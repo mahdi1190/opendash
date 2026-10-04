@@ -38,7 +38,7 @@ upgrades it.
 
 ### Added
 
-- **US animation packs.** Five regional packs (Northeast, Southeast, Midwest, Mountain West and Southwest, Pacific) give every state but Texas (which keeps its own pack) an opening scene and a symbol, plus an opening for 39 big cities and a symbol for 59 small cities and towns. They play only where you are (the weather town or the travel city), and the opening sequence welcomes you to your town or state. See `docs/dev/US_PACK.md`.
+- **US animation packs.** Five regional packs (Northeast, Southeast, Midwest, Mountain West and Southwest, Pacific) give every state but Texas (which keeps its own pack) an opening scene and a symbol, plus an opening for 39 big cities and a symbol for 59 small cities and towns. They play only where you are (the weather town or the travel city), and the opening sequence welcomes you to your town or state. Every state and big-city opening is a hand-drawn full-screen scene, and every other opening (festivals, world cities, Texas, the plain daily opening) now plays full screen too, on a landscape stage. See `docs/dev/US_PACK.md`.
 
 - UK pack: Kent, East Sussex, West Sussex, Surrey, Isle of Wight, Berkshire, Oxfordshire and Buckinghamshire (8 full-screen scenes each), plus Greater London (10). South East and London share one gallery pack with 84 scenes, including Hampshire's existing 10.
 - Connections: shared assistant cards in setup and Connections, bundled provider marks, unified Claude and OpenDash tool setup, local Codex/Gemini CLI tool registration, and clear browser availability.
