@@ -134,12 +134,12 @@ test('vendor marks follow provider identity rather than a renamed source label',
 test('embedded vendor marks equal the checked-in original assets and retain first-party provenance', () => {
   const { context: c } = page();
   const urls = vm.runInContext('CONN_BRAND_URLS', c);
-  const provenance = JSON.parse(readFileSync(join(ROOT, 'prototypes', 'connections', 'logos', 'sources.json'), 'utf8'));
+  const provenance = JSON.parse(readFileSync(join(ROOT, 'assets', 'brand', 'connections', 'sources.json'), 'utf8'));
   const assets = [['gmail', 'gmail.svg', 'www.gstatic.com'], ['calendar', 'google-calendar.svg', 'www.gstatic.com'], ['claude', 'claude.svg', 'www.anthropic.com'], ['outlook', 'outlook.png', 'res.public.onecdn.static.microsoft']];
   for (const [service, filename, host] of assets) {
     const encoded = urls[service].match(/^data:image\/(svg\+xml|png);base64,([A-Za-z0-9+/=]+)$/);
     assert.ok(encoded, `${service}: embedded image does not require a network request`);
-    const original = readFileSync(join(ROOT, 'prototypes', 'connections', 'logos', filename));
+    const original = readFileSync(join(ROOT, 'assets', 'brand', 'connections', filename));
     assert.deepEqual(Buffer.from(encoded[2], 'base64'), original, `${service}: use the exact original mark`);
     assert.equal(new URL(provenance[filename].source).hostname, host);
     if (filename.endsWith('.svg')) assert.doesNotMatch(original.toString('utf8'), /<script|<foreignObject|\bon\w+\s*=|javascript:|(?:href|src)\s*=\s*["'](?:https?:|\/\/|data:)/i);
