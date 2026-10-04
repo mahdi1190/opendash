@@ -300,9 +300,9 @@
       const post = (x, y, s) => `<path fill="#6a4a30" d="M${x - 3 * s} ${y}v${-34 * s}h${6 * s}v${34 * s}z"/>`;
       return `<defs>${lin(s1, [[0, '#2268c8'], [0.4, '#4f9be4'], [0.7, '#a6d2f2'], [0.88, '#e6f2f6']])}${lin(g1, [[0, '#d9b653'], [1, '#a98833']])}${lin(g2, [[0, '#e6c45e'], [1, '#b8923a']])}${radU(l1, [[0, '#fff6d0', 0.6], [1, '#fff6d0', 0]], 1350, 60, 800)}`
         + `<linearGradient id="${rn}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5d6a86" stop-opacity=".85"/><stop offset="1" stop-color="#6d7a96" stop-opacity="0"/></linearGradient></defs>`
-        + full(`url(#${s1})`) + rays(1350, 60, 1200, '#fffbe0', 0.14) + sun(1350, 70, 38, '#fffdf2', '#fff2b8')
+        + full(`url(#${s1})`) + rays(1480, 60, 1200, '#fffbe0', 0.14) + sun(1480, 80, 38, '#fffdf2', '#fff2b8')
         + streak(260, 120, 360, '#fff', 0.6) + streak(900, 70, 300, '#fff', 0.5)
-        + bigcloud(300, 330, 2.0, '#aebfd6', '#fff', 78, 6) + bigcloud(980, 250, 1.8, '#b4c4da', '#fff', 84, 30) + bigcloud(600, 150, 1.2, '#c0d0e4', '#fff', 66, 14) + bigcloud(1480, 360, 0.9, '#b8c8de', '#fff', 90, 46)
+        + bigcloud(300, 330, 2.0, '#aebfd6', '#fff', 78, 6) + bigcloud(900, 270, 1.6, '#b4c4da', '#fff', 84, 30) + bigcloud(600, 150, 1.2, '#c0d0e4', '#fff', 66, 14) + bigcloud(1480, 360, 0.9, '#b8c8de', '#fff', 90, 46)
         + `<g class="x-usdrift" style="--ad:70s;--dx:50px"><ellipse cx="1180" cy="380" rx="300" ry="64" fill="#46536e" opacity=".85"/><ellipse cx="1090" cy="360" rx="190" ry="56" fill="#556280"/><ellipse cx="1260" cy="352" rx="170" ry="48" fill="#5f6d8c"/><path fill="url(#${rn})" d="M980 400H1400L1370 590H1000z"/><path fill="none" stroke="#7f8cac" stroke-width="2.4" opacity=".7" stroke-dasharray="14 10" d="${Array.from({ length: 16 }, (_, i) => `M${1000 + i * 25} 396l-14 190`).join('')}"/></g>`
         + `<path class="x-usshim" style="--ad:2.4s" fill="none" stroke="#fff6c0" stroke-width="3" d="M1180 420l-14 40l16 4l-12 36"/>`
         + birds(77, 3, 500, 440, '#2b3646', 2.0, 640) + birds(78, 5, 900, 500, '#2b3646', 1.0, 520)

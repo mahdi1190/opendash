@@ -36,8 +36,8 @@
   /* ---------- Maine: the lighthouse in sea fog at dawn ---------- */
   usSceneAdd({ key: 'state:ME', label: 'Lighthouse in the sea fog', site: 'A Maine lighthouse at dawn', colour: 'slate', mood: 'calm', season: 'any', tags: ['lighthouse', 'fog', 'coast'],
     svg: () => {
-      const s1 = U(), w1 = U(), b1 = U(), r1 = U(); const cx = 1090;
-      return `<defs>${lin(s1, [[0, '#8d9fb8'], [0.35, '#cbb9c4'], [0.6, '#f1d3c0'], [1, '#f6e3cf']])}${lin(w1, [[0, '#d9c9c6'], [0.1, '#7f98a8'], [1, '#2e4a5c']])}${linU(r1, [[0, '#59616a'], [1, '#262b33']], 0, 600, 0, 900)}${linU(b1, [[0, '#fff3c0', 0.75], [1, '#fff3c0', 0]], cx, 292, cx - 760, 292)}</defs>`
+      const s1 = U(), w1 = U(), b1 = U(), r1 = U(), b2 = U(); const cx = 1090;
+      return `<defs>${lin(s1, [[0, '#8d9fb8'], [0.35, '#cbb9c4'], [0.6, '#f1d3c0'], [1, '#f6e3cf']])}${lin(w1, [[0, '#d9c9c6'], [0.1, '#7f98a8'], [1, '#2e4a5c']])}${linU(r1, [[0, '#59616a'], [1, '#262b33']], 0, 600, 0, 900)}${linU(b1, [[0, '#fff3c0', 0.75], [1, '#fff3c0', 0]], cx, 292, cx - 760, 292)}${radU(b2, [[0, '#fff0b8', 0.6], [1, '#fff0b8', 0]], cx, 287, 70)}</defs>`
         + full(`url(#${s1})`) + stars(4, 14, 140) + sun(430, 470, 40, '#fff6e2', '#ffd9bd', true)
         + streak(300, 150, 280, '#fff', 0.5) + streak(1250, 240, 240, '#f8e4e0', 0.5, 70) + cloud(860, 220, 1.1, '#d8d0d8', 0.7, 60, 10, '#f6ecea') + cloud(180, 330, 0.9, '#d4ccd6', 0.65, 70, 36, '#f6ece8')
         + birds(3, 4, 640, 360, '#4a5260', 1.1, 600)
@@ -62,7 +62,7 @@
         + `<rect x="${cx - 32}" y="268" width="64" height="38" fill="#ffe7a2" opacity=".95"/><rect class="us-lit" x="${cx - 32}" y="268" width="64" height="38"/><path fill="none" stroke="#2d3238" stroke-width="4" d="M${cx - 11} 268v38M${cx + 11} 268v38M${cx - 32} 287H${cx + 32}"/>`
         + `<path fill="#a8372d" d="M${cx - 40} 268L${cx} 226L${cx + 40} 268z"/><path fill="#2d3238" d="M${cx - 5} 226h10v-14h-10z"/><circle cx="${cx}" cy="208" r="6" fill="#2d3238"/>`
         + mv('ussway2', { ad: '9s', to: `${cx}px 287px` }, `<path fill="url(#${b1})" d="M${cx} 287L${cx - 760} 214V362z"/>`)
-        + mv('usglow', { ad: '3s' }, `<circle cx="${cx}" cy="287" r="40" fill="#fff0b8" opacity=".5"/>`)
+        + mv('usglow', { ad: '3s' }, `<circle cx="${cx}" cy="287" r="70" fill="url(#${b2})"/>`)
         /* surf, spray, fog over the rocks, foreground */
         + `<path fill="#e9eef0" opacity=".85" d="M540 770c40-14 70-8 110-14c30-4 60 6 90-2c-10 14-40 22-100 24c-40 2-70-2-100-8z"/>`
         + mv('usbob', { ad: '3.4s', dy: '5px' }, `<path fill="none" stroke="#fff" stroke-width="5" opacity=".7" d="M520 780q50-14 100 0t100 0t100 0"/>`) + `<g opacity=".55">${puffs(660, 770, 5, '#f4f8fa', 20, 40, 4, -80, 2.4)}${puffs(1500, 740, 4, '#f4f8fa', 22, -40, 4.6, -80, 2.4)}</g>`
