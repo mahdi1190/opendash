@@ -381,8 +381,9 @@ opt-in and end-to-end encrypted. The full plan is in
   Google Calendar, one-click recommendations, 16 new Home widgets, the morning
   brief on Home, a money story, travel and time zones, rebuilt People, and
   animations everywhere.
-- **v2.2, polish and depth:** more widgets, imports (Todoist, Google Tasks,
-  Microsoft To Do, Notion), more languages, and animation polish.
+- **v2.2, "Alive" (the animation update):** a large animation library with a
+  new look every day, visual themes, seasonal skies, a UK counties pack,
+  achievements and an animated "Year in OpenDash".
 - **v3.0, "OpenDash Everywhere" (planned):** a phone app (installable web app,
   then native), end-to-end encrypted sync between your devices
   (self-hosted, your own cloud storage, or an optional hosted service), app

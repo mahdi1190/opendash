@@ -33,14 +33,30 @@ category).
   (Off / Subtle / Standard / Playful), list and page transitions, celebrations
   that vary by what you finished, and weather on Home.
 
-## v2.2: polish and depth
+## v2.2: "Alive", the animation update
 
-- More widgets: health and routines, free slots, budgets, subscriptions, a
-  focus timer, "keep in touch", recent files, momentum.
-- Money and links recommendations; a trip story.
-- Animation polish across every screen; more scenes and seasonal skies.
-- Import from Todoist, Google Tasks, Microsoft To Do, Notion and CSV.
-- More languages and locale formats; accessibility audit.
+- **An animation library** behind everything animated: openings,
+  celebrations, story transitions, event scenes, symbols, weather and page
+  transitions.
+  - A gallery to preview, favourite and block animations.
+  - A new look every day.
+  - Visual themes (Calm, Playful, Cinematic, Retro pixel, Hand-drawn, Paper
+    cut-out, Neon night).
+- **Something new every day:** seasonal and festival animations, real
+  sunrise and sunset skies, moon phases, and your birthday.
+- **The UK pack:** animations for every UK county, drawn from its landmarks,
+  landscape, traditions, food and heritage. It recognises the county you are
+  in (opt-in, offline) and welcomes you when you cross into a new one.
+- **Moments across the app:** themed story skins, completion styles per
+  stream, streak flames, event scenes on the calendar, payday and budget
+  moments in Finances, a living Home background, and focus sessions that grow
+  a scene.
+- **Achievements and "Year in OpenDash":** milestones that unlock themes, and
+  an animated year (and month) in review, exported only if you choose.
+- **Later in 2.2:** a world pack tied to travel, "make your own" animations
+  drawn by the assistant, and optional soundscapes.
+- **Also:** more widgets, imports (Todoist, Google Tasks, Microsoft To Do,
+  Notion), more languages, and battery-saver motion.
 
 ## v3.0: "OpenDash Everywhere" (planned)
 
