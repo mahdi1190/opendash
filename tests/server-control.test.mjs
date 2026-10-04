@@ -156,6 +156,10 @@ function fakeWorld({ plan, rebuildResult = { ok: true, at: 'x' } }) {
     const c = new EventEmitter();
     c.pid = 100 + spawned.length; c.connected = true; c.sent = []; c.killed = false;
     c.send = (m) => c.sent.push(m);
+    // A running child keeps the event loop alive, as a real process handle does
+    // (the supervisor's own kill timer is unref'd and must not have to).
+    const alive = setInterval(() => {}, 60000);
+    c.once('exit', () => clearInterval(alive));
     c.kill = () => { c.killed = true; setImmediate(() => c.emit('exit', null, 'SIGTERM')); };
     spawned.push({ args, env, child: c });
     const step = plan[Math.min(i++, plan.length - 1)];
@@ -247,7 +251,7 @@ describe('supervisor (fake children)', () => {
   test('a stop is sent to the child over IPC; it is ended only if it does not stop', async () => {
     const w = fakeWorld({ plan: ['wait'] });
     const done = w.sup.run();
-    await sleep(5);
+    assert.equal(w.spawned.length, 1, 'the child is started synchronously by run()');
     w.sup.stop('received SIGINT (Ctrl+C)');
     const c = w.spawned[0].child;
     assert.deepEqual(c.sent, [{ cmd: 'stop', reason: 'received SIGINT (Ctrl+C)' }]);
@@ -259,17 +263,22 @@ describe('supervisor (fake children)', () => {
   test('a stop while waiting to restart after a crash ends at once', async () => {
     let t = 0;
     const spawned = [];
-    let wakeSleep;
+    let wakeSleep, sleeping;
+    const asleep = new Promise(r => { sleeping = r; });
+    // The backoff sleep never ends on its own: only the stop can end the wait.
+    // A ref'd timer keeps the event loop alive meanwhile (as the real sleep does).
+    const alive = setInterval(() => {}, 60000);
     const sup = createSupervisor({
       args: [], spawnChild: () => { const c = new EventEmitter(); c.pid = 1; spawned.push(c); setImmediate(() => c.emit('exit', 1, null)); return c; },
-      log: () => {}, now: () => t, sleep: () => new Promise(r => { wakeSleep = r; }),
+      log: () => {}, now: () => t, sleep: () => new Promise(r => { wakeSleep = r; sleeping(); }),
     });
     const done = sup.run();
-    await sleep(5);
-    sup.stop('received SIGTERM');
-    assert.equal(await done, 0);
-    assert.equal(spawned.length, 1);
-    wakeSleep && wakeSleep();
+    await asleep;                       // the crash happened and the backoff wait began
+    try {
+      sup.stop('received SIGTERM');
+      assert.equal(await done, 0);
+      assert.equal(spawned.length, 1);
+    } finally { wakeSleep && wakeSleep(); clearInterval(alive); }
   });
 });
 
@@ -540,7 +549,9 @@ describe('os-integration (dry run)', () => {
   const repoRoot = 'C:\\Apps\\dash board';
   const base = { platform: 'win32', repoRoot, port: 4173, dataDir: 'C:\\Apps\\dash board\\data', defaultDataDir: 'C:\\Apps\\dash board\\data', env, exists: () => true };
 
-  test('the command is fixed: the launcher, plus only a non-default port / data folder', () => {
+  // The command is a Windows registry value built from Windows paths (C:\...),
+  // which node:path only joins and resolves as such on Windows.
+  test('the command is fixed: the launcher, plus only a non-default port / data folder', { skip: process.platform !== 'win32' && 'Windows only: the start-up command uses Windows paths' }, () => {
     assert.equal(OS.launcherCommand(base), `"${join('C:\\Windows', 'System32', 'wscript.exe')}" "${join(repoRoot, 'tools', 'start-hidden.wsf')}"`);
     const c = OS.launcherCommand({ ...base, port: 4300, dataDir: 'D:\\My data\\dash\\' });
     assert.ok(c.endsWith('--port 4300 --data-dir "' + join('D:\\My data\\dash') + '"'), c);
@@ -740,7 +751,7 @@ describe('launcher (start-hidden.wsf)', () => {
 
   // The real Windows Script Host, on a COPY of the launcher next to a decoy
   // start-dashboard.bat that only writes down what it was given.
-  test('for real (cscript, a decoy start-dashboard.bat): the arguments survive cmd intact', { skip: process.platform !== 'win32', timeout: 30000 }, async (t) => {
+  test('for real (cscript, a decoy start-dashboard.bat): the arguments survive cmd intact', { skip: process.platform !== 'win32' && 'Windows only: runs the real Windows Script Host', timeout: 30000 }, async (t) => {
     const { spawnSync } = await import('node:child_process');
     const box = mkdtempSync(join(tmpdir(), 'launcher-'));
     try {

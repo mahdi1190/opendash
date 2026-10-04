@@ -66,7 +66,9 @@ before(async () => {
 after(async () => {
   await srv?.close();
   delete process.env.CLAUDE_CLI_PATH; delete process.env.FAKE_CLAUDE_MODE;
-  rmSync(dir, { recursive: true, force: true });
+  // Retries: on Windows a write that was in flight when the server closed can
+  // still be landing in state/ (ENOTEMPTY / EBUSY on the first pass).
+  rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
 test('weather: no town -> geocode -> set it in config -> forecast (cached) with attribution', async () => {

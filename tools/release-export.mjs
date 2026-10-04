@@ -29,7 +29,7 @@
 //             node tools/release-package.mjs --from <out> --version X.Y.Z
 // Exit codes: 0 ok, 1 the build check failed, 2 usage or file error.
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, copyFileSync, chmodSync, rmSync, mkdtempSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, copyFileSync, chmodSync, rmSync, mkdtempSync, statSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve, relative, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -101,10 +101,21 @@ export function buildInputsMissing(root, files) {
     const r = spawnSync(process.execPath, [`--import=${pathToFileURL(join(dirname(fileURLToPath(import.meta.url)), 'release-trace.mjs')).href}`, 'build.mjs', '--out', join(tmp, 'index.html')],
       { cwd: root, encoding: 'utf8', env: { ...process.env, RELEASE_TRACE_OUT: trace }, windowsHide: true });
     if (r.status !== 0 || !existsSync(trace)) return { missing: [], error: `the source does not build (${`${r.stderr || r.stdout || ''}`.trim().split(/\r?\n/)[0] || `exit ${r.status}`})` };
+    // The build resolves relative paths against its cwd, which the OS reports
+    // with symlinks resolved (macOS: /var/folders -> /private/var/folders), so
+    // a traced path may sit under the real path of root rather than root itself.
+    const roots = [...new Set([resolve(root), realpathSync(root)])];
+    const inRoot = (abs) => {
+      for (const base of roots) {
+        const rel = relative(base, abs);
+        if (rel && !rel.startsWith('..') && !isAbsolute(rel)) return rel.split('\\').join('/');
+      }
+      return null;
+    };
     const missing = new Set();
     for (const abs of JSON.parse(readFileSync(trace, 'utf8'))) {
-      const rel = relative(root, abs).split('\\').join('/');
-      if (!rel || rel.startsWith('..') || isAbsolute(rel) || files.has(rel)) continue;
+      const rel = inRoot(abs);
+      if (!rel || files.has(rel)) continue;
       let st;
       try { st = statSync(abs); } catch { continue; }   // checked for but absent in the source too
       if (st.isFile()) missing.add(rel);
