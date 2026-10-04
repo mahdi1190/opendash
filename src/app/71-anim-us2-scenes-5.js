@@ -501,7 +501,7 @@
         + `<rect y="650" width="1600" height="250" fill="url(#${lake})"/>`
         + `<path fill="#ffc07a" opacity=".3" d="M180 652h240l110 248H70z"/>` + shimmer(11, 26, 60, 560, 660, 890, '#ffd6a0', 50) + shimmer(12, 36, 0, 1600, 660, 890, '#c06ab0', 56)
         /* the plaza under the pyramid and the white wing */
-        + `<path fill="#352a5a" d="M380 664H1260L1330 690H320z"/>`
+        + `<path fill="#352a5a" d="M330 664H1270L1340 690L1230 748L800 772L400 748L300 690z"/><path fill="#4a3a78" d="M400 748L800 772L1230 748L1240 756L800 782L390 756z"/>`
         + `<g fill="#f4eef8"><path d="M330 600H500V672H330z"/><path d="M360 560H470V600H360z"/></g><path fill="#c9b8da" d="M330 600H500L488 612H342z"/><g fill="#8a6aa8" opacity=".5"><rect x="344" y="624" width="144" height="5"/><rect x="344" y="642" width="144" height="5"/></g>` + lit(372, 572, 20, 12) + lit(406, 572, 20, 12)
         /* the reflection */
         + `<g transform="translate(0 1484) scale(1 -1)" opacity=".26">` + pyr(1) + `</g>`
@@ -510,10 +510,9 @@
         + lit(600, 600, 14, 22) + lit(700, 650, 14, 22) + lit(900, 640, 14, 22) + lit(1000, 600, 14, 22)
         /* spotlights sweeping from the apex */
         + beam(-24, '#fff', '6s', '0s') + beam(18, '#fff', '7s', '-3s') + beam(-4, '#fff', '9s', '-5s')
-        + mv('usmove', { ad: '110s', dx: '800px' }, `<g transform="translate(760 760)"><path fill="#2a1f4a" d="M-60 0H70L56 -16H-40z"/><path fill="#fff" d="M0 -60L0 -16L28 -16z"/><path fill="#e0528a" d="M-4 -52L-4 -16L-24 -16z"/></g>`)
+        + mv('usmove', { ad: '110s', dx: '800px' }, `<g transform="translate(760 812)"><path fill="#2a1f4a" d="M-60 0H70L56 -16H-40z"/><path fill="#fff" d="M0 -60L0 -16L28 -16z"/><path fill="#e0528a" d="M-4 -52L-4 -16L-24 -16z"/></g>`)
         + `<path fill="#2a1f4a" d="M-160 900V830q200 -22 440 -4t500 6t480 -10t440 10V900z"/>`
         + dots('M-100 842Q400 826 800 838T1700 832', '#ffd98a', 4, 70, 'us-lamps')
-        + `<g fill="#17113a"><rect x="130" y="760" width="5" height="90"/><rect x="1450" y="750" width="5" height="100"/></g>` + lit(116, 748, 34, 12) + lit(1436, 738, 34, 12)
         + birds(91, 6, 700, 420, '#2a1f4a', 1.3, 640) + birds(92, 4, 1250, 330, '#3a2060', 1.0, 480)
         + finish(0.32);
     } });
