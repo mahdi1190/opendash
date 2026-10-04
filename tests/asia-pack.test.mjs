@@ -83,3 +83,12 @@ test('asia places table: unique ids, real countries, coordinates in range, every
   }
   for (const cc of Object.keys(R.ASIA_COUNTRIES)) assert.ok(R.ASIA_PLACES.some(p => p[2] === cc), `${cc} has a row`);
 });
+
+test('asia packs: travel to a city the world pack draws (Tokyo, Dubai, Singapore) is the world pack\'s', () => {
+  for (const city of ['tokyo-jp', 'dubai-ae', 'singapore-sg']) {
+    assert.equal(R.asiaCountryOf({ city }), '', city);
+    assert.equal(R.asiaPlace({ city }), null, city);
+    assert.equal(R.animSpecialPick('opening', day, {}, { city }).pack, 'world', city);
+  }
+  assert.equal(R.asiaPlace({ lat: 35.68, lon: 139.69 }).id, 'tokyo', 'at home in Tokyo the full scene plays');
+});

@@ -37,8 +37,8 @@ symbol) or `''` (an anchor, which only tells which country a position is in).
 | city | 1.2 | symbol | one small item per small city or town |
 
 A city beats its country's art in its slot while you are there; a festival or the birthday (priority 2+) still
-wins the day. Tokyo, Singapore and Dubai also have a world-pack signature (travel arrival card); in the opening
-these city scenes win.
+wins the day. Tokyo, Singapore and Dubai also have a world-pack signature: while travelling there the world pack owns the
+opening and the arrival card (`ASIA_WORLD_TRAVEL`); living there, the full-screen city scene plays.
 
 ## Full-screen scenes
 

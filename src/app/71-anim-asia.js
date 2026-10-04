@@ -2,7 +2,7 @@
    ASIA ANIMATION PACKS, the shared part. PURE classic script (no DOM, no fetches, nothing
    looked up online). Loads before the packs (72-anim-pack-asia-*.js). Where in Asia the user is, offline:
      - travel: ctx.city is '<place id>-<cc>' for a place in ASIA_PLACES (the travel tables' ids; Tokyo,
-       Singapore and Dubai also have a world-pack signature, this pack's city scenes win there)
+       Singapore and Dubai are the world pack's while travelling: ASIA_WORLD_TRAVEL)
      - home: the weather town (ctx.lat / ctx.lon): an art place (big or small city) within its radius
        gives the place; any table row (anchors included) within ASIA_COUNTRY_KM gives the COUNTRY
        (nearest row wins, so beside a border it can be the neighbour).
@@ -112,6 +112,8 @@ const ASIA_PLACES = [
   ['pakse', 'Pakse', 'LA', 15.12, 105.78, ''], ['savannakhet', 'Savannakhet', 'LA', 16.55, 104.75, ''], ['vang-vieng', 'Vang Vieng', 'LA', 18.92, 102.45, 'small'], ['bandar-seri-begawan', 'Bandar Seri Begawan', 'BN', 4.89, 114.94, 'big'],
   ['dili', 'Dili', 'TL', -8.56, 125.57, 'big'], ['baucau', 'Baucau', 'TL', -8.47, 126.46, ''],
 ];
+/** Cities the world pack (72-anim-pack-world.js) draws for travellers: while travelling there the world pack owns the opening, and the arrival card. */
+const ASIA_WORLD_TRAVEL = ['tokyo-jp', 'dubai-ae', 'singapore-sg'];
 const ASIA_COUNTRY_KM = 300;                       // beyond this from every row the position is not in Asia (or is a country this table does not cover)
 const ASIA_PLACE_KM = { big: 50, small: 30 };     // how close counts as "in" a city / a town
 const _asKm = (la1, lo1, la2, lo2) => {
@@ -129,7 +131,7 @@ function _asTravelRow(cityId) {
 /** The art place (a big or small city) for a ctx, {id, name, cc, kind} or null. Travel wins. */
 function asiaPlace(ctx) {
   if (!ctx) return null;
-  if (ctx.city) { const p = _asTravelRow(ctx.city); return p && p[5] ? _asObj(p) : null; }
+  if (ctx.city) { const p = ASIA_WORLD_TRAVEL.includes(ctx.city) ? null : _asTravelRow(ctx.city); return p && p[5] ? _asObj(p) : null; }
   if (!_asHasPos(ctx)) return null;
   let best = null, bd = Infinity;
   for (const p of ASIA_PLACES) {
@@ -142,7 +144,7 @@ function asiaPlace(ctx) {
 /** The country code for a ctx ('' = not in Asia, or travelling somewhere that is not an Asian place). Nearest table row wins. */
 function asiaCountryOf(ctx) {
   if (!ctx) return '';
-  if (ctx.city) { const p = _asTravelRow(ctx.city); return p ? p[2] : ''; }
+  if (ctx.city) { const p = ASIA_WORLD_TRAVEL.includes(ctx.city) ? null : _asTravelRow(ctx.city); return p ? p[2] : ''; }
   if (!_asHasPos(ctx)) return '';
   let best = '', bd = ASIA_COUNTRY_KM;
   for (const p of ASIA_PLACES) { const d = _asKm(ctx.lat, ctx.lon, p[3], p[4]); if (d < bd) { bd = d; best = p[2]; } }
