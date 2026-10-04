@@ -43,6 +43,20 @@ A city beats the state's art in its slot while you are there; a festival or the 
 (priority 2+) still wins the day. Every item is a 64 x 64 drawing that moves
 (`x-*` classes) and has a still variant for reduced motion.
 
+## Full-screen openings
+
+Every state signature and every big-city opening (88) is a **full-screen scene** (`full: true`, 1600 x 900,
+sliced to fill any screen, <= 32 KB rendered), drawn in `src/app/71-anim-us2-scenes-1..8.js` with the shared
+kit `usSceneKit()` / `usSceneCss()` in `71-anim-us.js` (the Texas scenes' toolkit: layered sky, parallax,
+ambient life, evening grade `.us-tint` / `.us-lit` / `.us-lamps` / `.us-star`). A scene file calls
+`usSceneAdd({key: 'state:NY' | 'place:buffalo', label, site, colour, mood, season, tags, svg})` and
+`usBuilder` upgrades the matching item. The small 64 x 64 art in the pack files for those items is
+superseded (kept as the item's source only). Elements (symbols) and small-town items stay small.
+
+All other openings (core, festivals, world cities, Texas, the UK South West) are small items: the opening
+sequence draws them on a full-screen landscape stage (`animOpeningStageHtml`, `.od-seq-stage` in
+`02-splash.css`): the seasonal landscape of the hour, the item large in the middle with a glow.
+
 ## Adding a place or a state item
 
 1. A new place: add a row to `US_PLACES` (give it `big` or `small`), then one

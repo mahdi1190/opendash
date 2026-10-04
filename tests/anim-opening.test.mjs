@@ -113,3 +113,13 @@ test('motion off and opening off never start the county or holiday stages', () =
     assert.equal(h.attributes['data-od-event'], undefined);
   }
 });
+
+test('every opening is full screen: a small item is drawn large on the landscape stage, a full scene fills the screen', () => {
+  const h = harness();
+  const html = (code) => vm.runInContext(code, h.context);
+  const small = html("(() => { const it = animItems({ slot: 'opening' }).find(i => !i.full); return animOpeningStageHtml(it, 'summer', 'day'); })()");
+  assert.match(small, /ap-fallback/, 'the landscape behind');
+  assert.match(small, /od-seq-stage-art/, 'the item, large in the middle');
+  const big = html("(() => { const it = animItems({ slot: 'opening' }).find(i => i.full); return animOpeningStageHtml(it, 'summer', 'day'); })()");
+  assert.ok(big.includes('ap-full') && !big.includes('od-seq-stage-art'), 'a full scene is the whole stage');
+});

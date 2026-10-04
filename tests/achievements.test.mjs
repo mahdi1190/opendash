@@ -11,7 +11,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
 const PACK_FILES = readdirSync(APP).filter(f => /^72-anim-pack-[a-z0-9-]+\.js$/.test(f)).sort();
-const body = ['71-achievements.js', '71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-us.js', ...PACK_FILES].map(src).join('\n;\n');
+const body = ['71-achievements.js', '71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', ...readdirSync(APP).filter(f => /^71-anim-us2?[-.]/.test(f)).sort(), ...PACK_FILES].map(src).join('\n;\n');
 const NAMES = ['ACH_DEFS', 'ACH_NOTES', 'achDef', 'achFacts', 'achProgress', 'achEarned', 'achRewardFor', 'achLockedBy', 'recapRange', 'recapBuild', 'recapLongestRun', 'animOriginLine',
   'ANIM_THEMES', 'animItem', 'animItems', 'animPack', 'animLocked', 'animThemeOpen', 'animLookNormalize', 'animThemeFor', 'animPickFor', 'animDailyPick', 'animValidatePack'];
 // eslint-disable-next-line no-new-func

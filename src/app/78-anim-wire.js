@@ -171,10 +171,7 @@ function animOpeningEvent() {
   const it = animSpecialPick('opening', todayStr(), animLook(), Object.assign(animCtx(), { level: _agLevel() }));
   return it && !it.county && !it.city && (it.priority || 1) >= 2 ? it : null;
 }
-function animOpeningEventHtml(it, tod) {
-  const art = animItemHtml(it, { size: it.full ? 'fill' : 'hero', live: true, tod });
-  return it.full ? art : animOpeningFallbackHtml(animSeasonOf(todayStr()), tod) + `<div class="od-seq-event-art">${art}</div>`;
-}
+function animOpeningEventHtml(it, tod) { return animOpeningStageHtml(it, animSeasonOf(todayStr()), tod); }
 
 /* ---------- the fallback: a full-screen seasonal landscape (no drawn county scene yet) ----------
    Rolling hills in the season's colours under the sky of the hour, drifting clouds, birds, a few
@@ -206,6 +203,12 @@ function animOpeningFallbackHtml(season, tod) {
     + (night ? '<rect width="1600" height="900" fill="#0b1030" opacity=".25"/>' : '') + `</svg></span>`;
 }
 
+/** A full-screen stage for ANY opening item: a full scene fills the screen as drawn; a 64-unit one (a core, festival, world or Texas opening) gets the seasonal landscape of the hour behind it and is drawn LARGE in the middle, with a soft glow in its colour. So every opening is full screen. */
+function animOpeningStageHtml(it, season, tod) {
+  if (it.full) return animItemHtml(it, { size: 'fill', live: true, tod });
+  return animOpeningFallbackHtml(season, tod) + `<div class="od-seq-stage"><div class="od-seq-stage-glow"></div><div class="od-seq-stage-art">${animItemHtml(it, { size: 'hero', live: true, tod })}</div></div>`;
+}
+
 function animOpeningSequence() {
   animOpeningModeSync();
   const ctl = window.__odOpening, sp = document.getElementById('od-splash');
@@ -229,12 +232,16 @@ function animOpeningSequence() {
     if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, it: pick, over: 'Texas' }; } catch (e) { tx = null; }
     // Elsewhere in the US (71-anim-us.js, 72-anim-pack-us-*.js): the town or the state, with today's US opening as the emblem.
     if (!w && !tx) try { const u = typeof usWhere === 'function' ? usWhere(animCtx()) : null; const pick = u ? animToday('opening') : null; if (pick && /^us-/.test(pick.pack)) tx = { name: u.name, it: pick, over: 'USA' }; } catch (e) { tx = null; }
+    // Anywhere else: today's opening from any pack (core, seasons, world ...), on the same full-screen stage.
+    let gen = null;
+    if (!w && !tx) try { gen = animToday('opening'); } catch (e) { gen = null; }
     const tod = animTimeOfDay(), season = animSeasonOf(todayStr());
     const { it, origin } = animOpeningScene(w, returning);
     const part = { dawn: 'dawn', day: 'day', dusk: 'evening', night: 'night' }[tod];
-    const cap = it ? origin : tx ? (tx.it.full ? tx.it.site || tx.it.label : tx.over + ' · ' + tx.it.label) : (w ? `${season[0].toUpperCase() + season.slice(1)} · ${w.name}` : `${/^[aeiou]/.test(season) ? 'An' : 'A'} ${season} ${part}`);
-    const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : tx && tx.it.full ? animItemHtml(tx.it, { size: 'fill', live: true, tod }) : animOpeningFallbackHtml(season, tod);
-    const emblem = tx && !tx.it.full ? '<div class="od-seq-emblem" aria-hidden="true">' + animItemHtml(tx.it, { size: 'hero', live: true }) + '</div>' : '';
+    const stageIt = tx ? tx.it : gen;
+    const cap = it ? origin : tx ? (tx.it.full ? tx.it.site || tx.it.label : tx.over + ' · ' + tx.it.label) : gen ? (gen.full ? gen.site || gen.label : gen.label) : (w ? `${season[0].toUpperCase() + season.slice(1)} · ${w.name}` : `${/^[aeiou]/.test(season) ? 'An' : 'A'} ${season} ${part}`);
+    const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : stageIt ? animOpeningStageHtml(stageIt, season, tod) : animOpeningFallbackHtml(season, tod);
+    const emblem = '';
     const box = document.createElement('div'); box.className = 'od-seq';
     box.innerHTML = `<div class="od-seq-bg">${art}</div><div class="od-seq-shade"></div>${emblem}`
       + `<div class="od-seq-title">${w ? '' : `<span class="od-seq-over">${esc(tx ? 'Welcome to' : 'Welcome back')}</span>`}${w || tx ? `<span class="od-seq-place">${esc(w ? animOpeningPlace(it, w) : tx.name)}</span>` : ''}</div>`
@@ -243,7 +250,7 @@ function animOpeningSequence() {
     sp.style.setProperty('--od-scene-ms', ms[2] + 'ms');
     sp.appendChild(box);
     sp.setAttribute('data-od-county', w ? w.id : '');
-    sp.setAttribute('data-od-scene', it ? it.ref : tx ? tx.it.ref : 'fallback');
+    sp.setAttribute('data-od-scene', it ? it.ref : stageIt ? stageIt.ref : 'fallback');
     sp.classList.add('od-st-hello');
     wait(ms[1], () => {
       sp.classList.add('od-st-scene');

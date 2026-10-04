@@ -10,11 +10,15 @@ upgrades it.
 
 ## [Unreleased]
 
-## [2.2.6] - 2026-10-04
+## [2.3.0] - 2026-10-04
 
-### Fixed
+### Added
 
-- Settings > Updates works on a copy whose files were copied over or that still points at another git repository: it now installs the checked release zip (with a backup) instead of refusing with "uncommitted changes". Only a clone of OpenDash itself updates through git.
+- **Full-screen US openings.** Every US state and every big city (88 in all) now opens with its own hand-drawn full-screen scene: Maine's lighthouse in the fog, the Seattle skyline under Mount Rainier, Mount Rushmore, the Gateway Arch, a Kilauea night and more. Each is layered, moves in several places and lights up at dusk. They play where you are (the weather town or the travel city); see `docs/dev/US_PACK.md`.
+
+### Changed
+
+- Every opening now plays full screen. Festival, world-city, Texas and the plain daily openings that were small pictures are drawn large on a full-screen landscape of the season and the hour, and the plain daily opening now shows the day's actual opening instead of only a bare landscape.
 
 ## [2.2.5] - 2026-10-04
 
@@ -292,8 +296,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.6...HEAD
-[2.2.6]: https://github.com/mahdi1190/opendash/compare/v2.2.5...v2.2.6
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/mahdi1190/opendash/compare/v2.2.5...v2.3.0
 [2.2.5]: https://github.com/mahdi1190/opendash/compare/v2.2.4...v2.2.5
 [2.2.4]: https://github.com/mahdi1190/opendash/compare/v2.2.3...v2.2.4
 [2.2.3]: https://github.com/mahdi1190/opendash/compare/v2.2.2...v2.2.3
