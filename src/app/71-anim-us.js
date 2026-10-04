@@ -162,7 +162,7 @@ function usPlace(ctx) {
 /** The state code for a ctx ('' = not in the US, or travelling somewhere that is not a US place). Nearest table row wins. */
 function usStateOf(ctx) {
   if (!ctx) return '';
-  if (ctx.city) { const m = /^(.+)-us$/.exec(String(ctx.city)); const p = m ? _usRow(m[1]) : null; return p ? p[2] : ''; }
+  if (ctx.city) { const m = /^(.+)-us$/.exec(String(ctx.city)); const p = m && m[1] !== 'new-york' ? _usRow(m[1]) : null; return p ? p[2] : ''; }   // a trip to New York is the world pack's
   if (!_usHasPos(ctx)) return '';
   let best = '', bd = US_STATE_KM;
   for (const p of US_PLACES) { const d = _usKm(ctx.lat, ctx.lon, p[3], p[4]); if (d < bd) { bd = d; best = p[2]; } }
