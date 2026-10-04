@@ -181,6 +181,54 @@
       "path": "src/app/72-anim-pack-us-southeast.js",
       "line_sha256": "2469d2e7c09ff2b0cc667195dbf80cefe91ce35e48d0a18f2a06feb936e5f564",
       "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-anim-us2-scenes-5.js",
+      "line_sha256": "656148cbe06e28c187fbca05886e26fe137e89e9a7b7c84964f0dce5f709dc32",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-anim-us2-scenes-5.js",
+      "line_sha256": "86aa92088e929d86bd2c88bef204aa3373407790316880d09a9a1a79958408c2",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-anim-us2-scenes-5.js",
+      "line_sha256": "dd626ce356198a680f3907273fdc55b1172c2188389d1549c8650416f43ef80c",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-anim-us2-scenes-5.js",
+      "line_sha256": "65f6d28e1f0c6c4540693c13e8684b5379c4929d5d6764fc0ed80dac89a93843",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-anim-us2-scenes-5.js",
+      "line_sha256": "b33de20045497db6e4ddaa6558690f27b13fdc72c6e2246f527c5ca17d193103",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-anim-us2-scenes-6.js",
+      "line_sha256": "5c5095dbe022a5d6a235a274ad21582c8a7e6430503d4d2d82c67e3a7c800d62",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-anim-us2-scenes-6.js",
+      "line_sha256": "c0eb4496b51e0b6161af3a60581c5c4ec43fc78f0f60a69e604aa90bd25fd89d",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-anim-us2-scenes-6.js",
+      "line_sha256": "9605244fe07e487cae62f8c72b8f63dfcbe9ec4f9f88e69464259c7c1475ad19",
+      "why": "reviewed ordinary word"
     }
   ]
 }
