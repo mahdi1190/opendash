@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-04
+
+### Added
+
+- **Full-screen US openings.** Every US state and every big city (88 in all) now opens with its own hand-drawn full-screen scene: Maine's lighthouse in the fog, the Seattle skyline under Mount Rainier, Mount Rushmore, the Gateway Arch, a Kilauea night and more. Each is layered, moves in several places and lights up at dusk. They play where you are (the weather town or the travel city); see `docs/dev/US_PACK.md`.
+
+### Changed
+
+- Every opening now plays full screen. Festival, world-city, Texas and the plain daily openings that were small pictures are drawn large on a full-screen landscape of the season and the hour, and the plain daily opening now shows the day's actual opening instead of only a bare landscape.
+
 ## [2.2.5] - 2026-10-04
 
 ### Changed
@@ -38,7 +48,7 @@ upgrades it.
 
 ### Added
 
-- **US animation packs.** Five regional packs (Northeast, Southeast, Midwest, Mountain West and Southwest, Pacific) give every state but Texas (which keeps its own pack) an opening scene and a symbol, plus an opening for 39 big cities and a symbol for 59 small cities and towns. They play only where you are (the weather town or the travel city), and the opening sequence welcomes you to your town or state. Every state and big-city opening is a hand-drawn full-screen scene, and every other opening (festivals, world cities, Texas, the plain daily opening) now plays full screen too, on a landscape stage. See `docs/dev/US_PACK.md`.
+- **US animation packs.** Five regional packs (Northeast, Southeast, Midwest, Mountain West and Southwest, Pacific) give every state but Texas (which keeps its own pack) an opening scene and a symbol, plus an opening for 39 big cities and a symbol for 59 small cities and towns. They play only where you are (the weather town or the travel city), and the opening sequence welcomes you to your town or state. See `docs/dev/US_PACK.md`.
 
 - UK pack: Kent, East Sussex, West Sussex, Surrey, Isle of Wight, Berkshire, Oxfordshire and Buckinghamshire (8 full-screen scenes each), plus Greater London (10). South East and London share one gallery pack with 84 scenes, including Hampshire's existing 10.
 - Connections: shared assistant cards in setup and Connections, bundled provider marks, unified Claude and OpenDash tool setup, local Codex/Gemini CLI tool registration, and clear browser availability.
@@ -286,7 +296,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.5...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/mahdi1190/opendash/compare/v2.2.5...v2.3.0
 [2.2.5]: https://github.com/mahdi1190/opendash/compare/v2.2.4...v2.2.5
 [2.2.4]: https://github.com/mahdi1190/opendash/compare/v2.2.3...v2.2.4
 [2.2.3]: https://github.com/mahdi1190/opendash/compare/v2.2.2...v2.2.3
