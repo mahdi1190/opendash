@@ -10,6 +10,18 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-10-04
+
+### Fixed
+
+- Home editing is a proper grid editor: drag to move with a live drop preview, drag edges or the corner to resize, the other widgets reflow; keyboard moves and resizes; Undo.
+- Stories always play full screen, with a volume slider and mute; task buttons in stories now really change the task, with Undo.
+- The assistant suggests several changes at once, including adding people from meetings and tasks who are not in People yet.
+- Finances shows Connect your bank at once when nothing is connected, and a timeout with Try again instead of loading forever.
+- The MCP server list updates straight away after adding or removing a server; new Add to Claude Code button.
+- Pick the workspace icon yourself (logo, initial, icon or emoji), or keep it automatic.
+- First-run setup highlights the theme actually in use.
+
 ## [2.2.0] - 2026-10-04
 
 OpenDash 2.2 "Alive": the animation update. This release also includes all
@@ -238,6 +250,7 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.1...HEAD
+[2.2.1]: https://github.com/mahdi1190/opendash/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/mahdi1190/opendash/compare/v2.0.0...v2.2.0
 [2.0.0]: https://github.com/mahdi1190/opendash/releases/tag/v2.0.0

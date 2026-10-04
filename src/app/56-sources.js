@@ -32,7 +32,7 @@ const SourcesStore = {
     if (this.loading && !opts.force) return this.loading;
     this.loading = (async () => {
       try {
-        const r = await fetch('/api/sources' + (opts.refresh ? '?refresh=1' : ''), { cache: 'no-store' });
+        const r = await fetch('/api/sources' + (opts.refresh ? '?refresh=1' : opts.cached ? '?discover=cached' : ''), { cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
         this.data = j; this.error = null;

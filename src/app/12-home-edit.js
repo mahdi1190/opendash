@@ -10,8 +10,13 @@
    foot of the board. Every change is one undoable data save
    (state.home.layout) and glides into place.
 
-   Keyboard, with a widget focused (Tab / arrows walk between them):
-     Alt+Up/Left, Alt+Down/Right   move it earlier / later
+   Moving and resizing with the pointer (drag a widget; drag its right edge,
+   bottom edge or corner) is the grid editor, 12-home-gridedit.js.
+   Keyboard, with a widget focused (Tab walks between them):
+     Left / Right                  move it one place earlier / later
+     Up / Down                     move it to the shelf above / below
+     Shift+Left / Shift+Right      narrower / wider (its sizes)
+     Shift+Up / Shift+Down         one row shorter / taller; 0 = fits its content
      + / -, or 1-4                 bigger / smaller, or Small/Medium/Large/Full
      Delete or Backspace           hide it (back from Add widget)
      Esc                           done
@@ -82,10 +87,11 @@ function homeEditStart(o) {
   if (state.view !== 'home') { setView('home'); }
   if (!_homeEditing) {
     _homeEditing = true; _homeEditFresh = true;
+    _homeEditUndo = [];
     if (o.focus) _homeEditFocusId = o.focus;                // _homeEditAfterMount focuses it
     _homeRememberNow();
     render();
-    homeAnnounce('Customising Home. Drag a widget to move it, or focus one and press Alt with the arrow keys to move it, plus or minus to resize it, Delete to hide it. Press Escape when you are done.');
+    homeAnnounce('Customising Home. Drag a widget to move it and drag its edges to resize it. With a widget focused, the arrow keys move it, Shift with the arrow keys resizes it, Delete hides it. Press Escape when you are done.');
     const first = document.querySelector('#main-body .hg-w[data-wid]:not([hidden])');
     if (first && !o.gallery && !o.focus) try { first.focus({ preventScroll: true }); } catch (e) { /* gone */ }
   }
@@ -130,6 +136,7 @@ function _homeLongPress(grid) {
 function homeEditDone() {
   if (!_homeEditing) return;
   _homeEditing = false;
+  _homeEditUndo = [];
   _homeRememberNow();
   if (typeof closePopovers === 'function') closePopovers();
   render();
@@ -154,7 +161,7 @@ document.addEventListener('keydown', (e) => {
 function _homeEditBar() {
   const bar = document.createElement('div'); bar.className = 'home-editbar'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Customise Home');
   const hiddenN = homeLayout().widgets.filter(w => w.hidden && homeWidgetAvailable(homeWidgetDef(w.id))).length;
-  bar.innerHTML = `<div class="heb-t">${icon('layout-grid')}<div><b>Customising Home</b><span>Drag to move · pick a size · <kbd class="kbd">−</kbd> hides · <kbd class="kbd">Alt</kbd>+arrows, <kbd class="kbd">1</kbd>–<kbd class="kbd">4</kbd></span></div></div><span class="spacer"></span>`;
+  bar.innerHTML = `<div class="heb-t">${icon('layout-grid')}<div><b>Customising Home</b><span>Drag to move · drag an edge to resize · <kbd class="kbd">−</kbd> hides · arrows move, <kbd class="kbd">Shift</kbd>+arrows resize</span></div></div><span class="spacer"></span>`;
   const mk = (cls, ic, label, run, extra) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls;
     b.innerHTML = icon(ic) + `<span>${esc(label)}</span>` + (extra || '');
@@ -164,6 +171,8 @@ function _homeEditBar() {
   };
   const add = mk('btn-secondary heb-add', 'plus', 'Add widget', (el) => _homeOpenGallery(el), hiddenN ? `<span class="badge badge-accent num">${esc(hiddenN)}</span>` : '');
   add.dataset.act = 'add'; add.setAttribute('aria-haspopup', 'dialog');
+  const u = mk('btn-ghost heb-undo', 'undo-2', 'Undo', () => homeEditUndo());
+  u.disabled = !_homeEditUndo.length; u.setAttribute('data-tip', 'Undo the last change to the layout');
   mk('btn-ghost heb-reset', 'rotate-ccw', 'Reset', () => homeResetLayout()).disabled = !homeState().layout;
   mk('btn-primary heb-done', 'check', 'Done', () => homeEditDone()).setAttribute('data-kbd', 'Esc');
   if (_homeEditFresh) {
@@ -180,7 +189,7 @@ function _homeEditBar() {
 
 /* ---------- each widget's controls: hide (−) top-left, grip top-centre, sizes top-right ---------- */
 function _homeEditChrome(frame, def, w) {
-  for (const o of frame.querySelectorAll(':scope > .hg-chrome, :scope > .hg-x, :scope > .hg-grip')) o.remove();
+  for (const o of frame.querySelectorAll(':scope > .hg-chrome, :scope > .hg-x, :scope > .hg-grip, :scope > .hg-rs')) o.remove();
   if (!_homeEditing) { frame.removeAttribute('tabindex'); frame.onkeydown = null; frame.style.removeProperty('--wq'); return; }
   frame.tabIndex = 0;
   frame.setAttribute('aria-roledescription', 'widget');
@@ -222,6 +231,7 @@ function _homeEditChrome(frame, def, w) {
     else if (b.dataset.act === 'settings') { const rec = _homeW.get(def.id); def.settings(b, rec ? _homeCtx(rec, false) : { id: def.id, def }); }
   };
   if (c.firstChild) frame.appendChild(c);
+  _homeResizeHandles(frame, def);
   frame.onkeydown = (e) => _homeEditKey(e, def.id, frame);
 }
 /** The dashed outline of the footprint `size` would take, from the widget's top-left (null = remove). */
@@ -247,15 +257,14 @@ function _homeSizeGhost(frame, size) {
 function _homeEditKey(e, id, frame) {
   if (e.target !== frame) return;
   const k = e.key;
-  const frames = () => [...document.querySelectorAll('#main-body .home-grid > .hg-w[data-wid]:not([hidden])')];
-  if (e.altKey && (k === 'ArrowUp' || k === 'ArrowLeft')) { e.preventDefault(); homeWidgetMove(id, -1); }
-  else if (e.altKey && (k === 'ArrowDown' || k === 'ArrowRight')) { e.preventDefault(); homeWidgetMove(id, 1); }
-  else if (!e.altKey && !e.ctrlKey && !e.metaKey && /^Arrow(Up|Down|Left|Right)$/.test(k)) {
+  if (/^Arrow(Up|Down|Left|Right)$/.test(k) && !e.ctrlKey && !e.metaKey) {
     e.preventDefault();
-    const all = frames(), i = all.indexOf(frame);
-    const n = all[Math.max(0, Math.min(all.length - 1, i + (k === 'ArrowDown' || k === 'ArrowRight' ? 1 : -1)))];
-    if (n) n.focus();
+    const fwd = k === 'ArrowDown' || k === 'ArrowRight' ? 1 : -1, vert = k === 'ArrowUp' || k === 'ArrowDown';
+    if (e.shiftKey) { if (vert) homeWidgetHeightStep(id, fwd); else homeWidgetStep(id, fwd); }   // resize
+    else if (vert) homeWidgetMoveRow(id, fwd);                                                    // move a shelf
+    else homeWidgetMove(id, fwd);                                                                 // move a place
   }
+  else if (k === '0' && !e.altKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); homeWidgetHeight(id, null); }
   else if (k === '+' || k === '=') { e.preventDefault(); homeWidgetStep(id, 1); }
   else if (k === '-' || k === '_') { e.preventDefault(); homeWidgetStep(id, -1); }
   else if (/^[1-4]$/.test(k) && !e.altKey && !e.ctrlKey && !e.metaKey) {
@@ -311,13 +320,9 @@ function _homeGapSlots(grid) {
 }
 /** After a re-render in edit mode: drag to reorder, and focus back on the widget being moved. */
 function _homeEditAfterMount(grid) {
-  const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   // A Home-level sortable (not a widget's): torn down with the next mount.
-  const s = makeSortable(grid, {
-    items: '.hg-w[data-wid]', axis: 'grid', idOf: (el) => el.dataset.wid, handle: coarse ? '.hg-grip' : undefined,
-    onReorder: (ids, moved) => homeWidgetOrder(ids, moved),
-    onStart: () => { for (const x of grid.querySelectorAll(':scope > .hg-slot')) x.remove(); },   // a drag reflows the rows
-  });
+  // The grid editor: drag to move (a live placeholder, the others glide), edges to resize (12-home-gridedit.js).
+  const s = _homeGridEditor(grid);
   const rec = { frame: grid, body: grid, def: { id: '_edit' }, size: '', sortables: [s] };
   _homeW.set('_edit', rec);
   _homeGapSlots(grid);

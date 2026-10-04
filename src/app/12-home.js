@@ -82,6 +82,9 @@ const _HOME_PO = { p1: 0, p2: 1, p3: 2, p0: 3 };
 const HOME_FOCUS_DEFAULTS = Object.freeze({ count: 5, pinned: true, p1: true, overdue: true, doing: true, planned: true, dueSoonDays: 3, streams: [] });
 const HOME_SIZES = Object.freeze(['s', 'm', 'l', 'full']);
 const HOME_SIZE_COLS = Object.freeze({ s: 4, m: 6, l: 8, full: 12 });
+// A widget's optional height (Customise: drag its bottom edge): h rows of HOME_ROW_PX; none = its content's height.
+const HOME_ROW_PX = 40, HOME_H_MIN = 3, HOME_H_MAX = 30;
+function homeHeightRows(h) { return Number.isInteger(h) && h >= HOME_H_MIN && h <= HOME_H_MAX ? h : undefined; }
 const HOME_SIZE_LABEL = Object.freeze({ s: 'Small', m: 'Medium', l: 'Large', full: 'Full width' });
 const HOME_LAYOUT_VERSION = 1;
 
@@ -298,7 +301,8 @@ function homeLayoutNormalize(raw, catalog, prefs) {
     const c = entry(w.id);
     if (!c || seen.has(w.id)) continue;
     seen.add(w.id);
-    out.push({ id: w.id, size: homeClampSize(w.size, c.sizes, c.defaultSize), hidden: w.hidden === true });
+    const h = homeHeightRows(w.h);
+    out.push({ id: w.id, size: homeClampSize(w.size, c.sizes, c.defaultSize), hidden: w.hidden === true, ...(h ? { h } : {}) });
   }
   // A widget the saved board has never seen goes in after its catalogue neighbour, not at
   // the end (so a new default one sits beside its neighbour on an old board).
@@ -345,6 +349,7 @@ function homeSaveLayout(widgets, o) {
   const next = homeLayoutNormalize({ widgets }, homeWidgetCatalog(), prefs);
   const samePrefs = o.prefs === undefined || JSON.stringify(o.prefs || {}) === JSON.stringify(homeState().widgetPrefs || {});
   if (samePrefs && JSON.stringify(next.widgets) === JSON.stringify(homeLayout().widgets)) return false;
+  if (_homeEditing && typeof _homeEditPushUndo === 'function') _homeEditPushUndo();   // Customise's Undo
   _homeRememberNow();                    // glide from where things are on screen right now
   const patch = { layout: next };
   if (!samePrefs) patch.widgetPrefs = o.prefs && Object.keys(o.prefs).length ? o.prefs : undefined;
@@ -359,6 +364,7 @@ function homeResetLayout() {
   if (!homeState().layout && !copies.length) { homeAnnounce('Home already has the default layout'); return; }
   const keep = Object.assign({}, wp);
   for (const k of copies) delete keep[k];
+  if (_homeEditing && typeof _homeEditPushUndo === 'function') _homeEditPushUndo();
   _homeRememberNow();
   homeUpdate({ layout: undefined, widgetPrefs: Object.keys(keep).length ? keep : undefined }, 'Home layout reset');
   homeAnnounce('Home layout reset to the default');
@@ -449,7 +455,6 @@ registerSection('home', {
     if (typeof homeTabsEl === 'function') root.appendChild(homeTabsEl(tab));
     if (tab !== 'today') {
       _homeGridLeave();
-      if (typeof homeHeadUnmount === 'function') homeHeadUnmount();
       if (typeof briefUnmount === 'function') briefUnmount();
       if (typeof _homeHeadActionsRemove === 'function') _homeHeadActionsRemove();
       const body = document.createElement('div'); body.className = 'rv-body home-tab-body';
@@ -499,7 +504,6 @@ registerSection('home', {
   unmount() {
     _homeGridLeave(true);                 // leaving Home: everything stops, whichever tab was open
     _homeEditing = false;
-    if (typeof homeHeadUnmount === 'function') homeHeadUnmount();
     if (typeof briefUnmount === 'function') briefUnmount();
     if (typeof eveningUnmount === 'function') eveningUnmount();
     if (typeof _homeHeadActionsRemove === 'function') _homeHeadActionsRemove();
@@ -513,6 +517,7 @@ function _homeFrame(def, w) {
   f.dataset.wid = def.id;                                // a copy's own id ('runway~2'); data-base = the widget
   f.dataset.base = def.baseId || def.id;
   f.dataset.size = w.size;
+  if (w.h) { f.dataset.h = String(w.h); f.style.setProperty('--hg-h', String(w.h)); }
   f.dataset.flip = 'w:' + def.id;
   f.setAttribute('data-flip-size', '');                  // a size change morphs (12-home-grid.js)
   f.setAttribute('aria-label', def.title);

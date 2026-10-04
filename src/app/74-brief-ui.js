@@ -434,11 +434,9 @@ function briefRender(container) {
   _bfRoot = root;
   root.appendChild(_bfHero(m, intro));
   const prog = document.createElement('div'); prog.dataset.region = 'progress'; root.appendChild(prog);
-  if (typeof homeHeadStage === 'function') { const st = homeHeadStage(); if (st) root.appendChild(st); }   // the story, inline (12-home-head.js)
   root.appendChild(_bfAiCard(m));
   if (typeof homeHeadIdeas === 'function') { const ideas = homeHeadIdeas(); if (ideas) root.appendChild(ideas); }
   container.appendChild(root);
-  if (typeof homeHeadAttach === 'function') homeHeadAttach(root);
   _bfPaintProgress();
   if (intro) _bfIntro(root, m);
   animActivate(root);

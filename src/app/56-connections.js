@@ -173,9 +173,50 @@ function _connCard(c, all) {
 async function _connLoadMcp() {
   if (_connMcpLoading) return;
   _connMcpLoading = true;
+  const was = _connMcp ? JSON.stringify(_connMcp.installed) : null;
   try { const r = await fetch('/api/connections/mcp', { cache: 'no-store' }); if (r.ok) _connMcp = await r.json(); } catch (e) { /* offline */ }
   _connMcpLoading = false;
+  const now = _connMcp ? JSON.stringify(_connMcp.installed) : null;
+  if (was !== now) {
+    // Installed or removed outside the page (a terminal, Claude Desktop): the server list follows.
+    if (was !== null && typeof SourcesStore !== 'undefined') SourcesStore.refresh({ cached: true });
+    if (state.view === 'connections') renderMain();
+  }
+}
+/** Re-read the real config (cheap): on entering the page, on focus, after a test or an install. */
+let _connMcpCheckedAt = 0;
+const _connMcpStale = () => Date.now() - _connMcpCheckedAt > 10000;   // mount runs on every render: not each time
+function _connRecheckMcp() {
+  _connMcpCheckedAt = Date.now();
+  _connLoadMcp();
+  if (typeof SourcesStore !== 'undefined' && !SourcesStore.loading && SourcesStore.data) SourcesStore.load({ cached: true });
+}
+window.addEventListener('focus', () => { if (state.view === 'connections') _connRecheckMcp(); });
+let _connMcpInstalling = false, _connMcpPoll = null;
+async function _connInstallMcp() {
+  if (_connMcpInstalling) return false;
+  _connMcpInstalling = true; if (state.view === 'connections') renderMain();
+  let ok = false;
+  try {
+    const r = await fetch('/api/connections/mcp-install', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    if (_connMcp) _connMcp = Object.assign({}, _connMcp, { installed: j.installed });
+    else _connMcp = { installed: j.installed };
+    // Show the new server in the list straight away (the server merged it from the real config).
+    if (Array.isArray(j.servers) && SourcesStore.data) SourcesStore.data = Object.assign({}, SourcesStore.data, { servers: j.servers });
+    ok = true;
+    toast(j.already ? 'The OpenDash MCP was already set up in Claude Code.' : 'OpenDash MCP added to Claude Code. Restart open Claude sessions to use it.', { kind: 'ok' });
+  } catch (e) {
+    toast((e && e.message) || 'Could not add the OpenDash MCP.', { kind: 'err' });
+  }
+  _connMcpInstalling = false;
+  connRefresh({ force: true });
+  SourcesStore.refresh({ cached: true });
+  if (ok) setTimeout(() => { if (!SourcesStore.loading) SourcesStore.load({ cached: true }); }, 25000);   // its health, once claude mcp list has run
+  _connLoadMcp();
   if (state.view === 'connections') renderMain();
+  return ok;
 }
 async function _connRunMcpTest() {
   _connMcpTesting = true; if (state.view === 'connections') renderMain();
@@ -184,12 +225,14 @@ async function _connRunMcpTest() {
     _connMcpTest = await r.json().catch(() => ({ ok: false, error: 'No answer from the server.' }));
   } catch (e) { _connMcpTest = { ok: false, error: 'The OpenDash server is not running.' }; }
   _connMcpTesting = false;
+  _connRecheckMcp();
   await connRefresh({ force: true });
   if (_connMcpTest.ok) toast(`The OpenDash MCP answered with ${_connMcpTest.tools} tools.`, { kind: 'ok' });
   if (state.view === 'connections') renderMain();
 }
 function _connMcpCard(all) {
   const e = all.mcp || { state: 'unknown' };
+  // The newest read of the real config wins (the connections list re-reads it on every refresh).
   const inst = (_connMcp && _connMcp.installed && _connMcp.installed.summary) || e.installed || {};
   const card = _connEl('section', 'card conn-card');
   card.dataset.conn = 'mcp';
@@ -212,7 +255,13 @@ function _connMcpCard(all) {
   }
   const foot = _connEl('div', 'conn-foot');
   foot.appendChild(_connEl('span', 'conn-when', 'Runs on this computer; nothing is sent anywhere else.'));
-  foot.appendChild(_connBtn('Set up', 'settings', 'btn-primary', () => _connMcpDrawer()));
+  if (inst.claudeCode !== 'installed') {
+    const ib = _connBtn(_connMcpInstalling ? 'Adding…' : 'Add to Claude Code', _connMcpInstalling ? null : 'plus', 'btn-primary', () => _connInstallMcp());
+    if (_connMcpInstalling) { ib.disabled = true; ib.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>'); }
+    ib.dataset.act = 'mcp-install';
+    foot.appendChild(ib);
+  }
+  foot.appendChild(_connBtn('Set up', 'settings', inst.claudeCode !== 'installed' ? 'btn-secondary' : 'btn-primary', () => _connMcpDrawer()));
   const tb = _connBtn(_connMcpTesting ? 'Testing…' : 'Test MCP', _connMcpTesting ? null : 'zap', 'btn-secondary', () => _connRunMcpTest());
   if (_connMcpTesting) { tb.disabled = true; tb.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>'); }
   foot.appendChild(tb);
@@ -221,12 +270,23 @@ function _connMcpCard(all) {
 }
 function _connMcpDrawer() {
   const info = _connMcp && _connMcp.install;
+  // While the drawer is open, notice a command pasted into a terminal (the real config is re-read).
+  clearInterval(_connMcpPoll);
+  const poll = _connMcpPoll = setInterval(() => _connLoadMcp(), 4000);
   openDrawer({
     title: 'Set up the OpenDash MCP', width: 560,
-    body: (el) => {
+    onClose: () => { clearInterval(poll); if (_connMcpPoll === poll) _connMcpPoll = null; },
+    body: (el, closeD) => {
       if (!info) { el.appendChild(_connEl('p', 'muted', 'Loading the commands for this computer…')); _connLoadMcp().then(() => { if (_connMcp) { closePopovers(); _connMcpDrawer(); } }); return; }
       const sec = (title, sub) => { const h = _connEl('div', 'conn-dsec'); h.appendChild(_connEl('h3', null, title)); if (sub) h.appendChild(_connEl('p', 'conn-note', sub)); el.appendChild(h); return h; };
       const a = sec('Claude Code and T3 Code', info.claudeCode.note);
+      const ccInst = _connMcp && _connMcp.installed && _connMcp.installed.summary && _connMcp.installed.summary.claudeCode;
+      if (ccInst !== 'installed') {
+        const row = _connEl('div', 'conn-dact');
+        row.appendChild(_connBtn('Add it for me', 'plus', 'btn-primary', async (b) => { b.disabled = true; if (await _connInstallMcp()) closeD(); else b.disabled = false; }));
+        row.appendChild(_connEl('span', 'conn-note', 'Runs the command below for you. Or paste it into a terminal yourself:'));
+        a.appendChild(row);
+      } else a.appendChild(_connEl('p', 'conn-note', 'Already set up for Claude Code and T3 Code.'));
       if (info.claudeCode.powershell) {
         a.appendChild(_connEl('div', 'conn-label', 'PowerShell'));
         a.appendChild(_connCode(info.claudeCode.powershell));
@@ -262,7 +322,7 @@ registerSection('connections', {
       connRefresh();
       return;
     }
-    if (!_connMcp && !_connMcpLoading) _connLoadMcp();
+    if (!_connMcpLoading && _connMcpStale()) _connRecheckMcp();
     const page = _connEl('div', 'conn-page');
     // Claude, plus one per capability (banks, calendars, email) that has a working source (56-sources.js).
     const caps = all.capabilities || null;

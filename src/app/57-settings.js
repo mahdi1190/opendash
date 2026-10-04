@@ -124,6 +124,13 @@ registerSettingsGroup({
     name.onblur = saveName;
     name.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } };
     el.appendChild(_settingsRow('Name', 'Used in greetings and the app title. Leave empty for just “OpenDash”.', name));
+    // The workspace icon (17-app-icon.js): automatic, or one the user picks.
+    const ib = document.createElement('button'); ib.type = 'button'; ib.className = 'btn btn-secondary btn-sm set-appicon';
+    const imk = document.createElement('span'); imk.className = 'brand-mark'; imk.setAttribute('aria-hidden', 'true'); setBrandMark(imk, userName());
+    const ik = typeof appIconKind === 'function' ? appIconKind(cfg.appIcon) : '';
+    ib.append(imk, Object.assign(document.createElement('span'), { textContent: ({ '': 'Automatic', logo: 'OpenDash logo', initial: 'Initial', icon: 'Icon', emoji: 'Emoji' })[ik] || 'Automatic' }));
+    ib.onclick = () => openAppIconPicker(ib);
+    el.appendChild(_settingsRow('Icon', 'Shown next to the name in the sidebar and in the browser tab. Click it to pick an icon or emoji, or go back to automatic.', ib));
     // Sources: your own addresses. Calendars named after anyone else's address start hidden.
     const mails = document.createElement('textarea'); mails.className = 'control control-sm set-input set-emails'; mails.rows = 2;
     mails.value = (cfg.myEmails || []).join('\n'); mails.placeholder = 'you@example.org';

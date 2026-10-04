@@ -29,35 +29,8 @@
 .bf-hero .hd-play:active { transform: scale(0.97); }
 .bf-hero .hd-play:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--hero-fg2), 0 6px 20px rgba(10, 14, 30, 0.18); }
 .bf-hero .hd-play .hd-i { width: 16px; height: 16px; fill: currentColor; stroke: none; }
-.bf-hero .hd-play.is-playing { opacity: 0.7; cursor: default; transform: none; }
-.bf-hero .hd-full { width: 44px; height: 44px; border-radius: 50%; background: var(--glass); color: var(--hero-fg); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-.bf-hero .hd-full:hover { background: color-mix(in oklab, var(--glass) 70%, #fff); color: var(--hero-fg); }
-.bf-hero .hd-full .i { width: 18px; height: 18px; }
-html[data-motion="reduced"] .bf-hero :is(.hd-play, .hd-full), html.anim-off .bf-hero :is(.hd-play, .hd-full) { transition: none; transform: none !important; }
+html[data-motion="reduced"] .bf-hero .hd-play, html.anim-off .bf-hero .hd-play { transition: none; transform: none !important; }
 
-/* ----- the story, inline (79-story.css styles the story itself) ----- */
-.hd-player { display: flex; flex-direction: column; gap: 10px; }
-.hd-stage { position: relative; min-height: 120px; border-radius: 18px; overflow: hidden; background: linear-gradient(160deg, #5a5fa8, #b27aa8 60%, #e3a07c); box-shadow: var(--shadow-sm); }
-.hd-player.is-away .hd-stage { display: grid; place-items: center; min-height: 170px; background: var(--bg-subtle); border: 1px dashed var(--border); box-shadow: none; }
-.hd-away { display: grid; justify-items: center; gap: 6px; text-align: center; font-size: 13px; color: var(--fg-muted); }
-.hd-away b { font-size: 15px; color: var(--fg); font-weight: 600; }
-.hd-ctrl { display: flex; align-items: center; gap: 4px; }
-.hd-cb { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--fg); cursor: pointer; transition: background-color var(--m-fast, 120ms) var(--m-ease-out, ease-out); }
-.hd-cb:hover { background: var(--bg-muted); }
-.hd-cb:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.hd-cb .i, .hd-cb .hd-i { width: 18px; height: 18px; }
-.hd-prev .hd-i, .hd-next .hd-i { fill: currentColor; }
-.hd-cb.hd-tog { width: 42px; height: 42px; background: var(--fg); color: var(--bg); }
-.hd-cb.hd-tog:hover { background: color-mix(in oklab, var(--fg) 86%, var(--bg)); }
-.hd-tog .hd-i { fill: currentColor; stroke: none; }
-.hd-tog .hd-i-play { display: none; }
-.hd-player.is-paused .hd-tog .hd-i-play { display: block; }
-.hd-player.is-paused .hd-tog .hd-i-pause { display: none; }
-.hd-mute .hd-i-mute { display: none; }
-.hd-player.is-muted .hd-mute .hd-i-mute { display: block; }
-.hd-player.is-muted .hd-mute .hd-i-vol { display: none; }
-.hd-stop .hd-i { fill: currentColor; stroke: none; width: 15px; height: 15px; }
-.hd-pos { margin-left: 6px; font-size: 12.5px; color: var(--fg-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ----- Ideas for today: a row of cards under the sentences ----- */
 .hd-ideas { display: flex; flex-direction: column; gap: 10px; }

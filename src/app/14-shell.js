@@ -404,14 +404,32 @@ function renderPageHeaderControls() {
 
 /** The OpenDash logo as an image URL: the SVG favicon build.mjs inlines ('' without one). */
 function brandLogoSrc() {
+  if (typeof _appIconOrigHref !== 'undefined' && _appIconOrigHref && _appIconOrigHref.svg) return _appIconOrigHref.svg;
   const l = document.querySelector('link[rel="icon"][type="image/svg+xml"]');
   return (l && l.getAttribute('href')) || '';
 }
-/** A brand mark (sidebar, welcome): the user's initial when a name is set, else the OpenDash logo. */
-function setBrandMark(el, name) {
+/**
+ * A brand mark (sidebar, welcome). The icon the user picked (config.appIcon,
+ * 17-app-icon.js) wins; automatic: the user's initial when a name is set,
+ * else the OpenDash logo. `pref` overrides the saved choice (the picker's preview).
+ */
+function setBrandMark(el, name, pref) {
   if (!el) return;
   const n = String(name || '').trim();
-  const src = n ? '' : brandLogoSrc();
+  const choice = pref !== undefined ? String(pref || '') : String((typeof APP_CONFIG !== 'undefined' && APP_CONFIG.appIcon) || '');
+  const kind = typeof appIconKind === 'function' ? appIconKind(choice) : '';
+  if (kind === 'icon' || kind === 'emoji') {
+    const key = kind + ':' + choice;
+    if (el.dataset.mark === key) return;
+    el.dataset.mark = key;
+    el.classList.toggle('has-logo', false);
+    el.classList.toggle('has-sym', true);
+    if (kind === 'icon') el.innerHTML = icon(choice);
+    else { const sp = document.createElement('span'); sp.className = 'brand-emoji'; sp.textContent = choice; el.replaceChildren(sp); }
+    return;
+  }
+  el.classList.toggle('has-sym', false);
+  const src = (kind === 'logo' || (!n && kind !== 'initial')) ? brandLogoSrc() : '';
   const key = src ? 'logo' : (n || 'O').slice(0, 1).toUpperCase();
   if (el.dataset.mark === key) return;
   el.dataset.mark = key;
@@ -479,6 +497,7 @@ function renderShell() {
   const bn = document.getElementById('brand-name'); if (bn && bn.textContent !== name) bn.textContent = name;
   if (_SHELL_IS_MAC) { const k = document.querySelector('#palette-btn .kbd'); if (k && k.textContent !== '⌘') k.textContent = '⌘'; }
   setBrandMark(document.getElementById('brand-mark'), userName());
+  if (typeof applyAppIconFavicon === 'function') applyAppIconFavicon();
   renderSwitcher();
   renderCrumb();
   renderSidebarFooter();

@@ -312,3 +312,57 @@ test('a messy stored layout is read back normalised by the server', async () => 
   await run([{ op: 'home.set_layout', widgets: [{ id: 'people', position: 0 }] }]);
   assert.deepEqual(disk().home.layout.widgets.map(w => w.id).sort(), HOME_WIDGETS.map(w => w.id).sort());
 });
+
+test('a widget height (rows) set in Customise is kept when valid, dropped otherwise; page and lib agree', () => {
+  const raw = { widgets: [{ id: 'focus', size: 'l', h: 11 }, { id: 'schedule', h: 2 }, { id: 'finance', h: 31 }, { id: 'people', h: 6.5 }, { id: 'countdowns', h: '8' }, { id: 'week', h: 30 }] };
+  const n = normalizeHomeLayout(raw).widgets;
+  const h = (id) => n.find(w => w.id === id).h;
+  assert.equal(h('focus'), 11);
+  assert.equal(h('week'), 30);
+  for (const id of ['schedule', 'finance', 'people', 'countdowns']) assert.equal(h(id), undefined, id);
+  assert.ok(!('h' in n.find(w => w.id === 'schedule')), 'no h key at all when it is auto');
+  assert.deepEqual(normalizeHomeLayout({ widgets: n }).widgets, n, 'idempotent');
+  const { run } = homeBox();
+  assert.deepEqual(JSON.parse(run(`JSON.stringify(homeLayoutNormalize(${JSON.stringify(raw)}, homeWidgetCatalog()))`)), plain(normalizeHomeLayout(raw)));
+});
+
+test('grid editor: where a dragged widget lands (homeShelfDropIndex, pure)', () => {
+  const { run } = homeBox();
+  const at = (boxes, x, y) => run(`homeShelfDropIndex(${JSON.stringify(boxes)}, ${x}, ${y}, 1200)`);
+  // shelf 1: A (0-400) B (416-800); shelf 2: C full width (0-1200); shelf 3: D (0-400), then empty columns
+  const b = [
+    { left: 0, top: 0, right: 400, bottom: 300 }, { left: 416, top: 0, right: 800, bottom: 300 },
+    { left: 0, top: 316, right: 1200, bottom: 500 }, { left: 0, top: 516, right: 400, bottom: 700 },
+  ];
+  assert.equal(at(b, 100, 100), 0, 'left half of A: before A');
+  assert.equal(at(b, 300, 100), 1, 'right half of A: after A');
+  assert.equal(at(b, 700, 100), 2, 'right half of B: after B');
+  assert.equal(at(b, 900, 100), 2, 'the empty end of shelf 1: after B');
+  assert.equal(at(b, 1000, 350), 2, 'a full-width widget: top half = before it');
+  assert.equal(at(b, 100, 480), 3, 'bottom half = after it');
+  assert.equal(at(b, 900, 600), 4, 'the empty end of the last shelf: after D');
+  assert.equal(at(b, 500, 900), 4, 'below everything: last');
+  assert.equal(at(b, 408, 100), null, 'in the gap between two widgets: no change');
+  assert.equal(at([], 10, 10), null);
+});
+
+test('grid editor keys: arrows move, Shift+arrows resize, 0 = fits its content; Customise has its own Undo', () => {
+  const src = readFileSync(join(APP, '12-home-edit.js'), 'utf8');
+  assert.match(src, /if \(e\.shiftKey\) \{ if \(vert\) homeWidgetHeightStep\(id, fwd\); else homeWidgetStep\(id, fwd\); \}/);
+  assert.match(src, /else if \(vert\) homeWidgetMoveRow\(id, fwd\);/);
+  assert.match(src, /else homeWidgetMove\(id, fwd\);/);
+  assert.match(src, /homeEditUndo\(\)/);
+  assert.match(src, /_homeGridEditor\(grid\)/);
+  const core = readFileSync(join(APP, '12-home.js'), 'utf8');
+  assert.match(core, /if \(_homeEditing && typeof _homeEditPushUndo === 'function'\) _homeEditPushUndo\(\);/);
+  const { run } = homeBox();
+  run(`state.home = { layout: { version: 1, widgets: [{ id: 'focus', size: 'm', hidden: false }] } }; _homeEditing = true; _homeEditUndo = []; homeAnnounce = () => {}; _homeRememberNow = () => {};`);
+  run(`homeWidgetSet('focus', { size: 'l', h: 9 }, 'x')`);
+  assert.deepEqual(plain(run(`homeLayout().widgets.find(w => w.id === 'focus')`)), { id: 'focus', size: 'l', hidden: false, h: 9 });
+  run(`homeWidgetSet('focus', { h: null }, 'x')`);
+  assert.deepEqual(plain(run(`homeLayout().widgets.find(w => w.id === 'focus')`)), { id: 'focus', size: 'l', hidden: false });
+  assert.equal(run('_homeEditUndo.length'), 2);
+  run('homeEditUndo()');
+  assert.equal(run(`homeLayout().widgets.find(w => w.id === 'focus').h`), 9, 'Undo brings the height back');
+  run('_homeEditing = false');
+});

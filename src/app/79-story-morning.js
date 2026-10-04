@@ -574,9 +574,21 @@ storyRegisterBeatType('m-ahead', (f, b, ctx) => {
 function _smDoIdea(btn, x) {
   const a = x.act; if (!a) return;
   if (a.do === 'plan') {
-    if (typeof setPlanned === 'function' && typeof getItem === 'function' && getItem(a.ref)) setPlanned(a.ref, todayStrSafe());
-    btn.classList.add('is-done'); btn.disabled = true;
-    btn.innerHTML = `${icon('check', 'i-sm')}<span>Planned for today</span>`;
+    // Through the actions layer, with a toast and Undo (user request, 4 Oct: it did nothing).
+    if (btn.getAttribute('aria-busy') === 'true' || btn.classList.contains('is-done')) return;
+    const label = btn.innerHTML;
+    btn.setAttribute('aria-busy', 'true'); btn.disabled = true;
+    const it = typeof getItem === 'function' ? getItem(a.ref) : null;
+    const name = it && typeof effTitle === 'function' ? shortTitleSafe(effTitle(it)) : 'It';
+    storyTaskOps([{ op: 'task.plan', id: a.ref, date: todayStrSafe() }], {
+      done: `${name}: planned for today`, icon: 'sun',
+      onUndo: () => { if (!btn.isConnected) return; btn.classList.remove('is-done'); btn.disabled = false; btn.innerHTML = label; },
+    }).then((j) => {
+      btn.removeAttribute('aria-busy');
+      if (!j) { btn.disabled = false; return; }
+      btn.classList.add('is-done');
+      btn.innerHTML = `${icon('check', 'i-sm')}<span>Planned for today</span>`;
+    });
     return;
   }
   if (a.do === 'task') return _smGo(() => openTask(a.ref));
@@ -584,7 +596,17 @@ function _smDoIdea(btn, x) {
   if (a.do === 'suggest' && typeof sgRunKey === 'function') return _smGo(() => sgRunKey(a.key));   // the card's button: its editor, prefilled
 }
 storyRegisterBeatType('m-go', (f, b, ctx) => {
-  const m = b.m || {}, bag = _smBag(), ideas = m.ideas || [];
+  const m = b.m || {}, bag = _smBag();
+  // "Plan for today" on a task that is already planned for today (or earlier) would change
+  // nothing: offer to open it instead; a task that has gone (done, binned) offers nothing.
+  const ideas = (m.ideas || []).map(x => {
+    const a = x && x.act;
+    if (!a || a.do !== 'plan') return x;
+    const it = typeof getItem === 'function' ? getItem(a.ref) : null;
+    if (!it || (typeof statusOf === 'function' && statusOf(a.ref) === 'done')) return Object.assign({}, x, { act: null });
+    if (it.plannedFor && it.plannedFor <= todayStrSafe()) return Object.assign({}, x, { act: { label: 'Open it', icon: 'external-link', do: 'task', ref: a.ref } });
+    return x;
+  });
   const glyph = (x) => x.scene ? animSceneHtml(x.scene, { size: 'lg' }) : `<span class="sm-wxt">${briefWxIcon(x.cond || 'rain', true, 'rain')}</span>`;
   const kIc = { gap: 'clock', weather: 'umbrella', 'follow-up': 'send', prep: 'users', overdue: 'alarm-clock', focus: 'target' };
   f.cards.innerHTML = `<div class="sm sm-go${ideas.length ? '' : ' no-ideas'}">

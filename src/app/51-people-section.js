@@ -650,7 +650,9 @@ function _pplMailInto(box, p) {
 }
 
 /* ---------- add / edit person ---------- */
-function openPersonEditor(id, prefill) {
+/** o: {onSaved(personId), stay: true = no person card after adding (a proposal opened it)}. */
+function openPersonEditor(id, prefill, o) {
+  o = o || {};
   const p = id ? getPerson(id) : null;
   const v = Object.assign({ kind: 'person' }, p ? JSON.parse(JSON.stringify(p)) : {}, prefill || {});
   const F = {};
@@ -722,7 +724,8 @@ function openPersonEditor(id, prefill) {
         if (res.error) { F._err.hidden = false; F._err.textContent = res.error; return false; }
         const nowSug = pplSuggest(state, { index: pplIndex(), details: false }).filter(x => x.personId === res.id);
         render();
-        if (!p) openPerson(res.id);
+        if (!p && !o.stay) openPerson(res.id);
+        if (typeof o.onSaved === 'function') { try { o.onSaved(res.id); } catch (e) { console.error('[people] onSaved', e); } }
         if (nowSug.length) {
           toast(`${nowSug.length} task${nowSug.length === 1 ? ' names' : 's name'} ${_pplFirst(getPerson(res.id))}`, { icon: 'link', action: { label: 'Link', run: () => { const n = linkSuggestedPeople(nowSug); render(); toast(`Linked ${n} task${n === 1 ? '' : 's'}`, { kind: 'ok' }); } } });
         } else toast(p ? 'Saved' : `Added ${fields.name.trim()}`, { kind: 'ok', icon: 'user-check' });

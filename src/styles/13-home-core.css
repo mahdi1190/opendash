@@ -22,6 +22,11 @@
 .hg-w[data-size="l"] { --hg-span: 8; }
 .hg-w[data-size="full"] { --hg-span: 12; }
 .hg-body { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+/* A widget given a height (Customise: its bottom edge, 12-home-gridedit.js): h rows of 40 px. Its
+   content no longer sizes it (contain: size), so the shelf is as tall as the tallest of it and its
+   neighbours and it still stretches with them; what does not fit scrolls inside it. */
+.hg-w[data-h] { contain: size; min-height: calc(var(--hg-h, 6) * 40px); }
+.hg-w[data-h] > .hg-body { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .hg-body > * { flex: none; }
 .hg-body > .home-card { flex: 1 1 auto; display: flex; flex-direction: column; }
 .hg-body > .home-card > .card-b { flex: 1 1 auto; }
@@ -107,4 +112,6 @@
 @container main (max-width: 600px) {
   .hg-w { --hg-span: 12; }
   .hg-w[data-size] { --hg-span: 12; }
+  .hg-w[data-h] { contain: none; min-height: 0; }            /* phones: one column, as tall as the content */
+  .hg-w[data-h] > .hg-body { overflow: visible; }
 }

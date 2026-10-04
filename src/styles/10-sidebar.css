@@ -22,6 +22,19 @@
 /* No name set: the mark is the OpenDash logo itself (setBrandMark), which brings its own tile. */
 .brand-mark.has-logo { background: none; box-shadow: none; }
 .brand-logo { display: block; width: 100%; height: 100%; }
+/* A picked icon or emoji (17-app-icon.js). The emoji brings its own colour, so no tile. */
+.brand-mark.has-sym .i { width: 14px; height: 14px; color: #fff; }
+.ob-mark.has-sym .i { width: 17px; height: 17px; }
+.set-appicon .brand-mark.has-sym .i { width: 13px; height: 13px; }
+.brand-mark .brand-emoji { font-size: 0.95em; line-height: 1; font-weight: normal; }
+.brand-mark:has(.brand-emoji) { background: var(--bg-muted); box-shadow: none; font-size: 15px; }
+#brand-mark { cursor: pointer; }
+.app:not(.sb-rail) #brand-mark:hover { box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent); }
+.appicon-top { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-1); }
+.appicon-opt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--space-2) var(--space-1); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: none; color: var(--fg-muted); font-size: var(--text-xs); cursor: pointer; }
+.appicon-opt:hover { background: var(--bg-muted); color: var(--fg); }
+.appicon-opt.on { border-color: color-mix(in oklab, var(--accent) 50%, transparent); background: color-mix(in oklab, var(--accent) 10%, transparent); color: var(--fg); cursor: default; }
+.appicon-opt:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .sb-ws-name { font-weight: var(--weight-semibold); font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-ws > .i { color: var(--fg-subtle); width: 14px; height: 14px; }
 

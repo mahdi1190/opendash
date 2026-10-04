@@ -295,6 +295,13 @@ function stwFollowNames(host) {
 }
 
 /* ---------- 5. slipped, and why ---------- */
+/** A slipped item's fix as actions-layer ops: move = a new due date (with the reason), drop = won't do. */
+function stwFixOps(x) {
+  if (!x || !x.id || !x.fix) return [];
+  if (x.fix.act === 'move' && /^\d{4}-\d{2}-\d{2}$/.test(String(x.fix.to || ''))) return [{ op: 'task.reschedule', id: x.id, dueDate: x.fix.to, reason: 'Weekly review' }];
+  if (x.fix.act === 'drop') return [{ op: 'task.wont_do', id: x.id, reason: 'Weekly review' }];
+  return [];
+}
 storyRegisterBeatType('stw-slipped', (f, b, ctx) => {
   _stwFresh(b);
   const S = b.m.slipped;
@@ -311,13 +318,23 @@ storyRegisterBeatType('stw-slipped', (f, b, ctx) => {
     card.className = 'stw-fx stw-glass stw-in';
     card.style.setProperty('--i', String(3 + k));
     card.innerHTML = `<div class="stw-fx-b"><div class="stw-fx-t">${esc(x.title)}</div><div class="stw-fx-m"><span class="stw-rsn t-${x.tone}">${esc(x.reason)}</span><span>${x.moves > 1 ? `moved ${x.moves === 2 ? 'twice' : x.moves + ' times'}` : 'moved once'}</span></div><div class="stw-fx-s">${icon('sparkles', 'i-sm')}<span>${esc(x.fix.text)}</span></div></div>`;
-    if (x.fix.act && x.open) {
-      card.appendChild(_stwBtn(x.fix.label, x.fix.act === 'drop' ? 'circle-x' : 'calendar-plus', 'pri', () => {
+    // A fix that would change nothing (already due that day, or gone) is not offered.
+    const live = typeof getItem === 'function' ? getItem(x.id) : null;
+    const noop = !live || (x.fix.act === 'move' && live.dueDate === x.fix.to);
+    if (x.fix.act && x.open && !noop && stwFixOps(x).length) {
+      // Through the actions layer with a toast and Undo (user request, 4 Oct: story task options did nothing).
+      card.appendChild(_stwBtn(x.fix.label, x.fix.act === 'drop' ? 'circle-x' : 'calendar-plus', 'pri', async (btn) => {
+        if (btn && btn.disabled) return;
         _stwHold(b);
-        if (x.fix.act === 'move') {
-          setDateWithReason(x.id, x.fix.to, 'Weekly review');
-          toast(`Planned for ${STW_WEEKDAYS[_stwWd(x.fix.to)]}`, { kind: 'ok', icon: 'calendar-plus', action: { label: 'Undo', run: () => undo() } });
-        } else markWontDo(x.id);
+        const move = x.fix.act === 'move';
+        const ops = stwFixOps(x);
+        if (!ops.length) return;
+        if (btn) btn.disabled = true;
+        const j = await storyTaskOps(ops, {
+          done: move ? `${x.title}: due ${STW_WEEKDAYS[_stwWd(x.fix.to)]}` : `${x.title}: dropped`, icon: move ? 'calendar-plus' : 'circle-x',
+          onUndo: () => { left = Math.min(S.total, left + 1); const n = f.cards.querySelector('.stw-left'); if (n) n.textContent = String(left); },
+        });
+        if (!j) { if (btn) btn.disabled = false; return; }
         left = Math.max(0, left - 1);
         const n = f.cards.querySelector('.stw-left'); if (n) n.textContent = String(left);
         _stwRemove(card, ctx.reduced);
@@ -370,14 +387,19 @@ storyRegisterBeatType('stw-next', (f, b, ctx) => {
     box.innerHTML = `${icon('circle-alert', 'i-sm')}<span class="stw-hint-t"><b>${esc(h.fromWd)} is ${esc(h.overBy ? stwHm(h.overBy) + ' over' : 'nearly full')}.</b> Move “${esc(h.title)}” to ${esc(h.toWd)}, which is lighter?</span>`;
     const acts = document.createElement('span'); acts.className = 'stw-hint-a';
     acts.append(
-      _stwBtn('Move it', null, 'pri', () => {
+      _stwBtn('Move it', null, 'pri', async (btn) => {
+        if (btn.disabled) return;
         _stwHold(b);
-        setDateWithReason(h.taskId, h.to, 'Weekly review: rebalance');
         const from = N.days.find(c => c.date === h.from), to = N.days.find(c => c.date === h.to);
-        for (const [c, d] of [[from, -h.est], [to, h.est]]) if (c) { c.planned = Math.max(0, c.planned + d); c.total = c.booked + c.planned; c.over = Math.max(0, c.total - STW_CAP_MIN); c.load = c.total / STW_CAP_MIN; c.warn = c.load > 0.75; c.tasks += d > 0 ? 1 : -1; }
-        paint();
+        const shift = (sign) => { for (const [c, d] of [[from, -h.est * sign], [to, h.est * sign]]) if (c) { c.planned = Math.max(0, c.planned + d); c.total = c.booked + c.planned; c.over = Math.max(0, c.total - STW_CAP_MIN); c.load = c.total / STW_CAP_MIN; c.warn = c.load > 0.75; c.tasks += d > 0 ? 1 : -1; } paint(); };
+        const putBack = () => { shift(-1); acts.remove(); box.querySelector('.stw-hint-t').textContent = 'Put back.'; };
+        btn.disabled = true;
+        // The actions layer, with a toast and Undo (user request, 4 Oct).
+        const j = await storyTaskOps([{ op: 'task.reschedule', id: h.taskId, dueDate: h.to, reason: 'Weekly review: rebalance' }], { done: `${h.title}: moved to ${h.toWd}`, icon: 'calendar-plus', onUndo: () => { if (box.isConnected) putBack(); } });
+        if (!j) { btn.disabled = false; return; }
+        shift(1);
         box.querySelector('.stw-hint-t').innerHTML = `<b>Moved.</b> “${esc(h.title)}” is now on ${esc(h.toWd)}.`;
-        acts.replaceChildren(_stwBtn('Undo', 'rotate-ccw', '', () => { undo(); acts.remove(); box.querySelector('.stw-hint-t').textContent = 'Put back.'; }));
+        acts.replaceChildren(_stwBtn('Undo', 'rotate-ccw', '', async (u) => { if (u.disabled || !j.undo) return; u.disabled = true; if (!(await storyTaskUndo(j.undo, putBack))) u.disabled = false; }));
       }),
       _stwBtn('Keep', null, '', () => { _stwHold(b); box.classList.add('is-gone'); }),
     );

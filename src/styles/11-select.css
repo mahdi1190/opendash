@@ -65,6 +65,10 @@
 .asst-pv-row:not(.is-on):not(.sel-done) > .asst-pv-body { opacity: 0.55; }
 .asst-pv-row .asst-pv-op { padding: 0; font-size: var(--text-sm); }
 .asst-pv-row > .badge { flex: none; }
+/* Each change's own buttons (72-assistant.js): the person editor, apply this one, skip. */
+.asst-row-acts { flex: none; display: inline-flex; align-items: center; gap: 2px; margin-left: var(--space-2); }
+.asst-row-acts .btn-xs { height: 26px; padding: 0 8px; gap: 4px; font-size: var(--text-xs, 12px); }
+.asst-row-acts .btn-icon.btn-xs { width: 26px; padding: 0; }
 .asst-pv-row .sel-row-err, .asst-pv-row .sel-row-note { padding-left: 48px; }
 .asst-prop .asst-prop-f .spacer { flex: 1; }
 .asst-pv-dialog { margin-top: var(--space-3); max-height: 300px; }

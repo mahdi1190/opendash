@@ -35,7 +35,7 @@ function load(env = {}) {
     if (field === 'planned') { it.plannedFor = date; } else { it.dueDate = date; }
     (g.state.taskActivity[id] = g.state.taskActivity[id] || []).push({ type: field === 'planned' ? 'plan' : 'date', to: date, reason });
   });
-  const names = ['sevNumWord', 'sevSpokenTime', 'sevEventPhrase', 'sevPeopleMet', 'sevNudge', 'sevDayType', 'sevDoneGroups', 'sevReflection', '_sevSession', '_sevMove', '_sevRestore', '_sev', 'storyCreateTimeline', 'storyCreateNarrator'];
+  const names = ['sevNumWord', 'sevSpokenTime', 'sevEventPhrase', 'sevPeopleMet', 'sevNudge', 'sevDayType', 'sevDoneGroups', 'sevReflection', '_sevSession', 'sevMoveOps', 'sevTop3Ops', '_sevForget', '_sev', 'storyCreateTimeline', 'storyCreateNarrator'];
   const keys = Object.keys(g);
   const fn = new Function(...keys, `"use strict";\n${core}\n${evening}\nreturn { ${names.join(', ')} };`);
   const api = fn(...keys.map(k => g[k]));
@@ -192,35 +192,39 @@ test("the reflection skips Claude's inventory sentences (two or more tasks, or t
   assert.match(own.text, /^A steady day: you finished pricing page/);
 });
 
-test('moving, dropping and putting back a slipped task', () => {
-  const items = { a: { id: 'a', dueDate: '2026-10-05' }, b: { id: 'b', plannedFor: '2026-10-05' } };
-  const state = { taskActivity: { a: [{ type: 'created' }] }, statuses: {} };
-  let saves = 0;
-  const m = load({ state, getItem: (id) => items[id], statusOf: (id) => state.statuses[id] || 'todo', saveData: () => saves++ });
+test('slipped tasks move through the actions layer: plan, reschedule (with the reason), drop, reopen', () => {
+  const m = load();
+  const due = { id: 'a', field: 'due' }, planned = { id: 'b', field: 'planned' };
+  assert.deepEqual(m.sevMoveOps(due, 'tomorrow', '2026-10-06', null, 'Too big'), [{ op: 'task.reschedule', id: 'a', dueDate: '2026-10-06', reason: 'Too big' }]);
+  assert.deepEqual(m.sevMoveOps(due, 'week', '2026-10-12', { target: 'tomorrow' }), [{ op: 'task.reschedule', id: 'a', dueDate: '2026-10-12', reason: 'Rolled over at the end of the day' }]);
+  assert.deepEqual(m.sevMoveOps(planned, 'tomorrow', '2026-10-06', null), [{ op: 'task.plan', id: 'b', date: '2026-10-06' }], 'a plan moves; the deadline stays');
+  assert.deepEqual(m.sevMoveOps(planned, 'drop', null, null, 'Not important'), [{ op: 'task.wont_do', id: 'b', reason: 'Not important' }]);
+  assert.deepEqual(m.sevMoveOps(planned, 'drop', null, { target: 'drop' }), [], 'dropping twice is a no-op');
+  assert.deepEqual(m.sevMoveOps(planned, 'tomorrow', '2026-10-06', { target: 'drop' }), [{ op: 'task.reopen', id: 'b' }, { op: 'task.plan', id: 'b', date: '2026-10-06' }], 'from Drop back to a day reopens first');
+  assert.deepEqual(m.sevMoveOps(due, 'tomorrow', 'soon', null), [], 'never a bad date');
+  // Undo through the toast or the beat's button: the rows go back to what they were.
   m._sevSession(DAY);
-  assert.ok(m._sevMove({ id: 'a', field: 'due' }, 'tomorrow', '2026-10-06', 'Too big'));
-  assert.equal(items.a.dueDate, '2026-10-06');
-  assert.equal(state.taskActivity.a.at(-1).reason, 'Too big');
-  // Changing the choice replaces the move (one activity entry, not two).
-  m._sevMove({ id: 'a', field: 'due' }, 'week', '2026-10-12');
-  assert.equal(items.a.dueDate, '2026-10-12');
-  assert.equal(state.taskActivity.a.length, 2);
-  assert.ok(m._sevRestore('a'));
-  assert.equal(items.a.dueDate, '2026-10-05');
-  assert.equal(state.taskActivity.a.length, 1, 'the move is gone from the history');
-  // A planned task moves its plan; Drop closes it and Undo reopens it.
-  m._sevMove({ id: 'b', field: 'planned' }, 'tomorrow', '2026-10-06');
-  assert.equal(items.b.plannedFor, '2026-10-06');
-  m._sevMove({ id: 'b', field: 'planned' }, 'drop', null);
-  assert.equal(items.b.plannedFor, '2026-10-05', 'switching to Drop puts the plan back first');
-  assert.equal(state.statuses.b, 'done');
-  m._sevRestore('b');
-  assert.equal(state.statuses.b, 'todo');
-  assert.equal(items.b.resolution, undefined);
-  assert.ok(saves >= 2);
-  // A new day starts a new session.
+  m._sev.moved.set('a', { target: 'week', date: '2026-10-12' }); m._sev.moved.set('b', { target: 'tomorrow', date: '2026-10-06' });
+  const entry = { prev: new Map([['a', { target: 'tomorrow', date: '2026-10-06' }], ['b', null]]), token: 'tok' };
+  m._sev.undo.push(entry);
+  let painted = 0;
+  m._sevForget(entry, () => painted++);
+  assert.deepEqual(m._sev.moved.get('a'), { target: 'tomorrow', date: '2026-10-06' });
+  assert.equal(m._sev.moved.has('b'), false);
+  assert.equal(m._sev.undo.length, 0); assert.equal(painted, 1);
   m._sevSession('2026-10-06');
-  assert.equal(m._sev.moved.size, 0);
+  assert.equal(m._sev.moved.size, 0, 'a new day starts a new session');
+});
+
+test('tomorrow\'s top 3: planned for tomorrow and first in Focus, as actions-layer ops', () => {
+  const items = { a: { id: 'a' }, b: { id: 'b' }, c: { id: 'c' }, gone: null };
+  const m = load({ getItem: (id) => items[id] || null, statusOf: (id) => (id === 'c' ? 'done' : 'todo') });
+  m.g.homeState = () => ({ focusOrder: ['x', 'a'] });
+  const ops = m.sevTop3Ops(['a', 'b', 'c', 'gone'], '2026-10-06');
+  assert.deepEqual(ops.slice(0, 2), [{ op: 'task.plan', id: 'a', date: '2026-10-06' }, { op: 'task.plan', id: 'b', date: '2026-10-06' }]);
+  assert.equal(ops[2].op, 'home.set_focus');
+  assert.deepEqual(ops[2].order.slice(0, 2), ['a', 'b']);
+  assert.deepEqual(m.sevTop3Ops(['c'], '2026-10-06'), [], 'nothing open: nothing to do');
 });
 
 test('engine hook: a beat that stops auto-advance while waiting to leave stays on screen', () => {

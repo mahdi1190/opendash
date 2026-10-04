@@ -5,13 +5,17 @@
     let j = null; try { j = await r.json(); } catch (e) { j = null; }
     return { ok: r.ok, status: r.status, body: j || {} };
   }
+  const LOAD_TIMEOUT_MS = 20000;
   async function load(quiet) {
     if (R.loading) return;
     R.loading = true;
     if (R.root) R.root.classList.toggle('fv-refreshing', !!R.model);
     if (!quiet && !R.data) paint();
+    // Never a skeleton for ever: the local read answers in milliseconds, so a slow one is an error (user report, 4 Oct).
+    const ac = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = ac ? setTimeout(() => ac.abort(), LOAD_TIMEOUT_MS) : null;
     try {
-      const r = await fetch('/api/finance', { cache: 'no-store' });
+      const r = await fetch('/api/finance', { cache: 'no-store', signal: ac ? ac.signal : undefined });
       if (!r.ok) throw new Error(r.status === 404 ? 'this server has no finance support — restart OpenDash' : 'HTTP ' + r.status);
       const j = await r.json();
       R.data = j; R.err = null; R.loadedAt = Date.now();
@@ -20,9 +24,11 @@
       R.model = (j.status === 'ok' && j.analysis) ? buildModel(j.analysis) : null;
       if (R.model) await loadBudgets(j.analysis);
     } catch (e) {
-      R.err = (e && e.message) || String(e);
-      R.errDown = typeof netIsDown === 'function' ? netIsDown(e) : /failed to fetch|network/i.test(R.err);   // @p2 the server is not running
+      const slow = e && e.name === 'AbortError';
+      R.err = slow ? 'Your finances took too long to load' : ((e && e.message) || String(e));
+      R.errDown = !slow && (typeof netIsDown === 'function' ? netIsDown(e) : /failed to fetch|network/i.test(R.err));   // @p2 the server is not running
     } finally {
+      if (timer) clearTimeout(timer);
       R.loading = false;
       if (R.root) R.root.classList.remove('fv-refreshing');
     }

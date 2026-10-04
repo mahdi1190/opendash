@@ -10,6 +10,9 @@ html[data-motion="full"] .ob-card { animation: ob-in var(--m-slow, 260ms) var(--
 .ob-top { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5) 0; }
 .ob-mark { width: 28px; height: 28px; border-radius: var(--radius-md); display: grid; place-items: center; flex: none;
   background: var(--accent); color: var(--fg-on-accent); font-weight: var(--weight-semibold); font-size: var(--text-sm); }
+.ob-mark-btn { border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+.ob-mark-btn:hover { box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent); }
+.ob-mark-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .ob-dots { flex: 1; display: flex; justify-content: center; gap: 6px; }
 .ob-dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--bg-emphasis); transition: width var(--m-base, 180ms) var(--m-ease-out, ease-out), background-color var(--m-base, 180ms); }
 .ob-dot.done { background: color-mix(in oklab, var(--accent) 45%, var(--bg-emphasis)); }

@@ -28,23 +28,35 @@ function _obDetect() {
   return { timezone: tz, locale: loc, currency, weekStart };
 }
 
+// The theme choice starts on what the app is really showing (user report, 4 Oct:
+// it highlighted Dark from the OS preference while the app was in Light).
+function _obCurrentTheme() {
+  if (state.autoTheme) return 'auto';
+  const shown = document.documentElement.getAttribute('data-theme') || state.theme;
+  return shown === 'dark' ? 'dark' : 'light';
+}
+// What Auto shows right now: the same evening rule as applyAutoTheme().
+function _obAutoTheme() {
+  const h = Clock.parts(Clock.now()).h;
+  return (h >= 19 || h < 7) ? 'dark' : 'light';
+}
+
 function openOnboarding() {
   if (_obOpen) return;
   _obOpen = true;
   const det = _obDetect();
   const d = {
     userName: APP_CONFIG.userName || '', currency: det.currency, locale: SETTINGS_LOCALES.some(l => l[0] === det.locale) ? det.locale : (APP_CONFIG.locale || 'en-GB'),
-    timezone: det.timezone, weekStart: det.weekStart, preset: 'work-life', theme: (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light',
+    timezone: det.timezone, weekStart: det.weekStart, preset: 'work-life', theme: _obCurrentTheme(),
     demo: false, myEmails: (APP_CONFIG.myEmails || []).join(', '),
   };
   let step = 0;
   const scrim = document.createElement('div'); scrim.className = 'ob-scrim';
   const card = document.createElement('div'); card.className = 'ob-card'; card.setAttribute('role', 'dialog'); card.setAttribute('aria-modal', 'true'); card.setAttribute('aria-labelledby', 'ob-title');
   document.body.append(scrim, card);
-  const prevTheme = document.documentElement.getAttribute('data-theme');
 
   const close = () => { _obOpen = false; scrim.remove(); card.remove(); document.removeEventListener('keydown', onKey, true); };
-  const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') { e.preventDefault(); next(); } };
+  const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON' && !(e.target.closest && e.target.closest('.pop'))) { e.preventDefault(); next(); } };
   document.addEventListener('keydown', onKey, true);
 
   const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
@@ -72,7 +84,7 @@ function openOnboarding() {
         applyStreams(state);
         saveData();
       }
-      state.theme = d.theme === 'auto' ? (state.theme || 'light') : d.theme;
+      state.theme = d.theme === 'auto' ? _obAutoTheme() : d.theme;
       state.autoTheme = d.theme === 'auto';
       saveUI();
       try { if (typeof _persistFire === 'function' && !d.demo) await _persistFire(); } catch (e) { /* the next save carries it */ }
@@ -94,7 +106,10 @@ function openOnboarding() {
   function paint() {
     card.innerHTML = '';
     const top = el('div', 'ob-top');
-    const mark = el('span', 'brand-mark ob-mark'); setBrandMark(mark, d.userName);
+    // The mark is the workspace icon: click to pick one (17-app-icon.js; saved at once).
+    const mark = el('button', 'brand-mark ob-mark ob-mark-btn'); mark.type = 'button'; setBrandMark(mark, d.userName);
+    mark.title = 'Change the icon'; mark.setAttribute('aria-label', 'Change the workspace icon');
+    mark.onclick = () => openAppIconPicker(mark, { name: d.userName.trim(), onPick: () => { delete mark.dataset.mark; setBrandMark(mark, d.userName); } });
     const dots = el('div', 'ob-dots');
     for (let i = 0; i < 4; i++) { const s = el('span', 'ob-dot' + (i === step ? ' on' : i < step ? ' done' : '')); dots.appendChild(s); }
     const skip = el('button', 'btn btn-ghost btn-sm ob-skip', 'Skip set-up'); skip.type = 'button'; skip.onclick = () => finish(true);
@@ -142,7 +157,7 @@ function openOnboarding() {
       body.appendChild(list);
       body.appendChild(field('Theme', seg([['light', 'Light', 'sun'], ['dark', 'Dark', 'moon'], ['auto', 'Auto', 'sun-moon']], d.theme, (k) => {
         d.theme = k;
-        document.documentElement.setAttribute('data-theme', k === 'auto' ? (prevTheme || 'light') : k);
+        document.documentElement.setAttribute('data-theme', k === 'auto' ? _obAutoTheme() : k);
       })));
     } else {
       h.textContent = 'Ready when you are';

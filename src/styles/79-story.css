@@ -211,6 +211,14 @@ html.story-open body > :not(.story) .bf-sky * { animation-play-state: paused !im
 .story.is-muted .st-mute .st-i-mute { display: block; }
 .story.is-muted .st-mute .st-i-vol { display: none; }
 .story.no-voice .st-mute { opacity: 0.4; }
+/* Volume (user request, 4 Oct): mute + a slider beside speed; persisted, applies at once. */
+.st-vol { display: flex; align-items: center; gap: 6px; padding-right: 6px; }
+.st-vol input[type="range"] { width: 92px; height: 28px; margin: 0; accent-color: var(--st-fg); cursor: pointer; background: none; }
+.st-vol input[type="range"]:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 6px; }
+.st-vol output { min-width: 3.2ch; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; opacity: 0.75; }
+.story.is-muted .st-vol input[type="range"], .story.is-muted .st-vol output { opacity: 0.45; }
+.story.no-voice .st-vol { display: none; }
+@media (max-width: 600px) { .st-vol input[type="range"] { width: 64px; } .st-vol output { display: none; } }
 .st-speed { display: flex; margin-left: 4px; padding: 3px; gap: 2px; border-radius: 999px; background: color-mix(in oklab, var(--st-fg) 8%, transparent); }
 .st-speed button { height: 30px; min-width: 44px; padding: 0 8px; border: 0; border-radius: 999px; background: none; color: var(--st-fg); font: inherit; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; opacity: 0.7; }
 .st-speed button[aria-pressed="true"] { background: var(--st-fg); color: color-mix(in oklab, var(--st-fg) 0%, #888); opacity: 1; }
@@ -265,15 +273,6 @@ html.story-open body > :not(.story) .bf-sky * { animation-play-state: paused !im
 /* Still: reduced motion or animations off. */
 .story.st-still *, .story.st-still *::before, .story.st-still *::after { animation: none !important; transition: none !important; }
 .story.st-still .st-ent { background-size: 100% 0.36em; }
-
-/* ---------- inline: the same stage inside a panel (Story.open(kind, {container})) ----------
-   Laid out at the window's size (so vw / vh / innerWidth mean what every beat expects) and
-   scaled into the container by --st-k; the container (.st-host) gets the height from the
-   engine. The panel draws its own controls, so the stage's dock and top-right buttons hide.
-   Expanded (.is-expanded) it is the ordinary full-screen story. */
-.st-host { position: relative; overflow: hidden; isolation: isolate; }
-.story.is-inline { position: absolute; inset: 0 auto auto 0; width: 100vw; height: 100vh; z-index: 0; transform: scale(var(--st-k, 0.5)); transform-origin: 0 0; outline: none; }
-.story.is-inline .st-ctrl, .story.is-inline .st-top-r, .story.is-inline .st-poster-opts { display: none; }
 
 /* ---------- entry button on the brief / evening / weekly pages ---------- */
 .st-entry-host { position: relative; }

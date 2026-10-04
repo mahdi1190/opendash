@@ -91,15 +91,27 @@ function _opsUses(op) {
   walk(op, null, 0);
   return out;
 }
-/** deps[i] = the earlier ops op i needs (the latest op before it that defined each ref it uses). */
+/**
+ * deps[i] = the earlier ops op i needs (the latest op before it that defined each ref it uses).
+ * A person made earlier in the batch counts too: person.create {id:'sam-lee'} (or its name)
+ * is needed by a later op whose person / people names that id or name (task.link_person,
+ * task.create {people}), so a link is never applied without the person it links.
+ */
 function opsRefDeps(ops) {
   const list = Array.isArray(ops) ? ops : [];
-  const defined = new Map();
+  const defined = new Map(), persons = new Map();
+  const fold = (v) => String(v || '').trim().toLowerCase();
   return list.map((op, i) => {
     const need = new Set();
     for (const name of _opsUses(op)) if (defined.has(name)) need.add(defined.get(name));
+    const pr = _opsParams(op);
+    if (op && op.op !== 'person.create') {
+      const who = [pr.person, ...(Array.isArray(pr.people) ? pr.people : [])].filter(x => typeof x === 'string');
+      for (const w of who) if (persons.has(fold(w))) need.add(persons.get(fold(w)));
+    }
     const ref = opsRefOf(op);
     if (ref) defined.set(ref, i);
+    if (op && op.op === 'person.create') for (const k of [pr.id, pr.name]) if (typeof k === 'string' && k.trim()) persons.set(fold(k), i);
     return [...need].sort((a, b) => a - b);
   });
 }

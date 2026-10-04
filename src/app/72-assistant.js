@@ -16,6 +16,12 @@
    select list): apply all, or only the ticked ones (dry run for their own
    confirm token, then apply); changes that need another ($ref) tick and
    untick with it; applied ones are marked done and the rest stay to apply.
+   Each change also has its own buttons (user request, 4 Oct): a tick applies just
+   it (with what it needs) with Undo, Skip sets it aside; a new person's primary
+   button opens the person editor prefilled (Add person there applies it, and the
+   changes that link them to tasks follow, with Undo). The assistant suggests
+   several things at once, including people from meetings and tasks who are not in
+   People yet (list_link_suggestions; ignored names never come back).
    Conversation memory: this tab's session (sessionStorage), last 40 messages;
    the server gets the last 12 turns with each question. Model choice is kept
    on this device (Opus 5.5 medium by default; Haiku 4.5 for speed).
@@ -32,6 +38,7 @@ const _ASST_SUGGESTIONS = [
   ['sun', 'Plan my day'],
   ['circle-alert', 'What is overdue, and what should I move?'],
   ['users', 'What am I waiting on from other people?'],
+  ['lightbulb', 'Suggest a few things to tidy up, including people to add'],
 ];
 let _asst = { el: null, open: false, messages: [], busy: false, ctrl: null, models: null, prevFocus: null, pollTimer: null, unsub: null };
 
@@ -160,13 +167,37 @@ function _asstDeps(p) {
   const n = (p.preview || []).length;
   return Array.isArray(p.deps) && p.deps.length >= n ? p.deps : (p.preview || []).map(() => []);
 }
+/** A create_person change's draft for the person editor: {id, name, email}. */
+function _asstPersonDraft(p, op) {
+  if (!op || op.op !== 'person.create') return null;
+  const d = (p.people && p.people[op.index]) || {};
+  const c = (op.changes || []).find(x => x.entity === 'person' && x.field === 'created') || {};
+  const name = d.name || c.label || '';
+  return name ? { id: d.id || c.id || '', name, email: d.email || '' } : null;
+}
 function _asstOpRowsHtml(p) {
   const undone = new Set(p.undoneIdx || []);
   const applied = new Set(p.applied || []);
+  const skipped = new Set(p.skipped || []), handled = new Set(p.handled || []);
+  const live = ['pending', 'error'].includes(p.state || 'pending');
   return (p.preview || []).slice().sort((a, b) => a.index - b.index).map((op) => {
     const label = op.summary || ((op.changes || [])[0] || {}).label || op.op || 'Change';
-    return `<div class="asst-pv-row" data-sel-id="${escAttr(String(op.index))}" data-label="${escAttr(label)}"><div class="asst-pv-body">${_asstProposalHtml({ preview: [op] })}</div>`
-      + (undone.has(op.index) ? '<span class="badge badge-soft">Undone</span>' : applied.has(op.index) ? '<span class="badge badge-success">Applied</span>' : '') + '</div>';
+    const i = op.index;
+    const badge = undone.has(i) ? '<span class="badge badge-soft">Undone</span>' : applied.has(i) ? '<span class="badge badge-success">Applied</span>'
+      : handled.has(i) ? '<span class="badge badge-success">Added</span>' : skipped.has(i) ? '<span class="badge badge-soft">Skipped</span>' : '';
+    // Its own buttons: the person editor (prefilled) for a new person, a tick to apply it now, Skip.
+    let acts = '';
+    if (live && !applied.has(i) && !undone.has(i) && !handled.has(i)) {
+      if (skipped.has(i)) acts = `<button type="button" class="btn btn-ghost btn-xs" data-row-act="unskip" data-tip="Offer it again">${icon('undo-2', 'i-sm')}<span>Restore</span></button>`;
+      else {
+        const draft = _asstPersonDraft(p, op);
+        acts = (draft ? `<button type="button" class="btn btn-secondary btn-xs" data-row-act="edit" data-tip="Open the person editor, filled in">${icon('user-plus', 'i-sm')}<span>Add ${esc(draft.name.split(/\s+/)[0])}…</span></button>` : '')
+          + `<button type="button" class="btn btn-ghost btn-icon btn-xs" data-row-act="apply" aria-label="${escAttr('Apply this: ' + label)}" data-tip="Apply this one">${icon('check', 'i-sm')}</button>`
+          + `<button type="button" class="btn btn-ghost btn-icon btn-xs" data-row-act="skip" aria-label="${escAttr('Skip this: ' + label)}" data-tip="Skip">${icon('x', 'i-sm')}</button>`;
+      }
+    }
+    return `<div class="asst-pv-row" data-sel-id="${escAttr(String(i))}" data-label="${escAttr(label)}"><div class="asst-pv-body">${_asstProposalHtml({ preview: [op] })}</div>`
+      + badge + (acts ? `<span class="asst-row-acts">${acts}</span>` : '') + '</div>';
   }).join('');
 }
 function _asstMountSelect(msg, p, card) {
@@ -185,7 +216,7 @@ function _asstMountSelect(msg, p, card) {
   const n = (k) => `${k} change${k === 1 ? '' : 's'}`;
   const sl = selectList(list, {
     store, rows: '.asst-pv-row', labelOf: (row) => row.dataset.label, label: 'Proposed changes', rowClick: true,
-    locked: (id) => (applied.has(Number(id)) ? 'done' : undone.has(Number(id))),
+    locked: (id) => (applied.has(Number(id)) || (p.handled || []).includes(Number(id)) ? 'done' : undone.has(Number(id)) || (p.skipped || []).includes(Number(id))),
     apply: { label: 'Apply selected', danger: !!p.needsConfirm && !applied.size, run: (ids) => _asstApplySome(msg, p, ids.map(Number)) },
     applyAll: { label: 'Apply all', run: (ids) => _asstApplySome(msg, p, ids.map(Number)) },
     // Unticking a change unticks the changes that need it; ticking one ticks what it needs.
@@ -203,7 +234,66 @@ function _asstMountSelect(msg, p, card) {
   });
   if (p.state === 'applying') sl.setBusy(true);
   card.classList.add('has-sel');
+  list.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-row-act]'); if (!b || !list.contains(b)) return;
+    e.stopPropagation();
+    const i = Number(b.closest('.asst-pv-row').dataset.selId);
+    _asstRowAct(msg, p, i, b.dataset.rowAct, b);
+  });
   return sl;
+}
+/** The changes that need op i (and are still open), i itself first. */
+function _asstWithUsers(p, i) {
+  const done = new Set([...(p.applied || []), ...(p.handled || []), ...(p.skipped || []), ...(p.undoneIdx || [])]);
+  return [i, ...opsUntickClosure(_asstDeps(p), i).filter(k => k !== i && !done.has(k))];
+}
+/** One change's own button: apply it now (with Undo), skip it, restore it, or open the person editor prefilled. */
+async function _asstRowAct(msg, p, i, act, btn) {
+  if (p.state === 'applying') return;
+  if (act === 'apply') return _asstApplySome(msg, p, [i]);
+  if (act === 'skip' || act === 'unskip') {
+    // Skipping a change skips the ones that need it; restoring one restores it alone.
+    const ids = act === 'skip' ? _asstWithUsers(p, i) : [i];
+    const set = new Set(p.skipped || []);
+    for (const k of ids) { if (act === 'skip') set.add(k); else set.delete(k); }
+    p.skipped = [...set];
+    p.sel = (p.sel || []).filter(k => !set.has(k));
+    if (act === 'unskip') p.sel = [...new Set([...(p.sel || []), i])];
+    _asstSettle(p); _asstSave(); _asstPaint();
+    return;
+  }
+  if (act === 'edit') {
+    const op = (p.preview || []).find(x => x.index === i);
+    const draft = _asstPersonDraft(p, op);
+    if (!draft || typeof openPersonEditor !== 'function') return;
+    openPersonEditor(null, { id: draft.id || undefined, name: draft.name, emails: draft.email ? [draft.email] : [] }, {
+      stay: true,
+      onSaved: (pid) => _asstPersonAdded(msg, p, i, pid),
+    });
+  }
+}
+/**
+ * The person editor added someone a proposal offered: that change is done, and the
+ * changes that link them to tasks are applied as they were proposed (one Undo).
+ */
+async function _asstPersonAdded(msg, p, i, pid) {
+  const users = _asstWithUsers(p, i).filter(k => k !== i);
+  const links = users.map(k => (p.preview || []).find(x => x.index === k)).filter(op => op && op.op === 'task.link_person');
+  const ops = links.map(op => { const c = (op.changes || []).find(x => x.id) || {}; return c.id ? { op: 'task.link_person', id: c.id, person: pid } : null; }).filter(Boolean);
+  p.handled = [...new Set([...(p.handled || []), i])];
+  p.sel = (p.sel || []).filter(k => k !== i);
+  if (ops.length && typeof actionsApply === 'function') {
+    const j = await actionsApply(ops, { client: 'dashboard assistant', done: `Linked to ${ops.length} task${ops.length === 1 ? '' : 's'}` });
+    if (j) { const idx = links.map(op => op.index); p.handled = [...new Set([...p.handled, ...idx])]; p.sel = (p.sel || []).filter(k => !idx.includes(k)); }
+  }
+  _asstSettle(p); _asstSave(); _asstPaint();
+}
+/** Every change decided (applied, added, skipped or undone): the proposal is finished. */
+function _asstSettle(p) {
+  const n = (p.preview || []).length;
+  const decided = new Set([...(p.applied || []), ...(p.handled || []), ...(p.skipped || []), ...(p.undoneIdx || [])]);
+  if (!n || decided.size < n || !['pending', 'error'].includes(p.state || 'pending')) return;
+  p.state = (p.applied || []).length || (p.handled || []).length ? 'applied' : 'dismissed';
 }
 function _asstProposalCard(msg, p) {
   const card = document.createElement('div');
@@ -216,7 +306,7 @@ function _asstProposalCard(msg, p) {
     <div class="asst-prop-h">${icon('wand-sparkles', 'i-sm')}<b>Proposed change${n === 1 ? '' : 's'}</b><span class="subtle">${n} change${n === 1 ? '' : 's'}</span><span class="spacer"></span>${badge}</div>
     ${p.note ? `<div class="asst-prop-note">${esc(p.note)}</div>` : ''}
     ${p.notice ? `<div class="callout warn">${icon('info', 'i-sm')}<span>${esc(p.notice)}</span></div>` : ''}
-    <div class="asst-pv">${selectable ? _asstOpRowsHtml(p) : _asstProposalHtml(p)}</div>
+    <div class="asst-pv">${selectable || (p.skipped || []).length || (p.handled || []).length ? _asstOpRowsHtml(p) : _asstProposalHtml(p)}</div>
     ${(p.warnings || []).length ? `<div class="asst-prop-warn subtle">${p.warnings.slice(0, 3).map(w => esc(w.message || w)).join('<br>')}</div>` : ''}
     ${p.needsConfirm && p.state === 'pending' && !(p.applied || []).length ? `<div class="callout danger">${icon('triangle-alert', 'i-sm')}<span>${esc(_asstConfirmText(p))} You can still undo it.</span></div>` : ''}
     ${p.error ? `<div class="callout danger">${icon('circle-alert', 'i-sm')}<span>${esc(p.error)}</span></div>` : ''}
@@ -238,7 +328,14 @@ function _asstProposalCard(msg, p) {
     f.insertAdjacentHTML('beforeend', '<span class="spacer"></span>');
     partUndos();
   } else if (p.state === 'pending' || p.state === 'error') {
-    btn('Apply', p.needsConfirm ? 'btn-danger' : 'btn-primary', 'check', () => _asstApply(msg, p));
+    const one = (p.preview || [])[0];
+    const draft = (p.preview || []).length === 1 ? _asstPersonDraft(p, one) : null;
+    if (draft && typeof openPersonEditor === 'function') {
+      btn(`Add ${draft.name.split(/\s+/)[0]}…`, 'btn-primary', 'user-plus', () => openPersonEditor(null, { id: draft.id || undefined, name: draft.name, emails: draft.email ? [draft.email] : [] }, {
+        stay: true, onSaved: () => { _asstDismiss(msg, p).then(() => { p.state = 'applied'; p.note = p.note || null; _asstSave(); _asstPaint(); }); },
+      }));
+      btn('Apply as it is', 'btn-secondary', 'check', () => _asstApply(msg, p));
+    } else btn('Apply', p.needsConfirm ? 'btn-danger' : 'btn-primary', 'check', () => _asstApply(msg, p));
     btn('Dismiss', 'btn-ghost', null, () => _asstDismiss(msg, p));
   } else if (p.state === 'applied' && parts.length > 1) {
     f.insertAdjacentHTML('beforeend', `<span class="subtle">${icon('circle-check', 'i-sm')} Done. </span>`);
@@ -380,10 +477,11 @@ function _asstConfirmSubset(p, dry) {
  * ticked and ready.
  */
 async function _asstApplySome(msg, p, ids) {
-  ids = [...new Set(ids)].filter(Number.isInteger).sort((a, b) => a - b);
+  const aside = new Set([...(p.skipped || []), ...(p.handled || [])]);
+  ids = [...new Set(ids)].filter(Number.isInteger).filter(i => !aside.has(i)).sort((a, b) => a - b);
   if (!ids.length) return;
   const applied = new Set(p.applied || []);
-  if (!applied.size && !(p.parts || []).length && ids.length >= (p.preview || []).length) return _asstApply(msg, p);   // all of it: the one-click path
+  if (!applied.size && !aside.size && !(p.parts || []).length && ids.length >= (p.preview || []).length) return _asstApply(msg, p);   // all of it: the one-click path
   p.state = 'applying'; p.error = null; p.notice = null; p.opErrors = {};
   _asstSave(); _asstPaint();
   const body = { proposalId: p.id, source: 'assistant', client: 'dashboard assistant' };
@@ -399,6 +497,7 @@ async function _asstApplySome(msg, p, ids) {
     p.sel = (p.sel || []).filter(i => !p.applied.includes(i));
     p.state = j.status === 'applied' ? 'applied' : 'pending';
     if (p.state === 'applied') p.undo = part.undo;
+    else _asstSettle(p);
     await _asstAdopt(j.version);
     const k = part.idx.length;
     toast(`Applied ${k} change${k === 1 ? '' : 's'}${p.state === 'applied' ? '' : `; ${(p.preview || []).length - p.applied.length} still to decide`}`, { kind: 'ok', icon: 'check', action: part.undo ? { label: 'Undo', run: () => _asstUndoPart(msg, p, part) } : undefined });
@@ -726,6 +825,7 @@ async function showAssistantProposal(id, text) {
     id, summary: pr.summary || '', note: pr.note || null, preview: pr.preview || [], warnings: pr.warnings || [],
     needsConfirm: !!pr.needsConfirm, reasons: Array.isArray(pr.reasons) ? pr.reasons : [], ops: pr.ops.length,
     deps: opsRefDeps(pr.ops), applied: Array.isArray(pr.appliedIdx) ? pr.appliedIdx : [], state: pr.status && pr.status !== 'pending' ? pr.status : 'pending',
+    people: Object.fromEntries(pr.ops.map((o, i) => [i, o]).filter(([, o]) => o && o.op === 'person.create').map(([i, o]) => { const q = o.params || o; return [i, { id: q.id || '', name: q.name || '', email: q.email || (Array.isArray(q.emails) ? q.emails[0] : '') || '' }]; })),
   };
   if (!_asst.el) _asstLoad();   // openAssistant() builds the panel (and reloads these messages)
   _asst.messages.push({ id: 'm' + Date.now(), role: 'assistant', text: String(text || ''), ts: Date.now(), proposals: [p] });

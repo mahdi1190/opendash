@@ -2,6 +2,7 @@
 // transactions, calendar events and email come from.
 //
 //   GET    /api/sources[?refresh=1]     -> {sources:[Source+health], capabilities, servers, discovery, persisted}
+//          ?discover=cached: answer at once from the last server list (re-listed in the background when old)
 //          servers: what `claude mcp list` shows (cached a minute; refresh=1 lists again)
 //   POST   /api/sources/tools  {server} -> {server, status, capability, tools:[{name, safety:'read'|'unknown'|'write', selected}]}
 //          one `claude -p` that stops at its start-up event: no model turn, nothing read
@@ -39,7 +40,7 @@ export default function register(app) {
 
   app.route({
     path: '/api/sources', method: 'GET', methodError: 'GET or POST only',
-    handler: async (c) => sources.status({ force: c.query.get('refresh') === '1' }),
+    handler: async (c) => sources.status({ force: c.query.get('refresh') === '1', discover: c.query.get('discover') === 'cached' ? 'cached' : true }),
   });
 
   app.route({

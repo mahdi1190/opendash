@@ -13,11 +13,12 @@
 //        (/login) or re-authenticate a connector (/mcp). Never sends input.
 //   GET  /api/connections/mcp            -> {install (commands, see mcp/install.mjs), installed:{entries, summary}}
 //   POST /api/connections/mcp-test       -> {ok, ms, tools, protocolVersion, today, error}
+//   POST /api/connections/mcp-install    {} -> {installed, already, servers}  (claude mcp add --scope user)
 //
 // Nothing here accepts or stores a password, key or token.
 
 import { createConnections, installStatus, cliFacts, testMcp } from '../../lib/connections.mjs';
-import { openClaudeTerminal } from '../../lib/claude-runner.mjs';
+import { openClaudeTerminal, addUserMcpServer, ClaudeError } from '../../lib/claude-runner.mjs';
 import { googleStatus } from '../../lib/google.mjs';
 import { installInfo } from '../../mcp/install.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
@@ -41,10 +42,12 @@ export default function register(app) {
       // Sources (lib/sources.mjs): per capability, is at least one enabled source healthy?
       // The page gates bank/calendar/email features on these first, the old entries second.
       try {
-        const st = await sourcesFor(app.ctx).status({ discover: 'cached', claudeOk: all.claude && all.claude.state === 'ok' ? true : all.claude && ['setup', 'auth'].includes(all.claude.state) ? false : null });
+        // 'background': answer at once (user report, 4 Oct: Finances showed "checking" for as long as
+        // `claude mcp list` took on a fresh start, although no bank was connected).
+        const st = await sourcesFor(app.ctx).status({ discover: 'background', claudeOk: all.claude && all.claude.state === 'ok' ? true : all.claude && ['setup', 'auth'].includes(all.claude.state) ? false : null });
         all.capabilities = st.capabilities;
         all.sources = st.sources.map(s => ({ id: s.id, capability: s.capability, kind: s.kind, label: s.label, colour: s.colour, enabled: s.enabled, state: s.health && s.health.state, message: s.health && s.health.message }));
-        all.discovery = { at: st.discovery.at, error: st.discovery.error, servers: Array.isArray(st.servers) ? st.servers.length : null };
+        all.discovery = { at: st.discovery.at, error: st.discovery.error, servers: Array.isArray(st.servers) ? st.servers.length : null, ...(st.discovery.pending ? { pending: true } : {}) };
       } catch (e) { log('warn', `connections: sources status failed (${e.message})`); }
       return all;
     },
@@ -86,6 +89,34 @@ export default function register(app) {
       await c.body({ allowEmpty: true });
       const r = await conns.check('mcp', { manual: true });
       return { ok: r.status === 'connected', tools: r.tools ?? null, error: r.status === 'connected' ? null : r.message, entry: r };
+    },
+  });
+
+  // Set up the OpenDash MCP for Claude Code / T3 Code in one click: the same
+  // `claude mcp add --scope user` the set-up drawer shows, run for the user.
+  // Answers with the fresh install status and server list, so the page updates at once.
+  app.route({
+    path: '/api/connections/mcp-install', method: 'POST', methodError: 'POST only',
+    handler: async (c) => {
+      await c.body({ allowEmpty: true });
+      const before = installStatus({ dataDir });
+      if (before.summary.claudeCode !== 'installed') {
+        const info = installInfo({ dataDir });
+        try {
+          await addUserMcpServer({ name: info.name, command: info.node, args: [info.server, '--data-dir', info.dataDir] });
+        } catch (e) {
+          if (e instanceof ClaudeError) {
+            const taken = /already exists/i.test(e.message || '');
+            return c.json(taken ? 409 : 502, { error: taken ? `Claude Code already has an MCP server called "${info.name}" (for another copy of the app). Remove it first: ${info.claudeCode.remove}` : e.message, code: e.code });
+          }
+          throw e;
+        }
+        log('note', 'OpenDash MCP added to Claude Code (user scope)');
+      }
+      const sources = sourcesFor(app.ctx);
+      sources.discover({ force: true }).catch(() => {});       // health follows in the background
+      const st = await sources.status({ discover: 'background' }).catch(() => null);
+      return { installed: installStatus({ dataDir }), already: before.summary.claudeCode === 'installed', servers: st ? st.servers : null };
     },
   });
 

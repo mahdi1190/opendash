@@ -66,6 +66,12 @@ function connHas(name) {
 function _connUnknown(name) {
   if (connHas(name)) return false;
   const e = _connAll && _connAll[name];
+  // The fast local answer (user report, 4 Oct: Finances said "Checking your bank…" for as long
+  // as Claude took to answer, with no bank connected). Once the server has said which sources
+  // exist and how they last did, a capability that is not available is simply not connected:
+  // a source never seen working ('unknown') is not connected yet. Show "Connect", not "Checking".
+  const cap = CONN_NAMES[name] && CONN_NAMES[name].cap;
+  if (cap && _connLoadedLive && _connAll && Array.isArray(_connAll.sources)) return false;
   if (e && e.checking) return true;
   if (!_connLoadedLive) return !(e && e.checkedAt);           // nothing known yet (fresh browser)
   if (name === 'claude' && typeof AI_PENDING !== 'undefined' && AI_PENDING && !(e && e.checkedAt)) return true;
@@ -248,7 +254,8 @@ async function connRefresh(opts) {
     _connLoading = null;
     _connNotify();
     // Something is being checked: look again shortly.
-    if (_connAll && Array.isArray(_connAll.checking) && _connAll.checking.length) setTimeout(() => connRefresh(), 2500);
+    // Something is being checked, or the server list is still being read: look again shortly.
+    if (_connAll && ((Array.isArray(_connAll.checking) && _connAll.checking.length) || (_connAll.discovery && _connAll.discovery.pending))) setTimeout(() => connRefresh(), 2500);
     return _connAll;
   })();
   return _connLoading;

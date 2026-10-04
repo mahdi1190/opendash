@@ -15,14 +15,86 @@
 // Linking follows src/app/52-people-link.js (through lib/people-tags.mjs),
 // exactly as the page counts it.
 
-import { ActionError, truncate, weekdayOf, daysBetween, normTag, isoInTz } from './model.mjs';
+import { ActionError, truncate, weekdayOf, daysBetween, normTag, isoInTz, addDaysIso } from './model.mjs';
+import { readMergedCalendar } from '../../lib/calendar-sources.mjs';
+import { calendarRules } from '../../lib/calendar-visibility.mjs';
 import { lastContactFromData } from '../../lib/people-contact.mjs';
 import {
-  pplBuildIndex, pplLinked, pplSuggest, pplOrphans, pplUnknownNames, pplIsWaiting, pplPersonEmails, pplKind,
+  pplBuildIndex, pplLinked, pplSuggest, pplOrphans, pplUnknownNames, pplIsWaiting, pplPersonEmails, pplKind, pplFold, pplLooksLikeMailbox,
   tglUsage, tglRegistry, tglFlags, tglStreamKeys, tglSimilar,
 } from '../../lib/people-tags.mjs';
 
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
+
+/** Attendee or title names that are a group, room or event rather than a person. */
+const NOT_A_PERSON = /\b(group|team|lab|society|office|room|calendar|committee|department|dept|list|admin|support|info|events?|meeting|seminar|symposium|workshop|conference|coffee|social|lunch|club|network|centre|center|school|university|faculty|programme|program|futures?)\b/i;
+/**
+ * People in upcoming calendar events who are not in People (user request, 4 Oct: the
+ * assistant proposes adding them): attendees whose address matches nobody, and names in
+ * event titles ("Coffee with Sam Lee") that match nobody. The user's ignored names and
+ * addresses (state.peopleIgnoredNames / peopleIgnoredEmails) and mailbox-like addresses
+ * are left out. events: [{id, title, date, attendees:[{name, email, self}]}].
+ * -> [{name, email?, events:[{id, title, date}]}] (most events first). Pure.
+ */
+export function peopleUnknownInEvents(s, events, o = {}) {
+  s = s || {};
+  const people = Array.isArray(s.people) ? s.people : [];
+  const idx = o.index || pplBuildIndex(people);
+  const ignore = new Set((Array.isArray(s.peopleIgnoredNames) ? s.peopleIgnoredNames : []).map(x => pplFold(x)));
+  const ignoreMail = new Set((Array.isArray(s.peopleIgnoredEmails) ? s.peopleIgnoredEmails : []).map(x => String(x).toLowerCase()));
+  const mine = new Set((o.myEmails || []).map(x => String(x).toLowerCase()));
+  const knownMail = new Set(people.flatMap(p => pplPersonEmails(p)).map(x => String(x).toLowerCase()));
+  const knownName = new Set(people.flatMap(p => [p.name, ...(Array.isArray(p.aliases) ? p.aliases : [])]).filter(Boolean).map(x => pplFold(x)));
+  const out = new Map();
+  const add = (name, email, ev) => {
+    const key = pplFold(name);
+    if (!key || ignore.has(key) || knownName.has(key)) return;
+    let r = out.get(key);
+    if (!r) { r = { name, ...(email ? { email } : {}), events: [] }; out.set(key, r); }
+    if (email && !r.email) r.email = email;
+    if (!r.events.some(x => x.id === ev.id)) r.events.push({ id: ev.id, title: truncate(ev.title || '', 80), date: ev.date });
+  };
+  const list = (Array.isArray(events) ? events : []).filter(e => e && e.id);
+  for (const ev of list) {
+    for (const a of Array.isArray(ev.attendees) ? ev.attendees : []) {
+      if (!a || a.self) continue;
+      const email = String(a.email || '').toLowerCase();
+      if (email && (knownMail.has(email) || ignoreMail.has(email) || mine.has(email) || pplLooksLikeMailbox({ email }))) continue;
+      const name = String(a.name || '').trim();
+      // A name is needed to propose someone (an address alone is left to People > Suggestions).
+      if (!name || name.includes('@') || name.split(/\s+/).length > 4 || NOT_A_PERSON.test(name)) continue;
+      add(name, email || null, ev);
+    }
+  }
+  // Names in the titles: the same rules as the names found in tasks, and only after a cue
+  // ("Coffee with Sam Lee", "Call Sam", "Sam's leaving do"): titles are full of capitalised
+  // words that are not people ("Process Modelling Meeting").
+  const asTasks = list.map(e => ({ id: e.id, title: String(e.title || '') }));
+  const stop = o.stop || [];
+  for (const u of pplUnknownNames({ custom: asTasks, statuses: {}, deleted: {}, people }, { index: idx, stop, ignore: [...(Array.isArray(s.peopleIgnoredNames) ? s.peopleIgnoredNames : [])], minTasks: 2 })) {
+    if (NOT_A_PERSON.test(u.name)) continue;
+    const n = u.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const cue = new RegExp(`(?:\\b(?:with|w/|meet|meeting|call|ping|see|visit|and|&)\\s+${n}(?!\\p{L})|(?<!\\p{L})${n}['’]s\\b)`, 'iu');
+    for (const id of u.taskIds) { const ev = list.find(e => e.id === id); if (ev && cue.test(String(ev.title || ''))) add(u.name, null, ev); }
+  }
+  return [...out.values()].sort((a, b) => b.events.length - a.events.length || a.name.localeCompare(b.name));
+}
+/** Upcoming events (today + 14 days, the calendars the user shows) for peopleUnknownInEvents. */
+async function upcomingEvents(q) {
+  const myEmails = (q.cfg && q.cfg.myEmails) || [];
+  const snap = q.paths ? await readMergedCalendar(q.paths, { myEmails }).catch(() => null) : null;
+  if (!snap || !Array.isArray(snap.events)) return [];
+  const from = q.clock.today, to = addDaysIso(from, 14);
+  const rules = calendarRules({ calendars: snap.calendars, state: q.s, myEmails });
+  const out = [];
+  for (const e of snap.events) {
+    if (!e || !e.start || !rules.shown(e)) continue;
+    const day = String(e.start.date || (e.start.dateTime ? isoInTz(new Date(e.start.dateTime), q.clock.timezone) : '')).slice(0, 10);
+    if (!day || day < from || day > to) continue;
+    out.push({ id: String(e.id || '').slice(0, 200), title: e.summary || '', date: day, attendees: Array.isArray(e.attendees) ? e.attendees : [] });
+  }
+  return out;
+}
 const statusOf = (s, id) => (s.statuses && s.statuses[id]) || 'todo';
 const live = (s) => (s.custom || []).filter(t => t && !(s.deleted && s.deleted[t.id]));
 export const TAG_RULE = 'Tags say what kind of work a task is (email, meeting, writing...) or which cross-stream project it belongs to. Never a person (link them), a stream, a date, urgency or a status (use those fields). Reuse the canonical tags; a new one needs createTag:true.';
@@ -105,9 +177,9 @@ export const PEOPLE_QUERIES = [
   },
   {
     name: 'people.suggestions', tool: 'list_link_suggestions',
-    description: 'People-linking work to review: open tasks that name someone they are not linked to (strong = in the title or a subtask), ids tasks point at that have no profile, and capitalised names in tasks that match nobody (maybe new people). link_suggested_people applies the first list.',
+    description: 'People-linking work to review: open tasks that name someone they are not linked to (strong = in the title or a subtask), ids tasks point at that have no profile, capitalised names in tasks that match nobody (maybe new people: unknownNames, with the tasks that mention them), and people in the next 14 days of calendar events who are not in People (unknownInCalendar: attendees and names in event titles, with the events). Names and addresses the user chose to ignore are already left out. link_suggested_people applies the first list.',
     schema: obj({ limit: { type: 'integer', minimum: 1, maximum: 300 } }),
-    run(q, p) {
+    async run(q, p) {
       const s = q.s;
       const idx = pplBuildIndex(s.people);
       const lim = p.limit || 60;
@@ -120,7 +192,8 @@ export const PEOPLE_QUERIES = [
         totalLinks: sug.length,
         strongLinks: sug.filter(x => x.strength === 'strong').length,
         noProfile: [...pplOrphans(s)].map(([id, r]) => ({ id, openTasks: r.open, tasks: r.total })),
-        unknownNames: unknown.slice(0, 30).map(u => ({ name: u.name, tasks: u.count })),
+        unknownNames: unknown.slice(0, 30).map(u => ({ name: u.name, tasks: u.count, taskIds: u.taskIds.slice(0, 10) })),
+        unknownInCalendar: peopleUnknownInEvents(s, await upcomingEvents(q).catch(() => []), { index: idx, stop, myEmails: (q.cfg && q.cfg.myEmails) || [] }).slice(0, 20),
       };
     },
   },

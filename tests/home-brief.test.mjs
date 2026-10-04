@@ -1,13 +1,12 @@
 // Home and the Morning brief are ONE page (src/app/12-home.js, 12-home-head.js,
-// 74-brief-ui.js, 77-brief-review.js) and the story engine's inline player
-// (src/app/79-story-engine.js):
+// 74-brief-ui.js, 77-brief-review.js) and the story engine (src/app/79-story-engine.js):
 //   - no separate brief panel or page: the 'brief' widget is gone from both
 //     catalogues, the Today widget is only a brand-new folder's welcome, and old
 //     '#view=review:*' / 'brief' links land on Home's tabs (viewAlias);
 //   - Home's tabs: Today / Evening / Week / History as 'home', 'home:evening' ...;
-//   - the engine run with a stand-in DOM: full screen is as before; inline lives in
-//     its container, expands to full screen and back (Esc), moves with a rebuilt
-//     page, only hears keys aimed at it, and reports state and its close.
+//   - the engine run with a stand-in DOM: every entry opens the full-screen player
+//     (a container is ignored: no inline / minimised mode on Home, user request 4 Oct);
+//     the volume slider is persisted and re-says the current words at once.
 // Synthetic data only.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -103,7 +102,7 @@ test('no "Morning brief" place left in the UI: sidebar, palette and Settings say
   assert.doesNotMatch(read('58-settings-home.js'), /Morning brief on Home/);
 });
 
-/* ───────── the engine's inline player, run with a stand-in DOM ───────── */
+/* ───────── the engine, run with a stand-in DOM ───────── */
 function storyBox() {
   let doc = null;
   class ClassList {
@@ -175,102 +174,61 @@ function storyBox() {
 }
 const tick = () => new Promise(r => setImmediate(r));
 
-test('inline API: full screen is unchanged without a container', async () => {
+test('the story always opens full screen (a container is ignored); Esc closes it', async () => {
   const t = storyBox();
-  await t.S.open('morning', { autoplay: false });
+  const host = new t.El('div'); t.body.appendChild(host);
+  await t.S.open('morning', { container: host, autoplay: false });
   await tick();
   const root = t.body.children.find(c => c.classList.contains('story'));
   assert.ok(root, 'the stage is a body-level element');
+  assert.equal(host.children.length, 0, 'nothing plays inside the panel');
   assert.equal(t.html.classList.contains('story-open'), true);
   assert.equal(root.getAttribute('role'), 'dialog'); assert.equal(root.getAttribute('aria-modal'), 'true');
   assert.equal(root.classList.contains('is-inline'), false);
-  assert.equal(t.S.isInline(), false); assert.equal(t.S.isExpanded(), false);
-  assert.equal(t.S.expand(), false, 'nothing to expand'); assert.equal(t.S.collapse(), false);
-  // Esc closes it, as before.
+  for (const k of ['expand', 'collapse', 'attach', 'isInline', 'isExpanded']) assert.equal(t.S[k], undefined, 'no inline API: ' + k);
   t.key('Escape', root);
   assert.equal(t.S.isOpen(), false);
   assert.equal(t.html.classList.contains('story-open'), false);
 });
 
-test('inline API: plays in its container, expands to full screen and back, moves, closes once', async () => {
+test('Home: Play my morning opens the full-screen player; no inline stage is left', () => {
+  const head = read('12-home-head.js');
+  assert.ok(fnSrc('12-home-head.js', 'homeHeadPlayRow').includes("st.open('morning', { autoplay: true })"));
+  assert.doesNotMatch(head, /container|homeHeadStage|hd-stage|\.expand\(/);
+  assert.doesNotMatch(read('74-brief-ui.js'), /homeHeadStage|homeHeadAttach/);
+});
+
+test('volume: the slider is saved, wins over Settings, un-mutes, and re-says the words at once', async () => {
   const t = storyBox();
-  const host = new t.El('div'); t.body.appendChild(host);
-  const states = [], closes = [];
-  await t.S.open('evening', { container: host, autoplay: false, onState: (s) => states.push(s), onClose: (o) => closes.push(o) });
+  assert.equal(t.run('storyPrefs().volume'), 1, 'default full volume');
+  t.run('APP_CONFIG.brief.story.volume = 0.6');
+  assert.equal(t.run('storyPrefs().volume'), 0.6, 'Settings default');
+  await t.S.open('morning', { autoplay: false });
   await tick();
-  const root = host.children.find(c => c.classList.contains('story'));
-  assert.ok(root, 'the stage lives in the container');
-  assert.equal(t.html.classList.contains('story-open'), false, 'the page is not dimmed or locked');
-  assert.equal(root.classList.contains('is-inline'), true);
-  assert.equal(root.getAttribute('role'), 'region'); assert.equal(root.getAttribute('aria-modal'), null);
-  assert.equal(host.classList.contains('st-host'), true);
-  // Laid out at the window's size and scaled into the container (720 of 1440 = half; 900 x 0.5).
-  assert.equal(root.style.getPropertyValue('--st-k'), '0.5'); assert.equal(host.style.height, '450px');
-  assert.deepEqual([t.S.isOpen(), t.S.kind(), t.S.isInline(), t.S.isExpanded()], [true, 'evening', true, false]);
-  assert.equal(states.at(-1).inline, true); assert.equal(states.at(-1).count > 0, true, 'state reports the moments');
-  // Keys: only those aimed at the player itself.
-  const outside = new t.El('button'); t.body.appendChild(outside);
-  assert.equal(t.key('m', outside).defaultPrevented, false, 'a key elsewhere on the page is left alone');
-  assert.equal(t.key('ArrowRight', root).defaultPrevented, true, 'a key on the stage drives it');
-  // Full screen: the same stage moves to the body; nothing reloads.
-  assert.equal(t.S.expand(), true);
-  assert.equal(root.parentElement, t.body);
-  assert.equal(t.html.classList.contains('story-open'), true);
-  assert.equal(root.getAttribute('role'), 'dialog'); assert.equal(root.getAttribute('aria-modal'), 'true');
-  assert.equal(t.S.isExpanded(), true); assert.equal(states.at(-1).expanded, true);
-  assert.equal(root.querySelector('.st-x').getAttribute('aria-label'), 'Back to the panel (Esc)');
-  // Esc there brings it back into the panel (it does not close).
-  t.key('Escape', root);
-  assert.equal(t.S.isOpen(), true);
-  assert.equal(root.parentElement, host);
-  assert.equal(t.html.classList.contains('story-open'), false);
-  assert.equal(t.S.isExpanded(), false); assert.equal(states.at(-1).expanded, false);
-  assert.equal(root.querySelector('.st-x').getAttribute('aria-label'), 'Close (Esc)');
-  // A full-screen request for the same story while it plays inline expands it (no second copy).
-  await t.S.open('evening', { autoplay: true });
-  assert.equal(t.S.isExpanded(), true); assert.equal(t.fetches.length, 1, 'loaded once');
-  t.S.collapse();
-  // A rebuilt panel: the player moves into the new container.
-  const host2 = new t.El('div'); t.body.appendChild(host2);
-  await t.S.open('evening', { container: host2 });
-  assert.equal(root.parentElement, host2);
-  assert.equal(host.classList.contains('st-host'), false); assert.equal(host2.classList.contains('st-host'), true);
-  assert.equal(t.fetches.length, 1, 'still loaded once');
-  // Esc inline stops it; onClose runs once and the container is left clean.
-  t.key('Escape', root);
-  assert.equal(t.S.isOpen(), false);
-  assert.equal(closes.length, 1); assert.deepEqual(plain(closes[0]), { expanded: false });
-  assert.equal(host2.classList.contains('st-host'), false); assert.equal(host2.style.height, '');
+  t.run('var _refreshes = 0; _story.tl = { refresh() { _refreshes++; }, setMuted() {}, destroy() {} };');
+  t.S.setVolume(0.35);
+  assert.equal(t.run('storyPrefs().volume'), 0.35, 'the player wins');
+  assert.equal(t.run('JSON.parse(localStorage.getItem("dashboard-story-ui")).volume'), 0.35, 'persisted');
+  assert.equal(t.run('storyNarrator().prefs.volume'), 0.35, 'the narrator has it');
+  assert.equal(t.run('_refreshes'), 1, 'the current words are said again at the new volume');
+  assert.equal(t.S.state().volume, 0.35);
+  t.S.setVolume(7); assert.equal(t.run('storyPrefs().volume'), 1, 'clamped');
+  t.S.toggleMute(); assert.equal(t.run('storyPrefs().muted'), true);
+  t.S.setVolume(0.5); assert.equal(t.run('storyPrefs().muted'), false, 'turning it up un-mutes');
   t.S.close();
-  assert.equal(closes.length, 1, 'closing twice reports once');
 });
 
-test('inline API: opening another kind replaces the inline story; a panel that has gone closes it on the way back', async () => {
+test('timeline refresh re-says from the current word with the latest prefs', () => {
   const t = storyBox();
-  const host = new t.El('div'); t.body.appendChild(host);
-  const closes = [];
-  await t.S.open('morning', { container: host, autoplay: false, onClose: () => closes.push('morning') });
-  await t.S.open('week', { autoplay: false });
-  assert.equal(closes.length, 1, 'the inline one was told it closed');
-  assert.deepEqual([t.S.kind(), t.S.isInline()], ['week', false]);
-  t.S.close();
-  // Expanded, then Home is left (the panel is gone): Esc closes instead of docking into nothing.
-  await t.S.open('morning', { container: host, autoplay: false, onClose: () => closes.push('again') });
-  t.S.expand();
-  host.remove();
-  const root = t.body.children.find(c => c.classList.contains('story'));
-  t.key('Escape', root);
-  assert.equal(t.S.isOpen(), false);
-  assert.deepEqual(closes, ['morning', 'again']);
-});
-
-test('inline fit: the window\'s layout scaled to the container width', () => {
-  const t = storyBox();
-  const fit = (...a) => plain(t.run(`storyInlineFit(${a.map(x => JSON.stringify(x)).join(',')})`));
-  assert.deepEqual(fit(720, 1440, 900), { k: 0.5, height: 450 });
-  assert.deepEqual(fit(1080, 1440, 900), { k: 0.75, height: 675 });
-  assert.deepEqual(fit(2000, 1440, 900), { k: 1, height: 900 }, 'never larger than the window');
-  assert.deepEqual(fit(0, 1440, 900), { k: 1, height: 900 }, 'no width yet: full size');
-  assert.deepEqual(fit(500, null, 'x'), { k: 0.3472, height: 313 }, 'junk window: 1440 x 900');
-  assert.deepEqual(fit(10, 1440, 900), { k: 0.05, height: 45 }, 'a floor');
+  const r = plain(t.run(`(() => {
+    const said = [];
+    const nar = { speak: (text, o) => { said.push(o.fromChar); return { cancel() {}, pause() {}, resume() {}, mode: 'voice' }; }, cancel() {} };
+    let fns = []; const timers = { set: (f) => { fns.push(f); return fns.length; }, clear() {} };
+    const tl = storyCreateTimeline({ beats: [{ id: 'a', say: 'one two three' }], narrator: nar, timers, now: () => 0 });
+    tl.play();
+    for (let k = 0; k < 3 && fns.length; k++) { const run = fns; fns = []; run.forEach(f => f()); }
+    tl.refresh();
+    return said;
+  })()`));
+  assert.ok(r.length >= 2, 'said again');
 });

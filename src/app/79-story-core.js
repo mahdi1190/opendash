@@ -357,6 +357,8 @@ function storyCreateTimeline(opts) {
       speed = x;
       if (say && state === 'playing') speakFrom(lastChar);
     },
+    /** Say the current words again with the narrator's latest prefs (volume / voice changed). */
+    refresh() { if (say && state === 'playing') speakFrom(lastChar); },
     setMuted(m) {
       m = !!m; if (m === muted) return;
       muted = m;
@@ -409,17 +411,4 @@ function storyHandleKey(e, player) {
   if (e.stopPropagation) e.stopPropagation();
   fn.call(player);
   return true;
-}
-
-/* ---------- inline (a Home panel) ---------- */
-/**
- * The inline player lays the stage out at the window's size (so every beat looks as it
- * does full screen) and scales it into its container: k = container width / window width,
- * the container's height = the window's height x k. Junk sizes fall back to 1440 x 900.
- */
-function storyInlineFit(width, vw, vh) {
-  const n = (v, d) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : d);
-  const W = n(vw, 1440), H = n(vh, 900), w = n(width, W);
-  const k = Math.max(0.05, Math.min(1, w / W));
-  return { k: Math.round(k * 10000) / 10000, height: Math.round(H * k) };
 }

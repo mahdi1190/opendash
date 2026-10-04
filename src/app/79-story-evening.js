@@ -19,8 +19,9 @@
    deadline tomorrow) sets the palette, mood, pace, confetti and the order.
    Beats with nothing to show are dropped. Interactive beats stop
    auto-advancing as soon as the user types or clicks; a Continue button moves on.
-   Actions reuse the Finish-the-day page (76-brief-evening.js): _evRoll,
-   eveningModel, eveningSetTop3, reviewSave. Session choices (rows moved, the
+   Task actions (move, drop, follow-up, top 3) go through the actions layer
+   (storyTaskOps in 79-story-engine.js: a toast with Undo, Home updates live);
+   the data comes from the Finish-the-day page (eveningModel, reviewSave). Session choices (rows moved, the
    why, the top 3, notes, mood) last for the day, so Replay keeps them.
    Styles: src/styles/79-story-evening.css.
    ============================================================ */
@@ -446,24 +447,35 @@ storyRegisterBeatType('ev-people', (f, b, ctx) => {
       ta.value = ''; S.drafts.delete(pid); save.disabled = true; ta.placeholder = 'Saved to their notes. Add another…';
       card.classList.remove('is-saved'); void card.offsetWidth; card.classList.add('is-saved');
     });
-    follow.addEventListener('click', () => {
-      if (S.followed.has(pid) || typeof addCustomTask !== 'function') return;
-      const id = addCustomTask(`Follow up with ${p.first || p.name || 'them'}`, briefAddDays(tomorrow, 1), 'p0', [], null, 'none', { people: [pid] });
-      if (!id) return;
+    follow.addEventListener('click', async () => {
+      if (S.followed.has(pid) || follow.disabled) return;
+      const label = follow.innerHTML, who = p.first || p.name || 'them';
+      follow.disabled = true;
+      const j = await storyTaskOps([{ op: 'task.create', title: `Follow up with ${who}`, dueDate: briefAddDays(tomorrow, 1), people: [pid] }], {
+        done: `Follow-up with ${who} added`, icon: 'repeat',
+        onUndo: () => { S.followed.delete(pid); if (follow.isConnected) { follow.disabled = false; follow.innerHTML = label; follow.classList.remove('is-done'); } },
+      });
+      if (!j) { follow.disabled = false; return; }
       S.followed.add(pid);
-      follow.disabled = true; follow.innerHTML = `${_sevIco('check')}<span>Follow-up added</span>`;
+      follow.innerHTML = `${_sevIco('check')}<span>Follow-up added</span>`;
       follow.classList.add('is-done');
     });
   });
   const nd = el.querySelector('.sev-nudge');
   if (nd) {
     const pid = nd.dataset.pid, p = ctx.person(pid) || {};
-    nd.querySelector('[data-sev="catchup"]').addEventListener('click', (e) => {
+    nd.querySelector('[data-sev="catchup"]').addEventListener('click', async (e) => {
       const btn = e.currentTarget;
-      const owe = btn.textContent.includes('Remind');
-      const id = typeof addCustomTask === 'function' ? addCustomTask(owe ? `Reply to ${p.first || p.name}` : `Catch up with ${p.first || p.name}`, owe ? tomorrow : reviewWeekRange(ctx.data.date, APP_CONFIG.weekStart || 'Mon').nextFrom, 'p0', [], null, 'none', { people: [pid] }) : null;
-      if (!id) return;
-      btn.disabled = true; btn.innerHTML = `${_sevIco('check')}<span>${owe ? 'On tomorrow’s list' : 'Added to next week'}</span>`;
+      if (btn.disabled) return;
+      const owe = btn.textContent.includes('Remind'), label = btn.innerHTML;
+      const title = owe ? `Reply to ${p.first || p.name}` : `Catch up with ${p.first || p.name}`;
+      btn.disabled = true;
+      const j = await storyTaskOps([{ op: 'task.create', title, dueDate: owe ? tomorrow : reviewWeekRange(ctx.data.date, APP_CONFIG.weekStart || 'Mon').nextFrom, people: [pid] }], {
+        done: owe ? `${title}: on tomorrow’s list` : `${title}: added to next week`, icon: 'calendar-plus',
+        onUndo: () => { if (btn.isConnected) { btn.disabled = false; btn.innerHTML = label; } },
+      });
+      if (!j) { btn.disabled = false; return; }
+      btn.innerHTML = `${_sevIco('check')}<span>${owe ? 'On tomorrow’s list' : 'Added to next week'}</span>`;
     });
     nd.querySelector('[data-sev="dismiss"]').addEventListener('click', () => { S.dismissed = true; nd.classList.add('is-gone'); T.set(() => nd.remove(), ctx.reduced ? 0 : 280); });
   }
@@ -482,34 +494,50 @@ function _sevSlipTargets(date) {
   out.push(['drop', 'Drop', null]);
   return out;
 }
-/** Move (or drop) one slipped task; remembers how to put it back. Returns true when changed. */
-function _sevMove(x, target, date, why) {
-  const it = typeof getItem === 'function' ? getItem(x.id) : null;
-  if (!it) return false;
-  _sevRestore(x.id, true);
-  const before = { dueDate: it.dueDate || null, dueTime: it.dueTime || null, plannedFor: it.plannedFor || null, plannedTime: it.plannedTime || null, plannedMinutes: it.plannedMinutes || null, status: statusOf(x.id), resolution: it.resolution || null, resolvedAt: it.resolvedAt || null, acts: (state.taskActivity[x.id] || []).length };
-  if (target === 'drop') setStatus(x.id, 'done', { wontDo: true, noSave: true });
-  else _evRoll(x.id, x.field === 'planned' ? 'planned' : 'due', date, why || EVENING_ROLL_REASON);
-  _sev.moved.set(x.id, { target, date, before });
+/**
+ * The actions-layer ops that move (or drop) one slipped task (user request, 4 Oct: the
+ * story's task options must really apply, with Undo). cur = the move already made this
+ * session ({target}) or null; why = the reason chip. Pure: tests/story-evening.test.mjs.
+ *   a planned task -> task.plan (the deadline stays); a due one -> task.reschedule with the
+ *   reason; Drop -> task.wont_do; from Drop back to a day -> task.reopen first.
+ */
+function sevMoveOps(x, target, date, cur, why) {
+  if (!x || !x.id) return [];
+  if (target === 'drop') return cur && cur.target === 'drop' ? [] : [Object.assign({ op: 'task.wont_do', id: x.id }, why ? { reason: why } : {})];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) return [];
+  const ops = cur && cur.target === 'drop' ? [{ op: 'task.reopen', id: x.id }] : [];
+  if (x.field === 'planned') ops.push({ op: 'task.plan', id: x.id, date });
+  else ops.push({ op: 'task.reschedule', id: x.id, dueDate: date, reason: why || EVENING_ROLL_REASON });
+  return ops;
+}
+/** Run moves through the actions layer: [{x, target, date}] -> true when applied (one Undo step). */
+async function _sevApplyMoves(moves, o) {
+  o = o || {};
+  const S = _sev, ops = [], prev = new Map();
+  for (const mv of moves) {
+    const cur = S.moved.get(mv.x.id) || null;
+    const part = sevMoveOps(mv.x, mv.target, mv.date, cur, S.why.get(mv.x.id));
+    if (!part.length) continue;
+    ops.push(...part); prev.set(mv.x.id, cur);
+  }
+  if (!ops.length) return false;
+  const n = prev.size, t0 = moves[0];
+  const one = n === 1 && t0.x.title ? `“${String(t0.x.title).slice(0, 60)}”` : null;
+  const msg = o.done || (t0.target === 'drop' ? (one ? one + ' dropped' : n + ' dropped') : `${one || n + ' tasks'} moved to ${o.label || 'later'}`);
+  const entry = { prev, token: null };
+  const j = await storyTaskOps(ops, { done: msg, icon: t0.target === 'drop' ? 'circle-x' : 'sunrise', onUndo: () => _sevForget(entry, o.repaint) });
+  if (!j) return false;
+  entry.token = j.undo || null;
+  for (const mv of moves) if (prev.has(mv.x.id)) S.moved.set(mv.x.id, { target: mv.target, date: mv.date || null });
+  if (entry.token) S.undo.push(entry);
   return true;
 }
-/** Put a moved task back as it was (dates, status, the activity entries the move added). */
-function _sevRestore(id, quiet) {
-  const m = _sev.moved.get(id), it = typeof getItem === 'function' ? getItem(id) : null;
-  if (!m || !it) return false;
-  const b = m.before;
-  if (b.dueDate) it.dueDate = b.dueDate; else delete it.dueDate;
-  if (b.dueTime) it.dueTime = b.dueTime;
-  if (b.plannedFor) it.plannedFor = b.plannedFor; else delete it.plannedFor;
-  for (const k of ['plannedTime', 'plannedMinutes']) { if (b[k] && b.plannedFor) it[k] = b[k]; else delete it[k]; }   // the planned slot (20-task-plan.js)
-  if (m.target === 'drop') {
-    state.statuses[id] = b.status || 'todo';
-    if (b.resolution) { it.resolution = b.resolution; it.resolvedAt = b.resolvedAt; } else { delete it.resolution; delete it.resolvedAt; }
-  }
-  if (Array.isArray(state.taskActivity[id])) state.taskActivity[id] = state.taskActivity[id].slice(0, b.acts);
-  _sev.moved.delete(id);
-  if (!quiet) { saveData(); render(); }
-  return true;
+/** An undone move: the rows go back to what they were before it. */
+function _sevForget(entry, repaint) {
+  const S = _sev;
+  S.undo = S.undo.filter(e => e !== entry);
+  for (const [id, cur] of entry.prev) { if (cur) S.moved.set(id, cur); else S.moved.delete(id); }
+  if (typeof repaint === 'function') repaint();
 }
 storyRegisterBeatType('ev-slipped', (f, b, ctx) => {
   const S = _sevSession(ctx.data.date), date = ctx.data.date;
@@ -562,20 +590,17 @@ storyRegisterBeatType('ev-slipped', (f, b, ctx) => {
   };
   const undoBtn = el.querySelector('[data-sev="undo"]');
   const syncUndo = () => { undoBtn.disabled = !S.undo.length; };
-  const apply = (ids, target) => {
+  const repaint = () => { if (!el.isConnected) return; el.querySelectorAll('.sev-row').forEach(paint); syncUndo(); };
+  let busy = false;
+  const apply = async (ids, target) => {
+    if (busy) return;
     const t = targets.find(x => x[0] === target);
-    const done = [];
-    for (const id of ids) {
-      const x = byId.get(id); if (!x) continue;
-      const cur = S.moved.get(id);
-      if (cur && cur.target === target) continue;
-      if (_sevMove(x, target, t ? t[2] : null, S.why.get(id))) done.push(id);
-    }
-    if (!done.length) return;
-    S.undo.push(done);
-    saveData(); render();
-    el.querySelectorAll('.sev-row').forEach(paint);
-    syncUndo();
+    const moves = ids.map(id => byId.get(id)).filter(x => x && !(S.moved.get(x.id) && S.moved.get(x.id).target === target)).map(x => ({ x, target, date: t ? t[2] : null }));
+    if (!moves.length) return;
+    busy = true; el.classList.add('is-busy');
+    const label = target === 'week' ? 'next week' : target === 'tomorrow' ? 'tomorrow' : t ? t[1] : 'later';
+    try { await _sevApplyMoves(moves, { label, repaint }); }
+    finally { busy = false; el.classList.remove('is-busy'); repaint(); }
   };
   el.querySelectorAll('.sev-row').forEach(row => {
     const id = row.dataset.id;
@@ -590,17 +615,17 @@ storyRegisterBeatType('ev-slipped', (f, b, ctx) => {
       // Already moved: the reason goes on the move (the weekly review reads it).
       const m = S.moved.get(id);
       const acts = state.taskActivity[id];
-      if (m && m.target !== 'drop' && Array.isArray(acts) && acts.length > m.before.acts) { acts[acts.length - 1].reason = S.why.get(id) || EVENING_ROLL_REASON; saveData(); }
+      const last = m && m.target !== 'drop' && Array.isArray(acts) ? [...acts].reverse().find(a => a && (a.type === 'date' || a.type === 'plan') && a.to === m.date) : null;
+      if (last) { last.reason = S.why.get(id) || EVENING_ROLL_REASON; saveData(); }
       paint(row);
     }));
     paint(row);
   });
-  undoBtn.addEventListener('click', () => {
-    const last = S.undo.pop(); if (!last) return;
-    for (const id of last) _sevRestore(id, true);
-    saveData(); render();
-    el.querySelectorAll('.sev-row').forEach(paint);
-    syncUndo();
+  undoBtn.addEventListener('click', async () => {
+    const last = S.undo[S.undo.length - 1]; if (!last || busy) return;
+    busy = true; undoBtn.disabled = true;
+    try { await storyTaskUndo(last.token, () => _sevForget(last, repaint)); }
+    finally { busy = false; repaint(); }
   });
   el.querySelector('[data-sev="all"]').addEventListener('click', () => apply((b.items || []).map(x => x.id).filter(id => !S.moved.has(id)), 'tomorrow'));
   syncUndo();
@@ -610,6 +635,15 @@ storyRegisterBeatType('ev-slipped', (f, b, ctx) => {
 });
 
 /* ---------- E4: tomorrow ---------- */
+/** Tomorrow's top 3 as actions-layer ops: each planned for tomorrow, then first in Home's Focus order. */
+function sevTop3Ops(ids, tom) {
+  const open = (id) => !!(typeof getItem === 'function' && getItem(id)) && (typeof statusOf !== 'function' || statusOf(id) !== 'done');
+  ids = (ids || []).filter(open).slice(0, 3);
+  if (!ids.length) return [];
+  const h = typeof homeState === 'function' ? homeState() : {};
+  const order = [...ids, ...((h && h.focusOrder) || []).filter(x => !ids.includes(x) && open(x))].slice(0, 30);
+  return [...ids.map(id => ({ op: 'task.plan', id, date: tom })), { op: 'home.set_focus', order }];
+}
 function sevTop3Candidates(ctx) {
   const S = _sevSession(ctx.data.date), tom = _sevTomorrowIso(ctx.data.date);
   const out = [], seen = new Set();
@@ -730,9 +764,14 @@ storyRegisterBeatType('ev-tomorrow', (f, b, ctx) => {
       const next = slots.querySelector('.sev-slot-in'); if (next) next.focus();
     });
   };
-  setBtn.addEventListener('click', () => {
-    if (!S.picked.length || S.committed || typeof eveningSetTop3 !== 'function') return;
-    eveningSetTop3(S.picked);
+  setBtn.addEventListener('click', async () => {
+    if (!S.picked.length || S.committed || setBtn.getAttribute('aria-busy') === 'true') return;
+    const ops = sevTop3Ops(S.picked, tom);
+    if (!ops.length) return;
+    setBtn.setAttribute('aria-busy', 'true');
+    const j = await storyTaskOps(ops, { done: 'Tomorrow’s top 3 are set', icon: 'target', onUndo: () => { S.committed = false; if (setBtn.isConnected) paint(); } });
+    setBtn.removeAttribute('aria-busy');
+    if (!j) return;
     S.committed = true; paint();
   });
   paint();
@@ -834,7 +873,10 @@ storyRegisterBeatType('ev-outro', (f, b, ctx) => {
   close.addEventListener('click', async () => {
     if (close.disabled) return;
     close.disabled = true;
-    if (!S.committed && S.picked && S.picked.length && typeof eveningSetTop3 === 'function') { eveningSetTop3(S.picked); S.committed = true; }
+    if (!S.committed && S.picked && S.picked.length) {
+      const ops = sevTop3Ops(S.picked, _sevTomorrowIso(ctx.data.date));
+      if (ops.length && await storyTaskOps(ops, { done: 'Tomorrow’s top 3 are set', icon: 'target', onUndo: () => { S.committed = false; } })) S.committed = true;
+    }
     const ok = S.closed || await sevSaveRecap(ctx);
     if (!ok) { close.disabled = false; return; }
     S.closed = true;

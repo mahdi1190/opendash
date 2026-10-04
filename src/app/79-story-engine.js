@@ -8,16 +8,8 @@
      storyOpen(kind, {autoplay, at})    kind 'morning'|'evening'|'week'; fetches
                                         GET /api/story?kind= -> {data, script, ai}; shows
                                         the Play poster (or plays at once with autoplay)
-     storyOpen(kind, {container, onState, onClose})   INLINE (a Home panel): the same
-                                        stage, laid out at the window's size and scaled
-                                        into `container` (which gets its height); no
-                                        page dimming, no focus trap, keys only while focus
-                                        is inside. storyExpand() zooms it to full screen
-                                        (nothing replays); Esc / the shrink button there,
-                                        or storyCollapse(), puts it back. storyAttach(el)
-                                        moves it into a rebuilt container. onState(state)
-                                        on play/pause/end/mute/expand; onClose() once.
-                                        Without `container` everything is as before.
+                                        Every entry point opens this big full-screen player
+                                        (user request, 4 Oct: never a small box on Home).
      storyClose()  storyIsOpen()
      storyRegisterBuilder(kind, build)  build(ctx) -> [beat...]  (replaces the default)
      storyRegisterBeatType(type, render) render(frame, beat, ctx) -> cleanup fn | void
@@ -56,7 +48,6 @@ function storyRegisterKind(kind, src) {
 const _story = {
   open: false, kind: null, root: null, tl: null, narrator: null, payload: null, beats: [], frames: [], cleanups: [],
   words: [], capWords: [], hot: new Set(), autoPaused: false, seq: 0, aiBusy: false, lastFocus: null, keyFn: null, ui: null,
-  inline: null, expanded: false, ro: null,       // inline: {host, onState, onClose} while it plays in a panel
 };
 function storyRegisterBuilder(kind, build) { if (kind && typeof build === 'function') STORY_BUILDERS[kind] = build; }
 function storyRegisterBeatType(type, render) { if (type && typeof render === 'function') STORY_BEAT_TYPES[type] = render; }
@@ -81,7 +72,9 @@ function storyPrefs() {
   const num = (v, d) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Number(v) : d);
   return {
     autoOpen: s.autoOpen !== false, voice: s.voice !== false, voiceName: s.voiceName || '',
-    rate: num(s.rate, 1), pitch: num(s.pitch, 1), volume: num(s.volume, 1),
+    rate: num(s.rate, 1), pitch: num(s.pitch, 1),
+    // The player's volume slider (this browser) wins over the Settings default.
+    volume: Math.max(0, Math.min(1, num(ui.volume, num(s.volume, 1)))),
     speed: STORY_SPEEDS.includes(Number(ui.speed)) ? Number(ui.speed) : STORY_SPEEDS.includes(Number(s.speed)) ? Number(s.speed) : 1,
     // This session's mute (the M key) wins over the default until the next day.
     muted: ui.mutedFor === todayStrSafe() ? !!ui.muted : s.voice === false,
@@ -394,6 +387,7 @@ function _stStageHtml(kind) {
       <button type="button" class="st-btn st-play" aria-label="Pause (Space)">${_stIcon('pause', 'st-i-pause')}${_stIcon('play', 'st-i-play')}</button>
       <button type="button" class="st-btn st-next" aria-label="Next (Right arrow)" data-tip="Next" data-kbd="→">${_stIcon('next')}</button>
       <button type="button" class="st-btn st-mute" aria-label="Mute (M)" data-tip="Read aloud" data-kbd="M">${_stIcon('vol', 'st-i-vol')}${_stIcon('mute', 'st-i-mute')}</button>
+      <div class="st-vol"><input type="range" class="st-vol-r" min="0" max="1" step="0.05" aria-label="Volume" data-tip="Volume"><output class="st-vol-o" aria-hidden="true"></output></div>
       <div class="st-speed" role="group" aria-label="Speed">${STORY_SPEEDS.map(s => `<button type="button" data-speed="${s}" aria-pressed="false">${s === 1 ? '1×' : String(s) + '×'}</button>`).join('')}</div>
     </div>
     <div class="st-poster">
@@ -435,13 +429,9 @@ function _stBg(p, beat) {
 async function storyOpen(kind, opts) {
   opts = opts || {};
   if (!STORY_VIEWS[kind]) kind = 'morning';
-  const host = opts.container && opts.container.nodeType === 1 ? opts.container : null;
   const variant = opts.variant != null ? String(opts.variant) : '';   // a page-built kind's period: another one is a new story
   // Re-selecting the story that is already open is a no-op (no reload, no replayed intro).
   if (_story.open && _story.kind === kind && (_story.variant || '') === variant) {
-    // Playing inline: a rebuilt panel takes the player along; a full-screen request expands it.
-    if (_story.inline && host) storyAttach(host, opts);
-    else if (_story.inline && !_story.expanded) storyExpand();
     if (opts.autoplay === true && _story.payload && !_story.tl) storyPlay();
     return;
   }
@@ -449,25 +439,22 @@ async function storyOpen(kind, opts) {
   const seq = ++_story.seq;
   const src = STORY_SOURCES[kind] || null;
   _story.open = true; _story.kind = kind; _story.variant = variant; _story.payload = null; _story.autoPaused = false; _story.fresh = false; _story.aiBusy = false;
-  _story.inline = host ? { host, onState: opts.onState, onClose: opts.onClose } : null; _story.expanded = false;
   _story.lastFocus = document.activeElement;
   const root = document.createElement('div');
-  root.className = 'story is-loading' + (storyReduced() ? ' st-still' : '') + (host ? ' is-inline' : '');
+  root.className = 'story is-loading' + (storyReduced() ? ' st-still' : '');
   _stRole(root, kind);
   root.dataset.kind = kind; root.dataset.state = 'idle';
   root.dataset.apTx = typeof animStoryTx === 'function' ? animStoryTx() : 'fade';   // today's beat transition (78-anim-wire.js)
   root.innerHTML = _stStageHtml(kind);
   if (typeof animLoadingHtml === 'function') root.insertAdjacentHTML('beforeend', animLoadingHtml('st-ap-loading'));   // shown while .is-loading
-  if (host) { root.tabIndex = -1; host.classList.add('st-host'); host.appendChild(root); }   // a click on the stage gives its keys focus
-  else { document.body.appendChild(root); document.documentElement.classList.add('story-open'); }
+  document.body.appendChild(root); document.documentElement.classList.add('story-open');
   _story.root = root;
-  if (host) _stInlineWatch();
   _stWire(root);
   const prefs = storyPrefs();
   _stSyncControls();
   root.querySelector('.st-ra').checked = !prefs.muted;
   requestAnimationFrame(() => root.classList.add('is-in'));
-  if (!host || opts.focus) root.querySelector('.st-bigplay').focus({ preventScroll: true });
+  root.querySelector('.st-bigplay').focus({ preventScroll: true });
   // Show whatever sky we already know while the story loads.
   if (src) _stBg({ data: { tod: src.dark ? 'night' : 'day' } });
   else if (typeof _bf !== 'undefined' && _bf.weather && _bf.weather.ok) _stBg({ data: { weather: { cond: _bf.weather.current ? _bf.weather.current.cond : 'none', tod: typeof briefTod === 'function' ? briefTod(_bf.weather) : 'day' } } });
@@ -482,7 +469,6 @@ async function storyOpen(kind, opts) {
     root.querySelector('.st-poster-h').textContent = 'The story could not load.';
     root.querySelector('.st-poster-sub').textContent = _serverAvailable === false ? 'The OpenDash server is not running.' : (e.message || 'Try again in a moment.');
     root.querySelector('.st-bigplay').hidden = true;
-    _stNotify();
     return;
   }
   if (seq !== _story.seq || !_story.open) return;
@@ -494,7 +480,6 @@ async function storyOpen(kind, opts) {
     const a = root.querySelector('.st-attrib'); a.hidden = false; a.textContent = payload.data.weather.attribution.text || '';
   }
   _stMaybeAi(false);
-  _stNotify();
   // Opened by a click (palette, a button): play straight away; the auto-open waits for Play.
   const gesture = opts.autoplay !== false && (opts.autoplay === true || (navigator.userActivation && navigator.userActivation.isActive));
   if (gesture) storyPlay();
@@ -552,8 +537,7 @@ function storyPlay() {
     });
   }
   _story.tl.play();
-  // Inline the panel keeps focus on its own controls (the stage's are hidden there).
-  const pl = root.querySelector('.st-play'); if (pl && (!_story.inline || _story.expanded)) pl.focus({ preventScroll: true });
+  const pl = root.querySelector('.st-play'); if (pl) pl.focus({ preventScroll: true });
 }
 function storyClose(o) {
   if (!_story.open) return;
@@ -565,155 +549,30 @@ function storyClose(o) {
   if (_story.keyFn) document.removeEventListener('keydown', _story.keyFn, true);
   _story.keyFn = null;
   const root = _story.root;
-  const inl = _story.inline, wasExpanded = _story.expanded;
   _story.open = false; _story.root = null; _story.payload = null; _story.beats = []; _story.words = []; _story.capWords = [];
-  _story.inline = null; _story.expanded = false;
-  _stInlineUnwatch(inl);
   document.documentElement.classList.remove('story-open');
   if (root) {
     root.classList.remove('is-in'); root.classList.add('is-out');
     setTimeout(() => root.remove(), storyReduced() || (o && o.quiet) ? 0 : 320);
   }
   const f = _story.lastFocus; _story.lastFocus = null;
-  // Inline: the panel takes over (it gets its own content and focus back through onClose).
-  if (inl) { if (typeof inl.onClose === 'function') { try { inl.onClose({ expanded: wasExpanded }); } catch (e) { console.error('[story] onClose', e); } } return; }
   if (f && f.isConnected && typeof f.focus === 'function' && !(o && o.quiet)) { try { f.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
 }
 
-/* ---------- inline (a Home panel) ---------- */
-/** Dialog when it fills the window, a region inside a panel. */
+/** The player is always a full-screen dialog. */
 function _stRole(root, kind) {
-  const inline = !!_story.inline && !_story.expanded;
-  root.setAttribute('role', inline ? 'region' : 'dialog');
-  if (inline) root.removeAttribute('aria-modal'); else root.setAttribute('aria-modal', 'true');
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-modal', 'true');
   root.setAttribute('aria-label', STORY_LABELS[kind] || 'Story');
 }
-/** Scale the stage (laid out at the window's size) into its panel; the panel gets the height. */
-function _stInlineFit() {
-  const inl = _story.inline, root = _story.root;
-  if (!inl || !root || _story.expanded || !inl.host) return;
-  const f = storyInlineFit(inl.host.clientWidth, window.innerWidth, window.innerHeight);
-  const k = String(f.k), h = f.height + 'px';
-  if (root.style.getPropertyValue('--st-k') !== k) root.style.setProperty('--st-k', k);
-  if (inl.host.style.height !== h) inl.host.style.height = h;      // only real changes (no resize loop)
-}
-function _stInlineWatch() {
-  const inl = _story.inline; if (!inl) return;
-  _stInlineFit();
-  if (typeof ResizeObserver === 'function') {
-    if (_story.ro) _story.ro.disconnect();
-    // The height follows the width a frame later, outside the observer's callback.
-    _story.ro = new ResizeObserver(() => { if (_story.fitRaf) return; _story.fitRaf = requestAnimationFrame(() => { _story.fitRaf = 0; _stInlineFit(); }); });
-    _story.ro.observe(inl.host);
-  }
-  window.addEventListener('resize', _stInlineFit);
-}
-function _stInlineUnwatch(inl) {
-  if (_story.ro) { _story.ro.disconnect(); _story.ro = null; }
-  window.removeEventListener('resize', _stInlineFit);
-  if (inl && inl.host) { inl.host.classList.remove('st-host'); inl.host.style.height = ''; }
-}
-/**
- * Move the stage without replaying anything: a DOM move restarts CSS animations, so
- * each running one is put back at the time it had reached (finished ones stay finished).
- */
-function _stCarry(root, move) {
-  let before = null;
-  try { before = typeof root.getAnimations === 'function' ? root.getAnimations({ subtree: true }) : null; } catch (e) { before = null; }
-  const snap = new Map();
-  for (const a of before || []) {
-    if (!a || !a.animationName || !a.effect) continue;
-    const key = a.animationName + '|' + (a.effect.pseudoElement || '');
-    let m = snap.get(a.effect.target); if (!m) { m = new Map(); snap.set(a.effect.target, m); }
-    m.set(key, a.currentTime);
-  }
-  move();
-  if (!snap.size) return;
-  try {
-    for (const a of root.getAnimations({ subtree: true })) {
-      if (!a || !a.animationName || !a.effect) continue;
-      const m = snap.get(a.effect.target);
-      const t = m && m.get(a.animationName + '|' + (a.effect.pseudoElement || ''));
-      if (t !== undefined && t !== null) a.currentTime = t;
-    }
-  } catch (e) { /* the moment simply replays */ }
-}
-function _stXLabel(root) {
-  const x = root && root.querySelector('.st-x'); if (!x) return;
-  const back = !!_story.inline && _story.expanded;
-  x.setAttribute('aria-label', back ? 'Back to the panel (Esc)' : 'Close (Esc)');
-  x.setAttribute('data-tip', back ? 'Back to the panel' : 'Close');
-  x.innerHTML = icon(back ? 'minimize-2' : 'x');
-}
-/** Inline -> full screen: the panel's stage zooms up to fill the window; the moment carries on. */
-function storyExpand() {
-  const root = _story.root, inl = _story.inline;
-  if (!_story.open || !root || !inl || _story.expanded) return false;
-  const r = root.getBoundingClientRect();
-  _story.expanded = true;
-  if (_story.ro) { _story.ro.disconnect(); }
-  _stCarry(root, () => document.body.appendChild(root));
-  root.classList.remove('is-inline'); root.classList.add('is-expanded');
-  root.style.removeProperty('--st-k');
-  _stRole(root, _story.kind); _stXLabel(root);
-  document.documentElement.classList.add('story-open');
-  if (!storyReduced() && r.width > 0 && typeof root.animate === 'function') {
-    const k = r.width / Math.max(1, window.innerWidth);
-    root.animate([{ transformOrigin: '0 0', transform: `translate(${r.left}px, ${r.top}px) scale(${k})`, borderRadius: `${Math.round(14 / Math.max(0.2, k))}px` }, { transformOrigin: '0 0', transform: 'none', borderRadius: '0px' }],
-      { duration: 460, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
-  }
-  const pl = root.querySelector(_story.tl ? '.st-play' : '.st-bigplay'); if (pl) try { pl.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
-  _stNotify();
-  return true;
-}
-/** Full screen -> back into the panel (closes instead when the panel has gone). */
-function storyCollapse() {
-  const root = _story.root, inl = _story.inline;
-  if (!_story.open || !root || !inl || !_story.expanded) return false;
-  if (!inl.host || !inl.host.isConnected) { storyClose(); return false; }
-  const seq = _story.seq;
-  const dock = () => {
-    if (seq !== _story.seq || !_story.expanded) return;
-    _story.expanded = false;
-    document.documentElement.classList.remove('story-open');
-    _stCarry(root, () => inl.host.appendChild(root));
-    root.classList.add('is-inline'); root.classList.remove('is-expanded');
-    _stRole(root, _story.kind); _stXLabel(root);
-    _stInlineWatch();
-    _stNotify();
-  };
-  const hr = inl.host.getBoundingClientRect();
-  if (storyReduced() || typeof root.animate !== 'function' || hr.width <= 0) { dock(); return true; }
-  const k = hr.width / Math.max(1, window.innerWidth);
-  const a = root.animate([{ transformOrigin: '0 0', transform: 'none', borderRadius: '0px' }, { transformOrigin: '0 0', transform: `translate(${hr.left}px, ${hr.top}px) scale(${k})`, borderRadius: `${Math.round(14 / Math.max(0.2, k))}px` }],
-    { duration: 380, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' });
-  a.onfinish = () => { dock(); a.cancel(); };
-  return true;
-}
-/** A rebuilt panel: the inline player moves into its new container (nothing replays). */
-function storyAttach(host, o) {
-  const inl = _story.inline, root = _story.root;
-  if (!_story.open || !inl || !root || !host || host.nodeType !== 1) return false;
-  if (o && typeof o.onState === 'function') inl.onState = o.onState;
-  if (o && typeof o.onClose === 'function') inl.onClose = o.onClose;
-  if (host === inl.host) return true;
-  if (inl.host) { inl.host.classList.remove('st-host'); inl.host.style.height = ''; }
-  inl.host = host; host.classList.add('st-host');
-  if (!_story.expanded) { _stCarry(root, () => host.appendChild(root)); _stInlineWatch(); }
-  return true;
-}
-/** What a panel needs to draw its own controls. */
+/** The player's state (tests and other areas read it). */
 function storyState() {
   return {
-    open: _story.open, kind: _story.open ? _story.kind : null, inline: !!_story.inline, expanded: !!_story.expanded,
-    state: _story.root ? (_story.root.dataset.state || 'idle') : 'idle', muted: storyPrefs().muted,
+    open: _story.open, kind: _story.open ? _story.kind : null,
+    state: _story.root ? (_story.root.dataset.state || 'idle') : 'idle', muted: storyPrefs().muted, volume: storyPrefs().volume,
     index: _story.tl ? _story.tl.index : -1, count: (_story.beats || []).length, loading: !!(_story.root && _story.root.classList.contains('is-loading')),
     error: !!(_story.root && _story.root.classList.contains('is-error')),
   };
-}
-function _stNotify() {
-  const inl = _story.inline;
-  if (inl && typeof inl.onState === 'function') { try { inl.onState(storyState()); } catch (e) { console.error('[story] onState', e); } }
 }
 function storyOpenDetails() {
   const kind = _story.kind, src = STORY_SOURCES[kind], p = _story.payload;
@@ -852,7 +711,6 @@ function _stOnBeat(i, beat, dir) {
   _story.ents = [...capHost.querySelectorAll('.st-ent')].map(el => ({ el, from: Number(el.dataset.from), to: Number(el.dataset.to), key: el.dataset.key }));
   _story.hot = new Set();
   _stPaintProgress();
-  _stNotify();
 }
 function _stOnPhase(i, phase) {
   for (const fr of _story.frames) for (const el of [fr.scene, fr.type, fr.cards]) {
@@ -889,7 +747,6 @@ function _stOnState(state) {
   const pl = root.querySelector('.st-play');
   if (pl) pl.setAttribute('aria-label', state === 'playing' ? 'Pause (Space)' : state === 'ended' ? 'Replay' : 'Play (Space)');
   root.classList.toggle('is-paused', state === 'paused');
-  _stNotify();
 }
 function _stOnEnd() {
   const root = _story.root; if (!root) return;
@@ -923,7 +780,11 @@ function _stSyncControls() {
   m.setAttribute('aria-pressed', p.muted ? 'true' : 'false');
   m.setAttribute('aria-label', p.muted ? 'Read aloud (M)' : 'Mute (M)');
   root.querySelectorAll('.st-speed button').forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.speed) === p.speed ? 'true' : 'false'));
-  _stNotify();
+  const vr = root.querySelector('.st-vol-r'), vo = root.querySelector('.st-vol-o'), pct = Math.round(p.volume * 100);
+  if (vr && document.activeElement !== vr) vr.value = String(p.volume);
+  if (vr) vr.setAttribute('aria-valuetext', pct + '%' + (p.muted ? ', muted' : ''));
+  if (vo) vo.textContent = pct + '%';
+  root.style.setProperty('--st-volume', String(p.muted ? 0 : p.volume));   // for any sound a beat plays
 }
 
 /* ---------- player actions + wiring ---------- */
@@ -941,9 +802,48 @@ const STORY_PLAYER = {
     _stSyncControls();
   },
   setSpeed(x) { _stSaveUi({ speed: x }); if (_story.tl) _story.tl.setSpeed(x); _stSyncControls(); },
-  // Esc: full screen closes; a story expanded from a panel goes back into it.
-  close() { if (_story.inline && _story.expanded) storyCollapse(); else storyClose(); },
+  /** Volume 0..1 (user request, 4 Oct): saved for this browser, applied to the narration at once. */
+  setVolume(v, o) {
+    v = Math.max(0, Math.min(1, Math.round(Number(v) * 100) / 100));
+    if (!Number.isFinite(v)) return;
+    _stSaveUi({ volume: v });
+    const nar = storyNarrator();                 // picks the new volume up for the next utterance
+    if (v > 0 && storyPrefs().muted) STORY_PLAYER.toggleMute();   // turning it up un-mutes
+    else if (_story.tl && !(o && o.live)) _story.tl.refresh();     // speech can't change volume mid-utterance: re-say from this word
+    _stSyncControls();
+    if (o && o.live) { clearTimeout(_story.volT); _story.volT = setTimeout(() => { if (_story.tl) _story.tl.refresh(); }, 220); }
+    return nar;
+  },
+  close() { storyClose(); },
 };
+/**
+ * A task action from a story beat (user request, 4 Oct: they did nothing). Always the
+ * normal actions layer (POST /api/actions: validation, history, live update of Home and
+ * the task lists) with a visible confirmation and Undo.
+ * o: {done: toast text, icon, onUndo()}. Returns the server's answer ({undo, ...}) or false.
+ */
+async function storyTaskOps(ops, o) {
+  o = o || {};
+  if (typeof actionsApply !== 'function') return false;
+  const j = await actionsApply(ops, { client: 'story', done: false });
+  if (!j) return false;                                   // failed: actionsApply has said why
+  if (typeof render === 'function') { try { render(); } catch (e) { console.error('[story] render', e); } }
+  toast(o.done || 'Done', { kind: 'ok', icon: o.icon, action: j.undo ? { label: 'Undo', run: () => storyTaskUndo(j.undo, o.onUndo) } : undefined });
+  return j;
+}
+/** Undo a story action by its token; true when undone. */
+async function storyTaskUndo(token, after) {
+  try {
+    await actionsUndo(token, { client: 'story' });
+    if (typeof render === 'function') render();
+    if (typeof after === 'function') after();
+    toast('Undone', { kind: 'ok', icon: 'undo-2' });
+    return true;
+  } catch (e) {
+    toast(typeof netErrorMessage === 'function' ? netErrorMessage(e, 'Could not undo') : 'Could not undo', { kind: 'err' });
+    return false;
+  }
+}
 function _stWire(root) {
   const on = (sel, fn) => { const el = root.querySelector(sel); if (el) el.addEventListener('click', fn); };
   on('.st-bigplay', () => storyPlay());
@@ -958,6 +858,9 @@ function _stWire(root) {
   on('.st-regen', () => _stMaybeAi(true));
   on('.st-src', () => { if (!_story.fresh) return; _story.fresh = false; _stSrcBadge(); storyPlay(); });
   root.querySelector('.st-ra').addEventListener('change', (e) => { if (storyPrefs().muted === e.target.checked) STORY_PLAYER.toggleMute(); });
+  const vr = root.querySelector('.st-vol-r');
+  vr.addEventListener('input', () => STORY_PLAYER.setVolume(vr.value, { live: true }));
+  vr.addEventListener('keydown', (e) => { if (/^Arrow/.test(e.key)) e.stopPropagation(); });   // arrows move the slider, not the moments
   root.querySelector('.st-speed').addEventListener('click', (e) => { const b = e.target.closest('button[data-speed]'); if (b) STORY_PLAYER.setSpeed(Number(b.dataset.speed)); });
   root.querySelector('.st-prog').addEventListener('click', (e) => {
     const s = e.target.closest('.st-seg'); if (!s) return;
@@ -968,13 +871,6 @@ function _stWire(root) {
   root.querySelector('.st-cards').addEventListener('click', (e) => { if (e.target === e.currentTarget && _story.tl) STORY_PLAYER.next(); });
   _story.keyFn = (e) => {
     if (!_story.open) return;
-    // Inline in a panel: only keys aimed at the player itself; the page keeps its shortcuts and Tab.
-    if (_story.inline && !_story.expanded) {
-      if (!e.target || !root.contains(e.target)) return;
-      if ((e.key === ' ' || e.key === 'Enter') && e.target.closest && e.target.closest('.story button, .story input')) return;
-      storyHandleKey(e, STORY_PLAYER);
-      return;
-    }
     if (e.key === 'Tab') { _stTrapTab(e); return; }
     // Space/Enter on a focused button clicks it; everything else is a player key.
     if ((e.key === ' ' || e.key === 'Enter') && e.target && e.target.closest && e.target.closest('.story button, .story input')) return;
@@ -1033,11 +929,9 @@ registerCommand({ id: 'story-week', label: 'Play my week (weekly review story)',
  *   registerKind(kind, {label, view, dark, load, ai, details})  a kind whose data the page builds
  *                           (the money story: open('money', {period, ref, variant}))
  *   timing (STORY_TIMING)  speeds (STORY_SPEEDS)  labels (STORY_LABELS)
- *   inline: open(kind, {container, onState, onClose}), expand(), collapse(), attach(el),
- *           isInline(), isExpanded(), state() -> {open, kind, inline, expanded, state,
- *           muted, index, count, loading}   (see storyOpen in the header)
+ *   state() -> {open, kind, state, muted, volume, index, count, loading, error}
+ *   setVolume(0..1)         narration volume (persisted; applies at once)
  * The overlay is a body-level element (.story); <html> gets .story-open while it shows.
- * Inline it lives in its container (.story.is-inline, scaled by --st-k) until expanded.
  */
 function storyPlayedToday(kind) { try { return localStorage.getItem('dashboard-story-played-' + kind) === todayStrSafe(); } catch (e) { return false; } }
 const Story = Object.freeze({
@@ -1046,8 +940,7 @@ const Story = Object.freeze({
   replay: () => STORY_PLAYER.replay(), toggleMute: () => STORY_PLAYER.toggleMute(), setSpeed: (x) => STORY_PLAYER.setSpeed(x),
   openDetails: () => storyOpenDetails(), autoOpen: (kind) => storyAutoOpen(kind), playedToday: storyPlayedToday, prefetch: () => storyPrefetchDue(),
   entryButton: (kind, o) => storyEntryButton(kind, o),
-  expand: () => storyExpand(), collapse: () => storyCollapse(), attach: (el, o) => storyAttach(el, o),
-  isInline: () => !!(_story.open && _story.inline), isExpanded: () => !!(_story.open && _story.inline && _story.expanded), state: () => storyState(),
+  setVolume: (v) => STORY_PLAYER.setVolume(v), state: () => storyState(),
   registerBuilder: storyRegisterBuilder, registerBeatType: storyRegisterBeatType, registerKind: storyRegisterKind,
   kit: STORY_KIT, timing: STORY_TIMING, speeds: STORY_SPEEDS, labels: STORY_LABELS,
 });
@@ -1080,7 +973,7 @@ function storySettingsRows(el) {
     const r = document.createElement('input'); r.type = 'range'; r.min = String(min); r.max = String(max); r.step = String(step); r.value = String(p[key]); r.setAttribute('aria-label', label);
     const out = document.createElement('output'); out.textContent = fmt(p[key]);
     r.addEventListener('input', () => { out.textContent = fmt(Number(r.value)); });
-    r.addEventListener('change', () => save({ [key]: Number(r.value) }));
+    r.addEventListener('change', () => { if (key === 'volume') _stSaveUi({ volume: Number(r.value) }); save({ [key]: Number(r.value) }); });
     wrap.append(r, out);
     return wrap;
   };
