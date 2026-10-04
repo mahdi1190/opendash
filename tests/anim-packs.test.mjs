@@ -19,7 +19,7 @@ const NAMES = ['ANIM_SLOTS', 'ANIM_SLOT_IDS', 'ANIM_THEMES', 'ANIM_THEME_IDS', '
   'animSpecialPick', 'animPickFor', 'animCountdownHeat', 'animCountdownStage', 'animStreakGrow', 'almDay', 'almAddDays', 'almEaster', 'almFestivals', 'almIsFestival', 'almSeasonMark', 'almClocksChange', 'almSunTimes', 'almSkyMoment',
   'almMoonPhase', 'almMeteorShower', 'almAuroraNights', 'ALM_MOVING', 'UK_REGIONS', 'UK_COUNTIES', 'ukCounty', 'ukCountiesIn', 'ukCountyNearest', 'ukTowns'];
 // The same order the build concatenates: the almanac, the libraries, the registry, then every pack.
-const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', '71-anim-us.js', ...PACK_FILES].map(src).join('\n;\n');
+const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(APP).filter(f => /^71-anim-us2?[-.]/.test(f)).sort(), ...PACK_FILES].map(src).join('\n;\n');
 // eslint-disable-next-line no-new-func
 const R = new Function(`"use strict";\n${body}\nreturn { ${NAMES.join(', ')}, ANIM_SCENES, Delight };`)();
 

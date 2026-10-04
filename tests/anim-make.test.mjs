@@ -21,7 +21,7 @@ const PACK_FILES = readdirSync(APP).filter(f => /^72-anim-pack-[a-z0-9-]+\.js$/.
 const NAMES = ['animSanitizeSvg', 'animSanitizeCss', 'animMarkupProblem', 'animMakeItem', 'animGateItem', 'animMinePack', 'animRegisterPack', 'animUnregisterPack',
   'animItems', 'animItem', 'animPack', 'animItemHtml', 'animDailyPick', 'animSpecialPick', 'animValidatePack', 'ANIM_MAKE_MAX_SVG', 'ANIM_MAKE_MAX_CSS', 'ANIM_MAKE_MAX_ITEMS',
   'ANIM_MAKE_SLOTS', 'ANIM_ITEM_MAX_BYTES', 'ANIM_PACK_MAX_BYTES', 'ANIM_PACK_CSS_MAX_BYTES', 'trPlaceTables'];
-const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-anim-sanitize.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', '71-anim-us.js', ...PACK_FILES, '69-travel-data.js'].map(src).join('\n;\n');
+const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-anim-sanitize.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(APP).filter(f => /^71-anim-us2?[-.]/.test(f)).sort(), ...PACK_FILES, '69-travel-data.js'].map(src).join('\n;\n');
 // eslint-disable-next-line no-new-func
 const R = new Function(`"use strict";\n${body}\nreturn { ${NAMES.join(', ')} };`)();
 
