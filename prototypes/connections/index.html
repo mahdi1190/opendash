@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Connections · OpenDash prototype</title>
+  <link rel="icon" href="../../assets/brand/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body data-theme="light">
+  <a class="sr-only skip-link" href="#main">Skip to connections</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Main navigation">
+      <a class="brand" href="http://localhost:4173/" aria-label="Open the current OpenDash app">
+        <img class="brand-symbol" src="../../assets/brand/logo-mark.svg" alt="" width="32" height="32">
+        <span class="brand-name">OpenDash<span class="brand-dot">.</span></span>
+      </a>
+      <div class="workspace">
+        <span class="workspace-avatar">P</span>
+        <span><span class="workspace-name">Personal</span><span class="workspace-caption">Just for you</span></span>
+      </div>
+      <p class="nav-label">YOUR WORKSPACE</p>
+      <nav>
+        <a class="nav-item" href="http://localhost:4173/#view=home"><span class="nav-icon" data-icon="house"></span>Overview</a>
+        <a class="nav-item" href="http://localhost:4173/#view=today"><span class="nav-icon" data-icon="list-todo"></span>Tasks</a>
+        <a class="nav-item" href="http://localhost:4173/#view=calendar"><span class="nav-icon" data-icon="calendar-days"></span>Calendar</a>
+        <a class="nav-item" href="http://localhost:4173/#view=finance"><span class="nav-icon" data-icon="wallet"></span>Finances</a>
+        <a class="nav-item" href="http://localhost:4173/#view=people"><span class="nav-icon" data-icon="users"></span>People</a>
+        <a class="nav-item" href="http://localhost:4173/#view=resources"><span class="nav-icon" data-icon="folder"></span>Files & links</a>
+      </nav>
+      <p class="nav-label">MAKE IT YOURS</p>
+      <nav>
+        <a class="nav-item active" href="#main" aria-current="page"><span class="nav-icon" data-icon="plug"></span>Connections<span class="nav-active-dot"></span></a>
+        <a class="nav-item" href="http://localhost:4173/#view=settings"><span class="nav-icon" data-icon="settings"></span>Settings</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="local-status"><span class="local-dot"></span>Local first. Yours always.</div>
+        <p>Your dashboard lives on your computer.</p>
+        <a class="nav-item original-link" href="http://localhost:4173/#view=connections"><span data-icon="arrow-up-right"></span>Open current page</a>
+      </div>
+    </aside>
+    <div class="app-main">
+      <header class="topbar">
+        <div class="breadcrumbs"><span data-icon="sliders-horizontal"></span><span>Workspace</span><span class="crumb-divider">/</span><strong>Connections</strong></div>
+        <div class="topbar-right">
+          <span class="prototype-badge">INTERACTIVE PROTOTYPE</span>
+          <button class="icon-button" id="help-button" aria-label="About this prototype"><span data-icon="circle-help"></span></button>
+          <button class="icon-button" id="theme-toggle" aria-label="Switch to dark mode"><span data-icon="moon"></span></button>
+        </div>
+      </header>
+      <main class="content" id="main" tabindex="-1">
+        <div class="page-heading">
+          <div><p class="eyebrow">YOUR WORKSPACE, WORKING TOGETHER</p><h1>Connections</h1><p class="page-subtitle">Bring the things you use into the place you plan.</p></div>
+          <div class="heading-actions"><button class="button secondary" id="refresh-button"><span data-icon="refresh-cw"></span>Check status</button><button class="button primary" data-action="add"><span data-icon="plus"></span>Add connection</button></div>
+        </div>
+        <section class="hero" aria-labelledby="hero-title">
+          <div class="hero-body"><span class="hero-kicker"><span data-icon="sparkles"></span>A little more connected</span><h2 id="hero-title">Less switching.<br>More getting on with your day.</h2><p>Your calendar, email and money, alongside your tasks.<br>Connect what helps. Leave the rest.</p><div class="hero-tags"><span class="hero-tag"><span data-icon="shield-check"></span>Read-only accounts</span><span class="hero-tag"><span data-icon="hard-drive"></span>Stored on your computer</span><span class="hero-tag"><span data-icon="check"></span>Always optional</span></div></div>
+          <div class="hero-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div><div class="orbit-core"><img src="../../assets/brand/logo-mark.svg" alt="" width="60" height="60"></div><div class="orbit-node node-mail"><span data-service-logo="gmail"></span></div><div class="orbit-node node-calendar"><span data-service-logo="calendar"></span></div><div class="orbit-node node-bank"><span data-icon="landmark"></span></div><div class="orbit-node node-ai"><span data-service-logo="claude"></span></div></div>
+        </section>
+        <section class="overview" aria-label="Connection overview" id="overview"></section>
+        <section class="connections-area" aria-labelledby="connections-title">
+          <div class="section-heading"><div class="section-title"><h2 id="connections-title">Your connections</h2><p>A clear view of what’s working, and what needs a little help.</p></div><span class="section-link"><span data-icon="eye"></span>Read-only access</span></div>
+          <div class="connections-toolbar">
+            <div class="filter-tabs" role="group" aria-label="Filter connections"><button class="filter-button active" data-filter="all" aria-pressed="true">All connections <span class="filter-count" id="count-all">3</span></button><button class="filter-button" data-filter="connected" aria-pressed="false">Connected <span class="filter-count" id="count-connected">2</span></button><button class="filter-button" data-filter="attention" aria-pressed="false">Needs attention <span class="filter-count" id="count-attention">1</span></button></div>
+            <label class="search-field"><span data-icon="search"></span><span class="sr-only">Search connections</span><input type="search" id="connection-search" placeholder="Search connections…" autocomplete="off"><kbd aria-hidden="true">/</kbd></label>
+          </div>
+          <div class="connection-grid" id="connection-grid"></div>
+          <p class="sr-only" id="results-status" role="status" aria-live="polite"></p>
+        </section>
+        <div class="lower-grid">
+          <section class="assistant-panel" aria-labelledby="assistant-title"><div class="assistant-top"><span class="service-logo claude"><span data-service-logo="claude"></span></span><div class="assistant-copy"><span class="eyebrow">AN OPTIONAL HELPING HAND</span><h2 id="assistant-title">Your assistant, right here.</h2><p>Claude helps you find your focus, connect the dots, and turn plans into progress.</p></div><span class="status-badge connected" id="assistant-status">Connected</span></div><div class="assistant-capabilities"><span class="capability"><span data-icon="check"></span>Smart suggestions</span><span class="capability"><span data-icon="check"></span>Task chat</span><span class="capability"><span data-icon="check"></span>Meeting prep</span></div><div class="assistant-bottom"><span class="sync-time">Via Claude Code on this computer</span><button class="button ghost small" id="assistant-button">Manage assistant<span data-icon="arrow-right"></span></button></div></section>
+          <section class="privacy-panel" aria-labelledby="privacy-title"><div class="privacy-icon"><span data-icon="shield-check"></span></div><h3 id="privacy-title">Connected, on your terms.</h3><p>Account connections can read, never send, change or delete. Your dashboard data stays on this computer.</p><button class="button ghost small" id="privacy-button">How access works<span data-icon="arrow-up-right"></span></button></section>
+        </div>
+        <details class="advanced-panel" id="advanced-panel"><summary><span data-icon="terminal"></span><span class="advanced-title">For your AI tools<span class="advanced-subtitle">OpenDash MCP & connected servers</span></span><span class="advanced-label">Advanced</span><span class="advanced-chevron" data-icon="chevron-down"></span></summary><div class="advanced-content"><p class="advanced-intro">Use OpenDash from your own AI tools. The OpenDash MCP can update dashboard tasks; account sources stay read-only.</p><div class="server-row"><span class="server-dot"></span><div class="server-copy"><strong>OpenDash MCP</strong><span>Claude Code · 23 dashboard tools</span></div><span class="server-state">Installed</span><div class="server-actions"><button class="button secondary small" data-action="test-mcp">Test connection</button><button class="button ghost small" data-action="mcp-settings">Set up<span data-icon="arrow-right"></span></button></div></div><div class="server-row"><span class="server-dot"></span><div class="server-copy"><strong>Google connectors</strong><span>Calendar & Gmail · account sources</span></div><span class="server-state">Available</span><button class="button ghost small" data-action="add">Add source<span data-icon="plus"></span></button></div></div></details>
+        <footer class="page-footer"><span class="footer-note"><span data-icon="flask-conical"></span>Sample data. Actions are simulated; no accounts are changed.</span><label class="demo-control" for="scenario">Try a state<select id="scenario"><option value="everyday">Everyday setup</option><option value="healthy">All connected</option><option value="empty">Fresh start</option><option value="offline">Offline</option></select></label></footer>
+      </main>
+    </div>
+  </div>
+  <dialog class="dialog" id="connection-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-subtitle"><div class="dialog-header"><div><span class="dialog-eyebrow" id="dialog-eyebrow">ADD A CONNECTION</span><h2 id="dialog-title">Make a little more room for your day.</h2><p id="dialog-subtitle">Choose what you’d like to bring into OpenDash.</p></div><button class="icon-button dialog-close" aria-label="Close dialog" id="dialog-close"><span data-icon="x"></span></button></div><div class="dialog-body" id="dialog-body"></div></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

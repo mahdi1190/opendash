@@ -15,6 +15,7 @@
   "scripts": {
     "start": "node tools/migrate.mjs --auto && node build.mjs && node tools/supervisor.mjs",
     "build": "node build.mjs",
+    "prototype:connections": "node prototypes/connections/serve.mjs",
     "check": "node build.mjs --syntax",
     "test": "node --test",
     "migrate": "node tools/migrate.mjs --auto"

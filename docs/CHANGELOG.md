@@ -10,6 +10,10 @@ upgrades it.
 
 ## [Unreleased]
 
+### Changed
+
+- Connections brings account sources and local assistants into one consistent card layout, with bundled provider logos, search and status filters, account selection, clear setup states and an advanced MCP section. Other pages and first-run setup keep their existing layout.
+
 ### Fixed
 
 - Refreshing in the same UK county now advances through its full-screen scenes and variations. The signature scene introduces a county on arrival; explicit opening pins, blocked scenes and disabled packs remain respected.
