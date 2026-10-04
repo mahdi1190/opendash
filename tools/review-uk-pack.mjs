@@ -1,7 +1,7 @@
 // Visual QA only; no app or build changes. Uses the existing dependency-free
 // headless Chrome driver. Output stays outside the repository by default.
 // node tools/review-uk-pack.mjs uk-south-east C:/path/to/review-output
-// Optional fourth argument: one county id to rerender after a local art change.
+// Optional fourth argument: one county or ukPart id to rerender a local art change.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -16,7 +16,7 @@ const R = new Function(files.map(f => readFileSync(join(app, f), 'utf8')).join('
 const pack = R.animPack(packId);
 if (!pack) throw new Error('Unknown pack: ' + packId);
 const countyFilter = process.argv[4];
-const sceneItems = countyFilter ? pack.items.filter(it => it.county === countyFilter) : pack.items;
+const sceneItems = countyFilter ? pack.items.filter(it => it.county === countyFilter || it.ukPart === countyFilter) : pack.items;
 if (!sceneItems.length) throw new Error('No scenes for county: ' + countyFilter);
 const css = ['71-anim-registry.css', '71-anim-library.css'].map(f => readFileSync(join(root, 'src', 'styles', f), 'utf8')).join('\n') + '\n' + pack.css;
 const modes = [{ name: 'light-still', dark: false, reduced: true }, { name: 'dark-still', dark: true, reduced: true }, { name: 'light-motion', dark: false, reduced: false }, { name: 'dark-motion', dark: true, reduced: false }];

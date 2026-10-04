@@ -14,6 +14,13 @@ upgrades it.
 
 - Connections brings account sources and local assistants into one consistent card layout, with bundled provider logos, search and status filters, account selection, clear setup states and an advanced MCP section. Other pages and first-run setup keep their existing layout.
 
+## [2.2.4] - 2026-10-04
+
+### Added
+
+- 32 animated views around Yateley, Fleet and Farnborough: eight places with four views each. The South East and London pack now has 148 full-screen scenes.
+- Nearby scenes appear twice for every wider county scene, using the existing weather or travel location offline. The place shown has its own title, without "Welcome to"; the landmark caption remains beneath it.
+
 ### Fixed
 
 - Refreshing in the same UK county now advances through its full-screen scenes and variations. The signature scene introduces a county on arrival; explicit opening pins, blocked scenes and disabled packs remain respected.
@@ -277,7 +284,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.3...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.4...HEAD
+[2.2.4]: https://github.com/mahdi1190/opendash/compare/v2.2.3...v2.2.4
 [2.2.3]: https://github.com/mahdi1190/opendash/compare/v2.2.2...v2.2.3
 [2.2.2]: https://github.com/mahdi1190/opendash/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/mahdi1190/opendash/compare/v2.2.0...v2.2.1

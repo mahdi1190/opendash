@@ -157,9 +157,9 @@ function animGalleryRender(el) {
     const drawn = [...new Set(animItems({}).filter(it => it.ukRegion).map(it => it.ukRegion))];
     const has = w && animItems({}).some(it => it.county === w.id);
     const nice = (r) => String(r).replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
-    const gap = w && !has ? ` ${w.name} has no regional animations yet (drawn so far: ${drawn.length ? drawn.map(nice).join(', ') : 'none'}), so only the “Welcome to ${w.name}” moment plays.` : '';
+    const gap = w && !has ? ` ${w.name} has no regional animations yet (drawn so far: ${drawn.length ? drawn.map(nice).join(', ') : 'none'}), so a seasonal scene shows its place name.` : '';
     const now = !look.ukRegional ? '' : w ? ` Now: ${w.name}, near ${w.town} (from ${w.source === 'travel' ? 'your travel location' : 'the weather town'}).${gap}` : ' No UK county found: set a weather town in the UK.';
-    packs.appendChild(_settingsRow('Regional animations (UK)', 'Off by default. Works out your county offline from the weather town or, while travelling, where you are, and plays that county\'s animations, with a "Welcome to …" moment when it changes. Nothing is sent anywhere.' + now,
+    packs.appendChild(_settingsRow('Regional animations (UK)', 'Uses your weather location or current travel location offline. Two nearby scenes then one from elsewhere in your county, when local art is available. Openings show the place name and landmark caption. Nothing is sent anywhere.' + now,
       _settingsSwitch(look.ukRegional, 'Regional animations (UK)', (v) => { animLookSave({ ukRegional: v }); if (v) animUkCheck({ first: true }); render(); })));
   }
   root.appendChild(packs);
