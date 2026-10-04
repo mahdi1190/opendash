@@ -7,6 +7,8 @@ const ASSISTANT_OPTIONS = Object.freeze([
     text: 'Connect local Codex to work with your tasks using OpenDash tools. The assistant inside this dashboard currently uses Claude.' },
   { id: 'grok', name: 'Grok', mark: 'grok', browser: 'https://grok.com', docs: 'https://docs.x.ai/grok/connectors/custom-mcp-tunneling',
     text: 'Open Grok in your browser. This local dashboard is not yet available as a browser connector.' },
+  { id: 'gemini', name: 'Gemini', mark: 'gemini', browser: 'https://gemini.google.com', docs: 'https://geminicli.com/docs/tools/mcp-server/',
+    text: 'Connect local Gemini CLI to your OpenDash tools. The Gemini website is separate; the assistant inside this dashboard currently uses Claude.' },
 ]);
 let _assistantBusy = null;
 
@@ -17,6 +19,7 @@ function assistantConnectionState(id, all) {
     return all.claude && all.claude.state === 'ok' && installed ? 'Connected' : installed ? 'Tools added · sign in' : 'Ready to set up';
   }
   if (id === 'codex') return !facts.codex ? 'Checking installation…' : facts.codex.configured ? 'Tools configured' : facts.codex.installed ? 'Ready to connect' : 'Install Codex first';
+  if (id === 'gemini') return !facts.gemini ? 'Checking installation…' : facts.gemini.configured ? 'Tools configured' : facts.gemini.installed ? 'Ready to connect' : 'Install Gemini CLI first';
   return 'Browser connector unavailable';
 }
 
@@ -49,6 +52,8 @@ function assistantConnectionGuide(id) {
       el.appendChild(_connEl('p', 'conn-note', 'Once Claude Code is installed, press Connect Claude here. OpenDash adds its tools as part of the same connection.'));
     } else if (id === 'codex') {
       el.appendChild(_connEl('p', 'conn-text', 'Install and sign in to Codex using the official setup guide, then return and press Connect Codex. ChatGPT in a browser does not read local Codex connections.'));
+    } else if (id === 'gemini') {
+      el.appendChild(_connEl('p', 'conn-text', 'Install and sign in to Gemini CLI, then return and press Connect Gemini CLI. OpenDash registers its tools in your user settings without bypassing Gemini tool confirmations or folder permissions. The Gemini website does not use this local connection.'));
     }
     el.appendChild(_connEl('p', 'conn-text', 'Browser assistants need an authenticated remote MCP connection. OpenDash currently runs its tools locally, so opening the website does not connect your dashboard.'));
     el.appendChild(_connBtn('Official connection guide', 'external-link', 'btn-secondary', () => window.open(provider.docs, '_blank', 'noopener')));
@@ -64,16 +69,17 @@ function assistantConnectionCards(all, repaint = () => renderMain(), compact = f
     const mark = _connEl('span', 'conn-ic assistant-mark');
     const img = document.createElement('img'); img.src = ASSISTANT_MARKS[provider.mark]; img.alt = ''; img.width = 28; img.height = 28; mark.appendChild(img);
     const titles = _connEl('div', 'conn-titles'); titles.append(_connEl('div', 'conn-name', provider.name), _connEl('div', 'conn-sub', provider.id === 'grok' ? 'Browser access' : 'OpenDash tools included'));
-    const short = { claude: 'Local Claude Code and OpenDash tools. Desktop is optional.', codex: 'Local Codex tools; the dashboard assistant still uses Claude.', grok: 'Browser access only; your local OpenDash tools are not connected.' };
+    const short = { claude: 'Local Claude Code and OpenDash tools. Desktop is optional.', codex: 'Local Codex tools; the dashboard assistant still uses Claude.', grok: 'Browser access only; your local OpenDash tools are not connected.', gemini: 'Local Gemini CLI tools; the dashboard assistant still uses Claude.' };
     head.append(mark, titles); card.append(head, _connEl('p', 'conn-text', compact ? short[provider.id] : provider.text));
     const status = assistantConnectionState(provider.id, all);
     card.appendChild(_connEl('span', 'assistant-state', status));
     if (!compact && provider.id === 'claude' && all.assistants) card.appendChild(_connEl('p', 'conn-note', all.assistants.claudeDesktop.detected ? 'Claude Desktop or its settings detected; it is optional.' : 'Claude Desktop is not required.'));
     const actions = _connEl('div', 'assistant-actions');
     const local = provider.id !== 'grok';
-    const installed = provider.id === 'claude' ? all.cli && all.cli.installed : all.assistants && all.assistants.codex && all.assistants.codex.installed;
+    const installed = provider.id === 'claude' ? all.cli && all.cli.installed : all.assistants && all.assistants[provider.id] && all.assistants[provider.id].installed;
+    const localName = provider.id === 'codex' ? 'Codex' : provider.id === 'gemini' ? 'Gemini CLI' : 'Claude';
     if (local) {
-      const b = _connBtn(_assistantBusy === provider.id ? 'Connecting…' : installed ? `Connect ${provider.id === 'codex' ? 'Codex' : 'Claude'}` : `Set up ${provider.id === 'codex' ? 'Codex' : 'Claude'}`, 'plug', 'btn-primary', () => installed ? assistantConnect(provider.id, repaint) : assistantConnectionGuide(provider.id));
+      const b = _connBtn(_assistantBusy === provider.id ? 'Connecting…' : installed ? `Connect ${localName}` : `Set up ${localName}`, 'plug', 'btn-primary', () => installed ? assistantConnect(provider.id, repaint) : assistantConnectionGuide(provider.id));
       b.disabled = !!_assistantBusy; actions.appendChild(b);
     }
     actions.appendChild(_connBtn(`Open ${provider.id === 'codex' ? 'ChatGPT' : provider.name}`, 'external-link', 'btn-secondary', () => window.open(provider.browser, '_blank', 'noopener')));

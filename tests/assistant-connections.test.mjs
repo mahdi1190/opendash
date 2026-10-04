@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { assistantFacts, codexExecutable, codexRegistration, connectCodex } from '../lib/assistant-connections.mjs';
+import { assistantFacts, codexExecutable, codexRegistration, connectCodex, geminiExecutable, geminiRegistration, connectGemini } from '../lib/assistant-connections.mjs';
 import { SERVER_PATH } from '../mcp/install.mjs';
 
 test('provider states distinguish local tools from browser and embedded assistant support', () => {
@@ -16,6 +16,35 @@ test('provider states distinguish local tools from browser and embedded assistan
   assert.equal(state('claude', { claude: { state: 'ok' }, mcp: { installed: { claudeCode: 'installed' } } }), 'Connected');
   assert.equal(state('codex', { assistants: { codex: { configured: true } } }), 'Tools configured');
   assert.equal(state('grok', {}), 'Browser connector unavailable');
+  assert.equal(state('gemini', { assistants: { gemini: { installed: true } } }), 'Ready to connect');
+  assert.equal(state('gemini', { assistants: { gemini: { configured: true } } }), 'Tools configured');
+  assert.equal(vm.runInContext('ASSISTANT_OPTIONS.length', scope), 4);
+});
+
+test('Gemini registers user-scope stdio tools through existing CLI, preserves permissions and conflicts', async () => {
+  const home = mkdtempSync(join(tmpdir(), 'od-gemini-'));
+  try {
+    const script = join(home, 'gemini.js'); writeFileSync(script, '');
+    const env = { OPENDASH_GEMINI_PATH: script };
+    const dataDir = join(home, 'data with spaces');
+    const calls = [];
+    const opts = { dataDir, env, home, platform: 'win32', run: async (...args) => { calls.push(args); } };
+    const r = await connectGemini(opts);
+    assert.equal(r.configured, true); assert.equal(calls[0][0], process.execPath);
+    assert.deepEqual(calls[0][1], [script, 'mcp', 'add', '--scope', 'user', '--transport', 'stdio', r.name, process.execPath, SERVER_PATH, '--', '--data-dir', dataDir]);
+    assert.equal(calls[0][2].shell, false); assert.ok(!calls[0][1].includes('--trust'));
+    mkdirSync(join(home, '.gemini'));
+    const settings = join(home, '.gemini', 'settings.json');
+    writeFileSync(settings, JSON.stringify({ mcpServers: { [r.name]: { command: process.execPath, args: [SERVER_PATH, '--data-dir', dataDir] } }, other: { keep: true } }));
+    assert.equal(geminiRegistration(opts).configured, true);
+    assert.equal((await connectGemini(opts)).already, true); assert.equal(calls.length, 1);
+    writeFileSync(settings, JSON.stringify({ mcpServers: { [r.name]: { command: 'other', args: [] } } }));
+    await assert.rejects(connectGemini(opts), { status: 409 }); assert.equal(calls.length, 1);
+    writeFileSync(settings, '// unfamiliar JSON with comments');
+    await assert.rejects(connectGemini(opts), { status: 409 }); assert.equal(calls.length, 1);
+    assert.equal(geminiExecutable({ env: { OPENDASH_GEMINI_PATH: join(home, 'gemini.cmd') }, home, exists: () => false }), null);
+    assert.equal(assistantFacts(opts).gemini.installed, true);
+  } finally { rmSync(home, { recursive: true, force: true }); }
 });
 
 test('Codex setup runs fixed argv without a shell, is repeatable, and refuses conflicting entries', async () => {

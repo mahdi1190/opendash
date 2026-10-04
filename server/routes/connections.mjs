@@ -23,7 +23,7 @@ import { googleStatus } from '../../lib/google.mjs';
 import { installInfo } from '../../mcp/install.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
 import { HttpError } from '../http.mjs';
-import { assistantFacts, connectCodex } from '../../lib/assistant-connections.mjs';
+import { assistantFacts, connectCodex, connectGemini } from '../../lib/assistant-connections.mjs';
 
 export default function register(app) {
   const { dataDir, log } = app.ctx;
@@ -59,9 +59,9 @@ export default function register(app) {
     path: '/api/connections/assistant-connect', method: 'POST', methodError: 'POST only',
     handler: async (c) => {
       const { id } = await c.body();
-      if (id !== 'codex') throw new HttpError(400, 'Unsupported local assistant');
-      try { return await connectCodex({ dataDir }); }
-      catch (e) { throw new HttpError(e.status || 502, e.status ? e.message : 'Codex could not add the OpenDash tools. Check Codex and try again.'); }
+      if (!['codex', 'gemini'].includes(id)) throw new HttpError(400, 'Unsupported local assistant');
+      try { return await (id === 'gemini' ? connectGemini : connectCodex)({ dataDir }); }
+      catch (e) { throw new HttpError(e.status || 502, e.status ? e.message : 'The assistant could not add the OpenDash tools. Check its local app and try again.'); }
     },
   });
 
