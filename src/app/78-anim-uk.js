@@ -74,7 +74,18 @@ function animUkCheck(o) {
     const tod = typeof animTimeOfDay === 'function' ? animTimeOfDay() : 'day';
     const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : (typeof animOpeningFallbackHtml === 'function' ? animOpeningFallbackHtml(animSeasonOf(todayStr()), tod) : '');
     const ms = { subtle: 2400, standard: 3400, playful: 4200 }[typeof _agLevel === 'function' ? _agLevel() : 'standard'] || 3400;
-    const el = animCineShow({ art, over: 'Welcome to', place: w.welcome, origin, ms, cls: 'ap-uk-welcome', onEnd: () => { _aukShowing = false; } });
+    const el = animCineShow({ art, over: 'Welcome to', place: w.welcome, origin, ms, cls: 'ap-uk-welcome', onEnd: reason => {
+      _aukShowing = false;
+      // Arrival has the same ordering as the daily splash. Skipping ends the
+      // whole sequence; a completed welcome may continue with today's event.
+      if (reason !== 'complete' || typeof animOpeningEvent !== 'function') return;
+      const event = animOpeningEvent();
+      if (!event) return;
+      const next = animCineShow({ art: animOpeningEventHtml(event, tod), over: 'Today', place: event.site || event.label,
+        ms: _AW_OPEN_MS[typeof _agLevel === 'function' ? _agLevel() : 'standard'] || 1700,
+        onEnd: () => { _aukShowing = false; } });
+      _aukShowing = !!next;
+    } });
     if (!el) { if (typeof toast === 'function') toast(words); return true; }
     _aukShowing = true;
     return true;

@@ -75,11 +75,12 @@ function animCineShow(o) {
   el.className = 'ap-cine' + (o.cls ? ' ' + o.cls : ''); el.setAttribute('role', 'status');
   el.style.setProperty('--ap-open-ms', ms + 'ms');
   el.innerHTML = o.art + `<div class="ap-cine-t">${o.over ? `<span class="ap-cine-over">${esc(o.over)}</span>` : ''}<span class="ap-cine-place">${esc(o.place || '')}</span>${o.origin ? `<span class="ap-cine-origin">${esc(o.origin)}</span>` : ''}<span class="ap-cine-skip">Click or press any key to close</span></div>`;
-  const end = () => { if (!el.isConnected) return; el.remove(); removeEventListener('keydown', end, true); if (o.onEnd) o.onEnd(); };
-  el.addEventListener('click', end);
-  addEventListener('keydown', end, true);
+  const end = (reason) => { if (!el.isConnected) return; el.remove(); removeEventListener('keydown', skip, true); if (o.onEnd) o.onEnd(reason); };
+  const skip = () => end('skip');
+  el.addEventListener('click', skip);
+  addEventListener('keydown', skip, true);
   document.body.appendChild(el);
-  setTimeout(end, ms + 80);
+  setTimeout(() => end('complete'), ms + 80);
   return el;
 }
 function animOpeningPlay(force) {
@@ -113,14 +114,15 @@ function animOpeningPlay(force) {
     return true;
   } catch (e) { return false; }
 }
-/* ---------- the opening sequence: the brand, "Welcome to <county>", then the county's scene ----------
+/* ---------- the opening sequence: brand, county welcome, county scene, optional event ----------
    One chained, skippable, FULL-SCREEN overlay on the splash (src/body.html #od-splash, 02-splash.css).
    The splash holds on the first load of the day (or every load: Settings > Animations > Opening,
    look.opening, mirrored to localStorage for the splash); later loads show just the short brand
    opening. Stages, each crossfading into the next: the brand; "Welcome to <county>" large over the
    scene as it fades in behind; the scene edge to edge (a full-viewport item, item.full: drawn at
    16:9 and sliced to fill any screen) with its origin line ("New Forest ponies · Hampshire"); then
-   a slow fade into the app. Lengths per intensity: [brand, welcome, scene] ms (about 6 s at
+   a matching holiday or event, when available, then a slow fade into the app.
+   Lengths per intensity: [brand, welcome, scene] ms (about 6 s at
    Standard). A county with no full scene yet (or no county) gets a full-screen seasonal landscape
    (animOpeningFallbackHtml). Off / reduced motion: the splash is never shown, so nothing plays.
    A click or any key skips everything (the splash's own handlers). */
@@ -133,18 +135,30 @@ function animTimeOfDay() {
   try { h = Clock.parts(Clock.now()).h; } catch (e) { h = new Date().getHours(); }   // clock-ok: fallback before the clock loads
   return h >= 5 && h < 8 ? 'dawn' : h >= 8 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'dusk' : 'night';
 }
-/** The scene and its origin line: the county's own full scene (today's, seeded), else null (the fallback plays). */
+/** The county's signature and origin line, with a seeded fallback for older packs. */
 function animOpeningScene(w) {
   if (!w) return { it: null, origin: '' };
   const day = todayStr(), look = animLook();
   const mine = animItems({ slot: 'opening', look }).filter(x => x.full && x.county === w.id && !look.block.includes(x.ref) && _awWhen(x, day, w.id));
   if (!mine.length) return { it: null, origin: '' };
   const today = animToday('opening');
-  const it = mine.find(x => today && x.ref === today.ref) || mine[_animHash(day + '|opening-seq') % mine.length];
+  const it = mine.find(x => x.signature) || mine.find(x => today && x.ref === today.ref) || mine[_animHash(day + '|opening-seq') % mine.length];
   const site = it.site || it.label.replace(new RegExp(', ' + w.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), '');
   return { it, origin: site.includes(w.name) ? site : site + ' · ' + w.name };
 }
 function _awWhen(it, day, county) { try { return typeof it.when !== 'function' || !!it.when(day, Object.assign(animCtx(), { county })); } catch (e) { return false; } }
+
+/** A date-based holiday or special event, following (never replacing) the
+ * county welcome. The registry still enforces blocks, packs and intensity.
+ * County rotations themselves have priority 1 and do not become an event. */
+function animOpeningEvent() {
+  const it = animSpecialPick('opening', todayStr(), animLook(), Object.assign(animCtx(), { level: _agLevel() }));
+  return it && !it.county && !it.city && (it.priority || 1) >= 2 ? it : null;
+}
+function animOpeningEventHtml(it, tod) {
+  const art = animItemHtml(it, { size: it.full ? 'fill' : 'hero', live: true, tod });
+  return it.full ? art : animOpeningFallbackHtml(animSeasonOf(todayStr()), tod) + `<div class="od-seq-event-art">${art}</div>`;
+}
 
 /* ---------- the fallback: a full-screen seasonal landscape (no drawn county scene yet) ----------
    Rolling hills in the season's colours under the sky of the hour, drifting clouds, birds, a few
@@ -210,7 +224,17 @@ function animOpeningSequence() {
     sp.classList.add('od-st-hello');
     wait(ms[1], () => {
       sp.classList.add('od-st-scene');
-      wait(ms[2], done);
+      wait(ms[2], () => {
+        // Keep the same splash and skip handlers. A skipped/removed splash
+        // cannot start the event because wait() checks alive() before running.
+        const event = animOpeningEvent();
+        if (!event || !_awOn()) { done(); return; }
+        const eventBox = document.createElement('div'); eventBox.className = 'od-seq od-seq-event';
+        eventBox.innerHTML = `<div class="od-seq-bg">${animOpeningEventHtml(event, tod)}</div><div class="od-seq-cap"><span class="od-seq-origin">${esc(event.site || event.label)}</span><span class="od-seq-skip">Click or press any key to skip</span></div>`;
+        box.remove(); sp.appendChild(eventBox);
+        sp.setAttribute('data-od-event', event.ref);
+        wait(_AW_OPEN_MS[_agLevel()] || _AW_OPEN_MS.standard, done);
+      });
     });
   });
   return true;

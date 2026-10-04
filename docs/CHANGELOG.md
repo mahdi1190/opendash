@@ -10,6 +10,10 @@ upgrades it.
 
 ## [Unreleased]
 
+### Added
+
+- UK county welcomes show the county's signature scene first, followed by a matching holiday or special-event animation. Skipping dismisses the whole sequence; blocked animations and disabled packs remain respected.
+
 ## [2.2.1] - 2026-10-04
 
 ### Fixed
