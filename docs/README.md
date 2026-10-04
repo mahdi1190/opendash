@@ -10,6 +10,7 @@
 | [FAQ](FAQ.md) | common questions |
 | [Architecture](ARCHITECTURE.md) | how the code is organised (for contributors) |
 | [Changelog](CHANGELOG.md) | what changed in each release |
+| [Roadmap](ROADMAP.md) | planned releases: v2.1, v2.2 and v3.0 (phone app, encrypted sync) |
 
 Contributing, the code of conduct, the security policy and support are in
 [`.github/`](../.github/): [CONTRIBUTING](../.github/CONTRIBUTING.md),
