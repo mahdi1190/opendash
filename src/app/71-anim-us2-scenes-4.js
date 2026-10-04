@@ -83,7 +83,7 @@
 
   /* ---------- ORLANDO: Lake Eola fountain and fireworks ---------- */
   usSceneAdd({ key: 'place:orlando', label: 'Fountain and skyline at dusk', site: 'Lake Eola Park', colour: 'violet', mood: 'dreamy', season: 'any', tags: ['fountain', 'skyline', 'fireworks', 'dusk'],
-    svg: () => { const s1 = U(), w1 = U(), g1 = U(); const sky = towers(5, -100, 1700, 560, 40, 190, '#35305f', 0.3); const skyFar = towers(3, -140, 1740, 560, 50, 170, '#5a4a88', false, 10);
+    svg: () => { const s1 = U(), w1 = U(), g1 = U(); const sky = towers(5, -100, 1700, 560, 40, 190, '#35305f', 0.2); const skyFar = towers(3, -140, 1740, 560, 50, 170, '#5a4a88', false, 10);
       const jets = (() => { let o = ''; for (let i = -4; i <= 4; i++) { const a = i * 22; o += `<path fill="none" stroke="#fff" stroke-width="${i % 2 ? 4 : 6}" stroke-linecap="round" opacity=".85" d="M800 650Q${800 + i * 14} ${650 - 120 + Math.abs(i) * 14} ${800 + i * 36} ${660 - Math.abs(i) * -4}"/>`; } return o; })();
       return `<defs>${lin(s1, [[0, '#1f2160'], [0.35, '#5b3a96'], [0.65, '#d86a96'], [0.85, '#ffaa86'], [1, '#ffd196']])}${lin(w1, [[0, '#ffa98c'], [0.2, '#8a5aa6'], [0.6, '#33307a'], [1, '#161a4a']])}${lin(g1, [[0, '#2a2442'], [1, '#13132e']])}</defs>`
         + full(`url(#${s1})`) + stars(7, 60, 320) + sun(800, 540, 36, '#ffe4b0', '#ff9c8c')
