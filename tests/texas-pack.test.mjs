@@ -100,10 +100,10 @@ test('texas pack: nine full-screen scenes; a city\'s own scene wins its opening,
     const c = { houston: { city: 'houston-us' }, dallas: { city: 'dallas-us' }, 'san-antonio': { city: 'san-antonio-us' }, 'el-paso': { city: 'el-paso-us' }, 'fort-worth': { lat: 32.7254, lon: -97.3208 } }[t];
     assert.equal(R.animSpecialPick('opening', day, {}, c).id, id, `${t}: its own scene wins the opening`);
   }
-  assert.equal(R.animSpecialPick('opening', day, {}, { ...AUSTIN }).id, 'austin-bats-scene');
+  assert.equal(R.animSpecialPick('opening', day, {}, { ...AUSTIN }).id, 'austin-capitol-walk');
   // anywhere else in Texas (Lubbock): only statewide items, never a city's scene
   const seen = new Set(Array.from({ length: 40 }, (_, i) => R.animSpecialPick('opening', `2026-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + i % 28).padStart(2, '0')}`, {}, { lat: 33.58, lon: -101.86 })).map(it => it && it.id));
-  assert.ok(!seen.has('dallas-skyline') && !seen.has('austin-bats-scene'), 'no other city\'s scene');
+  assert.ok(!seen.has('dallas-skyline') && !seen.has('austin-capitol-walk'), 'no other city\'s scene');
   assert.ok(seen.has('west-texas-sunset') || seen.has('gulf-coast-sunrise'), 'a statewide scene comes up');
   assert.equal(R.animSpecialPick('opening', '2026-10-05', {}, { ...LONDON }), null);
   assert.ok(!R.animItems({}).some(i => i.ref === 'texas/hill-country-bluebonnets' && i.when('2026-10-05', { ...HOUSTON })), 'no bluebonnets in October');

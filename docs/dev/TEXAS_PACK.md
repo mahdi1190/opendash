@@ -38,7 +38,7 @@ drifting at different speeds, ambient life) and under the 32 KB scene budget:
 | The Stockyards at dusk (the arch and its star, a cattle drive) | Fort Worth | 1.3 |
 | The skyline at golden hour (Reunion Tower, the Hunt Hill bridge) | Dallas | 1.3 |
 | Liftoff at dawn (pad, rocket, smoke) | Houston | 1.3 |
-| The bats at dusk (Congress Avenue bridge, the Capitol) | Austin | 1.3 |
+| The walk up to the Capitol (live oaks, statues and lamps along the path) | Austin | 1.3 |
 | The Alamo in the morning light (palms, string lights) | San Antonio | 1.3 |
 | The star on the Franklin Mountains (city lights) | El Paso | 1.3 |
 
@@ -47,7 +47,7 @@ tints the scene and lights `.tx-lit` (windows, lamps) and `.tx-lamps` (strings o
 drawn as round-capped dashed strokes) and `.tx-star`. The opening plays the scene full
 screen under "Welcome to <town>"; a small item still shows as an emblem over the landscape.
 `Never put a transform attribute on an element that has an x-* class` applies to scenes too:
-wrap it (the bats are a `<g transform>` around the animated `<use>`).
+wrap it in a `<g transform>`.
 
 ## The opening
 

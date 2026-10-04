@@ -10,7 +10,7 @@
    transform and opacity only; the still frame (reduced motion) is the scene at rest.
    Each scene returns the inside of the svg (<= ANIM_FULL_ITEM_MAX_BYTES, 32 KB).
      statewide   hill-country bluebonnets, a West Texas sunset, the Gulf coast at sunrise
-     city        Fort Worth stockyards, Dallas, Houston liftoff, Austin bats, the Alamo, El Paso
+     city        Fort Worth stockyards, Dallas, Houston liftoff, Austin Capitol walk, the Alamo, El Paso
    ============================================================ */
 function animTexasScenes() {
   let _n = 0;
@@ -243,23 +243,63 @@ function animTexasScenes() {
         + `<g fill="none" stroke="#3b5238" stroke-width="3" stroke-linecap="round">${Array.from({ length: 36 }, (_, i) => { const x = 20 + i * 44, h = 40 + (i * 37) % 50; return `<path d="M${x} 900q${(i % 3) * 4 - 4} ${-h / 2} ${(i % 5) * 3 - 6} ${-h}"/>`; }).join('')}</g>`
         + `<path fill="#2c4430" d="M-160 900V850C200 836 600 860 900 848S1500 836 1760 852V900z"/>` + finish(0.34); } });
 
-  /* ---------- Austin: the bats at dusk ---------- */
-  add({ id: 'austin-bats-scene', label: 'The bats at dusk, Austin', site: 'The bats at dusk', colour: 'violet', mood: 'dreamy', texasKind: 'scene', tags: ['austin', 'bats', 'congress avenue', 'capitol'],
-    svg: () => { const s1 = U(), w1 = U(), l1 = U(), ba = U(), bb = U();
-      const r = rnd(77); let swarm = '';
-      for (let i = 0; i < 64; i++) { const k = r(), s = 0.55 + r() * 0.9, y0 = 600 + r() * 30, dy = -(120 + k * 360), dx = 500 + r() * 800, d = -(r() * 9).toFixed(1);
-        swarm += `<g transform="translate(${R(320 + r() * 380)} ${R(y0)}) scale(${s.toFixed(2)})"><use href="#${i % 2 ? ba : bb}" class="x-txbat" style="--ad:${(8 + r() * 5).toFixed(1)}s;--d:${d}s;--dx:${R(dx)}px;--dy:${R(dy)}px"/></g>`; }
-      return `<defs>${lin(s1, [[0, '#2c2a6e'], [0.4, '#7a4f90'], [0.7, '#e88a78'], [1, '#ffcf8c']])}${linU(w1, [[0, '#d68a82'], [0.2, '#4a4a86'], [1, '#1c2044']], 0, 650, 0, 900)}${radU(l1, [[0, '#ff9a78', 0.55], [1, '#ff9a78', 0]], 1000, 600, 800)}<path id="${ba}" fill="#15101e" d="M0 0q-6-14-22-12q8 6 6 14q-8-4-16-2q10 4 14 12q4-6 10-6q4 6 8 6q4-6 8-6q6 0 10 6q4-8 14-12q-8-2-16 2q-2-8 6-14q-16-2-22 12z"/><path id="${bb}" fill="#15101e" d="M0 0q-6 6-22 8q8-8 6-16q-8 6-16 6q10-8 14-18q4 8 10 8q4-6 8-6q4 0 8 6q6 0 10-8q4 10 14 18q-8 0-16-6q-2 8 6 16q-16-2-22-8z"/></defs>`
-        + full(`url(#${s1})`) + stars(15, 50, 260) + `<circle cx="1260" cy="170" r="32" fill="#fff0cc" opacity=".9"/>`
-        + rays(1000, 600, 900, '#ffb88a', 0.15) + streak(300, 190, 300, '#c78ab0', 0.5) + cloud(1240, 300, 1.1, '#9c5a86', 0.8, 60, 6, '#f2a898') + cloud(480, 370, 0.9, '#9a5a88', 0.75, 70, 24, '#f4a89a')
-        + mv('txpar', { ad: '36s', dx: '8px' }, `<g fill="#4a4486" opacity=".8">${[[900, 60, 190], [970, 44, 260], [1020, 70, 210], [1100, 50, 300], [1160, 66, 180], [1240, 54, 240], [1310, 70, 170], [1400, 50, 220], [1470, 60, 160]].map(([x, w, h]) => `<rect x="${x}" y="${650 - h}" width="${w}" height="${h}"/>`).join('')}</g>`)
-        + `<rect width="1600" height="900" fill="url(#${l1})"/>`
-        + `<g><path fill="#d69486" d="M70 650V528h300V650z"/><path fill="#e0a090" d="M70 528h300v14H70z"/>${[0, 1, 2, 3, 4, 5].map(i => `<rect x="${126 + i * 36}" y="548" width="12" height="102" fill="#f2c8ba"/>`).join("")}<path fill="#e8b0a0" d="M110 528L220 474L330 528z"/><path fill="#f2c8ba" d="M140 524L220 484L300 524z"/><rect x="180" y="410" width="80" height="68" fill="#e0a090"/><path fill="#f2c8ba" d="M188 410v68M206 410v68M224 410v68M242 410v68" stroke="#f2c8ba" stroke-width="6" fill="none"/><path fill="#e8b0a0" d="M172 414q48-110 96 0z"/><path fill="#f2c8ba" d="M200 402q20-70 40 0z" opacity=".5"/><rect x="212" y="322" width="16" height="34" fill="#e0a090"/><path d="${star5(220, 308, 14, 6)}" fill="#ffe08a"/></g><circle class="tx-lit" cx="220" cy="448" r="7"/><circle class="tx-lit" cx="150" cy="590" r="6"/><circle class="tx-lit" cx="290" cy="590" r="6"/>`
-        + `<rect y="650" width="1600" height="250" fill="url(#${w1})"/>` + shimmer(5, 56, 0, 1600, 662, 880, '#ffb48a', 60) + shimmer(6, 20, 700, 1400, 662, 760, '#9fb4ff', 50)
-        + `<g fill="#2a2640"><rect x="-20" y="610" width="1640" height="22"/>${Array.from({ length: 20 }, (_, i) => `<path d="M${40 + i * 80} 632q40 52 80 0z" fill="#241f3a"/>`).join('')}${Array.from({ length: 20 }, (_, i) => `<rect x="${R(36 + i * 80)}" y="632" width="8" height="38"/>`).join('')}</g>`
-        + `<path class="tx-lamps" fill="none" stroke="#ffd27a" stroke-width="7" stroke-linecap="round" stroke-dasharray="0 40" d="M0 606H1600"/>`
-        + swarm
-        + `<path fill="#0f1020" d="M-160 900V836C200 820 600 850 900 836S1500 822 1760 840V900z"/>` + finish(0.34); } });
+  /* ---------- Austin: the walk up to the Capitol ---------- */
+  add({ id: 'austin-capitol-walk', label: 'The walk up to the Capitol, Austin', site: 'The walk up to the Capitol', colour: 'orange', mood: 'calm', texasKind: 'scene', tags: ['austin', 'capitol', 'live oaks', 'statues', 'path'],
+    svg: () => { const s1 = U(), p1 = U(), g1 = U(), l1 = U(), d1 = U(), b1 = U();
+      /** A bronze figure on a stone pedestal; (x, y) is the foot of the pedestal, s the scale. */
+      const statue = (x, y, s, pose) => {
+        const P = (v) => R(v * s);
+        const arm = pose ? `<path fill="none" stroke="#6b4c2a" stroke-width="${Math.max(2, P(7))}" stroke-linecap="round" d="M${x + P(12)} ${y - P(104)}l${P(14)} ${-P(26)}"/>` : `<path fill="none" stroke="#6b4c2a" stroke-width="${Math.max(2, P(7))}" stroke-linecap="round" d="M${x + P(12)} ${y - P(104)}l${P(6)} ${P(26)}"/>`;
+        return `<ellipse cx="${x}" cy="${y}" rx="${P(34)}" ry="${P(6)}" fill="#1b2a14" opacity=".35"/>`
+          + `<path fill="#b9ad9c" d="M${x - P(24)} ${y}v${-P(52)}h${P(48)}v${P(52)}z"/><path fill="#d3c8b6" d="M${x - P(28)} ${y - P(52)}h${P(56)}v${-P(8)}h${-P(56)}z"/><path fill="#9c917f" d="M${x + P(8)} ${y}v${-P(52)}h${P(16)}v${P(52)}z"/>`
+          + `<path fill="#7a5a34" d="M${x - P(10)} ${y - P(60)}h${P(20)}l${P(2)} ${-P(34)}h${-P(24)}z"/><path fill="#6b4c2a" d="M${x - P(13)} ${y - P(94)}q${P(13)} ${-P(14)} ${P(26)} 0l${-P(3)} ${-P(30)}h${-P(20)}z"/>`
+          + `<circle cx="${x}" cy="${y - P(134)}" r="${P(9)}" fill="#7a5a34"/>` + arm + `<path fill="#b8895a" opacity=".6" d="M${x - P(4)} ${y - P(60)}h${P(5)}l${P(1)} ${-P(32)}h${-P(5)}z"/>`;
+      };
+      /** A lamp post (the lamp lights at dusk). */
+      const lamp = (x, y, s) => `<path fill="#2b2a2e" d="M${x - R(3 * s)} ${y}V${y - R(130 * s)}h${R(6 * s)}V${y}z"/><path fill="#2b2a2e" d="M${x - R(10 * s)} ${y - R(130 * s)}h${R(20 * s)}l${-R(3 * s)} ${-R(10 * s)}h${-R(14 * s)}z"/><circle cx="${x}" cy="${y - R(152 * s)}" r="${R(12 * s)}" fill="#e8e0c8"/><circle class="tx-lit" cx="${x}" cy="${y - R(152 * s)}" r="${R(11 * s)}"/>`;
+      /** A walker seen from behind, small. */
+      const walker = (x, y, s, col) => `<g fill="${col}"><circle cx="${x}" cy="${y - R(58 * s)}" r="${R(8 * s)}"/><path d="M${x - R(10 * s)} ${y - R(48 * s)}h${R(20 * s)}l${R(4 * s)} ${R(30 * s)}h${-R(28 * s)}z"/><path d="M${x - R(8 * s)} ${y - R(20 * s)}h${R(7 * s)}v${R(20 * s)}h${-R(7 * s)}zM${x + R(1 * s)} ${y - R(20 * s)}h${R(7 * s)}v${R(20 * s)}h${-R(7 * s)}z"/></g>`;
+      /** The Capitol at the end of the walk, centred on x = 800, base on y = 500. */
+      const capitol = () => {
+        const wing = (x0, x1) => `<path fill="#d9a898" d="M${x0} 500V440H${x1}V500z"/><path fill="#c98674" d="M${x0} 440H${x1}V432H${x0}z"/>` + Array.from({ length: Math.floor((x1 - x0) / 22) }, (_, i) => `<rect x="${x0 + 8 + i * 22}" y="452" width="8" height="22" rx="3" fill="#8a5a50"/>`).join('');
+        return wing(560, 690) + wing(910, 1040)
+          + `<path fill="#e3b4a4" d="M690 500V404H910V500z"/><path fill="#c98674" d="M690 404H910V394H690z"/>`
+          + `<path fill="#f0c8ba" d="M700 394L800 346L900 394z"/><path fill="#d9a898" d="M718 394L800 356L882 394z"/>`
+          + Array.from({ length: 8 }, (_, i) => `<rect x="${706 + i * 25}" y="410" width="9" height="90" fill="#f4d2c6"/>`).join('')
+          + `<path fill="#9a6a5e" d="M770 500V452a30 30 0 0 1 60 0V500z"/><path fill="#fff" opacity=".12" d="M778 500V458a22 22 0 0 1 44 0V500z"/>`
+          + `<path fill="#c98674" d="M736 346h128v10H736z"/><rect x="750" y="292" width="100" height="56" fill="#e3b4a4"/>`
+          + Array.from({ length: 7 }, (_, i) => `<rect x="${756 + i * 14}" y="296" width="6" height="48" fill="#f4d2c6"/>`).join('')
+          + `<path fill="#c98674" d="M742 294h116v8H742z"/><path fill="#d6b8ae" d="M752 292q48-96 96 0z"/><path fill="#b99a92" d="M800 202v90M776 214l12 78M824 214l-12 78M756 244l22 48M844 244l-22 48" stroke="#b99a92" stroke-width="3" fill="none" opacity=".7"/>`
+          + `<path fill="#c9ada4" d="M786 206h28v-10h-28z"/><rect x="793" y="172" width="14" height="26" fill="#d6b8ae"/><path d="${star5(800, 160, 14, 6)}" fill="#ffe08a"/>`
+          + `<g class="tx-lit-w"><circle class="tx-lit" cx="800" cy="326" r="8"/></g>`
+          + `<path fill="#c98674" d="M560 500h480v8H560z"/><path fill="#e8d4c4" d="M700 500h200v8H700zM690 508h220v8H690zM680 516h240v8H680z"/>`;
+      };
+      return `<defs>${lin(s1, [[0, '#5e9bd8'], [0.55, '#a8cdee'], [1, '#e8f0f4']])}${linU(p1, [[0, '#cdb594'], [1, '#e9d6b2']], 0, 500, 0, 900)}${linU(g1, [[0, '#7aa04c'], [1, '#3f6a2c']], 0, 500, 0, 900)}${radU(l1, [[0, '#fff3c8', 0.55], [1, '#fff3c8', 0]], 1300, 40, 900)}${linU(d1, [[0, '#1e3a1c', 0.0], [1, '#1e3a1c', 0.5]], 0, 500, 0, 900)}${radU(b1, [[0, '#fff0b8', 0.5], [1, '#fff0b8', 0]], 800, 500, 340)}</defs>`
+        + full(`url(#${s1})`) + streak(260, 120, 300, '#fff', 0.55) + cloud(1180, 170, 1.2, '#dde7f0', 0.95, 62, 8) + cloud(420, 250, 0.9, '#e6eef6', 0.9, 54, 26) + cloud(850, 90, 0.7, '#eef3f8', 0.85, 70, 14)
+        + birds(8, 5, 760, 250, '#34405a', 1, 600)
+        + mv('txpar', { ad: '36s', dx: '6px' }, canopy('#6f9a6a', 470, 26, 7) + haze(440, 70, '#e8f0e0', 0.55))
+        + `<path fill="url(#${g1})" d="M-160 900V500H1760V900z"/>`
+        + `<g opacity=".18">${Array.from({ length: 8 }, (_, i) => `<path fill="#fff" d="M-160 ${505 + i * i * 7}H1760v${6 + i * 3}H-160z"/>`).join('')}</g>`
+        + capitol() + `<rect width="1600" height="900" fill="url(#${b1})"/>`
+        + `<path fill="url(#${p1})" d="M780 500H820L1180 900H420z"/><path fill="#b49c7c" d="M780 500H786L452 900H420zM820 500H814L1148 900H1180z"/>`
+        + `<g fill="none" stroke="#b49c7c" stroke-width="2" opacity=".5">${[524, 552, 590, 640, 706, 800].map((y, i) => { const k = (y - 500) / 400; return `<path d="M${R(783 - k * 331)} ${y}H${R(817 + k * 331)}"/>`; }).join('')}<path d="M800 500L800 900" stroke-dasharray="14 18"/></g>`
+        + `<g fill="#3a6a2a" opacity=".5">${[0, 1, 2, 3, 4, 5].map(i => `<ellipse cx="${R(800 + (i % 2 ? 1 : -1) * (30 + i * 46))}" cy="${R(560 + i * 62)}" rx="${R(8 + i * 5)}" ry="${R(2 + i * 1.4)}"/>`).join('')}</g>`
+        + `<path fill="url(#${d1})" d="M-160 900V500H1760V900z"/>`
+        + mv('txpar', { ad: '30s', dx: '10px' }, oak(610, 560, 0.62, '#2c4a2a', '#41653a', '#80a04e', 5) + oak(990, 560, 0.62, '#2f4e2d', '#456a3c', '#80a04e', 6))
+        + statue(700, 556, 0.5, true) + statue(900, 556, 0.5, false) + lamp(724, 548, 0.5) + lamp(876, 548, 0.5)
+        + walker(806, 610, 0.5, '#3a3a4a') + walker(792, 616, 0.55, '#7a3a3a')
+        + mv('txpar', { ad: '30s', dx: '14px' }, oak(430, 700, 1.0, '#2c4a2a', '#41653a', '#80a04e', 3) + oak(1170, 700, 1.0, '#2f4e2d', '#456a3c', '#80a04e', 4))
+        + statue(560, 690, 0.9, false) + statue(1040, 690, 0.9, true) + lamp(588, 676, 0.9) + lamp(1012, 676, 0.9)
+        + statue(470, 820, 1.3, true) + statue(1130, 820, 1.3, false) + lamp(500, 800, 1.3) + lamp(1100, 800, 1.3)
+        + `<rect width="1600" height="900" fill="url(#${l1})"/>` + rays(1300, 40, 1000, '#fff6d4', 0.18)
+        + mv('txsway2', { ad: '8s', to: '30px 900px' }, oak(30, 930, 2.3, '#233f22', '#386030', '#79994a', 11))
+        + mv('txsway2', { ad: '9s', d: '-2s', to: '1570px 900px' }, oak(1570, 930, 2.3, '#274526', '#3c6633', '#7d9d4c', 12))
+        + `<g fill="#233f22">${Array.from({ length: 10 }, (_, i) => `<circle cx="${560 - i * 65}" cy="${10 + i * 12}" r="${50 + i * 8}"/><circle cx="${1040 + i * 65}" cy="${10 + i * 12}" r="${50 + i * 8}"/>`).join("")}</g>`
+        + `<g fill="#3a6232">${Array.from({ length: 10 }, (_, i) => `<circle cx="${530 - i * 62}" cy="${i * 10}" r="${22 + i * 3}"/><circle cx="${1070 + i * 62}" cy="${i * 10}" r="${22 + i * 3}"/>`).join("")}</g>`
+        + `<g fill="#79994a" opacity=".85">${Array.from({ length: 12 }, (_, i) => `<circle cx="${R(i % 2 ? 60 + i * 30 : 1540 - i * 30)}" cy="${R(20 + (i * 37) % 110)}" r="${R(9 + (i * 7) % 14)}"/>`).join("")}</g>`
+        + `<g opacity=".9">${Array.from({ length: 7 }, (_, i) => `<path class="x-txfall" style="--ad:${(9 + i * 1.3).toFixed(1)}s;--d:-${(i * 1.7).toFixed(1)}s;--dx:${(i % 2 ? 1 : -1) * (60 + i * 14)}px" fill="#9bb858" d="M${R(300 + i * 150)} ${R(120 + (i * 53) % 80)}q10-12 20 0q-10 12-20 0z"/>`).join('')}</g>`
+        + `<g opacity=".16" fill="#fff6c8">${[[560, 760, 90], [820, 700, 70], [1010, 810, 80], [690, 850, 60]].map(([x, y, w]) => `<ellipse class="x-txglow" style="--ad:5s" cx="${x}" cy="${y}" rx="${w}" ry="${R(w / 7)}"/>`).join('')}</g>`
+        + finish(0.3); } });
 
   /* ---------- San Antonio: the Alamo in the morning ---------- */
   add({ id: 'alamo-morning', label: 'The Alamo in the morning light, San Antonio', site: 'The Alamo in the morning light', colour: 'amber', mood: 'calm', texasKind: 'scene', tags: ['san antonio', 'alamo', 'mission', 'plaza'],
@@ -332,7 +372,7 @@ function animTexasSceneCss() {
     A + 'txmove { --an: ap-txmove; --ad: 24s; --ae: linear; }', A + 'txbob { --an: ap-txbob; --ad: 3s; }', A + 'txglow { --an: ap-txglow; --ad: 6s; }',
     A + 'txrise { --an: ap-txrise; --ad: 9s; --ai: 1; --ae: cubic-bezier(.2, .7, .3, 1); }', A + 'txsway { --an: ap-txsway; --ad: 4s; }', A + 'txsway2 { --an: ap-txsway2; --ad: 6s; }',
     A + 'txspin { --an: ap-txspin; --ad: 40s; --ae: linear; }', A + 'txflag { --an: ap-txflag; --ad: 2s; }', A + 'txflicker { --an: ap-txflicker; --ad: .22s; }',
-    A + 'txlift { --an: ap-txlift; --ad: 14s; --ai: 1; --ae: cubic-bezier(.5, 0, .7, .6); }', A + 'txbat { --an: ap-txbat; --ad: 9s; --ae: linear; }',
+    A + 'txlift { --an: ap-txlift; --ad: 14s; --ai: 1; --ae: cubic-bezier(.5, 0, .7, .6); }', A + 'txfall { --an: ap-txfall; --ad: 10s; --ae: linear; }',
     '@keyframes ap-txdrift { 0%, 100% { transform: translateX(calc(var(--dx, 80px) * -1)); } 50% { transform: translateX(var(--dx, 80px)); } }',
     '@keyframes ap-txglide { 0% { transform: translate(calc(var(--dx, 500px) * -.5), 0); opacity: 0; } 10%, 85% { opacity: 1; } 100% { transform: translate(calc(var(--dx, 500px) * .5), var(--dy, -30px)); opacity: 0; } }',
     '@keyframes ap-txflap { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(-.35); } }',
@@ -348,6 +388,6 @@ function animTexasSceneCss() {
     '@keyframes ap-txflag { 0%, 100% { transform: skewY(0) scaleX(1); } 50% { transform: skewY(-4deg) scaleX(.94); } }',
     '@keyframes ap-txflicker { 0%, 100% { transform: scaleY(1); opacity: .95; } 50% { transform: scaleY(1.18); opacity: .8; } }',
     '@keyframes ap-txlift { from { transform: translateY(0); } to { transform: translateY(-620px); } }',
-    '@keyframes ap-txbat { 0% { transform: translate(0, 0); opacity: 0; } 8%, 88% { opacity: 1; } 100% { transform: translate(var(--dx, 900px), var(--dy, -380px)); opacity: 0; } }',
+    '@keyframes ap-txfall { 0% { transform: translate(0, -20px) rotate(0); opacity: 0; } 10%, 85% { opacity: 1; } 100% { transform: translate(var(--dx, 80px), 640px) rotate(380deg); opacity: 0; } }',
   ].join('\n');
 }

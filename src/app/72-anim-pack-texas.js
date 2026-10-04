@@ -148,9 +148,8 @@ function animTexasWhere(ctx) { const id = ANIM_TX.place(ctx); return id ? { id, 
   city('austin', 'signature', { id: 'capitol', label: 'The Capitol dome, Austin', colour: 'orange', mood: 'proud', tags: ['capitol', 'landmark', 'dome'],
     svg: () => `<path class="c x-twinkle" d="${star5(32, 8, 4, 1.7)}"/>` + '<path class="lk" d="M32 12v4"/><path class="w lk" d="M22 30q0-14 10-14t10 14z"/><path class="lk" d="M22 30h20M26 20v10M32 18v12M38 20v10"/>'
       + '<path class="s lk" d="M10 34h44v6H10z"/><path class="w lk" d="M12 40h40v18H12z"/>' + [16, 24, 32, 40, 47].map(x => `<path class="lk" d="M${x} 42v16"/>`).join('') });
-  city('austin', 'element', { id: 'bats', label: 'Bats at dusk', colour: 'violet', mood: 'dreamy', intensity: 'standard', tags: ['bats', 'dusk', 'bridge'],
-    svg: () => '<circle class="s" cx="46" cy="14" r="7"/><path class="lk t" d="M4 52h56"/><path class="lk" d="M10 52v6M24 52v6M38 52v6M52 52v6"/>'
-      + [[14, 36, 0], [26, 26, 0.5], [38, 32, 1], [48, 24, 1.5], [20, 18, 2]].map(([x, y, d]) => `<path class="k x-flap" style="--d:${d}s" d="M${x - 5} ${y}q3-4 5 0 2-4 5 0-3 5-5 3-2 2-5-3z"/>`).join('') });
+  city('austin', 'element', { id: 'live-oak', label: 'A live oak', colour: 'green', mood: 'calm', tags: ['oak', 'tree', 'shade'],
+    svg: () => '<path class="lk t" d="M32 58V38M32 46q-8-4-12-12M32 44q8-4 12-14"/><g class="x-swing"><circle class="c" cx="18" cy="28" r="11"/><circle class="c" cx="46" cy="28" r="11"/><circle class="c" cx="32" cy="20" r="14"/><circle class="s" cx="28" cy="17" r="5"/><circle class="s" cx="42" cy="26" r="4"/></g>' + ground });
   city('san-antonio', 'signature', { id: 'alamo', label: 'The Alamo, San Antonio', colour: 'amber', mood: 'proud', tags: ['alamo', 'landmark', 'mission'],
     svg: () => '<path class="w lk" d="M12 58V28q4-4 8-2l2-6h20l2 6q4-2 8 2v30z"/><path class="lk" d="M22 20q10-8 20 0"/><path class="s lk" d="M26 58V40a6 6 0 0 1 12 0v18z"/>'
       + '<path class="lk" d="M22 30h4M38 30h4M30 30h4"/><circle class="c x-twinkle" cx="32" cy="24" r="2.4"/>' + ground });
@@ -191,7 +190,7 @@ function animTexasWhere(ctx) { const id = ANIM_TX.place(ctx); return id ? { id, 
       + '<ellipse class="s lk" cx="32" cy="50" rx="18" ry="6"/><path class="lw" d="M32 44v12"/><g class="x-bounce"><ellipse class="c lk" cx="32" cy="30" rx="6" ry="4" transform="rotate(-24 32 30)"/><path class="lw" d="M29 31l6-3"/></g>' });
 
   /* ---------- full-screen scenes (71-anim-texas-scenes.js): a city's own win the opening in that city ---------- */
-  const SCENE_CITY = { 'fort-worth-stockyards-scene': 'fort-worth', 'dallas-skyline': 'dallas', 'houston-liftoff-scene': 'houston', 'austin-bats-scene': 'austin', 'alamo-morning': 'san-antonio', 'el-paso-star-scene': 'el-paso' };
+  const SCENE_CITY = { 'fort-worth-stockyards-scene': 'fort-worth', 'dallas-skyline': 'dallas', 'houston-liftoff-scene': 'houston', 'austin-capitol-walk': 'austin', 'alamo-morning': 'san-antonio', 'el-paso-star-scene': 'el-paso' };
   const SCENE_MONTHS = { 'hill-country-bluebonnets': [3, 4, 5] };
   const scenes = typeof animTexasScenes === 'function' ? animTexasScenes() : [];
   for (const o of scenes) {
