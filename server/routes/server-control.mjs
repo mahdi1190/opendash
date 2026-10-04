@@ -53,6 +53,10 @@ export default function register(app) {
     throw new HttpError(401, 'this needs the dashboard page itself, or a local program sending X-Dashboard-Token (the contents of <data>/local-token)');
   }
 
+  // For routes/updates.mjs (looked up per request, so file load order does not matter).
+  ctx.requireLocalCaller = requireLocalCaller;
+  ctx.acceptLifecycle = accept;
+
   const integration = () => createOsIntegration({
     repoRoot: ctx.repoRoot, port: ctx.port, dataDir, defaultDataDir: join(ctx.repoRoot, 'data'),
   });
@@ -79,7 +83,7 @@ export default function register(app) {
 
   app.route({ path: '/api/server/status', method: 'GET', sameOrigin: true, quiet: true, handler: () => status() });
 
-  function accept(c, action, rebuild) {
+  function accept(c, action, rebuild, extra) {
     if (!lifecycleAvailable()) throw new HttpError(501, 'restart is only available when OpenDash was started with start-opendash or node serve.mjs');
     const ok = action === 'restart' ? checkRestartAllowed() : (lifecyclePending() ? { ok: false, status: 409, message: 'already stopping or restarting' } : { ok: true });
     if (!ok.ok) {
@@ -106,7 +110,7 @@ export default function register(app) {
     c.res.once('close', go);
     return c.json(202, action === 'stop'
       ? { ok: true, stopping: true, pid: process.pid }
-      : { ok: true, restarting: true, mode, rebuild: !!rebuild, pid: process.pid, waitSeconds: rebuild ? 90 : 30 });
+      : { ok: true, restarting: true, mode, rebuild: !!rebuild, pid: process.pid, waitSeconds: rebuild ? 90 : 30, ...(extra || {}) });
   }
 
   app.route({

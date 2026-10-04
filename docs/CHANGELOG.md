@@ -10,6 +10,10 @@ upgrades it.
 
 ## [Unreleased]
 
+### Added
+
+- Settings > Updates: Check for updates asks the project’s GitHub releases for the newest version (nothing about you is sent), shows what is new, and Update installs it: a release zip is downloaded, verified against its published SHA-256, swapped in (the replaced files are kept in the data folder’s update-backup) and the server rebuilds and restarts; a git checkout is fast-forwarded to the release tag. An optional once-a-day check is off by default. Palette: Check for updates, Update OpenDash.
+
 ## [2.2.1] - 2026-10-04
 
 ### Fixed

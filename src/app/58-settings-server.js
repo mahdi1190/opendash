@@ -69,22 +69,25 @@ async function _ssFlush() {
   if (typeof state !== 'undefined' && (state._localDirty || _persistTimer)) await _persistFire();
 }
 
-/** Restart the server ({rebuild:true}: migrations + build first). Resolves true when it is back. */
+/** Restart the server ({rebuild:true}: migrations + build first). Resolves true when it is back.
+ *  {post:[url, body]} asks another route to do the restart (the update install, 58-settings-updates.js);
+ *  {label} names the overlay. */
 async function srvRestart(opts) {
   const rebuild = !!(opts && opts.rebuild);
   if (_ssRestarting) return false;
   if (typeof srvIsOffline === 'function' && srvIsOffline()) { toast('The server is not running: use Start server in the banner.', { kind: 'err' }); return false; }
   _ssRestarting = true;
-  const label = rebuild ? 'Rebuilding and restarting…' : 'Restarting the server…';
+  const label = (opts && opts.label) || (rebuild ? 'Rebuilding and restarting…' : 'Restarting the server…');
   _ssOverlay(label, 'Saving your changes first');
   try {
     await _ssFlush();
     const before = await srvProbe(5000);
     let r;
-    try { r = await _ssPost('/api/server/restart', { rebuild }); }
-    catch (e) { _ssOverlayOff(); toast('Could not restart: ' + _srvErrText(e), { kind: 'err' }); return false; }
+    try { r = await (opts && opts.post ? _ssPost(opts.post[0], opts.post[1]) : _ssPost('/api/server/restart', { rebuild })); }
+    catch (e) { _ssOverlayOff(); toast((opts && opts.post ? '' : 'Could not restart: ') + _srvErrText(e), { kind: 'err', timeout: 10000 }); return false; }
     if (typeof _srvLink !== 'undefined') _srvLink.state = 'restarting';
     const oldPid = (r && r.pid) || (before && before.pid);
+    if (r && r.updated) { try { sessionStorage.setItem('dashboard-updated', JSON.stringify({ from: r.updated.from, to: r.updated.to })); } catch (e) { /* fine */ } }
     const budget = (rebuild ? 90 : 30) * 1000;
     const t0 = Date.now();
     let h = null;
