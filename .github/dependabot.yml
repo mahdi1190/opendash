@@ -1,0 +1,12 @@
+# Keep the GitHub Actions used by .github/workflows up to date. The app itself
+# has no npm dependencies, so there is nothing else to watch. The workflows pin
+# each action to a full commit SHA (with its version as a comment); Dependabot
+# updates the SHA and the comment together.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci

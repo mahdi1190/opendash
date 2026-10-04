@@ -1,0 +1,56 @@
+/* @part 90-responsive.css · OWNER: C3 (container queries, print) */
+/* ---------- responsive (container queries on the view's own width) ---------- */
+@container fvbody (max-width: 1080px) {
+  .fv-kpis:not(.is-compact) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .fv-kpis:not(.is-compact) .fv-kpi.hero { grid-row: auto; grid-column: span 4; display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); grid-template-rows: auto auto auto 1fr; column-gap: var(--space-5); min-height: 0; padding-bottom: var(--space-3); }
+  .fv-kpis:not(.is-compact) .fv-kpi.hero > :not(.fv-kpi-sp) { grid-column: 1; }
+  .fv-kpis:not(.is-compact) .fv-kpi.hero .fv-kpi-sp { grid-column: 2; grid-row: 1 / span 4; height: 100%; min-height: 84px; margin: 0 calc(-1 * var(--space-4)) 0 0; align-self: stretch; }
+}
+@container fvbody (max-width: 1000px) {
+  .fv-card { grid-column: span var(--span-md, 12); }
+  .fv-stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container fvbody (max-width: 640px) {
+  .fv-card { grid-column: span 12; }
+  .fv-kpis, .fv-kpis.is-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fv-kpis:not(.is-compact) .fv-kpi.hero { grid-column: span 2; grid-template-columns: 1fr; }
+  .fv-kpis:not(.is-compact) .fv-kpi.hero .fv-kpi-sp { grid-column: 1; grid-row: auto; height: 60px; margin: var(--space-1-5) calc(-1 * var(--space-4)) 0; }
+  .fv-uncat { grid-template-columns: 1fr; }
+}
+/* @c3-begin phone (390 wide): a compact sticky bar, swipeable tabs, KPI tiles that snap sideways */
+@container fvbody (max-width: 560px) {
+  .fv-tabs { margin-left: calc(-1 * var(--space-2)); margin-right: calc(-1 * var(--space-2));
+    -webkit-mask-image: linear-gradient(to right, transparent 0, black 14px, black calc(100% - 28px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, black 14px, black calc(100% - 28px), transparent 100%); }
+  .fv-tab { height: 40px; padding: 0 9px; font-size: 13px; }
+  .fv-tab-ic { display: none; }
+  /* The bar keeps the presets, the range and Filters; Group by / Compare / Reset live in the panel. */
+  .fv-bar-r > .fv-seg, .fv-bar-r > .fv-switch, .fv-bar-r > .fv-bar-sep, .fv-bar-r > .fv-btn:not(.fv-more-btn) { display: none; }
+  /* One flow: presets on the first line, then the range and Filters side by side. */
+  .fv-bar { gap: var(--space-2); }
+  .fv-bar .fv-bar-l, .fv-bar .fv-bar-r { display: contents; }
+  .fv-bar .fv-more-btn { margin-left: auto; }
+  .fv-bud-bar .fv-btn > span { display: none; }
+  .fv-bud-bar .fv-btn { width: var(--control-h); padding: 0; }
+  .fv-bud-day { font-size: 13px; }
+  .fv-frow.fv-phone-only { display: flex; }
+  .fv-frow { flex-wrap: wrap; gap: var(--space-2); }
+  .fv-frow .fv-toggles { flex-wrap: wrap; height: auto; gap: var(--space-2) var(--space-3); }
+  .fv-presets { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .fv-timeline { display: none; }
+  .fv-range-lbl { padding: 0 var(--space-1); font-size: 13px; }
+  .fv-kpis, .fv-kpis.is-compact { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 72%; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 var(--space-4);
+    margin: var(--space-2) calc(-1 * var(--space-4)) var(--space-3); padding: 2px var(--space-4) var(--space-2); gap: 10px; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .fv-kpis::-webkit-scrollbar { display: none; }
+  .fv-kpis .fv-kpi, .fv-kpis:not(.is-compact) .fv-kpi.hero { grid-row: auto; grid-column: auto; scroll-snap-align: start; min-height: 128px; display: flex; flex-direction: column; padding-top: var(--space-3); padding-bottom: 0; }
+  .fv-kpis .fv-kpi.hero .fv-kpi-v { font-size: var(--text-2xl); line-height: var(--lh-2xl); }
+  .fv-kpis .fv-kpi.hero .fv-kpi-l, .fv-kpis .fv-kpi.hero .fv-kpi-d { font-size: var(--text-xs); }
+  .fv-kpis .fv-kpi.hero .fv-kpi-sp, .fv-kpis:not(.is-compact) .fv-kpi.hero .fv-kpi-sp { grid-column: auto; grid-row: auto; height: 36px; min-height: 0; margin: auto calc(-1 * var(--space-4)) 0; }
+  .fv-kpi:hover { transform: none; }
+  .fv-card { padding: var(--space-3) var(--space-4); border-radius: 14px; }
+  .fv-grid { gap: var(--space-3); }
+}
+/* @c3-end */
+@media print {
+  .fv-sticky { position: static; backdrop-filter: none; }
+  .fv-layer, .fv-head-actions { display: none; }
+}

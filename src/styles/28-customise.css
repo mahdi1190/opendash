@@ -1,0 +1,120 @@
+/* ============================================================
+   CUSTOMISE (28-customise.js): stream / tag markers in every shape, the
+   right-click menu, the customise popover and the rename-in-place field.
+   ============================================================ */
+
+/* ---------- markers: <span class="dot mk mk-<shape> [mk-sym] [mk-emoji]"> ---------- */
+/* Plain shapes keep each place's own dot size (7-8px). */
+.dot.mk-rounded { border-radius: 2px; }
+.dot.mk-square { border-radius: 0; }
+.dot.mk-diamond { border-radius: 1px; transform: rotate(45deg) scale(0.86); }
+.dot.mk-ring { background: transparent; box-shadow: inset 0 0 0 2px var(--c, var(--fg-subtle)); }
+.dot.mk.mk-pill { width: 13px; border-radius: var(--radius-full); }
+/* With a symbol the marker becomes a small badge in its shape. */
+.dot.mk.mk-sym {
+  --mk-s: 14px;
+  width: var(--mk-s); height: var(--mk-s); margin: 0;
+  display: inline-grid; place-items: center; color: #fff; line-height: 1; overflow: visible;
+}
+.dot.mk.mk-sym > .i { width: calc(var(--mk-s) * 0.66); height: calc(var(--mk-s) * 0.66); stroke-width: 2.4; vertical-align: 0; color: inherit; }
+.nav-item .dot.mk.mk-sym > .i, .nav-item.active .dot.mk.mk-sym > .i, .avatar > .i { color: inherit; }
+.dot.mk.mk-sym.mk-diamond > .i { width: calc(var(--mk-s) * 0.56); height: calc(var(--mk-s) * 0.56); }
+.dot.mk.mk-sym > .mk-e { font-size: calc(var(--mk-s) * 0.78); line-height: 1; }
+.dot.mk.mk-sym.mk-rounded { border-radius: 4px; }
+.dot.mk.mk-sym.mk-square { border-radius: 2px; }
+.dot.mk.mk-sym.mk-diamond { width: calc(var(--mk-s) * 0.8); height: calc(var(--mk-s) * 0.8); border-radius: 2px; transform: rotate(45deg); }
+.dot.mk.mk-sym.mk-diamond > * { transform: rotate(-45deg); }
+.dot.mk.mk-sym.mk-ring { color: var(--c, var(--fg-muted)); box-shadow: inset 0 0 0 1.5px var(--c, var(--fg-subtle)); }
+.dot.mk.mk-sym.mk-pill { width: calc(var(--mk-s) * 1.55); }
+.dot.mk.mk-emoji { background: color-mix(in oklab, var(--c, var(--fg-subtle)) 20%, transparent); }
+.dot.mk.mk-emoji.mk-ring { background: transparent; }
+/* Tags: the symbol itself in the tag's colour (no badge). */
+.dot.mk.mk-bare { background: transparent; box-shadow: none; transform: none; color: var(--c, var(--fg-muted)); }
+.dot.mk.mk-bare.mk-emoji { background: transparent; }
+.dot.mk.mk-bare > .i { width: var(--mk-s); height: var(--mk-s); stroke-width: 2; }
+/* Sizes per place */
+.nav-item .ic .dot.mk-sym { --mk-s: 16px; }
+.nav-item .ic .dot.mk-bare { --mk-s: 14px; }
+.stream .dot.mk-sym, .chip .dot.mk-sym { --mk-s: 13px; }
+.chip .dot.mk-bare { --mk-s: 12px; }
+.chip .dot.mk-tag:not(.mk-sym) { width: 6px; height: 6px; }
+.cmd-item .dot.mk-sym, .cz-menu .dot.mk-sym { --mk-s: 16px; }
+.ce .dot.mk, .wv-ev .dot.mk { width: 7px; height: 7px; flex: none; }
+.ce .dot.mk.mk-pill { width: 11px; }
+.ce .dot.mk.mk-sym, .wv-ev .dot.mk.mk-sym { --mk-s: 12px; }
+.dot.mk.mk-md:not(.mk-sym) { width: 11px; height: 11px; }
+.dot.mk.mk-md.mk-pill:not(.mk-sym) { width: 18px; }
+.dot.mk.mk-md.mk-sym { --mk-s: 17px; }
+.dot.mk.mk-lg:not(.mk-sym) { width: 11px; height: 11px; }
+.dot.mk.mk-lg.mk-pill:not(.mk-sym) { width: 18px; }
+.dot.mk.mk-lg.mk-sym { --mk-s: 22px; }
+
+/* A tag with a colour: a light tint on its chip */
+.chip.cz-tinted { border-color: color-mix(in oklab, var(--c) 38%, var(--border)); background: color-mix(in oklab, var(--c) 9%, var(--surface)); }
+.chip > .dot.mk-tag { margin-right: 1px; }
+
+/* Avatars with a symbol (people) */
+.avatar > .av-e { font-size: calc(var(--size) * 0.62); line-height: 1; }
+.avatar > .i { width: calc(var(--size) * 0.6); height: calc(var(--size) * 0.6); vertical-align: 0; }
+
+/* Settings > Streams: the swatch shows the whole marker */
+.set-color.cz-swatch { width: 18px; height: 18px; background: transparent; display: inline-grid; place-items: center; }
+.set-color.cz-swatch:hover { box-shadow: none; background: var(--bg-muted); }
+.set-color.cz-swatch > .dot { width: 12px; height: 12px; }
+.set-color.cz-swatch > .dot.mk-pill:not(.mk-sym) { width: 16px; }
+.set-color.cz-swatch > .dot.mk-sym { --mk-s: 17px; }
+
+/* The calendar's one-stream chip (right-click a stream > Show in calendar); x shows every stream */
+.cal-stream-only { gap: 6px; }
+.cal-stream-only .x { border: 0; background: none; padding: 0; margin-right: -2px; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: var(--radius-full); }
+.cal-stream-only .x:hover { background: var(--bg-muted); }
+
+/* The stream / tag view title */
+.cz-vt-mark { display: inline-flex; align-items: center; justify-content: center; min-width: 14px; margin-right: calc(-1 * var(--space-1)); }
+
+/* ---------- the right-click menu ---------- */
+.cz-menu .pop-item > .ic, .cz-secmenu .pop-item > .ic { width: 16px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.cz-menu .pop-label, .cz-secmenu .pop-label { text-transform: none; letter-spacing: 0; }
+.cz-secmenu .pop-label:last-child { font-weight: var(--weight-regular); color: var(--fg-subtle); white-space: normal; line-height: var(--lh-xs); padding-bottom: var(--space-2); }
+
+/* ---------- the customise popover ---------- */
+.pop.cz-popover { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); max-height: calc(100vh - 16px); overflow: auto; }
+.cz-pv { display: flex; align-items: center; gap: var(--space-3); min-height: 36px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--bg-subtle); }
+.cz-pv-row { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; font-weight: var(--weight-medium); }
+.cz-pv-row > .dot.mk-sym { --mk-s: 18px; }
+.cz-pv-row > .dot:not(.mk-sym) { width: 10px; height: 10px; }
+.cz-pv-row > .dot.mk-pill:not(.mk-sym) { width: 16px; }
+.cz-pv-chip { margin-left: auto; }
+.cz-h { font-size: var(--text-2xs); font-weight: var(--weight-semibold); color: var(--fg-subtle); text-transform: uppercase; letter-spacing: var(--tracking-caps); margin-top: var(--space-1); }
+.cz-swatches { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
+.cz-sw { aspect-ratio: 1; width: 100%; border: 0; padding: 0; border-radius: 50%; background: var(--c); cursor: pointer; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08); }
+.cz-sw.on { box-shadow: 0 0 0 2px var(--surface-raised, var(--surface)), 0 0 0 4px var(--c); cursor: default; }
+.cz-sw:focus-visible, .cz-shape:focus-visible, .cz-grid button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.cz-custom { display: flex; align-items: center; gap: var(--space-2); }
+.cz-custom input[type="color"] { width: 28px; height: 24px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; flex: none; }
+.cz-hex { width: 96px; font-family: var(--font-mono); }
+.cz-nocolor { margin-left: auto; }
+.cz-shapes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.cz-shape { height: 30px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface); display: grid; place-items: center; cursor: pointer; }
+.cz-shape:hover { background: var(--bg-muted); }
+.cz-shape.on { border-color: color-mix(in oklab, var(--c, var(--accent)) 55%, transparent); background: color-mix(in oklab, var(--c, var(--accent)) 10%, var(--surface)); cursor: default; }
+.cz-shape > .dot { width: 10px; height: 10px; }
+.cz-shape > .dot.mk-pill { width: 17px; }
+.cz-symbar { display: flex; gap: var(--space-2); align-items: center; }
+.cz-tabs { flex: none; }
+.cz-q { flex: 1; min-width: 0; }
+.cz-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; max-height: 196px; overflow: auto; padding: 2px; margin: -2px; overscroll-behavior: contain; }
+.cz-grid button { aspect-ratio: 1; border: 1px solid transparent; border-radius: var(--radius-sm); background: none; color: var(--fg-muted); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.cz-grid button .i { width: 16px; height: 16px; }
+.cz-grid button > span { font-size: 17px; line-height: 1; }
+.cz-grid button:hover { background: var(--bg-muted); color: var(--fg); }
+.cz-grid button.on { background: color-mix(in oklab, var(--c) 14%, transparent); color: var(--c); border-color: color-mix(in oklab, var(--c) 40%, transparent); cursor: default; }
+.cz-grid button.cz-none { color: var(--fg-subtle); }
+.cz-empty { grid-column: 1 / -1; padding: var(--space-3) var(--space-1); font-size: var(--text-xs); }
+
+/* ---------- rename in place ---------- */
+.cz-rename { z-index: var(--z-dropdown); height: 26px; box-shadow: var(--shadow-md); background: var(--surface-raised, var(--surface)); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .pop.cz-popover .dot.mk { transition: border-radius var(--m-fast, 120ms) ease, transform var(--m-fast, 120ms) ease, background-color var(--m-fast, 120ms) ease; }
+}

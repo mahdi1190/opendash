@@ -1,0 +1,524 @@
+/* ============================================================
+   MORNING STORY (owner: Morning story) - src/app/79-story-morning.js.
+   Everything is scoped to .story[data-kind="morning"] on the Story engine's
+   stage (79-story.css). Beats: m-greet m-say m-day m-people m-focus m-ahead
+   m-go (frames carry data-type and the class sm-b). Motion: transform and
+   opacity only, children stagger with --i, every loop stops under .st-still
+   (the engine's reduced-motion rule) and pauses with the story (.is-paused).
+   Scene sizes come from the --scene-* tokens (76-scenes.css).
+   ============================================================ */
+.story[data-kind="morning"] {
+  --sm-ink: var(--st-fg);
+  --sm-ink2: color-mix(in oklab, var(--st-fg) 70%, transparent);
+  --sm-ink3: color-mix(in oklab, var(--st-fg) 48%, transparent);
+  --sm-line: color-mix(in oklab, var(--st-fg) 13%, transparent);
+  --sm-glass: rgba(255, 255, 255, 0.58); --sm-glass2: rgba(255, 255, 255, 0.82); --sm-gline: rgba(255, 255, 255, 0.8);
+  --sm-gshadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 14px 36px -16px rgba(20, 32, 70, 0.34);
+  --sm-inv: #10131f; --sm-inv-fg: #fff;
+  --sm-ease: var(--m-ease-out, cubic-bezier(0.22, 1, 0.36, 1)); --sm-pop: var(--m-pop, cubic-bezier(0.34, 1.4, 0.64, 1));
+  --sm-top: 70px; --sm-bot: 146px; --sm-x: clamp(18px, 7vw, 150px);
+  /* The sentence beats' hero tile: big enough to read across the room (scales with the window). */
+  --sm-hero: clamp(var(--scene-hero, 132px), 25vmin, calc(var(--scene-hero, 132px) * 2));
+}
+@property --sm-p { syntax: "<number>"; inherits: true; initial-value: 0; }
+.story[data-kind="morning"].st-dark {
+  --sm-glass: rgba(16, 20, 44, 0.42); --sm-glass2: rgba(30, 34, 66, 0.66); --sm-gline: rgba(255, 255, 255, 0.13);
+  --sm-gshadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 18px 44px -16px rgba(0, 0, 0, 0.6);
+  --sm-inv: #f5f6ff; --sm-inv-fg: #10131f;
+}
+
+/* ---------- the sky: after the greeting a veil comes up and the sun steps back ---------- */
+.story[data-kind="morning"] .st-bg::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.55)); transition: opacity 1.2s var(--m-ease-in-out, ease-in-out); }
+.story[data-kind="morning"].st-dark .st-bg::after { background: linear-gradient(180deg, rgba(6, 10, 30, 0.5), rgba(6, 10, 30, 0.18) 50%, rgba(6, 10, 30, 0.6)); }
+.story[data-kind="morning"].is-playing:not([data-beat="intro"]) .st-bg::after { opacity: 0.55; }
+.story[data-kind="morning"] .st-sky .sky-sun { top: 13%; transition: transform 1.2s var(--m-ease-in-out, ease-in-out), opacity 1.2s; }
+.story[data-kind="morning"].is-playing:not([data-beat="intro"]) .st-sky .sky-sun { transform: translate(5vw, -3vh) scale(0.62); opacity: 0.55; }
+/* Clouds keep below the progress bar and the top buttons, and fade back once the day's details are up. */
+.story[data-kind="morning"] .st-sky .sky-cloud:not(.near) { translate: 0 40px; transition: opacity 1.2s; }
+.story[data-kind="morning"].is-playing:not([data-beat="intro"]) .st-sky .sky-cloud:not(.near) { opacity: 0.35; }
+.story[data-kind="morning"].st-dark.is-playing:not([data-beat="intro"]) .st-sky .sky-cloud:not(.near) { opacity: 0.22; }
+.story[data-kind="morning"] .st-sky .sky-drop { opacity: 0.8; transition: opacity 0.6s; }
+.story[data-kind="morning"].sm-rain-boost .st-sky .sky-drop { opacity: 1; scale: 1 1.3; }
+
+/* ---------- frames ---------- */
+.story[data-kind="morning"] .st-cards .st-frame.sm-b { padding: var(--sm-top) var(--sm-x) var(--sm-bot); grid-template-columns: minmax(0, 1fr); align-content: center; justify-items: center; }
+.story[data-kind="morning"] .st-type .st-frame.sm-b > *, .story[data-kind="morning"] .st-cards .st-frame.sm-b > * { max-width: none; }
+.story[data-kind="morning"] .sm { width: min(1140px, 100%); position: relative; scale: var(--sm-fit, 1); transform-origin: 50% 50%; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-in { animation: sm-rise calc(0.56s / var(--st-speed)) var(--sm-ease) both; animation-delay: calc((120ms + var(--i, 0) * 70ms) / var(--st-speed)); }
+@keyframes sm-rise { from { opacity: 0; transform: translateY(18px) scale(0.985); } }
+
+/* shared type + glass */
+.story[data-kind="morning"] .sm-ov { font-size: 12px; line-height: 16px; font-weight: 650; letter-spacing: 0.09em; text-transform: uppercase; color: var(--sm-ink2); }
+.story[data-kind="morning"] .sm-h1 { margin: 4px 0 0; font-size: clamp(28px, min(3.5vw, 6vh), 50px); line-height: 1.06; font-weight: 660; letter-spacing: -0.032em; text-wrap: balance; }
+.story[data-kind="morning"] .sm-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: clamp(14px, 3vh, 28px); }
+.story[data-kind="morning"] .sm-glass { background: var(--sm-glass); border: 1px solid var(--sm-gline); border-radius: 22px; box-shadow: var(--sm-gshadow);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3); backdrop-filter: blur(24px) saturate(1.3); }
+.story[data-kind="morning"] .sm-pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 13px; font-weight: 550; white-space: nowrap;
+  background: var(--sm-glass2); border: 1px solid var(--sm-gline); color: var(--sm-ink); }
+.story[data-kind="morning"] .sm-pill.is-warn { background: color-mix(in oklab, var(--warning) 22%, var(--sm-glass2)); }
+.story[data-kind="morning"] .sm-pill .anim-scene { --as-size: 20px; }
+.story[data-kind="morning"] .sm-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; max-width: 100%; padding: 0 13px; border-radius: 999px; border: 1px solid var(--sm-gline);
+  background: var(--sm-glass2); color: var(--sm-ink); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: transform 0.15s, background-color 0.2s; }
+.story[data-kind="morning"] .sm-btn span { overflow: hidden; text-overflow: ellipsis; }
+.story[data-kind="morning"] .sm-btn:hover { background: color-mix(in oklab, var(--sm-ink) 10%, var(--sm-glass2)); }
+.story[data-kind="morning"] .sm-btn:active { transform: scale(0.96); }
+.story[data-kind="morning"] .sm-btn:focus-visible, .story[data-kind="morning"] .sm-folder:focus-visible, .story[data-kind="morning"] .sm-gobtn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.story[data-kind="morning"] .sm-btn.is-pri { background: var(--sm-inv); color: var(--sm-inv-fg); border-color: transparent; }
+.story[data-kind="morning"] .sm-btn.is-pri:hover { background: color-mix(in oklab, var(--sm-inv) 88%, var(--sm-inv-fg)); }
+.story[data-kind="morning"] .sm-btn .i { width: 14px; height: 14px; }
+.story[data-kind="morning"] .sm-btn.is-pri .st-i { width: 13px; height: 13px; fill: currentColor; stroke: none; }
+.story[data-kind="morning"] .sm-btn.is-done { background: color-mix(in oklab, var(--success) 22%, var(--sm-glass2)); color: var(--sm-ink); animation: sm-pop 0.38s var(--sm-pop) both; cursor: default; }
+@keyframes sm-pop { from { opacity: 0.3; transform: scale(0.9); } to { opacity: 1; transform: none; } }
+
+/* ---------- 1. greeting + weather ---------- */
+.story[data-kind="morning"] .sm-greet { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 420px); gap: 20px 40px; align-items: end; }
+.story[data-kind="morning"] .sm-greet.no-wx { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.story[data-kind="morning"] .sm-g-main { position: relative; display: flex; flex-direction: column; gap: clamp(10px, 2vh, 18px); padding-bottom: 8px; min-width: 0; }
+.story[data-kind="morning"] .sm-hero-h { margin: 0; font-size: clamp(40px, min(5.4vw, 8.8vh), 78px); line-height: 1.02; font-weight: 680; letter-spacing: -0.038em; }
+.story[data-kind="morning"] .sm-line { display: block; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-line { animation-delay: calc((190ms + (var(--i) - 1) * 90ms) / var(--st-speed)); }
+.story[data-kind="morning"] .sm-lede { margin: 0; font-size: clamp(16px, 1.45vw, 20px); line-height: 1.5; color: var(--sm-ink2); letter-spacing: -0.012em; text-wrap: balance; max-width: 640px; }
+.story[data-kind="morning"] .sm-facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-facts .sm-pill { animation: sm-pop calc(0.38s / var(--st-speed)) var(--sm-pop) both; animation-delay: calc((400ms + (var(--i) - 5) * 50ms) / var(--st-speed)); }
+.story[data-kind="morning"] .sm-wx { display: flex; flex-direction: column; align-items: flex-end; text-align: right; min-width: 0; }
+.story[data-kind="morning"] .sm-temp { display: flex; align-items: flex-start; font-size: clamp(96px, min(13.6vw, 22vh), 196px); line-height: 0.82; font-weight: 200; letter-spacing: -0.07em; font-variant-numeric: tabular-nums; margin-right: -0.04em; }
+.story[data-kind="morning"] .sm-temp b { font-weight: inherit; }
+.story[data-kind="morning"] .sm-temp span { font-size: 0.72em; line-height: 0.9; margin-left: 0.02em; }
+.story[data-kind="morning"] .sm-cond { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; font-size: clamp(18px, 1.7vw, 24px); font-weight: 600; letter-spacing: -0.02em; }
+.story[data-kind="morning"] .sm-cond .i { width: 26px; height: 26px; stroke-width: 1.8; }
+.story[data-kind="morning"] .sm-hl { margin-top: 4px; font-size: 15px; color: var(--sm-ink2); }
+.story[data-kind="morning"] .sm-hl::first-letter { text-transform: uppercase; }
+.story[data-kind="morning"] .sm-g-scene .anim-scene { --as-size: var(--sm-hero); box-shadow: var(--sm-gshadow); }
+.story[data-kind="morning"] .sm-hours { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(var(--n, 13), minmax(0, 1fr)); padding: 14px 10px 10px; margin-top: clamp(4px, 2vh, 22px); }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-hours { animation: sm-rise calc(0.6s / var(--st-speed)) var(--sm-ease) calc(0.47s / var(--st-speed)) both; }
+.story[data-kind="morning"] .sm-h { display: flex; flex-direction: column; align-items: center; gap: 7px; position: relative; font-size: 13px; font-weight: 550; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-h { animation: sm-fade calc(0.4s / var(--st-speed)) linear both; animation-delay: calc((560ms + var(--i) * 30ms) / var(--st-speed)); }
+@keyframes sm-fade { from { opacity: 0; } }
+.story[data-kind="morning"] .sm-h .t { font-size: 12px; font-weight: 500; color: var(--sm-ink2); }
+/* Named by the voice ("showers from 3 pm"): the wet hours lift and tint. */
+.story[data-kind="morning"] .sm-h::after { content: ""; position: absolute; inset: -8px 3px -6px; border-radius: 12px; background: color-mix(in oklab, var(--info) 16%, transparent); opacity: 0; transition: opacity 0.45s var(--sm-ease); pointer-events: none; z-index: -1; }
+.story[data-kind="morning"] .sm-h.is-wet.is-named::after { opacity: 1; }
+.story[data-kind="morning"] .sm-h.is-wet { transition: translate 0.45s var(--sm-ease); }
+.story[data-kind="morning"] .sm-h.is-wet.is-named { translate: 0 -3px; }
+.story[data-kind="morning"] .sm-h.is-now .t { color: var(--sm-ink); font-weight: 700; }
+.story[data-kind="morning"] .sm-h.has-ev::before { content: ""; position: absolute; top: -9px; width: 5px; height: 5px; border-radius: 50%; background: var(--c); }
+.story[data-kind="morning"] .sm-hwx { width: 22px; height: 22px; stroke-width: 1.8; }
+.story[data-kind="morning"] .sm-hwx.sun, .story[data-kind="morning"] .sm-cwx.sun { color: #f3a712; }
+.story[data-kind="morning"] .sm-hwx.rain { color: var(--info); }
+.story[data-kind="morning"].st-dark .sm-hwx.sun { color: #ffcf5c; }
+.story[data-kind="morning"].st-dark .sm-hwx.rain { color: #8cc0ff; }
+.story[data-kind="morning"] .sm-h .rb { position: relative; width: 6px; height: 22px; border-radius: 4px; overflow: hidden; background: color-mix(in oklab, var(--info) 18%, transparent); }
+.story[data-kind="morning"] .sm-h .rb i { position: absolute; inset: 0; border-radius: 4px; background: var(--info); transform-origin: 50% 100%; transform: scaleY(var(--r, 0)); }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-h .rb i { animation: sm-grow-y calc(0.5s / var(--st-speed)) var(--sm-ease) both; animation-delay: calc((700ms + var(--i) * 30ms) / var(--st-speed)); }
+@keyframes sm-grow-y { from { transform: scaleY(0); } }
+.story[data-kind="morning"] .sm-h .rp { min-height: 14px; margin-top: -3px; font-size: 11px; font-weight: 650; color: var(--info-ink); }
+.story[data-kind="morning"].st-dark .sm-h .rp { color: #8cc0ff; }
+/* the first story ever: how to drive it, once, under the progress bar */
+.story[data-kind="morning"] .sm-hint { position: absolute; top: 44px; left: 20px; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0; max-width: calc(100vw - 40px); padding: 7px 14px; border-radius: 999px;
+  background: var(--sm-glass2); border: 1px solid var(--sm-gline); box-shadow: var(--sm-gshadow); font-size: 13px; font-weight: 550; color: var(--sm-ink2); pointer-events: none;
+  animation: sm-rise calc(0.5s / var(--st-speed)) var(--sm-ease) 1.4s both; }
+.story[data-kind="morning"] .sm-hint.is-out { opacity: 0; transition: opacity 0.4s; }
+.story[data-kind="morning"] .sm-hint span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.story[data-kind="morning"] .sm-hint kbd { min-width: 22px; height: 20px; padding: 0 5px; border-radius: 5px; display: inline-grid; place-items: center; font: inherit; font-size: 11px; font-weight: 650; color: var(--sm-ink); background: color-mix(in oklab, var(--sm-ink) 9%, transparent); }
+.story[data-kind="morning"] .sm-hint .i { width: 14px; height: 14px; }
+/* confetti on a celebration day (once a day) */
+.story[data-kind="morning"] .sm-confetti { position: absolute; left: 22%; top: 34%; width: 0; height: 0; pointer-events: none; z-index: 2; }
+.story[data-kind="morning"] .sm-confetti i { position: absolute; width: 7px; height: 11px; border-radius: 2px; opacity: 0; animation: sm-conf 1.5s cubic-bezier(0.2, 0.7, 0.3, 1) var(--d, 0ms) both; }
+@keyframes sm-conf { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--tx), calc(var(--ty) + 140px)) rotate(var(--r)); } }
+
+/* ---------- 2. the day in sentences ---------- */
+.story[data-kind="morning"] .st-type .st-frame[data-type="m-say"] { align-content: center; padding: var(--sm-top) calc(var(--sm-x) + var(--sm-hero) + clamp(28px, 4.5vw, 84px)) 104px calc(var(--sm-x) * 0.8); }
+.story[data-kind="morning"] .sm-sayw { width: min(1080px, 100%); margin: 0; }
+.story[data-kind="morning"] .sm-pips { display: flex; align-items: center; gap: 12px; margin-bottom: clamp(14px, 2.6vh, 24px); }
+.story[data-kind="morning"] .sm-pips .sm-ov { font-size: 13px; }
+.story[data-kind="morning"] .sm-pip { display: inline-flex; gap: 5px; }
+.story[data-kind="morning"] .sm-pip i { position: relative; width: 22px; height: 4px; border-radius: 4px; overflow: hidden; background: var(--sm-line); }
+.story[data-kind="morning"] .sm-pip i.is-done { background: var(--sm-ink); }
+.story[data-kind="morning"] .sm-pip i.is-cur::after { content: ""; position: absolute; inset: 0; background: var(--sm-ink); transform-origin: 0 50%; transform: scaleX(var(--p, 0)); transition: transform 0.3s linear; }
+.story[data-kind="morning"] .sm-trail { display: flex; flex-direction: column; gap: 8px; margin-bottom: clamp(14px, 2.8vh, 26px); }
+.story[data-kind="morning"] .sm-trail p { margin: 0; max-width: 900px; font-size: clamp(14px, min(1.55vw, 2.6vh), 22px); line-height: 1.35; font-weight: 520; letter-spacing: -0.015em; color: var(--sm-ink3); opacity: calc(1 - var(--k, 0) * 0.28); }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-trail.is-fwd p:last-child { transform-origin: 0 100%; animation: sm-shrink calc(0.52s / var(--st-speed)) var(--sm-ease) both; }
+@keyframes sm-shrink { from { opacity: 0.25; transform: translateY(0.9em) scale(1.9); } }
+.story[data-kind="morning"] .sm-say { margin: 0; font-size: clamp(32px, min(5vw, 8.2vh), 76px); line-height: 1.16; font-weight: 650; letter-spacing: -0.036em; text-wrap: pretty; overflow-wrap: break-word; }
+.story[data-kind="morning"] .sm-say.is-mid { font-size: clamp(30px, min(4.4vw, 7.2vh), 66px); }
+.story[data-kind="morning"] .sm-say.is-long { font-size: clamp(26px, min(3.7vw, 6vh), 56px); }
+.story[data-kind="morning"] .st-frame .sm-say .st-w { color: var(--sm-ink); opacity: 0.3; animation: none; transition: opacity 0.12s var(--sm-ease); }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-say > .st-w { animation: sm-word calc(0.5s / var(--st-speed)) var(--sm-ease) backwards; animation-delay: calc((140ms + var(--i, 0) * 22ms) / var(--st-speed)); }
+@keyframes sm-word { from { opacity: 0; transform: translateY(0.32em); } }
+.story[data-kind="morning"] .st-frame .sm-say .st-w:is(.is-said, .is-now) { opacity: 1; }
+.story[data-kind="morning"] .sm-say > .st-w.is-now { background: linear-gradient(transparent 72%, color-mix(in oklab, var(--accent) 36%, transparent) 72%, color-mix(in oklab, var(--accent) 36%, transparent) 92%, transparent 92%); }
+/* entity chips inside the sentence */
+.story[data-kind="morning"] .sm-say .st-ent { --e: var(--accent); position: relative; display: inline-block; max-width: 100%; margin: 0.03em 0.04em; padding: 0.04em 0.34em 0.08em 0.12em; border-radius: 999px;
+  font-size: 0.86em; line-height: 1.14; letter-spacing: -0.025em; vertical-align: baseline; color: var(--sm-ink);
+  background: var(--sm-glass2); border: 1px solid var(--sm-gline); box-shadow: var(--sm-gshadow); transition: opacity 0.38s var(--sm-ease), transform 0.38s var(--sm-pop); }
+.story[data-kind="morning"] .sm-say .st-ent .st-w { opacity: 1; color: inherit; animation: none; }
+.story[data-kind="morning"] .sm-say .st-ent .st-tail { color: inherit; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-say .st-ent { animation: sm-word calc(0.5s / var(--st-speed)) var(--sm-ease) backwards; animation-delay: calc((140ms + var(--i, 0) * 22ms) / var(--st-speed)); }
+.story[data-kind="morning"] .sm-say .st-ent.sm-ent-wait { opacity: 0.38; transform: scale(0.97); }
+/* Beats hand over without two big layouts on top of each other: the old one lifts and fades quickly. */
+.story[data-kind="morning"] .st-frame.sm-b.is-exit { animation: sm-out calc(0.3s / var(--st-speed)) ease-in both; }
+.story[data-kind="morning"] .st-type .st-frame[data-type="m-say"].is-exit { animation: sm-say-out calc(0.26s / var(--st-speed)) ease-in both; }
+@keyframes sm-out { to { opacity: 0; transform: translateY(-1.2vh); } }
+@keyframes sm-say-out { to { opacity: 0; } }
+.story[data-kind="morning"] .st-frame .sm-say .st-ent.sm-pop { animation: sm-pop calc(0.38s / var(--st-speed)) var(--sm-pop) both; }
+/* As the voice names a chip, a soft ring rings out once in the chip's colour. */
+.story[data-kind="morning"] .sm-say .st-ent::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--sm-ec, var(--accent)) 70%, transparent); }
+.story[data-kind="morning"] .st-frame .sm-say .st-ent.sm-pop::after { animation: sm-ping calc(0.9s / var(--st-speed)) var(--sm-ease) both; }
+@keyframes sm-ping { 0% { opacity: 0.9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.18, 1.5); } }
+.story[data-kind="morning"] .sm-say .st-ent[data-type="person"] { --sm-ec: var(--st-person); }
+.story[data-kind="morning"] .sm-say .st-ent[data-type="event"] { --sm-ec: var(--st-event); }
+.story[data-kind="morning"] .sm-say .st-ent[data-type="task"] { --sm-ec: var(--c, var(--st-task)); }
+.story[data-kind="morning"] .sm-say .st-ent[data-type="deadline"] { --sm-ec: var(--st-deadline); }
+.story[data-kind="morning"] .sm-say .st-ent[data-type="time"] { --sm-ec: var(--st-time); }
+.story[data-kind="morning"] .sm-say .st-ent[data-type="weather"] { --sm-ec: var(--info); }
+/* punctuation after a chip stays beside it (moved out of the pill by the renderer) */
+.story[data-kind="morning"] .sm-say .sm-nw { white-space: nowrap; }
+.story[data-kind="morning"] .sm-say .sm-nw > .st-tail { display: inline-block; margin-left: -0.1em; color: var(--sm-ink); opacity: 0.3; transition: opacity 0.12s; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-say .sm-nw > .st-tail { animation: sm-word calc(0.5s / var(--st-speed)) var(--sm-ease) backwards; animation-delay: calc((140ms + var(--i, 0) * 22ms) / var(--st-speed)); }
+.story[data-kind="morning"] .sm-say .sm-nw > .st-ent.is-hot + .st-tail, .story[data-kind="morning"].st-still .sm-say .sm-nw > .st-tail { opacity: 1; }
+.story[data-kind="morning"] .sm-say .st-ent[data-type="time"] { background: color-mix(in oklab, var(--accent) 16%, var(--sm-glass2)); font-variant-numeric: tabular-nums; }
+.story[data-kind="morning"] .sm-say .st-ent[data-type="deadline"] { background: color-mix(in oklab, var(--danger) 12%, var(--sm-glass2)); }
+.story[data-kind="morning"] .sm-say .st-ent[data-type="weather"] { background: color-mix(in oklab, var(--info) 12%, var(--sm-glass2)); }
+.story[data-kind="morning"] .sm-say .st-ent[data-type="task"] { box-shadow: var(--sm-gshadow), inset 0 -0.07em 0 var(--c, var(--accent)); }
+.story[data-kind="morning"] .sm-eg { position: relative; top: -0.07em; display: inline-block; margin-right: 0.2em; vertical-align: middle; line-height: 0; }
+.story[data-kind="morning"] .sm-eg-av { width: 1.02em; height: 1.02em; }
+.story[data-kind="morning"] .sm-eg-av .avatar { width: 100%; height: 100%; font-size: 0.4em; box-shadow: 0 0 0 0.05em var(--sm-glass2); }
+.story[data-kind="morning"] .sm-say .anim-scene.sm-eg { --as-size: 0.92em; border-radius: 0.26em; }
+.story[data-kind="morning"] .sm-eg-ring { width: 0.56em; height: 0.56em; margin-left: 0.16em; border-radius: 50%; border: 0.08em solid var(--c, var(--accent)); box-sizing: border-box; }
+.story[data-kind="morning"] .sm-eg-ic .i, .story[data-kind="morning"] .sm-eg-wx .i { width: 0.64em; height: 0.64em; margin-left: 0.12em; stroke-width: 2.4; }
+.story[data-kind="morning"] .sm-eg-ic .i { color: var(--accent); }
+.story[data-kind="morning"].st-dark .sm-eg-ic .i { color: var(--accent-ink); }
+.story[data-kind="morning"] .st-ent[data-type="deadline"] .sm-eg-ic .i { color: var(--danger); }
+.story[data-kind="morning"] .sm-eg-wx .i.rain { color: var(--info); }
+.story[data-kind="morning"] .sm-eg-wx .i.sun { color: #f3a712; }
+/* "Reading aloud": the caption pill's place on sentence beats (the words are never shown twice) */
+.story[data-kind="morning"] .sm-wave { position: absolute; left: 50%; bottom: 96px; translate: -50% 0; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
+  background: rgba(14, 16, 28, 0.78); color: #fff; font-size: 13px; font-weight: 500; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); pointer-events: none; }
+.story[data-kind="morning"] .sm-wave .bars { display: inline-flex; align-items: center; gap: 2px; height: 14px; }
+.story[data-kind="morning"] .sm-wave .bars b { width: 2.5px; height: var(--h, 8px); border-radius: 2px; background: currentColor; }
+.story[data-kind="morning"][data-state="playing"] .sm-wave .bars b { animation: sm-bar 0.9s ease-in-out calc(var(--k) * -170ms) infinite alternate; }
+@keyframes sm-bar { from { transform: scaleY(0.35); } to { transform: scaleY(1); } }
+.story[data-kind="morning"].is-muted .sm-wave { display: none; }
+@media (max-height: 560px) { .story[data-kind="morning"] .sm-wave { bottom: 72px; } }
+/* the hero tile: follows whatever the voice just named */
+.story[data-kind="morning"] .st-scene .st-frame[data-type="m-say"] { place-items: center end; padding: var(--sm-top) var(--sm-x) 104px 0; }
+.story[data-kind="morning"] .sm-herobox { position: relative; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-herobox { animation: sm-hero-in calc(0.9s / var(--st-speed)) var(--sm-ease) both 0.15s; }
+@keyframes sm-hero-in { from { opacity: 0; transform: translateY(24px) scale(0.9); } }
+.story[data-kind="morning"] .sm-hero-tile { position: relative; width: var(--sm-hero); height: var(--sm-hero); }
+/* A soft glow in the colour of whatever was just named, behind the tile (cross-fades on each swap). */
+.story[data-kind="morning"] .sm-aura { position: absolute; left: 50%; top: 50%; width: calc(var(--sm-hero) * 1.9); height: calc(var(--sm-hero) * 1.9); margin: calc(var(--sm-hero) * -0.95) 0 0 calc(var(--sm-hero) * -0.95); border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--c, var(--accent)) 40%, transparent), transparent); opacity: 0.9; transition: opacity 0.5s; }
+.story[data-kind="morning"].st-dark .sm-aura { background: radial-gradient(closest-side, color-mix(in oklab, var(--c, var(--accent)) 34%, transparent), transparent); }
+.story[data-kind="morning"] .sm-aura.is-out { opacity: 0; }
+.story[data-kind="morning"] .sm-aura.is-in { animation: sm-fade calc(0.6s / var(--st-speed)) linear both; }
+/* The ring around the tile fills as the sentence is read (the voice's progress). */
+.story[data-kind="morning"] .sm-hero-ring { position: absolute; inset: -14px; border-radius: calc(var(--sm-hero) * 0.34); pointer-events: none;
+  background: conic-gradient(from 0deg, color-mix(in oklab, var(--c, var(--accent)) 78%, var(--sm-ink)) calc(var(--sm-p) * 1turn), color-mix(in oklab, var(--sm-ink) 11%, transparent) 0);
+  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); padding: 2px; transition: --sm-p 0.35s linear; }
+.story[data-kind="morning"] .sm-face { position: absolute; inset: 0; display: grid; place-items: center; }
+.story[data-kind="morning"] .sm-face.is-in { animation: sm-face-in calc(0.56s / var(--st-speed)) var(--sm-pop) both; }
+.story[data-kind="morning"] .sm-face.is-out { animation: sm-face-out calc(0.4s / var(--st-speed)) var(--sm-ease) both; }
+@keyframes sm-face-in { from { opacity: 0; transform: translateY(10px) scale(0.84); } }
+@keyframes sm-face-out { to { opacity: 0; transform: translateY(-8px) scale(1.06); } }
+.story[data-kind="morning"] .st-scene .sm-face .anim-scene { --as-size: var(--sm-hero); border-radius: calc(var(--sm-hero) * 0.27); box-shadow: var(--sm-gshadow); animation: none; }
+.story[data-kind="morning"].st-dark .st-scene .sm-face .anim-scene { background: color-mix(in oklab, var(--c, var(--accent)) 24%, rgba(22, 26, 54, 0.78)); --as-ink: #e9ecff; }
+.story[data-kind="morning"] .sm-hero-av .avatar { width: var(--sm-hero); height: var(--sm-hero); font-size: calc(var(--sm-hero) * 0.36); box-shadow: 0 0 0 6px color-mix(in oklab, var(--c) 26%, transparent), var(--sm-gshadow); }
+.story[data-kind="morning"] .sm-hero-ic { display: grid; place-items: center; width: var(--sm-hero); height: var(--sm-hero); border-radius: calc(var(--sm-hero) * 0.27); background: var(--sm-glass2); box-shadow: var(--sm-gshadow); color: var(--accent); }
+.story[data-kind="morning"] .sm-hero-ic .i { width: 46%; height: 46%; stroke-width: 1.6; }
+.story[data-kind="morning"] .sm-hero-ic.is-wx .i.rain { color: var(--info); } .story[data-kind="morning"] .sm-hero-ic.is-wx .i.sun { color: #f3a712; }
+.story[data-kind="morning"] .sm-hero-lbl { max-width: calc(var(--sm-hero) + 80px); min-height: 1.4em; font-size: clamp(13px, 1.1vw, 16px); font-weight: 600; letter-spacing: -0.01em; color: var(--sm-ink2); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.story[data-kind="morning"] .sm-hero-lbl.is-in { animation: sm-rise calc(0.4s / var(--st-speed)) var(--sm-ease) both; }
+
+/* ---------- cards that light up as the narration names them (_smFollowSay) ---------- */
+.story[data-kind="morning"] :is(.sm-pc, .sm-fc, .sm-cd, .sm-mon, .sm-idea, .sm-tc, .sm-next, .sm-gap, .sm-lg) { transition: opacity 0.45s var(--sm-ease), translate 0.45s var(--sm-ease), box-shadow 0.45s var(--sm-ease); }
+.story[data-kind="morning"] .sm-naming :is(.sm-pc, .sm-fc, .sm-cd, .sm-mon, .sm-idea):not(.is-named) { opacity: 0.6; }
+.story[data-kind="morning"] :is(.sm-pc, .sm-fc, .sm-cd, .sm-mon, .sm-idea, .sm-tc).is-named { translate: 0 -6px; box-shadow: var(--sm-gshadow), 0 0 0 2px color-mix(in oklab, var(--c, var(--accent)) 72%, transparent), 0 22px 44px -18px color-mix(in oklab, var(--c, var(--accent)) 60%, transparent); }
+.story[data-kind="morning"] .sm-next.is-named { translate: 0 -2px; box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 40%, transparent); }
+.story[data-kind="morning"] .sm-gap.is-named { box-shadow: 0 0 0 3px color-mix(in oklab, var(--success) 45%, transparent); }
+.story[data-kind="morning"] .sm-lg.is-named { box-shadow: 0 0 0 2px color-mix(in oklab, var(--success) 55%, transparent); }
+
+/* ---------- 3. the shape of today ---------- */
+.story[data-kind="morning"] .sm-next { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px 0 12px; border-radius: 999px; background: var(--sm-inv); color: var(--sm-inv-fg); font-size: 16px; font-weight: 600; white-space: nowrap; flex: none; }
+.story[data-kind="morning"] .sm-next .lv { width: 8px; height: 8px; border-radius: 50%; background: #3dd68c; box-shadow: 0 0 0 4px rgba(61, 214, 140, 0.25); }
+.story[data-kind="morning"] .sm-next .avatar { box-shadow: 0 0 0 2px var(--sm-inv); }
+.story[data-kind="morning"] .sm-next .cd { font-weight: 500; opacity: 0.8; margin-left: 6px; }
+.story[data-kind="morning"] .sm-allday { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.story[data-kind="morning"] .sm-allday .lb { font-size: 12px; font-weight: 650; color: var(--sm-ink2); text-transform: uppercase; letter-spacing: 0.08em; margin-right: 4px; }
+.story[data-kind="morning"] .sm-track { position: relative; --T: 140px; height: 300px; margin-top: 8px; }
+.story[data-kind="morning"] .sm-trk, .story[data-kind="morning"] .sm-past { position: absolute; left: 0; top: var(--T); height: 6px; margin-top: -3px; border-radius: 6px; transform-origin: 0 50%; }
+.story[data-kind="morning"] .sm-trk { right: 0; background: var(--sm-line); }
+.story[data-kind="morning"] .sm-past { background: color-mix(in oklab, var(--sm-ink) 36%, transparent); }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) :is(.sm-trk, .sm-past) { animation: sm-draw calc(0.8s / var(--st-speed)) var(--sm-ease) calc(0.26s / var(--st-speed)) both; }
+@keyframes sm-draw { from { transform: scaleX(0); } }
+.story[data-kind="morning"] .sm-blk { position: absolute; top: var(--T); height: 12px; margin-top: -6px; border-radius: 6px; background: var(--c); }
+.story[data-kind="morning"] .sm-blk.is-past { opacity: 0.5; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-blk { animation: sm-fade calc(0.5s / var(--st-speed)) linear calc(0.7s / var(--st-speed)) backwards; }
+.story[data-kind="morning"] .sm-gap { position: absolute; top: var(--T); height: 18px; margin-top: -9px; border-radius: 6px; border: 1px solid color-mix(in oklab, var(--success) 60%, transparent);
+  background: repeating-linear-gradient(-45deg, color-mix(in oklab, var(--success) 40%, transparent) 0 3px, transparent 3px 7px); }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-gap { animation: sm-fade calc(0.6s / var(--st-speed)) linear calc(0.9s / var(--st-speed)) both; }
+.story[data-kind="morning"] .sm-gap span { position: absolute; top: 33px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 650; color: var(--success-ink); white-space: nowrap; }
+.story[data-kind="morning"] .sm-tick { position: absolute; top: calc(var(--T) + 10px); transform: translateX(-50%); font-size: 12px; color: var(--sm-ink3); }
+.story[data-kind="morning"] .sm-now { position: absolute; top: calc(var(--T) - 21px); width: 2px; height: 42px; margin-left: -1px; border-radius: 2px; background: var(--sm-ink); z-index: 1; }
+.story[data-kind="morning"] .sm-now::after { content: ""; position: absolute; left: -5px; top: 15px; width: 12px; height: 12px; border-radius: 50%; background: var(--sm-ink); }
+.story[data-kind="morning"] .sm-now .pulse { position: absolute; left: -11px; top: 9px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--sm-ink); opacity: 0; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-now .pulse { animation: sm-pulse 1.8s var(--sm-ease) 1s infinite; }
+@keyframes sm-pulse { from { transform: scale(0.5); opacity: 0.7; } to { transform: scale(1.9); opacity: 0; } }
+html.anim-paused .story .sm-now .pulse { animation-play-state: paused; }
+.story[data-kind="morning"] .sm-slot { position: absolute; width: 228px; }
+.story[data-kind="morning"] .sm-conn { position: absolute; width: 2px; margin-left: -1px; background: color-mix(in oklab, var(--c) 70%, transparent); }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-conn { animation: sm-fade calc(0.4s / var(--st-speed)) linear both; animation-delay: calc((560ms + var(--i) * 90ms) / var(--st-speed)); }
+.story[data-kind="morning"] .sm-tc { display: flex; align-items: flex-start; gap: 12px; height: 96px; padding: 12px; border-radius: 18px; overflow: hidden; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-track .sm-tc { animation: sm-rise calc(0.56s / var(--st-speed)) var(--sm-ease) both; animation-delay: calc((560ms + var(--i) * 90ms) / var(--st-speed)); }
+.story[data-kind="morning"] .sm-tc .anim-scene { --as-size: var(--scene-md); border-radius: 14px; }
+.story[data-kind="morning"] .sm-tc .tx { min-width: 0; display: flex; flex-direction: column; }
+.story[data-kind="morning"] .sm-tc .tm { font-size: 12px; font-weight: 600; color: var(--sm-ink2); margin-bottom: 2px; }
+.story[data-kind="morning"] .sm-tc b { font-size: 15px; font-weight: 620; letter-spacing: -0.012em; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.story[data-kind="morning"] .sm-tc .wh { display: flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 12px; color: var(--sm-ink2); min-width: 0; }
+.story[data-kind="morning"] .sm-tc .wh span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.story[data-kind="morning"] .sm-tc .wh .i { width: 13px; height: 13px; flex: none; }
+.story[data-kind="morning"] .sm-tc.is-next { box-shadow: var(--sm-gshadow), 0 0 0 2px var(--accent); }
+.story[data-kind="morning"] .sm-tc.is-past { opacity: 0.62; }
+.story[data-kind="morning"] .sm-more { position: absolute; right: 0; font-size: 12px; font-weight: 650; color: var(--sm-ink2); }
+.story[data-kind="morning"] .sm-tl-list { display: none; list-style: none; margin: 0; padding: 0; }
+/* An open day (only all-day items): the all-day things and the free stretch carry the beat. */
+.story[data-kind="morning"] .sm-day.is-open .sm-allday { gap: 10px; margin: 6px 0 18px; }
+.story[data-kind="morning"] .sm-day.is-open .sm-allday .sm-pill { height: 44px; padding: 0 18px 0 8px; gap: 10px; font-size: 17px; font-weight: 600; border-radius: 16px; box-shadow: var(--sm-gshadow); }
+.story[data-kind="morning"] .sm-day.is-open .sm-allday .sm-pill .anim-scene { --as-size: var(--scene-sm); border-radius: 10px; }
+.story[data-kind="morning"] .sm-day.is-open .sm-gap { height: 26px; margin-top: -13px; border-radius: 9px; }
+.story[data-kind="morning"] .sm-day.is-open .sm-gap span { top: 40px; font-size: 15px; }
+
+/* ---------- 4. people today ---------- */
+.story[data-kind="morning"] .sm-pcs { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 16px; }
+.story[data-kind="morning"] .sm-pcs[style*="--n:1"] { grid-template-columns: minmax(0, 420px); }
+.story[data-kind="morning"] .sm-pcs[style*="--n:2"] { grid-template-columns: repeat(2, minmax(0, 380px)); }
+.story[data-kind="morning"] .sm-pc { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: min(330px, 44vh); padding: 20px 18px 18px; border-radius: 24px; }
+.story[data-kind="morning"] .sm-pc.tone-owe { background: color-mix(in oklab, var(--warning) 14%, var(--sm-glass)); }
+.story[data-kind="morning"] .sm-pc.tone-cel { background: color-mix(in oklab, var(--sw-pink) 14%, var(--sm-glass)); }
+.story[data-kind="morning"] .sm-pc-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.story[data-kind="morning"] .sm-pc-av .avatar { box-shadow: 0 0 0 4px color-mix(in oklab, var(--c) 26%, transparent); }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-pc-av { display: inline-block; animation: sm-pop-av calc(0.5s / var(--st-speed)) var(--sm-pop) both; animation-delay: calc((240ms + var(--i) * 70ms) / var(--st-speed)); }
+@keyframes sm-pop-av { from { opacity: 0; transform: scale(0.6); } }
+.story[data-kind="morning"] .sm-pc .nm { display: flex; flex-direction: column; min-width: 0; }
+.story[data-kind="morning"] .sm-pc .nm b { font-size: 19px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.story[data-kind="morning"] .sm-pc .nm span { font-size: 13px; color: var(--sm-ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.story[data-kind="morning"] .sm-tag { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; background: color-mix(in oklab, var(--sm-ink) 9%, transparent); }
+.story[data-kind="morning"] .tone-owe .sm-tag { background: var(--warning); color: #3a2400; }
+.story[data-kind="morning"] .tone-cel .sm-tag { background: var(--sw-pink); color: #fff; }
+.story[data-kind="morning"] .sm-tag .i { width: 12px; height: 12px; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .tone-owe .sm-tag { animation: sm-nudge 0.5s ease-in-out calc(0.9s / var(--st-speed)) 2; }
+@keyframes sm-nudge { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.story[data-kind="morning"] .sm-pc-when { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 14px; background: color-mix(in oklab, var(--sm-ink) 5%, transparent); min-width: 0; }
+.story[data-kind="morning"] .sm-pc-when > div { display: flex; flex-direction: column; min-width: 0; }
+.story[data-kind="morning"] .sm-pc-when b { font-size: 14px; font-weight: 620; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.story[data-kind="morning"] .sm-pc-when small { font-size: 12px; color: var(--sm-ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.story[data-kind="morning"] .sm-pc-last { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--sm-ink2); }
+.story[data-kind="morning"] .sm-pc-last .i { width: 14px; height: 14px; flex: none; }
+.story[data-kind="morning"] .sm-pc-why { font-size: 15px; line-height: 1.45; letter-spacing: -0.008em; }
+.story[data-kind="morning"] .sm-pc-why .lb { display: block; margin-bottom: 4px; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sm-ink3); }
+.story[data-kind="morning"] .sm-pc-why p { margin: 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.story[data-kind="morning"] .sm-pc-why q { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 6px; font-size: 13px; line-height: 1.4; color: var(--sm-ink2); font-style: italic; quotes: "“" "”"; }
+.story[data-kind="morning"] .sm-pc-why small { display: block; margin-top: 6px; font-size: 12px; color: var(--sm-ink3); }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-pc-why { animation: sm-fade calc(0.5s / var(--st-speed)) linear both; animation-delay: calc((460ms + var(--i) * 70ms) / var(--st-speed)); }
+.story[data-kind="morning"] .sm-pc-ft { margin-top: auto; display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.story[data-kind="morning"] .sm-pc-ft .sm-btn.is-pri { max-width: 100%; min-width: 0; }
+.story[data-kind="morning"] .sm-foot { display: flex; align-items: center; gap: 8px; margin: 16px 0 0; font-size: 14px; color: var(--sm-ink2); }
+.story[data-kind="morning"] .sm-foot .i { width: 15px; height: 15px; }
+
+/* ---------- 5. focus ---------- */
+.story[data-kind="morning"] .sm-fcs { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 16px; align-items: stretch; }
+.story[data-kind="morning"] .sm-fcs[style*="--n:2"] { grid-template-columns: 1.2fr 1fr; }
+.story[data-kind="morning"] .sm-fcs[style*="--n:1"] { grid-template-columns: minmax(0, 620px); justify-content: center; }
+.story[data-kind="morning"] .sm-fc { position: relative; display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: min(380px, 50vh); padding: 22px 22px 20px 26px; border-radius: 24px; overflow: hidden; }
+.story[data-kind="morning"] .sm-fc::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--c); }
+.story[data-kind="morning"] .sm-fc .hd { display: flex; align-items: center; gap: 12px; }
+.story[data-kind="morning"] .sm-fc .hd .sp { flex: 1; }
+.story[data-kind="morning"] .sm-fc .n { font-size: 60px; line-height: 0.8; font-weight: 250; letter-spacing: -0.05em; color: var(--sm-ink3); }
+.story[data-kind="morning"] .sm-fc .anim-scene { --as-size: var(--scene-md); }
+.story[data-kind="morning"] .sm-fc .ti { font-size: clamp(19px, 1.8vw, 26px); line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.story[data-kind="morning"] .sm-fc .meta { display: flex; align-items: baseline; gap: 8px; font-size: 13px; color: var(--sm-ink2); line-height: 1.4; }
+.story[data-kind="morning"] .sm-fc .meta .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; transform: translateY(-1px); }
+.story[data-kind="morning"] .sm-ring { position: relative; width: 46px; height: 46px; flex: none; display: grid; place-items: center; }
+.story[data-kind="morning"] .sm-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.story[data-kind="morning"] .sm-ring circle { fill: none; stroke-width: 4; }
+.story[data-kind="morning"] .sm-ring .bg { stroke: var(--sm-line); }
+.story[data-kind="morning"] .sm-ring .fg { stroke: var(--c); stroke-linecap: round; stroke-dasharray: var(--C); stroke-dashoffset: var(--off); }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-ring .fg { animation: sm-ring calc(0.7s / var(--st-speed)) var(--sm-ease) calc(0.6s / var(--st-speed)) both; }
+@keyframes sm-ring { from { stroke-dashoffset: var(--C); } }
+.story[data-kind="morning"] .sm-ring b { font-size: 11px; font-weight: 700; }
+.story[data-kind="morning"] .sm-fc .subs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.story[data-kind="morning"] .sm-fc .subs li { display: flex; align-items: center; gap: 10px; font-size: 15px; letter-spacing: -0.008em; min-width: 0; }
+.story[data-kind="morning"] .sm-fc .subs li > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.story[data-kind="morning"] .sm-fc .subs .cb { width: 18px; height: 18px; border-radius: 6px; flex: none; display: grid; place-items: center; border: 1.6px solid color-mix(in oklab, var(--sm-ink) 40%, transparent); box-sizing: border-box; }
+.story[data-kind="morning"] .sm-fc .subs .cb .i { width: 12px; height: 12px; stroke-width: 3; }
+.story[data-kind="morning"] .sm-fc .subs li.d { color: var(--sm-ink3); text-decoration: line-through; text-decoration-color: color-mix(in oklab, var(--sm-ink) 30%, transparent); }
+.story[data-kind="morning"] .sm-fc .subs li.d .cb { background: var(--c); border-color: var(--c); color: #fff; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-fc .subs li.d .cb { animation: sm-pop calc(0.38s / var(--st-speed)) var(--sm-pop) both; animation-delay: calc((700ms + var(--k) * 60ms) / var(--st-speed)); }
+.story[data-kind="morning"] .sm-fc .subs li.nx { font-weight: 600; }
+.story[data-kind="morning"] .sm-fc .subs li.nx .cb { border-color: var(--c); box-shadow: 0 0 0 3px color-mix(in oklab, var(--c) 25%, transparent); }
+.story[data-kind="morning"] .sm-fc .subs li.more { color: var(--sm-ink3); font-size: 13px; }
+.story[data-kind="morning"] .sm-fc .ft { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.story[data-kind="morning"] .sm-folder { display: inline-flex; align-items: center; gap: 8px; min-width: 0; height: 34px; padding: 0 12px 0 10px; border-radius: 12px; border: 0; background: color-mix(in oklab, var(--sm-ink) 7%, transparent); color: var(--sm-ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.story[data-kind="morning"] .sm-folder:hover { background: color-mix(in oklab, var(--sm-ink) 12%, transparent); }
+.story[data-kind="morning"] .sm-folder .i { color: var(--c); width: 15px; height: 15px; flex: none; }
+.story[data-kind="morning"] .sm-folder span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- 6. deadlines, countdowns, money ---------- */
+.story[data-kind="morning"] .sm-ah { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; align-items: stretch; }
+.story[data-kind="morning"] .sm-ahead.no-money .sm-ah { grid-template-columns: minmax(0, 1fr); }
+.story[data-kind="morning"] .sm-ahead.no-cds .sm-ah { grid-template-columns: minmax(0, 560px); justify-content: center; }
+.story[data-kind="morning"] .sm-cds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.story[data-kind="morning"] .sm-cd { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 22px 24px; border-radius: 24px; overflow: hidden; }
+.story[data-kind="morning"] .sm-cd.is-hero { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 28px; }
+.story[data-kind="morning"] .sm-cds.solo .sm-cd.is-hero { min-height: min(300px, 40vh); }
+.story[data-kind="morning"] .sm-cd .big { display: flex; align-items: baseline; flex: none; }
+.story[data-kind="morning"] .sm-cd .big .num { font-size: clamp(56px, min(7vw, 12vh), 104px); line-height: 0.86; font-weight: 250; letter-spacing: -0.06em; font-variant-numeric: tabular-nums; }
+.story[data-kind="morning"] .sm-cd.is-hero .big .num { font-size: clamp(84px, min(11.6vw, 19vh), 168px); }
+/* "Today" instead of a number: a word needs less size to carry (and must clear the corner scene). */
+.story[data-kind="morning"] .sm-cd .big .num.is-word { font-size: clamp(36px, min(4.2vw, 7vh), 60px); letter-spacing: -0.04em; font-weight: 300; padding-right: 54px; }
+.story[data-kind="morning"] .sm-cd.is-hero .big .num.is-word { font-size: clamp(56px, min(7vw, 12vh), 104px); padding-right: 0; }
+.story[data-kind="morning"] .sm-cd .unit { margin-left: 8px; font-size: clamp(16px, 1.6vw, 22px); font-weight: 550; letter-spacing: -0.02em; color: var(--sm-ink2); }
+.story[data-kind="morning"] .sm-cd .tx { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; padding-right: 54px; }
+.story[data-kind="morning"] .sm-cd .tx b { font-size: 17px; font-weight: 620; letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.story[data-kind="morning"] .sm-cd.is-hero .tx b { font-size: clamp(17px, 1.6vw, 22px); }
+.story[data-kind="morning"] .sm-cd .tx span { font-size: 13px; color: var(--sm-ink2); }
+.story[data-kind="morning"] .sm-cd .bar { position: relative; display: block; height: 6px; margin-top: 8px; border-radius: 6px; overflow: hidden; background: var(--sm-line); }
+.story[data-kind="morning"] .sm-cd .bar i { position: absolute; inset: 0; border-radius: 6px; background: var(--accent); transform-origin: 0 50%; transform: scaleX(var(--p, 0)); }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) :is(.sm-cd .bar i, .sm-mon .bud b) { animation: sm-draw calc(0.7s / var(--st-speed)) var(--sm-ease) calc(0.5s / var(--st-speed)) both; }
+.story[data-kind="morning"] .sm-cd.is-urgent { background: color-mix(in oklab, var(--warning) 16%, var(--sm-glass)); }
+.story[data-kind="morning"] .sm-cd.is-urgent .big .num { color: color-mix(in oklab, var(--warning-ink) 80%, var(--sm-ink)); }
+.story[data-kind="morning"].st-dark .sm-cd.is-urgent .big .num { color: var(--warning-ink); }
+.story[data-kind="morning"] .sm-cd .ic { position: absolute; right: 18px; top: 18px; }
+.story[data-kind="morning"] .sm-cd .ic .anim-scene { --as-size: var(--scene-md); }
+.story[data-kind="morning"] .sm-mon { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 22px 24px; border-radius: 24px; }
+.story[data-kind="morning"] .sm-mon .left { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.story[data-kind="morning"] .sm-mon .left b { font-size: clamp(36px, 3.6vw, 52px); line-height: 1; font-weight: 300; letter-spacing: -0.045em; font-variant-numeric: tabular-nums; }
+.story[data-kind="morning"] .sm-mon .left small { font-size: 15px; font-weight: 550; color: var(--sm-ink2); }
+.story[data-kind="morning"] .sm-mon .bud { position: relative; height: 10px; border-radius: 10px; background: var(--sm-line); }
+.story[data-kind="morning"] .sm-mon .bud b { position: absolute; inset: 0; border-radius: 10px; background: linear-gradient(90deg, var(--sw-teal), var(--sw-green)); transform-origin: 0 50%; transform: scaleX(var(--p, 0)); }
+.story[data-kind="morning"] .sm-mon .bud i { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--sm-ink); }
+.story[data-kind="morning"] .sm-mon .ln { display: flex; align-items: center; gap: 10px; padding: 9px 0 0; border-top: 1px solid var(--sm-line); font-size: 14px; min-width: 0; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-mon .ln { animation: sm-rise calc(0.5s / var(--st-speed)) var(--sm-ease) both; animation-delay: calc((900ms + var(--k) * 60ms) / var(--st-speed)); }
+.story[data-kind="morning"] .sm-mon .ln .v { margin-left: auto; font-weight: 650; white-space: nowrap; }
+.story[data-kind="morning"] .sm-mon .ln .v.is-good { color: var(--success-ink); }
+.story[data-kind="morning"] .sm-mon .stale { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sm-ink3); }
+.story[data-kind="morning"] .sm-mon .stale .i { width: 13px; height: 13px; }
+
+/* ---------- 7. ideas + Let's go ---------- */
+.story[data-kind="morning"] .sm-ideas { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 16px; }
+.story[data-kind="morning"] .sm-ideas[style*="--n:1"] { grid-template-columns: minmax(0, 460px); justify-content: center; }
+.story[data-kind="morning"] .sm-idea { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 22px; border-radius: 24px; }
+.story[data-kind="morning"] .sm-idea > .anim-scene { --as-size: var(--scene-lg); }
+.story[data-kind="morning"] .sm-wxt { display: grid; place-items: center; width: var(--scene-lg); height: var(--scene-lg); border-radius: calc(var(--scene-lg) * 0.28); background: color-mix(in oklab, var(--info) 14%, var(--sm-glass2)); }
+.story[data-kind="morning"] .sm-wxt .i { width: 60%; height: 60%; stroke-width: 1.7; color: var(--info); }
+.story[data-kind="morning"] .sm-idea .k { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sm-ink2); }
+.story[data-kind="morning"] .sm-idea .k .i { width: 14px; height: 14px; }
+.story[data-kind="morning"] .sm-idea .t { font-size: clamp(17px, 1.6vw, 22px); line-height: 1.24; font-weight: 640; letter-spacing: -0.022em; overflow-wrap: anywhere; }
+.story[data-kind="morning"] .sm-idea .d { margin: 0; font-size: 14px; line-height: 1.5; color: var(--sm-ink2); }
+.story[data-kind="morning"] .sm-idea .ft { margin-top: auto; display: flex; gap: 8px; }
+.story[data-kind="morning"] .sm-close-h { margin: 0 0 8px; text-align: center; font-size: clamp(34px, min(5vw, 9vh), 72px); line-height: 1.06; font-weight: 680; letter-spacing: -0.036em; text-wrap: balance; }
+.story[data-kind="morning"] .sm-letsgo { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: clamp(18px, 4vh, 34px); }
+.story[data-kind="morning"] .sm-gobtn { position: relative; display: inline-flex; align-items: center; gap: 12px; height: 60px; padding: 0 30px 0 34px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--sm-inv); color: var(--sm-inv-fg); font: inherit; font-size: 20px; font-weight: 650; letter-spacing: -0.015em; box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.45); transition: transform 0.2s var(--sm-ease); }
+.story[data-kind="morning"] .sm-gobtn:hover { transform: scale(1.03); }
+.story[data-kind="morning"] .sm-gobtn .i { width: 20px; height: 20px; }
+.story[data-kind="morning"] .sm-gobtn::after { content: ""; position: absolute; inset: -6px; border-radius: inherit; box-shadow: 0 0 0 6px color-mix(in oklab, var(--accent) 45%, transparent); opacity: 0; pointer-events: none; }
+.story[data-kind="morning"] .st-frame:is(.is-enter, .is-hold) .sm-gobtn::after { animation: sm-glow 1.2s ease-in-out calc(0.9s / var(--st-speed)) 1 both; }
+@keyframes sm-glow { 50% { opacity: 1; } }
+
+/* ---------- narrow windows (phones) ---------- */
+@media (max-width: 700px) {
+  .story[data-kind="morning"] { --sm-top: 62px; --sm-bot: 150px; --sm-x: 16px; --sm-hero: var(--scene-xl, 88px); }
+  .story[data-kind="morning"] .sky-cloud { opacity: 0.45; }
+  /* A phone has no spare sky: after the greeting the sun sets out of the way of the buttons and the text. */
+  .story[data-kind="morning"].is-playing:not([data-beat="intro"]) .st-sky .sky-sun { transform: translate(30px, -10px) scale(0.5); opacity: 0; }
+  .story[data-kind="morning"].is-playing:not([data-beat="intro"]) .st-sky .sky-cloud:not(.near),
+  .story[data-kind="morning"].st-dark.is-playing:not([data-beat="intro"]) .st-sky .sky-cloud:not(.near) { opacity: 0.1; }
+  .story[data-kind="morning"] .st-cards .st-frame.sm-b { align-content: start; }
+  .story[data-kind="morning"] .sm { transform-origin: 50% 0; }
+  .story[data-kind="morning"] .sm-head { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+  .story[data-kind="morning"] .sm-h1 { font-size: clamp(24px, 7.6vw, 32px); }
+  .story[data-kind="morning"] .sm-glass { border-radius: 18px; }
+  /* greeting: the temperature leads */
+  .story[data-kind="morning"] .sm-greet, .story[data-kind="morning"] .sm-greet.no-wx { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .story[data-kind="morning"] .sm-wx { order: -1; align-items: flex-start; text-align: left; }
+  .story[data-kind="morning"] .sm-temp { font-size: clamp(88px, 30vw, 128px); margin: 0 0 0 -0.04em; }
+  .story[data-kind="morning"] .sm-cond { margin-top: 6px; font-size: 19px; }
+  .story[data-kind="morning"] .sm-hero-h { font-size: clamp(34px, 11vw, 44px); }
+  .story[data-kind="morning"] .sm-g-scene { order: -1; }
+  .story[data-kind="morning"] .sm-g-scene .anim-scene { --as-size: var(--scene-xl); }
+  .story[data-kind="morning"] .sm-hours { grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 10px 4px 6px; margin-top: 2px; }
+  .story[data-kind="morning"] .sm-hours .sm-h:nth-child(n+8) { display: none; }
+  /* sentences: centred, the hero under them */
+  .story[data-kind="morning"] .st-type .st-frame[data-type="m-say"] { align-content: center; padding: calc(var(--sm-top) + 10px) var(--sm-x) calc(118px + var(--sm-hero)); }
+  .story[data-kind="morning"] .sm-say { font-size: clamp(26px, 9.4vw, 38px); line-height: 1.2; }
+  .story[data-kind="morning"] .sm-say.is-mid { font-size: clamp(24px, 8.2vw, 33px); }
+  .story[data-kind="morning"] .sm-say.is-long { font-size: clamp(21px, 7vw, 28px); }
+  .story[data-kind="morning"] .sm-trail p { font-size: 15px; }
+  .story[data-kind="morning"] .sm-trail p:not(:last-child) { display: none; }
+  .story[data-kind="morning"] .st-scene .st-frame[data-type="m-say"] { place-items: end start; padding: 0 var(--sm-x) 104px; }
+  .story[data-kind="morning"] .sm-herobox { flex-direction: row; gap: 22px; }
+  .story[data-kind="morning"] .sm-hero-ring { inset: -7px; border-radius: calc(var(--sm-hero) * 0.32); }
+  .story[data-kind="morning"] .sm-aura { left: calc(var(--sm-hero) / 2); }
+  .story[data-kind="morning"] .sm-hero-lbl { max-width: 60vw; text-align: left; }
+  /* timeline: a list in time order */
+  .story[data-kind="morning"] .sm-track { display: none; }
+  .story[data-kind="morning"] .sm-tl-list { display: flex; flex-direction: column; gap: 8px; }
+  .story[data-kind="morning"] .sm-tl-list .sm-tc { height: auto; padding: 10px; }
+  .story[data-kind="morning"] .sm-tl-list .sm-tc .anim-scene { --as-size: var(--scene-sm); border-radius: 11px; }
+  .story[data-kind="morning"] .sm-lg { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--success-ink);
+    background: color-mix(in oklab, var(--success) 12%, transparent); border: 1px solid color-mix(in oklab, var(--success) 35%, transparent); }
+  .story[data-kind="morning"] .sm-lg .i { width: 14px; height: 14px; }
+  .story[data-kind="morning"] .sm-next { height: 38px; font-size: 14px; padding: 0 14px 0 10px; }
+  .story[data-kind="morning"] .sm-tl-list li:nth-child(n+7) { display: none; }
+  /* people, focus, ideas: compact rows */
+  .story[data-kind="morning"] .sm-pcs, .story[data-kind="morning"] .sm-pcs[style] { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .story[data-kind="morning"] .sm-pc { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 4px; min-height: 0; padding: 12px 14px; }
+  .story[data-kind="morning"] .sm-pc-top { display: contents; }
+  .story[data-kind="morning"] .sm-pc-av { grid-row: span 3; align-self: start; }
+  .story[data-kind="morning"] .sm-pc-av .avatar { width: 44px; height: 44px; font-size: 16px; }
+  .story[data-kind="morning"] .sm-pc .nm b { font-size: 16px; } .story[data-kind="morning"] .sm-pc .nm span { display: none; }
+  .story[data-kind="morning"] .sm-pc-when, .story[data-kind="morning"] .sm-pc-last, .story[data-kind="morning"] .sm-pc-why { grid-column: 2; }
+  .story[data-kind="morning"] .sm-pc-when { padding: 0; background: none; }
+  .story[data-kind="morning"] .sm-pc-when .anim-scene { --as-size: var(--scene-xs); }
+  .story[data-kind="morning"] .sm-pc-why { font-size: 13px; line-height: 1.4; } .story[data-kind="morning"] .sm-pc-why .lb { display: none; }
+  .story[data-kind="morning"] .sm-pc-why p { -webkit-line-clamp: 2; }
+  .story[data-kind="morning"] .sm-pc .sm-tag, .story[data-kind="morning"] .sm-pc-ft, .story[data-kind="morning"] .sm-foot { display: none; }
+  .story[data-kind="morning"] .sm-fcs, .story[data-kind="morning"] .sm-fcs[style] { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .story[data-kind="morning"] .sm-fc { min-height: 0; padding: 14px 16px 14px 20px; gap: 8px; }
+  .story[data-kind="morning"] .sm-fc .n { font-size: 34px; } .story[data-kind="morning"] .sm-fc .ti { font-size: 18px; }
+  .story[data-kind="morning"] .sm-fc .hd .anim-scene { --as-size: var(--scene-sm); }
+  .story[data-kind="morning"] .sm-fc:not(.is-first) { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; }
+  .story[data-kind="morning"] .sm-fc:not(.is-first) .hd .anim-scene, .story[data-kind="morning"] .sm-fc:not(.is-first) .hd .sp { display: none; }
+  .story[data-kind="morning"] .sm-fc:not(.is-first) :is(.subs, .meta, .ft) { display: none; }
+  .story[data-kind="morning"] .sm-fc:not(.is-first) .ti { font-size: 16px; -webkit-line-clamp: 2; }
+  .story[data-kind="morning"] .sm-fc .subs li:nth-child(n+4) { display: none; }
+  .story[data-kind="morning"] .sm-ah, .story[data-kind="morning"] .sm-ahead.no-cds .sm-ah { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .story[data-kind="morning"] .sm-cds { gap: 10px; }
+  .story[data-kind="morning"] .sm-cd { padding: 14px 16px; border-radius: 18px; }
+  .story[data-kind="morning"] .sm-cd.is-hero { gap: 14px; }
+  .story[data-kind="morning"] .sm-cd.is-hero .big .num { font-size: 72px; } .story[data-kind="morning"] .sm-cd .big .num { font-size: 46px; }
+  .story[data-kind="morning"] .sm-cd .unit { font-size: 14px; } .story[data-kind="morning"] .sm-cd .ic { display: none; } .story[data-kind="morning"] .sm-cd .tx { padding-right: 0; }
+  .story[data-kind="morning"] .sm-cd .tx b { font-size: 15px; }
+  .story[data-kind="morning"] .sm-mon { padding: 14px 16px; gap: 8px; } .story[data-kind="morning"] .sm-mon .left b { font-size: 34px; }
+  .story[data-kind="morning"] .sm-mon .ln ~ .ln { display: none; }
+  .story[data-kind="morning"] .sm-ideas, .story[data-kind="morning"] .sm-ideas[style] { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .story[data-kind="morning"] .sm-idea { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 4px; padding: 14px; }
+  .story[data-kind="morning"] .sm-idea > .anim-scene, .story[data-kind="morning"] .sm-idea > .sm-wxt { grid-row: span 3; --as-size: var(--scene-md); width: var(--scene-md); height: var(--scene-md); }
+  .story[data-kind="morning"] .sm-idea .k { display: none; } .story[data-kind="morning"] .sm-idea .t { font-size: 16px; } .story[data-kind="morning"] .sm-idea .d { font-size: 13px; line-height: 1.4; }
+  .story[data-kind="morning"] .sm-idea .ft { grid-column: 2; }
+  .story[data-kind="morning"] .sm-letsgo .sm-replay { display: none; }
+  .story[data-kind="morning"] .sm-gobtn { width: 100%; justify-content: center; height: 52px; font-size: 18px; }
+}
+/* short windows: tighter type */
+@media (max-height: 640px) and (min-width: 701px) {
+  .story[data-kind="morning"] { --sm-top: 60px; --sm-bot: 140px; }
+  .story[data-kind="morning"] .sm-pc, .story[data-kind="morning"] .sm-fc { min-height: 0; }
+}
+
+/* ---------- still: reduced motion or animations off ---------- */
+.story[data-kind="morning"].st-still .sm-say .st-ent { opacity: 1; transform: none; }
+.story[data-kind="morning"].st-still .st-sky .sky-sun, .story[data-kind="morning"].st-still .st-bg::after { transition: none; }
+.story[data-kind="morning"].st-still .sm-confetti { display: none; }

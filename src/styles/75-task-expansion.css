@@ -1,0 +1,13 @@
+/* Inline subtasks under a task row live in 20-main-tasks.css (.subtasks-inline).
+   This file keeps the task-pop styles that must come after 62-date-picker.css. */
+.people-pop { width: 280px; }
+.people-pop .input { margin-bottom: 4px; }
+.people-pop .pp-list { max-height: 300px; overflow: auto; }
+.people-pop .pop-item .chk { margin-left: auto; }
+.people-pop .pop-item .avatar.unknown { background: var(--bg-emphasis); color: var(--fg-muted); box-shadow: inset 0 0 0 1px var(--border-strong); }
+.pop-empty { padding: var(--space-3) var(--space-2); color: var(--fg-subtle); font-size: var(--text-xs); }
+.prio-item.p1 > .i { color: var(--p1); }
+.prio-item.p2 > .i { color: var(--p2); }
+.prio-item.p3 > .i { color: var(--p3); }
+.prio-item.p0 > .i { color: var(--fg-disabled); }
+.menu-point { position: fixed; }

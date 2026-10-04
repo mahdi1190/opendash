@@ -1,0 +1,10 @@
+/* Narrow screens (the shell's drawer rules are in 05-layout.css; the page
+   header adapts with container queries on #main there) */
+@media (max-width: 900px) {
+  .kanban { grid-template-columns: 1fr; }
+  .t-right .t-tags { display: none; }
+}
+@media (max-width: 640px) {
+  .t-right .t-people { display: none; }
+  .view-controls #new-task-btn > span { display: none; }
+}

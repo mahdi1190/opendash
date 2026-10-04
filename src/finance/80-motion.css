@@ -1,0 +1,17 @@
+/* @part 80-motion.css · OWNER: C3 (keyframes, entrance, reduced motion) */
+/* ---------- motion ---------- */
+@keyframes fv-spin { to { transform: rotate(360deg); } }
+@keyframes fv-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@keyframes fv-indet { 0% { left: -34%; } 100% { left: 100%; } }
+@keyframes fv-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes fv-pop { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes fv-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.fv-anim > * { animation: fv-rise .4s var(--fv-ease) both; animation-delay: calc(var(--i, 0) * 40ms); }
+.fv-kpis .fv-kpi { animation: fv-rise .4s var(--fv-ease) both; animation-delay: calc(var(--i, 0) * 30ms); }
+@media (prefers-reduced-motion: reduce) {
+  .fv *, .fv *::before, .fv *::after, .fv-layer *, .fv-layer *::before, .fv-layer *::after, .fv-head-actions * { animation: none !important; transition: none !important; }
+}
+:root.reduce-motion .fv *, :root.reduce-motion .fv-layer *, :root.reduced-motion .fv *, :root.reduced-motion .fv-layer *,
+:root[data-motion="reduced"] .fv *, :root[data-motion="reduced"] .fv-layer *, :root[data-motion="reduced"] .fv-head-actions *,
+:root[data-motion="reduced"] .fv *::before, :root[data-motion="reduced"] .fv *::after { animation: none !important; transition: none !important; }
+

@@ -1,0 +1,11 @@
+/* @part 53-balances.css · OWNER: C1 (balances) */
+/* balances */
+.fv-bals { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-3); }
+.fv-bal { background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-3); display: grid; gap: 2px; }
+.fv-bal .l { font-size: var(--text-xs); color: var(--fg-muted); font-weight: var(--weight-medium); }
+.fv-bal b { font-size: var(--text-xl); line-height: var(--lh-xl); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); font-variant-numeric: tabular-nums; }
+.fv-bal b.neg { color: var(--fg); }   /* @p1: a card balance owed is not an alarm; the minus sign says it */
+.fv-bal .mute { font-size: var(--text-2xs); }
+.fv-bal-stats .wide { grid-column: 1 / -1; }
+.fv-bal-stats b { font-variant-numeric: tabular-nums; }
+

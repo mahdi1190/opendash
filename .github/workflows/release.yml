@@ -1,0 +1,87 @@
+# Release: pushing a tag vX.Y.Z (or vX.Y.Z-pre) builds the clean export,
+# scans it, packages it, proves the zip builds and passes its tests, and
+# publishes a GitHub release with the zip, SHA256SUMS.txt and the changelog
+# section as notes. How to cut a release: docs/dev/RELEASING.md.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write        # create the release and upload its files
+  id-token: write        # build provenance (signed attestation of the zip)
+  attestations: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLAUDE_CLI_PATH: ${{ github.workspace }}/.no-claude-cli/claude
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+
+      - name: Version from the tag
+        id: v
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::tag $GITHUB_REF_NAME is not vX.Y.Z or vX.Y.Z-pre"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$version" == *-* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Privacy scan of the repository (generic rules)
+        run: node tools/privacy-scan.mjs --no-terms
+
+      - name: Export the release tree
+        run: node tools/release-export.mjs --out "$RUNNER_TEMP/opendash"
+
+      - name: Privacy scan of the export (generic rules)
+        run: node tools/privacy-scan.mjs "$RUNNER_TEMP/opendash" --no-terms
+
+      - name: Package, extract, build and test
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: >-
+          node tools/release-package.mjs
+          --from "$RUNNER_TEMP/opendash"
+          --version "$VERSION"
+          --out "$RUNNER_TEMP/dist"
+          --check-package-version
+
+      - name: Build provenance
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: ${{ runner.temp }}/dist/opendash-v${{ steps.v.outputs.version }}.zip
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
+          PRERELEASE: ${{ steps.v.outputs.prerelease }}
+        shell: bash
+        run: |
+          if [ "$PRERELEASE" = "true" ]; then latest=(--prerelease); else latest=(--latest); fi
+          gh release create "$GITHUB_REF_NAME" \
+            "$RUNNER_TEMP/dist/opendash-v$VERSION.zip" \
+            "$RUNNER_TEMP/dist/SHA256SUMS.txt" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "OpenDash v$VERSION" \
+            --notes-file "$RUNNER_TEMP/dist/release-notes.md" \
+            --verify-tag \
+            "${latest[@]}"

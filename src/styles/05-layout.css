@@ -1,0 +1,173 @@
+/* ============= APP SHELL LAYOUT =============
+   #app grid: sidebar (full height) | body. The body is the 48px top bar over
+   #content, and #content is main | detail pane. Owned by Shell/Design. */
+.app {
+  display: grid; height: 100vh; height: 100dvh;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  transition: grid-template-columns var(--m-slow) var(--m-ease-out);
+}
+.app.sidebar-collapsed, .app.focus { grid-template-columns: 0 minmax(0, 1fr); }
+.app.sidebar-collapsed .app-sidebar, .app.focus .app-sidebar { visibility: hidden; }
+.app-sidebar { grid-column: 1; grid-row: 1; }
+.app-body { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+/* ---------- top bar ---------- */
+.topbar {
+  flex: none; display: flex; align-items: center; gap: var(--space-3);
+  height: var(--topbar-h); padding: 0 var(--space-3) 0 var(--space-5); min-width: 0;
+  background: var(--bg); border-bottom: 1px solid var(--border); position: relative; z-index: 5;
+}
+.topbar .tb-menu { display: none; margin-left: calc(-1 * var(--space-2)); }
+.app.sidebar-collapsed .topbar .tb-menu, .app.focus .topbar .tb-menu { display: inline-grid; }
+.crumb { display: flex; align-items: center; gap: var(--space-1-5); color: var(--fg-muted); font-size: var(--text-sm); white-space: nowrap; min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.crumb > .i { color: var(--fg-subtle); }
+.crumb button { border: 0; background: none; padding: 2px 4px; margin: 0 -4px; border-radius: var(--radius-xs); color: inherit; cursor: pointer; font: inherit; }
+.crumb button:hover { background: var(--bg-muted); color: var(--fg); }
+.crumb .sep { color: var(--fg-disabled); }
+.crumb b { color: var(--fg); font-weight: var(--weight-medium); overflow: hidden; text-overflow: ellipsis; }
+.tb-widgets { display: flex; align-items: center; gap: var(--space-1-5); margin-left: auto; min-width: 0; flex: 1 1 auto; justify-content: flex-end; overflow: hidden; padding: 2px; }
+.tb-widgets > * { flex: none; }
+.tb-countdowns { display: flex; align-items: center; gap: var(--space-1-5); min-width: 0; }
+.tb-actions { display: flex; align-items: center; gap: 2px; padding-left: var(--space-2); border-left: 1px solid var(--border); height: 24px; flex: none; }
+.sync {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 0; background: none;
+  color: var(--fg-subtle); font-size: var(--text-xs); border-radius: var(--radius-sm); cursor: default; white-space: nowrap;
+}
+.sync:hover { background: var(--bg-muted); color: var(--fg-muted); }
+.sync .dot { width: 6px; height: 6px; --c: var(--fg-disabled); }
+.sync.sync-linked .dot, .sync.ok .dot { --c: var(--success); }
+.sync.err .dot { --c: var(--danger); }
+.sync.err { color: var(--danger-ink); }
+.sync.local .dot { --c: var(--warning); }
+
+/* countdown widget (.cdw) - the top-bar strip; the Home/Countdowns builder owns the editor */
+.cdw {
+  --c: var(--sw-indigo); position: relative; overflow: hidden;
+  display: inline-flex; align-items: center; gap: var(--space-2); height: 32px; padding: 0 var(--space-3) 0 4px;
+  border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface); white-space: nowrap;
+  box-shadow: var(--shadow-xs); cursor: pointer; font: inherit; color: var(--fg);
+  transition: border-color var(--m-fast) var(--m-ease-out), background-color var(--m-fast) var(--m-ease-out);
+}
+.cdw:hover { border-color: var(--border-strong); }
+.cdw:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.cdw-ic { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; flex: none; color: var(--c); background: color-mix(in oklab, var(--c) 14%, transparent); }
+.cdw-ic .i { width: 14px; height: 14px; stroke-width: 2; }
+.cdw-val { display: inline-flex; align-items: baseline; gap: 2px; }
+.cdw-num { font-size: var(--text-md); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; color: var(--fg); }
+.cdw-unit { font-size: var(--text-xs); color: var(--fg-subtle); font-weight: var(--weight-medium); }
+.cdw-lbl { font-size: var(--text-xs); color: var(--fg-muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.cdw-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: color-mix(in oklab, var(--c) 14%, transparent); }
+.cdw-bar i { display: block; height: 100%; width: var(--pct, 0%); background: var(--c); opacity: 0.8; }
+.cdw.tinted { background: color-mix(in oklab, var(--c) 9%, var(--surface)); border-color: color-mix(in oklab, var(--c) 28%, var(--border)); }
+.cdw.tinted .cdw-num { color: color-mix(in oklab, var(--c) 75%, var(--fg)); }
+.cdw.solid { background: var(--c); border-color: transparent; }
+.cdw.solid .cdw-num, .cdw.solid .cdw-lbl, .cdw.solid .cdw-unit { color: #fff; }
+.cdw.solid .cdw-ic { background: rgba(255,255,255,0.2); color: #fff; }
+.cdw.warn .cdw-num { color: var(--danger-ink); }
+.cdw.past { opacity: 0.6; }
+.cdw.is-dragging { transform: rotate(-2deg) translateY(-2px); box-shadow: var(--shadow-drag); z-index: 2; }
+.cdw.is-ghost { opacity: 0.35; border-style: dashed; box-shadow: none; }
+.cdw-add { width: 32px; height: 32px; border-radius: var(--radius-md); border: 1px dashed var(--border-strong); background: transparent; color: var(--fg-subtle); display: grid; place-items: center; cursor: pointer; flex: none; }
+.cdw-add:hover { color: var(--fg); background: var(--bg-muted); }
+.drop-line { width: 2px; height: 28px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
+
+/* ---------- content: main | detail ---------- */
+.content {
+  flex: 1 1 auto; min-height: 0; display: grid;
+  grid-template-columns: minmax(0, 1fr) 0;
+  /* No column transition: the pane renders at full width (motion.css slides it in). */
+}
+.content.detail-open { grid-template-columns: minmax(0, 1fr) var(--detail-w); }
+.main { overflow-y: auto; overflow-x: hidden; position: relative; min-width: 0; container-type: inline-size; container-name: main; }
+/* Task-style pages are centred: --content-max is the page INCLUDING its 40px side
+   padding (the mockups' .page), so the text column is 1000px. Home keeps the full
+   1080 for its two columns; full-width sections opt out with .main.wide */
+.main > .view-header, .main > #main-body { max-width: calc(var(--content-max) - 2 * var(--space-10)); margin-left: auto; margin-right: auto; }
+.main:has(> #main-body > .home) > .view-header, .main:has(> #main-body > .home) > #main-body { max-width: var(--content-max); }
+.main { padding: var(--space-6) var(--space-10) var(--space-16); }
+.main.wide { padding: var(--space-5) var(--space-6) var(--space-8); }
+.main.wide > .view-header, .main.wide > #main-body { max-width: none; }
+.main.bare { padding: 0; }
+.main.bare > .view-header { display: none; }
+.main.bare > #main-body { max-width: none; height: 100%; }
+
+/* ---------- page header (view-header) ---------- */
+.view-header {
+  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  min-height: 32px; margin-bottom: var(--space-4);
+}
+.view-title { font-size: var(--text-xl); line-height: var(--lh-xl); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.view-title .mute { color: var(--fg-subtle); font-weight: var(--weight-regular); font-size: var(--text-sm); letter-spacing: 0; margin-left: var(--space-3); vertical-align: 2px; }
+.view-controls { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+/* The filter is a quiet search button that opens into a field on click, on "/",
+   or while it holds text (the mockups show no field in the header). */
+.view-controls .view-filter {
+  width: var(--control-h); padding: 0; justify-content: center; gap: 0; cursor: text; overflow: hidden;
+  border-color: transparent; background: transparent; box-shadow: none;
+  transition: width var(--m-base) var(--m-ease-out), border-color var(--m-fast), box-shadow var(--m-fast), background-color var(--m-fast);
+}
+.view-controls .view-filter .i { flex: none; color: var(--fg-muted); }
+.view-controls .view-filter input { width: 0; flex: 0 0 0; opacity: 0; }
+.view-controls .view-filter:hover { background: var(--bg-muted); }
+.view-controls .view-filter:hover .i { color: var(--fg); }
+.view-controls .view-filter:focus-within,
+.view-controls .view-filter:has(input:not(:placeholder-shown)) {
+  width: 200px; padding: 0 var(--space-2); justify-content: flex-start; gap: var(--space-2);
+  background: var(--surface); border-color: var(--border); box-shadow: var(--shadow-xs);
+}
+.view-controls .view-filter:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
+.view-controls .view-filter:focus-within input,
+.view-controls .view-filter:has(input:not(:placeholder-shown)) input { flex: 1 1 auto; opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .view-controls .view-filter { transition: none; } }
+html[data-motion="reduced"] .view-controls .view-filter { transition: none; }
+/* Narrow main area (detail pane open, small window): icon-only layout switch, shorter filter */
+@container main (max-width: 920px) {
+  .view-controls .view-mode-toggle .mode > span { display: none; }
+  .view-controls .view-filter:focus-within, .view-controls .view-filter:has(input:not(:placeholder-shown)) { width: 150px; }
+}
+@container main (max-width: 720px) {
+  .view-controls #display-btn > span { display: none; }
+}
+
+/* "Skip to the page": off screen until a keyboard user tabs onto it */
+.skip-link {
+  position: fixed; top: 8px; left: 8px; z-index: calc(var(--z-palette) + 1); transform: translateY(-200%);
+  height: 32px; padding: 0 var(--space-3); border: 0; border-radius: var(--radius-sm);
+  background: var(--accent); color: var(--fg-on-accent); font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium); cursor: pointer;
+}
+.skip-link:focus-visible { transform: none; outline: none; box-shadow: var(--focus-ring); }
+#main:focus { outline: none; }
+
+/* sidebar drawer scrim (narrow screens) */
+.sb-scrim { display: none; }
+
+@media (max-width: 1180px) {
+  /* The detail pane floats over the list instead of squeezing it. */
+  .content.detail-open { grid-template-columns: minmax(0, 1fr) 0; }
+  .content.detail-open .detail-pane {
+    position: fixed; top: var(--topbar-h); right: 0; bottom: 0; width: min(var(--detail-w), 100vw);
+    z-index: var(--z-drawer); box-shadow: var(--shadow-xl);
+  }
+  .main { padding-left: var(--space-6); padding-right: var(--space-6); }
+}
+@media (max-width: 900px) {
+  .app, .app.sidebar-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+  .app-sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; width: min(var(--sidebar-w), 86vw); z-index: var(--z-drawer);
+    transform: translateX(-100%); visibility: hidden; box-shadow: var(--shadow-xl);
+    transition: transform var(--m-slow) var(--m-ease-out), visibility 0s linear var(--m-slow);
+  }
+  .app.drawer-open .app-sidebar { transform: none; visibility: visible; transition: transform var(--m-slow) var(--m-ease-out); }
+  .app.drawer-open .sb-scrim { display: block; position: fixed; inset: 0; z-index: calc(var(--z-drawer) - 1); background: var(--overlay); animation: ui-fade-in var(--m-base) var(--m-ease-out) both; }
+  .topbar { padding-left: var(--space-3); }
+  .topbar .tb-menu { display: inline-grid; }
+  .main { padding: var(--space-4) var(--space-4) var(--space-12); }
+  .view-controls { margin-left: 0; width: 100%; }
+}
+@media (max-width: 640px) {
+  .tb-widgets .cdw-lbl { display: none; }
+  .sync .sync-lbl { display: none; }
+  /* The page heading already names the view: give the top bar's width to the widgets. */
+  .topbar .crumb { display: none; }
+  .tb-widgets { justify-content: flex-start; }
+}

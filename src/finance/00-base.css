@@ -1,0 +1,32 @@
+/* @part 00-base.css · OWNER: C3 (scope variables, utilities) */
+/* ============= FINANCES VIEW (src/finance.js) =============
+   Built on the design system (src/styles/00-tokens.css, 01-components.css):
+   every colour, radius, shadow and type size is a token, so the view follows
+   light/dark and density with the rest of the app. The ECharts colours are
+   read from the same tokens in finance.js (tk()).
+   Everything is scoped under .fv (the view), .fv-head-actions (its buttons
+   in the page header) and .fv-layer (drawer, popovers, which live on <body>
+   so view transitions can't trap them). */
+.fv, .fv-layer, .fv-head-actions {
+  --fv-accent: var(--accent);
+  --fv-accent-ink: var(--accent-ink);
+  --fv-good: var(--success-ink);
+  --fv-bad: var(--danger-ink);
+  --fv-warn: var(--warning-ink);
+  --fv-warn-bg: var(--warning-soft);
+  --fv-radius: var(--radius-lg);
+  --fv-shadow: var(--shadow-xs);
+  --fv-ease: var(--m-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+  --fv-fast: var(--m-fast, 120ms);
+  --fv-base: var(--m-base, 180ms);
+}
+.fv { display: block; padding-bottom: var(--space-6); position: relative; }
+.fv .mute, .fv-layer .mute { color: var(--fg-muted); }
+.fv .num, .fv-layer .num { font-variant-numeric: tabular-nums; }
+.fv .nowrap { white-space: nowrap; }
+.fv-grow { flex: 1 1 auto; }
+.fv [hidden], .fv-layer [hidden], .fv-head-actions[hidden] { display: none !important; }
+.fv-sw { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.fv .i, .fv-layer .i, .fv-head-actions .i { width: 16px; height: 16px; flex: none; }
+.fv-spin { animation: fv-spin 0.9s linear infinite; }
+

@@ -1,0 +1,10 @@
+/* Standalone mode: hide features that require the Cowork host runtime.
+   Set by script.js at boot via document.body.classList.toggle('no-cowork'). */
+body.no-cowork .cowork-only,
+body.no-cowork #briefing-btn { display: none !important; }
+
+/* Feature gating by available backend.
+   .ai-only / .gmail-only (and [data-requires]) are no longer hidden when the
+   connection is missing: 56-connections-gate.js greys them out with a
+   tooltip and a "Connect" link (.is-gated, styles/56-connections-gate.css).
+   body.no-ai / body.no-gmail are still set at boot for code that reads them. */

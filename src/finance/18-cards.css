@@ -1,0 +1,99 @@
+/* @part 18-cards.css · OWNER: C3 (shared: grid, cards, empty, stat strip, legend, lists, scale, mini stats) */
+/* ---------- section grid + cards ---------- */
+.fv-panel { transition: opacity var(--fv-base); }
+/* Refreshing (sync, live update): the old render stays, dimmed, with "Updating…" in the bar. */
+.fv-refreshing .fv-panel, .fv-refreshing .fv-kpis { opacity: 0.55; }/* Cards in one row share a height (stretch), so the grid reads as tidy rows
+   instead of a ragged masonry; content stays top-aligned inside. */
+.fv-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); align-items: stretch; }
+.fv-card {
+  grid-column: span var(--span, 12); min-width: 0; position: relative;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--fv-radius); box-shadow: var(--fv-shadow);
+  padding: var(--space-4) var(--space-5); display: flex; flex-direction: column;
+  transition: border-color var(--fv-base);
+}
+.fv-card[hidden] { display: none; }
+.fv-card-h { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2) var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-3); }
+.fv-card-t { min-width: 0; flex: 1 1 200px; }
+.fv-card-t h3 { font-size: var(--text-sm); line-height: var(--lh-sm); font-weight: var(--weight-semibold); color: var(--fg); margin: 0; }
+.fv-card-s { font-size: var(--text-xs); line-height: var(--lh-xs); color: var(--fg-subtle); margin-top: 2px; }
+.fv-card-s:empty { display: none; }
+.fv-card-tools { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.fv-card-b { position: relative; min-width: 0; }
+/* A chart's height changes at once (an animated height would resize the canvas every frame). */
+.fv-chart { width: 100%; min-width: 0; }
+.fv-card.fill .fv-card-b { flex: 1 1 auto; display: flex; flex-direction: column; }
+.fv-card.fill .fv-chart { flex: 1 1 auto; }
+.fv-hint { font-size: var(--text-xs); color: var(--fg-subtle); }
+.fv-empty { padding: var(--space-10) var(--space-4); text-align: center; color: var(--fg-subtle); font-size: var(--text-sm); }
+.fv-empty::before { content: ''; display: block; width: 36px; height: 36px; margin: 0 auto var(--space-2); border-radius: 50%; background:
+  linear-gradient(var(--fg-disabled), var(--fg-disabled)) 11px 18px / 3px 8px no-repeat,
+  linear-gradient(var(--fg-disabled), var(--fg-disabled)) 17px 12px / 3px 14px no-repeat,
+  linear-gradient(var(--fg-disabled), var(--fg-disabled)) 23px 15px / 3px 11px no-repeat,
+  var(--bg-muted); }
+.fv-empty[hidden] { display: none; }
+.fv-card.is-empty .fv-chart, .fv-card.is-empty .fv-legend, .fv-card.is-empty .fv-mini-stats { display: none; }
+.fv-card-b > .fv-btn.ghost { display: flex; margin: var(--space-2) auto 0; }
+.fv-foot { margin-top: var(--space-5); font-size: var(--text-xs); color: var(--fg-subtle); }
+.fv-stat-strip { grid-column: span var(--span, 12); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+.fv-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--fv-radius); padding: var(--space-3) var(--space-4); display: grid; gap: 2px; box-shadow: var(--fv-shadow); }
+.fv-stat .l { font-size: var(--text-xs); font-weight: var(--weight-medium); color: var(--fg-muted); }
+.fv-stat b { font-size: var(--text-2xl); line-height: var(--lh-2xl); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tighter); font-variant-numeric: tabular-nums; }
+.fv-stat .s { font-size: var(--text-xs); color: var(--fg-subtle); }
+
+/* legend list under the donut */
+.fv-legend { display: grid; gap: 1px; margin-top: var(--space-3); }
+.fv-legend-row {
+  display: grid; grid-template-columns: 8px minmax(0, 1fr) auto auto 38px; align-items: center; gap: var(--space-2);
+  border: 0; background: transparent; font: inherit; font-size: var(--text-sm); color: var(--fg); text-align: left;
+  height: 30px; padding: 0 var(--space-2); border-radius: var(--radius-sm); cursor: pointer; transition: background-color var(--fv-fast), opacity var(--fv-base);
+}
+.fv-legend-row:hover { background: var(--bg-muted); }
+.fv-legend-row.dim { opacity: 0.45; }
+.fv-legend-row .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fv-legend-row .v { font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
+.fv-legend-row .p { color: var(--fg-subtle); font-variant-numeric: tabular-nums; text-align: right; font-size: var(--text-xs); }
+.fv-legend-row .fv-delta:empty { display: none; }
+.fv-delta { font-size: var(--text-xs); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
+.fv-delta.good { color: var(--fv-good); }
+.fv-delta.bad { color: var(--fv-warn); }   /* @p1: more spending is amber; red is for over budget only */
+.fv-delta.flat { color: var(--fg-subtle); }
+
+/* lists (flags, upcoming, largest, drawer) */
+.fv-list { list-style: none; display: grid; gap: 1px; padding: 0; margin: 0; }
+.fv-row {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; text-align: left; border: 0; background: transparent;
+  font: inherit; color: var(--fg); min-height: 40px; padding: var(--space-1-5) var(--space-2); border-radius: var(--radius-md); cursor: pointer; transition: background-color var(--fv-fast);
+}
+.fv-row:hover { background: var(--bg-muted); }
+.fv-row.static { cursor: default; }
+.fv-row.static:hover { background: transparent; }
+.fv-row-main { display: grid; min-width: 0; flex: 1; gap: 1px; }
+.fv-row-t { font-size: var(--text-sm); font-weight: var(--weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fv-row-t b { font-weight: var(--weight-semibold); }
+.fv-row-s { font-size: var(--text-xs); color: var(--fg-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fv-row-v { font-size: var(--text-sm); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fv-row-v.in { color: var(--fv-good); }
+.fv-row-bar { display: block; height: 3px; border-radius: var(--radius-full); background: var(--bg-muted); margin-top: var(--space-1); overflow: hidden; }
+.fv-row-bar i { display: block; height: 100%; border-radius: inherit; transform-origin: left; animation: fv-grow .6s var(--fv-ease) both; }
+.fv-flag { width: 24px; height: 24px; flex: none; border-radius: var(--radius-md); display: inline-grid; place-items: center; }
+.fv-flag .i { width: 14px; height: 14px; }
+.fv-flag.warn { background: var(--warning-soft); color: var(--warning-ink); }
+.fv-flag.info { background: var(--accent-soft); color: var(--accent-ink); }
+.fv-cal { width: 34px; flex: none; border-radius: var(--radius-md); border: 1px solid var(--border); text-align: center; overflow: hidden; display: grid; background: var(--surface); }
+.fv-cal b { font-size: var(--text-sm); line-height: 1.5; font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.fv-cal small { font-size: 10px; font-weight: var(--weight-semibold); text-transform: uppercase; letter-spacing: var(--tracking-caps); background: var(--bg-muted); color: var(--fg-muted); line-height: 1.5; }
+.fv-more-note { font-size: var(--text-xs); color: var(--fg-subtle); padding: var(--space-1-5) var(--space-2); }
+/* A full-width list reads better in two columns than as 1,200px-wide rows. */
+.fv-flags-wide .fv-list { grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); column-gap: var(--space-6); }
+.fv-flags-wide .fv-list > li { min-width: 0; }
+
+/* calendar scale + small stats */
+.fv-scale { display: inline-flex; align-items: center; gap: 3px; font-size: var(--text-2xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.fv-scale i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.fv-scale span:first-child { margin-right: 3px; } .fv-scale span:last-child { margin-left: 3px; }
+.fv-mini-stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin-top: var(--space-3); }
+.fv-mini-stats > div { background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); font-size: var(--text-xs); }
+.fv-mini-stats .l { color: var(--fg-muted); }
+.fv-mini-stats b { display: block; font-size: var(--text-lg); line-height: var(--lh-lg); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); font-variant-numeric: tabular-nums; }
+.fv-mini-stats b + .l { display: inline; }
+

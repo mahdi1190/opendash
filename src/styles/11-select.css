@@ -1,0 +1,103 @@
+/* ============= SELECT LISTS (11-ui-select.js) =============
+   A checkbox per row and a sticky bar: "2 of 5 selected", Select all /
+   Deselect all / Invert, then Dismiss selected / Apply all / Apply selected (N). */
+.sel-bar {
+  position: sticky; top: 0; z-index: var(--z-sticky);
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5) var(--space-3);
+  padding: var(--space-1-5) var(--space-3); min-height: 40px;
+  background: var(--surface); border-bottom: 1px solid var(--border-subtle);
+}
+.sel-count { font-size: var(--text-xs); font-weight: var(--weight-medium); color: var(--fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sel-quick { display: inline-flex; align-items: center; gap: var(--space-3); }
+.sel-quick .btn-link { font-size: var(--text-xs); white-space: nowrap; }
+.sel-quick .btn-link:disabled { color: var(--fg-disabled); cursor: default; text-decoration: none; }
+.sel-acts { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-1-5); margin-left: auto; }
+.sel-acts .btn { white-space: nowrap; }
+.sel-acts .btn .spinner { width: 12px; height: 12px; }
+.sel-bar.is-busy .sel-quick, .sel-bar.is-busy .sel-master { opacity: 0.5; pointer-events: none; }
+.sel-msg { flex-basis: 100%; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1-5) var(--space-2); border-radius: var(--radius-sm); background: var(--danger-soft); color: var(--danger-ink); font-size: var(--text-xs); }
+.sel-msg[hidden] { display: none; }
+.sel-msg > .i { flex: none; }
+.sel-bar.is-compact { padding: var(--space-1) var(--space-2); gap: var(--space-1) var(--space-2); min-height: 0; }
+.sel-bar.is-compact .sel-acts { flex-basis: 100%; gap: var(--space-1); }
+/* In the main pane the bar sticks to the very top of the scroll area (over #main's top padding). */
+.main { --sel-top: calc(-1 * var(--space-6)); }
+.main.wide { --sel-top: calc(-1 * var(--space-5)); }
+@media (max-width: 900px) { .main { --sel-top: calc(-1 * var(--space-4)); } }
+.main .sel-bar { top: var(--sel-top, 0); }
+
+/* the checkbox (the .cbx look, bigger target) */
+.sel-cbx {
+  position: relative; width: 16px; height: 16px; flex: none; display: inline-grid; place-items: center; align-self: center;
+  border-radius: var(--radius-xs); border: 1.5px solid var(--border-strong); background: var(--surface); color: var(--fg-on-accent);
+  cursor: pointer; transition: background-color var(--m-fast), border-color var(--m-fast);
+}
+.sel-cbx::after { content: ''; position: absolute; inset: -6px; }   /* a 28px hit area */
+.sel-cbx .i { width: 11px; height: 11px; stroke-width: 3; }
+.sel-cbx:hover { border-color: var(--accent); }
+.sel-cbx[aria-checked="true"], .sel-cbx[aria-checked="mixed"] { background: var(--accent); border-color: var(--accent); }
+.sel-cbx:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.sel-cbx[aria-disabled="true"] { cursor: default; }
+.sel-master[aria-disabled="true"] { opacity: 0.5; }
+
+/* rows */
+.sel-row { flex-wrap: wrap; column-gap: var(--space-2); }
+.sel-row > .sel-cbx { margin-left: var(--space-0-5); }
+.sel-row.sel-done > .sel-cbx { background: var(--success-soft); border-color: transparent; color: var(--success-ink); }
+.sel-row.sel-done > :not(.sel-cbx):not(.sel-row-err):not(.sel-row-note) { opacity: 0.6; }
+.sel-row.sel-locked > .sel-cbx { opacity: 0.4; }
+.sel-row-err, .sel-row-note { flex-basis: 100%; grid-column: 1 / -1; display: flex; align-items: flex-start; gap: var(--space-1); padding-left: 26px; font-size: var(--text-xs); line-height: var(--lh-xs, 16px); }
+.sel-row-err { color: var(--danger-ink); }
+.sel-row-err .i { flex: none; margin-top: 2px; }
+.sel-row-note { color: var(--fg-muted); }
+.sel-row.sel-failed { box-shadow: inset 2px 0 0 var(--danger); }
+.sel-rowclick > .sel-row:not(.sel-done):not(.sel-locked), .sel-rowclick .sel-row:not(.sel-done):not(.sel-locked) { cursor: pointer; }
+
+/* ---- where the pattern is used ---- */
+/* Assistant proposal: one row per change, the bar above the scrolling list */
+.asst-prop .sel-bar { position: static; padding: var(--space-1-5) var(--space-3); background: var(--bg-subtle); }
+.asst-pv-row { display: flex; align-items: flex-start; padding: var(--space-2) var(--space-3); }
+.asst-pv-row + .asst-pv-row { border-top: 1px solid var(--border-subtle); }
+.asst-pv-row > .sel-cbx { align-self: flex-start; margin-top: 2px; }
+.asst-pv-body { flex: 1; min-width: 0; }
+.asst-pv-body > .asst-pv-ent { padding: 0; }
+.asst-pv-body > .asst-pv-ent + .asst-pv-ent { border-top: 0; margin-top: var(--space-1-5); }
+.asst-pv-row:not(.is-on):not(.sel-done) > .asst-pv-body { opacity: 0.55; }
+.asst-pv-row .asst-pv-op { padding: 0; font-size: var(--text-sm); }
+.asst-pv-row > .badge { flex: none; }
+.asst-pv-row .sel-row-err, .asst-pv-row .sel-row-note { padding-left: 48px; }
+.asst-prop .asst-prop-f .spacer { flex: 1; }
+.asst-pv-dialog { margin-top: var(--space-3); max-height: 300px; }
+
+/* Suggested links: rows already have their own padding */
+.al-row.sel-row { grid-template-columns: auto minmax(0, 1fr) auto; padding-left: var(--space-1-5); }
+.al-row.sel-row > .sel-row-err, .al-row.sel-row > .sel-row-note { padding: 0 0 var(--space-1-5) 26px; }
+.al-home .sel-bar, .al-sugg .sel-bar { position: static; background: transparent; border-bottom: 0; padding: var(--space-1) 0; }
+.al-review > .sel-bar { margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-4)) var(--space-1); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.al-tickby { width: auto; }
+.al-ev .sel-bar { position: static; background: transparent; border-bottom: 0; padding: var(--space-1) 0; }
+@media (max-width: 900px) { .al-review > .sel-bar { margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) var(--space-1); } }
+
+/* People: tasks to link */
+.ppl-sug-modal .sel-bar { margin: 0 calc(-1 * var(--space-1)); }
+.ppl-sug-row.sel-row { display: flex; align-items: center; gap: var(--space-2); }
+
+/* Tags: clean-up cards */
+.tm-side .sel-bar { position: static; background: transparent; padding: 0 0 var(--space-2); border-bottom: 0; }
+.merge.sel-row { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-2); align-items: start; }
+.merge.sel-row > .sel-cbx { grid-column: 1; grid-row: 1; margin: 1px 0 0; }
+.merge.sel-row > :not(.sel-cbx) { grid-column: 2; }
+.merge.sel-row > .btn { justify-self: start; }
+.merge.sel-row:not(.is-on) { background: transparent; }
+
+/* Connections > Add a source: which tools of an MCP server */
+.src-flow .sel-bar { position: static; padding: 0 0 var(--space-2); background: transparent; border-bottom: 0; }
+.src-tool.sel-row { flex-wrap: nowrap; }
+.src-tool.sel-row > .sel-cbx { margin-left: 0; }
+
+/* People: new names */
+.ppl-name-row.sel-row > .sel-cbx { margin-right: var(--space-1); }
+
+/* Email triage: suggested tasks */
+.em-sug.sel-row > .sel-cbx { align-self: flex-start; margin-top: var(--space-2); }
+.em-sec > .sel-bar { margin-bottom: var(--space-2); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }

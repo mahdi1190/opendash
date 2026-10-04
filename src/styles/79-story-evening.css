@@ -1,0 +1,402 @@
+/* ============================================================
+   FINISH THE DAY STORY (owner: Evening story) - src/app/79-story-evening.js.
+   Six beats on the story stage (79-story.css): .sev-done .sev-people
+   .sev-slipped .sev-tomorrow .sev-reflect .sev-outro, each one .sev root
+   in the beat's .st-cards frame (the outro's night sky is in .st-scene).
+   The evening is a dusk sky with light ink in both themes, warm glass.
+   Every rule is scoped to .story[data-kind="evening"] so it wins over the
+   engine's (this file sorts before 79-story.css).
+   Motion: transform + opacity only, entrance once per beat (.is-enter /
+   .is-hold), nothing under .st-still (reduced motion / animations off).
+   ============================================================ */
+.story[data-kind="evening"] {
+  --sev-ink: #fbf8ff; --sev-ink2: rgba(251, 248, 255, 0.8); --sev-ink3: rgba(251, 248, 255, 0.58); --sev-line: rgba(255, 255, 255, 0.16);
+  --sev-glass: rgba(60, 26, 84, 0.3); --sev-glass2: rgba(72, 34, 98, 0.5); --sev-glass-b: rgba(255, 255, 255, 0.16);
+  --sev-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 44px -18px rgba(20, 6, 40, 0.55);
+  --sev-inv: #fbf8ff; --sev-inv-fg: #23143c;
+  --sev-ease: cubic-bezier(0.22, 1, 0.36, 1); --sev-pop: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --st-glass: rgba(40, 16, 62, 0.52);
+}
+.story[data-kind="evening"][data-palette="slate"] { --sev-glass: rgba(30, 34, 66, 0.36); --sev-glass2: rgba(38, 44, 82, 0.55); --sev-inv-fg: #141a33; }
+.story[data-kind="evening"][data-palette="ember"] { --sev-glass: rgba(90, 30, 60, 0.3); --sev-glass2: rgba(104, 36, 70, 0.5); }
+.story[data-kind="evening"][data-palette="lavender"] { --sev-glass: rgba(52, 34, 96, 0.3); --sev-glass2: rgba(62, 42, 110, 0.5); }
+
+/* ---------- the frame each beat lives in ---------- */
+.story[data-kind="evening"] .st-cards .st-frame[data-type^="ev-"] { align-content: center; justify-items: center; padding: 82px 5vw max(150px, 17vh); }
+.story[data-kind="evening"][data-beat-type="ev-reflect"] .st-cards .st-frame[data-type^="ev-"],
+.story[data-kind="evening"][data-beat-type="ev-outro"] .st-cards .st-frame[data-type^="ev-"] { padding-bottom: max(110px, 13vh); }
+.story[data-kind="evening"] .sev {
+  position: relative; width: min(1140px, 100%); max-height: 100%; min-height: 0; overflow-x: hidden; overflow-y: auto; scrollbar-width: none;
+  padding: 36px 28px 56px; margin: -36px -28px -56px; color: var(--sev-ink); box-sizing: content-box;
+}
+.story[data-kind="evening"] .sev::-webkit-scrollbar { display: none; }
+/* When a beat is taller than the window (phones), its lower edge fades out instead of cutting off; it scrolls. */
+.story[data-kind="evening"] .sev { -webkit-mask-image: linear-gradient(#000 calc(100% - 40px), transparent); mask-image: linear-gradient(#000 calc(100% - 40px), transparent); }
+.story[data-kind="evening"] .sev :where(button, input, textarea) { font: inherit; color: inherit; }
+
+/* ---------- shared pieces ---------- */
+.story[data-kind="evening"] .sev-over { font-size: 12px; line-height: 16px; font-weight: 650; letter-spacing: 0.09em; text-transform: uppercase; color: var(--sev-ink2); }
+.story[data-kind="evening"] .sev-head { display: grid; gap: 6px; margin-bottom: clamp(14px, 3vh, 28px); }
+.story[data-kind="evening"] .sev-h { margin: 0; font-size: clamp(30px, min(4.2vw, 6.6vh), 58px); line-height: 1.04; font-weight: 680; letter-spacing: -0.034em; text-wrap: balance; }
+.story[data-kind="evening"] .sev-h-soft { color: var(--sev-ink2); font-weight: 560; }
+.story[data-kind="evening"] .sev-lede { margin: 0; font-size: clamp(16px, min(1.5vw, 2.6vh), 21px); line-height: 1.45; color: var(--sev-ink2); letter-spacing: -0.012em; text-wrap: balance; }
+.story[data-kind="evening"] .sev-card { background: var(--sev-glass); border: 1px solid var(--sev-glass-b); border-radius: 22px; box-shadow: var(--sev-shadow);
+  backdrop-filter: blur(24px) saturate(1.3); -webkit-backdrop-filter: blur(24px) saturate(1.3); }
+.story[data-kind="evening"] .sev-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.story[data-kind="evening"] .sev-pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 580;
+  background: var(--sev-glass2); border: 1px solid var(--sev-glass-b); white-space: nowrap; }
+.story[data-kind="evening"] .sev-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; display: inline-block; }
+.story[data-kind="evening"] .sev-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--sev-glass-b);
+  background: var(--sev-glass2); font-size: 13.5px; font-weight: 620; white-space: nowrap; cursor: pointer; transition: background-color 0.2s, transform 0.2s var(--sev-ease), opacity 0.2s; }
+.story[data-kind="evening"] .sev-btn:hover:not(:disabled) { background: color-mix(in oklab, var(--sev-ink) 20%, var(--sev-glass2)); }
+.story[data-kind="evening"] .sev-btn:active:not(:disabled) { transform: scale(0.96); }
+.story[data-kind="evening"] .sev-btn:disabled { opacity: 0.5; cursor: default; }
+.story[data-kind="evening"] .sev-btn.is-done:disabled { opacity: 0.9; }
+.story[data-kind="evening"] .sev-btn.is-pri { background: var(--sev-inv); color: var(--sev-inv-fg); border-color: transparent; }
+.story[data-kind="evening"] .sev-btn.is-pri:hover:not(:disabled) { background: #fff; }
+.story[data-kind="evening"] :is(.sev-btn, .sev-chip, .sev-seg button, .sev-cand, .sev-mood button, .sev-xl, .sev-continue, .sev-x):focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.story[data-kind="evening"] .sev-more { margin: 10px 0 0; font-size: 13px; color: var(--sev-ink3); }
+.story[data-kind="evening"] .anim-scene { --surface: #2a1d4a; }
+.story[data-kind="evening"] .sev .anim-scene { background: color-mix(in oklab, var(--c, var(--accent)) 24%, rgba(30, 16, 54, 0.66)); --as-ink: #f1ecff; }
+
+/* Entrance: rise, staggered (once per beat). */
+/* (Slots are repainted when a pick changes: they come in with their section, never again on their own.) */
+.story[data-kind="evening"] .st-frame:is(.is-enter, .is-hold) :is(.sev-in, .sev-card:not(.sev-slot), .sev-count > *, .sev-head > *) {
+  animation: sev-rise calc(560ms / var(--st-speed, 1)) var(--sev-ease) both; animation-delay: calc((120ms + var(--i, 0) * 70ms) / var(--st-speed, 1)); }
+@keyframes sev-rise { from { opacity: 0; transform: translateY(18px) scale(0.985); } }
+
+/* Interactive beats: auto-advance stops on the first touch; Continue moves on. */
+.story[data-kind="evening"] .sev-continue { position: fixed; right: max(24px, 3vw); bottom: 98px; z-index: 2; display: none; align-items: center; gap: 8px; height: 42px; padding: 0 16px 0 18px; border: 0; border-radius: 999px;
+  background: var(--sev-inv); color: var(--sev-inv-fg); font-family: inherit; font-size: 14px; font-weight: 680; cursor: pointer; box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.6); }
+.story[data-kind="evening"].sev-held .st-frame:not(.is-exit) .sev-continue { display: inline-flex; animation: sev-rise 360ms var(--sev-ease) both; }
+.story[data-kind="evening"].sev-held .st-seg.is-cur i { background: repeating-linear-gradient(135deg, var(--st-fg) 0 4px, color-mix(in oklab, var(--st-fg) 45%, transparent) 4px 8px); }
+
+/* ---------- E1 done today ---------- */
+.story[data-kind="evening"] .sev-done { display: grid; grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.6fr); gap: clamp(24px, 4vw, 56px); align-items: center; }
+.story[data-kind="evening"] .sev-done.no-tiles { grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.2fr); }
+.story[data-kind="evening"] .sev-count { display: grid; gap: 8px; align-content: center; }
+.story[data-kind="evening"] .sev-big { display: block; font-size: clamp(110px, min(17vw, 28vh), 232px); line-height: 0.86; font-weight: 200; letter-spacing: -0.06em; font-variant-numeric: tabular-nums; margin-left: -0.05em; }
+.story[data-kind="evening"] .st-frame:is(.is-enter, .is-hold) .sev-big { animation: sev-big-in calc(900ms / var(--st-speed, 1)) var(--sev-ease) both; animation-delay: calc(190ms / var(--st-speed, 1)); }
+@keyframes sev-big-in { from { opacity: 0; transform: translateY(26px) scale(0.92); } }
+.story[data-kind="evening"] .sev-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.story[data-kind="evening"] .sev-done.no-tiles .sev-tiles, .story[data-kind="evening"] .sev-done.is-few .sev-tiles { grid-template-columns: minmax(0, 1fr); }
+.story[data-kind="evening"] .sev-one { position: relative; padding: 22px 24px; }
+.story[data-kind="evening"] .sev-one .anim-scene { --as-size: var(--scene-xl); border-radius: 22px; }
+.story[data-kind="evening"] .sev-one .sev-win-b b { font-size: clamp(18px, 1.8vw, 26px); padding-right: 72px; }
+.story[data-kind="evening"] .sev-one + .sev-one { background: var(--sev-glass); }
+.story[data-kind="evening"] .sev-tile { position: relative; display: flex; align-items: center; gap: 16px; padding: 18px 18px 18px 18px; min-width: 0; }
+.story[data-kind="evening"] .sev-tile .anim-scene { --as-size: var(--scene-xl); border-radius: 22px; flex: none; }
+.story[data-kind="evening"] .sev-tile.is-wide { grid-column: 1 / -1; }
+.story[data-kind="evening"] .sev-tile-b { display: grid; min-width: 0; }
+.story[data-kind="evening"] .sev-tile-n { font-size: 46px; line-height: 1; font-weight: 300; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.story[data-kind="evening"] .sev-tile-l { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; margin-top: 4px; }
+.story[data-kind="evening"] .sev-tile-x { font-size: 13px; color: var(--sev-ink2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A kind with one task: the task's name is the headline, the kind its overline. */
+.story[data-kind="evening"] .sev-tile-b.is-one { gap: 4px; padding-right: 64px; }
+.story[data-kind="evening"] .sev-tile-k { font-size: 12px; line-height: 16px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sev-ink2); }
+.story[data-kind="evening"] .sev-tile-t { font-size: clamp(18px, min(1.6vw, 2.8vh), 24px); line-height: 1.18; font-weight: 650; letter-spacing: -0.02em; text-wrap: balance;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.story[data-kind="evening"] .sev-badge { position: absolute; right: 14px; top: 12px; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--sev-ink2); opacity: 0; transform: scale(0.6); transition: opacity 0.3s, transform 0.38s var(--sev-pop); transition-delay: 0.5s; }
+.story[data-kind="evening"] .sev-tile.is-landed .sev-badge { opacity: 1; transform: none; }
+.story[data-kind="evening"] .sev-win { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 18px 22px; min-width: 0;
+  background: linear-gradient(100deg, color-mix(in oklab, var(--sw-amber) 30%, var(--sev-glass)), var(--sev-glass)); }
+.story[data-kind="evening"] .sev-win .anim-scene { --as-size: var(--scene-lg); border-radius: 18px; flex: none; }
+.story[data-kind="evening"] .sev-win-b { display: grid; gap: 3px; min-width: 0; }
+.story[data-kind="evening"] .sev-win-b b { font-size: clamp(16px, 1.5vw, 21px); line-height: 1.3; font-weight: 650; letter-spacing: -0.015em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.story[data-kind="evening"] .sev-win.is-burst .anim-scene { animation: sev-cheer 0.9s var(--sev-pop) both; }
+@keyframes sev-cheer { 40% { transform: scale(1.14) rotate(-4deg); } }
+.story[data-kind="evening"] .sev-done.is-quiet { display: grid; grid-template-columns: 1fr; justify-items: center; text-align: center; }
+.story[data-kind="evening"] .sev-quiet { display: grid; justify-items: center; gap: 14px; }
+.story[data-kind="evening"] .sev-quiet .anim-scene { --as-size: var(--scene-hero); border-radius: 30%; margin-bottom: 8px; }
+.story[data-kind="evening"] .sev-quiet .sev-h { font-size: clamp(40px, min(6vw, 10vh), 86px); }
+
+/* ---------- E2 people you met ---------- */
+.story[data-kind="evening"] .sev-said { margin: 0; --sev-fs: clamp(28px, min(3.8vw, 6.4vh), 54px); font-size: var(--sev-fs); line-height: 1.12; font-weight: 680; letter-spacing: -0.03em; max-width: 26ch; }
+.story[data-kind="evening"] .sev-said .st-ent { border-radius: 0.3em; }
+.story[data-kind="evening"] .sev-ent[data-type="person"] { white-space: nowrap; }
+.story[data-kind="evening"] .sev-said .sev-ent { padding: 0.04em 0.24em 0.06em 0.08em; border-radius: 999px; background-position: 0 50%; background-size: 0% 100%; }
+.story[data-kind="evening"] .sev-said .sev-ent.is-hot, .story[data-kind="evening"].st-still .sev-said .sev-ent { background-size: 100% 100%; }
+/* A spoken name: white ink on a stronger capsule of its colour (pink on a pink sky was hard to read). */
+.story[data-kind="evening"] .sev-said .sev-ent { background-image: linear-gradient(color-mix(in oklab, var(--e) 42%, rgba(30, 10, 50, 0.35)), color-mix(in oklab, var(--e) 42%, rgba(30, 10, 50, 0.35))); }
+.story[data-kind="evening"] .sev-said .sev-ent.is-hot .st-w, .story[data-kind="evening"].st-still .sev-said .sev-ent .st-w { color: var(--sev-ink); transition: color 0.35s var(--sev-ease) 0.1s; }
+.story[data-kind="evening"] .sev-lead { --l: calc(var(--sev-fs, 40px) * 0.8); position: relative; display: inline-block; width: var(--l); height: var(--l); vertical-align: -0.1em; margin-right: 0.14em; transform: scale(0.72); opacity: 0.32; transition: transform 0.38s var(--sev-pop), opacity 0.25s; }
+.story[data-kind="evening"] .sev-lead > * { position: absolute !important; inset: 0; margin: auto; }
+.story[data-kind="evening"] .st-ent.is-hot .sev-lead, .story[data-kind="evening"].st-still .sev-lead { transform: none; opacity: 1; }
+.story[data-kind="evening"] .sev-lead .avatar { --size: var(--l) !important; width: var(--l); height: var(--l); font-size: calc(var(--l) * 0.38); letter-spacing: 0; box-shadow: 0 0 0 3px color-mix(in oklab, var(--c) 35%, transparent); }
+.story[data-kind="evening"] .sev-lead .avatar > * { font-size: inherit; }
+.story[data-kind="evening"] .sev-lead .anim-scene { --as-size: var(--l); border-radius: calc(var(--l) * 0.28); }
+.story[data-kind="evening"] .sev-lead .sev-ring { width: calc(var(--l) * 0.62); height: calc(var(--l) * 0.62); border-width: calc(var(--l) * 0.1); }
+.story[data-kind="evening"] .sev-ring { width: 0.62em; height: 0.62em; border-radius: 50%; border: 0.09em solid currentColor; display: inline-block; align-self: center; }
+.story[data-kind="evening"] .sev-met { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.story[data-kind="evening"] .sev-people[data-n="1"] .sev-met { grid-template-columns: minmax(0, 520px); }
+.story[data-kind="evening"] .sev-people[data-n="2"] .sev-met { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 860px; }
+.story[data-kind="evening"] .sev-mc { display: flex; flex-direction: column; gap: 14px; padding: 20px; min-width: 0; transition: opacity 0.45s var(--sev-ease), transform 0.5s var(--sev-pop), box-shadow 0.4s; }
+.story[data-kind="evening"]:not(.st-still) .sev-mc:not(.is-hot) { opacity: 0.38; transform: translateY(10px) scale(0.975); }
+.story[data-kind="evening"] .sev-mc:focus-within { opacity: 1 !important; transform: none !important; }
+.story[data-kind="evening"] .sev-mc.is-hot { box-shadow: var(--sev-shadow), 0 0 0 1.5px color-mix(in oklab, var(--st-person) 50%, transparent); }
+.story[data-kind="evening"] .sev-mc-top { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.story[data-kind="evening"] .sev-ava { position: relative; flex: none; display: inline-flex; }
+.story[data-kind="evening"] .sev-ava .avatar { --size: 56px; font-size: 19px; }
+.story[data-kind="evening"] .sev-ava .anim-scene { position: absolute; right: -10px; bottom: -8px; --as-size: var(--scene-xs); border-radius: 9px; box-shadow: 0 0 0 3px var(--sev-glass2); }
+.story[data-kind="evening"] .sev-tick { position: absolute; left: -4px; top: -4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--sw-green); color: #fff; opacity: 0; transform: scale(0.4); }
+.story[data-kind="evening"] .sev-tick .i { width: 13px; height: 13px; }
+.story[data-kind="evening"] .sev-mc.is-saved .sev-tick { animation: sev-tick 1.6s var(--sev-pop) both; }
+@keyframes sev-tick { 0% { opacity: 0; transform: scale(0.4); } 20%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(0.9); } }
+.story[data-kind="evening"] .sev-mc-n { display: grid; min-width: 0; }
+.story[data-kind="evening"] .sev-mc-n b { font-size: 18px; font-weight: 660; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.story[data-kind="evening"] .sev-mc-n small { font-size: 13px; color: var(--sev-ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The one open thing with this person (you owe them / follow up / waiting on them). */
+.story[data-kind="evening"] .sev-loop { display: flex; align-items: center; gap: 7px; min-width: 0; margin-top: -4px; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; line-height: 18px;
+  background: color-mix(in oklab, var(--sev-ink) 7%, transparent); }
+.story[data-kind="evening"] .sev-loop .i { width: 15px; height: 15px; flex: none; opacity: 0.85; }
+.story[data-kind="evening"] .sev-loop-k { flex: none; font-weight: 650; }
+.story[data-kind="evening"] .sev-loop.is-owe .sev-loop-k { color: #ffd2a8; }
+.story[data-kind="evening"] .sev-loop.is-wait .sev-loop-k { color: #c9d4ff; }
+.story[data-kind="evening"] .sev-loop-t { min-width: 0; color: var(--sev-ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.story[data-kind="evening"] .sev-loop-n { flex: none; margin-left: auto; font-size: 12px; font-weight: 650; color: var(--sev-ink3); }
+.story[data-kind="evening"] .sev-note-l { display: block; }
+.story[data-kind="evening"] .sev-note { display: block; width: 100%; box-sizing: border-box; resize: none; min-height: 66px; padding: 11px 13px; border-radius: 14px; border: 1px solid transparent;
+  background: color-mix(in oklab, var(--sev-ink) 8%, transparent); font-size: 15px; line-height: 22px; caret-color: #fff; }
+.story[data-kind="evening"] .sev-note::placeholder, .story[data-kind="evening"] .sev input::placeholder { color: var(--sev-ink3); }
+.story[data-kind="evening"] .sev-note:focus { outline: none; border-color: color-mix(in oklab, var(--sev-ink) 40%, transparent); background: color-mix(in oklab, var(--sev-ink) 12%, transparent); }
+.story[data-kind="evening"] .sev-mc-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+.story[data-kind="evening"] .sev-ghost { position: absolute; z-index: 2; max-width: 60%; padding: 6px 10px; border-radius: 10px; background: var(--sev-glass2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; transform-origin: 0 0; }
+.story[data-kind="evening"].st-still .sev-ghost { display: none; }
+.story[data-kind="evening"] .sev-nudge { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 12px 14px 12px 16px; transition: opacity 0.26s, transform 0.26s; }
+.story[data-kind="evening"] .sev-nudge.is-gone { opacity: 0; transform: translateY(8px); }
+.story[data-kind="evening"] .sev-nudge .avatar { --size: 32px; flex: none; }
+.story[data-kind="evening"] .sev-nudge-t { flex: 1; min-width: 0; font-size: 15px; }
+.story[data-kind="evening"] .sev-nudge-t span { color: var(--sev-ink2); font-size: 13.5px; }
+
+/* ---------- E3 what slipped ---------- */
+.story[data-kind="evening"] .sev-slipped { max-width: 1040px; }
+.story[data-kind="evening"] .sev-rows { display: flex; flex-direction: column; gap: 12px; }
+.story[data-kind="evening"] .sev-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 16px 18px; transition: opacity 0.3s; }
+.story[data-kind="evening"] .sev-row .anim-scene { --as-size: var(--scene-md); border-radius: 14px; }
+.story[data-kind="evening"] .sev-row-b { min-width: 0; display: grid; gap: 5px; }
+.story[data-kind="evening"] .sev-row-t { font-size: clamp(16px, 1.4vw, 19px); font-weight: 640; letter-spacing: -0.015em; min-width: 0; }
+.story[data-kind="evening"] .sev-row-t span { position: relative; display: inline; -webkit-line-clamp: 2; }
+.story[data-kind="evening"] .sev-row-t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.story[data-kind="evening"] .sev-row-t span { background: linear-gradient(currentColor, currentColor) no-repeat 0 55% / 0% 1.5px; transition: background-size 0.3s var(--sev-ease); }
+.story[data-kind="evening"] .sev-row.is-moved .sev-row-t span { background-size: 100% 1.5px; }
+.story[data-kind="evening"] .sev-row.is-moved { opacity: 0.62; }
+.story[data-kind="evening"] .sev-row.is-moved:hover, .story[data-kind="evening"] .sev-row.is-moved:focus-within { opacity: 0.85; }
+.story[data-kind="evening"] .sev-row-m { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; font-size: 13px; color: var(--sev-ink2); }
+.story[data-kind="evening"] .sev-row-m .is-late { color: #ffc2b8; }
+.story[data-kind="evening"] .sev-row-done { display: none; align-items: center; gap: 4px; color: var(--sev-ink); }
+.story[data-kind="evening"] .sev-row.is-moved .sev-row-done { display: inline-flex; animation: sev-rise 0.4s var(--sev-ease) both; }
+.story[data-kind="evening"] .sev-why { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12.5px; color: var(--sev-ink3); margin-top: 2px; }
+/* The optional "why" stays quiet until a row is moved, hovered or focused (four rows of chips were noise); its room is kept so nothing jumps. */
+.story[data-kind="evening"]:not(.st-still) .sev-row:not(.is-moved):not(:hover):not(:focus-within) .sev-why { opacity: 0; }
+.story[data-kind="evening"] .sev-row .sev-why { transition: opacity 0.25s var(--sev-ease); }
+.story[data-kind="evening"] .sev-chip { height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--sev-glass-b); background: color-mix(in oklab, var(--sev-ink) 7%, transparent); font-size: 12px; font-weight: 600; cursor: pointer; color: var(--sev-ink2) !important; }
+.story[data-kind="evening"] .sev-chip[aria-pressed="true"] { background: var(--sev-inv); color: var(--sev-inv-fg) !important; border-color: transparent; }
+.story[data-kind="evening"] .sev-seg { position: relative; display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: color-mix(in oklab, var(--sev-ink) 10%, transparent); isolation: isolate; }
+.story[data-kind="evening"] .sev-seg button { position: relative; z-index: 1; height: 32px; padding: 0 13px; border: 0; border-radius: 999px; background: none; font-size: 13px; font-weight: 620; color: var(--sev-ink2) !important; cursor: pointer; white-space: nowrap; transition: color 0.18s; }
+.story[data-kind="evening"] .sev-seg button:hover { color: var(--sev-ink) !important; }
+.story[data-kind="evening"] .sev-seg button[aria-checked="true"] { color: var(--sev-inv-fg) !important; cursor: default; }
+.story[data-kind="evening"] .sev-thumb { position: absolute; z-index: 0; left: 0; top: 3px; bottom: 3px; width: var(--w, 0); border-radius: 999px; background: var(--sev-inv); opacity: 0; transform: translateX(var(--x, 0)); transition: transform 0.18s var(--sev-ease), opacity 0.18s; }
+.story[data-kind="evening"] .sev-seg.has-pick .sev-thumb { opacity: 1; }
+.story[data-kind="evening"] .sev-acts { display: flex; align-items: center; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.story[data-kind="evening"] .sev-acts .sev-more { margin: 0 0 0 6px; }
+
+/* ---------- E4 tomorrow ---------- */
+.story[data-kind="evening"] .sev-tom-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 22px; align-items: start; }
+.story[data-kind="evening"] .sev-tomorrow.no-pick .sev-tom-grid { grid-template-columns: minmax(0, 620px); }
+.story[data-kind="evening"] .sev-first { display: flex; flex-direction: column; gap: 14px; padding: 24px; min-width: 0; }
+.story[data-kind="evening"] .sev-first-row { display: flex; align-items: center; gap: 18px; }
+.story[data-kind="evening"] .sev-first .anim-scene { --as-size: var(--scene-xl); border-radius: 24px; flex: none; }
+.story[data-kind="evening"] .sev-time { font-size: clamp(60px, min(7vw, 11vh), 100px); line-height: 0.9; font-weight: 250; letter-spacing: -0.06em; font-variant-numeric: tabular-nums; }
+.story[data-kind="evening"] .sev-time-word { font-weight: 300; letter-spacing: -0.04em; }
+.story[data-kind="evening"] .sev-first-t { font-size: clamp(20px, 2vw, 28px); line-height: 1.15; font-weight: 660; letter-spacing: -0.025em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.story[data-kind="evening"] .sev-first-m { font-size: 14px; color: var(--sev-ink2); }
+.story[data-kind="evening"] .sev-wx { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 14px; background: color-mix(in oklab, var(--sev-ink) 8%, transparent); font-size: 14px; color: var(--sev-ink2); }
+.story[data-kind="evening"] .sev-wx b { color: var(--sev-ink); font-weight: 650; }
+.story[data-kind="evening"] .sev-wx .i { width: 22px; height: 22px; flex: none; }
+.story[data-kind="evening"] .sev-pick { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.story[data-kind="evening"] .sev-slots { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.story[data-kind="evening"] .sev-slot { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px; min-height: 60px; box-sizing: border-box; min-width: 0; }
+.story[data-kind="evening"] .sev-slot-n { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; font-weight: 700; font-size: 15px; background: var(--sev-inv); color: var(--sev-inv-fg); }
+.story[data-kind="evening"] .sev-slot-t { flex: 1; min-width: 0; font-size: 16.5px; font-weight: 620; letter-spacing: -0.012em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.story[data-kind="evening"] .sev-tag { flex: none; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--sev-glass-b); font-size: 12px; font-weight: 600; color: var(--sev-ink2); }
+.story[data-kind="evening"] .sev-x { flex: none; width: 30px; height: 30px; border: 0; border-radius: 50%; background: none; display: grid; place-items: center; cursor: pointer; opacity: 0.55; }
+.story[data-kind="evening"] .sev-x:hover { opacity: 1; background: color-mix(in oklab, var(--sev-ink) 12%, transparent); }
+.story[data-kind="evening"] .sev-slot.is-empty { background: transparent; border: 1.5px dashed var(--sev-line); color: var(--sev-ink3); }
+.story[data-kind="evening"] .sev-slot.is-empty .sev-slot-n { background: transparent; border: 1.5px dashed var(--sev-ink3); color: var(--sev-ink3); box-sizing: border-box; }
+.story[data-kind="evening"] .sev-slot-in { flex: 1; min-width: 0; height: 34px; border: 0; background: none; font-size: 16px; font-weight: 560; outline: none; }
+.story[data-kind="evening"] .sev-sug-l { font-size: 13px; color: var(--sev-ink2); margin-top: 4px; }
+.story[data-kind="evening"] .sev-cands { display: flex; flex-wrap: wrap; gap: 8px; }
+.story[data-kind="evening"] .sev-cand { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; height: 36px; padding: 0 13px 0 10px; border-radius: 999px; border: 1px solid var(--sev-glass-b);
+  background: var(--sev-glass); font-size: 14px; font-weight: 580; cursor: pointer; transition: transform 0.2s var(--sev-ease), background-color 0.2s; }
+.story[data-kind="evening"] .sev-cand span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.story[data-kind="evening"] .sev-cand .i { opacity: 0.7; flex: none; }
+.story[data-kind="evening"] .sev-cand:hover { background: var(--sev-glass2); transform: translateY(-1px); }
+.story[data-kind="evening"] .sev-pick-acts { margin-top: 6px; }
+
+/* ---------- E5 today in one line ---------- */
+.story[data-kind="evening"] .sev-reflect { display: grid; gap: 12px; justify-items: start; max-width: 1080px; }
+.story[data-kind="evening"] .sev-reflect .sev-said { --sev-fs: clamp(30px, min(4.4vw, 7.6vh), 64px); font-size: var(--sev-fs); line-height: 1.16; max-width: 22ch; margin-bottom: clamp(8px, 2vh, 20px); }
+.story[data-kind="evening"] .sev-reflect .sev-said.is-long { --sev-fs: clamp(26px, min(3.4vw, 5.8vh), 50px); max-width: 26ch; }
+.story[data-kind="evening"] .sev-mood-l { font-size: 14px; color: var(--sev-ink2); }
+.story[data-kind="evening"] .sev-mood { display: flex; flex-wrap: wrap; gap: 8px; }
+.story[data-kind="evening"] .sev-mood button { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 17px; border-radius: 999px; border: 1px solid var(--sev-glass-b); background: var(--sev-glass);
+  font-size: 15px; font-weight: 620; color: var(--sev-ink2) !important; cursor: pointer; transition: background-color 0.18s, color 0.18s; }
+.story[data-kind="evening"] .sev-mood button i { width: 11px; height: 11px; border-radius: 50%; background: var(--c); }
+.story[data-kind="evening"] .sev-mood button[aria-checked="true"] { background: var(--sev-inv); color: var(--sev-inv-fg) !important; cursor: default; }
+.story[data-kind="evening"] .sev-mood button[aria-checked="true"] i { animation: sev-dot 0.38s var(--sev-pop) both; }
+@keyframes sev-dot { from { transform: scale(0.3); } }
+.story[data-kind="evening"] .sev-journal { display: grid; gap: 6px; width: min(760px, 100%); box-sizing: border-box; padding: 14px 18px; margin-top: 8px; cursor: text; }
+.story[data-kind="evening"] .sev-journal small { font-size: 11.5px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sev-ink3); }
+.story[data-kind="evening"] .sev-journal input { border: 0; background: none; outline: none; font-size: 18px; line-height: 26px; padding: 0; caret-color: #fff; }
+
+/* ---------- E6 good job: the sun sets, night falls ---------- */
+.story[data-kind="evening"] .st-scene .st-frame.sev-night-frame { padding: 0; place-items: stretch; }
+.story[data-kind="evening"] .sev-night { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.story[data-kind="evening"] .sev-night-sky { position: absolute; inset: 0; background: linear-gradient(180deg, #060b22 0%, #0f1840 48%, #26285e 82%, #3a2f6a 100%); }
+.story[data-kind="evening"] .sev-star { position: absolute; left: var(--x); top: var(--y); width: 2px; height: 2px; border-radius: 50%; background: #fff; opacity: 0.85; transform: scale(var(--s, 1)); }
+.story[data-kind="evening"] .sev-star:nth-child(3n) { animation: none; }
+.story[data-kind="evening"] .sev-moon { position: absolute; right: 17%; top: 14%; width: 70px; height: 70px; border-radius: 50%; box-shadow: inset -19px -10px 0 0 #f2efd9; rotate: -24deg; }
+.story[data-kind="evening"] .sev-hills { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 26%; }
+.story[data-kind="evening"] .sev-hills .h1 { fill: rgba(18, 14, 46, 0.62); }
+.story[data-kind="evening"] .sev-hills .h2 { fill: rgba(9, 7, 26, 0.86); }
+.story[data-kind="evening"] .st-scene .st-frame:is(.is-enter, .is-hold) .sev-night-sky { animation: sev-fade calc(2400ms / var(--st-speed, 1)) ease-in-out both; }
+.story[data-kind="evening"] .st-scene .st-frame:is(.is-enter, .is-hold) .sev-star { animation: sev-fade 0.6s ease-out both, sev-twinkle 3.6s ease-in-out infinite; animation-delay: calc(900ms + var(--i) * 34ms), calc(2600ms + var(--tw, 0s)); }
+.story[data-kind="evening"] .st-scene .st-frame:is(.is-enter, .is-hold) .sev-star:nth-child(3n) { animation: sev-fade 0.6s ease-out both; animation-delay: calc(900ms + var(--i) * 34ms); }
+.story[data-kind="evening"] .st-scene .st-frame:is(.is-enter, .is-hold) .sev-moon { animation: sev-moon calc(2400ms / var(--st-speed, 1)) var(--sev-ease) both; animation-delay: 500ms; }
+.story[data-kind="evening"] .st-scene .st-frame:is(.is-enter, .is-hold) .sev-hills { animation: sev-hills calc(2000ms / var(--st-speed, 1)) var(--sev-ease) both; }
+@keyframes sev-fade { from { opacity: 0; } }
+@keyframes sev-twinkle { 50% { opacity: 0.25; } }
+@keyframes sev-moon { from { opacity: 0; transform: translateY(30px); } }
+@keyframes sev-hills { from { transform: translateY(40px); } }
+html.anim-paused .story[data-kind="evening"] .sev-night * { animation-play-state: paused !important; }
+/* The sun sinks behind the hills while the night comes in. */
+.story[data-kind="evening"] .st-bg .sky-sun { top: auto; bottom: -3vh; right: 17%; scale: 2.3; transition: translate 2.4s ease-in-out; }
+.story[data-kind="evening"] .st-bg .sky-rays { display: none; }
+.story[data-kind="evening"][data-beat="outro"] .st-bg .sky-sun { translate: 0 34vh; }
+.story[data-kind="evening"] .sev-outro { display: flex; flex-direction: column; align-items: center; text-align: center; gap: clamp(14px, 2.6vh, 24px); }
+.story[data-kind="evening"] .sev-hero { margin: 0; font-size: clamp(48px, min(7.4vw, 12vh), 108px); line-height: 1; font-weight: 720; letter-spacing: -0.045em; text-wrap: balance; }
+.story[data-kind="evening"] .sev-outro .sev-lede { max-width: 46ch; }
+.story[data-kind="evening"] .sev-outro .sev-pills { justify-content: center; }
+.story[data-kind="evening"] .sev-outro-acts { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+.story[data-kind="evening"] .sev-xl { display: inline-flex; align-items: center; gap: 12px; height: 60px; padding: 0 32px 0 28px; border: 0; border-radius: 999px; background: var(--sev-inv); color: #1b1240 !important;
+  font-size: 20px; font-weight: 680; letter-spacing: -0.015em; cursor: pointer; box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.6); transition: transform 0.25s var(--sev-ease); }
+.story[data-kind="evening"] .sev-xl:hover:not(:disabled) { transform: scale(1.03); }
+.story[data-kind="evening"] .sev-xl:disabled { opacity: 0.7; cursor: default; }
+.story[data-kind="evening"] .sev-xl .i { width: 22px; height: 22px; }
+.story[data-kind="evening"]:not(.st-still) .st-frame.is-hold .sev-xl { animation: sev-rise 560ms var(--sev-ease) both, sev-glow 1.2s ease-in-out 1 both; animation-delay: calc((120ms + 11 * 70ms) / var(--st-speed, 1)), 1.6s; }
+@keyframes sev-glow { 50% { box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.6), 0 0 0 10px rgba(255, 255, 255, 0.16); } }
+
+/* ---------- shorter windows ---------- */
+@media (max-height: 760px) and (min-width: 601px) {
+  .story[data-kind="evening"] .st-cards .st-frame[data-type^="ev-"] { padding-top: 70px; padding-bottom: 136px; }
+  .story[data-kind="evening"] .sev-tile { padding: 12px 14px; gap: 12px; }
+  .story[data-kind="evening"] .sev-tile .anim-scene { --as-size: var(--scene-lg); }
+  .story[data-kind="evening"] .sev-tile-n { font-size: 34px; }
+  .story[data-kind="evening"] .sev-tile-x, .story[data-kind="evening"] .sev-badge span { display: none; }
+  .story[data-kind="evening"] .sev-win { padding: 12px 16px; }
+  .story[data-kind="evening"] .sev-mc { padding: 14px; gap: 10px; }
+  .story[data-kind="evening"] .sev-note { min-height: 44px; }
+  .story[data-kind="evening"] .sev-row { padding: 10px 14px; }
+  .story[data-kind="evening"] .sev-row:not(.is-moved) .sev-why { display: none; }   /* the why comes once a row is moved */
+  .story[data-kind="evening"] .sev-head { margin-bottom: 12px; }
+  .story[data-kind="evening"] .sev-h { font-size: clamp(26px, 5.6vh, 40px); }
+  .story[data-kind="evening"] .sev-first { padding: 16px; gap: 10px; }
+  .story[data-kind="evening"] .sev-first .anim-scene { --as-size: var(--scene-lg); }
+  .story[data-kind="evening"] .sev-time { font-size: clamp(48px, 10vh, 72px); }
+  .story[data-kind="evening"] .sev-pick, .story[data-kind="evening"] .sev-slots { gap: 6px; }
+  .story[data-kind="evening"] .sev-slot { min-height: 42px; padding: 5px 10px; }
+  .story[data-kind="evening"] .sev-slot-n { width: 28px; height: 28px; font-size: 13px; }
+  .story[data-kind="evening"] .sev-sug-l { display: none; }
+  .story[data-kind="evening"] .sev-cand { height: 32px; font-size: 13px; }
+  .story[data-kind="evening"] .sev-pick-acts { margin-top: 2px; }
+  .story[data-kind="evening"] .sev-wx { display: none; }
+  .story[data-kind="evening"] .sev-mood button { height: 36px; padding: 0 13px; font-size: 14px; }
+  .story[data-kind="evening"] .sev-journal { padding: 10px 16px; }
+}
+@media (max-height: 560px) and (min-width: 601px) {
+  .story[data-kind="evening"] .st-cards .st-frame[data-type^="ev-"] { padding-top: 58px; padding-bottom: 122px; }
+  .story[data-kind="evening"] .sev-reflect .sev-said, .story[data-kind="evening"] .sev-reflect .sev-said.is-long { --sev-fs: clamp(24px, 6vh, 34px); margin-bottom: 4px; }
+  .story[data-kind="evening"] .sev-mood-l { display: none; }
+  .story[data-kind="evening"] .sev-journal { margin-top: 2px; }
+  .story[data-kind="evening"] .sev-tile-l { font-size: 14px; }
+  .story[data-kind="evening"] .sev-tiles { gap: 8px; }
+  .story[data-kind="evening"] .sev-tile .anim-scene { --as-size: var(--scene-md); }
+  .story[data-kind="evening"] .sev-nudge, .story[data-kind="evening"] .sev-sug-l, .story[data-kind="evening"] .sev-cands { display: none; }
+}
+@media (max-width: 960px) and (min-width: 601px) {
+  .story[data-kind="evening"] .sev-met { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .story[data-kind="evening"] .sev-mc:nth-child(3) { display: none; }
+  .story[data-kind="evening"] .sev-row { grid-template-columns: auto minmax(0, 1fr); }
+  .story[data-kind="evening"] .sev-row .sev-seg { grid-column: 1 / -1; justify-self: start; }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 600px) {
+  .story[data-kind="evening"] .st-cards .st-frame[data-type^="ev-"] { align-content: start; padding: 64px 16px 176px; }
+  .story[data-kind="evening"][data-beat-type="ev-outro"] .st-cards .st-frame[data-type^="ev-"] { align-content: center; }
+  .story[data-kind="evening"] .sev { padding: 12px; margin: -12px; }
+  .story[data-kind="evening"] .sev-h { font-size: 30px; }
+  .story[data-kind="evening"] .sev-head { margin-bottom: 14px; }
+  .story[data-kind="evening"] .sev-done { grid-template-columns: 1fr; gap: 14px; }
+  .story[data-kind="evening"] .sev-big { font-size: 128px; }
+  .story[data-kind="evening"] .sev-tiles { gap: 8px; }
+  .story[data-kind="evening"] .sev-tile { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; }
+  .story[data-kind="evening"] .sev-tile .anim-scene { --as-size: var(--scene-tip); border-radius: 13px; }
+  .story[data-kind="evening"] .sev-tile-n { font-size: 30px; }
+  .story[data-kind="evening"] .sev-tile-l { font-size: 14px; }
+  .story[data-kind="evening"] .sev-tile-x, .story[data-kind="evening"] .sev-badge span { display: none; }
+  .story[data-kind="evening"] .sev-badge { right: 10px; top: 10px; }
+  .story[data-kind="evening"] .sev-win { padding: 12px 14px; gap: 12px; }
+  .story[data-kind="evening"] .sev-win .anim-scene { --as-size: var(--scene-tip); border-radius: 13px; }
+  .story[data-kind="evening"] .sev-win-b b { font-size: 15px; }
+  .story[data-kind="evening"] .sev-said { --sev-fs: 30px; font-size: 30px; }
+  .story[data-kind="evening"] .sev-met, .story[data-kind="evening"] .sev-people[data-n] .sev-met { grid-template-columns: 1fr; gap: 8px; }
+  .story[data-kind="evening"] .sev-mc { padding: 14px; gap: 10px; }
+  .story[data-kind="evening"] .sev-ava .avatar { --size: 40px; font-size: 14px; }
+  .story[data-kind="evening"] .sev-ava .anim-scene { --as-size: var(--scene-dense); border-radius: 6px; right: -7px; bottom: -6px; }
+  .story[data-kind="evening"] .sev-note { min-height: 0; height: 40px; font-size: 14px; line-height: 20px; padding: 9px 10px; }
+  .story[data-kind="evening"] .sev-note:focus, .story[data-kind="evening"] .sev-note:not(:placeholder-shown) { height: 76px; }
+  .story[data-kind="evening"] .sev-mc-top { gap: 12px; }
+  .story[data-kind="evening"] .sev-mc-n b { font-size: 16px; }
+  .story[data-kind="evening"] .sev-mc-acts .sev-btn { height: 32px; padding: 0 11px; font-size: 12.5px; }
+  .story[data-kind="evening"] .sev-nudge { display: none; }
+  .story[data-kind="evening"] .sev-row { grid-template-columns: auto minmax(0, 1fr); padding: 12px; gap: 10px 12px; }
+  .story[data-kind="evening"] .sev-row .anim-scene { --as-size: var(--scene-sm); }
+  .story[data-kind="evening"] .sev-row-t { font-size: 15.5px; }
+  .story[data-kind="evening"] .sev-row .sev-seg { grid-column: 1 / -1; justify-self: stretch; }
+  .story[data-kind="evening"] .sev-seg button { flex: 1; padding: 0 6px; height: 30px; font-size: 12.5px; }
+  .story[data-kind="evening"] .sev-why span { display: none; }
+  .story[data-kind="evening"] .sev-row:not(.is-moved) .sev-why { display: none; }
+  .story[data-kind="evening"] .sev-said .sev-ent:not([data-type="person"]) { white-space: normal; }
+  .story[data-kind="evening"] .sev-tom-grid { grid-template-columns: 1fr; gap: 12px; }
+  .story[data-kind="evening"] .sev-first { padding: 16px; gap: 8px; }
+  .story[data-kind="evening"] .sev-first .anim-scene { --as-size: var(--scene-md); border-radius: 15px; }
+  .story[data-kind="evening"] .sev-time { font-size: 60px; }
+  .story[data-kind="evening"] .sev-first-t { font-size: 19px; }
+  .story[data-kind="evening"] .sev-wx { display: none; }
+  .story[data-kind="evening"] .sev-slot { min-height: 0; padding: 9px 12px; }
+  .story[data-kind="evening"] .sev-slot-n { width: 28px; height: 28px; font-size: 13px; }
+  .story[data-kind="evening"] .sev-slot-t, .story[data-kind="evening"] .sev-slot-in { font-size: 15px; }
+  .story[data-kind="evening"] .sev-tag { display: none; }
+  .story[data-kind="evening"] .sev-sug-l { display: none; }
+  .story[data-kind="evening"] .sev-reflect .sev-said { --sev-fs: 34px; font-size: 34px; }
+  .story[data-kind="evening"] .sev-reflect .sev-said.is-long { --sev-fs: 27px; font-size: 27px; }
+  .story[data-kind="evening"] .sev-mood button { height: 38px; padding: 0 12px; font-size: 13.5px; }
+  .story[data-kind="evening"] .sev-journal input { font-size: 15px; }
+  .story[data-kind="evening"] .sev-hero { font-size: 52px; }
+  .story[data-kind="evening"] .sev-xl { height: 54px; font-size: 18px; }
+  .story[data-kind="evening"] .sev-moon { right: 12%; top: 13%; width: 54px; height: 54px; box-shadow: inset -15px -8px 0 0 #f2efd9; }
+  .story[data-kind="evening"] .sev-continue { bottom: 150px; right: 16px; }
+}
+
+/* ---------- still (reduced motion / animations off) ---------- */
+.story[data-kind="evening"].st-still .sev-badge { opacity: 1; transform: none; transition: none; }
+.story[data-kind="evening"].st-still .sev-mc { opacity: 1; transform: none; }
+
+/* App toasts move to the top while a story is open (all three stories): the caption and the dock keep the bottom. */
+html.story-open .toast-host { top: 72px; bottom: auto; flex-direction: column; }
+
+/* Dark theme: a deeper dusk (the ink stays light in both themes). */
+[data-theme="dark"] .story[data-kind="evening"] .bf-sky[data-tod="dusk"] { --sky1: #231d5a; --sky2: #5d3770; --sky3: #a05a5e; }
+[data-theme="dark"] .story[data-kind="evening"] { --sev-glass: rgba(30, 14, 52, 0.36); --sev-glass2: rgba(44, 22, 70, 0.56); }

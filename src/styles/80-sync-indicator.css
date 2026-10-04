@@ -1,0 +1,2 @@
+/* The save status now lives in the top bar (.sync in 05-layout.css). */
+.sync.busy .dot { --c: var(--info); }

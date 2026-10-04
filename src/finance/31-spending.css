@@ -1,0 +1,24 @@
+/* @part 31-spending.css · NEW · OWNER: C1 (Spending section: patterns, biggest payments, flags) */
+/* When you spend: two or three averages under the bars */
+.fv-mini-stats.c1-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fv-mini-stats.c1-three b { font-size: var(--text-md); line-height: var(--lh-md); }
+
+/* Biggest payments: merchant tile, name, date and category, a bar in the category colour */
+.c1-big { gap: 2px; }
+.c1-big-row { gap: var(--space-3); align-items: center; }
+.c1-big-row .fv-row-s { display: flex; align-items: center; gap: 4px; }
+.c1-big-row .fv-row-s .c1-sym { margin-left: 2px; }
+.c1-big-row .fv-row-bar { margin-top: 5px; height: 4px; }
+.c1-big-row > .c1-sym:last-of-type { opacity: 0.9; }
+.c1-big.c1-play > li { animation: c1-rise 420ms var(--fv-ease) calc(var(--i, 0) * 40ms) both; }
+.c1-big-row .c1-nw { white-space: nowrap; flex: none; }
+.c1-big-row .c1-ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 560px) {
+  .c1-big-row > .c1-sym:nth-last-child(2) { display: none; }   /* the payment-type badge: no room on a phone */
+}
+
+/* Flags: the merchant's tile (or the category's icon) with the flag as a badge on its corner */
+.c1-flag-sym { position: relative; flex: none; display: inline-flex; }
+.c1-flag-sym .fv-flag { position: absolute; right: -6px; bottom: -6px; width: 17px; height: 17px; border-radius: 50%; box-shadow: 0 0 0 2px var(--surface); }
+.c1-flag-sym .fv-flag .i { width: 10px; height: 10px; }
+.c1-flags .fv-row { gap: var(--space-3); }

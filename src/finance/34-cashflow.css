@@ -1,0 +1,12 @@
+/* @part 34-cashflow.css · NEW · OWNER: C1 (Cash flow section: the kept gauge card) */
+.c1-kept .fv-chart { margin-top: calc(-1 * var(--space-2)); }
+.c1-kept-b { display: grid; gap: var(--space-2); }
+.c1-kept-say { margin: 0 0 var(--space-1); font-size: var(--text-sm); line-height: var(--lh-sm); color: var(--fg-muted); text-align: center; }
+.c1-kept-say b { color: var(--fg); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.c1-kept-say .mute { display: block; margin-top: var(--space-1); font-size: var(--text-xs); color: var(--fg-subtle); }
+.c1-kr { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); min-height: 26px; padding: 0 var(--space-1); border-radius: var(--radius-sm); }
+.c1-kr i { width: 10px; height: 10px; border-radius: 3px; flex: none; background: var(--c, var(--fg-subtle)); }
+.c1-kr .l { color: var(--fg-muted); }
+.c1-kr b { margin-left: auto; font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.c1-kr.kept { border-top: 1px solid var(--border-subtle); padding-top: var(--space-2); border-radius: 0; }
+.c1-kr.kept.neg b { color: var(--fv-bad); }

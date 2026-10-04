@@ -1,0 +1,150 @@
+/* @part 10-shell.css · OWNER: C3 (page-header actions, buttons, inputs, seg, switch, notices, first run) */
+/* ---------- page header: freshness subtitle + actions ---------- */
+.fv-fresh { display: inline-flex; align-items: center; gap: var(--space-1-5); color: var(--fg-subtle); }
+.fv-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex: none; display: inline-block; }
+.fv-fresh.stale .fv-dot { background: var(--warning); }
+.fv-head-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
+.fv-sync { display: inline-flex; }
+.fv-sync > .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.fv-sync-caret { border-top-left-radius: 0; border-bottom-left-radius: 0; padding: 0 var(--space-1-5); border-left: 1px solid color-mix(in oklab, var(--fg-on-accent) 28%, transparent) !important; }
+.fv-sync .btn.busy .fv-sync-ic { animation: fv-spin 1s linear infinite; }
+.fv-sync .btn.is-gated, .fv-head-actions .btn.is-gated { opacity: 0.55; }
+/* the caret stays usable (Import CSV lives in its menu) but matches its gated half */
+.fv-sync:has(> .fv-sync-main.is-gated) .fv-sync-caret { opacity: 0.55; filter: grayscale(0.6); }
+.fv-sync .btn:disabled { opacity: 0.6; cursor: default; }
+@container main (max-width: 620px) { .fv-head-actions .btn .lbl { display: none; } }
+
+/* ---------- buttons, inputs, segmented controls (mirror .btn / .seg / .switch) ---------- */
+.fv-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1-5);
+  height: var(--control-h); padding: 0 var(--space-3); border-radius: var(--radius-sm);
+  font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium); line-height: 1; white-space: nowrap; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--fg); box-shadow: var(--shadow-xs);
+  transition: background-color var(--fv-fast) var(--fv-ease), border-color var(--fv-fast) var(--fv-ease), color var(--fv-fast) var(--fv-ease), box-shadow var(--fv-fast) var(--fv-ease);
+}
+.fv-btn:hover { background: var(--bg-muted); }
+.fv-btn:focus-visible, .fv-seg button:focus-visible, .fv-chip:focus-visible, .fv-tab:focus-visible, .fv-kpi:focus-visible, .fv-row:focus-visible, .fv-link:focus-visible, .fv-range-lbl:focus-visible, .fv-icon-btn:focus-visible, .fv-legend-row:focus-visible {
+  outline: none; box-shadow: var(--focus-ring);
+}
+.fv-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--fg-on-accent); box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255,255,255,0.12); }
+.fv-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.fv-btn.ghost { background: transparent; border-color: transparent; color: var(--fg-muted); box-shadow: none; }
+.fv-btn.ghost:hover, .fv-btn.ghost.on { background: var(--bg-muted); color: var(--fg); }
+.fv-btn:disabled { opacity: 0.5; cursor: default; }
+.fv-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-full); background: var(--accent); color: var(--fg-on-accent); font-size: var(--text-2xs); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; }
+.fv-icon-btn { color: var(--fg-muted); }
+.fv-link { border: 0; background: none; padding: 0; font: inherit; font-weight: var(--weight-medium); color: var(--accent-ink); cursor: pointer; text-align: left; }
+.fv-link:hover { text-decoration: underline; }
+.fv-input {
+  height: var(--control-h); font: inherit; font-size: var(--text-sm); color: var(--fg); background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 var(--space-2-5, 10px); min-width: 0; box-shadow: var(--shadow-xs);
+  transition: border-color var(--fv-fast), box-shadow var(--fv-fast);
+}
+.fv-input::placeholder { color: var(--fg-subtle); }
+.fv-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
+.fv-input.bad { border-color: var(--danger); }
+.fv-seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--bg-muted); border-radius: var(--radius-sm); flex: none; }
+.fv-seg button {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 var(--space-2);
+  border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--fg-muted); white-space: nowrap;
+  font: inherit; font-size: var(--text-xs); font-weight: var(--weight-medium); cursor: pointer; font-variant-numeric: tabular-nums;
+  transition: background-color var(--fv-fast) var(--fv-ease), color var(--fv-fast) var(--fv-ease), box-shadow var(--fv-fast);
+}
+.fv-seg button:hover { color: var(--fg); }
+.fv-seg button.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-sm); }
+[data-theme="dark"] .fv-seg button.on { background: var(--bg-emphasis); }
+/* @c3-begin the sliding pill (seg() in 08-controls.js): one surface glides to the choice */
+.fv-seg { position: relative; isolation: isolate; }
+.fv-seg button { position: relative; z-index: 1; }
+.fv-seg button.on { cursor: default; }
+.fv-seg-pill { position: absolute; left: 0; top: 2px; bottom: 2px; width: 0; z-index: 0; border-radius: var(--radius-xs); background: var(--surface); box-shadow: var(--shadow-sm); transform-origin: 0 50%; pointer-events: none; opacity: 0; }
+[data-theme="dark"] .fv-seg-pill { background: var(--bg-emphasis); }
+.fv-seg.has-pill .fv-seg-pill { opacity: 1; }
+.fv-seg.has-pill button.on, [data-theme="dark"] .fv-seg.has-pill button.on { background: transparent; box-shadow: none; }
+/* @c3-end */
+.fv-switch { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--fg-muted); cursor: pointer; user-select: none; white-space: nowrap; }
+.fv-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.fv-switch-ui { width: 28px; height: 16px; border-radius: var(--radius-full); background: var(--border-strong); position: relative; transition: background-color var(--fv-base) var(--fv-ease); flex: none; }
+.fv-switch-ui::after { content: ''; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-xs); transition: transform var(--fv-base) var(--fv-ease); }
+.fv-switch input:checked + .fv-switch-ui { background: var(--accent); }
+.fv-switch input:checked + .fv-switch-ui::after { transform: translateX(12px); }
+.fv-switch input:focus-visible + .fv-switch-ui { box-shadow: var(--focus-ring); }
+.fv-switch:hover { color: var(--fg); }
+
+/* ---------- notices (update progress, stale data) ---------- */
+.fv-top { display: grid; gap: var(--space-2); }
+.fv-top:has(> :not([hidden])) { margin-bottom: var(--space-3); }
+.fv-progress { align-items: flex-start; }
+.fv-progress > .i { margin-top: 2px; }
+.fv-callout-b { flex: 1; min-width: 0; display: grid; gap: var(--space-1-5); line-height: var(--lh-sm); }
+.fv-callout-b > b { font-weight: var(--weight-semibold); }
+.fv-callout-b { display: block; }
+.fv-callout-b > .fv-steps, .fv-callout-b > .fv-prog-bar, .fv-callout-b > div, .fv-callout-b > ul { margin-top: var(--space-2); }
+.fv-callout-x { margin: -4px -4px 0 0; }
+.fv .callout.ok { background: var(--success-soft); border-color: color-mix(in oklab, var(--success) 28%, transparent); }
+.fv .callout.ok > .i { color: var(--success-ink); }
+.fv .callout.fv-run { background: var(--surface); border-color: var(--border); }
+.fv .callout.fv-run > .i { color: var(--accent); }
+.fv-banner > div { flex: 1; min-width: 0; }
+.fv-banner b { font-weight: var(--weight-semibold); }
+.fv-steps { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.fv-step { display: inline-flex; align-items: center; gap: var(--space-1-5); font-size: var(--text-xs); font-weight: var(--weight-medium); color: var(--fg-subtle); }
+.fv-step i { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); transition: background-color var(--m-slow, 240ms); }
+.fv-step.done { color: var(--fg-muted); }
+.fv-step.done i { background: var(--accent); }
+.fv-step.cur { color: var(--fg); }
+.fv-step.cur i { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); animation: fv-pulse 1.6s ease-in-out infinite; }
+.fv-prog-bar { height: 3px; border-radius: var(--radius-full); background: var(--bg-emphasis); overflow: hidden; position: relative; }
+.fv-prog-bar i { position: absolute; top: 0; bottom: 0; width: 34%; border-radius: inherit; background: var(--accent); animation: fv-indet 1.6s var(--fv-ease) infinite; }
+.fv-warn-list { margin: var(--space-1) 0 0 18px; color: var(--fg-muted); font-size: var(--text-xs); }
+
+/* ---------- first run ---------- */
+.fv-state { padding-top: var(--space-16); }
+.fv-welcome { padding-top: var(--space-12); }
+.fv-welcome .es-text { max-width: 480px; }
+.fv-welcome-note { display: inline-flex; align-items: center; gap: var(--space-2); margin-top: var(--space-4); font-size: var(--text-sm); color: var(--fg-muted); }
+.fv-welcome-steps { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 220px)); gap: var(--space-4); margin-top: var(--space-10); text-align: left; padding: 0; }
+.fv-welcome-steps li { display: grid; gap: var(--space-1); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-xs); }
+.fv-welcome-steps b { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--fg); }
+.fv-welcome-steps li > span:last-child { font-size: var(--text-xs); line-height: var(--lh-xs); color: var(--fg-muted); }
+.fv-step-ic { width: 28px; height: 28px; border-radius: var(--radius-md); background: var(--accent-soft); color: var(--accent-ink); display: inline-grid; place-items: center; margin-bottom: var(--space-1); }
+@container main (max-width: 720px) { .fv-welcome-steps { grid-template-columns: 1fr; } }
+/* drop a CSV anywhere on the page */
+.fv.fv-drop::after { content: 'Drop a CSV export to import it'; position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; border: 2px dashed var(--accent); border-radius: var(--radius-lg); background: color-mix(in oklab, var(--accent-soft) 88%, transparent); color: var(--accent-ink); font-weight: var(--weight-semibold); pointer-events: none; }
+/* @c3-begin new data just landed: the freshness dot rings twice */
+.fv-dot { position: relative; }
+.fv-fresh.is-new .fv-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--success); animation: fv-dot-ring 1200ms var(--fv-ease) 2; }
+@keyframes fv-dot-ring { from { transform: scale(1); opacity: 0.6; } to { transform: scale(3.2); opacity: 0; } }
+/* first run: the coin-into-a-jar scene */
+.fv-welcome .es-icon.fv-es-scene { background: none; width: auto; height: auto; }
+
+/* ---------- Sync bank: the arrows spin, then turn into a tick ---------- */
+.fv-sync-icons { display: inline-grid; width: 16px; height: 16px; flex: none; }
+.fv-sync-icons > .i { grid-area: 1 / 1; transition: transform 380ms var(--m-pop, cubic-bezier(0.34, 1.4, 0.64, 1)), opacity 200ms var(--fv-ease); }
+.fv-sync-icons > .fv-sync-ok { opacity: 0; transform: scale(0.4) rotate(-40deg); stroke-width: 2.6; }
+.fv-sync-main.done .fv-sync-ic { opacity: 0; transform: scale(0.4) rotate(120deg); animation: none; }
+.fv-sync-main.done .fv-sync-ok { opacity: 1; transform: none; }
+
+/* ---------- first-load skeleton (the final layout in grey) ---------- */
+@keyframes fv-sk-in { from { opacity: 0; } }
+.fv-skeleton { display: grid; gap: var(--space-3); padding-top: var(--space-1); animation: fv-sk-in 240ms ease-out 150ms both; }
+.fv-sk-tabs { display: flex; gap: var(--space-4); padding: 10px 2px 12px; border-bottom: 1px solid var(--border-subtle); }
+.fv-skel.tab { height: 14px; border-radius: 4px; }
+.fv-sk-bar { display: flex; align-items: center; gap: var(--space-3); }
+.fv-skel.seg { width: 268px; height: 28px; border-radius: 9px; }
+.fv-skel.lbl { width: 190px; height: 14px; }
+.fv-skel.seg2 { width: 220px; height: 28px; border-radius: 9px; }
+.fv-skel.nav { height: 46px; border-radius: 10px; }
+.fv-sk-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); margin-top: var(--space-1); }
+.fv-sk-card { background: var(--surface); border: 1px solid var(--border-subtle); border-radius: 14px; padding: var(--space-4); display: grid; gap: var(--space-3); align-content: start; min-width: 0; }
+.fv-sk-card.kpi { min-height: 116px; }
+.fv-sk-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--space-4); }
+.fv-sk-card.big .fv-skel-chart { height: 240px; }
+@container main (max-width: 620px) {
+  .fv-sk-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fv-sk-grid { grid-template-columns: minmax(0, 1fr); }
+  .fv-skel.seg2 { display: none; }
+  .fv-skel.seg { width: 200px; }
+}
+/* @c3-end */
+

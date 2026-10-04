@@ -1,0 +1,82 @@
+# CI: on every push and pull request, check the build, run the whole test
+# suite and the privacy scan on Linux, Windows and macOS with each supported
+# Node.js version. No npm install: the app has zero dependencies.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [20, 22, 24]
+    env:
+      # Runners have no Claude Code CLI. Point at a file that does not exist so
+      # nothing ever finds one by accident: tests that need it must skip.
+      CLAUDE_CLI_PATH: ${{ github.workspace }}/.no-claude-cli/claude
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Syntax check (node build.mjs --syntax)
+        run: node build.mjs --syntax
+
+      - name: Build index.html (node build.mjs)
+        run: node build.mjs
+
+      # bash expands the glob on every OS, so Node 20 (no glob support in
+      # --test) runs exactly the same files as Node 22 and 24.
+      - name: Tests (node --test tests/*.test.mjs)
+        shell: bash
+        run: node --test tests/*.test.mjs
+
+      - name: Privacy scan (generic rules)
+        run: node tools/privacy-scan.mjs --no-terms
+
+  # The same suite with no network and no Claude CLI, as on a user's offline
+  # machine. Advisory until every network or Claude test skips cleanly.
+  offline:
+    name: Offline (no network, no Claude CLI)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    env:
+      CLAUDE_CLI_PATH: ${{ github.workspace }}/.no-claude-cli/claude
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+
+      - name: Build index.html
+        run: node build.mjs
+
+      - name: Tests with the network switched off (tools/release-offline.mjs)
+        shell: bash
+        run: |
+          export NODE_OPTIONS="--import=file://$PWD/tools/release-offline.mjs"
+          node --test tests/*.test.mjs

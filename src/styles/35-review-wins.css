@@ -1,0 +1,52 @@
+/* ============= REVIEW MODE, WINS, BIN (owner: Tasks; 33-tasks-logs.js) ============= */
+.review, .wins { display: flex; flex-direction: column; gap: var(--space-3); }
+.review-scope { margin: 0; font-size: var(--text-xs); }
+.stat-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); padding: var(--space-3) var(--space-4); min-width: 0; }
+.stat-card .lbl { font-size: var(--text-xs); color: var(--fg-subtle); font-weight: var(--weight-medium); }
+.stat-card .num { font-size: var(--text-2xl); line-height: var(--lh-2xl); font-weight: var(--weight-semibold); color: var(--fg); margin-top: 2px; font-variant-numeric: tabular-nums; letter-spacing: var(--tracking-tighter); }
+.stat-card .sub { font-size: var(--text-xs); color: var(--fg-subtle); margin-top: 2px; }
+.stat-card.danger .num { color: var(--danger-ink); }
+.stat-card.success .num { color: var(--success-ink); }
+
+.wins-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); padding: var(--space-3) var(--space-4) var(--space-2); }
+.wins-section h3 { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: 0 0 var(--space-2); font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--fg); }
+.wins-section h3 .count { font-size: var(--text-xs); color: var(--fg-subtle); font-weight: var(--weight-regular); font-variant-numeric: tabular-nums; }
+.wins-section > .muted { margin: 0 0 var(--space-2); font-size: var(--text-sm); color: var(--fg-subtle); }
+.wins-streams { display: inline-flex; flex-wrap: wrap; gap: var(--space-3); margin-left: auto; font-weight: var(--weight-regular); }
+
+.bar-stream {
+  display: grid; grid-template-columns: 140px minmax(0, 1fr) 40px; align-items: center; gap: var(--space-3); width: 100%;
+  height: 30px; padding: 0 var(--space-1); border: 0; background: none; border-radius: var(--radius-sm); font: inherit; font-size: var(--text-sm); color: var(--fg); cursor: pointer; text-align: left;
+}
+.bar-stream:hover { background: var(--bg-muted); }
+.bar-stream .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-stream .progress { height: 6px; }
+.bar-stream .num { font-size: var(--text-xs); color: var(--fg-muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+.win-row {
+  display: grid; grid-template-columns: 120px 8px minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); width: 100%;
+  min-height: 34px; padding: 4px var(--space-1); border: 0; border-top: 1px solid var(--border-subtle); background: none;
+  font: inherit; font-size: var(--text-sm); color: var(--fg); text-align: left;
+}
+button.win-row, .win-row[role="button"] { cursor: pointer; }
+.win-row:hover { background: var(--bg-muted); }
+.wins-section h3 + .win-row, .wins-section > .win-row:first-of-type { border-top: 0; }
+.win-row .when { color: var(--fg-subtle); font-variant-numeric: tabular-nums; font-size: var(--text-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.win-row .when.danger { color: var(--danger-ink); }
+.win-row .when.warn { color: var(--warning-ink); }
+.win-row .when.success { color: var(--success-ink); }
+.win-row .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.win-row .win-undo { opacity: 0; }
+.win-row:hover .win-undo, .win-row .win-undo:focus-visible { opacity: 1; }
+
+.bin-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.bin-head .muted { flex: 1; font-size: var(--text-sm); color: var(--fg-subtle); }
+.bin-row .bin-del { color: var(--fg-subtle); }
+.bin-row .bin-del:hover { color: var(--danger-ink); background: var(--danger-soft); }
+
+@container main (max-width: 720px) {
+  .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .win-row { grid-template-columns: 84px 8px minmax(0, 1fr) auto; }
+  .bar-stream { grid-template-columns: 96px minmax(0, 1fr) 32px; }
+}

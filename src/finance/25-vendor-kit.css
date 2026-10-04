@@ -1,0 +1,39 @@
+/* @part 25-vendor-kit.css · NEW (3 Oct 2026) · OWNER: C2 (sparklines, merchant tiles in the view, tooltip tiles, change badges; see 25-vendor-kit.js) */
+/* ---------- vendor kit ---------- */
+.fv, .fv-layer {
+  --c2-in: var(--c-in-ink, var(--success-ink));
+  --c2-pop: var(--m-pop, cubic-bezier(0.34, 1.4, 0.64, 1));
+}
+/* Sparkline: stretched path, non-scaling stroke, HTML end dot. Draw-in is a
+   transform on the clip group (scaleX 0 -> 1), then the dot pops. */
+.fv-spk { position: relative; display: block; width: 100%; height: 100%; }
+.fv-spk svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.fv-spk-dot { position: absolute; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--surface); pointer-events: none; }
+.fv-spk.enter .fv-spk-clip { transform-box: view-box; transform-origin: 0 50%; animation: c2-draw 900ms var(--fv-ease) calc(var(--i, 0) * 60ms + 260ms) both; }
+.fv-spk.enter .fv-spk-dot { animation: c2-pop 320ms var(--c2-pop) calc(var(--i, 0) * 60ms + 1100ms) both; }
+@keyframes c2-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes c2-pop { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: none; } }
+@keyframes c2-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes c2-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes c2-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes c2-tile { from { opacity: 0; transform: scale(0.86); } to { opacity: 1; transform: none; } }
+/* No symbol library: a calm letter tile. */
+.fv-mt-fallback { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--bg-emphasis); color: var(--fg-muted); font-weight: var(--weight-semibold); flex: none; }
+.fv-mt-fallback.sz-sm { width: 28px; height: 28px; border-radius: 8px; }
+.fv-mt-fallback.sz-lg { width: 48px; height: 48px; border-radius: 13px; }
+.fv-mt-fallback.sz-xs { width: 20px; height: 20px; border-radius: 6px; font-size: 11px; }
+/* Tooltip head with the merchant's tile */
+.fv-tt-mh { display: flex; align-items: center; gap: 7px; }
+.fv-tt-mh .fsym { flex: none; }
+/* Price change / new / stopped badges */
+.fv-chg { display: inline-flex; align-items: center; gap: 2px; height: 18px; padding: 0 6px 0 4px; border-radius: var(--radius-full); font-size: 11px; font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; white-space: nowrap; flex: none; }
+.fv-chg .i { width: 11px; height: 11px; stroke-width: 2.4; }
+.fv-chg.up { background: var(--warning-soft); color: var(--warning-ink); }
+.fv-chg.down { background: var(--success-soft); color: var(--success-ink); }
+.fv-chg.new { background: var(--info-soft); color: var(--info-ink); padding: 0 7px; }
+.fv-chg.off { background: var(--bg-muted); color: var(--fg-muted); padding: 0 7px; }
+/* The current merchant reads as current wherever it appears. */
+.fv .is-current { cursor: default; }
+@media (prefers-reduced-motion: reduce) {
+  .fv-spk.enter .fv-spk-clip, .fv-spk.enter .fv-spk-dot { animation: none !important; }
+}

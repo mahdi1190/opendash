@@ -1,0 +1,966 @@
+{
+ "note": "Made by spend.py (Python) on tests/fixtures/finance/make-fixture.mjs. Regenerate with: node tests/fixtures/finance/golden.mjs --spend-py <spend.py>",
+ "runs": {
+  "2026-09-10": {
+   "today": "2026-09-10",
+   "week": {
+    "start": "2026-08-31",
+    "end": "2026-09-06",
+    "total": 1680.23,
+    "avg_prev": 42.83,
+    "by_category": {
+     "Housing": 950,
+     "Uncategorised": 603.98,
+     "Groceries": 79.19,
+     "Eating out": 24.75,
+     "Subscriptions": 10.99,
+     "Fitness": 7.5,
+     "Shopping": 3.82
+    }
+   },
+   "month": {
+    "label": "September 2026",
+    "mtd": 1672.73,
+    "last_month_label": "August",
+    "last_month_to_date": 1190.3,
+    "last_month_full": -381.41,
+    "by_category": {
+     "Housing": 950,
+     "Uncategorised": 603.98,
+     "Groceries": 79.19,
+     "Eating out": 24.75,
+     "Subscriptions": 10.99,
+     "Shopping": 3.82
+    },
+    "last_by_category": {
+     "Housing": 950,
+     "Groceries": 316.24,
+     "Shopping": 135.22,
+     "Uncategorised": 118.58,
+     "Fitness": 37.5,
+     "Subscriptions": 30.49,
+     "Eating out": -1969.44
+    },
+    "avg3_by_category": {
+     "Housing": 950,
+     "Groceries": 421.48,
+     "Shopping": 101.69,
+     "Uncategorised": 70.5,
+     "Fitness": 35,
+     "Payments to people": 14.2,
+     "Cash": 13.33,
+     "Subscriptions": 17.49,
+     "Transport": 1.4,
+     "Eating out": -605.05
+    }
+   },
+   "income_month": 1234.5,
+   "months": [
+    "2025-10",
+    "2025-11",
+    "2025-12",
+    "2026-01",
+    "2026-02",
+    "2026-03",
+    "2026-04",
+    "2026-05",
+    "2026-06",
+    "2026-07",
+    "2026-08",
+    "2026-09"
+   ],
+   "monthly": {
+    "Housing": [
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950
+    ],
+    "Groceries": [
+     364.1,
+     359.42,
+     380.03,
+     347.19,
+     370.07,
+     406.35,
+     389.43,
+     221.48,
+     460.88,
+     487.31,
+     316.24,
+     79.19
+    ],
+    "Shopping": [
+     122.56,
+     20.1,
+     146.08,
+     73.27,
+     253.92,
+     162.73,
+     112.45,
+     89.4,
+     14.47,
+     155.37,
+     135.22,
+     3.82
+    ],
+    "Uncategorised": [
+     28.37,
+     10,
+     10,
+     19.18,
+     30.69,
+     27.69,
+     26.52,
+     39.55,
+     32.85,
+     60.06,
+     118.58,
+     603.98
+    ],
+    "Fitness": [
+     30,
+     30,
+     37.5,
+     30,
+     30,
+     37.5,
+     30,
+     30,
+     37.5,
+     30,
+     37.5,
+     0
+    ],
+    "Payments to people": [
+     42.99,
+     0,
+     37.13,
+     41.67,
+     0,
+     0,
+     0,
+     29.89,
+     42.61,
+     0,
+     0,
+     0
+    ],
+    "Cash": [
+     40,
+     40,
+     0,
+     40,
+     0,
+     0,
+     0,
+     0,
+     0,
+     40,
+     0,
+     0
+    ],
+    "Subscriptions": [
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     30.49,
+     10.99
+    ],
+    "Transport": [
+     0,
+     4.2,
+     0,
+     4.2,
+     0,
+     4.2,
+     0,
+     4.2,
+     0,
+     4.2,
+     0,
+     0
+    ],
+    "Eating out": [
+     135.11,
+     90.94,
+     129.57,
+     122.28,
+     159.07,
+     102.71,
+     62.05,
+     64.54,
+     118.42,
+     35.88,
+     -1969.44,
+     24.75
+    ]
+   },
+   "weeks": [
+    {
+     "week": "2026-05-18",
+     "total": 125.26
+    },
+    {
+     "week": "2026-05-25",
+     "total": 130.88
+    },
+    {
+     "week": "2026-06-01",
+     "total": 1164.49
+    },
+    {
+     "week": "2026-06-08",
+     "total": 122.32
+    },
+    {
+     "week": "2026-06-15",
+     "total": 217.17
+    },
+    {
+     "week": "2026-06-22",
+     "total": 120.84
+    },
+    {
+     "week": "2026-06-29",
+     "total": 1085.14
+    },
+    {
+     "week": "2026-07-06",
+     "total": 220.78
+    },
+    {
+     "week": "2026-07-13",
+     "total": 249.24
+    },
+    {
+     "week": "2026-07-20",
+     "total": 170.86
+    },
+    {
+     "week": "2026-07-27",
+     "total": 1040.69
+    },
+    {
+     "week": "2026-08-03",
+     "total": 232.8
+    },
+    {
+     "week": "2026-08-10",
+     "total": 177.94
+    },
+    {
+     "week": "2026-08-17",
+     "total": 227.9
+    },
+    {
+     "week": "2026-08-24",
+     "total": -1977.55
+    },
+    {
+     "week": "2026-08-31",
+     "total": 1680.23
+    }
+   ],
+   "recurring": [
+    {
+     "merchant": "Openrent Ltd Ref",
+     "category": "Housing",
+     "frequency": "monthly",
+     "last_amount": 950,
+     "monthly_cost": 950,
+     "first_seen": "2025-08-01",
+     "last_seen": "2026-09-01",
+     "count": 14,
+     "amount_varies": false
+    },
+    {
+     "merchant": "J Bloggs",
+     "category": "Payments to people",
+     "frequency": "monthly",
+     "last_amount": 42.61,
+     "monthly_cost": 42.61,
+     "first_seen": "2025-09-20",
+     "last_seen": "2026-06-20",
+     "count": 6,
+     "amount_varies": true
+    },
+    {
+     "merchant": "Puregym Ltd",
+     "category": "Fitness",
+     "frequency": "weekly",
+     "last_amount": 7.5,
+     "monthly_cost": 32.5,
+     "first_seen": "2025-08-04",
+     "last_seen": "2026-08-31",
+     "count": 57,
+     "amount_varies": false
+    },
+    {
+     "merchant": "Netflix.Com",
+     "category": "Subscriptions",
+     "frequency": "monthly",
+     "last_amount": 10.99,
+     "monthly_cost": 10.99,
+     "first_seen": "2025-08-05",
+     "last_seen": "2026-09-05",
+     "count": 14,
+     "amount_varies": false
+    },
+    {
+     "merchant": "Phone Plan Co",
+     "category": "Uncategorised",
+     "frequency": "monthly",
+     "last_amount": 10,
+     "monthly_cost": 10,
+     "first_seen": "2025-08-12",
+     "last_seen": "2026-08-12",
+     "count": 13,
+     "amount_varies": false
+    },
+    {
+     "merchant": "Streamify Premium",
+     "category": "Uncategorised",
+     "frequency": "monthly",
+     "last_amount": 9.99,
+     "monthly_cost": 9.99,
+     "first_seen": "2026-07-03",
+     "last_seen": "2026-09-03",
+     "count": 3,
+     "amount_varies": false
+    },
+    {
+     "merchant": "Annual Widget Club",
+     "category": "Uncategorised",
+     "frequency": "annual",
+     "last_amount": 60,
+     "monthly_cost": 5,
+     "first_seen": "2025-08-20",
+     "last_seen": "2026-08-20",
+     "count": 2,
+     "amount_varies": false
+    }
+   ],
+   "recurring_monthly_total": 1061.09,
+   "flags": [
+    {
+     "kind": "Possible duplicate",
+     "severity": "warn",
+     "date": "2026-09-02",
+     "merchant": "City Taxi Co",
+     "amount": 12.4,
+     "note": "charged 2 times between 01 Sep and 02 Sep"
+    },
+    {
+     "kind": "Large spend",
+     "severity": "warn",
+     "date": "2026-09-01",
+     "merchant": "Openrent Ltd Ref",
+     "amount": 950,
+     "note": "large payment"
+    },
+    {
+     "kind": "Large spend",
+     "severity": "warn",
+     "date": "2026-09-02",
+     "merchant": "Bigstore Furniture",
+     "amount": 480,
+     "note": "about 48x your usual uncategorised transaction"
+    },
+    {
+     "kind": "New recurring payment",
+     "severity": "info",
+     "date": "2026-09-03",
+     "merchant": "Streamify Premium",
+     "amount": 9.99,
+     "note": "monthly, about £9.99 a month"
+    },
+    {
+     "kind": "Uncategorised",
+     "severity": "info",
+     "date": "2026-09-02",
+     "merchant": "Bigstore Furniture",
+     "amount": 480,
+     "note": "1 transaction(s); raw: BIGSTORE FURNITURE"
+    },
+    {
+     "kind": "Uncategorised",
+     "severity": "info",
+     "date": "2026-09-02",
+     "merchant": "City Taxi Co",
+     "amount": 24.8,
+     "note": "2 transaction(s); raw: CITY TAXI CO"
+    },
+    {
+     "kind": "Uncategorised",
+     "severity": "info",
+     "date": "2026-09-03",
+     "merchant": "Crêperie House",
+     "amount": 12,
+     "note": "1 transaction(s); raw: CRÊPERIE £ HOUSE"
+    },
+    {
+     "kind": "Uncategorised",
+     "severity": "info",
+     "date": "2026-09-03",
+     "merchant": "Streamify Premium",
+     "amount": 9.99,
+     "note": "1 transaction(s); raw: STREAMIFY PREMIUM"
+    },
+    {
+     "kind": "Uncategorised",
+     "severity": "info",
+     "date": "2026-09-04",
+     "merchant": "Snack Hut",
+     "amount": 6.4,
+     "note": "2 transaction(s); raw: SNACK HUT"
+    },
+    {
+     "kind": "Uncategorised",
+     "severity": "info",
+     "date": "2026-09-04",
+     "merchant": "Thé Room",
+     "amount": 7,
+     "note": "1 transaction(s); raw: THÉ ROOM"
+    },
+    {
+     "kind": "Uncategorised",
+     "severity": "info",
+     "date": "2026-09-05",
+     "merchant": "Bookshop Central",
+     "amount": 12.99,
+     "note": "1 transaction(s); raw: BOOKSHOP CENTRAL"
+    },
+    {
+     "kind": "Uncategorised",
+     "severity": "info",
+     "date": "2026-09-05",
+     "merchant": "Hardware Depot",
+     "amount": 45.2,
+     "note": "1 transaction(s); raw: HARDWARE DEPOT"
+    },
+    {
+     "kind": "Uncategorised",
+     "severity": "info",
+     "date": "2026-09-05",
+     "merchant": "Market Stall",
+     "amount": 5.6,
+     "note": "2 transaction(s); raw: MARKET STALL"
+    }
+   ],
+   "uncategorised_merchants": [
+    "BIGSTORE FURNITURE",
+    "BOOKSHOP CENTRAL",
+    "CITY TAXI CO",
+    "CRÊPERIE HOUSE",
+    "HARDWARE DEPOT",
+    "MARKET STALL",
+    "SNACK HUT",
+    "STREAMIFY PREMIUM",
+    "THÉ ROOM"
+   ],
+   "counts": {
+    "total": 526,
+    "by_how": {
+     "rule": 435,
+     "unmatched": 55,
+     "default": 19,
+     "override": 13,
+     "bank": 4
+    }
+   },
+   "categories": [
+    "Bills & utilities",
+    "Cash",
+    "Debt repayments",
+    "Eating out",
+    "Education",
+    "Entertainment",
+    "Family",
+    "Fees & interest",
+    "Fitness",
+    "Gifts & charity",
+    "Groceries",
+    "Health",
+    "Home",
+    "Housing",
+    "Income",
+    "Insurance",
+    "Internal transfers",
+    "Other",
+    "Payments to people",
+    "Personal care",
+    "Savings & investments",
+    "Shopping",
+    "Subscriptions",
+    "Tax",
+    "Transport",
+    "Travel",
+    "Uncategorised",
+    "Work expenses"
+   ],
+   "exclude_from_spending": [
+    "Income",
+    "Internal transfers",
+    "Savings & investments",
+    "Work expenses"
+   ],
+   "transactions": {
+    "n": 526,
+    "sha": "4581b0d4bb83f1385ab27cb2",
+    "categories": "687461f11660c563da484ea7"
+   },
+   "analysisSha": "b6c8912b43fc1bdc8e5c77df",
+   "storeSha": "991780ed35e72c225a23310b",
+   "bankCategories": {
+    "n": 10,
+    "sha": "0beaa0c5b3826dfd766dbe92"
+   },
+   "processed": [
+    "2026-export-a.csv",
+    "2026-export-b.csv",
+    "Statement Money In Out.csv",
+    "bank-sync-20260909-120000.csv",
+    "old-bank-latin1.csv"
+   ],
+   "inboxLeft": [
+    "broken.csv",
+    "notes.txt"
+   ]
+  },
+  "2026-09-30": {
+   "today": "2026-09-30",
+   "week": {
+    "start": "2026-09-21",
+    "end": "2026-09-27",
+    "total": 0,
+    "avg_prev": 172.75,
+    "by_category": {}
+   },
+   "month": {
+    "label": "September 2026",
+    "mtd": 1672.73,
+    "last_month_label": "August",
+    "last_month_to_date": -388.91,
+    "last_month_full": -381.41,
+    "by_category": {
+     "Housing": 950,
+     "Uncategorised": 603.98,
+     "Groceries": 79.19,
+     "Eating out": 24.75,
+     "Subscriptions": 10.99,
+     "Shopping": 3.82
+    },
+    "last_by_category": {
+     "Housing": 950,
+     "Groceries": 316.24,
+     "Shopping": 135.22,
+     "Uncategorised": 118.58,
+     "Fitness": 37.5,
+     "Subscriptions": 30.49,
+     "Eating out": -1969.44
+    },
+    "avg3_by_category": {
+     "Housing": 950,
+     "Groceries": 421.48,
+     "Shopping": 101.69,
+     "Uncategorised": 70.5,
+     "Fitness": 35,
+     "Payments to people": 14.2,
+     "Cash": 13.33,
+     "Subscriptions": 17.49,
+     "Transport": 1.4,
+     "Eating out": -605.05
+    }
+   },
+   "income_month": 1234.5,
+   "months": [
+    "2025-10",
+    "2025-11",
+    "2025-12",
+    "2026-01",
+    "2026-02",
+    "2026-03",
+    "2026-04",
+    "2026-05",
+    "2026-06",
+    "2026-07",
+    "2026-08",
+    "2026-09"
+   ],
+   "monthly": {
+    "Housing": [
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950,
+     950
+    ],
+    "Groceries": [
+     364.1,
+     359.42,
+     380.03,
+     347.19,
+     370.07,
+     406.35,
+     389.43,
+     221.48,
+     460.88,
+     487.31,
+     316.24,
+     79.19
+    ],
+    "Shopping": [
+     122.56,
+     20.1,
+     146.08,
+     73.27,
+     253.92,
+     162.73,
+     112.45,
+     89.4,
+     14.47,
+     155.37,
+     135.22,
+     3.82
+    ],
+    "Uncategorised": [
+     28.37,
+     10,
+     10,
+     19.18,
+     30.69,
+     27.69,
+     26.52,
+     39.55,
+     32.85,
+     60.06,
+     118.58,
+     603.98
+    ],
+    "Fitness": [
+     30,
+     30,
+     37.5,
+     30,
+     30,
+     37.5,
+     30,
+     30,
+     37.5,
+     30,
+     37.5,
+     0
+    ],
+    "Payments to people": [
+     42.99,
+     0,
+     37.13,
+     41.67,
+     0,
+     0,
+     0,
+     29.89,
+     42.61,
+     0,
+     0,
+     0
+    ],
+    "Cash": [
+     40,
+     40,
+     0,
+     40,
+     0,
+     0,
+     0,
+     0,
+     0,
+     40,
+     0,
+     0
+    ],
+    "Subscriptions": [
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     10.99,
+     30.49,
+     10.99
+    ],
+    "Transport": [
+     0,
+     4.2,
+     0,
+     4.2,
+     0,
+     4.2,
+     0,
+     4.2,
+     0,
+     4.2,
+     0,
+     0
+    ],
+    "Eating out": [
+     135.11,
+     90.94,
+     129.57,
+     122.28,
+     159.07,
+     102.71,
+     62.05,
+     64.54,
+     118.42,
+     35.88,
+     -1969.44,
+     24.75
+    ]
+   },
+   "weeks": [
+    {
+     "week": "2026-06-08",
+     "total": 122.32
+    },
+    {
+     "week": "2026-06-15",
+     "total": 217.17
+    },
+    {
+     "week": "2026-06-22",
+     "total": 120.84
+    },
+    {
+     "week": "2026-06-29",
+     "total": 1085.14
+    },
+    {
+     "week": "2026-07-06",
+     "total": 220.78
+    },
+    {
+     "week": "2026-07-13",
+     "total": 249.24
+    },
+    {
+     "week": "2026-07-20",
+     "total": 170.86
+    },
+    {
+     "week": "2026-07-27",
+     "total": 1040.69
+    },
+    {
+     "week": "2026-08-03",
+     "total": 232.8
+    },
+    {
+     "week": "2026-08-10",
+     "total": 177.94
+    },
+    {
+     "week": "2026-08-17",
+     "total": 227.9
+    },
+    {
+     "week": "2026-08-24",
+     "total": -1977.55
+    },
+    {
+     "week": "2026-08-31",
+     "total": 1680.23
+    },
+    {
+     "week": "2026-09-07",
+     "total": 0
+    },
+    {
+     "week": "2026-09-14",
+     "total": 0
+    },
+    {
+     "week": "2026-09-21",
+     "total": 0
+    }
+   ],
+   "recurring": [
+    {
+     "merchant": "Openrent Ltd Ref",
+     "category": "Housing",
+     "frequency": "monthly",
+     "last_amount": 950,
+     "monthly_cost": 950,
+     "first_seen": "2025-08-01",
+     "last_seen": "2026-09-01",
+     "count": 14,
+     "amount_varies": false
+    },
+    {
+     "merchant": "J Bloggs",
+     "category": "Payments to people",
+     "frequency": "monthly",
+     "last_amount": 42.61,
+     "monthly_cost": 42.61,
+     "first_seen": "2025-09-20",
+     "last_seen": "2026-06-20",
+     "count": 6,
+     "amount_varies": true
+    },
+    {
+     "merchant": "Puregym Ltd",
+     "category": "Fitness",
+     "frequency": "weekly",
+     "last_amount": 7.5,
+     "monthly_cost": 32.5,
+     "first_seen": "2025-08-04",
+     "last_seen": "2026-08-31",
+     "count": 57,
+     "amount_varies": false
+    },
+    {
+     "merchant": "Netflix.Com",
+     "category": "Subscriptions",
+     "frequency": "monthly",
+     "last_amount": 10.99,
+     "monthly_cost": 10.99,
+     "first_seen": "2025-08-05",
+     "last_seen": "2026-09-05",
+     "count": 14,
+     "amount_varies": false
+    },
+    {
+     "merchant": "Phone Plan Co",
+     "category": "Uncategorised",
+     "frequency": "monthly",
+     "last_amount": 10,
+     "monthly_cost": 10,
+     "first_seen": "2025-08-12",
+     "last_seen": "2026-08-12",
+     "count": 13,
+     "amount_varies": false
+    },
+    {
+     "merchant": "Streamify Premium",
+     "category": "Uncategorised",
+     "frequency": "monthly",
+     "last_amount": 9.99,
+     "monthly_cost": 9.99,
+     "first_seen": "2026-07-03",
+     "last_seen": "2026-09-03",
+     "count": 3,
+     "amount_varies": false
+    },
+    {
+     "merchant": "Annual Widget Club",
+     "category": "Uncategorised",
+     "frequency": "annual",
+     "last_amount": 60,
+     "monthly_cost": 5,
+     "first_seen": "2025-08-20",
+     "last_seen": "2026-08-20",
+     "count": 2,
+     "amount_varies": false
+    }
+   ],
+   "recurring_monthly_total": 1061.09,
+   "flags": [],
+   "uncategorised_merchants": [],
+   "counts": {
+    "total": 526,
+    "by_how": {
+     "rule": 435,
+     "unmatched": 55,
+     "default": 19,
+     "override": 13,
+     "bank": 4
+    }
+   },
+   "categories": [
+    "Bills & utilities",
+    "Cash",
+    "Debt repayments",
+    "Eating out",
+    "Education",
+    "Entertainment",
+    "Family",
+    "Fees & interest",
+    "Fitness",
+    "Gifts & charity",
+    "Groceries",
+    "Health",
+    "Home",
+    "Housing",
+    "Income",
+    "Insurance",
+    "Internal transfers",
+    "Other",
+    "Payments to people",
+    "Personal care",
+    "Savings & investments",
+    "Shopping",
+    "Subscriptions",
+    "Tax",
+    "Transport",
+    "Travel",
+    "Uncategorised",
+    "Work expenses"
+   ],
+   "exclude_from_spending": [
+    "Income",
+    "Internal transfers",
+    "Savings & investments",
+    "Work expenses"
+   ],
+   "transactions": {
+    "n": 526,
+    "sha": "4581b0d4bb83f1385ab27cb2",
+    "categories": "687461f11660c563da484ea7"
+   },
+   "analysisSha": "31f3e78e799321e4aceacc14",
+   "storeSha": "991780ed35e72c225a23310b",
+   "bankCategories": {
+    "n": 10,
+    "sha": "0beaa0c5b3826dfd766dbe92"
+   },
+   "processed": [
+    "2026-export-a.csv",
+    "2026-export-b.csv",
+    "Statement Money In Out.csv",
+    "bank-sync-20260909-120000.csv",
+    "old-bank-latin1.csv"
+   ],
+   "inboxLeft": [
+    "broken.csv",
+    "notes.txt"
+   ]
+  }
+ }
+}

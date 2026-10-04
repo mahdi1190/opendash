@@ -1,0 +1,89 @@
+/* ============================================================
+   EMAIL TRIAGE (#view=triage) (owner: Calendar/Email). 55-email-google.js
+   ============================================================ */
+.em-page { display: flex; flex-direction: column; min-width: 0; }
+.em-bar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-xs); }
+.em-status { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 1 1 260px; font-size: var(--text-sm); color: var(--fg-muted); }
+.em-status .i { flex: none; color: var(--fg-subtle); }
+.em-status.err { color: var(--danger-ink, var(--danger)); }
+.em-status.err .i { color: var(--danger); }
+.em-acts { display: flex; align-items: center; gap: var(--space-2); flex: none; }
+.em-acts .control { width: auto; }
+@keyframes em-spin { to { transform: rotate(360deg); } }
+.em-page .spin { animation: em-spin 0.9s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .em-page .spin { animation: none; } }
+html[data-motion="reduced"] .em-page .spin { animation: none; }
+.em-sec .section-h .seg { margin-left: auto; }
+
+/* suggested tasks */
+.em-sugs { display: flex; flex-direction: column; gap: var(--space-2); }
+.em-sug { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-xs); }
+.em-sug > .check { margin-top: 6px; cursor: default; }
+.em-sug-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.em-sug-t { width: 100%; border: 1px solid transparent; border-radius: var(--radius-sm); background: none; font: inherit; font-size: var(--text-md, 14px); font-weight: var(--weight-semibold); color: var(--fg); padding: 2px 6px; margin-left: -7px; outline: none; }
+.em-sug-t:hover { border-color: var(--border); }
+.em-sug-t:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); background: var(--surface); }
+.em-sug-d { font-size: var(--text-sm); color: var(--fg-muted); line-height: 1.45; }
+.em-sug-d:empty { display: none; }
+.em-sug-m { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.em-sug-m .control { width: auto; height: 24px; padding: 0 26px 0 8px; }
+.em-sug-m .chip { gap: 4px; }
+.em-src { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-xs); color: var(--fg-subtle); text-decoration: none; min-width: 0; max-width: 100%; }
+.em-src span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.em-src:hover { color: var(--accent-ink); }
+.em-sug-a { display: flex; align-items: center; gap: 4px; flex: none; }
+
+/* the inbox list */
+.em-list { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+.em-list > .empty-state { border: 0; }
+.em-row { display: flex; align-items: center; gap: var(--space-3); padding: 10px var(--space-4); border-bottom: 1px solid var(--border-subtle); min-width: 0; }
+.em-row:last-child { border-bottom: 0; }
+.em-row:hover { background: var(--bg-subtle); }
+.em-b { flex: 1; min-width: 0; }
+.em-l1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.em-from { font-size: var(--text-sm); font-weight: var(--weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.em-row.unread .em-from { font-weight: var(--weight-semibold); }
+.em-row.unread .em-from::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 6px; vertical-align: 1px; }
+.em-n { font-size: var(--text-2xs); color: var(--fg-subtle); background: var(--bg-muted); border-radius: 8px; padding: 0 5px; line-height: 16px; flex: none; }
+.em-imp { color: var(--warning); display: inline-flex; flex: none; }
+.em-when { margin-left: auto; font-size: var(--text-xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; flex: none; padding-left: var(--space-2); }
+.em-l2 { font-size: var(--text-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.em-subj { color: var(--fg); }
+.em-row.unread .em-subj { font-weight: var(--weight-medium); }
+.em-snip { color: var(--fg-subtle); }
+.em-a { display: flex; align-items: center; gap: 4px; flex: none; }
+.em-a > .btn:not(.btn-icon), .em-a > a.btn { opacity: 0; transition: opacity var(--m-fast, .15s); }
+.em-row:hover .em-a > .btn, .em-row:hover .em-a > a.btn, .em-row:focus-within .em-a > .btn, .em-row:focus-within .em-a > a.btn { opacity: 1; }
+.em-a > .btn-icon { opacity: 0; }
+.em-row.handled { opacity: 0.72; }
+.em-row.handled .em-a > .btn { opacity: 1; }
+.em-done { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-xs); color: var(--success); margin-right: 4px; }
+/* several mailboxes (Sources): account chips above the list, a small mark on each row */
+.em-accts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
+.em-acct { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: var(--radius-full); border: 1px solid var(--border);
+  background: var(--surface); color: var(--fg-muted); font: inherit; font-size: var(--text-xs); font-weight: var(--weight-medium); cursor: pointer; max-width: 260px; }
+.em-acct > span:not(.dot):not(.n) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.em-acct .n { color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+.em-acct:hover { color: var(--fg); border-color: var(--border-strong); }
+.em-acct:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.em-acct.on { background: var(--accent-soft); border-color: var(--accent-soft-2); color: var(--accent-ink); }
+.em-acct.on .n { color: inherit; }
+.em-acct-manage { margin-left: auto; }
+.em-acct-tag { display: inline-flex; align-items: center; gap: 5px; margin-left: var(--space-2); font-size: var(--text-2xs); font-weight: var(--weight-regular, 400); color: var(--fg-subtle); white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.em-acct-tag .dot { width: 6px; height: 6px; }
+/* touch screens never hover: the row actions are always visible there */
+@media (hover: none) {
+  .em-row .em-a > .btn, .em-row .em-a > a.btn { opacity: 1; }
+}
+@container main (max-width: 720px) {
+  .em-acct-tag { display: none; }
+  .em-snip { display: none; }
+  /* .em-row prefix: must beat `.em-a > .btn:not(.btn-icon)` (0,3,0), or Make task stays invisible */
+  .em-row .em-a > .btn, .em-row .em-a > a.btn { opacity: 1; }
+  /* actions go on their own line, so the sender and subject get the full width */
+  .em-row { flex-wrap: wrap; row-gap: var(--space-1-5); }
+  .em-a { flex-basis: 100%; padding-left: 36px; }
+  .em-a .em-done { margin-right: auto; }
+  .em-acts { flex: 1 1 100%; flex-wrap: wrap; }
+  .em-acts .control { flex: 1 1 auto; }
+}

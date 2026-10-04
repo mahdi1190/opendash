@@ -1,0 +1,123 @@
+/* ============= RESIZING (owner: Shell/Design; 13-splitter.js) =============
+   .split-h  a pane's edge (sidebar, side panel, assistant, calendar rail):
+             9 px hit area, a 2 px line on hover / while dragging, focusable.
+   .rz-h     a window's edges and corners (card, dialogs, drawers, palette).
+   .app.sb-rail  the sidebar dragged narrow: an icon rail. */
+
+/* ---------- pane splitters ---------- */
+.split-h {
+  position: absolute; z-index: 6; touch-action: none; user-select: none; -webkit-user-select: none;
+  outline: none; background: transparent;
+}
+.split-col { top: 0; bottom: 0; width: 9px; cursor: col-resize; }
+.split-row { left: 0; right: 0; height: 9px; cursor: row-resize; }
+.split-h::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; border-radius: 2px;
+  background: var(--accent); opacity: 0; transition: opacity var(--m-fast) var(--m-ease-out) 80ms;
+}
+.split-row::after { top: 50%; bottom: auto; left: 0; right: 0; width: auto; height: 2px; margin: -1px 0 0; }
+.split-h:hover::after, .split-h.is-dragging::after { opacity: 0.85; transition-delay: 0ms; }
+.split-h:focus-visible::after { opacity: 1; box-shadow: 0 0 0 3px var(--accent-soft-2); }
+.split-h.is-dragging::after { opacity: 1; }
+
+/* the sidebar's right edge */
+.app-sidebar { position: relative; }
+.split-sidebar { right: -1px; }
+/* the side panel (and People's person panel, same width): the handle rides its left edge */
+.content { position: relative; }
+.split-detail { display: none; top: 0; right: var(--detail-w); transform: translateX(50%); }
+.content.detail-open > .split-detail,
+.content:has(> .main .ppl-wrap.has-panel) > .split-detail { display: block; }
+/* the assistant's left edge */
+.split-asst { left: -4px; display: none; }
+.asst.open > .split-asst { display: block; }
+/* the calendar's agenda rail / event panel */
+.cal-wrap { position: relative; }
+.split-cal { right: var(--cal-rail-w, 296px); transform: translateX(50%); }
+.cal-wrap.with-panel > .split-cal { right: var(--cal-panel-w, 360px); }
+
+body.is-resizing, body.is-resizing * { cursor: var(--rz-cursor, col-resize) !important; user-select: none !important; -webkit-user-select: none !important; }
+body.is-resizing-row, body.is-resizing-row * { --rz-cursor: row-resize; }
+body.is-resizing iframe { pointer-events: none; }
+/* the grid follows the pointer: no column transitions while dragging */
+body.is-resizing .app, body.is-resizing .content, body.is-resizing .cal-wrap { transition: none !important; }
+
+@media (max-width: 1180px) {
+  /* the side panel floats: its handle follows it */
+  .content.detail-open > .split-detail,
+  .content:has(> .main .ppl-wrap.has-panel) > .split-detail {
+    position: fixed; top: var(--topbar-h); bottom: 0; right: min(var(--detail-w), 100vw); z-index: calc(var(--z-drawer) + 1);
+  }
+}
+@media (max-width: 900px) { .split-sidebar { display: none; } }
+@media (max-width: 700px) { .split-h { display: none !important; } }
+@container main (max-width: 980px) { .split-cal { display: none; } }
+
+/* ---------- window edges (makeResizable) ---------- */
+/* the window is the containing block for its handles (.modal, .cmd, .drawer and .tc are positioned already) */
+.modal-card.rz-on { position: relative; }
+.rz-h { position: absolute; z-index: 8; touch-action: none; user-select: none; -webkit-user-select: none; outline: none; }
+.rz-e, .rz-w { top: 14px; bottom: 14px; width: 8px; }
+.rz-e { right: 0; } .rz-w { left: 0; }
+.rz-n, .rz-s { left: 14px; right: 14px; height: 8px; }
+.rz-n { top: 0; } .rz-s { bottom: 0; }
+.rz-ne, .rz-nw, .rz-se, .rz-sw { width: 16px; height: 16px; }
+.rz-ne { top: 0; right: 0; } .rz-nw { top: 0; left: 0; } .rz-se { bottom: 0; right: 0; } .rz-sw { bottom: 0; left: 0; }
+/* a quiet line on the edge being hovered */
+.rz-h::after { content: ""; position: absolute; border-radius: 2px; background: var(--accent); opacity: 0; transition: opacity var(--m-fast) var(--m-ease-out) 100ms; }
+.rz-e::after { top: 0; bottom: 0; right: 2px; width: 2px; } .rz-w::after { top: 0; bottom: 0; left: 2px; width: 2px; }
+.rz-s::after { left: 0; right: 0; bottom: 2px; height: 2px; } .rz-n::after { left: 0; right: 0; top: 2px; height: 2px; }
+.rz-h:hover::after { opacity: 0.7; transition-delay: 0ms; }
+/* the corner grip: three short diagonal strokes, shown on hover / focus */
+.rz-se::after, .rz-sw::after { width: 9px; height: 9px; bottom: 4px; border-radius: 0; background: none; opacity: 0;
+  border-bottom: 2px solid var(--fg-subtle); border-right: 2px solid var(--fg-subtle); border-bottom-right-radius: 4px; }
+.rz-se::after { right: 4px; }
+.rz-sw::after { left: 4px; transform: scaleX(-1); }
+.rz-on:hover > .rz-se::after, .rz-on:hover > .rz-sw::after { opacity: 0.45; }
+.rz-se:hover::after, .rz-sw:hover::after { opacity: 0.9; border-color: var(--accent); }
+.rz-key:focus-visible::after { opacity: 1; border-color: var(--accent); }
+.rz-key:focus-visible { box-shadow: inset 0 0 0 2px var(--accent-soft-2); border-radius: 4px; }
+/* the card: a wider grab zone just outside its edges */
+.tc > .rz-e { right: -6px; width: 12px; } .tc > .rz-w { left: -6px; width: 12px; }
+.tc > .rz-s { bottom: -6px; height: 12px; }
+.tc > .rz-se { right: -6px; bottom: -6px; width: 22px; height: 22px; } .tc > .rz-sw { left: -6px; bottom: -6px; width: 22px; height: 22px; }
+.tc > .rz-se::after { right: 10px; bottom: 10px; } .tc > .rz-sw::after { left: 10px; bottom: 10px; }
+.tc > .rz-e::after { right: 5px; } .tc > .rz-w::after { left: 5px; } .tc > .rz-s::after { bottom: 5px; }
+/* a resized dialog: its body fills the height it was given */
+.modal.rz-has-h { display: flex; flex-direction: column; }
+.modal.rz-has-h > .modal-b { flex: 1 1 auto; }
+.cmd.rz-sized { max-width: calc(100vw - 24px); }
+@media (max-width: 699px) { .rz-h { display: none !important; } }
+@media (prefers-reduced-motion: reduce) { .rz-h::after, .split-h::after { transition: none; } }
+
+/* ---------- the sidebar as an icon rail ---------- */
+@media (min-width: 901px) {
+  .app.sb-rail .app-sidebar { padding: 0 6px var(--space-2); }
+  .app.sb-rail .sb-head { justify-content: center; padding: 0; }
+  .app.sb-rail .sb-ws { flex: 0 0 auto; margin: 0; padding: 4px; }
+  .app.sb-rail .sb-ws-name, .app.sb-rail .sb-ws > .i, .app.sb-rail #sidebar-toggle { display: none; }
+  .app.sb-rail .sb-search { justify-content: center; height: 32px; padding: 0; }
+  .app.sb-rail .sb-search .lbl, .app.sb-rail .sb-search .kbd-group { display: none; }
+  .app.sb-rail .switcher { grid-template-columns: 1fr; padding: 2px; }
+  .app.sb-rail .sw-tile { height: 38px; }
+  .app.sb-rail .sw-tile > span:not(.sw-badge) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .app.sb-rail .sw-tile .sw-badge { top: 2px; right: 3px; font-size: 9px; }
+  .app.sb-rail .sb-scroll { margin: 0 -6px; padding: var(--space-1) 6px var(--space-3); }
+  .app.sb-rail .nav-sec { height: 1px; margin: var(--space-2) 6px; padding: 0; background: var(--border); overflow: hidden; }
+  .app.sb-rail .nav-sec > * { display: none; }
+  .app.sb-rail .sb-block:first-child .nav-sec:first-child { display: none; }
+  .app.sb-rail .nav-item { justify-content: center; padding: 0; height: 34px; gap: 0; }
+  .app.sb-rail .nav-item .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .app.sb-rail .nav-item .count, .app.sb-rail .nav-item .link { display: none; }
+  .app.sb-rail .nav-item .badge { position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px; padding: 0 3px; font-size: 9px; }
+  .app.sb-rail .nav-item .count.alert { display: block; position: absolute; top: 3px; right: 5px; width: 6px; height: 6px; padding: 0; border-radius: 50%; background: var(--danger); font-size: 0; overflow: hidden; }
+  .app.sb-rail .nav-item.nav-more, .app.sb-rail .nav-input, .app.sb-rail .minical, .app.sb-rail .calrow .src, .app.sb-rail .sb-block > :not(.nav-item):not(.nav-sec):not(.sb-items) { display: none; }
+  .app.sb-rail .sb-foot { flex-direction: column; gap: 2px; }
+  .app.sb-rail .sb-foot .btn { width: 100%; justify-content: center; padding: 0; height: 30px; }
+  .app.sb-rail .sb-foot .btn > span { display: none; }
+  .app.sb-rail .sb-foot .btn-icon { margin-left: 0; width: 100%; }
+}
+@media (max-width: 900px) {
+  /* the drawer always shows the full sidebar */
+  .app.sb-rail .app-sidebar { width: min(var(--sidebar-w-full, 248px), 86vw); }
+}

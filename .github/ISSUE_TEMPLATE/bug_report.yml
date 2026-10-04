@@ -1,0 +1,148 @@
+name: Bug report
+description: Something in OpenDash does not work as it should.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        **Privacy first.** This issue is public. Do not paste personal data: no real
+        names, email addresses, task titles, calendar entries, amounts of money,
+        bank details, file paths with your user name, tokens or unedited logs.
+        Reproduce the problem with demo data if you can (the welcome's
+        *Load demo data*, or `node tools/make-fake-data.mjs <folder>`).
+
+        **Security problems** go through a private report instead:
+        Security tab > *Report a vulnerability*. See SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: OpenDash version
+      description: Settings > About shows it (or the `version` in package.json).
+      placeholder: "2.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: Operating system version
+      description: For example "macOS 15.1", "Ubuntu 24.04" or "Windows 11 24H2".
+    validations:
+      required: false
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: The output of `node -v` in a terminal.
+      placeholder: "v22.11.0"
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: "Firefox 131"
+    validations:
+      required: false
+  - type: dropdown
+    id: start
+    attributes:
+      label: How do you start OpenDash?
+      options:
+        - The launcher (start-opendash.bat or start-opendash.sh)
+        - Start automatically at login (Windows switch)
+        - npm start
+        - node serve.mjs
+        - Other
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Install, launcher or updating
+        - Home
+        - Tasks
+        - Calendar
+        - Finances
+        - People and tags
+        - Files and links, auto-linking
+        - Morning brief, Finish the day, weekly review, stories
+        - Assistant or other Claude features
+        - OpenDash MCP server
+        - Connections and data sources
+        - Settings, backups, import and export
+        - Server control and offline page
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you saw, including any error message (with personal details removed).
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of steps that shows the problem, ideally starting from demo data.
+      placeholder: |
+        1. Load demo data
+        2. Open Calendar > Week
+        3. Drag the task "Send Alex the draft" to Thursday 10:00
+        4. ...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: |
+        Settings > Diagnostics > *Copy diagnostics* gives a report with paths, email
+        addresses and tokens removed. Please read it before pasting.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log lines
+      description: |
+        From Settings > Server > *Open log*, or `data/logs/server.log`. The log holds no
+        task text or money, but check it for paths and names before pasting.
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I removed personal data (names, emails, task text, money, paths, tokens) from everything above.
+          required: true
+        - label: I searched the existing issues and this has not been reported yet.
+          required: true

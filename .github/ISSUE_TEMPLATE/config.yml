@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and help
+    url: https://github.com/mahdi1190/opendash/discussions/categories/q-a
+    about: Ask how to install, connect or use OpenDash in Discussions (Q&A). Please do not open an issue for questions.
+  - name: Ideas and general discussion
+    url: https://github.com/mahdi1190/opendash/discussions
+    about: Share ideas, show your setup (demo data only) and talk with other users.
+  - name: Report a security vulnerability
+    url: https://github.com/mahdi1190/opendash/security/advisories/new
+    about: Report security problems privately, never in a public issue. See SECURITY.md.
+  - name: Documentation
+    url: https://github.com/mahdi1190/opendash/tree/main/docs
+    about: Install guide, usage, connections, the MCP server, privacy and the FAQ.

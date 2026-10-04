@@ -1,0 +1,35 @@
+/* ============= DATE PICKING (owner: Tasks; 32-tasks-ui.js) =============
+   Mini month (buildMiniMonth) + the due-date popover (openDueDatePopover).
+   The old #date-picker element in body.html is no longer used. */
+.date-picker { display: none !important; }
+
+.mini-month { user-select: none; }
+.mm-h { display: flex; align-items: center; justify-content: space-between; height: 30px; padding: 0 2px; margin-bottom: 2px; }
+.mm-h b { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--fg); }
+.mm-g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; text-align: center; font-variant-numeric: tabular-nums; }
+.mm-wd { height: 22px; line-height: 22px; font-size: 10px; font-weight: var(--weight-medium); color: var(--fg-subtle); }
+.mm-d {
+  position: relative; height: 30px; border: 0; background: none; border-radius: var(--radius-sm); padding: 0;
+  font: inherit; font-size: var(--text-xs); color: var(--fg); cursor: pointer;
+}
+.mm-d:hover { background: var(--bg-muted); }
+.mm-d:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.mm-d.out { color: var(--fg-disabled); }
+.mm-d.past:not(.today):not(.sel) { color: var(--fg-subtle); }
+.mm-d.today { color: var(--accent-ink); font-weight: var(--weight-semibold); }
+.mm-d.sel { background: var(--accent); color: var(--fg-on-accent); font-weight: var(--weight-semibold); }
+.mm-d.has::after { content: ""; position: absolute; bottom: 4px; left: 50%; width: 3px; height: 3px; margin-left: -1.5px; border-radius: 50%; background: var(--fg-subtle); }
+.mm-d.sel.has::after { background: var(--fg-on-accent); }
+.mm-foot { display: flex; justify-content: flex-end; padding-top: var(--space-1); margin-top: var(--space-1); border-top: 1px solid var(--border-subtle); }
+
+.due-pop { padding: var(--space-2); }
+.due-pop .pop-label { padding: 2px 4px 6px; }
+.due-pop-in { margin-bottom: var(--space-1); }
+.due-pop-hint { font-size: var(--text-xs); color: var(--success-ink); white-space: nowrap; }
+.due-pop-quick { display: flex; flex-direction: column; padding: 2px 0 var(--space-1); margin-bottom: var(--space-1); border-bottom: 1px solid var(--border-subtle); }
+.due-pop-quick .pop-item .hint { margin-left: auto; }
+.due-pop-quick .pop-item.on { background: var(--accent-soft); color: var(--accent-ink); }
+.due-pop .mini-month { padding: 0 2px; }
+.due-pop-time { display: flex; align-items: center; gap: var(--space-2); padding-top: var(--space-2); margin-top: var(--space-1); border-top: 1px solid var(--border-subtle); font-size: var(--text-xs); color: var(--fg-muted); }
+.due-pop-time .i { color: var(--fg-subtle); }
+.due-pop-time input { margin-left: auto; width: 110px; }

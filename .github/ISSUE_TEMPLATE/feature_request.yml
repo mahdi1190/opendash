@@ -1,0 +1,72 @@
+name: Feature request
+description: Suggest an idea or an improvement for OpenDash.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. For open-ended thoughts, or to see whether others want the
+        same thing, the Ideas category in Discussions is a good first stop.
+
+        OpenDash stays local-first: no accounts, no cloud service of its own, no
+        telemetry and no npm dependencies. Ideas that fit those limits are much easier
+        to accept.
+
+        Please keep personal data out of this public issue: describe your situation
+        with generic examples (Alex, Sam, Acme).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: The situation you are in and what is hard today.
+      placeholder: "When I plan the week, I cannot see which tasks are waiting on someone else..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+      description: How it could work from your point of view. Sketches are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have considered
+      description: Workarounds you use today, or other ways it could be done.
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Home
+        - Tasks
+        - Calendar
+        - Finances
+        - People and tags
+        - Files and links, auto-linking
+        - Morning brief, Finish the day, weekly review, stories
+        - Assistant or other Claude features
+        - OpenDash MCP server
+        - Connections and data sources
+        - Settings, backups, import and export
+        - Install, launcher or updating
+        - Documentation
+        - Something else
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and discussions for this idea.
+          required: true
+        - label: This request contains no personal data.
+          required: true
+        - label: I would like to help build it.
+          required: false

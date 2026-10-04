@@ -1,0 +1,48 @@
+/* ============= BASE =============
+   Legacy variable names used by the older feature CSS (and read by the
+   Finances charts through getComputedStyle) are mapped onto the v2 tokens
+   in 00-tokens.css, so every existing rule follows the new palette in both
+   themes. New code should use the token names directly. */
+:root, [data-theme="dark"] {
+  --card: var(--surface);
+  --text: var(--fg);
+  --text-muted: var(--fg-muted);
+  --text-dim: var(--fg-subtle);
+  --hover: var(--bg-muted);
+  --selected: var(--accent-soft);
+  --shadow: var(--shadow-sm);
+  --done: var(--success);
+  --doing: var(--warning);
+  --note-bg: var(--warning-soft);
+  --note-border: var(--warning);
+  --note-text: var(--fg);
+  --note-meta: var(--warning-ink);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: var(--font-features);
+  font-size: var(--text-sm);
+  line-height: var(--lh-sm);
+  background: var(--bg);
+  color: var(--fg);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+input, textarea, select { font-feature-settings: var(--font-features); }
+a { color: var(--accent-ink); }
+code, pre, kbd { font-family: var(--font-mono); }
+::selection { background: var(--accent-soft-2); }
+:focus-visible { outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* Thin, quiet scrollbars */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }

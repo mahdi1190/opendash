@@ -1,0 +1,98 @@
+/* @part 35-recurring.css · NEW (3 Oct 2026) · OWNER: C2 (Recurring: summary strip, month calendar, next 30/60 days, all payments) */
+/* ---------- summary strip ---------- */
+.fv-rc-sum { flex-direction: row; align-items: center; flex-wrap: wrap; gap: var(--space-4) var(--space-8); padding: var(--space-4) var(--space-5); }
+.fv-rc-it { display: grid; gap: 1px; min-width: 0; }
+.fv-rc-it .l { font-size: var(--text-xs); color: var(--fg-muted); font-weight: var(--weight-medium); }
+.fv-rc-it b { font-size: var(--text-2xl); line-height: var(--lh-2xl); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tighter); font-variant-numeric: tabular-nums; }
+.fv-rc-it .s { font-size: var(--text-xs); color: var(--fg-subtle); }
+.fv-rc-sep { width: 1px; align-self: stretch; background: var(--border-subtle); }
+.fv-rc-tags { margin-left: auto; display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.fv-rc-tags .fv-tag { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: var(--weight-semibold); }
+.fv-rc-tags .fv-tag .i { width: 13px; height: 13px; }
+.fv-rc-tags .fv-tag.warn { background: var(--warning-soft); color: var(--warning-ink); }
+.fv-rc-tags .fv-tag.info { background: var(--info-soft); color: var(--info-ink); }
+/* ---------- month calendar ---------- */
+.fv-rc-nav button { min-width: 28px; justify-content: center; }
+.fv-rc-nav button:disabled { opacity: 0.4; cursor: default; }
+.fv-rc-nav button.on { cursor: default; }
+.fv-rc-nav .i { width: 14px; height: 14px; }
+.fv-rc-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.fv-rc-wd { font-size: 11px; color: var(--fg-subtle); text-align: center; font-weight: var(--weight-semibold); padding-bottom: 2px; }
+.fv-rcd { position: relative; min-height: 76px; border-radius: 10px; background: var(--bg-subtle); padding: 6px 7px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fv-rcd.out { background: transparent; }
+.fv-rcd.we:not(.out) { background: color-mix(in oklab, var(--bg-subtle) 60%, transparent); }
+.fv-rcd-n { font-size: 11.5px; color: var(--fg-muted); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
+.fv-rcd.today { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.fv-rcd.today .fv-rcd-n { color: var(--accent-ink); font-weight: var(--weight-bold); }
+.fv-rcd.pay { background: color-mix(in oklab, var(--c-in, var(--success)) 12%, var(--surface)); }
+.fv-rcd.pay .fv-rcd-n { color: var(--c2-in); }
+.fv-rcd-tiles { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.fv-rcd-t { border: 0; padding: 0; background: none; border-radius: 6px; cursor: pointer; display: inline-flex; transition: transform var(--fv-fast) var(--fv-ease); }
+.fv-rcd-t:hover { transform: translateY(-1px) scale(1.08); }
+.fv-rcd-t:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fv-rcd-t .fsym { --fs-size: 22px; }
+.fv-rcd-t.due .fsym { box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 2.5px color-mix(in oklab, var(--fg) 22%, transparent); }
+.fv-rcd.past .fv-rcd-tiles { opacity: 0.55; }
+.fv-rcd-more { font-size: 10px; font-weight: var(--weight-semibold); color: var(--fg-muted); }
+.fv-rcd-tot { margin-top: auto; font-size: 11px; font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.fv-rcd.past .fv-rcd-tot { color: var(--fg-muted); }
+.fv-rcd-pay { margin-top: auto; display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: var(--weight-semibold); color: var(--c2-in); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fv-rcd-pay .i { width: 12px; height: 12px; }
+.fv-rc-cal.enter .fv-rcd { animation: c2-fade 420ms var(--fv-ease) calc(var(--row, 0) * 40ms + 120ms) backwards; }
+.fv-rc-cal.enter .fv-rcd-t { animation: c2-tile 320ms var(--c2-pop) calc(var(--row, 0) * 40ms + 320ms + var(--j, 0) * 30ms) backwards; }
+/* ---------- next 30 / 60 days ---------- */
+.fv-bills { display: flex; flex-direction: column; }
+.fv-bill { display: grid; grid-template-columns: 56px 28px minmax(0, 1fr) auto 76px; align-items: center; gap: var(--space-2-5, 10px); padding: 7px var(--space-1); border: 0; border-top: 1px solid var(--border-subtle); background: transparent; font: inherit; color: var(--fg); text-align: left; cursor: pointer; border-radius: 0; transition: background-color var(--fv-fast); }
+.fv-bill:first-child { border-top: 0; }
+.fv-bill:hover { background: var(--bg-muted); }
+.fv-bill-d { font-size: var(--text-xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.fv-bill-n { font-size: var(--text-sm); font-weight: var(--weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fv-bill-a { text-align: right; font-size: var(--text-sm); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.fv-bill.after { opacity: 0.55; }
+.fv-bill.after:hover { opacity: 0.9; }
+.fv-bill.enter { animation: c2-rise 420ms var(--fv-ease) calc(var(--i, 0) * 40ms + 160ms) backwards; }
+.fv-paysep { display: flex; align-items: center; gap: var(--space-2); padding: 7px var(--space-1); font-size: 11.5px; font-weight: var(--weight-semibold); color: var(--c2-in); border-top: 1px dashed color-mix(in oklab, var(--c-in, var(--success)) 45%, transparent); }
+.fv-paysep .i { width: 14px; height: 14px; }
+.fv-paysep .mute { font-weight: var(--weight-regular); }
+/* ---------- all recurring payments ---------- */
+.fv-rl { display: flex; flex-direction: column; margin: 0 calc(-1 * var(--space-5)); }
+.fv-rl-row { display: grid; grid-template-columns: 36px minmax(0, 1.3fr) 120px minmax(0, 1fr) 96px 92px; align-items: center; gap: var(--space-3); padding: 9px var(--space-5); border: 0; border-top: 1px solid var(--border-subtle); background: transparent; font: inherit; color: var(--fg); text-align: left; cursor: pointer; transition: background-color var(--fv-fast), opacity var(--fv-base); }
+.fv-rl-row:hover { background: var(--bg-subtle); }
+.fv-rl-row.off { opacity: 0.6; }
+.fv-rl-row.is-current { background: var(--accent-soft); }
+.fv-rl-main { display: grid; gap: 1px; min-width: 0; }
+.fv-rl-nm { display: flex; align-items: center; gap: var(--space-1-5); min-width: 0; font-size: var(--text-sm); font-weight: var(--weight-medium); }
+.fv-rl-nm .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fv-rl-sub { font-size: var(--text-xs); color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fv-rl-row > .fsym-tx { justify-self: start; }
+.fv-rl-yr { display: grid; gap: 3px; min-width: 0; }
+.fv-rl-yr .bar { position: relative; height: 8px; border-radius: 6px; background: var(--bg-muted); overflow: hidden; }
+.fv-rl-yr .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--w); border-radius: 6px; transform-origin: 0 50%; }
+.fv-rl-yr .cap { font-size: var(--text-xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.fv-rl.enter .fv-rl-yr .bar i { animation: c2-grow-x 800ms var(--fv-ease) calc(var(--i, 0) * 60ms + 300ms) backwards; }
+.fv-rl-nx { font-size: var(--text-xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fv-rl-am { display: grid; justify-items: end; }
+.fv-rl-am b { font-size: var(--text-sm); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.fv-rl-am small { font-size: var(--text-2xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+/* ---------- phone ---------- */
+@container fvbody (max-width: 640px) {
+  .fv-rc-sum { gap: var(--space-3) var(--space-5); }
+  .fv-rc-sep { display: none; }
+  .fv-rc-it { flex: 1 1 40%; }
+  .fv-rc-it b { font-size: var(--text-xl); line-height: var(--lh-xl); }
+  .fv-rc-tags { margin-left: 0; }
+  .fv-rc-cal { gap: 3px; }
+  .fv-rcd { min-height: 56px; padding: 4px; border-radius: 8px; gap: 2px; }
+  .fv-rcd-t .fsym { --fs-size: 16px; }
+  .fv-rcd-t .fsym .fsym-mono { font-size: 7.5px !important; }
+  .fv-rcd-tot, .fv-rcd-pay { font-size: 9.5px; }
+  .fv-rcd-pay .i { display: none; }
+  .fv-bill { grid-template-columns: 50px 28px minmax(0, 1fr) 68px; }
+  .fv-bill > :nth-child(4) { display: none; }
+  .fv-rl { margin: 0 calc(-1 * var(--space-4)); }
+  .fv-rl-row { grid-template-columns: 36px minmax(0, 1fr) auto; padding: 9px var(--space-4); }
+  .fv-rl-row > .fsym-tx, .fv-rl-yr, .fv-rl-nx { display: none; }
+  /* @p1: the empty badge placeholder took the amount's column, so rows without a type badge wrapped */
+  .fv-rl-row > .fv-kind-none { display: none; }
+  .fv-rl-am small { white-space: nowrap; }
+}

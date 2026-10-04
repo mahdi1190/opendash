@@ -1,0 +1,233 @@
+/* ============= MOTION SYSTEM =============
+   Calm, short, ease-out motion. Rules of the house:
+   - durations 120-320 ms, ease-out curves; nothing loops except .skeleton;
+   - transform/opacity for micro-interactions;
+   - no bounce except the tiny check pop on task completion;
+   - nothing delays typing or clicks.
+   Everything is switched off by prefers-reduced-motion OR the sidebar's
+   "Reduce motion" toggle (html[data-motion="reduced"], set by motion.js). */
+:root {
+  --m-fast: 120ms;
+  --m-base: 180ms;
+  --m-slow: 240ms;
+  --m-slower: 320ms;
+  --m-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --m-ease-out-soft: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --m-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --m-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --m-pop: cubic-bezier(0.34, 1.4, 0.64, 1);   /* the only overshoot: check pop */
+  --m-lift: 0 1px 2px rgba(15,23,42,0.05), 0 6px 16px rgba(15,23,42,0.08);
+  --m-money: #0f8a6a;
+  --m-money-tint: rgba(15,138,106,0.12);
+}
+[data-theme="dark"] {
+  --m-lift: 0 1px 2px rgba(0,0,0,0.45), 0 8px 20px rgba(0,0,0,0.35);
+  --m-money: #34d399;
+  --m-money-tint: rgba(52,211,153,0.14);
+}
+
+/* ---------- Sidebar: first-class Finances entry ---------- */
+.sidebar-section.nav-feature-section { padding: 2px 0 6px; }
+.nav-item.nav-feature { padding-top: 8px; padding-bottom: 8px; font-weight: 600; font-size: 13.5px; }
+.nav-item.nav-feature .icon {
+  width: 26px; height: 26px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--m-money-tint); color: var(--m-money);
+  font-size: 14px; font-weight: 700; line-height: 1;
+  transition: background-color var(--m-base) ease, color var(--m-base) ease, transform var(--m-base) var(--m-ease-out);
+}
+.nav-item.nav-feature .label { display: flex; flex-direction: column; line-height: 1.2; }
+.nav-item.nav-feature .label small { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-top: 1px; }
+.nav-item.nav-feature.active .icon { background: var(--m-money); color: #fff; }
+.nav-item.nav-feature .chev { color: var(--text-dim); font-size: 14px; transition: transform var(--m-base) var(--m-ease-out), opacity var(--m-base) ease; opacity: 0.6; }
+.nav-item.nav-feature:hover .chev { transform: translateX(2px); opacity: 1; }
+
+/* ---------- Sidebar: gliding active indicator ---------- */
+.sidebar { position: relative; }
+.sidebar .nav-item { position: relative; z-index: 1; }
+.nav-indicator {
+  position: absolute; left: 8px; right: 8px; top: 0; height: 0;
+  border-radius: 6px; background: var(--selected);
+  pointer-events: none; z-index: 0; opacity: 0;
+  transition: transform var(--m-slow) var(--m-ease-out), height var(--m-slow) var(--m-ease-out), opacity var(--m-base) ease;
+  will-change: transform;
+}
+.nav-indicator::before {
+  content: ''; position: absolute; left: -8px; top: 6px; bottom: 6px; width: 3px;
+  border-radius: 0 3px 3px 0; background: var(--accent);   /* sits on the sidebar edge */
+}
+.nav-indicator.on { opacity: 1; }
+.sidebar.m-has-indicator .nav-item.active,
+.sidebar.m-has-indicator .nav-item.active:hover { background: transparent; box-shadow: none; }
+
+/* ---------- Sidebar footer: Reduce motion switch ---------- */
+.sidebar-footer {
+  position: sticky; bottom: -8px; z-index: 2;   /* -8px: the sidebar's own bottom padding */
+  background: var(--card); padding: 6px 0 10px !important;
+}
+.m-toggle {
+  display: flex; align-items: center; gap: 10px; margin: 0 8px;
+  padding: 6px 10px; border-radius: 6px; cursor: pointer;
+  font-size: 12px; color: var(--text-muted); user-select: none;
+  transition: background-color var(--m-fast) ease, color var(--m-fast) ease;
+}
+.m-toggle:hover { background: var(--hover); color: var(--text); }
+.m-toggle .m-toggle-label { flex: 1; }
+.m-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.m-switch {
+  position: relative; width: 28px; height: 16px; border-radius: 999px; flex: none;
+  background: var(--border-strong);
+  transition: background-color var(--m-base) ease;
+}
+.m-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  transition: transform var(--m-base) var(--m-ease-out);
+}
+.m-toggle input:checked + .m-switch { background: var(--accent); }
+.m-toggle input:checked + .m-switch::after { transform: translateX(12px); }
+.m-toggle input:focus-visible + .m-switch { outline: 2px solid var(--accent); outline-offset: 2px; }
+.m-toggle.is-locked { cursor: default; }
+
+/* ---------- Micro-interactions: buttons, nav items, cards ---------- */
+.btn, .ctrl-btn, .icon-toggle, .tmpl-btn, .icon-btn, .pin-btn, .prio-opt,
+.view-mode-toggle .mode, .cal-nav button,
+.bulk-bar button, .date-picker .dp-nav button, .date-picker .dp-footer button {
+  transition: background-color var(--m-fast) ease, border-color var(--m-fast) ease,
+              color var(--m-fast) ease, opacity var(--m-fast) ease,
+              transform var(--m-fast) var(--m-ease-out), box-shadow var(--m-base) ease;
+}
+.btn:active, .icon-toggle:active, .tmpl-btn:active, .icon-btn:active, .prio-opt:active,
+.bulk-bar button:active, .cal-nav button:active,
+.date-picker .dp-nav button:active, .date-picker .dp-footer button:active { transform: scale(0.96); }
+.view-mode-toggle .mode:active { transform: scale(0.97); }
+/* Sort/Group menus live inside their button: don't shrink an open menu. */
+.ctrl-btn:active:not(:has(.menu.open)) { transform: scale(0.97); }
+.btn.primary:hover { box-shadow: 0 2px 8px rgba(15,23,42,0.18); }
+
+.nav-item { transition: background-color var(--m-fast) ease, transform var(--m-fast) var(--m-ease-out); }
+.nav-item .icon, .nav-item .dot { transition: transform var(--m-base) var(--m-ease-out), color var(--m-fast) ease; }
+.nav-item:hover .icon, .nav-item:hover .dot { transform: scale(1.12); }
+.nav-item:active { transform: scale(0.985); }
+
+.kanban-card, .day-cell, .m-lift {
+  transition: background-color var(--m-fast) ease, border-color var(--m-fast) ease,
+              transform var(--m-base) var(--m-ease-out), box-shadow var(--m-base) ease;
+}
+.kanban-card:hover, .m-lift:hover { transform: translateY(-1px); box-shadow: var(--m-lift); }
+.kanban-card:active, .m-lift:active { transform: translateY(0) scale(0.995); }
+.kanban-col { transition: background-color var(--m-base) ease; }
+
+.priority-flag { transition: transform var(--m-fast) var(--m-ease-out); }
+.checkbox { transition: background-color var(--m-fast) ease, border-color var(--m-fast) ease, transform var(--m-fast) var(--m-ease-out); }
+.checkbox:active { transform: scale(0.88); }
+
+/* ---------- Toasts ---------- */
+.save-toast {
+  transform: translateY(10px) scale(0.98);
+  transition: opacity var(--m-base) var(--m-ease-out), transform var(--m-slow) var(--m-ease-out);
+}
+.save-toast.show { transform: none; }
+
+/* ---------- Popovers & menus: scale + fade from their anchor ---------- */
+@keyframes m-pop-in { from { opacity: 0; transform: scale(0.97) translateY(-4px); } }
+.menu.open { animation: m-pop-in var(--m-base) var(--m-ease-out) both; transform-origin: top right; }
+.ctx-menu.open { animation: m-pop-in var(--m-base) var(--m-ease-out) both; transform-origin: top left; }
+.date-picker.open { animation: m-pop-in var(--m-base) var(--m-ease-out) both; transform-origin: top center; }
+
+/* ---------- Modals: overlay fades, card scales + fades (open and close) ---------- */
+.modal-overlay, .kb-overlay {
+  opacity: 0;
+  transition: opacity var(--m-base) var(--m-ease-out);
+  transition: opacity var(--m-base) var(--m-ease-out), display var(--m-base) allow-discrete, overlay var(--m-base) allow-discrete;
+}
+.modal-overlay:not(.open), .kb-overlay:not(.open) { pointer-events: none; }
+.modal-overlay.open, .kb-overlay.open { opacity: 1; }
+.modal-card, .kb-card {
+  opacity: 0; transform: scale(0.97) translateY(6px);
+  transition: opacity var(--m-base) var(--m-ease-out), transform var(--m-slow) var(--m-ease-out);
+}
+.modal-overlay.open .modal-card, .kb-overlay.open .kb-card { opacity: 1; transform: none; }
+@starting-style {
+  .modal-overlay.open, .kb-overlay.open { opacity: 0; }
+  .modal-overlay.open .modal-card, .kb-overlay.open .kb-card { opacity: 0; transform: scale(0.97) translateY(6px); }
+}
+
+/* ---------- Drawers: detail pane slides in, bulk bar rises ---------- */
+@keyframes m-drawer-in { from { opacity: 0; transform: translateX(14px); } }
+.content.detail-open .detail-pane { animation: m-drawer-in var(--m-slow) var(--m-ease-out) both; }
+.bulk-bar { transition: transform var(--m-slow) var(--m-ease-out), opacity var(--m-base) ease; }
+@starting-style { .bulk-bar.open { opacity: 0; transform: translateX(-50%) translateY(16px); } }
+
+/* ---------- Task completion: pop, strike, then fade + collapse ---------- */
+@keyframes m-check-pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes m-strike { from { text-decoration-color: transparent; } }
+.task.m-ghost { pointer-events: none; overflow: hidden; }
+.task.m-ghost .checkbox, .task.m-just-done .checkbox { animation: m-check-pop 280ms var(--m-pop) both; }
+.task.m-ghost .t-title, .task.m-just-done .t-title {
+  text-decoration: line-through; text-decoration-color: currentColor;
+  animation: m-strike var(--m-base) var(--m-ease-out) 60ms both;
+}
+.task.m-ghost .drag-handle, .task.m-ghost .multi-handle, .task.m-ghost .pin-btn { opacity: 0 !important; }
+
+/* ---------- New task: gentle one-off highlight ---------- */
+@keyframes m-new-glow { from { background-color: var(--selected); box-shadow: inset 3px 0 0 var(--p3); } }
+@keyframes m-enter { from { opacity: 0; transform: translateY(-4px); } }
+.task.m-new { animation: m-enter var(--m-slow) var(--m-ease-out) both, m-new-glow 1400ms var(--m-ease-out-soft) both; }
+
+/* ---------- Skeleton loading (the one allowed loop) ---------- */
+.skeleton {
+  position: relative; overflow: hidden;
+  background: var(--hover); border-radius: 6px;
+  color: transparent !important; user-select: none; pointer-events: none;
+}
+.skeleton * { visibility: hidden; }
+.skeleton::after {
+  content: ''; position: absolute; inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%);
+  animation: m-shimmer 1.4s var(--m-ease-in-out) infinite;
+}
+[data-theme="dark"] .skeleton::after { background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%); }
+@keyframes m-shimmer { to { transform: translateX(100%); } }
+.skeleton-text { height: 0.8em; margin: 0.4em 0; border-radius: 4px; }
+.skeleton-text.short { width: 40%; }
+.skeleton-text.mid { width: 70%; }
+.skeleton-title { height: 1.4em; width: 50%; margin: 0.2em 0 0.6em; border-radius: 5px; }
+.skeleton-block { min-height: 120px; border-radius: 8px; }
+.skeleton-circle { border-radius: 50%; }
+
+/* ---------- View transitions (main area only; sidebar/topbar stay put) ---------- */
+#main { view-transition-name: main-view; }
+::view-transition { pointer-events: none; }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-group(main-view) { animation: none; }
+/* Fade-through, not a cross-fade: the old view is gone before the new one
+   arrives, so the two never double-expose. */
+::view-transition-old(main-view) { animation: m-vt-out 90ms var(--m-ease-in) both; }
+::view-transition-new(main-view) { animation: m-vt-in var(--m-base) var(--m-ease-out) 70ms both; }
+@keyframes m-vt-out { to { opacity: 0; transform: translateY(-3px); } }
+@keyframes m-vt-in { from { opacity: 0; } }
+/* Fallback when the View Transitions API is missing: motion.js adds this. */
+.m-view-enter { animation: m-vt-in var(--m-base) var(--m-ease-out) both; }
+
+/* ---------- Reduced motion (system setting or the sidebar toggle) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important; animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important; transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton::after { display: none; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-motion="reduced"] *::after {
+  animation-duration: 1ms !important; animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important; transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-motion="reduced"] .skeleton::after { display: none; }
+/* The Finances view (src/finance.css) stops its own animations under either
+   setting; its update panel shows a running step label and elapsed time instead. */

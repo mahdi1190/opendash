@@ -1,0 +1,78 @@
+/* ============================================================
+   TAG MANAGER (26-tags-section.js). Mockup 06.
+   ============================================================ */
+.modal.tm { top: 56px; width: min(820px, calc(100vw - 32px)); height: min(620px, calc(100vh - 80px)); max-height: none; }
+.tm { display: flex; flex-direction: column; overflow: hidden; }
+.tm-h { flex-wrap: nowrap; }
+.tm-h > .i { width: 18px; height: 18px; color: var(--fg-muted); flex: none; }
+.tm-h h2 { flex: none; }
+.tm-filter { height: 28px; width: 220px; margin-left: var(--space-4); }
+.tm-h .seg { margin-left: var(--space-2); }
+.tm-h .tm-x { margin-left: auto; }
+.tm-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; flex: 1; min-height: 0; }
+.tm-list { overflow: auto; padding: var(--space-2) var(--space-3); }
+.tm-row { display: grid; grid-template-columns: 16px minmax(0, 1fr) 70px 60px 28px; gap: var(--space-3); align-items: center; height: 36px; padding: 0 var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); }
+/* Ticked rows are shown by the checkbox alone (mockup 06); hover still washes the row. */
+.tm-row:hover { background: var(--bg-muted); }
+/* The row menu: the ellipsis sits at the left of its column like the mockup, with a full-size hit area. */
+.tm-row > .btn-icon { justify-self: start; margin-left: -5px; color: var(--fg-subtle); }
+.tm-row .cbx:not(.on) { background: transparent; }
+.tm-row > .btn-icon .i { width: 14px; height: 14px; }
+.tm-row > .btn-icon:hover, .tm-row > .btn-icon[aria-expanded="true"] { color: var(--fg); }
+.tm-row.archived .tm-name { color: var(--fg-subtle); }
+.tm-row .cbx { cursor: pointer; padding: 0; }
+.tm-row .cbx:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.tm-name { display: flex; align-items: center; gap: 6px; min-width: 0; background: none; border: 0; padding: 0; font: inherit; color: var(--fg); cursor: pointer; text-align: left; height: 100%; }
+.tm-name:hover .truncate { text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+.tm-name .truncate { min-width: 0; flex: 0 1 auto; }
+.tm-flag { height: 18px; font-size: 11px; padding: 0 6px; flex: none; }
+.tm-flag-person { background: var(--info-soft, var(--bg-muted)); color: var(--info-ink, var(--fg-muted)); }
+.tm-flag-status { background: var(--warning-soft); color: var(--warning-ink); }
+.tm-pin { color: var(--fg-subtle); flex: none; }
+.tm-row .bar { height: 4px; border-radius: 2px; background: var(--bg-emphasis); overflow: hidden; }
+.tm-row .bar i { display: block; height: 100%; background: var(--fg-subtle); width: var(--w); }
+.tm-count { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tm-empty { padding: var(--space-6) var(--space-3); text-align: center; font-size: var(--text-sm); }
+.tm-side { border-left: 1px solid var(--border); background: var(--bg-subtle); padding: var(--space-4); overflow: auto; }
+.tm-side-h { margin-bottom: var(--space-2); }
+.merge { padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); margin-bottom: var(--space-2); }
+.merge-t { display: flex; align-items: center; gap: 6px; font-weight: var(--weight-medium); flex-wrap: wrap; }
+.merge-t > .i { width: 14px; height: 14px; color: var(--fg-muted); flex: none; }
+/* "Merge into [chip]": text and chip sit on one 20 px line, 6 px apart (mockup 06). */
+.merge-t > span { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.merge .from { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 8px; }
+.merge .chip { max-width: 100%; }
+.tm-side-p { font-size: var(--text-xs); margin: 6px 0 8px; line-height: var(--lh-sm); }
+.tm-clean { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3); font-size: var(--text-sm); }
+.tm-clean > .i { color: var(--success); flex: none; margin-top: 2px; }
+.tm-rule { font-size: var(--text-xs); margin-top: var(--space-4); line-height: 18px; }
+.tm-f { justify-content: flex-start; }
+.tm-seln { font-size: var(--text-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.tm-f .grow { flex: 1 1 0; }
+.tm-merge-from { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--space-3); }
+
+/* as a page (#view=tags) */
+.tm-page { height: calc(100vh - var(--topbar-h) - 120px); min-height: 420px; }
+.tm-page .tm-h { border-bottom: 1px solid var(--border); }
+
+@media (max-width: 760px) {
+  /* header in two rows: title + close, then filter + sort (nothing hidden) */
+  .tm-h { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); }
+  .tm-h .badge { justify-self: start; }
+  .tm-h .tm-x { grid-column: 4; grid-row: 1; margin-left: 0; justify-self: end; }
+  .tm-filter { grid-column: 1 / 4; grid-row: 2; width: auto; min-width: 0; margin-left: 0; }
+  .tm-h .seg { grid-column: 4; grid-row: 2; margin-left: 0; }
+  /* suggestions move under the list instead of disappearing */
+  .tm-body { display: flex; flex-direction: column; }
+  .tm-list { flex: 1 1 auto; min-height: 120px; }
+  .tm-side { flex: 0 1 auto; border-left: 0; border-top: 1px solid var(--border); max-height: 36vh; padding: var(--space-3); }
+  .tm-f { flex-wrap: wrap; row-gap: var(--space-2); }
+  .tm-seln { white-space: normal; }
+  .tm-row { grid-template-columns: 16px minmax(0, 1fr) 60px 28px; }
+  .tm-row .bar { display: none; }
+}
+
+/* footer Delete: quiet red text like the mockup, red wash on hover */
+.tm-f .tm-del { color: var(--danger-ink); }
+.tm-f .tm-del .i { color: var(--danger-ink); }
+.tm-f .tm-del:hover { background: var(--danger-soft); color: var(--danger-ink); }

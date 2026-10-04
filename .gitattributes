@@ -1,0 +1,27 @@
+# Line endings: LF in the repository and in every checkout (the tests and
+# build.mjs compare files byte for byte), except Windows batch files, which
+# cmd.exe reads most reliably with CRLF.
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.sh text eol=lf
+*.command text eol=lf
+
+# Binary files: never converted, never diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.zip binary
+*.pdf binary
+
+# Third-party code: hidden from GitHub's language statistics and collapsed in diffs.
+vendor/** linguist-vendored
+vendor/*.min.js -diff

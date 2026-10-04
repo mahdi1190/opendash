@@ -1,0 +1,50 @@
+# Local Claude Code config (per-machine paths and permissions): never committed
+.claude/
+
+# Editor / OS noise
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*~
+*.swp
+*.swo
+__pycache__/
+*.pyc
+
+# ---------------------------------------------------------------
+# USER DATA - NEVER COMMIT. Everything a user owns lives in the data
+# folder (default ./data, or --data-dir / DASHBOARD_DATA_DIR):
+# state, finances, calendar/email snapshots, secrets, logs, config.
+# ---------------------------------------------------------------
+/data/
+data/
+
+# Backup and export files the app downloads (OpenDash names, and the
+# dashboard- names older versions used)
+dashboard-backup-*.json
+*-dashboard-backup-*.json
+opendash-backup-*.json
+opendash-data-*.json
+opendash-data-*.zip
+
+# The built page: start-opendash rebuilds it from src/ on every start
+/index.html
+
+# Personal one-off data scripts (they carry real task text)
+tools/apply_sync.py
+tools/write_snapshot_local*.py
+
+# ---------------------------------------------------------------
+# PERSONAL STATE — NEVER COMMIT. This repository is PUBLIC.
+# The legacy state/ folder (dashboard-state.json) holds a user's
+# own tasks, people, deadlines and notes.
+# ---------------------------------------------------------------
+state/
+tasks-*.md
+*-dashboard-*.json
+*.pre-standalone
+
+# Google OAuth client + refresh tokens — NEVER commit (public repo)
+secrets/
+.env

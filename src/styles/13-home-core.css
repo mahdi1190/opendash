@@ -1,0 +1,110 @@
+/* ============= HOME (12-home*.js) ============= Owner: Home foundation.
+   Core: the page, the widget grid and frame, the shared card bits and empty
+   states. Edit mode is 13-home-edit.css; each widget's own rules are in
+   13-home-w-*.css. Those load AFTER this file (build.mjs sorts by name), so
+   a widget can override anything here. */
+.home { display: flex; flex-direction: column; }
+.home .spacer { flex: 1; }
+
+/* ----- the widget grid: "shelves". 12 columns; widgets fill rows in their saved
+   order and size only (never by content), so positions are stable like phone
+   home-screen widgets. The widgets in a row stretch to the same height and use
+   it (a card fills its frame; footers sit at the foot). A row whose sizes do
+   not add up to 12 keeps the gap. ----- */
+.home-grid {
+  --hg-gap: var(--space-4);                       /* the space between widgets, both ways */
+  position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--hg-gap); grid-auto-rows: auto; grid-auto-flow: row; align-items: stretch;
+}
+.hg-w { grid-column: span var(--hg-span, 12); min-width: 0; position: relative; display: flex; flex-direction: column; }
+.hg-w[data-size="s"] { --hg-span: 4; }
+.hg-w[data-size="m"] { --hg-span: 6; }
+.hg-w[data-size="l"] { --hg-span: 8; }
+.hg-w[data-size="full"] { --hg-span: 12; }
+.hg-body { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+.hg-body > * { flex: none; }
+.hg-body > .home-card { flex: 1 1 auto; display: flex; flex-direction: column; }
+.hg-body > .home-card > .card-b { flex: 1 1 auto; }
+.hg-body > :first-child { margin-top: 0; }        /* the grid gap is the only space between widgets */
+.hg-body > :last-child { margin-bottom: 0; }
+.hg-body > .home-card { margin: 0; }
+.hg-w.is-off > .hg-body > .home-card { background: var(--bg-subtle); box-shadow: none; }
+.hg-w.is-off > .hg-body > .home-card .card-h h3, .hg-w.is-off > .hg-body > .home-card .card-h > .i { color: var(--fg-subtle); }
+.hg-w.is-arriving > .hg-body { border-radius: var(--radius-lg); animation: hg-arrive 1.4s var(--m-ease-out, ease-out) 1; }
+@keyframes hg-arrive { 0%, 40% { box-shadow: 0 0 0 3px var(--accent-soft-2); } 100% { box-shadow: 0 0 0 3px transparent; } }
+[data-motion="reduced"] .hg-w.is-arriving > .hg-body { animation: none; box-shadow: 0 0 0 3px var(--accent-soft-2); }
+.hg-empty-home { grid-column: 1 / -1; }
+/* The Today hero greets, so the page header ("Home", already in the breadcrumb) stays
+   for screen readers only and the hero sits right under the top bar. */
+.main:has(> #main-body > .home.has-hero) > .view-header {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+/* Customise: a quiet pill beside the breadcrumb (12-home-edit.js); pressed while customising. */
+.tb-home-cust {
+  display: inline-flex; align-items: center; gap: 6px; flex: none; height: 26px; padding: 0 10px 0 8px; margin-left: var(--space-2);
+  border-radius: var(--radius-full); border: 1px solid var(--border); background: var(--surface); color: var(--fg-muted);
+  font: inherit; font-size: 12.5px; font-weight: var(--weight-medium); cursor: pointer; white-space: nowrap;
+  transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out), border-color var(--m-fast) var(--m-ease-out);
+}
+.tb-home-cust .i { width: 14px; height: 14px; color: var(--fg-subtle); }
+.tb-home-cust:hover { background: var(--bg-muted); color: var(--fg); }
+.tb-home-cust:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.tb-home-cust[aria-pressed="true"] { background: var(--accent-soft); border-color: color-mix(in oklab, var(--accent) 35%, transparent); color: var(--accent-ink); cursor: default; }
+.tb-home-cust[aria-pressed="true"] .i { color: var(--accent-ink); }
+.home-foot-bar { display: flex; justify-content: center; margin-top: var(--space-8); }
+.home-foot-cust { border-radius: var(--radius-full); }
+@media (max-width: 640px) {
+  .tb-home-cust { width: 30px; height: 30px; padding: 0; margin-left: 0; justify-content: center; }
+  .tb-home-cust > span { display: none; }
+}
+.home-sec .act { display: inline-flex; gap: 2px; }
+.home-sec .n { font-variant-numeric: tabular-nums; }
+
+/* ----- side cards ----- */
+/* One header for every widget (HOME_SPEC.md 2): 44 px, a 16 px icon, the title at 13/600, a
+   12 px count, links on the right; no rule under it. Headers on a shelf line up. */
+.home-card .card-h { padding: 10px var(--space-2) 6px var(--space-4); min-height: 44px; border-bottom: 0; }
+.home-card .card-h > .i { color: var(--fg-subtle); width: 16px; height: 16px; flex: none; }
+.home-card .card-h h3 { font-size: 13px; letter-spacing: -0.005em; white-space: nowrap; }
+.home-card .card-h .n { font-size: var(--text-xs); color: var(--fg-subtle); }
+.home-card .card-h .spacer { flex: 1; }
+.home-card .card-h .btn { margin-left: auto; }
+.home-card .card-h .btn .i { width: 14px; height: 14px; }
+.home-card .card-b { padding: var(--space-1) var(--space-4) var(--space-4); }
+.home-card.is-off { background: var(--bg-subtle); box-shadow: none; }
+.home-card.is-off .card-h h3, .home-card.is-off .card-h > .i { color: var(--fg-subtle); }
+.home-empty { display: flex; gap: var(--space-3); align-items: flex-start; flex-wrap: wrap; font-size: var(--text-sm); color: var(--fg-muted); }
+.home-empty > .i { width: 18px; height: 18px; color: var(--fg-subtle); flex: none; margin-top: 1px; }
+.home-empty > div { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 2px; }
+.home-empty b { color: var(--fg); font-weight: var(--weight-medium); }
+.home-empty span { font-size: var(--text-xs); color: var(--fg-subtle); line-height: 18px; }
+.home-empty code { font-family: var(--font-mono); font-size: 11px; padding: 0 3px; border-radius: 3px; background: var(--bg-muted); color: var(--fg-muted); }
+.home-empty > .btn { margin-left: 30px; }
+.home-foot { display: flex; align-items: center; gap: 6px; margin-top: var(--space-3); font-size: var(--text-xs); color: var(--fg-subtle); }
+.home-foot .i { width: 13px; height: 13px; }
+.home .skeleton { height: 14px; }
+.home .danger { color: var(--danger-ink); }
+
+/* ----- a dragged task outside its list (makeSortable compactLift, _homeDragPill) ----- */
+.sortable-pill {
+  display: inline-flex; align-items: center; gap: var(--space-2); max-width: 340px; padding: 6px var(--space-3) 6px var(--space-2-5, 10px);
+  border-radius: var(--radius-full); background: var(--surface-raised); border: 1px solid var(--border); box-shadow: var(--shadow-drag);
+  font-size: var(--text-sm); color: var(--fg); white-space: nowrap; transform: none !important;
+}
+.sortable-pill .sp-t { overflow: hidden; text-overflow: ellipsis; min-width: 0; font-weight: var(--weight-medium); }
+.sortable-pill .sp-k { display: inline-flex; align-items: center; gap: 4px; flex: none; font-size: var(--text-2xs); color: var(--fg-subtle); padding-left: var(--space-2); border-left: 1px solid var(--border); }
+.sortable-pill .sp-k .i { width: 12px; height: 12px; }
+.hw-p { width: 6px; height: 6px; border-radius: 50%; background: var(--p0); flex: none; }
+.hw-p.p1 { background: var(--p1); } .hw-p.p2 { background: var(--p2); } .hw-p.p3 { background: var(--p3); }
+
+.home-glances { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4); margin-top: var(--space-6); }
+
+/* ----- narrow: small and medium widgets go half width, large ones full; phones one column ----- */
+@container main (max-width: 940px) {
+  .hg-w[data-size="s"], .hg-w[data-size="m"] { --hg-span: 6; }
+  .hg-w[data-size="l"] { --hg-span: 12; }
+}
+@container main (max-width: 600px) {
+  .hg-w { --hg-span: 12; }
+  .hg-w[data-size] { --hg-span: 12; }
+}

@@ -1,0 +1,76 @@
+<button class="skip-link" id="skip-link" type="button">Skip to the page</button>
+<div class="app" id="app">
+  <aside class="app-sidebar" id="app-sidebar" aria-label="Navigation">
+    <div class="sb-head">
+      <button class="sb-ws" id="ws-btn" type="button" aria-haspopup="menu" title="Workspace menu">
+        <span class="brand-mark" id="brand-mark" aria-hidden="true"></span>
+        <span class="sb-ws-name" id="brand-name">OpenDash</span>
+        <svg class="i" aria-hidden="true"><use href="#i-chevrons-up-down"/></svg>
+      </button>
+      <button class="btn-icon" id="sidebar-toggle" type="button" data-tip="Hide sidebar" data-kbd="Ctrl+\" aria-label="Hide sidebar"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+    </div>
+    <button class="sb-search" id="palette-btn" type="button" aria-label="Search or jump to (Ctrl+K)">
+      <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+      <span class="lbl">Search or jump to…</span>
+      <span class="kbd-group"><kbd class="kbd">Ctrl</kbd><kbd class="kbd">K</kbd></span>
+    </button>
+    <div class="switcher" id="section-switcher" role="tablist" aria-label="Sections"></div>
+    <nav class="sidebar sb-scroll" id="sidebar" aria-label="Section navigation"></nav>
+    <div class="sb-foot" id="sb-foot"></div>
+  </aside>
+  <div class="sb-scrim" id="sb-scrim"></div>
+
+  <div class="app-body">
+    <header class="topbar" id="topbar">
+      <button class="btn-icon tb-menu" id="drawer-btn" type="button" aria-label="Show sidebar" data-tip="Show sidebar"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+      <nav class="crumb" id="crumb" aria-label="Breadcrumb"></nav>
+      <div class="tb-widgets" id="tb-widgets">
+        <div class="tb-countdowns" id="countdowns"></div>
+      </div>
+      <div class="tb-actions" id="tb-actions">
+        <button class="sync" id="folder-btn" type="button" aria-live="polite"><span class="dot"></span><span class="sync-lbl">Saved</span></button>
+        <button class="btn-icon" id="theme-toggle" type="button" aria-label="Toggle theme" data-kbd="Ctrl+Shift+D"><svg class="i" aria-hidden="true"><use href="#i-moon"/></svg></button>
+        <button class="btn-icon" id="more-btn" type="button" aria-haspopup="menu" aria-label="More" data-tip="More"><svg class="i" aria-hidden="true"><use href="#i-ellipsis"/></svg></button>
+      </div>
+    </header>
+
+    <div class="content" id="content">
+      <main class="main" id="main">
+        <div class="view-header" id="view-header">
+          <div class="view-title" id="view-title">Today<span class="mute" id="view-subtitle"></span></div>
+          <div class="view-controls" id="view-controls">
+            <label class="input input-sm view-filter" data-tip="Filter this list" data-kbd="/">
+              <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+              <input id="search-input" type="search" placeholder="Filter tasks" autocomplete="off" aria-label="Filter this list" />
+            </label>
+            <div class="seg view-mode-toggle" role="group" aria-label="Layout">
+              <button class="mode" type="button" data-mode="list" aria-label="List"><svg class="i" aria-hidden="true"><use href="#i-layout-list"/></svg><span>List</span></button>
+              <button class="mode" type="button" data-mode="kanban" aria-label="Board"><svg class="i" aria-hidden="true"><use href="#i-square-kanban"/></svg><span>Board</span></button>
+              <button class="mode" type="button" data-mode="calendar" data-goto="calendar:week" aria-label="Calendar" data-tip="Open these tasks on the calendar"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><span>Calendar</span></button>
+              <button class="mode" type="button" data-mode="review" aria-label="Review"><svg class="i" aria-hidden="true"><use href="#i-list-checks"/></svg><span>Review</span></button>
+            </div>
+            <button class="btn btn-secondary" id="display-btn" type="button" aria-haspopup="dialog"><svg class="i" aria-hidden="true"><use href="#i-sliders-horizontal"/></svg><span>Display</span></button>
+            <button class="btn btn-primary" id="new-task-btn" type="button" data-kbd="Q"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg><span>New task</span></button>
+          </div>
+        </div>
+        <div id="main-body"></div>
+      </main>
+      <aside class="detail-pane" id="detail-pane" aria-label="Details"></aside>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="import-file" accept=".json,application/json" hidden />
+<div class="save-toast" id="save-toast" role="status"></div>
+<div class="toast-host" id="toast-host" aria-live="polite"></div>
+<div class="ctx-menu" id="ctx-menu"></div>
+<div class="modal-overlay" id="modal-overlay"><div class="modal-card" id="modal-card" role="dialog" aria-modal="true"></div></div>
+<div class="date-picker" id="date-picker"></div>
+<div class="debug-banner" id="debug-banner" role="alert">
+  <button class="x btn-icon btn-sm" id="debug-close" type="button" aria-label="Dismiss"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+  <h4 id="debug-title">Sync error</h4>
+  <pre id="debug-body"></pre>
+  <button class="btn btn-secondary btn-sm" id="debug-copy" type="button">Copy to clipboard</button>
+</div>
+<div class="bulk-bar" id="bulk-bar"></div>
+<div class="kb-overlay" id="kb-overlay"><div class="kb-card" id="kb-card"></div></div>

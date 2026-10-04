@@ -1,0 +1,8 @@
+/* @part 51-uncategorised.css · OWNER: C1 (needs a category) */
+/* needs a category */
+.fv-uncat { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); gap: var(--space-1-5) var(--space-6); align-items: center; }
+.fv-uncat > .fv-btn { justify-self: start; }
+.fv-uncat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 150px; align-items: center; gap: var(--space-3); min-height: 36px; border-bottom: 1px solid var(--border-subtle); }
+.fv-uncat-m { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); font-size: var(--text-sm); }
+.fv-uncat .fv-catsel { border-color: var(--border); width: 100%; }
+

@@ -1,0 +1,27 @@
+/* ============= CONNECTION GATING (56-connections-gate.js) =============
+   [data-requires] / .ai-only / .gmail-only elements whose connection is
+   missing stay visible but greyed out; a click explains and offers Connect. */
+.is-gated { opacity: 0.45; filter: grayscale(0.6); cursor: not-allowed !important; }
+.is-gated:hover { opacity: 0.6; }
+.is-gated.is-checking { opacity: 0.6; cursor: progress !important; }
+.is-gated:focus-visible { opacity: 0.75; }
+/* a gated panel: dim content, calm overlay with a Connect button */
+.is-gated-box { position: relative; opacity: 1; filter: none; cursor: default !important; }
+.is-gated-box:hover { opacity: 1; }
+.is-gated-box > :not(.gate-overlay) { opacity: 0.35; filter: grayscale(0.7); pointer-events: none; user-select: none; }
+.gate-overlay { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: var(--space-2); flex-wrap: wrap;
+  padding: var(--space-3); text-align: center; font-size: var(--text-sm); color: var(--fg-muted); border-radius: inherit;
+  background: color-mix(in oklab, var(--surface) 55%, transparent); }
+.gate-overlay > .i { color: var(--fg-subtle); }
+.gate-overlay .gate-ov-text { max-width: 320px; }
+.is-gated.is-checking .gate-overlay > .i { animation: ui-spin 1.2s linear infinite; }
+/* the explanation popover */
+.gate-pop { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) !important; }
+.gate-pop-text { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--text-sm); line-height: var(--lh-sm); color: var(--fg); }
+.gate-pop-text > .i { color: var(--fg-subtle); margin-top: 2px; }
+.gate-pop > .btn { align-self: flex-start; }
+/* a soft requirement only adds a note to the tooltip */
+.is-soft-gated { }
+/* a feature switched off in config.json disappears instead */
+.gate-off { display: none !important; }
+html[data-motion="reduced"] .is-gated.is-checking .gate-overlay > .i, html[data-motion="reduced"] .conn-head .status.is-busy::before { animation: none; }

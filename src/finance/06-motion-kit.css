@@ -1,0 +1,33 @@
+/* @part 06-motion-kit.css · NEW (added after the split) · OWNER: C3 (motion polish); see 06-motion-kit.js */
+/* ---------- motion kit: in-view entrance, skeleton shimmer, paused loops ---------- */
+/* MK.inView: .fv-iv hides the element, .fv-iv-in reveals it (once) */
+.fv-iv { opacity: 0; transform: translate3d(0, var(--fv-iv-y, 10px), 0); }
+.fv-iv.fv-iv-in { opacity: 1; transform: none; transition: opacity 480ms var(--fv-ease), transform 620ms var(--fv-ease); transition-delay: var(--fv-iv-d, 0ms); }
+/* MK.skeleton */
+.fv-skel-wrap { display: grid; gap: var(--space-2); }
+.fv-skel-chart { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: end; height: 180px; padding: var(--space-3) 0 0; }
+.fv-skel-kpi { min-height: 96px; align-content: start; }
+.fv-skel { display: block; position: relative; overflow: hidden; background: var(--bg-muted); border-radius: var(--radius-sm); }
+.fv-skel-chart .fv-skel { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.fv-skel.line { height: 10px; }
+.fv-skel.k1 { height: 10px; width: 42%; }
+.fv-skel.k2 { height: 26px; width: 64%; }
+.fv-skel.k3 { height: 30px; width: 100%; margin-top: var(--space-2); }
+/* The shimmer waits 400 ms, so a fast load never flashes (FINANCE_MOTION.md §8). */
+.fv-skel::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--surface) 62%, transparent), transparent); animation: fv-shimmer 1.4s linear 400ms infinite; }
+@keyframes fv-shimmer { to { transform: translateX(100%); } }
+/* MK.pauseOffscreen, and every loop while the tab is hidden */
+.fv-offscreen, .fv-offscreen *, .fv.fv-tab-hidden * { animation-play-state: paused !important; }
+/* reduced motion and print: everything visible, nothing moving */
+@media (prefers-reduced-motion: reduce) {
+  .fv-iv { opacity: 1 !important; transform: none !important; }
+  .fv-skel::after { animation: none !important; }
+}
+:root[data-motion="reduced"] .fv-iv, :root.reduce-motion .fv-iv, :root.reduced-motion .fv-iv { opacity: 1 !important; transform: none !important; }
+:root[data-motion="reduced"] .fv-skel::after { animation: none !important; }
+@media print { .fv-iv { opacity: 1 !important; transform: none !important; } }
+/* @c3-begin MK.ghostOut: the section that is leaving, as an inert overlay above the arriving one */
+.fv-panel { position: relative; }
+.fv-ghost { position: absolute; left: 0; right: 0; top: 0; z-index: 1; pointer-events: none; }
+/* @c3-end */
+

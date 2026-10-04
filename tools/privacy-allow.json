@@ -1,0 +1,90 @@
+{
+  "_about": "Reviewed exceptions for tools/privacy-scan.mjs. Each entry: rule (or *), path (glob over repo-relative paths), optional match (a regex the matched text must satisfy) and why. forbidden-path can never be allowed. private-term only on one reviewed line: an exact path plus line_sha256 (the lineHash of a --json report), never a glob or a match, so the term itself is never written here; any edit to that line brings the finding back. Keep entries narrow; the scan lists any entry that no longer matches anything. repository: the public repository (owner/name); links to the same owner's other repositories are reported (rule other-repo).",
+  "repository": "mahdi1190/opendash",
+  "allow": [
+    {
+      "rule": "email",
+      "path": "**",
+      "match": "^[a-z0-9._-]{1,12}@([xyz]\\.org|b\\.co)$",
+      "why": "one-letter placeholder domains in code comments and tests (x.org, y.org, b.co); new code should use example.org"
+    },
+    {
+      "rule": "email",
+      "path": "tests/**",
+      "match": "^uid-\\d+@google\\.com$",
+      "why": "made-up iCal event UIDs in calendar tests"
+    },
+    {
+      "rule": "money",
+      "path": "src/finance/*.js",
+      "match": "^\\u00a3(5|1k|2k|100|200|1,234)$",
+      "why": "axis-label and label-width examples in code comments (bucket bounds, a 1,234 placeholder), not real figures"
+    },
+    {
+      "rule": "money",
+      "path": "lib/finance/store.mjs",
+      "match": "^\\u00a31,234\\.50$",
+      "why": "a parser input example in a code comment"
+    },
+    {
+      "rule": "money",
+      "path": "lib/story-data.mjs",
+      "match": "^\\u00a312\\.40$",
+      "why": "a format example in a code comment"
+    },
+    {
+      "rule": "money",
+      "path": "src/app/12-home-w-finance.js",
+      "match": "^\\u00a34$",
+      "why": "a format example in a code comment (pounds and pence drawn apart)"
+    },
+    {
+      "rule": "private-term",
+      "path": "LICENSE",
+      "line_sha256": "c97e2d05269908f2b8726a75531ef87999270cca72fa4615c24d4891a4e4d8d1",
+      "why": "the copyright line: the author's name is public on purpose"
+    },
+    {
+      "rule": "private-term",
+      "path": "package.json",
+      "line_sha256": "a23c9edd9bdc52586377cefdbeafa580e665a98651ba1c0cbce3af49cb97e0dc",
+      "why": "the package author field: the author's name is public on purpose (same holder as LICENSE)"
+    },
+    {
+      "rule": "private-term",
+      "path": "assets/brand/BRAND.md",
+      "line_sha256": "beb1a2f3a49b36012dfad123b5ed1a66983df27ff3ec3efb3f7da0b27fd12adb",
+      "why": "the copyright line: the author's name is public on purpose (same holder as LICENSE)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/52-people-link.js",
+      "line_sha256": "881cc4eb1d7e2524ce377c589554f70ac84be5fbba2b7cce105f46155833a3dc",
+      "why": "stop-word list of generic role and office words (common academic abbreviations); a coincidence with a private term"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/52-people-link.js",
+      "line_sha256": "7ee6135b392b802e0ce2d90203ef53d85ea64e66bc62ba1c718c172013c88c8c",
+      "why": "generic list of common first names that are also English words; a coincidence with a private term, not a list of contacts"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/52-people-link.js",
+      "line_sha256": "47456daf4733fd49e5c315643bcaf7fd78c40255ae0d73a142660f80708bedd7",
+      "why": "generic list of common first names that are also English words; a coincidence with a private term, not a list of contacts"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/67-fin-symbols.js",
+      "line_sha256": "48f6f54fe77c171c7b426dd80eb9abe130fd8da608908a21b80e357b64247077",
+      "why": "a public coffee-chain brand name in the merchant logo table"
+    },
+    {
+      "rule": "private-term",
+      "path": "vendor/echarts.min.js",
+      "line_sha256": "9d9042310dec51c580901690533c9c2a7e6e9a0e9de0f5af571233c29ef22946",
+      "why": "unmodified Apache ECharts 5.6.1 build: a CSS colour name in its named-colour table"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+/* @part 97-p1-polish.css · NEW · OWNER: P1 (visual critic: cross-section polish that belongs to no one part) */
+
+/* Phone: the page title and its freshness line ("Data to Fri 2 Oct · 4,440 transactions") shared one
+   nowrap line, so the title itself ellipsed to "Finances..". Scoped to Finances (the .fv-fresh line):
+   the freshness drops to its own line under the title. */
+/* Cash flow, wide page: "Where money came from" and "Spending by account" are short lists (often two
+   rows); as three equal cards they left two big empty boxes. They now stack beside the savings-rate
+   chart, which spans both rows. Under 1000 px the cards go back to full width (90-responsive.css). */
+@container fvbody (min-width: 1001px) {
+  .fv-grid > .fv-card.p1-cf-rate { grid-row: span 2; }
+  .fv-grid > .fv-card.p1-cf-side { grid-column: span 8; }
+  /* the chart takes the card's full height (its ResizeObserver resizes the canvas once) */
+  .fv-card.p1-cf-rate > .fv-card-b { flex: 1 1 auto; display: flex; flex-direction: column; }
+  .fv-card.p1-cf-rate > .fv-card-b > .fv-chart { flex: 1 1 auto; height: auto !important; min-height: 190px; contain: size; }   /* size: the canvas never feeds back into the row height */
+}
+
+@container main (max-width: 620px) {
+  .view-title:has(.fv-fresh) { white-space: normal; overflow: visible; }
+  .view-title:has(.fv-fresh) .mute { display: block; margin: 2px 0 0; vertical-align: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--text-xs); }
+}

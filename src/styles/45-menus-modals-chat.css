@@ -1,0 +1,59 @@
+/* ============= CONTEXT MENU, LEGACY MODAL, TASK CHAT ============= */
+.ctx-menu {
+  position: fixed; z-index: var(--z-dropdown);
+  background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+  padding: 4px; min-width: 220px; display: none;
+}
+[data-theme="dark"] .ctx-menu { border-color: transparent; }
+.ctx-menu.open { display: block; }
+.ctx-item {
+  display: flex; align-items: center; gap: var(--space-2); min-height: 30px; padding: 0 var(--space-2);
+  border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-sm); color: var(--fg);
+}
+.ctx-item .ctx-ic { width: 16px; display: inline-flex; justify-content: center; color: var(--fg-subtle); flex: none; }
+.ctx-item .ctx-lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-item:hover { background: var(--bg-muted); }
+.ctx-item.danger, .ctx-item.danger .ctx-ic { color: var(--danger-ink); }
+.ctx-item.danger:hover { background: var(--danger-soft); }
+.ctx-sep { height: 1px; background: var(--border); margin: 4px -4px; }
+
+/* showModal(html): the legacy modal, restyled to the v2 dialog look.
+   New code can use openDialog() (11-ui-kit.js). */
+.modal-overlay {
+  position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(1.5px);
+  display: none; align-items: flex-start; justify-content: center; padding-top: 10vh; z-index: var(--z-modal);
+}
+.modal-overlay.open { display: flex; }
+.modal-card {
+  background: var(--surface-raised); border-radius: var(--radius-lg); padding: var(--space-5);
+  max-width: 600px; width: calc(100% - 32px); box-shadow: var(--shadow-xl);
+  max-height: 80vh; overflow-y: auto; color: var(--fg);
+}
+.modal-card h3 { font-size: var(--text-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-3); }
+.modal-card p { font-size: var(--text-sm); color: var(--fg-muted); margin-bottom: var(--space-3); line-height: var(--lh-sm); }
+.modal-card code { font-size: 12px; background: var(--bg-muted); padding: 1px 4px; border-radius: var(--radius-xs); }
+.modal-card textarea {
+  width: 100%; min-height: 110px; padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border); border-radius: var(--radius-md); line-height: var(--lh-sm);
+  font-family: inherit; font-size: var(--text-sm); resize: vertical; background: var(--surface); color: var(--fg); outline: none;
+}
+.modal-card textarea:focus, .modal-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); outline: none; }
+.modal-card .modal-actions {
+  margin: var(--space-5) calc(-1 * var(--space-5)) calc(-1 * var(--space-5)); padding: var(--space-3) var(--space-5);
+  display: flex; gap: var(--space-2); justify-content: flex-end; flex-wrap: wrap;
+  border-top: 1px solid var(--border); background: var(--bg-subtle); border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+.modal-card .modal-actions .btn.danger { margin-right: auto; }
+
+/* Task chat */
+.chat-area { background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-2); max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-1-5); }
+.chat-msg { padding: 6px 10px; border-radius: var(--radius-md); font-size: var(--text-sm); line-height: var(--lh-sm); word-wrap: break-word; max-width: 85%; }
+.chat-msg.user { background: var(--accent); color: var(--fg-on-accent); align-self: flex-end; }
+.chat-msg.claude { background: var(--surface); border: 1px solid var(--border); align-self: flex-start; white-space: pre-wrap; color: var(--fg); }
+.chat-msg .meta { font-size: var(--text-2xs); opacity: 0.7; margin-top: 2px; }
+.chat-input-row { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.chat-input-row textarea {
+  flex: 1; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md);
+  font-family: inherit; font-size: var(--text-sm); resize: vertical; background: var(--surface); color: var(--fg); min-height: 36px; outline: none;
+}
+.chat-input-row textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }

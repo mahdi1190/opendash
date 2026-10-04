@@ -1,0 +1,38 @@
+/* ============= SERVER LINK (src/app/86-offline-banner.js, 58-settings-server.js) =============
+   The "server isn't running" banner: calm and sticky, in the flow between the
+   top bar and the page (it pushes the page down rather than covering it).
+   The restart overlay: a scrim with one small card. */
+.srv-banner {
+  flex: none; align-self: center; position: relative; z-index: var(--z-sticky);
+  display: flex; align-items: center; gap: var(--space-3);
+  width: max-content; max-width: calc(100% - 2 * var(--space-3));
+  margin: var(--space-2) var(--space-3) 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in oklab, var(--warning) 35%, var(--border));
+  border-radius: var(--radius-lg); background: var(--surface-raised); box-shadow: var(--shadow-sm);
+  opacity: 0; transition: opacity var(--m-base, 200ms) var(--m-ease-out, ease-out);
+}
+.srv-banner.is-floating { position: fixed; top: var(--space-2); left: 50%; transform: translateX(-50%); margin: 0; z-index: calc(var(--z-drawer) - 1); box-shadow: var(--shadow-md); }
+.srv-banner[hidden] { display: none; }
+.srv-banner.on { opacity: 1; }
+.srv-banner .srv-ic { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: var(--radius-full); background: var(--warning-soft); color: var(--warning-ink); }
+.srv-banner .srv-msg { min-width: 0; flex: 1; }
+.srv-banner .srv-title { font-size: var(--text-sm); line-height: var(--lh-sm); font-weight: var(--weight-semibold); color: var(--fg); }
+.srv-banner .srv-sub { font-size: var(--text-xs); line-height: var(--lh-xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.srv-banner .srv-acts { display: flex; gap: var(--space-2); flex: none; }
+.srv-banner a.btn { text-decoration: none; }
+@media (max-width: 640px) {
+  .srv-banner { flex-wrap: wrap; width: auto; align-self: stretch; }
+  .srv-banner .srv-acts { width: 100%; justify-content: flex-end; }
+}
+
+.srv-overlay { position: fixed; inset: 0; z-index: var(--z-toast); display: grid; place-items: center; background: var(--overlay); }
+.srv-overlay[hidden] { display: none; }
+.srv-ov-card { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); min-width: 280px; max-width: calc(100vw - 32px);
+  padding: var(--space-6) var(--space-8); border-radius: var(--radius-xl); background: var(--surface-raised); box-shadow: var(--shadow-lg); text-align: center; }
+.srv-ov-card .spinner { width: 22px; height: 22px; }
+.srv-ov-t { font-size: var(--text-md); line-height: var(--lh-md); font-weight: var(--weight-semibold); color: var(--fg); }
+.srv-ov-s { font-size: var(--text-xs); line-height: var(--lh-xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; min-height: var(--lh-xs); }
+
+@media (prefers-reduced-motion: reduce) { .srv-banner { transition: none; } }
+html[data-motion="reduced"] .srv-banner { transition: none; }

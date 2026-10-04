@@ -1,0 +1,22 @@
+{
+  "name": "opendash",
+  "version": "2.0.0",
+  "description": "OpenDash: a calm, local-first productivity dashboard for tasks, calendar, finances and people, with an optional Claude assistant.",
+  "private": true,
+  "license": "MIT",
+  "author": "Mahdi Ahmed",
+  "repository": "github:mahdi1190/opendash",
+  "homepage": "https://github.com/mahdi1190/opendash#readme",
+  "bugs": "https://github.com/mahdi1190/opendash/issues",
+  "keywords": ["dashboard", "productivity", "local-first", "self-hosted", "tasks", "calendar", "mcp", "claude"],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node tools/migrate.mjs --auto && node build.mjs && node tools/supervisor.mjs",
+    "build": "node build.mjs",
+    "check": "node build.mjs --syntax",
+    "test": "node --test",
+    "migrate": "node tools/migrate.mjs --auto"
+  }
+}

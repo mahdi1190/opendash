@@ -1,0 +1,59 @@
+/* ============================================================
+   SCENE SIZES + CONTINUITY (shared by every area that shows a scene).
+   The animated scenes themselves are in 71-anim-library.js/.css; this file
+   is the one size scale they all read, plus the layout the bigger sizes need.
+
+   Size scale (animSceneHtml(type, {size}) -> .sz-<size> -> --as-size):
+     --scene-xs    28px  a leading tile in a list row (deadlines, rules, all-day pills)
+     --scene-sm    38px  timeline and done-list rows, the brief's day plan
+     --scene-md    50px  cards, the event panel header, celebrations
+     --scene-lg    64px  banners, the Settings gallery
+     --scene-xl    88px  a hero strip
+     --scene-hero  132px the brief headline, the task card header
+     --scene-tip   44px  the hover badge on calendar entries (78-brief-hooks.js)
+     --scene-dense 22px  packed mini-lists (the weekly review's day columns)
+   Compact rows (html[data-density="compact"]) keep the row sizes at their
+   old, smaller values; cards and heroes stay the same in both densities.
+   Use the tokens for anything that lines up with a scene (a column, an
+   indent), never the pixel values, so a row never misaligns.
+
+   Tint: give a scene the class is-tinted (animSceneHtml {cls: 'is-tinted'})
+   and set --scene-tint (a stream or calendar colour) on it or any ancestor.
+
+   Continuity (71-anim-continuity.js): a scene rebuilt by render() carries on
+   from where the old one was instead of restarting; --as-t is how long its
+   key has been playing, turned into a negative delay here.
+   ============================================================ */
+:root {
+  --scene-xs: 28px;
+  --scene-sm: 38px;
+  --scene-md: 50px;
+  --scene-lg: 64px;
+  --scene-xl: 88px;
+  --scene-hero: 132px;
+  --scene-tip: 44px;
+  --scene-dense: 22px;
+}
+html[data-density="compact"] { --scene-xs: 22px; --scene-sm: 30px; --scene-md: 40px; --scene-tip: 36px; }
+
+.anim-scene.is-tinted { --c: var(--scene-tint, var(--accent)); }
+
+/* continuity: keep the timeline across re-renders (transform/opacity untouched) */
+.anim-scene.is-live [class*="x-"] { animation-delay: calc(var(--d, 0s) - var(--as-t, 0s)); }
+.anim-scene.is-urgent.is-live svg { animation-delay: calc(0.6s - var(--as-t, 0s)); }
+
+/* the hover badge: bigger, still anchored on the entry's top-right corner (78 places it for a 30px badge) */
+.anim-tip .anim-scene { --as-size: var(--scene-tip); }
+.anim-tip { translate: calc(30px - var(--scene-tip)) calc((30px - var(--scene-tip)) / 2); }
+
+/* ---------- the brief, evening and review (74-brief.css) lined up with the scale ---------- */
+.bf-ev { grid-template-columns: 54px var(--scene-sm) minmax(0, 1fr) auto; }
+.bf-gap { grid-template-columns: 54px var(--scene-sm) minmax(0, 1fr); }
+.bf-gap-l { margin-left: calc(var(--scene-sm) / 2 - 1px); }
+.bf-fc-n { padding-top: calc(var(--scene-md) / 2 - 8px); }
+.bf-subs, .bf-fc-prog, .bf-fc .hf-res { margin-left: calc(var(--scene-md) + 24px); }
+.bf-dl-ic { width: var(--scene-xs); }
+.ev-subs-ic { width: var(--scene-sm); height: var(--scene-sm); border-radius: calc(var(--scene-sm) * 0.27); }
+.hist-b { padding-left: calc(var(--scene-sm) + 28px); }
+.wk-day .anim-scene.sz-xs { --as-size: var(--scene-dense); }
+@media (max-width: 760px) { .hist-b { padding-left: 18px; } }

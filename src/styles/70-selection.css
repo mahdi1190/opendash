@@ -1,0 +1,13 @@
+/* Rubber-band drag-select rectangle (task lists) */
+.rubber-band {
+  position: fixed;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.6);
+  pointer-events: none;
+  z-index: 1000;
+  border-radius: 2px;
+}
+
+/* Keyboard-navigation cursor on task rows (Arrow keys move it, Enter opens detail) */
+.task.kb-cursor { box-shadow: inset 3px 0 0 var(--accent); }
+
