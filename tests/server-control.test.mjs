@@ -742,7 +742,7 @@ describe('launcher (start-hidden.mjs)', () => {
       try { rmSync(join(tmpdir(), `dashboard-start-${p}.stamp`), { force: true }); } catch { /* fine */ }
       assert.equal(got, `[--no-open --port ${p} --data-dir "${dataDir}"] [1]`);
       // (Retries: the detached second stage may still be ending in the folder.)
-    } finally { rmSync(box, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }); }
+    } finally { try { rmSync(box, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }); } catch { /* a just-exited child can hold the folder on Windows; a leftover temp folder is harmless */ } }
   });
 });
 

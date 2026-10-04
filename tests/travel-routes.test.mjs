@@ -64,7 +64,9 @@ test('/api/finance/travel: the Lisbon payments in euros, fees apart, no online b
   assert.ok(j.rows.some(x => x.atm), 'the cash withdrawal');
   assert.equal(j.rates.EUR.source, 'own');
   assert.ok(j.rates.EUR.rate > 1.14 && j.rates.EUR.rate < 1.16);
-  const log = readFileSync(join(dir, 'logs', 'server.log'), 'utf8');
+  // the log line is written just after the reply: wait for it
+  let log = '';
+  for (let i = 0; i < 40; i++) { log = readFileSync(join(dir, 'logs', 'server.log'), 'utf8'); if (/finance travel: \d+ read/.test(log)) break; await new Promise(r => setTimeout(r, 50)); }
   assert.match(log, /finance travel: \d+ read, \d+ abroad/);
   assert.ok(!/LISBOA|PASTELARIA|EUR|129/.test(log), 'no memos, places or amounts in the log');
 });
