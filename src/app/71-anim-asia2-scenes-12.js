@@ -250,7 +250,7 @@
         + Array.from({ length: Math.max(2, Math.round(w / 56)) }, (_, i) => `<rect x="${x - w / 2 + 14 + i * 56}" y="${y - h + 24}" width="22" height="${h - 24}" rx="11" fill="#c8a860" opacity=".85"/>`).join('')
         + tiers(x, y - h, w + 20, 3, 34, rf, '#f6c850') ;
       const spire = (x, y) => { const g = U(); return `<defs>${lin(g, [[0, '#fbe08a'], [1, '#d8921e']])}</defs><rect x="${x - 90}" y="${y - 110}" width="180" height="110" fill="#f4ead2"/>` + `<rect x="${x - 90}" y="${y - 114}" width="180" height="10" fill="#f6c850"/>` + [0, 1, 2, 3].map((i) => `<rect x="${x - 70 + i * 38}" y="${y - 90}" width="26" height="90" rx="13" fill="#c8a860"/>`).join('') + `<rect x="${x - 60}" y="${y - 190}" width="120" height="76" fill="#f4ead2"/>` + [0, 1, 2].map((i) => roof(x, y - 114 - i * 52, 250 - i * 46, 44, '#d4642a', '#f6c850')).join('')
-        + `<path fill="url(#${g})" d="M${x - 38} ${y - 280}L${x - 10} ${y - 400}L${x - 3} ${y - 500}H${x + 3}L${x + 10} ${y - 400}L${x + 38} ${y - 280}z"/>` + `<path stroke="#a8660e" stroke-width="2" d="M${x - 28} ${y - 310}H${x + 28}M${x - 18} ${y - 350}H${x + 18}M${x - 10} ${y - 395}H${x + 10}"/>`
+        + `<path fill="url(#${g})" d="M${x - 38} ${y - 255}L${x - 10} ${y - 400}L${x - 3} ${y - 500}H${x + 3}L${x + 10} ${y - 400}L${x + 38} ${y - 255}z"/>` + `<path stroke="#a8660e" stroke-width="2" d="M${x - 28} ${y - 310}H${x + 28}M${x - 18} ${y - 350}H${x + 18}M${x - 10} ${y - 395}H${x + 10}"/>`
         + `<path fill="#f6c850" d="M${x - 4} ${y - 500}h8v-34h-8z"/>` + [0, 1, 2, 3].map((i) => lit(x - 70 + i * 38 + 7, y - 70, 12, 40)).join(''); };
       let wall = ''; for (let i = 0; i < 40; i++) wall += `<path fill="#f4ead2" d="M${-160 + i * 50} 720V700l12 -12l12 12V720z"/>`;
       return `<defs>${lin(s1, [[0, '#4a3a86'], [0.4, '#a85a90'], [0.7, '#f0905c'], [1, '#ffd08a']])}${lin(w1, [[0, '#d8785a'], [0.25, '#7a4a78'], [1, '#2a2450']])}${radU(g1, [[0, '#ffd08a', 0.7], [1, '#ffd08a', 0]], 800, 430, 600)}</defs>`
@@ -271,23 +271,23 @@
   /* ---------------- Vientiane: the great golden stupa ---------------- */
   asiaSceneAdd({ key: 'place:vientiane', label: 'The great golden stupa', site: 'That Luang', colour: 'amber', mood: 'proud', season: 'any', tags: ['stupa', 'temple', 'plaza'],
     svg: () => {
-      const s1 = U(), g1 = U(), p1 = U(); const cx = 800;
-      const Lp = (dx, y) => `${cx - dx} ${y}`, Rp = (dx, y) => `${cx + dx} ${y}`;
-      const spire = (x, y, s) => `<path fill="url(#${g1})" d="M${x - 14 * s} ${y}L${x - 12 * s} ${y - 40 * s}Q${x - 8 * s} ${y - 70 * s} ${x} ${y - 110 * s}Q${x + 8 * s} ${y - 70 * s} ${x + 12 * s} ${y - 40 * s}L${x + 14 * s} ${y}z"/><path fill="none" stroke="#9a6414" stroke-width="2" d="M${x - 13 * s} ${y - 20 * s}H${x + 13 * s}M${x - 11 * s} ${y - 36 * s}H${x + 11 * s}"/>`;
-      const main = `<path fill="url(#${g1})" d="M${Lp(120, 470)}L${Lp(120, 420)}Q${Lp(100, 390)} ${Lp(80, 360)}L${Lp(78, 320)}Q${Lp(62, 290)} ${Lp(54, 250)}L${Lp(46, 210)}Q${Lp(40, 160)} ${Lp(24, 110)}Q${Lp(12, 70)} ${Lp(3, 40)}L${Rp(3, 40)}Q${Rp(12, 70)} ${Rp(24, 110)}Q${Rp(40, 160)} ${Rp(46, 210)}L${Rp(54, 250)}Q${Rp(62, 290)} ${Rp(78, 320)}L${Rp(80, 360)}Q${Rp(100, 390)} ${Rp(120, 420)}L${Rp(120, 470)}z"/>`;
-      let det = ''; for (let y = 120; y < 440; y += 22) det += `<path fill="none" stroke="#8a5a10" stroke-width="2" opacity=".6" d="M${cx - 120 + (440 - y) * 0 - Math.max(8, R((y - 80) * 0.3))} ${y}H${cx + Math.max(8, R((y - 80) * 0.3))}"/>`;
-      let lotus = ''; for (let i = -4; i <= 4; i++) lotus += `<path fill="#f8d56a" stroke="#9a6414" stroke-width="1.5" d="M${cx + i * 20 - 11} 430q11 -34 22 0z"/>`;
-      const base1 = `<path fill="#d49a28" d="M${Lp(300, 600)}L${Lp(260, 540)}H${Rp(260, 540)}L${Rp(300, 600)}z"/><path fill="#e8b848" d="M${Lp(220, 545)}L${Lp(200, 505)}H${Rp(200, 505)}L${Rp(220, 545)}z"/><path fill="#c8861e" d="M${Lp(150, 506)}L${Lp(130, 468)}H${Rp(130, 468)}L${Rp(150, 506)}z"/>`;
-      let minis = ''; for (let i = 0; i < 9; i++) { const x = cx - 240 + i * 60; minis += spire(x, 545, 0.6); }
-      for (let i = 0; i < 5; i++) minis += spire(cx - 120 + i * 60, 506, 0.45);
+      const s1 = U(), g1 = U(), p1 = U(), g3 = U(), h1 = U(); const cx = 800;
+      const spire = (x, y, s) => `<path fill="url(#${g3})" d="M${R(x - 14 * s)} ${y}L${R(x - 12 * s)} ${R(y - 40 * s)}Q${R(x - 8 * s)} ${R(y - 70 * s)} ${x} ${R(y - 110 * s)}Q${R(x + 8 * s)} ${R(y - 70 * s)} ${R(x + 12 * s)} ${R(y - 40 * s)}L${R(x + 14 * s)} ${y}z"/><path fill="none" stroke="#9a6414" stroke-width="2" d="M${R(x - 13 * s)} ${R(y - 20 * s)}H${R(x + 13 * s)}M${R(x - 11 * s)} ${R(y - 36 * s)}H${R(x + 11 * s)}"/>`;
+      const prof = [[470, 120], [430, 120], [430, 102], [392, 96], [392, 80], [352, 76], [330, 62], [292, 56], [250, 44], [200, 36], [150, 26], [100, 14], [50, 6], [30, 3]];
+      const main = `<path fill="url(#${g1})" d="M${prof.map(([y, w]) => `${cx - w} ${y}`).join('L')}L${prof.slice().reverse().map(([y, w]) => `${cx + w} ${y}`).join('L')}z"/>`;
+      let det = ''; for (const [y, w] of [[430, 102], [392, 80], [352, 62], [292, 44], [250, 36], [200, 26], [150, 14], [100, 6]]) det += `<path stroke="#8a5a10" stroke-width="2.4" opacity=".7" d="M${cx - w} ${y}H${cx + w}"/>`;
+      let lotus = ''; for (let i = -4; i <= 4; i++) lotus += `<path fill="#f8d56a" stroke="#9a6414" stroke-width="1.5" d="M${cx + i * 20 - 11} 470q11 -34 22 0z"/><path fill="#f8d56a" stroke="#9a6414" stroke-width="1.2" d="M${cx + i * 10 - 6} 330q6 -22 12 0z"/>`;
+      const base1 = `<rect x="${cx - 310}" y="570" width="620" height="40" fill="#d49a28"/><rect x="${cx - 310}" y="570" width="620" height="6" fill="#f4cc66"/><rect x="${cx - 240}" y="520" width="480" height="50" fill="#e0a838"/><rect x="${cx - 240}" y="520" width="480" height="6" fill="#f8dc7a"/><rect x="${cx - 170}" y="470" width="340" height="50" fill="#c8861e"/>` + [0, 1, 2, 3, 4, 5].map((i) => `<rect x="${cx - 150 + i * 56}" y="486" width="22" height="30" rx="11" fill="#7a3a1a" opacity=".6"/>`).join('');
+      let minis = ''; for (let i = 0; i < 11; i++) minis += spire(cx - 280 + i * 56, 570, 0.62);
+      for (let i = 0; i < 9; i++) minis += spire(cx - 220 + i * 55, 520, 0.5);
       let wallRow = '', wl = ''; for (let i = 0; i < 32; i++) { const x = -160 + i * 62; wallRow += `<path fill="#d4962a" d="M${x} 640L${x + 8} 600L${x + 20} 640z"/>`; wl += `<rect x="${x + 6}" y="648" width="12" height="30" rx="6" fill="#7a3a1a" opacity=".7"/>`; }
       let frang = ''; const r = rnd(81);
       for (let i = 0; i < 16; i++) frang += `<path fill="${i % 3 ? '#fff' : '#f9e8a8'}" d="M${1300 + r() * 220} ${450 + r() * 140}q8 -12 16 0q-8 12 -16 0z"/>`;
-      return `<defs>${lin(s1, [[0, '#2f86d0'], [0.5, '#7ec0ee'], [1, '#d6ecf4']])}${linU(g1, [[0, '#ffe58a'], [0.4, '#f4b830'], [1, '#b8741a']], cx - 120, 0, cx + 120, 0)}${lin(p1, [[0, '#d8c8a2'], [1, '#b8a47a']])}</defs>`
+      return `<defs>${lin(s1, [[0, '#2f86d0'], [0.5, '#7ec0ee'], [1, '#d6ecf4']])}${linU(g1, [[0, '#ffe58a'], [0.4, '#f4b830'], [1, '#b8741a']], cx - 120, 0, cx + 120, 0)}${lin(p1, [[0, '#d8c8a2'], [1, '#b8a47a']])}${radU(h1, [[0, '#ffe08a', 0.4], [1, '#ffe08a', 0]], cx, 290, 340)}<linearGradient id="${g3}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fbe48a"/><stop offset=".5" stop-color="#e8b032"/><stop offset="1" stop-color="#b8741a"/></linearGradient></defs>`
         + full(`url(#${s1})`) + sun(1380, 160, 38, '#fffbe0', '#fff0b0') + cloud(260, 180, 1.4, '#cfe0f0', 0.95, 90, 0) + cloud(1000, 120, 1.1, '#d6e6f4', 0.95, 70, 20) + cloud(1400, 300, 1, '#d0e0f0', 0.9, 110, 45)
         + mv('uspar', { ad: '70s', dx: '18px' }, canopy('#2f6a3a', 590, 60, 82, -160, 1760, 650) + canopy('#245a30', 610, 44, 83, -160, 1760, 650))
-        + mv('usglow', { ad: '5s', to: `${cx}px 300px` }, `<circle cx="${cx}" cy="290" r="300" fill="#ffe08a" opacity=".16"/>`)
-        + base1 + minis + main + lotus + det
+        + mv('usglow', { ad: '5s', to: `${cx}px 300px` }, `<circle cx="${cx}" cy="290" r="340" fill="url(#${h1})"/>`)
+        + base1 + minis + main + det + lotus
         + `<path fill="#fff6c0" opacity=".3" d="M${cx - 30} 120L${cx - 4} 440H${cx - 50}Q${cx - 44} 300 ${cx - 30} 120z"/>`
         + `<rect x="${cx - 4}" y="6" width="8" height="36" fill="#d49a28"/><path fill="#f8d870" d="M${cx} 0l5 10l-5 10l-5 -10z"/>`
         + `<rect y="640" width="1600" height="260" fill="url(#${p1})"/>` + wallRow + `<rect y="640" width="1600" height="8" fill="#e8c860"/>` + wl
@@ -338,13 +338,13 @@
       const s1 = U(), w1 = U(), h1 = U(), g1 = U();
       const boat = (x, y, s, col, tr) => hull(x, y, s, col, tr) + `<path fill="none" stroke="#3a2a20" stroke-width="${3 * s}" d="M${x + 20 * s} ${y - 8 * s}V${y - 70 * s}M${x + 20 * s} ${y - 66 * s}L${x - 40 * s} ${y - 10 * s}"/><path fill="#f4e8d0" d="M${x + 22 * s} ${y - 66 * s}L${x + 70 * s} ${y - 12 * s}H${x + 22 * s}z"/>`;
       let terr = ''; const r = rnd(66);
-      for (let i = 0; i < 10; i++) terr += `<path fill="none" stroke="#7a6a3a" stroke-width="3" opacity=".5" d="M${-100 + i * 190} ${470 + r() * 40}q${40 + r() * 40} ${60 + r() * 50} ${10 + r() * 20} ${120 + r() * 60}"/>`;
+      for (let i = 0; i < 4; i++) terr += `<path fill="none" stroke="#7a6a3a" stroke-width="3" opacity=".5" d="M${-60 + i * 150} ${430 + r() * 30}q${40 + r() * 40} ${60 + r() * 50} ${10 + r() * 20} ${120 + r() * 60}"/>`;
       return `<defs>${lin(s1, [[0, '#6a8ac8'], [0.35, '#e8a8a8'], [0.65, '#ffc888'], [1, '#ffe6b0']])}${lin(w1, [[0, '#f2c8a0'], [0.12, '#4ac0c0'], [0.5, '#1a90ac'], [1, '#0e5c88']])}${lin(h1, [[0, '#b8a068'], [0.5, '#9a8450'], [1, '#6a7a4a']])}${radU(g1, [[0, '#ffe0a8', 0.9], [1, '#ffe0a8', 0]], 1150, 470, 420)}</defs>`
         + full(`url(#${s1})`) + `<circle cx="1150" cy="470" r="420" fill="url(#${g1})"/>` + sun(1150, 470, 52, '#fff6d0', '#ffd090', true) + cloud(300, 190, 1.3, '#e8a8a0', 0.85, 90, 0, '#ffd6bc') + cloud(850, 130, 1, '#e8a8a0', 0.85, 70, 25, '#ffd6bc') + cloud(1400, 260, 1.1, '#e8a8a0', 0.8, 110, 40, '#ffd6bc')
         + mv('uspar', { ad: '90s', dx: '16px' }, `<path fill="#7a88a8" d="M820 560Q900 500 980 490Q1100 470 1260 520Q1340 540 1400 560z"/><path fill="#6a7a98" opacity=".6" d="M900 560Q1000 520 1100 520T1340 560z"/>`)
         + mv('uspar', { ad: '70s', dx: '20px' }, `<path fill="url(#${h1})" d="M-160 560V420Q0 330 120 370Q220 330 330 380Q440 340 520 420Q620 480 700 560z"/>` + terr + `<path fill="#6a7a4a" d="M-160 560V520Q200 470 520 540L700 560z" opacity=".8"/>` + canopy('#5a7a44', 520, 24, 61, -160, 620, 565))
         + `<rect y="560" width="1600" height="340" fill="url(#${w1})"/>`
-        + `<path fill="#ffe0a8" opacity=".5" d="M1080 566H1220L1340 900H820z"/>`
+        + `<path fill="#ffe0a8" opacity=".32" d="M1100 566H1200L1300 900H900z"/>`
         + shimmer(77, 60, -100, 1700, 580, 880, '#fff0cc', 60)
         + mv('usbob', { ad: '5s', dy: '3px' }, boat(520, 710, 1.1, '#e8d8b0', '#2a8ab8')) + mv('usbob', { ad: '6s', d: '-2s', dy: '3px' }, boat(1030, 650, 0.8, '#c85a3a', '#f4e8d0'))
         + mv('usbob', { ad: '7s', d: '-3s', dy: '3px' }, boat(1380, 600, 0.55, '#2a7aa8', '#f0c050'))

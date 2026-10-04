@@ -78,16 +78,15 @@
       let leaves = '';
       const tree = (x, y, s, seed) => { const r = rnd(seed); let c = `<path fill="#5a4030" d="M${x - 9 * s} ${y}l${5 * s} ${-150 * s}h${8 * s}l${5 * s} ${150 * s}z"/>`; for (let i = 0; i < 16; i++) c += `<circle cx="${R(x + (r() - 0.5) * 210 * s)}" cy="${R(y - 170 * s - r() * 120 * s)}" r="${R((46 + r() * 40) * s)}" fill="${['#f0b830', '#e8a21c', '#f7cf4a', '#d98d14'][i % 4]}"/>`; return c; };
       for (let i = 0; i < 30; i++) { const r = rnd(i * 7 + 3); leaves += `<path class="x-usfall" style="--ad:${R(9 + r() * 8)}s;--d:-${R(r() * 14)}s;--dx:${R(-100 + r() * 200)}px" fill="#f2b92c" d="M${R(r() * 1600)} ${R(r() * 220)}l7 -4l7 4l-7 9z"/>`; }
-      return `<defs>${lin(s1, [[0, '#5da4d8'], [0.55, '#a9d3ec'], [1, '#fbe6b8']])}${lin(g1, [[0, '#a8863f'], [1, '#6e5a2b']])}</defs>`
+      return `<defs>${lin(s1, [[0, '#5da4d8'], [0.55, '#a9d3ec'], [1, '#fbe6b8']])}${lin(g1, [[0, '#c9a455'], [1, '#8a7035']])}</defs>`
         + full(`url(#${s1})`) + sun(300, 210, 40, '#fff4cc', '#ffe08a') + stars(5, 20, 200)
-        + cloud(420, 190, 0.9, '#cfe0ee', 0.85, 62, 6) + cloud(1230, 150, 0.8, '#d8e6f0', 0.8, 70, 28) + streak(900, 300, 260, '#fff', 0.45, 80)
+        + cloud(420, 190, 0.9, '#cfe0ee', 0.85, 62, 6) + cloud(1230, 150, 0.8, '#d8e6f0', 0.8, 70, 28) + streak(1000, 90, 260, '#fff', 0.45, 80)
         + mv('uspar', { ad: '44s', dx: '10px' }, ridge('#9dbbcf', 560, 70, 7, 4) + ridge('#86a9b8', 600, 50, 8, 9))
         + mv('uspar', { ad: '34s', dx: '12px' }, city(31, -160, 1760, 650, 20, 60, 40, 80, '#b59c76', 0.0))
         + `<rect x="-160" y="640" width="1920" height="260" fill="url(#${g1})"/>`
         + `<path fill="#b79a68" d="M520 700H1080V664H520z"/><path fill="#c9ad77" d="M560 664H1040V630H560z"/><path d="M600 700V664M700 700V664M800 700V664M900 700V664M1000 700V664" stroke="#8f7648" stroke-width="3"/>`
         + `<path d="M770 700V630M830 700V630" stroke="#d8bf8c" stroke-width="6"/>`
         + `<g>${pagoda(800, 632, tiers, '#d1ad72', '#a98c5c', '#4d3a22', '#6d5a3a')}</g>`
-        + `<path fill="#e6c98d" opacity=".4" d="M860 632V210l40 20V632z"/>`
         + mv('uspar', { ad: '40s', dx: '14px' }, tree(250, 760, 1.15, 12) + tree(1360, 770, 1.3, 21) + tree(120, 800, 0.8, 8) + tree(1500, 800, 0.8, 18))
         + `<path fill="#c79d2c" d="M-160 860Q300 800 800 850T1760 840V900H-160z" opacity=".95"/>`
         + `<path fill="#e5b43c" d="M-160 880Q400 840 900 880T1760 870V900H-160z"/>`
@@ -143,7 +142,7 @@
       for (let i = 0; i < 20; i++) reflect += `<rect x="${R(260 + rr() * 1080)}" y="${R(700 + rr() * 170)}" width="${R(40 + rr() * 110)}" height="4" rx="2" fill="${['#ffcf7a', '#8fb6ff', '#ff9d8a'][i % 3]}" opacity=".6"/>`;
       return `<defs>${lin(s1, [[0, '#35418c'], [0.4, '#8a6fb5'], [0.7, '#f1946f'], [1, '#ffd08a']])}${lin(w1, [[0, '#8f78a8'], [1, '#232a5e']])}${radU(g1, [[0, '#ffdca0', 0.7], [1, '#ffdca0', 0]], 800, 600, 600)}</defs>`
         + full(`url(#${s1})`) + stars(12, 40, 260) + sun(1250, 560, 30, '#fff1c8', '#ffb070') + rays(1250, 560, 1000, '#ffd9a0', 0.08)
-        + cloud(330, 180, 1.0, '#b575a5', 0.8, 60, 5, '#ffc7a8') + cloud(1300, 260, 0.9, '#c07aa5', 0.75, 70, 30, '#ffcdb0') + streak(800, 120, 300, '#ffb0a0', 0.4, 90)
+        + cloud(330, 180, 1.0, '#b575a5', 0.8, 60, 5, '#ffc7a8') + cloud(1300, 260, 0.9, '#c07aa5', 0.75, 70, 30, '#ffcdb0')
         + mv('uspar', { ad: '44s', dx: '8px' }, city(2, -160, 1760, 620, 40, 150, 30, 60, '#7c6aa6', 0.25))
         // distant TV tower
         + `<path d="M1450 620V300" stroke="#6a5a98" stroke-width="5"/><ellipse cx="1450" cy="360" rx="22" ry="10" fill="#6a5a98"/><path d="M1450 300V240" stroke="#6a5a98" stroke-width="2"/><rect class="us-lit" x="1445" y="352" width="10" height="3"/>`
@@ -186,7 +185,6 @@
         + `<rect x="-160" y="660" width="1920" height="240" fill="url(#${w1})" opacity=".55"/>`
         + shimmer(5, 28, 0, 1600, 680, 880, '#fff2f0', 70) + shimmer(8, 12, 0, 1600, 700, 880, '#6d98b2', 60)
         + mv('usmove', { ad: '46s', dx: '420px' }, mv('usbob', { ad: '3.6s', dy: '3px' }, `<path fill="#6b4a3a" d="M980 760Q1060 786 1140 760l-14 -16H994z"/><path fill="#c25a4a" d="M1010 744Q1060 706 1110 744z"/>`))
-        + mv('uspar', { ad: '42s', dx: '14px' }, `<path d="M1500 900V640M1530 900V680" stroke="#4a3a2c" stroke-width="10"/><g fill="#6e8a4e"><circle cx="1500" cy="620" r="60"/><circle cx="1560" cy="660" r="48"/></g>`)
         + `<g class="x-ussway2" style="--ad:8s;transform-box:view-box;transform-origin:1600px 0px">${bough(3, 1760, 40, 1160, 250, '#3f3028', ['#f7bfd0', '#fbd5e0', '#ee9db8', '#ffffff'], 70, 14)}${bough(9, 1760, 150, 1380, 340, '#3f3028', ['#f7bfd0', '#fbd5e0', '#ee9db8'], 40, 12)}</g>`
         + `<g class="x-ussway2" style="--ad:9s;--d:-3s;transform-box:view-box;transform-origin:0px 0px">${bough(5, -160, 100, 360, 160, '#3f3028', ['#f7bfd0', '#fbd5e0', '#ee9db8', '#ffffff'], 50, 13)}</g>`
         + petals(3, 22, '#fbd5e0', 9, 16) + birds(4, 3, 700, 250, '#59506a', 1.1, 600) + finish(0.3);
@@ -209,11 +207,11 @@
       let flick = `<circle class="x-usflicker" style="--ad:1.4s;transform-box:fill-box;transform-origin:center" cx="${tx}" cy="108" r="6" fill="#ff5a4a"/><circle class="x-usflicker" style="--ad:1.7s;transform-box:fill-box;transform-origin:center" cx="${sx}" cy="78" r="6" fill="#ff5a4a"/>`;
       return `<defs>${lin(s1, [[0, '#4a4f9c'], [0.35, '#9f7fb8'], [0.65, '#f49a78'], [1, '#ffd49a']])}${lin(sk, [[0, '#dfe8f5'], [1, '#8fa6c6']])}${lin(g1, [[0, '#4a4668'], [1, '#2a2745']])}</defs>`
         + full(`url(#${s1})`) + stars(14, 36, 280) + rays(300, 600, 1100, '#ffd9a0', 0.1) + sun(300, 640, 44, '#fff0c4', '#ffae6e')
-        + cloud(900, 200, 1.1, '#b87aa6', 0.85, 66, 5, '#ffc2a6') + cloud(300, 330, 0.8, '#c585a6', 0.8, 54, 20, '#ffcdb0') + streak(1100, 130, 320, '#ffa89a', 0.4, 90)
+        + cloud(900, 200, 1.1, '#b87aa6', 0.85, 66, 5, '#ffc2a6') + cloud(300, 330, 0.8, '#c585a6', 0.8, 54, 20, '#ffcdb0')
         + mv('uspar', { ad: '44s', dx: '8px' }, city(3, -160, 1760, 700, 70, 240, 24, 56, '#8e75ad', 0.1))
         + haze(560, 120, '#ffc9a0', 0.4)
         + skyl + tower + flick
-        + mv('uspar', { ad: '34s', dx: '14px' }, city(8, -160, 1760, 820, 80, 280, 36, 80, '#5b4f82', 0.25))
+        + mv('uspar', { ad: '34s', dx: '14px' }, city(8, -160, 1760, 820, 60, 200, 36, 80, '#5b4f82', 0.25))
         // elevated railway with a train
         + `<rect x="-160" y="790" width="1920" height="16" fill="#3a3558"/><path d="M0 806V900M240 806V900M480 806V900M720 806V900M960 806V900M1200 806V900M1440 806V900M1680 806V900" stroke="#3a3558" stroke-width="12"/>`
         + `<rect x="-160" y="806" width="1920" height="94" fill="url(#${g1})"/>` + dots('M-160 782H1760', '#ffd9a0', 5, 38, 'us-lamps')
@@ -302,7 +300,7 @@
         o += `<rect fill="#a78155" x="${x + 6}" y="${R(y + 4)}" width="${R(168 * s)}" height="8" rx="3"/>`;
         for (let i = 0; i < 4; i++) o += `<path d="M${R(x + 24 + i * 44 * s)} ${R(y + 12)}V${R(y + 86 * s)}" stroke="#4a3626" stroke-width="5"/><ellipse cx="${R(x + 24 + i * 44 * s)}" cy="${R(y + 16)}" rx="13" ry="5" fill="#d9a46a"/>`;
         o += `<circle class="us-lit" cx="${x + 10}" cy="${R(y - 90 * s)}" r="14"/><circle fill="#ee5a3a" cx="${x + 10}" cy="${R(y - 90 * s)}" r="12"/><circle class="us-lit" cx="${R(x + 170 * s)}" cy="${R(y - 90 * s)}" r="14"/><circle fill="#ee5a3a" cx="${R(x + 170 * s)}" cy="${R(y - 90 * s)}" r="12"/>`;
-        return o + puffs(R(x + 90 * s), R(y - 30 * s), 3, '#fff', 20, 14, 3.4, -150, 2.4); };
+        return o + `<g opacity=".5">` + puffs(R(x + 90 * s), R(y - 30 * s), 3, '#fff', 16, 14, 3.4, -150, 2.4) + '</g>'; };
       const tw = (x) => `<path fill="url(#${w1}x)" d=""/>`;
       let reflect = '', rr = rnd(21);
       for (let i = 0; i < 26; i++) reflect += `<rect class="x-usshim" style="--ad:${(2 + rr() * 2).toFixed(1)}s;--d:-${(rr() * 3).toFixed(1)}s" x="${R(100 + rr() * 1400)}" y="${R(660 + rr() * 220)}" width="${R(30 + rr() * 90)}" height="5" rx="2" fill="${['#ffb35a', '#ff7a4a', '#ffd48a'][i % 3]}"/>`;
@@ -321,7 +319,7 @@
         // the bridge
         + `<path fill="#3a3358" d="M-160 560H1760V584H-160z"/><path d="M0 584V640M300 584V640M600 584V640M900 584V640M1200 584V640M1500 584V640" stroke="#3a3358" stroke-width="10"/>${dots('M-160 556H1760', '#ffe3a0', 5, 44, 'us-lamps')}`
         + mv('usmove', { ad: '26s', dx: '2000px' }, `<rect x="200" y="534" width="58" height="18" rx="6" fill="#e6e0d0"/>${lit(210, 538, 14, 7)}${lit(230, 538, 14, 7)}`)
-        + `<rect x="-160" y="800" width="1920" height="100" fill="#2a2342"/>`
+        + `<rect x="-160" y="728" width="1920" height="172" fill="#33294e"/><rect x="-160" y="722" width="1920" height="10" fill="#5a4a78"/><path d="M-160 760H1760M-160 800H1760M-160 850H1760" stroke="#463a66" stroke-width="2"/>`
         + stall(170, 740, 1.4, '#c93c3c', 3) + stall(520, 750, 1.2, '#2f5f8f', 5) + stall(1010, 745, 1.3, '#c93c3c', 8) + stall(1330, 755, 1.15, '#d98a2c', 12)
         + birds(5, 3, 900, 240, '#3a2f55', 1.1, 600) + finish(0.34);
     } });
@@ -369,6 +367,7 @@
     svg: () => {
       const s1 = U(), w1 = U();
       let hs = '', stairs = '';
+      const shd = U();
       const pal = ['#f4a6a0', '#f7d36a', '#8fc7e6', '#9fd6a4', '#f5b87a', '#c9a6e0', '#f2e6cf', '#7fbfb6', '#ee8a7a'];
       const r = rnd(19);
       for (let k = 0; k < 6; k++) {
@@ -381,7 +380,7 @@
             + lit(R(x + w * 0.2), R(base - hh * 0.65), R(w * 0.22), R(hh * 0.3)) + lit(R(x + w * 0.6), R(base - hh * 0.65), R(w * 0.2), R(hh * 0.3));
           x += w + 4 + r() * 10;
         }
-        stairs += `M${R(300 + k * 60 + r() * 60)} ${base}l${R(-20 + r() * 40)} 66`;
+        hs += `<rect x="-160" y="${base - 6}" width="1920" height="34" fill="url(#${shd})"/>`;
       }
       let sails = '';
       const ship = (x, y, s, col) => mv('usmove', { ad: R(70 + s * 10) + 's', dx: '260px' }, mv('usbob', { ad: '4s', dy: '2px' }, `<path fill="${col}" d="M${x} ${y}h${R(120 * s)}l${R(-14 * s)} ${R(16 * s)}H${R(x + 16 * s)}z"/><rect fill="#f2f0ea" x="${R(x + 30 * s)}" y="${R(y - 20 * s)}" width="${R(44 * s)}" height="${R(20 * s)}"/>`));
@@ -391,7 +390,7 @@
       br += `<path fill="none" stroke="#e4e8f0" stroke-width="3" d="M-160 366Q130 250 430 252Q780 340 1130 252Q1450 250 1760 366"/>`;
       let h = ''; for (let i = 0; i < 40; i++) { const x = -100 + i * 46; h += `M${x} 366V${R(300 + Math.abs(((x - 430) % 700) - 350) * 0.1)}`; }
       br += `<path d="${h}" stroke="#cfd5e0" stroke-width="1.6" opacity=".6"/>` + dots('M-160 362H1760', '#ffe3a0', 4, 36, 'us-lamps');
-      return `<defs>${lin(s1, [[0, '#6bb4e4'], [0.55, '#c3e3f2'], [1, '#fdeed8']])}${lin(w1, [[0, '#9fd0e0'], [1, '#4f8fb0']])}</defs>`
+      return `<defs>${lin(shd, [[0, '#2a3a5a', 0], [1, '#2a3a5a', 0.35]])}${lin(s1, [[0, '#6bb4e4'], [0.55, '#c3e3f2'], [1, '#fdeed8']])}${lin(w1, [[0, '#9fd0e0'], [1, '#4f8fb0']])}</defs>`
         + full(`url(#${s1})`) + sun(1280, 170, 34, '#fffbe6', '#ffeab8') + stars(4, 14, 180)
         + cloud(420, 150, 1.0, '#f2d6d6', 0.9, 64, 4, '#fff') + cloud(1000, 250, 0.8, '#e6e3ec', 0.85, 58, 22) + streak(1300, 300, 240, '#fff', 0.5, 80)
         + mv('uspar', { ad: '52s', dx: '8px' }, ridge('#9db8cc', 330, 50, 7, 8) + ridge('#7fa3b4', 350, 30, 9, 12))
@@ -399,10 +398,8 @@
         + br + ship(540, 420, 1.1, '#3a4f6a') + ship(1160, 408, 0.8, '#a84a3a') + ship(900, 440, 1.4, '#45606f')
         + `<path d="M1100 372V334M1118 372V320M1136 372V334" stroke="#e6a43a" stroke-width="5"/>`
         + mv('uspar', { ad: '40s', dx: '10px' }, hs)
-        + `<path d="${stairs}" stroke="#efe6d6" stroke-width="7" opacity=".7" fill="none"/>`
         + `<path fill="#6a8f5a" d="M-160 900V850Q200 820 500 860T1000 850Q1400 820 1760 860V900z"/>`
         + dots('M-160 600Q300 580 800 610T1760 590', '#ffd48a', 5, 34, 'us-lamps')
-        + `<g class="x-ussway" style="--ad:5s;transform-box:view-box;transform-origin:1400px 900px"><path d="M1400 900V790" stroke="#4a6a3a" stroke-width="5"/><circle cx="1400" cy="780" r="26" fill="#f26a8a"/><circle cx="1400" cy="780" r="10" fill="#ffd96a"/></g>`
         + birds(5, 6, 700, 260, '#4a5a7a', 1.3, 700) + birds(14, 3, 1100, 330, '#4a5a7a', 1, 500) + finish(0.28);
     } });
 
@@ -427,7 +424,6 @@
         + `<g>${Array.from({ length: 14 }, (_, i) => `<rect fill="${['#2f7f6a', '#2a5da3', '#c8352c'][i % 3]}" x="${296 + i * 21}" y="468" width="16" height="12"/>`).join('')}</g>`
         + roof(440, 372, 360, 100, '#4b4f5a', '#6c717e') + `<path d="M440 372V344" stroke="#3a3f49" stroke-width="5"/><circle cx="440" cy="340" r="6" fill="#d9b24a"/>`
         + `<rect x="-160" y="660" width="1920" height="240" fill="url(#${w1})"/>`
-        + `<g opacity=".3"><rect fill="#a8342c" x="300" y="700" width="270" height="40"/></g>`
         + shimmer(6, 30, 0, 1600, 680, 880, '#fff0e8', 70) + shimmer(2, 14, 0, 1600, 700, 880, '#7a84b8', 60)
         + mv('usmove', { ad: '46s', dx: '520px' }, mv('usbob', { ad: '3.6s', dy: '3px' }, `<path fill="#5a4636" d="M820 770Q900 800 980 770l-12 -16H832z"/><path fill="#d9c08a" d="M870 754V722" stroke="#5a4636" stroke-width="4"/>`))
         + mv('uspar', { ad: '42s', dx: '14px' }, willow(1380, 820, 1.25, 6) + willow(170, 840, 1.1, 12) + willow(1550, 860, 0.8, 3))
