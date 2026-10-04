@@ -1,10 +1,23 @@
 # The UK pack: adding a region
 
-The UK pack is a set of regional animation packs, one file per region. Wave 3
-batch 1 shipped the South West (`src/app/72-anim-pack-uk-south-west.js`) as
-the model. Every later batch copies that file and changes only the content,
-so the work is mechanical. Read `docs/dev/ANIMATION_PACKS.md` first for the
-general pack format.
+The UK pack is a set of regional animation scripts. Use the full-screen
+Hampshire scenes and toolkit in `src/app/72-anim-pack-uk-south-east.js` as
+the drawing model. Batch 1's South West mini-scenes still need a full-screen
+upgrade after the remaining regions. Read `docs/dev/ANIMATION_PACKS.md`
+first for the general pack format.
+
+Neighbouring regions may share one gallery pack: South East and London use
+the existing `uk-south-east` id, so saved favourites keep working. Every
+item retains its actual `ukRegion` from the county table. Keep each file
+below about 400 KB; a split file uses the same regions and a distinct pack id.
+The build already discovers the classic scripts; no registry change is needed.
+
+The next expansion targets **1,000+ animated scenes per combined gallery pack**,
+including named towns and researched places within each county. The 8–12 scenes
+per county below are the completed baseline, not the final expansion target.
+New views must change composition and activity as well as lighting or season;
+photos and static image substitutes do not meet the animated SVG quality bar.
+The large scene expansion is developed separately from the tested baseline.
 
 ## How it plays
 
@@ -18,9 +31,10 @@ general pack format.
   as `'cornwall'`.
 - Every UK item has a `when` rule: `ctx.county === <its county>`. That means
   it never comes up anywhere else, or with the setting off.
-- Items sit in the `opening` slot at priority 1. A festival or the birthday
-  (priority 2 and up) still wins the day. In the county, the daily opening
-  rotates among the county's items.
+- Items sit in the `opening` slot at priority 1. Daily picks rotate among
+  the county's items. The full welcome sequence plays its signature first,
+  then a matching festival or special event (priority 2 and up). A skip ends
+  the whole sequence. Blocks, packs off and motion preferences still apply.
 - **Welcome to \<county\>:** when the detected county changes, the county's
   signature opening plays with a caption. The last county is remembered per
   device (`localStorage dashboard-anim-uk-county`). With motion off, a toast
@@ -60,8 +74,8 @@ as Hampshire is in `72-anim-pack-uk-south-east.js`:
 | Batch | Region id | Areas (ids in `UK_COUNTIES`) |
 | --- | --- | --- |
 | 1 (done) | `south-west` | cornwall, devon, dorset, somerset, bristol, gloucestershire, wiltshire |
-| 2 | `south-east` | kent, east-sussex, west-sussex, surrey, hampshire, isle-of-wight, berkshire, oxfordshire, buckinghamshire |
-| 3 | `london` | greater-london (one area; it may take more elements and variants) |
+| 2 (baseline done: 74 full scenes; expansion pending) | `south-east` | kent, east-sussex, west-sussex, surrey, hampshire, isle-of-wight, berkshire, oxfordshire, buckinghamshire |
+| 3 (baseline done: 10 full scenes; combined gallery; expansion pending) | `london` | greater-london |
 | 4 | `east` | norfolk, suffolk, cambridgeshire, essex, hertfordshire, bedfordshire |
 | 5 | `east-midlands` | derbyshire, nottinghamshire, leicestershire, rutland, northamptonshire, lincolnshire |
 | 6 | `west-midlands` | west-midlands, staffordshire, shropshire, herefordshire, worcestershire, warwickshire |
@@ -73,41 +87,48 @@ as Hampshire is in `72-anim-pack-uk-south-east.js`:
 | 12 | `northern-ireland` | antrim, armagh, down, fermanagh, londonderry, tyrone |
 
 The authoritative list is always `ukCountiesIn('<region>')`. The pack test
-checks that each item's county belongs to its pack's region.
+checks that each item's county belongs to its pack's region, or to one of
+the explicitly combined neighbouring regions.
 
 ## Steps for one region
 
-1. Copy `72-anim-pack-uk-south-west.js` to `72-anim-pack-uk-<region>.js`.
+1. Copy the Hampshire toolkit and manifest structure from
+   `72-anim-pack-uk-south-east.js` to `72-anim-pack-uk-<region>.js`.
    Then change three things:
    - `REGION` and `NATION` (`GB-ENG`, `GB-WLS`, `GB-SCT` or `GB-NIR`)
    - the `NAMES` map (county id to display name)
    - the pack's `id: 'uk-<region>'`, `name: 'UK: <Region name>'` and
      `description`
-2. Keep the helpers as they are: `add(county, kind, o)`, `wv`, `cloud`,
-   `gull` and `steam`.
+2. Keep the full-screen toolkit: `add(county, kind, o)`, `ridge`, `canopy`,
+   `cloud`, `birds`, `shimmer`, `puffs`, `haze`, `rays`, `reflect`, `finish`,
+   `mv` and `U`. Add shared drawing helpers only where needed. Research
+   8–12 subjects/views per county and put their reasons and sources in a
+   comment at the top of its section.
 3. For each county, follow the checklist below. Then run
    `node --test tests/anim-packs.test.mjs`. It finds the file on its own and
    runs the quality gate plus the UK checks.
 4. Run `node build.mjs --syntax` and then `node build.mjs`. Review the art in
    Settings > Animations > Animation gallery > By pack, in light and dark and
    with reduced motion.
-5. Update the pack row in `MODULES.md` with the new file, and tick the batch
-   in the table above.
+5. Run `npm test` and `node tools/privacy-scan.mjs .` (zero errors), update
+   `MODULES.md` and `docs/CHANGELOG.md`, tick the batch above, and commit it.
+   `node tools/review-uk-pack.mjs <pack-id> <output-folder>` produces full-size
+   light/dark, still/moving frames and county contact sheets with the existing
+   headless Chrome helper. Keep review artifacts outside the release tree.
 
 ## Per-county checklist
 
 - [ ] **One signature opening** (`kind: 'signature'`). This is the county's
       best-known sight, and it plays in "Welcome to …". It has no `months`.
-- [ ] **Up to 5 elements**, at most one of each kind:
+- [ ] **8–12 scenes total**, including the signature and at most three of
+      each other kind (variants count):
   - `landmark`: a building or structure
   - `landscape`: the land or coast
   - `tradition`: a festival or custom
   - `food`: food and drink
   - `sport` or `heritage`: these share the fifth element
-- [ ] Batch 1 drew about 3 elements per county, with 1 variant each.
-      Variants come later as a separate item, `id: '<element>-2'`, with the
-      same `ukKind`. The "no kind twice" test then needs widening to "at most
-      3 per kind".
+- [ ] Variants are separate items, `id: '<element>-2'`, with the same
+      `ukKind`, a considered change of light, season or angle, and distinct art.
 - [ ] A dated tradition gets `months: [n, ...]`, so it only comes up in its
       season. Examples: wassail `[1]`, the Balloon Fiesta `[8]`, cheese
       rolling `[5]`.
@@ -115,15 +136,16 @@ checks that each item's county belongs to its pack's region.
       the county name.
 - [ ] `tags`: 2 to 4 plain lower-case words. `add` adds `uk`, the region, the
       county and the kind.
-- [ ] `colour` is a swatch. `mood` and `intensity` default to `subtle`. Use
+- [ ] `colour` is a swatch. `mood` defaults to `calm`, `intensity` to `subtle`. Use
       `standard` only for busy, energetic art.
-- [ ] Art: an original drawing in the 64 x 64 scene vocabulary (fills
-      `k c s w m`; strokes `lk lc lm lw`, plus `t` and `dash`).
+- [ ] Art: an original full-screen 1600 × 900 drawing with `full: true`,
+      sky and light, three depth layers, at least three ambient motion kinds,
+      and `finish()` last. A complete still frame works with reduced motion.
   - Motion uses only the `x-*` classes and is transform/opacity only.
   - Any new keyframes go in the pack's `css`, prefixed `ap-uk`.
   - There is no text in the SVG, and no logos, crests, club badges or
     trademarks.
-  - Each item is at most 14 KB.
+  - Each full scene is at most `ANIM_FULL_ITEM_MAX_BYTES` (32 KB rendered).
   - `reduced: 'static'` is fine unless the still frame is empty.
 - [ ] **Respect:** be specific and true to the place. Use a named landmark, a
       real custom or a protected food (PGI/PDO) rather than a generic joke.

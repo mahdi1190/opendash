@@ -358,12 +358,15 @@ test('UK packs: tagged with region and county, one signature per county, at most
   for (const p of uk) {
     const region = p.id.slice(3);
     assert.ok(R.UK_REGIONS.some(r => r.id === region), `${p.id}: a UK region`);
+    // The South East and London share one gallery pack, while each scene
+    // keeps its authoritative county region. No county-only check is relaxed.
+    const regions = p.id === 'uk-south-east' ? ['south-east', 'london'] : [region];
     const per = new Map();
     for (const it of p.items) {
       const c = R.ukCounty(it.county);
       assert.ok(c, `${it.ref}: county ${it.county} is in UK_COUNTIES`);
-      assert.equal(c.region, region, `${it.ref}: county in its pack region`);
-      assert.equal(it.ukRegion, region);
+      assert.ok(regions.includes(c.region), `${it.ref}: county in its pack regions`);
+      assert.equal(it.ukRegion, c.region);
       assert.deepEqual(it.region, [c.nation], `${it.ref}: nation`);
       assert.ok(['signature', 'landmark', 'landscape', 'tradition', 'food', 'sport', 'heritage'].includes(it.ukKind), `${it.ref}: kind`);
       assert.ok(it.tags.includes(it.ukKind) && it.tags.includes('uk'));
@@ -403,4 +406,28 @@ test('UK packs: tagged with region and county, one signature per county, at most
   assert.equal(R.animDailyPick('opening', '2026-10-06', {}, { level: 'standard' }).pack.startsWith('uk-'), false);
   assert.equal(R.animDailyPick('opening', '2026-12-25', {}, { county: 'cornwall', level: 'standard' }).pack, 'seasons', 'Christmas still wins');
   assert.equal(R.animDailyPick('opening', '2026-10-06', { packsOff: ['uk-south-west'] }, { county: 'cornwall', level: 'standard' }).pack.startsWith('uk-'), false);
+});
+
+test('South East and London: complete county rotations, full framing, local ids and dated traditions', () => {
+  const expected = ['south-east', 'london'].flatMap(region => R.ukCountiesIn(region));
+  const pack = R.animPack('uk-south-east');
+  assert.deepEqual([...new Set(pack.items.map(i => i.county))].sort(), expected.map(c => c.id).sort());
+  const ids = html => [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
+  for (const c of expected) {
+    const list = pack.items.filter(i => i.county === c.id);
+    assert.ok(list.length >= 8 && list.length <= 12, `${c.id}: 8–12 scenes`);
+    for (const it of list) {
+      assert.equal(it.full, true, `${it.ref}: full viewport`);
+      assert.ok(it.site && it.colour && it.tags.length >= 6, `${it.ref}: caption and metadata`);
+      const a = R.animItemHtml(it, {}), b = R.animItemHtml(it, {});
+      const first = ids(a), second = ids(b);
+      assert.ok(first.length && !first.some(id => second.includes(id)), `${it.ref}: fresh ids`);
+      assert.ok(!/<text\b|<image\b|<foreignObject\b/i.test(a), `${it.ref}: original shape art`);
+      assert.ok(!/\b(?:href|src)="(?!#)/.test(a), `${it.ref}: local references only`);
+      if (it.months) {
+        assert.equal(it.ukKind, 'tradition');
+        for (let mo = 1; mo <= 12; mo++) assert.equal(it.when(`2026-${String(mo).padStart(2, '0')}-15`, { county: c.id }), it.months.includes(mo), `${it.ref}: month ${mo}`);
+      }
+    }
+  }
 });

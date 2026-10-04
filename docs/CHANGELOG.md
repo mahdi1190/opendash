@@ -12,6 +12,8 @@ upgrades it.
 
 ### Added
 
+- UK pack: Kent, East Sussex, West Sussex, Surrey, Isle of Wight, Berkshire, Oxfordshire and Buckinghamshire (8 full-screen scenes each), plus Greater London (10). South East and London share one gallery pack with 84 scenes, including Hampshire's existing 10.
+- Connections: shared assistant cards in setup and Connections, bundled provider marks, unified Claude and OpenDash tool setup, local Codex/Gemini CLI tool registration, and clear browser availability.
 - UK county welcomes show the county's signature scene first, followed by a matching holiday or special-event animation. Skipping dismisses the whole sequence; blocked animations and disabled packs remain respected.
 
 ## [2.2.1] - 2026-10-04

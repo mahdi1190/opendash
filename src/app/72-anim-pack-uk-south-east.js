@@ -1,16 +1,16 @@
 /* ============================================================
-   ANIMATION PACK "uk-south-east" (v2.2, UK batch 2, first county: Hampshire).
+   ANIMATION PACK "uk-south-east" (v2.2, UK batches 2 and 3).
    PURE classic script, the same manifest and quality gate as
    72-anim-pack-uk-south-west.js (docs/dev/UK_PACK.md). Opt-in like every UK
    pack: the items play only when the detected county (71-uk-counties.js,
    offline) is theirs.
-   Hampshire is drawn as FULL-VIEWPORT scenes (item.full: a 1600 x 900
+   All nine South East counties and Greater London have FULL-VIEWPORT scenes (item.full: a 1600 x 900
    drawing, preserveAspectRatio slice, so it fills any screen edge to edge):
    the opening sequence plays one full screen after "Welcome to Hampshire"
    (78-anim-wire.js), and the gallery and the animation-of-the-day card show
    them large. Each scene is layered: a sky gradient and its light, far /
    mid / near layers that drift at different speeds (parallax), and ambient
-   life (birds, clouds, water shimmer, steam, smoke). Ten scenes rotate with
+   life (birds, clouds, water shimmer, steam, smoke). Eighty-four scenes rotate with
    the seeded daily look; each carries `site` for the origin line.
    Colours are painted (the scene's own palette); the dark theme, or a
    tod-dusk / tod-night class (animItemHtml o.tod), lays an evening grade
@@ -21,18 +21,19 @@
 (function () {
   const REGION = 'south-east', NATION = 'GB-ENG';
   const items = [];
-  const NAMES = { hampshire: 'Hampshire' };
+  const NAMES = { hampshire: 'Hampshire', kent: 'Kent', 'east-sussex': 'East Sussex', 'west-sussex': 'West Sussex', surrey: 'Surrey', 'isle-of-wight': 'Isle of Wight', berkshire: 'Berkshire', oxfordshire: 'Oxfordshire', buckinghamshire: 'Buckinghamshire', 'greater-london': 'Greater London' };
   /** One county element. months: only in those months (a dated tradition). */
   const add = (county, kind, o) => {
     const months = o.months || null;
+    const area = ukCounty(county), region = area.region;
     items.push(Object.assign({
       slot: 'opening', mood: 'calm', intensity: 'subtle', theme: 'any', season: 'any', region: [NATION], reduced: 'static', priority: 1, full: true,
-      county, ukRegion: REGION, ukKind: kind, signature: kind === 'signature', site: o.label,
+      county, ukRegion: region, ukKind: kind, signature: kind === 'signature', site: o.label,
       when: (day, ctx) => !!ctx && ctx.county === county && (!months || months.includes(+String(day).slice(5, 7))),
     }, o, {
       id: county + '-' + o.id,
       label: o.label + ', ' + NAMES[county],
-      tags: ['uk', 'south east', NAMES[county].toLowerCase(), kind].concat(o.tags || []),
+      tags: ['uk', region.replace(/-/g, ' '), NAMES[county].toLowerCase(), kind].concat(o.tags || []),
     }));
   };
 
@@ -457,11 +458,438 @@
         + mv('ukglide', { ad: '16s', dx: '500px', dy: '-30px' }, `<path fill="#f4f6f8" d="M300 420c30-10 60-10 80 0-20 10-60 12-80 0z"/><path fill="none" stroke="#f4f6f8" stroke-width="10" stroke-linecap="round" d="M330 418l-40-40M350 418l30-36"/><path fill="#2c3036" d="M376 418l14 -2-14 -4z"/>`)
         + finish()); } });
 
+  /* ---------- shared framing for the remaining South East counties ----------
+     These are drawing helpers, not new registry or opening behaviour. All
+     moving ground bands extend from -160 to 1760. Subjects stay in the
+     central 1200 units; each render owns every gradient and reflection id. */
+  const arch = (x, y, w, h, stone) => `<path fill="#394855" d="M${x} ${y + h}V${y + w / 2}Q${x + w / 2} ${y - w / 2} ${x + w} ${y + w / 2}V${y + h}z"/>${lit(x + 4, y + w / 2, w - 8, h - w / 2)}<path fill="none" stroke="${stone || '#d4c7aa'}" stroke-width="3" d="M${x + w / 2} ${y + 8}V${y + h}M${x} ${y + h * .64}H${x + w}"/>`;
+  const sashes = (x, y, n, rows, gap, colour) => {
+    let out = '';
+    for (let j = 0; j < rows; j++) for (let i = 0; i < n; i++) {
+      const xx = x + i * gap, yy = y + j * 68;
+      out += `<rect x="${xx - 4}" y="${yy - 4}" width="32" height="44" fill="${colour || '#dfd9c9'}"/><rect x="${xx}" y="${yy}" width="24" height="36" fill="#384d59"/>${lit(xx, yy, 24, 36)}<path stroke="${colour || '#dfd9c9'}" stroke-width="2" d="M${xx + 12} ${yy}v36M${xx} ${yy + 18}h24"/>`;
+    }
+    return out;
+  };
+  const battlements = (x, y, w, colour) => {
+    let d = `M${x} ${y + 16}V${y}`;
+    for (let i = 0; i < w; i += 32) d += 'h16v-16h16v16';
+    return `<path fill="${colour}" d="${d}V${y + 16}z"/>`;
+  };
+  const town = (seed, y, colour) => {
+    const r = rnd(seed); let out = '';
+    for (let x = -160; x < 1760; x += 94) {
+      const h = R(38 + r() * 50);
+      out += `<path fill="${colour}" d="M${x} ${y}v-${h}l38-26 38 26v${h}z"/><path fill="#637272" d="M${x - 5} ${y - h + 3}l43-32 43 32-5 5-38-26-38 26z"/><path fill="#647579" d="M${x + 20} ${y - h + 10}h10v15h-10zM${x + 48} ${y - h + 10}h10v15h-10z"/>${lit(x + 20, y - h + 10, 10, 15)}${lit(x + 48, y - h + 10, 10, 15)}<path fill="#52605c" d="M${x + 33} ${y}v-23h13v23z"/>`;
+    }
+    return out;
+  };
+  const sail = (x, y, k, seed) => mv('ukbob', { ad: `${4 + seed % 3}s`, d: `-${seed % 4}s`, dy: '4px' }, `<g transform="translate(${x} ${y}) scale(${k})"><path fill="#f7f1df" d="M0-10V-210Q70-120 106-10z"/><path fill="#dce7e5" d="M-8-12V-170L-80-12z"/><path stroke="#354855" stroke-width="4" d="M-3 0V-220"/><path fill="#354855" d="M-90-2H122L100 22H-60z"/><path fill="none" stroke="#e8f4f0" opacity=".55" stroke-width="4" d="M-115 30q100 16 236 0"/></g>`);
+  const boat = (x, y, k, colour) => `<g transform="translate(${x} ${y}) scale(${k})"><ellipse cy="26" rx="124" ry="12" fill="#233e49" opacity=".2"/><path fill="${colour}" d="M-130-10Q0 15 130-10L100 42Q0 66-100 42z"/><path fill="#f1ddbc" d="M-130-10Q0 15 130-10L114 0Q0 26-114 0z"/><path fill="#39545b" d="M-60-22h110v26H-60z"/><path stroke="#8c7053" stroke-width="5" d="M0-12V-124M-72-18L-10-108L78-18"/></g>`;
+  const pavilion = (x, y, w, col) => `<path fill="${col}" d="M${x} ${y}v-100h${w}v100z"/><path fill="#675649" d="M${x - 16} ${y - 100}l${w / 2 + 16}-65 ${w / 2 + 16} 65z"/>${sashes(x + 22, y - 78, Math.floor(w / 54), 1, 54)}<path fill="#d9d1bc" d="M${x - 20} ${y}h${w + 40}v12H${x - 20}z"/>`;
+  const terrace = (seed, y) => town(seed, y, '#b98c6e') + `<path fill="#6c5551" d="M-160 ${y}H1760v16H-160z"/>`;
+  /** Chalk is a lit, weathered face, rather than an unbroken white cutout. */
+  const chalk = (d, seed) => {
+    const id = U(), light = U(), r = rnd(seed); let seams = '';
+    for (let i = 0; i < 22; i++) {
+      const x = R(-160 + r() * 1920), y = R(370 + r() * 190), h = R(90 + r() * 240);
+      seams += `M${x} ${y}q${R(r() * 26 - 13)} ${R(h * .45)} ${R(r() * 22 - 11)} ${h}`;
+    }
+    return `<defs><clipPath id="${id}"><path d="${d}"/></clipPath>${linU(light, [[0, '#faf3df'], [.55, '#e3e0d0'], [1, '#a8b9b3']], 0, 400, 1600, 790)}</defs><path fill="url(#${light})" d="${d}"/><g clip-path="url(#${id})"><path fill="none" stroke="#aab7aa" stroke-width="3" opacity=".45" d="${seams}"/><path fill="none" stroke="#c4c3b2" stroke-width="5" opacity=".5" d="M-160 570Q650 530 1760 615M-160 644Q700 580 1760 697"/></g>`;
+  };
+  const lawn = y => `<path fill="#bed397" opacity=".16" d="${Array.from({ length: 9 }, (_, i) => { const x = -400 + i * 280; return `M${x} 900L${600 + i * 44} ${y}h26L${x + 140} 900z`; }).join('')}"/><path fill="#263e34" opacity=".12" d="M300 ${y + 4}h960l94 55H220z"/>`;
+  /** A travel-poster frame: painted light, three independent depth bands,
+      clouds, birds and swaying grass (plus water when appropriate).
+      The subject callback returns markup; finish() is always last. */
+  const vista = (seed, subject, o = {}) => {
+    const sky = U(), floor = U(), wash = U(), stone = U(), masonry = U(), roof = U();
+    const warm = o.time === 'dawn' || o.time === 'dusk', autumn = o.autumn;
+    const sk = warm ? [[0, '#49598c'], [.35, '#b294b4'], [.7, '#f2b599'], [1, '#ffe6b4']] : [[0, '#648fb9'], [.5, '#bfd7df'], [1, '#f2ecd6']];
+    const water = o.water, y = o.y || 680;
+    const palette = { stone: `url(#${masonry})`, shade: warm ? '#95785f' : '#a59980', roof: `url(#${roof})`, green: autumn ? '#a29047' : '#617d45' };
+    const ground = water ? [[0, warm ? '#ab9ea9' : '#80b5bd'], [1, warm ? '#344968' : '#2d6378']] : [[0, autumn ? '#a8aa65' : '#94a768'], [1, autumn ? '#6c6641' : '#405c38']];
+    return `<g${o.time === 'dusk' ? ' class="hx-evening"' : ''}><defs>${lin(sky, sk)}${linU(floor, ground, 0, y, 0, 900)}${radU(wash, [[0, '#fff2c5', .26], [1, '#fff2c5', 0]], warm ? 1130 : 350, warm ? 480 : 180, 900)}${linU(stone, [[0, warm ? '#e6c298' : '#f0e3c8'], [.45, warm ? '#d1ac87' : '#ddd0b3'], [1, warm ? '#ba9876' : '#b9b096']], 200, 160, 1320, 750)}${linU(roof, [[0, '#6c797b'], [1, '#46505b']], 200, 250, 1400, 650)}<pattern id="${masonry}" width="64" height="28" patternUnits="userSpaceOnUse"><rect width="64" height="28" fill="url(#${stone})"/><path fill="none" stroke="#746956" stroke-width="1" opacity=".14" d="M0 0H64M0 14H64M0 28H64M32 0v14M12 14v14M56 14v14"/></pattern></defs>`
+      + full(`url(#${sky})`) + stars(seed, 32, 280)
+      + sun(warm ? 1130 : 350, warm ? 465 : 180, warm ? 55 : 38, '#fff4d8', '#ffdfa0')
+      + rays(warm ? 1130 : 350, warm ? 465 : 180, 1000, '#fff1c4', .13)
+      + cloud(250, warm ? 215 : 160, 1.18, warm ? '#d4a6aa' : '#c7d5df', .8, 56, 9)
+      + cloud(1330, 150, 1.35, warm ? '#d4a6aa' : '#c7d5df', .84, 67, 21)
+      + streak(820, 84, 310, '#f8eeeb', .45, 75)
+      + mv('ukpar', { ad: '44s', dx: '7px' }, o.coast ? `<path fill="${warm ? '#b6a4ad' : '#9bbec5'}" d="M-160 ${y - 16}H1760V900H-160z"/>${haze(y - 48, 70, '#f5e7d0', .25)}` : ridge(warm ? '#a291aa' : '#a3b5b2', 510, 100, 7, seed) + haze(460, 150, '#f5e7d0', .45))
+      + mv('ukpar', { ad: '37s', dx: '15px' }, o.coast ? `<path fill="#7a959d" opacity=".6" d="M1410 ${y - 18}h65l-10 7h-48zM1440 ${y - 18}v-9h15v9z"/>` : canopy(warm ? '#6e7b83' : '#708b79', 585, 33, seed + 1, null, null, 760, '#a4b195'))
+      + `<rect x="-160" y="${y}" width="1920" height="${900 - y}" fill="url(#${floor})"/>`
+      + (o.lawn ? lawn(y) : '')
+      + mv('ukpar', { ad: '32s', dx: '23px' }, subject(palette))
+      + (water ? shimmer(seed + 8, 48, -100, 1740, y + 15, 895, warm ? '#ffe3be' : '#d5eef0', 55) : o.path === false ? '' : `<path fill="#d8ccb0" d="M650 900Q770 770 960 ${y}h25Q820 795 820 900z"/>`)
+      + birds(seed + 5, 5, 740, 230, '#394452', 1, 370)
+      + mv('ukpar', { ad: '27s', dx: '34px' }, water ? `<path fill="#a9987b" d="M-160 900v-28Q120 802 380 900zM1300 900q250-85 460-50v50z"/>${grass(seed + 6, 30, -160, 280, 900, 85, '#64714a')}${grass(seed + 7, 30, 1370, 1760, 900, 65, '#4a6347')}` : ridge(autumn ? '#71663e' : '#405b33', 900, 25, 8, seed + 3) + grass(seed + 6, 65, -160, 1760, 900, 48, '#3c5833') + meadow(seed + 7, 18, -160, 1760, 850, 900, autumn ? ['#eac277', '#eee0b9'] : ['#f8edcc', '#d3b75e']))
+      + `<rect width="1600" height="900" fill="url(#${wash})"/>` + finish() + '</g>';
+  };
+  /** Two considered variants of one subject, preserving its county/kind. */
+  const pair = (county, kind, id, label, colour, tags, drawing, opts) => {
+    const seed = [...(county + id)].reduce((a, c) => a + c.charCodeAt(0), 0);
+    add(county, kind, { id, label, site: label, colour, tags, svg: () => vista(seed, drawing, opts) });
+    add(county, kind, { id: id + '-2', label: label + ' at dusk', site: label + ' at dusk', colour, mood: 'dreamy', tags, svg: () => vista(seed, drawing, Object.assign({}, opts, { time: 'dusk' })) });
+  };
+
+  /* ---------- Kent: eight subjects and views ----------
+     Canterbury Cathedral — Bell Harry tower and the long Gothic nave identify the county.
+     Leeds Castle — the two stone islands and bridge are its defining outline.
+     Leeds Castle at dusk — reflected towers catch the evening light.
+     White Cliffs of Dover — chalk headlands above the Channel, with flint bands.
+     White Cliffs at dusk — a warmer view of the same coastal geology.
+     Hop harvest in the Weald — tall hop poles and white-cowled oasts mark a real late-summer custom.
+     Brogdale orchards — the National Fruit Collection preserves Kent's fruit-growing heritage.
+     Chatham Historic Dockyard — the long timber covered slips preserve shipbuilding history.
+     Sources: visitkent.co.uk/visit-kent-blog/its-good-to-be-green/
+     visitkent.co.uk/visit-kent-blog/flavours-of-summer
+     nationaltrust.org.uk/visit/kent/the-white-cliffs-of-dover */
+  const canterbury = (p) => {
+    let windows = '';
+    for (let i = 0; i < 9; i++) windows += arch(420 + i * 70, 420, 32, 95, p.stone) + `<path fill="${p.shade}" d="M${402 + i * 70} 640v-135h10v135z"/>`;
+    return `<path fill="${p.stone}" d="M340 640V406l66-66 65 66h669v234z"/><path fill="${p.roof}" d="M460 415l24-48h637l36 48z"/>${windows}`
+      + `<path fill="${p.stone}" d="M750 640V225h148v415z"/><path fill="${p.shade}" d="M878 225h20v415h-20z"/>${battlements(744, 225, 160, p.stone)}${arch(770, 265, 36, 90, p.stone)}${arch(838, 265, 36, 90, p.stone)}`
+      + `<path fill="${p.shade}" d="M742 640V214h12V640zM888 640V214h12V640z"/><path fill="${p.stone}" d="M734 216l14-45 14 45zM880 216l14-45 14 45z"/>`
+      + `<path fill="${p.stone}" d="M280 640V345h76v295zM360 640V345h76v295z"/>${battlements(276, 345, 80, p.stone)}${battlements(356, 345, 80, p.stone)}${arch(300, 388, 34, 74)}${arch(380, 388, 34, 74)}`
+      + `<path fill="${p.roof}" d="M1040 412l75-52 110 85v15H1040z"/><path fill="${p.stone}" d="M1080 640V460h165v180z"/>${arch(1140, 472, 48, 115)}`
+      + `<path fill="#ded0ad" d="M250 650h1040v18H250z"/>${oak(1250, 680, .58, '#354d38', '#577044', '#8fa160', 321)}`;
+  };
+  add('kent', 'signature', { id: 'canterbury-cathedral', label: 'Canterbury Cathedral', site: 'Canterbury Cathedral, the Precincts', colour: 'slate', tags: ['canterbury', 'cathedral', 'gothic'], svg: () => vista(301, canterbury, { lawn: true }) });
+  const leeds = (p) => {
+    const id = U();
+    const tower = (x, y, w, h) => `<path fill="${p.stone}" d="M${x} 660V${y}h${w}v${h}z"/>${battlements(x - 4, y, w + 8, p.stone)}${arch(x + 18, y + 42, 24, 53)}<path fill="${p.shade}" d="M${x + w - 12} ${y}h12V660h-12z"/>`;
+    return `<path fill="#557245" d="M260 674q260-75 470-15 320-66 630 8v33H260z"/><g id="${id}"><path fill="${p.stone}" d="M360 660V440h320v220zM930 660V400h280v260z"/>${tower(340, 390, 90, 270)}${tower(600, 390, 90, 270)}${tower(930, 350, 76, 310)}${tower(1160, 350, 76, 310)}${sashes(440, 477, 3, 2, 50)}${sashes(1010, 440, 3, 2, 46)}<path fill="${p.shade}" d="M680 612q125-85 250 0v48h-26q-98-67-196 0h-28z"/></g>${reflect(id, 690, .24)}`;
+  };
+  pair('kent', 'landmark', 'leeds-castle', 'Leeds Castle', 'slate', ['castle', 'moat', 'maidstone'], leeds, { water: true });
+  const dover = () => chalk('M-160 640V510Q130 340 420 390T820 390Q1000 410 1200 500L1360 655z', 390) + `<path fill="#7d9660" d="M-160 510Q130 340 420 390T820 390Q1000 410 1200 500l-20 15Q970 428 812 412T410 416Q90 390-160 550z"/><path fill="#abb8ae" opacity=".65" d="M420 420q100 90 20 222l70-5q55-140-12-213zM800 414q150 110 120 230l70 4q12-125-103-215z"/><path fill="#ecf3ed" opacity=".7" d="M-160 664q380-24 620 1t880 0v8H-160z"/>${sail(1240, 757, .38, 7)}`;
+  pair('kent', 'landscape', 'white-cliffs', 'The White Cliffs of Dover', 'teal', ['dover', 'chalk', 'channel'], dover, { water: true, coast: true, y: 620 });
+  const oasts = () => {
+    let hops = '';
+    for (let i = 0; i < 12; i++) { const x = 250 + i * 66; hops += `<path stroke="#80684c" stroke-width="6" d="M${x} 720V375"/><path fill="none" stroke="#63834a" stroke-width="15" stroke-dasharray="6 8" d="M${x + 10} 718Q${x - 14} 540 ${x + 12} 390"/>`; }
+    let kilns = '';
+    for (let i = 0; i < 3; i++) { const x = 1070 + i * 88; kilns += `<path fill="#ac694b" d="M${x} 690V485q40-20 80 0v205z"/><path fill="#744735" d="M${x - 8} 485l48-148 48 148z"/><path fill="#f3eee0" d="M${x + 20} 345q-5-45 25-55l30 14-26 6v35z"/>${lit(x + 31, 542, 20, 40)}`; }
+    return mv('uksway2', { ad: '8s' }, hops) + `<path stroke="#80684c" stroke-width="3" d="M230 382H1040"/>${kilns}`;
+  };
+  add('kent', 'tradition', { id: 'hop-harvest', label: 'Hop harvest in the Weald', colour: 'green', months: [8, 9], tags: ['hops', 'weald', 'harvest'], svg: () => vista(322, oasts, { autumn: true, path: false }) });
+  const orchard = () => {
+    let out = '';
+    for (let row = 0; row < 3; row++) for (let i = 0; i < 3; i++) {
+      const x = 300 + i * 300 + row * 32, y = 600 + row * 92, k = .37 + row * .12;
+      out += oak(x, y, k, '#36583b', '#648545', '#a2b55f', 340 + row * 4 + i);
+      const r = rnd(348 + i + row); for (let j = 0; j < 9; j++) out += `<circle cx="${R(x - 80 * k + r() * 160 * k)}" cy="${R(y - 250 * k + r() * 110 * k)}" r="${R(8 * k)}" fill="${j % 2 ? '#c68542' : '#bd4e39'}"/>`;
+    }
+    return out + `<path fill="#986443" d="M720 800h100l-12 60h-78z"/><path stroke="#dfb47b" stroke-width="5" d="M726 816h87M731 833h79"/>`;
+  };
+  add('kent', 'food', { id: 'brogdale-orchards', label: 'Brogdale orchards', site: 'The National Fruit Collection, Brogdale', colour: 'green', tags: ['brogdale', 'orchard', 'fruit'], svg: () => vista(341, orchard, { autumn: true, path: false }) });
+  add('kent', 'heritage', { id: 'chatham-slips', label: 'Covered slips at Chatham Historic Dockyard', colour: 'amber', tags: ['chatham', 'dockyard', 'shipbuilding'], svg: () => vista(361, () => {
+    let ribs = ''; for (let i = 0; i < 12; i++) ribs += `<path fill="none" stroke="#795a3f" stroke-width="10" d="M${300 + i * 76} 710V420l38-82 38 82V710"/>`;
+    return `<path fill="#9b8870" d="M270 710V420l460-138 470 138v290z"/><path fill="#5b6669" d="M244 424l486-166 496 166-20 20-476-138-465 138z"/>${ribs}<path fill="#34464e" d="M340 650h784l-82 65H408z"/><path fill="#c5b18d" d="M344 650h776v12H344z"/><path fill="none" stroke="#c9b38c" stroke-width="7" d="M300 430H1210M300 534H1210"/>${boat(760, 786, .66, '#6f4435')}`;
+  }, { water: true, y: 710 }) });
+
+  /* ---------- East Sussex: eight subjects and views ----------
+     Seven Sisters — the seven chalk brows, seen across the coastal water.
+     Royal Pavilion — Brighton's unmistakable onion domes and pierced arcade.
+     Royal Pavilion at dusk — lantern-like windows beneath the domes.
+     Cuckmere Haven — river meanders between grazing marsh and chalk slopes.
+     Cuckmere Haven at dusk — a quiet reflected-sky variant.
+     Hastings Jack in the Green — the leaf-covered May Day procession, without caricature.
+     Hastings beach-launched catch — fishing boats and baskets on the working shingle.
+     Hastings net shops — tall, narrow black timber sheds built to dry fishing gear.
+     Sources: visit1066country.com; hastingstraditionaljackinthegreen.co.uk
+     hastingshistory.net/hastings-net-shops; brightonmuseums.org.uk */
+  const sisters = () => {
+    let d = 'M-160 692V520', top = 'M-160 520';
+    for (let i = 0; i < 7; i++) { const x = -160 + i * 180, yy = [472, 454, 449, 412, 428, 384, 397][i]; const seg = `Q${x + 64} ${yy - [54, 83, 61, 94, 68, 79, 50][i]} ${x + 180} ${yy}`; d += seg; top += seg; }
+    d += 'L1280 650L1270 692z'; top += 'L1280 650';
+    return chalk(d, 402) + `<path fill="none" stroke="#738b57" stroke-width="19" d="${top}"/><path fill="#f2f5ea" d="M-160 692q740-40 1430-11v12H-160z"/>${sail(1390, 762, .32, 4)}`;
+  };
+  add('east-sussex', 'signature', { id: 'seven-sisters', label: 'Seven Sisters', site: 'Seven Sisters, the Sussex coast', colour: 'teal', tags: ['chalk', 'coast', 'seven sisters'], svg: () => vista(401, sisters, { water: true, coast: true, y: 660 }) });
+  const brighton = (p) => {
+    const dome = (x, y, w, h) => `<path fill="${p.stone}" d="M${x - w} ${y}Q${x - w * 1.2} ${y - h * .48} ${x} ${y - h}Q${x + w * 1.2} ${y - h * .48} ${x + w} ${y}z"/><path fill="none" stroke="${p.shade}" stroke-width="3" d="M${x} ${y - h}Q${x - w * .46} ${y - h * .45} ${x} ${y}M${x} ${y - h}Q${x + w * .46} ${y - h * .45} ${x} ${y}"/><path stroke="${p.shade}" stroke-width="4" d="M${x} ${y - h}v-25"/>`;
+    let out = `<path fill="${p.stone}" d="M340 680V490h920v190z"/>`;
+    for (let i = 0; i < 15; i++) out += arch(367 + i * 58, 540, 32, 112, p.stone);
+    out += `<path fill="${p.stone}" d="M665 490V370h270v120z"/>${dome(800, 378, 150, 198)}${dome(460, 490, 96, 124)}${dome(1140, 490, 96, 124)}`;
+    for (const x of [340, 580, 640, 960, 1020, 1260]) out += `<path fill="${p.stone}" d="M${x - 10} 680V370h20v310z"/>${dome(x, 385, 27, 56)}`;
+    return out + `<path fill="${p.shade}" d="M320 676h960v12H320z"/>${meadow(424, 35, 200, 1400, 740, 790, ['#dfad72', '#f2e1a4', '#d17b8b'])}`;
+  };
+  pair('east-sussex', 'landmark', 'royal-pavilion', 'Royal Pavilion, Brighton', 'amber', ['brighton', 'pavilion', 'domes'], brighton, { lawn: true });
+  const cuckmere = () => `<path fill="#9bad72" d="M-160 610Q250 550 590 615T1760 570V900H-160z"/><path fill="#699079" d="M740 620Q370 650 820 706T610 795Q310 825 670 900H960Q370 814 844 788T1100 705Q600 642 890 620z"/><path fill="none" stroke="#cddcd0" stroke-width="5" d="M740 620Q370 650 820 706T610 795Q310 825 670 900"/><path fill="#dfe2d4" d="M1160 600V490q110-75 220-20t380 40v90z"/><path fill="none" stroke="#6f8a57" stroke-width="15" d="M1160 490q110-75 220-20t380 40"/>${shimmer(444, 28, 640, 900, 705, 850, '#dceee5', 38)}${grass(446, 35, 1000, 1300, 840, 60, '#506d3e')}`;
+  pair('east-sussex', 'landscape', 'cuckmere-haven', 'Cuckmere Haven', 'green', ['cuckmere', 'river', 'marsh'], cuckmere, { path: false });
+  const crowd = (seed, n, y, col) => {
+    const r = rnd(seed); let out = '';
+    for (let i = 0; i < n; i++) { const x = R(250 + r() * 1100), yy = y + R(r() * 25), k = .65 + r() * .35; out += `<g transform="translate(${x} ${yy}) scale(${k})"><circle cy="-45" r="8" fill="#65594c"/><path fill="${col[i % col.length]}" d="M-10-32q10-7 20 0l6 34h-32z"/><path stroke="#46515a" stroke-width="5" d="M-7 0v17M7 0v17"/></g>`; }
+    return mv('ukbob', { ad: '5s', dy: '2px' }, out);
+  };
+  add('east-sussex', 'tradition', { id: 'jack-in-the-green', label: 'Hastings Jack in the Green', colour: 'green', months: [5], tags: ['hastings', 'may day', 'leaves'], svg: () => vista(461, () => terrace(462, 645) + crowd(463, 34, 775, ['#7d9660', '#d0ad6b', '#779595']) + mv('uksway2', { ad: '6s' }, `<path fill="#355e3b" d="M695 775Q650 660 750 494Q850 660 805 775z"/>${canopy('#739657', 590, 30, 467, 710, 790, 774)}<path fill="none" stroke="#b4c184" stroke-width="10" stroke-dasharray="5 14" d="M700 702q70-180 102 0"/>`) + meadow(465, 20, 620, 890, 810, 850, ['#f2e6bc', '#d4b76c'])) });
+  add('east-sussex', 'food', { id: 'hastings-catch', label: 'The Hastings fishing catch', site: 'The Stade, Hastings', colour: 'teal', tags: ['hastings', 'fishing', 'seafood'], svg: () => vista(481, () => `<path fill="#c2af8d" d="M-160 735q780-100 1920 0v165H-160z"/>${boat(560, 760, 1.2, '#4b777b')}${boat(1110, 690, .66, '#9b5842')}<path fill="#a87b4e" d="M925 800h130l-10 70H936z"/><path fill="none" stroke="#d8b282" stroke-width="5" d="M931 818h119M934 838h114M944 800v69M970 800v69M997 800v69M1025 800v69"/><g fill="#c2d5d2">${[0, 1, 2, 3, 4].map(i => `<path d="M${939 + i * 21} 808q17-15 36 0-17 14-36 0l-8 7v-14z"/>`).join('')}</g>`, { water: true, coast: true, y: 610 }) });
+  add('east-sussex', 'heritage', { id: 'net-shops', label: 'Hastings net shops', colour: 'slate', tags: ['hastings', 'net shops', 'timber'], svg: () => vista(501, () => {
+    let out = `<path fill="#c7b89a" d="M-160 680H1760V900H-160z"/>`;
+    for (let i = 0; i < 6; i++) { const x = 340 + i * 146, h = 220 + i % 3 * 55; out += `<path fill="#343b3a" d="M${x} 720V${720 - h}l58-70 58 70v${h}z"/><path fill="#202b2c" d="M${x + 80} ${720 - h + 3}h36V720h-36z"/><path fill="none" stroke="#6b7066" stroke-width="3" d="${Array.from({ length: 12 }, (_, j) => `M${x} ${720 - h + j * h / 12}h112`).join('')}"/><path fill="#192629" d="M${x + 33} 720v-90h48v90z"/><path fill="#7b877d" d="M${x + 23} ${650 - h}h30v35h-30z"/>`; }
+    return out + `<path fill="none" stroke="#8b785d" stroke-width="4" opacity=".6" d="M350 794q100-45 220 0t250 0t260 0"/>${boat(1100, 810, .55, '#76513b')}`;
+  }) });
+
+  /* ---------- West Sussex: eight subjects and views ----------
+     Arundel Castle — a hillside keep and dense crenellated skyline above the Arun.
+     Chichester Cathedral — slender spire and detached medieval bell tower.
+     Chichester Cathedral at dusk — lit lancets over the Close.
+     West Wittering — broad tidal sand and grass-topped dunes.
+     West Wittering at dusk — a reflected evening tide.
+     South of England Show — Ardingly's June agricultural gathering.
+     Nutbourne vineyard — south-facing vine rows, a real local wine landscape.
+     Goodwood Motor Circuit — racing heritage with unbranded open-wheel silhouettes.
+     Sources: seas.org.uk; nutbournevineyards.com/pages/the-vineyard
+     goodwood.com/motorsport/goodwood-revival; chichestercathedral.org.uk */
+  const arundel = (p) => {
+    let out = `<path fill="#6b814e" d="M200 720q560-310 1240-10v70H200z"/><path fill="${p.stone}" d="M360 640V465h810v175z"/>`;
+    for (let i = 0; i < 7; i++) { const x = 370 + i * 120, y = [370, 420, 345, 410, 385, 395, 435][i]; out += `<path fill="${p.stone}" d="M${x} 650V${y}h70v${650 - y}z"/>${battlements(x - 3, y, 80, p.stone)}${arch(x + 22, y + 40, 25, 60)}<path fill="${p.shade}" d="M${x + 60} ${y}h10V650h-10z"/>`; }
+    return out + `<path fill="${p.stone}" d="M570 455V292q85-37 170 0v163z"/>${battlements(566, 292, 180, p.stone)}${arch(600, 320, 26, 60)}${arch(680, 320, 26, 60)}${sashes(450, 510, 9, 1, 70)}${oak(1300, 755, .6, '#304d38', '#617748', '#99aa67', 526)}`;
+  };
+  add('west-sussex', 'signature', { id: 'arundel-castle', label: 'Arundel Castle', site: 'Arundel Castle above the Arun', colour: 'slate', tags: ['arundel', 'castle', 'arun'], svg: () => vista(521, arundel, { water: true, y: 780 }) });
+  const chichester = (p) => {
+    let out = `<path fill="${p.stone}" d="M450 665V450h620v215z"/><path fill="${p.roof}" d="M420 454l62-69h556l60 69z"/>`;
+    for (let i = 0; i < 9; i++) out += arch(468 + i * 65, 490, 30, 113, p.stone);
+    return out + `<path fill="${p.stone}" d="M790 665V340h112v325z"/><path fill="${p.shade}" d="M845 335L858 90l48 245z"/><path fill="${p.stone}" d="M790 340L858 90l-13 250z"/>${arch(810, 380, 27, 80)}${arch(859, 380, 27, 80)}<path fill="${p.stone}" d="M300 665V385h92v280z"/>${battlements(296, 385, 100, p.stone)}${arch(324, 428, 40, 75)}<path fill="${p.shade}" d="M380 385h12V665h-12z"/><path fill="#c2b79b" d="M275 665h860v12H275z"/>`;
+  };
+  pair('west-sussex', 'landmark', 'chichester-cathedral', 'Chichester Cathedral', 'slate', ['chichester', 'spire', 'cathedral'], chichester, { lawn: true });
+  const wittering = () => `<path fill="#e4d3aa" d="M-160 640Q650 610 1760 706V900H-160z"/><path fill="#a4c0bd" d="M-160 700Q480 664 1000 716T1760 720v35q-650-68-1920 10z"/>${shimmer(545, 35, -160, 1760, 700, 752, '#f7f1d5', 76)}<path fill="#cbb982" d="M1050 900q180-204 710-200v200z"/>${grass(546, 45, 1230, 1760, 840, 70, '#81894c')}${sail(450, 646, .3, 5)}<path fill="none" stroke="#bba982" stroke-width="4" d="M200 835q420-80 790-32"/>`;
+  pair('west-sussex', 'landscape', 'west-wittering', 'West Wittering beach', 'teal', ['sand', 'dunes', 'wittering'], wittering, { water: true, coast: true, y: 595 });
+  const showground = () => {
+    let tents = ''; for (let i = 0; i < 5; i++) { const x = 300 + i * 230; tents += `<path fill="#eee8d4" d="M${x} 660v-75h170v75z"/><path fill="#f9f2df" d="M${x - 16} 585l101-85 101 85z"/><path fill="#acb0a0" d="M${x + 62} 660v-60h45v60z"/>`; }
+    return tents + crowd(562, 30, 713, ['#88969a', '#b8895e', '#708655']) + `<path fill="none" stroke="#eee3c7" stroke-width="9" d="M280 806H1320M280 836H1320"/>${[340, 520, 700, 880, 1060, 1240].map(x => `<path stroke="#dfd1ae" stroke-width="10" d="M${x} 870V780"/>`).join('')}<g transform="translate(760 784) scale(.7)">${pony('#aa8358', '#866441', '#4c3b2c', false)}</g>`;
+  };
+  add('west-sussex', 'tradition', { id: 'ardingly-show', label: 'South of England Show', site: 'The South of England Show, Ardingly', colour: 'green', months: [6], tags: ['ardingly', 'agriculture', 'show'], svg: () => vista(561, showground) });
+  const vines = (seed, withTower) => {
+    let out = '';
+    for (let i = 0; i < 9; i++) { const x = -180 + i * 240; out += `<path fill="#71894a" d="M${x} 900l${700 - x * .38}-285h16L${x + 130} 900z"/><path fill="none" stroke="#b0b375" stroke-width="9" stroke-dasharray="4 12" d="M${x + 64} 886L${710 + i * 16} 640"/>`; }
+    out += `<path fill="none" stroke="#776548" stroke-width="6" d="M320 838v-80M650 818v-80M970 798v-80M1300 778v-80"/>`;
+    if (withTower) out += `<path fill="#c4b79a" d="M1010 600V505h92v95z"/><path fill="#646650" d="M998 510l58-115 58 115z"/>${lit(1036, 534, 28, 40)}`;
+    return out + grass(seed, 32, -160, 1760, 900, 35, '#425b32');
+  };
+  add('west-sussex', 'food', { id: 'nutbourne-vines', label: 'Nutbourne vineyard', colour: 'green', tags: ['nutbourne', 'vineyard', 'wine'], svg: () => vista(581, () => vines(584, true), { autumn: true, path: false }) });
+  const racingCar = (x, y, k, col) => `<g transform="translate(${x} ${y}) scale(${k})"><ellipse cy="16" rx="130" ry="12" fill="#243434" opacity=".3"/><circle cx="-80" r="27" fill="#303738"/><circle cx="84" r="27" fill="#303738"/><circle cx="-80" r="13" fill="#acb4b0"/><circle cx="84" r="13" fill="#acb4b0"/><path fill="${col}" d="M-115-8l38-24h78l60 12 64 22h-244z"/><path fill="#d3c3a0" d="M-12-34q24-18 38 4z"/><path stroke="#aaa99c" stroke-width="4" d="M-45-30h43"/></g>`;
+  add('west-sussex', 'heritage', { id: 'goodwood-circuit', label: 'Goodwood Motor Circuit', colour: 'green', tags: ['goodwood', 'motorsport', 'circuit'], svg: () => vista(601, () => pavilion(600, 610, 360, '#d9d5c2') + `<path fill="#737b74" d="M-160 800q780-230 1920-10v95q-800-197-1920 10z"/><path fill="none" stroke="#eee5cb" stroke-width="6" d="M-160 825q780-225 1920-10"/>` + mv('ukpar', { ad: '12s', dx: '70px' }, racingCar(710, 745, 1.1, '#396950') + racingCar(1110, 792, .8, '#b3744b')) + crowd(605, 26, 655, ['#857359', '#5c7170', '#b5a07c']), { path: false }) });
+
+  /* ---------- Surrey: eight subjects and views ----------
+     Box Hill — layered chalk slopes and the wooded Mole valley.
+     Leith Hill Tower — the distinctive eighteenth-century battlemented lookout.
+     Leith Hill Tower at dusk — evening light over the canopy.
+     Frensham Great Pond — sandy shore, heath and a broad freshwater surface.
+     Frensham at dusk — a still golden reflection across the pond.
+     Shere Open Gardens — the village's June opening of private cottage gardens.
+     Denbies vines — the Dorking vineyard on the North Downs slopes.
+     Brooklands banking — the banked concrete track preserves early motor racing.
+     Sources: visitsurrey.com/explore/the-surrey-hills-aonb/
+     surreycc.gov.uk/culture-and-leisure/countryside/sites/visitor-information/leith-hill
+     shereopengardens.co.uk; brooklandsmuseum.com */
+  const boxhill = () => ridge('#92a777', 580, 140, 5, 623) + `<path fill="#687e4c" d="M-160 900V710Q450 420 1060 710T1760 710v190z"/><path fill="#b9b481" d="M-160 900V802Q490 604 1050 785T1760 780v120z"/>${canopy('#4a6946', 760, 25, 625, -160, 690, 900)}<path fill="none" stroke="#e3dac0" stroke-width="14" d="M660 900Q540 814 1010 741T1420 769"/>${oak(1260, 788, .67, '#3d5939', '#6d8551', '#a4ad68', 626)}`;
+  add('surrey', 'signature', { id: 'box-hill', label: 'Box Hill', site: 'Box Hill and the Mole valley', colour: 'green', tags: ['box hill', 'mole valley', 'downs'], svg: () => vista(621, boxhill, { path: false }) });
+  const leith = (p) => `<path fill="#6f814a" d="M-160 780Q760 610 1760 770v130H-160z"/><path fill="${p.stone}" d="M660 720V310h240v410z"/><path fill="${p.shade}" d="M864 310h36v410h-36z"/>${battlements(650, 310, 260, p.stone)}${arch(742, 596, 68, 124)}${arch(750, 388, 46, 70)}<path fill="none" stroke="#b2a487" stroke-width="3" opacity=".7" d="${Array.from({ length: 18 }, (_, i) => `M662 ${326 + i * 21}H899`).join('')}"/>${oak(1150, 755, .62, '#39573a', '#657d48', '#9aac63', 646)}`;
+  pair('surrey', 'landmark', 'leith-hill', 'Leith Hill Tower', 'slate', ['leith hill', 'tower', 'woodland'], leith);
+  const frensham = () => canopy('#52764c', 585, 35, 663, null, null, 660, '#9bb47b') + `<path fill="#d3c39c" d="M-160 665q290-65 540 6L250 790H-160zM1250 900q220-145 510-160v160z"/>${oak(260, 661, .63, '#3b5941', '#667d4f', '#9cad73', 664)}${grass(665, 40, 1320, 1760, 840, 100, '#687942')}${shimmer(666, 35, 200, 1400, 680, 850, '#e1efe6', 48)}`;
+  pair('surrey', 'landscape', 'frensham-pond', 'Frensham Great Pond', 'teal', ['frensham', 'pond', 'heath'], frensham, { water: true, y: 650 });
+  const shere = () => `<path fill="#e5d5b8" d="M450 690V490h460v200z"/><path fill="#986647" d="M410 496l155-146h215l165 146z"/><path fill="#686957" d="M455 490h20v200h-20zM890 490h20v200h-20zM455 570h450v10H455z"/>${sashes(510, 520, 5, 2, 72)}<path fill="#6c5b44" d="M675 690V592h58v98z"/>${oak(1120, 748, .8, '#37533c', '#65824b', '#9eb96a', 683)}${meadow(684, 60, 280, 1350, 765, 850, ['#e6b666', '#ba79a5', '#eeede0', '#c36f65'])}<path fill="none" stroke="#d6c5a3" stroke-width="9" d="M300 855h360M840 855h480"/>`;
+  add('surrey', 'tradition', { id: 'shere-gardens', label: 'Shere Open Gardens', colour: 'pink', months: [6], tags: ['shere', 'gardens', 'flowers'], svg: () => vista(681, shere) });
+  add('surrey', 'food', { id: 'denbies-vines', label: 'Denbies vineyard', site: 'Vine rows below Box Hill, Dorking', colour: 'green', tags: ['dorking', 'vineyard', 'wine'], svg: () => vista(701, () => ridge('#95a36a', 625, 120, 6, 702) + vines(703, false) + pavilion(1050, 605, 260, '#e4d5bc'), { autumn: true, path: false }) });
+  add('surrey', 'heritage', { id: 'brooklands-banking', label: 'Brooklands banking', colour: 'slate', tags: ['brooklands', 'weybridge', 'motorsport'], svg: () => vista(721, () => `<path fill="#b2b4a7" d="M-160 900V675Q520 550 1760 370V900z"/><path fill="#d0cdb9" d="M-160 688Q520 563 1760 383v28Q520 590-160 711z"/><path fill="none" stroke="#858f84" stroke-width="4" d="M-160 760Q520 610 1760 460M-160 824Q520 679 1760 522M300 625l270 275M690 557l350 343M1110 480l440 420"/>` + mv('ukpar', { ad: '18s', dx: '50px' }, racingCar(710, 716, 1.05, '#6d8666')) + grass(724, 40, -160, 480, 900, 60, '#4c643d'), { path: false }) });
+
+  /* ---------- Isle of Wight: eight subjects and views ----------
+     The Needles — three chalk stacks ending at the red-and-white lighthouse.
+     Osborne — Italianate terraces and twin belvedere towers.
+     Osborne at dusk — the towers warm above the garden.
+     Freshwater Bay — chalk headlands framing a curved shingle inlet.
+     Freshwater Bay at dusk — the bay and a quiet evening tide.
+     Garlic Festival — Newchurch's annual August gathering, tents and harvest stalls.
+     Mersley garlic fields — the island's established crop, shown growing rather than branded.
+     Sailing at Cowes — the island's maritime sporting heritage, no club or sponsor marks.
+     Sources: visitisleofwight.co.uk; english-heritage.org.uk/visit/places/osborne/
+     garlicfestival.co.uk (third weekend in August); thegarlicfarm.co.uk */
+  const needles = () => {
+    let out = `<path fill="#dde0cf" d="M-160 900V430q240-105 450 20L540 670l90 142z"/><path fill="#738b58" d="M-160 430q240-105 450 20l48 62q-320-115-498-44z"/>`;
+    for (const [x, y, w, h] of [[590, 760, 190, 244], [815, 784, 168, 192], [1045, 804, 137, 139]]) {
+      out += `<path fill="#ede8d8" d="M${x - w / 2} ${y}l25-${h * .35} 27-${h * .2} 13-${h * .42} 28-7 22 ${h * .36} 26 ${h * .13} 24 ${h * .4}z"/><path fill="#acbbb5" d="M${x + 8} ${y - h}l22 ${h * .36} 26 ${h * .13} 24 ${h * .4}v${h * .11}h-30l-23-${h * .55}z"/><path fill="none" stroke="#c2c7bc" stroke-width="3" d="M${x - w * .25} ${y - h * .12}l${w * .55}-10M${x - w * .18} ${y - h * .36}l${w * .45}-9M${x - w * .1} ${y - h * .57}l${w * .3}-8"/>`;
+    }
+    return out + `<path fill="#e7e6d6" d="M1220 800l8-146h36l8 146z"/><path fill="#b95543" d="M1224 724h44l2 34h-48zM1228 655h36v34h-38z"/><path fill="#41515b" d="M1220 655h52v-13h-52z"/>${lit(1239, 645, 15, 9)}<path fill="#efeee0" d="M1218 800h58l12 12h-83z"/>`;
+  };
+  add('isle-of-wight', 'signature', { id: 'needles', label: 'The Needles', site: 'The Needles and lighthouse, Alum Bay', colour: 'teal', tags: ['needles', 'chalk', 'lighthouse'], svg: () => vista(741, needles, { water: true, coast: true, y: 625 }) });
+  const osborne = (p) => {
+    const tower = (x, y) => `<path fill="${p.stone}" d="M${x} 650V${y}h108v${650 - y}z"/><path fill="${p.shade}" d="M${x + 90} ${y}h18V650h-18z"/><path fill="#e8dabc" d="M${x - 10} ${y}h128v-15H${x - 10}z"/>${[0, 1, 2].map(i => arch(x + 10 + i * 32, y + 26, 22, 68)).join('')}<path fill="${p.roof}" d="M${x - 15} ${y - 15}l69-22 69 22z"/>`;
+    return `<path fill="${p.stone}" d="M380 650V420h820v230z"/><path fill="${p.shade}" d="M380 430h820v12H380zM380 578h820v10H380z"/>${sashes(440, 465, 12, 2, 58)}${tower(430, 270)}${tower(1060, 220)}<path fill="#ddd0b2" d="M350 650h880v20H350zM320 680h940v17H320zM290 710h1000v15H290z"/>${meadow(765, 32, 330, 1300, 755, 840, ['#d6a166', '#e2e2c6', '#c27b8d'])}`;
+  };
+  pair('isle-of-wight', 'landmark', 'osborne', 'Osborne House', 'amber', ['osborne', 'terrace', 'belvedere'], osborne, { lawn: true });
+  const freshwater = () => chalk('M-160 900V480Q150 355 340 510L470 760zM1180 780l80-320q200-10 500 130v310z', 782) + `<path fill="#718e58" d="M-160 480Q150 355 340 510l-6 20Q140 390-160 505zM1260 460q200-10 500 130v30q-290-126-505-139z"/><path fill="#bbae94" d="M-160 900q820-275 1920 0z"/><path fill="none" stroke="#e9ede2" stroke-width="9" d="M290 832q510-165 1020 5"/>${boat(700, 810, .45, '#6c7870')}`;
+  pair('isle-of-wight', 'landscape', 'freshwater-bay', 'Freshwater Bay', 'teal', ['freshwater', 'bay', 'chalk'], freshwater, { water: true, coast: true, y: 620 });
+  add('isle-of-wight', 'tradition', { id: 'garlic-festival', label: 'Isle of Wight Garlic Festival', site: 'The Garlic Festival, Newchurch', colour: 'amber', months: [8], tags: ['newchurch', 'garlic', 'festival'], svg: () => vista(801, () => {
+    let stalls = '';
+    for (const [x, c] of [[310, '#bd9362'], [570, '#809373'], [1130, '#a97664']]) {
+      stalls += `<path fill="#be9667" d="M${x} 754V605h180v149z"/><path fill="${c}" d="M${x - 12} 605l102-60 102 60v23H${x - 12}z"/><path fill="#d8be91" d="M${x - 8} 701h196v19H${x - 8}z"/>`;
+      for (let j = 0; j < 6; j++) stalls += `<path fill="#e9dfc9" d="M${x + 20 + j * 27} 701q-16-24 0-34l5-16 5 16q16 10 0 34z"/>`;
+    }
+    return `<path fill="#455f5c" d="M805 665V473q110-65 220 0v192z"/><path fill="#899e8b" d="M777 475q138-112 276 0v18H777z"/><path fill="#b59c76" d="M793 662h244v25H793z"/><path fill="none" stroke="#d8c4a3" stroke-width="5" d="M821 494H1009M805 660V483M1025 660V483"/>${[845, 915, 985].map(x => `<circle class="hx-lit" cx="${x}" cy="512" r="9"/>`).join('')}${stalls}${crowd(807, 27, 805, ['#8a9468', '#b48d64', '#648887'])}<path fill="#b78d54" d="M410 836h210v54H410z"/>${[0, 1, 2, 3, 4, 5].map(i => `<path fill="#e9dfc9" d="M${438 + i * 29} 836q-16-24 0-34l5-16 5 16q16 10 0 34z"/>`).join('')}`;
+  }, { path: false }) });
+  const garlicFields = () => {
+    let leaves = ''; for (let row = 0; row < 5; row++) for (let i = 0; i < 24; i++) { const x = -140 + i * 82 + row * 12, y = 635 + row * 49, h = 25 + row * 12; leaves += `M${x} ${y}q-24-${h} -12-${h * 1.5}q16 ${h} 12 ${h * 1.5}q12-${h} 27-${h * 1.4}q-10 ${h} -27 ${h * 1.4}z`; }
+    return `<path fill="#a89566" d="M-160 620H1760V900H-160z"/>${mv('uksway', { ad: '5s' }, `<path fill="#527645" d="${leaves}"/>`)}${pavilion(1040, 605, 240, '#b47d58')}<path fill="#aa8254" d="M360 812h115v53H360z"/>${[0, 1, 2, 3, 4].map(i => `<path fill="#eee6d1" d="M${372 + i * 20} 808q-15-23 0-34v-10h5v10q15 12 0 34z"/>`).join('')}`;
+  };
+  add('isle-of-wight', 'food', { id: 'mersley-garlic', label: 'Mersley garlic fields', site: 'Garlic fields at Mersley Farm, Newchurch', colour: 'green', tags: ['garlic', 'newchurch', 'fields'], svg: () => vista(821, garlicFields, { path: false }) });
+  add('isle-of-wight', 'sport', { id: 'cowes-sailing', label: 'Sailing at Cowes', colour: 'blue', tags: ['cowes', 'sailing', 'solent'], svg: () => vista(841, () => town(842, 638, '#86999c') + sail(390, 730, .75, 2) + sail(850, 820, 1.25, 7) + sail(1220, 688, .45, 5), { water: true, y: 638 }) });
+
+  /* ---------- Berkshire: eight subjects and views ----------
+     Windsor Castle — the Round Tower rising over the long crenellated ward.
+     Maidenhead Railway Bridge — Brunel's two very flat brick arches.
+     Maidenhead Railway Bridge at dusk — arches reflected in the Thames.
+     Kennet and Avon Canal — Hungerford's towpath, canal boats and waterside trees.
+     Kennet and Avon at dusk — a late-day canal reflection.
+     Hungerford Hocktide — flower-topped Tutti poles, a surviving local custom.
+     Eton mess — strawberry, meringue and cream, shown in a riverside still life.
+     Dorney Lake rowing — long racing shells across the purpose-built course.
+     Sources: windsor.gov.uk; visithungerford.com/whats-on/hocktide/
+     canalrivertrust.org.uk; dorneylake.co.uk; networkrail.co.uk */
+  const windsor = (p) => {
+    let out = `<path fill="${p.stone}" d="M300 655V435h1000v220z"/>${battlements(295, 435, 1020, p.stone)}`;
+    for (let i = 0; i < 10; i++) out += arch(326 + i * 99, 482, 36, 114, p.stone);
+    for (const x of [300, 480, 1080, 1260]) out += `<path fill="${p.stone}" d="M${x} 655V365h72v290z"/>${battlements(x - 3, 365, 80, p.stone)}${arch(x + 22, 408, 27, 70)}`;
+    return out + `<path fill="#657e48" d="M600 655q160-85 350 0z"/><path fill="${p.stone}" d="M670 620V305q100-35 200 0v315z"/><path fill="${p.shade}" d="M832 300q26 4 38 5v315h-38z"/>${battlements(664, 305, 210, p.stone)}${arch(700, 355, 27, 76)}${arch(758, 355, 27, 76)}${arch(816, 355, 27, 76)}<path fill="#ddd1b6" d="M270 655h1070v14H270z"/>`;
+  };
+  add('berkshire', 'signature', { id: 'windsor-castle', label: 'Windsor Castle', colour: 'slate', tags: ['windsor', 'castle', 'round tower'], svg: () => vista(861, windsor) });
+  const maidenhead = () => {
+    const id = U();
+    return `<g id="${id}"><path fill="#ae765b" fill-rule="evenodd" d="M220 520H1390V690H220zM290 690v-32a240 98 0 0 1 480 0v32zM830 690v-32a240 98 0 0 1 480 0v32z"/><path fill="none" stroke="#d1aa83" stroke-width="10" d="M290 658a240 98 0 0 1 480 0M830 658a240 98 0 0 1 480 0"/><path fill="#805840" d="M200 508h1210v20H200z"/><path fill="none" stroke="#d7b48f" stroke-width="3" d="M220 552H1390M220 576H1390M220 600H300M1280 600h110"/></g>${reflect(id, 690, .22)}${boat(1030, 800, .45, '#5e7772')}`;
+  };
+  pair('berkshire', 'landmark', 'maidenhead-bridge', 'Maidenhead Railway Bridge', 'red', ['maidenhead', 'brunel', 'thames'], maidenhead, { water: true, y: 660 });
+  const canal = () => `<path fill="#82995e" d="M-160 900V620H590Q430 755 350 900zM1150 900Q1060 735 960 620H1760V900z"/><path fill="#c7bd97" d="M1080 900Q1010 747 937 630h40Q1070 750 1160 900z"/>${oak(350, 735, .9, '#3b5a3b', '#6b8550', '#a6b574', 885)}${oak(1240, 650, .55, '#3b5a3b', '#6b8550', '#a6b574', 886)}${mv('ukbob', { ad: '6s', dy: '3px' }, `<path fill="#526d65" d="M600 785h430l-30 65H628z"/><path fill="#b17a56" d="M670 724h280l45 66H625z"/>${sashes(690, 743, 5, 1, 50)}<path fill="#384d4e" d="M660 719h280l12 9H647z"/>`)}<path fill="none" stroke="#dfd9b9" stroke-width="5" d="M620 853q220 28 410-8"/>`;
+  pair('berkshire', 'landscape', 'hungerford-canal', 'The Kennet and Avon Canal, Hungerford', 'teal', ['hungerford', 'canal', 'towpath'], canal, { water: true, y: 620 });
+  add('berkshire', 'tradition', { id: 'hocktide', label: 'Hungerford Hocktide', colour: 'pink', months: [3, 4, 5], tags: ['hungerford', 'hocktide', 'flowers'], svg: () => vista(901, () => terrace(902, 650) + pavilion(670, 650, 280, '#d8c5a7') + crowd(903, 25, 800, ['#9e8a61', '#687c7d', '#8d754f']) + [580, 980].map((x, i) => `<path stroke="#8b6c46" stroke-width="10" d="M${x} 850V450"/>` + mv('uksway2', { ad: '7s' }, `<ellipse cx="${x}" cy="450" rx="55" ry="65" fill="#65864d"/>${meadow(906 + i, 20, x - 42, x + 42, 465, 490, ['#e8cf95', '#c8819c', '#efeddd'])}`)).join('')) });
+  const bowl = (x, y, flavour) => `<g transform="translate(${x} ${y}) scale(1.45)"><ellipse cy="102" rx="115" ry="20" fill="#2d4240" opacity=".2"/><path fill="#dce6dc" d="M-100 0Q-80 98 0 98T100 0z"/><ellipse rx="100" ry="30" fill="#eee8d5"/><g fill="#f7f2df">${[[-52, -4], [0, -17], [50, 0], [-15, 15]].map(([xx, yy]) => `<circle cx="${xx}" cy="${yy}" r="28"/>`).join('')}</g><g fill="${flavour}">${[[-62, -20], [25, -23], [59, 8], [-15, 10]].map(([xx, yy]) => `<path d="M${xx - 16} ${yy - 8}q16-17 32 0l-16 30z"/>`).join('')}</g><path fill="#547749" d="M14-32q18-22 32 0z"/></g>`;
+  add('berkshire', 'food', { id: 'eton-mess', label: 'Eton mess', site: 'Strawberries, cream and meringue beside the Thames', colour: 'red', tags: ['eton', 'strawberries', 'meringue'], svg: () => vista(921, () => town(922, 660, '#919e93') + sail(1180, 745, .44, 5) + `<path fill="#99724e" d="M260 830h1080v70H260z"/><path fill="#d3b487" d="M230 810h1140v28H230z"/>` + bowl(810, 716, '#bb5b49') + `<path fill="#e8dec2" d="M330 823l90-70 130 70z"/>`, { water: true, y: 660 }) });
+  const shell = (x, y, n, col) => mv('ukpar', { ad: '13s', dx: '65px' }, `<g transform="translate(${x} ${y})"><path fill="${col}" d="M-260 0Q0-15 260 0Q0 19-260 0z"/>${Array.from({ length: n }, (_, i) => { const xx = -175 + i * 48; return `<circle cx="${xx}" cy="-23" r="7" fill="#726556"/><path fill="#e7e1c8" d="M${xx - 8}-15h16v20h-16z"/>` + mv('ukheel', { ad: '3s', d: '-.5s', to: `${xx}px 0px` }, `<path stroke="#9c8861" stroke-width="4" d="M${xx} 0l${i % 2 ? '55 50' : '-55 -50'}"/><path stroke="#e4d9ae" stroke-width="11" d="M${xx + (i % 2 ? 45 : -45)} ${i % 2 ? 43 : -43}l${i % 2 ? '18 16' : '-18 -16'}"/>`); }).join('')}</g>`);
+  add('berkshire', 'sport', { id: 'dorney-rowing', label: 'Rowing at Dorney Lake', colour: 'blue', tags: ['dorney', 'rowing', 'lake'], svg: () => vista(941, () => `<path fill="#879970" d="M-160 642H1760v20H-160z"/>${shell(770, 758, 8, '#b59b57')}${shell(1100, 836, 4, '#e2d1a5')}`, { water: true, y: 650 }) });
+
+  /* ---------- Oxfordshire: eight subjects and views ----------
+     Radcliffe Camera — the circular library's dome, drum and paired columns.
+     Blenheim Palace — the Baroque central block and long wings in Woodstock.
+     Blenheim at dusk — honey-coloured stone in low evening light.
+     Uffington White Horse — the ancient flowing chalk figure, never a realistic horse.
+     Uffington at dusk — the chalk lines against a warm hill and distant vale.
+     Bampton Morris — the village's Whitsun dancing, shown as restrained silhouettes.
+     Banbury cakes — oval currant pastries with scored tops, a named local food.
+     Henley rowing — racing shells passing the riverside church and bridge.
+     Sources: experienceoxfordshire.org/places-to-go/banbury/
+     visit.bodleian.ox.ac.uk; blenheimpalace.com; bamptonmorris.co.uk
+     historicengland.org.uk/listing/the-list/list-entry/1008413 */
+  const camera = (p) => {
+    let out = `<path fill="${p.stone}" d="M610 695V420q190-30 380 0v275z"/><path fill="${p.shade}" d="M615 545h370v12H615z"/><path fill="${p.stone}" d="M622 414q0-144 178-177 178 33 178 177z"/><path fill="none" stroke="${p.shade}" stroke-width="5" d="M800 238Q720 280 715 414M800 238Q880 280 885 414M800 238V414"/><path fill="#b5a68e" d="M590 414h420v17H590zM600 684h400v18H600z"/>`;
+    for (let i = 0; i < 7; i++) { const x = 630 + i * 48; out += arch(x + 2, 466, 26, 62) + `<path fill="#eadcc0" d="M${x - 8} 683V457h8v226zM${x + 30} 683V457h8v226z"/>`; }
+    return terrace(965, 690) + out + `<path fill="${p.stone}" d="M780 240V195h40v45z"/><path fill="${p.roof}" d="M773 194q27-42 54 0z"/><path fill="#d0bfa1" d="M575 710h450v15H575zM550 735h500v14H550z"/>`;
+  };
+  add('oxfordshire', 'signature', { id: 'radcliffe-camera', label: 'Radcliffe Camera', site: 'Radcliffe Square, Oxford', colour: 'amber', tags: ['oxford', 'library', 'dome'], svg: () => vista(961, camera) });
+  const blenheim = (p) => {
+    let out = `<path fill="${p.stone}" d="M270 650V452h1060v198z"/><path fill="${p.shade}" d="M270 450h1060v16H270zM270 563h1060v10H270z"/>${sashes(300, 490, 17, 2, 60)}<path fill="${p.stone}" d="M650 650V370h300v280z"/><path fill="${p.shade}" d="M628 376l172-82 172 82z"/>`;
+    for (const x of [300, 1180]) out += `<path fill="${p.stone}" d="M${x} 650V345h115v305z"/><path fill="${p.shade}" d="M${x - 12} 350h139v-16H${x - 12}z"/><path fill="${p.stone}" d="M${x + 14} 334v-60h87v60z"/><path fill="${p.roof}" d="M${x + 10} 276q-8-20 14-26v-18h67v18q22 6 14 26z"/><path fill="${p.stone}" d="M${x + 43} 232v-22h29v22z"/><path stroke="${p.shade}" stroke-width="5" d="M${x + 57} 210v-21"/>${sashes(x + 21, 392, 2, 3, 48)}`;
+    for (let i = 0; i < 6; i++) out += `<path fill="#e8d8b6" d="M${669 + i * 45} 650V402h13v248z"/>`;
+    return out + arch(770, 526, 58, 124, p.stone) + `<path fill="#d5c29e" d="M250 651h1100v20H250z"/><path fill="none" stroke="#e8dcbe" stroke-width="7" d="M275 476H640M960 476h365M275 584H640M960 584h365"/>${meadow(987, 25, 280, 1360, 795, 840, ['#eee1be', '#b79364'])}`;
+  };
+  pair('oxfordshire', 'landmark', 'blenheim-palace', 'Blenheim Palace', 'amber', ['woodstock', 'palace', 'baroque'], blenheim, { lawn: true });
+  const uffington = () => `<path fill="#70834d" d="M-160 900V655Q620 375 1760 660V900z"/><path fill="#9fa86a" d="M-160 900V770Q850 596 1760 776V900z"/><g transform="translate(530 570) rotate(-9)"><path fill="none" stroke="#eee9cf" stroke-width="16" stroke-linecap="round" d="M-60 85Q24 50 195 39Q255 12 314-39L378-66M189 59Q244 99 313 125M174 81L60 166L-32 155M79 48Q-8 30-83 63M319-34l32 33 45-1"/><path fill="#eee9cf" d="M375-68l33 22-15 12-30-22zM366-60l-1-31 12 28z"/></g><path fill="none" stroke="#d7cdab" stroke-width="8" d="M-160 752Q600 512 1760 732"/>${grass(1005, 50, -160, 1760, 900, 50, '#4c623c')}`;
+  pair('oxfordshire', 'landscape', 'uffington-horse', 'Uffington White Horse', 'green', ['uffington', 'chalk', 'white horse'], uffington, { path: false });
+  add('oxfordshire', 'tradition', { id: 'bampton-morris', label: 'Bampton Morris dancing', colour: 'amber', months: [5, 6], tags: ['bampton', 'morris', 'whitsun'], svg: () => vista(1021, () => terrace(1022, 650) + `<path fill="#c7b896" d="M-160 710H1760v190H-160z"/>` + Array.from({ length: 8 }, (_, i) => { const x = 450 + i * 90; return mv('ukbob', { ad: '3s', d: `-${i % 3}s`, dy: '4px' }, `<g transform="translate(${x} 783)"><circle cy="-75" r="11" fill="#85735a"/><path fill="#ede8d4" d="M-15-60h30l8 40h-46z"/><path stroke="#536666" stroke-width="9" d="M-10-18l-10 28M10-18l15 26"/><path fill="none" stroke="#ede8d4" stroke-width="8" d="M-14-50l-30-20M14-50l30-20"/><path fill="#f9f3df" d="M-49-77l18-13 5 24zM37-76l18-14 9 22z"/></g>`); }).join('')) });
+  const pastries = () => {
+    let out = `<path fill="#aa7e54" d="M300 800h1000v100H300z"/><path fill="#d7b384" d="M260 782h1080v28H260z"/><ellipse cx="810" cy="801" rx="310" ry="64" fill="#e8dfc5"/>`;
+    for (const [x, y, k] of [[630, 773, .9], [810, 745, 1], [980, 784, .9]]) { const r = rnd(x); out += `<g transform="translate(${x} ${y}) scale(${k})"><ellipse cy="16" rx="83" ry="42" fill="#b97d40"/><ellipse rx="83" ry="38" fill="#dbad64"/><path fill="none" stroke="#9c713f" stroke-width="6" d="M-35-19l11 31M-5-25L8 12M27-20l12 27"/>`; for (let i = 0; i < 12; i++) out += `<circle cx="${R(r() * 130 - 65)}" cy="${R(r() * 38 - 19)}" r="2" fill="#f1d59a"/>`; out += '</g>'; }
+    return out + puffs(800, 717, 5, '#faf3e5', 13, -55, 5, -160, 2);
+  };
+  add('oxfordshire', 'food', { id: 'banbury-cakes', label: 'Banbury cakes', colour: 'amber', mood: 'cosy', tags: ['banbury', 'pastry', 'currants'], svg: () => vista(1041, () => terrace(1042, 690) + pastries(), { path: false }) });
+  add('oxfordshire', 'sport', { id: 'henley-rowing', label: 'Rowing at Henley-on-Thames', colour: 'blue', tags: ['henley', 'rowing', 'thames'], svg: () => vista(1061, p => town(1062, 650, '#a49982') + `<path fill="${p.stone}" d="M1090 650V400h90v250z"/>${battlements(1085, 400, 100, p.stone)}${arch(1118, 446, 35, 80)}<path fill="${p.shade}" fill-rule="evenodd" d="M250 595h690v72H250z${[0, 1, 2, 3, 4].map(i => `M${280 + i * 130} 667v-22a46 30 0 0 1 92 0v22z`).join('')}"/>${shell(710, 782, 8, '#c4ad73')}${shell(1210, 848, 4, '#eee1b9')}`, { water: true, y: 650 }) });
+
+  /* ---------- Buckinghamshire: eight subjects and views ----------
+     Waddesdon Manor — French Renaissance towers and steep slate roofs above the parterre.
+     Stowe's Palladian Bridge — classical colonnade and pediments reflected in the lake.
+     Stowe bridge at dusk — low light beneath its stone arches.
+     Ivinghoe Beacon — open chalk grassland and the Ridgeway's sinuous path.
+     Ivinghoe Beacon at dusk — long shadows across the Chiltern escarpment.
+     Olney Pancake Race — Shrove Tuesday pans, pancakes and restrained running silhouettes.
+     Aylesbury duck — the county's traditional white duck, shown in a farmyard setting.
+     Bletchley Park — the mansion and huts preserve computing and codebreaking history.
+     Sources: nationaltrust.org.uk/visit/oxfordshire-buckinghamshire-berkshire/waddesdon-manor
+     nationaltrust.org.uk/visit/oxfordshire-buckinghamshire-berkshire/stowe-gardens
+     olneypancakerace.org; bletchleypark.org.uk */
+  const waddesdon = (p) => {
+    let out = `<path fill="${p.stone}" d="M370 670V435h860v235z"/><path fill="${p.roof}" d="M340 440l96-119h692l132 119z"/>${sashes(440, 478, 12, 2, 60)}`;
+    for (const [x, y] of [[375, 255], [665, 210], [1130, 260]]) out += `<path fill="${p.stone}" d="M${x} 670V${y + 160}h90v${510 - y}z"/><path fill="${p.shade}" d="M${x + 72} ${y + 160}h18V670h-18z"/><path fill="${p.roof}" d="M${x - 16} ${y + 166}l61-166 61 166z"/><path stroke="#515e63" stroke-width="4" d="M${x + 45} ${y}v-22"/>${arch(x + 30, y + 205, 27, 75)}`;
+    for (const x of [465, 555, 990, 1080]) out += `<path fill="${p.stone}" d="M${x} 440v-58h38v58z"/><path fill="${p.shade}" d="M${x - 7} 383l26-30 26 30z"/>${arch(x + 10, 389, 19, 36)}<path fill="${p.stone}" d="M${x + 3} 353v-12h32v12z"/>`;
+    return out + `<path fill="${p.stone}" d="M820 670V390h170v280z"/><path fill="${p.roof}" d="M806 390l42-110h114l44 110z"/>${sashes(850, 431, 2, 3, 68)}<path fill="none" stroke="#eee1c7" stroke-width="8" d="M390 547H660M710 547H815M996 547H1200M390 465H660M710 465H815M996 465H1200"/><path fill="#ddd0b1" d="M350 670h900v18H350z"/><path fill="#3d6440" d="M360 810h310v55H360zM970 810h310v55H970z"/>${meadow(1086, 24, 365, 668, 817, 850, ['#d49992', '#eed6ae'])}${meadow(1087, 24, 976, 1274, 817, 850, ['#d49992', '#eed6ae'])}`;
+  };
+  add('buckinghamshire', 'signature', { id: 'waddesdon-manor', label: 'Waddesdon Manor', colour: 'slate', tags: ['waddesdon', 'manor', 'parterre'], svg: () => vista(1081, waddesdon, { lawn: true }) });
+  const stowe = (p) => {
+    const id = U(); let cols = '';
+    for (let i = 0; i < 10; i++) { const x = 473 + i * 72; cols += `<path fill="${p.stone}" d="M${x} 574V418h18v156z"/><path fill="#e9ddc4" d="M${x - 7} 574h32v10h-32zM${x - 5} 418h28v-8h-28z"/>`; }
+    return `<g id="${id}"><path fill="${p.stone}" fill-rule="evenodd" d="M385 580H1250V700H385zM452 700v-28a66 45 0 0 1 132 0v28zM667 700v-28a100 68 0 0 1 200 0v28zM957 700v-28a66 45 0 0 1 132 0v28z"/><path fill="${p.roof}" d="M370 416l130-68h580l186 68z"/><path fill="${p.stone}" d="M370 416h896v14H370zM370 574h896v14H370z"/>${cols}<path fill="${p.stone}" d="M385 582V440h65v142zM1164 582V440h66v142z"/><path fill="${p.stone}" d="M355 430l62-58 62 58zM1144 430l62-58 62 58z"/></g>${reflect(id, 700, .28)}`;
+  };
+  pair('buckinghamshire', 'landmark', 'stowe-bridge', 'The Palladian Bridge, Stowe', 'slate', ['stowe', 'bridge', 'gardens'], stowe, { water: true, y: 690 });
+  const ivinghoe = () => `<path fill="#7d9254" d="M-160 900V718Q240 648 585 472Q800 418 1050 600T1760 660v240z"/><path fill="#a8ad69" d="M-160 900V822Q650 625 1000 698T1760 740v160z"/><path fill="none" stroke="#e1d6ad" stroke-width="12" d="M490 900Q850 785 810 639T607 486"/><path fill="none" stroke="#607848" stroke-width="10" d="M-160 746Q210 698 528 525"/>${oak(1320, 788, .57, '#3f5c36', '#778952', '#adb171', 1126)}${grass(1127, 60, -160, 1760, 900, 55, '#51683a')}`;
+  pair('buckinghamshire', 'landscape', 'ivinghoe-beacon', 'Ivinghoe Beacon', 'green', ['ivinghoe', 'chilterns', 'ridgeway'], ivinghoe, { path: false });
+  add('buckinghamshire', 'tradition', { id: 'olney-pancake-race', label: 'Olney Pancake Race', colour: 'amber', months: [2, 3], tags: ['olney', 'pancakes', 'shrove tuesday'], svg: () => vista(1141, () => terrace(1142, 650) + `<path fill="#c1b092" d="M-160 700H1760v200H-160z"/>` + Array.from({ length: 5 }, (_, i) => { const x = 480 + i * 145; return mv('ukbob', { ad: '2.5s', d: `-${i * .4}s`, dy: '4px' }, `<g transform="translate(${x} ${780 + i % 2 * 25})"><circle cy="-75" r="11" fill="#8f7860"/><path fill="${['#859493', '#b37e66', '#84815f'][i % 3]}" d="M-15-59h30l9 44h-48z"/><path fill="#ece5cc" d="M-12-42h24v29h-24z"/><path fill="none" stroke="#535d59" stroke-width="9" d="M-8-15l-22 18-14-12M8-15l24 24"/><path stroke="#9a8160" stroke-width="7" d="M10-46l35-8"/><ellipse cx="57" cy="-55" rx="20" ry="6" fill="#4b5454"/><ellipse cx="57" cy="-59" rx="15" ry="4" fill="#d1a45c"/></g>`); }).join('')) });
+  const duck = (x, y, k) => mv('ukbob', { ad: '5s', dy: '2px' }, `<g transform="translate(${x} ${y}) scale(${k})"><path fill="#eee9d6" d="M-60 0q-40-32-70-13l35 35q67 27 111-10 20-17 18-54l-19-9q-14 40-38 35z"/><circle cx="26" cy="-52" r="21" fill="#f7f1df"/><path fill="#d5ad63" d="M43-56l27 9-28 5z"/><circle cx="32" cy="-57" r="3" fill="#39433b"/><path stroke="#c29a58" stroke-width="5" d="M-35 20v20h-14M0 17v23h15"/><path fill="none" stroke="#d0cbb6" stroke-width="3" d="M-70-1q25 28 55 4"/></g>`);
+  add('buckinghamshire', 'food', { id: 'aylesbury-ducks', label: 'Aylesbury ducks', site: 'Aylesbury ducks in a farmyard orchard', colour: 'amber', tags: ['aylesbury', 'ducks', 'farming'], svg: () => vista(1161, () => pavilion(1080, 660, 220, '#a57b53') + oak(420, 720, .78, '#3e593b', '#7b8d55', '#b3b770', 1164) + `<path fill="#8ca694" d="M510 830q270-90 570 0-210 90-570 0z"/>${duck(680, 820, 1.12)}${duck(980, 807, .75)}${duck(1160, 832, .82)}`) });
+  const bletchley = (p) => `<path fill="#ac7457" d="M400 665V444h710v221z"/><path fill="${p.roof}" d="M370 452l110-115h550l120 115z"/>${sashes(470, 487, 9, 2, 65)}<path fill="${p.stone}" d="M865 665V375h140v290z"/><path fill="${p.roof}" d="M855 375l80-76 80 76z"/>${arch(904, 419, 48, 66)}<path fill="#a47654" d="M408 390V285h45v105zM720 350V244h47v106z"/><path fill="${p.stone}" d="M870 660v-84h127v84z"/><path fill="#53654f" d="M1120 716V640h220v76z"/><path fill="#424e4c" d="M1098 642l132-63 132 63z"/>${sashes(1140, 659, 4, 1, 47)}<path fill="none" stroke="#e1ceb0" stroke-width="4" d="M400 572h710M400 453h710"/>`;
+  add('buckinghamshire', 'heritage', { id: 'bletchley-park', label: 'Bletchley Park', colour: 'red', tags: ['bletchley', 'computing', 'heritage'], svg: () => vista(1181, bletchley) });
+
+  /* ---------- Greater London: ten subjects and views ----------
+     Tower Bridge — the paired Gothic towers, suspended side spans and high walkway.
+     St Paul's Cathedral — Wren's dome and the two west-front bell towers.
+     St Paul's at dusk — the stone and dome above the evening city.
+     Kew Palm House — the iron-and-glass curved nave and botanical garden.
+     Kew Palm House at dusk — a quiet glass reflection across the pond.
+     Regent's Canal — narrowboats, towpath and low brick bridges.
+     Totally Thames — September's river arts season, represented by classic boats at St Katharine Docks.
+     Borough Market — iron roof, produce stalls and bread, with no labels or branding.
+     Wimbledon grass courts — the county's tennis heritage without sponsor or club markings.
+     Royal Observatory — Flamsteed House, its time ball and telescope dome in Greenwich Park.
+     Sources: visitlondon.com/things-to-do/london-attractions-map
+     towerbridge.org.uk; stpauls.co.uk; kew.org; rmg.co.uk/royal-observatory
+     thamesfestivaltrust.org/artistic-programme/totally-thames/ */
+  const towerBridge = (p) => {
+    const id = U(); let towers = '';
+    for (const x of [430, 1010]) {
+      towers += `<path fill="${p.stone}" d="M${x} 710V330h140v380z"/><path fill="${p.shade}" d="M${x + 116} 330h24v380h-24z"/>${arch(x + 40, 505, 62, 175, p.stone)}${arch(x + 47, 365, 47, 87, p.stone)}`;
+      for (const xx of [x - 13, x + 122]) towers += `<path fill="${p.stone}" d="M${xx} 510V315h30v195z"/><path fill="${p.roof}" d="M${xx - 5} 315l20-89 20 89z"/>`;
+      towers += `<path fill="${p.roof}" d="M${x + 15} 330l55-94 55 94z"/><path fill="#d8cdb4" d="M${x - 9} 482h158v15H${x - 9}z"/>`;
+    }
+    return town(1202, 668, '#8b9ea3') + `<g id="${id}">${towers}<path fill="#739ca9" d="M550 428h460v22H550zM-160 676H1760v18H-160z"/><path fill="none" stroke="#789eaa" stroke-width="16" d="M-160 650Q170 650 430 445M1150 445Q1470 650 1760 650"/><path fill="none" stroke="#8badb5" stroke-width="5" d="${[0, 1, 2, 3, 4, 5].map(i => `M${10 + i * 65} ${650 - i * i * 5}V676M${1200 + i * 65} ${500 + i * 29}V676`).join('')}"/><path fill="none" stroke="#c6d2cd" stroke-width="3" d="M570 432h440M570 442h440"/></g>${reflect(id, 710, .2)}${boat(770, 804, .52, '#7d5a43')}`;
+  };
+  add('greater-london', 'signature', { id: 'tower-bridge', label: 'Tower Bridge', colour: 'blue', tags: ['thames', 'tower bridge', 'london'], svg: () => vista(1201, towerBridge, { water: true, y: 685 }) });
+  const stpauls = (p) => {
+    let out = terrace(1222, 675) + `<path fill="${p.stone}" d="M430 680V456h740v224z"/><path fill="${p.shade}" d="M400 462l130-100h580l85 100z"/>${sashes(455, 515, 11, 2, 61)}<path fill="${p.stone}" d="M670 456V337h260v119z"/><path fill="${p.roof}" d="M658 336q22-142 142-174 120 32 142 174z"/><path fill="none" stroke="#8b928b" stroke-width="5" d="M800 165Q716 223 709 336M800 165Q884 223 891 336"/>`;
+    for (let i = 0; i < 9; i++) out += `<path fill="${p.shade}" d="M${685 + i * 26} 436v-79h8v79z"/>`;
+    out += `<path fill="${p.stone}" d="M780 168V122h40v46z"/><path fill="${p.roof}" d="M773 122q27-32 54 0z"/><path stroke="${p.shade}" stroke-width="4" d="M800 98V68M791 80h18"/>`;
+    for (const x of [460, 1050]) out += `<path fill="${p.stone}" d="M${x} 500V328h90v172z"/>${arch(x + 23, 361, 40, 90)}<path fill="${p.stone}" d="M${x + 7} 328v-32h76v32z"/><path fill="${p.roof}" d="M${x} 296q45-97 90 0z"/><path fill="${p.stone}" d="M${x + 33} 240v-32h24v32z"/>`;
+    for (let i = 0; i < 6; i++) out += `<path fill="#f0e4c9" d="M${672 + i * 44} 679V565h15v114z"/><path fill="${p.shade}" d="M${687 + i * 44} 679V565h5v114z"/>`;
+    return out + `<path fill="${p.stone}" d="M650 565l150-80 150 80z"/><path fill="${p.shade}" d="M676 553l124-58 124 58z"/>${arch(778, 592, 45, 87)}<path fill="#d7cbb0" d="M400 682h800v16H400zM637 698h326v13H637zM622 720h356v12H622z"/>`;
+  };
+  pair('greater-london', 'landmark', 'st-pauls', 'St Paul\'s Cathedral', 'slate', ['st pauls', 'dome', 'cathedral'], stpauls);
+  const palmHouse = () => {
+    const id = U(); let ribs = '';
+    for (let i = 0; i <= 18; i++) { const x = 355 + i * 50, yy = i < 4 || i > 14 ? 510 : 390; ribs += `<path fill="none" stroke="#d9ded0" stroke-width="5" d="M${x} 662V${yy}"/>`; }
+    let palms = ''; for (let i = 0; i < 7; i++) { const x = 490 + i * 105; palms += `<path stroke="#66764b" stroke-width="5" d="M${x} 648l8-95"/><path fill="#68895b" d="M${x + 8} 553q-49-57-72-3 44-16 72 3q38-59 75-6-46-10-75 6q0-65-27-72-17 41 27 72z"/>`; }
+    return `<g id="${id}"><path fill="#9eb9a7" d="M350 660V552q0-80 160-80h70q0-170 220-170t220 170h70q160 0 160 80v108z"/>${palms}${ribs}<path fill="none" stroke="#e5e2cf" stroke-width="6" d="M350 660V552q0-80 160-80h70q0-170 220-170t220 170h70q160 0 160 80v108M350 560h900M370 608h860M585 471h430M605 425h390M658 377h288"/><path fill="#d9dfcf" d="M754 660V500q46-57 92 0v160z"/>${arch(770, 515, 60, 145)}<path fill="#dad9be" d="M330 660h940v20H330z"/></g>${reflect(id, 686, .2)}${meadow(1246, 25, 240, 530, 775, 835, ['#d48f91', '#f1dab6'])}`;
+  };
+  pair('greater-london', 'landscape', 'kew-palm-house', 'Kew Palm House and gardens', 'green', ['kew', 'glasshouse', 'gardens'], palmHouse, { water: true, y: 682 });
+  add('greater-london', 'landscape', { id: 'regents-canal', label: 'Regent\'s Canal', colour: 'teal', tags: ['canal', 'towpath', 'narrowboat'], svg: () => vista(1261, () => terrace(1262, 596) + canal() + `<path fill="#ac795b" fill-rule="evenodd" d="M350 570h830v148H350zM510 718v-15a250 115 0 0 1 500 0v15z"/><path fill="none" stroke="#d3aa80" stroke-width="10" d="M510 703a250 115 0 0 1 500 0"/>`, { water: true, y: 640 }) });
+  add('greater-london', 'tradition', { id: 'totally-thames', label: 'Totally Thames classic boats', site: 'Classic boats at St Katharine Docks during Totally Thames', colour: 'blue', months: [9], tags: ['thames', 'boats', 'festival'], svg: () => vista(1281, () => terrace(1282, 642) + `<path fill="#879286" d="M250 632h1100v25H250z"/>${sail(480, 756, .8, 3)}${sail(1080, 790, 1.05, 7)}${boat(780, 826, .63, '#aa6f4f')}<path fill="none" stroke="#d4ccb2" stroke-width="5" d="M310 664V830M1280 664V840"/>`, { water: true, y: 645 }) });
+  add('greater-london', 'food', { id: 'borough-market', label: 'Borough Market', colour: 'green', tags: ['borough', 'market', 'produce'], svg: () => vista(1301, () => {
+    let frame = '', produce = '';
+    for (let i = 0; i < 6; i++) { const x = 300 + i * 170; frame += `<path fill="none" stroke="#40665d" stroke-width="10" d="M${x} 720V455l85-80 85 80V720"/>`; produce += `<path fill="#a98456" d="M${x + 5} 765h140v60h-140z"/><path fill="#e4d4ac" d="M${x} 739h150v26H${x}z"/>`; const r = rnd(1302 + i); for (let j = 0; j < 12; j++) produce += `<ellipse cx="${R(x + 20 + r() * 110)}" cy="${R(731 - r() * 20)}" rx="${i > 3 ? 17 : 8}" ry="8" fill="${['#94a65a', '#c1854c', '#a5a574', '#b85f4b', '#dbb175', '#d5a267'][i]}"/>`; }
+    return `<path fill="#b7c6b1" opacity=".8" d="M280 460l540-110 540 110v20H280z"/>${frame}<path fill="none" stroke="#517369" stroke-width="6" d="M280 462H1360M280 480H1360M300 520H1320"/>${produce}${crowd(1308, 15, 710, ['#9e855f', '#637e78', '#a7986d'])}`;
+  }, { path: false }) });
+  add('greater-london', 'sport', { id: 'wimbledon-grass', label: 'Wimbledon grass courts', colour: 'green', tags: ['wimbledon', 'tennis', 'grass'], svg: () => vista(1321, () => pavilion(1030, 635, 270, '#c7b897') + `<path fill="#769359" d="M310 865l170-210h660l180 210z"/><path fill="none" stroke="#f0ebd3" stroke-width="5" d="M350 850l150-180h620l156 180zM390 790h825M460 715h685M655 790l70-75M949 790l-61-75"/><path fill="#5c7564" opacity=".45" d="M425 760h778v30H425z"/><path fill="none" stroke="#dfe4d1" stroke-width="4" d="M422 760h784"/><path fill="none" stroke="#7e8d73" stroke-width="2" d="${Array.from({ length: 40 }, (_, i) => `M${430 + i * 19} 762v27`).join('')}"/>${mv('ukbob', { ad: '4s', dy: '10px' }, '<circle cx="870" cy="770" r="8" fill="#d5db9a"/>')}`, { path: false }) });
+  add('greater-london', 'heritage', { id: 'greenwich-observatory', label: 'Royal Observatory Greenwich', colour: 'red', tags: ['greenwich', 'observatory', 'time'], svg: () => vista(1341, p => `<path fill="#71925a" d="M-160 900V770Q830 625 1760 770v130z"/><path fill="#b27b5c" d="M490 705V435h510v270z"/><path fill="#676864" d="M465 443l95-96h335l126 96z"/>${sashes(532, 486, 7, 3, 61)}<path fill="${p.stone}" d="M510 435V345h112v90z"/>${sashes(532, 369, 2, 1, 52)}<path fill="#616b66" d="M493 345l74-44 74 44z"/><path stroke="#515c58" stroke-width="5" d="M567 320V219"/><circle class="x-ukglow" style="--ad:6s" cx="567" cy="270" r="20" fill="#b55748"/><path fill="#c1c9ae" d="M1060 705V545h160v160z"/><path fill="#82a091" d="M1050 546q0-113 90-129 90 16 90 129z"/><path fill="none" stroke="#d7ddc6" stroke-width="7" d="M1140 418v126"/>`, { time: 'dusk' }) });
+
   const css = [
     /* the evening grade: dark theme, or the time of day the opening asks for (71-anim-wire.css lays the same on the splash) */
     '.anim-scene.ap-full .hx-tint { fill: #4a4f94; mix-blend-mode: multiply; opacity: 0; pointer-events: none; }',
     '.anim-scene.ap-full .hx-lit { fill: #ffd27a; stroke: #ffd27a; opacity: 0; }',
     '.anim-scene.ap-full .hx-star { opacity: 0; }',
+    '.anim-scene.ap-full .hx-evening .hx-lit { opacity: .88; }',
+    '.anim-scene.ap-full .hx-evening .hx-tint { opacity: .28; }',
     '[data-theme="dark"] .anim-scene.ap-full .hx-tint, .anim-scene.ap-full.tod-dusk .hx-tint { opacity: .6; }',
     '.anim-scene.ap-full.tod-night .hx-tint { opacity: .85; }',
     '[data-theme="dark"] .anim-scene.ap-full .hx-lit, .anim-scene.ap-full.tod-dusk .hx-lit, .anim-scene.ap-full.tod-night .hx-lit { opacity: .92; }',
@@ -526,6 +954,6 @@
     '@keyframes ap-ukflutter { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(60px, -40px); } 50% { transform: translate(120px, 10px); } 75% { transform: translate(50px, 30px); } }',
   ].join('\n');
 
-  animRegisterPack({ id: 'uk-south-east', name: 'UK: South East', version: '2.2.1', css,
-    description: 'Hampshire so far, as full-screen scenes: the New Forest, Winchester, Portsmouth, the Solent, Southampton, the South Downs, chalk streams, the Watercress Line, Chawton and the watercress beds. Opt-in: plays only in that county (Regional animations (UK)).', items });
+  animRegisterPack({ id: 'uk-south-east', name: 'UK: South East & London', version: '2.2.2', css,
+    description: 'Full-screen illustrated scenes across all nine South East counties and Greater London, together in one neighbouring-region gallery pack. County detection remains opt-in and every scene plays only in its own county.', items });
 })();
