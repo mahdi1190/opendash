@@ -302,7 +302,7 @@
         // the lake with Fuji reflected
         + `<rect y="650" width="1600" height="250" fill="url(#${l1})"/><g opacity=".4" transform="translate(0 1300) scale(1 -1)"><path fill="#6a6aa4" d="${cone}"/><path fill="#fff0f2" d="${cap}"/></g>`
         + `<rect y="640" width="1600" height="20" fill="#ffd8d8" opacity=".35"/>` + shimmer(5, 34, 200, 1400, 665, 880, '#ffe4ec', 90)
-        + mv('usbob', { ad: '3.4s', dy: '3px' }, `<g transform="translate(1180 740)"><path fill="#3a2c3c" d="M-60 0Q0 18 64 -4Q30 4 -60 -10z"/><rect x="-10" y="-34" width="3" height="26" fill="#3a2c3c"/><path fill="#fbe8ee" d="M-8 -34L24 -10H-8z"/></g>`)
+        + mv('usbob', { ad: '3.4s', dy: '3px' }, `<g transform="translate(560 760)"><path fill="#3a2c3c" d="M-60 0Q0 18 64 -4Q30 4 -60 -10z"/><rect x="-10" y="-34" width="3" height="26" fill="#3a2c3c"/><path fill="#fbe8ee" d="M-8 -34L24 -10H-8z"/></g>`)
         // a pagoda on the near shore and the shore itself
         + `<path fill="url(#${g1})" d="M900 900V780Q1060 730 1200 770Q1400 740 1760 790V900z"/>` + canopy('#3a5a3e', 770, 30, 51, 900, 1760, 900) + pagoda(1120, 780, 1.1) + canopy('#2e4a34', 800, 24, 52, 860, 1500, 900)
         + dots('M920 800H1500', '#ffe2a0', 4, 40, 'us-lamps')
@@ -321,19 +321,17 @@
       let cols = '', dan = '';
       for (let x = 540; x <= 1060; x += 65) { cols += `<rect x="${x - 7}" y="520" width="14" height="130" fill="#b8382a"/>`; }
       for (let x = 545; x < 1060; x += 22) dan += `<path fill="${(x / 22) % 2 ? '#2f8a7a' : '#3a6ab0'}" d="M${x} 498h14v14h-14z"/>`;
-      const roofTop = 'M360 470Q440 464 520 430Q640 382 800 376Q960 382 1080 430Q1160 464 1240 470L1260 450Q1176 446 1100 396Q960 340 800 336Q640 340 500 396Q424 446 340 450z';
-      const roof2 = 'M420 392Q520 384 600 330Q690 284 800 280Q910 284 1000 330Q1080 384 1180 392L1200 372Q1100 368 1020 306Q920 246 800 242Q680 246 580 306Q500 368 400 372z';
+      const roofTop = 'M330 466Q420 480 520 474H1080Q1180 480 1270 466Q1230 470 1190 446Q1000 420 800 418Q600 420 410 446Q370 470 330 466z';
+      const roof2 = 'M410 392Q500 404 590 398H1010Q1100 404 1190 392Q1150 396 1120 366Q1050 322 960 296Q880 274 800 272Q720 274 640 296Q550 322 480 366Q450 396 410 392z';
       return `<defs>${lin(s1, [[0, '#3a82cc'], [0.5, '#9ccbe8'], [1, '#fbe6c0']])}${lin(g1, [[0, '#cfc6b6'], [1, '#a89e8e']])}${lin(st1, [[0, '#9a9aa0'], [1, '#6e7078']])}</defs>`
         + full(`url(#${s1})`) + stars(3, 20, 140) + sun(1320, 230, 36, '#fffdf0', '#fff0b8') + cloud(380, 190, 1.0, '#d4e6f2', 0.9, 80, 6) + cloud(1340, 380, 0.9, '#d8e8f4', 0.85, 90, 40) + streak(820, 130, 300, '#ffffff', 0.4, 70)
         // the granite peak behind the palace
-        + mv('uspar', { ad: '70s', dx: '8px' }, `<path fill="#8a8e98" d="M300 520L430 330L520 300L600 220L700 180L800 140L900 190L1000 230L1100 320L1200 360L1320 520z"/><path fill="#a8acb6" d="M700 180L800 140L900 190L850 330L780 300L720 360L660 280z" opacity=".7"/><path fill="#6e727e" d="M900 190L1000 230L1100 320L1200 360L1320 520H1000z" opacity=".5"/>` + canopy('#8a6a3a', 520, 20, 7, 300, 1320, 600) + haze(440, 120, '#e8eef2', 0.5))
+        + mv('uspar', { ad: '70s', dx: '8px' }, `<path fill="#a4acba" d="M120 560L330 380L480 320L620 230L720 190L800 150L900 200L1010 240L1130 330L1280 380L1500 560z"/><path fill="#c2c8d2" d="M720 190L800 150L900 200L850 340L780 310L720 370L660 290z" opacity=".7"/><path fill="#8890a0" d="M900 200L1010 240L1130 330L1280 380L1500 560H1000z" opacity=".45"/>` + canopy('#8a6a3a', 540, 20, 7, 120, 1500, 600) + haze(460, 110, '#e8eef2', 0.55))
         + mv('uspar', { ad: '50s', dx: '12px' }, ridge('#7a8a6a', 560, 70, 10, 111, 700) + canopy('#b8662a', 580, 22, 112, -160, 1760, 700) + canopy('#d89a30', 610, 20, 113, -160, 1760, 700))
         // the hall: two tiers of up-curved tiled eaves, red columns and painted brackets
-        + `<path fill="${Td}" d="${roof2}"/><path fill="${T}" d="M420 392Q520 384 600 330Q690 284 800 280Q910 284 1000 330Q1080 384 1180 392Q1100 384 1000 344Q900 306 800 304Q700 306 600 344Q500 384 420 392z"/>`
-        + `<rect x="560" y="392" width="480" height="70" fill="#f0e4cc"/><rect x="560" y="392" width="480" height="12" fill="#2f8a7a"/>` + lit(610, 412, 24, 40) + lit(700, 412, 24, 40) + lit(790, 412, 24, 40) + lit(880, 412, 24, 40) + lit(970, 412, 24, 40)
-        + `<path fill="none" stroke="#1f2830" stroke-width="3" opacity=".6" d="M440 386Q540 378 620 326Q700 282 800 280M1160 386Q1060 378 980 326Q900 282 800 280"/>`
-        + `<path fill="${Td}" d="${roofTop}"/><path fill="${T}" d="M360 470Q440 464 520 430Q640 382 800 376Q960 382 1080 430Q1160 464 1240 470Q1150 462 1070 424Q960 388 800 384Q640 388 530 424Q450 462 360 470z"/>`
-        + `<path stroke="#6e7886" stroke-width="3" fill="none" opacity=".6" d="M440 462Q540 440 640 400M520 450Q600 420 700 392M1160 462Q1060 440 960 400M1080 450Q1000 420 900 392"/>`
+        + `<rect x="560" y="396" width="480" height="58" fill="#f0e4cc"/><rect x="560" y="396" width="480" height="10" fill="#2f8a7a"/>` + lit(610, 414, 24, 34) + lit(700, 414, 24, 34) + lit(790, 414, 24, 34) + lit(880, 414, 24, 34) + lit(970, 414, 24, 34)
+        + `<path fill="${Td}" d="${roof2}"/><path fill="${T}" d="M640 296Q720 274 800 272V396H590Q550 322 640 296zM800 272Q880 274 960 296Q1050 322 1010 396H800z" opacity=".35"/><path fill="none" stroke="#7a8696" stroke-width="3" d="M800 276V394M740 284L690 392M860 284L910 392M680 304L600 390M920 304L1000 390" opacity=".55"/>`
+        + `<path fill="${Td}" d="${roofTop}"/><path fill="none" stroke="#7a8696" stroke-width="3" opacity=".5" d="M800 422V474M700 424L660 474M900 424L940 474M580 432L520 474M1020 432L1080 474"/>`
         + `<rect x="520" y="470" width="560" height="190" fill="#f4ead4"/><rect x="520" y="486" width="560" height="26" fill="#2a6a8a"/>` + dan + cols
         + `<path fill="#5a2a22" d="M720 650V560Q800 530 880 560V650z"/><path fill="#7a3a2c" d="M620 650V570H700V650zM900 650V570H980V650z" opacity=".85"/>` + lit(630, 580, 60, 60) + lit(910, 580, 60, 60) + lit(740, 570, 120, 76)
         + mv('usglow', { ad: '6s', to: '800px 280px' }, `<circle cx="800" cy="240" r="10" fill="#e8c46a"/>`)
@@ -364,7 +362,7 @@
           hl += `<path d="M${R(cx)} ${R(base - h)}L${R(cx + w * 0.34)} ${R(base - h * 0.4)}L${R(cx + w * 0.1)} ${R(base)}L${R(cx + 4)} ${R(base - h * 0.6)}z"/>`;
           x += w * 0.72;
         }
-        return `<g fill="${fill}">${o}</g><g fill="${hi}" opacity=".45">${hl}</g>`;
+        return `<g fill="${fill}">${o}</g><g fill="${hi}" opacity=".22">${hl}</g>`;
       };
       const ledgePine = (x, y, s) => pine(x, y, s, '#2e5a3e');
       return `<defs>${lin(s1, [[0, '#6f98b4'], [0.45, '#c4d8d8'], [0.8, '#f4ead0'], [1, '#fff4d8']])}${radU(f1, [[0, '#fff4cc', 0.7], [1, '#fff4cc', 0]], 1000, 260, 520)}${lin(w1, [[0, '#9ac4c0'], [1, '#3e7a82']])}${lin(g1, [[0, '#6a8a58'], [1, '#34503a']])}</defs>`
@@ -380,7 +378,7 @@
         + canopy('#b8662a', 790, 24, 14, -160, 600, 900) + canopy('#d89a30', 830, 24, 15, 1100, 1760, 900) + canopy('#3e6a44', 860, 24, 16, -160, 1760, 900)
         + mv('ussway2', { ad: '8s', to: '200px 900px' }, ledgePine(200, 900, 2.3) + ledgePine(330, 900, 1.6) + ledgePine(90, 900, 1.3))
         + mv('ussway2', { ad: '9s', to: '1400px 900px' }, ledgePine(1400, 900, 2.4) + ledgePine(1520, 900, 1.5) + ledgePine(1280, 900, 1.2))
-        + mv('usdrift', { ad: '60s', dx: '120px' }, `<ellipse cx="500" cy="590" rx="360" ry="22" fill="#f6f8f4" opacity=".6"/><ellipse cx="1150" cy="500" rx="300" ry="18" fill="#f6f8f4" opacity=".55"/><ellipse cx="800" cy="680" rx="420" ry="20" fill="#f6f8f4" opacity=".5"/>`)
+        + mv('usdrift', { ad: '60s', dx: '120px' }, `<ellipse cx="500" cy="590" rx="360" ry="22" fill="#f6f8f4" opacity=".35"/><ellipse cx="1150" cy="500" rx="300" ry="18" fill="#f6f8f4" opacity=".3"/><ellipse cx="800" cy="680" rx="420" ry="20" fill="#f6f8f4" opacity=".3"/>`)
         + fall(51, 18, ['#e8742a', '#f0b830', '#c8442e'], 3, 6, 9, 16)
         + birds(6, 5, 420, 330, '#3a4850', 1.1, 600)
         + finish(0.28);

@@ -106,8 +106,7 @@
         + mv('usbob', { ad: '6s', dy: '2px' }, refl(560, 0.35, dg(dragon))) + sup
         + `<rect x="-160" y="548" width="1920" height="22" fill="#2a2744"/><rect x="-160" y="540" width="1920" height="9" fill="#46406a"/>` + dots('M-160 536H1760', '#ffd27a', 5, 40, 'us-lamps')
         + dg(dragon) + cars
-        + dg(`<circle cx="1500" cy="450" r="90" fill="url(#${g1})"/>`
-        + mv('usflicker', { ad: '0.3s', to: '1560px 470px' }, `<path fill="#ff7a1a" d="M1585 470q60 -22 110 -4q-50 8 -110 28z"/><path fill="#ffd45a" d="M1590 474q40 -12 70 -2q-30 6 -70 16z"/>`)
+        + dg(mv('usflicker', { ad: '0.3s', to: '1560px 470px' }, `<path fill="#ff7a1a" d="M1585 470q60 -22 110 -4q-50 8 -110 28z"/><path fill="#ffd45a" d="M1590 474q40 -12 70 -2q-30 6 -70 16z"/>`)
         + puffs(1640, 470, 6, '#ff9a3a', 28, 90, 2.4, -60, 2.2))
         + mv('usbob', { ad: '4s', dy: '4px' }, hull(500, 780, 1.2, '#2a2040', '#d26a28') + `<rect class="us-lit" x="470" y="738" width="60" height="18" rx="4"/>`)
         + mv('usbob', { ad: '5s', d: '-2s', dy: '3px' }, hull(1200, 830, 0.9, '#3a2a48', '#c25a28') + `<rect class="us-lit" x="1176" y="798" width="46" height="14" rx="4"/>`)
