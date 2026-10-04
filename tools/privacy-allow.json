@@ -163,6 +163,24 @@
       "path": "src/app/72-anim-pack-uk-south-east.js",
       "line_sha256": "5c5af4311242a8ff49a468c751c6eeac14fdb4aba08a8437beadb6d312610c4d",
       "why": "a fish species name in a scene comment, an ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-anim-us.js",
+      "line_sha256": "9877be407be178d9708a30734799877599b203d9b0d433cb38d00d09d622572f",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/72-anim-pack-us-midwest.js",
+      "line_sha256": "f4e787c2bb07ab300990be151e4c9b520ae634a2d2faed7a761dfc134e31944d",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/72-anim-pack-us-southeast.js",
+      "line_sha256": "2469d2e7c09ff2b0cc667195dbf80cefe91ce35e48d0a18f2a06feb936e5f564",
+      "why": "reviewed ordinary word"
     }
   ]
 }
