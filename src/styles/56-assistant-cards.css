@@ -1,0 +1,9 @@
+.conn-grid.assistant-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.assistant-mark img { display: block; width: 28px; height: 28px; object-fit: contain; }
+[data-theme="dark"] .assistant-mark img { filter: invert(1); }
+.assistant-state { color: var(--fg); font-size: var(--text-xs); font-weight: var(--weight-semibold); }
+.assistant-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: auto; padding-bottom: var(--space-4); }
+.conn-grid.assistant-grid-compact { grid-template-columns: 1fr; margin-top: var(--space-2); }
+.assistant-grid-compact .conn-card.assistant-card { padding: var(--space-3); }
+.assistant-grid-compact .assistant-actions { padding-bottom: 0; }
+@media (max-width: 1000px) { .conn-grid.assistant-grid { grid-template-columns: 1fr; } }

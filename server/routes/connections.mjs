@@ -23,6 +23,7 @@ import { googleStatus } from '../../lib/google.mjs';
 import { installInfo } from '../../mcp/install.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
 import { HttpError } from '../http.mjs';
+import { assistantFacts, connectCodex } from '../../lib/assistant-connections.mjs';
 
 export default function register(app) {
   const { dataDir, log } = app.ctx;
@@ -39,6 +40,7 @@ export default function register(app) {
       if (g) all.google = { ...all.google, status: g.connected ? 'connected' : g.configured ? 'configured' : 'not-set-up', state: g.connected ? 'ok' : g.configured ? 'auth' : 'setup', account: g.account || null };
       all.cli = cliFacts();
       delete all.cli.path;              // the page does not need the executable's path
+      all.assistants = assistantFacts({ dataDir });
       // Sources (lib/sources.mjs): per capability, is at least one enabled source healthy?
       // The page gates bank/calendar/email features on these first, the old entries second.
       try {
@@ -50,6 +52,16 @@ export default function register(app) {
         all.discovery = { at: st.discovery.at, error: st.discovery.error, servers: Array.isArray(st.servers) ? st.servers.length : null, ...(st.discovery.pending ? { pending: true } : {}) };
       } catch (e) { log('warn', `connections: sources status failed (${e.message})`); }
       return all;
+    },
+  });
+
+  app.route({
+    path: '/api/connections/assistant-connect', method: 'POST', methodError: 'POST only',
+    handler: async (c) => {
+      const { id } = await c.body();
+      if (id !== 'codex') throw new HttpError(400, 'Unsupported local assistant');
+      try { return await connectCodex({ dataDir }); }
+      catch (e) { throw new HttpError(e.status || 502, e.status ? e.message : 'Codex could not add the OpenDash tools. Check Codex and try again.'); }
     },
   });
 

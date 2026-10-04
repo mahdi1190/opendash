@@ -173,19 +173,9 @@ function openOnboarding() {
       list.append(opt(false, 'Start empty', 'Your streams, no tasks yet. Press Q to add the first one.', 'square-check-big'),
         opt(true, 'Explore with demo data', 'Example tasks, people, a calendar and finances, all invented. Reset it later in Settings > Data.', 'sparkles'));
       body.appendChild(list);
-      const conn = el('div', 'ob-conn');
-      const ok = window.Connections && Connections.has('claude');
-      conn.innerHTML = icon(ok ? 'circle-check' : 'plug');
-      const ct = el('div', 'ob-conn-t');
-      ct.append(el('b', null, ok ? 'Claude is connected' : 'Connect Claude later (optional)'),
-        el('span', null, ok ? 'The assistant and smart features are ready.' : 'The assistant, AI summaries and Gmail, Google Calendar and bank sync need Claude Code on this computer, signed in with your own Claude plan. Everything else works without it.'));
-      conn.appendChild(ct);
-      if (!ok) {
-        const b = el('button', 'btn btn-secondary btn-sm'); b.type = 'button'; b.innerHTML = icon('refresh-cw') + '<span>Check now</span>';
-        b.onclick = async () => { b.disabled = true; b.innerHTML = '<span class="spinner"></span><span>Checking…</span>'; await connCheck('claude'); paint(); };
-        conn.appendChild(b);
-      }
-      body.appendChild(conn);
+      body.appendChild(el('h2', 'conn-name', 'Choose your assistant (optional)'));
+      body.appendChild(el('p', 'conn-note', 'Connect your assistant and its OpenDash tools together. Everything else works without an assistant.'));
+      body.appendChild(assistantConnectionCards((window.Connections && Connections.all()) || {}, paint, true));
     }
     card.appendChild(body);
     const foot = el('div', 'ob-foot');
@@ -198,6 +188,9 @@ function openOnboarding() {
     card.appendChild(foot);
   }
   paint();
+  // Resolve local installation facts while the welcome stays open. This is a
+  // read-only refresh: no provider is installed or signed in automatically.
+  if (typeof connRefresh === 'function') connRefresh({ force: true }).then(() => { if (_obOpen && step === 3) paint(); });
 }
 
 async function _obMaybeStart(tries) {

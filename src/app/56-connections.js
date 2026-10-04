@@ -330,15 +330,13 @@ registerSection('connections', {
     const n = parts.filter(Boolean).length, total = parts.length;
     const intro = _connEl('div', 'conn-intro');
     const it = _connEl('div', 'conn-intro-text');
-    it.appendChild(_connEl('p', null, 'Connect Claude and your accounts to switch on the smart parts of the dashboard. Anything that needs a connection stays greyed out until it works.'));
+    it.appendChild(_connEl('p', null, 'Choose an assistant and connect its OpenDash tools in the same step. Claude also powers the assistant and smart features inside this dashboard.'));
     const sum = _connEl('div', 'conn-summary');
     sum.innerHTML = `<span class="ring" style="--pct:${Math.round(n / total * 100)}"><span>${n}/${total}</span></span>`;
     sum.appendChild(_connEl('span', null, n === total ? 'Everything is connected.' : `${n} of ${total} working`));
     intro.append(it, sum);
     page.appendChild(intro);
-    const grid = _connEl('div', 'conn-grid');
-    grid.appendChild(_connCard(CONNECTION_INFO[0], all));
-    grid.appendChild(_connMcpCard(all));
+    const grid = assistantConnectionCards(all);
     page.appendChild(grid);
     page.appendChild(srcSection(all));
     const priv = _connEl('div', 'conn-privacy');
