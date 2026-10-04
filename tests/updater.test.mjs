@@ -185,6 +185,9 @@ describe('installing a release zip', () => {
       d = U.describeState({ state: { auto: false, latest: { ...latest, zip: null }, checkedAt: 'x', error: null }, current: '1.0.0', repoRoot: app.root });
       assert.equal(d.canApply, false);
       mkdirSync(join(app.root, '.git'));
+      writeFileSync(join(app.root, '.git', 'config'), '[remote "origin"]\n\turl = https://github.com/someone/private-dashboard.git\n');
+      assert.equal(U.installKind(app.root), 'zip', 'a copy tracking another repository updates from the zip');
+      writeFileSync(join(app.root, '.git', 'config'), '[remote "origin"]\n\turl = https://github.com/mahdi1190/opendash.git\n');
       assert.equal(U.installKind(app.root), 'git');
       assert.equal(U.describeState({ state: { auto: false, latest: { ...latest, zip: null }, checkedAt: 'x', error: null }, current: '1.0.0', repoRoot: app.root }).canApply, true, 'git needs no zip');
     } finally { app.done(); }

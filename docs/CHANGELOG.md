@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.2.6] - 2026-10-04
+
+### Fixed
+
+- Settings > Updates works on a copy whose files were copied over or that still points at another git repository: it now installs the checked release zip (with a backup) instead of refusing with "uncommitted changes". Only a clone of OpenDash itself updates through git.
+
 ## [2.2.5] - 2026-10-04
 
 ### Changed
@@ -286,7 +292,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.5...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.6...HEAD
+[2.2.6]: https://github.com/mahdi1190/opendash/compare/v2.2.5...v2.2.6
 [2.2.5]: https://github.com/mahdi1190/opendash/compare/v2.2.4...v2.2.5
 [2.2.4]: https://github.com/mahdi1190/opendash/compare/v2.2.3...v2.2.4
 [2.2.3]: https://github.com/mahdi1190/opendash/compare/v2.2.2...v2.2.3
