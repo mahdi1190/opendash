@@ -207,20 +207,24 @@ function animOpeningSequence() {
     try { w = typeof animUkWhere === 'function' ? animUkWhere() : null; } catch (e) { w = null; }
     if (w) try { localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ }   // no second welcome (78-anim-uk.js)
     try { if (typeof animThemeApply === 'function') animThemeApply(); } catch (e) { /* the packs' css is injected there */ }
+    // No UK county: in Texas (72-anim-pack-texas.js) the welcome names the town and today's Texas opening is the emblem.
+    let tx = null;
+    if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, it: pick }; } catch (e) { tx = null; }
     const tod = animTimeOfDay(), season = animSeasonOf(todayStr());
     const { it, origin } = animOpeningScene(w);
     const part = { dawn: 'dawn', day: 'day', dusk: 'evening', night: 'night' }[tod];
-    const cap = it ? origin : (w ? `${season[0].toUpperCase() + season.slice(1)} · ${w.name}` : `${/^[aeiou]/.test(season) ? 'An' : 'A'} ${season} ${part}`);
-    const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : animOpeningFallbackHtml(season, tod);
+    const cap = it ? origin : tx ? (tx.it.full ? tx.it.site || tx.it.label : 'Texas · ' + tx.it.label) : (w ? `${season[0].toUpperCase() + season.slice(1)} · ${w.name}` : `${/^[aeiou]/.test(season) ? 'An' : 'A'} ${season} ${part}`);
+    const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : tx && tx.it.full ? animItemHtml(tx.it, { size: 'fill', live: true, tod }) : animOpeningFallbackHtml(season, tod);
+    const emblem = tx && !tx.it.full ? '<div class="od-seq-emblem" aria-hidden="true">' + animItemHtml(tx.it, { size: 'hero', live: true }) + '</div>' : '';
     const box = document.createElement('div'); box.className = 'od-seq';
-    box.innerHTML = `<div class="od-seq-bg">${art}</div><div class="od-seq-shade"></div>`
-      + `<div class="od-seq-title"><span class="od-seq-over">${esc(w ? 'Welcome to' : 'Welcome back')}</span>${w ? `<span class="od-seq-place">${esc(w.welcome)}</span>` : ''}</div>`
+    box.innerHTML = `<div class="od-seq-bg">${art}</div><div class="od-seq-shade"></div>${emblem}`
+      + `<div class="od-seq-title"><span class="od-seq-over">${esc(w || tx ? 'Welcome to' : 'Welcome back')}</span>${w || tx ? `<span class="od-seq-place">${esc(w ? w.welcome : tx.name)}</span>` : ''}</div>`
       + `<div class="od-seq-cap"><span class="od-seq-origin">${esc(cap)}</span><span class="od-seq-skip">Click or press any key to skip</span></div>`;
     sp.style.setProperty('--od-hello-ms', ms[1] + 'ms');
     sp.style.setProperty('--od-scene-ms', ms[2] + 'ms');
     sp.appendChild(box);
     sp.setAttribute('data-od-county', w ? w.id : '');
-    sp.setAttribute('data-od-scene', it ? it.ref : 'fallback');
+    sp.setAttribute('data-od-scene', it ? it.ref : tx ? tx.it.ref : 'fallback');
     sp.classList.add('od-st-hello');
     wait(ms[1], () => {
       sp.classList.add('od-st-scene');

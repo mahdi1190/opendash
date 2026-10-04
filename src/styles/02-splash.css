@@ -51,6 +51,8 @@
 .od-seq-shade { position: absolute; inset: 0; opacity: 0; background: radial-gradient(70% 60% at 50% 48%, rgb(251 251 253 / 0.5), rgb(244 242 255 / 0.82)); }
 .od-splash.is-dark .od-seq-shade { background: radial-gradient(70% 60% at 50% 48%, rgb(14 14 22 / 0.38), rgb(14 14 22 / 0.72)); }
 .od-seq::after { content: ""; position: absolute; inset: 0; opacity: 0; pointer-events: none; z-index: 1; background: linear-gradient(to top, rgb(8 10 24 / 0.7), rgb(8 10 24 / 0.28) 24%, transparent 44%); }
+.od-seq-emblem { position: absolute; z-index: 2; right: clamp(20px, 6vw, 96px); bottom: clamp(70px, 16vh, 150px); width: clamp(120px, 22vmin, 240px); opacity: 0; filter: drop-shadow(0 12px 28px rgb(8 10 24 / 0.45)); }
+.od-seq-emblem > .anim-scene { width: 100%; height: auto; aspect-ratio: 1; }
 .od-seq-title { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 0.2em; text-align: center; opacity: 0; padding: 0 5vw; }
 .od-seq-over { font-size: clamp(1rem, 1.7vw, 1.5rem); font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.78; }
 .od-seq-place { font-size: clamp(3rem, 8.4vw, 8rem); font-weight: 700; letter-spacing: -0.035em; line-height: 0.98; }
@@ -71,6 +73,7 @@
 .od-splash.od-st-scene .od-seq-shade { opacity: 1; animation: od-seq-fade-out 1000ms cubic-bezier(0.4, 0, 0.2, 1) both; }
 .od-splash.od-st-scene .od-seq-title { opacity: 1; animation: od-seq-title-out 800ms cubic-bezier(0.4, 0, 0.2, 1) both; }
 .od-splash.od-st-scene .od-seq::after { animation: od-seq-fade 900ms ease-out 200ms both; }
+.od-splash.od-st-scene .od-seq-emblem { animation: od-seq-cap-in 900ms cubic-bezier(0.22, 1, 0.36, 1) 300ms both; }
 .od-splash.od-st-scene .od-seq-cap { animation: od-seq-cap-in 900ms cubic-bezier(0.22, 1, 0.36, 1) 420ms both; }
 /* A dated event follows the county scene inside the same skippable splash.
    Existing 64-unit festival art stays centred over a full seasonal landscape. */
