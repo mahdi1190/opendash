@@ -163,7 +163,7 @@
   add({ key: 'state:WA', label: 'Mount Rainier at sunrise', site: 'Mount Rainier', colour: 'blue', mood: 'calm', season: 'any', tags: ['mountain', 'rainier', 'sunrise', 'lake'],
     svg: () => {
       const s1 = U(), mt = U(), lk = U(), g3 = U();
-      const peak = 'M180 700C300 680 380 570 470 510C520 476 560 448 600 384C640 334 670 302 700 272C720 252 742 234 772 228C800 224 822 234 852 242C892 252 922 272 962 312C1002 352 1032 402 1092 462C1162 532 1262 620 1400 700V740H180z';
+      const peak = 'M180 700C300 680 380 570 470 510C520 476 560 448 600 384C640 334 670 302 700 272C720 252 742 234 772 228C800 224 822 234 852 242C892 252 922 272 962 312C1002 352 1032 402 1092 462C1162 532 1262 620 1400 700V716H180z';
       return `<defs>${lin(s1, [[0, '#5b7cc6'], [0.32, '#c7a4d2'], [0.58, '#ffc1a2'], [0.82, '#ffe1b0'], [1, '#fff0cc']])}${linU(mt, [[0, '#fbd5cd'], [0.4, '#fff4ee'], [0.7, '#e9e4f2'], [1, '#98a6d6']], 180, 0, 1400, 0)}${lin(lk, [[0, '#7f9ec8'], [0.4, '#4f78a6'], [1, '#2c4f7c']])}${radU(g3, [[0, '#fff0c0', 0.8], [1, '#fff0c0', 0]], 200, 600, 700)}</defs>`
         + full(`url(#${s1})`) + sun(190, 590, 42, '#fffbe8', '#ffd69a', true) + `<rect width="1600" height="900" fill="url(#${g3})"/>`
         + streak(1180, 150, 300, '#fff0e8', 0.5, 66) + cloud(1300, 230, 1.1, '#f0c8c8', 0.85, 60, 8, '#fff2ee') + cloud(330, 170, 0.9, '#f3c8c8', 0.8, 70, 30, '#fff2ee')
@@ -174,7 +174,7 @@
         + `<path fill="#5c5a8c" opacity=".55" d="M560 470l40-26 24 18-14 24zM1090 500l36-20 26 22-20 24zM700 540l30-20 22 20-24 22z"/>`
         + `<path fill="none" stroke="#fff" stroke-width="3" opacity=".6" d="M730 290l40 70M820 280l-30 90M900 330l-50 90"/>`
         + mv('usdrift', { ad: '40s', dx: '70px' }, `<ellipse cx="790" cy="262" rx="150" ry="14" fill="#fff" opacity=".8"/><ellipse cx="800" cy="246" rx="100" ry="10" fill="#fff" opacity=".85"/><ellipse cx="770" cy="282" rx="190" ry="9" fill="#ffe0d8" opacity=".6"/>`)
-        + mv('uspar', { ad: '34s', dx: '12px' }, ridge('#4f6094', 700, 36, 10, 62, 740) + firs(63, -160, 1760, 716, 60, 140, '#2f4c4c', 750))
+        + mv('uspar', { ad: '34s', dx: '12px' }, ridge('#4f6094', 700, 36, 10, 62, 716) + firs(63, -160, 1760, 716, 60, 140, '#2f4c4c', 716))
         + `<rect y="716" width="1600" height="184" fill="url(#${lk})"/>`
         + `<g opacity=".4" transform="translate(0 1432) scale(1 -1)"><path fill="url(#${mt})" d="${peak}"/></g>`
         + `<rect y="716" width="1600" height="184" fill="url(#${lk})" opacity=".45"/>`

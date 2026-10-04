@@ -102,7 +102,7 @@
         + mv('uspar', { ad: '28s', dx: '50px' }, pines(71, -150, 520, 640, 300, '#1c3a3a', 70, 110) + `<path fill="#1c3a3a" d="M-160 900V700q150 -40 330 -20q130 14 190 70l40 150z"/>`)
         + mv('uspar', { ad: '28s', dx: '50px' }, pines(72, 1090, 1760, 640, 340, '#16302f', 76, 120) + `<path fill="#16302f" d="M1760 900V690q-140 -30 -300 10q-150 40 -230 100l-40 100z"/>`)
         + `<path fill="#2c4845" d="M-160 900V810q250 -10 520 40l60 50zM1160 900q170 -50 360 -80t240 -14V900z"/>`
-        + mv('usdrift', { ad: '50s', d: '-12s', dx: '120px' }, haze(500, 70, '#f6f2e4', 0.7)) + mv('usdrift', { ad: '64s', dx: '90px' }, haze(580, 60, '#f6f2e4', 0.5))
+        + mv('usdrift', { ad: '50s', d: '-12s', dx: '120px' }, haze(500, 70, '#f6f2e4', 0.4)) + mv('usdrift', { ad: '64s', dx: '90px' }, haze(580, 60, '#f6f2e4', 0.3))
         /* the loon and its reflection */
         + mv('usbob', { ad: '6s', dy: '3px' }, `<g transform="translate(790 676) scale(1.5)"><g opacity=".4" transform="scale(1 -1) translate(0 -2)">${loon()}</g>${loon()}</g>`)
         + `<g fill="none" stroke="#f2f6f2" stroke-width="2.6" opacity=".6">` + mv('uspuff', { ad: '5s', dx: '0px', dy: '0px', sc: 3.2 }, `<ellipse cx="800" cy="692" rx="140" ry="10"/>`) + mv('uspuff', { ad: '5s', d: '-2.5s', dx: '0px', dy: '0px', sc: 3.2 }, `<ellipse cx="800" cy="692" rx="140" ry="10"/>`) + `</g>`
@@ -135,7 +135,7 @@
         + `<path fill="#4d7a46" d="M-160 900V760q500 -40 960 -14t960 4V900z" opacity="0"/>`
         /* the river */
         + `<rect y="738" width="1600" height="162" fill="url(#${riv})"/><path fill="#6c5a48" opacity=".5" d="M-160 738H1760v10H-160z"/>`
-        + `<path fill="#ffd29a" opacity=".3" d="M1160 738h200l150 162h-520z"/>` + shimmer(41, 26, 880, 1640, 750, 890, '#ffd9a8', 56) + shimmer(42, 18, 0, 1600, 760, 890, '#d0b898', 54)
+        + shimmer(41, 26, 880, 1640, 750, 890, '#ffd9a8', 56) + shimmer(42, 18, 0, 1600, 760, 890, '#d0b898', 54)
         /* the sternwheeler */
         + mv('usmove', { ad: '120s', dx: '240px' }, mv('usbob', { ad: '4s', dy: '2.5px' },
             `<g transform="translate(1330 832) scale(.8)"><path fill="#3b2a24" d="M-190 -4h400l-26 28h-348z"/><rect fill="#f7f2e8" x="-170" y="-40" width="340" height="36"/><rect fill="#fbf8f0" x="-150" y="-72" width="290" height="32"/><rect fill="#f1e9d8" x="-120" y="-100" width="170" height="28"/><rect fill="#b3342a" x="-100" y="-114" width="130" height="14"/><rect fill="#2b2a2a" x="-160" y="-44" width="324" height="4"/><rect fill="#2b2a2a" x="-140" y="-76" width="272" height="4"/>`
