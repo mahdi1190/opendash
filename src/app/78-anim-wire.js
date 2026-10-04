@@ -135,14 +135,21 @@ function animTimeOfDay() {
   try { h = Clock.parts(Clock.now()).h; } catch (e) { h = new Date().getHours(); }   // clock-ok: fallback before the clock loads
   return h >= 5 && h < 8 ? 'dawn' : h >= 8 && h < 17 ? 'day' : h >= 17 && h < 20 ? 'dusk' : 'night';
 }
-/** The county's signature and origin line, with a seeded fallback for older packs. */
-function animOpeningScene(w) {
+/** Signature on arrival; subsequent openings advance through the county's scenes. */
+function animOpeningScene(w, rotate) {
   if (!w) return { it: null, origin: '' };
   const day = todayStr(), look = animLook();
-  const mine = animItems({ slot: 'opening', look }).filter(x => x.full && x.county === w.id && !look.block.includes(x.ref) && _awWhen(x, day, w.id));
+  const mine = animItems({ slot: 'opening', look }).filter(x => x.full && x.county === w.id && !look.block.includes(x.ref) && _animFitsLevel(x, _agLevel()) && _awWhen(x, day, w.id));
   if (!mine.length) return { it: null, origin: '' };
-  const today = animToday('opening');
-  const it = mine.find(x => x.signature) || mine.find(x => today && x.ref === today.ref) || mine[_animHash(day + '|opening-seq') % mine.length];
+  const key = 'dashboard-opening-last-' + w.id;
+  let last = '';
+  try { last = localStorage.getItem(key) || ''; } catch (e) { /* private mode */ }
+  const signature = mine.find(x => x.signature);
+  const previous = mine.findIndex(x => x.ref === last);
+  const pin = mine.find(x => look.pin && x.ref === look.pin.opening);
+  const next = mine[(previous >= 0 ? previous + 1 : Math.max(0, mine.indexOf(signature) + 1)) % mine.length];
+  const it = rotate ? pin || next : signature || pin || mine[0];
+  try { localStorage.setItem(key, it.ref); } catch (e) { /* private mode */ }
   const site = it.site || it.label.replace(new RegExp(', ' + w.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), '');
   return { it, origin: site.includes(w.name) ? site : site + ' · ' + w.name };
 }
@@ -205,13 +212,14 @@ function animOpeningSequence() {
     if (!APP_CONFIG.onboardedAt && typeof _serverAvailable !== 'undefined' && _serverAvailable && typeof getAllItems === 'function' && !getAllItems().length) { done(); return; }
     let w = null;
     try { w = typeof animUkWhere === 'function' ? animUkWhere() : null; } catch (e) { w = null; }
-    if (w) try { localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ }   // no second welcome (78-anim-uk.js)
+    let returning = false;
+    if (w) try { returning = localStorage.getItem(_AUK_KEY) === w.id; localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ }   // no second welcome (78-anim-uk.js)
     try { if (typeof animThemeApply === 'function') animThemeApply(); } catch (e) { /* the packs' css is injected there */ }
     // No UK county: in Texas (72-anim-pack-texas.js) the welcome names the town and today's Texas opening is the emblem.
     let tx = null;
     if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, it: pick }; } catch (e) { tx = null; }
     const tod = animTimeOfDay(), season = animSeasonOf(todayStr());
-    const { it, origin } = animOpeningScene(w);
+    const { it, origin } = animOpeningScene(w, returning);
     const part = { dawn: 'dawn', day: 'day', dusk: 'evening', night: 'night' }[tod];
     const cap = it ? origin : tx ? (tx.it.full ? tx.it.site || tx.it.label : 'Texas · ' + tx.it.label) : (w ? `${season[0].toUpperCase() + season.slice(1)} · ${w.name}` : `${/^[aeiou]/.test(season) ? 'An' : 'A'} ${season} ${part}`);
     const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : tx && tx.it.full ? animItemHtml(tx.it, { size: 'fill', live: true, tod }) : animOpeningFallbackHtml(season, tod);

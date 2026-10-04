@@ -72,6 +72,19 @@ test('skipping the county scene prevents a later holiday from appearing', () => 
   assert.equal(h.attributes['data-od-event'], undefined);
 });
 
+test('returning county openings rotate on refresh; arrival keeps its signature', () => {
+  const h = harness({ day: '2026-10-06' });
+  const pick = rotate => vm.runInContext(`animOpeningScene(animUkWhere(), ${rotate}).it.ref`, h.context);
+  assert.equal(pick(false), 'uk-south-east/hampshire-new-forest-ponies');
+  const seen = new Set();
+  for (let i = 0; i < 10; i++) seen.add(pick(true));
+  assert.equal(seen.size, 10, 'all county scenes are reached before repeating');
+  h.run(); h.next();
+  const first = h.attributes['data-od-scene'];
+  h.run(); h.next(); h.next(); h.next();
+  assert.notEqual(h.attributes['data-od-scene'], first, 'returning splash advances');
+});
+
 test('ordinary days, blocked holidays and disabled packs have no event stage', () => {
   for (const options of [{ day: '2026-10-06' }, { look: { block: ['seasons/open-christmas-tree'] } }, { look: { packsOff: ['seasons'] } }]) {
     const h = harness(options); assert.equal(h.event(), null);

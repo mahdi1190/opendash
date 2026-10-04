@@ -10,6 +10,10 @@ upgrades it.
 
 ## [Unreleased]
 
+### Fixed
+
+- Refreshing in the same UK county now advances through its full-screen scenes and variations. The signature scene introduces a county on arrival; explicit opening pins, blocked scenes and disabled packs remain respected.
+
 ## [2.2.3] - 2026-10-04
 
 ### Added
