@@ -371,16 +371,25 @@ problem? Please report it privately, as described in
 
 ## Roadmap
 
-OpenDash 2.0.0 is the first public release. Ideas being considered next
-(not promises; share yours in
-[Discussions](https://github.com/mahdi1190/opendash/discussions)):
+OpenDash 2.0.0 is the first public release. Local-first stays the default;
+everything involving the cloud, accounts or other devices will be optional,
+opt-in and end-to-end encrypted. The full plan is in
+[docs/ROADMAP.md](docs/ROADMAP.md), and planned releases are tracked as
+[milestones](https://github.com/mahdi1190/opendash/milestones).
 
-- `OPENDASH_*` names for the `DASHBOARD_*` environment variables, with the old
-  names still working.
-- An OpenDash name for the Windows start-up entry, moved over automatically.
-- Node.js 26 in the test matrix, and the offline test run as a required check.
-- A supported way to open OpenDash from your other devices. Today it only
-  answers on the computer it runs on, by design.
+- **v2.1, "Do more from Home" (in progress):** a calendar that works like
+  Google Calendar, one-click recommendations, 16 new Home widgets, the morning
+  brief on Home, a money story, travel and time zones, rebuilt People, and
+  animations everywhere.
+- **v2.2, polish and depth:** more widgets, imports (Todoist, Google Tasks,
+  Microsoft To Do, Notion), more languages, and animation polish.
+- **v3.0, "OpenDash Everywhere" (planned):** a phone app (installable web app,
+  then native), end-to-end encrypted sync between your devices
+  (self-hosted, your own cloud storage, or an optional hosted service), app
+  lock with passkeys, encryption at rest, and push notifications.
+
+Ideas and votes are welcome in
+[Discussions](https://github.com/mahdi1190/opendash/discussions).
 
 ## Contributing
 
