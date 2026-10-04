@@ -90,11 +90,13 @@ test('no calendar list (old snapshot, demo data): everything shows and is the us
 
 /* ---------- a data folder with two calendars: the user's and a colleague's (ticked on) ---------- */
 const DAY = '2026-03-10';   // a Tuesday; London is on GMT in March, so Z times are local
+// The clock follows the computer's zone by default (travel); pinned to the home zone
+// here so the day is London's whatever TZ the tests run in (CI runs Tokyo, Adelaide...).
 function dataDir({ tick = true } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'cal-vis-'));
   mkdirSync(join(dir, 'state'), { recursive: true });
   mkdirSync(join(dir, 'calendar'), { recursive: true });
-  writeFileSync(join(dir, 'config.json'), JSON.stringify({ userName: 'Robin Example', timezone: 'Europe/London', weekStart: 'Mon', myEmails: MY }));
+  writeFileSync(join(dir, 'config.json'), JSON.stringify({ userName: 'Robin Example', timezone: 'Europe/London', time: { follow: 'home' }, weekStart: 'Mon', myEmails: MY }));
   const t = (h, m = 0) => `${DAY}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00Z`;
   const ev = (id, summary, a, b, cal, extra = {}) => normaliseEvent({ id, summary, start: { dateTime: a }, end: { dateTime: b }, status: 'confirmed', ...extra }, cal);
   writeFileSync(join(dir, 'calendar', 'events.json'), JSON.stringify({

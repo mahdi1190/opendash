@@ -179,12 +179,27 @@ export function dateError(field, value, today) {
 
 // ─── Ids ───────────────────────────────────────────────────────────────────
 const rand = (n = 3) => randomBytes(8).toString('base64url').replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, n).padEnd(n, '0');
+// A batch makes many ids in the same millisecond, and 3 random characters
+// collide about once in 120 batches of 26 (two new tasks sharing an id: one is
+// lost, and a confirm token's preview no longer matches). So an id is never
+// handed out twice by this process: the suffixes used in the current
+// millisecond are remembered, per prefix, and a repeat is drawn again.
+const _issued = new Map();   // prefix -> { ms, used: Set }
+function uniqueId(prefix, n) {
+  const ms = Date.now();
+  let e = _issued.get(prefix);
+  if (!e || e.ms !== ms) { e = { ms, used: new Set() }; _issued.set(prefix, e); }
+  let r = rand(n);
+  for (let i = 0; e.used.has(r); i++) r = rand(i < 50 ? n : n + 3);
+  e.used.add(r);
+  return `${prefix}-${ms}-${r}`;
+}
 // 'u-' marks a user-created task (the page's bin/restore logic relies on it).
-export const newTaskId = () => `u-${Date.now()}-${rand(3)}`;
-export const newSubtaskId = () => `st-${Date.now()}-${rand(3)}`;
-export const newNoteId = () => `n-${Date.now()}-${rand(5)}`;
-export const newActivityId = () => `a-${Date.now()}-${rand(3)}`;
-export const newCountdownId = () => `cd-${Date.now()}-${rand(3)}`;
+export const newTaskId = () => uniqueId('u', 3);
+export const newSubtaskId = () => uniqueId('st', 3);
+export const newNoteId = () => uniqueId('n', 5);
+export const newActivityId = () => uniqueId('a', 3);
+export const newCountdownId = () => uniqueId('cd', 3);
 export const newToken = (prefix) => `${prefix}_${randomBytes(9).toString('base64url')}`;
 
 // ─── Fuzzy helpers ─────────────────────────────────────────────────────────

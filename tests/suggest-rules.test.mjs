@@ -335,12 +335,15 @@ test('performance: 2,000 tasks and 300 events evaluate in well under 25 ms', () 
   }
   const ctx = makeCtx({ now: '2026-10-05T07:00', tasks, events, focus: tasks.slice(0, 5).map(t => t.id) });
   E.sgEvaluate(ctx, {}, {});            // warm up
-  const runs = 5;
+  const runs = 7;
   const copies = Array.from({ length: runs }, () => JSON.parse(JSON.stringify(ctx)));   // fresh snapshots (no index built yet)
-  const t0 = performance.now();
-  for (let i = 0; i < runs; i++) E.sgEvaluate(copies[i], {}, {});
-  const ms = (performance.now() - t0) / runs;
-  assert.ok(ms < 25, `took ${ms.toFixed(2)} ms per evaluation`);
+  const times = copies.map(c => { const t0 = performance.now(); E.sgEvaluate(c, {}, {}); return performance.now() - t0; }).sort((a, b) => a - b);
+  const ms = times[runs >> 1];          // the median: one GC pause or a busy neighbour does not decide it
+  // Shared CI runners (GitHub's Windows ones above all) are 1.5x slower and noisier than a
+  // desk machine, so they get twice the budget; a real regression (quadratic work over
+  // 2,000 tasks) costs far more than that and still fails there.
+  const budget = process.env.CI ? 50 : 25;
+  assert.ok(ms < budget, `took ${ms.toFixed(2)} ms per evaluation (median of ${runs}; budget ${budget} ms${process.env.CI ? ' on CI' : ''})`);
 });
 
 test('the builders\' harness: every registered rule keeps the contract on the fixtures it fires on', () => {

@@ -20,7 +20,7 @@ import {
   timeArgs, applyChange, inversePatch, recreateArgs, runPlan, createFakeRunner, createCalendarWriter, writePrompt, CalWriteError, fakeTool,
 } from '../lib/calendar-write.mjs';
 import { canonicalJson, planStepMatches, checkFailure } from '../lib/calendar-write-gate.mjs';
-import { buildArgs, runClaude, setCliPath, CONNECTORS } from '../lib/claude-runner.mjs';
+import { buildArgs, runClaude, setCliPath, CONNECTORS, privateWorkDir } from '../lib/claude-runner.mjs';
 import { normaliseEvent, eventsFromResults, PRIMARY_PROBE } from '../lib/calendar.mjs';
 import { dataPaths } from '../lib/datadir.mjs';
 
@@ -345,8 +345,10 @@ test('runner + hook end to end (fake CLI that runs the hooks): exact calls pass,
     await assert.rejects(go('changed'), (e) => e instanceof CalWriteError && e.code === 'CONFLICT' && e.current && e.current.updated === '2026-10-02T09:00:00Z');
     // the plan file is gone after every run
     // (this test's plans only: other test files may be mid-run alongside)
-    const left = readdirSync(join(tmpdir(), 'dashboard-claude')).filter(n => /^\.calw-[0-9a-f]+\.json$/.test(n))
-      .filter(n => { try { return readFileSync(join(tmpdir(), 'dashboard-claude', n), 'utf8').includes('"Moved"'); } catch { return false; } });
+    // the runner's own work folder: "dashboard-claude" on Windows, "dashboard-claude-<uid>" on POSIX
+    const work = privateWorkDir();
+    const left = readdirSync(work).filter(n => /^\.calw-[0-9a-f]+\.json$/.test(n))
+      .filter(n => { try { return readFileSync(join(work, n), 'utf8').includes('"Moved"'); } catch { return false; } });
     assert.deepEqual(left, []);
   } finally {
     setCliPath(NO_CLI); delete process.env.FAKE_CALW_MODE; delete process.env.FAKE_CALW_LOG;
