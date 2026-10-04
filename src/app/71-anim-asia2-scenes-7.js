@@ -40,7 +40,7 @@
     svg: () => {
       const s1 = U(), g1 = U(), f1 = U(), W = '#f4f1ea', S = '#cfc9bc', D = '#a9a395';
       let facets = '';
-      for (let i = 1; i < 6; i++) facets += `M${800 - i * 40} ${640 - i * 43}L${800 + i * 40} ${640 - i * 43}`;
+      for (let i = 1; i < 6; i++) facets += `M${800 - 280 + i * 43} ${640 - i * 43}L${800 + 280 - i * 43} ${640 - i * 43}`;
       return `<defs>${lin(s1, [[0, '#6aa2d6'], [0.55, '#bcd9ec'], [1, '#fbe8c8']])}${lin(g1, [[0, '#d9d3c4'], [1, '#b9b3a2']])}${radU(f1, [[0, '#fff1c8', 0.6], [1, '#fff1c8', 0]], 1330, 250, 520)}</defs>`
         + full(`url(#${s1})`) + `<rect width="1600" height="900" fill="url(#${f1})"/>` + stars(3, 24, 200)
         + sun(1330, 220, 38, '#fffbe6', '#fff0b8', true)
@@ -52,14 +52,14 @@
         // the mosque: four slim minarets and the tent-like prayer hall
         + minaret(420, 250, 660, 24, W, D, '#d6d0c2') + minaret(1180, 250, 660, 24, W, D, '#d6d0c2') + minaret(560, 330, 650, 20, W, D, '#d6d0c2') + minaret(1040, 330, 650, 20, W, D, '#d6d0c2')
         + `<path fill="${W}" d="M520 650L800 360L1080 650z"/><path fill="${S}" d="M800 360L1080 650H800z"/><path fill="${D}" d="M800 360L1080 650H940z" opacity=".5"/>`
-        + `<path fill="none" stroke="${D}" stroke-width="3" d="${facets}M800 360V650M660 505L800 650M940 505L800 650M720 450L650 650M880 450L950 650M680 650V560M920 650V560"/>`
+        + `<path fill="none" stroke="${D}" stroke-width="3" d="${facets}M800 360V650M660 505L800 650M940 505L800 650"/>`
         + `<path fill="#fffdf6" d="M800 360L842 410H758z"/><path fill="${W}" d="M470 650h660v22H470z"/><path fill="${D}" d="M470 672h660v10H470z"/>`
         + `<path fill="#1f5b7a" d="M740 650V590Q800 548 860 590V650z"/>` + lit(756, 600, 18, 44) + lit(791, 596, 18, 48) + lit(826, 600, 18, 44)
         + lit(580, 620, 14, 24) + lit(630, 620, 14, 24) + lit(956, 620, 14, 24) + lit(1006, 620, 14, 24)
         + mv('usglow', { ad: '5s', to: '800px 360px' }, '<circle cx="800" cy="352" r="8" fill="#f4d98a"/>')
         // the plaza, steps and a long pool
         + `<path fill="url(#${g1})" d="M-160 682H1760V900H-160z"/><path fill="#8fb7cc" d="M300 770H1300L1440 860H160z" opacity=".75"/><path fill="#fff" opacity=".4" d="M300 770H1300L1320 790H280z"/>`
-        + shimmer(7, 26, 200, 1400, 775, 855, '#ffffff', 70) + puffs(520, 782, 3, '#ffffff', 10, 0, 3.4, -60, 2.2) + puffs(1080, 782, 3, '#ffffff', 10, 0, 3.4, -60, 2.2)
+        + shimmer(7, 26, 200, 1400, 775, 855, '#ffffff', 70)
         + `<path d="M-160 700H1760" stroke="#a9a395" stroke-width="2"/>` + dots('M-120 704H1720', '#fff3cc', 4, 70, 'us-lamps')
         + mv('ussway2', { ad: '7s', to: '120px 900px' }, pine(120, 900, 1.5, '#2d5a43') + pine(1480, 900, 1.6, '#2d5a43') + pine(240, 900, 1.1, '#33664c'))
         + finish(0.3);
