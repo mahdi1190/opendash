@@ -10,6 +10,8 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-10-04
+
 ### Added
 
 - UK pack: Kent, East Sussex, West Sussex, Surrey, Isle of Wight, Berkshire, Oxfordshire and Buckinghamshire (8 full-screen scenes each), plus Greater London (10). South East and London share one gallery pack with 84 scenes, including Hampshire's existing 10.
@@ -258,7 +260,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.1...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.2...HEAD
+[2.2.2]: https://github.com/mahdi1190/opendash/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/mahdi1190/opendash/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/mahdi1190/opendash/compare/v2.0.0...v2.2.0
 [2.0.0]: https://github.com/mahdi1190/opendash/releases/tag/v2.0.0
