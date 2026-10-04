@@ -404,6 +404,10 @@ function liveSyncStart() {
   _liveES.addEventListener('error', () => { if (typeof srvConnectionLost === 'function') srvConnectionLost('events'); });
   const on = (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } _liveOnRemote(d); };
   _liveES.addEventListener('state', on);
+  // A change written to Google Calendar from another tab or tool (44-calendar-write.js).
+  _liveES.addEventListener('calendar', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (typeof calwOnRemote === 'function') calwOnRemote(d); });
+  // Another tab told the server the computer's zone changed: read our own now (07-core-clock.js).
+  _liveES.addEventListener('time', () => { if (typeof Clock !== 'undefined') Clock.check(); });
   // After a reconnect the hello carries the current version: catch up on anything missed.
   _liveES.addEventListener('hello', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && d.version) _liveOnRemote({ version: d.version, source: 'external' }); });
 }

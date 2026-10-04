@@ -12,7 +12,8 @@
    Sidebar blocks here: 'calendars' (one toggle per Google calendar, with
    rename/recolour; replaces the shell's default) and 'cal-sync' (data age +
    Update now). Keys: t today, j/k or arrows previous/next, m w d a modes,
-   Esc closes the event panel.
+   Esc closes the event panel. Dragging, resizing, creating and the other
+   keys (c, n/p, e, Delete, Alt+arrows) are 45-calendar-grid-edit.js's.
    ============================================================ */
 let _calSectionFresh = true;     // entering the section starts on today
 let _calOpenEventId = null;      // the event whose panel is open
@@ -35,6 +36,10 @@ function calSetMode(m) {
 function calFocus() { return calendarSelectedDate(); }
 function calSetFocus(iso, opts) {
   if (iso === calFocus() && iso.slice(0, 7) === state.calMonth && !(opts && opts.force)) return;   // the selected day again: no-op
+  // Another period (next / previous / Today): the grid slides in from the travel side (src/motion.js).
+  const prev = calFocus(), m = calMode();
+  const period = (d) => (m === 'month' ? d.slice(0, 7) : m === 'week' && !_calNarrow() ? _calWeekStartOf(d) : d);
+  if (!(opts && opts.quiet) && window.Motion && Motion.hint && period(prev) !== period(iso)) Motion.hint({ region: '.cal-body', dir: iso > prev ? 1 : -1 });
   _calSelectedDate = iso;
   state.calMonth = iso.slice(0, 7);
   if (!(opts && opts.quiet)) { saveUI(); render(); }
@@ -52,25 +57,25 @@ function _calWeekDays(iso) {
 function calStep(dir) {
   const f = calFocus(), m = calMode();
   if (m === 'month') {
-    const d = _calParse(f); const day = d.getDate();
-    const t = new Date(d.getFullYear(), d.getMonth() + dir, 1);
-    t.setDate(Math.min(day, new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate()));
+    const d = _calParse(f); const day = d.getDate(); // clock-ok: wall date
+    const t = new Date(d.getFullYear(), d.getMonth() + dir, 1); // clock-ok: wall date
+    t.setDate(Math.min(day, new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate())); // clock-ok: wall date
     calSetFocus(fmtDate(t));
   } else calSetFocus(_calAddDays(f, dir * (m === 'week' ? (_calNarrow() ? 3 : 7) : m === 'agenda' ? 14 : 1)));
 }
 function calTitleParts() {
   const f = _calParse(calFocus()), m = calMode(), L = _CAL_LOCALE();
-  if (m === 'month') return [f.toLocaleDateString(L, { month: 'long' }), String(f.getFullYear())];
+  if (m === 'month') return [f.toLocaleDateString(L, { month: 'long' }), String(f.getFullYear())]; // clock-ok: wall date
   if (m === 'week') {
     const days = _calWeekDays(calFocus());
     const a = _calParse(days[0]), b = _calParse(days[days.length - 1]);
-    const same = a.getMonth() === b.getMonth();
+    const same = a.getMonth() === b.getMonth(); // clock-ok: wall date
     // Three-letter months as in mockup 07 ("28 Sep – 4 Oct"; some locales write "Sept").
     const short = (d) => d.toLocaleDateString(L, { day: 'numeric', month: 'short' }).replace(/\bSept\b/, 'Sep');
-    const left = same ? String(a.getDate()) : short(a);
-    return [`${left} – ${short(b)}`, String(b.getFullYear())];
+    const left = same ? String(a.getDate()) : short(a); // clock-ok: wall date
+    return [`${left} – ${short(b)}`, String(b.getFullYear())]; // clock-ok: wall date
   }
-  if (m === 'day') return [f.toLocaleDateString(L, { weekday: 'long', day: 'numeric', month: 'long' }), String(f.getFullYear())];
+  if (m === 'day') return [f.toLocaleDateString(L, { weekday: 'long', day: 'numeric', month: 'long' }), String(f.getFullYear())]; // clock-ok: wall date
   return ['Agenda', 'from ' + f.toLocaleDateString(L, { day: 'numeric', month: 'short' })];
 }
 
@@ -112,7 +117,7 @@ registerSection('calendar', {
 
 /** Move the now-line without a full render. */
 function _calTickNow() {
-  const n = new Date(), m = n.getHours() * 60 + n.getMinutes();
+  const n = Clock.parts(Clock.now()), m = n.h * 60 + n.mi;
   document.querySelectorAll('.wv-col.today .wv-now').forEach(el => { el.style.top = (m / 60 * CAL_HOUR_PX) + 'px'; });
 }
 /** Job progress changed: repaint what shows it (sidebar card) without rebuilding the grid. */
@@ -138,14 +143,17 @@ function _calBuild() {
     const f = _calParse(calFocus());
     const opt = { includeDone: !!calPrefs().showDone };
     const grid = calMonthGrid(Object.assign({}, o, {
-      year: f.getFullYear(), month: f.getMonth(), selected: calFocus(),
+      year: f.getFullYear(), month: f.getMonth(), selected: calFocus(), // clock-ok: wall date
       entries: (iso) => calEntriesOn(iso, opt),
       onSelect: (iso) => calSetFocus(iso),
     }));
     body.appendChild(grid);
+    if (typeof calGridEditMonth === 'function') calGridEditMonth(grid);   // drag / create like Google (45-calendar-grid-edit.js)
     requestAnimationFrame(() => calFitMonth(grid));
   } else if (m === 'week' || m === 'day') {
-    body.appendChild(calTimeGrid(Object.assign({}, o, { days: m === 'week' ? _calWeekDays(calFocus()) : [calFocus()] })));
+    const tg = calTimeGrid(Object.assign({}, o, { days: m === 'week' ? _calWeekDays(calFocus()) : [calFocus()] }));
+    body.appendChild(tg);
+    if (typeof calGridEditTime === 'function') calGridEditTime(tg);
   } else {
     const opt = { includeDone: !!calPrefs().showDone };
     body.appendChild(calAgendaList(Object.assign({}, o, { from: calFocus(), days: 42, entries: (iso) => calEntriesOn(iso, opt) })));
@@ -178,7 +186,9 @@ function _calHeader() {
     const f = calFocus();
     openMenu(e.currentTarget, [
       { label: 'New task', icon: 'circle-plus', hint: _calFmt(f, { day: 'numeric', month: 'short' }), run: () => calNewTaskDialog({ date: f }) },
-      { label: 'New Google Calendar event', icon: 'external-link', hint: 'opens Google', run: () => window.open(googleCalendarUrl({ title: '', date: f, time: '09:00' }), '_blank', 'noopener') },
+      typeof calGridCreate === 'function'
+        ? { label: 'New event', icon: 'calendar-plus', kbd: 'C', run: () => setTimeout(() => calGridCreate(), 0) }
+        : { label: 'New Google Calendar event', icon: 'external-link', hint: 'opens Google', run: () => window.open(googleCalendarUrl({ title: '', date: f, time: '09:00' }), '_blank', 'noopener') },
     ], { align: 'end' });
   };
   return h;
@@ -214,6 +224,7 @@ function calFilterMenu(anchor) {
     ...cals.map(c => ({ label: c.name, icon: 'calendar', checked: () => !calPrefs().hidden[c.id === 'google' ? 'google' : 'cal:' + c.id], keepOpen: true, run: (e) => { calSetCalendarHidden(c.id, !c.hidden); c.hidden = !c.hidden; _calRefreshMenuChecks(e); } })),
     { heading: 'From OpenDash' },
     { label: 'Task due dates', icon: 'circle-check', checked: () => !calPrefs().hidden.tasks, keepOpen: true, run: (e) => { toggle('tasks')(); _calRefreshMenuChecks(e); } },
+    { label: 'Planned time', icon: 'calendar-clock', checked: () => !calPrefs().hidden.plans, keepOpen: true, run: (e) => { toggle('plans')(); _calRefreshMenuChecks(e); } },   // planned slots (20-task-plan.js)
     { label: 'Tasks from', icon: 'layers', hint: _calOnlyStream() ? STREAMS[_calOnlyStream()].label : 'every stream', run: () => setTimeout(() => {
       const cur = _calOnlyStream();
       const b = document.querySelector('.cal-h [data-filter]');
@@ -273,8 +284,9 @@ function calRail() {
   for (let i = 0; i < 14 && shownDays < 4; i++) {
     const iso = _calAddDays(start, i);
     const entries = calEntriesOn(iso, { includeDone: false });
-    const evs = entries.filter(e => e.kind !== 'task');
-    const tasks = entries.filter(e => e.kind === 'task');
+    // Planned time (20-task-plan.js) sits with the timed rows, not under "Due".
+    const evs = entries.filter(e => e.kind !== 'task' || e.planned);
+    const tasks = entries.filter(e => e.kind === 'task' && !e.planned);
     if (i > 0 && !entries.length) continue;
     shownDays++;
     const sec = document.createElement('section'); sec.className = 'ag-day';
@@ -394,6 +406,7 @@ registerSidebarBlock('calendar', {
       for (const c of g.cals) _calSidebarRow(row, c, multi);
     }
     row({ label: 'Task due dates', c: 'var(--sw-indigo)', src: 'OpenDash', off: !!hidden.tasks, toggle: () => { if (hidden.tasks) delete hidden.tasks; else hidden.tasks = true; saveUI(); render(); } });
+    row({ label: 'Planned time', c: 'var(--accent)', src: 'OpenDash', off: !!hidden.plans, toggle: () => { if (hidden.plans) delete hidden.plans; else hidden.plans = true; saveUI(); render(); } });   // planned slots (20-task-plan.js)
     row({ label: 'Countdowns', c: 'var(--sw-amber)', src: 'OpenDash', off: !!hidden.countdowns, toggle: () => { if (hidden.countdowns) delete hidden.countdowns; else hidden.countdowns = true; saveUI(); render(); } });
   },
 });

@@ -96,9 +96,9 @@ function uiDateField(o) {
   const pick = (iso) => { o.value = iso; paint(); o.onChange && o.onChange(iso); };
   btn.onclick = () => openPopover(wrap, (el, close) => {
     el.classList.add('pad', 'ui-datef-pop');
-    const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return fmtDate(d); };
-    const nextMon = (() => { const d = new Date(); d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7)); return fmtDate(d); })();
-    const inMonth = (() => { const d = new Date(); d.setMonth(d.getMonth() + 1); return fmtDate(d); })();
+    const plus = (n) => Clock.addDays(todayStr(), n);
+    const nextMon = (() => { const d = new Date(todayStr() + 'T00:00:00'); d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7)); return fmtDate(d); })(); // clock-ok: wall date
+    const inMonth = (() => { const d = new Date(todayStr() + 'T00:00:00'); d.setMonth(d.getMonth() + 1); return fmtDate(d); })(); // clock-ok: wall date
     const quick = document.createElement('div'); quick.className = 'ui-datef-quick';
     for (const [t, v] of [['Today', todayStr()], ['Tomorrow', plus(1)], ['Next week', nextMon], ['In a month', inMonth]]) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'chip chip-lg'; b.textContent = t;
@@ -139,7 +139,7 @@ function _tbeNewWidget(type, list) {
   const id = 'cd-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5);
   const used = new Set(list.map(w => w.color));
   const color = _CD_SWATCHES.find(c => !used.has(c)) || _CD_SWATCHES[list.length % _CD_SWATCHES.length];
-  const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return fmtDate(d); };
+  const plus = (n) => Clock.addDays(todayStr(), n);
   const base = { id, type, label: '', color, headline: list.length === 0, visible: true };
   if (type === 'countdown') Object.assign(base, { date: plus(30), unit: 'days', warnDays: 14 });
   if (type === 'countup') Object.assign(base, { date: todayStr(), unit: 'days', warnDays: 0 });
@@ -413,6 +413,8 @@ function openTopbarCustomiser(opts) {
       form.appendChild(field('Count', 'full', seg(Object.entries(TB_TASK_FILTERS), w.tasks, (v) => { w.tasks = v; changed(true); }, 'Which tasks'), 'Updates live. Clicking it opens that list.'));
     } else if (w.type === 'clock') {
       form.appendChild(field('Show', 'full', seg(Object.entries(TB_CLOCK_FORMATS), w.clock, (v) => { w.clock = v; changed(true); }, 'Clock format'), 'Uses your locale from Settings.'));
+      // Which time (travel spec 5.1): the dashboard's, home's, or any zone (a world clock). 69-travel-ui.js.
+      if (typeof trTbClockZoneControl === 'function') form.appendChild(field('Time zone', 'full', trTbClockZoneControl(w, () => changed(true)), 'Local follows the dashboard; Home shows home time while you travel.'));
     } else {
       const cal = calendarSoon(() => { if (!closed) renderPreview(); });
       const hint = document.createElement('div'); hint.className = 'callout' + (cal.ok || cal.loading ? '' : ' warn');

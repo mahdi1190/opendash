@@ -1,0 +1,171 @@
+/* Home widget "calcheck" (Invites & clashes): its styles.
+   OWNER: the "calcheck" widget builder (WIDGETS_CATALOGUE.md 3.6). STUB from the widget platform (W0-A).
+   Loaded after 13-home-core.css and 13-home-platform.css. Scope every rule to this widget:
+   .hg-w[data-base="calcheck"] (every copy) or the widget's own root class. Sizes from the
+   design tokens (scenes: the --scene-* tokens), never hard-coded; respect reduced motion.
+   The card is its own inline-size container: rows adapt to the card's width (S, M, L, a phone). */
+
+.cck { container-type: inline-size; display: flex; flex-direction: column; min-height: 100%; }
+.cck > .card-b { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: var(--space-1) var(--space-3) var(--space-3); }
+.cck-h .hgl-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cck-h .hg-gear { margin-left: 2px; }
+
+/* the kinds: one colour each, always with a text badge (never colour alone) */
+.cck .k-reply { --k: var(--accent); }
+.cck .k-clash { --k: var(--danger); }
+.cck .k-b2b { --k: var(--warning); }
+.cck .k-link { --k: var(--info); }
+.cck .k-hours { --k: var(--sw-violet); }
+.cck .k-maybe { --k: var(--fg-subtle); }
+
+/* stale data: "Updated 07:02", click = read the calendar again */
+.cck-upd {
+  display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; flex: none; border: 0; border-radius: 7px;
+  background: var(--warning-soft); color: var(--warning-ink); font: inherit; font-size: 11px; font-weight: var(--weight-medium); cursor: pointer;
+}
+.cck-upd .i { width: 12px; height: 12px; }
+.cck-upd:hover { filter: brightness(0.97); }
+.cck-upd:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.cck-upd.is-running { background: var(--bg-muted); color: var(--fg-muted); cursor: default; }
+.cck-upd.is-running .i { animation: cck-spin 1s linear infinite; }
+@keyframes cck-spin { to { transform: rotate(360deg); } }
+
+/* S: the summary, then the nearest item */
+.cck-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; margin: 2px 4px 8px; font-size: var(--text-md, 15px); line-height: 22px; font-weight: var(--weight-semibold); color: var(--fg); letter-spacing: -0.01em; }
+.cck-pill { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.cck-pill > i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); flex: none; }
+.cck-sep { color: var(--fg-subtle); font-weight: var(--weight-regular); }
+.cck-s-more { margin: 6px 4px 0; font-size: 12px; color: var(--fg-subtle); }
+
+/* M / L: groups by kind */
+.cck-groups { display: flex; flex-direction: column; gap: 10px; }
+.cck-gh { display: flex; align-items: center; gap: 6px; margin: 2px 4px 2px; }
+.cck-gh::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--k); }
+.cck-gn { font-variant-numeric: tabular-nums; color: var(--fg-subtle); font-weight: var(--weight-medium); }
+.cck-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+
+/* a row: what (dot, title, badge), when and who; actions under it; tools top right */
+.cck-row { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 8px 8px 8px 8px; margin: 0 -2px; outline: none; }
+.cck-row[hidden] { display: none; }
+.cck-main { display: flex; align-items: flex-start; gap: 10px; min-width: 0; padding-right: 58px; }
+.cck-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--c, var(--sw-blue)); margin-top: 4px; flex: none; }
+.cck-ic { flex: none; width: 16px; height: 18px; display: grid; place-items: center; color: var(--k); }
+.cck-ic .i { width: 15px; height: 15px; }
+.cck-body { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
+.cck-l1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cck-t { min-width: 0; font-size: 13px; line-height: 18px; font-weight: var(--weight-medium); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cck-badge {
+  flex: none; font-size: 10px; line-height: 16px; padding: 0 6px; border-radius: 5px; font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
+  color: color-mix(in oklab, var(--k) 78%, var(--fg)); background: color-mix(in oklab, var(--k) 13%, transparent);
+}
+.cck-l2 { font-size: 12px; line-height: 17px; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cck-warn { color: var(--warning-ink); font-weight: var(--weight-medium); }
+
+/* a clash: the two events, each opens its own card */
+.cck-pair { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
+.cck-ev {
+  display: flex; align-items: center; gap: 8px; min-width: 0; width: 100%; padding: 3px 6px; margin-left: -6px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--fg); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer;
+}
+.cck-ev:hover { background: color-mix(in oklab, var(--bg-muted) 70%, transparent); }
+.cck-ev:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.cck-ev .cck-dot { margin-top: 0; width: 8px; height: 8px; }
+.cck-ev-t { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cck-ev time { flex: none; color: var(--fg-muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+
+/* L: two lanes on one axis, the overlap hatched */
+.cck-tl { position: relative; display: block; margin: 6px 0 0; padding: 2px 0 16px; }
+.cck-tl-lane { position: relative; display: block; height: 8px; margin: 3px 0; border-radius: 4px; background: var(--bg-muted); }
+.cck-tl-bar { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--c, var(--sw-blue)); transform-origin: 0 50%; }
+.cck-tl-ov {
+  position: absolute; top: 0; bottom: 14px; z-index: 1; border-radius: 3px; pointer-events: none;
+  background: repeating-linear-gradient(135deg, color-mix(in oklab, var(--danger) 40%, transparent) 0 3px, transparent 3px 6px);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--danger) 55%, transparent);
+}
+.cck-tl-ax { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; font-size: 10.5px; color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+
+/* actions: the answer (always shown), the chips; the tools (It's fine, more) top right */
+.cck-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-left: 20px; }
+.cck-acts[hidden] { display: none; }
+.cck-rsvp { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-xs); background: var(--surface); }
+.cck-r {
+  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border: 0; border-left: 1px solid var(--border);
+  background: transparent; color: var(--fg); font: inherit; font-size: 12px; font-weight: var(--weight-medium); cursor: pointer; white-space: nowrap;
+  transition: background-color var(--m-fast, 120ms) ease-out, color var(--m-fast, 120ms) ease-out;
+}
+.cck-r:first-child { border-left: 0; }
+.cck-r .i { width: 13px; height: 13px; color: var(--fg-subtle); }
+.cck-r:hover { background: var(--bg-subtle); }
+.cck-r:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
+.cck-r[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); cursor: default; }
+.cck-r[aria-pressed="true"] .i { color: var(--accent-ink); }
+.cck-r[aria-busy="true"] { opacity: 0.6; cursor: progress; }
+.cck-split { display: inline-flex; gap: 0; }
+.cck-chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--fg); font: inherit; font-size: 12px; font-weight: var(--weight-medium); box-shadow: var(--shadow-xs); cursor: pointer; white-space: nowrap;
+  transition: background-color var(--m-fast, 120ms) ease-out, border-color var(--m-fast, 120ms) ease-out;
+}
+.cck-chip .i { width: 13px; height: 13px; color: var(--fg-subtle); }
+.cck-chip:hover { background: var(--bg-subtle); border-color: var(--border-strong, var(--border)); }
+.cck-chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.cck-split > .cck-chip:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.cck-split > .cck-ok { width: 28px; padding: 0; justify-content: center; margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.cck-split > .cck-ok .i { color: var(--success-ink); }
+.cck-chip.is-done, .cck-chip[data-done="1"] { background: var(--success-soft); border-color: transparent; color: var(--success-ink); box-shadow: none; cursor: default; }
+.cck-chip.is-done .i, .cck-chip[data-done="1"] .i { color: var(--success-ink); }
+.cck-chip[aria-busy="true"] { opacity: 0.6; cursor: progress; }
+
+.cck-tools { position: absolute; top: 6px; right: 4px; display: flex; gap: 2px; }
+.cck-x {
+  width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 7px; background: transparent; color: var(--fg-subtle); cursor: pointer;
+  transition: background-color var(--m-fast, 120ms) ease-out, color var(--m-fast, 120ms) ease-out, opacity var(--m-fast, 120ms) ease-out;
+}
+.cck-x .i { width: 14px; height: 14px; }
+.cck-x:hover { background: var(--bg-emphasis, var(--bg-muted)); color: var(--fg); }
+.cck-x:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* Secondary actions show on hover and on focus (always on touch screens). */
+@media (hover: hover) {
+  .cck-row .cck-tools .cck-x { opacity: 0; }
+  .cck-row:hover .cck-tools .cck-x, .cck-row:focus-within .cck-tools .cck-x, .cck-row[aria-current="true"] .cck-x { opacity: 1; }
+}
+
+.cck-foot { flex-wrap: wrap; }
+.cck-foot > span { min-width: 0; }
+.cck-more { margin-left: auto; height: 26px; padding: 0 8px; gap: 4px; font-size: 12px; color: var(--fg-muted); }
+.cck-more .i { width: 13px; height: 13px; }
+
+/* S: one compact row */
+.cck--s .cck-row { padding: 8px; }
+.cck--s .cck-acts { padding-left: 0; }
+
+/* narrow cards (S, a phone tile): the answer buttons drop their icons; the clash's times stay */
+@container (max-width: 330px) {
+  .cck-r .i { display: none; }
+  .cck-r { padding: 0 8px; }
+  .cck-acts { padding-left: 0; }
+  .cck-main { padding-right: 54px; }
+}
+@container (min-width: 520px) {
+  .cck-pair { flex-direction: row; flex-wrap: wrap; gap: 2px 14px; }
+  .cck-pair .cck-ev { width: auto; flex: 1 1 200px; }
+}
+/* wide (L, full width on a tablet): what on the left, the answer and chips on the right */
+@container (min-width: 640px) {
+  .cck-row { flex-direction: row; align-items: center; gap: 10px; }
+  .cck-main { flex: 1 1 auto; padding-right: 0; }
+  .cck-acts { flex: none; padding-left: 0; flex-wrap: nowrap; }
+  .cck-tools { position: static; flex: none; }
+  .k-clash .cck-main { align-self: flex-start; }
+  .k-clash.cck-row { align-items: flex-start; }
+}
+
+/* settings popover */
+.cck-set .hg-set-row small { color: var(--fg-subtle); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cck-upd.is-running .i { animation: none; }
+  .cck-r, .cck-chip, .cck-x { transition: none; }
+}
+[data-motion="reduced"] .cck-upd.is-running .i { animation: none; }

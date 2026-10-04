@@ -108,7 +108,7 @@ body.is-resizing .app, body.is-resizing .content, body.is-resizing .cal-wrap { t
   .app.sb-rail .sb-block:first-child .nav-sec:first-child { display: none; }
   .app.sb-rail .nav-item { justify-content: center; padding: 0; height: 34px; gap: 0; }
   .app.sb-rail .nav-item .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .app.sb-rail .nav-item .count, .app.sb-rail .nav-item .link { display: none; }
+  .app.sb-rail .nav-item .count, .app.sb-rail .nav-item .sb-pin, .app.sb-rail .nav-item .link { display: none; }
   .app.sb-rail .nav-item .badge { position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px; padding: 0 3px; font-size: 9px; }
   .app.sb-rail .nav-item .count.alert { display: block; position: absolute; top: 3px; right: 5px; width: 6px; height: 6px; padding: 0; border-radius: 50%; background: var(--danger); font-size: 0; overflow: hidden; }
   .app.sb-rail .nav-item.nav-more, .app.sb-rail .nav-input, .app.sb-rail .minical, .app.sb-rail .calrow .src, .app.sb-rail .sb-block > :not(.nav-item):not(.nav-sec):not(.sb-items) { display: none; }

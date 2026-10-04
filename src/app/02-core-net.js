@@ -56,8 +56,22 @@ function netErrorMessage(e, fallback) {
   const ours = (input) => {
     try { return new URL(typeof input === 'string' ? input : (input && input.url) || String(input), location.href).origin === location.origin; } catch (err) { return false; }
   };
+  // Requests to this server carry the computer's time zone (X-Dashboard-Zone), so
+  // the server's "today" is the page's (travel spec 2.2, P2; Clock: 07-core-clock.js).
+  const withZone = (input, init) => {
+    let zone = '';
+    try { zone = (window.Clock && window.Clock.system()) || Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (err) { zone = ''; }
+    if (!zone || typeof Headers !== 'function') return init;
+    try {
+      const h = new Headers((init && init.headers) || (typeof Request === 'function' && input instanceof Request ? input.headers : undefined));
+      if (h.has('X-Dashboard-Zone')) return init;
+      h.set('X-Dashboard-Zone', zone);
+      return Object.assign({}, init || {}, { headers: h });
+    } catch (err) { return init; }
+  };
   const wrapped = function netFetch(input, init) {
     const mine = ours(input);
+    if (mine) init = withZone(input, init);
     return orig.call(window, input, init).then((r) => { if (mine) flip(false); return r; }, (e) => {
       if (!mine || !netIsDown(e)) throw e;
       flip(true);

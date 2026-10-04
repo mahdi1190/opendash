@@ -57,6 +57,8 @@ export const ICONS = [
   'folder-open', 'folder-search', 'folder-git-2', 'file', 'file-spreadsheet', 'file-code', 'file-archive', 'file-image',
   'file-pen-line', 'file-video', 'file-audio', 'git-pull-request', 'git-branch', 'hard-drive', 'image', 'clipboard',
   'square-code', 'folder-x',
+  // Travel & time, People card, suggestions (69-travel-*.js, 54-people-card.js, 68-suggest-*.js)
+  'user-round-pen', 'map-pin-off', 'list-plus', 'calendar-off', 'square-check', 'user-round',
 ];
 
 function build(fromDir, names) {

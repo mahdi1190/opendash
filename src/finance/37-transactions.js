@@ -75,7 +75,7 @@
     try { seen = JSON.parse(localStorage.getItem(TX_SEEN_KEY) || 'null'); } catch (e) { seen = null; }
     M._vkNew = VL.unseen(M.tx, seen);
     const since = M.anchor - 60;
-    try { localStorage.setItem(TX_SEEN_KEY, JSON.stringify({ since, keys: M.tx.filter(x => x.n >= since).map(x => x.k), at: new Date().toISOString() })); } catch (e) { /* quota or private mode */ }
+    try { localStorage.setItem(TX_SEEN_KEY, JSON.stringify({ since, keys: M.tx.filter(x => x.n >= since).map(x => x.k), at: new Date(Date.now()).toISOString() })); } catch (e) { /* quota or private mode */ }
     return M._vkNew;
   }
   function txBalances(M) {

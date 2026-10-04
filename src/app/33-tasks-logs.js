@@ -81,7 +81,7 @@ function renderReviewView(container) {
   page.appendChild(sec);
   section('Overdue', sortItems(overdue, 'date').map(i => rowFor(i, `${-daysUntil(effDate(i))}d late`, 'danger')), 'Nothing overdue.');
   section('Slipping (moved later 2+ times)', slipped.map(x => rowFor(x.i, `${x.n}× moved`, 'warn')), 'No task keeps slipping.');
-  section('Untouched for 30 days', stale.slice(0, 10).map(i => rowFor(i, _dayLabel(fmtDate(new Date(lastTouch(i))), { day: 'numeric', month: 'short' }))), 'Everything has moved recently.');
+  section('Untouched for 30 days', stale.slice(0, 10).map(i => rowFor(i, _dayLabel(Clock.parts(new Date(lastTouch(i)).getTime()).iso, { day: 'numeric', month: 'short' }))), 'Everything has moved recently.');
   section('Done this week', recent.sort((a, b) => b.ts - a.ts).map(c => { const it = getItem(c.id); return it ? rowFor(it, formatTimestamp(c.ts), 'success') : null; }).filter(Boolean), 'Nothing completed in the last 7 days.');
   container.appendChild(page);
 }
@@ -97,7 +97,7 @@ function renderWinsLog(container) {
   }
   const groups = new Map();
   for (const c of all) {
-    const key = fmtDate(_qaWeekStart(new Date(new Date(c.ts).setHours(0, 0, 0, 0))));
+    const key = fmtDate(_qaWeekStart(_qaToday(c.ts)));   // the week of the day it was done, in the dashboard's zone
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(c);
   }
@@ -105,7 +105,7 @@ function renderWinsLog(container) {
   for (const [start, items] of groups) {
     const sec = document.createElement('section'); sec.className = 'wins-section';
     const ds = new Date(start + 'T00:00:00');
-    const ed = new Date(ds); ed.setDate(ds.getDate() + 6);
+    const ed = new Date(ds); ed.setDate(ds.getDate() + 6); // clock-ok: wall date
     const thisWeek = start === fmtDate(_qaWeekStart(_qaToday()));
     const lbl = thisWeek ? 'This week' : `${ds.toLocaleDateString(_locale(), { day: 'numeric', month: 'short' })} – ${ed.toLocaleDateString(_locale(), { day: 'numeric', month: 'short', year: 'numeric' })}`;
     const per = {};

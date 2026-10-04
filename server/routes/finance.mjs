@@ -27,6 +27,7 @@ import { updateConnection } from '../../lib/datadir.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
 import { fetchFromSource, describeRejected } from '../../lib/source-adapter.mjs';
 import { HttpError } from '../http.mjs';
+import { clockTodayIn, canonZone } from '../../lib/clock.mjs';
 import { financeDir } from '../../lib/finance.mjs';
 import { MBM, briefFor, aiBrief, readBriefCache, writeBriefCache, briefCacheFile, DEFAULT_BRIEF_MODEL } from '../../lib/finance/brief.mjs';
 import { askJson, aiStatus } from '../../lib/ai.mjs';
@@ -159,8 +160,7 @@ export default function register(app) {
     path: '/api/finance/export', method: 'GET', methodError: 'GET only', sameOrigin: true,
     handler: async (c) => {
       const csv = await exportTransactions();
-      const now = new Date();   // the file is named after today on the user's calendar, not UTC's
-      const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const day = clockTodayIn(canonZone((c.getConfig() || {}).timezone) || 'UTC');   // the home day, not UTC (travel spec S7)
       c.send(200, '﻿' + csv, 'text/csv; charset=utf-8', { 'Content-Disposition': `attachment; filename="transactions-${day}.csv"` });
     },
   });

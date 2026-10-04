@@ -59,8 +59,10 @@
       E.kpis.classList.toggle('is-compact', !!list);
       if (list) E.kpis.style.setProperty('--kn', String(Math.max(1, list.length)));
       let vis = 0;
+      const shown = [];   // tiles that were hidden and now show: only these fade in (the strip itself stays put)
       for (const d of KPI_DEFS) {
         const k = E.kpi[d.k]; const at = list ? list.indexOf(d.k) : KPI_DEFS.indexOf(d);
+        if (at >= 0 && k.el.hidden) shown.push(k.el);
         k.el.hidden = at < 0;
         k.el.style.order = at < 0 ? '' : String(at);
         if (at >= 0) k.el.style.setProperty('--i', String(vis++));
@@ -69,8 +71,8 @@
       // otherwise chase the tile that was in view before the reorder).
       // @p2 only when the row was scrolled: writing scrollLeft forces a layout of the half-built section.
       if (E.kpisScrolled) { E.kpisScrolled = false; E.kpis.scrollLeft = 0; }
-      // A different set crossfades in (not on the first show, which has its entrance).
-      if (had && set !== false && !E.kpisPending && !MK.reduced() && typeof E.kpis.animate === 'function') E.kpis.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 240, easing: 'ease-out' });
+      // A different set: the tiles that join fade in (not on the first show, which has its entrance).
+      if (had && set !== false && !E.kpisPending && !MK.reduced()) for (const el of shown) if (typeof el.animate === 'function') el.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: 'ease-out' });
     }
     if (set !== false && E.kpisPending) kpiEntrance();
   }

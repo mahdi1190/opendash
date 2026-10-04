@@ -1,0 +1,12 @@
+{
+  "_about": "Monday 10:00: Sam (in People) emailed on Friday about the venue, unread, nothing handled and no task (S16). Synthetic.",
+  "now": "2026-10-05T10:00",
+  "caps": { "inbox": true },
+  "events": { "2026-10-05": [] },
+  "inbox": { "ok": true, "fetchedAt": "2026-10-05T09:00:00Z", "threads": [
+    { "id": "th1", "lastMessageId": "msg1", "from": { "email": "sam@example.com", "name": "Sam Lee" }, "personId": "sam", "subject": "The venue for the workshop", "date": "2026-10-02T15:10:00Z", "unread": true, "important": false, "category": "primary", "count": 1, "handled": false },
+    { "id": "th2", "lastMessageId": "msg2", "from": { "email": "news@example.com", "name": "Acme News" }, "subject": "Weekly digest", "date": "2026-10-03T08:00:00Z", "unread": true, "important": false, "category": "promotions", "count": 1, "handled": false }
+  ] },
+  "tasks": [],
+  "focus": []
+}

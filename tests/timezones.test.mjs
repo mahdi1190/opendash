@@ -1,7 +1,9 @@
 // Time zones, for users anywhere in the world. Nothing may assume one zone:
 //   - a new data folder starts on this computer's zone (config.timezone), the page's
 //     own default is the browser's zone, and no source file hard-codes a zone;
-//   - the server's "today" and clock follow config.timezone (UTC+14 and UTC-4/-5);
+//   - the server's "today" and clock follow config.timezone (UTC+14 and UTC-4/-5) when the
+//     user keeps home time (config.time.follow 'home'; by default they follow the computer,
+//     lib/clock.mjs effectiveZone, tested in clock.test.mjs);
 //   - Settings says when config.timezone and this computer differ;
 //   - daylight-saving days (UK 25 Oct 2026, US 1 Nov 2026, Adelaide 4 Oct 2026,
 //     UK 29 Mar 2026): calendar events sit at their wall-clock time on the page,
@@ -50,6 +52,17 @@ test('no source file hard-codes a time zone (only the Windows-name table and the
   const allowed = [
     (f, line) => f === 'lib/ical.mjs' && /Standard Time': '/.test(line),                       // Outlook's Windows zone names -> IANA
     (f, line) => f === 'src/app/57-settings.js' && /^\s*return \['UTC', /.test(line),          // the zone list when Intl cannot list them
+    // Old-name -> current-name tables (a renamed zone is never a trip): rows of 'Old': 'New' pairs only.
+    (f, line) => /^(src\/app\/07-core-clock-logic\.js|server\/actions\/ops-people\.mjs|tools\/travel-data-facts\.mjs)$/.test(f)
+      && /^\s*(?:const TZ_ALIASES = \{\s*)?(?:'[A-Za-z0-9_\/+-]+': '[A-Za-z0-9_\/+-]+',?\s*)+(?:\};?)?\s*$/.test(line),
+    // An example zone in a tool description or an error message ("such as 'Asia/Tokyo'", "e.g. 'America/New_York'").
+    (f, line) => /^server\/actions\/ops-(home|people)\.mjs$/.test(f) && /(such as|e\.g\.) \\?'/.test(line),
+    // Gallery previews and the picker's suggested zone: made-up trips, never the user's clock.
+    (f, line) => f === 'src/app/12-home-w-travel.js' && /const z = 'Asia\/Tokyo', hz = Clock\.home\(\);/.test(line),
+    (f, line) => f === 'src/app/69-travel-moments.js' && /Clock\.home\(\)\) \|\| 'Europe\/London'|zone: 'Asia\/Tokyo', label: 'Tokyo'/.test(line),
+    (f, line) => f === 'src/app/69-travel-ui.js' && /zSel\.value = .*: 'Asia\/Tokyo'\);/.test(line),
+    // The fake-data generators (demo trips; a default home only when the fake config has none).
+    (f) => f === 'tools/fake-trip.mjs' || f === 'tools/make-fake-data.mjs',
   ];
   const found = [];
   for (const file of ['src', 'lib', 'server', 'mcp', 'tools'].flatMap(d => walk(join(ROOT, d))).concat([join(ROOT, 'serve.mjs'), join(ROOT, 'build.mjs')])) {
@@ -101,7 +114,7 @@ test('the server\'s today and time follow config.timezone (UTC+14, UTC-4, London
   const dir = mkdtempSync(join(tmpdir(), 'tz-ctx-'));
   try {
     mkdirSync(join(dir, 'state'), { recursive: true });
-    writeFileSync(join(dir, 'config.json'), JSON.stringify({ userName: 'Test', timezone: 'Pacific/Kiritimati' }));
+    writeFileSync(join(dir, 'config.json'), JSON.stringify({ userName: 'Test', timezone: 'Pacific/Kiritimati', time: { follow: 'home' } }));
     writeFileSync(join(dir, 'state', 'dashboard-state.json'), JSON.stringify({ _lastSave: 1, custom: [], streams: [{ id: 'work', label: 'Work', color: '#2563eb', order: 0 }] }));
     const a = createActions({ dataDir: dir, now: () => at.getTime() });
     const c = await a.query('context.get', {});
@@ -133,8 +146,16 @@ function calBox() {
     setTimeout, clearTimeout, setInterval, fetch: async () => ({ ok: false }), _serverAvailable: false, fmtDate,
   };
   vm.createContext(box);
+  // The page's Clock (07-core-clock*.js) follows the computer's zone, as the page does by default.
+  vm.runInContext(clockSrc(), box, { filename: '07-core-clock.js' });
   vm.runInContext(src('40-calendar.js'), box, { filename: '40-calendar.js' });
   return box;
+}
+function clockSrc() { return [src('07-core-clock-logic.js'), src('07-core-clock.js')].join('\n;\n'); }
+/** Move this process to another zone and tell the page's Clock at once (no 2 s debounce). */
+function setZone(box, zone) {
+  process.env.TZ = zone;
+  vm.runInContext('Clock.check({ now: true })', box);
 }
 const timed = (id, a, b) => ({ id, summary: id, calendarId: ME, allDay: false, start: { dateTime: a }, end: { dateTime: b } });
 function entriesOn(box, events, iso) {
@@ -144,7 +165,7 @@ function entriesOn(box, events, iso) {
 }
 test('daylight-saving days: events sit at their wall-clock time on the page (Home, the brief, week and day views)', () => {
   const box = calBox();
-  process.env.TZ = 'Europe/London';                 // Sun 25 Oct 2026: 02:00 BST -> 01:00 GMT (a 25-hour day)
+  setZone(box, 'Europe/London');                    // Sun 25 Oct 2026: 02:00 BST -> 01:00 GMT (a 25-hour day)
   const uk = [
     timed('before', '2026-10-25T00:40:00+01:00', '2026-10-25T01:10:00+01:00'),
     timed('first-0130', '2026-10-25T01:30:00+01:00', '2026-10-25T01:45:00+01:00'),
@@ -161,12 +182,12 @@ test('daylight-saving days: events sit at their wall-clock time on the page (Hom
   assert.deepEqual(entriesOn(box, lateSat, '2026-10-25'), [['sat-late', 0, 60]], '01:00 GMT is two hours after 23:00 BST, at 01:00 on the clock');
   assert.deepEqual(entriesOn(box, [timed('spring', '2026-03-29T09:00:00Z', '2026-03-29T10:00:00Z')], '2026-03-29'), [['spring', 600, 660]], 'a 23-hour day: 10:00 BST');
 
-  process.env.TZ = 'America/New_York';              // Sun 1 Nov 2026: 02:00 EDT -> 01:00 EST
+  setZone(box, 'America/New_York');                 // Sun 1 Nov 2026: 02:00 EDT -> 01:00 EST
   assert.deepEqual(entriesOn(box, [timed('ten', '2026-11-01T15:00:00Z', '2026-11-01T16:00:00Z'), timed('three', '2026-11-01T08:00:00Z', '2026-11-01T08:30:00Z')], '2026-11-01'),
     [['three', 180, 210], ['ten', 600, 660]]);
-  process.env.TZ = 'Australia/Adelaide';            // Sun 4 Oct 2026: 02:00 ACST (+9:30) -> 03:00 ACDT (+10:30)
+  setZone(box, 'Australia/Adelaide');               // Sun 4 Oct 2026: 02:00 ACST (+9:30) -> 03:00 ACDT (+10:30)
   assert.deepEqual(entriesOn(box, [timed('ten', '2026-10-04T10:00:00+10:30', '2026-10-04T11:00:00+10:30')], '2026-10-04'), [['ten', 600, 660]]);
-  process.env.TZ = 'Pacific/Kiritimati';            // +14: a UTC morning is already the next day
+  setZone(box, 'Pacific/Kiritimati');               // +14: a UTC morning is already the next day
   assert.deepEqual(entriesOn(box, [timed('morning', '2026-10-24T20:00:00Z', '2026-10-24T21:00:00Z')], '2026-10-25'), [['morning', 600, 660]]);
 });
 
@@ -182,7 +203,7 @@ test('Home: "in N min" is real time on the night the clocks change (as the brief
   assert.equal(box.homeDayModel({ events: [ev({ at: Date.parse('2026-10-26T03:00:00Z'), start: 180 })], nowMin: 30, nowMs: Date.parse('2026-10-26T00:30:00Z') }).nextIn, 150, 'an ordinary night: the same either way');
   // The page passes the instant of every timed event and the clock to the model.
   assert.match(src('12-home-cal.js'), /at: !e\.allDay && ev\.start && ev\.start\.dateTime \? Date\.parse\(ev\.start\.dateTime\)/);
-  assert.equal((src('12-home-w-schedule.js').match(/nowMs: Date\.now\(\)/g) || []).length, 2);
+  assert.equal((src('12-home-w-schedule.js').match(/nowMs: (?:Date|Clock)\.now\(\)/g) || []).length, 2);   // Clock.now(): the page's clock (fixable for tests)
 });
 
 test('daylight-saving days: "Yesterday" and timestamps count calendar days, not 24-hour steps', () => {
@@ -196,9 +217,9 @@ test('daylight-saving days: "Yesterday" and timestamps count calendar days, not 
   assert.equal(box.__fmt(new Date(2026, 2, 30, 0, 10).getTime()), 'Today, 00:10');
   const ppl = src('51-people-section.js');
   const fns = ['_pplDayMs', '_pplAgo'].map(n => new RegExp(`function ${n}\\([\\s\\S]*?\\n}\\n|function ${n}\\([^\\n]*\\n`).exec(ppl)[0]);
-  const pb = { todayStr: () => '2026-03-30', fmtDate };
+  const pb = { todayStr: () => '2026-03-30', fmtDate, setTimeout, clearTimeout };
   vm.createContext(pb);
-  vm.runInContext(fns.join('\n') + ';globalThis.__ago = _pplAgo;', pb);
+  vm.runInContext(clockSrc() + '\n;\n' + fns.join('\n') + ';globalThis.__ago = _pplAgo;', pb);
   assert.equal(pb.__ago(new Date(2026, 2, 29, 12).getTime()), 'Yesterday', 'two local midnights 23 hours apart are still a day');
   assert.equal(pb.__ago(new Date(2026, 2, 27, 12).getTime()), '3 days ago');
 });
@@ -232,7 +253,7 @@ function storyDir(zone, events) {
   const dir = mkdtempSync(join(tmpdir(), 'tz-story-'));
   mkdirSync(join(dir, 'state'), { recursive: true });
   mkdirSync(join(dir, 'calendar'), { recursive: true });
-  const cfg = { userName: 'Robin Example', timezone: zone, weekStart: 'Mon', myEmails: [ME] };
+  const cfg = { userName: 'Robin Example', timezone: zone, time: { follow: 'home' }, weekStart: 'Mon', myEmails: [ME] };
   writeFileSync(join(dir, 'config.json'), JSON.stringify(cfg));
   writeFileSync(join(dir, 'calendar', 'events.json'), JSON.stringify({ version: 2, fetchedAt: new Date().toISOString(), calendars: [{ id: ME, name: 'Me' }],
     events: events.map(([id, a, b]) => normaliseEvent({ id, summary: id.replace(/-/g, ' '), start: { dateTime: a }, end: { dateTime: b }, status: 'confirmed' }, ME)) }));
@@ -279,7 +300,7 @@ test('dates the MCP gives are on the user\'s clock: created, notes, history, peo
     const ts = Date.UTC(2026, 9, 24, 12);           // 02:00 on Sunday 25 Oct in Kiritimati
     mkdirSync(join(dir, 'state'), { recursive: true });
     mkdirSync(join(dir, 'inbox'), { recursive: true });
-    writeFileSync(join(dir, 'config.json'), JSON.stringify({ userName: 'Test', timezone: 'Pacific/Kiritimati' }));
+    writeFileSync(join(dir, 'config.json'), JSON.stringify({ userName: 'Test', timezone: 'Pacific/Kiritimati', time: { follow: 'home' } }));
     writeFileSync(join(dir, 'state', 'dashboard-state.json'), JSON.stringify({
       _lastSave: 1, streams: [{ id: 'work', label: 'Work', color: '#2563eb', order: 0 }],
       people: [{ id: 'sam', name: 'Sam Taylor', email: 'sam@example.org', notes: [{ id: 'pn1', ts, text: 'Met for coffee' }] }],

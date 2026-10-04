@@ -1,0 +1,87 @@
+/* ============= HOME's HEAD (12-home-head.js, 74-brief-ui.js, 77-brief-review.js) =============
+   Owner: Brief + Review. Home is one page: the Today / Evening / Week / History tabs,
+   then (Today) the day's hero at full size with Play my morning, the inline story,
+   the day in three sentences and Ideas for today, then the widget board.
+   The hero, the sky and the sentences are 74-brief.css; this file is the frame. */
+
+/* ----- the tabs: a quiet row at the top of Home ----- */
+.home > .home-tabs {
+  position: static; z-index: auto; margin: 0 0 var(--space-4); padding: 0 0 10px;
+  background: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.home-tabs .rv-tab { position: relative; height: 34px; padding: 0 14px; font-size: 14px; }
+.home-tabs .rv-tab .i { width: 15px; height: 15px; }
+.home-tabs .rv-tab.is-due::after { content: ""; position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--warning, #f59e0b); }
+.home .home-tab-body { padding: 0 0 var(--space-12, 48px); max-width: none; }
+.home > .home-head { margin-bottom: var(--space-6, 24px); }
+
+/* ----- Play my morning: big, in the hero ----- */
+.bf-play-row { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
+.bf-play-row[hidden] { display: none; }
+.bf-hero .hd-play {
+  display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 24px 0 18px; border: 0; border-radius: 999px;
+  background: var(--hero-fg); color: color-mix(in oklab, var(--hero-fg) 8%, #fff); font: inherit; font-size: 16px; font-weight: 620; letter-spacing: -0.01em;
+  box-shadow: 0 6px 20px rgba(10, 14, 30, 0.18); cursor: pointer;
+  transition: transform var(--m-fast, 120ms) var(--m-ease-out, ease-out), box-shadow var(--m-fast, 120ms) var(--m-ease-out, ease-out), opacity var(--m-fast, 120ms);
+}
+.bf-hero.on-dark .hd-play, .bf-hero.on-dusk .hd-play, [data-theme="dark"] .bf-hero .hd-play { color: #12131c; }
+.bf-hero .hd-play:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(10, 14, 30, 0.24); }
+.bf-hero .hd-play:active { transform: scale(0.97); }
+.bf-hero .hd-play:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--hero-fg2), 0 6px 20px rgba(10, 14, 30, 0.18); }
+.bf-hero .hd-play .hd-i { width: 16px; height: 16px; fill: currentColor; stroke: none; }
+.bf-hero .hd-play.is-playing { opacity: 0.7; cursor: default; transform: none; }
+.bf-hero .hd-full { width: 44px; height: 44px; border-radius: 50%; background: var(--glass); color: var(--hero-fg); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.bf-hero .hd-full:hover { background: color-mix(in oklab, var(--glass) 70%, #fff); color: var(--hero-fg); }
+.bf-hero .hd-full .i { width: 18px; height: 18px; }
+html[data-motion="reduced"] .bf-hero :is(.hd-play, .hd-full), html.anim-off .bf-hero :is(.hd-play, .hd-full) { transition: none; transform: none !important; }
+
+/* ----- the story, inline (79-story.css styles the story itself) ----- */
+.hd-player { display: flex; flex-direction: column; gap: 10px; }
+.hd-stage { position: relative; min-height: 120px; border-radius: 18px; overflow: hidden; background: linear-gradient(160deg, #5a5fa8, #b27aa8 60%, #e3a07c); box-shadow: var(--shadow-sm); }
+.hd-player.is-away .hd-stage { display: grid; place-items: center; min-height: 170px; background: var(--bg-subtle); border: 1px dashed var(--border); box-shadow: none; }
+.hd-away { display: grid; justify-items: center; gap: 6px; text-align: center; font-size: 13px; color: var(--fg-muted); }
+.hd-away b { font-size: 15px; color: var(--fg); font-weight: 600; }
+.hd-ctrl { display: flex; align-items: center; gap: 4px; }
+.hd-cb { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--fg); cursor: pointer; transition: background-color var(--m-fast, 120ms) var(--m-ease-out, ease-out); }
+.hd-cb:hover { background: var(--bg-muted); }
+.hd-cb:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hd-cb .i, .hd-cb .hd-i { width: 18px; height: 18px; }
+.hd-prev .hd-i, .hd-next .hd-i { fill: currentColor; }
+.hd-cb.hd-tog { width: 42px; height: 42px; background: var(--fg); color: var(--bg); }
+.hd-cb.hd-tog:hover { background: color-mix(in oklab, var(--fg) 86%, var(--bg)); }
+.hd-tog .hd-i { fill: currentColor; stroke: none; }
+.hd-tog .hd-i-play { display: none; }
+.hd-player.is-paused .hd-tog .hd-i-play { display: block; }
+.hd-player.is-paused .hd-tog .hd-i-pause { display: none; }
+.hd-mute .hd-i-mute { display: none; }
+.hd-player.is-muted .hd-mute .hd-i-mute { display: block; }
+.hd-player.is-muted .hd-mute .hd-i-vol { display: none; }
+.hd-stop .hd-i { fill: currentColor; stroke: none; width: 15px; height: 15px; }
+.hd-pos { margin-left: 6px; font-size: 12.5px; color: var(--fg-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ----- Ideas for today: a row of cards under the sentences ----- */
+.hd-ideas { display: flex; flex-direction: column; gap: 10px; }
+.hd-ideas-h { display: flex; align-items: center; gap: 6px; color: var(--fg-subtle); }
+.hd-ideas-h .i { width: 14px; height: 14px; }
+.hd-ideas-h h2 { margin: 0; }
+.hd-idea-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; align-items: stretch; }
+.hd-idea-row > * { min-width: 0; margin: 0; }
+.hd-idea { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border-subtle); background: var(--surface); box-shadow: var(--shadow-xs); }
+.hd-ii { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); }
+.hd-ii .i { width: 15px; height: 15px; }
+.hd-idea p { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 20px; color: var(--fg); }
+.hd-idea .btn { flex: none; }
+.brief.intro .hd-idea-row > * { animation: hd-rise 520ms var(--m-ease-out, ease-out) both; animation-delay: calc(700ms + var(--i, 0) * 80ms); }
+@keyframes hd-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+html[data-motion="reduced"] .hd-idea-row > *, html.anim-off .hd-idea-row > * { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .hd-idea-row > * { animation: none !important; } }
+
+@media (max-width: 640px) {
+  .bf-hero .hd-play { height: 44px; font-size: 15px; padding: 0 20px 0 16px; }
+  .hd-pos { display: none; }
+  .home-tabs .rv-tab { padding: 0 10px; }
+}
+
+/* The Evening tab's "Play my day" (79-story-engine.js storyMountEntry): top right of its hero,
+   clear of the date line (the weather sits at the bottom right). */
+.home .st-entry-host > .st-entry-row:not(.st-entry-week) { top: 18px; left: auto; right: 18px; }

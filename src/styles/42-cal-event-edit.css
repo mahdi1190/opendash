@@ -1,0 +1,211 @@
+/* ============= EVENT EDITING (owner: Calendar; 46-cal-event-edit.js) =============
+   The editable event in the centre card (.tc) and the calendar's side panel
+   (.ev-panel), in the spirit of Google Calendar's event page: fields read as
+   plain text until you point at them, then show a soft field; one click opens
+   the date / time pickers. Tokens only; both themes follow them. */
+
+/* ---------- title ---------- */
+.ev-panel .evc-title {
+  display: block; width: calc(100% + 12px); margin: -2px -6px 0; padding: 2px 6px; resize: none; overflow: hidden;
+  border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--fg); outline: none;
+  font: inherit; font-size: var(--text-lg); line-height: 24px; font-weight: var(--weight-semibold);
+  transition: background-color var(--m-fast), box-shadow var(--m-fast);
+}
+.ev-panel .evc-title:hover { background: var(--bg-muted); }
+.ev-panel .evc-title:focus { background: var(--surface); box-shadow: 0 0 0 1px var(--border-strong), 0 0 0 4px var(--accent-soft-2); }
+.evc-title::placeholder { color: var(--fg-disabled); }
+
+/* ---------- date / time row ---------- */
+.evc-when { display: flex; flex-direction: column; gap: 2px; margin-top: var(--space-1); }
+.evc-when-r { display: flex; align-items: center; flex-wrap: wrap; gap: 2px var(--space-1); margin-left: calc(-1 * var(--space-2)); }
+.evc-f {
+  display: inline-flex; align-items: center; height: 30px; padding: 0 var(--space-2);
+  border: 0; border-radius: var(--radius-md); background: transparent; color: var(--fg);
+  font: inherit; font-size: var(--text-md); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer;
+  transition: background-color var(--m-fast), color var(--m-fast);
+}
+.evc-f:hover, .evc-f[aria-expanded="true"] { background: var(--bg-muted); }
+.evc-f[aria-expanded="true"] { box-shadow: inset 0 0 0 1px var(--border-strong); }
+.evc-f:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.evc-f.is-muted { color: var(--fg-subtle); font-weight: var(--weight-regular); }
+.evc-dash { color: var(--fg-subtle); padding: 0 1px; }
+.evc-when-r2 { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-3); min-height: 26px; font-size: var(--text-sm); color: var(--fg-muted); }
+.evc-allday { display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; user-select: none; }
+.evc-allday .switch { margin: 0; }
+.evc-bit { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.evc-bit .i { color: var(--fg-subtle); }
+.evc-when .ev-live, .evc-when-ro .ev-live { font-size: var(--text-xs); padding: 1px 8px; border-radius: var(--radius-full); background: var(--bg-muted); color: var(--fg-muted); font-weight: var(--weight-medium); }
+.evc-when .ev-live.now, .evc-when-ro .ev-live.now { background: var(--danger-soft); color: var(--danger-ink); }
+.evc-when-ro { flex-wrap: wrap; }
+.ev-panel .evc-when-ro { display: flex; align-items: center; gap: var(--space-1) var(--space-3); }
+.ev-panel .evc-when-ro .tc-bit { display: inline-flex; align-items: center; gap: 5px; }
+.evc-panel-when { margin: var(--space-2) 0 0; }
+.evc-panel-when .evc-when { margin-top: 0; }
+.ev-panel .evc-f { height: 26px; font-size: var(--text-sm); padding: 0 6px; }
+.ev-panel .evc-when-r { margin-left: -6px; }
+.ev-panel .evc-when-r2 { font-size: var(--text-xs); }
+
+/* the time list */
+.evc-timepop { padding: var(--space-2); display: flex; flex-direction: column; gap: var(--space-1); }
+.evc-tin { width: 100%; }
+.evc-tin.is-invalid { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+.evc-tl { max-height: 248px; overflow-y: auto; overscroll-behavior: contain; margin: 0 calc(-1 * var(--space-1)); padding: 0 var(--space-1); scroll-behavior: auto; }
+.evc-tl .pop-item { font-variant-numeric: tabular-nums; }
+.evc-tl .pop-item.on { background: var(--accent-soft); color: var(--accent-ink); }
+.evc-tl .pop-item .hint { margin-left: auto; }
+
+/* ---------- rows: location, add guests ---------- */
+.evc-row { display: flex; align-items: center; gap: var(--space-2); min-height: 34px; margin: 0 calc(-1 * var(--space-2)) var(--space-3); padding: 0 var(--space-2); border-radius: var(--radius-md); }
+.evc-row > .evc-ic { color: var(--fg-subtle); flex: none; }
+.evc-in {
+  flex: 1; min-width: 0; height: 32px; padding: 0 var(--space-2); margin-left: calc(-1 * var(--space-1));
+  border: 0; border-radius: var(--radius-md); background: transparent; color: var(--fg); outline: none;
+  font: inherit; font-size: var(--text-md);
+  transition: background-color var(--m-fast), box-shadow var(--m-fast);
+}
+.evc-in::placeholder { color: var(--fg-subtle); }
+.evc-in:hover { background: var(--bg-muted); }
+.evc-in:focus { background: var(--surface); box-shadow: 0 0 0 1px var(--border-strong), 0 0 0 4px var(--accent-soft-2); }
+.evc-in.is-invalid { box-shadow: 0 0 0 1px var(--danger), 0 0 0 4px var(--danger-soft); }
+.evc-loc-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-md); }
+.evc-maps { flex: none; color: var(--fg-muted); }
+.ev-panel .evc-row { margin-bottom: var(--space-2); }
+.ev-panel .evc-in, .ev-panel .evc-loc-t { font-size: var(--text-sm); height: 28px; }
+.tc-side .evc-row, .ev-panel .evc-gadd { margin-top: var(--space-1); }
+
+/* ---------- RSVP ---------- */
+.evc-rsvp { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-4); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--bg-subtle); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+[data-theme="dark"] .evc-rsvp { background: color-mix(in oklab, var(--bg-subtle) 60%, var(--surface-raised)); }
+.evc-rsvp-q { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--fg); }
+.evc-rsvp-seg button { gap: 5px; padding: 0 10px; }
+.evc-rsvp-seg button[data-r="accepted"][aria-pressed="true"] { color: var(--success-ink); }
+.evc-rsvp-seg button[data-r="declined"][aria-pressed="true"] { color: var(--danger-ink); }
+.ev-panel .evc-rsvp { margin: 0 0 var(--space-3); }
+
+/* ---------- description ---------- */
+.evc-desc { margin: 0 0 var(--space-2); }
+.evc-desc .ev-sec { margin-top: var(--space-2); }
+.evc-desc-b { font-size: var(--text-md); line-height: 22px; color: var(--fg); overflow-wrap: anywhere; padding: var(--space-1) var(--space-2); margin: 0 calc(-1 * var(--space-2)); border-radius: var(--radius-md); }
+.evc-desc-b > :first-child { margin-top: 0; } .evc-desc-b > :last-child { margin-bottom: 0; }
+.evc-desc-b.is-editable { cursor: text; transition: background-color var(--m-fast); }
+.evc-desc-b.is-editable:hover { background: var(--bg-muted); }
+.evc-desc-b:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.evc-desc-b.is-empty { color: var(--fg-subtle); border: 1px dashed var(--border); margin: 0; }
+.evc-desc-b.is-empty:hover { border-color: var(--border-strong); }
+.evc-desc-in {
+  display: block; width: 100%; box-sizing: border-box; min-height: 96px; resize: vertical; padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--fg); outline: none;
+  font: inherit; font-size: var(--text-md); line-height: 22px;
+}
+.evc-desc-in:hover { border-color: var(--border-strong); }
+.evc-desc-in:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
+.ev-panel .evc-desc-b, .ev-panel .evc-desc-in { font-size: var(--text-sm); line-height: 20px; }
+.ev-panel .evc-desc-b { max-height: 260px; overflow: auto; }
+
+/* ---------- details: calendar, colour ---------- */
+.evc-dl { row-gap: 6px; }
+.evc-dl dd { min-height: 28px; }
+.evc-val { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.evc-pick {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 28px; padding: 0 var(--space-2); margin-left: calc(-1 * var(--space-2));
+  border: 0; border-radius: var(--radius-md); background: transparent; color: var(--fg); font: inherit; font-size: var(--text-sm); cursor: pointer; min-width: 0;
+}
+.evc-pick:hover, .evc-pick[aria-expanded="true"] { background: var(--bg-muted); }
+.evc-pick:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.evc-pick .evc-chev { color: var(--fg-subtle); flex: none; }
+.evc-dot { --c: var(--sw-blue); width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; display: inline-block; }
+:is(.evc-dot).c-indigo { --c: var(--sw-indigo); } :is(.evc-dot).c-blue { --c: var(--sw-blue); } :is(.evc-dot).c-teal { --c: var(--sw-teal); }
+:is(.evc-dot).c-green { --c: var(--sw-green); } :is(.evc-dot).c-amber { --c: var(--sw-amber); } :is(.evc-dot).c-orange { --c: var(--sw-orange); }
+:is(.evc-dot).c-red { --c: var(--sw-red); } :is(.evc-dot).c-pink { --c: var(--sw-pink); } :is(.evc-dot).c-violet { --c: var(--sw-violet); } :is(.evc-dot).c-slate { --c: var(--sw-slate); }
+.pop-item .ic .evc-dot { margin: 0 3px; }
+
+/* Google's eleven event colours, from the swatch tokens */
+.gc-1 { --c: color-mix(in oklab, var(--sw-indigo) 62%, var(--surface)); }
+.gc-2 { --c: color-mix(in oklab, var(--sw-green) 78%, var(--surface)); }
+.gc-3 { --c: var(--sw-violet); }
+.gc-4 { --c: color-mix(in oklab, var(--sw-pink) 55%, var(--sw-orange)); }
+.gc-5 { --c: var(--sw-amber); }
+.gc-6 { --c: var(--sw-orange); }
+.gc-7 { --c: var(--sw-blue); }
+.gc-8 { --c: var(--sw-slate); }
+.gc-9 { --c: var(--sw-indigo); }
+.gc-10 { --c: color-mix(in oklab, var(--sw-green) 72%, var(--fg)); }
+.gc-11 { --c: var(--sw-red); }
+.evc-colpop { padding: var(--space-2); }
+.evc-colgrid { display: grid; grid-template-columns: repeat(6, 28px); gap: 8px; padding: 4px 4px 6px; }
+.evc-col {
+  width: 28px; height: 28px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+  background: var(--c); color: var(--fg-on-accent); display: grid; place-items: center;
+  transition: transform var(--m-fast) var(--m-ease-out), box-shadow var(--m-fast);
+}
+.evc-col:hover { transform: scale(1.1); }
+.evc-col:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface-raised), 0 0 0 4px var(--accent); }
+.evc-col[aria-checked="true"] { box-shadow: 0 0 0 2px var(--surface-raised), 0 0 0 4px var(--c); }
+.evc-col .i { width: 14px; height: 14px; }
+.evc-col.evc-col-cal:not([aria-checked="true"]) { box-shadow: inset 0 0 0 3px color-mix(in oklab, var(--surface-raised) 55%, transparent); }
+.tc-evsq.evc-sqbtn { border: 0; padding: 0; cursor: pointer; transition: transform var(--m-fast) var(--m-ease-out), box-shadow var(--m-fast); }
+.tc-evsq.evc-sqbtn:hover { transform: scale(1.12); }
+.tc-evsq.evc-sqbtn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ---------- guests ---------- */
+.evc-gsum { font-size: var(--text-xs); color: var(--fg-subtle); margin: -4px 0 var(--space-1); }
+.evc-guest { position: relative; }
+.evc-av { position: relative; display: inline-flex; flex: none; }
+.evc-rs {
+  position: absolute; right: -3px; bottom: -3px; width: 13px; height: 13px; border-radius: 50%;
+  display: grid; place-items: center; box-shadow: 0 0 0 2px var(--surface-raised);
+  font-size: 9px; line-height: 1; color: var(--fg-on-accent);
+}
+.ev-panel .evc-rs { box-shadow: 0 0 0 2px var(--surface); }
+.tc-side .evc-rs { box-shadow: 0 0 0 2px var(--bg-subtle); }
+.evc-rs .i { width: 9px; height: 9px; stroke-width: 3; }
+.evc-rs b { font-weight: var(--weight-bold); }
+.evc-rs.yes { background: var(--success); }
+.evc-rs.no { background: var(--danger); }
+.evc-rs.maybe { background: var(--fg-subtle); }
+.evc-rs.wait { display: none; }
+.evc-gx { opacity: 0; flex: none; }
+.evc-guest:hover .evc-gx, .evc-gx:focus-visible { opacity: 1; }
+.evc-gx:hover { color: var(--danger-ink); }
+.evc-gchips { margin: 0 0 var(--space-2); }
+
+/* ---------- notes ---------- */
+.evc-note { margin: var(--space-1) 0 0; font-size: var(--text-xs); line-height: 18px; color: var(--fg-subtle); }
+.evc-ro { display: flex; align-items: flex-start; gap: 6px; margin: 0 0 var(--space-3); font-size: var(--text-xs); line-height: 18px; color: var(--fg-subtle); }
+.evc-ro .i { margin-top: 2px; flex: none; }
+.tc-side .evc-ro { padding-bottom: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
+
+/* ---------- the card: event + new event ---------- */
+/* Join / answer / place on top of the content column; the details to the right
+   (on narrow cards they come straight after the top, before the description). */
+.tc-cols.evc-cols { grid-template-areas: "top side" "rest side"; grid-template-rows: auto 1fr; row-gap: 0; }
+.evc-cols > .tc-evtop { grid-area: top; }
+.evc-cols > .tc-evside { grid-area: side; }
+.evc-cols > .tc-evmain:not(.tc-evtop) { grid-area: rest; }
+.evc-cols > .tc-evtop:empty { display: none; }
+@container tc (max-width: 720px) {
+  .tc-cols.evc-cols { grid-template-areas: "top" "side" "rest"; grid-template-rows: auto; row-gap: var(--space-5); }
+  .evc-cols > .tc-evtop > :last-child { margin-bottom: 0; }
+}
+.tc-head-ev .evc-title.tc-title { margin-top: 0; }
+.tc-head-ev .evc-when { margin-top: 2px; }
+.tc-evmain .evc-loc { margin-top: calc(-1 * var(--space-1)); }
+.evc-newmain .evc-desc .ev-sec:first-child { margin-top: 0; }
+.tc .evc-delbtn:hover { color: var(--danger-ink); background: var(--danger-soft); }
+.ev-panel .ev-del { flex: none; margin-top: -2px; color: var(--fg-subtle); }
+.ev-panel .ev-del:hover { color: var(--danger-ink); background: var(--danger-soft); }
+
+@media (max-width: 700px) {
+  .tc-foot [data-fk="evn-save"] span { display: inline; }
+  .tc[data-kind="evcreate"] .tc-r .tc-sep { display: none; }
+  .evc-f { height: 34px; font-size: var(--text-sm); }
+  .evc-when-r { gap: 0 2px; }
+  .evc-in { height: 36px; }
+  .evc-gx { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .evc-f, .evc-in, .evc-col, .evc-pick, .evc-desc-b, .tc-evsq.evc-sqbtn { transition: none; }
+  .evc-col:hover, .tc-evsq.evc-sqbtn:hover { transform: none; }
+}
+html[data-motion="reduced"] :is(.evc-f, .evc-in, .evc-col, .evc-desc-b, .tc-evsq.evc-sqbtn) { transition: none; }
+html[data-motion="reduced"] .evc-col:hover, html[data-motion="reduced"] .tc-evsq.evc-sqbtn:hover { transform: none; }

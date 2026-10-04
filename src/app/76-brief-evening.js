@@ -1,5 +1,5 @@
 /* ============================================================
-   FINISH THE DAY (owner: Brief + Review): #view=review:evening.
+   FINISH THE DAY (owner: Brief + Review): #view=home:evening (Home's Evening tab).
    Same style as the Morning brief: a recap of what got done (tasks,
    subtasks ticked today, meetings that happened) in a warm, specific
    voice; what slipped with one-click "tomorrow" or a new date; tomorrow's
@@ -12,26 +12,26 @@
 const _ev = { picked: null, pickedFor: '', introFor: '', savedFor: '' };
 const EVENING_ROLL_REASON = 'Rolled over at the end of the day';
 
-function _evTomorrow(d) { d = d || new Date(); return fmtDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)); }
+function _evTomorrow(d) { return Clock.addDays(Clock.parts(d ? d.getTime() : Clock.now()).iso, 1); }
 function _evDayCounts() {
   const out = {};
-  for (const arr of Object.values(state.completionLog || {})) for (const ts of (arr || [])) { const d = fmtDate(new Date(Number(ts))); out[d] = (out[d] || 0) + 1; }
+  for (const arr of Object.values(state.completionLog || {})) for (const ts of (arr || [])) { const d = Clock.parts(Number(ts)).iso; out[d] = (out[d] || 0) + 1; }
   return out;
 }
 /** Everything the recap shows. */
 function eveningModel() {
-  const nowD = new Date(), date = todayStr(), now = _bfMin(nowD), tomorrow = _evTomorrow(nowD);
+  const nowD = new Date(Clock.now()), date = todayStr(), now = _bfMin(nowD), tomorrow = _evTomorrow(nowD);
   const seen = new Set(), done = [];
   for (const [id, arr] of Object.entries(state.completionLog || {})) {
     for (const ts of (arr || [])) {
-      if (fmtDate(new Date(Number(ts))) !== date || seen.has(id)) continue;
+      if (Clock.parts(Number(ts)).iso !== date || seen.has(id)) continue;
       const it = getItem(id); if (!it) continue;
       seen.add(id); done.push({ i: it, ts: Number(ts), type: animForTask(it).type, prio: effPriority(it) });
     }
   }
   done.sort((a, b) => (PRIORITY_ORDER[a.prio] ?? 3) - (PRIORITY_ORDER[b.prio] ?? 3) || a.ts - b.ts);
   const subs = [];
-  for (const it of getAllItems()) for (const s of effSubtasks(it)) if (s && s.done && s.doneAt && fmtDate(new Date(Number(s.doneAt))) === date) subs.push({ i: it, s });
+  for (const it of getAllItems()) for (const s of effSubtasks(it)) if (s && s.done && s.doneAt && Clock.parts(Number(s.doneAt)).iso === date) subs.push({ i: it, s });
   const events = _bfEventsOn(date);
   const happened = events.filter(e => !e.allDay && e.end <= now && !e.free);
   const meetings = happened.filter(e => BRIEF_MEETING_TYPES.includes(e.type));
@@ -57,7 +57,7 @@ function eveningModel() {
     if (d >= week.from && d <= date) thisWeek += n;
     if (d >= week.prevFrom && d <= briefAddDays(week.prevFrom, elapsed)) lastWeekSoFar += n;
   }
-  const rolledToday = Object.values(state.taskActivity || {}).reduce((t, list) => t + (list || []).filter(a => a && a.reason === EVENING_ROLL_REASON && fmtDate(new Date(a.ts)) === date).length, 0);
+  const rolledToday = Object.values(state.taskActivity || {}).reduce((t, list) => t + (list || []).filter(a => a && a.reason === EVENING_ROLL_REASON && Clock.parts(new Date(a.ts).getTime()).iso === date).length, 0);
   const w = _bfForcedWx(_bf.weather && _bf.weather.ok ? _bf.weather : null);
   return { date, nowD, now, tomorrow, done, subs, happened, meetings, slipped, tomEvents, tomTasks, cand: cand.slice(0, 12), streak, thisWeek, lastWeekSoFar, rolledToday, weather: w };
 }
@@ -142,7 +142,7 @@ function _evHero(m, intro) {
   hero.innerHTML = briefSkyHtml(cond === 'clear' || cond === 'partly' ? cond : cond === 'none' ? 'none' : cond, tod, { setting: true }) + `
     <div class="bf-hero-in">
       <div class="bf-hero-l">
-        <div class="bf-date overline">${esc(m.nowD.toLocaleDateString(APP_CONFIG.locale || undefined, { weekday: 'long', day: 'numeric', month: 'long' }))} · Finish the day</div>
+        <div class="bf-date overline">${esc(m.nowD.toLocaleDateString(APP_CONFIG.locale || undefined, { weekday: 'long', day: 'numeric', month: 'long', timeZone: Clock.zone() }))} · Finish the day</div>
         <h1 class="bf-greet">${intro ? kineticWordsHtml(greet, 120) : esc(greet)}</h1>
         <p class="bf-tagline">${esc(eveningPraise(m))}</p>
         <div class="bf-stats">${stats.map(s => `<span class="bf-stat"><b class="num" data-n="${escAttr(s.n)}">${intro ? '0' : esc(s.n)}</b> ${esc(s.n === 1 ? s.one : s.many)}</span>`).join('<span class="bf-dot" aria-hidden="true">·</span>')}</div>
@@ -163,7 +163,7 @@ function _evDone(m) {
   const shown = _ev.allDone ? m.done : m.done.slice(0, 6);
   for (const d of shown) {
     const li = document.createElement('li'); li.className = 'anim-hover-host'; li.style.setProperty('--i', i++);
-    li.innerHTML = `${animSceneHtml(d.type, { size: 'sm', hover: i > 3 })}<div class="ev-d-b"><div class="ev-d-t">${esc(effTitle(d.i))}</div><div class="ev-d-s">${_homeStreamHtml(effStream(d.i))}<span>${esc(new Date(d.ts).toLocaleTimeString(APP_CONFIG.locale || undefined, { hour: '2-digit', minute: '2-digit' }))}</span></div></div><span class="ev-tick">${icon('check', 'i-sm')}</span>`;
+    li.innerHTML = `${animSceneHtml(d.type, { size: 'sm', hover: i > 3 })}<div class="ev-d-b"><div class="ev-d-t">${esc(effTitle(d.i))}</div><div class="ev-d-s">${_homeStreamHtml(effStream(d.i))}<span>${esc(new Date(d.ts).toLocaleTimeString(APP_CONFIG.locale || undefined, { hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), timeZone: Clock.zone() }))}</span></div></div><span class="ev-tick">${icon('check', 'i-sm')}</span>`;
     li.onclick = () => homeOpenSheet(d.i.id, li);
     ul.appendChild(li);
   }

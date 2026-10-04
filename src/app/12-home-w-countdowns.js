@@ -107,6 +107,17 @@ function _hcdRender(el, ctx) {
     const rows = rest.slice(0, 4);
     body.innerHTML = _hcdHeroHtml(hero) + (rows.length ? `<div class="hcd-rows">${rows.map(_hcdRowHtml).join('')}</div>` : '') + _hcdMore(rest.length - rows.length, canEdit);
   }
+  // v2.2 wave 4: each countdown warms up as its date nears (78-anim-moments.js, 71-anim-moments.css)
+  if (typeof animCountdownAttrs === 'function') {
+    for (const n of body.querySelectorAll('[data-cd]')) {
+      const x = list.find(y => y.w.id === n.dataset.cd);
+      const a = x ? animCountdownAttrs(x.w.date) : null;
+      if (!a || !a.heat) continue;
+      n.classList.add(...a.cls.trim().split(' '));
+      n.style.setProperty('--ap-heat', String(a.heat));
+      if (n.classList.contains('hcd-hero') || n.classList.contains('is-first')) n.insertAdjacentHTML('beforeend', animCountdownArtHtml(a.heat));
+    }
+  }
   homeGrowEntering(card, 'countdowns', ctx.firstPaint);
   card.addEventListener('click', (e) => {
     const t = e.target.closest('[data-act], [data-cd]');

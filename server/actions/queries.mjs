@@ -20,6 +20,7 @@ import { HOME_QUERIES } from './queries-home.mjs';
 import { BRIEF_QUERIES } from './queries-brief.mjs';
 import { RESOURCE_QUERIES } from './ops-resources.mjs';
 import { AUTOLINK_QUERIES } from './ops-autolink.mjs';
+import { DAYNOTE_QUERIES } from './ops-daynotes.mjs';
 import { pplLinked, pplBuildIndex } from '../../lib/people-tags.mjs';
 
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
@@ -80,6 +81,7 @@ export function compactTask(q, t, pm = peopleMap(q.s)) {
   // Task fields added by the Tasks area (ops-tasks.mjs): time, plan, estimate, won't do.
   if (t.dueTime) o.time = t.dueTime;
   if (t.plannedFor) o.plannedFor = t.plannedFor;
+  if (t.plannedFor && t.plannedTime) { o.plannedTime = t.plannedTime; if (t.plannedMinutes) o.plannedMinutes = t.plannedMinutes; }
   if (t.estimate) o.estimateMinutes = t.estimate;
   if (o.status === 'done' && t.resolution === 'wontdo' && (t.resolvedAt || 0) >= ((((s.completionLog || {})[t.id]) || []).slice(-1)[0] || 0)) o.resolution = 'wontdo';
   return o;
@@ -132,7 +134,7 @@ export function rankTasks(q, text, { includeDone = false, limit = 8, stream, per
 export const QUERIES = [
   {
     name: 'context.get', tool: 'get_context',
-    description: 'START HERE. Today\'s date and weekday in the user\'s time zone, the next 14 days, the user, streams, people, tags, countdowns, counts, and what priorities/statuses mean.',
+    description: 'START HERE. Today\'s date and weekday in the user\'s current time zone (homeTimezone is where they live), the next 14 days, the user, streams, people, tags, countdowns, counts, and what priorities/statuses mean.',
     schema: obj({}),
     run(q) {
       const s = q.s;
@@ -156,6 +158,8 @@ export const QUERIES = [
       }
       return {
         today, weekday: q.clock.weekday, time: q.clock.time, timezone: q.clock.timezone,
+        // Where the user lives (finance days, "home"); timezone is where they are now (travel spec 6.6).
+        homeTimezone: q.clock.home || q.cfg.timezone,
         next14Days: Array.from({ length: 14 }, (_, i) => { const d = addDaysIso(today, i + 1); return `${d} ${weekdayOf(d).slice(0, 3)}`; }),
         thisWeek: weekRange(today, q.cfg.weekStart, 0), nextWeek: weekRange(today, q.cfg.weekStart, 1),
         weekStart: q.cfg.weekStart, locale: q.cfg.locale, currency: q.cfg.currency,
@@ -296,6 +300,8 @@ export const QUERIES = [
         id, title: t.title, ...(binned ? { binned: true, binnedAt: new Date(binned.binTs).toISOString() } : {}),
         status: binned ? (binned.status || 'todo') : statusOf(s, id),
         due: t.dueDate || null, ...(t.dueDate ? { daysLeft: daysBetween(q.clock.today, t.dueDate), weekday: weekdayOf(t.dueDate) } : {}),
+        // When the user plans to work on it (plan_task), never the deadline: the day, and a time slot.
+        ...(t.plannedFor ? { planned: { date: t.plannedFor, weekday: weekdayOf(t.plannedFor), ...(t.plannedTime ? { time: t.plannedTime, minutes: t.plannedMinutes || t.estimate || 30 } : {}) } } : {}),
         priority: t.priority || 'p0', stream: t.stream, streamLabel: labels.get(t.stream) || t.stream,
         tags: t.tags || [],
         people: linkedPeople(s, t).map(pid => ({ id: pid, name: pm.get(pid) ? pm.get(pid).name : null, ...((t.people || []).includes(pid) ? {} : { via: 'tag' }) })),
@@ -477,7 +483,7 @@ export const QUERIES = [
 
 // Calendar/Email queries (server/actions/calendar-queries.mjs) and People/Tags
 // queries (server/actions/queries-people.mjs) replace or add by name.
-for (const cq of [...CALENDAR_QUERIES, ...PEOPLE_QUERIES, ...HOME_QUERIES, ...RESOURCE_QUERIES, ...BRIEF_QUERIES, ...AUTOLINK_QUERIES]) {   // + queries-home.mjs (top bar, Home), ops-resources.mjs (Files & links), queries-brief.mjs (brief, reviews)
+for (const cq of [...CALENDAR_QUERIES, ...PEOPLE_QUERIES, ...HOME_QUERIES, ...RESOURCE_QUERIES, ...BRIEF_QUERIES, ...AUTOLINK_QUERIES, ...DAYNOTE_QUERIES]) {   // + ops-daynotes.mjs (Daily note)   // + queries-home.mjs (top bar, Home), ops-resources.mjs (Files & links), queries-brief.mjs (brief, reviews)
   const i = QUERIES.findIndex(x => x.name === cq.name);
   if (i >= 0) QUERIES[i] = cq; else QUERIES.push(cq);
 }

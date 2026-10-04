@@ -1,0 +1,15 @@
+{
+  "_about": "Monday 14:40, booked solid to 18:00 (gaps under 45 min only). Synthetic.",
+  "now": "2026-10-05T14:40",
+  "events": {
+    "2026-10-05": [
+      { "id": "m1", "title": "Supervision", "start": "14:30", "end": "15:45", "attendees": 1 },
+      { "id": "m2", "title": "Reading group", "start": "16:15", "end": "17:15", "attendees": 6 },
+      { "id": "m3", "title": "Call with Alex", "start": "17:30", "end": "18:00", "attendees": 1, "people": ["alex"] }
+    ]
+  },
+  "tasks": [
+    { "id": "t-report", "title": "Report draft: section 2", "priority": "p1", "focusWhy": ["High priority"] }
+  ],
+  "focus": ["t-report"]
+}

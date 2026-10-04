@@ -26,6 +26,7 @@ import { TASK_OPS } from './ops-tasks.mjs';
 import { BRIEF_OPS } from './ops-brief.mjs';
 import { RESOURCE_OPS } from './ops-resources.mjs';
 import { AUTOLINK_OPS, bindAutolinkOps } from './ops-autolink.mjs';
+import { DAYNOTE_OPS } from './ops-daynotes.mjs';
 import { tglRenameRefs } from '../../lib/people-tags.mjs';
 
 // ─── Schema building blocks ────────────────────────────────────────────────
@@ -145,7 +146,7 @@ function setStatus(ctx, t, v) {
       const next = advanceByRecurrence(t.dueDate || null, rec, ctx.today, t.repeatDay);
       out.push(...setDue(ctx, t, next, `repeats ${rec}`));
       if (Array.isArray(t.subtasks) && t.subtasks.some(x => x && x.done)) t.subtasks = t.subtasks.map(x => ({ ...x, done: false }));
-      delete t.plannedFor;
+      delete t.plannedFor; delete t.plannedTime; delete t.plannedMinutes;   // the planned slot goes with the plan
       s.statuses[t.id] = 'todo';
       out.push(change(t, 'status', 'done', 'todo (repeats)'));
     }
@@ -801,6 +802,7 @@ export const OPS = [
   ...RESOURCE_OPS,                                 // ops-resources.mjs (Files & links)
   ...BRIEF_OPS,                                    // ops-brief.mjs (Review: save a weekly review / evening recap)
   ...AUTOLINK_OPS,                                 // ops-autolink.mjs (auto-linking: suggest, rate, apply, reject, relate)
+  ...DAYNOTE_OPS,                                  // ops-daynotes.mjs (Home's Daily note: save a day's markdown)
 ];
 extendPeopleOps(OPS);                              // ops-people.mjs (People + tag registry)
 // ops-home.mjs (top bar + Home): replaces countdown.* with the 2.0 widget versions, adds the rest.

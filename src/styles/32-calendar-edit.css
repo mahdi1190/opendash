@@ -1,0 +1,109 @@
+/* ============================================================
+   CALENDAR GRID EDITING (45-calendar-grid-edit.js): resize handles, drag
+   ghosts, drafts, the quick-create popover, the saving shimmer and the
+   revert flash. Google Calendar's interactions on the mockups' look.
+   ============================================================ */
+
+/* Dragging across the grid never selects text; a finger holding an event gets no callout. */
+.cge-on .wv-grid, .cge-on .wv-head, .month.cge-on { -webkit-user-select: none; user-select: none; }
+.cge-on .wv-ev, .cge-on .wv-allbar, .month.cge-on .ce { -webkit-touch-callout: none; }
+
+/* ---------- handles: the edges of an editable timed block ---------- */
+.cge-rz { position: absolute; left: 0; right: 0; height: 8px; z-index: 2; cursor: ns-resize; touch-action: none; }
+.cge-rz-s { bottom: 0; }
+.cge-rz-n { top: 0; }
+/* Google's small "=" grip, shown on hover */
+.cge-rz::after { content: ""; position: absolute; left: 50%; width: 14px; height: 2px; margin-left: -7px; border-top: 1px solid currentColor; border-bottom: 1px solid currentColor; opacity: 0; transition: opacity var(--m-fast) var(--m-ease-out); }
+.cge-rz-s::after { bottom: 2px; }
+.cge-rz-n::after { top: 2px; }
+.wv-ev:hover > .cge-rz::after, .wv-ev.cge-resizing > .cge-rz::after { opacity: .5; }
+.wv-ev.cge-resizing { z-index: 5; box-shadow: var(--shadow-md); transform: none; transition: none; }
+.wv-ev.cge-resizing .wv-s { display: block; }
+.wv-ev.cge-resizing.short .wv-s { display: inline; }
+
+/* ---------- selection: the event the keys act on ---------- */
+.wv .wv-ev.cge-sel, .wv .wv-allbar.cge-sel { box-shadow: 0 0 0 2px var(--accent), var(--shadow-sm); z-index: 3; }
+.month .ce.cge-sel { box-shadow: inset 0 0 0 1.5px var(--accent); }
+
+/* ---------- a drag in progress ---------- */
+.cge-src { opacity: .4; }
+.wv .cge-src.cge-sel, .month .cge-src.cge-sel { box-shadow: none; }
+.cge-lifted { box-shadow: var(--shadow-drag); }
+body.cge-dragging, body.cge-dragging * { cursor: grabbing !important; }
+body.cge-m-resize, body.cge-m-resize * { cursor: ns-resize !important; }
+body.cge-m-create, body.cge-m-create * { cursor: default !important; }
+body.cge-dragging .wv-ev:hover { transform: none; }
+body.cge-dragging .tip:not(.cge-hint), body.cge-dragging .anim-tip { display: none; }   /* no tooltip or hover scene for what the pointer crosses */
+
+/* the ghost: where it lands, snapped, with the time it will have */
+.cge-ghost { pointer-events: none; z-index: 6; transition: none; box-shadow: var(--shadow-drag); }
+.wv-ev.cge-ghost { left: 2px; right: 4px; }
+.wv-ev.cge-ghost .wv-s { display: block; font-weight: var(--weight-medium); }
+.wv-ev.cge-ghost.short { flex-direction: row; align-items: center; gap: 6px; }
+.wv-ev.cge-ghost.short .wv-s { display: inline; }
+.wv-allbar.cge-ghost { position: absolute; top: 4px; height: 22px; margin: 0; }
+.wv-allbar.cge-ghost .wv-t { display: flex; min-width: 0; overflow: hidden; }
+.wv-allbar.cge-ghost .cge-gl { margin-left: auto; padding-left: 8px; font-weight: var(--weight-regular); opacity: .75; flex: none; }
+.wv-allbar.cge-ghost .cge-gl:empty { display: none; }
+
+/* month: target days light up; the chip sits in the first one */
+.mc.cge-mt { background: color-mix(in oklab, var(--accent) 7%, var(--surface)); box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--accent) 55%, transparent); }
+.ce.cge-mghost { position: fixed; z-index: calc(var(--z-dropdown) - 1); pointer-events: none; height: 22px; padding: 0 6px; border-radius: 5px; background: var(--surface-raised); box-shadow: var(--shadow-drag); }
+.ce.cge-mghost.allday { background: color-mix(in oklab, var(--c) 22%, var(--surface)); }
+.ce.cge-mghost time:empty { display: none; }
+
+/* a new block being drawn (and while its quick-create is open): Google's solid draft */
+.cge-draft:not(.is-task):not(.tk) { background: color-mix(in oklab, var(--c) 82%, var(--surface)); border-left-color: var(--c); color: var(--fg-on-accent); }
+.cge-draft:not(.is-task):not(.tk) .wv-s, .cge-draft:not(.is-task):not(.tk) time { color: color-mix(in oklab, var(--fg-on-accent) 85%, transparent); }
+.cge-draft.is-task, .ce.cge-draft.tk { background: var(--surface); color: var(--fg); }
+.ce.cge-draft.tk { box-shadow: inset 0 0 0 1.5px var(--border-strong), var(--shadow-md); }
+
+/* ---------- saving to Google: a quiet shimmer; a failed write flashes as it goes back ---------- */
+.ce.cge-saving, .agd-row.cge-saving { position: relative; }   /* .wv-ev is absolute and .wv-allbar relative already */
+.cge-saving::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, color-mix(in oklab, var(--surface) 55%, transparent) 50%, transparent 70%) 0 0 / 250% 100% no-repeat;
+  animation: cge-shimmer 1.3s linear infinite; }
+@keyframes cge-shimmer { from { background-position: 130% 0; } to { background-position: -130% 0; } }
+@media (prefers-reduced-motion: reduce) { .cge-saving::after { animation: none; background: color-mix(in oklab, var(--surface) 30%, transparent); } }
+html[data-motion="reduced"] .cge-saving::after { animation: none; background: color-mix(in oklab, var(--surface) 30%, transparent); }
+.cge-revert { animation: cge-revert .9s var(--m-ease-out) 1; }
+@keyframes cge-revert { 0%, 40% { box-shadow: 0 0 0 2px var(--danger), var(--shadow-md); } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* ---------- read-only events: no handles, the reason in the tooltip ---------- */
+.wv-ev.cge-ro, .wv-allbar.cge-ro, .ce.cge-ro { cursor: pointer; }
+
+/* ---------- the quick-create popover (beside the draft, as Google's) ---------- */
+.pop.cge-qc { max-width: min(380px, calc(100vw - 16px)); padding: var(--space-2) var(--space-4) var(--space-3); overflow: visible; }
+.cge-qc-top { display: flex; justify-content: flex-end; margin: 0 calc(-1 * var(--space-2)) 0 0; }
+.cge-qc-title { display: block; width: 100%; box-sizing: border-box; margin: 0 0 var(--space-3); padding: 6px 2px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none;
+  font: inherit; font-size: var(--text-xl); line-height: 28px; color: var(--fg); outline: none; transition: border-color var(--m-fast) ease; }
+.cge-qc-title:focus { border-bottom: 2px solid var(--accent); padding-bottom: 5px; }
+.cge-qc-title::placeholder { color: var(--fg-subtle); }
+.cge-qc-kind { margin-bottom: var(--space-3); }
+.cge-qc-kind button { display: inline-flex; align-items: center; gap: 6px; }
+.cge-qc-kind button:disabled { opacity: .45; cursor: not-allowed; }
+.cge-qc-rows { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--space-3); }
+.cge-qc-row { display: flex; align-items: center; gap: var(--space-3); min-height: 32px; font-size: var(--text-sm); color: var(--fg); }
+.cge-qc-row[hidden] { display: none; }
+.cge-qc-row > .i { color: var(--fg-subtle); flex: none; }
+.cge-qc-row input { flex: 1; min-width: 0; height: 30px; padding: 0 8px; margin-left: -8px; border: 0; border-radius: var(--radius-sm); background: none; font: inherit; color: var(--fg); outline: none; }
+.cge-qc-row input:hover { background: var(--bg-muted); }
+.cge-qc-row input:focus { background: var(--bg-subtle); box-shadow: inset 0 -2px 0 var(--accent); }
+.cge-qc-row select { flex: 1; min-width: 0; }
+.cge-qc-tnote { color: var(--fg-muted); font-size: var(--text-xs); }
+.cge-qc-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--sw-blue)); flex: none; margin-right: -4px; }
+.cge-qc-why { margin: 2px 0 0; font-size: var(--text-xs); color: var(--fg-subtle); }
+.cge-qc-why[hidden] { display: none; }
+.cge-qc-f { display: flex; justify-content: flex-end; gap: var(--space-2); }
+
+/* ---------- colour hooks for the pieces above ---------- */
+:is(.cge-qc-dot).c-indigo { --c: var(--sw-indigo); }
+:is(.cge-qc-dot).c-blue { --c: var(--sw-blue); }
+:is(.cge-qc-dot).c-teal { --c: var(--sw-teal); }
+:is(.cge-qc-dot).c-green { --c: var(--sw-green); }
+:is(.cge-qc-dot).c-amber { --c: var(--sw-amber); }
+:is(.cge-qc-dot).c-orange { --c: var(--sw-orange); }
+:is(.cge-qc-dot).c-red { --c: var(--sw-red); }
+:is(.cge-qc-dot).c-pink { --c: var(--sw-pink); }
+:is(.cge-qc-dot).c-violet { --c: var(--sw-violet); }
+:is(.cge-qc-dot).c-slate { --c: var(--sw-slate); }

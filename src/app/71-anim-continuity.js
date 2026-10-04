@@ -23,7 +23,7 @@
 const _ASC_FORGET_MS = 2500;
 const _ascKeys = new Map();          // key -> {t0, el, goneAt}
 const _ascStamped = new WeakSet();   // live scenes already given their --as-t
-let _ascView = null, _ascHiddenAt = 0;
+let _ascView = null, _ascHiddenAt = 0, _ascSkyHidden = 0;   // _ascSkyHidden: ms the tab spent hidden (the sky clock pauses with it)
 
 function _ascNow() {
   const t = document.timeline && document.timeline.currentTime;
@@ -47,11 +47,31 @@ function _ascStamp(el, now) {
   if (age > 0) el.style.setProperty('--as-t', (age / 1000).toFixed(3) + 's');
   else el.style.removeProperty('--as-t');
 }
+// A sky scrolled out of view pauses its loops (77-sky-ambient.css .is-offscreen).
+let _ascIO = null;
+const _ascSkies = new Set();
+function _ascSkyIO(sky) {
+  if (typeof IntersectionObserver !== 'function') return;
+  if (!_ascIO) _ascIO = new IntersectionObserver((es) => { for (const e of es) e.target.classList.toggle('is-offscreen', !e.isIntersecting); });
+  for (const s of _ascSkies) if (!s.isConnected) { _ascIO.unobserve(s); _ascSkies.delete(s); }
+  _ascSkies.add(sky);
+  _ascIO.observe(sky);
+}
 function _ascSweep() {
   let view = '';
-  try { view = String(state.view || ''); } catch (e) { view = ''; }
+  // Keys start fresh on a SECTION change only: a sub move (person A to B, a Settings group,
+  // a Review tab, a calendar mode) keeps the scenes that stay on screen running (C7).
+  try { view = typeof navSectionOf === 'function' ? navSectionOf(state.view) : String(state.view || ''); } catch (e) { view = ''; }
   if (view !== _ascView) { _ascView = view; _ascKeys.clear(); }
   const now = _ascNow();
+  // Weather skies run on one session clock: a rebuilt sky (a save, a re-click, live sync) gets
+  // --sky-t = the time since the page loaded, and 74-brief.css subtracts it from every layer's
+  // delay, so the stars, clouds and rain carry on where they were instead of restarting (C5).
+  for (const sky of document.querySelectorAll('.bf-sky:not([data-sky-t]), .tc-hero-bg:not([data-sky-t])')) {
+    sky.setAttribute('data-sky-t', '');
+    sky.style.setProperty('--sky-t', ((now - _ascSkyHidden) / 1000).toFixed(3) + 's');
+    if (sky.classList.contains('bf-sky')) _ascSkyIO(sky);
+  }
   for (const [k, e] of _ascKeys) {
     if (e.el.isConnected) { e.goneAt = 0; continue; }
     if (!e.goneAt) e.goneAt = now;
@@ -77,6 +97,7 @@ if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined' &
     if (!_ascHiddenAt) return;
     const away = _ascNow() - _ascHiddenAt;     // the scenes were paused that long: shift every key with them
     _ascHiddenAt = 0;
+    _ascSkyHidden += away;
     for (const e of _ascKeys.values()) e.t0 += away;
   });
 }

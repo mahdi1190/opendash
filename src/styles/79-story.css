@@ -266,6 +266,15 @@ html.story-open body > :not(.story) .bf-sky * { animation-play-state: paused !im
 .story.st-still *, .story.st-still *::before, .story.st-still *::after { animation: none !important; transition: none !important; }
 .story.st-still .st-ent { background-size: 100% 0.36em; }
 
+/* ---------- inline: the same stage inside a panel (Story.open(kind, {container})) ----------
+   Laid out at the window's size (so vw / vh / innerWidth mean what every beat expects) and
+   scaled into the container by --st-k; the container (.st-host) gets the height from the
+   engine. The panel draws its own controls, so the stage's dock and top-right buttons hide.
+   Expanded (.is-expanded) it is the ordinary full-screen story. */
+.st-host { position: relative; overflow: hidden; isolation: isolate; }
+.story.is-inline { position: absolute; inset: 0 auto auto 0; width: 100vw; height: 100vh; z-index: 0; transform: scale(var(--st-k, 0.5)); transform-origin: 0 0; outline: none; }
+.story.is-inline .st-ctrl, .story.is-inline .st-top-r, .story.is-inline .st-poster-opts { display: none; }
+
 /* ---------- entry button on the brief / evening / weekly pages ---------- */
 .st-entry-host { position: relative; }
 .st-entry-row { position: absolute; z-index: 5; top: 14px; left: 16px; }   /* top-left: the hero keeps the weather on the right */

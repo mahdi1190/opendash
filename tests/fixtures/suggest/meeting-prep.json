@@ -1,0 +1,15 @@
+{
+  "_about": "Monday 10:00: a call with Sam at 14:00, and the user owes Sam two things; 13:30-14:00 is free (S4). Synthetic.",
+  "now": "2026-10-05T10:00",
+  "events": {
+    "2026-10-05": [
+      { "id": "call1", "title": "Call with Sam", "start": "14:00", "end": "14:30", "attendees": 1, "people": ["sam"], "organizerSelf": false, "type": "call" }
+    ]
+  },
+  "tasks": [
+    { "id": "t-budget", "title": "Send the budget to Sam", "priority": "p2", "people": ["sam"] },
+    { "id": "t-notes", "title": "Share the workshop notes", "priority": "p3", "people": ["sam"] },
+    { "id": "t-wait", "title": "Data files from Sam", "priority": "p2", "waiting": true, "people": ["sam"] }
+  ],
+  "focus": ["t-budget"]
+}

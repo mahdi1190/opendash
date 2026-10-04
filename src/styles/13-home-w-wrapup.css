@@ -1,0 +1,103 @@
+/* Home widget "wrapup" (After meetings): its styles.
+   OWNER: the "wrapup" widget builder (WIDGETS_CATALOGUE.md 3.5). 12-home-w-wrapup.js.
+   Loaded after 13-home-core.css, 13-home-platform.css and the glances kit (.hgl-*), which
+   it reuses for the header, rows, mini buttons and foot. Every rule is scoped to .wu.
+   The card is its own inline-size container: the rows adapt to the card's width
+   (S / M / L, half width on a tablet, one column on a phone). Reduced motion: no
+   transitions here beyond the kit's colour fades. */
+
+.wu { container-type: inline-size; display: flex; flex-direction: column; min-height: 100%; }
+.wu > .card-b { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: var(--space-1) var(--space-4) var(--space-4); }
+.wu .hgl-h .hg-gear { margin-left: 2px; }
+
+/* S: the count, then the latest meeting */
+.wu-sum { margin: 0 0 6px; display: flex; align-items: baseline; gap: 8px; font-size: 13px; color: var(--fg-muted); }
+.wu-sum .num { font-size: 28px; line-height: 32px; font-weight: var(--weight-semibold); letter-spacing: -0.03em; color: var(--fg); font-variant-numeric: tabular-nums; }
+
+/* rows */
+.wu-list { list-style: none; margin: 0 -8px; padding: 0; display: flex; flex-direction: column; }
+.wu-row { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 6px 8px 8px; cursor: default; }
+.wu-row:hover { background: var(--bg-muted); }
+.wu-list > .wu-row + .wu-row::before { content: ''; position: absolute; left: 8px; right: 8px; top: 0; border-top: 1px solid var(--border-subtle); }
+[data-theme="dark"] .wu-list > .wu-row + .wu-row::before { border-top-color: var(--border); }
+.wu-list > .wu-row:hover::before, .wu-list > .wu-row:hover + .wu-row::before,
+.wu-row[aria-current="true"]::before, .wu-row[aria-current="true"] + .wu-row::before { opacity: 0; }
+.wu-row[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 30%, transparent); }
+
+.wu-main {
+  display: flex; align-items: center; gap: 10px; width: calc(100% + 8px); min-width: 0; padding: 2px 4px; margin: 0 -4px;
+  border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 8px;
+}
+.wu-main:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.wu-row[aria-current="true"] .wu-main { cursor: default; }
+.wu-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.wu-tt { font-size: 13px; line-height: 18px; font-weight: var(--weight-medium); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wu-meta { display: block; font-size: 12px; line-height: 16px; color: var(--fg-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wu-has { display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; color: var(--fg-muted); }
+.wu-has .i { width: 11px; height: 11px; }
+
+.wu-avs { display: inline-flex; flex: none; padding-left: 4px; }
+.wu-avs .avatar { margin-left: -4px; box-shadow: 0 0 0 2px var(--surface); }
+.wu-row:hover .wu-avs .avatar { box-shadow: 0 0 0 2px var(--bg-muted); }
+.wu-more-av { background: var(--bg-muted); color: var(--fg-muted); font-size: 10px; }
+[data-theme="dark"] .wu-more-av { background: var(--bg-subtle); }
+
+/* the buttons: Note, Follow-up (+ ✓), Thank-you (+ ✓), Nothing needed */
+.wu-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.wu-acts .hgl-mini { height: 26px; }
+.wu-acts .hgl-mini[aria-pressed="true"], .wu-acts .hgl-mini.is-done { background: var(--accent-soft); border-color: color-mix(in oklab, var(--accent) 35%, var(--border)); cursor: default; }
+.wu-split { display: inline-flex; }
+.wu-split > .hgl-mini:first-child:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.wu-split > .wu-ok { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; width: 26px; padding: 0; justify-content: center; }
+.wu-ok .i { color: var(--success-ink); }
+.wu-b-done { margin-left: auto; color: var(--fg-muted); }
+.wu-acts .hgl-mini.is-busy { opacity: 0.7; cursor: progress; }
+
+/* S: icon buttons under the latest meeting */
+.wu--s .wu-row { padding-bottom: 6px; }
+.wu--s .wu-acts { gap: 6px; }
+.wu--s .wu-acts > .hgl-mini, .wu--s .wu-split > .hgl-mini:first-child { width: 30px; padding: 0; justify-content: center; }
+.wu--s .wu-b-done { margin-left: 0; }
+
+/* the note box (opened in place) */
+.wu-panel { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding: 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-xs); }
+.wu-note { width: 100%; min-height: 72px; font-size: 13px; }
+.wu-ticks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.wu-tick { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-muted); cursor: pointer; }
+.wu-tick input, .wu-fu input[type="checkbox"] { width: 14px; height: 14px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.wu-fu { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; }
+.wu-fu-l { font-size: 12px; color: var(--fg-muted); white-space: nowrap; cursor: pointer; }
+.wu-fu-t { min-width: 0; width: 100%; font-size: 12px; }
+.wu-due { gap: 4px; height: var(--control-h-sm, 24px); white-space: nowrap; }
+.wu-due .i { width: 12px; height: 12px; }
+.wu-pacts { display: flex; align-items: center; gap: 6px; }
+.wu-hint { margin-left: auto; display: inline-flex; gap: 2px; opacity: 0.8; }
+
+/* foot: "+N more", "Updated 07:02" */
+.wu-foot { flex-wrap: wrap; }
+.wu-foot .wu-more { margin-left: auto; height: 24px; padding: 0 6px; font-size: 12px; gap: 3px; }
+.wu-foot .wu-more .i, .wu-upd .i { width: 13px; height: 13px; }
+.wu-upd { height: 24px; padding: 0 6px; font-size: 12px; gap: 5px; color: var(--fg-subtle); }
+.wu-upd:hover { color: var(--fg); }
+.wu-later { font-size: 12px; color: var(--fg-subtle); }
+
+/* "All wrapped up" (right after the last one) */
+.wu-clear { display: flex; align-items: center; gap: 14px; padding: 10px 2px 4px; }
+.wu-clear-art { flex: none; display: inline-flex; }
+.wu-clear-art > .i { width: 28px; height: 28px; color: var(--success-ink); }
+.wu-clear > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wu-clear b { font-size: 14px; font-weight: var(--weight-semibold); color: var(--fg); }
+.wu-clear span { font-size: 12px; line-height: 17px; color: var(--fg-muted); }
+
+/* narrow cards (a phone, S at half width): labels shorten, the follow-up line wraps */
+@container (max-width: 420px) {
+  .wu:not(.wu--s) .wu-acts .hgl-mini > span { display: none; }
+  .wu:not(.wu--s) .wu-acts > .hgl-mini, .wu:not(.wu--s) .wu-split > .hgl-mini:first-child { width: 30px; padding: 0; justify-content: center; }
+  .wu-fu { grid-template-columns: auto minmax(0, 1fr); }
+  .wu-fu-t { grid-column: 1 / -1; }
+  .wu-hint { display: none; }
+  .wu-avs { display: none; }
+}
+@container (max-width: 260px) {
+  .wu-dur, .wu-dot:has(+ .wu-dur) { display: none; }
+}

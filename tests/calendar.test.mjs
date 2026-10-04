@@ -118,7 +118,11 @@ test('runner: calendar-read may list calendars and read events, nothing else', (
 
 // ─── the calendar job ────────────────────────────────────────────────────────
 let dir;
-beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'cal-test-')); mkdirSync(join(dir, 'calendar'), { recursive: true }); });
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), 'cal-test-')); mkdirSync(join(dir, 'calendar'), { recursive: true });
+  // The page saw the computer on London time: days are London days whatever this machine's TZ is.
+  writeFileSync(join(dir, 'time.json'), JSON.stringify({ version: 1, system: { zone: 'Europe/London', at: new Date().toISOString() }, changes: [] }));
+});
 // (Retries: Windows can briefly hold a file that was just written and closed.)
 afterEach(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }));
 const svcWith = (run, extra = {}) => createCalendarService({ dataDir: dir, paths: dataPaths(dir), getConfig: () => ({ timezone: 'Europe/London' }), run, ...extra });

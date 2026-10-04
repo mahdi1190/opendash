@@ -41,6 +41,8 @@ registerSection('finance', {
     return sub ? [sub] : [];
   },
   layout: 'wide',
+  // render() keeps the mounted root attached (80-main-render.js): re-attaching it replayed the KPI entrance (C6).
+  keepRoot: (main) => !!(window.FinanceView && main.childElementCount === 1 && main.firstElementChild.classList.contains('fv')),
   mount(container) { renderFinanceView(container); },
   unmount() { try { if (window.FinanceView && FinanceView.unmount) FinanceView.unmount(); } catch (e) { console.error('[finance] unmount', e); } },
 });

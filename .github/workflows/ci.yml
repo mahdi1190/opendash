@@ -54,6 +54,36 @@ jobs:
       - name: Privacy scan (generic rules)
         run: node tools/privacy-scan.mjs --no-terms
 
+  # The same suite with the machine's clock in other time zones: ahead of
+  # UTC, behind it, a half-hour zone and the +14 date line. The DST weeks
+  # (UK 25 Oct, US 1 Nov) are covered inside tests/clock.test.mjs.
+  timezones:
+    name: Time zone ${{ matrix.tz }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        tz: [America/New_York, Asia/Tokyo, Australia/Adelaide, Pacific/Kiritimati]
+    env:
+      TZ: ${{ matrix.tz }}
+      CLAUDE_CLI_PATH: ${{ github.workspace }}/.no-claude-cli/claude
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+
+      - name: Build index.html
+        run: node build.mjs
+
+      - name: Tests (TZ=${{ matrix.tz }})
+        shell: bash
+        run: node --test tests/*.test.mjs
+
   # The same suite with no network and no Claude CLI, as on a user's offline
   # machine. Advisory until every network or Claude test skips cleanly.
   offline:

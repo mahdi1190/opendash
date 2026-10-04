@@ -10,6 +10,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { loadPageClock } from './fixtures/page-clock.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'src', 'app');
@@ -63,6 +64,7 @@ function homeBox(st) {
   };
   box.document.activeElement = box.document.body;
   vm.createContext(box);
+  loadPageClock(box);   // Home's hours come from the page's Clock (travel spec 2.7 P12)
   vm.runInContext(HOME_FILES.map(f => readFileSync(join(APP, f), 'utf8')).join('\n'), box, { filename: 'home-bundle.js' });
   const fire = (t) => { for (const f of listeners[t] || []) f({}); };
   return { box, state, sections, timers, errors, fire, run: (code) => vm.runInContext(code, box) };

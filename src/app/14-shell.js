@@ -421,10 +421,41 @@ function setBrandMark(el, name) {
   el.replaceChildren(img);
 }
 
+/* ---------- the light/dark switch ---------- */
+const _SHELL_TT_SVG = '<svg class="i tt-morph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><defs><mask id="tt-mask">'
+  + '<rect width="24" height="24" fill="#fff"/><circle class="tt-bite" cx="12" cy="12" r="6.5" fill="#000"/></mask></defs>'
+  + '<g class="tt-rays">' + [0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4, c = Math.cos(a), s = Math.sin(a); return `<path d="M${(12 + 7.5 * c).toFixed(2)} ${(12 + 7.5 * s).toFixed(2)}L${(12 + 10 * c).toFixed(2)} ${(12 + 10 * s).toFixed(2)}"/>`; }).join('') + '</g>'
+  + '<circle class="tt-core" cx="12" cy="12" r="4.5" mask="url(#tt-mask)"/>'
+  + '<g class="tt-stars"><path d="M19 4.5v3M17.5 6h3"/><path d="M21 12.5v2M20 13.5h2"/><path d="M4 4.5v2M3 5.5h2"/></g></svg>';
+let _shellThemeSwapVariant = null;   // a one-off variant ref (the gallery's "Try it")
+let _shellThemeTo = null;            // the theme a running swap is about to apply
+/** Options for Motion.themeSwap: where the toggle is, and today's variant from the animation library. */
+function _shellThemeSwapOpts(theme) {
+  const tt = document.getElementById('theme-toggle');
+  const r = tt && tt.getBoundingClientRect();
+  const origin = r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  let it = _shellThemeSwapVariant && typeof animItem === 'function' ? animItem(_shellThemeSwapVariant) : null;
+  if (!it && typeof animToday === 'function') { try { it = animToday('theme-switch'); } catch (e) { it = null; } }
+  return { origin, dark: theme === 'dark', kind: it && it.vt ? it.vt.kind : 'fade', ms: it && it.vt ? it.vt.ms : 320 };   // every variant blocked: the plain crossfade
+}
+
 /** Repaint the chrome. render() calls this before the sidebar and main. */
 function renderShell() {
   const html = document.documentElement;
-  html.setAttribute('data-theme', state.theme === 'dark' ? 'dark' : 'light');
+  const theme = state.theme === 'dark' ? 'dark' : 'light';
+  const was = html.getAttribute('data-theme');
+  // A theme change plays the day's light/dark transition once (src/motion.js themeSwap: a circular
+  // reveal from the toggle, a dusk wipe or a crossfade; the animation library's 'theme-switch' slot).
+  // The swap applies asynchronously (inside the View Transition), so a second render before it lands
+  // must not start another one (that would cancel the first); apply reads the theme wanted by then.
+  if (was && was !== theme && window.Motion && Motion.themeSwap) {
+    if (_shellThemeTo !== theme) {
+      _shellThemeTo = theme;
+      Motion.themeSwap(() => { _shellThemeTo = null; html.setAttribute('data-theme', state.theme === 'dark' ? 'dark' : 'light'); }, _shellThemeSwapOpts(theme));
+    }
+  } else if (!_shellThemeTo) html.setAttribute('data-theme', theme);
+  _shellThemeSwapVariant = null;
+  if (typeof animThemeApply === 'function') animThemeApply();
   html.setAttribute('data-density', state.density === 'compact' ? 'compact' : 'normal');
   const app = document.getElementById('app');
   if (app) {
@@ -437,7 +468,9 @@ function renderShell() {
   const tt = document.getElementById('theme-toggle');
   if (tt) {
     const dark = state.theme === 'dark';
-    tt.innerHTML = icon(dark ? 'sun' : 'moon');
+    // The icon shows the current mode and morphs: sun -> moon with stars going dark, back going light.
+    if (!tt.querySelector('.tt-morph')) tt.innerHTML = _SHELL_TT_SVG;
+    tt.classList.toggle('is-dark', dark);
     tt.setAttribute('data-tip', dark ? 'Light mode' : 'Dark mode');
     tt.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
   }
@@ -463,7 +496,7 @@ registerMoreItem({ id: 'focus', label: 'Focus mode', icon: 'focus', order: 120, 
   run: () => { state.focus = !state.focus; saveUI(); render(); } });
 registerMoreItem({ id: 'reduce-motion', label: 'Reduce motion', icon: 'sparkle', order: 130,
   checked: () => !!(window.Motion && Motion.prefersReduced()),
-  disabled: () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+  disabled: () => (window.Motion && Motion.systemReduced ? Motion.systemReduced() : !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)),
   title: 'Turn interface animations down to the minimum (saved on this device)',
   run: () => { if (window.Motion) Motion.setReduced(!Motion.prefersReduced()); } });
 registerMoreItem({ id: 'briefing', label: 'Morning briefing', icon: 'sunrise', order: 210, hidden: () => !HAS_COWORK, run: () => runMorningBriefing() });

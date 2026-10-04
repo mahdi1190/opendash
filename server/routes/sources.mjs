@@ -71,7 +71,7 @@ export default function register(app) {
       const { source, errors } = validateSource({ ...(existing || {}), ...input, id: (existing && existing.id) || newSourceId(input.capability, input.label || input.server), ...(existing && existing.kind === 'ical' && !input.url ? { url: existing.url } : {}) });
       if (errors.length) throw new HttpError(400, errors.join('; '));
       const cfg = getConfig() || {};
-      const tz = cfg.timezone || 'UTC';
+      const tz = (c.clockNow && c.clockNow().timezone) || cfg.timezone || 'UTC';   // effective zone (travel spec S5)
       const today = isoDay(new Date(), tz);
       const t0 = Date.now();
       try {

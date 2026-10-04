@@ -92,8 +92,9 @@ bootStatePersistence().then(() => {
   if (AI_AVAILABLE || GOOGLE_CONNECTED) render();
   if (GOOGLE_CONNECTED) fetchCalendarEvents();
   _pollAiStatus(8);
-  if (typeof briefMaybeAutoOpen === 'function') setTimeout(briefMaybeAutoOpen, 600);   // the Morning brief, first visit of the day (74-brief-ui.js)
+  if (typeof briefMaybeAutoOpen === 'function') setTimeout(briefMaybeAutoOpen, 600);   // Home's morning greeting, first visit of the day (74-brief-ui.js)
   if (typeof liveSyncStart === 'function') liveSyncStart();   // changes from the assistant, MCP clients, other tabs
+  if (typeof clockBoot === 'function') clockBoot();           // the time-zone sensor, banner and server sync (87-clock-ui.js)
 });
 
 // Persist when the tab is hidden (normal request) or closed (beacon), so the

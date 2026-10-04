@@ -7,15 +7,41 @@
    ============================================================ */
 // The data change (state.view + save) is instant; only the repaint runs inside
 // a View Transition (src/motion.js) when one is available.
+// Navigation kinds (src/app/09-motion-logic.js, MOTION_SYSTEM §6):
+//   same: re-selecting the current view is a no-op (scroll to the top if scrolled);
+//   sub : same section (a Settings group, a Review tab, a person, a task view): no View
+//         Transition; only the section's changing pane animates (Motion.afterMain);
+//   page: another section: the View Transition and the page entrance.
+// Callers that need a refresh call render(), not setView(sameView).
+/* The Morning brief and the Review pages became Home (user request, 4 Oct): Home's
+   Today / Evening / Week / History tabs are 'home', 'home:evening', 'home:week' and
+   'home:history'. Old names (links, bookmarks, saved views, other code) land there. */
+function viewAlias(v) {
+  if (typeof v !== 'string') return v;
+  if (v === 'review' || v === 'review:today' || v === 'home:today' || v === 'brief') return 'home';
+  const m = /^review:(evening|week|history)$/.exec(v);
+  return m ? 'home:' + m[1] : v;
+}
 function setView(v) {
-  const changed = state.view !== v;
+  v = viewAlias(v);
+  const from = state.view;
+  const person = typeof v === 'string' && v.startsWith('person:');
+  if (from === v && !(person && state.selectedTaskId)) {
+    closePopovers();
+    if (window.Motion && Motion.scrollTopIfScrolled) Motion.scrollTopIfScrolled(document.getElementById('main'));
+    return;
+  }
   // The person panel only renders when no task is selected, so going to a
   // person must close any open task panel (otherwise the person never shows).
-  if (typeof v === 'string' && v.startsWith('person:')) state.selectedTaskId = null;
+  if (person) state.selectedTaskId = null;
   state.view = v; saveUI();
   _syncViewHash();
   closePopovers();
-  if (changed && window.Motion) Motion.viewTransition(render); else render();
+  if (!window.Motion) { render(); return; }
+  const kind = from === v ? 'same' : motionNavKind(from, v, (x) => { const s = sectionFor(x); return s ? s.name : null; });
+  if (kind === 'same') { render(); return; }
+  if (Motion.navigate) Motion.navigate(render, { kind, dir: motionNavDir(from, v, (x) => { const s = sectionFor(x); return s ? s.name : null; }) });
+  else Motion.viewTransition(render);
 }
 
 // Hash routing: '#view=<name>' (e.g. #view=finance, #view=stream:<id>)
@@ -25,7 +51,7 @@ const _HASH_VIEWS = new Set(['home', 'today', 'tomorrow', 'week', 'all', 'no-dat
 function _viewFromHash(hash) {
   const m = /^#view=(.+)$/.exec(hash == null ? (location.hash || '') : hash);
   if (!m) return null;
-  let v; try { v = decodeURIComponent(m[1]); } catch (e) { return null; }
+  let v; try { v = viewAlias(decodeURIComponent(m[1])); } catch (e) { return null; }
   if (_HASH_VIEWS.has(v)) return v;
   { const sec = sectionFor(v); if (sec && sec.hashable) return v; }   // registerSection() views
   if (/^stream:/.test(v)) return STREAMS[v.slice(7)] ? v : null;
@@ -123,21 +149,54 @@ function _sbNewStream() {
   setTimeout(() => { const i = document.querySelector('input[aria-label="New stream name"]'); if (i) i.focus(); }, 60);
 }
 let _sbShowEmptyStreams = false;
+const SB_STREAM_DEFAULTS = { sort: 'custom', show: 0 };   // the streams' own order, all of them (as before)
+/** Streams' custom order is their own order (Settings > Streams, reorder_streams): a drag rewrites it. */
+function _sbSaveStreamOrder(ids) {
+  const L = typeof _ssList === 'function' ? _ssList() : (Array.isArray(state.streams) ? state.streams : []);
+  const pos = new Map(ids.map((id, i) => [id, i]));
+  const sorted = L.slice().sort((a, b) => (a.archived - b.archived) || ((pos.has(a.id) ? pos.get(a.id) : 1e6 + (a.order ?? 0)) - (pos.has(b.id) ? pos.get(b.id) : 1e6 + (b.order ?? 0))));
+  sorted.forEach((x, i) => { x.order = i; });
+  state.streams = sorted;
+  applyStreams(state);
+  saveData();
+}
+/** Totals and last activity per stream, tag and person (all tasks, done included), once per save. */
+let _sbStatsKey = null, _sbStatsVal = null;
+function sbStats() {
+  const key = [state._lastSave || 0, (state.custom || []).length, Object.keys(state.deleted || {}).length].join('|');
+  if (key === _sbStatsKey && _sbStatsVal) return _sbStatsVal;
+  const tasks = getAllItems();
+  const base = { isOpen: (t) => statusOf(t.id) !== 'done', activity: state.taskActivity || {}, completions: state.completionLog || {} };
+  _sbStatsVal = {
+    streams: sbTaskStats(tasks, Object.assign({ keysOf: (t) => [effStream(t)] }, base)),
+    tags: sbTaskStats(tasks, Object.assign({ keysOf: (t) => effTags(t) }, base)),
+    people: sbTaskStats(tasks, Object.assign({ keysOf: (t) => Array.isArray(t.people) ? t.people : [] }, base)),
+  };
+  _sbStatsKey = key;
+  return _sbStatsVal;
+}
 registerSidebarBlock('tasks', {
   id: 'streams', order: 20,
   render(el, ctx) {
     const entries = Object.entries(STREAMS).filter(([, s]) => !s.archived).sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0));
     if (!entries.length) return false;
-    el.appendChild(sbSection({ title: 'Streams', collapsible: 'streams', actions: [{ icon: 'plus', label: 'New stream', run: _sbNewStream }] }));
+    el.appendChild(sbSection({ title: 'Streams', collapsible: 'streams', actions: [sbListMenuAction('streams', SB_STREAM_DEFAULTS, 'streams'), { icon: 'plus', label: 'New stream', run: _sbNewStream }] }));
     czSectionHint(el, 'streams');
     if (sbIsCollapsed('streams')) return;
     const full = entries.filter(([k]) => ctx.counts.streams[k]);
     const empty = entries.filter(([k]) => !ctx.counts.streams[k] && state.view !== 'stream:' + k);
-    for (const [k, s] of entries) {
-      if (!ctx.counts.streams[k] && !_sbShowEmptyStreams && full.length && state.view !== 'stream:' + k) continue;   // nothing open anywhere: list them all
+    // nothing open in a stream: folded away unless asked for (or nothing is open anywhere: list them all)
+    const visible = entries.filter(([k]) => ctx.counts.streams[k] || _sbShowEmptyStreams || !full.length || state.view === 'stream:' + k);
+    const st = sbStats().streams;
+    sbOrderedList(el, {
+      key: 'streams', noun: 'Streams', defaults: SB_STREAM_DEFAULTS,
+      items: visible.map(([k, s]) => ({ id: k, label: s.label, open: ctx.counts.streams[k] || 0, total: (st.get(k) || {}).total || 0, recent: (st.get(k) || {}).recent || 0 })),
+      custom: entries.map(([k]) => k),
+      saveCustom: _sbSaveStreamOrder,
+      keepId: state.view.startsWith('stream:') ? state.view.slice(7) : null,
       // Its marker (colour, symbol, shape) and the right-click menu: 28-customise.js.
-      el.appendChild(czMark(sbNavItem({ label: s.label, avatarHtml: `<span class="ic">${streamMarkHtml(k)}</span>`, view: 'stream:' + k, count: ctx.counts.streams[k] || '' }), 'stream', k));
-    }
+      row: (it) => czMark(sbNavItem({ label: it.label, avatarHtml: `<span class="ic">${streamMarkHtml(it.id)}</span>`, view: 'stream:' + it.id, count: it.open || '' }), 'stream', it.id),
+    });
     if (empty.length && full.length) {
       el.appendChild(sbNavItem({
         label: _sbShowEmptyStreams ? 'Hide empty streams' : `${empty.length} empty stream${empty.length === 1 ? '' : 's'}`,
@@ -194,7 +253,7 @@ registerSidebarBlock('tasks', {
     const cur = state.view.startsWith('person:') ? state.view.slice(7) : null;
     if (cur && !pick.some(x => x.p.id === cur)) { const p = people.find(x => x.id === cur); if (p) pick.push({ p, n: 0 }); }
     for (const { p, n } of pick) {
-      el.appendChild(sbNavItem({ label: p.name, avatarHtml: avatarHtml(p, 18), view: 'person:' + p.id, count: n || '' }));
+      el.appendChild(sbNavItem({ label: p.name, avatarHtml: avatarHtml(p, 18), active: state.view === 'person:' + p.id, count: n || '', onClick: () => openPerson(p.id) }));
     }
   },
 });
@@ -218,8 +277,8 @@ registerSidebarBlock('calendar', {
     const fresh = typeof _calSectionFresh !== 'undefined' && _calSectionFresh;
     const want = String(state.view).startsWith('calendar') ? (fresh ? calendarSelectedDate().slice(0, 7) : /^\d{4}-\d{2}$/.test(state.calMonth || '') ? state.calMonth : null) : null;
     if (want && want !== _sbCalShown) { const [yy, mm] = want.split('-').map(Number); _sbCalCursor = new Date(yy, mm - 1, 1); _sbCalShown = want; }
-    if (!_sbCalCursor) { const d = new Date(); _sbCalCursor = new Date(d.getFullYear(), d.getMonth(), 1); }
-    const y = _sbCalCursor.getFullYear(), m = _sbCalCursor.getMonth();
+    if (!_sbCalCursor) { const [ty, tm] = today.split('-').map(Number); _sbCalCursor = new Date(ty, tm - 1, 1); }
+    const y = _sbCalCursor.getFullYear(), m = _sbCalCursor.getMonth(); // clock-ok: wall date (the month shown)
     const locale = APP_CONFIG.locale || undefined;
     const ws = _weekStartIndex();
     const dueDays = new Set(getAllItems().filter(i => statusOf(i.id) !== 'done' && effDate(i)).map(i => effDate(i)));
@@ -235,20 +294,20 @@ registerSidebarBlock('calendar', {
     const base = new Date(2024, 0, 7 + ws);   // a Sunday + offset
     for (let i = 0; i < 7; i++) {
       const w = document.createElement('span'); w.className = 'w';
-      w.textContent = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i).toLocaleDateString(locale, { weekday: 'narrow' });
+      w.textContent = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i).toLocaleDateString(locale, { weekday: 'narrow' }); // clock-ok: wall date
       grid.appendChild(w);
     }
     const first = new Date(y, m, 1);
-    const lead = (first.getDay() - ws + 7) % 7;
+    const lead = (first.getDay() - ws + 7) % 7; // clock-ok: wall date
     const start = new Date(y, m, 1 - lead);
     const sel = calendarSelectedDate();
     for (let i = 0; i < 42; i++) {
-      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
-      if (i >= 35 && d.getMonth() !== m) break;
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i); // clock-ok: wall date
+      if (i >= 35 && d.getMonth() !== m) break; // clock-ok: wall date
       const iso = fmtDate(d);
       const b = document.createElement('button'); b.type = 'button';
-      b.className = 'd' + (d.getMonth() !== m ? ' o' : '') + (iso === today ? ' t' : '') + (iso === sel && String(state.view).startsWith('calendar') ? ' sel' : '') + (dueDays.has(iso) ? ' has' : '');
-      b.textContent = String(d.getDate());
+      b.className = 'd' + (d.getMonth() !== m ? ' o' : '') + (iso === today ? ' t' : '') + (iso === sel && String(state.view).startsWith('calendar') ? ' sel' : '') + (dueDays.has(iso) ? ' has' : ''); // clock-ok: wall date
+      b.textContent = String(d.getDate()); // clock-ok: wall date
       b.setAttribute('aria-label', d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' }));
       b.onclick = () => {
         _calSelectedDate = iso;

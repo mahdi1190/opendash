@@ -3,7 +3,7 @@
      - Home: briefHomeBanner(root), the central "Start my day" / "Finish the day"
      - top bar: a "Start my day" / "Finish the day" pill (registerTopbarWidget)
      - sidebar (Home): Review entries; the palette: commands
-     - Settings: "Morning brief" and "Animations" (gallery, keyword rules,
+     - Settings: "Home and stories" and "Animations" (gallery, keyword rules,
        per-item overrides, Claude for unknown titles); the town for the
        weather in Profile (briefSettingsLocationRow) and onboarding
        (briefOnboardingLocationField)
@@ -15,10 +15,12 @@
 
 /* ---------- Home ---------- */
 function _briefSeenToday() { try { return localStorage.getItem('dashboard-brief-seen') === todayStr(); } catch (e) { return false; } }
-function _eveningNow() { return new Date().getHours() >= briefPrefs().eveningHour; }
+// Hours where the user is (Clock, travel spec 2.7 P11).
+function _briefHourNow() { return Clock.parts(Clock.now()).h; }
+function _eveningNow() { return _briefHourNow() >= briefPrefs().eveningHour; }
 function _eveningSavedToday() { return (state.reviews || []).some(r => r && r.kind === 'evening' && r.date === todayStr()); }
 function briefHomeBanner(root) {
-  const h = new Date().getHours();
+  const h = _briefHourNow();
   const evening = _eveningNow();
   const morning = !evening && (h < 12 || !_briefSeenToday());
   const w = _bf.weather && _bf.weather.ok ? _bf.weather : null;
@@ -26,7 +28,7 @@ function briefHomeBanner(root) {
   root.appendChild(_briefBannerEl(morning, evening, w));
 }
 function _briefBannerEl(morning, evening, w) {
-  if (morning === undefined) { evening = _eveningNow(); morning = !evening && (new Date().getHours() < 12 || !_briefSeenToday()); w = _bf.weather && _bf.weather.ok ? _bf.weather : null; }
+  if (morning === undefined) { evening = _eveningNow(); morning = !evening && (_briefHourNow() < 12 || !_briefSeenToday()); w = _bf.weather && _bf.weather.ok ? _bf.weather : null; }
   const el = document.createElement('section');
   const big = morning || (evening && !_eveningSavedToday());
   el.className = 'home-brief' + (big ? ' big' : ' small') + (evening ? ' is-evening' : '') + ' anim-hover-host';
@@ -35,18 +37,18 @@ function _briefBannerEl(morning, evening, w) {
   const wx = w && w.current ? `<span class="hb-wx">${briefWxIcon(cond, w.current.isDay, 'i-sm')}<b class="num">${esc(_bfDeg(w.current.temp))}</b><span>${esc(w.current.label)}</span></span>` : '';
   if (big) {
     el.innerHTML = (animEnabled() ? briefSkyHtml(cond, evening ? (tod === 'night' ? 'night' : 'dusk') : tod, { setting: evening }) : '')
-      + `<div class="hb-in">${animSceneHtml(evening ? 'rest' : 'idea', { size: 'lg', hover: true })}<div class="hb-t"><div class="overline">${esc(evening ? 'Evening' : 'Morning brief')}</div><b>${esc(evening ? 'Ready to wrap up?' : 'Your day, laid out')}</b><span>${esc(evening ? 'See what you got done, roll what slipped and pick tomorrow’s top 3.' : 'Weather, calendar, focus and deadlines, refreshed and on one calm page.')}</span></div>${wx}</div>`;
+      + `<div class="hb-in">${animSceneHtml(evening ? 'rest' : 'idea', { size: 'lg', hover: true })}<div class="hb-t"><div class="overline">${esc(evening ? 'Evening' : 'Morning')}</div><b>${esc(evening ? 'Ready to wrap up?' : 'Your day, laid out')}</b><span>${esc(evening ? 'See what you got done, roll what slipped and pick tomorrow’s top 3.' : 'Weather, calendar, focus and deadlines, refreshed and on one calm page.')}</span></div>${wx}</div>`;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-primary btn-lg hb-go';
     b.innerHTML = icon(evening ? 'sunset' : 'sunrise') + `<span>${evening ? 'Finish the day' : 'Start my day'}</span>`;
-    b.onclick = () => (evening ? (typeof storyFinishTheDay === 'function' ? storyFinishTheDay() : setView('review:evening')) : typeof storyStartMyDay === 'function' ? storyStartMyDay() : briefOpen({ welcome: false }));
+    b.onclick = () => (evening ? (typeof storyFinishTheDay === 'function' ? storyFinishTheDay() : setView('home:evening')) : typeof storyStartMyDay === 'function' ? storyStartMyDay() : briefOpen({ welcome: false }));
     el.querySelector('.hb-in').appendChild(b);
   } else {
     el.innerHTML = `<div class="hb-in">${wx}<span class="spacer"></span></div>`;
     const row = el.querySelector('.hb-in');
     const mk = (label, ic, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm'; b.innerHTML = icon(ic, 'i-sm') + `<span>${esc(label)}</span>`; b.onclick = run; row.appendChild(b); };
-    mk('Morning brief', 'sunrise', () => briefOpen({ welcome: false }));
-    mk(evening ? 'Recap saved' : 'Finish the day', evening ? 'circle-check' : 'sunset', () => setView('review:evening'));
-    mk('Weekly review', 'calendar-range', () => setView('review:week'));
+    mk('Today', 'sunrise', () => briefOpen({ welcome: false }));
+    mk(evening ? 'Recap saved' : 'Finish the day', evening ? 'circle-check' : 'sunset', () => setView('home:evening'));
+    mk('Weekly review', 'calendar-range', () => setView('home:week'));
   }
   return el;
 }
@@ -55,12 +57,11 @@ function _briefBannerEl(morning, evening, w) {
 registerTopbarWidget({
   id: 'brief-cta', order: 5,
   render(el) {
-    if (typeof state === 'undefined' || String(state.view).startsWith('review')) return false;
-    // On Home the Today hero carries the same button (12-home-w-today.js): no second copy up here.
-    if (state.view === 'home' && typeof homeTodayOnBoard === 'function' && homeTodayOnBoard()) return false;
+    // On Home (any tab) the day's hero and the tabs carry the same buttons: no second copy up here.
+    if (typeof state === 'undefined' || /^(home|review)(:|$)/.test(String(state.view))) return false;
     const evening = _eveningNow();
     let label = '', ic = '', go = null;
-    if (evening && !_eveningSavedToday()) { label = 'Finish the day'; ic = 'sunset'; go = () => setView('review:evening'); }
+    if (evening && !_eveningSavedToday()) { label = 'Finish the day'; ic = 'sunset'; go = () => setView('home:evening'); }
     else if (!evening && !_briefSeenToday()) { label = 'Start my day'; ic = 'sunrise'; go = () => briefOpen({ welcome: false }); }
     if (!go) { el.innerHTML = ''; return false; }
     // The pill opens the full-screen story over its page (79-story-engine.js); "Open details" is one click away.
@@ -78,33 +79,33 @@ registerTopbarWidget({
 registerSidebarBlock('home', {
   id: 'review-nav', order: 12,
   render(el, ctx) {
+    // Home's other tabs (77-brief-review.js); Home itself (the Today tab) is the item above.
     el.appendChild(sbSection({ title: 'Review' }));
-    el.appendChild(sbNavItem({ label: 'Morning brief', icon: 'sunrise', view: 'review:today', active: ctx.view === 'review' || ctx.view === 'review:today' }));
-    el.appendChild(sbNavItem({ label: 'Finish the day', icon: 'sunset', view: 'review:evening', badge: _eveningNow() && !_eveningSavedToday() ? 'now' : '' }));
-    el.appendChild(sbNavItem({ label: 'Weekly review', icon: 'calendar-range', view: 'review:week' }));
-    el.appendChild(sbNavItem({ label: 'History', icon: 'history', view: 'review:history' }));
+    el.appendChild(sbNavItem({ label: 'Finish the day', icon: 'sunset', view: 'home:evening', badge: _eveningNow() && !_eveningSavedToday() ? 'now' : '' }));
+    el.appendChild(sbNavItem({ label: 'Weekly review', icon: 'calendar-range', view: 'home:week' }));
+    el.appendChild(sbNavItem({ label: 'History', icon: 'history', view: 'home:history' }));
   },
 });
-registerCommand({ id: 'brief-start', label: 'Start my day (morning brief)', icon: 'sunrise', group: 'Go to', keywords: 'morning brief today weather welcome plan day story', run: () => (typeof storyStartMyDay === 'function' ? storyStartMyDay() : briefOpen({ welcome: false })) });
-registerCommand({ id: 'brief-evening', label: 'Finish the day', icon: 'sunset', group: 'Go to', keywords: 'evening recap end of day wrap up roll over tomorrow top 3 story', run: () => (typeof storyFinishTheDay === 'function' ? storyFinishTheDay() : setView('review:evening')) });
-registerCommand({ id: 'brief-week', label: 'Weekly review', icon: 'calendar-range', group: 'Go to', keywords: 'week review outcomes plan retrospective', run: () => setView('review:week') });
-registerCommand({ id: 'brief-history', label: 'Review history', icon: 'history', group: 'Go to', keywords: 'past reviews briefs recaps', run: () => setView('review:history') });
-registerCommand({ id: 'brief-refresh', label: 'Refresh the morning brief', icon: 'refresh-cw', keywords: 'update calendar inbox finances weather', run: () => { briefOpen({ welcome: false }); setTimeout(() => briefRefresh(true), 50); } });
+registerCommand({ id: 'brief-start', label: 'Start my day', icon: 'sunrise', group: 'Go to', keywords: 'home morning brief today weather welcome plan day story', run: () => (typeof storyStartMyDay === 'function' ? storyStartMyDay() : briefOpen({ welcome: false })) });
+registerCommand({ id: 'brief-evening', label: 'Finish the day', icon: 'sunset', group: 'Go to', keywords: 'evening recap end of day wrap up roll over tomorrow top 3 story', run: () => (typeof storyFinishTheDay === 'function' ? storyFinishTheDay() : setView('home:evening')) });
+registerCommand({ id: 'brief-week', label: 'Weekly review', icon: 'calendar-range', group: 'Go to', keywords: 'week review outcomes plan retrospective', run: () => setView('home:week') });
+registerCommand({ id: 'brief-history', label: 'History', icon: 'history', group: 'Go to', keywords: 'review history past reviews briefs recaps mornings', run: () => setView('home:history') });
+registerCommand({ id: 'brief-refresh', label: 'Refresh Home (calendar, inbox, finances)', icon: 'refresh-cw', keywords: 'morning brief update calendar inbox finances weather', run: () => { briefOpen({ welcome: false }); setTimeout(() => briefRefresh(true), 50); } });
 
 /* ---------- weekly-review nudge (75-modals.js calls this) ---------- */
 function reviewMaybePrompt() {
-  const now = new Date();
-  const dow = now.getDay(), hour = now.getHours();
+  const now = Clock.parts(Clock.now());
+  const dow = now.dow, hour = now.h;
   if (!((dow === 5 && hour >= 15) || dow === 6 || dow === 0 || (dow === 1 && hour < 12))) return;
   if (Date.now() - (state.lastReviewPrompt || 0) < 5 * 86400000) return;
-  if (String(state.view).startsWith('review')) return;      // not on top of the brief; Home's banner offers it too
+  if (/^home:/.test(String(state.view))) return;      // not on top of Home's Evening / Week / History tabs
   if (typeof storyIsOpen === 'function' && storyIsOpen()) return;   // never over a playing story
   if (typeof _obOpen !== 'undefined' && _obOpen) return;           // never over the welcome set-up
   if (!getAllItems().length) return;                                // a new data folder: nothing to review yet
   const r = reviewWeekRange(todayStr(), APP_CONFIG.weekStart || 'Mon');
   if ((state.reviews || []).some(x => x && x.kind === 'week' && (x.date === r.from || x.date === r.prevFrom))) return;
   state.lastReviewPrompt = Date.now(); saveUI();
-  toast('Time for your weekly review? Seven short steps.', { icon: 'calendar-range', timeout: 12000, action: { label: 'Start', run: () => (typeof storyWeekFromPrompt === 'function' ? storyWeekFromPrompt() : setView('review:week')) } });
+  toast('Time for your weekly review? Seven short steps.', { icon: 'calendar-range', timeout: 12000, action: { label: 'Start', run: () => (typeof storyWeekFromPrompt === 'function' ? storyWeekFromPrompt() : setView('home:week')) } });
 }
 
 /* ---------- celebrations ---------- */
@@ -118,11 +119,15 @@ function animCelebrate(item) {
   if (_celebrateN > 2 || now - _pointer.at > 3000) return;      // a burst of completions or no click: stay quiet
   _celebrateAt = now;
   const type = animForTask(item).type;
+  // A kind with its own celebration (email, writing, coding, admin, exercise...) or a context
+  // moment (submission, milestone, streak, all Focus done): 78-delight-hooks.js.
+  try { if (typeof delightCelebrate === 'function' && delightCelebrate(item, type)) return; } catch (e) { console.error('[delight]', e); }
   const el = document.createElement('div');
   el.className = 'anim-pop';
   el.style.left = Math.max(40, Math.min(window.innerWidth - 40, _pointer.x)) + 'px';
   el.style.top = Math.max(40, _pointer.y) + 'px';
   el.innerHTML = animSceneHtml(type, { size: 'md', once: true, cls: 'is-live' });
+  if (typeof animTaskDone === 'function') animTaskDone(item, _pointer.x, _pointer.y);   // the stream's completion style, behind (78-anim-moments.js)
   document.body.appendChild(el);
   if (BRIEF_CELEBRATE_TYPES.includes(type) || effPriority(item) === 'p1') animBurst(el, type);
   setTimeout(() => el.remove(), 1700);
@@ -264,25 +269,25 @@ function briefSettingsLocationRow() {
     clr.onclick = async () => { if (await settingsSaveConfig({ location: null }, 'Weather turned off')) { _bf.weather = null; render(); } };
     ctl.appendChild(clr);
   }
-  return _settingsRow('Town for the weather', 'Used by the Morning brief. The forecast comes from Open-Meteo.com (free, no account); only the place is sent.', ctl);
+  return _settingsRow('Town for the weather', 'Used by Home’s greeting and the stories. The forecast comes from Open-Meteo.com (free, no account); only the place is sent.', ctl);
 }
 /** For the welcome set-up (59-onboarding.js): d.location is filled when a place is picked. */
 function briefOnboardingLocationField(d) {
   const f = document.createElement('label'); f.className = 'field';
   const l = document.createElement('span'); l.className = 'field-label'; l.textContent = 'Town for the weather (optional)';
-  const h = document.createElement('span'); h.className = 'field-hint'; h.textContent = 'For the Morning brief. Weather data by Open-Meteo.com.';
+  const h = document.createElement('span'); h.className = 'field-hint'; h.textContent = 'For Home’s greeting and the stories. Weather data by Open-Meteo.com.';
   f.append(l, briefLocationPicker(d.location || null, (loc) => { d.location = loc; }), h);
   return f;
 }
 
-/* ---------- Settings: Morning brief ---------- */
+/* ---------- Settings: Home's day (the hero, the stories, Finish the day, the week) ---------- */
 registerSettingsGroup({
-  id: 'brief', title: 'Morning brief', icon: 'sunrise', order: 55,
-  description: 'The welcome screen of your day, Finish the day and the weekly review.',
+  id: 'brief', title: 'Home and stories', icon: 'sunrise', order: 55,
+  description: 'The top of Home (the greeting, the day in three sentences, Play my morning), Finish the day and the weekly review.',
   render(el) {
     const p = briefPrefs();
     const save = (patch, msg) => settingsSaveConfig({ brief: patch }, msg).then(ok => { if (ok) render(); });
-    el.appendChild(_settingsRow('Open on the first visit of the day', 'The brief opens by itself the first time you open the dashboard each day. It refreshes your calendar, inbox and finances in the background.', _settingsSwitch(p.autoOpen, 'Open automatically', (on) => save({ autoOpen: on }, on ? 'The brief will open each morning' : 'The brief will wait for you'))));
+    el.appendChild(_settingsRow('Open on the first visit of the day', 'Home comes forward with today’s greeting the first time you open the dashboard each day. It refreshes your calendar, inbox and finances in the background.', _settingsSwitch(p.autoOpen, 'Open automatically', (on) => save({ autoOpen: on }, on ? 'Home will greet you each morning' : 'Home will wait for you'))));
     el.appendChild(_settingsRow('Day in three sentences', 'A short summary written by Claude, once a day. Needs Claude (Connections).', _settingsSwitch(p.ai, 'AI summary', (on) => save({ ai: on }))));
     el.appendChild(_settingsRow('Model for summaries', 'Haiku is quick and light; the others write a little more carefully.', _settingsSelect(SETTINGS_MODELS, p.model, (v) => save({ model: v }))));
     el.appendChild(_settingsRow('Offer “Finish the day” from', 'Home and the top bar suggest the evening recap from this hour.', _settingsSelect(['15', '16', '17', '18', '19', '20', '21'].map(x => [x, x + ':00']), String(p.eveningHour), (v) => save({ eveningHour: Number(v) }))));
@@ -290,14 +295,13 @@ registerSettingsGroup({
     el.appendChild(briefSettingsLocationRow());
     if (typeof storySettingsRows === 'function') storySettingsRows(el);   // 79-story-engine.js
     const open = document.createElement('button'); open.type = 'button'; open.className = 'btn btn-secondary btn-sm';
-    open.innerHTML = icon('sunrise', 'i-sm') + '<span>Open the brief now</span>';
+    open.innerHTML = icon('sunrise', 'i-sm') + '<span>Go to Home now</span>';
     open.onclick = () => briefOpen({ welcome: false });
     el.appendChild(_settingsRow('Try it', null, open));
   },
 });
 
 /* ---------- Settings: Animations ---------- */
-let _galleryFilter = '';
 registerSettingsGroup({
   id: 'animations', title: 'Animations', icon: 'sparkles', order: 56,
   description: 'The little scenes for events and tasks, the weather sky and the small celebrations.',
@@ -305,6 +309,36 @@ registerSettingsGroup({
     const p = briefPrefs();
     const sys = !!(window.Motion && Motion.prefersReduced());
     const save = (patch) => settingsSaveConfig({ brief: patch }, false).then(ok => { if (ok) { _animSyncRoot(); render(); } });
+    // The OS asks for reduced motion (Windows: Animation effects off): say so plainly, and let the user animate anyway.
+    if (window.Motion && Motion.osReduced && Motion.osReduced()) {
+      const anyway = Motion.osOverride();
+      const note = document.createElement('div'); note.className = 'callout set-callout' + (anyway ? '' : ' warn');
+      note.innerHTML = icon('info') + `<span>${anyway
+        ? 'Your computer asks apps for reduced motion, but you chose to animate anyway on this device.'
+        : 'Your computer asks apps for reduced motion (on Windows: Settings &gt; Accessibility &gt; Visual effects &gt; Animation effects is off), so nearly every animation here is silenced. Turn that back on, or animate anyway on this device.'}</span>`;
+      note.setAttribute('data-anim-os-note', '');
+      el.appendChild(note);
+      el.appendChild(_settingsRow('Animate anyway', 'Ignore the system’s reduced-motion request in this browser only. Your intensity choice below still applies.',
+        _settingsSwitch(anyway, 'Animate anyway', (on) => { Motion.setOsOverride(on); _animSyncRoot(); render(); })));
+    }
+    // Intensity (per device, src/motion.js): scales every duration, distance and stagger, or turns motion off.
+    if (window.Motion && Motion.setLevel) {
+      const osRed = Motion.systemReduced && Motion.systemReduced();
+      const seg = _settingsSeg([['off', 'Off'], ['subtle', 'Subtle'], ['standard', 'Standard'], ['playful', 'Playful']], Motion.chosenLevel(),
+        (k) => { Motion.setLevel(k); _animSyncRoot(); render();
+          requestAnimationFrame(() => { const pv = document.querySelector('.mx-preview'); if (pv) { pv.classList.remove('is-playing'); void pv.offsetWidth; pv.classList.add('is-playing'); } }); });
+      const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap';
+      const pv = document.createElement('span'); pv.className = 'mx-preview'; pv.setAttribute('aria-hidden', 'true');
+      pv.innerHTML = '<i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i>';
+      wrap.append(seg, pv);
+      el.appendChild(_settingsRow('Intensity', osRed ? 'Your system asks for reduced motion, so only short fades play whatever this says.' : 'How much the interface moves on this device: Off keeps everything still; Playful adds bigger celebrations.', wrap));
+    }
+    // The opening sequence (78-anim-wire.js): the brand, "Welcome to <county>", the county's scene.
+    if (typeof animOpeningModeSync === 'function') {
+      const seg = _settingsSeg([['every', 'Every load'], ['daily', 'First load of the day'], ['off', 'Off']], animOpeningMode(),
+        (k) => { animLookSave({ opening: k }); animOpeningModeSync(); render(); });
+      el.appendChild(_settingsRow('Opening', 'When the app opens: the OpenDash mark, then "Welcome to …" your county (with Regional animations (UK) on) and today\'s scene from it, full screen, for a few seconds. Later loads that day show just the short mark. A click or any key skips it.', seg));
+    }
     el.appendChild(_settingsRow('Animations', sys ? 'Reduced motion is on (system or Appearance), so scenes stay still whatever this says.' : 'Weather, scenes and moving text. Everything stays still when this is off.', _settingsSwitch(p.animations, 'Animations', (on) => save({ animations: on }))));
     el.appendChild(_settingsRow('Celebrate completed tasks', 'A tiny animation where you clicked, for a second. Never for bulk changes.', _settingsSwitch(p.celebrate, 'Celebrations', (on) => save({ celebrate: on }))));
 
@@ -371,20 +405,9 @@ registerSettingsGroup({
     };
     el.appendChild(_settingsRow('Unmatched titles', 'Titles no keyword fits get a plain calendar scene. Claude (Haiku) can suggest better ones; the answers are remembered per title.', ask));
 
-    // Gallery
-    const gh = document.createElement('div'); gh.className = 'anim-gallery-h';
-    gh.innerHTML = `<h3>Scene gallery</h3><span class="muted">${esc(ANIM_SCENES.length)} scenes · hover to play</span><span class="spacer"></span>`;
-    const filt = document.createElement('input'); filt.className = 'control control-sm'; filt.placeholder = 'Filter'; filt.value = _galleryFilter; filt.setAttribute('aria-label', 'Filter scenes');
-    gh.appendChild(filt);
-    el.appendChild(gh);
-    const g = document.createElement('div'); g.className = 'anim-gallery';
-    const paint = () => {
-      const q = filt.value.trim().toLowerCase();
-      g.innerHTML = ANIM_SCENES.filter(s => !q || s.label.toLowerCase().includes(q) || s.type.includes(q) || s.keywords.some(k => k.includes(q)))
-        .map(s => `<figure class="ag-item anim-hover-host" title="${escAttr(s.keywords.slice(0, 12).join(', '))}">${animSceneHtml(s.type, { size: 'lg', hover: true })}<figcaption><b>${esc(s.label)}</b><span>${esc(ANIM_CATEGORIES[s.cat] || '')}</span></figcaption></figure>`).join('');
-    };
-    filt.oninput = () => { _galleryFilter = filt.value; paint(); };
-    paint();
-    el.appendChild(g);
+    // The animation gallery (every slot and pack, today's look, themes): 78-anim-gallery.js
+    animGalleryRender(el);
+    // Achievements and recaps (v2.2 wave 5): 78-achievements.js
+    if (typeof achPanelRender === 'function') achPanelRender(el);
   },
 });

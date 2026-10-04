@@ -102,9 +102,8 @@ function hglOpenMail(url) {
 }
 function hglOpenPerson(id) {
   if (!id) return;
-  const v = 'person:' + id;
-  if (state.view === v) return;                               // re-selecting is a no-op
-  setView(v);
+  if (state.view === 'person:' + id) return;                  // re-selecting is a no-op
+  openPerson(id);                                             // the card or the panel (54-people-card.js)
 }
 /** First name for short labels ("Owen is waiting"). */
 function hglFirst(p) {

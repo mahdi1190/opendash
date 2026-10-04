@@ -98,7 +98,7 @@ export default function register(app) {
         if (b.propose === true) return await actions.propose({ ops: b.ops, source: kind === 'browser' ? 'assistant' : source, client, note: b.note });
         return await actions.apply({
           ops: b.ops, dryRun: b.dryRun === true, idempotencyKey: b.idempotencyKey, source, client,
-          confirm: b.confirm, ifVersion: b.ifVersion,
+          confirm: b.confirm, ifVersion: b.ifVersion, zone: c.zone,
         });
       } catch (e) { return fail(c, e); }
     },
@@ -147,7 +147,7 @@ export default function register(app) {
         await who(c, { write: false });
         const op = c.query.get('op') || '';
         const def = QUERY_BY_NAME.get(op) || QUERY_BY_TOOL.get(op);
-        return await actions.query(op, paramsFromQuery(def, c.query));
+        return await actions.query(op, paramsFromQuery(def, c.query), { zone: c.zone });
       } catch (e) { return fail(c, e); }
     },
   });
@@ -157,7 +157,7 @@ export default function register(app) {
       try {
         await who(c, { write: false });
         const b = await c.body();
-        return await actions.query(String(b.op || ''), b.params || {});
+        return await actions.query(String(b.op || ''), b.params || {}, { zone: c.zone });
       } catch (e) { return fail(c, e); }
     },
   });

@@ -37,11 +37,11 @@ const _hfDescFull = new Set();      // descriptions shown in full ("more"), this
 function _hfReduced() { return !!(window.Motion && Motion.prefersReduced()) || !!document.hidden; }
 function _hfCardEl(id) { return id ? document.querySelector(`#main-body .hf-card[data-id="${CSS.escape(id)}"]`) : null; }
 function _hfPlus(n, from) {
-  const d = from ? new Date(from + 'T00:00:00') : new Date();
-  d.setDate(d.getDate() + n);
+  const d = new Date((from || todayStr()) + 'T00:00:00');
+  d.setDate(d.getDate() + n); // clock-ok: wall date
   return fmtDate(d);
 }
-function _hfNextMonday() { const d = new Date(); d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7)); return fmtDate(d); }
+function _hfNextMonday() { const d = new Date(todayStr() + 'T00:00:00'); d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7)); return fmtDate(d); } // clock-ok: wall date
 function _hfDay(iso, withWeekday) { return typeof _tbShortDate === 'function' ? _tbShortDate(iso, withWeekday !== false) : iso; }
 
 /* ============================================================
@@ -148,12 +148,17 @@ function _hfTimeLines(item) {
   const est = Number(item.estimate) || 0;
   if (est > 0) out.push({ t: `About ${_hfMinutes(est)}`, s: 'your estimate' });
   const forToday = (d && d <= today) || statusOf(item.id) === 'doing' || (item.plannedFor && item.plannedFor <= today);
+  // A planned slot (20-task-plan.js) says when; otherwise the next free stretch in the working hours.
+  const ps = typeof planSlotOf === 'function' ? planSlotOf(item) : null;
+  if (ps && ps.date >= today) out.push({ t: `Planned ${planSlotText(ps)}`, s: ps.date === today ? 'today' : _hfDay(ps.date) });
   const cal = typeof _calSoon !== 'undefined' ? _calSoon : null;
-  if (forToday && cal && cal.day === today && cal.ok && Array.isArray(cal.events)) {
-    const evs = cal.events.filter(e => e && e.date === today && !e.allDay && e.start);
-    const now = new Date();
-    const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const slot = homeFocusFreeSlot(evs, hm, Math.max(30, Math.min(est || 60, 240)), '19:00');
+  if (forToday && !(ps && ps.date === today) && cal && cal.day === today && cal.ok && Array.isArray(cal.events)) {
+    const planned = typeof planSlotsOn === 'function' ? planSlotsOn(today).map(p => ({ start: p.slot.time, end: homeHM(p.slot.end) })) : [];
+    const evs = cal.events.filter(e => e && e.date === today && !e.allDay && e.start).concat(planned);
+    const now = Clock.parts(Clock.now());
+    const hm = `${String(now.h).padStart(2, '0')}:${String(now.mi).padStart(2, '0')}`;
+    const wh = typeof homeWorkHours === 'function' ? homeWorkHours() : null;
+    const slot = homeFocusFreeSlot(evs, wh && wh.start > hm ? wh.start : hm, Math.max(30, Math.min(est || 60, 240)), wh ? wh.end : '19:00');
     if (slot) out.push({ t: `Free ${slot.start}–${slot.end}`, s: slot.start <= hm ? 'clear from now' : 'your next clear stretch today' });
   }
   return out;
@@ -383,7 +388,7 @@ function homeFocusAct(act, id, card, btn, e) {
   else if (act === 'more') _hfMore(card, btn);
   else if (act === 'res' && typeof resPrimary === 'function') resPrimary(btn.dataset.res, { type: 'task', id });   // Files & links (63-resources.js)
   else if (act === 'alink-ev') { if (typeof openEvent === 'function') openEvent(btn.dataset.ev, { from: btn }); else if (typeof calOpenEvent === 'function') calOpenEvent(btn.dataset.ev); }   // a linked meeting (66-autolink.js)
-  else if (act === 'person' && btn.dataset.person) setView('person:' + btn.dataset.person);
+  else if (act === 'person' && btn.dataset.person) openPerson(btn.dataset.person, { from: btn });
 }
 /** "More" / "Less" on the description: the card glides to its new height. */
 function _hfMore(card, btn) {
@@ -525,7 +530,7 @@ function _hfDatePop(anchor, o) {
     const h = document.createElement('div'); h.className = 'pop-label'; h.textContent = o.title || 'Date';
     el.appendChild(h);
     const quick = document.createElement('div'); quick.className = 'hf-date-quick';
-    const inMonth = (() => { const d = new Date(); d.setMonth(d.getMonth() + 1); return fmtDate(d); })();
+    const inMonth = (() => { const d = new Date(todayStr() + 'T00:00:00'); d.setMonth(d.getMonth() + 1); return fmtDate(d); })(); // clock-ok: wall date
     for (const [t, v] of [['Today', todayStr()], ['Tomorrow', _hfPlus(1)], ['Next week', _hfNextMonday()], ['In a month', inMonth]]) {
       if (o.min && v < o.min) continue;
       const b = document.createElement('button'); b.type = 'button'; b.className = 'chip chip-lg';

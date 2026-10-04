@@ -4,7 +4,7 @@ REM index.html, then run the server under tools\supervisor.mjs, which starts
 REM it again if it crashes and handles Settings > Server > Restart.
 REM   start-opendash.bat                        default data folder .\data, port 4173
 REM   start-opendash.bat --data-dir D:\dash --port 4300 --no-open
-REM DASHBOARD_NO_PAUSE=1 (set by tools\start-hidden.wsf for a window nobody
+REM DASHBOARD_NO_PAUSE=1 (set by tools\start-hidden.mjs for a window nobody
 REM sees) skips the "press a key" pauses.
 REM start-dashboard.bat (the old name) is a shim that runs this file.
 setlocal

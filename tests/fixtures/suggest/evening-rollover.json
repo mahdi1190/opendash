@@ -1,0 +1,14 @@
+{
+  "_about": "Monday 17:40 (after the evening hour): three things due or planned today are still open (S11, S9). Synthetic.",
+  "now": "2026-10-05T17:40",
+  "events": {
+    "2026-10-05": [ { "id": "m1", "title": "Supervision", "start": "11:00", "end": "12:00", "attendees": 1 } ],
+    "2026-10-06": [ { "id": "m4", "title": "Call with Alex", "start": "11:30", "end": "12:00", "attendees": 1, "people": ["alex"] } ]
+  },
+  "tasks": [
+    { "id": "t-a", "title": "Send the budget to Sam", "priority": "p2", "due": "2026-10-05", "people": ["sam"] },
+    { "id": "t-b", "title": "Book the venue", "priority": "p3", "planned": "2026-10-05" },
+    { "id": "t-c", "title": "Report draft: section 2", "priority": "p1", "due": "2026-10-05", "focusWhy": ["Due today", "High priority"] }
+  ],
+  "focus": ["t-c", "t-a"]
+}

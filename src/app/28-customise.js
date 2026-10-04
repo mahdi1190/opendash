@@ -355,16 +355,20 @@ async function czTagDelete(tag) {
 function czPersonItems(pid, el, at) {
   const p = getPerson(pid);
   if (!p) return null;
-  const here = state.view === 'person:' + pid;
+  const here = state.view === 'person:' + pid || (typeof pcCurrentPersonId === 'function' && pcCurrentPersonId() === pid);
   const first = String(p.name || '').split(/\s+/)[0] || p.name;
   return [
     { heading: p.self ? 'You' : 'Person' },
-    { label: 'Open ' + p.name, icon: 'user', disabled: here, run: () => { state.selectedTaskId = null; setView('person:' + pid); } },
+    { label: 'Open ' + p.name, icon: 'user', disabled: here || p.self, run: () => openPerson(pid, { from: el && el.isConnected ? el : null }) },
     { label: 'Rename…', icon: 'pencil', run: () => czRename('person', pid, el) },
     { label: 'Colour & symbol…', icon: avatarHtmlInitials(p, 16), run: () => czOpenCustomise('person', pid, _czWhere(el, at)) },
+    // Pictures (54-people-card.js): upload, Gravatar (opt-in), built-in covers.
+    { label: 'Profile picture…', icon: 'image', run: () => pcOpenPictures(pid, 'photo') },
+    { label: 'Cover picture…', icon: 'layout-template', run: () => pcOpenPictures(pid, 'cover') },
     { label: 'Edit details…', icon: 'contact', run: () => openPersonEditor(pid) },
     'sep',
     { label: `New task for ${first}`, icon: 'circle-plus', run: () => openNewTask('@' + pid + ' ') },
+    p.self ? null : { label: 'Link tasks…', icon: 'link', run: () => pcOpenLinkTasks(pid) },
     { label: p.pinned ? 'Unpin from the sidebar' : 'Pin to the sidebar', icon: p.pinned ? 'pin-off' : 'pin',
       run: () => czApply([{ op: 'person.update', id: pid, pinned: !p.pinned }], { done: p.pinned ? `Unpinned ${p.name}` : `Pinned ${p.name} to the sidebar`, icon: p.pinned ? 'pin-off' : 'pin' }) },
     p.self ? null : 'sep',

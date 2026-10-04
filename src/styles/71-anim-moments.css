@@ -1,0 +1,143 @@
+/* ============================================================
+   MOMENTS ACROSS THE APP (v2.2 wave 4): src/app/78-anim-moments.js and the
+   "moments" pack (72-anim-pack-moments.js). Transform and opacity motion only;
+   nothing moves with animations off (html.anim-off), reduced motion
+   (html[data-motion="reduced"]) or the Off level; all of it pauses while the
+   tab is hidden (html.anim-paused). The styles below key on
+   html[data-ap-ring|soon|vendor|living|idle], set from the day's picks.
+   ============================================================ */
+
+/* ---------- growth (streak flames, focus scenes, countdowns): --ap-grow 0..1 ---------- */
+.anim-scene .ap-gr { transform-box: view-box; transform-origin: 32px 60px; transform: scale(calc(0.35 + 0.65 * var(--ap-grow, 1))); transition: transform 600ms var(--m-ease-out, ease-out); }
+
+/* ---------- overlays ---------- */
+.ap-moment { position: fixed; z-index: 9000; pointer-events: none; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 8px;
+  animation: ap-moment-in var(--ap-m-ms, 1600ms) var(--m-ease-out, ease-out) both; }
+.ap-moment.is-center { left: 50%; top: 42%; }
+.ap-moment.ap-halo { z-index: 8999; opacity: 0.85; }
+.ap-moment .anim-scene { box-shadow: var(--shadow-md); }
+.ap-moment.ap-halo .anim-scene { box-shadow: none; background: transparent; }
+.ap-moment-cap { font-size: var(--text-sm); font-weight: var(--weight-semibold); padding: 4px 12px; border-radius: 999px; background: var(--surface); color: var(--fg); box-shadow: var(--shadow-md); white-space: nowrap; }
+@keyframes ap-moment-in { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } 14% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); } 22%, 80% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -58%) scale(0.96); } }
+.ap-moment.ap-boss .anim-scene { animation: ap-boss-shake 700ms ease-in-out 200ms 1; }
+@keyframes ap-boss-shake { 0%, 100% { transform: none; } 20% { transform: translateX(-4px) rotate(-2deg); } 40% { transform: translateX(4px) rotate(2deg); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+
+/* payday rain */
+.ap-rain { position: fixed; inset: 0 0 auto 0; height: 100vh; z-index: 9000; pointer-events: none; overflow: hidden; }
+.ap-rain .ap-drop { position: absolute; top: -80px; animation: ap-rain 2.6s cubic-bezier(0.4, 0, 0.7, 1) var(--d, 0s) both; }
+.ap-rain .ap-drop .anim-scene { background: transparent; box-shadow: none; }
+.ap-rain .ap-moment-cap { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); animation: ap-fade-cap 3.2s ease both; }
+@keyframes ap-rain { 0% { opacity: 0; transform: translateY(0) rotate(-10deg); } 10% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(105vh) rotate(16deg); } }
+@keyframes ap-fade-cap { 0%, 100% { opacity: 0; } 15%, 80% { opacity: 1; } }
+
+/* ---------- tasks: the streak flame ---------- */
+.ap-streak:not(.anim-scene) { display: inline-flex; vertical-align: -6px; margin-right: 4px; }
+.ap-streak .anim-scene { --as-size: 20px; background: transparent; box-shadow: none; }
+
+/* ---------- progress fills (.ring.ap-ring) ---------- */
+.ring.ap-ring { position: relative; overflow: hidden; }
+.ring.ap-ring > span { z-index: 1; }
+html[data-ap-ring] .ring.ap-ring::after { content: ""; position: absolute; pointer-events: none; }
+html[data-ap-ring="liquid"] .ring.ap-ring::after {
+  left: -50%; width: 200%; height: 200%; top: calc(100% - var(--pct, 0) * 0.8% - 6%); border-radius: 42%;
+  background: var(--c, var(--accent)); opacity: 0.16; animation: ap-spin 7s linear infinite; }
+html[data-ap-ring="glow"] .ring.ap-ring::after { inset: 0; border-radius: 50%; box-shadow: 0 0 0 2px var(--c, var(--accent)) inset, 0 0 10px var(--c, var(--accent)) inset; opacity: 0; animation: ap-breathe 3.6s ease-in-out infinite; }
+html[data-ap-ring="sheen"] .ring.ap-ring::after { inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 80%, rgb(255 255 255 / 0.55) 90%, transparent 100%); animation: ap-spin 4.5s linear infinite; mix-blend-mode: soft-light; }
+@keyframes ap-spin { to { transform: rotate(360deg); } }
+@keyframes ap-breathe { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.75; } }
+
+/* ---------- calendar: scenes on events, the pulse before a meeting ---------- */
+.wv-ev.has-sc { padding-right: 30px; }
+.wv-ev .wv-sc { position: absolute; top: 4px; right: 4px; pointer-events: none; }
+.agd-row:has(> .agd-sc) { grid-template-columns: 52px 3px minmax(0, 1fr) auto; }
+.agd-row > .agd-sc { align-self: center; margin-right: 4px; }
+.wv-ev.ap-soon, .agd-row.ap-soon { position: relative; }
+.ap-soon-ring { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; border: 2px solid var(--c, var(--accent)); opacity: 0; }
+html[data-ap-soon="pulse"] .ap-soon-ring { animation: ap-soon-pulse 1.8s ease-out infinite; }
+html[data-ap-soon="glow"] .ap-soon-ring { animation: ap-breathe 2.4s ease-in-out infinite; }
+html[data-ap-soon="beat"] .ap-soon > .ap-soon-ring { opacity: 0.6; }
+html[data-ap-soon="beat"] .ap-soon .wv-t, html[data-ap-soon="beat"] .ap-soon .t { animation: ap-beat 1.6s ease-in-out infinite; transform-origin: left center; }
+@keyframes ap-soon-pulse { 0% { opacity: 0.8; transform: scale(1); } 100% { opacity: 0; transform: scale(1.06); } }
+@keyframes ap-beat { 0%, 60%, 100% { transform: none; } 15% { transform: scale(1.03); } 30% { transform: scale(0.99); } }
+.ap-soon-in { margin-left: 6px; font-size: var(--text-xs); font-weight: var(--weight-semibold); color: var(--c, var(--accent)); white-space: nowrap; }
+
+/* ---------- finances: vendor tiles at rest ---------- */
+html[data-ap-vendor="shimmer"][data-motion-level="standard"] .fsym-m .fsym-face::after,
+html[data-ap-vendor="shimmer"][data-motion-level="playful"] .fsym-m .fsym-face::after { animation: ap-shimmer 11s ease-in-out 3s infinite; }
+html[data-ap-vendor="glint"][data-motion-level="standard"] .fsym-m .fsym-face::after,
+html[data-ap-vendor="glint"][data-motion-level="playful"] .fsym-m .fsym-face::after { animation: ap-glint 9s ease-in-out 2s infinite; }
+html[data-ap-vendor] :nth-child(3n+2) > .fsym-m .fsym-face::after, html[data-ap-vendor] :nth-child(3n+2) > * > .fsym-m .fsym-face::after { animation-delay: 6.5s; }
+html[data-ap-vendor] :nth-child(3n) > .fsym-m .fsym-face::after, html[data-ap-vendor] :nth-child(3n) > * > .fsym-m .fsym-face::after { animation-delay: 9.5s; }
+@keyframes ap-shimmer { 0%, 88% { opacity: 0; transform: translateX(-70%); } 90% { opacity: 1; } 98% { opacity: 1; transform: translateX(70%); } 100% { opacity: 0; transform: translateX(70%); } }
+@keyframes ap-glint { 0%, 92% { opacity: 0; transform: translateX(0) scale(0.6); } 95% { opacity: 0.9; transform: translateX(0) scale(1); } 100% { opacity: 0; transform: translateX(0) scale(0.6); } }
+
+/* ---------- home: the living background ---------- */
+.ap-living { position: absolute; inset: 0; z-index: -1; border-radius: inherit; overflow: hidden; pointer-events: none; }
+.ap-living i { position: absolute; display: block; border-radius: 50%; }
+.ap-living .ap-orb { left: var(--ap-sx, 50%); top: var(--ap-sy, 30%); width: 220px; height: 220px; margin: -110px 0 0 -110px;
+  background: radial-gradient(circle, rgb(255 206 120 / 0.42), rgb(255 206 120 / 0) 68%); }
+.ap-living.is-night .ap-orb { background: radial-gradient(circle, rgb(190 200 255 / 0.30), rgb(190 200 255 / 0) 66%); }
+.ap-living .ap-blob { width: 280px; height: 200px; opacity: 0; }
+.ap-living .ap-blob.a { left: 8%; top: 40%; background: radial-gradient(closest-side, rgb(150 170 255 / 0.22), transparent); }
+.ap-living .ap-blob.b { right: 6%; top: -20%; background: radial-gradient(closest-side, rgb(255 160 200 / 0.18), transparent); }
+.ap-living[data-fx="drift"] .ap-blob { opacity: 1; animation: ap-drift 38s ease-in-out infinite alternate; }
+.ap-living[data-fx="drift"] .ap-blob.b { animation-duration: 46s; animation-direction: alternate-reverse; }
+.ap-living[data-fx="sunarc"] .ap-orb, .ap-living[data-fx="drift"] .ap-orb { animation: ap-orb 24s ease-in-out infinite alternate; }
+[data-theme="dark"] .ap-living .ap-orb { opacity: 0.55; }
+@keyframes ap-drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(60px, -24px) scale(1.15); } }
+@keyframes ap-orb { from { transform: translate(-6px, 4px) scale(0.96); } to { transform: translate(6px, -4px) scale(1.05); } }
+
+/* ---------- home: widgets at rest (standard and playful only) ---------- */
+html[data-ap-idle="nod"]:is([data-motion-level="standard"], [data-motion-level="playful"]) .hg-w .card-h > svg.i:first-child,
+html[data-ap-idle="nod"]:is([data-motion-level="standard"], [data-motion-level="playful"]) .hg-w .hf-h > svg.i:first-child { animation: ap-nod 14s ease-in-out 4s infinite; transform-origin: 50% 80%; }
+html[data-ap-idle="glow"]:is([data-motion-level="standard"], [data-motion-level="playful"]) .hg-w .card-h > svg.i:first-child,
+html[data-ap-idle="glow"]:is([data-motion-level="standard"], [data-motion-level="playful"]) .hg-w .hf-h > svg.i:first-child { animation: ap-icon-glow 9s ease-in-out 2s infinite; }
+html[data-ap-idle] .hg-w:nth-child(2n) :is(.card-h, .hf-h) > svg.i:first-child { animation-delay: 8s; }
+html[data-ap-idle] .hg-w:nth-child(3n) :is(.card-h, .hf-h) > svg.i:first-child { animation-delay: 11s; }
+@keyframes ap-nod { 0%, 90%, 100% { transform: none; } 93% { transform: rotate(-12deg); } 96% { transform: rotate(8deg); } }
+@keyframes ap-icon-glow { 0%, 85%, 100% { opacity: 1; } 92% { opacity: 0.45; } }
+
+/* ---------- focus sessions ---------- */
+/* :not(.anim-scene): a focus item's own art carries the slot class "ap-focus" (animItemHtml) */
+.ap-focus:not(.anim-scene) { position: fixed; left: 16px; bottom: 16px; z-index: 900; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 8px; border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-md); }
+.ap-focus-t { display: flex; flex-direction: column; line-height: 1.2; }
+.ap-focus-t b { font-size: var(--text-sm); }
+.ap-focus-t small { font-size: var(--text-xs); color: var(--fg-muted); }
+.ap-focus.is-done { border-color: var(--success, var(--accent)); }
+.ap-focus.is-done .ap-focus-art .anim-scene { animation: ap-bloom 900ms var(--m-ease-out, ease-out) 1; }
+@keyframes ap-bloom { 0% { transform: scale(0.9); } 50% { transform: scale(1.12); } 100% { transform: none; } }
+
+/* ---------- people ---------- */
+.hbp-row.ap-has-bday, .hbp-row.ap-has-while { position: relative; }
+.hbp-row > .ap-person { position: absolute; left: 18px; top: -2px; pointer-events: none; }
+.hbp-row > .ap-person .anim-scene { --as-size: 20px; box-shadow: 0 0 0 2px var(--surface); }
+.ap-pc-moment { position: absolute; left: 12px; bottom: 10px; display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 999px;
+  background: color-mix(in oklab, var(--surface) 88%, transparent); box-shadow: var(--shadow-sm); font-size: var(--text-xs); font-weight: var(--weight-medium); pointer-events: none; }
+.ap-pc-moment .anim-scene { --as-size: 40px; }
+
+/* ---------- countdowns: warmer as the date nears (--ap-heat 0..1) ---------- */
+.ap-cd { position: relative; }
+.ap-cd::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--warning, #e8a33d) calc(var(--ap-heat, 0) * 70%), transparent) inset, 0 0 calc(var(--ap-heat, 0) * 18px) color-mix(in oklab, var(--warning, #e8a33d) calc(var(--ap-heat, 0) * 50%), transparent) inset;
+  opacity: calc(0.4 + var(--ap-heat, 0) * 0.6); }
+.ap-cd.ap-cd-close::after { animation: ap-breathe 4s ease-in-out infinite; }
+.ap-cd.ap-cd-imminent::after { animation: ap-breathe 2.2s ease-in-out infinite; }
+.ap-cd.ap-cd-today::after { animation: ap-breathe 1.2s ease-in-out infinite; }
+.ap-cd-art { position: absolute; top: 6px; right: 6px; pointer-events: none; }
+.ap-cd-art .anim-scene { --as-size: 26px; }
+.hcd-hero.ap-cd > .anim-scene { margin-right: 28px; }
+
+/* ---------- off, reduced, hidden ---------- */
+html.anim-off :is(.ap-moment, .ap-rain), html[data-motion="reduced"] :is(.ap-moment, .ap-rain), html[data-motion-level="off"] :is(.ap-moment, .ap-rain) { display: none; }
+/* the page removes the html[data-ap-*] styles and the countdown heat when motion is off or
+   reduced (animMomentsApply); this is the belt to those braces */
+html.anim-off .ring.ap-ring::after, html[data-motion="reduced"] .ring.ap-ring::after,
+html.anim-off .ap-cd::after, html[data-motion="reduced"] .ap-cd::after,
+html.anim-off .ap-soon-ring, html[data-motion="reduced"] .ap-soon-ring,
+html.anim-off .ap-soon :is(.wv-t, .t), html[data-motion="reduced"] .ap-soon :is(.wv-t, .t),
+html.anim-off .ap-living i, html[data-motion="reduced"] .ap-living i,
+html.anim-off .ap-focus .anim-scene, html[data-motion="reduced"] .ap-focus .anim-scene { animation: none !important; }
+html.anim-paused .ring.ap-ring::after, html.anim-paused .ap-cd::after, html.anim-paused[data-ap-vendor] .fsym-face::after,
+html.anim-paused .ap-soon-ring, html.anim-paused .ap-soon :is(.wv-t, .t), html.anim-paused .ap-living i,
+html.anim-paused .ap-rain .ap-drop, html.anim-paused[data-ap-idle] .hg-w :is(.card-h, .hf-h) > svg.i:first-child { animation-play-state: paused !important; }

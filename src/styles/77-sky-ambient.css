@@ -1,0 +1,65 @@
+/* ============================================================
+   AMBIENT SKY: continuity + new weather layers (DELIGHT_LIBRARY §3.6).
+   Extends .bf-sky (74-brief.css); built by briefSkyHtml (74-brief-ui.js).
+   1. Continuity (C5): every sky runs on one session clock. 71-anim-continuity.js
+      stamps --sky-t (seconds since the page loaded, hidden time excluded) on a
+      sky when it is inserted, and every layer subtracts it from its delay, so a
+      rebuilt sky carries on where the old one was instead of restarting.
+   2. New layers: wind (gusts, leaves, faster clouds), the thunder bolt, the
+      rainbow after rain (plays once), the heat haze and flares.
+   3. Home's Today hero gets a soft weather layer (.hh-amb): the particles only,
+      no sky gradient, behind the words.
+   Transform and opacity only. Still under Off / Reduced / Animations off,
+   paused while the tab is hidden or the sky is off screen (.is-offscreen).
+   ============================================================ */
+
+/* ---------- 1. continuity ---------- */
+.bf-sky .sky-star, .bf-sky .sky-cloud, .bf-sky .sky-drop, .bf-sky .sky-flake, .bf-sky .sky-fog,
+.bf-sky .sky-gust, .bf-sky .sky-leaf, .bf-sky .sky-leaf > i, .bf-sky .sky-flare { animation-delay: calc(var(--d, 0s) - var(--sky-t, 0s)); }
+.bf-sky .sky-flash, .bf-sky .sky-bolt, .bf-sky .sky-disc, .bf-sky .sky-rays, .bf-sky .sky-sun.setting,
+.bf-sky .sky-cloud.near, .bf-sky .sky-haze { animation-delay: calc(0s - var(--sky-t, 0s)); }
+.bf-sky.is-offscreen * { animation-play-state: paused !important; }
+/* the centre card's hero drift (41-task-card.css) runs on the same clock: next / previous no longer restarts it (C8) */
+.tc-hero-bg > i:nth-child(1) { animation-delay: calc(0s - var(--sky-t, 0s)); }
+.tc-hero-bg > i:nth-child(2) { animation-delay: calc(-6s - var(--sky-t, 0s)); }
+.tc-hero-bg > i:nth-child(3) { animation-delay: calc(-3s - var(--sky-t, 0s)); }
+
+/* ---------- 2. new layers ---------- */
+.bf-sky { container-type: size; }
+.bf-sky .sky-gust { position: absolute; left: 0; top: var(--y); width: var(--w, 120px); height: 1.6px; border-radius: 2px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent); opacity: 0; animation: sky-gust var(--t, 2.2s) cubic-bezier(0.4, 0, 0.6, 1) var(--d, 0s) infinite; }
+.bf-sky[data-tod="night"] .sky-gust, .bf-sky[data-tod="evening"] .sky-gust { background: linear-gradient(90deg, transparent, rgba(200, 215, 255, 0.35), transparent); }
+.bf-sky .sky-leaf { position: absolute; left: 0; top: var(--y); width: 0; height: 0; animation: sky-blow var(--t, 6s) linear var(--d, 0s) infinite; }
+.bf-sky .sky-leaf > i { position: absolute; width: 12px; height: 8px; border-radius: 0 100% 0 100%; background: var(--lc, #d9822b); animation: sky-tumble 1.3s ease-in-out var(--d, 0s) infinite alternate; }
+.bf-sky[data-wind] .sky-cloud:not(.near) { animation-duration: calc(var(--t, 70s) * 0.32); }
+.bf-sky .sky-bolt { position: absolute; left: var(--x, 64%); top: 8%; width: 22px; height: 62px; background: #fff7c2; opacity: 0;
+  clip-path: polygon(40% 0, 100% 0, 66% 38%, 92% 38%, 22% 100%, 42% 52%, 14% 52%); animation: sky-bolt 9s linear infinite; }
+.bf-sky .sky-rainbow { position: absolute; left: 50%; top: -40px; width: 420px; height: 420px; margin-left: -210px; border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle, transparent 52%, rgba(146, 106, 255, 0.5) 53%, rgba(84, 140, 255, 0.5) 55.5%, rgba(64, 196, 160, 0.48) 58%, rgba(255, 214, 70, 0.5) 60.5%, rgba(255, 150, 70, 0.48) 63%, rgba(244, 84, 104, 0.45) 65.5%, transparent 67%);
+  -webkit-mask: linear-gradient(180deg, #000 40%, transparent 62%); mask: linear-gradient(180deg, #000 40%, transparent 62%);
+  animation: sky-rainbow 2600ms ease-out calc(300ms - var(--rb-t, 0s)) both; }
+.bf-sky .sky-haze { position: absolute; left: -5%; right: -5%; bottom: 0; height: 46%; opacity: 0.5;
+  background: repeating-linear-gradient(180deg, rgba(255, 200, 140, 0) 0 6px, rgba(255, 200, 140, 0.4) 6px 8px), linear-gradient(0deg, rgba(255, 170, 90, 0.45), transparent);
+  -webkit-mask: linear-gradient(0deg, #000, transparent); mask: linear-gradient(0deg, #000, transparent); animation: sky-haze 3.2s ease-in-out infinite alternate; }
+.bf-sky .sky-flare { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); border-radius: 50%; background: radial-gradient(circle, rgba(255, 240, 200, 0.5), transparent 70%); animation: sky-twinkle 6s ease-in-out var(--d, 0s) infinite; }
+/* dark theme: day skies are deep, the words on them light: white clouds are dimmed */
+[data-theme="dark"] .bf-sky .sky-cloud:not(.dark) { background: rgba(196, 210, 236, 0.3); }
+html[data-motion="reduced"] .bf-sky .sky-rainbow, html.anim-off .bf-sky .sky-rainbow { opacity: 0.5; }
+
+@keyframes sky-gust { 0% { opacity: 0; transform: translateX(-20%); } 20% { opacity: 1; } 70% { opacity: 0.8; } 100% { opacity: 0; transform: translateX(900px); } }
+@keyframes sky-blow { 0% { transform: translate(-40px, 0); } 25% { transform: translate(25cqw, 14px); } 50% { transform: translate(50cqw, -6px); } 75% { transform: translate(75cqw, 18px); } 100% { transform: translate(calc(100cqw + 40px), 4px); } }
+@keyframes sky-tumble { from { transform: rotate(-40deg) scaleX(1); } to { transform: rotate(160deg) scaleX(0.4); } }
+@keyframes sky-bolt { 0%, 93.6%, 95.4%, 100% { opacity: 0; } 94% { opacity: 1; } 95% { opacity: 0.7; } }
+@keyframes sky-rainbow { from { opacity: 0; transform: scale(0.94); } to { opacity: 0.8; transform: none; } }
+@keyframes sky-haze { from { transform: translateY(0) scaleY(1); opacity: 0.35; } to { transform: translateY(-3px) scaleY(1.04); opacity: 0.6; } }
+
+/* ---------- 3. Home's Today hero: the weather, softly, behind the words ---------- */
+.hh-amb.bf-sky { background: none; z-index: 0; opacity: 0.55; border-radius: inherit; }
+.hh-amb.bf-sky::after { display: none; }
+.hh-amb .sky-sun, .hh-amb .sky-moon, .hh-amb .sky-glow { display: none; }
+.hh-amb .sky-cloud { opacity: 0.55; }
+.hh-amb .sky-drop { background: linear-gradient(transparent, color-mix(in oklab, var(--sw-blue, #3b82f6) 60%, transparent)); }
+.hh-amb .sky-flake { box-shadow: 0 0 0 0.5px rgba(96, 118, 156, 0.55); }
+.hh-amb .sky-flash { background: color-mix(in oklab, var(--sw-amber, #f59e0b) 30%, transparent); }
+.hh-amb .sky-rainbow { width: 300px; height: 300px; margin-left: -150px; left: 78%; top: -60px; }
+.hh-amb .sky-haze { opacity: 0.35; }
+.hh-amb ~ * { position: relative; z-index: 1; }

@@ -182,9 +182,9 @@ function gdAgeLabel(iso, verb) {
   if (mins < 1) return verb + ' just now';
   if (mins < 60) return `${verb} ${mins} min ago`;
   const d = new Date(t);
-  if (fmtDate(d) === todayStr()) return `${verb} ${_calTime(d)} today`;
+  if (Clock.parts(t).iso === todayStr()) return `${verb} ${_calTime(d)} today`;
   const days = Math.floor((Date.now() - t) / 86400000);
-  const day = d.toLocaleDateString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'short' });
+  const day = d.toLocaleDateString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'short', timeZone: Clock.zone() });
   return days < 1 ? `${verb} ${day}, ${_calTime(d)}` : `${verb} ${day} · ${days} day${days === 1 ? '' : 's'} ago`;
 }
 function gdIsStale(store) { const a = store.age(); return a === null || a > 24 * 3600 * 1000; }
@@ -192,29 +192,23 @@ function gdIsStale(store) { const a = store.age(); return a === null || a > 24 *
 /* ---------- dates ---------- */
 const _CAL_LOCALE = () => APP_CONFIG.locale || undefined;
 function _calParse(iso) { const [y, m, d] = String(iso).split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); }
-function _calAddDays(iso, n) { const d = _calParse(iso); d.setDate(d.getDate() + n); return fmtDate(d); }
+// Wall dates (_calParse: a local Date at midnight built from y/m/d, never from an instant) do
+// calendar arithmetic only, so the computer's zone cannot shift them. Instants (event times,
+// "now") go through Clock (07-core-clock.js), so the page can show a zone other than the computer's.
+function _calAddDays(iso, n) { const d = _calParse(iso); d.setDate(d.getDate() + n); return fmtDate(d); } // clock-ok: wall date
 function _calWeekStartOf(iso) {
   const ws = typeof _weekStartIndex === 'function' ? _weekStartIndex() : 1;
   const d = _calParse(iso);
-  d.setDate(d.getDate() - ((d.getDay() - ws + 7) % 7));
+  d.setDate(d.getDate() - ((d.getDay() - ws + 7) % 7)); // clock-ok: wall date
   return fmtDate(d);
 }
 function _calFmt(iso, opts) { return _calParse(iso).toLocaleDateString(_CAL_LOCALE(), opts); }
-function _calTime(d) { return d.toLocaleTimeString(_CAL_LOCALE(), { hour: '2-digit', minute: '2-digit' }); }
+/** An instant's wall time ('09:30') in the dashboard's zone. */
+function _calTime(d) { return d.toLocaleTimeString(_CAL_LOCALE(), { hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), timeZone: Clock.zone() }); }
 function _calHM(min) { const h = Math.floor(min / 60), m = min % 60; return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'); }
 function _calMinOf(hm) { const m = /^(\d{1,2}):(\d{2})$/.exec(String(hm || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; }
-function _calTimeLabel(hm) { const n = _calMinOf(hm); if (n === null) return ''; const d = new Date(2024, 0, 1, Math.floor(n / 60), n % 60); return _calTime(d); }
-/**
- * Where an instant sits on day `iso`, in wall-clock minutes (0 before the day, 1440 after it).
- * Wall clock, not time elapsed since midnight: on a daylight-saving day (23 or 25 hours long)
- * a 10:00 meeting still sits at 10:00, next to the page's "now" line (getHours/getMinutes).
- */
-function _calWallMin(d, iso) {
-  const day = fmtDate(d);
-  if (day < iso) return 0;
-  if (day > iso) return 24 * 60;
-  return d.getHours() * 60 + d.getMinutes();
-}
+/** A wall time 'HH:MM' as the locale writes it (no zone: it is not an instant). */
+function _calTimeLabel(hm) { const n = _calMinOf(hm); if (n === null) return ''; return new Date(Date.UTC(2024, 0, 1, Math.floor(n / 60), n % 60)).toLocaleTimeString(_CAL_LOCALE(), { hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), timeZone: 'UTC' }); }
 
 /* ---------- the calendar store ---------- */
 let _calIndex = null;   // Map iso -> [event]
@@ -252,9 +246,10 @@ function calEventMeta(id, create) {
 
 function calAllEvents() { const d = CalStore.data; return d && Array.isArray(d.events) ? d.events : []; }
 function calEventById(id) { return calAllEvents().find(e => e.id === id) || null; }
-function calEventStart(ev) { return ev.start.dateTime ? new Date(ev.start.dateTime) : _calParse(ev.start.date); }
-function calEventEnd(ev) { return ev.end && ev.end.dateTime ? new Date(ev.end.dateTime) : ev.end && ev.end.date ? _calParse(ev.end.date) : calEventStart(ev); }
-/** [firstDay, lastDay] in local time (all-day ends are exclusive; a midnight end stays on the day before). */
+/** An event's start / end as an instant (an all-day date starts at midnight in the dashboard's zone). */
+function calEventStart(ev) { return ev.start.dateTime ? new Date(ev.start.dateTime) : new Date(Clock.at(ev.start.date, 0)); }
+function calEventEnd(ev) { return ev.end && ev.end.dateTime ? new Date(ev.end.dateTime) : ev.end && ev.end.date ? new Date(Clock.at(ev.end.date, 0)) : calEventStart(ev); }
+/** [firstDay, lastDay] in the dashboard's zone (all-day ends are exclusive; a midnight end stays on the day before). */
 function calEventDays(ev) {
   if (ev.allDay || ev.start.date) {
     const a = ev.start.date, endEx = ev.end && ev.end.date ? ev.end.date : _calAddDays(a, 1);
@@ -262,7 +257,7 @@ function calEventDays(ev) {
     return [a, b < a ? a : b];
   }
   const s = calEventStart(ev), e = new Date(Math.max(calEventEnd(ev).getTime() - 1, s.getTime()));
-  return [fmtDate(s), fmtDate(e)];
+  return [Clock.parts(s.getTime()).iso, Clock.parts(e.getTime()).iso];
 }
 function _calBuildIndex() {
   const idx = new Map();
@@ -275,8 +270,9 @@ function _calBuildIndex() {
   }
   return idx;
 }
+let _calIndexZone = '';   // the zone the index's days are in: a new zone (travel, the override) rebuilds it
 function calEventsOn(iso) {
-  if (!_calIndex) _calIndex = _calBuildIndex();
+  if (!_calIndex || _calIndexZone !== Clock.zone()) { _calIndex = _calBuildIndex(); _calIndexZone = Clock.zone(); }
   return _calIndex.get(iso) || [];
 }
 /* ---------- calendars (several Google calendars through one account) ---------- */
@@ -367,6 +363,9 @@ function calSetCalendarHidden(id, hidden) {
   saveUI(); render();
 }
 function calEventColor(ev) {
+  // An event with its own Google colour (colorId 1-11) shows it, as in Google (46-cal-event-edit-logic.js).
+  const own = ev && ev.colorId && typeof evcColor === 'function' ? evcColor(ev.colorId) : null;
+  if (own) return own.sw;
   const c = calEventCalendar(ev);
   if (c) return c.color;
   if (ev.eventType === 'birthday') return 'pink';
@@ -439,8 +438,9 @@ function calendarEventsFor(person, limit) {
 /* ---------- entries (one shape for every view) ---------- */
 /**
  * Everything on a day as chips: {kind:'event'|'task'|'countdown', key, id,
- * title, allDay, start/end minutes (timed), color, prio, done, important, ref}.
- * opt: {taskFilter(item), includeDone, sources (override calPrefs)}
+ * title, allDay, start/end minutes (timed), color, prio, done, important, ref};
+ * a task's planned slot is a second task entry with planned:true (key 'p:<id>').
+ * opt: {taskFilter(item), includeDone, sources (override calPrefs), plans (false: no planned slots)}
  */
 function calEntriesOn(iso, opt) {
   opt = opt || {};
@@ -465,10 +465,13 @@ function calEntriesOn(iso, opt) {
       const e = { kind: 'event', key: 'e:' + ev.id, id: ev.id, title: ev.summary, allDay: !!ev.allDay, color: calEventColor(ev), important: imp, declined, free: !!ev.free, ref: ev };
       if (!ev.allDay) {
         const s = calEventStart(ev), en = calEventEnd(ev);
-        e.start = _calWallMin(s, iso);
-        e.end = _calWallMin(en, iso);
+        // Wall-clock minutes, as Google draws them: a clock-change day has 23 or 25 hours, and
+        // counting elapsed time put everything after 02:00 an hour off on those days.
+        const wall = (d) => { const p = Clock.parts(d.getTime()); return p.iso < iso ? 0 : p.iso > iso ? 24 * 60 : p.h * 60 + p.mi; };
+        e.start = wall(s);
+        e.end = wall(en);
         if (e.end <= e.start) e.end = Math.min(24 * 60, e.start + 15);
-        e.continued = fmtDate(s) !== iso;
+        e.continued = Clock.parts(s.getTime()).iso !== iso;
         // A timed event that fills the whole day (or a day it runs through) reads as all-day.
         // So does one that lasts a day or more (a trip, a conference): it sits in the all-day lane.
         if ((e.start === 0 && e.end >= 24 * 60 - 1) || en.getTime() - s.getTime() >= 24 * 3600 * 1000) { e.allDay = true; e.time = ''; }
@@ -479,17 +482,28 @@ function calEntriesOn(iso, opt) {
       out.push(e);
     }
   }
-  if (on('tasks')) {
+  // Planned time (20-task-plan.js) has its own switch ('plans', on unless hidden): it is not a due date.
+  const tasksOn = on('tasks'), plansOn = opt.plans !== false && on('plans') && typeof planSlotOf === 'function';
+  if (tasksOn || plansOn) {
     // The calendar's own view can show one stream only (right-click a stream > Show in calendar).
     const onlyStream = !opt.sources && calPrefs().stream && STREAMS[calPrefs().stream] ? calPrefs().stream : null;
     for (const t of getAllItems()) {
-      if (effDate(t) !== iso) continue;
+      // A planned slot that day: when the user means to work on it, its own entry
+      // (planned:true, key 'p:<id>') beside the deadline's. opt.plans:false leaves them out.
+      const ps = plansOn ? planSlotOf(t) : null;
+      const dueHere = tasksOn && effDate(t) === iso, planHere = !!(ps && ps.date === iso);
+      if (!dueHere && !planHere) continue;
       if (onlyStream && effStream(t) !== onlyStream) continue;
       const done = statusOf(t.id) === 'done';
       if (done && !opt.includeDone) continue;
       if (opt.taskFilter && !opt.taskFilter(t)) continue;
-      const tm = _calMinOf(t.dueTime);
       const p = effPriority(t);
+      if (planHere) {
+        out.push({ kind: 'task', planned: true, key: 'p:' + t.id, id: t.id, title: effTitle(t), allDay: false, prio: p, done, important: false, ref: t,
+          start: ps.start, end: ps.end, time: _calTimeLabel(ps.time), sort: 10 + ps.start });
+      }
+      if (!dueHere) continue;
+      const tm = _calMinOf(t.dueTime);
       const e = { kind: 'task', key: 't:' + t.id, id: t.id, title: effTitle(t), allDay: tm === null, prio: p, done, important: p === 'p1', ref: t };
       if (tm !== null) { e.start = tm; e.end = Math.min(24 * 60, tm + (Number(t.estimate) > 0 ? Math.min(Number(t.estimate), 8 * 60) : 30)); e.time = _calTimeLabel(t.dueTime); }
       e.sort = p === 'p1' && !done ? 0.7 : tm !== null ? 10 + tm : 1600 + (PRIORITY_ORDER[p] ?? 3);
@@ -512,6 +526,7 @@ function calChipHtml(e, o) {
     inner = (e.time && !e.allDay ? `<time>${esc(e.time)}</time>` : '') + `<span>${esc(e.title)}</span>`;
   } else if (e.kind === 'task') {
     cls.push('tk');
+    if (e.planned) cls.push('plan');
     if (e.done) cls.push('done');
     // A stream with its own symbol or shape shows it on its tasks (28-customise.js).
     const sid = e.ref ? effStream(e.ref) : null;
@@ -522,8 +537,8 @@ function calChipHtml(e, o) {
     inner = icon(e.icon) + `<span>${esc(e.title)}</span>`;
   }
   const drag = e.kind === 'task' && !o.noDrag ? ' draggable="true"' : '';
-  const tip = e.kind === 'event' ? `${e.time ? e.time + ' · ' : ''}${e.title}${e.declined ? ' (declined)' : ''}` : e.kind === 'task' ? `Task: ${e.title}` : `Countdown: ${e.title}`;
-  return `<button type="button" class="${cls.join(' ')}" data-kind="${e.kind}" data-id="${escAttr(e.id)}"${drag} title="${escAttr(tip)}">${inner}</button>`;
+  const tip = e.kind === 'event' ? `${e.time ? e.time + ' · ' : ''}${e.title}${e.declined ? ' (declined)' : ''}` : e.kind === 'task' ? `${e.planned ? 'Planned' : 'Task'}: ${e.title}` : `Countdown: ${e.title}`;
+  return `<button type="button" class="${cls.join(' ')}" data-kind="${e.kind}" data-id="${escAttr(e.id)}"${e.planned ? ' data-plan="1"' : ''}${drag} title="${escAttr(tip)}">${inner}</button>`;
 }
 
 /* ---------- scheduling (drag and drop) ---------- */
@@ -534,6 +549,7 @@ function calDragStart(e, id) {
   const t = getItem(id);
   _calDragId = id;
   _calDragOffsetMin = 0;
+  if (typeof planDragNote === 'function') planDragNote(e, id);   // a planned block moves its slot, never the deadline (20-task-plan.js)
   const block = e.target && e.target.closest ? e.target.closest('.wv-ev.is-task') : null;
   if (block) {
     const r = block.getBoundingClientRect();
@@ -576,6 +592,7 @@ function calMakeDropTarget(el, at) {
     if (!id) return;
     e.preventDefault();
     const where = at(e);
+    if (where && where.date && typeof planDropOnDay === 'function' && planDropOnDay(id, where)) return;
     if (where && where.date) calScheduleTask(id, where.date, where.time);
   });
 }
@@ -599,7 +616,8 @@ function calScheduleTask(id, date, time) {
 }
 
 /* ---------- Google Calendar: prefilled "new event" page ---------- */
-function _calStamp(d) { const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}T${p(d.getHours())}${p(d.getMinutes())}00`; }
+/** An instant as Google's 'YYYYMMDDTHHMMSS' wall time in the dashboard's zone (sent with ctz = that zone). */
+function _calStamp(ms) { const t = Clock.parts(ms), p = (n) => String(n).padStart(2, '0'); return `${t.iso.replace(/-/g, '')}T${p(t.h)}${p(t.mi)}00`; }
 /** o: {title, date 'YYYY-MM-DD', time 'HH:MM'|null, minutes, details, location} -> https URL. */
 function googleCalendarUrl(o) {
   o = o || {};
@@ -607,8 +625,8 @@ function googleCalendarUrl(o) {
   let dates;
   const tm = _calMinOf(o.time);
   if (tm !== null) {
-    const s = _calParse(date); s.setHours(Math.floor(tm / 60), tm % 60, 0, 0);
-    const e = new Date(s.getTime() + (Number(o.minutes) > 0 ? Number(o.minutes) : 60) * 60000);
+    const s = Clock.at(date, tm);
+    const e = s + (Number(o.minutes) > 0 ? Number(o.minutes) : 60) * 60000;
     dates = _calStamp(s) + '/' + _calStamp(e);
   } else {
     dates = date.replace(/-/g, '') + '/' + _calAddDays(date, 1).replace(/-/g, '');
@@ -616,7 +634,7 @@ function googleCalendarUrl(o) {
   const q = new URLSearchParams({ action: 'TEMPLATE', text: String(o.title || '').slice(0, 300), dates });
   if (o.details) q.set('details', String(o.details).slice(0, 1500));
   if (o.location) q.set('location', String(o.location).slice(0, 300));
-  if (tm !== null && APP_CONFIG.timezone) q.set('ctz', APP_CONFIG.timezone);
+  if (tm !== null) q.set('ctz', Clock.zone());   // one zone for the stamp and ctz (spec 2.7 P5)
   return 'https://calendar.google.com/calendar/render?' + q.toString();
 }
 function calAddTaskToGoogle(id) {
@@ -708,8 +726,8 @@ function renderCalendarView(container) {
   head.querySelectorAll('[data-d]').forEach(b => {
     b.onclick = () => {
       const n = Number(b.dataset.d);
-      const d = n === 0 ? new Date() : new Date(yr, mo - 1 + n, 1);
-      state.calMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const d = n === 0 ? _calParse(todayStr()) : new Date(yr, mo - 1 + n, 1);
+      state.calMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; // clock-ok: wall date
       saveUI(); renderMain();
     };
   });
@@ -734,9 +752,9 @@ function renderCalendarView(container) {
 function calMonthGrid(o) {
   const ws = typeof _weekStartIndex === 'function' ? _weekStartIndex() : 1;
   const first = new Date(o.year, o.month, 1);
-  const lead = (first.getDay() - ws + 7) % 7;
+  const lead = (first.getDay() - ws + 7) % 7; // clock-ok: wall date
   const start = new Date(o.year, o.month, 1 - lead);
-  const daysIn = new Date(o.year, o.month + 1, 0).getDate();
+  const daysIn = new Date(o.year, o.month + 1, 0).getDate(); // clock-ok: wall date
   const weeks = Math.ceil((lead + daysIn) / 7);
   const today = todayStr();
   const grid = document.createElement('div'); grid.className = 'month';
@@ -745,19 +763,19 @@ function calMonthGrid(o) {
   const base = new Date(2024, 0, 7 + ws);
   for (let i = 0; i < 7; i++) {
     const h = document.createElement('div'); h.className = 'dow'; h.setAttribute('role', 'columnheader');
-    h.textContent = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i).toLocaleDateString(_CAL_LOCALE(), { weekday: 'short' });
+    h.textContent = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i).toLocaleDateString(_CAL_LOCALE(), { weekday: 'short' }); // clock-ok: wall date
     grid.appendChild(h);
   }
   for (let i = 0; i < weeks * 7; i++) {
-    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i); // clock-ok: wall date
     const iso = fmtDate(d);
-    const out = d.getMonth() !== o.month;
-    const wk = d.getDay() === 0 || d.getDay() === 6;
+    const out = d.getMonth() !== o.month; // clock-ok: wall date
+    const wk = d.getDay() === 0 || d.getDay() === 6; // clock-ok: wall date
     const cell = document.createElement('div');
     cell.className = 'mc' + (out ? ' out' : '') + (wk ? ' wkend' : '') + (iso === today ? ' today' : '') + (o.selected === iso ? ' sel' : '');
     cell.dataset.date = iso;
     cell.setAttribute('role', 'gridcell');
-    const label = d.getDate() === 1 ? d.toLocaleDateString(_CAL_LOCALE(), { day: 'numeric', month: 'short' }) : String(d.getDate());
+    const label = d.getDate() === 1 ? d.toLocaleDateString(_CAL_LOCALE(), { day: 'numeric', month: 'short' }) : String(d.getDate()); // clock-ok: wall date
     const full = d.toLocaleDateString(_CAL_LOCALE(), { weekday: 'long', day: 'numeric', month: 'long' });
     const entries = o.entries(iso);
     cell.innerHTML = `<button type="button" class="dn" aria-label="${escAttr(full)}">${esc(label)}</button>` + entries.map(e => calChipHtml(e)).join('');
@@ -830,6 +848,7 @@ function calTaskMenu(anchor, id) {
     'sep',
     { label: 'Add to Google Calendar', icon: 'calendar-plus', run: () => calAddTaskToGoogle(id) },
     ...(t.dueTime ? [{ label: 'Remove the time', icon: 'clock', run: () => calScheduleTask(id, effDate(t), null) }] : []),
+    ...(t.plannedFor && t.plannedTime && typeof setPlannedSlot === 'function' ? [{ label: 'Remove the planned time', icon: 'circle-x', run: () => setPlannedSlot(id, t.plannedFor, null) }] : []),
     { label: 'Remove the date', icon: 'circle-dashed', run: () => { const prev = effDate(t); setDateWithReason(id, null, 'Removed on the calendar'); delete t.dueTime; toast('Date removed', { action: { label: 'Undo', run: () => calScheduleTask(id, prev, undefined) } }); } },
   ], { align: 'start' });
 }

@@ -63,7 +63,7 @@ function renderTaskView(main, subEl) {
   closed = sortItems(closed, 'completed', view);
 
   if (searching) subEl.textContent = `${open.length + closed.length} match${open.length + closed.length === 1 ? '' : 'es'} in all tasks`;
-  else if (view === 'today') subEl.textContent = new Date().toLocaleDateString(_locale(), { weekday: 'long', day: 'numeric', month: 'long' });
+  else if (view === 'today') subEl.textContent = _qaToday().toLocaleDateString(_locale(), { weekday: 'long', day: 'numeric', month: 'long' });
   else if (view === 'completed') subEl.textContent = `${open.length} in the last ${_logbookDays} days`;
   else subEl.textContent = open.length ? `${open.length} open` : '';
 
@@ -237,7 +237,7 @@ function _renderTodaySummary() {
   const wrap = document.createElement('div'); wrap.className = 'today-sum';
   const left = document.createElement('div'); left.className = 'ts-prog';
   const pct = p.total ? Math.round(p.done / p.total * 100) : 0;
-  const ring = document.createElement('span'); ring.className = 'ring'; ring.style.setProperty('--pct', String(pct));
+  const ring = document.createElement('span'); ring.className = 'ring ap-ring'; ring.style.setProperty('--pct', String(pct));   // ap-ring: the day's fill style (71-anim-moments.css)
   const ringTxt = `${p.done}/${p.total}`;
   ring.innerHTML = `<span${ringTxt.length > 4 ? ' class="long"' : ''}>${ringTxt}</span>`;
   const txt = document.createElement('div'); txt.className = 'ts-txt';
@@ -246,7 +246,8 @@ function _renderTodaySummary() {
   if (p.doing) bits.push(`${p.doing} in progress`);
   const streak = computeStreak();
   if (streak > 1) bits.push(`${streak}-day streak`);
-  txt.innerHTML = `<b>${p.total ? `${p.done} of ${p.total} done` : 'Nothing planned yet'}</b><span>${esc(bits.join(' · ') || (p.total && p.done === p.total ? 'All done. Nice.' : 'Due today, planned and in progress'))}</span>`;
+  const flame = streak > 1 && typeof animStreakHtml === 'function' ? animStreakHtml(streak) : '';   // grows over a week (78-anim-moments.js)
+  txt.innerHTML = `<b>${p.total ? `${p.done} of ${p.total} done` : 'Nothing planned yet'}</b><span>${flame}${esc(bits.join(' · ') || (p.total && p.done === p.total ? 'All done. Nice.' : 'Due today, planned and in progress'))}</span>`;
   left.append(ring, txt);
   wrap.appendChild(left);
   wrap.appendChild(_renderWeekStrip({}));
@@ -257,11 +258,11 @@ function computeStreak() {
   // Consecutive days with at least one completion, ending today or yesterday.
   const completions = Object.values(state.completionLog || {}).flat();
   if (completions.length === 0) return 0;
-  const days = new Set(completions.map(ts => fmtDate(new Date(ts))));
+  const days = new Set(completions.map(ts => Clock.parts(Number(ts)).iso));
   let streak = 0;
-  const cursor = new Date();
-  if (!days.has(fmtDate(cursor))) cursor.setDate(cursor.getDate() - 1);
-  while (days.has(fmtDate(cursor))) { streak++; cursor.setDate(cursor.getDate() - 1); }
+  let cursor = todayStr();
+  if (!days.has(cursor)) cursor = Clock.addDays(cursor, -1);
+  while (days.has(cursor)) { streak++; cursor = Clock.addDays(cursor, -1); }
   return streak;
 }
 
@@ -316,7 +317,7 @@ function _renderWeekStrip(o) {
     const cell = document.createElement('button'); cell.type = 'button';
     const selected = state.view === 'day:' + ds || (state.view === 'today' && ds === today);
     cell.className = 'ws-day' + (ds === today ? ' is-today' : '') + (selected ? ' on' : '') + (ds < today ? ' past' : '');
-    cell.innerHTML = `<span class="dn"><span class="dw">${esc(d.toLocaleDateString(_locale(), { weekday: 'short' }))}</span><b>${d.getDate()}</b></span>`
+    cell.innerHTML = `<span class="dn"><span class="dw">${esc(d.toLocaleDateString(_locale(), { weekday: 'short' }))}</span><b>${d.getDate()}</b></span>` // clock-ok: wall date
       + `<span class="load${n >= 3 ? ' busy' : ''}">${'<i></i>'.repeat(Math.min(n, 4))}</span>`;
     cell.title = d.toLocaleDateString(_locale(), { weekday: 'long', day: 'numeric', month: 'long' }) + (n ? ` · ${n} open` : '') + ' · drop a task here to move it';
     cell.onclick = () => setView(ds === today ? 'today' : 'day:' + ds);
@@ -547,8 +548,8 @@ function _openTemplatesPopover(anchor, view) {
   const items = [];
   for (const t of TEMPLATES) {
     items.push({ label: t.label, icon: 'layout-template', hint: STREAMS[t.stream]?.label || '', run: () => {
-      const d = new Date(); d.setDate(d.getDate() + (t.daysAhead || 0));
-      const id = addCustomTask(t.title, fmtDate(d), t.priority, [...(t.tags || [])], t.stream, t.recurrence || 'none');
+      const d = Clock.addDays(todayStr(), t.daysAhead || 0);
+      const id = addCustomTask(t.title, d, t.priority, [...(t.tags || [])], t.stream, t.recurrence || 'none');
       if (id) toast('Added: ' + t.title, { kind: 'ok', action: { label: 'Open', run: () => openTask(id) } });
     } });
   }
@@ -563,7 +564,9 @@ function _openTemplatesPopover(anchor, view) {
 
 /* ---------- board (kanban) ---------- */
 function renderKanban(container, o) {
-  const { open, closed, view } = o;
+  const { closed, view } = o;
+  // Pinned first in each column, as in the list ("Pin to top"); the sort order applies within each half.
+  const open = o.open.filter(i => isPinned(i.id)).concat(o.open.filter(i => !isPinned(i.id)));
   const cols = [
     { key: 'todo', label: 'To do', items: open.filter(i => statusOf(i.id) === 'todo') },
     { key: 'doing', label: 'In progress', items: open.filter(i => statusOf(i.id) === 'doing') },
@@ -624,6 +627,11 @@ function _renderKanbanCard(it) {
   cb.onclick = (e) => { e.stopPropagation(); toggleDone(it.id); };
   const ttl = document.createElement('div'); ttl.className = 'ttl'; ttl.textContent = effTitle(it);
   top.append(cb, ttl);
+  if (isPinned(it.id) && status !== 'done') {   // the pin marker (Unpin: right-click > Unpin)
+    card.classList.add('pinned');
+    const pm = document.createElement('span'); pm.className = 'kc-pin'; pm.setAttribute('aria-label', 'Pinned'); pm.dataset.tip = 'Pinned to the top';
+    pm.innerHTML = icon('pin', 'i-xs'); top.appendChild(pm);
+  }
   card.appendChild(top);
   const meta = document.createElement('div'); meta.className = 'meta';
   const stream = effStream(it);

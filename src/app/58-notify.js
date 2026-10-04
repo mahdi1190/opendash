@@ -40,8 +40,9 @@ function _notifyEvents() {
 function _notifyTick() {
   const n = APP_CONFIG.notifications;
   if (!n || !n.enabled || typeof Notification === 'undefined' || Notification.permission !== 'granted' || typeof state === 'undefined') return;
-  const now = new Date();
-  if (n.dueDigest !== false && now.getHours() >= 8) {
+  // The digest hour and "today" in the dashboard's zone (Clock, travel spec 2.7 P8); event leads are instants.
+  const nowMs = Clock.now();
+  if (n.dueDigest !== false && Clock.parts(nowMs).h >= 8) {
     const today = todayStr();
     if (_notifyClaim('digest:' + today)) {
       let due = 0, overdue = 0;
@@ -61,9 +62,9 @@ function _notifyTick() {
     for (const ev of _notifyEvents()) {
       const s = ev && ev.start && ev.start.dateTime ? Date.parse(ev.start.dateTime) : NaN;
       if (!Number.isFinite(s)) continue;
-      const mins = (s - now.getTime()) / 60000;
+      const mins = (s - nowMs) / 60000;
       if (mins <= lead && mins > lead - 2 && ev.selfResponse !== 'declined' && ev.status !== 'cancelled' && _notifyClaim('event:' + (ev.id || s) + ':' + s)) {
-        const at = new Date(s).toLocaleTimeString(APP_CONFIG.locale || undefined, { hour: '2-digit', minute: '2-digit' });
+        const at = Clock.fmtTime(s);
         notifyShow(ev.summary || 'Event', `Starts at ${at}${ev.location ? ' · ' + ev.location : ''}`, 'event');
       }
     }

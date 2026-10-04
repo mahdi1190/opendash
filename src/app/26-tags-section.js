@@ -16,6 +16,7 @@
    ============================================================ */
 const TAG_RULE_TEXT = 'Tags say what kind of work a task is (email, meeting, writing…) or which cross-stream project it belongs to. People, streams, dates and urgency have their own fields.';
 const SIDEBAR_TOP_TAGS = 5;
+const SB_TAG_DEFAULTS = { sort: 'open', show: SIDEBAR_TOP_TAGS };   // as before: the busiest tags, pinned first
 let _tmQuery = '';
 let _tmSort = 'use';            // use | az | unused
 const _tmSel = new Set();
@@ -424,15 +425,21 @@ registerSidebarBlock('tasks', {
     const rows = tagRows().filter(r => !r.archived);
     const all = rows.filter(r => r.total);
     if (!all.length && !rows.some(r => r.pinned)) return false;
-    el.appendChild(sbSection({ title: 'Tags', collapsible: 'tags', actions: [{ icon: 'sliders-horizontal', label: 'Manage tags', run: () => openTagManager() }] }));
+    el.appendChild(sbSection({ title: 'Tags', collapsible: 'tags', actions: [sbListMenuAction('tags', SB_TAG_DEFAULTS, 'tags'), { icon: 'sliders-horizontal', label: 'Manage tags', run: () => openTagManager() }] }));
     czSectionHint(el, 'tags');
     if (sbIsCollapsed('tags')) return;
-    const top = rows.filter(r => r.pinned).map(r => r.tag);
-    for (const r of rows.filter(x => x.open && !x.pinned).sort((a, b) => b.open - a.open || a.tag.localeCompare(b.tag))) { if (top.length >= Math.max(SIDEBAR_TOP_TAGS, top.length)) break; top.push(r.tag); }
+    // Sorted by open tasks (the default) the list is the tags in use now; any other sort lists every used tag.
+    const pref = sbListPrefsFor('tags', SB_TAG_DEFAULTS);
     const cur = state.view.startsWith('tag:') ? state.view.slice(4) : null;
-    if (cur && !top.includes(cur)) top.push(cur);
+    const st = sbStats().tags;
+    const pick = rows.filter(r => r.pinned || r.tag === cur || (pref.sort === 'open' ? r.open : r.total));
     // Each tag shows its symbol / colour (else #) and has the right-click menu (28-customise.js).
-    for (const t of top) el.appendChild(czMark(sbNavItem({ label: t, avatarHtml: `<span class="ic">${tagMarkHtml(t) || icon('hash')}</span>`, view: 'tag:' + t, count: (ctx.counts.tags && ctx.counts.tags[t]) || '' }), 'tag', t));
+    sbOrderedList(el, {
+      key: 'tags', noun: 'Tags', defaults: SB_TAG_DEFAULTS,
+      items: pick.map(r => ({ id: r.tag, label: r.tag, open: r.open, total: r.total, recent: (st.get(r.tag) || {}).recent || 0, pinned: r.pinned })),
+      custom: sbSavedOrder('tags'), saveCustom: (ids) => sbSaveOrder('tags', ids), keepId: cur,
+      row: (it) => czMark(sbNavItem({ label: it.id, avatarHtml: `<span class="ic">${tagMarkHtml(it.id) || icon('hash')}</span>`, view: 'tag:' + it.id, count: (ctx.counts.tags && ctx.counts.tags[it.id]) || '' }), 'tag', it.id),
+    });
     const flagged = all.some(r => r.flags.some(f => f.kind !== 'single')) || tglSimilar(state).length > 0;
     const more = sbNavItem({ label: `All ${all.length} tags`, icon: 'tags', className: 'nav-more', active: state.view === 'tags', onClick: () => openTagManager({ query: '' }), title: 'Search, merge and clean up tags' });
     if (flagged) { const link = document.createElement('span'); link.className = 'link'; link.textContent = 'Clean up'; more.appendChild(link); }

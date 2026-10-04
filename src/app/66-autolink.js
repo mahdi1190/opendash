@@ -61,8 +61,10 @@ function alWhen(iso) {
   const d = new Date(/T/.test(s) ? s : s + 'T12:00:00');
   if (isNaN(d)) return '';
   const L = APP_CONFIG.locale || undefined;
-  const day = d.toLocaleDateString(L, { weekday: 'short', day: 'numeric', month: 'short' });
-  return /T/.test(s) ? `${day} ${d.toLocaleTimeString(L, { hour: '2-digit', minute: '2-digit' })}` : day;
+  // A timestamp is an instant (shown in the dashboard's zone); a bare date is a wall date.
+  const zone = /T/.test(s) ? { timeZone: Clock.zone() } : {};
+  const day = d.toLocaleDateString(L, { weekday: 'short', day: 'numeric', month: 'short', ...zone });
+  return /T/.test(s) ? `${day} ${d.toLocaleTimeString(L, { hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), ...zone })}` : day;
 }
 function _alEvents() { try { return typeof calAllEvents === 'function' ? calAllEvents() : []; } catch (e) { return []; } }
 function _alEnsureCalendar() { try { if (typeof CalStore !== 'undefined' && _serverAvailable && !CalStore.st.loaded && !CalStore.st.loading) CalStore.load(); } catch (e) { /* the calendar is optional */ } }
@@ -246,7 +248,7 @@ function alOpenTarget(sg) {
   }
   if (sg.type === 'event' && typeof calOpenEvent === 'function') return calOpenEvent(t.eventId);
   if (sg.type === 'email') { const u = safeUrl(t.link || ''); if (u) window.open(u, '_blank', 'noopener'); return; }
-  if (sg.type === 'person') return setView('person:' + t.personId);
+  if (sg.type === 'person') return openPerson(t.personId);
   if (sg.type === 'task' && getItem(t.taskId)) return openTask(t.taskId);   // centre card or side panel (61-task-card.js)
 }
 
@@ -317,7 +319,7 @@ function autolinkRelatedSection(taskId) {
     const g = _alGroup('People', 'users', L.people.length);
     for (const p of L.people) {
       g.appendChild(_alLinkedRow({ avatar: typeof homeAvatar === 'function' ? homeAvatar(p, 18) : null, icon: 'user', label: p.name, sub: [p.role, p.org].filter(Boolean).join(' · '),
-        open: () => setView('person:' + p.id),
+        open: () => openPerson(p.id),
         unlink: () => alActions([{ op: 'task.unlink_person', id: taskId, person: p.id }], { done: `Unlinked ${p.name}` }) }));
     }
     sec.appendChild(g);
@@ -557,7 +559,7 @@ function _alAgo(iso) {
   if (m < 1) return 'just now';
   if (m < 60) return `${m} min ago`;
   if (m < 24 * 60) return `${Math.round(m / 60)} h ago`;
-  return alWhen(fmtDate(new Date(t)));   // the local calendar day (not UTC's)
+  return alWhen(Clock.parts(t).iso);   // the page's calendar day (not UTC's)
 }
 function _alPaintStatus() {
   const el = document.querySelector('.al-status');

@@ -16,6 +16,7 @@
 // exactly as the page counts it.
 
 import { ActionError, truncate, weekdayOf, daysBetween, normTag, isoInTz } from './model.mjs';
+import { lastContactFromData } from '../../lib/people-contact.mjs';
 import {
   pplBuildIndex, pplLinked, pplSuggest, pplOrphans, pplUnknownNames, pplIsWaiting, pplPersonEmails, pplKind,
   tglUsage, tglRegistry, tglFlags, tglStreamKeys, tglSimilar,
@@ -78,9 +79,9 @@ export const PEOPLE_QUERIES = [
   },
   {
     name: 'person.get', tool: 'get_person',
-    description: "One person: profile, notes, and their open tasks split into 'owe' (things you owe them) and 'waiting' (things you are waiting on them for), plus how many are done.",
+    description: "One person: profile, notes, their open tasks split into 'owe' (things you owe them) and 'waiting' (things you are waiting on them for), how many are done, and lastContact {date, kind: meeting|email|note|task, daysAgo} (when the user was last in touch, or null).",
     schema: obj({ id: { type: 'string', minLength: 1, maxLength: 100, description: 'person id, name or alias' } }, ['id']),
-    run(q, p) {
+    async run(q, p) {
       const s = q.s;
       const who = find(s, p.id);
       if (!who) {
@@ -92,11 +93,13 @@ export const PEOPLE_QUERIES = [
       const open = mine.filter(t => statusOf(s, t.id) !== 'done').sort((a, b) => String(a.dueDate || '9999').localeCompare(String(b.dueDate || '9999')));
       return {
         person: personOut(who),
-        ...(who.phone ? { phone: who.phone } : {}), ...(who.linkedin ? { linkedin: who.linkedin } : {}),
+        ...(who.phone ? { phone: who.phone } : {}), ...(who.linkedin ? { linkedin: who.linkedin } : {}), ...(who.tz ? { tz: who.tz } : {}),
         notes: (Array.isArray(who.notes) ? who.notes : []).slice(0, 20).map(n => ({ date: isoInTz(new Date(n.ts || 0), q.clock.timezone), text: truncate(n.text, 600) })),
         owe: open.filter(t => !pplIsWaiting(t)).map(t => mini(q, t)),
         waiting: open.filter(t => pplIsWaiting(t)).map(t => mini(q, t)),
         doneCount: mine.length - open.length,
+        // The shared last-contact rule (lib/people-contact.mjs = src/app/53-people-contact-logic.js).
+        lastContact: (await lastContactFromData(q, { today: q.clock.today }).catch(() => new Map())).get(who.id) || null,
       };
     },
   },

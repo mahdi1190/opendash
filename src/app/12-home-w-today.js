@@ -1,6 +1,9 @@
 /* ============================================================
-   HOME widget "today": the hero, the morning brief in more detail without
-   starting the story. Owner: HB1 (today hero). Pure logic (tested in Node):
+   HOME widget "today": the welcome for a brand-new data folder. Owner: HB1 (today hero).
+   Since Home and the Morning brief became one page (user request, 4 Oct) the day's
+   hero heads Home for everyone else (74-brief-ui.js briefRender, 12-home-head.js), so
+   this widget is offered only while there is nothing yet (available(): homeIsNewUser);
+   the day-hero code below still serves that welcome and the gallery preview. Pure logic (tested in Node):
    12-home-today-logic.js. CSS: 13-home-w-today.css.
 
    What it shows
@@ -36,6 +39,7 @@ registerHomeWidget({
   id: 'today', title: 'Today', icon: 'sun', order: 10,
   description: 'Today in a few lines: weather, the next event, what is due and how Focus is going, with Start my day',
   sizes: ['l', 'full'], defaultSize: 'full',
+  available() { return typeof homeIsNewUser !== 'function' || homeIsNewUser(); },   // everyone else: the hero heads Home
   render(el, ctx) { return _hhRender(el, ctx); },
   unmount() { _hhStopTicker(); clearTimeout(_hh.waitTimer); },
 });
@@ -76,7 +80,8 @@ function homeTodayOnBoard() {
 
 /* ---------- small helpers ---------- */
 function _hhPad(n) { return String(n).padStart(2, '0'); }
-function _hhNowHM(d) { d = d || new Date(); return _hhPad(d.getHours()) + ':' + _hhPad(d.getMinutes()); }
+// Hours and minutes where the user is (Clock, travel spec 2.7 P12).
+function _hhNowHM(d) { const p = Clock.parts(d ? d.getTime() : Clock.now()); return _hhPad(p.h) + ':' + _hhPad(p.mi); }
 function _hhReduced() {
   if (window.Motion && typeof Motion.prefersReduced === 'function' && Motion.prefersReduced()) return true;
   return typeof animEnabled === 'function' ? !animEnabled() : false;
@@ -96,11 +101,11 @@ function _hhRerender() { if (_hhLive() && typeof homeRerenderWidget === 'functio
 
 /* ---------- the model: everything the hero reads, from the page's own data ---------- */
 function _hhModel() {
-  const nowD = new Date();
+  const nowD = new Date(Clock.now()), np = Clock.parts(nowD.getTime());
   const today = todayStr();
-  const tomorrow = typeof tomorrowStr === 'function' ? tomorrowStr() : fmtDate(new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() + 1));
+  const tomorrow = typeof tomorrowStr === 'function' ? tomorrowStr() : Clock.addDays(today, 1);
   const now = _hhNowHM(nowD);
-  const hour = nowD.getHours();
+  const hour = np.h;
   const evening = hour >= _hhEveningHour();
   const all = getAllItems();
   const open = all.filter(i => statusOf(i.id) !== 'done');
@@ -114,7 +119,7 @@ function _hhModel() {
   const doneIds = [];
   for (const [id, arr] of Object.entries(state.completionLog || {})) {
     let hit = false;
-    for (const ts of arr || []) { const n = Number(ts); if (n && fmtDate(new Date(n)) === today) { doneToday++; hit = true; if (n < firstAt) firstAt = n; } }
+    for (const ts of arr || []) { const n = Number(ts); if (n && Clock.parts(n).iso === today) { doneToday++; hit = true; if (n < firstAt) firstAt = n; } }
     if (hit) doneIds.push(id);
   }
   const doneItems = doneIds.map(id => getItem(id)).filter(i => i && statusOf(i.id) === 'done').sort(byPrio);
@@ -141,17 +146,22 @@ function _hhModel() {
   const m = {
     today, tomorrow, now, hour, evening, nowD,
     isNew: !all.length && !Object.keys(state.completionLog || {}).length,
-    sunday: nowD.getDay() === 0,
+    sunday: np.dow === 0,
     dueToday, overdue, dueTomorrow, doneItems, doneToday, events, tomorrowFirst, countdowns, hasCal, calLoading: calUnknown,
     focusList,
   };
+  // The user's working hours (config.workHours, 20-task-plan.js), so every widget's free time agrees.
+  const wh = typeof homeWorkHours === 'function' ? homeWorkHours() : null;
+  const work = wh ? { dayStart: wh.startMin, dayEnd: wh.endMin } : {};
   m.stats = homeTodayStats({
+    ...work,
     now, evening, dueToday: dueToday.length, overdue: overdue.length, doneToday,
     firstDoneAt: Number.isFinite(firstAt) ? _hhNowHM(new Date(firstAt)) : null, slipped,
     events, calendar: hasCal ? true : calUnknown ? 'unknown' : false, tomorrowFirst,
     focus: [...focusList.map(i => units(i, false)), ...focusDone.map(i => units(i, true))],
   });
   m.tpl = {
+    ...work,
     evening, now, events, tomorrowFirst, slipped, slippedToday, calendar: hasCal ? true : calUnknown ? 'unknown' : false,
     dueToday: dueToday.map(mini), overdue: overdue.map(mini), dueTomorrow: dueTomorrow.map(mini),
     focus: focusList.map(mini), done: doneItems.map(mini), doneCount: doneToday,
@@ -200,7 +210,7 @@ function _hhScriptCurrent(entry, m) {
   const sc = entry && entry.script;
   if (!sc || sc.source !== 'ai' || !Array.isArray(sc.sentences) || !sc.sentences.length) return false;
   if (m.evening) return true;
-  const nowMin = m.hour * 60 + m.nowD.getMinutes();
+  const nowMin = Clock.parts(m.nowD.getTime()).min;
   const evs = new Map(((entry.data && entry.data.events) || []).map(e => [e.id, e]));
   for (const s of sc.sentences.slice(0, 3)) for (const e of s.entities || []) {
     if (e.type === 'event') { const ev = evs.get(e.ref); if (ev && !ev.allDay && Number.isFinite(ev.endMin) && ev.endMin <= nowMin) return false; }
@@ -236,11 +246,14 @@ function _hhText(m) {
   const t = homeTodayTemplate(m.tpl);
   return { src: 'template', sentences: t.sentences, tone: t.tone };
 }
+/** The compact hero is retired with the brief panel (the day's hero heads Home now): always the full one. */
+function _hhCompact() { return false; }
 /** Fetch what is missing or old (each at most every 10 minutes); arrivals repaint the hero. */
-function _hhLoad(m) {
+function _hhLoad(m, compact) {
   if (!_hhServer()) return;
   const kind = m.evening ? 'evening' : 'morning';
   const old = (e) => !e || e.date !== m.today || Date.now() - e.at > 10 * 60 * 1000;
+  if (compact) { _hhLoadWx(); return; }                     // compact: only the weather is needed here
   if (_hhStory() && _hhAiOn() && !_hh.busy['story:' + kind] && old(_hh.story[kind])) {
     _hh.busy['story:' + kind] = true;
     _hhGet('/api/story?kind=' + kind)
@@ -257,6 +270,9 @@ function _hhLoad(m) {
       .catch(() => { _hh.summary[kind] = { date: m.today, at: Date.now(), text: null }; })
       .finally(() => { _hh.busy['sum:' + kind] = false; _hhArrived('summary'); });
   }
+  _hhLoadWx();
+}
+function _hhLoadWx() {
   if (APP_CONFIG.location && typeof briefLoadWeather === 'function' && typeof _bf !== 'undefined' && !_bf.weatherLoading
     && (!_bf.weather || Date.now() - (_bf.weatherAt || 0) > 10 * 60 * 1000) && !_hh.busy.wx) {
     _hh.busy.wx = true;
@@ -300,16 +316,18 @@ function _hhRender(el, ctx) {
     clearTimeout(_hh.waitTimer);
     _hh.waitTimer = setTimeout(() => { if (_hhLive() && _hh.el.classList.contains('is-waiting')) _hhRerender(); }, _HH_WAIT_MS + 30);
   }
-  _hhLoad(m);
+  const compact = _hhCompact(m);
+  _hhLoad(m, compact);
   const root = document.createElement('section');
   const tod = m.hour < 5 || m.hour >= 22 ? 'night' : m.evening ? 'evening' : m.hour < 12 ? 'morning' : 'day';
-  root.className = `hh tod-${tod}` + (m.evening ? ' is-evening' : '') + (m.isNew ? ' is-new' : '');
+  root.className = `hh tod-${tod}` + (m.evening ? ' is-evening' : '') + (m.isNew ? ' is-new' : '') + (compact ? ' is-compact' : '');
   root.dataset.size = ctx.size;
   root.setAttribute('aria-label', 'Today');
   el.appendChild(root);
   _hh.el = root;
   if (m.isNew) _hhPaintWelcome(root, m);
-  else _hhPaintHero(root, m, ctx, reduced);
+  else _hhPaintHero(root, m, ctx, reduced, compact);
+  if (typeof animLivingPaint === 'function') animLivingPaint(root);   // the light that moves through the day (78-anim-moments.js); after the paints (they set innerHTML)
   _hh.sig = _hhSig(m);
   _hhEnsureTicker();
   return true;
@@ -317,7 +335,7 @@ function _hhRender(el, ctx) {
 
 function _hhOverline(m) {
   let d = '';
-  try { d = m.nowD.toLocaleDateString(APP_CONFIG.locale || undefined, { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { d = m.today; }
+  try { d = m.nowD.toLocaleDateString(APP_CONFIG.locale || undefined, { weekday: 'long', day: 'numeric', month: 'long', timeZone: Clock.zone() }); } catch (e) { d = m.today; }
   const wk = homeTodayWeek(m.today);
   return `<div class="hh-ovl"><span class="hh-live" aria-hidden="true"></span><span>${esc(d)}${wk && !m.isNew ? ` · Week ${esc(wk)}` : ''}</span></div>`;
 }
@@ -329,14 +347,16 @@ function _hhHello(m) {
 }
 function _hhGreeting(m) { return _hhHello(m) + '.'; }
 
-function _hhPaintHero(root, m, ctx, reduced) {
+function _hhPaintHero(root, m, ctx, reduced, compact) {
   const text = _hhText(m);
-  const waiting = !_hh.shown && _hhWaiting(m);       // the first paint of an entry waits (briefly) for the words
+  // Compact (the brief panel is on the board): greeting, weather and the numbers; no sentences,
+  // deadline chips or Start button (the panel has them), so nothing is said twice.
+  const waiting = !compact && !_hh.shown && _hhWaiting(m);   // the first paint of an entry waits (briefly) for the words
   if (!waiting) _hh.shown = true;
   const now = performance.now();
   // Entrance timing, carried across re-renders by negative delays.
   if (!reduced && now - _hh.entryAt < 1600) { root.classList.add('is-entering'); root.style.setProperty('--hh-en', `${-Math.round(now - _hh.entryAt)}ms`); }
-  if (!waiting && _hh.read && !reduced) {
+  if (!compact && !waiting && _hh.read && !reduced) {
     if (!_hh.readAt) { _hh.readAt = now; try { localStorage.setItem(_HH_READ_KEY, m.today); } catch (e) { /* private mode */ } }
     if (now - _hh.readAt < 2200) { root.classList.add('is-reading'); root.style.setProperty('--hh-rd', `${-Math.round(now - _hh.readAt)}ms`); }
   }
@@ -345,16 +365,19 @@ function _hhPaintHero(root, m, ctx, reduced) {
   const go = _hhGoSpec(m);
   root.innerHTML = `<div class="hh-in">
       <div class="hh-head">${_hhOverline(m)}<h2 class="hh-hi">${esc(_hhGreeting(m))}</h2></div>
-      <p class="hh-say">${waiting ? '<span class="hh-sk" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}</p>
-      <div class="hh-chips"></div>
-      <div class="hh-side"><div class="hh-wx" hidden></div><div class="hh-go-wrap"></div></div>
+      ${compact ? '' : `<p class="hh-say">${waiting ? '<span class="hh-sk" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}</p>
+      <div class="hh-chips"></div>`}
+      <div class="hh-side"><div class="hh-wx" hidden></div>${compact ? '' : '<div class="hh-go-wrap"></div>'}</div>
       <div class="hh-stats" role="group" aria-label="Today in numbers"></div>
     </div>`;
-  if (!waiting) _hhPaintSay(root.querySelector('.hh-say'), text, m);
-  _hhPaintChips(root.querySelector('.hh-chips'), m);
+  if (!compact) {
+    if (!waiting) _hhPaintSay(root.querySelector('.hh-say'), text, m);
+    _hhPaintChips(root.querySelector('.hh-chips'), m);
+  }
   _hhPaintWx(root);
-  if (go) root.querySelector('.hh-go-wrap').appendChild(_hhGoButton(go));
+  if (go && !compact) root.querySelector('.hh-go-wrap').appendChild(_hhGoButton(go));
   _hhPaintStats(root.querySelector('.hh-stats'), m, root.classList.contains('is-entering'));
+  if (typeof sgHeroSlot === 'function') sgHeroSlot(root);   // the top suggestion (68-suggest-ui.js), one line under the numbers
 }
 
 /* ---------- the sentence ---------- */
@@ -443,7 +466,7 @@ function _hhEntity(type, ref, text, m) {
     if (!p) return out;
     out.lead = _hhAvatar(p);
     out.title = p.name || '';
-    out.run = () => setView('person:' + p.id);
+    out.run = () => openPerson(p.id);
   } else if (type === 'event') {
     const ev = _hhEventById(ref, text);
     out.lead = typeof animSceneHtml === 'function' ? animSceneHtml(_hhEventScene(ev, ref, text), { size: 'xs', cls: 'hh-esc' }) : icon('calendar');
@@ -474,7 +497,7 @@ function _hhEntity(type, ref, text, m) {
   return out;
 }
 function _hhAvatar(p) {
-  const url = typeof safeUrl === 'function' ? safeUrl(p.avatarUrl) : '';
+  const url = (typeof pcPhotoUrl === 'function' && pcPhotoUrl(p.photo)) || (typeof safeUrl === 'function' ? safeUrl(p.avatarUrl) : '');
   const inner = url ? `<img src="${escAttr(url)}" alt="">` : esc(typeof avatarInitials === 'function' ? avatarInitials(p.name) : String(p.name || '?').slice(0, 1));
   return `<span class="avatar hh-av" style="--c:${escAttr(safeColor(p.color, 'var(--sw-slate)'))}">${inner}</span>`;
 }
@@ -549,7 +572,7 @@ function _hhPaintWx(root, arrived) {
   const w = typeof _bf !== 'undefined' && _bf.weather && _bf.weather.ok && _bf.weather.current ? _bf.weather : null;
   if (!w || !APP_CONFIG.location) { box.hidden = true; box.innerHTML = ''; return; }
   const c = w.current, t = w.today || {};
-  const rain = homeTodayRain(w.hourly, todayStr(), new Date().getHours());
+  const rain = homeTodayRain(w.hourly, todayStr(), Clock.parts(Clock.now()).h);
   const wasHidden = box.hidden;
   const place = w.location && w.location.name ? w.location.name : '';
   box.innerHTML = `${_hhWxIcon(c.cond, c.isDay)}<span class="t">${esc(_hhDeg(c.temp))}</span>`
@@ -560,7 +583,26 @@ function _hhPaintWx(root, arrived) {
   box.title = `${place ? place + ': ' : ''}${c.label || ''}, ${_hhDeg(c.temp)}${w.stale ? ' (from earlier)' : ''} · ${w.attribution && w.attribution.text ? w.attribution.text : 'Weather data by Open-Meteo.com'}`;
   box.setAttribute('role', 'img'); box.setAttribute('aria-label', box.title);
   box.hidden = false;
+  _hhPaintAmbient(root, w);
   if (arrived && wasHidden && !_hhReduced() && window.Motion && typeof Motion.animate === 'function' && root.isConnected) Motion.animate(box, [{ opacity: 0 }, { opacity: 1 }], { duration: 260 });
+}
+
+/** The weather, softly, behind the hero's words (77-sky-ambient.css .hh-amb). Kept while the
+ *  weather and time of day hold, so a re-render never restarts it; still when animations are off. */
+function _hhPaintAmbient(root, w) {
+  if (!root || typeof briefSkyHtml !== 'function') return;
+  const old = root.querySelector(':scope > .hh-amb');
+  const on = typeof animEnabled === 'function' && animEnabled() && w && w.current;
+  if (!on) { if (old) old.remove(); return; }
+  const tod = typeof briefTod === 'function' ? briefTod(w) : 'day';
+  const key = (w.current.cond || 'none') + '|' + tod + '|' + (typeof animSkyAccentRef === 'function' ? animSkyAccentRef() : '');   // + the real sky's moment
+  if (old && old.dataset.k === key) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = briefSkyHtml(w.current.cond || 'none', tod, { cls: 'hh-amb' });
+  const sky = tmp.firstElementChild;
+  if (!sky) return;
+  sky.dataset.k = key;
+  if (old) old.replaceWith(sky); else root.prepend(sky);
 }
 
 /* ---------- Start my day / Finish the day ---------- */
@@ -599,8 +641,8 @@ function _hhGo(kind) {
     st.open(kind, { autoplay: true });
     return;
   }
-  if (kind === 'morning') { if (typeof briefOpen === 'function') briefOpen({ welcome: false }); else setView('review:today'); }
-  else setView(kind === 'week' ? 'review:week' : 'review:evening');
+  if (kind === 'morning') { if (typeof briefOpen === 'function') briefOpen({ welcome: false }); else setView('home'); }
+  else setView(kind === 'week' ? 'home:week' : 'home:evening');
 }
 
 /* ---------- the numbers ---------- */
@@ -631,7 +673,7 @@ function _hhPaintStats(host, m, first) {
   const done = () => cell('done', `<span class="l">${icon('circle-check')}Done today</span><span class="v">${esc(s.done.n)}</span><span class="s">${esc(s.done.sub)}</span>`,
     `Done today: ${s.done.n}`, () => setView('completed'));
   const slip = () => cell('slipped', `<span class="l">${icon('arrow-right')}Slipped</span><span class="v">${esc(s.slipped.n)}</span><span class="s">${esc(s.slipped.sub)}</span>`,
-    `Slipped: ${s.slipped.n}. ${s.slipped.sub}.`, () => setView(s.slipped.n ? 'review:evening' : 'today'));
+    `Slipped: ${s.slipped.n}. ${s.slipped.sub}.`, () => setView(s.slipped.n ? 'home:evening' : 'today'));
   if (m.evening) { done(); evs(); next(); focus(); slip(); } else { due(); evs(); next(); focus(); done(); }
   for (const c of cells) {
     const b = document.createElement('button'); b.type = 'button';

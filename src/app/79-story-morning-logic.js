@@ -440,8 +440,14 @@ function smIdeas(d) {
   const focus = new Map((d.focus || []).map(f => [f.id, f]));
   const refOf = (s, type) => (s.refs || []).find(r => r.type === type);
   const rain = d.weather && smRainFrom(d.weather.next);
+  // The suggestions engine's cards first (68-suggest-ui.js sgStoryIdeas: act.do 'suggest' runs the card's
+  // button, which opens the normal editor prefilled), at most two; its free-time card replaces the server's.
+  const eng = (Array.isArray(d.engineIdeas) ? d.engineIdeas : []).filter(x => x && x.act && x.act.do === 'suggest').slice(0, 2);
+  for (const x of eng) out.push(x);
+  const engGap = eng.some(x => /^free:/.test(String(x.act.key || '')));
   for (const s of d.suggestions || []) {
     if (out.length >= 3) break;
+    if (engGap && s.kind === 'gap') continue;
     const t = refOf(s, 'task'), p = refOf(s, 'person');
     if (s.kind === 'gap') {
       const f = t && focus.get(t.ref), tm = refOf(s, 'time'), gp = tm && (d.gaps || []).find(x => x.start === tm.ref);

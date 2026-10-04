@@ -1,0 +1,10 @@
+{
+  "_about": "Monday 10:00: waiting on Sam for 6 days, the follow-up date has passed (S14 nudge). Synthetic.",
+  "now": "2026-10-05T10:00",
+  "caps": { "gmailDraft": true },
+  "events": { "2026-10-05": [] },
+  "tasks": [
+    { "id": "t-wait", "title": "Data files from Sam", "priority": "p2", "waiting": true, "people": ["sam"], "due": "2026-10-02", "createdAt": "2026-09-29T09:00:00Z" }
+  ],
+  "focus": []
+}

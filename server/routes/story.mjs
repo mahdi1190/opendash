@@ -49,7 +49,8 @@ export default function register(app) {
   async function context(c) {
     const cfg = c.getConfig();
     const s = await store.readObject().catch(() => null);
-    return { s: s && typeof s === 'object' ? s : { custom: [] }, cfg, clock: clock(cfg.timezone, now()), paths: c.paths || paths, financeDir: app.ctx.financeDir || cfg.financeDir || (c.paths || paths).finance };
+    // The effective zone for this request (the page's header, else time.json; lib/clock.mjs).
+    return { s: s && typeof s === 'object' ? s : { custom: [] }, cfg, clock: c.clockNow ? c.clockNow(now()) : clock(cfg.timezone, now()), paths: c.paths || paths, financeDir: app.ctx.financeDir || cfg.financeDir || (c.paths || paths).finance };
   }
   /** The forecast, but never more than WEATHER_WAIT_MS of waiting: a story must start now. */
   async function forecast(cfg) {
@@ -70,6 +71,8 @@ export default function register(app) {
   };
   // The cache key: the day, or the reviewed week's first day.
   const cacheDate = (data) => (data.kind === 'week' && data.range ? data.range.from : data.date);
+  // A script written in another time zone is a miss (its times would be wrong here).
+  const sameZone = (hit, data) => (hit && (!hit.tz || hit.tz === data.tz) ? hit : null);
   const storyCfg = (cfg) => (cfg.brief && cfg.brief.story) || {};
 
   app.route({
@@ -80,7 +83,7 @@ export default function register(app) {
       const { q, data } = await dayModel(c, kind);
       const aiOn = !(q.cfg.brief && q.cfg.brief.ai === false);
       let script = null, state = aiOn ? 'missing' : 'off';
-      const hit = aiOn ? await readStoryScript(dataDir, kind, cacheDate(data)).catch(() => null) : null;
+      const hit = aiOn ? sameZone(await readStoryScript(dataDir, kind, cacheDate(data)).catch(() => null), data) : null;
       if (hit) {
         const v = validateStoryScript(hit, data, { kind, source: 'ai', model: hit.model || null });
         if (v.script) { script = { ...v.script, at: hit.at || v.script.at }; state = 'cached'; }
@@ -101,7 +104,7 @@ export default function register(app) {
       const { data } = await dayModel(c, kind);
       const date = cacheDate(data);
       if (!b.regenerate) {
-        const hit = await readStoryScript(dataDir, kind, date).catch(() => null);
+        const hit = sameZone(await readStoryScript(dataDir, kind, date).catch(() => null), data);
         if (hit) {
           const v = validateStoryScript(hit, data, { kind, source: 'ai', model: hit.model || null });
           if (v.script) return { script: { ...v.script, at: hit.at || v.script.at }, cached: true, dropped: v.dropped };
@@ -116,7 +119,7 @@ export default function register(app) {
         const t0 = Date.now();
         const r = await generateStoryScript({ kind, data, askJson: ai().askJson, model, userName: cfg.userName, style: cfg.ai && cfg.ai.style });
         if (!r.script) throw new HttpError(502, 'The AI script came back unusable.', { code: 'BAD_OUTPUT' });
-        await writeStoryScript(dataDir, kind, date, r.script);
+        await writeStoryScript(dataDir, kind, date, { ...r.script, tz: data.tz });
         log('info', `story script ${kind} ${r.script.model || model} sentences=${r.script.sentences.length} dropped=${r.dropped} ${Date.now() - t0}ms`);
         return { script: r.script, cached: false, dropped: r.dropped };
       })();

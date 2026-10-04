@@ -72,7 +72,7 @@
   // Dates are handled as UTC day numbers (days since 1970-01-01), so DST and
   // time zones can never shift a transaction onto the wrong day.
   const dnum = iso => Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / DAY_MS);
-  const diso = n => new Date(n * DAY_MS).toISOString().slice(0, 10);
+  const diso = n => new Date(n * DAY_MS).toISOString().slice(0, 10);   // clock-ok: a day number to its ISO date (UTC arithmetic)
   const dobj = n => new Date(n * DAY_MS);
   const dow = n => (n + 3) % 7;                       // Monday = 0
   const weekStart = n => n - dow(n);
@@ -84,7 +84,12 @@
     const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
     return Math.round(Date.UTC(y, m, Math.min(day, last)) / DAY_MS);
   }
-  function localToday() { const d = new Date(); return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY_MS); }
+  // The HOME day: banks date transactions at home, so money days stay on home time
+  // while the user travels (travel spec 2.3, P10; Clock is the page's, 07-core-clock.js).
+  function localToday() {
+    if (typeof Clock !== 'undefined') return Math.round(Date.parse(Clock.today(Clock.home()) + 'T00:00:00Z') / DAY_MS);
+    const d = new Date(Date.now()); return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY_MS);   // clock-ok: no Clock (a part run alone)
+  }
   // @p2 One cached Intl.DateTimeFormat per option set: toLocaleDateString builds a new
   // formatter on every call (about 20 ms per filter change at 4,000+ transactions).
   // Same output: every caller passes date fields only (weekday/day/month/year).

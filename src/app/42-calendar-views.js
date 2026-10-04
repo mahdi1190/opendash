@@ -4,11 +4,16 @@
    calTimeGrid({days:[iso], selectedId, onEvent, onTask, onDay}) -> element
        One scroll box: sticky day headers, an all-day lane (events spanning
        days, countdowns), a "due" lane (tasks due that day without a time),
-       then the hour grid. Overlapping events sit side by side; tasks with a
-       time are dashed "planned" blocks; the red now-line marks the time.
+       then the hour grid. Overlapping events sit side by side; a task's
+       planned slot (20-task-plan.js) is a dashed "Planned" block, a task due
+       at a time a "Due" block; the red now-line marks the time.
        Drag a task (from the due lane, a planned block, the rail or a month
        cell) onto a time to plan it: a placeholder shows where and how long.
-       Click an empty slot for New task / Google event.
+       That sets a planned slot and never moves the deadline; dragging a
+       "Due" block still moves its due time.
+       Click an empty slot for New task / Google event (in the Calendar
+       section 45-calendar-grid-edit.js takes over: drag events, resize,
+       click-and-drag to create).
    calAgendaList({from, days, entries(iso), onEvent, onTask, onDay}) -> element
    calAgendaRow(entry, iso) -> one agenda/rail row
    Both use calEntriesOn() / calChipHtml() from 40-calendar.js.
@@ -84,8 +89,8 @@ function calTimeGrid(o) {
   const days = o.days;
   const n = days.length;
   const today = todayStr();
-  const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const now = Clock.parts(Clock.now());
+  const nowMin = now.h * 60 + now.mi;
   const root = document.createElement('div');
   root.className = 'wv' + (n === 1 ? ' wv-1' : '');
   root.style.setProperty('--n', String(n));
@@ -97,8 +102,8 @@ function calTimeGrid(o) {
   for (const iso of days) {
     const d = _calParse(iso);
     const wd = d.toLocaleDateString(_CAL_LOCALE(), { weekday: n === 1 ? 'long' : 'short' });
-    const wk = d.getDay() === 0 || d.getDay() === 6;
-    h += `<button type="button" class="wv-dh${iso === today ? ' today' : ''}${wk ? ' wkend' : ''}" data-date="${iso}" aria-label="${escAttr(d.toLocaleDateString(_CAL_LOCALE(), { weekday: 'long', day: 'numeric', month: 'long' }))}"><small>${esc(wd)}</small><b>${d.getDate()}</b></button>`;
+    const wk = d.getDay() === 0 || d.getDay() === 6; // clock-ok: wall date
+    h += `<button type="button" class="wv-dh${iso === today ? ' today' : ''}${wk ? ' wkend' : ''}" data-date="${iso}" aria-label="${escAttr(d.toLocaleDateString(_CAL_LOCALE(), { weekday: 'long', day: 'numeric', month: 'long' }))}"><small>${esc(wd)}</small><b>${d.getDate()}</b></button>`; // clock-ok: wall date
   }
   head.innerHTML = h;
 
@@ -159,7 +164,7 @@ function calTimeGrid(o) {
   body.style.height = (24 * CAL_HOUR_PX) + 'px';
   let lines = '';
   for (let hh = 0; hh < 24; hh++) {
-    lines += `<div class="wv-hr" style="top:${hh * CAL_HOUR_PX}px">${hh ? `<span>${esc(_calTime(new Date(2024, 0, 1, hh, 0)))}</span>` : ''}</div>`;
+    lines += `<div class="wv-hr" style="top:${hh * CAL_HOUR_PX}px">${hh ? `<span>${esc(_calTimeLabel(_calHM(hh * 60)))}</span>` : ''}</div>`;
   }
   body.innerHTML = lines + '<div class="wv-gutcol"></div>';
   // Busy hours: at most maxCols side by side, each at least ~64px wide; the rest of an
@@ -170,9 +175,12 @@ function calTimeGrid(o) {
   const maxCols = Math.max(2, Math.min(n === 1 ? 6 : 4, Math.floor(colW / 50)));
   for (const { iso, entries } of perDay) {
     const col = document.createElement('div');
-    const dow = _calParse(iso).getDay();
+    const dow = _calParse(iso).getDay(); // clock-ok: wall date
     col.className = 'wv-col' + (iso === today ? ' today' : '') + (dow === 0 || dow === 6 ? ' wkend' : '');
     col.dataset.date = iso;
+    // The sky across the week (78-anim-weeksky.js): a quiet layer behind the hours.
+    const sky = typeof animWeekSkyVars === 'function' ? animWeekSkyVars(iso) : '';
+    if (sky) { const s = document.createElement('div'); s.className = 'wv-sky'; s.setAttribute('aria-hidden', 'true'); s.style.cssText = sky; col.appendChild(s); }
     // "Free" events (shown as available in Google: reminders, other people's
     // leave) sit behind the rest as quiet bands.
     const all = entries.filter(x => !x.allDay);
@@ -194,10 +202,11 @@ function calTimeGrid(o) {
       const ht = Math.max(20, (e.end - e.start) / 60 * CAL_HOUR_PX - 3);
       // As in mockup 07: only today's finished events fade; earlier days keep their colours.
       const past = iso === today && e.end <= nowMin;
-      b.className = 'wv-ev' + (e.kind === 'task' ? ' is-task' : ' c-' + e.color) + (e.important ? ' imp' : '') + (e.declined ? ' declined' : '')
+      b.className = 'wv-ev' + (e.kind === 'task' ? ' is-task' + (e.planned ? ' is-plan' : ' is-due') : ' c-' + e.color) + (e.important ? ' imp' : '') + (e.declined ? ' declined' : '')
         + (e.done ? ' done' : '') + (ht < 38 ? ' short' : '') + (past && e.kind === 'event' ? ' past' : '') + (o.selectedId && e.id === o.selectedId ? ' sel' : '')
         + (e.ref && e.ref.status === 'tentative' ? ' tentative' : '');
       b.dataset.kind = e.kind; b.dataset.id = e.id;
+      if (e.planned) b.dataset.plan = '1';      // a planned slot (20-task-plan.js): dragging it moves the slot, not the deadline
       b.style.top = (e.start / 60 * CAL_HOUR_PX + 1) + 'px';
       b.style.height = ht + 'px';
       if (e._band) {
@@ -214,7 +223,7 @@ function calTimeGrid(o) {
       let sub;
       if (e.kind === 'task') {
         b.draggable = true;
-        sub = `${_calTimeLabel(_calHM(e.start))}–${_calTimeLabel(_calHM(e.end))} · Planned · ${calDurLabel(e.end - e.start)}`;
+        sub = `${_calTimeLabel(_calHM(e.start))}–${_calTimeLabel(_calHM(e.end))} · ${e.planned ? 'Planned' : 'Due'} · ${calDurLabel(e.end - e.start)}`;
       } else {
         const ev = e.ref;
         const times = e.continued ? `until ${_calTime(calEventEnd(ev))}` : `${e.time}–${_calTime(calEventEnd(ev))}`;
@@ -225,7 +234,13 @@ function calTimeGrid(o) {
       }
       // A task of a stream with its own symbol / shape shows it (28-customise.js).
       const sm = e.kind === 'task' && e.ref && typeof streamIsCustomised === 'function' && streamIsCustomised(effStream(e.ref)) ? streamMarkHtml(effStream(e.ref)) : '';
-      b.innerHTML = `<span class="wv-t">${e.kind === 'task' ? `<span class="mini-check ${escAttr(e.prio)}"></span>${sm}` : e.important ? icon('star', 'i-xs') : ''}<span>${esc(e.title)}</span></span><span class="wv-s">${esc(sub)}</span>`;
+      // v2.2 wave 4 (78-anim-moments.js): the event's scene on roomy chips, the pulse before it starts.
+      const evm = e.kind === 'event' && !e.declined && typeof animEventSceneHtml === 'function';
+      const scn = evm && ht >= 44 && !b.classList.contains('narrow') ? animEventSceneHtml(e.ref, { size: 'xs', cls: 'wv-sc' }) : '';
+      const soon = evm && typeof animSoonInfo === 'function' ? animSoonInfo(e.ref) : null;
+      if (scn) b.classList.add('anim-hover-host', 'has-sc');
+      if (soon) b.classList.add('ap-soon');
+      b.innerHTML = `<span class="wv-t">${e.kind === 'task' ? `<span class="mini-check ${escAttr(e.prio)}"></span>${sm}` : e.important ? icon('star', 'i-xs') : ''}<span>${esc(e.title)}</span></span><span class="wv-s">${esc(sub)}</span>${scn}${soon ? '<i class="ap-soon-ring" aria-hidden="true"></i>' : ''}`;
       b.title = `${e.title}\n${sub}`;
       col.appendChild(b);
     }
@@ -243,7 +258,7 @@ function calTimeGrid(o) {
     }
     if (iso === today) {
       const line = document.createElement('div'); line.className = 'wv-now'; line.style.top = (nowMin / 60 * CAL_HOUR_PX) + 'px';
-      line.innerHTML = '<i></i>';
+      line.innerHTML = '<i></i>' + (typeof animWeekSkyOrb === 'function' ? animWeekSkyOrb(nowMin, iso) : '');
       col.appendChild(line);
     }
     _calWireColumn(col, iso);
@@ -288,6 +303,7 @@ function calTimeGrid(o) {
     // (before 08:00) still opens on the morning, not on empty small hours.
     const earliest = Math.min(...perDay.flatMap(p => p.entries.filter(x => !x.allDay && !x.free && !x.continued).map(x => x.start)), 24 * 60);
     let startMin = 8 * 60;
+    if (typeof homeWorkHours === 'function') startMin = Math.max(6 * 60, homeWorkHours().startMin - 60);   // an hour before the working day (config.workHours)
     if (earliest < startMin) startMin = Math.max(6 * 60, earliest - 30);
     const viewMin = Math.max(180, (root.clientHeight - 140) / CAL_HOUR_PX * 60);
     if (days.includes(today) && nowMin > startMin + viewMin - 60) startMin = Math.min(nowMin - 120, 24 * 60 - viewMin);
@@ -317,9 +333,10 @@ function _calWireColumn(col, iso) {
     if (![...(e.dataTransfer.types || [])].includes(CAL_DND_TYPE)) return;
     e.preventDefault(); e.dataTransfer.dropEffect = 'move';
     const id = _calDragId;
-    const len = calTaskMinutes(id ? getItem(id) : null);
+    const pl = id && typeof planDragPreview === 'function' ? planDragPreview(id) : null;   // dropping plans a slot (20-task-plan.js)
+    const len = pl ? pl.minutes : calTaskMinutes(id ? getItem(id) : null);
     const m = Math.min(minAt(e.clientY - (_calDragOffsetMin / 60 * CAL_HOUR_PX)), 24 * 60 - 15);
-    show(m, len, `Drop to schedule · ${_calTimeLabel(_calHM(m))}–${_calTimeLabel(_calHM(Math.min(24 * 60, m + len)))}`);
+    show(m, len, `${pl ? pl.label : 'Drop to schedule'} · ${_calTimeLabel(_calHM(m))}–${_calTimeLabel(_calHM(Math.min(24 * 60, m + len)))}`);
     col.classList.add('drop-on');
   });
   col.addEventListener('dragleave', (e) => { if (!col.contains(e.relatedTarget)) { drop.hidden = true; col.classList.remove('drop-on'); } });
@@ -328,17 +345,19 @@ function _calWireColumn(col, iso) {
     if (!id) return;
     e.preventDefault();
     const m = minAt(e.clientY - (_calDragOffsetMin / 60 * CAL_HOUR_PX));
-    calScheduleTask(id, iso, _calHM(Math.min(m, 24 * 60 - 15)));
+    const hm = _calHM(Math.min(m, 24 * 60 - 15));
+    if (typeof planDropOnTime === 'function' && planDropOnTime(id, iso, hm)) return;   // a planned slot; the deadline stays
+    calScheduleTask(id, iso, hm);
   });
   col.addEventListener('click', (e) => {
-    if (e.target.closest('.wv-ev')) return;
+    if (e.target.closest('.wv-ev') || col.closest('.cge-on')) return;   // the Calendar section: click-and-drag to create (45-calendar-grid-edit.js)
     const m = Math.floor(minAt(e.clientY) / 30) * 30;
     show(m, 60, `${_calTimeLabel(_calHM(m))}–${_calTimeLabel(_calHM(Math.min(24 * 60, m + 60)))}`);
     drop.classList.add('pick');
     calSlotMenu(drop, iso, _calHM(m), () => { drop.hidden = true; drop.classList.remove('pick'); });
   });
   col.addEventListener('dblclick', (e) => {
-    if (e.target.closest('.wv-ev')) return;
+    if (e.target.closest('.wv-ev') || col.closest('.cge-on')) return;
     const m = Math.floor(minAt(e.clientY) / 30) * 30;
     closePopovers();
     calNewTaskDialog({ date: iso, time: _calHM(m) });
@@ -374,7 +393,7 @@ function calAgendaList(o) {
     sec.dataset.date = iso;
     const d = _calParse(iso);
     const rel = iso === today ? 'Today' : iso === _calAddDays(today, 1) ? 'Tomorrow' : iso === _calAddDays(today, -1) ? 'Yesterday' : d.toLocaleDateString(_CAL_LOCALE(), { weekday: 'long' });
-    sec.innerHTML = `<button type="button" class="agd-h"><span class="agd-n">${d.getDate()}</span><span class="agd-w"><b>${esc(rel)}</b><span>${esc(d.toLocaleDateString(_CAL_LOCALE(), { month: 'long', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }))}</span></span></button>`;
+    sec.innerHTML = `<button type="button" class="agd-h"><span class="agd-n">${d.getDate()}</span><span class="agd-w"><b>${esc(rel)}</b><span>${esc(d.toLocaleDateString(_CAL_LOCALE(), { month: 'long', year: iso.slice(0, 4) === today.slice(0, 4) ? undefined : 'numeric' }))}</span></span></button>`; // clock-ok: wall date
     const list = document.createElement('div'); list.className = 'agd-l';
     if (!entries.length) list.innerHTML = `<div class="agd-empty">Nothing scheduled</div>`;
     for (const e of entries) list.appendChild(calAgendaRow(e, iso, o));
@@ -422,21 +441,21 @@ function calShortVideoName(ev) {
 let _calRepeatCache = { key: null, map: new Map() };
 function calRepeatInfo(ev) {
   if (!ev || !ev.recurring) return null;
-  const key = CalStore.data && CalStore.data.fetchedAt;
+  const key = (CalStore.data && CalStore.data.fetchedAt) + '|' + Clock.zone();
   if (_calRepeatCache.key !== key) _calRepeatCache = { key, map: new Map() };
   if (_calRepeatCache.map.has(ev.id)) return _calRepeatCache.map.get(ev.id);
-  const s = calEventStart(ev);
+  const s = calEventStart(ev), sp = Clock.parts(s.getTime());
   const hm = ev.allDay ? '' : _calTime(s);
-  // Day numbers from the calendar date (UTC), so a daylight-saving change never makes a week 6 or 8 days.
-  const dayNo = (d) => { const [y, mo, dd] = fmtDate(d).split('-').map(Number); return Math.round(Date.UTC(y, mo - 1, dd) / 86400000); };
-  const day0 = dayNo(s);
-  const gaps = new Set(), dows = new Set([s.getDay()]);
+  // Day numbers from the calendar date (UTC) on the page's clock, so a daylight-saving change never makes a week 6 or 8 days.
+  const dayNo = (iso) => { const [y, mo, dd] = String(iso).split('-').map(Number); return Math.round(Date.UTC(y, mo - 1, dd) / 86400000); };
+  const day0 = dayNo(sp.iso);
+  const gaps = new Set(), dows = new Set([sp.dow]);
   for (const o of calAllEvents()) {
     if (o === ev || o.id === ev.id || !o.recurring || o.summary !== ev.summary || (o.calendarId || '') !== (ev.calendarId || '') || !!o.allDay !== !!ev.allDay) continue;
-    const os = calEventStart(o);
+    const os = calEventStart(o), op = Clock.parts(os.getTime());
     if (!ev.allDay && _calTime(os) !== hm) continue;
-    const d = Math.abs(dayNo(os) - day0);
-    if (d) { gaps.add(d); dows.add(os.getDay()); }
+    const d = Math.abs(dayNo(op.iso) - day0);
+    if (d) { gaps.add(d); dows.add(op.dow); }
   }
   const L = _CAL_LOCALE();
   const dayName = (n) => new Date(2024, 0, 7 + n).toLocaleDateString(L, { weekday: 'long' });   // 7 Jan 2024 was a Sunday
@@ -458,6 +477,7 @@ function calAgendaRow(e, iso, o) {
   row.className = 'agd-row' + (e.kind === 'event' ? ' c-' + e.color : e.kind === 'countdown' ? ' c-' + e.color + ' cd' : ' tk') + (e.important ? ' imp' : '') + (e.declined ? ' declined' : '') + (e.done ? ' done' : '')
     + (o.selectedId && o.selectedId === e.id ? ' sel' : '');
   row.dataset.kind = e.kind; row.dataset.id = e.id;
+  if (e.planned) { row.dataset.plan = '1'; row.classList.add('plan'); }
   row.tabIndex = 0; row.setAttribute('role', 'button');
   const now = Date.now();
   if (e.kind === 'event' && !e.allDay) {
@@ -470,7 +490,7 @@ function calAgendaRow(e, iso, o) {
     lead = `<span class="check ${escAttr(e.prio)}${e.done ? ' done' : ''}${statusOf(e.id) === 'doing' ? ' doing' : ''}" data-id="${escAttr(e.id)}" role="checkbox" aria-checked="${e.done}" aria-label="Complete">${e.done ? icon('check') : ''}</span>`;
     if (o.taskMeta !== false) {
       const st = STREAMS[effStream(e.ref)];
-      sub = [e.time ? 'Planned' : '', st ? st.label : ''].filter(Boolean).join(' · ');
+      sub = [e.planned ? 'Planned' : e.time ? 'Due' : '', st ? st.label : ''].filter(Boolean).join(' · ');
       if (st && typeof streamMarkHtml === 'function') subIcon = streamMarkHtml(effStream(e.ref));   // the stream's marker (28-customise.js)
     }
   } else if (e.kind === 'countdown') {
@@ -500,7 +520,13 @@ function calAgendaRow(e, iso, o) {
     sub = bits.join(' · ');
   }
   const time = e.kind === 'event' ? (e.allDay ? 'All day' : e.continued ? '' : e.time) : e.kind === 'task' ? (e.time || '') : '';
-  row.innerHTML = `<time>${esc(time)}</time>${lead}<div class="agd-b"><div class="t">${e.important && e.kind === 'event' ? icon('star', 'i-xs imp-star') : ''}${e.kind === 'countdown' ? icon(e.icon, 'i-xs') : ''}<span>${esc(e.title)}</span></div>${sub ? `<div class="s">${subIcon}<span>${esc(sub)}</span></div>` : ''}</div>`;
+  // v2.2 wave 4 (78-anim-moments.js): the event's scene, and "in N min" with a pulse just before it starts.
+  const evm = e.kind === 'event' && !e.declined && typeof animEventSceneHtml === 'function';
+  const scn = evm ? animEventSceneHtml(e.ref, { size: 'xs', cls: 'agd-sc' }) : '';
+  const soon = evm && !e.allDay && typeof animSoonInfo === 'function' ? animSoonInfo(e.ref) : null;
+  if (scn) row.classList.add('anim-hover-host');
+  if (soon) row.classList.add('ap-soon');
+  row.innerHTML = `<time>${esc(time)}</time>${lead}<div class="agd-b"><div class="t">${e.important && e.kind === 'event' ? icon('star', 'i-xs imp-star') : ''}${e.kind === 'countdown' ? icon(e.icon, 'i-xs') : ''}<span>${esc(e.title)}</span>${soon ? `<span class="ap-soon-in">in ${esc(soon.min)} min</span>` : ''}</div>${sub ? `<div class="s">${subIcon}<span>${esc(sub)}</span></div>` : ''}</div>${scn}${soon ? '<i class="ap-soon-ring" aria-hidden="true"></i>' : ''}`;
   row.addEventListener('keydown', (k) => { if (k.key === 'Enter') { k.preventDefault(); row.click(); } });
   return row;
 }

@@ -232,15 +232,15 @@ function _sevDecorateEntities(el, ctx) {
  * Already open: a no-op (re-selecting the current thing never replays it).
  */
 function storyFinishTheDay() {
-  if (typeof storyOpen !== 'function') { setView('review:evening'); return; }
+  if (typeof storyOpen !== 'function') { setView('home:evening'); return; }
   if (typeof storyIsOpen === 'function' && storyIsOpen() && _story.kind === 'evening') return;
-  if (!String(state.view || '').startsWith('review:evening')) setView('review:evening');
+  if (!String(state.view || '').startsWith('home:evening')) setView('home:evening');
   storyOpen('evening', { autoplay: true });
 }
 /** Whether Home should offer "Finish the day" now: from the evening hour (Settings, 17:00) until today's recap is saved. */
 function storyEveningDue() {
   const hour = typeof briefPrefs === 'function' ? briefPrefs().eveningHour : 17;
-  if (new Date().getHours() < hour) return false;
+  if (Clock.parts(Clock.now()).h < hour) return false;
   return !(state.reviews || []).some(r => r && r.kind === 'evening' && r.date === todayStrSafe());
 }
 
@@ -487,7 +487,7 @@ function _sevMove(x, target, date, why) {
   const it = typeof getItem === 'function' ? getItem(x.id) : null;
   if (!it) return false;
   _sevRestore(x.id, true);
-  const before = { dueDate: it.dueDate || null, dueTime: it.dueTime || null, plannedFor: it.plannedFor || null, status: statusOf(x.id), resolution: it.resolution || null, resolvedAt: it.resolvedAt || null, acts: (state.taskActivity[x.id] || []).length };
+  const before = { dueDate: it.dueDate || null, dueTime: it.dueTime || null, plannedFor: it.plannedFor || null, plannedTime: it.plannedTime || null, plannedMinutes: it.plannedMinutes || null, status: statusOf(x.id), resolution: it.resolution || null, resolvedAt: it.resolvedAt || null, acts: (state.taskActivity[x.id] || []).length };
   if (target === 'drop') setStatus(x.id, 'done', { wontDo: true, noSave: true });
   else _evRoll(x.id, x.field === 'planned' ? 'planned' : 'due', date, why || EVENING_ROLL_REASON);
   _sev.moved.set(x.id, { target, date, before });
@@ -501,6 +501,7 @@ function _sevRestore(id, quiet) {
   if (b.dueDate) it.dueDate = b.dueDate; else delete it.dueDate;
   if (b.dueTime) it.dueTime = b.dueTime;
   if (b.plannedFor) it.plannedFor = b.plannedFor; else delete it.plannedFor;
+  for (const k of ['plannedTime', 'plannedMinutes']) { if (b[k] && b.plannedFor) it[k] = b[k]; else delete it[k]; }   // the planned slot (20-task-plan.js)
   if (m.target === 'drop') {
     state.statuses[id] = b.status || 'todo';
     if (b.resolution) { it.resolution = b.resolution; it.resolvedAt = b.resolvedAt; } else { delete it.resolution; delete it.resolvedAt; }

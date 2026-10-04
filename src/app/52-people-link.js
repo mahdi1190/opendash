@@ -388,6 +388,9 @@ function pplUnknownNames(state, opts) {
   const min = opts.minTasks || 2;
   for (const r of found.values()) {
     if (r.tasks.size < min && !r.cue) continue;
+    // Ignore works on whole names too ("Wellcome Leap"): the per-word check
+    // above only catches one-word names.
+    if (ignore.has(r.key)) continue;
     const name = [...r.names.entries()].sort((a, b) => b[1] - a[1])[0][0];
     out.push({ name, key: r.key, count: r.tasks.size, taskIds: [...r.tasks], cue: r.cue });
   }

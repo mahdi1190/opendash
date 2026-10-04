@@ -13,7 +13,7 @@
 // No imports from queries.mjs (it imports this file).
 
 import { daysBetween, weekdayOf } from './model.mjs';
-import { WIDGET_TYPES, widgetList, focusTasks, HOME_WIDGETS, HOME_SIZE_NAMES, normalizeHomeLayout } from '../../lib/home-topbar.mjs';
+import { WIDGET_TYPES, widgetList, focusTasks, HOME_WIDGETS, HOME_SIZE_NAMES, normalizeHomeLayout, HOME_WIDGET_PREFS, homeCatalogEntry, homeInstanceTitle, splitHomeInstance } from '../../lib/home-topbar.mjs';
 
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 
@@ -80,17 +80,21 @@ export const HOME_QUERIES = [
   },
   {
     name: 'home.layout', tool: 'get_home_layout',
-    description: "Home's widgets in page order: id, title, size (s = a third of the width, m = half, l = two thirds, full = the whole width), the sizes it allows, and its position among the shown ones (hidden ones have hidden:true and wait in Customise > Add widget). Change them with set_home_layout.",
+    description: "Home's widgets in page order: id, title, size (s = a third of the width, m = half, l = two thirds, full = the whole width), the sizes it allows, and its position among the shown ones (hidden ones have hidden:true and wait in Customise > Add widget). Copies of one widget have ids like runway~2 (copyOf); maxCopies says how many a widget allows. settings = its own settings (only those changed from the defaults) and settingKeys the keys it accepts. Change the layout with set_home_layout, a widget's settings (or add a copy) with set_home_widget.",
     schema: obj({}),
     run(q) {
       const home = q.s.home && typeof q.s.home === 'object' ? q.s.home : {};
-      let n = 0;
+      const wp = home.widgetPrefs && typeof home.widgetPrefs === 'object' ? home.widgetPrefs : {};
+      let pos = 0;
       return {
         custom: home.layout !== undefined, sizes: { ...HOME_SIZE_NAMES },
-        widgets: normalizeHomeLayout(home.layout).widgets.map(w => {
-          const d = HOME_WIDGETS.find(x => x.id === w.id);
-          const o = { id: w.id, title: d.title, size: w.size, sizes: [...d.sizes] };
-          if (w.hidden) o.hidden = true; else o.position = n++;
+        widgets: normalizeHomeLayout(home.layout, HOME_WIDGETS, wp).widgets.map(w => {
+          const d = homeCatalogEntry(w.id);
+          const o = { id: w.id, title: homeInstanceTitle(w.id), size: w.size, sizes: [...d.sizes] };
+          if (splitHomeInstance(w.id).n > 1) o.copyOf = d.id; else if (d.multi > 1) o.maxCopies = d.multi;
+          if (w.hidden) o.hidden = true; else o.position = pos++;
+          if (wp[w.id] && typeof wp[w.id] === 'object' && Object.keys(wp[w.id]).length) o.settings = wp[w.id];
+          if (HOME_WIDGET_PREFS[d.id]) o.settingKeys = Object.keys(HOME_WIDGET_PREFS[d.id].properties);
           return o;
         }),
       };

@@ -100,6 +100,9 @@ test('suggestions, auto-link on create, orphans and unknown names', () => {
   const names = pplUnknownNames(s, { index: idx });
   assert.ok(names.some(n => n.name === 'Priya Shah' && n.count === 2), JSON.stringify(names));
   assert.ok(!names.some(n => /Sam|Alex|Email|Plan/.test(n.name)));
+  // Ignoring a multi-word name hides it (the per-word check alone missed these).
+  const ig = pplUnknownNames(s, { index: idx, ignore: ['Priya Shah'] });
+  assert.ok(!ig.some(n => n.name === 'Priya Shah'), JSON.stringify(ig));
 });
 
 test('calendar events link by any address or by name in the title', () => {

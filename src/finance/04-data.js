@@ -27,6 +27,8 @@
       if (R.root) R.root.classList.remove('fv-refreshing');
     }
     if (R.mounted) paint();
+    // v2.2 wave 4: payday money rain, once a day (src/app/78-anim-moments.js)
+    if (R.mounted && R.model && typeof animPaydayCheck === 'function') { try { animPaydayCheck(R.model.tx); } catch (e) { /* a moment only */ } }
   }
   async function loadBudgets(a) {
     if (a && a.budgets && typeof a.budgets === 'object') { R.budgets = cleanBudgets(a.budgets); R.budgetsLocal = false; return; }

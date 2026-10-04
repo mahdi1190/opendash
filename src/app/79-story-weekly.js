@@ -37,7 +37,7 @@ function _stwEnv(ctx) {
       return { id, name: p.name, first, color: p.color, avatarUrl: p.avatarUrl, kind: p.kind, lastContact: p.lastContact || null };
     },
     peopleAll: (typeof state !== 'undefined' && Array.isArray(state.people) ? state.people : []).filter(p => p && !p.self && !p.inactive),
-    dayOf: (ms) => (typeof fmtDate === 'function' ? fmtDate(new Date(ms)) : new Date(ms).toISOString().slice(0, 10)),
+    dayOf: (ms) => Clock.parts(Number(ms)).iso,
     pending, draft,
     steps: typeof WEEK_STEPS !== 'undefined' ? WEEK_STEPS : null,
   };
@@ -478,6 +478,9 @@ storyRegisterBeatType('stw-guided', (f, b) => {
   });
   if (saved) sv.disabled = true;
   go.appendChild(sv);
+  // The money story of the same week (src/finance/28-money-story.js), when there is money data.
+  const money = window.MoneyStory ? window.MoneyStory.status() : null;
+  if (money && (money.ok || !money.known)) go.appendChild(_stwBtn('Money this week', 'wallet', 'ghost', () => { let from; try { from = _wkRange().from; } catch (e) { from = undefined; } window.MoneyStory.open({ period: 'week', ref: from }); }));
   go.appendChild(_stwBtn('Later', null, 'ghost', () => storyClose()));
 });
 
@@ -489,7 +492,7 @@ function _stwSavedThisWeek() {
 function storyWeekStartGuided(step) {
   storyClose({ quiet: true });
   try { _wkDraft(); if (typeof _wk !== 'undefined') _wk.step = Math.max(0, Math.min((WEEK_STEPS || []).length - 1, Number(step) || 0)); } catch (e) { /* the page sets it */ }
-  if (state.view === 'review:week') renderMain(); else setView('review:week');
+  if (state.view === 'home:week') renderMain(); else setView('home:week');
 }
 /** Save the week as it stands (outcomes, wins, slips, stats) as a weekly review in History. */
 async function storyWeekQuickSave(m) {
@@ -515,7 +518,7 @@ function storyWeekPrefs() {
   return { weekOpen: s.weekOpen === 'page' ? 'page' : 'story' };
 }
 /**
- * Review > Week calls this on every render: the first visit of each week opens
+ * Home > Week calls this on every render: the first visit of each week opens
  * the story (its Play poster) over the page, once. Re-renders, Open details and
  * later visits do nothing.
  */
@@ -526,18 +529,18 @@ function storyWeekOnEnter() {
   const key = STW_AUTO_KEY + from;
   try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) { return; }
   if (_stwSavedThisWeek()) return;
-  setTimeout(() => { if (!storyIsOpen() && String(state.view) === 'review:week') storyOpen('week', { autoplay: false }); }, 0);
+  setTimeout(() => { if (!storyIsOpen() && String(state.view) === 'home:week') storyOpen('week', { autoplay: false }); }, 0);
 }
 /** The weekly prompt's Start: the story over the Week page (plays at once: it is a click). */
 function storyWeekFromPrompt() {
-  if (typeof storyOpen !== 'function') { setView('review:week'); return; }
+  if (typeof storyOpen !== 'function') { setView('home:week'); return; }
   try { localStorage.setItem(STW_AUTO_KEY + _wkRange().from, '1'); } catch (e) { /* ignore */ }
   storyOpen('week', { autoplay: true });
-  if (state.view !== 'review:week') setView('review:week');
+  if (state.view !== 'home:week') setView('home:week');
 }
-/** Settings > Morning brief: how the weekly review opens. */
+/** Settings > Home and stories: how the weekly review opens. */
 function storyWeekSettingsRows(el) {
   if (typeof _settingsRow !== 'function' || typeof _settingsSeg !== 'function') return;
-  el.appendChild(_settingsRow('Weekly review opens as', 'The first visit to Review > Week each week: the full-screen story with a Play button, or straight to the step-by-step page.',
-    _settingsSeg([['story', 'Story'], ['page', 'Page']], storyWeekPrefs().weekOpen, (k) => settingsSaveConfig({ brief: { story: { weekOpen: k } } }, false))));
+  el.appendChild(_settingsRow('Weekly review opens as', 'The first visit to Home > Week each week: the full-screen story with a Play button, or straight to the step-by-step page.',
+    _settingsSeg([['story', 'Story'], ['page', 'Page']], storyWeekPrefs().weekOpen, (k) => settingsSaveConfig({ brief: { story: { weekOpen: k } } }, 'Saved').then(ok => { if (ok) render(); }))));
 }

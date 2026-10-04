@@ -1,17 +1,29 @@
 /* ============================================================
    MAIN RENDER
    ============================================================ */
-let _lastRenderedView = null;
+let _lastRendered = null;      // {section, view, mode} of the previous render
+let _lastRenderKind = null;    // 'page' | 'sub' | null for the render in progress (render() hands it to Motion.afterMain)
+/** The section a view belongs to, for motion (task views share 'tasks', person: is 'people'). */
+function navSectionOf(v) {
+  return motionSectionOf(v, (x) => { const s = sectionFor(x); return s ? s.name : null; });
+}
 function renderMain() {
   const main = document.getElementById('main-body');
-  main.innerHTML = '';
-  // Add view-changed class only when view (or list/board/calendar mode) actually
-  // switches, not on every render. Only then do rows get the stagger-in.
-  const viewKey = state.view + '|' + state.viewMode;
-  const viewChanged = _lastRenderedView !== viewKey;
-  if (viewChanged) {
+  // Entrances play once per ENTRY (CLAUDE.md): a page entry is another section; a sub entry
+  // is another sub-view or mode in the same section (only its pane animates, the section's
+  // nav, tabs and toolbars stay put); anything else is a re-render and animates nothing new.
+  const next = { section: navSectionOf(state.view), view: state.view, mode: state.viewMode };
+  const kind = motionRenderKind(_lastRendered, next);
+  _lastRendered = next;
+  _lastRenderKind = kind;
+  if (window.Motion && Motion.beforeMain) Motion.beforeMain(main, kind);
+  // A section that owns a persistent root (Finances) keeps it attached across re-renders:
+  // re-attaching a detached subtree restarts every CSS entrance inside it.
+  const sec = sectionFor(state.view);
+  const keep = !kind && sec && typeof sec.keepRoot === 'function' && _mountedSection && _mountedSection.name === sec.name && sec.keepRoot(main);
+  if (!keep) main.innerHTML = '';
+  if (kind) {
     main.classList.add('view-changed');
-    _lastRenderedView = viewKey;
     setTimeout(() => main.classList.remove('view-changed'), 350);
   } else {
     main.classList.remove('view-changed');
@@ -20,7 +32,7 @@ function renderMain() {
   _renderMainBody(main);
   // The Finances view runs its own entrance (cards and KPI tiles rise in), so
   // the generic stagger would animate its wrapper a second time.
-  if (viewChanged && window.Motion && state.view !== 'finance') Motion.stagger(main);
+  if (kind === 'page' && window.Motion && state.view !== 'finance') Motion.stagger(main);
 }
 // Views that list tasks (and so use List/Board/Calendar/Review, Sort, Group).
 function isTaskView(v) {
@@ -96,6 +108,8 @@ function _render() {
   if (typeof splitSync === 'function') splitSync();   // remembered pane sizes + resize handles (13-splitter.js)
   document.body.classList.toggle('has-selection', multiSelect.ids.size > 0);
   if (window.Motion) Motion.afterRender();   // new-task highlight, expand-in
+  if (window.Motion && Motion.afterMain) Motion.afterMain(document.getElementById('main-body'), _lastRenderKind);   // sub-view pane swap, list FLIP
+  _lastRenderKind = null;
 
   // Multi-select action bar (one undo step per action): 32-tasks-ui.js
   renderBulkBar();

@@ -47,15 +47,47 @@ Home is the landing page: a grid of widgets for today.
 |---|---|
 | **Today** | the date, weather, your day in a few lines with links to what it names, deadlines and countdowns, a few numbers (due, events, next, Focus, done) and *Start my day* or *Finish the day* |
 | **Focus** | the few tasks that matter most right now. Click a row to open it in place: its description, the whole checklist, folders, people and time, with *Done*, *Snooze*, *Reschedule* and *Open full card*. Drag a row onto a day in *This week* to move it |
-| **Today's schedule** | today's events in order with a line for now, the next event, and free stretches of 45 minutes or more with *Block it* |
+| **Today's schedule** | today's events and planned tasks in order with a line for now, the next event, and free stretches of 45 minutes or more inside your working hours with *Block*, which books the time in your calendar |
 | **Suggested links** | folders, meetings and people that auto-linking found for your tasks, to accept or reject (hidden until you add it) |
 | **Waiting on** | tasks waiting on someone, oldest first, with *Nudge*, which drafts an email (it never sends one) |
 | **Money** | spending today, this week and this month against your usual pace, with the latest payments **(needs Finances data)** |
 | **People today** | who you meet today and why it matters, and who is waiting longest on you |
 | **This week** | the next seven days: what is due, countdowns and events; drop a task on a day to move it |
 | **Countdowns** | the dates you are counting down to, as big numbers |
+| **Morning brief** | your day in three sentences, the shape of the day, what is due, Focus and money tiles, ideas; *Play* runs the story right in the panel (and full screen) |
+| **Suggestions** | one-click ideas for your day (see below) |
 
 Widgets with nothing to show stay out of the way until they have something.
+
+More widgets wait in **Add widget** (Customise > Add widget), each with a
+*New* badge until you have looked at it:
+
+| Widget | What it does |
+|---|---|
+| **Quick capture** | type a task the quick way (`#tag @person tomorrow p1`), use a template, sort what you just added |
+| **Fill the gap** | the free time until your next event and the task that fits it; *Block* puts it in your calendar |
+| **Plan my day** | how much of today's free time your plans fill, a timeline you can drag tasks onto, and *Auto-plan* |
+| **Meeting prep** | your next meeting with people: what you owe them, what you wait on, the agenda, a follow-up task, an email to everyone **(needs a calendar)** |
+| **After meetings** | a note, a follow-up or a thank-you for each meeting that just ended **(needs a calendar)** |
+| **Invites & clashes** | invitations to answer, clashes, back-to-back meetings, meetings with no link **(needs a calendar)** |
+| **Needs reply** | emails from people waiting on you: make a task or write a reply draft **(needs a mailbox)** |
+| **I owe** | what you promised whom, with *Today* and *Write* |
+| **Catch up** | what slipped, and the tasks that keep moving |
+| **Deadline runway** | will you make a countdown at your recent pace? (up to four) |
+| **Smart list** | any search as a list or a board (up to six) |
+| **Habits & routines** | your repeating tasks as streaks |
+| **Launchpad** | pinned folders, links and snippets, one click away |
+| **Payday & safe to spend** | how much a day is safe to spend until payday, the bills before it **(needs Finances data)** |
+| **Daily note** | one running note per day; a line can become a task |
+| **What changed** | what assistants, MCP clients and scripts changed today, with Undo |
+
+**Every suggestion and widget button works the same way.** The main button
+opens the normal editor already filled in (a new event, a task, an email
+draft): change anything, then press *Save*. Nothing is saved before that. The
+small **✓** beside it does the suggestion exactly as offered, at once, with
+*Undo*. Blocking time always makes a calendar event (and plans the task for
+that day); it never moves a deadline. Email is only ever saved as a **draft** in
+Gmail: OpenDash cannot send email or move money.
 
 **Tune Focus** with *Tune* on the Focus widget: how many tasks it shows (3 to
 7), what it includes (overdue, pinned, in progress, planned for today, high
@@ -68,7 +100,9 @@ their size (Small, Medium, Large or Full width, as each widget allows), change
 a widget's options where it has them (Focus: *Tune*), hide them, add them back
 with *Add widget*, or *Reset* the layout; *Done* or Esc finishes. With a
 widget focused: Alt+arrows move it, + and - (or 1 to 4) resize it, Delete
-hides it, and A opens *Add widget*.
+hides it, and A opens *Add widget*. Settings > Home has the same switches for
+the brief and suggestions panels, *Hide amounts* (blurs money until you point
+at it) and your working hours.
 
 ![Customising Home](screenshots/home-customise-light.png)
 
@@ -142,7 +176,12 @@ to add several tasks at once.
 
 - **Month, week, day and agenda** views, with your tasks, planned blocks and
   countdowns next to your events.
-- **Drag a task** onto the week or day view to plan it for a time slot.
+- **Drag a task** onto the week or day view to plan it for a time slot. A
+  planned slot (dashed, "Planned") keeps the task's deadline as it is.
+- **Working hours** (Settings > Profile, 09:00–18:00 Monday to Friday unless
+  you change them) decide what counts as free time on Home and in suggestions.
+- **Writing to Google Calendar** **(needs a connection)**: create, move and
+  edit events, answer invitations (always after a confirm), with *Undo*.
 - Click an event for its details: join link, attendees (linked to People),
   related tasks, your own notes and agenda, *Create task*.
 - The sidebar lists your calendars; switch each on or off, rename or recolour
@@ -183,6 +222,10 @@ to add several tasks at once.
 - Click a category, merchant, bar or day to filter everything by it; the chip
   or Esc clears it.
 - A wrong category? Change it once for that merchant; you can undo it.
+- **Play story** (Overview) plays a short, read-aloud recap of the month or
+  week: spent against usual, the top category, your top places, the biggest
+  one-off, bills ahead, what you kept and a few fun facts. Its numbers are the
+  Overview's own.
 
 Finance data never enters the task state. *Sync bank* works through Claude,
 so the transactions it fetches pass through Claude on their way in (a CSV
@@ -235,6 +278,11 @@ Finish the day, Weekly review, History), and each can also play as a
 full-screen **story**: your day in a few sentences as big type that lights up
 word by word while it is read aloud, with scenes for your events, the people
 involved and the tasks that matter.
+
+The same brief also lives on Home as the **Morning brief** panel, under the
+Today hero: *Play* runs the story right in the panel (and full screen). It
+switches to the evening recap from your evening hour and to the week on your
+weekly-review day.
 
 - **Start my day** (on Home, or in the palette) opens the **morning brief** and
   plays the morning story: a greeting and the weather, the day in three
@@ -297,7 +345,9 @@ Open **Settings** from the sidebar footer (or Ctrl+K, "settings").
 
 | Group | What is there |
 |---|---|
-| Profile & region | name, your email addresses, time zone, date format, currency, week start, weather town |
+| Profile & region | name, your email addresses, time zone, date format, currency, week start, working hours, weather town |
+| Home | Customise, the brief and suggestions panels, Hide amounts, working hours |
+| Suggestions | on or off, how many on Home, a switch per kind of suggestion, reset |
 | Appearance | theme, task row size, reduce motion |
 | Tasks, Streams, Templates | how tasks open, your streams and quick-add templates |
 | AI | which Claude models to use for quick jobs and for the assistant |

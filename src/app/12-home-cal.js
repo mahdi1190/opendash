@@ -18,7 +18,8 @@
      homeCalEvents(iso)        that day's events: [{kind:'event', key, id, title, allDay,
                                bg, start, end (minutes in the day), color, type,
                                location, join, people:[personId], calendar, until}]
-     homeTimedTasks(iso)       open tasks with a time that day (kind:'task')
+     homeTimedTasks(iso)       open tasks with a time that day (kind:'task'; planned:true for a
+                               planned slot, 20-task-plan.js; it counts as busy in the gaps)
      homeDayModel(o)           PURE: one day's timeline (past / now / next, the
                                now line, free gaps). tests/home-schedule.test.mjs
      homeDur(min), homeHM(min) "1 h 30 min" / "42 min", "09:05"
@@ -32,7 +33,24 @@ const HOME_CAL_STALE_MS = 6 * 3600 * 1000;
 
 function homeHM(min) {
   const m = Math.max(0, Math.min(24 * 60, Math.round(Number(min) || 0)));
-  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  const hm = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  // Settings > Clock (12-hour, or "As the language" in a 12-hour language) - it was always 24-hour here.
+  const f = m < 24 * 60 ? _homeHM12() : null;
+  return f ? f.format(new Date(Date.UTC(2024, 0, 1, Math.floor(m / 60), m % 60))) : hm;
+}
+let _homeHM12Key = null, _homeHM12Fmt = null;
+function _homeHM12() {
+  if (typeof clockH12Opt !== 'function' || typeof APP_CONFIG === 'undefined') return null;
+  const loc = APP_CONFIG.locale || undefined, o = clockH12Opt();
+  const key = `${loc}|${o.hour12}`;
+  if (key !== _homeHM12Key) {
+    _homeHM12Key = key; _homeHM12Fmt = null;
+    try {
+      const twelve = o.hour12 !== undefined ? o.hour12 : !!new Intl.DateTimeFormat(loc, { hour: 'numeric' }).resolvedOptions().hour12;
+      if (twelve) _homeHM12Fmt = new Intl.DateTimeFormat(loc, { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' });
+    } catch (e) { _homeHM12Fmt = null; }
+  }
+  return _homeHM12Fmt;
 }
 /** "42 min", "2 h", "1 h 30 min". */
 function homeDur(min) {
@@ -42,7 +60,7 @@ function homeDur(min) {
   return r ? `${h} h ${r} min` : `${h} h`;
 }
 function _homeMinOf(hm) { const m = /^(\d{1,2}):(\d{2})$/.exec(String(hm || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; }
-function homeNowMin() { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+function homeNowMin() { const d = Clock.parts(Clock.now()); return d.h * 60 + d.mi; }
 function _homeAddDays(iso, n) { const [y, m, d] = String(iso).split('-').map(Number); return fmtDate(new Date(y, (m || 1) - 1, (d || 1) + n)); }
 
 /* ---------- is there a calendar, and how fresh is it ---------- */
@@ -80,9 +98,9 @@ function homeCalStatus(onUpdate) {
     const d = new Date(at);
     let when = '';
     try {
-      when = fmtDate(d) === todayStr() ? d.toLocaleTimeString(APP_CONFIG.locale || undefined, { hour: '2-digit', minute: '2-digit' })
-        : d.toLocaleDateString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'short' });
-    } catch (e) { when = fmtDate(d); }
+      when = Clock.parts(at).iso === todayStr() ? d.toLocaleTimeString(APP_CONFIG.locale || undefined, { hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), timeZone: Clock.zone() })
+        : d.toLocaleDateString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'short', timeZone: Clock.zone() });
+    } catch (e) { when = Clock.parts(at).iso; }
     out.label = 'Updated ' + when;
   }
   return out;
@@ -168,12 +186,22 @@ function _homeCalSort(list) {
   return list.sort((a, b) => (b.allDay - a.allDay) || (a.start - b.start) || (a.end - b.end) || a.title.localeCompare(b.title));
 }
 
-/** Open tasks with a time on that day (a scheduled block or a due time). */
+/**
+ * Open tasks with a time on that day: a planned slot (planned:true, key 'p:<id>';
+ * 12-home-plan-logic.js: when the user means to work on it) or a due time.
+ */
 function homeTimedTasks(iso) {
   if (typeof getAllItems !== 'function') return [];
   const out = [];
   for (const i of getAllItems()) {
-    if (statusOf(i.id) === 'done' || effDate(i) !== iso) continue;
+    if (statusOf(i.id) === 'done') continue;
+    const ps = typeof planSlotOf === 'function' ? planSlotOf(i) : null;
+    if (ps && ps.date === iso) {
+      const pst = (typeof STREAMS !== 'undefined' && STREAMS[effStream(i)]) || null;
+      out.push({ kind: 'task', key: 'p:' + i.id, id: i.id, title: String(effTitle(i) || ''), allDay: false, bg: false, start: ps.start, end: ps.end,
+        color: pst && pst.color ? pst.color : '', stream: pst ? pst.label || '' : '', prio: effPriority(i), estimated: true, planned: true });
+    }
+    if (effDate(i) !== iso) continue;
     const s = _homeMinOf(i.dueTime);
     if (s === null) continue;
     const est = Math.max(5, Math.min(12 * 60, Number(i.estimate) || 30));
@@ -186,8 +214,9 @@ function homeTimedTasks(iso) {
 
 /* ---------- the day's timeline (pure) ---------- */
 /**
- * o: {events, tasks, nowMin (null = not today), nowMs (Date.now(), optional), workStart, workEnd, gapMin}
- * -> {allDay, timed, rows, next, nextIn, current, gaps, freeMin, eventCount, sig}
+ * o: {events, tasks, nowMin (null = not today), nowMs (Clock.now(), optional), workStart, workEnd, gapMin}
+ *   (the page passes the user's working hours: homeWorkWindow(), 20-task-plan.js)
+ * -> {allDay, timed, rows, next, nextIn, current, gaps, freeMin, eventCount, sig, workStart, workEnd}
  * rows, in reading order: {t:'item', item, state:'past'|'now'|'future', next},
  * {t:'now', min} (after anything under way, before the first thing still to
  * start), {t:'gap', start, end, minutes, best, lead}. Gaps: free stretches of
@@ -236,7 +265,7 @@ function homeDayModel(o) {
   const rows = keyed.map(k => k[2]);
   const sig = [allDay.map(e => e.key).join(','), rows.map(r => (r.t === 'item' ? r.item.key + ':' + r.state[0] + (r.next ? '*' : '') : r.t === 'gap' ? `g${r.start}-${r.end}` : 'now')).join('|')].join('#');
   return {
-    allDay, timed, rows, gaps,
+    allDay, timed, rows, gaps, workStart: ws, workEnd: we,
     // "in N min": real minutes when the event's instant is known (o.nowMs, item.at), as the brief
     // counts; clock minutes otherwise. They differ only on the night the clocks change.
     next: nx ? nx.item : null,

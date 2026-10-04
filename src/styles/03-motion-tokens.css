@@ -1,0 +1,92 @@
+/* ============================================================
+   MOTION TOKENS + INTENSITY (MOTION_SYSTEM v3.1 §2 and §5).
+   The base durations (--m-fast/-base/-slow/-slower/-instant) and easings live
+   in src/motion.css and 00-tokens.css; this file adds the new tokens and lets
+   the user's level scale every one of them:
+     html[data-motion-level] = off | reduced | subtle | standard | playful
+   (src/motion.js sets it from Settings > Animations > Intensity, per device;
+   the OS "reduce motion" setting gives 'reduced' and wins).
+   Off and Reduced also carry html[data-motion="reduced"], which already zeroes
+   every duration (motion.css), so they need nothing here.
+   ============================================================ */
+:root {
+  --m-k: 1;          /* time x */
+  --m-dk: 1;         /* travel x */
+  --m-sk: 1;         /* stagger step x */
+  --m-enter: calc(460ms * var(--m-k));    /* block entrances (cards, widgets, rows) */
+  --m-stage: calc(640ms * var(--m-k));    /* page titles, hero figures */
+  --m-long: calc(900ms * var(--m-k));     /* tickers, chart draws, flashes */
+  --m-pulse: 1800ms;                      /* the "now" pulse: the one self-starting chrome loop */
+  --m-ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --m-spring-snappy: linear(0.001, 0.035, 0.108, 0.204, 0.322, 0.431, 0.536, 0.632, 0.717, 0.791, 0.858, 0.907, 0.946, 0.975, 0.997, 1.012, 1.022, 1.029, 1.031, 1.031, 1.029, 1.027, 1.024, 1.02, 1.016, 1.013, 1.01, 1.008, 1.006, 1.004, 1.002, 1.001, 1, 1, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 1);
+  --m-spring-gentle: linear(0, 0.023, 0.078, 0.146, 0.223, 0.302, 0.386, 0.461, 0.53, 0.594, 0.655, 0.706, 0.75, 0.789, 0.825, 0.854, 0.878, 0.899, 0.918, 0.933, 0.945, 0.955, 0.964, 0.971, 0.977, 0.982, 0.986, 0.989, 0.991, 0.993, 0.995, 0.996, 0.997, 0.998, 0.998, 0.999, 0.999, 0.999, 1, 1, 1);
+  --m-spring-bouncy: linear(0, 0.046, 0.156, 0.291, 0.439, 0.585, 0.726, 0.84, 0.933, 1.003, 1.056, 1.086, 1.101, 1.105, 1.099, 1.088, 1.074, 1.058, 1.042, 1.028, 1.016, 1.007, 0.999, 0.994, 0.991, 0.989, 0.989, 0.99, 0.991, 0.992, 0.994, 0.996, 0.997, 0.998, 0.999, 1, 1.001, 1.001, 1.001, 1.001, 1);
+  --m-spring-snappy-ms: 406ms;
+  --m-spring-gentle-ms: 570ms;
+  --m-spring-bouncy-ms: 610ms;
+  --m-pop-ease: var(--m-spring-snappy);   /* what "pops" use; resolved per level below */
+  --m-d0: calc(2px * var(--m-dk));
+  --m-d1: calc(4px * var(--m-dk));
+  --m-d2: calc(8px * var(--m-dk));
+  --m-d3: calc(12px * var(--m-dk));
+  --m-d4: calc(24px * var(--m-dk));
+  --m-d5: calc(48px * var(--m-dk));
+}
+/* Subtle: shorter, half the travel, no overshoot. (html[...] beats motion.css's :root tokens.) */
+html[data-motion-level="subtle"] {
+  --m-k: 0.8; --m-dk: 0.5; --m-sk: 0.6;
+  --m-fast: 96ms; --m-base: 144ms; --m-slow: 192ms; --m-slower: 256ms; --m-instant: 64ms;
+  --m-pop: cubic-bezier(0.22, 1, 0.36, 1);
+  --m-pop-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* Playful: a touch longer, more travel, the bouncy spring for pops. */
+html[data-motion-level="playful"] {
+  --m-k: 1.1; --m-dk: 1.5; --m-sk: 1.15;
+  --m-fast: 132ms; --m-base: 198ms; --m-slow: 264ms; --m-slower: 352ms;
+  --m-pop: cubic-bezier(0.3, 1.6, 0.55, 1);
+  --m-pop-ease: var(--m-spring-bouncy);
+}
+
+/* ---------- theme switch (src/motion.js themeSwap; the variant is the library's 'theme-switch' slot) ----------
+   circle: the new theme grows as a circle from the toggle (--tt-x/--tt-y/--tt-r); wipe: dusk falls from
+   the top (dawn rises from the bottom going light); fade: a crossfade (also the reduced-motion fallback).
+   ~500 ms scaled by the intensity; the page stays clickable (the overlay takes no pointer events). */
+html.m-theme-vt *:not(.tt-morph *), html.m-theme-vt *::before, html.m-theme-vt *::after { transition: none !important; }
+html.m-theme-vt #main { view-transition-name: none; }
+html.m-theme-vt::view-transition { pointer-events: none; }
+html.m-theme-vt::view-transition-group(root) { animation: none; }
+html.m-theme-vt::view-transition-old(root) { animation: m-theme-out var(--tt-ms, 260ms) var(--m-ease-in-out) both; }
+html.m-theme-vt::view-transition-new(root) { animation: m-theme-in var(--tt-ms, 260ms) var(--m-ease-in-out) both; }
+html.m-theme-circle::view-transition-old(root), html.m-theme-wipe::view-transition-old(root) { animation: none; }
+html.m-theme-circle::view-transition-new(root) { animation: m-theme-iris var(--tt-ms, 500ms) cubic-bezier(0.22, 1, 0.36, 1) both; }
+html.m-theme-wipe::view-transition-new(root) { animation: m-theme-dusk var(--tt-ms, 500ms) cubic-bezier(0.65, 0, 0.35, 1) both; }
+html.m-theme-wipe.m-theme-to-light::view-transition-new(root) { animation-name: m-theme-dawn; }
+@keyframes m-theme-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes m-theme-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes m-theme-iris { from { clip-path: circle(0 at var(--tt-x, 100%) var(--tt-y, 0)); } to { clip-path: circle(var(--tt-r, 150vmax) at var(--tt-x, 100%) var(--tt-y, 0)); } }
+@keyframes m-theme-dusk { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+@keyframes m-theme-dawn { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0); } }
+
+/* the toggle icon: sun -> moon with three stars (reverse going light) */
+#theme-toggle .tt-morph { overflow: visible; }
+#theme-toggle .tt-morph .tt-core { fill: currentColor; stroke: none; transform-box: fill-box; transform-origin: center; transition: transform 460ms var(--m-spring-gentle, cubic-bezier(0.22, 1, 0.36, 1)); }
+#theme-toggle .tt-morph .tt-bite { transform: translate(14px, -14px); transition: transform 460ms cubic-bezier(0.22, 1, 0.36, 1); }
+#theme-toggle .tt-morph .tt-rays { transform-box: view-box; transform-origin: 12px 12px; transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease; }
+#theme-toggle .tt-morph .tt-stars path { transform-box: fill-box; transform-origin: center; opacity: 0; transform: scale(0.2); transition: opacity 200ms ease, transform 360ms cubic-bezier(0.3, 1.6, 0.55, 1); }
+#theme-toggle.is-dark .tt-morph .tt-core { transform: scale(1.55); }
+#theme-toggle.is-dark .tt-morph .tt-bite { transform: translate(4px, -3.5px); }
+#theme-toggle.is-dark .tt-morph .tt-rays { opacity: 0; transform: rotate(-60deg) scale(0.4); }
+#theme-toggle.is-dark .tt-morph .tt-stars path { opacity: 1; transform: none; }
+#theme-toggle.is-dark .tt-morph .tt-stars path:nth-child(1) { transition-delay: 160ms; }
+#theme-toggle.is-dark .tt-morph .tt-stars path:nth-child(2) { transition-delay: 240ms; }
+#theme-toggle.is-dark .tt-morph .tt-stars path:nth-child(3) { transition-delay: 320ms; }
+html[data-motion="reduced"] #theme-toggle .tt-morph * { transition: none !important; }
+@media (prefers-reduced-motion: reduce) { #theme-toggle .tt-morph * { transition: none !important; } }
+
+/* ---------- Settings > Animations > Intensity preview ---------- */
+.mx-preview { display: inline-flex; align-items: flex-end; gap: 4px; height: 28px; padding: 4px 8px; border-radius: 8px; background: var(--surface-2, var(--hover)); vertical-align: middle; }
+.mx-preview > i { display: block; width: 8px; border-radius: 3px; background: var(--accent); opacity: 0.85; }
+.mx-preview > i:nth-child(1) { height: 40%; } .mx-preview > i:nth-child(2) { height: 75%; } .mx-preview > i:nth-child(3) { height: 55%; } .mx-preview > i:nth-child(4) { height: 95%; }
+.mx-preview.is-playing > i { animation: mx-prev-rise calc(460ms * var(--m-k)) var(--m-pop-ease) both; animation-delay: calc(var(--i, 0) * 55ms * var(--m-sk)); transform-origin: 50% 100%; }
+@keyframes mx-prev-rise { from { opacity: 0; transform: translateY(calc(10px * var(--m-dk))) scaleY(0.4); } to { opacity: 0.85; transform: none; } }
+html[data-motion="reduced"] .mx-preview.is-playing > i { animation: none; }

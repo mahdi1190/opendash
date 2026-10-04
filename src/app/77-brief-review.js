@@ -1,9 +1,10 @@
 /* ============================================================
-   REVIEW (owner: Brief + Review): #view=review[:today|evening|week|history],
-   in the Home section. Sub-tabs: Today (the Morning brief, 74-brief-ui.js),
-   Evening (Finish the day, 76-brief-evening.js), Week (the guided weekly
-   review below) and History (saved reviews + the daily brief / recap
-   snapshots kept by the server).
+   HOME'S TABS (owner: Brief + Review). The Morning brief and the Review pages are
+   one place now, Home (user request, 4 Oct): Today ('home': the day's hero, its three
+   sentences, Play my morning, then the widgets; 12-home.js, 12-home-head.js), Evening
+   ('home:evening': Finish the day, 76-brief-evening.js), Week ('home:week': the guided
+   weekly review below) and History ('home:history': saved reviews + the daily brief /
+   recap snapshots kept by the server). Old '#view=review:*' links redirect (viewAlias).
    Weekly review steps:
      1 inbox and suggestions  2 overdue and stale  3 waiting-on chase list
      4 next week against capacity  5 three outcomes per area
@@ -11,41 +12,32 @@
      7 optional AI summary, notes and Save (actions op review.save, kind 'week')
    A draft is kept in this browser until it is saved.
    ============================================================ */
-const REVIEW_TABS = [['today', 'Today', 'sunrise'], ['evening', 'Evening', 'sunset'], ['week', 'Week', 'calendar-range'], ['history', 'History', 'history']];
-function _rvTab(v) { const m = /^review:([a-z]+)$/.exec(String(v || '')); const t = m ? m[1] : 'today'; return REVIEW_TABS.some(x => x[0] === t) ? t : 'today'; }
-
-registerSection('review', {
-  group: 'home',
-  match: v => v === 'review' || /^review:[a-z]+$/.test(v),
-  title: (v) => { const t = REVIEW_TABS.find(x => x[0] === _rvTab(v)); return t ? t[1] === 'Today' ? 'Morning brief' : t[1] === 'Evening' ? 'Finish the day' : t[1] === 'Week' ? 'Weekly review' : 'Review history' : 'Review'; },
-  crumb: (v) => ['Review', (REVIEW_TABS.find(x => x[0] === _rvTab(v)) || [])[1] || ''],
-  taskControls: false, hashable: true, layout: 'bare',
-  mount(container, view) {
-    const tab = _rvTab(view || state.view);
-    const wrap = document.createElement('div'); wrap.className = 'rv';
-    wrap.appendChild(_rvTabs(tab));
-    const body = document.createElement('div'); body.className = 'rv-body';
-    wrap.appendChild(body);
-    container.appendChild(wrap);
-    if (tab !== 'today') briefUnmount();
-    if (tab !== 'evening') eveningUnmount();
-    if (tab === 'today') briefRender(body);
-    else if (tab === 'evening') eveningRender(body);
-    else if (tab === 'week') weeklyRender(body);
-    else historyRender(body);
-  },
-  unmount() { briefUnmount(); eveningUnmount(); },
-});
-function _rvTabs(cur) {
-  const bar = document.createElement('div'); bar.className = 'rv-tabs'; bar.setAttribute('role', 'tablist');
-  for (const [id, label, ic] of REVIEW_TABS) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'rv-tab' + (id === cur ? ' on' : ''); b.setAttribute('role', 'tab');
-    b.setAttribute('aria-selected', id === cur ? 'true' : 'false');
+const HOME_TABS = Object.freeze([['today', 'Today', 'sunrise'], ['evening', 'Evening', 'sunset'], ['week', 'Week', 'calendar-range'], ['history', 'History', 'history']]);
+/** The tab a Home view shows: 'home' = today, 'home:evening' = evening... */
+function homeTabOf(v) { const m = /^home:([a-z]+)$/.exec(String(v || '')); const t = m ? m[1] : 'today'; return HOME_TABS.some(x => x[0] === t) ? t : 'today'; }
+function homeTabView(tab) { return !tab || tab === 'today' ? 'home' : 'home:' + tab; }
+/** The tab bar at the top of Home (the current tab is selected; clicking it again does nothing). */
+function homeTabsEl(cur) {
+  const bar = document.createElement('div'); bar.className = 'rv-tabs home-tabs'; bar.setAttribute('role', 'tablist'); bar.setAttribute('aria-label', 'Home');
+  for (const [id, label, ic] of HOME_TABS) {
+    const on = id === cur;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'rv-tab' + (on ? ' on' : ''); b.setAttribute('role', 'tab');
+    b.dataset.tab = id;
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (on) b.setAttribute('aria-current', 'page');
+    if (id === 'evening' && typeof _eveningNow === 'function' && _eveningNow() && typeof _eveningSavedToday === 'function' && !_eveningSavedToday()) b.classList.add('is-due');
     b.innerHTML = icon(ic, 'i-sm') + `<span>${esc(label)}</span>`;
-    b.onclick = () => setView('review:' + id);
+    b.onclick = () => setView(homeTabView(id));
     bar.appendChild(b);
   }
   return bar;
+}
+/** Evening, Week or History into Home's body (Today is the widget board: 12-home.js). */
+function homeTabMount(body, tab) {
+  if (tab !== 'evening' && typeof eveningUnmount === 'function') eveningUnmount();
+  if (tab === 'evening') eveningRender(body);
+  else if (tab === 'week') weeklyRender(body);
+  else if (tab === 'history') historyRender(body);
 }
 
 /* ---------- saving through the actions layer ---------- */
@@ -72,7 +64,7 @@ async function reviewSave(op, okMsg) {
   if (!Array.isArray(state.reviews)) state.reviews = [];
   const { op: _o, ...rest } = op;
   const at = state.reviews.findIndex(r => r && r.kind === op.kind && r.date === op.date);
-  const rec = Object.assign({ id: `rv-${op.kind}-${op.date}`, savedAt: new Date().toISOString(), source: 'ui' }, rest);
+  const rec = Object.assign({ id: `rv-${op.kind}-${op.date}`, savedAt: new Date(Date.now()).toISOString(), source: 'ui' }, rest);
   if (at >= 0) state.reviews[at] = rec; else state.reviews.push(rec);
   saveData();
   toast(okMsg || 'Saved', { kind: 'ok' });
@@ -143,6 +135,7 @@ function weeklyRender(container) {
   layout.append(rail, pane);
   root.appendChild(layout);
   if (typeof storyMountEntry === 'function') storyMountEntry(root, 'week');   // 79-story-engine.js
+  if (window.MoneyStory) window.MoneyStory.weekEntry(root, r.from);          // src/finance/28-money-story.js: "Money this week"
   if (typeof storyWeekOnEnter === 'function') storyWeekOnEnter();             // 79-story-weekly.js: the first visit each week opens the story
   container.appendChild(root);
   animActivate(root);
@@ -170,7 +163,7 @@ function _wkInbox(b) {
   _wkIntro(b, 'Start with a clear head: deal with the email suggestions and anything still sitting in the inbox.');
   const sugs = ((state.emailTriage && state.emailTriage.suggestions) || []).filter(s => s.status === 'pending');
   const handled = (state.emailTriage && state.emailTriage.handled) || {};
-  if (!InboxStore.st.loaded && !InboxStore.st.loading && _serverAvailable) InboxStore.load().then(() => { if (state.view === 'review:week' && _wk.step === 0) renderMain(); });
+  if (!InboxStore.st.loaded && !InboxStore.st.loading && _serverAvailable) InboxStore.load().then(() => { if (state.view === 'home:week' && _wk.step === 0) renderMain(); });
   const weekAgo = Date.now() - 7 * 86400000;
   const msgs = (typeof emailMessages === 'function' ? emailMessages() : []).filter(m => !handled[m.id] && (!m.date || Date.parse(m.date) >= weekAgo));
   const linkSugs = typeof pplSuggestionsCount === 'function' ? pplSuggestionsCount() : null;
@@ -294,7 +287,7 @@ function _wkOutcomes(b, r, d) {
 /* 6. wins and stats */
 function _wkStats(r) {
   const tasks = getAllItems().map(i => ({ id: i.id, title: effTitle(i), stream: (STREAMS[effStream(i)] || {}).label || effStream(i) || 'No stream' }));
-  return reviewWeekStats({ from: r.from, to: r.to, tasks, completions: state.completionLog || {}, activity: state.taskActivity || {}, dayOf: (ms) => fmtDate(new Date(ms)) });
+  return reviewWeekStats({ from: r.from, to: r.to, tasks, completions: state.completionLog || {}, activity: state.taskActivity || {}, dayOf: (ms) => Clock.parts(Number(ms)).iso });
 }
 function _wkWins(b, r, d) {
   const st = _wkStats(r);
@@ -378,7 +371,7 @@ function _wkFinish(b, r, d) {
       try { localStorage.removeItem(_wkDraftKey(r.from)); } catch (e) { /* ignore */ }
       if (typeof animBurst === 'function') animBurst(save, 'celebration');
       state.lastReviewPrompt = Date.now(); saveUI();
-      setTimeout(() => setView('review:history'), 700);
+      setTimeout(() => setView('home:history'), 700);
     }
   };
   b.appendChild(save);
@@ -390,7 +383,7 @@ function _wkFinish(b, r, d) {
 const _hist = { snaps: null, at: 0, open: null };
 function historyRender(container) {
   const root = document.createElement('div'); root.className = 'hist';
-  root.innerHTML = `<div class="wk-head"><div><div class="overline">Review</div><h1>History</h1><p class="muted">Your weekly reviews, evening recaps and the morning briefs you opened.</p></div></div>`;
+  root.innerHTML = `<div class="wk-head"><div><div class="overline">Home</div><h1>History</h1><p class="muted">Your weekly reviews, evening recaps and the mornings you opened.</p></div></div>`;
   const list = document.createElement('div'); list.className = 'hist-list';
   root.appendChild(list);
   container.appendChild(root);
@@ -398,10 +391,10 @@ function historyRender(container) {
     list.innerHTML = '';
     const items = [];
     for (const r of (state.reviews || [])) if (r && r.date) items.push({ date: r.date, kind: r.kind === 'week' ? 'week' : 'evening-review', r });
-    (state.weeklyReviews || []).forEach((r, i) => { const date = r.weekOf || (r.ts ? fmtDate(new Date(r.ts)) : null); if (date) items.push({ date, kind: 'legacy', r, i }); });
+    (state.weeklyReviews || []).forEach((r, i) => { const date = r.weekOf || (r.ts ? Clock.parts(new Date(r.ts).getTime()).iso : null); if (date) items.push({ date, kind: 'legacy', r, i }); });
     for (const s of (_hist.snaps || [])) if (!(s.kind === 'evening' && items.some(x => x.kind === 'evening-review' && x.date === s.date))) items.push({ date: s.date, kind: 'snap-' + s.kind, s });
     items.sort((a, b) => b.date.localeCompare(a.date) || a.kind.localeCompare(b.kind));
-    if (!items.length) { mountEmptyState(list, { icon: 'history', title: 'Nothing here yet', text: 'Open the Morning brief, finish a day or save a weekly review and it will show up here.', actions: [{ label: 'Weekly review', icon: 'calendar-range', primary: true, run: () => setView('review:week') }] }); return; }
+    if (!items.length) { mountEmptyState(list, { icon: 'history', title: 'Nothing here yet', text: 'Open Home in the morning, finish a day or save a weekly review and it will show up here.', actions: [{ label: 'Weekly review', icon: 'calendar-range', primary: true, run: () => setView('home:week') }] }); return; }
     let month = '';
     for (const it of items.slice(0, 200)) {
       const mo = _calParse(it.date).toLocaleDateString(APP_CONFIG.locale || undefined, { month: 'long', year: 'numeric' });
@@ -417,7 +410,7 @@ function historyRender(container) {
 function _histRow(it) {
   const row = document.createElement('article'); row.className = 'card hist-row k-' + it.kind;
   const day = _calParse(it.date).toLocaleDateString(APP_CONFIG.locale || undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-  const KIND = { week: ['Weekly review', 'calendar-range'], 'evening-review': ['Finished the day', 'sunset'], legacy: ['Weekly review (old)', 'calendar-range'], 'snap-brief': ['Morning brief', 'sunrise'], 'snap-evening': ['Evening recap', 'sunset'] }[it.kind] || ['Review', 'history'];
+  const KIND = { week: ['Weekly review', 'calendar-range'], 'evening-review': ['Finished the day', 'sunset'], legacy: ['Weekly review (old)', 'calendar-range'], 'snap-brief': ['Morning', 'sunrise'], 'snap-evening': ['Evening recap', 'sunset'] }[it.kind] || ['Review', 'history'];
   let sub = '', detail = '';
   if (it.kind === 'week') {
     const r = it.r;

@@ -1,0 +1,10 @@
+{
+  "_about": "Saturday 14:40 (the reported case): nothing booked. Not a work day, so Home and the stories stay quiet; Today's schedule still offers its button. Synthetic.",
+  "now": "2026-10-03T14:40",
+  "events": { "2026-10-03": [] },
+  "tasks": [
+    { "id": "t-report", "title": "Report draft: section 2", "priority": "p1", "due": "2026-10-09", "focusWhy": ["High priority", "Due Fri"],
+      "subtasks": { "done": 0, "total": 2, "open": ["Outline the argument", "Redo figure 3"], "doneAt": [] } }
+  ],
+  "focus": ["t-report"]
+}

@@ -29,8 +29,13 @@
      loops; the others move on hover.
    Click an event: openEvent (61-task-card.js) when it exists, else the
      calendar; that row is aria-current while its card is open. A task: the
-     task card (ctx.openTask). Block it: a new task in that slot
-     (tcOpenCreate with date, time and minutes), else the quick-add dialog.
+     task card (ctx.openTask). A free gap's "Block 14:45–16:45" is suggestion
+     S1 (68-suggest-*.js): it opens the event card in create mode, prefilled
+     (Focus: <top Focus task>, min(gap, 2 h), the primary calendar, the task
+     linked) and Save books it in Google Calendar; the small ✓ books it at
+     once, with a receipt (Undo, Open, change task / length) at the top of
+     this widget. Never a task (user request, 3 Oct). Without a calendar to
+     write to, the button reads Connect calendar / Update calendar.
    ============================================================ */
 registerHomeWidget({
   id: 'schedule', title: 'Today’s schedule', icon: 'calendar-days', order: 30,
@@ -57,7 +62,7 @@ function _hsRender(el, ctx) {
   const tasks = homeTimedTasks(today);
   if (cal.off && !tasks.length && !ctx.editing) return false;
   const events = cal.ok ? homeCalEvents(today) : [];
-  const m = homeDayModel({ events, tasks, nowMin: homeNowMin(), nowMs: Date.now() });
+  const m = homeDayModel({ events, tasks, nowMin: homeNowMin(), nowMs: Clock.now(), ...(typeof homeWorkWindow === 'function' ? homeWorkWindow() : {}) });
   if (ctx.firstPaint) _hsEarlier = false;
   if (_hsOpenId && !(typeof tcIsOpen === 'function' && tcIsOpen())) _hsOpenId = '';
 
@@ -80,6 +85,7 @@ function _hsRender(el, ctx) {
   const w0 = ctx.size !== 'l' ? 0 : _hsW.size === ctx.size && _hsW.w ? _hsW.w : el.clientWidth;
   const wantTrack = ctx.size === 'l' && w0 >= _HS_TRACK_MIN_W;
   card.classList.toggle('is-track', wantTrack);
+  if (typeof sgScheduleReceipts === 'function') sgScheduleReceipts(body);     // blocks just made here: Undo, Open, change task / length
   if (m.allDay.length) body.insertAdjacentHTML('beforeend', _hsAllDayHtml(m.allDay));
   const banner = _hsBanner(m, cal);
   if (banner) body.insertAdjacentHTML('beforeend', banner.html);
@@ -150,25 +156,24 @@ function _hsShortDay(iso) {
 /* ---------- a free morning, or nothing timed at all: one calm banner ---------- */
 function _hsBanner(m, cal) {
   const lead = m.gaps.find(g => g.lead);
-  const block = lead ? _hsBlockBtn(lead, 'Block some') : '';
+  const block = lead ? _hsBlockBtn(lead) : '';
+  // S1's words (68-suggest-ui.js): "Free from 14:45 to 18:00. Block 2 h for Report draft?"
+  const offer = (kind) => (lead && typeof sgScheduleBannerText === 'function' ? sgScheduleBannerText(lead, kind) : '');
   if (!m.timed.length) {
     if (!cal.ok) return null;
     // All-day entries only (a birthday): the same words as the hero's Events number ("No meetings").
     const title = m.eventCount ? 'No meetings today' : 'No events today, a clear day';
-    const sub = lead ? `Free from ${homeHM(lead.start)} to the evening. Block some time for focus?` : homeNowMin() >= HOME_WORK_END ? 'The evening is yours.' : 'Nothing on the calendar.';
+    const sub = lead ? offer('empty') || `Free from ${homeHM(lead.start)} to ${homeHM(lead.end)}.` : homeNowMin() >= m.workEnd ? 'The evening is yours.' : 'Nothing on the calendar.';
     return { gap: lead || null, html: `<div class="hs-free">${homeScene('rest', { size: 'sm' })}<div><b>${esc(title)}</b><span>${esc(sub)}</span></div>${block}</div>` };
   }
   if (lead && lead.minutes >= 180) {
-    const sub = `${homeDur(lead.minutes)} clear. Block some for focus?`;
+    const sub = offer('long') || `${homeDur(lead.minutes)} clear.`;
     return { gap: lead, html: `<div class="hs-free">${homeScene('rest', { size: 'sm' })}<div><b>Free until ${esc(homeHM(lead.end))}</b><span>${esc(sub)}</span></div>${block}</div>` };
   }
   return null;
 }
-function _hsCanBlock() { return typeof tcOpenCreate === 'function' || typeof openNewTask === 'function'; }
-function _hsBlockBtn(g, label) {
-  if (!_hsCanBlock()) return '';
-  return `<button type="button" class="hs-block" data-block="${g.start}-${g.end}" aria-label="Block ${escAttr(homeHM(g.start))} to ${escAttr(homeHM(g.end))} for focus">${icon('calendar-plus')}<span>${esc(label || 'Block it')}</span></button>`;
-}
+/** A free gap's buttons: S1 "Block 14:45–16:45" (the event card, prefilled) + ✓ (now, with Undo). */
+function _hsBlockBtn(g) { return typeof sgScheduleBlockHtml === 'function' ? sgScheduleBlockHtml(g) : ''; }
 
 /* ---------- the list (M, and L when narrow) ---------- */
 function _hsListHtml(m, banner) {
@@ -187,13 +192,13 @@ function _hsInText(min) { return min <= 0 ? 'now' : 'in ' + homeDur(min); }
 function _hsItemHtml(r, m) {
   const x = r.item, task = x.kind === 'task', live = r.next || r.state === 'now';
   const end = x.end > x.start && (!task || x.estimated) ? homeHM(x.end) : '';
-  const cls = `hs-ev is-${r.state}${r.next ? ' is-next' : ''}${task ? ' is-task' : ''} anim-hover-host`;
+  const cls = `hs-ev is-${r.state}${r.next ? ' is-next' : ''}${task ? ' is-task' : ''}${x.planned ? ' is-plan' : ''} anim-hover-host`;
   const lead = task ? `<span class="hs-ck" aria-hidden="true"></span>` : homeScene(x.type, { size: 'xs', hover: !live });
-  const meta = task ? (x.stream ? `<span>${esc(x.stream)}</span>` : '') : _hsMetaHtml(x);
+  const meta = task ? (x.planned ? '<span class="hs-plan">Planned</span>' : '') + (x.stream ? `<span>${esc(x.stream)}</span>` : '') : _hsMetaHtml(x);
   const right = r.next && m.nextIn !== null ? `<span class="hs-in"><i class="hs-pulse" aria-hidden="true"></i><span data-in>${esc(_hsInText(m.nextIn))}</span></span>`
     : r.state === 'now' ? '<span class="hs-nowpill">Now</span>'
     : r.state === 'past' ? `<span class="hs-done" aria-hidden="true">${icon('check')}</span>` : '';
-  const say = `${homeHM(x.start)}${end ? ' to ' + end : ''}, ${x.title}${x.location ? ', ' + x.location : ''}${r.next && m.nextIn !== null ? ', ' + _hsInText(m.nextIn) : r.state === 'now' ? ', happening now' : r.state === 'past' ? ', finished' : ''}${task ? ', task' : ''}`;
+  const say = `${homeHM(x.start)}${end ? ' to ' + end : ''}, ${x.title}${x.location ? ', ' + x.location : ''}${r.next && m.nextIn !== null ? ', ' + _hsInText(m.nextIn) : r.state === 'now' ? ', happening now' : r.state === 'past' ? ', finished' : ''}${task ? (x.planned ? ', planned time for a task' : ', task') : ''}`;
   const ids = task ? `data-id="${escAttr(x.id)}" data-task="${escAttr(x.id)}"` : `data-ev="${escAttr(x.id)}" data-scene-key="${escAttr(x.key)}"`;
   const color = homeCalColor(x.color, task ? 'var(--fg-subtle)' : 'var(--sw-blue)');
   return `<div class="${cls}" role="button" tabindex="0" ${ids} data-flip="${escAttr(x.key)}" style="--c:${escAttr(color)}" aria-label="${escAttr(say)}">`
@@ -234,7 +239,7 @@ function _hsTomorrowHtml(today) {
 
 /* ---------- L: the horizontal track ---------- */
 function _hsSpan(m) {
-  const first = m.timed.length ? m.timed[0].start : HOME_WORK_START;
+  const first = m.timed.length ? m.timed[0].start : m.workStart;
   const last = m.timed.reduce((n, x) => Math.max(n, x.end), 0);
   return { from: Math.min(8 * 60, Math.floor(first / 60) * 60), to: Math.min(24 * 60, Math.max(22 * 60, Math.ceil(last / 60) * 60)) };
 }
@@ -244,7 +249,7 @@ function _hsTrack(body, m, knownW) {
   const now = homeNowMin();
   const wrap = document.createElement('div'); wrap.className = 'hs-track';
   wrap.dataset.from = from; wrap.dataset.to = to;
-  const blocks = m.timed.map(x => `<span class="hs-tk-blk${x.kind === 'task' ? ' is-task' : ''}${x.end <= now ? ' is-past' : ''}" style="left:${pct(x.start)}%;width:${Math.max(0.5, pct(x.end) - pct(x.start))}%;--c:${escAttr(homeCalColor(x.color, 'var(--fg-subtle)'))}"></span>`).join('');
+  const blocks = m.timed.map(x => `<span class="hs-tk-blk${x.kind === 'task' ? ' is-task' : ''}${x.planned ? ' is-plan' : ''}${x.end <= now ? ' is-past' : ''}" style="left:${pct(x.start)}%;width:${Math.max(0.5, pct(x.end) - pct(x.start))}%;--c:${escAttr(homeCalColor(x.color, 'var(--fg-subtle)'))}"></span>`).join('');
   const gaps = m.gaps.map(g => `<span class="hs-tk-gap${g.best ? ' is-best' : ''}" data-min="${g.minutes}" style="left:${pct(g.start)}%;width:${pct(g.end) - pct(g.start)}%" title="${escAttr(`Free ${homeHM(g.start)}–${homeHM(g.end)}${g.best ? ' · best for focus' : ''}`)}"><span></span></span>`).join('');
   const ticks = [];
   const step = to - from > 14 * 60 ? 180 : 120;
@@ -311,7 +316,7 @@ function _hsCardHtml(r, m, left, top) {
   const tag = r.next && m.nextIn !== null ? `<span class="hs-card-in"><i class="hs-pulse" aria-hidden="true"></i><span data-in>${esc(_hsInText(m.nextIn))}</span></span>` : r.state === 'now' ? '<span class="hs-card-in is-now">Now</span>' : '';
   const ids = task ? `data-id="${escAttr(x.id)}" data-task="${escAttr(x.id)}"` : `data-ev="${escAttr(x.id)}" data-scene-key="${escAttr(x.key)}"`;
   const say = `${time.replace('–', ' to ')}, ${x.title}${r.next && m.nextIn !== null ? ', ' + _hsInText(m.nextIn) : r.state === 'past' ? ', finished' : r.state === 'now' ? ', happening now' : ''}`;
-  return `<div class="hs-card is-${r.state}${r.next ? ' is-next' : ''}${task ? ' is-task' : ''} anim-hover-host" role="button" tabindex="0" ${ids} data-flip="${escAttr(x.key)}" style="left:${left}px;top:${top}px;--c:${escAttr(homeCalColor(x.color, 'var(--fg-subtle)'))}" aria-label="${escAttr(say)}">`
+  return `<div class="hs-card is-${r.state}${r.next ? ' is-next' : ''}${task ? ' is-task' : ''}${x.planned ? ' is-plan' : ''} anim-hover-host" role="button" tabindex="0" ${ids} data-flip="${escAttr(x.key)}" style="left:${left}px;top:${top}px;--c:${escAttr(homeCalColor(x.color, 'var(--fg-subtle)'))}" aria-label="${escAttr(say)}">`
     + (task ? '<span class="hs-ck" aria-hidden="true"></span>' : homeScene(x.type, { size: 'xs', hover: !live }))
     + `<span class="hs-tt"><span class="hs-card-tm num">${esc(time)}${tag}</span><span class="hs-t">${esc(x.title)}</span></span></div>`;
 }
@@ -324,9 +329,11 @@ function _hsTrackFootHtml(m) {
 /* ---------- clicks, keys, the open event ---------- */
 function _hsWire(card, ctx) {
   card.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-act], [data-block], [data-ev], [data-task]');
+    const b = e.target.closest('[data-act], [data-block], [data-block-now], [data-sg-cal], [data-ev], [data-task]');
     if (!b || !card.contains(b)) return;
-    if (b.dataset.block) { _hsBlock(b.dataset.block, b); return; }
+    if (b.dataset.block) { _hsBlock(b.dataset.block, b, false); return; }
+    if (b.dataset.blockNow) { _hsBlock(b.dataset.blockNow, b, true); return; }
+    if (b.dataset.sgCal) { if (typeof sgScheduleCal === 'function') sgScheduleCal(b.dataset.sgCal); return; }
     const act = b.dataset.act;
     if (act === 'calendar') { setView('calendar'); return; }
     if (act === 'connect') { if (window.Connections && typeof Connections.open === 'function') Connections.open('calendar'); else setView('connections'); return; }
@@ -357,14 +364,8 @@ function _hsRefresh(btn) {
   if (s && typeof s.update === 'function') s.update({ force: true });
   else if (typeof calendarSoon === 'function') calendarSoon(() => homeRerenderWidget('schedule'), true);
 }
-/** "Block it": a new task in that free slot (the user names it). */
-function _hsBlock(spec, from) {
-  const [a, b] = String(spec).split('-').map(Number);
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return;
-  const minutes = Math.max(15, Math.min(120, b - a));
-  if (typeof tcOpenCreate === 'function') tcOpenCreate({ title: '', date: todayStr(), time: homeHM(a), minutes }, { from });
-  else if (typeof openNewTask === 'function') openNewTask(`today ${homeHM(a)}`, { from });
-}
+/** "Block 14:45–16:45": the event card prefilled (quick = false) or the block at once (quick = true). Never a task. */
+function _hsBlock(spec, from, quick) { if (typeof sgScheduleBlock === 'function') sgScheduleBlock(spec, from, quick); }
 
 /* ---------- size changes: L switches between list and track; the track re-lays its cards ---------- */
 function _hsObserve(card, el, ctx, track, assumedW) {
@@ -404,7 +405,7 @@ function _hsTick() {
   const today = todayStr();
   if (card.dataset.day !== today) { render(); return; }                          // a new day: the whole page (the week moves too)
   const cal = homeCalStatus();
-  const m = homeDayModel({ events: cal.ok ? homeCalEvents(today) : [], tasks: homeTimedTasks(today), nowMin: homeNowMin(), nowMs: Date.now() });
+  const m = homeDayModel({ events: cal.ok ? homeCalEvents(today) : [], tasks: homeTimedTasks(today), nowMin: homeNowMin(), nowMs: Clock.now(), ...(typeof homeWorkWindow === 'function' ? homeWorkWindow() : {}) });
   if (m.sig !== card.dataset.sig) { homeRerenderWidget('schedule'); return; }   // something started or ended: repaint, rows glide
   _hsLive(card, m);
   _hsTickStart();

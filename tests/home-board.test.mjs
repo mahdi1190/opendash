@@ -45,7 +45,7 @@ test('the grid is shelves: no masonry rows, no dense packing; a row stretches it
 
 test('the default board: whole shelves of 12 at the HOME_SPEC.md 3 sizes, links waiting in the gallery', () => {
   const shown = HOME_WIDGETS.filter(w => !w.defaultHidden).map(w => [w.id, w.defaultSize]);
-  assert.deepEqual(shown, [['today', 'full'], ['focus', 'l'], ['schedule', 's'], ['finance', 's'], ['people', 's'], ['countdowns', 's'], ['week', 'l'], ['waiting', 's']]);
+  assert.deepEqual(shown, [['today', 'full'], ['focus', 'l'], ['schedule', 's'], ['suggest', 'full'], ['finance', 's'], ['people', 's'], ['countdowns', 's'], ['week', 'l'], ['waiting', 's']]);
   const run = homeBox();
   assert.deepEqual(plain(run(`homeShelfGaps(${JSON.stringify(shown.map(([, s]) => HOME_SIZE_COLS[s]))})`)), [], 'no free columns anywhere');
   // The page registers the same defaults (the catalogue test compares the rest).

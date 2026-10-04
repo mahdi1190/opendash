@@ -114,6 +114,20 @@
 .anim-scene .x-wave-hand { --an: as-sway; --ad: 1.2s; }
 .anim-scene .x-swing { --an: as-swing; --ad: 2.8s; }
 .anim-scene .x-tree { --an: as-tree; --ad: 4.6s; }
+/* the travel moments block (travel spec 4.7; owner MOMENTS) */
+.anim-scene .x-land { --an: as-land; --ad: 4.2s; --ae: cubic-bezier(.3, .55, .5, 1); }
+.anim-scene .x-takeoff { --an: as-takeoff; --ad: 4.2s; --ae: cubic-bezier(.5, 0, .8, .6); }
+.anim-scene .x-contrail { --an: as-contrail; --ad: 4.2s; --ae: cubic-bezier(.5, 0, .8, .6); opacity: 0; }   /* still frames: no trail, no second face, no moon */
+.anim-scene .x-hand { --an: as-spin; --ad: 6s; --ae: steps(12, end); }
+.anim-scene .x-lid { --an: as-lid; --ad: 3.4s; }
+.anim-scene .x-passout { --an: as-passout; --ad: 3.6s; }
+.anim-scene .x-coin { --an: as-coin; --ad: 3.2s; }
+.anim-scene .x-face-a { --an: as-face-a; --ad: 3.2s; --ae: steps(1, end); }
+.anim-scene .x-face-b { --an: as-face-b; --ad: 3.2s; --ae: steps(1, end); opacity: 0; }
+.anim-scene .x-sunset { --an: as-sunset; --ad: 5s; }
+.anim-scene .x-moonrise { --an: as-moonrise; --ad: 5s; opacity: 0; }
+.anim-scene .x-doorlight { --an: as-doorlight; --ad: 3.6s; }
+.anim-scene .x-rollin { --an: as-rollin; --ad: 3.6s; }
 
 @keyframes as-bob { 0%, 100% { transform: none; } 50% { transform: translateY(-2.5px); } }
 @keyframes as-pop { 0% { transform: none; opacity: 1; } 8% { transform: scale(0); opacity: 0; } 22% { transform: scale(1.12); opacity: 1; } 30%, 100% { transform: none; opacity: 1; } }
@@ -167,6 +181,18 @@
 @keyframes as-swing { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(6deg); } }
 @keyframes as-tree { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
 @keyframes as-sway { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(14deg); } }
+@keyframes as-land { 0% { transform: translate(-22px, -18px) rotate(9deg); opacity: 0; } 12% { opacity: 1; } 55% { transform: translate(-2px, 0) rotate(-2deg); } 62%, 88% { transform: none; opacity: 1; } 100% { transform: translateX(6px); opacity: 0; } }
+@keyframes as-takeoff { 0% { transform: translateX(-14px); opacity: 0; } 8% { opacity: 1; } 34% { transform: none; } 70% { transform: translate(14px, -16px) rotate(-14deg); opacity: 1; } 86%, 100% { transform: translate(24px, -26px) rotate(-15deg); opacity: 0; } }
+@keyframes as-contrail { 0%, 30% { transform: scaleX(0); opacity: .9; } 70% { transform: none; opacity: .9; } 90%, 100% { transform: none; opacity: 0; } }
+@keyframes as-lid { 0%, 35% { transform: rotate(-28deg); } 50%, 88% { transform: none; } 100% { transform: rotate(-28deg); } }
+@keyframes as-passout { 0% { transform: translateY(12px); opacity: 0; } 22%, 84% { transform: none; opacity: 1; } 100% { transform: translateY(12px); opacity: 0; } }
+@keyframes as-coin { 0%, 38% { transform: none; } 50% { transform: scaleX(0.05); } 62%, 88% { transform: none; } 94% { transform: scaleX(0.05); } 100% { transform: none; } }
+@keyframes as-face-a { 0% { opacity: 1; } 50% { opacity: 0; } 94% { opacity: 1; } }
+@keyframes as-face-b { 0% { opacity: 0; } 50% { opacity: 1; } 94% { opacity: 0; } }
+@keyframes as-sunset { 0%, 30%, 100% { transform: none; opacity: 1; } 50%, 80% { transform: translateY(18px); opacity: 0; } }
+@keyframes as-moonrise { 0%, 30%, 100% { transform: translateY(18px); opacity: 0; } 50%, 80% { transform: none; opacity: 1; } }
+@keyframes as-doorlight { 0%, 45% { opacity: .35; } 55%, 92% { opacity: 1; } 100% { opacity: .35; } }
+@keyframes as-rollin { 0% { transform: translateX(-16px); opacity: 0; } 12% { opacity: 1; } 45%, 88% { transform: translateX(10px); opacity: 1; } 100% { transform: translateX(10px); opacity: 0; } }
 @keyframes as-shake { 0%, 30%, 100% { transform: none; } 4% { transform: translateX(-1.5px) rotate(-2deg); } 8% { transform: translateX(1.5px) rotate(2deg); } 12% { transform: translateX(-1.5px) rotate(-1deg); } 16% { transform: translateX(1px); } }
 
 /* off: reduced motion (system or Appearance), Settings > Animations off */

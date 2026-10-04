@@ -93,10 +93,18 @@ test('layout normalisation: unknown ids and repeats dropped, sizes clamped, miss
 
   const messy = { version: 7, widgets: [{ id: 'finance' }, { id: 'nope', size: 'l' }, { id: 'focus', size: 's' }, { id: 'finance', size: 'l' }, { id: 'week', size: 'm', hidden: 1 }, null, 'x', { id: 5 }, { id: 'people', hidden: true, size: 'enormous' }] };
   const n = normalizeHomeLayout(messy);
-  assert.deepEqual(ids(n).slice(0, 4), ['finance', 'focus', 'week', 'people'], 'stored order first, unknown and repeated ids dropped');
-  assert.deepEqual(n.widgets.slice(0, 4).map(w => [w.size, w.hidden]), [['s', false], ['m', false], ['l', false], ['s', true]]);
-  assert.deepEqual(ids(n).slice(4), ['today', 'schedule', 'links', 'countdowns', 'waiting'], 'missing ones appended in catalogue order');
-  for (const w of n.widgets.slice(4)) assert.equal(w.hidden, HOME_WIDGETS.find(c => c.id === w.id).defaultHidden, w.id + ' appended with its default visibility');
+  const stored = ['finance', 'focus', 'week', 'people'];
+  assert.deepEqual(ids(n).filter(id => stored.includes(id)), stored, 'stored order kept, unknown and repeated ids dropped');
+  assert.deepEqual(stored.map(id => n.widgets.find(w => w.id === id)).map(w => [w.size, w.hidden]), [['s', false], ['m', false], ['l', false], ['s', true]]);
+  assert.deepEqual(ids(n).slice().sort(), HOME_WIDGETS.map(w => w.id).sort(), 'every widget exactly once');
+  // A missing one goes in right after its catalogue neighbour (integrator, 4 Oct: a new
+  // default widget lands where it belongs on an old board); the catalogue's first goes last.
+  const cat = HOME_WIDGETS.map(w => w.id);
+  for (const id of cat.filter(x => !stored.includes(x))) {
+    const i = cat.indexOf(id);
+    if (i > 0) assert.equal(ids(n)[ids(n).indexOf(id) - 1], cat[i - 1], id + ' follows ' + cat[i - 1]);
+  }
+  for (const w of n.widgets.filter(x => !stored.includes(x.id))) assert.equal(w.hidden, HOME_WIDGETS.find(c => c.id === w.id).defaultHidden, w.id + ' added with its default visibility');
   assert.equal(n.version, 1);
   assert.deepEqual(normalizeHomeLayout(messy.widgets), n, 'a bare array works too');
   for (const junk of ['x', 42, null, { widgets: 'no' }, [null, 1, 'a', { id: 5 }]]) assert.deepEqual(normalizeHomeLayout(junk), def);
@@ -112,7 +120,9 @@ test('layout normalisation: unknown ids and repeats dropped, sizes clamped, miss
 
 test('reordering the shown widgets keeps hidden ones in their slots (edit mode drag / Alt+arrows)', () => {
   const { run } = homeBox();
-  const lay = normalizeHomeLayout({ widgets: [{ id: 'today' }, { id: 'focus' }, { id: 'waiting', hidden: true }, { id: 'schedule' }, { id: 'finance', size: 'm' }, { id: 'countdowns', hidden: true }] }).widgets;
+  const six = ['today', 'focus', 'waiting', 'schedule', 'finance', 'countdowns'];
+  const lay = normalizeHomeLayout({ widgets: [{ id: 'today' }, { id: 'focus' }, { id: 'waiting', hidden: true }, { id: 'schedule' }, { id: 'finance', size: 'm' }, { id: 'countdowns', hidden: true }] }).widgets
+    .filter(w => six.includes(w.id));
   const out = JSON.parse(run(`JSON.stringify(homeLayoutReorder(${JSON.stringify(lay)}, ['finance', 'today', 'nope', 'finance', 'countdowns'], w => !w.hidden))`));
   assert.equal(out.length, lay.length);
   assert.deepEqual(out.map(w => w.id).slice(0, 5), ['finance', 'today', 'waiting', 'focus', 'schedule'], 'waiting (hidden) keeps slot 2; unknown, repeated and hidden ids ignored');
@@ -296,7 +306,7 @@ test('a messy stored layout is read back normalised by the server', async () => 
   s._lastSave = Date.now();
   (await import('node:fs')).writeFileSync(file, JSON.stringify(s));
   const q = await a.query('home.layout');
-  assert.deepEqual(q.widgets.slice(0, 2).map(w => [w.id, w.size]), [['focus', 'm'], ['week', 'l']]);
+  assert.deepEqual(q.widgets.filter(w => ['focus', 'week'].includes(w.id)).map(w => [w.id, w.size]), [['focus', 'm'], ['week', 'l']]);
   assert.equal(q.widgets.length, HOME_WIDGETS.length);
   // And the next change stores a clean layout.
   await run([{ op: 'home.set_layout', widgets: [{ id: 'people', position: 0 }] }]);

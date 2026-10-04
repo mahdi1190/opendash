@@ -16,7 +16,8 @@ let _obOpen = false;
 
 function _obDetect() {
   let tz = 'UTC', loc = 'en-GB';
-  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch (e) { /* default */ }
+  // The home zone starts as the computer's (Clock: canonical id); a computer left on UTC suggests the config's.
+  try { tz = Clock.system() || tz; if (Clock.placeless(tz) && APP_CONFIG.timezone) tz = APP_CONFIG.timezone; } catch (e) { /* default */ }
   try { loc = (navigator.languages && navigator.languages[0]) || navigator.language || loc; } catch (e) { /* default */ }
   if (!/^[a-z]{2,3}(-[A-Z]{2})?$/.test(loc)) loc = 'en-GB';
   const cur = { GB: 'GBP', IE: 'EUR', US: 'USD', CA: 'CAD', AU: 'AUD', NZ: 'NZD', IN: 'INR', CH: 'CHF', SE: 'SEK', NO: 'NOK', DK: 'DKK', PL: 'PLN', JP: 'JPY', SG: 'SGD', ZA: 'ZAR', BR: 'BRL', MX: 'MXN' };
@@ -52,9 +53,9 @@ function openOnboarding() {
 
   async function finish(skipped) {
     const btns = card.querySelectorAll('button'); btns.forEach(b => { b.disabled = true; });
-    const patch = skipped ? { onboardedAt: new Date().toISOString() } : {
+    const patch = skipped ? { onboardedAt: new Date(Clock.now()).toISOString() } : {
       userName: d.userName.trim(), myEmails: String(d.myEmails || '').split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(x => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(x)), currency: d.currency, locale: d.locale, timezone: d.timezone, weekStart: d.weekStart,
-      theme: { default: d.theme === 'dark' ? 'dark' : 'light', auto: d.theme === 'auto' }, onboardedAt: new Date().toISOString(),
+      theme: { default: d.theme === 'dark' ? 'dark' : 'light', auto: d.theme === 'auto' }, onboardedAt: new Date(Clock.now()).toISOString(),
       ...(d.location ? { location: d.location } : {}),
     };
     if (!(await settingsSaveConfig(patch, false))) { btns.forEach(b => { b.disabled = false; }); return; }
@@ -78,7 +79,7 @@ function openOnboarding() {
     }
     close();
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
-    // Land on Home, as promised: the Morning brief (and its full-screen story)
+    // Land on Home, as promised: Home's morning greeting (and its full-screen story)
     // opens by itself from tomorrow, not on top of the set-up just finished.
     try { localStorage.setItem('dashboard-brief-seen', todayStr()); } catch (e) { /* ignore */ }
     location.hash = '#view=home';
@@ -118,7 +119,7 @@ function openOnboarding() {
       p.textContent = 'So that “today”, due dates and money look right. Detected from this computer.';
       const grid = el('div', 'ob-grid');
       grid.append(
-        field('Time zone', _settingsSelect(settingsTimeZones(), d.timezone, (v) => { d.timezone = v; paint(); })),
+        field('Home time zone', _settingsSelect(settingsTimeZones(), d.timezone, (v) => { d.timezone = v; paint(); }), 'Where you live. While you travel, the dashboard follows this computer’s clock.'),
         field('Language and date format', _settingsSelect(SETTINGS_LOCALES, d.locale, (v) => { d.locale = v; paint(); }), 'Example: ' + settingsDateExample(d.locale, d.timezone)),
         field('Currency', _settingsSelect(SETTINGS_CURRENCIES, d.currency, (v) => { d.currency = v; })),
         field('Week starts on', seg([['Mon', 'Monday'], ['Sun', 'Sunday'], ['Sat', 'Saturday']], d.weekStart, (k) => { d.weekStart = k; })));

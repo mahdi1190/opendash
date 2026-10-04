@@ -128,8 +128,8 @@
     E.readBtn = h('button', { type: 'button', class: 'fv-mb-btn glass', 'aria-pressed': 'false', onclick: () => mbReadToggle() }, mbIcon('vol'), h('span', { text: 'Read aloud' }));
     E.aiBtn = h('button', { type: 'button', class: 'fv-mb-btn ghost', hidden: true, title: 'Ask Claude to word these three sentences (only totals and the next bills are sent; every number is checked)', onclick: () => mbAiLoad(true, false) }, ic('wand-sparkles'), h('span', { text: 'Rewrite with Claude' }));
     E.hint = h('span', { class: 'fv-mb-hint', text: 'Words light up as they are read' });
-    // Play story: needs a "money" kind in the Story player (79-story-*, the story workflow). Hidden until then.
-    E.storyBtn = h('button', { type: 'button', class: 'fv-mb-btn inv', hidden: true }, h('span', { text: 'Play story' }));
+    // Play story: the money story (28-money-story.js): this month so far, or last month on the 1st to the 3rd.
+    E.storyBtn = h('button', { type: 'button', class: 'fv-mb-btn inv', hidden: !msCanPlay(), title: 'Your month in money as a short story, read aloud', onclick: () => msOpen({}) }, msPlayEl(), h('span', { text: 'Play story' }));
     E.safe = h('aside', { class: 'fv-mb-safe', 'aria-label': 'Safe to spend' });
     E.hero = h('section', { class: 'fv-mb-hero' + (MB.entering ? ' is-entering' : ''), 'data-mood': 'calm', 'aria-label': 'Money brief' },
       E.sky,
@@ -230,7 +230,7 @@
     if (first || MB.aiChecked !== B.key + B.mode) mbAiLoad(false, false);
   }
   function mbHello() {
-    const hr = new Date().getHours();
+    const hr = typeof Clock !== 'undefined' ? Clock.parts(Clock.now()).h : new Date(Date.now()).getHours();   // clock-ok: the greeting's hour where the user is (Clock, P10)
     const part = hr < 5 ? 'Good evening' : hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
     const name = String(CFG.userName || '').trim();
     return name ? `${part}, ${name}.` : `${part}.`;

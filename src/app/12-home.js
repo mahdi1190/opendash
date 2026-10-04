@@ -11,10 +11,15 @@
      12-home-drag.js     makeSortable (pointer drag; the top bar uses it too)
      12-home-focus-card.js  Focus: the card a row opens into, its motion, the task
                          actions, and homeOpenSheet (the retired sheet's old name)
+     12-home-platform.js the widget platform: groups, copies, widget settings,
+                         homeData / homeTick / homeAction / homeOps / homeMemo /
+                         homeSample / homeRowKeys, hide amounts, the suggestion slot
+                         (its header is the API reference)
      12-home-w-<id>.js   one widget each (today, focus, schedule, links, waiting,
-                         finance, people, week, countdowns)
-     styles: 13-home-core.css, 13-home-edit.css, 13-home-w-*.css (loaded after
-             the core, so a widget's rules can override it)
+                         finance, people, week, countdowns; the v1 widgets of
+                         WIDGETS_CATALOGUE.md start as stubs with an OWNER line)
+     styles: 13-home-core.css, 13-home-edit.css, 13-home-platform.css, 13-home-w-*.css
+             (loaded after the core, so a widget's rules can override it)
    build.mjs loads '12-home-*.js' BEFORE this file ('-' sorts before '.'), so
    widget files may only declare things and call registerHomeWidget() at load.
 
@@ -25,7 +30,10 @@
        title: 'Finances', icon: 'wallet', description: 'one line for the gallery',
        sizes: ['s', 'm', 'l'],      s = 4 of 12 columns, m = 6, l = 8, full = 12;
                                     one column on phones, s/m = half width when narrow
-       defaultSize: 's', order: 60, defaultHidden: false,
+       defaultSize: 's', order: 60, defaultHidden: false,   (new widgets: defaultHidden true,
+                                    or they appear on every existing board)
+       group: 'money', multi: 1, aliases: [...], fresh: true, defaults: {...}, sample(kit)
+                                    see 12-home-platform.js (multi > 1 = copies 'id~2'...)
        gate: 'finance',             config.features[gate] === false -> not shown anywhere
        emptyHint: 'Appears when…',  optional: Customise's placeholder while render() returns false
        available() { ... },         optional: false = not offered right now
@@ -35,7 +43,10 @@
        unmount() { ... },           optional: Home is being left (stop timers, drop caches)
      });
    ctx (fresh each render):
-     id, def, size, editing
+     id, def, size, editing, preview (true in the Add widget gallery: sample content,
+                         no fetch, no tick, no write)
+     instance, baseId, copy   which copy this is ('runway~2', 'runway', 2; id = instance)
+     prefs               its settings (homePrefs; change them with homeSetPrefs(ctx, patch))
      firstPaint          true on the widget's first paint since Home was entered or it was
                          added. The framework already staggers the widget in; use this for
                          effects inside it (count-ups...), never on re-renders from saves/sync.
@@ -60,10 +71,11 @@
    DATA (state.home, saved with saveData = one undo step):
      focus {count, pinned, p1, overdue, doing, planned, dueSoonDays, streams[]},
      focusOrder [taskId], snoozed {taskId: 'YYYY-MM-DD'},
-     layout {version: 1, widgets: [{id, size, hidden}]}   (missing = the defaults)
-   UI (saveUI, no undo): state.homeUI {expanded: [taskId]}.
+     layout {version: 1, widgets: [{id, size, hidden}]}   (missing = the defaults; ids may be copies)
+     widgetPrefs {instanceId: {...}}                      each widget copy's own settings
+   UI (saveUI, no undo): state.homeUI {expanded: [taskId], hideAmounts, gallerySeen: [id]}.
    Assistants: set_home_focus / get_home_focus, set_home_layout / reset_home_layout /
-   get_home_layout (server/actions/ops-home.mjs, queries-home.mjs); the server's
+   get_home_layout, set_home_widget (server/actions/ops-home.mjs, queries-home.mjs); the server's
    copy of the rules is lib/home-topbar.mjs.
    ============================================================ */
 const _HOME_PO = { p1: 0, p2: 1, p3: 2, p0: 3 };
@@ -73,11 +85,8 @@ const HOME_SIZE_COLS = Object.freeze({ s: 4, m: 6, l: 8, full: 12 });
 const HOME_SIZE_LABEL = Object.freeze({ s: 'Small', m: 'Medium', l: 'Large', full: 'Full width' });
 const HOME_LAYOUT_VERSION = 1;
 
-function _homeGreeting() {
-  const h = new Date().getHours();
-  const part = h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-  return userName() ? `${part}, ${userName()}` : part;
-}
+/** A brand-new data folder (no tasks, nothing ever done): the Today widget's welcome greets instead of the hero. */
+function homeIsNewUser() { return !getAllItems().length && !Object.keys(state.completionLog || {}).length; }
 function homeState() { return state.home && typeof state.home === 'object' ? state.home : {}; }
 function homeFocusConfig() {
   const f = Object.assign({}, HOME_FOCUS_DEFAULTS, homeState().focus || {});
@@ -118,7 +127,7 @@ function homeFocusWhy(i, cfg) {
   if (cfg.dueSoonDays && d !== null && d > 0 && d <= cfg.dueSoonDays) { why.push({ k: 'soon', t: `Due ${dueLabel(effDate(i))}` }); s += 100 - d * 10; }
   return { why, score: s };
 }
-/** The Focus list: manual order first, then by score; at most cfg.count. */
+/** The Focus list: pinned first, then the manual order, then by score; at most cfg.count. */
 function homeFocusTasks(limit) {
   const cfg = homeFocusConfig();
   const h = homeState();
@@ -133,17 +142,24 @@ function homeFocusTasks(limit) {
     if (streams && !streams.has(effStream(i))) continue;
     const r = homeFocusWhy(i, cfg);
     if (!r.why.length) continue;
-    cands.push({ i, why: r.why, score: r.score, o: order.indexOf(i.id) });
+    cands.push({ i, why: r.why, score: r.score, o: order.indexOf(i.id), pin: !!(cfg.pinned && isPinned(i.id)) });
   }
   cands.sort((a, b) => {
+    // Pinned tasks lead (user report, 4 Oct: "Pin to Focus" left the task third, under
+    // overdue ones and the drag order); the drag order, then the score, apply within each half.
+    if (a.pin !== b.pin) return a.pin ? -1 : 1;
     if (a.o >= 0 || b.o >= 0) { if (a.o < 0) return 1; if (b.o < 0) return -1; return a.o - b.o; }
     return b.score - a.score;
   });
   return cands.slice(0, limit || cfg.count);
 }
-function homeFocusCandidateCount() {
-  const cfg = homeFocusConfig();
-  return getAllItems().filter(i => _homeIsOpen(i) && !_homeNotStarted(i) && homeFocusWhy(i, cfg).why.length).length;
+/** How many tasks qualify for Focus under the same filters as the list (streams, snoozes), uncapped. */
+function homeFocusCandidateCount() { return homeFocusTasks(Infinity).length; }
+/** The Focus header count: "Top 7 of 28" when capped, "3 of up to 7" when fewer qualify than the Tune count. */
+function homeFocusCountLabel(nShown, total, cap) {
+  if (!nShown) return '';
+  if (total > nShown) return `Top ${nShown} of ${total}`;
+  return cap > nShown ? `${nShown} of up to ${cap}` : `${nShown} open`;
 }
 
 /* ---------- waiting on someone ---------- */
@@ -168,7 +184,7 @@ function homeWaitingPerson(i) {
 function homeAvatar(p, size) {
   if (!p) return '';
   const sz = Number(size) || 20;
-  const url = safeUrl(p.avatarUrl);
+  const url = (typeof pcPhotoUrl === 'function' && pcPhotoUrl(p.photo)) || safeUrl(p.avatarUrl);
   const inner = url ? `<img src="${escAttr(url)}" alt="" data-avatar-fallback="${escAttr(p.id)}" data-avatar-size="${sz}">` : esc(avatarInitials(p.name));
   return `<span class="avatar" style="--size:${sz}px;--c:${escAttr(safeColor(p.color, 'var(--sw-slate)'))}" title="${escAttr(p.name || '')}">${inner}</span>`;
 }
@@ -207,7 +223,7 @@ function _homeFmtMoney(n, cur) {
 }
 function _homeDoneToday() {
   const today = todayStr(); let n = 0;
-  for (const arr of Object.values(state.completionLog || {})) for (const ts of (arr || [])) if (Number(ts) && fmtDate(new Date(Number(ts))) === today) n++;
+  for (const arr of Object.values(state.completionLog || {})) for (const ts of (arr || [])) if (Number(ts) && Clock.parts(Number(ts)).iso === today) n++;
   return n;
 }
 
@@ -223,13 +239,14 @@ function registerHomeWidget(def) {
   const i = list.findIndex(d => d.id === def.id);
   if (i >= 0) list[i] = def; else list.push(def);
 }
-/** A definition with every field filled in (sizes in canonical order). */
+/** A definition with every field filled in (sizes in canonical order; group, multi, aliases: 12-home-platform.js). */
 function _homeDefNorm(d) {
   const asked = Array.isArray(d.sizes) ? d.sizes : HOME_SIZES;
   const sizes = HOME_SIZES.filter(s => asked.includes(s));
   const ss = sizes.length ? sizes : HOME_SIZES.slice();
   return Object.assign({ title: d.id, icon: 'layout-grid', description: '', order: 50, defaultHidden: false }, d, {
     sizes: ss, defaultSize: ss.includes(d.defaultSize) ? d.defaultSize : ss[0], defaultHidden: d.defaultHidden === true,
+    group: homeGroupOf(d), multi: _homeMultiOf(d), aliases: homeAliasesOf(d), baseId: d.id, copy: 1,
   });
 }
 /** Every registered widget, normalised, in default order. */
@@ -237,7 +254,16 @@ function homeWidgetCatalog() {
   return homeWidgetDefs().map((d, i) => ({ d: _homeDefNorm(d), i }))
     .sort((a, b) => (a.d.order - b.d.order) || (a.i - b.i)).map(x => x.d);
 }
-function homeWidgetDef(id) { const d = homeWidgetDefs().find(x => x.id === id); return d ? _homeDefNorm(d) : null; }
+/** A widget, or one of its copies ('runway~2': the same widget with that id, baseId and copy number). */
+function homeWidgetDef(id) {
+  const d = homeWidgetDefs().find(x => x.id === id);
+  if (d) return _homeDefNorm(d);
+  const base = homeBaseId(id), n = homeCopyNo(id);
+  const b = n > 1 ? homeWidgetDefs().find(x => x.id === base) : null;
+  if (!b) return null;
+  const nd = _homeDefNorm(b);
+  return n <= nd.multi ? Object.assign(nd, { id: String(id), baseId: base, copy: n, title: `${nd.title} ${n}` }) : null;
+}
 /** Shown at all? (feature switch in config, the widget's own available()). */
 function homeWidgetAvailable(def) {
   if (!def) return false;
@@ -260,23 +286,38 @@ function homeClampSize(size, sizes, fallback) {
   }
   return best;
 }
-function homeLayoutNormalize(raw, catalog) {
+function homeLayoutNormalize(raw, catalog, prefs) {
   const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' && Array.isArray(raw.widgets) ? raw.widgets : []);
   const byId = new Map(catalog.map(c => [c.id, c]));
+  // The widget an id belongs to: itself, or a copy 2..multi of one ('runway~2').
+  const entry = (id) => { const c = byId.get(homeBaseId(id)); const n = homeCopyNo(id); return c && (n === 1 || n <= (c.multi || 1)) ? c : null; };
   const seen = new Set();
   const out = [];
   for (const w of list) {
     if (!w || typeof w !== 'object' || typeof w.id !== 'string') continue;
-    const c = byId.get(w.id);
+    const c = entry(w.id);
     if (!c || seen.has(w.id)) continue;
     seen.add(w.id);
     out.push({ id: w.id, size: homeClampSize(w.size, c.sizes, c.defaultSize), hidden: w.hidden === true });
   }
-  for (const c of catalog) if (!seen.has(c.id)) out.push({ id: c.id, size: c.defaultSize, hidden: !!c.defaultHidden });
+  // A widget the saved board has never seen goes in after its catalogue neighbour, not at
+  // the end (so a new default one sits beside its neighbour on an old board).
+  catalog.forEach((c, i) => {
+    if (seen.has(c.id)) return;
+    const at = i === 0 ? out.length : out.findIndex(w => w.id === catalog[i - 1].id) + 1;
+    out.splice(at, 0, { id: c.id, size: c.defaultSize, hidden: !!c.defaultHidden });
+    seen.add(c.id);
+  });
+  // Copies with settings that the layout lost (an older build dropped them) come back, shown, at the end.
+  if (prefs && typeof prefs === 'object' && !Array.isArray(prefs)) {
+    const at = (id) => catalog.indexOf(entry(id)) * 100 + homeCopyNo(id);
+    const lost = Object.keys(prefs).filter(id => !seen.has(id) && homeCopyNo(id) > 1 && entry(id)).sort((a, b) => at(a) - at(b));
+    for (const id of lost) out.push({ id, size: entry(id).defaultSize, hidden: false });
+  }
   return { version: HOME_LAYOUT_VERSION, widgets: out };
 }
 /** The layout in display order (stored, else the defaults). */
-function homeLayout() { return homeLayoutNormalize(homeState().layout, homeWidgetCatalog()); }
+function homeLayout() { return homeLayoutNormalize(homeState().layout, homeWidgetCatalog(), homeState().widgetPrefs); }
 /**
  * A new order for the widgets that are shown (isShown(w)); the others (hidden,
  * switched off) keep their slots, so showing one again puts it back where it was.
@@ -299,17 +340,27 @@ function homeLayoutReorder(widgets, order, isShown) {
  */
 function homeSaveLayout(widgets, o) {
   o = o || {};
-  const next = homeLayoutNormalize({ widgets }, homeWidgetCatalog());
-  if (JSON.stringify(next.widgets) === JSON.stringify(homeLayout().widgets)) return false;
+  // o.prefs: the widget settings to save in the same step (adding or removing a copy).
+  const prefs = o.prefs !== undefined ? o.prefs : homeState().widgetPrefs;
+  const next = homeLayoutNormalize({ widgets }, homeWidgetCatalog(), prefs);
+  const samePrefs = o.prefs === undefined || JSON.stringify(o.prefs || {}) === JSON.stringify(homeState().widgetPrefs || {});
+  if (samePrefs && JSON.stringify(next.widgets) === JSON.stringify(homeLayout().widgets)) return false;
   _homeRememberNow();                    // glide from where things are on screen right now
-  homeUpdate({ layout: next }, o.toast || null);
+  const patch = { layout: next };
+  if (!samePrefs) patch.widgetPrefs = o.prefs && Object.keys(o.prefs).length ? o.prefs : undefined;
+  homeUpdate(patch, o.toast || null);
   if (o.say) homeAnnounce(o.say);
   return true;
 }
 function homeResetLayout() {
-  if (!homeState().layout) { homeAnnounce('Home already has the default layout'); return; }
+  // The default arrangement: extra copies of a widget go too (their settings with them).
+  const wp = homeState().widgetPrefs || {};
+  const copies = Object.keys(wp).filter(k => homeCopyNo(k) > 1);
+  if (!homeState().layout && !copies.length) { homeAnnounce('Home already has the default layout'); return; }
+  const keep = Object.assign({}, wp);
+  for (const k of copies) delete keep[k];
   _homeRememberNow();
-  homeUpdate({ layout: undefined }, 'Home layout reset');
+  homeUpdate({ layout: undefined, widgetPrefs: Object.keys(keep).length ? keep : undefined }, 'Home layout reset');
   homeAnnounce('Home layout reset to the default');
 }
 
@@ -356,25 +407,68 @@ function _homeEntryFirst(id) {
   return first;
 }
 
+/* Home is one page with four tabs (77-brief-review.js): Today ('home': the day's hero, its
+   three sentences and Play my morning (74-brief-ui.js briefRender, 12-home-head.js), then
+   the widgets), Evening, Week and History ('home:evening' ...). The old Morning brief and
+   Review pages redirect here (viewAlias, 15-nav-sidebar.js). */
+let _homeGridOn = false;           // the widget board is mounted (the Today tab)
+/** The widget board is left (another tab, or Home itself): its timers, data and entries go. */
+function _homeGridLeave(force) {
+  if (!_homeGridOn && !force) return;
+  _homeGridOn = false;
+  _homeEntryEnd();
+  _homeEditing = false;
+  _homeTeardown();
+  homeTickStop();                       // the shared minute tick and data listeners (12-home-platform.js)
+  _homeDataForget();
+  for (const d of homeWidgetDefs()) {
+    if (typeof d.unmount === 'function') try { d.unmount(); } catch (e) { console.error(`[home] widget "${d.id}" unmount failed`, e); }
+  }
+  homeGridForget();
+}
+/** The page title of a Home tab ('Home' for Today). */
+function _homeTabTitle(v) {
+  const t = typeof homeTabOf === 'function' ? homeTabOf(v || state.view) : 'today';
+  return t === 'evening' ? 'Finish the day' : t === 'week' ? 'Weekly review' : t === 'history' ? 'History' : 'Home';
+}
 registerSection('home', {
   group: 'home',
-  // The Today hero greets (12-home-w-today.js): then the page is just "Home".
-  title: () => (typeof homeTodayOnBoard === 'function' && homeTodayOnBoard() ? 'Home' : _homeGreeting()),
-  crumb: () => [],
+  match: v => v === 'home' || /^home:(evening|week|history)$/.test(v),
+  title: (v) => _homeTabTitle(v),
+  crumb: (v) => (_homeTabTitle(v) === 'Home' ? [] : [_homeTabTitle(v)]),   // 'Home > Finish the day'
   taskControls: false,
-  mount(container) {
-    const entering = _homeEntryBegin();
-    _homeTeardown();
+  mount(container, view) {
+    const tab = typeof homeTabOf === 'function' ? homeTabOf(view || state.view) : 'today';
     const sub = document.getElementById('view-subtitle');
-    if (sub) sub.textContent = typeof homeTodayOnBoard === 'function' && homeTodayOnBoard() ? '' : new Date().toLocaleDateString(APP_CONFIG.locale || undefined, { weekday: 'long', day: 'numeric', month: 'long' });
-    if (typeof _homeHeadActions === 'function') _homeHeadActions();          // Customise (12-home-edit.js)
-    // The live region exists before the first announcement (one made on the spot is often missed).
+    if (sub) sub.textContent = '';
     if (typeof homeAnnounce === 'function' && !document.getElementById('home-live')) homeAnnounce('');
-    const root = document.createElement('div'); root.className = 'home' + (_homeEditing ? ' is-editing' : '');
-    // The hero greets: then the page header is only for screen readers (13-home-core.css).
-    if (typeof homeTodayOnBoard === 'function' && homeTodayOnBoard()) root.classList.add('has-hero');
+    // The tabs and the hero head the page: the page header is only for screen readers (13-home-core.css).
+    const root = document.createElement('div');
+    root.className = 'home has-hero home-tab-' + tab + (_homeEditing && tab === 'today' ? ' is-editing' : '') + (homeAmountsHidden() ? ' is-amt-hidden' : '');
     container.appendChild(root);
+    if (typeof homeTabsEl === 'function') root.appendChild(homeTabsEl(tab));
+    if (tab !== 'today') {
+      _homeGridLeave();
+      if (typeof homeHeadUnmount === 'function') homeHeadUnmount();
+      if (typeof briefUnmount === 'function') briefUnmount();
+      if (typeof _homeHeadActionsRemove === 'function') _homeHeadActionsRemove();
+      const body = document.createElement('div'); body.className = 'rv-body home-tab-body';
+      root.appendChild(body);
+      if (typeof homeTabMount === 'function') homeTabMount(body, tab);
+      return;
+    }
+    if (typeof eveningUnmount === 'function') eveningUnmount();
+    const entering = _homeEntryBegin();
+    _homeGridOn = true;
+    _homeTeardown();
+    if (typeof _homeHeadActions === 'function') _homeHeadActions();          // Customise (12-home-edit.js)
+    // The day's hero. A brand-new user (no tasks yet) gets the Today widget's welcome instead (12-home-w-today.js).
+    if (typeof briefRender === 'function' && !homeIsNewUser()) briefRender(root);
+    else if (typeof briefUnmount === 'function') briefUnmount();
     const grid = document.createElement('div'); grid.className = 'home-grid';
+    // The departure card sits above the board before a trip (69-travel-moments.js; decided on entry).
+    const depart = !_homeEditing && typeof trDepartureHomeCard === 'function' ? trDepartureHomeCard(entering) : null;
+    if (depart) root.appendChild(depart);
     root.appendChild(grid);
     if (!_homeEditing && typeof _homeLongPress === 'function') _homeLongPress(grid);   // hold a header = Customise
     // Customise's toolbar floats at the foot of the view (sticky), so the board never shifts.
@@ -403,13 +497,11 @@ registerSection('home', {
     _homeKeepFocus();                     // a save / live sync rebuilt Home: keyboard focus stays where it was
   },
   unmount() {
-    _homeEntryEnd();
+    _homeGridLeave(true);                 // leaving Home: everything stops, whichever tab was open
     _homeEditing = false;
-    _homeTeardown();
-    for (const d of homeWidgetDefs()) {
-      if (typeof d.unmount === 'function') try { d.unmount(); } catch (e) { console.error(`[home] widget "${d.id}" unmount failed`, e); }
-    }
-    homeGridForget();
+    if (typeof homeHeadUnmount === 'function') homeHeadUnmount();
+    if (typeof briefUnmount === 'function') briefUnmount();
+    if (typeof eveningUnmount === 'function') eveningUnmount();
     if (typeof _homeHeadActionsRemove === 'function') _homeHeadActionsRemove();
   },
 });
@@ -418,7 +510,8 @@ registerSection('home', {
 function _homeFrame(def, w) {
   const f = document.createElement('section');
   f.className = 'hg-w';
-  f.dataset.wid = def.id;
+  f.dataset.wid = def.id;                                // a copy's own id ('runway~2'); data-base = the widget
+  f.dataset.base = def.baseId || def.id;
   f.dataset.size = w.size;
   f.dataset.flip = 'w:' + def.id;
   f.setAttribute('data-flip-size', '');                  // a size change morphs (12-home-grid.js)
@@ -491,7 +584,9 @@ function _homeCtx(rec, first) {
   if (!seen) { seen = new Set(); _homeEntry.seen.set(def.id, seen); }
   const before = new Set(seen);
   const ctx = {
-    id: def.id, def, size: rec.size, editing: _homeEditing, firstPaint: first,
+    id: def.id, def, size: rec.size, editing: _homeEditing, firstPaint: first, preview: false,
+    instance: def.id, baseId: def.baseId || def.id, copy: def.copy || 1,     // copies: 'runway~2', 'runway', 2
+    prefs: homePrefs(def.id),                                                  // its settings (homeSetPrefs to change)
     expanded: _homeExpandedSet(),
     isNew(key) { const k = String(key); seen.add(k); return !before.has(k); },
     enterNew(els, keyOf) {
@@ -672,8 +767,8 @@ function homeSnooze(id) {
 }
 function homeTaskMenu(anchor, id) {
   const it = getItem(id); if (!it) return;
-  const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return fmtDate(d); };
-  const nextMon = (() => { const d = new Date(); const add = ((8 - d.getDay()) % 7) || 7; d.setDate(d.getDate() + add); return fmtDate(d); })();
+  const plus = (n) => Clock.addDays(todayStr(), n);
+  const nextMon = (() => { const add = ((8 - Clock.parts(Clock.now()).dow) % 7) || 7; return plus(add); })();
   const card = () => document.querySelector(`.hf-card[data-id="${CSS.escape(id)}"]`);
   openMenu(anchor, [
     { label: 'Open full card', icon: 'maximize-2', kbd: '↵', run: () => homeOpenTask(id, card()) },

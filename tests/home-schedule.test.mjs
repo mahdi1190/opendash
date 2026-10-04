@@ -9,6 +9,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { loadPageClock } from './fixtures/page-clock.mjs';
 import { HOME_WIDGETS } from '../lib/home-topbar.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -33,6 +34,7 @@ function homeBox(extra = {}) {
     ...extra,
   };
   vm.createContext(box);
+  loadPageClock(box);   // the page's Clock: wall times in the dashboard's zone (travel spec 2.7)
   vm.runInContext(HOME_FILES.map(f => readFileSync(join(APP, f), 'utf8')).join('\n'), box, { filename: 'home-bundle.js' });
   return { box, run: (code) => vm.runInContext(code, box) };
 }
@@ -233,7 +235,11 @@ test('the default board fills whole shelves of 12 columns (HOME_SPEC.md 3): no g
     row.push(w.id); used += c;
   }
   rows.push(row);
-  eq(rows, [['today'], ['focus', 'schedule'], ['finance', 'people', 'countdowns'], ['week', 'waiting']]);
+  // Full-width widgets added later sit on shelves of their own (the brief panel under the hero,
+  // Suggestions under Focus + schedule); the original shelves are unchanged around them.
+  const own = new Set(['brief', 'suggest']);
+  for (const id of own) if (shown.some(w => w.id === id)) assert.ok(rows.some(r => r.length === 1 && r[0] === id), id + ' fills a shelf alone');
+  eq(rows.filter(r => !(r.length === 1 && own.has(r[0]))), [['today'], ['focus', 'schedule'], ['finance', 'people', 'countdowns'], ['week', 'waiting']]);
   for (const r of rows) eq(r.reduce((s, id) => s + COLS[HOME_WIDGETS.find(w => w.id === id).defaultSize], 0), 12);
   assert.ok(HOME_WIDGETS.find(w => w.id === 'links').defaultHidden, 'Suggested links waits in Add widget');
 });

@@ -18,7 +18,8 @@
    Changes are spoken through a polite live region (homeAnnounce).
    Public: homeEditStart({gallery}), homeEditDone(), homeAnnounce(text),
    homeWidgetMove(id, delta), homeWidgetResize(id, size), homeWidgetStep(id, dir),
-   homeWidgetHide(id), homeWidgetShow(id).
+   homeWidgetHide(id) (a copy 'id~n' is removed instead), homeWidgetShow(id);
+   copies: homeWidgetAddCopy / homeWidgetRemoveCopy (12-home-platform.js).
    ============================================================ */
 let _homeEditFocusId = null;      // the widget to focus again after the re-render
 let _homeEditFresh = false;       // edit mode has just started (the bar slides in)
@@ -188,7 +189,8 @@ function _homeEditChrome(frame, def, w) {
   const pos = frame.parentElement ? [...frame.parentElement.children].indexOf(frame) : 0;
   frame.style.setProperty('--wq', String(Math.max(0, pos) % 7));
   const x = document.createElement('button'); x.type = 'button'; x.className = 'hg-x'; x.dataset.act = 'hide';
-  x.innerHTML = icon('minus'); x.setAttribute('aria-label', `Hide ${def.title}`); x.setAttribute('data-tip', 'Hide');
+  // A second copy of a widget is removed (with its settings; Undo), not hidden.
+  x.innerHTML = icon('minus'); x.setAttribute('aria-label', `${def.copy > 1 ? 'Remove' : 'Hide'} ${def.title}`); x.setAttribute('data-tip', def.copy > 1 ? 'Remove this copy' : 'Hide');
   x.onclick = (e) => { e.stopPropagation(); homeWidgetHide(def.id); };
   frame.appendChild(x);
   frame.insertAdjacentHTML('beforeend', `<span class="hg-grip" aria-hidden="true">${icon('grip-vertical')}</span>`);
@@ -374,7 +376,8 @@ function homeWidgetHide(id) {
   _homeEditFocusId = vis[i + 1] || vis[i - 1] || null;
   _homeEntry.painted.delete(id);
   const next = homeLayout().widgets.map(w => (w.id === id ? Object.assign({}, w, { hidden: true }) : w));
-  const save = () => homeSaveLayout(next, { toast: `${def.title} hidden. Add it back from Customise`, say: `${def.title} hidden` });
+  const save = () => (def.copy > 1 ? homeWidgetRemoveCopy(id)
+    : homeSaveLayout(next, { toast: `${def.title} hidden. Add it back from Customise`, say: `${def.title} hidden` }));
   // It shrinks away first; the others then glide into the space.
   const f = document.querySelector(`#main-body .hg-w[data-wid="${CSS.escape(id)}"]`);
   const a = f && window.Motion ? Motion.animate(f, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(0.94)' }], { duration: 180, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' }) : null;
@@ -393,24 +396,29 @@ function homeWidgetShow(id, size) {
   homeSaveLayout(next, { say: `${def.title} added` });
 }
 
-/* ---------- Add widget gallery (HOME_SPEC.md 6, hm-07) ----------
-   A dialog: on the left every widget ("Not on Home" first, with Add; then "On Home");
-   on the right the chosen one's name, what it does, its sizes and a LIVE preview (the
-   widget's own render() into a box of that size, inert, scaled to fit). Add to Home
-   puts it at the end of the board in the chosen size; for one already on Home the
-   button applies the chosen size. A preview may reset module state a widget keeps for
-   its board copy, so closing re-renders Home (positions are remembered; nothing moves). */
+/* ---------- Add widget gallery (HOME_SPEC.md 6, hm-07; groups and copies: WIDGETS_CATALOGUE.md 4.1) ----------
+   A dialog: on the left a filter box (title, description, words) and every widget:
+   "Not on Home" grouped (Time, Tasks, People...; a "New" badge until it has been looked
+   at), then "On Home"; on the right the chosen one's name, what it does, its sizes and a
+   LIVE preview (the widget's own render() into a box of that size, inert, scaled to fit).
+   Add to Home puts it at the end of the board in the chosen size; for one already on
+   Home the button applies the chosen size, and a widget that allows copies offers Add
+   another. A preview may reset module state a widget keeps for its board copy, so
+   closing re-renders Home (positions are remembered; nothing moves). */
 const _HG_SIZE_W = Object.freeze({ s: 365, m: 556, l: 746, full: 1128 });
 const _HG_SIZE_LONG = Object.freeze({ s: 'Small · a third', m: 'Medium · half', l: 'Large · two thirds', full: 'Full width' });
 function _homeOpenGallery(anchor, pick, fitCols) {
   const cat = homeWidgetCatalog().filter(homeWidgetAvailable);
   const placed = () => new Map(homeLayout().widgets.map(w => [w.id, w]));
-  const isOn = (id) => { const w = placed().get(id); return !!(w && !w.hidden); };
-  // From a free slot: the widgets with a size that fits it come first, at that size.
+  const shownN = (id) => homeLayout().widgets.filter(w => !w.hidden && homeBaseId(w.id) === id).length;   // copies too
+  const isOn = (id) => shownN(id) > 0;
+  // From a free slot: the widgets with a size that fits it come first (in each group), at that size.
   const fitSize = (def) => (fitCols ? def.sizes.filter(s => HOME_SIZE_COLS[s] <= fitCols).pop() || null : null);
   const byFit = (a, b) => (fitCols ? (fitSize(a) ? 0 : 1) - (fitSize(b) ? 0 : 1) : 0);
-  const notOn = cat.filter(d => !isOn(d.id)).sort(byFit), on = cat.filter(d => isOn(d.id));
-  let sel = (pick && cat.find(d => d.id === pick)) || notOn[0] || on[0];
+  const notOn = cat.filter(d => !isOn(d.id)), on = cat.filter(d => isOn(d.id));
+  const groups = HOME_GROUPS.map(([g, label]) => [label, notOn.filter(d => d.group === g).sort(byFit)]).filter(x => x[1].length);
+  const ordered = groups.flatMap(x => x[1]);
+  let sel = (pick && cat.find(d => d.id === pick)) || (fitCols && ordered.find(d => fitSize(d))) || ordered[0] || on[0];
   if (!sel) return;
   let size = fitSize(sel);             // the size picked in the segment (null = current or default)
   let changed = false;
@@ -420,27 +428,65 @@ function _homeOpenGallery(anchor, pick, fitCols) {
     body: (el, close) => {
       el.classList.add('hgal-b');
       el.closest('.modal').classList.add('hgal-modal');
+      const side = document.createElement('div'); side.className = 'hgal-side';
+      const q = document.createElement('input'); q.type = 'search'; q.className = 'input input-sm hgal-q';
+      q.placeholder = 'Search widgets'; q.setAttribute('aria-label', 'Search widgets'); q.autocomplete = 'off';
       const list = document.createElement('div'); list.className = 'hgal-list'; list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', 'Widgets');
+      const none = document.createElement('p'); none.className = 'hgal-none'; none.textContent = 'No widget matches'; none.hidden = true;
+      none.setAttribute('role', 'status');
+      side.append(q, list, none);
       const pane = document.createElement('div'); pane.className = 'hgal-pane';
-      el.append(list, pane);
-      const group = (label, defs, here) => {
-        if (!defs.length) return;
-        const h = document.createElement('div'); h.className = 'hgal-gh'; h.textContent = label; list.appendChild(h);
+      el.append(side, pane);
+      const badge = (def, here) => {
+        if (here) { const n = shownN(def.id); return `<span class="hgal-on">${icon('check')}On Home${n > 1 ? ` ×${n}` : ''}</span>`; }
+        return homeWidgetIsNew(def) ? '<span class="hgal-new">New</span>' : '<span class="hgal-tag">Add</span>';
+      };
+      const heading = (cls, label) => { const h = document.createElement('div'); h.className = cls; h.textContent = label; list.appendChild(h); return h; };
+      const group = (defs, here, sub) => {
+        const h = sub ? heading('hgal-gh hgal-sg', sub) : null;
         for (const def of defs) {
           const b = document.createElement('button'); b.type = 'button'; b.className = 'hgal-item'; b.dataset.id = def.id;
           b.setAttribute('role', 'option');
-          b.innerHTML = `<span class="hgal-ic">${icon(def.icon)}</span><span class="hgal-t">${esc(def.title)}</span>`
-            + (here ? `<span class="hgal-on">${icon('check')}On Home</span>` : '<span class="hgal-tag">Add</span>');
+          b.innerHTML = `<span class="hgal-ic">${icon(def.icon)}</span><span class="hgal-t">${esc(def.title)}</span>${badge(def, here)}`;
           b.onclick = () => { if (sel.id !== def.id) { sel = def; size = isOn(def.id) ? null : fitSize(def); paint(); } };   // re-selecting: nothing
+          b._hgDef = def;
+          if (h) b._hgHead = h;
           list.appendChild(b);
         }
       };
-      group('Not on Home', notOn, false);
-      group('On Home', on, true);
+      if (groups.length) heading('hgal-gh hgal-top', 'Not on Home');
+      for (const [label, defs] of groups) group(defs, false, label);
+      if (on.length) { const h = heading('hgal-gh hgal-top', 'On Home'); group(on, true, null); for (const b of list.querySelectorAll('.hgal-item')) if (!b._hgHead && isOn(b.dataset.id)) b._hgHead = h; }
+      const visible = () => [...list.querySelectorAll('.hgal-item')].filter(b => !b.hidden);
+      // The filter: hides what does not match (and empty headings); the selection moves to the first match.
+      q.addEventListener('input', () => {
+        for (const b of list.querySelectorAll('.hgal-item')) b.hidden = !homeWidgetMatches(b._hgDef, q.value);
+        for (const h of list.querySelectorAll('.hgal-gh')) {
+          const mine = [...list.querySelectorAll('.hgal-item')].filter(b => b._hgHead === h);
+          h.hidden = mine.length ? mine.every(b => b.hidden) : false;
+        }
+        for (const h of list.querySelectorAll('.hgal-top')) {           // "Not on Home" / "On Home" over their groups
+          let n = h.nextElementSibling, any = false;
+          while (n && !n.classList.contains('hgal-top')) { if (n.classList.contains('hgal-item') && !n.hidden) any = true; n = n.nextElementSibling; }
+          h.hidden = !any;
+        }
+        const vis = visible();
+        none.hidden = vis.length > 0;
+        if (vis.length && !vis.some(b => b.dataset.id === sel.id)) { sel = vis[0]._hgDef; size = isOn(sel.id) ? null : fitSize(sel); paint(); }
+      });
+      q.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown' || e.key === 'Enter') {
+          const v = visible(); if (!v.length) return;
+          e.preventDefault();
+          const b = v.find(x => x.dataset.id === sel.id) || v[0];
+          b.focus(); if (b.dataset.id !== sel.id) b.click();
+        }
+      });
       list.addEventListener('keydown', (e) => {
         if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-        const items = [...list.querySelectorAll('.hgal-item')];
+        const items = visible();
         const i = items.findIndex(x => x.dataset.id === sel.id);
+        if (e.key === 'ArrowUp' && i <= 0) { e.preventDefault(); q.focus(); return; }
         const n = items[Math.max(0, Math.min(items.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))];
         if (!n) return;
         e.preventDefault(); n.focus(); n.click();
@@ -453,6 +499,11 @@ function _homeOpenGallery(anchor, pick, fitCols) {
           const on = b.dataset.id === def.id;
           b.setAttribute('aria-selected', on ? 'true' : 'false');
           b.classList.toggle('is-current', on);
+        }
+        // Looked at: its "New" badge goes (homeUI.gallerySeen).
+        if (homeWidgetIsNew(def) && homeMarkGallerySeen(def.id)) {
+          const nb = list.querySelector(`.hgal-item[data-id="${CSS.escape(def.id)}"] .hgal-new`);
+          if (nb) nb.outerHTML = '<span class="hgal-tag">Add</span>';
         }
         pane.innerHTML = `<h3>${esc(def.title)}</h3>${def.description ? `<p class="hgal-d">${esc(def.description)}</p>` : ''}`;
         if (def.sizes.length > 1) {
@@ -483,10 +534,20 @@ function _homeOpenGallery(anchor, pick, fitCols) {
           go.className = 'btn btn-secondary'; go.disabled = true;
           go.innerHTML = icon('check') + '<span>On Home</span>';
         }
+        foot.appendChild(go);
+        // A widget that allows copies (runway, smart list): another one, with its own settings.
+        const n = shownN(def.id);
+        if (here && def.multi > 1 && n < def.multi) {
+          const more = document.createElement('button'); more.type = 'button'; more.className = 'btn btn-secondary hgal-another';
+          more.innerHTML = icon('plus') + '<span>Add another</span>';
+          more.onclick = () => { changed = true; close(); homeWidgetAddCopy(def.id, sz); };
+          foot.appendChild(more);
+        }
         const note = document.createElement('p'); note.className = 'hgal-note';
-        note.textContent = here ? 'Already on your Home. Pick another size to change it, or hide it with its − button.'
+        note.textContent = here
+          ? (def.multi > 1 ? `On your Home${n > 1 ? ` ${n} times` : ''}. You can have up to ${def.multi}, each with its own settings.` : 'Already on your Home. Pick another size to change it, or hide it with its − button.')
           : 'Lands at the end of the board; drag it where you like afterwards.';
-        foot.append(go, note);
+        foot.appendChild(note);
         pane.appendChild(foot);
       };
       paint();
@@ -498,12 +559,13 @@ function _homeOpenGallery(anchor, pick, fitCols) {
 function _homePreview(stage, def, size) {
   const w = _HG_SIZE_W[size] || 365;
   const box = document.createElement('div'); box.className = 'hgal-scale'; box.style.width = w + 'px';
-  const frame = document.createElement('section'); frame.className = 'hg-w hgal-w'; frame.dataset.size = size; frame.dataset.wid = def.id;
+  const frame = document.createElement('section'); frame.className = 'hg-w hgal-w'; frame.dataset.size = size; frame.dataset.wid = def.id; frame.dataset.base = def.baseId || def.id;
   const body = document.createElement('div'); body.className = 'hg-body'; body.inert = true;
   frame.appendChild(body); box.appendChild(frame); stage.appendChild(box);
   const rec = { frame, body, def };
   const ctx = {
     id: def.id, def, size, editing: false, firstPaint: false, preview: true, expanded: new Set(),
+    instance: def.id, baseId: def.baseId || def.id, copy: def.copy || 1, prefs: homePrefs(def.id),
     isNew: () => false, enterNew: () => 0, toggleExpanded() {}, rerender() {}, flip(fn) { fn(); },
     sortable: () => ({ destroy() {}, get dragging() { return false; } }),
     off: (o) => _homeOffState(rec, o || {}), openTask() {},

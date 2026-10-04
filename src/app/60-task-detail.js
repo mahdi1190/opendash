@@ -79,7 +79,7 @@ function describeActivity(a) {
       return { icon: 'rotate-ccw', text: `${st(a.from)} → ${st(a.to)}` };
     case 'occurrence': return { icon: 'repeat', text: `${a.skipped ? 'Skipped' : 'Completed'} · next ${_fmtVal('date', a.to)}`, quote: a.from ? `was due ${_fmtVal('date', a.from)}` : '' };
     case 'date': case 'reschedule': return { icon: 'calendar', text: `Due ${_fmtVal('date', a.from)} → ${_fmtVal('date', a.to)}`, quote: a.reason || '' };
-    case 'plan': return { icon: 'sun', text: a.to ? `Planned for ${_fmtVal('plan', a.to)}` : 'Removed from plan' };
+    case 'plan': return { icon: 'sun', text: a.to ? `Planned for ${_fmtVal('plan', a.to)}${a.time ? ', ' + a.time + (a.minutes ? ` (${a.minutes} min)` : '') : ''}` : 'Removed from plan' };
     case 'priority': return { icon: 'flag', text: `Priority ${_fmtVal('priority', a.from)} → ${_fmtVal('priority', a.to)}` };
     case 'stream': return { icon: 'layers', text: `Moved to ${_fmtVal('stream', a.to)}` };
     case 'title': return { icon: 'pencil', text: 'Renamed', quote: a.from ? `was “${String(a.from).slice(0, 120)}”` : '' };
@@ -234,7 +234,9 @@ function tdProps(id, o) {
   // Planned
   if (status !== 'done') {
     const pl = item.plannedFor || null;
-    const html = pl ? (daysUntil(pl) <= 0 ? `${icon('sun', 'i-sm')}<span>Today</span>${daysUntil(pl) < 0 ? `<span class="rel">since ${esc(dueLabel(pl))}</span>` : ''}` : esc(_dayLabel(pl, { weekday: 'short', day: 'numeric', month: 'short' }))) : '<span class="ph">Not planned</span>';
+    const slotTxt = typeof planSlotLabel === 'function' ? planSlotLabel(item) : '';   // a planned time slot (20-task-plan.js)
+    const html = (pl ? (daysUntil(pl) <= 0 ? `${icon('sun', 'i-sm')}<span>Today</span>${daysUntil(pl) < 0 ? `<span class="rel">since ${esc(dueLabel(pl))}</span>` : ''}` : esc(_dayLabel(pl, { weekday: 'short', day: 'numeric', month: 'short' }))) : '<span class="ph">Not planned</span>')
+      + (slotTxt ? `<span class="rel dp-plan-slot">${esc(slotTxt)}</span>` : '');
     const wrap = document.createElement('div'); wrap.className = 'prop-row';
     wrap.appendChild(chipBtn(html, 'dp-plan' + (pl && daysUntil(pl) <= 0 ? ' on' : ''), (a) => openDueDatePopover(a, { value: pl, allowClear: true, title: 'Plan to work on it', onPick: (d) => setPlanned(id, d) }), 'The day you plan to work on it (not the deadline)'));
     if (!(pl && daysUntil(pl) <= 0)) {
@@ -304,7 +306,7 @@ function tdPeople(id) {
     open.innerHTML = `${p ? avatarHtmlInitials(p, 16) : `<span class="avatar avatar-16" style="--c:var(--sw-slate)">${esc(avatarInitials(name))}</span>`}<span data-cz-label>${esc(name)}</span>`;
     if (p) czMark(chip, 'person', pid);   // right-click: the person's menu (28-customise.js)
     open.title = p ? (explicit.includes(pid) ? 'Open ' + name : `Linked through a tag · open ${name}`) : 'No profile yet';
-    open.onclick = () => { if (p) { if (typeof tcClose === 'function') tcClose({ instant: true }); setView('person:' + pid); } };
+    open.onclick = () => { if (p) openPerson(pid, { from: open }); };   // inside the card: on top, with Back
     chip.appendChild(open);
     if (!p) {
       const mk = document.createElement('button'); mk.type = 'button'; mk.className = 'pc-make'; mk.textContent = 'Create';
@@ -313,7 +315,7 @@ function tdPeople(id) {
         const nice = pid.replace(/[-_]+/g, ' ').replace(/\b\p{L}/gu, c => c.toUpperCase());
         state.people.push({ id: pid, name: nice, email: '', role: '', aliases: [], color: '#475569', createdAt: Date.now() });
         saveData(); render();
-        toast(`Created ${nice}`, { kind: 'ok', icon: 'user-plus', action: { label: 'Open', run: () => setView('person:' + pid) } });
+        toast(`Created ${nice}`, { kind: 'ok', icon: 'user-plus', action: { label: 'Open', run: () => openPerson(pid) } });
       };
       chip.appendChild(mk);
     }

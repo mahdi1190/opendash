@@ -1,0 +1,13 @@
+{
+  "_about": "Monday 14:40: the dashboard's own block for the report started at 14:30 and the task is still to do (S7). Synthetic.",
+  "now": "2026-10-05T14:40",
+  "events": {
+    "2026-10-05": [
+      { "id": "blk2", "title": "Focus: Report draft", "start": "14:30", "end": "16:00", "origin": { "kind": "block", "rule": "free-slot", "taskId": "t-report" }, "linked": ["t-report"], "type": "writing" }
+    ]
+  },
+  "tasks": [
+    { "id": "t-report", "title": "Report draft: section 2", "priority": "p1", "status": "todo", "planned": "2026-10-05", "focusWhy": ["High priority", "Planned today"] }
+  ],
+  "focus": ["t-report"]
+}

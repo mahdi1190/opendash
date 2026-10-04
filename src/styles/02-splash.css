@@ -1,0 +1,87 @@
+/* ============================================================
+   OPENING ANIMATION (src/body.html #od-splash): the OpenDash mark and
+   wordmark, once per page load, under 1.2 s. The sun rises into the card in
+   its three dashes, the wordmark wipes in ("Open", then "Dash"), and the
+   overlay fades as the app is ready. Never takes input; any click or key
+   skips it; removed before paint under reduced motion / Intensity Off.
+   Transform, opacity and clip only.
+   ============================================================ */
+.od-splash {
+  position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center;
+  pointer-events: none; color: #1b1b1f;
+  background: radial-gradient(60% 50% at 50% 46%, #f4f2ff 0%, #fbfbfd 60%, #ffffff 100%);
+}
+.od-splash.is-dark { color: #ececef; background: radial-gradient(60% 50% at 50% 46%, #1d1b33 0%, #121218 62%, #0e0e12 100%); }
+.od-sp-in { display: flex; align-items: center; gap: 16px; }
+.od-sp-mark { width: 64px; height: 64px; overflow: visible; filter: drop-shadow(0 10px 22px rgba(103, 80, 212, 0.32)); animation: od-sp-mark 520ms cubic-bezier(0.3, 1.45, 0.55, 1) both; transform-origin: 50% 60%; }
+.od-sp-sun { transform-box: view-box; animation: od-sp-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.od-sp-sun.s1 { animation-delay: 140ms; }
+.od-sp-sun.s2 { animation-delay: 200ms; }
+.od-sp-sun.s3 { animation-delay: 250ms; }
+.od-sp-word { display: block; overflow: visible; }
+.od-sp-word .w1, .od-sp-word .w2 { animation: od-sp-word 460ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.od-sp-word .w1 { animation-delay: 240ms; }
+.od-sp-word .w2 { animation-delay: 320ms; }
+.od-splash.is-out { animation: od-sp-out 300ms cubic-bezier(0.4, 0, 0.2, 1) both; }
+.od-splash.is-out .od-sp-in { animation: od-sp-lift 300ms cubic-bezier(0.4, 0, 1, 1) both; }
+.od-splash.is-skip { animation: od-sp-out 140ms linear both; }
+@keyframes od-sp-mark { 0% { opacity: 0; transform: scale(0.6) rotate(-8deg); } 60% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes od-sp-rise { from { transform: translateY(26px); opacity: 0.2; } to { transform: none; opacity: 1; } }
+@keyframes od-sp-word { from { opacity: 0; transform: translateX(-14px); clip-path: inset(0 100% 0 0); } to { opacity: 1; transform: none; clip-path: inset(0 0 0 0); } }
+@keyframes od-sp-out { to { opacity: 0; } }
+@keyframes od-sp-lift { to { transform: translateY(-6px) scale(0.98); } }
+/* ---------- the opening sequence (78-anim-wire.js animOpeningSequence; .is-hold) ----------
+   Full screen, edge to edge. The brand lifts away; the scene fades in behind a veil while
+   "Welcome to <county>" rises large at the centre; then the veil clears, the title drifts off
+   and the scene plays full bleed with its origin line low on the left, under a slow pull-back
+   (Ken Burns); the splash's own fade (longer when holding) crossfades into the app. Lengths
+   come from the intensity (--od-hello-ms, --od-scene-ms). While it holds, the splash takes the
+   click that skips it (so the click does not land on the app underneath). The scene ignores the
+   animation style layer's filters here (a full-screen filter is costly and the art is painted).
+   Transform and opacity only. */
+.od-splash.is-hold { pointer-events: auto; cursor: pointer; }
+.od-splash.is-hold.is-out { animation-duration: 720ms; }
+.od-splash .od-seq { position: absolute; inset: 0; overflow: hidden; font-family: var(--font-sans, system-ui, sans-serif); }
+.od-seq-bg { position: absolute; inset: 0; opacity: 0; }
+.od-seq-bg > .anim-scene {
+  position: absolute; inset: 0; width: 100%; height: 100%; --as-size: 100%; border-radius: 0; background: none; box-shadow: none;
+  filter: none !important; background-image: none !important; transform-origin: 50% 62%;
+}
+.od-seq-bg > .anim-scene svg { width: 100%; height: 100%; filter: none; }
+.od-seq-shade { position: absolute; inset: 0; opacity: 0; background: radial-gradient(70% 60% at 50% 48%, rgb(251 251 253 / 0.5), rgb(244 242 255 / 0.82)); }
+.od-splash.is-dark .od-seq-shade { background: radial-gradient(70% 60% at 50% 48%, rgb(14 14 22 / 0.38), rgb(14 14 22 / 0.72)); }
+.od-seq::after { content: ""; position: absolute; inset: 0; opacity: 0; pointer-events: none; z-index: 1; background: linear-gradient(to top, rgb(8 10 24 / 0.7), rgb(8 10 24 / 0.28) 24%, transparent 44%); }
+.od-seq-title { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 0.2em; text-align: center; opacity: 0; padding: 0 5vw; }
+.od-seq-over { font-size: clamp(1rem, 1.7vw, 1.5rem); font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.78; }
+.od-seq-place { font-size: clamp(3rem, 8.4vw, 8rem); font-weight: 700; letter-spacing: -0.035em; line-height: 0.98; }
+.od-seq-title:not(:has(.od-seq-place)) .od-seq-over { font-size: clamp(2.4rem, 6vw, 5.6rem); letter-spacing: -0.03em; text-transform: none; font-weight: 700; opacity: 1; }
+.od-seq-cap {
+  position: absolute; z-index: 2; left: clamp(24px, 5vw, 88px); bottom: clamp(26px, 7vh, 80px); right: 24px; display: grid; gap: 8px; justify-items: start;
+  color: #fff; text-shadow: 0 2px 18px rgb(0 0 0 / 0.45); opacity: 0;
+}
+.od-seq-origin { font-size: clamp(1.3rem, 2.4vw, 2.2rem); font-weight: 650; letter-spacing: -0.015em; }
+.od-seq-skip { font-size: 0.82rem; font-weight: 500; opacity: 0.72; letter-spacing: 0.02em; }
+/* stage 2: the welcome */
+.od-splash.od-st-hello .od-sp-in { animation: od-seq-brand-out 560ms cubic-bezier(0.4, 0, 0.2, 1) both; }
+.od-splash.od-st-hello .od-seq-bg { animation: od-seq-fade 900ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both; }
+.od-splash.od-st-hello .od-seq-bg > .anim-scene { animation: od-seq-kb calc(var(--od-hello-ms, 1600ms) + var(--od-scene-ms, 3600ms) + 900ms) cubic-bezier(0.3, 0, 0.4, 1) both; }
+.od-splash.od-st-hello .od-seq-shade { animation: od-seq-fade 600ms ease-out both; }
+.od-splash.od-st-hello .od-seq-title { animation: od-seq-title-in min(900ms, calc(var(--od-hello-ms, 1600ms) * 0.7)) cubic-bezier(0.22, 1, 0.36, 1) 180ms both; }
+/* stage 3: the scene, full bleed */
+.od-splash.od-st-scene .od-seq-shade { opacity: 1; animation: od-seq-fade-out 1000ms cubic-bezier(0.4, 0, 0.2, 1) both; }
+.od-splash.od-st-scene .od-seq-title { opacity: 1; animation: od-seq-title-out 800ms cubic-bezier(0.4, 0, 0.2, 1) both; }
+.od-splash.od-st-scene .od-seq::after { animation: od-seq-fade 900ms ease-out 200ms both; }
+.od-splash.od-st-scene .od-seq-cap { animation: od-seq-cap-in 900ms cubic-bezier(0.22, 1, 0.36, 1) 420ms both; }
+@keyframes od-seq-brand-out { to { opacity: 0; transform: translateY(-24px) scale(0.94); } }
+@keyframes od-seq-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes od-seq-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes od-seq-kb { from { transform: scale(1.14); } to { transform: scale(1.0); } }
+@keyframes od-seq-title-in { from { opacity: 0; transform: translateY(26px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes od-seq-title-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-40px) scale(1.04); } }
+@keyframes od-seq-cap-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@media (max-width: 420px) { .od-sp-mark { width: 52px; height: 52px; } .od-sp-word { width: 140px; height: 29px; } }
+@media (prefers-reduced-motion: reduce) { .od-splash { display: none; } }
+/* holding for the full sequence: the brand opens larger (the mark and wordmark are vectors) */
+.od-splash.is-hold .od-sp-in { gap: 26px; }
+.od-splash.is-hold .od-sp-mark { width: clamp(84px, 9vmin, 124px); height: clamp(84px, 9vmin, 124px); }
+.od-splash.is-hold .od-sp-word { width: clamp(220px, 24vmin, 330px); height: auto; }

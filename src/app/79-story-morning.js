@@ -18,9 +18,9 @@
 /* ---------- the page's live facts for the pure builder ---------- */
 function _smOpts(ctx) {
   const d = (ctx && ctx.data) || {};
-  const now = new Date();
+  const now = Clock.parts(Clock.now());
   const today = typeof todayStrSafe === 'function' ? todayStrSafe() : '';
-  const nowMin = d.date && d.date === today ? now.getHours() * 60 + now.getMinutes() : smMin(d.now);
+  const nowMin = d.date && d.date === today ? now.h * 60 + now.mi : smMin(d.now);
   let countdowns = [];
   try {
     countdowns = (typeof tbList === 'function' ? tbList() : []).filter(w => w && w.type === 'countdown' && w.date && w.date >= (d.date || today))
@@ -49,7 +49,10 @@ function _smOpts(ctx) {
   };
 }
 storyRegisterBuilder('morning', (ctx) => {
-  const beats = smBuildMorning(ctx.data, ctx.script, _smOpts(ctx));
+  // The suggestions engine's ideas (68-suggest-ui.js) join the close beat's ideas.
+  let data = ctx.data;
+  if (typeof sgStoryIdeas === 'function' && data) { try { data = Object.assign({}, data, { engineIdeas: sgStoryIdeas('morning') }); } catch (e) { data = ctx.data; } }
+  const beats = smBuildMorning(data, ctx.script, _smOpts(ctx));
   const kind = smDayKind(ctx.data);
   const palette = (ctx.script && ctx.script.palette) || smPalette(kind, ctx.data && ctx.data.tod);
   for (const b of beats) b.bg = Object.assign({ palette }, b.bg || {});
@@ -475,7 +478,7 @@ storyRegisterBeatType('m-people', (f, b, ctx) => {
     <div class="sm-pcs" style="--n:${(m.cards || []).length}">${cards}</div>
     ${m.more ? `<p class="sm-foot sm-in" style="--i:7">${icon('users', 'i-sm')}<span>${esc(`and ${m.more} more on your mind today`)}</span></p>` : ''}
   </div>`;
-  f.cards.querySelectorAll('[data-person]').forEach(x => x.addEventListener('click', () => _smGo(() => setView('person:' + x.dataset.person))));
+  f.cards.querySelectorAll('[data-person]').forEach(x => x.addEventListener('click', () => _smGo(() => openPerson(x.dataset.person))));
   f.cards.querySelectorAll('[data-task]').forEach(x => x.addEventListener('click', () => _smGo(() => openTask(x.dataset.task))));
   // Each card lights up as the voice says the name.
   _smFollowSay(f, b, bag, (m.cards || []).map((p, i) => ({ sel: `.sm-pc[data-k="${i}"]`, needle: p.first })));
@@ -577,7 +580,8 @@ function _smDoIdea(btn, x) {
     return;
   }
   if (a.do === 'task') return _smGo(() => openTask(a.ref));
-  if (a.do === 'person') return _smGo(() => setView('person:' + a.ref));
+  if (a.do === 'person') return _smGo(() => openPerson(a.ref));
+  if (a.do === 'suggest' && typeof sgRunKey === 'function') return _smGo(() => sgRunKey(a.key));   // the card's button: its editor, prefilled
 }
 storyRegisterBeatType('m-go', (f, b, ctx) => {
   const m = b.m || {}, bag = _smBag(), ideas = m.ideas || [];
@@ -593,7 +597,7 @@ storyRegisterBeatType('m-go', (f, b, ctx) => {
     <div class="sm-letsgo sm-in" style="--i:${ideas.length + 3}"><button type="button" class="sm-gobtn">Let’s go${icon('arrow-right')}</button><button type="button" class="sm-btn sm-replay">${icon('rotate-ccw', 'i-sm')}<span>Replay</span></button></div>
   </div>`;
   f.cards.querySelectorAll('.sm-idea [data-i]').forEach(btn => btn.addEventListener('click', () => _smDoIdea(btn, ideas[Number(btn.dataset.i)])));
-  f.cards.querySelector('.sm-gobtn').addEventListener('click', () => _smGo(() => { if (String(state.view).startsWith('review')) setView('home'); }));
+  f.cards.querySelector('.sm-gobtn').addEventListener('click', () => _smGo(() => { if (state.view !== 'home') setView('home'); }));
   f.cards.querySelector('.sm-replay').addEventListener('click', () => STORY_PLAYER.replay());
   _smFollowSay(f, b, bag, ideas.map((x, i) => ({ sel: `.sm-idea[data-k="${i}"]`, needle: x.say })));
   // The last beat waits: the button takes focus once it has risen (keyboard: Enter starts the day).
@@ -606,6 +610,6 @@ storyRegisterBeatType('m-go', (f, b, ctx) => {
 /* ---------- entry points ---------- */
 /** "Start my day": the story over the brief page (Open details / Close land on it). */
 function storyStartMyDay() {
-  if (typeof briefOpen === 'function' && !String(state.view).startsWith('review:today')) briefOpen({ welcome: false });
+  if (typeof briefOpen === 'function' && !String(state.view).startsWith('home')) briefOpen({ welcome: false });
   storyOpen('morning', { autoplay: true });
 }

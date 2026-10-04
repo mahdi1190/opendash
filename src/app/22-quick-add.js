@@ -20,17 +20,19 @@
 const _QA_WD = { sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2, wed: 3, weds: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6 };
 const _QA_MONTHS = { jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3, may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8, sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11 };
 
-function _qaToday(now) { const d = now ? new Date(now) : new Date(); d.setHours(0, 0, 0, 0); return d; }
-function _qaAdd(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+// The parser's dates are wall dates: local Dates at midnight built from y/m/d, used for calendar
+// arithmetic only. "Today" (or the instant `now`) is read in the dashboard's zone through Clock.
+function _qaToday(now) { const [y, m, d] = (now ? Clock.parts(new Date(now).getTime()).iso : todayStr()).split('-').map(Number); return new Date(y, m - 1, d); }
+function _qaAdd(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; } // clock-ok: wall date
 function _qaWeekStartIdx() { return typeof _tWeekStart === 'function' ? _tWeekStart() : 1; }
 /** Start (as Date) of the week containing d, using the configured week start. */
-function _qaWeekStart(d) { const ws = _qaWeekStartIdx(); return _qaAdd(d, -((d.getDay() - ws + 7) % 7)); }
+function _qaWeekStart(d) { const ws = _qaWeekStartIdx(); return _qaAdd(d, -((d.getDay() - ws + 7) % 7)); } // clock-ok: wall date
 function _qaNextWeekday(today, wd, strictlyAfter) {
-  let ahead = (wd - today.getDay() + 7) % 7;
+  let ahead = (wd - today.getDay() + 7) % 7; // clock-ok: wall date
   if (ahead === 0 && strictlyAfter) ahead = 7;
   return _qaAdd(today, ahead);
 }
-function _qaValidDay(y, m, d) { const x = new Date(y, m, d); return x.getFullYear() === y && x.getMonth() === m && x.getDate() === d ? x : null; }
+function _qaValidDay(y, m, d) { const x = new Date(y, m, d); return x.getFullYear() === y && x.getMonth() === m && x.getDate() === d ? x : null; } // clock-ok: wall date
 /** Day-month order for "15/10": month first only for US-style locales. */
 function _qaMonthFirst() { const l = String((typeof APP_CONFIG !== 'undefined' && APP_CONFIG.locale) || 'en-GB'); return /^en-US|^en-PH|^fil/i.test(l); }
 
@@ -49,23 +51,23 @@ function _qaDateAt(words, i, today) {
     return { date: fri, len: a === 'eow' ? 1 : 3 };
   }
   if (a === 'eom' || (a === 'end' && b === 'of' && c === 'month')) {
-    return { date: new Date(today.getFullYear(), today.getMonth() + 1, 0), len: a === 'eom' ? 1 : 3 };
+    return { date: new Date(today.getFullYear(), today.getMonth() + 1, 0), len: a === 'eom' ? 1 : 3 }; // clock-ok: wall date
   }
   if (a === 'weekend' || (a === 'this' && b === 'weekend')) return { date: _qaNextWeekday(today, 6, false), len: a === 'this' ? 2 : 1 };
   if (a === 'next' && b === 'week') return { date: _qaAdd(_qaWeekStart(today), 7), len: 2 };
-  if (a === 'next' && b === 'month') return { date: new Date(today.getFullYear(), today.getMonth() + 1, 1), len: 2 };
+  if (a === 'next' && b === 'month') return { date: new Date(today.getFullYear(), today.getMonth() + 1, 1), len: 2 }; // clock-ok: wall date
   if (a === 'next' && b === 'weekend') return { date: _qaAdd(_qaNextWeekday(today, 6, false), 7), len: 2 };
   if ((a === 'next' || a === 'this') && b in _QA_WD) {
     // "next fri": that day in NEXT week; "this fri": that day in the current week (or the coming one).
     if (a === 'this') return { date: _qaNextWeekday(today, _QA_WD[b], false), len: 2 };
     const ws = _qaAdd(_qaWeekStart(today), 7);
-    return { date: _qaAdd(ws, (_QA_WD[b] - ws.getDay() + 7) % 7), len: 2 };
+    return { date: _qaAdd(ws, (_QA_WD[b] - ws.getDay() + 7) % 7), len: 2 }; // clock-ok: wall date
   }
   if (a === 'in' && /^\d{1,3}$/.test(b) && /^(day|days|d|week|weeks|wk|wks|w|month|months|mo)$/.test(c)) {
     const n = Number(b);
     if (/^d/.test(c)) return { date: _qaAdd(today, n), len: 3 };
     if (/^w/.test(c)) return { date: _qaAdd(today, n * 7), len: 3 };
-    const x = new Date(today); x.setMonth(x.getMonth() + n); return { date: x, len: 3 };
+    const x = new Date(today); x.setMonth(x.getMonth() + n); return { date: x, len: 3 }; // clock-ok: wall date
   }
   if (a in _QA_WD) {
     // Bare weekday: the next one (today's weekday means a week from today).
@@ -79,7 +81,7 @@ function _qaDateAt(words, i, today) {
   if ((m = /^(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?$/.exec(a))) {
     let [x, y] = [Number(m[1]), Number(m[2])];
     if (_qaMonthFirst()) [x, y] = [y, x];
-    let yr = m[3] ? Number(m[3].length === 2 ? '20' + m[3] : m[3]) : today.getFullYear();
+    let yr = m[3] ? Number(m[3].length === 2 ? '20' + m[3] : m[3]) : today.getFullYear(); // clock-ok: wall date
     let d = _qaValidDay(yr, y - 1, x);
     if (d && !m[3] && d < today) d = _qaValidDay(yr + 1, y - 1, x);
     return d ? { date: d, len: 1 } : null;
@@ -89,14 +91,14 @@ function _qaDateAt(words, i, today) {
   const yearAt = (s) => (/^20\d{2}$/.test(s) ? Number(s) : null);
   if (dayNum(a) && b in _QA_MONTHS) {
     const y = yearAt(c);
-    let d = _qaValidDay(y || today.getFullYear(), _QA_MONTHS[b], dayNum(a));
-    if (d && !y && d < today) d = _qaValidDay(today.getFullYear() + 1, _QA_MONTHS[b], dayNum(a));
+    let d = _qaValidDay(y || today.getFullYear(), _QA_MONTHS[b], dayNum(a)); // clock-ok: wall date
+    if (d && !y && d < today) d = _qaValidDay(today.getFullYear() + 1, _QA_MONTHS[b], dayNum(a)); // clock-ok: wall date
     return d ? { date: d, len: y ? 3 : 2 } : null;
   }
   if (a in _QA_MONTHS && dayNum(b) && a.length >= 3) {
     const y = yearAt(c);
-    let d = _qaValidDay(y || today.getFullYear(), _QA_MONTHS[a], dayNum(b));
-    if (d && !y && d < today) d = _qaValidDay(today.getFullYear() + 1, _QA_MONTHS[a], dayNum(b));
+    let d = _qaValidDay(y || today.getFullYear(), _QA_MONTHS[a], dayNum(b)); // clock-ok: wall date
+    if (d && !y && d < today) d = _qaValidDay(today.getFullYear() + 1, _QA_MONTHS[a], dayNum(b)); // clock-ok: wall date
     return d ? { date: d, len: y ? 3 : 2 } : null;
   }
   return null;
@@ -163,7 +165,7 @@ function _qaFmtDay(d) {
   if (n === 0) return 'Today';
   if (n === 1) return 'Tomorrow';
   const loc = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.locale) || undefined;
-  return d.toLocaleDateString(loc, n !== null && n > 0 && n < 7 ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+  return d.toLocaleDateString(loc, n !== null && n > 0 && n < 7 ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: iso.slice(0, 4) === todayStr().slice(0, 4) ? undefined : 'numeric' });
 }
 
 function parseQuickAdd(input, opts) {

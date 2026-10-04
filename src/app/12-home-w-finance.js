@@ -36,12 +36,18 @@ registerHomeWidget({
 /* ---------- the glance (pure; no DOM, no page globals) ---------- */
 const _HB_DAY = 864e5;
 function _hbDnum(iso) { return Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / _HB_DAY); }
-function _hbDiso(n) { return new Date(n * _HB_DAY).toISOString().slice(0, 10); }
+function _hbDiso(n) { return new Date(n * _HB_DAY).toISOString().slice(0, 10); }   // clock-ok: a day number to its ISO date (UTC arithmetic)
 function _hbR2(x) { return Math.round(x * 100) / 100; }
 function _hbMed(a) { if (!a.length) return 0; const s = [...a].sort((p, q) => p - q); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
 function _hbMonthIdx(n) { const d = new Date(n * _HB_DAY); return d.getUTCFullYear() * 12 + d.getUTCMonth(); }
 function _hbMonthStart(mi) { return Math.round(Date.UTC(Math.floor(mi / 12), mi % 12, 1) / _HB_DAY); }
-function _hbLocalIso(d) { d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+// Money days are HOME days (banks date transactions at home; travel spec 2.3): Clock's home
+// day when the page's Clock is there, else the Date's own day.
+function _hbLocalIso(d) {
+  if (!d && typeof Clock !== 'undefined') return Clock.today(Clock.home());
+  d = d || new Date(Date.now());
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;   // clock-ok: the Date given (or no Clock)
+}
 const _HB_FREQS = [
   { p: 7, tol: 1.5, label: 'Weekly', min: 3 }, { p: 14, tol: 2, label: 'Fortnightly', min: 3 },
   { p: 30.44, tol: 4, label: 'Monthly', min: 2 }, { p: 91, tol: 10, label: 'Quarterly', min: 2 },

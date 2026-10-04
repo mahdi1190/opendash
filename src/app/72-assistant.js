@@ -109,7 +109,7 @@ function _asstVal(field, v) {
     // "Tue 6 Oct" (plus the year when it is not this year): exact, never relative.
     const d = new Date(+m[1], +m[2] - 1, +m[3]);
     const opts = { weekday: 'short', day: 'numeric', month: 'short' };
-    if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+    if (m[1] !== todayStr().slice(0, 4)) opts.year = 'numeric';
     try { return d.toLocaleDateString(APP_CONFIG.locale || undefined, opts); } catch (e) { return String(v); }
   }
   if (field === 'priority') return ({ p0: 'None', p1: 'P1 High', p2: 'P2 Medium', p3: 'P3 Low' })[v] || String(v);

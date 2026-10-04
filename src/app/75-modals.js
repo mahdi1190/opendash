@@ -66,6 +66,8 @@ function showKbHelp() {
       ['Toggle sidebar', [mod, '\\']], ['Dark mode', [mod, 'Shift', 'D']], ['Focus mode', [mod, 'Shift', 'F']],
       ['Export to Markdown', [mod, 'E']], ['Print view', [mod, 'P']],
     ]],
+    // The calendar's keys, Google Calendar's (45-calendar-grid-logic.js)
+    ...(typeof cglKeyHelp === 'function' ? [['Calendar', cglKeyHelp()]] : []),
   ];
   const keys = (ks) => `<span class="kbd-group">${ks.map(k => `<kbd class="kbd">${esc(k)}</kbd>`).join('')}</span>`;
   card.innerHTML = `<div class="kb-head"><h3>Keyboard shortcuts</h3><button type="button" class="btn-icon" id="kb-close" aria-label="Close">${icon('x')}</button></div>`
@@ -125,8 +127,7 @@ function applyTemplate(tmplId) {
   const newId = 'u-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5);
   let dueDate = null;
   if (typeof t.daysAhead === 'number' && Number.isFinite(t.daysAhead)) {
-    const d = new Date(); d.setDate(d.getDate() + t.daysAhead);
-    dueDate = fmtDate(d);
+    dueDate = Clock.addDays(todayStr(), t.daysAhead);
   }
   state.custom.push({
     id: newId, title: t.title, dueDate,
@@ -207,9 +208,9 @@ function openTemplatesModal() {
    ============================================================ */
 function maybeShowReviewPrompt() {
   if (typeof reviewMaybePrompt === 'function') return reviewMaybePrompt();   // the guided weekly review (77/78-brief-*.js)
-  const now = new Date();
-  const dow = now.getDay();
-  const hour = now.getHours();
+  const now = Clock.parts(Clock.now());
+  const dow = now.dow;
+  const hour = now.h;
   const isSundayEvening = dow === 0 && hour >= 17;
   const isMondayMorning = dow === 1 && hour < 12;
   if (!isSundayEvening && !isMondayMorning) return;

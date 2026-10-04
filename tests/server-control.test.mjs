@@ -13,7 +13,6 @@ import { tmpdir } from 'node:os';
 import { request, createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import vm from 'node:vm';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FAKE_CLAUDE = join(ROOT, 'tests', 'fixtures', 'fake-claude.mjs');
@@ -527,7 +526,7 @@ describe('server API', () => {
     assert.equal(on.json.protocol.current, true);
     const cmd = on.json.protocol.command;
     assert.ok(!/%\d|%\*/.test(cmd), 'the link is never passed to the command');
-    assert.match(cmd, /wscript\.exe" ".*start-hidden\.wsf" --port \d+ --data-dir "/);
+    assert.match(cmd, /^"[^"]*\\System32\\conhost\.exe" --headless "[^"]*node(\.exe)?" "[^"]*\\tools\\start-hidden\.mjs" --port \d+ --data-dir "/);
     assert.ok(dry.calls.slice(before).every(c => /\\System32\\reg\.exe$/i.test(c.file)), 'only reg.exe, by full path');
     assert.equal((await raw(port, 'GET', '/api/health?quick=1')).json.launch.startScheme, 'dashboard-start', 'the page learns the Start server link');
     assert.equal(JSON.parse(readFileSync(join(dir, 'launch.json'), 'utf8')).protocol, true);
@@ -552,7 +551,10 @@ describe('os-integration (dry run)', () => {
   // The command is a Windows registry value built from Windows paths (C:\...),
   // which node:path only joins and resolves as such on Windows.
   test('the command is fixed: the launcher, plus only a non-default port / data folder', { skip: process.platform !== 'win32' && 'Windows only: the start-up command uses Windows paths' }, () => {
-    assert.equal(OS.launcherCommand(base), `"${join('C:\\Windows', 'System32', 'wscript.exe')}" "${join(repoRoot, 'tools', 'start-hidden.wsf')}"`);
+    const node = 'C:\\Program Files\\nodejs\\node.exe';
+    assert.equal(OS.launcherCommand({ ...base, nodeExe: node }), `"${join('C:\\Windows', 'System32', 'conhost.exe')}" --headless "${node}" "${join(repoRoot, 'tools', 'start-hidden.mjs')}"`);
+    assert.equal(OS.launcherCommand({ ...base, nodeExe: node, hidden: false }), `"${node}" "${join(repoRoot, 'tools', 'start-hidden.mjs')}"`, 'no conhost: node directly');
+    assert.throws(() => OS.launcherCommand({ ...base, nodeExe: 'C:\\n&de\\node.exe' }), /cannot be used/);
     const c = OS.launcherCommand({ ...base, port: 4300, dataDir: 'D:\\My data\\dash\\' });
     assert.ok(c.endsWith('--port 4300 --data-dir "' + join('D:\\My data\\dash') + '"'), c);
     assert.throws(() => OS.launcherCommand({ ...base, dataDir: 'D:\\a&calc' }), /cannot be used/);
@@ -580,7 +582,7 @@ describe('os-integration (dry run)', () => {
     st = await os.set('autostart', true);
     assert.deepEqual([st.autostart.enabled, st.autostart.current, st.autostart.approved], [true, true, true]);
     // another copy of the app registered itself
-    await dry.exec(OS.regExe(env), ['add', OS.RUN_KEY, '/v', 'personal-dashboard', '/t', 'REG_SZ', '/d', '"x.exe" "D:\\other\\tools\\start-hidden.wsf"', '/f']);
+    await dry.exec(OS.regExe(env), ['add', OS.RUN_KEY, '/v', 'personal-dashboard', '/t', 'REG_SZ', '/d', '"x.exe" "D:\\other\\tools\\start-hidden.mjs"', '/f']);
     // and the user switched it off in Task Manager
     await dry.exec(OS.regExe(env), ['add', OS.APPROVED_KEY, '/v', 'personal-dashboard', '/t', 'REG_BINARY', '/d', '030000000000000000000000', '/f']);
     st = await os.status();
@@ -617,31 +619,26 @@ describe('os-integration (dry run)', () => {
     assert.deepEqual(OS.START_SCRIPTS, { bat: ['start-opendash.bat', 'start-dashboard.bat'], sh: ['start-opendash.sh', 'start-dashboard.sh'] });
   });
 
-  test('missing launcher or script host: refused before anything is written', async () => {
+  test('missing launcher: refused before anything is written; no conhost: still works, node directly', async () => {
     const dry = OS.createDryRunExec();
-    const noHost = OS.createOsIntegration({ ...base, exec: dry.exec, exists: (p) => !/wscript/i.test(p) });
-    await assert.rejects(noHost.set('protocol', true), /Windows Script Host/);
+    const noLauncher = OS.createOsIntegration({ ...base, exec: dry.exec, exists: (p) => !/start-hidden/i.test(p) });
+    await assert.rejects(noLauncher.set('protocol', true), (e) => e.code === 'NO_LAUNCHER');
     assert.equal(dry.calls.length, 0);
     // turning OFF still works without it
-    await noHost.set('protocol', false);
+    await noLauncher.set('protocol', false);
+    const noHost = OS.createOsIntegration({ ...base, exec: dry.exec, exists: (p) => !/conhost/i.test(p) });
+    const st = await noHost.set('autostart', true);
+    assert.equal(st.hiddenHost, false);
+    assert.equal(st.autostart.current, true);
+    assert.ok(!/conhost/i.test(st.autostart.command) && /start-hidden\.mjs"$/.test(st.autostart.command), st.autostart.command);
   });
 
   test('reg query output is parsed in any language', () => {
-    const out = '\r\nHKEY_CURRENT_USER\\Software\\Classes\\dashboard-start\\shell\\open\\command\r\n    (Standard)    REG_SZ    "C:\\x\\wscript.exe" "C:\\a b\\tools\\start-hidden.wsf"\r\n    URL Protocol    REG_SZ    \r\n';
-    assert.deepEqual(OS.parseRegQuery(out), [{ name: '', type: 'REG_SZ', data: '"C:\\x\\wscript.exe" "C:\\a b\\tools\\start-hidden.wsf"' }, { name: 'URL Protocol', type: 'REG_SZ', data: '' }]);
+    const out = '\r\nHKEY_CURRENT_USER\\Software\\Classes\\dashboard-start\\shell\\open\\command\r\n    (Standard)    REG_SZ    "C:\\x\\conhost.exe" --headless "C:\\n\\node.exe" "C:\\a b\\tools\\start-hidden.mjs"\r\n    URL Protocol    REG_SZ    \r\n';
+    assert.deepEqual(OS.parseRegQuery(out), [{ name: '', type: 'REG_SZ', data: '"C:\\x\\conhost.exe" --headless "C:\\n\\node.exe" "C:\\a b\\tools\\start-hidden.mjs"' }, { name: 'URL Protocol', type: 'REG_SZ', data: '' }]);
   });
 
-  test('the launcher ignores everything but --port N and a plain --data-dir, and never reads a URL', () => {
-    const wsf = readFileSync(join(ROOT, 'tools', 'start-hidden.wsf'), 'utf8');
-    assert.match(wsf, /language="JScript"/, 'not VBScript');
-    assert.match(wsf, /start-opendash\.bat/);
-    assert.match(wsf, /start-dashboard\.bat/, 'the old name is the fallback');
-    assert.match(wsf, /"--no-open"/);
-    assert.match(wsf, /DASHBOARD_NO_PAUSE/);
-    assert.match(wsf, /\/\^\[0-9\]\{2,5\}\$\//, 'the port must be digits');
-    assert.ok(!/Run\([^)]*Arguments/.test(wsf), 'arguments never reach the command line unchecked');
-    // (the one URL in it is its own fixed health check on 127.0.0.1)
-    assert.ok(!/:\/\//.test(wsf.replace(/dashboard-start:\/\//g, '').replace('"http://127.0.0.1:" + port + "/api/health?quick=1"', '')), 'no URL handling');
+  test('the start scripts never pause a hidden window and only hand over to the supervisor', () => {
     const bat = readFileSync(join(ROOT, 'start-opendash.bat'), 'utf8');
     assert.ok(!/^\s*pause\s*$/m.test(bat), 'every pause is skipped for a hidden window');
     assert.match(bat, /node tools\\supervisor\.mjs %\*/);
@@ -661,58 +658,20 @@ describe('os-integration (dry run)', () => {
   });
 });
 
-// ─── 5b. the launcher's own logic (tools/start-hidden.wsf) ───────────────
-// Its JScript runs in a VM with fake WScript / ActiveX objects: what it would
-// run, for which arguments. Nothing is started.
-const WSF = readFileSync(join(ROOT, 'tools', 'start-hidden.wsf'), 'utf8');
-function runLauncher(args, { answers = false, stamp = null, root = 'C:\\Apps\\dash board', batExists = true, oldBatExists = false } = {}) {
-  const src = /<!\[CDATA\[([\s\S]*?)\]\]>/.exec(WSF)[1];
-  const setLine = 'env.Item("DASHBOARD_NO_PAUSE") = "1";';
-  assert.ok(src.includes(setLine), 'the hidden window never pauses');
-  const runs = [], probes = [], envSet = {}, files = new Map();
-  const port = (() => { const i = args.indexOf('--port'); return i >= 0 ? args[i + 1] : '4173'; })();
-  if (stamp != null) files.set(`C:\\Temp\\dashboard-start-${port}.stamp`, String(Date.now() - stamp));
-  const bats = { [root + '\\start-opendash.bat']: batExists, [root + '\\start-dashboard.bat']: oldBatExists };
-  const factories = {
-    'Scripting.FileSystemObject': () => ({
-      GetParentFolderName: (p) => p.slice(0, p.lastIndexOf('\\')),
-      FileExists: (f) => (f in bats ? bats[f] : files.has(f)),
-      FolderExists: () => false,
-      GetSpecialFolder: () => ({ Path: 'C:\\Temp' }),
-      OpenTextFile: (f) => ({ AtEndOfStream: false, ReadAll: () => files.get(f), Close() {} }),
-      CreateTextFile: (f) => ({ Write: (s) => files.set(f, s), Close() {} }),
-    }),
-    'WScript.Shell': () => ({
-      Environment: () => ({ Item: () => '', __set: (k, v) => { envSet[k] = v; } }),
-      ExpandEnvironmentStrings: () => 'C:\\Windows\\system32\\cmd.exe',
-      Run: (cmd, win, wait) => { runs.push({ cmd, win, wait }); return 0; },
-      CurrentDirectory: '',
-    }),
-    'MSXML2.ServerXMLHTTP.6.0': () => ({
-      setTimeouts() {}, open(m, url) { probes.push(url); },
-      send() { if (!answers) throw new Error('connection refused'); this.status = 200; this.responseText = '{"ok":true,"app":"dashboard"}'; },
-    }),
-  };
-  const box = {
-    ActiveXObject: function (name) { return factories[name](); },
-    WScript: { ScriptFullName: root + '\\tools\\start-hidden.wsf', Arguments: { length: args.length, Item: (i) => args[i] }, Echo() {} },
-  };
-  vm.createContext(box);
-  vm.runInContext(src.replace(setLine, 'env.__set("DASHBOARD_NO_PAUSE", "1");'), box);
-  return { runs, probes, envSet, files };
-}
+// ─── 5b. the launcher's own logic (tools/start-hidden.mjs) ───────────────
+// A plain Node script (Defender quarantined the old script-host launcher):
+// its pure parts directly, the guard through DASHBOARD_LAUNCHER_DRY_RUN, and
+// one real start on a COPY of it next to a decoy start-dashboard.bat.
+describe('launcher (start-hidden.mjs)', () => {
+  let LH;
+  before(async () => { LH = await import('../tools/start-hidden.mjs'); });
+  const CMD = (extra, bat = 'start-opendash.bat') => `/d /s /c ""C:\\Apps\\dash board\\${bat}" --no-open${extra}"`;
+  const line = (args) => LH.cmdLine('C:\\Apps\\dash board\\start-opendash.bat', LH.parseLauncherArgs(args));
 
-describe('launcher (start-hidden.wsf)', () => {
-  const CMD = (extra, bat = 'start-opendash.bat') => `"C:\\Windows\\system32\\cmd.exe" /d /c ""C:\\Apps\\dash board\\${bat}" --no-open${extra}"`;
-
-  test('no arguments: start-opendash.bat --no-open from its own folder, hidden, not waited for', () => {
-    const r = runLauncher([]);
-    assert.deepEqual(r.runs, [{ cmd: CMD(''), win: 0, wait: false }]);
-    assert.deepEqual(r.envSet, { DASHBOARD_NO_PAUSE: '1' });
-    assert.deepEqual(r.probes, ['http://127.0.0.1:4173/api/health?quick=1']);
-  });
-  test('the registered --port / --data-dir are passed on, quoted', () => {
-    assert.equal(runLauncher(['--port', '4300', '--data-dir', 'D:\\My data (2)']).runs[0].cmd, CMD(' --port 4300 --data-dir "D:\\My data (2)"'));
+  test('no arguments: start-opendash.bat --no-open; the registered --port / --data-dir are passed on, quoted', () => {
+    assert.equal(line([]), CMD(''));
+    assert.equal(line(['--port', '4300', '--data-dir', 'D:\\My data (2)']), CMD(' --port 4300 --data-dir "D:\\My data (2)"'));
+    assert.equal(line(['--data-dir', 'D:\\dash\\']), CMD(' --data-dir "D:\\dash"'), 'a trailing \\ never escapes the quote');
   });
   test('reading stops at the first other argument: a link (even one Windows appended) adds nothing', () => {
     for (const [args, extra] of [
@@ -723,51 +682,67 @@ describe('launcher (start-hidden.wsf)', () => {
       [['--data-dir', 'C:\\a&calc.exe'], ''],
       [['--data-dir', 'C:\\a" & calc & "'], ''],
       [['--data-dir', 'C:\\%COMSPEC%'], ''],
+      [['--data-dir', 'C:\\'], ''],
       [['--port', '80;calc'], ''],
-      [['--port', '4300', '--port', '4400'], ' --port 4300'],
+      [['--port', '99999'], ''],
       [['//X', '--port', '4300'], ''],
-    ]) {
-      const r = runLauncher(args);
-      assert.equal(r.runs.length, 1, args.join(' '));
-      assert.equal(r.runs[0].cmd, CMD(extra), args.join(' '));
-    }
+    ]) assert.equal(line(args), CMD(extra), args.join(' '));
   });
-  test('nothing runs when a dashboard already answers, or it was started under 20 s ago', () => {
-    assert.deepEqual(runLauncher(['--port', '4300'], { answers: true }).runs, []);
-    assert.deepEqual(runLauncher(['--port', '4300'], { stamp: 5000 }).runs, [], 'a second click / the page opening the link again');
-    assert.equal(runLauncher(['--port', '4300'], { stamp: 60000 }).runs.length, 1, 'an old stamp does not block');
-    const r = runLauncher(['--port', '4301']);
-    assert.ok(Number(r.files.get('C:\\Temp\\dashboard-start-4301.stamp')) > 0, 'the start is stamped');
+  test('the app folder: start-opendash.bat first, the old name as the fallback, none -> nothing; unsafe -> refused', () => {
+    const only = (...names) => (p) => names.some(n => p.endsWith('\\' + n) || p.endsWith('/' + n));
+    assert.equal(LH.pickBat('C:\\A', only('start-opendash.bat', 'start-dashboard.bat')), join('C:\\A', 'start-opendash.bat'));
+    assert.equal(LH.pickBat('C:\\A', only('start-dashboard.bat')), join('C:\\A', 'start-dashboard.bat'));
+    assert.equal(LH.pickBat('C:\\A', () => false), null);
+    for (const root of ['C:\\a&b', 'C:\\100%']) assert.throws(() => LH.cmdLine(root + '\\start-opendash.bat', LH.parseLauncherArgs([])), /unsafe/);
   });
-  test('a folder with only the old start-dashboard.bat (an older copy) still starts, through that', () => {
-    assert.deepEqual(runLauncher(['--port', '4300'], { batExists: false, oldBatExists: true }).runs, [{ cmd: CMD(' --port 4300', 'start-dashboard.bat'), win: 0, wait: false }]);
-    assert.equal(runLauncher([], { oldBatExists: true }).runs[0].cmd, CMD(''), 'start-opendash.bat wins when both are there');
+  test('the 20 s guard: a second start within 20 s does nothing; an old stamp does not block', () => {
+    const box = mkdtempSync(join(tmpdir(), 'launcher-guard-'));
+    try {
+      const t0 = Date.now();
+      assert.equal(LH.guardStamp(box, 4301, t0), false, 'first start');
+      assert.ok(existsSync(join(box, 'dashboard-start-4301.stamp')), 'the start is stamped');
+      assert.equal(LH.guardStamp(box, 4301, t0 + 5000), true, 'a second click / the page opening the link again');
+      assert.equal(LH.guardStamp(box, 4301, t0 + 60000), false);
+    } finally { rmSync(box, { recursive: true, force: true }); }
   });
-  test('an unusable app folder or no launcher at all: nothing runs', () => {
-    assert.deepEqual(runLauncher([], { root: 'C:\\a&b' }).runs, []);
-    assert.deepEqual(runLauncher([], { root: 'C:\\100%' }).runs, []);
-    assert.deepEqual(runLauncher([], { batExists: false }).runs, []);
+  test('the script itself: never a script-host file, no URL handling, fixed health check only', () => {
+    const src = readFileSync(join(ROOT, 'tools', 'start-hidden.mjs'), 'utf8');
+    assert.match(src, /DASHBOARD_NO_PAUSE: '1'/);
+    assert.match(src, /windowsHide: true/);
+    assert.match(src, /host: '127\.0\.0\.1'/);
+    assert.ok(!/:\/\//.test(src.replace(/dashboard-start:\/\//g, '')), 'no URL handling');
+    assert.ok(!existsSync(join(ROOT, 'tools', 'start-hidden.wsf')) && !existsSync(join(ROOT, 'tools', 'start-hidden.vbs')));
+  });
+  test('dry run through the real script: running or recently started -> nothing; otherwise the stage-2 command', { timeout: 30000 }, async () => {
+    const { spawnSync } = await import('node:child_process');
+    const box = mkdtempSync(join(tmpdir(), 'launcher-dry-'));
+    try {
+      const p = await freePort();
+      const run = () => JSON.parse(spawnSync(process.execPath, [join(ROOT, 'tools', 'start-hidden.mjs'), '--port', String(p), 'dashboard-start://x'], { encoding: 'utf8', windowsHide: true, env: { ...process.env, DASHBOARD_LAUNCHER_DRY_RUN: box } }).stdout);
+      const a = run();
+      assert.equal(a.started, true);
+      assert.deepEqual(a.args.slice(1), ['--hidden-child', '--port', String(p)]);
+      assert.equal(run().reason, 'recent');
+    } finally { rmSync(box, { recursive: true, force: true }); }
   });
 
-  // The real Windows Script Host, on a COPY of the launcher next to a decoy
-  // start-dashboard.bat that only writes down what it was given.
-  test('for real (cscript, a decoy start-dashboard.bat): the arguments survive cmd intact', { skip: process.platform !== 'win32' && 'Windows only: runs the real Windows Script Host', timeout: 30000 }, async (t) => {
+  test('for real (a copy, a decoy start-dashboard.bat): hidden, and the arguments survive cmd intact', { skip: process.platform !== 'win32' && 'Windows only: runs cmd.exe', timeout: 30000 }, async () => {
     const { spawnSync } = await import('node:child_process');
     const box = mkdtempSync(join(tmpdir(), 'launcher-'));
     try {
       mkdirSync(join(box, 'tools'));
-      writeFileSync(join(box, 'tools', 'start-hidden.wsf'), WSF);
+      writeFileSync(join(box, 'tools', 'start-hidden.mjs'), readFileSync(join(ROOT, 'tools', 'start-hidden.mjs')));
       writeFileSync(join(box, 'start-dashboard.bat'), '@echo off\r\n>"%~dp0got.txt" echo [%*] [%DASHBOARD_NO_PAUSE%]\r\n');
       const dataDir = join(box, 'my data');
       const p = await freePort();
-      const r = spawnSync('cscript', ['//nologo', join(box, 'tools', 'start-hidden.wsf'), '--port', String(p), '--data-dir', dataDir, 'dashboard-start://x&calc', '--port', '1'], { encoding: 'utf8', windowsHide: true, timeout: 20000 });
-      if (r.error || /disabled|not recognized/i.test(r.stdout + r.stderr)) { t.skip('Windows Script Host is not available'); return; }
+      const r = spawnSync(process.execPath, [join(box, 'tools', 'start-hidden.mjs'), '--port', String(p), '--data-dir', dataDir, 'dashboard-start://x&calc', '--port', '1'], { encoding: 'utf8', windowsHide: true, timeout: 20000 });
+      assert.equal(r.status, 0, r.stderr);
       let got = null;
       for (let i = 0; i < 100 && !got; i++) { await sleep(100); try { got = readFileSync(join(box, 'got.txt'), 'utf8').trim(); } catch { /* not yet */ } }
       try { rmSync(join(tmpdir(), `dashboard-start-${p}.stamp`), { force: true }); } catch { /* fine */ }
       assert.equal(got, `[--no-open --port ${p} --data-dir "${dataDir}"] [1]`);
-      // (Retries: the decoy's cmd.exe, started without waiting, may still be ending in the folder.)
-    } finally { rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }
+      // (Retries: the detached second stage may still be ending in the folder.)
+    } finally { rmSync(box, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }); }
   });
 });
 

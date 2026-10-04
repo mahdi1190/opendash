@@ -82,6 +82,7 @@ export default function register(app) {
       const d = await financeData().catch(() => null);
       if (!d || d.status !== 'ok') return { available: false, reason: 'empty', lastUpdate: d && d.meta ? d.meta.lastUpdate : null };
       const b = await getBudgets().catch(() => ({ budgets: null }));
+      // Home time on purpose: banks date transactions at home (cfg.timezone = home; travel spec 2.3).
       const out = moneyLine(d.analysis, { today: localToday(cfg.timezone), budgets: b.budgets, currency: cfg.currency });
       return { ...out, lastUpdate: d.meta.lastUpdate || null, analysisAt: d.meta.analysisAt || null };
     },
@@ -131,7 +132,7 @@ export default function register(app) {
   app.route({
     path: '/api/brief/day', method: 'GET',
     handler: async (c) => {
-      const date = c.query.get('date') || localToday(c.getConfig().timezone);
+      const date = c.query.get('date') || (c.clockNow ? c.clockNow().today : localToday(c.getConfig().timezone));   // effective zone (travel spec 2.7 S3)
       if (!isIsoDate(date)) throw new HttpError(400, 'date must be YYYY-MM-DD');
       const out = { date };
       for (const k of SNAPSHOT_KINDS) {

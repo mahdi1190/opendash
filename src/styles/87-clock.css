@@ -1,0 +1,43 @@
+/* ============= CLOCK (src/app/87-clock-ui.js) =============
+   The one-line time-zone banner (travel spec 2.4, prototype t5-surfaces): calm,
+   in the flow between the top bar and the page, like the server banner. Also
+   the UTC card (same slot) and the Settings "Dashboard time" radios. */
+.clk-banner {
+  flex: none; position: relative; z-index: var(--z-sticky);
+  display: flex; align-items: center; gap: var(--space-3);
+  margin: var(--space-2) var(--space-3) 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in oklab, var(--info) 22%, transparent);
+  border-radius: var(--radius-lg); background: var(--info-soft); color: var(--fg);
+  font-size: var(--text-sm); line-height: var(--lh-sm);
+  opacity: 0; transform: translateY(-6px);
+  transition: opacity var(--m-slow, 240ms) var(--m-ease-out, ease-out), transform var(--m-slow, 240ms) var(--m-ease-out, ease-out);
+}
+.clk-banner.on { opacity: 1; transform: none; }
+.clk-banner.is-out { opacity: 0; transform: translateY(-6px); }
+.clk-banner.is-floating { position: fixed; top: var(--space-2); left: 50%; transform: translateX(-50%); margin: 0; z-index: calc(var(--z-drawer) - 1); box-shadow: var(--shadow-md); max-width: calc(100vw - 2 * var(--space-3)); }
+.clk-banner .clk-ic { display: grid; place-items: center; flex: none; color: var(--info-ink); }
+.clk-banner .clk-msg { flex: 1; min-width: 0; }
+.clk-banner .clk-t { font-weight: var(--weight-semibold); }
+.clk-banner .clk-s { color: var(--fg); }
+.clk-banner .clk-optin { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-1); color: var(--fg-muted); font-size: var(--text-xs); line-height: var(--lh-xs); }
+.clk-banner .clk-optin[hidden] { display: none; }
+.clk-banner .clk-acts { display: flex; align-items: center; gap: var(--space-1); flex: none; }
+.clk-banner a.btn { text-decoration: none; }
+.clk-banner .btn-secondary { background: var(--surface); }
+@media (max-width: 640px) {
+  .clk-banner { flex-wrap: wrap; }
+  .clk-banner .clk-msg { flex-basis: calc(100% - 40px); }
+  .clk-banner .clk-acts { width: 100%; justify-content: flex-end; }
+}
+@media (prefers-reduced-motion: reduce) { .clk-banner { transition: none; transform: none; } }
+html[data-motion="reduced"] .clk-banner { transition: none; transform: none; }
+
+/* Settings > Dashboard time */
+.clk-radios { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; }
+.clk-radio { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); min-height: var(--control-h-sm, 28px); padding: 2px var(--space-1); font-size: var(--text-sm); color: var(--fg); cursor: pointer; }
+.clk-radio input[type="radio"] { margin: 0; accent-color: var(--accent); }
+.clk-radio input[type="radio"]:checked { cursor: default; }
+.clk-radio .clk-radio-h { color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.clk-radio.is-off { color: var(--fg-disabled); cursor: not-allowed; }
+.clk-radio .clk-zone { width: auto; flex: 0 1 260px; max-width: 260px; min-width: 0; }

@@ -14,6 +14,7 @@ function ensureStateDefaults(s) {
   if (!Array.isArray(s.bin.notes)) s.bin.notes = [];
   s.view            = s.view            || 'today';
   if (String(s.view).startsWith('board:')) s.view = 'home';   // boards were retired (migration 080)
+  if (typeof viewAlias === 'function') s.view = viewAlias(s.view);   // the old Review pages are Home's tabs
   s.viewMode        = s.viewMode        || 'list';
   s.sortBy          = s.sortBy          || 'date';
   s.groupBy         = s.groupBy         || 'auto';
@@ -26,7 +27,7 @@ function ensureStateDefaults(s) {
   s.completionLog   = s.completionLog   || {};   // { taskId: [ts, ts, ...] }
   s.customOrder     = s.customOrder     || {};   // { viewKey: [taskId, ...] }
   s.calCache        = s.calCache        || { fetched: 0, events: [], err: null };
-  s.calMonth        = s.calMonth        || (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; })();
+  s.calMonth        = s.calMonth        || (() => { try { return Clock.today().slice(0, 7); } catch (e) { return ''; } })();   // '' at first load (before 07-core-clock.js): the views fill it in
   s.weekBarOffset   = s.weekBarOffset   || 0;
   // Countdowns are user data (first one = topbar headline). A fresh install
   // starts with none; existing state keeps whatever it already has.
@@ -46,6 +47,7 @@ function ensureStateDefaults(s) {
   s.people          = s.people          || [];
   s.peopleNotes     = s.peopleNotes     || {};
   s.peopleEmailCache = s.peopleEmailCache || {};
+  if (!s.daynotes || typeof s.daynotes !== 'object' || Array.isArray(s.daynotes)) s.daynotes = {};   // Home's Daily note: {'YYYY-MM-DD': {md, updatedAt}} (12-home-daynotes.js)
   s._lastSave       = s._lastSave       || 0;
   // streams / quickTemplates are optional: absent means the generic defaults
   // (see 00-core-constants.js). Rebuild the STREAMS/TEMPLATES lookups.

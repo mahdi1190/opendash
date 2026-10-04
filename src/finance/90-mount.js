@@ -84,6 +84,8 @@
     section: () => F.section,
     sectionLabel: () => (SECTIONS.find(s => s[0] === F.section) || [])[1] || '',
     setSection: (id) => setSection(id),
+    // Select a merchant (the bar's chip clears it): Home's Payday & safe to spend opens a bill in Recurring with it.
+    setMerchant: (m) => { m = typeof m === 'string' ? m : ''; if (m !== F.merchant) setMerchant(m); },
   };
   // @c3 The shell's pure helpers, for tests/finance-shell.test.mjs and the console (not an API for other modules).
   window.FinanceView._shell = {

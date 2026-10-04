@@ -40,11 +40,16 @@ export function sampleState() {
   };
 }
 
-/** A fresh data dir with config + the sample state. */
-export function makeDataDir(state = sampleState()) {
+/**
+ * A fresh data dir with config + the sample state. The page "observed" the
+ * computer on London time just now (time.json), so the server's "today" is
+ * TODAY whatever this machine's TZ is; observedZone: null leaves no time.json.
+ */
+export function makeDataDir(state = sampleState(), { observedZone = 'Europe/London' } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'actions-test-'));
   mkdirSync(join(dir, 'state'), { recursive: true });
   writeFileSync(join(dir, 'config.json'), JSON.stringify({ userName: 'Test', timezone: 'Europe/London', weekStart: 'Mon' }));
+  if (observedZone) writeFileSync(join(dir, 'time.json'), JSON.stringify({ version: 1, system: { zone: observedZone, at: new Date().toISOString() }, changes: [] }));
   writeFileSync(join(dir, 'state', 'dashboard-state.json'), JSON.stringify(state));
   mkdirSync(join(dir, 'calendar'), { recursive: true });
   writeFileSync(join(dir, 'calendar', 'calendar.json'), JSON.stringify({ fetchedAt: new Date().toISOString(), events: [

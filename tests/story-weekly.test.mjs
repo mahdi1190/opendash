@@ -294,9 +294,9 @@ test('page: titles, names and stream labels are escaped in the renderers', () =>
   }
 });
 
-test('entry: the first visit to Review > Week each week opens the story once; "page" never does', async () => {
+test('entry: the first visit to Home > Week each week opens the story once; "page" never does', async () => {
   const opened = [];
-  const base = { storyOpen: (k, o) => opened.push([k, o]), storyIsOpen: () => false, _wkRange: () => ({ from: '2026-09-28' }), state: { view: 'review:week', reviews: [] }, setTimeout: (f) => f() };
+  const base = { storyOpen: (k, o) => opened.push([k, o]), storyIsOpen: () => false, _wkRange: () => ({ from: '2026-09-28' }), state: { view: 'home:week', reviews: [] }, setTimeout: (f) => f() };
   const p1 = loadPage(Object.assign({ APP_CONFIG: { brief: { story: {} } } }, base));
   p1.api.storyWeekOnEnter(); p1.api.storyWeekOnEnter();
   assert.deepEqual(opened, [['week', { autoplay: false }]]);
@@ -305,7 +305,7 @@ test('entry: the first visit to Review > Week each week opens the story once; "p
   assert.equal(opened.length, 1);
   assert.equal(p2.api.storyWeekPrefs().weekOpen, 'page');
   // already saved this week: no story
-  const p3 = loadPage(Object.assign({ APP_CONFIG: {} }, base, { state: { view: 'review:week', reviews: [{ kind: 'week', date: '2026-09-28' }] } }));
+  const p3 = loadPage(Object.assign({ APP_CONFIG: {} }, base, { state: { view: 'home:week', reviews: [{ kind: 'week', date: '2026-09-28' }] } }));
   p3.api.storyWeekOnEnter();
   assert.equal(opened.length, 1);
   // the weekly prompt: plays at once over the Week page
@@ -313,5 +313,5 @@ test('entry: the first visit to Review > Week each week opens the story once; "p
   const p4 = loadPage(Object.assign({ APP_CONFIG: {}, setView: (v) => views.push(v) }, base, { state: { view: 'home', reviews: [] } }));
   p4.api.storyWeekFromPrompt();
   assert.deepEqual(opened.at(-1), ['week', { autoplay: true }]);
-  assert.deepEqual(views, ['review:week']);
+  assert.deepEqual(views, ['home:week']);
 });

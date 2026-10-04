@@ -2,11 +2,12 @@
 // Email areas (owner: Calendar/Email), so an assistant or MCP client can do
 // what the Calendar section and Email triage do. Added to OPS in ops.mjs.
 //
-//   task.schedule          [schedule_task]            put a task on a day and (optionally) a time,
-//                                                     with a planned length: what dragging a task
-//                                                     onto the calendar does
+//   task.schedule          [schedule_task]            MOVES THE DEADLINE: a due day and (optionally)
+//                                                     a due time, with an estimate. Time-blocking
+//                                                     without moving it is task.plan (ops-tasks.mjs)
 //   event.annotate         [annotate_event]           your notes on a calendar event, mark it
-//                                                     important, link/unlink tasks to it
+//                                                     important, link/unlink tasks to it, mark it
+//                                                     wrapped up (after the meeting: handled)
 //   calendar.update        [update_calendar]          rename or recolour one of the Google
 //                                                     calendars in the dashboard (display only)
 //   email.triage           [triage_email]             mark an email thread handled (a task was
@@ -41,13 +42,25 @@ function meta(ctx, id) {
 }
 function tidyMeta(ctx, id) {
   const m = ctx.s.eventMeta && ctx.s.eventMeta[id];
-  if (m && !m.notes && !(m.tasks && m.tasks.length) && m.important === undefined) delete ctx.s.eventMeta[id];
+  if (m && !m.notes && !(m.tasks && m.tasks.length) && m.important === undefined && !m.origin && !m.wrapped) delete ctx.s.eventMeta[id];
 }
+// Who made an event (the suggestions engine's own blocks: origin.kind 'block' etc.). Google cannot
+// carry a private marker through the connector, so the dashboard keeps it here.
+const ORIGIN_KINDS = Object.freeze(['block', 'prep', 'travel', 'lunch', 'rest', 'habit']);
+const ORIGIN_SCHEMA = {
+  type: ['object', 'null'], additionalProperties: false, required: ['kind'],
+  properties: {
+    kind: { type: 'string', enum: ORIGIN_KINDS },
+    rule: { type: 'string', maxLength: 40, pattern: '^[a-z0-9][a-z0-9-]{0,39}$' },
+    taskId: S.taskId,
+  },
+  description: "the dashboard made this event (a focus block, prep...): {kind, rule?, taskId?}; null clears it",
+};
 
 export const CALENDAR_OPS = [
   {
     name: 'task.schedule', tool: 'schedule_task',
-    description: "Put a task on a day and, optionally, a time slot (it then shows as a planned block in the calendar's week and day views). 'date' null removes the date (and the time). 'time' null keeps it on the day without a time. 'minutes' is how long you plan to spend (default: the task's estimate, else 30). Use list_calendar first to find a free slot.",
+    description: "MOVES THE DEADLINE: sets the task's due date (dueDate) and due time (dueTime), and 'minutes' becomes its estimate. To time-block work without changing the deadline, use plan_task with date + time + minutes instead (a planned slot). 'date' null removes the due date (and the time). 'time' null keeps it due on the day without a time. Use list_calendar first to find a free slot.",
     schema: obj({
       id: S.taskId,
       date: { type: ['string', 'null'], pattern: '^\\d{4}-\\d{2}-\\d{2}$', formatHint: 'YYYY-MM-DD', description: 'ISO date, or null for no date' },
@@ -86,7 +99,7 @@ export const CALENDAR_OPS = [
   },
   {
     name: 'event.annotate', tool: 'annotate_event',
-    description: "Your own notes on a Google Calendar event (agenda, prep), whether it is important (shown prominently), and which tasks belong to it. This only changes the dashboard: the Google event itself is never edited. notes:null clears the notes; important:null goes back to automatic. To make a task FROM an event: create_task with ref:'t1', then annotate_event with linkTasks:['$t1'] in the same batch.",
+    description: "Your own notes on a Google Calendar event (agenda, prep), whether it is important (shown prominently), and which tasks belong to it. This only changes the dashboard: the Google event itself is never edited. notes:null clears the notes; important:null goes back to automatic; wrapped:true marks a meeting that is over as wrapped up (its notes and follow-ups are handled). To make a task FROM an event: create_task with ref:'t1', then annotate_event with linkTasks:['$t1'] in the same batch.",
     schema: obj({
       eventId: S.eventId,
       notes: { type: ['string', 'null'], maxLength: 4000, description: 'replaces the notes (null clears them)' },
@@ -94,7 +107,9 @@ export const CALENDAR_OPS = [
       important: { type: ['boolean', 'null'], description: 'true = highlight it; false = never; null = automatic' },
       linkTasks: { type: 'array', items: S.taskId, maxItems: 20, description: 'task ids to link to the event' },
       unlinkTasks: { type: 'array', items: S.taskId, maxItems: 20, description: 'task ids to unlink' },
-    }, ['eventId'], { minProperties: 2, minPropertiesMessage: 'annotate_event needs notes, appendNotes, important, linkTasks or unlinkTasks' }),
+      origin: ORIGIN_SCHEMA,
+      wrapped: { type: ['boolean', 'null'], description: 'true = the meeting is wrapped up (notes and follow-ups handled; After meetings stops offering it); false or null = not yet' },
+    }, ['eventId'], { minProperties: 2, minPropertiesMessage: 'annotate_event needs notes, appendNotes, important, linkTasks, unlinkTasks, origin or wrapped' }),
     run(ctx, p) {
       if (!EVENT_ID_RE.test(p.eventId)) throw new ActionError('BAD_VALUE', 'eventId is not a valid event id (use one from list_calendar)', { field: 'eventId' });
       if (p.notes !== undefined && p.appendNotes !== undefined) throw new ActionError('INVALID_PARAMS', 'give notes or appendNotes, not both', { field: 'appendNotes' });
@@ -106,6 +121,11 @@ export const CALENDAR_OPS = [
         let to = p.notes === null ? null : p.notes !== undefined ? cleanText(p.notes, 4000) : [from, cleanText(p.appendNotes, 2000)].filter(Boolean).join('\n');
         if (!to) to = null;
         if (to !== from) { if (to) m.notes = to; else delete m.notes; ch.push(echange(id, 'notes', from && truncate(from, 80), to && truncate(to, 80))); }
+      }
+      if (p.wrapped !== undefined) {
+        // Stored only as true; false / null remove it (the entry is then pruned when empty).
+        const from = m.wrapped === true;
+        if (from !== (p.wrapped === true)) { if (p.wrapped === true) m.wrapped = true; else delete m.wrapped; ch.push(echange(id, 'wrapped', from, p.wrapped === true)); }
       }
       if (p.important !== undefined) {
         const from = m.important ?? null;
@@ -122,6 +142,19 @@ export const CALENDAR_OPS = [
         if (at >= 0) { tasks.splice(at, 1); ch.push(echange(id, 'unlinked task', rid, null)); }
       }
       if (tasks.length) m.tasks = tasks; else delete m.tasks;
+      if (p.origin !== undefined) {
+        const from = m.origin || null;
+        let to = null;
+        if (p.origin) {
+          to = { kind: p.origin.kind };
+          if (p.origin.rule) to.rule = p.origin.rule;
+          if (p.origin.taskId) to.taskId = ctx.task(p.origin.taskId, 'origin.taskId').id;
+        }
+        if (JSON.stringify(from) !== JSON.stringify(to)) {
+          if (to) m.origin = to; else delete m.origin;
+          ch.push(echange(id, 'origin', from && from.kind, to && to.kind));
+        }
+      }
       tidyMeta(ctx, id);
       return { summary: ch.length ? `Update the event's ${[...new Set(ch.map(c => c.field))].join(', ')}` : 'No change to the event', changes: ch };
     },

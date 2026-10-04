@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pageClockSource } from './fixtures/page-clock.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -30,7 +31,8 @@ function storyEngine({ obOpen = false, onboardedAt = null, items = [] } = {}) {
     async function _bfPost(url, body) { env.posts.push([url, body.kind]); return {}; }
     function registerCommand() {}
   `;
-  const src = read('src/app/79-story-core.js') + '\n' + read('src/app/79-story-engine.js');   // in build order
+  // in build order; the page's Clock first (the engine asks it for the hour and weekday, travel spec P11)
+  const src = pageClockSource() + '\n;\n' + read('src/app/79-story-core.js') + '\n' + read('src/app/79-story-engine.js');
   const storyPrefetchDue = new Function('env', `${prelude}\n${src}\nreturn storyPrefetchDue;`)(env);
   return { storyPrefetchDue, env };
 }

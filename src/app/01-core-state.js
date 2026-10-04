@@ -45,6 +45,9 @@ const UI_STATE_KEYS = [
   'lastReviewPrompt', '_lastBackup', 'taskViewPrefs', 'calPrefs', 'peopleView',
   'openItemsIn', 'itemHero', 'paneSizes',
   'homeUI',   // Home: which Focus cards are expanded (12-home.js)
+  'suggestStats',   // Suggestions: local counts (68-suggest-*.js), never sent anywhere
+  'achievements',   // Achievements: the unlocks (78-achievements.js); never an undo step
+  'sidebarLists',   // Sidebar Streams / Tags / People: sort and how many show (15-nav-order.js); the custom order is data (sidebarOrder)
 ];
 const BOOKKEEPING_KEYS = ['_lastSave', '_saveCount', '_localDirty'];
 const _NON_DATA_KEYS = new Set([...UI_STATE_KEYS, ...BOOKKEEPING_KEYS]);
@@ -136,8 +139,8 @@ function redo() {
 function resetUndoHistory() { _undoStack.length = 0; _redoStack.length = 0; _prevSnapshot = _dataSnapshot(); }
 
 function backupFilename() {
-  const d = new Date();
-  return `opendash-backup-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}.json`;
+  const d = Clock.parts(Clock.now(), Clock.home());   // a machine artefact: named in home time
+  return `opendash-backup-${d.iso}-${String(d.h).padStart(2,'0')}${String(d.mi).padStart(2,'0')}.json`;
 }
 function downloadBackup(silent) {
   const json = JSON.stringify(typeof _stateForPersist === 'function' ? _stateForPersist() : state, null, 2);
@@ -170,7 +173,7 @@ function importBackup(file) {
       const data = JSON.parse(e.target.result);
       if (typeof data !== 'object' || !data || Array.isArray(data)) throw new Error('Not a JSON object');
       if (!Array.isArray(data.custom)) throw new Error('This file has no task list, so it is not an OpenDash backup.');
-      const when = data._lastSave ? new Date(data._lastSave).toLocaleString() : 'an unknown date';
+      const when = data._lastSave ? new Date(data._lastSave).toLocaleString(undefined, { timeZone: Clock.zone() }) : 'an unknown date';
       if (!confirm(`Replace your current OpenDash data with this backup?\n\nFile: ${file.name}\nBackup from ${when}: ${data.custom.length} tasks (you have ${state.custom.length} now).\nThis will overwrite any unsaved local changes.`)) return;
       for (const k of RETIRED_STATE_KEYS) delete data[k];
       if (data.bin && Array.isArray(data.bin.tasks)) data.bin.tasks = data.bin.tasks.filter(t => !(t && t.kind === 'board'));

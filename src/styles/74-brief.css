@@ -21,15 +21,13 @@
   position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
   background: linear-gradient(172deg, var(--sky1) 0%, var(--sky2) 55%, var(--sky3) 100%);
 }
-.bf-sky[data-tod="dawn"] { --sky1: #c9d6ff; --sky2: #f7cfd9; --sky3: #ffe0bf; }
-.bf-sky[data-tod="morning"] { --sky1: #bcdcff; --sky2: #e1efff; --sky3: #fff4df; }
-.bf-sky[data-tod="day"] { --sky1: #a9d3ff; --sky2: #d6ebff; --sky3: #f3faff; }
-.bf-sky[data-tod="dusk"] { --sky1: #5b4db8; --sky2: #c76c93; --sky3: #f29a6c; }   /* deep enough for white text */
-.bf-sky[data-tod="evening"] { --sky1: #232a63; --sky2: #4b3f8d; --sky3: #c77a92; }
-.bf-sky[data-tod="night"] { --sky1: #070d26; --sky2: #111b42; --sky3: #1f2c58; }
-[data-theme="dark"] .bf-sky[data-tod="dawn"] { --sky1: #2a3266; --sky2: #6b4a72; --sky3: #a8705f; }
-[data-theme="dark"] .bf-sky[data-tod="morning"] { --sky1: #17345e; --sky2: #24507f; --sky3: #4f6787; }
-[data-theme="dark"] .bf-sky[data-tod="day"] { --sky1: #123a6b; --sky2: #1f5490; --sky3: #3e6c9c; }
+/* The stops are the shared --sky-<tod>-1..3 tokens (76-scenes.css; dark values there too): the travel scenes use them. */
+.bf-sky[data-tod="dawn"] { --sky1: var(--sky-dawn-1); --sky2: var(--sky-dawn-2); --sky3: var(--sky-dawn-3); }
+.bf-sky[data-tod="morning"] { --sky1: var(--sky-morning-1); --sky2: var(--sky-morning-2); --sky3: var(--sky-morning-3); }
+.bf-sky[data-tod="day"] { --sky1: var(--sky-day-1); --sky2: var(--sky-day-2); --sky3: var(--sky-day-3); }
+.bf-sky[data-tod="dusk"] { --sky1: var(--sky-dusk-1); --sky2: var(--sky-dusk-2); --sky3: var(--sky-dusk-3); }   /* deep enough for white text */
+.bf-sky[data-tod="evening"] { --sky1: var(--sky-evening-1); --sky2: var(--sky-evening-2); --sky3: var(--sky-evening-3); }
+.bf-sky[data-tod="night"] { --sky1: var(--sky-night-1); --sky2: var(--sky-night-2); --sky3: var(--sky-night-3); }
 /* weather tints: an overlay, never a filter (filters would re-raster every frame) */
 .bf-sky::after { content: ""; position: absolute; inset: 0; background: transparent; }
 .bf-sky[data-cond="cloudy"]::after, .bf-sky[data-cond="fog"]::after { background: linear-gradient(180deg, rgba(120, 132, 150, 0.38), rgba(150, 160, 175, 0.18)); }

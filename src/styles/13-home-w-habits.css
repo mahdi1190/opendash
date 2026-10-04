@@ -1,0 +1,214 @@
+/* Home widget "habits" (Habits & routines): its styles.
+   OWNER: the "habits" widget builder (WIDGETS_CATALOGUE.md 3.12). JS: 12-home-w-habits.js.
+   Loaded after 13-home-core.css and 13-home-platform.css. Every rule is scoped to the
+   widget's root class .hab. Sizes from the design tokens; scenes use the --scene-* tokens
+   through animSceneHtml. Motion: once per entry (.is-entering, homeGrowEntering) and on the
+   user's own tick (.is-ticked, .is-up); none with reduced motion. */
+.hab { container: hab / inline-size; }
+.hab .card-h .hab-add { margin-left: 0; }
+.hab .card-h .hab-add .i { width: 14px; height: 14px; }
+.hab .card-h .n { margin-left: 2px; }
+
+/* ----- S: today's habits as large toggle pills ----- */
+.hab-pills { display: flex; flex-direction: column; gap: 6px; }
+.hab-pw { position: relative; display: flex; align-items: stretch; min-width: 0; }
+.hab-pill {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px;
+  padding: 6px 14px 6px 9px; border-radius: var(--radius-full); border: 1px solid var(--border);
+  background: var(--surface); color: var(--fg); font: inherit; font-size: var(--text-sm);
+  font-weight: var(--weight-medium); text-align: left; cursor: pointer; position: relative;
+  transition: background-color var(--m-fast, 120ms) var(--m-ease-out, ease-out), border-color var(--m-fast, 120ms) var(--m-ease-out, ease-out), transform var(--m-fast, 120ms) var(--m-ease-out, ease-out);
+}
+.hab-pill:hover { background: var(--bg-muted); border-color: var(--border-strong); }
+.hab-pill:active:not([aria-disabled="true"]) { transform: scale(0.985); }
+.hab-pill:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hab-ck { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: none; color: var(--fg-subtle); transition: background-color var(--m-fast, 120ms) ease, color var(--m-fast, 120ms) ease; }
+.hab-ck .i { width: 22px; height: 22px; }
+.hab-pill:hover:not([aria-disabled="true"]) .hab-ck { color: var(--success); }
+.hab-pill.is-done { background: var(--success-soft); border-color: color-mix(in oklab, var(--success) 38%, transparent); cursor: default; }
+.hab-pill.is-done .hab-ck { background: var(--success); color: var(--fg-on-accent); }
+.hab-pill.is-done .hab-ck .i { width: 15px; height: 15px; }
+.hab-pill.is-skipped { background: var(--bg-subtle); color: var(--fg-muted); border-style: dashed; cursor: default; }
+.hab-pill.is-skipped .hab-ck .i { width: 16px; height: 16px; }
+.hab-pt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hab-sn { display: inline-flex; align-items: center; gap: 2px; flex: none; color: var(--fg); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; transition: opacity var(--m-fast, 120ms) ease; }
+.hab-sn .i { width: 14px; height: 14px; color: var(--sw-orange); }
+.hab-sn b { font-weight: inherit; min-width: 1ch; display: inline-block; line-height: 1.2; }
+.hab-sn.is-zero { color: var(--fg-subtle); font-weight: var(--weight-medium); }
+.hab-sn.is-zero .i { color: var(--fg-disabled); }
+/* Skip: at the pill's end on hover or keyboard focus (it covers the streak while shown). */
+.hab-pw .hab-skip { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); opacity: 0; pointer-events: none; transition: opacity var(--m-fast, 120ms) ease; background: var(--surface); }
+.hab-pw:is(:hover, :focus-within) .hab-skip { opacity: 1; pointer-events: auto; }
+.hab-pw:is(:hover, :focus-within):has(.hab-skip) .hab-pill .hab-sn { opacity: 0; }
+@media (hover: none) { .hab-pw .hab-skip { display: none; } .hab-pw:has(.hab-skip) .hab-pill .hab-sn { opacity: 1; } }
+.hab-more { align-self: flex-start; margin-top: 6px; border: 0; background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-xs); cursor: pointer; padding: 4px 6px; border-radius: var(--radius-sm); }
+.hab-more:hover { background: var(--bg-muted); color: var(--fg); }
+.hab-more:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* Nothing due today (S): what comes next. */
+.hab-none { display: flex; gap: 10px; align-items: flex-start; padding: 2px 0 8px; }
+.hab-none > .i { width: 18px; height: 18px; color: var(--success); flex: none; margin-top: 1px; }
+.hab-none b { display: block; font-size: var(--text-sm); color: var(--fg); font-weight: var(--weight-medium); }
+.hab-none span { font-size: var(--text-xs); color: var(--fg-subtle); }
+.hab-next { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.hab-nx-b { width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; background: none; border-radius: var(--radius-sm); font: inherit; color: var(--fg); cursor: pointer; text-align: left; min-width: 0; }
+.hab-nx-b:hover { background: var(--bg-muted); }
+.hab-nx-b:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hab-nx-b .hab-t { flex: 1 1 auto; }
+.hab-nx-d { flex: none; font-size: var(--text-xs); color: var(--fg-subtle); }
+.hab-nx[aria-current="true"] .hab-nx-b { background: var(--accent-soft); cursor: default; }
+
+/* ----- the tick (M and L) ----- */
+.hab-tk { width: 30px; height: 30px; border-radius: 50%; border: 0; padding: 0; background: none; display: grid; place-items: center; color: var(--fg-subtle); cursor: pointer; flex: none; transition: background-color var(--m-fast, 120ms) ease, color var(--m-fast, 120ms) ease; }
+.hab-tk .i { width: 24px; height: 24px; }
+.hab-tk:hover:not([aria-disabled="true"]) { color: var(--success); background: var(--success-soft); }
+.hab-tk:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hab-tk.is-done { background: var(--success); color: var(--fg-on-accent); cursor: default; }
+.hab-tk.is-done .i { width: 16px; height: 16px; }
+.hab-tk.is-skipped { color: var(--fg-muted); background: var(--bg-muted); cursor: default; }
+.hab-tk.is-skipped .i { width: 16px; height: 16px; }
+.hab-tk[aria-disabled="true"]:not(.is-done):not(.is-skipped) { color: var(--fg-disabled); cursor: default; }
+.hab-t { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.hab-sub { font-size: var(--text-xs); color: var(--fg-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.hab-nm { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.hab-skip { color: var(--fg-subtle); }
+.hab-skip .i { width: 14px; height: 14px; }
+.hab-skip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ----- M: a row per habit ----- */
+.hab-rows { list-style: none; margin: 0 calc(-1 * var(--space-2)); padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.hab-row {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto 28px; grid-template-areas: "tk nm dots st sk";
+  align-items: center; column-gap: 10px; row-gap: 6px; padding: 6px var(--space-2); border-radius: var(--radius-md); cursor: pointer;
+  transition: background-color var(--m-fast, 120ms) ease;
+}
+.hab-row > .hab-tk { grid-area: tk; }
+.hab-row > .hab-nm { grid-area: nm; }
+.hab-row > .hab-dots { grid-area: dots; }
+.hab-row > .hab-st { grid-area: st; }
+.hab-row > .hab-skip, .hab-row > .hab-skip-ph { grid-area: sk; }
+.hab-row:hover { background: var(--bg-muted); }
+.hab-row:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hab-row[aria-current="true"] { background: var(--accent-soft); cursor: default; }
+.hab-row .hab-skip { opacity: 0; transition: opacity var(--m-fast, 120ms) ease; }
+.hab-row:is(:hover, :focus-within) .hab-skip { opacity: 1; }
+@media (hover: none) { .hab-row .hab-skip { opacity: 1; } }
+.hab-st { display: flex; flex-direction: column; align-items: flex-end; min-width: 46px; line-height: 1.2; }
+.hab-st small { font-size: var(--text-2xs); color: var(--fg-subtle); white-space: nowrap; }
+
+/* The dots: one per day (a ring = today; hollow = missed; dashed = skipped; tinted = a period already done). */
+.hab-dots { display: grid; grid-template-columns: repeat(var(--n, 14), minmax(3px, 9px)); gap: 3px; align-items: center; justify-content: end; width: calc(var(--n, 14) * 12px); max-width: 42cqi; }
+.hab-dots > i, .hab-heat > i { display: block; aspect-ratio: 1; border-radius: 50%; background: var(--bg-emphasis); box-sizing: border-box; }
+.hab :is(.hab-dots, .hab-heat) > i.c-done { background: var(--success); }
+.hab :is(.hab-dots, .hab-heat) > i.c-extra { background: color-mix(in oklab, var(--success) 55%, transparent); }
+.hab :is(.hab-dots, .hab-heat) > i.c-cover { background: color-mix(in oklab, var(--success) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--success) 35%, transparent); }
+.hab :is(.hab-dots, .hab-heat) > i.c-skipped { background: transparent; border: 1.5px dashed var(--fg-subtle); }
+.hab :is(.hab-dots, .hab-heat) > i.c-skipcover { background: var(--bg-muted); border: 1px dashed var(--border-strong); }
+.hab :is(.hab-dots, .hab-heat) > i.c-missed { background: transparent; box-shadow: inset 0 0 0 1.5px var(--border-strong); }
+.hab :is(.hab-dots, .hab-heat) > i.c-lapse { background: transparent; box-shadow: inset 0 0 0 1px var(--border); }
+.hab :is(.hab-dots, .hab-heat) > i.c-due { background: transparent; box-shadow: inset 0 0 0 2px var(--accent); }
+.hab :is(.hab-dots, .hab-heat) > i.c-open { background: transparent; box-shadow: inset 0 0 0 1px var(--border-strong); }
+.hab :is(.hab-dots, .hab-heat) > i.c-off { background: var(--border); transform: scale(0.45); }
+.hab :is(.hab-dots, .hab-heat) > i.c-before { background: var(--bg-muted); opacity: 0.55; }
+.hab :is(.hab-dots, .hab-heat) > i.c-future { background: transparent; }
+
+/* ----- L: a card per habit with an 8-week heatmap ----- */
+.hab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: var(--space-3); }
+.hab-card {
+  display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 10px 12px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-lg); background: var(--surface); cursor: pointer;
+  transition: border-color var(--m-fast, 120ms) ease, background-color var(--m-fast, 120ms) ease;
+}
+.hab-card:hover { border-color: var(--border-strong); }
+.hab-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hab-card[aria-current="true"] { border-color: color-mix(in oklab, var(--accent) 55%, transparent); background: var(--accent-soft); cursor: default; }
+.hab-ch { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hab-ch .hab-nm { flex: 1 1 auto; }
+.hab-ch .hab-skip { opacity: 0; transition: opacity var(--m-fast, 120ms) ease; flex: none; }
+.hab-card:is(:hover, :focus-within) .hab-ch .hab-skip { opacity: 1; }
+@media (hover: none) { .hab-ch .hab-skip { opacity: 1; } }
+.hab-scene { flex: none; display: inline-flex; }
+.hab-cb { display: flex; align-items: flex-start; gap: 16px; min-width: 0; }
+.hab-heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 11px); grid-auto-columns: 11px; gap: 3px; flex: none; }
+.hab-heat > i { border-radius: 3px; aspect-ratio: auto; }
+/* The numbers beside the heatmap: "15 streak", "16 best", "89% last 30 days" (number first). */
+.hab-kv { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; padding-top: 2px; }
+.hab-kv > div { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.hab-kv dt { order: 1; font-size: var(--text-xs); color: var(--fg-subtle); white-space: nowrap; }
+.hab-kv dd { margin: 0; font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--fg); line-height: 1.2; }
+.hab-kv .is-streak dd { font-size: var(--text-lg); }
+.hab-kv .hab-sn .i { width: 15px; height: 15px; align-self: center; }
+.hab-cs { font-size: var(--text-xs); color: var(--fg-subtle); }
+
+/* ----- all done today ----- */
+.hab-alldone {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 6px 10px; border-radius: var(--radius-md);
+  background: var(--success-soft); color: var(--success-ink); font-size: var(--text-sm); font-weight: var(--weight-medium); position: relative;
+}
+.hab-m .hab-alldone, .hab-l .hab-alldone { margin: 0 0 8px; }
+.hab-ad-i { display: inline-flex; }
+.hab-ad-i .i { width: 16px; height: 16px; }
+.hab-ad-scene { margin-left: auto; display: inline-flex; }
+
+/* ----- no habits yet, and the new-habit row ----- */
+.hab-empty { display: flex; gap: 12px; align-items: center; }
+.hab-empty-s { flex: none; display: inline-flex; }
+.hab-empty h4 { margin: 0 0 2px; font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--fg); }
+.hab-empty p { margin: 0; font-size: var(--text-xs); color: var(--fg-subtle); line-height: 1.5; }
+.hab-new { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.hab-new .input { flex: 1 1 150px; min-width: 0; }
+.hab-new .hab-new-open .i { width: 14px; height: 14px; }
+.hab-quick { color: var(--success); }
+.hab-quick:hover { color: var(--success-ink); background: var(--success-soft); }
+.hab-hint { flex-basis: 100%; margin: 0; font-size: var(--text-2xs); color: var(--fg-subtle); }
+.hab-others { list-style: none; margin: 10px 0 0; padding: 8px 0 0; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 2px; }
+.hab-other { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.hab-ot { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 0; background: none; border-radius: var(--radius-sm); font: inherit; color: var(--fg); cursor: pointer; text-align: left; }
+.hab-ot > .i { width: 14px; height: 14px; color: var(--fg-subtle); flex: none; }
+.hab-ot .hab-t { flex: 1 1 auto; }
+.hab-ot .hab-sub { flex: none; }
+.hab-ot:hover { background: var(--bg-muted); }
+.hab-ot:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hab-other[aria-current="true"] .hab-ot { background: var(--accent-soft); cursor: default; }
+
+/* ----- narrow (a phone, a narrow column): the dots go under the name ----- */
+@container hab (max-width: 460px) {
+  .hab-row { grid-template-columns: 30px minmax(0, 1fr) auto 28px; grid-template-areas: "tk nm st sk" ". dots dots dots"; }
+  .hab-row > .hab-dots { width: auto; max-width: none; justify-content: start; }
+}
+@container hab (max-width: 300px) {
+  .hab-new .hab-new-open span { display: none; }
+}
+
+/* ----- motion: once per entry ----- */
+.hab.is-entering .hab-pw { animation: hab-pill-in 380ms var(--m-ease-out, ease-out) both; animation-delay: calc(var(--i, 0) * 50ms + 60ms - var(--grow-el, 0ms)); }
+.hab.is-entering .hab-dots > i { animation: hab-dot-in 340ms var(--m-ease-out, ease-out) both; animation-delay: calc(var(--i, 0) * 22ms + 90ms - var(--grow-el, 0ms)); }
+.hab.is-entering .hab-heat > i { animation: hab-dot-in 340ms var(--m-ease-out, ease-out) both; animation-delay: calc(var(--c, 0) * 45ms + 90ms - var(--grow-el, 0ms)); }
+.hab.is-entering .hab-dots > i.c-off { animation-name: hab-off-in; }
+@keyframes hab-pill-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes hab-dot-in { from { opacity: 0; transform: scale(0); } }
+@keyframes hab-off-in { from { opacity: 0; transform: scale(0); } to { transform: scale(0.45); } }
+
+/* ----- motion: the user's own tick ----- */
+.hab-pill.is-ticked { animation: hab-glow 900ms ease-out 1; }
+.hab-pill.is-ticked .hab-ck, .hab-tk.is-ticked { animation: hab-pop 440ms var(--m-ease-out, ease-out) 1; }
+@keyframes hab-pop { 0% { transform: scale(0.55); } 55% { transform: scale(1.18); } 100% { transform: none; } }
+@keyframes hab-glow { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--success) 45%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+.hab-sn b.is-up { position: relative; display: inline-grid; overflow: hidden; vertical-align: bottom; }
+.hab-sn b.is-up > span { grid-area: 1 / 1; }
+.hab-sn b.is-up > .o { animation: hab-roll-out 520ms var(--m-ease-out, ease-out) 120ms both; }
+.hab-sn b.is-up > .n { animation: hab-roll-in 520ms var(--m-ease-out, ease-out) 120ms both; }
+.hab-sn.is-up .i { animation: hab-flame 700ms var(--m-ease-out, ease-out) 1; transform-origin: 50% 90%; }
+@keyframes hab-roll-out { from { transform: none; opacity: 1; } to { transform: translateY(-100%); opacity: 0; } }
+@keyframes hab-roll-in { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes hab-flame { 0% { transform: scale(1); } 40% { transform: scale(1.35) rotate(-6deg); } 100% { transform: none; } }
+.hab-alldone.is-celebrating { animation: hab-ad 1s var(--m-ease-out, ease-out) 1; }
+@keyframes hab-ad { 0% { transform: scale(0.96); box-shadow: 0 0 0 0 color-mix(in oklab, var(--success) 50%, transparent); } 55% { transform: scale(1.02); } 100% { transform: none; box-shadow: 0 0 0 14px transparent; } }
+
+/* ----- reduced motion: nothing moves ----- */
+@media (prefers-reduced-motion: reduce) {
+  .hab *, .hab *::before, .hab *::after { animation: none !important; transition: none !important; }
+  .hab-sn b.is-up > .o { display: none; }
+}
+html[data-motion="reduced"] .hab *, html[data-motion="reduced"] .hab *::before, html[data-motion="reduced"] .hab *::after { animation: none !important; transition: none !important; }
+html[data-motion="reduced"] .hab-sn b.is-up > .o { display: none; }

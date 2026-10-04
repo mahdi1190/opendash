@@ -3,6 +3,7 @@
 // GET /api/events (server/routes/actions.mjs) is a Server-Sent Events stream:
 //   event: hello   data: {version}                      on connect
 //   event: state   data: {version, source, client, summary}   on every change
+//   event: calendar data: {op, ids, removed, calendarId, client, at}  a change written to Google Calendar
 //   : ping                                              every 25 s
 //
 // Changes come from two places:
@@ -109,6 +110,12 @@ export function createLiveSync({ store, journal, log = () => {} }) {
     });
   }
 
+  /** Any other named event for open tabs, e.g. 'calendar' (lib/calendar-write.mjs changed Google Calendar). */
+  function emit(event, data) {
+    if (!/^[a-z][a-z-]{1,30}$/.test(String(event)) || event === 'state' || event === 'hello') return;
+    for (const res of clients) send(res, event, data);
+  }
+
   function close() {
     unsubscribe();
     clearTimeout(timer); clearInterval(poller); clearInterval(pinger);
@@ -117,5 +124,5 @@ export function createLiveSync({ store, journal, log = () => {} }) {
     clients.clear();
   }
 
-  return { start, attach, close, broadcast, checkFile, get clientCount() { return clients.size; }, get version() { return lastVersion; } };
+  return { start, attach, close, broadcast, emit, checkFile, get clientCount() { return clients.size; }, get version() { return lastVersion; } };
 }

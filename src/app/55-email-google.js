@@ -76,10 +76,10 @@ let _emAccount = null;       // 'sourceId|accountId' shown, or null for every ma
 function _emDate(iso) {
   const t = Date.parse(iso || '');
   if (!Number.isFinite(t)) return '';
-  const d = new Date(t), L = APP_CONFIG.locale || undefined;
-  if (fmtDate(d) === todayStr()) return d.toLocaleTimeString(L, { hour: '2-digit', minute: '2-digit' });
-  if (Date.now() - t < 6 * 86400000) return d.toLocaleDateString(L, { weekday: 'short' });
-  return d.toLocaleDateString(L, { day: 'numeric', month: 'short' });
+  const d = new Date(t), L = APP_CONFIG.locale || undefined, timeZone = Clock.zone();
+  if (Clock.parts(t).iso === todayStr()) return d.toLocaleTimeString(L, { hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), timeZone });
+  if (Date.now() - t < 6 * 86400000) return d.toLocaleDateString(L, { weekday: 'short', timeZone });
+  return d.toLocaleDateString(L, { day: 'numeric', month: 'short', timeZone });
 }
 
 /** Recent threads with a person (any of their addresses), newest first. For People. */
@@ -170,7 +170,7 @@ function acceptSuggestion(sugId, quiet) {
   if (!sug) return null;
   const email = emailById(sug.emailId);
   let due = null;
-  if (typeof sug.dueHint === 'number') { const d = new Date(); d.setDate(d.getDate() + sug.dueHint); due = fmtDate(d); }
+  if (typeof sug.dueHint === 'number') due = Clock.addDays(todayStr(), sug.dueHint);
   const tags = [...new Set(['email', ...(sug.tags || [])])].filter(x => x !== 'from-email');
   const detail = [sug.detail, email ? `From: ${email.sender || _emSenderName(email)}\nSubject: ${email.subject}\n${_emLink(email)}` : ''].filter(Boolean).join('\n\n');
   const id = addCustomTask(sug.title, due, sug.priority, tags, sug.stream, 'none', { people: sug.peopleIds || [], detail });

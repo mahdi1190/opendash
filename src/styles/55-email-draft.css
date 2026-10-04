@@ -1,0 +1,20 @@
+/* ============================================================
+   THE DRAFT EDITOR (window.GmailDraft.openEditor, 55-email-actions.js)
+   A normal dialog, prefilled: To / Cc chips, Subject, Message.
+   ============================================================ */
+.modal-b.gmd { display: flex; flex-direction: column; gap: var(--space-3); }
+.gmd-ctx { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--fg-subtle); min-width: 0; }
+.gmd-ctx span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gmd-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-height: 30px; }
+.gmd-chip { gap: 4px; max-width: 100%; padding-right: 2px; }
+.gmd-chip > span:not(.avatar) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.gmd-x { width: 20px; height: 20px; border-radius: 50%; flex: none; }
+.gmd-add.control { width: auto; max-width: 280px; }
+.gmd-body.control { min-height: 160px; resize: vertical; font-family: inherit; line-height: 1.5; }
+.gmd-count { align-self: flex-end; font-variant-numeric: tabular-nums; }
+.gmd-note { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: var(--text-xs); color: var(--fg-muted); line-height: 1.45; }
+.gmd-note .i { flex: none; margin-top: 1px; color: var(--success); }
+.gmd-err { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md);
+  background: var(--danger-soft, var(--bg-subtle)); color: var(--danger-ink, var(--danger)); font-size: var(--text-sm); }
+.gmd-err[hidden] { display: none; }
+.modal-f .btn-primary[aria-busy="true"] { cursor: progress; }

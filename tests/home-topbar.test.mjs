@@ -139,20 +139,21 @@ test('Focus: rules, order, snooze and streams; the page and the server agree', (
   const s = focusState(today);
   const ids = (st, limit) => focusTasks(st, today, limit).tasks.map(x => x.task.id);
   const pageIds = (st, limit) => { const box = pageBox(st, today); return plain(box.homeFocusTasks(limit)).map(x => x.i.id); };
-  // overdue 400+, today 300, doing 250, pinned 220, planned 200, p1 120, soon 80
-  assert.deepEqual(ids(s, 9), ['a', 'b', 'l', 'k', 'g', 'c', 'f', 'd']);
+  // Pinned first; then overdue 400+, today 300, doing 250, planned 200, p1 120, soon 80
+  assert.deepEqual(ids(s, 9), ['k', 'a', 'b', 'l', 'g', 'c', 'f', 'd']);
   assert.deepEqual(pageIds(s, 9), ids(s, 9));
   const r = focusTasks(s, today);
   assert.equal(r.tasks.length, 5); assert.equal(r.candidates, 8);
-  assert.deepEqual(r.tasks[0].why, ['overdue']);
+  assert.ok(r.tasks[0].why.includes('pinned'));
+  assert.deepEqual(r.tasks[1].why, ['overdue']);
   // Settings: streams, rules, count.
   const tuned = { ...s, home: { focus: { streams: ['work'], p1: false, dueSoonDays: 0, count: 3 } } };
-  assert.deepEqual(ids(tuned), ['a', 'b', 'l']);
-  assert.deepEqual(ids(tuned, 9), ['a', 'b', 'l', 'k', 'g']);
+  assert.deepEqual(ids(tuned), ['k', 'a', 'b']);
+  assert.deepEqual(ids(tuned, 9), ['k', 'a', 'b', 'l', 'g']);
   assert.deepEqual(pageIds(tuned, 9), ids(tuned, 9));
-  // Manual order first, then by score; snoozed hidden until tomorrow.
+  // Pinned, then the manual order, then by score; snoozed hidden until tomorrow.
   const ordered = { ...s, home: { focusOrder: ['d', 'c'], snoozed: { a: today, b: addDays(today, -1) } } };
-  assert.deepEqual(ids(ordered, 9), ['d', 'c', 'b', 'l', 'k', 'g', 'f']);
+  assert.deepEqual(ids(ordered, 9), ['k', 'd', 'c', 'b', 'l', 'g', 'f']);
   assert.deepEqual(pageIds(ordered, 9), ids(ordered, 9));
   assert.equal(focusTasks(ordered, today).hidden, 1);
   assert.equal(focusConfig({ focus: { count: 99, dueSoonDays: -4 } }).count, 9);

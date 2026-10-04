@@ -13,8 +13,8 @@ function _tWeekStart() {
   return ws.startsWith('sun') ? 0 : ws.startsWith('sat') ? 6 : 1;
 }
 function _isoPlus(n, from) {
-  const base = from ? new Date(from + 'T00:00:00') : new Date();
-  base.setDate(base.getDate() + n);
+  const base = new Date((from || todayStr()) + 'T00:00:00');
+  base.setDate(base.getDate() + n); // clock-ok: wall date
   return fmtDate(base);
 }
 function _dayLabel(iso, opts) {
@@ -29,7 +29,7 @@ function isArchived(item) {
   if (!ts) return false;
   return (Date.now() - ts) > (state.archiveDays || 7) * 86400000;
 }
-function _closedOn(item) { const ts = closedAt(item); return ts ? fmtDate(new Date(ts)) : null; }
+function _closedOn(item) { const ts = closedAt(item); return ts ? Clock.parts(Number(ts)).iso : null; }
 
 /** Does the task belong to the view, ignoring whether it is open or done? */
 function inViewScope(item, view, today) {
@@ -302,7 +302,7 @@ function todayProgress() {
   for (const [id, log] of Object.entries(state.completionLog || {})) {
     const it = getItem(id);
     if (!it || statusOf(id) === 'done' || !Array.isArray(log)) continue;
-    if (log.some(ts => fmtDate(new Date(ts)) === today)) done++;
+    if (log.some(ts => Clock.parts(Number(ts)).iso === today)) done++;
   }
   return { done, total: done + open, open, overdue, doing };
 }

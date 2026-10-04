@@ -1,0 +1,149 @@
+/* ============================================================
+   ANIMATION WIRING (v2.2 wave 2): where the daily picks play in the page
+   (src/app/78-anim-wire.js). Transform and opacity only; nothing here runs
+   under reduced motion (html[data-motion="reduced"] and the OS setting stop
+   it), and every scene pauses while the tab is hidden (html.anim-paused).
+   ============================================================ */
+
+/* ---------- the opening: once per entry, over the page, never clickable ---------- */
+/* :not(.anim-scene): an opening item's own art carries the slot class "ap-opening" too
+   (animItemHtml), and must stay a tile in the gallery and on Home (fixed in wave 5) */
+.ap-opening:not(.anim-scene) {
+  position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; pointer-events: none;
+  animation: ap-open-veil var(--ap-open-ms, 1700ms) var(--m-ease-in-out, ease-in-out) both;
+}
+.ap-opening .anim-scene { box-shadow: 0 18px 50px -18px rgba(20, 24, 50, 0.35); animation: ap-open-art var(--ap-open-ms, 1700ms) cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes ap-open-veil { 0% { opacity: 0; } 15%, 72% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes ap-open-art { 0% { transform: scale(0.82) translateY(10px); } 30%, 75% { transform: none; } 100% { transform: scale(1.04) translateY(-6px); } }
+html[data-motion="reduced"] .ap-opening:not(.anim-scene) { display: none; }
+@media (prefers-reduced-motion: reduce) { .ap-opening:not(.anim-scene) { display: none; } }
+
+/* ---------- page transitions: the section View Transition's entrance (data-ap-page-tx) ---------- */
+html[data-ap-page-tx="slide"]::view-transition-new(main-view) { animation: ap-vt-slide var(--m-base, 220ms) var(--m-ease-out, ease-out) 70ms both; }
+html[data-ap-page-tx="rise"]::view-transition-new(main-view) { animation: ap-vt-rise var(--m-base, 220ms) var(--m-ease-out, ease-out) 70ms both; }
+html[data-ap-page-tx="slide"] .m-view-enter { animation-name: ap-vt-slide; }
+html[data-ap-page-tx="rise"] .m-view-enter { animation-name: ap-vt-rise; }
+@keyframes ap-vt-slide { from { opacity: 0; transform: translateX(14px); } }
+@keyframes ap-vt-rise { from { opacity: 0; transform: translateY(10px); } }
+html[data-motion="reduced"][data-ap-page-tx]::view-transition-new(main-view) { animation: none; }
+
+/* ---------- story beat transitions (.story[data-ap-tx]) ---------- */
+.story[data-ap-tx="fade"]:not(.st-still) .st-scene .st-frame:is(.is-enter, .is-hold) { animation: ap-st-fade calc(0.5s / var(--st-speed, 1)) var(--st-ease, ease-out) both; }
+.story[data-ap-tx="slide"]:not(.st-still) .st-scene .st-frame:is(.is-enter, .is-hold) { animation: ap-st-slide calc(0.6s / var(--st-speed, 1)) var(--st-ease, ease-out) both; }
+.story[data-ap-tx="iris"]:not(.st-still) .st-scene .st-frame:is(.is-enter, .is-hold) { animation: ap-st-iris calc(0.7s / var(--st-speed, 1)) var(--st-ease, ease-out) both; }
+@keyframes ap-st-fade { from { opacity: 0; } }
+@keyframes ap-st-slide { from { opacity: 0; transform: translateX(calc(var(--dir, 1) * 5vw)); } }
+@keyframes ap-st-iris { from { opacity: 0; transform: scale(0.9); } 60% { opacity: 1; } }
+
+/* ---------- the story while it loads ---------- */
+.story .ap-loading { position: absolute; inset: auto 0 14vh 0; display: grid; place-items: center; z-index: 3; pointer-events: none; opacity: 0.9; }
+.story:not(.is-loading) .ap-loading { display: none; }
+
+/* ---------- the sky accent (Home's hero ambient, the briefs): small, quiet, top right ---------- */
+.bf-sky .ap-sky-accent { position: absolute; top: 8%; right: 5%; opacity: 0.85; pointer-events: none; }
+.bf-sky .ap-sky-accent .anim-scene { background: transparent; box-shadow: none; }
+.hh-amb .ap-sky-accent { top: 6%; right: 3%; opacity: 0.6; }
+.hh-amb .ap-sky-accent .anim-scene { --as-size: var(--scene-md, 40px); }
+/* The accent is the moon (or the sun low on the horizon): the generic one steps aside. */
+.bf-sky[data-ap-sky="moon"] .sky-moon, .bf-sky[data-ap-sky="sun"] .sky-sun { display: none; }
+
+/* ---------- empty states: today's art, the section's icon as a badge ---------- */
+.empty-state .es-icon.es-art { width: auto; height: auto; background: none; border-radius: 0; position: relative; }
+.empty-state .es-art .es-badge { position: absolute; right: -6px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface); color: var(--fg-subtle); box-shadow: 0 0 0 1px var(--border); }
+.empty-state .es-art .es-badge .i { width: 13px; height: 13px; }
+
+/* ---------- "New in 2.2: animations" (78-anim-new.js): a one-time card, bottom-right ---------- */
+.anew-card {
+  position: fixed; right: 20px; bottom: 20px; z-index: 8000; width: min(420px, calc(100vw - 40px));
+  display: flex; gap: 12px; padding: 14px 40px 14px 14px; border-radius: 12px;
+  background: var(--surface, var(--bg)); border: 1px solid var(--border); box-shadow: 0 18px 50px -18px rgba(20, 24, 50, 0.35);
+  animation: anew-in var(--m-slow, 240ms) var(--m-ease-out, ease-out) both;
+}
+.anew-art { flex: none; width: 64px; }
+.anew-art .anim-scene { width: 64px; height: 64px; }
+.anew-body { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.anew-h { font-weight: 600; }
+.anew-t { font-size: 13px; color: var(--muted, inherit); }
+.anew-warn { color: var(--warning, inherit); }
+.anew-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.anew-x { position: absolute; top: 8px; right: 8px; }
+@keyframes anew-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* ---------- full-viewport scenes (item.full: 1600 x 900, sliced to fill; animItemHtml size 'fill') ---------- */
+.anim-scene.ap-full { background: color-mix(in oklab, var(--c, var(--accent)) 14%, var(--surface)); overflow: hidden; }
+.anim-scene.ap-full svg { width: 100%; height: 100%; overflow: hidden; }
+.anim-scene.sz-fill { --as-size: 100%; width: 100%; height: 100%; border-radius: 0; }
+/* the opening's fallback landscape (78-anim-wire.js animOpeningFallbackHtml): its own motion, no pack needed */
+.anim-scene .x-awf-drift { --an: ap-awf-drift; --ad: 50s; }
+.anim-scene .x-awf-par { --an: ap-awf-drift; --ad: 30s; }
+.anim-scene .x-awf-glide { --an: ap-awf-glide; --ad: 16s; --ae: linear; }
+.anim-scene .x-awf-glow { --an: ap-awf-glow; --ad: 6s; }
+.anim-scene .x-awf-sway { --an: ap-awf-sway; --ad: 6s; transform-box: view-box; }
+@keyframes ap-awf-drift { 0%, 100% { transform: translateX(-70px); } 50% { transform: translateX(70px); } }
+@keyframes ap-awf-glide { 0% { transform: translate(-260px, 20px); opacity: 0; } 12%, 85% { opacity: 1; } 100% { transform: translate(300px, -40px); opacity: 0; } }
+@keyframes ap-awf-glow { 0%, 100% { opacity: 0.8; transform: scale(0.97); } 50% { opacity: 1; transform: scale(1.04); } }
+@keyframes ap-awf-sway { 0%, 100% { transform: rotate(-1deg); } 50% { transform: rotate(1deg); } }
+
+/* ---------- "Welcome to <county>" later in the day (78-anim-uk.js): a short full-screen moment ---------- */
+.ap-cine { position: fixed; inset: 0; z-index: 9000; overflow: hidden; cursor: pointer; color: #fff;
+  animation: ap-cine-life var(--ap-open-ms, 3400ms) cubic-bezier(0.4, 0, 0.2, 1) both; }
+.ap-cine > .anim-scene { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; box-shadow: none; filter: none !important; background-image: none !important; transform-origin: 50% 62%;
+  animation: ap-cine-kb calc(var(--ap-open-ms, 3400ms) + 400ms) cubic-bezier(0.3, 0, 0.4, 1) both; }
+.ap-cine > .anim-scene svg { filter: none; }
+.ap-cine::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to top, rgb(8 10 24 / 0.62), rgb(8 10 24 / 0.16) 34%, transparent 52%), radial-gradient(60% 50% at 50% 46%, rgb(8 10 24 / 0.22), transparent 70%); }
+.ap-cine-t { position: absolute; z-index: 1; left: clamp(24px, 5vw, 88px); bottom: clamp(26px, 7vh, 80px); right: 24px; display: grid; gap: 6px; text-shadow: 0 2px 18px rgb(0 0 0 / 0.45); }
+.ap-cine-over { font-size: clamp(0.95rem, 1.5vw, 1.3rem); font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.85; animation: ap-cine-up 700ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both; }
+.ap-cine-place { font-size: clamp(2.2rem, 5.2vw, 4.8rem); font-weight: 700; letter-spacing: -0.035em; line-height: 1; animation: ap-cine-up 800ms cubic-bezier(0.22, 1, 0.36, 1) 320ms both; }
+.ap-cine-origin { font-size: clamp(1.05rem, 1.8vw, 1.5rem); font-weight: 600; opacity: 0.92; animation: ap-cine-up 800ms cubic-bezier(0.22, 1, 0.36, 1) 520ms both; }
+.ap-cine-skip { font-size: 0.8rem; opacity: 0.7; animation: ap-cine-up 600ms ease 900ms both; }
+@keyframes ap-cine-life { 0% { opacity: 0; } 12%, 84% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes ap-cine-kb { from { transform: scale(1.1); } to { transform: none; } }
+@keyframes ap-cine-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+html[data-motion="reduced"] .ap-cine, html.anim-off .ap-cine { display: none; }
+@media (prefers-reduced-motion: reduce) { .ap-cine { display: none; } }
+
+/* ---------- bigger moments (v2.2): celebrations, boss battles and money moments fill more of the screen ----------
+   Still brief and never clickable (pointer-events: none); the level trims them (Subtle) or lets them linger (Playful). */
+.dl-pop.is-app > .anim-scene { --as-size: clamp(96px, 12vmin, 150px); }
+.dl-moment.is-app { max-width: min(640px, calc(100vw - 32px)); min-width: min(440px, calc(100vw - 32px)); padding: 18px 34px 18px 18px; gap: 22px; border-radius: 28px; bottom: 40px; }
+.dl-moment.is-app > .anim-scene { --as-size: clamp(112px, 14vmin, 168px); }
+.dl-moment.is-app .dl-m-over { font-size: 13px; }
+.dl-moment.is-app .dl-m-h { font-size: clamp(26px, 2.6vw, 38px); }
+.dl-moment.is-app .dl-m-sub { font-size: 15px; }
+/* a wide burst of the moment's colour behind the card */
+.dl-moment.is-app::before { content: ""; position: absolute; left: 50%; top: 50%; width: min(1100px, 140vw); height: 520px; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--c) 34%, transparent), transparent); transform: translate(-50%, -50%) scale(0.4); opacity: 0;
+  animation: ap-burst var(--dl-dur, 3400ms) cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes ap-burst { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } 18% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 70% { opacity: 0.7; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15); } }
+.ap-moment.is-center .anim-scene { --as-size: clamp(180px, 32vmin, 320px); }
+.ap-moment.is-center::before { content: ""; position: absolute; left: 50%; top: 50%; width: 170vmin; height: 110vmin; z-index: -1; pointer-events: none; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) 22%, transparent), transparent); transform: translate(-50%, -50%); }
+.ap-moment.is-center .ap-moment-cap { font-size: clamp(1.1rem, 1.8vw, 1.5rem); padding: 8px 20px; }
+.ap-moment.ap-under .anim-scene, .ap-moment.ap-halo .anim-scene { --as-size: clamp(96px, 12vmin, 140px); }
+html[data-motion-level="subtle"] .dl-moment.is-app::before, html[data-motion-level="subtle"] .ap-moment.is-center::before { display: none; }
+
+/* ---------- Animation of the day (12-home-w-animday.js): the art fills the card, the words over it ---------- */
+.hwa.hwa-full { position: relative; display: block; min-height: 100%; height: 100%; padding: 0; overflow: hidden; }
+.hwa-full .hwa-art { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; }
+.hwa-full .hwa-art > .anim-scene { width: 100%; height: 100%; border-radius: 0; --as-size: 100%; }
+.hwa-full .hwa-art > .anim-scene:not(.ap-full) svg { width: 70%; height: 70%; }
+.hwa-full .hwa-t { position: absolute; left: 0; right: 0; bottom: 0; padding: 28px 14px 12px; color: #fff; pointer-events: none;
+  background: linear-gradient(to top, rgb(8 10 24 / 0.66), rgb(8 10 24 / 0.3) 60%, transparent); text-shadow: 0 1px 8px rgb(0 0 0 / 0.4); }
+.hwa-full .hwa-t .subtle { color: rgb(255 255 255 / 0.82); }
+.hwa-full .hwa-foot { pointer-events: auto; }
+.hwa-full .hwa-foot .chip { background: rgb(255 255 255 / 0.18); color: #fff; border-color: transparent; }
+.hwa-full .hwa-foot .btn { color: #fff; }
+
+/* ---------- the gallery stage (78-anim-gallery.js): large; a full scene at 16:9 ---------- */
+.apg-stage .apg-stage-art .anim-scene { --as-size: clamp(160px, 22vw, 240px); }
+.apg-stage.is-full { flex-direction: column; align-items: stretch; padding: 0; overflow: hidden; }
+.apg-stage.is-full .apg-stage-art { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 62vh; }
+.apg-stage.is-full .apg-stage-art .anim-scene { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; --as-size: 100%; }
+.apg-stage.is-full .apg-stage-meta { padding: var(--space-3); }
+/* the one-time "New in 2.2" card: today's opening shown larger (a full scene as a landscape) */
+.anew-card .anew-art { width: 132px; }
+.anew-card .anew-art .anim-scene { width: 132px; height: 96px; --as-size: 96px; border-radius: 10px; }
+.anew-card .anew-art .anim-scene:not(.ap-full) svg { width: 76%; height: 76%; }
+/* gallery tiles: a full scene shows as a landscape across the tile, not a small square */
+.apg-item > .anim-scene.ap-full { width: 100%; height: auto; aspect-ratio: 16 / 9; --as-size: 100%; border-radius: var(--radius-md, 8px); }

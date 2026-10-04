@@ -1,0 +1,70 @@
+/* ============================================================
+   Home widget platform (12-home-platform.js). Owner: Home foundation (W0-A).
+   The Add widget gallery's filter, groups, "New" badges and Add another;
+   Hide amounts (.hg-amt); the one-click button states (homeAction);
+   the shared rows (homeRowKeys); the settings popover (homeSettingsMenu);
+   the suggestion slot (homeSuggestSlot). Loaded after 13-home-edit.css.
+   ============================================================ */
+
+/* ----- the gallery: a side column (filter + list) beside the preview ----- */
+.hgal-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); background: var(--bg-subtle); }
+.hgal-side .hgal-list { flex: 1; min-height: 0; border-right: 0; background: none; padding-top: var(--space-1); }
+.hgal-q { flex: none; margin: var(--space-3) var(--space-3) var(--space-1); width: auto; }
+.hgal-none { margin: 0; padding: var(--space-2) var(--space-4) var(--space-4); font-size: var(--text-xs); color: var(--fg-muted); }
+.hgal-gh.hgal-sg { padding: var(--space-2) var(--space-2) 2px; font-size: var(--text-2xs); font-weight: var(--weight-medium); letter-spacing: 0.02em; text-transform: none; color: var(--fg-muted); }
+.hgal-gh.hgal-top + .hgal-sg { padding-top: 0; }
+.hgal-gh[hidden], .hgal-item[hidden] { display: none; }
+.hgal-new {
+  padding: 1px 6px; border-radius: var(--radius-full); background: var(--accent-soft); color: var(--accent-ink);
+  font-size: var(--text-2xs); font-weight: var(--weight-semibold); letter-spacing: 0.02em;
+}
+.hgal-foot { flex-wrap: wrap; }
+.hgal-foot .hgal-note { flex: 1 1 220px; }
+@media (max-width: 700px) {
+  .hgal-side { border-right: 0; border-bottom: 1px solid var(--border); }
+  .hgal-side .hgal-list { border-bottom: 0; padding-top: 0; }
+  .hgal-q { margin: var(--space-2) var(--space-3) 0; }
+  .hgal-gh.hgal-sg { display: none; }
+  .hgal-item:has(.hgal-new) { grid-template-columns: 22px auto auto; }
+  .hgal-item .hgal-new { display: inline-block; }
+}
+
+/* ----- Hide amounts: money blurs until hovered or focused ----- */
+.hg-amt.is-hidden { filter: blur(6px); border-radius: var(--radius-xs); cursor: default; transition: filter var(--m-fast) var(--m-ease-out); }
+.hg-amt.is-hidden:hover, .hg-amt.is-hidden:focus-visible { filter: none; }
+.hg-amt.is-hidden:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+@media (prefers-reduced-motion: reduce) { .hg-amt.is-hidden { transition: none; } }
+
+/* ----- one-click buttons (homeAction): busy, then done (a re-click does nothing) ----- */
+.hg-body .is-busy { cursor: progress; opacity: 0.7; }
+.hg-body [data-done="1"] { cursor: default; }
+.hg-body .btn.is-done { color: var(--success-ink); }
+
+/* ----- shared rows (homeRowKeys): one Tab stop each; secondary actions on hover and focus ----- */
+.hg-body [data-row] { outline: none; border-radius: var(--radius-md); }
+.hg-body [data-row]:focus-visible { box-shadow: var(--focus-ring); }
+.hg-body [data-row][aria-current="true"] { background: var(--accent-soft); cursor: default; }
+.hg-body [data-row] .hg-row-acts { opacity: 0; transition: opacity var(--m-fast) var(--m-ease-out); }
+.hg-body [data-row]:hover .hg-row-acts, .hg-body [data-row]:focus-within .hg-row-acts { opacity: 1; }
+@media (hover: none) { .hg-body [data-row] .hg-row-acts { opacity: 1; } }
+
+/* ----- the settings popover (homeSettingsMenu) ----- */
+.hg-set-pop { padding: var(--space-2) 0; }
+.hg-set-h { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-3) var(--space-2); font-size: var(--text-sm); }
+.hg-set-h .i { width: 15px; height: 15px; color: var(--fg-muted); }
+.hg-set-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-1-5) var(--space-3); }
+.hg-set-row .seg { flex: none; }
+.hg-set-row .input { width: 120px; flex: none; }
+.hg-set-l { display: flex; flex-direction: column; min-width: 0; font-size: var(--text-sm); }
+.hg-set-l small { font-size: var(--text-2xs); color: var(--fg-muted); line-height: 15px; }
+.hg-set-foot { padding: var(--space-2) var(--space-3) var(--space-1); font-size: var(--text-2xs); color: var(--fg-muted); border-top: 1px solid var(--border-subtle); margin-top: var(--space-1); }
+
+/* ----- a widget's settings gear outside Customise (homeSettingsButton) ----- */
+.hg-gear { color: var(--fg-subtle); }
+.hg-gear:hover { color: var(--fg); }
+/* In a gallery preview and while customising (the frame has its own settings button) it is not needed. */
+.hgal-w .hg-gear, .home.is-editing .hg-body .hg-gear { visibility: hidden; }
+
+/* ----- the suggestion slot at the foot of a widget (homeSuggestSlot) ----- */
+.hg-suggest { margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px dashed var(--border-subtle); }
+.hg-suggest:empty { display: none; }

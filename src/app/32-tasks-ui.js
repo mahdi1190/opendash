@@ -27,7 +27,7 @@ function buildMiniMonth(el, o) {
     const [y, m] = cur.split('-').map(Number);
     const first = new Date(y, m - 1, 1);
     const ws = _tWeekStart();
-    const lead = (first.getDay() - ws + 7) % 7;
+    const lead = (first.getDay() - ws + 7) % 7; // clock-ok: wall date
     const start = new Date(y, m - 1, 1 - lead);
     const counts = o.counts || {};
     let html = `<div class="mm-h"><button type="button" class="btn-icon btn-sm" data-mm="prev" aria-label="Previous month">${icon('chevron-left')}</button>`
@@ -35,11 +35,11 @@ function buildMiniMonth(el, o) {
       + `<button type="button" class="btn-icon btn-sm" data-mm="next" aria-label="Next month">${icon('chevron-right')}</button></div><div class="mm-g">`;
     for (let i = 0; i < 7; i++) html += `<span class="mm-wd">${esc(new Date(2024, 0, 7 + ws + i).toLocaleDateString(_locale(), { weekday: 'narrow' }))}</span>`;
     for (let i = 0; i < 42; i++) {
-      const d = new Date(start); d.setDate(start.getDate() + i);
-      if (i >= 35 && d.getMonth() !== m - 1) break;
+      const d = new Date(start); d.setDate(start.getDate() + i); // clock-ok: wall date
+      if (i >= 35 && d.getMonth() !== m - 1) break; // clock-ok: wall date
       const ds = fmtDate(d);
-      const cls = ['mm-d', d.getMonth() !== m - 1 ? 'out' : '', ds === today ? 'today' : '', ds === o.value ? 'sel' : '', ds < today ? 'past' : '', counts[ds] ? 'has' : ''].filter(Boolean).join(' ');
-      html += `<button type="button" class="${cls}" data-date="${ds}" title="${escAttr(d.toLocaleDateString(_locale(), { weekday: 'long', day: 'numeric', month: 'long' }) + (counts[ds] ? ` · ${counts[ds]} open` : ''))}">${d.getDate()}</button>`;
+      const cls = ['mm-d', d.getMonth() !== m - 1 ? 'out' : '', ds === today ? 'today' : '', ds === o.value ? 'sel' : '', ds < today ? 'past' : '', counts[ds] ? 'has' : ''].filter(Boolean).join(' '); // clock-ok: wall date
+      html += `<button type="button" class="${cls}" data-date="${ds}" title="${escAttr(d.toLocaleDateString(_locale(), { weekday: 'long', day: 'numeric', month: 'long' }) + (counts[ds] ? ` · ${counts[ds]} open` : ''))}">${d.getDate()}</button>`; // clock-ok: wall date
     }
     el.innerHTML = html + '</div>';
     el.querySelector('[data-mm="prev"]').onclick = (e) => { e.stopPropagation(); const d = new Date(y, m - 2, 1); cur = fmtDate(d).slice(0, 7); paint(); };
@@ -181,7 +181,7 @@ function openPeoplePicker(anchor, id) {
         const nice = r.name.replace(/[-_]+/g, ' ').replace(/\b\p{L}/gu, c => c.toUpperCase());
         state.people.push({ id: r.name, name: nice, kind: 'person', email: '', emails: [], role: '', aliases: [], streams: [], color: '#475569', createdAt: Date.now() });
         saveData();
-        toast(`Created ${nice}`, { kind: 'ok', icon: 'user-plus', action: { label: 'Open', run: () => setView('person:' + r.name) } });
+        toast(`Created ${nice}`, { kind: 'ok', icon: 'user-plus', action: { label: 'Open', run: () => openPerson(r.name) } });
       } else {
         const pid = ensurePersonByName(r.name);
         if (pid && !cur.includes(pid)) setOverride(id, 'people', [...cur, pid]); else saveData();

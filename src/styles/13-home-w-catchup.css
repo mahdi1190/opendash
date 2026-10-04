@@ -1,0 +1,166 @@
+/* Home widget "catchup" (Catch up): its styles.
+   OWNER: the "catchup" widget builder (WIDGETS_CATALOGUE.md 3.9). 12-home-w-catchup.js.
+   Loaded after 13-home-core.css and 13-home-platform.css. Every rule is scoped to the
+   widget (.hcu) or its two editors (.hcu-ed, in a dialog). Sizes from the design tokens
+   (scenes: the --scene-* tokens); reduced motion: nothing moves (the JS checks too). */
+
+/* ----- the card ----- */
+.hcu { container-type: inline-size; display: flex; flex-direction: column; min-height: 100%; }
+.hcu > .card-b { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: var(--space-1) var(--space-4) var(--space-4); }
+.hcu .hgl-h .hg-gear { margin-left: 2px; }
+
+/* ----- sections ----- */
+.hcu-sec + .hcu-sec { margin-top: var(--space-3); }
+.hcu-sec-h { display: flex; align-items: center; gap: var(--space-2); min-height: 30px; margin-bottom: 2px; }
+.hcu-ovl { font-size: 11px; line-height: 16px; font-weight: var(--weight-semibold); letter-spacing: var(--tracking-caps, 0.06em); text-transform: uppercase; color: var(--fg-subtle); white-space: nowrap; }
+.hcu-sec-n { font-size: var(--text-xs); color: var(--fg-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hcu-sec-h .spacer { flex: 1; }
+
+/* Move all to tomorrow (opens the editor) + its check (now, with Undo) */
+.hcu-all { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
+.hcu-all .btn { white-space: nowrap; }
+.hcu-all .hcu-ok { width: 28px; padding: 0; justify-content: center; }
+.hcu-all .hcu-ok .i { width: 14px; height: 14px; }
+
+/* ----- rows ----- */
+.hcu-list { list-style: none; margin: 0 calc(-1 * var(--space-2)); padding: 0; }
+.hcu-row {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+  column-gap: var(--space-1); padding: 0 var(--space-1) 0 0;
+}
+.hcu-list > .hcu-row + .hcu-row::before { content: ''; position: absolute; left: var(--space-2); right: var(--space-2); top: 0; border-top: 1px solid var(--border-subtle); }
+[data-theme="dark"] .hcu-list > .hcu-row + .hcu-row::before { border-top-color: var(--border); }
+.hcu-list > .hcu-row:hover::before, .hcu-list > .hcu-row:hover + .hcu-row::before,
+.hcu-row[aria-current="true"]::before, .hcu-row[aria-current="true"] + .hcu-row::before { opacity: 0; }
+.hcu-main {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; width: 100%;
+  padding: 7px var(--space-2); border: 0; background: none; font: inherit; text-align: left; color: inherit; cursor: pointer; border-radius: 10px;
+}
+.hcu-row[aria-current="true"] .hcu-main { cursor: default; }
+.hcu-t { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.hcu-t > .dot { flex: none; }
+.hcu-tt { font-size: 13px; line-height: 18px; font-weight: var(--weight-medium); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.hcu-s { display: block; max-width: 100%; font-size: 12px; line-height: 16px; color: var(--fg-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hcu-s q { quotes: '\201C' '\201D'; color: var(--fg-muted); }
+.hcu-late { font-weight: var(--weight-medium); color: var(--warning-ink); }
+.hcu-badge {
+  display: inline-flex; align-items: center; height: 16px; padding: 0 5px; border-radius: var(--radius-full);
+  background: var(--warning-soft); color: var(--warning-ink); font-size: var(--text-2xs); font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums; vertical-align: 1px;
+}
+.hcu-badge.is-stalled { background: var(--bg-muted); color: var(--fg-muted); }
+
+/* the row's own buttons: on hover and focus (always on touch); a plain button each */
+.hcu-acts { display: inline-flex; align-items: center; gap: 2px; }
+.hcu-act {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 28px; min-width: 28px; padding: 0 6px;
+  border: 0; border-radius: 7px; background: none; color: var(--fg-muted); font: inherit; font-size: 12px; font-weight: var(--weight-medium); cursor: pointer;
+  transition: background-color var(--m-fast, 120ms) ease-out, color var(--m-fast, 120ms) ease-out;
+}
+.hcu-act .i { width: 15px; height: 15px; }
+.hcu-act:hover { background: var(--bg-muted); color: var(--fg); }
+.hcu-act:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hcu-act[data-act="done"]:hover { color: var(--success-ink); background: var(--success-soft); }
+.hcu-act[data-act="letgo"]:hover { color: var(--danger-ink); background: var(--danger-soft); }
+.hcu-act[aria-pressed="true"] { color: var(--accent-ink, var(--accent)); background: var(--accent-soft); cursor: default; }
+/* Pick a day: the date field, as one more icon button */
+.hcu-acts .ui-datef.hcu-pick { height: 28px; width: 28px; padding: 0; gap: 0; justify-content: center; border: 0; box-shadow: none; background: none; border-radius: 7px; position: relative; color: var(--fg-muted); }
+.hcu-acts .ui-datef.hcu-pick:hover { background: var(--bg-muted); color: var(--fg); }
+.hcu-acts .ui-datef.hcu-pick:focus-within { box-shadow: var(--focus-ring); }
+.hcu-acts .ui-datef.hcu-pick > .i { width: 15px; height: 15px; color: currentColor; pointer-events: none; }
+.hcu-acts .ui-datef.hcu-pick .ui-datef-btn { position: absolute; inset: 0; width: 100%; height: 100%; font-size: 0; color: transparent; border-radius: 7px; }
+.hcu-acts .ui-datef.hcu-pick .ui-datef-x { display: none; }
+
+/* L: the "why" chips and the decisions (second line) */
+.hcu-why, .hcu-decide { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 0 var(--space-2) 8px; margin-top: -3px; }
+.hcu-why-c { height: 20px; border-style: dashed; border-color: var(--border-strong, var(--border)); color: var(--fg-muted); }
+button.hcu-why-c.on, button.hcu-why-c[aria-checked="true"] { border-style: solid; border-color: transparent; background: var(--warning-soft); color: var(--warning-ink); }
+.hcu-why-c:focus-visible, .hcu-dec:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hcu-dec { height: 24px; padding: 0 8px; gap: 5px; color: var(--fg-muted); max-width: none; }
+.hcu-dec .i { width: 13px; height: 13px; }
+.hcu-row.is-slip .hcu-why { opacity: 0.55; transition: opacity var(--m-fast, 120ms) ease-out; }
+.hcu-row.is-slip:hover .hcu-why, .hcu-row.is-slip:focus-within .hcu-why, .hcu-row.is-slip .hcu-why:has(.on) { opacity: 1; }
+@media (hover: none) { .hcu-row.is-slip .hcu-why { opacity: 1; } }
+
+/* "+N more" */
+.hcu-foot { padding-top: var(--space-2); }
+.hcu-more { margin-left: auto; height: 24px; padding: 0 6px; font-size: 12px; gap: 3px; }
+.hcu-more .i { width: 13px; height: 13px; }
+
+/* ----- S: the tile ----- */
+.hcu-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; flex: 1; justify-content: center; }
+.hcu-big { display: flex; align-items: baseline; gap: 8px; }
+.hcu-big .num { font-size: 34px; line-height: 38px; font-weight: var(--weight-semibold); letter-spacing: -0.03em; color: var(--warning-ink); font-variant-numeric: tabular-nums; }
+.hcu-big .lbl { font-size: 14px; font-weight: var(--weight-medium); color: var(--warning-ink); }
+.hcu-big.is-moving .num, .hcu-big.is-moving .lbl { color: var(--fg); }
+.hcu-sub, .hcu-also { font-size: 12px; color: var(--fg-muted); }
+.hcu-tile .hcu-all { margin-top: 2px; flex-wrap: wrap; }
+.hcu-top {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: calc(100% + 16px); margin: 0 -8px;
+  padding: 6px 8px; border: 0; background: none; font: inherit; text-align: left; color: inherit;
+}
+
+/* ----- All caught up (once, after the user cleared the last slipped task here) ----- */
+.hcu-caught {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); margin-bottom: var(--space-2);
+  border-radius: 12px; background: var(--success-soft);
+}
+.hcu-caught > div { display: flex; flex-direction: column; min-width: 0; }
+.hcu-caught b { font-size: 14px; font-weight: var(--weight-semibold); color: var(--success-ink); }
+.hcu-caught span { font-size: 12px; line-height: 17px; color: var(--fg-muted); }
+.hcu-caught .anim-scene { flex: none; }
+.hcu-caught-ic { width: var(--scene-sm, 38px); height: var(--scene-sm, 38px); flex: none; display: grid; place-items: center; border-radius: 10px; background: var(--surface); color: var(--success-ink); }
+.hcu--s .hcu-caught { flex-direction: column; align-items: flex-start; flex: 1; justify-content: center; margin-bottom: 0; }
+
+/* narrow cards (phones, a small column): the titles keep the width; the row's buttons get
+   a line of their own (always there on touch, on hover and focus with a mouse) and Move all
+   goes under the heading */
+@container (max-width: 420px) {
+  .hcu-row { grid-template-columns: minmax(0, 1fr); }
+  .hcu-acts { justify-content: flex-start; padding: 0 var(--space-1) 6px; margin-top: -4px; }
+  .hcu-act.has-text span { display: none; }
+  .hcu-sec-h { flex-wrap: wrap; row-gap: 6px; }
+  .hcu-sec-h .hcu-all { order: 3; flex-basis: 100%; }
+  .hcu-sec-h .hcu-all-main { flex: 1; justify-content: center; }
+  @media (hover: hover) {
+    .hcu-row:not(:hover):not(:focus-within) .hcu-acts { display: none; }
+  }
+}
+@container (max-width: 300px) {
+  .hcu-sec-n { display: none; }
+}
+
+/* ----- the editors (dialogs): Catch up (Move all) and Break it down ----- */
+.hcu-ed { display: flex; flex-direction: column; gap: var(--space-3); }
+.hcu-ed-intro { margin: 0; font-size: var(--text-sm); line-height: 1.45; }
+.hcu-ed-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.hcu-ed-l { width: 92px; flex: none; font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--fg); }
+.hcu-ed-l small { font-weight: normal; color: var(--fg-subtle); }
+.hcu-ed-days, .hcu-ed-why { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.hcu-ed-day { height: 32px; padding: 0 10px; gap: 6px; max-width: none; }
+.hcu-ed-day small { color: var(--fg-subtle); font-size: var(--text-2xs); }
+button.hcu-ed-day.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink, var(--accent)); cursor: default; }
+.hcu-ed-day.on small { color: inherit; }
+.hcu-ed-pick { height: 32px; width: 150px; }
+.hcu-ed-pick.on { border-color: var(--accent); background: var(--accent-soft); }
+.hcu-ed .sel-bar { position: static; padding: var(--space-1-5) var(--space-2); background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-bottom: 0; border-radius: var(--radius-md) var(--radius-md) 0 0; }
+.hcu-ed-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border-subtle); border-radius: 0 0 var(--radius-md) var(--radius-md); max-height: min(46vh, 380px); overflow: auto; }
+.hcu-ed-item { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-2); row-gap: 0; align-items: center; padding: 7px var(--space-3); }
+.hcu-ed-item + .hcu-ed-item { border-top: 1px solid var(--border-subtle); }
+.hcu-ed-item > .sel-cbx { grid-row: 1 / span 2; }
+.hcu-ed-item > .hcu-t, .hcu-ed-item > .hcu-s { grid-column: 2; }
+.hcu-ed-item.sel-done { opacity: 0.6; }
+.hcu-steps-h { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--bg-subtle); }
+.hcu-steps-b { display: flex; flex-direction: column; gap: var(--space-3); min-height: 80px; }
+.hcu-steps-wait { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-2); font-size: var(--text-sm); color: var(--fg-muted); }
+.hcu-steps-err { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--danger-soft); color: var(--danger-ink); font-size: var(--text-sm); }
+.hcu-steps-err .i { flex: none; margin-top: 2px; }
+.hcu-steps-acts { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.hcu-steps-list .hcu-ed-item { grid-template-columns: auto minmax(0, 1fr); }
+.hcu-steps-list .hcu-step { width: 100%; }
+@media (max-width: 520px) {
+  .hcu-ed-l { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hcu-act, .hcu-row.is-slip .hcu-why { transition: none; }
+}

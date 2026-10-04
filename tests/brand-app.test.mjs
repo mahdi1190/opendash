@@ -171,9 +171,10 @@ test('start-opendash.* are the launchers; start-dashboard.* only call them', () 
   assert.match(shimSh, /^#!\/bin\/sh\n/);
   assert.match(shimSh, /exec sh "\$here\/start-opendash\.sh" "\$@"/);
   assert.doesNotMatch(shimSh, /node /);
-  // The hidden start-up script prefers the new launcher and falls back to the old one.
-  const wsf = read('tools/start-hidden.wsf');
-  assert.ok(wsf.indexOf('start-opendash.bat') < wsf.indexOf('if (!fso.FileExists(bat)) bat = root + "\\\\start-dashboard.bat"'));
+});
+
+test('the hidden start-up script prefers the new launcher and falls back to the old one', () => {
+  assert.match(read('tools/start-hidden.mjs'), /BATS = Object\.freeze\(\['start-opendash\.bat', 'start-dashboard\.bat'\]\)/);
 });
 
 test('third-party credits: ECharts (Apache-2.0), Inter (OFL-1.1), Lucide (ISC), with their licence files', () => {

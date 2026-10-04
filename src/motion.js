@@ -23,8 +23,11 @@
 (function () {
   'use strict';
 
-  const PREF_KEY = 'dashboard-motion';   // 'reduced' | absent. Separate from STORAGE_KEY.
+  const PREF_KEY = 'dashboard-motion';   // legacy: 'reduced' | absent. Separate from STORAGE_KEY.
+  const LEVEL_KEY = 'dashboard-motion-level';   // 'off' | 'subtle' | 'standard' | 'playful' (per device)
+  const LAST_KEY = 'dashboard-motion-last';     // the level before Off (the Reduce motion switch toggles back to it)
   const D = { fast: 120, base: 180, slow: 240, slower: 320 };
+  const HAS_LOGIC = typeof motionResolveLevel === 'function';   // src/app/09-motion-logic.js
   const E = {
     out: 'cubic-bezier(0.22, 1, 0.36, 1)',
     outSoft: 'cubic-bezier(0.25, 0.8, 0.25, 1)',
@@ -34,27 +37,92 @@
   const mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
   /* ---------- preference ---------- */
-  function systemReduced() { return !!(mq && mq.matches); }
-  function userReduced() {
-    try { return localStorage.getItem(PREF_KEY) === 'reduced'; } catch (e) { return false; }
+  const OS_KEY = 'dashboard-motion-os-override';   // '1': animate even though the OS asks for reduced motion (per device)
+  /** The raw OS request (Windows: Settings > Accessibility > Visual effects > Animation effects off). */
+  function osReduced() { return !!(mq && mq.matches); }
+  function osOverride() { return _get(OS_KEY) === '1'; }
+  /** The OS request as this page honours it: the user can choose "Animate anyway". */
+  function systemReduced() { return osReduced() && !osOverride(); }
+  // "Animate anyway" also has to lift the stylesheets' own
+  // @media (prefers-reduced-motion: reduce) rules: they are switched to
+  // "not all" while the override holds and restored when it ends.
+  const _mediaOrig = new WeakMap();
+  function _patchRules(rules, lift) {
+    for (const r of Array.from(rules || [])) {
+      if (r.media && r.cssRules) {
+        const orig = _mediaOrig.has(r) ? _mediaOrig.get(r) : r.media.mediaText;
+        if (/prefers-reduced-motion\s*:\s*reduce/i.test(orig)) {
+          if (!_mediaOrig.has(r)) _mediaOrig.set(r, orig);
+          const want = lift ? 'not all' : orig;
+          if (r.media.mediaText !== want) { try { r.media.mediaText = want; } catch (e) { /* read-only rule */ } }
+        }
+      }
+      if (r.cssRules) _patchRules(r.cssRules, lift);
+    }
   }
-  function prefersReduced() { return systemReduced() || userReduced(); }
-  function applyAttr() {
-    document.documentElement.setAttribute('data-motion', prefersReduced() ? 'reduced' : 'full');
+  function applyMediaOverride() {
+    const lift = osReduced() && osOverride();
+    if (!lift && !_mediaPatched) return;
+    _mediaPatched = lift;
+    for (const sh of Array.from(document.styleSheets || [])) { try { _patchRules(sh.cssRules, lift); } catch (e) { /* cross-origin sheet */ } }
   }
-  function setReduced(on) {
-    try {
-      if (on) localStorage.setItem(PREF_KEY, 'reduced');
-      else localStorage.removeItem(PREF_KEY);
-    } catch (e) { /* storage blocked: the attribute still applies for this session */ }
+  let _mediaPatched = false;
+  function setOsOverride(on) {
+    _set(OS_KEY, on ? '1' : null);
+    if (on) _mediaPatched = true;
+    applyMediaOverride();
     applyAttr();
     syncToggle();
   }
+  function _get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function _set(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* storage blocked */ } }
+  let _sessionLevel = null;    // when storage is blocked, the choice still holds for this session
+  /** The chosen level (Settings > Animations > Intensity), ignoring the OS setting. */
+  function chosenLevel() {
+    const stored = _sessionLevel || _get(LEVEL_KEY);
+    if (HAS_LOGIC) return motionResolveLevel({ stored, legacy: _get(PREF_KEY) });
+    return stored || (_get(PREF_KEY) === 'reduced' ? 'off' : 'standard');
+  }
+  /** The effective level: 'reduced' when the OS asks for it, else the chosen one. */
+  function level() { return systemReduced() ? 'reduced' : chosenLevel(); }
+  function profile(l) {
+    if (HAS_LOGIC) return motionProfile(l || level());
+    return { name: 'standard', k: 1, dk: 1, sk: 1, cap: 6, budget: 400, loops: 6, move: true, fade: true, burst: 2, particles: 1 };
+  }
+  function userReduced() { return chosenLevel() === 'off'; }
+  function prefersReduced() { return systemReduced() || userReduced(); }
+  function applyAttr() {
+    const html = document.documentElement;
+    html.setAttribute('data-motion', prefersReduced() ? 'reduced' : 'full');
+    html.setAttribute('data-motion-level', level());
+  }
+  function setLevel(l) {
+    if (HAS_LOGIC ? !MOTION_LEVELS.includes(l) : !/^(off|subtle|standard|playful)$/.test(l)) return;
+    const prev = chosenLevel();
+    if (l === 'off' && prev !== 'off') _set(LAST_KEY, prev);
+    _sessionLevel = l;
+    _set(LEVEL_KEY, l);
+    _set(PREF_KEY, l === 'off' ? 'reduced' : null);   // older builds read the legacy switch
+    applyAttr();
+    syncToggle();
+  }
+  /** The Reduce motion switch: Off, or back to the level before Off. */
+  function setReduced(on) {
+    if (on) setLevel('off');
+    else setLevel(_get(LAST_KEY) && _get(LAST_KEY) !== 'off' ? _get(LAST_KEY) : 'standard');
+  }
 
-  /* ---------- tiny WAAPI wrapper ---------- */
+  /* ---------- tiny WAAPI wrapper (durations and delays scale with the level) ---------- */
   function animate(el, keyframes, opts) {
     if (!el || typeof el.animate !== 'function' || prefersReduced()) return null;
-    try { return el.animate(keyframes, opts); } catch (e) { return null; }
+    const k = profile().k || 1;
+    let o = opts;
+    if (k !== 1 && opts && typeof opts === 'object') {
+      o = Object.assign({}, opts);
+      if (typeof o.duration === 'number') o.duration = Math.round(o.duration * k);
+      if (typeof o.delay === 'number') o.delay = Math.round(o.delay * k);
+    }
+    try { return el.animate(keyframes, o); } catch (e) { return null; }
   }
 
   /* ---------- countUp ---------- */
@@ -112,7 +180,7 @@
     const vh = window.innerHeight || 900;
     const max = opts.max || 14;
     const step = opts.step != null ? opts.step : 22;
-    const distance = opts.distance != null ? opts.distance : 6;
+    const distance = (opts.distance != null ? opts.distance : 6) * (profile().dk || 0);
     const duration = opts.duration || D.slow;
     const picked = [];
     for (const el of items) {
@@ -155,6 +223,159 @@
     } catch (e) { update(); }
   }
 
+  /* ---------- navigation kinds (MOTION_SYSTEM §6: the Settings replay fix) ----------
+     setView() decides the kind (motionNavKind): 'page' runs the View Transition and the page
+     entrance; 'sub' (same section) re-renders with NO transition, and afterMain() animates only
+     the changing pane; 'same' never gets here (a no-op). renderMain() classifies every render
+     itself as well (motionRenderKind), so mode changes that bypass setView behave the same. */
+  let _navHint = null;          // {kind, dir} from navigate(), read by afterMain()
+  let _swapHint = null;         // {region, dir} from hint(): a period step (calendar) in the same view
+  function navigate(update, o) {
+    o = o || {};
+    _navHint = { kind: o.kind || 'page', dir: o.dir || 0, at: performance.now() };
+    if (o.kind === 'sub') { update(); return; }
+    viewTransition(update);
+  }
+  /** A same-view change that should still slide (calendar next / previous): call before render(). */
+  function hint(o) { _swapHint = o ? { region: o.region, dir: o.dir || 0, at: performance.now() } : null; }
+  function scrollTopIfScrolled(sc) {
+    sc = sc || document.getElementById('main');
+    if (sc && sc.scrollTop > 0) sc.scrollTo({ top: 0, behavior: prefersReduced() ? 'auto' : 'smooth' });
+  }
+
+  // The pane that changes with a sub-view, per section (first match wins). Everything outside it
+  // (nav lists, tab bars, toolbars, the rail) is chrome and never re-animates.
+  const SUB_REGIONS = ['[data-m-region="content"]', '.set-main', '.rv-body', '.ppl-panel', '.cal-body', '.files-body', '.tags-main'];
+  function _region(main, sel) {
+    if (sel) return main.querySelector(sel);
+    for (const s of SUB_REGIONS) { const el = main.querySelector(s); if (el) return el; }
+    return null;
+  }
+  /** The new pane arrives from the travel side (Standard: 12 px slide; Subtle: fade + 6 px; Reduced: 150 ms fade). */
+  function swapIn(el, dir) {
+    if (!el) return;
+    const q = profile();
+    if (systemReduced()) {        // Reduced: a short crossfade, no movement
+      try { el.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' }); } catch (e) { /* old engine */ }
+      return;
+    }
+    if (prefersReduced()) return;
+    const d = (q.sub === 'fade' ? 6 : 12) * (q.dk || 1);
+    const from = dir ? `translateX(${dir > 0 ? d : -d}px)` : `translateY(${Math.round(d / 2)}px)`;
+    animate(el, [{ opacity: 0, transform: from }, { opacity: 1, transform: 'none' }], { duration: D.slow, easing: E.out });
+  }
+
+  /* ---------- FLIP for keyed lists (task rows, board cards) ----------
+     beforeMain() measures every visible row by key before #main-body is rebuilt; afterMain()
+     measures again and glides the rows that moved (sort, group, filter, search, drag, insert,
+     remove), lets new rows enter, and leaves the rest alone (a plain save moves nothing). */
+  const FLIP_SEL = '.task[data-id], .task-group > h3';
+  let _flipBefore = null, _flipSkip = false, _flipKind = null, _titleBefore = null, _titleWas = null;   // the header title (as of the last render) only moves when its words change
+  function _flipKey(el) {
+    if (el.matches('.task[data-id]')) return 't:' + el.dataset.id;
+    return 'g:' + (el.textContent || '').trim().slice(0, 60);
+  }
+  function _flipMeasure(main) {
+    const out = {}, els = {};
+    const vh = window.innerHeight || 900;
+    const list = main.querySelectorAll(FLIP_SEL);
+    if (list.length > 400) return null;          // a huge list: no per-row motion
+    for (const el of list) {
+      if (el.closest('.m-ghost')) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width && !r.height) continue;
+      if (r.bottom < -40 || r.top > vh + 40) continue;
+      const k = _flipKey(el);
+      if (out[k]) continue;
+      out[k] = { top: r.top, left: r.left }; els[k] = el;
+    }
+    return { rects: out, els };
+  }
+  /** Called by renderMain() before it empties #main-body. kind: 'page' | 'sub' | null. */
+  function beforeMain(main, kind) {
+    _flipKind = kind;
+    _flipBefore = null;
+    if (!main || prefersReduced() || kind === 'page' || _flipSkip) return;
+    try { const m = _flipMeasure(main); _flipBefore = m && Object.keys(m.rects).length ? m.rects : null; } catch (e) { _flipBefore = null; }
+  }
+  function _runFlip(main, kind) {
+    const before = _flipBefore; _flipBefore = null;
+    if (!before || prefersReduced() || !HAS_LOGIC) return;
+    const m = _flipMeasure(main);
+    if (!m) return;
+    const plan = motionFlipPlan(before, m.rects, { nav: kind });
+    const q = profile();
+    for (const mv of plan.moves) {
+      const el = m.els[mv.key];
+      animate(el, [{ transform: `translate(${mv.dx}px, ${mv.dy}px)` }, { transform: 'none' }], { duration: D.slower, easing: E.out });
+    }
+    const n = plan.enters.length;
+    plan.enters.forEach((k, i) => {
+      const el = m.els[k];
+      const delay = (kind === 'sub' ? 0 : 110) + motionStaggerDelay(i, n, 'row', q);
+      animate(el, [{ opacity: 0, transform: `translateY(${Math.round(8 * (q.dk || 1))}px)` }, { opacity: 1, transform: 'none' }],
+        { duration: D.slow + 60, delay, easing: E.out, fill: 'backwards' });
+    });
+  }
+  /** Called by render() after everything is painted. */
+  function afterMain(main, kind) {
+    main = main || document.getElementById('main-body');
+    if (!main) return;
+    const nav = _navHint && performance.now() - _navHint.at < 1500 ? _navHint : null;
+    _navHint = null;
+    const swap = _swapHint && performance.now() - _swapHint.at < 1500 ? _swapHint : null;
+    _swapHint = null;
+    { const t = document.getElementById('view-title'); const was = _titleBefore; _titleBefore = t ? t.textContent : null; _titleWas = was; }
+    if (_flipSkip) { _flipBefore = null; return; }
+    if (kind === 'page') { _flipBefore = null; return; }
+    const rows = !!main.querySelector('.task[data-id], .task-view, .kanban');
+    if (kind === 'sub') {
+      const dir = nav ? nav.dir : 0;
+      const title = document.getElementById('view-title');
+      if (title && title.textContent !== _titleWas) animate(title, [{ opacity: 0, transform: `translateX(${dir >= 0 ? 6 : -6}px)` }, { opacity: 1, transform: 'none' }], { duration: D.slow, easing: E.out });
+      if (rows) _runFlip(main, 'sub');
+      else { _flipBefore = null; swapIn(_region(main), dir); }
+      return;
+    }
+    if (swap) { _flipBefore = null; swapIn(_region(main, swap.region), swap.dir); return; }
+    if (rows) _runFlip(main, null); else _flipBefore = null;
+  }
+  /** Run fn() with list FLIP off (a completion ghost or an expanding row animates instead). */
+  function withoutFlip(fn) {
+    const was = _flipSkip; _flipSkip = true;
+    try { return fn(); } finally { _flipSkip = was; }
+  }
+
+  /* ---------- theme switch: one crossfade (C9), not 14 stray colour transitions ---------- */
+  /**
+   * The light/dark switch. o: {kind: 'circle'|'wipe'|'fade', ms, origin: {x, y}, dark} (14-shell.js
+   * passes the day's 'theme-switch' variant from the animation library). Off or a hidden tab: instant.
+   * OS reduced motion: a short crossfade instead. The level scales the duration (~500 ms Standard).
+   */
+  function themeSwap(apply, o) {
+    o = o || {};
+    const html = document.documentElement;
+    if (userReduced() || document.hidden || typeof document.startViewTransition !== 'function') { apply(); return; }
+    const red = systemReduced();
+    const kind = red ? 'fade' : (/^(circle|wipe|fade)$/.test(o.kind) ? o.kind : 'circle');
+    const ms = red ? 180 : Math.round(Math.max(200, Math.min(900, (o.ms || 500) * (profile().k || 1))));
+    const cls = ['m-theme-vt', 'm-theme-' + kind, o.dark === false ? 'm-theme-to-light' : 'm-theme-to-dark'];
+    const w = window.innerWidth || 1200, h = window.innerHeight || 800;
+    const x = o.origin ? o.origin.x : w - 24, y = o.origin ? o.origin.y : 24;
+    html.style.setProperty('--tt-x', Math.round(x) + 'px');
+    html.style.setProperty('--tt-y', Math.round(y) + 'px');
+    html.style.setProperty('--tt-r', Math.ceil(Math.hypot(Math.max(x, w - x), Math.max(y, h - y))) + 'px');
+    html.style.setProperty('--tt-ms', ms + 'ms');
+    html.classList.add(...cls);
+    let t;
+    const clear = () => { html.classList.remove(...cls); ['--tt-x', '--tt-y', '--tt-r', '--tt-ms'].forEach(p => html.style.removeProperty(p)); };
+    try { t = document.startViewTransition(() => { apply(); }); }
+    catch (e) { apply(); clear(); return; }
+    const done = clear;
+    ['ready', 'updateCallbackDone'].forEach(k => t[k] && t[k].catch(() => {}));
+    if (t.finished) t.finished.then(done, done); else setTimeout(done, ms + 120);
+  }
+
   /* ---------- task completion ---------- */
   function rowFor(id) {
     if (!id) return null;
@@ -185,7 +406,7 @@
     const nextId = siblingTaskId(block, +1);
     const ghost = row.cloneNode(true);
 
-    commit();
+    withoutFlip(commit);              // the ghost below animates the gap; the list FLIP stays out of it
 
     const fresh = rowFor(id);
     if (fresh) {                       // still listed (e.g. All Tasks): just pop + strike in place
@@ -342,6 +563,8 @@
     document.querySelectorAll('#main-body .task.expanded[data-id]').forEach(r => exp.add(r.dataset.id));
     if (sameView) {
       const opened = Array.from(exp).filter(id => !expandedPrev.has(id));
+      const closed = Array.from(expandedPrev).filter(id => !exp.has(id));
+      if (opened.length || closed.length) _flipBefore = null;   // the expand animates the rows below; no FLIP on top
       // One or a few rows: animate. "Expand all" on a long list: just show them.
       if (opened.length <= 6) for (const id of opened) {
         const r = rowFor(id);
@@ -355,8 +578,11 @@
 
   /* ---------- boot ---------- */
   applyAttr();
+  applyMediaOverride();
+  // Styles added later (the animation packs' CSS) get the same treatment.
+  if (window.MutationObserver && document.head) new MutationObserver(() => { if (osReduced() && osOverride()) applyMediaOverride(); }).observe(document.head, { childList: true });
   if (mq) {
-    const onChange = () => { applyAttr(); syncToggle(); };
+    const onChange = () => { applyMediaOverride(); applyAttr(); syncToggle(); };
     if (mq.addEventListener) mq.addEventListener('change', onChange);
     else if (mq.addListener) mq.addListener(onChange);
   }
@@ -366,6 +592,8 @@
     tokens: { durations: Object.assign({}, D), easings: Object.assign({}, E) },
     prefersReduced, setReduced, animate, countUp, stagger, viewTransition,
     completeTask, expand, collapse, decorateSidebar, afterRender,
+    level, chosenLevel, setLevel, profile, systemReduced, osReduced, osOverride, setOsOverride,
+    navigate, hint, scrollTopIfScrolled, swapIn, beforeMain, afterMain, withoutFlip, themeSwap,
   };
 
   // script.js rendered once before this file loaded: catch up.

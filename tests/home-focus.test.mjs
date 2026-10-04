@@ -10,6 +10,7 @@ import { readFileSync, readdirSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { loadPageClock } from './fixtures/page-clock.mjs';
 import { createActions } from '../server/actions/index.mjs';
 import { makeDataDir, TODAY, addDays } from './fixtures/actions-state.mjs';
 
@@ -40,6 +41,7 @@ function focusBox(st) {
     effTitle: (t) => t.title, effDetail: (t) => t.detail || '', getSubtasks: (id) => (state.custom.find(t => t.id === id) || {}).subtasks || [],
   };
   vm.createContext(box);
+  loadPageClock(box);   // the page's Clock: wall times in the dashboard's zone (travel spec 2.7)
   vm.runInContext(HOME_FILES.map(f => readFileSync(join(APP, f), 'utf8')).join('\n'), box, { filename: 'home-bundle.js' });
   return { box, state, calls, run: (code) => vm.runInContext(code, box) };
 }

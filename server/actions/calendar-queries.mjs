@@ -129,6 +129,7 @@ export const CALENDAR_QUERIES = [
           ...(e.selfResponse && e.selfResponse !== 'accepted' ? { myResponse: e.selfResponse } : {}),
           ...(Array.isArray(m.tasks) && m.tasks.length ? { taskIds: m.tasks.slice(0, 20) } : {}),
           ...(m.important ? { important: true } : {}),
+          ...(m.wrapped === true ? { wrapped: true } : {}),
           ...(m.notes ? { notes: truncate(m.notes, 300) } : {}),
           ...(inCals.length && calName.get(inCals[0]) ? { calendar: calName.get(inCals[0]) } : {}),
           ...(e.recurring ? { repeating: true } : {}),

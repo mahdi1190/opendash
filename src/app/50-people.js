@@ -90,7 +90,8 @@ function pplAvatarColor(c) {
 function avatarHtml(person, size) {
   const sz = Number(size) || 32;
   const p = person || { name: '?' };
-  const url = safeUrl(p.avatarUrl);
+  // A picture set on their card (54-people-card.js: uploaded, or Gravatar when the user opted in) comes first.
+  const url = (typeof pcPhotoUrl === 'function' && pcPhotoUrl(p.photo)) || safeUrl(p.avatarUrl);
   const cls = 'avatar ' + _pplAvClass(sz) + (p.stub ? ' unknown' : '');
   const st = `--c:${escAttr(pplAvatarColor(p.color))};--size:${sz}px`;
   if (url) return `<span class="${cls}" style="${st}" title="${escAttr(p.name)}"${p.id && !p.stub && typeof czAttrs === 'function' ? czAttrs('person', p.id) : ''}><img src="${escAttr(url)}" alt="" data-avatar-fallback="${escAttr(p.id || '')}" data-avatar-size="${sz}"></span>`;
@@ -157,6 +158,11 @@ function _pplApply(p, f) {
   if (f.streams !== undefined) p.streams = _pplCleanList(f.streams, false).filter(s => STREAMS[s]);
   if (f.color !== undefined && safeColor(f.color, '') ) p.color = f.color;
   for (const k of ['inactive', 'pinned']) if (f[k] !== undefined) { if (f[k]) p[k] = true; else delete p[k]; }
+  if (f.tz !== undefined) {   // their IANA time zone (travel spec 5.2); '' removes it
+    const z = typeof trPersonTzCheck === 'function' ? trPersonTzCheck(f.tz) : { ok: true, zone: String(f.tz || '').trim() };
+    if (!z.ok) return z.message;
+    if (z.zone) p.tz = z.zone; else delete p.tz;
+  }
   if (p.stub && f.name !== undefined) delete p.stub;
   return '';
 }
@@ -199,7 +205,7 @@ function mergePeople(fromId, intoId) {
   b.streams = [...new Set([...(b.streams || []), ...(a.streams || [])])];
   const notes = [...(Array.isArray(b.notes) ? b.notes : []), ...(Array.isArray(a.notes) ? a.notes : [])].sort((x, y) => (y.ts || 0) - (x.ts || 0));
   if (notes.length) b.notes = notes;
-  for (const k of ['role', 'org', 'group', 'phone', 'linkedin', 'avatarUrl']) if (!b[k] && a[k]) b[k] = a[k];
+  for (const k of ['role', 'org', 'group', 'phone', 'linkedin', 'avatarUrl', 'photo', 'cover']) if (!b[k] && a[k]) b[k] = a[k];
   delete b.stub;
   let moved = 0;
   const fix = (t) => {

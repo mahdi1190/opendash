@@ -35,7 +35,7 @@
     const qt = (a, q) => { if (!a.length) return 0; const s = [...a].sort((p, r) => p - r); const p = (s.length - 1) * q, lo = Math.floor(p), hi = Math.ceil(p); return s[lo] + (s[hi] - s[lo]) * (p - lo); };
     const validIso = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}/.test(s);
     const dnum = iso => Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / DAY);
-    const diso = n => new Date(n * DAY).toISOString().slice(0, 10);
+    const diso = n => new Date(n * DAY).toISOString().slice(0, 10);   // clock-ok: a day number to its ISO date (UTC arithmetic)
     const dobj = n => new Date(n * DAY);
     const dowOf = n => (n + 3) % 7;                         // Monday = 0
     const mIdx = n => { const d = dobj(n); return d.getUTCFullYear() * 12 + d.getUTCMonth(); };
@@ -72,9 +72,10 @@
           s: kind === 'spend' ? -amt : 0, inc: kind === 'income' && amt > 0 ? amt : 0 });
       });
       tx.sort((p, q) => q.n - p.n || p.i - q.i);
-      // No date given: today on this computer's calendar (not UTC's day, and never rounded up at noon).
-      const now = new Date();
-      const today = validIso(a.today) ? dnum(a.today) : (Number.isFinite(o.today) ? o.today : Math.round(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / DAY));
+      // No day given: the home day on the page (Clock; money days stay on home time); without Clock,
+      // today on this computer's calendar (not UTC's day, and never rounded up at noon).
+      const localDay = () => { const now = new Date(); return Math.round(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / DAY); };   // clock-ok: fallback where Clock is not loaded (server, tests)
+      const today = validIso(a.today) ? dnum(a.today) : (Number.isFinite(o.today) ? o.today : typeof Clock !== 'undefined' ? dnum(Clock.today(Clock.home())) : localDay());
       const maxN = tx.length ? tx[0].n : today;
       const anchor = Math.max(today, maxN);
       const minN = tx.length ? Math.min(tx[tx.length - 1].n, anchor) : anchor - 90;

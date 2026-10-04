@@ -1,0 +1,55 @@
+/* ============================================================
+   CALENDAR WRITE (src/app/44-calendar-write.js): the saving chip, the
+   recurring-scope and guest dialogs, and .calw-pending for event blocks
+   whose change is still on its way to Google.
+   ============================================================ */
+
+/* ---------- "Saving to Google..." / "Saved" ---------- */
+.calw-chip {
+  position: fixed; left: var(--space-4); bottom: var(--space-4); z-index: var(--z-toast);
+  display: inline-flex; align-items: center; gap: var(--space-2); min-height: 32px; max-width: calc(100vw - 32px);
+  padding: 0 var(--space-3); background: var(--surface-raised); color: var(--fg); border: 1px solid var(--border);
+  border-radius: var(--radius-full); box-shadow: var(--shadow-sm); font-size: var(--text-sm); line-height: var(--lh-sm);
+  opacity: 0; transform: translateY(6px); transition: opacity var(--m-base) var(--m-ease-out), transform var(--m-base) var(--m-ease-out);
+  pointer-events: none;
+}
+.calw-chip[hidden] { display: none; }
+@media (max-width: 700px) { .calw-chip { bottom: 96px; } }   /* above the toasts on a phone (a two- or three-line toast reaches ~90px) */
+.calw-chip.in { opacity: 1; transform: none; }
+.calw-chip > .i { color: var(--success); }
+.calw-chip.is-saving { color: var(--fg-muted); }
+.calw-chip .calw-spin { width: 14px; height: 14px; }
+.calw-chip .calw-fake { font-style: normal; font-size: var(--text-2xs); color: var(--warning-ink); background: var(--warning-soft); border-radius: var(--radius-full); padding: 0 var(--space-1-5); }
+@media (prefers-reduced-motion: reduce) {
+  .calw-chip { transition: none; transform: none; }
+  .calw-chip .calw-spin { animation: none; border-top-color: var(--fg-subtle); }
+}
+html[data-motion="reduced"] .calw-chip { transition: none; transform: none; }
+html[data-motion="reduced"] .calw-chip .calw-spin { animation: none; border-top-color: var(--fg-subtle); }
+
+/* ---------- dialogs ---------- */
+.calw-dlg .calw-lead { margin: 0 0 var(--space-3); color: var(--fg-muted); }
+.calw-scope { display: flex; flex-direction: column; gap: var(--space-1); }
+.calw-opt {
+  display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: var(--space-2);
+  padding: var(--space-2) var(--space-2); border-radius: var(--radius-sm); cursor: pointer;
+}
+.calw-opt:hover { background: var(--bg-muted); }
+.calw-opt input { margin: 0; accent-color: var(--accent); }
+.calw-opt-l { color: var(--fg); }
+.calw-opt-h { grid-column: 2; font-size: var(--text-xs); color: var(--fg-subtle); }
+.calw-opt.is-off { cursor: default; }
+.calw-opt.is-off:hover { background: none; }
+.calw-opt.is-off .calw-opt-l { color: var(--fg-disabled); }
+.calw-guests { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); max-height: 180px; overflow: auto; }
+.calw-guests li { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.calw-g-n { color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.calw-g-e { color: var(--fg-subtle); font-size: var(--text-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.calw-g-more { color: var(--fg-subtle); font-size: var(--text-xs); }
+
+/* ---------- an event whose change is still being saved (views add the class) ---------- */
+.calw-pending { position: relative; }
+.calw-pending::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--surface) 35%, transparent) 6px 12px);
+}

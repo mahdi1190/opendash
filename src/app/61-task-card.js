@@ -15,10 +15,14 @@
          push    true: stack it on the open card with Back (default: only when
                  opened from inside the card)
          context 'home' adds Home's "Hide from Focus today" to the card's menu
-     openEvent(id, {from, mode, push})  a calendar event (same options)
+     openEvent(id, {from, mode, push})  a calendar event (same options); editable
+                 through CalWrite where allowed (46-cal-event-edit.js)
+     openEvent(null, {create:{start, end, allDay, calendarId, title}, from})
+                 a NEW Google event in the card (the quick-create's "More options")
      tcOpenCreate(prefill, {from})      a new task in create mode; prefill is
                  quick-add text or {title, date, time, minutes, eventId,
-                 people, detail, stream, tags, priority, onCreated(id)}
+                 people, detail, stream, tags, priority, ignore, onCreated(id)}
+                 (ignore: raw words in the title the parser leaves as text)
      tcClose({instant}), tcIsOpen(), tcCurrentTaskId(), itemOpenMode(),
      itemOpenTarget() (where the next open lands: 'panel' whenever the side
      panel is showing something), switchItemMode(mode) (the switch buttons)
@@ -46,7 +50,8 @@
    into it; a bottom sheet at <= 700 px; nothing moves with reduced motion.
    Focus is trapped inside and returns to the row. Keys: Esc, Tab, Ctrl+Enter
    (done / create and close), Up/Down or J/K (previous / next task in the list),
-   the task keys X S T D P 1-4 E . Del, Alt+Left (back), M (maximise).
+   the task keys X S T D P 1-4 E . Del, Alt+Left (back), M (maximise); on an
+   event you can edit: E (title), Del (delete); a new event: Enter / Ctrl+Enter saves.
    Size: drag the edges or corners, or the maximise toggle (M); remembered in
    localStorage as window type 'card' (13-splitter.js makeResizable);
    double-click an edge to reset.
@@ -129,7 +134,10 @@ function _tcClosePanel() {
 /** Open a calendar event the same way. Not loaded yet: the calendar finds it (side panel). */
 function openEvent(id, o) {
   o = o || {};
+  if (!id && o.create && typeof evcOpenCreate === 'function') return evcOpenCreate(o.create, o);
   if (!id) return false;
+  // A suggestion's proposed time (travel T8 / T12, cal.moveOpen): the card opens with it filled in (69-travel-ui.js).
+  if (o.propose && typeof trEvcSetProposal === 'function') trEvcSetProposal(id, o.propose);
   const mode = _itemModeFor(o);
   const ev = typeof calEventById === 'function' ? calEventById(id) : null;
   if (mode === 'panel' || !ev) {
@@ -140,7 +148,7 @@ function openEvent(id, o) {
     return 'panel';
   }
   const now = _tc && !_tc.closing ? _tcCur() : null;
-  if (now && now.kind === 'event' && now.id === id && !o.push) { _tcFocusStart(); return 'card'; }
+  if (now && now.kind === 'event' && now.id === id && !o.push) { if (o.propose) _tcPaint(); _tcFocusStart(); return 'card'; }
   _tcClosePanel();
   if (typeof _calOpenEventId !== 'undefined' && _calOpenEventId) { _calOpenEventId = null; render(); }
   const fromEl = o.from && o.from.isConnected ? o.from : null;
@@ -206,7 +214,11 @@ function tcDraftFrom(prefill, view, defaults) {
     estimate: Number(p.minutes || p.estimate) || null,
     eventId: p.eventId || null,
     onCreated: typeof p.onCreated === 'function' ? p.onCreated : null,
-    ignore: [],
+    // Words in a prefilled title the parser must leave as text (an email subject: "Lunch on Friday").
+    ignore: Array.isArray(p.ignore) ? p.ignore.filter(x => typeof x === 'string' && x).slice(0, 40) : [],
+    // A suggestion's prefill (travel spec 5.6 request 5): its checklist, and "Filled in from a suggestion".
+    subtasks: Array.isArray(p.subtasks) ? p.subtasks.map(s => String(s || '').trim().slice(0, 200)).filter(Boolean).slice(0, 30) : [],
+    suggested: p.suggested === true,
   };
 }
 /**
@@ -234,7 +246,7 @@ function tcDraftResolve(d, parse) {
 }
 /* ---------- small DOM helpers ---------- */
 function _tcCur() { return _tc && _tc.stack.length ? _tc.stack[_tc.stack.length - 1] : null; }
-function _tcReduced() { return !!(window.Motion && Motion.prefersReduced()) || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+function _tcReduced() { return window.Motion ? Motion.prefersReduced() : !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
 function _tcSheet() { return !!(window.matchMedia && window.matchMedia('(max-width: 700px)').matches); }
 function _tcIsField(t) { return !!t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable); }
 function _tcVisible(el) { return !!el && el.getClientRects().length > 0; }
@@ -297,13 +309,19 @@ function _tcEntryLabel(e) {
   if (!e) return '';
   if (e.kind === 'task') { const it = getItem(e.id); return it ? effTitle(it) : 'task'; }
   if (e.kind === 'event') { const ev = typeof calEventById === 'function' ? calEventById(e.id) : null; return ev ? String(ev.summary || 'event') : 'event'; }
+  if (e.kind === 'evcreate') return 'New event';
+  if (e.kind === 'person') { const p = getPerson(e.id); return p ? p.name : 'person'; }
   return 'New task';
 }
-function _tcKeyOf(e) { return e.kind + ':' + (e.kind === 'create' ? e.draft.key : e.id); }
+function _tcKeyOf(e) { return e.kind + ':' + (e.draft ? e.draft.key : e.id); }
 function _tcValid(e) {
   if (!e) return false;
   if (e.kind === 'task') return !!getItem(e.id);
-  if (e.kind === 'event') return typeof calEventById === 'function' && !!calEventById(e.id);
+  if (e.kind === 'person') return !!getPerson(e.id);   // 54-people-card.js
+  if (e.kind === 'event') {
+    if (typeof evcFollowId === 'function') evcFollowId(e);   // a new event's temporary id became its Google id
+    return typeof calEventById === 'function' && !!calEventById(e.id);
+  }
   return true;
 }
 
@@ -379,6 +397,8 @@ function _tcPaint(o) {
   _tcHeroSync(cur);
   if (cur.kind === 'task') _tcTaskView(inner, cur, keep);
   else if (cur.kind === 'event') _tcEventView(inner, cur);
+  else if (cur.kind === 'evcreate') _evcCreateView(inner, cur);   // 46-cal-event-edit.js
+  else if (cur.kind === 'person') pcPersonView(inner, cur, keep);   // 54-people-card.js
   else _tcCreateView(inner, cur, keep);
   _tc.paintedKey = key;
   const sc = inner.querySelector('.tc-scroll'); if (sc && scroll) sc.scrollTop = scroll;
@@ -415,14 +435,15 @@ function tcRefresh() { if (_tc && !_tc.closing) _tcPaint(); }
 /** The row / chip of what the card shows stays highlighted behind it (aria-current). */
 function _tcMarkRows() {
   const cur = _tc && !_tc.closing ? _tcCur() : null;
-  const id = cur && (cur.kind === 'task' || cur.kind === 'event') ? cur.id : null;
+  const id = cur && (cur.kind === 'task' || cur.kind === 'event' || cur.kind === 'person') ? cur.id : null;
+  const attr = cur && cur.kind === 'person' ? 'pid' : 'id';   // People rows carry data-pid (54-people-card.js)
   for (const n of document.querySelectorAll('.tc-current')) {
-    if (id && n.dataset.id === id) continue;
+    if (id && n.dataset[attr] === id) continue;
     n.classList.remove('tc-current'); if (n.getAttribute('aria-current') === 'true') n.removeAttribute('aria-current');
   }
   if (!id) return;
-  for (const n of document.querySelectorAll(`[data-id="${CSS.escape(id)}"]`)) {
-    if (_tc.root.contains(n) || !n.closest('#main-body, .ppl-panel, #detail-pane')) continue;
+  for (const n of document.querySelectorAll(`[data-${attr}="${CSS.escape(id)}"]`)) {
+    if (_tc.root.contains(n) || !n.closest('#main-body, .ppl-panel, #detail-pane, #sidebar')) continue;
     n.classList.add('tc-current'); n.setAttribute('aria-current', 'true');
   }
 }
@@ -442,6 +463,7 @@ function _tcRestore(root, keep) {
 
 /* ---------- the header band: the item's animated scene ---------- */
 function _tcHeroSpec(cur) {
+  if (cur.kind === 'person') return null;   // a person's card draws its own cover (54-people-card.js)
   if (typeof animSceneHtml !== 'function') return null;
   if (cur.kind === 'task') {
     const it = getItem(cur.id); if (!it || typeof animForTask !== 'function') return null;
@@ -457,6 +479,7 @@ function _tcHeroSpec(cur) {
     return { type: a.type || 'event', why: a.why || '', color: `var(--sw-${/^[a-z]+$/.test(c) ? c : 'indigo'})`,
       pick: typeof animPickType === 'function' ? (b) => animPickType(b, { kind: 'event', title: ev.summary }, a.type) : null };
   }
+  if (cur.kind === 'evcreate') return typeof evcHeroSpec === 'function' ? evcHeroSpec(cur.draft) : null;
   // create: the scene follows what you type
   const d = cur.draft;
   let type = 'task';
@@ -560,6 +583,7 @@ function _tcTaskView(inner, cur, keep) {
   main.appendChild(tdActivitySection(id, view, () => _tcPaint()));
   main.appendChild(tdChatSection(id));
   const side = document.createElement('aside'); side.className = 'tc-side'; side.setAttribute('aria-label', 'Properties');
+  if (!done && typeof sgTaskCardSlot === 'function') { const sg = sgTaskCardSlot(id); if (sg) side.appendChild(sg); }   // S2: block time for it, on top (68-suggest-time-ui.js)
   side.appendChild(tdProps(id, { card: true }));
   const meet = _tcMeetings(id); if (meet) side.appendChild(meet);
   side.appendChild(_tcMeta(id));
@@ -716,6 +740,7 @@ function _tcDelete(id) {
 /** "Open in side panel": this item, and the next ones this session (switchItemMode), open in the side panel. */
 function _tcToPanel() {
   const cur = _tcCur(); if (!cur) return;
+  if (cur.kind === 'person') { pcToPanel(cur.id); return; }   // its own session switch (54-people-card.js)
   switchItemMode('panel');
   if (cur.kind === 'task') { const id = cur.id; tcClose({ instant: true, noFocus: true }); selectTask(id); return; }
   if (cur.kind === 'event') {
@@ -748,7 +773,8 @@ function _tcMoreMenu(anchor, id) {
 /* ---------- an event ---------- */
 function _tcEventView(inner, cur) {
   const ev = calEventById(cur.id);
-  const p = calEventParts(ev);
+  const p = calEventParts(ev, { where: 'card' });
+  const E = p.edit || null;   // editable parts through CalWrite (46-cal-event-edit.js)
   _tc.card.setAttribute('aria-label', 'Event: ' + p.title);
   const right = [calEventStar(ev)];
   right[0].classList.add('tc-ib');
@@ -758,29 +784,41 @@ function _tcEventView(inner, cur) {
     a.innerHTML = icon('external-link'); a.setAttribute('aria-label', ev.htmlLink ? 'Open in Google Calendar' : 'Open the event'); a.setAttribute('data-tip', ev.htmlLink ? 'Open in Google Calendar' : 'Open the event');
     right.push(a);
   }
+  if (E && E.canDelete) right.push(_tcBtn('trash-2', 'Delete event', () => evcDelete(ev), { fk: 'evc-del', kbd: 'Del', cls: 'evc-delbtn' }));
   right.push(_tcSep(), _tcBtn('panel-right', 'Open in side panel', () => _tcToPanel(), { fk: 'tc-panel' }), _tcMaxBtn());
   inner.appendChild(_tcBar(_tc.stack.length > 1 ? [_tcBackBtn()] : [], right));
 
   const head = document.createElement('div'); head.className = 'tc-head tc-head-ev';
-  const sw = document.createElement('span'); sw.className = 'tc-evsq c-' + (/^[a-z]+$/.test(p.color) ? p.color : 'indigo'); sw.setAttribute('aria-hidden', 'true');
+  const sw = document.createElement(E && E.colour ? 'button' : 'span'); sw.className = 'tc-evsq c-' + (/^[a-z]+$/.test(p.color) ? p.color : 'indigo');
+  if (E && E.colour) { sw.type = 'button'; sw.classList.add('evc-sqbtn'); sw.dataset.fk = 'evc-sq'; sw.setAttribute('aria-label', 'Event colour'); sw.setAttribute('data-tip', 'Colour'); sw.onclick = () => E.colour(sw); }
+  else sw.setAttribute('aria-hidden', 'true');
   const hb = document.createElement('div'); hb.className = 'tc-hb';
-  const h = document.createElement('h2'); h.className = 'tc-evtitle'; h.id = 'tc-title'; h.textContent = p.title;
-  const when = document.createElement('div'); when.className = 'tc-sub tc-when';
-  when.innerHTML = `<span class="tc-bit">${icon('clock', 'i-xs')}<span></span></span>${p.live ? `<b class="ev-live${p.live === 'Now' ? ' now' : ''}">${esc(p.live)}</b>` : ''}`;
-  when.querySelector('.tc-bit span').textContent = p.when;
-  hb.append(h, when);
+  if (E) hb.append(E.title, E.when);
+  else {
+    const h = document.createElement('h2'); h.className = 'tc-evtitle'; h.id = 'tc-title'; h.textContent = p.title;
+    const when = document.createElement('div'); when.className = 'tc-sub tc-when';
+    when.innerHTML = `<span class="tc-bit">${icon('clock', 'i-xs')}<span></span></span>${p.live ? `<b class="ev-live${p.live === 'Now' ? ' now' : ''}">${esc(p.live)}</b>` : ''}`;
+    when.querySelector('.tc-bit span').textContent = p.when;
+    hb.append(h, when);
+  }
   head.append(sw, hb);
   inner.appendChild(head);
 
   const scroll = document.createElement('div'); scroll.className = 'tc-scroll';
   const cols = document.createElement('div'); cols.className = 'tc-cols';
   const main = document.createElement('div'); main.className = 'tc-main tc-evmain';
-  for (const n of [p.actions, p.notes, ...p.tasks, p.desc, p.organiser]) if (n) main.appendChild(n);
+  // Editable: Join / answer / place on top, then the details (they move up on narrow cards), then the rest.
+  const top = E ? document.createElement('div') : null;
+  if (top) { top.className = 'tc-main tc-evmain tc-evtop'; cols.classList.add('evc-cols'); for (const n of [p.actions, E.rsvp, E.location]) if (n) top.appendChild(n); }
+  const mainParts = E ? [E.desc, p.notes, ...p.tasks, p.organiser] : [p.actions, p.notes, ...p.tasks, p.desc, p.organiser];
+  for (const n of mainParts) if (n) main.appendChild(n);
   const side = document.createElement('aside'); side.className = 'tc-side tc-evside'; side.setAttribute('aria-label', 'Details');
-  if (p.facts) side.appendChild(p.facts);
-  for (const n of p.attendees) side.appendChild(n);
-  if (!p.facts && !p.attendees.length) { const e = document.createElement('div'); e.className = 'tc-meta'; e.textContent = 'No other details from the calendar.'; side.appendChild(e); }
-  cols.append(main, side);
+  const facts = E ? E.facts : p.facts, people = E ? E.guests : p.attendees;
+  if (E && E.ro) side.appendChild(E.ro);
+  if (facts) side.appendChild(facts);
+  for (const n of people) side.appendChild(n);
+  if (!facts && !people.length) { const e = document.createElement('div'); e.className = 'tc-meta'; e.textContent = 'No other details from the calendar.'; side.appendChild(e); }
+  if (top) cols.append(top, side, main); else cols.append(main, side);
   scroll.appendChild(cols);
   inner.appendChild(scroll);
   p.notesInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); p.notesInput.blur(); try { _tc.card.focus({ preventScroll: true }); } catch (err) { /* gone */ } } });
@@ -841,6 +879,7 @@ function _tcCreateView(inner, cur, keep) {
   });
   hb.append(ta, chips);
   head.append(cb, hb);
+  if (d.suggested && typeof sgPrefillTagHtml === 'function') { hb.insertAdjacentHTML('afterbegin', sgPrefillTagHtml()); ta.dataset.prefilled = ''; }
   inner.appendChild(head);
   requestAnimationFrame(fit);
   paintChips();
@@ -856,6 +895,8 @@ function _tcCreateView(inner, cur, keep) {
   desc.addEventListener('input', () => { d.detail = desc.value; });
   ds.appendChild(desc);
   main.appendChild(ds);
+  const steps = typeof trTcSubtasksSection === 'function' ? trTcSubtasksSection(d) : null;   // a suggestion's checklist (69-travel-ui.js)
+  if (steps) main.appendChild(steps);
   const tip = document.createElement('p'); tip.className = 'tc-tip';
   tip.innerHTML = `${icon('sparkles', 'i-xs')}<span>Type it the quick way too: <b>fri 3pm</b>, <b>!p1</b>, <b>#tag</b>, <b>+stream</b>, <b>@person</b>, <b>~30m</b>, <b>every week</b>.</span>`;
   main.appendChild(tip);
@@ -874,6 +915,13 @@ function _tcCreateView(inner, cur, keep) {
   go.onclick = () => _tcCreateSave(false);
   foot.append(cancel, go);
   inner.appendChild(foot);
+  // The prefill sweep: once per draft, over the fields a suggestion filled in (prototype t6).
+  if (d.suggested && !d._swept && typeof sgPrefillSweep === 'function') {
+    d._swept = true;
+    if (d.dueDate) { const due = side.querySelector('[data-prop="due"]'); if (due) due.dataset.prefilled = ''; }
+    if (d.tags.length) { const tg = side.querySelector('dd[data-prop="tags"]'); if (tg) tg.dataset.prefilled = ''; }
+    requestAnimationFrame(() => { if (_tc) sgPrefillSweep(_tc.card); });
+  }
 }
 /** The draft's properties: due (+ time), priority, stream, people, tags, repeat, length. */
 function _tcDraftProps(cur, r) {
@@ -1068,11 +1116,18 @@ function _tcCreateSave(close) {
     return null;
   }
   if (_tc.sug) _tc.sug.hidden = true;
-  const id = addCustomTask(r.title, r.dueDate, r.priority, r.tags, r.stream, r.recurrence, {
-    dueTime: r.dueTime, estimate: r.estimate, people: r.people, newPeople: r.newPeople, detail: r.detail,
-  });
+  // The task and its link to the event are one undo step (the toast's Undo takes both back).
+  const make = () => {
+    const nid = addCustomTask(r.title, r.dueDate, r.priority, r.tags, r.stream, r.recurrence, {
+      dueTime: r.dueTime, estimate: r.estimate, people: r.people, newPeople: r.newPeople, detail: r.detail,
+      // A suggestion's checklist (travel spec 5.6 request 5).
+      ...(Array.isArray(d.subtasks) && d.subtasks.some(s => String(s).trim()) ? { subtasks: d.subtasks.map(s => String(s).trim()).filter(Boolean) } : {}),
+    });
+    if (nid && d.eventId && typeof calLinkTask === 'function') calLinkTask(d.eventId, nid, true);
+    return nid;
+  };
+  const id = d.eventId && typeof selUndoGroup === 'function' ? selUndoGroup(make) : make();
   if (!id) return null;
-  if (d.eventId && typeof calLinkTask === 'function') calLinkTask(d.eventId, id, true);
   if (d.onCreated) { try { d.onCreated(id); } catch (e) { console.error(e); } }
   if (!_tc) return id;
   if (close) {
@@ -1108,11 +1163,12 @@ function _tcKey(e) {
   }
   if (k === 'Escape') {
     if (_tc.sug && !_tc.sug.hidden) { stop(); _tc.sug.hidden = true; return; }
-    if (field && cur.kind !== 'create') return;   // the field's own Esc first (the root listener blurs plain fields)
+    if (field && cur.kind !== 'create' && cur.kind !== 'evcreate') return;   // the field's own Esc first (the root listener blurs plain fields)
     stop(); _tcBackOrClose(); return;
   }
   if ((e.ctrlKey || e.metaKey) && k === 'Enter') {
     if (cur.kind === 'create') { stop(); _tcCreateSave(true); return; }
+    if (cur.kind === 'evcreate') { stop(); _evcCreateSave(); return; }
     if (cur.kind === 'task' && (!field || t.dataset.fk === 'title')) { stop(); _tcToggleDone(cur.id); return; }
     return;
   }
@@ -1125,6 +1181,8 @@ function _tcKey(e) {
   if (t && t.closest && t.closest('.tc-rs, .split-h')) return;
   if (k === 'm' || k === 'M') { stop(); tcToggleMax(); return; }
   if (cur.kind === 'task' && _tcTaskKey(k, cur)) { stop(); return; }
+  if (cur.kind === 'event' && typeof evcCardKey === 'function' && evcCardKey(k, cur)) { stop(); return; }
+  if (cur.kind === 'person' && typeof pcCardKey === 'function' && pcCardKey(k, cur)) { stop(); return; }
   if (!inCard) e.stopPropagation();               // nothing behind the card reacts
 }
 /** The task keys (as in the lists): returns true when handled. */
@@ -1180,8 +1238,8 @@ function _tcFocusStart() {
   const cur = _tcCur(); if (!cur) return;
   setTimeout(() => {
     if (!_tc) return;
-    if (cur.kind === 'create') {
-      const ta = _tc.card.querySelector('[data-fk="new-title"]');
+    if (cur.kind === 'create' || cur.kind === 'evcreate') {
+      const ta = _tc.card.querySelector('[data-fk="new-title"], [data-fk="evn-title"]');
       if (ta) { ta.focus({ preventScroll: true }); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e) { /* fine */ } return; }
     }
     // The dialog itself (not the title, which would look like edit mode); Tab walks in.

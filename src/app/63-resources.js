@@ -9,7 +9,8 @@
      resBlock({type, id}, {compact})   the "Files & links" block (task detail, person panel, stream page)
      resFocusChips(taskId)             chips for Home's Focus cards (trusted markup, data-act="res")
      resPrimary(id)                    the row's main action: Explore a folder, open a file / link, show a snippet
-     openAttachDialog({links})         paste anything / Browse / snippet
+     openAttachDialog({links, pinned, text})   paste anything / Browse / snippet
+                                       (pinned: also pin it, for Home's Launchpad; text: the paste box filled in)
      openExplorePanel(id, {sub, link}) the in-app Explore panel for a folder resource
      #view=files                       the global Files & links view (Tasks sidebar)
 
@@ -57,20 +58,22 @@ function resContextLink() {
 
 /**
  * Add (or re-attach) resources from detected items. items: [{kind, target, label, lang?}]
- * Returns {added, linked} counts. One undo step.
+ * opts.pinned: pin them too (Home's Launchpad). Returns {added, linked} counts. One undo step.
  */
-function resAddItems(items, links) {
+function resAddItems(items, links, opts) {
+  const pin = !!(opts && opts.pinned);
   const list = resList();
   let added = 0, linked = 0;
   const touched = [];
   const ls = (links || []).filter(Boolean).map(l => ({ type: l.type, id: l.id }));
   for (const it of items) {
     let r;
-    try { r = rsrcNormalize({ ...it, links: ls }); } catch (e) { toast(e.message || 'That cannot be attached', { kind: 'err' }); continue; }
+    try { r = rsrcNormalize({ ...it, links: ls, ...(pin ? { pinned: true } : {}) }); } catch (e) { toast(e.message || 'That cannot be attached', { kind: 'err' }); continue; }
     const same = rsrcFindSame(list, r.kind, r.target);
     if (same) {
       same.links = Array.isArray(same.links) ? same.links : [];
       for (const l of ls) if (!same.links.some(x => x.type === l.type && x.id === l.id)) { same.links.push(l); linked++; }
+      if (pin && !same.pinned) { same.pinned = true; linked++; }
       touched.push(same.id);
       continue;
     }
@@ -81,9 +84,10 @@ function resAddItems(items, links) {
     saveData();
     render();
     const n = added + linked;
-    toast(n === 1 ? (added ? 'Attached' : 'Attached (it was already saved)') : `Attached ${n}`, { kind: 'ok', icon: 'paperclip', action: { label: 'Undo', run: () => undo() } });
+    if (pin) toast(n === 1 ? 'Pinned to Launchpad' : `Pinned ${n} to Launchpad`, { kind: 'ok', icon: 'pin', action: { label: 'Undo', run: () => undo() } });
+    else toast(n === 1 ? (added ? 'Attached' : 'Attached (it was already saved)') : `Attached ${n}`, { kind: 'ok', icon: 'paperclip', action: { label: 'Undo', run: () => undo() } });
     resRefreshStatus(touched, true);
-  } else if (touched.length) toast('Already attached here', { icon: 'paperclip' });
+  } else if (touched.length) toast(pin ? 'Already pinned' : 'Already attached here', { icon: pin ? 'pin' : 'paperclip' });
   return { added, linked, ids: touched };
 }
 function resUpdate(id, patch) {
@@ -192,9 +196,10 @@ function resFmtDate(ms) {
   if (!ms) return '';
   const d = new Date(ms);
   const loc = (APP_CONFIG && APP_CONFIG.locale) || undefined;
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  try { return d.toLocaleDateString(loc, { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) }) + (sameYear ? ' ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' }) : ''); }
-  catch (e) { return d.toISOString().slice(0, 10); }
+  const timeZone = Clock.zone(), day = Clock.parts(d.getTime()).iso;
+  const sameYear = day.slice(0, 4) === todayStr().slice(0, 4);
+  try { return d.toLocaleDateString(loc, { day: 'numeric', month: 'short', timeZone, ...(sameYear ? {} : { year: 'numeric' }) }) + (sameYear ? ' ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), timeZone }) : ''); }
+  catch (e) { return day; }
 }
 
 /* ---------- actions ---------- */
@@ -505,16 +510,16 @@ function resAddMenu(anchor, link) {
   openMenu(anchor, items, { align: 'end', width: 240 });
   resIntegrations();
 }
-async function resBrowse(mode, links) {
+async function resBrowse(mode, links, opts) {
   const t = toast(mode === 'folder' ? 'Choose a folder in the window that opened…' : 'Choose a file in the window that opened…', { icon: mode === 'folder' ? 'folder' : 'file', timeout: 60000 });
   try {
     const out = await _resApi('/api/resources/pick', { mode, multi: mode === 'file' });
     t();
     if (out.cancelled) return;
-    resAddItems(out.paths.map(p => ({ kind: mode, target: p })), links);
+    resAddItems(out.paths.map(p => ({ kind: mode, target: p })), links, opts);
   } catch (e) {
     t();
-    if (e.code === 'NO_PICKER') { toast('No file picker here: paste the path instead', { kind: 'err' }); openAttachDialog({ links }); return; }
+    if (e.code === 'NO_PICKER') { toast('No file picker here: paste the path instead', { kind: 'err' }); openAttachDialog({ links, pinned: !!(opts && opts.pinned) }); return; }
     toast(e.message || 'The picker failed', { kind: 'err' });
   }
 }
@@ -587,9 +592,12 @@ function openAttachDialog(o) {
   const links = (o.links || []).filter(Boolean);
   let mode = o.mode || 'paste';
   let ta = null, sLabel = null, sLang = null, sText = null, preview = null;
-  const where = links.length ? links.map(_resLinkLabel).join(', ') : 'Files & links (not attached to anything yet)';
+  // o.pinned: what is added is pinned too (Home's Launchpad); o.text: the paste box filled in.
+  const pin = o.pinned ? { pinned: true } : undefined;
+  let prefill = typeof o.text === 'string' ? o.text : '';
+  const where = links.length ? links.map(_resLinkLabel).join(', ') : pin ? 'Launchpad on Home (pinned)' : 'Files & links (not attached to anything yet)';
   openDialog({
-    title: 'Attach', width: 600,
+    title: pin ? 'Pin to Launchpad' : 'Attach', width: 600,
     body: (el, close) => {
       const sub = document.createElement('p'); sub.className = 'muted res-dlg-to';
       sub.innerHTML = `${icon('paperclip', 'i-sm')}<span>To: <strong>${esc(where)}</strong></span>`;
@@ -622,18 +630,19 @@ function openAttachDialog(o) {
             for (const it of p.items) {
               const r = { ...it, id: '' };
               const exists = rsrcFindSame(resList(), it.kind, it.target);
-              preview.insertAdjacentHTML('beforeend', `<div class="res-pv">${_resIconHtml(r)}<span class="res-txt"><span class="res-name">${esc(it.label)}</span><span class="res-sub">${esc(rsrcKindLabel(r))}${exists ? ' · already saved: it will be attached here too' : ''}</span></span></div>`);
+              preview.insertAdjacentHTML('beforeend', `<div class="res-pv">${_resIconHtml(r)}<span class="res-txt"><span class="res-name">${esc(it.label)}</span><span class="res-sub">${esc(rsrcKindLabel(r))}${exists ? (pin ? ' · already saved: it will be pinned' : ' · already saved: it will be attached here too') : ''}</span></span></div>`);
             }
             for (const line of p.rejected.slice(0, 5)) preview.insertAdjacentHTML('beforeend', `<div class="res-pv bad">${icon('circle-alert', 'i-sm')}<span class="truncate">${esc(line)}</span><span class="subtle">not a path or link</span></div>`);
           };
           ta.oninput = upd;
+          if (prefill) { ta.value = prefill; prefill = ''; upd(); }
           const tools = document.createElement('div'); tools.className = 'hstack res-dlg-tools';
           const picker = !_resIntegrations || _resIntegrations.picker !== false;
           if (picker) {
             for (const [m, l, ic] of [['file', 'Browse for files…', 'file'], ['folder', 'Browse for a folder…', 'folder']]) {
               const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm';
               b.innerHTML = icon(ic) + `<span>${esc(l)}</span>`;
-              b.onclick = () => { close(); resBrowse(m, links); };
+              b.onclick = () => { close(); resBrowse(m, links, pin); };
               tools.appendChild(b);
             }
           }
@@ -665,23 +674,23 @@ function openAttachDialog(o) {
           panes.appendChild(f3);
           setTimeout(() => sText && sText.focus(), 0);
         } else {
-          _resDrivePane(panes, links, close);
+          _resDrivePane(panes, links, close, pin);
         }
       };
       paint();
     },
     actions: [
       { label: 'Cancel' },
-      { label: 'Attach', primary: true, icon: 'paperclip', run: () => {
+      { label: pin ? 'Pin' : 'Attach', primary: true, icon: pin ? 'pin' : 'paperclip', run: () => {
         if (mode === 'paste') {
           const p = rsrcParseMany(ta ? ta.value : '');
           if (!p.items.length) { toast('Paste at least one absolute path or http(s) link', { kind: 'err' }); return false; }
-          resAddItems(p.items, links);
+          resAddItems(p.items, links, pin);
           return true;
         }
         if (mode === 'snippet') {
           if (!sText || !sText.value.trim()) { toast('Paste the snippet text first', { kind: 'err' }); return false; }
-          resAddItems([{ kind: 'snippet', target: sText.value, label: sLabel.value, lang: sLang.value }], links);
+          resAddItems([{ kind: 'snippet', target: sText.value, label: sLabel.value, lang: sLang.value }], links, pin);
           return true;
         }
         return false;
@@ -690,7 +699,7 @@ function openAttachDialog(o) {
   });
   resIntegrations();
 }
-function _resDrivePane(el, links, close) {
+function _resDrivePane(el, links, close, pin) {
   const integ = _resIntegrations;
   const st = integ && integ.drive ? integ.drive.state : 'unknown';
   if (st !== 'ok') {
@@ -700,7 +709,7 @@ function _resDrivePane(el, links, close) {
     b.onclick = () => { close(); setView('connections'); };
     c.appendChild(b);
     el.appendChild(c);
-    if (st === 'unknown') resIntegrations(true).then(() => { if (el.isConnected) { el.innerHTML = ''; _resDrivePane(el, links, close); } });
+    if (st === 'unknown') resIntegrations(true).then(() => { if (el.isConnected) { el.innerHTML = ''; _resDrivePane(el, links, close, pin); } });
     return;
   }
   const f = document.createElement('div'); f.className = 'hstack';
@@ -723,7 +732,7 @@ function _resDrivePane(el, links, close) {
         const r = { kind: 'drive', target: fl.url, label: fl.title };
         const b = document.createElement('button'); b.type = 'button'; b.className = 'res-pick';
         b.innerHTML = _resIconHtml(r) + `<span class="res-txt"><span class="res-name">${esc(fl.title)}</span><span class="res-sub">${esc(rsrcKindLabel(r))}${fl.modifiedTime ? ' · ' + esc(resFmtDate(Date.parse(fl.modifiedTime))) : ''}</span></span>`;
-        b.onclick = () => { resAddItems([r], links); close(); };
+        b.onclick = () => { resAddItems([r], links, pin); close(); };
         out.appendChild(b);
       }
     } catch (e) { out.innerHTML = ''; const c = document.createElement('div'); c.className = 'callout warn'; c.textContent = e.message || 'Drive could not be searched'; out.appendChild(c); }

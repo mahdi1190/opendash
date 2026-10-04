@@ -219,6 +219,13 @@
     if (bits.length) say += (tLook.k === 'over' ? ': ' : '. ') + bits.join(' and ');
     if (view.cur && tLook.k !== 'over') say += headingOver ? `. At this pace the month ends near ${gbp(fcT)}, about ${gbp(fcT - tot)} over` : `. At this pace the month ends near ${gbp(fcT)}, within the budget`;
     S.hSay.textContent = say + '.';
+    // v2.2 wave 5: the "Under budget" achievement (src/app/78-achievements.js), with or without motion
+    if (!view.cur && bc && view.mi === bc.mi - 1 && tot > 0 && spentT <= tot && typeof achNote === 'function') achNote('under-budget');
+    // v2.2 wave 4: last month closed under budget -> a confetti burst at the ring, once a day (src/app/78-anim-moments.js)
+    if (!view.cur && bc && view.mi === bc.mi - 1 && tot > 0 && spentT <= tot && typeof animMoneyMoment === 'function' && !MK.reduced()) {
+      const ringEl = S.hRing;
+      setTimeout(() => { try { if (ringEl.isConnected) animMoneyMoment('under-budget', ringEl, 'm' + view.mi); } catch (e) { /* a moment only */ } }, 450);
+    }
     // Status chips (counts)
     S.hChips.innerHTML = '';
     for (const [k, tone, icon, label] of [['ok', 'good', 'circle-check', view.cur ? 'on track' : 'under'], ['ahead', 'warn', 'triangle-alert', 'ahead of pace'], ['over', 'bad', 'circle-alert', 'over'], ['sched', 'sched', 'calendar-check', 'on schedule']]) {

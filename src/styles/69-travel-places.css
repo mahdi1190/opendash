@@ -1,0 +1,29 @@
+/* ============================================================
+   TRAVEL PLACES: the flag chip (trFlagHtml, 69-travel-places.js).
+   Owner: PLACES (travel spec 4.9). Flags are SVG: Windows shows emoji
+   flags as two letters. Size with --tr-flag-h (the width follows 3:2).
+   .is-cc is the fallback for a country without a flag spec.
+   .is-sheen sweeps one highlight across when it first appears (900 ms),
+   never a loop; reduced motion and Motion off skip it.
+   ============================================================ */
+.tr-flag {
+  --tr-flag-h: 1em;
+  position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none;
+  height: var(--tr-flag-h); width: calc(var(--tr-flag-h) * 1.5); vertical-align: -0.125em;
+  border-radius: 2px; overflow: hidden; line-height: 1;
+  outline: 1px solid color-mix(in srgb, currentColor 18%, transparent); outline-offset: -1px;   /* above the SVG: white flags keep an edge */
+}
+.tr-flag > svg { display: block; width: 100%; height: 100%; }
+.tr-flag.is-cc {
+  font-size: calc(var(--tr-flag-h) * 0.62); font-weight: 700; letter-spacing: .02em;
+  color: var(--text-muted, currentColor); background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.tr-flag.is-shape { outline: none; border-radius: 0; }   /* Nepal: the flag is not a rectangle */
+.tr-flag.is-sheen::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 30%, rgb(255 255 255 / .55) 50%, transparent 70%);
+  transform: translateX(-120%); animation: tr-flag-sheen 900ms var(--m-ease-out, ease-out) 1 forwards;
+}
+@keyframes tr-flag-sheen { to { transform: translateX(120%); } }
+@media (prefers-reduced-motion: reduce) { .tr-flag.is-sheen::after { animation: none; display: none; } }
+html[data-motion-level="off"] .tr-flag.is-sheen::after, html[data-motion-level="reduced"] .tr-flag.is-sheen::after { animation: none; display: none; }

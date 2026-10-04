@@ -1,0 +1,26 @@
+{
+  "_note": "Synthetic: a week in Tokyo from London, Sat 10 - Fri 16 Oct 2026 (BST is UTC+1, JST UTC+9). Placeholder names only.",
+  "events": [
+    { "id": "ev-ba7", "summary": "BA 7 LHR → HND", "start": { "dateTime": "2026-10-10T11:30:00+01:00", "timeZone": "Europe/London" },
+      "end": { "dateTime": "2026-10-11T09:30:00+09:00", "timeZone": "Asia/Tokyo" }, "extra": { "location": "London Heathrow (LHR)" } },
+    { "id": "ev-ba8", "summary": "BA 8 HND → LHR", "start": { "dateTime": "2026-10-16T11:30:00+09:00", "timeZone": "Asia/Tokyo" },
+      "end": { "dateTime": "2026-10-16T15:20:00+01:00", "timeZone": "Europe/London" } },
+    { "id": "ev-hotel", "allDay": true, "summary": "Hotel Gracery", "from": "2026-10-11", "to": "2026-10-15", "extra": { "location": "Kabukicho, Shinjuku, Tokyo, Japan" } },
+    { "id": "ev-sync", "summary": "Weekly sync", "start": { "dateTime": "2026-10-13T08:00:00+01:00", "timeZone": "Europe/London" }, "end": "2026-10-13T08:30:00+01:00",
+      "extra": { "attendees": [{ "email": "me@example.com", "self": true, "response": "accepted" }, { "email": "riley@example.com", "name": "Riley Test", "response": "accepted" }], "organizer": { "email": "me@example.com", "self": true } } },
+    { "id": "ev-late", "summary": "Budget review", "start": { "dateTime": "2026-10-14T18:00:00+01:00", "timeZone": "Europe/London" }, "end": "2026-10-14T19:00:00+01:00",
+      "extra": { "attendees": [{ "email": "me@example.com", "self": true, "response": "accepted" }, { "email": "riley@example.com", "name": "Riley Test", "response": "accepted" }], "organizer": { "email": "riley@example.com", "name": "Riley Test" } } },
+    { "id": "ev-morgan", "summary": "Planning call", "start": { "dateTime": "2026-10-08T10:00:00+01:00", "timeZone": "Europe/London" }, "end": "2026-10-08T10:30:00+01:00",
+      "extra": { "attendees": [{ "email": "me@example.com", "self": true, "response": "accepted" }, { "email": "morgan@example.net", "name": "Morgan Test", "response": "accepted" }], "organizer": { "email": "me@example.com", "self": true } } },
+    { "id": "ev-casey1", "summary": "Roadmap", "start": { "dateTime": "2026-09-30T10:00:00-04:00", "timeZone": "America/New_York" }, "end": "2026-09-30T10:30:00-04:00",
+      "extra": { "attendees": [{ "email": "me@example.com", "self": true, "response": "accepted" }, { "email": "casey@example.com", "name": "Casey Test", "organizer": true }], "organizer": { "email": "casey@example.com", "name": "Casey Test" } } },
+    { "id": "ev-casey2", "summary": "Roadmap follow-up", "start": { "dateTime": "2026-10-07T11:00:00-04:00", "timeZone": "America/New_York" }, "end": "2026-10-07T11:30:00-04:00",
+      "extra": { "attendees": [{ "email": "me@example.com", "self": true, "response": "accepted" }, { "email": "casey@example.com", "name": "Casey Test", "organizer": true }], "organizer": { "email": "casey@example.com", "name": "Casey Test" } } }
+  ],
+  "tasks": [
+    { "id": "t-report", "title": "Quarterly report", "due": "2026-10-13" },
+    { "id": "t-review", "title": "Review the slides", "planned": "2026-10-12" },
+    { "id": "t-adapter", "title": "Buy a travel adapter", "due": "2026-10-09", "tags": ["trip"] },
+    { "id": "t-later", "title": "Book the dentist", "due": "2026-10-21" }
+  ]
+}

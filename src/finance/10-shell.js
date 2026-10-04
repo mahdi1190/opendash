@@ -186,9 +186,9 @@
     } catch (e) { errs.push('Could not reach the OpenDash server. Is it still running?'); }
     R.importing = false;
     if (last && last.analysis) {
-      R.lastImport = { at: new Date().toISOString(), added, rows, errs };
+      R.lastImport = { at: new Date(Date.now()).toISOString(), added, rows, errs };   // an instant
       if (!R.data) R.data = { status: 'ok', meta: {} };
-      if (R.data.meta) { R.data.meta.storeCount = last.total; R.data.meta.analysisAt = new Date().toISOString(); }
+      if (R.data.meta) { R.data.meta.storeCount = last.total; R.data.meta.analysisAt = new Date(Date.now()).toISOString(); }   // an instant
       applyAnalysis(last.analysis);
     } else if (errs.length) R.startErr = errs.join(' · ');
     if (last) syncDone(); else paintSyncBtn();

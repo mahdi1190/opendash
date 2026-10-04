@@ -152,7 +152,7 @@ export default function register(app) {
     path: '/api/google/calendar', method: 'GET',
     handler: async (c) => {
       try {
-        return { events: await todayEvents(c.getConfig().timezone), source: 'live' };
+        return { events: await todayEvents(c.clockNow ? c.clockNow().timezone : c.getConfig().timezone), source: 'live' };   // effective zone (travel spec S5)
       } catch (e) {
         const snap = await calSnap();
         if (snap) return { events: snap.events || [], source: 'snapshot', fetchedAt: snap.fetchedAt };

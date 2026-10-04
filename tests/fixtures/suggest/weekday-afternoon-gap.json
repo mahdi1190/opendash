@@ -1,0 +1,20 @@
+{
+  "_about": "Monday 14:40: a seminar and lunch are over, the rest of the working day (to 18:00) is free. Synthetic.",
+  "now": "2026-10-05T14:40",
+  "events": {
+    "2026-10-05": [
+      { "id": "seminar1", "title": "Seminar", "start": "10:00", "end": "11:00", "attendees": 3, "organizerSelf": false, "type": "meeting" },
+      { "id": "lunch1", "title": "Lunch with Sam", "start": "12:30", "end": "13:30", "attendees": 1, "people": ["sam"], "type": "meal" }
+    ],
+    "2026-10-06": [
+      { "id": "standup2", "title": "Team stand-up", "start": "09:30", "end": "09:45", "attendees": 5 }
+    ]
+  },
+  "tasks": [
+    { "id": "t-report", "title": "Report draft: section 2", "priority": "p1", "due": "2026-10-09", "focusWhy": ["High priority", "Due Fri"], "estimate": 240,
+      "subtasks": { "done": 1, "total": 4, "open": ["Outline the argument", "Redo figure 3", "References"], "doneAt": [] } },
+    { "id": "t-slides", "title": "Slides for Alex", "priority": "p2", "due": "2026-10-07", "focusWhy": ["Due Wed"] },
+    { "id": "t-wait", "title": "Data files from Sam", "priority": "p2", "waiting": true, "people": ["sam"] }
+  ],
+  "focus": ["t-report", "t-slides", "t-wait"]
+}

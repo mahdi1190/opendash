@@ -25,7 +25,7 @@ const STW_STEPS = [['inbox', 'Clear the inbox'], ['overdue', 'Overdue and stale'
 
 /* ---------- small pure helpers ---------- */
 function _stwUtc(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : new Date(NaN); }
-function _stwAdd(iso, n) { const d = _stwUtc(iso); return isNaN(d) ? iso : new Date(d.getTime() + n * 86400000).toISOString().slice(0, 10); }
+function _stwAdd(iso, n) { const d = _stwUtc(iso); return isNaN(d) ? iso : new Date(d.getTime() + n * 86400000).toISOString().slice(0, 10); } // clock-ok: UTC civil date (no zone)
 function _stwWd(iso) { const d = _stwUtc(iso); return isNaN(d) ? 0 : d.getUTCDay(); }
 function _stwMin(hm) { const m = /^(\d{1,2}):(\d{2})/.exec(String(hm || '')); return m ? +m[1] * 60 + +m[2] : 0; }
 function _stwDM(iso) { const d = _stwUtc(iso); return isNaN(d) ? '' : `${d.getUTCDate()} ${STW_MONTHS[d.getUTCMonth()]}`; }
@@ -101,7 +101,9 @@ function stwWeekModel(d, env) {
   const inWeek = (iso) => !!iso && iso >= r.from && iso <= r.to;
   const person = typeof env.person === 'function' ? (id) => { try { return env.person(id) || null; } catch (e) { return null; } } : () => null;
   const comps = env.completions && typeof env.completions === 'object' ? env.completions : {};
-  const dayOf = typeof env.dayOf === 'function' ? env.dayOf : (ms) => new Date(ms).toISOString().slice(0, 10);
+  // The day of an instant: the caller's (the page passes Clock's, the server its zone's); else the page's Clock.
+  const dayOf = typeof env.dayOf === 'function' ? env.dayOf : typeof Clock !== 'undefined' ? (ms) => Clock.parts(Number(ms)).iso
+    : (ms) => new Date(ms).toISOString().slice(0, 10); // clock-ok: Node fallback (no Clock)
   const tasks = Array.isArray(env.tasks) ? env.tasks.filter(t => t && t.id) : [];
   const taskById = new Map(tasks.map(t => [t.id, t]));
   const streams = env.streams && typeof env.streams === 'object' ? env.streams : {};

@@ -26,7 +26,7 @@ function _ssRefresh() { if (state.view === 'settings:server') renderMain(); }
 function srvSettingsInvalidate() { _ssStatus = null; _ssInteg = null; _ssRefresh(); }
 function _ssWhen(iso) {
   if (!iso) return '';
-  try { return new Date(iso).toLocaleString(APP_CONFIG.locale || undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return String(iso); }
+  try { return new Date(iso).toLocaleString(APP_CONFIG.locale || undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), timeZone: Clock.zone() }); } catch (e) { return String(iso); }
 }
 function _ssDuration(s) {
   s = Math.max(0, Math.round(Number(s) || 0));
@@ -270,17 +270,17 @@ function _ssStartCard(el) {
       ? 'Adds OpenDash to your Windows start-up apps (for your account only). It starts with no window; stop it here with Stop server.'
       : `Lets the “server isn’t running” banner start it (a ${ig.scheme}:// link for your account only). It always runs this app’s start-opendash with no window and ignores anything in the link.`;
     if (_ssIntegBusy === f) return 'Asking Windows…';
-    if (x.enabled && !x.current) return base + ' Now: on, but set up for another copy or folder of the app. Turn it off and on again to point it here.';
+    if (x.enabled && !x.current) return base + (!/start-hidden\.mjs/i.test(x.command || '') ? ' Now: on, but with an old launcher that no longer works. Turn it off and on again to fix it.' : ' Now: on, but set up for another copy or folder of the app. Turn it off and on again to point it here.');
     if (f === 'autostart' && x.enabled && x.approved === false) return base + ' Now: on, but switched off in Task Manager › Startup apps. Turn it off and on again here to re-enable it.';
     return base + (x.enabled ? ' Now: on.' : ' Now: off.');
   };
-  const sw1 = _settingsSwitch(!!(ig.autostart && ig.autostart.enabled), 'Start automatically when I log in', (on) => _ssToggle('autostart', on), !!_ssIntegBusy || (!ig.scriptHost && !(ig.autostart && ig.autostart.enabled)));
+  const sw1 = _settingsSwitch(!!(ig.autostart && ig.autostart.enabled), 'Start automatically when I log in', (on) => _ssToggle('autostart', on), !!_ssIntegBusy);
   card.body.appendChild(_settingsRow('Start automatically when I log in', hintFor('autostart'), sw1));
-  const sw2 = _settingsSwitch(!!(ig.protocol && ig.protocol.enabled), 'Enable the Start server button', (on) => _ssToggle('protocol', on), !!_ssIntegBusy || (!ig.scriptHost && !(ig.protocol && ig.protocol.enabled)));
+  const sw2 = _settingsSwitch(!!(ig.protocol && ig.protocol.enabled), 'Enable the Start server button', (on) => _ssToggle('protocol', on), !!_ssIntegBusy);
   card.body.appendChild(_settingsRow('Enable the Start server button', hintFor('protocol'), sw2));
-  if (!ig.scriptHost) {
+  if (ig.hiddenHost === false) {
     const p = document.createElement('p'); p.className = 'set-h';
-    p.textContent = 'Windows Script Host (wscript.exe) is not available on this computer, so the server cannot be started without a window. Start it with start-opendash in the app folder (or your OpenDash shortcut) instead.';
+    p.textContent = 'This Windows has no hidden console host (conhost.exe), so a console window flashes up briefly when the server is started this way.';
     card.body.appendChild(p);
   }
   const re = _ssBtn('Check again', 'refresh-cw', 'btn-ghost', () => { _ssInteg = null; _ssLoad(); _ssRefresh(); });

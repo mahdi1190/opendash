@@ -19,7 +19,7 @@
    reviewCapacity(days, capacityMin)       next week's booked time against capacity
    ============================================================ */
 const BRIEF_MEETING_TYPES = Object.freeze(['meeting', 'one-on-one', 'video-call', 'call', 'interview', 'conference', 'lecture']);
-const BRIEF_TRAVEL_TYPES = Object.freeze(['flight', 'train', 'travel']);
+const BRIEF_TRAVEL_TYPES = Object.freeze(['flight', 'train', 'travel', 'takeoff', 'landing', 'layover', 'ferry', 'coach']);   // + the travel spec 4.7 transport scenes
 const BRIEF_CELEBRATE_TYPES = Object.freeze(['birthday', 'wedding', 'party', 'celebration']);
 
 function briefPad(n) { return String(n).padStart(2, '0'); }

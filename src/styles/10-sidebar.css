@@ -80,6 +80,8 @@
 .nav-item .i { color: var(--fg-subtle); }
 .nav-item .ic { width: 16px; display: inline-flex; justify-content: center; align-items: center; flex: none; }
 .nav-item .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-item .sb-pin { flex: none; display: inline-flex; color: var(--warning); opacity: .8; margin-left: 4px; }
+.nav-item .sb-pin + .count { margin-left: auto; }
 .nav-item .count { margin-left: auto; font-size: var(--text-xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; background: none; padding: 0; min-width: 0; }
 .nav-item .count.alert { color: var(--danger-ink); font-weight: var(--weight-medium); }
 .nav-item .badge { margin-left: auto; }

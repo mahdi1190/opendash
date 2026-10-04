@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { loadPageClock } from './fixtures/page-clock.mjs';
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
@@ -26,6 +27,7 @@ const box = {
   window: {},
 };
 vm.createContext(box);
+loadPageClock(box);   // the page's Clock: "today" in the dashboard's zone (travel spec 2.7)
 // 08 (dates) + 22 (parser) + 23 (dialog helpers) + 16 (palette): declarations only at load.
 vm.runInContext(src('08-utils-dates.js') + '\n;globalThis.fmtDate = fmtDate; globalThis.daysUntil = daysUntil;', box, { filename: '08-utils-dates.js' });
 vm.runInContext(src('22-quick-add.js'), box, { filename: '22-quick-add.js' });

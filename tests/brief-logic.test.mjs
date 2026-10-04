@@ -94,7 +94,7 @@ const CASES = [
   // travel and outings
   [ev('Flight to Lisbon'), 'flight'], [ev('✈️ XY123 – Leeds → Lisbon'), 'flight'], [ev('Train to York'), 'train'],
   [ev('Drive to Leeds'), 'car'], [ev('Annual leave', { allDay: true, days: 5 }), 'holiday'], [ev('Beach day'), 'holiday'],
-  [ev('Hotel check-in'), 'travel'], [ev('Walk in the hills'), 'outing'], [ev('Picnic in the park'), 'outing'],
+  [ev('Hotel check-in'), 'hotel'], [ev('Walk in the hills'), 'outing'],   // hotel has its own scene (travel spec 4.7) [ev('Picnic in the park'), 'outing'],
   [ev('Castle tour'), 'sightseeing'], [ev('Museum visit'), 'sightseeing'],
   // sport and health
   [ev('Gym'), 'gym'], [ev('Leg day'), 'gym'], [ev('Parkrun', { start: 9 * 60, weekday: 6 }), 'run'], [ev('Morning 5k run'), 'run'],

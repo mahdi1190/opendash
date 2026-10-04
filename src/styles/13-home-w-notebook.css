@@ -1,0 +1,197 @@
+/* Home widget "notebook" (Daily note): its styles.
+   OWNER: the "notebook" widget builder (WIDGETS_CATALOGUE.md 3.15).
+   Loaded after 13-home-core.css and 13-home-platform.css. Every rule is scoped to the
+   widget's own root (.nb) or its settings popover (.nb-set). The card is its own
+   inline-size container: the side column and the 30-day strip fold under the editor
+   when the card is narrow (a phone, a half-width tablet column), with no extra rules.
+   Motion: "Saved" fades in, a ticked line flashes once, the strip's dots pop in once per
+   visit; motion.css switches all of it off under reduced motion. Nothing moves while typing. */
+
+.nb { container-type: inline-size; display: flex; flex-direction: column; min-height: 100%; }
+.nb > .card-b { flex: 1 1 auto; display: flex; flex-direction: column; gap: var(--space-2); min-height: 0; padding: var(--space-1) var(--space-4) var(--space-4); }
+
+/* ----- header: title, the day, ‹ › Today, settings ----- */
+.nb .nb-h { gap: var(--space-2); flex-wrap: wrap; row-gap: 2px; }
+.nb .nb-h .btn { margin-left: 0; }
+.nb-h-day { font-size: 12px; color: var(--fg-subtle); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nb-nav { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.nb-nav .btn-icon .i { width: 15px; height: 15px; }
+.nb-day { font-size: 12px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px; min-width: 0; font-variant-numeric: tabular-nums; }
+.nb-day b { color: var(--fg); font-weight: var(--weight-semibold); }
+.nb-today { margin-left: 4px; }
+.nb-today.is-current { color: var(--accent-ink); background: var(--accent-soft); cursor: default; }
+
+/* ----- the toolbar and the save state ----- */
+.nb-bar { display: flex; align-items: center; gap: 2px; margin: 0 -6px; min-height: 28px; flex-wrap: wrap; }
+.nb-bar .btn .i { width: 14px; height: 14px; }
+.nb-bar .nb-pv.is-on { color: var(--accent-ink); background: var(--accent-soft); }
+.nb-bar .nb-copy.is-done { color: var(--success-ink); }
+.nb-status { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; font-size: 12px; color: var(--fg-subtle); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nb-status .i { width: 12px; height: 12px; color: var(--success); }
+.nb-status:empty { display: none; }
+.nb-status.is-fresh { animation: nb-fade-in 420ms cubic-bezier(0.22, 1, 0.36, 1); }
+.nb-status.is-stale { opacity: 0.55; }
+.nb-status.is-err { color: var(--danger-ink); }
+.nb-status.is-err .i { color: var(--danger); }
+@keyframes nb-fade-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+
+/* ----- the editor (kept alive across repaints) ----- */
+.nb-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); flex: 1 1 auto; min-height: 0; }
+.nb-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; }
+.nb-surface { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+.nb .nb-ta {
+  flex: 1 1 auto; width: 100%; min-height: 200px; resize: none; padding: 10px 12px;
+  font-size: var(--text-sm); line-height: 21px; tab-size: 2; overflow-wrap: anywhere;
+  background: var(--surface); border-color: var(--border-subtle); box-shadow: none;
+}
+.nb .nb-ta:hover { border-color: var(--border); }
+.nb .nb-ta:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
+.nb .nb-ta::placeholder { color: var(--fg-subtle); }
+.nb--l .nb-ta { min-height: 280px; }
+.nb--full .nb-ta { min-height: 340px; }
+.nb-ta-sample { white-space: pre-wrap; color: var(--fg-muted); overflow: hidden; max-height: 220px; }
+.nb-count { font-size: 11px; line-height: 16px; color: var(--fg-subtle); text-align: right; font-variant-numeric: tabular-nums; }
+.nb-count[hidden] { display: none; }
+.nb-count.is-warn { color: var(--warning-ink); }
+.nb-none { margin: 0; font-size: 12px; line-height: 18px; color: var(--fg-muted); }
+.nb-none code { font-family: var(--font-mono); font-size: 11px; background: var(--bg-muted); border-radius: 4px; padding: 0 4px; }
+
+/* ----- Preview ----- */
+.nb-preview {
+  flex: 1 1 auto; min-height: 200px; max-height: 460px; overflow: auto; padding: 10px 12px;
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-subtle);
+}
+.nb--l .nb-preview { min-height: 280px; }
+.nb--full .nb-preview { min-height: 340px; max-height: 560px; }
+.nb-md + .nb-todo, .nb-todo + .nb-md { margin-top: 4px; }
+.nb-md > :last-child { margin-bottom: 0; }
+
+/* ----- a checkbox line: Make task (opens the card, filled in) and ✓ (adds it now) ----- */
+.nb-todo {
+  display: flex; align-items: center; gap: var(--space-2); min-height: 32px;
+  margin: 1px -6px; padding: 3px 6px; border-radius: var(--radius-sm); position: relative;
+}
+.nb-todo[data-row]:hover, .nb-todo[data-row]:focus-within { background: var(--bg-muted); }
+.nb-todo[data-row]:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.nb-todo[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.nb-todo-ic { width: 15px; height: 15px; flex: none; color: var(--fg-subtle); }
+.nb-todo-t { flex: 1 1 auto; min-width: 0; font-size: var(--text-sm); line-height: 20px; color: var(--fg); overflow-wrap: anywhere; }
+.nb-todo.is-made .nb-todo-t, .nb-todo.is-done .nb-todo-t { color: var(--fg-subtle); text-decoration: line-through; text-decoration-color: color-mix(in oklab, var(--fg-subtle) 60%, transparent); }
+.nb-todo.is-made .nb-todo-ic { color: var(--success); }
+.nb-made { flex: none; font-size: 11px; line-height: 18px; padding: 0 8px; border-radius: var(--radius-full); color: var(--success-ink); background: var(--success-soft); }
+.nb-todo-acts { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.nb-todo-acts .btn .i, .nb-quick .i { width: 14px; height: 14px; }
+.nb-quick:hover { color: var(--success-ink); background: var(--success-soft); }
+.nb-todo.is-just-made { animation: nb-made 1000ms ease-out; }
+.nb-todo.is-just-made .nb-made { animation: nb-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes nb-made { from { background: var(--success-soft); } to { background: transparent; } }
+@keyframes nb-pop { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
+
+/* ----- L and Full: the side column ----- */
+.nb--l .nb-grid, .nb--full .nb-grid { grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); }
+.nb-side { container-type: inline-size; display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; padding-left: var(--space-4); border-left: 1px solid var(--border-subtle); }
+.nb-sec { min-width: 0; }
+.nb-sec-h { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: 12px; line-height: 18px; font-weight: var(--weight-semibold); color: var(--fg-muted); }
+.nb-sec-h .i { width: 14px; height: 14px; color: var(--fg-subtle); flex: none; }
+.nb-sec-n { margin-left: auto; font-size: 11px; font-weight: var(--weight-medium); color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+.nb-todos { display: flex; flex-direction: column; }
+.nb-sec-y > summary {
+  list-style: none; display: flex; align-items: center; gap: 6px; margin: 0 -6px; padding: 4px 6px;
+  border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; line-height: 18px;
+}
+.nb-sec-y > summary::-webkit-details-marker { display: none; }
+.nb-sec-y > summary:hover { background: var(--bg-muted); }
+.nb-sec-y > summary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.nb-sec-y > summary .nb-sec-h { margin: 0; }
+.nb-chev { width: 13px; height: 13px; color: var(--fg-subtle); flex: none; transition: transform var(--m-fast, 120ms) ease-out; }
+.nb-sec-y[open] .nb-chev { transform: rotate(90deg); }
+.nb-sec-d { margin-left: auto; font-size: 11px; color: var(--fg-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.nb-sec-b { padding: 6px 0 0 19px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.nb-md li:has(> svg.i:first-child) { list-style: none; display: flex; align-items: flex-start; gap: 6px; margin-left: -18px; }
+.nb-md li:has(> svg.i:first-child) > .i { width: 13px; height: 13px; margin-top: 3px; flex: none; color: var(--fg-subtle); }
+.nb-md-sm { font-size: 12px; line-height: 18px; color: var(--fg-muted); max-height: 220px; overflow: auto; width: 100%; }
+.nb-goto .i { width: 13px; height: 13px; }
+.nb-otd {
+  display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  padding: 7px 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-subtle);
+  transition: background var(--m-fast, 120ms), border-color var(--m-fast, 120ms);
+}
+.nb-otd + .nb-otd { margin-top: 6px; }
+.nb-otd:hover { background: var(--bg-muted); border-color: var(--border); }
+.nb-otd:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.nb-otd-k { font-size: 11px; line-height: 16px; color: var(--fg-subtle); }
+.nb-otd-t { font-size: 12px; line-height: 18px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@container (max-width: 240px) { .nb-side .nb-make span { display: none; } }
+
+/* ----- Full: the last 30 days and search ----- */
+.nb-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); gap: var(--space-3); align-items: start; }
+.nb-strip { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px; }
+.nb-strip::-webkit-scrollbar { display: none; }
+.nb-dd {
+  flex: 1 0 24px; min-width: 24px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 3px 0 4px;
+  border: 0; border-radius: var(--radius-sm); background: none; color: var(--fg-muted); font: inherit; cursor: pointer;
+}
+.nb-dd.is-mon { margin-left: 4px; }
+.nb-dd:first-child { margin-left: 0; }
+.nb-dd:hover { background: var(--bg-muted); color: var(--fg); }
+.nb-dd:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.nb-dd-w { font-size: 10px; line-height: 12px; color: var(--fg-subtle); }
+.nb-dd-n { font-size: 12px; line-height: 16px; font-variant-numeric: tabular-nums; }
+.nb-dd-dot { width: 5px; height: 5px; border-radius: 50%; background: transparent; }
+.nb-dd.has-note .nb-dd-dot { background: var(--accent); }
+.nb-dd.is-today .nb-dd-n { font-weight: var(--weight-semibold); color: var(--accent-ink); }
+.nb-dd.is-current { background: var(--accent-soft); color: var(--accent-ink); cursor: default; }
+.nb-dd.is-current .nb-dd-w { color: var(--accent-ink); }
+.nb-search { min-width: 0; position: relative; }
+.nb-search-f { width: 100%; }
+.nb-search-f .i { width: 14px; height: 14px; flex: none; }
+.nb-results {
+  position: absolute; z-index: 6; top: calc(100% + 4px); left: 0; right: 0; display: flex; flex-direction: column; max-height: 280px; overflow: auto;
+  padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-raised); box-shadow: var(--shadow-md);
+}
+.nb-results[hidden] { display: none; }
+.nb-results > .nb-none { padding: 4px 6px; }
+.nb-res-h { padding: 2px 6px 4px; font-size: 11px; color: var(--fg-subtle); }
+.nb-res { display: flex; align-items: baseline; gap: var(--space-2); width: 100%; padding: 5px 6px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.nb-res:hover { background: var(--bg-muted); }
+.nb-res:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.nb-res.is-current { background: var(--accent-soft); cursor: default; }
+.nb-res-d { flex: none; width: 76px; font-size: 11px; color: var(--fg-subtle); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nb-res-t { flex: 1 1 auto; min-width: 0; font-size: 12px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nb-res mark { background: var(--warning-soft); color: inherit; border-radius: 2px; padding: 0 1px; }
+
+/* ----- S: the last line and Write ----- */
+.nb-last {
+  display: flex; flex-direction: column; gap: 2px; min-height: 48px; padding: 8px 10px;
+  border-radius: var(--radius-md); background: var(--bg-subtle); box-shadow: inset 2px 0 0 var(--accent-soft-2);
+}
+.nb-last-k { font-size: 11px; line-height: 16px; color: var(--fg-subtle); }
+.nb-last-t { font-size: 13px; line-height: 19px; color: var(--fg); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.nb-last-none { margin: auto 0; font-size: 13px; line-height: 19px; color: var(--fg-muted); }
+.nb-write { display: flex; align-items: center; gap: 6px; }
+.nb .nb-write-in { flex: 1 1 auto; min-width: 0; height: var(--control-h-lg); }
+.nb-write-go .i { width: 14px; height: 14px; }
+.nb-foot { display: flex; justify-content: flex-end; min-height: 16px; margin-top: auto; }
+.nb-foot .nb-status { margin-left: 0; padding: 0; }
+
+/* ----- the settings popover ----- */
+.nb-set .nb-set-tpl { display: flex; flex-direction: column; gap: 6px; padding: var(--space-2) var(--space-3) var(--space-1); border-top: 1px solid var(--border-subtle); margin-top: var(--space-1); }
+.nb-set .nb-set-ta { font-family: var(--font-mono); font-size: 12px; line-height: 18px; min-height: 104px; }
+.nb-set .nb-set-acts { display: flex; align-items: center; gap: var(--space-2); }
+.nb-set .nb-set-acts .btn .i { width: 13px; height: 13px; }
+.nb-set .nb-set-msg { font-size: var(--text-2xs); color: var(--fg-muted); }
+
+/* ----- narrow cards (a phone, a half-width column): one column ----- */
+@container (max-width: 640px) {
+  .nb--l .nb-grid, .nb--full .nb-grid { grid-template-columns: minmax(0, 1fr); }
+  .nb-side { padding-left: 0; border-left: 0; padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); }
+  .nb-top { grid-template-columns: minmax(0, 1fr); }
+  .nb-dd { flex: 0 0 26px; }
+}
+@container (max-width: 420px) {
+  .nb-bar .btn > span { display: none; }
+  .nb-bar .nb-pv.is-on > span { display: inline; }
+  .nb .nb-ta, .nb .nb-preview { min-height: 180px; }
+  .nb-day-sep, .nb-day:has(b) .nb-day-d { display: none; }
+  .nb-today.is-current { display: none; }                 /* the label already says Today */
+}

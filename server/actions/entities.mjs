@@ -11,6 +11,7 @@
 //   tagRegistry     the canonical tag list, when the state has one
 //   resource:<id>   one Files & links entry (state.resources)
 //   autolink:<id>   one task's auto-link suggestions + rejected/applied memory (state.autolink)
+//   daynote:<date>  one day of Home's Daily note (state.daynotes[date]; ops-daynotes.mjs)
 
 import { clone, same } from './model.mjs';
 
@@ -84,6 +85,7 @@ export function snapshot(s, key) {
   if (kind === 'home') return { value: val(s, 'home') };                 // ops-home.mjs: Home's Focus settings
   if (kind === 'eventMeta') return { value: val(s.eventMeta, id) };      // ops-calendar.mjs: one event's notes/links
   if (kind === 'autolink') return autolinkSnap(s, id);                    // ops-autolink.mjs: one task's suggestions + memory
+  if (kind === 'daynote') return { value: val(s.daynotes, id) };         // ops-daynotes.mjs: one day's note
   if (kind === 'key' && CALENDAR_KEYS.has(id)) return { value: val(s, id) };   // ops-calendar.mjs: a whole top-level key
   throw new Error('unknown entity ' + key);
 }
@@ -156,6 +158,7 @@ export function restore(s, key, snap) {
   }
   if (kind === 'eventMeta') { setOrDelete(s, 'eventMeta', id, snap.value); return; }   // ops-calendar.mjs
   if (kind === 'autolink') { autolinkRestore(s, id, snap); return; }                    // ops-autolink.mjs
+  if (kind === 'daynote') { setOrDelete(s, 'daynotes', id, snap.value); return; }       // ops-daynotes.mjs
   if (kind === 'key' && CALENDAR_KEYS.has(id)) {
     if (snap.value === null) delete s[id];
     else s[id] = clone(snap.value);

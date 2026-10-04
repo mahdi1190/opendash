@@ -132,7 +132,7 @@ function _palSources(mode) {
     for (const p of (state.people || [])) {
       const n = counts.byPerson[p.id] || 0;
       add({ group: 'People', avatar: p, label: p.name, keywords: [p.role, p.email, p.id, ...(p.aliases || [])].filter(Boolean).join(' '),
-        hint: [p.role || '', n ? `${n} open` : ''].filter(Boolean).join(' · '), weight: n, run: () => setView('person:' + p.id) });
+        hint: [p.role || '', n ? `${n} open` : ''].filter(Boolean).join(' · '), weight: n, run: () => openPerson(p.id) });
     }
   }
   if (mode === '' || mode === 'tags') {
@@ -190,7 +190,7 @@ function _palDueText(due) {
   const [y, m, d] = due.split('-').map(Number);
   const dt = new Date(y, m - 1, d);
   const o = { weekday: 'short', day: 'numeric', month: 'short' };
-  if (y !== new Date().getFullYear()) o.year = 'numeric';
+  if (String(y) !== todayStr().slice(0, 4)) o.year = 'numeric';
   try { return dt.toLocaleDateString(APP_CONFIG.locale || undefined, o); } catch (e) { return dueLabel(due); }
 }
 
@@ -477,29 +477,8 @@ registerCommand({
  * Returns true when applied.
  */
 async function paletteApplyOps(ops, o) {
-  o = o || {};
-  const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    .then(async (r) => { const j = await r.json().catch(() => ({})); if (!r.ok || j.ok === false) { const e = new Error((j.error && (j.error.message || j.error)) || `HTTP ${r.status}`); e.code = j.error && j.error.code; throw e; } return j; });
-  try {
-    // Make sure the server has this tab's latest edits before it changes anything.
-    if (typeof _persistFire === 'function' && (state._localDirty || (typeof _persistTimer !== 'undefined' && _persistTimer))) { _persistFire(); await new Promise(r => setTimeout(r, 400)); }
-    const dry = await post('/api/actions', { ops, dryRun: true, source: 'ui', client: 'command palette' });
-    if (dry.needsConfirm) {
-      const n = (dry.preview || []).reduce((a, p) => a + ((p.changes || []).length || 1), 0);
-      const ok = await confirmDialog({ title: o.confirmTitle || 'Apply this change?', text: `${n} change${n === 1 ? '' : 's'}. You can undo it afterwards.`, confirmLabel: 'Apply' });
-      if (!ok) return false;
-    }
-    const j = await post('/api/actions', { ops, confirm: dry.confirm, source: 'ui', client: 'command palette' });
-    if (typeof _asstAdopt === 'function') await _asstAdopt(j.version);
-    toast(o.done || 'Done', { kind: 'ok', action: j.undo ? { label: 'Undo', run: async () => {
-      try { const u = await post('/api/actions/undo', { token: j.undo, source: 'ui', client: 'command palette' }); if (typeof _asstAdopt === 'function') await _asstAdopt(u.version); }
-      catch (e) { toast(e.message || 'Could not undo', { kind: 'err' }); }
-    } } : undefined });
-    return true;
-  } catch (e) {
-    toast(e.message || 'That did not work', { kind: 'err' });
-    return false;
-  }
+  // The shared actionsApply (12-home-platform.js; Home widgets use it too as homeOps).
+  return !!(await actionsApply(ops, Object.assign({}, o || {}, { client: 'command palette' })));
 }
 
 /** Start a server-side update job, go to its section and say so. */

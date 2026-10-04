@@ -10,7 +10,131 @@ upgrades it.
 
 ## [Unreleased]
 
-Nothing yet.
+## [2.2.0] - 2026-10-04
+
+OpenDash 2.2 "Alive": the animation update. This release also includes all
+of the 2.1 "Do more from Home" work, which was not released separately.
+
+### Highlights
+
+- **Home and the morning brief are one page.** The big animated greeting,
+  your day in three sentences, *Play my morning* and the Today / Evening /
+  Week / History tabs sit on top of your widgets.
+- **An animation library** behind everything animated, with a gallery to
+  preview, favourite and block animations, a new look every day, and seven
+  themes (Calm, Playful, Cinematic, Retro pixel, Hand-drawn, Paper cut-out,
+  Neon night).
+- **A full-screen opening:** OpenDash, a welcome to your county, then a scene
+  from it. Settings > Animations > Opening: every load, first load of the
+  day, or off.
+- **The UK pack (first regions):** full-screen scenes for the South West and
+  Hampshire; county detection is opt-in and offline. Other places get a
+  seasonal landscape.
+- **Moments across the app:** seasonal and festival days, real sunrise and
+  sunset skies, story skins, streak flames, calendar event scenes, payday and
+  budget moments, achievements, month and year recaps, a world pack for
+  travel, and *make your own* animations drawn by the assistant.
+- **Signature light/dark transition.**
+
+### Fixed
+
+- Start at login and the *Start server* button use a plain Node launcher
+  (`tools/start-hidden.mjs`); the old script-host file is gone because
+  Windows Defender flagged it.
+- Settings that saved but did not redraw (story or page, read aloud, voice
+  and speed, weekly review); the 12/24-hour clock is used everywhere; picking
+  a time zone saves it.
+- *Ignore* on "not in People yet" names now works for names of two or more
+  words.
+- Pin to top always puts pinned items first (Focus, board, sidebar).
+- Home suggestions fill up to the chosen count and say why when they cannot.
+- The Focus count from *Tune* is used everywhere; the List widget's Rows
+  setting is respected.
+- Sort and "show N" for the sidebar's Streams, Tags and People, with drag
+  to reorder.
+
+### Added
+
+- **Travel and time zones.** The page and the server share one clock: it
+  follows this computer by default, your configured zone becomes your *home*
+  zone, and money days stay on home time. Settings > Travel & time has
+  *Dashboard time* (follow this computer, always home time, or always one
+  zone), the home time zone and the clock format. Optional, local-only trip
+  detection (a time-zone change, travel in your calendar, payments abroad,
+  optionally the browser's location reduced to the nearest city; no geo-IP),
+  arrival, departure and welcome-home moments, a second clock for home time,
+  meetings shown in both zones, jet-lag and public-holiday hints, and travel
+  suggestions. People can have their own time zone. *Forget this trip* removes
+  what the dashboard inferred about a trip.
+- **Motion.** Settings > Animations has an *Intensity* control (Off, Subtle,
+  Standard, Playful) with a live preview; page and section changes, lists and
+  the theme switch animate, an opening animation plays on load, the sky scenes
+  gain weather layers, and finishing things can play a small celebration.
+  *Reduce motion* still keeps everything still.
+- **People overhaul.** People open in their own centre card, like tasks (the
+  side panel is still there); profile and cover pictures (upload, emoji or
+  symbol, built-in covers, Gravatar as an opt-in); a List or Grid view with a
+  show filter; and the People actions are back in reach: *Find people in
+  emails*, *Check email*, *Review suggested links*, *Assign to tasks…* and
+  *Link tasks…* per person.
+
+- **Suggestions that do the thing.** One-click ideas on Home, in the Today
+  hero, the Morning brief and the stories: block free time for your top task,
+  book the hours a deadline needs, prep before a meeting, move your block when
+  a meeting lands on it, answer an invitation, rebook a block that came and
+  went, plan tomorrow's first block, roll over what slipped, set an estimate,
+  nudge someone you are waiting on, reply to someone waiting on you, turn
+  emails into tasks, follow up after a meeting, and pick up a stream that went
+  quiet. The main button opens the normal editor already filled in (nothing is
+  saved until you press *Save*); the small ✓ does it as offered, at once, with
+  *Undo*. Settings > Suggestions has a switch for each kind. "Why am I seeing
+  this?", *Not now* and *Stop these* on every card.
+- **Writing to Google Calendar**: create, move, resize and edit events, and
+  answer invitations, from the Calendar and from Home, with *Undo*. Blocking
+  time makes a real calendar event linked to its task, never a stand-in task.
+- **Sixteen new Home widgets** in Add widget: Quick capture, Fill the gap, Plan
+  my day, Meeting prep, After meetings, Invites & clashes, Needs reply, I owe,
+  Catch up, Deadline runway, Smart list, Habits & routines, Launchpad, Payday &
+  safe to spend, Daily note and What changed. Some can be added more than once
+  (Deadline runway, Smart list), and many have their own settings.
+- **The Morning brief on Home**: your day in three sentences, the shape of the
+  day as a track, tiles for deadlines, Focus and money, and ideas; the story
+  plays inside the panel and can go full screen. Evening and weekly versions
+  appear at their time.
+- **Money story**: *Play story* on the Finances Overview plays a short,
+  read-aloud recap of the month or week, with the Overview's own numbers.
+- **Gmail drafts**: replies, nudges and thank-yous are saved as drafts in
+  Gmail (in the right thread), never sent. Undo deletes the draft.
+- **Working hours** (Settings > Profile) and **planned time slots**: plan a
+  task for a time without moving its deadline; slots show dashed in Today's
+  schedule and every Calendar view.
+- **Daily note**: one running markdown note per day; MCP clients can read and
+  add to it (`get_daynotes`, `save_daynote`); the in-app assistant is not
+  given your notes.
+- **Settings > Home**: Customise, the brief and suggestions panels, Hide
+  amounts and working hours in one place.
+- The demo data now gives every new widget and suggestion something to show.
+
+### Changed
+
+- Dragging a task onto a time in the week or day view plans a slot; the
+  deadline stays where it was.
+- New widgets that are shown by default appear in their natural place on an
+  existing Home board (the Morning brief right under the hero), not at the end.
+- The Today hero, Today's schedule, the brief and the stories count free time
+  inside your working hours.
+- "Today", due dates, the calendar, the brief, the stories and the assistant
+  all use the same clock, so they agree on what day it is while you travel
+  and on daylight-saving days. Backups, data exports and the transactions CSV
+  are named after the home day.
+
+### Security
+
+- Sending email is impossible by design: every Claude run is denied the Gmail
+  send, reply and forward tools, and the Gmail drafts profile allows exactly
+  one planned draft call.
+- Calendar writes and Gmail drafts refuse a Claude record that answers one
+  call twice (a refusal followed by a forged "success").
 
 ## [2.0.0] - 2026-10-03
 
@@ -114,5 +238,6 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/mahdi1190/opendash/compare/v2.0.0...v2.2.0
 [2.0.0]: https://github.com/mahdi1190/opendash/releases/tag/v2.0.0

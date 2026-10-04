@@ -1,0 +1,11 @@
+{
+  "_about": "Monday 14:40, a free afternoon, the calendar can be read but not written (not connected for writes): S1's button says Connect calendar (G2). Synthetic.",
+  "now": "2026-10-05T14:40",
+  "caps": { "calWrite": false },
+  "cal": { "writable": false },
+  "events": { "2026-10-05": [] },
+  "tasks": [
+    { "id": "t-report", "title": "Report draft: section 2", "priority": "p1", "focusWhy": ["High priority"] }
+  ],
+  "focus": ["t-report"]
+}

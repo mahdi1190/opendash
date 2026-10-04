@@ -13,15 +13,19 @@
 //   home.set_focus     [set_home_focus]       what Home's Focus shows, its order, hide/unhide
 //   home.set_layout    [set_home_layout]      Home's widgets: move, resize, hide/show, order
 //   home.reset_layout  [reset_home_layout]    Home's widgets back to the default arrangement
+//   home.set_widget_prefs [set_home_widget]   one widget's own settings; add a copy (runway, list)
 // The matching reads (list_countdowns, get_home_focus, get_home_layout) are in queries-home.mjs.
 //
 // Undo: 'countdowns' and 'home' entities (entities.mjs).
 
-import { ActionError, cleanLine, isIsoDate, dateError, daysBetween, weekdayOf, newCountdownId, truncate, LIMITS, addDaysIso } from './model.mjs';
+import { ActionError, cleanLine, isIsoDate, dateError, daysBetween, weekdayOf, newCountdownId, truncate, LIMITS, addDaysIso, closest } from './model.mjs';
+import { check } from './validate.mjs';
 import {
   WIDGET_TYPES, DATED_TYPES, LIVE_TYPES, UNITS, STYLES, TASK_FILTERS, CLOCK_FORMATS, SWATCHES,
   normalizeWidget, widgetList, storedWidget, setHeadline, normColor, focusConfig, EMOJI_ICONS,
   HOME_WIDGETS, HOME_SIZES, HOME_SIZE_NAMES, HOME_LAYOUT_VERSION, normalizeHomeLayout, findHomeWidget,
+  HOME_WIDGET_PREFS, HOME_WIDGET_PREFS_MAX_BYTES, mergeWidgetPrefs, splitHomeInstance, homeInstanceTitle, findHomeInstance,
+  validClockZone,
 } from '../../lib/home-topbar.mjs';
 
 const obj = (properties, required = [], extra = {}) => ({ type: 'object', properties, required, additionalProperties: false, ...extra });
@@ -43,7 +47,7 @@ const S = {
   visible: { type: 'boolean', description: 'false hides it from the bar but keeps it' },
   position: { type: 'integer', minimum: 0, maximum: 100, description: '0 = first (makes it the headline); default: last' },
 };
-const WIDGET_REF = { type: 'string', minLength: 1, maxLength: 60, description: `a Home widget id (${HOME_WIDGETS.map(w => w.id).join(', ')}) or its name` };
+const WIDGET_REF = { type: 'string', minLength: 1, maxLength: 60, description: `a Home widget id (${HOME_WIDGETS.map(w => w.id).join(', ')}) or its name; a copy is <id>~<n> (e.g. runway~2)` };
 const DATED_FIELDS = { label: S.label, date: S.date, type: { type: 'string', enum: [...DATED_TYPES], description: 'countdown (days until, the default), countup (days since) or progress (time between start and date)' }, time: S.time, start: S.start, icon: S.icon, color: S.color, style: S.style, unit: S.unit, headline: S.headline, warnDays: S.warnDays, hideWhenPast: S.hideWhenPast, showBar: S.showBar, visible: S.visible };
 
 const ICON_RE = /^[a-z][a-z0-9-]{0,31}$/;
@@ -81,6 +85,11 @@ function find(list, ref, field = 'id') {
   });
 }
 const nameOf = (w) => w.label || WIDGET_TYPES[w.type].label;
+// A clock's zone (travel spec 5.1): the user picks it, so no per-person data is needed.
+const CLOCK_ZONE_FIELDS = {
+  zone: { type: 'string', maxLength: 64, description: "clock widget: 'local' (the dashboard's time, default), 'home' (home time while away) or an IANA zone such as 'Asia/Tokyo'" },
+  zoneLabel: { type: 'string', maxLength: 40, description: "clock widget with a zone: a short name to show, e.g. 'Tokyo office'" },
+};
 const change = (w, field, from, to) => ({ entity: 'countdown', id: w.id, label: truncate(nameOf(w), 60), field, from: from ?? null, to: to ?? null });
 
 /** Apply the shared optional fields; returns the changes. */
@@ -104,6 +113,14 @@ function applyFields(ctx, w, p) {
   if (p.visible !== undefined) set('visible', !!p.visible);
   if (p.tasks !== undefined) set('tasks', p.tasks);
   if (p.clock !== undefined) set('clock', p.clock);
+  if (p.zone !== undefined) {   // a clock's zone (travel spec 5.1): 'local' | 'home' | an IANA id
+    const z = cleanLine(p.zone, 64) || 'local';
+    if (z !== 'local' && z !== 'home' && !validClockZone(z)) throw new ActionError('BAD_VALUE', `'${truncate(z, 40)}' is not a time zone; use 'local', 'home' or an IANA name such as 'Asia/Tokyo'`, { field: 'zone' });
+    if (w.type !== 'clock') throw new ActionError('BAD_VALUE', 'zone is for clock widgets', { field: 'zone' });
+    if (z === 'local') { if (w.zone) { ch.push(change(w, 'zone', w.zone, 'local')); delete w.zone; delete w.zoneLabel; } }
+    else set('zone', z);
+  }
+  if (p.zoneLabel !== undefined && w.zone) set('zoneLabel', cleanLine(p.zoneLabel, 40));
   if (p.showBar !== undefined) set('showBar', !!p.showBar);
   else if (p.start !== undefined && w.type !== 'countup') set('showBar', !!w.start || w.type === 'progress');
   if (w.type === 'progress') {
@@ -150,6 +167,7 @@ export const HOME_OPS = [
       type: { type: 'string', enum: Object.keys(WIDGET_TYPES), description: 'countdown, countup or progress (dated); tasks, event or clock (live)' },
       tasks: { type: 'string', enum: [...TASK_FILTERS], description: 'tasks widget: which tasks it counts' },
       clock: { type: 'string', enum: [...CLOCK_FORMATS], description: 'clock widget: time + date, time or date' },
+      ...CLOCK_ZONE_FIELDS,
       label: { type: 'string', maxLength: 200, description: 'new label (live widgets may use "" for the automatic one)' },
     }, ['id'], { minProperties: 2, minPropertiesMessage: 'update_countdown needs at least one field to change' }),
     run(ctx, p) {
@@ -204,17 +222,20 @@ export const HOME_OPS = [
   },
   {
     name: 'topbar.add_widget', tool: 'add_topbar_widget',
-    description: 'Add a live widget to the top bar: "tasks" (a live count: tasks option today|overdue|week|doing|pinned), "event" (the next calendar event) or "clock" (date and time; clock option both|time|date). For dated countdowns use create_countdown.',
+    description: 'Add a live widget to the top bar: "tasks" (a live count: tasks option today|overdue|week|doing|pinned), "event" (the next calendar event) or "clock" (date and time; clock option both|time|date; zone local|home|an IANA zone for a world clock). For dated countdowns use create_countdown.',
     schema: obj({
       type: { type: 'string', enum: [...LIVE_TYPES], description: 'tasks, event or clock' },
       tasks: { type: 'string', enum: [...TASK_FILTERS], description: 'tasks widget: which tasks to count (default today = due today or overdue)' },
       clock: { type: 'string', enum: [...CLOCK_FORMATS], description: 'clock widget: what to show (default both)' },
+      ...CLOCK_ZONE_FIELDS,
       label: { type: 'string', maxLength: 200, description: 'optional label (default: automatic)' },
       icon: S.icon, color: S.color, style: S.style, showBar: S.showBar, visible: S.visible, position: S.position,
     }, ['type']),
     run(ctx, p) {
       const list = widgets(ctx);
-      if (list.some(w => w.type === p.type && (p.type !== 'tasks' || w.tasks === (p.tasks || 'today')))) {
+      // One of each, except task counts with different filters and clocks with different zones (world clocks).
+      const zoneOf = (z) => (!z || z === 'local' ? 'local' : z);
+      if (list.some(w => w.type === p.type && (p.type !== 'tasks' || w.tasks === (p.tasks || 'today')) && (p.type !== 'clock' || zoneOf(w.zone) === zoneOf(p.zone)))) {
         throw new ActionError('DUPLICATE_WIDGET', `the top bar already has a ${WIDGET_TYPES[p.type].label.toLowerCase()} widget${p.type === 'tasks' ? ` for ${p.tasks || 'today'}` : ''}`, { field: 'type', hint: 'change it with update_countdown' });
       }
       const w = normalizeWidget({ id: newCountdownId(), type: p.type, label: '', headline: false, color: p.type === 'clock' ? 'slate' : p.type === 'event' ? 'blue' : 'teal', warnDays: 0 }, list.length, false);
@@ -305,16 +326,22 @@ export const HOME_OPS = [
       ctx.touch('home');
       const s = ctx.s;
       const home = s.home && typeof s.home === 'object' ? { ...s.home } : {};
-      const before = normalizeHomeLayout(home.layout).widgets;
+      const before = normalizeHomeLayout(home.layout, HOME_WIDGETS, home.widgetPrefs).widgets;
       let list = before.map(w => ({ ...w }));
+      // A copy (runway~2) not on Home yet is added, shown, at the end.
+      const entry = (ref, field) => {
+        const { id, def } = instanceOf(ref, field);
+        let w = list.find(x => x.id === id);
+        if (!w) { w = { id, size: def.defaultSize, hidden: false }; list.push(w); }
+        return { id, def, w };
+      };
       if (p.order) {
-        const picked = p.order.map((ref, i) => widgetOf(ref, `order[${i}]`).id);
+        const picked = p.order.map((ref, i) => entry(ref, `order[${i}]`).id);
         if (new Set(picked).size !== picked.length) throw new ActionError('BAD_VALUE', 'order names the same widget twice', { field: 'order' });
         list = [...picked.map(id => list.find(w => w.id === id)), ...list.filter(w => !picked.includes(w.id))];
       }
       (p.widgets || []).forEach((c, i) => {
-        const def = widgetOf(c.id, `widgets[${i}].id`);
-        const w = list.find(x => x.id === def.id);
+        const { def, w } = entry(c.id, `widgets[${i}].id`);
         const moves = ['position', 'before', 'after'].filter(k => c[k] !== undefined);
         if (moves.length > 1) throw new ActionError('BAD_VALUE', `widgets[${i}]: give only one of position, before or after`, { field: `widgets[${i}]` });
         if (c.size !== undefined) {
@@ -332,19 +359,22 @@ export const HOME_OPS = [
           at = c.position >= shown.length ? rest.length : rest.indexOf(shown[c.position]);
         } else {
           const key = c.before !== undefined ? 'before' : 'after';
-          const ref = widgetOf(c[key], `widgets[${i}].${key}`);
-          if (ref.id === def.id) throw new ActionError('BAD_VALUE', `widgets[${i}]: a widget cannot go ${key} itself`, { field: `widgets[${i}].${key}` });
-          at = rest.findIndex(x => x.id === ref.id) + (key === 'after' ? 1 : 0);
+          const ref = instanceOf(c[key], `widgets[${i}].${key}`);
+          if (ref.id === w.id) throw new ActionError('BAD_VALUE', `widgets[${i}]: a widget cannot go ${key} itself`, { field: `widgets[${i}].${key}` });
+          const j = rest.findIndex(x => x.id === ref.id);
+          if (j < 0) throw new ActionError('NOT_FOUND', `${homeInstanceTitle(ref.id)} is not on Home`, { field: `widgets[${i}].${key}` });
+          at = j + (key === 'after' ? 1 : 0);
         }
         rest.splice(at, 0, w);
         list = rest;
       });
-      const after = normalizeHomeLayout({ widgets: list }).widgets;
+      const after = normalizeHomeLayout({ widgets: list }, HOME_WIDGETS, home.widgetPrefs).widgets;
       const ch = [];
       const rec = (id, field, from, to) => ch.push({ entity: 'home', id: 'layout:' + id, label: titleOf(id), field, from, to });
       const words = [];
       for (const w of after) {
         const b = before.find(x => x.id === w.id);
+        if (!b) { rec(w.id, 'added', null, w.id); words.push(`${titleOf(w.id)} added`); continue; }
         if (b.size !== w.size) { rec(w.id, 'size', b.size, w.size); words.push(`${titleOf(w.id)} ${HOME_SIZE_NAMES[w.size]}`); }
         if (b.hidden !== w.hidden) { rec(w.id, 'hidden', b.hidden, w.hidden); words.push(`${titleOf(w.id)} ${w.hidden ? 'hidden' : 'shown'}`); }
       }
@@ -361,26 +391,120 @@ export const HOME_OPS = [
   },
   {
     name: 'home.reset_layout', tool: 'reset_home_layout',
-    description: "Put Home's widgets back to the default arrangement: the default widgets shown, in the default order and sizes. Focus settings are kept.",
+    description: "Put Home's widgets back to the default arrangement: the default widgets shown, in the default order and sizes; extra copies of a widget (runway~2...) are removed. Focus settings and each widget's own settings are kept.",
     schema: obj({}),
     run(ctx) {
       ctx.touch('home');
       const s = ctx.s;
       const home = s.home && typeof s.home === 'object' ? { ...s.home } : {};
-      const had = home.layout !== undefined;
+      const wp = home.widgetPrefs && typeof home.widgetPrefs === 'object' ? { ...home.widgetPrefs } : null;
+      const copies = wp ? Object.keys(wp).filter(k => splitHomeInstance(k).n > 1) : [];
+      const had = home.layout !== undefined || copies.length > 0;
       delete home.layout;
+      if (copies.length) { for (const k of copies) delete wp[k]; if (Object.keys(wp).length) home.widgetPrefs = wp; else delete home.widgetPrefs; }
       s.home = home;
       if (!had) ctx.warn('reset_home_layout: Home already has the default layout');
       return {
-        summary: had ? 'Reset the Home layout to the default' : 'Home already has the default layout',
+        summary: had ? `Reset the Home layout to the default${copies.length ? ` (removed ${copies.map(titleOf).join(', ')})` : ''}` : 'Home already has the default layout',
         changes: had ? [{ entity: 'home', id: 'layout', label: 'Home layout', field: 'layout', from: 'custom', to: 'default' }] : [],
+      };
+    },
+  },
+  {
+    name: 'home.set_widget_prefs', tool: 'set_home_widget',
+    description: "Change one Home widget's own settings (get_home_layout shows each widget's settings and settingKeys), e.g. which countdown a Deadline runway tracks or a Smart list's search. settings: the keys to change (null puts one back to its default); reset:true clears them all first. Widgets that allow copies (runway up to 4, list up to 6) take newCopy:true: it adds another copy with these settings at the end of Home (its id comes back as created.widgetId, e.g. runway~2). show:true also puts the widget on Home, show:false hides it; size sets its size. Example: 'track the launch in a runway' = {widget:'runway', newCopy:true, settings:{countdownId:'<id from list_countdowns>', scope:{kind:'tag', value:'launch'}}}.",
+    schema: obj({
+      widget: { ...WIDGET_REF, description: 'a Home widget id or name, or a copy id such as runway~2' },
+      settings: { type: 'object', description: 'the settings to change, by key (see settingKeys in get_home_layout); null = back to the default' },
+      reset: { type: 'boolean', description: 'true clears all its settings first' },
+      newCopy: { type: 'boolean', description: 'add another copy (only widgets that allow copies: runway, list)' },
+      show: { type: 'boolean', description: 'true puts it on Home (at the end when it was hidden); false hides it' },
+      size: { type: 'string', enum: [...HOME_SIZES], description: 's (a third of the width), m (half), l (two thirds) or full' },
+    }, ['widget'], { minProperties: 2, minPropertiesMessage: 'set_home_widget needs settings, reset, newCopy, show or size' }),
+    run(ctx, p) {
+      ctx.touch('home');
+      const s = ctx.s;
+      const home = s.home && typeof s.home === 'object' ? { ...s.home } : {};
+      const wp = home.widgetPrefs && typeof home.widgetPrefs === 'object' && !Array.isArray(home.widgetPrefs) ? { ...home.widgetPrefs } : {};
+      const before = normalizeHomeLayout(home.layout, HOME_WIDGETS, wp).widgets;
+      let { id, def } = instanceOf(p.widget, 'widget');
+      if (p.newCopy) {
+        if ((Number(def.multi) || 1) < 2) throw new ActionError('BAD_VALUE', `${def.title} can be on Home only once (no copies)`, { field: 'newCopy', valid: HOME_WIDGETS.filter(w => w.multi > 1).map(w => w.id) });
+        if (id !== def.id) throw new ActionError('BAD_VALUE', `newCopy takes the widget (${def.id}), not one of its copies`, { field: 'widget' });
+        // The first copy not in use (not shown and no settings): the widget itself, then <id>~2...
+        const used = (x) => { const w = before.find(y => y.id === x); return (w && !w.hidden) || Object.hasOwn(wp, x); };
+        const all = [def.id, ...Array.from({ length: def.multi - 1 }, (_, k) => `${def.id}~${k + 2}`)];
+        id = all.find(x => !used(x));
+        if (!id) throw new ActionError('BAD_VALUE', `Home already has ${def.multi} copies of ${def.title} (the most it allows); change one of them instead`, { field: 'newCopy', valid: all });
+      }
+      const schema = HOME_WIDGET_PREFS[def.id];
+      const ch = [];
+      const label = titleOf(id);
+      // Settings: validated against the widget's schema (null = back to the default).
+      let prefs = p.reset ? {} : { ...(wp[id] || {}) };
+      if (p.settings !== undefined) {
+        if (!schema) throw new ActionError('BAD_VALUE', `${def.title} has no settings`, { field: 'settings', valid: Object.keys(HOME_WIDGET_PREFS) });
+        const known = Object.keys(schema.properties);
+        const patch = {};
+        for (const [k, v] of Object.entries(p.settings)) {
+          if (!Object.hasOwn(schema.properties, k)) {
+            const near = closest(k, known, 1);
+            throw new ActionError('BAD_VALUE', `${def.title} has no setting '${truncate(k, 40)}'`, { field: `settings.${k}`, valid: known, ...(near.length ? { hint: `did you mean '${near[0]}'?` } : {}) });
+          }
+          if (v !== null) patch[k] = v;
+        }
+        const errs = check(schema, patch, 'settings');
+        if (errs.length) throw new ActionError('INVALID_PARAMS', errs[0].message, { field: errs[0].field, valid: errs[0].valid, hint: errs[0].hint });
+        prefs = mergeWidgetPrefs(prefs, p.settings);
+      }
+      const bytes = Buffer.byteLength(JSON.stringify(prefs));
+      if (bytes > HOME_WIDGET_PREFS_MAX_BYTES) throw new ActionError('BAD_VALUE', `${label}: the settings are too large (${bytes} bytes; at most ${HOME_WIDGET_PREFS_MAX_BYTES})`, { field: 'settings' });
+      const old = wp[id] || {};
+      for (const k of new Set([...Object.keys(old), ...Object.keys(prefs)])) {
+        if (JSON.stringify(old[k] ?? null) !== JSON.stringify(prefs[k] ?? null)) ch.push({ entity: 'home', id: 'widget:' + id, label, field: 'settings.' + k, from: old[k] ?? null, to: prefs[k] ?? null });
+      }
+      // A copy exists while it has a settings entry (so keep {} for copies); the widget itself drops an empty one.
+      if (Object.keys(prefs).length || splitHomeInstance(id).n > 1) wp[id] = prefs; else delete wp[id];
+      // Layout: show / hide / size (a new copy is shown unless show:false).
+      let list = before.map(w => ({ ...w }));
+      let w = list.find(x => x.id === id);
+      const isNew = !w;                                // a copy that did not exist yet: it goes on Home
+      if (!w) { w = { id, size: def.defaultSize, hidden: true }; list.push(w); }
+      const show = p.show !== undefined ? p.show : (p.newCopy || isNew ? true : undefined);
+      if (show === true && w.hidden) { list = list.filter(x => x !== w).concat([w]); w.hidden = false; ch.push({ entity: 'home', id: 'layout:' + id, label, field: 'hidden', from: true, to: false }); }
+      else if (show === false && !w.hidden) { w.hidden = true; ch.push({ entity: 'home', id: 'layout:' + id, label, field: 'hidden', from: false, to: true }); }
+      if (p.size !== undefined) {
+        if (!def.sizes.includes(p.size)) throw new ActionError('BAD_VALUE', `${def.title} can be ${def.sizes.map(x => `${x} (${HOME_SIZE_NAMES[x]})`).join(', ')}; not ${p.size}`, { field: 'size', valid: [...def.sizes] });
+        if (w.size !== p.size) { ch.push({ entity: 'home', id: 'layout:' + id, label, field: 'size', from: w.size, to: p.size }); w.size = p.size; }
+      }
+      const after = normalizeHomeLayout({ widgets: list }, HOME_WIDGETS, wp).widgets;
+      if (JSON.stringify(after) !== JSON.stringify(before)) home.layout = { version: HOME_LAYOUT_VERSION, widgets: after };
+      if (Object.keys(wp).length) home.widgetPrefs = wp; else delete home.widgetPrefs;
+      s.home = home;
+      if (!ch.length) ctx.warn(`set_home_widget: nothing to change for ${label}`);
+      const what = [...new Set(ch.map(c => c.field.replace(/^settings\./, '')))];
+      return {
+        summary: ch.length ? `${p.newCopy && splitHomeInstance(id).n > 1 ? `Add ${label}` : label}: ${what.join(', ')}` : `No change to ${label}`,
+        changes: ch, ...(p.newCopy ? { created: { widgetId: id } } : {}),
       };
     },
   },
 ];
 
 /* ---------- Home layout helpers ---------- */
-function titleOf(id) { const w = HOME_WIDGETS.find(x => x.id === id); return w ? w.title : id; }
+function titleOf(id) { return homeInstanceTitle(id); }
+/** A widget or one of its copies -> {id, def}; NOT_FOUND names the widgets (and the copies allowed). */
+function instanceOf(ref, field) {
+  const hit = findHomeInstance(ref);
+  if (hit) return hit;
+  const { base, n } = splitHomeInstance(String(ref).trim());
+  const w = n > 1 ? findHomeWidget(base) : null;
+  if (w) {
+    throw new ActionError('NOT_FOUND', w.multi > 1 ? `${w.title} allows ${w.multi} copies (${w.id}, ${w.id}~2 … ${w.id}~${w.multi}); no ${truncate(String(ref), 40)}` : `${w.title} can be on Home only once; no ${truncate(String(ref), 40)}`, { field, valid: [w.id] });
+  }
+  const def = widgetOf(ref, field);                 // (throws: findHomeInstance already tried every name)
+  return { id: def.id, def, n: 1 };
+}
 function widgetOf(ref, field) {
   const w = findHomeWidget(ref);
   if (w) return w;

@@ -1,0 +1,21 @@
+/* ============================================================
+   SUGGESTIONS S2-S9 (68-suggest-rules-time.js, 68-suggest-time-ui.js):
+   S2's "Time" section in the task card's side column, and the armed state
+   of a chip that asks before it tells someone (S6: Maybe / Can't).
+   Tokens only; motion respects reduced motion.
+   ============================================================ */
+.tc-side > .sg-tc:first-child { margin: 0 0 var(--space-3); padding: 0; border-top: 0; }
+.sg-tc .sg-card { padding: var(--space-2-5, 10px); column-gap: var(--space-2); }
+.sg-tc .sg-card + .sg-card { margin-top: var(--space-1-5); }
+.sg-tc .sg-ovl { display: none; }
+.sg-tc .sg-ic { width: var(--scene-xs); height: var(--scene-xs); }
+.sg-tc .sg-ic .i { width: 15px; height: 15px; }
+.sg-tc .sg-ic .anim-scene { width: var(--scene-xs); height: var(--scene-xs); }
+.sg-tc .sg-tx { font-size: var(--text-xs); line-height: var(--lh-xs, 16px); }
+.sg-tc .sg-act { gap: var(--space-1); }
+.sg-tc .sg-chip { font-size: var(--text-xs); }
+.sg-chip.is-armed { background: var(--warning-soft); color: var(--warning-ink); border-color: var(--warning); }
+@media (prefers-reduced-motion: no-preference) {
+  .sg-chip.is-armed, .sg-go.is-armed { animation: sg-armed 600ms ease-out 1; }
+}
+@keyframes sg-armed { 0% { transform: scale(0.97); } 60% { transform: scale(1.02); } 100% { transform: scale(1); } }

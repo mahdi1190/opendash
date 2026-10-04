@@ -1,0 +1,67 @@
+/* ============================================================
+   v2.2 wave 6: "Make your own" (78-anim-make.js), the world pack on the
+   travel arrival card (78-anim-world.js), focus mode dimming
+   (78-anim-moments.js) and the sky across the week view (78-anim-weeksky.js).
+   ============================================================ */
+
+/* ---------- make your own ---------- */
+.am-intro { margin: 0 0 10px; }
+.am-desc { width: 100%; resize: vertical; min-height: 64px; }
+.am-slot { margin-top: 4px; }
+.am-status { min-height: 1.4em; margin: 8px 0; font-size: var(--fs-sm, 13px); }
+.am-preview { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; padding: 12px; border: 1px solid var(--border-subtle); border-radius: var(--r-lg, 12px); background: var(--surface-2, var(--surface)); }
+.am-prev-art { display: grid; justify-items: center; gap: 4px; font-size: var(--fs-xs, 12px); }
+.am-prev-meta { display: grid; gap: 4px; min-width: 140px; flex: 1; align-content: start; }
+.am-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.apg-mine { margin: 14px 0; }
+.apg-mine-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.apg-mine-item { position: relative; }
+.apg-mine-off { margin: 6px 0 0; font-size: var(--fs-xs, 12px); }
+
+/* ---------- the world pack on the arrival card ---------- */
+.trm-world { position: absolute; right: 14px; bottom: 12px; display: flex; align-items: flex-end; gap: 6px; pointer-events: none; z-index: 2; }
+.trm-world .anim-scene { box-shadow: 0 6px 18px rgb(0 0 0 / 0.18); }
+.trm-world .trm-world-el { margin-bottom: 4px; }
+@media (max-width: 600px) { .trm-world .trm-world-sig { --as-size: var(--scene-lg, 64px); } }
+
+/* ---------- focus mode: the rest of the page dims while a focus block runs ---------- */
+html.ap-focusing #sidebar,
+html.ap-focusing #topbar,
+html.ap-focusing #main-body .home-grid > .hg-w[data-wid]:not([data-wid="focus"]) {
+  opacity: 0.42; filter: saturate(0.55);
+  transition: opacity 0.6s var(--ap-ease, ease), filter 0.6s var(--ap-ease, ease);
+}
+html.ap-focusing #sidebar:hover, html.ap-focusing #sidebar:focus-within,
+html.ap-focusing #topbar:hover, html.ap-focusing #topbar:focus-within,
+html.ap-focusing #main-body .home-grid > .hg-w[data-wid]:hover,
+html.ap-focusing #main-body .home-grid > .hg-w[data-wid]:focus-within { opacity: 1; filter: none; }
+html.ap-focusing .ap-focus { box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 30%, transparent), var(--shadow-lg, 0 8px 24px rgb(0 0 0 / 0.2)); }
+@media (prefers-reduced-motion: reduce) {
+  html.ap-focusing #sidebar, html.ap-focusing #topbar, html.ap-focusing #main-body .home-grid > .hg-w[data-wid] { transition: none; }
+}
+
+/* ---------- the sky across the week view ---------- */
+.wv-sky {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.55;
+  background: linear-gradient(to bottom,
+    var(--wvs-night) 0%,
+    var(--wvs-night) calc(var(--sky-rise, 25%) - 4%),
+    var(--wvs-dawn) var(--sky-rise, 25%),
+    var(--wvs-day) calc(var(--sky-rise, 25%) + 6%),
+    var(--wvs-day) calc(var(--sky-set, 75%) - 6%),
+    var(--wvs-dusk) var(--sky-set, 75%),
+    var(--wvs-night) calc(var(--sky-set, 75%) + 4%),
+    var(--wvs-night) 100%);
+  --wvs-night: color-mix(in oklab, var(--accent) 7%, transparent);
+  --wvs-dawn: color-mix(in oklab, #f6b26b 16%, transparent);
+  --wvs-day: transparent;
+  --wvs-dusk: color-mix(in oklab, #e06666 13%, transparent);
+}
+[data-theme="dark"] .wv-sky { --wvs-night: color-mix(in oklab, #1c2a5a 30%, transparent); --wvs-dawn: color-mix(in oklab, #f6b26b 12%, transparent); --wvs-dusk: color-mix(in oklab, #c06090 12%, transparent); }
+.wv-col.today .wv-sky { opacity: 0.8; }
+.wv-sky-orb { position: absolute; right: 4px; top: -9px; width: 12px; height: 12px; border-radius: 50%; }
+.wv-sky-orb.is-sun { background: radial-gradient(circle, #ffd76a 45%, color-mix(in oklab, #ffd76a 30%, transparent) 70%, transparent 72%); animation: wvs-glow 4s ease-in-out infinite; }
+.wv-sky-orb.is-moon { background: radial-gradient(circle at 35% 40%, transparent 38%, #cfd8ea 40%); box-shadow: none; }
+@keyframes wvs-glow { 50% { transform: scale(1.18); } }
+html.anim-paused .wv-sky-orb, html.anim-off .wv-sky-orb { animation: none; }
+@media (prefers-reduced-motion: reduce) { .wv-sky-orb { animation: none; } }

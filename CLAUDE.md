@@ -51,7 +51,9 @@ which runs `serve.mjs` and restarts it; exit codes in MODULES.md section 9).
 Top-level keys: `custom` (tasks), `statuses`, `notes`, `taskActivity`,
 `completionLog`, `pinned`, `bin`, `people` (`self:true` = the user),
 `countdowns`, `streams`, `quickTemplates`, `taskTemplates`, `taskChat`,
-`emailTriage`, `customOrder`, plus UI keys (see `lib/state-keys.mjs`).
+`emailTriage`, `customOrder`, `daynotes` (Home's Daily note:
+`{'YYYY-MM-DD': {md, updatedAt}}`, op `daynote.save`), plus UI keys (see
+`lib/state-keys.mjs`).
 `_lastSave` is the version: the server stamps it on every write and refuses
 older versions (409). Task syncs from Claude Code go through the dashboard
 MCP (`mcp/server.mjs`, tools such as `get_context`, `search_tasks`,

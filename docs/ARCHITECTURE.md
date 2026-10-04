@@ -131,7 +131,7 @@ wins: it is updated with every change to the code.
 - `release-*.mjs`, `privacy-scan.mjs` and `privacy-deep.mjs`: the clean export, the privacy scan
   (and its `--deep` pass), the release zip and the brand assets (see
   [docs/dev/RELEASING.md](dev/RELEASING.md)).
-- `start-hidden.wsf`: the fixed no-window launcher used by the Windows
+- `start-hidden.mjs`: the fixed no-window launcher used by the Windows
   switches.
 
 ## How a change flows

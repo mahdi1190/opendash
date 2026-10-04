@@ -1,0 +1,194 @@
+/* Home widget "capture" (Quick capture): its styles.
+   OWNER: the "capture" widget builder (WIDGETS_CATALOGUE.md 3.1). (12-home-w-capture.js)
+   Loaded after 13-home-core.css and 13-home-platform.css. Every rule is scoped to the
+   widget's own root class .hcap (or its settings popover .hcap-set). The card is its own
+   inline-size container: a row is one line from about 560 px, two lines below it (S, a
+   phone). Light and dark through the tokens; reduced motion = no transitions. */
+
+.hcap { container-type: inline-size; display: flex; flex-direction: column; min-height: 100%; }
+.hcap > .card-b { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: var(--space-1) var(--space-4) var(--space-4); }
+
+/* header: the "N to sort" pill (S, M) */
+.hcap .hcap-pill {
+  display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px 0 9px; flex: none; margin-right: 4px;
+  border: 0; border-radius: var(--radius-full); background: var(--accent-soft); color: var(--accent-ink);
+  font: inherit; font-size: var(--text-xs); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; cursor: pointer;
+  transition: background-color var(--m-fast, 120ms) ease-out;
+}
+.hcap .hcap-pill:hover { background: var(--accent-soft-2); }
+.hcap .hcap-pill:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hcap .hcap-pill .i { width: 13px; height: 13px; }
+.hcap .hcap-pill[aria-expanded="true"] { background: var(--accent-soft-2); }
+
+/* the input */
+.hcap-in { position: relative; display: flex; flex-direction: column; }
+.hcap-box {
+  display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 4px 0 10px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-xs);
+  transition: border-color var(--m-fast, 120ms), box-shadow var(--m-fast, 120ms);
+}
+.hcap-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
+.hcap-box.is-invalid { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+.hcap-plus { display: inline-grid; place-items: center; color: var(--accent); flex: none; }
+.hcap-plus .i { width: 16px; height: 16px; }
+.hcap-input {
+  flex: 1 1 auto; min-width: 0; height: 100%; border: 0; outline: 0; padding: 0; background: transparent;
+  color: var(--fg); font: inherit; font-size: var(--text-md);
+}
+.hcap-input::placeholder { color: var(--fg-subtle); }
+.hcap .hcap-full, .hcap .hcap-add { flex: none; width: 28px; height: 28px; color: var(--fg-subtle); }
+.hcap .hcap-full:hover, .hcap .hcap-add:hover { color: var(--fg); }
+.hcap-box:focus-within .hcap-add { color: var(--accent); }
+.hcap .hcap-full .i, .hcap .hcap-add .i { width: 15px; height: 15px; }
+
+/* # @ + suggestions: in the flow under the field (never clipped by the card) */
+.hcap-sug {
+  display: flex; flex-direction: column; margin-top: 6px; padding: 4px; max-height: 228px; overflow: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
+}
+.hcap-sug[hidden] { display: none; }
+.hcap-sug .pop-item { width: 100%; }
+.hcap-sug .pop-item.on { background: var(--bg-emphasis); }
+.hcap-sug .pop-item .hint { margin-left: auto; }
+
+/* the parser's live chips, or the ghost hint */
+.hcap .hcap-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 0 0; }
+.hcap .hcap-chips[hidden] { display: none; }
+.hcap .qa-tok { height: 22px; max-width: 220px; gap: 5px; background: var(--surface); }
+.hcap .qa-tok .i { width: 12px; height: 12px; }
+.hcap .qa-tok .dot { width: 7px; height: 7px; }
+.hcap button.qa-tok .qad-x { display: inline-flex; color: var(--fg-disabled, var(--fg-subtle)); margin-right: -2px; }
+.hcap button.qa-tok:hover .qad-x { color: var(--fg); }
+.hcap .qa-tok.implied { border-style: dashed; color: var(--fg-subtle); background: transparent; }
+.hcap-help { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 22px; padding-top: 8px; font-size: var(--text-xs); color: var(--fg-subtle); }
+.hcap-help[hidden] { display: none; }
+.hcap-ghost { display: inline-flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hcap-ghost > span { overflow: hidden; text-overflow: ellipsis; }
+.hcap-ghost .i { flex: none; color: var(--accent); opacity: 0.8; }
+.hcap-keys { display: inline-flex; align-items: center; gap: 3px; flex: none; white-space: nowrap; }
+.hcap-keys .kbd { margin-left: 4px; }
+.hcap-keys .kbd + .kbd { margin-left: 1px; }
+@container (max-width: 420px) { .hcap-keys { display: none; } }
+
+/* several lines pasted: the preview */
+.hcap-paste { margin-top: 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-subtle); overflow: hidden; }
+.hcap-paste-h { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; font-size: var(--text-sm); }
+.hcap-paste-h > .i { width: 15px; height: 15px; color: var(--accent); flex: none; }
+.hcap-paste-h b { font-weight: var(--weight-semibold); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hcap-paste-h .spacer { flex: 1; }
+.hcap-paste-full { height: 26px; padding: 0 8px; gap: 4px; font-size: var(--text-xs); flex: none; }
+.hcap-paste-full .i { width: 13px; height: 13px; }
+.hcap-pl { list-style: none; margin: 0; padding: 0; max-height: 232px; overflow: auto; border-top: 1px solid var(--border-subtle); background: var(--surface); }
+.hcap-pli { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 2px 4px 2px 10px; border-bottom: 1px solid var(--border-subtle); }
+.hcap-pli:last-child { border-bottom: 0; }
+.hcap-pli .check { flex: none; }
+.hcap-plt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--fg); }
+.hcap-pli.is-empty .hcap-plt { color: var(--fg-subtle); font-style: italic; }
+.hcap-plc { display: inline-flex; gap: 4px; flex: 0 1 auto; max-width: 50%; overflow: hidden; }
+.hcap .hcap-plx { flex: none; width: 26px; height: 26px; color: var(--fg-subtle); }
+.hcap .hcap-plx:hover { color: var(--fg); }
+.hcap-paste-more { margin: 0; padding: 6px 10px; font-size: var(--text-xs); color: var(--fg-subtle); border-top: 1px solid var(--border-subtle); }
+.hcap-paste-f { display: flex; justify-content: flex-end; gap: 6px; padding: 8px; border-top: 1px solid var(--border-subtle); }
+@container (max-width: 420px) { .hcap-plc { display: none; } }
+
+/* templates: [mark Label | check] */
+.hcap-tpls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.hcap-tpl {
+  display: inline-flex; align-items: stretch; height: 28px; max-width: 100%; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); box-shadow: var(--shadow-xs); overflow: hidden;
+}
+.hcap-tpl-main, .hcap-tpl-ok {
+  display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--fg); font: inherit; cursor: pointer;
+  transition: background-color var(--m-fast, 120ms) ease-out, color var(--m-fast, 120ms) ease-out;
+}
+.hcap-tpl-main { padding: 0 10px 0 9px; font-size: var(--text-xs); font-weight: var(--weight-medium); min-width: 0; }
+.hcap-tpl-main > span:not(.dot) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hcap-tpl-main .i { width: 13px; height: 13px; color: var(--fg-subtle); flex: none; }
+.hcap-tpl-main .dot { flex: none; }
+.hcap-tpl-ok { justify-content: center; width: 28px; padding: 0; border-left: 1px solid var(--border-subtle); color: var(--fg-subtle); flex: none; }
+.hcap-tpl-main:hover, .hcap-tpl-ok:hover { background: var(--bg-muted); color: var(--fg); }
+.hcap-tpl-ok:hover { color: var(--success-ink); }
+.hcap-tpl-main:focus-visible, .hcap-tpl-ok:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
+.hcap-tpl-ok .i { width: 13px; height: 13px; }
+.hcap-tpl-ok.is-done, .hcap-tpl-ok.is-done:hover { background: var(--success-soft); color: var(--success-ink); cursor: default; }
+
+/* sections and rows */
+.hcap-sec { display: flex; flex-direction: column; margin-top: 14px; min-width: 0; }
+.hcap-sh { display: flex; align-items: baseline; gap: 6px; margin: 0 0 4px; padding: 0 2px; }
+.hcap .hcap-sh .hgl-ovl { font-size: 11px; line-height: 16px; font-weight: var(--weight-semibold); letter-spacing: var(--tracking-caps, 0.06em); text-transform: uppercase; color: var(--fg-subtle); }   /* also in the gallery (outside .home) */
+.hcap-shn { font-size: var(--text-2xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+.hcap-list { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.hcap-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "mk rt" ". acts";
+  align-items: center; column-gap: 8px; row-gap: 5px; padding: 7px 8px; min-width: 0;
+}
+.hcap-row--sort { grid-template-columns: minmax(0, 1fr); grid-template-areas: "rt" "acts"; }
+.hcap-mk { grid-area: mk; display: inline-flex; width: 10px; justify-content: center; }
+.hcap-mk:empty { width: 0; }
+.hcap-rt { grid-area: rt; display: flex; flex-direction: column; min-width: 0; }
+.hcap-t { font-size: var(--text-sm); line-height: 18px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hcap-s { font-size: 11.5px; line-height: 16px; color: var(--fg-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hcap-s .hcap-due.late { color: var(--warning-ink); }
+.hcap-acts { grid-area: acts; display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.hcap .hcap-chip { max-width: 160px; gap: 5px; background: var(--surface); color: var(--fg-muted); transition: background-color var(--m-fast, 120ms) ease-out, color var(--m-fast, 120ms) ease-out, border-color var(--m-fast, 120ms) ease-out; }
+.hcap .hcap-chip .i { width: 12px; height: 12px; flex: none; }
+.hcap .hcap-chip .dot { flex: none; }
+.hcap .hcap-chip:hover { background: var(--bg-muted); color: var(--fg); }
+.hcap .hcap-chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); border-color: transparent; cursor: default; }
+.hcap .hcap-chip[aria-pressed="true"] .i { color: var(--accent); }
+.hcap .hcap-chip.is-set[aria-pressed="true"] { cursor: pointer; }            /* a set date can still change */
+.hcap .hcap-chip.is-late[aria-pressed="true"] { background: var(--warning-soft, var(--accent-soft)); color: var(--warning-ink); }
+.hcap .hcap-chip.is-late[aria-pressed="true"] .i { color: var(--warning-ink); }
+@container (max-width: 420px) {
+  .hcap .hcap-more-st > span { display: none; }                               /* "More" as its icon: one line of chips */
+  .hcap .hcap-more-st { padding: 0 7px; }
+}
+.hcap .hcap-st.is-guess { border-color: color-mix(in oklab, var(--accent) 55%, var(--border)); color: var(--fg); }
+.hcap .hcap-fine:hover { color: var(--success-ink); border-color: color-mix(in oklab, var(--success) 45%, var(--border)); }
+.hcap .hcap-chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hcap-row.is-leaving { pointer-events: none; }
+.hcap-more { align-self: flex-start; height: 26px; padding: 0 8px; gap: 4px; margin-top: 4px; font-size: var(--text-xs); color: var(--fg-muted); }
+.hcap-more .i { width: 13px; height: 13px; }
+
+/* wide enough: one line per row, the chips on the right (shown on hover / focus with a mouse) */
+@container (min-width: 560px) {
+  .hcap-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "mk rt acts"; }
+  .hcap-row--sort { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "rt acts"; }
+  .hcap-acts { flex-wrap: nowrap; justify-content: flex-end; }
+}
+@media (hover: hover) {
+  @container (min-width: 560px) {
+    .hcap-row--just .hcap-chip:not([aria-pressed="true"]):not(.is-set) { opacity: 0.55; }
+    .hcap-row--just:hover .hcap-chip, .hcap-row--just:focus-within .hcap-chip, .hcap-row--just:focus .hcap-chip { opacity: 1; }
+  }
+}
+
+/* nothing recent: the syntax at a glance */
+.hcap-tip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 12px 0 0; font-size: var(--text-xs); color: var(--fg-subtle); }
+.hcap-tip-k { display: inline-flex; align-items: center; gap: 4px; color: var(--fg-muted); }
+.hcap-tip-k .i { color: var(--fg-subtle); }
+
+/* the suggestion slot sits at the foot */
+.hcap .hg-suggest { margin-top: auto; padding-top: 12px; }
+
+/* phones and touch: bigger targets */
+@media (max-width: 700px), (hover: none) {
+  .hcap .hcap-chip { height: 28px; padding: 0 9px; }
+  .hcap-tpl { height: 32px; }
+  .hcap-tpl-ok { width: 34px; }
+  .hcap .hcap-full, .hcap .hcap-add { width: 34px; height: 34px; }
+  .hcap-box { height: 44px; }
+}
+
+/* dark */
+[data-theme="dark"] .hcap .hcap-chip[aria-pressed="true"] { background: color-mix(in oklab, var(--accent) 24%, var(--surface)); }
+[data-theme="dark"] .hcap-tpl, [data-theme="dark"] .hcap-box { box-shadow: none; }
+
+/* settings popover */
+.hcap-set .hcap-set-sel { width: 150px; flex: none; }
+.hcap-set .hcap-set-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hcap-set .hcap-set-foot .btn { height: 24px; padding: 0 8px; font-size: var(--text-xs); }
+
+/* reduced motion: instant */
+html[data-motion="reduced"] .hcap *, html[data-motion="reduced"] .hcap { transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .hcap, .hcap * { transition: none !important; } }

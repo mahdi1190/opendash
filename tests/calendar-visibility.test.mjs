@@ -13,6 +13,7 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { loadPageClock } from './fixtures/page-clock.mjs';
 import {
   calendarRules, visibleEvents, isCalendarShown, isUntitledEvent, isDeclinedEvent, isUserInvited, calendarPrefKey, eventCalendarIds,
 } from '../lib/calendar-visibility.mjs';
@@ -168,6 +169,7 @@ function pageBox(hidden) {
     fmtDate: (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
   };
   vm.createContext(box);
+  loadPageClock(box);   // 40-calendar.js places events by the page's Clock (travel spec 2.7)
   vm.runInContext(readFileSync(join(ROOT, 'src', 'app', '40-calendar.js'), 'utf8'), box, { filename: '40-calendar.js' });
   return box;
 }

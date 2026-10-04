@@ -393,6 +393,7 @@ test('branding keep-list: every compatibility identifier still exists where the 
   assert.deepEqual(missing, [], `renamed or removed (existing installs depend on these; see BRANDING_PLAN.md "Keep"):\n  ${missing.join('\n  ')}`);
 });
 
+
 // ─── Privacy ───────────────────────────────────────────────────────────────
 
 test('community files and docs contain no personal data (generic privacy rules)', () => {

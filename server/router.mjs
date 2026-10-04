@@ -30,6 +30,7 @@
 //   - POST/PUT/PATCH with a body need Content-Type: application/json -> 415
 
 import { send, json, readBody, readJsonBody, hostAllowed, sameOrigin, isJsonRequest, HttpError, SMALL_BODY } from './http.mjs';
+import { requestZone, systemZone, clockFor, timeStoreFor } from '../lib/clock.mjs';
 
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -84,7 +85,20 @@ export function createApp(ctx) {
       json: (...a) => json(res, ...a),
       text: (max) => readBody(req, max ?? r.maxBody ?? SMALL_BODY),
       body: (opts = {}) => readJsonBody(req, { max: r.maxBody ?? SMALL_BODY, ...opts }),
+      // The page sends its computer's zone (X-Dashboard-Zone); clockNow() is
+      // "today" for this request in the effective zone (lib/clock.mjs, travel spec 2.2).
+      zone: requestZone(req),
     };
+    c.clockNow = (now = Date.now()) => {
+      const cfg = (typeof ctx.getConfig === 'function' && ctx.getConfig()) || {};
+      const where = (ctx.paths && ctx.paths.root) || ctx.dataDir;
+      const stored = where ? timeStoreFor(where).peek() : null;
+      return clockFor(cfg, systemZone({ header: c.zone, stored, now: Number(now), cfg }), now);
+    };
+    {   // time.json is read once per process before the first clockNow() (peek() is sync)
+      const where = (ctx.paths && ctx.paths.root) || ctx.dataDir;
+      if (where && !timeStoreFor(where).peek()) await timeStoreFor(where).get().catch(() => null);
+    }
     const t0 = Date.now();
     try {
       const out = await r.handler(c);

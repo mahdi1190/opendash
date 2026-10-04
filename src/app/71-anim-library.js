@@ -122,11 +122,91 @@ const ANIM_SCENES = [
     svg: () => `<circle class="c x-glow" cx="44" cy="20" r="9"/><path class="lk" d="M18 46V22"/><path class="c" d="M18 22c-6 0-11 3-12 7 4-2 8-2 12 0 4-2 8-2 12 0-1-4-6-7-12-7z"/>`
       + _AS_WAVE(42, 'lc', 0) + _AS_WAVE(50, 'lm', -0.8) + `<path class="s" d="M0 54h64v10H0z"/>` },
   { type: 'travel', label: 'Travel', cat: 'travel', colour: 'blue', loop: 'subtle',
-    keywords: ['travel', 'trip to', 'journey', 'commute', 'hotel', 'airbnb', 'hostel', 'check-in', 'luggage', 'suitcase', 'abroad', 'away', 'pack for', 'passport control'],
+    // hotel / airbnb / check-in moved to 'hotel', luggage / pack for to 'packing' (travel spec 4.7)
+    keywords: ['travel', 'trip to', 'journey', 'commute', 'abroad', 'away', 'passport control'],
     match: (f) => (f.allDay && f.days >= 2 && !f.names ? 0.5 : 0) + (f.allDay && f.place ? 3.5 : 0),
     svg: () => `<rect class="c" x="12" y="24" width="32" height="28" rx="4"/><path class="lk" d="M22 24v-5h12v5"/><rect class="w" x="19" y="30" width="2.5" height="16" rx="1"/><rect class="w" x="34.5" y="30" width="2.5" height="16" rx="1"/>`
       + `<circle class="k" cx="18" cy="55" r="2.5"/><circle class="k" cx="38" cy="55" r="2.5"/>`
       + `<g class="x-bounce o-b"><path class="k" d="M51 6a7 7 0 0 1 7 7c0 6-7 12-7 12s-7-6-7-12a7 7 0 0 1 7-7z"/><circle class="w" cx="51" cy="13" r="2.5"/></g>` },
+  // ── Travel moments (travel spec 4.7; owner of this block: MOMENTS). A flight shows takeoff the
+  //    day before, flight in the air and landing after (f.startsSoon / f.endedRecently). ──
+  { type: 'landing', label: 'Landing', cat: 'travel', colour: 'blue', loop: 'subtle',
+    keywords: ['landing', 'touchdown', 'arrivals hall'],
+    match: (f) => (f.flightCode && f.endedRecently ? 8 : 0),
+    svg: () => `<rect class="m" x="2" y="54" width="60" height="2.5" rx="1"/>${[8, 22, 36, 50].map(x => `<rect class="w" x="${x}" y="54.6" width="7" height="1.2" rx=".6"/>`).join('')}`
+      + `<g class="x-land o-v" style="transform-origin:34px 46px"><path class="c" d="M50 44.2c0-1.6-2.1-2.8-5-2.8H20.6l-4.6-6.2h-3.1l2.2 7c-1.5.5-1.9 1.6-1 2.6.9.9 2.6 1.3 4.6 1.3H45c2.9 0 5-.8 5-1.9z"/>`
+      + `<path class="c" d="M35.8 44.3L28.3 50.8h3.4l10.2-6.5z" opacity=".85"/><path class="lk" d="M45 46.6v3.4M27 46.8v3"/><circle class="k" cx="45" cy="51" r="1.4"/><circle class="k" cx="27" cy="50.8" r="1.4"/></g>` },
+  { type: 'takeoff', label: 'Take-off', cat: 'travel', colour: 'blue', loop: 'subtle',
+    keywords: ['takeoff', 'take-off', 'departures', '🛫'],
+    match: (f) => (f.flightCode && f.startsSoon ? 8 : 0),
+    svg: () => `<rect class="m" x="2" y="54" width="60" height="2.5" rx="1"/><path class="lm x-contrail o-l" d="M6 51h20"/>`
+      + `<g class="x-takeoff o-v" style="transform-origin:30px 50px"><path class="c" d="M44 48.2c0-1.6-2.1-2.8-5-2.8H14.6l-4.6-6.2H6.9l2.2 7c-1.5.5-1.9 1.6-1 2.6.9.9 2.6 1.3 4.6 1.3H39c2.9 0 5-.8 5-1.9z"/>`
+      + `<path class="c" d="M29.8 48.3L22.3 54.8h3.4l10.2-6.5z" opacity=".85"/></g>` },
+  { type: 'layover', label: 'Layover', cat: 'travel', colour: 'slate', loop: 'subtle',
+    keywords: ['stopover', 'connecting flight', 'connection at'],
+    match: () => 0,
+    svg: () => `<rect class="m" x="2" y="54" width="60" height="2.5" rx="1"/><path class="c" d="M40 48.2c0-1.6-2.1-2.8-5-2.8H10.6l-4.6-6.2H2.9l2.2 7c-1.5.5-1.9 1.6-1 2.6.9.9 2.6 1.3 4.6 1.3H35c2.9 0 5-.8 5-1.9z"/>`
+      + `<path class="lk" d="M30 49.6v3M14 49.6v3"/><circle class="w lc t" cx="48" cy="20" r="11"/><path class="lk" d="M48 20v-6"/><g class="x-hand o-v" style="transform-origin:48px 20px"><path class="lc t" d="M48 20l5 3"/></g>` },
+  { type: 'hotel', label: 'Hotel', cat: 'travel', colour: 'violet', loop: 'subtle',
+    keywords: ['hotel', 'airbnb', 'hostel', 'check-in', 'ryokan', 'guesthouse', 'guest house', 'motel', 'b&b', 'accommodation', '🏨'],
+    match: (f) => (f.physical && / check (in|out) /.test(f.tNorm) ? 1 : 0),
+    svg: () => `<path class="lk" d="M8 22v34M56 40v16M8 48h48"/><rect class="s lc" x="8" y="38" width="48" height="10" rx="2"/><rect class="c" x="12" y="30" width="14" height="8" rx="3"/>`
+      + `<g class="x-swing o-v" style="transform-origin:46px 12px"><path class="lm" d="M46 12v8"/><rect class="c" x="41" y="20" width="10" height="13" rx="2.5"/><circle class="w" cx="46" cy="24" r="1.6"/></g>` },
+  { type: 'ferry', label: 'Ferry', cat: 'travel', colour: 'teal', loop: 'subtle',
+    keywords: ['ferry', 'ferries', 'crossing', 'sailing', 'boat to', 'p&o', 'stena', 'brittany ferries', 'catamaran', '⛴', '🚢'],
+    match: () => 0,
+    svg: () => `<g class="x-bob"><path class="c" d="M8 38h48l-6 12H14z"/><rect class="s lc" x="18" y="28" width="26" height="10" rx="2"/><rect class="w" x="22" y="31" width="4" height="4" rx="1"/><rect class="w" x="29" y="31" width="4" height="4" rx="1"/><rect class="w" x="36" y="31" width="4" height="4" rx="1"/><rect class="k" x="38" y="20" width="4" height="8" rx="1"/></g>`
+      + _AS_WAVE(53, 'lc', 0) + _AS_WAVE(58, 'lm', -0.8) },
+  { type: 'coach', label: 'Coach / bus', cat: 'travel', colour: 'green', loop: 'subtle',
+    keywords: ['coach', 'coach to', 'bus to', 'flixbus', 'megabus', 'national express', 'shuttle bus', 'airport bus', '🚌'],
+    match: () => 0,
+    svg: () => `<g class="x-bob"><rect class="c" x="6" y="22" width="52" height="24" rx="5"/><rect class="w" x="10" y="27" width="9" height="8" rx="1.5"/><rect class="w" x="22" y="27" width="9" height="8" rx="1.5"/><rect class="w" x="34" y="27" width="9" height="8" rx="1.5"/><rect class="w" x="46" y="27" width="8" height="12" rx="1.5"/></g>`
+      + [16, 46].map(x => `<g class="x-spin"><circle class="k" cx="${x}" cy="47" r="4.5"/><circle class="w" cx="${x}" cy="47" r="1.6"/></g>`).join('')
+      + `<g class="x-slidel">${[0, 14, 28, 42, 56, 70].map(x => `<rect class="m" x="${x}" y="56" width="8" height="2" rx="1"/>`).join('')}</g>` },
+  { type: 'passport', label: 'Passport / visa', cat: 'travel', colour: 'indigo', loop: 'subtle',
+    keywords: ['passport', 'visa', 'esta', 'etias', 'evisa', 'e-visa', 'eta application', 'visa application'],
+    match: (f) => (f.kind === 'task' && / (esta|etias|evisa|e visa|visa) /.test(f.tNorm) ? 3.5 : 0),
+    svg: () => `<rect class="c" x="14" y="14" width="30" height="40" rx="3"/><circle class="lw" cx="29" cy="30" r="7"/><path class="lw" d="M22 30h14M29 23c-3 4-3 10 0 14M29 23c3 4 3 10 0 14"/><rect class="w" x="21" y="44" width="16" height="2" rx="1"/>`
+      + `<g class="x-stamp"><rect class="k" x="44" y="8" width="10" height="9" rx="2"/><rect class="m" x="42" y="17" width="14" height="4" rx="1.5"/></g><rect class="lc x-mark" x="40" y="34" width="16" height="10" rx="2" transform="rotate(-10 48 39)"/>` },
+  { type: 'packing', label: 'Packing', cat: 'travel', colour: 'amber', loop: 'subtle',
+    keywords: ['pack', 'packing', 'packing list', 'luggage', 'suitcase', 'pack for', 'carry-on', 'hand luggage', '🧳'],
+    match: () => 0,
+    svg: () => `<rect class="c" x="12" y="30" width="40" height="24" rx="4"/><rect class="w" x="18" y="36" width="2.5" height="14" rx="1"/><rect class="w" x="43.5" y="36" width="2.5" height="14" rx="1"/>`
+      + `<g class="x-lid o-v" style="transform-origin:12px 30px"><rect class="s lc" x="12" y="24" width="40" height="6" rx="2"/><path class="lk" d="M27 24v-4h10v4"/></g>`
+      + `<g class="x-drop"><rect class="k" x="24" y="8" width="7" height="10" rx="2"/></g><g class="x-drop" style="--d:.7s"><circle class="c" cx="38" cy="12" r="4"/></g>` },
+  { type: 'checkin', label: 'Online check-in', cat: 'travel', colour: 'blue', loop: 'subtle', prio: 1,
+    keywords: ['check in online', 'online check in', 'online check-in', 'checkin online', 'boarding pass', 'boarding passes', 'seat selection', 'choose seats', 'select seats'],
+    match: () => 0,
+    svg: () => `<rect class="w lm" x="12" y="40" width="40" height="16" rx="3"/><g class="x-passout"><rect class="s lc" x="16" y="12" width="32" height="34" rx="3"/><path class="lk" d="M22 20h14M22 26h9"/>`
+      + `<g class="x-blink">${[22, 25, 27, 30, 34, 36, 39, 42].map((x, i) => `<rect class="k" x="${x}" y="33" width="${i % 3 ? 1.2 : 2}" height="8"/>`).join('')}</g></g>` },
+  { type: 'currency', label: 'Currency / travel money', cat: 'travel', colour: 'green', loop: 'subtle',
+    keywords: ['currency', 'currency exchange', 'exchange money', 'travel money', 'foreign cash', 'bureau de change', 'forex', 'travel card', '💱'],
+    match: () => 0,
+    svg: () => `<rect class="m" x="14" y="54" width="36" height="3" rx="1.5"/><g class="x-coin"><circle class="c" cx="32" cy="32" r="17"/><circle class="lw" cx="32" cy="32" r="13"/>`
+      + `<g class="x-face-a"><path class="lw t" d="M37 25c-2-2.5-8-2.5-9 0.5s3 4.5 5 5 6 2.5 5 5.5-7 3-9.5 0.5M32 21.5v21"/></g>`
+      + `<g class="x-face-b"><path class="lw t" d="M38.5 25.5a8 8 0 1 0 0 13M25 30h10M25 34h10"/></g></g>` },
+  { type: 'jetlag', label: 'Jet lag / body clock', cat: 'travel', colour: 'indigo', loop: 'subtle',
+    keywords: ['jet lag', 'jetlag', 'jet-lag', 'body clock'],
+    match: () => 0,
+    svg: () => `<g class="x-sunset"><circle class="c" cx="22" cy="30" r="9"/><path class="lc" d="M22 15v3M10 30H7M37 30h-3M13.5 21.5l2 2M30.5 21.5l-2 2"/></g>`
+      + `<g class="x-moonrise"><path class="k" d="M46 20a10 10 0 1 0 8 14 8 8 0 1 1-8-14z"/></g><rect class="m" x="4" y="44" width="56" height="3" rx="1.5"/><rect class="s" x="4" y="47" width="56" height="13" rx="2"/>` },
+  { type: 'homecoming', label: 'Homecoming', cat: 'travel', colour: 'orange', loop: 'subtle',
+    keywords: ['flight home', 'fly home', 'back home', 'return flight', 'homecoming', 'welcome home', 'home again'],
+    match: () => 0,
+    svg: () => `<path class="k" d="M30 56V30l14-11 14 11v26z"/><rect class="c x-doorlight" x="40" y="40" width="8" height="16" rx="1.5"/><rect class="m" x="2" y="56" width="60" height="2.5" rx="1"/>`
+      + `<g class="x-rollin"><rect class="c" x="8" y="40" width="14" height="13" rx="2.5"/><path class="lc" d="M12 40v-4h6v4"/><circle class="k" cx="11" cy="55" r="1.8"/><circle class="k" cx="19" cy="55" r="1.8"/></g>` },
+  // Motifs (spec 4.6): the 64 px picture of a place kind (trips list, Trip widget S, Trip view header).
+  { type: 'oldtown', label: 'Old town', cat: 'travel', colour: 'amber', loop: 'subtle',
+    keywords: [],
+    match: () => 0,
+    svg: () => `<path class="s" d="M4 56V38l8-7 8 7v18zM20 56V34l6-6 6 6v22zM44 56V36l8-7 8 7v20z"/><path class="c" d="M32 56V22l3-12 3 12v34z"/><rect class="w" x="9" y="44" width="5" height="6" rx="1"/><rect class="w" x="24" y="40" width="4" height="6" rx="1"/><rect class="w" x="49" y="42" width="5" height="6" rx="1"/>`
+      + `<g class="x-flag o-l" style="transform-origin:35px 9px"><path class="k" d="M35 4l9 3-9 3z"/></g><rect class="m" x="2" y="56" width="60" height="2.5" rx="1"/>` },
+  { type: 'tropical', label: 'Tropical', cat: 'travel', colour: 'teal', loop: 'subtle',
+    keywords: [],
+    match: () => 0,
+    svg: () => `<circle class="c x-glow" cx="48" cy="16" r="7"/><path class="lk t" d="M20 50c-1-12 1-22 6-30"/>`
+      + `<g class="x-tree o-v" style="transform-origin:26px 20px"><path class="c" d="M26 20c-6-6-14-6-18-2 6-1 11 0 18 2zM26 20c3-8 10-10 15-8-6 1-10 4-15 8zM26 20c8-2 14 1 16 6-5-3-10-4-16-6zM26 20c-7 1-12 6-12 11 3-5 7-8 12-11z"/></g>`
+      + `<path class="s" d="M0 50h64v14H0z"/>` + _AS_WAVE(53, 'lc', 0) + _AS_WAVE(58, 'lm', -0.8) },
 
   // ── Sport ──
   { type: 'run', label: 'Run', cat: 'sport', colour: 'orange', loop: 'subtle',
@@ -403,6 +483,10 @@ function animFeatures(x, knownNames) {
     morning: start !== null && start < 12 * 60, evening: start !== null && start >= 17.5 * 60,
     calendar: String(x.calendar || ''), eventType: String(x.eventType || ''), weekday: typeof x.weekday === 'number' ? x.weekday : null,
     p1: x.priority === 'p1', dueToday: !!x.dueToday, overdue: !!x.overdue,
+    // Travel spec 2.7 P13: the landing and take-off scenes. The caller passes now / startMs / endMs
+    // (instants; the page uses Clock.now()), so this file stays free of the clock.
+    endedRecently: Number.isFinite(x.now) && Number.isFinite(x.endMs) && x.endMs <= x.now && x.now - x.endMs <= 36 * 3600000,
+    startsSoon: Number.isFinite(x.now) && Number.isFinite(x.startMs) && x.startMs > x.now && x.startMs - x.now <= 24 * 3600000,
   };
 }
 
@@ -434,8 +518,25 @@ function animClassify(x, opts) {
     const kw = animNorm(r.kw);
     if (kw.trim() && (f.tNorm.includes(kw) || f.tagNorm.includes(kw))) return { type: r.type, score: 50, source: 'rule', why: `your rule "${String(r.kw).trim()}"` };
   }
+  // The keyword scan depends on the features alone: remember it (a Home render classifies the
+  // same few dozen titles many times; integrator, 4 Oct: it was half of the brief's render time).
+  const idx = _animIndex();
+  if (_animMemo.idx !== idx || _animMemo.map.size > 3000) { _animMemo.idx = idx; _animMemo.map = new Map(); }
+  const mk = JSON.stringify(f);
+  let res = _animMemo.map.get(mk);
+  if (res === undefined) { res = _animScan(f, idx); _animMemo.map.set(mk, res); }
+  if (res) return Object.assign({}, res);
+  const ai = opts.ai && opts.ai[animTitleKey(f.title)];
+  if (ai && _ANIM_BY_TYPE.has(ai)) return { type: ai, score: 1, source: 'ai', why: 'Claude’s guess' };
+  // Calendars attach a Teams link to almost everything: only a link with no room is a video call.
+  if (f.kind === 'event' && f.link && !f.physical) return { type: 'video-call', score: 1, source: 'signal', why: 'a join link' };
+  return { type: f.kind === 'task' ? 'task' : 'event', score: 0, source: 'fallback', why: 'no match' };
+}
+const _animMemo = { idx: null, map: new Map() };
+/** The keyword and signal scan of animClassify: a result, or null when nothing matched well enough. */
+function _animScan(f, index) {
   let best = null;
-  for (const { s, kws } of _animIndex()) {
+  for (const { s, kws } of index) {
     let score = 0, tHit = false; const hits = [];
     for (const kw of kws) {
       const w = kw.words > 1 ? 0.5 : 0;
@@ -458,11 +559,7 @@ function animClassify(x, opts) {
     if (best.type === 'meeting' && f.link && best.kw && !f.physical) return { type: 'video-call', score: best.score, source: 'keyword', why: 'a meeting with a join link' };
     return { type: best.type, score: best.score, source: best.kw ? 'keyword' : 'signal', why: best.kw ? `“${best.hits[0]}”` : 'its time, place, people or link' };
   }
-  const ai = opts.ai && opts.ai[animTitleKey(f.title)];
-  if (ai && _ANIM_BY_TYPE.has(ai)) return { type: ai, score: 1, source: 'ai', why: 'Claude’s guess' };
-  // Calendars attach a Teams link to almost everything: only a link with no room is a video call.
-  if (f.kind === 'event' && f.link && !f.physical) return { type: 'video-call', score: 1, source: 'signal', why: 'a join link' };
-  return { type: f.kind === 'task' ? 'task' : 'event', score: 0, source: 'fallback', why: 'no match' };
+  return null;
 }
 
 function animScene(type) { return _ANIM_BY_TYPE.get(type) || _ANIM_BY_TYPE.get('event'); }

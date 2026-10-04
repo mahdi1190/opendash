@@ -54,7 +54,7 @@ address.
 
 **Two optional switches (Windows; off unless you turn them on)** in Settings >
 Server > Starting the server. Both are for your Windows account only, need no
-administrator rights, run the same fixed launcher (`tools/start-hidden.wsf`,
+administrator rights, run the same fixed launcher (`tools/start-hidden.mjs`,
 which starts `start-opendash.bat --no-open` with no window), and turning them
 off removes exactly what they added. The page always shows what Windows
 actually has, not what it assumes.

@@ -102,7 +102,7 @@ function exportMarkdown() {
   const open = getAllItems().filter(i => statusOf(i.id) !== 'done');
   const byStream = new Map();
   for (const i of open) { const s = effStream(i); if (!byStream.has(s)) byStream.set(s, []); byStream.get(s).push(i); }
-  const lines = [`# ${appTitle()}`, '', `Exported ${new Date().toLocaleString(APP_CONFIG.locale || undefined)} · ${open.length} open task${open.length === 1 ? '' : 's'}`, ''];
+  const lines = [`# ${appTitle()}`, '', `Exported ${Clock.fmtDate(Clock.now(), { dateStyle: 'medium', timeStyle: 'short' })} · ${open.length} open task${open.length === 1 ? '' : 's'}`, ''];
   const streams = [...byStream.keys()].sort((a, b) => (STREAMS[a]?.order ?? 999) - (STREAMS[b]?.order ?? 999));
   for (const s of streams) {
     lines.push(`## ${STREAMS[s]?.label || s}`, '');
@@ -125,7 +125,7 @@ function exportMarkdown() {
 
 function applyAutoTheme() {
   if (!state.autoTheme) return;
-  const h = new Date().getHours();
+  const h = Clock.parts(Clock.now()).h;   // the evening where the user is (travel spec 2.7 P12)
   const newTheme = (h >= 19 || h < 7) ? 'dark' : 'light';
   if (state.theme !== newTheme) { state.theme = newTheme; document.documentElement.setAttribute('data-theme', state.theme); renderShell(); }
 }

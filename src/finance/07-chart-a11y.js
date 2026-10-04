@@ -30,7 +30,7 @@
   // Pure: { kind, cols, rows: [[label, ...cells]], n, first, last, ranged }.
   // fmtFor(series, axis) -> value formatter; dayLbl(ms) -> a date label.
   function a11yRows(opt, fmtFor, dayLbl) {
-    opt = opt || {}; fmtFor = fmtFor || (() => v => String(v)); dayLbl = dayLbl || (t => new Date(t).toISOString().slice(0, 10));
+    opt = opt || {}; fmtFor = fmtFor || (() => v => String(v)); dayLbl = dayLbl || (t => new Date(t).toISOString().slice(0, 10));   // clock-ok: a day-number timestamp (UTC midnight) to its date
     const out = { kind: '', cols: [], rows: [], n: 0, first: '', last: '', ranged: false };
     const series = a11ySeries(opt); if (!series.length) return out;
     const s0 = series[0];

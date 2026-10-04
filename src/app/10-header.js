@@ -60,6 +60,11 @@ function tbNormalize(raw, i, legacyHeadline) {
   w.visible = w.visible !== false;
   w.tasks = TB_TASK_FILTERS[w.tasks] ? w.tasks : 'today';
   w.clock = TB_CLOCK_FORMATS[w.clock] ? w.clock : 'both';
+  // A clock's zone (travel spec 5.1): 'local' = the dashboard's zone (default), 'home', or an IANA id.
+  if (w.type === 'clock' && w.zone && w.zone !== 'local') {
+    if (w.zone !== 'home' && !(typeof Clock !== 'undefined' ? Clock.valid(w.zone) : /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)+$/.test(w.zone))) delete w.zone;
+  } else delete w.zone;
+  if (typeof w.zoneLabel === 'string' && w.zone) w.zoneLabel = w.zoneLabel.slice(0, 40); else delete w.zoneLabel;
   return w;
 }
 
@@ -79,27 +84,30 @@ function tbList(src) {
 
 /* ---------- date maths (local calendar days) ---------- */
 function _tbDays(iso) { return iso ? daysUntil(iso) : null; }
+// Wall dates (ISO days) are counted with UTC arithmetic, so no time zone or
+// clock change can shift them; "now" and "today" come from Clock (07-core-clock.js).
+const _tbUtc = (iso) => (_TB_ISO.test(iso || '') ? Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) : NaN);
 function _tbWorkdays(fromIso, toIso) {
   // Mon-Fri days after `from` up to and including `to` (negative if to < from).
-  const a = new Date(fromIso + 'T00:00:00'), b = new Date(toIso + 'T00:00:00');
+  const a = _tbUtc(fromIso), b = _tbUtc(toIso);
   if (isNaN(a) || isNaN(b)) return null;
   const sign = b < a ? -1 : 1;
   const [lo, hi] = sign > 0 ? [a, b] : [b, a];
-  let n = 0;
-  const d = new Date(lo);
   // Whole weeks first, then the remainder day by day.
   const total = Math.round((hi - lo) / 86400000);
-  n += Math.floor(total / 7) * 5;
-  d.setDate(d.getDate() + Math.floor(total / 7) * 7);
-  while (d < hi) { d.setDate(d.getDate() + 1); const wd = d.getDay(); if (wd !== 0 && wd !== 6) n++; }
+  let n = Math.floor(total / 7) * 5;
+  for (let t = lo + Math.floor(total / 7) * 7 * 86400000 + 86400000; t <= hi; t += 86400000) {
+    const wd = new Date(t).getUTCDay();
+    if (wd !== 0 && wd !== 6) n++;
+  }
   return n * sign;
 }
 function _tbLocale() { return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.locale) || undefined; }
 function _tbShortDate(iso, withWeekday) {
-  const d = new Date(iso + 'T00:00:00');
-  if (isNaN(d)) return iso || '';
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  const o = { day: 'numeric', month: 'short' };
+  if (!_TB_ISO.test(iso || '')) return iso || '';
+  const d = new Date(iso + 'T12:00:00Z');   // a wall date: noon UTC, formatted in UTC
+  const sameYear = iso.slice(0, 4) === todayStr().slice(0, 4);
+  const o = { day: 'numeric', month: 'short', timeZone: 'UTC' };
   if (withWeekday) o.weekday = 'short';
   if (!sameYear) o.year = 'numeric';
   return _tbFmtParts(d, o) || iso;
@@ -112,10 +120,9 @@ function _tbFmtParts(d, o) {
       .map(p => (p.type === 'literal' ? p.value.replace(/,\s*/g, ' ') : p.type === 'month' && p.value === 'Sept' ? 'Sep' : p.value)).join('').replace(/\s+/g, ' ').trim();
   } catch (e) { return ''; }
 }
-function _tbTime(d) {
-  try { return d.toLocaleTimeString(_tbLocale(), { hour: '2-digit', minute: '2-digit' }); } catch (e) { return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
-}
-function _tbNowHM() { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
+/** An instant's time ('14:05') in `zone` (default: the dashboard's zone). */
+function _tbTime(d, zone) { return Clock.fmtTime(d instanceof Date ? d.getTime() : Number(d), zone ? { zone } : undefined); }
+function _tbNowHM() { const p = Clock.parts(Clock.now()); return `${String(p.h).padStart(2, '0')}:${String(p.mi).padStart(2, '0')}`; }
 /** {num, unit} for a day count in the widget's unit (n >= 0). */
 function _tbAmount(n, unit, iso) {
   if (unit === 'date' && iso) return { num: _tbShortDate(iso), unit: '' };
@@ -128,8 +135,7 @@ function _tbAmount(n, unit, iso) {
 }
 function _tbPct(startIso, endIso) {
   if (!startIso || !endIso || endIso <= startIso) return null;
-  const s = new Date(startIso + 'T00:00:00'), e = new Date(endIso + 'T00:00:00');
-  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const s = _tbUtc(startIso), e = _tbUtc(endIso), now = _tbUtc(todayStr());
   return Math.max(0, Math.min(100, Math.round(((now - s) / (e - s)) * 100)));
 }
 
@@ -163,8 +169,7 @@ function calendarSoon(onUpdate, force) {
   if (typeof onUpdate === 'function' && (_calSoon.loading || !fresh || force)) _calSoonWaiters.add(onUpdate);
   if ((!fresh || force) && !_calSoon.loading && typeof fetch === 'function' && (typeof _serverAvailable === 'undefined' || _serverAvailable)) {
     _calSoon.loading = true;
-    const end = new Date(); end.setDate(end.getDate() + 8);
-    const url = `/api/query?op=calendar.list&from=${today}&to=${fmtDate(end)}`;
+    const url = `/api/query?op=calendar.list&from=${today}&to=${Clock.addDays(today, 8)}`;
     fetch(url, { headers: { 'Accept': 'application/json' } })
       .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
       .then(j => {
@@ -266,26 +271,34 @@ function tbCompute(w) {
     if (e.date === today && e.start) { const m = _tbMinutesUntil(e.start); if (m >= 0 && m <= 30) out.warn = true; }
     return out;
   }
-  // clock
-  const now = new Date();
-  const time = _tbTime(now);
-  let date = '';
-  try { date = now.toLocaleDateString(_tbLocale(), { weekday: 'short', day: 'numeric', month: 'short' }); } catch (e) { date = todayStr(); }
-  if (w.clock === 'date') { out.num = date; out.lbl = w.label; }
-  else if (w.clock === 'time') { out.num = time; out.lbl = w.label; }
-  else { out.num = time; out.lbl = w.label || date; }
-  out.tip = now.toLocaleString(_tbLocale(), { dateStyle: 'full', timeStyle: 'short' });
+  // clock: the dashboard's time, home time or any zone (w.zone 'local' | 'home' | IANA id)
+  const now = Clock.now();
+  const zone = tbClockZone(w);
+  const time = _tbTime(now, zone);
+  const date = Clock.fmtDate(now, { zone, weekday: 'short', day: 'numeric', month: 'short' });
+  const place = zone !== Clock.zone() ? (w.zoneLabel || Clock.label(zone)) : '';
+  if (w.clock === 'date') { out.num = date; out.lbl = w.label || place; }
+  else if (w.clock === 'time') { out.num = time; out.lbl = w.label || place; }
+  else { out.num = time; out.lbl = w.label || (place ? place + ' · ' + date : date); }
+  const diff = place ? Clock.diff(Clock.zone(), zone, now) : 0;
+  out.tip = Clock.fmtDate(now, { zone, dateStyle: 'full', timeStyle: 'short' }) + (place ? ` · ${place}${diff ? ` (${Clock.fmtDiff(diff)})` : ''}` : '');
   return out;
+}
+/** The zone a clock widget shows: 'local' (default) = the dashboard's zone, 'home', or an IANA id. */
+function tbClockZone(w) {
+  const z = w && w.zone;
+  if (!z || z === 'local') return Clock.zone();
+  if (z === 'home') return Clock.home();
+  return Clock.canon(z) || Clock.zone();
 }
 function _tbMinutesUntil(hm) {
   const [h, m] = String(hm).split(':').map(Number);
-  const t = new Date(); const now = t.getHours() * 60 + t.getMinutes();
-  return h * 60 + m - now;
+  return h * 60 + m - Clock.parts(Clock.now()).min;
 }
 function _tbDoneToday() {
   const today = todayStr();
   let n = 0;
-  for (const arr of Object.values(state.completionLog || {})) for (const ts of (arr || [])) if (Number(ts) && fmtDate(new Date(Number(ts))) === today) n++;
+  for (const arr of Object.values(state.completionLog || {})) for (const ts of (arr || [])) if (Number(ts) && Clock.parts(Number(ts)).iso === today) n++;
   return n;
 }
 
@@ -519,19 +532,21 @@ if (typeof ResizeObserver === 'function') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hook); else hook();
 }
 
-/* ---------- ticking: clocks, "next event" and the date rolling over ---------- */
+/* ---------- ticking: clocks and "next event" ---------- */
+// The one ticker is Clock's (07-core-clock.js, every 15 s, also with no clock
+// widget); a new day or time zone re-renders the page from 87-clock-ui.js.
 function _tbEnsureTicker() {
   const live = tbList().some(w => w.visible && (w.type === 'clock' || w.type === 'event'));
   if (_tbTicker) return;
-  _tbTicker = setInterval(() => {
-    const key = todayStr() + ' ' + _tbNowHM();
+  _tbTicker = Clock.onTick(() => {
+    const key = todayStr() + ' ' + _tbNowHM() + ' ' + Clock.zone();
     if (key === _tbTickKey) return;
     const dayChanged = _tbTickKey.slice(0, 10) !== key.slice(0, 10);
     _tbTickKey = key;
-    if (dayChanged && typeof render === 'function') { render(); return; }
+    if (dayChanged) return;   // Clock's 'day' / 'zone' event renders everything
     if (tbList().some(w => w.visible && (w.type === 'clock' || w.type === 'event'))) _tbRepaintSoon();
-  }, 15000);
-  _tbTickKey = todayStr() + ' ' + _tbNowHM();
+  });
+  _tbTickKey = todayStr() + ' ' + _tbNowHM() + ' ' + Clock.zone();
   return live;
 }
 

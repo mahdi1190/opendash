@@ -45,3 +45,6 @@
 .kanban-add:hover { background: var(--bg-muted); }
 .kanban-add:focus { background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
 @container main (max-width: 720px) { .kanban { grid-template-columns: 1fr; } .kanban-col { min-height: 0; } }
+
+/* Pinned card marker (pinned cards lead their column). */
+.kanban-card .kc-pin { flex: none; margin-left: auto; color: var(--warning); display: inline-flex; }

@@ -107,7 +107,7 @@ up panel offers two blocks for the `"permissions"` section of
       "mcp__opendash__get_home_focus", "mcp__opendash__get_home_layout",
       "mcp__opendash__list_calendar", "mcp__opendash__list_inbox", "mcp__opendash__get_finance_summary",
       "mcp__opendash__list_resources", "mcp__opendash__get_suggested_links", "mcp__opendash__get_related",
-      "mcp__opendash__get_brief", "mcp__opendash__list_reviews"
+      "mcp__opendash__get_brief", "mcp__opendash__list_reviews", "mcp__opendash__get_daynotes"
     ],
     "ask": ["mcp__opendash__*"]
   }
@@ -130,10 +130,11 @@ Ask Claude, for example:
 
 ## Tools
 
-84 tools in the default (full) mode: 22 that only read and 62 that change
+87 tools in the default (full) mode: 23 that only read and 64 that change
 something. *Test MCP* in Connections starts the server in
 [propose mode](#modes-and-transport) so the test can never change anything,
-which is why it reports 23 tools (the read tools plus `propose_changes`); the
+which is why it reports 23 tools (the read tools except `get_daynotes`, which
+the in-app assistant does not get, plus `propose_changes`); the
 server you register runs in full mode. `describe_operations` returns every
 operation with its exact JSON Schema.
 
@@ -148,20 +149,22 @@ operation with its exact JSON Schema.
 | Calendar, email, money | `list_calendar`, `list_inbox`, `get_finance_summary` (totals only, never single transactions) |
 | Files & links | `list_resources`, `get_suggested_links`, `get_related` |
 | Brief and reviews | `get_brief`, `list_reviews` |
+| Daily note | `get_daynotes` (one day, a range or a search; not offered to the in-app assistant) |
 
 ### Change
 
 | Area | Tools |
 |---|---|
-| Tasks | `create_task`, `update_task`, `complete_task`, `reopen_task`, `wont_do_task`, `bin_task`, `restore_task`, `reschedule_task`, `plan_task`, `schedule_task`, `set_task_priority`, `set_task_estimate`, `move_task_stream`, `add_task_note`, `add_subtask`, `update_subtask`, `remove_subtask`, `reorder_subtasks`, `promote_subtask` |
+| Tasks | `create_task`, `update_task`, `complete_task`, `reopen_task`, `wont_do_task`, `bin_task`, `restore_task`, `reschedule_task`, `plan_task` (when to work on it: a day, or a time slot; the deadline stays), `schedule_task` (moves the deadline: due day and time), `set_task_priority`, `set_task_estimate`, `move_task_stream`, `add_task_note`, `add_subtask`, `update_subtask`, `remove_subtask`, `reorder_subtasks`, `promote_subtask` |
 | People | `create_person`, `update_person`, `merge_people`, `delete_person`, `add_person_note`, `link_person`, `unlink_person`, `link_suggested_people` |
 | Tags | `add_tag`, `remove_tag`, `create_tag`, `update_tag`, `rename_tag`, `merge_tags`, `delete_tag` |
 | Streams | `create_stream`, `update_stream`, `reorder_streams` |
-| Top bar and Home | `create_countdown`, `update_countdown`, `delete_countdown`, `reorder_countdowns`, `add_topbar_widget`, `set_home_focus`, `set_home_layout`, `reset_home_layout` |
-| Calendar and email | `annotate_event` (your notes on an event; the event itself is never changed), `update_calendar` (display name and colour in OpenDash only), `triage_email` |
+| Top bar and Home | `create_countdown`, `update_countdown`, `delete_countdown`, `reorder_countdowns`, `add_topbar_widget`, `set_home_focus`, `set_home_layout`, `reset_home_layout`, `set_home_widget` (a widget's own settings; another copy of Deadline runway or Smart list) |
+| Calendar and email | `annotate_event` (your notes on an event, important, linked tasks, wrapped up; the event itself is never changed), `update_calendar` (display name and colour in OpenDash only), `triage_email` |
 | Files & links | `create_resource`, `update_resource`, `delete_resource` (never touches the file itself), `link_resource`, `unlink_resource` |
 | Auto-linking | `suggest_links`, `rate_suggested_links`, `apply_suggested_links`, `reject_suggested_links`, `relate_task`, `unrelate_task` |
 | Reviews | `save_review` |
+| Daily note | `save_daynote` (replace a day's note, or add lines at its end; 10,000 characters a day) |
 | Batches | `apply_changes` (several operations, all or nothing), `undo_changes` |
 
 There are no tools that write to Google, your email or your bank, and no
@@ -198,7 +201,8 @@ Enforced by OpenDash, not left to the model:
 ## Modes and transport
 
 - **Full mode** (the default): read tools plus every change tool.
-- **Propose mode** (`--mode propose`): read tools plus `propose_changes` only.
+- **Propose mode** (`--mode propose`): read tools (all but `get_daynotes`) plus
+  `propose_changes` only.
   The model can suggest changes but never apply them; you review the preview
   in OpenDash and apply it with one click. The in-app assistant uses this mode,
   so text inside an email, an invitation or a bank transaction can never change

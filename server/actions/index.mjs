@@ -39,6 +39,7 @@ import { recorder, snapshot, restore, sameSnap } from './entities.mjs';
 import { createJournal } from './journal.mjs';
 import { ensureLocalToken, signConfirm, verifyConfirm, sha } from './auth.mjs';
 import { nearDuplicate } from './find.mjs';
+import { clockFor, systemZone, timeStoreFor } from '../../lib/clock.mjs';
 import {
   ActionError, SOURCES, clock, clone, stable, cleanLine, normTag, tagCounts, tagRegistry, closest, truncate, newActivityId, newToken, weekdayOf,
 } from './model.mjs';
@@ -65,10 +66,17 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
     const s = await store.readObject();
     return s && typeof s === 'object' ? s : { custom: [] };
   }
-  async function queryCtx(s) {
+  // "Today" in the effective zone (travel spec 2.7 S1): the page's zone when it
+  // asked (zone), else what time.json last recorded, else this process's zone.
+  const timeStore = timeStoreFor(paths.root);
+  async function clockNow(cfg, zone) {
+    const stored = await timeStore.get().catch(() => null);
+    return clockFor(cfg, systemZone({ header: zone, stored, now: now(), cfg }), now());
+  }
+  async function queryCtx(s, zone) {
     const cfg = await config();
     return {
-      s, cfg, clock: clock(cfg.timezone, new Date(now())), paths,
+      s, cfg, clock: await clockNow(cfg, zone), paths,
       financeDir: financeDir || cfg.financeDir || paths.finance,
       version: Number(s._lastSave) || 0, journal,
     };
@@ -91,14 +99,14 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
   }
 
   // ── Queries ─────────────────────────────────────────────────────────
-  async function query(name, params = {}) {
+  async function query(name, params = {}, { zone } = {}) {
     const def = QUERY_BY_NAME.get(name) || QUERY_BY_TOOL.get(name);
     if (!def) {
       const valid = QUERIES.map(x => x.name);
       throw new ActionError('UNKNOWN_QUERY', `unknown query '${truncate(name, 40)}'`, { field: 'op', valid, hint: closest(name, valid, 1).map(x => `did you mean '${x}'?`)[0] });
     }
     params = params && typeof params === 'object' && !Array.isArray(params) ? params : {};
-    const q = await queryCtx(await readState());
+    const q = await queryCtx(await readState(), zone);
     const errs = schemaErrors(def.schema, params, {}, q.clock.today);
     if (errs.length) throw batchError(errs);
     return def.run(q, params);
@@ -221,9 +229,9 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
     return { next: s, preview, warnings, errors, entities, reasons, created: preview.filter(p => p.created).map(p => ({ index: p.index, ...p.created })) };
   }
 
-  const meta = async (source, client) => {
+  const meta = async (source, client, zone) => {
     const cfg = await config();
-    return { source: SOURCES.includes(source) ? source : 'script', client: client ? cleanLine(client, 80) || null : null, today: clock(cfg.timezone, new Date(now())).today, timeNow: now() };
+    return { source: SOURCES.includes(source) ? source : 'script', client: client ? cleanLine(client, 80) || null : null, today: (await clockNow(cfg, zone)).today, timeNow: now() };
   };
   const summarize = (preview) => {
     const changed = preview.filter(p => p.changes.length);
@@ -237,7 +245,7 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
    * args: {ops, dryRun, idempotencyKey, source, client, confirm, ifVersion}
    */
   async function apply(args = {}, internal = {}) {
-    const m = await meta(args.source, args.client);
+    const m = await meta(args.source, args.client, args.zone);
     const { items, errors } = normalize(args.ops, m.today);
     if (errors.length) {
       // Report every problem at once: also run the well-formed ops (on a copy,

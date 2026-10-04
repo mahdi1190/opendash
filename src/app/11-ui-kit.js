@@ -43,8 +43,10 @@ function avatarInitials(name) {
 /* ---------- empty states ---------- */
 function emptyStateHtml(o) {
   o = o || {};
+  // Today's empty-state art (78-anim-wire.js; plays once per entry), the section's icon as its badge.
+  const art = !o.compact && o.art !== false && typeof animEmptyArtHtml === 'function' ? animEmptyArtHtml() : '';
   return `<div class="empty-state${o.compact ? ' compact' : ''}">`
-    + `<div class="es-icon">${icon(o.icon || 'sparkles')}</div>`
+    + (art ? `<div class="es-icon es-art">${art}<span class="es-badge">${icon(o.icon || 'sparkles')}</span></div>` : `<div class="es-icon">${icon(o.icon || 'sparkles')}</div>`)
     + (o.title ? `<div class="es-title">${esc(o.title)}</div>` : '')
     + (o.text ? `<div class="es-text">${esc(o.text)}</div>` : '')
     + `<div class="es-actions"></div></div>`;

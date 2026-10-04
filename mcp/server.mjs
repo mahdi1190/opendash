@@ -157,7 +157,7 @@ const ann = (title, readOnly, destructive = false) => ({ title, readOnlyHint: re
 
 function toolList() {
   const tools = [];
-  for (const q of QUERIES) tools.push({ name: q.tool, title: q.tool.replace(/_/g, ' '), description: q.description, inputSchema: publicSchema(q.schema), annotations: ann(q.tool, true) });
+  for (const q of QUERIES) if (MODE !== 'propose' || q.assistant !== false) tools.push({ name: q.tool, title: q.tool.replace(/_/g, ' '), description: q.description, inputSchema: publicSchema(q.schema), annotations: ann(q.tool, true) });
   tools.push({
     name: 'describe_operations', title: 'describe operations',
     description: 'Every change operation with its exact fields (JSON Schema), for building apply_changes / propose_changes batches.',
@@ -217,7 +217,7 @@ async function callTool(name, args) {
       return ok({ ops: d.ops.map(o => ({ name: o.name, description: o.description, ...(o.needsDryRun ? { needsDryRun: true } : {}), fields: o.schema.properties, required: o.schema.required })), rules: d.rules });
     }
     const q = QUERY_BY_TOOL.get(name);
-    if (q) return ok(await api.query(q.name, args));
+    if (q && (MODE !== 'propose' || q.assistant !== false)) return ok(await api.query(q.name, args));   // assistant:false (get_daynotes): not for the in-app assistant
     if (MODE === 'propose') {
       if (name === 'propose_changes') return ok(await api.propose(args.ops, args.note));
       if (OP_BY_TOOL.has(name) || name === 'apply_changes' || name === 'undo_changes') {

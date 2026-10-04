@@ -112,7 +112,7 @@ function homePeopleToday(o) {
     if (t.due && t.due < today) return { days: _hbpDays(t.due, today), late: true };
     const c = t.createdAt ? (typeof t.createdAt === 'number' ? new Date(t.createdAt) : new Date(String(t.createdAt))) : null;
     if (!c || isNaN(c)) return null;
-    const iso = `${c.getFullYear()}-${String(c.getMonth() + 1).padStart(2, '0')}-${String(c.getDate()).padStart(2, '0')}`;
+    const iso = Clock.parts(c.getTime()).iso;
     return { days: Math.max(0, _hbpDays(iso, today)), late: false };
   };
   let owedBest = null;
@@ -191,7 +191,7 @@ function hglAgoText(d) {
 }
 
 /* ---------- the page's inputs ---------- */
-function _hbpHM(d) { return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
+function _hbpHM(d) { const p = Clock.parts(d.getTime()); return `${String(p.h).padStart(2, '0')}:${String(p.mi).padStart(2, '0')}`; }
 /** Today's and tomorrow's events with attendees (CalStore), else the light list (titles only). */
 function _hbpEvents(today, tomorrow) {
   const full = typeof CalStore !== 'undefined' && CalStore.data && typeof calEventsOn === 'function';
@@ -256,14 +256,13 @@ function _hbpRender(el, ctx) {
   const people = (state.people || []).filter(p => p && !p.self && !p.isSelf);
   if (!people.length) return false;                              // a new user: it appears once People has someone
   const today = todayStr();
-  const t2 = new Date(); t2.setDate(t2.getDate() + 1);
-  const tomorrow = fmtDate(t2);
+  const tomorrow = tomorrowStr();
   const events = _hbpEvents(today, tomorrow);
   const tasks = _hbpTasks();
   const idx = typeof pplIndex === 'function' ? pplIndex() : undefined;
-  const first = homePeopleToday({ people: state.people, idx, events, tasks, today, nowHM: _hbpHM(new Date()), locale: APP_CONFIG.locale, max: ctx.size === 'm' ? 8 : 5 });
+  const first = homePeopleToday({ people: state.people, idx, events, tasks, today, nowHM: _hbpHM(new Date(Clock.now())), locale: APP_CONFIG.locale, max: ctx.size === 'm' ? 8 : 5 });
   const seen = _hbpLastSeen(first.rows.filter(r => r.meeting && !r.group).map(r => r.id), today);
-  const res = Object.keys(seen).length ? homePeopleToday({ people: state.people, idx, events, tasks, today, nowHM: _hbpHM(new Date()), lastSeen: seen, locale: APP_CONFIG.locale, max: ctx.size === 'm' ? 8 : 5 }) : first;
+  const res = Object.keys(seen).length ? homePeopleToday({ people: state.people, idx, events, tasks, today, nowHM: _hbpHM(new Date(Clock.now())), lastSeen: seen, locale: APP_CONFIG.locale, max: ctx.size === 'm' ? 8 : 5 }) : first;
 
   const card = document.createElement('section');
   card.className = `card home-card hbp hbp--${ctx.size || 's'}`;
@@ -325,7 +324,11 @@ function _hbpRow(r, today) {
     li.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
     return li;
   }
-  li.innerHTML = `${homeAvatar(p, 32)}<div class="hbp-body"><div class="hbp-n"><span class="nm">${esc(p.name || p.id)}</span>${owed}</div>${meta}${r.why.length ? `<div class="hbp-y">${_hbpWhyHtml(r.why)}</div>` : ''}</div>${time}`;
+  // v2.2 wave 4 (78-anim-moments.js): a birthday today, or a gentle wave for someone not seen in a while.
+  const bday = r.why.some(w => w.k === 'celebrate' && /today/.test(w.b)), quiet = !bday && r.why.some(w => w.k === 'seen');
+  const pm = typeof animPersonMomentHtml === 'function' && (bday || quiet) ? animPersonMomentHtml(bday ? 'birthday' : 'while', 'xs') : '';
+  if (pm) li.classList.add(bday ? 'ap-has-bday' : 'ap-has-while');
+  li.innerHTML = `${homeAvatar(p, 32)}${pm}<div class="hbp-body"><div class="hbp-n"><span class="nm">${esc(p.name || p.id)}</span>${owed}</div>${meta}${r.why.length ? `<div class="hbp-y">${_hbpWhyHtml(r.why)}</div>` : ''}</div>${time}`;
   li.title = `Open ${p.name || 'this person'}`;
   li.onclick = () => hglOpenPerson(r.id);
   li.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hglOpenPerson(r.id); } };

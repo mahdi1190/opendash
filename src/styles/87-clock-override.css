@@ -1,0 +1,13 @@
+/* ============================================================
+   Dashboard time: a trip's zone and a prefilled choice in the Settings
+   radio (owner: SWEEP; 87-clock-override.js, the radio is 87-clock-ui.js).
+   ============================================================ */
+/* A choice filled in from a suggestion (T7): one soft accent sweep, then it waits for Save. */
+.clk-radio.is-proposed { position: relative; overflow: hidden; border-radius: var(--radius-md); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.clk-radio.is-proposed::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--accent-soft-2, var(--accent-soft)), transparent); transform: translateX(-100%); animation: co-sweep 900ms var(--m-ease-out, ease-out) 120ms 1 both; pointer-events: none; }
+@keyframes co-sweep { to { transform: translateX(100%); } }
+.co-prop { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); padding-top: var(--space-1); }
+.co-prop-t { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); color: var(--accent-ink, var(--accent)); margin-right: auto; }
+@media (prefers-reduced-motion: reduce) {
+  .clk-radio.is-proposed::after { animation: none; display: none; }
+}

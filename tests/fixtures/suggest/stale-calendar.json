@@ -1,0 +1,11 @@
+{
+  "_about": "Monday 14:40 with a free afternoon, but the calendar was last read yesterday (stale): calendar cards are held back (G1). Synthetic.",
+  "now": "2026-10-05T14:40",
+  "cal": { "stale": true, "label": "Updated 4 Oct" },
+  "caps": { "calendar": false },
+  "events": { "2026-10-05": [] },
+  "tasks": [
+    { "id": "t-report", "title": "Report draft: section 2", "priority": "p1", "focusWhy": ["High priority"] }
+  ],
+  "focus": ["t-report"]
+}

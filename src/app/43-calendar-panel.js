@@ -7,7 +7,9 @@
        with RSVP, linked to People (or "Add to People"); related tasks (linked
        to the event + open tasks with the same people); agenda & notes (yours,
        stored in state.eventMeta; Draft with Claude builds one from the open
-       tasks with these people); the Google description.
+       tasks with these people); the Google description. Title, times, place,
+       description, calendar, colour, guests and RSVP are editable through
+       CalWrite where allowed (46-cal-event-edit.js, via calEventParts' out.edit).
    calNewTaskDialog({date, time, title, minutes, eventId, people, detail})
        a small dialog for a task on a day/time, optionally linked to an event.
    Event text is untrusted: everything is escaped or set as textContent, and
@@ -19,12 +21,12 @@ const _CAL_RSVP = { accepted: ['yes', 'Going'], tentative: ['maybe', 'Maybe'], d
 function _calWhenText(ev) {
   const L = _CAL_LOCALE();
   const s = calEventStart(ev), e = calEventEnd(ev);
-  const day = (d) => d.toLocaleDateString(L, { weekday: 'short', day: 'numeric', month: 'short' });
+  const day = (d) => d.toLocaleDateString(L, { weekday: 'short', day: 'numeric', month: 'short', timeZone: Clock.zone() });
   if (ev.allDay) {
     const [a, b] = calEventDays(ev);
-    return a === b ? `${day(_calParse(a))} · All day` : `${day(_calParse(a))} – ${day(_calParse(b))} · All day`;
+    return a === b ? `${_calFmt(a, { weekday: 'short', day: 'numeric', month: 'short' })} · All day` : `${_calFmt(a, { weekday: 'short', day: 'numeric', month: 'short' })} – ${_calFmt(b, { weekday: 'short', day: 'numeric', month: 'short' })} · All day`;
   }
-  const sameDay = fmtDate(s) === fmtDate(new Date(e.getTime() - 1));
+  const sameDay = Clock.parts(s.getTime()).iso === Clock.parts(e.getTime() - 1).iso;
   return sameDay ? `${day(s)} · ${_calTime(s)}–${_calTime(e)}` : `${day(s)} ${_calTime(s)} – ${day(e)} ${_calTime(e)}`;
 }
 /** 'Now' / 'In 25 min' / 'In 3 h' / 'Ended' / '' */
@@ -32,7 +34,7 @@ function _calLive(ev) {
   if (ev.allDay) return '';
   const now = Date.now(), s = calEventStart(ev).getTime(), e = calEventEnd(ev).getTime();
   if (now >= s && now < e) return 'Now';
-  if (now >= e) return fmtDate(new Date(e)) === todayStr() ? 'Ended' : '';
+  if (now >= e) return Clock.parts(e).iso === todayStr() ? 'Ended' : '';
   const mins = Math.round((s - now) / 60000);
   if (mins <= 90) return `In ${mins} min`;
   if (mins < 12 * 60) return `In ${Math.round(mins / 60)} h`;
@@ -67,13 +69,13 @@ function calLinkTask(evId, taskId, on) {
   if (on && at < 0) list.push(taskId);
   if (!on && at >= 0) list.splice(at, 1);
   if (list.length) m.tasks = list; else delete m.tasks;
-  if (!m.tasks && !m.notes && m.important === undefined) delete state.eventMeta[evId];
+  if (!m.tasks && !m.notes && m.important === undefined && !m.origin && !m.wrapped) delete state.eventMeta[evId];
   saveData(); render();
 }
 function calSetImportant(evId, value) {
   const m = calEventMeta(evId, true);
   if (value === null) delete m.important; else m.important = value;
-  if (!m.tasks && !m.notes && m.important === undefined) delete state.eventMeta[evId];
+  if (!m.tasks && !m.notes && m.important === undefined && !m.origin && !m.wrapped) delete state.eventMeta[evId];
   saveData(); render();
 }
 
@@ -94,9 +96,14 @@ function calEventStar(ev) {
 function calEventPanel(ev) {
   const panel = document.createElement('aside'); panel.className = 'ev-panel';
   panel.setAttribute('aria-label', 'Event');
-  const p = calEventParts(ev);
+  const p = calEventParts(ev, { where: 'panel' });
+  const E = p.edit || null;   // editable parts (46-cal-event-edit.js)
   // --- head ---
   const top = p.head;
+  if (E) {
+    const hd = top.querySelector('.ev-hd');
+    if (hd) { hd.innerHTML = ''; hd.append(E.title); }
+  }
   const toCard = document.createElement('button'); toCard.type = 'button'; toCard.className = 'btn btn-icon btn-ghost ev-to-card';
   toCard.setAttribute('aria-label', 'Open in the centre'); toCard.setAttribute('data-tip', 'Open in the centre');
   toCard.innerHTML = icon('scan');
@@ -105,11 +112,21 @@ function calEventPanel(ev) {
   x.innerHTML = icon('x');
   x.onclick = () => calCloseEvent();
   top.append(calEventStar(ev));
+  if (E && E.canDelete) {
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'btn btn-icon btn-ghost ev-del';
+    del.setAttribute('aria-label', 'Delete event'); del.setAttribute('data-tip', 'Delete event');
+    del.innerHTML = icon('trash-2');
+    del.onclick = () => evcDelete(ev);
+    top.append(del);
+  }
   if (typeof openEvent === 'function') top.append(toCard);
   top.append(x);
   panel.appendChild(top);
   if (typeof animPanelHeader === 'function') animPanelHeader(top, ev);   // the event's animated scene (78-brief-hooks.js)
-  for (const n of [p.actions, p.facts, ...p.attendees, ...p.tasks, p.notes, p.desc, p.organiser]) if (n) panel.appendChild(n);
+  if (E) { const w = document.createElement('div'); w.className = 'evc-panel-when'; w.append(E.when); panel.appendChild(w); }
+  const parts = E ? [p.actions, E.rsvp, E.ro, E.facts, E.location, ...E.guests, ...p.tasks, p.notes, E.desc, p.organiser]
+    : [p.actions, p.facts, ...p.attendees, ...p.tasks, p.notes, p.desc, p.organiser];
+  for (const n of parts) if (n) panel.appendChild(n);
   panel.addEventListener('keydown', (e) => { if (e.key === 'Escape' && e.target === p.notesInput) { p.notesInput.blur(); } });
   return panel;
 }
@@ -118,9 +135,10 @@ function calEventPanel(ev) {
  * Everything the event panel shows, as separate nodes, so the side panel and
  * the centre card (61-task-card.js) can lay them out their own way:
  * {head (.ev-top: colour swatch, title, when), title, when, live, color, actions,
- *  facts (dl|null), attendees [nodes], tasks [nodes], notes, notesInput, desc|null, organiser|null}
+ *  facts (dl|null), attendees [nodes], tasks [nodes], notes, notesInput, desc|null, organiser|null,
+ *  edit: the editable versions from 46-cal-event-edit.js (evcDecorate; o.where 'card' | 'panel')}
  */
-function calEventParts(ev) {
+function calEventParts(ev, o) {
   const cal = calEventCalendar(ev);
   const color = calEventColor(ev);
   const live = _calLive(ev);
@@ -198,7 +216,7 @@ function calEventParts(ev) {
       if (p) {
         row.classList.add('linked'); row.tabIndex = 0; row.setAttribute('role', 'button');
         row.title = 'Open ' + p.name;
-        row.onclick = () => { if (typeof tcClose === 'function') tcClose({ instant: true }); setView('person:' + p.id); };
+        row.onclick = () => openPerson(p.id, { from: row });   // inside the card: on top, with Back
         row.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); row.click(); } };
       } else if (!a.self && a.email) {
         const add = document.createElement('button'); add.type = 'button'; add.className = 'btn btn-icon btn-ghost btn-sm ev-addp';
@@ -280,7 +298,7 @@ function calEventParts(ev) {
     const m = calEventMeta(ev.id, true);
     if ((m.notes || '') === v) return;
     if (v) m.notes = v.slice(0, 4000); else delete m.notes;
-    if (!m.tasks && !m.notes && m.important === undefined) delete state.eventMeta[ev.id];
+    if (!m.tasks && !m.notes && m.important === undefined && !m.origin && !m.wrapped) delete state.eventMeta[ev.id];
     saveData();
   });
   // One box for the notes and the "drafted from…" line, as in mockup 07.
@@ -306,6 +324,8 @@ function calEventParts(ev) {
     p.querySelector('span').textContent = 'Organised by ' + (ev.organizer.name || ev.organizer.email);
     out.organiser = p;
   }
+  // Title, times, place, description, calendar, colour, guests, RSVP: editable through CalWrite (46-cal-event-edit.js).
+  if (typeof evcDecorate === 'function') evcDecorate(out, ev, o);
   return out;
 }
 
@@ -315,7 +335,7 @@ function calAddAttendee(a) {
   if (typeof openPersonEditor === 'function') { openPersonEditor(null, { name, email: a.email, emails: [a.email] }); return; }
   if (typeof createPerson === 'function') {
     const p = createPerson({ name, email: a.email, emails: [a.email] });
-    toast(`Added ${name} to People`, { kind: 'ok', action: p && p.id ? { label: 'Open', run: () => setView('person:' + p.id) } : undefined });
+    toast(`Added ${name} to People`, { kind: 'ok', action: p && p.id ? { label: 'Open', run: () => openPerson(p.id) } : undefined });
     render();
   }
 }

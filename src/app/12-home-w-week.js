@@ -45,7 +45,7 @@ function homeWeekModel(o) {
   for (let k = 0; k < days; k++) {
     const iso = _homeAddDays(o.start, k);
     const [y, mo, d] = iso.split('-').map(Number);
-    const dow = new Date(y, mo - 1, d).getDay();
+    const dow = new Date(y, mo - 1, d).getDay(); // clock-ok: wall date
     const evs = typeof o.eventsOn === 'function' ? (o.eventsOn(iso) || []) : [];
     const bdays = evs.filter(e => e.type === 'birthday');
     const timed = evs.filter(e => !e.allDay && !e.bg && e.type !== 'birthday');

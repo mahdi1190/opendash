@@ -4,7 +4,8 @@
 
    Task fields (all optional except id/title): dueDate 'YYYY-MM-DD',
    dueTime 'HH:MM', plannedFor 'YYYY-MM-DD' (the day you mean to work on it,
-   separate from the deadline), priority p0-p3, stream, tags[], people[],
+   separate from the deadline) + plannedTime 'HH:MM' / plannedMinutes (a planned
+   time slot that day: 20-task-plan.js setPlannedSlot), priority p0-p3, stream, tags[], people[],
    detail (markdown), subtasks[{id,title,done,ts}], recurrence
    (none|daily|weekdays|weekly|biweekly|monthly), repeatDay (month anchor),
    estimate (minutes), createdAt, createdVia, resolution ('wontdo'),
@@ -44,7 +45,7 @@ function _isoAddDays(iso, n) { const [y, m, d] = iso.split('-').map(Number); ret
 function _isoAddMonths(iso, n, anchorDay) {
   const [y, m, d] = iso.split('-').map(Number);
   const first = new Date(y, m - 1 + n, 1);
-  const last = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const last = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate(); // clock-ok: wall date
   first.setDate(Math.min(anchorDay || d, last));
   return fmtDate(first);
 }
@@ -56,7 +57,7 @@ function recurrenceStep(iso, rec, anchorDay) {
   if (rec === 'monthly') return _isoAddMonths(iso, 1, anchorDay);
   if (rec === 'weekdays') {
     let d = _isoAddDays(iso, 1);
-    for (let i = 0; i < 3 && [0, 6].includes(new Date(d + 'T00:00:00').getDay()); i++) d = _isoAddDays(d, 1);
+    for (let i = 0; i < 3 && [0, 6].includes(new Date(d + 'T00:00:00').getDay()); i++) d = _isoAddDays(d, 1); // clock-ok: wall date
     return d;
   }
   return iso;
@@ -81,7 +82,7 @@ function _rollRecurring(item, { skipped } = {}) {
   if (rec === 'monthly' && !item.repeatDay && from) item.repeatDay = Number(from.slice(8, 10));
   const next = nextOccurrence(from, rec, todayStr(), item.repeatDay);
   item.dueDate = next;
-  delete item.plannedFor;
+  delete item.plannedFor; delete item.plannedTime; delete item.plannedMinutes;   // the planned slot goes with the plan (20-task-plan.js)
   if (Array.isArray(item.subtasks) && item.subtasks.some(s => s.done)) item.subtasks = item.subtasks.map(s => ({ ...s, done: false }));
   state.statuses[item.id] = 'todo';
   logActivity(item.id, 'occurrence', { from, to: next, rec, skipped: !!skipped });
@@ -133,8 +134,12 @@ function setStatus(id, s, opts) {
 function toggleDone(id, opts) {
   const item = getItem(id); if (!item) return;
   const closing = statusOf(id) !== 'done';
+  const due = closing ? effDate(item) : '';
   const r = setStatus(id, closing ? 'done' : 'todo');
-  if (closing && typeof animCelebrate === 'function') animCelebrate(item);   // 78-brief-hooks.js (Settings > Animations)
+  // A long-overdue task finally done is a "boss battle" (78-anim-moments.js); else the usual celebration.
+  const boss = closing && !(opts && opts.quiet) && typeof animBossCheck === 'function' && animBossCheck(item, due);
+  if (closing && !boss && typeof animCelebrate === 'function') animCelebrate(item);   // 78-brief-hooks.js (Settings > Animations)
+  if (closing && typeof achTaskDone === 'function') achTaskDone(item, due);   // achievements (78-achievements.js)
   if (opts && opts.quiet) return r;
   if (closing) {
     const msg = r.rolledTo ? `Done. Next: ${dueLabel(r.rolledTo)}` : 'Task completed';
@@ -214,12 +219,12 @@ function setOverride(id, field, value) {
   saveData();
 }
 function setDate(id, date) { setDateWithReason(id, date, null); }
-/** The day you plan to work on it (separate from the deadline). null clears. */
+/** The day you plan to work on it (separate from the deadline). null clears it, with any planned time slot (20-task-plan.js). */
 function setPlanned(id, date) {
   const item = getItem(id); if (!item) return;
   const from = item.plannedFor || null;
   if (from === (date || null)) return;
-  if (date) item.plannedFor = date; else delete item.plannedFor;
+  if (date) item.plannedFor = date; else { delete item.plannedFor; delete item.plannedTime; delete item.plannedMinutes; }
   logActivity(id, 'plan', { from, to: date || null });
   saveData(); render();
 }

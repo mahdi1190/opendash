@@ -36,6 +36,22 @@
 }
 html[data-density="compact"] { --scene-xs: 22px; --scene-sm: 30px; --scene-md: 40px; --scene-tip: 36px; }
 
+/* One sky (travel spec 4.6): the brief's .bf-sky (74-brief.css) and the travel scenes
+   (69-travel-moments.css) read the same stops, by briefTimeOfDay's six times of day. */
+:root {
+  --sky-dawn-1: #c9d6ff; --sky-dawn-2: #f7cfd9; --sky-dawn-3: #ffe0bf;
+  --sky-morning-1: #bcdcff; --sky-morning-2: #e1efff; --sky-morning-3: #fff4df;
+  --sky-day-1: #a9d3ff; --sky-day-2: #d6ebff; --sky-day-3: #f3faff;
+  --sky-dusk-1: #5b4db8; --sky-dusk-2: #c76c93; --sky-dusk-3: #f29a6c;
+  --sky-evening-1: #232a63; --sky-evening-2: #4b3f8d; --sky-evening-3: #c77a92;
+  --sky-night-1: #070d26; --sky-night-2: #111b42; --sky-night-3: #1f2c58;
+}
+[data-theme="dark"] {
+  --sky-dawn-1: #2a3266; --sky-dawn-2: #6b4a72; --sky-dawn-3: #a8705f;
+  --sky-morning-1: #17345e; --sky-morning-2: #24507f; --sky-morning-3: #4f6787;
+  --sky-day-1: #123a6b; --sky-day-2: #1f5490; --sky-day-3: #3e6c9c;
+}
+
 .anim-scene.is-tinted { --c: var(--scene-tint, var(--accent)); }
 
 /* continuity: keep the timeline across re-renders (transform/opacity untouched) */

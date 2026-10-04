@@ -6,7 +6,8 @@
 //   person.create         [create_person]          name; kind, role, org, group, emails[], aliases[], streams[] ...
 //   person.update         [update_person]          any of those fields (lists replace; addAliases/addEmails add);
 //                                                   a rename keeps the old name's match words as aliases;
-//                                                   icon = a symbol or emoji avatar
+//                                                   icon = a symbol or emoji avatar; photo / cover =
+//                                                   the card's pictures (refs: lib/people-images.mjs)
 //   person.merge          [merge_people]           fold one record into another: links, aliases, emails, notes (danger)
 //   person.delete         [delete_person]          remove a person and unlink their tasks (danger)
 //   person.add_note       [add_person_note]        a dated note about someone
@@ -26,6 +27,7 @@
 import { ActionError, LIMITS, cleanLine, cleanText, normTag, slug, resolvePerson, truncate, clone } from './model.mjs';
 import { pplBuildIndex, pplLinked, pplAutoLink, pplSuggest, pplFold, pplNormalizePerson, pplTerms, tglRegistry, tglSetFlags } from '../../lib/people-tags.mjs';
 import { czCleanSymbol, czRenameAliases, spriteIconNames } from '../../lib/customise.mjs';
+import { refKind, COVER_PRESETS } from '../../lib/people-images.mjs';
 
 const obj = (properties, required = [], extra = {}) => ({ type: 'object', properties, required, additionalProperties: false, ...extra });
 const PALETTE = ['#2563eb', '#7c3aed', '#059669', '#0891b2', '#ea580c', '#db2777', '#dc2626', '#0d9488', '#ca8a04', '#4f46e5'];
@@ -51,6 +53,20 @@ function cleanIcon(v, field = 'icon') {
   const r = czCleanSymbol(v, spriteIconNames());
   if (r.error) throw new ActionError('BAD_VALUE', r.error, { field, ...(r.near.length ? { valid: r.near, hint: `did you mean ${r.near.map(n => `'${n}'`).join(' or ')}?` } : {}) });
   return r.value;
+}
+/** A picture reference: '' (none), 'file:<name>' (uploaded on the page), 'gravatar:<sha256>' (photo only), 'preset:<id>' (cover only). */
+function cleanPicture(v, field) {
+  const r = String(v == null ? '' : v).trim();
+  if (!r) return '';
+  const k = refKind(r);
+  const ok = field === 'photo' ? (k === 'file' && /-avatar-/.test(r)) || k === 'gravatar' : (k === 'file' && /-cover-/.test(r)) || k === 'preset';
+  if (!ok) {
+    throw new ActionError('BAD_VALUE', field === 'photo'
+      ? "photo must be '' (initials or symbol), 'file:<name>' from a picture uploaded on the People card, or 'gravatar:<sha256 of the address>'"
+      : `cover must be '', 'file:<name>' from a picture uploaded on the People card, or 'preset:<id>' (${COVER_PRESETS.join(', ')})`,
+    { field, ...(field === 'cover' ? { valid: COVER_PRESETS.map(x => 'preset:' + x) } : {}) });
+  }
+  return r;
 }
 const EMAIL_RE = /^[^\s@<>"',;:()]{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,24}$/;
 
@@ -103,6 +119,8 @@ function setFields(ctx, who, p, { replaceLists = true } = {}) {
     set('name', n);
   }
   if (p.icon !== undefined) set('icon', cleanIcon(p.icon));
+  if (p.photo !== undefined) set('photo', cleanPicture(p.photo, 'photo'));
+  if (p.cover !== undefined) set('cover', cleanPicture(p.cover, 'cover'));
   if (p.kind !== undefined) set('kind', p.kind);
   for (const f of ['role', 'org', 'group']) if (p[f] !== undefined) set(f, cleanLine(p[f], f === 'group' ? 40 : LIMITS.role));
   if (p.phone !== undefined) set('phone', cleanLine(p.phone, LIMITS.phone));
@@ -123,13 +141,27 @@ function setFields(ctx, who, p, { replaceLists = true } = {}) {
   if (p.removeAliases !== undefined) { const rm = new Set(cleanAliases(p.removeAliases)); aliases = aliases.filter(a => !rm.has(a)); }
   if (p.aliases !== undefined || p.addAliases !== undefined || p.removeAliases !== undefined || oldAliases.length) set('aliases', aliases.slice(0, 20));
   if (p.streams !== undefined) set('streams', cleanStreams(ctx, p.streams));
+  if (p.tz !== undefined) set('tz', cleanTz(p.tz));
   return ch;
+}
+/** A person's IANA time zone (travel spec 5.2): '' removes it; old names map to the current ones. */
+const TZ_ALIASES = { 'Asia/Calcutta': 'Asia/Kolkata', 'Europe/Kiev': 'Europe/Kyiv', 'Asia/Saigon': 'Asia/Ho_Chi_Minh', 'Asia/Katmandu': 'Asia/Kathmandu', 'Asia/Rangoon': 'Asia/Yangon', 'America/Buenos_Aires': 'America/Argentina/Buenos_Aires' };
+function cleanTz(v) {
+  const z = cleanLine(v, 64);
+  if (!z) return '';
+  const c = TZ_ALIASES[z] || z;
+  try { new Intl.DateTimeFormat('en-GB', { timeZone: c }); } catch { throw new ActionError('BAD_VALUE', `'${truncate(z, 40)}' is not a time zone; use an IANA name such as 'America/New_York'`, { field: 'tz' }); }
+  if (/^(UTC|GMT|Etc\/)/i.test(c)) throw new ActionError('BAD_VALUE', 'a person\'s time zone is a place, e.g. \'Europe/London\', not UTC', { field: 'tz' });
+  return c;
 }
 const PROFILE = {
   kind: S.kind, role: S.role, org: S.org, group: S.group, emails: S.emails, email: { type: 'string', maxLength: 200, description: 'one address (added first)' },
   aliases: S.aliases, streams: S.streams, phone: S.phone, linkedin: S.linkedin, color: S.color,
   icon: { ...S.icon, description: "a symbol or emoji shown in their avatar instead of the initials ('' = initials again)" },
+  photo: { type: 'string', maxLength: 120, description: "profile picture: '' = initials or their symbol; 'file:<name>' = a picture uploaded on their People card; 'gravatar:<sha256 of their address>' = their Gravatar (only when the user opted in for this person: the page then asks gravatar.com for it)" },
+  cover: { type: 'string', maxLength: 120, description: `cover picture on their People card: '' = a soft gradient in their colour; 'preset:<id>' (${COVER_PRESETS.join(', ')}); 'file:<name>' = a picture uploaded on the card` },
   inactive: { type: 'boolean', description: 'no longer active: sinks to the bottom of People' },
+  tz: { type: 'string', maxLength: 64, description: "their time zone (IANA), e.g. 'America/New_York': meetings then show their time too; '' removes it" },
 };
 
 /** Add `pid` to a task's people (lifting a previous removal). */
@@ -186,7 +218,7 @@ export const PEOPLE_OPS = [
   },
   {
     name: 'person.update', tool: 'update_person',
-    description: "Change a person: name, kind, role, org, group, emails / aliases / streams (these REPLACE the list; addEmails / addAliases / removeAliases edit it), phone, linkedin, colour, icon (a symbol or emoji avatar), inactive, pinned. Renaming keeps the old name as an alias, so tasks that use it still link (keepOldName:false to skip that).",
+    description: "Change a person: name, kind, role, org, group, emails / aliases / streams (these REPLACE the list; addEmails / addAliases / removeAliases edit it), phone, linkedin, colour, icon (a symbol or emoji avatar), photo and cover (the pictures on their People card), inactive, pinned, tz (their time zone). Renaming keeps the old name as an alias, so tasks that use it still link (keepOldName:false to skip that).",
     schema: obj({
       id: S.person, name: S.name, ...PROFILE,
       addEmails: S.emails, addAliases: S.aliases, removeAliases: S.aliases,
@@ -218,7 +250,7 @@ export const PEOPLE_OPS = [
       const streams = [...new Set([...(b.streams || []), ...(a.streams || [])])];
       const notes = [...(Array.isArray(b.notes) ? b.notes : []), ...(Array.isArray(a.notes) ? a.notes : [])].sort((x, y) => (y.ts || 0) - (x.ts || 0));
       b.emails = mails; b.email = mails[0] || ''; b.aliases = aliases; b.streams = streams; if (notes.length) b.notes = notes;
-      for (const f of ['role', 'org', 'group', 'phone', 'linkedin', 'avatarUrl']) if (!b[f] && a[f]) b[f] = a[f];
+      for (const f of ['role', 'org', 'group', 'phone', 'linkedin', 'avatarUrl', 'photo', 'cover']) if (!b[f] && a[f]) b[f] = a[f];
       ch.push(pchange(b, 'merged', null, a.name));
       let moved = 0;
       const fix = (t, live) => {

@@ -13,6 +13,7 @@
 //   --no-finance  skip the finance folder
 //   --user NAME   the name in config.json (default "Alex"; never overwrites a set name)
 //   --today DATE  pretend today is DATE (YYYY-MM-DD), e.g. for screenshots that match a mockup
+//   --trip        add a fake trip (flights, a hotel, payments abroad: tools/fake-trip.mjs)
 //
 // Then:  node serve.mjs --data-dir <dest> --port <yours> --no-open
 // Node stdlib only.
@@ -22,6 +23,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { atomicWrite, withLock, writeJson, readJson, isInside } from '../lib/fsutil.mjs';
 import { argValue, ensureDataDir, REPO_ROOT } from '../lib/datadir.mjs';
+import { addFakeTrip } from './fake-trip.mjs';
 
 const isInsideRepo = (p) => isInside(REPO_ROOT, resolve(p));
 
@@ -65,6 +67,7 @@ export const DEMO_PEOPLE = [
 // Who is at which recurring demo meeting (so People shows "Next meeting" / "Last contact").
 const DEMO_ATTENDEES = {
   '1:1': ['priya', 'tom'], 'Design review': ['tom', 'lena'], 'Client': ['marcus'], 'Dinner with Jordan': ['jordan'], 'Lunch with Ana': ['ana'],
+  'Planning sync': ['lena', 'tom'], 'Roadmap chat': ['priya'], 'Pricing follow-up': ['marcus'], 'Hiring sync': ['priya'],
 };
 // The demo's calendars (one Google account that also sees a team and a family calendar).
 export const DEMO_CALENDARS = [
@@ -204,9 +207,11 @@ export function buildFakeData({ today = new Date(), seed = 7, tasks: nTasks = 72
   const ev = (day, h, m, mins, summary, extra = {}) => {
     const s = addDays(t0, day); s.setHours(h, m, 0, 0);
     const e = new Date(s.getTime() + mins * 60000);
-    const { responses = {}, organizer, ...rest } = extra;
+    const { responses = {}, organizer, selfResponse = 'accepted', ...rest } = extra;
     const who = Object.entries(DEMO_ATTENDEES).find(([k]) => summary.includes(k));
-    const attendees = who ? [{ email: 'you@example.com', self: true, responseStatus: 'accepted' }, ...who[1].map(pid => {
+    const org = organizer ? DEMO_PEOPLE.find(x => x.id === organizer) : null;
+    if (org) rest.organizer = { email: org.email, displayName: org.name };
+    const attendees = who ? [{ email: 'you@example.com', self: true, responseStatus: selfResponse }, ...who[1].map(pid => {
       const p = DEMO_PEOPLE.find(x => x.id === pid);
       return { email: p.email, name: p.name, responseStatus: responses[pid] || 'accepted', ...(organizer === pid ? { organizer: true } : {}) };
     })] : undefined;
@@ -247,6 +252,18 @@ export function buildFakeData({ today = new Date(), seed = 7, tasks: nTasks = 72
   ev(dayOff(3, 3), 15, 0, 90, 'Client workshop: Harbor & Co', { ...CLIENTS, location: 'Harbor & Co offices' });
   allDay(dayOff(3, 6), 3, 'Product conference', WORK);
   ev(dayOff(4, 5), 19, 0, 150, 'Concert', { ...PERSONAL, location: 'Town Hall' });
+  // Relative to today, whatever the weekday, so every Home widget and suggestion has
+  // something to show: a meeting that has ended (After meetings), one later today (Meeting
+  // prep), an invitation to answer (Invites & clashes), and two of the dashboard's own
+  // focus blocks (one earlier today, one tomorrow that a meeting landed on).
+  const ownBlocks = [];
+  const block = (day, h, m, mins, title) => { ownBlocks.push({ id: `demo-ev-${en}`, title }); ev(day, h, m, mins, 'Focus: ' + title, { ...PERSONAL }); };
+  block(0, 8, 0, 60, 'Fix onboarding drop-off on step 3');
+  ev(0, 9, 0, 30, 'Planning sync', { ...WORK, ...meet('pln-sync-day'), organizer: 'lena' });
+  ev(0, 16, 0, 45, 'Roadmap chat with Priya', { ...WORK, ...meet('rdm-chat-pri'), organizer: 'priya' });
+  ev(1, 12, 0, 30, 'Pricing follow-up with Marcus', { ...PERSONAL, organizer: 'marcus', selfResponse: 'needsAction' });   // invitations land on the primary calendar
+  block(1, 14, 0, 120, 'Draft Q4 roadmap');
+  ev(1, 15, 0, 30, 'Hiring sync', { ...WORK, ...meet('hir-sync-pri'), organizer: 'priya' });
   events.sort((a, b) => String(a.start.dateTime || a.start.date).localeCompare(String(b.start.dateTime || b.start.date)));
   const calendar = { source: 'demo', fetchedAt: new Date(now).toISOString(), calendars: DEMO_CALENDARS.map(c => ({ ...c })), events };
   // An agenda on the 1:1 that is on today's week (the event panel shows it under "Agenda & notes").
@@ -255,6 +272,45 @@ export function buildFakeData({ today = new Date(), seed = 7, tasks: nTasks = 72
   // A task planned into this Friday afternoon (a dashed block in the week view).
   const planned = state.custom.find(t => t.title === 'Prepare client workshop slides');
   if (planned) Object.assign(planned, { dueDate: iso(addDays(t0, dayOff(0, 4))), dueTime: '15:15', estimate: 60, priority: 'p1' });
+  // The own focus blocks: marked as the dashboard's (origin) and linked to their task.
+  state.eventMeta = state.eventMeta || {};
+  for (const b of ownBlocks) {
+    const t = state.custom.find(x => x.title === b.title);
+    if (!t) continue;
+    if (state.statuses[t.id] === 'done') { delete state.statuses[t.id]; delete state.completionLog[t.id]; }
+    state.eventMeta[b.id] = { origin: { kind: 'block', rule: 'free-slot', taskId: t.id }, tasks: [t.id] };
+  }
+
+  // Habits: the repeating tasks with a few weeks behind them (Habits & routines).
+  const DAY = 86400000;
+  const habit = (title, every, misses) => {
+    const t = state.custom.find(x => x.title === title);
+    if (!t) return;
+    t.createdAt = now - 60 * DAY;
+    t.dueDate = iso(t0);
+    const log = [];
+    for (let k = every; k <= every * 8; k += every) if (!misses.includes(k)) log.push(now - k * DAY - 3 * 3600000);
+    state.completionLog[t.id] = log;
+    delete state.statuses[t.id];
+  };
+  habit('Practise Spanish (20 minutes)', 1, [4]);
+  habit('Run 5k', 7, []);
+  habit('Meal-prep for the week', 7, [21]);
+
+  // Files & links (Launchpad): example links and a snippet, three pinned.
+  state.resources = [
+    { id: 'r-demo-wiki', kind: 'url', label: 'Team wiki', target: 'https://wiki.example.com/launch', pinned: true, links: [{ type: 'stream', id: 'launch' }], createdAt: now - 20 * DAY },
+    { id: 'r-demo-repo', kind: 'github', label: 'example/launch-site', target: 'https://github.com/example/launch-site', pinned: true, links: [{ type: 'stream', id: 'launch' }], createdAt: now - 18 * DAY },
+    { id: 'r-demo-standup', kind: 'snippet', label: 'Stand-up notes', target: 'Yesterday:\nToday:\nBlocked on:', pinned: true, links: [{ type: 'stream', id: 'work' }], createdAt: now - 15 * DAY },
+    { id: 'r-demo-style', kind: 'url', label: 'Style guide', target: 'https://example.org/style-guide', pinned: false, links: [{ type: 'stream', id: 'work' }], createdAt: now - 3 * DAY },
+    { id: 'r-demo-course', kind: 'url', label: 'Statistics course', target: 'https://learn.example.org/statistics', pinned: false, links: [{ type: 'stream', id: 'learning' }], createdAt: now - 1 * DAY },
+  ];
+
+  // The Daily note: yesterday and this morning.
+  state.daynotes = {
+    [iso(addDays(t0, -1))]: { md: '- 09:10 Pricing copy is nearly there; Tom has comments\n- [x] Sent the beta invites to the first 50\n- 16:30 Q4 roadmap: start from the team input doc', updatedAt: now - DAY },
+    [iso(t0)]: { md: '- 08:40 Top of the day: the launch checklist\n- Ask Tom about the pricing page copy\n- Book a physio appointment before Friday', updatedAt: now - 3 * 3600000 },
+  };
 
   // Inbox snapshot
   const mails = [
@@ -325,10 +381,11 @@ const DEMO_MARKER = '.demo-data';
  * the state through its store (live sync, versioning); otherwise the file
  * is written under the state lock with a bumped _lastSave.
  */
-export async function writeFakeData(dataDir, { tasks = 72, seed = 7, force = false, finance = true, replaceFinance = false, financeDir, userName, today, writeState, setConfig, log = () => {} } = {}) {
+export async function writeFakeData(dataDir, { tasks = 72, seed = 7, force = false, finance = true, replaceFinance = false, financeDir, userName, today, writeState, setConfig, trip = false, log = () => {} } = {}) {
   const p = await ensureDataDir(dataDir);
   const cfg = await readJson(p.config, { fallback: {} });
   const data = buildFakeData({ tasks, seed, ...(today ? { today } : {}), userName: (cfg && cfg.userName) || userName || 'Alex', currency: (cfg && cfg.currency) || 'GBP' });
+  if (trip) { const d = today ? new Date(today) : new Date(); addFakeTrip(data, { t0: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12), homeZone: (cfg && cfg.timezone) || 'Europe/London' }); }
   const cur = existsSync(p.stateFile) ? await readJson(p.stateFile, { fallback: null }) : null;
   if (cur && Array.isArray(cur.custom) && cur.custom.length && !force) {
     throw Object.assign(new Error('this data folder already has tasks (use --force to replace them; a copy is kept)'), { status: 409 });
@@ -417,7 +474,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   console.log(`\n  Writing FAKE demo data to ${resolve(dest)}`);
   writeFakeData(dest, {
     tasks: Math.max(0, Math.min(50000, Number(argValue(argv, '--tasks')) || 72)), seed: Number(argValue(argv, '--seed')) || 7,
-    force: argv.includes('--force'), finance: !argv.includes('--no-finance'), userName: argValue(argv, '--user'), log: console.log,
+    force: argv.includes('--force'), finance: !argv.includes('--no-finance'), trip: argv.includes('--trip'), userName: argValue(argv, '--user'), log: console.log,
     ...(todayArg ? { today: new Date(`${todayArg}T12:00:00`) } : {}),
   }).then(() => console.log(`\n  Done. Start it with:\n     node serve.mjs --data-dir "${resolve(dest)}" --port <your port> --no-open\n`))
     .catch(e => { console.error(`\n  ${e.message}\n`); process.exitCode = 1; });

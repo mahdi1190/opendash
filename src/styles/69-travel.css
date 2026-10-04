@@ -1,0 +1,170 @@
+/* ============================================================
+   TRAVEL SURFACES (src/app/69-travel-ui*.js). Owner: SURFACES (travel spec 5.1,
+   5.2, 5.5, 5.9, 6.4; prototypes t5-surfaces and t6-prefill). Tokens only.
+   ============================================================ */
+
+/* ---------- the top-bar chip (chrome: no entrance on navigation) ---------- */
+/* Not a .cdw: the strip hides overflowing .cdw widgets from the end, and the second clock must stay (phones: flag + time). */
+.tr-chip {
+  position: relative; display: inline-flex; align-items: center; flex: none; gap: var(--space-1-5); height: 32px; padding: 0 var(--space-3) 0 var(--space-2);
+  border-radius: var(--radius-md); border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--border)); background: color-mix(in oklab, var(--accent-soft) 45%, var(--surface));
+  white-space: nowrap; box-shadow: var(--shadow-xs); cursor: pointer; font: inherit; font-size: var(--text-sm); color: var(--fg);
+  transition: border-color var(--m-fast) var(--m-ease-out), background-color var(--m-fast) var(--m-ease-out);
+}
+.tr-chip:hover { border-color: var(--border-strong); }
+.tr-chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.tr-chip .tr-flag { --tr-flag-h: 12px; }
+.tr-chip .tr-chip-t { font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; display: inline-block; }
+.tr-chip .tr-chip-c, .tr-chip .tr-chip-hl, .tr-chip .tr-chip-line { color: var(--fg-muted); }
+.tr-chip .tr-chip-home { display: inline-flex; align-items: center; gap: 4px; color: var(--fg-muted); }
+.tr-chip .tr-chip-h { font-variant-numeric: tabular-nums; color: var(--fg); }
+.tr-chip .tr-chip-sep { width: 1px; align-self: stretch; margin: 8px 2px; background: var(--border); }
+.tr-chip .tr-arc { width: 22px; height: 13px; flex: none; }
+.tr-chip .tr-arc-p { fill: none; stroke: var(--border-strong); stroke-width: 1; stroke-dasharray: 1.5 2; }
+.tr-chip .tr-arc-s { fill: var(--warning); }
+.tr-chip .tr-arc.is-night .tr-arc-s { fill: var(--fg-muted); }
+.tr-chip.is-depart { background: var(--surface); }
+.tr-chip.is-depart .tr-chip-line { color: var(--fg); font-weight: var(--weight-medium); }
+.tr-chip .tr-chip-dot { display: none; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--accent); }
+.tr-chip.has-dot .tr-chip-dot { display: block; }
+.tr-chip.tr-chip-in { animation: tr-chip-in 120ms linear both; }
+@keyframes tr-chip-in { from { opacity: 0; } }
+@media (max-width: 700px) {
+  #tbw-travel-clock { order: -1; flex: none; }     /* first on a phone: the strip clips from the end */
+  .tr-chip { padding: 0 var(--space-2); }
+  .tr-chip .tr-chip-c, .tr-chip .tr-arc, .tr-chip .tr-chip-sep, .tr-chip .tr-chip-home, .tr-chip.is-depart .tr-chip-line { display: none; }
+}
+
+/* ---------- the opt-in card (same slot and look as the zone banner) ---------- */
+.tr-optin { background: var(--accent-soft); border-color: color-mix(in oklab, var(--accent) 22%, transparent); }
+.tr-optin .clk-ic { color: var(--accent-ink); }
+
+/* ---------- the prefill tag and sweep (every suggestion that opens an editor) ---------- */
+.sg-prefill-tag { display: inline-flex; align-items: center; gap: 4px; padding: 1px var(--space-2); border-radius: var(--radius-full); background: var(--accent-soft); color: var(--accent-ink); font-size: var(--text-xs); line-height: var(--lh-xs); font-weight: var(--weight-medium); white-space: nowrap; }
+.sg-sweep { position: relative; }
+.sg-sweep::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(100deg, transparent 20%, color-mix(in oklab, var(--accent) 22%, transparent) 50%, transparent 80%);
+  background-size: 250% 100%; background-position: 120% 0; animation: sg-sweep 820ms var(--m-ease-out, ease-out) 1 both; }
+@keyframes sg-sweep { to { background-position: -40% 0; opacity: 0.2; } }
+@media (prefers-reduced-motion: reduce) { .sg-sweep::after { animation: none; display: none; } }
+.tc-head-new .sg-prefill-tag, .tc-prefill-tag { margin: 0 0 var(--space-1); }
+.tr-tc-steps .tr-tc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.tr-tc-item, .tr-tc-add { display: flex; align-items: center; gap: var(--space-2); border-radius: var(--radius-sm); }
+.tr-tc-item .control, .tr-tc-add .control { flex: 1; min-width: 0; border-color: transparent; background: transparent; }
+.tr-tc-item .control:hover, .tr-tc-add .control:hover { border-color: var(--border-subtle); }
+.tr-tc-item .control:focus, .tr-tc-add .control:focus { border-color: var(--border-strong); background: var(--surface); }
+.tr-tc-box { color: var(--fg-subtle); display: grid; place-items: center; }
+.tr-tc-add { padding-left: 22px; }
+
+/* ---------- event card: their time, the proposal ---------- */
+.tr-evc-their { flex-basis: 100%; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px var(--space-1); margin-top: var(--space-1); padding: var(--space-1) var(--space-2); border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--fg); font-size: var(--text-xs); line-height: var(--lh-xs); }
+.tr-evc-their .icon { align-self: center; color: var(--fg-muted); }
+.tr-evc-their-v { color: var(--fg-muted); }
+.tr-evc-their.is-warn { background: var(--warning-soft); }
+.tr-evc-their.is-warn .icon, .tr-evc-their.is-warn .tr-evc-their-v { color: var(--warning-ink); }
+.tr-evc-your { color: var(--accent-ink); }
+.tr-evc-prop { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--border)); border-radius: var(--radius-lg); background: color-mix(in oklab, var(--accent-soft) 35%, var(--surface)); }
+.tr-evc-prop-h { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); }
+.tr-evc-prop-f { display: flex; align-items: center; gap: var(--space-2); }
+.tr-evc-prop-hint { font-size: var(--text-xs); }
+
+/* ---------- people ---------- */
+.tr-ptz .num { font-variant-numeric: tabular-nums; }
+.ppl-form .field[data-prefilled] { border-radius: var(--radius-md); }
+.ppl-form .field .sg-prefill-tag { align-self: flex-start; }
+
+/* ---------- the top-bar clock widget's zone (Customise top bar) ---------- */
+.tr-tbz { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.tr-tbz-z { width: auto; flex: 0 1 240px; min-width: 0; }
+.tr-tbz-z[hidden] { display: none; }
+
+/* ---------- a suggestion's focus ring (nav focus) ---------- */
+.tr-focus-ring { border-radius: var(--radius-md); animation: tr-focus 1.6s var(--m-ease-out, ease-out) 1; }
+@keyframes tr-focus { 0%, 40% { box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 45%, transparent); background-color: var(--accent-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .tr-focus-ring { animation: none; box-shadow: 0 0 0 2px var(--accent); } }
+
+/* ---------- Settings > Travel & time ---------- */
+.tr-set { position: relative; }
+.tr-set-h { padding: var(--space-4) 0 var(--space-1); border-top: 1px solid var(--border-subtle); }
+.tr-set > .tr-set-h:first-child { padding-top: 0; border-top: 0; }
+.tr-set-h h3 { margin: 0; font-size: var(--text-xs); line-height: var(--lh-xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--fg-muted); }
+.tr-set-h p { margin: 2px 0 0; color: var(--fg-muted); font-size: var(--text-sm); }
+.tr-set-h + .set-row { border-top: 0; }
+.tr-set-cbs { display: flex; flex-direction: column; gap: var(--space-1); }
+.tr-set-cb { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); font-size: var(--text-sm); cursor: pointer; }
+.tr-set-cb input { margin: 0; accent-color: var(--accent); align-self: center; }
+.tr-set-cb.is-off { color: var(--fg-disabled); cursor: not-allowed; }
+.tr-set-cb-h { flex-basis: 100%; padding-left: 22px; }
+.tr-set-hol { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-2); }
+.tr-set-hol > .tr-set-cbs { flex-basis: 100%; }
+.tr-set-hol > select { width: auto; flex: 0 1 240px; min-width: 0; }
+.tr-set-mkhome { margin-top: var(--space-1); }
+.tr-set-prop { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-2); padding: var(--space-2); border-radius: var(--radius-md); background: color-mix(in oklab, var(--accent-soft) 45%, var(--surface)); border: 1px solid color-mix(in oklab, var(--accent) 25%, var(--border)); }
+.tr-set-prop-f { display: flex; gap: var(--space-2); flex-basis: 100%; }
+.tr-set-prop .tr-set-cb { flex-basis: 100%; flex-wrap: nowrap; align-items: center; }
+.tr-set-trips { display: flex; flex-direction: column; gap: 2px; }
+.tr-set-trip { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-h); font-size: var(--text-sm); }
+.tr-set-trip-l { font-weight: var(--weight-medium); }
+.tr-set-trip-d { flex: 1; }
+.tr-set-forget-all { align-self: flex-start; margin-top: var(--space-2); }
+.tr-set-ghost { position: absolute; left: 0; right: 0; pointer-events: none; }
+
+/* ---------- Trips: the list ---------- */
+.tr-trips { display: flex; flex-direction: column; gap: var(--space-5); }
+.tr-trips-g h3 { margin: 0 0 var(--space-2); }
+.tr-trips-list { display: flex; flex-direction: column; gap: var(--space-1); }
+.tr-trip-row { display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface); color: var(--fg); font: inherit; text-align: left; cursor: pointer; transition: border-color var(--m-fast) var(--m-ease-out), background-color var(--m-fast) var(--m-ease-out); }
+.tr-trip-row:hover { border-color: var(--border-strong); background: var(--bg-subtle); }
+.tr-trip-row:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.tr-trip-mot { flex: none; display: grid; place-items: center; width: var(--scene-lg, 64px); }
+.tr-trip-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tr-trip-t { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-md); }
+.tr-trip-s { font-size: var(--text-sm); }
+
+/* ---------- Trips: one trip ---------- */
+.tr-trip { display: flex; flex-direction: column; gap: var(--space-4); }
+.tr-subnav { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.tr-subnav .chip { cursor: pointer; }
+.tr-subnav .chip[aria-current] { cursor: default; }
+.tr-subnav .tr-flag { --tr-flag-h: 10px; }
+.tr-trip-body { display: flex; flex-direction: column; gap: var(--space-4); }
+.tr-trip-h { display: flex; align-items: center; gap: var(--space-4); }
+.tr-trip-hm { flex: none; width: var(--scene-xl, 88px); display: grid; place-items: center; }
+.tr-trip-hb { min-width: 0; }
+.tr-trip-ht { display: flex; align-items: center; gap: var(--space-2); }
+.tr-trip-ht .tr-flag { --tr-flag-h: 18px; }
+.tr-trip-ht h2 { margin: 0; font-size: var(--text-2xl); line-height: var(--lh-2xl); letter-spacing: var(--tracking-tight); }
+.tr-trip-hs { margin-top: 2px; }
+.tr-thanks { margin: var(--space-1) 0 0; font-size: var(--text-sm); }
+.tr-thanks b { color: var(--fg); font-weight: var(--weight-medium); }
+.tr-clocks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.tr-clock { display: flex; flex-direction: column; padding: var(--space-3); border-radius: var(--radius-lg); background: var(--bg-subtle); }
+.tr-clock-t { font-size: var(--text-2xl); line-height: var(--lh-2xl); font-weight: var(--weight-regular); font-variant-numeric: tabular-nums; }
+.tr-clock.is-home .tr-clock-t { color: var(--fg-muted); }
+.tr-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tr-trip-cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-5); align-items: start; }
+.tr-trip-r { display: flex; flex-direction: column; gap: var(--space-5); }
+@media (max-width: 860px) { .tr-trip-cols { grid-template-columns: minmax(0, 1fr); } }
+.tr-tl h3, .tr-money h3, .tr-hols h3 { margin: 0 0 var(--space-2); }
+.tr-tl-day { padding: var(--space-2) 0; border-top: 1px solid var(--border-subtle); }
+.tr-tl-day.is-today .tr-tl-d b { color: var(--accent-ink); }
+.tr-tl-d { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); margin-bottom: var(--space-1); }
+.tr-tl-items { display: flex; flex-direction: column; gap: 2px; }
+.tr-tl-free { font-size: var(--text-sm); padding-left: 64px; }
+.tr-tl-row { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: var(--row-h); padding: 2px var(--space-1); border: 0; border-radius: var(--radius-md); background: transparent; color: var(--fg); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }
+.tr-tl-row:hover { background: var(--bg-muted); }
+.tr-tl-row:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.tr-tl-row.is-done .tr-tl-title { text-decoration: line-through; color: var(--fg-muted); }
+.tr-tl-row.is-leg .tr-tl-title { font-weight: var(--weight-medium); }
+.tr-tl-time { flex: none; width: 56px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.tr-tl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tr-tl-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-tl-sub { font-size: var(--text-xs); }
+.tr-tl-home { display: inline-flex; align-items: center; gap: 3px; font-size: var(--text-xs); flex: none; }
+.tr-money-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-2); }
+.tr-mtile { display: flex; flex-direction: column; padding: var(--space-2) var(--space-3); border-radius: var(--radius-lg); background: var(--bg-subtle); }
+.tr-mtile b { font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
+.tr-mtile span { font-size: var(--text-xs); }
+.tr-money-sk { height: 64px; border-radius: var(--radius-lg); }
+.tr-hol { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-1) 0; font-size: var(--text-sm); }
+.tr-hol .icon { align-self: center; color: var(--fg-muted); }

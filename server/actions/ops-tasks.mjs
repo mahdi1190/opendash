@@ -3,7 +3,9 @@
 // the task panel do. Appended to OPS in ops.mjs (TASK_OPS).
 //
 //   task.plan               [plan_task]               the day you plan to WORK on a task (separate
-//                                                     from its deadline); Today shows it
+//                                                     from its deadline); Today shows it. With time
+//                                                     (+ minutes): a planned slot (plannedTime,
+//                                                     plannedMinutes; rules in lib/plan-logic.mjs)
 //   task.wont_do            [wont_do_task]            close a task without doing it; on a repeating
 //                                                     task: skip this occurrence (it moves on)
 //   task.reorder_subtasks   [reorder_subtasks]        put a task's subtasks in a new order
@@ -16,6 +18,7 @@
 import {
   ActionError, cleanLine, isIsoDate, dateError, truncate, advanceByRecurrence, newTaskId, LIMITS,
 } from './model.mjs';
+import { planApplySlot, planSlotMinutes, PLAN_MIN_MINUTES, PLAN_MAX_MINUTES } from '../../lib/plan-logic.mjs';
 
 const obj = (properties, required = [], extra = {}) => ({ type: 'object', properties, required, additionalProperties: false, ...extra });
 const S = {
@@ -43,18 +46,32 @@ function findSubtask(t, ref, field = 'subtaskId') {
 export const TASK_OPS = [
   {
     name: 'task.plan', tool: 'plan_task',
-    description: "Plan the day the user will WORK on a task (not its deadline). A task planned for today (or an earlier day, until it is done) shows in Today. date null removes it from the plan. Use this for 'put X on my list for today/Thursday'; use reschedule_task to change the deadline.",
-    schema: obj({ id: S.taskId, date: S.dateOrNull }, ['id', 'date']),
+    description: "Plan when the user will WORK on a task; the deadline (dueDate, dueTime) is never changed. date = the day (a task planned for today or earlier shows in Today until it is done); time 'HH:MM' + minutes = a planned time slot that day, shown as a dashed 'Planned' block in Today's schedule and the calendar and counted as busy (time-blocking). Omitted fields are kept; time null removes the slot but keeps the day; minutes null goes back to the estimate; date null removes the plan (day, time and length). Use this for 'put X on my list for Thursday' or 'block 10:00-11:30 tomorrow for X'; use reschedule_task (or schedule_task) only to change the deadline.",
+    schema: obj({
+      id: S.taskId, date: S.dateOrNull,
+      time: { type: ['string', 'null'], pattern: '^([01]\\d|2[0-3]):[0-5]\\d$', formatHint: 'HH:MM (24-hour)', description: "start of the planned slot 'HH:MM' in the user's time zone, or null to remove the slot (the day stays)" },
+      minutes: { type: ['integer', 'null'], minimum: PLAN_MIN_MINUTES, maximum: PLAN_MAX_MINUTES, description: `length of the planned slot in minutes (${PLAN_MIN_MINUTES}-${PLAN_MAX_MINUTES}); default the task's estimate, else 30; null = back to that default` },
+    }, ['id', 'date']),
     run(ctx, p) {
       const t = ctx.task(p.id);
       if (p.date !== null && !isIsoDate(p.date)) throw dateError('date', p.date, ctx.today);
       if (statusOf(ctx.s, t.id) === 'done' && p.date) ctx.warn(`'${label(t)}' is already done; it is planned anyway`);
-      const from = t.plannedFor || null;
-      const to = p.date || null;
-      if (from === to) return { summary: `"${label(t)}" is already ${to ? 'planned for ' + to : 'unplanned'}`, changes: [] };
-      if (to) t.plannedFor = to; else delete t.plannedFor;
-      ctx.log(t.id, 'plan', { from, to });
-      return { summary: to ? `Plan "${label(t)}" for ${to}` : `Remove "${label(t)}" from the plan`, changes: [change(t, 'plannedFor', from, to)] };
+      // One rule with the page (src/app/12-home-plan-logic.js, via lib/plan-logic.mjs).
+      const r = planApplySlot(t, { date: p.date, time: p.time, minutes: p.minutes });
+      if (r.error) throw new ActionError('INVALID_PARAMS', r.error, { field: /minutes/.test(r.error) ? 'minutes' : /time/.test(r.error) ? 'time' : 'date' });
+      const { from, to } = r;
+      const slot = (x) => (x.date ? x.date + (x.time ? ' ' + x.time + (x.minutes ? ` (${x.minutes} min)` : '') : '') : null);
+      if (!r.changed) return { summary: `"${label(t)}" is already ${to.date ? 'planned for ' + slot(to) : 'unplanned'}`, changes: [] };
+      ctx.log(t.id, 'plan', { from: from.date, to: to.date, ...(to.time ? { time: to.time } : {}), ...(to.time && to.minutes ? { minutes: to.minutes } : {}), ...(from.time && !to.time && to.date ? { cleared: 'time' } : {}) });
+      const changes = [];
+      if (from.date !== to.date) changes.push(change(t, 'plannedFor', from.date, to.date));
+      if (from.time !== to.time) changes.push(change(t, 'plannedTime', from.time, to.time));
+      if (from.minutes !== to.minutes) changes.push(change(t, 'plannedMinutes', from.minutes, to.minutes));
+      const sum = !to.date ? `Remove "${label(t)}" from the plan`
+        : to.time ? `Plan "${label(t)}" for ${to.date} ${to.time} (${planSlotMinutes(t)} min; the deadline stays)`
+        : from.time && from.date === to.date ? `Remove the planned time of "${label(t)}" (still planned for ${to.date})`
+        : `Plan "${label(t)}" for ${to.date}`;
+      return { summary: sum, changes };
     },
   },
   {
@@ -73,7 +90,7 @@ export const TASK_OPS = [
         const from = t.dueDate || null;
         const next = advanceByRecurrence(from, rec, ctx.today, t.repeatDay);
         t.dueDate = next;
-        delete t.plannedFor;
+        delete t.plannedFor; delete t.plannedTime; delete t.plannedMinutes;
         if (Array.isArray(t.subtasks) && t.subtasks.some(x => x && x.done)) t.subtasks = t.subtasks.map(x => ({ ...x, done: false }));
         s.statuses[t.id] = 'todo';
         ctx.log(t.id, 'occurrence', { from, to: next, rec, skipped: true, ...(reason ? { reason } : {}) });

@@ -1,0 +1,128 @@
+/* Home widget "gap" (Fill the gap): its styles.
+   OWNER: the "gap" widget builder (WIDGETS_CATALOGUE.md 3.2). STUB from the widget platform (W0-A).
+   Loaded after 13-home-core.css and 13-home-platform.css. Scope every rule to this widget:
+   .hg-w[data-base="gap"] (every copy) or the widget's own root class. Sizes from the
+   design tokens (scenes: the --scene-* tokens), never hard-coded; respect reduced motion.
+   Motion: the ring sweeps in once per entry (.is-sweep, the widget's first paint) and then
+   drains on the minute tick (a stroke transition); Shuffle crossfades in JS. Both off under
+   reduced motion. The popovers (.hgap-ed, .hgap-allp) live on <body>. */
+
+.hgap { --hgap-ring: 56px; }
+.hgap--m, .hgap--l { --hgap-ring: 64px; }
+.hgap .card-b.hgap-b { display: flex; flex-direction: column; gap: var(--space-2-5, 10px); }
+
+/* ----- the ring and its words ----- */
+.hgap-top { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.hgap-ring { position: relative; flex: none; width: var(--hgap-ring); height: var(--hgap-ring); }
+.hgap-svg { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+.hgap-svg circle { fill: none; stroke-width: 3.4; }
+.hgap-svg .tr { stroke: color-mix(in oklab, var(--accent) 16%, var(--bg-muted)); }
+.hgap-svg .fl {
+  stroke: var(--accent); stroke-linecap: round; stroke-dasharray: 100 100; stroke-dashoffset: calc(100 - var(--p, 0));
+  transition: stroke-dashoffset 900ms var(--m-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+}
+.hgap-ring.is-later .fl { stroke: color-mix(in oklab, var(--accent) 38%, var(--bg-muted)); }
+.hgap-svg.is-sweep .fl { animation: hgap-sweep 900ms var(--m-ease-out, cubic-bezier(0.22, 1, 0.36, 1)) 200ms both; }
+@keyframes hgap-sweep { from { stroke-dashoffset: 100; } }
+.hgap-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; pointer-events: none; }
+.hgap-num b { font-size: var(--text-lg); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; letter-spacing: var(--tracking-tight); color: var(--fg); }
+.hgap-num small { margin-top: 2px; font-size: var(--text-2xs); color: var(--fg-subtle); }
+.hgap-ring.is-later .hgap-num b { color: var(--fg-muted); }
+.hgap-when { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hgap-line { font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hgap-sub2 { font-size: var(--text-xs); color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.hgap.is-busy .hgap-line { color: var(--fg-muted); }
+
+/* ----- a task (S: one; M / L: rows) ----- */
+.hgap-mk { flex: none; display: inline-flex; margin-top: 3px; }
+.hgap-pt { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.hgap-tt { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--fg); line-height: var(--lh-sm, 18px); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.hgap-why { display: flex; flex-wrap: wrap; gap: 4px; }
+.hgap-chip { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: var(--radius-full); font-size: var(--text-2xs); font-weight: var(--weight-medium); background: var(--bg-muted); color: var(--fg-muted); white-space: nowrap; }
+.hgap-chip.is-fit { background: var(--accent-soft); color: var(--accent-ink); }
+.hgap-chip.is-due { background: var(--warning-soft); color: var(--warning-ink); }
+
+.hgap-pickw { display: flex; flex-direction: column; gap: var(--space-2); }
+.hgap-pick { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-2) var(--space-2-5, 10px); border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border-subtle); cursor: pointer; transition: border-color var(--m-fast, 120ms) ease-out; }
+.hgap-pick:hover { border-color: var(--border); }
+.hgap-pick:focus-visible, .hgap-row:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hgap-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5); }
+.hgap-acts .hgap-shuf { margin-left: auto; }
+.hgap-start.is-done { color: var(--success-ink); background: var(--success-soft); border-color: transparent; cursor: default; }
+.hgap-start.btn-icon[aria-pressed="true"] { color: var(--success-ink); }
+
+.hgap-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.hgap-row { display: flex; align-items: flex-start; gap: var(--space-2); padding: 7px var(--space-2); border-radius: var(--radius-md); border: 1px solid transparent; cursor: pointer; }
+.hgap-row:hover { background: var(--bg-subtle); }
+.hgap-row.is-on { background: var(--accent-soft); border-color: color-mix(in oklab, var(--accent) 28%, transparent); cursor: default; }
+.hgap-row.is-on .hgap-chip:not(.is-fit):not(.is-due) { background: color-mix(in oklab, var(--surface) 70%, transparent); }
+.hgap-ra { flex: none; display: flex; gap: 2px; margin-left: auto; opacity: 0; transition: opacity var(--m-fast, 120ms) ease-out; }
+.hgap-row:hover .hgap-ra, .hgap-row:focus-within .hgap-ra, .hgap-row.is-on .hgap-ra { opacity: 1; }
+@media (hover: none) { .hgap-ra { opacity: 1; } }
+
+.hgap-sub-h { font-size: var(--text-2xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-caps, 0.04em); text-transform: uppercase; color: var(--fg-subtle); margin: 2px 0 var(--space-1-5); }
+.hgap-plan .sg-card, .hgap-lrow .sg-card { margin: 0; }
+
+/* ----- L: later gaps ----- */
+.hgap-later { display: flex; flex-direction: column; padding-top: var(--space-2); border-top: 1px solid var(--border-subtle); }
+.hgap-llist { display: flex; flex-direction: column; gap: var(--space-1-5); }
+.hgap-lrow.is-empty { display: flex; align-items: baseline; gap: var(--space-2); padding: 4px var(--space-2); font-size: var(--text-xs); color: var(--fg-subtle); }
+.hgap-lrow.is-empty b { font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; color: var(--fg-muted); }
+.hgap-all { align-self: flex-start; margin-top: var(--space-2); }
+
+/* ----- without a calendar to write to: a planned slot ----- */
+.hgap-slot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5) var(--space-2); padding: var(--space-2) var(--space-2-5, 10px); border: 1px dashed var(--border); border-radius: var(--radius-md); }
+.hgap-slot-ic { flex: none; display: inline-flex; color: var(--accent-ink); }
+.hgap-slot-ic .i { width: 15px; height: 15px; }
+.hgap-slot-t { flex: 1 1 140px; display: flex; flex-direction: column; min-width: 0; }
+.hgap-slot-t b { font-size: var(--text-sm); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.hgap-slot-t span { font-size: var(--text-xs); color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hgap-slot-a { display: flex; gap: var(--space-1-5); margin-left: auto; }
+
+/* ----- nothing fits ----- */
+.hgap-none-t { margin: 0; font-size: var(--text-sm); color: var(--fg-muted); }
+.hgap-est { list-style: none; margin: var(--space-1-5) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1-5); }
+.hgap-est-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.hgap-est-row .hgap-mk { margin-top: 0; }
+.hgap-est-row .hgap-tt { flex: 1; -webkit-line-clamp: 1; font-size: var(--text-xs); }
+.hgap-est-c { flex: none; display: flex; gap: 4px; }
+.hgap-est-b { cursor: pointer; }
+.hgap-est-b.is-done { background: var(--success-soft); color: var(--success-ink); border-color: transparent; }
+
+/* ----- foot, loading ----- */
+.hgap-foot { display: flex; align-items: center; gap: var(--space-1-5); padding-top: var(--space-2); border-top: 1px solid var(--border-subtle); font-size: var(--text-xs); color: var(--fg-subtle); }
+.hgap-foot .i { flex: none; }
+.hgap-foot .hgap-conn { margin-left: auto; }
+.hgap-skel { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) 0; }
+.hgap-skel .skeleton { height: 14px; border-radius: var(--radius-sm); }
+.hgap-skel .skeleton:first-child { width: 55%; height: 18px; }
+
+/* ----- the plan editor and Plan all (popovers on <body>) ----- */
+.pop.hgap-ed, .pop.hgap-allp { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2-5, 10px); }
+.hgap-ed-h { display: flex; align-items: center; gap: var(--space-2); }
+.hgap-ed-h .i { width: 16px; height: 16px; color: var(--accent-ink); }
+.hgap-ed-h b { font-size: var(--text-sm); }
+.hgap-ed-task { display: flex; align-items: center; gap: var(--space-1-5); font-size: var(--text-sm); font-weight: var(--weight-medium); min-width: 0; }
+.hgap-ed-tt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hgap-ed-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: var(--text-xs); color: var(--fg-muted); }
+.hgap-ed-row .input { width: 112px; }
+.hgap-ed-len { flex-wrap: wrap; }
+.hgap-ed-note { margin: 0; font-size: var(--text-xs); color: var(--fg-subtle); }
+.hgap-ed-acts { display: flex; justify-content: flex-end; gap: var(--space-1-5); }
+.hgap-all-list { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow: auto; }
+.hgap-all-row { display: grid; grid-template-columns: auto 92px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); padding: 6px var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); }
+.hgap-all-row b { font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
+.hgap-all-row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hgap-all-row .d { font-size: var(--text-xs); color: var(--fg-subtle); }
+
+/* ----- settings: the working-hours row (12-home-w-gap.js adds it under the header) ----- */
+.pop.hg-set-pop .hgap-set-wh { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-1-5) var(--space-3); }
+.pop.hg-set-pop .hgap-set-wh .btn { flex: none; }
+
+/* ----- reduced motion: everything instant ----- */
+html[data-motion="reduced"] .hgap-svg .fl, html.anim-off .hgap-svg .fl { transition: none; animation: none; }
+html[data-motion="reduced"] .hgap-ra, html[data-motion="reduced"] .hgap-pick { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .hgap-svg .fl { transition: none; animation: none; }
+  .hgap-ra, .hgap-pick { transition: none; }
+}

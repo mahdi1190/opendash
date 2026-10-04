@@ -97,7 +97,7 @@ function settingsTimeZones() {
   return ['UTC', 'Europe/London', 'Europe/Dublin', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Asia/Tokyo', 'Asia/Singapore', 'Australia/Sydney'];
 }
 function settingsDateExample(locale, tz) {
-  try { return new Date().toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: tz }); } catch (e) { return ''; }
+  try { return new Date(Clock.now()).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: tz || Clock.zone() }); } catch (e) { return ''; }
 }
 /**
  * The Time zone row's note. cfgTz: config.timezone (what the server, the
@@ -141,25 +141,22 @@ registerSettingsGroup({
     el.appendChild(_settingsRow('Currency', 'Used by Finances.', _settingsSelect(SETTINGS_CURRENCIES, cfg.currency,
       async (v) => { if (await settingsSaveConfig({ currency: v }, false)) reloadHint(); })));
     const ex = document.createElement('div'); ex.className = 'set-h set-example';
-    const updEx = () => { ex.textContent = 'Example: ' + settingsDateExample(APP_CONFIG.locale, APP_CONFIG.timezone); };
+    const updEx = () => { ex.textContent = 'Example: ' + settingsDateExample(APP_CONFIG.locale, Clock.zone()); };
     updEx();
     const loc = _settingsSelect(SETTINGS_LOCALES, cfg.locale, async (v) => { if (await settingsSaveConfig({ locale: v }, false)) { updEx(); reloadHint(); render(); } });
     const locRow = _settingsRow('Language and date format', null, loc);
     locRow.querySelector('.set-l').appendChild(ex);
     el.appendChild(locRow);
-    // Time zone (config.timezone): a new data folder starts on this computer's zone. When the
-    // browser is somewhere else (a trip, a copied data folder), say so and offer a one-click fix.
+    // Dashboard time, Home time zone (config.timezone) and Clock: 87-clock-ui.js. Changes apply live.
+    // They live in Travel & time (69-travel-ui-settings.js); Profile keeps a link (travel spec 6.4).
+    const tzLink = typeof trSettingsProfileLink === 'function' ? trSettingsProfileLink() : null;
+    if (tzLink) el.appendChild(tzLink);
+    else if (typeof clockSettingsRows === 'function') clockSettingsRows(el, { onChange: updEx });
+    // A new data folder starts on this computer's zone. When the browser is somewhere else than
+    // the home zone (a copied data folder, a move), say so and offer a one-click "Use <zone>".
     const here = browserTimeZone();
-    const saveTz = async (v) => {
-      if (!(await settingsSaveConfig({ timezone: v }, false))) return;
-      if (![...tzSel.options].some(o => o.value === v)) { const op = document.createElement('option'); op.value = v; op.textContent = v; tzSel.prepend(op); }
-      tzSel.value = v; updEx(); paintTz(); reloadHint();
-    };
-    const tzSel = _settingsSelect(settingsTimeZones(), cfg.timezone, saveTz, 'set-tz');
-    tzSel.setAttribute('aria-label', 'Time zone');
     const tzUse = document.createElement('button'); tzUse.type = 'button'; tzUse.className = 'btn btn-secondary btn-sm set-tz-use';
     tzUse.textContent = 'Use ' + here;
-    tzUse.onclick = () => saveTz(here);
     const tzNote = document.createElement('div'); tzNote.className = 'set-h set-tz-note';
     const paintTz = () => {
       const n = settingsZoneNote(APP_CONFIG.timezone, here);
@@ -167,14 +164,25 @@ registerSettingsGroup({
       tzNote.classList.toggle('is-warn', n.mismatch);
       tzUse.hidden = !n.mismatch;
     };
+    const saveTz = async (v) => {
+      if (!(await settingsSaveConfig({ timezone: v }, 'Home time zone saved'))) return;
+      if (typeof Clock !== 'undefined' && typeof Clock.refresh === 'function') Clock.refresh('setting');
+      updEx(); paintTz(); render();
+    };
+    tzUse.onclick = () => saveTz(here);
     paintTz();
-    const tzRow = _settingsRow('Time zone', '“Today”, due dates, the stories and the assistant follow this.', tzSel);
-    tzRow.querySelector('.set-l').appendChild(tzNote);
-    tzRow.querySelector('.set-c').appendChild(tzUse);
-    el.appendChild(tzRow);
+    if (tzLink && tzLink.querySelector('.set-l') && tzLink.querySelector('.set-c')) {
+      tzLink.querySelector('.set-l').appendChild(tzNote);
+      tzLink.querySelector('.set-c').appendChild(tzUse);
+    } else {
+      const tzRow = _settingsRow('This computer', null, tzUse);
+      tzRow.querySelector('.set-l').appendChild(tzNote);
+      el.appendChild(tzRow);
+    }
     el.appendChild(_settingsRow('Week starts on', 'Calendars and week views.', _settingsSeg(
       [['Mon', 'Monday'], ['Sun', 'Sunday'], ['Sat', 'Saturday']], cfg.weekStart,
       async (k) => { if (await settingsSaveConfig({ weekStart: k })) render(); })));
+    if (typeof planSettingsWorkHoursRow === 'function') el.appendChild(planSettingsWorkHoursRow());   // config.workHours (20-task-plan.js)
     if (typeof briefSettingsLocationRow === 'function') el.appendChild(briefSettingsLocationRow());   // weather town (78-brief-hooks.js)
   },
 });
@@ -191,7 +199,7 @@ registerSettingsGroup({
     el.appendChild(_settingsRow('Task rows', 'Compact fits more on screen.', _settingsSeg(
       [['normal', 'Comfortable'], ['compact', 'Compact']], state.density === 'compact' ? 'compact' : 'normal',
       (k) => { state.density = k; saveUI(); render(); })));
-    const sys = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const sys = (window.Motion && Motion.systemReduced ? Motion.systemReduced() : !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches));
     const on = !!(window.Motion && Motion.prefersReduced());
     el.appendChild(_settingsRow('Reduce motion', sys ? 'Your system setting already asks for reduced motion.' : 'Turns interface animations down to the minimum on this device.',
       _settingsSwitch(on, 'Reduce motion', () => { if (window.Motion) { Motion.setReduced(!Motion.prefersReduced()); render(); } }, sys)));
@@ -276,7 +284,8 @@ registerSettingsGroup({
       + `<dt>Runs on</dt><dd>This computer only (127.0.0.1). No account, no cloud, no tracking.</dd>`
       + `<dt>Font</dt><dd>Inter · SIL Open Font License 1.1</dd>`
       + `<dt>Icons</dt><dd>Lucide · ISC licence</dd>`
-      + `<dt>Charts</dt><dd>Apache ECharts · Apache License 2.0</dd>`;
+      + `<dt>Charts</dt><dd>Apache ECharts · Apache License 2.0</dd>`
+      + `<dt>Places</dt><dd>Cities from GeoNames (geonames.org) · CC BY 4.0; time zones (IANA) and airports (OurAirports) · public domain</dd>`;
     el.appendChild(dl);
     const p = document.createElement('p'); p.className = 'set-h set-foot';
     p.textContent = 'The OpenDash licence is in LICENSE; full third-party licence texts are in THIRD_PARTY_NOTICES.md and vendor/ in the app folder.';

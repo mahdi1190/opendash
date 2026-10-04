@@ -71,6 +71,9 @@ export function createJournal(stateDir, { now = () => Date.now() } = {}) {
     summary: h.summary, ops: h.ops, ...(h.undoOf ? { undoOf: h.undoOf } : {}),
     ...(h.undone ? { undone: { at: new Date(h.undone.at).toISOString(), by: h.undone.by } } : {}),
     undoable: !!(h.entities && !h.undone),
+    // What it touched (entity keys such as 'task:<id>'; the Home "What changed" widget opens a
+    // single task from them). Only while the entry can still be undone (older ones drop entities).
+    ...(Array.isArray(h.entities) ? { touched: h.entities.slice(0, 20).map(e => e.key), touchedCount: h.entities.length } : {}),
   });
 
   return {

@@ -58,7 +58,7 @@ function homeFocusDoneToday(shownIds) {
   const shown = shownIds || _hfShown.ids;
   for (const [id, arr] of Object.entries(state.completionLog || {})) {
     const ts = Array.isArray(arr) && arr.length ? Number(arr[arr.length - 1]) : 0;
-    if (!ts || fmtDate(new Date(ts)) !== today) continue;
+    if (!ts || Clock.parts(ts).iso !== today) continue;
     const it = getItem(id);
     if (!it || statusOf(id) !== 'done' || (typeof isWontDo === 'function' && isWontDo(it))) continue;
     if (!shown.has(id) && !homeFocusWhy(it).why.length) continue;
@@ -112,7 +112,7 @@ function _hfRender(root, ctx) {
 
 function _hfHead(nOpen, total, nDone) {
   const h = document.createElement('header'); h.className = 'hf-h';
-  const count = nOpen ? (total > nOpen ? `Top ${nOpen} of ${total}` : `${nOpen} open`) : '';
+  const count = homeFocusCountLabel(nOpen, total, homeFocusConfig().count);
   h.innerHTML = `${icon('target')}<h3>Focus</h3><span class="n">${esc([count, nDone ? `${nDone} done` : ''].filter(Boolean).join(' · '))}</span><span class="spacer"></span>`;
   const act = document.createElement('span'); act.className = 'hf-h-act';
   const all = document.createElement('button'); all.type = 'button'; all.className = 'btn btn-ghost btn-sm hf-collapse-all'; all.hidden = true;
@@ -125,7 +125,12 @@ function _hfHead(nOpen, total, nDone) {
   const add = document.createElement('button'); add.type = 'button'; add.className = 'btn-icon btn-sm hf-new';
   add.innerHTML = icon('plus'); add.setAttribute('aria-label', 'New task'); add.setAttribute('data-tip', 'New task');
   add.onclick = () => openNewTask('', { from: add });
-  act.append(all, tune, add);
+  // A focus block with a scene that grows as it runs (78-anim-moments.js)
+  const blk = document.createElement('button'); blk.type = 'button'; blk.className = 'btn-icon btn-sm hf-block';
+  blk.innerHTML = icon('timer'); blk.setAttribute('aria-label', 'Start a 25-minute focus block'); blk.setAttribute('data-tip', 'Focus block (25 min)');
+  blk.onclick = () => { if (typeof animFocusStart === 'function') animFocusStart(25); };
+  if (typeof animFocusStart !== 'function') blk.hidden = true;
+  act.append(all, tune, blk, add);
   h.appendChild(act);
   return h;
 }
@@ -183,7 +188,9 @@ function _hfMetaDue(item) {
 }
 function _hfWhyHtml(item, why) {
   // The due chip already says "Today" / "2d overdue" / "Mon": never repeat it here.
-  const whyShown = effDate(item) ? why.filter(w => !['overdue', 'today', 'soon'].includes(w.k)) : why;
+  let whyShown = effDate(item) ? why.filter(w => !['overdue', 'today', 'soon'].includes(w.k)) : why;
+  // The pin marker always shows (first), so a pinned card says why it sits on top.
+  whyShown = whyShown.filter(w => w.k === 'pinned').concat(whyShown.filter(w => w.k !== 'pinned'));
   const sep = '<span class="sep" aria-hidden="true">·</span>';
   const est = Number(item.estimate) > 0 ? `${sep}<span class="hf-why w-est">~${esc(_hfMinutes(Number(item.estimate)))}</span>` : '';
   return `${whyShown.slice(0, 2).map(w => `${sep}<span class="hf-why w-${escAttr(w.k)}">${w.k === 'pinned' ? icon('pin') : ''}${esc(w.t)}</span>`).join('')}${est}`;
@@ -293,7 +300,7 @@ function homeMoveInFocus(id, dir) {
 function _homeShiftDate(id, n) {
   const it = getItem(id); if (!it) return;
   const base = effDate(it) || todayStr();
-  const d = new Date(base + 'T00:00:00'); d.setDate(d.getDate() + n);
+  const d = new Date(base + 'T00:00:00'); d.setDate(d.getDate() + n); // clock-ok: wall date
   homeReschedule(id, fmtDate(d));
   _homeRefocusRow(id);
 }
@@ -307,8 +314,8 @@ function _hfDoneList(body, done, ctx) {
   for (const d of done.slice(-max)) {
     const r = document.createElement('div'); r.className = 'hf-done-row';
     r.setAttribute('role', 'listitem'); r.dataset.id = d.item.id; r.dataset.flip = 'hfd:' + d.item.id;
-    const t = new Date(d.at);
-    const hm = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+    const t = Clock.parts(Number(d.at));
+    const hm = homeHM(t.h * 60 + t.mi);
     r.innerHTML = `<span class="hf-done-ck" aria-hidden="true">${icon('check')}</span><button type="button" class="hf-done-t" data-tip="Open">${esc(effTitle(d.item))}</button><small>${esc(hm)}</small>`;
     r.querySelector('button').onclick = () => homeOpenTask(d.item.id, r);
     wrap.appendChild(r);

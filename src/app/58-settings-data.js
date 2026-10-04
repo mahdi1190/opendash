@@ -15,7 +15,7 @@ async function _sdJson(url, opts) {
   return j;
 }
 function _sdWhen(iso) {
-  try { return new Date(iso).toLocaleString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso; }
+  try { return new Date(iso).toLocaleString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), timeZone: Clock.zone() }); } catch (e) { return iso; }
 }
 function _sdSize(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
 function _sdBtn(label, ic, cls, run) {
@@ -35,7 +35,7 @@ function _sdRefresh() { if (state.view === 'settings:data' || state.view === 'se
 function settingsCleanJsonExport() {
   const src = typeof _stateForPersist === 'function' ? _stateForPersist() : state;
   const skip = new Set([...(typeof UI_STATE_KEYS !== 'undefined' ? UI_STATE_KEYS : []), '_lastSave', '_saveCount', '_localDirty']);
-  const out = { exportedAt: new Date().toISOString(), app: 'dashboard', kind: 'state' };
+  const out = { exportedAt: new Date(Date.now()).toISOString(), app: 'dashboard', kind: 'state' };
   for (const k of Object.keys(src)) if (!skip.has(k) && !/^_(cowork|sync|oneDrive|seed|overrides)/i.test(k)) out[k] = src[k];
   const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

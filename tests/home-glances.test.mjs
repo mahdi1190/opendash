@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { loadPageClock } from './fixtures/page-clock.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'src', 'app');
@@ -19,6 +20,7 @@ const src = (f) => readFileSync(join(APP, f), 'utf8');
 function box() {
   const ctx = { console, registerHomeWidget() {}, APP_CONFIG: { locale: 'en-GB', currency: 'GBP', features: {} }, window: {}, Intl, Date, Math };
   vm.createContext(ctx);
+  loadPageClock(ctx);   // the page's Clock: wall times in the dashboard's zone (travel spec 2.7)
   vm.runInContext(['52-people-link.js', '12-home-glances.js', '12-home-w-finance.js', '12-home-w-people.js', '12-home-w-waiting.js'].map(src).join('\n;\n'), ctx, { filename: 'glances.js' });
   return ctx;
 }

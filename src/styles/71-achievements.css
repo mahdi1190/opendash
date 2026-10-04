@@ -1,0 +1,50 @@
+/* ============================================================
+   ACHIEVEMENTS, RECAPS AND THE ANIMATION OF THE DAY (v2.2 wave 5):
+   src/app/78-achievements.js (Settings > Animations > Achievements, the
+   unlock moment), 79-story-recap.js (the recap's look beat, the card dialog),
+   12-home-w-animday.js (Home). Locked rewards in the gallery (78-anim-gallery.js).
+   Transform/opacity motion only; reduced motion keeps everything still.
+   ============================================================ */
+/* the gallery: rewards not earned yet */
+.apg-item.is-locked, .apg-theme.is-locked { cursor: default; }
+.apg-item.is-locked .anim-scene { filter: grayscale(1) opacity(0.45); }
+.apg-theme.is-locked { opacity: 0.6; }
+.apg-theme.is-locked:hover { transform: none; }
+.apg-lock { position: absolute; top: 6px; right: 6px; color: var(--fg-muted); }
+
+/* Settings > Animations > Achievements */
+.ach { margin-top: var(--space-5); }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-2); margin: var(--space-3) 0; }
+.ach-card { display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-2); align-items: center; padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface); }
+.ach-card.is-got { border-color: color-mix(in srgb, var(--accent) 45%, var(--border-subtle)); }
+.ach-ic { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-2, var(--bg)); color: var(--fg-muted); }
+.ach-card.is-got .ach-ic { color: var(--accent); }
+.ach-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: var(--text-xs); }
+.ach-t b { font-size: var(--text-sm); }
+.ach-when { color: var(--fg-muted); font-size: var(--text-2xs); }
+.ach-bar { display: block; height: 4px; margin-top: 4px; border-radius: 2px; background: var(--border-subtle); overflow: hidden; }
+.ach-bar i { display: block; width: var(--pct, 0%); height: 100%; background: var(--accent); }
+.ach-rw { display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 92px; text-align: center; color: var(--fg-muted); font-size: var(--text-2xs); }
+.ach-card:not(.is-got) .ach-rw .anim-scene { filter: grayscale(1) opacity(0.5); }
+.ach-theme { display: contents; }
+.ach-recaps { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* the unlock moment: the reward's art, centred, with its caption (78-anim-moments.js .ap-moment) */
+.ap-moment.ach-moment .ap-moment-cap { font-weight: 600; }
+
+/* the recap story */
+.rc-look { display: grid; place-items: center; width: 100%; height: 100%; }
+.rc-card-pv { margin-top: var(--space-3); }
+.rc-card-pv canvas { display: block; width: 100%; height: auto; border-radius: var(--radius-lg); }
+.rc-tick { display: flex; align-items: center; gap: 6px; margin-top: var(--space-2); font-size: var(--text-sm); }
+
+/* Home: Animation of the day */
+.hwa { display: flex; align-items: center; gap: var(--space-3); min-height: 100%; }
+.hwa-art { flex: none; display: grid; place-items: center; padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--radius-lg); }
+.hwa-art:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hwa-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hwa-over { font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: 0.06em; }
+.hwa-name { font-size: var(--text-md, 1rem); }
+.hwa-origin { font-size: var(--text-xs); }
+.hwa-foot { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-2); }
+.hwa-foot .chip { display: inline-flex; align-items: center; gap: 4px; }

@@ -46,7 +46,7 @@ function rowDueLabel(item) {
   else if (d === 1) lbl = 'Tomorrow';
   else if (d === -1) lbl = 'Yesterday';
   else if ((d > 1 && d < 7) || (d < -1 && d > -7)) lbl = dt.toLocaleDateString(loc, { weekday: 'short' });
-  else lbl = dt.toLocaleDateString(loc, dt.getFullYear() === new Date().getFullYear() ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
+  else lbl = dt.toLocaleDateString(loc, iso.slice(0, 4) === todayStr().slice(0, 4) ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
   if (time && d !== 0) lbl += ' ' + time;
   return lbl;
 }
@@ -84,7 +84,7 @@ function _rowMeeting(taskId) {
   const next = evs.filter(ev => at(ev) >= now - 3600000).sort((a, b) => at(a) - at(b))[0] || evs.slice().sort((a, b) => at(b) - at(a))[0];
   const d = calEventStart(next);
   const loc = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.locale) || undefined;
-  return { title: String(next.summary || next.title || 'Meeting'), when: isNaN(d) ? '' : d.toLocaleString(loc, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) };
+  return { title: String(next.summary || next.title || 'Meeting'), when: isNaN(d) ? '' : d.toLocaleString(loc, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), timeZone: Clock.zone() }) };
 }
 function _rowDueClass(item) {
   const d = daysUntil(effDate(item));
@@ -247,7 +247,7 @@ function renderTaskRow(item, opts) {
   if (wont) m('t-wont', 'circle-x', "Won't do");
   else if (status === 'done' && opts.showClosed) {
     const ts = closedAt(item);
-    if (ts) m('t-closed', 'check', new Date(ts).toLocaleTimeString((typeof APP_CONFIG !== 'undefined' && APP_CONFIG.locale) || undefined, { hour: '2-digit', minute: '2-digit' }), 'Completed ' + formatTimestamp(ts));
+    if (ts) m('t-closed', 'check', new Date(ts).toLocaleTimeString((typeof APP_CONFIG !== 'undefined' && APP_CONFIG.locale) || undefined, { hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), timeZone: Clock.zone() }), 'Completed ' + formatTimestamp(ts));
   }
   body.appendChild(meta);
   el.appendChild(body);

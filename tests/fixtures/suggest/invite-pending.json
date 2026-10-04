@@ -1,0 +1,16 @@
+{
+  "_about": "Monday 10:00: Alex invited the user to a reading group on Thursday 16:00 (not answered yet, nothing else then), and to a talk on Wednesday 11:00 that overlaps a supervision (S6). Synthetic.",
+  "now": "2026-10-05T10:00",
+  "events": {
+    "2026-10-05": [],
+    "2026-10-07": [
+      { "id": "talk1", "title": "Department talk", "start": "11:00", "end": "12:00", "attendees": 30, "organizerSelf": false, "myResponse": "needsAction", "organizer": "Alex Kim", "type": "lecture" },
+      { "id": "sup1", "title": "Supervision", "start": "11:30", "end": "12:30", "attendees": 1, "organizerSelf": false, "myResponse": "accepted" }
+    ],
+    "2026-10-08": [
+      { "id": "read1", "title": "Reading group", "start": "16:00", "end": "17:00", "attendees": 6, "organizerSelf": false, "myResponse": "needsAction", "organizer": "Alex Kim", "people": ["alex"], "type": "meeting" }
+    ]
+  },
+  "tasks": [],
+  "focus": []
+}

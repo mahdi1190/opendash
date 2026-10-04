@@ -7,6 +7,10 @@
    dated notes, recent email (when Gmail is connected).
    Dialogs: add/edit person, merge, link suggestions (accept in bulk, with
    the "link people when a task is created" switch).
+   A person opens with openPerson() (54-people-card.js): the centre card, or
+   this page's person panel (#view=person:<id>) when the user chose the side
+   panel. The action row under the title (Find people in emails, Check email,
+   Review suggested links, Assign to tasks) is pcPeopleToolbar().
    Every user/external string goes through esc()/escAttr() or textContent.
    ============================================================ */
 let _pplQuery = '';
@@ -14,6 +18,7 @@ let _pplShowDone = false;
 let _pplCalAsked = false;
 let _pplCalloutHidden = false;
 let _pplAllTasksFor = null;   // person id whose panel shows every open task (else the first few)
+let _pplEntered = false;      // the entrance animation plays once per entry into People (unmount resets it)
 const PPL_PANEL_TASKS = 4;
 
 function _pplPrefs() {
@@ -21,6 +26,7 @@ function _pplPrefs() {
   if (!['table', 'cards'].includes(p.mode)) p.mode = 'table';
   if (!['next', 'name', 'open', 'contact'].includes(p.sort)) p.sort = 'next';
   if (typeof p.group !== 'string') p.group = 'all';
+  if (!['all', 'open', 'waiting', 'inactive'].includes(p.show)) p.show = 'all';
   return p;
 }
 function _pplVisible() { return (Array.isArray(state.people) ? state.people : []).filter(p => p && !p.self); }
@@ -29,7 +35,7 @@ function _pplDayMs(iso) { const [y, m, d] = iso.split('-').map(Number); return n
 function _pplAgo(ms) {
   if (!ms) return '';
   // round, not floor: across a daylight-saving change two local midnights are 23 or 25 hours apart.
-  const days = Math.round((_pplDayMs(todayStr()) - _pplDayMs(fmtDate(new Date(ms)))) / 86400000);
+  const days = Math.round((_pplDayMs(todayStr()) - _pplDayMs(Clock.parts(ms).iso)) / 86400000);
   if (days <= 0) return 'Today';
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days} days ago`;
@@ -71,6 +77,9 @@ function _pplFacts(p) {
   }
   const mail = _pplMail[p.id];
   if (mail && Array.isArray(mail.messages)) for (const m of mail.messages) { const t = Date.parse(m.date); if (Number.isFinite(t) && t <= now && t > last) last = t; }
+  // The shared last-contact rule (53-people-contact.js: meetings, email, notes, tasks), so People, Home and the stories agree.
+  const lc = typeof personLastContact === 'function' ? personLastContact(p) : null;
+  if (lc) { const ms = _pplDayMs(lc.date); if (ms > last && ms <= now) last = ms; }
   return { tasks, open, next: nextTask ? effDate(nextTask) : null, nextTime: nextTask && nextTask.dueTime && effDate(nextTask) === today ? nextTask.dueTime : '', last, nextEv };
 }
 
@@ -87,16 +96,22 @@ registerSection('people', {
   match: v => v === 'people' || (/^person:./.test(v) && !!getPerson(v.slice(7))),
   title: v => { if (v.startsWith('person:')) { const p = getPerson(v.slice(7)); return p ? p.name : 'Person'; } return 'People'; },
   crumb: v => { if (v.startsWith('person:')) { const p = getPerson(v.slice(7)); return ['People', p ? p.name : v.slice(7)]; } return ['People']; },
-  mount(container, view) { renderPeoplePage(container, view.startsWith('person:') ? view.slice(7) : null); },
+  mount(container, view) {
+    const entering = !_pplEntered; _pplEntered = true;
+    renderPeoplePage(container, view.startsWith('person:') ? view.slice(7) : null, { entering });
+  },
+  unmount() { _pplEntered = false; },
 });
 
-function renderPeoplePage(container, selId) {
+function renderPeoplePage(container, selId, o) {
+  o = o || {};
   _pplEnsureCal();
   const pref = _pplPrefs();
   const all = _pplVisible();
   const sel = selId ? getPerson(selId) : null;
   const wrap = document.createElement('div');
-  wrap.className = 'ppl-wrap' + (sel && !state.selectedTaskId ? ' has-panel' : '');
+  wrap.className = 'ppl-wrap' + (sel && !state.selectedTaskId ? ' has-panel' : '') + (o.entering ? ' is-entering' : '');
+  if (o.entering) setTimeout(() => wrap.classList.remove('is-entering'), 900);
   const page = document.createElement('div'); page.className = 'ppl-page';
   wrap.appendChild(page);
   container.appendChild(wrap);
@@ -112,10 +127,11 @@ function renderPeoplePage(container, selId) {
   fin.oninput = () => { _pplQuery = fin.value; _pplPaintBody(); };
   filt.appendChild(fin);
   const seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Layout');
-  for (const [k, l, ic] of [['table', 'Table', 'layout-list'], ['cards', 'Cards', 'layout-grid']]) {
+  for (const [k, l, ic] of [['table', 'List', 'layout-list'], ['cards', 'Grid', 'layout-grid']]) {
     const b = document.createElement('button'); b.type = 'button'; b.innerHTML = icon(ic, 'i-sm') + `<span>${l}</span>`;
     b.setAttribute('aria-pressed', pref.mode === k ? 'true' : 'false');
-    b.onclick = () => { pref.mode = k; saveUI(); renderMain(); };
+    if (pref.mode === k) b.setAttribute('aria-current', 'true');
+    b.onclick = () => { if (pref.mode === k) return; pref.mode = k; saveUI(); renderMain(); };
     seg.appendChild(b);
   }
   const add = document.createElement('button'); add.type = 'button'; add.className = 'btn btn-primary';
@@ -138,6 +154,7 @@ function renderPeoplePage(container, selId) {
   acts.append(filt, seg, add, more);
   ph.appendChild(acts);
   page.appendChild(ph);
+  if (typeof pcPeopleToolbar === 'function') page.appendChild(pcPeopleToolbar());   // 54-people-card.js
 
   if (!all.length) {
     mountEmptyState(page, { icon: 'users', title: 'No people yet', text: 'Add the people you work with. Tasks that mention them link automatically, and you see what you owe each of them and what you are waiting on.' });
@@ -232,7 +249,9 @@ function _pplPaintBody() {
   const groups = _pplGroups(all);
   if (pref.group !== 'all' && pref.group !== '_none' && !groups.some(([g]) => g === pref.group)) pref.group = 'all';
   const inGroup = (p) => pref.group === 'all' || (pref.group === '_none' ? !p.group : p.group === pref.group);
-  const rows = all.filter(p => match(p) && inGroup(p)).map(p => ({ p, f: _pplFacts(p) }));
+  const SHOW = { all: 'Everyone', open: 'With open tasks', waiting: 'Waiting on them', inactive: 'Inactive' };
+  const shows = (p, f) => pref.show === 'all' ? true : pref.show === 'inactive' ? !!p.inactive : pref.show === 'open' ? f.open.length > 0 : f.open.some(pplIsWaiting);
+  const rows = all.filter(p => match(p) && inGroup(p)).map(p => ({ p, f: _pplFacts(p) })).filter(r => shows(r.p, r.f));
   const cmpName = (a, b) => String(a.p.name).localeCompare(String(b.p.name));
   const sorters = {
     next: (a, b) => (a.f.next ? 0 : 1) - (b.f.next ? 0 : 1) || String(a.f.next || '').localeCompare(String(b.f.next || '')) || b.f.open.length - a.f.open.length || cmpName(a, b),
@@ -249,40 +268,48 @@ function _pplPaintBody() {
     b.className = 'chip' + (pref.group === key ? ' chip-accent' : '');
     b.setAttribute('aria-pressed', pref.group === key ? 'true' : 'false');
     b.innerHTML = `<span>${esc(label)}</span><span class="${pref.group === key ? '' : 'subtle'}">${n}</span>`;
-    b.onclick = () => { pref.group = key; saveUI(); _pplPaintBody(); };
+    if (pref.group === key) b.setAttribute('aria-current', 'true');
+    b.onclick = () => { if (pref.group === key) return; pref.group = key; saveUI(); _pplPaintBody(); };
     return b;
   };
   bar.appendChild(chip('All', 'all', all.length));
   for (const [g, n] of groups) bar.appendChild(chip(g, g, n));
   const none = all.filter(p => !p.group).length;
   if (groups.length && none) bar.appendChild(chip('No group', '_none', none));
+  const showBtn = document.createElement('button'); showBtn.type = 'button'; showBtn.className = 'btn btn-ghost btn-sm ppl-show' + (pref.show !== 'all' ? ' is-on' : '');
+  showBtn.innerHTML = icon('filter', 'i-sm') + `<span>${esc(SHOW[pref.show])}</span>`;
+  showBtn.onclick = () => openMenu(showBtn, Object.entries(SHOW).map(([k, l]) => ({ label: l, checked: pref.show === k, run: () => { if (pref.show === k) return; pref.show = k; saveUI(); _pplPaintBody(); } })), { align: 'end', width: 210 });
   const SORT = { next: 'Next due', name: 'Name', open: 'Open tasks', contact: 'Last contact' };
   const sb = document.createElement('button'); sb.type = 'button'; sb.className = 'btn btn-ghost btn-sm ppl-sort';
   sb.innerHTML = icon('arrow-up-down', 'i-sm') + `<span>${esc(SORT[pref.sort])}</span>`;
   sb.onclick = () => openMenu(sb, Object.entries(SORT).map(([k, l]) => ({ label: l, checked: pref.sort === k, run: () => { pref.sort = k; saveUI(); _pplPaintBody(); } })), { align: 'end', width: 200 });
-  bar.appendChild(sb);
+  bar.append(showBtn, sb);
   body.appendChild(bar);
+  if (typeof pcSetPageList === 'function') pcSetPageList(rows.map(r => r.p.id));   // previous / next on the card
 
   if (!rows.length) {
-    mountEmptyState(body, { icon: 'search-x', title: 'Nobody matches', text: q ? 'Try a different name, email or organisation.' : 'No one is in this group.' });
+    mountEmptyState(body, { icon: 'search-x', title: 'Nobody matches', text: q ? 'Try a different name, email or organisation.' : pref.show !== 'all' ? 'Nobody here fits that filter.' : 'No one is in this group.' });
     return;
   }
-  const selId = state.view.startsWith('person:') ? state.view.slice(7) : null;
-  const open = (p) => { state.selectedTaskId = null; setView('person:' + p.id); };
+  const selId = state.view.startsWith('person:') ? state.view.slice(7) : (typeof pcCurrentPersonId === 'function' ? pcCurrentPersonId() : null);
+  const open = (p, el) => openPerson(p.id, { from: el });   // the centre card or the person panel (54-people-card.js)
   if (pref.mode === 'cards') {
     const grid = document.createElement('div'); grid.className = 'ppl-cards';
-    for (const { p, f } of rows) {
+    rows.forEach(({ p, f }, n) => {
       const c = document.createElement('button'); c.type = 'button';
-      c.className = 'card ppl-card' + (p.id === selId ? ' sel' : '') + (p.inactive ? ' inactive' : '');
+      c.className = 'card ppl-card' + (p.id === selId ? ' sel tc-current' : '') + (p.inactive ? ' inactive' : '');
+      c.dataset.pid = p.id; c.style.setProperty('--i', Math.min(n, 16));
+      if (p.id === selId) c.setAttribute('aria-current', 'true');
       if (!p.stub) czMark(c, 'person', p.id);   // right-click: rename, colour, symbol... (28-customise.js)
       const sub = [p.role, p.org].filter(Boolean).join(' · ');
-      c.innerHTML = `<div class="ppl-card-h">${avatarHtml(p, 40)}<div class="min0"><div class="pp-name truncate">${esc(p.name)}</div><div class="pp-role truncate">${esc(sub || _pplKindLabel(p))}</div></div></div>`
+      c.innerHTML = `<span class="pc-cover ppl-card-cov" aria-hidden="true"></span><div class="ppl-card-h">${avatarHtml(p, 40)}<div class="min0"><div class="pp-name truncate">${esc(p.name)}</div><div class="pp-role truncate">${esc(sub || _pplKindLabel(p))}</div></div></div>`
         + `<div class="ppl-card-f"><span>${icon('circle-dot', 'i-xs')}${f.open.length} open</span>`
         + (f.next ? (() => { const x = _pplDue(f.next, f.nextTime); return `<span class="due ${escAttr(x.cls)}">${esc(x.text)}</span>`; })() : '<span class="subtle">No due tasks</span>')
         + `<span class="subtle">${esc(f.last ? _pplAgo(f.last) : '')}</span></div>`;
-      c.onclick = () => open(p);
+      if (typeof pcCoverApply === 'function') pcCoverApply(c.querySelector('.ppl-card-cov'), p);
+      c.onclick = () => open(p, c);
       grid.appendChild(c);
-    }
+    });
     body.appendChild(grid);
     return;
   }
@@ -290,9 +317,11 @@ function _pplPaintBody() {
   const t = document.createElement('table'); t.className = 'table ppl-table' + (narrow ? ' narrow' : '');
   t.innerHTML = `<thead><tr><th>Name</th><th class="c-org">Organisation</th><th class="c-streams">Streams</th><th class="num">Open</th><th>Next due</th><th class="c-last">Last contact</th></tr></thead>`;
   const tb = document.createElement('tbody');
-  for (const { p, f } of rows) {
+  rows.forEach(({ p, f }, n) => {
     const tr = document.createElement('tr');
-    tr.className = (p.id === selId ? 'sel' : '') + (p.inactive ? ' inactive' : '');
+    tr.className = (p.id === selId ? 'sel tc-current' : '') + (p.inactive ? ' inactive' : '');
+    tr.dataset.pid = p.id; tr.style.setProperty('--i', Math.min(n, 16));
+    if (p.id === selId) tr.setAttribute('aria-current', 'true');
     tr.tabIndex = 0;
     if (!p.stub) czMark(tr, 'person', p.id);
     const streams = (Array.isArray(p.streams) && p.streams.length ? p.streams : _pplStreamsFromTasks(f.tasks)).filter(s => STREAMS[s]).slice(0, 4);
@@ -303,10 +332,10 @@ function _pplPaintBody() {
       + `<td class="num">${f.open.length ? f.open.length : '<span class="subtle">0</span>'}</td>`
       + `<td>${(() => { const x = _pplDue(f.next, f.nextTime); return `<span class="due ${escAttr(x.cls)}">${esc(x.text)}</span>`; })()}</td>`
       + `<td class="subtle c-last">${esc(f.last ? _pplAgo(f.last) : '—')}</td>`;
-    tr.onclick = () => open(p);
-    tr.onkeydown = (e) => { if (e.key === 'Enter') open(p); };
+    tr.onclick = () => open(p, tr);
+    tr.onkeydown = (e) => { if (e.key === 'Enter') open(p, tr); };
     tb.appendChild(tr);
-  }
+  });
   t.appendChild(tb);
   body.appendChild(t);
 }
@@ -319,7 +348,7 @@ function _pplDue(iso, time) {
   let text;
   if (d === 0) text = /^\d{1,2}:\d{2}$/.test(time || '') ? time : 'Today'; else if (d === 1) text = 'Tomorrow'; else if (d < 0) text = (-d) + 'd late';
   else if (d <= 13) text = _pplFmt(dt, { weekday: 'short', day: 'numeric', month: 'short' });
-  else text = _pplFmt(dt, dt.getFullYear() === new Date().getFullYear() ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
+  else text = _pplFmt(dt, iso.slice(0, 4) === todayStr().slice(0, 4) ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
   return { text, cls: d < 0 ? 'overdue' : d === 0 ? 'today' : d <= 3 ? 'soon' : '' };
 }
 /** Short due label for the person panel's task rows (mockup 04): 'Today', 'Tomorrow', 'Wed' (within a week, late or not), 'Fri 9' (next week), '14 Oct', '9d late'. */
@@ -331,13 +360,15 @@ function _pplShortDue(iso) {
   if (d < -6) return (-d) + 'd late';
   if (d < 7) return _pplFmt(dt, { weekday: 'short' });
   if (d <= 8) return _pplFmt(dt, { weekday: 'short', day: 'numeric' });
-  return _pplFmt(dt, dt.getFullYear() === new Date().getFullYear() ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
+  return _pplFmt(dt, iso.slice(0, 4) === todayStr().slice(0, 4) ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
 }
 /** Locale date text; "Sept" (newer en-GB data) is shortened to "Sep" like the rest of the mockups. */
 function _pplFmt(dt, opts) {
   return dt.toLocaleDateString((APP_CONFIG && APP_CONFIG.locale) || undefined, opts).replace(/\bSept\b/, 'Sep');
 }
-function _pplTime(dt) { return dt.toLocaleTimeString((APP_CONFIG && APP_CONFIG.locale) || undefined, { hour: '2-digit', minute: '2-digit' }); }
+/** _pplFmt for an instant (an event, a note): its date in the dashboard's zone. */
+function _pplFmtAt(dt, opts) { return _pplFmt(dt, Object.assign({}, opts, { timeZone: Clock.zone() })); }
+function _pplTime(dt) { return dt.toLocaleTimeString((APP_CONFIG && APP_CONFIG.locale) || undefined, { hour: '2-digit', minute: '2-digit', ...(typeof clockH12Opt === 'function' ? clockH12Opt() : {}), timeZone: Clock.zone() }); }
 /**
  * A regular meeting with this person: the same weekday + start time + title
  * at least twice (or a recurring event) with one still to come.
@@ -349,7 +380,7 @@ function _pplMeets(p) {
   const groups = new Map();
   for (const ev of evs) {
     const s = calEventStart(ev);
-    const k = s.getDay() + '|' + _pplTime(s) + '|' + String(ev.summary || '').trim().toLowerCase();
+    const k = Clock.parts(s.getTime()).dow + '|' + _pplTime(s) + '|' + String(ev.summary || '').trim().toLowerCase();
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(ev);
   }
@@ -362,9 +393,9 @@ function _pplMeets(p) {
   if (!best) return null;
   const s = calEventStart(best.next);
   const loc = (APP_CONFIG && APP_CONFIG.locale) || '';
-  const wd = _pplFmt(s, { weekday: 'long' });
-  const days = Math.round((_pplDayMs(fmtDate(s)) - _pplDayMs(todayStr())) / 86400000);
-  const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : _pplFmt(s, days < 7 ? { weekday: 'short' } : { weekday: 'short', day: 'numeric', month: 'short' });
+  const wd = _pplFmtAt(s, { weekday: 'long' });
+  const days = Math.round((_pplDayMs(Clock.parts(s.getTime()).iso) - _pplDayMs(todayStr())) / 86400000);
+  const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : _pplFmtAt(s, days < 7 ? { weekday: 'short' } : { weekday: 'short', day: 'numeric', month: 'short' });
   return { text: `${/^en\b|^en-/i.test(loc || 'en') ? wd + 's' : wd} ${_pplTime(s)} · next ${when}`, title: best.next.summary || '' };
 }
 function _pplKindLabel(p) { return pplKind(p) === 'org' ? 'Organisation' : p.kind === 'mailbox' ? 'Mailbox' : 'Person'; }
@@ -384,12 +415,18 @@ function _pplPanel(el, p) {
     { label: p.pinned ? 'Unpin from sidebar' : 'Pin to sidebar', icon: p.pinned ? 'pin-off' : 'pin', run: () => { updatePersonFields(p.id, { pinned: !p.pinned }); render(); } },
     { label: _pplShowDone ? 'Hide done tasks' : `Show done tasks (${doneN})`, icon: 'circle-check', hidden: () => !doneN, run: () => { _pplShowDone = !_pplShowDone; renderMain(); } },
     { label: p.inactive ? 'Mark as active' : 'Mark as inactive', icon: p.inactive ? 'user-check' : 'user-minus', run: () => { updatePersonFields(p.id, { inactive: !p.inactive }); render(); } },
+    { label: 'Link tasks…', icon: 'link', run: () => pcOpenLinkTasks(p.id) },
     { label: 'Merge into…', icon: 'git-merge', run: () => openPersonMerge(p.id) },
     'sep',
     { label: 'Delete…', icon: 'trash-2', danger: true, run: () => pplConfirmDelete(p.id) },
   ], { align: 'end', width: 220 }));
-  top.append(mk('pencil', 'Edit', () => openPersonEditor(p.id)), moreBtn, mk('x', 'Close', () => setView('people')));
+  // The side panel's way back to the big card (54-people-card.js), like a task's "Open in the centre".
+  const centre = mk('scan', 'Open in the centre', () => pcToCard(p.id, centre));
+  top.append(centre, mk('image', 'Pictures', () => pcOpenPictures(p.id, 'photo')), mk('pencil', 'Edit', () => openPersonEditor(p.id)), moreBtn, mk('x', 'Close', () => setView('people')));
   el.appendChild(top);
+  const cov = document.createElement('div'); cov.className = 'pc-cover ppl-panel-cover';
+  if (typeof pcCoverApply === 'function') pcCoverApply(cov, p);
+  el.appendChild(cov);
 
   const hero = document.createElement('div'); hero.className = 'pp-hero';
   const sub = [p.role, p.org].filter(Boolean).join(' · ');
@@ -405,7 +442,7 @@ function _pplPanel(el, p) {
   const emails = pplPersonEmails(p);
   const mail = document.createElement('a'); mail.className = 'btn btn-secondary' + (emails.length ? '' : ' is-disabled');
   mail.innerHTML = icon('mail', 'i-sm') + '<span>Email</span>';
-  if (emails.length) { mail.href = 'mailto:' + encodeURIComponent(emails[0]).replace(/%40/g, '@'); } else { mail.setAttribute('aria-disabled', 'true'); mail.title = 'No email address yet'; }
+  if (emails.length) { mail.href = 'mailto:' + encodeURIComponent(emails[0]).replace(/%40/g, '@'); mail.onclick = (e) => { if (typeof pcEmail === 'function') { e.preventDefault(); pcEmail(p.id); } }; } else { mail.setAttribute('aria-disabled', 'true'); mail.title = 'No email address yet'; }
   const tk = document.createElement('button'); tk.type = 'button'; tk.className = 'btn btn-secondary';
   tk.innerHTML = icon('plus', 'i-sm') + `<span>Task for ${esc(_pplFirst(p))}</span>`;
   tk.onclick = () => (typeof openQuickAddDialog === 'function' ? openQuickAddDialog('@' + p.id + ' ') : openNewTask('@' + p.id + ' '));
@@ -413,7 +450,10 @@ function _pplPanel(el, p) {
   nt.innerHTML = icon('notebook-pen', 'i-sm') + '<span>Note</span>';
   // The note box stays folded away while there are notes (mockup 04); Note opens it.
   nt.onclick = () => { const comp = el.querySelector('.ppl-note-compose'); if (comp) comp.hidden = false; const ta = el.querySelector('.ppl-note-in'); if (ta) { ta.scrollIntoView({ block: 'nearest' }); ta.focus(); } };
-  btns.append(mail, tk, nt);
+  const lk = document.createElement('button'); lk.type = 'button'; lk.className = 'btn btn-secondary';
+  lk.innerHTML = icon('link', 'i-sm') + '<span>Link tasks…</span>';
+  lk.onclick = () => pcOpenLinkTasks(p.id);
+  btns.append(mail, tk, lk, nt);
   el.appendChild(btns);
 
   // Profile
@@ -433,16 +473,18 @@ function _pplPanel(el, p) {
   if (meets) row('calendar-clock', 'Meets', `<span class="truncate" title="${escAttr(meets.title)}">${esc(meets.text)}</span>`);
   else if (f.nextEv) {
     const s = calEventStart(f.nextEv);
-    const when = _pplFmt(s, { weekday: 'short', day: 'numeric', month: 'short' }) + (f.nextEv.allDay ? '' : ', ' + _pplTime(s));
+    const when = _pplFmtAt(s, { weekday: 'short', day: 'numeric', month: 'short' }) + (f.nextEv.allDay ? '' : ', ' + _pplTime(s));
     row('calendar-clock', 'Next meeting', `<span class="truncate" title="${escAttr(f.nextEv.summary || '')}">${esc(when)} · ${esc(f.nextEv.summary || 'Event')}</span>`);
   } else row('history', 'Last contact', f.last ? esc(_pplAgo(f.last)) : '<span class="subtle">Not yet</span>');
   if (p.phone) row('phone', 'Phone', `<a href="tel:${escAttr(String(p.phone).replace(/[^\d+]/g, ''))}">${esc(p.phone)}</a>`);
+  if (typeof trPersonTzHtml === 'function' && pplKind(p) !== 'org') row('globe', 'Time zone', trPersonTzHtml(p));   // their time (travel spec 5.2)
   if (safeUrl(p.linkedin)) row('link', 'LinkedIn', `<a href="${escAttr(safeUrl(p.linkedin))}" target="_blank" rel="noopener noreferrer">Profile</a>`);
   s1.appendChild(dl);
   const hint = document.createElement('div'); hint.className = 'subtle ppl-hint';
   hint.textContent = 'Aliases link tasks that mention any of these names.';
   s1.appendChild(hint);
   el.appendChild(s1);
+  if (typeof trPersonTzWire === 'function') trPersonTzWire(s1, p);   // its Set / Change; a suggestion's prefilled zone (T13)
   const aa = s1.querySelector('.ppl-add-alias');
   if (aa) aa.onclick = async () => {
     const v = await promptDialog({ title: 'Add an alias', label: `Another name for ${p.name} (a nickname, surname or initials)`, placeholder: 'e.g. Sam', confirmLabel: 'Add' });
@@ -507,7 +549,7 @@ function _pplPanel(el, p) {
   for (const n of notes) {
     const d = document.createElement('div'); d.className = 'note ppl-note';
     const when = document.createElement('span'); when.className = 'when';
-    when.textContent = n.ts ? _pplFmt(new Date(n.ts), { day: 'numeric', month: 'short', year: daysUntil(fmtDate(new Date(n.ts))) < -300 ? 'numeric' : undefined }) + _pplNoteContext(p, n.ts) : '';
+    when.textContent = n.ts ? _pplFmtAt(new Date(n.ts), { day: 'numeric', month: 'short', year: daysUntil(Clock.parts(Number(n.ts)).iso) < -300 ? 'numeric' : undefined }) + _pplNoteContext(p, n.ts) : '';
     const tx = document.createElement('div'); tx.className = 'ppl-note-text'; tx.textContent = n.text;
     const del = document.createElement('button'); del.type = 'button'; del.className = 'btn-icon btn-sm ppl-note-del'; del.innerHTML = icon('trash-2');
     del.setAttribute('aria-label', 'Delete note');
@@ -536,7 +578,7 @@ function _pplNoteContext(p, ts) {
   for (const ev of _pplEvents(p)) {
     if (!ev.start || !ev.start.dateTime) continue;
     const end = calEventEnd(ev).getTime();
-    if (end > ts || ts - end > 3 * 3600 * 1000 || fmtDate(new Date(end)) !== fmtDate(new Date(ts))) continue;
+    if (end > ts || ts - end > 3 * 3600 * 1000 || Clock.parts(end).iso !== Clock.parts(ts).iso) continue;
     if (!best || end > calEventEnd(best).getTime()) best = ev;
   }
   if (!best) return '';
@@ -561,6 +603,8 @@ function _pplMiniTask(i) {
   r.onclick = () => openTask(i.id, { from: r });   // centre card or side panel (61-task-card.js)
   return r;
 }
+/** Gmail snippets arrive with HTML entities (&#39;): decode the common ones before esc(), so they read as text. */
+function _pplUnent(s) { return String(s == null ? '' : s).replace(/&#39;|&#x27;|&quot;|&lt;|&gt;/g, (m) => ({ '&#39;': "'", '&#x27;': "'", '&quot;': '"', '&lt;': '<', '&gt;': '>' })[m]).replace(/&amp;/g, '&'); }
 function _pplMailInto(box, p) {
   const emails = pplPersonEmails(p);
   const gmail = window.Connections && typeof Connections.has === 'function' ? Connections.has('gmail') : false;
@@ -573,8 +617,8 @@ function _pplMailInto(box, p) {
       const a = document.createElement(safeUrl(m.link) ? 'a' : 'div'); a.className = 'ppl-mail-row';
       if (safeUrl(m.link)) { a.href = safeUrl(m.link); a.target = '_blank'; a.rel = 'noopener noreferrer'; }
       const dt = m.date ? new Date(m.date) : null;
-      a.innerHTML = `<span class="s truncate">${esc(m.subject || '(no subject)')}</span><span class="d">${esc(dt && !isNaN(dt) ? dt.toLocaleDateString((APP_CONFIG && APP_CONFIG.locale) || undefined, { day: 'numeric', month: 'short' }) : '')}</span>`
-        + (m.snippet ? `<span class="sn truncate">${esc(m.snippet)}</span>` : '');
+      a.innerHTML = `<span class="s truncate">${esc(_pplUnent(m.subject) || '(no subject)')}</span><span class="d">${esc(dt && !isNaN(dt) ? dt.toLocaleDateString((APP_CONFIG && APP_CONFIG.locale) || undefined, { day: 'numeric', month: 'short', timeZone: Clock.zone() }) : '')}</span>`
+        + (m.snippet ? `<span class="sn truncate">${esc(_pplUnent(m.snippet))}</span>` : '');
       box.appendChild(a);
     }
     return;
@@ -658,6 +702,7 @@ function openPersonEditor(id, prefill) {
       const two2 = document.createElement('div'); two2.className = 'ppl-form-2';
       two2.append(field('Phone', inp('phone', '+44 …', v.phone)), field('LinkedIn', inp('linkedin', 'https://linkedin.com/in/…', v.linkedin)));
       el.appendChild(two2);
+      if (typeof trPersonTzField === 'function') el.appendChild(trPersonTzField(v, F, field));   // 69-travel-ui.js
       const err = document.createElement('div'); err.className = 'field-error'; err.hidden = true; F._err = err;
       el.appendChild(err);
     },
@@ -667,6 +712,7 @@ function openPersonEditor(id, prefill) {
         const fields = {
           name: F.name.value, kind: F.kind.value, role: F.role.value, org: F.org.value, group: F.group.value,
           emails: F.emails.value, aliases: F.aliases.value, streams: [...F.streams], phone: F.phone.value, linkedin: F.linkedin.value,
+          ...(F.tz ? { tz: F.tz.value } : {}),
         };
         const dup = !p && (state.people || []).find(x => pplFold(x.name) === pplFold(fields.name.trim()));
         if (dup && !F._dupOk) { F._dupOk = true; F._err.hidden = false; F._err.textContent = `${dup.name} is already in People. Click again to add another person with the same name.`; return false; }
@@ -676,7 +722,7 @@ function openPersonEditor(id, prefill) {
         if (res.error) { F._err.hidden = false; F._err.textContent = res.error; return false; }
         const nowSug = pplSuggest(state, { index: pplIndex(), details: false }).filter(x => x.personId === res.id);
         render();
-        if (!p) setView('person:' + res.id);
+        if (!p) openPerson(res.id);
         if (nowSug.length) {
           toast(`${nowSug.length} task${nowSug.length === 1 ? ' names' : 's name'} ${_pplFirst(getPerson(res.id))}`, { icon: 'link', action: { label: 'Link', run: () => { const n = linkSuggestedPeople(nowSug); render(); toast(`Linked ${n} task${n === 1 ? '' : 's'}`, { kind: 'ok' }); } } });
         } else toast(p ? 'Saved' : `Added ${fields.name.trim()}`, { kind: 'ok', icon: 'user-check' });
@@ -707,7 +753,7 @@ function openPersonMerge(fromId) {
       if (!sel.value) { sel.focus(); return false; }
       const into = getPerson(sel.value);
       const n = mergePeople(a.id, sel.value);
-      setView('person:' + sel.value);
+      if (state.view.startsWith('person:')) setView('person:' + sel.value); else if (typeof pcCurrentPersonId === 'function' && pcCurrentPersonId() === a.id) openPerson(sel.value, { mode: 'card' });
       toast(`Merged into ${into ? into.name : sel.value} (${n} task${n === 1 ? '' : 's'} relinked)`, { kind: 'ok', action: { label: 'Undo', run: () => undo() } });
       return true;
     } }],
@@ -719,7 +765,7 @@ async function pplConfirmDelete(id) {
   const ok = await confirmDialog({ title: `Delete ${p.name}?`, text: `${n ? `They are unlinked from ${n} task${n === 1 ? '' : 's'} (the tasks stay). ` : ''}If you just don't work with them any more, "Mark as inactive" keeps their history.`, confirmLabel: 'Delete', danger: true });
   if (!ok) return;
   deletePersonById(id);
-  setView('people');
+  if (state.view !== 'people') setView('people'); else render();
   toast(`Deleted ${p.name}`, { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } });
 }
 
@@ -818,7 +864,7 @@ function openLinkSuggestions(tab) {
         row.setAttribute('aria-label', u.name);
         row.innerHTML = `<span class="avatar avatar-24" style="--c:var(--sw-slate)">${esc(avatarInitials(u.name))}</span><span class="lbl"><b>${esc(u.name)}</b> <span class="subtle">in ${u.count} task${u.count === 1 ? '' : 's'}</span></span>`;
         const ign = document.createElement('button'); ign.type = 'button'; ign.className = 'btn btn-ghost btn-sm'; ign.textContent = 'Ignore';
-        ign.onclick = () => { state.peopleIgnoredNames = [...new Set([...(state.peopleIgnoredNames || []), u.name])]; saveData(); paint(); renderMain(); };
+        ign.onclick = () => { state.peopleIgnoredNames = [...new Set([...(state.peopleIgnoredNames || []), u.name])]; saveData(); paint(); render(); };   // render(): the sidebar's 'N new' badge too
         const add = document.createElement('button'); add.type = 'button'; add.className = 'btn btn-secondary btn-sm'; add.textContent = 'Add person';
         add.onclick = () => openPersonEditor(null, { name: u.name });
         row.append(ign, add); nameList.appendChild(row);
@@ -838,7 +884,7 @@ function openLinkSuggestions(tab) {
           applyAll: { label: 'Add all', run: addThese },
           dismiss: { label: 'Ignore selected', tip: 'Not people (places, companies, books): never flag them again', run: (names) => {
             state.peopleIgnoredNames = [...new Set([...(state.peopleIgnoredNames || []), ...names])];
-            saveData(); paint(); renderMain();
+            saveData(); paint(); render();
             toast(`Ignored ${names.length} name${names.length === 1 ? '' : 's'}`, { action: { label: 'Undo', run: () => undo() } });
           } },
         });
@@ -862,6 +908,7 @@ function openLinkSuggestions(tab) {
 /* ---------- sidebar: People (badge for new names; people as shortcuts) ---------- */
 // Names in open tasks that match nobody (the People callout's rule), cached per save.
 let _pplSbNewKey = null, _pplSbNewN = 0;
+const SB_PEOPLE_DEFAULTS = { sort: 'open', show: 5 };   // as before: pinned, then the most open tasks, 5 at a time
 function _pplSidebarNewNames() {
   const key = [state._lastSave || 0, (state.custom || []).length, (state.people || []).length, (state.peopleIgnoredNames || []).length].join('|');
   if (key === _pplSbNewKey) return _pplSbNewN;
@@ -880,6 +927,7 @@ registerSidebarBlock('tasks', {
     el.appendChild(sbSection({
       title: 'People', collapsible: 'people',
       actions: [
+        sbListMenuAction('people', SB_PEOPLE_DEFAULTS, 'people'),
         { icon: 'link', label: sugN ? `${sugN} tasks name someone: review` : 'Review link suggestions', run: () => openLinkSuggestions('links') },
         { icon: 'user-plus', label: 'Add person', run: () => openPersonEditor(null) },
       ],
@@ -891,10 +939,23 @@ registerSidebarBlock('tasks', {
     el.appendChild(sbNavItem({ label: 'All people', icon: 'users', view: 'people', active: state.view === 'people',
       badge: newN ? `${newN} new` : '', count: newN ? '' : (people.filter(p => !p.inactive).length || ''),
       title: newN ? `${newN} name${newN === 1 ? '' : 's'} in your tasks with no contact yet` : '' }));
-    const scored = people.filter(p => !p.inactive || p.pinned).map(p => ({ p, n: openTaskCountFor(p.id) }));
-    const pick = scored.filter(x => x.p.pinned).concat(scored.filter(x => !x.p.pinned && x.n > 0).sort((a, b) => b.n - a.n)).slice(0, ctx.group === 'home' ? 3 : 5);
-    const cur = state.view.startsWith('person:') ? state.view.slice(7) : null;
+    // Sorted by open tasks (the default): pinned people and whoever has open tasks; any other sort lists everyone active.
+    const pref = sbListPrefsFor('people', SB_PEOPLE_DEFAULTS);
+    const cur = state.view.startsWith('person:') ? state.view.slice(7) : (typeof pcCurrentPersonId === 'function' ? pcCurrentPersonId() : null);
+    const st = sbStats().people;
+    const scored = people.filter(p => !p.inactive || p.pinned || p.id === cur).map(p => ({ p, n: openTaskCountFor(p.id) }));
+    const pick = scored.filter(x => x.p.pinned || x.p.id === cur || pref.sort !== 'open' || x.n > 0);
     if (cur && !pick.some(x => x.p.id === cur)) { const p = getPerson(cur); if (p && !p.self) pick.push({ p, n: openTaskCountFor(p.id) }); }
-    for (const { p, n } of pick) el.appendChild(czMark(sbNavItem({ label: p.name, avatarHtml: `<span class="ic">${avatarHtml(p, 16)}</span>`, view: 'person:' + p.id, title: `${n} open task${n === 1 ? '' : 's'}` }), 'person', p.id));
+    sbOrderedList(el, {
+      key: 'people', noun: 'People', defaults: SB_PEOPLE_DEFAULTS,
+      items: pick.map(({ p, n }) => ({ id: p.id, label: p.name, open: n, total: (st.get(p.id) || {}).total || 0, recent: (st.get(p.id) || {}).recent || 0, pinned: !!p.pinned, p })),
+      custom: sbSavedOrder('people'), saveCustom: (ids) => sbSaveOrder('people', ids), keepId: cur,
+      row: ({ p, open: n }) => {
+        // Opens the person's card (or the panel, per Settings); re-selecting is a no-op there.
+        const it = sbNavItem({ label: p.name, avatarHtml: `<span class="ic">${avatarHtml(p, 16)}</span>`, active: cur === p.id, title: `${n} open task${n === 1 ? '' : 's'}`, onClick: () => openPerson(p.id, { from: it }) });
+        it.dataset.pid = p.id;
+        return czMark(it, 'person', p.id);
+      },
+    });
   },
 });

@@ -1,0 +1,155 @@
+/* Home widget "spendable" (Payday & safe to spend): its styles.
+   OWNER: the "spendable" widget builder (WIDGETS_CATALOGUE.md 3.14). JS: 12-home-w-spendable.js.
+   Loaded after 13-home-core.css, 13-home-platform.css and 13-home-w-glances.css (the
+   header and empty-state pieces it shares with Money: .hgl-h, .hgl-emp, .hgl-row).
+   Every rule is scoped to .hsp (the widget's card) except the one Hide-amounts rule
+   for Money at the end. The card is its own inline-size container: S/M/L adapt to
+   their real width (half width on a tablet, one column on a phone). Hide amounts:
+   money is wrapped in homeAmtHtml() (.hg-amt; the blur is in 13-home-platform.css). */
+
+.hsp { container-type: inline-size; display: flex; flex-direction: column; min-height: 100%; }
+.hsp > .card-b { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: var(--space-1) var(--space-4) var(--space-4); }
+.hsp .hsp-h { gap: 2px; }
+.hsp .hsp-h > .spacer { flex: 1 1 auto; }
+.hsp .hsp-hb { color: var(--fg-subtle); }
+.hsp .hsp-hb:hover { color: var(--fg); }
+.hsp .hsp-hb .i { width: 15px; height: 15px; }
+.hsp .hsp-eye[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent-soft); }
+.hsp .hsp-sync.is-busy { cursor: progress; color: var(--accent-ink); }
+.hsp .hsp-sync.is-busy .i { animation: hsp-spin 900ms linear infinite; }
+@keyframes hsp-spin { to { transform: rotate(360deg); } }
+.hsp .ovl { font-size: 11px; line-height: 16px; font-weight: var(--weight-semibold); letter-spacing: var(--tracking-caps, 0.06em); text-transform: uppercase; color: var(--fg-subtle); }
+.hsp .num { font-variant-numeric: tabular-nums; }
+.hsp-wrap { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.hsp-skel { display: flex; flex-direction: column; gap: 10px; padding: 6px 0 12px; min-height: 110px; }
+
+/* ----- the number ----- */
+.hsp-hero {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: calc(100% + 16px); margin: 0 -8px; padding: 6px 8px 8px;
+  border: 0; border-radius: 12px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: background-color var(--m-fast, 120ms) var(--m-ease-out, ease-out);
+}
+.hsp-hero:hover { background: var(--bg-subtle); }
+[data-theme="dark"] .hsp-hero:hover { background: var(--bg-muted); }
+.hsp-hero:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hsp-big { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; color: var(--fg); }
+.hsp-n { font-size: 40px; line-height: 44px; font-weight: var(--weight-semibold); letter-spacing: -0.035em; white-space: nowrap; }
+.hsp-u { font-size: 15px; font-weight: var(--weight-medium); color: var(--fg-muted); letter-spacing: -0.01em; white-space: nowrap; }
+.hsp-sub { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 13px; line-height: 18px; color: var(--fg-muted); }
+.hsp-sub .i { width: 14px; height: 14px; flex: none; color: var(--accent); }
+.hsp-note { font-size: 12px; line-height: 17px; color: var(--fg-subtle); }
+.hsp-left { margin-top: 10px; font-size: 12px; line-height: 17px; color: var(--fg-muted); }
+.hsp-left b { color: var(--fg); font-weight: var(--weight-semibold); font-size: 13px; }
+.hsp-kb { color: var(--fg-subtle); }
+.hsp-low { display: grid; grid-template-columns: 14px minmax(0, 1fr); column-gap: 6px; align-items: center; margin-top: 10px; padding: 7px 10px; border-radius: 10px; background: var(--bg-subtle); font-size: 12px; line-height: 17px; color: var(--fg-muted); }
+[data-theme="dark"] .hsp-low { background: var(--bg-muted); }
+.hsp-low > .i { width: 13px; height: 13px; color: var(--fg-subtle); }
+.hsp-low b { color: var(--fg); font-weight: var(--weight-semibold); }
+.hsp-low small { grid-column: 2; font-size: 11px; line-height: 14px; color: var(--fg-subtle); }
+
+/* ----- bills before payday ----- */
+.hsp-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.hsp-col { min-width: 0; display: flex; flex-direction: column; }
+.hsp-bh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.hsp-bt { font-size: 12px; font-weight: var(--weight-semibold); color: var(--fg-muted); white-space: nowrap; }
+.hsp-bl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.hsp-bill {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 10px; align-items: center;
+  width: calc(100% + 12px); margin: 0 -6px; padding: 4px 6px; border: 0; border-radius: 8px; background: none;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.hsp-bill:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hsp-bill .n { min-width: 0; display: flex; flex-direction: column; }
+.hsp-bill .nm { font-size: 13px; font-weight: var(--weight-medium); line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hsp-bill small { font-size: 11px; line-height: 14px; color: var(--fg-subtle); white-space: nowrap; }
+.hsp-bill small.due { color: var(--warning-ink); font-weight: var(--weight-medium); }
+.hsp-bill .a { font-size: 13px; font-weight: var(--weight-semibold); white-space: nowrap; }
+.hsp-tile { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--c); background: color-mix(in oklab, var(--c) 15%, var(--surface)); }
+[data-theme="dark"] .hsp-tile { background: color-mix(in oklab, var(--c) 24%, var(--surface)); }
+.hsp-more { display: inline-flex; align-items: center; gap: 2px; align-self: flex-start; margin: 4px 0 0 -6px; padding: 3px 6px; border: 0; border-radius: 7px; background: none; color: var(--fg-muted); font: inherit; font-size: 12px; font-weight: var(--weight-medium); cursor: pointer; }
+.hsp-more:hover { background: var(--bg-muted); color: var(--fg); }
+.hsp-more:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hsp-more .i { width: 13px; height: 13px; }
+.hsp-none { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 4px 0 0; font-size: 12px; line-height: 17px; color: var(--fg-muted); }
+.hsp-none > .i { width: 14px; height: 14px; color: var(--success-ink); flex: none; }
+.hsp-nx { flex-basis: 100%; padding-left: 20px; color: var(--fg-subtle); }
+
+/* ----- the balance (L) ----- */
+.hsp-bal { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle, var(--border)); display: flex; flex-direction: column; }
+.hsp-balh { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; width: calc(100% + 12px); margin: 0 -6px; padding: 4px 6px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.hsp-balh:hover { background: var(--bg-subtle); }
+[data-theme="dark"] .hsp-balh:hover { background: var(--bg-muted); }
+.hsp-balh:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hsp-bv { font-size: 20px; line-height: 24px; font-weight: var(--weight-semibold); letter-spacing: -0.02em; color: var(--fg); }
+.hsp-ch { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: var(--weight-semibold); white-space: nowrap; }
+.hsp-ch .i { width: 12px; height: 12px; }
+.hsp-ch small { margin-left: 3px; font-weight: 400; color: var(--fg-subtle); }
+.hsp-ch.up { color: var(--success-ink); }
+.hsp-ch.down { color: var(--fg-muted); }
+.hsp-plot { position: relative; height: 56px; margin-top: 10px; }
+.hsp-plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.hsp-plot .ln { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.hsp-plot .ar { fill: color-mix(in oklab, var(--accent) 11%, transparent); stroke: none; }
+[data-theme="dark"] .hsp-plot .ar { fill: color-mix(in oklab, var(--accent) 20%, transparent); }
+.hsp-dot, .hsp-hov { position: absolute; left: var(--x); top: var(--y); width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); transform: translate(-50%, -50%); pointer-events: none; }
+.hsp-hov { width: 7px; height: 7px; background: var(--surface); box-shadow: 0 0 0 2px var(--accent); transition: left 90ms ease-out, top 90ms ease-out; }
+.hsp-hov[hidden], .hsp-tip[hidden] { display: none; }
+.hsp-hit { position: absolute; inset: -8px 0 0; cursor: pointer; }
+.hsp-tip {
+  position: absolute; left: clamp(56px, var(--x), calc(100% - 56px)); bottom: calc(100% + 8px); transform: translateX(-50%); z-index: 2;
+  display: flex; flex-direction: column; padding: 5px 8px; border-radius: 8px; background: var(--fg); color: var(--bg);
+  font-size: 11px; line-height: 14px; white-space: nowrap; box-shadow: var(--shadow-md); pointer-events: none;
+}
+.hsp-tip b { font-size: 12px; }
+.hsp-ax { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--fg-subtle); white-space: nowrap; }
+.hsp-acs { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.hsp-ac { display: flex; align-items: baseline; gap: 6px; width: calc(100% + 12px); margin: 0 -6px; padding: 4px 6px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.hsp-ac:hover { background: var(--bg-muted); }
+.hsp-ac:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hsp-ac .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--weight-medium); color: var(--fg); }
+.hsp-ac small { color: var(--fg-subtle); white-space: nowrap; text-transform: lowercase; }
+.hsp-ac .a { margin-left: auto; padding-left: 8px; font-weight: var(--weight-semibold); white-space: nowrap; }
+.hsp-tag { flex: none; height: 17px; padding: 0 6px; border-radius: 6px; font-size: 10.5px; line-height: 17px; color: var(--fg-muted); background: var(--bg-muted); white-space: nowrap; }
+
+/* ----- data age, the off state ----- */
+.hsp-stale { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: auto; padding-top: 10px; font-size: 12px; color: var(--fg-subtle); }
+.hsp-stale > .i { width: 13px; height: 13px; flex: none; }
+.hsp-link { padding: 0 2px; border: 0; border-radius: 4px; background: none; color: var(--accent-ink); font: inherit; font-weight: var(--weight-medium); cursor: pointer; }
+.hsp-link:hover { text-decoration: underline; }
+.hsp-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hsp-link[aria-busy="true"] { color: var(--fg-subtle); cursor: progress; text-decoration: none; }
+.hsp .home-empty.hsp-off { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; flex: 1; padding: 14px 10px; min-height: 160px; }
+.hsp .home-empty.hsp-off > div { display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 280px; }
+.hsp .home-empty.hsp-off > div b { font-size: 14px; font-weight: var(--weight-semibold); }
+.hsp .home-empty.hsp-off > div span { font-size: 12px; line-height: 18px; color: var(--fg-muted); }
+.hsp .home-empty.hsp-off > .anim-scene ~ .i { display: none; }
+.hsp .home-empty.hsp-off > .btn { margin-top: 6px; }
+
+/* Hide amounts: inside a button the button is the Tab stop, so its focus shows them. */
+.hsp button:focus-visible .hg-amt.is-hidden, .hsp button:hover .hg-amt.is-hidden { filter: none; }
+
+/* ----- sizes ----- */
+@container (min-width: 440px) {
+  .hsp--m .hsp-grid, .hsp--l .hsp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); column-gap: 22px; align-items: start; }
+  .hsp--m .hsp-bb, .hsp--l .hsp-bb { padding-top: 6px; }
+}
+@container (min-width: 620px) {
+  .hsp--l .hsp-acs:has(> li + li) { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+  .hsp--l .hsp-plot { height: 64px; }
+}
+@container (max-width: 249px) {
+  .hsp-n { font-size: 32px; line-height: 36px; }
+  .hsp .hsp-h .hg-gear { display: none; }
+}
+
+/* Hide amounts blurs Money too while this widget is on Home (its switch lives here), so it
+   is never blurred with no switch on the board. Hover or focus shows an amount. */
+.home.is-amt-hidden:has(.hg-w[data-base="spendable"]:not([hidden])) .hbf :is(.num, .hbf-sub b, .hbf-tip, .hbf-slg) { filter: blur(6px); transition: filter var(--m-fast, 120ms) var(--m-ease-out, ease-out); }
+.home.is-amt-hidden:has(.hg-w[data-base="spendable"]:not([hidden])) .hbf :is(.num, .hbf-sub b, .hbf-slg):hover,
+.home.is-amt-hidden:has(.hg-w[data-base="spendable"]:not([hidden])) .hbf :is(button, [tabindex]):focus-visible :is(.num, .hbf-sub b) { filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hsp .hsp-sync.is-busy .i { animation: none; }
+  .hsp-hov { transition: none; }
+  .home.is-amt-hidden .hbf .num { transition: none; }
+}

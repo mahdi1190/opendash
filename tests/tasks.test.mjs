@@ -8,6 +8,7 @@ import { readFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { loadPageClock } from './fixtures/page-clock.mjs';
 import { createActions } from '../server/actions/index.mjs';
 import { advanceByRecurrence } from '../server/actions/model.mjs';
 import { makeDataDir, sampleState, TODAY as SRV_TODAY, addDays as srvAddDays } from './fixtures/actions-state.mjs';
@@ -43,6 +44,7 @@ function makeBox() {
   };
   box.state = freshState();
   vm.createContext(box);
+  loadPageClock(box);   // the page's Clock: wall times in the dashboard's zone (travel spec 2.7)
   vm.runInContext(src('08-utils-dates.js') + '\n;globalThis.fmtDate = fmtDate; globalThis.todayStr = todayStr; globalThis.daysUntil = daysUntil; globalThis.tomorrowStr = tomorrowStr;', box, { filename: '08-utils-dates.js' });
   for (const f of ['20-task-model.js', '21-task-query.js', '22-quick-add.js', '30-task-row.js', '32-tasks-ui.js', '60-task-detail.js']) {
     vm.runInContext(src(f), box, { filename: f });

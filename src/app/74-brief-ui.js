@@ -1,8 +1,10 @@
 /* ============================================================
-   MORNING BRIEF (owner: Brief + Review). The welcome screen of the day:
-   #view=review:today (the Review section lives in 77-brief-review.js).
-     - opens by itself on the first visit of each day (Settings > Morning
-       brief), from Home's "Start my day", the palette and the sidebar;
+   THE DAY'S HERO (owner: Brief + Review). The top of Home's Today tab (#view=home;
+   the tabs live in 77-brief-review.js, the Play button, the inline story and
+   Ideas for today in 12-home-head.js). Once a separate "Morning brief" page; it
+   became Home (user request, 4 Oct).
+     - Home comes forward by itself on the first visit of each day (Settings >
+       Home and stories), from "Start my day", the palette and the sidebar;
      - refreshes calendar, inbox and finances in the background through
        the existing jobs and connection gates (briefOrchestrate, 73-...);
      - lays the day out by what kind of day it is (briefDayType), with
@@ -80,15 +82,16 @@ const _animEvCache = new Map();
 /** Scene for a calendar event (raw CalStore event). */
 function animForEvent(ev) {
   if (!ev) return { type: 'event' };
-  const key = (ev.id || '') + '|' + (ev.summary || '') + '|' + JSON.stringify(animPrefs()) + '|' + Object.keys(animAiCache()).length;
+  // The hour is in the key: a flight turns from takeoff to flight to landing (P13), at most hourly.
+  const key = (ev.id || '') + '|' + (ev.summary || '') + '|' + JSON.stringify(animPrefs()) + '|' + Object.keys(animAiCache()).length + '|' + Math.floor(Clock.now() / 3600000);
   if (_animEvCache.has(key)) return _animEvCache.get(key);
-  let start = null, minutes = 0, days = 1, calName = '';
+  let start = null, minutes = 0, days = 1, calName = '', startMs = NaN, endMs = NaN;
   try {
-    if (!ev.allDay && ev.start && ev.start.dateTime) { const s = calEventStart(ev), e = calEventEnd(ev); start = s.getHours() * 60 + s.getMinutes(); minutes = Math.round((e - s) / 60000); }
+    if (!ev.allDay && ev.start && ev.start.dateTime) { const s = calEventStart(ev), e = calEventEnd(ev); start = Clock.parts(s.getTime()).min; minutes = Math.round((e - s) / 60000); startMs = s.getTime(); endMs = e.getTime(); }
     const span = calEventDays(ev); days = Math.max(1, _calDaysBetween(span[0], span[1]) + 1);
     const c = calEventCalendar(ev); calName = c ? c.name : '';
   } catch (e) { /* partial event */ }
-  const r = animClassify({ kind: 'event', title: ev.summary, description: ev.description, location: ev.location, link: !!(ev.conferenceUrl || ev.hangoutLink), attendees: (ev.attendees || []).length, start, minutes, allDay: !!ev.allDay, days, calendar: calName, eventType: ev.eventType }, _animOpts());
+  const r = animClassify({ kind: 'event', title: ev.summary, description: ev.description, location: ev.location, link: !!(ev.conferenceUrl || ev.hangoutLink), attendees: (ev.attendees || []).length, start, minutes, allDay: !!ev.allDay, days, calendar: calName, eventType: ev.eventType, now: Clock.now(), startMs, endMs }, _animOpts());
   if (_animEvCache.size > 3000) _animEvCache.clear();
   _animEvCache.set(key, r);
   return r;
@@ -193,16 +196,38 @@ function briefSkyHtml(cond, tod, o) {
   if (cond === 'snow') for (let i = 0; i < 28; i++) p.push(`<i class="sky-flake" style="--x:${(rnd() * 100).toFixed(1)}%;--d:${(-rnd() * 9).toFixed(2)}s;--t:${(6 + rnd() * 6).toFixed(1)}s;--s:${(0.5 + rnd() * 0.9).toFixed(2)}"></i>`);
   if (cond === 'fog') for (let i = 0; i < 3; i++) p.push(`<i class="sky-fog" style="--y:${30 + i * 22}%;--d:${(-i * 7).toFixed(1)}s"></i>`);
   if (cond === 'thunder') p.push('<i class="sky-flash"></i>');
-  return `<div class="bf-sky" data-cond="${escAttr(cond || 'none')}" data-tod="${escAttr(tod)}" aria-hidden="true">${p.join('')}</div>`;
+  // Extra weather layers (77-sky-ambient.css): wind, the thunder bolt, a rainbow after rain, heat haze.
+  const x = o.extras || _bfSkyExtras();
+  if (x.wind) {
+    for (let i = 0; i < 5; i++) p.push(`<i class="sky-gust" style="--y:${(18 + rnd() * 60).toFixed(1)}%;--w:${(80 + rnd() * 90).toFixed(0)}px;--d:${(-rnd() * 3).toFixed(2)}s;--t:${(1.8 + rnd() * 1.2).toFixed(2)}s"></i>`);
+    if (!night) for (let i = 0; i < 3; i++) p.push(`<i class="sky-leaf" style="--y:${(30 + rnd() * 50).toFixed(1)}%;--d:${(-rnd() * 6).toFixed(2)}s;--t:${(5 + rnd() * 3).toFixed(1)}s"><i style="--lc:${['#d9822b', '#c9a227', '#9bb24a'][i]}"></i></i>`);
+  }
+  if (x.bolt) p.push(`<i class="sky-bolt" style="--x:${(40 + rnd() * 40).toFixed(0)}%"></i>`);
+  if (x.rainbow && !night) p.push('<i class="sky-rainbow"></i>');
+  if (x.heat && !night) { p.push('<i class="sky-haze"></i>'); for (let i = 0; i < 3; i++) p.push(`<i class="sky-flare" style="--x:${(50 + rnd() * 40).toFixed(0)}%;--y:${(8 + rnd() * 30).toFixed(0)}%;--s:${(30 + rnd() * 40).toFixed(0)}px;--d:${(-rnd() * 6).toFixed(2)}s"></i>`); }
+  // The real sky's moment or a festival sky (78-anim-wire.js; the sky and seasons packs): a small accent.
+  const acc = o.accent === false || typeof animSkyAccentHtml !== 'function' ? '' : animSkyAccentHtml();
+  if (acc) p.push(acc);
+  const accKind = acc ? (/data-ap-sky="(\w+)"/.exec(acc) || [])[1] || '' : '';
+  return `<div class="bf-sky${o.cls ? ' ' + escAttr(o.cls) : ''}"${accKind ? ` data-ap-sky="${escAttr(accKind)}"` : ''}${x.wind ? ' data-wind=""' : ''} data-cond="${escAttr(cond || 'none')}" data-tod="${escAttr(tod)}" aria-hidden="true">${p.join('')}</div>`;
+}
+/** Wind / rainbow / heat / bolt flags from the cached weather (09-motion-logic.js motionSkyExtras). */
+function _bfSkyExtras() {
+  try {
+    const w = typeof _bf !== 'undefined' && _bf.weather && _bf.weather.ok ? _bf.weather : null;
+    if (!w || typeof motionSkyExtras !== 'function') return {};
+    const hour = typeof Clock !== 'undefined' ? Clock.parts().h : new Date().getHours();   // clock-ok: fallback where Clock is not loaded (tests)
+    return motionSkyExtras(w, { hour, today: todayStrSafe() });
+  } catch (e) { return {}; }
 }
 function _bfSunHours(w) {
   const h = (s) => { const m = _calMinOf(s); return m === null ? NaN : m / 60; };
   return { up: h(w && w.today && w.today.sunrise), down: h(w && w.today && w.today.sunset) };
 }
 function briefTod(w, d) {
-  d = d || new Date();
+  const p = Clock.parts(d ? d.getTime() : Clock.now());   // the hour where the user is (travel spec 2.7 P11)
   const sun = _bfSunHours(w);
-  return briefTimeOfDay(d.getHours() + d.getMinutes() / 60, sun.up, sun.down);
+  return briefTimeOfDay(p.h + p.mi / 60, sun.up, sun.down);
 }
 function _bfDeg(t) { return typeof t === 'number' && isFinite(t) ? Math.round(t) + '°' : '–'; }
 
@@ -212,7 +237,7 @@ const _bf = {
   money: null, moneyAt: 0, moneyLoading: false,
   summary: {}, summaryLoading: {},
   refresh: null, refreshedFor: '', results: {},
-  welcome: false, returnView: 'home', introFor: '', snapFor: '', ticker: null, dayCheck: todayStrSafe(),
+  welcome: false, introFor: '', snapFor: '', ticker: null, dayCheck: todayStrSafe(),
 };
 function todayStrSafe() { try { return todayStr(); } catch (e) { return ''; } }
 function _bfJson(url, opts) {
@@ -317,7 +342,9 @@ function briefRefresh(force) {
 }
 
 /* ---------- the model ---------- */
-function _bfMin(d) { return d.getHours() * 60 + d.getMinutes(); }
+function _bfMin(d) { return Clock.parts(d.getTime()).min; }
+/** The hour of the model's "now" in the dashboard's zone. */
+function _bfHour(m) { return Clock.parts(m.nowD.getTime()).h; }
 function _bfEventsOn(iso) {
   if (typeof calEntriesOn !== 'function' || !CalStore.data) return [];
   const mine = new Set((APP_CONFIG.myEmails || []).map(x => String(x).toLowerCase()));
@@ -350,7 +377,7 @@ function _bfIsDeadline(i) { return animForTask(i).type === 'deadline'; }
 /** Everything the brief shows, from the page's own data. */
 function briefModel() {
   const date = todayStr();
-  const nowD = new Date(), now = _bfMin(nowD);
+  const nowD = new Date(Clock.now()), np = Clock.parts(nowD.getTime()), now = np.min;
   const events = _bfEventsOn(date);
   const open = _bfOpen();
   const dueToday = open.filter(i => effDate(i) === date);
@@ -359,7 +386,7 @@ function briefModel() {
   const focus = (typeof homeFocusTasks === 'function' ? homeFocusTasks(3) : []).map(f => ({ i: f.i, why: f.why, type: animForTask(f.i).type }));
   const w = _bfForcedWx(_bf.weather && _bf.weather.ok ? _bf.weather : null);
   const input = {
-    date, weekday: nowD.getDay(), now,
+    date, weekday: np.dow, now,
     events: events.map(e => ({ title: e.title, type: e.type, start: e.start, end: e.end, allDay: e.allDay, minutes: e.minutes, own: e.own })),
     tasks: { today: dueToday.length, overdue: overdue.length, p1Today: dueToday.filter(i => effPriority(i) === 'p1').length, deadlines: deadlines.map(i => ({ id: i.id, title: effTitle(i) })) },
     focus: focus.map(f => ({ id: f.i.id, title: effTitle(f.i), type: f.type })),
@@ -371,44 +398,47 @@ function briefModel() {
   const nowEv = timed.find(e => e.start <= now && e.end > now) || null;
   const next = timed.find(e => e.start > now) || null;
   // Deadlines this week: P1 or deadline-like tasks in the next 7 days, plus dated top-bar countdowns in 14.
-  const in7 = fmtDate(new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() + 7));
+  const in7 = Clock.addDays(date, 7);
   const weekDl = open.filter(i => { const d = effDate(i); return d && d >= date && d <= in7 && (effPriority(i) === 'p1' || _bfIsDeadline(i)); })
     .sort((a, b) => effDate(a).localeCompare(effDate(b)) || (PRIORITY_ORDER[effPriority(a)] ?? 3) - (PRIORITY_ORDER[effPriority(b)] ?? 3));
-  const in14 = fmtDate(new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() + 14));
+  const in14 = Clock.addDays(date, 14);
   const countdowns = (typeof tbList === 'function' ? tbList() : []).filter(x => x && TB_TYPES[x.type] && TB_TYPES[x.type].dated && x.type === 'countdown' && x.date && x.date >= date && x.date <= in14).slice(0, 4);
   const waiting = typeof homeIsWaiting === 'function' ? open.filter(homeIsWaiting) : [];
   const backlog = open.filter(i => !effDate(i) && statusOf(i.id) !== 'doing' && !(typeof homeIsWaiting === 'function' && homeIsWaiting(i)) && !(i.startDate && i.startDate > date))
     .sort((a, b) => (PRIORITY_ORDER[effPriority(a)] ?? 3) - (PRIORITY_ORDER[effPriority(b)] ?? 3) || String(a.createdAt || a.id).localeCompare(String(b.createdAt || b.id))).slice(0, 4);
-  const tomorrow = fmtDate(new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() + 1));
+  const tomorrow = Clock.addDays(date, 1);
   const trip = [...events, ...(dt.type === 'travel' ? [] : _bfEventsOn(tomorrow).map(e => Object.assign(e, { tomorrow: true })))].filter(e => BRIEF_TRAVEL_TYPES.includes(e.type) && (!e.allDay || e.own));
   return { date, now, nowD, events, timed, nowEv, next, open, dueToday, overdue, deadlines, focus, dt, head, weekDl, countdowns, waiting, backlog, trip, weather: w, money: _bf.money };
 }
 
 /* ---------- rendering ---------- */
 let _bfRoot = null;
+/**
+ * The day's hero into Home (12-home.js mount, every render): the greeting over the
+ * weather sky with Play my morning, the refresh strip, the inline story's stage and
+ * "your day in three sentences", then Ideas for today. The widgets follow it.
+ */
 function briefRender(container) {
   _animSyncRoot();
-  if (CalStore && !CalStore.st.loaded && !CalStore.st.loading && _serverAvailable) CalStore.load().then(() => _bfUpdate(['hero', 'cards']));
-  if (!_bf.weather) briefLoadWeather().then(() => _bfUpdate(['hero', 'cards']));
-  if (!_bf.money) briefLoadMoney().then(() => _bfUpdate(['money']));
+  if (CalStore && !CalStore.st.loaded && !CalStore.st.loading && _serverAvailable) CalStore.load().then(() => _bfUpdate(['hero']));
+  if (!_bf.weather) briefLoadWeather().then(() => _bfUpdate(['hero']));
+  if (!_bf.money) briefLoadMoney();
   animAiCache();
   const m = briefModel();
   const intro = _bf.introFor !== m.date && animEnabled();
   _bf.introFor = m.date;
   const root = document.createElement('div');
-  root.className = 'brief' + (intro ? ' intro' : '') + (_bf.welcome ? ' is-welcome' : '');
+  root.className = 'brief home-head' + (intro ? ' intro' : '') + (_bf.welcome ? ' is-welcome' : '');
   root.dataset.daytype = m.dt.type;
   root.style.setProperty('--bf-accent', `var(--sw-${m.dt.accent})`);
   _bfRoot = root;
   root.appendChild(_bfHero(m, intro));
   const prog = document.createElement('div'); prog.dataset.region = 'progress'; root.appendChild(prog);
+  if (typeof homeHeadStage === 'function') { const st = homeHeadStage(); if (st) root.appendChild(st); }   // the story, inline (12-home-head.js)
   root.appendChild(_bfAiCard(m));
-  const grid = document.createElement('div'); grid.className = 'bf-grid'; grid.dataset.region = 'cards';
-  _bfFillCards(grid, m);
-  root.appendChild(grid);
-  root.appendChild(_bfFooter(m));
-  if (typeof storyMountEntry === 'function') storyMountEntry(root, 'morning');   // 79-story-engine.js
+  if (typeof homeHeadIdeas === 'function') { const ideas = homeHeadIdeas(); if (ideas) root.appendChild(ideas); }
   container.appendChild(root);
+  if (typeof homeHeadAttach === 'function') homeHeadAttach(root);
   _bfPaintProgress();
   if (intro) _bfIntro(root, m);
   animActivate(root);
@@ -423,7 +453,7 @@ function briefUnmount() {
   clearTimeout(_bfTypeTimer);
   _bfRoot = null; _bf.welcome = false;
 }
-/** Replace regions of the open brief without replaying the intro. */
+/** Replace regions of the hero without replaying the intro ('cards' / 'money': the widgets below have their own data). */
 function _bfUpdate(regions) {
   const root = _bfRoot;
   if (!root || !root.isConnected) return;
@@ -433,32 +463,19 @@ function _bfUpdate(regions) {
   root.style.setProperty('--bf-accent', `var(--sw-${m.dt.accent})`);
   for (const r of regions) {
     if (r === 'hero') { const old = root.querySelector('[data-region="hero"]'); if (old) old.replaceWith(_bfHero(m, false)); }
-    else if (r === 'cards') { const g = root.querySelector('[data-region="cards"]'); if (g) { g.innerHTML = ''; _bfFillCards(g, m); } }
-    else if (r === 'money') { const c = root.querySelector('[data-card="money"]'); if (c) c.replaceWith(_bfCard('money', m)); }
   }
   animActivate(root);
   _bfTick();
 }
-function _bfFillCards(grid, m) {
-  const main = document.createElement('div'); main.className = 'bf-col bf-col-main';
-  const side = document.createElement('div'); side.className = 'bf-col bf-col-side';
-  const MAIN = new Set(['focus', 'schedule', 'trip', 'backlog']);
-  for (const id of m.dt.order) {
-    const el = _bfCard(id, m);
-    if (!el) continue;
-    (MAIN.has(id) ? main : side).appendChild(el);
-  }
-  grid.append(main, side);
-}
 
 /* ---------- hero ---------- */
 function _bfGreeting(m) {
-  const h = m.nowD.getHours();
+  const h = _bfHour(m);
   const part = h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
   return userName() ? `${part}, ${userName()}` : part;
 }
 /** "Protect your morning" only while it is morning. */
-function _bfPart(m) { const h = m.nowD.getHours(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'; }
+function _bfPart(m) { const h = _bfHour(m); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'; }
 function _bfTagline(m) {
   const part = _bfPart(m);
   if (part === 'morning') return m.dt.tagline;
@@ -474,7 +491,7 @@ function _bfHero(m, intro) {
   hero.className = 'bf-hero' + (/night|evening|dusk/.test(tod) || /rain|thunder/.test(cond) ? ' on-dark' : '');
   hero.dataset.region = 'hero'; hero.dataset.tod = tod; hero.dataset.cond = cond;
   let dateTxt = '';
-  try { dateTxt = m.nowD.toLocaleDateString(APP_CONFIG.locale || undefined, { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { dateTxt = m.date; }
+  try { dateTxt = m.nowD.toLocaleDateString(APP_CONFIG.locale || undefined, { weekday: 'long', day: 'numeric', month: 'long', timeZone: Clock.zone() }); } catch (e) { dateTxt = m.date; }
   const place = APP_CONFIG.location && APP_CONFIG.location.name ? APP_CONFIG.location.name : '';
   const stats = briefStats(m.dt.counts);
   let head = m.head;
@@ -493,6 +510,7 @@ function _bfHero(m, intro) {
         <p class="bf-tagline">${esc(_bfTagline(m))}</p>
         <div class="bf-stats">${stats.every(s => !s.n) ? '<span class="bf-stat-none">Nothing due today.</span>' : stats.map(s => `<span class="bf-stat" data-k="${escAttr(s.key)}"><b class="num" data-n="${escAttr(s.n)}">${intro ? '0' : esc(s.n)}</b> ${esc(s.n === 1 ? s.one : s.many)}</span>`).join('<span class="bf-dot" aria-hidden="true">·</span>')}</div>
         <div class="bf-next"></div>
+        <div class="bf-play-row"></div>
       </div>
       <div class="bf-hero-r">
         <div class="bf-wx"></div>
@@ -501,6 +519,9 @@ function _bfHero(m, intro) {
     </div>`;
   _bfNextLine(hero.querySelector('.bf-next'), m);
   _bfWeatherNow(hero.querySelector('.bf-wx'), m);
+  const row = hero.querySelector('.bf-play-row');
+  if (typeof homeHeadPlayRow === 'function') homeHeadPlayRow(row, m); else row.remove();   // Play my morning (12-home-head.js)
+  if (typeof animLivingPaint === 'function') animLivingPaint(hero);                        // the light that moves through the day (78-anim-moments.js)
   return hero;
 }
 function _bfNextLine(el, m) {
@@ -509,7 +530,7 @@ function _bfNextLine(el, m) {
     el.innerHTML = `${icon('sun', 'i-sm')}<span>${m.timed.length ? 'Nothing else in the calendar today.' : 'No meetings today.'}</span>`;
     return;
   }
-  const at = new Date(m.nowD.getFullYear(), m.nowD.getMonth(), m.nowD.getDate(), Math.floor(e.start / 60), e.start % 60).getTime();
+  const at = Clock.at(m.date, e.start);
   // Real minutes to go (as the 30 s ticker counts them), not clock minutes: they differ on a daylight-saving day.
   el.innerHTML = `${animSceneHtml(e.type, { size: 'xs' })}<span class="bf-next-t"><b>${esc(e.title)}</b> <span class="bf-rel" data-at="${at}" data-end="${at + e.minutes * 60000}">${esc(m.nowEv === e ? 'now' : briefRelTime(Math.round((at - m.nowD.getTime()) / 60000)))}</span></span>`;
   el.title = `${_bfTimeTxt(e.start)}–${_bfTimeTxt(e.end)} ${e.title}`;
@@ -598,7 +619,7 @@ function _bfFacts(m) {
   if (_bfWxParam()) m = Object.assign({}, m, { weather: _bf.weather && _bf.weather.ok ? _bf.weather : null });   // Claude gets the real forecast
   const hm = (n) => (n === null || n === undefined ? null : _calHM(n));
   return {
-    date: m.date, weekday: m.nowD.toLocaleDateString('en-GB', { weekday: 'long' }), now: hm(m.now), dayType: m.dt.type,
+    date: m.date, weekday: m.nowD.toLocaleDateString('en-GB', { weekday: 'long', timeZone: Clock.zone() }), now: hm(m.now), dayType: m.dt.type,
     weather: m.weather && m.weather.current ? { now: m.weather.current.label, temp: m.weather.current.temp, high: m.weather.today && m.weather.today.hi, low: m.weather.today && m.weather.today.lo, rainChance: m.weather.today && m.weather.today.rainChance } : null,
     schedule: m.events.slice(0, 14).map(e => ({ time: e.allDay ? 'all day' : `${hm(e.start)}-${hm(e.end)}`, title: e.title.slice(0, 120), kind: e.type })),
     focus: m.focus.map(f => ({ title: effTitle(f.i).slice(0, 160), why: f.why.map(x => x.t), nextStep: (getSubtasks(f.i.id).find(s => !s.done) || {}).title || null })),
@@ -677,248 +698,11 @@ function _bfCardShell(id, title, ic, opts) {
   }
   return { card, body: card.querySelector('.card-b') };
 }
-function _bfCard(id, m) {
-  try {
-    switch (id) {
-      case 'schedule': return _bfSchedule(m);
-      case 'focus': return _bfFocus(m);
-      case 'deadlines': return _bfDeadlines(m);
-      case 'waiting': return _bfWaiting(m);
-      case 'money': return _bfMoney(m);
-      case 'weather': return _bfWeatherCard(m);
-      case 'backlog': return _bfBacklog(m);
-      case 'trip': return _bfTrip(m);
-      default: return null;
-    }
-  } catch (e) { console.error('[brief card ' + id + ']', e); return null; }
-}
 function _bfEmpty(body, ic, title, text) {
   body.innerHTML = `<div class="home-empty">${icon(ic)}<div><b>${esc(title)}</b><span>${esc(text)}</span></div></div>`;
 }
 function _bfTimeTxt(min) { return _calTimeLabel(_calHM(min)); }
-
-function _bfSchedule(m) {
-  const calOff = APP_CONFIG.features && APP_CONFIG.features.calendar === false;
-  const { card, body } = _bfCardShell('schedule', 'Today', 'calendar-clock', { n: m.events.length || '', action: calOff ? null : { label: 'Calendar', run: () => setView('calendar:day') } });
-  if (m.dt.type === 'meetings') card.classList.add('is-lead');
-  const allDay = m.events.filter(e => e.allDay).sort((a, b) => (b.own - a.own) || (b.type === 'birthday') - (a.type === 'birthday'));
-  if (allDay.length) {
-    const ad = document.createElement('div'); ad.className = 'bf-allday';
-    allDay.forEach((e, i) => {
-      const c = document.createElement('span'); c.className = 'bf-ad anim-hover-host' + (e.type === 'birthday' ? ' is-bday' : '') + (!e.own || e.bg ? ' other' : '');      c.style.setProperty('--i', i);
-      c.innerHTML = animSceneHtml(e.type, { size: 'xs' }) + `<span>${esc(e.title)}</span>`;
-      ad.appendChild(c);
-    });
-    body.appendChild(ad);
-  }
-  if (!m.timed.length) {
-    if (!allDay.length) {
-      const noCal = !CalStore.data || !calAllEvents().length;
-      _bfEmpty(body, noCal ? 'plug' : 'sun', noCal ? 'No calendar yet' : 'Nothing booked', noCal ? 'Connect a calendar in Connections to see your day here.' : 'The whole day is yours.');
-    }
-    return card;
-  }
-  const gaps = m.dt.type === 'meetings' || m.dt.counts.meetings >= 2 ? briefGaps(m.timed, 9 * 60, 18 * 60, 45) : [];
-  const ol = document.createElement('ol'); ol.className = 'bf-tl';
-  const rows = m.timed.map(e => ({ k: 'e', at: e.start, e })).concat(gaps.map(g => ({ k: 'g', at: g.start, g }))).sort((a, b) => a.at - b.at || (a.k === 'g' ? 1 : -1));
-  let idx = 0;
-  for (const r of rows) {
-    const li = document.createElement('li');
-    li.style.setProperty('--i', idx++);
-    if (r.k === 'g') {
-      li.className = 'bf-gap';
-      li.innerHTML = `<time>${esc(_bfTimeTxt(r.g.start))}</time><span class="bf-gap-l"></span><span class="bf-gap-t">${icon('sparkle', 'i-xs')}Free until ${esc(_bfTimeTxt(r.g.end))} · ${esc(_bfDur(r.g.minutes))}</span>`;
-      ol.appendChild(li); continue;
-    }
-    const e = r.e;
-    const isNow = m.nowEv === e, isNext = !isNow && m.next === e, past = e.end <= m.now;
-    li.className = 'bf-ev anim-hover-host' + (isNow ? ' now' : isNext ? ' next' : past ? ' past' : '');
-    const at = new Date(m.nowD.getFullYear(), m.nowD.getMonth(), m.nowD.getDate(), Math.floor(e.start / 60), e.start % 60).getTime();
-    const url = safeUrl(e.joinUrl);
-    li.innerHTML = `<time>${esc(_bfTimeTxt(e.start))}<span>${esc(_bfTimeTxt(e.end))}</span></time>`
-      + `${animSceneHtml(e.type, { size: 'sm', hover: past })}`
-      + `<div class="bf-ev-b"><div class="bf-ev-t">${esc(e.title)}${isNow ? '<span class="badge badge-accent">Now</span>' : isNext ? `<span class="badge badge-soft bf-rel" data-at="${at}" data-end="${at + e.minutes * 60000}">${esc(briefRelTime(Math.round((at - m.nowD.getTime()) / 60000)))}</span>` : ''}</div>`
-      + `${e.location && !/^https?:/i.test(e.location) ? `<div class="bf-ev-s">${icon('map-pin', 'i-xs')}<span>${esc(e.location)}</span></div>` : ''}</div>`;
-    if (url && !past) {
-      const a = document.createElement('a'); a.className = 'btn btn-sm ' + (isNow || isNext ? 'btn-primary' : 'btn-ghost'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
-      a.innerHTML = icon('video', 'i-sm') + '<span>Join</span>';
-      li.appendChild(a);
-    }
-    li.tabIndex = 0; li.setAttribute('role', 'button');
-    const open = () => { if (typeof calOpenEvent === 'function') calOpenEvent(e.id); };
-    li.addEventListener('click', (ev) => { if (!ev.target.closest('a')) open(); });
-    li.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') open(); });
-    ol.appendChild(li);
-  }
-  body.appendChild(ol);
-  return card;
-}
-function _bfDur(min) { const h = Math.floor(min / 60), r = min % 60; return h ? `${h} h${r ? ' ' + r + ' min' : ''}` : `${r} min`; }
-
-function _bfFocus(m) {
-  const { card, body } = _bfCardShell('focus', m.dt.type === 'deadline' ? ({ morning: 'Protect your morning', afternoon: 'Protect your afternoon', evening: 'Before you stop' })[_bfPart(m)] : 'Focus', 'target', { n: m.focus.length || '', action: { label: 'Home', run: () => setView('home') } });
-  if (m.dt.lead === 'focus') card.classList.add('is-lead');
-  if (!m.focus.length) { _bfEmpty(body, 'circle-check', 'Nothing pressing', 'No overdue, pinned or high-priority tasks. A good day to pick something you have been meaning to do.'); return card; }
-  const list = document.createElement('div'); list.className = 'bf-focus-list';
-  m.focus.forEach((f, idx) => {
-    const it = f.i, id = it.id;
-    const subs = getSubtasks(id);
-    const done = subs.filter(s => s.done).length;
-    const el = document.createElement('article');
-    el.className = 'bf-fc anim-hover-host'; el.dataset.id = id; el.style.setProperty('--i', idx);
-    const d = effDate(it), n = d ? daysUntil(d) : null;
-    const due = d ? `<span class="hf-due ${n < 0 ? 'overdue' : n === 0 ? 'today' : n <= 3 ? 'soon' : ''}">${icon(n < 0 ? 'circle-alert' : 'calendar', 'i-xs')}<span>${esc(n < 0 ? `${-n}d overdue` : dueLabel(d))}</span></span>` : '';
-    el.innerHTML = `<div class="bf-fc-top"><span class="bf-fc-n num">${idx + 1}</span>${animSceneHtml(f.type, { size: 'md', urgent: f.type === 'deadline' && n !== null && n <= 0 })}`
-      + `<div class="bf-fc-h"><div class="bf-fc-t">${esc(effTitle(it))}</div><div class="bf-fc-m">${_homeStreamHtml(effStream(it))}${f.why.filter(w => !['overdue', 'today', 'soon'].includes(w.k)).slice(0, 2).map(w => `<span class="hf-why w-${escAttr(w.k)}">${esc(w.t)}</span>`).join('')}${due}</div></div></div>`
-      + (subs.length ? `<ul class="bf-subs">${subs.filter(s => !s.done).slice(0, 3).map(s => `<li data-st="${escAttr(s.id)}"><button type="button" class="cbx" role="checkbox" aria-checked="false" aria-label="${escAttr(s.title)}" data-act="sub">${icon('check')}</button><span>${esc(s.title)}</span></li>`).join('')}</ul>`
-        + `<div class="bf-fc-prog"><span class="progress"><i style="--pct:${Math.round(done / subs.length * 100)}%"></i></span><span class="num">${esc(done)}/${esc(subs.length)}</span></div>` : '')
-      + (typeof resFocusChips === 'function' ? resFocusChips(id) : '');
-    el.addEventListener('click', (e) => {
-      const a = e.target.closest('[data-act]');
-      if (a) {
-        e.stopPropagation();
-        if (a.dataset.act === 'sub') { const li = a.closest('[data-st]'); toggleSubtask(id, li.dataset.st); }
-        else if (a.dataset.act === 'res' && typeof resPrimary === 'function') resPrimary(a.dataset.res, { type: 'task', id });
-        else if (a.dataset.act === 'open') homeOpenSheet(id, el);
-        return;
-      }
-      homeOpenSheet(id, el);
-    });
-    list.appendChild(el);
-  });
-  body.appendChild(list);
-  return card;
-}
-
-function _bfDeadlines(m) {
-  const items = m.weekDl.slice(0, 6);
-  const { card, body } = _bfCardShell('deadlines', 'Deadlines this week', 'hourglass', { n: m.weekDl.length || '', action: { label: 'Upcoming', run: () => setView('week') } });
-  if (!items.length && !m.countdowns.length) { _bfEmpty(body, 'check-check', 'No deadlines this week', 'Nothing high-priority is due in the next seven days.'); return card; }
-  const ul = document.createElement('ul'); ul.className = 'bf-dl';
-  for (const i of items) {
-    const n = daysUntil(effDate(i));
-    const li = document.createElement('li'); li.className = 'anim-hover-host' + (n <= 0 ? ' is-today' : n <= 2 ? ' is-soon' : '');
-    li.innerHTML = `${animSceneHtml(animForTask(i).type, { size: 'xs', hover: true })}<span class="bf-dl-t">${esc(effTitle(i))}</span><span class="bf-dl-c num">${esc(n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `${n} days`)}</span>`;
-    li.onclick = () => homeOpenSheet(i.id, li);
-    ul.appendChild(li);
-  }
-  for (const w of m.countdowns) {
-    const n = daysUntil(w.date);
-    const li = document.createElement('li'); li.className = 'bf-dl-cd';
-    li.innerHTML = `<span class="bf-dl-ic">${typeof tbIconHtml === 'function' ? tbIconHtml(w) : icon('hourglass')}</span><span class="bf-dl-t">${esc(w.label || 'Countdown')}</span><span class="bf-dl-c num">${esc(n === 0 ? 'Today' : `${n} days`)}</span>`;
-    ul.appendChild(li);
-  }
-  body.appendChild(ul);
-  return card;
-}
-
-function _bfWaiting(m) {
-  const { card, body } = _bfCardShell('waiting', 'Waiting on · follow up', 'hourglass', { n: m.waiting.length || '' });
-  const rows = m.waiting.slice(0, 5);
-  if (!rows.length) { _bfEmpty(body, 'check-check', 'Nobody to chase', 'Nothing is waiting on someone else.'); return card; }
-  const ul = document.createElement('ul'); ul.className = 'hw-list';
-  for (const i of rows) {
-    const p = typeof homeWaitingPerson === 'function' ? homeWaitingPerson(i) : null;
-    const d = effDate(i), n = d ? daysUntil(d) : null;
-    const li = document.createElement('li'); li.className = 'hw-row'; li.tabIndex = 0; li.setAttribute('role', 'button');
-    li.innerHTML = `${p ? homeAvatar(p, 24) : `<span class="hw-ic">${icon('clock')}</span>`}<div class="hw-body"><div class="hw-t">${esc(effTitle(i))}</div><div class="hw-s">${esc(p ? p.name : 'Someone')}${d ? ` · <span class="${n < 0 ? 'danger' : ''}">${esc(n < 0 ? `chase: ${-n}d late` : n === 0 ? 'chase today' : 'follow up ' + dueLabel(d))}</span>` : ''}</div></div>`;
-    li.onclick = () => homeOpenSheet(i.id, li);
-    ul.appendChild(li);
-  }
-  body.appendChild(ul);
-  return card;
-}
-
 function _bfMoneyFmt(n, cur) { return typeof _homeFmtMoney === 'function' ? _homeFmtMoney(n, cur) : String(n); }
-function _bfMoney(m) {
-  if (APP_CONFIG.features && APP_CONFIG.features.finance === false) return null;
-  const { card, body } = _bfCardShell('money', 'Money', 'wallet', { action: { label: 'Finances', run: () => setView('finance') } });
-  const d = _bf.money;
-  if (!d) { body.innerHTML = '<span class="skeleton skeleton-text" style="width:70%"></span>'; return card; }
-  if (!d.available) { _bfEmpty(body, 'lock', 'No finance data yet', 'Import a bank CSV or connect your bank in Finances.'); card.classList.add('is-off'); return card; }
-  const cur = d.currency;
-  const y = d.yesterday || {};
-  const mo = d.month || {};
-  const warn = mo.pct !== null && mo.pct !== undefined && mo.pct > (mo.monthPct || 0) + 5;
-  body.innerHTML = `<div class="bf-money-y">${!y.covered ? `<span class="muted">Yesterday's payments are not in yet.</span>` : y.count ? `Yesterday you spent <b class="num">${esc(_bfMoneyFmt(y.total, cur))}</b> <span class="muted">(${esc(y.count)} payment${y.count === 1 ? '' : 's'})</span>` : 'No spending yesterday.'}</div>`
-    + (typeof mo.toDate === 'number' ? `<div class="hfin-row"><div><div class="hfin-n num">${esc(_bfMoneyFmt(mo.toDate, cur))}</div><div class="hfin-l">spent in ${esc(mo.label || 'this month')}</div></div></div>` : '')
-    + (mo.budget ? `<div class="progress hfin-bar${warn ? ' warn' : ''}"><i style="--pct:${Math.min(100, mo.pct)}%"></i><b style="left:${mo.monthPct}%"></b></div><div class="hfin-cmp${warn ? ' warn' : ''}">${esc(`${mo.pct}% of the ${_bfMoneyFmt(mo.budget, cur)} budget · ${mo.monthPct}% of the month gone`)}</div>`
-      : typeof mo.lastMonthSameDay === 'number' && mo.lastMonthSameDay > 0 ? `<div class="hfin-cmp">${esc(`${Math.round((mo.toDate - mo.lastMonthSameDay) / mo.lastMonthSameDay * 100)}% vs last month by this day`)}</div>` : '')
-    + (d.staleDays > 3 ? `<div class="home-foot">${icon('history')}<span>Latest transaction is ${esc(Math.round(d.staleDays))} days old</span></div>` : '');
-  return card;
-}
-
-function _bfWeatherCard(m) {
-  const w = m.weather;
-  if (!w || !w.ok) return null;
-  const { card, body } = _bfCardShell('weather', APP_CONFIG.location ? `Weather · ${APP_CONFIG.location.name}` : 'Weather', 'sun');
-  const today = m.date;
-  const hrs = (w.hourly || []).filter(h => h.date === today && h.hour >= Math.max(7, m.nowD.getHours()) && h.hour <= 21).slice(0, 8);
-  const list = hrs.length >= 4 ? hrs : (w.hourly || []).filter(h => h.date >= today).slice(0, 8);
-  const strip = document.createElement('div'); strip.className = 'bf-hours';
-  if (!list.length) {
-    // No hourly values for this day (outside the forecast): the day in one line instead of an empty strip.
-    const t = w.today || {}, c = w.current || {};
-    strip.className = 'bf-wx-day';
-    strip.innerHTML = `${briefWxIcon(c.cond, true)}<span><b>${esc(c.label || 'Forecast')}</b> · high ${esc(_bfDeg(t.hi))}, low ${esc(_bfDeg(t.lo))}${typeof t.rainChance === 'number' ? ` · ${esc(t.rainChance)}% chance of rain` : ''}</span>`;
-    body.appendChild(strip);
-  }
-  else {
-  strip.innerHTML = list.map(h => `<div class="bf-h${h.rain >= 50 ? ' wet' : ''}"><span class="bf-h-t">${esc(h.time)}</span><span class="bf-h-i">${briefWxIcon(h.cond, h.isDay, 'i-sm')}</span><b class="num">${esc(_bfDeg(h.temp))}</b><span class="bf-h-r" title="Chance of rain: ${esc(h.rain || 0)}%"><i style="--pct:${Math.max(0, Math.min(100, h.rain || 0))}%"></i></span><span class="bf-h-p num">${(h.rain || 0) >= 10 ? esc(h.rain) + "%" : ""}</span></div>`).join('');
-  body.appendChild(strip);
-  }
-  const t = w.today || {};
-  const foot = document.createElement('div'); foot.className = 'bf-wx-foot';
-  foot.innerHTML = `${t.sunrise ? `<span>${icon('sunrise', 'i-xs')}${esc(t.sunrise)}</span>` : ''}${t.sunset ? `<span>${icon('sunset', 'i-xs')}${esc(t.sunset)}</span>` : ''}<span class="spacer"></span>`
-    + `<a class="bf-attr" href="${escAttr((w.attribution && w.attribution.url) || 'https://open-meteo.com/')}" target="_blank" rel="noopener noreferrer">${esc((w.attribution && w.attribution.text) || 'Weather data by Open-Meteo.com')}</a>`;
-  body.appendChild(foot);
-  return card;
-}
-
-function _bfBacklog(m) {
-  if (!m.backlog.length) return null;
-  const { card, body } = _bfCardShell('backlog', m.dt.type === 'weekend' ? 'If you feel like it' : 'Good day for the backlog', 'layers', { n: '' });
-  const ul = document.createElement('ul'); ul.className = 'bf-backlog';
-  for (const i of m.backlog) {
-    const li = document.createElement('li'); li.className = 'anim-hover-host';
-    li.innerHTML = `${animSceneHtml(animForTask(i).type, { size: 'xs', hover: true })}<span class="bf-bl-t">${esc(effTitle(i))}</span>`;
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm';
-    b.innerHTML = icon('sun', 'i-sm') + '<span>Today</span>';
-    b.onclick = (e) => { e.stopPropagation(); setPlanned(i.id, todayStr()); toast('Planned for today', { kind: 'ok', action: { label: 'Undo', run: () => undo() } }); };
-    li.appendChild(b);
-    li.onclick = () => homeOpenSheet(i.id, li);
-    ul.appendChild(li);
-  }
-  body.appendChild(ul);
-  return card;
-}
-
-function _bfTrip(m) {
-  if (!m.trip.length) return null;
-  const { card, body } = _bfCardShell('trip', m.dt.type === 'travel' ? 'Your trip' : 'Travel tomorrow', 'plane');
-  if (m.dt.type === 'travel') card.classList.add('is-lead');
-  for (const e of m.trip.slice(0, 3)) {
-    const row = document.createElement('div'); row.className = 'bf-trip-row';
-    row.innerHTML = `${animSceneHtml(e.type, { size: 'lg' })}<div><div class="bf-trip-t">${esc(e.title)}</div><div class="bf-trip-s">${esc(e.tomorrow ? 'Tomorrow' : 'Today')}${e.allDay ? ' · all day' : ` · ${esc(_bfTimeTxt(e.start))}–${esc(_bfTimeTxt(e.end))} (${esc(_bfDur(e.minutes))})`}${e.location ? ' · ' + esc(e.location) : ''}</div>${!e.allDay && !e.tomorrow && e.start > m.now ? `<div class="bf-trip-n">Leave with time to spare: <b>${esc(briefRelTime(e.start - m.now))}</b></div>` : ''}</div>`;
-    body.appendChild(row);
-  }
-  return card;
-}
-
-function _bfFooter(m) {
-  const f = document.createElement('div'); f.className = 'bf-foot';
-  const go = document.createElement('button'); go.type = 'button'; go.className = 'btn btn-primary btn-lg bf-go';
-  go.innerHTML = `<span>${_bf.welcome ? 'Let’s go' : 'Back to Home'}</span>` + icon('arrow-right');
-  go.onclick = () => { const v = _bf.returnView && !String(_bf.returnView).startsWith('review') ? _bf.returnView : 'home'; _bf.welcome = false; setView(v); };
-  f.appendChild(go);
-  if (m.nowD.getHours() >= briefPrefs().eveningHour) {
-    const ev = document.createElement('button'); ev.type = 'button'; ev.className = 'btn btn-secondary btn-lg';
-    ev.innerHTML = icon('sunset') + '<span>Finish the day</span>';
-    ev.onclick = () => setView('review:evening');
-    f.appendChild(ev);
-  }
-  return f;
-}
 
 /* ---------- intro choreography ---------- */
 function _bfIntro(root, m) {
@@ -962,11 +746,13 @@ function _bfSaveSnapshot(update) {
 
 /* ---------- auto-open on the first visit of the day ---------- */
 async function briefMaybeAutoOpen() {
+  // Just after a time-zone change: not before 06:00 local, never in the first 10 min (travel spec 2.5, 87-clock-ui.js).
+  const wait = typeof clockAutoOpenWait === 'function' ? clockAutoOpenWait() : 0;
+  if (wait > 0) { clearTimeout(_bf.autoT); _bf.autoT = setTimeout(briefMaybeAutoOpen, Math.min(wait + 1000, 30 * 60000)); return; }
   _bf.dayCheck = todayStr();
   if (!briefPrefs().autoOpen || typeof _serverAvailable === 'undefined' || !_serverAvailable) return;
   if (typeof _obOpen !== 'undefined' && _obOpen) return;
   if (!APP_CONFIG.onboardedAt && !getAllItems().length) return;       // the welcome set-up comes first
-  if (String(state.view).startsWith('review:today')) return;
   const today = todayStr();
   let local = null; try { local = localStorage.getItem('dashboard-brief-seen'); } catch (e) { /* ignore */ }
   if (local === today) return;
@@ -977,12 +763,15 @@ async function briefMaybeAutoOpen() {
   briefOpen({ welcome: true });
   if (typeof storyAutoOpen === 'function') storyAutoOpen('morning');   // the story poster over the brief (79-story-engine.js)
 }
+/** Home's Today tab with the day's hero at the top (the greeting reads in again). */
 function briefOpen(o) {
   _bf.welcome = !!(o && o.welcome);
-  if (!String(state.view).startsWith('review')) _bf.returnView = state.view;
   _bf.introFor = '';
-  if (_bf.welcome && state.selectedTaskId && typeof closeDetail === 'function') closeDetail();   // the welcome screen gets the whole width
-  setView('review:today');
+  if (_bf.welcome && state.selectedTaskId && typeof closeDetail === 'function') closeDetail();   // the welcome gets the whole width
+  if (state.view !== 'home') { setView('home'); return; }
+  render();
+  const main = document.getElementById('main');
+  if (main && main.scrollTop > 0) main.scrollTo({ top: 0, behavior: window.Motion && Motion.prefersReduced() ? 'auto' : 'smooth' });
 }
 /** A tab left open overnight: the first look at it on a new day opens the brief. */
 function _briefDayCheck() {
