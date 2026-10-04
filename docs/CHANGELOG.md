@@ -10,6 +10,10 @@ upgrades it.
 
 ## [Unreleased]
 
+### Added
+
+- **Animation packs for Asia.** Every Asian country and territory (52, from Turkey to Japan and Indonesia) opens with a hand-drawn full-screen scene and has a small symbol; every major city (80) has its own full-screen opening, and every smaller city or famous town (73) a small symbol of its own. They play where you are (the weather town or the travel city), the opening welcomes you to your city or country, and each pack can be switched off in Settings > Animations. See `docs/dev/ASIA_PACK.md`.
+
 ## [2.3.0] - 2026-10-04
 
 ### Added
