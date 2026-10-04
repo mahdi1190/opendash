@@ -191,18 +191,18 @@
   /** A grazing horse (x, y = hoof line): body, neck, head down, legs, tail. */
   const horse = (x, y, s, col, mane) => `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="-34" rx="34" ry="15" fill="${col}"/><path fill="${col}" d="M24 -40L44 -34L52 -4L44 -2L36 -26z"/><path fill="${col}" d="M44 -34L62 -26L64 -18L52 -20z" opacity=".9"/><path d="M22 -46Q36 -40 44 -30" stroke="${mane}" stroke-width="5" fill="none"/><path d="M-26 -42Q-52 -40 -50 -10" stroke="${mane}" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M-20 -22V0M-10 -22V0M16 -22V0M26 -22V0" stroke="${col}" stroke-width="5" stroke-linecap="round"/></g>`;
   /** A flame (teardrop) in a flickering wrapper. */
-  const flame = (x, y, h, w, col, dur, del) => mv('usflicker', { ad: dur + 's', d: -del + 's', to: `${x}px ${y}px` }, `<path fill="${col}" d="M${x - w} ${y}Q${x - w * 0.5} ${y - h * 0.5} ${x - w * 0.1} ${y - h}Q${x + w * 0.3} ${y - h * 0.5} ${x + w} ${y}z"/>`);
+  const flame = (x, y, h, w, col, dur, del) => mv('usflicker', { ad: dur + 's', d: -del + 's', to: `${x}px ${y}px` }, `<path fill="${col}" d="M${x - w} ${y}C${x - w} ${R(y - h * 0.4)} ${R(x - w * 0.2)} ${R(y - h * 0.5)} ${R(x + w * 0.2)} ${y - h}C${R(x + w * 0.1)} ${R(y - h * 0.55)} ${x + w} ${R(y - h * 0.35)} ${x + w} ${y}z"/>`);
 
   /* ---------- Kazakhstan: the red canyon at sunset, the river and the eagles ---------- */
   asiaSceneAdd({ key: 'country:KZ', label: 'The red canyon at sunset', site: 'Charyn Canyon', colour: 'orange', mood: 'proud', season: 'any', tags: ['canyon', 'landscape', 'sunset', 'steppe'],
     svg: () => {
-      const s1 = U(), r1 = U(), c1 = U();
+      const s1 = U(), r1 = U();
       const spire = (x, y, w, h, fill, dark) => {
         let g = '';
         for (let i = 1; i < 6; i++) g += `M${R(x - w / 2 + (w * i) / 6)} ${y + h}l${R((i - 3) * 2)} ${-R(h * 0.8)}`;
         return `<path fill="${fill}" d="M${x - w / 2} ${y + h}L${x - w * 0.42} ${y + h * 0.3}L${x - w * 0.3} ${y + h * 0.18}L${x - w * 0.12} ${y}L${x + w * 0.1} ${y + h * 0.1}L${x + w * 0.32} ${y + h * 0.22}L${x + w * 0.46} ${y + h * 0.4}L${x + w / 2} ${y + h}z"/><path d="${g}" stroke="${dark}" stroke-width="3" fill="none" opacity=".55"/><path fill="${dark}" opacity=".3" d="M${x + w * 0.1} ${y + h * 0.1}L${x + w * 0.32} ${y + h * 0.22}L${x + w * 0.46} ${y + h * 0.4}L${x + w / 2} ${y + h}H${x}z"/>`;
       };
-      return `<defs>${lin(s1, [[0, '#6a7fb4'], [0.35, '#e9a0a0'], [0.65, '#ffc487'], [1, '#ffe6b0']])}${lin(r1, [[0, '#4fb8b0'], [1, '#1f6f78']])}${lin(c1, [[0, '#ffb070', 0.55], [1, '#ffb070', 0]])}</defs>`
+      return `<defs>${lin(s1, [[0, '#6a7fb4'], [0.35, '#e9a0a0'], [0.65, '#ffc487'], [1, '#ffe6b0']])}${lin(r1, [[0, '#4fb8b0'], [1, '#1f6f78']])}</defs>`
         + full(`url(#${s1})`) + rays(800, 500, 1100, '#ffe0b0', 0.1) + sun(800, 520, 52, '#fff3d0', '#ffb468')
         + streak(300, 170, 300, '#ffc8b0', 0.5) + streak(1300, 250, 240, '#ffb090', 0.5, 70) + cloud(500, 300, 0.9, '#d58a98', 0.8, 60, 5, '#ffd0b0') + cloud(1280, 360, 0.7, '#d38e9a', 0.75, 52, 18, '#ffd6b6')
         + birds(23, 4, 900, 330, '#4a2f40', 1, 560)
@@ -210,9 +210,9 @@
         + mv('uspar', { ad: '32s', dx: '14px' }, spire(300, 330, 150, 340, '#b8603c', '#6a2e28') + spire(520, 400, 120, 270, '#c26c44', '#6a2e28') + spire(1120, 380, 130, 290, '#c26c44', '#6a2e28') + spire(1340, 320, 160, 350, '#b8603c', '#6a2e28') + ridge('#a9533a', 640, 40, 14, 63))
         + `<path fill="#8a3f30" d="M-160 900V260Q-100 240 -60 300L40 340L120 330L180 420L240 440L300 520L370 560L430 640L520 700L600 760L680 820L700 900z"/><path fill="#a24a36" opacity=".8" d="M-160 560L60 520L200 560L300 600L420 660L520 740L600 820L640 900H-160z"/><path d="M-100 360L40 460L160 480M-40 470L120 560L260 580M20 580L180 650L340 680" stroke="#c9704a" stroke-width="9" opacity=".5" fill="none" stroke-linecap="round"/>`
         + `<path fill="#8a3f30" d="M1760 900V240Q1700 230 1660 300L1560 350L1480 340L1420 430L1360 450L1300 530L1230 570L1170 650L1090 710L1020 770L960 840L940 900z"/><path fill="#a24a36" opacity=".8" d="M1760 540L1580 520L1460 570L1360 610L1240 670L1150 740L1060 820L1030 900H1760z"/><path d="M1700 380L1560 470L1440 490M1640 480L1480 570L1340 590M1600 590L1420 660L1280 690" stroke="#c9704a" stroke-width="9" opacity=".5" fill="none" stroke-linecap="round"/>`
-        + `<path fill="url(#${r1})" d="M690 900L740 760Q790 700 800 650Q820 690 850 760L930 900z"/><path fill="url(#${r1})" opacity=".8" d="M760 760Q800 690 800 650Q830 700 860 760z"/>`
+        + `<path d="M800 650Q760 690 820 730Q880 770 800 810Q730 850 800 900" fill="none" stroke="#2a8f94" stroke-width="40" stroke-linecap="round"/><path d="M800 650Q760 690 820 730Q880 770 800 810Q730 850 800 900" fill="none" stroke="#5fd0c0" stroke-width="22" stroke-linecap="round" opacity=".8"/><path d="M-160 700L700 900M1760 700L900 900M-160 780L500 900M1760 780L1100 900" stroke="#6a2e28" stroke-width="5" opacity=".35"/><path d="M-160 450L100 520L240 560M1760 450L1500 520L1360 560M-160 620L200 700M1760 620L1400 700" stroke="#5a2420" stroke-width="5" opacity=".4" fill="none"/>`
         + shimmer(25, 16, 700, 900, 700, 890, '#c9fff2', 40)
-        + `<rect y="600" width="1600" height="300" fill="url(#${c1})"/>`
+        + haze(560, 340, '#ffb070', 0.5)
         + mv('uspar', { ad: '26s', dx: '10px' }, `<path fill="#4f3a2e" d="M-160 900V800Q40 760 120 820Q200 770 300 840V900z"/><path fill="#4f3a2e" d="M1760 900V790Q1560 760 1500 830Q1400 780 1280 850V900z"/>`
           + canopy('#5a6a2e', 868, 26, 71, 660, 960))
         + mv('usflap', { ad: '1s', to: '1000px 400px' }, '') + birds(27, 2, 700, 260, '#2c1c1c', 2.2, 380)
@@ -236,11 +236,11 @@
         + mv('uspar', { ad: '44s', dx: '8px' }, peak(280, 170, 620, 440, '#6a6aa4', '#4a4a86', '#ffd8dc', 5) + peak(1280, 140, 700, 470, '#6a6aa4', '#4a4a86', '#ffd8dc', 6) + peak(760, 120, 780, 500, '#7a76ae', '#524f90', '#ffe4e0', 7) + peak(1560, 250, 520, 360, '#7a76ae', '#524f90', '#ffe0e0', 8))
         + mv('uspar', { ad: '34s', dx: '12px' }, peak(100, 330, 560, 330, '#5a5f94', '#3f4478', '#f6c8d0', 9) + peak(1040, 300, 600, 340, '#5a5f94', '#3f4478', '#f6c8d0', 10) + ridge('#4c5486', 560, 70, 12, 11))
         + `<rect y="430" width="1600" height="230" fill="url(#${f1})"/>` + haze(560, 90, '#ffc8b8', 0.5)
-        + ridge('#3d3f6e', 640, 40, 14, 12, 700) + `<path fill="#3d3f6e" d="M1120 640Q1160 600 1196 540L1204 540Q1240 600 1280 640z"/>`
+        + ridge('#3d3f6e', 640, 40, 14, 12, 700) + `<path fill="#3d3f6e" d="M1060 660Q1160 560 1200 540Q1240 560 1340 660z"/>`
         + `<path d="M1200 640V310" stroke="#d8d4e8" stroke-width="6"/><path d="${lat}" stroke="#d8d4e8" stroke-width="2" fill="none"/><path d="M1200 310V240" stroke="#d8d4e8" stroke-width="3"/><rect x="1186" y="400" width="28" height="12" fill="#d8d4e8"/>`
         + mv('usflicker', { ad: '1.8s', to: '1200px 240px' }, '<circle cx="1200" cy="238" r="4" fill="#ff5a4a"/>')
         + mv('uspar', { ad: '30s', dx: '10px' }, city(81, -160, 1760, 720, 30, 110, 26, 54, '#6a6aa0', 0.5) + `<rect y="716" width="1600" height="190" fill="#4a4a7e"/>`)
-        + tiers + `<path fill="#d9a63a" d="M410 512l20 -40l20 40z"/><path fill="#d9a63a" d="M${430 - 62} 590l12 -22l12 22zM${430 + 38} 590l12 -22l12 22z"/>` + lit(418, 604, 8, 18) + lit(436, 604, 8, 18) + lit(418, 566, 8, 14) + lit(436, 566, 8, 14)
+        + `<g transform="translate(430 640) scale(1.7) translate(-430 -640)">${tiers}<path fill="#d9a63a" d="M410 512l20 -44l20 44z"/><path d="M430 468v-14" stroke="#d9a63a" stroke-width="3"/><path fill="#d9a63a" d="M${430 - 62} 590l12 -24l12 24zM${430 + 38} 590l12 -24l12 24z"/><rect x="380" y="600" width="100" height="40" fill="#efd48a"/>${lit(418, 604, 8, 18)}${lit(436, 604, 8, 18)}${lit(390, 610, 8, 16)}${lit(462, 610, 8, 16)}${lit(418, 566, 8, 14)}${lit(436, 566, 8, 14)}</g>`
         + dots('M-160 722H1760', '#ffd88a', 4, 30, 'us-lamps') + dots('M-160 744H1760', '#ffd88a', 3, 22, 'us-lamps')
         + mv('uspar', { ad: '24s', dx: '14px' }, trees)
         + `<path fill="#3d2a3a" d="M-160 900V850Q400 820 800 850T1760 840V900z"/>`
@@ -306,8 +306,8 @@
         + tent(260, 660, 1.1) + tent(350, 668, 0.9) + tent(1370, 664, 1.2) + dots('M230 636Q300 628 370 640', '#ffd27a', 4, 18, 'us-lamps')
         + `<ellipse cx="800" cy="640" rx="260" ry="62" fill="#3a1a1a"/><ellipse cx="800" cy="640" rx="236" ry="52" fill="url(#${d1})"/>`
         + fl
-        + puffs(800, 600, 6, '#4a2a2a', 40, 90, 6, -300, 3.4) + puffs(760, 610, 5, '#ff9a2a', 5, -30, 3.2, -280, 1.4) + puffs(860, 612, 4, '#ffb23a', 5, 40, 3.8, -240, 1.4)
-        + `<path fill="url(#${g1})" d="M530 650Q700 724 800 724Q900 724 1070 650Q1060 700 800 742Q540 700 530 650z"/><path fill="#8a4a3a" opacity=".6" d="M540 660Q700 726 800 726Q900 726 1060 660Q1040 690 800 716Q560 690 540 660z"/>`
+        + puffs(800, 560, 6, '#5a3a3a', 16, 80, 6, -300, 3.2) + puffs(760, 610, 5, '#ff9a2a', 5, -30, 3.2, -280, 1.4) + puffs(860, 612, 4, '#ffb23a', 5, 40, 3.8, -240, 1.4)
+        + `<path d="M566 644A234 50 0 0 0 1034 644" fill="none" stroke="#3a1a1a" stroke-width="16" stroke-linecap="round"/><path d="M540 650A260 58 0 0 0 1060 650" fill="none" stroke="#a0603c" stroke-width="5" opacity=".7"/>`
         + `<path fill="#4a2a28" d="M-160 900V780Q200 730 560 790Q800 830 1040 790Q1400 730 1760 790V900z"/><path fill="#2a1a20" d="M-160 900V850Q300 800 700 860T1760 850V900z"/>`
         + shimmer(61, 14, 520, 1080, 600, 650, '#ffd27a', 50)
         + mv('usbob', { ad: '1.2s', dy: '1.5px' }, `<g opacity=".35" fill="#ff9a2a"><rect x="560" y="600" width="480" height="8" rx="4"/></g>`)
@@ -326,7 +326,7 @@
         + mv('uspar', { ad: '46s', dx: '8px' }, peaks(0)) + haze(450, 120, '#e9f3f8', 0.6)
         + mv('uspar', { ad: '34s', dx: '12px' }, ridge('#9a8a76', 520, 90, 12, 81) + ridge('#8a7a66', 560, 60, 14, 82))
         + `<rect y="560" width="1600" height="340" fill="url(#${l1})"/>`
-        + `<g transform="translate(0 1100) scale(1 -1)" opacity=".34">${peaks(1)}${ridge('#9a8a76', 520, 90, 12, 81)}</g>`
+        + `<g transform="translate(0 1100) scale(1 -1)" opacity=".34">${peaks(1)}</g>`
         + `<rect y="560" width="1600" height="340" fill="url(#${l1})" opacity=".5"/>`
         + shimmer(91, 34, -100, 1700, 580, 880, '#e8fff8', 80) + shimmer(92, 20, 200, 1400, 570, 700, '#fff', 60)
         + `<path fill="#a69277" d="M-160 900V700Q100 650 340 700Q480 730 560 900z"/><path fill="#8a7658" d="M-160 900V760Q140 720 300 790Q400 840 420 900z"/><path fill="#b4a283" d="M1760 900V690Q1500 650 1260 700Q1100 740 1020 900z"/>`
@@ -365,13 +365,13 @@
     svg: () => {
       const s1 = U(), v1 = U(), r1 = U();
       let gul = '';
-      for (let i = 0; i < 9; i++) gul += `M${800 + (i - 4) * 14} ${300 + Math.abs(i - 4) * 10}Q${800 + (i - 4) * 60} ${460} ${800 + (i - 4) * 100} ${640}`;
+      for (let i = 0; i < 9; i++) gul += `M${800 + (i - 4) * 6} ${290 + Math.abs(i - 4) * 14}Q${800 + (i - 4) * 22} ${470} ${800 + (i - 4) * 36 + (i < 4 ? -30 : 30)} ${640}`;
       return `<defs>${lin(s1, [[0, '#4a4a92'], [0.3, '#a07ab0'], [0.6, '#f4a4a4'], [1, '#ffd8b0']])}${linU(v1, [[0, '#f8e4ee'], [0.5, '#c6a8c8'], [1, '#5c4a7c']], 520, 200, 1080, 640)}${lin(r1, [[0, '#f8c8a8'], [1, '#6a7aa6']])}</defs>`
         + full(`url(#${s1})`) + stars(111, 40, 220) + sun(300, 520, 46, '#fff0d0', '#ffb890', true) + rays(300, 520, 1000, '#ffd8b8', 0.08)
         + streak(1100, 160, 300, '#ffc8c0', 0.5) + streak(400, 230, 240, '#f0a8b8', 0.5, 70) + cloud(1300, 300, 0.8, '#d58aa4', 0.8, 60, 6, '#ffd0c0') + birds(113, 5, 500, 300, '#3a2f55', 1, 600)
         + mv('uspar', { ad: '44s', dx: '8px' }, peak(1360, 330, 520, 330, '#8a78b0', '#5f5090', '#fbe4ee', 31) + peak(180, 380, 460, 280, '#8a78b0', '#5f5090', '#fbe4ee', 32))
         + mv('uspar', { ad: '36s', dx: '10px' }, `<path fill="url(#${v1})" d="M520 640Q640 560 700 430Q740 330 770 250L800 232L832 252Q870 340 920 440Q980 560 1090 640z"/>` + `<path fill="#5c4a7c" opacity=".45" d="M800 232L832 252Q870 340 920 440Q980 560 1090 640H820z"/>` + `<path d="${gul}" stroke="#7a68a0" stroke-width="3" fill="none" opacity=".5"/>` + `<path fill="#fff" opacity=".7" d="M776 244L800 232L826 248L812 276L796 262L780 282z"/>`)
-        + mv('usdrift', { ad: '60s', dx: '60px' }, puffs(800, 232, 8, '#f6e4ee', 38, 150, 9, -140, 3.4))
+        + mv('usdrift', { ad: '60s', dx: '60px' }, puffs(800, 236, 8, '#f6e4ee', 14, 150, 9, -140, 3.2))
         + haze(560, 100, '#ffd0b8', 0.5)
         + mv('uspar', { ad: '30s', dx: '12px' }, ridge('#a85a4a', 640, 50, 12, 41) + canopy('#c9792a', 650, 22, 42, -160, 1760, 720))
         + `<path fill="url(#${r1})" d="M-160 900V780Q400 740 800 770Q1100 790 1300 750Q1600 710 1760 740V900z" opacity=".0"/>`

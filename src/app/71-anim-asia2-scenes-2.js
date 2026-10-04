@@ -198,4 +198,131 @@
         + gull(9, 6, 700, 300, '#fff', 520) + puffs(1330, 700, 3, '#ffffff', 6, 20, 6, -60, 2) + finish(0.3);
     } });
 
+
+  /** A skyline of filler towers (flat or slanted tops) with a lit window carpet. */
+  const towers = (seed, x0, x1, b, hmin, hmax, wmin, wmax, fill, glass, glow) => {
+    const r = rnd(seed); let x = x0, o = '', d = '';
+    while (x < x1) {
+      const bw = wmin + r() * (wmax - wmin), bh = hmin + r() * (hmax - hmin), k = r();
+      o += k < 0.25 ? `<path d="M${R(x)} ${b}V${R(b - bh + 36)}L${R(x + bw)} ${R(b - bh)}V${b}z"/>` : k < 0.4 ? `<path d="M${R(x)} ${b}V${R(b - bh)}H${R(x + bw * 0.6)}L${R(x + bw)} ${R(b - bh + 24)}V${b}z"/>` : `<rect x="${R(x)}" y="${R(b - bh)}" width="${R(bw)}" height="${R(bh)}"/>`;
+      if (bw > 26) for (let y = b - bh + 26; y < b - 14; y += 24) d += `M${R(x + 8)} ${R(y)}h${R(bw - 16)}`;
+      x += bw + 2 + r() * 8;
+    }
+    return `<g fill="${fill}">${o}</g>` + dots(d, glass, 9, 16, '', ' opacity=".5"') + dots(d, glow || '#ffd27a', 5, 16, 'us-lamps');
+  };
+  /** A dune: a lit slope and a shaded slope meeting on a crest running from (x0, y) up to (x0 + w * 0.5, y - h) and down to (x0 + w, y). */
+  const dune = (x0, y, w, h, light, shade, foot) => {
+    const cx = x0 + w * 0.46, f = foot || 900;
+    return `<path fill="${light}" d="M${x0} ${f}V${y}C${R(x0 + w * 0.2)} ${R(y - h * 0.15)} ${R(cx - w * 0.15)} ${R(y - h)} ${R(cx)} ${R(y - h)}L${R(cx + 8)} ${f}z"/><path fill="${shade}" d="M${R(cx)} ${R(y - h)}C${R(cx + w * 0.12)} ${R(y - h * 0.9)} ${R(x0 + w * 0.8)} ${R(y - h * 0.1)} ${x0 + w} ${y}V${f}H${R(cx + 8)}z"/>`;
+  };
+  const sphere = (cx, cy, r, base, band, hi) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${base}"/><path fill="none" stroke="${band}" stroke-width="${R(r / 7)}" opacity=".85" d="M${cx - r} ${cy}A${r} ${R(r * 0.3)} 0 0 0 ${cx + r} ${cy}M${R(cx - r * 0.93)} ${R(cy - r * 0.38)}A${r} ${R(r * 0.26)} 0 0 0 ${R(cx + r * 0.93)} ${R(cy - r * 0.38)}M${R(cx - r * 0.9)} ${R(cy + r * 0.4)}A${r} ${R(r * 0.26)} 0 0 0 ${R(cx + r * 0.9)} ${R(cy + r * 0.4)}M${R(cx - r * 0.6)} ${R(cy - r * 0.8)}A${r} ${R(r * 0.2)} 0 0 0 ${R(cx + r * 0.6)} ${R(cy - r * 0.8)}"/><ellipse cx="${R(cx - r * 0.3)}" cy="${R(cy - r * 0.35)}" rx="${R(r * 0.22)}" ry="${R(r * 0.34)}" fill="${hi}" opacity=".55" transform="rotate(35 ${R(cx - r * 0.3)} ${R(cy - r * 0.35)})"/>`;
+
+  /* ---------- United Arab Emirates: a needle-tower skyline over the dunes at sunrise ---------- */
+  asiaSceneAdd({ key: 'country:AE', label: 'Dunes and a glass skyline at sunrise', site: 'The desert and the skyline', colour: 'pink', mood: 'energetic', season: 'any', tags: ['dunes', 'skyline', 'desert'],
+    svg: () => {
+      const s1 = U(), g1 = U();
+      return `<defs>${lin(s1, [[0, '#7c9fd6'], [0.4, '#d8b8d4'], [0.68, '#ffc8b4'], [1, '#ffe6bc']])}${linU(g1, [[0, '#b9a8cc'], [1, '#8a80b0']], 0, 100, 0, 600)}</defs>`
+        + full(`url(#${s1})`) + rays(1040, 600, 1200, '#fff1d0', 0.1) + sun(1040, 600, 60, '#fffaf0', '#ffd0a0')
+        + streak(380, 170, 300, '#ffe0dc', 0.55) + streak(1300, 250, 260, '#ffd0cc', 0.5, 70) + cloud(700, 300, 0.8, '#d9a4b8', 0.6, 62, 10, '#ffe2d4')
+        + mv('uspar', { ad: '46s', dx: '8px' }, towers(61, -160, 1760, 650, 60, 200, 28, 60, '#a898c4', '#6f6a9c', '#ffd27a') + `<path fill="#9b8bbd" d="M1030 650L1042 420L1047 250L1050 130L1053 250L1058 420L1070 650z"/><path fill="#9b8bbd" d="M1040 330h20v90h-20z"/><path fill="#b9a8d8" d="M1050 130L1053 250L1058 420L1070 650H1052z" opacity=".6"/>`
+          + `<path fill="#a898c4" d="M640 650C650 520 690 440 780 360C760 460 770 560 790 650z"/><path fill="#c9bbe0" d="M780 360C760 460 770 560 790 650H760C760 560 770 460 780 360z" opacity=".7"/>` + haze(540, 140, '#ffdcc0', 0.55))
+        + mv('uspar', { ad: '34s', dx: '12px' }, towers(62, -160, 1760, 690, 40, 110, 36, 70, '#8a7eb2', '#5c5890', '#ffd27a') + haze(640, 90, '#ffd8b8', 0.4))
+        + dune(-200, 710, 1100, 90, '#f2b676', '#c98a56', 900) + dune(700, 720, 1200, 110, '#f6c080', '#d29a5e', 900)
+        + mv('uspar', { ad: '26s', dx: '16px' }, dune(-240, 800, 1200, 160, '#eeaa66', '#b87646', 900) + dune(640, 830, 1300, 190, '#e89c58', '#a8683c', 900))
+        + mv('usdrift', { ad: '8s', dx: '70px' }, `<path fill="none" stroke="#ffe2b4" stroke-width="3" stroke-linecap="round" opacity=".6" d="M200 760q70-8 140 0M1180 790q60-8 120 0"/>`)
+        + mv('usdrift', { ad: '11s', d: '-3s', dx: '90px' }, `<path fill="none" stroke="#ffe2b4" stroke-width="2.4" stroke-linecap="round" opacity=".5" d="M620 770q60-8 120 0M900 740q50-8 100 0"/>`)
+        + `<path fill="none" stroke="#a8683c" stroke-width="2" opacity=".35" d="M60 860q80-14 160 0M380 880q80-14 160 0M820 862q80-14 160 0M1240 880q80-14 160 0"/>`
+        + mv('usmove', { ad: '80s', dx: '300px' }, camel(380, 842, 1.5, '#4a2c1a') + camel(560, 850, 1.5, '#4a2c1a') + camel(740, 844, 1.4, '#4a2c1a'))
+        + palm(1470, 880, 190, -30, '#5b4228', '#3f6a30', 6)
+        + birds(63, 3, 800, 220, '#5a3a4a', 1.4, 640) + finish(0.32);
+    } });
+
+  /* ---------- Qatar: a sunlit bay, dhows and the angular towers of a waterfront ---------- */
+  asiaSceneAdd({ key: 'country:QA', label: 'Dhows on a bright waterfront bay', site: 'Doha Bay', colour: 'teal', mood: 'cheerful', season: 'any', tags: ['bay', 'dhow', 'skyline'],
+    svg: () => {
+      const s1 = U(), sea = U(), t1 = U(), t2 = U();
+      const tower = (x, b, w, h, kind) => {
+        let o = '';
+        if (kind === 0) o = `<path fill="url(#${t1})" d="M${x} ${b}V${b - h + 70}L${x + w} ${b - h}V${b}z"/><path fill="#fff" opacity=".4" d="M${x + w * 0.7} ${b}V${b - h + 10}L${x + w} ${b - h}V${b}z"/>`;
+        else if (kind === 1) o = `<path fill="url(#${t2})" d="M${x} ${b}V${b - h * 0.85}Q${x} ${b - h} ${x + w / 2} ${b - h}Q${x + w} ${b - h} ${x + w} ${b - h * 0.85}V${b}z"/><path fill="#fff" opacity=".35" d="M${x + w * 0.65} ${b}V${b - h * 0.95}Q${x + w * 0.9} ${b - h} ${x + w} ${b - h * 0.85}V${b}z"/>`;
+        else o = `<path fill="url(#${t1})" d="M${x} ${b}L${x + w * 0.2} ${b - h}H${x + w * 0.8}L${x + w} ${b}z"/><path fill="#d8ecf6" d="M${x + w * 0.5} ${b - h}L${x + w * 0.5} ${b - h - 44}" stroke="#9db4c4" stroke-width="3"/>`;
+        let d = ''; for (let y = b - h + 40; y < b - 10; y += 22) d += `M${x + 8} ${y}h${w - 16}`;
+        return o + dots(d, '#ffffff', 5, 14, '', ' opacity=".35"') + dots(d, '#ffd27a', 4, 14, 'us-lamps');
+      };
+      let sky = '';
+      [[300, 80, 330, 0], [390, 100, 440, 1], [510, 90, 380, 2], [620, 110, 560, 0], [750, 90, 300, 1], [850, 120, 480, 2], [990, 90, 360, 0], [1090, 110, 420, 1], [1220, 100, 320, 2]].forEach(([x, w, h, k]) => { sky += tower(x, 618, w, h, k); });
+      return `<defs>${lin(s1, [[0, '#3b97dc'], [0.55, '#8ed0ee'], [1, '#e8f6f4']])}${lin(sea, [[0, '#38c0c8'], [0.5, '#1590b0'], [1, '#0a5f86']])}${lin(t1, [[0, '#9fd0e8'], [1, '#4f8fb8']])}${lin(t2, [[0, '#e6f2f6'], [1, '#79a8c4']])}</defs>`
+        + full(`url(#${s1})`) + sun(560, 130, 38, '#ffffff', '#fff6c0')
+        + cloud(300, 180, 0.9, '#d2e6f2', 0.85, 60, 4) + cloud(1180, 150, 1.1, '#d2e6f2', 0.8, 74, 22) + streak(900, 280, 300, '#ffffff', 0.5, 80)
+        + mv('uspar', { ad: '46s', dx: '8px' }, `<g opacity=".55">` + towers(71, -160, 300, 618, 40, 120, 30, 60, '#8fb4cc', '#6a98b8') + towers(72, 1320, 1760, 618, 40, 120, 30, 60, '#8fb4cc', '#6a98b8') + `</g>` + haze(520, 100, '#e8f6f4', 0.55))
+        + mv('uspar', { ad: '36s', dx: '12px' }, sky)
+        + `<rect y="618" width="1600" height="282" fill="url(#${sea})"/><path fill="#e8dcc0" d="M-160 618H1760v14H-160z"/><path fill="#7ec0a0" d="M-160 606H1760v14H-160z" opacity=".5"/>`
+        + mir(sky, 618, 0.16)
+        + shimmer(5, 30, -100, 1700, 640, 890, '#e8fbfb', 60) + shimmer(6, 20, -100, 1700, 680, 896, '#0a6a90', 70)
+        + dhow(380, 760, 1.5, '#7a4a2c', '#e8c060', '#fff6e6') + dhow(1060, 720, 1.0, '#8a5230', '#c8483c', null) + dhow(760, 690, 0.6, '#7a4a2c', '#e8c060', '#fff6e6') + dhow(1400, 800, 1.4, '#7a4a2c', '#2f8a9a', '#fff6e6')
+        + `<g class="us-lamps">${dots('M260 744Q380 724 500 744', '#ffd27a', 6, 24, 'us-lamps')}</g>`
+        + palm(80, 900, 260, 30, '#5b4228', '#2f6a3a', 8) + palm(1540, 900, 230, -26, '#5b4228', '#2f6a3a', 9)
+        + gull(73, 6, 640, 330, '#ffffff', 600) + finish(0.3);
+    } });
+
+  /* ---------- Bahrain: an old sea fort with palms at sunset, a pearling dhow offshore ---------- */
+  asiaSceneAdd({ key: 'country:BH', label: 'An old sea fort at sunset', site: 'The old fort and the sea', colour: 'violet', mood: 'calm', season: 'any', tags: ['fort', 'sea', 'dhow'],
+    svg: () => {
+      const s1 = U(), sea = U(), m1 = U();
+      const fort = (rf) => {
+        let o = `<path fill="#a98a5e" d="M740 720C790 680 860 650 940 640H1280C1340 660 1380 690 1420 720z"/>`;
+        o += `<rect x="860" y="540" width="480" height="104" fill="#cfae7a"/><path fill="#cfae7a" d="M860 540h18v-14h16v14h18v-14h16v14h18v-14h16v14h18v-14h16v14h18v-14h16v14h18v-14h16v14h18v-14h16v14h18v-14h16v14h18v-14h16v14h18v-14h16v14h18v-14h16v14h18v-14h16v14H860z" opacity="0"/>`;
+        for (let x = 860; x < 1340; x += 32) o += `<rect x="${x}" y="526" width="18" height="16" fill="#cfae7a"/>`;
+        [[860, 520], [1340, 520]].forEach(([x, y]) => { o += `<rect x="${x - 38}" y="${y - 60}" width="76" height="190" fill="#c29c68"/><rect x="${x - 44}" y="${y - 72}" width="88" height="16" fill="#cfae7a"/>`; for (let i = 0; i < 4; i++) o += `<rect x="${x - 44 + i * 24}" y="${y - 86}" width="16" height="16" fill="#cfae7a"/>`; });
+        o += `<rect x="1050" y="440" width="120" height="110" fill="#d8b884"/><rect x="1040" y="424" width="140" height="20" fill="#cfae7a"/>`;
+        for (let i = 0; i < 6; i++) o += `<rect x="${1040 + i * 26}" y="408" width="16" height="18" fill="#cfae7a"/>`;
+        o += `<path fill="#6a4630" d="M1090 550V500Q1090 480 1110 480Q1130 480 1130 500V550z"/><path fill="#6a4630" d="M1004 640V590Q1004 570 1024 570Q1044 570 1044 590V640z"/>`;
+        o += `<path fill="#e8cc98" opacity=".5" d="M1320 540h20v104h-20zM1150 440h20v110h-20z"/>`;
+        return o + (rf ? '' : lit(1100, 512, 12, 24) + lit(1016, 596, 12, 22) + lit(862, 470, 12, 16) + lit(1336, 470, 12, 16) + lit(1200, 580, 12, 22));
+      };
+      return `<defs>${lin(s1, [[0, '#3d3f86'], [0.35, '#8a5fa0'], [0.62, '#f08a8e'], [0.82, '#ffb890'], [1, '#ffd89c']])}${lin(sea, [[0, '#f4a090'], [0.2, '#8a6aa8'], [1, '#2a3a76']])}${lin(m1, [[0, '#d8b080'], [1, '#a68458']])}</defs>`
+        + full(`url(#${s1})`) + stars(81, 40, 260) + rays(420, 640, 1100, '#ffd8a0', 0.12) + sun(420, 640, 62, '#fff2d0', '#ff9a78')
+        + cloud(260, 230, 1.0, '#c0709a', 0.65, 60, 6, '#f8a8a0') + cloud(1200, 180, 1.1, '#b8689a', 0.6, 72, 24, '#f4a0a4') + streak(820, 330, 300, '#ffc0b0', 0.5, 70)
+        + mv('uspar', { ad: '48s', dx: '8px' }, `<path fill="#9a7aa8" d="M-160 662C100 650 300 660 600 656C900 652 1200 664 1760 658V668H-160z"/>` + haze(600, 80, '#ffc8a8', 0.5))
+        + `<rect y="660" width="1600" height="240" fill="url(#${sea})"/>`
+        + mv('uspar', { ad: '36s', dx: '10px' }, fort(0))
+        + `<g transform="translate(0 1360) scale(1 -1)" opacity=".28">${fort(1)}</g><rect y="660" width="1600" height="240" fill="url(#${sea})" opacity=".5"/>`
+        + shimmer(7, 28, -100, 1700, 670, 890, '#ffc098', 56) + shimmer(8, 18, -100, 1700, 720, 896, '#6a68b0', 66)
+        + `<path fill="url(#${m1})" d="M-160 900V810C120 770 300 790 520 820C700 846 900 800 1100 790C1300 780 1560 800 1760 830V900z"/><path fill="#8a6a44" opacity=".5" d="M-160 860C200 836 500 870 800 880C1100 890 1400 850 1760 870V900H-160z"/>`
+        + dhow(300, 722, 0.8, '#5a3a28', '#c8982f', '#f2e4d0') + `<g transform="translate(300 722)"><ellipse cx="0" cy="12" rx="120" ry="5" fill="#ffc098" opacity=".4"/></g>` + dhow(1480, 700, 0.55, '#5a3a28', '#c8982f', null)
+        + palm(160, 880, 340, 50, '#3a2630', '#2b1f34', 4) + palm(300, 890, 250, -30, '#3a2630', '#2b1f34', 5) + palm(1420, 890, 360, -50, '#3a2630', '#2b1f34', 6) + palm(1530, 890, 260, 30, '#3a2630', '#2b1f34', 7)
+        + birds(83, 4, 1000, 300, '#3a2a58', 1.1, 600) + finish(0.34);
+    } });
+
+  /* ---------- Kuwait: slender sphere towers over the Gulf at dusk ---------- */
+  asiaSceneAdd({ key: 'country:KW', label: 'Slender sphere towers over the Gulf', site: 'The Gulf waterfront', colour: 'indigo', mood: 'focused', season: 'any', tags: ['towers', 'gulf', 'dusk'],
+    svg: () => {
+      const s1 = U(), sea = U(), sh = U();
+      const twr = (rf) => {
+        let o = '';
+        // main tower: shaft, lower sphere, upper bulb, needle
+        o += `<path fill="url(#${sh})" d="M672 650L690 420H710L728 650z"/><path fill="url(#${sh})" d="M694 350H706V250H700z" opacity="0"/>`;
+        o += `<path fill="url(#${sh})" d="M694 360L698 250H702L706 360z"/><path fill="#cfe4ee" d="M699 250L700 130L701 250z" stroke="#cfe4ee" stroke-width="3"/>`;
+        o += sphere(700, 396, 58, '#3e93b4', '#d6f0f4', '#ffffff') + sphere(700, 262, 24, '#3e93b4', '#d6f0f4', '#ffffff');
+        // second tower
+        o += `<path fill="url(#${sh})" d="M876 650L892 470H908L924 650z"/><path fill="url(#${sh})" d="M894 400L898 320H902L906 400z"/><path fill="#cfe4ee" d="M899 320L900 200L901 320z" stroke="#cfe4ee" stroke-width="3"/>`;
+        o += sphere(900, 436, 44, '#3e93b4', '#d6f0f4', '#ffffff') + sphere(900, 334, 18, '#3e93b4', '#d6f0f4', '#ffffff');
+        // slender third
+        o += `<path fill="url(#${sh})" d="M1034 650L1046 300H1054L1066 650z"/><path fill="#cfe4ee" d="M1049 300L1050 220L1051 300z" stroke="#cfe4ee" stroke-width="3"/>` + sphere(1050, 330, 22, '#3e93b4', '#d6f0f4', '#ffffff');
+        return o + (rf ? '' : lit(692, 380, 16, 10) + lit(692, 410, 16, 10) + lit(694, 252, 12, 8) + lit(892, 424, 16, 8) + lit(892, 448, 16, 8) + lit(1042, 322, 16, 8) + dots('M700 650V420M900 650V470M1050 650V330', '#ffd27a', 5, 26, 'us-lamps'));
+      };
+      return `<defs>${lin(s1, [[0, '#1c2f6e'], [0.4, '#37649c'], [0.68, '#e48a7e'], [1, '#ffcf8c']])}${lin(sea, [[0, '#f0a890'], [0.2, '#4a6aa0'], [1, '#12285a']])}${linU(sh, [[0, '#9ec8d8'], [0.5, '#e8f4f8'], [1, '#7aa8c0']], 660, 0, 740, 0)}</defs>`
+        + full(`url(#${s1})`) + stars(91, 50, 280) + rays(1250, 650, 1000, '#ffd8a0', 0.1) + sun(1250, 650, 50, '#fff0c8', '#ff9a74')
+        + cloud(300, 220, 1.0, '#b86a92', 0.6, 60, 6, '#f4a89c') + cloud(1100, 160, 0.9, '#a86490', 0.55, 70, 26, '#ec9aa0') + streak(900, 360, 280, '#ffc0a8', 0.5, 80)
+        + mv('uspar', { ad: '46s', dx: '8px' }, towers(92, 1180, 1760, 650, 50, 190, 28, 54, '#5a6a9a', '#3a4a7c', '#ffd27a') + towers(93, -160, 480, 650, 40, 120, 30, 56, '#5a6a9a', '#3a4a7c', '#ffd27a') + haze(590, 80, '#ffc8a0', 0.45))
+        + `<rect y="650" width="1600" height="250" fill="url(#${sea})"/>`
+        + mv('uspar', { ad: '34s', dx: '10px' }, `<path fill="#3a4470" d="M-160 650H1760v34H-160z"/>` + twr(0))
+        + mir(twr(1), 650, 0.28) + `<rect y="650" width="1600" height="250" fill="url(#${sea})" opacity=".45"/>`
+        + shimmer(5, 26, -100, 1700, 670, 890, '#ffc098', 56) + shimmer(6, 20, -100, 1700, 720, 896, '#5a7ac0', 66)
+        + `<path fill="#2a3052" d="M-160 690H1760V900H-160z" opacity="0"/>`
+        + dhow(1180, 790, 1.3, '#4a2e22', '#d8a840', '#efe2cc') + dhow(380, 760, 0.8, '#4a2e22', '#d8a840', null)
+        + `<g class="us-lamps">${dots('M1060 772Q1180 752 1300 772', '#ffd27a', 6, 22, 'us-lamps')}</g>`
+        + palm(110, 900, 300, 40, '#2b2034', '#241a34', 6) + palm(250, 900, 200, -26, '#2b2034', '#241a34', 7) + palm(1500, 900, 280, -36, '#2b2034', '#241a34', 8)
+        + birds(94, 4, 520, 300, '#2e2850', 1.1, 600) + finish(0.34);
+    } });
 })();

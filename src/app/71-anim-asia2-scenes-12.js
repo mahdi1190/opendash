@@ -40,7 +40,7 @@
       d += `M${R(bx)} ${R(by)}q${R(-10 + r() * 20)} ${R(len * 0.5)} ${R(-6 + r() * 12)} ${R(len)}`;
     }
     o += `<path fill="none" stroke="${leaf}" stroke-width="3.4" stroke-linecap="round" d="${d}"/>`;
-    o += `<ellipse cx="${tx}" cy="${R(ty - 10)}" rx="190" ry="62" fill="${leaf}"/>`;
+    for (let i = 0; i < 9; i++) o += `<circle cx="${R(tx - 160 + i * 40 + r() * 20)}" cy="${R(ty - 4 + Math.abs(i - 4) * 9 - r() * 26)}" r="${R(46 + r() * 26)}" fill="${leaf}"/>`;
     return `<path fill="none" stroke="${trunk}" stroke-width="30" stroke-linecap="round" d="M${x} ${y}Q${R(x + lean * 0.2)} ${R(y - h * 0.6)} ${tx} ${ty}"/>` + mv('ussway', { ad: (5 + r() * 2).toFixed(1) + 's', d: '-' + (r() * 3).toFixed(1) + 's', to: `${tx}px ${ty}px` }, o);
   };
   /** A small boat hull (centre x, waterline y). */
@@ -95,19 +95,20 @@
       let sup = ''; for (let i = 0; i < 26; i++) sup += `<rect x="${-100 + i * 74}" y="568" width="9" height="${100 + (i % 2) * 6}" fill="#3a3550"/>`;
       let cars = ''; for (let i = 0; i < 6; i++) cars += mv('usmove', { ad: (14 + i * 3) + 's', d: -i * 3 + 's', dx: '1400px' }, `<circle class="us-lamps" cx="${200 + i * 230}" cy="${548 + (i % 2) * 8}" r="5" fill="#ffd9a0"/><circle cx="${230 + i * 230}" cy="${548 + (i % 2) * 8}" r="4" fill="#e04030"/>`);
       const towers = bld(41, -160, 1760, 520, 50, 250, '#4c4a72', 34, 78, 8) + bld(42, -160, 1760, 520, 30, 160, '#3c3a60', 44, 96, 6);
-      const lotus = `<path fill="#5a527e" d="M1180 520V250q-30-30-40-70q40 20 70 0q-3 30 40 70z"/>`;
+      const lotus = `<path fill="#5a527e" d="M1160 520V250L1180 190L1200 250V520z"/><circle cx="1180" cy="236" r="16" fill="#6a6290"/><path stroke="#5a527e" stroke-width="4" d="M1180 190V140"/>`;
+      const dg = (inner) => `<g transform="translate(-250 0)">${inner}</g>`;
       return `<defs>${lin(s1, [[0, '#2a2358'], [0.45, '#8a3f78'], [0.75, '#f08a58'], [1, '#ffc27a']])}${lin(w1, [[0, '#6a3d6a'], [0.35, '#392c5c'], [1, '#161a3a']])}${radU(g1, [[0, '#ffd27a', 0.5], [1, '#ffd27a', 0]], 1480, 440, 260)}</defs>`
         + full(`url(#${s1})`) + stars(7, 60, 360) + sun(260, 430, 40, '#ffe3a4', '#ffb070') + cloud(700, 200, 1.1, '#d27a8a', 0.8, 80, 0, '#f2a6a0') + cloud(1200, 120, 0.8, '#d77a8a', 0.7, 100, 30, '#f2a6a0')
         + mv('uspar', { ad: '80s', dx: '30px' }, ridge('#6a4a78', 440, 90, 8, 4, 540) + ridge('#4a3a68', 480, 70, 9, 5, 540))
         + mv('uspar', { ad: '60s', dx: '20px' }, towers + lotus) + wins(43, -100, 1700, 300, 515, 90, 5)
         + `<rect y="520" width="1600" height="380" fill="url(#${w1})"/>`
         + refl(520, 0.3, towers) + shimmer(6, 50, -100, 1700, 600, 880, '#ffb070', 60) + shimmer(7, 22, 900, 1700, 600, 880, '#ffe08a', 50)
-        + mv('usbob', { ad: '6s', dy: '2px' }, refl(560, 0.35, dragon)) + sup
+        + mv('usbob', { ad: '6s', dy: '2px' }, refl(560, 0.35, dg(dragon))) + sup
         + `<rect x="-160" y="548" width="1920" height="22" fill="#2a2744"/><rect x="-160" y="540" width="1920" height="9" fill="#46406a"/>` + dots('M-160 536H1760', '#ffd27a', 5, 40, 'us-lamps')
-        + dragon + cars
-        + `<circle cx="1500" cy="450" r="90" fill="url(#${g1})"/>`
+        + dg(dragon) + cars
+        + dg(`<circle cx="1500" cy="450" r="90" fill="url(#${g1})"/>`
         + mv('usflicker', { ad: '0.3s', to: '1560px 470px' }, `<path fill="#ff7a1a" d="M1585 470q60 -22 110 -4q-50 8 -110 28z"/><path fill="#ffd45a" d="M1590 474q40 -12 70 -2q-30 6 -70 16z"/>`)
-        + puffs(1640, 470, 6, '#ff9a3a', 28, 90, 2.4, -60, 2.2)
+        + puffs(1640, 470, 6, '#ff9a3a', 28, 90, 2.4, -60, 2.2))
         + mv('usbob', { ad: '4s', dy: '4px' }, hull(500, 780, 1.2, '#2a2040', '#d26a28') + `<rect class="us-lit" x="470" y="738" width="60" height="18" rx="4"/>`)
         + mv('usbob', { ad: '5s', d: '-2s', dy: '3px' }, hull(1200, 830, 0.9, '#3a2a48', '#c25a28') + `<rect class="us-lit" x="1176" y="798" width="46" height="14" rx="4"/>`)
         + `<g opacity=".85">${birds(9, 5, 600, 260, '#2a2040', 0.9)}</g>` + finish(0.3);
@@ -146,8 +147,8 @@
           + `<path fill="${col}" d="M${R(x - 105 * s)} ${R(y - 4 * s)}H${R(x + 105 * s)}L${R(x + 80 * s)} ${R(y + 14 * s)}H${R(x - 80 * s)}z"/><rect x="${R(x - 105 * s)}" y="${R(y - 6 * s)}" width="${R(210 * s)}" height="${R(4 * s)}" fill="#fff"/>`
           + `<path fill="${awn}" d="M${R(x - 50 * s)} ${R(y - 6 * s)}L${R(x - 36 * s)} ${R(y - 44 * s)}H${R(x + 50 * s)}L${R(x + 62 * s)} ${R(y - 6 * s)}z"/><path fill="#fff" opacity=".35" d="M${R(x - 20 * s)} ${R(y - 6 * s)}L${R(x - 12 * s)} ${R(y - 44 * s)}H${R(x + 6 * s)}L${R(x + 2 * s)} ${R(y - 6 * s)}z"/></g>`;
       };
-      const isle = `<path fill="#6f8a6a" d="M-160 520V430Q-40 360 40 400Q90 330 190 370Q260 330 330 420Q400 400 480 520z"/><path fill="#a5a590" d="M-160 520V470q80 -20 150 6q60 -30 130 0q70 -22 130 -2q60 -10 120 12V520z"/>`
-        + canopy('#4f7a52', 420, 36, 17, -160, 480, 520) ;
+      const isle = `<path fill="#6f8a6a" d="M-160 520V430Q-40 340 60 380Q110 300 210 350Q300 330 380 430Q440 470 520 520z"/><path fill="#a5a590" d="M-160 520V480q80 -20 150 6q60 -30 130 0q70 -22 130 -2q60 -10 120 12L520 520z"/>`
+        + canopy('#4f7a52', 430, 30, 17, -160, 400, 520) ;
       return `<defs>${lin(s1, [[0, '#4aa4dc'], [0.55, '#9fd6ee'], [1, '#e2f4f0']])}${lin(w1, [[0, '#7fe0d6'], [0.25, '#2bbcc0'], [0.6, '#0d8fb4'], [1, '#0b5f94']])}${lin(i1, [[0, '#f2e2b0'], [1, '#d8c48a']])}</defs>`
         + full(`url(#${s1})`) + sun(1250, 150, 40, '#fffbe6', '#fff0b0') + cloud(400, 190, 1.4, '#cfe4f2', 0.95, 90, 0) + cloud(900, 130, 1, '#d6e8f4', 0.95, 70, 15) + cloud(1350, 260, 1.2, '#cfe4f2', 0.9, 110, 40)
         + mv('uspar', { ad: '80s', dx: '20px' }, isle + `<path fill="#7d9c88" opacity=".7" d="M1000 520V480Q1100 440 1200 470Q1300 440 1440 520z"/>`)
@@ -169,9 +170,8 @@
       const banana = (x, y, s) => { let o = ''; for (let i = 0; i < 7; i++) { const a = (-160 + i * 22) * Math.PI / 180, L = (95 + (i % 3) * 18) * s, ex = x + Math.cos(a) * L, ey = y + Math.sin(a) * L * 0.8 + 16 * s; o += `<path fill="#4aa040" d="M${x} ${y}Q${R(x + Math.cos(a) * L * 0.5)} ${R(y + Math.sin(a) * L * 0.9 - 28 * s)} ${R(ex)} ${R(ey)}Q${R(x + Math.cos(a) * L * 0.5 + 8)} ${R(y + Math.sin(a) * L * 0.7)} ${x} ${y}z"/>`; } return `<path fill="none" stroke="#7a6a42" stroke-width="${8 * s}" d="M${x} ${y + 60 * s}V${y}"/>` + mv('ussway', { ad: (4 + r() * 2).toFixed(1) + 's', d: -r() * 3 + 's', to: `${x}px ${y}px` }, o); };
       let rows = ''; for (let i = 0; i < 14; i++) { const y = 640 + i * 20; rows += `<path fill="none" stroke="#2f6a2c" stroke-width="${2 + i * 0.35}" opacity=".5" d="M-160 ${y}Q800 ${y - 36 - i * 2} 1760 ${y}"/>`; }
       const apo = `<path fill="url(#${m1})" d="M-160 560L180 470Q300 430 390 380Q470 300 560 250Q650 190 720 160Q760 140 800 132Q850 138 890 160Q990 210 1070 280Q1140 340 1210 400Q1340 450 1500 480L1760 540V600H-160z"/>`
-        + `<path fill="#2d4a38" opacity=".5" d="M800 132Q760 140 720 160Q650 190 560 250Q470 300 390 380Q520 340 600 330Q700 250 760 220Q800 190 830 170z"/>`
-        + `<path fill="#f4ecd8" opacity=".35" d="M800 132Q850 138 890 160Q950 190 990 250Q900 230 860 200Q820 180 800 132z"/>`
-        + `<path fill="#4d6a50" d="M720 200l-8 80l30 -50zM900 200l14 70l-40 -40z" opacity=".5"/>`;
+        + `<path fill="#2d4a38" opacity=".45" d="M800 132Q850 138 890 160Q990 210 1070 280Q1140 340 1210 400Q1340 450 1500 480L1760 540V600H1000Q930 420 860 260Q830 190 800 132z"/>`
+        + `<path fill="none" stroke="#2d4a38" stroke-width="10" opacity=".35" stroke-linecap="round" d="M770 170Q740 260 690 330M730 190Q670 250 600 330M860 190Q890 280 960 370M700 200Q640 300 520 400M900 210Q990 300 1100 420"/>`;
       return `<defs>${lin(s1, [[0, '#5aa6dc'], [0.5, '#a9d8ee'], [1, '#f2eed0']])}${lin(m1, [[0, '#5a7d84'], [0.5, '#44705c'], [1, '#3a6a4a']])}${lin(g1, [[0, '#9cd45a'], [1, '#2f7a30']])}${radU(f1, [[0, '#fff8d0', 0.8], [1, '#fff8d0', 0]], 1280, 200, 420)}</defs>`
         + full(`url(#${s1})`) + `<circle cx="1280" cy="200" r="420" fill="url(#${f1})"/>` + sun(1280, 200, 36, '#fffce0', '#fff0a0') + cloud(260, 180, 1.2, '#d4e6f0', 0.95, 90, 0) + cloud(1050, 110, 0.9, '#d4e6f0', 0.9, 70, 30)
         + mv('uspar', { ad: '90s', dx: '18px' }, apo) + mv('usdrift', { ad: '50s', dx: '70px' }, `<ellipse cx="560" cy="330" rx="260" ry="26" fill="#f6f2e4" opacity=".75"/><ellipse cx="1060" cy="350" rx="300" ry="24" fill="#f6f2e4" opacity=".7"/><ellipse cx="800" cy="260" rx="190" ry="14" fill="#fff" opacity=".6"/>`)
@@ -187,7 +187,7 @@
   /* ---------------- Yangon: the golden stupa at dusk ---------------- */
   asiaSceneAdd({ key: 'place:yangon', label: 'Golden stupa at dusk', site: 'Shwedagon Pagoda', colour: 'amber', mood: 'proud', season: 'any', tags: ['pagoda', 'stupa', 'dusk'],
     svg: () => {
-      const s1 = U(), g1 = U(), g2 = U(), gl = U(); const cx = 800;
+      const s1 = U(), g1 = U(), g2 = U(), gl = U(), g3 = U(); const cx = 800;
       const Lp = (dx, y) => `${cx - dx} ${y}`, Rp = (dx, y) => `${cx + dx} ${y}`;
       const stupa = `<path fill="url(#${g1})" d="M${Lp(210, 600)}C${Lp(210, 480)} ${Lp(110, 390)} ${Lp(70, 322)}L${Lp(54, 322)}L${Lp(54, 292)}L${Lp(16, 120)}L${Lp(7, 92)}L${Rp(7, 92)}L${Rp(16, 120)}L${Rp(54, 292)}L${Rp(54, 322)}L${Rp(70, 322)}C${Rp(110, 390)} ${Rp(210, 480)} ${Rp(210, 600)}z"/>`;
       let bands = '', petals = '';
@@ -197,10 +197,10 @@
       const hti = `<rect x="${cx - 18}" y="76" width="36" height="8" fill="#e4a830"/><path fill="#f4c850" d="M${cx - 22} 76H${cx + 22}L${cx + 12} 56H${cx - 12}z"/><path fill="#e4a830" d="M${cx - 14} 56H${cx + 14}L${cx + 8} 40H${cx - 8}z"/><path stroke="#e4a830" stroke-width="4" d="M${cx} 40V10"/><path fill="#f6e08a" d="M${cx} 4l7 10l-7 10l-7 -10z"/>`
         + `<circle class="us-lit" cx="${cx}" cy="14" r="4"/>`;
       const terr = `<path fill="#c88a22" d="M${cx - 320} 640L${cx - 280} 600H${cx + 280}L${cx + 320} 640z"/><path fill="#e0a838" d="M${cx - 290} 604L${cx - 250} 590H${cx + 250}L${cx + 290} 604z"/><rect x="${cx - 360}" y="640" width="720" height="90" fill="#d9a042"/><rect x="${cx - 360}" y="640" width="720" height="10" fill="#f4cc66"/>`;
-      const small = (x, y, s) => `<path fill="url(#${g1})" d="M${x - 42 * s} ${y}C${x - 42 * s} ${y - 50 * s} ${x - 18 * s} ${y - 80 * s} ${x - 10 * s} ${y - 100 * s}L${x - 4 * s} ${y - 170 * s}H${x + 4 * s}L${x + 10 * s} ${y - 100 * s}C${x + 18 * s} ${y - 80 * s} ${x + 42 * s} ${y - 50 * s} ${x + 42 * s} ${y}z"/><path fill="#e4a830" d="M${x - 1} ${y - 170 * s}h2v-20h-2z"/><rect x="${x - 50 * s}" y="${y}" width="${100 * s}" height="${10 * s}" fill="#d6962a"/>`;
+      const small = (x, y, s) => `<path fill="url(#${g3})" d="M${x - 42 * s} ${y}C${x - 42 * s} ${y - 50 * s} ${x - 18 * s} ${y - 80 * s} ${x - 10 * s} ${y - 100 * s}L${x - 4 * s} ${y - 170 * s}H${x + 4 * s}L${x + 10 * s} ${y - 100 * s}C${x + 18 * s} ${y - 80 * s} ${x + 42 * s} ${y - 50 * s} ${x + 42 * s} ${y}z"/><path fill="#e4a830" d="M${x - 1} ${y - 170 * s}h2v-20h-2z"/><rect x="${x - 50 * s}" y="${y}" width="${100 * s}" height="${10 * s}" fill="#d6962a"/>`;
       let arches = ''; for (let i = 0; i < 12; i++) arches += lit(cx - 340 + i * 56, 668, 20, 32);
-      let tr = ''; for (let i = 0; i < 12; i++) tr += `<ellipse cx="${-100 + i * 150}" cy="${690 + (i % 3) * 8}" rx="${52 + (i % 4) * 10}" ry="${70 + (i % 3) * 14}" fill="#1f3a30"/>`;
-      return `<defs>${lin(s1, [[0, '#35306e'], [0.35, '#8a4a88'], [0.65, '#ee7a62'], [1, '#ffc078']])}${linU(g1, [[0, '#fff0a0'], [0.3, '#f6c850'], [0.7, '#d8941e'], [1, '#a8660e']], cx - 210, 0, cx + 210, 0)}${radU(gl, [[0, '#ffd870', 0.75], [1, '#ffd870', 0]], cx, 340, 560)}${lin(g2, [[0, '#1f3a30'], [1, '#12241e']])}</defs>`
+      let tr = ''; for (let i = 0; i < 12; i++) tr += `<ellipse cx="${-100 + i * 150}" cy="${760 + (i % 3) * 8}" rx="${60 + (i % 4) * 10}" ry="${50 + (i % 3) * 12}" fill="#1f3a30"/>`;
+      return `<defs>${lin(s1, [[0, '#35306e'], [0.35, '#8a4a88'], [0.65, '#ee7a62'], [1, '#ffc078']])}${linU(g1, [[0, '#fff0a0'], [0.3, '#f6c850'], [0.7, '#d8941e'], [1, '#a8660e']], cx - 210, 0, cx + 210, 0)}${radU(gl, [[0, '#ffd870', 0.75], [1, '#ffd870', 0]], cx, 340, 560)}${lin(g2, [[0, '#1f3a30'], [1, '#12241e']])}<linearGradient id="${g3}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fbe48a"/><stop offset=".5" stop-color="#e8b032"/><stop offset="1" stop-color="#b8741a"/></linearGradient></defs>`
         + full(`url(#${s1})`) + stars(4, 70, 300) + sun(300, 560, 46, '#ffe8a8', '#ffa860') + cloud(1200, 220, 1.2, '#c6577a', 0.8, 90, 0, '#f09a8a') + cloud(300, 150, 1, '#b0507a', 0.8, 70, 30, '#e6908a') + streak(800, 460, 420, '#ffc08a', 0.35, 90)
         + `<circle cx="${cx}" cy="340" r="560" fill="url(#${gl})"/>`
         + mv('usglow', { ad: '5s', to: `${cx}px 340px` }, rays(cx, 330, 520, '#ffe8a0', 0.28))
@@ -221,8 +221,8 @@
       let posts = '', pr = '';
       for (let i = 0; i < 46; i++) { const x = -150 + i * 42, h = 40 + (i % 5) * 4, y = 610 + Math.sin(i * 0.15) * 4; posts += `<rect x="${x}" y="${y}" width="9" height="${h}" fill="#2a1a20"/>`; pr += `<rect x="${x}" y="${y}" width="9" height="${h}" fill="#2a1a20"/>`; }
       const deck = `<rect x="-160" y="598" width="1920" height="14" fill="#3a2428"/><rect x="-160" y="590" width="1920" height="6" fill="#5a3a34"/>`;
-      let roofs = ''; for (let i = 0; i < 3; i++) { const x = 300 + i * 420; roofs += `<path fill="#2a1a20" d="M${x - 60} 590L${x - 40} 548H${x + 40}L${x + 60} 590z"/>`; }
-      const boat = (x, y, s) => `<path fill="#1e1218" d="M${x - 80 * s} ${y}Q${x} ${y + 20 * s} ${x + 80 * s} ${y - 8 * s}L${x + 60 * s} ${y + 6 * s}Q${x} ${y + 24 * s} ${x - 70 * s} ${y + 8 * s}z"/><path fill="none" stroke="#1e1218" stroke-width="${3 * s}" d="M${x - 10 * s} ${y - 2 * s}L${x - 40 * s} ${y - 54 * s}M${x - 40 * s} ${y - 54 * s}q50 -10 90 20"/>`;
+      let roofs = ''; for (let i = 0; i < 3; i++) { const x = 300 + i * 420; roofs += `<path fill="#2a1a20" d="M${x - 50} 590V566H${x + 50}V590z"/><path fill="#2a1a20" d="M${x - 66} 568Q${x - 40} 566 ${x - 24} 540H${x + 24}Q${x + 40} 566 ${x + 66} 568z"/>`; }
+      const boat = (x, y, s) => `<path fill="#1e1218" d="M${x - 90 * s} ${y - 12 * s}Q${x - 40 * s} ${y + 8 * s} ${x} ${y + 10 * s}Q${x + 50 * s} ${y + 8 * s} ${x + 90 * s} ${y - 14 * s}Q${x + 40 * s} ${y + 26 * s} ${x - 90 * s} ${y - 12 * s}z"/><path fill="#1e1218" d="M${x - 24 * s} ${y - 6 * s}Q${x - 24 * s} ${y - 30 * s} ${x} ${y - 36 * s}Q${x + 24 * s} ${y - 30 * s} ${x + 24 * s} ${y - 6 * s}z"/><path fill="none" stroke="#1e1218" stroke-width="${3 * s}" d="M${x + 30 * s} ${y - 8 * s}L${x + 80 * s} ${y - 60 * s}"/><path fill="none" stroke="#1e1218" stroke-width="${1.5 * s}" d="M${x + 80 * s} ${y - 60 * s}Q${x + 120 * s} ${y - 30 * s} ${x + 90 * s} ${y - 12 * s}"/>`;
       const far = `<path fill="#6a3a58" d="M-160 560Q100 540 300 556T700 548T1100 556T1760 546V600H-160z"/>` + canopy('#4a2a44', 560, 30, 72, -160, 1760, 600)
         + `<path fill="#4a2a44" d="M1180 556l12 -70l12 70zM1500 556l8 -50l8 50z"/><path fill="#c8884a" opacity=".6" d="M1186 520h12v36h-12z"/>`;
       return `<defs>${lin(s1, [[0, '#4a2a6a'], [0.3, '#b2476a'], [0.6, '#ff8a4a'], [1, '#ffd078']])}${lin(w1, [[0, '#ff9a5a'], [0.2, '#c0557a'], [0.6, '#5a3068'], [1, '#2a1a44']])}</defs>`
@@ -248,10 +248,10 @@
       const chofa = (x, y, s) => `<path fill="#f6c850" d="M${x} ${y}q${6 * s} ${-18 * s} ${2 * s} ${-34 * s}q${-12 * s} ${12 * s} ${-8 * s} ${34 * s}z"/>`;
       const hall = (x, y, w, h, wall, rf) => `<rect x="${x - w / 2}" y="${y - h}" width="${w}" height="${h}" fill="${wall}"/>` + `<rect x="${x - w / 2}" y="${y - h}" width="${w}" height="8" fill="#f6c850"/>`
         + Array.from({ length: Math.max(2, Math.round(w / 56)) }, (_, i) => `<rect x="${x - w / 2 + 14 + i * 56}" y="${y - h + 24}" width="22" height="${h - 24}" rx="11" fill="#c8a860" opacity=".85"/>`).join('')
-        + tiers(x, y - h, w + 20, 3, 34, rf, '#f6c850') + chofa(x - w / 2 - 6, y - h - 60, 1) + chofa(x + w / 2 + 6, y - h - 60, 1);
-      const spire = (x, y) => { const g = U(); return `<defs>${lin(g, [[0, '#fbe08a'], [1, '#d8921e']])}</defs><rect x="${x - 70}" y="${y - 250}" width="140" height="250" fill="#f4ead2"/>` + `<rect x="${x - 70}" y="${y - 254}" width="140" height="10" fill="#f6c850"/>` + [0, 1, 2].map((i) => roof(x, y - 250 - i * 56, 230 - i * 44, 48, '#d4642a', '#f6c850')).join('')
-        + `<path fill="url(#${g})" d="M${x - 38} ${y - 400}L${x - 10} ${y - 520}L${x - 3} ${y - 620}H${x + 3}L${x + 10} ${y - 520}L${x + 38} ${y - 400}z"/>` + `<path stroke="#a8660e" stroke-width="2" d="M${x - 24} ${y - 440}H${x + 24}M${x - 16} ${y - 490}H${x + 16}M${x - 10} ${y - 540}H${x + 10}"/>`
-        + `<path fill="#f6c850" d="M${x - 4} ${y - 620}h8v-34h-8z"/>` + [0, 1, 2, 3].map((i) => `<rect class="us-lit" x="${x - 40 + i * 20}" y="${y - 220}" width="12" height="40" rx="6"/>`).join(''); };
+        + tiers(x, y - h, w + 20, 3, 34, rf, '#f6c850') ;
+      const spire = (x, y) => { const g = U(); return `<defs>${lin(g, [[0, '#fbe08a'], [1, '#d8921e']])}</defs><rect x="${x - 90}" y="${y - 110}" width="180" height="110" fill="#f4ead2"/>` + `<rect x="${x - 90}" y="${y - 114}" width="180" height="10" fill="#f6c850"/>` + [0, 1, 2, 3].map((i) => `<rect x="${x - 70 + i * 38}" y="${y - 90}" width="26" height="90" rx="13" fill="#c8a860"/>`).join('') + `<rect x="${x - 60}" y="${y - 190}" width="120" height="76" fill="#f4ead2"/>` + [0, 1, 2].map((i) => roof(x, y - 114 - i * 52, 250 - i * 46, 44, '#d4642a', '#f6c850')).join('')
+        + `<path fill="url(#${g})" d="M${x - 38} ${y - 280}L${x - 10} ${y - 400}L${x - 3} ${y - 500}H${x + 3}L${x + 10} ${y - 400}L${x + 38} ${y - 280}z"/>` + `<path stroke="#a8660e" stroke-width="2" d="M${x - 28} ${y - 310}H${x + 28}M${x - 18} ${y - 350}H${x + 18}M${x - 10} ${y - 395}H${x + 10}"/>`
+        + `<path fill="#f6c850" d="M${x - 4} ${y - 500}h8v-34h-8z"/>` + [0, 1, 2, 3].map((i) => lit(x - 70 + i * 38 + 7, y - 70, 12, 40)).join(''); };
       let wall = ''; for (let i = 0; i < 40; i++) wall += `<path fill="#f4ead2" d="M${-160 + i * 50} 720V700l12 -12l12 12V720z"/>`;
       return `<defs>${lin(s1, [[0, '#4a3a86'], [0.4, '#a85a90'], [0.7, '#f0905c'], [1, '#ffd08a']])}${lin(w1, [[0, '#d8785a'], [0.25, '#7a4a78'], [1, '#2a2450']])}${radU(g1, [[0, '#ffd08a', 0.7], [1, '#ffd08a', 0]], 800, 430, 600)}</defs>`
         + full(`url(#${s1})`) + stars(9, 50, 240) + `<circle cx="800" cy="430" r="600" fill="url(#${g1})"/>` + sun(1320, 470, 44, '#ffeab0', '#ffa860') + cloud(300, 180, 1.2, '#b4527c', 0.8, 90, 0, '#f09a88') + cloud(1200, 130, 1, '#b4527c', 0.8, 70, 30, '#f09a88')
@@ -263,7 +263,6 @@
         + shimmer(51, 40, -100, 1700, 770, 890, '#ffd8a0', 60)
         + mv('usbob', { ad: '5s', dy: '3px' }, hull(420, 820, 1.2, '#3a2a58', '#f0a040') + `<path fill="#d4642a" d="M370 806L384 776H460L474 806z"/><rect class="us-lit" x="396" y="788" width="40" height="12" rx="3"/>`)
         + mv('usbob', { ad: '6s', d: '-2s', dy: '3px' }, hull(1180, 850, 1.0, '#4a2a58', '#e0a040'))
-        + `<g opacity=".4">${refl(740, 0.9, `<rect x="660" y="540" width="280" height="200" fill="#f4ead2"/>`)}</g>`
         + palm(120, 760, 470, 60, '#243a36', '#2a2a30', 5, 7) + palm(1500, 760, 520, -50, '#243a36', '#2a2a30', 6, 6.5)
         + dots('M-160 730H1760', '#ffd27a', 5, 38, 'us-lamps')
         + `<g opacity=".85">${birds(10, 6, 900, 260, '#3a2a50', 0.9)}</g>` + finish(0.34);

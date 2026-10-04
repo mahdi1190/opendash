@@ -189,7 +189,6 @@
         + `<path fill="url(#${g1})" d="M-160 640Q400 626 800 650T1760 640V900H-160z"/><path fill="url(#${w1})" d="M-160 740Q500 700 900 730T1760 720V790Q900 770 500 800T-160 800z"/>`
         + shimmer(4, 20, 100, 1500, 735, 790, '#f0d8d0', 80)
         + `<path d="M520 770H1000" stroke="#5a3a2a" stroke-width="12"/><path d="M560 770V740M660 770V740M760 770V740M860 770V740M960 770V740M540 740H980" stroke="#5a3a2a" stroke-width="4"/><path fill="#a8402e" d="M520 740H1000l-10 -16H530z"/>`
-        + puffs(1060, 520, 4, '#d8d0d4', 20, 70, 6, -130, 3) + puffs(340, 520, 3, '#d8d0d4', 18, -50, 6, -110, 3)
         + birds(15, 5, 600, 330, '#3a3050', 1.1, 560)
         + mv('ussway2', { ad: '8s', to: '140px 900px' }, pine(140, 900, 2.0, '#223a2c') + pine(300, 900, 1.5, '#2a4634') + pine(60, 900, 1.2, '#2a4634'))
         + mv('ussway2', { ad: '9s', to: '1480px 900px' }, pine(1480, 900, 2.2, '#223a2c') + pine(1350, 900, 1.4, '#2a4634') + pine(1560, 900, 1.2, '#2a4634'))
@@ -231,11 +230,11 @@
   asiaSceneAdd({ key: 'place:kabul', label: 'Hillside homes and kites', site: 'The hillside homes and the snow mountains', colour: 'amber', mood: 'dreamy', season: 'any', tags: ['hills', 'kites', 'mountains'],
     svg: () => {
       const s1 = U(), g1 = U();
-      const homes = (seed, x0, x1, y0, rows, step, cols) => {
+      const homes = (seed, x0, x1, top, rows, step, cols) => {
         const r = rnd(seed); let o = '';
         for (let k = 0; k < rows; k++) {
-          let x = x0 + r() * 20 - (k % 2) * 16;
-          while (x < x1) { const w = 40 + r() * 34, h = 26 + r() * 20, y = y0 + k * step + Math.sin(x / 140 + k) * 8; o += `<rect x="${R(x)}" y="${R(y - h)}" width="${R(w)}" height="${R(h)}" fill="${cols[Math.floor(r() * cols.length)]}"/><rect x="${R(x)}" y="${R(y - h)}" width="${R(w)}" height="4" fill="#7a5a44" opacity=".5"/>`; if (r() < 0.3) o += lit(R(x + 6), R(y - h + 9), 8, 10); if (r() < 0.12) o += `<rect x="${R(x + w - 12)}" y="${R(y - h - 10)}" width="5" height="10" fill="#6a4a38"/>`; x += w + 6 + r() * 12; }
+          let x = x0 + r() * 20 - (k % 2) * 24;
+          while (x < x1) { const w = 44 + r() * 34, h = 40 + r() * 16, y = top(x + w / 2) + k * step + 40, c = cols[Math.floor(r() * cols.length)]; o += `<path fill="${c}" d="M${R(x)} ${R(y)}V${R(y - h)}h${R(w)}V${R(y)}z"/><path fill="#7a5a44" opacity=".35" d="M${R(x)} ${R(y - h)}h${R(w)}v4h${-R(w)}z"/>`; if (r() < 0.28) o += lit(R(x + 8), R(y - h + 12), 9, 11); x += w + 2; }
         }
         return o;
       };
@@ -245,14 +244,15 @@
         + cloud(360, 230, 1.0, '#cfdcea', 0.85, 80, 10) + cloud(1000, 150, 0.9, '#d4e0ec', 0.8, 90, 40)
         + mv('uspar', { ad: '70s', dx: '8px' }, `<path fill="#9aa6c4" d="M-160 470L40 360L160 410L330 250L460 340L580 300L760 420L880 330L1060 280L1220 380L1380 320L1560 400L1760 330V640H-160z"/><path fill="#fffaf2" d="M330 250L398 304L366 298L342 322L318 296L284 312zM1060 280L1124 332L1092 326L1068 350L1044 324L1010 338zM580 300L632 340L606 336L586 354L566 336L538 346zM1380 320L1436 362L1406 356L1384 378L1360 354L1330 366z"/>` + haze(430, 120, '#ffe6c8', 0.55))
         + mv('uspar', { ad: '52s', dx: '12px' }, ridge('#9a7e68', 520, 70, 8, 81, 700) + haze(540, 80, '#f4d8b8', 0.4))
-        // two hills crowded with flat-roofed homes
-        + `<path fill="url(#${g1})" d="M-160 900V560Q120 440 360 520Q640 600 760 700L820 900z"/><path fill="url(#${g1})" d="M1000 900Q1060 660 1240 560Q1480 460 1760 540V900z"/><path fill="#9a7a58" d="M-160 900V700Q400 640 900 760Q1300 700 1760 740V900z"/>`
-        + `<g>` + homes(3, -150, 560, 590, 4, 50, ['#d6b48a', '#c8a07a', '#e0c49a', '#b88e6c', '#e8d2a8']) + `</g>` + `<g>` + homes(9, 1020, 1760, 610, 4, 50, ['#d6b48a', '#c8a07a', '#e0c49a', '#b88e6c', '#e8d2a8']) + `</g>`
-        + `<path d="M-160 820H1760" stroke="#6a4e36" stroke-width="3" opacity=".5"/>`
-        + `<g>` + homes(5, -60, 1700, 880, 1, 36, ['#caa47e', '#b88c68', '#dcc094']) + `</g>`
-        + canopy('#556e3e', 770, 30, 21, 560, 1010, 900) + canopy('#3e5a2e', 810, 26, 22, 600, 980, 900)
-        + puffs(260, 560, 3, '#e0d8d0', 14, 50, 6, -120, 3) + puffs(1300, 560, 3, '#e0d8d0', 14, 40, 6, -110, 3) + puffs(1500, 600, 3, '#e0d8d0', 14, -40, 6, -100, 3)
-        + dots('M-100 820H1700', '#ffd890', 5, 60, 'us-lamps')
+        // two hills crowded with flat-roofed homes, a far city in the valley between
+        + `<path fill="#b8946a" d="M-160 900V560Q120 440 360 520Q640 600 760 700L820 900z"/><path fill="#b8946a" d="M1000 900Q1060 660 1240 560Q1480 460 1760 540V900z"/>`
+        + mv('uspar', { ad: '44s', dx: '8px' }, homes(31, 540, 1060, () => 640, 3, 26, ['#e8d2a8', '#dcc094', '#e0c49a']) + haze(660, 90, '#f4d8b8', 0.5))
+        + `<path fill="#8f6e50" d="M440 900Q600 780 800 780Q1000 780 1160 900z"/>`
+        + `<g>` + homes(3, -150, 760, (x) => x < 360 ? 540 : 540 + (x - 360) * 0.5, 5, 40, ['#d6b48a', '#c8a07a', '#e0c49a', '#b88e6c', '#e8d2a8']) + `</g>`
+        + `<g>` + homes(9, 980, 1760, (x) => x > 1240 ? 560 : 560 + (1240 - x) * 0.5, 5, 40, ['#d6b48a', '#c8a07a', '#e0c49a', '#b88e6c', '#e8d2a8']) + `</g>`
+        + [620, 700, 880, 960].map((x, i) => `<path fill="${i % 2 ? '#3e5a2e' : '#556e3e'}" d="M${x} 900Q${x - 22} 800 ${x} 700Q${x + 22} 800 ${x} 900z"/>`).join('')
+        + puffs(260, 600, 3, '#e0d8d0', 14, 50, 6, -120, 3) + puffs(1300, 600, 3, '#e0d8d0', 14, 40, 6, -110, 3)
+        + dots('M-100 880H1700', '#ffd890', 5, 60, 'us-lamps')
         + kite(600, 200, 1.2, '#d83a4a', '#f6c84a', 22, 0) + kite(840, 140, 1.0, '#2f7ad8', '#f6f0e0', 26, -8) + kite(1020, 280, 1.4, '#3aa860', '#f6c84a', 30, -14) + kite(430, 330, 0.9, '#e8782a', '#4a2f8a', 24, -4) + kite(1260, 180, 0.8, '#a83a9a', '#f6f0e0', 20, -10)
         + birds(11, 4, 800, 400, '#4a3a44', 1.0, 500)
         + finish(0.3);
