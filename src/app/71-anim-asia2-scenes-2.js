@@ -13,12 +13,12 @@
   /** A copy of a drawing mirrored about the line y (a reflection in water). */
   const mir = (inner, y, op) => `<g transform="translate(0 ${2 * y}) scale(1 -1)" opacity="${op}">${inner}</g>`;
   /** A ribbed dome (cx, base y, radius, height) with a drum and a finial. */
-  const dome = (cx, b, r, h, fill, rib, drum) => {
+  const dome = (cx, b, r, h, fill, rib, drum, plain) => {
     let o = '';
     if (drum) o += `<rect x="${R(cx - r * 0.82)}" y="${b}" width="${R(r * 1.64)}" height="${drum}" fill="${fill}"/><path fill="none" stroke="${rib}" stroke-width="2" opacity=".6" d="M${R(cx - r * 0.82)} ${b + 8}h${R(r * 1.64)}"/>`;
     o += `<path fill="${fill}" d="M${R(cx - r)} ${b}C${R(cx - r)} ${R(b - h * 0.72)} ${R(cx - r * 0.45)} ${R(b - h * 0.98)} ${cx} ${b - h}C${R(cx + r * 0.45)} ${R(b - h * 0.98)} ${R(cx + r)} ${R(b - h * 0.72)} ${R(cx + r)} ${b}z"/>`;
     let d = '';
-    for (let i = -3; i <= 3; i++) d += `M${R(cx + i * r / 3.4)} ${b}Q${R(cx + i * r / 5)} ${R(b - h * 0.8)} ${cx} ${b - h + 4}`;
+    if (!plain) for (let i = -3; i <= 3; i++) d += `M${R(cx + i * r / 3.4)} ${b}Q${R(cx + i * r / 5)} ${R(b - h * 0.8)} ${cx} ${b - h + 4}`;
     return o + `<path fill="none" stroke="${rib}" stroke-width="1.6" opacity=".45" d="${d}"/><path fill="none" stroke="${rib}" stroke-width="2.4" d="M${cx} ${b - h}V${b - h - Math.max(14, R(r * 0.3))}"/><circle cx="${cx}" cy="${b - h - Math.max(14, R(r * 0.3))}" r="${Math.max(3, R(r * 0.05))}" fill="${rib}"/>`;
   };
   /** A slender minaret (x, base, height, width): tapering shaft, balcony, upper tube, pointed cap. */
@@ -324,5 +324,136 @@
         + `<g class="us-lamps">${dots('M1060 772Q1180 752 1300 772', '#ffd27a', 6, 22, 'us-lamps')}</g>`
         + palm(110, 900, 300, 40, '#2b2034', '#241a34', 6) + palm(250, 900, 200, -26, '#2b2034', '#241a34', 7) + palm(1500, 900, 280, -36, '#2b2034', '#241a34', 8)
         + birds(94, 4, 520, 300, '#2e2850', 1.1, 600) + finish(0.34);
+    } });
+
+  /* ---------- Istanbul: the old city's domes and minarets above the Bosphorus at dawn ---------- */
+  asiaSceneAdd({ key: 'place:istanbul', id: 'skyline', label: 'Domes and minarets above the Bosphorus', site: 'Sultanahmet from the Bosphorus', colour: 'pink', mood: 'dreamy', season: 'any', tags: ['domes', 'minarets', 'ferry', 'bosphorus'],
+    svg: () => {
+      const s1 = U(), sea = U(), d1 = U();
+      const hs = (x, b) => {
+        let o = `<rect x="${x - 150}" y="${b - 130}" width="300" height="130" fill="#d6a894"/><rect x="${x - 150}" y="${b - 130}" width="300" height="10" fill="#e8c4ae"/>`;
+        o += dome(x - 118, b - 128, 56, 46, '#8c8aa8', '#6a6888', 0, 1) + dome(x + 118, b - 128, 56, 46, '#8c8aa8', '#6a6888', 0, 1);
+        o += `<rect x="${x - 98}" y="${b - 200}" width="196" height="76" fill="#d6a894"/>` + dome(x - 76, b - 196, 46, 40, '#8c8aa8', '#6a6888', 0, 1) + dome(x + 76, b - 196, 46, 40, '#8c8aa8', '#6a6888', 0, 1);
+        o += `<rect x="${x - 76}" y="${b - 236}" width="152" height="44" fill="#d6a894"/>` + dome(x, b - 232, 76, 88, '#8c8aa8', '#6a6888', 0, 1);
+        let w = ''; for (let i = -3; i <= 3; i++) w += `M${x + i * 20} ${b - 224}v10`;
+        o += `<path fill="none" stroke="#ffd27a" stroke-width="7" stroke-linecap="round" class="us-lamps" d="${w}"/>`;
+        for (const dx of [-186, 186]) o += `<rect x="${x + dx - 15}" y="${b - 150}" width="30" height="150" fill="#cf9f8c"/>`;
+        let b2 = ''; for (let i = -2; i <= 2; i++) b2 += `M${x + i * 52 - 6} ${b - 20}V${b - 70}Q${x + i * 52 + 4} ${b - 90} ${x + i * 52 + 14} ${b - 70}V${b - 20}z`;
+        o += `<path fill="#8a5a4a" opacity=".7" d="${b2}"/>`;
+        o += minaret(x - 204, b - 30, 230, 17, '#e6d8c8', '#c8b8a8', '#8c8aa8') + minaret(x + 204, b - 30, 230, 17, '#e6d8c8', '#c8b8a8', '#8c8aa8');
+        return o + lit(x - 70, b - 90, 12, 24) + lit(x + 58, b - 90, 12, 24);
+      };
+      const bm = (x, b) => {
+        let o = `<rect x="${x - 120}" y="${b - 100}" width="240" height="100" fill="#cdbfc8"/><rect x="${x - 150}" y="${b - 56}" width="300" height="56" fill="#c6b7c2"/>`;
+        for (let i = -4; i <= 4; i++) o += dome(x + i * 34, b - 56, 15, 18, '#8c8aa8', '#6a6888', 0, 1);
+        o += dome(x - 90, b - 98, 44, 48, '#8c8aa8', '#6a6888', 0, 1) + dome(x + 90, b - 98, 44, 48, '#8c8aa8', '#6a6888', 0, 1) + dome(x, b - 150, 70, 66, '#8c8aa8', '#6a6888', 0, 1);
+        o += dome(x - 40, b - 112, 24, 28, '#8c8aa8', '#6a6888', 0, 1) + dome(x + 40, b - 112, 24, 28, '#8c8aa8', '#6a6888', 0, 1);
+        o += `<rect x="${x - 58}" y="${b - 156}" width="116" height="52" fill="#cdbfc8"/>` + dome(x, b - 154, 62, 98, '#8c8aa8', '#6a6888', 0, 1);
+        let w = ''; for (let i = -3; i <= 3; i++) w += `M${x + i * 15} ${b - 140}v8`;
+        o += `<path fill="none" stroke="#ffd27a" stroke-width="6" stroke-linecap="round" class="us-lamps" d="${w}"/>`;
+        for (const [dx, h] of [[-150, 250], [150, 250], [-124, 170], [124, 170]]) o += minaret(x + dx, b - 56, h, 15, '#e0d4d8', '#bcaeb8', '#8c8aa8');
+        return o;
+      };
+      const ferry = (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})">` + mv('usbob', { ad: '3.4s', dy: '2px' },
+        `<path fill="#f4f0ec" d="M-120 -30H110L96 0H-100z"/><path fill="#b8362c" d="M-114 -12H104L100 -4H-110z"/><rect x="-90" y="-52" width="160" height="22" fill="#fbf7f2"/><rect x="-60" y="-72" width="100" height="20" fill="#f4f0ec"/><rect x="-14" y="-98" width="18" height="26" fill="#d8d0c8"/><rect x="-16" y="-104" width="22" height="10" fill="#222"/>`
+        + `<path fill="#3a4a6a" d="M-84 -46h22v10h-22zM-54 -46h22v10h-22zM-24 -46h22v10h-22zM6 -46h22v10H6zM36 -46h22v10H36zM-50 -66h18v8h-18zM-22 -66h18v8h-18zM6 -66h18v8H6z" opacity=".75"/>`
+        + `<path class="us-lit" d="M-84 -46h22v10h-22zM-24 -46h22v10h-22zM36 -46h22v10H36zM-22 -66h18v8h-18z"/>`) + puffs(-6, y * 0 - 104, 6, '#e8e4ec', 14, 90, 5, -60, 3) + `</g>`;
+      let trees = '';
+      const r = rnd(7); for (let i = 0; i < 26; i++) trees += `<ellipse cx="${R(480 + r() * 1100)}" cy="${R(640 - r() * 20)}" rx="${R(20 + r() * 20)}" ry="${R(18 + r() * 16)}"/>`;
+      return `<defs>${lin(s1, [[0, '#7a8cc8'], [0.35, '#d0a8cc'], [0.65, '#ffbfae'], [1, '#ffe3b6']])}${lin(sea, [[0, '#f0b0a8'], [0.2, '#8a8cc0'], [1, '#2f4a86']])}</defs>`
+        + full(`url(#${s1})`) + stars(101, 26, 200) + rays(430, 600, 1100, '#fff0cc', 0.1) + sun(430, 600, 66, '#fffaf0', '#ffc8a4')
+        + streak(300, 190, 300, '#ffe4e4', 0.55) + cloud(1200, 190, 1.0, '#d49ab8', 0.65, 64, 12, '#ffdccc') + cloud(760, 130, 0.7, '#d49ab8', 0.55, 56, 30, '#ffdccc')
+        + mv('uspar', { ad: '52s', dx: '8px' }, ridge('#a79cc4', 600, 26, 12, 5) + haze(560, 90, '#ffd8c4', 0.5))
+        + mv('uspar', { ad: '38s', dx: '12px' }, `<path fill="#9a8ab2" d="M470 650C560 610 760 590 1000 580C1240 570 1460 590 1760 620V650z"/>` + `<g fill="#6a8a78">${trees}</g>` + hs(760, 628) + bm(1190, 622) + `<g fill="#5a7a68">${trees}</g>`)
+        + haze(560, 100, '#fbd8d0', 0.4)
+        + `<rect y="640" width="1600" height="260" fill="url(#${sea})"/>`
+        + mir(`<path fill="#9a8ab2" d="M470 650C560 610 760 590 1000 580C1240 570 1460 590 1760 620V650z"/><g fill="#d6a894"><rect x="610" y="500" width="300" height="140"/><rect x="1070" y="530" width="240" height="110"/></g><g fill="#8c8aa8"><circle cx="760" cy="420" r="70"/><circle cx="1190" cy="490" r="62"/></g>`, 640, 0.2) + `<rect y="640" width="1600" height="260" fill="url(#${sea})" opacity=".55"/>`
+        + shimmer(5, 28, -100, 1700, 660, 890, '#ffd0b0', 60) + shimmer(6, 20, -100, 1700, 700, 896, '#6a74b8', 70)
+        + mv('usmove', { ad: '70s', dx: '700px' }, ferry(800, 780, 1.4) + `<path fill="none" stroke="#ffe8e0" stroke-width="4" opacity=".5" stroke-linecap="round" d="M580 790q-110 6 -240 18M600 800q-120 10 -260 28"/>`)
+        + `<g opacity=".95">${dhow(1340, 700, 0.5, '#3a3050', '#8a6a98', null)}</g>`
+        + [0, 1, 2, 3, 4, 5, 6, 7].map((i) => mv('usglide', { ad: (12 + i * 1.6) + 's', d: -(i * 2.4) + 's', dx: '600px', dy: '-30px' }, mv('usflap', { ad: '.55s', d: -(i * 0.12).toFixed(1) + 's' }, `<path fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" d="M${560 + i * 70} ${420 + (i * 53) % 170}q10-12 20 0q10-12 20 0"/>`))).join('')
+        + finish(0.3);
+    } });
+
+  /* ---------- Tbilisi: balconied houses on the river, a hill fortress and a church on its rock, in autumn ---------- */
+  asiaSceneAdd({ key: 'place:tbilisi', id: 'skyline', label: 'Balconied houses above the river in autumn', site: 'The old town and the Kura river', colour: 'orange', mood: 'cosy', season: ['autumn'], tags: ['old town', 'balconies', 'fortress', 'autumn'],
+    svg: () => {
+      const s1 = U(), rv = U(), cl = U();
+      const hcols = ['#e0a860', '#c8704c', '#8ec0a0', '#f0dcb4', '#d88a8a', '#e8c070', '#9fb8d0'];
+      const homes = (seed, x0, x1, b, hmin, hmax) => {
+        const r = rnd(seed); let x = x0, o = '', win = '', bal = '', rails = '';
+        while (x < x1) {
+          const w = 62 + r() * 34, h = hmin + r() * (hmax - hmin), c = hcols[R(r() * 20) % hcols.length], top = R(b - h);
+          o += `<rect x="${R(x)}" y="${top}" width="${R(w)}" height="${R(h)}" fill="${c}"/><path fill="#9a4a38" d="M${R(x - 5)} ${top}L${R(x + w / 2)} ${top - 24}L${R(x + w + 5)} ${top}z"/>`;
+          for (let f = 0; f < 2 + (h > 90 ? 1 : 0); f++) {
+            const y = top + 14 + f * 36;
+            win += `M${R(x + 10)} ${y}h12v20h-12zM${R(x + w - 22)} ${y}h12v20h-12z`;
+            if (f === 0 || r() < 0.6) { bal += `<rect x="${R(x + 4)}" y="${y + 24}" width="${R(w - 8)}" height="10" fill="#5a3a28"/>`; rails += `M${R(x + 8)} ${y + 24}v-10M${R(x + w / 2)} ${y + 24}v-10M${R(x + w - 8)} ${y + 24}v-10`; }
+          }
+          x += w + 3 + r() * 6;
+        }
+        return o + `<path fill="#4a3022" d="${win}"/>` + `<path fill="none" stroke="#5a3a28" stroke-width="2" d="${rails}"/>` + bal + dots(win.replace(/h12v20h-12z/g, 'h12'), '#ffd27a', 8, 12, 'us-lamps');
+      };
+      let treesA = '', treesB = '';
+      const r2 = rnd(12); for (let i = 0; i < 30; i++) { const c = ['#d8782a', '#e8a838', '#b8501e', '#c9962e'][i % 4]; treesA += `<circle cx="${R(-120 + r2() * 1880)}" cy="${R(420 + r2() * 90)}" r="${R(24 + r2() * 26)}" fill="${c}"/>`; }
+      const r3 = rnd(15); for (let i = 0; i < 26; i++) { const c = ['#d8782a', '#e8a838', '#b8501e', '#8a9a3a'][i % 4]; treesB += `<circle cx="${R(r3() * 1700 - 60)}" cy="${R(690 + r3() * 40)}" r="${R(22 + r3() * 24)}" fill="${c}"/>`; }
+      const wall = (x0, x1, y) => { let o = `<path fill="#c8a47e" d="M${x0} ${y + 60}V${y}H${x1}V${y + 60}z"/>`; for (let x = x0; x < x1; x += 22) o += `<rect x="${x}" y="${y - 12}" width="12" height="14" fill="#c8a47e"/>`; return o; };
+      const cliff = `M1010 700V470C1010 440 1030 420 1060 414L1180 410C1230 412 1260 440 1262 480V700z`;
+      return `<defs>${lin(s1, [[0, '#4b6fb0'], [0.45, '#d29aa8'], [0.75, '#ffc684'], [1, '#ffe0a0']])}${lin(rv, [[0, '#c89a70'], [0.3, '#6a7a78'], [1, '#2a4048']])}</defs>`
+        + full(`url(#${s1})`) + stars(111, 20, 160) + rays(1400, 420, 1000, '#ffe6a8', 0.1) + sun(1400, 420, 46, '#fff6d4', '#ffbe6a')
+        + cloud(380, 170, 1.0, '#d28a94', 0.7, 60, 6, '#ffd2b4') + cloud(1180, 120, 0.8, '#d28a94', 0.65, 70, 24, '#ffd8b8')
+        + mv('uspar', { ad: '54s', dx: '8px' }, ridge('#8c86b4', 400, 80, 9, 3) + `<path fill="#fff" opacity=".4" d="M230 340l24 16 20-10 26 16h-80zM900 330l20 14 24-8 20 14h-70z"/>` + haze(360, 100, '#ffd4b0', 0.5))
+        + mv('uspar', { ad: '40s', dx: '12px' }, ridge('#7a6a4a', 500, 50, 9, 6) + treesA)
+        + mv('uspar', { ad: '34s', dx: '14px' }, wall(420, 900, 330) + `<path fill="#c8a47e" d="M420 330V270h14v-8h14v8h14v60zM556 330V250l24-26l24 26v80z" opacity="0"/><rect x="410" y="250" width="44" height="90" fill="#b8946a"/><path fill="#8a4a3a" d="M404 250L432 218L460 250z"/><rect x="620" y="262" width="40" height="78" fill="#b8946a"/><path fill="#8a4a3a" d="M614 262L640 232L666 262z"/><rect x="840" y="256" width="46" height="84" fill="#b8946a"/><path fill="#8a4a3a" d="M834 256L863 224L892 256z"/><path fill="#8a6a4a" d="M410 340C500 380 700 390 900 340z"/>`)
+        + mv('uspar', { ad: '28s', dx: '16px' }, `<path fill="#a08a64" d="M-160 700V560C-60 520 100 500 300 470C420 452 520 450 700 460V700z"/>` + homes(21, -120, 760, 560, 70, 110) + `<path fill="#8a7450" d="M-160 700V620H760V700z"/>` + homes(22, -140, 700, 650, 74, 100))
+        + mv('uspar', { ad: '30s', dx: '12px' }, `<path fill="#8a7a62" d="${cliff}"/><path fill="#6a5a46" opacity=".5" d="M1180 410C1230 412 1260 440 1262 480V700H1210z"/>`
+          + `<rect x="1060" y="320" width="116" height="92" fill="#d2ae88"/><path fill="#b8946a" d="M1060 320h116v10H1060z"/><rect x="1086" y="268" width="64" height="52" fill="#d2ae88"/><path fill="#6a6a78" d="M1082 268L1118 190L1154 268z"/><path fill="#6a6a78" d="M1118 190V176" stroke="#6a6a78" stroke-width="3"/><path fill="#8a4a3a" d="M1100 412V366Q1100 350 1114 350Q1128 350 1128 366V412z"/><path fill="#6a5a46" d="M1150 412V380H1166V412z"/>` + lit(1112, 288, 12, 22) + lit(1076, 346, 10, 16) + lit(1148, 346, 10, 16)
+          + `<path fill="#6a8a58" d="M1008 470C1020 456 1034 458 1050 446" opacity="0"/><circle cx="1030" cy="436" r="24" fill="#c9962e"/><circle cx="1246" cy="470" r="22" fill="#d8782a"/>`)
+        + `<rect y="690" width="1600" height="210" fill="url(#${rv})"/>`
+        + mir(`<path fill="#8a7a62" d="${cliff}"/><rect x="-160" y="560" width="920" height="140" fill="#b8845c"/><rect x="1060" y="320" width="116" height="92" fill="#d2ae88"/>`, 700, 0.3) + `<rect y="700" width="1600" height="200" fill="url(#${rv})" opacity=".55"/>`
+        + shimmer(5, 26, -100, 1700, 710, 890, '#ffd8a0', 56) + shimmer(6, 18, -100, 1700, 760, 896, '#4a6870', 66)
+        + `<path fill="#3a2a22" d="M-160 868C100 850 300 866 600 872C900 878 1200 856 1760 868V900H-160z"/>` + `<g opacity=".95">${treesB}</g>`.replace(/cy="(\d+)"/g, (m, v) => `cy="${+v + 170}"`)
+        + `<path fill="none" stroke="#2f2a2a" stroke-width="2" d="M300 262L1500 150"/>` + mv('usmove', { ad: '40s', dx: '900px' }, `<g transform="translate(850 208)"><path stroke="#2f2a2a" stroke-width="2" d="M0 0v16"/><rect x="-14" y="16" width="28" height="18" rx="3" fill="#c8402c"/>${lit(-8, 20, 16, 8)}</g>`)
+        + [0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => `<path class="x-usfall" style="--ad:${(10 + i * 1.4).toFixed(1)}s;--d:-${(i * 2.2).toFixed(1)}s;--dx:${(i % 2 ? 1 : -1) * (60 + i * 10)}px" fill="${['#d8782a', '#e8a838', '#b8501e'][i % 3]}" d="M${200 + i * 160} ${100 + (i * 47) % 160}q10-14 20 0q-10 14-20 0z"/>`).join('')
+        + puffs(130, 480, 4, '#f0e8e4', 12, 40, 6, -110, 2.4) + birds(113, 4, 900, 200, '#3a2a44', 1.1, 600) + finish(0.32);
+    } });
+
+  /* ---------- Yerevan: the great mountain above rose-tuff rooftops at sunrise ---------- */
+  asiaSceneAdd({ key: 'place:yerevan', id: 'skyline', label: 'A snowy mountain over rose-coloured rooftops', site: 'Yerevan at sunrise', colour: 'pink', mood: 'calm', season: ['spring'], tags: ['mountain', 'sunrise', 'church', 'apricot'],
+    svg: () => {
+      const s1 = U(), m1 = U(), sn = U(), f1 = U();
+      const blocks = (seed, x0, x1, b, hmin, hmax, cols) => {
+        const r = rnd(seed); let x = x0, o = '', win = '';
+        while (x < x1) {
+          const w = 40 + r() * 50, h = hmin + r() * (hmax - hmin), top = R(b - h);
+          o += `<rect x="${R(x)}" y="${top}" width="${R(w)}" height="${R(h)}" fill="${cols[R(r() * 9) % cols.length]}"/><rect x="${R(x - 2)}" y="${top - 3}" width="${R(w + 4)}" height="5" fill="#b86a58" opacity=".6"/>`;
+          for (let y = top + 14; y < b - 14; y += 24) win += `M${R(x + 9)} ${y}h${R(w - 18)}`;
+          x += w + 2 + r() * 4;
+        }
+        return o + dots(win, '#6a3a38', 10, 22, '', ' opacity=".55"') + dots(win, '#ffd27a', 6, 22, 'us-lamps');
+      };
+      const church = (x, b) => `<rect x="${x - 70}" y="${b - 90}" width="140" height="90" fill="#c4887a"/><path fill="#b27264" d="M${x - 76} ${b - 90}L${x} ${b - 130}L${x + 76} ${b - 90}z"/><rect x="${x - 34}" y="${b - 150}" width="68" height="70" fill="#cf9484"/><path fill="#a86a5c" d="M${x - 42} ${b - 150}L${x} ${b - 236}L${x + 42} ${b - 150}z"/><path fill="#c9887a" d="M${x} ${b - 236}V${b - 244}" stroke="#a86a5c" stroke-width="3"/><path fill="#5a3030" d="M${x - 10} ${b}V${b - 40}Q${x} ${b - 54} ${x + 10} ${b - 40}V${b}z"/><path fill="#5a3030" d="M${x - 8} ${b - 130}V${b - 106}Q${x} ${b - 116} ${x + 8} ${b - 106}V${b - 130}z"/>` + lit(x - 6, b - 126, 12, 18);
+      const blossom = (x, y, dx, dy, seed) => {
+        const r = rnd(seed); let o = '', br = `M${x} ${y}Q${R(x + dx * 0.4)} ${R(y + dy * 0.2)} ${R(x + dx)} ${R(y + dy)}`, fl = '';
+        for (let i = 0; i < 38; i++) { const t = r(), px = R(x + dx * t + (r() - 0.5) * 120), py = R(y + dy * t + (r() - 0.3) * 90); fl += `<circle cx="${px}" cy="${py}" r="${R(7 + r() * 7)}" fill="${r() < 0.5 ? '#ffffff' : '#ffd0d8'}"/>`; }
+        return mv('ussway2', { ad: '7s', d: '-' + seed + 's', to: `${x}px ${y}px` }, `<path fill="none" stroke="#4a3028" stroke-width="9" stroke-linecap="round" d="${br}"/><g opacity=".92">${fl}</g>`);
+      };
+      let rows = '';
+      for (let i = 0; i < 9; i++) rows += `M${-160 + i * 80} 700L${-200 + i * 220} 770`;
+      return `<defs>${lin(s1, [[0, '#6c92d0'], [0.4, '#c8b4d8'], [0.7, '#ffc4b0'], [1, '#ffe6b8']])}${linU(m1, [[0, '#d8c4e0'], [0.5, '#b09ac8'], [1, '#8a7ab0']], 160, 240, 520, 640)}${linU(sn, [[0, '#ffffff'], [1, '#ffd8e0']], 440, 230, 700, 380)}${lin(f1, [[0, '#8ea25a'], [1, '#5a7a3a']])}</defs>`
+        + full(`url(#${s1})`) + rays(1330, 600, 1100, '#fff0c8', 0.1) + sun(1330, 600, 52, '#fffaf0', '#ffd0a0')
+        + streak(1180, 190, 300, '#ffe6e4', 0.55) + cloud(350, 160, 0.8, '#d49ab8', 0.55, 66, 10, '#ffe0d0') + cloud(1000, 120, 0.7, '#d49ab8', 0.5, 56, 30, '#ffe0d0')
+        + mv('uspar', { ad: '60s', dx: '7px' }, `<path fill="#c0a0cc" d="M900 650C960 530 990 430 1030 384C1070 430 1110 530 1200 650z"/><path fill="#fff" opacity=".85" d="M1006 410L1030 384L1054 410L1040 424L1030 408L1018 426z"/><path fill="#ffd8e0" opacity=".6" d="M1030 384L1054 410L1040 424L1030 408z"/>`
+          + `<path fill="url(#${m1})" d="M-160 650C100 610 280 490 400 340C440 290 480 250 520 230C560 250 600 290 650 360C760 500 920 610 1100 650z"/><path fill="#8a74ac" opacity=".55" d="M520 230C500 330 470 480 440 650H-160C100 610 280 490 400 340C440 290 480 250 520 230z"/>`
+          + `<path fill="url(#${sn})" d="M400 340C440 290 480 250 520 230C560 250 600 290 650 360L626 344L598 388L566 342L534 398L504 346L470 392L438 350L416 384z"/><path fill="#c4a0cc" opacity=".55" d="M520 230C500 290 470 330 438 350L416 384L400 340C440 290 480 250 520 230z"/>`
+          + haze(480, 150, '#ffd8d0', 0.55))
+        + mv('uspar', { ad: '44s', dx: '10px' }, `<rect x="-160" y="640" width="1920" height="70" fill="url(#${f1})"/><path fill="none" stroke="#c4cc7a" stroke-width="3" opacity=".6" d="${rows}"/>` + `<path fill="#a0b060" opacity=".4" d="M-160 640H1760v8H-160z"/>`)
+        + mv('uspar', { ad: '34s', dx: '14px' }, blocks(121, -160, 1760, 730, 40, 110, ['#e0a08a', '#d98f78', '#e8b098', '#cf8a76', '#e6a890']) + haze(690, 80, '#ffd0c0', 0.3))
+        + mv('uspar', { ad: '26s', dx: '16px' }, `<path fill="#6a8a48" d="M-160 900V800C100 780 300 790 560 800C800 810 1100 780 1400 790C1560 796 1700 800 1760 800V900z"/>` + blocks(122, 640, 1560, 810, 50, 140, ['#e8a690', '#d98f78', '#ecb49c', '#d4907c']))
+        + church(260, 800) + `<path fill="#4f7a3a" d="M-160 900V810C100 790 300 800 500 816C700 830 900 832 1000 840C1200 850 1560 830 1760 840V900z"/>`
+        + `<g fill="#6a8a48">${[160, 420, 560, 1030, 1230, 1510].map((x) => `<circle cx="${x}" cy="838" r="${34 + (x % 3) * 8}"/>`).join('')}</g>`
+        + blossom(1700, 120, -520, 120, 3) + blossom(1700, 40, -300, 220, 5) + blossom(-100, 60, 360, 150, 7)
+        + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => `<circle class="x-usfall" style="--ad:${(9 + i * 1.3).toFixed(1)}s;--d:-${(i * 1.9).toFixed(1)}s;--dx:${(i % 2 ? 1 : -1) * (40 + i * 9)}px" cx="${900 + i * 70}" cy="${100 + (i * 41) % 120}" r="5" fill="#ffd8e0"/>`).join('')
+        + birds(123, 4, 700, 230, '#4a3858', 1.2, 700) + finish(0.3);
     } });
 })();
