@@ -13,6 +13,7 @@ upgrades it.
 ### Added
 
 - Settings > Updates: Check for updates asks the project’s GitHub releases for the newest version (nothing about you is sent), shows what is new, and Update installs it: a release zip is downloaded, verified against its published SHA-256, swapped in (the replaced files are kept in the data folder’s update-backup) and the server rebuilds and restarts; a git checkout is fast-forwarded to the release tag. An optional once-a-day check is off by default. Palette: Check for updates, Update OpenDash.
+- A Texas animation pack with nine full-screen scenes (the Hill Country in bluebonnets, a West Texas sunset, the Gulf Coast, the Fort Worth Stockyards, Dallas, a Houston liftoff, the Austin Capitol walk, the Alamo, El Paso's star) shown under "Welcome to <town>" when the app opens, plus Lone Star openings, symbols and celebrations, a big-sky sunset, a landmark for six Texas cities, and Texas Independence Day, San Jacinto Day, Juneteenth, bluebonnet and rodeo season and Friday night lights. It plays only in Texas (a travel city there, or a weather town within reach) and can be switched off in Settings > Animations.
 
 ## [2.2.1] - 2026-10-04
 
