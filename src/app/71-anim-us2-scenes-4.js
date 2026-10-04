@@ -225,12 +225,12 @@
         + `<rect y="680" width="1600" height="220" fill="url(#${g1})"/>`
         /* roses and rail */
         + `<g>${Array.from({ length: 8 }, (_, i) => `<ellipse cx="${100 + i * 200}" cy="700" rx="90" ry="22" fill="#2f7a34"/>`).join('')}</g><path fill="none" stroke="#d8283a" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 20" d="M0 696H1600M0 706H1600"/><path fill="none" stroke="#f08aa0" stroke-width="8" stroke-linecap="round" stroke-dasharray="0 24" d="M10 700H1600"/>`
-        + `<rect y="716" width="1600" height="184" fill="url(#${t1})"/><path fill="#a0724a" d="M0 760Q800 744 1600 760V776Q800 760 0 776z" opacity=".55"/><rect y="712" width="1600" height="8" fill="#fff"/><g fill="#fff">${Array.from({ length: 27 }, (_, i) => `<rect x="${i * 60 - 8}" y="712" width="8" height="30"/>`).join('')}</g>`
-        + mv('uspar', { ad: '1.6s', dx: '6px' }, `<path fill="none" stroke="#e8c898" stroke-width="5" stroke-dasharray="26 80" opacity=".5" d="M0 800H1600M0 850H1600"/>`)
-        + mv('usmove', { ad: '8s', dx: '2600px' }, horse(1180, 800, 1.35, '#6a3a22', '#3a2014', '#d8283a', '#fff', '.55s', '0s'))
-        + mv('usmove', { ad: '8.6s', d: '-1.4s', dx: '2600px' }, horse(1000, 780, 1.2, '#2c2420', '#14100e', '#2a5ab8', '#f2c94a', '.5s', '-.2s'))
-        + mv('usmove', { ad: '9.2s', d: '-3s', dx: '2600px' }, horse(820, 756, 1.05, '#a0663a', '#5a3620', '#2f9a4a', '#fff', '.6s', '-.4s'))
-        + mv('usmove', { ad: '10s', d: '-5s', dx: '2600px' }, horse(650, 736, 0.9, '#8a8a90', '#4a4a50', '#f2c94a', '#d8283a', '.55s', '-.1s'))
+        + `<rect y="716" width="1600" height="184" fill="url(#${t1})"/><path fill="#a0724a" d="M0 760Q800 744 1600 760V776Q800 760 0 776z" opacity=".55"/><rect y="712" width="1600" height="8" fill="#fff"/>` + mv('usmove', { ad: '.8s', dx: '-60px' }, `<g fill="#fff">${Array.from({ length: 29 }, (_, i) => `<rect x="${i * 60 - 68}" y="712" width="8" height="30"/>`).join('')}</g>`)
+        + mv('usmove', { ad: '1.4s', dx: '-106px' }, `<path fill="none" stroke="#e8c898" stroke-width="5" stroke-dasharray="26 80" opacity=".5" d="M-120 800H1720M-120 850H1720"/>`)
+        + mv('usdrift', { ad: '3.4s', dx: '30px' }, horse(1180, 800, 1.35, '#6a3a22', '#3a2014', '#d8283a', '#fff', '.55s', '0s'))
+        + mv('usdrift', { ad: '4.1s', d: '-1.4s', dx: '36px' }, horse(1000, 780, 1.2, '#2c2420', '#14100e', '#2a5ab8', '#f2c94a', '.5s', '-.2s'))
+        + mv('usdrift', { ad: '3.8s', d: '-3s', dx: '26px' }, horse(820, 756, 1.05, '#a0663a', '#5a3620', '#2f9a4a', '#fff', '.6s', '-.4s'))
+        + mv('usdrift', { ad: '4.6s', d: '-2s', dx: '34px' }, horse(650, 736, 0.9, '#8a8a90', '#4a4a50', '#f2c94a', '#d8283a', '.55s', '-.1s'))
         + finish(0.3); } });
 
   /* ---------- NEW ORLEANS: gas lamps and the cathedral at dusk ---------- */

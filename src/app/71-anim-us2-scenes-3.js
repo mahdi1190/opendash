@@ -79,7 +79,7 @@
         + birds(5, 5, 780, 340, '#3a3a52', 1.1, 560)
         + mv('uspar', { ad: '34s', dx: '8px' }, ridge('#a4b4cc', 530, 36, 9, 41) + haze(470, 110, '#ffe6c0', 0.6) + ridge('#86a98c', 575, 30, 10, 42))
         + `<rect width="1600" height="900" fill="url(#${l1})"/>`
-        + mv('uspar', { ad: '34s', dx: '14px' }, ridge(`url(#${g2})`, 628, 34, 8, 43) + canopy('#3c6a3c', 612, 26, 44, 560, 1010, 660) + canopy('#456f3e', 614, 22, 45, 1330, 1760, 660))
+        + mv('uspar', { ad: '34s', dx: '14px' }, canopy('#3c6a3c', 606, 26, 44, 560, 1010, 700) + canopy('#456f3e', 608, 22, 45, 1330, 1760, 700) + ridge(`url(#${g2})`, 640, 30, 8, 43))
         /* the barn on the rise */
         + `<g><path fill="#4d5a52" d="M996 556L1120 482L1244 556z"/><path fill="#2f4f45" d="M996 556L1120 482L1244 556L1232 556L1120 492L1008 556z"/><rect x="1008" y="552" width="224" height="72" fill="#f5eee0"/><rect x="1008" y="552" width="224" height="8" fill="#e4d8c2"/>`
         + `<path fill="#f5eee0" d="M960 590L1008 556V624H960z"/><path fill="#2f4f45" d="M948 592L1008 552V560L960 598z"/><path fill="#f5eee0" d="M1232 556L1280 590V624H1232z"/><path fill="#2f4f45" d="M1232 552L1292 592L1280 598L1232 560z"/>`
@@ -284,6 +284,7 @@
       for (let i = 0; i < N; i += 1) { lat += `M${R(top[i][0])} ${R(top[i][1])}L${R(bot[i + 1][0])} ${R(bot[i + 1][1])}M${R(bot[i][0])} ${R(bot[i][1])}L${R(top[i + 1][0])} ${R(top[i + 1][1])}`; }
       for (let i = 2; i < N - 1; i += 2) { col += `M${R(top[i][0])} ${R(top[i][1])}V290`; }
       let tr = ''; for (let x = 300; x < 1300; x += 26) tr += `M${x} 262L${x + 13} 286L${x + 26} 262`;
+      const rim = (seed, n, x0, x1) => { const r = rnd(seed); let o = ''; for (let i = 0; i < n; i++) o += `<circle cx="${R(x0 + r() * (x1 - x0))}" cy="${R(244 + r() * 50)}" r="${R(26 + r() * 30)}" fill="${cl[R(r() * 5)]}"/>`; return o; };
       const blob = (seed, n, side) => { const r = rnd(seed); let o = ''; for (let i = 0; i < n; i++) { const y = 262 + r() * 640, xe = side < 0 ? 300 + (y - 250) * 0.34 : 1300 - (y - 250) * 0.34, x = side < 0 ? xe - r() * 520 : xe + r() * 520;
           o += `<circle cx="${R(x)}" cy="${R(y)}" r="${R(34 + r() * 46)}" fill="${cl[R(r() * 5)]}"/>`; } return o; };
       return `<defs>${lin(s1, [[0, '#6a9ad4'], [0.45, '#b8d0e4'], [0.78, '#f6e6c0'], [1, '#ffe8b8']])}${lin(w1, [[0, '#6aa89a'], [1, '#2c6a62']])}${linU(c1, [[0, '#8a7a6a'], [1, '#4a4038']], 0, 250, 0, 900)}${radU(l1, [[0, '#fff2c8', 0.6], [1, '#fff2c8', 0]], 1150, 190, 800)}</defs>`
@@ -296,7 +297,7 @@
         + mv('usmove', { ad: '50s', dx: '60px' }, `<path fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".7" d="M600 730q40-10 80 0M780 760q60-14 120 0M980 740q40-8 70 0M520 820q80-16 160 0M900 840q90-14 180 0"/>`) + shimmer(5, 40, 380, 1220, 720, 890, '#e8fff4', 46)
         /* the gorge walls in fall colour */
         + `<path fill="url(#${c1})" d="M-160 250H300C330 330 360 480 420 620L540 900H-160z"/><path fill="url(#${c1})" d="M1760 250H1300C1270 330 1240 480 1180 620L1060 900H1760z"/>`
-        + blob(95, 52, -1) + blob(96, 52, 1) + canopy('#e08a24', 262, 30, 97, -160, 340, 330) + canopy('#c8501e', 270, 28, 98, 1260, 1760, 330) + `<path fill="#6a604f" opacity=".5" d="M300 250C330 330 360 480 420 620L450 700C380 560 340 400 300 250zM1300 250C1270 330 1240 480 1180 620L1150 700C1220 560 1260 400 1300 250z"/>`
+        + blob(95, 52, -1) + blob(96, 52, 1) + rim(97, 14, -160, 330) + rim(98, 14, 1280, 1760) + `<path fill="#6a604f" opacity=".5" d="M300 250C330 330 360 480 420 620L450 700C380 560 340 400 300 250zM1300 250C1270 330 1240 480 1180 620L1150 700C1220 560 1260 400 1300 250z"/>`
         + mv('usdrift', { ad: '50s', dx: '120px' }, `<ellipse cx="800" cy="610" rx="420" ry="26" fill="#f4f0e4" opacity=".5"/><ellipse cx="900" cy="690" rx="360" ry="22" fill="#fff" opacity=".45"/>`)
         /* the steel arch and the deck */
         + `<path fill="#4a5662" d="${poly(top)}${poly(bot.slice().reverse()).replace('M', 'L')}z"/><path fill="none" stroke="#2c3640" stroke-width="2.4" d="${lat}"/><path fill="none" stroke="#5a6672" stroke-width="5" d="${col}"/>`

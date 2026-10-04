@@ -501,7 +501,7 @@
         + `<rect y="650" width="1600" height="250" fill="url(#${lake})"/>`
         + `<path fill="#ffc07a" opacity=".3" d="M180 652h240l110 248H70z"/>` + shimmer(11, 26, 60, 560, 660, 890, '#ffd6a0', 50) + shimmer(12, 36, 0, 1600, 660, 890, '#c06ab0', 56)
         /* the plaza under the pyramid and the white wing */
-        + `<path fill="#352a5a" d="M330 664H1270L1340 690L1230 748L800 772L400 748L300 690z"/><path fill="#4a3a78" d="M400 748L800 772L1230 748L1240 756L800 782L390 756z"/>`
+        + `<path fill="#352a5a" d="M340 668L800 764L1250 672L1170 660L800 744L470 656z"/>`
         + `<g fill="#f4eef8"><path d="M330 600H500V672H330z"/><path d="M360 560H470V600H360z"/></g><path fill="#c9b8da" d="M330 600H500L488 612H342z"/><g fill="#8a6aa8" opacity=".5"><rect x="344" y="624" width="144" height="5"/><rect x="344" y="642" width="144" height="5"/></g>` + lit(372, 572, 20, 12) + lit(406, 572, 20, 12)
         /* the reflection */
         + `<g transform="translate(0 1484) scale(1 -1)" opacity=".26">` + pyr(1) + `</g>`
