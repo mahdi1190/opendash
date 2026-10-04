@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const src = name => readFileSync(new URL('../src/app/' + name, import.meta.url), 'utf8');
-function harness({ day = '2026-12-25', look = {}, on = true } = {}) {
+function harness({ day = '2026-12-25', look = {}, on = true, town = '' } = {}) {
   const timers = [], attributes = {}, stored = new Map(); let gone = false;
   const element = () => ({
     isConnected: true, innerHTML: '', children: [], className: '',
@@ -27,10 +27,10 @@ function harness({ day = '2026-12-25', look = {}, on = true } = {}) {
     _serverAvailable: false, todayStr: () => day, _agLevel: () => 'standard',
     animEnabled: () => on, animLook: () => ({ opening: 'daily', block: [], packsOff: [], ...look }),
     esc: s => String(s),
-    animUkWhere: () => ({ id: 'hampshire', name: 'Hampshire', welcome: 'Hampshire' }),
+    animUkWhere: () => ({ id: 'hampshire', name: 'Hampshire', welcome: 'Hampshire', town }),
     animUkCountyId: () => 'hampshire', _AUK_KEY: 'synthetic-county',
   });
-  for (const file of ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-uk-counties.js', '72-anim-pack-seasons.js', '72-anim-pack-uk-south-east.js']) vm.runInContext(src(file), context);
+  for (const file of ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-uk-counties.js', '72-anim-pack-seasons.js', '72-anim-pack-uk-south-east-4.js', '72-anim-pack-uk-south-east.js']) vm.runInContext(src(file), context);
   vm.runInContext("function animToday(slot) { return animDailyPick(slot, todayStr(), animLook(), { county: 'hampshire', level: 'standard' }); }", context);
   vm.runInContext(src('78-anim-wire.js'), context);
   const arrival = () => {
@@ -60,7 +60,7 @@ test('Christmas plays after the welcome and county scene, then closes', () => {
 
 test('county arrivals continue with the holiday only on natural completion', () => {
   const h = harness(); const overlays = h.arrival();
-  assert.equal(overlays.length, 1); assert.match(overlays[0].innerHTML, /Welcome to/);
+  assert.equal(overlays.length, 1); assert.match(overlays[0].innerHTML, /Hampshire/); assert.doesNotMatch(overlays[0].innerHTML, /Welcome to/);
   h.next(); assert.equal(overlays.length, 2); assert.match(overlays[1].innerHTML, /Christmas/);
   h.next(); assert.equal(overlays[1].isConnected, false);
   const skipped = harness(); const dismissed = skipped.arrival();
@@ -77,12 +77,26 @@ test('returning county openings rotate on refresh; arrival keeps its signature',
   const pick = rotate => vm.runInContext(`animOpeningScene(animUkWhere(), ${rotate}).it.ref`, h.context);
   assert.equal(pick(false), 'uk-south-east/hampshire-new-forest-ponies');
   const seen = new Set();
-  for (let i = 0; i < 10; i++) seen.add(pick(true));
-  assert.equal(seen.size, 10, 'all county scenes are reached before repeating');
+  for (let i = 0; i < 42; i++) seen.add(pick(true));
+  assert.equal(seen.size, 42, 'all county scenes are reached before repeating');
   h.run(); h.next();
   const first = h.attributes['data-od-scene'];
   h.run(); h.next(); h.next(); h.next();
   assert.notEqual(h.attributes['data-od-scene'], first, 'returning splash advances');
+});
+
+test('local openings name the scene town and mix two nearby views with one wider view', () => {
+  const h = harness({ day: '2026-10-06', town: 'Yateley' });
+  h.run(); h.next();
+  assert.match(h.splash.children[0].innerHTML, /od-seq-place">Yateley</);
+  assert.doesNotMatch(h.splash.children[0].innerHTML, /Welcome to/);
+  const seen = new Set(); let nearby = 0;
+  for (let i = 0; i < 30; i++) {
+    const it = vm.runInContext('animOpeningScene(animUkWhere(), true).it', h.context);
+    assert.ok(!seen.has(it.ref), 'the first thirty selections do not repeat'); seen.add(it.ref);
+    if (it.ukPart === 'north-hampshire') nearby++;
+  }
+  assert.equal(nearby, 20);
 });
 
 test('ordinary days, blocked holidays and disabled packs have no event stage', () => {

@@ -145,6 +145,24 @@
       "path": "src/app/72-anim-pack-uk-south-east.js",
       "line_sha256": "0e814f215adf1784cbcb6379fca274529dbac69cf0a4c80204c9463e2d786005",
       "why": "a fish species name in a scene comment, an ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/72-anim-pack-uk-south-east.js",
+      "line_sha256": "b207bcb8f6604ae37a3688d0205a81fb6b2f1adc980b83388848173c167b4b87",
+      "why": "a fish species name in a scene comment, an ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/72-anim-pack-uk-south-east.js",
+      "line_sha256": "cac3349a844b8f4da83dc0d18592c516b79da7451540daa50e6e22696dede7cc",
+      "why": "a fish species name in a scene comment, an ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/72-anim-pack-uk-south-east.js",
+      "line_sha256": "5c5af4311242a8ff49a468c751c6eeac14fdb4aba08a8437beadb6d312610c4d",
+      "why": "a fish species name in a scene comment, an ordinary word"
     }
   ]
 }

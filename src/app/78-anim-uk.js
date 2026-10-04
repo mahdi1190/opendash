@@ -40,7 +40,7 @@ function animUkWhere() {
   let where = null;
   for (const p of pts) {
     const c = ukCountyNearest(p.lat, p.lon);
-    if (c) { where = Object.assign(c, { source: p.source }); break; }
+    if (c) { where = Object.assign(c, { source: p.source, lat: p.lat, lon: p.lon }); break; }
   }
   _aukMemo = { at: now, key, where };
   return where;
@@ -65,7 +65,7 @@ function animUkCheck(o) {
     if (!last && !o.first) { try { localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ } return false; }
     if (document.hidden || _aukShowing || document.querySelector('.ap-opening:not(.anim-scene), .ap-cine, #od-splash') || document.documentElement.classList.contains('story-open')) return false;   // try again on the next check
     try { localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ }
-    const words = 'Welcome to ' + w.welcome;
+    const words = w.town || w.name;
     const on = typeof _awOn === 'function' ? _awOn() : true;
     if (!on) { if (typeof toast === 'function') toast(words); return true; }
     // Full screen: the county's scene edge to edge (or the seasonal landscape when none is drawn yet),
@@ -74,7 +74,7 @@ function animUkCheck(o) {
     const tod = typeof animTimeOfDay === 'function' ? animTimeOfDay() : 'day';
     const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : (typeof animOpeningFallbackHtml === 'function' ? animOpeningFallbackHtml(animSeasonOf(todayStr()), tod) : '');
     const ms = { subtle: 2400, standard: 3400, playful: 4200 }[typeof _agLevel === 'function' ? _agLevel() : 'standard'] || 3400;
-    const el = animCineShow({ art, over: 'Welcome to', place: w.welcome, origin, ms, cls: 'ap-uk-welcome', onEnd: reason => {
+    const el = animCineShow({ art, over: '', place: animOpeningPlace(it, w), origin, ms, cls: 'ap-uk-welcome', onEnd: reason => {
       _aukShowing = false;
       // Arrival has the same ordering as the daily splash. Skipping ends the
       // whole sequence; a completed welcome may continue with today's event.

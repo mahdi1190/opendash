@@ -207,6 +207,28 @@ function _animFitsLevel(it, lv) { return !ANIM_INTENSITIES.includes(lv) || _anim
  * the birthday, the moon tonight, sunrise now) whose rule holds; the highest priority wins,
  * then the day seeds the choice. Blocks, packs switched off and the intensity level apply.
  */
+/** Nearby means a scene's public town centre is within 15 km. No location lookup. */
+function animUkScenePools(items, ctx) {
+  const towns = typeof ukTowns === 'function' ? ukTowns() : [];
+  const home = towns.find(t => t.id === ctx.county && t.town === ctx.ukTown);
+  const lat = Number.isFinite(ctx.ukLat) ? ctx.ukLat : home && home.lat;
+  const lon = Number.isFinite(ctx.ukLon) ? ctx.ukLon : home && home.lon;
+  const nearby = items.filter(it => {
+    if (it.county !== ctx.county || !it.ukTown) return false;
+    const town = towns.find(t => t.id === it.county && t.town === it.ukTown);
+    if (!town || !Number.isFinite(lat) || !Number.isFinite(lon)) return it.ukTown === ctx.ukTown;
+    const r = Math.PI / 180, a = (town.lat - lat) * r, b = (town.lon - lon) * r;
+    const h = Math.sin(a / 2) ** 2 + Math.cos(lat * r) * Math.cos(town.lat * r) * Math.sin(b / 2) ** 2;
+    return 12742 * Math.asin(Math.min(1, Math.sqrt(h))) <= 15;
+  });
+  const local = new Set(nearby);
+  return { nearby, wider: items.filter(it => !local.has(it)) };
+}
+function animUkRotationPool(items, ctx, step) {
+  const { nearby, wider } = animUkScenePools(items, ctx);
+  if (!nearby.length || !wider.length) return items;
+  return Math.abs(step) % 3 === 2 ? wider : nearby;
+}
 function animSpecialPick(slot, day, look, ctx) {
   look = animLookNormalize(look); ctx = ctx || {};
   const hits = animItems({ slot, look }).filter(it => typeof it.when === 'function' && !look.block.includes(it.ref) && _animFitsLevel(it, ctx.level) && _animWhen(it, day, ctx));
@@ -217,9 +239,7 @@ function animSpecialPick(slot, day, look, ctx) {
   // A national event still has higher priority; unavailable local art falls
   // back to the whole county, including when local scenes are blocked.
   if (top < 2 && ctx.county && ctx.ukTown) {
-    const town = String(ctx.ukTown).toLowerCase();
-    const local = pool.filter(it => it.county === ctx.county && typeof it.ukTown === 'string' && it.ukTown.toLowerCase() === town);
-    if (local.length) pool = local;
+    pool = animUkRotationPool(pool, ctx, Math.floor(Date.parse(day + 'T12:00:00Z') / 86400000));
   }
   const favs = pool.filter(it => look.fav.includes(it.ref));
   const bag = favs.length ? favs : pool;

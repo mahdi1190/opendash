@@ -20,16 +20,22 @@ including named towns and researched places within each county. The 8–12 scene
 per county below are the completed baseline, not the final expansion target.
 New views must change composition and activity as well as lighting or season;
 photos and static image substitutes do not meet the animated SVG quality bar.
-The first expansion adds 32 scenes (16 Hampshire, 16 Kent), for 116 combined scenes. Further expansion is paused.
+Town expansions add 64 scenes: 16 elsewhere in Hampshire, 16 in Kent and
+32 around Yateley, Fleet and Farnborough, for 148 combined scenes. The wider
+1,000-scene expansion remains paused.
 South East and London target 1,044 scenes: the 84 baseline scenes plus 24 new
 named places with four considered views in each of the ten county/area groups.
 This is an authoring target; completed counts remain in the batch table.
 
 Expanded scenes carry `ukPlace`, `ukLocality`, `ukTown`, `ukView` and
 `viewReason`. `ukLocality` is the actual village or town; `ukTown` is a main-town
-cluster already in the offline county table. A matched town rotates its local
-views, with a county fallback when the town has no enabled, eligible artwork.
-One signature per county still opens its welcome, followed by today's event.
+cluster already in the offline county table. Town centres within 15 km of the
+current weather/travel point form the nearby pool. Two openings use that pool,
+then one uses the wider county, with independent cursors and county fallback
+when either pool is empty. The daily card follows the same two-to-one balance
+over days. Pins, blocks, disabled packs and holiday priority still apply.
+Openings show the illustrated place's own name, without "Welcome to". A first
+arrival prefers local art and otherwise uses the county signature.
 The gallery pages 80 scenes at a time and searches all scenes, including place
 and town names, so large packs remain entirely browsable.
 
@@ -46,11 +52,11 @@ and town names, so large packs remain entirely browsable.
 - Every UK item has a `when` rule: `ctx.county === <its county>`. That means
   it never comes up anywhere else, or with the setting off.
 - Items sit in the `opening` slot at priority 1. Daily picks rotate among
-  the county's items. The full welcome sequence plays its signature first,
+  the county's items. The full opening sequence plays its local scene first,
   then a matching festival or special event (priority 2 and up). A skip ends
   the whole sequence. Blocks, packs off and motion preferences still apply.
-- **Welcome to \<county\>:** when the detected county changes, the county's
-  signature opening plays with a caption. The last county is remembered per
+- **Place opening:** when the detected county changes, nearby art (or the
+  county signature) plays with a place name and caption. The last county is remembered per
   device (`localStorage dashboard-anim-uk-county`). With motion off, a toast
   shows instead. If the county's region is not drawn yet, the caption plays
   alone.
@@ -66,7 +72,7 @@ as Hampshire is in `72-anim-pack-uk-south-east.js`:
   subject inside the middle 1200 x 800 and draw layers 160 units past each
   edge, so they can drift.
 - The opening sequence (`78-anim-wire.js`) plays the county's full scene after
-  "Welcome to <county>", full screen, with the origin line from `site`. A
+  the place name, full screen, with the origin line from `site`. A
   county with no full scene gets a seasonal landscape instead
   (`animOpeningFallbackHtml`). The gallery stage, the animation-of-the-day
   card and the county welcome also show full scenes large.
@@ -88,7 +94,7 @@ as Hampshire is in `72-anim-pack-uk-south-east.js`:
 | Batch | Region id | Areas (ids in `UK_COUNTIES`) |
 | --- | --- | --- |
 | 1 (done) | `south-west` | cornwall, devon, dorset, somerset, bristol, gloucestershire, wiltshire |
-| 2 (106 full scenes; expansion paused) | `south-east` | kent, east-sussex, west-sussex, surrey, hampshire, isle-of-wight, berkshire, oxfordshire, buckinghamshire |
+| 2 (138 full scenes; wider expansion paused) | `south-east` | kent, east-sussex, west-sussex, surrey, hampshire, isle-of-wight, berkshire, oxfordshire, buckinghamshire |
 | 3 (baseline done: 10 full scenes; combined gallery; expansion pending) | `london` | greater-london |
 | 4 | `east` | norfolk, suffolk, cambridgeshire, essex, hertfordshire, bedfordshire |
 | 5 | `east-midlands` | derbyshire, nottinghamshire, leicestershire, rutland, northamptonshire, lincolnshire |
@@ -133,7 +139,7 @@ the explicitly combined neighbouring regions.
 ## Per-county checklist
 
 - [ ] **One signature opening** (`kind: 'signature'`). This is the county's
-      best-known sight, and it plays in "Welcome to …". It has no `months`.
+      best-known sight, used on arrival when local art is unavailable. It has no `months`.
 - [ ] **8–12 baseline scenes**, including the signature and at most three of
       each other kind (baseline variants count). Expanded town collections add
       researched named places with at most four distinct views per place:

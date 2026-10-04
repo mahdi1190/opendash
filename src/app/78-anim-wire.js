@@ -32,7 +32,7 @@ function animCtx() {
     lat: loc && isFinite(+loc.lat) ? +loc.lat : null,
     lon: loc && isFinite(+loc.lon) ? +loc.lon : null,
     firstSnow: _awFirstSnow(),
-    ...(() => { const w = typeof animUkWhere === 'function' ? animUkWhere() : null; return { county: w ? w.id : '', ukTown: w ? w.town : '' }; })(),   // offline and opt-in (78-anim-uk.js)
+    ...(() => { const w = typeof animUkWhere === 'function' ? animUkWhere() : null; return { county: w ? w.id : '', ukTown: w ? w.town : '', ukLat: w && w.lat, ukLon: w && w.lon }; })(),   // offline and opt-in (78-anim-uk.js)
     ...(() => { const w = typeof animWorldWhere === 'function' ? animWorldWhere() : null; return { city: w ? w.city : '', country: w ? w.country : '' }; })(),   // the world pack (78-anim-world.js)
   };
 }
@@ -145,14 +145,23 @@ function animOpeningScene(w, rotate) {
   let last = '';
   try { last = localStorage.getItem(key) || ''; } catch (e) { /* private mode */ }
   const signature = mine.find(x => x.signature);
-  const previous = mine.findIndex(x => x.ref === last);
   const pin = mine.find(x => look.pin && x.ref === look.pin.opening);
-  const next = mine[(previous >= 0 ? previous + 1 : Math.max(0, mine.indexOf(signature) + 1)) % mine.length];
-  const it = rotate ? pin || next : signature || pin || mine[0];
+  let rotation = { step: 0, nearby: '', wider: '' };
+  try { const saved = JSON.parse(localStorage.getItem(key + '-rotation') || 'null'); if (saved && Number.isSafeInteger(saved.step) && saved.step >= 0) rotation = saved; } catch (e) { /* private mode */ }
+  const ctx = { county: w.id, ukTown: w.town, ukLat: w.lat, ukLon: w.lon };
+  const groups = animUkScenePools(mine, ctx);
+  const pool = animUkRotationPool(mine, ctx, rotation.step);
+  const lane = groups.nearby.length && groups.wider.length ? (rotation.step % 3 === 2 ? 'wider' : 'nearby') : 'all';
+  const previous = pool.findIndex(x => x.ref === (rotation[lane] || last));
+  const next = pool[(previous >= 0 ? previous + 1 : Math.max(0, pool.indexOf(signature) + 1)) % pool.length];
+  const localIntro = groups.nearby.find(x => x.ukTown === w.town) || groups.nearby[0];
+  const it = rotate ? pin || next : pin || localIntro || signature || mine[0];
   try { localStorage.setItem(key, it.ref); } catch (e) { /* private mode */ }
+  if (rotate && !pin) try { rotation[lane] = it.ref; rotation.step = (rotation.step + 1) % 3000000; localStorage.setItem(key + '-rotation', JSON.stringify(rotation)); } catch (e) { /* private mode */ }
   const site = it.site || it.label.replace(new RegExp(', ' + w.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), '');
   return { it, origin: site.includes(w.name) ? site : site + ' · ' + w.name };
 }
+function animOpeningPlace(it, w) { return it && (it.ukLocality || it.ukTown) || w && w.name || ''; }
 function _awWhen(it, day, county) { try { return typeof it.when !== 'function' || !!it.when(day, Object.assign(animCtx(), { county })); } catch (e) { return false; } }
 
 /** A date-based holiday or special event, following (never replacing) the
@@ -228,7 +237,7 @@ function animOpeningSequence() {
     const emblem = tx && !tx.it.full ? '<div class="od-seq-emblem" aria-hidden="true">' + animItemHtml(tx.it, { size: 'hero', live: true }) + '</div>' : '';
     const box = document.createElement('div'); box.className = 'od-seq';
     box.innerHTML = `<div class="od-seq-bg">${art}</div><div class="od-seq-shade"></div>${emblem}`
-      + `<div class="od-seq-title"><span class="od-seq-over">${esc(w || tx ? 'Welcome to' : 'Welcome back')}</span>${w || tx ? `<span class="od-seq-place">${esc(w ? w.welcome : tx.name)}</span>` : ''}</div>`
+      + `<div class="od-seq-title">${w ? '' : `<span class="od-seq-over">${esc(tx ? 'Welcome to' : 'Welcome back')}</span>`}${w || tx ? `<span class="od-seq-place">${esc(w ? animOpeningPlace(it, w) : tx.name)}</span>` : ''}</div>`
       + `<div class="od-seq-cap"><span class="od-seq-origin">${esc(cap)}</span><span class="od-seq-skip">Click or press any key to skip</span></div>`;
     sp.style.setProperty('--od-hello-ms', ms[1] + 'ms');
     sp.style.setProperty('--od-scene-ms', ms[2] + 'ms');
