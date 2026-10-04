@@ -186,4 +186,200 @@
         + palm(120, 870, 260, 30, '#3c2d4c', '#2f3f4a', 6, 0) + palm(1480, 880, 300, -30, '#3c2d4c', '#2a3a48', 7, 2)
         + finish(0.36);
     } });
+  /** A yurt: felt walls, a domed roof with a smoke ring, a patterned band and a door. (x, y = foot) */
+  const yurt = (x, y, s, felt, band, door) => `<g transform="translate(${x} ${y}) scale(${s})"><path fill="${felt}" d="M-62 0V-46Q-64 -52 -52 -62Q-24 -96 0 -98Q24 -96 52 -62Q64 -52 62 -46V0z"/><path fill="#000" opacity=".12" d="M0 -98Q24 -96 52 -62Q64 -52 62 -46V0H0z"/><rect x="-62" y="-34" width="124" height="9" fill="${band}"/><path d="M-62 -29.5H62" stroke="#fff" stroke-width="3" stroke-dasharray="3 8" opacity=".7"/><path d="M-60 -48Q0 -60 60 -48" fill="none" stroke="${band}" stroke-width="3"/><path fill="${door}" d="M-12 0V-30Q0 -38 12 -30V0z"/><circle cx="0" cy="-99" r="8" fill="#6a4a38"/></g>`;
+  /** A grazing horse (x, y = hoof line): body, neck, head down, legs, tail. */
+  const horse = (x, y, s, col, mane) => `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="-34" rx="34" ry="15" fill="${col}"/><path fill="${col}" d="M24 -40L44 -34L52 -4L44 -2L36 -26z"/><path fill="${col}" d="M44 -34L62 -26L64 -18L52 -20z" opacity=".9"/><path d="M22 -46Q36 -40 44 -30" stroke="${mane}" stroke-width="5" fill="none"/><path d="M-26 -42Q-52 -40 -50 -10" stroke="${mane}" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M-20 -22V0M-10 -22V0M16 -22V0M26 -22V0" stroke="${col}" stroke-width="5" stroke-linecap="round"/></g>`;
+  /** A flame (teardrop) in a flickering wrapper. */
+  const flame = (x, y, h, w, col, dur, del) => mv('usflicker', { ad: dur + 's', d: -del + 's', to: `${x}px ${y}px` }, `<path fill="${col}" d="M${x - w} ${y}Q${x - w * 0.5} ${y - h * 0.5} ${x - w * 0.1} ${y - h}Q${x + w * 0.3} ${y - h * 0.5} ${x + w} ${y}z"/>`);
+
+  /* ---------- Kazakhstan: the red canyon at sunset, the river and the eagles ---------- */
+  asiaSceneAdd({ key: 'country:KZ', label: 'The red canyon at sunset', site: 'Charyn Canyon', colour: 'orange', mood: 'proud', season: 'any', tags: ['canyon', 'landscape', 'sunset', 'steppe'],
+    svg: () => {
+      const s1 = U(), r1 = U(), c1 = U();
+      const spire = (x, y, w, h, fill, dark) => {
+        let g = '';
+        for (let i = 1; i < 6; i++) g += `M${R(x - w / 2 + (w * i) / 6)} ${y + h}l${R((i - 3) * 2)} ${-R(h * 0.8)}`;
+        return `<path fill="${fill}" d="M${x - w / 2} ${y + h}L${x - w * 0.42} ${y + h * 0.3}L${x - w * 0.3} ${y + h * 0.18}L${x - w * 0.12} ${y}L${x + w * 0.1} ${y + h * 0.1}L${x + w * 0.32} ${y + h * 0.22}L${x + w * 0.46} ${y + h * 0.4}L${x + w / 2} ${y + h}z"/><path d="${g}" stroke="${dark}" stroke-width="3" fill="none" opacity=".55"/><path fill="${dark}" opacity=".3" d="M${x + w * 0.1} ${y + h * 0.1}L${x + w * 0.32} ${y + h * 0.22}L${x + w * 0.46} ${y + h * 0.4}L${x + w / 2} ${y + h}H${x}z"/>`;
+      };
+      return `<defs>${lin(s1, [[0, '#6a7fb4'], [0.35, '#e9a0a0'], [0.65, '#ffc487'], [1, '#ffe6b0']])}${lin(r1, [[0, '#4fb8b0'], [1, '#1f6f78']])}${lin(c1, [[0, '#ffb070', 0.55], [1, '#ffb070', 0]])}</defs>`
+        + full(`url(#${s1})`) + rays(800, 500, 1100, '#ffe0b0', 0.1) + sun(800, 520, 52, '#fff3d0', '#ffb468')
+        + streak(300, 170, 300, '#ffc8b0', 0.5) + streak(1300, 250, 240, '#ffb090', 0.5, 70) + cloud(500, 300, 0.9, '#d58a98', 0.8, 60, 5, '#ffd0b0') + cloud(1280, 360, 0.7, '#d38e9a', 0.75, 52, 18, '#ffd6b6')
+        + birds(23, 4, 900, 330, '#4a2f40', 1, 560)
+        + mv('uspar', { ad: '40s', dx: '8px' }, ridge('#c98a70', 560, 80, 12, 61) + ridge('#b6745c', 600, 60, 14, 62)) + haze(500, 120, '#ffc89a', 0.5)
+        + mv('uspar', { ad: '32s', dx: '14px' }, spire(300, 330, 150, 340, '#b8603c', '#6a2e28') + spire(520, 400, 120, 270, '#c26c44', '#6a2e28') + spire(1120, 380, 130, 290, '#c26c44', '#6a2e28') + spire(1340, 320, 160, 350, '#b8603c', '#6a2e28') + ridge('#a9533a', 640, 40, 14, 63))
+        + `<path fill="#8a3f30" d="M-160 900V260Q-100 240 -60 300L40 340L120 330L180 420L240 440L300 520L370 560L430 640L520 700L600 760L680 820L700 900z"/><path fill="#a24a36" opacity=".8" d="M-160 560L60 520L200 560L300 600L420 660L520 740L600 820L640 900H-160z"/><path d="M-100 360L40 460L160 480M-40 470L120 560L260 580M20 580L180 650L340 680" stroke="#c9704a" stroke-width="9" opacity=".5" fill="none" stroke-linecap="round"/>`
+        + `<path fill="#8a3f30" d="M1760 900V240Q1700 230 1660 300L1560 350L1480 340L1420 430L1360 450L1300 530L1230 570L1170 650L1090 710L1020 770L960 840L940 900z"/><path fill="#a24a36" opacity=".8" d="M1760 540L1580 520L1460 570L1360 610L1240 670L1150 740L1060 820L1030 900H1760z"/><path d="M1700 380L1560 470L1440 490M1640 480L1480 570L1340 590M1600 590L1420 660L1280 690" stroke="#c9704a" stroke-width="9" opacity=".5" fill="none" stroke-linecap="round"/>`
+        + `<path fill="url(#${r1})" d="M690 900L740 760Q790 700 800 650Q820 690 850 760L930 900z"/><path fill="url(#${r1})" opacity=".8" d="M760 760Q800 690 800 650Q830 700 860 760z"/>`
+        + shimmer(25, 16, 700, 900, 700, 890, '#c9fff2', 40)
+        + `<rect y="600" width="1600" height="300" fill="url(#${c1})"/>`
+        + mv('uspar', { ad: '26s', dx: '10px' }, `<path fill="#4f3a2e" d="M-160 900V800Q40 760 120 820Q200 770 300 840V900z"/><path fill="#4f3a2e" d="M1760 900V790Q1560 760 1500 830Q1400 780 1280 850V900z"/>`
+          + canopy('#5a6a2e', 868, 26, 71, 660, 960))
+        + mv('usflap', { ad: '1s', to: '1000px 400px' }, '') + birds(27, 2, 700, 260, '#2c1c1c', 2.2, 380)
+        + finish(0.34);
+    } });
+
+  /* ---------- Almaty: the alpenglow range above the city, autumn orchards and the old wooden cathedral ---------- */
+  asiaSceneAdd({ key: 'place:almaty', label: 'The snow range above the city', site: 'The mountains above Almaty', colour: 'indigo', mood: 'calm', season: ['autumn'], tags: ['mountains', 'city', 'autumn', 'cathedral'],
+    svg: () => {
+      const s1 = U(), f1 = U();
+      let tiers = '';
+      for (const [w, y, h, c] of [[80, 590, 40, '#f4d58a'], [60, 550, 40, '#e9a86a'], [42, 512, 38, '#f2c96e']]) tiers += `<rect x="${430 - w / 2}" y="${y}" width="${w}" height="${h}" fill="${c}"/><rect x="${430 - w / 2 - 6}" y="${y - 6}" width="${w + 12}" height="8" fill="#b8693e"/>`;
+      let lat = '';
+      for (let i = 0; i < 12; i++) lat += `M1196 ${640 - i * 16}l8 -16M1204 ${640 - i * 16}l-8 -16`;
+      let trees = '';
+      const cols = ['#e0762a', '#d9a02a', '#c2452a', '#e8b83a', '#b8602a'];
+      for (let i = 0; i < 22; i++) { const r = rnd(i + 90), x = -80 + i * 82 + r() * 30, y = 790 + (i % 3) * 30 + r() * 20, rr = 34 + r() * 22; trees += `<circle cx="${R(x)}" cy="${R(y - rr)}" r="${R(rr)}" fill="${cols[i % 5]}"/><path d="M${R(x)} ${R(y)}V${R(y - rr * 0.5)}" stroke="#4a3022" stroke-width="5"/>`; }
+      return `<defs>${lin(s1, [[0, '#3a4a8e'], [0.3, '#8f7aae'], [0.55, '#f2a0b0'], [0.8, '#ffd0b0'], [1, '#ffe8c8']])}${lin(f1, [[0, '#7f86b8', 0], [1, '#7f86b8', 0.6]])}</defs>`
+        + full(`url(#${s1})`) + stars(31, 40, 200) + sun(1000, 360, 40, '#fff0d0', '#ffc0a0', true)
+        + cloud(300, 230, 0.8, '#d98aa8', 0.7, 66, 4, '#ffd0c0') + cloud(1300, 180, 0.7, '#d98aa8', 0.7, 58, 20, '#ffd6c8') + birds(33, 4, 700, 300, '#3a2f55', 1, 600)
+        + mv('uspar', { ad: '44s', dx: '8px' }, peak(280, 170, 620, 440, '#6a6aa4', '#4a4a86', '#ffd8dc', 5) + peak(1280, 140, 700, 470, '#6a6aa4', '#4a4a86', '#ffd8dc', 6) + peak(760, 120, 780, 500, '#7a76ae', '#524f90', '#ffe4e0', 7) + peak(1560, 250, 520, 360, '#7a76ae', '#524f90', '#ffe0e0', 8))
+        + mv('uspar', { ad: '34s', dx: '12px' }, peak(100, 330, 560, 330, '#5a5f94', '#3f4478', '#f6c8d0', 9) + peak(1040, 300, 600, 340, '#5a5f94', '#3f4478', '#f6c8d0', 10) + ridge('#4c5486', 560, 70, 12, 11))
+        + `<rect y="430" width="1600" height="230" fill="url(#${f1})"/>` + haze(560, 90, '#ffc8b8', 0.5)
+        + ridge('#3d3f6e', 640, 40, 14, 12, 700) + `<path fill="#3d3f6e" d="M1120 640Q1160 600 1196 540L1204 540Q1240 600 1280 640z"/>`
+        + `<path d="M1200 640V310" stroke="#d8d4e8" stroke-width="6"/><path d="${lat}" stroke="#d8d4e8" stroke-width="2" fill="none"/><path d="M1200 310V240" stroke="#d8d4e8" stroke-width="3"/><rect x="1186" y="400" width="28" height="12" fill="#d8d4e8"/>`
+        + mv('usflicker', { ad: '1.8s', to: '1200px 240px' }, '<circle cx="1200" cy="238" r="4" fill="#ff5a4a"/>')
+        + mv('uspar', { ad: '30s', dx: '10px' }, city(81, -160, 1760, 720, 30, 110, 26, 54, '#6a6aa0', 0.5) + `<rect y="716" width="1600" height="190" fill="#4a4a7e"/>`)
+        + tiers + `<path fill="#d9a63a" d="M410 512l20 -40l20 40z"/><path fill="#d9a63a" d="M${430 - 62} 590l12 -22l12 22zM${430 + 38} 590l12 -22l12 22z"/>` + lit(418, 604, 8, 18) + lit(436, 604, 8, 18) + lit(418, 566, 8, 14) + lit(436, 566, 8, 14)
+        + dots('M-160 722H1760', '#ffd88a', 4, 30, 'us-lamps') + dots('M-160 744H1760', '#ffd88a', 3, 22, 'us-lamps')
+        + mv('uspar', { ad: '24s', dx: '14px' }, trees)
+        + `<path fill="#3d2a3a" d="M-160 900V850Q400 820 800 850T1760 840V900z"/>`
+        + mv('usfall', { ad: '11s', dx: '90px' }, '<path fill="#d9702a" d="M300 120q10 -8 18 0q-6 10 -18 0z"/>') + mv('usfall', { ad: '13s', d: '-5s', dx: '-70px' }, '<path fill="#e8a42a" d="M1100 80q10 -8 18 0q-6 10 -18 0z"/>') + mv('usfall', { ad: '9s', d: '-2s', dx: '60px' }, '<path fill="#c2452a" d="M700 100q10 -8 18 0q-6 10 -18 0z"/>')
+        + finish(0.36);
+    } });
+
+  /* ---------- Uzbekistan: the three tiled madrasas and their ribbed turquoise domes ---------- */
+  asiaSceneAdd({ key: 'country:UZ', label: 'The tiled madrasas and turquoise domes', site: 'The Registan', colour: 'teal', mood: 'proud', season: 'any', tags: ['madrasa', 'domes', 'silk road', 'architecture'],
+    svg: () => {
+      const s1 = U(), g1 = U(), p1 = U();
+      const iwan = (cx, base, w, h) => {
+        const ax = cx - w * 0.3, bx = cx + w * 0.3, top = base - h * 0.96, yy = base - h * 0.62;
+        return `<path fill="#15407f" d="M${ax} ${base}V${yy}C${ax} ${R(yy - h * 0.2)} ${cx - 14} ${R(top + 30)} ${cx} ${R(top)}C${cx + 14} ${R(top + 30)} ${bx} ${R(yy - h * 0.2)} ${bx} ${yy}V${base}z`
+          + `<path fill="#2a7fb8" d="M${ax + 16} ${base}V${yy + 20}C${ax + 16} ${R(yy - h * 0.1)} ${cx - 8} ${R(top + 56)} ${cx} ${R(top + 40)}C${cx + 8} ${R(top + 56)} ${bx - 16} ${R(yy - h * 0.1)} ${bx - 16} ${yy + 20}V${base}z`
+          + `<path fill="#0f2a5a" d="M${ax + 40} ${base}V${yy + 80}Q${cx} ${R(yy + 20)} ${bx - 40} ${yy + 80}V${base}z"/><path d="M${ax} ${R(yy + 30)}Q${cx} ${R(top + 10)} ${bx} ${R(yy + 30)}" stroke="#7fd0d6" stroke-width="3" fill="none" stroke-dasharray="4 8"/>`
+          + `<path d="M${ax + 6} ${R(base - h * 0.3)}H${bx - 6}M${ax + 6} ${R(base - h * 0.45)}H${bx - 6}" stroke="#bfe8ee" stroke-width="3" stroke-dasharray="3 7" opacity=".8"/>`;
+      };
+      const facade = (x, w, h, base) => {
+        const cx = x + w / 2; let n = '';
+        for (const sx of [x + 14, x + w - 14 - w * 0.17]) for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) n += `<path fill="#6d4a30" d="M${R(sx + c * w * 0.085 + 2)} ${base - 40 - r * h * 0.3}v${-R(h * 0.15)}a${R(w * 0.03)} ${R(w * 0.03)} 0 0 1 ${R(w * 0.06)} 0v${R(h * 0.15)}z" opacity=".75"/>`;
+        return `<path fill="#dfb680" d="M${x} ${base}V${base - h}h${w}V${base}z"/><path fill="#b78a56" opacity=".45" d="M${cx} ${base - h}h${w / 2}V${base}H${cx}z"/><rect x="${x}" y="${base - h}" width="${w}" height="14" fill="#2a7fb8"/><path d="M${x} ${base - h + 7}H${x + w}" stroke="#bfe8ee" stroke-width="3" stroke-dasharray="3 7"/><rect x="${x}" y="${base - h - 16}" width="${w}" height="8" fill="#dfb680" opacity=".95"/>` + n + iwan(cx, base, w, h);
+      };
+      const minaret = (x, base, h, lean) => {
+        let b = '';
+        for (let i = 0; i < 7; i++) b += `M${x - 17} ${base - 30 - i * (h / 8)}h34`;
+        return `<g transform="rotate(${lean} ${x} ${base})"><path fill="#d8aa72" d="M${x - 19} ${base}V${base - h}h38V${base}z"/><path fill="#a87a4a" opacity=".5" d="M${x} ${base}V${base - h}h19V${base}z"/><path d="${b}" stroke="#2a7fb8" stroke-width="9"/><path d="${b}" stroke="#bfe8ee" stroke-width="2" stroke-dasharray="3 6" transform="translate(0 0)"/><rect x="${x - 25}" y="${base - h}" width="50" height="12" fill="#2a7fb8"/><path fill="#2ba2b8" d="M${x - 22} ${base - h - 2}Q${x - 24} ${base - h - 34} ${x} ${base - h - 46}Q${x + 24} ${base - h - 34} ${x + 22} ${base - h - 2}z"/>${lit(x - 5, base - h * 0.45, 10, 16)}</g>`;
+      };
+      const rdome = (cx, by, r) => {
+        let ribs = '';
+        for (let i = -3; i <= 3; i++) ribs += `M${cx + i * (r / 3.4)} ${by}Q${cx + i * (r / 2.1)} ${R(by - r * 1.0)} ${cx} ${R(by - r * 1.4)}`;
+        return `<rect x="${cx - r * 0.78}" y="${by}" width="${r * 1.56}" height="${r * 0.9}" fill="#d8aa72"/><rect x="${cx - r * 0.78}" y="${by + r * 0.3}" width="${r * 1.56}" height="9" fill="#2a7fb8"/>` + `<path fill="#26a6bd" d="M${cx - r * 0.95} ${by + 6}C${cx - r * 1.35} ${R(by - r * 0.8)} ${R(cx - r * 0.4)} ${R(by - r * 1.25)} ${cx} ${R(by - r * 1.55)}C${R(cx + r * 0.4)} ${R(by - r * 1.25)} ${R(cx + r * 1.35)} ${R(by - r * 0.8)} ${R(cx + r * 0.95)} ${by + 6}z"/><path d="${ribs}" stroke="#176f8c" stroke-width="3" fill="none" opacity=".7"/><path d="M${cx} ${R(by - r * 1.55)}v-18" stroke="#d9b54a" stroke-width="3"/>`;
+      };
+      return `<defs>${lin(s1, [[0, '#3a95d8'], [0.55, '#a8dcee'], [1, '#f8ecd0']])}${lin(g1, [[0, '#e6c88c'], [1, '#bd9660']])}${lin(p1, [[0, '#d8b17a', 0], [1, '#6a4a30', 0.4]])}</defs>`
+        + full(`url(#${s1})`) + sun(240, 180, 38, '#fffbe6', '#fff0b8') + cloud(600, 190, 0.9, '#e2eff8', 0.9, 62, 4) + cloud(1300, 140, 0.75, '#e0eef8', 0.9, 54, 18) + streak(900, 300, 260, '#fff', 0.45, 80)
+        + mv('uspar', { ad: '38s', dx: '10px' }, rdome(330, 400, 74) + rdome(1270, 400, 74) + `<rect x="130" y="450" width="1340" height="200" fill="#d4a870"/>`)
+        + haze(560, 100, '#f4e6c8', 0.4)
+        + facade(150, 300, 300, 680) + facade(1150, 300, 300, 680) + facade(560, 480, 440, 700)
+        + minaret(110, 700, 330, -1.4) + minaret(1490, 700, 330, 1.4) + minaret(520, 710, 380, -1.2) + minaret(1080, 710, 380, 1.2)
+        + `<rect y="700" width="1600" height="200" fill="url(#${g1})"/><rect y="700" width="1600" height="200" fill="url(#${p1})"/>`
+        + `<path d="M-160 760H1760M-160 820H1760M-160 880H1760" stroke="#c9a070" stroke-width="3" opacity=".5"/><path d="M200 700L-100 900M1400 700L1700 900M800 700V900" stroke="#c9a070" stroke-width="3" opacity=".35"/>`
+        + `<path fill="#6a4a30" opacity=".28" d="M560 700H1040L1180 760H460z"/>`
+        + mv('usglide', { ad: '19s', dx: '700px', dy: '-60px' }, '') + birds(41, 7, 760, 420, '#3a4a62', 1.1, 640) + birds(43, 5, 500, 560, '#4a5a72', 0.8, 500)
+        + mv('usbob', { ad: '6s', dy: '3px' }, `<path fill="#6a8f4a" d="M20 900V810Q60 770 40 720Q90 770 80 810V900z" opacity=".9"/><path fill="#6a8f4a" d="M1520 900V800Q1560 770 1540 720Q1600 770 1590 810V900z" opacity=".9"/>`)
+        + mv('ussway2', { ad: '5s', to: '1500px 900px' }, `<path fill="#4f7a3a" d="M1480 900V780Q1520 690 1560 780V900z"/>`) + mv('ussway2', { ad: '6s', d: '-2s', to: '120px 900px' }, `<path fill="#4f7a3a" d="M80 900V770Q120 680 160 770V900z"/>`)
+        + finish(0.3);
+    } });
+
+  /* ---------- Turkmenistan: the burning crater in the desert at dusk ---------- */
+  asiaSceneAdd({ key: 'country:TM', label: 'The burning crater in the desert', site: 'The Karakum Desert crater', colour: 'orange', mood: 'dreamy', season: 'any', tags: ['desert', 'crater', 'fire', 'dunes'],
+    svg: () => {
+      const s1 = U(), g1 = U(), c1 = U(), d1 = U();
+      const flames = [[640, 640, 120, 24, '#ff7a1a', 0.5, 0.1], [700, 650, 170, 30, '#ff9a2a', 0.62, 0.3], [770, 640, 140, 26, '#ffb23a', 0.45, 0.2], [830, 652, 200, 34, '#ff7a1a', 0.7, 0.5], [900, 642, 150, 28, '#ff9a2a', 0.52, 0.4], [960, 650, 130, 24, '#ffc84a', 0.58, 0.6], [740, 654, 90, 20, '#ffe08a', 0.4, 0.15], [870, 656, 100, 22, '#ffe08a', 0.46, 0.35], [1010, 646, 90, 20, '#ff7a1a', 0.5, 0.2], [600, 650, 80, 18, '#ff9a2a', 0.44, 0.55]];
+      let fl = ''; for (const f of flames) fl += flame(f[0], f[1], f[2], f[3], f[4], f[5], f[6]);
+      const tent = (x, y, s) => `<path fill="#3a2a36" d="M${x - 40 * s} ${y}Q${x} ${y - 70 * s} ${x + 40 * s} ${y}z"/>${lit(x - 5 * s, y - 20 * s, 10 * s, 16 * s)}`;
+      return `<defs>${lin(s1, [[0, '#17143c'], [0.4, '#4a2a60'], [0.7, '#b0485a'], [1, '#f0903a']])}${lin(g1, [[0, '#6a3a30'], [1, '#2a1a20']])}${radU(c1, [[0, '#ffb44a', 0.9], [0.4, '#ff7a1a', 0.4], [1, '#ff5a1a', 0]], 800, 620, 560)}${radU(d1, [[0, '#ffd07a'], [0.5, '#ff7a1a'], [1, '#a02a10']], 800, 640, 220)}</defs>`
+        + full(`url(#${s1})`) + stars(51, 70, 360) + sun(1380, 600, 30, '#ffd098', '#ff9060', true)
+        + streak(300, 160, 280, '#a05a8a', 0.4) + streak(1200, 240, 240, '#c0607a', 0.45, 70) + cloud(500, 330, 0.7, '#7a3a68', 0.7, 60, 4, '#d0707a')
+        + birds(53, 3, 1100, 300, '#2a1a30', 1, 500)
+        + mv('uspar', { ad: '44s', dx: '8px' }, ridge('#6a3a4a', 600, 40, 12, 71) + ridge('#52303e', 640, 36, 13, 72))
+        + `<rect y="600" width="1600" height="300" fill="url(#${g1})"/><path d="M-160 700Q400 660 800 700T1760 690" stroke="#8a4a38" stroke-width="3" fill="none" opacity=".5"/>`
+        + `<rect width="1600" height="900" fill="url(#${c1})"/>`
+        + tent(260, 660, 1.1) + tent(350, 668, 0.9) + tent(1370, 664, 1.2) + dots('M230 636Q300 628 370 640', '#ffd27a', 4, 18, 'us-lamps')
+        + `<ellipse cx="800" cy="640" rx="260" ry="62" fill="#3a1a1a"/><ellipse cx="800" cy="640" rx="236" ry="52" fill="url(#${d1})"/>`
+        + fl
+        + puffs(800, 600, 6, '#4a2a2a', 40, 90, 6, -300, 3.4) + puffs(760, 610, 5, '#ff9a2a', 5, -30, 3.2, -280, 1.4) + puffs(860, 612, 4, '#ffb23a', 5, 40, 3.8, -240, 1.4)
+        + `<path fill="url(#${g1})" d="M530 650Q700 724 800 724Q900 724 1070 650Q1060 700 800 742Q540 700 530 650z"/><path fill="#8a4a3a" opacity=".6" d="M540 660Q700 726 800 726Q900 726 1060 660Q1040 690 800 716Q560 690 540 660z"/>`
+        + `<path fill="#4a2a28" d="M-160 900V780Q200 730 560 790Q800 830 1040 790Q1400 730 1760 790V900z"/><path fill="#2a1a20" d="M-160 900V850Q300 800 700 860T1760 850V900z"/>`
+        + shimmer(61, 14, 520, 1080, 600, 650, '#ffd27a', 50)
+        + mv('usbob', { ad: '1.2s', dy: '1.5px' }, `<g opacity=".35" fill="#ff9a2a"><rect x="560" y="600" width="480" height="8" rx="4"/></g>`)
+        + finish(0.3);
+    } });
+
+  /* ---------- Tajikistan: the turquoise high lake under the snow peaks ---------- */
+  asiaSceneAdd({ key: 'country:TJ', label: 'The turquoise lake under the snow peaks', site: 'The high Pamir lake', colour: 'blue', mood: 'calm', season: 'any', tags: ['mountains', 'lake', 'pamir', 'alpine'],
+    svg: () => {
+      const s1 = U(), l1 = U();
+      const peaks = (flip) => peak(260, 170, 560, 400, '#7e8aa6', '#56627e', '#f6f9ff', 3) + peak(820, 120, 760, 450, '#7a86a4', '#525e7c', '#fff', 4) + peak(1380, 190, 640, 380, '#8692ae', '#5a6684', '#f6f9ff', 5);
+      let road = '', yaks = '';
+      for (const [x, y, s] of [[1180, 790, 0.9], [1290, 820, 1], [1100, 830, 0.8]]) yaks += `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="-34" rx="38" ry="22" fill="#2a2420"/><path fill="#1f1a18" d="M26 -42L52 -34L52 -14L38 -16z"/><path d="M-26 -16V0M-12 -16V0M14 -16V0M26 -16V0" stroke="#2a2420" stroke-width="6" stroke-linecap="round"/><path d="M-30 -22Q-34 -4 -26 6" stroke="#2a2420" stroke-width="8" fill="none"/></g>`;
+      return `<defs>${lin(s1, [[0, '#2f6fc0'], [0.5, '#8ec4ea'], [1, '#eaf3f8']])}${lin(l1, [[0, '#46d0c8'], [0.5, '#1fa4b4'], [1, '#12687e']])}</defs>`
+        + full(`url(#${s1})`) + sun(1380, 140, 34, '#fffbe6', '#fff4c8') + cloud(380, 150, 0.9, '#f0f6fa', 0.92, 64, 3) + cloud(1200, 120, 0.7, '#eef5fa', 0.92, 52, 16) + streak(820, 90, 280, '#fff', 0.5, 90) + birds(63, 4, 700, 260, '#2f4258', 1.1, 600)
+        + mv('uspar', { ad: '46s', dx: '8px' }, peaks(0)) + haze(450, 120, '#e9f3f8', 0.6)
+        + mv('uspar', { ad: '34s', dx: '12px' }, ridge('#9a8a76', 520, 90, 12, 81) + ridge('#8a7a66', 560, 60, 14, 82))
+        + `<rect y="560" width="1600" height="340" fill="url(#${l1})"/>`
+        + `<g transform="translate(0 1100) scale(1 -1)" opacity=".34">${peaks(1)}${ridge('#9a8a76', 520, 90, 12, 81)}</g>`
+        + `<rect y="560" width="1600" height="340" fill="url(#${l1})" opacity=".5"/>`
+        + shimmer(91, 34, -100, 1700, 580, 880, '#e8fff8', 80) + shimmer(92, 20, 200, 1400, 570, 700, '#fff', 60)
+        + `<path fill="#a69277" d="M-160 900V700Q100 650 340 700Q480 730 560 900z"/><path fill="#8a7658" d="M-160 900V760Q140 720 300 790Q400 840 420 900z"/><path fill="#b4a283" d="M1760 900V690Q1500 650 1260 700Q1100 740 1020 900z"/>`
+        + `<path d="M1760 720Q1500 700 1380 760Q1260 830 1100 900" stroke="#d6c8a8" stroke-width="14" fill="none"/><path d="M1760 720Q1500 700 1380 760Q1260 830 1100 900" stroke="#7a6a50" stroke-width="2" stroke-dasharray="14 12" fill="none"/>`
+        + mv('usmove', { ad: '60s', dx: '600px' }, '<rect x="1380" y="738" width="30" height="16" rx="3" fill="#3a5a7a"/><rect x="1396" y="730" width="14" height="10" fill="#2a4a6a"/>')
+        + canopy('#7c8a3a', 780, 16, 94, 1020, 1300, 800) + canopy('#6c7a30', 800, 14, 95, 20, 280, 830)
+        + yaks + `<path fill="#6a6a52" d="M-160 900V860Q300 830 700 870T1760 860V900z"/>`
+        + finish(0.3);
+    } });
+
+  /* ---------- Kyrgyzstan: yurts, horses and flocks on the high summer pasture ---------- */
+  asiaSceneAdd({ key: 'country:KG', label: 'Yurts and horses on the summer pasture', site: 'A summer pasture above the lake', colour: 'green', mood: 'cheerful', season: ['summer'], tags: ['yurt', 'pasture', 'horses', 'mountains'],
+    svg: () => {
+      const s1 = U(), l1 = U(), g1 = U();
+      let flowers = '';
+      const fr = rnd(7), fc = ['#fff', '#ffd23a', '#ff7a9a', '#c18aff'];
+      for (let i = 0; i < 60; i++) flowers += `<circle cx="${R(-100 + fr() * 1800)}" cy="${R(700 + fr() * 190)}" r="${(2 + fr() * 3).toFixed(1)}" fill="${fc[i % 4]}"/>`;
+      let sheep = '';
+      for (let i = 0; i < 9; i++) { const r = rnd(i + 5); sheep += `<g transform="translate(${R(r() * 300)} ${R(r() * 24)})"><ellipse cx="${60 + i * 34}" cy="740" rx="14" ry="9" fill="#f4efe6"/><circle cx="${74 + i * 34}" cy="738" r="5" fill="#3a2f2a"/></g>`; }
+      return `<defs>${lin(s1, [[0, '#5a9ede'], [0.5, '#a9d6ef'], [1, '#f2f0dc']])}${lin(l1, [[0, '#4a9ac4'], [1, '#2f6f9c']])}${lin(g1, [[0, '#8bc34a'], [1, '#4f8a30']])}</defs>`
+        + full(`url(#${s1})`) + sun(300, 140, 38, '#fffbe6', '#fff2b0') + cloud(560, 190, 1, '#f6fafc', 0.92, 62, 3) + cloud(1280, 150, 0.8, '#f2f8fb', 0.92, 52, 20) + cloud(900, 290, 0.6, '#f4f9fc', 0.88, 70, 30) + birds(71, 4, 1000, 280, '#34506a', 1, 560)
+        + mv('uspar', { ad: '46s', dx: '8px' }, peak(400, 250, 700, 340, '#7f93ac', '#5f7690', '#f6faff', 21) + peak(1200, 220, 760, 370, '#7f93ac', '#5f7690', '#f6faff', 22) + ridge('#6a85a0', 540, 70, 12, 23))
+        + haze(480, 90, '#eaf3f6', 0.6) + `<rect y="540" width="1600" height="60" fill="url(#${l1})"/><path d="M-160 560H1760" stroke="#e8fbff" stroke-width="2" opacity=".5"/>`
+        + shimmer(101, 10, -100, 1700, 548, 596, '#fff', 60)
+        + mv('uspar', { ad: '36s', dx: '10px' }, ridge('#5a9a40', 600, 50, 12, 24) + canopy('#2f6a38', 604, 16, 25, -160, 520, 640) + canopy('#2f6a38', 606, 14, 26, 1100, 1760, 640))
+        + `<path fill="url(#${g1})" d="M-160 900V640Q300 590 800 640T1760 630V900z"/><path fill="#6faa3a" opacity=".6" d="M-160 900V740Q400 690 900 740T1760 730V900z"/>`
+        + yurt(300, 690, 1.0, '#f4eee0', '#c4452a', '#7a3a22') + yurt(470, 700, 0.8, '#f1ead8', '#2a6fa8', '#6a3a22') + yurt(1280, 700, 1.15, '#f6f0e2', '#c4452a', '#7a3a22')
+        + puffs(300, 592, 4, '#e8e4dc', 14, 40, 5, -120, 3) + puffs(1280, 586, 4, '#e8e4dc', 16, 50, 5.4, -130, 3)
+        + mv('usmove', { ad: '70s', dx: '280px' }, sheep) + mv('usbob', { ad: '4s', dy: '2px' }, horse(760, 780, 1.1, '#6a3f26', '#2a1a14') + horse(940, 800, 1, '#d9c9a8', '#8a7a5a')) + mv('usbob', { ad: '5s', d: '-2s', dy: '2px' }, horse(1080, 770, 0.8, '#2a2220', '#14100e'))
+        + `<g>${flowers}</g>` + mv('ussway', { ad: '5s', to: '800px 900px' }, `<path fill="#4f8a30" d="M-160 900V850Q400 820 800 860T1760 850V900z"/>`)
+        + finish(0.3);
+    } });
+
+  /* ---------- Russia (Siberia and the Far East): a smoking volcano over the autumn tundra at dawn ---------- */
+  asiaSceneAdd({ key: 'country:RU', label: 'The volcano over the autumn tundra', site: 'A volcano on the Kamchatka peninsula', colour: 'violet', mood: 'proud', season: ['autumn'], tags: ['volcano', 'tundra', 'dawn', 'far east'],
+    svg: () => {
+      const s1 = U(), v1 = U(), r1 = U();
+      let gul = '';
+      for (let i = 0; i < 9; i++) gul += `M${800 + (i - 4) * 14} ${300 + Math.abs(i - 4) * 10}Q${800 + (i - 4) * 60} ${460} ${800 + (i - 4) * 100} ${640}`;
+      return `<defs>${lin(s1, [[0, '#4a4a92'], [0.3, '#a07ab0'], [0.6, '#f4a4a4'], [1, '#ffd8b0']])}${linU(v1, [[0, '#f8e4ee'], [0.5, '#c6a8c8'], [1, '#5c4a7c']], 520, 200, 1080, 640)}${lin(r1, [[0, '#f8c8a8'], [1, '#6a7aa6']])}</defs>`
+        + full(`url(#${s1})`) + stars(111, 40, 220) + sun(300, 520, 46, '#fff0d0', '#ffb890', true) + rays(300, 520, 1000, '#ffd8b8', 0.08)
+        + streak(1100, 160, 300, '#ffc8c0', 0.5) + streak(400, 230, 240, '#f0a8b8', 0.5, 70) + cloud(1300, 300, 0.8, '#d58aa4', 0.8, 60, 6, '#ffd0c0') + birds(113, 5, 500, 300, '#3a2f55', 1, 600)
+        + mv('uspar', { ad: '44s', dx: '8px' }, peak(1360, 330, 520, 330, '#8a78b0', '#5f5090', '#fbe4ee', 31) + peak(180, 380, 460, 280, '#8a78b0', '#5f5090', '#fbe4ee', 32))
+        + mv('uspar', { ad: '36s', dx: '10px' }, `<path fill="url(#${v1})" d="M520 640Q640 560 700 430Q740 330 770 250L800 232L832 252Q870 340 920 440Q980 560 1090 640z"/>` + `<path fill="#5c4a7c" opacity=".45" d="M800 232L832 252Q870 340 920 440Q980 560 1090 640H820z"/>` + `<path d="${gul}" stroke="#7a68a0" stroke-width="3" fill="none" opacity=".5"/>` + `<path fill="#fff" opacity=".7" d="M776 244L800 232L826 248L812 276L796 262L780 282z"/>`)
+        + mv('usdrift', { ad: '60s', dx: '60px' }, puffs(800, 232, 8, '#f6e4ee', 38, 150, 9, -140, 3.4))
+        + haze(560, 100, '#ffd0b8', 0.5)
+        + mv('uspar', { ad: '30s', dx: '12px' }, ridge('#a85a4a', 640, 50, 12, 41) + canopy('#c9792a', 650, 22, 42, -160, 1760, 720))
+        + `<path fill="url(#${r1})" d="M-160 900V780Q400 740 800 770Q1100 790 1300 750Q1600 710 1760 740V900z" opacity=".0"/>`
+        + `<path fill="url(#${r1})" d="M560 900Q640 820 760 790Q900 760 1000 720Q1060 700 1120 706Q1020 740 900 790Q780 840 720 900z"/>`
+        + shimmer(121, 14, 560, 1100, 720, 890, '#ffe8d0', 60)
+        + `<path fill="#9a3f30" d="M-160 900V790Q200 730 560 790Q300 820 200 900z"/><path fill="#b9532a" d="M1760 900V780Q1400 730 1060 800Q1300 830 1400 900z"/><path fill="#d98a2a" d="M-160 900V850Q400 810 700 870T1760 860V900z"/>`
+        + mv('ussway', { ad: '5s', to: '100px 900px' }, canopy('#e0a030', 860, 24, 43, 0, 700, 900) + canopy('#c2452a', 880, 20, 44, 900, 1700, 900))
+        + mv('usdrift', { ad: '50s', dx: '120px' }, `<ellipse cx="500" cy="660" rx="380" ry="18" fill="#fff" opacity=".28"/><ellipse cx="1180" cy="690" rx="320" ry="14" fill="#fff" opacity=".25"/>`)
+        + finish(0.34);
+    } });
 })();
