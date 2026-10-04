@@ -338,7 +338,7 @@
         + mv('usdrift', { ad: '60s', dx: '360px' }, `<g transform="translate(1000 700) scale(.9)">` + mv('usbob', { ad: '3.4s', dy: '2px' }, ferry) + `</g>`)
         + mv('usglide', { ad: '22s', dx: '1300px', dy: '-60px' }, `<g transform="translate(560 240)"><path fill="#f0f0e8" d="M-30 0H30L22 -10H-22z"/><path stroke="#f0f0e8" stroke-width="3" d="M-40 -14H40"/><path fill="#d23a3a" d="M-8 -10h16v-8h-16z"/></g>`)
         + `<path fill="url(#${hl})" d="M-160 900V700C-60 670 100 650 260 690C380 720 480 760 560 820L640 900z"/>`
-        + `<path fill="#3a6a48" d="M200 900V800C300 780 420 790 520 840L580 900z" opacity=".6"/>` + firs(125, -160, 260, 760, 80, 190, '#244a36', 900)
+        + `<path fill="#3a6a48" d="M200 900V800C300 780 420 790 520 840L580 900z" opacity=".6"/>` + firs(125, -160, 300, 770, 80, 190, '#244a36') + `<path fill="#244a36" d="M-160 770H190L420 900H-160z"/>`
         + `<path fill="#3a5a40" d="M560 860C700 820 840 850 960 860S1300 830 1500 860L1760 850V900H560z"/>`
         + `<path fill="#d8d2c0" d="M${nx - 90} ${gy}H${nx + 90}L${nx + 150} 900H${nx - 150}z" opacity="0"/>`
         + needle
@@ -352,31 +352,32 @@
     svg: () => {
       const s1 = U(), au1 = U(), au2 = U(), sn = U(), ice = U();
       const sst = (seed, n, y1, op) => { const r = rnd(seed); let o = ''; for (let i = 0; i < n; i++) o += `<circle cx="${R(r() * 1600)}" cy="${R(r() * y1)}" r="${(0.9 + r() * 1.5).toFixed(1)}"/>`; return `<g fill="#fff" opacity="${op}">${o}</g>`; };
-      const curtain = (id, base, amp, x0, x1, top, ph) => {
-        let d = `M${x0} ${base}`; const n = 10;
-        for (let i = 1; i <= n; i++) { const x = x0 + (x1 - x0) * i / n; d += `Q${R(x - (x1 - x0) / n / 2)} ${R(base - amp * Math.sin(i * 1.3 + ph))} ${R(x)} ${R(base - amp * 0.5 * Math.sin(i * 0.9 + ph))}`; }
-        d += `L${x1} ${top}`; for (let i = n; i >= 1; i--) { const x = x0 + (x1 - x0) * (i - 1) / n; d += `Q${R(x + (x1 - x0) / n / 2)} ${R(top - 40 * Math.sin(i + ph))} ${R(x)} ${R(top + 30 * Math.cos(i * 1.7 + ph))}`; }
-        return `<path fill="url(#${id})" d="${d}z"/>`;
+      const curtain = (id, base, amp, x0, x1, hgt, ph) => {
+        let d = `M${x0} ${base}`; const n = 10, w = (x1 - x0) / n;
+        for (let i = 1; i <= n; i++) d += `Q${R(x0 + w * i - w / 2)} ${R(base - amp * Math.sin(i * 1.3 + ph))} ${R(x0 + w * i)} ${R(base - amp * 0.4 * Math.sin(i * 0.9 + ph))}`;
+        for (let i = n; i >= 1; i--) d += `L${R(x0 + w * i)} ${R(base - hgt - amp * 0.6 * Math.sin(i * 0.8 + ph))}`;
+        let rays = ''; const r = rnd(7 + R(ph * 9));
+        for (let x = x0; x < x1; x += 26) { const k = (x - x0) / w, y = base - amp * 0.4 * Math.sin(k * 0.9 + ph), h = hgt * (0.5 + r() * 0.6); rays += `M${R(x)} ${R(y)}V${R(y - h)}`; }
+        return `<path fill="url(#${id})" d="${d}z"/><path fill="none" stroke="#b8ffe0" stroke-width="5" opacity=".14" d="${rays}"/>`;
       };
-      const moose = `<g transform="translate(1180 800)"><ellipse cx="10" cy="4" rx="150" ry="10" fill="#0a1630" opacity=".5"/>` + mv('usbob', { ad: '4s', dy: '1.5px' },
-        `<path fill="#241a1c" d="M-90 -150C-60 -190 10 -198 60 -184C90 -176 112 -170 120 -150L128 -140C140 -128 140 -112 128 -104L118 -108C106 -86 96 -50 100 0H84L76 -70C40 -60 -10 -60 -40 -70L-50 0H-66L-70 -80C-92 -90 -100 -120 -90 -150z"/>`
-        + `<path fill="#241a1c" d="M118 -150C132 -188 150 -214 176 -222L204 -214C214 -206 214 -194 204 -190C196 -180 182 -168 172 -150C166 -138 140 -130 126 -136z"/><path fill="#241a1c" d="M-90 -150C-70 -178 -50 -190 -30 -194L10 -176C-20 -170 -60 -160 -90 -150z"/>`
-        + `<path fill="none" stroke="#241a1c" stroke-width="7" stroke-linecap="round" d="M176 -214C170 -250 150 -268 124 -266M176 -214C196 -246 226 -262 252 -252M158 -230C148 -236 128 -238 112 -232M190 -232C210 -246 232 -240 248 -224M110 -252l-14 -14M124 -266l-4 -20M252 -252l16 -12M232 -262l6 -18"/>`
-        + `<circle cx="188" cy="-208" r="3" fill="#9ab"/>`) + puffs(214, -204, 5, '#bcd2e4', 10, 40, 3.4, -50, 2.6) + `</g>`;
+      const moose = `<g transform="translate(1160 800)"><ellipse cx="20" cy="4" rx="150" ry="9" fill="#0a1630" opacity=".5"/>` + mv('usbob', { ad: '4s', dy: '1.5px' },
+        `<path stroke="#241a1c" stroke-width="13" stroke-linecap="round" d="M66 -120L62 -6M92 -118L100 -6M-84 -120L-92 -6M-58 -120L-48 -6"/><path fill="#241a1c" d="M-110 -150C-100 -192 -40 -200 20 -214C60 -224 92 -206 102 -182L112 -140C92 -108 40 -104 -20 -106C-60 -106 -100 -108 -110 -150z"/>`
+        + `<path fill="#241a1c" d="M86 -196C106 -232 122 -252 150 -252C172 -254 190 -240 202 -226L238 -206C246 -198 240 -186 228 -184L198 -188C178 -176 150 -176 136 -190C122 -168 106 -150 98 -134z"/><path fill="#241a1c" d="M130 -176C128 -150 134 -134 144 -128C142 -146 146 -160 152 -176z"/>`
+        + `<path fill="#241a1c" d="M168 -250C150 -276 120 -282 98 -276L112 -290L100 -300L124 -298L122 -314L142 -300L148 -320L158 -296C180 -300 198 -280 194 -252z"/><path fill="#33262a" d="M178 -252C190 -280 214 -290 240 -284L232 -272L246 -266L230 -260L240 -248C222 -250 200 -246 190 -240z"/><circle cx="196" cy="-222" r="3" fill="#9ab"/>`) + puffs(236, -198, 5, '#bcd2e4', 10, 40, 3.4, -50, 2.6) + `</g>`;
       return `<defs>${lin(s1, [[0, '#02061a'], [0.5, '#0a2038'], [1, '#17455a']])}${lin(au1, [[0, '#6a4adf', 0], [0.35, '#3fe0a0', 0.55], [0.75, '#7affc0', 0.85], [1, '#9dffd0', 0]])}${lin(au2, [[0, '#b44ae0', 0], [0.4, '#40d8c0', 0.5], [0.8, '#a6ffd8', 0.7], [1, '#a6ffd8', 0]])}${lin(sn, [[0, '#cfe4f4'], [1, '#6f94b6']])}${lin(ice, [[0, '#7fa8c4'], [1, '#2f5a7a']])}</defs>`
         + full(`url(#${s1})`) + mv('usglow', { ad: '5s' }, sst(131, 60, 440, 0.9)) + mv('usglow', { ad: '6.4s', d: '-2s' }, sst(132, 50, 400, 0.75)) + stars(133, 50, 420)
-        + mv('ussway', { ad: '9s', to: '800px 520px' }, mv('usdrift', { ad: '18s', dx: '90px' }, curtain(au1, 430, 150, -200, 1800, 120, 0)))
-        + mv('ussway', { ad: '12s', d: '-4s', to: '600px 520px' }, mv('usdrift', { ad: '26s', d: '-8s', dx: '120px' }, `<g opacity=".8">${curtain(au2, 470, 120, -200, 1800, 190, 2)}</g>`))
+        + mv('ussway', { ad: '9s', to: '800px 520px' }, mv('usdrift', { ad: '18s', dx: '90px' }, curtain(au1, 440, 120, -200, 1800, 260, 0)))
+        + mv('ussway', { ad: '12s', d: '-4s', to: '600px 520px' }, mv('usdrift', { ad: '26s', d: '-8s', dx: '120px' }, `<g opacity=".8">${curtain(au2, 480, 90, -200, 1800, 200, 2)}</g>`))
         + mv('usglow', { ad: '7s', d: '-2s' }, `<ellipse cx="520" cy="420" rx="400" ry="60" fill="#5affb0" opacity=".16"/>`)
         + cloud(1250, 190, 1, '#2b4a62', 0.35, 80, 8, '#4a6e86')
-        + mv('uspar', { ad: '54s', dx: '8px' }, `<path fill="#9ab8d6" d="M-160 600C-80 540 40 470 150 430L230 380L300 430C380 380 440 330 520 300C560 290 590 320 630 360C700 400 760 380 860 340L940 300C1000 330 1060 380 1160 420C1260 380 1400 430 1560 470L1760 560V680H-160z"/><path fill="#d8eaf8" opacity=".85" d="M150 430L230 380L300 430L260 436L230 410L196 440zM520 300C560 290 590 320 630 360L590 352L560 322L530 346zM860 340L940 300L1010 350L960 346L936 326L900 350z"/><path fill="#6b8cae" opacity=".6" d="M-160 600C-80 540 40 470 150 430L130 600zM1160 420C1260 380 1400 430 1560 470L1760 560V600H1300z"/>`)
+        + mv('uspar', { ad: '54s', dx: '8px' }, `<path fill="#5b7ea6" d="M-160 600C-80 540 40 470 150 430L230 380L300 430C380 380 440 330 520 300C560 290 590 320 630 360C700 400 760 380 860 340L940 300C1000 330 1060 380 1160 420C1260 380 1400 430 1560 470L1760 560V680H-160z"/><path fill="#d8eaf8" opacity=".85" d="M150 430L230 380L300 430L260 436L230 410L196 440zM520 300C560 290 590 320 630 360L590 352L560 322L530 346zM860 340L940 300L1010 350L960 346L936 326L900 350z"/><path fill="#44668e" opacity=".6" d="M-160 600C-80 540 40 470 150 430L130 600zM1160 420C1260 380 1400 430 1560 470L1760 560V600H1300z"/>`)
         + `<rect y="600" width="1600" height="300" fill="url(#${ice})"/>`
         + `<g opacity=".35" transform="translate(0 1200) scale(1 -1)"><path fill="#7affc0" d="M-200 560H1800V600H-200z"/></g>`
         + `<path fill="#e6f0f8" opacity=".6" d="M-160 600H1760V612H-160z"/>`
         + bld(134, 420, 900, 628, 12, 56, '#3d5a76', 12, 26, 4) + bld(135, 1000, 1300, 628, 10, 40, '#3d5a76', 10, 22, 4) + wins(136, 420, 1300, 580, 626, 40, 4) + dots('M420 614H1300', '#ffd27a', 3, 18, 'us-lit')
         + shimmer(137, 18, 0, 1600, 640, 800, '#9dffd0', 50) + mv('usdrift', { ad: '60s', dx: '200px' }, haze(610, 60, '#bcd6e8', 0.35))
         + `<path fill="url(#${sn})" d="M-160 900V760C100 720 400 740 700 770S1200 730 1500 750L1760 760V900z"/><path fill="#fff" opacity=".5" d="M-160 790C200 770 500 800 800 790S1300 770 1760 790V805C1300 790 1000 815 700 805S200 790 -160 805z"/>`
-        + mv('ussway', { ad: '9s', to: '100px 900px' }, firs(138, -160, 420, 800, 220, 440, '#06142a', 900)) + mv('ussway', { ad: '10s', d: '-3s', to: '1500px 900px' }, firs(139, 1400, 1760, 810, 200, 400, '#06142a', 900)) + firs(140, 460, 560, 770, 100, 200, '#0a1d34')
+        + mv('ussway', { ad: '9s', to: '100px 900px' }, firs(138, -160, 420, 800, 220, 440, '#06142a') + `<path fill="#06142a" d="M-160 790H300L420 900H-160z"/>`) + mv('ussway', { ad: '10s', d: '-3s', to: '1500px 900px' }, firs(139, 1400, 1760, 810, 200, 400, '#06142a') + `<path fill="#06142a" d="M1400 810H1760V900H1330z"/>`) + firs(140, 460, 560, 770, 100, 200, '#0a1d34')
         + moose
         + [0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<circle class="x-usfall" style="--ad:${(8 + i * 1.1).toFixed(1)}s;--d:-${(i * 1.6).toFixed(1)}s;--dx:${(i % 2 ? 1 : -1) * 30}px" cx="${180 + i * 190}" cy="${40 + (i * 61) % 120}" r="3" fill="#e8f4ff"/>`).join('')
         + finish(0.3);
@@ -386,12 +387,12 @@
   add({ key: 'place:honolulu', label: 'Diamond Head and a surfer', site: 'Diamond Head and Waikiki', colour: 'blue', mood: 'cheerful', season: 'any', tags: ['diamond-head', 'surf', 'beach', 'waikiki'],
     svg: () => {
       const s1 = U(), sea = U(), dh = U(), wv = U(), bch = U();
-      const wave = 'M-160 790C100 770 260 760 420 740C560 722 640 690 700 650C740 620 800 618 820 650C830 680 800 700 760 704C860 712 1000 740 1180 760C1380 780 1560 790 1760 790V900H-160z';
-      const surfer = `<g transform="translate(700 680)">` + mv('usbob', { ad: '2.2s', dy: '3px' }, `<path fill="#f4e8c8" d="M-70 14C-30 8 40 6 86 -6C70 12 10 22 -70 14z"/><path fill="#c9442c" d="M-10 -6C-16 -30 -10 -52 4 -66C12 -72 22 -68 24 -58C24 -40 20 -22 22 -8z"/><path fill="#6a4a38" d="M0 -66C-8 -80 0 -92 12 -92C22 -90 26 -80 20 -68z"/><circle cx="14" cy="-82" r="12" fill="#a9714c"/><path fill="#2f6ad0" d="M-10 -38L-48 -52L-52 -46L-12 -26zM18 -40L58 -54L60 -46L22 -26z"/><path fill="#a9714c" d="M-4 -8L-14 18H-4L6 -4zM22 -8L36 18H46L30 -4z"/>`) + `</g>`;
+      const wave = 'M-160 790C100 770 260 760 420 740C560 722 640 690 700 640C740 590 810 588 826 630C834 670 800 700 760 704C860 712 1000 740 1180 760C1380 780 1560 790 1760 790V900H-160z';
+      const surfer = `<g transform="translate(700 690) scale(1.5)">` + mv('usbob', { ad: '2.2s', dy: '3px' }, `<path fill="#f4e8c8" d="M-80 10C-30 0 40 -2 92 -16C60 8 -20 20 -80 10z"/><path fill="none" stroke="#a9714c" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" d="M-8 4L-22 -26L2 -44M22 0L32 -30L2 -44"/><path fill="none" stroke="#2f6ad0" stroke-width="19" stroke-linecap="round" d="M2 -46L-4 -58"/><path fill="none" stroke="#a9714c" stroke-width="15" stroke-linecap="round" d="M-4 -60L-16 -92"/><path fill="none" stroke="#a9714c" stroke-width="7" stroke-linecap="round" d="M-16 -88L-54 -76M-16 -88L28 -80"/><circle cx="-20" cy="-106" r="11" fill="#a9714c"/><path fill="#3a2a22" d="M-31 -108C-30 -120 -12 -120 -9 -108z"/>`) + `</g>`;
       return `<defs>${lin(s1, [[0, '#2f86e6'], [0.55, '#7cc6f4'], [1, '#d8f0f6']])}${lin(sea, [[0, '#3fcbd0'], [0.45, '#1ea3c4'], [1, '#0f6a9c']])}${linU(dh, [[0, '#8a8a4a'], [0.4, '#6f8a46'], [1, '#4a6a3c']], 0, 300, 0, 640)}${lin(wv, [[0, '#7ae8e0'], [1, '#2aa6c8']])}${lin(bch, [[0, '#f6e6b8'], [1, '#e2c98e']])}</defs>`
         + full(`url(#${s1})`) + sun(1330, 170, 42, '#fffbe0', '#fff0a8', false)
         + cloud(300, 150, 1.1, '#dcecf6', 0.95, 60, 4) + cloud(1020, 110, 1.3, '#e0eef8', 0.95, 70, 30) + cloud(1450, 280, 0.8, '#e4f0f8', 0.9, 52, 12) + streak(700, 260, 300, '#fff', 0.5, 70)
-        + mv('uspar', { ad: '50s', dx: '8px' }, `<path fill="url(#${dh})" d="M-160 640C-80 600 60 520 200 450C300 400 340 372 400 340C440 320 480 318 520 336C560 356 600 400 700 470C800 520 900 560 1020 610L1060 640z"/><path fill="#4a5e34" opacity=".55" d="M400 340C440 320 480 318 520 336C560 356 600 400 700 470C640 440 560 400 520 380L470 360z"/><path fill="none" stroke="#3f5a30" stroke-width="3" opacity=".5" d="M240 520C260 480 300 440 340 400M560 400C600 440 660 480 720 520M420 360C400 430 380 500 360 580"/>` + haze(560, 80, '#cfe8e8', 0.45))
+        + mv('uspar', { ad: '50s', dx: '8px' }, `<path fill="url(#${dh})" d="M-160 640C-80 600 60 520 200 450C300 400 340 372 400 340C440 320 480 318 520 336C560 356 600 400 700 470C800 520 900 560 1020 610L1060 640z"/><path fill="#4a5e34" opacity=".55" d="M400 340C440 320 480 318 520 336C560 356 600 400 700 470C640 440 560 400 520 380L470 360z"/><path fill="none" stroke="#3f5a30" stroke-width="3" opacity=".5" d="M240 520C260 480 300 440 340 400M560 400C600 440 660 480 720 520M420 360C400 430 380 500 360 580"/>` + haze(600, 50, '#cfe8e8', 0.3))
         + mv('uspar', { ad: '40s', dx: '12px' }, bld(151, 560, 1500, 662, 40, 150, '#e8e0d0', 28, 46, 6) + tower(900, 662, 56, 220, '#f0e8d8', 'flat') + tower(1060, 662, 50, 180, '#e6dcc8', 'flat') + wins(152, 560, 1500, 540, 660, 40, 4) + `<path fill="#3f8a4a" d="M-160 662V640C200 630 600 640 1000 636S1500 640 1760 650V662z"/>` + canopy('#2d7a3c', 650, 22, 153, -160, 1760, 664))
         + `<path fill="url(#${bch})" d="M-160 662H1760V700C1300 690 800 680 -160 690z"/>`
         + `<rect y="680" width="1600" height="220" fill="url(#${sea})"/>`
