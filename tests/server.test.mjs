@@ -16,7 +16,10 @@ function freePort() {
 }
 function raw(method, path, { headers = {}, body } = {}) {
   return new Promise((res, rej) => {
-    const req = request({ host: '127.0.0.1', port, method, path, headers: { Host: `localhost:${port}`, ...headers } }, (r) => {
+    // agent:false: a fresh connection each time. A request refused with 413
+    // leaves its body unread; on a kept-alive socket the next request could
+    // be reset (ECONNRESET, seen on macOS).
+    const req = request({ host: '127.0.0.1', port, method, path, agent: false, headers: { Host: `localhost:${port}`, ...headers } }, (r) => {
       let data = '';
       r.setEncoding('utf8');
       r.on('data', d => { data += d; });
