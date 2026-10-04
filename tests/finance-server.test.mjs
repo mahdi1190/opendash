@@ -244,9 +244,11 @@ test('no-bank rebuild works with no connection, and logs never hold money or mer
   assert.equal(job.state, 'ok');
   assert.equal(job.result.bank, false);
   // Leave out this run's own numbers first (data folder, port, process id,
-  // timings): a pid of 12000 or a 2004 ms request is not the 2000.00 salary.
+  // timings, the line timestamps): a pid of 12000 or a 2004 ms request is not
+  // the 2000.00 salary, and a line logged at 09:12:45.993 is not the 45.99.
   const log = readFileSync(join(dir, 'logs', 'server.log'), 'utf8')
     .split(dir).join('<dir>').split(String(port)).join('<port>')
+    .replace(/\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z/g, '<time>')
     .replace(/\bpid \d+/g, 'pid <n>').replace(/\b\d+ms\b/g, '<n>ms');
   for (const s of ['TESCO', 'GROCER', 'MYSTERY', '45.99', '2000', 'Shopping']) assert.ok(!log.includes(s), `log mentions ${s}`);
 });
