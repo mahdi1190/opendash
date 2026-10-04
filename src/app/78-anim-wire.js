@@ -32,7 +32,7 @@ function animCtx() {
     lat: loc && isFinite(+loc.lat) ? +loc.lat : null,
     lon: loc && isFinite(+loc.lon) ? +loc.lon : null,
     firstSnow: _awFirstSnow(),
-    county: typeof animUkCountyId === 'function' ? animUkCountyId() : '',   // the UK packs (opt-in; 78-anim-uk.js)
+    ...(() => { const w = typeof animUkWhere === 'function' ? animUkWhere() : null; return { county: w ? w.id : '', ukTown: w ? w.town : '' }; })(),   // offline and opt-in (78-anim-uk.js)
     ...(() => { const w = typeof animWorldWhere === 'function' ? animWorldWhere() : null; return { city: w ? w.city : '', country: w ? w.country : '' }; })(),   // the world pack (78-anim-world.js)
   };
 }

@@ -883,6 +883,18 @@
   add('greater-london', 'sport', { id: 'wimbledon-grass', label: 'Wimbledon grass courts', colour: 'green', tags: ['wimbledon', 'tennis', 'grass'], svg: () => vista(1321, () => pavilion(1030, 635, 270, '#c7b897') + `<path fill="#769359" d="M310 865l170-210h660l180 210z"/><path fill="none" stroke="#f0ebd3" stroke-width="5" d="M350 850l150-180h620l156 180zM390 790h825M460 715h685M655 790l70-75M949 790l-61-75"/><path fill="#5c7564" opacity=".45" d="M425 760h778v30H425z"/><path fill="none" stroke="#dfe4d1" stroke-width="4" d="M422 760h784"/><path fill="none" stroke="#7e8d73" stroke-width="2" d="${Array.from({ length: 40 }, (_, i) => `M${430 + i * 19} 762v27`).join('')}"/>${mv('ukbob', { ad: '4s', dy: '10px' }, '<circle cx="870" cy="770" r="8" fill="#d5db9a"/>')}`, { path: false }) });
   add('greater-london', 'heritage', { id: 'greenwich-observatory', label: 'Royal Observatory Greenwich', colour: 'red', tags: ['greenwich', 'observatory', 'time'], svg: () => vista(1341, p => `<path fill="#71925a" d="M-160 900V770Q830 625 1760 770v130z"/><path fill="#b27b5c" d="M490 705V435h510v270z"/><path fill="#676864" d="M465 443l95-96h335l126 96z"/>${sashes(532, 486, 7, 3, 61)}<path fill="${p.stone}" d="M510 435V345h112v90z"/>${sashes(532, 369, 2, 1, 52)}<path fill="#616b66" d="M493 345l74-44 74 44z"/><path stroke="#515c58" stroke-width="5" d="M567 320V219"/><circle class="x-ukglow" style="--ad:6s" cx="567" cy="270" r="20" fill="#b55748"/><path fill="#c1c9ae" d="M1060 705V545h160v160z"/><path fill="#82a091" d="M1050 546q0-113 90-129 90 16 90 129z"/><path fill="none" stroke="#d7ddc6" stroke-width="7" d="M1140 418v126"/>`, { time: 'dusk' }) });
 
+  // Numbered parts sort before this base file. They are pure drawing builders,
+  // sharing this one toolkit and U() sequence; only this base registers a pack.
+  const appendPart = (part, build) => {
+    if (typeof build !== 'function') return;
+    build({ add: (county, kind, o) => add(county, kind, Object.assign({ ukPart: part }, o)),
+      U, R, rnd, mv, full, ridge, canopy, lin, rad, linU, radU, cloud, streak,
+      rays, haze, finish, birds, shimmer, puffs, stars, sun, grass, meadow, oak,
+      lit, reflect, arch, sashes, battlements, town, sail, boat, chalk, vista });
+  };
+  appendPart('hampshire-towns', typeof ukSouthEastPart2 === 'function' ? ukSouthEastPart2 : null);
+  appendPart('kent-towns', typeof ukSouthEastPart3 === 'function' ? ukSouthEastPart3 : null);
+
   const css = [
     /* the evening grade: dark theme, or the time of day the opening asks for (71-anim-wire.css lays the same on the splash) */
     '.anim-scene.ap-full .hx-tint { fill: #4a4f94; mix-blend-mode: multiply; opacity: 0; pointer-events: none; }',

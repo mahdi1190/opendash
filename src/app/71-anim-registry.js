@@ -212,7 +212,15 @@ function animSpecialPick(slot, day, look, ctx) {
   const hits = animItems({ slot, look }).filter(it => typeof it.when === 'function' && !look.block.includes(it.ref) && _animFitsLevel(it, ctx.level) && _animWhen(it, day, ctx));
   if (!hits.length) return null;
   const top = Math.max(...hits.map(it => it.priority || 1));
-  const pool = hits.filter(it => (it.priority || 1) === top);
+  let pool = hits.filter(it => (it.priority || 1) === top);
+  // Town scenes are a local rotation within the already matched county.
+  // A national event still has higher priority; unavailable local art falls
+  // back to the whole county, including when local scenes are blocked.
+  if (top < 2 && ctx.county && ctx.ukTown) {
+    const town = String(ctx.ukTown).toLowerCase();
+    const local = pool.filter(it => it.county === ctx.county && typeof it.ukTown === 'string' && it.ukTown.toLowerCase() === town);
+    if (local.length) pool = local;
+  }
   const favs = pool.filter(it => look.fav.includes(it.ref));
   const bag = favs.length ? favs : pool;
   return bag[_animHash(`${day}|${slot}|special|${ctx.salt || ''}`) % bag.length];

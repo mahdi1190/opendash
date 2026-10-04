@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.2.3] - 2026-10-04
+
+### Added
+
+- 32 full-screen animated place studies: 16 in Hampshire and 16 in Kent, bringing the South East and London pack to 116 scenes. Each place has four distinct views, with layered motion and reduced-motion stills.
+- Local town scene rotations with county fallback, and a paged animation gallery with town search.
+
 ## [2.2.2] - 2026-10-04
 
 ### Added
@@ -260,7 +267,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.2...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.3...HEAD
+[2.2.3]: https://github.com/mahdi1190/opendash/compare/v2.2.2...v2.2.3
 [2.2.2]: https://github.com/mahdi1190/opendash/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/mahdi1190/opendash/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/mahdi1190/opendash/compare/v2.0.0...v2.2.0

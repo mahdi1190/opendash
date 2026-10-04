@@ -9,15 +9,29 @@ first for the general pack format.
 Neighbouring regions may share one gallery pack: South East and London use
 the existing `uk-south-east` id, so saved favourites keep working. Every
 item retains its actual `ukRegion` from the county table. Keep each file
-below about 400 KB; a split file uses the same regions and a distinct pack id.
-The build already discovers the classic scripts; no registry change is needed.
+below about 400 KB. Numbered parts are pure drawing builders, loaded before the
+base file, which passes its Hampshire toolkit to them and registers the combined
+items once. They keep the same gallery pack and saved item references. Each part
+has a `// UK_SCENE_PART: <pack-id>/<part-id>` marker, and every contributed scene
+has `ukPart` so the quality gate proves that no source part was left out.
 
 The next expansion targets **1,000+ animated scenes per combined gallery pack**,
 including named towns and researched places within each county. The 8–12 scenes
 per county below are the completed baseline, not the final expansion target.
 New views must change composition and activity as well as lighting or season;
 photos and static image substitutes do not meet the animated SVG quality bar.
-The large scene expansion is developed separately from the tested baseline.
+The first expansion adds 32 scenes (16 Hampshire, 16 Kent), for 116 combined scenes. Further expansion is paused.
+South East and London target 1,044 scenes: the 84 baseline scenes plus 24 new
+named places with four considered views in each of the ten county/area groups.
+This is an authoring target; completed counts remain in the batch table.
+
+Expanded scenes carry `ukPlace`, `ukLocality`, `ukTown`, `ukView` and
+`viewReason`. `ukLocality` is the actual village or town; `ukTown` is a main-town
+cluster already in the offline county table. A matched town rotates its local
+views, with a county fallback when the town has no enabled, eligible artwork.
+One signature per county still opens its welcome, followed by today's event.
+The gallery pages 80 scenes at a time and searches all scenes, including place
+and town names, so large packs remain entirely browsable.
 
 ## How it plays
 
@@ -74,7 +88,7 @@ as Hampshire is in `72-anim-pack-uk-south-east.js`:
 | Batch | Region id | Areas (ids in `UK_COUNTIES`) |
 | --- | --- | --- |
 | 1 (done) | `south-west` | cornwall, devon, dorset, somerset, bristol, gloucestershire, wiltshire |
-| 2 (baseline done: 74 full scenes; expansion pending) | `south-east` | kent, east-sussex, west-sussex, surrey, hampshire, isle-of-wight, berkshire, oxfordshire, buckinghamshire |
+| 2 (106 full scenes; expansion paused) | `south-east` | kent, east-sussex, west-sussex, surrey, hampshire, isle-of-wight, berkshire, oxfordshire, buckinghamshire |
 | 3 (baseline done: 10 full scenes; combined gallery; expansion pending) | `london` | greater-london |
 | 4 | `east` | norfolk, suffolk, cambridgeshire, essex, hertfordshire, bedfordshire |
 | 5 | `east-midlands` | derbyshire, nottinghamshire, leicestershire, rutland, northamptonshire, lincolnshire |
@@ -120,8 +134,9 @@ the explicitly combined neighbouring regions.
 
 - [ ] **One signature opening** (`kind: 'signature'`). This is the county's
       best-known sight, and it plays in "Welcome to …". It has no `months`.
-- [ ] **8–12 scenes total**, including the signature and at most three of
-      each other kind (variants count):
+- [ ] **8–12 baseline scenes**, including the signature and at most three of
+      each other kind (baseline variants count). Expanded town collections add
+      researched named places with at most four distinct views per place:
   - `landmark`: a building or structure
   - `landscape`: the land or coast
   - `tradition`: a festival or custom

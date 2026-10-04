@@ -13,7 +13,14 @@
    (state.animPrefs.look), so they follow the user to every device.
    ============================================================ */
 let _agMemo = { key: '', look: null };
-let _agUI = { by: 'slot', slot: 'event-scene', pack: 'core', q: '', sel: null };
+let _agUI = { by: 'slot', slot: 'event-scene', pack: 'core', q: '', sel: null, page: 0 };
+/** Bound the amount of illustrated SVG in the gallery, without hiding later scenes. */
+function animGalleryPage(items, page) {
+  const size = 80, pages = Math.max(1, Math.ceil(items.length / size));
+  page = Math.max(0, Math.min(pages - 1, Math.floor(Number(page) || 0)));
+  const start = page * size;
+  return { page, pages, start, end: Math.min(items.length, start + size), items: items.slice(start, start + size) };
+}
 
 function animLook() {
   const raw = state.animPrefs && typeof state.animPrefs === 'object' ? state.animPrefs.look : null;
@@ -93,7 +100,7 @@ function animGalleryRender(el) {
     if (_agUI.by === 'slot' && _agUI.slot === s.id) b.setAttribute('aria-current', 'true');
     b.innerHTML = (it ? animItemHtml(it, { size: 'md', hover: true, reduced }) : '<span class="apg-none">—</span>') + `<span>${esc(s.label)}</span>`;
     b.setAttribute('data-tip', it ? it.label + (look.pin[s.id] === it.ref ? ' (pinned)' : '') : 'Nothing: every one is blocked');
-    b.onclick = () => { if (_agUI.by === 'slot' && _agUI.slot === s.id) return; _agUI.by = 'slot'; _agUI.slot = s.id; _agUI.sel = it ? it.ref : null; _agUI.q = ''; render(); };
+    b.onclick = () => { if (_agUI.by === 'slot' && _agUI.slot === s.id) return; _agUI.by = 'slot'; _agUI.slot = s.id; _agUI.sel = it ? it.ref : null; _agUI.q = ''; _agUI.page = 0; render(); };
     row.appendChild(b);
   }
   strip.appendChild(row);
@@ -162,17 +169,18 @@ function animGalleryRender(el) {
 
   // Browse
   const bar = document.createElement('div'); bar.className = 'apg-bar';
-  const by = _settingsSeg([['slot', 'By slot'], ['pack', 'By pack']], _agUI.by, (k) => { if (k === _agUI.by) return; _agUI.by = k; render(); });
+  const by = _settingsSeg([['slot', 'By slot'], ['pack', 'By pack']], _agUI.by, (k) => { if (k === _agUI.by) return; _agUI.by = k; _agUI.page = 0; render(); });
   const pick = _agUI.by === 'slot'
-    ? _settingsSelect(ANIM_SLOTS.map(s => [s.id, `${s.label} (${animItems({ slot: s.id }).length})`]), _agUI.slot, (v) => { _agUI.slot = v; _agUI.sel = null; paint(); })
-    : _settingsSelect(animPacks().map(p => [p.id, `${p.name} (${p.items.length})`]), _agUI.pack, (v) => { _agUI.pack = v; _agUI.sel = null; paint(); });
+    ? _settingsSelect(ANIM_SLOTS.map(s => [s.id, `${s.label} (${animItems({ slot: s.id }).length})`]), _agUI.slot, (v) => { _agUI.slot = v; _agUI.sel = null; _agUI.page = 0; paint(); })
+    : _settingsSelect(animPacks().map(p => [p.id, `${p.name} (${p.items.length})`]), _agUI.pack, (v) => { _agUI.pack = v; _agUI.sel = null; _agUI.page = 0; paint(); });
   const q = document.createElement('input'); q.className = 'control control-sm'; q.placeholder = 'Filter'; q.value = _agUI.q; q.setAttribute('aria-label', 'Filter animations');
   bar.append(by, pick, q);
   root.appendChild(bar);
 
   const stage = document.createElement('div'); stage.className = 'apg-stage'; stage.setAttribute('aria-live', 'polite');
   const grid = document.createElement('div'); grid.className = 'anim-gallery apg-grid';
-  root.append(stage, grid);
+  const paging = document.createElement('nav'); paging.className = 'apg-bar'; paging.setAttribute('aria-label', 'Animation pages');
+  root.append(stage, grid, paging);
 
   function showStage(it) {
     if (!it) { stage.hidden = true; return; }
@@ -196,9 +204,21 @@ function animGalleryRender(el) {
     const lk = animLook(), t = animTodayLook();
     const needle = q.value.trim().toLowerCase();
     const items = animItems(_agUI.by === 'slot' ? { slot: _agUI.slot } : { pack: _agUI.pack })
-      .filter(it => !needle || it.label.toLowerCase().includes(needle) || it.tags.some(x => String(x).includes(needle)) || it.id.includes(needle));
+      .filter(it => !needle || it.label.toLowerCase().includes(needle) || it.tags.some(x => String(x).includes(needle)) || it.id.includes(needle)
+        || String(it.ukTown || '').toLowerCase().includes(needle) || String(it.ukLocality || '').toLowerCase().includes(needle));
+    const page = animGalleryPage(items, _agUI.page); _agUI.page = page.page;
+    paging.replaceChildren(); paging.hidden = page.pages <= 1;
+    const range = document.createElement('span'); range.className = 'muted'; range.setAttribute('aria-live', 'polite');
+    range.textContent = `${items.length ? page.start + 1 : 0}–${page.end} of ${items.length} scenes`;
+    for (const [label, delta] of [['Previous', -1], ['Next', 1]]) {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-secondary btn-sm'; button.textContent = label;
+      button.disabled = delta < 0 ? page.page === 0 : page.page === page.pages - 1;
+      button.onclick = () => { _agUI.page += delta; paint(); grid.querySelector('[tabindex="0"]')?.focus(); };
+      paging.appendChild(button);
+    }
+    paging.insertBefore(range, paging.lastChild);
     grid.replaceChildren();
-    for (const it of items.slice(0, 160)) {
+    for (const it of page.items) {
       const f = document.createElement('figure');
       const fav = lk.fav.includes(it.ref), blk = lk.block.includes(it.ref), pin = lk.pin[it.slot] === it.ref, packOff = !animPack(it.pack).core && lk.packsOff.includes(it.pack);
       if (animLocked(it, lk)) {   // a reward not earned yet: a still silhouette and how to earn it
@@ -227,7 +247,7 @@ function animGalleryRender(el) {
     if (!items.length) grid.innerHTML = '<p class="muted">Nothing matches.</p>';
     showStage(_agUI.sel ? animItem(_agUI.sel) : null);
   }
-  q.oninput = () => { _agUI.q = q.value; paint(); };
+  q.oninput = () => { _agUI.q = q.value; _agUI.page = 0; paint(); };
   paint();
   el.appendChild(root);
 }

@@ -13,6 +13,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
 const PACK_FILES = readdirSync(APP).filter(f => /^72-anim-pack-[a-z0-9-]+\.js$/.test(f)).sort();
+const PART_FILES = PACK_FILES.filter(f => /\/\/ UK_SCENE_PART: ([a-z0-9-]+)\/([a-z0-9-]+)/.test(src(f)));
 const NAMES = ['ANIM_SLOTS', 'ANIM_SLOT_IDS', 'ANIM_THEMES', 'ANIM_THEME_IDS', 'ANIM_ITEM_MAX_BYTES', 'ANIM_FULL_ITEM_MAX_BYTES', 'ANIM_PACK_MAX_BYTES', 'animValidatePack', 'animRegisterPack',
   'animPacks', 'animPack', 'animItem', 'animItems', 'animLookNormalize', 'animSeasonOf', 'animDailyPick', 'animDailyLook', 'animThemeFor', 'animItemHtml',
   'animSpecialPick', 'animPickFor', 'animCountdownHeat', 'animCountdownStage', 'animStreakGrow', 'almDay', 'almAddDays', 'almEaster', 'almFestivals', 'almIsFestival', 'almSeasonMark', 'almClocksChange', 'almSunTimes', 'almSkyMoment',
@@ -40,8 +41,22 @@ test('there is at least the core pack, and every pack file registered a valid pa
   assert.ok(PACK_FILES.includes('72-anim-pack-core.js'));
   const ids = R.animPacks().map(p => p.id);
   assert.ok(ids.includes('core'));
-  assert.ok(ids.length >= PACK_FILES.length, `pack files ${PACK_FILES.length}, registered ${ids.length}`);
+  assert.ok(ids.length >= PACK_FILES.length - PART_FILES.length, `registration files ${PACK_FILES.length - PART_FILES.length}, registered ${ids.length}`);
+  for (const file of PART_FILES) {
+    const [, pack, part] = /\/\/ UK_SCENE_PART: ([a-z0-9-]+)\/([a-z0-9-]+)/.exec(src(file));
+    assert.ok(R.animPack(pack)?.items.some(it => it.ukPart === part), `${file}: its drawing builder contributed scenes`);
+    assert.ok(Buffer.byteLength(src(file)) <= 400000, `${file}: source part under 400 KB`);
+  }
 });
+
+/** Fresh ids must not make identical drawings appear to be different art. */
+function canonicalArt(html) {
+  const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
+  const names = new Map(ids.map((id, i) => [id, 'local-' + i]));
+  return html.replace(/\bid="([^"]+)"/g, (all, id) => `id="${names.get(id)}"`)
+    .replace(/url\(#([^)]+)\)/g, (all, id) => `url(#${names.get(id) || id})`)
+    .replace(/href="#([^"]+)"/g, (all, id) => `href="#${names.get(id) || id}"`).replace(/\s+/g, ' ');
+}
 
 for (const pack of R.animPacks()) {
   test(`quality gate: pack "${pack.id}"`, () => {
@@ -65,7 +80,7 @@ for (const pack of R.animPacks()) {
         }
       }
       // near-duplicate check: two items of one slot may not draw the same thing
-      const key = it.slot + '|' + it.svg({}).replace(/\s+/g, ' ');
+      const key = it.slot + '|' + canonicalArt(it.svg({}));
       assert.ok(!seen.has(key), `${it.ref} draws the same as ${seen.get(key)}`);
       seen.set(key, it.ref);
     }
@@ -352,7 +367,7 @@ test('UK county table: every nation and region, the nearest main town, nothing o
   assert.equal(R.ukCounty('highland').welcome, 'the Highlands');
 });
 
-test('UK packs: tagged with region and county, one signature per county, at most 11 elements (3 per kind), county-only', () => {
+test('UK packs: county-only, one signature, bounded baseline and meaningful place views', () => {
   const uk = R.animPacks().filter(p => p.id.startsWith('uk-'));
   assert.ok(uk.length >= 1, 'batch 1 ships the south west');
   for (const p of uk) {
@@ -378,17 +393,26 @@ test('UK packs: tagged with region and county, one signature per county, at most
     }
     for (const [county, list] of per) {
       assert.equal(list.filter(i => i.signature).length, 1, `${county}: one signature opening`);
-      assert.ok(list.filter(i => !i.signature).length <= 11, `${county}: at most 11 elements`);
+      const baseline = list.filter(i => !i.ukPart);
+      assert.ok(baseline.filter(i => !i.signature).length <= 11, `${county}: at most 11 baseline elements`);
       const kinds = new Map();
-      for (const i of list.filter(x => !x.signature)) { const k = i.ukKind === 'heritage' ? 'sport' : i.ukKind; kinds.set(k, (kinds.get(k) || 0) + 1); }
+      for (const i of baseline.filter(x => !x.signature)) { const k = i.ukKind === 'heritage' ? 'sport' : i.ukKind; kinds.set(k, (kinds.get(k) || 0) + 1); }
       for (const [k, n] of kinds) assert.ok(n <= 3, `${county}: at most 3 of kind ${k}`);
+      const places = new Map();
+      for (const i of list.filter(x => x.ukPart)) {
+        assert.ok(i.full && i.ukPlace && i.ukTown && i.ukLocality && i.ukView && i.viewReason, `${i.ref}: named place, locality, view and reason`);
+        assert.ok(R.ukTowns().some(t => t.id === county && t.town === i.ukTown), `${i.ref}: offline town cluster in its county`);
+        const views = places.get(i.ukPlace) || new Set();
+        assert.ok(!views.has(i.ukView), `${i.ref}: distinct view of its place`); views.add(i.ukView); places.set(i.ukPlace, views);
+      }
+      for (const [place, views] of places) assert.ok(views.size <= 4, `${county}/${place}: no more than four considered views`);
       const sig = list.find(i => i.signature);
       assert.ok(sig.when('2026-03-03', { county }), `${county}: the signature plays any month`);
     }
   }
   // Hampshire (the South East's first county): a rich rotation, each with its own place line
   const hants = R.animItems({}).filter(i => i.county === 'hampshire');
-  assert.ok(hants.length >= 8 && hants.length <= 12, 'Hampshire: 8 to 12 scenes');
+  assert.ok(hants.filter(i => !i.ukPart).length >= 8 && hants.filter(i => !i.ukPart).length <= 12, 'Hampshire: 8 to 12 baseline scenes, plus researched place views');
   for (const i of hants) assert.ok(typeof i.site === 'string' && i.site && !i.site.includes('Hampshire'), `${i.ref}: a site line`);
   for (const i of hants) assert.equal(i.full, true, `${i.ref}: a full-viewport scene (the opening plays it edge to edge)`);
   // two renders never share gradient ids (a scene can show twice on a page: the gallery and Home)
@@ -415,7 +439,7 @@ test('South East and London: complete county rotations, full framing, local ids 
   const ids = html => [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
   for (const c of expected) {
     const list = pack.items.filter(i => i.county === c.id);
-    assert.ok(list.length >= 8 && list.length <= 12, `${c.id}: 8–12 scenes`);
+    assert.ok(list.filter(i => !i.ukPart).length >= 8 && list.filter(i => !i.ukPart).length <= 12, `${c.id}: 8–12 baseline scenes`);
     for (const it of list) {
       assert.equal(it.full, true, `${it.ref}: full viewport`);
       assert.ok(it.site && it.colour && it.tags.length >= 6, `${it.ref}: caption and metadata`);
