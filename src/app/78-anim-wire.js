@@ -217,11 +217,13 @@ function animOpeningSequence() {
     try { if (typeof animThemeApply === 'function') animThemeApply(); } catch (e) { /* the packs' css is injected there */ }
     // No UK county: in Texas (72-anim-pack-texas.js) the welcome names the town and today's Texas opening is the emblem.
     let tx = null;
-    if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, it: pick }; } catch (e) { tx = null; }
+    if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, it: pick, over: 'Texas' }; } catch (e) { tx = null; }
+    // Elsewhere in the US (71-anim-us.js, 72-anim-pack-us-*.js): the town or the state, with today's US opening as the emblem.
+    if (!w && !tx) try { const u = typeof usWhere === 'function' ? usWhere(animCtx()) : null; const pick = u ? animToday('opening') : null; if (pick && /^us-/.test(pick.pack)) tx = { name: u.name, it: pick, over: 'USA' }; } catch (e) { tx = null; }
     const tod = animTimeOfDay(), season = animSeasonOf(todayStr());
     const { it, origin } = animOpeningScene(w, returning);
     const part = { dawn: 'dawn', day: 'day', dusk: 'evening', night: 'night' }[tod];
-    const cap = it ? origin : tx ? (tx.it.full ? tx.it.site || tx.it.label : 'Texas · ' + tx.it.label) : (w ? `${season[0].toUpperCase() + season.slice(1)} · ${w.name}` : `${/^[aeiou]/.test(season) ? 'An' : 'A'} ${season} ${part}`);
+    const cap = it ? origin : tx ? (tx.it.full ? tx.it.site || tx.it.label : tx.over + ' · ' + tx.it.label) : (w ? `${season[0].toUpperCase() + season.slice(1)} · ${w.name}` : `${/^[aeiou]/.test(season) ? 'An' : 'A'} ${season} ${part}`);
     const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : tx && tx.it.full ? animItemHtml(tx.it, { size: 'fill', live: true, tod }) : animOpeningFallbackHtml(season, tod);
     const emblem = tx && !tx.it.full ? '<div class="od-seq-emblem" aria-hidden="true">' + animItemHtml(tx.it, { size: 'hero', live: true }) + '</div>' : '';
     const box = document.createElement('div'); box.className = 'od-seq';

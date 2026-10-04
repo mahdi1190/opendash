@@ -11,7 +11,7 @@ const APP = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
 const PACK_FILES = readdirSync(APP).filter(f => /^72-anim-pack-[a-z0-9-]+\.js$/.test(f)).sort();
 const NAMES = ['animTexasWhere', 'animPack', 'animItems', 'animSpecialPick', 'animDailyPick', 'trPlaceTables'];
-const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-anim-sanitize.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...PACK_FILES, '69-travel-data.js'].map(src).join('\n;\n');
+const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-anim-sanitize.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', '71-anim-us.js', ...PACK_FILES, '69-travel-data.js'].map(src).join('\n;\n');
 // eslint-disable-next-line no-new-func
 const R = new Function(`"use strict";\n${body}\nreturn { ${NAMES.join(', ')} };`)();
 
@@ -51,7 +51,7 @@ test('texas pack: plays from the travel city or the home weather town, and nowhe
   assert.equal(R.animSpecialPick('opening', day, {}, { ...LONDON }), null, 'not in London');
   assert.equal(R.animSpecialPick('opening', day, {}, {}), null, 'no location, no Texas');
   assert.equal(R.animSpecialPick('opening', day, {}, { ...HOUSTON, city: 'paris-fr' }).pack, 'world', 'a trip to Paris from Texas is Paris (the world pack), not Texas');
-  assert.equal(R.animSpecialPick('opening', day, {}, { lat: 35.0, lon: -106.6 }), null, 'Albuquerque is far from every Texas town');
+  assert.equal(R.animSpecialPick('opening', day, {}, { lat: 19.43, lon: -99.13 }), null, 'Mexico City is far from every Texas town and is not in the US');
   for (let i = 0; i < 40; i++) {
     const d = `2026-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + i % 28).padStart(2, '0')}`;
     for (const slot of ['opening', 'symbol', 'celebration', 'sky']) {
