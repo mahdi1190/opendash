@@ -33,11 +33,11 @@
 
   // ================= CYPRUS =================
   B.element('CY', { id: 'halloumi', label: 'Grilled halloumi', colour: 'amber', mood: 'cosy', tags: ['food', 'cheese'],
-    svg: () => steam(20, 30, 0) + steam(32, 28, 0.7) + steam(44, 30, 1.4) +
-      '<g class="x-bob" style="--ad:3.4s"><path class="s" d="M6 40q0-8 8-8h36q8 0 8 8z"/><path class="c" d="M10 38l8-4h28l8 4v6H10z"/><path class="w" d="M12 44h40v4H12z"/>' +
-      '<path class="lk t" d="M20 36l3 6M28 35l3 7M36 35l3 7M44 36l3 6"/></g>' +
-      '<g class="x-swing o-b"><path class="w lk" d="M50 20q4-6 8-3-2 6-8 3z"/><path class="lc" d="M54 18l-2 4"/></g>' +
-      '<path class="k" d="M4 54h56v4H4z"/><g class="x-flicker"><path class="lm" d="M10 60q2-3 4 0M26 60q2-3 4 0M42 60q2-3 4 0"/></g>' });
+    svg: () => steam(22, 26, 0) + steam(32, 24, 0.7) + steam(42, 26, 1.4) +
+      '<path class="k" d="M2 44h12l2-2h30l2 2h14v4H48l-2 2H18l-2-2H2z"/><ellipse class="m" cx="32" cy="48" rx="26" ry="9"/><ellipse class="k" cx="32" cy="47" rx="22" ry="6.5"/>' +
+      '<g class="x-bob" style="--ad:3.4s"><path class="s" d="M14 42l8-6h22l8 6v4H14z"/><path class="c" d="M14 42l8-6h22l8 6-8 4H22z"/><path class="lk t" d="M20 40l8 4M26 38l8 4M32 36l8 4M38 36l8 4"/>' +
+      '<path class="c" d="M22 32l8-5h16l7 5-8 4H29z"/><path class="lk t" d="M28 32l7 3M34 30l7 3M40 29l6 3"/></g>' +
+      '<g class="x-swing o-b"><path class="w lk" d="M50 20q4-6 9-3-2 6-9 3z"/></g>' });
   B.place('paphos', { id: 'aphrodite-rock', label: "Aphrodite's rock", colour: 'teal', mood: 'dreamy', tags: ['sea', 'rocks', 'shell'],
     svg: () => sun(14, 14, 6) + bird(34, 12, 0.4) + bird(44, 20, 1.2) +
       '<path class="s" d="M0 38h64v26H0z"/>' +
@@ -48,10 +48,10 @@
   // ================= GEORGIA =================
   B.element('GE', { id: 'khachapuri', label: 'Khachapuri boat', colour: 'orange', mood: 'cosy', tags: ['food', 'bread'],
     svg: () => steam(22, 24, 0) + steam(34, 22, 0.6) + steam(46, 24, 1.2) +
-      '<g class="x-bob" style="--ad:3.6s"><path class="c" d="M3 38q10-14 29-14t29 14q-10 14-29 14T3 38z"/>' +
-      '<path class="w" d="M13 38q8-8 19-8t19 8q-8 8-19 8t-19-8z"/><path class="s" d="M16 38q7-6 16-6t16 6q-7 6-16 6t-16-6z"/>' +
-      '<g class="x-pulse" style="--ad:2.4s"><circle class="c" cx="32" cy="38" r="5.5"/></g><circle class="w" cx="30.5" cy="36.5" r="1.4"/>' +
-      '<path class="lk" d="M8 40l3 1M54 40l-3 1M20 48l2-2M44 48l-2-2"/><rect class="w" x="42" y="33" width="4" height="3" rx="0.6"/></g>' + gnd(58, 8, 56) });
+      '<g class="x-bob" style="--ad:3.6s"><path class="c lk" d="M2 40q8-4 14-10 8-6 16-6t16 6q6 6 14 10-8 12-30 12T2 40z"/>' +
+      '<path class="w" d="M14 38q6-8 18-8t18 8q-6 7-18 7t-18-7z"/><path class="s" d="M18 38q5-5 14-5t14 5q-5 5-14 5t-14-5z"/>' +
+      '<g class="x-pulse" style="--ad:2.4s"><circle class="c lk" cx="32" cy="38" r="6"/></g><circle class="w" cx="30" cy="36" r="1.6"/>' +
+      '<path class="lk" d="M8 42q2 4 6 6M56 42q-2 4-6 6M24 50l1-3M40 50l-1-3"/><rect class="w lk" x="42" y="33" width="5" height="3.4" rx="0.6"/></g>' + gnd(58, 8, 56) });
 
   // ================= ARMENIA =================
   B.element('AM', { id: 'apricot', label: 'Apricot branch', colour: 'orange', mood: 'cheerful', tags: ['fruit', 'tree'], season: ['summer'],
@@ -63,19 +63,19 @@
 
   // ================= AZERBAIJAN =================
   B.element('AZ', { id: 'tea-glass', label: 'Pear-shaped tea glass', colour: 'red', mood: 'cosy', tags: ['tea', 'drink'],
-    svg: () => steam(28, 20, 0) + steam(36, 18, 0.8) +
+    svg: () => steam(28, 16, 0) + steam(36, 14, 0.8) +
       '<ellipse class="c" cx="32" cy="55" rx="22" ry="5"/><ellipse class="w" cx="32" cy="53" rx="15" ry="3"/>' +
-      '<g class="x-bob" style="--ad:3.8s"><path class="w lk" d="M22 22h20q-1 6-5 9 5 4 5 11 0 9-10 9t-10-9q0-7 5-11-4-3-5-9z"/>' +
-      '<path class="c" d="M24 38q8-3 16 0 2 4 0 7-3 6-8 6t-8-6q-2-3 0-7z"/><path class="w" d="M26 24h3v6h-3z" opacity="0.7"/></g>' +
-      '<g class="x-pop" style="--d:0.6s"><rect class="w lk" x="48" y="46" width="5" height="5" rx="0.8"/></g><path class="lk" d="M30 36v4"/>' });
+      '<g class="x-bob" style="--ad:3.8s"><path class="w lk" d="M18 18h28q-1 8-6 12 6 5 6 12 0 10-14 10T20 42q0-7 6-12-5-4-8-12z"/>' +
+      '<path class="c" d="M22 36q10-3 20 0 3 5 1 9-4 6-11 6t-11-6q-2-4 1-9z"/><path class="w" d="M22 20h3l1 8-3-2z" opacity="0.8"/><path class="lk" d="M24 42q8 3 16 0"/></g>' +
+      '<g class="x-pop" style="--d:0.6s"><rect class="w lk" x="49" y="46" width="5" height="5" rx="0.8"/></g>' });
 
   // ================= LEBANON =================
   B.element('LB', { id: 'cedar', label: 'Cedar of Lebanon', colour: 'green', mood: 'proud', tags: ['tree', 'mountain'],
-    svg: () => stars([[8, 8], [54, 10], [46, 20]]) + moon(14, 18, 4) +
-      '<path class="m" d="M0 56l12-14 8 8 12-18 14 20 6-8 12 12v10H0z" opacity="0.6"/><path class="w" d="M32 32l-3 5 3-1 3 2z"/>' +
-      '<path class="lk t" d="M30 62q1-10 0-18M33 62q-1-10 0-16"/>' +
-      '<g class="x-swing o-b"><path class="c" d="M8 40q12-4 24-3 12-1 24 3-6 3-12 2 7 2 8 6-8 0-14-3 6 4 4 8-8-2-14-6-6 4-14 6-2-4 4-8-6 3-14 3 1-4 8-6-6 0-10-2z"/>' +
-      '<path class="lk" d="M14 41q18-3 36 0"/></g>' + gnd(62, 6, 58) });
+    svg: () => stars([[8, 8], [54, 10], [46, 20], [14, 20]]) + moon(52, 14, 4) +
+      '<path class="m" d="M0 62V48l12-10 8 6 12-12 12 12 8-6 12 10v14z" opacity="0.35"/>' +
+      '<path class="lk t" d="M30 62q1-12-1-24M34 62q-1-12 1-22"/>' +
+      '<g class="x-swing o-b"><path class="c" d="M12 34q10-6 20-6t20 6q-10 4-20 4t-20-4z"/><path class="c" d="M6 44q12-8 26-8t26 8q-12 6-26 6T6 44z"/><path class="c" d="M18 24q8-6 14-6t14 6q-8 3-14 3t-14-3z"/><path class="c" d="M26 16q4-6 6-8 2 2 6 8-6 2-12 0z"/>' +
+      '<path class="lk" d="M14 36q18 3 36 0M10 46q22 4 44 0M22 25q10 2 20 0"/></g>' + gnd(62, 6, 58) });
 
   // ================= SYRIA =================
   B.element('SY', { id: 'damask-rose', label: 'Damask rose', colour: 'pink', mood: 'dreamy', tags: ['flower', 'rose'],
@@ -101,13 +101,12 @@
   // ================= PALESTINE =================
   B.element('PS', { id: 'tatreez', label: 'Cross-stitch embroidery', colour: 'red', mood: 'proud', tags: ['textile', 'embroidery', 'craft'],
     svg: () => {
-      let s = '<rect class="s" x="4" y="8" width="56" height="44" rx="2"/><path class="lm" d="M4 14h56M4 46h56"/>';
-      const cx = (x, y, cls, d) => `<g class="${cls}" style="--d:${d}s"><path class="lc" d="M${x - 2} ${y - 2}l4 4M${x + 2} ${y - 2}l-4 4"/></g>`;
+      let s = '<rect class="s" x="4" y="8" width="56" height="44" rx="2"/><path class="lc" d="M4 14h56M4 46h56"/>';
+      const cx = (x, y, cls, d) => `<g class="${cls}" style="--d:${d}s"><path class="lc t" d="M${x - 2} ${y - 2}l4 4M${x + 2} ${y - 2}l-4 4"/></g>`;
       const pts = [[0, 0], [-1, -1], [1, -1], [-1, 1], [1, 1], [0, -2], [0, 2], [-2, 0], [2, 0], [-3, 0], [3, 0], [0, -3], [0, 3]];
       pts.forEach(([a, b], i) => { s += cx(32 + a * 5.4, 30 + b * 4.6, i % 3 ? 'x-twinkle' : 'x-pulse', (i * 0.23).toFixed(2)); });
-      for (let i = 0; i < 8; i++) { s += `<path class="lk" d="M${8 + i * 7} 11l3 0M${8 + i * 7} 49l3 0"/>`; }
-      s += '<g class="x-bob"><path class="k" d="M44 6l8 16" /><path class="lm" d="M52 22q6 8-2 14"/></g>';
-      return s;
+      for (let i = 0; i < 8; i++) { s += `<path class="lk" d="M${8 + i * 7} 11h3M${8 + i * 7} 49h3"/>`; }
+      return s + '<g class="x-bob"><path class="lk t" d="M46 56l10-4"/><circle class="w lk" cx="46.5" cy="55.8" r="1"/></g>';
     } });
   B.place('bethlehem', { id: 'star-over-town', label: 'Star over the hill town', colour: 'indigo', mood: 'calm', tags: ['star', 'hills', 'night'],
     svg: () => stars([[8, 8], [18, 20], [48, 6], [58, 22], [38, 24]]) +
@@ -145,19 +144,19 @@
 
   // ================= IRAN =================
   B.element('IR', { id: 'carpet', label: 'Persian carpet', colour: 'red', mood: 'proud', tags: ['textile', 'carpet', 'craft'],
-    svg: () => stars([[8, 10], [54, 8], [56, 54]]) +
-      '<g class="x-float"><path class="lk" d="M10 14l-3 2M10 20l-3 1M10 26l-3 0M10 32l-3-1M10 38l-3-2M54 14l3 2M54 20l3 1M54 26l3 0M54 32l3-1M54 38l3-2"/>' +
-      '<rect class="c" x="10" y="12" width="44" height="30" rx="1"/><rect class="w" x="14" y="16" width="36" height="22" rx="1"/><rect class="s" x="17" y="19" width="30" height="16"/>' +
-      '<path class="c" d="M32 20l9 7-9 7-9-7z"/><path class="w" d="M32 23l5 4-5 4-5-4z"/><circle class="k" cx="32" cy="27" r="1.6"/>' +
-      '<path class="c" d="M18 20l4 3-4 3zM46 20l-4 3 4 3zM18 28l4 3-4 3zM46 28l-4 3 4 3z"/></g>' +
+    svg: () => stars([[8, 10], [54, 8], [56, 56], [10, 54]]) +
+      '<g class="x-float"><path class="lm" d="M10 14l-4 2M10 20l-4 1M10 26l-4 0M10 32l-4-1M10 38l-4-2M54 14l4 2M54 20l4 1M54 26l4 0M54 32l4-1M54 38l4-2"/>' +
+      '<rect class="c" x="10" y="12" width="44" height="30" rx="1"/><rect class="w" x="13" y="15" width="38" height="24" rx="1"/><rect class="m" x="16" y="18" width="32" height="18"/>' +
+      '<path class="c" d="M32 19l10 8-10 8-10-8z"/><path class="w" d="M32 22l6 5-6 5-6-5z"/><circle class="k" cx="32" cy="27" r="1.8"/>' +
+      '<path class="c" d="M17 22l4 3-4 3zM47 22l-4 3 4 3z"/><path class="w" d="M18 19l2 2M46 19l-2 2M18 35l2-2M46 35l-2-2"/></g>' +
       '<g class="x-wave"><path class="lm" d="M8 52q6-3 12 0t12 0 12 0 12 0"/></g>' });
   B.place('isfahan', { id: 'bridge-arches', label: 'Two-tier arched bridge', colour: 'amber', mood: 'calm', tags: ['bridge', 'arches', 'river'],
     svg: () => sun(52, 12, 5) + bird(8, 10, 0.4) +
-      '<rect class="c" x="2" y="26" width="60" height="4"/><rect class="m" x="2" y="30" width="60" height="16"/>' +
-      [4, 15, 26, 37, 48].map(x => `<path class="s" d="M${x} 46V38q4.5-8 9 0v8z"/>`).join('') +
-      [9, 20, 31, 42].map(x => `<path class="k" d="M${x} 28v-2"/>`).join('') +
+      '<rect class="c" x="2" y="26" width="60" height="4"/><rect class="c" x="2" y="30" width="60" height="16"/><path class="lk" d="M2 36h60"/>' +
+      [4, 15, 26, 37, 48].map(x => `<path class="k" d="M${x} 46V39q4.5-8 9 0v7z"/>`).join('') +
+      [4, 15, 26, 37, 48].map(x => `<path class="s" d="M${x + 1.5} 36V32q3-4 6 0v4z"/>`).join('') +
       '<path class="c" d="M2 26q4-5 8 0 4-5 8 0 4-5 8 0 4-5 8 0 4-5 8 0 4-5 8 0 4-5 8 0" />' +
-      '<g class="x-blink"><rect class="w" x="16" y="30" width="2" height="3"/></g><g class="x-blink" style="--d:0.7s"><rect class="w" x="38" y="30" width="2" height="3"/></g>' +
+      '<g class="x-blink"><rect class="w" x="14" y="33" width="2" height="3"/></g><g class="x-blink" style="--d:0.7s"><rect class="w" x="36" y="33" width="2" height="3"/></g>' +
       '<path class="s" d="M0 46h64v18H0z"/>' + wave(50, 'lw') + wave(55, 'lc') + wave(60, 'lw') });
   B.place('shiraz', { id: 'cypress-nightingale', label: 'Cypress and nightingale', colour: 'green', mood: 'dreamy', tags: ['cypress', 'bird', 'poetry', 'garden'],
     svg: () => moon(50, 12, 5) + stars([[8, 8], [20, 16], [36, 6], [58, 28]]) +
@@ -191,19 +190,19 @@
       '<path class="m" d="M6 62V44l6-4 6 4v18zM46 62V48l6-4 6 4v14z"/>' + gnd(62) });
   B.place('socotra', { id: 'dragon-blood-tree', label: 'Dragon blood tree', colour: 'red', mood: 'dreamy', tags: ['tree', 'island', 'rare'],
     svg: () => sun(52, 12, 5) + bird(8, 12, 0.5) +
-      '<path class="m" d="M0 52l10-8 8 4 10-6 12 8 8-4 16 8v10H0z" opacity="0.7"/>' +
-      '<path class="lk t" d="M32 58V42M32 44q-6-4-10-8M32 44q6-4 10-8M32 42q-2-4-2-8M32 42q2-4 2-8"/>' +
-      '<g class="x-breathe"><path class="c" d="M8 32q4-14 24-14t24 14q-8-4-24-4t-24 4z"/><path class="m" d="M12 31q20-6 40 0" opacity="0.6"/></g>' +
-      '<g class="x-drop"><circle class="c" cx="26" cy="36" r="1.4"/></g><g class="x-drop" style="--d:0.8s"><circle class="c" cx="40" cy="36" r="1.4"/></g><g class="x-drop" style="--d:1.5s"><circle class="c" cx="33" cy="38" r="1.4"/></g>' +
-      '<path class="s" d="M0 56q16-4 32-1t32-3v12H0z"/>' + gnd(58, 4, 60) });
+      '<path class="m" d="M0 56l10-8 8 4 10-8 12 8 8-4 16 8v4H0z" opacity="0.5"/>' +
+      '<path class="s" d="M0 56q16-4 32-1t32-3v12H0z"/>' +
+      '<path class="lk t" d="M32 58V40M32 42q-6-4-12-10M32 42q6-4 12-10M32 40q-2-4-2-10M32 40q2-4 2-10"/>' +
+      '<g class="x-breathe"><path class="c" d="M6 28q4-14 26-14t26 14q-10-6-26-6T6 28z"/><path class="lk" d="M14 26q18-6 36 0" opacity="0.6"/></g>' +
+      '<g class="x-drop"><circle class="c" cx="22" cy="32" r="1.5"/></g><g class="x-drop" style="--d:0.8s"><circle class="c" cx="42" cy="32" r="1.5"/></g><g class="x-drop" style="--d:1.5s"><circle class="c" cx="32" cy="34" r="1.5"/></g>' + gnd(58, 4, 60) });
 
   // ================= OMAN =================
   B.element('OM', { id: 'incense-burner', label: 'Frankincense burner', colour: 'amber', mood: 'calm', tags: ['incense', 'craft', 'smoke'],
-    svg: () => steam(26, 28, 0) + steam(32, 26, 0.6) + steam(38, 28, 1.2) +
-      '<path class="c" d="M20 34h24q-1 8-6 10l2 8H24l2-8q-5-2-6-10z"/><path class="m" d="M16 34h32v3H16z"/><path class="w" d="M22 54h20v3H22z"/>' +
-      '<path class="lk" d="M26 40q6 4 12 0M25 46q7 4 14 0"/><circle class="w" cx="32" cy="37" r="1.6"/>' +
-      '<g class="x-flicker"><path class="k" d="M26 34l2-4 2 3 2-5 2 5 2-3 2 4z"/></g>' +
-      '<g class="x-glow"><circle class="c" cx="32" cy="32" r="3" opacity="0.7"/></g><path class="lc t" d="M10 59h44"/>' });
+    svg: () => steam(26, 26, 0) + steam(32, 24, 0.6) + steam(38, 26, 1.2) +
+      '<path class="c" d="M18 46q0-20 14-20t14 20z"/><path class="m" d="M32 22v4"/><circle class="w lk" cx="32" cy="21" r="2"/>' +
+      '<circle class="k" cx="25" cy="40" r="1.6"/><circle class="k" cx="32" cy="35" r="1.6"/><circle class="k" cx="39" cy="40" r="1.6"/><circle class="k" cx="32" cy="43" r="1.6"/><circle class="k" cx="28" cy="46" r="0"/>' +
+      '<path class="m" d="M14 46h36v4H14z"/><path class="c" d="M24 50h16l3 8H21z"/><path class="w" d="M23 54h18" opacity="0.7"/>' +
+      '<g class="x-flicker"><circle class="c" cx="32" cy="35" r="1.6"/></g><g class="x-glow"><circle class="w" cx="32" cy="43" r="1.6"/></g><path class="lc t" d="M10 60h44"/>' });
   B.place('nizwa', { id: 'round-fort', label: 'Round fort tower', colour: 'orange', mood: 'proud', tags: ['fort', 'tower', 'palm'],
     svg: () => '<g class="x-rise" style="--ad:6s"><circle class="c" cx="52" cy="14" r="5"/></g>' + bird(8, 12, 0.3) +
       '<path class="m" d="M0 52l12-10 10 6 10-8 12 8 10-4 10 8v12H0z" opacity="0.5"/>' +
@@ -214,28 +213,29 @@
 
   // ================= UNITED ARAB EMIRATES =================
   B.element('AE', { id: 'falcon', label: 'Falcon', colour: 'slate', mood: 'proud', tags: ['bird', 'falcon', 'animal'],
-    svg: () => sun(12, 12, 5) + dunes(56) + '<path class="lk t" d="M32 62V40"/><path class="lc t" d="M24 56h16"/>' +
-      '<g class="x-breathe o-b"><path class="m" d="M20 38q-4-14 8-20 8-3 14 2 4 6 0 14l4 8-8-2q-4 10-12 8z" transform="translate(0 4)"/>' +
-      '<path class="s" d="M24 36q0-10 8-12 8 0 10 8-2 10-8 14-8 0-10-10z"/><path class="lk" d="M28 34l4 1M28 38l5 1M29 42l4 1"/>' +
-      '<path class="m" d="M20 30q-8 8-4 22l6-2-1-8z"/><circle class="w" cx="30" cy="24" r="3.2"/><g class="x-blink"><circle class="k" cx="30" cy="24" r="1.6"/></g><path class="k" d="M24 24l-5 3 6 1z"/></g>' +
+    svg: () => sun(12, 12, 5) + dunes(56) + '<path class="lk t" d="M34 62V50"/><path class="lc t" d="M24 56h20"/>' +
+      '<g class="x-breathe o-b"><path class="c" d="M36 30q10 4 8 16-2 8-8 14l-6-2 2-20z"/>' +
+      '<path class="s" d="M22 24q-4 10 0 22 4 6 12 6 4-12 2-22-6-8-14-6z"/><path class="m" d="M30 28q8 4 8 20l-4 4q-6-12-4-24z" opacity="0.6"/>' +
+      '<path class="lk t" d="M24 36h8M24 41h9M25 46h8"/><circle class="m" cx="24" cy="18" r="8"/><path class="w" d="M20 20q3 4 8 2l-1 4q-6 1-9-3z"/>' +
+      '<circle class="w" cx="22" cy="16" r="2.4"/><g class="x-blink"><circle class="k" cx="21.6" cy="16" r="1.3"/></g><path class="c" d="M17 15q-7 0-8 6 5-1 8-5z"/><path class="k" d="M16 18l-4 3"/></g>' +
       '<g class="x-slidel"><path class="lm" d="M44 14h8M48 18h8"/></g>' });
 
   // ================= QATAR =================
   B.element('QA', { id: 'oryx', label: 'Arabian oryx', colour: 'slate', mood: 'calm', tags: ['animal', 'oryx', 'desert'],
-    svg: () => sun(52, 12, 5) + dunes(52) +
-      '<g class="x-bob" style="--ad:3.4s"><path class="lk t" d="M40 12L26 4M42 14L32 2"/>' +
-      '<path class="w lk" d="M12 34q0-8 10-8h16q6 0 8 6l2-12 8 2-6 14-2 12H44l-2-8H22l-2 8h-6l-2-8z"/>' +
-      '<path class="w" d="M42 24l6-10 4 1-3 12z"/><path class="k" d="M44 24l5 1-4 6z"/><circle class="k" cx="47" cy="19" r="1"/>' +
-      '<path class="m" d="M24 28v8M34 28v8" opacity="0.5"/><path class="k" d="M14 34l-4 4"/></g>' +
-      '<path class="lk" d="M18 52v6M24 52v6M38 52v6M44 52v6"/>' + gnd(58, 2, 62) });
+    svg: () => sun(12, 12, 5) + dunes(52) +
+      '<g class="x-bob" style="--ad:3.4s"><path class="lk t" d="M48 16L34 2M50 15L38 1"/>' +
+      '<path class="w lk" d="M10 32q0-6 8-6h18q6 0 8 4l4-8 6 3-4 10-4 4v6H42l-2-6H20l-2 6h-6l-2-6z"/><circle class="w lk" cx="52" cy="19" r="5"/>' +
+      '<path class="k" d="M49 19l-2 4h6l1-5z"/><circle class="k" cx="51" cy="17" r="1"/><path class="k" d="M48 22h-2l-1 6"/>' +
+      '<path class="m" d="M24 30v6M32 30v6" opacity="0.5"/><path class="lk t" d="M10 32l-5 6"/></g>' +
+      '<path class="lk t" d="M14 42v13M20 42v13M38 42v13M44 42v13"/>' + gnd(58, 2, 62) });
 
   // ================= BAHRAIN =================
   B.element('BH', { id: 'pearl', label: 'Pearl in the shell', colour: 'blue', mood: 'dreamy', tags: ['pearl', 'sea', 'shell'],
-    svg: () => '<g class="x-rise"><circle class="w" cx="12" cy="44" r="2"/></g><g class="x-rise" style="--d:0.8s"><circle class="w" cx="52" cy="40" r="2.4"/></g><g class="x-rise" style="--d:1.6s"><circle class="w" cx="46" cy="52" r="1.5"/></g>' +
-      '<g class="x-breathe o-b"><path class="m" d="M8 40q4-20 24-20t24 20z"/><path class="lk" d="M32 20v20M20 24l5 16M44 24l-5 16M13 32l8 8M51 32l-8 8"/></g>' +
-      '<path class="c" d="M6 40q4 16 26 16t26-16z"/><path class="w" d="M12 40q4 10 20 10t20-10z"/>' +
-      '<g class="x-pulse"><circle class="w lm" cx="32" cy="40" r="6"/></g><circle class="s" cx="30" cy="38" r="1.8"/>' +
-      '<g class="x-twinkle"><path class="w" d="M32 26l1 3 3 1-3 1-1 3-1-3-3-1 3-1z"/></g>' + wave(60, 'lw') });
+    svg: () => '<g class="x-rise"><circle class="w" cx="12" cy="44" r="2"/></g><g class="x-rise" style="--d:0.8s"><circle class="w" cx="54" cy="38" r="2.4"/></g><g class="x-rise" style="--d:1.6s"><circle class="w" cx="46" cy="52" r="1.5"/></g>' +
+      '<g class="x-breathe o-b"><path class="c lk" d="M8 40q4-24 24-24t24 24q-8-6-24-6T8 40z"/><path class="lk" d="M32 16v18M20 20l4 14M44 20l-4 14M13 28l8 6M51 28l-8 6"/></g>' +
+      '<path class="s lk" d="M6 40q6-4 26-4t26 4q-4 16-26 16T6 40z"/><path class="w" d="M12 42q8-3 20-3t20 3" opacity="0.7"/>' +
+      '<g class="x-pulse"><circle class="w lk" cx="32" cy="40" r="7"/></g><circle class="s" cx="29.6" cy="37.6" r="2"/>' +
+      '<g class="x-twinkle"><path class="w" d="M46 24l1 3 3 1-3 1-1 3-1-3-3-1 3-1z"/></g>' + wave(60, 'lw') });
 
   // ================= KUWAIT =================
   B.element('KW', { id: 'dhow', label: 'Traditional dhow', colour: 'teal', mood: 'cheerful', tags: ['boat', 'sail', 'sea'],
