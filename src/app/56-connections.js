@@ -142,7 +142,7 @@ function _connCard(c, all) {
   card.dataset.conn = c.id;
   card.classList.add('st-' + (e.checking ? 'checking' : (e.state || 'unknown')));
   const head = _connEl('div', 'conn-head');
-  const ic = _connEl('span', 'conn-ic'); ic.innerHTML = icon(c.icon);
+  const ic = _connEl('span', 'conn-ic'); ic.innerHTML = _connMark(c.id, c.icon);
   const t = _connEl('div', 'conn-titles');
   t.append(_connEl('div', 'conn-name', c.name), _connEl('div', 'conn-sub', c.sub));
   head.append(ic, t, _connStatusPill(e));
@@ -237,7 +237,7 @@ function _connMcpCard(all) {
   const card = _connEl('section', 'card conn-card');
   card.dataset.conn = 'mcp';
   const head = _connEl('div', 'conn-head');
-  const ic = _connEl('span', 'conn-ic'); ic.innerHTML = icon('plug-zap');
+  const ic = _connEl('span', 'conn-ic'); ic.innerHTML = _connMark('mcp', 'plug-zap');
   const t = _connEl('div', 'conn-titles');
   t.append(_connEl('div', 'conn-name', 'OpenDash MCP'), _connEl('div', 'conn-sub', 'Use OpenDash from Claude Code, T3 Code or Claude Desktop'));
   const anyInstalled = inst.claudeCode === 'installed' || inst.desktop === 'installed';
@@ -309,13 +309,152 @@ function _connMcpDrawer() {
 }
 
 /* ---------- the page ---------- */
+let _connPageFilter = 'all', _connPageQuery = '', _connPageAdvanced = false, _connPageChecking = false;
+let _connPageSearchFocus = false, _connPageSearchCaret = 0;
+let _connPageAccountFocus = null;
+
+function _connPageLiveSource(s) { return s.kind !== 'csv' && !s.demo && s.enabled !== false; }
+function _connPageNeedsAttention(s) { return _connPageLiveSource(s) && ['auth', 'error', 'setup', 'unknown', 'limited'].includes(_connPageSourceState(s)); }
+function _connPageMatchesSource(s, filter, query) {
+  const st = _connPageSourceState(s);
+  if (filter === 'connected' && !(_connPageLiveSource(s) && st === 'ok')) return false;
+  if (filter === 'attention' && !_connPageNeedsAttention(s)) return false;
+  if (filter === 'paused' && st !== 'off') return false;
+  const text = [s.label, s.server, s.capability, s.kind, ...(s.accounts || []).map(a => a.name || a.id)].join(' ').toLowerCase();
+  return !query.trim() || text.includes(query.trim().toLowerCase());
+}
+function _connPageCounts(sources, all) {
+  const assistants = all.assistants ? ASSISTANT_OPTIONS.filter(p => p.id !== 'grok').map(p => _connPageAssistantDetails(p.id, all)) : null;
+  return {
+    connected: sources.filter(s => _connPageLiveSource(s) && _connPageSourceState(s) === 'ok').length + (assistants ? assistants.filter(a => a.working).length : all.claude && all.claude.state === 'ok' ? 1 : 0),
+    attention: sources.filter(_connPageNeedsAttention).length + (assistants ? assistants.filter(a => a.attention).length : all.claude && ['auth', 'error', 'setup', 'limited'].includes(all.claude.state) ? 1 : 0),
+  };
+}
+async function _connPageCheck() {
+  if (_connPageChecking) return;
+  _connPageChecking = true;
+  if (state.view === 'connections') renderMain();
+  try { await connCheck('claude'); await SourcesStore.refresh({ refresh: true }); }
+  finally { _connPageChecking = false; if (state.view === 'connections') renderMain(); }
+}
+function _connPagePrivacy() {
+  openDrawer({ title: 'Your connections, your control', width: 500, body: el => {
+    el.appendChild(_connEl('p', 'conn-text', 'Account sources use read-only tools. They bring information into OpenDash without sending email, changing account records or deleting data.'));
+    el.appendChild(_connSteps([
+      'Sign in with the provider or in Claude’s own window. OpenDash never asks for your password.',
+      'Choose which calendars, mailboxes and accounts to include. Pause or remove a source from its menu at any time.',
+      'Imported data lives in your local data folder. Claude-backed requests are processed through your own Claude account.',
+      'The optional OpenDash MCP can read and update dashboard tasks. Its permissions and setup are in “For your AI tools”.',
+    ]));
+  } });
+}
+function _connPageHero() {
+  const hero = _connEl('section', 'cp-hero');
+  const body = _connEl('div', 'cp-hero-body');
+  body.append(_connEl('span', 'cp-kicker', 'A LITTLE MORE CONNECTED'), _connEl('h2', null, 'Less switching. More getting on with your day.'), _connEl('p', null, 'Bring your email, calendar and money into one calm place. You choose what connects.'));
+  const tags = _connEl('div', 'cp-hero-tags');
+  for (const [ic, label] of [['shield-check', 'Read-only accounts'], ['hard-drive', 'Local data'], ['sliders-horizontal', 'You’re in control']]) {
+    const tag = _connEl('span', 'cp-hero-tag'); tag.innerHTML = icon(ic, 'i-xs'); tag.appendChild(_connEl('span', null, label)); tags.appendChild(tag);
+  }
+  body.appendChild(tags);
+  const art = _connEl('div', 'cp-hero-art'); art.setAttribute('aria-hidden', 'true');
+  for (const cls of ['one', 'two', 'three']) art.appendChild(_connEl('span', 'cp-orbit ' + cls));
+  const core = _connEl('span', 'cp-orbit-core'); core.innerHTML = _connMark('mcp'); art.appendChild(core);
+  for (const [cls, service, fallback] of [['mail', 'gmail', 'mail'], ['calendar', 'calendar', 'calendar-days'], ['bank', null, 'landmark'], ['ai', 'claude', 'sparkles']]) {
+    const node = _connEl('span', 'cp-orbit-node ' + cls); node.innerHTML = _connMark(service, fallback); art.appendChild(node);
+  }
+  hero.append(body, art); return hero;
+}
+function _connPageOverview(sources, all, ready) {
+  const counts = _connPageCounts(sources, all);
+  const overview = _connEl('div', 'cp-overview');
+  const items = [
+    ['green', 'check', ready ? String(counts.connected) : '—', 'Connected', 'Sources + local assistants'],
+    ['amber', 'circle-alert', ready ? String(counts.attention) : '—', 'Need attention', counts.attention ? 'A little help to get going' : 'Everything looks clear'],
+    ['purple', 'shield-check', 'Your data', 'Your control', 'Choose what to share'],
+  ];
+  for (const [colour, ic, value, label, note] of items) {
+    const item = _connEl('div', 'cp-overview-item');
+    const mark = _connEl('span', 'cp-overview-icon ' + colour); mark.innerHTML = icon(ic);
+    const copy = _connEl('div');
+    const line = _connEl('div'); line.append(_connEl('strong', 'cp-overview-value', value), _connEl('span', 'cp-overview-label', label));
+    copy.append(line, _connEl('span', 'cp-overview-note', note)); item.append(mark, copy); overview.appendChild(item);
+  }
+  return overview;
+}
+function _connPageSourceSection(sources, ready) {
+  const section = _connEl('section', 'cp-connections');
+  const head = _connEl('div', 'cp-section-head');
+  const title = _connEl('div'); title.append(_connEl('h2', null, 'Your connections'), _connEl('p', null, 'The things that bring your day together.'));
+  const note = _connEl('span', 'cp-readonly'); note.innerHTML = icon('lock', 'i-xs'); note.appendChild(_connEl('span', null, 'Account sources are read-only'));
+  head.append(title, note); section.appendChild(head);
+  const toolbar = _connEl('div', 'cp-toolbar'), filters = _connEl('div', 'cp-filters');
+  filters.setAttribute('role', 'group'); filters.setAttribute('aria-label', 'Filter connections');
+  const grid = _connEl('div', 'cp-source-grid');
+  const results = _connEl('span', 'cp-results'); results.setAttribute('role', 'status'); results.setAttribute('aria-live', 'polite');
+  const paint = () => {
+    grid.replaceChildren();
+    const visible = sources.filter(s => _connPageMatchesSource(s, _connPageFilter, _connPageQuery));
+    for (const s of visible) grid.appendChild(_connPageSourceCard(s));
+    // CSVs and demo sources never stand in for a connected account.
+    const missing = ['bank', 'calendar', 'email'].filter(cap => !sources.some(s => s.capability === cap && s.kind !== 'csv' && !s.demo));
+    if (ready && _connPageFilter === 'all') for (const cap of missing) {
+      const suggestion = _connPageSuggestion(cap);
+      if (!_connPageQuery.trim() || suggestion.textContent.toLowerCase().includes(_connPageQuery.trim().toLowerCase())) grid.appendChild(suggestion);
+    }
+    if (!ready) grid.appendChild(_connEl('p', 'cp-loading', SourcesStore.error ? 'Your connections are unavailable. Try refreshing when the server is ready.' : 'Loading your connections…'));
+    else if (!grid.childElementCount) {
+      const empty = _connEl('div', 'cp-empty');
+      empty.append(_connEl('h3', null, 'No connections match.'), _connEl('p', null, 'Try another search or show all your connections.'));
+      empty.appendChild(_connBtn('Clear filters', 'x', 'btn-secondary', () => { _connPageFilter = 'all'; _connPageQuery = ''; input.value = ''; paint(); }));
+      grid.appendChild(empty);
+    }
+    results.textContent = ready ? `${visible.length} source${visible.length === 1 ? '' : 's'} shown` : 'Loading connections';
+    for (const button of filters.children) { const active = button.dataset.filter === _connPageFilter; button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); }
+  };
+  for (const [id, label, count] of [
+    ['all', 'All', sources.length], ['connected', 'Connected', sources.filter(s => _connPageLiveSource(s) && _connPageSourceState(s) === 'ok').length],
+    ['attention', 'Needs attention', sources.filter(_connPageNeedsAttention).length], ['paused', 'Paused', sources.filter(s => _connPageSourceState(s) === 'off').length],
+  ]) {
+    const button = _connEl('button', 'cp-filter'); button.type = 'button'; button.dataset.filter = id;
+    button.append(_connEl('span', null, label), _connEl('span', 'cp-count', ready ? String(count) : '—'));
+    button.onclick = () => { if (_connPageFilter === id) return; _connPageFilter = id; paint(); };
+    filters.appendChild(button);
+  }
+  const search = _connEl('label', 'cp-search'); search.innerHTML = icon('search');
+  const input = _connEl('input'); input.type = 'search'; input.placeholder = 'Find a connection…'; input.value = _connPageQuery;
+  input.setAttribute('aria-label', 'Find a connection');
+  input.onfocus = () => { _connPageSearchFocus = true; };
+  input.onblur = () => { _connPageSearchFocus = false; };
+  input.onselect = () => { _connPageSearchCaret = input.selectionStart ?? input.value.length; };
+  input.oninput = () => { _connPageQuery = input.value; _connPageSearchCaret = input.selectionStart ?? input.value.length; paint(); };
+  search.appendChild(input); toolbar.append(filters, search); section.append(toolbar, results, grid);
+  if (SourcesStore.error) {
+    const error = _connEl('div', 'cp-fetch-error'); error.setAttribute('role', 'alert');
+    error.append(_connEl('span', null, 'Could not refresh connections. ' + SourcesStore.error), _connBtn('Try again', 'refresh-cw', 'btn-secondary', () => SourcesStore.refresh({ cached: true })));
+    section.insertBefore(error, toolbar);
+  }
+  paint();
+  if (_connPageSearchFocus) requestAnimationFrame(() => { if (input.isConnected) { input.focus({ preventScroll: true }); input.setSelectionRange(_connPageSearchCaret, _connPageSearchCaret); } });
+  return section;
+}
+
+function _connPageAssistantSection(all) {
+  const section = _connEl('section', 'cp-assistants');
+  const head = _connEl('div', 'cp-section-head');
+  const title = _connEl('div'); title.append(_connEl('h2', null, 'Your AI assistants'), _connEl('p', null, 'Connect an assistant and its OpenDash tools together.'));
+  const note = _connEl('span', 'cp-readonly'); note.innerHTML = _connMark('claude'); note.appendChild(_connEl('span', null, 'Dashboard AI uses Claude'));
+  head.append(title, note); section.append(head, _connPageAssistantCards(all));
+  return section;
+}
+
 registerSection('connections', {
   group: 'system',
   title: () => 'Connections',
   mount(container) {
     const sub = document.getElementById('view-subtitle');
     if (sub) sub.textContent = '';
-    const all = (typeof connRefresh === 'function') ? (Connections.all() || null) : null;
+    let all = (typeof connRefresh === 'function') ? (Connections.all() || null) : null;
     if (!_connSub && window.Connections) _connSub = Connections.onChange(() => { if (state.view === 'connections') renderMain(); });
     if (!all) {
       for (let i = 0; i < 4; i++) { const s = document.createElement('div'); s.className = 'skeleton skeleton-row'; container.appendChild(s); }
@@ -323,44 +462,68 @@ registerSection('connections', {
       return;
     }
     if (!_connMcpLoading && _connMcpStale()) _connRecheckMcp();
+    // The cheap config read is fresher than cached connection probes.
+    if (_connMcp && _connMcp.installed && _connMcp.installed.summary) all = Object.assign({}, all, { mcp: Object.assign({}, all.mcp, { installed: _connMcp.installed.summary }) });
+    if (!SourcesStore.data && !SourcesStore.loading && !SourcesStore.error) SourcesStore.load({ cached: true });
+    if (_connFocus) { _connPageFilter = 'all'; _connPageQuery = ''; _connPageSearchFocus = false; if (['mcp', 'servers', 'google'].includes(_connFocus)) _connPageAdvanced = true; }
+    const sourceOrder = { email: 0, calendar: 1, bank: 2 };
+    const sources = SourcesStore.data && Array.isArray(SourcesStore.data.sources)
+      ? SourcesStore.data.sources.slice().sort((a, b) => (sourceOrder[a.capability] ?? 3) - (sourceOrder[b.capability] ?? 3)) : [];
+    const ready = !!SourcesStore.data;
     const page = _connEl('div', 'conn-page');
-    // Claude, plus one per capability (banks, calendars, email) that has a working source (56-sources.js).
-    const caps = all.capabilities || null;
-    const parts = [all.claude && all.claude.state === 'ok', ...(caps ? ['bank', 'calendar', 'email'].map(k => !!(caps[k] && caps[k].available)) : ['bank', 'calendar', 'gmail'].map(k => !!(all[k] && all[k].state === 'ok')))];
-    const n = parts.filter(Boolean).length, total = parts.length;
-    const intro = _connEl('div', 'conn-intro');
-    const it = _connEl('div', 'conn-intro-text');
-    it.appendChild(_connEl('p', null, 'Choose an assistant and connect its OpenDash tools in the same step. Claude also powers the assistant and smart features inside this dashboard.'));
-    const sum = _connEl('div', 'conn-summary');
-    sum.innerHTML = `<span class="ring" style="--pct:${Math.round(n / total * 100)}"><span>${n}/${total}</span></span>`;
-    sum.appendChild(_connEl('span', null, n === total ? 'Everything is connected.' : `${n} of ${total} working`));
-    intro.append(it, sum);
-    page.appendChild(intro);
-    const grid = assistantConnectionCards(all);
-    page.appendChild(grid);
-    page.appendChild(srcSection(all));
-    const priv = _connEl('div', 'conn-privacy');
-    priv.innerHTML = icon('shield-check');
-    priv.appendChild(_connEl('span', null, 'Every source is read-only: the dashboard can look things up, never send, change or delete anything, and tools that could are locked. Sign-in happens on claude.ai or in Claude’s own window; the dashboard never sees a password.'));
-    page.appendChild(priv);
+    page.addEventListener('focusin', event => {
+      const account = event.target.closest('[data-account]');
+      const card = account && account.closest('[data-source]');
+      _connPageAccountFocus = card ? { source: card.dataset.source, account: account.dataset.account } : null;
+    });
+    page.addEventListener('focusout', event => { if (event.relatedTarget && !page.contains(event.relatedTarget)) _connPageAccountFocus = null; });
+    const heading = _connEl('div', 'cp-heading');
+    const copy = _connEl('div'); copy.append(_connEl('span', 'cp-eyebrow', 'MAKE SPACE FOR YOUR DAY'), _connEl('p', 'cp-subtitle', 'Your accounts, working together.'));
+    const actions = _connEl('div', 'cp-heading-actions');
+    const check = _connBtn(_connPageChecking ? 'Checking…' : 'Check status', 'refresh-cw', 'btn-secondary', _connPageCheck); check.disabled = _connPageChecking;
+    actions.append(check, _connBtn('Add connection', 'plus', 'btn-primary', () => srcAddFlow({})));
+    heading.append(copy, actions);
+    page.append(heading, _connPageHero(), _connPageOverview(sources, all, ready), _connPageSourceSection(sources, ready), _connPageAssistantSection(all));
+    const privacy = _connEl('section', 'cp-privacy-panel cp-privacy-wide');
+    privacy.innerHTML = icon('shield-check');
+    privacy.append(_connEl('h3', null, 'Connected doesn’t mean giving up control.'), _connEl('p', null, 'Account sources stay read-only. Choose what to include, and pause or disconnect whenever you like.'), _connBtn('How your data is handled', 'arrow-right', 'btn-ghost', _connPagePrivacy));
+    page.appendChild(privacy);
+    const advanced = _connEl('details', 'cp-advanced'); advanced.open = _connPageAdvanced;
+    advanced.ontoggle = () => { _connPageAdvanced = advanced.open; };
+    const summary = _connEl('summary'); summary.innerHTML = icon('terminal');
+    const advancedTitle = _connEl('span', 'cp-advanced-title', 'For your AI tools'); advancedTitle.appendChild(_connEl('span', 'cp-advanced-subtitle', 'OpenDash MCP & connected servers'));
+    const chevron = _connEl('span', 'cp-advanced-chevron'); chevron.innerHTML = icon('chevron-down');
+    summary.append(advancedTitle, _connEl('span', 'cp-advanced-label', 'Advanced'), chevron); advanced.appendChild(summary);
+    const advancedBody = _connEl('div', 'cp-advanced-body');
+    advancedBody.append(_connEl('p', 'cp-subtitle', 'Use OpenDash from your own AI tools. The OpenDash MCP can update dashboard tasks; account sources stay read-only.'), _connMcpCard(all), srcServersCard());
     const g = all.google;
     if (g && g.status && g.status !== 'not-set-up') {
       const adv = _connEl('div', 'conn-adv');
       adv.appendChild(_connEl('span', 'conn-adv-t', 'Google (direct sign-in, optional)'));
       adv.appendChild(_connStatusPill(g));
       if (g.status === 'configured') adv.appendChild(_connBtn('Sign in', 'log-in', 'btn-secondary', () => window.open('/api/google/connect', '_blank')));
-      page.appendChild(adv);
+      adv.dataset.conn = 'google'; advancedBody.appendChild(adv);
     }
+    advanced.appendChild(advancedBody); page.appendChild(advanced);
     container.appendChild(page);
+    if (_connPageAccountFocus) {
+      const target = _connPageAccountFocus;
+      requestAnimationFrame(() => {
+        const button = page.querySelector(`[data-source="${CSS.escape(target.source)}"] [data-account="${CSS.escape(target.account)}"]`);
+        if (button && button.isConnected && !button.disabled) button.focus({ preventScroll: true });
+      });
+    }
     if (_connFocus) {
-      const id = _connFocus; _connFocus = null;
+      const id = _connFocus;
       const cap = { gmail: 'email', email: 'email', calendar: 'calendar', bank: 'bank' }[id];
-      const el = cap ? container.querySelector(`[data-cap="${cap}"]`) : container.querySelector(`[data-conn="${CSS.escape(id)}"]`);
+      if (!cap || ready || SourcesStore.error) _connFocus = null;
+      const source = cap && sources.find(s => s.capability === cap && s.kind !== 'csv' && !s.demo);
+      const el = cap ? (source && container.querySelector(`[data-source="${CSS.escape(source.id)}"]`)) || container.querySelector(`.cp-suggestion[data-cap="${cap}"]`) : container.querySelector(`[data-conn="${CSS.escape(id)}"]`);
       if (el) { el.scrollIntoView({ block: 'center', behavior: (window.Motion && Motion.prefersReduced()) ? 'auto' : 'smooth' }); el.classList.add('is-focus'); setTimeout(() => el.classList.remove('is-focus'), 1800); }
     }
   },
-  unmount() { /* keep the caches: cheap, and no flash on return */ },
+  unmount() { _connPageSearchFocus = false; _connPageAccountFocus = null; /* keep the caches: no flash on return */ },
 });
 
 registerCommand({ id: 'open-connections', label: 'Connections', icon: 'plug', group: 'Go to', keywords: 'connect claude gmail calendar bank mcp sign in', run: () => setView('connections') });
-registerCommand({ id: 'check-connections', label: 'Check all connections', icon: 'refresh-cw', keywords: 'connections status re-check', run: () => { setView('connections'); connCheck('claude').then(() => SourcesStore.refresh({ refresh: true })); } });
+registerCommand({ id: 'check-connections', label: 'Check all connections', icon: 'refresh-cw', keywords: 'connections status re-check', run: () => { setView('connections'); _connPageCheck(); } });

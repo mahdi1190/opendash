@@ -1,6 +1,6 @@
 {
   "name": "opendash",
-  "version": "2.2.4",
+  "version": "2.2.5",
   "description": "OpenDash: a calm, local-first productivity dashboard for tasks, calendar, finances and people, with an optional Claude assistant.",
   "private": true,
   "license": "MIT",
@@ -15,6 +15,7 @@
   "scripts": {
     "start": "node tools/migrate.mjs --auto && node build.mjs && node tools/supervisor.mjs",
     "build": "node build.mjs",
+    "prototype:connections": "node prototypes/connections/serve.mjs",
     "check": "node build.mjs --syntax",
     "test": "node --test",
     "migrate": "node tools/migrate.mjs --auto"

@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.2.5] - 2026-10-04
+
+### Changed
+
+- Connections brings account sources and local assistants into one consistent card layout, with bundled provider logos, search and status filters, account selection, clear setup states and an advanced MCP section. Other pages and first-run setup keep their existing layout.
+
 ## [2.2.4] - 2026-10-04
 
 ### Added
@@ -280,7 +286,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.4...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.2.5...HEAD
+[2.2.5]: https://github.com/mahdi1190/opendash/compare/v2.2.4...v2.2.5
 [2.2.4]: https://github.com/mahdi1190/opendash/compare/v2.2.3...v2.2.4
 [2.2.3]: https://github.com/mahdi1190/opendash/compare/v2.2.2...v2.2.3
 [2.2.2]: https://github.com/mahdi1190/opendash/compare/v2.2.1...v2.2.2

@@ -1,0 +1,22 @@
+{
+  "gmail.svg": {
+    "provider": "Google",
+    "source": "https://www.gstatic.com/images/branding/productlogos/gmail_2026/v2/web/192px.svg",
+    "referencedBy": "https://workspace.google.com/products/gmail/"
+  },
+  "google-calendar.svg": {
+    "provider": "Google",
+    "source": "https://www.gstatic.com/images/branding/productlogos/calendar_2026/v2/web/192px.svg",
+    "referencedBy": "https://workspace.google.com/products/calendar/"
+  },
+  "claude.svg": {
+    "provider": "Anthropic",
+    "source": "https://www.anthropic.com/press-kit",
+    "archiveEntry": "Anthropic media resources/Anthropic logos/Claude logos/3 Claude Spark/SVG/Claude Spark - Clay.svg"
+  },
+  "outlook.png": {
+    "provider": "Microsoft",
+    "source": "https://res.public.onecdn.static.microsoft/assets/mail/pwa/v4/pngs/apple-touch-icon.png",
+    "referencedBy": "https://outlook.live.com/"
+  }
+}
