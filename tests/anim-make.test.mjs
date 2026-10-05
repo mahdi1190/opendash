@@ -9,20 +9,19 @@
 // Synthetic data only.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { regionSourceFiles } from '../tools/lib/anim-sources.mjs';
+import { animRegistryFiles } from '../tools/lib/anim-sources.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
-const PACK_FILES = readdirSync(APP).filter(f => /^72-anim-pack-[a-z0-9-]+\.js$/.test(f)).sort();
 const NAMES = ['animSanitizeSvg', 'animSanitizeCss', 'animMarkupProblem', 'animMakeItem', 'animGateItem', 'animMinePack', 'animRegisterPack', 'animUnregisterPack',
   'animItems', 'animItem', 'animPack', 'animItemHtml', 'animDailyPick', 'animSpecialPick', 'animValidatePack', 'ANIM_MAKE_MAX_SVG', 'ANIM_MAKE_MAX_CSS', 'ANIM_MAKE_MAX_ITEMS',
   'ANIM_MAKE_SLOTS', 'ANIM_ITEM_MAX_BYTES', 'ANIM_PACK_MAX_BYTES', 'ANIM_PACK_CSS_MAX_BYTES', 'trPlaceTables'];
-const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-anim-sanitize.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...regionSourceFiles(APP), ...PACK_FILES, '69-travel-data.js'].map(src).join('\n;\n');
+const body = animRegistryFiles(APP, ['71-anim-sanitize.js', '69-travel-data.js']).map(src).join('\n;\n');   // the build's order
 // eslint-disable-next-line no-new-func
 const R = new Function(`"use strict";\n${body}\nreturn { ${NAMES.join(', ')} };`)();
 

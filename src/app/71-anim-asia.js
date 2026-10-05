@@ -123,7 +123,6 @@ const ASIA_PLACE_KM = { big: 50, small: 30 };     // how close counts as "in" a 
 const ASIA_REGION = animRegionDefine({
   id: 'asia', name: 'Asia', over: 'Asia', unitWord: 'country',
   units: ASIA_COUNTRIES, places: ASIA_PLACES, unitKm: ASIA_COUNTRY_KM, placeKm: ASIA_PLACE_KM,
-  travelId: (p) => p[0] + '-' + p[2].toLowerCase(),   // 'tokyo-jp': the travel tables' ids
   worldTravel: ASIA_WORLD_TRAVEL,
   placeKinds: ['small'],                              // the big cities come from their scenes (B.scenes())
   keys: { unit: 'cc', unitName: 'countryName' }, fields: { unit: 'asiaCc' },

@@ -237,8 +237,9 @@ function animOpeningSequence() {
     let tx = null;
     if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, it: pick, over: 'Texas' }; } catch (e) { tx = null; }
     // A region (71-anim-0region.js: the US in 71-anim-us.js, Asia in 71-anim-asia.js, and every region added since): the town or the
-    // region's own unit (state, country...), with today's opening from that region's packs (<id>-*) as the emblem.
-    if (!w && !tx) try { const g = typeof animRegionWhere === 'function' ? animRegionWhere(animCtx()) : null; const pick = g ? animToday('opening') : null; if (pick && animRegionOwns(g.region, pick.pack)) tx = { name: g.name, it: pick, over: g.over }; } catch (e) { tx = null; }
+    // region's own unit (state, country...), with today's opening from that region's packs (<id>-*) as the emblem. Two regions can reach
+    // the same spot (animRegionsWhere lists them nearest first): the welcome names the match of the region that owns the picked opening.
+    if (!w && !tx) try { const gs = typeof animRegionsWhere === 'function' ? animRegionsWhere(animCtx()) : []; const pick = gs.length ? animToday('opening') : null; const g = pick ? gs.find(m => animRegionOwns(m.region, pick.pack)) : null; if (g) tx = { name: g.name, it: pick, over: g.over }; } catch (e) { tx = null; }
     // Anywhere else: today's opening from any pack (core, seasons, world ...), on the same full-screen stage.
     let gen = null;
     if (!w && !tx) try { gen = animToday('opening'); } catch (e) { gen = null; }

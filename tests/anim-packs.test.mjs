@@ -5,22 +5,22 @@
 // Then the daily look (seeded, stable within a day) and the look prefs. Synthetic data only.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { regionSourceFiles } from '../tools/lib/anim-sources.mjs';
+import { animRegistryFiles, packSourceFiles } from '../tools/lib/anim-sources.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
-const PACK_FILES = readdirSync(APP).filter(f => /^72-anim-pack-[a-z0-9-]+\.js$/.test(f)).sort();
+const PACK_FILES = packSourceFiles(APP);
 const PART_FILES = PACK_FILES.filter(f => /\/\/ UK_SCENE_PART: ([a-z0-9-]+)\/([a-z0-9-]+)/.test(src(f)));
 const NAMES = ['ANIM_SLOTS', 'ANIM_SLOT_IDS', 'ANIM_THEMES', 'ANIM_THEME_IDS', 'ANIM_ITEM_MAX_BYTES', 'ANIM_FULL_ITEM_MAX_BYTES', 'ANIM_PACK_MAX_BYTES', 'animValidatePack', 'animRegisterPack',
   'animPacks', 'animPack', 'animItem', 'animItems', 'animLookNormalize', 'animSeasonOf', 'animDailyPick', 'animDailyLook', 'animThemeFor', 'animItemHtml',
   'animSpecialPick', 'animPickFor', 'animCountdownHeat', 'animCountdownStage', 'animStreakGrow', 'almDay', 'almAddDays', 'almEaster', 'almFestivals', 'almIsFestival', 'almSeasonMark', 'almClocksChange', 'almSunTimes', 'almSkyMoment',
   'almMoonPhase', 'almMeteorShower', 'almAuroraNights', 'ALM_MOVING', 'UK_REGIONS', 'UK_COUNTIES', 'ukCounty', 'ukCountiesIn', 'ukCountyNearest', 'ukTowns'];
-// The same order the build concatenates: the almanac, the libraries, the registry, then every pack.
-const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...regionSourceFiles(APP), ...PACK_FILES].map(src).join('\n;\n');
+// The same order the build concatenates (one sorted list: the region files, the almanac, the libraries, the registry ... then every pack).
+const body = animRegistryFiles(APP).map(src).join('\n;\n');
 // eslint-disable-next-line no-new-func
 const R = new Function(`"use strict";\n${body}\nreturn { ${NAMES.join(', ')}, ANIM_SCENES, Delight };`)();
 

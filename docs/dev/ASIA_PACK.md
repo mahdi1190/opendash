@@ -19,14 +19,17 @@ rule, so none of them is in the ordinary daily rotation and none plays outside A
 (`animRegionDefine`, see "Regions" in `docs/dev/ANIMATION_PACKS.md`, which prints this config as its worked
 example). The lookups, the builder and the scene kit are the generic framework in `src/app/71-anim-0region.js`;
 `asiaPlace`, `asiaCountryOf`, `asiaWhere`, `asiaBuilder` and `asiaSceneAdd` are one-line wrappers over it.
-`ASIA_PLACES` rows are `[id, name, country, lat, lon, kind]`,
+`ASIA_PLACES` rows are `[id, name, country, lat, lon, kind]` (read once, when the region is defined),
 `kind` = `big` (a major city: a full-screen opening), `small` (a smaller city, town or famous place: a small
 symbol) or `''` (an anchor, which only tells which country a position is in).
 
 - `asiaCountryOf(ctx)`: the country of the nearest row within `ASIA_COUNTRY_KM` (300 km) of the weather town
   (`ctx.lat`, `ctx.lon`). While travelling, `ctx.city` = `<place id>-<cc>` (the travel tables' ids) decides.
-  Beside a border the neighbour can win, and the edge of Europe or Africa can read as an Asian country: add rows
-  to sharpen a region.
+  Beside a border the neighbour can win. A position in Europe or Africa within 300 km of an Asian row reads as
+  an Asian country until a Europe or Africa region has rows there (where two regions' reaches overlap the nearer
+  row wins, `animRegionsWhere`). Regions must not overlap, so do not add Asian rows outside Asia to sharpen the
+  edge: add the neighbour's rows in its own region, or move the edge by lowering `ASIA_COUNTRY_KM`, and re-run
+  `tests/region-framework.test.mjs` (it pins the radii and rejects a row inside another region's reach).
 - `asiaPlace(ctx)`: an art place within 50 km (big) or 30 km (small).
 - `asiaWhere(ctx)`: where in Asia (the town if there is one, else the country). The opening sequence in
   `78-anim-wire.js` reaches it through the generic `animRegionWhere(animCtx())` ("Welcome to Kyoto", the day's

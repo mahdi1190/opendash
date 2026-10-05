@@ -27,8 +27,11 @@ a position is in).
 
 - `usStateOf(ctx)`: the state of the nearest row within `US_STATE_KM` (190 km) of the weather town
   (`ctx.lat`, `ctx.lon`). While travelling, `ctx.city` = `<place id>-us` decides. Right beside a
-  border the neighbour can win, and the edge of Canada or Mexico can read as a US state: add rows
-  to sharpen a region.
+  border the neighbour can win. A position in Canada or Mexico within 190 km of a US row reads as a US
+  state until a Canada or Mexico region has rows there (where two regions' reaches overlap the nearer row wins,
+  `animRegionsWhere`). Regions must not overlap, so do not add US rows outside the US to sharpen the edge:
+  add the neighbour's rows in its own region, or move the edge by lowering `US_STATE_KM`, and re-run
+  `tests/region-framework.test.mjs` (it pins the radii and rejects a row inside another region's reach).
 - `usPlace(ctx)`: an art place within 50 km (big) or 30 km (small). A trip to New York is the
   world pack's (it already draws the Empire State skyline for travellers).
 - `usWhere(ctx)`: where in the US (the town if there is one, else the state; Texas is the Texas pack's, DC
@@ -50,7 +53,7 @@ A city beats the state's art in its slot while you are there; a festival or the 
 
 ## Full-screen openings
 
-Every state signature and every big-city opening (88) is a **full-screen scene** (`full: true`, 1600 x 900,
+Every state signature and every big-city opening (49 states and 39 big places) is a **full-screen scene** (`full: true`, 1600 x 900,
 sliced to fill any screen, <= 32 KB rendered), drawn in `src/app/71-anim-us2-scenes-1..8.js` with the shared
 kit `animSceneKit()` / `animSceneCss()` in `71-anim-0region.js` (`usSceneKit()` / `usSceneCss()` in
 `71-anim-us.js` are aliases; the Texas scenes' toolkit: layered sky, parallax,

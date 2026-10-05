@@ -1,8 +1,18 @@
 /* ============================================================
    ANIMATION REGIONS, the generic framework. PURE classic script (no DOM, no fetches, nothing looked up
-   online). The name sorts this file BEFORE every other 71-anim-* file (the build concatenates
-   src/app/*.js by name into ONE script scope: a top-level const is usable only after its file has loaded,
-   function declarations are hoisted), so a region config may call animRegionDefine() while it loads.
+   online).
+
+   LOAD ORDER (read this before writing a region file). The build concatenates src/app/*.js by name into ONE
+   script scope (build.mjs; tools/lib/anim-sources.mjs animRegistryFiles() lists the animation files in exactly that
+   order and tests/region-framework.test.mjs evaluates them in it). A top-level const is usable only after its file has
+   loaded; function declarations are hoisted. This file's name sorts it BEFORE every other 71-anim-* file, so a region
+   config may call animRegionDefine() while it loads. But region configs and scene files sort before (71-anim-asia*,
+   71-anim-region-*) or after (71-anim-us*) the library and the registry, so at load time they may use ONLY this file's
+   names: touching the registry's or the library's consts (ANIM_SLOTS ...) from a config or a scene file throws
+   "Cannot access ... before initialization" and the app's script dies. Calling their functions later, inside a function
+   that runs after load, is fine. Every file shares that one scope, so a scene file wraps its code in an IIFE,
+   (function () { const K = animSceneKit(); ... })();, or its consts clash with the next scene file's
+   ("Identifier 'K' has already been declared").
 
    A REGION is a part of the world with its own full-screen openings and small symbols, played only where the
    user is (the US, Asia, and every region added since). A region is DATA, never logic:
@@ -22,8 +32,12 @@
                  kind: 'big' (a signature opening) | 'small' (a symbol) | '' (an anchor: only tells which unit a position is in)
      unitKm      300         beyond this from every row a position is in no unit of this region
      placeKm     { big: 50, small: 30 }   how close counts as "in" a big city / a small one (the default)
-     travelId    (row) => row[0] + '-' + row[2].toLowerCase()   the travel city id of a row (default row[0] + '-' + id)
-     worldTravel ['tokyo-jp']   travel city ids the world pack draws: while travelling there the region matches nothing
+     travelId    (row) => row[0] + '-' + countryCode.toLowerCase()   the travel city id of a row: the travel tables' id
+                 ('seattle-us', 'tokyo-jp'); the default uses the same country hook and unit-code fallback as the items
+     worldTravel ['tokyo-jp']   travel city ids the world pack draws: while travelling there the region matches nothing.
+                 EVERY city of the world pack (72-anim-pack-world.js) that a row of the region maps to must be listed, or
+                 the region's city art beats the world pack's landmark (tests/region-framework.test.mjs and
+                 region.check({ worldCities }) enforce it)
      elsewhere   ['TX']      units with art elsewhere (their own pack): lookups know them, where() returns null
      pseudo      { DC: {id, name, kind, group?} }   special units with no unit art of their own: one fixed place
      placeKinds  ['big', 'small']   the kinds b.place() may build (Asia: ['small']; its big cities come from scenes)
@@ -33,7 +47,8 @@
      keys        { unit, unitName }   property names in place() / where() results (defaults 'unit', 'unitName')
      country     the ISO country code of an item: a string, or (unit) => code; default the unit code itself
      extra       (unit) => ({...})   more fields for every item (the US adds state)
-   The region: where(ctx), place(ctx), unitOf(ctx), builder(group), sceneAdd(entry), scenes, check().
+   The region: where(ctx), locate(ctx), place(ctx), unitOf(ctx), builder(group), sceneAdd(entry), scenes, check(),
+   travelId(row), worldTravel, elsewhere, travelRow(city).
 
    Where the user is (ctx.city is the travel city while away, else ctx.lat / ctx.lon, the weather town):
      travel     ctx.city = travelId(row) of a place row; ids in worldTravel return no match
@@ -42,6 +57,17 @@
    Items carry <fields.kind>: unitWord | 'city', <fields.unit> (the unit code), for a city <fields.place> and
    <fields.size>, and for a unit <fields.signature>; priority 1 (unit) and 1.2 (city): a festival or the birthday
    (priority 2+) still wins the day.
+
+   REGIONS MUST NOT OVERLAP. No row of a region may sit inside another region's reach (unitKm of its nearest
+   row): tests/region-framework.test.mjs checks every region against every other. Two reaches can still overlap
+   between rows; there the region whose nearest row is NEARER wins. region.locate(ctx) returns {km, where}, the
+   distance to that nearest row (0 for a travel match); animRegionsWhere(ctx) lists every region that matches
+   nearest first (ties in definition order); animRegionWhere(ctx) is its first entry. A unit with art elsewhere
+   (elsewhere) still claims its position: a farther region cannot take it, the lists are empty there. The opening
+   sequence takes the entry whose region owns the opening it picked (a farther region's art can be picked in the
+   overlap). Item when() rules stay per region.
+   TABLES are read ONCE, when animRegionDefine() runs: the lookups work on that snapshot, so finish the tables
+   (units, places) before defining; check() reports a table edited afterwards.
    Guide: docs/dev/ANIMATION_PACKS.md ("Regions"). Gate: tests/region-framework.test.mjs.
    ============================================================ */
 /** Every registered region, in definition order (file-name order). */
@@ -72,16 +98,25 @@ function animRegionOwns(regionId, packId) { packId = String(packId || ''); retur
 /** Register a full-screen scene for a region: animRegionSceneAdd('asia', {key: 'country:JP', label, site, colour, mood, season, tags, svg}). Works before or after the region is defined. */
 function animRegionSceneAdd(regionId, e) { _arSceneStore(String(regionId), e); }
 /**
- * Where in any region the user is, for the opening sequence: the first region that matches, as
- * {region, over, id, name, kind, <keys.unit>, <keys.unitName>} (id '' = only the unit is known), or null.
+ * Where in every region the user is, for the opening sequence: one entry per region that matches, NEAREST first
+ * (km = the distance to that region's nearest row, 0 for a travel match; ties in definition order), each
+ * {region, over, km, id, name, kind, <keys.unit>, <keys.unitName>} (id '' = only the unit is known).
+ * A region whose nearest row is a unit with art elsewhere (elsewhere) claims the position without matching: the
+ * list stops there, so a farther region cannot take it.
  */
-function animRegionWhere(ctx) {
-  for (const r of ANIM_REGIONS) {
-    const w = r.where(ctx);
-    if (w) return Object.assign({ region: r.id, over: r.over }, w);
+function animRegionsWhere(ctx) {
+  const claims = [];
+  ANIM_REGIONS.forEach((r, order) => { const m = r.locate(ctx); if (m) claims.push({ r, order, m }); });
+  claims.sort((a, b) => a.m.km - b.m.km || a.order - b.order);
+  const out = [];
+  for (const c of claims) {
+    if (!c.m.where) break;
+    out.push(Object.assign({ region: c.r.id, over: c.r.over, km: c.m.km }, c.m.where));
   }
-  return null;
+  return out;
 }
+/** Where in any region the user is: the nearest match of animRegionsWhere(ctx) (ties: the region defined first), or null. */
+function animRegionWhere(ctx) { return animRegionsWhere(ctx)[0] || null; }
 
 /**
  * Define a region from its config (see the header). Returns the region object and registers it in ANIM_REGIONS.
@@ -107,28 +142,34 @@ function animRegionDefine(cfg) {
   const T = Object.assign({ root: id, unit: id + '-' + unitWord, city: id + '-city' }, cfg.tags);
   const P = Object.assign({ unit: 1, city: 1.2 }, cfg.priority);
   const K = Object.assign({ unit: 'unit', unitName: 'unitName' }, cfg.keys);
-  if (K.unit === K.unitName || [K.unit, K.unitName].some(k => ['id', 'name', 'kind', 'region', 'over'].includes(k))) bad('keys: unit and unitName must be two names other than id, name, kind, region, over');
+  if (K.unit === K.unitName || [K.unit, K.unitName].some(k => ['id', 'name', 'kind', 'region', 'over', 'km'].includes(k))) bad('keys: unit and unitName must be two names other than id, name, kind, region, over, km');
   const placeKinds = Array.isArray(cfg.placeKinds) ? cfg.placeKinds : ['big', 'small'];
   const pseudo = Object.assign({}, cfg.pseudo);
-  const elsewhere = Array.isArray(cfg.elsewhere) ? cfg.elsewhere.slice() : [];
-  const worldTravel = Array.isArray(cfg.worldTravel) ? cfg.worldTravel.slice() : [];
-  const travelIdOf = typeof cfg.travelId === 'function' ? cfg.travelId : (p) => p[0] + '-' + id;
+  const elsewhere = Object.freeze(Array.isArray(cfg.elsewhere) ? cfg.elsewhere.slice() : []);
+  const worldTravel = Object.freeze(Array.isArray(cfg.worldTravel) ? cfg.worldTravel.slice() : []);
+  const worldSet = new Set(worldTravel);
   const countryOf = typeof cfg.country === 'function' ? cfg.country : typeof cfg.country === 'string' ? () => cfg.country : (u) => u;
+  // The travel tables' city id ('seattle-us', 'tokyo-jp'): the row id and the lower-case country code, the country read as the items read it.
+  const travelIdHook = typeof cfg.travelId === 'function' ? cfg.travelId : (p) => p[0] + '-' + countryOf(p[2]).toLowerCase();
+  /** The travel city id of a row, or '' when the hook cannot make one (a malformed row: check() reports it, the lookups skip it). */
+  const travelIdOf = (p) => { try { const t = travelIdHook(p); return typeof t === 'string' ? t : ''; } catch (e) { return ''; } };
   const extraOf = typeof cfg.extra === 'function' ? cfg.extra : () => null;
   const itemFields = (u) => { const c = countryOf(u); return Object.assign({ region: [c], country: c }, extraOf(u)); };
   const groups = [...new Set(Object.values(units).map(u => u && u[1]))];
   const scenes = _arScenesOf(id);
 
+  // The tables are read ONCE, here: the lookups work on this snapshot of the rows (check() reports a table edited afterwards).
   const rows = places.filter(p => Array.isArray(p) && p.length >= 6);   // a malformed row is skipped here and reported by check()
+  const rowsAtDefine = places.slice();
   const rowById = new Map(), travel = new Map();
   for (const p of rows) {
     if (!rowById.has(p[0])) rowById.set(p[0], p);
     const t = travelIdOf(p);
-    if (!travel.has(t)) travel.set(t, p);
+    if (t && !travel.has(t)) travel.set(t, p);
   }
   const unitRow = (u) => _arHas(units, u) ? units[u] : null;
   /** The place row a travel city id names, or null (also null for the ids the world pack draws). */
-  const travelRow = (city) => worldTravel.includes(String(city)) ? null : travel.get(String(city)) || null;
+  const travelRow = (city) => worldSet.has(String(city)) ? null : travel.get(String(city)) || null;
   const obj = (p) => p ? { id: p[0], name: p[1], [K.unit]: p[2], kind: p[5] } : null;
   /** A unit (or a pseudo unit) belongs to a group; a pseudo unit without a group belongs to every one. */
   const inGroup = (u, group) => unitRow(u) ? units[u][1] === group : _arHas(pseudo, u) ? !pseudo[u].group || pseudo[u].group === group : false;
@@ -146,23 +187,34 @@ function animRegionDefine(cfg) {
     }
     return obj(best);
   }
-  /** The unit code for a ctx ('' = not in this region, or travelling somewhere that is not one of its places). Nearest row wins. */
-  function unitOf(ctx) {
-    if (!ctx) return '';
-    if (ctx.city) { const p = travelRow(ctx.city); return p ? p[2] : ''; }
-    if (!_arHasPos(ctx)) return '';
+  const NO_UNIT = { u: '', km: Infinity };
+  /** The nearest row: {u: its unit code, km: the distance to it}, NO_UNIT when none is in reach. A travel match is km 0. */
+  function nearest(ctx) {
+    if (!ctx) return NO_UNIT;
+    if (ctx.city) { const p = travelRow(ctx.city); return p ? { u: p[2], km: 0 } : NO_UNIT; }
+    if (!_arHasPos(ctx)) return NO_UNIT;
     let best = '', bd = unitKm;
     for (const p of rows) { const d = _arKm(ctx.lat, ctx.lon, p[3], p[4]); if (d < bd) { bd = d; best = p[2]; } }
-    return best;
+    return best ? { u: best, km: bd } : NO_UNIT;
+  }
+  /** The unit code for a ctx ('' = not in this region, or travelling somewhere that is not one of its places). Nearest row wins. */
+  function unitOf(ctx) { return nearest(ctx).u; }
+  /**
+   * The match the opening sequence works with: {km, where} or null (not in this region). km is the distance to the nearest row (0 for a
+   * travel match), what animRegionsWhere() ranks the regions by. where is {id, name, <keys.unit>, <keys.unitName>, kind}: a place wins,
+   * else the unit; null for a unit with art elsewhere (the position is claimed, nothing is opened).
+   */
+  function locate(ctx) {
+    const { u, km } = nearest(ctx);
+    if (!u) return null;
+    if (_arHas(pseudo, u)) { const s = pseudo[u]; return { km, where: { id: s.id, name: s.name, [K.unit]: u, [K.unitName]: s.name, kind: s.kind } }; }
+    if (!unitRow(u)) return null;
+    if (elsewhere.includes(u)) return { km, where: null };
+    const p = place(ctx), nm = units[u][0];
+    return { km, where: p && p[K.unit] === u ? Object.assign({ [K.unitName]: nm }, p) : { id: '', name: nm, [K.unit]: u, [K.unitName]: nm, kind: '' } };
   }
   /** For the opening sequence: where in the region, {id, name, <keys.unit>, <keys.unitName>, kind} or null. A place wins, else the unit. */
-  function where(ctx) {
-    const u = unitOf(ctx);
-    if (u && _arHas(pseudo, u)) { const s = pseudo[u]; return { id: s.id, name: s.name, [K.unit]: u, [K.unitName]: s.name, kind: s.kind }; }
-    if (!u || elsewhere.includes(u) || !unitRow(u)) return null;
-    const p = place(ctx), nm = units[u][0];
-    return p && p[K.unit] === u ? Object.assign({ [K.unitName]: nm }, p) : { id: '', name: nm, [K.unit]: u, [K.unitName]: nm, kind: '' };
-  }
+  function where(ctx) { const m = locate(ctx); return m ? m.where : null; }
   /** The scene registered for a unit or a place, or null. A unit scene's key is '<unitWord>:<CODE>' ('unit:<CODE>' also works). */
   const sceneFor = (kind, ref) => (kind === 'place' ? scenes['place:' + ref] : scenes[unitWord + ':' + ref] || scenes['unit:' + ref]) || null;
   function sceneAdd(e) { _arSceneStore(id, e); }
@@ -174,11 +226,17 @@ function animRegionDefine(cfg) {
    *   B.element('JP', {...})          B.unit('JP', 'element', {...})
    *   B.place('kyoto', {...})         a place's item: big = opening (upgraded to its scene when there is one), small = symbol
    *   B.scenes()                      every registered scene of this group becomes its full-screen opening item
-   * Then animRegisterPack(B.pack({id, name, description})). Ids, labels, tags, priorities and the when() rule are filled in.
+   * Then animRegisterPack(B.pack({id: '<region id>-<group>', name, description})): B.pack throws on any other id. Ids, labels, tags,
+   * priorities and the when() rule are filled in; an item id used twice throws at the call.
    */
   function builder(group) {
     if (!groups.includes(group)) throw new Error(id + ' pack: no group "' + group + '" (groups: ' + groups.join(', ') + ')');
-    const items = [];
+    const items = [], ids = new Set();
+    /** Every item goes through here: a second item with the same id would make the whole pack fail to register, silently, so it throws at the call site. */
+    const push = (it) => {
+      if (ids.has(it.id)) throw new Error(id + ' pack ' + group + ': duplicate item id "' + it.id + '" (every item id is used once per pack; a scene registered for a unit or a place already makes "<unit>-signature" / "<place>-skyline" unless it has its own id)');
+      ids.add(it.id); items.push(it);
+    };
     const base = { mood: 'neutral', intensity: 'subtle', theme: 'any', season: 'any', reduced: 'static', priority: P.unit };
     const unitWhen = (u) => (day, ctx) => unitOf(ctx) === u;
     const placeWhen = (pid) => (day, ctx) => { const q = place(ctx); return !!q && q.id === pid; };
@@ -192,7 +250,7 @@ function animRegionDefine(cfg) {
       if (!o || typeof o.id !== 'string') throw new Error(id + ' pack ' + group + ': ' + u + ' ' + kind + ' needs an id');
       const sig = kind === 'signature';
       o = upgrade(o, sig ? sceneFor(unitWord, u) : null);
-      items.push(Object.assign({}, base, itemFields(u), { slot: sig ? 'opening' : 'symbol', [F.kind]: unitWord, [F.unit]: u, [F.signature]: sig, when: unitWhen(u) },
+      push(Object.assign({}, base, itemFields(u), { slot: sig ? 'opening' : 'symbol', [F.kind]: unitWord, [F.unit]: u, [F.signature]: sig, when: unitWhen(u) },
         o, { id: u.toLowerCase() + '-' + o.id, label: o.label + ', ' + nm[0], tags: unitTags(nm[0], u, kind).concat(o.tags || []) }));
     }
     function placeItem(pid, o) {
@@ -202,7 +260,7 @@ function animRegionDefine(cfg) {
       if (!o || typeof o.id !== 'string') throw new Error(id + ' pack ' + group + ': ' + pid + ' needs an id');
       const big = p[5] === 'big';
       o = upgrade(o, big ? sceneFor('place', pid) : null);
-      items.push(Object.assign({}, base, itemFields(p[2]), { slot: big ? 'opening' : 'symbol', [F.kind]: 'city', [F.unit]: p[2], [F.place]: pid, [F.size]: p[5], priority: P.city, when: placeWhen(pid) },
+      push(Object.assign({}, base, itemFields(p[2]), { slot: big ? 'opening' : 'symbol', [F.kind]: 'city', [F.unit]: p[2], [F.place]: pid, [F.size]: p[5], priority: P.city, when: placeWhen(pid) },
         o, { id: pid + '-' + o.id, label: o.label + ', ' + p[1], tags: cityTags(p).concat(o.tags || []) }));
     }
     function scenesToItems() {
@@ -212,25 +270,34 @@ function animRegionDefine(cfg) {
         if (kind === unitWord || kind === 'unit') {
           const nm = unitRow(ref);
           if (!nm || nm[1] !== group) continue;
-          items.push(Object.assign({}, base, itemFields(ref), { slot: 'opening', full: true, [F.kind]: unitWord, [F.unit]: ref, [F.signature]: true, when: unitWhen(ref) },
+          push(Object.assign({}, base, itemFields(ref), { slot: 'opening', full: true, [F.kind]: unitWord, [F.unit]: ref, [F.signature]: true, when: unitWhen(ref) },
             e, { key: undefined, id: ref.toLowerCase() + '-' + (e.id || 'signature'), label: e.label + ', ' + nm[0], tags: unitTags(nm[0], ref, 'signature').concat(e.tags || []) }));
         } else if (kind === 'place') {
           const p = rowById.get(ref);
           if (!p || p[5] !== 'big' || !inGroup(p[2], group)) continue;
-          items.push(Object.assign({}, base, itemFields(p[2]), { slot: 'opening', full: true, [F.kind]: 'city', [F.unit]: p[2], [F.place]: ref, [F.size]: 'big', priority: P.city, when: placeWhen(ref) },
+          push(Object.assign({}, base, itemFields(p[2]), { slot: 'opening', full: true, [F.kind]: 'city', [F.unit]: p[2], [F.place]: ref, [F.size]: 'big', priority: P.city, when: placeWhen(ref) },
             e, { key: undefined, id: ref + '-' + (e.id || 'skyline'), label: e.label + ', ' + p[1], tags: cityTags(p).concat(e.tags || []) }));
         }
       }
     }
     return {
       items, region, group, unit, element(u, o) { unit(u, 'element', o); }, place: placeItem, scenes: scenesToItems,
-      pack(m) { return Object.assign({ version: '1.0.0', css: animSceneCss(), items }, m); },
+      pack(m) {
+        const want = id + '-' + group;   // a region owns the packs named '<id>-<group>': the opening's "Welcome to" looks the pick's pack up by it
+        if (!m || m.id !== want) throw new Error(id + ' pack ' + group + ': the pack id must be "' + want + '" (animRegionOwns), not ' + JSON.stringify(m && m.id));
+        return Object.assign({ version: '1.0.0', css: animSceneCss(), items }, m);
+      },
     };
   }
 
-  /** Table and scene mistakes, as a list of sentences ([] = sound). The tests call it for every region. */
-  function check() {
+  /**
+   * Table and scene mistakes, as a list of sentences ([] = sound). The tests call it for every region.
+   * check({ worldCities: [...] }) also lists every travel city the world pack draws that a row of this region maps to
+   * and worldTravel does not name (the region's city art would beat the world pack's landmark for a traveller there).
+   */
+  function check(opts) {
     const out = [], seen = new Set(), travelSeen = new Map(), anchored = new Set();
+    if (places.length !== rowsAtDefine.length || places.some((p, i) => p !== rowsAtDefine[i])) out.push('places: the table changed after animRegionDefine (' + rowsAtDefine.length + ' rows then, ' + places.length + ' now); the lookups use it as it was defined');
     for (const p of places) {
       if (!Array.isArray(p) || p.length < 6) { out.push('a place row needs [id, name, unit, lat, lon, kind]: ' + JSON.stringify(p)); continue; }
       const [pid, name, u, lat, lon, kind] = p;
@@ -242,7 +309,8 @@ function animRegionDefine(cfg) {
       if (!['', 'big', 'small'].includes(kind)) out.push(pid + ': kind is big, small or ""');
       anchored.add(u);
       const t = travelIdOf(p);
-      if (travelSeen.has(t)) out.push(pid + ': travel id ' + t + ' is also ' + travelSeen.get(t)); else travelSeen.set(t, pid);
+      if (!t) out.push(pid + ': no travel id (the travelId hook threw or returned no string for this row)');
+      else if (travelSeen.has(t)) out.push(pid + ': travel id ' + t + ' is also ' + travelSeen.get(t)); else travelSeen.set(t, pid);
     }
     for (const u of Object.keys(units)) {
       if (!Array.isArray(units[u]) || typeof units[u][0] !== 'string' || typeof units[u][1] !== 'string') out.push(u + ': a unit is [name, group]');
@@ -251,7 +319,9 @@ function animRegionDefine(cfg) {
     for (const u of Object.keys(pseudo)) if (!pseudo[u] || !pseudo[u].id || !pseudo[u].name || !pseudo[u].kind) out.push(u + ': a pseudo unit is {id, name, kind}');
     for (const u of elsewhere) if (!unitRow(u)) out.push('elsewhere ' + u + ' is not in units');
     for (const t of worldTravel) if (!travel.has(t)) out.push('worldTravel ' + t + ': no place has that travel id');
+    for (const c of (opts && Array.isArray(opts.worldCities) ? opts.worldCities : [])) if (travel.has(c) && !worldSet.has(c)) out.push('worldTravel: the world pack draws ' + c + ' and ' + travel.get(c)[0] + ' maps to it, but it is not listed (a traveller there would get this region\'s art, not the world pack\'s)');
     for (const key of Object.keys(scenes)) {
+      if (!_arSceneKey.test(key)) { out.push(key + ': a scene key is "' + unitWord + ':<CODE>" or "place:<id>"'); continue; }
       const [kind, ref] = key.split(':');
       if (kind === 'place') { const p = rowById.get(ref); if (!p || p[5] !== 'big') out.push(key + ': a scene is for a big place'); }
       else if (kind === unitWord || kind === 'unit') { if (!unitRow(ref)) out.push(key + ': not a ' + unitWord); }
@@ -260,7 +330,7 @@ function animRegionDefine(cfg) {
     return out;
   }
 
-  const region = { id, name: cfg.name || id, over: cfg.over || cfg.name || id, unitWord, units, places, groups, keys: K, fields: F, tags: T, priority: P, scenes, place, unitOf, where, builder, sceneAdd, check, travelRow, owns: (packId) => animRegionOwns(id, packId) };
+  const region = { id, name: cfg.name || id, over: cfg.over || cfg.name || id, unitWord, units, places, groups, keys: K, fields: F, tags: T, priority: P, scenes, place, unitOf, where, locate, builder, sceneAdd, check, travelRow, travelId: travelIdOf, worldTravel, elsewhere, owns: (packId) => animRegionOwns(id, packId) };
   ANIM_REGIONS.push(region);
   return region;
 }

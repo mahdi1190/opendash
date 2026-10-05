@@ -18,7 +18,7 @@ import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync, statSy
 import { join, basename, resolve, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { animRegistryFiles, REGION_FILE_RE } from './anim-sources.mjs';
+import { animRegistryFiles } from './anim-sources.mjs';
 import { launchChrome, findChrome } from '../release-chrome.mjs';
 import { cssClasses } from './anim-quality.mjs';
 
@@ -27,25 +27,17 @@ export const repoRoot = () => resolve(dirname(fileURLToPath(import.meta.url)), '
 /* ---------------------------------------------------------------------------------------------
    The registry
    --------------------------------------------------------------------------------------------- */
-const PACK_FILE_RE = /^72-anim-pack-[a-z0-9-]+\.js$/;
 
-/** The source files a registry load needs, in build order, with `extraFiles` (paths) placed where their name sorts. */
+/** The source files a registry load needs, in build order (one list sorted by name), with `extraFiles` (paths) placed where their name sorts. */
 export function registrySources(root, extraFiles = []) {
   const app = join(root, 'src', 'app');
-  const base = animRegistryFiles(app);
-  const head = base.filter(f => !REGION_FILE_RE.test(f) && !PACK_FILE_RE.test(f));
-  const region = new Map(base.filter(f => REGION_FILE_RE.test(f)).map(f => [f, join(app, f)]));
-  const packs = new Map(base.filter(f => PACK_FILE_RE.test(f)).map(f => [f, join(app, f)]));
-  const tail = [];
+  const files = new Map(animRegistryFiles(app).map(f => [f, join(app, f)]));
   for (const p of extraFiles) {
     const abs = resolve(p), name = basename(abs);
     if (!existsSync(abs)) throw new Error(`no such file: ${p}`);
-    if (REGION_FILE_RE.test(name)) region.set(name, abs);
-    else if (PACK_FILE_RE.test(name)) packs.set(name, abs);
-    else tail.push({ name, path: abs });
+    files.set(name, abs);   // a file of the same name replaces the registered one
   }
-  const sorted = (m) => [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).map(([name, path]) => ({ name, path }));
-  return [...head.map(f => ({ name: f, path: join(app, f) })), ...sorted(region), ...sorted(packs), ...tail];
+  return [...files.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).map(([name, path]) => ({ name, path }));
 }
 
 const NAMES = ['animPacks', 'animPack', 'animItem', 'animItems', 'animItemHtml', 'animValidatePack', 'ANIM_ITEM_MAX_BYTES', 'ANIM_FULL_ITEM_MAX_BYTES'];

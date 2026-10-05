@@ -2,17 +2,17 @@
 // headless Chrome driver. Output stays outside the repository by default.
 // node tools/review-uk-pack.mjs uk-south-east C:/path/to/review-output
 // Optional fourth argument: one county or ukPart id to rerender a local art change.
-import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { launchChrome } from './release-chrome.mjs';
-import { regionSourceFiles } from './lib/anim-sources.mjs';
+import { animRegistryFiles } from './lib/anim-sources.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const app = join(root, 'src', 'app');
 const packId = process.argv[2] || 'uk-south-east';
 const out = resolve(process.argv[3] || join(root, '..', 'uk-art-review', packId));
 mkdirSync(out, { recursive: true });
-const files = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...regionSourceFiles(app), ...readdirSync(app).filter(f => /^72-anim-pack-.*\.js$/.test(f)).sort()];
+const files = animRegistryFiles(app);   // the animation files in the order the build concatenates them
 const R = new Function(files.map(f => readFileSync(join(app, f), 'utf8')).join('\n;\n') + '\nreturn {animPack,animItemHtml};')();
 const pack = R.animPack(packId);
 if (!pack) throw new Error('Unknown pack: ' + packId);
