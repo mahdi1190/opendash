@@ -57,17 +57,21 @@ function printRegion(out, st, { short }) {
   }
   if (st.orphans.length) { sections.push(`ORPHAN SCENES (${st.orphans.length}):`); for (const o of st.orphans) sections.push(`    ${o.key}: ${o.why}`); }
   if (st.problems.length) { sections.push(`TABLE PROBLEMS (${st.problems.length}, from region.check):`); for (const p of st.problems) sections.push(`    ${p}`); }
-  if (st.starter.length) sections.push(`STARTER DATA still in the tables (${st.starter.join(', ')}): replace the example rows of src/app/71-anim-region-${st.region}.js with the real units and places`);
+  if (st.duplicates.length) { sections.push(`DUPLICATE SCENE KEYS (${st.duplicates.length}): the last registration wins and silently hides the others`); for (const d of st.duplicates) sections.push(`    ${d.key}: registered ${d.count} times${d.files.length ? ', in ' + d.files.join(', ') : ''}: keep one`); }
+  const exampleRows = st.starter.filter(x => /^example-/.test(x)), starterNotes = st.starter.filter(x => !/^example-/.test(x));
+  if (exampleRows.length) sections.push(`STARTER DATA still in the tables (${exampleRows.join(', ')}): replace the example rows of src/app/71-anim-region-${st.region}.js with the real units and places`);
+  for (const n of starterNotes) sections.push(`STARTER DATA: ${n}`);
   if (sections.length) { out(''); sections.forEach(s => out(s)); }
   out('');
   if (st.complete) out(`COMPLETE: every ${w} and place has its art${st.lint.ran ? ', every item passes the lint' : ' (lint not run)'}.`);
   else {
     const next = [];
     if (st.starter.length || st.problems.length) next.push('fix the tables');
+    if (st.duplicates.length) next.push(`remove the duplicate scene keys (${st.duplicates.map(d => d.key).join(', ')})`);
     if (st.lint.failing) next.push(`node tools/anim-pack.mjs lint --pack ${st.packs.filter(p => p.lint && (p.lint.fail || p.lint.cssFailures.length)).map(p => p.pack).join(' --pack ')}`);
     if (st.missing.some(m => m.need === 'scene')) next.push(`node tools/anim-pack.mjs brief ${st.region} --kind scene`);
     if (st.missing.some(m => m.need === 'element')) next.push(`node tools/anim-pack.mjs brief ${st.region} --kind element`);
-    out(`INCOMPLETE: ${st.missing.length} missing, ${st.orphans.length} orphan scene(s), ${st.problems.length} table problem(s), ${st.lint.failing} lint failure(s)${st.starter.length ? ', starter data present' : ''}.${next.length ? ' Next: ' + next.join('; ') + '.' : ''}`);
+    out(`INCOMPLETE: ${st.missing.length} missing, ${st.orphans.length} orphan scene(s), ${st.problems.length} table problem(s)${st.duplicates.length ? `, ${st.duplicates.length} duplicate scene key(s)` : ''}, ${st.lint.failing} lint failure(s)${st.starter.length ? ', starter data present' : ''}.${next.length ? ' Next: ' + next.join('; ') + '.' : ''}`);
   }
 }
 
@@ -82,11 +86,12 @@ export default {
     'no-lint': { type: 'boolean', help: 'skip the lint (faster; the lint columns and the lint part of --strict are left out)' },
   },
   run(args, ctx) {
+    if (ctx.positionals.length > 1) throw new Error(`status takes one region, got ${ctx.positionals.length} (${ctx.positionals.join(', ')}): run it once per region, or without a region to list them all`);
     const reg = loadRegistry(ctx.root, { fresh: true });
     const id = ctx.positionals[0];
     if (!id) {
       // no region: one line per region
-      const rows = regions(reg).map(r => { const st = regionCoverage(reg, r, null); return { id: r.id, name: r.name, unitWord: r.unitWord, groups: r.groups.length, units: st.totals.units, big: st.totals.big, small: st.totals.small, scenes: `${st.totals.scenes}/${st.totals.scenesNeeded}`, elements: `${st.totals.elements}/${st.totals.elementsNeeded}`, missing: st.missing.length, complete: !st.missing.length && !st.orphans.length && !st.problems.length && !st.starter.length }; });
+      const rows = regions(reg).map(r => { const st = regionCoverage(reg, r, null); return { id: r.id, name: r.name, unitWord: r.unitWord, groups: r.groups.length, units: st.totals.units, big: st.totals.big, small: st.totals.small, scenes: `${st.totals.scenes}/${st.totals.scenesNeeded}`, elements: `${st.totals.elements}/${st.totals.elementsNeeded}`, missing: st.missing.length, complete: !st.missing.length && !st.orphans.length && !st.problems.length && !st.duplicates.length && !st.starter.length }; });
       if (args.json) { ctx.out(JSON.stringify({ regions: rows }, null, 1)); return 0; }
       ctx.out('regions (node tools/anim-pack.mjs status <region> for the detail):');
       for (const r of rows) ctx.out(`  ${pad(r.id, 10)} ${pad(r.name, 18)} ${lpad(r.units, 3)} ${plural(r.unitWord)}, ${lpad(r.big, 3)} big and ${lpad(r.small, 3)} small places   scenes ${pad(r.scenes, 8)} elements ${pad(r.elements, 8)} ${r.complete ? 'complete' : `${r.missing} missing`}`);

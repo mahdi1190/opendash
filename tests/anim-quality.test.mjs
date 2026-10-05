@@ -10,9 +10,9 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync } from 'no
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { measure, check, richness, proposeThresholds, RULE_HINTS, thinSpots, parseMarkup, pathBox, colourClusters, motionKind, checkCss, shapeKeys, sharedShares, profileFor, applyWaivers, RULE_PLAN, RICHNESS_COMPONENTS, ruleTable } from '../tools/lib/anim-quality.mjs';
+import { measure, check, richness, proposeThresholds, RULE_HINTS, thinSpots, parseMarkup, pathBox, colourClusters, motionKind, checkCss, shapeKeys, sharedShares, profileFor, applyWaivers, RULE_PLAN, RICHNESS_COMPONENTS, ruleTable, stableIds, isLegacyProfile, TARGETS, allowedTagList, forbiddenTagList, lintMarkup } from '../tools/lib/anim-quality.mjs';
 import { main, lintRegistry, loadThresholds, loadReference, loadCommands, COMMANDS } from '../tools/anim-pack.mjs';
-import { loadRegistry, findBrowser, registrySources } from '../tools/lib/anim-render.mjs';
+import { loadRegistry, findBrowser, registrySources, CROPS } from '../tools/lib/anim-render.mjs';
 import { mkdirSync } from 'node:fs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -262,7 +262,7 @@ test('every rule says how to fix it (a hint for each limited side)', () => {
 const PINNED = {
   'scene': { bytes: { min: 9622, max: 32000 }, shapes: { min: 65 }, paths: { min: 13 }, pathSegments: { min: 98 }, segmentsPerShape: { min: 0.38 }, bytesPerShape: { min: 72 }, shapesPerKB: { min: 3.28 }, distinctShapes: { min: 57 }, distinctForms: { min: 47 }, distinctRatio: { min: 0.68 }, colours: { min: 27 }, colourClusters: { min: 15 }, coloursWithArea: { min: 13 }, tonalRange: { min: 0.824 }, hueSectors: { max: 7 }, gradients: { min: 5 }, gradientsUsed: { min: 5 }, gradientFilledShapes: { min: 5 }, translucentLayers: { min: 14 }, skyStops: { min: 2 }, bands: { min: 2 }, bandFills: { min: 2 }, detailShapes: { min: 49 }, detailCells: { min: 24 }, detailColumns: { min: 8 }, detailRows: { min: 6 }, focusShare: { min: 0.111 }, sizeClasses: { min: 8 }, tinyShare: { max: 0.747 }, hiddenShare: { max: 0.174 }, bottomCover: { min: 1 }, movingGroups: { min: 12 }, motionKinds: { min: 5 }, driftGroups: { min: 3 }, ambientGroups: { min: 7 }, ambientKinds: { min: 1 }, motionZones: { min: 2 }, distinctDurations: { min: 11 }, staggerDelays: { min: 6 }, movingPerShape: { min: 0.073, max: 0.701 }, sharedShare: { max: 0.257 }, sharedShareAll: { max: 0.361 }, unknownClasses: { max: 0 }, coverUps: { max: 0 }, richness: { min: 0.66 } },
   'scene-legacy': { bytes: { min: 12355, max: 32000 }, shapes: { min: 77 }, paths: { min: 17 }, pathSegments: { min: 176 }, segmentsPerShape: { min: 0.69 }, bytesPerShape: { min: 72 }, shapesPerKB: { min: 4.7 }, distinctShapes: { min: 77 }, distinctForms: { min: 46 }, distinctRatio: { min: 0.516 }, colours: { min: 29 }, colourClusters: { min: 17 }, coloursWithArea: { min: 15 }, tonalRange: { min: 0.892 }, hueSectors: { max: 5 }, gradients: { min: 7 }, gradientsUsed: { min: 7 }, gradientFilledShapes: { min: 19 }, translucentLayers: { min: 19 }, skyStops: { min: 2 }, bands: { min: 3 }, bandFills: { min: 3 }, detailShapes: { min: 58 }, detailCells: { min: 33 }, detailColumns: { min: 15 }, detailRows: { min: 4 }, focusShare: { min: 0.13 }, sizeClasses: { min: 8 }, tinyShare: { max: 0.447 }, hiddenShare: { max: 0.142 }, bottomCover: { min: 1 }, movingGroups: { min: 19 }, motionKinds: { min: 7 }, driftGroups: { min: 3 }, ambientGroups: { min: 10 }, ambientKinds: { min: 3 }, motionZones: { min: 2 }, distinctDurations: { min: 17 }, staggerDelays: { min: 8 }, movingPerShape: { min: 0.055, max: 0.645 }, sharedShare: { max: 1 }, sharedShareAll: { max: 1 }, unknownClasses: { max: 0 }, coverUps: { max: 0 }, richness: { min: 0.795 } },
-  'item': { bytes: { min: 600, max: 14000 }, shapes: { min: 7 }, paths: { min: 3 }, pathSegments: { min: 14 }, distinctShapes: { min: 4 }, distinctForms: { min: 4 }, distinctFills: { min: 1 }, inkCells: { min: 30 }, extentW: { min: 0.591 }, extentH: { min: 0.534 }, colours: { max: 0 }, gradients: { max: 0 }, inlinePaint: { max: 0 }, unknownClasses: { max: 0 }, movingGroups: { min: 1 }, motionKinds: { min: 1 }, motionShare: { min: 0.1 }, hiddenShapes: { max: 3 }, richness: { min: 0.642 } },
+  'item': { bytes: { min: 600, max: 14000 }, shapes: { min: 7 }, paths: { min: 3 }, pathSegments: { min: 14 }, distinctShapes: { min: 4 }, distinctForms: { min: 4 }, distinctFills: { min: 1 }, inkCells: { min: 30 }, extentW: { min: 0.591 }, extentH: { min: 0.534 }, colours: { max: 0 }, gradients: { max: 0 }, inlinePaint: { max: 0 }, unknownClasses: { max: 0 }, movingGroups: { min: 1 }, motionKinds: { min: 1 }, motionShare: { min: 0.1 }, hiddenShapes: { max: 3 }, sharedShare: { max: 0.563 }, sharedShareAll: { max: 0.632 }, richness: { min: 0.642 } },
   'item-classic': { bytes: { min: 321, max: 14000 }, shapes: { min: 1 }, paths: { min: 0 }, pathSegments: { min: 0 }, distinctShapes: { min: 1 }, distinctForms: { min: 1 }, distinctFills: { min: 0 }, inkCells: { min: 10 }, extentW: { min: 0.219 }, extentH: { min: 0.125 }, colours: { max: 0 }, gradients: { max: 0 }, inlinePaint: { max: 0 }, unknownClasses: { max: 6 }, movingGroups: { min: 0 }, motionKinds: { min: 0 }, motionShare: { min: 0 }, hiddenShapes: { max: 5 }, richness: { min: 0.359 } },
 };
 
@@ -345,8 +345,19 @@ test('reference: the exemplars exist, are the right kind, and pass the strict li
     assert.ok(r && !r.full && r.profile === 'item' && r.failures.length + r.waived.length === 0, x.ref);
     assert.ok(x.why.length > 60);
   }
-  for (const x of ref.weaker) { assert.ok(BY_REF.has(x.ref), x.ref); assert.ok(x.wrong.length > 40 && x.fix.length > 20, x.ref); }
-  assert.equal(new Set([...ref.scenes, ...ref.items, ...ref.weaker].map(x => x.ref)).size, ref.scenes.length + ref.items.length + ref.weaker.length, 'no ref twice');
+  for (const x of ref.weaker) { assert.ok(BY_REF.has(x.ref), x.ref); assert.ok(x.wrong.length > 40 && x.fix.length > 20, x.ref); assert.ok(BY_REF.get(x.ref).full, `${x.ref}: a weaker SCENE`); }
+  assert.ok(ref.weakerItems.length >= 3 && ref.weakerItems.length <= 6, 'a few weak SMALL items: the element agents have a negative example of their own kind');
+  for (const x of ref.weakerItems) { const r = BY_REF.get(x.ref); assert.ok(r && !r.full && r.profile === 'item', `${x.ref}: a weaker small item of the strict profile`); assert.ok(x.wrong.length > 60 && x.fix.length > 40, x.ref); }
+  const all = [...ref.scenes, ...ref.items, ...ref.weaker, ...ref.weakerItems];
+  assert.equal(new Set(all.map(x => x.ref)).size, all.length, 'no ref twice');
+  // the `read:` hint of an item locates it: the pack file and the call with its id, which really is in that file
+  for (const x of [...ref.items, ...ref.weakerItems]) {
+    const m = /^(src\/app\/72-anim-pack-[a-z0-9-]+\.js) \(B\.(element|place|state)\('([^']+)', (?:'element', )?\{ id: '([^']+)' \}\)\)$/.exec(x.source || '');
+    assert.ok(m, `${x.ref}: source names the file and the call and id, got ${x.source}`);
+    const text = readFileSync(join(ROOT, m[1]), 'utf8');
+    assert.ok(new RegExp(`B\\.${m[2]}\\('${m[3]}', (?:'element', )?\\{ id: '${m[4]}'`).test(text), `${x.ref}: ${m[0]} is in ${m[1]}`);
+    assert.ok(x.ref.endsWith('-' + m[4]) && x.ref.startsWith(BY_REF.get(x.ref).pack + '/'), `${x.ref} is the item that call makes`);
+  }
 });
 
 /* ---------- the CLI ---------- */
@@ -428,8 +439,9 @@ test('cli: reference prints the exemplars and the weaker scenes', async () => {
   assert.match(r.out, /us-northeast\/new-york-skyline/);
   assert.match(r.out, /DO BETTER THAN THESE/);
   assert.match(r.out, /reference --render/);
+  assert.match(r.out, /DO BETTER THAN THESE SMALL ITEMS \(\d+\)/); assert.match(r.out, /read: src\/app\/72-anim-pack-us-northeast\.js \(B\.state\('VT', 'element', \{ id: 'maple-syrup' \}\)\)/);
   const j = JSON.parse((await run(['reference', '--json'])).out);
-  assert.ok(j.scenes.length >= 10);
+  assert.ok(j.scenes.length >= 10 && j.weakerItems.length >= 3);
 });
 
 test('calibration: proposing thresholds from today\'s corpus reproduces the committed floors (only the two documented overrides differ)', () => {
@@ -439,7 +451,13 @@ test('calibration: proposing thresholds from today\'s corpus reproduces the comm
     const proposed = proposeThresholds(rs.map(r => r.metrics), profile, { caps });
     const differs = [];
     for (const [metric, t] of Object.entries(proposed)) {
-      if (metric === 'richness') { assert.deepEqual(t.components, TH[profile].richness.components, `${profile}: richness components are the corpus medians`); continue; }
+      if (metric === 'richness') {
+        // the size component is measured with stabilised ids (stableIds): the committed median was taken before, so it may differ by a few bytes (well under 1 %)
+        const { bytes: pb, ...pRest } = t.components, { bytes: cb, ...cRest } = TH[profile].richness.components;
+        assert.deepEqual(pRest, cRest, `${profile}: richness components are the corpus medians`);
+        assert.ok(Math.abs(pb - cb) / cb < 0.01, `${profile}: the size component ${pb} is within 1 % of the committed ${cb}`);
+        continue;
+      }
       for (const side of ['min', 'max']) if (t[side] !== TH[profile][metric][side]) differs.push(`${profile}.${metric}.${side}: proposed ${t[side]}, committed ${TH[profile][metric][side]}`);
     }
     // waived items are inside the corpus, so a metric they set the floor of differs by design: only skyStops (the waived flat sky) may
@@ -471,5 +489,119 @@ test('cli: sheet renders a small item to a 512 x 512 PNG (skipped without Chrome
     assert.equal(png.subarray(1, 4).toString(), 'PNG');
     assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [512, 512]);
     assert.equal((await run(['sheet', '--mode', 'purple', 'us-pacific/hi-sea-turtle'])).code, 1);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+/* ---------- the CLI review fixes (FIX2) ---------- */
+
+test('lint bytes do not depend on what was rendered before: stable ids, the thinnest scene gives one answer alone and in a pack', async () => {
+  const html = (n) => `<svg viewBox="0 0 1600 900"><defs><linearGradient id="us${n}"><stop offset="0" stop-color="#fff"/></linearGradient><radialGradient id="us${n}x"/></defs><rect fill="url(#us${n})"/><use href="#us${n}x"/></svg>`;
+  for (const legacy of [false, true]) {
+    const a = stableIds(html('1'), legacy), b = stableIds(html('zz9'), legacy), len = legacy ? 5 : 4;
+    assert.equal(a, b, 'the same drawing with different counters is the same text');
+    assert.match(a, new RegExp(`id="us0*1" `.slice(0, 0) + `<linearGradient id="us.{${len - 2}}"`));
+    assert.ok(a.includes(`url(#us${'0'.repeat(len - 3)}1)`) && a.includes(`href="#us${'0'.repeat(len - 3)}2"`), a);
+  }
+  assert.equal(stableIds('<g data-id="x" id="a"/>'), '<g data-id="x" id="us01"/>', 'only id attributes are renamed');
+  assert.equal(stableIds('<rect/>'), '<rect/>');
+  assert.ok(isLegacyProfile('scene-legacy') && isLegacyProfile('item-classic') && !isLegacyProfile('scene') && !isLegacyProfile('item'));
+  const bytesOf = async (argv) => JSON.parse((await run(['lint', ...argv, '--json'])).out).items.find(i => i.ref === 'us-mountain/nm-white-sands').metrics.bytes;
+  const alone = await bytesOf(['--ref', 'us-mountain/nm-white-sands']), inPack = await bytesOf(['--pack', 'us-mountain']), inTwo = await bytesOf(['--ref', 'us-mountain/az-grand-canyon,us-mountain/nm-white-sands']);
+  assert.deepEqual([inPack, inTwo], [alone, alone], 'the same result alone, in a selection and in its pack');
+  assert.equal(alone, TH.scene.bytes.min, 'it IS the thinnest accepted scene: the floor');
+  assert.equal(BY_REF.get('us-mountain/nm-white-sands').metrics.bytes, alone, 'and the corpus measurement agrees');
+});
+
+test('the strict vocabulary: use, pattern, mask, symbol and filter are rejected for new packs, text, images, scripts, styles, links and SMIL everywhere; the legacy profiles keep theirs', () => {
+  assert.deepEqual(allowedTagList(), ['path', 'circle', 'rect', 'ellipse', 'polygon', 'line', 'polyline', 'defs', 'clipPath', 'linearGradient', 'radialGradient', 'g', 'stop']);
+  for (const t of ['text', 'image', 'script', 'style', 'a', 'animate', 'set', 'animateMotion', 'animateTransform', 'foreignObject']) assert.ok(forbiddenTagList().includes(t), t);
+  const wrap = (x) => `<svg viewBox="0 0 1600 900"><defs><clipPath id="c"><rect width="9" height="9"/></clipPath><linearGradient id="g"><stop offset="0"/></linearGradient></defs>${x}</svg>`;
+  const problems = (x, kind = 'scene', opts = {}) => measure(wrap(x), kind, opts).problems;
+  assert.deepEqual(problems('<g clip-path="url(#c)"><rect width="4" height="4" fill="url(#g)"/></g>'), [], 'defs, clipPath and gradients are allowed');
+  for (const t of ['<use href="#c"/>', '<pattern id="p"/>', '<mask id="m"/>', '<symbol id="s"/>', '<filter id="f"/>']) assert.ok(problems(t).some(p => /unsupported <(use|pattern|mask|symbol|filter)>/.test(p)), t);
+  for (const t of ['<text>x</text>', '<image href="#c"/>', '<script/>', '<style/>', '<a href="#c"/>', '<animate/>']) assert.ok(problems(t).some(p => /is not allowed|unsupported/.test(p)), t);
+  assert.deepEqual(problems('<use href="#c"/><pattern id="p"/>', 'scene', { legacy: true }), [], 'the frozen legacy profiles were calibrated on art that uses them');
+  assert.ok(lintMarkup(wrap('<use href="#c"/>'), 'scene-legacy', TH).metrics.problems.length === 0 && lintMarkup(wrap('<use href="#c"/>'), 'scene', TH).metrics.problems.length === 1);
+  for (const r of RES.results.filter(r => r.profile === 'scene' || r.profile === 'item')) assert.ok(!r.failures.some(f => f.rule === 'structure'), `${r.ref} keeps to the strict vocabulary`);
+});
+
+test('small items: a copy of an icon, only re-coloured or nudged, fails sharedShareAll; hand-drawn icons share a few shapes', async () => {
+  const turtle = REG.items().find(e => e.ref === 'us-pacific/hi-sea-turtle');
+  const svg = turtle.item.svg({});
+  const recoloured = svg.replace(/class="([^"]*)"/g, (a, v) => `class="${v.split(' ').map(t => (t === 'c' ? 's' : t === 'k' ? 'm' : t)).join(' ')}"`);
+  assert.notEqual(recoloured, svg);
+  const keys = (x) => shapeKeys(wrapItem(x));
+  const a = keys(svg), b = keys(recoloured);
+  const shares = sharedShares([{ pack: 'p', keys: a }, { pack: 'p', keys: b }]);
+  assert.equal(shares[1].all, 1, 'every shape of the recoloured copy is in the original');
+  assert.ok(shares[1].all > TH.item.sharedShareAll.max && shares[1].pack > TH.item.sharedShare.max);
+  const own = BY_REF.get('us-pacific/hi-sea-turtle').metrics;
+  assert.ok(own.sharedShare <= TH.item.sharedShare.max && own.sharedShareAll <= TH.item.sharedShareAll.max, 'the original is clean');
+  assert.ok(typeof own.sharedShare === 'number' && typeof own.sharedShareAll === 'number', 'small items carry the metrics');
+  const rules = check({ ...own, sharedShare: 1, sharedShareAll: 1 }, 'item', TH).map(f => f.rule);
+  assert.ok(rules.includes('sharedShare') && rules.includes('sharedShareAll'));
+  assert.deepEqual(check({ ...own, sharedShare: 1, sharedShareAll: 1 }, 'item-classic', TH).filter(f => /sharedShare/.test(f.rule)), [], 'the frozen classic icons are templated: no rule for them');
+  // the real CLI: the same trick, registered as a new pack item, fails the lint
+  const dir = mkdtempSync(join(tmpdir(), 'anim-copy-'));
+  try {
+    const file = join(dir, '72-anim-pack-zz-copycat.js');
+    writeFileSync(file, `(function () { animRegisterPack({ id: 'zz-copycat', name: 'Copycat', version: '1.0.0', description: 'A re-coloured copy of an accepted icon, for the lint tests.', css: '',
+      items: [{ id: 'turtle', slot: 'symbol', label: 'Copied turtle', tags: ['test'], mood: 'calm', intensity: 'subtle', theme: 'any', season: 'any', region: 'any', colour: 'green', svg: () => ${JSON.stringify(recoloured)}, reduced: 'static' }] }); })();`);
+    const r = await run(['lint', '--file', file, '--json']);
+    assert.equal(r.code, 2, r.out);
+    const item = JSON.parse(r.out).items[0];
+    assert.equal(item.metrics.sharedShareAll, 1); assert.ok(item.failures.some(f => f.rule === 'sharedShareAll'), item.failures.map(f => f.rule).join());
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+  // calibrate lists the rule with its corpus distribution
+  const c = await run(['calibrate']);
+  assert.match(c.out, /== item: 245 items[\s\S]*sharedShare\s+<= 0\.563[\s\S]*sharedShareAll\s+<= 0\.632/);
+});
+
+test('lint prints the thin spots of EVERY selected item in the default mode, --quiet silences them, --json carries the targets', async () => {
+  const refs = ['us-mountain/nm-white-sands', 'asia-west/sa-signature', 'asia-west/abu-dhabi-skyline', 'us-midwest/mn-loon', 'us-pacific/hi-sea-turtle'];
+  const r = await run(['lint', '--ref', refs.join(',')]);
+  assert.equal(r.code, 0, r.out);
+  for (const ref of refs) assert.match(r.out, new RegExp(`PASS  ${ref}`), `${ref} is listed although it passes`);
+  assert.equal((r.out.match(/thin spots \d+ \(target <= 4\)/g) || []).length, 5, 'one thin-spot line per item');
+  assert.match(r.out, /nm-white-sands[\s\S]*tinyShare\s+0\.421\s+median 0\.136\s+too much/, 'the rule, the value and the corpus median');
+  assert.match(r.out, /MISSES THE TARGET: richness 0\.547 < 0\.90/); assert.match(r.out, /redraw target missed by \d+ passing item/);
+  assert.match(r.out, /PASS: 5 items clean \(2 documented waivers\)\.$/, 'the last line is still the pass line');
+  const q = await run(['lint', '--ref', refs.join(','), '--quiet']);
+  assert.equal(q.code, 0); assert.doesNotMatch(q.out, /thin spots|PASS  us-|redraw target|too little/); assert.match(q.out, /PASS: 5 items clean/);
+  const j = JSON.parse((await run(['lint', '--ref', refs.join(','), '--json'])).out);
+  assert.deepEqual(j.targets, { richness: TARGETS.richness, maxThinSpots: TARGETS.maxThinSpots, maxRedraws: TARGETS.maxRedraws });
+  assert.ok(j.items.every(i => typeof i.richness === 'number' && Array.isArray(i.targetMiss) && Array.isArray(i.thin)));
+  // the whole registry still lists only the failures (972 blocks would drown them)
+  assert.ok(TARGETS.richness === 0.9 && TARGETS.maxThinSpots === 4 && TARGETS.maxRedraws === 3);
+  const short = await run(['lint', '--ref', 'asia-west/abu-dhabi-skyline']);   // three or fewer: the rules table, and the thin spots too
+  assert.match(short.out, /PASS {2}richness/); assert.match(short.out, /thin spots 5/);
+});
+
+test('--option errors are friendly: a negative number is not swallowed as a flag, and a missing src/app is explained', async () => {
+  const neg = await run(['lint', '--ref', '-3']);
+  assert.equal(neg.code, 1); assert.match(neg.err, /--ref needs a value that does not start with a dash/);
+  const none = mkdtempSync(join(tmpdir(), 'anim-empty-'));
+  try {
+    for (const argv of [['lint'], ['status'], ['status', 'x'], ['brief', 'x', '--kind', 'scene'], ['sheet', 'a/b']]) { const e = await run([...argv, '--root', none]); assert.equal(e.code, 1, argv.join(' ')); assert.match(e.err, /no src\/app folder under .* \(or give --root/, argv.join(' ')); assert.doesNotMatch(e.err, /ENOENT|scandir/); }
+  } finally { rmSync(none, { recursive: true, force: true }); }
+});
+
+test('sheet --crop: a phone and a square tile render what they show of a scene (skipped without Chrome)', { skip: !findBrowser() }, async () => {
+  assert.deepEqual(CROPS, { square: 900, phone: 420 });
+  const dir = mkdtempSync(join(tmpdir(), 'anim-crop-'));
+  try {
+    const r = await run(['sheet', 'us-mountain/nm-white-sands', 'us-pacific/hi-sea-turtle', '--out', dir, '--crop', 'phone', '--contact']);
+    assert.equal(r.code, 0, r.err);
+    const phone = readFileSync(join(dir, 'us-mountain__nm-white-sands-light-phone.png'));
+    assert.deepEqual([phone.readUInt32BE(16), phone.readUInt32BE(20)], [420, 900], 'the central 420 x 900 of the scene');
+    const turtle = readFileSync(join(dir, 'us-pacific__hi-sea-turtle-light.png'));
+    assert.deepEqual([turtle.readUInt32BE(16), turtle.readUInt32BE(20)], [512, 512], 'a small item is never cropped');
+    assert.ok(existsSync(join(dir, 'contact-light-phone.png')));
+    const sq = await run(['sheet', 'us-mountain/nm-white-sands', '--out', dir, '--crop', 'square']);
+    assert.equal(sq.code, 0, sq.err);
+    const sqp = readFileSync(join(dir, 'us-mountain__nm-white-sands-light-square.png'));
+    assert.deepEqual([sqp.readUInt32BE(16), sqp.readUInt32BE(20)], [900, 900]);
+    const bad = await run(['sheet', 'us-mountain/nm-white-sands', '--out', dir, '--crop', 'wide']);
+    assert.equal(bad.code, 1); assert.match(bad.err, /--crop must be one of square, phone/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

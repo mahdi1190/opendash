@@ -12,12 +12,12 @@ Contents: 1 the twelve sentences, 2 ground facts, 3 composition, 4 sky and light
 1. A scene is a 1600 x 900 flat-vector painting of 5 to 14 gradients and 90 to 500 drawn elements (median about 250, 23 KB), always built back to front in the same ten layers: sky, light, sky life, far plane, mid plane, water or ground, landmark, subject life, near plane and framing, `finish()`.
 2. The sky is the palette: 3 to 5 stops, lighter by about .35 in lightness at the horizon, a low halo-and-rays sun, 1 to 2 streaks, 2 to 3 gradient clouds with tinted bellies, birds.
 3. Depth: planes get darker, more saturated and less hazy toward the viewer, with a `haze()` band at every boundary and a mirrored reflection (.3 to .4) in water. The darkest value (lightness <= .15, tinted, never black) is the framing foreground at both edges.
-4. The landmark sits in the middle 1200 x 800, lit from behind or beside, with at least two detail systems (window rows, tiers, struts, arches) and a translucent lit-side or shadow-side facet; structures are computed (loops, catenaries, scale ladders), not scribbled.
+4. The subject sits in the middle (its identifying part inside x 590 to 1010, the whole of it inside x 350 to 1250: what a portrait phone and a square tile show), lit from behind or beside, with at least two detail systems (window rows, tiers, struts, arches) and a translucent lit-side or shadow-side facet; structures are computed (loops, catenaries, scale ladders), not scribbled.
 5. Palette: one dominant hue family (sky, haze, water, far planes), one or two secondary families, at most three small saturated accents; mean saturation about .54; no pure black, no grey.
-6. Scenes are painted for daylight; one `finish(.30)` adds a vignette and an evening grade, and night-only lights are separate `us-lit` / `us-lamps` / `us-star` elements.
+6. Any time of day is fine and the scene must read in the LIGHT theme as drawn (most are daylight, golden hour or dusk; a night scene is painted as night: `us-pacific/anchorage-aurora-moose`); one `finish(.30)` goes last and adds a vignette and the evening grade (it darkens the scene in the dark theme and at night), and the lights that should switch on at night are separate `us-lit` / `us-lamps` / `us-star` elements.
 7. Everything alive uses the 17 kit classes, transform and opacity only: drift and parallax, birds, glints, boats and traffic, bobs, sways, flames, falls; median 65 moving groups and 9 kit classes per scene.
 8. Nothing is in sync: every repeat has its own period and a negative delay, so the picture is already mid-motion at t = 0 and the loops are invisible.
-9. Small icons are 64 x 64 drawings in theme classes only (`k c s w m`, `lk lc lm lw`, `t`, `dash`; zero hex), about 650 to 780 bytes, one dominant mass, 1 to 3 staggered `x-*` motions, a wave band or ground line and one sparkle; they must read at 28 px.
+9. Small icons are 64 x 64 drawings in theme classes only (`k c s w m`, `lk lc lm lw`, `t`, `dash`; zero hex), about 1.0 KB (median; 0.8 to 1.4 KB), about 12 shapes, one dominant mass, a median of 5 independently staggered `x-*` groups in 3 kinds (the exemplars 7 to 14), a wave band or ground line and one sparkle; they must read at 28 px.
 10. Never: flat skies, stacked-coin crowns, bare box buildings, an empty bottom third, hair-like foreground strokes, letter-like marks, clone-stamped creatures, sun and moon together, a scene with nothing to light at night, a scene near the 32,000-byte cap.
 11. Review means rendering and looking: light and night, a 320 px thumbnail, side by side with the model exemplar, against the rubric (`rubric.md`).
 12. Passing the lint is the floor; the bar is the corpus median.
@@ -26,12 +26,12 @@ Contents: 1 the twelve sentences, 2 ground facts, 3 composition, 4 sky and light
 
 | Fact | Value |
 | --- | --- |
-| Canvas | `viewBox="0 0 1600 900"`, `preserveAspectRatio="xMidYMid slice"`; layers run x -160 to 1760 so they can drift; the subject lives inside x 200 to 1400 and y 40 to 840 |
-| Crops | 16:9 on a desktop, the middle 1200 x 900 on 4:3, the middle 900 x 900 in a square tile. The outer 200 px carry framing (foliage, cables, lamps), not the story |
+| Canvas | `viewBox="0 0 1600 900"`, `preserveAspectRatio="xMidYMid slice"`; layers run x -160 to 1760 so they can drift; the subject lives inside y 40 to 840, its identifying part inside x 590 to 1010 and the whole of it inside x 350 to 1250 (next row) |
+| Crops | the scene fills the screen, so a screen of the same height and width W shows the central W of the 1600 units: 16:9 on a desktop (all 1600), 4:3 the middle 1200, a square tile the middle 900 (x 350 to 1250), a portrait phone only the middle 420 to 506 (x 590 to 1010 at the narrowest, x 547 to 1053 at 9:16). The outer 350 units carry framing (foliage, cables, lamps), water, sky and distance, not the story. `sheet --crop phone` and `--crop square` render those crops: look at them |
 | Time on screen | the opening plays full screen for 2.4 s (subtle), 3.4 s (standard), 4.2 s (playful): the picture must read at a glance and its first motion must already be visible |
 | Byte cap | 32,000 rendered bytes per scene, 14,000 per small item (`ANIM_FULL_ITEM_MAX_BYTES`, `ANIM_ITEM_MAX_BYTES`) |
-| Markup | shapes, groups, gradients only; no text, image, `use`, link, style, script, SMIL, `foreignObject`, `NaN`, `undefined` |
-| Paint | scenes: any hex colour, painted for daylight (a dusk or golden-hour sky counts as daylight-lit). Small items: theme classes only |
+| Markup | exactly what the lint accepts: path circle rect ellipse polygon line polyline g defs clipPath linearGradient radialGradient stop. The lint rejects text, tspan, image, script, style, a, foreignObject, SMIL (animate, set, animateMotion, animateTransform), and for new packs also `use`, `pattern`, `mask`, `symbol`, `filter` (only the frozen UK scenes use them); no `NaN`, `undefined` |
+| Paint | scenes: any hex colour; any time of day, but it must read in the light theme as drawn (a dusk or golden-hour sky is typical, a night scene is painted as night). Small items: theme classes only |
 | Tile | the page draws the rounded tile behind a small item (radius .28 x size, background `color-mix(--c 11%, surface)`); an item never draws a full-tile rect |
 
 ## 3. Composition
@@ -39,14 +39,14 @@ Contents: 1 the twelve sentences, 2 ground facts, 3 composition, 4 sky and light
 | Rule | Evidence |
 | --- | --- |
 | Horizon or waterline at 60 to 72 % of the height: median y 610 (p25 560, p75 650, p10 520, p90 700) | the sky gets two thirds of the picture because the sky is where the palette lives |
-| Landmark centred or on a third, inside x 200 to 1400, the tallest and strongest-contrast thing | Bangkok prang x 800, Mackinac towers x 520 and 1080, Austin Capitol at the vanishing point (800, 500) |
+| Landmark centred or on a third, its identifying part inside x 590 to 1010 and all of it inside x 350 to 1250 (the phone and square crops), the tallest and strongest-contrast thing | Bangkok prang x 800, the Mackinac span x 520 to 1080 (its centre, cables and a ship stay in the phone crop), Austin Capitol at the vanishing point (800, 500) |
 | The light source BEHIND or BESIDE the landmark, never in front; the sky glow is the lightest area right where the silhouette needs contrast | sun (1240, 560) beside Wat Arun; the sun framed in the arch of St. Louis |
 | Both sides framed: a dark foreground object at each side, 150 to 450 px wide, swaying (`ussway2`, 5 to 11 s) | palms (`asia-southeast/ho-chi-minh-city-skyline`), pines (`us-midwest/mi-mackinac-bridge`), blossom boughs (`asia-east/jp-signature`), live oaks at scale 2.3 (`texas/austin-capitol-walk`), cypress (`us-southeast/la-bayou-camp`) |
 | 4 to 7 depth planes: sky, far, mid, ground or water, landmark, near, frame | the lint's `bands` / `bandFills` see them |
 | Scale cues: the same kind of object repeated at decreasing size | villas 1.46 to .42 (`asia-south/mv-signature`), statues and lamps .5 / .9 / 1.3 (Austin), ships at two scales |
 | Perspective is faked with ONE vanishing point and linear scale | Austin path `M780 500H820L1180 900H420z` with cross-lines at `k = (y - 500) / 400`; fields projected with `xAt(x0, y) = 800 + (x0 - 800) * (y - VP) / (900 - VP)`; the Maldives jetty |
 | The ground in front of the subject is NEVER an empty slab: a lamp string, rail, quay, pier, path, reeds or darker silhouettes | the lint's `bottomCover` and rubric R5 |
-| Keep the central 1200 x 800 free of near-plane clutter; foreground strokes over the subject <= 90 px tall | rubric R2, R14 |
+| Keep the central x 350 to 1250 free of near-plane clutter; foreground strokes over the subject <= 90 px tall | rubric R2, R14 |
 
 ## 4. Sky and light: the stack every scene starts with
 
@@ -130,13 +130,13 @@ Repeat a tower or villa at 3 to 7 scales along a perspective line for depth. A s
 - Mountains: a multi-point ridgeline, ONE shadow-side path and ONE lit-highlight path following the ridge, a hem-shaped snow cap (the 7-tooth cap in `jp-signature`), haze at the base; never a triangle with an arrow cap, never 4 to 7 translucent overlay bars (E12, E15).
   Canyon strata: hard-stop gradients (each stop written twice at `i/n` and `(i+1)/n`), three parallax layers that darken, haze between them (`us-mountain/az-grand-canyon`).
 - Clouds only through `cloud()` (never three circles that look like ears, never giant opaque domes).
-- Creatures: one smooth silhouette path with 12 or more control points in a single dark tone (the loon in `us-midwest/mn-loon`), or tiny and far (<= 40 px). Never straight-stroke legs and ovals for a hero animal, never mannequin faces, never real people.
+- Creatures: one smooth silhouette path with 12 or more control points in a single dark tone (the loon in `us-midwest/mn-loon`), or tiny and far (<= 40 px). Never straight-stroke legs and ovals for a hero animal, never mannequin faces, never portraits, crowds or identifiable people (a tiny anonymous faceless silhouette, a few pixels tall, is allowed as a scale cue).
   Repeated animals vary pose, size (x .85 per step), spacing and tone (E10).
 - Snow stays luminous (ground L >= .9, shadows in blue `#aebbd6`), warm lights are the only saturated accents.
 
-## 9. Night: why paint is daylight and what must light up
+## 9. Night: what must light up, whatever the time of day
 
-See `kit-reference.md` section 5 for the classes. Rules: (a) paint for daylight, never "for night"; (b) every light that should appear only at night is a separate `us-lit` / `us-lamps` / `us-star` element, pale day glass first and the lit layer second;
+See `kit-reference.md` section 5 for the classes. Rules: (a) the time of day is free, but a scene is painted AS it looks (a day or dusk scene as day or dusk; a night scene as night, like `us-pacific/anchorage-aurora-moose`), never as a daylight picture under a dark wash, and it must read in the light theme; `finish()` goes last and the page's evening grade is laid on top; (b) every light that should appear only at night is a separate `us-lit` / `us-lamps` / `us-star` element, pale day glass first and the lit layer second;
 (c) a scene with none of the three just goes blue-purple at night (render `us-pacific/wa-rainier` at night: nothing comes on); (d) a LOW sun reads as a moon at night (lovely in `us-southeast/la-bayou-camp`), a HIGH bright disc with rays looks odd.
 Measured use: `us-lit` in 161 of 229 scenes (median 3), `us-lamps` in 125 (median 1, p90 19), stars in 152. 21 scenes light nothing (E16): the do-better list. Windows are not yellow squares: `lit()` for a few HERO windows, `dots()` rows for the rest.
 
@@ -192,9 +192,9 @@ The floors are what the lint enforces; the rubric bar (rubric.md R16) is 25 movi
 | E6 | Over-saturated or un-harmonised palette, or pastel mush with no dark | `asia-east/xian-skyline`, `us-southeast/va-shenandoah-skyline`; `us-mountain/nm-white-sands` | S near .54, <= 3 small accents, far layers S .15 to .35, one value near L .1 |
 | E7 | Text-like or noise marks: tiles in a row that read as letters, barcode flowers, fur-like tufts | `us-pacific/los-angeles-palms-searchlights`, `us-pacific/wa-rainier`, `us-midwest/ks-wheat` | no arrays of >= 5 near-identical boxes; blades <= 120 px; strokes over the subject <= 90 px tall |
 | E8 | Near-cap byte size (14 scenes >= 30,000 B) | `asia-east/macau-skyline` 31,724 | target <= 29 KB: `dots()` and dash arrays for windows, `R()`, one `d` per fill colour, no duplicate near-identical paths |
-| E9 | Hidden landmark or hidden light | `texas/el-paso-star-scene`, `asia-west/jo-signature`, `us-midwest/ia-farmland` | landmark 25 to 55 % of the height, inside x 200 to 1400, glow behind it, foreground only at the edges and below y 780 |
+| E9 | Hidden landmark or hidden light | `texas/el-paso-star-scene`, `asia-west/jo-signature`, `us-midwest/ia-farmland` | landmark 25 to 55 % of the height, its identifying part inside x 590 to 1010 and all of it inside x 350 to 1250, glow behind it, foreground only at the edges and below y 780 |
 | E10 | Clone-stamped repeats at one scale on one line | `asia-west/sa-signature` (5 identical camels), `asia-west/ae-signature` | vary pose, size (x .85 per step), spacing, tone; shadow ellipses |
-| E11 | Crude creatures and figures; real people | `us-southeast/ky-bluegrass-farm` horses, `us-midwest/sd-rushmore` faces (never draw real people) | one smooth silhouette path with 12+ points, or tiny and far |
+| E11 | Crude creatures and figures; real people | `us-southeast/ky-bluegrass-farm` horses, `us-midwest/sd-rushmore` faces (never draw portraits or identifiable people) | one smooth silhouette path with 12+ points, or tiny and far |
 | E12 | Translucent overlay strips and glitch facets; a lens-flare group in the foreground | `us-pacific/wa-rainier`, `texas/west-texas-sunset` | ONE shadow-side path and ONE highlight path following the form; flares only around the sun |
 | E13 | Hard seams and bars: solid haze or fog rects cutting objects | `us-mountain/ut-bryce-hoodoos`, `asia-west/lb-signature` | `haze()` or bands that follow the object; check every plane boundary |
 | E14 | Incoherent light: sun and moon together, rays from another origin | `us-mountain/nm-white-sands` | one source; rays, glow, glints, facets and shadows agree |

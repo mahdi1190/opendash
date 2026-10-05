@@ -12,11 +12,13 @@
 //   registrySources(root, extraFiles, omit)          the source files in build order, extra files placed where their name sorts
 //   findBrowser()                                    Chrome / Edge / Chromium: CHROME_PATH, PATH, Playwright's folders
 //   itemPage(reg, entry, {mode, at})                 the HTML page for one item, animations paused at `at` ms
-//   renderItems(reg, entries, { mode, outDir, ... }) PNGs: scenes 1600 x 900 paused at 6.5 s, small items 512 x 512
+//   renderItems(reg, entries, { mode, outDir, crop, ... }) PNGs: scenes 1600 x 900 paused at 6.5 s, small items 512 x 512; crop 'square' | 'phone' shows what
+//                                                    a square tile (the central 900 x 900) or a portrait phone (the central 420 x 900) shows of a scene
 //   contactSheet(rendered, { file, columns })        a grid of rendered PNGs in one PNG
 import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
 import { join, basename, resolve, dirname } from 'node:path';
 import { homedir } from 'node:os';
+import vm from 'node:vm';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { animRegistryFiles } from './anim-sources.mjs';
 import { launchChrome, findChrome } from '../release-chrome.mjs';
@@ -34,6 +36,7 @@ export const repoRoot = () => resolve(dirname(fileURLToPath(import.meta.url)), '
  */
 export function registrySources(root, extraFiles = [], omit = []) {
   const app = join(root, 'src', 'app');
+  if (!existsSync(app)) throw new Error(`no src/app folder under ${root}: run the tool in the repository root (or give --root <a checkout of the repo>)`);
   const files = new Map(animRegistryFiles(app).filter(f => !omit.includes(f)).map(f => [f, join(app, f)]));
   for (const p of extraFiles) {
     const abs = resolve(p), name = basename(abs);
@@ -58,26 +61,56 @@ export function loadRegistry(root = repoRoot(), { extraFiles = [], omit = [], fr
   if (plain) _registries.set(root, reg);
   return reg;
 }
+const BUNDLE = 'anim-registry-bundle.js';
+/**
+ * Evaluate the animation files the way the build does: ONE function body (one scope, hoisting across files, a top-level const is shared). The bundle is compiled
+ * with a file name, so a syntax error (a top-level const declared twice: a scene file without its IIFE) and a runtime throw carry a line number, which is mapped
+ * back to the FILE and the line in it. Returns the names the registry exposes.
+ */
+function evalRegistry(list, texts) {
+  const head = '(function () {\n', tail = `\nreturn { ${NAMES.map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ')} };\n})`;
+  const spans = []; let line = 2;   // the first file starts on line 2 of the bundle; the separator "\n;\n" adds the line of the ";"
+  texts.forEach((t, i) => { const n = t.split('\n').length; spans.push({ name: list[i].name, from: line, to: line + n - 1 }); line += n + 1; });
+  const where = (e) => {
+    const m = new RegExp(BUNDLE.replace(/\./g, '\\.') + ':(\\d+)').exec(String((e && e.stack) || ''));
+    const at = m && spans.find(sp => +m[1] >= sp.from && +m[1] <= sp.to + 1);
+    return at ? { name: at.name, line: +m[1] - at.from + 1 } : null;
+  };
+  try {
+    const fn = new vm.Script(head + texts.join('\n;\n') + tail, { filename: BUNDLE }).runInThisContext();
+    return fn();
+  } catch (e) {
+    const at = where(e);
+    if (!at) {
+      for (let i = 0; i < list.length; i++) {
+        try { new vm.Script(`(function () {\n${texts[i]}\n})`, { filename: list[i].name }); } catch (se) { throw new Error(`${list[i].name}: ${se.message}`); }   // compile only: names a file with a syntax error
+      }
+      throw e;
+    }
+    let extra = '';
+    const dup = /Identifier '([^']+)' has already been declared/.exec(e.message);
+    if (dup) {   // name the file that declared it first
+      const re = new RegExp(`^(?:const|let|class|function)\\s+${dup[1].replace(/[$]/g, '\\$&')}\\b|^(?:const|let)\\s*[{\\[][^=\\n]*\\b${dup[1].replace(/[$]/g, '\\$&')}\\b`, 'm');
+      const first = list.findIndex((f, i) => list[i].name !== at.name && i < list.findIndex(x => x.name === at.name) && re.test(texts[i]));
+      extra = first >= 0 ? ` (first declared in ${list[first].name}; every file shares one scope: wrap a scene file in an IIFE, (function () { ... })();)` : ' (every file shares one scope: wrap a scene file in an IIFE, (function () { ... })();)';
+    }
+    const err = new Error(`${at.name}:${at.line}: ${e.name === 'SyntaxError' || e.name === 'ReferenceError' || e.name === 'TypeError' ? e.name + ': ' : ''}${e.message}${extra}`);
+    err.file = at.name; err.line = at.line; err.cause = e;
+    throw err;
+  }
+}
+
 function loadRegistryUncached(root, extraFiles, omit = []) {
   const list = registrySources(root, extraFiles, omit);
   const texts = list.map(f => readFileSync(f.path, 'utf8'));
-  let R;
-  try {
-    // eslint-disable-next-line no-new-func
-    R = new Function(texts.join('\n;\n') + `\nreturn { ${NAMES.map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ')} };`)();
-  } catch (e) {
-    for (let i = 0; i < list.length; i++) {
-      try { new Function(texts[i]); } catch (se) { throw new Error(`${list[i].name}: ${se.message}`); }   // compile only: names the file with the syntax error
-    }
-    throw e;
-  }
+  const R = evalRegistry(list, texts);
   const styles = join(root, 'src', 'styles');
   const cssFiles = existsSync(styles) ? readdirSync(styles).filter(f => f.endsWith('.css')).sort() : [];
   let appCss = null;
   const appCssText = () => appCss || (appCss = cssFiles.map(f => readFileSync(join(styles, f), 'utf8')).join('\n'));
   let appClasses = null;
   const reg = {
-    root, files: list.map(f => f.name), R,
+    root, files: list.map(f => f.name), sources: list.map((f, i) => ({ name: f.name, path: f.path, text: texts[i] })), R,
     packs: () => R.animPacks(),
     items() {
       const out = [];
@@ -125,6 +158,12 @@ export function findBrowser(env = process.env) {
   return null;
 }
 
+/**
+ * What a scene shows on a narrower screen: the scene is cut with preserveAspectRatio "xMidYMid slice" (it fills the screen, centred), so a screen of height 900 units and
+ * width W shows the central W units of the 1600. A square tile shows 900, a portrait phone about 420 (a 9:19 phone) to 506 (a 9:16 phone): 420 is the narrowest.
+ */
+export const CROPS = Object.freeze({ square: 900, phone: 420 });
+
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /** The page for one item: the app's theme variables and animation css, the pack's css, the animations paused at `at` ms. */
@@ -148,8 +187,9 @@ ${(entry.packObj && entry.packObj.css) || ''}
  * Render items to PNG files: <outDir>/<ref with / as __>-<mode>.png. Returns [{ref, file, full}].
  * `chrome` may be passed in to share one browser between calls.
  */
-export async function renderItems(reg, entries, { mode = 'light', outDir, chrome, executable = findBrowser(), at = 6500, onProgress } = {}) {
+export async function renderItems(reg, entries, { mode = 'light', outDir, chrome, executable = findBrowser(), at = 6500, crop = '', onProgress } = {}) {
   if (!entries.length) return [];
+  if (crop && !CROPS[crop]) throw new Error(`--crop must be one of ${Object.keys(CROPS).join(', ')}`);
   mkdirSync(outDir, { recursive: true });
   const own = !chrome;
   if (own) {
@@ -159,10 +199,11 @@ export async function renderItems(reg, entries, { mode = 'light', outDir, chrome
   const out = [];
   try {
     for (const e of entries) {
-      const file = join(outDir, `${e.ref.replace(/\//g, '__')}-${mode}.png`);
-      const png = await chrome.screenshot({ html: itemPage(reg, e, { mode, at }), width: e.full ? 1600 : 512, height: e.full ? 900 : 512, transparent: false });
+      const cropped = crop && e.full;   // a small item is never cropped
+      const file = join(outDir, `${e.ref.replace(/\//g, '__')}-${mode}${cropped ? '-' + crop : ''}.png`);
+      const png = await chrome.screenshot({ html: itemPage(reg, e, { mode, at }), width: e.full ? (cropped ? CROPS[crop] : 1600) : 512, height: e.full ? 900 : 512, transparent: false });
       writeFileSync(file, png);
-      out.push({ ref: e.ref, file, full: e.full });
+      out.push({ ref: e.ref, file, full: e.full, crop: cropped ? crop : '' });
       if (onProgress) onProgress(out.length, entries.length, e.ref);
     }
   } finally { if (own) await chrome.close(); }

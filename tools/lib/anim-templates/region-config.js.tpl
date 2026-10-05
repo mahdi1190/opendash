@@ -77,7 +77,7 @@ const {{ID}}_WORLD_TRAVEL = [];
 const {{ID}}_REGION = animRegionDefine({
   id: '{{id}}',                          // lower-case letters and digits; its packs are '{{id}}-<group>'; never uk texas world core seasons sky moments rewards mine
   name: {{name_js}},                       // the human name
-  over: {{name_js}},                       // the caption prefix over the town in the opening: "Welcome to <place>" over "<over>"
+  over: {{name_js}},                       // the caption prefix of the SMALL (64-unit) opening items only: "<over> · <label>". A full-screen scene shows its own `site` as the caption under "Welcome to <place>"
   unitWord: '{{unit_word}}',                // what a unit is called ('state', 'country', 'province'...): the item kind value and the scene key prefix ('{{unit_word}}:CODE')
   units: {{ID}}_UNITS, places: {{ID}}_PLACES,
   unitKm: {{ID}}_UNIT_KM, placeKm: {{ID}}_PLACE_KM,

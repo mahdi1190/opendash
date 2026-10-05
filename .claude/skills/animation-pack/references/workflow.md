@@ -13,13 +13,13 @@ Contents: 1 the stages at a glance, 2 preconditions, 3 scaffold, 4 tables, 5 car
 | 1 | Preconditions | clean branch, `npm test` green, a browser for `sheet` | all true |
 | 2 | Scaffold | `node tools/anim-pack.mjs new eu "Europe" --unit-word country --groups west,east,north,south` | scaffold loads, `region.check()` empty |
 | 3 | Tables | fill `src/app/71-anim-region-eu.js` (units, places, `unitKm`, `worldTravel`) | `status eu` shows no table problem and no `example-` rows |
-| 4 | Care notes | write `## Cultural care` in `docs/dev/EU_PACK.md` | present before any brief is written |
-| 5 | Briefs | `brief eu --kind scene --out .anim-ref/briefs` (and `--kind element`) | one brief per agent |
+| 4 | Care notes | write `## Cultural care` in `docs/dev/EU_PACK.md` | present before any brief is written (`brief` notes it while the section is still the skeleton) |
+| 5 | Gold standard and briefs | `reference --render` (light, night, dark) ONCE, then `brief eu --kind scene --out .anim-ref/briefs` (and `--kind element`) | the exemplar PNGs exist; one brief per agent, and a `plan.json` |
 | 6 | Pilot | ONE scene batch and ONE element batch first | review panel passes the pilot; briefs tuned |
 | 7 | Fan out | one agent per brief, each owns one file | each report in the fixed format |
-| 8 | Per-batch lint | the orchestrator re-runs `lint --file` itself | `PASS: <n> items clean.` with no waiver, no foreign file touched |
+| 8 | Per-batch check | the orchestrator re-runs `lint --file` itself, runs `node --test tests/anim-packs.test.mjs` and `guard --owned <the batch's files>` | `PASS: <n> items clean.` with no waiver, `guard` exit 0: no foreign file, threshold, waiver, gold-standard or test touched |
 | 9 | Review panel | fresh, blind reviewers score against the exemplars | every piece PASS from every reviewer |
-| 10 | Fix loop | redraw only what the notes name; re-lint; fresh re-review | max 3 rounds per piece, then NOT DONE |
+| 10 | Fix loop | redraw only what the notes name; re-lint; fresh re-review | max 3 attempts / rounds per piece, then NOT DONE (removed, draft saved) |
 | 11 | Integrate | `status eu --strict`, `npm test`, `node build.mjs --syntax`, privacy scan | all green |
 | 12 | Docs and release | `docs/dev/EU_PACK.md`, `MODULES.md` row, changelog, version | the owner asks for it |
 
@@ -28,7 +28,7 @@ Contents: 1 the stages at a glance, 2 preconditions, 3 scaffold, 4 tables, 5 car
 - Branch: not the default branch; `git status --short` clean.
 - Baseline: `npm test` is green BEFORE you start (so a red later is yours). `node build.mjs --syntax` passes.
 - A browser for the LOOK gate: `node tools/anim-pack.mjs sheet asia-south/mv-signature --out /tmp/x` renders a PNG. If it prints "No Chrome, Edge or Chromium found", set `CHROME_PATH` (or `PLAYWRIGHT_BROWSERS_PATH`). Without a browser nothing can be looked at, so nothing can pass: stop and report.
-- Study the gold standard yourself once: `node tools/anim-pack.mjs reference --render` and `reference --render --mode night` (PNGs in `.anim-ref/`, git-ignored), open ten of them with the Read tool.
+- Study the gold standard yourself once: `node tools/anim-pack.mjs reference --render` and `reference --render --mode night` (and `--mode dark` for the icons; PNGs in `.anim-ref/`, git-ignored), open ten of them with the Read tool.
 - Never touch live data or port 4173; test the app on a copy (CLAUDE.md).
 
 ## 3. Scaffold
@@ -54,20 +54,22 @@ Edit ONLY `src/app/71-anim-region-eu.js` (read its comments; they explain every 
 
 ## 5. Care notes (before any brief)
 
-The brief template adds a general care block (no text of any kind, no flags, maps or borders, no political or military symbols, no real people, no holy figures, sacred architecture only respectfully, disputed places neutral, no stereotypes, no brands, be factual). Add the REGION-specific notes in
-the `## Cultural care` section of `docs/dev/EU_PACK.md` as short "Draw ..." and "Never draw ..." lines: sensitive places and how to draw them neutrally, motifs to avoid, local conventions. `brief` appends them to every brief. Check them against what the places really look like; when unsure what a place looks like, draw something you are sure of (the landscape).
+The brief template adds a general care block (no text of any kind, no flags, maps or borders, no political or military symbols, no portraits, faces, crowds or identifiable people (a tiny anonymous faceless silhouette as a scale cue is allowed), no holy figures, sacred architecture only respectfully, disputed places neutral, no stereotypes, no brands, be factual; it overrides what older scenes show). Add the REGION-specific notes in
+the `## Cultural care` section of `docs/dev/EU_PACK.md` as short "Draw ..." and "Never draw ..." lines: sensitive places and how to draw them neutrally, motifs to avoid, local conventions. The section runs to the next heading of the same or a higher level (sub-headings belong to it). `brief` appends it to every brief, and prints a note when the section is still the skeleton: do this step BEFORE you make the briefs. Check them against what the places really look like; when unsure what a place looks like, draw something you are sure of (the landscape).
 
 ## 6. Plan the batches
 
 ```
-node tools/anim-pack.mjs brief eu --kind scene                          # the plan: batches of about 11 keys, cut at group boundaries, with the file each agent owns
+node tools/anim-pack.mjs brief eu --kind scene                          # the plan: batches of about 7 keys, cut at group boundaries, with the file each agent owns
 node tools/anim-pack.mjs brief eu --kind element                        # one batch per group (an element batch is a whole pack file, which has one owner)
 node tools/anim-pack.mjs brief eu --kind scene --of 14                  # more, smaller batches: fewer scenes per agent means more care per scene
 node tools/anim-pack.mjs brief eu --kind scene --group west --out .anim-ref/briefs     # one group; files become 71-anim-region-eu-scenes-west-N.js
 node tools/anim-pack.mjs brief eu --kind scene --batch 3 --note "Prefer morning light." # print one brief with an extra instruction (repeatable)
-node tools/anim-pack.mjs brief eu --kind scene --out .anim-ref/briefs   # write scene-brief-N.md for every batch (and element-brief-N.md with --kind element)
+node tools/anim-pack.mjs brief eu --kind scene --out .anim-ref/briefs   # write scene-brief-N.md for every batch (element-brief-N.md with --kind element) and plan.json: the index to dispatch from
+node tools/anim-pack.mjs brief eu --kind scene --of 14 --out .anim-ref/briefs --clean   # a different plan in a folder that already has briefs of that kind: refused without --clean (a stale brief would give two agents the same keys)
 ```
-Keys that already have art are marked `done` in the brief and left alone. Smaller batches (6 to 8 scenes) give better scenes than 11: quality drops with fatigue and a long batch tempts an agent to cut corners. The briefs name the files (`src/app/71-anim-region-eu-scenes-N.js`);
+Keys that already have art are marked `done (leave alone)` in the brief; redrawing a finished piece is the orchestrator's decision and the orchestrator names its file. About 7 scenes per agent is the default (a scene at the median bar is about 23 KB of drawing code and four or five renders to look at): quality drops with fatigue and a long batch tempts an agent to cut corners, and the brief tells the agent to stop and report at the first sign of rushing; `--of M` makes batches smaller still.
+Every key in the table carries a SUGGESTED time of day, season, scene type and palette (elements: motif kind and colour) from a fixed rotation over the whole region, so that agents who cannot see each other end up with different pictures; an agent may change one with a reason. The "already drawn" list is a snapshot and is not a coordination mechanism. The briefs name the files (`src/app/71-anim-region-eu-scenes-N.js`);
 a scene file MUST keep that name so it sorts before the pack files (a file called `scratch.js` loads after them and `B.scenes()` never sees it). For the legacy US and Asia regions the briefs print new-style file names that do not exist there (their files are `71-anim-us2-scenes-*.js` and `71-anim-asia2-scenes-*.js`); use the briefs for new regions only.
 
 ## 7. Pilot first
@@ -77,12 +79,13 @@ Run ONE scene batch and ONE element batch (a group with few units) end to end th
 
 ## 8. Fan out
 
-One agent per brief, each with a fresh context, with the Agent tool or a Workflow script (see the `workflow-authoring` skill when you script it). The prompt can be one line:
+Render the gold standard ONCE first: `node tools/anim-pack.mjs reference --render`, `--mode night` and `--mode dark` (the PNGs in `.anim-ref/` are what the briefs point to; agents must not render them, several would write the same files at the same time).
+One agent per brief (`plan.json` lists them), each with a fresh context, with the Agent tool or a Workflow script (see the `workflow-authoring` skill when you script it). The prompt can be one line:
 `Your complete task brief is the file .anim-ref/briefs/scene-brief-3.md. Read all of it first, then follow it exactly. Reply with the final report the brief asks for.`
 Rules for the fan-out:
 - Each agent owns exactly ONE file (`scene-brief` and `element-brief` section 1). Scene agents and element agents of the same group never touch the same file (`B.scenes()` in the pack file is theirs to leave alone).
 - Run at most about 4 to 6 at a time: every command loads the whole registry, other agents' files included, and a half-written file of one agent breaks another's load. The error names the file; wait a minute, run again, never touch it.
-- Agents do not commit, push or `git add`. Only the orchestrator integrates.
+- Agents do not commit, push or `git add`. Only the orchestrator integrates. Agents of one checkout share one working tree: to prove ONE agent alone touched only its files, give each agent its own git worktree; otherwise guard the union of the files of everyone who ran.
 - Give every agent the same quality contract (it is in the brief): study, kit and recipe, lint with no waiver, look at light AND night, rubric, care, report; fewer pieces beat weak ones.
 
 ## 9. What the orchestrator checks after EVERY agent (never trust the report)
@@ -90,19 +93,19 @@ Rules for the fan-out:
 ```
 node tools/anim-pack.mjs lint --file src/app/71-anim-region-eu-scenes-3.js          # last line must be exactly: PASS: <n> items clean.
 node tools/anim-pack.mjs status eu --short                                          # what is still missing, orphans, table problems
-git status --short                                                                  # only the agent's own file(s) changed
-git diff --quiet -- tools tests && echo "no tool or test edited"                    # no threshold, waiver, test or tool edit (exit 0)
+node tools/anim-pack.mjs guard --owned src/app/71-anim-region-eu-scenes-3.js        # PROOF: exit 0 only if nothing else changed; exit 2 names every other file and any threshold, waiver, gold-standard or test edit
+node --test tests/anim-packs.test.mjs                                               # the reduced-variant, theme-wrap and size-cap gates of the whole registry (agents do not run it: half-written files of others break it)
 ```
-- `lint --file` for a scene file reports the scenes that `B.scenes()` turns into items; for a pack file add `--only small` for its elements. The PASS line must carry NO "documented waivers" suffix. A waiver, a threshold edit, an edited test or a foreign file: reject the batch.
+- `lint --file` for a scene file reports the scenes that `B.scenes()` turns into items (it exits 1 and lints nothing when the file registers nothing, a key that is not in the region's tables, a scene no pack uses or a key another file registers too); for a pack file add `--only small` for its elements. The PASS line must carry NO "documented waivers" suffix. A waiver, a threshold edit, an edited test or a foreign file (`guard` fails): reject the batch.
 - Open the contact sheet yourself: `node tools/anim-pack.mjs sheet --file <file> --mode light --out .anim-ref/<name> --contact`. Eleven thumbnails side by side expose sameness (five golden-hour harbours), clones and weak compositions at once.
-- Compare the report with the facts: bytes under 29 KB, `PER SCENE` lines complete, every instant-reject field present, NOT DONE listed honestly.
-- A claim you cannot back (an uncited render, a missing PNG path) is a failed report.
+- Compare the report with the facts: bytes under 29 KB, `PER SCENE` lines complete, every instant-reject field present, NOT DONE listed honestly with a draft path and the scene really removed from the file, `GIT:` equal to what `git status --short` shows now, one observation and one defect per render in `LOOKED`.
+- A claim you cannot back (an uncited render, a missing PNG path, a LOOKED line with no defect) is a failed report.
 
 ## 10. The independent review panel
 
 The author does not approve a batch. Spawn REVIEWERS with a fresh context (they have not seen the brief, the drawing, the author's notes or scores). Per batch: two reviewers, each with at most 6 pieces (split the batch), a different emphasis per reviewer
 (art direction: composition, colour, light, craft; technical: motion, night, hygiene, budget), and a pass rule of MIN, not average: a piece passes only if every reviewer who saw it passes it and nobody names an instant reject.
-Render the sheets yourself first so that all reviewers see the same pictures: `sheet --file <file> --mode light --out .anim-ref/<name> --contact` and `--mode night`, and `reference --render` (light and night) for the exemplars.
+Render the sheets yourself first so that all reviewers see the same pictures: `sheet --file <file> --mode light --out .anim-ref/<name> --contact` and `--mode night`, the crops (`--crop phone`, `--crop square`), and `reference --render` (light and night) for the exemplars.
 
 Reviewer prompt (paste, fill the paths and the keys; give NO author score or claim):
 
@@ -110,8 +113,8 @@ Reviewer prompt (paste, fill the paths and the keys; give NO author score or cla
 You are an independent reviewer of OpenDash animation pieces. You did not draw them. Your job is to find what is below the bar, not to be kind.
 Read .claude/skills/animation-pack/references/rubric.md (all of it) and references/style-guide.md sections 3 to 10.
 Pieces: <file> keys <key, key, ...>. Renders (open every one with the Read tool): <dir>/*-light.png, <dir>/*-night.png, <dir>/contact-light.png. Gold standard: .anim-ref/*-light.png and *-night.png from `reference --render`; pick the exemplar nearest each piece.
-Do: (1) run `node tools/anim-pack.mjs lint --file <file> --rules` yourself and copy the last line; (2) for each piece look at the contact sheet, then the light PNG, then the night PNG, then the exemplar's PNG, then read its source for motion and hygiene;
-(3) score R1-R20 PASS/FAIL one by one with a reason for every FAIL, list instant rejects, and give the verdict against the exemplar: better, equal or below. "Slightly below" is below. Do not score a line you did not check.
+Do: (1) run `node tools/anim-pack.mjs lint --file <file> --rules` yourself and copy the last line; (2) for each piece look at the contact sheet, then the light PNG, then the night PNG, then the phone and square crops, then the exemplar's PNG, then read its source for motion and hygiene;
+(3) score R1-R20 PASS/FAIL one by one with a reason for every FAIL, list instant rejects, and give the craft verdict against the exemplar: better, equal or below. The exemplars are the best ten of the corpus, so a little less polish is not "below": `below` means a craft system the exemplar shows (depth planes with haze, framing, a reflection, lights that come on, motion at three depths) is missing. Do not score a line you did not check.
 Never edit any file. If you cannot render, say "not looked at" and stop: that piece does not pass.
 Reply per piece in exactly this form, then a one-paragraph summary of the batch (repeated weaknesses, sameness across pieces):
 <key> | lint: <last line> | model: <exemplar ref> | R1-R20: <20 characters P/F> = <n>/20 | core lines: pass|FAIL <which> | instant rejects: none|<numbers> | vs exemplar: better|equal|below | verdict: PASS|REDO | the three most valuable concrete fixes
@@ -121,7 +124,7 @@ The orchestrator reads the reports, computes the pass rule, and sends REDO piece
 ## 11. The fix loop
 
 For each REDO piece: one drawing agent (a fresh one is fine, or the author) receives the file, the brief's quality contract, the exemplar and the reviewers' numbered fixes, and redraws only what the notes name; it must lint, look and score again. Then the orchestrator re-runs stage 9, and a reviewer who did not see the previous round re-reviews.
-At most 3 rounds per piece. A piece that still fails is NOT DONE: remove it from the file (never leave a failing scene registered), list the key in the final report with the failing lines, and let the owner decide. Never relax a threshold, add a waiver, edit a test or a tool to make a piece pass.
+At most 3 rounds per piece (and at most 3 attempts inside a round's agent). A piece that still fails is NOT DONE: remove it from the file (never leave a failing scene registered), keep its draft under `.anim-ref/drafts/`, list the key in the final report with the failing lines, and let the owner decide. Never relax a threshold, add a waiver, edit a test or a tool to make a piece pass: only the orchestrator, on the owner's word, decides about waivers.
 If the same defect keeps appearing across pieces (flat skies, nothing lights at night, clone rows), it is a brief problem: add a `--note` and re-issue the batch rather than fixing each piece by hand.
 
 ## 12. Elements (small symbols)
@@ -174,7 +177,10 @@ what is finished is a whole group (its scenes and its elements) rather than a th
 | lint FAIL `sharedShare` / `sharedShareAll` | too much of the piece is identical to another scene: you copied numbers or a template; draw your own geometry, seeds and palette (`recipes.md` intro) |
 | lint FAIL `hiddenShare`, `tinyShare`, `distinctRatio` | padding or clones: remove them and improve the real drawing |
 | lint FAIL on a structural rule (`x-transform`, `unique-ids`, `classes-defined`, `evening-grade-last`, `sky-gradient`) | a hygiene bug: `kit-reference.md` section 7 |
-| lint FAIL only on counts, but the picture looks finished | the picture is thinner than the corpus floor: the lint is calibrated at the minimum of 229 accepted scenes, so look again, honestly, beside the exemplar. If it still looks right, STOP, report the rule, value and threshold, and leave the piece (SKILL.md "Failure handling") |
+| lint FAIL only on counts, but the picture looks finished | the picture is thinner than the corpus floor: the lint is calibrated at the minimum of 229 accepted scenes, so look again, honestly, beside the exemplar. If it still fails after 3 attempts, the piece is NOT DONE: remove it, save the draft, report the rule, value and threshold (SKILL.md "Failure handling") |
+| the load error names a file and a line | that file is at fault: `Identifier 'K' has already been declared` is a scene file without its IIFE (the message names the file that declared it first); a `ReferenceError` is code that ran at load time. Another agent's file: wait and retry, never touch it |
+| `lint --file`: "problem(s) in the scene file(s)" | a scene key that is not in the region's tables (`province:ZZ`), a scene for a small place, dead art (no pack item uses it) or a key registered twice: fix the key, draw only the batch's keys |
+| `guard` exits 2 | a file outside the batch changed (or a threshold, waiver, gold-standard or test): restore it or send the batch back |
 | the render is black or empty | the markup threw (`NaN`), a gradient id is missing, or `svg()` returned nothing: run `lint` for the structure rows |
 | `status` shows "starter data" | an `example-` row of the scaffold remains in the tables |
 | a scene is at 31 KB | simplify repeated elements (SKILL.md "Failure handling"), not the composition |

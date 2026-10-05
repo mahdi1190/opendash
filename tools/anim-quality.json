@@ -740,6 +740,18 @@
       "median": 0,
       "note": "corpus n=245: min 0, p3 0, p10 0, median 0, p90 0, max 3"
     },
+    "sharedShare": {
+      "max": 0.563,
+      "warnMax": 0.231,
+      "median": 0.077,
+      "note": "corpus n=245: min 0, p3 0, p10 0, median 0.077, p90 0.231, max 0.563. How much of the icon is identical (same geometry, any paint) to another small item of its pack; a copy that is only re-coloured shares all of it"
+    },
+    "sharedShareAll": {
+      "max": 0.632,
+      "warnMax": 0.333,
+      "median": 0.133,
+      "note": "corpus n=245: min 0, p3 0, p10 0, median 0.133, p90 0.333, max 0.632. The same against every small item of every pack"
+    },
     "richness": {
       "min": 0.642,
       "warnMin": 0.763,

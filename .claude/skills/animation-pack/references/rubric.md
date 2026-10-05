@@ -9,20 +9,24 @@ Contents: 1 how to review, 2 pass marks, 3 scene rubric (R1 to R20), 4 scene ins
 
 1. Run the lint yourself, do not trust a claim: `node tools/anim-pack.mjs lint --file <file> --rules` (or `--ref <ref>`). Anything but a last line of exactly `PASS: <n> items clean.` is a fail of R20 and of the gate; a line with "documented waivers" means something was waived: not allowed for new work.
 2. Render and open the pictures (the Read tool shows PNGs):
-   - scene: `node tools/anim-pack.mjs sheet --file <file> --mode light --out <dir> --contact`, then `--mode night`; open both full-size PNGs and the contact sheet (the contact sheet is the 320 px thumbnail test).
+   - scene: `node tools/anim-pack.mjs sheet --file <file> --mode light --out <dir> --contact`, then `--mode night`; open both full-size PNGs and the contact sheet (the contact sheet is the 320 px thumbnail test); then `--mode light --crop phone` and `--crop square` (R2: what a portrait phone and a square tile show).
    - item: `sheet --file <file> --only small --mode light --out <dir> --contact` and `--mode dark`; open them AND judge the contact sheet (it is the nearest thing to 28 px).
    - the model exemplar: `node tools/anim-pack.mjs reference --render` (and `--mode night`) writes `.anim-ref/*.png`; open the exemplar's PNG for the same mode and hold it next to the piece.
 3. Look at the picture FIRST (thumbnail, then full size), then at the numbers (`lint --rules`), then at the source for R12 to R20 and the hygiene lines.
 4. A still render cannot show motion. Judge motion (R16 to R18) from the lint's motion rows (`movingGroups`, `motionKinds`, `driftGroups`, `ambientGroups`, `motionZones`, `distinctDurations`, `staggerDelays`) and from reading the `mv()` calls and `x-` classes in the source: which classes, which `--ad` / `--d` / `--dx`, whether any are shared by neighbours.
-5. Score every line PASS or FAIL in writing, one short reason per FAIL, then list the instant rejects (or "none"), then give the verdict against the exemplar.
+5. Score every line PASS or FAIL in writing, one short reason per FAIL, then list the instant rejects (or "none"), then give the craft verdict against the nearest exemplar (section 2 defines it).
 6. Reviewer independence: a reviewer scores BLIND. It is given the file path and the rendered PNGs, the exemplar, and this rubric; it is NOT given the author's scores or claims, and it never edits the piece.
    A reviewer that cannot render (no browser: `sheet` says "No Chrome, Edge or Chromium found") reviews nothing: it reports "not looked at" and the piece does not pass.
 
 ## 2. Pass marks
 
-- Scene: at least 18 of 20 AND zero instant rejects AND every CORE line passes (R1, R2, R9, R11, R16, R19, R20) AND the side-by-side verdict is "equal or better than the exemplar".
-- Small item: at least 18 of 20 AND zero instant rejects AND every CORE line passes (I1, I2, I6, I11, I15, I17) AND the verdict against the nearest icon exemplar is "equal or better".
-- The verdict has three values: `better`, `equal`, `below`. "Slightly below" is `below`. A `below` piece is redrawn, whatever its score. The bar is the corpus MEDIAN, not its minimum: a scene that only matches `us-mountain/nm-white-sands` has passed nothing.
+- Scene: at least 18 of 20 AND zero instant rejects AND every CORE line passes (R1, R2, R9, R11, R16, R19, R20) AND the craft verdict is not `below` AND the redraw targets are met (lint richness >= 0.90 and at most 4 thin spots).
+- Small item: at least 18 of 20 AND zero instant rejects AND every CORE line passes (I1, I2, I6, I11, I15, I17) AND the craft verdict against the nearest icon exemplar is not `below` AND the same redraw targets.
+- The redraw targets are advisory in `lint` (a miss is printed, never a failure): 68 % of the accepted scenes reach richness 0.90 and 75 % have 4 or fewer thin spots. A piece that still misses them after 3 redraws is reported with its numbers (TARGET MISSES) and the independent reviewer decides.
+- The craft verdict has three values: `better`, `equal`, `below`. It compares the piece with its nearest exemplar by the craft SYSTEMS it uses, not by polish: the exemplars are the best ten of the corpus, so almost every new piece is a little less polished than its exemplar, and that is not `below`.
+  `below` means a system the exemplar shows is MISSING from the piece: depth planes with haze between them, framing on both sides, a reflection where there is water, lights that come on at night, motion at three depths (items: the one dominant mass, the staggered motions, the ground line). A `below` piece is redrawn, whatever its score.
+  The bar is the corpus MEDIAN, not its minimum: a scene that only matches `us-mountain/nm-white-sands` has passed nothing.
+- The author's own score is a self-check, never an approval: only an independent blind reviewer's score counts.
 - Anything not looked at is a FAIL of its lines. Do not score a line you did not check.
 
 ## 3. Part A: the scene rubric (full-screen 1600 x 900)
@@ -33,7 +37,7 @@ Render at 1600 x 900 (paused at 6.5 s) in light AND night, next to the model exe
 | # | Line | PASS when | Check |
 | --- | --- | --- | --- |
 | R1 | Reads in one second (CORE) | at 320 x 180 the landmark is identifiable and there is ONE focal point | the contact sheet; FAIL if two things compete or the thumbnail is a mush |
-| R2 | Landmark in the safe area (CORE) | the subject lives inside x 200..1400 and y 40..840, covered by at most about 15 % foreground | check the 4:3 (middle 1200 wide) and 1:1 (middle 900 wide) crops by eye |
+| R2 | Landmark in the safe area (CORE) | the whole subject lives inside x 350..1250 and y 40..840 (a square tile shows the central 900 units), the part that identifies it inside x 590..1010 (a portrait phone shows only the central 420 to 506), covered by at most about 15 % foreground | `sheet --crop phone` and `--crop square`: it is still the picture in both |
 | R3 | Horizon and weights | horizon or waterline between y 520 and 700; the focal weight is off-axis or centred deliberately; light behind or beside the landmark, not in front | |
 | R4 | Five or more planes | at least 5 distinguishable planes (sky, far, mid, water or ground, landmark, near, frame) separated by a value step or a haze band | lint `bands` and `bandFills` near the median (8 and 6) |
 | R5 | Framing and lead-in | a dark framing element on each side (or a perspective lead-in); the bottom 20 % has structure (rail, lamps, pier, path, reeds), not an empty slab | lint `bottomCover` 1 is only the floor |
@@ -54,7 +58,7 @@ Render at 1600 x 900 (paused at 6.5 s) in light AND night, next to the model exe
 | R12 | Organic forms shaped | crowns have a silhouette and a tone hierarchy (not coins); mountains have ridgelines, faces and a snow hem; clouds come from `cloud()` | style-guide section 8 |
 | R13 | Lights are layered | windows and lamps are `lit()` or `dots(..., 'us-lamps')` over pale day glass, hero windows lit, `stars()` present; the NIGHT render comes alive (lights on, tint, stars) | open the night PNG |
 | R14 | No text-like or noise marks | no letters, no tiled boxes that read as writing, no strokes taller than about 90 px over the subject, no barcode flowers | |
-| R15 | No clones, no crude figures | repeated objects vary in scale, pose and spacing; creatures are smooth silhouettes or tiny; no people | lint `distinctRatio`, `sharedShare` |
+| R15 | No clones, no crude figures | repeated objects vary in scale, pose and spacing; creatures are smooth silhouettes or tiny; no portraits, faces or crowds (a tiny faceless scale-cue silhouette is fine) | lint `distinctRatio`, `sharedShare` |
 
 ### Motion
 | # | Line | PASS when | Check |
@@ -67,13 +71,13 @@ Render at 1600 x 900 (paused at 6.5 s) in light AND night, next to the model exe
 | # | Line | PASS when | Check |
 | --- | --- | --- | --- |
 | R19 | Finish and grade (CORE) | `finish(.28 to .38)` is the last element; `us-tint` present; the night render keeps the landmark readable with lights on | lint `evening-grade-last` |
-| R20 | Budget and hygiene (CORE) | the lint's last line is `PASS: <n> items clean.` with no waiver; 14 to 29 KB rendered (hard cap 32,000); >= 5 gradients, >= 27 colours, >= 65 shapes; ids from `U()`; no `transform` on an `x-` element; no text, image, `use`, style, SMIL, href; no `NaN`; balanced tags; the author edited no threshold, test or tool | `git diff -- tools/anim-quality.json tests` is empty for this work |
+| R20 | Budget and hygiene (CORE) | the lint's last line is `PASS: <n> items clean.` with no waiver; 14 to 29 KB rendered (hard cap 32,000); >= 5 gradients, >= 27 colours, >= 65 shapes; ids from `U()`; no `transform` on an `x-` element; none of the markup the lint rejects (text, image, `use`, pattern, mask, symbol, filter, style, SMIL, href); no `NaN`; balanced tags; the author edited no threshold, test or tool | `git diff -- tools/anim-quality.json tests` is empty for this work |
 
 ## 4. Part A: the 8 instant rejects (any one fails the scene, no scoring)
 
 1. A flat sky: one or two stops, or no sun, glow or cloud layer.
-2. Lettering of any kind, text-like tile arrays, flags, maps or borders, political or military symbols, real people, holy figures (the care rules apply to every region).
-3. The landmark is hidden, cropped by the safe area, smaller than about 25 % of the height, or covered by foreground.
+2. Lettering of any kind, text-like tile arrays, flags, maps or borders, political or military symbols, portraits, faces, crowds or identifiable people (a tiny anonymous faceless silhouette as a scale cue is allowed), holy figures (the care rules apply to every region).
+3. The landmark is hidden, cropped by the square crop (x 350..1250) or with nothing that identifies it inside the phone crop (x 590..1010), smaller than about 25 % of the height, or covered by foreground.
 4. No framing foreground AND an empty bottom third; or a foreground that blocks the picture (tall dense strokes).
 5. A dead scene: fewer than 25 moving groups, fewer than 5 kit classes, or no foreground motion.
 6. Trees or crowns as plain stacked opaque circles, mountains as bare triangles, clouds from three circles, buildings as bare boxes with no windows or lit side.
@@ -100,7 +104,7 @@ Render with `sheet --file <pack file> --only small` in light AND dark; judge the
 | I7 | Stroke hierarchy | primary contour `t` (3.4), interior detail `lk` (2.4), highlights and wave tops `lw` (1.4); not everything the same weight |
 | I8 | Tone budget | one hero colour plus ink, tint and surface; depth by `s / m / c` fills and opacity, not by new colours |
 | I9 | Works in dark and in other swatches | the dark render has no invisible part and no black hole; nothing relies on a colour the theme does not give |
-| I10 | Care | nothing text-like, no flag, map, political or military symbol, no real person, no holy figure |
+| I10 | Care | nothing text-like, no flag, map, political or military symbol, no portrait, face or identifiable person, no holy figure |
 
 ### Motion
 | # | Line | PASS when |
@@ -115,16 +119,16 @@ Render with `sheet --file <pack file> --only small` in light AND dark; judge the
 ### Technical
 | # | Line | PASS when |
 | --- | --- | --- |
-| I17 | Budget and lint (CORE) | the lint's last line is `PASS: <n> items clean.` with no waiver; `svg()` of 600 to about 1,700 bytes (median 650 to 780; above about 1.7 KB is an outlier), hard cap 14,000 rendered |
+| I17 | Budget and lint (CORE) | the lint's last line is `PASS: <n> items clean.` with no waiver; `svg()` of 600 to about 1,700 bytes (median 650 to 780; above about 1.7 KB is an outlier); rendered with its wrapper (what the lint measures) median 1.0 KB, 0.8 to 1.4 KB, hard cap 14,000 |
 | I18 | Different from its siblings | no two items of a slot draw the same thing; not a recolour of another icon; its own composition |
-| I19 | Looked at | light and dark PNGs and the contact sheet were opened, at xs and large, and the verdict against the exemplar is written |
+| I19 | Looked at | light and dark PNGs and the contact sheet were opened, at xs and large, with one concrete observation and one defect per render written down, and the craft verdict against the exemplar is written |
 | I20 | Hygiene | unique ids within the pack, the builder's id rules (`B.element('JP', {id: 'sushi'})` gives `jp-sushi`), `reduced` default `'static'` kept, no thresholds, tests or tools edited |
 
 ## 6. Part B: the 8 instant rejects for small items
 
 1. Illegible at 28 px: a blob, noise, hairlines, or it reads as the wrong thing (the "four bottles" canal houses).
 2. A hex colour, an inline paint attribute, a gradient, or a `<style>` in the item.
-3. Text-like marks, a flag, a map, a political or military symbol, a real person, a holy figure.
+3. Text-like marks, a flag, a map, a political or military symbol, a portrait, face or identifiable person, a holy figure.
 4. No motion, or all motion in lockstep (three or more things with the same `--d`).
 5. A `transform` attribute on an `x-` element, a duplicate id, `NaN` or `undefined`, invalid markup.
 6. A clone or recolour of another icon, or two items of one slot that draw the same thing.

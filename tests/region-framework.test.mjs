@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { animRegistryFiles, regionSourceFiles, packSourceFiles, ANIM_BASE_FILES, REGION_FILE_RE } from '../tools/lib/anim-sources.mjs';
 import { concatDir } from '../build.mjs';
+import { RESERVED_UNIT_WORDS } from '../tools/lib/anim-region.mjs';
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
@@ -602,6 +603,7 @@ test('every region (ANIM_REGIONS): sound tables, packs named <id>-<group>, no ro
   const owner = new Map();
   for (const r of R.ANIM_REGIONS) {
     assert.deepEqual(r.check({ worldCities: WORLD_CITIES }), [], r.id + ': check() is empty');
+    assert.deepEqual(r.sceneDuplicates(), [], r.id + ': no scene key is registered twice (the last registration would silently hide the other)');
     assert.ok(r.groups.length > 0, r.id);
     for (const o of R.ANIM_REGIONS) if (o !== r) {
       assert.ok(!r.owns(o.id) && !o.owns(r.id), `${r.id} and ${o.id}: pack names must not collide`);
@@ -683,4 +685,42 @@ test('check() also rejects a scene stored under a malformed key (set directly on
   const L = load(false), r = L.animRegionDefine({ id: 'keys', unitKm: 100, units: { AA: ['A', 'g'] }, places: [['a', 'A', 'AA', 1, 1, 'big']] });
   r.scenes['nocolon'] = { label: 'x' }; r.scenes['a:b:c'] = { label: 'x' };
   assert.ok(r.check().some(m => /nocolon: a scene key is/.test(m)) && r.check().some(m => /a:b:c: a scene key is/.test(m)), r.check().join('\n'));
+});
+
+test('a unit may not be called by one of the framework\'s own kinds (city and place name places, big and small the place kinds): the coverage would count a place as a unit', () => {
+  const L = load(false);
+  const ok = { id: 'okay', unitKm: 100, units: { AA: ['A', 'g'] }, places: [['a-town', 'A Town', 'AA', 1, 1, 'big']] };
+  assert.deepEqual(RESERVED_UNIT_WORDS, ['place', 'city', 'big', 'small', 'signature', 'element']);
+  const m = /_AR_RESERVED_WORDS = \[([^\]]*)\]/.exec(src('71-anim-0region.js'));
+  assert.ok(m); assert.deepEqual(RESERVED_UNIT_WORDS, m[1].split(',').map(x => x.trim().replace(/'/g, '')).filter(Boolean), 'the tools repeat the framework\'s list');
+  for (const w of RESERVED_UNIT_WORDS) assert.throws(() => L.animRegionDefine({ ...ok, id: 'w' + w, unitWord: w }), /unitWord.*not one of place, city, big, small, signature, element/, w);
+  for (const w of ['country', 'state', 'province', 'county', 'town', 'municipality', 'unit']) assert.equal(L.animRegionDefine({ ...ok, id: 'w' + w, unitWord: w }).unitWord, w, w);
+});
+
+test('a scene key registered twice is recorded: check() names it with its count (the last registration wins and silently hides the earlier scene)', () => {
+  const L = load(false);
+  const r = L.animRegionDefine({ id: 'dupe', unitKm: 100, units: { AA: ['A', 'g'] }, places: [['a-town', 'A Town', 'AA', 1, 1, 'big']] });
+  const add = (key, label) => L.animRegionSceneAdd('dupe', { key, label, svg: () => '' });
+  add('unit:AA', 'first'); add('place:a-town', 'only once');
+  assert.deepEqual(r.sceneDuplicates(), []); assert.deepEqual(r.check(), []);
+  add('unit:AA', 'second');
+  assert.deepEqual(r.sceneDuplicates(), [['unit:AA', 2]]);
+  assert.match(r.check().join('\n'), /^DUPLICATE SCENE KEY unit:AA \(registered 2 times; the last registration wins/);
+  add('unit:AA', 'third'); r.sceneAdd({ key: 'place:a-town', label: 'again', svg: () => '' });
+  assert.deepEqual(r.sceneDuplicates(), [['unit:AA', 3], ['place:a-town', 2]]);
+  assert.equal(r.scenes['unit:AA'].label, 'third', 'the last one wins, which is why it must be reported');
+  assert.equal(r.check().filter(p => /DUPLICATE SCENE KEY/.test(p)).length, 2);
+});
+
+test('the scaffold\'s placeholder country XX is starter data: check() reports it (a region of states has no country code), and a travel id ending -xx too', () => {
+  const L = load(false);
+  const states = { unitWord: 'state', unitKm: 100, units: { AA: ['A', 'g'] }, places: [['a-town', 'A Town', 'AA', 1, 1, 'big']] };
+  const bad = L.animRegionDefine({ ...states, id: 'plc', country: 'XX' });
+  assert.match(bad.check().join('\n'), /^starter: the country is still the placeholder XX \(1 of the travel ids end in -xx, for example a-town-xx\): set country: '<ISO 3166-1 alpha-2 code>'/);
+  assert.equal(bad.travelId(bad.places[0]), 'a-town-xx');
+  assert.deepEqual(L.animRegionDefine({ ...states, id: 'real', country: 'ZZ' }).check(), [], 'a real code clears it');
+  const viaHook = L.animRegionDefine({ ...states, id: 'hook', country: 'ZZ', travelId: (p) => p[0] + '-xx' });
+  assert.match(viaHook.check().join('\n'), /^starter: .*end in -xx/, 'a travel id ending -xx is flagged whatever made it');
+  assert.deepEqual(L.animRegionDefine({ id: 'cty', unitWord: 'country', unitKm: 100, units: { FR: ['France', 'g'] }, places: [['paris', 'Paris', 'FR', 48.86, 2.35, 'big']] }).check(), [], 'a region of countries: the unit code is the country');
+  assert.match(L.animRegionDefine({ id: 'fn', unitWord: 'zone', unitKm: 100, country: () => 'XX', units: { AA: ['A', 'g'] }, places: [['a', 'A', 'AA', 1, 1, '']] }).check().join('\n'), /placeholder XX/, 'a country hook that returns XX');
 });

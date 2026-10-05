@@ -219,7 +219,7 @@ pack files. It never copies logic.**
 
 | Field | Meaning |
 | --- | --- |
-| `id`, `name`, `over` | `'asia'`, `'Asia'`, the caption prefix over the town in the opening (`'USA'`, `'Asia'`) |
+| `id`, `name`, `over` | `'asia'`, `'Asia'`, and the caption prefix of the SMALL (64-unit) opening items only (`'USA'`, `'Asia'`: `<over> · <label>`). The opening sequence (`78-anim-wire.js`) shows the title "Welcome to <place>" (the place name from the tables) and, under it, a full-screen scene's own **`site`** as the caption (`site || label`): `site` says what is shown ("Manhattan from the Brooklyn Bridge"), never just the place name again, and `over` is not shown for a full scene |
 | `unitWord` | `'state'`, `'country'`...: the item kind value and the scene key prefix (`country:JP`; `unit:JP` also works) |
 | `units` | `{ CODE: [name, group] }`: the groups become the packs (`asia-west` is the group `west`) |
 | `places` | `[[id, name, unit, lat, lon, kind]]`; `kind` is `'big'` (a signature opening), `'small'` (a symbol) or `''` (an anchor: it only tells which unit a position is in). Every unit needs at least one row |
@@ -263,12 +263,12 @@ data: `unitWord: 'state'`, `worldTravel: ['new-york-us']`, `elsewhere: ['TX']`, 
 
 1. `src/app/71-anim-region-<id>.js`: the tables and `animRegionDefine` (keep the result in a const, such as
    `const EU = animRegionDefine({...})`, for the pack files).
-2. Scenes, about ten units per file, in `71-anim-region-<id>-scenes-N.js`. **Wrap the file in an IIFE**: every
+2. Scenes, about seven per file (one per agent), in `71-anim-region-<id>-scenes-N.js`. **Wrap the file in an IIFE**: every
    `src/app` file shares one script scope, so a top-level `const K` in two scene files is a SyntaxError.
    ```js
    (function () {
      const K = animSceneKit();
-     animRegionSceneAdd('eu', { key: 'country:FR' | 'place:paris', id?, label, site, colour, mood, season, tags,
+     animRegionSceneAdd('eu', { key: 'country:FR' | 'place:paris', id?, label /* without the place name */, site /* the caption under "Welcome to <place>": what is shown */, colour, mood, season, tags,
        svg: () => K.full('#a9d4f0') + K.sun(1180, 210, 40, '#fff6d8', '#ffe39a') /* ... */ });
    })();
    ```
@@ -304,54 +304,69 @@ If a new region seems to need new logic, extend the framework and that test inst
 
 ### Making a new region with the tools
 
-Three commands of `node tools/anim-pack.mjs` (see `--help`) take a region from nothing to done; the skill `.claude/skills/animation-pack/`
+Four commands of `node tools/anim-pack.mjs` (see `--help`) take a region from nothing to done; the skill `.claude/skills/animation-pack/`
 (SKILL.md and its `references/`) is the playbook (style, kit, rubric, workflow) around them.
 
 ```
 node tools/anim-pack.mjs new eu "Europe" --unit-word country --groups west,east,north,south     # scaffold
-#   fill the tables of src/app/71-anim-region-eu.js (units, places, unitKm, worldTravel)
+#   fill the tables of src/app/71-anim-region-eu.js (units, places, unitKm, worldTravel, country when the units are not countries)
 node tools/anim-pack.mjs status eu                                                              # what is missing
-node tools/anim-pack.mjs brief eu --kind scene   --out .anim-ref/briefs                         # one brief per agent: scenes
+#   fill the "Cultural care" section of docs/dev/EU_PACK.md BEFORE any brief: it is copied into every brief
+node tools/anim-pack.mjs reference --render                                                     # the gold standard, once (also --mode night, --mode dark):
+node tools/anim-pack.mjs reference --render --mode night                                        #   agents never render it themselves, they would write the same PNGs
+node tools/anim-pack.mjs reference --render --mode dark
+node tools/anim-pack.mjs brief eu --kind scene   --out .anim-ref/briefs                         # one brief per agent (about 7 scenes) + plan.json: scenes
 node tools/anim-pack.mjs brief eu --kind element --out .anim-ref/briefs                         # one brief per group: elements
-#   each agent: lint --file <its file>, sheet --file <its file> (light and night), report
+#   each agent: lint --file <its file>, sheet --file <its file> (light, night, --crop phone and square), report
+node tools/anim-pack.mjs guard --owned <the files of the batch>                                 # PROOF that only those files changed (exit 2 otherwise)
 node tools/anim-pack.mjs status eu --strict                                                     # exit 0 when complete and clean
 ```
 
 - `new <id> "<Name>" [--unit-word country] [--groups a,b,c]` writes the config `71-anim-region-<id>.js` (2 example units and 3 example places in the
-  open sea, a comment on every field, kind, radius, the travel id rule and `worldTravel`), an empty scene file `71-anim-region-<id>-scenes-1.js` (the IIFE
+  open sea, placed away from the rows of every region already defined, a comment on every field, kind, radius, the travel id rule and `worldTravel`), an empty scene file `71-anim-region-<id>-scenes-1.js` (the IIFE
   pattern), one `72-anim-pack-<id>-<group>.js` per group (`B.scenes()` plus commented element calls), the generated data-driven
-  `tests/<id>-pack.test.mjs` and the `docs/dev/<ID>_PACK.md` skeleton, then prints the `MODULES.md` row and the next steps. It refuses to overwrite a
-  file, a reserved or malformed id, an existing region or colliding pack names, and proves the scaffold loads with an empty `region.check()` (else it removes
-  what it wrote). `--root <dir>` scaffolds into another checkout. **It ships no example art, on purpose**: a "minimal" scene or icon is what an agent
+  `tests/<id>-pack.test.mjs` and the `docs/dev/<ID>_PACK.md` skeleton, then prints the `MODULES.md` row and the next steps (in order: tables, `status`, **the "Cultural care" section**, the gold standard rendered once, the briefs, the agents, `guard`, `status --strict`).
+  It refuses to overwrite a file, a reserved or malformed id, an empty `--groups` or `--unit-word` (or an empty group name), an existing region or colliding pack names, and a unit word that is one of the framework's own kinds
+  (`place city big small signature element`: `city` would make the coverage count a place as a unit; use `town` or `municipality`); it proves the scaffold loads with sound tables (else it removes
+  what it wrote). `--root <dir>` scaffolds into another checkout. When the units are not countries (`--unit-word state`) the config carries `country: 'XX'` as a placeholder: `region.check()` and `status --strict` report it as
+  starter data (items would carry the region `XX` and every travel id would end in `-xx`) until the ISO code is set. **It ships no example art, on purpose**: a "minimal" scene or icon is what an agent
   would copy, cannot pass the strict lint and would go live if forgotten. So the pack files register nothing until they have an item, and the generated
   test, the "every region" test of `tests/region-framework.test.mjs` and the "every pack file registered a valid pack" test of
   `tests/anim-packs.test.mjs` are RED until every unit that opens has a full-screen signature and an element, every big place a full-screen opening and
   every small place an element: a half-built region cannot be committed. `status` is the progress bar and warns while the `example-` rows remain.
 - `status [<region>] [--json] [--strict] [--short] [--no-lint]`: per group the units (signature = a full-screen scene, element = a symbol), the big places
-  (scene) and the small places (element), what is MISSING, orphan scenes (registered, in no pack), table problems (`region.check()` with the world
-  pack's cities), bytes and lint PASS / FAIL / waived per pack. Exit 2 under `--strict` when anything is missing, orphaned, wrong, failing or starter
+  (scene) and the small places (element), what is MISSING, orphan scenes (registered, in no pack), **duplicate scene keys** (a key registered twice: the last registration silently wins; `check()` and `status` name the files), table problems (`region.check()` with the world
+  pack's cities), bytes and lint PASS / FAIL / waived per pack. Exit 2 under `--strict` when anything is missing, orphaned, duplicated, wrong, failing or starter
   data. With no region it lists every region (`us` and `asia` are complete).
-- `brief <region> --kind scene|element [--batch N --of M] [--group g] [--out dir] [--note text] [--json]` fills `tools/lib/anim-templates/scene-brief.md`
-  and `element-brief.md` with the region's facts, the exact keys of the batch, the one file the agent owns, the verify commands, the exemplars, the care
-  rules and the whole quality contract (study the exemplars, draw with the kit, `lint --file` passes with no waiver, `sheet` light AND night looked at
-  and compared with the nearest exemplar, the rubric scored, a final report; no padding, no copy-and-recolour, no text, flags, maps, political symbols,
-  people or holy figures, no threshold or waiver edits, no foreign files). Scene batches are consecutive slices of the scene keys in group order
-  (`<unit word>:<CODE>` per unit that opens, `place:<id>` per big place), about 11 per agent (`--of M` overrides; a cut moves to a group boundary within
+- `brief <region> --kind scene|element [--batch N --of M] [--group g] [--out dir [--clean]] [--note text] [--json]` fills `tools/lib/anim-templates/scene-brief.md`
+  and `element-brief.md` with the region's facts, the exact keys of the batch, the one file the agent owns, the verify commands, the exemplars (with their PNG paths and an item-locating `read:` hint), the care
+  rules (the general ones and the region's own "Cultural care" section, whose absence `brief` reports), the **corpus targets** (generated from `tools/anim-quality.json` and the measured exemplars: the median and
+  10th-percentile size, shapes, path segments, gradients, translucent layers, moving groups ...; the redraw targets richness >= 0.90 and at most 4 thin spots), the **pass mark** (18 of 20 and the core lines), the **safe zones** (a portrait phone shows only
+  the central 420 to 506 units, a square tile 900), the allowed markup (generated from the lint's tag lists) and the whole quality contract (study the exemplars, draw with the kit, `lint --file` passes with no waiver and meets the targets, `sheet` light AND night and the phone and square crops looked at
+  with one observation and one defect per render, a self-check on the rubric, a final report with `git status --short`; no padding, no copy-and-recolour, no text, flags, maps, political symbols, identifiable people or holy figures, no threshold or waiver edits, no foreign files). A scene that still fails after 3 redraws is removed from the
+  file and reported as NOT DONE with the failing rule and the path of its saved draft (`.anim-ref/drafts/`): only the orchestrator decides about waivers. Every key carries a **suggested** time of day, season, scene type and palette (elements: motif kind and colour) from a fixed rotation over the whole region, so that parallel
+  batches differ without knowing each other; an agent may change one with a reason. Scene batches are consecutive slices of the scene keys in group order
+  (`<unit word>:<CODE>` per unit that opens, `place:<id>` per big place), about 7 per agent (`--of M` overrides; a cut moves to a group boundary within
   1 key), in `src/app/71-anim-region-<id>-scenes-N.js` (`...-scenes-<group>-N.js` with `--group`); element batches are whole groups (a pack file has one
-  owner), in `src/app/72-anim-pack-<id>-<group>.js`. Without `--batch` it prints the plan; `--out` writes `<kind>-brief-N.md`; `--json` is the plan for a
-  script. Keys that already have art are marked `done`. The region's own care notes come from the `## Cultural care` section of its doc.
+  owner), in `src/app/72-anim-pack-<id>-<group>.js`. Without `--batch` it prints the plan; `--out` writes `<kind>-brief[-<group>]-N.md` and a `plan.json` (what to dispatch, the files each batch owns, the commands to run before and after) and refuses to leave briefs of an earlier plan beside them (`--clean` removes them: dispatching a stale one gives two agents the same keys); `--json` is the plan for a
+  script. Keys that already have art are marked `done (leave alone)`: redrawing a finished piece is the orchestrator's decision.
+- `guard --owned <file>[,<file>...] [--base <ref>] [--json]`: the orchestrator's proof that a batch touched only its own files. It asks git what changed (modified, added, deleted, renamed, untracked; git-ignored files such as `.anim-ref/` are not changes) and exits 2 when any changed file is outside the owned set or is
+  `tools/anim-quality.json` (thresholds and waivers), `tools/anim-reference.json` or a test (never an agent's to edit, even if listed as owned). Agents of one checkout share one working tree: pass the union of their files, or give each agent its own git worktree to prove one alone.
+- `lint --file <path>` is loud about the file: it exits 1 without linting when the file registers nothing, registers a scene key that does not exist (a unit that is not in the tables, a place that is not big), a scene no pack item uses, or a key another file registers too; `--quiet` hides the thin spots and
+  redraw-target lines it otherwise prints for every selected item; `sheet --crop phone|square` renders what a portrait phone or a square tile shows of a scene.
+- A load error (a top-level `const` declared in two files because a scene file has no IIFE, a runtime throw, a syntax error) names the FILE and the line, for every command.
 
 The template placeholders (`{{name}}`; a placeholder with no value is an error, never "undefined"):
 
 | Template | Placeholders |
 | --- | --- |
-| `scene-brief.md` | `region_id region_name over unit_word groups_summary batch batches count todo_count batch_groups file region_file keys done_note existing exemplars weaker care notes verify scene_cap` |
-| `element-brief.md` | `region_id region_name unit_word groups_summary batch batches count todo_count batch_groups files region_file keys done_note existing exemplars weaker care notes verify item_cap` |
+| `scene-brief.md` | `region_id region_name unit_word groups_summary batch batches count todo_count batch_groups file region_file keys done_note existing exemplars weaker care notes verify scene_cap todo_s guard skill refs targets pass_mark safe_zones markup_rules min_richness max_thin max_redraws` |
+| `element-brief.md` | `region_id region_name unit_word groups_summary batch batches count todo_count batch_groups files region_file keys done_note existing exemplars weaker care notes verify item_cap todo_s guard skill refs targets pass_mark markup_rules min_richness max_thin max_redraws` |
 | scaffold (`region-*.tpl`, `modules-row.md.tpl`) | `id ID name name_js unit_word unit_word_plural groups_list units_table places_table world_cities field_unit country_line n group todo_lines pack_name_js pack_desc_js pack_rows over pack_count pack_s pack_list` |
 
 `lint --file <path>` and `sheet --file <path>` work for a file that is not in `src/app` yet and for one that already is (they load the registry
 without the file and take everything it then adds). A pack file also carries the scenes other agents draw into it (`B.scenes()`): `--only small` keeps
-its elements, `--only scenes` its scenes.
+its elements, `--only scenes` its scenes. Lint measures every drawing with its ids renamed to a fixed length (`stableIds`), so a scene's size does not depend on how many scenes were rendered before it.
 
 ## The skill and the tools
 
@@ -369,8 +384,10 @@ ignores the per-machine `.claude/*` but not `.claude/skills/`; Claude Code loads
 | Floor | `tools/anim-quality.json` (`lint`, `calibrate`), `tools/lib/anim-quality.mjs` | thresholds calibrated at the minimum of the accepted corpus; never lowered, never waived for new work |
 | Briefs | `tools/lib/anim-templates/scene-brief.md`, `element-brief.md` | what `brief` fills in for each drawing agent; they send the agent to the skill |
 
-The rule behind all of it: the lint is a floor, the bar is the corpus median. A piece passes only with `PASS: <n> items clean.` (no waiver), looked-at light and night renders beside the nearest exemplar, a written rubric score of at least 18 of 20 with no instant reject,
-and, for a batch, a blind review by a fresh reviewer. When the lint fails but the art looks right, report it; never edit a threshold, add a waiver or pad the drawing.
+Care rules that bind every region (the briefs carry them, `tools/lib/anim-region.mjs` `CARE_RULES`): no text, no flags, maps or borders, no political or military symbols, no holy figures; **people: no portraits, faces, crowds or identifiable persons, and no person as the subject, but a tiny anonymous silhouette without features (a few pixels, a handful per scene) is allowed as a scale cue** (the accepted corpus has them; this settles the older "no real people" wording of `ASIA_PACK.md`). The care rules override what older scenes show (a few of the first US scenes carry flags).
+
+The rule behind all of it: the lint is a floor, the bar is the corpus median (richness >= 0.90, at most 4 thin spots). A piece passes only with `PASS: <n> items clean.` (no waiver), looked-at light and night renders (and the phone and square crops) beside the nearest exemplar, a written rubric self-check of at least 18 of 20 with every core line and no instant reject,
+and, for a batch, a blind review by a fresh reviewer and `guard` proving that only the agent's own files changed. A piece that still fails after 3 redraws is removed and reported as NOT DONE with its draft; never edit a threshold, add a waiver or pad the drawing: only the orchestrator decides about waivers.
 
 ## My animations: made by the user (wave 6)
 

@@ -9,22 +9,29 @@
 //   regionCoverage(reg, region, lint?)       what exists and what is missing, per group and per pack (lint = lintRegistry() result or null)
 //   planBatches(list, {size, of, groupOf})   consecutive, balanced batches that never split a group more than they must
 //   readTemplate(name) / renderTemplate(text, vars, name) / templatePlaceholders(text)
-//   CARE_RULES / careFor(root, region)       the cultural and representation care rules every brief carries
+//   CARE_RULES / careFor / careInfo           the cultural and representation care rules every brief carries (and the region's own notes)
+//   varietyOf(region)                         the time of day, season, scene type, palette family (and element motif kind, colour) assigned to every key
+//   sceneChanges / fileProblems / sceneFilesOf   what a scene file registers, and what is wrong with it (a key that does not exist, a duplicate key, dead art)
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const TEMPLATES_DIR = join(HERE, 'anim-templates');
-/** About this many full-screen scenes per agent: enough to keep one context busy, few enough to finish each one properly. */
-export const SCENES_PER_AGENT = 11;
+/** About this many full-screen scenes per agent: a scene at the median bar is about 23 KB of drawing code plus four renders to look at, so more than this tempts an agent to rush the last ones. */
+export const SCENES_PER_AGENT = 7;
 /** The pack families that are not regions: a region id may not be one of them (the framework's own list is private, so it is repeated here and tested). */
 export const RESERVED_IDS = ['uk', 'texas', 'world', 'core', 'seasons', 'sky', 'moments', 'rewards', 'mine'];
+/** The words a unit may not be called: the framework's own kinds (repeated here and tested against the framework's list). */
+export const RESERVED_UNIT_WORDS = ['place', 'city', 'big', 'small', 'signature', 'element'];
 
 export const titleCase = (s) => String(s).split('-').map(w => w ? w[0].toUpperCase() + w.slice(1) : w).join(' ');
 export const kb = (n) => (n / 1024).toFixed(1) + ' KB';
 /** "country" -> "countries", "state" -> "states". */
 export const plural = (w) => (/[^aeiou]y$/.test(w) ? w.slice(0, -1) + 'ies' : /(s|x|ch|sh)$/.test(w) ? w + 'es' : w + 's');
+
+/** The rubric pass mark (references/rubric.md, section 2): the briefs state it, the tests pin it to the rubric. */
+export const RUBRIC_PASS = Object.freeze({ score: 18, of: 20, core: Object.freeze({ scene: ['R1', 'R2', 'R9', 'R11', 'R16', 'R19', 'R20'], item: ['I1', 'I2', 'I6', 'I11', 'I15', 'I17'] }) });
 
 /* ---------------------------------------------------------------------------------------------
    Finding a region
@@ -89,7 +96,8 @@ export function regionNeeds(region) {
 /**
  * Coverage of a region, from the items its packs registered (not from the scene registry: a scene nobody built into a pack is not in the app).
  * `lint` is lintRegistry()'s result for the region's items, or null (not linted).
- * Returns {region, unitWord, groups: [{group, units, big, small, packId, counts}], packs, totals, missing, orphans, problems, starter, lint, complete}.
+ * Returns {region, unitWord, groups: [{group, units, big, small, packId, counts}], packs, totals, missing, orphans, problems, duplicates, starter, lint, complete}.
+ *   starter    the scaffold's example rows ("example-...") and the placeholder country XX (a region whose units are not countries); duplicates [{key, count, files}]: a scene key registered twice
  *   unit row   {code, name, signature: {state, ref, bytes}, element: {state, ref, bytes}}   state: 'ok' | 'small' (an opening that is not full screen) | 'missing'
  *   place row  {id, name, unit, unitName, kind, item: {state, ref, bytes}}
  *   missing    [{need: 'scene' | 'element', key, name, group, state, why}]
@@ -153,8 +161,11 @@ export function regionCoverage(reg, region, lint = null) {
     }
     return row;
   });
-  const problems = region.check({ worldCities: worldCities(reg) });
-  const starter = region.places.filter(p => Array.isArray(p) && /^example-/.test(p[0])).map(p => p[0]);
+  const all = region.check({ worldCities: worldCities(reg) });
+  const problems = all.filter(p => !/^starter:|^DUPLICATE SCENE KEY /.test(p));
+  const duplicates = (region.sceneDuplicates ? region.sceneDuplicates() : []).map(([key, count]) => ({ key, count, files: sceneFilesOf(reg, key) }));
+  // starter data: the scaffold's example rows, and the placeholder country (check() says so: "starter: ...")
+  const starter = [...region.places.filter(p => Array.isArray(p) && /^example-/.test(p[0])).map(p => p[0]), ...all.filter(p => /^starter:/.test(p)).map(p => p.replace(/^starter: /, ''))];
   const lintFail = packs.reduce((n, p) => n + (p.lint ? p.lint.fail + p.lint.cssFailures.length : 0), 0);
   const totals = {
     units: needs.unitsOpen.length, big: needs.big.length, small: needs.small.length, scenesNeeded: needs.keys.length,
@@ -163,9 +174,9 @@ export function regionCoverage(reg, region, lint = null) {
     lintFailing: lintFail,
   };
   return {
-    region: region.id, name: region.name, unitWord: word, groups, packs, totals, missing, orphans, problems, starter, elsewhere: needs.elsewhere,
+    region: region.id, name: region.name, unitWord: word, groups, packs, totals, missing, orphans, problems, duplicates, starter, elsewhere: needs.elsewhere,
     lint: lint ? { ran: true, failing: lintFail, stale: lint.staleWaivers || [] } : { ran: false, failing: 0, stale: [] },
-    complete: !missing.length && !orphans.length && !problems.length && !starter.length && !lintFail,
+    complete: !missing.length && !orphans.length && !problems.length && !duplicates.length && !starter.length && !lintFail,
   };
 }
 
@@ -219,36 +230,137 @@ export function renderTemplate(text, vars, name = 'template') {
 /* ---------------------------------------------------------------------------------------------
    Cultural and representation care
    --------------------------------------------------------------------------------------------- */
-/** The rules every brief carries, for every region (the Asia pack's care rule, made general). */
+/** The rules every brief carries, for every region (the Asia pack's care rule, made general). They override anything an older scene shows. */
 export const CARE_RULES = [
-  'No text of any kind: no lettering, signs, numerals, pseudo-script or marks that read as letters. The markup sanitiser rejects <text>; review rejects letter-like shapes.',
-  'No flags, no maps, no borders, no national or political emblems. A place is shown as landscape and architecture, never as a political entity.',
+  'No text of any kind: no lettering, signs, numerals, pseudo-script or marks that read as letters. The lint rejects <text> (its `structure` rule); review rejects letter-like shapes.',
+  'No flags, no maps, no borders, no national or political emblems. A place is shown as landscape and architecture, never as a political entity. A few older scenes of the United States and Asia still carry flags: these care rules override anything you see in older scenes, never imitate it.',
   'No political or military symbols: no coats of arms, party or state insignia, uniforms, weapons, war vehicles, parades or monuments to a conflict.',
-  'No people: no portraits, faces, crowds or figures of real or identifiable persons. Life in a scene comes from animals, boats, birds, ordinary vehicles, lights and weather.',
+  'People: no portraits, faces, crowds or figures of real or identifiable persons, and no person as the subject. The one allowed form is a tiny anonymous silhouette without features, a few pixels tall, used as a scale cue (a figure on a pier, a walker on a dune): a handful per scene at most, never a group that reads as a crowd. Life in a scene comes from animals, boats, birds, ordinary vehicles, lights and weather.',
   'No holy figures, deities or prophets, and no religious statues or icons. Sacred architecture (a temple, a mosque, a church, a shrine) may be drawn respectfully as architecture, never as the butt of a joke or as a prop.',
   'Disputed, contested or sensitive places stay neutral: draw the landscape or the skyline, never a claim. When in doubt, choose the landscape.',
   'No stereotypes or caricature: draw what the people who live there are proud of (a landmark, a landscape, a craft, a food, a plant, an animal), at their best. No tourist-brochure cliche stacked with every symbol of the place at once.',
   'No real brands, logos or trademarked characters, and no copyrighted artwork.',
-  'Be factual: the right season, the right climate, the right architecture and plants for the place and the time of day. When you are not sure what something looks like, draw something you are sure of.',
+  'Be factual: the right season, climate, architecture and plants for the place and the time of day. When you are not sure what something looks like, draw something you are sure of.',
 ];
 
 /**
- * The care text of a brief: CARE_RULES, plus the region's own notes when docs/dev/<ID>_PACK.md has a heading that starts with
- * "Cultural care" (the scaffold writes one): the lines under it, up to the next heading.
+ * The region's own care notes: the "Cultural care" section of docs/dev/<ID>_PACK.md (a heading of any level whose text starts with "Cultural care").
+ * The section runs to the next heading of the SAME OR A HIGHER level (a "###" inside a "##" section belongs to it); "#" lines inside a code fence are not headings;
+ * the scaffold's placeholder HTML comment counts as empty. Returns {state, own, doc}: state 'ok' (notes found), 'skeleton' (the section is there but empty or
+ * still the placeholder), 'no-section' (the doc has no such heading) or 'no-doc' (there is no doc).
  */
+export function careInfo(root, region) {
+  const rel = `docs/dev/${region.id.toUpperCase()}_PACK.md`, doc = join(root, 'docs', 'dev', `${region.id.toUpperCase()}_PACK.md`);
+  if (!existsSync(doc)) return { state: 'no-doc', own: '', doc: rel };
+  const lines = readFileSync(doc, 'utf8').split(/\r?\n/);
+  let fence = '', at = -1, level = 0;
+  const heading = (l) => { const m = /^(#{1,6})\s+(.*\S)\s*$/.exec(l); return m ? { level: m[1].length, text: m[2] } : null; };
+  const fenceOf = (l) => { const m = /^\s{0,3}(`{3,}|~{3,})/.exec(l); return m ? m[1][0] : ''; };
+  for (let i = 0; i < lines.length; i++) {
+    const f = fenceOf(lines[i]);
+    if (f) { fence = fence === f ? '' : fence || f; continue; }
+    if (fence) continue;
+    const h = heading(lines[i]);
+    if (h && /^cultural care\b/i.test(h.text)) { at = i; level = h.level; break; }
+  }
+  if (at < 0) return { state: 'no-section', own: '', doc: rel };
+  const body = []; fence = '';
+  for (let i = at + 1; i < lines.length; i++) {
+    const f = fenceOf(lines[i]);
+    if (f) fence = fence === f ? '' : fence || f;
+    else if (!fence) { const h = heading(lines[i]); if (h && h.level <= level) break; }
+    body.push(lines[i]);
+  }
+  const own = body.join('\n').replace(/<!--[\s\S]*?-->/g, '').trim();   // the scaffold's placeholder is an HTML comment
+  return { state: own ? 'ok' : 'skeleton', own, doc: rel };
+}
+
+/** The care text of a brief: CARE_RULES, plus the region's own notes (careInfo). */
 export function careFor(root, region) {
-  let own = '';
-  const doc = join(root, 'docs', 'dev', `${region.id.toUpperCase()}_PACK.md`);
-  if (existsSync(doc)) {
-    const lines = readFileSync(doc, 'utf8').split(/\r?\n/);
-    const at = lines.findIndex(l => /^#{2,4}\s+cultural care/i.test(l));
-    if (at >= 0) {
-      const body = [];
-      for (let i = at + 1; i < lines.length && !/^#{1,4}\s/.test(lines[i]); i++) body.push(lines[i]);
-      own = body.join('\n').replace(/<!--[\s\S]*?-->/g, '').trim();   // the scaffold's placeholder is an HTML comment
+  const { own, doc } = careInfo(root, region);
+  const generic = CARE_RULES.map(r => `- ${r}`).join('\n');
+  return own ? `${generic}\n\nSpecific to ${region.name} (from ${doc}):\n\n${own}` : generic;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Variety: what each key is suggested to be, so that parallel agents do not all draw the same picture
+   --------------------------------------------------------------------------------------------- */
+const TIMES = ['sunrise', 'morning', 'midday', 'late afternoon', 'golden hour', 'dusk', 'night'];
+const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+const UNIT_TYPES = ['mountains', 'coast', 'desert or dry plain', 'forest', 'farmland', 'lake or river', 'monument or landmark', 'island or archipelago', 'canyon, cliffs or hills'];
+const PLACE_TYPES = ['skyline', 'harbour or waterfront', 'bridge', 'monument or landmark', 'old town or temple town', 'lights at night', 'skyline across water'];
+const PALETTES = ['warm amber and rose', 'cool blue and violet', 'teal and green', 'red and orange', 'slate and silver', 'indigo and gold', 'pink and violet'];
+const MOTIFS = ['animal', 'plant', 'food', 'craft', 'instrument', 'building detail', 'natural feature'];
+const SWATCHES = ['blue', 'indigo', 'violet', 'pink', 'red', 'orange', 'amber', 'green', 'teal', 'slate'];
+/**
+ * A suggestion for every scene key (time, season, type, palette) and element (motif kind, colour) of a region, from a fixed rotation over the whole region's key
+ * list: the keys of different batches get different suggestions without the agents knowing about each other (a list of subjects already drawn is a snapshot and cannot
+ * do that). The agent may deviate when the place demands it (a desert has no forest, the tropics have no winter) with one line of reason in its report.
+ * Returns {scene: Map key -> {time, season, type, palette}, element: Map key -> {motif, colour}}; `needs` is regionNeeds(region).
+ */
+export function varietyOf(needs) {
+  const scene = new Map(), element = new Map();
+  needs.keys.forEach((k, i) => {
+    const cyc = Math.floor(i / 7);
+    scene.set(k.key, { time: TIMES[i % 7], season: SEASONS[(i + cyc) % 4], type: (k.kind === 'unit' ? UNIT_TYPES : PLACE_TYPES)[(i + cyc) % (k.kind === 'unit' ? 9 : 7)], palette: PALETTES[(i + 2 * cyc + 1) % 7] });
+  });
+  let j = 0;
+  for (const g of needs.groups) for (const u of g.units) { element.set(u.key, { motif: MOTIFS[j % 7], colour: SWATCHES[(j * 3 + Math.floor(j / 7)) % 10] }); j++; }
+  for (const g of needs.groups) for (const b of g.small) { element.set(b.key, { motif: MOTIFS[j % 7], colour: SWATCHES[(j * 3 + Math.floor(j / 7)) % 10] }); j++; }
+  return { scene, element };
+}
+
+/* ---------------------------------------------------------------------------------------------
+   What a scene file registers, and what is wrong with it
+   --------------------------------------------------------------------------------------------- */
+/** The scene keys with no pack item that carries them (dead art): [{region, key, why}]. */
+export function regionOrphans(reg, region) {
+  const F = region.fields, word = region.unitWord, sigs = new Set(), cities = new Set();
+  for (const e of reg.items()) {
+    if (!region.owns(e.pack) || !e.full) continue;
+    const it = e.item;
+    if (it[F.kind] === word && it[F.signature]) sigs.add(it[F.unit]); else if (it[F.kind] === 'city') cities.add(it[F.place]);
+  }
+  return Object.keys(region.scenes).filter(key => { const [kind, ref] = key.split(':'); return kind === 'place' ? !cities.has(ref) : !sigs.has(ref); })
+    .map(key => ({ region: region.id, key, why: 'a scene is registered but no pack item uses it (is the pack file of its group calling B.scenes()? is the key a unit that opens, or a big place?)' }));
+}
+/** The scenes a loaded registry has that `baseline` (the registry without some files) lacks or has drawn differently: [{region, key, entry, state: 'new' | 'changed'}]. */
+export function sceneChanges(reg, baseline) {
+  const out = [];
+  for (const region of regions(reg)) {
+    const was = baseline ? regions(baseline).find(r => r.id === region.id) : null;
+    for (const [key, e] of Object.entries(region.scenes)) {
+      const old = was && was.scenes[key];
+      if (!old) out.push({ region: region.id, key, entry: e, state: 'new' });
+      else if (String(old.svg) !== String(e.svg) || old.label !== e.label) out.push({ region: region.id, key, entry: e, state: 'changed' });
     }
   }
-  const generic = CARE_RULES.map(r => `- ${r}`).join('\n');
-  const mine = own ? `\n\nSpecific to ${region.name} (from docs/dev/${region.id.toUpperCase()}_PACK.md):\n\n${own}` : '';
-  return generic + mine;
+  return out;
+}
+/** The source files that mention a scene key as a literal (key: 'country:KE'), for naming who owns a duplicate. */
+export function sceneFilesOf(reg, key) {
+  const re = new RegExp(`['"]${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`);
+  return (reg.sources || []).filter(f => /^71-/.test(f.name) && re.test(f.text)).map(f => f.name);
+}
+/**
+ * What is wrong with the scene files a command was given ([] = sound): a key that is not a key of the region (a unit that does not exist, a place that is not big),
+ * a scene no pack item uses (dead art) and a key registered twice (the last registration wins and silently hides the other). `baseline` is the registry without the files.
+ */
+export function fileProblems(reg, baseline, files = []) {
+  const out = [], changed = sceneChanges(reg, baseline), names = new Set(files.map(f => String(f).replace(/^.*[\\/]/, '')));
+  const orphans = new Map();
+  for (const region of regions(reg)) {
+    for (const o of regionOrphans(reg, region)) orphans.set(`${region.id}|${o.key}`, o);
+    const problems = region.check({ worldCities: worldCities(reg) });
+    for (const c of changed.filter(x => x.region === region.id)) {
+      for (const p of problems) if (p.startsWith(c.key + ':')) out.push(`${c.key} (region ${region.id}): ${p.slice(c.key.length + 2)}. A scene key is a key of the region: "${region.unitWord}:<CODE>" of a unit that opens, or "place:<id>" of a big place (node tools/anim-pack.mjs status ${region.id} lists them)`);
+      const o = orphans.get(`${region.id}|${c.key}`);
+      if (o && !problems.some(p => p.startsWith(c.key + ':'))) out.push(`${c.key} (region ${region.id}): ${o.why}`);
+    }
+    for (const [key, n] of region.sceneDuplicates ? region.sceneDuplicates() : []) {
+      const owners = sceneFilesOf(reg, key);
+      if (changed.some(c => c.region === region.id && c.key === key) || owners.some(f => names.has(f))) out.push(`DUPLICATE SCENE KEY ${key} (region ${region.id}) is registered ${n} times${owners.length ? ', in ' + owners.join(', ') : ''}: the last registration wins and hides the others. Draw only the keys of your batch, each once`);
+    }
+  }
+  return out;
 }

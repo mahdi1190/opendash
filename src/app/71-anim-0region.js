@@ -75,8 +75,14 @@ const ANIM_REGIONS = [];
 /** Scenes per region id: { regionId: { key: entry } }. They live here, not in the region, so a scene file may register
  * before its region's config has loaded ('...-scenes-N.js' sorts before '....js' in a file name). */
 const _ANIM_REGION_SCENES = Object.create(null);
+/** How often each scene key was registered, per region id, for the keys registered more than once: { regionId: { key: count } }. The last registration wins, so a duplicate silently hides the earlier scene: region.check() reports it. */
+const _ANIM_REGION_DUPES = Object.create(null);
 /** Ids the other pack families own: no region may take them (a region owns the packs named '<id>-*'). */
 const _AR_RESERVED = ['uk', 'texas', 'world', 'core', 'seasons', 'sky', 'moments', 'rewards', 'mine'];
+/** Words a unit may not be called: they are the framework's own kinds ('place' and 'city' name places in scene keys and item kinds, 'big' and 'small' the place kinds, 'signature' and 'element' what a unit draws). */
+const _AR_RESERVED_WORDS = ['place', 'city', 'big', 'small', 'signature', 'element'];
+/** The placeholder country of the scaffold (tools/anim-pack.mjs new): "XX" is the ISO user-assigned code, never a real country. */
+const _AR_PLACEHOLDER_COUNTRY = 'XX';
 const _arKm = (la1, lo1, la2, lo2) => {
   const r = Math.PI / 180, dl = (la2 - la1) * r, dg = (lo2 - lo1) * r;
   const a = Math.sin(dl / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin(dg / 2) ** 2;
@@ -88,7 +94,9 @@ const _arSceneKey = /^[a-z]+:[^:\s]+$/;
 function _arScenesOf(id) { return _ANIM_REGION_SCENES[id] || (_ANIM_REGION_SCENES[id] = {}); }
 function _arSceneStore(regionId, e) {
   if (!e || typeof e !== 'object' || typeof e.key !== 'string' || !_arSceneKey.test(e.key)) throw new Error('region ' + regionId + ' scene: key "<unit word>:<CODE>" or "place:<id>"');
-  _arScenesOf(regionId)[e.key] = e;
+  const scenes = _arScenesOf(regionId);
+  if (_arHas(scenes, e.key)) { const d = _ANIM_REGION_DUPES[regionId] || (_ANIM_REGION_DUPES[regionId] = {}); d[e.key] = (d[e.key] || 1) + 1; }
+  scenes[e.key] = e;
 }
 
 /** The region with this id, or null. */
@@ -130,7 +138,7 @@ function animRegionDefine(cfg) {
   if (_AR_RESERVED.includes(id)) bad('id ' + id + ' belongs to another pack family');
   if (ANIM_REGIONS.some(r => r.id === id)) bad('already defined');
   const unitWord = cfg.unitWord || 'unit';
-  if (!/^[a-z]+$/.test(unitWord) || unitWord === 'place') bad('unitWord: one lower-case word ("state", "country"), not "place"');
+  if (!/^[a-z]+$/.test(unitWord) || _AR_RESERVED_WORDS.includes(unitWord)) bad('unitWord: one lower-case word ("state", "country"), not one of ' + _AR_RESERVED_WORDS.join(', ') + ' (the framework\'s own kinds)');
   const units = cfg.units, places = cfg.places;
   if (!units || typeof units !== 'object' || Array.isArray(units)) bad('units: { CODE: [name, group] }');
   if (!Array.isArray(places)) bad('places: [[id, name, unit, lat, lon, kind], ...]');
@@ -290,6 +298,9 @@ function animRegionDefine(cfg) {
     };
   }
 
+  /** The scene keys registered more than once: [[key, count], ...]. */
+  function sceneDuplicates() { return Object.entries(_ANIM_REGION_DUPES[id] || {}); }
+
   /**
    * Table and scene mistakes, as a list of sentences ([] = sound). The tests call it for every region.
    * check({ worldCities: [...] }) also lists every travel city the world pack draws that a row of this region maps to
@@ -320,6 +331,12 @@ function animRegionDefine(cfg) {
     for (const u of elsewhere) if (!unitRow(u)) out.push('elsewhere ' + u + ' is not in units');
     for (const t of worldTravel) if (!travel.has(t)) out.push('worldTravel ' + t + ': no place has that travel id');
     for (const c of (opts && Array.isArray(opts.worldCities) ? opts.worldCities : [])) if (travel.has(c) && !worldSet.has(c)) out.push('worldTravel: the world pack draws ' + c + ' and ' + travel.get(c)[0] + ' maps to it, but it is not listed (a traveller there would get this region\'s art, not the world pack\'s)');
+    const dupes = sceneDuplicates();
+    for (const [key, n] of dupes) out.push('DUPLICATE SCENE KEY ' + key + ' (registered ' + n + ' times; the last registration wins and hides the others: two scene files draw the same key, keep one)');
+    // starter data: the scaffold's placeholder country 'XX' (a region whose units are not countries) makes every item's region ['XX'] and every travel id end in -xx, so travel matching can never work
+    const xxIds = [...travel.keys()].filter(t => /-xx$/.test(t));
+    const countryOr = (u) => { try { return countryOf(u); } catch (e) { return ''; } };
+    if (Object.keys(units).some(u => countryOr(u) === _AR_PLACEHOLDER_COUNTRY) || xxIds.length) out.push('starter: the country is still the placeholder XX' + (xxIds.length ? ' (' + xxIds.length + ' of the travel ids end in -xx, for example ' + xxIds[0] + ')' : '') + ': set country: \'<ISO 3166-1 alpha-2 code>\' in the config (items carry it as their region, and a travel id is <place id>-<country code>)');
     for (const key of Object.keys(scenes)) {
       if (!_arSceneKey.test(key)) { out.push(key + ': a scene key is "' + unitWord + ':<CODE>" or "place:<id>"'); continue; }
       const [kind, ref] = key.split(':');
@@ -330,7 +347,7 @@ function animRegionDefine(cfg) {
     return out;
   }
 
-  const region = { id, name: cfg.name || id, over: cfg.over || cfg.name || id, unitWord, units, places, groups, keys: K, fields: F, tags: T, priority: P, scenes, place, unitOf, where, locate, builder, sceneAdd, check, travelRow, travelId: travelIdOf, worldTravel, elsewhere, owns: (packId) => animRegionOwns(id, packId) };
+  const region = { id, name: cfg.name || id, over: cfg.over || cfg.name || id, unitWord, units, places, groups, keys: K, fields: F, tags: T, priority: P, scenes, place, unitOf, where, locate, builder, sceneAdd, sceneDuplicates, check, travelRow, travelId: travelIdOf, worldTravel, elsewhere, owns: (packId) => animRegionOwns(id, packId) };
   ANIM_REGIONS.push(region);
   return region;
 }

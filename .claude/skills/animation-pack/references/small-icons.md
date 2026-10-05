@@ -87,10 +87,10 @@ Stagger rules (measured over the 245 symbols: every one moves; median 5 animated
 3. TONES: add `c` (hero), `s` (secondary plate), `w` (highlight), `m` (far or ground). At most three big colour areas; a depth cue by an `s` plate behind or an `m` band below. Nothing smaller than 3 units that matters.
 4. STROKES: primary contour `t` (3.4) only where the silhouette needs an edge, interior detail `lk` (2.4), highlights and wave tops `lw` (1.4). Keep a clear weight hierarchy.
 5. ANCHOR: a ground line `<path class="lm" d="M3 60h58"/>` (y 54 to 62) or a wave band; ONE off-centre accent (a sparkle, a bubble, a sun) as counterweight in an empty corner.
-6. MOTION: pick 3 to 5 parts and 2 to 3 motion kinds; give each its own `--d` (steps .3 to .6); wrap every transformed or nested thing; add a wave band or a sparkle.
+6. MOTION: pick 3 to 7 parts (the median accepted icon has 5 moving groups, the exemplars 7 to 14) in at least 2 and usually 3 motion kinds; give each its own `--d` (steps .3 to .6); wrap every transformed or nested thing; add a wave band or a sparkle.
 7. GATES: `lint --file <pack file> --only small` must pass (floors: 7 shapes, 3 paths, bytes 600 to 14,000; read the thin spots: median 12 shapes, 9 paths, 1,018 B rendered, 5 moving groups, 3 kinds); render light AND dark and judge the contact sheet; score `rubric.md` part B.
 
-Bytes: `svg()` p10 288, median 652, p90 1,183; regional symbols p10 555, median 778, p90 1,202, 13 shapes median (p10 9, p90 18). Above about 1.7 KB is an outlier (one core item reaches 3,454 B). The rendered item adds the wrapper; the hard cap is 14,000.
+Bytes: `svg()` p10 288, median 652, p90 1,183; regional symbols p10 555, median 778, p90 1,202, 13 shapes median (p10 9, p90 18). Above about 1.7 KB is an outlier (one core item reaches 3,454 B). The lint measures the RENDERED item, which adds the span and svg wrapper (about 250 bytes): median 1.0 KB, 0.8 to 1.4 KB between the 10th and 90th percentile, exemplars 1.4 to 1.9 KB; the hard cap is 14,000.
 Do not pad to reach a number: the lint measures hidden shapes, tiny specks and copies.
 
 ## 5. Composition and readability at 28 px

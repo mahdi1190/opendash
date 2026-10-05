@@ -33,7 +33,13 @@ export const SMALL = Object.freeze({ w: 64, h: 64 });
 
 const SHAPE_TAGS = new Set(['path', 'circle', 'rect', 'ellipse', 'polygon', 'line', 'polyline']);
 const DEFS_LIKE = new Set(['defs', 'clipPath', 'mask', 'pattern', 'linearGradient', 'radialGradient', 'symbol', 'filter']);
-const ALLOWED_TAGS = new Set([...SHAPE_TAGS, ...DEFS_LIKE, 'svg', 'g', 'stop', 'use', 'span']);
+/** What a drawing may contain. The STRICT profiles (every new pack): shapes, g, defs, clipPath, the two gradients and their stops (plus the svg / span wrapper). The frozen LEGACY profiles (the templated UK scenes, the classic small items)
+ * were calibrated on art that also uses <use>, <pattern>, <mask>, <symbol> and <filter>, so they keep them. text, image, script, style, a and SMIL are rejected everywhere (FORBIDDEN_TAGS). */
+const STRICT_TAGS = new Set([...SHAPE_TAGS, 'defs', 'clipPath', 'linearGradient', 'radialGradient', 'svg', 'g', 'stop', 'span']);
+const LEGACY_TAGS = new Set([...SHAPE_TAGS, ...DEFS_LIKE, 'svg', 'g', 'stop', 'use', 'span']);
+/** The markup a drawing may contain / may never contain, for the briefs (generated from the sets above, so they cannot drift from the lint). */
+export const allowedTagList = () => [...STRICT_TAGS].filter(t => t !== 'svg' && t !== 'span');
+export const forbiddenTagList = () => [...FORBIDDEN_TAGS].map(t => ({ textpath: 'textPath', foreignobject: 'foreignObject', animatemotion: 'animateMotion', animatetransform: 'animateTransform', feimage: 'feImage' }[t] || t));
 const FORBIDDEN_TAGS = new Set(['text', 'tspan', 'textpath', 'image', 'script', 'foreignobject', 'iframe', 'object', 'embed', 'style', 'a', 'animate', 'set', 'animatemotion', 'animatetransform', 'feimage', 'link', 'audio', 'video', 'canvas']);
 const FILL_CLASSES = new Set(['k', 'c', 's', 'w', 'm']);
 const STROKE_CLASSES = new Set(['ln', 'lk', 'lc', 'lm', 'lw', 'lsoft']);
@@ -287,7 +293,7 @@ export function measure(markup, kind, opts = {}) {
   for (const e of els) {
     const tl = e.tag.toLowerCase();
     if (FORBIDDEN_TAGS.has(tl)) problems.push(`<${e.tag}> is not allowed`);
-    else if (!ALLOWED_TAGS.has(e.tag)) problems.push(`unsupported <${e.tag}>`);
+    else if (!(opts.legacy ? LEGACY_TAGS : STRICT_TAGS).has(e.tag)) problems.push(`unsupported <${e.tag}>${opts.legacy ? '' : ' (allowed: path circle rect ellipse polygon line polyline g defs clipPath linearGradient radialGradient stop)'}`);
     for (const k in e.attrs) {
       const v = e.attrs[k];
       if (k === 'id') ids.push(v);
@@ -415,6 +421,7 @@ export function measure(markup, kind, opts = {}) {
     const ic = new Set();
     for (const e of shapes) for (let cy = Math.max(0, Math.floor(e.box.y0 / 8)); cy <= Math.min(7, Math.floor(e.box.y1 / 8)); cy++) for (let cx = Math.max(0, Math.floor(e.box.x0 / 8)); cx <= Math.min(7, Math.floor(e.box.x1 / 8)); cx++) ic.add(cy * 8 + cx);
     m.inkCells = ic.size;
+    Object.defineProperty(m, '_keys', { value: keysOf(shapes), enumerable: false });   // for sharedShares(): not part of the JSON
     attachCss(m, els, opts);
     return m;
   }
@@ -583,8 +590,8 @@ export const RULE_HINTS = {
   bottomCover: ['the ground does not reach the bottom edge: something must fill the foot of the canvas', ''],
   hiddenShapes: ['', 'padded with invisible or off-canvas shapes'],
   coverUps: ['', 'a solid opaque shape covers the whole canvas after the first layer: it hides what is under it'],
-  sharedShare: ['', 'too much of this scene is identical to another scene of the pack: draw its own picture, do not re-dress a template'],
-  sharedShareAll: ['', 'too much of this scene is copied unchanged from other scenes: draw its own picture'],
+  sharedShare: ['', 'too much of this drawing is identical to another drawing of the pack: draw its own picture, do not re-dress a template or copy and recolour an icon'],
+  sharedShareAll: ['', 'too much of this drawing is copied unchanged from other drawings (a scene or an icon recoloured or nudged): draw its own picture'],
   movingGroups: ['too little moves: add parallax clouds, birds, shimmer, smoke, sway', ''],
   motionKinds: ['too few kinds of motion: mix drift, glide, shimmer, puff, sway, flicker ...', ''],
   driftGroups: ['too few drifting groups (clouds, haze, parallax layers)', ''],
@@ -647,9 +654,33 @@ export function check(metrics, profile, thresholds) {
 
 /** measure + check in one call. */
 export function lintMarkup(markup, profile, thresholds, opts = {}) {
-  const metrics = measure(markup, profile.startsWith('scene') ? 'scene' : 'item', opts);
+  const metrics = measure(markup, profile.startsWith('scene') ? 'scene' : 'item', { legacy: isLegacyProfile(profile), ...opts });
   return { metrics, failures: check(metrics, profile, thresholds) };
 }
+
+/** The frozen legacy profiles ('scene-legacy', 'item-classic'): calibrated on older art with a wider vocabulary (see LEGACY_TAGS). */
+export const isLegacyProfile = (profile) => /-(legacy|classic)$/.test(String(profile));
+
+/**
+ * The drawing with its ids renamed to ids of one fixed length ('us' + base 36), in order of appearance, so that its size does not depend on
+ * how many drawings the scene kit rendered before it: the kit's counter makes a gradient id longer after each render (us1 ... usz, us10 ...), and
+ * the byte rules sit within a few bytes of the thinnest accepted scene. 4 characters for the strict profiles and 5 for the legacy ones: the
+ * length the corpus had when the thresholds were calibrated (the strict art ran at 3 to 4, the UK scenes at 4 to 5).
+ */
+export function stableIds(html, legacy = false) {
+  const len = legacy ? 5 : 4, text = String(html);
+  const ids = [...new Set([...text.matchAll(/(?<![\w-])id="([^"]+)"/g)].map(m => m[1]))];
+  if (!ids.length) return text;
+  const to = new Map(ids.map((id, i) => [id, 'us' + (i + 1).toString(36).padStart(len - 2, '0')]));
+  const rename = (id) => to.get(id) || id;
+  return text.replace(/(?<![\w-])id="([^"]+)"/g, (a, id) => `id="${rename(id)}"`).replace(/url\(#([^)]+)\)/g, (a, id) => `url(#${rename(id)})`).replace(/href="#([^"]+)"/g, (a, id) => `href="#${rename(id)}"`);
+}
+
+/**
+ * What a piece is aimed at, over and above the lint floor (the briefs print these; `lint` marks a miss): the richness index (1.0 = the median accepted
+ * piece: 68 % of the accepted scenes reach 0.9) and the number of thin spots (rules beyond the 10th / 90th percentile of the corpus: the accepted scenes have 4 or fewer in 75 % of the cases, the items in 90 %). A piece below its target is redrawn, at most 3 times.
+ */
+export const TARGETS = Object.freeze({ richness: 0.9, maxThinSpots: 4, maxRedraws: 3 });
 
 /** Which thresholds profile an item is judged by: 'scene' / 'item' (the strict ones, every new pack), or the legacy 'scene-legacy' / 'item-classic' for the frozen list of packs calibrated on their own older corpus. */
 export function profileFor(it, thresholds) {
@@ -701,11 +732,11 @@ export const RULE_PLAN = {
   item: {
     bytes: BOTH, shapes: MIN, paths: MIN, pathSegments: MIN, distinctShapes: MIN, distinctForms: MIN, distinctFills: MIN, inkCells: MIN, extentW: MIN, extentH: MIN,
     colours: MAX, gradients: MAX, inlinePaint: MAX, unknownClasses: MAX,
-    movingGroups: MIN, motionKinds: MIN, motionShare: MIN, hiddenShapes: MAX, richness: MIN,
+    movingGroups: MIN, motionKinds: MIN, motionShare: MIN, hiddenShapes: MAX, sharedShare: MAX, sharedShareAll: MAX, richness: MIN,
   },
 };
 RULE_PLAN['scene-legacy'] = RULE_PLAN.scene;
-RULE_PLAN['item-classic'] = RULE_PLAN.item;
+RULE_PLAN['item-classic'] = Object.fromEntries(Object.entries(RULE_PLAN.item).filter(([k]) => !/^sharedShare/.test(k)));   // the classic icons are templated (the birthday, party and dinner scenes share every shape): no shared-shape rule for the frozen list
 /** Components of the composite richness index, per metrics kind. */
 export const RICHNESS_COMPONENTS = {
   scene: ['shapes', 'pathSegments', 'colourClusters', 'gradients', 'translucentLayers', 'movingGroups', 'motionKinds', 'ambientGroups', 'bands', 'detailCells', 'sizeClasses', 'distinctForms', 'bytes'],
