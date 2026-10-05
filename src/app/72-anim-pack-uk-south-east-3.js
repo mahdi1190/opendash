@@ -37,7 +37,7 @@
 function ukSouthEastPart3(T) {
   const { add, U, R, rnd, mv, full, ridge, canopy, linU, radU, cloud,
     streak, rays, haze, finish, birds, shimmer, stars, sun, grass,
-    meadow, oak, lit, reflect, arch, sail, boat } = T;
+    meadow, oak, lit, reflect, arch, sail, boat, placeAtmosphere } = T;
 
   /** Masonry is shaded across each wall, with staggered mortar courses.
       A fresh pattern and a fresh gradient belong to every render. */
@@ -82,17 +82,17 @@ function ukSouthEastPart3(T) {
     const sky = U(), ground = U(), sea = U(), wash = U();
     const warm = setting.time === 'dusk', winter = setting.winter;
     const horizon = setting.horizon || 620, coast = setting.coast;
+    const atmosphere = placeAtmosphere('kent-castle',seed,Object.assign({},setting,{y:horizon}));
+    const light = atmosphere.sun;
     const p = { warm, winter, ground, sea };
-    return `<defs>${linU(sky, warm ? [[0, '#3b5283'], [.45, '#bc99ab'], [.8, '#efc09e'], [1, '#ffe0b2']] : [[0, '#528ec3'], [.48, '#bbd8e6'], [1, winter ? '#e7edf0' : '#f1ecce']], 0, 0, 0, 900)}${linU(ground, [[0, winter ? '#afb7a3' : '#8eaa69'], [1, winter ? '#556b64' : '#3d633e']], 0, horizon, 0, 900)}${linU(sea, [[0, warm ? '#c4aba6' : '#9ac4cc'], [1, warm ? '#445d76' : '#366f89']], 0, horizon - 50, 0, 900)}${radU(wash, [[0, '#fff3cb', .2], [1, '#fff3cb', 0]], 1120, 430, 900)}</defs>`
-      + full(`url(#${sky})`) + sun(warm ? 1240 : 360, warm ? 430 : 175, warm ? 48 : 37, '#fff5dd', '#ffdfac')
-      + rays(warm ? 1240 : 360, warm ? 430 : 175, 920, '#fff2cc', .12) + stars(seed, 30, 280)
-      + cloud(240, 185, 1.13, warm ? '#c8a4ad' : '#d3e1e7', .85, 61, 7)
-      + cloud(1300, 135, 1.3, warm ? '#d0a9ad' : '#d6e5eb', .83, 53, 22) + streak(830, 90, 260, '#fff6e6', .4, 73)
+    return `<defs>${linU(sky, atmosphere.sky, 0, 0, 0, 900)}${linU(ground, [[0, winter ? '#afb7a3' : '#83b96b'], [1, winter ? '#556b64' : '#24654b']], 0, horizon, 0, 900)}${linU(sea, [[0, warm ? '#d4a3be' : '#74d1dc'], [1, warm ? '#445d76' : '#267d9c']], 0, horizon - 50, 0, 900)}${radU(wash, [[0, '#fff3cb', .2], [1, '#fff3cb', 0]],light[0],light[1],900)}</defs>`
+      + full(`url(#${sky})`) + sun(...light, '#fff5dd', '#ffdfac')
+      + (atmosphere.rays ? rays(light[0],light[1],920,'#fff2cc',.12) : '') + stars(seed,30,280) + atmosphere.air()
       + mv('ukpar', { ad: '43s', dx: '7px' }, coast ? `<rect x="-160" y="${horizon - 70}" width="1920" height="${970 - horizon}" fill="url(#${sea})"/>${haze(horizon - 90, 80, '#f5e6d1', .45)}` : ridge(warm ? '#a397a7' : '#a8c1b4', horizon - 60, 65, 7, seed) + haze(horizon - 110, 140, '#edeada', .46))
       + mv('ukpar', { ad: '37s', dx: '14px' }, coast ? `<path fill="#697f8c" opacity=".7" d="M1410 ${horizon - 65}h70l-12 9h-44zM1440 ${horizon - 65}v-10h18v10z"/>` : canopy(winter ? '#7e9288' : '#68856d', horizon - 7, 24, seed + 1, null, null, 900, '#9fb89c'))
       + `<path fill="url(#${ground})" d="M-160 ${horizon}H1760V900H-160z"/>`
       + mv('ukpar', { ad: '32s', dx: '22px' }, draw(p))
-      + birds(seed + 4, 4, 830, 270, '#354d59', .95, 410)
+      + atmosphere.life()
       + mv('ukpar', { ad: '27s', dx: '35px' }, near(p))
       + `<rect width="1600" height="900" fill="url(#${wash})"/>` + finish();
   };

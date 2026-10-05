@@ -1,16 +1,16 @@
 /* ============================================================
-   ANIMATION PACK "uk-south-east" (v2.2, UK batches 2 and 3).
+   ANIMATION PACK "uk-south-east" (v2.3, UK batches 2 and 3).
    PURE classic script, the same manifest and quality gate as
    72-anim-pack-uk-south-west.js (docs/dev/UK_PACK.md). Opt-in like every UK
    pack: the items play only when the detected county (71-uk-counties.js,
    offline) is theirs.
    All nine South East counties and Greater London have FULL-VIEWPORT scenes (item.full: a 1600 x 900
    drawing, preserveAspectRatio slice, so it fills any screen edge to edge):
-   the opening sequence plays one full screen after "Welcome to Hampshire"
+   the opening sequence shows the user's location over a nearby scene
    (78-anim-wire.js), and the gallery and the animation-of-the-day card show
    them large. Each scene is layered: a sky gradient and its light, far /
    mid / near layers that drift at different speeds (parallax), and ambient
-   life (birds, clouds, water shimmer, steam, smoke). Eighty-four scenes rotate with
+   life (birds, clouds, water shimmer, steam, smoke). The four files contain 148 scenes with
    the seeded daily look; each carries `site` for the origin line.
    Colours are painted (the scene's own palette); the dark theme, or a
    tod-dusk / tod-night class (animItemHtml o.tod), lays an evening grade
@@ -73,13 +73,14 @@
   const radU = (id, a, cx, cy, r) => `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="${r}">${stops(a)}</radialGradient>`;
   /** A soft cumulus: a flat, shaded base and lit puffs on top, drifting. */
   const cloud = (x, y, s, tone, op, dur, del, top) => {
-    const g = U(), r = rnd(R(x * 7 + y)); let puffsD = '';
-    for (let i = 0; i < 6; i++) { const px = x - 120 * s + i * 48 * s + r() * 20 * s, pr = (34 + r() * 40) * s * (i === 2 || i === 3 ? 1.35 : 1); puffsD += `<circle cx="${R(px)}" cy="${R(y - pr * 0.55)}" r="${R(pr)}"/>`; }
+    const g = U(), r = rnd(R(x * 7 + y)), shape = Math.abs(Math.round(x+y+(del||0)))%3; let puffsD = '';
+    // Broad banks, tall cumulus and broken small puffs have different profiles.
+    // The original light and drift supplied by each drawing remain authoritative.
+    const n=shape===2?4:6, stretch=shape===0?1.4:shape===1?.78:1;
+    for (let i = 0; i < n; i++) { const px=x+(-120+i*240/(n-1)+r()*20)*s*stretch, pr=(25+r()*43)*s*(shape===1&&i===2?1.85:1); puffsD+=`<ellipse cx="${R(px)}" cy="${R(y-pr*(shape===0?.3:.63))}" rx="${R(pr*(shape===0?1.6:1))}" ry="${R(pr*(shape===0?.58:1))}"/>`; }
     return `<defs>${linU(g, [[0, top || '#fff'], [0.55, top || '#fff'], [1, tone]], 0, R(y - 110 * s), 0, R(y + 24 * s))}</defs>`
-      + mv('ukdrift', { ad: (dur || 46) + 's', d: -(del || 0) + 's', dx: R(60 + s * 40) + 'px' },
-        `<g opacity="${op || 0.92}" fill="url(#${g})"><ellipse cx="${x}" cy="${y}" rx="${R(170 * s)}" ry="${R(26 * s)}"/>${puffsD}</g>`);
+      + mv('ukdrift', { ad: (dur || 46) + 's', d: -(del || 0) + 's', dx: R(60 + s * 40) + 'px' }, `<g opacity="${op || 0.92}" fill="url(#${g})"><ellipse cx="${x}" cy="${y}" rx="${R((shape===0?230:shape===1?134:170)*s)}" ry="${R(19*s)}"/>${puffsD}</g>`);
   };
-  /** A thin high streak of cloud. */
   const streak = (x, y, w, col, op, dur) => mv('ukdrift', { ad: (dur || 60) + 's', dx: '90px' }, `<ellipse cx="${x}" cy="${y}" rx="${w}" ry="${R(w / 22) + 3}" fill="${col}" opacity="${op || 0.5}"/><ellipse cx="${R(x + w * 0.3)}" cy="${y + 10}" rx="${R(w * 0.6)}" ry="${R(w / 30) + 2}" fill="${col}" opacity="${(op || 0.5) * 0.7}"/>`);
   /** Long soft rays from the sun, turning slowly. */
   const rays = (x, y, len, col, op) => { const g = U(); let d = ''; const r = rnd(R(x + y)); for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2 + r() * 0.3, b = a + 0.025 + r() * 0.07; d += `M${x} ${y}L${R(x + Math.cos(a) * len)} ${R(y + Math.sin(a) * len)}L${R(x + Math.cos(b) * len)} ${R(y + Math.sin(b) * len)}z`; }
@@ -93,13 +94,13 @@
     const r = rnd(seed); let o = '';
     for (let i = 0; i < n; i++) {
       const s = (size || 1) * (0.7 + r() * 0.6), bx = R(x + r() * 260 - 130), by = R(y + r() * 120 - 60);
+      const pose=(seed+i)%3, wing=pose===0?`M${bx-R(20*s)} ${by-R(5*s)}q${R(10*s)} ${-R(15*s)} ${R(20*s)} ${R(5*s)}q${R(10*s)} ${-R(20*s)} ${R(22*s)} ${-R(4*s)}`:pose===1?`M${bx-R(23*s)} ${by-R(8*s)}l${R(18*s)} ${R(9*s)}q${R(6*s)} ${R(4*s)} ${R(13*s)} 0l${R(17*s)} ${-R(12*s)}`:`M${bx-R(25*s)} ${by+R(2*s)}q${R(14*s)} ${-R(8*s)} ${R(25*s)} 0q${R(12*s)} ${-R(11*s)} ${R(26*s)} ${-R(3*s)}`;
       o += mv('ukglide', { ad: R(16 + r() * 10) + 's', d: -R(r() * 14) + 's', dx: (dx || 520) + 'px', dy: R(-40 + r() * 60) + 'px' },
         mv('ukflap', { ad: (0.5 + r() * 0.4).toFixed(2) + 's', d: -(r()).toFixed(2) + 's' },
-          `<path fill="none" stroke="${col}" stroke-width="${(3.2 * s).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round" d="M${bx - R(18 * s)} ${by}q${R(9 * s)} ${-R(10 * s)} ${R(18 * s)} 0q${R(9 * s)} ${-R(10 * s)} ${R(18 * s)} 0"/>`));
+          `<path fill="none" stroke="${col}" stroke-width="${(2.7*s).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round" d="${wing}M${bx} ${by-2}l${R(2*s)} ${R(6*s)}"/>`));
     }
     return o;
   };
-  /** Glints on water. */
   const shimmer = (seed, n, x0, x1, y0, y1, col, w) => {
     const r = rnd(seed); let o = '';
     for (let i = 0; i < n; i++) {
@@ -135,11 +136,19 @@
   /** A broad oak: trunk, limbs and a crown of lit and shaded clumps that sway. */
   const oak = (x, y, s, dark, mid, lite, seed) => {
     const r = rnd(seed || 7), h = 300 * s;
-    let crown = '';
-    for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI, cx = R(x + Math.cos(a) * 170 * s * (0.7 + r() * 0.4)), cy = R(y - h + 40 * s - Math.sin(a) * 110 * s); crown += `<circle cx="${cx}" cy="${cy}" r="${R((70 + r() * 40) * s)}" fill="${dark}"/>`; }
-    crown += `<circle cx="${x}" cy="${R(y - h - 20 * s)}" r="${R(120 * s)}" fill="${dark}"/>`;
-    for (let i = 0; i < 7; i++) crown += `<circle cx="${R(x - 120 * s + r() * 200 * s)}" cy="${R(y - h - 70 * s + r() * 120 * s)}" r="${R((40 + r() * 34) * s)}" fill="${mid}"/>`;
-    for (let i = 0; i < 5; i++) crown += `<circle cx="${R(x - 60 * s + r() * 170 * s)}" cy="${R(y - h - 90 * s + r() * 60 * s)}" r="${R((22 + r() * 20) * s)}" fill="${lite}"/>`;
+    const patch = (cx,cy,rx,ry,n) => {
+      const points=Array.from({length:n},(_,i)=>{const a=i/n*Math.PI*2,k=.72+r()*.5;return [R(cx+Math.cos(a)*rx*k),R(cy+Math.sin(a)*ry*k)];});
+      let d=`M${R((points[0][0]+points[n-1][0])/2)} ${R((points[0][1]+points[n-1][1])/2)}`;
+      for(let i=0;i<n;i++){const q=points[(i+1)%n];d+=`Q${points[i][0]} ${points[i][1]} ${R((points[i][0]+q[0])/2)} ${R((points[i][1]+q[1])/2)}`;}
+      return d+'z';
+    };
+    const width=(230+r()*40)*s, cy=y-h-8*s;
+    const depth=U();
+    let crown=`<defs>${linU(depth,[[0,mid],[.7,dark]],x-width,cy-100*s,x+width,cy+140*s)}</defs><path fill="url(#${depth})" d="${patch(x,cy,width,158*s,20)}"/>`,middle='',lights='',leaves='';
+    for(let i=0;i<3;i++){const xx=x+(i-1)*100*s+(r()-.5)*35*s,yy=cy+(-55+r()*95)*s;middle+=patch(xx,yy,(60+r()*30)*s,(55+r()*28)*s,7);}
+    for(let i=0;i<2;i++){const xx=x+(-150+r()*265)*s,yy=cy-(40+r()*60)*s;lights+=patch(xx,yy,(30+r()*17)*s,(20+r()*14)*s,6);}
+    for(let i=0;i<8;i++){const xx=R(x+(-160+r()*320)*s),yy=R(cy+(-96+r()*130)*s);leaves+=`M${xx} ${yy}q${R(8*s)} ${R(-5*s)} ${R(15*s)} 0`;}
+    crown+=`<path fill="${mid}" opacity=".65" d="${middle}"/><path fill="${lite}" opacity=".55" d="${lights}"/><path fill="none" stroke="${lite}" opacity=".45" stroke-width="${R(3*s)+1}" d="${leaves}"/>`;
     return `<path fill="#3d2e22" d="M${R(x - 22 * s)} ${y}C${R(x - 14 * s)} ${R(y - 90 * s)} ${R(x - 16 * s)} ${R(y - 160 * s)} ${R(x - 60 * s)} ${R(y - h + 20 * s)}L${R(x - 44 * s)} ${R(y - h + 10 * s)}C${R(x - 10 * s)} ${R(y - 190 * s)} ${R(x + 4 * s)} ${R(y - 200 * s)} ${R(x + 50 * s)} ${R(y - h + 30 * s)}L${R(x + 62 * s)} ${R(y - h + 44 * s)}C${R(x + 22 * s)} ${R(y - 170 * s)} ${R(x + 16 * s)} ${R(y - 90 * s)} ${R(x + 26 * s)} ${y}z"/>`
       + `<g class="x-uksway2 o-b" style="--ad:7s">${crown}</g>`;
   };
@@ -162,7 +171,7 @@
   add('hampshire', 'signature', { id: 'new-forest-ponies', label: 'New Forest ponies', colour: 'green', mood: 'calm', tags: ['new forest', 'ponies', 'heath', 'national park'],
     svg: () => { const s1 = U(), g1 = U(), h1 = U(), l1 = U();
       const gorse = (seed, n, y0, y1, s) => { const r = rnd(seed); let o = ''; for (let i = 0; i < n; i++) { const x = R(r() * 1700 - 50), y = R(y0 + r() * (y1 - y0)), k = s * (0.6 + (y - y0) / (y1 - y0 + 1)); o += `<path fill="#3a5428" d="M${x - R(40 * k)} ${y}c${R(4 * k)} ${-R(30 * k)} ${R(30 * k)} ${-R(34 * k)} ${R(40 * k)} ${-R(26 * k)}c${R(14 * k)} ${-R(8 * k)} ${R(38 * k)} ${-R(2 * k)} ${R(40 * k)} ${R(26 * k)}z"/>`; let f = ''; for (let j = 0; j < 9; j++) f += `M${R(x - 30 * k + r() * 60 * k)} ${R(y - 4 * k - r() * 24 * k)}h.1`; o += `<path fill="none" stroke="#f2c230" stroke-linecap="round" stroke-width="${R(6 * k) + 1}" d="${f}"/>`; } return o; };
-      return svg(`<defs>${lin(s1, [[0, '#6f97cf'], [0.45, '#b9cde2'], [0.72, '#f7dcae'], [0.86, '#ffd08a'], [1, '#f6b878']])}${linU(g1, [[0, '#9aa553'], [1, '#41612a']], 0, 680, 0, 900)}${linU(h1, [[0, '#a07a98'], [1, '#6e5a5c']], 0, 590, 0, 690)}${radU(l1, [[0, '#ffe2a0', 0.55], [1, '#ffe2a0', 0]], 800, 520, 700)}</defs>`
+      return svg(`<defs>${lin(s1, [[0, '#6f97cf'], [0.45, '#b9cde2'], [0.72, '#f7dcae'], [0.86, '#ffd08a'], [1, '#f6b878']])}${linU(g1, [[0, '#9aa553'], [1, '#316f44']], 0, 680, 0, 900)}${linU(h1, [[0, '#a07a98'], [1, '#6e5a5c']], 0, 590, 0, 690)}${radU(l1, [[0, '#ffe2a0', 0.55], [1, '#ffe2a0', 0]], 800, 520, 700)}</defs>`
         + full(`url(#${s1})`) + rays(800, 500, 900, '#fff4d0', 0.2) + sun(800, 500, 50, '#fff6dc', '#ffd27a')
         + streak(260, 120, 260, '#fff', 0.55) + streak(1250, 90, 300, '#fff', 0.45, 70)
         + cloud(260, 240, 1.15, '#f3d2b8', 0.9, 52, 6) + cloud(1340, 200, 0.95, '#f1cdb4', 0.85, 44, 30)
@@ -186,7 +195,7 @@
       const win = (x, y, w, h) => `<path fill="#4a5262" d="M${x} ${y + h}V${y + w / 2}a${w / 2} ${w / 2} 0 0 1 ${w} 0V${y + h}z"/><path fill="none" stroke="${st2}" stroke-width="3" d="M${x + w / 2} ${y + h}V${y + w / 2}"/>` + lit(x + 3, y + w / 2, w - 6, h - w / 2 - 2);
       let nave = '';
       for (let i = 0; i < 9; i++) { const x = 560 + i * 50; nave += win(x + 12, 404, 24, 54) + win(x + 12, 520, 26, 60) + `<rect x="${x + 42}" y="${490}" width="10" height="150" fill="${st3}"/>`; }
-      return svg(`<defs>${lin(s1, [[0, '#6f9fd4'], [0.6, '#b9d0e6'], [1, '#f3e1bf']])}${lin(w1, [[0, st1], [1, st2]])}${lin(l1, [[0, '#7da24e'], [1, '#4f7a34']])}</defs>`
+      return svg(`<defs>${lin(s1, [[0, '#438fc9'], [0.6, '#b9d0e6'], [1, '#f3e1bf']])}${lin(w1, [[0, st1], [1, st2]])}${lin(l1, [[0, '#80b85b'], [1, '#32794a']])}</defs>`
         + full(`url(#${s1})`) + sun(260, 200, 40, '#fff6dc', '#ffe3a0')
         + cloud(700, 150, 1.4, '#fff', 0.9, 56, 4) + cloud(1300, 110, 1.1, '#fff', 0.8, 48, 18) + cloud(160, 300, 0.8, '#fff', 0.7, 40, 9)
         + rays(260, 200, 900, '#fff6dc', 0.12)
@@ -235,7 +244,7 @@
         + [250, 330, 410, 490, 570].map((y, i) => `<path stroke="#a8b6c8" stroke-width="5" d="M1190 ${y}H${[1262, 1290, 1300, 1296, 1270][i]}"/>`).join('')
         + `<path fill="#e9eef5" d="M1150 160h150l-10 30h-130z"/><path fill="#5b6e86" d="M1160 172h130l-4 10h-122z"/><path fill="#f3f6fa" d="M1170 132h110l-8 26h-94z"/><path fill="#c8d2de" d="M1184 132L1190 40h6l4 92z"/>`
         + `<rect class="hx-lit" x="1162" y="171" width="126" height="12" rx="3"/><circle class="hx-lit x-ukglow" style="--ad:2s" cx="1193" cy="44" r="8"/>`;
-      return svg(`<defs>${lin(s1, [[0, '#29507f'], [0.42, '#7d9fcb'], [0.7, '#e9c2b0'], [0.86, '#f7c08e'], [1, '#f6a874']])}${lin(sea, [[0, '#6f97c0'], [0.4, '#3d6a98'], [1, '#1f3f66']])}${lin(s2, [[0, '#fff'], [1, '#fff']])}</defs>`
+      return svg(`<defs>${lin(s1, [[0, '#29507f'], [0.42, '#7d9fcb'], [0.7, '#e9c2b0'], [0.86, '#f7c08e'], [1, '#f6a874']])}${lin(sea, [[0, '#599fca'], [0.4, '#266f9e'], [1, '#164b70']])}${lin(s2, [[0, '#fff'], [1, '#fff']])}</defs>`
         + full(`url(#${s1})`) + rays(860, 560, 900, '#ffe6c4', 0.14) + sun(860, 560, 40, '#fff1d8', '#ffbd7a') + stars(81, 60, 360)
         + cloud(420, 160, 1.5, '#fff1e6', 0.8, 54, 8) + cloud(1300, 120, 1.1, '#ffe8da', 0.75, 50, 22)
         // Gosport and Gunwharf: a low skyline and harbour wall
@@ -296,7 +305,7 @@
         + `<rect x="-6" y="-64" width="430" height="10" fill="#16181a"/><rect x="330" y="-58" width="84" height="32" rx="6" fill="#1f4a32"/><rect x="414" y="-74" width="16" height="26" fill="#b8322c"/><path fill="#16181a" d="M430 -66h10v-6h6v18h-6v-6h-10z"/><circle cx="420" cy="-86" r="8" fill="#f4f0e0"/>`
         + `${wheel(150, 34)}${wheel(230, 34)}${wheel(310, 34)}${wheel(386, 18)}<path stroke="#9aa0a8" stroke-width="8" stroke-linecap="round" d="M150 -26H310"/><path fill="#16181a" d="M410 -24l36 24H396z"/>`;
       const steam = puffs(383, -205, 18, '#f8f6f2', 40, -520, 5.4, -170, 2) + puffs(380, -200, 8, '#dcd9d4', 30, -360, 4, -140, 1.8) + puffs(240, -70, 4, '#f4f4f4', 22, -60, 2);
-      return svg(`<defs>${lin(s1, [[0, '#6b9bd2'], [0.65, '#c4d9ea'], [1, '#f0e6cf']])}${lin(f1, [[0, '#a7b96a'], [1, '#7a9a48']])}${lin(f2, [[0, '#cfb46a'], [1, '#a68a44']])}</defs>`
+      return svg(`<defs>${lin(s1, [[0, '#3b91c9'], [0.65, '#c4d9ea'], [1, '#f0e6cf']])}${lin(f1, [[0, '#b0c66e'], [1, '#649f50']])}${lin(f2, [[0, '#cfb46a'], [1, '#a68a44']])}</defs>`
         + full(`url(#${s1})`) + sun(300, 160, 40, '#fff8e0', '#ffeab0')
         + cloud(760, 150, 1.3, '#e3eaf2', 0.92, 54, 5) + cloud(1360, 250, 1.0, '#e5ecf3', 0.88, 46, 16) + streak(200, 330, 220, '#fff', 0.45)
         + rays(300, 160, 800, '#fff8e0', 0.12)
@@ -332,7 +341,7 @@
       const willow = (x, y, s, d) => { const r = rnd(x + d); let str = '', str2 = '';
         for (let i = 0; i < 26; i++) { const t = i / 25, sx = R(x - 150 * s + t * 300 * s), sy = R(y - 200 * s + Math.pow(Math.abs(t - 0.5) * 2, 2) * 90 * s), len = R((120 + r() * 80) * s), bend = R((t - 0.5) * 40 * s); const seg = `M${sx} ${sy}q${bend} ${R(len / 2)} ${R(bend * 1.4)} ${len}`; if (i % 2) str2 += seg; else str += seg; }
         return `<path fill="#4a3a2a" d="M${x - 9} ${y}C${x - 6} ${R(y - 60 * s)} ${x - 20} ${R(y - 110 * s)} ${x - 40} ${R(y - 150 * s)}h14C${x} ${R(y - 120 * s)} ${x + 8} ${R(y - 60 * s)} ${x + 9} ${y}z"/><g class="x-uksway2 o-b" style="--ad:${6 + d}s"><ellipse cx="${x}" cy="${R(y - 190 * s)}" rx="${R(130 * s)}" ry="${R(74 * s)}" fill="#5e8a3e"/><ellipse cx="${R(x - 120 * s)}" cy="${R(y - 140 * s)}" rx="${R(50 * s)}" ry="${R(56 * s)}" fill="#5e8a3e"/><ellipse cx="${R(x + 120 * s)}" cy="${R(y - 140 * s)}" rx="${R(50 * s)}" ry="${R(56 * s)}" fill="#5e8a3e"/><ellipse cx="${R(x - 50 * s)}" cy="${R(y - 196 * s)}" rx="${R(70 * s)}" ry="${R(34 * s)}" fill="#7aa64e"/><ellipse cx="${R(x + 60 * s)}" cy="${R(y - 188 * s)}" rx="${R(70 * s)}" ry="${R(30 * s)}" fill="#6f9a48"/><path fill="none" stroke="#5e8a3e" stroke-width="${R(6 * s)}" stroke-linecap="round" d="${str2}"/><path fill="none" stroke="#9cc466" stroke-width="${R(5 * s)}" stroke-linecap="round" d="${str}"/></g>`; };
-      return svg(`<defs>${lin(s1, [[0, '#7fb0dc'], [1, '#e9f0ee']])}${linU(w1, [[0, '#86c8bc'], [0.45, '#3f8f86'], [1, '#1d5052']], 0, 276, 0, 900)}${lin(b1, [[0, '#cbb88e'], [1, '#8c7a58']])}${lin(ray, [[0, '#fff', 0.5], [1, '#fff', 0]])}${lin(ft, [[0, '#4f4a2a'], [0.45, '#9a8a4a'], [0.7, '#d8c58a'], [1, '#efe4bc']])}</defs>`
+      return svg(`<defs>${lin(s1, [[0, '#55b5d3'], [1, '#e9f0ee']])}${linU(w1, [[0, '#70d1c5'], [0.45, '#269d94'], [1, '#135968']], 0, 276, 0, 900)}${lin(b1, [[0, '#cbb88e'], [1, '#8c7a58']])}${lin(ray, [[0, '#fff', 0.5], [1, '#fff', 0]])}${lin(ft, [[0, '#4f4a2a'], [0.45, '#9a8a4a'], [0.7, '#d8c58a'], [1, '#efe4bc']])}</defs>`
         + full(`url(#${s1})`) + cloud(400, 90, 1.0, '#e3ebf0', 0.9, 40, 6) + cloud(1200, 100, 0.85, '#e3ebf0', 0.85, 46, 12)
         // the far bank: water meadow, willows trailing to the water, reeds
         + mv('ukpar', { ad: '30s', dx: '10px' }, canopy('#6d955a', 200, 18, 121, null, null, null, '#93b67a') + `<path fill="#86ad62" d="M-160 236H1760V280H-160z"/>`
@@ -446,7 +455,7 @@
         for (let j = 0; j < 5; j++) cress += `<path fill="none" stroke="${['#2f6e2a', '#3d8432', '#58a844', '#6cb850', '#8ad06a'][j]}" stroke-width="${R((10 + j * 2) * k)}" stroke-linecap="round" stroke-dasharray="${[`1 ${R(9 * k)} 1 ${R(17 * k)}`, `1 ${R(13 * k)}`, `1 ${R(7 * k)} 1 ${R(21 * k)}`, `1 ${R(11 * k)} 1 ${R(15 * k)}`, `1 ${R(25 * k)}`][j]}" stroke-dashoffset="${j * 7}" d="M-60 ${R(y + h * (0.75 - j * 0.16))}H1660"/>`;
         beds += `<rect x="-40" y="${R(y - 8 * k)}" width="1680" height="${R(h + 16 * k)}" fill="url(#${w1})"/>${shimmer(210 + b, 16, 0, 1600, y + h * 0.8, y + h + 8 * k, '#efffff', 22 + b * 10)}${mv('ukpar', { ad: `${10 + b * 2}s`, dx: `${3 + b * 2}px` }, cress)}<rect x="-40" y="${R(y + h + 6 * k)}" width="1680" height="${R(6 + b * 4)}" fill="#a39a82"/><rect x="-40" y="${R(y + h + 6 * k)}" width="1680" height="2" fill="#d8d0b8"/>`;
       }
-      return svg(`<defs>${lin(s1, [[0, '#6ea2d8'], [0.7, '#cfe2ee'], [1, '#f1f2e4']])}${lin(w1, [[0, '#bfe6de'], [1, '#6cb2a8']])}</defs>`
+      return svg(`<defs>${lin(s1, [[0, '#3d9acd'], [0.7, '#cfe2ee'], [1, '#f1f2e4']])}${lin(w1, [[0, '#bfe6de'], [1, '#6cb2a8']])}</defs>`
         + full(`url(#${s1})`) + rays(1200, 170, 800, '#fffbe0', 0.12) + sun(1200, 170, 42, '#fffbe6', '#fff0b8')
         + cloud(480, 170, 1.3, '#e2eaf1', 0.92, 50, 6) + cloud(1380, 290, 0.9, '#e2eaf1', 0.86, 46, 18) + streak(900, 90, 260, '#fff', 0.45)
         + mv('ukpar', { ad: '36s', dx: '10px' }, ridge('#a9c49a', 470, 50, 6, 201) + haze(420, 120, '#f2f6ee', 0.55) + canopy('#5e8a4a', 520, 22, 202, null, null, null, '#8db474')
@@ -464,6 +473,10 @@
      moving ground bands extend from -160 to 1760. Subjects stay in the
      central 1200 units; each render owns every gradient and reflection id. */
   const arch = (x, y, w, h, stone) => `<path fill="#394855" d="M${x} ${y + h}V${y + w / 2}Q${x + w / 2} ${y - w / 2} ${x + w} ${y + w / 2}V${y + h}z"/>${lit(x + 4, y + w / 2, w - 8, h - w / 2)}<path fill="none" stroke="${stone || '#d4c7aa'}" stroke-width="3" d="M${x + w / 2} ${y + 8}V${y + h}M${x} ${y + h * .64}H${x + w}"/>`;
+  const lancet = (x,y,w,h,stone) => {
+    const glass=U(),d=`M${x} ${y+h}V${y+w*.65}Q${x} ${y+w*.2} ${x+w/2} ${y}Q${x+w} ${y+w*.2} ${x+w} ${y+w*.65}V${y+h}z`;
+    return `<defs>${linU(glass,[[0,'#39859a'],[.55,'#31647d'],[1,'#6f92ab']],x,y,x+w,y+h)}</defs><path fill="url(#${glass})" stroke="${stone||'#ddd0b3'}" stroke-width="4" d="${d}"/><path class="hx-lit" d="${d}"/><path fill="none" stroke="${stone||'#ddd0b3'}" stroke-width="2" d="M${x+w*.33} ${y+h}V${y+w*.8}q0-${w*.4} ${w*.17}-${w*.48}q${w*.17} ${w*.08} ${w*.17} ${w*.48}V${y+h}M${x+3} ${y+h*.66}h${w-6}M${x+w/2} ${y+w*.25}v${h-w*.25}"/>`;
+  };
   const sashes = (x, y, n, rows, gap, colour) => {
     let out = '';
     for (let j = 0; j < rows; j++) for (let i = 0; i < n; i++) {
@@ -478,12 +491,16 @@
     return `<path fill="${colour}" d="${d}V${y + 16}z"/>`;
   };
   const town = (seed, y, colour) => {
-    const r = rnd(seed); let out = '';
-    for (let x = -160; x < 1760; x += 94) {
-      const h = R(38 + r() * 50);
-      out += `<path fill="${colour}" d="M${x} ${y}v-${h}l38-26 38 26v${h}z"/><path fill="#637272" d="M${x - 5} ${y - h + 3}l43-32 43 32-5 5-38-26-38 26z"/><path fill="#647579" d="M${x + 20} ${y - h + 10}h10v15h-10zM${x + 48} ${y - h + 10}h10v15h-10z"/>${lit(x + 20, y - h + 10, 10, 15)}${lit(x + 48, y - h + 10, 10, 15)}<path fill="#52605c" d="M${x + 33} ${y}v-23h13v23z"/>`;
+    const r = rnd(seed); let out = '', windows = '';
+    for (let x = -160; x < 1760;) {
+      const w=R(84+r()*61),h=R(47+r()*67),top=y-h,style=Math.floor(r()*3),wall=[colour,'#bd8e70','#d8c9a4','#8dabb0'][Math.floor(r()*4)],roof=['#657481','#8d5d4b','#5d6671'][style];
+      const roofD=style===0?`M${x-5} ${top}l${R(w*.24)}-28h${R(w*.52+10)}l${R(w*.24)} 28z`:style===1?`M${x-5} ${top}l${R(w/2+5)}-37 ${R(w/2+5)} 37z`:`M${x-3} ${top-5}h${w+6}v10h-${w+6}z`;
+      out+=`<path fill="${wall}" d="M${x} ${y}v-${h}h${w}v${h}z"/><path fill="#5a6164" opacity=".22" d="M${x+w-14} ${top}h14v${h}h-14z"/><path fill="${roof}" d="${roofD}"/><path fill="${wall}" d="M${x+12} ${top+2}v-38h12v38z"/><path stroke="#ddd1ba" stroke-width="2" d="M${x} ${top+5}h${w}"/>`;
+      for(let row=0;row<(h>79?2:1);row++)for(let j=0;j<3;j++){const xx=x+16+j*(w-37)/3,yy=top+16+row*31;windows+=`M${R(xx)} ${yy}h12v19h-12z`;}
+      out+=`<path fill="#45695e" d="M${x+R(w*.46)} ${y}v-26h15v26z"/>`;
+      x+=w+3+R(r()*11);
     }
-    return out;
+    return out+`<path fill="#355b6e" stroke="#dddece" stroke-width="2" d="${windows}"/><path class="hx-lit" d="${windows}"/>`;
   };
   const sail = (x, y, k, seed) => mv('ukbob', { ad: `${4 + seed % 3}s`, d: `-${seed % 4}s`, dy: '4px' }, `<g transform="translate(${x} ${y}) scale(${k})"><path fill="#f7f1df" d="M0-10V-210Q70-120 106-10z"/><path fill="#dce7e5" d="M-8-12V-170L-80-12z"/><path stroke="#354855" stroke-width="4" d="M-3 0V-220"/><path fill="#354855" d="M-90-2H122L100 22H-60z"/><path fill="none" stroke="#e8f4f0" opacity=".55" stroke-width="4" d="M-115 30q100 16 236 0"/></g>`);
   const boat = (x, y, k, colour) => `<g transform="translate(${x} ${y}) scale(${k})"><ellipse cy="26" rx="124" ry="12" fill="#233e49" opacity=".2"/><path fill="${colour}" d="M-130-10Q0 15 130-10L100 42Q0 66-100 42z"/><path fill="#f1ddbc" d="M-130-10Q0 15 130-10L114 0Q0 26-114 0z"/><path fill="#39545b" d="M-60-22h110v26H-60z"/><path stroke="#8c7053" stroke-width="5" d="M0-12V-124M-72-18L-10-108L78-18"/></g>`;
@@ -502,35 +519,71 @@
   /** A travel-poster frame: painted light, three independent depth bands,
       clouds, birds and swaying grass (plus water when appropriate).
       The subject callback returns markup; finish() is always last. */
+  // Irregular woodland silhouettes: uneven crowns and a lit canopy plane,
+  // rather than the repeated row of identical semicircles in the old frame.
+  const woodlandEdge = (seed,y,warm) => {
+    const r=rnd(seed);let back=`M-160 ${y+120}V${y}`,front=`M-160 ${y+150}V${y+35}`,light='';
+    for(let x=-160;x<1760;){const w=R(80+r()*140),h=18+r()*65,a=R(x+w*.23),b=R(x+w*.73),top=R(y-h);back+=`C${R(x+w*.08)} ${R(y+9)} ${R(x+w*.1)} ${top} ${a} ${top}Q${R(x+w*.37)} ${R(top-17)} ${R(x+w*.54)} ${R(top+7)}Q${b} ${R(top-5)} ${R(x+w*.88)} ${R(y-4)}L${x+w} ${R(y+r()*12)}`;front+=`C${x+R(w*.14)} ${R(y-h*.4)} ${x+R(w*.49)} ${R(y-h*.48)} ${x+R(w*.6)} ${R(y+18)}Q${x+R(w*.8)} ${R(y+4)} ${x+w} ${R(y+35)}`;light+=`M${a} ${R(top+9)}q${R(w*.16)}-10 ${R(w*.32)} 5`;x+=w;}
+    return `<path fill="${warm?'#716d8b':'#579f91'}" d="${back}V${y+150}H-160z"/><path fill="${warm?'#525d79':'#2e796c'}" d="${front}V${y+150}H-160z"/><path fill="none" stroke="${warm?'#b08d9d':'#92c999'}" stroke-width="7" stroke-linecap="round" opacity=".5" d="${light}"/>`;
+  };
+  const placeAtmosphere = (name, seed, o = {}) => {
+    name = name || ({301:'canterbury-cathedral',322:'hop-harvest',341:'brogdale-orchard',361:'chatham-docks',401:'seven-sisters',461:'hastings-festival',481:'hastings-coast',501:'net-shops',521:'arundel-castle',561:'ardingly-show',581:'nutbourne-vines',601:'goodwood',621:'box-hill',681:'shere-gardens',701:'denbies',721:'brooklands',741:'needles',801:'garlic-festival',821:'mersley',841:'cowes',861:'windsor-castle',901:'hocktide',921:'eton',941:'dorney',961:'radcliffe-camera',1021:'bampton-morris',1041:'banbury',1061:'henley',1081:'waddesdon-manor',1141:'olney-pancake',1161:'aylesbury-orchard',1181:'bletchley',1201:'london-bridge',1261:'london-canal',1281:'london-docks',1301:'london-market',1321:'wimbledon',1341:'london-greenwich'}[seed] || 'countryside');
+    const warm = o.time === 'dusk' || o.time === 'dawn', r = rnd(seed + 871), y = o.y || o.horizon || 680;
+    const marine = o.coast, urban = /london|st-pauls|camera|cathedral|market|hocktide|morris|pancake/.test(name);
+    const garden = o.lawn || /garden|manor|pavilion|orchard|abbey/.test(name);
+    const skies = marine ? [['#287db9','#90dce1','#fff1ca'],['#246eaa','#9dc9e5','#f8eadb'],['#167d9d','#86d5d0','#ffdeb0']]
+      : urban ? [['#497bbf','#aacde6','#ffdeb9'],['#355d9f','#aabedc','#f8e7d8'],['#526fad','#bed8d9','#fff0c8']]
+      : garden ? [['#3b92bc','#b0e4db','#fff3cd'],['#3a77a6','#accfc3','#fff0b8'],['#597eb5','#c8d9df','#ffdfc7']]
+      : [['#328db6','#b3dedd','#f7e8bd'],['#2a779b','#a0c8ca','#f5eac9'],['#627aac','#c2cdd6','#ffe2b4']];
+    const skyColours = skies[Math.floor(r()*skies.length)];
+    const sx = R(230 + r() * 1160), sy = R(warm ? 330 + r() * 160 : 110 + r() * 150), sr = R(30 + r() * 23);
+    const airType = Math.floor(r() * 3), airSeed = Math.floor(r() * 900);
+    const cloudPlans=Array.from({length:4},(_,i)=>[R(-90+i*470+r()*170),R(65+r()*235),.45+r()*.85,45+r()*35,-r()*24]);
+    const air = () => airType === 0 ? cloudPlans.map(([x,yy,k,ad]) => streak(x,yy,170+k*150,warm?'#ffd9c5':'#edfaff',.24,ad)).join('')
+      : airType === 1 ? cloud(cloudPlans[0][0],cloudPlans[0][1],1.15, warm ? '#e4aeb8' : '#e1f5f5', .72,77,airSeed%18) + cloud(...cloudPlans[2].slice(0,3),'#f0f8ed',.65,61,-12)
+      : cloudPlans.slice(0,3).map(([x,yy,k,ad,d]) => cloud(x,yy,k,warm?'#f9c5b8':'#e3f5fb',.68,ad,d,warm?'#b99ec0':'#b2d4e3')).join('');
+    const life = () => {
+      if (marine) return mv('ukglide', {ad:'24s',d:'-7s',dx:'170px',dy:'-24px'}, `<g transform="translate(${R(260+r()*70)} 310)"><path fill="#fff8e3" d="M-38 8Q-15-30 0-3Q19-25 45 1L5 9z"/><path fill="#516878" d="M-38 8l20-22-9 22zM45 1L27-12l7 17z"/></g>`);
+      if (urban && o.water) return mv('ukglide',{ad:'21s',d:'-8s',dx:'190px',dy:'-30px'},'<path fill="#f1f7ed" d="M1000 342q-30-32-54-6 29-12 54 14 26-29 58-15-27-27-58 7z"/>');
+      if (urban) return [240,1360].map((x,i) => `<path stroke="#3e5966" stroke-width="5" d="M${x} 852V690"/><path fill="#3e5966" d="M${x-13} 693l13-20 13 20v28h-26z"/>${lit(x-8,696,16,21)}${mv('ukglow',{ad:`${5+i}s`},`<circle class="hx-lit" cx="${x}" cy="707" r="19" opacity=".12"/>`)}`).join('');
+      if (garden) return [0,1,2].map(i => mv('ukflutter',{ad:`${7+i}s`,d:`-${i*2}s`},mv('ukflap',{ad:'.45s',to:'center'},`<g transform="translate(${380+i*440} ${690-i*49})"><path fill="${['#ffb443','#e778b2','#fff3c6'][i]}" d="M0 0C-35-32-39 12-9 8L0 0C35-32 39 12 9 8z"/><path stroke="#615349" stroke-width="3" d="M0-7v20"/></g>`))).join('');
+      return mv('ukmist',{ad:'23s',dx:'55px'},haze(y-85,95,warm ? '#ffe6c8' : '#eff8dc',.24)) + birds(seed+19,2,190+seed%870,160+seed%100,'#35516a',.7,170);
+    };
+    return {sky:warm ? [[0,'#344b85'],[.42,'#af88bb'],[.78,'#ffa984'],[1,'#ffe6aa']] : [[0,skyColours[0]],[.55,skyColours[1]],[1,skyColours[2]]],sun:[sx,sy,sr],rays:airType===0,air,life,
+      far: () => marine ? `<path fill="${warm ? '#ac9bac' : '#75b9cc'}" d="M-160 ${y-18}H1760V900H-160z"/>${haze(y-44,68,'#ffeacc',.23)}` : ridge(warm ? '#a688ad' : '#88b7b0',y-150,o.flat?18:55+seed%70,5+seed%4,seed+41)+haze(y-190,100,'#fff4df',.31),
+      mid: () => marine ? `<path fill="#7296a7" opacity=".5" d="M${1250+seed%200} ${y-18}h62l-9 7h-43z"/>` : urban ? Array.from({length:19},(_,i)=>{const x=-160+i*105,h=42+(i*23+seed)%58;return `<path fill="${warm?'#7f7897':'#809ea9'}" d="M${x} ${y}v-${h}l46-17 51 17v${h}z"/><path stroke="${warm?'#d4a4ad':'#b4cece'}" stroke-width="4" stroke-dasharray="4 11" d="M${x+12} ${y-h+21}h72"/>`;}).join('') : woodlandEdge(seed+52,y-55,warm)};
+  };
   const vista = (seed, subject, o = {}) => {
     const sky = U(), floor = U(), wash = U(), stone = U(), masonry = U(), roof = U();
     const warm = o.time === 'dawn' || o.time === 'dusk', autumn = o.autumn;
-    const sk = warm ? [[0, '#49598c'], [.35, '#b294b4'], [.7, '#f2b599'], [1, '#ffe6b4']] : [[0, '#648fb9'], [.5, '#bfd7df'], [1, '#f2ecd6']];
+    // A place may supply its own sky, light, horizon and ambient choreography.
+    // The place profile varies the atmosphere; a bespoke view can override it.
+    const atmosphere = o.atmosphere || placeAtmosphere(o.art || '',seed,o), light = atmosphere.sun || [warm ? 1130 : 350, warm ? 465 : 180, warm ? 55 : 38];
+    const sk = atmosphere.sky || (warm ? [[0, '#49598c'], [.35, '#b294b4'], [.7, '#f2b599'], [1, '#ffe6b4']] : [[0, '#648fb9'], [.5, '#bfd7df'], [1, '#f2ecd6']]);
     const water = o.water, y = o.y || 680;
     const palette = { stone: `url(#${masonry})`, shade: warm ? '#95785f' : '#a59980', roof: `url(#${roof})`, green: autumn ? '#a29047' : '#617d45' };
-    const ground = water ? [[0, warm ? '#ab9ea9' : '#80b5bd'], [1, warm ? '#344968' : '#2d6378']] : [[0, autumn ? '#a8aa65' : '#94a768'], [1, autumn ? '#6c6641' : '#405c38']];
+    const ground = water ? [[0, warm ? '#c99eb8' : '#6dc7d2'], [1, warm ? '#35476e' : '#216f89']] : [[0, autumn ? '#b4ad59' : '#88b968'], [1, autumn ? '#77703e' : '#32664a']];
     return `<g${o.time === 'dusk' ? ' class="hx-evening"' : ''}><defs>${lin(sky, sk)}${linU(floor, ground, 0, y, 0, 900)}${radU(wash, [[0, '#fff2c5', .26], [1, '#fff2c5', 0]], warm ? 1130 : 350, warm ? 480 : 180, 900)}${linU(stone, [[0, warm ? '#e6c298' : '#f0e3c8'], [.45, warm ? '#d1ac87' : '#ddd0b3'], [1, warm ? '#ba9876' : '#b9b096']], 200, 160, 1320, 750)}${linU(roof, [[0, '#6c797b'], [1, '#46505b']], 200, 250, 1400, 650)}<pattern id="${masonry}" width="64" height="28" patternUnits="userSpaceOnUse"><rect width="64" height="28" fill="url(#${stone})"/><path fill="none" stroke="#746956" stroke-width="1" opacity=".14" d="M0 0H64M0 14H64M0 28H64M32 0v14M12 14v14M56 14v14"/></pattern></defs>`
       + full(`url(#${sky})`) + stars(seed, 32, 280)
-      + sun(warm ? 1130 : 350, warm ? 465 : 180, warm ? 55 : 38, '#fff4d8', '#ffdfa0')
-      + rays(warm ? 1130 : 350, warm ? 465 : 180, 1000, '#fff1c4', .13)
-      + cloud(250, warm ? 215 : 160, 1.18, warm ? '#d4a6aa' : '#c7d5df', .8, 56, 9)
+      + (atmosphere.light === false ? '' : atmosphere.light === 'moon' ? `<path fill="#e9f5dc" d="M${light[0]} ${light[1]-light[2]}a${light[2]} ${light[2]} 0 1 0 ${light[2]*.65} ${light[2]*1.76}a${light[2]*.84} ${light[2]*.84} 0 0 1 ${-light[2]*.65} ${-light[2]*1.76}z"/>` : sun(...light, '#fff4d8', '#ffdfa0') + (atmosphere.rays === false ? '' : rays(light[0], light[1], 1000, '#fff1c4', .13)))
+      + (atmosphere.air ? atmosphere.air() : cloud(250, warm ? 215 : 160, 1.18, warm ? '#d4a6aa' : '#c7d5df', .8, 56, 9)
       + cloud(1330, 150, 1.35, warm ? '#d4a6aa' : '#c7d5df', .84, 67, 21)
-      + streak(820, 84, 310, '#f8eeeb', .45, 75)
-      + mv('ukpar', { ad: '44s', dx: '7px' }, o.coast ? `<path fill="${warm ? '#b6a4ad' : '#9bbec5'}" d="M-160 ${y - 16}H1760V900H-160z"/>${haze(y - 48, 70, '#f5e7d0', .25)}` : ridge(warm ? '#a291aa' : '#a3b5b2', 510, o.flat ? 14 : 100, 7, seed) + haze(460, 150, '#f5e7d0', .45))
-      + mv('ukpar', { ad: '37s', dx: '15px' }, o.coast ? `<path fill="#7a959d" opacity=".6" d="M1410 ${y - 18}h65l-10 7h-48zM1440 ${y - 18}v-9h15v9z"/>` : canopy(warm ? '#6e7b83' : '#708b79', 585, 33, seed + 1, null, null, 760, '#a4b195'))
+      + streak(820, 84, 310, '#f8eeeb', .45, 75))
+      + mv('ukpar', { ad: '44s', dx: '7px' }, atmosphere.far ? atmosphere.far() : o.coast ? `<path fill="${warm ? '#b6a4ad' : '#9bbec5'}" d="M-160 ${y - 16}H1760V900H-160z"/>${haze(y - 48, 70, '#f5e7d0', .25)}` : ridge(warm ? '#a291aa' : '#a3b5b2', 510, o.flat ? 14 : 100, 7, seed) + haze(460, 150, '#f5e7d0', .45))
+      + mv('ukpar', { ad: '37s', dx: '15px' }, atmosphere.mid ? atmosphere.mid() : o.coast ? `<path fill="#7a959d" opacity=".6" d="M1410 ${y - 18}h65l-10 7h-48zM1440 ${y - 18}v-9h15v9z"/>` : canopy(warm ? '#6e7b83' : '#708b79', 585, 33, seed + 1, null, null, 760, '#a4b195'))
       + `<rect x="-160" y="${y}" width="1920" height="${900 - y}" fill="url(#${floor})"/>`
       + (o.lawn ? lawn(y) : '')
       + mv('ukpar', { ad: '32s', dx: '23px' }, subject(palette))
       + (water ? shimmer(seed + 8, 48, -100, 1740, y + 15, 895, warm ? '#ffe3be' : '#d5eef0', 55) : o.path === false ? '' : `<path fill="#d8ccb0" d="M650 900Q770 770 960 ${y}h25Q820 795 820 900z"/>`)
-      + birds(seed + 5, 5, 740, 230, '#394452', 1, 370)
-      + mv('ukpar', { ad: '27s', dx: '34px' }, water || o.edgeNear ? `<path fill="#a9987b" d="M-160 900v-28Q120 802 380 900zM1300 900q250-85 460-50v50z"/>${grass(seed + 6, 30, -160, 280, 900, 85, '#64714a')}${grass(seed + 7, 30, 1370, 1760, 900, 65, '#4a6347')}` : ridge(autumn ? '#71663e' : '#405b33', 900, 25, 8, seed + 3) + grass(seed + 6, 65, -160, 1760, 900, 48, '#3c5833') + meadow(seed + 7, 18, -160, 1760, 850, 900, autumn ? ['#eac277', '#eee0b9'] : ['#f8edcc', '#d3b75e']))
+      + (atmosphere.life ? atmosphere.life() : atmosphere.birds === false ? '' : birds(seed + 5, 5, 740, 230, '#394452', 1, 370))
+      + mv('ukpar', { ad: '27s', dx: '34px' }, o.art === 'st-pauls' ? `<path fill="#8b9b9d" d="M-160 900v-32l190-12 170 44zM1310 900l190-52 260 18v34z"/><path stroke="#d7d0c1" stroke-width="4" d="M-160 890l180-20 154 30M1360 900l138-38 262 19"/>` : water || o.edgeNear ? `<path fill="#a9987b" d="M-160 900v-28Q120 802 380 900zM1300 900q250-85 460-50v50z"/>${grass(seed + 6, 30, -160, 280, 900, 85, '#64714a')}${grass(seed + 7, 30, 1370, 1760, 900, 65, '#4a6347')}` : ridge(autumn ? '#71663e' : '#405b33', 900, 25, 8, seed + 3) + grass(seed + 6, 65, -160, 1760, 900, 48, '#3c5833') + meadow(seed + 7, 18, -160, 1760, 850, 900, autumn ? ['#eac277', '#eee0b9'] : ['#f8edcc', '#d3b75e']))
       + `<rect width="1600" height="900" fill="url(#${wash})"/>` + finish() + '</g>';
   };
   /** Two considered variants of one subject, preserving its county/kind. */
   const pair = (county, kind, id, label, colour, tags, drawing, opts) => {
     const seed = [...(county + id)].reduce((a, c) => a + c.charCodeAt(0), 0);
-    add(county, kind, { id, label, site: label, colour, tags, svg: () => vista(seed, drawing, opts) });
-    add(county, kind, { id: id + '-2', label: label + ' at dusk', site: label + ' at dusk', colour, mood: 'dreamy', tags, svg: () => vista(seed, drawing, Object.assign({}, opts, { time: 'dusk' })) });
+    add(county, kind, { id, label, site: label, colour, tags, svg: () => vista(seed, drawing, Object.assign({art:id},opts)) });
+    add(county, kind, { id: id + '-2', label: label + ' at dusk', site: label + ' at dusk', colour, mood: 'dreamy', tags, svg: () => vista(seed, drawing, Object.assign({art:id}, opts, { time: 'dusk' })) });
   };
 
   /* ---------- Kent: eight subjects and views ----------
@@ -547,12 +600,12 @@
      nationaltrust.org.uk/visit/kent/the-white-cliffs-of-dover */
   const canterbury = (p) => {
     let windows = '';
-    for (let i = 0; i < 9; i++) windows += arch(420 + i * 70, 420, 32, 95, p.stone) + `<path fill="${p.shade}" d="M${402 + i * 70} 640v-135h10v135z"/>`;
+    for (let i = 0; i < 9; i++) windows += lancet(420 + i * 70, 420, 32, 95, p.stone) + `<path fill="${p.shade}" d="M${402 + i * 70} 640v-135h10v135z"/>`;
     return `<path fill="${p.stone}" d="M340 640V406l66-66 65 66h669v234z"/><path fill="${p.roof}" d="M460 415l24-48h637l36 48z"/>${windows}`
-      + `<path fill="${p.stone}" d="M750 640V225h148v415z"/><path fill="${p.shade}" d="M878 225h20v415h-20z"/>${battlements(744, 225, 160, p.stone)}${arch(770, 265, 36, 90, p.stone)}${arch(838, 265, 36, 90, p.stone)}`
+      + `<path fill="${p.stone}" d="M750 640V225h148v415z"/><path fill="${p.shade}" d="M878 225h20v415h-20z"/>${battlements(744, 225, 160, p.stone)}${lancet(770, 265, 36, 90, p.stone)}${lancet(838, 265, 36, 90, p.stone)}`
       + `<path fill="${p.shade}" d="M742 640V214h12V640zM888 640V214h12V640z"/><path fill="${p.stone}" d="M734 216l14-45 14 45zM880 216l14-45 14 45z"/>`
-      + `<path fill="${p.stone}" d="M280 640V345h76v295zM360 640V345h76v295z"/>${battlements(276, 345, 80, p.stone)}${battlements(356, 345, 80, p.stone)}${arch(300, 388, 34, 74)}${arch(380, 388, 34, 74)}`
-      + `<path fill="${p.roof}" d="M1040 412l75-52 110 85v15H1040z"/><path fill="${p.stone}" d="M1080 640V460h165v180z"/>${arch(1140, 472, 48, 115)}`
+      + `<path fill="${p.stone}" d="M280 640V345h76v295zM360 640V345h76v295z"/>${battlements(276, 345, 80, p.stone)}${battlements(356, 345, 80, p.stone)}${lancet(300, 388, 34, 74)}${lancet(380, 388, 34, 74)}`
+      + `<path fill="${p.roof}" d="M1040 412l75-52 110 85v15H1040z"/><path fill="${p.stone}" d="M1080 640V460h165v180z"/>${lancet(1140, 472, 48, 115)}`
       + `<path fill="#ded0ad" d="M250 650h1040v18H250z"/>${oak(1250, 680, .58, '#354d38', '#577044', '#8fa160', 321)}`;
   };
   add('kent', 'signature', { id: 'canterbury-cathedral', label: 'Canterbury Cathedral', site: 'Canterbury Cathedral, the Precincts', colour: 'slate', tags: ['canterbury', 'cathedral', 'gothic'], svg: () => vista(301, canterbury, { lawn: true }) });
@@ -648,8 +701,8 @@
   add('west-sussex', 'signature', { id: 'arundel-castle', label: 'Arundel Castle', site: 'Arundel Castle above the Arun', colour: 'slate', tags: ['arundel', 'castle', 'arun'], svg: () => vista(521, arundel, { water: true, y: 780 }) });
   const chichester = (p) => {
     let out = `<path fill="${p.stone}" d="M450 665V450h620v215z"/><path fill="${p.roof}" d="M420 454l62-69h556l60 69z"/>`;
-    for (let i = 0; i < 9; i++) out += arch(468 + i * 65, 490, 30, 113, p.stone);
-    return out + `<path fill="${p.stone}" d="M790 665V340h112v325z"/><path fill="${p.shade}" d="M845 335L858 90l48 245z"/><path fill="${p.stone}" d="M790 340L858 90l-13 250z"/>${arch(810, 380, 27, 80)}${arch(859, 380, 27, 80)}<path fill="${p.stone}" d="M300 665V385h92v280z"/>${battlements(296, 385, 100, p.stone)}${arch(324, 428, 40, 75)}<path fill="${p.shade}" d="M380 385h12V665h-12z"/><path fill="#c2b79b" d="M275 665h860v12H275z"/>`;
+    for (let i = 0; i < 9; i++) out += lancet(468 + i * 65, 490, 30, 113, p.stone);
+    return out + `<path fill="${p.stone}" d="M790 665V340h112v325z"/><path fill="${p.shade}" d="M845 335L858 90l48 245z"/><path fill="${p.stone}" d="M790 340L858 90l-13 250z"/>${lancet(810, 380, 27, 80)}${lancet(859, 380, 27, 80)}<path fill="${p.stone}" d="M300 665V385h92v280z"/>${battlements(296, 385, 100, p.stone)}${lancet(324, 428, 40, 75)}<path fill="${p.shade}" d="M380 385h12V665h-12z"/><path fill="#c2b79b" d="M275 665h860v12H275z"/>`;
   };
   pair('west-sussex', 'landmark', 'chichester-cathedral', 'Chichester Cathedral', 'slate', ['chichester', 'spire', 'cathedral'], chichester, { lawn: true });
   const wittering = () => `<path fill="#e4d3aa" d="M-160 640Q650 610 1760 706V900H-160z"/><path fill="#a4c0bd" d="M-160 700Q480 664 1000 716T1760 720v35q-650-68-1920 10z"/>${shimmer(545, 35, -160, 1760, 700, 752, '#f7f1d5', 76)}<path fill="#cbb982" d="M1050 900q180-204 710-200v200z"/>${grass(546, 45, 1230, 1760, 840, 70, '#81894c')}${sail(450, 646, .3, 5)}<path fill="none" stroke="#bba982" stroke-width="4" d="M200 835q420-80 790-32"/>`;
@@ -705,11 +758,11 @@
      Sources: visitisleofwight.co.uk; english-heritage.org.uk/visit/places/osborne/
      garlicfestival.co.uk (third weekend in August); thegarlicfarm.co.uk */
   const needles = () => {
-    let out = `<path fill="#dde0cf" d="M-160 900V430q240-105 450 20L540 670l90 142z"/><path fill="#738b58" d="M-160 430q240-105 450 20l48 62q-320-115-498-44z"/>`;
+    let out = chalk('M-160 900V430q240-105 450 20L540 670l90 142z', 744)+`<path fill="#738b58" d="M-160 430q240-105 450 20l48 62q-320-115-498-44z"/>`;
     for (const [x, y, w, h] of [[590, 760, 190, 244], [815, 784, 168, 192], [1045, 804, 137, 139]]) {
-      out += `<path fill="#ede8d8" d="M${x - w / 2} ${y}l25-${h * .35} 27-${h * .2} 13-${h * .42} 28-7 22 ${h * .36} 26 ${h * .13} 24 ${h * .4}z"/><path fill="#acbbb5" d="M${x + 8} ${y - h}l22 ${h * .36} 26 ${h * .13} 24 ${h * .4}v${h * .11}h-30l-23-${h * .55}z"/><path fill="none" stroke="#c2c7bc" stroke-width="3" d="M${x - w * .25} ${y - h * .12}l${w * .55}-10M${x - w * .18} ${y - h * .36}l${w * .45}-9M${x - w * .1} ${y - h * .57}l${w * .3}-8"/>`;
+      out += chalk(`M${x - w / 2} ${y}l25-${h * .35} 27-${h * .2} 13-${h * .42} 28-7 22 ${h * .36} 26 ${h * .13} 24 ${h * .4}z`, x)+`<path fill="#849fa4" opacity=".65" d="M${x + 8} ${y - h}l22 ${h * .36} 26 ${h * .13} 24 ${h * .4}v${h * .11}h-30l-23-${h * .55}z"/><path fill="none" stroke="#c2c7bc" stroke-width="3" d="M${x - w * .25} ${y - h * .12}l${w * .55}-10M${x - w * .18} ${y - h * .36}l${w * .45}-9M${x - w * .1} ${y - h * .57}l${w * .3}-8"/>${mv('ukglow',{ad:`${4+x%3}s`,d:`-${x%4}s`},`<path fill="none" stroke="#edfff1" stroke-width="5" opacity=".7" d="M${x-w*.6} ${y+7}q${w*.65} 17 ${w*1.3} 0M${x-w*.55} ${y+24}q${w*.5} 10 ${w*1.1} 0"/>`)}`;
     }
-    return out + `<path fill="#e7e6d6" d="M1220 800l8-146h36l8 146z"/><path fill="#b95543" d="M1224 724h44l2 34h-48zM1228 655h36v34h-38z"/><path fill="#41515b" d="M1220 655h52v-13h-52z"/>${lit(1239, 645, 15, 9)}<path fill="#efeee0" d="M1218 800h58l12 12h-83z"/>`;
+    return out + `<path fill="#b7c2b1" d="M1088 806l6-35 27-20 30 48 10 18z"/><g transform="translate(-140 0)"><path fill="#e7e6d6" d="M1220 800l8-146h36l8 146z"/><path fill="#b95543" d="M1224 724h44l2 34h-48zM1228 655h36v34h-38z"/><path fill="#9b4542" d="M1254 654h10l8 146h-12z"/><path fill="#41515b" d="M1220 655h52v-13h-52z"/>${lit(1239, 645, 15, 9)}<path fill="#efeee0" d="M1218 800h58l12 12h-83z"/><path fill="none" stroke="#ccd4c4" stroke-width="3" d="M1225 708h41M1221 776h50"/></g>`;
   };
   add('isle-of-wight', 'signature', { id: 'needles', label: 'The Needles', site: 'The Needles and lighthouse, Alum Bay', colour: 'teal', tags: ['needles', 'chalk', 'lighthouse'], svg: () => vista(741, needles, { water: true, coast: true, y: 625 }) });
   const osborne = (p) => {
@@ -746,10 +799,13 @@
      Sources: windsor.gov.uk; visithungerford.com/whats-on/hocktide/
      canalrivertrust.org.uk; dorneylake.co.uk; networkrail.co.uk */
   const windsor = (p) => {
+    let curved='';
+    for(let i=0;i<9;i++){const x=667+i*23,yy=299+Math.pow((x-770)/104,2)*17;curved+=`<path fill="${p.stone}" d="M${x} ${R(yy+15)}v-25h12v25z"/>`;}
+    for(let i=0;i<8;i++)curved+=`<path fill="none" stroke="#a59880" stroke-width="2" opacity=".32" d="M674 ${342+i*31}q96 28 191 0"/>`;
     let out = `<path fill="${p.stone}" d="M300 655V435h1000v220z"/>${battlements(295, 435, 1020, p.stone)}`;
     for (let i = 0; i < 10; i++) out += arch(326 + i * 99, 482, 36, 114, p.stone);
     for (const x of [300, 480, 1080, 1260]) out += `<path fill="${p.stone}" d="M${x} 655V365h72v290z"/>${battlements(x - 3, 365, 80, p.stone)}${arch(x + 22, 408, 27, 70)}`;
-    return out + `<path fill="#657e48" d="M600 655q160-85 350 0z"/><path fill="${p.stone}" d="M670 620V305q100-35 200 0v315z"/><path fill="${p.shade}" d="M832 300q26 4 38 5v315h-38z"/>${battlements(664, 305, 210, p.stone)}${arch(700, 355, 27, 76)}${arch(758, 355, 27, 76)}${arch(816, 355, 27, 76)}<path fill="#ddd1b6" d="M270 655h1070v14H270z"/>`;
+    return out + `<path fill="#657e48" d="M600 655q160-85 350 0z"/><path fill="${p.stone}" d="M670 608V305q100-35 200 0v303q-100 34-200 0z"/><path fill="${p.shade}" opacity=".75" d="M836 302q24 1 34 3v303q-15 8-34 12z"/><ellipse cx="770" cy="306" rx="100" ry="22" fill="#8b897b"/><path fill="none" stroke="#eadcc2" stroke-width="9" d="M670 305q100 44 200 0"/>${curved}${arch(700, 355, 27, 76)}${arch(758, 355, 27, 76)}${arch(816, 355, 27, 76)}<path fill="none" stroke="#e3d5b8" stroke-width="6" d="M670 587q100 34 200 0"/><path fill="#ddd1b6" d="M270 655h1070v14H270z"/>`;
   };
   add('berkshire', 'signature', { id: 'windsor-castle', label: 'Windsor Castle', colour: 'slate', tags: ['windsor', 'castle', 'round tower'], svg: () => vista(861, windsor) });
   const maidenhead = () => {
@@ -760,8 +816,15 @@
   const canal = () => `<path fill="#82995e" d="M-160 900V620H590Q430 755 350 900zM1150 900Q1060 735 960 620H1760V900z"/><path fill="#c7bd97" d="M1080 900Q1010 747 937 630h40Q1070 750 1160 900z"/>${oak(350, 735, .9, '#3b5a3b', '#6b8550', '#a6b574', 885)}${oak(1240, 650, .55, '#3b5a3b', '#6b8550', '#a6b574', 886)}${mv('ukbob', { ad: '6s', dy: '3px' }, `<path fill="#526d65" d="M600 785h430l-30 65H628z"/><path fill="#b17a56" d="M670 724h280l45 66H625z"/>${sashes(690, 743, 5, 1, 50)}<path fill="#384d4e" d="M660 719h280l12 9H647z"/>`)}<path fill="none" stroke="#dfd9b9" stroke-width="5" d="M620 853q220 28 410-8"/>`;
   pair('berkshire', 'landscape', 'hungerford-canal', 'The Kennet and Avon Canal, Hungerford', 'teal', ['hungerford', 'canal', 'towpath'], canal, { water: true, y: 620 });
   add('berkshire', 'tradition', { id: 'hocktide', label: 'Hungerford Hocktide', colour: 'pink', months: [3, 4, 5], tags: ['hungerford', 'hocktide', 'flowers'], svg: () => vista(901, () => terrace(902, 650) + pavilion(670, 650, 280, '#d8c5a7') + crowd(903, 25, 800, ['#9e8a61', '#687c7d', '#8d754f']) + [580, 980].map((x, i) => `<path stroke="#8b6c46" stroke-width="10" d="M${x} 850V450"/>` + mv('uksway2', { ad: '7s' }, `<ellipse cx="${x}" cy="450" rx="55" ry="65" fill="#65864d"/>${meadow(906 + i, 20, x - 42, x + 42, 465, 490, ['#e8cf95', '#c8819c', '#efeddd'])}`)).join('')) });
-  const bowl = (x, y, flavour) => `<g transform="translate(${x} ${y}) scale(1.45)"><ellipse cy="102" rx="115" ry="20" fill="#2d4240" opacity=".2"/><path fill="#dce6dc" d="M-100 0Q-80 98 0 98T100 0z"/><ellipse rx="100" ry="30" fill="#eee8d5"/><g fill="#f7f2df">${[[-52, -4], [0, -17], [50, 0], [-15, 15]].map(([xx, yy]) => `<circle cx="${xx}" cy="${yy}" r="28"/>`).join('')}</g><g fill="${flavour}">${[[-62, -20], [25, -23], [59, 8], [-15, 10]].map(([xx, yy]) => `<path d="M${xx - 16} ${yy - 8}q16-17 32 0l-16 30z"/>`).join('')}</g><path fill="#547749" d="M14-32q18-22 32 0z"/></g>`;
-  add('berkshire', 'food', { id: 'eton-mess', label: 'Eton mess', site: 'Strawberries, cream and meringue beside the Thames', colour: 'red', tags: ['eton', 'strawberries', 'meringue'], svg: () => vista(921, () => town(922, 660, '#919e93') + sail(1180, 745, .44, 5) + `<path fill="#99724e" d="M260 830h1080v70H260z"/><path fill="#d3b487" d="M230 810h1140v28H230z"/>` + bowl(810, 716, '#bb5b49') + `<path fill="#e8dec2" d="M330 823l90-70 130 70z"/>`, { water: true, y: 660 }) });
+  const strawberry = (x,y,k,angle=0) => {
+    const id=U();let seeds='';for(let row=0;row<4;row++)for(let i=0;i<4-row;i++)seeds+=`M${-12+row*4+i*8} ${-8+row*8}l1 2`;
+    return `<g transform="translate(${x} ${y}) rotate(${angle}) scale(${k})"><defs>${linU(id,[[0,'#ff8981'],[.45,'#ed4a50'],[1,'#a72643']],-15,-22,18,30)}</defs><path fill="url(#${id})" d="M-20-12C-18-32 0-29 2-18C11-31 27-19 22-4Q19 12 3 30Q-14 18-20-12z"/><path fill="none" stroke="#ffe4a1" stroke-width="1.8" stroke-linecap="round" d="${seeds}"/><path fill="#3d8755" d="M1-18l-13-10 3 12-13-1 16 9 7-6 12 7-4-10 10-8-17 5z"/><path fill="none" stroke="#a9c870" stroke-width="2" d="M1-19l2-11"/><path fill="#ffd2bc" opacity=".45" d="M-13-16q7-7 9 1l-6 16q-5-7-3-17z"/></g>`;
+  };
+  const bowl = (x, y) => {
+    const ceramic=U();
+    return `<g transform="translate(${x} ${y}) scale(1.45)"><defs>${linU(ceramic,[[0,'#eaf8ec'],[.4,'#bde3de'],[1,'#5097a0']],-100,0,110,100)}</defs><ellipse cy="102" rx="115" ry="20" fill="#24474c" opacity=".2"/><path fill="url(#${ceramic})" d="M-100 0Q-80 98 0 98T100 0z"/><path fill="#f8fff0" opacity=".6" d="M-84 7q12 66 54 77-47-22-54-77z"/><ellipse rx="100" ry="30" fill="#8cbec0"/><ellipse cy="-2" rx="91" ry="25" fill="#e7cdb4"/><path fill="#fff6df" d="M-90-4q-6-32 27-25-5-33 29-27 14-30 35-5 31-24 42 7 39-2 34 28 29 16 3 29-28 22-48 1-35 20-55-2-40 16-67-6z"/><path fill="none" stroke="#e1bba9" stroke-width="3" d="M-68-19q18-15 30 1M-15-39q21-10 36 7M32-13q15-14 31-2M-27 2q20-12 39-2"/>${strawberry(-60,-28,.94,-29)}${strawberry(27,-33,1,20)}${strawberry(63,0,.8,39)}${strawberry(-12,2,.77,-12)}<g fill="#ffffed" stroke="#ded8c5" stroke-width="1.4"><path d="M-34-31l17-21 18 9-15 22zM34-24l16-19 17 15-12 11zM-75 9l18-14 12 19-17 10z"/></g><path fill="none" stroke="#f5fff4" stroke-width="4" d="M-96 10q95 43 192 0"/><path fill="none" stroke="#76b4b7" stroke-width="2" d="M-68 57q64 42 139 1"/></g>`;
+  };
+  add('berkshire', 'food', { id: 'eton-mess', label: 'Eton mess', site: 'Strawberries, cream and meringue beside the Thames', colour: 'red', tags: ['eton', 'strawberries', 'meringue'], svg: () => vista(921, () => town(922, 660, '#919e93') + sail(1180, 745, .44, 5) + `<path fill="#a46b49" d="M-160 821H1760V900H-160z"/><path fill="#dfb88b" d="M-160 802H1760v21H-160z"/><path fill="none" stroke="#875638" stroke-width="2" opacity=".4" d="M-160 845H1760M-160 882H1760M389 821v79M1200 821v79"/><path fill="#eee9d5" d="M365 810l153-41 142 38-106 93H359z"/><path fill="none" stroke="#72b8bd" stroke-width="4" d="M393 815l126-33 120 33M378 838l145-38 88 28"/>` + bowl(810, 699) + strawberry(472,824,1.15,31) + strawberry(548,858,.85,-12) + `<ellipse cx="1140" cy="827" rx="63" ry="14" fill="#704d3d" opacity=".2"/><path fill="#abc8c8" d="M1092 822q-17-7-8-15 19-14 41-1l96 18-2 7-99-16q-13 14-28 7z"/><path fill="none" stroke="#edf8ef" stroke-width="3" d="M1091 807q15-9 25 1l89 18"/>`, { water: true, y: 660 }) });
   const shell = (x, y, n, col) => mv('ukpar', { ad: '13s', dx: '65px' }, `<g transform="translate(${x} ${y})"><path fill="${col}" d="M-260 0Q0-15 260 0Q0 19-260 0z"/>${Array.from({ length: n }, (_, i) => { const xx = -175 + i * 48; return `<circle cx="${xx}" cy="-23" r="7" fill="#726556"/><path fill="#e7e1c8" d="M${xx - 8}-15h16v20h-16z"/>` + mv('ukheel', { ad: '3s', d: '-.5s', to: `${xx}px 0px` }, `<path stroke="#9c8861" stroke-width="4" d="M${xx} 0l${i % 2 ? '55 50' : '-55 -50'}"/><path stroke="#e4d9ae" stroke-width="11" d="M${xx + (i % 2 ? 45 : -45)} ${i % 2 ? 43 : -43}l${i % 2 ? '18 16' : '-18 -16'}"/>`); }).join('')}</g>`);
   add('berkshire', 'sport', { id: 'dorney-rowing', label: 'Rowing at Dorney Lake', colour: 'blue', tags: ['dorney', 'rowing', 'lake'], svg: () => vista(941, () => `<path fill="#879970" d="M-160 642H1760v20H-160z"/>${shell(770, 758, 8, '#b59b57')}${shell(1100, 836, 4, '#e2d1a5')}`, { water: true, y: 650 }) });
 
@@ -794,9 +857,10 @@
   pair('oxfordshire', 'landscape', 'uffington-horse', 'Uffington White Horse', 'green', ['uffington', 'chalk', 'white horse'], uffington, { path: false });
   add('oxfordshire', 'tradition', { id: 'bampton-morris', label: 'Bampton Morris dancing', colour: 'amber', months: [5, 6], tags: ['bampton', 'morris', 'whitsun'], svg: () => vista(1021, () => terrace(1022, 650) + `<path fill="#c7b896" d="M-160 710H1760v190H-160z"/>` + Array.from({ length: 8 }, (_, i) => { const x = 450 + i * 90; return mv('ukbob', { ad: '3s', d: `-${i % 3}s`, dy: '4px' }, `<g transform="translate(${x} 783)"><circle cy="-75" r="11" fill="#85735a"/><path fill="#ede8d4" d="M-15-60h30l8 40h-46z"/><path stroke="#536666" stroke-width="9" d="M-10-18l-10 28M10-18l15 26"/><path fill="none" stroke="#ede8d4" stroke-width="8" d="M-14-50l-30-20M14-50l30-20"/><path fill="#f9f3df" d="M-49-77l18-13 5 24zM37-76l18-14 9 22z"/></g>`); }).join('')) });
   const pastries = () => {
-    let out = `<path fill="#aa7e54" d="M300 800h1000v100H300z"/><path fill="#d7b384" d="M260 782h1080v28H260z"/><ellipse cx="810" cy="801" rx="310" ry="64" fill="#e8dfc5"/>`;
-    for (const [x, y, k] of [[630, 773, .9], [810, 745, 1], [980, 784, .9]]) { const r = rnd(x); out += `<g transform="translate(${x} ${y}) scale(${k})"><ellipse cy="16" rx="83" ry="42" fill="#b97d40"/><ellipse rx="83" ry="38" fill="#dbad64"/><path fill="none" stroke="#9c713f" stroke-width="6" d="M-35-19l11 31M-5-25L8 12M27-20l12 27"/>`; for (let i = 0; i < 12; i++) out += `<circle cx="${R(r() * 130 - 65)}" cy="${R(r() * 38 - 19)}" r="2" fill="#f1d59a"/>`; out += '</g>'; }
-    return out + puffs(800, 717, 5, '#faf3e5', 13, -55, 5, -160, 2);
+    const glaze=U(),ceramic=U();
+    let out = `<defs>${linU(glaze,[[0,'#ffe6a0'],[.5,'#eaa54a'],[1,'#b45f2f']],0,-38,0,42)}${linU(ceramic,[[0,'#fff9e6'],[1,'#7bc5c8']],0,755,0,840)}</defs><path fill="#ad7b53" d="M-160 803H1760V900H-160z"/><path fill="#deb784" d="M-160 781H1760v25H-160z"/><path fill="none" stroke="#946d4b" stroke-width="2" opacity=".4" d="M-160 821H1760M-160 855H1760M-160 889H1760M350 806v94M1120 806v94"/><path fill="#f0eee1" d="M455 794l300-72 456 117-201 61H639z"/><path fill="none" stroke="#68a8b0" stroke-width="4" d="M467 802l282-65 438 108M663 893l344-3 179-43"/><ellipse cx="810" cy="801" rx="310" ry="64" fill="url(#${ceramic})"/><ellipse cx="810" cy="795" rx="274" ry="48" fill="#fff7df"/>`;
+    for (const [x, y, k] of [[630, 773, .9], [810, 745, 1], [980, 784, .9]]) { const r = rnd(x); out += `<g transform="translate(${x} ${y}) scale(${k})"><ellipse cy="16" rx="83" ry="42" fill="#b97d40"/><ellipse rx="83" ry="38" fill="url(#${glaze})"/><path fill="none" stroke="#9c713f" stroke-width="6" d="M-35-19l11 31M-5-25L8 12M27-20l12 27"/><path fill="none" stroke="#ffe4ad" stroke-width="3" d="M-41-21l11 31M-11-27L2 10M21-22l12 27"/>`; for (let i = 0; i < 12; i++) out += `<circle cx="${R(r() * 130 - 65)}" cy="${R(r() * 38 - 19)}" r="2" fill="${i%3?'#ffe1ab':'#795237'}"/>`; out += '</g>'; }
+    return out + `<ellipse cx="1274" cy="831" rx="95" ry="22" fill="#eadbc2"/><path fill="#3a7a87" d="M1216 749h112v43q-5 43-56 43t-56-43z"/><path fill="none" stroke="#71b7bd" stroke-width="10" d="M1329 762q65-10 47 45-14 20-47 4"/><ellipse cx="1272" cy="750" rx="56" ry="15" fill="#ede2c6"/><ellipse cx="1272" cy="751" rx="47" ry="10" fill="#8b4e32"/>` + puffs(1272, 740, 5, '#faf3e5', 13, -55, 5, -160, 2);
   };
   add('oxfordshire', 'food', { id: 'banbury-cakes', label: 'Banbury cakes', colour: 'amber', mood: 'cosy', tags: ['banbury', 'pastry', 'currants'], svg: () => vista(1041, () => terrace(1042, 690) + pastries(), { path: false }) });
   add('oxfordshire', 'sport', { id: 'henley-rowing', label: 'Rowing at Henley-on-Thames', colour: 'blue', tags: ['henley', 'rowing', 'thames'], svg: () => vista(1061, p => town(1062, 650, '#a49982') + `<path fill="${p.stone}" d="M1090 650V400h90v250z"/>${battlements(1085, 400, 100, p.stone)}${arch(1118, 446, 35, 80)}<path fill="${p.shade}" fill-rule="evenodd" d="M250 595h690v72H250z${[0, 1, 2, 3, 4].map(i => `M${280 + i * 130} 667v-22a46 30 0 0 1 92 0v22z`).join('')}"/>${shell(710, 782, 8, '#c4ad73')}${shell(1210, 848, 4, '#eee1b9')}`, { water: true, y: 650 }) });
@@ -817,16 +881,23 @@
     let out = `<path fill="${p.stone}" d="M370 670V435h860v235z"/><path fill="${p.roof}" d="M340 440l96-119h692l132 119z"/>${sashes(440, 478, 12, 2, 60)}`;
     for (const [x, y] of [[375, 255], [665, 210], [1130, 260]]) out += `<path fill="${p.stone}" d="M${x} 670V${y + 160}h90v${510 - y}z"/><path fill="${p.shade}" d="M${x + 72} ${y + 160}h18V670h-18z"/><path fill="${p.roof}" d="M${x - 16} ${y + 166}l61-166 61 166z"/><path stroke="#515e63" stroke-width="4" d="M${x + 45} ${y}v-22"/>${arch(x + 30, y + 205, 27, 75)}`;
     for (const x of [465, 555, 990, 1080]) out += `<path fill="${p.stone}" d="M${x} 440v-58h38v58z"/><path fill="${p.shade}" d="M${x - 7} 383l26-30 26 30z"/>${arch(x + 10, 389, 19, 36)}<path fill="${p.stone}" d="M${x + 3} 353v-12h32v12z"/>`;
-    return out + `<path fill="${p.stone}" d="M820 670V390h170v280z"/><path fill="${p.roof}" d="M806 390l42-110h114l44 110z"/>${sashes(850, 431, 2, 3, 68)}<path fill="none" stroke="#eee1c7" stroke-width="8" d="M390 547H660M710 547H815M996 547H1200M390 465H660M710 465H815M996 465H1200"/><path fill="#ddd0b1" d="M350 670h900v18H350z"/><path fill="#3d6440" d="M360 810h310v55H360zM970 810h310v55H970z"/>${meadow(1086, 24, 365, 668, 817, 850, ['#d49992', '#eed6ae'])}${meadow(1087, 24, 976, 1274, 817, 850, ['#d49992', '#eed6ae'])}`;
+    let ornaments='';for(let i=0;i<12;i++){const x=438+i*61;ornaments+=`<path fill="${p.stone}" d="M${x} 333l5-17 5 17z"/><path stroke="#e4d1af" stroke-width="2" d="M${x+5} 316v-9"/>`;}
+    const parterre=`<path fill="#daceab" d="M-160 900V744H1760V900z"/><path fill="#7baf65" d="M280 780h1040l215 120H65z"/><path fill="#e8d9b5" d="M734 690h144l89 210H657z"/><path fill="none" stroke="#246e54" stroke-width="17" d="M244 876q80-100 241-67t120 54q-86 38-228-4 31-46 150-21M1128 838q120-25 150 21-142 42-228 4-41-21 120-54t241 67"/><path fill="none" stroke="#8ac178" stroke-width="4" d="M244 871q80-100 241-67t120 54q-86 38-228-4M1128 833q120-25 150 21-142 42-228 4-41-21 120-54t241 67"/>${meadow(1086,26,280,620,812,872,['#ff787f','#ffce57','#cf85d1'])}${meadow(1087,26,1010,1340,812,872,['#ff787f','#ffce57','#cf85d1'])}<ellipse cx="806" cy="818" rx="108" ry="24" fill="#d1c2a3"/><ellipse cx="806" cy="813" rx="92" ry="18" fill="#57b7c5"/><path fill="#cbb999" d="M791 807l6-63h18l6 63z"/><ellipse cx="806" cy="750" rx="39" ry="9" fill="#e6d7b6"/>${mv('ukglow',{ad:'3.7s'},'<path fill="none" stroke="#e7ffff" stroke-width="3" d="M806 743q-2-56-28-29M806 743q2-56 28-29M769 753q-13 34-12 59M844 753q13 34 12 59"/>')}${shimmer(1090,8,730,880,808,827,'#d6ffff',20)}`;
+    return out + `<path fill="${p.stone}" d="M820 670V390h170v280z"/><path fill="${p.roof}" d="M806 390l42-110h114l44 110z"/>${sashes(850, 431, 2, 3, 68)}<path fill="none" stroke="#eee1c7" stroke-width="8" d="M390 547H660M710 547H815M996 547H1200M390 465H660M710 465H815M996 465H1200"/><path fill="#ddd0b1" d="M350 670h900v18H350z"/>${ornaments}${parterre}`;
   };
-  add('buckinghamshire', 'signature', { id: 'waddesdon-manor', label: 'Waddesdon Manor', colour: 'slate', tags: ['waddesdon', 'manor', 'parterre'], svg: () => vista(1081, waddesdon, { lawn: true }) });
+  add('buckinghamshire', 'signature', { id: 'waddesdon-manor', label: 'Waddesdon Manor', colour: 'slate', tags: ['waddesdon', 'manor', 'parterre'], svg: () => vista(1081, waddesdon, { path:false, lawn: true }) });
   const stowe = (p) => {
     const id = U(); let cols = '';
     for (let i = 0; i < 10; i++) { const x = 473 + i * 72; cols += `<path fill="${p.stone}" d="M${x} 574V418h18v156z"/><path fill="#e9ddc4" d="M${x - 7} 574h32v10h-32zM${x - 5} 418h28v-8h-28z"/>`; }
     return `<g id="${id}"><path fill="${p.stone}" fill-rule="evenodd" d="M385 580H1250V700H385zM452 700v-28a66 45 0 0 1 132 0v28zM667 700v-28a100 68 0 0 1 200 0v28zM957 700v-28a66 45 0 0 1 132 0v28z"/><path fill="${p.roof}" d="M370 416l130-68h580l186 68z"/><path fill="${p.stone}" d="M370 416h896v14H370zM370 574h896v14H370z"/>${cols}<path fill="${p.stone}" d="M385 582V440h65v142zM1164 582V440h66v142z"/><path fill="${p.stone}" d="M355 430l62-58 62 58zM1144 430l62-58 62 58z"/></g>${reflect(id, 700, .28)}`;
   };
   pair('buckinghamshire', 'landmark', 'stowe-bridge', 'The Palladian Bridge, Stowe', 'slate', ['stowe', 'bridge', 'gardens'], stowe, { water: true, y: 690 });
-  const ivinghoe = () => `<path fill="#7d9254" d="M-160 900V718Q240 648 585 472Q800 418 1050 600T1760 660v240z"/><path fill="#a8ad69" d="M-160 900V822Q650 625 1000 698T1760 740v160z"/><path fill="none" stroke="#e1d6ad" stroke-width="12" d="M490 900Q850 785 810 639T607 486"/><path fill="none" stroke="#607848" stroke-width="10" d="M-160 746Q210 698 528 525"/>${oak(1320, 788, .57, '#3f5c36', '#778952', '#adb171', 1126)}${grass(1127, 60, -160, 1760, 900, 55, '#51683a')}`;
+  const ivinghoe = () => {
+    const r = rnd(1126); let fields = '', flowers = '';
+    for (let i = 0; i < 13; i++) { const x = -160+i*148, y = 655+r()*41; fields += `<path fill="${['#90b679','#c7c17a','#67a18a'][i%3]}" d="M${R(x)} ${R(y)}l117-17 45 40-145 24z"/><path fill="none" stroke="#58816e" stroke-width="3" d="M${R(x)} ${R(y)}l117-17 45 40"/>`; }
+    for (let i = 0; i < 28; i++) { const x = R(70+r()*1380), y = R(824+r()*67); flowers += `<path stroke="#687e4b" stroke-width="2" d="M${x} ${y}l-4-17"/><circle cx="${x-4}" cy="${y-17}" r="${2+r()*3}" fill="${i%3?'#e3dcb6':'#ac91c5'}"/>`; }
+    return fields+`<path fill="#78a66b" d="M-160 900V718Q240 648 585 472Q800 418 1050 600T1760 660v240z"/><path fill="#4d8974" d="M675 466Q800 418 1050 600T1760 660v240H1370Q1190 748 970 639T675 466z"/><path fill="#afbf73" d="M-160 900V822Q650 625 1000 698T1760 740v160z"/><path fill="none" stroke="#cfda98" opacity=".55" stroke-width="8" d="M-160 785Q229 672 474 566M1080 733q329-30 680 76"/><path fill="none" stroke="#e1d6ad" stroke-width="12" d="M490 900Q850 785 810 639T607 486"/><path fill="none" stroke="#608b55" stroke-width="10" d="M-160 746Q210 698 528 525"/>${flowers}${grass(1127, 60, -160, 1760, 900, 55, '#516f47')}`;
+  };
   pair('buckinghamshire', 'landscape', 'ivinghoe-beacon', 'Ivinghoe Beacon', 'green', ['ivinghoe', 'chilterns', 'ridgeway'], ivinghoe, { path: false });
   add('buckinghamshire', 'tradition', { id: 'olney-pancake-race', label: 'Olney Pancake Race', colour: 'amber', months: [2, 3], tags: ['olney', 'pancakes', 'shrove tuesday'], svg: () => vista(1141, () => terrace(1142, 650) + `<path fill="#c1b092" d="M-160 700H1760v200H-160z"/>` + Array.from({ length: 5 }, (_, i) => { const x = 480 + i * 145; return mv('ukbob', { ad: '2.5s', d: `-${i * .4}s`, dy: '4px' }, `<g transform="translate(${x} ${780 + i % 2 * 25})"><circle cy="-75" r="11" fill="#8f7860"/><path fill="${['#859493', '#b37e66', '#84815f'][i % 3]}" d="M-15-59h30l9 44h-48z"/><path fill="#ece5cc" d="M-12-42h24v29h-24z"/><path fill="none" stroke="#535d59" stroke-width="9" d="M-8-15l-22 18-14-12M8-15l24 24"/><path stroke="#9a8160" stroke-width="7" d="M10-46l35-8"/><ellipse cx="57" cy="-55" rx="20" ry="6" fill="#4b5454"/><ellipse cx="57" cy="-59" rx="15" ry="4" fill="#d1a45c"/></g>`); }).join('')) });
   const duck = (x, y, k) => mv('ukbob', { ad: '5s', dy: '2px' }, `<g transform="translate(${x} ${y}) scale(${k})"><path fill="#eee9d6" d="M-60 0q-40-32-70-13l35 35q67 27 111-10 20-17 18-54l-19-9q-14 40-38 35z"/><circle cx="26" cy="-52" r="21" fill="#f7f1df"/><path fill="#d5ad63" d="M43-56l27 9-28 5z"/><circle cx="32" cy="-57" r="3" fill="#39433b"/><path stroke="#c29a58" stroke-width="5" d="M-35 20v20h-14M0 17v23h15"/><path fill="none" stroke="#d0cbb6" stroke-width="3" d="M-70-1q25 28 55 4"/></g>`);
@@ -854,8 +925,12 @@
       towers += `<path fill="${p.stone}" d="M${x} 710V330h140v380z"/><path fill="${p.shade}" d="M${x + 116} 330h24v380h-24z"/>${arch(x + 40, 505, 62, 175, p.stone)}${arch(x + 47, 365, 47, 87, p.stone)}`;
       for (const xx of [x - 13, x + 122]) towers += `<path fill="${p.stone}" d="M${xx} 510V315h30v195z"/><path fill="${p.roof}" d="M${xx - 5} 315l20-89 20 89z"/>`;
       towers += `<path fill="${p.roof}" d="M${x + 15} 330l55-94 55 94z"/><path fill="#d8cdb4" d="M${x - 9} 482h158v15H${x - 9}z"/>`;
+      towers += `<path fill="#356f98" d="M${x+9} 324l61-105 62 105h-14l-48-82-47 82z"/><path fill="${p.stone}" d="M${x+62} 284h17v40h-17z"/><path fill="#496f7f" d="M${x+62} 283l8-18 9 18z"/><path fill="#e7ddc6" d="M${x-11} 459h162v10H${x-11}zM${x-10} 353h160v8H${x-10}zM${x-7} 698h154v18H${x-7}z"/>`;
+      for(const xx of [x+4,x+112])towers += `<path fill="${p.stone}" d="M${xx} 676V510h20v166z"/><path fill="${p.shade}" d="M${xx+15} 518h5v158h-5z"/><path fill="#e8ddc4" d="M${xx-3} 588h26v7h-26zM${xx-3} 643h26v7h-26z"/>`;
+      towers += `<path fill="none" stroke="#e6dcc8" stroke-width="3" d="M${x+39} 443v-61q30-39 63 0v61M${x+48} 510v-16h44v16M${x+32} 681V557q37-70 76 0v124"/><path fill="none" stroke="#9d947d" stroke-width="2" opacity=".5" d="${Array.from({length:9},(_,i)=>`M${x+25} ${510+i*19}h11M${x+104} ${510+i*19}h8`).join('')}"/>`;
     }
-    return town(1202, 668, '#8b9ea3') + `<g id="${id}">${towers}<path fill="#739ca9" d="M550 428h460v22H550zM-160 676H1760v18H-160z"/><path fill="none" stroke="#789eaa" stroke-width="16" d="M-160 650Q170 650 430 445M1150 445Q1470 650 1760 650"/><path fill="none" stroke="#8badb5" stroke-width="5" d="${[0, 1, 2, 3, 4, 5].map(i => `M${10 + i * 65} ${650 - i * i * 5}V676M${1200 + i * 65} ${500 + i * 29}V676`).join('')}"/><path fill="none" stroke="#c6d2cd" stroke-width="3" d="M570 432h440M570 442h440"/></g>${reflect(id, 710, .2)}${boat(770, 804, .52, '#7d5a43')}`;
+    const lattice=Array.from({length:18},(_,i)=>`M${570+i*24} 424l24 27M${570+i*24} 451l24-27`).join('');
+    return town(1202, 668, '#8b9ea3') + `<g id="${id}">${towers}<path fill="#287fbd" d="M550 420h460v36H550zM-160 676H1760v18H-160z"/><path fill="none" stroke="#dcecec" stroke-width="3" d="${lattice}"/><path fill="none" stroke="#3f99c8" stroke-width="16" d="M-160 650Q170 650 430 445M1150 445Q1470 650 1760 650"/><path fill="none" stroke="#f0e1c9" stroke-width="4" d="M-160 641Q170 641 430 436M1150 436Q1470 641 1760 641"/><path fill="none" stroke="#8badb5" stroke-width="5" d="${[0, 1, 2, 3, 4, 5].map(i => `M${10 + i * 65} ${650 - i * i * 5}V676M${1200 + i * 65} ${500 + i * 29}V676`).join('')}"/><path fill="none" stroke="#c6d2cd" stroke-width="3" d="M570 421h440M570 454h440M-160 678H1760"/><path fill="none" stroke="#455b72" stroke-width="6" d="M570 698H1010M790 679v16"/></g>${reflect(id, 710, .2)}${boat(770, 804, .52, '#7d5a43')}`;
   };
   add('greater-london', 'signature', { id: 'tower-bridge', label: 'Tower Bridge', colour: 'blue', tags: ['thames', 'tower bridge', 'london'], svg: () => vista(1201, towerBridge, { water: true, y: 685 }) });
   const stpauls = (p) => {
@@ -864,9 +939,11 @@
     out += `<path fill="${p.stone}" d="M780 168V122h40v46z"/><path fill="${p.roof}" d="M773 122q27-32 54 0z"/><path stroke="${p.shade}" stroke-width="4" d="M800 98V68M791 80h18"/>`;
     for (const x of [460, 1050]) out += `<path fill="${p.stone}" d="M${x} 500V328h90v172z"/>${arch(x + 23, 361, 40, 90)}<path fill="${p.stone}" d="M${x + 7} 328v-32h76v32z"/><path fill="${p.roof}" d="M${x} 296q45-97 90 0z"/><path fill="${p.stone}" d="M${x + 33} 240v-32h24v32z"/>`;
     for (let i = 0; i < 6; i++) out += `<path fill="#f0e4c9" d="M${672 + i * 44} 679V565h15v114z"/><path fill="${p.shade}" d="M${687 + i * 44} 679V565h5v114z"/>`;
-    return out + `<path fill="${p.stone}" d="M650 565l150-80 150 80z"/><path fill="${p.shade}" d="M676 553l124-58 124 58z"/>${arch(778, 592, 45, 87)}<path fill="#d7cbb0" d="M400 682h800v16H400zM637 698h326v13H637zM622 720h356v12H622z"/>`;
+    let colonnade='';for(let i=0;i<16;i++){const x=678+i*16;colonnade+=`<path fill="#f1e1bd" d="M${x} 431v-71h6v71z"/><path fill="#f1e1bd" d="M${x-2} 356h10v5h-10zM${x-2} 431h10v5h-10z"/>`;}
+    const plaza=`<path fill="#bbc4c4" d="M-160 695H1760V900H-160z"/><path fill="none" stroke="#e7e0cf" stroke-width="3" opacity=".65" d="M-160 751H1760M-160 827H1760M120 900l425-205M440 900l221-205M1160 900L941 695M1500 900l-442-205"/>`;
+    return plaza+out+colonnade + `<path fill="${p.stone}" d="M650 565l150-80 150 80z"/><path fill="${p.shade}" d="M676 553l124-58 124 58z"/>${arch(778, 592, 45, 87)}<path fill="#d7cbb0" d="M400 682h800v16H400zM637 698h326v13H637zM622 720h356v12H622z"/><path fill="#ede2cb" d="M610 737h380v10H610zM597 755h406v10H597zM584 773h432v10H584z"/><path fill="none" stroke="#e5d5b5" stroke-width="5" d="M439 492h721M450 666h700M658 340h284M668 446h265"/>`;
   };
-  pair('greater-london', 'landmark', 'st-pauls', 'St Paul\'s Cathedral', 'slate', ['st pauls', 'dome', 'cathedral'], stpauls);
+  pair('greater-london', 'landmark', 'st-pauls', 'St Paul\'s Cathedral', 'slate', ['st pauls', 'dome', 'cathedral'], stpauls,{path:false});
   const palmHouse = () => {
     const id = U(); let ribs = '';
     for (let i = 0; i <= 18; i++) { const x = 355 + i * 50, yy = i < 4 || i > 14 ? 510 : 390; ribs += `<path fill="none" stroke="#d9ded0" stroke-width="5" d="M${x} 662V${yy}"/>`; }
@@ -891,7 +968,7 @@
     build({ add: (county, kind, o) => add(county, kind, Object.assign({ ukPart: part }, o)),
       U, R, rnd, mv, full, ridge, canopy, lin, rad, linU, radU, cloud, streak,
       rays, haze, finish, birds, shimmer, puffs, stars, sun, grass, meadow, oak,
-      lit, reflect, arch, sashes, battlements, town, sail, boat, chalk, vista });
+      lit, reflect, arch, sashes, battlements, town, sail, boat, chalk, vista, placeAtmosphere });
   };
   appendPart('hampshire-towns', typeof ukSouthEastPart2 === 'function' ? ukSouthEastPart2 : null);
   appendPart('kent-towns', typeof ukSouthEastPart3 === 'function' ? ukSouthEastPart3 : null);
@@ -968,6 +1045,6 @@
     '@keyframes ap-ukflutter { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(60px, -40px); } 50% { transform: translate(120px, 10px); } 75% { transform: translate(50px, 30px); } }',
   ].join('\n');
 
-  animRegisterPack({ id: 'uk-south-east', name: 'UK: South East & London', version: '2.2.2', css,
+  animRegisterPack({ id: 'uk-south-east', name: 'UK: South East & London', version: '2.3.0', css,
     description: 'Full-screen illustrated scenes across all nine South East counties and Greater London, together in one neighbouring-region gallery pack. County detection remains opt-in and every scene plays only in its own county.', items });
 })();

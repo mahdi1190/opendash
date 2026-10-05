@@ -28,7 +28,7 @@ function ukSouthEastPart2(T) {
       add('hampshire', kind, { id: place + '-' + view, label: label + ' — ' + reason,
         site: label.includes(locality) ? label : label + ', ' + locality, colour, tags, ukPlace: place, ukTown: town,
         ukLocality: locality, ukView: view, viewReason: reason,
-        svg: () => vista(seed, draw, Object.assign({ path: false }, options)) });
+        svg: () => vista(seed, draw, Object.assign({ path: false, art:place }, options)) });
     }
   };
   const brick = (seed, warm) => {
