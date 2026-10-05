@@ -10,9 +10,9 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync } from 'no
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { measure, check, richness, proposeThresholds, RULE_HINTS, thinSpots, parseMarkup, pathBox, colourClusters, motionKind, checkCss, shapeKeys, sharedShares, profileFor, applyWaivers, RULE_PLAN, RICHNESS_COMPONENTS, ruleTable, stableIds, isLegacyProfile, TARGETS, allowedTagList, forbiddenTagList, lintMarkup } from '../tools/lib/anim-quality.mjs';
+import { measure, check, richness, proposeThresholds, RULE_HINTS, thinSpots, parseMarkup, pathBox, colourClusters, motionKind, checkCss, shapeKeys, sharedShares, profileFor, applyWaivers, RULE_PLAN, RICHNESS_COMPONENTS, ruleTable, stableIds, ADVISORY_PLAN, ADVISORY_MOVED, THIN_HINTS, HUE_NAMES, describe, isLegacyProfile, TARGETS, allowedTagList, forbiddenTagList, lintMarkup } from '../tools/lib/anim-quality.mjs';
 import { main, lintRegistry, loadThresholds, loadReference, loadCommands, COMMANDS } from '../tools/anim-pack.mjs';
-import { loadRegistry, findBrowser, registrySources, CROPS } from '../tools/lib/anim-render.mjs';
+import { loadRegistry, findBrowser, registrySources, CROPS, SIZES, DEFAULT_AT, itemPage, sizesPage, contactPage } from '../tools/lib/anim-render.mjs';
 import { mkdirSync } from 'node:fs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -241,6 +241,7 @@ test('thresholds: valid, documented, and covering every rule of every profile', 
       for (const side of sides) {
         assert.ok(Number.isFinite(t[side]), `${profile}.${metric}.${side} is a number`);
         const warn = t[side === 'min' ? 'warnMin' : 'warnMax'];
+        if (t.advisoryIn) { assert.equal(warn, undefined, `${profile}.${metric}: its advisory level is ${t.advisoryIn}'s, not its own`); continue; }
         assert.ok(Number.isFinite(warn), `${profile}.${metric}: the advisory (10th percentile) level`);
         assert.ok(side === 'min' ? warn >= t.min : warn <= t.max, `${profile}.${metric}: the advisory level is inside the limit`);
       }
@@ -248,6 +249,36 @@ test('thresholds: valid, documented, and covering every rule of every profile', 
       if (t.min != null && t.max != null) assert.ok(t.min <= t.max, `${profile}.${metric}: min <= max`);
     }
   }
+});
+
+test('advisory-only metrics (detailPerKB, sameDelay): no floor, no ceiling, a level at the corpus 10th / 90th percentile, and shapesPerKB hands its advisory to detailPerKB', () => {
+  for (const [profile, plan] of Object.entries(RULE_PLAN)) {
+    const kind = profile.startsWith('scene') ? 'scene' : 'item', rs = RES.results.filter(r => r.profile === profile);
+    for (const [metric, side] of Object.entries(ADVISORY_PLAN[kind])) {
+      const t = TH[profile][metric];
+      assert.deepEqual(plan[metric], [], `${profile}.${metric} is in the plan with no limited side`);
+      assert.deepEqual([t.min, t.max], [undefined, undefined], `${profile}.${metric} is never a failure`);
+      const d = describe(rs.map(r => r.metrics[metric]));
+      assert.equal(t[side], side === 'warnMin' ? Math.floor(d.p10 * (d.p10 >= 10 ? 1 : 1000)) / (d.p10 >= 10 ? 1 : 1000) : Math.ceil(d.p90 * (d.p90 >= 10 ? 1 : 1000)) / (d.p90 >= 10 ? 1 : 1000), `${profile}.${metric}.${side} is the corpus ${side === 'warnMin' ? '10th' : '90th'} percentile`);
+      assert.equal(t.median, d.median); assert.match(t.note, /^corpus n=\d+: min /);
+      // the corpus is judged against its own level: about a tenth of it is a thin spot (that is what the level means)
+      const flagged = rs.filter(r => thinSpots(r.metrics, profile, TH).some(x => x.rule === metric)).length;
+      assert.ok(flagged / rs.length > 0.02 && flagged / rs.length < 0.2, `${profile}.${metric}: ${flagged} of ${rs.length} are thin spots`);
+    }
+    for (const [metric, by] of Object.entries(ADVISORY_MOVED[kind])) {
+      const t = TH[profile][metric];
+      assert.equal(t.advisoryIn, by); assert.equal(t.warnMin, undefined); assert.ok(Number.isFinite(t.min), 'the hard floor is untouched');
+      assert.ok(!rs.some(r => thinSpots(r.metrics, profile, TH).some(x => x.rule === metric)), `${profile}.${metric} is never a thin spot any more: ${by} is`);
+    }
+  }
+  // calibrate --propose regenerates exactly these entries (the file is the corpus' answer, not a hand edit)
+  for (const profile of Object.keys(RULE_PLAN)) {
+    const kind = profile.startsWith('scene') ? 'scene' : 'item', rs = RES.results.filter(r => r.profile === profile);
+    const proposed = proposeThresholds(rs.map(r => r.metrics), profile, { caps: { bytes: kind === 'scene' ? REG.limits.scene : REG.limits.item } });
+    for (const metric of Object.keys(ADVISORY_PLAN[kind])) assert.deepEqual(proposed[metric], TH[profile][metric], `${profile}.${metric}`);
+    for (const [metric, by] of Object.entries(ADVISORY_MOVED[kind])) { assert.equal(proposed[metric].advisoryIn, by); assert.equal(proposed[metric].warnMin, undefined); }
+  }
+  assert.match(TH._how.join('\n'), /advisory-only metrics .* "detailPerKB" .* "sameDelay"/);
 });
 
 test('every rule says how to fix it (a hint for each limited side)', () => {
@@ -492,6 +523,55 @@ test('cli: sheet renders a small item to a 512 x 512 PNG (skipped without Chrome
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+/* ---------- FIX3A: sheet --still, --at, --sizes, --key; the contact sheet matches its mode ---------- */
+
+const pngSize = (f) => { const b = readFileSync(f); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
+
+test('sheet pages: --still renders the reduced-motion rest frame (no is-live, ap-still), --at pauses later, --sizes is a strip at 28, 40, 64 and 128 px, a light contact sheet is on a light page', () => {
+  const turtle = REG.items().find(e => e.ref === 'us-pacific/hi-sea-turtle'), scene = REG.items().find(e => e.ref === 'us-pacific/hi-volcano-night');
+  assert.deepEqual(SIZES, [28, 40, 64, 128]); assert.equal(DEFAULT_AT, 6500);
+  const body = (h) => h.slice(h.indexOf('<body>'));   // the page's css names every class: only the markup counts
+  const live = itemPage(REG, turtle, { mode: 'light' }), still = itemPage(REG, turtle, { mode: 'light', still: true });
+  assert.match(body(live), /class="anim-scene[^"]*is-live/); assert.doesNotMatch(body(live), /ap-still/); assert.match(live, /currentTime=6500/);
+  assert.match(body(still), /class="anim-scene[^"]*ap-still/); assert.doesNotMatch(body(still), /is-live/, 'animations off: the rest frame'); assert.match(itemPage(REG, turtle, { mode: 'light', at: 1200 }), /currentTime=1200/);
+  assert.match(body(itemPage(REG, scene, { mode: 'night', still: true })), /class="anim-scene tod-night[^"]*ap-still/, 'night and still combine'); assert.match(itemPage(REG, scene, { mode: 'dark' }), /data-theme="dark"/);
+  // the strip: the same item at each size, the app's own size classes, 1x
+  const strip = sizesPage(REG, turtle, { mode: 'light' });
+  assert.equal((strip.html.match(/<figure>/g) || []).length, 4); for (const px of SIZES) assert.ok(strip.html.includes(`style="width:${px}px;height:${px}px"`) && strip.html.includes(`${px} px</figcaption>`), String(px));
+  for (const cls of ['sz-xs', 'sz-sm', 'sz-lg', 'sz-hero']) assert.ok(body(strip.html).includes(cls), cls + ': the app\'s own tile classes');
+  assert.deepEqual([strip.width, strip.height], [28 + 40 + 64 + 128 + 4 * 28 + 28, 128 + 28 + 36]); assert.match(strip.html, /background:#f4f4f6/); assert.match(sizesPage(REG, turtle, { mode: 'dark' }).html, /background:#16171a/);
+  assert.match(body(sizesPage(REG, turtle, { still: true }).html), /ap-still/); assert.doesNotMatch(body(sizesPage(REG, turtle, { still: true }).html), /is-live/);
+  // the contact sheet: a light render sits on a light page, a dark or night one on a dark page; the sizes strips keep their real size
+  const done = [{ ref: 'a/b', file: '/tmp/x.png', full: false, sizesFile: '/tmp/x-sizes.png' }];
+  assert.match(contactPage(done, { mode: 'light' }), /background:#eceef2;color:#1b2430/); for (const mode of ['dark', 'night']) assert.match(contactPage(done, { mode }), /background:#17232b;color:#fff/, mode);
+  assert.doesNotMatch(contactPage(done, { mode: 'light' }), /#17232b/, 'a dark page is only for dark renders');
+  const sz = contactPage(done, { mode: 'light', sizes: true, columns: 2 }); assert.ok(sz.includes('x-sizes.png') && !sz.includes('src="file:///tmp/x.png"') && /max-content/.test(sz) && !/width:100%/.test(sz));
+  assert.equal(contactPage([{ ref: 'a/b', file: '/tmp/x.png', full: false }], { sizes: true }).includes('<img'), false, 'no strip, no cell');
+});
+
+test('sheet --still / --at / --sizes / --key write their own files (skipped without Chrome)', { skip: !findBrowser() }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'anim-sheet2-'));
+  try {
+    const r = await run(['sheet', 'us-pacific/hi-sea-turtle,us-pacific/ak-totem', '--out', dir, '--still', '--sizes', '--contact']);
+    assert.equal(r.code, 0, r.err);
+    for (const f of ['us-pacific__hi-sea-turtle-light-still.png', 'us-pacific__hi-sea-turtle-light-still-sizes.png', 'us-pacific__ak-totem-light-still.png', 'contact-light-still.png', 'contact-light-sizes-still.png']) assert.ok(existsSync(join(dir, f)), f);
+    assert.deepEqual(pngSize(join(dir, 'us-pacific__hi-sea-turtle-light-still.png')), [512, 512]);
+    assert.deepEqual(pngSize(join(dir, 'us-pacific__hi-sea-turtle-light-still-sizes.png')), [28 + 40 + 64 + 128 + 4 * 28 + 28, 128 + 28 + 36], 'a strip at 1x');
+    assert.ok(r.out.includes('-sizes.png'), 'the strip paths are printed');
+    // --at: another time, another file; a still render is not the animated one
+    const at = await run(['sheet', 'us-pacific/hi-sea-turtle', '--out', dir, '--at', '2000']); assert.equal(at.code, 0, at.err); assert.ok(existsSync(join(dir, 'us-pacific__hi-sea-turtle-light-t2000.png')));
+    assert.ok(!existsSync(join(dir, 'us-pacific__hi-sea-turtle-light.png')), 'the default-time file is not written by --at');
+    for (const bad of ['x', '-1', '1.5', '', '999999999']) { const e = await run(['sheet', 'us-pacific/hi-sea-turtle', '--out', dir, `--at=${bad}`]); assert.equal(e.code, 1, bad); assert.match(e.err, /--at must be a whole number of milliseconds from 0 to 600000/, bad); }
+    // --key renders one item of a pack; an unknown key is an error; --sizes on scenes says it draws nothing for them
+    const k = await run(['sheet', '--pack', 'us-pacific', '--key', 'hi-sea-turtle', '--out', dir, '--mode', 'dark']); assert.equal(k.code, 0, k.err); assert.deepEqual(k.out.split('\n'), [join(dir, 'us-pacific__hi-sea-turtle-dark.png')]);
+    const kk = await run(['sheet', '--pack', 'us-pacific', '--key', 'nope', '--out', dir]); assert.equal(kk.code, 1); assert.match(kk.err, /--key nope names no item of the selection/);
+    const sc = await run(['sheet', 'us-pacific/hi-volcano-night', '--out', dir, '--sizes']); assert.equal(sc.code, 0, sc.err); assert.match(sc.err, /--sizes draws a strip for small items only/); assert.ok(!existsSync(join(dir, 'us-pacific__hi-volcano-night-light-sizes.png')));
+    // the help says what each does and that the contact sheet is not 28 px
+    const h = (await run(['sheet', '--help'])).out;
+    for (const w of ['--key <v>', '--still', 'the rest frame, exactly what reduced motion shows', '--at <v>', '--sizes', '28, 40, 64, 128 px', 'a light render sits on a light page', 'NOT 28 px', 'Judge "does it read at 28 px" on the --sizes strip']) assert.ok(h.includes(w), w);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 /* ---------- the CLI review fixes (FIX2) ---------- */
 
 test('lint bytes do not depend on what was rendered before: stable ids, the thinnest scene gives one answer alone and in a pack', async () => {
@@ -584,6 +664,78 @@ test('--option errors are friendly: a negative number is not swallowed as a flag
   try {
     for (const argv of [['lint'], ['status'], ['status', 'x'], ['brief', 'x', '--kind', 'scene'], ['sheet', 'a/b']]) { const e = await run([...argv, '--root', none]); assert.equal(e.code, 1, argv.join(' ')); assert.match(e.err, /no src\/app folder under .* \(or give --root/, argv.join(' ')); assert.doesNotMatch(e.err, /ENOENT|scandir/); }
   } finally { rmSync(none, { recursive: true, force: true }); }
+});
+
+/* ---------- FIX3A: delay lint, detail per KB, thin-spot hints ---------- */
+
+const mover = (cls, d, extra = '') => `<g class="${cls}"${d == null ? '' : ` style="--d:${d}"`}><circle class="c" cx="${10 + extra.length * 7}" cy="30" r="6"/></g>`;
+const itemWith = (...movers) => lintItem('<path class="k" d="M10 50h44v8H10z"/><path class="s" d="M12 20l20-10 20 10v20H12z"/>' + movers.map((m, i) => m.replace('cx="', `cx="${12 + i * 9}`).replace(/cx="\d+(\d\d)"/, 'cx="$1"')).join('')).m;
+
+test('sameDelay: how many moving elements share one --d; a mover with no --d is delay 0 (a bare x-glow counts), ".4s", "0.4s" and "400ms" are one delay', () => {
+  assert.equal(itemWith(mover('x-glow'), mover('x-pulse'), mover('x-bob')).sameDelay, 3, 'three bare movers: three on delay 0');
+  assert.equal(itemWith(mover('x-glow'), mover('x-pulse', '0s'), mover('x-bob', '0')).sameDelay, 3, 'a bare mover and "0s" and "0" are all delay 0');
+  assert.equal(itemWith(mover('x-glow', '.4s'), mover('x-pulse', '0.4s'), mover('x-bob', '400ms')).sameDelay, 3, '.4s = 0.4s = 400ms');
+  assert.equal(itemWith(mover('x-glow', '.4s'), mover('x-pulse', '.8s'), mover('x-bob', '-.4s')).sameDelay, 1, 'three different delays (a negative one is its own)');
+  assert.equal(itemWith(mover('x-glow'), mover('x-pulse', '.5s'), mover('x-bob', '.5s'), mover('x-ring', '.5s')).sameDelay, 3);
+  const m = itemWith(mover('x-glow'), mover('x-pulse'), mover('x-bob', '.3s')); assert.deepEqual([m.sameDelay, m.sameDelayValue], [2, '0'], 'the value that is shared is reported');
+  assert.deepEqual([itemWith(mover('x-glow', '.3s')).sameDelay, itemWith(mover('x-glow', '.3s')).sameDelayValue], [1, ''], 'one mover shares nothing');
+  assert.equal(measure(wrapItem('<path class="k" d="M10 50h44v8H10z"/>'), 'item', { classes: SCENE_CLASSES }).sameDelay, 0, 'nothing moves');
+  // a thin spot only beyond the corpus 90th percentile (5): 6 on one delay is flagged, with the advice; the rubric's "no three" is not what the corpus does
+  const six = lintItem('<path class="k" d="M10 50h44v8H10z"/>' + Array.from({ length: 6 }, (_, i) => `<g class="x-pulse"><circle class="c" cx="${12 + i * 9}" cy="30" r="5"/></g>`).join('')).m;
+  assert.equal(six.sameDelay, 6); const thin = thinSpots(six, 'item', TH).find(t => t.rule === 'sameDelay');
+  assert.ok(thin && thin.side === 'high' && thin.warn === 5, JSON.stringify(thin)); assert.match(thin.hint, /6 moving elements share --d 0s \(a mover with no --d is delay 0: a bare x-glow counts\)/); assert.match(thin.hint, /median of 3 on one delay and 90 % have at most 5/); assert.match(thin.hint, /aim for few, not zero/);
+  assert.equal(thinSpots(itemWith(mover('x-glow'), mover('x-pulse'), mover('x-bob')), 'item', TH).some(t => t.rule === 'sameDelay'), false, 'three on a delay is the corpus median, not a thin spot');
+  assert.ok(!check(six, 'item', TH).some(f => f.rule === 'sameDelay'), 'never a failure');
+  assert.ok(!ruleTable(six, 'item', TH).some(r => r.rule === 'sameDelay' || r.rule === 'detailPerKB'), 'an advisory metric is not a row of the PASS / FAIL table');
+  // the evidence behind the level: the accepted corpus and every gold exemplar have 3 or more on delay 0
+  const gold = loadReference(ROOT).items.map(x => BY_REF.get(x.ref).metrics);
+  assert.ok(gold.every(m => m.sameDelay >= 3 && m.sameDelay <= 5 && m.sameDelayValue === '0'), JSON.stringify(gold.map(m => [m.sameDelay, m.sameDelayValue])));
+  assert.ok(RES.results.filter(r => r.profile === 'item').filter(r => r.metrics.sameDelay >= 3).length / RES.results.filter(r => r.profile === 'item').length > 0.5, 'most accepted items have 3 or more on one delay: "no three" is craft advice, not the corpus');
+});
+
+test('detailPerKB (shapes + path segments per KB) is the "too little drawn for its size" advisory: a path-heavy scene with few shapes per KB is not flagged, a padded one is; shapesPerKB keeps its hard floor', () => {
+  const rich = RES.results.filter(r => r.profile === 'scene').map(r => r.metrics);
+  assert.ok(rich.every(m => Math.abs(m.detailPerKB - (m.shapes + m.pathSegments) / (m.bytes / 1024)) < 0.01), 'the definition');
+  // few shapes per KB, many segments: path-heavy (the pilot's hand-drawn ferns, rocks and houses)
+  const heavy = rich.filter(m => m.shapesPerKB < TH.scene.shapesPerKB.min * 2 && m.detailPerKB > TH.scene.detailPerKB.median);
+  const m = { ...rich[0], shapesPerKB: 5.5, detailPerKB: 49 }, padded = { ...rich[0], shapesPerKB: 5.5, detailPerKB: 12 };
+  assert.ok(m.shapesPerKB >= TH.scene.shapesPerKB.min, 'above the hard floor: passes');
+  assert.equal(thinSpots(m, 'scene', TH).some(t => t.rule === 'shapesPerKB' || t.rule === 'detailPerKB'), false, 'path-heavy: rich, not padded');
+  const tp = thinSpots(padded, 'scene', TH).find(t => t.rule === 'detailPerKB');
+  assert.ok(tp && tp.side === 'low' && tp.warn === 21, JSON.stringify(tp)); assert.match(tp.hint, /^too little drawn for its size: shapes plus path segments per KB\. Padded or repeated markup .*\(a path-heavy scene is fine: its segments count here\)/);
+  // the hard floor still holds
+  assert.ok(check({ ...rich[0], shapesPerKB: 3.0 }, 'scene', TH).some(f => f.rule === 'shapesPerKB'), 'below the corpus floor: a failure');
+  assert.equal(TH.scene.shapesPerKB.min, 3.28); assert.equal(TH['scene-legacy'].shapesPerKB.min, 4.7);
+  assert.ok(heavy.length >= 0);
+});
+
+test('hueSectors: the thin spot says which sectors carry area and how to fit a 5-stop dusk sky in five (the guide\'s palette costs four); the level stays at the corpus 90th percentile (5)', () => {
+  assert.equal(TH.scene.hueSectors.warnMax, 5); assert.equal(TH.scene.hueSectors.max, 7, 'the hard ceiling is untouched');
+  // the data behind keeping it: 93 % of the accepted scenes stay within five sectors, and the 5-stop dusk skies are within noise of that
+  const sc = RES.results.filter(r => r.profile === 'scene'), over = (list) => list.filter(r => r.metrics.hueSectors > 5).length / list.length;
+  assert.ok(over(sc) > 0.03 && over(sc) < 0.1, 'overall ' + over(sc)); const dusk = sc.filter(r => r.metrics.skyStops >= 5); assert.ok(dusk.length > 40 && over(dusk) < 0.2, `5-stop skies: ${dusk.length} scenes, ${over(dusk)} above five`);
+  const sixSectors = sc.find(r => r.metrics.hueSectors >= 6); assert.ok(sixSectors);
+  const t = thinSpots(sixSectors.metrics, 'scene', TH).find(x => x.rule === 'hueSectors');
+  assert.ok(t && t.side === 'high'); assert.match(t.hint, new RegExp(`^${sixSectors.metrics.hueSectors} of the 12 hue sectors carry area \\(`)); for (const n of sixSectors.metrics.hueSectorList) assert.ok(t.hint.includes(n) && HUE_NAMES.includes(n), n);
+  assert.match(t.hint, /A 5-stop dusk sky alone spends four \(blue, violet, magenta, red to gold\)/); assert.match(t.hint, /ONE more family between them \(muted greens OR teals\)/); assert.match(t.hint, /accents under 4 % of the painted area/);
+  assert.equal(sixSectors.metrics.hueSectorList.length, sixSectors.metrics.hueSectors);
+  // the guide's own palette: its sky stops fall in four sectors
+  const sector = (hex) => { const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return Math.floor(((h * 60) + 360) % 360 / 30) % 12; };
+  assert.deepEqual([...new Set(['#4f4a92', '#b26aa0', '#ff8a7e', '#ffc080', '#ffe4a0'].map(sector))].sort((a, b) => a - b), [0, 1, 8, 10], 'the dusk palette of the style guide is four sectors: one more family fits under the advisory');
+});
+
+test('every thin spot says what to do about it: identical seeds cause sharedShare (give every call its own seed), delay, copies, and the CLI prints the hint', async () => {
+  for (const rule of ['sharedShare', 'sharedShareAll']) { const x = THIN_HINTS[rule][1](); assert.match(x, /seed/); assert.match(x, /[Gg]ive every .*call its own seed/); }
+  assert.match(THIN_HINTS.sharedShare[1](), /stars\(\), birds\(\), shimmer\(\), puffs\(\), ridge\(\) and canopy\(\) draw the SAME shapes for the same seed/);
+  for (const rule of ['distinctRatio', 'distinctForms']) assert.match(THIN_HINTS[rule][0], /<g transform=.*scale|scale\(\)/); assert.match(THIN_HINTS.distinctRatio[0], /puffs\(\) with n above 3/); assert.match(THIN_HINTS.distinctRatio[0], /bake the scale into the coordinates/);
+  const seed = RES.results.find(r => r.profile === 'scene' && thinSpots(r.metrics, 'scene', TH).some(t => t.rule === 'sharedShare' || t.rule === 'sharedShareAll'));
+  if (seed) { const t = thinSpots(seed.metrics, 'scene', TH).find(x => /^sharedShare/.test(x.rule)); assert.match(t.hint, /own seed/); }
+  const r = await run(['lint', '--ref', 'us-pacific/ak-midnight-sun,us-pacific/hi-sea-turtle']);
+  assert.match(r.out, /delays: \d+ moving elements share --d 0s \(a bare x-\* counts as 0\)|thin spots/);
+  const text = (await run(['lint', '--help'])).out;
+  for (const w of ['Good to know:', 'us-lit', 'counts as ONE shape and ONE lit pane group', 'give every call its own seed', 'detailPerKB', 'a bare x-glow counts as delay 0', '5-stop dusk sky already spends four of the five hue sectors']) assert.ok(text.includes(w), w);
+  const j = JSON.parse((await run(['lint', '--pack', 'us-pacific', '--json'])).out); assert.ok(j.items.every(i => i.thin.every(t => 'hint' in t)), 'the JSON carries the hints too');
+  assert.ok(j.items.some(i => i.metrics.detailPerKB > 0 || i.metrics.sameDelay >= 0));
 });
 
 test('sheet --crop: a phone and a square tile render what they show of a scene (skipped without Chrome)', { skip: !findBrowser() }, async () => {

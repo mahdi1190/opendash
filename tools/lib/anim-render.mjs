@@ -11,10 +11,11 @@
 //   reg.R                                            the evaluated registry functions (animPacks, animItemHtml ...) and the regions (ANIM_REGIONS, animRegion)
 //   registrySources(root, extraFiles, omit)          the source files in build order, extra files placed where their name sorts
 //   findBrowser()                                    Chrome / Edge / Chromium: CHROME_PATH, PATH, Playwright's folders
-//   itemPage(reg, entry, {mode, at})                 the HTML page for one item, animations paused at `at` ms
-//   renderItems(reg, entries, { mode, outDir, crop, ... }) PNGs: scenes 1600 x 900 paused at 6.5 s, small items 512 x 512; crop 'square' | 'phone' shows what
-//                                                    a square tile (the central 900 x 900) or a portrait phone (the central 420 x 900) shows of a scene
-//   contactSheet(rendered, { file, columns })        a grid of rendered PNGs in one PNG
+//   itemPage(reg, entry, {mode, at, still})          the HTML page for one item, animations paused at `at` ms (still: animations OFF, the rest frame reduced motion shows)
+//   sizesPage(reg, entry, {mode, at, still})         a strip of a small item at SIZES (28, 40, 64, 128 px): "does it read at 28 px?"
+//   renderItems(reg, entries, { mode, outDir, crop, still, at, sizes, ... }) PNGs: scenes 1600 x 900 paused at `at` (default 6.5 s), small items 512 x 512 (+ a sizes strip);
+//                                                    crop 'square' | 'phone' shows what a square tile (the central 900 x 900) or a portrait phone (the central 420 x 900) shows of a scene
+//   contactPage(rendered, { columns, mode, sizes }) / contactSheet(rendered, { file, ... })   a grid of rendered PNGs in one PNG, on a page that matches the mode (a light render never sits on a dark page)
 import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
 import { join, basename, resolve, dirname } from 'node:path';
 import { homedir } from 'node:os';
@@ -163,13 +164,17 @@ export function findBrowser(env = process.env) {
  * width W shows the central W units of the 1600. A square tile shows 900, a portrait phone about 420 (a 9:19 phone) to 506 (a 9:16 phone): 420 is the narrowest.
  */
 export const CROPS = Object.freeze({ square: 900, phone: 420 });
+/** The pixel sizes of the `sheet --sizes` strip of a small item: the smallest real use (28), a list row (40), the gallery (64), the hero tile (128). */
+export const SIZES = Object.freeze([28, 40, 64, 128]);
+/** Where animations are paused, in ms (a scene's sun takes 9 s to rise, so a mid-motion PNG is not the rest frame: --still shows that). */
+export const DEFAULT_AT = 6500;
 
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/** The page for one item: the app's theme variables and animation css, the pack's css, the animations paused at `at` ms. */
-export function itemPage(reg, entry, { mode = 'light', at = 6500 } = {}) {
+/** The page for one item: the app's theme variables and animation css, the pack's css, the animations paused at `at` ms (still: animations off, the reduced-motion rest frame). */
+export function itemPage(reg, entry, { mode = 'light', at = DEFAULT_AT, still = false } = {}) {
   const full = entry.full;
-  let html = reg.html(entry.item, { live: true, size: full ? 'fill' : 'hero' });
+  let html = reg.html(entry.item, still ? { reduced: true, size: full ? 'fill' : 'hero' } : { live: true, size: full ? 'fill' : 'hero' });
   if (mode === 'night') html = html.replace('class="anim-scene', 'class="anim-scene tod-night');
   else if (mode === 'dusk') html = html.replace('class="anim-scene', 'class="anim-scene tod-dusk');
   const dark = mode === 'dark' || mode === 'night';
@@ -184,10 +189,35 @@ ${(entry.packObj && entry.packObj.css) || ''}
 }
 
 /**
- * Render items to PNG files: <outDir>/<ref with / as __>-<mode>.png. Returns [{ref, file, full}].
+ * A strip of a small item at SIZES px (the app draws it at 28 px in a list row and 128 px on a hero tile): the same tile the app uses (`.anim-scene`, its theme, its
+ * background), sized by --as-size, each with its size under it. The PNG is at 1x, so 28 px IS 28 pixels: look at it at its real size.
+ */
+export function sizesPage(reg, entry, { mode = 'light', at = DEFAULT_AT, still = false, sizes = SIZES } = {}) {
+  const dark = mode === 'dark' || mode === 'night';
+  const sizeClass = (px) => (px <= 28 ? 'xs' : px <= 44 ? 'sm' : px <= 70 ? 'lg' : 'hero');   // the app's own tile classes: they also set the svg's share of the tile (92 % at xs, 84 % above)
+  const tiles = sizes.map(px => {
+    let html = reg.html(entry.item, still ? { reduced: true, size: sizeClass(px) } : { live: true, size: sizeClass(px) });
+    if (mode === 'night') html = html.replace('class="anim-scene', 'class="anim-scene tod-night');
+    return `<figure><div class="t" style="width:${px}px;height:${px}px">${html}</div><figcaption>${px} px</figcaption></figure>`;
+  }).join('');
+  const width = sizes.reduce((n, px) => n + px, 0) + sizes.length * 28 + 28, height = Math.max(...sizes) + 28 + 36;
+  const css = `${reg.pageCss()}
+${(entry.packObj && entry.packObj.css) || ''}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:${dark ? '#16171a' : '#f4f4f6'};--ap-speed:1;--ap-ease:ease-in-out;font:11px system-ui,sans-serif;color:${dark ? '#aab' : '#556'}}
+  body{display:flex;align-items:flex-end;gap:28px;padding:14px 0 14px 28px;box-sizing:border-box}
+  figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .t .anim-scene.anim-scene.anim-scene{--as-size:100%;width:100%;height:100%}`;
+  return { html: `<!doctype html><html data-theme="${dark ? 'dark' : 'light'}"><head><meta charset="utf-8"><style>${css}</style></head><body>${tiles}<script>for(const a of document.getAnimations()){a.pause();a.currentTime=${at}}</script></body></html>`, width, height };
+}
+
+/**
+ * Render items to PNG files: <outDir>/<ref with / as __>-<mode>[-<crop>][-still | -t<ms>].png. Returns [{ref, file, full, crop, still, at, sizesFile}].
+ *   still   animations OFF (the rest frame: what reduced motion shows; a scene's rising sun is at its place, a falling leaf is not mid-air)
+ *   at      the time the animations are paused at, in ms (default 6.5 s); ignored with `still`
+ *   sizes   also write <...>-sizes.png for every SMALL item: the item at 28, 40, 64 and 128 px (a scene has no strip)
  * `chrome` may be passed in to share one browser between calls.
  */
-export async function renderItems(reg, entries, { mode = 'light', outDir, chrome, executable = findBrowser(), at = 6500, crop = '', onProgress } = {}) {
+export async function renderItems(reg, entries, { mode = 'light', outDir, chrome, executable = findBrowser(), at = DEFAULT_AT, crop = '', still = false, sizes = false, onProgress } = {}) {
   if (!entries.length) return [];
   if (crop && !CROPS[crop]) throw new Error(`--crop must be one of ${Object.keys(CROPS).join(', ')}`);
   mkdirSync(outDir, { recursive: true });
@@ -196,28 +226,46 @@ export async function renderItems(reg, entries, { mode = 'light', outDir, chrome
     if (!executable) throw new Error('No Chrome, Edge or Chromium found. Set CHROME_PATH to its executable (or PLAYWRIGHT_BROWSERS_PATH to a Playwright browsers folder).');
     chrome = await launchChrome({ executable });
   }
+  const tag = still ? '-still' : at !== DEFAULT_AT ? `-t${at}` : '';
   const out = [];
   try {
     for (const e of entries) {
       const cropped = crop && e.full;   // a small item is never cropped
-      const file = join(outDir, `${e.ref.replace(/\//g, '__')}-${mode}${cropped ? '-' + crop : ''}.png`);
-      const png = await chrome.screenshot({ html: itemPage(reg, e, { mode, at }), width: e.full ? (cropped ? CROPS[crop] : 1600) : 512, height: e.full ? 900 : 512, transparent: false });
+      const stem = join(outDir, `${e.ref.replace(/\//g, '__')}-${mode}${cropped ? '-' + crop : ''}${tag}`);
+      const file = stem + '.png';
+      const png = await chrome.screenshot({ html: itemPage(reg, e, { mode, at, still }), width: e.full ? (cropped ? CROPS[crop] : 1600) : 512, height: e.full ? 900 : 512, transparent: false });
       writeFileSync(file, png);
-      out.push({ ref: e.ref, file, full: e.full, crop: cropped ? crop : '' });
+      let sizesFile = '';
+      if (sizes && !e.full) {
+        const page = sizesPage(reg, e, { mode, at, still });
+        sizesFile = stem + '-sizes.png';
+        writeFileSync(sizesFile, await chrome.screenshot({ html: page.html, width: page.width, height: page.height, transparent: false }));
+      }
+      out.push({ ref: e.ref, file, full: e.full, crop: cropped ? crop : '', still, at: still ? null : at, sizesFile });
       if (onProgress) onProgress(out.length, entries.length, e.ref);
     }
   } finally { if (own) await chrome.close(); }
   return out;
 }
 
-/** A grid of rendered PNGs (with their refs) in one PNG. `rendered` is renderItems' result. */
-export async function contactSheet(rendered, { file, columns = 4, chrome, executable = findBrowser() } = {}) {
+/**
+ * The page of a contact sheet: a grid of rendered PNGs (with their refs). `mode` picks the page: a dark page for dark and night renders, a LIGHT page for light ones (a small
+ * light tile on a dark page is judged against the wrong background). `sizes: true` lays out the sizes strips (`sizesFile`) of the small items instead, at their real pixel size.
+ */
+export function contactPage(rendered, { columns = 4, mode = 'light', sizes = false } = {}) {
+  const dark = mode === 'dark' || mode === 'night';
+  const list = sizes ? rendered.filter(r => r.sizesFile).map(r => ({ ...r, file: r.sizesFile, full: false })) : rendered;
+  const cells = list.map(r => `<figure class="${r.full ? 'w' : ''}"><img src="${pathToFileURL(r.file).href}"><figcaption>${esc(r.ref)}</figcaption></figure>`).join('');
+  const bg = dark ? '#17232b' : '#eceef2', fg = dark ? '#fff' : '#1b2430';
+  return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;padding:12px;background:${bg};color:${fg};font:13px system-ui}main{display:grid;grid-template-columns:repeat(${columns},${sizes ? 'max-content' : '1fr'});gap:10px}figure{margin:0}img{display:block;${sizes ? '' : 'width:100%;'}height:auto}figcaption{padding:4px 0}</style></head><body><main>${cells}</main></body></html>`;
+}
+
+/** A contact sheet in one PNG (contactPage rendered). `rendered` is renderItems' result. */
+export async function contactSheet(rendered, { file, columns = 4, chrome, executable = findBrowser(), mode = 'light', sizes = false } = {}) {
   const own = !chrome;
   if (own) chrome = await launchChrome({ executable });
   try {
-    const cells = rendered.map(r => `<figure class="${r.full ? 'w' : ''}"><img src="${pathToFileURL(r.file).href}"><figcaption>${esc(r.ref)}</figcaption></figure>`).join('');
-    const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;padding:12px;background:#17232b;color:#fff;font:13px system-ui}main{display:grid;grid-template-columns:repeat(${columns},1fr);gap:10px}figure{margin:0}img{display:block;width:100%;height:auto}figcaption{padding:4px 0}</style></head><body><main>${cells}</main></body></html>`;
-    const png = await chrome.screenshot({ html, width: 1600, height: 'auto', transparent: false });
+    const png = await chrome.screenshot({ html: contactPage(rendered, { columns, mode, sizes }), width: 1600, height: 'auto', transparent: false });
     writeFileSync(file, png);
     return file;
   } finally { if (own) await chrome.close(); }

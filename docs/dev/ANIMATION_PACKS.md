@@ -203,7 +203,11 @@ pack files. It never copies logic.**
   was picked (item `when()` rules stay per region, so in an overlap the farther region's art can be the pick). When
   a new region's rows fall inside a neighbour's reach: move or drop the row, or lower the `unitKm` of one of
   them (then run `tests/region-framework.test.mjs` and the tests of both regions: lowering it changes where that region plays). Never
-  add rows of a region beyond its own territory to "sharpen" its edge: that claims the neighbour's ground for it.
+  add rows of a region beyond its own territory to "sharpen" its edge: that claims the neighbour's ground for it. `region.check()` lists every such
+  row (and every other region's row inside this one's) as `overlap: ...` with the ways out, and `status <id>` shows them under OVERLAP WITH OTHER REGIONS. **The border case**: a small
+  town just across a border from a neighbour's row cannot be a row of the region on the other side (a town of Papua New Guinea 70 km from Asia's Jayapura row is inside Asia's 300 km
+  reach: a position there resolves to Asia and Indonesia's art plays). Leave such a town without a row, move it, or lower the neighbour's `unitKm` after running both regions' tests;
+  adding rows to push the neighbour out is never the answer.
 - **The tables are read once**, when `animRegionDefine` runs: the lookups work on that snapshot. Finish the tables
   before defining the region; `check()` reports a table edited afterwards.
 - The legacy `71-anim-us.js` and `71-anim-asia.js` stay as thin configs and keep their old public names
@@ -214,8 +218,8 @@ pack files. It never copies logic.**
 
 `animRegionDefine(cfg)` returns the region (also in `ANIM_REGIONS`, found by `animRegion(id)`). The region has
 `where(ctx)`, `locate(ctx)` (`{km, where}`, what `animRegionsWhere` ranks by), `place(ctx)`, `unitOf(ctx)`,
-`builder(group)`, `sceneAdd(entry)`, `scenes` (the registry), `check()`, `travelId(row)`, `travelRow(city)`,
-`worldTravel` and `elsewhere` (frozen copies of the config lists).
+`builder(group)`, `sceneAdd(entry)`, `scenes` (the registry), `check()`, `overlaps()`, `nearestRow(ctx)` (`{id, unit, km}`: the row that decides a position), `travelId(row)`,
+`travelRow(city)`, `countryOf(unit)`, `unitKm`, `placeKm` (the radii the config set), `complete` and `worldTravel` and `elsewhere` (frozen copies of the config lists).
 
 | Field | Meaning |
 | --- | --- |
@@ -226,17 +230,24 @@ pack files. It never copies logic.**
 | `unitKm` | beyond this from every row a position is in no unit of the region (US 190, Asia 300) |
 | `placeKm` | `{big: 50, small: 30}` (the default): how close counts as "in" a place |
 | `travelId` | `(row) => travel city id` (default `row[0] + '-' + countryCode.toLowerCase()`, the country read as the items read it: the `country` hook, else the unit code. `seattle-us` for the US, `tokyo-jp` for Asia, `paris-fr` for a region of countries: the travel tables' ids, so a config rarely sets it) |
-| `worldTravel` | travel city ids the world pack draws: while travelling there the region matches nothing. List EVERY city of the world pack (`72-anim-pack-world.js`) that a row of the region maps to, or the region's city art beats the world pack's landmark for a traveller there. The tests check it for every region, and `region.check({ worldCities })` names a missing one |
+| `worldTravel` | travel city ids the world pack draws: while travelling there the region matches nothing. List EVERY city of the world pack (`72-anim-pack-world.js`) that a row of the region maps to, or the region's city art beats the world pack's landmark for a traveller there. The tests check it for every region, and `region.check()` names a missing one (the list is read live from the world pack; `check({ worldCities: [...] })` gives one explicitly) |
 | `elsewhere` | units whose art lives in another pack (US: `TX`): looked up, never opened |
 | `pseudo` | `{ CODE: {id, name, kind, group?} }`: a unit with no art of its own that is one fixed place (US: `DC`) |
 | `placeKinds` | the kinds `B.place()` may build (default both; Asia `['small']`: its big cities come from scenes) |
 | `fields` | the item fields `{kind, unit, place, size, signature}` (default `<id>Kind`, `<id><Unit>`, `<id>Place`, `<id>Size`, `<id>Signature`) |
 | `tags`, `priority`, `keys` | the first tags `{root, unit, city}`; `{unit: 1, city: 1.2}`; the property names of `place()` / `where()` results `{unit, unitName}` |
 | `country`, `extra` | the ISO country of an item (a string, or `(unit) => code`; default the unit code, so country units need nothing) and more item fields `(unit) => ({...})` |
+| `complete` | `true` or `false` (default `true`: a config that does not say is finished, so the US and Asia keep every hard gate). `new` writes `false`: while it is false the COVERAGE tests (every unit and place has its art, no starter data) are reported as `todo`, the STRUCTURAL ones (sound tables, no overlap, no dead art, the lookups, unique travel ids) always fail hard. `status <id> --declare-complete` sets `true` when `status --strict` passes; from then on the coverage tests fail hard |
 
 `region.check()` lists table mistakes (duplicate ids, unknown units, bad coordinates, a unit with no row, a travel
-id used twice or that the hook cannot make, a scene with a wrong key, a table edited after defining) as an array of
-sentences; the tests assert it is empty for every region.
+id used twice or that the hook cannot make, a scene with a wrong key, a table edited after defining, a world-pack city a row maps to that `worldTravel` does not name, a row inside another region's reach) as an array of
+sentences; the tests assert it is empty for every region (the scaffold's `starter:` notes aside until the region is complete).
+
+**What travelling does.** While the user travels, `ctx.city` is a travel city id and ONLY `travelRow(ctx.city)` is used: the row whose travel id is that city decides, and a travel city that is not a
+row of the region matches nothing at all (no opening plays for that trip). Every travel city of the region's countries that should open needs a row (an anchor `''` is enough to give the trip the
+unit's art): `status <id>` lists the ones without a row, with the nearest row and a line to paste. The other way round is harmless: a row the travel tables lack is still reached from home (the weather
+town's position decides, no travel id is involved); only a trip to it misses. `status` also prints a REACH line (how far the farthest travel city of the region's countries is from its nearest row, against `unitKm`),
+the advice for choosing `unitKm`.
 
 ### A worked example: Asia (`src/app/71-anim-asia.js`, tables shortened)
 
@@ -289,11 +300,11 @@ data: `unitWord: 'state'`, `worldTravel: ['new-york-us']`, `elsewhere: ['TX']`, 
    rule, and throws when a unit or place belongs to another group, when an item id is used twice in the pack (a
    pack with a duplicate fails to register, silently, so the call throws instead) and when the pack id is not
    `<region id>-<group>`.
-4. `tests/<id>-pack.test.mjs`: every unit has a signature and an element, every place an item, the lookups, nothing
-   leaks outside the region (generated by `new`, see below; `tests/asia-pack.test.mjs` is the hand-written original). The rules that hold for every region are loops over
-   `ANIM_REGIONS` in `tests/region-framework.test.mjs` and gate the new region with no copy: `check()` is empty, its
-   packs are named `<id>-<group>`, no row of it sits inside another region's reach, its travel ids are unique, and
-   every world-pack city it maps is in `worldTravel`.
+4. `tests/<id>-pack.test.mjs`: the lookups and nothing leaking outside the region always run (structural); every unit has a signature and an element, every place an item, no starter data left are
+   coverage tests: `todo` while the config says `complete: false`, hard once `true` (generated by `new`, see below; `tests/asia-pack.test.mjs` is the hand-written original). The rules that hold for every region are loops over
+   `ANIM_REGIONS` in `tests/region-framework.test.mjs`, one test each so that a failure in one never hides another, and gate the new region with no copy: `check()` is empty, its
+   packs are named `<id>-<group>`, no row of it sits inside another region's reach (its own test: it runs while the art is still missing), its travel ids are unique, and
+   every world-pack city it maps is in `worldTravel`; a pack for every group that opens is the coverage part.
 5. Docs `docs/dev/<ID>_PACK.md` and a row in `MODULES.md` (Animation library). The opening sequence needs no edit:
    `animRegionWhere(animCtx())` already covers the new region.
 
@@ -308,18 +319,19 @@ Four commands of `node tools/anim-pack.mjs` (see `--help`) take a region from no
 (SKILL.md and its `references/`) is the playbook (style, kit, rubric, workflow) around them.
 
 ```
-node tools/anim-pack.mjs new eu "Europe" --unit-word country --groups west,east,north,south     # scaffold
+node tools/anim-pack.mjs new eu "Europe" --unit-word country --groups west,east,north,south     # scaffold (complete: false: the repo stays green while you draw)
 #   fill the tables of src/app/71-anim-region-eu.js (units, places, unitKm, worldTravel, country when the units are not countries)
-node tools/anim-pack.mjs status eu                                                              # what is missing
-#   fill the "Cultural care" section of docs/dev/EU_PACK.md BEFORE any brief: it is copied into every brief
-node tools/anim-pack.mjs reference --render                                                     # the gold standard, once (also --mode night, --mode dark):
-node tools/anim-pack.mjs reference --render --mode night                                        #   agents never render it themselves, they would write the same PNGs
-node tools/anim-pack.mjs reference --render --mode dark
-node tools/anim-pack.mjs brief eu --kind scene   --out .anim-ref/briefs                         # one brief per agent (about 7 scenes) + plan.json: scenes
+node tools/anim-pack.mjs status eu                                                              # what is missing, overlaps, travel cities without a row, the reach
+#   fill the "Cultural care" section (and, if the rotation does not fit a place, "Scene suggestions") of docs/dev/EU_PACK.md BEFORE any brief
+git add <the scaffold files `new` prints> && git commit -m "Europe: scaffold"                    # COMMIT THE SCAFFOLD: the agents start from one tree, guard has a baseline
+node tools/anim-pack.mjs reference --render                                                     # the gold standard, once, light + night + dark in one run:
+                                                                                                #   agents never render it themselves, they would write the same PNGs
+node tools/anim-pack.mjs brief eu --kind scene   --out .anim-ref/briefs                         # one brief per agent (about 7 scenes) + plan.json; creates the scene file of each batch
 node tools/anim-pack.mjs brief eu --kind element --out .anim-ref/briefs                         # one brief per group: elements
-#   each agent: lint --file <its file>, sheet --file <its file> (light, night, --crop phone and square), report
-node tools/anim-pack.mjs guard --owned <the files of the batch>                                 # PROOF that only those files changed (exit 2 otherwise)
+#   each agent: lint --file <its file> [--key <key>], sheet --file <its file> (light, night, --crop phone and square; --still, --sizes for icons), report
+node tools/anim-pack.mjs guard --owned <the files of ALL agents that ran in this tree>          # PROOF that only those files changed (exit 2 otherwise)
 node tools/anim-pack.mjs status eu --strict                                                     # exit 0 when complete and clean
+node tools/anim-pack.mjs status eu --declare-complete                                           # sets complete: true: the coverage tests now fail hard
 ```
 
 - `new <id> "<Name>" [--unit-word country] [--groups a,b,c]` writes the config `71-anim-region-<id>.js` (2 example units and 3 example places in the
@@ -330,15 +342,18 @@ node tools/anim-pack.mjs status eu --strict                                     
   (`place city big small signature element`: `city` would make the coverage count a place as a unit; use `town` or `municipality`); it proves the scaffold loads with sound tables (else it removes
   what it wrote). `--root <dir>` scaffolds into another checkout. When the units are not countries (`--unit-word state`) the config carries `country: 'XX'` as a placeholder: `region.check()` and `status --strict` report it as
   starter data (items would carry the region `XX` and every travel id would end in `-xx`) until the ISO code is set. **It ships no example art, on purpose**: a "minimal" scene or icon is what an agent
-  would copy, cannot pass the strict lint and would go live if forgotten. So the pack files register nothing until they have an item, and the generated
-  test, the "every region" test of `tests/region-framework.test.mjs` and the "every pack file registered a valid pack" test of
-  `tests/anim-packs.test.mjs` are RED until every unit that opens has a full-screen signature and an element, every big place a full-screen opening and
-  every small place an element: a half-built region cannot be committed. `status` is the progress bar and warns while the `example-` rows remain.
-- `status [<region>] [--json] [--strict] [--short] [--no-lint]`: per group the units (signature = a full-screen scene, element = a symbol), the big places
+  would copy, cannot pass the strict lint and would go live if forgotten. So the pack files register nothing until they have an item, and the config says `complete: false`:
+  the generated test, the "every region" tests of `tests/region-framework.test.mjs` and the "every pack file registered a valid pack" test of `tests/anim-packs.test.mjs` run their STRUCTURAL
+  checks (sound tables, no overlap, no dead art, the lookups, unique travel ids; an empty scaffold pack file is waited for) as hard failures from the first second and report their COVERAGE checks
+  (every unit that opens has a full-screen signature and an element, every big place a full-screen opening, every small place an element, no starter data) as node:test `todo`: the repo stays GREEN while
+  the region is drawn. When `status <id> --strict` passes, `status <id> --declare-complete` sets `complete: true` and the coverage tests become hard failures. `status` is the progress bar and warns while the `example-` rows remain.
+  `new` ends by telling the orchestrator to COMMIT THE SCAFFOLD before any agent starts (the exact `git add ... && git commit` line), and the config documents what travelling does, the border case and the starter banner to delete once the tables are real.
+- `status [<region>] [--json] [--strict] [--short] [--no-lint] [--declare-complete]`: per group the units (signature = a full-screen scene, element = a symbol), the big places
   (scene) and the small places (element), what is MISSING, orphan scenes (registered, in no pack), **duplicate scene keys** (a key registered twice: the last registration silently wins; `check()` and `status` name the files), table problems (`region.check()` with the world
-  pack's cities), bytes and lint PASS / FAIL / waived per pack. Exit 2 under `--strict` when anything is missing, orphaned, duplicated, wrong, failing or starter
-  data. With no region it lists every region (`us` and `asia` are complete).
-- `brief <region> --kind scene|element [--batch N --of M] [--group g] [--out dir [--clean]] [--note text] [--json]` fills `tools/lib/anim-templates/scene-brief.md`
+  pack's cities), bytes and lint PASS / FAIL / waived per pack, **overlaps** with other regions (the border cases), **TRAVEL** (the travel cities of the region's countries that have no row: a trip there plays nothing; the nearest row and a line to paste;
+  advice, not part of `complete`) and a **REACH** line (the farthest travel city from its nearest row against `unitKm`). Exit 2 under `--strict` when anything is missing, orphaned, duplicated, wrong, overlapping, failing or starter
+  data, and also when everything is done but the config still says `complete: false`; `--declare-complete` then sets `complete: true` (it refuses, exit 2, while anything is missing). With no region it lists every region (`us` and `asia` are complete).
+- `brief <region> --kind scene|element [--batch N --of M] [--group g] [--out dir [--clean]] [--note text] [--clear-notes] [--json]` fills `tools/lib/anim-templates/scene-brief.md`
   and `element-brief.md` with the region's facts, the exact keys of the batch, the one file the agent owns, the verify commands, the exemplars (with their PNG paths and an item-locating `read:` hint), the care
   rules (the general ones and the region's own "Cultural care" section, whose absence `brief` reports), the **corpus targets** (generated from `tools/anim-quality.json` and the measured exemplars: the median and
   10th-percentile size, shapes, path segments, gradients, translucent layers, moving groups ...; the redraw targets richness >= 0.90 and at most 4 thin spots), the **pass mark** (18 of 20 and the core lines), the **safe zones** (a portrait phone shows only
@@ -350,10 +365,23 @@ node tools/anim-pack.mjs status eu --strict                                     
   1 key), in `src/app/71-anim-region-<id>-scenes-N.js` (`...-scenes-<group>-N.js` with `--group`); element batches are whole groups (a pack file has one
   owner), in `src/app/72-anim-pack-<id>-<group>.js`. Without `--batch` it prints the plan; `--out` writes `<kind>-brief[-<group>]-N.md` and a `plan.json` (what to dispatch, the files each batch owns, the commands to run before and after) and refuses to leave briefs of an earlier plan beside them (`--clean` removes them: dispatching a stale one gives two agents the same keys); `--json` is the plan for a
   script. Keys that already have art are marked `done (leave alone)`: redrawing a finished piece is the orchestrator's decision.
-- `guard --owned <file>[,<file>...] [--base <ref>] [--json]`: the orchestrator's proof that a batch touched only its own files. It asks git what changed (modified, added, deleted, renamed, untracked; git-ignored files such as `.anim-ref/` are not changes) and exits 2 when any changed file is outside the owned set or is
-  `tools/anim-quality.json` (thresholds and waivers), `tools/anim-reference.json` or a test (never an agent's to edit, even if listed as owned). Agents of one checkout share one working tree: pass the union of their files, or give each agent its own git worktree to prove one alone.
+  Also: **the season column follows the latitude** of the key (`any` in the tropics, the local season with the label to write in the south, the same word in the north) and the brief and `plan.json` say what `season` is: only a
+  LABEL (gallery card, "picked for ..." note), never a gate (a region scene plays wherever the user is); **`--out` creates the empty scene file of every batch that has none** (listed in `plan.json` as `created`), stores
+  the `--note` texts in `plan.json` and re-reads them on every re-run (a new note is added, `--clear-notes` forgets them), checks that the PNGs the briefs cite exist (`missingPng`; render them once with `reference --render`) and says
+  whether the scaffold is COMMITTED (`plan.json` `git`; the commit command is the first `before` step, and once it is committed the guard commands carry `--base <commit>`). Each exemplar carries `what it shows` in words, the written
+  fallback when a PNG cannot be displayed. The optional "Scene suggestions" section of `docs/dev/<ID>_PACK.md` (`- place:melbourne: type = laneways; palette = red and orange`, fields time, season, type, palette, motif, colour)
+  overrides the rotation per key, once, for every brief.
+- `guard --owned <file>[,<file>...] [--base <ref>] [--json]` (the scaffold must be COMMITTED first: an untracked scaffold is listed as strays, and guard says to commit it): the orchestrator's proof that a batch touched only its own files. It asks git what changed (modified, added, deleted, renamed, untracked; git-ignored files such as `.anim-ref/` are not changes) and exits 2 when any changed file is outside the owned set or is
+  `tools/anim-quality.json` (thresholds and waivers), `tools/anim-reference.json` or a test (never an agent's to edit, even if listed as owned). Without `--base` it compares with HEAD, the last commit (what is uncommitted); `--base <ref>` also counts everything committed since (the commit of the scaffold is the usual base; `brief --out` writes it into `plan.json` and the guard commands). It says in every run what it proved:
+  in ONE shared working tree the UNION (nothing outside the files listed changed: list the files of every agent that ran, it cannot say which agent wrote which); to prove ONE agent alone give it its own git worktree (`git worktree add ../agent-1 <scaffold commit>`) and guard it there.
 - `lint --file <path>` is loud about the file: it exits 1 without linting when the file registers nothing, registers a scene key that does not exist (a unit that is not in the tables, a place that is not big), a scene no pack item uses, or a key another file registers too; `--quiet` hides the thin spots and
-  redraw-target lines it otherwise prints for every selected item; `sheet --crop phone|square` renders what a portrait phone or a square tile shows of a scene.
+  redraw-target lines it otherwise prints for every selected item; `--key <key,key>` (also on `sheet`) selects items by id, ref or region key (`country:AU`, `place:sydney`; `*` is a wildcard), so an iteration lints or renders one scene of a file.
+  Each thin spot prints what to do about it (identical seeds across `stars()` / `birds()` / `shimmer()` / `puffs()` / `ridge()` / `canopy()` calls are what make `sharedShare` thin: give every call its own seed; instanced `<g transform=scale>` and `puffs()` with n above 3 repeat a
+  `d` string, which `distinctRatio` counts once; the hue sectors that carry area are named). A `<path>` carrying `us-lit` counts as ONE shape and one lit pane group. "Too little drawn for its size" is the advisory `detailPerKB` (shapes + path segments per KB: path-heavy
+  hand-drawn art is not flagged; `shapesPerKB` keeps its hard floor, and its advisory moved to `detailPerKB`); small items also report how many moving elements share one `--d` (a bare `x-*` is delay 0): an advisory above the corpus 90th percentile (5; the accepted median is 3 and the gold
+  exemplars have 3 to 5 on delay 0). `sheet` renders items paused at `--at <ms>` (default 6.5 s; the file gets a `-t<ms>` suffix) or with `--still` (animations OFF: the rest frame reduced motion shows, `-still`), `--sizes` adds a strip of a small item at 28, 40, 64 and
+  128 px at real pixel size (`-sizes.png`; the contact-sheet tiles are about 200 px, so judge "reads at 28 px" on the strip), `--crop phone|square` renders what a portrait phone or a square tile shows of a scene, and a contact sheet of light renders sits on a light page.
+  `reference --render` renders the exemplars in light, night AND dark (every PNG the briefs cite) unless one `--mode` is given.
 - A load error (a top-level `const` declared in two files because a scene file has no IIFE, a runtime throw, a syntax error) names the FILE and the line, for every command.
 
 The template placeholders (`{{name}}`; a placeholder with no value is an error, never "undefined"):

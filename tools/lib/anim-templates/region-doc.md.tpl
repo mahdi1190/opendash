@@ -54,6 +54,16 @@ maps or borders, no political or military symbols, no identifiable people, no ho
 what is specific here: sensitive places and how to draw them neutrally, motifs to avoid, local conventions (seasons, dress code of a building, orientation of a sacred place)
 and anything a reviewer must check. Keep it to a short list of "Draw ..." and "Never draw ..." lines. -->
 
+## Scene suggestions
+
+<!-- Optional. The briefs suggest a time of day, season, scene type and palette (scenes) and a motif kind and colour (elements) from a fixed rotation that knows nothing about the place:
+a "bridge" for a city with none, a "craft" the care notes above forbid. Say what to use instead ONCE, here, one line per key, and every brief carries it (no agent spends a report line on
+overriding the tool). Fields: time, season (any, spring, summer, autumn, winter: the season of the picture), type, palette (scenes); motif, colour (elements; a colour is one of blue indigo violet pink red orange amber green teal slate).
+Keys are the ones `node tools/anim-pack.mjs status {{id}}` lists ("{{unit_word}}:<CODE>" for a {{unit_word}}'s signature scene AND its element, "place:<id>" for a big or small place). Example (delete the markers to use it):
+- place:an-example-id: type = old town and river; palette = warm amber and rose
+- {{unit_word}}:XX: season = any; motif = plant; colour = green
+-->
+
 ## Adding a place, a {{unit_word}} or a scene
 
 1. A new place: a row in `{{ID}}_PLACES` (`big` or `small`), then its scene (`place:<id>`) or one `B.place('<id>', {...})` in the pack file of its group.
@@ -62,9 +72,11 @@ and anything a reviewer must check. Keep it to a short list of "Draw ..." and "N
 
 ## Making the whole region
 
-1. `node tools/anim-pack.mjs status {{id}}` shows what is missing (no table problem, no starter row, the real `country` code when the units are not countries).
+1. `node tools/anim-pack.mjs status {{id}}` shows what is missing (no table problem, no starter row, the real `country` code when the units are not countries, no overlap with another region, the travel cities of your countries that have no row).
 2. Fill in the "Cultural care" section above. Only then make the briefs: the section is copied into each of them.
-3. `node tools/anim-pack.mjs reference --render` (and `--mode night`, `--mode dark`) once, so that no agent renders the gold standard while another does.
-4. `node tools/anim-pack.mjs brief {{id}} --kind scene --out .anim-ref/briefs` (and `--kind element`) writes the task briefs for the agents and a `plan.json` to dispatch from.
-5. Each agent draws its batch and passes the lint and the look gate (see the skill's `references/workflow.md`); the orchestrator proves with `node tools/anim-pack.mjs guard --owned <its files>` that only those files changed.
-6. `node tools/anim-pack.mjs status {{id}} --strict` exits 0, `npm test` is green, `node build.mjs --syntax`, `node tools/privacy-scan.mjs` is clean.
+3. **Commit the scaffold** (the config, the scene stub, the pack files, the generated test and this doc): `git add src/app/71-anim-region-{{id}}*.js src/app/72-anim-pack-{{id}}-*.js tests/{{id}}-pack.test.mjs docs/dev/{{ID}}_PACK.md && git commit -m "{{name}}: scaffold"`.
+   The repo stays green while the region is drawn (`complete: false` in the config: the coverage tests are `todo`), and `guard` needs the committed scaffold as its baseline.
+4. `node tools/anim-pack.mjs reference --render` once (it renders light, night and dark), so that no agent renders the gold standard while another does.
+5. `node tools/anim-pack.mjs brief {{id}} --kind scene --out .anim-ref/briefs` (and `--kind element`) writes the task briefs for the agents and a `plan.json` to dispatch from; it also creates the scene file of every batch that does not exist yet.
+6. Each agent draws its batch and passes the lint and the look gate (see the skill's `references/workflow.md`); the orchestrator proves with `node tools/anim-pack.mjs guard --owned <the files of ALL agents that ran in this tree>` that only those files changed (one agent alone: its own git worktree).
+7. `node tools/anim-pack.mjs status {{id}} --strict` exits 0, then `node tools/anim-pack.mjs status {{id}} --declare-complete` sets `complete: true` in the config (the coverage tests become hard failures), `npm test` is green, `node build.mjs --syntax`, `node tools/privacy-scan.mjs` is clean.

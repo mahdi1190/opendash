@@ -226,6 +226,9 @@ function applyBox(b, m, pad) {
 }
 const union = (a, b) => !a ? (b && { ...b }) : !b ? a : { x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) };
 
+/** The 12 hue sectors of 30 degrees, from 0 (red): the names the hueSectors advisory prints. */
+export const HUE_NAMES = ['red or coral', 'orange or gold', 'yellow', 'lime', 'green', 'sea green', 'teal', 'azure', 'blue or indigo', 'violet', 'magenta', 'rose'];
+
 /* ---------- style helpers ---------- */
 const _styleRe = new Map();
 function styleProp(n, prop) {
@@ -421,6 +424,16 @@ export function measure(markup, kind, opts = {}) {
     const ic = new Set();
     for (const e of shapes) for (let cy = Math.max(0, Math.floor(e.box.y0 / 8)); cy <= Math.min(7, Math.floor(e.box.y1 / 8)); cy++) for (let cx = Math.max(0, Math.floor(e.box.x0 / 8)); cx <= Math.min(7, Math.floor(e.box.x1 / 8)); cx++) ic.add(cy * 8 + cx);
     m.inkCells = ic.size;
+    // Delays: how many moving elements share ONE --d (a mover with no --d is delay 0: a bare x-glow counts). Three things on the same delay pulse in lockstep.
+    // The delay is read as a number of seconds (".4s", "0.4s" and "400ms" are one value). An ADVISORY (see ADVISORY_PLAN), not a floor.
+    const delayCount = new Map();
+    for (const e of movers) {
+      const raw = (styleProp(e, '--d') || '0').trim(), n = /^(-?\d*\.?\d+)(ms|s)?$/.exec(raw);
+      const d = n ? String(+(parseFloat(n[1]) * (n[2] === 'ms' ? 0.001 : 1)).toFixed(3)) : raw;
+      delayCount.set(d, (delayCount.get(d) || 0) + 1);
+    }
+    m.sameDelay = delayCount.size ? Math.max(...delayCount.values()) : 0;
+    m.sameDelayValue = m.sameDelay > 1 ? [...delayCount].find(([, c]) => c === m.sameDelay)[0] : '';
     Object.defineProperty(m, '_keys', { value: keysOf(shapes), enumerable: false });   // for sharedShares(): not part of the JSON
     attachCss(m, els, opts);
     return m;
@@ -435,6 +448,9 @@ export function measure(markup, kind, opts = {}) {
   m.detailShapes = detail.length;
   m.tinyShare = m.shapes ? +(content.filter(e => area(e) < 60 && w_(e) < 14 && h_(e) < 14).length / m.shapes).toFixed(3) : 0;
   m.shapesPerKB = +(m.shapes / (m.bytes / 1024)).toFixed(2);
+  // How much is DRAWN per KB: shapes plus path segments. A path-heavy hand-drawn scene (long outlines, few shapes) has a low shapesPerKB and a high detailPerKB: it is
+  // rich, not padded, so the advisory for "too little drawn for its size" is detailPerKB (see ADVISORY_PLAN); shapesPerKB keeps its hard floor.
+  m.detailPerKB = +((m.shapes + m.pathSegments) / (m.bytes / 1024)).toFixed(2);
   Object.defineProperty(m, '_keys', { value: keysOf(shapes), enumerable: false });   // for sharedShares(): not part of the JSON
 
   // Depth layers: wide shapes (a ridge, a shore, a street, a haze band) and their tonal progression.
@@ -495,6 +511,7 @@ export function measure(markup, kind, opts = {}) {
   const lums = [...byColour.keys()].map(lumOf);
   m.tonalRange = lums.length ? +(Math.max(...lums) - Math.min(...lums)).toFixed(3) : 0;
   m.hueSectors = satArea ? hueArea.filter(v => v >= satArea * 0.04).length : 0;
+  m.hueSectorList = satArea ? hueArea.map((v, i) => (v >= satArea * 0.04 ? HUE_NAMES[i] : '')).filter(Boolean) : [];   // which ones, so the advisory can say what to merge
   // The ground reaches the bottom edge: shapes touching y >= 880 cover the width.
   const bottom = content.filter(e => e.box.y1 >= H - 20 && w_(e) >= 40).map(e => [Math.max(0, e.box.x0), Math.min(W, e.box.x1)]).sort((p, q) => p[0] - q[0]);
   let covered = 0, edge = 0;
@@ -718,7 +735,7 @@ export function checkCss(css) {
    The thresholds file (tools/anim-quality.json) is the result; `node tools/anim-pack.mjs calibrate`
    shows how every threshold compares with the corpus today.
    --------------------------------------------------------------------------------------------- */
-const MIN = ['min'], MAX = ['max'], BOTH = ['min', 'max'];
+const MIN = ['min'], MAX = ['max'], BOTH = ['min', 'max'], NONE = [];   // NONE: an advisory-only metric (ADVISORY_PLAN)
 /** The rules of each profile: metric -> which sides are limited. Keys of the thresholds file. */
 export const RULE_PLAN = {
   scene: {
@@ -728,13 +745,26 @@ export const RULE_PLAN = {
     bands: MIN, bandFills: MIN, detailShapes: MIN, detailCells: MIN, detailColumns: MIN, detailRows: MIN, focusShare: MIN, sizeClasses: MIN, tinyShare: MAX, hiddenShare: MAX, bottomCover: MIN,
     movingGroups: MIN, motionKinds: MIN, driftGroups: MIN, ambientGroups: MIN, ambientKinds: MIN, motionZones: MIN, distinctDurations: MIN, staggerDelays: MIN, movingPerShape: BOTH,
     sharedShare: MAX, sharedShareAll: MAX, unknownClasses: MAX, coverUps: MAX, richness: MIN,
+    detailPerKB: NONE,
   },
   item: {
     bytes: BOTH, shapes: MIN, paths: MIN, pathSegments: MIN, distinctShapes: MIN, distinctForms: MIN, distinctFills: MIN, inkCells: MIN, extentW: MIN, extentH: MIN,
     colours: MAX, gradients: MAX, inlinePaint: MAX, unknownClasses: MAX,
     movingGroups: MIN, motionKinds: MIN, motionShare: MIN, hiddenShapes: MAX, sharedShare: MAX, sharedShareAll: MAX, richness: MIN,
+    sameDelay: NONE,
   },
 };
+/**
+ * Advisory-only metrics (sides NONE): no floor and no ceiling, so never a failure; only a level beyond which a PASSING drawing is listed as a thin spot (the keys are the kind
+ * of profile, 'scene' or 'item'). Calibrated on the corpus like every other level (warnMin = its 10th percentile, warnMax = its 90th).
+ *   detailPerKB  (shapes + path segments) per KB of markup: how much is drawn for its size. It replaces shapesPerKB as the "padded or repeated" advisory (ADVISORY_MOVED):
+ *                a path-heavy hand-drawn scene has few shapes per KB and many segments per KB, and the blind pilot rated such scenes above the corpus
+ *   sameDelay    the most moving elements that share one --d (a mover with no --d is delay 0, so a bare x-glow counts); the accepted items have a median of 3 and
+ *                a 90th percentile of 5, so the level is 5: the rubric's "no three" is craft advice the six gold exemplars themselves do not follow (3 to 5 on delay 0)
+ */
+export const ADVISORY_PLAN = Object.freeze({ scene: Object.freeze({ detailPerKB: 'warnMin' }), item: Object.freeze({ sameDelay: 'warnMax' }) });
+/** Metrics that keep their hard limit but whose advisory level is another metric's (thresholds carry `advisoryIn: '<metric>'` instead of a warnMin): { kind: { metric: replacedBy } }. */
+export const ADVISORY_MOVED = Object.freeze({ scene: Object.freeze({ shapesPerKB: 'detailPerKB' }), item: Object.freeze({}) });
 RULE_PLAN['scene-legacy'] = RULE_PLAN.scene;
 RULE_PLAN['item-classic'] = Object.fromEntries(Object.entries(RULE_PLAN.item).filter(([k]) => !/^sharedShare/.test(k)));   // the classic icons are templated (the birthday, party and dinner scenes share every shape): no shared-shape rule for the frozen list
 /** Components of the composite richness index, per metrics kind. */
@@ -768,9 +798,12 @@ export function proposeThresholds(corpus, profile, { caps = {}, richnessMin } = 
       continue;
     }
     const d = describe(corpus.map(m => m[metric]));
-    const t = {};
-    if (sides.includes('min')) { t.min = round(d.min, true); t.warnMin = round(d.p10, true); }
-    if (sides.includes('max')) { t.max = caps[metric] != null ? caps[metric] : round(d.max, false); t.warnMax = round(d.p90, false); }
+    const t = {}, moved = (ADVISORY_MOVED[kind] || {})[metric], adv = (ADVISORY_PLAN[kind] || {})[metric];
+    if (sides.includes('min')) { t.min = round(d.min, true); if (!moved) t.warnMin = round(d.p10, true); }
+    if (sides.includes('max')) { t.max = caps[metric] != null ? caps[metric] : round(d.max, false); if (!moved) t.warnMax = round(d.p90, false); }
+    if (adv === 'warnMin') t.warnMin = round(d.p10, true);
+    if (adv === 'warnMax') t.warnMax = round(d.p90, false);
+    if (moved) t.advisoryIn = moved;
     t.median = d.median;
     t.note = `corpus n=${d.n}: min ${d.min}, p3 ${d.p3}, p10 ${d.p10}, median ${d.median}, p90 ${d.p90}, max ${d.max}`;
     out[metric] = t;
@@ -800,6 +833,7 @@ export function ruleTable(metrics, profile, thresholds, failures = check(metrics
   }
   for (const [metric, t] of Object.entries(spec)) {
     if (metric.startsWith('_') || t == null || typeof t !== 'object') continue;
+    if (t.min == null && t.max == null) continue;   // an advisory-only metric (ADVISORY_PLAN) is not a rule: thinSpots() lists it
     const v = metric === 'richness' ? richness(m, t).index : m[metric];
     const lim = [t.min != null ? `>= ${t.min}` : '', t.max != null ? `<= ${t.max}` : ''].filter(Boolean).join(' and ');
     row(metric, v, lim);
@@ -844,9 +878,26 @@ export function sharedShares(list) {
 }
 
 /**
+ * What to do about a thin spot, by metric and side: [what a LOW value means and how to raise it, what a HIGH value means and how to lower it]; a function gets the measured metrics
+ * (so the hint can name the hue sectors or the delay). The lint prints it under the thin spot, so the advice is where the number is.
+ */
+export const THIN_HINTS = {
+  sharedShare: [null, () => 'identical seeds across calls cause this: stars(), birds(), shimmer(), puffs(), ridge() and canopy() draw the SAME shapes for the same seed, and identical shapes count as copies. Give every call its own seed, never reuse one from another call, scene or file'],
+  sharedShareAll: [null, () => 'identical seeds across calls cause this: give every stars() / birds() / shimmer() / puffs() / ridge() / canopy() call its own seed (not the same numbers in two scenes or two files); a recoloured copy of a scene or icon shares everything with its original'],
+  hueSectors: [null, (m) => `${m.hueSectors} of the 12 hue sectors carry area (${(m.hueSectorList || []).join(', ')}). A 5-stop dusk sky alone spends four (blue, violet, magenta, red to gold): give the ground and the water ONE more family between them (muted greens OR teals), keep accents under 4 % of the painted area (a sector counts only above 4 % of the saturated area) and tint the rest toward the sky`],
+  detailPerKB: ['too little drawn for its size: shapes plus path segments per KB. Padded or repeated markup (long coordinates, a path drawn again) costs bytes without adding drawing: shorten the numbers, remove repeats, add real outlines (a path-heavy scene is fine: its segments count here)', null],
+  distinctRatio: ['identical copies do not count: the same <path d> drawn again (a row of houses, windows, huts, doors) is one shape. Instancing a helper with <g transform="scale()"> or puffs() with n above 3 repeats the d string: bake the scale into the coordinates, or vary the parameters per instance', null],
+  distinctForms: ['identical outlines drawn again count once (an instanced helper with <g transform=scale> repeats its d string): give the buildings, trees, huts and rocks different outlines, or bake the scale into the coordinates', null],
+  distinctShapes: ['identical copies count once: draw different shapes, not the same d string again', null],
+  staggerDelays: ['give moving elements different --d delays so they do not pulse in lockstep', null],
+  sameDelay: [null, (m) => `${m.sameDelay} moving elements share --d ${m.sameDelayValue || 0}s (a mover with no --d is delay 0: a bare x-glow counts): they pulse in lockstep. Give each its own --d (spread over the animation period). The accepted items have a median of 3 on one delay and 90 % have at most 5; the gold exemplars have 3 to 5 on delay 0, so aim for few, not zero`],
+  tinyShare: [null, () => 'too many specks: build real forms (a window row as ONE path, not forty rects) instead of scatter'],
+};
+
+/**
  * Advisory, not a failure: the metrics where a drawing that PASSES is still thinner than 90 % of the accepted corpus
- * (below warnMin), or looks padded (above warnMax of a padding rule). Returns [{rule, side, value, warn, median}], worst
- * first: where to add richness. A size budget (bytes) is not padding, so it is never listed above its ceiling.
+ * (below warnMin), or looks padded (above warnMax of a padding rule). Returns [{rule, side, value, warn, median, hint}], worst
+ * first: where to add richness; `hint` (THIN_HINTS) says what to do about it. A size budget (bytes) is not padding, so it is never listed above its ceiling.
  */
 export function thinSpots(metrics, profile, thresholds) {
   const spec = thresholds[profile], out = [];
@@ -854,9 +905,10 @@ export function thinSpots(metrics, profile, thresholds) {
     if (metric.startsWith('_') || t == null || typeof t !== 'object') continue;
     const v = metric === 'richness' ? richness(metrics, t).index : metrics[metric];
     if (typeof v !== 'number') continue;
-    const med = t.median || 1;
-    if (t.warnMin != null && v < t.warnMin && (t.min == null || v >= t.min)) out.push({ rule: metric, side: 'low', value: v, warn: t.warnMin, median: t.median, gap: (t.warnMin - v) / med });
-    if (metric !== 'bytes' && t.warnMax != null && v > t.warnMax && (t.max == null || v <= t.max)) out.push({ rule: metric, side: 'high', value: v, warn: t.warnMax, median: t.median, gap: (v - t.warnMax) / med });
+    const med = t.median || 1, h = THIN_HINTS[metric];
+    const hint = (side) => { const x = h && h[side === 'low' ? 0 : 1]; return typeof x === 'function' ? x(metrics) : x || ''; };
+    if (t.warnMin != null && v < t.warnMin && (t.min == null || v >= t.min)) out.push({ rule: metric, side: 'low', value: v, warn: t.warnMin, median: t.median, hint: hint('low'), gap: (t.warnMin - v) / med });
+    if (metric !== 'bytes' && t.warnMax != null && v > t.warnMax && (t.max == null || v <= t.max)) out.push({ rule: metric, side: 'high', value: v, warn: t.warnMax, median: t.median, hint: hint('high'), gap: (v - t.warnMax) / med });
   }
   return out.sort((a, b) => b.gap - a.gap).map(({ gap, ...x }) => x);
 }

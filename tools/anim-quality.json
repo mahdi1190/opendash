@@ -3,6 +3,7 @@
   "_how": [
     "profiles: \"scene\" judges every full-screen scene (item.full, 1600 x 900) and \"item\" every small 64 x 64 item, EXCEPT the frozen legacy lists: \"scene-legacy\" (the templated UK packs) and \"item-classic\" (functional marks and the first regional waves), each calibrated on its own corpus. A new pack is always judged by the strict \"scene\" / \"item\".",
     "warnMin / warnMax: the corpus 10th / 90th percentile. A drawing that passes but is thinner than that is listed as a thin spot by `lint` (advisory, never a failure): aim for the median.",
+    "advisory-only metrics (no min and no max, never a failure): \"detailPerKB\" (scenes: shapes plus path segments per KB, the \"too little drawn for its size\" advisory; shapesPerKB keeps its hard floor and carries \"advisoryIn\": \"detailPerKB\" instead of a warnMin, because a path-heavy hand-drawn scene has few shapes per KB and is rich, not padded) and \"sameDelay\" (small items: the most moving elements that share one --d, a bare x-* counting as delay 0; the level is the corpus 90th percentile, 5, because the accepted items have a median of 3 and all six gold exemplars have 3 to 5 on delay 0). `calibrate --propose` regenerates them.",
     "A rule is a metric of tools/lib/anim-quality.mjs measure() (sharedShare / sharedShareAll are added by the registry lint: how much of a scene is identical to other scenes of its pack / of any pack): min is the least allowed, max the most. Keys starting with \"_\" and \"note\" are documentation. The structural rules (valid markup, unique ids, refs resolve, no transform on an x-* element, classes defined in css, sky gradient first, evening grade last) are always on and have no threshold.",
     "richness: a composite. Each component is its value over the corpus median (capped at 125 %), averaged: 1.0 is the median accepted drawing. It stops one inflated count from hiding thin everything else. Its floor for scenes (0.66) is about the 3rd percentile, above the five thinnest accepted scenes, which are listed under waivers.",
     "waivers: [{ref, rule, reason}]: an accepted item that does not meet one rule. Every waiver must still be needed (tests/anim-quality.test.mjs fails when a waived rule passes, so the list only shrinks), and the list is capped. Never add one for new work: fix the drawing.",
@@ -86,7 +87,7 @@
     },
     "shapesPerKB": {
       "min": 3.28,
-      "warnMin": 6.67,
+      "advisoryIn": "detailPerKB",
       "median": 9.85,
       "note": "corpus n=229: min 3.28, p3 5.62, p10 6.67, median 9.85, p90 11.79, max 14.15"
     },
@@ -335,6 +336,11 @@
         "bytes": 22801
       },
       "note": "composite of shapes, pathSegments, colourClusters, gradients, translucentLayers, movingGroups, motionKinds, ambientGroups, bands, detailCells, sizeClasses, distinctForms, bytes, each capped at 125% of its corpus median; corpus index n=229: min 0.547, p3 0.682, p10 0.766, median 0.979, max 1.221"
+    },
+    "detailPerKB": {
+      "warnMin": 21,
+      "median": 30.14,
+      "note": "corpus n=229: min 15.33, p3 18.66, p10 21.02, median 30.14, p90 44.62, max 81.43"
     }
   },
   "scene-legacy": {
@@ -378,7 +384,7 @@
     },
     "shapesPerKB": {
       "min": 4.7,
-      "warnMin": 6.8,
+      "advisoryIn": "detailPerKB",
       "median": 8.34,
       "note": "corpus n=168: min 4.7, p3 6.09, p10 6.8, median 8.34, p90 10.42, max 14.28"
     },
@@ -627,6 +633,11 @@
         "bytes": 19212
       },
       "note": "composite of shapes, pathSegments, colourClusters, gradients, translucentLayers, movingGroups, motionKinds, ambientGroups, bands, detailCells, sizeClasses, distinctForms, bytes, each capped at 125% of its corpus median; corpus index n=168: min 0.795, p3 0.843, p10 0.875, median 1.018, max 1.218"
+    },
+    "detailPerKB": {
+      "warnMin": 28,
+      "median": 38.64,
+      "note": "corpus n=168: min 19.02, p3 26.98, p10 28.49, median 38.64, p90 48.91, max 61.81"
     }
   },
   "item": {
@@ -766,6 +777,11 @@
         "bytes": 1018
       },
       "note": "composite of shapes, pathSegments, distinctForms, movingGroups, inkCells, bytes, each capped at 125% of its corpus median; corpus index n=245: min 0.642, p3 0.685, p10 0.763, median 1.002, max 1.244"
+    },
+    "sameDelay": {
+      "warnMax": 5,
+      "median": 3,
+      "note": "corpus n=245: min 1, p3 1, p10 2, median 3, p90 5, max 10"
     }
   },
   "item-classic": {
@@ -893,6 +909,11 @@
         "bytes": 743
       },
       "note": "composite of shapes, pathSegments, distinctForms, movingGroups, inkCells, bytes, each capped at 125% of its corpus median; corpus index n=330: min 0.359, p3 0.515, p10 0.632, median 0.989, max 1.25"
+    },
+    "sameDelay": {
+      "warnMax": 2,
+      "median": 1,
+      "note": "corpus n=330: min 0, p3 0, p10 0, median 1, p90 2, max 6"
     }
   },
   "waivers": [

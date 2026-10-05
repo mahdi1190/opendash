@@ -11,11 +11,12 @@ import { fileURLToPath } from 'node:url';
 import { main, loadCommands, COMMANDS } from '../tools/anim-pack.mjs';
 import { loadRegistry, findBrowser } from '../tools/lib/anim-render.mjs';
 import { animRegistryFiles } from '../tools/lib/anim-sources.mjs';
-import { planBatches, regionNeeds, findRegion, templatePlaceholders, renderTemplate, readTemplate, careFor, careInfo, varietyOf, fileProblems, RESERVED_IDS, RESERVED_UNIT_WORDS, TEMPLATES_DIR, SCENES_PER_AGENT, CARE_RULES, RUBRIC_PASS, plural } from '../tools/lib/anim-region.mjs';
+import { planBatches, regionNeeds, findRegion, templatePlaceholders, renderTemplate, readTemplate, careFor, careInfo, varietyOf, suggestionsInfo, applySuggestions, fileProblems, RESERVED_IDS, RESERVED_UNIT_WORDS, TEMPLATES_DIR, SCENES_PER_AGENT, CARE_RULES, RUBRIC_PASS, plural, seasonFor, SEASONS, SEASON_NOTE, TROPIC_LAT, sceneStubText, scaffoldVars, travelGaps, worldCities } from '../tools/lib/anim-region.mjs';
 import { starterData, starterBaseFor, STARTER_BASE } from '../tools/lib/anim-cmd/new.mjs';
-import { corpusTargets, exemplarRanges, safeZones, markupRules, passMark, briefFileOf } from '../tools/lib/anim-cmd/brief.mjs';
-import { guardResult, parseStatus, parseNameStatus, forbiddenReason } from '../tools/lib/anim-cmd/guard.mjs';
-import { loadThresholds, loadReference } from '../tools/anim-pack.mjs';
+import { corpusTargets, exemplarRanges, safeZones, markupRules, passMark, briefFileOf, seasonCell, citedPngs } from '../tools/lib/anim-cmd/brief.mjs';
+import { guardResult, parseStatus, parseNameStatus, forbiddenReason, gitScaffoldState, GUARD_PROOF } from '../tools/lib/anim-cmd/guard.mjs';
+import { declareComplete } from '../tools/lib/anim-cmd/status.mjs';
+import { loadThresholds, loadReference, itemNames, keyFilter } from '../tools/anim-pack.mjs';
 import { TARGETS, allowedTagList } from '../tools/lib/anim-quality.mjs';
 import { CROPS } from '../tools/lib/anim-render.mjs';
 
@@ -288,39 +289,57 @@ test('templates: every placeholder of every template is supplied by the commands
   for (const f of names.filter(n => /^region-|^modules/.test(n))) assert.ok(templatePlaceholders(readTemplate(f)).length > 0, f);
 });
 
-test('the generated test is red until every unit and place has its art, then green (run for real, in the temp checkout)', async () => {
+test('the generated test keeps the repo GREEN while the region is drawn (structural checks hard, coverage checks todo) and turns hard once the config says complete: true (run for real, in the temp checkout)', async () => {
   const root = makeRoot();
   assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
   const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;   // inside `node --test` a nested run would think it is a child of this one
   const test = () => spawnSync(process.execPath, ['--test', 'tests/zz-pack.test.mjs'], { cwd: root, encoding: 'utf8', env });
-  const red = test();
-  assert.notEqual(red.status, 0, 'no art yet: the coverage tests fail');
-  assert.match(red.stdout, /signature opening is missing/); assert.match(red.stdout, /node tools\/anim-pack\.mjs status zz lists everything that is missing/);
-  assert.match(red.stdout, /ok \d+ - zz: the region is defined and its tables are sound/, 'the table checks pass from the start');
-  fillStarterArt(root);
-  const red2 = test();
-  assert.notEqual(red2.status, 0, 'the placeholder country XX keeps the generated test red even when every piece of art exists');
-  assert.match(red2.stdout, /starter: the country is still the placeholder XX/);
   const cfg = join(root, 'src', 'app', '71-anim-region-zz.js');
+  assert.match(readFileSync(cfg, 'utf8'), /\n {2}complete: false, /, 'the scaffold says complete: false');
+  const wip = test();
+  assert.equal(wip.status, 0, 'no art yet, and the suite is green: ' + wip.stdout.slice(-2500));
+  for (const t of ['the region is defined and its tables are sound', 'every registered scene is built into a pack \\(no dead art\\)', 'items are unique, animated and gated by a when\\(\\) rule', 'where the user is decides what plays', 'nothing plays away from the region']) assert.match(wip.stdout, new RegExp(`\\nok \\d+ - zz: ${t}`), 'structural: ' + t);
+  assert.match(wip.stdout, /# fail 0/); assert.match(wip.stdout, /# todo 4/); assert.match(wip.stdout, /# pass 5/);
+  assert.match(wip.stdout, /not ok \d+ - zz: every province that opens has a full-screen signature opening and an element # TODO the region is not declared complete \(complete: false in its config\)/, 'coverage: reported as todo, with the reason');
+  assert.match(wip.stdout, /signature opening is missing/); assert.match(wip.stdout, /node tools\/anim-pack\.mjs status zz lists everything that is missing/, 'the todo still says what is missing');
+  fillStarterArt(root);
+  const art = test();
+  assert.equal(art.status, 0, 'every piece of art exists, the placeholder country and the example rows keep the last coverage test todo: ' + art.stdout.slice(-2000));
+  assert.match(art.stdout, /not ok \d+ - zz: no starter data is left .* # TODO/); assert.match(art.stdout, /example row example-big/); assert.match(art.stdout, /starter: the country is still the placeholder XX/);
+  assert.match(art.stdout, /\nok \d+ - zz: every province that opens has a full-screen signature opening and an element # TODO/, 'a coverage test that passes is still listed as todo until the region is declared complete');
+  // declare complete (by hand here; `status --declare-complete` does it): from now on the coverage tests FAIL HARD
+  writeFileSync(cfg, readFileSync(cfg, 'utf8').replace(/\n {2}complete: false,/, '\n  complete: true,'));
+  const hard = test();
+  assert.notEqual(hard.status, 0, 'complete: true and starter data left: red'); assert.match(hard.stdout, /# todo 0/); assert.match(hard.stdout, /not ok \d+ - zz: no starter data is left/); assert.doesNotMatch(hard.stdout, /# TODO/);
+  assert.match(hard.stdout, /\nok \d+ - zz: the region is defined and its tables are sound/, 'the structural tests stay green');
+  // real data: the country set, the example rows renamed: green, every test hard
   writeFileSync(cfg, readFileSync(cfg, 'utf8').replace(/\n {2}country: 'XX',/, "\n  country: 'ZZ',"));
+  for (const f of readdirSync(join(root, 'src', 'app')).filter(f => /zz/.test(f))) { const p = join(root, 'src', 'app', f); writeFileSync(p, readFileSync(p, 'utf8').replace(/example-/g, 'real-')); }
   const green = test();
   assert.equal(green.status, 0, green.stdout.slice(-3000) + green.stderr);
-  assert.match(green.stdout, /# pass 7/); assert.match(green.stdout, /# fail 0/);
-  // status agrees: everything exists; the junk art fails the lint, the example rows are still there
+  assert.match(green.stdout, /# pass 9/); assert.match(green.stdout, /# fail 0/); assert.match(green.stdout, /# todo 0/);
+  // complete: true with a missing piece of art: red again (the coverage tests are hard)
+  const east = join(root, 'src', 'app', '72-anim-pack-zz-east.js');
+  writeFileSync(east, readFileSync(east, 'utf8').replace(/\n {2}B\.element\('XB'[^\n]*/, ''));
+  const regressed = test();
+  assert.notEqual(regressed.status, 0, 'a finished region that loses an element fails'); assert.match(regressed.stdout, /an element is missing/);
+  // status agrees: everything exists; the junk art fails the lint, so the region is not complete
   const st = JSON.parse((await run(['status', 'zz', '--json', '--root', root])).out);
-  assert.deepEqual(st.missing, []); assert.deepEqual(st.orphans, []); assert.deepEqual(st.problems, []);
-  assert.equal(st.complete, false); assert.ok(st.lint.failing > 0, 'a one-circle scene is not a scene'); assert.equal(st.starter.length, 3, 'the three example rows are still there; the country is no longer a placeholder');
-  assert.deepEqual(st.packs.map(p => p.pack), ['zz-east', 'zz-west']); assert.ok(st.packs.every(p => p.lint.fail > 0 && p.lint.failing.every(f => f.rules.length > 0)));
+  assert.equal(st.declared, true); assert.deepEqual(st.starter, []); assert.deepEqual(st.orphans, []); assert.deepEqual(st.problems, []);
+  assert.equal(st.complete, false); assert.ok(st.lint.failing > 0, 'a one-circle scene is not a scene'); assert.deepEqual(st.missing.map(m => m.key), ['province:XB']);
   const text = await run(['status', 'zz', '--strict', '--root', root]);
-  assert.equal(text.code, 2); assert.match(text.out, /FAIL zz-west\/xa-signature: /); assert.match(text.out, /node tools\/anim-pack\.mjs lint --ref zz-west\/xa-signature/);
+  assert.equal(text.code, 2); assert.match(text.out, /FAIL zz-west\/xa-signature: /); assert.match(text.out, /node tools\/anim-pack\.mjs lint --ref zz-west\/xa-signature/); assert.match(text.out, /The config says complete: true, so the coverage tests of the region fail until this is fixed/);
   // lint --file works for a file that is already in src/app (everything the file adds), and --only keeps the elements of a pack file apart from its scenes
+  writeFileSync(east, readFileSync(east, 'utf8').replace('  // The pack registers once', "  B.element('XB', { id: 'm', label: 'Motif B', colour: 'amber', mood: 'cheerful', tags: ['t'], svg: () => '<circle class=\"c x-pulse\" cx=\"30\" cy=\"32\" r=\"8\"/>' });\n  // The pack registers once"));
   const refsOf = async (argv) => JSON.parse((await run([...argv, '--root', root, '--json'])).out).items.map(i => i.ref).sort();
   assert.equal((await run(['lint', '--file', join(root, 'src', 'app', '71-anim-region-zz-scenes-1.js'), '--root', root, '--json'])).code, 2, 'lint --file sees the new scenes through the scaffold\'s pack files');
-  assert.deepEqual(await refsOf(['lint', '--file', join(root, 'src', 'app', '71-anim-region-zz-scenes-1.js')]), ['zz-east/xb-signature', 'zz-west/example-big-skyline', 'zz-west/xa-signature'], 'a scene file adds its scenes');
+  assert.deepEqual(await refsOf(['lint', '--file', join(root, 'src', 'app', '71-anim-region-zz-scenes-1.js')]), ['zz-east/xb-signature', 'zz-west/real-big-skyline', 'zz-west/xa-signature'], 'a scene file adds its scenes');
   const westPack = join(root, 'src', 'app', '72-anim-pack-zz-west.js');
-  assert.deepEqual(await refsOf(['lint', '--file', westPack]), ['zz-west/example-big-skyline', 'zz-west/xa-m', 'zz-west/xa-signature'], 'a pack file adds its elements and the scenes it builds');
+  assert.deepEqual(await refsOf(['lint', '--file', westPack]), ['zz-west/real-big-skyline', 'zz-west/xa-m', 'zz-west/xa-signature'], 'a pack file adds its elements and the scenes it builds');
   assert.deepEqual(await refsOf(['lint', '--file', westPack, '--only', 'small']), ['zz-west/xa-m']);
-  assert.deepEqual(await refsOf(['lint', '--file', westPack, '--only', 'scenes']), ['zz-west/example-big-skyline', 'zz-west/xa-signature']);
+  assert.deepEqual(await refsOf(['lint', '--file', westPack, '--only', 'scenes']), ['zz-west/real-big-skyline', 'zz-west/xa-signature']);
+  assert.deepEqual(await refsOf(['lint', '--file', westPack, '--key', 'province:XA']), ['zz-west/xa-m', 'zz-west/xa-signature'], '--key: a unit\'s key names its signature and its element');
+  assert.deepEqual(await refsOf(['lint', '--file', westPack, '--key', 'place:real-big']), ['zz-west/real-big-skyline']);
   const bogus = await run(['lint', '--file', westPack, '--only', 'bogus', '--root', root]);
   assert.equal(bogus.code, 1); assert.match(bogus.err, /--only must be small or scenes/);
   assert.match((await run(['sheet', '--file', westPack, '--only', 'bogus', '--root', root])).err, /--only must be small or scenes/);
@@ -486,16 +505,17 @@ test('brief --out: group-qualified file names, a plan.json index, stale briefs a
   assert.equal((await run(['brief', 'zz', '--kind', 'element', '--out', out, '--root', root])).code, 0);
   const two = await run(['brief', 'zz', '--kind', 'scene', '--of', '2', '--out', out, '--root', root]);
   assert.equal(two.code, 0, two.err); assert.deepEqual(readdirSync(out).sort(), ['element-brief-1.md', 'element-brief-2.md', 'plan.json', 'scene-brief-1.md', 'scene-brief-2.md']);
-  assert.match(two.out, /render the gold standard ONCE[\s\S]*reference --render --mode night[\s\S]*guard --owned/);
+  assert.match(two.out, /render the gold standard ONCE[\s\S]*reference --render {6}\(light, night and dark in one run\)[\s\S]*guard --owned/);
+  assert.doesNotMatch(two.out, /reference --render --mode/, 'one run renders every mode the briefs cite');
   const plan = JSON.parse(readFileSync(join(out, 'plan.json'), 'utf8'));
   assert.equal(plan.region, 'zz'); assert.deepEqual(plan.dispatch, ['element-brief-1.md', 'element-brief-2.md', 'scene-brief-1.md', 'scene-brief-2.md'].sort((a, b) => (plan.dispatch.indexOf(a) - plan.dispatch.indexOf(b))));
   assert.deepEqual(Object.keys(plan.plans).sort(), ['element', 'scene']);
   const sp = plan.plans.scene; assert.equal(sp.of, 2);
   assert.deepEqual(sp.batches.map(b => [b.brief, b.owns, b.count]), [['scene-brief-1.md', ['src/app/71-anim-region-zz-scenes-1.js'], 2], ['scene-brief-2.md', ['src/app/71-anim-region-zz-scenes-2.js'], 1]]);
   assert.deepEqual(sp.batches.flatMap(b => b.keys).sort(), ['place:example-big', 'province:XA', 'province:XB']);
-  assert.deepEqual(sp.before, ['node tools/anim-pack.mjs reference --render', 'node tools/anim-pack.mjs reference --render --mode night']);
+  assert.deepEqual(sp.before, ['node tools/anim-pack.mjs reference --render'], 'light, night and dark in one run (a bare temp checkout is not a git repo: no commit step)');
   assert.equal(sp.afterEach[0].guard, 'node tools/anim-pack.mjs guard --owned src/app/71-anim-region-zz-scenes-1.js');
-  assert.match(sp.afterAll[0], /guard --owned src\/app\/71-anim-region-zz-scenes-1\.js,src\/app\/71-anim-region-zz-scenes-2\.js/); assert.ok(sp.afterAll.includes('node --test tests/anim-packs.test.mjs'));
+  assert.match(sp.afterAll[0], /guard --owned src\/app\/71-anim-region-zz-scenes-1\.js,src\/app\/71-anim-region-zz-scenes-2\.js/); assert.ok(sp.afterAll.includes('node --test tests/anim-packs.test.mjs')); assert.ok(sp.afterAll.includes('node --test tests/region-framework.test.mjs tests/zz-pack.test.mjs'));
   // a different plan for the same kind: the old briefs would double-assign keys, so it is refused, nothing is touched
   const was = readFileSync(join(out, 'scene-brief-1.md'), 'utf8');
   const clash = await run(['brief', 'zz', '--kind', 'scene', '--group', 'west', '--out', out, '--root', root]);
@@ -770,4 +790,393 @@ test('the verify block of a generated brief runs: every command is a real invoca
     }
   }
   assert.ok(ran >= 12, `${ran} commands ran`);
+});
+
+/* ---------- FIX3A: the pilot's friction in the tooling ---------- */
+
+const git = (dir, ...a) => { const r = spawnSync('git', ['-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@example.invalid', '-c', 'commit.gpgsign=false', ...a], { encoding: 'utf8' }); assert.equal(r.status, 0, `git ${a.join(' ')}: ${r.stderr}`); return r.stdout; };
+/** A scaffold (province, groups west and east) in a temp checkout that is also a git repository: the animation sources are committed, the scaffold is not. */
+async function gitScaffold() {
+  const root = makeRoot();
+  git(root, 'init', '-q'); writeFileSync(join(root, '.gitignore'), '.anim-ref/\n'); git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'sources');
+  assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
+  return root;
+}
+const retarget = (root, from, to) => { const f = join(root, 'src', 'app', '71-anim-region-zz.js'); writeFileSync(f, readFileSync(f, 'utf8').replace(from, to)); };
+
+test('season: the suggestion follows the latitude (any in the tropics, the local season with the flipped label in the south), and the briefs and plan.json say what season means', async () => {
+  // the rule
+  for (const [lat, base, want] of [[-17.8, 'autumn', ['any', 'any']], [-9.5, 'winter', ['any', 'any']], [23.4, 'winter', ['any', 'any']], [-23.4, 'summer', ['any', 'any']],
+    [23.6, 'winter', ['winter', 'winter']], [-23.6, 'winter', ['winter', 'summer']], [35.7, 'autumn', ['autumn', 'autumn']], [-37.8, 'autumn', ['autumn', 'spring']], [-37.8, 'spring', ['spring', 'autumn']], [-45, 'summer', ['summer', 'winter']], [47, 'spring', ['spring', 'spring']],
+    [undefined, 'summer', ['summer', 'summer']], [NaN, 'summer', ['summer', 'summer']]]) {
+    const r = seasonFor(lat, base); assert.deepEqual([r.season, r.label], want, `${lat} ${base}`);
+  }
+  assert.equal(TROPIC_LAT, 23.5); assert.deepEqual(SEASONS, ['spring', 'summer', 'autumn', 'winter']);
+  assert.equal(seasonCell({ season: 'any', seasonLabel: 'any' }), 'any'); assert.equal(seasonCell({ season: 'autumn', seasonLabel: 'autumn' }), 'autumn'); assert.equal(seasonCell({ season: 'autumn', seasonLabel: 'spring' }), "autumn (season: 'spring')");
+  // the rotation: a key's season depends on its latitude only; the tropics never get a four-season word
+  const keys = Array.from({ length: 28 }, (_, i) => ({ key: 'place:p' + i, kind: 'place', lat: i % 3 === 0 ? -17.8 : i % 3 === 1 ? 10 : -37.8 }));
+  const v = varietyOf({ keys, groups: [] }).scene;
+  for (const k of keys) { const x = v.get(k.key); if (Math.abs(k.lat) < TROPIC_LAT) assert.deepEqual([x.season, x.seasonLabel], ['any', 'any'], k.key); else assert.notEqual(x.season, 'any', k.key); }
+  const south = keys.filter(k => k.lat < -30).map(k => v.get(k.key)); assert.ok(south.length > 5);
+  for (const x of south) assert.equal(x.seasonLabel, ({ spring: 'autumn', summer: 'winter', autumn: 'spring', winter: 'summer' })[x.season], 'the south flips the label');
+  // a unit key carries the mean latitude of its rows
+  const reg = loadRegistry(ROOT), needs = regionNeeds(findRegion(reg, 'asia'));
+  const jp = needs.keys.find(k => k.key === 'country:JP'), sg = needs.keys.find(k => k.key === 'country:SG'), id = needs.keys.find(k => k.key === 'country:ID');
+  assert.ok(jp.lat > 30 && jp.lat < 40, String(jp.lat)); assert.ok(Math.abs(sg.lat) < 3); assert.ok(Number.isFinite(id.lat) && Number.isFinite(jp.lon));
+  const asia = varietyOf(needs).scene;
+  assert.equal(asia.get('country:SG').season, 'any', 'Singapore has no autumn'); assert.notEqual(asia.get('country:JP').season, 'any');
+  for (const k of needs.keys) if (Math.abs(k.lat) < TROPIC_LAT) assert.equal(asia.get(k.key).season, 'any', k.key + ' is in the tropics');
+  // a tropical scaffold: every suggestion is `any`, no autumn anywhere; a northern one: the words as they are; a southern one: the label is written out
+  const brief = async (root) => (await run(['brief', 'zz', '--kind', 'scene', '--batch', '1', '--root', root])).out;
+  const trop = makeRoot(); assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', trop])).code, 0);
+  const cfg = join(trop, 'src', 'app', '71-anim-region-zz.js'), text = readFileSync(cfg, 'utf8');
+  writeFileSync(cfg, text.replace(/-50\.00/g, '-10.00').replace(/-52\.00/g, '-12.00'));
+  const tmd = await brief(trop), rows = tmd.split('\n').filter(l => /^\| \d+ \| `/.test(l));
+  assert.equal(rows.length, 3); for (const r of rows) assert.equal(r.split(' | ')[6], 'any', r);
+  assert.doesNotMatch(rows.join('\n'), /autumn|spring|summer|winter/, 'the tropics: no four-season word in the table');
+  const north = makeRoot(); assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', north])).code, 0);
+  writeFileSync(join(north, 'src', 'app', '71-anim-region-zz.js'), text.replace(/-50\.00/g, '50.00').replace(/-52\.00/g, '52.00'));
+  const nrows = (await brief(north)).split('\n').filter(l => /^\| \d+ \| `/.test(l)); assert.ok(nrows.every(r => /^(spring|summer|autumn|winter)$/.test(r.split(' | ')[6])), nrows.join('\n'));
+  const { root } = await shared(); const srows = (await brief(root)).split('\n').filter(l => /^\| \d+ \| `/.test(l));
+  assert.ok(srows.every(r => /^(spring|summer|autumn|winter) \(season: '(spring|summer|autumn|winter)'\)$/.test(r.split(' | ')[6])), 'the south: the local season and the label to write: ' + srows.join('\n'));
+  // what season means is IN the brief and in plan.json
+  for (const md of [tmd, await brief(root)]) {
+    assert.ok(md.includes(SEASON_NOTE)); assert.match(md, /only a LABEL/); assert.match(md, /does NOT decide when the scene plays/); assert.match(md, /Use `any` unless the picture really shows one season/); assert.match(md, /tropics \(\|latitude\| < 23\.5\) have no four seasons/); assert.match(md, /local autumn \(March to May\) is labelled `spring`/);
+  }
+  const out = mkdtempSync(join(tmpdir(), 'anim-season-')); temps.push(out);
+  assert.equal((await run(['brief', 'zz', '--kind', 'scene', '--out', out, '--root', root])).code, 0);
+  const plan = JSON.parse(readFileSync(join(out, 'plan.json'), 'utf8')).plans.scene;
+  assert.equal(plan.seasonNote, SEASON_NOTE); assert.ok(Object.values(plan.suggestions).every(x => 'seasonLabel' in x && 'season' in x));
+  // the framework agrees: a region item's season does not gate play (animSpecialPick never reads it), which is why the note says "label"
+  const registry = readFileSync(join(APP, '71-anim-registry.js'), 'utf8'), pick = registry.slice(registry.indexOf('function animSpecialPick'), registry.indexOf('function animDailyPick'));
+  assert.ok(!/season/.test(pick), 'animSpecialPick has no season rule: the label is only a label');
+});
+
+test('brief --out creates the empty scene file of every batch that has none (listed in plan.json), keeps an existing file as it is, and refuses before it writes anything', async () => {
+  const root = makeRoot(); assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
+  const out = mkdtempSync(join(tmpdir(), 'anim-stub-')); temps.push(out);
+  const one = join(root, 'src', 'app', '71-anim-region-zz-scenes-1.js'), two = join(root, 'src', 'app', '71-anim-region-zz-scenes-2.js'), three = join(root, 'src', 'app', '71-anim-region-zz-scenes-3.js');
+  writeFileSync(one, '// an agent was here\n(function () { const K = animSceneKit(); })();\n');
+  assert.equal(existsSync(two), false);
+  const r = await run(['brief', 'zz', '--kind', 'scene', '--of', '3', '--out', out, '--root', root]);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(readFileSync(one, 'utf8'), '// an agent was here\n(function () { const K = animSceneKit(); })();\n', 'an existing scene file is never touched');
+  const region = findRegion(loadRegistry(root, { fresh: true }), 'zz');
+  assert.equal(readFileSync(two, 'utf8'), sceneStubText(region, 2)); assert.equal(readFileSync(three, 'utf8'), sceneStubText(region, 3));
+  assert.match(readFileSync(two, 'utf8'), /^\/\*[\s\S]*batch 2\.[\s\S]*\*\/\n\(function \(\) \{\n {2}const K = animSceneKit\(\);/);
+  assert.match(r.out, /created 2 empty scene files[\s\S]*71-anim-region-zz-scenes-2\.js[\s\S]*71-anim-region-zz-scenes-3\.js/);
+  const plan = JSON.parse(readFileSync(join(out, 'plan.json'), 'utf8')).plans.scene;
+  assert.deepEqual(plan.created, ['src/app/71-anim-region-zz-scenes-2.js', 'src/app/71-anim-region-zz-scenes-3.js']);
+  assert.ok(plan.batches.every(b => b.owns.every(f => existsSync(join(root, f)))), 'every file a batch owns exists before its agent starts');
+  assert.doesNotMatch(readFileSync(join(out, 'scene-brief-2.md'), 'utf8'), /does not exist yet: create it/, 'the brief no longer says the file is missing');
+  // the stubs load, register nothing and are loud when linted alone
+  assert.deepEqual(findRegion(loadRegistry(root, { fresh: true }), 'zz').check().filter(p => !/^starter:/.test(p)), []);
+  const lint = await run(['lint', '--file', two, '--root', root]); assert.equal(lint.code, 1); assert.match(lint.err, /registered no new or changed item/);
+  // a re-run: nothing is created again, the earlier list stays
+  const again = await run(['brief', 'zz', '--kind', 'scene', '--of', '3', '--out', out, '--root', root]);
+  assert.doesNotMatch(again.out, /created \d+ empty scene file/); assert.deepEqual(JSON.parse(readFileSync(join(out, 'plan.json'), 'utf8')).plans.scene.created, plan.created);
+  // a refusal (a stale plan) happens BEFORE anything is created
+  const west = join(root, 'src', 'app', '71-anim-region-zz-scenes-west-1.js');
+  const refused = await run(['brief', 'zz', '--kind', 'scene', '--group', 'west', '--out', out, '--root', root]);
+  assert.equal(refused.code, 1); assert.match(refused.err, /refusing to write/); assert.equal(existsSync(west), false, 'nothing was created by a refused run');
+  assert.equal((await run(['brief', 'zz', '--kind', 'scene', '--group', 'west', '--out', out, '--clean', '--root', root])).code, 0); assert.equal(existsSync(west), true, 'a group filter names its own file');
+  // printing a brief (no --out) writes nothing
+  const bare = makeRoot(); assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', bare])).code, 0);
+  assert.equal((await run(['brief', 'zz', '--kind', 'scene', '--of', '2', '--batch', '2', '--root', bare])).code, 0); assert.equal(existsSync(join(bare, 'src', 'app', '71-anim-region-zz-scenes-2.js')), false);
+  // --of is a number of batches, cut at group boundaries: the printed line says so (the pilot read "about 7 per agent" as a promise)
+  assert.match(r.out, /--of M sets the number of batches, cut at group boundaries where that costs little, so the sizes can differ/); assert.doesNotMatch(r.out, /--of M changes it/);
+});
+
+test('brief --note is stored in plan.json and re-read on every re-run (never silently dropped); --clear-notes forgets them', async () => {
+  const { root } = await shared();
+  const out = mkdtempSync(join(tmpdir(), 'anim-notes-')); temps.push(out);
+  const planOf = () => JSON.parse(readFileSync(join(out, 'plan.json'), 'utf8')).plans.scene;
+  const first = await run(['brief', 'zz', '--kind', 'scene', '--out', out, '--note', 'Prefer morning light.', '--note', 'No bridges.', '--root', root]);
+  assert.equal(first.code, 0, first.err); assert.deepEqual(planOf().notes, ['Prefer morning light.', 'No bridges.']); assert.match(first.out, /notes in every brief \(stored in plan\.json; a re-run re-reads them\):\n {2}- Prefer morning light\.\n {2}- No bridges\./);
+  const md = () => readFileSync(join(out, 'scene-brief-1.md'), 'utf8');
+  assert.match(md(), /Extra instructions for this batch:\n\n- Prefer morning light\.\n- No bridges\./);
+  // re-run with no --note: the stored ones are used again, and the run says so
+  const re = await run(['brief', 'zz', '--kind', 'scene', '--out', out, '--root', root]);
+  assert.match(re.err, /re-using 2 stored notes from .*plan\.json/); assert.deepEqual(planOf().notes, ['Prefer morning light.', 'No bridges.']); assert.match(md(), /- Prefer morning light\.\n- No bridges\./);
+  // a new one is ADDED (a repeated one is not doubled)
+  const add = await run(['brief', 'zz', '--kind', 'scene', '--out', out, '--note', 'No bridges.', '--note', 'Draw the harbour calm.', '--root', root]);
+  assert.match(add.err, /re-using 2 stored notes .* and adding 1 new/); assert.deepEqual(planOf().notes, ['Prefer morning light.', 'No bridges.', 'Draw the harbour calm.']);
+  // the other kind keeps its own notes; a single batch re-run keeps them too
+  assert.equal((await run(['brief', 'zz', '--kind', 'element', '--out', out, '--note', 'Foods are safe.', '--root', root])).code, 0);
+  assert.deepEqual(JSON.parse(readFileSync(join(out, 'plan.json'), 'utf8')).plans.element.notes, ['Foods are safe.']); assert.equal(planOf().notes.length, 3, 'the scene notes are untouched by the element run');
+  assert.doesNotMatch(readFileSync(join(out, 'element-brief-1.md'), 'utf8'), /Prefer morning light/);
+  // --clear-notes forgets the stored ones (the new ones still apply)
+  const clear = await run(['brief', 'zz', '--kind', 'scene', '--out', out, '--clear-notes', '--note', 'Fresh start.', '--root', root]);
+  assert.match(clear.err, /3 stored note\(s\) of scene briefs forgotten/); assert.deepEqual(planOf().notes, ['Fresh start.']); assert.doesNotMatch(md(), /Prefer morning light/); assert.match(md(), /- Fresh start\./);
+  assert.match((await run(['brief', 'zz', '--kind', 'scene', '--clear-notes', '--root', root])).err, /--clear-notes goes with --out/);
+  // a plan.json of another region is replaced loudly, and its notes are not carried over
+  const other = await run(['brief', 'us', '--kind', 'element', '--group', 'pacific', '--out', out, '--clean']);
+  assert.equal(other.code, 0, other.err); assert.match(other.err, /was the plan of region "zz": it is replaced by this region's plan \(its stored notes are not carried over\)/);
+  assert.deepEqual(JSON.parse(readFileSync(join(out, 'plan.json'), 'utf8')).plans.element.notes, []);
+});
+
+test('the scaffold must be COMMITTED before the agents start: new and brief say so, plan.json carries the command, and once it is committed the guard commands carry the base', async () => {
+  const root = await gitScaffold();
+  const made = await run(['new', 'qq', 'Quux', '--root', root]);
+  assert.match(made.out, /COMMIT THE SCAFFOLD before any agent starts, so that every agent begins from the same tree and `guard` has a baseline/); assert.match(made.out, /git add src\/app\/71-anim-region-qq\.js .* docs\/dev\/QQ_PACK\.md && git commit -m "Quux: scaffold"/);
+  const steps = made.out.split('\n').filter(l => /^ {2}\d\. /.test(l)), at = (re) => steps.findIndex(l => re.test(l));
+  assert.ok(at(/Cultural care/) < at(/COMMIT THE SCAFFOLD/) && at(/COMMIT THE SCAFFOLD/) < at(/reference --render/) && at(/reference --render/) < at(/brief qq --kind scene/), steps.join('\n'));
+  const out = mkdtempSync(join(tmpdir(), 'anim-commit-')); temps.push(out);
+  const plan = () => JSON.parse(readFileSync(join(out, 'plan.json'), 'utf8'));
+  const r = await run(['brief', 'zz', '--kind', 'scene', '--of', '2', '--out', out, '--root', root]);
+  assert.equal(r.code, 0, r.err); assert.match(r.out, /Before you dispatch:\n {2}1\. COMMIT THE SCAFFOLD first \(\d+ files are uncommitted: .*71-anim-region-zz\.js/); assert.match(r.out, /git add .* && git commit -m "Zed Land: scaffold"/);
+  assert.match(r.out, /guard over the files of every agent that ran: node tools\/anim-pack\.mjs guard --owned src\/app\/71-anim-region-zz-scenes-1\.js,src\/app\/71-anim-region-zz-scenes-2\.js\n\(it proves the UNION of the files listed, not one agent alone: to prove one agent give it its own git worktree/);
+  let p = plan(); assert.equal(p.git.committed, false); assert.equal(p.git.base, null); assert.ok(p.git.uncommitted.includes('src/app/71-anim-region-zz-scenes-2.js'), 'the stub just made is part of what must be committed');
+  assert.match(p.plans.scene.before[0], /^git add .*docs\/dev\/ZZ_PACK\.md.* && git commit -m "Zed Land: scaffold"$/); assert.equal(p.plans.scene.before[1], 'node tools/anim-pack.mjs reference --render'); assert.doesNotMatch(p.plans.scene.afterAll[0], /--base/);
+  assert.match(p.proves, /UNION/);
+  // commit it, make the briefs again: the base is in plan.json and in every guard command
+  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'scaffold');
+  const head = git(root, 'rev-parse', '--short=10', 'HEAD').trim();
+  const again = await run(['brief', 'zz', '--kind', 'scene', '--of', '2', '--out', out, '--root', root]);
+  assert.doesNotMatch(again.out, /COMMIT THE SCAFFOLD/); p = plan();
+  assert.deepEqual([p.git.committed, p.git.base, p.git.uncommitted], [true, head, []]); assert.deepEqual(p.plans.scene.before, ['node tools/anim-pack.mjs reference --render']);
+  assert.equal(p.plans.scene.afterEach[0].guard, `node tools/anim-pack.mjs guard --owned src/app/71-anim-region-zz-scenes-1.js --base ${head}`); assert.match(p.plans.scene.afterAll[0], new RegExp(`guard --owned .*scenes-1\\.js,.*scenes-2\\.js --base ${head}$`));
+  assert.match(readFileSync(join(out, 'scene-brief-1.md'), 'utf8'), new RegExp(`guard --owned src/app/71-anim-region-zz-scenes-1\\.js --base ${head}`));
+  assert.deepEqual(gitScaffoldState(root, ['src/app/71-anim-region-zz*.js']).uncommitted, []); assert.equal(gitScaffoldState(mkdtempSync(join(tmpdir(), 'anim-nogit-')), ['x']), null);
+  // the agents work, the orchestrator guards: the committed scaffold is the baseline (the pilot's guard listed the scaffold itself as strays)
+  const guard = (...a) => run(['guard', ...a, '--root', root]);
+  const s1 = join(root, 'src', 'app', '71-anim-region-zz-scenes-1.js'), s2 = join(root, 'src', 'app', '71-anim-region-zz-scenes-2.js');
+  writeFileSync(s1, readFileSync(s1, 'utf8') + '// agent 1\n'); writeFileSync(s2, readFileSync(s2, 'utf8') + '// agent 2\n');
+  const both = await guard('--owned', 'src/app/71-anim-region-zz-scenes-1.js,src/app/71-anim-region-zz-scenes-2.js', '--base', head);
+  assert.equal(both.code, 0, both.out); assert.match(both.out, new RegExp(`Compared with ${head} \\(${head}\\)\\. What this proves: In ONE shared working tree this proves the UNION`));
+  const one = await guard('--owned', 'src/app/71-anim-region-zz-scenes-1.js');
+  assert.equal(one.code, 2, 'in a shared tree one agent\'s guard sees the other agent\'s file'); assert.match(one.out, /\?\? |M {2}src\/app\/71-anim-region-zz-scenes-2\.js/); assert.match(one.out, /Compared with HEAD, the last commit \(/);
+  assert.match(both.out, /list the files of every agent that ran in this tree/); assert.match(both.out, /git worktree add \.\.\/agent-1/);
+});
+
+test('guard: an untracked scaffold is named as such (commit it first), what it proves is stated, and ONE agent is proved in its own git worktree', async () => {
+  const g = gitRepo(); const guard = (...a) => run(['guard', ...a, '--root', g.root]);
+  const base = g.git('rev-parse', '--short=10', 'HEAD').trim();
+  g.w('src/app/71-anim-region-yy.js', 'config\n'); g.w('src/app/72-anim-pack-yy-north.js', 'pack\n'); g.w(OWN1, 'a2\n');
+  const r = await guard('--owned', OWN1);
+  assert.equal(r.code, 2); assert.match(r.out, /2 of them are untracked \(\?\?\)\. If they are the region's scaffold .* COMMIT it before the agents start so that guard has a baseline \(git add src\/app\/71-anim-region-yy\.js src\/app\/72-anim-pack-yy-north\.js && git commit -m "scaffold"\)/);
+  assert.match(r.out, /guard cannot tell a scaffold file from a stray one/); assert.match(r.out, new RegExp(`Compared with HEAD, the last commit \\(${base}\\)\\. What this proves: In ONE shared working tree this proves the UNION`));
+  assert.match(r.out, /To prove ONE agent alone, give it its own git worktree \(git worktree add \.\.\/agent-1 <the commit of the committed scaffold>\) and run guard there/);
+  assert.equal(JSON.parse((await guard('--owned', OWN1, '--json')).out).proves, GUARD_PROOF); assert.equal(JSON.parse((await guard('--owned', OWN1, '--json')).out).base.sha, base);
+  // forbidden files are not "untracked scaffold": no commit advice for them
+  g.w('tests/new.test.mjs', 'x\n'); assert.doesNotMatch((await guard('--owned', OWN1)).out, /git add [^\n]*tests\/new\.test\.mjs/);
+  // commit the scaffold: now guard passes for the owned file and says what it proved
+  rmSync(g.p('tests/new.test.mjs')); g.git('add', 'src/app/71-anim-region-yy.js', 'src/app/72-anim-pack-yy-north.js'); g.git('commit', '-q', '-m', 'scaffold');
+  const base2 = g.git('rev-parse', '--short=10', 'HEAD').trim();
+  assert.equal((await guard('--owned', OWN1)).code, 0); assert.match((await guard('--owned', OWN1, '--base', base)).out, /scaffold|FAIL/, 'since the OLD base the scaffold counts as changed');
+  assert.equal((await guard('--owned', OWN1, '--base', base)).code, 2); assert.equal((await guard('--owned', OWN1, '--base', base2)).code, 0);
+  // one agent alone: its own worktree, made from the scaffold commit; the other agent's change in the main tree is not its business
+  g.git('add', '-A'); g.git('commit', '-q', '-m', 'agent 1 in the main tree'); const wt = join(g.dir, '..', 'anim-agent-' + base2); temps.push(wt);
+  g.git('worktree', 'add', '-q', wt, base2);
+  writeFileSync(join(wt, OWN2), 'agent 2 was here\n');
+  const inWt = await run(['guard', '--owned', OWN2, '--base', base2, '--root', wt]);
+  assert.equal(inWt.code, 0, inWt.out); assert.match(inWt.out, /1 changed file, all of them owned:\n {2}M {2}src\/app\/71-anim-region-zz-scenes-2\.js/);
+  writeFileSync(join(wt, 'src/app/71-anim-region-zz-scenes-1.js'), 'agent 2 touched agent 1\'s file\n');
+  const stray = await run(['guard', '--owned', OWN2, '--base', base2, '--root', wt]);
+  assert.equal(stray.code, 2); assert.match(stray.out, /M {2}src\/app\/71-anim-region-zz-scenes-1\.js {3}\(not one of the owned files\)/, 'in its own worktree one agent\'s stray edit is caught');
+});
+
+test('complete: `new` writes complete: false, status shows it, --strict also fails when everything is drawn but the flag is still false, and --declare-complete sets it (only when nothing is missing)', async () => {
+  const root = makeRoot();
+  const made = await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root]);
+  assert.equal(made.code, 0); assert.match(made.out, /The repo stays GREEN while you draw: the config says `complete: false`/); assert.match(made.out, /status zz --declare-complete/);
+  assert.match(made.out, /8\. node tools\/anim-pack\.mjs status zz --strict {3}\(exit 0\) {3}then {3}node tools\/anim-pack\.mjs status zz --declare-complete/);
+  const cfg = join(root, 'src', 'app', '71-anim-region-zz.js'), text = readFileSync(cfg, 'utf8');
+  assert.match(text, /\n {2}complete: false, {23}\/\/ true when every unit and place has its art/); for (const w of ['coverage tests are reported as todo', 'they fail hard']) assert.ok(text.includes(w), w);
+  assert.equal(findRegion(loadRegistry(root, { fresh: true }), 'zz').complete, false);
+  const st = JSON.parse((await run(['status', 'zz', '--json', '--no-lint', '--root', root])).out); assert.equal(st.declared, false);
+  assert.match((await run(['status', 'zz', '--short', '--no-lint', '--root', root])).out, /config says complete: false \(the coverage tests are todo\)/);
+  assert.match((await run(['status', '--root', root])).out, /zz\s+Zed Land\s+2 provinces.*6 missing, being drawn \(complete: false\)/);
+  // refused while anything is missing: exit 2, nothing changed
+  const refused = await run(['status', 'zz', '--declare-complete', '--root', root]);
+  assert.equal(refused.code, 2); assert.match(refused.out, /NOT DECLARED: zz is not complete \(see above\): nothing was changed/); assert.equal(readFileSync(cfg, 'utf8'), text);
+  assert.equal(JSON.parse((await run(['status', 'zz', '--declare-complete', '--json', '--root', root])).out).declare.ok, false);
+  for (const [argv, re] of [[['status', 'zz', '--declare-complete', '--no-lint'], /--declare-complete needs the lint/], [['status', '--declare-complete'], /--declare-complete needs a region/]]) { const e = await run([...argv, '--root', root]); assert.equal(e.code, 1, argv.join(' ')); assert.match(e.err, re); }
+  // a region with nothing left to draw (every unit has its art elsewhere), real data: complete, but not declared
+  const done = text.replace(/\n {2}country: 'XX',/, "\n  country: 'ZZ',").replace("// elsewhere: ['XX'],", "elsewhere: ['XA', 'XB'],").replace(/example-/g, 'real-');
+  writeFileSync(cfg, done);
+  const ready = await run(['status', 'zz', '--strict', '--root', root]);
+  assert.equal(ready.code, 2, ready.out); assert.match(ready.out, /COMPLETE: every province and place has its art, every item passes the lint\. The config still says complete: false: run `node tools\/anim-pack\.mjs status zz --declare-complete`/);
+  assert.match(ready.out, /STRICT: everything is drawn and lint-clean, but src\/app\/71-anim-region-zz\.js still says complete: false, so the coverage tests are only todo/);
+  assert.match((await run(['status', '--root', root])).out, /zz\s+Zed Land.*complete, not declared \(status zz --declare-complete\)/);
+  // declare: the flag flips in the config (that line only), the run says what changes, strict passes, a second run is a no-op
+  const d = await run(['status', 'zz', '--declare-complete', '--root', root]);
+  assert.equal(d.code, 0, d.out); assert.match(d.out, /DECLARED: set complete: true in src\/app\/71-anim-region-zz\.js\. The coverage tests of tests\/zz-pack\.test\.mjs, tests\/region-framework\.test\.mjs and tests\/anim-packs\.test\.mjs now fail hard/);
+  assert.equal(readFileSync(cfg, 'utf8'), done.replace(/\n {2}complete: false,/, '\n  complete: true,')); assert.equal(findRegion(loadRegistry(root, { fresh: true }), 'zz').complete, true);
+  assert.equal((await run(['status', 'zz', '--strict', '--root', root])).code, 0);
+  const again = await run(['status', 'zz', '--declare-complete', '--root', root]); assert.equal(again.code, 0); assert.match(again.out, /Nothing to change: the region already says complete: true/);
+  // the real regions say nothing and are complete by default: declaring them changes nothing
+  const us = await run(['status', 'us', '--declare-complete']); assert.equal(us.code, 0, us.out); assert.match(us.out, /Nothing to change/); assert.equal(findRegion(loadRegistry(ROOT), 'us').complete, true);
+  assert.deepEqual(declareComplete(ROOT, findRegion(loadRegistry(ROOT), 'asia')), { changed: false, file: 'src/app/71-anim-asia.js', why: 'the region already says complete: true (or sets no flag: the default is true)' });
+  // a config that lost its `complete: false,` line cannot be flipped by the tool: it says what to do by hand
+  writeFileSync(cfg, done.replace(/\n {2}complete: false,/, '\n  complete: (false),'));
+  const lost = await run(['status', 'zz', '--declare-complete', '--root', root]); assert.equal(lost.code, 1); assert.match(lost.err, /has no `complete: false,` line to flip: set `complete: true` in its animRegionDefine/);
+  assert.match(readTemplate('region-config.js.tpl'), /complete: false, /); assert.match(readTemplate('region-doc.md.tpl'), /--declare-complete/);
+  assert.match((await run(['status', '--help'])).out, /--declare-complete[\s\S]*Good to know:[\s\S]*complete: false \(what `new` writes\) keeps the repo green/);
+});
+
+test('status: a row inside another region\'s reach is an OVERLAP (the border case), shown in its own section, with the ways out; the region is not complete until it is resolved', async () => {
+  const root = makeRoot(); assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
+  const cfg = join(root, 'src', 'app', '71-anim-region-zz.js'), text = readFileSync(cfg, 'utf8');
+  assert.equal(JSON.parse((await run(['status', 'zz', '--json', '--no-lint', '--root', root])).out).overlaps.length, 0, 'the scaffold is far from every region');
+  // move the example small town to where a town just across Asia's eastern border would be (about 70 km from Asia's Jayapura row)
+  writeFileSync(cfg, text.replace(/\['example-small', 'Example Small Town', 'XB', -50\.00, -22\.50, 'small'\]/, "['example-small', 'Example Small Town', 'XB', -2.68, 141.30, 'small']"));
+  const st = JSON.parse((await run(['status', 'zz', '--json', '--no-lint', '--root', root])).out);
+  assert.equal(st.overlaps.length, 1); assert.match(st.overlaps[0], /^example-small \(XB, -2\.68, 141\.3\) and asia's row jayapura are \d+ km apart, each inside the other's reach \(asia 300 km, this region 150 km\)/); assert.equal(st.problems.some(p => /overlap/.test(p)), false, 'reported once, in its own list');
+  assert.equal(st.complete, false);
+  const text2 = (await run(['status', 'zz', '--short', '--no-lint', '--root', root])).out;
+  assert.match(text2, /OVERLAP WITH OTHER REGIONS \(1\): rows inside another region's reach, the border cases where the neighbour wins\n {4}example-small/); assert.match(text2, /1 overlap\(s\)/); assert.match(text2, /resolve the overlaps \(move or drop the row, or lower a unitKm\)/);
+  assert.equal((await run(['status', 'zz', '--strict', '--no-lint', '--root', root])).code, 2);
+  const region = findRegion(loadRegistry(root, { fresh: true }), 'zz'); assert.match(region.check().join('\n'), /overlap: example-small .* move or drop one of the two rows .* add it to asia's own tables/);
+  // the config template documents it, with the example
+  for (const w of ['THE BORDER CASE', 'Jayapura', 'inside Asia\'s 300 km reach', 'OVERLAP WITH OTHER REGIONS', 'never push the neighbour out by adding rows']) assert.ok(text.includes(w), w);
+});
+
+test('status lists the travel cities of the region\'s countries that have no row (a trip there matches nothing) and the REACH line; the template says what travelling does', async () => {
+  const root = makeRoot(); cpSync(join(APP, '69-travel-data.js'), join(root, 'src', 'app', '69-travel-data.js'));
+  assert.equal((await run(['new', 'oz', 'Oz', '--unit-word', 'country', '--groups', 'south', '--root', root])).code, 0);
+  const cfg = join(root, 'src', 'app', '71-anim-region-oz.js'), tpl = readFileSync(cfg, 'utf8');
+  for (const w of ['WHAT TRAVELLING DOES', 'ONLY travelRow(ctx.city) is used', 'matches nothing at all', 'is still reached from home', 'REACH line']) assert.ok(tpl.includes(w), w);
+  writeFileSync(cfg, `const OZ_UNITS = { AU: ['Australia', 'south'] };
+const OZ_PLACES = [['brisbane', 'Brisbane', 'AU', -27.47, 153.03, ''], ['perth', 'Perth', 'AU', -31.95, 115.86, ''], ['sydney', 'Sydney', 'AU', -33.87, 151.21, 'big'], ['mildura', 'Mildura', 'AU', -34.19, 142.16, '']];
+const OZ_REGION = animRegionDefine({ id: 'oz', name: 'Oz', unitWord: 'country', units: OZ_UNITS, places: OZ_PLACES, unitKm: 150, worldTravel: ['sydney-au'], complete: false });
+`);
+  const reg = loadRegistry(root, { fresh: true }), region = findRegion(reg, 'oz'), g = travelGaps(reg, region);
+  assert.deepEqual(g.countries, ['AU']); assert.ok(g.cities >= 10, String(g.cities));
+  assert.ok(g.drawnByWorld >= 1 && g.withRow >= 3, JSON.stringify([g.drawnByWorld, g.withRow]));
+  const mel = g.noRow.find(c => c.id === 'melbourne-au');
+  assert.ok(mel && mel.pop > 1e6 && mel.km > 150 && mel.inReach === false && mel.unit === 'AU', JSON.stringify(mel)); assert.equal(mel.row, "['melbourne', 'Melbourne', '??', -37.81, 144.96, '']", 'a line to paste (the unit is ?? when no row reaches it)');
+  assert.ok(g.noRow.every(c => !['brisbane-au', 'perth-au', 'sydney-au'].includes(c.id)), 'a city with a row, or drawn by the world pack, is not a gap');
+  assert.deepEqual(g.noRow.map(c => c.pop), [...g.noRow.map(c => c.pop)].sort((a, b) => b - a), 'most populous first');
+  assert.ok(g.reach.farthest.km > 300 && g.reach.beyond.length >= 3 && g.reach.beyond.some(b => b.id === 'melbourne-au') === (mel.km > 150) && g.reach.unitKm === 150);
+  const near = g.noRow.find(c => c.inReach); if (near) assert.match(near.row, /'AU', /, 'inside the reach the suggestion carries the unit');
+  const text = (await run(['status', 'oz', '--no-lint', '--root', root])).out;
+  assert.match(text, /TRAVEL \(while travelling only a row's travel id counts\): \d+ travel cities in AU: \d+ have a row \(\d+ of them drawn by the world pack for a traveller\), \d+ have none \(a trip there plays nothing; an anchor row of the right country is enough to fix it\)/);
+  assert.match(text, /melbourne-au {10,}Melbourne .* km from AU +\['melbourne', 'Melbourne', '\?\?', -37\.81, 144\.96, ''\]/); assert.match(text, /REACH: unitKm 150; the farthest travel city from its nearest row is .* at \d+ km; \d+ lie beyond unitKm \(a home position there is in no country\): /);
+  const j = JSON.parse((await run(['status', 'oz', '--json', '--no-lint', '--root', root])).out); assert.deepEqual(j.travel.countries, ['AU']); assert.equal(j.travel.noRow.length, g.noRow.length);
+  assert.equal(j.complete, false, 'advice, not part of complete: a region is not held back by a trip it chose not to serve');
+  // a root without the travel tables says nothing about trips (no crash); a region whose country is still the placeholder says nothing either
+  const bare = makeRoot(); assert.equal((await run(['new', 'zz', 'Zed Land', '--unit-word', 'province', '--root', bare])).code, 0);
+  assert.equal(JSON.parse((await run(['status', 'zz', '--json', '--no-lint', '--root', bare])).out).travel, null); assert.doesNotMatch((await run(['status', 'zz', '--no-lint', '--root', bare])).out, /TRAVEL \(/);
+  const usT = JSON.parse((await run(['status', 'us', '--json', '--no-lint'])).out).travel; assert.deepEqual(usT.countries, ['US']); assert.ok(usT.cities > 30 && usT.reach.farthest.km < 190, 'the US: every travel city is within reach');
+});
+
+test('scaffold text: the unit word is pluralised properly (countries, counties, states, provinces), the world pack list is read from the registry, the banner says what to delete', async () => {
+  const cases = [['country', 'countries'], ['county', 'counties'], ['state', 'states'], ['province', 'provinces'], ['territory', 'territories'], ['municipality', 'municipalities'], ['parish', 'parishes'], ['oblast', 'oblasts'], ['canton', 'cantons'], ['prefecture', 'prefectures']];
+  for (const [w, p] of cases) assert.equal(plural(w), p, w);
+  for (const [i, [w, p]] of cases.slice(0, 5).entries()) {
+    const root = makeRoot(); assert.equal((await run(['new', 'pl' + String.fromCharCode(97 + i), 'Plural', '--unit-word', w, '--root', root])).code, 0, w);
+    const text = readFileSync(join(root, 'src', 'app', `71-anim-region-pl${String.fromCharCode(97 + i)}.js`), 'utf8');
+    assert.ok(text.includes(`middle of large ${p} so that`) && text.includes(`A row decides ${p} by DISTANCE`), `${w}: ${p}`);
+    assert.doesNotMatch(text, /countrys|countys|statess|provincess|territorys|ys by DISTANCE|large \w+ys so/, w);
+    assert.doesNotMatch(readFileSync(join(root, 'docs', 'dev', `PL${String.fromCharCode(65 + i)}_PACK.md`), 'utf8'), /countrys|countys|statess/, w);
+  }
+  const { root } = await shared(); const text = readFileSync(join(root, 'src', 'app', '71-anim-region-zz.js'), 'utf8'), live = worldCities(loadRegistry(root, { fresh: true }));
+  assert.ok(live.length >= 12);
+  assert.ok(text.replace(/\s+/g, ' ').includes(`when this file was made it was: ${live.join(', ')}). List EVERY one`), 'the list is the registry\'s, not typed'); assert.match(text, /read it live from\n {3}the registry, it grows: `region\.check\(\)` and `node tools\/anim-pack\.mjs status zz` compare it with this region's rows every time/);
+  assert.match(text, /WHEN THE TABLES ARE REAL, DELETE THIS BANNER and the how-to comments you no longer need \(keep one line per column and the region's own\n {3}notes: Asia's config is the model\)/);
+  assert.ok(!/world pack \(72-anim-pack-world\.js\) draws a landmark for travellers in: /.test(text), 'the stale "draws a landmark in: <list>" sentence is gone');
+});
+
+test('--key names items by id, ref or region key (a wildcard works), and an unknown key is an error that lists what exists', async () => {
+  const reg = loadRegistry(ROOT), all = reg.items().filter(e => e.pack === 'asia-east');
+  const jp = all.filter(e => e.id.startsWith('jp-'));
+  assert.deepEqual(itemNames(reg, all.find(e => e.id === 'jp-signature')).sort(), ['asia-east/jp-signature', 'country:JP', 'jp-signature'].sort());
+  assert.ok(itemNames(reg, all.find(e => e.item.asiaKind === 'city' && e.full)).some(n => /^place:/.test(n)), 'a big place is place:<id>');
+  assert.deepEqual(keyFilter(reg, all, ['country:JP']).map(e => e.id).sort(), jp.map(e => e.id).sort(), 'a unit key names its signature and its element');
+  assert.deepEqual(keyFilter(reg, all, ['jp-signature']).map(e => e.id), ['jp-signature']); assert.deepEqual(keyFilter(reg, all, ['ASIA-EAST/JP-SIGNATURE']).map(e => e.id), ['jp-signature'], 'case does not matter');
+  assert.deepEqual(keyFilter(reg, all, ['jp-*']).map(e => e.id).sort(), jp.map(e => e.id).sort()); assert.equal(keyFilter(reg, all, []).length, all.length);
+  assert.equal(keyFilter(reg, all, ['jp-signature', 'country:KR']).length, 1 + all.filter(e => e.id.startsWith('kr-')).length);
+  assert.throws(() => keyFilter(reg, all, ['jp-signature', 'atlantis']), /--key atlantis names no item of the selection\. A key is an item id \(au-signature\), a ref \(pack\/id\) or a region key \(country:AU, place:sydney\); \* is a wildcard\. The selection has: /);
+  const r = await run(['lint', '--pack', 'asia-east', '--key', 'country:JP', '--quiet']); assert.equal(r.code, 0, r.out); assert.match(r.out, new RegExp(`lint: ${jp.length} items`)); assert.match((await run(['lint', '--pack', 'asia-east', '--key', 'zzz'])).err, /--key zzz names no item/);
+  assert.match((await run(['lint', '--help'])).out, /--key <v> {7,}lint only the items these keys name/);
+});
+
+test('brief warns when the PNGs it cites do not exist, and `reference --render` renders every mode the briefs cite (light, night, dark) unless one --mode is given (skipped without Chrome)', { skip: !findBrowser() }, async () => {
+  const root = makeRoot(); mkdirSync(join(root, 'tools'), { recursive: true });
+  const small = { _about: 'a tiny gold standard for the test', scenes: [{ ref: 'us-mountain/nm-white-sands', why: 'w', tags: [] }], items: [{ ref: 'us-pacific/hi-sea-turtle', why: 'w', tags: [] }], weaker: [{ ref: 'us-pacific/ak-midnight-sun', wrong: 'x' }], weakerItems: [{ ref: 'us-pacific/ak-totem', wrong: 'x' }] };
+  writeFileSync(join(root, 'tools', 'anim-reference.json'), JSON.stringify(small)); cpSync(join(ROOT, 'tools', 'anim-quality.json'), join(root, 'tools', 'anim-quality.json'));
+  assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
+  assert.deepEqual(citedPngs('scene', small), ['.anim-ref/us-mountain__nm-white-sands-light.png', '.anim-ref/us-mountain__nm-white-sands-night.png']);
+  assert.deepEqual(citedPngs('element', small), ['.anim-ref/us-pacific__hi-sea-turtle-light.png', '.anim-ref/us-pacific__hi-sea-turtle-dark.png', '.anim-ref/us-mountain__nm-white-sands-light.png'], 'the element brief cites -dark for icons, light for the scene palette');
+  const out = mkdtempSync(join(tmpdir(), 'anim-png-')); temps.push(out);
+  const missing = JSON.parse((await run(['brief', 'zz', '--kind', 'element', '--json', '--batch', '1', '--root', root])).out).missingPng; assert.equal(missing.length, 3);
+  const b = await run(['brief', 'zz', '--kind', 'element', '--out', out, '--root', root]); assert.match(b.out, /render the gold standard ONCE \(3 PNGs the briefs cite do not exist yet, for example \.anim-ref\/us-pacific__hi-sea-turtle-light\.png/); assert.equal(JSON.parse(readFileSync(join(out, 'plan.json'), 'utf8')).missingPng.length, 3);
+  // one mode: only that mode, for everything
+  const dark = await run(['reference', '--render', '--mode', 'dark', '--json', '--root', root]); assert.equal(dark.code, 0, dark.err);
+  assert.deepEqual(readdirSync(join(root, '.anim-ref')).sort(), ['us-mountain__nm-white-sands-dark.png', 'us-pacific__ak-midnight-sun-dark.png', 'us-pacific__ak-totem-dark.png', 'us-pacific__hi-sea-turtle-dark.png']);
+  assert.deepEqual(JSON.parse(dark.out).rendered['us-pacific/hi-sea-turtle'], { dark: join(root, '.anim-ref', 'us-pacific__hi-sea-turtle-dark.png') });
+  // no --mode: the exemplars in light, night AND dark, the weaker ones in light
+  const all = await run(['reference', '--render', '--json', '--root', root]); assert.equal(all.code, 0, all.err);
+  const files = readdirSync(join(root, '.anim-ref')).sort();
+  for (const f of ['us-mountain__nm-white-sands-light.png', 'us-mountain__nm-white-sands-night.png', 'us-mountain__nm-white-sands-dark.png', 'us-pacific__hi-sea-turtle-light.png', 'us-pacific__hi-sea-turtle-night.png', 'us-pacific__hi-sea-turtle-dark.png', 'us-pacific__ak-midnight-sun-light.png', 'us-pacific__ak-totem-light.png']) assert.ok(files.includes(f), f);
+  assert.deepEqual(Object.keys(JSON.parse(all.out).rendered['us-pacific/hi-sea-turtle']), ['light', 'night', 'dark']); assert.equal(JSON.parse(all.out).rendered['us-pacific/ak-totem'].night, undefined);
+  // now every PNG a brief cites exists, and the brief says nothing
+  for (const kind of ['scene', 'element']) assert.deepEqual(citedPngs(kind, small).filter(f => !existsSync(join(root, f))), [], kind);
+  assert.deepEqual(JSON.parse((await run(['brief', 'zz', '--kind', 'scene', '--json', '--batch', '1', '--root', root])).out).missingPng, []);
+  const ok = await run(['brief', 'zz', '--kind', 'scene', '--out', out, '--clean', '--root', root]); assert.match(ok.out, /the gold standard PNGs the briefs cite exist/);
+  assert.match((await run(['reference', '--help'])).out, /--render +render the exemplars to \.anim-ref\/ .*Without --mode: the exemplars in light, night AND dark/);
+  assert.equal((await run(['reference', '--render', '--mode', 'purple', '--root', root])).code, 1);
+});
+
+test('"Scene suggestions" in the region doc override the rotation per key (once, for every brief); bad lines and unknown keys are reported, never silently used; the exemplars carry their written description', async () => {
+  const root = makeRoot(); assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
+  const doc = join(root, 'docs', 'dev', 'ZZ_PACK.md'), text = readFileSync(doc, 'utf8');
+  assert.ok(text.includes('## Scene suggestions') && text.indexOf('## Cultural care') < text.indexOf('## Scene suggestions') && text.indexOf('## Scene suggestions') < text.indexOf('## Adding a place'), 'the doc skeleton has the section, after the care notes');
+  const region = findRegion(loadRegistry(root, { fresh: true }), 'zz');
+  assert.equal(suggestionsInfo(root, region).state, 'skeleton', 'the example is inside a comment: nothing is applied');
+  const json = async (extra = []) => JSON.parse((await run(['brief', 'zz', '--kind', 'scene', '--json', '--batch', '1', '--root', root, ...extra])).out);
+  const before = await json(), keyOf = (j, key) => j.batches[0].keys.find(k => k.key === key);
+  const md0 = (await run(['brief', 'zz', '--kind', 'scene', '--batch', '1', '--root', root])).out;
+  writeFileSync(doc, text.replace('## Adding a place', `- \`place:example-big\`: type = old town and river; palette = warm amber and rose; time = night; season = any
+- province:XA: motif = plant; colour = green; season = winter
+- province:NOPE: type = coast
+- not a line
+- place:example-big: nonsense = 1; colour = purple; season = monsoon
+
+## Adding a place`));
+  const r = await run(['brief', 'zz', '--kind', 'scene', '--batch', '1', '--root', root]);
+  assert.equal(r.code, 0, r.err);
+  assert.match(r.err, /note: 2 suggestions from the "Scene suggestions" section of docs\/dev\/ZZ_PACK\.md replace the rotation's/);
+  assert.match(r.err, /province:NOPE is not a scene or element key of zz .*: ignored/); assert.match(r.err, /not a suggestion line \(expected "- <key>: field = value; field = value"\): - not a line.*: ignored/);
+  assert.match(r.err, /"nonsense = 1" is not one of time, season, type, palette, motif, colour \(field = value\)/); assert.match(r.err, /colour = purple is not one of blue, indigo/); assert.match(r.err, /season = monsoon is not any, spring, summer, autumn or winter/);
+  const row = r.out.split('\n').find(l => /^\| \d+ \| `place:example-big`/.test(l)); assert.ok(row && row.includes('| night | any | old town and river | warm amber and rose |'), row);
+  const xa = r.out.split('\n').find(l => /^\| \d+ \| `province:XA`/.test(l)); assert.ok(/\| winter \(season: 'summer'\) \|/.test(xa), 'a season override in the south keeps the flipped label: ' + xa);
+  assert.notEqual(r.out, md0);
+  const j = await json(); assert.equal(keyOf(j, 'place:example-big').season, 'any'); assert.equal(keyOf(before, 'place:example-big').season !== 'any', true);
+  // elements: motif and colour
+  const el = (await run(['brief', 'zz', '--kind', 'element', '--batch', '1', '--root', root])).out, erow = el.split('\n').find(l => /B\.element\('XA'/.test(l) && /^\| \d+ \|/.test(l)); assert.ok(/\| plant \| green \|$/.test(erow), erow);
+  // plan.json carries the applied values; the info reader and the applier agree
+  const info = suggestionsInfo(root, region); assert.deepEqual(info.byKey['place:example-big'], { type: 'old town and river', palette: 'warm amber and rose', time: 'night', season: 'any' }); assert.ok(info.problems.length >= 4);
+  const out = mkdtempSync(join(tmpdir(), 'anim-sugg-')); temps.push(out);
+  assert.equal((await run(['brief', 'zz', '--kind', 'scene', '--out', out, '--root', root])).code, 0);
+  assert.deepEqual(JSON.parse(readFileSync(join(out, 'plan.json'), 'utf8')).plans.scene.suggestions['place:example-big'], { time: 'night', season: 'any', seasonLabel: 'any', type: 'old town and river', palette: 'warm amber and rose' });
+  // the exemplars carry what they show, in words (the fallback when a PNG cannot be displayed)
+  const ref = loadReference(ROOT), ny = ref.scenes.find(x => x.ref === 'us-northeast/new-york-skyline');
+  assert.ok(md0.includes(`what it shows: ${ny.why}`)); assert.match(md0, /`us-northeast\/new-york-skyline`.*\n {4}read: .*\n {4}what it shows: Three depth layers of towers[\s\S]*?\n {4}PNG: /);
+  for (const x of ref.items) assert.ok(el.includes(`what it shows: ${x.why.replace(/\s+/g, ' ').trim()}`), x.ref);
+});
+
+test('a scaffold keeps the repo-wide tests GREEN (region-framework: structural checks run, coverage is todo; anim-packs: an empty scaffold pack file is waiting) and complete: true makes them fail hard (run for real, in the temp checkout)', async () => {
+  const root = makeRoot();
+  for (const f of ['78-anim-wire.js', '69-travel-data.js']) cpSync(join(APP, f), join(root, 'src', 'app', f));
+  mkdirSync(join(root, 'tests'), { recursive: true }); cpSync(join(ROOT, 'build.mjs'), join(root, 'build.mjs')); cpSync(join(ROOT, 'tools', 'lib', 'anim-region.mjs'), join(root, 'tools', 'lib', 'anim-region.mjs'));
+  for (const f of ['region-framework.test.mjs', 'anim-packs.test.mjs']) cpSync(join(ROOT, 'tests', f), join(root, 'tests', f));
+  assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
+  const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
+  const test = () => spawnSync(process.execPath, ['--test', 'tests/region-framework.test.mjs', 'tests/anim-packs.test.mjs'], { cwd: root, encoding: 'utf8', env });
+  const wip = test();
+  assert.equal(wip.status, 0, 'the scaffold is green: ' + wip.stdout.split('\n').filter(l => /^not ok|^# (pass|fail)/.test(l)).join('\n'));
+  assert.match(wip.stdout, /# fail 0/); assert.match(wip.stdout, /# todo 1/);
+  assert.match(wip.stdout, /not ok \d+ - zz: a pack exactly when a group has units that open, and no starter data left .* # TODO zz is not declared complete/);
+  for (const t of ['every region: the flag is a boolean, the tables are sound', 'every region: no row inside another region\'s reach', 'every region: unique travel ids']) assert.match(wip.stdout, new RegExp(`\\nok \\d+ - ${t.replace(/[()'\\]/g, '\\$&')}`), t + ' ran and passed');
+  assert.match(wip.stdout, /\nok \d+ - there is at least the core pack, and every pack file registered a valid pack \(an empty scaffold pack file/, 'the pack registration test tolerates the empty scaffold pack files');
+  // declare it complete: the coverage test and the registration test fail hard, the structural ones stay green
+  const cfg = join(root, 'src', 'app', '71-anim-region-zz.js');
+  writeFileSync(cfg, readFileSync(cfg, 'utf8').replace(/\n {2}complete: false,/, '\n  complete: true,'));
+  const hard = test();
+  assert.notEqual(hard.status, 0); assert.match(hard.stdout, /# todo 0/);
+  assert.match(hard.stdout, /not ok \d+ - zz: a pack exactly when a group has units that open, and no starter data left/); assert.doesNotMatch(hard.stdout, /zz: a pack exactly[^\n]*# TODO/);
+  assert.match(hard.stdout, /not ok \d+ - there is at least the core pack, and every pack file registered a valid pack/); assert.match(hard.stdout, /registration files \d+, registered \d+/);
+  assert.match(hard.stdout, /\nok \d+ - every region: no row inside another region's reach/, 'the overlap test is its own test: it keeps running');
 });

@@ -47,19 +47,30 @@
      keys        { unit, unitName }   property names in place() / where() results (defaults 'unit', 'unitName')
      country     the ISO country code of an item: a string, or (unit) => code; default the unit code itself
      extra       (unit) => ({...})   more fields for every item (the US adds state)
-   The region: where(ctx), locate(ctx), place(ctx), unitOf(ctx), builder(group), sceneAdd(entry), scenes, check(),
-   travelId(row), worldTravel, elsewhere, travelRow(city).
+     complete    true | false   a region still being drawn (the scaffold of tools/anim-pack.mjs new writes false) has its COVERAGE
+                 tests reported as todo (every unit has its art, no starter rows left ...); the structural ones (sound tables, no
+                 overlap, unique travel ids, no dead art) always run. Set true when `node tools/anim-pack.mjs status <id> --strict`
+                 passes (`status <id> --declare-complete` does it): the coverage tests then fail hard. Default true: a config
+                 that does not say is a finished region (the US and Asia).
+   The region: where(ctx), locate(ctx), place(ctx), unitOf(ctx), nearestRow(ctx), builder(group), sceneAdd(entry), scenes, check(),
+   travelId(row), worldTravel, elsewhere, travelRow(city), unitKm, placeKm, complete, countryOf(unit).
 
    Where the user is (ctx.city is the travel city while away, else ctx.lat / ctx.lon, the weather town):
-     travel     ctx.city = travelId(row) of a place row; ids in worldTravel return no match
+     travel     ctx.city = travelId(row) of a place row; ids in worldTravel return no match. ONLY travelRow(ctx.city) is used: a
+                travel city that is not a row of the region matches nothing at all (the region plays nothing for that trip), so
+                every travel city of the region's countries that should open needs a row (`status` lists the ones without)
      home       a big or small place within its radius gives the PLACE; any row (anchors too) within unitKm
-                gives the UNIT (nearest row wins, so right beside a border it can be the neighbour)
+                gives the UNIT (nearest row wins, so right beside a border it can be the neighbour). A row the travel tables
+                lack is still reached from home: the weather town's position decides, no travel id is involved
    Items carry <fields.kind>: unitWord | 'city', <fields.unit> (the unit code), for a city <fields.place> and
    <fields.size>, and for a unit <fields.signature>; priority 1 (unit) and 1.2 (city): a festival or the birthday
    (priority 2+) still wins the day.
 
    REGIONS MUST NOT OVERLAP. No row of a region may sit inside another region's reach (unitKm of its nearest
-   row): tests/region-framework.test.mjs checks every region against every other. Two reaches can still overlap
+   row): tests/region-framework.test.mjs checks every region against every other, and region.check() names each such row
+   (BORDER CASE: a town just across a border from a neighbour region, e.g. a row 70 km from Asia's Jayapura row, cannot be a row
+   of the region on the other side while Asia reaches 300 km: leave it without a row, drop it, or lower the neighbour's unitKm
+   after running both regions' tests). Two reaches can still overlap
    between rows; there the region whose nearest row is NEARER wins. region.locate(ctx) returns {km, where}, the
    distance to that nearest row (0 for a travel match); animRegionsWhere(ctx) lists every region that matches
    nearest first (ties in definition order); animRegionWhere(ctx) is its first entry. A unit with art elsewhere
@@ -145,6 +156,8 @@ function animRegionDefine(cfg) {
   const unitKm = cfg.unitKm;
   if (!(typeof unitKm === 'number' && unitKm > 0)) bad('unitKm: the distance (km) beyond which a position is in no unit');
   const placeKm = Object.assign({ big: 50, small: 30 }, cfg.placeKm);
+  if (cfg.complete != null && typeof cfg.complete !== 'boolean') bad('complete: true or false (a region still being drawn is false)');
+  const complete = cfg.complete !== false;   // a config that does not say is a finished region: the US and Asia keep every hard gate
   const cap = unitWord[0].toUpperCase() + unitWord.slice(1);
   const F = Object.assign({ kind: id + 'Kind', unit: id + cap, place: id + 'Place', size: id + 'Size', signature: id + 'Signature' }, cfg.fields);
   const T = Object.assign({ root: id, unit: id + '-' + unitWord, city: id + '-city' }, cfg.tags);
@@ -195,18 +208,20 @@ function animRegionDefine(cfg) {
     }
     return obj(best);
   }
-  const NO_UNIT = { u: '', km: Infinity };
-  /** The nearest row: {u: its unit code, km: the distance to it}, NO_UNIT when none is in reach. A travel match is km 0. */
+  const NO_UNIT = { u: '', km: Infinity, row: null };
+  /** The nearest row: {u: its unit code, km: the distance to it, row}, NO_UNIT when none is in reach. A travel match is km 0. */
   function nearest(ctx) {
     if (!ctx) return NO_UNIT;
-    if (ctx.city) { const p = travelRow(ctx.city); return p ? { u: p[2], km: 0 } : NO_UNIT; }
+    if (ctx.city) { const p = travelRow(ctx.city); return p ? { u: p[2], km: 0, row: p } : NO_UNIT; }
     if (!_arHasPos(ctx)) return NO_UNIT;
-    let best = '', bd = unitKm;
-    for (const p of rows) { const d = _arKm(ctx.lat, ctx.lon, p[3], p[4]); if (d < bd) { bd = d; best = p[2]; } }
-    return best ? { u: best, km: bd } : NO_UNIT;
+    let best = '', bd = unitKm, bp = null;
+    for (const p of rows) { const d = _arKm(ctx.lat, ctx.lon, p[3], p[4]); if (d < bd) { bd = d; best = p[2]; bp = p; } }
+    return best ? { u: best, km: bd, row: bp } : NO_UNIT;
   }
   /** The unit code for a ctx ('' = not in this region, or travelling somewhere that is not one of its places). Nearest row wins. */
   function unitOf(ctx) { return nearest(ctx).u; }
+  /** The nearest row within unitKm of a ctx: {id, unit, km} (a travel match is km 0), or null. What check() names when two regions overlap. */
+  function nearestRow(ctx) { const n = nearest(ctx); return n.u ? { id: n.row[0], unit: n.u, km: n.km } : null; }
   /**
    * The match the opening sequence works with: {km, where} or null (not in this region). km is the distance to the nearest row (0 for a
    * travel match), what animRegionsWhere() ranks the regions by. where is {id, name, <keys.unit>, <keys.unitName>, kind}: a place wins,
@@ -301,10 +316,55 @@ function animRegionDefine(cfg) {
   /** The scene keys registered more than once: [[key, count], ...]. */
   function sceneDuplicates() { return Object.entries(_ANIM_REGION_DUPES[id] || {}); }
 
+  /** The travel city ids the world pack draws, read live from the registry (animPack is the registry's; it is only called when check() runs, after every file has loaded), or null when there is no world pack to ask. */
+  function liveWorldCities() {
+    try {
+      if (typeof animPack !== 'function') return null;
+      const w = animPack('world');
+      return w && Array.isArray(w.items) ? [...new Set(w.items.map(i => i.city).filter(Boolean))] : null;
+    } catch (e) { return null; }
+  }
+  /**
+   * Rows of this region inside ANOTHER region's reach, and rows of another region inside this one's (the overlap rule: tests/region-framework.test.mjs
+   * fails on either): [{other, otherName, row, unit, otherRow, otherUnit, lat, lon, km, reach, myReach, direction}]. direction: 'in' (my row, their reach),
+   * 'out' (their row, my reach; row is theirs) or 'both' (the same two rows lie inside each other's reach: one entry, not two).
+   */
+  function overlaps() {
+    const found = [], at = (p) => ({ lat: p[3], lon: p[4] });
+    for (const o of ANIM_REGIONS) {
+      if (o === region || !o.nearestRow) continue;
+      const mine = [];
+      for (const p of rows) {
+        if (!_arHasPos(at(p))) continue;
+        const n = o.nearestRow(at(p));
+        if (n) mine.push({ other: o.id, otherName: o.name, row: p[0], unit: p[2], otherRow: n.id, otherUnit: n.unit, lat: p[3], lon: p[4], km: n.km, reach: o.unitKm, myReach: unitKm, direction: 'in' });
+      }
+      for (const q of o.places) {
+        if (!Array.isArray(q) || q.length < 6 || !_arHasPos(at(q))) continue;
+        const n = nearestRow(at(q));
+        if (!n) continue;
+        const twin = mine.find(v => v.row === n.id && v.otherRow === q[0]);   // my row n.id is inside their reach and their row q[0] inside mine: one overlap
+        if (twin) twin.direction = 'both';
+        else found.push({ other: o.id, otherName: o.name, row: q[0], unit: q[2], otherRow: n.id, otherUnit: n.unit, lat: q[3], lon: q[4], km: n.km, reach: unitKm, myReach: o.unitKm, direction: 'out' });
+      }
+      found.push(...mine);
+    }
+    return found;
+  }
+  /** The sentence check() prints for one overlap (actionable: what is wrong, and the ways out). */
+  function overlapMessage(v) {
+    const km = Math.round(v.km), pos = v.row + ' (' + v.unit + ', ' + v.lat + ', ' + v.lon + ')';
+    if (v.direction === 'both') return 'overlap: ' + pos + ' and ' + v.other + '\'s row ' + v.otherRow + ' are ' + km + ' km apart, each inside the other\'s reach (' + v.other + ' ' + v.reach + ' km, this region ' + v.myReach + ' km), so both claim the positions between them (a BORDER CASE when one of them is a town just across a border: the nearer row wins there). Fix it one way: move or drop one of the two rows (the one on the wrong side of the border), or lower ' + v.other + '\'s unitKm or ' + id + '\'s (then run the tests of both regions), or, if the place belongs to ' + v.otherName + ', add it to ' + v.other + '\'s own tables instead of here';
+    if (v.direction === 'in') return 'overlap: ' + pos + ' is ' + km + ' km from ' + v.other + '\'s row ' + v.otherRow + ', inside its reach of ' + v.reach + ' km, so ' + v.other + ' claims the positions beside this row (a BORDER CASE when it is a town just across a border: the neighbour wins there). Fix it one way: move or drop the row, or lower ' + v.other + '\'s unitKm (then run the tests of both regions), or, if the place belongs to ' + v.otherName + ', add it to ' + v.other + '\'s own tables instead of here';
+    return 'overlap: ' + v.other + '\'s row ' + pos + ' is ' + km + ' km from this region\'s row ' + v.otherRow + ', inside its reach of ' + v.reach + ' km, so this region would claim the positions beside ' + v.other + '\'s row. Fix it one way: lower ' + id + '\'s unitKm (now ' + v.reach + '; then run the tests of both regions), or move or drop ' + v.otherRow + ', the row that reaches it';
+  }
+
   /**
    * Table and scene mistakes, as a list of sentences ([] = sound). The tests call it for every region.
    * check({ worldCities: [...] }) also lists every travel city the world pack draws that a row of this region maps to
-   * and worldTravel does not name (the region's city art would beat the world pack's landmark for a traveller there).
+   * and worldTravel does not name (the region's city art would beat the world pack's landmark for a traveller there); without the option the
+   * list is read live from the world pack when the registry has one (pass { worldCities: [] } to skip it).
+   * Rows inside another region's reach, and other regions' rows inside this one's, are listed as 'overlap: ...' (see overlaps()).
    */
   function check(opts) {
     const out = [], seen = new Set(), travelSeen = new Map(), anchored = new Set();
@@ -330,7 +390,9 @@ function animRegionDefine(cfg) {
     for (const u of Object.keys(pseudo)) if (!pseudo[u] || !pseudo[u].id || !pseudo[u].name || !pseudo[u].kind) out.push(u + ': a pseudo unit is {id, name, kind}');
     for (const u of elsewhere) if (!unitRow(u)) out.push('elsewhere ' + u + ' is not in units');
     for (const t of worldTravel) if (!travel.has(t)) out.push('worldTravel ' + t + ': no place has that travel id');
-    for (const c of (opts && Array.isArray(opts.worldCities) ? opts.worldCities : [])) if (travel.has(c) && !worldSet.has(c)) out.push('worldTravel: the world pack draws ' + c + ' and ' + travel.get(c)[0] + ' maps to it, but it is not listed (a traveller there would get this region\'s art, not the world pack\'s)');
+    const worldCities = opts && Array.isArray(opts.worldCities) ? opts.worldCities : liveWorldCities() || [];
+    for (const c of worldCities) if (travel.has(c) && !worldSet.has(c)) out.push('worldTravel: the world pack draws ' + c + ' and ' + travel.get(c)[0] + ' maps to it, but it is not listed (a traveller there would get this region\'s art, not the world pack\'s)');
+    for (const v of overlaps()) out.push(overlapMessage(v));
     const dupes = sceneDuplicates();
     for (const [key, n] of dupes) out.push('DUPLICATE SCENE KEY ' + key + ' (registered ' + n + ' times; the last registration wins and hides the others: two scene files draw the same key, keep one)');
     // starter data: the scaffold's placeholder country 'XX' (a region whose units are not countries) makes every item's region ['XX'] and every travel id end in -xx, so travel matching can never work
@@ -347,7 +409,7 @@ function animRegionDefine(cfg) {
     return out;
   }
 
-  const region = { id, name: cfg.name || id, over: cfg.over || cfg.name || id, unitWord, units, places, groups, keys: K, fields: F, tags: T, priority: P, scenes, place, unitOf, where, locate, builder, sceneAdd, sceneDuplicates, check, travelRow, travelId: travelIdOf, worldTravel, elsewhere, owns: (packId) => animRegionOwns(id, packId) };
+  const region = { id, name: cfg.name || id, over: cfg.over || cfg.name || id, unitWord, units, places, groups, keys: K, fields: F, tags: T, priority: P, scenes, place, unitOf, nearestRow, where, locate, builder, sceneAdd, sceneDuplicates, check, overlaps, travelRow, travelId: travelIdOf, countryOf: (u) => { try { return String(countryOf(u)); } catch (e) { return ''; } }, worldTravel, elsewhere, unitKm, placeKm: Object.freeze(Object.assign({}, placeKm)), complete, owns: (packId) => animRegionOwns(id, packId) };
   ANIM_REGIONS.push(region);
   return region;
 }

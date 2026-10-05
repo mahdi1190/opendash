@@ -5,16 +5,17 @@
 // DECISION: the scaffold ships NO example art. A scene or an icon "deliberately minimal but lint-valid" would be the thing an agent copies,
 // and a minimal scene cannot pass the strict lint anyway; any art in the starter files would also go live in the app if it were forgotten.
 // So the starter rows are in the open sea (nothing plays anywhere real), the pack files register nothing until they have an item, and the
-// generated test FAILS until every unit, big place and small place has its art: a half-built region must not be committable, and
-// `node tools/anim-pack.mjs status <id>` is the progress bar. The config loads and region.check() is empty from the first second.
+// config says `complete: false`: the generated test runs its STRUCTURAL checks (sound tables, no dead art, the lookups, nothing plays away) as hard
+// failures from the first second, and reports its COVERAGE checks (every unit and place has its art, no starter data) as node:test `todo` until the
+// region is declared complete (`status <id> --declare-complete` sets `complete: true`); then they fail hard, so a finished region cannot regress.
+// The repo is green the whole time, a half-built region is visible (todo, `status`), and the scaffold is committed before any agent starts.
 import { existsSync, mkdirSync, writeFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { loadRegistry } from '../anim-render.mjs';
-import { regions, worldCities, readTemplate, renderTemplate, titleCase, plural, RESERVED_IDS, RESERVED_UNIT_WORDS } from '../anim-region.mjs';
+import { regions, worldCities, readTemplate, renderTemplate, titleCase, plural, jsq, RESERVED_IDS, RESERVED_UNIT_WORDS } from '../anim-region.mjs';
 
 const MAX_GROUPS = 8;
 const NUMBER_WORDS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
-const jsq = (s) => "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
 
 /** Where the starter rows go when nothing else is known (the open South Atlantic), and the places `new` tries when another region still has example rows: all open sea. */
@@ -92,7 +93,7 @@ export default {
     const common = { id, ID, name, name_js: jsq(name), unit_word: unitWord, unit_word_plural: plural(unitWord), groups_list: groups.map(g => `'${g}'`).join(', ') };
     const unitOfRow = (code) => data.units.find(u => u.code === code);
     const plan = [];
-    plan.push({ path: `src/app/71-anim-region-${id}.js`, tpl: 'region-config.js.tpl', what: 'the config: starter tables, radii, worldTravel, animRegionDefine',
+    plan.push({ path: `src/app/71-anim-region-${id}.js`, tpl: 'region-config.js.tpl', what: 'the config: starter tables, radii, worldTravel, complete: false, animRegionDefine',
       vars: { ...common, units_table: data.unitsTable, places_table: data.placesTable, world_cities: worldCities(reg).join(', ') || 'none', field_unit: id + cap(unitWord),
         country_line: unitWord === 'country'
           ? "  // country: 'XX',                     // the ISO 3166-1 alpha-2 country of the items AND the suffix of the travel ids; needed when the units are NOT countries (states, provinces ...); here each unit code is its own country code"
@@ -106,7 +107,7 @@ export default {
       plan.push({ path: `src/app/72-anim-pack-${id}-${g}.js`, tpl: 'region-pack.js.tpl', what: `the ${g} pack: B.scenes() plus the element calls to fill`,
         vars: { ...common, group: g, todo_lines: todo, pack_name_js: jsq(`${name}: ${title(g)}`), pack_desc_js: jsq(`Full-screen openings and small symbols for the ${title(g)} part of ${name}, played only where you are.`) } });
     }
-    plan.push({ path: `tests/${id}-pack.test.mjs`, tpl: 'region-test.mjs.tpl', what: 'the coverage gate (data-driven: red until every unit and place has its art)', vars: common });
+    plan.push({ path: `tests/${id}-pack.test.mjs`, tpl: 'region-test.mjs.tpl', what: 'the gate (data-driven: structural checks hard, coverage checks todo until `complete: true`)', vars: common });
     const packRows = groups.map(g => `| \`${id}-${g}\` | \`72-anim-pack-${id}-${g}.js\` | TODO: the ${plural(unitWord)} of the ${g} group |`).join('\n');
     plan.push({ path: `docs/dev/${ID}_PACK.md`, tpl: 'region-doc.md.tpl', what: 'the guide skeleton', vars: { ...common, over: name, pack_rows: packRows } });
 
@@ -135,21 +136,24 @@ export default {
     out('');
     out('The scaffold loads and its tables are sound (the example rows are in the open sea, away from every other region: nothing plays anywhere real). It ships NO example art.');
     if (unitWord !== 'country') out(`The units are ${plural(unitWord)}, not countries: set \`country: '<ISO code>'\` in the config. Until then region.check() and \`status --strict\` report the placeholder XX as starter data (travel ids would end in -xx).`);
-    out(`Until every ${unitWord} and place has its art, tests/${id}-pack.test.mjs, the "every region" test of tests/region-framework.test.mjs and the "every pack file registered a valid pack" test of tests/anim-packs.test.mjs`);
-    out('are RED on purpose: a half-built region must not be committed. `status` is the progress bar.');
+    out(`The repo stays GREEN while you draw: the config says \`complete: false\`, so the coverage tests of tests/${id}-pack.test.mjs, of tests/region-framework.test.mjs and of tests/anim-packs.test.mjs (every ${unitWord} and place has its art, no starter data)`);
+    out('are reported as todo, while the structural ones (sound tables, no overlap with another region, no dead art, the lookups, nothing plays away) always run. `status` is the progress bar.');
+    out(`When \`status ${id} --strict\` passes, \`status ${id} --declare-complete\` sets \`complete: true\`: the coverage tests then fail hard.`);
     out('');
     out('MODULES.md row (paste it into the Animation library table):');
     out(renderTemplate(readTemplate('modules-row.md.tpl'), { ...common, pack_count: groups.length, pack_s: groups.length === 1 ? '' : 's', pack_list: groups.map(g => '`' + id + '-' + g + '`').join(', ') }, 'modules-row.md.tpl').trimEnd());
     out('');
     out('Next steps (in this order):');
     out(`  1. Replace the STARTER rows of src/app/71-anim-region-${id}.js with the real units and places (status warns while "example-" rows remain). Choose the groups,`);
-    out('     the big and small places, unitKm and worldTravel; keep every row out of every other region\'s reach (tests/region-framework.test.mjs checks it).');
-    out(`  2. node build.mjs --syntax && node tools/anim-pack.mjs status ${id}        (what is missing)`);
+    out('     the big and small places, unitKm and worldTravel; keep every row out of every other region\'s reach (check() and the tests name any overlap). Add a row for every travel city of your countries that should open.');
+    out(`  2. node build.mjs --syntax && node tools/anim-pack.mjs status ${id}        (what is missing, overlaps, travel cities without a row, the reach)`);
     out(`  3. Fill the "Cultural care" section of docs/dev/${ID}_PACK.md BEFORE any brief is made: it is copied into every brief (a brief made earlier carries only the general rules; \`brief\` says so).`);
-    out('  4. node tools/anim-pack.mjs reference --render   (and --mode night, --mode dark), once, so that no agent renders the gold standard at the same time as another.');
-    out(`  5. node tools/anim-pack.mjs brief ${id} --kind scene --out .anim-ref/briefs     and     ... --kind element --out .anim-ref/briefs`);
-    out('  6. Fan the briefs out to agents; each lints (lint --file ...), looks (sheet ...) and reports; prove each batch touched only its own files (guard --owned ...); review independently (.claude/skills/animation-pack/references/workflow.md).');
-    out(`  7. node tools/anim-pack.mjs status ${id} --strict   (exit 0)   then   npm test   and   node tools/privacy-scan.mjs;  paste the MODULES.md row above.`);
+    out(`  4. COMMIT THE SCAFFOLD before any agent starts, so that every agent begins from the same tree and \`guard\` has a baseline (an uncommitted scaffold makes it list your own files as strays):`);
+    out(`       git add ${rendered.map(f => f.path).join(' ')} && git commit -m "${name}: scaffold"`);
+    out('  5. node tools/anim-pack.mjs reference --render   (once: it renders light, night and dark, so that no agent renders the gold standard at the same time as another).');
+    out(`  6. node tools/anim-pack.mjs brief ${id} --kind scene --out .anim-ref/briefs     and     ... --kind element --out .anim-ref/briefs     (they also create the scene file of every batch that has none)`);
+    out('  7. Fan the briefs out to agents; each lints (lint --file ...), looks (sheet ...) and reports; prove the batches touched only their own files (guard --owned <the files of all agents that ran in this tree>); review independently (.claude/skills/animation-pack/references/workflow.md).');
+    out(`  8. node tools/anim-pack.mjs status ${id} --strict   (exit 0)   then   node tools/anim-pack.mjs status ${id} --declare-complete   then   npm test   and   node tools/privacy-scan.mjs;  paste the MODULES.md row above.`);
     return 0;
   },
 };

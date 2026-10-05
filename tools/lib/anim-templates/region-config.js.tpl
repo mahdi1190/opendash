@@ -18,9 +18,15 @@
 
    REGIONS MUST NOT OVERLAP. No row of this region may sit inside another region's reach ({{ID}}_UNIT_KM from its nearest row;
    the US reaches 190 km, Asia 300 km), and no other region's row inside this one's: tests/region-framework.test.mjs loops over
-   every region and fails naming both and the row. Where two reaches overlap between rows, the region whose nearest row is
-   NEARER wins. Fixes: move or drop the row, or lower one {{ID}}_UNIT_KM (then run the tests of both regions). NEVER add rows
-   outside this region's own territory to "sharpen" its edge: that claims the neighbour's ground.
+   every region and fails naming both and the row, region.check() lists every such row as "overlap: ..." with the ways out and
+   `node tools/anim-pack.mjs status {{id}}` shows them under OVERLAP WITH OTHER REGIONS. Where two reaches overlap between rows, the
+   region whose nearest row is NEARER wins. Fixes: move or drop the row, or lower one {{ID}}_UNIT_KM (then run the tests of both
+   regions), or add the place to the neighbour's own tables when it is the neighbour's. NEVER add rows outside this region's own
+   territory to "sharpen" its edge: that claims the neighbour's ground.
+   THE BORDER CASE: a small town just across a border from a neighbour region's row cannot be a row here. Example: a town of Papua New
+   Guinea 70 km from Asia's Jayapura row (Indonesia) is inside Asia's 300 km reach, so a position there resolves to the neighbour
+   and its art plays. Leave such a town without a row (it is then the neighbour's, or nobody's), or lower the neighbour's unitKm after
+   running both regions' tests: never push the neighbour out by adding rows.
 
    Guide: docs/dev/ANIMATION_PACKS.md ("Regions"), docs/dev/{{ID}}_PACK.md. Gate: tests/{{id}}-pack.test.mjs (this region) and
    tests/region-framework.test.mjs (every region). Progress: `node tools/anim-pack.mjs status {{id}}`.
@@ -28,6 +34,9 @@
 
 /* >>> STARTER DATA: the rows below are EXAMPLES (2 units, 3 places, in the open sea where no real region reaches). Replace them
    with the real tables. `node tools/anim-pack.mjs status` warns (and `--strict` fails) while "example-" rows remain. <<<
+   WHEN THE TABLES ARE REAL, DELETE THIS BANNER and the how-to comments you no longer need (keep one line per column and the region's own
+   notes: Asia's config is the model); the rules live in docs/dev/ANIMATION_PACKS.md, not in every config. */
+/* The tables:
 
    UNITS: { CODE: [name, group] }
      CODE   the key of the {{unit_word}} everywhere: item fields, scene keys ('{{unit_word}}:CODE'), the place rows' third column. For a
@@ -44,32 +53,41 @@ const {{ID}}_UNITS = {{units_table}};
      kind      'big'    a major city: a full-screen opening, the scene key 'place:<id>' (plays within placeKm.big, 50 km)
                'small'  a smaller city, a town or a famous place: a small symbol, B.place('<id>', ...) (plays within placeKm.small, 30 km)
                ''       an ANCHOR: no art at all. It only tells which {{unit_word}} a position is in. Add anchors along borders and through the
-                        middle of large {{unit_word}}s so that "the nearest row" gives the right {{unit_word}} everywhere people live.
-     lat, lon  decimal degrees (two decimals are plenty for a city). A row decides {{unit_word}}s by DISTANCE: 100 to 250 km between
+                        middle of large {{unit_word_plural}} so that "the nearest row" gives the right {{unit_word}} everywhere people live.
+     lat, lon  decimal degrees (two decimals are plenty for a city). A row decides {{unit_word_plural}} by DISTANCE: 100 to 250 km between
                rows is typical; a {{unit_word}} with a single row only exists within {{ID}}_UNIT_KM of it.
    Pick the big places by size and fame, the small ones by what is worth a symbol. Every unit that opens needs a signature scene and an element whatever its rows are; every big place
    a scene; every small place an element: the work is the sum, so choose the list you can finish well.
 
    THE TRAVEL ID of a row is '<place id>-<country code, lower case>' ('tokyo-jp', 'seattle-us', 'paris-fr'): the country code is the
    unit code for a region of countries, or the `country` field below for states and provinces. It must equal the id the travel tables use
-   for that city (src/app/69-travel-data.js, trPlaceTables().byId). Check one with:
+   for that city (src/app/69-travel-data.js, trPlaceTables().byId).
+   WHAT TRAVELLING DOES: while the user travels, ONLY travelRow(ctx.city) is used: the row whose travel id is the trip's city decides, and a
+   travel city that is not a row of this region matches nothing at all (no opening plays for that trip). So every travel city of this
+   region's countries that should open needs a row (an anchor '' is enough to give the trip the {{unit_word}}'s art); `node tools/anim-pack.mjs
+   status {{id}}` lists the travel cities of your countries that have no row, nearest row and a line to paste included, and checks one
+   id by hand with:
      node -e "const T=new Function(require('fs').readFileSync('src/app/69-travel-data.js','utf8')+'\nreturn trPlaceTables();')();console.log(T.byId.has('paris-fr'))"
-   A row whose id the travel tables lack is still reached from the home weather town; only a trip there misses it. Set the `travelId`
-   hook in the config only when a whole region's ids differ from the default. */
+   The other way round is harmless: a row whose id the travel tables lack is still reached from home (the weather town's position decides,
+   no travel id involved); only a trip to it misses. Set the `travelId` hook in the config only when a whole region's ids differ from the
+   default. */
 const {{ID}}_PLACES = {{places_table}};
 
 /* RADII. {{ID}}_UNIT_KM: beyond this distance from every row a position is in no {{unit_word}} of this region (the US 190, Asia 300).
    Rule of thumb: the largest gap an inhabited point can be from its nearest row, plus a margin; dense rows (a row every 100 km) allow
    100 to 150, sparse regions 250 to 300. Smaller is safer for the no-overlap rule and keeps the edge tight; larger covers more empty land
-   and sea. {{ID}}_PLACE_KM: how close counts as "in" a big city (50) or a small place (30): the defaults fit; widen a big one only for a
-   huge metropolis or an island hub. Two art places closer together than their radii: the nearer one wins. */
+   and sea. `node tools/anim-pack.mjs status {{id}}` prints a REACH line: how far the farthest travel city of your countries is from its
+   nearest row and which ones lie beyond {{ID}}_UNIT_KM (a home position there is in no {{unit_word}}). {{ID}}_PLACE_KM: how close counts as
+   "in" a big city (50) or a small place (30): the defaults fit; widen a big one only for a huge metropolis or an island hub. Two art
+   places closer together than their radii: the nearer one wins. */
 const {{ID}}_UNIT_KM = 150;
 const {{ID}}_PLACE_KM = { big: 50, small: 30 };
 
-/* WORLD PACK CITIES. The world pack (72-anim-pack-world.js) draws a landmark for travellers in: {{world_cities}}. List EVERY one of
-   those travel ids that a row of this region maps to (its travel id, see above): while travelling there the region then matches nothing
-   and the world pack's art plays. Forget one and this region's city art beats the world pack's landmark; the tests check it for every
-   region and region.check({ worldCities }) names the missing id. Empty means no row maps to any of them. */
+/* WORLD PACK CITIES. The world pack (72-anim-pack-world.js) draws a landmark for travellers in the cities of its list (read it live from
+   the registry, it grows: `region.check()` and `node tools/anim-pack.mjs status {{id}}` compare it with this region's rows every time; when this
+   file was made it was: {{world_cities}}). List EVERY one of those travel ids that a row of this region maps to (its travel id, see above):
+   while travelling there the region then matches nothing and the world pack's art plays. Forget one and this region's city art beats the
+   world pack's landmark; the tests check it for every region and region.check() names the missing id. Empty means no row maps to any. */
 const {{ID}}_WORLD_TRAVEL = [];
 
 /* The region: the config is the whole definition (the fields are documented in docs/dev/ANIMATION_PACKS.md, "The config"). The tables are
@@ -82,6 +100,7 @@ const {{ID}}_REGION = animRegionDefine({
   units: {{ID}}_UNITS, places: {{ID}}_PLACES,
   unitKm: {{ID}}_UNIT_KM, placeKm: {{ID}}_PLACE_KM,
   worldTravel: {{ID}}_WORLD_TRAVEL,
+  complete: false,                       // true when every unit and place has its art: `node tools/anim-pack.mjs status {{id}} --strict` passes, then `status {{id}} --declare-complete` sets it. While false the coverage tests are reported as todo (the repo stays green while you draw); once true they fail hard
   placeKinds: ['small'],                 // B.place() builds only small places: the big cities come from their scenes through B.scenes() (Asia's way). ['big', 'small'] is the US's icons-first way
 {{country_line}}
   // --- optional: uncomment and edit only when the region needs it ---

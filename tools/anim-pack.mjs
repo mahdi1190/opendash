@@ -2,23 +2,24 @@
 // OpenDash animation pack tool: make animation packs EASY and CONSISTENT. Node >= 20, no npm dependencies.
 //
 //   node tools/anim-pack.mjs --help
-//   node tools/anim-pack.mjs lint [--pack <id>] [--ref <ref,ref>] [--file <path>] [--only small|scenes] [--json] [--rules] [--quiet]
-//   node tools/anim-pack.mjs sheet <ref,ref | --pack <id> | --file <path>> [--only small|scenes] [--mode light|dark|night] [--crop square|phone] [--out <dir>] [--contact]
+//   node tools/anim-pack.mjs lint [--pack <id>] [--ref <ref,ref>] [--key <key,key>] [--file <path>] [--only small|scenes] [--json] [--rules] [--quiet]
+//   node tools/anim-pack.mjs sheet <ref,ref | --pack <id> | --file <path>> [--key <key,key>] [--only small|scenes] [--mode light|dark|night] [--crop square|phone] [--still] [--at <ms>] [--sizes] [--out <dir>] [--contact]
 //   node tools/anim-pack.mjs reference [--render] [--mode light|dark|night]
 //   node tools/anim-pack.mjs calibrate [--propose]
 //   node tools/anim-pack.mjs new <id> "<Name>" [--unit-word country|state|...] [--groups a,b,c]      (tools/lib/anim-cmd/new.mjs)
-//   node tools/anim-pack.mjs status [<region>] [--json] [--strict] [--short] [--no-lint]               (tools/lib/anim-cmd/status.mjs)
-//   node tools/anim-pack.mjs brief <region> --kind scene|element [--batch N --of M] [--group g] [--out dir] [--clean]   (tools/lib/anim-cmd/brief.mjs)
+//   node tools/anim-pack.mjs status [<region>] [--json] [--strict] [--short] [--no-lint] [--declare-complete]   (tools/lib/anim-cmd/status.mjs)
+//   node tools/anim-pack.mjs brief <region> --kind scene|element [--batch N --of M] [--group g] [--out dir] [--clean] [--note text] [--clear-notes]   (tools/lib/anim-cmd/brief.mjs)
 //   node tools/anim-pack.mjs guard --owned <file>[,<file>...] [--base <ref>]                           (tools/lib/anim-cmd/guard.mjs)
 //
 // lint      measures every full scene and small item against tools/anim-quality.json (calibrated on the accepted
 //           corpus) and prints PASS / FAIL per rule; exit code 2 when anything fails. A pass is still checked against the redraw
 //           targets (richness, thin spots): the thin spots of every selected item are printed (--quiet silences them).
 //           With --file it first fails loudly (exit 1) on a file that registers nothing, a scene key that does not exist, dead art or a duplicate key.
-// sheet     renders items to PNG with the app's theme and the animation paused mid-motion, so they can be LOOKED AT
-//           (--crop phone | square shows only what a portrait phone / a square tile shows of a scene).
+// sheet     renders items to PNG with the app's theme and the animation paused at 6.5 s (--at <ms>), so they can be LOOKED AT
+//           (--crop phone | square shows only what a portrait phone / a square tile shows of a scene; --still turns the animation OFF: the
+//           rest frame, what reduced motion shows; --sizes adds a strip of a small item at 28, 40, 64 and 128 px; --key renders only some items).
 // reference prints the gold-standard exemplars (tools/anim-reference.json): study them before drawing; --render
-//           writes their PNGs to .anim-ref/ (git-ignored).
+//           writes their PNGs to .anim-ref/ (git-ignored): light, night AND dark in one run (one --mode renders only that one).
 // calibrate compares every threshold with the corpus today (and proposes thresholds from it with --propose).
 // new       scaffolds a whole new region (config with starter tables, scene stub, a pack file per group, a generated coverage test,
 //           a doc skeleton); it refuses to overwrite and ships no example art. status shows what a region has and what is MISSING
@@ -27,8 +28,9 @@
 //           Guide: docs/dev/ANIMATION_PACKS.md, "Making a new region".
 //
 // To add a subcommand, either drop a module in tools/lib/anim-cmd/<name>.mjs (it is found automatically; no edit here) or add an entry
-// to COMMANDS below. A command is {summary, usage, options, run(args, ctx)}: `options` is a node:util parseArgs spec with a `help`
-// text per option; `ctx` carries {root, out, err, positionals}; run returns the exit code (0 ok, 1 error, 2 failures).
+// to COMMANDS below. A command is {summary, usage, options, notes?, run(args, ctx)}: `options` is a node:util parseArgs spec with a `help`
+// text per option, `notes` an optional list of sentences `<command> --help` prints under the options; `ctx` carries {root, out, err, positionals};
+// run returns the exit code (0 ok, 1 error, 2 failures).
 //   // tools/lib/anim-cmd/hello.mjs
 //   export default { summary: 'say hello', usage: 'hello [--name <n>]', options: { name: { type: 'string', help: 'who' } },
 //                    run(args, ctx) { ctx.out('hello ' + (args.name || 'world')); return 0; } };
@@ -39,8 +41,8 @@ import { join, resolve, dirname, basename } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { measure, check, profileFor, applyWaivers, ruleTable, checkCss, richness, describe, proposeThresholds, shapeKeys, sharedShares, thinSpots, stableIds, isLegacyProfile, TARGETS, RULE_PLAN } from './lib/anim-quality.mjs';
-import { loadRegistry, renderItems, contactSheet, repoRoot, findBrowser, CROPS } from './lib/anim-render.mjs';
-import { fileProblems } from './lib/anim-region.mjs';
+import { loadRegistry, renderItems, contactSheet, repoRoot, findBrowser, CROPS, SIZES, DEFAULT_AT } from './lib/anim-render.mjs';
+import { fileProblems, regions } from './lib/anim-region.mjs';
 import { launchChrome } from './release-chrome.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -65,6 +67,28 @@ function onlyKind(args, entries) {
   return entries.filter(e => (args.only === 'scenes' ? e.full : !e.full));
 }
 const splitList = (v) => [].concat(v || []).flatMap(x => String(x).split(',')).map(s => s.trim()).filter(Boolean);
+
+/** The names an item answers to for --key: its id (au-signature), its ref (oceania-australasia/au-signature) and, in a region, its key (country:AU, place:sydney: a unit's key names both its signature and its element). */
+export function itemNames(reg, e) {
+  const names = [e.id, e.ref], r = regions(reg).find(x => x.owns(e.pack));
+  if (r) { const F = r.fields, it = e.item; if (it[F.kind] === 'city') names.push('place:' + it[F.place]); else if (it[F.kind] === r.unitWord) names.push(r.unitWord + ':' + it[F.unit]); }
+  return names;
+}
+/** --key <key,key>: keep the entries a key names (`*` is a wildcard, case does not matter). A key that names nothing is an error: a typo must not render everything or nothing silently. */
+export function keyFilter(reg, entries, keys) {
+  if (!keys.length) return entries;
+  const tests = keys.map(k => ({ k, re: new RegExp('^' + k.split('*').map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$', 'i'), hit: 0 }));
+  const kept = entries.filter(e => { const names = itemNames(reg, e); let ok = false; for (const t of tests) if (names.some(n => t.re.test(n))) { t.hit++; ok = true; } return ok; });
+  const missing = tests.filter(t => !t.hit).map(t => t.k);
+  if (missing.length) throw new Error(`--key ${missing.join(', ')} names no item of the selection. A key is an item id (au-signature), a ref (pack/id) or a region key (country:AU, place:sydney); * is a wildcard. The selection has: ${entries.slice(0, 12).map(e => e.id).join(', ')}${entries.length > 12 ? ', ...' : ''}`);
+  return kept;
+}
+/** --at <ms>: a whole number of milliseconds, 0 to 600000. */
+function toMs(v) {
+  const n = Number(v);
+  if (!String(v).trim() || !Number.isInteger(n) || n < 0 || n > 600000) throw new Error(`--at must be a whole number of milliseconds from 0 to 600000, got "${v}"`);
+  return n;
+}
 
 /** The drawing without its per-render gradient ids, to tell changed art from the same art drawn again. */
 function canonicalArt(html) {
@@ -168,16 +192,24 @@ function targetOf(r, thresholds) {
 
 const lint = {
   summary: 'measure every full scene and small item against the calibrated thresholds, print the thin spots (exit 2 on any failure)',
-  usage: 'lint [--pack <id>] [--ref <ref,ref>] [--file <path>] [--only small|scenes] [--json] [--rules] [--quiet]',
+  usage: 'lint [--pack <id>] [--ref <ref,ref>] [--key <key,key>] [--file <path>] [--only small|scenes] [--json] [--rules] [--quiet]',
   options: {
     pack: { type: 'string', multiple: true, help: 'lint one pack (repeatable)' },
     ref: { type: 'string', multiple: true, help: 'lint these items (<pack>/<id>, comma separated)' },
+    key: { type: 'string', multiple: true, help: 'lint only the items these keys name: an item id (au-signature), a ref (pack/id) or a region key (country:AU, place:sydney: a unit\'s key names its signature and its element); * is a wildcard. Combine with --file or --pack to lint one scene of a file' },
     file: { type: 'string', multiple: true, help: 'a scene or pack file (not registered yet, or already in src/app): it is loaded with the registry and what it adds (new or changed items) is linted. Exit 1, nothing linted, when the file registers nothing, registers a scene key that does not exist or that no pack uses, or registers a key twice' },
     json: { type: 'boolean', help: 'machine-readable output' },
     rules: { type: 'boolean', help: 'print the PASS / FAIL table of every rule for every selected item (default when 3 or fewer items)' },
     quiet: { type: 'boolean', help: 'print only failures and the summary: no thin spots, no redraw-target lines' },
     only: { type: 'string', help: 'small | scenes: lint only the small items, or only the full-screen scenes, of the selection (e.g. a pack file with --file)' },
   },
+  notes: [
+    'A pass is still measured against the redraw targets (richness, thin spots). Thin spots are ADVISORY, never a failure: the levels in tools/anim-quality.json (warnMin / warnMax) are the 10th / 90th percentile of the accepted corpus, and each thin spot prints what to do about it.',
+    'Counting: a <path> that carries the class us-lit (a row of lit panes drawn as ONE path of many sub-paths) counts as ONE shape and ONE lit pane group, however many panes it holds. That is the cheap way to draw a lit row (one path, not forty rects), but the pane count does not raise `shapes`.',
+    'Seeds: stars(), birds(), shimmer(), puffs(), ridge() and canopy() draw the SAME shapes for the same seed, and identical shapes count as copies (sharedShare / sharedShareAll): give every call its own seed, also across scenes and files.',
+    '"Too little drawn" is detailPerKB (shapes plus path segments per KB), so a path-heavy scene with few shapes per KB is not flagged; shapesPerKB keeps its hard floor. Small items also report how many moving elements share one --d (a bare x-glow counts as delay 0): a thin spot above 5, the accepted median is 3.',
+    'A scene with a 5-stop dusk sky already spends four of the five hue sectors the advisory allows (blue, violet, magenta, red to gold): the ground and the water share ONE more family, accents stay under 4 % of the painted area.',
+  ],
   run(args, ctx) {
     const root = ctx.root, thresholds = loadThresholds(root);
     const files = splitList(args.file);
@@ -188,7 +220,7 @@ const lint = {
       if (bad.length) { for (const m of bad) ctx.err(`lint: ${m}`); ctx.err(`lint: ${bad.length} problem(s) in the scene file(s): nothing was linted. Fix them first.`); return 1; }
     }
     const t0 = Date.now();
-    const entries = onlyKind(args, selectEntries(reg, { refs: splitList(args.ref), packs: splitList(args.pack), baseline }));
+    const entries = keyFilter(reg, onlyKind(args, selectEntries(reg, { refs: splitList(args.ref), packs: splitList(args.pack), baseline })), splitList(args.key));
     if (files.length && !entries.length) { ctx.err(`lint: the file(s) loaded but registered no new or changed ${args.only === 'small' ? 'small item' : args.only === 'scenes' ? 'scene' : 'item'}, so there is nothing to lint. A scene file only shows once a pack item uses its key (the pack file of its group calls B.scenes()); a pack file must call animRegisterPack; the file must be saved with a scene in it.`); return 1; }
     const res = lintRegistry(reg, thresholds, entries);
     const ms = Date.now() - t0;
@@ -209,8 +241,8 @@ const lint = {
         out(`${pad(id, 22)} ${lpad(rs.filter(r => r.full).length, 6)} ${lpad(rs.filter(r => !r.full).length, 6)} ${lpad(rs.filter(r => !r.failures.length).length, 6)} ${lpad(rs.filter(r => r.failures.length).length, 6)} ${lpad(rs.filter(r => r.waived.length).length, 6)}`);
       }
     }
-    const selected = files.length > 0 || splitList(args.ref).length > 0 || splitList(args.pack).length > 0;   // an explicit selection lists every item; the whole registry lists only the failures
-    const thinLine = (t) => `      ${pad(t.rule, 22)} ${lpad(t.value, 8)}   median ${t.median}   ${t.side === 'low' ? 'too little' : 'too much'}`;
+    const selected = files.length > 0 || splitList(args.ref).length > 0 || splitList(args.pack).length > 0 || splitList(args.key).length > 0;   // an explicit selection lists every item; the whole registry lists only the failures
+    const thinLine = (t) => `      ${pad(t.rule, 22)} ${lpad(t.value, 8)}   median ${t.median}   ${t.side === 'low' ? 'too little' : 'too much'}${t.hint ? `\n          -> ${t.hint}` : ''}`;
     for (const r of res.results) {
       const tg = targets.get(r.ref);
       if (!r.failures.length && !showRules && !(selected && !quiet)) continue;
@@ -226,6 +258,8 @@ const lint = {
       out(`    ${tg.index != null ? `richness ${tg.index} (target >= ${TARGETS.richness.toFixed(2)}, 1.0 = the median accepted ${r.full ? 'scene' : 'item'}); ` : ''}thin spots ${tg.thin.length} (target <= ${TARGETS.maxThinSpots})${tg.miss.length ? `   MISSES THE TARGET: ${tg.miss.join(', ')}: redraw, do not pad` : '   target met'}${tg.thin.length ? `; a pass, but ${tg.thin.some(t => t.side === 'high') ? 'beyond the 10th / 90th percentile of' : 'thinner than 90 % of'} the accepted ${r.full ? 'scenes' : 'items'}, aim for the median:` : ''}`);
       for (const t of shown) out(thinLine(t));
       if (tg.thin.length > shown.length) out(`      ... and ${tg.thin.length - shown.length} more (--rules or --json lists all)`);
+      const dl = thresholds[r.profile] && thresholds[r.profile].sameDelay;
+      if (!r.full && dl && r.metrics.sameDelay >= 3 && !tg.thin.some(t => t.rule === 'sameDelay')) out(`    delays: ${r.metrics.sameDelay} moving elements share --d ${r.metrics.sameDelayValue}s (a bare x-* counts as 0): they pulse together; the accepted median is ${dl.median} and a thin spot starts above ${dl.warnMax}. Staggering them is better craft.`);
     }
     for (const p of res.packCss) for (const f of p.failures) out(`\nFAIL  pack ${p.pack} css  [${f.rule}] ${f.message}`);
     if (res.staleWaivers.length) out(`\nnote: ${res.staleWaivers.length} waiver(s) no longer needed, remove them from tools/anim-quality.json: ${res.staleWaivers.map(w => w.ref + ' ' + w.rule).join('; ')}`);
@@ -243,39 +277,53 @@ const lint = {
    --------------------------------------------------------------------------------------------- */
 const MODES = ['light', 'dark', 'night'];
 const sheet = {
-  summary: 'render items to PNG (scenes 1600 x 900 paused at 6.5 s, small items 512 x 512) so they can be looked at',
-  usage: 'sheet <ref,ref | --pack <id> | --file <path>> [--only small|scenes] [--mode light|dark|night] [--crop square|phone] [--out <dir>] [--contact]',
+  summary: 'render items to PNG (scenes 1600 x 900 paused at 6.5 s, small items 512 x 512) so they can be looked at; --still, --at, --sizes, --key',
+  usage: 'sheet <ref,ref | --pack <id> | --file <path>> [--key <key,key>] [--only small|scenes] [--mode light|dark|night] [--crop square|phone] [--still] [--at <ms>] [--sizes] [--out <dir>] [--contact]',
   options: {
     pack: { type: 'string', multiple: true, help: 'render every item of this pack (repeatable)' },
     file: { type: 'string', multiple: true, help: 'a scene or pack file (not registered yet, or already in src/app): renders what it adds (new or changed items)' },
+    key: { type: 'string', multiple: true, help: 'render only the items these keys name: an item id (au-signature), a ref (pack/id) or a region key (country:AU, place:sydney: a unit\'s key names its signature and its element); * is a wildcard. So an iteration re-renders one scene of a file, not all of them' },
     mode: { type: 'string', default: 'light', help: 'light | dark | night (night = dark theme at night time: lit windows, stars)' },
     crop: { type: 'string', help: 'square | phone: render only what a square tile (the central 900 of the 1600 units) or a portrait phone (the central 420) shows of a scene: the subject must still be the picture there (files get a -square / -phone suffix)' },
+    still: { type: 'boolean', help: 'animations OFF: the rest frame, exactly what reduced motion shows (a rising sun is at its place, a falling leaf or a half-faded drop is not caught mid-animation). Files get a -still suffix. Without it the animations are paused at --at' },
+    at: { type: 'string', help: `the time the animations are paused at, in ms (default ${DEFAULT_AT}); ignored with --still. A non-default time gets a -t<ms> suffix, so the renders do not overwrite each other` },
+    sizes: { type: 'boolean', help: `also write <...>-sizes.png for every small item: the item at ${SIZES.join(', ')} px, at its real pixel size (1x), so "reads at 28 px" can be checked. With --contact a contact sheet of the strips is written too. Scenes have no strip` },
     out: { type: 'string', help: 'output folder (default .anim-ref/sheets/)' },
-    contact: { type: 'boolean', help: 'also write one contact-sheet PNG with all the renders' },
+    contact: { type: 'boolean', help: 'also write one contact-sheet PNG with all the renders (on a page that matches --mode: a light render sits on a light page)' },
     only: { type: 'string', help: 'small | scenes: render only the small items, or only the full-screen scenes, of the selection' },
   },
   positionals: '<ref,ref>',
+  notes: [
+    'The contact-sheet tiles are about 200 px wide: that is NOT 28 px. Judge "does it read at 28 px" on the --sizes strip, which is rendered at its real pixel size.',
+    'Animations are paused at --at (6.5 s by default), so an animated part (a rising sun, a falling leaf, a pulse) shows a mid-animation state. --still shows the rest frame, the one reduced motion shows and the one a viewer sees first.',
+  ],
   async run(args, ctx) {
     const mode = args.mode || 'light';
     if (!MODES.includes(mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
     const crop = args.crop || '';
     if (crop && !CROPS[crop]) throw new Error(`--crop must be one of ${Object.keys(CROPS).join(', ')}`);
+    const at = args.at == null ? DEFAULT_AT : toMs(args.at), still = !!args.still;
     const files = splitList(args.file);
     const reg = loadRegistry(ctx.root, { extraFiles: files });
     const baseline = files.length ? loadRegistry(ctx.root, { omit: files.map(f => basename(f)) }) : null;   // without the files: a file already in src/app adds all its items
     if (files.length) { const bad = fileProblems(reg, baseline, files); if (bad.length) throw new Error(`the scene file(s) are not sound:\n  ${bad.join('\n  ')}`); }
     const refs = splitList(ctx.positionals);
     if (!refs.length && !splitList(args.pack).length && !files.length) throw new Error('sheet needs refs (us-pacific/ak-midnight-sun,...), --pack <id> or --file <path>');
-    const entries = onlyKind(args, selectEntries(reg, { refs, packs: splitList(args.pack), baseline }));
+    const entries = keyFilter(reg, onlyKind(args, selectEntries(reg, { refs, packs: splitList(args.pack), baseline })), splitList(args.key));
     if (!entries.length) throw new Error('nothing to render');
     const outDir = resolve(args.out || join(ctx.root, '.anim-ref', 'sheets'));
     const exe = findBrowser();
     if (!exe) throw new Error('No Chrome, Edge or Chromium found. Set CHROME_PATH to its executable (or PLAYWRIGHT_BROWSERS_PATH to a Playwright browsers folder).');
+    if (args.sizes && entries.every(e => e.full)) ctx.err('note: --sizes draws a strip for small items only; the selection is all full-screen scenes (--crop phone shows what a narrow screen keeps)');
     const chrome = await launchChrome({ executable: exe });
     try {
-      const done = await renderItems(reg, entries, { mode, outDir, chrome, crop, onProgress: (i, n, ref) => { if (!args.json) ctx.err(`  [${i}/${n}] ${ref}`); } });
-      for (const d of done) ctx.out(d.file);
-      if (args.contact) ctx.out(await contactSheet(done, { file: join(outDir, `contact-${mode}${crop && entries.some(e => e.full) ? '-' + crop : ''}.png`), chrome, columns: entries.every(e => !e.full) ? 6 : crop === 'phone' ? 8 : crop === 'square' ? 5 : 3 }));
+      const done = await renderItems(reg, entries, { mode, outDir, chrome, crop, still, at, sizes: !!args.sizes, onProgress: (i, n, ref) => { if (!args.json) ctx.err(`  [${i}/${n}] ${ref}`); } });
+      for (const d of done) { ctx.out(d.file); if (d.sizesFile) ctx.out(d.sizesFile); }
+      const tag = still ? '-still' : at !== DEFAULT_AT ? `-t${at}` : '';
+      if (args.contact) {
+        ctx.out(await contactSheet(done, { file: join(outDir, `contact-${mode}${crop && entries.some(e => e.full) ? '-' + crop : ''}${tag}.png`), chrome, mode, columns: entries.every(e => !e.full) ? 6 : crop === 'phone' ? 8 : crop === 'square' ? 5 : 3 }));
+        if (args.sizes && done.some(d => d.sizesFile)) ctx.out(await contactSheet(done, { file: join(outDir, `contact-${mode}-sizes${tag}.png`), chrome, mode, sizes: true, columns: 2 }));
+      }
     } finally { await chrome.close(); }
     return 0;
   },
@@ -285,30 +333,34 @@ const sheet = {
    reference
    --------------------------------------------------------------------------------------------- */
 const reference = {
-  summary: 'print the gold-standard exemplars to match (and the weaker scenes and small items to beat); --render writes their PNGs to .anim-ref/',
+  summary: 'print the gold-standard exemplars to match (and the weaker scenes and small items to beat); --render writes their PNGs to .anim-ref/ (light, night and dark)',
   usage: 'reference [--render] [--mode light|dark|night] [--json]',
   options: {
-    render: { type: 'boolean', help: 'render the exemplars to .anim-ref/ (git-ignored) and print the paths' },
-    mode: { type: 'string', default: 'light', help: 'light | dark | night' },
-    json: { type: 'boolean', help: 'machine-readable output' },
+    render: { type: 'boolean', help: 'render the exemplars to .anim-ref/ (git-ignored) and print the paths. Without --mode: the exemplars in light, night AND dark (every PNG the briefs cite: scenes light + night, small items light + dark), the weaker ones in light' },
+    mode: { type: 'string', help: 'with --render: only this mode (light | dark | night) for everything' },
+    json: { type: 'boolean', help: 'machine-readable output (with --render: rendered is {ref: {mode: path}})' },
   },
   async run(args, ctx) {
     const ref = loadReference(ctx.root);
     if (args.json && !args.render) { ctx.out(JSON.stringify(ref, null, 1)); return 0; }
     const weakerItems = ref.weakerItems || [];
     const all = [...ref.scenes, ...ref.items, ...ref.weaker, ...weakerItems];
-    let paths = new Map();
+    const paths = new Map();   // ref -> {mode: path}
+    if (args.mode && !MODES.includes(args.mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
     if (args.render) {
-      const mode = args.mode || 'light';
-      if (!MODES.includes(mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
       const reg = loadRegistry(ctx.root);
-      const entries = selectEntries(reg, { refs: all.map(x => x.ref) });
       const exe = findBrowser();
       if (!exe) throw new Error('No Chrome, Edge or Chromium found. Set CHROME_PATH to its executable (or PLAYWRIGHT_BROWSERS_PATH to a Playwright browsers folder).');
       const outDir = join(ctx.root, '.anim-ref');
       mkdirSync(outDir, { recursive: true });
-      const done = await renderItems(reg, entries, { mode, outDir, executable: exe, onProgress: (i, n, r) => ctx.err(`  [${i}/${n}] ${r}`) });
-      paths = new Map(done.map(d => [d.ref, d.file]));
+      const jobs = args.mode ? [[args.mode, all.map(x => x.ref)]] : [['light', all.map(x => x.ref)], ['night', [...ref.scenes, ...ref.items].map(x => x.ref)], ['dark', [...ref.scenes, ...ref.items].map(x => x.ref)]];
+      const chrome = await launchChrome({ executable: exe });   // one browser for every mode
+      try {
+        for (const [mode, refs] of jobs) {
+          const done = await renderItems(reg, selectEntries(reg, { refs }), { mode, outDir, chrome, onProgress: (i, n, r) => ctx.err(`  ${mode} [${i}/${n}] ${r}`) });
+          for (const d of done) paths.set(d.ref, { ...(paths.get(d.ref) || {}), [mode]: d.file });
+        }
+      } finally { await chrome.close(); }
     }
     if (args.json) { ctx.out(JSON.stringify({ ...ref, rendered: Object.fromEntries(paths) }, null, 1)); return 0; }
     const show = (title, list, why) => {
@@ -318,7 +370,7 @@ const reference = {
         ctx.out(`      ${x[why]}`);
         if (x.fix) ctx.out(`      instead: ${x.fix}`);
         if (x.source) ctx.out(`      read: ${x.source}`);
-        if (paths.has(x.ref)) ctx.out(`      ${paths.get(x.ref)}`);
+        for (const f of Object.values(paths.get(x.ref) || {})) ctx.out(`      ${f}`);
       }
     };
     ctx.out(ref._about || 'Gold-standard exemplars: match their craft, never copy their drawing.');
@@ -326,7 +378,7 @@ const reference = {
     show(`SMALL 64 x 64 ITEMS to study (${ref.items.length})`, ref.items, 'why');
     show(`DO BETTER THAN THESE SCENES (${ref.weaker.length}): accepted, but flat, blobby or crude`, ref.weaker, 'wrong');
     show(`DO BETTER THAN THESE SMALL ITEMS (${weakerItems.length}): accepted, but flat, blobby or crude`, weakerItems, 'wrong');
-    if (!args.render) ctx.out('\nSee them: node tools/anim-pack.mjs reference --render   (writes .anim-ref/*.png; open them before you draw)');
+    if (!args.render) ctx.out('\nSee them: node tools/anim-pack.mjs reference --render   (writes .anim-ref/*.png: light, night and dark; open them before you draw)');
     return 0;
   },
 };
@@ -388,16 +440,17 @@ function usage(out, table = COMMANDS) {
   };
   for (const [title, names] of HELP_GROUPS) section(title, names);
   section('Other', Object.keys(table).filter(n => !shown.has(n)));
-  out('A new region, start to finish: new <id> "<Name>"  ->  fill the tables and the "Cultural care" section of its doc  ->  status <id>  ->  reference --render (once)  ->');
-  out('  brief <id> --kind scene / --kind element  ->  each agent: lint --file <its file>, sheet --file <its file> (light AND night), report  ->  guard --owned <files>  ->  status <id> --strict  ->  npm test.');
+  out('A new region, start to finish: new <id> "<Name>"  ->  fill the tables and the "Cultural care" section of its doc  ->  status <id>  ->  COMMIT the scaffold  ->  reference --render (once)  ->');
+  out('  brief <id> --kind scene / --kind element  ->  each agent: lint --file <its file>, sheet --file <its file> (light AND night), report  ->  guard --owned <the files of every agent>  ->  status <id> --strict  ->  status <id> --declare-complete  ->  npm test.');
   out('\nRun `node tools/anim-pack.mjs <command> --help` for a command\'s options.');
   out('Global: --root <dir> works on another checkout of the repo.');
-  out('Exit codes: 0 ok, 1 error, 2 lint failures (status --strict: anything missing or failing).');
+  out('Exit codes: 0 ok, 1 error, 2 lint failures (status --strict: anything missing or failing, or everything done but `complete: false` still in the config).');
 }
 function commandHelp(c, out) {
   out(`usage: node tools/anim-pack.mjs ${c.usage}\n\n${c.summary}\n`);
   for (const [k, o] of Object.entries(c.options || {})) out(`  --${pad(k + (o.type === 'string' ? ' <v>' : ''), 14)} ${o.help || ''}`);
   out(`  --${pad('root <dir>', 14)} the repo root (default: this checkout)`);
+  if (c.notes && c.notes.length) { out('\nGood to know:'); for (const n of c.notes) out(`  - ${n}`); }
 }
 
 /** The built-in commands plus every module in tools/lib/anim-cmd/ (default export; the file name is the command name). */

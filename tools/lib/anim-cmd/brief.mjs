@@ -4,27 +4,24 @@
 // season, scene type and palette, or motif kind and colour, from a rotation over the whole region so that parallel batches differ), the file the agent owns,
 // the exact verify commands, the corpus targets (generated from tools/anim-quality.json and the measured exemplars: never typed), the pass mark and the
 // cultural care rules. Scene batches are consecutive slices of the region's scene keys in group order (about 7 per agent; --of M overrides); element batches
-// are whole groups (a pack file has one owner). --out writes the briefs and a plan.json index for the orchestrator.
+// are whole groups (a pack file has one owner). --out writes the briefs and a plan.json index for the orchestrator, creates the empty scene file (the IIFE stub) of
+// every scene batch that has none, stores the --note texts in plan.json (a re-run re-reads them, never drops them: --clear-notes starts afresh), and says whether the
+// scaffold is COMMITTED (the agents must start from a committed tree and `guard` compares with a commit).
+// The season column follows the key's latitude: `any` in the tropics, the local season (and the label to write) in the south, the same word in the north. The
+// \`season:\` field of an entry is only a label (gallery card, "picked for ..." note): it does not decide when a region scene plays.
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
-import { join, basename, resolve } from 'node:path';
+import { join, basename, resolve, dirname } from 'node:path';
 import { loadRegistry, CROPS } from '../anim-render.mjs';
 import { loadReference, loadThresholds, measureRegistry, selectEntries } from '../../anim-pack.mjs';
 import { TARGETS, allowedTagList, forbiddenTagList } from '../anim-quality.mjs';
-import { findRegion, regionNeeds, regionCoverage, planBatches, readTemplate, renderTemplate, careFor, careInfo, varietyOf, plural, SCENES_PER_AGENT, RUBRIC_PASS } from '../anim-region.mjs';
+import { findRegion, regionNeeds, regionCoverage, planBatches, readTemplate, renderTemplate, careFor, careInfo, varietyOf, suggestionsInfo, applySuggestions, plural, sceneFileOf, packFileOf, configFileOf, sceneStubText, SEASON_NOTE, SCENES_PER_AGENT, RUBRIC_PASS } from '../anim-region.mjs';
+import { gitScaffoldState, GUARD_PROOF } from './guard.mjs';
+export { sceneFileOf, packFileOf, configFileOf };
 
 const KINDS = ['scene', 'element'];
 const SKILL = '.claude/skills/animation-pack/SKILL.md';
 const REFS = '.claude/skills/animation-pack/references';
 
-/** The scene file the agent of batch n owns (with a group filter the group is in the name, so two filtered plans never share a file). */
-export const sceneFileOf = (id, n, group) => `src/app/71-anim-region-${id}-scenes-${group ? group + '-' : ''}${n}.js`;
-/** The pack file of a group. */
-export const packFileOf = (id, group) => `src/app/72-anim-pack-${id}-${group}.js`;
-/** The file a region's config lives in: the scaffold's name, or the legacy name of the US and Asia. */
-export function configFileOf(root, id) {
-  for (const f of [`src/app/71-anim-region-${id}.js`, `src/app/71-anim-${id}.js`]) if (existsSync(join(root, f))) return f;
-  return `src/app/71-anim-region-${id}.js`;
-}
 /** The brief file of batch n: `<kind>-brief[-<group>]-<n>.md` (the group is in the name when the plan is filtered, so two filtered plans never share a file name). */
 export const briefFileOf = (kind, n, group) => `${kind}-brief${group ? '-' + group : ''}-${n}.md`;
 const briefFileRe = (kind) => new RegExp(`^${kind}-brief(-[a-z][a-z0-9]*(?:-[a-z0-9]+)*)?-\\d+\\.md$`);
@@ -58,6 +55,7 @@ function groupBatches(groups, of) {
 export function buildPlan(reg, region, { kind, of = 0, batch = 0, group = '' }) {
   if (group && !region.groups.includes(group)) throw new Error(`--group "${group}" is not a group of ${region.id} (groups: ${region.groups.join(', ')})`);
   const needs = regionNeeds(region), cov = regionCoverage(reg, region, null), variety = varietyOf(needs);
+  const sugg = suggestionsInfo(reg.root, region), overrides = applySuggestions(variety, sugg, needs);   // the region doc's "Scene suggestions": per-key overrides of the rotation
   const doneScene = (k) => !!(region.scenes[k.key] || (k.kind === 'unit' && region.scenes['unit:' + k.ref]));   // 'unit:<CODE>' also works as a key
   let batches;
   if (kind === 'scene') {
@@ -76,7 +74,7 @@ export function buildPlan(reg, region, { kind, of = 0, batch = 0, group = '' }) 
   }
   for (const b of batches) { b.count = b.items.length; b.todo = b.items.filter(x => x.state === 'draw').length; b.brief = briefFileOf(kind, b.n, group); }
   if (batch && (batch < 1 || batch > batches.length)) throw new Error(`--batch ${batch} is out of range: this plan has ${batches.length} batch${batches.length === 1 ? '' : 'es'} (add --of M to change the number)`);
-  return { region: region.id, kind, group: group || null, of: batches.length, size: kind === 'scene' ? SCENES_PER_AGENT : null, total: batches.reduce((n, b) => n + b.count, 0), batches };
+  return { region: region.id, kind, group: group || null, of: batches.length, size: kind === 'scene' ? SCENES_PER_AGENT : null, total: batches.reduce((n, b) => n + b.count, 0), batches, suggestions: { doc: sugg.doc, applied: overrides.applied, unknown: overrides.unknown, problems: overrides.problems } };
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -134,12 +132,14 @@ export function passMark(kind) {
    --------------------------------------------------------------------------------------------- */
 const mdCell = (s) => String(s).replace(/\|/g, '/');
 const stateCell = (k) => (k.state === 'done' ? 'done (leave alone)' : 'draw');
+/** The season cell: `any` (the tropics), the word (north), or the local season with the label to write (south: "autumn (season: 'spring')"). */
+export const seasonCell = (k) => (k.season === 'any' ? 'any' : k.seasonLabel && k.seasonLabel !== k.season ? `${k.season} (season: '${k.seasonLabel}')` : k.season);
 function keyTable(region, b, kind) {
   const word = region.unitWord;
   if (kind === 'scene') {
     const lines = ['| # | key | what to draw | group | status | suggested time | season | type | palette |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |'];
-    b.items.forEach((k, i) => lines.push(`| ${i + 1} | \`${k.key}\` | ${k.kind === 'unit' ? `${mdCell(k.name)}: the ${word}'s signature` : `${mdCell(k.name)} (${mdCell(k.unitName)}): big city, at ${k.lat}, ${k.lon}`} | ${k.group} | ${stateCell(k)} | ${k.time} | ${k.season} | ${k.type} | ${k.palette} |`));
-    return lines.join('\n');
+    b.items.forEach((k, i) => lines.push(`| ${i + 1} | \`${k.key}\` | ${k.kind === 'unit' ? `${mdCell(k.name)}: the ${word}'s signature` : `${mdCell(k.name)} (${mdCell(k.unitName)}): big city, at ${k.lat}, ${k.lon}`} | ${k.group} | ${stateCell(k)} | ${k.time} | ${seasonCell(k)} | ${k.type} | ${k.palette} |`));
+    return lines.join('\n') + '\n\n' + SEASON_NOTE;
   }
   const lines = ['| # | file | call | what it is | status | suggested motif kind | suggested colour |', '| --- | --- | --- | --- | --- | --- | --- |'];
   b.items.forEach((k, i) => lines.push(`| ${i + 1} | \`${basename(packFileOf(region.id, k.group))}\` | \`${k.call}('${k.id}', { id, label, colour, mood, tags, svg })\` | ${k.call === 'B.element' ? `${mdCell(k.name)}: the ${word}'s symbol` : `${mdCell(k.name)} (${mdCell(k.unitName)}): a small place's symbol`} | ${stateCell(k)} | ${k.motif} | ${k.colour} |`));
@@ -162,8 +162,9 @@ function existingList(reg, region, kind) {
   return lines.length > 80 ? lines.slice(0, 80).join('\n') + `\n- ... and ${lines.length - 80} more` : lines.join('\n');
 }
 const pngName = (ref, mode) => `.anim-ref/${ref.replace(/\//g, '__')}-${mode}.png`;
+/** One block per exemplar: the item, its source, WHAT TO TAKE FROM IT in words (the written fallback when a PNG cannot be shown: the value structure, the layers, the palette) and the PNGs to open. */
 function exemplarLines(list, modes) {
-  return list.map(x => `- \`${x.ref}\`${x.tags && x.tags.length ? `  [${x.tags.join(', ')}]` : ''}${x.source ? `\n    read: ${x.source}` : ''}\n    PNG: ${modes.map(m => pngName(x.ref, m)).join(' , ')}`).join('\n');
+  return list.map(x => `- \`${x.ref}\`${x.tags && x.tags.length ? `  [${x.tags.join(', ')}]` : ''}${x.source ? `\n    read: ${x.source}` : ''}${x.why ? `\n    what it shows: ${String(x.why).replace(/\s+/g, ' ').trim()}` : ''}\n    PNG: ${modes.map(m => pngName(x.ref, m)).join(' , ')}`).join('\n');
 }
 function weakerLines(list) {
   return list.map(x => `- \`${x.ref}\`: ${String(x.wrong || '').replace(/\s+/g, ' ').slice(0, 240)}${x.source ? `\n    read: ${x.source}` : ''}`).join('\n');
@@ -190,7 +191,7 @@ function verifyBlock(kind, files, regionId, owned) {
 }
 
 /** The brief of one batch, as markdown. `opts.targets` (the corpus-targets block) is made once per command by the caller; without it it is computed here. */
-export function renderBrief(reg, region, plan, b, { root, notes = [], targets = null }) {
+export function renderBrief(reg, region, plan, b, { root, notes = [], targets = null, base = '' }) {
   const needs = regionNeeds(region), ref = loadReference(root), kind = plan.kind;
   const name = kind === 'scene' ? 'scene-brief.md' : 'element-brief.md';
   const thresholds = loadThresholds(root);
@@ -198,7 +199,7 @@ export function renderBrief(reg, region, plan, b, { root, notes = [], targets = 
   const verify = verifyBlock(kind, b.files, region.id);
   const files = b.files.map(f => `- \`${f}\`${existsSync(join(root, f)) ? '' : '  (does not exist yet: create it like the scaffold\'s pack files: `const B = <REGION>.builder(\'<group>\'); B.scenes(); ...; animRegisterPack(B.pack({ id: \'' + region.id + '-<group>\', name, description }))`)'}`).join('\n');
   const doneN = b.count - b.todo;
-  const guard = `node tools/anim-pack.mjs guard --owned ${b.files.join(',')}`;
+  const guard = `node tools/anim-pack.mjs guard --owned ${b.files.join(',')}${base ? ' --base ' + base : ''}`;
   const vars = {
     region_id: region.id, region_name: region.name, over: region.over, unit_word: region.unitWord, unit_word_plural: plural(region.unitWord),
     groups_summary: groupsSummary(region, needs), batch: b.n, batches: plan.of, count: b.count, todo_count: b.todo, todo_s: b.todo === 1 ? '' : 's', batch_groups: batchGroups(b),
@@ -216,89 +217,135 @@ export function renderBrief(reg, region, plan, b, { root, notes = [], targets = 
   return renderTemplate(readTemplate(name), vars, name).replace(/\n{3,}/g, '\n\n');
 }
 
-/** The orchestrator's commands around a plan: render the gold standard once before the agents start, check every batch after. */
-function planCommands(plan) {
+/** The PNG paths the briefs of a kind cite (exemplarLines): the gold standard must be rendered before they are dispatched. */
+export function citedPngs(kind, ref) {
+  return kind === 'scene'
+    ? ref.scenes.flatMap(x => ['light', 'night'].map(m => pngName(x.ref, m)))
+    : [...ref.items.flatMap(x => ['light', 'dark'].map(m => pngName(x.ref, m))), ...ref.scenes.slice(0, 4).map(x => pngName(x.ref, 'light'))];
+}
+
+/** The orchestrator's commands around a plan: render the gold standard once before the agents start (all three modes), check after. `base` = the commit of the scaffold when it is known. */
+function planCommands(plan, base, commit = '') {
   const owned = [...new Set(plan.batches.flatMap(b => b.files))];
+  const guard = (files) => `node tools/anim-pack.mjs guard --owned ${files.join(',')}${base ? ' --base ' + base : ''}`;
   return {
-    before: plan.kind === 'scene'
-      ? ['node tools/anim-pack.mjs reference --render', 'node tools/anim-pack.mjs reference --render --mode night']
-      : ['node tools/anim-pack.mjs reference --render', 'node tools/anim-pack.mjs reference --render --mode dark'],
-    afterEach: plan.batches.map(b => ({ batch: b.n, owns: b.files, lint: b.files.map(f => `node tools/anim-pack.mjs lint --file ${f}${plan.kind === 'element' ? ' --only small' : ''}`), guard: `node tools/anim-pack.mjs guard --owned ${b.files.join(',')}` })),
-    afterAll: [`node tools/anim-pack.mjs guard --owned ${owned.join(',')}`, 'node --test tests/anim-packs.test.mjs', `node tools/anim-pack.mjs status ${plan.region} --strict`],
+    before: [...(commit ? [commit] : []), 'node tools/anim-pack.mjs reference --render'],
+    afterEach: plan.batches.map(b => ({ batch: b.n, owns: b.files, lint: b.files.map(f => `node tools/anim-pack.mjs lint --file ${f}${plan.kind === 'element' ? ' --only small' : ''}`), guard: guard(b.files) })),
+    afterAll: [guard(owned), 'node --test tests/anim-packs.test.mjs', `node --test tests/region-framework.test.mjs tests/${plan.region}-pack.test.mjs`, `node tools/anim-pack.mjs status ${plan.region} --strict`],
   };
 }
 
+/** The files of a region's scaffold, as git pathspecs (for "is the scaffold committed?"). */
+const scaffoldPaths = (root, id) => [configFileOf(root, id), `docs/dev/${id.toUpperCase()}_PACK.md`, `tests/${id}-pack.test.mjs`, `src/app/71-anim-region-${id}-scenes-*.js`, `src/app/72-anim-pack-${id}-*.js`];
+
 export default {
   summary: 'ready-to-paste task briefs for the agents that draw a region (batched scene briefs, per-group element briefs)',
-  usage: 'brief <region> --kind scene|element [--batch N --of M] [--group <g>] [--out <dir> [--clean]] [--note <text>] [--json]',
+  usage: 'brief <region> --kind scene|element [--batch N --of M] [--group <g>] [--out <dir> [--clean]] [--note <text>] [--clear-notes] [--json]',
   positionals: '<region>',
   options: {
     kind: { type: 'string', help: `scene (full-screen scenes, batches of about ${SCENES_PER_AGENT} keys) | element (small symbols, one batch per group) (required)` },
     batch: { type: 'string', help: 'print the brief of batch N (1-based); without it the plan is printed (and with --out every brief is written)' },
-    of: { type: 'string', help: `the number of batches (default: scenes ceil(keys / ${SCENES_PER_AGENT}), elements one per group; elements never split a group)` },
+    of: { type: 'string', help: `the number of batches (default: scenes ceil(keys / ${SCENES_PER_AGENT}), elements one per group). Scene batches are cut at group boundaries where that costs little, so the sizes can differ; elements never split a group` },
     group: { type: 'string', help: 'only this group' },
-    out: { type: 'string', help: 'write the brief(s) as <kind>-brief[-<group>]-<N>.md into this folder, plus plan.json (the index to dispatch from), instead of printing them' },
+    out: { type: 'string', help: 'write the brief(s) as <kind>-brief[-<group>]-<N>.md into this folder, plus plan.json (the index to dispatch from), instead of printing them; also creates the empty scene file of every scene batch that has none' },
     clean: { type: 'boolean', help: 'with --out: remove the briefs of this kind in the folder that this plan does not overwrite (otherwise they are refused: dispatching a stale one gives two agents the same keys)' },
-    note: { type: 'string', multiple: true, help: 'an extra instruction added to every brief (repeatable)' },
+    note: { type: 'string', multiple: true, help: 'an extra instruction added to every brief (repeatable). With --out it is stored in plan.json and re-used by every later run into the same folder (a re-run never drops it)' },
+    'clear-notes': { type: 'boolean', help: 'with --out: forget the notes stored in plan.json (the ones given with --note this time still apply)' },
     json: { type: 'boolean', help: 'machine-readable: the plan; with --batch also the brief as markdown' },
   },
+  notes: [
+    'season: the season column follows the latitude of the key: `any` in the tropics (|latitude| < 23.5), the local season in the south with the label to write ("autumn (season: \'spring\')": the app calendar is the northern one), the same word in the north. The `season:` field of an entry is only a LABEL (gallery card, "picked for ..." note): it does not decide when a region scene plays; use `any` unless the picture really shows one season.',
+    'Commit the scaffold (and the scene stubs this command creates) before the agents start: they begin from the same tree and `guard` compares with a commit.',
+    GUARD_PROOF,
+  ],
   run(args, ctx) {
     if (ctx.positionals.length > 1) throw new Error(`brief takes one region, got ${ctx.positionals.length} (${ctx.positionals.join(', ')}): run it once per region`);
     const id = ctx.positionals[0];
     if (!id) throw new Error('brief needs a region: node tools/anim-pack.mjs brief <region> --kind scene|element');
     if (!KINDS.includes(args.kind)) throw new Error(`--kind must be one of ${KINDS.join(', ')}`);
     if (args.clean && !args.out) throw new Error('--clean goes with --out <dir>');
+    if (args['clear-notes'] && !args.out) throw new Error('--clear-notes goes with --out <dir> (the notes are stored in its plan.json)');
     const reg = loadRegistry(ctx.root, { fresh: true });
     const region = findRegion(reg, id);
-    const of = toInt(args.of, 'of'), batch = toInt(args.batch, 'batch'), notes = [].concat(args.note || []).map(s => String(s).trim()).filter(Boolean);
+    const of = toInt(args.of, 'of'), batch = toInt(args.batch, 'batch'), given = [].concat(args.note || []).map(s => String(s).trim()).filter(Boolean);
     if (args.group != null && !String(args.group).trim()) throw new Error('--group is empty: give one of the region\'s groups (' + region.groups.join(', ') + ') or leave the option out');
     const plan = buildPlan(reg, region, { kind: args.kind, of, batch, group: args.group || '' });
     if (!plan.batches.length) throw new Error(`nothing to brief: ${region.id} has no ${args.kind === 'scene' ? 'scene keys' : 'elements to draw'}${args.group ? ' in group ' + args.group : ''}`);
     if (args.kind === 'element' && of && of > plan.of) ctx.err(`note: --of ${of} is more than the ${plan.of} group(s): a pack file has one owner, so there are ${plan.of} batch(es)`);
     const care = careInfo(ctx.root, region);
     if (care.state !== 'ok' && !(args.json && !batch && !args.out)) ctx.err(`note: ${care.state === 'no-doc' ? `${care.doc} does not exist` : care.state === 'no-section' ? `${care.doc} has no "Cultural care" section` : `the "Cultural care" section of ${care.doc} is still the skeleton comment`}: the briefs carry only the general care rules. Fill in the region's own notes (sensitive places, motifs to avoid), then make the briefs again.`);
+    const sg = plan.suggestions;
+    for (const k of sg.unknown) ctx.err(`note: ${sg.doc}, "Scene suggestions": ${k} is not a scene or element key of ${region.id} (node tools/anim-pack.mjs status ${region.id} lists them): ignored`);
+    for (const m of sg.problems) ctx.err(`note: ${m}: ignored`);
+    if (sg.applied && !(args.json && !batch && !args.out)) ctx.err(`note: ${sg.applied} suggestion${sg.applied === 1 ? '' : 's'} from the "Scene suggestions" section of ${sg.doc} replace the rotation's`);
     const chosen = batch ? [plan.batches[batch - 1]] : plan.batches;
-    const written = [];
+    const written = [], created = [];
     const needMd = !(args.json && !batch && !args.out);
-    let targets = null;
-    if (needMd) {
-      const ref = loadReference(ctx.root), th = loadThresholds(ctx.root);
-      targets = corpusTargets(args.kind, th, exemplarRanges(reg, args.kind === 'scene' ? ref.scenes.map(x => x.ref) : ref.items.map(x => x.ref), th));
-    }
-    const briefs = chosen.map(b => ({ b, md: needMd ? renderBrief(reg, region, plan, b, { root: ctx.root, notes, targets }) : null }));
-    let planFile = null;
+    const ref = loadReference(ctx.root), th = loadThresholds(ctx.root);
+
+    // --out: the stale-brief check comes FIRST (nothing is written when it refuses), then the stub scene files, then the briefs (which then say the file exists), then plan.json
+    let dir = null, planFile = null, old = {}, stale = [], notes = given;
     if (args.out) {
-      const dir = resolve(args.out);
+      dir = resolve(args.out);
       mkdirSync(dir, { recursive: true });
-      const names = new Set(briefs.map(({ b }) => b.brief));
-      const stale = readdirSync(dir).filter(f => briefFileRe(args.kind).test(f) && !names.has(f));
+      const names = new Set(chosen.map(b => b.brief));
+      stale = readdirSync(dir).filter(f => briefFileRe(args.kind).test(f) && !names.has(f));
       if (stale.length && !args.clean) throw new Error(`refusing to write: ${dir} already holds ${args.kind} briefs that this plan does not overwrite (${stale.join(', ')}), from an earlier plan. Dispatching one of them would give two agents the same keys. Pass --clean to remove them, or use another folder. Nothing was written.`);
+      planFile = join(dir, 'plan.json');
+      try { old = JSON.parse(readFileSync(planFile, 'utf8')); } catch { old = {}; }
+      if (old && old.region && old.region !== region.id) ctx.err(`note: ${planFile} was the plan of region "${old.region}": it is replaced by this region's plan (its stored notes are not carried over)`);
+      const stored = old.region === region.id && old.plans && old.plans[args.kind] && Array.isArray(old.plans[args.kind].notes) ? old.plans[args.kind].notes : [];
+      if (stored.length && args['clear-notes']) ctx.err(`note: ${stored.length} stored note(s) of ${args.kind} briefs forgotten (--clear-notes)`);
+      else if (stored.length) ctx.err(`note: re-using ${stored.length} stored note${stored.length === 1 ? '' : 's'} from ${planFile}${given.length ? ` and adding ${given.filter(n => !stored.includes(n)).length} new` : ''} (--clear-notes forgets them)`);
+      notes = [...new Set([...(args['clear-notes'] ? [] : stored), ...given])];
+      if (args.kind === 'scene') {
+        for (const b of chosen) for (const f of b.files) if (!existsSync(join(ctx.root, f))) { mkdirSync(dirname(join(ctx.root, f)), { recursive: true }); writeFileSync(join(ctx.root, f), sceneStubText(region, b.n), { flag: 'wx' }); created.push(f); }
+      }
+    }
+    // is the scaffold committed? (the agents start from the committed tree; guard compares with a commit)
+    const gitState = args.out ? gitScaffoldState(ctx.root, scaffoldPaths(ctx.root, region.id)) : null;
+    const base = gitState && gitState.head && !gitState.uncommitted.length ? gitState.head : '';
+    const commitCmd = gitState && gitState.uncommitted.length ? `git add ${[...new Set(gitState.uncommitted.map(x => x.path))].join(' ')} && git commit -m "${region.name}: scaffold"` : '';
+
+    let targets = null;
+    if (needMd) targets = corpusTargets(args.kind, th, exemplarRanges(reg, args.kind === 'scene' ? ref.scenes.map(x => x.ref) : ref.items.map(x => x.ref), th));
+    const briefs = chosen.map(b => ({ b, md: needMd ? renderBrief(reg, region, plan, b, { root: ctx.root, notes, targets, base }) : null }));
+    const missingPng = args.out || batch ? citedPngs(args.kind, ref).filter(f => !existsSync(join(ctx.root, f))) : [];
+    if (dir) {
       for (const f of stale) unlinkSync(join(dir, f));
       for (const { b, md } of briefs) { const f = join(dir, b.brief); writeFileSync(f, md); written.push(f); }
       // plan.json: the index to dispatch from; the other kind's plan, if the folder has one, is kept
-      planFile = join(dir, 'plan.json');
-      let old = {};
-      try { old = JSON.parse(readFileSync(planFile, 'utf8')); } catch { old = {}; }
       const plans = old.region === region.id && old.plans && typeof old.plans === 'object' ? old.plans : {};
-      plans[args.kind] = { kind: args.kind, group: plan.group, of: plan.of, total: plan.total, ...planCommands(plan),
+      const suggestions = Object.fromEntries(briefs.flatMap(({ b }) => b.items.map(k => [k.key, args.kind === 'scene' ? { time: k.time, season: k.season, seasonLabel: k.seasonLabel, type: k.type, palette: k.palette } : { motif: k.motif, colour: k.colour }])));
+      const before = plans[args.kind] && Array.isArray(plans[args.kind].created) ? plans[args.kind].created : [];   // the stubs an earlier run made stay listed
+      plans[args.kind] = { kind: args.kind, group: plan.group, of: plan.of, total: plan.total, notes, ...(args.kind === 'scene' ? { seasonNote: SEASON_NOTE } : {}), ...planCommands(plan, base, commitCmd), created: [...new Set([...before, ...created])], suggestions,
         batches: briefs.map(({ b }) => ({ batch: b.n, brief: b.brief, owns: b.files, groups: b.groups, count: b.count, todo: b.todo, keys: b.items.map(k => k.key) })) };
-      writeFileSync(planFile, JSON.stringify({ region: region.id, dispatch: Object.values(plans).flatMap(p => p.batches.map(x => x.brief)), plans }, null, 1) + '\n');
+      writeFileSync(planFile, JSON.stringify({ region: region.id, dispatch: Object.values(plans).flatMap(p => p.batches.map(x => x.brief)), git: gitState ? { head: gitState.head, base: base || null, committed: !gitState.uncommitted.length, uncommitted: gitState.uncommitted.map(x => x.path) } : null, missingPng, proves: GUARD_PROOF, plans }, null, 1) + '\n');
       written.push(planFile);
       if (stale.length) ctx.err(`removed ${stale.length} stale ${args.kind} brief(s): ${stale.join(', ')}`);
     }
     if (args.json) {
-      const slim = (b) => ({ batch: b.n, brief: b.brief, files: b.files, groups: b.groups, count: b.count, todo: b.todo, keys: b.items.map(k => ({ key: k.key, call: k.call || null, name: k.name, group: k.group, state: k.state })) });
-      ctx.out(JSON.stringify({ region: plan.region, kind: plan.kind, group: plan.group, of: plan.of, size: plan.size, total: plan.total, written,
+      const slim = (b) => ({ batch: b.n, brief: b.brief, files: b.files, groups: b.groups, count: b.count, todo: b.todo, keys: b.items.map(k => ({ key: k.key, call: k.call || null, name: k.name, group: k.group, state: k.state, ...(args.kind === 'scene' ? { season: k.season, seasonLabel: k.seasonLabel } : {}) })) });
+      ctx.out(JSON.stringify({ region: plan.region, kind: plan.kind, group: plan.group, of: plan.of, size: plan.size, total: plan.total, written, created, notes, missingPng,
         batches: briefs.map(({ b, md }) => (batch ? { ...slim(b), markdown: md } : slim(b))) }, null, 1));
       return 0;
     }
-    if (batch && !args.out) { ctx.out(briefs[0].md.replace(/\s+$/, '')); if (briefs[0].b.todo === 0) ctx.err('note: every key of this batch already has its art; the brief is for a redraw'); return 0; }
+    if (batch && !args.out) { ctx.out(briefs[0].md.replace(/\s+$/, '')); if (briefs[0].b.todo === 0) ctx.err('note: every key of this batch already has its art; the brief is for a redraw'); if (missingPng.length) ctx.err(`note: ${missingPng.length} of the PNGs this brief cites do not exist yet: render the gold standard once with node tools/anim-pack.mjs reference --render`); return 0; }
     if (written.length) written.forEach(f => ctx.out(f));
     const unit = args.kind === 'scene' ? 'scene key' : 'element';
-    ctx.out(`brief ${args.kind}, region "${region.id}": ${plan.total} ${unit}${plan.total === 1 ? '' : 's'} in ${plan.of} batch${plan.of === 1 ? '' : 'es'}${args.kind === 'scene' ? ` (about ${SCENES_PER_AGENT} per agent; --of M changes it)` : ' (one per group; --of M merges groups)'}`);
+    ctx.out(`brief ${args.kind}, region "${region.id}": ${plan.total} ${unit}${plan.total === 1 ? '' : 's'} in ${plan.of} batch${plan.of === 1 ? '' : 'es'}${args.kind === 'scene' ? ` (about ${SCENES_PER_AGENT} per agent; --of M sets the number of batches, cut at group boundaries where that costs little, so the sizes can differ)` : ' (one per group; --of M merges groups)'}`);
     for (const b of plan.batches) ctx.out(`  batch ${String(b.n).padStart(2)}  ${String(b.count).padStart(3)} (${String(b.todo).padStart(3)} to draw)  ${b.groups.join(', ').padEnd(24)} ${b.files.join(', ')}`);
+    if (created.length) ctx.out(`\ncreated ${created.length} empty scene file${created.length === 1 ? '' : 's'} (the IIFE stub, so that every batch's file exists before its agent starts):\n  ${created.join('\n  ')}`);
+    if (notes.length) ctx.out(`\nnotes in every brief (stored in plan.json; a re-run re-reads them):\n${notes.map(n => `  - ${n}`).join('\n')}`);
     if (!written.length) ctx.out(`\nPrint one: node tools/anim-pack.mjs brief ${region.id} --kind ${args.kind} --batch N${of ? ` --of ${of}` : ''}${args.group ? ` --group ${args.group}` : ''}\nWrite all: node tools/anim-pack.mjs brief ${region.id} --kind ${args.kind}${of ? ` --of ${of}` : ''}${args.group ? ` --group ${args.group}` : ''} --out .anim-ref/briefs`);
-    else ctx.out(`\nBefore you dispatch: render the gold standard ONCE (the agents must not write the same PNGs at the same time):\n  ${planCommands(plan).before.join('\n  ')}\nAfter every agent (or all together: pass the union of the files): node tools/anim-pack.mjs guard --owned <its files>\nplan.json lists what to dispatch and the commands.`);
+    else {
+      const steps = [];
+      if (commitCmd) steps.push(`COMMIT THE SCAFFOLD first (${gitState.uncommitted.length} file${gitState.uncommitted.length === 1 ? ' is' : 's are'} uncommitted: ${gitState.uncommitted.slice(0, 8).map(x => x.path).join(', ')}${gitState.uncommitted.length > 8 ? ', ...' : ''}). The agents must start from the same committed tree, and guard compares with a commit (an uncommitted scaffold is listed as strays):\n       ${commitCmd}`);
+      if (missingPng.length) steps.push(`render the gold standard ONCE (${missingPng.length} PNG${missingPng.length === 1 ? '' : 's'} the briefs cite ${missingPng.length === 1 ? 'does' : 'do'} not exist yet, for example ${missingPng[0]}; the agents must not write the same PNGs at the same time):\n       node tools/anim-pack.mjs reference --render      (light, night and dark in one run)`);
+      else steps.push('the gold standard PNGs the briefs cite exist; render them again only if the exemplars changed (node tools/anim-pack.mjs reference --render)');
+      ctx.out(`\nBefore you dispatch:\n${steps.map((x, i) => `  ${i + 1}. ${x}`).join('\n')}`);
+      ctx.out(`After the agents, in a shared tree ONE guard over the files of every agent that ran: ${planCommands(plan, base).afterAll[0]}\n(it proves the UNION of the files listed, not one agent alone: to prove one agent give it its own git worktree and guard it there.)\nplan.json lists what to dispatch (briefs, the file each batch owns, the stored notes, the suggestions) and the commands.`);
+    }
     return 0;
   },
 };

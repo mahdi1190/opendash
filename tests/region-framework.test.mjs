@@ -69,6 +69,7 @@ const load = (toy = true) => new Function(`"use strict";\n${BODY}\n${toy ? TOY_S
 const R = load();
 const { TOY } = R;
 const day = '2026-10-05';   // a Monday: no festival
+const nonStarter = (list) => list.filter(m => !/^starter:/.test(m));   // the scaffold's placeholder country is starter data: the coverage tests own it
 const KM = 111.1949;        // km per degree of latitude: the framework's own haversine on a meridian
 const row = (id) => TOY.places.find(p => p[0] === id);
 const at = (p) => ({ lat: p[3], lon: p[4] });
@@ -442,16 +443,16 @@ test('build order: animRegistryFiles() lists the animation files exactly as buil
 test('the animation files evaluate in build order: a config that touches a registry const at load fails here as it fails the app', () => {
   assert.deepEqual(evalBuildOrder().ANIM_REGIONS.map(r => r.id).filter(id => ['asia', 'us'].includes(id)), ['asia', 'us'], 'a region added since is loaded too: only the first two are pinned');
   // a new region's config (71-anim-region-*) and an Asia-style file (71-anim-asia*) both load BEFORE the registry: its consts are in the dead zone
-  assert.throws(() => evalBuildOrder({ '71-anim-region-zz.js': 'const _x = Object.keys(ANIM_SLOTS);\n' }), /ANIM_SLOTS|before initialization/);
-  assert.throws(() => evalBuildOrder({ '71-anim-asia-zz.js': 'const _y = ANIM_SLOT_IDS.length;\n' }), ReferenceError);
+  assert.throws(() => evalBuildOrder({ '71-anim-region-zzbo.js': 'const _x = Object.keys(ANIM_SLOTS);\n' }), /ANIM_SLOTS|before initialization/);
+  assert.throws(() => evalBuildOrder({ '71-anim-asia-zzbo.js': 'const _y = ANIM_SLOT_IDS.length;\n' }), ReferenceError);
   // every file shares one scope: scene files without an IIFE clash, with one they load (scenes first, then the config: '-' sorts before '.')
-  const scene = (key, code, wrap) => (wrap ? '(function () { ' : '') + `const K = animSceneKit(); animRegionSceneAdd('zz', { key: '${key}', label: 'x', svg: () => K.full('#fff') });` + (wrap ? ' })();' : '') + '\n';
-  assert.throws(() => evalBuildOrder({ '71-anim-region-zz-scenes-1.js': scene('unit:ZA'), '71-anim-region-zz-scenes-2.js': scene('unit:ZB') }), /already been declared/);
+  const scene = (key, code, wrap) => (wrap ? '(function () { ' : '') + `const K = animSceneKit(); animRegionSceneAdd('zzbo', { key: '${key}', label: 'x', svg: () => K.full('#fff') });` + (wrap ? ' })();' : '') + '\n';
+  assert.throws(() => evalBuildOrder({ '71-anim-region-zzbo-scenes-1.js': scene('unit:ZA'), '71-anim-region-zzbo-scenes-2.js': scene('unit:ZB') }), /already been declared/);
   const L = evalBuildOrder({
-    '71-anim-region-zz-scenes-1.js': scene('unit:ZA', 0, true), '71-anim-region-zz-scenes-2.js': scene('unit:ZB', 0, true),
-    '71-anim-region-zz.js': "const ZZ = animRegionDefine({ id: 'zz', unitKm: 50, units: { ZA: ['Za', 'g'], ZB: ['Zb', 'g'] }, places: [['za', 'Za', 'ZA', 0, 0, ''], ['zb', 'Zb', 'ZB', 0, 2, '']] });\n",
+    '71-anim-region-zzbo-scenes-1.js': scene('unit:ZA', 0, true), '71-anim-region-zzbo-scenes-2.js': scene('unit:ZB', 0, true),
+    '71-anim-region-zzbo.js': "const ZZBO = animRegionDefine({ id: 'zzbo', unitKm: 50, units: { ZA: ['Za', 'g'], ZB: ['Zb', 'g'] }, places: [['za', 'Za', 'ZA', 0, 0, ''], ['zb', 'Zb', 'ZB', 0, 2, '']] });\n",
   });
-  assert.deepEqual(Object.keys(L.animRegion('zz').scenes), ['unit:ZA', 'unit:ZB']); assert.deepEqual(L.animRegion('zz').check(), []);
+  assert.deepEqual(Object.keys(L.animRegion('zzbo').scenes), ['unit:ZA', 'unit:ZB']); assert.deepEqual(L.animRegion('zzbo').check(), []);
 });
 
 /* ---------- overlapping regions ---------- */
@@ -548,7 +549,7 @@ test('worldTravel is exposed, and every city the world pack draws that a region 
       if (row) assert.ok(r.worldTravel.includes(c), `${r.id}: ${c} (row ${row[0]}) is drawn by the world pack, so it belongs in worldTravel`);
     }
     for (const c of r.worldTravel) { assert.equal(r.travelRow(c), null, `${r.id}: ${c} matches nothing while travelling`); assert.equal(r.where({ city: c }), null); }
-    assert.deepEqual(r.check({ worldCities: WORLD_CITIES }), [], r.id);
+    assert.deepEqual(nonStarter(r.check({ worldCities: WORLD_CITIES })), [], r.id);
   }
   assert.deepEqual(R.animRegion('us').worldTravel, ['new-york-us']); assert.deepEqual(R.animRegion('asia').worldTravel, ['tokyo-jp', 'dubai-ae', 'singapore-sg']);
   assert.deepEqual(TOY.worldTravel, ['alpha-cove~AA']); assert.equal(TOY.travelId(CV), 'alpha-cove~AA'); assert.deepEqual(TOY.elsewhere, ['DD']);
@@ -598,19 +599,35 @@ test('B.unit / B.place / B.scenes throw at the call on a duplicate item id (a pa
 });
 
 /* ---------- every region ---------- */
-test('every region (ANIM_REGIONS): sound tables, packs named <id>-<group>, no row inside another region\'s reach, unique travel ids', () => {
+/* Two kinds of rule. STRUCTURAL ones (sound tables, no overlap, unique travel ids, pack names, no dead art, no duplicate scene) always run and always fail hard.
+   COVERAGE ones (a pack for every group that opens, no starter data left) fail hard once the region says `complete` (the US, Asia and any region whose config says
+   complete: true) and are reported as todo until: a scaffolded region being drawn is not a red repo. Each loop iteration is its own test, so one region's failure
+   never hides another's (the old single test stopped at the first missing pack). */
+const coverageOpts = (r) => (r.complete ? {} : { todo: `${r.id} is not declared complete (complete: false in its config): reported, not failing; node tools/anim-pack.mjs status ${r.id} is the progress bar` });
+
+test('every region: the flag is a boolean, the tables are sound and no scene key is registered twice (structural: always hard)', () => {
   assert.ok(R.ANIM_REGIONS.length >= 3);
-  const owner = new Map();
   for (const r of R.ANIM_REGIONS) {
-    assert.deepEqual(r.check({ worldCities: WORLD_CITIES }), [], r.id + ': check() is empty');
+    assert.equal(typeof r.complete, 'boolean', r.id + ': complete');
+    assert.deepEqual(nonStarter(r.check({ worldCities: WORLD_CITIES })), [], r.id + ': check() is empty (the scaffold\'s starter notes aside)');
     assert.deepEqual(r.sceneDuplicates(), [], r.id + ': no scene key is registered twice (the last registration would silently hide the other)');
     assert.ok(r.groups.length > 0, r.id);
-    for (const o of R.ANIM_REGIONS) if (o !== r) {
-      assert.ok(!r.owns(o.id) && !o.owns(r.id), `${r.id} and ${o.id}: pack names must not collide`);
-      for (const p of r.places) assert.equal(o.unitOf({ lat: p[3], lon: p[4] }), '', `${r.id} row ${p[0]} sits inside ${o.id}'s reach: regions must not overlap (lower one unitKm, or drop the row)`);
-    }
+  }
+});
+
+test('every region: no row inside another region\'s reach, and no other region\'s row inside this one\'s (overlap: its own test, so it runs while the art is still missing)', () => {
+  for (const r of R.ANIM_REGIONS) for (const o of R.ANIM_REGIONS) if (o !== r) {
+    assert.ok(!r.owns(o.id) && !o.owns(r.id), `${r.id} and ${o.id}: pack names must not collide`);
+    for (const p of r.places) assert.equal(o.unitOf({ lat: p[3], lon: p[4] }), '', `${r.id} row ${p[0]} sits inside ${o.id}'s reach: regions must not overlap (lower one unitKm, or drop the row)`);
+  }
+  for (const r of R.ANIM_REGIONS) assert.deepEqual(r.check({ worldCities: WORLD_CITIES }).filter(m => /^overlap:/.test(m)), [], r.id + ': check() names no overlap');
+});
+
+test('every region: unique travel ids, packs named <id>-<group> that hold only the region\'s items (structural: always hard)', () => {
+  const owner = new Map();
+  for (const r of R.ANIM_REGIONS) {
     for (const p of r.places) { const t = r.travelId(p); assert.ok(!owner.has(t), `${t} is the travel id of ${r.id}/${p[0]} and of ${owner.get(t)}`); owner.set(t, r.id + '/' + p[0]); }
-    // packs: everything carrying this region's items is named <id>-<group>; a pack exists for every group that has a unit that opens
+    // a pack that carries this region's items is named <id>-<group>; a pack that is registered holds items (an empty pack is not registered at all)
     for (const p of R.animPacks()) {
       const mine = p.items.filter(i => i[r.fields.kind] != null);
       if (mine.length) {
@@ -620,11 +637,78 @@ test('every region (ANIM_REGIONS): sound tables, packs named <id>-<group>, no ro
       }
       if (r.owns(p.id)) assert.ok(mine.length > 0, `${p.id} is named for ${r.id} but holds none of its items`);
     }
+  }
+});
+
+for (const r of R.ANIM_REGIONS) {
+  test(`${r.id}: a pack exactly when a group has units that open, and no starter data left (coverage: hard when the region is complete, else todo)`, coverageOpts(r), () => {
     for (const g of r.groups) {
       const opens = Object.keys(r.units).filter(u => r.units[u][1] === g && !r.elsewhere.includes(u)).length;
-      assert.equal(!!R.animPack(r.id + '-' + g), opens > 0, `${r.id}-${g}: a pack exactly when the group has units that open (${opens})`);
+      assert.equal(!!R.animPack(r.id + '-' + g), opens > 0, `${r.id}-${g}: a pack exactly when the group has units that open (${opens})   (node tools/anim-pack.mjs status ${r.id})`);
     }
-  }
+    assert.deepEqual(r.check({ worldCities: WORLD_CITIES }).filter(m => /^starter:/.test(m)), [], `${r.id}: starter data left (set country, replace the example rows)`);
+    assert.deepEqual(r.places.filter(p => /^example-/.test(p[0])).map(p => p[0]), [], `${r.id}: example rows left in the tables`);
+  });
+}
+
+test('the complete flag: default true (a config that does not say is finished: the US, Asia), false while a region is drawn, anything else is refused', () => {
+  const L = load(false), cfg = { unitKm: 100, units: { AA: ['A', 'g'] }, places: [['a-town', 'A Town', 'AA', 1, 1, 'big']] };
+  assert.equal(L.animRegionDefine({ ...cfg, id: 'dflt' }).complete, true);
+  assert.equal(L.animRegionDefine({ ...cfg, id: 'done', complete: true }).complete, true);
+  assert.equal(L.animRegionDefine({ ...cfg, id: 'wip', complete: false }).complete, false);
+  for (const bad of ['no', 0, 1, 'false']) assert.throws(() => L.animRegionDefine({ ...cfg, id: 'bad' + String(bad).replace(/\W/g, ''), complete: bad }), /complete: true or false/, String(bad));
+  assert.equal(R.animRegion('us').complete, true); assert.equal(R.animRegion('asia').complete, true);
+  assert.match(src('71-anim-0region.js'), /complete {4}true \| false/, 'the header documents the flag');
+});
+
+test('the region exposes unitKm and placeKm (the radii the config set), countryOf and nearestRow', () => {
+  const us = R.animRegion('us'), asia = R.animRegion('asia');
+  assert.deepEqual([us.unitKm, us.placeKm, asia.unitKm, asia.placeKm], [R.US_STATE_KM, R.US_PLACE_KM, R.ASIA_COUNTRY_KM, R.ASIA_PLACE_KM]);
+  assert.ok(Object.isFrozen(us.placeKm), 'the radii cannot be changed after the region is defined (the lookups work on their snapshot)');
+  assert.deepEqual([TOY.unitKm, TOY.placeKm], [80, { big: 50, small: 30 }]);
+  assert.equal(TOY.countryOf('AA'), 'AA'); assert.equal(us.countryOf('WA'), 'US'); assert.equal(asia.countryOf('JP'), 'JP');
+  assert.deepEqual(TOY.nearestRow(at(AC)), { id: 'alpha-city', unit: 'AA', km: 0 });
+  assert.equal(TOY.nearestRow(north(AC, -55)).id, 'alpha-city'); assert.equal(TOY.nearestRow(north(AC, -57)).id, 'bravo-bay');
+  assert.equal(TOY.nearestRow(north(AC, 90)), null, 'beyond unitKm: no row'); assert.equal(TOY.nearestRow(null), null); assert.equal(TOY.nearestRow({}), null);
+  assert.deepEqual(TOY.nearestRow({ city: 'charlie-camp~CC' }), { id: 'charlie-camp', unit: 'CC', km: 0 }, 'a travel match is 0 km');
+});
+
+test('overlap: check() names a row inside another region\'s reach with the ways out (the border case: a town just across a border from a neighbour\'s row)', () => {
+  const asia = R.ASIA_PLACES.find(p => p[0] === 'jayapura');
+  assert.ok(asia, 'the border case is real: Asia\'s Jayapura row');
+  const unit = (id, unitKm, rows) => ({ id, unitWord: 'country', unitKm, units: { PG: ['Neighbour land', 'g'] }, places: rows });
+  const town = (lat, lon) => ['border-town', 'Border Town', 'PG', lat, lon, ''], cap = ['capital', 'Capital', 'PG', -9.48, 147.15, 'big'];
+  const near = [asia[3] - 0.15, asia[4] + 0.6];   // about 70 km east of Asia's row: a town on the far side of the border
+  // both reaches contain the other row: ONE entry, seen from either side
+  const L = load(false), png = L.animRegionDefine(unit('neigh', 250, [town(...near), cap]));
+  const found = png.check({ worldCities: [] }).filter(m => /^overlap:/.test(m));
+  assert.equal(found.length, 1, found.join('\n'));
+  for (const re of [/^overlap: border-town \(PG, /, /and asia's row jayapura are \d+ km apart/, /each inside the other's reach \(asia 300 km, this region 250 km\)/, /BORDER CASE/, /move or drop one of the two rows/, /lower asia's unitKm or neigh's \(then run the tests of both regions\)/, /add it to asia's own tables/]) assert.match(found[0], re);
+  assert.ok(/\b(6\d|7\d) km apart/.test(found[0]), 'the distance is in the message: ' + found[0]);
+  const [v] = png.overlaps();
+  assert.deepEqual([v.direction, v.other, v.row, v.otherRow, v.reach, v.myReach], ['both', 'asia', 'border-town', 'jayapura', 300, 250]);
+  const back = L.animRegion('asia').check({ worldCities: [] }).filter(x => /^overlap:/.test(x));
+  assert.equal(back.length, 1, 'Asia sees the same overlap, once'); assert.match(back[0], /^overlap: jayapura \(ID, .*and neigh's row border-town are \d+ km apart/);
+  // only the neighbour's reach contains my row (my reach is short): "in"
+  const inOnly = load(false).animRegionDefine(unit('inonly', 40, [town(...near), cap])).check({ worldCities: [] }).filter(m => /^overlap:/.test(m));
+  assert.equal(inOnly.length, 1); for (const re of [/^overlap: border-town \(PG, .* km from asia's row jayapura, inside its reach of 300 km, so asia claims/, /move or drop the row/, /lower asia's unitKm \(then run the tests of both regions\)/, /add it to asia's own tables/]) assert.match(inOnly[0], re);
+  // only my reach contains the neighbour's row (my row is outside its reach): "out"
+  const far = [asia[3] - 0.15, asia[4] + 3.4];   // about 380 km east
+  const outOnly = load(false).animRegionDefine(unit('outonly', 420, [town(...far), cap])).check({ worldCities: [] }).filter(m => /^overlap:/.test(m));
+  assert.equal(outOnly.length, 1); for (const re of [/^overlap: asia's row jayapura \(ID, .* km from this region's row border-town, inside its reach of 420 km/, /lower outonly's unitKm \(now 420; then run the tests of both regions\), or move or drop border-town/]) assert.match(outOnly[0], re);
+  // away from every other region the region is clean again; a clean real region reports nothing
+  assert.deepEqual(load(false).animRegionDefine(unit('far', 250, [cap])).check({ worldCities: [] }), []);
+  assert.deepEqual(R.animRegion('asia').check({ worldCities: WORLD_CITIES }).filter(x => /^overlap:/.test(x)), []);
+});
+
+test('region.check() reads the world pack\'s cities live when it is given none; { worldCities: [...] } still decides (and [] skips the check)', () => {
+  const L = load(false), eu = L.animRegionDefine({ id: 'eu', unitWord: 'country', unitKm: 100, units: { FR: ['France', 'west'] }, places: [['paris', 'Paris', 'FR', 48.86, 2.35, 'big']] });
+  assert.ok(eu.check().some(m => /paris-fr/.test(m) && /worldTravel/.test(m)), 'no argument: the live world pack says paris-fr is drawn: ' + eu.check().join('\n'));
+  assert.deepEqual(eu.check({ worldCities: [] }), [], 'an explicit list wins');
+  assert.ok(eu.check({ worldCities: ['paris-fr'] }).some(m => /paris-fr/.test(m)));
+  const ok = load(false).animRegionDefine({ id: 'eu2', unitWord: 'country', unitKm: 100, worldTravel: ['paris-fr'], units: { FR: ['France', 'west'] }, places: [['paris', 'Paris', 'FR', 48.86, 2.35, 'big']] });
+  assert.deepEqual(ok.check(), [], 'listed: nothing to say');
+  for (const r of R.ANIM_REGIONS) assert.deepEqual(nonStarter(r.check()), [], r.id + ': every region is clean against the live world pack too');
 });
 
 /* ---------- radii: the shipped values are pinned at both sides of each edge ---------- */
@@ -718,9 +802,10 @@ test('the scaffold\'s placeholder country XX is starter data: check() reports it
   const bad = L.animRegionDefine({ ...states, id: 'plc', country: 'XX' });
   assert.match(bad.check().join('\n'), /^starter: the country is still the placeholder XX \(1 of the travel ids end in -xx, for example a-town-xx\): set country: '<ISO 3166-1 alpha-2 code>'/);
   assert.equal(bad.travelId(bad.places[0]), 'a-town-xx');
-  assert.deepEqual(L.animRegionDefine({ ...states, id: 'real', country: 'ZZ' }).check(), [], 'a real code clears it');
-  const viaHook = L.animRegionDefine({ ...states, id: 'hook', country: 'ZZ', travelId: (p) => p[0] + '-xx' });
+  // one region per context: two regions on the same coordinates would overlap, which check() now reports
+  assert.deepEqual(load(false).animRegionDefine({ ...states, id: 'real', country: 'ZZ' }).check(), [], 'a real code clears it');
+  const viaHook = load(false).animRegionDefine({ ...states, id: 'hook', country: 'ZZ', travelId: (p) => p[0] + '-xx' });
   assert.match(viaHook.check().join('\n'), /^starter: .*end in -xx/, 'a travel id ending -xx is flagged whatever made it');
-  assert.deepEqual(L.animRegionDefine({ id: 'cty', unitWord: 'country', unitKm: 100, units: { FR: ['France', 'g'] }, places: [['paris', 'Paris', 'FR', 48.86, 2.35, 'big']] }).check(), [], 'a region of countries: the unit code is the country');
-  assert.match(L.animRegionDefine({ id: 'fn', unitWord: 'zone', unitKm: 100, country: () => 'XX', units: { AA: ['A', 'g'] }, places: [['a', 'A', 'AA', 1, 1, '']] }).check().join('\n'), /placeholder XX/, 'a country hook that returns XX');
+  assert.deepEqual(load(false).animRegionDefine({ id: 'cty', unitWord: 'country', unitKm: 100, units: { FR: ['France', 'g'] }, places: [['paris', 'Paris', 'FR', 48.86, 2.35, 'big']] }).check({ worldCities: [] }), [], 'a region of countries: the unit code is the country');
+  assert.match(load(false).animRegionDefine({ id: 'fn', unitWord: 'zone', unitKm: 100, country: () => 'XX', units: { AA: ['A', 'g'] }, places: [['a', 'A', 'AA', 1, 1, '']] }).check().join('\n'), /placeholder XX/, 'a country hook that returns XX');
 });
