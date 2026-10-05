@@ -563,6 +563,7 @@ function _bfStartTicker() {
 }
 function _bfTick() {
   if (document.hidden) return;
+  if (typeof homeRefreshClock === 'function') homeRefreshClock();
   const now = Date.now();
   for (const el of document.querySelectorAll('.bf-rel[data-at]')) {
     const at = Number(el.dataset.at), end = Number(el.dataset.end) || at;
@@ -635,7 +636,7 @@ function _bfAiCard(m) {
   regen.onclick = () => _bfLoadSummary(briefModel(), true);
   card.querySelector('.bf-ai-h').appendChild(regen);
   const p = briefPrefs();
-  if (!p.ai) { card.hidden = true; return card; }
+  if (!p.ai && !(typeof homeUseCurrentSummary === 'function' && homeUseCurrentSummary())) { card.hidden = true; return card; }
   _bfPaintAi(card, false);
   return card;
 }
@@ -643,6 +644,20 @@ function _bfPaintAi(card, typeIt) {
   card = card || (_bfRoot && _bfRoot.querySelector('[data-region="ai"]'));
   if (!card) return;
   const t = card.querySelector('.bf-ai-t');
+  if (typeof homeUseCurrentSummary === 'function' && homeUseCurrentSummary()) {
+    card.hidden = false;
+    const heading = card.querySelector('.overline');
+    if (heading) heading.textContent = 'Day so far';
+    card.classList.remove('is-off');
+    t.textContent = homeCurrentSummary(); t.classList.remove('muted');
+    const button = card.querySelector('.bf-ai-re');
+    if (button) { button.innerHTML = icon('refresh-cw', 'i-sm') + '<span>Refresh today</span>'; button.onclick = homeRefreshToday; }
+    return;
+  }
+  const heading = card.querySelector('.overline');
+  if (heading) heading.textContent = 'Your day in three sentences';
+  const button = card.querySelector('.bf-ai-re');
+  if (button) { button.innerHTML = icon('refresh-cw', 'i-sm') + '<span>Regenerate</span>'; button.onclick = () => _bfLoadSummary(briefModel(), true); }
   const s = _bf.summary.brief;
   const loading = _bf.summaryLoading.brief;
   const ai = typeof connHas === 'function' ? connHas('claude') : AI_AVAILABLE;
@@ -658,6 +673,7 @@ function _bfPaintAi(card, typeIt) {
   }
 }
 function _bfLoadSummary(m, regenerate) {
+  if (!regenerate && typeof homeUseCurrentSummary === 'function' && homeUseCurrentSummary()) { _bfPaintAi(null, false); return; }
   const p = briefPrefs();
   if (!p.ai || !_serverAvailable) return;
   const date = m.date;

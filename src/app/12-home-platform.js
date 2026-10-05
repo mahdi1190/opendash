@@ -315,6 +315,17 @@ function homeDataRefresh(key) {
   e.at = 0;
   if (!e.loading) _homeDataFetch(e, e.sig);
 }
+/** Refresh the cached read-only data used by widgets currently on Home. */
+function homeDataRefreshVisible() {
+  const jobs = [];
+  for (const e of _homeDataCache.values()) {
+    if (!e.src || e.loading || !e.subs.size) continue;
+    e.at = 0;
+    const job = _homeDataFetch(e, e.sig);
+    if (job) jobs.push(job);
+  }
+  return Promise.allSettled(jobs);
+}
 function _homeDataOffline() { return typeof _serverAvailable !== 'undefined' && _serverAvailable === false; }
 function _homeDataFetch(e, sig) {
   // No server (yet: the first render runs before the health check): stay as we are; the

@@ -49,6 +49,7 @@ function _homeHeadActions() {
   if (old) old.remove();                                    // (older builds put it in the page header)
   const crumb = document.getElementById('crumb');
   if (!crumb || !crumb.parentElement) return;
+  if (typeof homeRefreshButton === 'function') homeRefreshButton(crumb);
   let b = document.getElementById('tb-home-customise');
   if (!b) {
     b = document.createElement('button'); b.type = 'button'; b.id = 'tb-home-customise'; b.className = 'tb-home-cust home-customise';
@@ -61,6 +62,8 @@ function _homeHeadActions() {
   b.setAttribute('aria-pressed', _homeEditing ? 'true' : 'false');
 }
 function _homeHeadActionsRemove() {
+  const refresh = document.getElementById('tb-home-refresh');
+  if (refresh) refresh.remove();
   const el = document.getElementById('tb-home-customise');
   if (el) el.remove();
 }

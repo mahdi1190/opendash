@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.4.3] - 2026-10-05
+
+### Added
+
+- Home has a **Refresh today** button beside Customise: updates ideas, the day-so-far summary and widgets using the current time, without regenerating AI text.
+
+### Fixed
+
+- Ideas refresh each minute and when returning to the tab; expired time windows disappear. After noon, Home shows a current day-so-far summary instead of stale morning advice. Refresh preserves note editors and focused widget controls.
+
 ## [2.4.2] - 2026-10-05
 
 ### Added
@@ -320,7 +330,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.2...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.3...HEAD
+[2.4.3]: https://github.com/mahdi1190/opendash/compare/v2.4.2...v2.4.3
 [2.4.2]: https://github.com/mahdi1190/opendash/compare/v2.4.0...v2.4.2
 [2.4.0]: https://github.com/mahdi1190/opendash/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/mahdi1190/opendash/compare/v2.2.5...v2.3.0

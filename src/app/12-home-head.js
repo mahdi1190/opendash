@@ -54,7 +54,7 @@ function _hdStoryData() {
       if (JSON.stringify(_hd.story && _hd.story.data && _hd.story.data.suggestions || null) !== had) _hdRepaintIdeas();
     });
   }
-  return _hd.story && _hd.story.data ? _hd.story : null;
+  return fresh && _hd.story && _hd.story.data ? _hd.story : null;
 }
 function _hdRepaintIdeas() {
   const root = _hdRoot(); if (!root) return;
@@ -98,6 +98,13 @@ const _HD_IDEA_ICON = { gap: 'calendar-plus', 'follow-up': 'users', prep: 'list-
 /** One of the story's suggestions with ONE action that opens the normal editor or page, prefilled. */
 function _hdIdea(s, p) {
   if (!s || !s.text) return null;
+  const minute = Clock.parts(Clock.now()).min;
+  for (const ref of s.refs || []) {
+    if (ref.type === 'time' && /^\d{1,2}:\d{2}$/.test(ref.ref)) {
+      const [h, m] = ref.ref.split(':').map(Number);
+      if (h * 60 + m < minute) return null;
+    }
+  }
   const ref = (type) => (s.refs || []).find(r => r && r.type === type);
   const task = ref('task') || ref('deadline'), ev = ref('event');
   let act = null;
