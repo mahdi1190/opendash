@@ -8,6 +8,7 @@ import { join, dirname, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 import { main, loadCommands, COMMANDS } from '../tools/anim-pack.mjs';
 import { loadRegistry, findBrowser } from '../tools/lib/anim-render.mjs';
 import { animRegistryFiles } from '../tools/lib/anim-sources.mjs';
@@ -16,8 +17,8 @@ import { starterData, starterBaseFor, STARTER_BASE } from '../tools/lib/anim-cmd
 import { corpusTargets, exemplarRanges, safeZones, markupRules, passMark, briefFileOf, seasonCell, citedPngs } from '../tools/lib/anim-cmd/brief.mjs';
 import { guardResult, parseStatus, parseNameStatus, forbiddenReason, gitScaffoldState, GUARD_PROOF } from '../tools/lib/anim-cmd/guard.mjs';
 import { declareComplete } from '../tools/lib/anim-cmd/status.mjs';
-import { loadThresholds, loadReference, itemNames, keyFilter } from '../tools/anim-pack.mjs';
-import { TARGETS, allowedTagList } from '../tools/lib/anim-quality.mjs';
+import { loadThresholds, loadReference, itemNames, keyFilter, measureRegistry, selectEntries } from '../tools/anim-pack.mjs';
+import { TARGETS, allowedTagList, measure } from '../tools/lib/anim-quality.mjs';
 import { CROPS } from '../tools/lib/anim-render.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -1179,4 +1180,221 @@ test('a scaffold keeps the repo-wide tests GREEN (region-framework: structural c
   assert.match(hard.stdout, /not ok \d+ - zz: a pack exactly when a group has units that open, and no starter data left/); assert.doesNotMatch(hard.stdout, /zz: a pack exactly[^\n]*# TODO/);
   assert.match(hard.stdout, /not ok \d+ - there is at least the core pack, and every pack file registered a valid pack/); assert.match(hard.stdout, /registration files \d+, registered \d+/);
   assert.match(hard.stdout, /\nok \d+ - every region: no row inside another region's reach/, 'the overlap test is its own test: it keeps running');
+});
+
+/* ---------- FIX3B: the pilot's friction in the skill, the briefs and the docs ---------- */
+
+const SKILL_DIR = join(ROOT, '.claude', 'skills', 'animation-pack');
+const skillText = (f) => readFileSync(join(SKILL_DIR, f), 'utf8');
+const SKILL = () => skillText('SKILL.md');
+const REF = (n) => skillText(`references/${n}.md`);
+const KIT_NAMES = 'U, R, rnd, lin, linU, radU, mv, full, ridge, canopy, mesa, cloud, streak, haze, rays, sun, stars, birds, shimmer, puffs, dots, lit, star5, finish';
+/** The scene kit, evaluated on its own (the framework file is pure: it needs nothing else). */
+const kit = () => vm.runInNewContext(readFileSync(join(APP, '71-anim-0region.js'), 'utf8') + '\n;animSceneKit()', {});
+/** The fenced js blocks of a reference that are marked `<!-- tested -->`: the helpers the docs promise run, and their `// use: <expr>` lines. */
+function testedBlocks(file) {
+  const code = [...REF(file).matchAll(/<!-- tested -->\n```js\n([\s\S]*?)```/g)].map(m => m[1]).join('\n');
+  return { code, uses: [...code.matchAll(/^\s*\/\/ use: (.*)$/gm)].map(m => m[1]) };
+}
+/** Evaluate the tested helpers with the real kit and return each `// use:` expression's markup, plus extra expressions. */
+function runUses(code, uses, extra = []) {
+  const all = [...uses, ...extra];
+  const fn = new Function('K', `const { ${KIT_NAMES} } = K;\n${code}\nreturn [${all.map(u => `() => (${u})`).join(', ')}];`);
+  return fn(kit()).map(t => t());
+}
+
+test('recipes.md: every tested helper block runs against the real kit, every // use: line renders valid markup, and the hygiene lint rules pass (the helpers are not folklore)', async () => {
+  const { code, uses } = testedBlocks('recipes');
+  assert.ok(uses.length >= 11, `${uses.length} use lines`);
+  for (const name of ['reflect', 'win', 'city', 'palm', 'pine', 'pines', 'fall', 'snowflakes', 'flies', 'blades', 'clipped', 'blob', 'crown3', 'rock', 'bush', 'rangePts', 'sharp', 'facets', 'frond', 'treeFern', 'hut', 'yacht', 'sst', 'moon', 'pane', 'panes', 'lamp'])
+    assert.match(code, new RegExp(`const ${name} = `), `${name} is defined in a tested block`);
+  const out = runUses(code, uses);
+  out.forEach((m, i) => { assert.equal(typeof m, 'string'); assert.ok(m.length > 40, uses[i].slice(0, 60)); assert.doesNotMatch(m, /NaN|undefined|\[object/, uses[i].slice(0, 60)); });
+  // the markup is balanced (every <g> closes) and uses only the lint's vocabulary
+  const markup = out.join('');
+  assert.equal((markup.match(/<g[ >]/g) || []).length, (markup.match(/<\/g>/g) || []).length, 'balanced groups');
+  for (const t of new Set([...markup.matchAll(/<([a-zA-Z]+)/g)].map(m => m[1]))) assert.ok(allowedTagList().includes(t), `<${t}> is allowed markup`);
+  // what section 7 says the night pattern is: always-on stars (not us-star), a painted AND a us-lit pane, a lit path of many panes, a lamps string
+  const night = runUses(code, uses, ["sst(1051, 12, 330, 0.9)", "stars(1053, 12, 340)", "pane(10, 10, 14, 18)", "panes(560, 600, 6, 3, 8, 10, 14, 18)", "moon(330, 200, 32, -135)"]).slice(-5);
+  assert.doesNotMatch(night[0], /us-star/); assert.match(night[1], /class="us-star"/);
+  assert.match(night[2], /fill="#ffc872"[^>]*\/><rect class="us-lit"/);
+  assert.match(night[3], /<path fill="#ffc872" d="(M[^"]*){18}"\/><path class="us-lit" d="/);
+  assert.match(night[4], /<circle[^>]*fill="url\(#us\d+\)"/); assert.doesNotMatch(night[4], /class="x-ussun|us-star/);
+  // "a path carrying us-lit counts as ONE shape": 18 panes as one path are one shape, as 18 rects they are 18
+  const classes = new Set(['us-lit']), wrap = (x) => `<svg viewBox="0 0 1600 900">${x}</svg>`;
+  let d = ''; for (let j = 0; j < 3; j++) for (let i = 0; i < 6; i++) d += `M${560 + i * 14} ${600 + j * 18}h8v10h-8z`;
+  assert.equal(measure(wrap(`<path class="us-lit" d="${d}"/>`), 'scene', { classes }).shapes, 1);
+  assert.equal(measure(wrap([...d.matchAll(/M(\d+) (\d+)/g)].map(m => `<rect class="us-lit" x="${m[1]}" y="${m[2]}" width="8" height="10"/>`).join('')), 'scene', { classes }).shapes, 18);
+  // the same helpers inside a real scene file: the structural lint rules pass (the count rules do not apply to a toy)
+  const root = makeRoot();
+  assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
+  const file = join(root, 'src', 'app', '71-anim-region-zz-scenes-1.js');
+  writeFileSync(file, `(function () {\n  const K = animSceneKit();\n  const { ${KIT_NAMES} } = K;\n${code}\n  animRegionSceneAdd('zz', { key: 'province:XA', label: 'Helpers', site: 'x', colour: 'teal', mood: 'calm', season: 'any', tags: [],\n    svg: () => {\n      const s1 = U();\n      return '<defs>' + lin(s1, [[0, '#161142'], [0.4, '#8c3b6b'], [1, '#ffc674']]) + '</defs>' + full('url(#' + s1 + ')')\n${uses.map(u => '        + ' + u).join('\n')}\n        + finish(0.34);\n    } });\n})();\n`);
+  const lint = JSON.parse((await run(['lint', '--file', file, '--json', '--root', root])).out);
+  const failed = lint.items[0].failures.map(f => f.rule);
+  for (const rule of ['structure', 'unique-ids', 'refs-resolve', 'x-transform', 'viewbox', 'classes-defined', 'sky-gradient', 'evening-grade', 'evening-grade-last', 'unknownClasses', 'coverUps']) assert.ok(!failed.includes(rule), `${rule} passes: ${failed.join(', ')}`);
+});
+
+test('recipes.md: the byte budget per layer is measured (the numbers in the table are what the kit and the helpers really cost), and the seed and clone warnings are there', () => {
+  const doc = REF('recipes');
+  const { lin, stars, sun, rays, cloud, birds, haze, canopy, ridge, shimmer, puffs, finish } = kit();
+  const { code } = testedBlocks('recipes');
+  const bytes = (expr) => runUses(code, [], [expr])[0].length;
+  const cost = [   // [the doc's wording, bytes now]
+    ['`stars(seed, 24, 200)` .87', stars(61, 24, 200).length], ['`sun` .43', sun(1280, 520, 52, '#fff0c8', '#ff9a68').length], ['`rays` .75', rays(1280, 520, 900, '#ffd29a', 0.14).length],
+    ['`cloud` .6 each', cloud(420, 330, 1.4, '#c8649a', 0.88, 64, 6, '#ff9488').length], ['`birds(seed, 5, ...)` 1.3', birds(8, 5, 760, 250, '#34405a', 1, 600).length], ['`haze` .36', haze(540, 120, '#ffb894', 0.55).length],
+    ['`canopy` .6', canopy('#4e6a78', 630, 16, 7, -160, 1760, 700).length], ['`ridge` .2', ridge('#6a78a8', 610, 50, 9, 7, 700).length], ['112 B per glint', shimmer(7, 40, 300, 1300, 660, 880, '#ffd0b0', 60).length / 40],
+    ['`puffs` .37', puffs(500, 600, 3, '#fff', 14, -120, 4, -200, 2.6).length], ['`finish(.34)`', finish(0.34).length], ['`lin` with 5 stops .27', lin('a', [[0, '#4f4a92'], [0.3, '#b26aa0'], [0.55, '#ff8a7e'], [0.78, '#ffc080'], [1, '#ffe4a0']]).length],
+    ['a palm .6 to 1.0', bytes("palm(200, 800, 300, '#1c2c2a', 30, 1.2, 7)")], ['a row of 10 pines 5', bytes("pines(5, 0, 1600, 760, 160, '#0b1b2d', 70)")], ['`blades` (30) .7', bytes("blades(9, 30, 0, 400, 880, 900, '#160c24', 5, 24, 52)")],
+    ['a tree fern with 7 fronds 2.2', bytes("treeFern(300, 800, 160, 1, '#244a40', '#6a5a30', [[-80, -20, 30], [-50, -60, 30], [0, -80, 20], [50, -60, 30], [80, -20, 30], [-20, -70, 20], [30, -75, 20]], 7, 5)")],
+    ['falling petals 113 B each (18 = 2 KB)', bytes("fall(4, 18, ['#f6c0c8'], 4, 7, 9, 15)")], ['fireflies 200 B each (16 = 3.2 KB)', bytes("flies(9, 16, 100, 1500, 560, 760, '#ffe08a')")],
+  ];
+  const want = { '`stars(seed, 24, 200)` .87': 870, '`sun` .43': 430, '`rays` .75': 750, '`cloud` .6 each': 600, '`birds(seed, 5, ...)` 1.3': 1300, '`haze` .36': 360, '`canopy` .6': 600, '`ridge` .2': 200, '112 B per glint': 112, '`puffs` .37': 370, '`finish(.34)`': 300, '`lin` with 5 stops .27': 270,
+    'a palm .6 to 1.0': 800, 'a row of 10 pines 5': 5000, '`blades` (30) .7': 700, 'a tree fern with 7 fronds 2.2': 2200, 'falling petals 113 B each (18 = 2 KB)': 2000, 'fireflies 200 B each (16 = 3.2 KB)': 3200 };
+  for (const [text, got] of cost) {
+    assert.ok(doc.includes(text), `the table says "${text}"`);
+    const w = want[text], tol = text === 'a palm .6 to 1.0' ? 0.3 : 0.2;   // a palm costs .6 to 1.0 KB: 800 +- 30 % covers both ends
+    assert.ok(Math.abs(got - w) <= w * tol + 12, `${text}: measured ${Math.round(got)} B, the doc says about ${w}`);
+  }
+  assert.match(doc, /A median scene is 22\.8 KB rendered \(p10 14\.8, p90 29\.0\), the cap is 32,000 and the target is at most 29,000/);
+  for (const must of ['Ladders without clones', 'an identical circle repeated', 'bake the scale into the coordinates', 'unique per CALL, per scene AND per file', 'start above 1000', 'never two consecutive numbers', 'rays()', 'ensign']) assert.ok(doc.includes(must) || REF('kit-reference').includes(must), must);
+});
+
+test('small-icons.md: the ONE size table is what the corpus and the exemplars measure and what the generated target table prints; no older contradicting range is left anywhere', async () => {
+  const doc = REF('small-icons'), reg = loadRegistry(ROOT), th = loadThresholds(ROOT), ref = loadReference(ROOT);
+  const all = reg.items().filter(e => !e.full && /^(us|asia)-/.test(e.pack));
+  const svg = all.map(e => { try { return e.item.svg().length; } catch { return 0; } }).sort((a, b) => a - b);
+  const rendered = measureRegistry(reg, all, th).map(r => r.metrics.bytes).sort((a, b) => a - b);
+  const q = (a, p) => a[Math.floor((a.length - 1) * p)];
+  const row = (label) => { const m = new RegExp(`\\| ${label} \\| ([\\d,]+) \\| ([\\d,]+) \\| ([\\d,]+) \\| ([\\d,]+) \\| ([\\d,]+) to ([\\d,]+) \\|`).exec(doc); assert.ok(m, `the size table has a "${label}" row`); return m.slice(1).map(x => +x.replace(/,/g, '')); };
+  const near = (a, b, what) => assert.ok(Math.abs(a - b) <= Math.max(15, b * 0.03), `${what}: the doc says ${a}, measured ${b}`);
+  const [s10, s50, s90, sMax, sLo, sHi] = row('`svg\\(\\)` bytes'), [r10, r50, r90, rMax, rLo, rHi] = row('rendered bytes');
+  [[s10, q(svg, 0.1)], [s50, q(svg, 0.5)], [s90, q(svg, 0.9)], [sMax, svg[svg.length - 1]], [r10, q(rendered, 0.1)], [r50, q(rendered, 0.5)], [r90, q(rendered, 0.9)], [rMax, rendered[rendered.length - 1]]].forEach(([a, b], i) => near(a, b, ['svg p10', 'svg median', 'svg p90', 'svg max', 'rendered p10', 'rendered median', 'rendered p90', 'rendered max'][i]));
+  const ex = selectEntries(reg, { refs: ref.items.map(x => x.ref) }), exSvg = ex.map(e => e.item.svg().length), exRendered = measureRegistry(reg, ex, th).map(r => r.metrics.bytes);
+  near(sLo, Math.min(...exSvg), 'exemplar svg() min'); near(sHi, Math.max(...exSvg), 'exemplar svg() max'); near(rLo, Math.min(...exRendered), 'exemplar rendered min'); near(rHi, Math.max(...exRendered), 'exemplar rendered max');
+  // the generated brief target table says the same (median 1.0 KB, thin below 0.8 KB, the exemplars 1.4 to 1.9 KB)
+  const targets = corpusTargets('item', th, exemplarRanges(reg, ref.items.map(x => x.ref), th));
+  assert.match(targets, /\| rendered size \| 1\.0 KB \| 0\.8 KB \| 1\.4 KB to 1\.9 KB \|/);
+  assert.match(doc, /aim at 1\.0 to 1\.9 KB rendered \(`svg\(\)` about 780 to 1,700 B\)/); assert.match(doc, /the ceiling is 2\.0 KB rendered \(`svg\(\)` 1,800 B\), the corpus maximum/);
+  // every file that states the size says the same, and the older contradicting ranges are gone
+  const files = ['SKILL.md', 'references/style-guide.md', 'references/rubric.md', 'references/small-icons.md', 'references/workflow.md'];
+  for (const f of files) assert.doesNotMatch(skillText(f), /0\.8 to 1\.4 KB|600 to about 1,700|about 1\.7 KB is an outlier|over about 1\.7 KB with nothing/, `${f}: no older size range`);
+  for (const f of ['SKILL.md', 'references/rubric.md', 'references/style-guide.md']) assert.match(skillText(f), /2\.0 KB/, f);
+  assert.match(skillText('references/rubric.md'), /the ceiling 1,800 B `svg\(\)` \/ 2\.0 KB rendered, the corpus maximum: above it FAIL/);
+  const el = readFileSync(join(TEMPLATES_DIR, 'element-brief.md'), 'utf8');
+  assert.match(el, /aim at 1\.0 to 1\.9 KB rendered \(`svg\(\)` 780 to 1,700 B\); the ceiling is 2\.0 KB rendered \/ 1,800 B `svg\(\)`/); assert.doesNotMatch(el, /0\.8 to 1\.4/);
+});
+
+test('small-icons.md: `s` and `w` are described as the CSS defines them, the pale-object rule, opacity, lsoft, x-shadow, x-blink and the 14-segment wave band are all there and true', () => {
+  const doc = REF('small-icons'), css = readFileSync(join(ROOT, 'src', 'styles', '71-anim-library.css'), 'utf8');
+  assert.match(css, /--as-soft: color-mix\(in oklab, var\(--c, var\(--accent\)\) 24%, transparent\)/); assert.match(css, /\.anim-scene \.s \{ fill: var\(--as-soft\); \}/); assert.match(css, /\.anim-scene \.w \{ fill: var\(--surface\); \}/);
+  assert.match(css, /\.anim-scene \.lsoft \{ stroke: var\(--as-soft\); stroke-width: 9; \}/); assert.match(css, /\.x-shadow \{ --an: as-shadow/); assert.match(css, /@keyframes as-blink \{ 0% \{ opacity: 1; \} 50% \{ opacity: 0; \} \}/);
+  for (const must of ['24 % alpha over whatever is behind it', 'DARKEN where they overlap', 'the tile\'s **surface**', 'near-black', '**Pale objects.**', '`w lk`', 'a large plain `w` area', '`opacity` as an attribute is allowed', '`lsoft`', '`x-shadow`', 'It is off for half the cycle', '14 segments in all', 'a plate whose top edge IS the wave', 'One idea per tile', 'That strip is the 28 px test']) assert.ok(doc.includes(must), must);
+  // the wave band of 14 segments loops seamlessly with the 12 px slide: it covers x 0 to 64 at both ends of the slide
+  const wv = (y) => `M-2 ${y}q3-2 6 0${'t6 0'.repeat(13)}`; assert.equal(wv(58).match(/[qt]/g).length, 14); const width = 14 * 6, from = -2;
+  assert.ok(from <= 0 && from + width >= 64 + 0 && from - 12 <= 0 && from + width - 12 >= 64, 'the band covers the tile at both ends of its slide');
+  assert.ok(doc.includes("'t6 0'.repeat(13)"), 'the wv() helper is the 14-segment one'); assert.ok(!doc.includes("'q3-2 6 0t6 0'.repeat(12)"));
+  // the corpus facts quoted: w is used by most symbols and most of its shapes have no outline class
+  const reg = loadRegistry(ROOT), items = reg.items().filter(e => !e.full && /^(us|asia)-/.test(e.pack)); let wTot = 0, wOut = 0, itemsW = 0;
+  for (const e of items) { let hasW = false; for (const [, , attrs] of reg.html(e.item).matchAll(/<(path|circle|ellipse|rect|polygon|polyline|line)\b([^>]*)>/g)) { const cls = ((/class="([^"]*)"/.exec(attrs) || [])[1] || '').split(/\s+/); if (cls.includes('w')) { wTot++; hasW = true; if (cls.some(c => /^(lk|lc|lm|lw|ln|t)$/.test(c))) wOut++; } } if (hasW) itemsW++; }
+  assert.equal(items.length, 245); assert.ok(Math.abs(itemsW - 209) <= 6 && Math.abs(wTot - 561) <= 20 && Math.abs(wOut - 164) <= 10, `${itemsW} items use w, ${wOut} of ${wTot} outlined`);
+});
+
+test('the six recurring weaknesses of the pilot: the rubric names each as a check, the style guide has the fix and an example, the recipes have the pattern, and the scene and element briefs point at them', () => {
+  const rubric = REF('rubric'), style = REF('style-guide'), recipes = REF('recipes'), small = REF('small-icons');
+  const sec9 = rubric.split('## 9. The six recurring weaknesses')[1], sec14 = style.split('## 14. The six weaknesses')[1];
+  assert.ok(sec9 && sec14);
+  for (const w of ['W1', 'W2', 'W3', 'W4', 'W5', 'W6']) { assert.ok(new RegExp(`\\| ${w}\\b`).test(sec9), `rubric section 9 names ${w}`); assert.ok(new RegExp(`\\| ${w} \\|`).test(sec14), `style-guide section 14 has ${w}`); }
+  for (const line of ['R7', 'R10', 'R12', 'R13', 'R15']) assert.ok(new RegExp(`\\| ${line} \\|[^\\n]*\\(W\\d\\)`).test(rubric), `${line} carries its weakness tag`);
+  for (const line of ['I1', 'I3', 'I9']) assert.match(rubric, new RegExp(`\\| ${line} \\|[^\\n]*(W6|grey on grey|black hole)`));
+  assert.match(sec14, /dim tint over the day picture/); assert.match(sec14, /coin circles/); assert.match(sec14, /Cloned or template shapes/); assert.match(sec14, /no dark anchor/); assert.match(sec14, /hard vertical seams/); assert.match(sec14, /scene-in-a-tile/);
+  // the concrete fixes live where the table says
+  for (const must of ['## 7. A night scene painted for the LIGHT theme', '### Water and ground that are not slabs, and the dark anchor', '### Mountains, cones and strata', '## 6. Helper patterns from the pilot', 'const crown3 =', 'const treeFern =', 'const hut =', 'Ladders without clones']) assert.ok(recipes.includes(must), must);
+  assert.match(small, /\*\*One idea per tile \(an icon is not a scene\)\.\*\*/);
+  assert.match(style, /\| E19 \| Water or ground as a hard-edged slab/); assert.match(style, /\| E20 \| A sunburst or striped rays that read as a flag/);
+  for (const t of ['scene-brief.md', 'element-brief.md']) assert.match(readFileSync(join(TEMPLATES_DIR, t), 'utf8'), /six recurring weaknesses of (rubric )?section 9|rubric section 9/, t);
+  // the night render check is a named rubric line, not only advice
+  assert.match(rubric, /\| R13 \| Lights are layered; the night is not a dim copy \|/); assert.match(rubric, /the sun disc and rays still bright and nothing lit \(W1\)/);
+});
+
+test('the skill, the briefs and the rubric agree: seven steps in one order, one attempts rule, one looking rule, one place for the study note, one GIT line, one reading list per kind', () => {
+  const skill = SKILL(), scene = readFileSync(join(TEMPLATES_DIR, 'scene-brief.md'), 'utf8'), el = readFileSync(join(TEMPLATES_DIR, 'element-brief.md'), 'utf8');
+  assert.ok(skill.split('\n').length <= 400, `SKILL.md is ${skill.split('\n').length} lines`);
+  // the seven steps, in the briefs' order, in the checklist
+  const steps = ['STUDY', 'DRAW', 'LINT', 'LOOK', 'SELF-CHECK', 'CARE', 'REPORT'], at = steps.map((s, i) => skill.indexOf(`**${i + 1} ${s}`));
+  assert.ok(at.every(x => x > 0) && at.every((x, i) => !i || x > at[i - 1]), `the checklist has the seven steps in order: ${at}`);
+  assert.match(skill, /seven steps, the same seven in the same order as the agent briefs' "Definition of done"/);
+  for (const [name, t] of [['scene', scene], ['element', el]]) {
+    const bs = ['STUDIED', 'DRAWN', 'LINT', 'LOOK', 'SELF-CHECK', 'CARE', 'REPORTED'].map((s, i) => t.search(new RegExp(`\\n${i + 1}\\. ${s}\\b`)));
+    assert.ok(bs.every(x => x > 0) && bs.every((x, i) => !i || x > bs[i - 1]), `${name} brief: the seven steps in order: ${bs}`); assert.match(t, /Definition of done, for EACH \w+ \(all seven, in this order\)/);
+  }
+  assert.doesNotMatch(skill, /0 Care/);
+  // attempts: every redraw from scratch counts, look failures too, polish does not
+  for (const [n, t] of [['skill', skill], ['scene', scene], ['element', el]]) { assert.match(t, /EVERY redraw from scratch counts|every redraw from scratch (is the next|counts)/i, n); assert.match(t, /failed LOOK/, n); assert.match(t, /[Pp]olish edits/, n); assert.match(t, /do not count/, n); assert.match(t, /a polish pass that needs a different composition is a redraw/i, n); }
+  // looking: an image that did not load has not been looked at, and the report lists the PNGs that loaded
+  for (const [n, t] of [['skill', skill], ['scene', scene], ['element', el], ['rubric', REF('rubric')], ['workflow', REF('workflow')], ['small-icons', REF('small-icons')]]) { assert.match(t, /did not load/, n); assert.match(t, /request limit/, n); }
+  assert.match(skill, /never claim a look you did not make/i); assert.match(scene + el, /PNGS LOADED:/); assert.match(skill, /PNGS LOADED:/);
+  // the study note has a place in every report, in the SKILL.md form
+  for (const [n, t] of [['skill', skill], ['scene', scene], ['element', el]]) { assert.match(t, /STUDY: <[^>]+> \| MODEL: <[^>]+> \| TAKE:/, n); assert.match(t, /NOT COPYING/, n); }
+  // the GIT line: git status AND the guard output, the committed scaffold, what to expect in a shared tree
+  for (const [n, t] of [['skill', skill], ['scene', scene], ['element', el]]) { assert.match(t, /GIT: <the output of `git status --short`|GIT: <git status --short, verbatim>/, n); assert.match(t, /guard/, n); }
+  assert.match(scene, /then <the output of `\{\{guard\}\}`, verbatim: `guard: OK` when you work alone/); assert.match(el, /then <the output of `\{\{guard\}\}`, verbatim: `guard: OK` when you work alone/);
+  assert.match(scene + el, /COMMITTED the scaffold/); assert.match(REF('workflow'), /\*\*The GIT line of the report\.\*\*/);
+  // reading lists: one per kind, and they agree between the skill and the briefs
+  assert.match(skill, /\| Draw a SCENE \| `references\/style-guide\.md` \(sections 1 to 10\), `references\/recipes\.md`[^|]*`references\/kit-reference\.md`, `references\/rubric\.md` part A \| `small-icons\.md`/);
+  assert.match(skill, /\| Draw a small icon or an element \| `references\/small-icons\.md` \(all\), `references\/style-guide\.md` sections 1 and 10, `references\/rubric\.md` part B \| `recipes\.md` and `kit-reference\.md`/);
+  assert.match(scene, /exactly these four references/); assert.match(scene, /a scene agent does not need `small-icons\.md`/);
+  assert.match(el, /exactly these three references/); assert.match(el, /You do NOT need `\{\{refs\}\}\/recipes\.md` or `\{\{refs\}\}\/kit-reference\.md`/); assert.doesNotMatch(el, /read all of them|all of them, with their full paths/); assert.doesNotMatch(scene, /all of them, with their full paths/);
+  assert.match(REF('small-icons'), /What an element agent reads, and nothing else/);
+  // the study step: the orchestrator renders once, the agents open the PNGs (the checklist and the briefs say the same)
+  assert.match(skill, /you OPEN the PNGs, you do not render them/); assert.match(scene, /you OPEN those PNGs, you do not render them/); assert.match(el, /you OPEN those PNGs, you do not render them/);
+  assert.doesNotMatch(skill, /`reference --render` and `reference --render --mode night`/);
+});
+
+test('care: the region\'s notes may only be STRICTER (the briefs, the doc skeleton, the workflow and the docs say so), the rotation yields to the care text, and the safe motifs are named', async () => {
+  const scene = readFileSync(join(TEMPLATES_DIR, 'scene-brief.md'), 'utf8'), el = readFileSync(join(TEMPLATES_DIR, 'element-brief.md'), 'utf8'), tpl = readFileSync(join(TEMPLATES_DIR, 'region-doc.md.tpl'), 'utf8');
+  for (const [n, t] of [['scene', scene], ['element', el], ['doc skeleton', tpl], ['workflow', REF('workflow')], ['skill', SKILL()], ['docs', readFileSync(join(ROOT, 'docs', 'dev', 'ANIMATION_PACKS.md'), 'utf8')]]) assert.match(t, /may only be STRICTER|MAY ONLY BE STRICTER/i, n);
+  assert.match(scene, /a region note that bans every figure bans that silhouette too/); assert.match(el, /a region note that bans every figure bans that silhouette too/);
+  assert.match(scene, /the care text and the place win/); assert.match(el, /the care text and the place win/); assert.match(SKILL(), /the care text and the place win/);
+  assert.match(scene + el, /Scene suggestions/);
+  for (const must of ['NAME THE SAFE MOTIFS', 'a food or a drink in a plain vessel', 'a plant or a crop', 'a real animal in its habitat that is not an emblem or a mascot', 'a tool of daily work', 'a natural feature', 'a landscape', 'a national bird used as an emblem']) assert.ok(tpl.includes(must), must);
+  assert.ok(el.includes('a food or drink in a plain vessel, a plant or crop, a real animal in its habitat that is not an emblem or a mascot'), 'the element brief names the safe kinds'); assert.match(REF('small-icons'), /Safe by default: a food or drink in a plain vessel/);
+  assert.match(tpl, /rays\(\)/); assert.match(scene, /rising-sun flag/); assert.match(REF('kit-reference'), /rising-sun ensign/);
+  // the scaffold's doc is still "skeleton" for `brief` (the comment is the placeholder), and a region that writes its own notes gets them after the general rules
+  const root = makeRoot();
+  assert.equal((await run(['new', 'cc', 'Care Land', '--root', root])).code, 0);
+  const region = findRegion(loadRegistry(root, { fresh: true }), 'cc'); assert.equal(careInfo(root, region).state, 'skeleton');
+  assert.match(readFileSync(join(root, 'docs', 'dev', 'CC_PACK.md'), 'utf8'), /THE REGION'S NOTES MAY ONLY BE STRICTER THAN THE GENERAL RULES, NEVER LOOSER/);
+  assert.doesNotMatch(readFileSync(join(ROOT, 'docs', 'dev', 'ASIA_PACK.md'), 'utf8'), /no real people/);
+});
+
+test('workflow.md documents the tooling as it is: commit before fan-out, stubs, todo until complete, overlap and travel, the --of hint, the sheet options, declare-complete before strict; and the pilot procedure is there with its pass rule and a working blinding sketch', () => {
+  const wf = REF('workflow'), skill = SKILL();
+  for (const must of ['COMMIT the scaffold and the stubs', 'git.committed: true', '`missingPng`', 'creates the empty scene file (the IIFE stub) of every batch', 'stored in `plan.json`'.replace('stored in', 'the `--note` texts stored in'), '`--of M` is the NUMBER of batches, not a size', 'the repo stays GREEN', 'complete: false', 'node:test `todo`', 'OVERLAP WITH OTHER REGIONS', '**a travel city that is not a row matches nothing at all**', 'The border case', 'REACH line', '`--still`', '`--sizes`', '`sheet --key`', '`lint --key`']) assert.ok(wf.includes(must), must);
+  assert.ok(wf.indexOf('status eu --declare-complete') < wf.indexOf('status eu --strict', wf.indexOf('status eu --declare-complete')), 'declare-complete comes before the strict run');
+  assert.match(skill, /--declare-complete` \(it refuses while anything is missing, overlapping or failing\), then `status <id> --strict` exits 0/);
+  assert.doesNotMatch(wf, /are RED until every unit|A half-built region cannot be committed|region tests stay red/, 'the old "red by design" wording is gone');
+  assert.match(skill, /A region in one paragraph/); assert.match(skill, /COMMIT the scaffold and the stubs/);
+  // the pilot procedure and its pass rule
+  const pilot = wf.split('## 18. Validating a change to the skill or the briefs')[1];
+  assert.ok(pilot, 'section 18'); assert.match(wf, /18 validating a change to the skill or the briefs/);
+  assert.match(pilot, /at least the corpus mean minus 0\.75; every pilot piece is at least the corpus mean minus 1\.0; and no pilot piece has more than ONE instant-reject vote of the three/);
+  for (const must of ['first user', 'Three fresh judges', 'crypto.randomInt', 'one fixed date', 'OUTSIDE the folder', 'pilot mean 7.06 against the corpus sample\'s 4.77', 'icons: 6.55 against 4.63', '9 of 9 and 7 of 7', '60 items']) assert.ok(pilot.includes(must), must);
+  // the blinding sketch runs: it copies the PNGs under neutral shuffled names with one modified time and writes the key outside the folder
+  const sketch = /```js\n\/\/ the blinding step[^\n]*\n([\s\S]*?)```/.exec(pilot); assert.ok(sketch, 'the sketch is in the section');
+  const dir = mkdtempSync(join(tmpdir(), 'anim-blind-')); temps.push(dir);
+  writeFileSync(join(dir, 'a.png'), 'a'); writeFileSync(join(dir, 'b.png'), 'b');
+  writeFileSync(join(dir, 'blind.mjs'), `const pieces = [{ source: 'pilot', ref: 'p/a', png: { light: ${JSON.stringify(join(dir, 'a.png'))}, night: ${JSON.stringify(join(dir, 'b.png'))} } }, { source: 'corpus', ref: 'c/b', png: { light: ${JSON.stringify(join(dir, 'b.png'))} } }];\n${sketch[1]}`);
+  const r = spawnSync(process.execPath, ['blind.mjs'], { cwd: dir, encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr);
+  const blind = readdirSync(join(dir, 'blind')).sort(); assert.equal(blind.length, 3); assert.ok(blind.every(f => /^S0[12]-(light|night)\.png$/.test(f)), blind.join(', ')); assert.ok(!blind.some(f => /pilot|corpus/.test(f)), 'no name gives the source away');
+  assert.equal(new Set(blind.map(f => statSync(join(dir, 'blind', f)).mtimeMs)).size, 1, 'one modified time for every file'); assert.equal(JSON.parse(readFileSync(join(dir, 'blind-KEY.json'), 'utf8')).length, 2);
+  assert.match(pilot, /Math\.floor\(N \/ 2\) \+ i \* N/);
+});
+
+test('the skill\'s commands for the look gate are real: sheet --still --sizes --key --at, lint --key, status --declare-complete, brief --clear-notes; and SKILL.md says what each one is for', () => {
+  const skill = SKILL(), small = REF('small-icons');
+  for (const must of ['--still', '--sizes', '--key', '--at <ms>', '--crop phone', '--crop square', '--contact']) assert.ok(skill.includes(must), must);
+  assert.match(skill, /the 28 px test is the `--sizes` strip/); assert.match(skill, /a rising `sun\(\.\.\., true\)` takes 9 s/); assert.match(small, /`--still` renders the REST frame/); assert.match(small, /That strip is the 28 px test/);
+  assert.match(REF('rubric'), /The 28 px test is the `--sizes` strip/); assert.match(REF('rubric'), /How to judge a contact sheet or a strip/); assert.match(REF('kit-reference'), /`sheet --still`/);
+  const brief = readFileSync(join(TEMPLATES_DIR, 'element-brief.md'), 'utf8'); assert.match(brief, /--still --sizes --contact --out \.anim-ref\/<name>/); assert.match(brief, /The 28 px test is the `--sizes` strip/);
 });

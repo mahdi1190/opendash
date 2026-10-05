@@ -50,15 +50,21 @@ Style and craft: `.claude/skills/animation-pack/` (SKILL.md and its references).
 ## Cultural care
 
 <!-- Region-specific care notes: write them BEFORE you make the briefs. They are appended to every scene and element brief (`node tools/anim-pack.mjs brief {{id}} ...`) after the general rules (no text, flags,
-maps or borders, no political or military symbols, no identifiable people, no holy figures, sacred architecture only respectfully, disputed places neutral). Replace this comment with
+maps or borders, no political or military symbols, no portraits, faces, crowds or identifiable people, no holy figures, sacred architecture only respectfully, disputed places neutral). Replace this comment with
 what is specific here: sensitive places and how to draw them neutrally, motifs to avoid, local conventions (seasons, dress code of a building, orientation of a sacred place)
-and anything a reviewer must check. Keep it to a short list of "Draw ..." and "Never draw ..." lines. -->
+and anything a reviewer must check. Keep it to a short list of "Draw ..." and "Never draw ..." lines.
+THE REGION'S NOTES MAY ONLY BE STRICTER THAN THE GENERAL RULES, NEVER LOOSER. The general rule ALLOWS a tiny anonymous faceless silhouette as a scale cue; if this region should have none, say it in one plain line ("No person silhouette at all, of anyone")
+rather than leaving two statements that seem to differ: the stricter one wins, in the briefs and in review. A note here never allows what a general rule forbids.
+NAME THE SAFE MOTIFS for every sensitive unit. When you forbid a people's art, patterns, carvings, masks, dress, ceremony or the obvious national animal or instrument, an element still has to be drawn: say what IS safe, one line per sensitive unit, from
+this list of kinds: a food or a drink in a plain vessel; a plant or a crop; a real animal in its habitat that is not an emblem or a mascot; a tool of daily work (a net, a paddle, a kettle); a natural feature (a reef, a cone, a waterfall); weather or the sea;
+a landscape. And say what is NOT safe (a carving, a mask, a national bird used as an emblem, an instrument tied to one people). Example: "Unit XX: safe: a coconut, a fish dish, a fern. Not safe: carvings, patterns, any mask."
+Also say whether the kit's sunburst (`rays()`) could read as a flag here (red and white rays read as a rising-sun ensign): the briefs already warn, add the place's own case. -->
 
 ## Scene suggestions
 
-<!-- Optional. The briefs suggest a time of day, season, scene type and palette (scenes) and a motif kind and colour (elements) from a fixed rotation that knows nothing about the place:
-a "bridge" for a city with none, a "craft" the care notes above forbid. Say what to use instead ONCE, here, one line per key, and every brief carries it (no agent spends a report line on
-overriding the tool). Fields: time, season (any, spring, summer, autumn, winter: the season of the picture), type, palette (scenes); motif, colour (elements; a colour is one of blue indigo violet pink red orange amber green teal slate).
+<!-- Optional. The briefs suggest a time of day, season, scene type and palette (scenes) and a motif kind and colour (elements) from a fixed rotation that knows nothing about the place or the care notes:
+a "bridge" for a city with none, a "craft" or an "instrument" the care notes above forbid, an autumn in the tropics. Say what to use instead ONCE, here, one line per key, and every brief carries it (no agent spends a report line on
+overriding the tool). Where a suggestion would still collide with the care notes, the care notes and the place win. Fields: time, season (any, spring, summer, autumn, winter: the season of the picture), type, palette (scenes); motif, colour (elements; a colour is one of blue indigo violet pink red orange amber green teal slate).
 Keys are the ones `node tools/anim-pack.mjs status {{id}}` lists ("{{unit_word}}:<CODE>" for a {{unit_word}}'s signature scene AND its element, "place:<id>" for a big or small place). Example (delete the markers to use it):
 - place:an-example-id: type = old town and river; palette = warm amber and rose
 - {{unit_word}}:XX: season = any; motif = plant; colour = green
@@ -74,9 +80,9 @@ Keys are the ones `node tools/anim-pack.mjs status {{id}}` lists ("{{unit_word}}
 
 1. `node tools/anim-pack.mjs status {{id}}` shows what is missing (no table problem, no starter row, the real `country` code when the units are not countries, no overlap with another region, the travel cities of your countries that have no row).
 2. Fill in the "Cultural care" section above. Only then make the briefs: the section is copied into each of them.
-3. **Commit the scaffold** (the config, the scene stub, the pack files, the generated test and this doc): `git add src/app/71-anim-region-{{id}}*.js src/app/72-anim-pack-{{id}}-*.js tests/{{id}}-pack.test.mjs docs/dev/{{ID}}_PACK.md && git commit -m "{{name}}: scaffold"`.
+3. `node tools/anim-pack.mjs reference --render` once (it renders light, night and dark), so that no agent renders the gold standard while another does.
+4. `node tools/anim-pack.mjs brief {{id}} --kind scene --out .anim-ref/briefs` (and `--kind element`) writes the task briefs for the agents and a `plan.json` to dispatch from; it also creates the scene file of every batch that does not exist yet and stores your `--note` texts.
+5. **Commit the scaffold and the stubs** (the config, the scene stubs, the pack files, the generated test and this doc): `git add src/app/71-anim-region-{{id}}*.js src/app/72-anim-pack-{{id}}-*.js tests/{{id}}-pack.test.mjs docs/dev/{{ID}}_PACK.md && git commit -m "{{name}}: scaffold"` (`brief` prints the exact line), then run the same `brief` command again so that `plan.json` carries the base commit.
    The repo stays green while the region is drawn (`complete: false` in the config: the coverage tests are `todo`), and `guard` needs the committed scaffold as its baseline.
-4. `node tools/anim-pack.mjs reference --render` once (it renders light, night and dark), so that no agent renders the gold standard while another does.
-5. `node tools/anim-pack.mjs brief {{id}} --kind scene --out .anim-ref/briefs` (and `--kind element`) writes the task briefs for the agents and a `plan.json` to dispatch from; it also creates the scene file of every batch that does not exist yet.
-6. Each agent draws its batch and passes the lint and the look gate (see the skill's `references/workflow.md`); the orchestrator proves with `node tools/anim-pack.mjs guard --owned <the files of ALL agents that ran in this tree>` that only those files changed (one agent alone: its own git worktree).
-7. `node tools/anim-pack.mjs status {{id}} --strict` exits 0, then `node tools/anim-pack.mjs status {{id}} --declare-complete` sets `complete: true` in the config (the coverage tests become hard failures), `npm test` is green, `node build.mjs --syntax`, `node tools/privacy-scan.mjs` is clean.
+6. Each agent draws its batch and passes the lint and the look gate (see the skill's `references/workflow.md`); each reports its `git status --short` and its `guard --owned <its file>` output; the orchestrator proves with `node tools/anim-pack.mjs guard --owned <the files of ALL agents that ran in this tree>` that only those files changed (one agent alone: its own git worktree).
+7. When everything is drawn and lint-clean: `node tools/anim-pack.mjs status {{id}} --declare-complete` sets `complete: true` in the config (the coverage tests become hard failures; it refuses while anything is missing), then `node tools/anim-pack.mjs status {{id}} --strict` exits 0, `npm test` is green, `node build.mjs --syntax`, `node tools/privacy-scan.mjs` is clean.

@@ -57,7 +57,8 @@ toolkit `usSceneKit()` / `usSceneCss()` (aliases of `animSceneKit()` / `animScen
 `animRegionSceneAdd('asia', {...})`), and
 `asiaBuilder(group).scenes()` in each pack file turns every registered scene of that group into its opening item.
 
-Cultural care: no flags, maps or borders, no political or military symbols, no real people, no lettering, no
+Cultural care: no flags, maps or borders, no political or military symbols, no portraits, faces, crowds or identifiable
+people (a tiny anonymous faceless silhouette as a scale cue is allowed, the general rule), no lettering, no
 holy figures. Sacred architecture may be drawn respectfully; disputed places stay neutral landscape or skyline.
 
 ## Adding a place, a country or a scene
