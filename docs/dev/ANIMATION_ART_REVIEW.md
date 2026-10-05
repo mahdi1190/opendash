@@ -50,8 +50,11 @@ Stanage's smooth slab now has jointed crags, scree and lit rock planes.
 Winter Garden now includes glazing divisions, timber highlights and swaying
 planted pots. Whitworth Hall has additional buttresses, tracery and entrance steps.
 The university forecourts should still feel less interchangeable. Mam Tor now has a rounded crest, a stepped ridge path, patchwork fields and
-eroded flank planes. Stanage's rock faces remain more regular than the actual
-edge; that silhouette is a priority for the next individual drawing pass.
+eroded flank planes. In the UK-priority follow-up, Stanage's two views replace
+the regular upright slabs with a receding, continuous escarpment: uneven
+buttresses, bedding cracks, clipped rock grain, grassy shoulders and fallen
+blocks. The composition was checked against
+[the National Park's Stanage guide](https://www.peakdistrict.gov.uk/visiting/places-to-visit/stanage-and-north-lees).
 
 South East findings: the first pass replaces the fixed sky/cloud/flock arrangement
 with coast, town, garden and countryside atmospheres. North Hampshire retains
@@ -69,8 +72,7 @@ the lighthouse sits against the outer stack rather than floating beyond it.
 Its rock and lighthouse arrangement was checked against
 [The Needles](https://www.theneedles.co.uk/landmarks/the-needles-rocks/) and
 [National Trust](https://www.nationaltrust.org.uk/visit/isle-of-wight/the-needles-old-battery-and-new-battery/the-history-of-the-needles-rocks-and-lighthouse).
-Remaining concerns include simplified manor and palace frontages and the
-orderly rock-face geometry. Waddesdon's parterre, bedding and fountain are guided
+Remaining concerns include simplified manor and palace frontages. Waddesdon's parterre, bedding and fountain are guided
 by [the custodian's garden history](https://waddesdon.org.uk/history/history-of-the-gardens/).
 This is an incremental art review, not a claim that the entire library is finished.
 
@@ -85,3 +87,6 @@ Source sizes remain below the 400 KB split threshold: South East main about
 Scene counts are unchanged: Hampshire 58, Kent 24, the other seven South East
 counties eight each, Greater London ten, South Yorkshire eight, Greater
 Manchester eight and Derbyshire four. No new scenes were added in this pass.
+
+Review priority: UK location scenes first. Worldwide individual redraws and
+the thousand-scene expansion stay outside the current polish pass.

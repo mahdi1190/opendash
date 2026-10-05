@@ -12,6 +12,8 @@ upgrades it.
 
 ### Changed
 
+- UK-priority art follow-up: both Stanage Edge views replace the repeated slab silhouette with a receding escarpment, irregular rock planes, bedding cracks and grounded moorland slopes.
+
 - UK animation art, first pass: stronger place palettes and different skies, horizons and ambient activity across 148 South East/London and 20 Northern scenes. North Hampshire adds heather, gorse, ferns and insects; selected landmarks gain structural detail, coastlines gain weathering and foam, and food scenes gain detailed still-life objects. The wider scene-by-scene review remains in progress.
 - US and Asia scene toolkit: varied cloud formations and bird wing poses replace repeated outlines across the existing 229 full-screen scenes.
 
