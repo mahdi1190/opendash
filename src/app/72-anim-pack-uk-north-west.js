@@ -1,5 +1,6 @@
 /* UK: Northern cities and the Peaks. Twenty full-screen place studies.
-   The Hampshire toolkit is copied unchanged, with a separate SVG id prefix.
+   The Hampshire toolkit supplies primitives, with a separate SVG id prefix.
+   Each place has its own atmosphere, streetscape and ambient choreography.
    Eight Sheffield, eight Manchester and four Peak District views. */
 (function () {
   const items = [];
@@ -39,13 +40,14 @@
   const radU = (id, a, cx, cy, r) => `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="${r}">${stops(a)}</radialGradient>`;
   /** A soft cumulus: a flat, shaded base and lit puffs on top, drifting. */
   const cloud = (x, y, s, tone, op, dur, del, top) => {
-    const g = U(), r = rnd(R(x * 7 + y)); let puffsD = '';
-    for (let i = 0; i < 6; i++) { const px = x - 120 * s + i * 48 * s + r() * 20 * s, pr = (34 + r() * 40) * s * (i === 2 || i === 3 ? 1.35 : 1); puffsD += `<circle cx="${R(px)}" cy="${R(y - pr * 0.55)}" r="${R(pr)}"/>`; }
+    const g = U(), r = rnd(R(x * 7 + y)), shape = Math.abs(Math.round(x+y+(del||0)))%3; let puffsD = '';
+    // Broad banks, tall cumulus and broken small puffs have different profiles.
+    // The original light and drift supplied by each drawing remain authoritative.
+    const n=shape===2?4:6, stretch=shape===0?1.4:shape===1?.78:1;
+    for (let i = 0; i < n; i++) { const px=x+(-120+i*240/(n-1)+r()*20)*s*stretch, pr=(25+r()*43)*s*(shape===1&&i===2?1.85:1); puffsD+=`<ellipse cx="${R(px)}" cy="${R(y-pr*(shape===0?.3:.63))}" rx="${R(pr*(shape===0?1.6:1))}" ry="${R(pr*(shape===0?.58:1))}"/>`; }
     return `<defs>${linU(g, [[0, top || '#fff'], [0.55, top || '#fff'], [1, tone]], 0, R(y - 110 * s), 0, R(y + 24 * s))}</defs>`
-      + mv('ukdrift', { ad: (dur || 46) + 's', d: -(del || 0) + 's', dx: R(60 + s * 40) + 'px' },
-        `<g opacity="${op || 0.92}" fill="url(#${g})"><ellipse cx="${x}" cy="${y}" rx="${R(170 * s)}" ry="${R(26 * s)}"/>${puffsD}</g>`);
+      + mv('ukdrift', { ad: (dur || 46) + 's', d: -(del || 0) + 's', dx: R(60 + s * 40) + 'px' }, `<g opacity="${op || 0.92}" fill="url(#${g})"><ellipse cx="${x}" cy="${y}" rx="${R((shape===0?230:shape===1?134:170)*s)}" ry="${R(19*s)}"/>${puffsD}</g>`);
   };
-  /** A thin high streak of cloud. */
   const streak = (x, y, w, col, op, dur) => mv('ukdrift', { ad: (dur || 60) + 's', dx: '90px' }, `<ellipse cx="${x}" cy="${y}" rx="${w}" ry="${R(w / 22) + 3}" fill="${col}" opacity="${op || 0.5}"/><ellipse cx="${R(x + w * 0.3)}" cy="${y + 10}" rx="${R(w * 0.6)}" ry="${R(w / 30) + 2}" fill="${col}" opacity="${(op || 0.5) * 0.7}"/>`);
   /** Long soft rays from the sun, turning slowly. */
   const rays = (x, y, len, col, op) => { const g = U(); let d = ''; const r = rnd(R(x + y)); for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2 + r() * 0.3, b = a + 0.025 + r() * 0.07; d += `M${x} ${y}L${R(x + Math.cos(a) * len)} ${R(y + Math.sin(a) * len)}L${R(x + Math.cos(b) * len)} ${R(y + Math.sin(b) * len)}z`; }
@@ -59,13 +61,13 @@
     const r = rnd(seed); let o = '';
     for (let i = 0; i < n; i++) {
       const s = (size || 1) * (0.7 + r() * 0.6), bx = R(x + r() * 260 - 130), by = R(y + r() * 120 - 60);
+      const pose=(seed+i)%3, wing=pose===0?`M${bx-R(20*s)} ${by-R(5*s)}q${R(10*s)} ${-R(15*s)} ${R(20*s)} ${R(5*s)}q${R(10*s)} ${-R(20*s)} ${R(22*s)} ${-R(4*s)}`:pose===1?`M${bx-R(23*s)} ${by-R(8*s)}l${R(18*s)} ${R(9*s)}q${R(6*s)} ${R(4*s)} ${R(13*s)} 0l${R(17*s)} ${-R(12*s)}`:`M${bx-R(25*s)} ${by+R(2*s)}q${R(14*s)} ${-R(8*s)} ${R(25*s)} 0q${R(12*s)} ${-R(11*s)} ${R(26*s)} ${-R(3*s)}`;
       o += mv('ukglide', { ad: R(16 + r() * 10) + 's', d: -R(r() * 14) + 's', dx: (dx || 520) + 'px', dy: R(-40 + r() * 60) + 'px' },
         mv('ukflap', { ad: (0.5 + r() * 0.4).toFixed(2) + 's', d: -(r()).toFixed(2) + 's' },
-          `<path fill="none" stroke="${col}" stroke-width="${(3.2 * s).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round" d="M${bx - R(18 * s)} ${by}q${R(9 * s)} ${-R(10 * s)} ${R(18 * s)} 0q${R(9 * s)} ${-R(10 * s)} ${R(18 * s)} 0"/>`));
+          `<path fill="none" stroke="${col}" stroke-width="${(2.7*s).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round" d="${wing}M${bx} ${by-2}l${R(2*s)} ${R(6*s)}"/>`));
     }
     return o;
   };
-  /** Glints on water. */
   const shimmer = (seed, n, x0, x1, y0, y1, col, w) => {
     const r = rnd(seed); let o = '';
     for (let i = 0; i < n; i++) {
@@ -101,11 +103,19 @@
   /** A broad oak: trunk, limbs and a crown of lit and shaded clumps that sway. */
   const oak = (x, y, s, dark, mid, lite, seed) => {
     const r = rnd(seed || 7), h = 300 * s;
-    let crown = '';
-    for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI, cx = R(x + Math.cos(a) * 170 * s * (0.7 + r() * 0.4)), cy = R(y - h + 40 * s - Math.sin(a) * 110 * s); crown += `<circle cx="${cx}" cy="${cy}" r="${R((70 + r() * 40) * s)}" fill="${dark}"/>`; }
-    crown += `<circle cx="${x}" cy="${R(y - h - 20 * s)}" r="${R(120 * s)}" fill="${dark}"/>`;
-    for (let i = 0; i < 7; i++) crown += `<circle cx="${R(x - 120 * s + r() * 200 * s)}" cy="${R(y - h - 70 * s + r() * 120 * s)}" r="${R((40 + r() * 34) * s)}" fill="${mid}"/>`;
-    for (let i = 0; i < 5; i++) crown += `<circle cx="${R(x - 60 * s + r() * 170 * s)}" cy="${R(y - h - 90 * s + r() * 60 * s)}" r="${R((22 + r() * 20) * s)}" fill="${lite}"/>`;
+    const patch = (cx,cy,rx,ry,n) => {
+      const points=Array.from({length:n},(_,i)=>{const a=i/n*Math.PI*2,k=.72+r()*.5;return [R(cx+Math.cos(a)*rx*k),R(cy+Math.sin(a)*ry*k)];});
+      let d=`M${R((points[0][0]+points[n-1][0])/2)} ${R((points[0][1]+points[n-1][1])/2)}`;
+      for(let i=0;i<n;i++){const q=points[(i+1)%n];d+=`Q${points[i][0]} ${points[i][1]} ${R((points[i][0]+q[0])/2)} ${R((points[i][1]+q[1])/2)}`;}
+      return d+'z';
+    };
+    const width=(230+r()*40)*s, cy=y-h-8*s;
+    const depth=U();
+    let crown=`<defs>${linU(depth,[[0,mid],[.7,dark]],x-width,cy-100*s,x+width,cy+140*s)}</defs><path fill="url(#${depth})" d="${patch(x,cy,width,158*s,20)}"/>`,middle='',lights='',leaves='';
+    for(let i=0;i<3;i++){const xx=x+(i-1)*100*s+(r()-.5)*35*s,yy=cy+(-55+r()*95)*s;middle+=patch(xx,yy,(60+r()*30)*s,(55+r()*28)*s,7);}
+    for(let i=0;i<2;i++){const xx=x+(-150+r()*265)*s,yy=cy-(40+r()*60)*s;lights+=patch(xx,yy,(30+r()*17)*s,(20+r()*14)*s,6);}
+    for(let i=0;i<8;i++){const xx=R(x+(-160+r()*320)*s),yy=R(cy+(-96+r()*130)*s);leaves+=`M${xx} ${yy}q${R(8*s)} ${R(-5*s)} ${R(15*s)} 0`;}
+    crown+=`<path fill="${mid}" opacity=".65" d="${middle}"/><path fill="${lite}" opacity=".55" d="${lights}"/><path fill="none" stroke="${lite}" opacity=".45" stroke-width="${R(3*s)+1}" d="${leaves}"/>`;
     return `<path fill="#3d2e22" d="M${R(x - 22 * s)} ${y}C${R(x - 14 * s)} ${R(y - 90 * s)} ${R(x - 16 * s)} ${R(y - 160 * s)} ${R(x - 60 * s)} ${R(y - h + 20 * s)}L${R(x - 44 * s)} ${R(y - h + 10 * s)}C${R(x - 10 * s)} ${R(y - 190 * s)} ${R(x + 4 * s)} ${R(y - 200 * s)} ${R(x + 50 * s)} ${R(y - h + 30 * s)}L${R(x + 62 * s)} ${R(y - h + 44 * s)}C${R(x + 22 * s)} ${R(y - 170 * s)} ${R(x + 16 * s)} ${R(y - 90 * s)} ${R(x + 26 * s)} ${y}z"/>`
       + `<g class="x-uksway2 o-b" style="--ad:7s">${crown}</g>`;
   };
@@ -151,34 +161,6 @@
     return `<defs><clipPath id="${id}"><path d="${d}"/></clipPath>${linU(light, [[0, '#faf3df'], [.55, '#e3e0d0'], [1, '#a8b9b3']], 0, 400, 1600, 790)}</defs><path fill="url(#${light})" d="${d}"/><g clip-path="url(#${id})"><path fill="none" stroke="#aab7aa" stroke-width="3" opacity=".45" d="${seams}"/><path fill="none" stroke="#c4c3b2" stroke-width="5" opacity=".5" d="M-160 570Q650 530 1760 615M-160 644Q700 580 1760 697"/></g>`;
   };
   const lawn = y => `<path fill="#bed397" opacity=".16" d="${Array.from({ length: 9 }, (_, i) => { const x = -400 + i * 280; return `M${x} 900L${600 + i * 44} ${y}h26L${x + 140} 900z`; }).join('')}"/><path fill="#263e34" opacity=".12" d="M300 ${y + 4}h960l94 55H220z"/>`;
-  /** A travel-poster frame: painted light, three independent depth bands,
-      clouds, birds and swaying grass (plus water when appropriate).
-      The subject callback returns markup; finish() is always last. */
-  const vista = (seed, subject, o = {}) => {
-    const sky = U(), floor = U(), wash = U(), stone = U(), masonry = U(), roof = U();
-    const warm = o.time === 'dawn' || o.time === 'dusk', autumn = o.autumn;
-    const sk = warm ? [[0, '#49598c'], [.35, '#b294b4'], [.7, '#f2b599'], [1, '#ffe6b4']] : [[0, '#648fb9'], [.5, '#bfd7df'], [1, '#f2ecd6']];
-    const water = o.water, y = o.y || 680;
-    const palette = { stone: `url(#${masonry})`, shade: warm ? '#95785f' : '#a59980', roof: `url(#${roof})`, green: autumn ? '#a29047' : '#617d45' };
-    const ground = water ? [[0, warm ? '#ab9ea9' : '#80b5bd'], [1, warm ? '#344968' : '#2d6378']] : [[0, autumn ? '#a8aa65' : '#94a768'], [1, autumn ? '#6c6641' : '#405c38']];
-    return `<g${o.time === 'dusk' ? ' class="hx-evening"' : ''}><defs>${lin(sky, sk)}${linU(floor, ground, 0, y, 0, 900)}${radU(wash, [[0, '#fff2c5', .26], [1, '#fff2c5', 0]], warm ? 1130 : 350, warm ? 480 : 180, 900)}${linU(stone, [[0, warm ? '#e6c298' : '#f0e3c8'], [.45, warm ? '#d1ac87' : '#ddd0b3'], [1, warm ? '#ba9876' : '#b9b096']], 200, 160, 1320, 750)}${linU(roof, [[0, '#6c797b'], [1, '#46505b']], 200, 250, 1400, 650)}<pattern id="${masonry}" width="64" height="28" patternUnits="userSpaceOnUse"><rect width="64" height="28" fill="url(#${stone})"/><path fill="none" stroke="#746956" stroke-width="1" opacity=".14" d="M0 0H64M0 14H64M0 28H64M32 0v14M12 14v14M56 14v14"/></pattern></defs>`
-      + full(`url(#${sky})`) + stars(seed, 32, 280)
-      + sun(warm ? 1130 : 350, warm ? 465 : 180, warm ? 55 : 38, '#fff4d8', '#ffdfa0')
-      + rays(warm ? 1130 : 350, warm ? 465 : 180, 1000, '#fff1c4', .13)
-      + cloud(250, warm ? 215 : 160, 1.18, warm ? '#d4a6aa' : '#c7d5df', .8, 56, 9)
-      + cloud(1330, 150, 1.35, warm ? '#d4a6aa' : '#c7d5df', .84, 67, 21)
-      + streak(820, 84, 310, '#f8eeeb', .45, 75)
-      + mv('ukpar', { ad: '44s', dx: '7px' }, o.coast ? `<path fill="${warm ? '#b6a4ad' : '#9bbec5'}" d="M-160 ${y - 16}H1760V900H-160z"/>${haze(y - 48, 70, '#f5e7d0', .25)}` : ridge(warm ? '#a291aa' : '#a3b5b2', 510, o.flat ? 14 : 100, 7, seed) + haze(460, 150, '#f5e7d0', .45))
-      + mv('ukpar', { ad: '37s', dx: '15px' }, o.coast ? `<path fill="#7a959d" opacity=".6" d="M1410 ${y - 18}h65l-10 7h-48zM1440 ${y - 18}v-9h15v9z"/>` : canopy(warm ? '#6e7b83' : '#708b79', 585, 33, seed + 1, null, null, 760, '#a4b195'))
-      + `<rect x="-160" y="${y}" width="1920" height="${900 - y}" fill="url(#${floor})"/>`
-      + (o.lawn ? lawn(y) : '')
-      + mv('ukpar', { ad: '32s', dx: '23px' }, subject(palette))
-      + (water ? shimmer(seed + 8, 48, -100, 1740, y + 15, 895, warm ? '#ffe3be' : '#d5eef0', 55) : o.path === false ? '' : `<path fill="#d8ccb0" d="M650 900Q770 770 960 ${y}h25Q820 795 820 900z"/>`)
-      + birds(seed + 5, 5, 740, 230, '#394452', 1, 370)
-      + mv('ukpar', { ad: '27s', dx: '34px' }, water || o.edgeNear ? `<path fill="#a9987b" d="M-160 900v-28Q120 802 380 900zM1300 900q250-85 460-50v50z"/>${grass(seed + 6, 30, -160, 280, 900, 85, '#64714a')}${grass(seed + 7, 30, 1370, 1760, 900, 65, '#4a6347')}` : ridge(autumn ? '#71663e' : '#405b33', 900, 25, 8, seed + 3) + grass(seed + 6, 65, -160, 1760, 900, 48, '#3c5833') + meadow(seed + 7, 18, -160, 1760, 850, 900, autumn ? ['#eac277', '#eee0b9'] : ['#f8edcc', '#d3b75e']))
-      + `<rect width="1600" height="900" fill="url(#${wash})"/>` + finish() + '</g>';
-  };
-
   /* Sheffield (south-yorkshire): the Diamond's aluminium lattice, Arts Tower's
      slender curtain wall, Winter Garden's timber ribs and Kelham's foundry heritage.
      https://sheffield.ac.uk/library/buildings/diamond
@@ -196,12 +178,21 @@
      https://www.peakdistrict.gov.uk/visiting/places-to-visit/stanage-and-north-lees
      https://www.peakdistrict.gov.uk/visiting/miles-without-stiles/mam-tor-landslip
      The two Peak anchors are approximate public landscape centres, not visitor positions. */
-  const stoneWindow = (x,y,w,h) => arch(x,y,w,h,'#dfcaaa');
+  const stoneWindow = (x,y,w,h) => {
+    const glass=U(), shape=`M${x} ${y+h}V${y+w*.65}Q${x+w*.08} ${y+w*.17} ${x+w/2} ${y}Q${x+w*.92} ${y+w*.17} ${x+w} ${y+w*.65}V${y+h}z`;
+    let mullions=''; const n=w>100?4:2;
+    for(let i=1;i<n;i++){const xx=x+w*i/n;mullions+=`M${xx} ${y+h}V${y+w*.7}q${w/n*.25}-${w*.18} ${w/n*.5}-${w*.2}`;}
+    return `<defs>${linU(glass,[[0,'#7eb5c5'],[.4,'#365e78'],[1,'#263c55']],x,y,x+w,y+h)}</defs><path fill="url(#${glass})" stroke="#e4c6a0" stroke-width="${w>100?8:4}" d="${shape}"/><path class="hx-lit" d="${shape}"/><path fill="none" stroke="#cfb188" stroke-width="${w>100?4:2}" d="${mullions}M${x} ${y+h*.6}h${w}"/>${w>100?`<g fill="none" stroke="#e0be96" stroke-width="4"><circle cx="${x+w/2}" cy="${y+w*.45}" r="${w*.18}"/><path d="M${x+w*.35} ${y+w*.45}q${w*.15}-${w*.16} ${w*.3} 0q-${w*.15} ${w*.16}-${w*.3} 0"/></g>`:''}`;
+  };
+  const stoneWall = (d,colour,shade) => {
+    const light=U(), blocks=U();
+    return `<defs>${linU(light,[[0,colour],[1,shade]],350,200,1250,740)}<pattern id="${blocks}" width="66" height="32" patternUnits="userSpaceOnUse"><path fill="none" stroke="#edd2b2" stroke-width="1" opacity=".28" d="M0 0H66M0 16H66M0 32H66M33 0v16M12 16v16M56 16v16"/><path fill="#563f42" opacity=".1" d="M0 1h31v13H0zM34 17h20v13H34z"/></pattern></defs><path fill="url(#${light})" d="${d}"/><path fill="url(#${blocks})" d="${d}"/>`;
+  };
   const paving = () => `<path fill="#bdb5a3" d="M-160 738H1760V900H-160z"/><path stroke="#e1d5bd" stroke-width="3" opacity=".7" fill="none" d="M-160 815H1760M-160 865H1760M100 900l330-162M490 900l143-162M960 900l-42-162M1390 900l-274-162"/>`;
-  const streetTree = (x,y,k,seed) => oak(x,y,k,'#365746','#62846a','#a3b584',seed);
+  const streetTree = (x,y,k,seed) => oak(x,y,k,'#164e48','#38865b','#a9c861',seed);
   const glazed = (x,y,w,h,cols,rows) => {
     const grid=U(), glass=U(), dx=w/cols, dy=h/rows;
-    return `<defs>${linU(glass,[[0,'#b8cfd0'],[.48,'#5f8593'],[1,'#b7b8a5']],x,y,x+w,y+h)}<pattern id="${grid}" width="${dx}" height="${dy}" patternUnits="userSpaceOnUse"><path d="M0 0H${dx}V${dy}" fill="none" stroke="#d8dcd1" stroke-width="3"/></pattern></defs><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${glass})"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${grid})"/>${Array.from({length:9},(_,i)=>lit(x+8+(i*3%cols)*dx,y+8+(i*7%rows)*dy,Math.max(8,dx-16),Math.max(8,dy-14))).join('')}`;
+    return `<defs>${linU(glass,[[0,'#cdf3ed'],[.32,'#46a8b2'],[.65,'#357c99'],[1,'#e3c69c']],x,y,x+w,y+h)}<pattern id="${grid}" width="${dx}" height="${dy}" patternUnits="userSpaceOnUse"><path d="M0 0H${dx}V${dy}" fill="none" stroke="#d8e9df" stroke-width="3"/></pattern></defs><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${glass})"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${grid})"/>${Array.from({length:9},(_,i)=>lit(x+8+(i*3%cols)*dx,y+8+(i*7%rows)*dy,Math.max(8,dx-16),Math.max(8,dy-14))).join('')}`;
   };
   const diamond = detail => {
     let lattice=''; const clip=U();
@@ -218,23 +209,46 @@
   };
   const winterGarden = close => {
     let ribs='';for(let i=0;i<9;i++){const x=450+i*76; ribs+=`<path d="M${x} 721V553q0-189 93-224 93 35 93 224v168"/>`;}
+    let glazing='',pots='';
+    for(let i=0;i<16;i++)glazing+=`M${473+i*48} 715V${i<2||i>13?490:380}`;
+    for(let i=0;i<5;i++){const x=530+i*139;pots+=`<path fill="#b78668" d="M${x-24} 712l6 25h36l6-25z"/>`+mv('uksway2',{ad:`${5+i*.4}s`,d:`-${i}s`,to:`${x}px 714px`},`<path fill="#368a6c" d="M${x} 714q-60-34-39-77 31 17 39 77-4-98 30-104 19 39-30 104 36-70 57-40 8 28-57 40z"/>`);}
     let palms='';for(let i=0;i<6;i++){const x=515+i*116,y=694;palms+=`<path stroke="#74674a" stroke-width="9" d="M${x} ${y}q-10-55 3-112"/><path fill="#527454" d="M${x} ${y-112}q-68-89-102-5 64-25 102 5-42-127 42-140-23 70-42 140 83-115 125-42-78 0-125 42z"/>`;}
-    return paving()+`<g${close?' transform="translate(-255 -82) scale(1.2)"':''}><path fill="#8faeaa" opacity=".78" d="M450 725V553q0-189 93-224h608q93 35 93 224v172z"/>${palms}<g fill="none" stroke="#b89b74" stroke-width="12">${ribs}</g><path stroke="#d5dccb" stroke-width="3" fill="none" d="M450 552h794M450 628h794M491 403h718"/></g>${streetTree(close?1330:279,858,.77,5051)}`;
+    return paving()+`<g${close?' transform="translate(-255 -82) scale(1.2)"':''}><path fill="#73bfc2" opacity=".78" d="M450 725V553q0-189 93-224h608q93 35 93 224v172z"/><path fill="#d7f5e9" opacity=".2" d="M480 580l150-235h49L530 718h-50zM890 722l151-377h65L968 722z"/>${palms}${pots}<path fill="none" stroke="#d2ece2" stroke-width="2" opacity=".55" d="${glazing}"/><g fill="none" stroke="#d2ac7b" stroke-width="12">${ribs}</g><g fill="none" stroke="#805e48" stroke-width="3">${ribs}</g><path stroke="#d5dccb" stroke-width="3" fill="none" d="M450 552h794M450 628h794M491 403h718"/><path fill="#cfbda0" d="M440 722h816v15H440z"/></g>${streetTree(close?1330:279,858,.77,5051)}`;
   };
   const kelham = close => {
-    let windows='';for(let i=0;i<9;i++)windows+=stoneWindow(465+i*71,579,34,91);
+    let windows='';for(let i=0;i<9;i++)windows+=arch(465+i*71,579,34,91,'#dfcaaa');
     const converter=`<path fill="#48565a" d="M1085 720l20-142h71l30 142z"/><path fill="#667578" d="M1081 582q-33-40 0-103l30-38-7-58h57l-5 61 36 41q23 64-14 97z"/><path fill="none" stroke="#a8aea2" stroke-width="9" d="M1080 550h107M1098 490h79"/><path fill="#48565a" d="M1072 384l51-33h65l-31 33z"/>`;
     return paving()+`<path fill="#ae795e" d="M400 730V542h758v188z"/><path fill="#645d55" d="M374 546l100-100h590l112 100z"/><path fill="#936e56" d="M442 540V258h41v282z"/><path fill="#c39b77" d="M435 253h56v14h-56z"/>${windows}${close?`<g transform="translate(-460 -165) scale(1.3)">${converter}</g>`:converter}${streetTree(260,851,.71,5062)}`;
   };
   const whitworthHall = close => {
     let bays='';for(let i=0;i<5;i++)bays+=stoneWindow(810+i*71,562,42,110);
     const face=`<path fill="#bc9d76" d="M390 724V382l187-165 184 165v342zM756 723V488h440v235z"/><path fill="#58676b" d="M371 391l206-190 205 190-20 7-185-167-185 167zM756 488l72-93h280l96 93z"/><path fill="#e0c5a0" d="M389 709h816v20H389z"/>${stoneWindow(462,374,226,237)}<path fill="#e0c5a0" d="M555 611v-244h12v244zM611 611V367h12v244z"/>${bays}<path fill="#ad9271" d="M352 724V412h46v312zM747 724V413h36v311z"/><path fill="#ddc39b" d="M346 412l29-68 29 68zM740 413l27-64 25 64z"/><path fill="#455452" d="M524 724v-81q55-69 109 0v81z"/>`;
-    return paving()+(close?`<g transform="translate(-75 -87) scale(1.12)">${face}</g>`:face)+streetTree(close?1280:275,849,.72,5073);
+    let detail='';
+    for(const x of [409,725])detail+=`<path fill="#d9be94" d="M${x} 719V414h15v305z"/><path fill="#8e765e" d="M${x+15} 414l12 18v287h-12z"/><path fill="#e3caa3" d="M${x-3} 426h26v8h-26zM${x-3} 568h26v8h-26z"/>`;
+    for(let i=0;i<5;i++)detail+=`<path fill="#d9be94" d="M${790+i*78} 718V525h9v193z"/><path stroke="#e6d0ab" stroke-width="4" d="M${790+i*78} 506l4-28 5 28"/>`;
+    detail+=`<path fill="none" stroke="#dec49c" stroke-width="4" d="M396 398l181-164 180 164M409 638h94M650 638h90M793 697h381M512 724v-91q64-96 132 0v91"/><path fill="#bfaa87" d="M507 724h141l24 14H484z"/><path fill="#d8c4a2" d="M484 738h188l24 14H460z"/>`;
+    return paving()+(close?`<g transform="translate(-75 -87) scale(1.12)">${face}${detail}</g>`:face+detail)+streetTree(close?1280:275,849,.72,5073);
   };
   const rylands = close => {
-    let lancets='';for(let i=0;i<5;i++)lancets+=stoneWindow(633+i*69,508,38,126);
-    const face=`<path fill="#a78170" d="M458 737V339h106v398zM1020 737V339h106v398zM564 737V415h456v322z"/><path fill="#be9a7d" d="M446 350v-22l63-110 68 110v22zM1006 350v-22l68-110 67 110v22z"/><path fill="#d3b093" d="M568 419l224-178 224 178z"/><path fill="#b28b70" d="M588 421h408v58H588z"/>${lancets}${stoneWindow(481,384,62,188)}${stoneWindow(1041,384,62,188)}<path fill="#5d5e5b" d="M727 737v-83q64-88 130 0v83z"/><circle cx="792" cy="362" r="39" fill="#637984"/><path stroke="#d7bb9b" stroke-width="7" d="M753 362h78M792 323v78M765 335l54 54M765 389l54-54"/><path fill="none" stroke="#d2b295" stroke-width="8" d="M454 604h115M1014 604h117M584 485h416M575 642h435"/>`;
-    return paving()+(close?`<g transform="translate(-213 -62) scale(1.18)">${face}</g>`:face)+streetTree(close?1320:270,858,.65,5090);
+    // Deansgate corner: a tall reading-room gable and traceried oriel bays,
+    // octagonal turrets and open parapets. No invented rose window or roofs.
+    let tracery='',rail='';
+    for(let i=0;i<10;i++)rail+=`M${758+i*38} 371v-39q14-26 28 0v39`;
+    for(const x of [762,1012]){
+      tracery+=stoneWall(`M${x} 605V405l21-20h119l20 20v200l-27 24h-111z`,'#cd9979','#81585c');
+      for(let i=0;i<3;i++)tracery+=stoneWindow(x+19+i*43,422,32,135);
+      tracery+=`<path fill="#714e55" d="M${x-8} 610h176v13h-176z"/><path fill="#ac765e" d="M${x+22} 623l53 49 51-49z"/>`;
+    }
+    const face=stoneWall('M412 744V292l159-145 157 145v452zM728 744V356l474 72v316z','#c09173','#8e6268')
+      +`<path fill="none" stroke="#e3b78b" stroke-width="9" d="M407 297l164-151 160 150M728 365l474 70M408 744h794"/>`
+      +stoneWindow(490,292,162,287)+stoneWindow(510,627,123,117)
+      +stoneWall('M394 744V228l22-20 23 20v516zM701 744V230l22-20 24 20v514z','#c39270','#77535d')
+      +`<path fill="#d1a281" d="M390 231v-24h11v12h11v-12h12v12h12v-12h11v24zM696 230v-24h12v12h12v-12h12v12h12v-12h10v24z"/>`
+      +tracery+`<g fill="none" stroke="#bc9278" stroke-width="5">${rail}</g><path stroke="#705660" stroke-width="8" d="M747 374l453 61"/>`
+      +stoneWindow(793,680,94,64)+stoneWindow(1043,680,94,64)
+      +`<path fill="#3e3843" d="M938 744v-99q35-62 70 0v99z"/><path fill="none" stroke="#dab08b" stroke-width="5" d="M927 744v-108q46-86 92 0v108"/><path fill="#946c66" d="M757 744v-91h19v91zM1157 744V462h19v282z"/>`
+      +Array.from({length:12},(_,i)=>`<path stroke="#6d535a" stroke-width="4" d="M${421+i*63} 780v-31"/>`).join('')+`<path stroke="#82616a" stroke-width="5" d="M414 760h763"/>`;
+    return paving()+(close?`<g transform="translate(-355 -96) scale(1.25)">${face}</g>`:face);
   };
   const whitworthGallery = dusk => {
     let panes='';for(let i=0;i<12;i++)panes+=`M${540+i*55} 484v202`;
@@ -246,12 +260,71 @@
   };
   const stanage = detail => {
     let strata='';for(let i=0;i<5;i++)strata+=`M${400+i*55} ${578+i*33}q385-32 780 17`;
+    const r=rnd(5160);let crags='';
+    for(let i=0;i<15;i++){
+      const x=390+i*67,y=505+Math.sin(i*.65)*23+r()*26,h=91+r()*117,w=62+r()*51;
+      crags+=`<path fill="${['#ac987a','#8c806b','#b3a084'][i%3]}" stroke="#756d60" stroke-width="2" d="M${R(x)} ${R(y)}l${R(w*.8)}-14 ${R(w*.2)} 37-${R(w*.15)} ${R(h)}-${R(w*.7)} 12-18-${R(h*.66)}z"/><path fill="#d6c199" d="M${R(x)} ${R(y)}l${R(w*.8)}-14 ${R(w*.2)} 17-${R(w*.74)} 13z"/><path fill="none" stroke="#655d54" stroke-width="2" d="M${R(x+12)} ${R(y+54)}l${R(w*.7)}-11M${R(x+w*.7)} ${R(y+18)}l-6 ${R(h*.5)} 11 27"/>`;
+    }
     const mill=`<ellipse cx="532" cy="842" rx="125" ry="28" fill="#495744" opacity=".25"/><path fill="#9c9b84" fill-rule="evenodd" d="M630 760a99 99 0 1 0-198 0 99 99 0 1 0 198 0M550 760a19 19 0 1 1-38 0 19 19 0 1 1 38 0"/><path fill="none" stroke="#c9c0a2" stroke-width="5" d="M449 734q17-74 94-59"/>`;
-    return ridge('#839376',640,91,5,5151)+`<path fill="#969274" d="M370 802l56-265 209-30 30-32 312 23 108 38 313 4-44 91-123 7-47 83-269-6-22 85z"/><path fill="#bcb396" d="M426 537l209-30 30-32 312 23 108 38 313 4-30 29-302-8-97-31-308-22-25 32-212 31z"/><path fill="none" stroke="#736f59" stroke-width="8" d="${strata}"/><path fill="#7b8359" d="M-160 900V792q611-104 1920 34v74z"/>${detail?mill:grass(5154,55,40,1500,894,83,'#727447')}${detail?grass(5156,32,920,1600,900,65,'#727447'):`<g transform="translate(290 334) scale(.58)">${mill}</g>`}`;
+    const edge=`<path fill="#796f63" d="M370 802l56-265 209-30 30-32 312 23 108 38 313 4-44 91-123 7-47 83-269-6-22 85z"/><path fill="#b9a583" d="M426 537l209-30 30-32 312 23 108 38 313 4-30 29-302-8-97-31-308-22-25 32-212 31z"/><path fill="none" stroke="#736f59" stroke-width="5" d="${strata}"/>${crags}`;
+    let scree='';for(let i=0;i<30;i++){const x=R(350+r()*1080),y=R(747+r()*71),w=R(7+r()*26);scree+=`<path fill="${i%2?'#b3a188':'#786f65'}" d="M${x} ${y}l${w*.4}-${w*.6} ${w*.6} ${w*.2} 5 ${w*.5}z"/>`;}
+    return ridge('#789b86',640,91,5,5151)+`<path fill="#9aa766" d="M-160 900V731q940-70 1920 90v79z"/>`+(detail?`<g transform="translate(-100 -31) scale(1.08)">${edge}</g>`:edge)+scree+`<path fill="#628252" d="M-160 900V826q611-54 1920 40v34z"/>${detail?mill:grass(5154,55,40,1500,894,83,'#99943e')}${detail?grass(5156,32,920,1600,900,65,'#9a9144'):`<g transform="translate(290 334) scale(.58)">${mill}</g>`}`;
   };
   const mamTor = detail => {
     let stones='';for(let i=0;i<13;i++){const y=651+i*19,x=917-(i*i*1.65),w=15+i*4;stones+=`M${x} ${y}l${w} 4-4 9-${w} -3z`;}
-    return ridge('#859895',594,89,6,5171)+ridge('#6d8775',694,95,5,5172)+`<path fill="#9a9f69" d="M-160 900V793Q391 647 730 658L971 497l187 138 602 122V900z"/><path fill="#89906b" d="M971 497l187 138 602 122v143H994l-129-90 79-109z"/><path fill="#c3bda0" d="M667 900Q763 765 939 651l32-154 13 9-27 161Q821 782 801 900z"/><path fill="#969989" stroke="#ded5b7" stroke-width="2" d="${stones}"/><path stroke="#5f7159" stroke-width="3" fill="none" d="M800 860l65-129 65-69"/>${detail?`<path fill="#99917a" d="M240 876l52-94 63-13 75 39-9 69z"/><path fill="#c1b99a" d="M292 782l63-13 75 39-90 7z"/>${grass(5179,30,50,610,900,113,'#807d4d')}`:meadow(5181,23,40,540,817,893,['#d3bd83','#b5b798'])}`;
+    let fields='';for(let i=0;i<14;i++){const x=-160+i*140,y=661+(i%3)*17;fields+=`<path fill="${['#78a278','#a1b569','#5a927d','#c0bd79'][i%4]}" opacity=".75" d="M${x} ${y}l108-15 67 28-138 25z"/><path stroke="#537b71" stroke-width="2" fill="none" d="M${x} ${y}l108-15 67 28"/>`;}
+    return ridge('#6995ae',594,89,6,5171)+ridge('#528c86',694,95,5,5172)+fields+`<path fill="#a2b866" d="M-160 900V793Q391 647 730 658C803 637 847 552 906 526Q949 511 980 520C1025 560 1097 618 1158 635L1760 757V900z"/><path fill="#548575" d="M980 520C1025 560 1097 618 1158 635L1760 757v143H994l-129-90 79-109z"/><path fill="#8b9d6c" d="M1014 565q62 45 95 111l-46-14-26-40-32-14zM1109 676q61 48 107 55l-65 9-34-30-40-21z"/><path fill="none" stroke="#b2c785" opacity=".6" stroke-width="7" d="M1030 589q62 83 399 158M1035 651q21 81 347 148M992 729q106 101 340 114"/><path fill="#e0c791" d="M667 900Q763 765 939 651l32-131 13 9-27 138Q821 782 801 900z"/><path fill="#969989" stroke="#ded5b7" stroke-width="2" d="${stones}"/><path stroke="#5f7159" stroke-width="3" fill="none" d="M800 860l65-129 65-69"/>${detail?`<path fill="#99917a" d="M240 876l52-94 63-13 75 39-9 69z"/><path fill="#c1b99a" d="M292 782l63-13 75 39-90 7z"/>${grass(5179,30,50,610,900,113,'#807d4d')}`:meadow(5181,23,40,540,817,893,['#d3bd83','#b5b798'])}`;
+  };
+  // Deliberate place palettes and sky layouts: the disc, cloud formations and
+  // horizon are not stamped in the same position behind every landmark.
+  const atmospheres = {
+    diamond: ['#116ca2','#6dcbd5','#fff0c1',1250,180,'city'],
+    'arts-tower': ['#345eb4','#98c5ed','#fae6d0',330,260,'city'],
+    'winter-garden': ['#187f9a','#a0ded5','#fff4d3',1180,330,'city'],
+    kelham: ['#385777','#a4bdc4','#ffce91',1180,470,'brick'],
+    'whitworth-hall': ['#4366ad','#b3d8eb','#ffecba',1170,225,'city'],
+    'john-rylands': ['#435190','#c3a6c5','#ffd49b',300,350,'brick'],
+    'whitworth-gallery': ['#167d8f','#91cfb6','#fff0b6',940,185,'park'],
+    castlefield: ['#24639a','#78c5d6','#f7dba5',280,320,'brick'],
+    'stanage-edge': ['#3578b8','#b8d6e7','#ffdfa8',1230,220,'moor'],
+    'mam-tor': ['#295b88','#72b2bd','#f6d089',440,430,'moor'],
+  };
+  const bench = (x,y,k=1) => `<g transform="translate(${x} ${y}) scale(${k})"><ellipse cx="65" cy="8" rx="91" ry="9" fill="#203c42" opacity=".14"/><path fill="#b96c39" d="M0-58h138v12H0zM0-39h138v12H0zM-8-16h154v12H-8z"/><path stroke="#28444e" stroke-width="7" d="M10-47V0M125-47V0M-8-21v21M146-21v21"/></g>`;
+  const bicycle = (x,y,k=1) => `<g transform="translate(${x} ${y}) scale(${k})"><g fill="none" stroke="#2a414c" stroke-width="4"><circle cx="-35" cy="-24" r="24"/><circle cx="47" cy="-24" r="24"/><path stroke="#d9893b" stroke-width="5" d="M-35-24l25-38 23 38h-48l12-49M13-24l26-42 8 42"/><path d="M33-77h17M-27-74h20"/></g></g>`;
+  const walker = (x,y,k,coat,phase) => `<g transform="translate(${x} ${y}) scale(${k})"><ellipse rx="12" ry="3" fill="#183943" opacity=".2"/><g fill="none" stroke="#33434e" stroke-width="6" stroke-linecap="round">${mv('ukstep',{ad:'1.8s',d:`-${phase}s`,to:'0px -26px'},'<path d="M0-26L-9-2"/>')}${mv('ukstep',{ad:'1.8s',d:`-${phase+.9}s`,to:'0px -26px'},'<path d="M0-26L9-2"/>')}</g><path fill="${coat}" d="M-9-52q9-8 18 0l4 30h-26z"/><circle cy="-64" r="8" fill="#b38d71"/><path fill="#34424c" d="M-8-68q8-10 16 0v4H-8z"/></g>`;
+  const passers = (seed,y,coat) => { const r=rnd(seed); return Array.from({length:3},(_,i)=>mv('ukstroll',{ad:`${28+i*7}s`,d:`-${i*8}s`,dx:`${i%2?-180:220}px`},walker(440+i*270+r()*70,y, .6+i*.13,coat,i*.4))).join(''); };
+  const lamps = (x,y) => `<path stroke="#304e59" stroke-width="7" fill="none" d="M${x} ${y}v-155q0-20 24-20h17"/><path fill="#b0c7c4" d="M${x+21} ${y-178}h36v12h-36z"/><ellipse class="hx-lit" cx="${x+39}" cy="${y-164}" rx="19" ry="5"/>`;
+  const skyline = (seed,type) => { const r=rnd(seed);let s=''; for(let x=-160;x<1760;x+=93){const h=R(35+r()*90);s+=`<path fill="${type==='brick'?'#9d7282':'#648d9b'}" d="M${x} 655v-${h}h78v${h}z"/><path fill="#b1c4c7" opacity=".45" d="M${x+5} ${655-h+8}h57v7h-57z"/>`;if(type==='brick')s+=`<path fill="#745c71" d="M${x-4} ${655-h}l43-34 43 34z"/>`; }return s; };
+  const blooms = (seed,x0,x1,y) => meadow(seed,24,x0,x1,y-10,y+20,['#ffbf43','#ea6281','#e7edba']);
+  const locality = (place,v,seed) => {
+    if(place==='diamond') return bench(v?305:1110,837,.7)+bicycle(v?1220:350,837,.85)+passers(seed,792,'#e9a541')+mv('ukglow',{ad:'8s'},'<path fill="#f1ffff" opacity=".12" d="M426 290l23 0 264 407h-55zM921 289h28l264 407h-56z"/>');
+    if(place==='arts-tower') return lamps(v?1210:395,849)+bench(v?1110:400,867,.65)+passers(seed,793,'#ba5670')+blooms(seed+1,1140,1370,869);
+    if(place==='winter-garden') return bench(v?240:1175,844,.7)+passers(seed,798,'#cc6a41')+blooms(seed+2,290,410,862)+mv('ukglow',{ad:'11s'},'<path fill="#fff2c7" opacity=".15" d="M521 434l45-61 254 348h-87z"/>');
+    if(place==='kelham') return `<path fill="#59636a" d="M-160 879l730-108h19L-160 896zM210 900l481-129h19L310 900z"/><path fill="none" stroke="#beb7a3" stroke-width="3" d="M-160 885l735-109M256 900l442-124"/>`+bench(1250,856,.68)+passers(seed,800,'#4d8e9b')+mv('ukdrift',{ad:'23s',dx:'35px'},haze(711,70,'#f5d49a',.22));
+    if(place==='whitworth-hall') return lamps(1190,864)+bench(1070,863,.72)+blooms(seed,220,420,890)+passers(seed,790,'#4d8cab');
+    if(place==='john-rylands') return `<path fill="#68718a" d="M-160 886V847h1920v53H-160z"/><path stroke="#cfbda5" stroke-width="4" d="M-160 846H1760"/>`+lamps(1250,846)+passers(seed,815,'#b74965')+mv('ukshim',{ad:'5s'},'<path fill="#ffe7b5" opacity=".2" d="M721 841l127-4 119 40H658z"/>');
+    if(place==='whitworth-gallery') return bench(v?1080:600,850,.7)+blooms(seed,840,1100,886)+mv('ukflutter',{ad:'8s',d:'-3s'},'<path fill="#f0b446" d="M980 744q-22-30-30-9-3 18 30 14 27-30 32-12 2 19-32 12z"/>')+mv('ukfall',{ad:'13s',dx:'-65px',d:'-4s'},'<path fill="#edaf51" d="M480 474q-17-13-22 8 16 9 22-8z"/>');
+    if(place==='castlefield') return `<path stroke="#ecd29d" stroke-width="4" fill="none" d="M-160 847Q650 830 1760 857"/>`+mv('ukstroll',{ad:'44s',dx:'-300px'},`<g transform="translate(${v?640:1000} 850)"><path fill="#d96b46" d="M-95-9H97L82 18H-76z"/><path fill="#274d60" d="M-64-36H62v27H-64z"/><path fill="#f3ce7e" d="M-50-31h26v17h-26zM-9-31h26v17H-9zM32-31h21v17H32z"/><path fill="#efe6ce" d="M-99-12H100v5H-99z"/></g>`)+shimmer(seed,16,330,1150,810,889,'#f9c485',55)+passers(seed,394,'#ecb151');
+    if(place==='stanage-edge') return `<path fill="#723f79" d="M-160 900v-32q210-73 459 14l24 18zM1150 900q260-71 610-30v30z"/>`+blooms(seed,-80,230,885)+grass(seed+1,22,1180,1740,900,104,'#bc9646')+mv('uksoar',{ad:'27s',dx:'140px',dy:'-36px'},'<path fill="#34434e" d="M859 224q-41-26-80-8 47-3 77 20l5 10 6-9q33-23 73-20-45-20-78 8z"/>')+mv('ukdrift',{ad:'31s',dx:'70px'},haze(631,90,'#f4dbbc',.22));
+    return `<path fill="none" stroke="#e9dca7" stroke-width="3" opacity=".5" d="M-160 641q380-54 805 3M1020 652q410-96 740 20"/>`+grass(seed,40,-100,520,900,82,'#b29f4f')+mv('uksoar',{ad:'33s',dx:'-120px',dy:'-18px'},'<path fill="#263f50" d="M1220 330q-30-17-59-8l58 16 7 8 4-9 61-16q-43-6-65 9z"/>')+mv('ukdrift',{ad:'36s',dx:'85px'},haze(604,133,'#dff1e3',.36));
+  };
+  const northernScene = (place,v,draw,seed) => {
+    const [top,mid,base,sx,sy,type]=atmospheres[place],sky=U(),glow=U();
+    const evening=!!v, moon=evening&&(place==='arts-tower'||place==='john-rylands'),urban=type==='city'||type==='brick';
+    const skyStops=evening?[[0,'#29345f'],[.45,top],[.78,'#dc8b97'],[1,'#ffcb85']]:[[0,top],[.58,mid],[1,base]];
+    let air='';
+    if(place==='diamond'||place==='stanage-edge') air=cloud(v?220:980,118,v?.72:1.1,'#b2d9e5',.8,61,seed%17)+cloud(v?1360:300,295,.62,'#c7e5e4',.7,49,11);
+    else if(place==='winter-garden'||place==='whitworth-gallery') air=streak(v?300:1120,100,260,'#e4fff0',.56,83)+streak(v?1170:320,245,190,'#effad4',.47,64);
+    else if(place==='mam-tor') air=mv('ukdrift',{ad:'73s',dx:'130px'},'<path fill="#cee2e4" opacity=".6" d="M-160 215q250-60 580 30t600-20 740 0v22q-430-11-750 20t-570-20-600 0z"/>');
+    else air=cloud(v?1250:200,155,.8,'#c2b5ca',.7,70,17)+streak(v?460:1100,270,350,'#fde6d7',.5,79);
+    const light=moon?`<path fill="#e6f1e6" d="M${1600-sx} ${sy-100}a25 25 0 1 0 16 44a21 21 0 0 1-16-44z"/>`:sun(v?1600-sx:sx,v?sy+110:sy,v?47:32,'#fff4c9','#ffc673');
+    const far=urban?skyline(seed,type):ridge(place==='mam-tor'?'#588ea1':'#899fc2',565,130,9,seed);
+    const middle=urban?haze(592,140,'#ffe7c0',.24):canopy(type==='park'?'#24725b':'#528a83',660,type==='park'?64:14,seed+2,null,null,900,'#97c486');
+    const foreground=urban?`<path fill="#285c60" d="M-160 900v-27h308l42 27zM1410 900l35-22h315v22z"/>${blooms(seed+5,-140,115,907)}${grass(seed+6,18,1480,1760,909,51,'#53a775')}`:grass(seed+7,32,-160,170,908,76,'#3a7562')+grass(seed+8,32,1480,1760,907,61,'#476d50');
+    return `<g${evening?' class="hx-evening"':''}><defs>${lin(sky,skyStops)}${radU(glow,[[0,'#ffda96',.17],[1,'#ffda96',0]],v?1600-sx:sx,sy,780)}</defs>`+full(`url(#${sky})`)+stars(seed,27,330)+light+air
+      +mv('ukpar',{ad:'63s',dx:'6px'},far)+mv('ukpar',{ad:'47s',dx:'12px'},middle)
+      +mv('ukpar',{ad:'39s',dx:'18px'},draw(v))+locality(place,v,seed)
+      +mv('ukpar',{ad:'31s',dx:'28px'},foreground)+`<rect width="1600" height="900" fill="url(#${glow})"/>`+finish(.3)+'</g>';
   };
   const studies = [
     ['south-yorkshire','Sheffield','diamond','The Diamond','signature',diamond,['university','engineering','lattice'],'The engineering building across its forecourt','A closer study of the diamond lattice'],
@@ -259,7 +332,7 @@
     ['south-yorkshire','Sheffield','winter-garden','Sheffield Winter Garden','landmark',winterGarden,['glasshouse','timber','plants'],'The timber arches across the city square','Closer to the planted glasshouse ribs'],
     ['south-yorkshire','Sheffield','kelham','Kelham Island Museum','heritage',kelham,['industry','steel','museum'],'The museum and its industrial silhouettes','The Bessemer converter in the foreground'],
     ['greater-manchester','Manchester','whitworth-hall','Whitworth Hall','signature',whitworthHall,['university','gothic','hall'],'The Gothic hall across its forecourt','The traceried window and entrance at dusk'],
-    ['greater-manchester','Manchester','john-rylands','John Rylands Library','landmark',rylands,['university','library','gothic'],'The turreted library frontage','The rose window and stonework at dusk'],
+    ['greater-manchester','Manchester','john-rylands','John Rylands Library','landmark',rylands,['university','library','gothic'],'The reading-room gable and Deansgate corner','The traceried oriel bays at dusk'],
     ['greater-manchester','Manchester','whitworth-gallery','The Whitworth','heritage',whitworthGallery,['university','gallery','park'],'Glass galleries facing the park trees','Evening light beneath the park canopy'],
     ['greater-manchester','Manchester','castlefield','Castlefield Viaduct','heritage',castlefield,['canal','ironwork','garden'],'Iron latticework above the canal','A closer view of the planted viaduct'],
     ['derbyshire','Castleton','stanage-edge','Stanage Edge','landscape',stanage,['gritstone','moorland','millstones'],'Gritstone ledges above the moor','A discarded millstone below the edge'],
@@ -270,9 +343,15 @@
     const geo=place==='stanage-edge'?{ukLat:53.347,ukLon:-1.632}:place==='mam-tor'?{ukLat:53.349,ukLon:-1.810}:{};
     add(county,v&&kind==='signature'?'landmark':kind,Object.assign({id:place+(v?'-2':''),label,site:label+' — '+(v?close:wide),colour:county==='derbyshire'?'green':'slate',tags,
       ukPlace:place,ukTown:town,ukLocality:county==='derbyshire'?'Peak District':town,ukView:v?'close-evening':'wide',viewReason:v?close:wide,
-      svg:()=>vista(5200+i*23+v,()=>draw(!!v),{path:false,flat:county!=='derbyshire',edgeNear:true,y:730,time:v?'dusk':'day'})},geo));
+      svg:()=>northernScene(place,!!v,draw,5200+i*23+v)},geo));
   }
   const css = [
+    '.anim-scene .x-ukstep { --an: ap-ukstep; --ad: 1.8s; }',
+    '.anim-scene .x-ukstroll { --an: ap-ukstroll; --ad: 32s; --ae: linear; }',
+    '.anim-scene .x-uksoar { --an: ap-uksoar; --ad: 27s; }',
+    '@keyframes ap-ukstep { 0%,100% { transform: rotate(-18deg); } 50% { transform: rotate(18deg); } }',
+    '@keyframes ap-ukstroll { 0%,100% { transform: translateX(calc(var(--dx,220px) * -.5)); opacity:0; } 12% { opacity:1; } 88% { transform: translateX(calc(var(--dx,220px) * .5)); opacity:1; } 95% { transform: translateX(calc(var(--dx,220px) * .5)); opacity:0; } }',
+    '@keyframes ap-uksoar { 0%,100% { transform: translate(0,0) rotate(-3deg); } 50% { transform: translate(var(--dx,120px),var(--dy,-30px)) rotate(4deg); } }',
     /* the evening grade: dark theme, or the time of day the opening asks for (71-anim-wire.css lays the same on the splash) */
     '.anim-scene.ap-full .hx-tint { fill: #4a4f94; mix-blend-mode: multiply; opacity: 0; pointer-events: none; }',
     '.anim-scene.ap-full .hx-lit { fill: #ffd27a; stroke: #ffd27a; opacity: 0; }',
@@ -343,5 +422,5 @@
     '@keyframes ap-ukflutter { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(60px, -40px); } 50% { transform: translate(120px, 10px); } 75% { transform: translate(50px, 30px); } }',
   ].join('\n');
 
-  animRegisterPack({id:'uk-north-west',name:'UK: Northern cities & Peaks',version:'1.0.0',description:'Sheffield, Manchester and nearby Peak District landscapes. Twenty animated place studies with university architecture and industrial heritage.',css,items});
+  animRegisterPack({id:'uk-north-west',name:'UK: Northern cities & Peaks',version:'1.1.0',description:'Sheffield, Manchester and nearby Peak District landscapes. Twenty animated place studies with university architecture and industrial heritage.',css,items});
 })();
