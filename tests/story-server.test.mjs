@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { request, createServer } from 'node:http';
 import { makeDataDir, TODAY, addDays, sampleState } from './fixtures/actions-state.mjs';
-import { setStoryAi, setStoryWeatherFetch } from '../server/routes/story.mjs';
+import { setStoryAi, setStoryWeatherFetch, setStoryNow } from '../server/routes/story.mjs';
 import { STORY_SCRIPT_SCHEMA } from '../lib/story-script.mjs';
 
 let dir, port, srv;
@@ -55,7 +55,7 @@ before(async () => {
 });
 after(async () => {
   await srv?.close();
-  setStoryAi(null); setStoryWeatherFetch(null);
+  setStoryAi(null); setStoryWeatherFetch(null); setStoryNow(null);
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -156,4 +156,29 @@ test('settings: brief.story is validated and partial patches keep the rest', asy
   aiCalls = [];
   await post('/api/story/script', { kind: 'week' });
   assert.equal(aiCalls[0].model, 'claude-sonnet-5', 'the configured model is used');
+});
+
+test('day adviser respects opt-in, deduplicates automatic periods and caps them at three', async () => {
+  aiAvailable=true;aiCalls=[];
+  await put('/api/config',{timezone:'UTC',brief:{ai:true,advisorAuto:false}});
+  assert.equal((await post('/api/story/advice',{automatic:true})).status,409);
+  await put('/api/config',{brief:{advisorAuto:true}});
+  aiAnswer={summary:'Review the priorities for the rest of today.',ideas:[]};
+  for(const time of ['08:00','13:00','18:00']) {
+    setStoryNow(()=>new Date(TODAY+'T'+time+':00Z'));
+    const first=await post('/api/story/advice',{automatic:true});assert.equal(first.status,200,first.text);
+    assert.equal((await post('/api/story/advice',{automatic:true})).json.cached,true);
+  }
+  assert.equal(aiCalls.length,3);assert.equal(aiCalls[0].effort,'medium');
+  assert.equal((await post('/api/story/advice',{}, {'Origin':'https://elsewhere.example'})).status,403);
+  await put('/api/config',{brief:{ai:false}});assert.equal((await post('/api/story/advice')).status,409);
+  setStoryNow(null);
+});
+
+test('failed automatic adviser reasoning consumes its period instead of repeating model calls', async()=>{
+  await put('/api/config',{brief:{ai:true,advisorAuto:true}});
+  setStoryNow(()=>new Date(addDays(TODAY,1)+'T08:00:00Z'));aiAnswer={summary:'',ideas:[]};aiCalls=[];
+  assert.equal((await post('/api/story/advice',{automatic:true})).status,502);
+  assert.equal((await post('/api/story/advice',{automatic:true})).json.cached,true);
+  assert.equal(aiCalls.length,1);setStoryNow(null);
 });

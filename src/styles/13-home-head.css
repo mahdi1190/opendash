@@ -58,3 +58,9 @@ html[data-motion="reduced"] .hd-idea-row > *, html.anim-off .hd-idea-row > * { a
 /* The Evening tab's "Play my day" (79-story-engine.js storyMountEntry): top right of its hero,
    clear of the date line (the weather sits at the bottom right). */
 .home .st-entry-host > .st-entry-row:not(.st-entry-week) { top: 18px; left: auto; right: 18px; }
+.hd-advisor { padding: 18px; }
+.hd-advisor .bf-ai-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hd-advisor-status { margin: 12px 0; font-size: 13px; }
+.hd-advisor-ideas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 12px; }
+.hd-advisor .hd-idea { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px; }
+.hd-advisor .hd-idea p { flex: none; font-size: 13px; }

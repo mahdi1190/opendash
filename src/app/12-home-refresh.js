@@ -2,13 +2,15 @@
  * connector jobs, page reload or writes to tasks/notes are needed. */
 let _homeTodayRefresh = null, _homeClockMinute = '', _homeCurrentDate = '';
 function homeCurrentSummary() {
+  const advice = typeof homeAdviceCurrent === 'function' ? homeAdviceCurrent() : null;
+  if (advice && advice.summary && homeAdviceIdeas().length === (advice.ideas || []).length) return advice.summary;
   const model = _hhModel();
   const done = Number(model.doneToday) || 0;
   const progress = done ? `${done} task${done === 1 ? '' : 's'} completed so far today.` : '';
   return [progress, ...homeTodayTemplate(model.tpl).sentences.slice(0, progress ? 2 : 3).map(s => s.text)].filter(Boolean).join(' ');
 }
 function homeUseCurrentSummary() {
-  return Clock.parts(Clock.now()).h >= 12 || _homeCurrentDate === todayStr();
+  return Clock.parts(Clock.now()).h >= 12 || _homeCurrentDate === todayStr() || (typeof _homeAdvice !== 'undefined' && _homeAdvice && _homeAdvice.date === todayStr());
 }
 function homeRefreshDerived() {
   if (typeof _sgSnap !== 'undefined') _sgSnap = null;
@@ -17,6 +19,7 @@ function homeRefreshDerived() {
   if (typeof _bfUpdate === 'function') _bfUpdate(['hero']);
   if (typeof _bfPaintAi === 'function') _bfPaintAi(null, false);
   if (typeof _hdRepaintIdeas === 'function') _hdRepaintIdeas();
+  if (typeof homeAdvisorPaint === 'function') homeAdvisorPaint();
   if (typeof homeRerenderWidget === 'function') {
     for (const frame of document.querySelectorAll('#main-body .hg-w[data-wid]')) {
       // Editors and receipt controls keep their DOM and focus during a refresh.
@@ -59,6 +62,7 @@ function homeRefreshClock() {
   const active = document.activeElement;
   if (active && active.closest && active.closest('.home-head, .hg-w')) return;
   homeRefreshDerived();
+  if (typeof homeAdvisorTick === 'function') homeAdvisorTick();
 }
 function homeRefreshButton(crumb) {
   if (document.getElementById('tb-home-refresh')) return;

@@ -48,6 +48,7 @@ function briefPrefs() {
   const h = Number(b.eveningHour);
   return {
     autoOpen: b.autoOpen !== false, ai: b.ai !== false, model: b.model || 'claude-haiku-4-5',
+    advisorAuto: b.advisorAuto === true,
     eveningHour: Number.isFinite(h) ? h : 17, animations: b.animations !== false, celebrate: b.celebrate !== false, units: b.units === 'imperial' ? 'imperial' : 'metric',
   };
 }
@@ -444,6 +445,7 @@ function briefRender(container) {
   briefRefresh(false);
   _bfMarkSeen();
   _bfLoadSummary(m, false);
+  if (typeof homeAdvisorTick === 'function') homeAdvisorTick();
   return root;
 }
 function briefUnmount() {

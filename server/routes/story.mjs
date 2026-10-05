@@ -27,6 +27,9 @@ import { buildStoryData, STORY_KINDS } from '../../lib/story-data.mjs';
 import { fallbackStoryScript, validateStoryScript, generateStoryScript, readStoryScript, writeStoryScript } from '../../lib/story-script.mjs';
 import { askJson, aiStatus } from '../../lib/ai.mjs';
 import { clock } from '../actions/model.mjs';
+import { dayAdvisorFacts, validateDayAdvice, DAY_ADVISOR_SCHEMA, DAY_ADVISOR_SYSTEM } from '../../lib/day-advisor.mjs';
+import { join } from 'node:path';
+import { readJson, writeJson, withLock } from '../../lib/fsutil.mjs';
 
 // Tests swap the network, the model and the clock.
 let fetchImpl = null, aiImpl = null, nowImpl = null;
@@ -74,6 +77,44 @@ export default function register(app) {
   // A script written in another time zone is a miss (its times would be wrong here).
   const sameZone = (hit, data) => (hit && (!hit.tz || hit.tz === data.tz) ? hit : null);
   const storyCfg = (cfg) => (cfg.brief && cfg.brief.story) || {};
+
+  app.route({path:'/api/story/advice',method:'POST',maxBody:4096,handler:async c=>{
+    const body=await c.body();
+    if(body.automatic && !c.getConfig().brief?.advisorAuto) throw new HttpError(409,'Automatic day advice is off.');
+    if(c.getConfig().brief?.ai===false) throw new HttpError(409,'AI advice is off in Settings.');
+    if(pending.has('advice')) return pending.get('advice');
+    const job=(async()=>{
+      const {q,data}=await dayModel(c,'morning');
+      const facts=dayAdvisorFacts(q,data),period=data.part;
+      const file=join(dataDir,'brief','day-advice.json');
+      return withLock(file,async()=>{
+        const cache=await readJson(file,{fallback:null});
+        const same=cache&&cache.date===facts.date&&cache.tz===facts.timezone;
+        // Revalidate cached output before returning it. Automatic calls run once per period.
+        const cached= same ? validateDayAdvice(cache,facts) : null;
+        if(same && ((body.automatic && cache.periods?.includes(period)) || (!body.automatic && Date.now()-cache.at<60000))) return {...cached,date:facts.date,tz:data.tz,at:cache.at||0,expiresAt:cache.expiresAt||0,period:cache.period,model:cache.model,cached:true};
+        if(same && body.automatic && (cache.periods||[]).length>=3) return {...cached,date:facts.date,tz:data.tz,at:cache.at,expiresAt:cache.expiresAt,period:cache.period,model:cache.model,cached:true};
+        const status=await ai().aiStatus();
+        if(!status.available) throw new HttpError(503,'Connect Claude in Connections to use the day adviser.');
+        const periods=[...new Set([...(same?cache.periods||[]:[]),period])];
+        // Reserve before calling the model: failed automatic calls also consume
+        // their period, so retries cannot exceed three automatic calls in a day.
+        if(body.automatic) await writeJson(file,{...(same?cache:{}),date:facts.date,tz:data.tz,periods});
+        const model=q.cfg.ai?.chatModel || 'claude-sonnet-5';
+        const answer=await ai().askJson({model,effort:'medium',timeoutMs:120000,system:DAY_ADVISOR_SYSTEM,schema:DAY_ADVISOR_SCHEMA,prompt:JSON.stringify(facts)});
+        // Read the day again after reasoning, since tasks may finish while the model runs.
+        const fresh=await dayModel(c,'morning'),currentFacts=dayAdvisorFacts(fresh.q,fresh.data);
+        if(currentFacts.date!==facts.date||currentFacts.timezone!==facts.timezone) throw new HttpError(409,'The day or time zone changed. Try again.');
+        const advice=validateDayAdvice(answer.json,currentFacts);
+        if(!advice.summary) throw new HttpError(502,'The adviser returned an incomplete response.');
+        const result={...advice,date:facts.date,tz:data.tz,at:Date.now(),expiresAt:Date.now()+2*60*60*1000,period:fresh.data.part,model,periods:[...new Set([...periods,fresh.data.part])]};
+        await writeJson(file,result);
+        return {...result,cached:false};
+      });
+    })();
+    pending.set('advice',job);
+    try{return await job;}finally{pending.delete('advice');}
+  }});
 
   app.route({
     path: '/api/story', method: 'GET', methodError: 'GET only',

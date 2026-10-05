@@ -281,6 +281,8 @@ registerSettingsGroup({
     el.appendChild(_settingsRow('Offer “Finish the day” from', 'Home and the top bar suggest the evening recap from this hour.', _settingsSelect(['15', '16', '17', '18', '19', '20', '21'].map(x => [x, x + ':00']), String(p.eveningHour), (v) => save({ eveningHour: Number(v) }))));
     el.appendChild(_settingsRow('Temperatures', null, _settingsSeg([['metric', '°C'], ['imperial', '°F']], p.units, (k) => save({ units: k }).then(() => { _bf.weather = null; }))));
     el.appendChild(briefSettingsLocationRow());
+    el.appendChild(_settingsRow('AI day adviser', 'Review your day once each morning, afternoon and evening while Home is open (at most three automatic reviews daily). Uses the AI chat model selected in Settings > AI. The manual button can request another review. Tasks and calendar context go to your connected Claude account.',
+      _settingsSwitch(p.advisorAuto, 'Automatic AI day reviews', on => save({ advisorAuto: on }), !p.ai)));
     if (typeof storySettingsRows === 'function') storySettingsRows(el);   // 79-story-engine.js
     const open = document.createElement('button'); open.type = 'button'; open.className = 'btn btn-secondary btn-sm';
     open.innerHTML = icon('sunrise', 'i-sm') + '<span>Go to Home now</span>';
