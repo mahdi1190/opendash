@@ -17,7 +17,7 @@ const PART_FILES = PACK_FILES.filter(f => /\/\/ UK_SCENE_PART: ([a-z0-9-]+)\/([a
 const NAMES = ['ANIM_SLOTS', 'ANIM_SLOT_IDS', 'ANIM_THEMES', 'ANIM_THEME_IDS', 'ANIM_ITEM_MAX_BYTES', 'ANIM_FULL_ITEM_MAX_BYTES', 'ANIM_PACK_MAX_BYTES', 'animValidatePack', 'animRegisterPack',
   'animPacks', 'animPack', 'animItem', 'animItems', 'animLookNormalize', 'animSeasonOf', 'animDailyPick', 'animDailyLook', 'animThemeFor', 'animItemHtml',
   'animSpecialPick', 'animPickFor', 'animCountdownHeat', 'animCountdownStage', 'animStreakGrow', 'almDay', 'almAddDays', 'almEaster', 'almFestivals', 'almIsFestival', 'almSeasonMark', 'almClocksChange', 'almSunTimes', 'almSkyMoment',
-  'almMoonPhase', 'almMeteorShower', 'almAuroraNights', 'ALM_MOVING', 'UK_REGIONS', 'UK_COUNTIES', 'ukCounty', 'ukCountiesIn', 'ukCountyNearest', 'ukTowns'];
+  'almMoonPhase', 'almSceneLight', 'almMoonDiscPath', 'almMeteorShower', 'almAuroraNights', 'ALM_MOVING', 'UK_REGIONS', 'UK_COUNTIES', 'ukCounty', 'ukCountiesIn', 'ukCountyNearest', 'ukTowns'];
 // The same order the build concatenates: the almanac, the libraries, the registry, then every pack.
 const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(APP).filter(f => /^71-anim-(us2?|asia2?)[-.]/.test(f)).sort(), ...PACK_FILES].map(src).join('\n;\n');
 // eslint-disable-next-line no-new-func
@@ -482,5 +482,33 @@ test('Yateley: four views of each place per season, matching the calendar and re
     assert.ok(eligible.every(i => i.ukSeason === season), day);
     const picked = R.animSpecialPick('opening',day,{block:off},ctx);
     assert.ok(picked && picked.ukSeason === season, `${day}: automatic local selection respects seasons`);
+  }
+});
+
+
+test('Yateley live skies: astronomical daylight, local timezone and lunar phase fit every view', () => {
+  const lat=51.34,lon=-.83,zone='Europe/London';
+  const summerTimes=R.almSunTimes('2026-06-21',lat,lon),winterTimes=R.almSunTimes('2026-12-21',lat,lon);
+  const summer=R.almSceneLight((summerTimes.rise+summerTimes.set)/2,lat,lon,zone);
+  const winter=R.almSceneLight((winterTimes.rise+winterTimes.set)/2,lat,lon,zone);
+  assert.ok(summer.altitude>winter.altitude+35,'seasonal sun height changes without new scenes');
+  assert.equal(summer.x,800);assert.equal(summer.tod,'day');
+  const dawn=R.almSceneLight(summerTimes.rise,lat,lon,zone);
+  const dusk=R.almSceneLight(summerTimes.set,lat,lon,zone);
+  assert.equal(dawn.tod,'dawn');assert.equal(dusk.tod,'dusk');assert.ok(dawn.x<dusk.x);
+  const night=R.almSceneLight(summerTimes.set+2*3600000,lat,lon,zone);
+  assert.equal(night.tod,'night');assert.equal(night.sun,false);
+  assert.equal(R.almSceneLight(Date.parse('2026-03-29T12:00Z'),lat,lon,zone).altitude,R.almSceneLight(Date.parse('2026-03-29T12:00Z'),lat,lon,'UTC').altitude,'DST does not move the physical sun');
+  assert.equal(R.almSceneLight(0,null,null,zone),null);
+  assert.equal(R.almSceneLight(0,lat,lon,'bad-zone'),null);
+  assert.notEqual(R.almMoonDiscPath(.25,29),R.almMoonDiscPath(.75,29),'waxing and waning illuminate opposite sides');
+  for(const it of R.animPack('uk-south-east').items.filter(i=>i.liveSky)) {
+    for(const sky of [summer,winter,dawn,dusk,night]) {
+      const html=R.animItemHtml(it,{sky,live:true});
+      assert.equal(markupProblem(html),'',it.ref);
+      assert.ok(html.length<=R.ANIM_FULL_ITEM_MAX_BYTES,`${it.ref}/${sky.tod}: ${html.length}`);
+      assert.ok(html.includes(`tod-${sky.tod}`));
+      if(sky.tod==='night')assert.ok(html.includes('x-ukystar'));
+    }
   }
 });

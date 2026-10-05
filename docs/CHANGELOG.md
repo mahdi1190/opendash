@@ -12,6 +12,10 @@ upgrades it.
 
 ### Changed
 
+- Yateley live-sky foundation: the 48 seasonal scenes can use the effective clock, active coordinates, calculated daylight and solar height, night stars and the existing lunar-phase approximation. Other packs and continuous in-place sky updates remain follow-up work.
+
+- Yateley detail follow-up across all 48 seasonal versions: fuller botanical sprays, layered grass clumps, gorse stems, textured ground and stones, duck feather markings, hovering bees, moving pond fish, perched birds, nibbling squirrels and a wagging dog tail. Reusable shape definitions keep the existing scene budget.
+
 - Yateley seasons: all 12 rebuilt views now have spring, summer, autumn and winter versions (48 scenes, 36 added). Automatic local openings match the calendar season; spring brings blossom and fresh growth, summer flowering heath and active insects, autumn falling leaves, and winter snowfall, bare trees and frozen pond illustrations.
 
 - Yateley art rebuild: 12 full-screen views across Yateley Common, Wyndham's Pool and Yateley Green, with individual birch leaves, flowering heather, detailed pond margins, swimming ducks and ducklings, darting dragonflies, flapping butterflies and a walking dog companion.

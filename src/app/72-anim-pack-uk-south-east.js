@@ -1016,6 +1016,16 @@
     '.anim-scene .x-ukflutter { --an: ap-ukflutter; --ad: 7s; }',
     '.anim-scene .x-ukspin { --an: ap-ukspin; --ad: 40s; }',
     '.anim-scene .x-ukwheel { --an: ap-ukwheel; --ad: 1.4s; --ae: linear; }',
+    '.anim-scene .x-ukystar { --an: ap-ukystar; --ad: 4s; }',
+    '@keyframes ap-ukystar { 0%,100% { opacity: .35; } 50% { opacity: 1; } }',
+    '.anim-scene .x-ukytail { --an: ap-ukytail; --ad: 4s; }',
+    '.anim-scene .x-ukynibble { --an: ap-ukynibble; --ad: 1.8s; }',
+    '.anim-scene .x-ukybee { --an: ap-ukybee; --ad: 8s; }',
+    '.anim-scene .x-ukyfish { --an: ap-ukyfish; --ad: 17s; }',
+    '@keyframes ap-ukytail { 0%,100% { transform: rotate(-5deg); } 50% { transform: rotate(7deg); } }',
+    '@keyframes ap-ukynibble { 0%,55%,100% { transform: rotate(0); } 68%,88% { transform: rotate(-12deg); } 78% { transform: rotate(5deg); } }',
+    '@keyframes ap-ukybee { 0%,100% { transform: translate(0,0); } 25% { transform: translate(40px,-28px); } 45%,60% { transform: translate(var(--dx),var(--dy)); } 80% { transform: translate(25px,9px); } }',
+    '@keyframes ap-ukyfish { 0%,100% { transform: translate(0,0); opacity: .18; } 50% { transform: translate(var(--dx),var(--dy)); opacity: .4; } }',
     '.anim-scene .x-ukynod { --an: ap-ukynod; --ad: 4.6s; }',
     '.anim-scene .x-ukysnow { --an: ap-ukysnow; --ad: 13s; --ae: linear; }',
     '@keyframes ap-ukynod { 0%,60%,100% { transform: rotate(0); } 72% { transform: rotate(8deg); } 84% { transform: rotate(-4deg); } }',
@@ -1069,6 +1079,6 @@
     '@keyframes ap-ukflutter { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(60px, -40px); } 50% { transform: translate(120px, 10px); } 75% { transform: translate(50px, 30px); } }',
   ].join('\n');
 
-  animRegisterPack({ id: 'uk-south-east', name: 'UK: South East & London', version: '2.4.0', css,
+  animRegisterPack({ id: 'uk-south-east', name: 'UK: South East & London', version: '2.4.1', css,
     description: 'Full-screen illustrated scenes across all nine South East counties and Greater London, together in one neighbouring-region gallery pack. County detection remains opt-in and every scene plays only in its own county.', items });
 })();

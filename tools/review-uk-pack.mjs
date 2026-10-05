@@ -12,7 +12,7 @@ const packId = process.argv[2] || 'uk-south-east';
 const out = resolve(process.argv[3] || join(root, '..', 'uk-art-review', packId));
 mkdirSync(out, { recursive: true });
 const files = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(app).filter(f => /^71-anim-(us2?|asia2?)[-.]/.test(f)).sort(), ...readdirSync(app).filter(f => /^72-anim-pack-.*\.js$/.test(f)).sort()];
-const R = new Function(files.map(f => readFileSync(join(app, f), 'utf8')).join('\n;\n') + '\nreturn {animPack,animItemHtml};')();
+const R = new Function(files.map(f => readFileSync(join(app, f), 'utf8')).join('\n;\n') + '\nreturn {animPack,animItemHtml,almSceneLight};')();
 const pack = R.animPack(packId);
 if (!pack) throw new Error('Unknown pack: ' + packId);
 const countyFilter = process.argv[4] === 'all' ? null : process.argv[4];
@@ -22,6 +22,12 @@ const css = ['00-tokens.css', '01-components.css', '78-delight.css', '71-anim-re
 const modes = [{ name: 'light-still', dark: false, reduced: true }, { name: 'dark-still', dark: true, reduced: true }, { name: 'light-motion', dark: false, reduced: false }, { name: 'dark-motion', dark: true, reduced: false }].filter(m => !process.argv[5] || process.argv[5].split(',').includes(m.name));
 const chrome = await launchChrome();
 const rows = [];
+const atArg=process.argv.find(a=>a.startsWith('--at='));
+const locationArg=process.argv.find(a=>a.startsWith('--location='));
+const coords=locationArg?locationArg.slice(11).split(',').map(Number):[];
+const zoneArg=process.argv.find(a=>a.startsWith('--zone='));
+const sky=atArg&&coords.length===2?R.almSceneLight(Date.parse(atArg.slice(5)),coords[0],coords[1],zoneArg?zoneArg.slice(7):'UTC'):null;
+if(atArg&&!sky)throw new Error('--at requires a valid --location=lat,lon');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 try {
   for (const mode of modes) {
@@ -31,7 +37,7 @@ try {
         .anim-scene.ap-full{position:absolute;inset:0;width:100%;height:100%;border-radius:0;background:none;--as-size:100%;filter:none}
         .anim-scene.ap-full svg{width:100%;height:100%;filter:none}
         .anim-scene:not(.ap-full){position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);--as-size:420px;width:420px;height:420px}
-        </style></head><body>${R.animItemHtml(it, { live: !mode.reduced, reduced: mode.reduced, size: 'fill' })}
+        </style></head><body>${R.animItemHtml(it, { live: !mode.reduced, reduced: mode.reduced, size: 'fill', ...(sky?{sky}:{lighting:false}) })}
         <script>for(const a of document.getAnimations()){a.pause();a.currentTime=6500}</script></body></html>`;
       const filename = `${it.id}-${mode.name}.png`;
       if (process.argv.includes('--sheets-only')) {

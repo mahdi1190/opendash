@@ -124,3 +124,30 @@ passes, five existing skips and zero failures. Syntax and production builds pass
 All 48 seasonal scenes were rendered at 1600 x 900 in light/dark and still/motion
 modes. Privacy scan: zero errors and warnings. The unchanged 32,000-byte gate
 passes. South East main is about 155 KB; North Hampshire part is about 49 KB.
+
+Additional Yateley detail pass: all 48 versions now use multi-leaf twig sprays
+and paired plant stems, with grass/seed tufts, small foreground stones and seeded
+bank texture. Gorse gains prickly stems and flower highlights; ducks gain feather
+lines and wing markings. Spring/summer bees have wing and hover motion, unfrozen
+ponds gain moving fish silhouettes and perched birds, and the Common gains a
+squirrel with independent head, paw and tail movement. The walking dog's tail
+moves independently. Winter retains its snow, bare plants and resting waterbird
+behaviour. Species and object placement remain illustrative rather than a record
+of particular wildlife sightings. Reusable botanical and bee definitions and
+rounded coordinates preserve the unchanged 32,000-byte rendered-scene gate.
+The distant woodland remains stylised; finer tree structure is a remaining art
+concern. The other 46 Hampshire viewpoints still await this composition rebuild.
+
+Live-sky foundation: `almSceneLight` is a pure snapshot calculation, and
+`animItemHtml` supplies it only to opted-in `liveSky` items (currently Yateley 48).
+Clock.now/Clock.zone and active coordinates are used. Sun height changes with
+latitude, date and time; the screen position is an illustrated east-to-west arc,
+not a surveyed compass bearing. Sunrise/dusk classification uses solar elevation.
+The night moon uses the existing mean-lunation approximation, whose phase can be
+about a day off; moon altitude/visibility is not calculated. Stars twinkle through
+opacity only. The sky updates on rendering; continuous in-place updates and other
+packs are not implemented. The small shared registry hook is necessary to supply
+clock/location inputs without drawing builders reading app state directly.
+The gate now checks 38 cases, including live renders of all 48 scenes at daylight,
+dawn, dusk and night, summer/winter solar height, DST invariance and phase shape.
+The review tool accepts --at, --location and --zone for deterministic frames.

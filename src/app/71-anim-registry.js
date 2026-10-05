@@ -325,6 +325,17 @@ function animItemHtml(x, o) {
   o = o || {};
   const it = typeof x === 'string' ? animItem(x) : x;
   if (!it) return '';
+  if(it.liveSky && o.lighting !== false && !o.sky) {
+    // The pack opts in; its pure renderer receives a clock/location snapshot.
+    // Explicit sky/lighting options keep gallery QA deterministic.
+    try {const ctx=typeof animCtx==='function'?animCtx():null;
+      if(ctx){const ms=typeof Clock!=='undefined'?Clock.now():Date.now(); // clock-ok: pre-clock fallback
+        const lat=Number.isFinite(ctx.ukLat)?ctx.ukLat:ctx.lat,lon=Number.isFinite(ctx.ukLon)?ctx.ukLon:ctx.lon;
+        const sky=almSceneLight(ms,lat,lon,typeof Clock!=='undefined'?Clock.zone():ctx.tz);
+        if(sky)o=Object.assign({},o,{sky,tod:sky.tod});}
+    }catch(e){ /* No location: the complete authored illustration remains. */ }
+  }
+  if(o.sky&&it.liveSky)o=Object.assign({},o,{tod:o.sky.tod});
   const reduced = !!o.reduced;
   const body = reduced ? (it.reduced === 'static' ? it.svg(o) : it.reduced(o)) : it.svg(o);
   const cls = ['anim-scene', 'ap-art', 'c-' + it.colour, 'sz-' + (o.size || 'md'), 'ap-' + it.slot];

@@ -204,3 +204,31 @@ function almAuroraNights(year, lat) {
   }
   return [...out].sort();
 }
+
+
+/** Pure illustrated lighting from the local date, sunrise equation and declination.
+ * Sun elevation uses the standard latitude/declination/hour-angle equation:
+ * https://gml.noaa.gov/grad/solcalc/solareqns.PDF . The screen arc is artistic,
+ * not a compass bearing. Lunar phase uses the existing mean-lunation model.
+ */
+function almSceneLight(ms, lat, lon, tz) {
+  if (!Number.isFinite(ms) || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat)>90 || Math.abs(lon)>180) return null;
+  let day;
+  try { const p=new Intl.DateTimeFormat('en-CA',{timeZone:tz||'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(ms));const get=k=>p.find(x=>x.type===k).value;day=`${get('year')}-${get('month')}-${get('day')}`; }
+  catch(e){return null;}
+  // Select the solar cycle nearest local noon, also across the date line.
+  let times=almSunTimes(day,lat,lon);
+  if(times.rise!=null){const cycles=[-1,0,1].map(d=>almSunTimes(almAddDays(day,d),lat,lon));times=cycles.reduce((a,b)=>Math.abs(ms-(a.rise+a.set)/2)<Math.abs(ms-(b.rise+b.set)/2)?a:b);}
+  const noon=times.rise==null?_almUtc(day)+12*3600000-lon/15*3600000:(times.rise+times.set)/2;
+  const hour=(ms-noon)/3600000*15*_ALM_RAD,phi=lat*_ALM_RAD,dec=_almSun(_almJd(ms)).dec;
+  const altitude=Math.asin(Math.sin(phi)*Math.sin(dec)+Math.cos(phi)*Math.cos(dec)*Math.cos(hour))/_ALM_RAD;
+  const progress=times.rise==null?((ms-noon)/ALM_DAY_MS+.5):Math.max(0,Math.min(1,(ms-times.rise)/(times.set-times.rise)));
+  const tod=altitude < -6?'night':altitude < 7?(ms<noon?'dawn':'dusk'):'day';
+  const grade=tod==='night'?.66:tod==='day'?0:.16+Math.max(0,-altitude)*.025;
+  return {day,tod,altitude,progress,x:Math.round(240+1120*progress),y:Math.round(480-Math.max(0,altitude)*5.2),sun:altitude>=-.833,grade,moon:almMoonPhase(ms),...times};
+}
+/** The illuminated moon silhouette (right = waxing, left = waning). */
+function almMoonDiscPath(frac,r) {
+  const f=((frac%1)+1)%1,cos=Math.cos(f*2*Math.PI),rx=Math.max(.001,Math.abs(cos)*r),wax=f<.5;
+  return `M0 ${-r}A${r} ${r} 0 0 ${wax?1:0} 0 ${r}A${rx.toFixed(2)} ${r} 0 0 ${wax?(cos>=0?0:1):(cos>=0?1:0)} 0 ${-r}Z`;
+}
