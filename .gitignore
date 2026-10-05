@@ -48,3 +48,4 @@ tasks-*.md
 # Google OAuth client + refresh tokens — NEVER commit (public repo)
 secrets/
 .env
+.anim-ref/

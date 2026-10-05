@@ -1,0 +1,369 @@
+#!/usr/bin/env node
+// OpenDash animation pack tool: make animation packs EASY and CONSISTENT. Node >= 20, no npm dependencies.
+//
+//   node tools/anim-pack.mjs --help
+//   node tools/anim-pack.mjs lint [--pack <id>] [--ref <ref,ref>] [--file <path>] [--json] [--rules]
+//   node tools/anim-pack.mjs sheet <ref,ref | --pack <id> | --file <path>> [--mode light|dark|night] [--out <dir>] [--contact]
+//   node tools/anim-pack.mjs reference [--render] [--mode light|dark|night]
+//   node tools/anim-pack.mjs calibrate [--propose]
+//
+// lint      measures every full scene and small item against tools/anim-quality.json (calibrated on the accepted
+//           corpus) and prints PASS / FAIL per rule; exit code 2 when anything fails.
+// sheet     renders items to PNG with the app's theme and the animation paused mid-motion, so they can be LOOKED AT.
+// reference prints the gold-standard exemplars (tools/anim-reference.json): study them before drawing; --render
+//           writes their PNGs to .anim-ref/ (git-ignored).
+// calibrate compares every threshold with the corpus today (and proposes thresholds from it with --propose).
+//
+// To add a subcommand, either drop a module in tools/lib/anim-cmd/<name>.mjs (it is found automatically; no edit here) or add an entry
+// to COMMANDS below. A command is {summary, usage, options, run(args, ctx)}: `options` is a node:util parseArgs spec with a `help`
+// text per option; `ctx` carries {root, out, err, positionals}; run returns the exit code (0 ok, 1 error, 2 failures).
+//   // tools/lib/anim-cmd/hello.mjs
+//   export default { summary: 'say hello', usage: 'hello [--name <n>]', options: { name: { type: 'string', help: 'who' } },
+//                    run(args, ctx) { ctx.out('hello ' + (args.name || 'world')); return 0; } };
+// Reusable parts: tools/lib/anim-quality.mjs (measure / check / lintMarkup / thinSpots), tools/lib/anim-render.mjs (registry, rendering),
+// and here lintRegistry / measureRegistry / selectEntries / loadThresholds / loadReference.
+import { readFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
+import { parseArgs } from 'node:util';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { measure, check, profileFor, applyWaivers, ruleTable, checkCss, richness, describe, proposeThresholds, shapeKeys, sharedShares, thinSpots, RULE_PLAN } from './lib/anim-quality.mjs';
+import { loadRegistry, renderItems, contactSheet, repoRoot, findBrowser } from './lib/anim-render.mjs';
+import { launchChrome } from './release-chrome.mjs';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+/* ---------------------------------------------------------------------------------------------
+   Shared: thresholds, the reference list, selecting items
+   --------------------------------------------------------------------------------------------- */
+export function loadThresholds(root = repoRoot()) {
+  const p = [join(root, 'tools', 'anim-quality.json'), join(HERE, 'anim-quality.json')].find(existsSync);
+  if (!p) throw new Error('tools/anim-quality.json not found');
+  return JSON.parse(readFileSync(p, 'utf8'));
+}
+export function loadReference(root = repoRoot()) {
+  const p = [join(root, 'tools', 'anim-reference.json'), join(HERE, 'anim-reference.json')].find(existsSync);
+  if (!p) throw new Error('tools/anim-reference.json not found');
+  return JSON.parse(readFileSync(p, 'utf8'));
+}
+const splitList = (v) => [].concat(v || []).flatMap(x => String(x).split(',')).map(s => s.trim()).filter(Boolean);
+
+/** The drawing without its per-render gradient ids, to tell changed art from the same art drawn again. */
+function canonicalArt(html) {
+  const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
+  const names = new Map(ids.map((id, i) => [id, 'n' + i]));
+  return html.replace(/\bid="([^"]+)"/g, (a, id) => `id="${names.get(id)}"`).replace(/url\(#([^)]+)\)/g, (a, id) => `url(#${names.get(id) || id})`).replace(/href="#([^"]+)"/g, (a, id) => `href="#${names.get(id) || id}"`);
+}
+
+/** The registry entries a command works on: --ref, --pack, or (with extra files) what those files add or change. */
+export function selectEntries(reg, { refs = [], packs = [], baseline = null } = {}) {
+  let list = reg.items();
+  if (baseline) {
+    const was = new Map(baseline.items().map(e => [e.ref, canonicalArt(baseline.html(e.item))]));
+    list = list.filter(e => !was.has(e.ref) || was.get(e.ref) !== canonicalArt(reg.html(e.item)));
+  }
+  if (packs.length) {
+    const known = new Set(reg.items().map(e => e.pack));
+    for (const p of packs) if (!known.has(p)) throw new Error(`unknown pack "${p}" (packs: ${[...known].join(', ')})`);
+    list = list.filter(e => packs.includes(e.pack));
+  }
+  if (refs.length) {
+    const byRef = new Map(list.map(e => [e.ref, e]));
+    const missing = refs.filter(r => !byRef.has(r));
+    if (missing.length) throw new Error(`unknown ref(s): ${missing.join(', ')}. A ref is <pack>/<item id>, for example us-pacific/ak-midnight-sun`);
+    list = refs.map(r => byRef.get(r));
+  }
+  return list;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   lint
+   --------------------------------------------------------------------------------------------- */
+/**
+ * Measure registry entries: [{entry, metrics}]. Scenes also get `sharedShare` / `sharedShareAll`: how much of the scene is
+ * identical to other scenes of its pack / of any pack (always measured against the WHOLE registry, not only `entries`).
+ */
+export function measureRegistry(reg, entries = reg.items()) {
+  const classCache = new Map();
+  const rows = entries.map(e => {
+    if (!classCache.has(e.pack)) classCache.set(e.pack, reg.classesFor(e.packObj));
+    return { entry: e, metrics: measure(reg.html(e.item), e.full ? 'scene' : 'item', { classes: classCache.get(e.pack) }) };
+  });
+  const scenes = rows.filter(r => r.entry.full);
+  if (scenes.length) {
+    const inSet = new Set(scenes.map(r => r.entry.ref));
+    const list = scenes.map(r => ({ ref: r.entry.ref, pack: r.entry.pack, keys: r.metrics._keys }));
+    const cache = reg._shapeKeys || (reg._shapeKeys = new Map());
+    for (const e of reg.items()) if (e.full && !inSet.has(e.ref)) list.push({ ref: e.ref, pack: e.pack, keys: cache.get(e.ref) || cache.set(e.ref, shapeKeys(reg.html(e.item))).get(e.ref) });
+    const shares = sharedShares(list);
+    scenes.forEach((r, i) => { r.metrics.sharedShare = shares[i].pack; r.metrics.sharedShareAll = shares[i].all; });
+  }
+  return rows;
+}
+
+/** Lint registry entries. Returns {results, packCss, staleWaivers, summary}; a result is {ref, pack, profile, metrics, failures, waived}. */
+export function lintRegistry(reg, thresholds, entries = reg.items()) {
+  const results = measureRegistry(reg, entries).map(({ entry: e, metrics }) => {
+    const profile = profileFor(e, thresholds);
+    const split = applyWaivers(check(metrics, profile, thresholds), e.ref, thresholds);
+    return { ref: e.ref, pack: e.pack, slot: e.slot, full: e.full, profile, metrics, failures: split.failures, waived: split.waived };
+  });
+  const packCss = [];
+  for (const id of new Set(entries.map(e => e.pack))) {
+    const p = reg.packs().find(x => x.id === id);
+    const f = checkCss(p && p.css);
+    if (f.length) packCss.push({ pack: id, failures: f });
+  }
+  const seen = new Set(results.map(r => r.ref));
+  const staleWaivers = (thresholds.waivers || []).filter(w => seen.has(w.ref) && !results.find(r => r.ref === w.ref).waived.some(f => f.rule === w.rule));
+  const failing = results.filter(r => r.failures.length);
+  return {
+    results, packCss, staleWaivers,
+    summary: { items: results.length, scenes: results.filter(r => r.full).length, small: results.filter(r => !r.full).length, failing: failing.length, failures: failing.reduce((n, r) => n + r.failures.length, 0) + packCss.reduce((n, p) => n + p.failures.length, 0), waived: results.reduce((n, r) => n + r.waived.length, 0) },
+  };
+}
+
+const pad = (s, n) => String(s).padEnd(n);
+const lpad = (s, n) => String(s).padStart(n);
+
+function printRuleTable(out, r, thresholds) {
+  for (const row of ruleTable(r.metrics, r.profile, thresholds, [...r.failures, ...r.waived])) {
+    const waived = r.waived.some(f => f.rule === row.rule);
+    out(`    ${row.ok ? 'PASS' : waived ? 'WAIV' : 'FAIL'}  ${pad(row.rule, 22)} ${lpad(row.value, 8)}   ${row.limit}`);
+  }
+}
+
+const lint = {
+  summary: 'measure every full scene and small item against the calibrated thresholds (exit 2 on any failure)',
+  usage: 'lint [--pack <id>] [--ref <ref,ref>] [--file <path>] [--json] [--rules]',
+  options: {
+    pack: { type: 'string', multiple: true, help: 'lint one pack (repeatable)' },
+    ref: { type: 'string', multiple: true, help: 'lint these items (<pack>/<id>, comma separated)' },
+    file: { type: 'string', multiple: true, help: 'a scene or pack file that is not registered yet: it is loaded with the registry and its new or changed items are linted' },
+    json: { type: 'boolean', help: 'machine-readable output' },
+    rules: { type: 'boolean', help: 'print the PASS / FAIL table of every rule for every selected item (default when 3 or fewer items)' },
+  },
+  run(args, ctx) {
+    const root = ctx.root, thresholds = loadThresholds(root);
+    const files = splitList(args.file);
+    const reg = loadRegistry(root, { extraFiles: files });
+    const baseline = files.length ? loadRegistry(root) : null;
+    const t0 = Date.now();
+    const entries = selectEntries(reg, { refs: splitList(args.ref), packs: splitList(args.pack), baseline });
+    if (files.length && !entries.length) { ctx.err('lint: the file(s) loaded but registered no new or changed item. A scene file only shows once a pack item uses its key; a pack file must call animRegisterPack.'); return 1; }
+    const res = lintRegistry(reg, thresholds, entries);
+    const ms = Date.now() - t0;
+    const fail = res.summary.failing > 0 || res.packCss.length > 0;
+    if (args.json) {
+      ctx.out(JSON.stringify({ ok: !fail, ms, summary: res.summary, packCss: res.packCss, staleWaivers: res.staleWaivers, items: res.results.map(r => ({ ref: r.ref, pack: r.pack, profile: r.profile, pass: !r.failures.length, failures: r.failures, waived: r.waived, thin: thinSpots(r.metrics, r.profile, thresholds), metrics: r.metrics })) }, null, 1));
+      return fail ? 2 : 0;
+    }
+    const out = ctx.out;
+    out(`anim-pack lint: ${res.summary.items} items (${res.summary.scenes} full scenes, ${res.summary.small} small) in ${(ms / 1000).toFixed(1)} s`);
+    const showRules = args.rules || entries.length <= 3;
+    if (!showRules) {
+      out('');
+      out(`${pad('pack', 22)} ${lpad('scenes', 6)} ${lpad('small', 6)} ${lpad('pass', 6)} ${lpad('FAIL', 6)} ${lpad('waived', 6)}`);
+      for (const id of [...new Set(res.results.map(r => r.pack))]) {
+        const rs = res.results.filter(r => r.pack === id);
+        out(`${pad(id, 22)} ${lpad(rs.filter(r => r.full).length, 6)} ${lpad(rs.filter(r => !r.full).length, 6)} ${lpad(rs.filter(r => !r.failures.length).length, 6)} ${lpad(rs.filter(r => r.failures.length).length, 6)} ${lpad(rs.filter(r => r.waived.length).length, 6)}`);
+      }
+    }
+    for (const r of res.results) {
+      if (!showRules && !r.failures.length) continue;
+      out('');
+      out(`${r.failures.length ? 'FAIL' : 'PASS'}  ${r.ref}  (${r.profile}${r.waived.length ? `, waived: ${r.waived.map(f => f.rule).join(', ')}` : ''})`);
+      if (showRules) printRuleTable(out, r, thresholds);
+      if (r.failures.length) {
+        if (showRules) out('    how to fix:');
+        for (const f of r.failures) out(`    - [${f.rule}] ${f.message}`);
+      }
+      const thin = thinSpots(r.metrics, r.profile, thresholds).slice(0, 8);
+      if (showRules && thin.length) {
+        out(`    thin spots (a pass, but ${thin.some(t => t.side === 'high') ? 'beyond the 10th / 90th percentile of' : 'thinner than 90 % of'} the accepted ${r.full ? 'scenes' : 'items'}; aim for the median):`);
+        for (const t of thin) out(`      ${pad(t.rule, 22)} ${lpad(t.value, 8)}   median ${t.median}   ${t.side === 'low' ? 'too little' : 'too much'}`);
+      }
+    }
+    for (const p of res.packCss) for (const f of p.failures) out(`\nFAIL  pack ${p.pack} css  [${f.rule}] ${f.message}`);
+    if (res.staleWaivers.length) out(`\nnote: ${res.staleWaivers.length} waiver(s) no longer needed, remove them from tools/anim-quality.json: ${res.staleWaivers.map(w => w.ref + ' ' + w.rule).join('; ')}`);
+    out('');
+    out(fail ? `FAIL: ${res.summary.failing} item(s) with ${res.summary.failures} failing rule(s). Compare with \`node tools/anim-pack.mjs reference\`, fix, re-run.`
+      : `PASS: ${res.summary.items} items clean${res.summary.waived ? ` (${res.summary.waived} documented waivers)` : ''}.`);
+    return fail ? 2 : 0;
+  },
+};
+
+/* ---------------------------------------------------------------------------------------------
+   sheet
+   --------------------------------------------------------------------------------------------- */
+const MODES = ['light', 'dark', 'night'];
+const sheet = {
+  summary: 'render items to PNG (scenes 1600 x 900 paused at 6.5 s, small items 512 x 512) so they can be looked at',
+  usage: 'sheet <ref,ref | --pack <id> | --file <path>> [--mode light|dark|night] [--out <dir>] [--contact]',
+  options: {
+    pack: { type: 'string', multiple: true, help: 'render every item of this pack (repeatable)' },
+    file: { type: 'string', multiple: true, help: 'a scene or pack file not registered yet: renders its new or changed items' },
+    mode: { type: 'string', default: 'light', help: 'light | dark | night (night = dark theme at night time: lit windows, stars)' },
+    out: { type: 'string', help: 'output folder (default .anim-ref/sheets/)' },
+    contact: { type: 'boolean', help: 'also write one contact-sheet PNG with all the renders' },
+  },
+  positionals: '<ref,ref>',
+  async run(args, ctx) {
+    const mode = args.mode || 'light';
+    if (!MODES.includes(mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
+    const files = splitList(args.file);
+    const reg = loadRegistry(ctx.root, { extraFiles: files });
+    const baseline = files.length ? loadRegistry(ctx.root) : null;
+    const refs = splitList(ctx.positionals);
+    if (!refs.length && !splitList(args.pack).length && !files.length) throw new Error('sheet needs refs (us-pacific/ak-midnight-sun,...), --pack <id> or --file <path>');
+    const entries = selectEntries(reg, { refs, packs: splitList(args.pack), baseline });
+    if (!entries.length) throw new Error('nothing to render');
+    const outDir = resolve(args.out || join(ctx.root, '.anim-ref', 'sheets'));
+    const exe = findBrowser();
+    if (!exe) throw new Error('No Chrome, Edge or Chromium found. Set CHROME_PATH to its executable (or PLAYWRIGHT_BROWSERS_PATH to a Playwright browsers folder).');
+    const chrome = await launchChrome({ executable: exe });
+    try {
+      const done = await renderItems(reg, entries, { mode, outDir, chrome, onProgress: (i, n, ref) => { if (!args.json) ctx.err(`  [${i}/${n}] ${ref}`); } });
+      for (const d of done) ctx.out(d.file);
+      if (args.contact) ctx.out(await contactSheet(done, { file: join(outDir, `contact-${mode}.png`), chrome, columns: entries.every(e => !e.full) ? 6 : 3 }));
+    } finally { await chrome.close(); }
+    return 0;
+  },
+};
+
+/* ---------------------------------------------------------------------------------------------
+   reference
+   --------------------------------------------------------------------------------------------- */
+const reference = {
+  summary: 'print the gold-standard exemplars to match (and the weaker ones to beat); --render writes their PNGs to .anim-ref/',
+  usage: 'reference [--render] [--mode light|dark|night] [--json]',
+  options: {
+    render: { type: 'boolean', help: 'render the exemplars to .anim-ref/ (git-ignored) and print the paths' },
+    mode: { type: 'string', default: 'light', help: 'light | dark | night' },
+    json: { type: 'boolean', help: 'machine-readable output' },
+  },
+  async run(args, ctx) {
+    const ref = loadReference(ctx.root);
+    if (args.json && !args.render) { ctx.out(JSON.stringify(ref, null, 1)); return 0; }
+    const all = [...ref.scenes, ...ref.items, ...ref.weaker];
+    let paths = new Map();
+    if (args.render) {
+      const mode = args.mode || 'light';
+      if (!MODES.includes(mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
+      const reg = loadRegistry(ctx.root);
+      const entries = selectEntries(reg, { refs: all.map(x => x.ref) });
+      const exe = findBrowser();
+      if (!exe) throw new Error('No Chrome, Edge or Chromium found. Set CHROME_PATH to its executable (or PLAYWRIGHT_BROWSERS_PATH to a Playwright browsers folder).');
+      const outDir = join(ctx.root, '.anim-ref');
+      mkdirSync(outDir, { recursive: true });
+      const done = await renderItems(reg, entries, { mode, outDir, executable: exe, onProgress: (i, n, r) => ctx.err(`  [${i}/${n}] ${r}`) });
+      paths = new Map(done.map(d => [d.ref, d.file]));
+    }
+    if (args.json) { ctx.out(JSON.stringify({ ...ref, rendered: Object.fromEntries(paths) }, null, 1)); return 0; }
+    const show = (title, list, why) => {
+      ctx.out(`\n${title}`);
+      for (const x of list) {
+        ctx.out(`  ${x.ref}${x.tags && x.tags.length ? `   [${x.tags.join(', ')}]` : ''}`);
+        ctx.out(`      ${x[why]}`);
+        if (x.fix) ctx.out(`      instead: ${x.fix}`);
+        if (x.source) ctx.out(`      read: ${x.source}`);
+        if (paths.has(x.ref)) ctx.out(`      ${paths.get(x.ref)}`);
+      }
+    };
+    ctx.out(ref._about || 'Gold-standard exemplars: match their craft, never copy their drawing.');
+    show(`FULL-SCREEN SCENES to study (${ref.scenes.length})`, ref.scenes, 'why');
+    show(`SMALL 64 x 64 ITEMS to study (${ref.items.length})`, ref.items, 'why');
+    show(`DO BETTER THAN THESE (${ref.weaker.length}): accepted, but flat, blobby or crude`, ref.weaker, 'wrong');
+    if (!args.render) ctx.out('\nSee them: node tools/anim-pack.mjs reference --render   (writes .anim-ref/*.png; open them before you draw)');
+    return 0;
+  },
+};
+
+/* ---------------------------------------------------------------------------------------------
+   calibrate
+   --------------------------------------------------------------------------------------------- */
+const calibrate = {
+  summary: 'compare every threshold with the corpus today; --propose prints thresholds computed from it',
+  usage: 'calibrate [--propose]',
+  options: { propose: { type: 'boolean', help: 'print proposed thresholds (JSON) at the corpus floor instead of the comparison' } },
+  run(args, ctx) {
+    const thresholds = loadThresholds(ctx.root);
+    const reg = loadRegistry(ctx.root);
+    const res = lintRegistry(reg, thresholds);
+    for (const profile of Object.keys(RULE_PLAN)) {
+      const rs = res.results.filter(r => r.profile === profile);
+      if (!rs.length) continue;
+      if (args.propose) {
+        const caps = { bytes: profile === 'scene' ? reg.limits.scene : reg.limits.item };
+        ctx.out(JSON.stringify({ [profile]: proposeThresholds(rs.map(r => r.metrics), profile, { caps }) }, null, 1));
+        continue;
+      }
+      ctx.out(`\n== ${profile}: ${rs.length} items`);
+      ctx.out(`${pad('rule', 22)} ${pad('threshold', 14)} ${lpad('min', 8)} ${lpad('p3', 8)} ${lpad('median', 8)} ${lpad('p90', 8)} ${lpad('max', 8)}   tightest item`);
+      for (const [metric, t] of Object.entries(thresholds[profile])) {
+        if (metric.startsWith('_') || typeof t !== 'object') continue;
+        const vals = rs.map(r => metric === 'richness' ? richness(r.metrics, t).index : r.metrics[metric]);
+        const d = describe(vals), lim = [t.min != null ? `>= ${t.min}` : '', t.max != null ? `<= ${t.max}` : ''].filter(Boolean).join(' ');
+        const tight = t.min != null ? rs[vals.indexOf(d.min)].ref : rs[vals.indexOf(d.max)].ref;
+        ctx.out(`${pad(metric, 22)} ${pad(lim, 14)} ${lpad(d.min, 8)} ${lpad(d.p3, 8)} ${lpad(d.median, 8)} ${lpad(d.p90, 8)} ${lpad(d.max, 8)}   ${tight}`);
+      }
+    }
+    return 0;
+  },
+};
+
+/** The subcommand table: add new commands here. */
+export const COMMANDS = { lint, sheet, reference, calibrate };
+
+/* ---------------------------------------------------------------------------------------------
+   main
+   --------------------------------------------------------------------------------------------- */
+function usage(out, table = COMMANDS) {
+  out('OpenDash animation pack tool\n');
+  out('usage: node tools/anim-pack.mjs <command> [options]\n');
+  for (const [name, c] of Object.entries(table)) out(`  ${pad(name, 11)} ${c.summary}`);
+  out('\nRun `node tools/anim-pack.mjs <command> --help` for a command\'s options.');
+  out('Global: --root <dir> works on another checkout of the repo.');
+  out('Exit codes: 0 ok, 1 error, 2 lint failures.');
+}
+function commandHelp(c, out) {
+  out(`usage: node tools/anim-pack.mjs ${c.usage}\n\n${c.summary}\n`);
+  for (const [k, o] of Object.entries(c.options || {})) out(`  --${pad(k + (o.type === 'string' ? ' <v>' : ''), 14)} ${o.help || ''}`);
+  out(`  --${pad('root <dir>', 14)} the repo root (default: this checkout)`);
+}
+
+/** The built-in commands plus every module in tools/lib/anim-cmd/ (default export; the file name is the command name). */
+export async function loadCommands(dir = join(HERE, 'lib', 'anim-cmd')) {
+  const all = { ...COMMANDS };
+  if (!existsSync(dir)) return all;
+  for (const f of readdirSync(dir).filter(f => /^[a-z][a-z0-9-]*\.mjs$/.test(f)).sort()) {
+    const mod = await import(pathToFileURL(join(dir, f)).href);
+    const c = mod.default || mod.command;
+    const name = f.replace(/\.mjs$/, '');
+    if (!c || typeof c.run !== 'function' || !c.summary || !c.usage) throw new Error(`tools/lib/anim-cmd/${f}: export default {summary, usage, options, run}`);
+    if (COMMANDS[name]) throw new Error(`tools/lib/anim-cmd/${f}: "${name}" is a built-in command`);
+    all[name] = c;
+  }
+  return all;
+}
+
+export async function main(argv, io = {}) {
+  const out = io.out || ((s) => console.log(s)), err = io.err || ((s) => console.error(s));
+  let table;
+  try { table = await loadCommands(io.commandsDir); } catch (e) { err(`anim-pack: ${e.message}`); return 1; }
+  const name = argv[0];
+  if (!name || name === '--help' || name === '-h' || name === 'help') { usage(out, table); return 0; }
+  const cmd = table[name];
+  if (!cmd) { err(`unknown command "${name}"\n`); usage(err, table); return 1; }
+  if (argv.includes('--help') || argv.includes('-h')) { commandHelp(cmd, out); return 0; }
+  let parsed;
+  try {
+    parsed = parseArgs({ args: argv.slice(1), options: { ...(cmd.options || {}), root: { type: 'string' } }, allowPositionals: true, strict: true });
+  } catch (e) { err(`${e.message}\n`); commandHelp(cmd, err); return 1; }
+  const ctx = { root: resolve(parsed.values.root || repoRoot()), out, err, positionals: parsed.positionals };
+  try { return await cmd.run(parsed.values, ctx); }
+  catch (e) { err(`anim-pack ${name}: ${e.message}`); return 1; }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main(process.argv.slice(2)).then(code => { process.exitCode = code; });
+}
