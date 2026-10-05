@@ -12,6 +12,8 @@ upgrades it.
 
 ### Changed
 
+- Yateley seasons: all 12 rebuilt views now have spring, summer, autumn and winter versions (48 scenes, 36 added). Automatic local openings match the calendar season; spring brings blossom and fresh growth, summer flowering heath and active insects, autumn falling leaves, and winter snowfall, bare trees and frozen pond illustrations.
+
 - Yateley art rebuild: 12 full-screen views across Yateley Common, Wyndham's Pool and Yateley Green, with individual birch leaves, flowering heather, detailed pond margins, swimming ducks and ducklings, darting dragonflies, flapping butterflies and a walking dog companion.
 
 - UK-priority art follow-up: both Stanage Edge views replace the repeated slab silhouette with a receding escarpment, irregular rock planes, bedding cracks and grounded moorland slopes.

@@ -1,5 +1,5 @@
 /* ============================================================
-   ANIMATION PACK "uk-south-east" (v2.3, UK batches 2 and 3).
+   ANIMATION PACK "uk-south-east" (v2.4, UK batches 2 and 3).
    PURE classic script, the same manifest and quality gate as
    72-anim-pack-uk-south-west.js (docs/dev/UK_PACK.md). Opt-in like every UK
    pack: the items play only when the detected county (71-uk-counties.js,
@@ -10,7 +10,7 @@
    (78-anim-wire.js), and the gallery and the animation-of-the-day card show
    them large. Each scene is layered: a sky gradient and its light, far /
    mid / near layers that drift at different speeds (parallax), and ambient
-   life (birds, clouds, water shimmer, steam, smoke). The four files contain 148 scenes with
+   life (birds, clouds, water shimmer, steam, smoke). The four files contain 184 scenes with
    the seeded daily look; each carries `site` for the origin line.
    Colours are painted (the scene's own palette); the dark theme, or a
    tod-dusk / tod-night class (animItemHtml o.tod), lays an evening grade
@@ -34,7 +34,7 @@
       id: county + '-' + o.id,
       label: o.label + ', ' + NAMES[county],
       tags: ['uk', region.replace(/-/g, ' '), NAMES[county].toLowerCase(), kind].concat(o.tags || []),
-      when: (day, ctx) => !!ctx && !!ctx.county && (!months || months.includes(+String(day).slice(5, 7))) && (ctx.county === county || (!!o.ukTown && animUkScenePools([{county,ukTown:o.ukTown}], ctx).nearby.length > 0)),
+      when: (day, ctx) => !!ctx && !!ctx.county && (!months || months.includes(+String(day).slice(5, 7))) && (!o.ukSeason || o.ukSeason === animSeasonOf(day)) && (ctx.county === county || (!!o.ukTown && animUkScenePools([{county,ukTown:o.ukTown}], ctx).nearby.length > 0)),
     }));
   };
 
@@ -1016,6 +1016,10 @@
     '.anim-scene .x-ukflutter { --an: ap-ukflutter; --ad: 7s; }',
     '.anim-scene .x-ukspin { --an: ap-ukspin; --ad: 40s; }',
     '.anim-scene .x-ukwheel { --an: ap-ukwheel; --ad: 1.4s; --ae: linear; }',
+    '.anim-scene .x-ukynod { --an: ap-ukynod; --ad: 4.6s; }',
+    '.anim-scene .x-ukysnow { --an: ap-ukysnow; --ad: 13s; --ae: linear; }',
+    '@keyframes ap-ukynod { 0%,60%,100% { transform: rotate(0); } 72% { transform: rotate(8deg); } 84% { transform: rotate(-4deg); } }',
+    '@keyframes ap-ukysnow { 0% { transform: translate(0,0); opacity: 0; } 15%,85% { opacity: 1; } 100% { transform: translate(var(--dx),var(--dy)); opacity: 0; } }',
     '.anim-scene .x-ukywalk { --an: ap-ukywalk; --ad: 19s; }',
     '.anim-scene .x-ukyleg { --an: ap-ukyleg; --ad: .9s; }',
     '@keyframes ap-ukywalk { 0%,100% { transform: translate(0,0); } 50% { transform: translate(var(--dx),var(--dy)); } }',
@@ -1065,6 +1069,6 @@
     '@keyframes ap-ukflutter { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(60px, -40px); } 50% { transform: translate(120px, 10px); } 75% { transform: translate(50px, 30px); } }',
   ].join('\n');
 
-  animRegisterPack({ id: 'uk-south-east', name: 'UK: South East & London', version: '2.3.1', css,
+  animRegisterPack({ id: 'uk-south-east', name: 'UK: South East & London', version: '2.4.0', css,
     description: 'Full-screen illustrated scenes across all nine South East counties and Greater London, together in one neighbouring-region gallery pack. County detection remains opt-in and every scene plays only in its own county.', items });
 })();

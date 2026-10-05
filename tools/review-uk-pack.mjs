@@ -16,7 +16,7 @@ const R = new Function(files.map(f => readFileSync(join(app, f), 'utf8')).join('
 const pack = R.animPack(packId);
 if (!pack) throw new Error('Unknown pack: ' + packId);
 const countyFilter = process.argv[4] === 'all' ? null : process.argv[4];
-const sceneItems = countyFilter ? pack.items.filter(it => it.county === countyFilter || it.ukPart === countyFilter || it.id === countyFilter || (countyFilter === 'full' && it.full) || (countyFilter === 'mini' && !it.full)) : pack.items;
+const sceneItems = countyFilter ? pack.items.filter(it => it.county === countyFilter || it.ukLocality === countyFilter || it.ukSeason === countyFilter || it.ukPart === countyFilter || it.id === countyFilter || (countyFilter === 'full' && it.full) || (countyFilter === 'mini' && !it.full)) : pack.items;
 if (!sceneItems.length) throw new Error('No scenes for county: ' + countyFilter);
 const css = ['00-tokens.css', '01-components.css', '78-delight.css', '71-anim-registry.css', '71-anim-library.css', '71-anim-moments.css', '76-scenes.css'].map(f => readFileSync(join(root, 'src', 'styles', f), 'utf8')).join('\n') + '\n' + pack.css;
 const modes = [{ name: 'light-still', dark: false, reduced: true }, { name: 'dark-still', dark: true, reduced: true }, { name: 'light-motion', dark: false, reduced: false }, { name: 'dark-motion', dark: true, reduced: false }].filter(m => !process.argv[5] || process.argv[5].split(',').includes(m.name));

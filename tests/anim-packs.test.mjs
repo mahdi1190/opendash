@@ -398,12 +398,14 @@ test('UK packs: county-only, one signature, bounded baseline and meaningful plac
       const kinds = new Map();
       for (const i of baseline.filter(x => !x.signature)) { const k = i.ukKind === 'heritage' ? 'sport' : i.ukKind; kinds.set(k, (kinds.get(k) || 0) + 1); }
       for (const [k, n] of kinds) assert.ok(n <= 3, `${county}: at most 3 of kind ${k}`);
-      const places = new Map();
+      const places = new Map(), seasonalViews = new Set();
       for (const i of list.filter(x => x.ukPart)) {
         assert.ok(i.full && i.ukPlace && i.ukTown && i.ukLocality && i.ukView && i.viewReason, `${i.ref}: named place, locality, view and reason`);
         assert.ok(R.ukTowns().some(t => t.id === county && t.town === i.ukTown), `${i.ref}: offline town cluster in its county`);
         const views = places.get(i.ukPlace) || new Set();
-        assert.ok(!views.has(i.ukView), `${i.ref}: distinct view of its place`); views.add(i.ukView); places.set(i.ukPlace, views);
+        const variant = `${i.ukPlace}|${i.ukView}|${i.ukSeason || 'any'}`;
+        assert.ok(!seasonalViews.has(variant), `${i.ref}: distinct viewpoint and season`);
+        seasonalViews.add(variant); views.add(i.ukView); places.set(i.ukPlace, views);
       }
       for (const [place, views] of places) assert.ok(views.size <= 4, `${county}/${place}: no more than four considered views`);
       const sig = list.find(i => i.signature);
@@ -453,5 +455,32 @@ test('South East and London: complete county rotations, full framing, local ids 
         for (let mo = 1; mo <= 12; mo++) assert.equal(it.when(`2026-${String(mo).padStart(2, '0')}-15`, { county: c.id }), it.months.includes(mo), `${it.ref}: month ${mo}`);
       }
     }
+  }
+});
+
+
+test('Yateley: four views of each place per season, matching the calendar and retaining saved refs', () => {
+  const places = ['yateley-common', 'wyndhams-pool', 'yateley-green'];
+  const all = R.animPack('uk-south-east').items;
+  const scenes = all.filter(i => places.includes(i.ukPlace));
+  assert.equal(scenes.length, 48);
+  for (const place of places) {
+    for (const season of ['spring', 'summer', 'autumn', 'winter']) {
+      const views = scenes.filter(i => i.ukPlace === place && i.ukSeason === season);
+      assert.equal(views.length, 4);
+      assert.deepEqual(views.map(i => i.ukView).sort(), ['close','detail','evening','wide']);
+      for (const it of views) assert.deepEqual(it.season, [season]);
+    }
+    for (let v = 1; v <= 4; v++) assert.ok(all.some(i => i.id === `hampshire-${place}-${v}`), 'saved scene refs survive');
+  }
+  const off = all.filter(i => !scenes.includes(i)).map(i => i.ref);
+  for (let month = 1; month <= 12; month++) {
+    const day = `2026-${String(month).padStart(2,'0')}-16`;
+    const season = R.animSeasonOf(day), ctx = {county:'hampshire',ukTown:'Yateley',level:'standard'};
+    const eligible = scenes.filter(i => i.when(day, ctx));
+    assert.equal(eligible.length, 12, day);
+    assert.ok(eligible.every(i => i.ukSeason === season), day);
+    const picked = R.animSpecialPick('opening',day,{block:off},ctx);
+    assert.ok(picked && picked.ukSeason === season, `${day}: automatic local selection respects seasons`);
   }
 });

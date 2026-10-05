@@ -20,8 +20,8 @@ including named towns and researched places within each county. The 8–12 scene
 per county below are the completed baseline, not the final expansion target.
 New views must change composition and activity as well as lighting or season;
 photos and static image substitutes do not meet the animated SVG quality bar.
-Town expansions add 64 scenes: 16 elsewhere in Hampshire, 16 in Kent and
-32 around Yateley, Fleet and Farnborough, for 148 combined scenes. The wider
+Town expansions and seasonal versions add 100 scenes: 16 elsewhere in Hampshire, 16 in Kent and
+68 around Yateley, Fleet and Farnborough, for 184 combined scenes (36 additional seasonal versions). The wider
 1,000-scene expansion remains paused.
 South East and London target 1,044 scenes: the 84 baseline scenes plus 24 new
 named places with four considered views in each of the ten county/area groups.
@@ -36,6 +36,14 @@ If none are available, a seasonal scene fills the screen. Distant scenes remain
 available in the gallery. The main title always names the current location;
 the corner names the illustrated landmark and its actual county. Pins and
 blocks respect proximity, while national events keep their priority.
+Yateley's three rebuilt places have four viewpoints in each of four seasons:
+48 scenes. `ukSeason` and `season` identify each version; the pack's local
+`when` rule matches `animSeasonOf(day)` before the opening rotation. Spring is
+March-May, summer June-August, autumn September-November, winter December-February.
+The gallery keeps every version available. Existing saved refs remain valid.
+Seasonal versions keep the four-view limit per place, with unique view/season pairs.
+Snow and frozen ponds are illustrated winter moods, not live weather readings.
+
 The gallery pages 80 scenes at a time and searches all scenes, including place
 and town names, so large packs remain entirely browsable.
 
@@ -98,7 +106,7 @@ as Hampshire is in `72-anim-pack-uk-south-east.js`:
 | Batch | Region id | Areas (ids in `UK_COUNTIES`) |
 | --- | --- | --- |
 | 1 (done) | `south-west` | cornwall, devon, dorset, somerset, bristol, gloucestershire, wiltshire |
-| 2 (138 full scenes; wider expansion paused) | `south-east` | kent, east-sussex, west-sussex, surrey, hampshire, isle-of-wight, berkshire, oxfordshire, buckinghamshire |
+| 2 (174 full scenes; wider expansion paused) | `south-east` | kent, east-sussex, west-sussex, surrey, hampshire, isle-of-wight, berkshire, oxfordshire, buckinghamshire |
 | 3 (baseline done: 10 full scenes; combined gallery; expansion pending) | `london` | greater-london |
 | 4 | `east` | norfolk, suffolk, cambridgeshire, essex, hertfordshire, bedfordshire |
 | 5 | `east-midlands` | derbyshire, nottinghamshire, leicestershire, rutland, northamptonshire, lincolnshire |
