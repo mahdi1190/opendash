@@ -62,6 +62,7 @@ function _tmTravelOn() { return typeof TravelStore !== 'undefined' && TravelStor
 function _tmWords(text) {
   return String(text).split(' ').map((w, i) => `<span class="trm-w"><span class="trm-wi" style="--i:${i}">${esc(w)}</span></span>`).join(' ');
 }
+function _tmJourneyEggHtml(m) { return m.egg ? `<p class="trm-egg"><b>${esc(m.egg.title)}</b><span>${esc(m.egg.detail)}</span></p>` : ''; }
 function _tmChipsHtml(list) {
   return (list || []).map((c, i) => `<span class="trm-chip" style="--i:${i}">${_tmIcon(c.icon)}<span>${c.html}</span></span>`).join('');   // c.html: built by the logic file with every user text escaped
 }
@@ -193,6 +194,7 @@ function trFullCard(m, o) {
     + `<div class="trm-stamp" aria-hidden="true">${m.stamp}</div>`
     + `<div class="trm-over">${_tmFlag(m.cc, 'is-lg')}<span class="trm-overline">${esc(m.overline)}</span></div>`
     + `<h2 class="trm-title" id="${id}" aria-label="${esc(m.title)}"><span aria-hidden="true">${_tmWords(m.title)}</span></h2>`
+    + _tmJourneyEggHtml(m)
     + _tmGreetHtml(m.greeting)
     + _tmClocksHtml(m)
     + `<div class="trm-chips">${_tmChipsHtml(m.chipsFull)}</div>`
@@ -216,6 +218,7 @@ function trPostcard(m, o) {
     + `<div class="trm-over">${_tmIcon('house', 'i-sm')}<span class="trm-overline">${esc(m.overline.replace(m.dateIso, typeof Clock !== 'undefined' ? Clock.fmtDate(Clock.now(), { weekday: 'long', day: 'numeric', month: 'long' }) : m.dateIso))}</span></div>`
     + `<h2 class="trm-title" id="${id}" aria-label="${esc(m.title)}"><span aria-hidden="true">${_tmWords(m.title)}</span></h2>`
     + `<p class="trm-line">${esc(m.line)}</p>`
+    + _tmJourneyEggHtml(m)
     + `<div class="trm-chips">${_tmChipsHtml(m.chips)}</div>`
     + `<div class="trm-act"><button type="button" class="btn btn-primary btn-sm" data-trm-act="more">${_tmIcon('maximize-2')} See more</button>`
     + (m.tripId ? `<button type="button" class="btn btn-secondary btn-sm" data-trm-act="trip">${_tmIcon('map')} Trip</button>` : '')
@@ -237,6 +240,7 @@ function trRecapCard(m, o) {
     + `<div class="trm-over">${_tmIcon('house', 'i-sm')}<span class="trm-overline">${esc(m.overline.replace(m.dateIso, typeof Clock !== 'undefined' ? Clock.fmtDate(Clock.now(), { weekday: 'long', day: 'numeric', month: 'long' }) : m.dateIso))}</span></div>`
     + `<h2 class="trm-title" id="${id}" aria-label="${esc(m.title)}"><span aria-hidden="true">${_tmWords(m.title)}</span></h2>`
     + `<p class="trm-line">${esc(m.line)}</p>`
+    + _tmJourneyEggHtml(m)
     + `<div class="trm-amts">${counts}</div>`
     + `<div class="trm-chips">${_tmChipsHtml(m.chips)}</div>`
     + `<div class="trm-act">${m.tripId ? `<button type="button" class="btn btn-primary btn-sm" data-trm-act="trip">${_tmIcon('map', 'i-sm')} See the trip</button>` : ''}`
@@ -390,9 +394,10 @@ function _tmShowPostcard(m, o) {
   let entering = level !== 'off' && level !== 'reduced';
   setTimeout(() => { entering = false; }, settle);
   // The life line: a JS timer (the reduced-motion CSS would cut a CSS one to 1 ms); the bar is only its picture.
-  let left = 8000, startedAt = 0, timer = null, paused = 0;
+  const lifeMs = 8000 + (m.egg ? m.egg.extraMs : 0);
+  let left = lifeMs, startedAt = 0, timer = null, paused = 0;
   const bar = root.querySelector('.trm-life i');
-  const anim = bar && level !== 'off' && level !== 'reduced' ? bar.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: 8000, delay: settle, easing: 'linear', fill: 'both' }) : null;
+  const anim = bar && level !== 'off' && level !== 'reduced' ? bar.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: lifeMs, delay: settle, easing: 'linear', fill: 'both' }) : null;
   const run = () => { if (paused || timer || state.closing) return; startedAt = Date.now(); timer = setTimeout(() => close('dock'), left); if (anim) anim.play(); };
   const hold = (why) => { paused |= why; if (timer) { clearTimeout(timer); timer = null; left = Math.max(0, left - (Date.now() - startedAt)); } if (anim) anim.pause(); };
   const release = (why) => { paused &= ~why; run(); };
@@ -611,7 +616,9 @@ async function _tmArrivalFor(mo, snap) {
   const b = _TM.banner && _TM.banner.cc === place.cc ? _TM.banner.text : '';
   if (b) { _TM.banner = null; clearTimeout(_TM.bannerTimer); }
   const landed = snap.landed && snap.landed.cc === place.cc ? `Your ${mo.leg && mo.leg.mode && mo.leg.mode !== 'flight' ? 'train' : 'flight'} arrived in ${snap.landed.label || place.label}. This computer still shows ${Clock.label(Clock.home())} time.` : '';
-  const m = trArrivalModel({ now, zone: place.zone || snap.zone, place, home: snap.home, leg: mo.leg, source: snap.where && snap.where.source, trip, weather, meetings: snap.meetings, nextEvent, holidays: snap.holidays, rate, h12: _tmH12(), banner: b, landed, key: mo.key });
+  const arrivals = Object.keys(_tmShownMap()).filter(k => k.startsWith('arrive:') && k !== mo.key);
+  const m = trArrivalModel({ now, zone: place.zone || snap.zone, place, home: snap.home, leg: mo.leg, source: snap.where && snap.where.source, trip, weather, meetings: snap.meetings, nextEvent, holidays: snap.holidays, rate, h12: _tmH12(), banner: b, landed, key: mo.key,
+    returningCountry: arrivals.some(k => k.endsWith(':' + place.cc)), sequence: arrivals.length, birthday: APP_CONFIG.birthday });
   m.tripId = mo.tripId || m.tripId;
   if (place.cityId) m.cityId = place.cityId;   // the world pack's landmark on the card (78-anim-world.js)
   return m;

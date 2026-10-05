@@ -17,7 +17,7 @@ function harness({ day = '2026-12-25', look = {}, on = true, town = '' } = {}) {
   });
   const splash = element();
   const context = vm.createContext({
-    console, setTimeout: fn => { timers.push(fn); }, setInterval() {}, addEventListener() {}, removeEventListener() {}, performance: { now: () => 0 },
+    console, setTimeout: (fn, delay) => { fn.delay = delay; timers.push(fn); }, setInterval() {}, addEventListener() {}, removeEventListener() {}, performance: { now: () => 0 },
     localStorage: { getItem: k => stored.get(k), setItem: (k, v) => stored.set(k, v) },
     document: { hidden: false, readyState: 'loading', addEventListener() {},
       getElementById: () => splash, createElement: element, querySelector: () => null,
@@ -30,7 +30,7 @@ function harness({ day = '2026-12-25', look = {}, on = true, town = '' } = {}) {
     animUkWhere: () => ({ id: 'hampshire', name: 'Hampshire', welcome: 'Hampshire', town }),
     animUkCountyId: () => 'hampshire', _AUK_KEY: 'synthetic-county',
   });
-  for (const file of ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-uk-counties.js', '72-anim-pack-seasons.js', '72-anim-pack-uk-south-east-4.js', '72-anim-pack-uk-south-east.js']) vm.runInContext(src(file), context);
+  for (const file of ['69-travel-moments-logic.js', '71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-uk-counties.js', '72-anim-pack-seasons.js', '72-anim-pack-uk-south-east-4.js', '72-anim-pack-uk-south-east.js']) vm.runInContext(src(file), context);
   vm.runInContext("function animToday(slot) { return animDailyPick(slot, todayStr(), animLook(), { county: 'hampshire', level: 'standard' }); }", context);
   vm.runInContext(src('78-anim-wire.js'), context);
   const arrival = () => {
@@ -162,6 +162,59 @@ test('arrival prefixes expire after five minutes even when fewer than three were
   now++;
   assert.equal(vm.runInContext('animUkArrivalState(point).remaining', c), 0);
   assert.equal(vm.runInContext('animUkArrivalState(point).pending', c), false);
+});
+test('an arrival Easter egg adds 2.5 seconds once, preserves the title and respects skipping', () => {
+  const h = harness({ day: '2026-10-06' });
+  vm.runInContext(src('78-anim-uk.js'), h.context);
+  h.context.animUkWhere = () => ({ id: 'hampshire', name: 'Hampshire', town: 'Yateley', lat: 51.34, lon: -0.83 });
+  vm.runInContext('animUkCheck()', h.context);
+  h.context.animUkWhere = () => ({ id: 'hampshire', name: 'Hampshire', town: 'Fleet', lat: 51.28, lon: -0.84 });
+  assert.equal(vm.runInContext('animUkCheck()', h.context), true);
+  const overlay = h.context.document.body.children[0];
+  assert.match(overlay.innerHTML, /Fleet by name/);
+  assert.match(overlay.innerHTML, /ap-cine-place">Fleet</);
+  assert.equal(h.timers[0].delay, 3400 + 2500 + 80);
+  assert.equal(vm.runInContext('animUkArrivalState(animUkWhere()).egg', h.context), null);
+  overlay.listeners.click(); h.next();
+  assert.equal(h.context.document.body.children.length, 1, 'skip does not add another stage');
+});
+test('splash Easter eggs extend only their welcome stage and are consumed once', () => {
+  const h = harness({ day: '2026-10-06' });
+  vm.runInContext(src('78-anim-uk.js'), h.context);
+  h.context.animUkWhere = () => ({ id: 'hampshire', name: 'Hampshire', town: 'Yateley', lat: 51.34, lon: -0.83 });
+  vm.runInContext('animUkArrivalState(animUkWhere())', h.context);
+  h.context.animUkWhere = () => ({ id: 'hampshire', name: 'Hampshire', town: 'Fleet', lat: 51.28, lon: -0.84 });
+  h.run(); h.next();
+  assert.match(h.splash.children[0].innerHTML, /od-seq-egg/);
+  assert.equal(h.timers[0].delay, 1600 + 2500);
+  h.next(); assert.equal(h.timers[0].delay, 3600, 'the ordinary scene duration stays the same');
+  assert.equal(vm.runInContext('animUkArrivalState(animUkWhere()).egg', h.context), null);
+});
+test('cinematic Easter egg copy is escaped and cannot insert markup', () => {
+  const h = harness();
+  h.context.esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  vm.runInContext('animCineShow({art:"",place:"Fleet",egg:{title:"<img src=x>",detail:"<script>bad</script>"},ms:5900})',h.context);
+  const html = h.context.document.body.children[0].innerHTML;
+  assert.match(html,/&lt;img src=x&gt;/);
+  assert.match(html,/&lt;script&gt;bad&lt;\/script&gt;/);
+  assert.doesNotMatch(html,/<img|<script/);
+});
+test('local Easter eggs have a six-hour cooldown, expire with the welcome and keep bounded memories', () => {
+  let now = 1000;
+  const c = vm.createContext({ APP_CONFIG: { locationMode: 'manual' }, Date: { now: () => now } });
+  vm.runInContext(src('69-travel-moments-logic.js') + '\n' + src('78-anim-uk.js'), c);
+  const visit = (town, consume = false) => { c.point = { id: 'hampshire', town }; return vm.runInContext(`animUkArrivalState(point, ${consume})`, c); };
+  visit('Yateley');
+  assert.equal(visit('Fleet', true).egg.id, 'local-fleet');
+  assert.equal(visit('Yateley').egg, null);
+  now += 6 * 3600000;
+  assert.equal(visit('Fleet').egg.id, 'local-fleet', 'a later arrival can choose another matching surprise');
+  now += 5 * 60000;
+  assert.equal(visit('Fleet').egg, null);
+  for (let i = 0; i < 20; i++) visit('Town ' + i);
+  assert.equal(vm.runInContext('_aukArrivalMemory.seen.length', c), 12);
+  assert.equal(vm.runInContext('_aukArrivalMemory.visits.length', c), 12);
+  assert.equal(vm.runInContext('_aukArrivalMemory.recent.length', c), 12);
 });
 
 test('ordinary days, blocked holidays and disabled packs have no event stage', () => {

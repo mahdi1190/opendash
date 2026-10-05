@@ -56,6 +56,9 @@
 .od-seq-title { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 0.2em; text-align: center; opacity: 0; padding: 0 5vw; }
 .od-seq-over { font-size: clamp(1rem, 1.7vw, 1.5rem); font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.78; }
 .od-seq-place { font-size: clamp(3rem, 8.4vw, 8rem); font-weight: 700; letter-spacing: -0.035em; line-height: 0.98; }
+.od-seq-egg { display: grid; gap: 8px; margin-top: 18px; max-width: 42rem; font-size: clamp(0.95rem, 1.6vw, 1.3rem); line-height: 1.4; }
+.od-seq-egg b { font-size: 1.2em; }
+.od-seq-egg > span { opacity: 0.85; }
 .od-seq-title:not(:has(.od-seq-place)) .od-seq-over { font-size: clamp(2.4rem, 6vw, 5.6rem); letter-spacing: -0.03em; text-transform: none; font-weight: 700; opacity: 1; }
 .od-seq-cap {
   position: absolute; z-index: 2; left: clamp(24px, 5vw, 88px); bottom: clamp(26px, 7vh, 80px); right: 24px; display: grid; gap: 8px; justify-items: start;

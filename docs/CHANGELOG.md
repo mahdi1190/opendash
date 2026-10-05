@@ -12,6 +12,8 @@ upgrades it.
 
 ### Changed
 
+- 48 contextual travel Easter eggs: straight-line distance bands, country/hemisphere changes, clock shifts, repeat visits, busy location days, birthdays and local wordplay. UK surprises appear once per arrival with a six-hour cooldown; timed Easter egg openings and welcome-home postcards last 2.5 seconds longer. Travel arrival dialogs remain dismissible at any time.
+
 - Device location requests a fresh fix on every page load and Refresh today, checks again on tab return and every 15 minutes while visible, and works without the browser Permissions API. Failed fixes retain the last location; manual locations remain unchanged.
 - UK town arrivals show “Welcome to” for three displayed openings or five minutes after detection, whichever comes first, including moves within one county. Device fixes must move at least 3 km and change the detected town/area; ordinary GPS drift does not restart the greeting. Counts and expiry persist on the device.
 

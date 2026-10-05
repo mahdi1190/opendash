@@ -23,6 +23,51 @@ function load() {
 const L = load();
 const HOME = { zone: 'Europe/London', label: 'London', cc: 'GB', ccy: 'GBP' };
 const T = Date.UTC(2026, 9, 4, 6, 42);   // Sun 4 Oct 2026, 07:42 London, 15:42 Tokyo
+test('journey Easter eggs use straight-line thresholds and never infer trips from manual edits', () => {
+  const from = { lat: 0, lon: 0, cc: 'GB' };
+  const pick = lon => L.trJourneyEgg({ from, to: { lat: 0, lon, cc: 'GB' }, source: 'geo' });
+  assert.equal(pick(1), null);
+  assert.equal(pick(1.5).id, 'hundred-miles');
+  assert.equal(pick(4).id, 'big-hop');
+  assert.equal(pick(15).id, 'thousand-miles');
+  assert.match(pick(15).detail, /as the crow flies/);
+  assert.equal(pick(15).extraMs, 2500);
+  assert.equal(L.trJourneyEgg({ from, to: { lat: 0, lon: 15 }, source: 'manual' }), null);
+  assert.equal(L.trJourneyEgg({ from: {lat: NaN, lon: 0}, to: {lat: 0, lon: 200} }), null);
+});
+test('country, returning-place, town and late arrivals have distinct gentle surprises', () => {
+  const pick = i => L.trJourneyEgg(i);
+  assert.equal(pick({from:{cc:'GB'},to:{cc:'JP'}}).id, 'new-country');
+  assert.equal(pick({from:{cc:'GB'},to:{cc:''}}), null, 'unknown countries do not become border crossings');
+  assert.equal(pick({returning:true,to:{town:'Fleet'}}).id, 'returning');
+  for (const town of ['Fleet', 'Yateley', 'Sheffield', 'Manchester']) assert.equal(pick({to:{town}}).id, 'local-' + town.toLowerCase());
+  assert.equal(pick({hour:23}).id, 'late-arrival');
+  assert.equal(pick({hour:12}).id, 'lunchtime');
+});
+test('all 48 authored Easter eggs are reachable from matching contexts and vary deterministically', () => {
+  assert.equal(L.TR_JOURNEY_EGGS.length, 48);
+  assert.equal(new Set(L.TR_JOURNEY_EGGS.map(e => e.id)).size, 48);
+  const contexts = [
+    {birthday:true},
+    ...[1.5,4,8,15,40,80,170].map(lon => ({from:{lat:0,lon:0},to:{lat:0,lon},source:'geo'})),
+    {from:{lat:10,lon:0},to:{lat:-10,lon:0},source:'geo'},
+    {from:{lat:0,lon:170},to:{lat:0,lon:-170},source:'geo'},
+    {from:{lat:0,lon:0},to:{lat:20,lon:0},source:'geo'},
+    {from:{lat:20,lon:0},to:{lat:0,lon:0},source:'geo'},
+    {from:{cc:'GB'},to:{cc:'JP'}}, {from:{cc:'JP'},to:{cc:'GB'},homeCc:'GB'}, {from:{cc:'GB'},to:{cc:'JP'},returningCountry:true},
+    ...[30,180,540].map(diffMin=>({diffMin})), {dayDiff:1}, {dayDiff:-1},
+    {uniqueToday:3}, {uniqueWeek:5}, {returning:true,awayMs:3600000}, {returning:true,awayMs:31*86400000},
+    {visitCount:3}, {visitCount:5}, {returning:true}, {returning:true,dow:6},
+    {hour:23}, {hour:6}, {hour:12}, {dow:5,hour:16}, {dow:0,hour:15},
+    ...['Fleet','Yateley','Sheffield','Manchester','Reading','Bath','York','Oxford','Cambridge','Edinburgh','Glasgow','Cardiff','Belfast','Derry/Londonderry'].map(town=>({to:{town}})),
+  ];
+  const reached = new Set();
+  for (const c of contexts) for (let sequence=0; sequence<48; sequence++) {
+    const egg = L.trJourneyEgg({...c,sequence});
+    if (egg) { reached.add(egg.id); assert.equal(egg.extraMs,2500); assert.deepEqual(egg,L.trJourneyEgg({...c,sequence})); }
+  }
+  assert.deepEqual([...reached].sort(),L.TR_JOURNEY_EGGS.map(e=>e.id).sort());
+});
 
 /** Balanced tags, nothing executable. */
 function wellFormed(svg) {
@@ -194,7 +239,7 @@ test('the arrival card: a city from the calendar, the clocks, the greeting and u
   assert.match(m.chips[1].html, /18°.*until 18:00/);
   assert.match(m.chips[2].html, /¥190/);
   assert.match(m.stamp, /HND · 14:42/);
-  assert.equal(L.trMomentAnnounce(m), 'Welcome to Tokyo. It is 15:42 here, 8 hours ahead of London.');
+  assert.equal(L.trMomentAnnounce(m), 'Welcome to Tokyo. It is 15:42 here, 8 hours ahead of London. New country, new chapter. Your dashboard came along for the ride.');
 });
 
 test('zone-only, rail, night, half-hour and date-line arrivals', () => {
@@ -230,6 +275,8 @@ test('welcome home and the departure card', () => {
   const h = L.trHomeModel({ now: Date.UTC(2026, 9, 9, 18, 40), home: Object.assign({ cityId: 'london-gb' }, HOME),
     trip: { id: 'trip-a', dest: { label: 'Tokyo', cc: 'JP' }, from: '2026-10-04', to: '2026-10-09', groupEvents: ['a', 'b', 'c'], spending: { byCcy: { JPY: { orig: 48200, home: 254 } } } }, bodyDiffMin: -480 });
   assert.equal(h.title, 'Welcome home');
+  assert.equal(h.egg.id, 'home-country');
+  assert.equal(h.egg.extraMs, 2500);
   assert.equal(h.line, '6 days in Tokyo. The dashboard is back on London time.');
   assert.deepEqual(h.counts.map(c => c.n), [6, 3]);
   assert.deepEqual(h.spend, [{ ccy: 'JPY', amt: 48200 }]);

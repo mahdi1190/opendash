@@ -74,7 +74,7 @@ function animCineShow(o) {
   const el = document.createElement('div');
   el.className = 'ap-cine' + (o.cls ? ' ' + o.cls : ''); el.setAttribute('role', 'status');
   el.style.setProperty('--ap-open-ms', ms + 'ms');
-  el.innerHTML = o.art + `<div class="ap-cine-t">${o.over ? `<span class="ap-cine-over">${esc(o.over)}</span>` : ''}<span class="ap-cine-place">${esc(o.place || '')}</span>${o.origin ? `<span class="ap-cine-origin">${esc(o.origin)}</span>` : ''}<span class="ap-cine-skip">Click or press any key to close</span></div>`;
+  el.innerHTML = o.art + `<div class="ap-cine-t">${o.over ? `<span class="ap-cine-over">${esc(o.over)}</span>` : ''}<span class="ap-cine-place">${esc(o.place || '')}</span>${o.origin ? `<span class="ap-cine-origin">${esc(o.origin)}</span>` : ''}${o.egg ? `<span class="ap-cine-egg"><b>${esc(o.egg.title)}</b><span>${esc(o.egg.detail)}</span></span>` : ''}<span class="ap-cine-skip">Click or press any key to close</span></div>`;
   const end = (reason) => { if (!el.isConnected) return; el.remove(); removeEventListener('keydown', skip, true); if (o.onEnd) o.onEnd(reason); };
   const skip = () => end('skip');
   el.addEventListener('click', skip);
@@ -232,6 +232,7 @@ function animOpeningSequence() {
     try { w = typeof animUkWhere === 'function' ? animUkWhere() : null; } catch (e) { w = null; }
     let returning = false;
     const arrival = w && typeof animUkArrivalState === 'function' ? animUkArrivalState(w) : null;
+    const helloMs = ms[1] + (arrival && arrival.egg ? arrival.egg.extraMs : 0);
     if (w) try { returning = localStorage.getItem(_AUK_KEY) === w.id; localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ }   // no second welcome (78-anim-uk.js)
     if (arrival && arrival.pending) returning = false;
     try { if (typeof animThemeApply === 'function') animThemeApply(); } catch (e) { /* the packs' css is injected there */ }
@@ -254,16 +255,16 @@ function animOpeningSequence() {
     const emblem = '';
     const box = document.createElement('div'); box.className = 'od-seq';
     box.innerHTML = `<div class="od-seq-bg">${art}</div><div class="od-seq-shade"></div>${emblem}`
-      + `<div class="od-seq-title">${w ? (arrival && arrival.remaining > 0 ? '<span class="od-seq-over">Welcome to</span>' : '') : `<span class="od-seq-over">${esc(tx ? 'Welcome to' : 'Welcome back')}</span>`}${w || tx ? `<span class="od-seq-place">${esc(w ? animOpeningPlace(it, w) : tx.name)}</span>` : ''}</div>`
+      + `<div class="od-seq-title">${w ? (arrival && arrival.remaining > 0 ? '<span class="od-seq-over">Welcome to</span>' : '') : `<span class="od-seq-over">${esc(tx ? 'Welcome to' : 'Welcome back')}</span>`}${w || tx ? `<span class="od-seq-place">${esc(w ? animOpeningPlace(it, w) : tx.name)}</span>` : ''}${arrival && arrival.egg ? `<span class="od-seq-egg"><b>${esc(arrival.egg.title)}</b><span>${esc(arrival.egg.detail)}</span></span>` : ''}</div>`
       + `<div class="od-seq-cap"><span class="od-seq-origin">${esc(cap)}</span><span class="od-seq-skip">Click or press any key to skip</span></div>`;
-    sp.style.setProperty('--od-hello-ms', ms[1] + 'ms');
+    sp.style.setProperty('--od-hello-ms', helloMs + 'ms');
     sp.style.setProperty('--od-scene-ms', ms[2] + 'ms');
     sp.appendChild(box);
     if (w && arrival) animUkArrivalState(w, true);
     sp.setAttribute('data-od-county', w ? w.id : '');
     sp.setAttribute('data-od-scene', it ? it.ref : stageIt ? stageIt.ref : 'fallback');
     sp.classList.add('od-st-hello');
-    wait(ms[1], () => {
+    wait(helloMs, () => {
       sp.classList.add('od-st-scene');
       wait(ms[2], () => {
         // Keep the same splash and skip handlers. A skipped/removed splash

@@ -75,6 +75,8 @@
 .trm-chip b { color: var(--fg); font-weight: 600; }
 .trm-pc .trm-chip { min-height: 24px; font-size: 12px; padding: 2px 9px; }
 .trm-note { margin: 12px 0 0; font-size: var(--text-xs); color: var(--fg-subtle); display: flex; gap: 6px; align-items: center; }
+.trm-egg { display: grid; gap: 4px; margin: 12px 0; font-size: var(--text-sm); line-height: 1.5; }
+.trm-egg > span { color: var(--fg-subtle); }
 .trm-act { display: flex; gap: 8px; margin-top: 16px; align-items: center; flex-wrap: wrap; }
 .trm-pc .trm-act { margin-top: 12px; }
 .trm-sp { flex: 1; }

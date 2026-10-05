@@ -528,6 +528,80 @@ function _tmHours(hhmm) { const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || '')
  * nextEvent {title, start}, holidays [{cc, date, name}], rate {ccy, perHome}, h12, banner (the zone banner's words),
  * landed (TR7: the computer did not switch), month}
  */
+/** One gentle surprise per arrival. Distances are displacement, never route
+ * mileage; manually changing a place does not establish that a trip occurred. */
+const TR_JOURNEY_EGGS = Object.freeze([
+  ['birthday-arrival', 'Birthday side quest unlocked.', 'A new setting for your birthday chapter.', x => x.birthday],
+  ['far-far-away', 'Same dashboard. Quite the plot twist.', x => x.distance, x => x.miles >= 7500],
+  ['five-thousand-miles', 'Your dashboard deserves a window seat.', x => x.distance, x => x.miles >= 5000],
+  ['two-thousand-miles', 'That is a serious scene change.', x => x.distance, x => x.miles >= 2500],
+  ['thousand-miles', 'Wow, you travelled a lot.', x => x.distance, x => x.miles >= 1000],
+  ['five-hundred-miles', 'Your dashboard packed light.', x => x.distance, x => x.miles >= 500],
+  ['big-hop', 'That was quite a hop.', x => x.distance, x => x.miles >= 250],
+  ['hundred-miles', 'New scenery unlocked.', x => x.distance, x => x.miles >= 100],
+  ['equator', 'New hemisphere. Same open tabs.', 'You crossed the equator between these locations.', x => x.geo && x.from.lat * x.to.lat < 0 && Math.abs(x.from.lat) >= 3 && Math.abs(x.to.lat) >= 3],
+  ['date-line', 'Longitude just did a plot twist.', 'These locations sit on opposite sides of the 180-degree meridian.', x => x.geo && Math.abs(x.to.lon - x.from.lon) > 180],
+  ['northward', 'Your compass picked the upstairs option.', 'A change of at least ten degrees of latitude northward.', x => x.geo && x.to.lat - x.from.lat >= 10],
+  ['southward', 'Your compass picked the downstairs option.', 'A change of at least ten degrees of latitude southward.', x => x.geo && x.from.lat - x.to.lat >= 10],
+  ['longitude', 'A whole new column on the globe.', 'A change of at least 45 degrees of longitude.', x => x.geo && Math.abs(x.to.lon - x.from.lon) >= 45 && Math.abs(x.to.lon - x.from.lon) <= 180],
+  ['home-country', 'Back on familiar map pages.', 'A little home territory. A fresh chapter.', x => x.border && x.to.cc === x.homeCc],
+  ['return-country', 'This country gets a sequel.', 'You have welcomed this country before.', x => x.border && x.returningCountry],
+  ['new-country', 'New country, new chapter.', 'Your dashboard came along for the ride.', x => x.border],
+  ['clock-minutes', 'Even the minutes moved.', 'This clock shift is not a whole number of hours.', x => Number.isFinite(x.diffMin) && x.diffMin !== 0 && Math.abs(x.diffMin) % 60 !== 0],
+  ['clock-big', 'Your clock has entered a new era.', 'Eight hours or more from your home clock. Same dashboard.', x => Math.abs(x.diffMin) >= 480],
+  ['clock-shift', 'Same you. New clock.', 'At least three hours from your home clock.', x => Math.abs(x.diffMin) >= 180],
+  ['calendar-ahead', 'Tomorrow called. You answered.', 'The local date is ahead of the date at home.', x => x.dayDiff > 0],
+  ['calendar-behind', 'Today got an extended edition.', 'The local date is behind the date at home.', x => x.dayDiff < 0],
+  ['third-town-day', 'Your day has multiple filming locations.', 'Three or more different towns in the last 24 hours.', x => x.uniqueToday >= 3],
+  ['fifth-town-week', 'A week with quite the guest list.', 'Five or more different towns in the last seven days.', x => x.uniqueWeek >= 5],
+  ['return-quick', 'Back already? The sequel was fast.', 'This place made another appearance within a day.', x => x.returning && x.awayMs > 0 && x.awayMs <= 86400000],
+  ['return-month', 'Previously, on your dashboard...', 'A familiar place, at least a month since the last visit.', x => x.returning && x.awayMs >= 30 * 86400000],
+  ['third-visit', 'A trilogy deserves a good entrance.', 'Your third recorded visit to this place.', x => x.visitCount === 3],
+  ['fifth-visit', 'This place is becoming a recurring character.', 'Five or more recorded visits to this place.', x => x.visitCount >= 5],
+  ['returning', 'The sequel looks good on you.', 'A familiar place. A fresh chapter.', x => x.returning],
+  ['weekend-return', 'Weekend sequel unlocked.', 'Back somewhere familiar for the weekend.', x => x.returning && (x.dow === 0 || x.dow === 6)],
+  ['late-arrival', 'A late entrance. Nicely done.', 'Unpack at your own pace.', x => x.hour >= 22 || x.hour < 5],
+  ['early-bird', 'The opening credits started early.', 'A new setting before eight. Take your time settling in.', x => x.hour >= 5 && x.hour < 8],
+  ['lunchtime', 'A new location on the lunch menu.', 'The scenery changed around lunchtime.', x => x.hour >= 11 && x.hour < 14],
+  ['friday-arrival', 'Friday got a location upgrade.', 'A fresh setting for the end of the week.', x => x.dow === 5 && x.hour >= 16],
+  ['sunday-arrival', 'Sunday has a bonus scene.', 'A small scene change before the new week.', x => x.dow === 0],
+  ['local-fleet', 'Fleet by name. No need to rush.', 'Settle in at your own pace.', x => x.town === 'fleet'],
+  ['local-yateley', 'Small town. Grand entrance.', 'Yateley has entered the chat.', x => x.town === 'yateley'],
+  ['local-sheffield', 'Sheffield has entered the chat.', 'A fresh setting for today.', x => x.town === 'sheffield'],
+  ['local-manchester', 'Manchester has entered the chat.', 'Your dashboard made the guest list.', x => x.town === 'manchester'],
+  ['local-reading', 'Reading? The plot thickens.', 'A new page for today.', x => x.town === 'reading'],
+  ['local-bath', 'Bath has made a splash.', 'A fresh setting. No towel required.', x => x.town === 'bath'],
+  ['local-york', 'York turn to make an entrance.', 'The next chapter starts here.', x => x.town === 'york'],
+  ['local-oxford', 'Oxford: a fresh page.', 'No footnotes required for this entrance.', x => x.town === 'oxford'],
+  ['local-cambridge', 'Cambridge has joined the group project.', 'Your dashboard brought its own notes.', x => x.town === 'cambridge'],
+  ['local-edinburgh', 'Edinburgh gets the opening credits.', 'A new setting for the same main character.', x => x.town === 'edinburgh'],
+  ['local-glasgow', 'Glasgow has entered the scene.', 'Your dashboard remembered its lines.', x => x.town === 'glasgow'],
+  ['local-cardiff', 'Cardiff has joined the cast.', 'A fresh backdrop for your next chapter.', x => x.town === 'cardiff'],
+  ['local-belfast', 'Belfast gets a grand entrance.', 'Your dashboard is ready for its close-up.', x => x.town === 'belfast'],
+  ['local-derry', 'A fresh chapter in Derry/Londonderry.', 'Same dashboard. New opening credits.', x => ['derry/londonderry', 'derry', 'londonderry'].includes(x.town)],
+].map(([id, title, detail, matches]) => Object.freeze({ id, title, detail, matches })));
+function trJourneyEgg(i) {
+  i = i || {};
+  const from = i.from || {}, to = i.to || {};
+  const valid = p => Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180;
+  let miles = 0;
+  if (valid(from) && valid(to)) {
+    const r = Math.PI / 180;
+    const h = Math.sin((to.lat - from.lat) * r / 2) ** 2 + Math.cos(from.lat * r) * Math.cos(to.lat * r) * Math.sin((to.lon - from.lon) * r / 2) ** 2;
+    miles = 12742 * Math.asin(Math.min(1, Math.sqrt(h))) / 1.609344;
+  }
+  const observed = ['geo', 'calendar', 'trip', 'travel'].includes(i.source || 'geo');
+  const ctx = { ...i, from, to, miles: observed ? miles : 0, geo: observed && valid(from) && valid(to) && miles >= 100,
+    border: /^[A-Z]{2}$/.test(from.cc || '') && /^[A-Z]{2}$/.test(to.cc || '') && from.cc !== to.cc,
+    town: String(to.town || to.name || '').trim().toLowerCase(),
+    distance: `About ${Math.round(miles).toLocaleString('en-GB')} miles between these locations, as the crow flies.` };
+  const candidates = TR_JOURNEY_EGGS.filter(e => e.matches(ctx));
+  if (!candidates.length) return null;
+  // Deterministic variety among genuinely matching triggers, never unrelated jokes.
+  const sequence = Math.max(0, Math.floor(Number(i.sequence) || 0));
+  const e = candidates[sequence % candidates.length];
+  return { id: e.id, title: e.title, detail: typeof e.detail === 'function' ? e.detail(ctx) : e.detail, extraMs: 2500 };
+}
 function trArrivalModel(i) {
   i = i || {};
   const now = Number(i.now) || 0;
@@ -580,6 +654,11 @@ function trArrivalModel(i) {
   const diffLabel = (typeof clockFmtDiff === 'function' ? clockFmtDiff(diffMin) : String(diffMin)) + (dayDiff > 0 ? ' · tomorrow there' : dayDiff < 0 ? ' · yesterday there' : '');
   const iata = i.leg && i.leg.to && i.leg.to.iata ? i.leg.to.iata : (i.leg && /\b([A-Z]{3})\s*$/.exec(String(i.leg.title || '').replace(/[)\]]/g, '')) || [])[1] || '';
   const arrivedMin = i.leg && Number.isFinite(i.leg.arrive) ? _tmParts(i.leg.arrive, zone).min : lp.min;
+  const origin = i.leg && i.leg.from || home;
+  const originCity = origin.cityId && typeof trCity === 'function' ? trCity(origin.cityId) : null;
+  const egg = trJourneyEgg({ from: { ...(originCity || origin), cc: origin.cc || home.cc }, to: { ...(city || place), cc, town: cityName }, source: i.source || 'trip',
+    hour: lp.h, dow: lp.dow, dayDiff, diffMin, homeCc: home.cc, returningCountry: !!i.returningCountry, sequence: i.sequence || 0,
+    birthday: !!(i.birthday && String(i.birthday).slice(-5) === lp.iso.slice(-5)) });
   const note = i.landed ? String(i.landed) : i.banner ? String(i.banner) : '';
   return {
     kind: 'arrive', key: i.key || '', tripId: (i.trip && i.trip.id) || i.tripId || '', cc, cityId: place.cityId || '', city: hasCity ? cityName : '', country, title, overline,
@@ -589,18 +668,18 @@ function trArrivalModel(i) {
     chips: chips.slice(0, night ? 1 : 3), chipsFull: chips.slice(0, night ? 1 : 4),
     stamp: `Arrived${iata ? '<br>' + _tmEsc(iata) : '<br>' + _tmEsc(cc)} · ${_tmHM(arrivedMin, false)}`,
     note, fullNote: `The dashboard now shows ${timeLabel.replace(/ time$/, '')} time. Tasks keep their dates; meetings show both times.`,
-    h12: !!i.h12,
+    h12: !!i.h12, egg,
   };
 }
 /** The live-region sentence: "Welcome to Tokyo. It is 15:42 here, 8 hours ahead of London." */
 function trMomentAnnounce(m) {
   if (!m) return '';
-  if (m.kind === 'home') return `${m.title}. ${m.line || ''}`.trim();
+  if (m.kind === 'home') return `${m.title}. ${m.line || ''}${m.egg ? ' ' + m.egg.title + ' ' + m.egg.detail : ''}`.trim();
   if (m.kind === 'depart') return `${m.title}. ${m.lineText || ''}`.trim();
   const d = Math.round(Number(m.diffMin) || 0), a = Math.abs(d), h = Math.floor(a / 60), mm = a % 60;
   const amount = (h ? `${h} hour${h === 1 ? '' : 's'}` : '') + (mm ? `${h ? ' ' : ''}${mm} minutes` : '');
   const rel = !d ? `the same time as ${m.home.city}` : `${amount} ${d > 0 ? 'ahead of' : 'behind'} ${m.home.city}`;
-  return `${m.title}. It is ${m.local.label} here, ${rel}.`;
+  return `${m.title}. It is ${m.local.label} here, ${rel}.${m.egg ? ' ' + m.egg.title + ' ' + m.egg.detail : ''}`;
 }
 /**
  * Welcome home (spec 4.1; t3). i: {now, home {zone, label, cc, cityId}, trip {id, label, dest, from, to, nights, spending,
@@ -621,6 +700,7 @@ function trHomeModel(i) {
   const by = t.spending && t.spending.byCcy ? Object.entries(t.spending.byCcy) : [];
   const spend = by.slice(0, 2).map(([ccy, v]) => ({ ccy, amt: v && Number.isFinite(v.orig) ? v.orig : 0 }));
   const homeLabel = home.label || (typeof clockZoneLabel === 'function' ? clockZoneLabel(home.zone) : '');
+  const egg = trJourneyEgg({ from: t.dest || {}, to: { ...home, town: home.label }, homeCc: home.cc, source: 'trip' });
   const kind = typeof trPlaceKind === 'function' ? trPlaceKind({ cityId: home.cityId, cc: home.cc }) : 'oldtown';
   const chips = [];
   if (wx) chips.push({ icon: wx.icon, kind: 'weather', html: wx.html });
@@ -631,7 +711,7 @@ function trHomeModel(i) {
     kind: 'home', key: i.key || '', tripId: t.id || '', title: 'Welcome home', overline: `Back · ${hp.iso} · ${_tmHM(hp.min, i.h12)}`, dateIso: hp.iso, timeLabel: _tmHM(hp.min, i.h12),
     line: `${days} day${days === 1 ? '' : 's'}${where ? ' in ' + where : ' away'}. The dashboard is back on ${homeLabel} time.`, where, days, counts, spend,
     sceneKind: kind, seed: 'home', tod: trTodAt(hp.h + hp.mi / 60, wx ? _tmHours(wx.sunrise) : NaN, wx ? _tmHours(wx.sunset) : NaN), cond: wx ? wx.cond : 'clear', actor: 'home', month: hp.mo,
-    chips: chips.slice(0, 3), homeLabel, keptUntil: t.to && typeof clockAddDays === 'function' ? clockAddDays(t.to, 92) : '',
+    chips: chips.slice(0, 3), homeLabel, egg, keptUntil: t.to && typeof clockAddDays === 'function' ? clockAddDays(t.to, 92) : '',
   };
 }
 /**

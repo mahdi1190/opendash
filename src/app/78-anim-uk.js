@@ -25,19 +25,42 @@ function animUkArrivalState(w, consume = false, acknowledge = false) {
   let rec = _aukArrivalMemory;
   try { rec = JSON.parse(localStorage.getItem('dashboard-anim-uk-arrival') || 'null') || rec; } catch (e) { /* private mode */ }
   const town = w.town || w.name;
-  const point = { id: w.id, town, lat: w.lat, lon: w.lon };
-  if (!rec || !rec.point) rec = { point, remaining: 0, pending: false };
+  const point = { id: w.id, town, lat: w.lat, lon: w.lon, cc: 'GB' };
+  const placeKey = w.id + '|' + town.toLowerCase();
+  if (!rec || !rec.point) rec = { point, remaining: 0, pending: false, seen: [placeKey], visits: [{key: placeKey, at: Date.now(), count: 1}], recent: [{key: placeKey, at: Date.now()}], sequence: 0 };
   else if (rec.point.id !== w.id || rec.point.town !== town) {
     const p = rec.point, r = Math.PI / 180;
     const valid = [p.lat, p.lon, w.lat, w.lon].every(v => typeof v === 'number' && Number.isFinite(v));
     const h = valid ? Math.sin((w.lat - p.lat) * r / 2) ** 2 + Math.cos(p.lat * r) * Math.cos(w.lat * r) * Math.sin((w.lon - p.lon) * r / 2) ** 2 : 0;
     const km = valid ? 12742 * Math.asin(Math.min(1, Math.sqrt(h))) : 0;
-    if (APP_CONFIG.locationMode === 'manual' || km >= 3 || (!valid && p.id !== w.id)) rec = { point, remaining: 3, pending: true, until: Date.now() + 5 * 60 * 1000 };
+    if (APP_CONFIG.locationMode === 'manual' || km >= 3 || (!valid && p.id !== w.id)) {
+      const seen = Array.isArray(rec.seen) ? rec.seen.filter(x => typeof x === 'string').slice(-12) : [p.id + '|' + String(p.town || '').toLowerCase()];
+      const now = Date.now();
+      const visits = Array.isArray(rec.visits) ? rec.visits.filter(v => v && typeof v.key === 'string').slice(-12) : [];
+      const previous = visits.find(v => v.key === placeKey);
+      const count = previous ? Math.max(1, Number(previous.count) || 1) + 1 : seen.includes(placeKey) ? 2 : 1;
+      const recent = [...(Array.isArray(rec.recent) ? rec.recent.filter(v => v && typeof v.key === 'string' && v.at > now - 7 * 86400000 && v.at <= now) : []), {key: placeKey, at: now}].slice(-12);
+      let local = {};
+      try { if (typeof Clock !== 'undefined' && typeof _tmParts === 'function') local = _tmParts(Clock.now(), Clock.zone()); } catch (e) { /* Clock not ready. */ }
+      const egg = typeof trJourneyEgg === 'function' && (!rec.eggAt || Date.now() - rec.eggAt >= 6 * 3600000)
+        ? trJourneyEgg({ from: p, to: point, returning: seen.includes(placeKey), visitCount: count, awayMs: previous && previous.at > 0 ? now - previous.at : 0,
+          uniqueToday: new Set(recent.filter(v => v.at > now - 86400000).map(v => v.key)).size, uniqueWeek: new Set(recent.map(v => v.key)).size,
+          sequence: Number(rec.sequence) || 0, hour: local.h, dow: local.dow,
+          birthday: !!(APP_CONFIG.birthday && local.iso && String(APP_CONFIG.birthday).slice(-5) === local.iso.slice(-5)),
+          source: APP_CONFIG.locationMode === 'manual' ? 'manual' : 'geo' }) : null;
+      rec = { ...rec, point, remaining: 3, pending: true, until: Date.now() + 5 * 60 * 1000, egg,
+        seen: [...seen.filter(x => x !== placeKey), placeKey].slice(-12), recent,
+        visits: [...visits.filter(v => v.key !== placeKey), {key: placeKey, at: now, count}].slice(-12), sequence: (Number(rec.sequence) || 0) + 1 };
+    }
   }
-  if (rec.remaining > 0 && (!Number.isFinite(rec.until) || Date.now() >= rec.until)) { rec.remaining = 0; rec.pending = false; }
-  const result = { remaining: Math.max(0, Math.min(3, Number(rec.remaining) || 0)), pending: !!rec.pending };
-  if (consume) { rec.remaining = Math.max(0, result.remaining - 1); rec.pending = false; }
-  else if (acknowledge) rec.pending = false;
+  if (rec.remaining > 0 && (!Number.isFinite(rec.until) || Date.now() >= rec.until)) { rec.remaining = 0; rec.pending = false; rec.egg = null; }
+  const result = { remaining: Math.max(0, Math.min(3, Number(rec.remaining) || 0)), pending: !!rec.pending, egg: rec.egg || null };
+  if (consume) {
+    rec.remaining = Math.max(0, result.remaining - 1); rec.pending = false;
+    if (rec.egg) rec.eggAt = Date.now();
+    rec.egg = null;
+  }
+  else if (acknowledge) { rec.pending = false; rec.egg = null; }
   _aukArrivalMemory = rec;
   try { localStorage.setItem('dashboard-anim-uk-arrival', JSON.stringify(rec)); } catch (e) { /* private mode */ }
   return result;
@@ -104,8 +127,8 @@ function animUkCheck(o) {
     const { it, origin } = typeof animOpeningScene === 'function' ? animOpeningScene(w) : { it: null, origin: '' };
     const tod = typeof animTimeOfDay === 'function' ? animTimeOfDay() : 'day';
     const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : (typeof animOpeningFallbackHtml === 'function' ? animOpeningFallbackHtml(animSeasonOf(todayStr()), tod) : '');
-    const ms = { subtle: 2400, standard: 3400, playful: 4200 }[typeof _agLevel === 'function' ? _agLevel() : 'standard'] || 3400;
-    const el = animCineShow({ art, over: arrival.remaining > 0 ? 'Welcome to' : '', place: animOpeningPlace(it, w), origin, ms, cls: 'ap-uk-welcome', onEnd: reason => {
+    const ms = ({ subtle: 2400, standard: 3400, playful: 4200 }[typeof _agLevel === 'function' ? _agLevel() : 'standard'] || 3400) + (arrival.egg ? arrival.egg.extraMs : 0);
+    const el = animCineShow({ art, over: arrival.remaining > 0 ? 'Welcome to' : '', place: animOpeningPlace(it, w), origin, egg: arrival.egg, ms, cls: 'ap-uk-welcome', onEnd: reason => {
       _aukShowing = false;
       // Arrival has the same ordering as the daily splash. Skipping ends the
       // whole sequence; a completed welcome may continue with today's event.

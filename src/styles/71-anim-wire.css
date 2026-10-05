@@ -96,6 +96,9 @@ html[data-motion="reduced"][data-ap-page-tx]::view-transition-new(main-view) { a
 .ap-cine-over { font-size: clamp(0.95rem, 1.5vw, 1.3rem); font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.85; animation: ap-cine-up 700ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both; }
 .ap-cine-place { font-size: clamp(2.2rem, 5.2vw, 4.8rem); font-weight: 700; letter-spacing: -0.035em; line-height: 1; animation: ap-cine-up 800ms cubic-bezier(0.22, 1, 0.36, 1) 320ms both; }
 .ap-cine-origin { font-size: clamp(1.05rem, 1.8vw, 1.5rem); font-weight: 600; opacity: 0.92; animation: ap-cine-up 800ms cubic-bezier(0.22, 1, 0.36, 1) 520ms both; }
+.ap-cine-egg { display: grid; gap: 4px; max-width: 44rem; margin: 12px 0; font-size: clamp(0.95rem, 1.5vw, 1.2rem); line-height: 1.4; animation: ap-cine-up 800ms cubic-bezier(0.22, 1, 0.36, 1) 620ms both; }
+.ap-cine-egg b { font-size: 1.2em; }
+.ap-cine-egg > span { opacity: 0.88; }
 .ap-cine-skip { font-size: 0.8rem; opacity: 0.7; animation: ap-cine-up 600ms ease 900ms both; }
 @keyframes ap-cine-life { 0% { opacity: 0; } 12%, 84% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes ap-cine-kb { from { transform: scale(1.1); } to { transform: none; } }
