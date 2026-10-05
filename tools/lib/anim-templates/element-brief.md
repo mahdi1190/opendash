@@ -120,8 +120,9 @@ Final report (reply with exactly this, nothing implied):
 
 ```
 FILES: <the pack files>   elements: <n of {{count}}>
-LINT: <the last line of each `lint --file`: PASS or FAIL, waivers: none>
-PER ELEMENT: <call and id> | <rendered bytes> | model exemplar | rubric score /20 | instant rejects: none | thin spots left
+LINT: <the last line of each `lint --file` verbatim: it must read "PASS: <n> items clean." with no waivers>
+PER ELEMENT: <call and id> | <rendered bytes> | model exemplar | rubric score /20 (I1-I20 as a P/F string) | instant rejects: none | vs exemplar: better, equal or below | thin spots left
+LOOKED: <the PNG paths you opened: light, dark, the contact sheet and the exemplar PNGs>
 WEAKEST: <the element you consider weakest>, why, and what you would improve with more time
 NOT DONE: <elements not drawn or not passing, with the reason>   (or "none")
 OTHER FILES I THINK ARE WRONG: <or "none">

@@ -353,6 +353,25 @@ The template placeholders (`{{name}}`; a placeholder with no value is an error, 
 without the file and take everything it then adds). A pack file also carries the scenes other agents draw into it (`B.scenes()`): `--only small` keeps
 its elements, `--only scenes` its scenes.
 
+## The skill and the tools
+
+Drawing a pack well is a craft with a house style, so it has a playbook and tools that enforce it. The playbook is the Claude Code project skill **`.claude/skills/animation-pack/`** (committed: `.gitignore`
+ignores the per-machine `.claude/*` but not `.claude/skills/`; Claude Code loads it by itself when a task is about animation packs, regions, scenes or icons). The tools are `node tools/anim-pack.mjs` (`--help` lists them).
+
+| Part | File | What it is for |
+| --- | --- | --- |
+| Entry and gates | `.claude/skills/animation-pack/SKILL.md` | the one-page checklist and the hard gates: study the gold standard, draw with the kit, lint with no waiver, look at light and night renders, score the rubric, independent review; failure handling |
+| Style | `references/style-guide.md` | the visual and motion language, quantified from the 229 hand-drawn scenes, with the defect catalogue |
+| Review | `references/rubric.md` | the 20-point rubric and the 8 instant rejects for scenes (part A) and small items (part B), how to score blind |
+| Craft | `references/recipes.md`, `references/kit-reference.md`, `references/small-icons.md` | ten scene-type recipes with exact kit calls and tested local helpers; every `animSceneKit()` helper and motion class; the 64 x 64 icon craft |
+| Process | `references/workflow.md` | a whole region: `new`, tables, care notes, `brief`, a pilot, agents, per-batch lint, the review panel, the fix loop, integration, release |
+| Gold standard | `tools/anim-reference.json` (`reference [--render]`) | the exemplars to match and the "do better" list |
+| Floor | `tools/anim-quality.json` (`lint`, `calibrate`), `tools/lib/anim-quality.mjs` | thresholds calibrated at the minimum of the accepted corpus; never lowered, never waived for new work |
+| Briefs | `tools/lib/anim-templates/scene-brief.md`, `element-brief.md` | what `brief` fills in for each drawing agent; they send the agent to the skill |
+
+The rule behind all of it: the lint is a floor, the bar is the corpus median. A piece passes only with `PASS: <n> items clean.` (no waiver), looked-at light and night renders beside the nearest exemplar, a written rubric score of at least 18 of 20 with no instant reject,
+and, for a batch, a blind review by a fresh reviewer. When the lint fails but the art looks right, report it; never edit a threshold, add a waiver or pad the drawing.
+
 ## My animations: made by the user (wave 6)
 
 Settings > Animations > gallery > "Create an animation": the user describes
