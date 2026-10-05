@@ -96,6 +96,7 @@ function brandMarkApi(iconHref) {
     const e = { dataset: {}, children: [], textContent: '', className: '', classes: new Set() };
     e.classList = { toggle: (c, on) => { if (on) e.classes.add(c); else e.classes.delete(c); } };
     e.replaceChildren = (...kids) => { e.children = kids; e.textContent = ''; };
+    e.removeAttribute = name => { delete e[name]; };
     return e;
   };
   const document = {
