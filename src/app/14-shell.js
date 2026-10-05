@@ -418,6 +418,18 @@ function setBrandMark(el, name, pref) {
   const n = String(name || '').trim();
   const choice = pref !== undefined ? String(pref || '') : String((typeof APP_CONFIG !== 'undefined' && APP_CONFIG.appIcon) || '');
   const kind = typeof appIconKind === 'function' ? appIconKind(choice) : '';
+  const local = !kind && typeof animProfileScene === 'function' ? animProfileScene() : null;
+  el.classList.toggle('has-local-scene', !!local);
+  if (local) {
+    const key = 'nearby:' + local.ref + ':' + _agLevel() + ':' + animTimeOfDay();
+    if (el.dataset.mark === key) return;
+    el.dataset.mark = key;
+    el.classList.toggle('has-logo', false); el.classList.toggle('has-sym', false);
+    el.title = local.site || local.label;
+    el.innerHTML = animItemHtml(local, { size: 'fill', live: animEnabled(), reduced: !animEnabled(), tod: animTimeOfDay() });
+    return;
+  }
+  el.removeAttribute('title');
   if (kind === 'icon' || kind === 'emoji') {
     const key = kind + ':' + choice;
     if (el.dataset.mark === key) return;

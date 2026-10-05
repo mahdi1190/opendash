@@ -258,19 +258,7 @@ function briefLocationPicker(current, onPick) {
   inp.onkeydown = (e) => { if (e.key === 'Escape') { res.hidden = true; } if (e.key === 'Enter') { e.preventDefault(); const f = res.querySelector('.loc-opt'); if (f) f.click(); } };
   return wrap;
 }
-function briefSettingsLocationRow() {
-  const cur = APP_CONFIG.location || null;
-  const ctl = document.createElement('div'); ctl.className = 'loc-ctl';
-  ctl.appendChild(briefLocationPicker(cur, async (l) => {
-    if (await settingsSaveConfig({ location: l }, `Weather is now for ${l.name}`)) { _bf.weather = null; briefLoadWeather(true); }
-  }));
-  if (cur) {
-    const clr = document.createElement('button'); clr.type = 'button'; clr.className = 'btn btn-ghost btn-sm'; clr.textContent = 'Clear';
-    clr.onclick = async () => { if (await settingsSaveConfig({ location: null }, 'Weather turned off')) { _bf.weather = null; render(); } };
-    ctl.appendChild(clr);
-  }
-  return _settingsRow('Town for the weather', 'Used by Home’s greeting and the stories. The forecast comes from Open-Meteo.com (free, no account); only the place is sent.', ctl);
-}
+function briefSettingsLocationRow() { return dashboardLocationSettings(); }
 /** For the welcome set-up (59-onboarding.js): d.location is filled when a place is picked. */
 function briefOnboardingLocationField(d) {
   const f = document.createElement('label'); f.className = 'field';

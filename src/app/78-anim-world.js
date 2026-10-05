@@ -12,6 +12,7 @@
    day's opening and symbol while you are there (their when() rules).
    ============================================================ */
 function animWorldWhere() {
+  if (APP_CONFIG.locationMode) return null; // Regional packs use the explicitly selected coordinates.
   try {
     if (typeof TravelStore === 'undefined' || !TravelStore.on()) return null;
     const w = TravelStore.snapshot().where;

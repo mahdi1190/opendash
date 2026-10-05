@@ -10,12 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-10-05
+
 ### Added
 
 - UK Northern cities & Peaks: 20 animated full-screen scenes, with eight Sheffield views, eight Manchester views and four Peak District views, including The Diamond, Arts Tower and university heritage.
 
 ### Changed
 
+- Settings offers one location source: Manual or Device. Device mode requests browser permission and refreshes an approximate location while the app is open. Manual mode keeps the selected town fixed.
+- The automatic workspace icon uses a nearby animated mini illustration, or a miniature full scene when no local mini exists; chosen custom icons remain available.
 - UK openings keep the current location as their title. Backgrounds rotate only among nearby places (approximately 25 km), with the actual landmark and county in the corner. A seasonal background fills gaps in local coverage.
 
 ## [2.4.0] - 2026-10-04
@@ -316,7 +320,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.1...HEAD
+[2.4.1]: https://github.com/mahdi1190/opendash/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/mahdi1190/opendash/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/mahdi1190/opendash/compare/v2.2.5...v2.3.0
 [2.2.6]: https://github.com/mahdi1190/opendash/compare/v2.2.5...v2.2.6

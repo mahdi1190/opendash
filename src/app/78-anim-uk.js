@@ -18,6 +18,7 @@ let _aukMemo = { at: 0, key: '', where: null };
 
 function animUkOn() { try { return !!animLook().ukRegional; } catch (e) { return false; } }
 function _aukTravelPoint() {
+  if (APP_CONFIG.locationMode) return null; // Explicit location choice takes precedence over travel inference.
   try {
     if (typeof TravelStore === 'undefined' || !TravelStore.on()) return null;
     const w = TravelStore.snapshot().where;
@@ -40,7 +41,9 @@ function animUkWhere() {
   let where = null;
   for (const p of pts) {
     const c = ukCountyNearest(p.lat, p.lon);
-    if (c) { where = Object.assign(c, { source: p.source, lat: p.lat, lon: p.lon }); break; }
+    if (c) { where = Object.assign(c, { source: p.source, lat: p.lat, lon: p.lon });
+      if (APP_CONFIG.locationMode === 'manual' && APP_CONFIG.location && APP_CONFIG.location.name) where.town = APP_CONFIG.location.name;
+      break; }
   }
   _aukMemo = { at: now, key, where };
   return where;

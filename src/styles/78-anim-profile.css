@@ -1,0 +1,5 @@
+.brand-mark.has-local-scene { overflow: hidden; padding: 0; background: transparent; }
+.brand-mark.has-local-scene > .anim-scene { display: block; width: 100%; height: 100%; border-radius: inherit; }
+.brand-mark.has-local-scene svg { width: 100%; height: 100%; }
+.loc-ctl { flex-wrap: wrap; }
+.loc-ctl [role="status"] { flex-basis: 100%; }

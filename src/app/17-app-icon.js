@@ -97,7 +97,7 @@ function openAppIconPicker(anchor, opts) {
       const mk = document.createElement('span'); mk.className = 'brand-mark'; mk.setAttribute('aria-hidden', 'true');
       setBrandMark(mk, val === 'initial' ? (name || 'OpenDash') : name, val);
       b.append(mk, Object.assign(document.createElement('span'), { textContent: label }));
-      b.title = val ? label : 'Your initial when a name is set, otherwise the OpenDash logo';
+      b.title = val ? label : 'Nearby animated art when available, otherwise your initial or the OpenDash logo';
       b.onclick = () => pick(val);
       top.appendChild(b);
     }
