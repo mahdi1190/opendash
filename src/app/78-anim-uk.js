@@ -15,6 +15,33 @@
    ============================================================ */
 const _AUK_KEY = 'dashboard-anim-uk-county';
 let _aukMemo = { at: 0, key: '', where: null };
+let _aukArrivalMemory = null;
+/** Keep a stable town anchor: a new name plus 3 km of movement is an arrival,
+ * not a small GPS shift across a nearest-town boundary. Explicit manual choices
+ * can change the name without moving. Welcomes last three displays or five
+ * minutes from detection, whichever comes first. */
+function animUkArrivalState(w, consume = false, acknowledge = false) {
+  if (!w) return { remaining: 0, pending: false };
+  let rec = _aukArrivalMemory;
+  try { rec = JSON.parse(localStorage.getItem('dashboard-anim-uk-arrival') || 'null') || rec; } catch (e) { /* private mode */ }
+  const town = w.town || w.name;
+  const point = { id: w.id, town, lat: w.lat, lon: w.lon };
+  if (!rec || !rec.point) rec = { point, remaining: 0, pending: false };
+  else if (rec.point.id !== w.id || rec.point.town !== town) {
+    const p = rec.point, r = Math.PI / 180;
+    const valid = [p.lat, p.lon, w.lat, w.lon].every(v => typeof v === 'number' && Number.isFinite(v));
+    const h = valid ? Math.sin((w.lat - p.lat) * r / 2) ** 2 + Math.cos(p.lat * r) * Math.cos(w.lat * r) * Math.sin((w.lon - p.lon) * r / 2) ** 2 : 0;
+    const km = valid ? 12742 * Math.asin(Math.min(1, Math.sqrt(h))) : 0;
+    if (APP_CONFIG.locationMode === 'manual' || km >= 3 || (!valid && p.id !== w.id)) rec = { point, remaining: 3, pending: true, until: Date.now() + 5 * 60 * 1000 };
+  }
+  if (rec.remaining > 0 && (!Number.isFinite(rec.until) || Date.now() >= rec.until)) { rec.remaining = 0; rec.pending = false; }
+  const result = { remaining: Math.max(0, Math.min(3, Number(rec.remaining) || 0)), pending: !!rec.pending };
+  if (consume) { rec.remaining = Math.max(0, result.remaining - 1); rec.pending = false; }
+  else if (acknowledge) rec.pending = false;
+  _aukArrivalMemory = rec;
+  try { localStorage.setItem('dashboard-anim-uk-arrival', JSON.stringify(rec)); } catch (e) { /* private mode */ }
+  return result;
+}
 
 function animUkOn() { try { return !!animLook().ukRegional; } catch (e) { return false; } }
 function _aukTravelPoint() {
@@ -62,22 +89,23 @@ function animUkCheck(o) {
   try {
     const w = animUkWhere();
     if (!w) return false;
+    const arrival = animUkArrivalState(w);
     let last = '';
     try { last = localStorage.getItem(_AUK_KEY) || ''; } catch (e) { last = ''; }
-    if (last === w.id && !o.force) return false;
-    if (!last && !o.first) { try { localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ } return false; }
+    if (last === w.id && !arrival.pending && !o.force) return false;
+    if (!last && !o.first && !arrival.pending) { try { localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ } return false; }
     if (document.hidden || _aukShowing || document.querySelector('.ap-opening:not(.anim-scene), .ap-cine, #od-splash') || document.documentElement.classList.contains('story-open')) return false;   // try again on the next check
     try { localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ }
     const words = w.town || w.name;
     const on = typeof _awOn === 'function' ? _awOn() : true;
-    if (!on) { if (typeof toast === 'function') toast(words); return true; }
+    if (!on) { if (typeof toast === 'function') toast(words); animUkArrivalState(w, false, true); return true; }
     // Full screen: the county's scene edge to edge (or the seasonal landscape when none is drawn yet),
     // the words low on the left; brief, and a click or any key dismisses it at once.
     const { it, origin } = typeof animOpeningScene === 'function' ? animOpeningScene(w) : { it: null, origin: '' };
     const tod = typeof animTimeOfDay === 'function' ? animTimeOfDay() : 'day';
     const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : (typeof animOpeningFallbackHtml === 'function' ? animOpeningFallbackHtml(animSeasonOf(todayStr()), tod) : '');
     const ms = { subtle: 2400, standard: 3400, playful: 4200 }[typeof _agLevel === 'function' ? _agLevel() : 'standard'] || 3400;
-    const el = animCineShow({ art, over: '', place: animOpeningPlace(it, w), origin, ms, cls: 'ap-uk-welcome', onEnd: reason => {
+    const el = animCineShow({ art, over: arrival.remaining > 0 ? 'Welcome to' : '', place: animOpeningPlace(it, w), origin, ms, cls: 'ap-uk-welcome', onEnd: reason => {
       _aukShowing = false;
       // Arrival has the same ordering as the daily splash. Skipping ends the
       // whole sequence; a completed welcome may continue with today's event.
@@ -90,6 +118,7 @@ function animUkCheck(o) {
       _aukShowing = !!next;
     } });
     if (!el) { if (typeof toast === 'function') toast(words); return true; }
+    animUkArrivalState(w, true);
     _aukShowing = true;
     return true;
   } catch (e) { return false; }

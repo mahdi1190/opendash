@@ -231,7 +231,9 @@ function animOpeningSequence() {
     let w = null;
     try { w = typeof animUkWhere === 'function' ? animUkWhere() : null; } catch (e) { w = null; }
     let returning = false;
+    const arrival = w && typeof animUkArrivalState === 'function' ? animUkArrivalState(w) : null;
     if (w) try { returning = localStorage.getItem(_AUK_KEY) === w.id; localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ }   // no second welcome (78-anim-uk.js)
+    if (arrival && arrival.pending) returning = false;
     try { if (typeof animThemeApply === 'function') animThemeApply(); } catch (e) { /* the packs' css is injected there */ }
     // No UK county: in Texas (72-anim-pack-texas.js) the welcome names the town and today's Texas opening is the emblem.
     let tx = null;
@@ -252,11 +254,12 @@ function animOpeningSequence() {
     const emblem = '';
     const box = document.createElement('div'); box.className = 'od-seq';
     box.innerHTML = `<div class="od-seq-bg">${art}</div><div class="od-seq-shade"></div>${emblem}`
-      + `<div class="od-seq-title">${w ? '' : `<span class="od-seq-over">${esc(tx ? 'Welcome to' : 'Welcome back')}</span>`}${w || tx ? `<span class="od-seq-place">${esc(w ? animOpeningPlace(it, w) : tx.name)}</span>` : ''}</div>`
+      + `<div class="od-seq-title">${w ? (arrival && arrival.remaining > 0 ? '<span class="od-seq-over">Welcome to</span>' : '') : `<span class="od-seq-over">${esc(tx ? 'Welcome to' : 'Welcome back')}</span>`}${w || tx ? `<span class="od-seq-place">${esc(w ? animOpeningPlace(it, w) : tx.name)}</span>` : ''}</div>`
       + `<div class="od-seq-cap"><span class="od-seq-origin">${esc(cap)}</span><span class="od-seq-skip">Click or press any key to skip</span></div>`;
     sp.style.setProperty('--od-hello-ms', ms[1] + 'ms');
     sp.style.setProperty('--od-scene-ms', ms[2] + 'ms');
     sp.appendChild(box);
+    if (w && arrival) animUkArrivalState(w, true);
     sp.setAttribute('data-od-county', w ? w.id : '');
     sp.setAttribute('data-od-scene', it ? it.ref : stageIt ? stageIt.ref : 'fallback');
     sp.classList.add('od-st-hello');

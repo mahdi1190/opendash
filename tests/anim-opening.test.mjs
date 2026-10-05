@@ -99,6 +99,70 @@ test('local openings keep the current town in the title and only show nearby sce
   assert.equal(nearby, 30);
   assert.equal(vm.runInContext('animOpeningPlace({ukTown:"Fleet",ukLocality:"Fleet"},animUkWhere())',h.context),'Yateley');
 });
+test('moving towns within a county welcomes the actual town for three displayed openings', () => {
+  const h = harness({ day: '2026-10-06', town: 'Yateley' });
+  vm.runInContext(src('78-anim-uk.js'), h.context);
+  h.context.animUkWhere = () => ({ id: 'hampshire', name: 'Hampshire', town: 'Yateley', lat: 51.34, lon: -0.83 });
+  vm.runInContext('animUkArrivalState(animUkWhere())', h.context);
+  h.context.animUkWhere = () => ({ id: 'hampshire', name: 'Hampshire', town: 'Fleet', lat: 51.28, lon: -0.84 });
+  // Observing a pending arrival repeatedly does not use its three welcomes.
+  for (let i = 0; i < 4; i++) assert.equal(vm.runInContext('animUkArrivalState(animUkWhere()).remaining', h.context), 3);
+  for (let i = 0; i < 4; i++) {
+    h.run(); h.next();
+    const html = h.splash.children.at(-1).innerHTML;
+    assert.match(html, /od-seq-place">Fleet</);
+    assert.equal(html.includes('Welcome to'), i < 3);
+    h.timers.length = 0;
+  }
+  assert.equal(vm.runInContext('animUkCheck()', h.context), false, 'no extra arrival after the splash');
+});
+test('GPS boundary jitter does not restart welcome counts; accepted arrivals survive reload', () => {
+  const stored = new Map();
+  const make = () => {
+    const c = vm.createContext({ APP_CONFIG: { locationMode: 'device' },
+      localStorage: { getItem: k => stored.get(k), setItem: (k, v) => stored.set(k, v) } });
+    vm.runInContext(src('78-anim-uk.js'), c); return c;
+  };
+  let c = make();
+  const observe = (town, lat, consume = false) => { c.point = { id: 'hampshire', name: 'Hampshire', town, lat, lon: -0.83 }; return vm.runInContext(`animUkArrivalState(point, ${consume})`, c); };
+  observe('Yateley', 51.34);
+  assert.equal(observe('Neighbouring town', 51.35).remaining, 0);
+  assert.equal(observe('Fleet', 51.28, true).remaining, 3);
+  c = make();
+  assert.equal(observe('Fleet', 51.28, true).remaining, 2);
+  assert.equal(observe('Fleet', 51.28, true).remaining, 1);
+  assert.equal(observe('Fleet', 51.28).remaining, 0);
+  assert.equal(observe('Yateley', 51.34).remaining, 3, 'returning is a new arrival');
+});
+test('same-county arrivals defer while busy and do not replay on periodic checks', () => {
+  const h = harness({ day: '2026-10-06' });
+  vm.runInContext(src('78-anim-uk.js'), h.context);
+  h.context.animUkWhere = () => ({ id: 'hampshire', name: 'Hampshire', town: 'Yateley', lat: 51.34, lon: -0.83 });
+  vm.runInContext('animUkCheck()', h.context);
+  h.context.animUkWhere = () => ({ id: 'hampshire', name: 'Hampshire', town: 'Fleet', lat: 51.28, lon: -0.84 });
+  h.context.document.hidden = true;
+  assert.equal(vm.runInContext('animUkCheck()', h.context), false);
+  h.context.document.hidden = false;
+  assert.equal(vm.runInContext('animUkCheck()', h.context), true);
+  assert.match(h.context.document.body.children[0].innerHTML, /Welcome to/);
+  assert.match(h.context.document.body.children[0].innerHTML, /ap-cine-place">Fleet</);
+  h.next();
+  assert.equal(vm.runInContext('animUkCheck()', h.context), false);
+});
+test('arrival prefixes expire after five minutes even when fewer than three were shown', () => {
+  let now = 1000;
+  const c = vm.createContext({ APP_CONFIG: { locationMode: 'manual' }, Date: { now: () => now } });
+  vm.runInContext(src('78-anim-uk.js'), c);
+  c.point = { id: 'hampshire', town: 'Yateley' };
+  vm.runInContext('animUkArrivalState(point)', c);
+  c.point = { id: 'hampshire', town: 'Fleet' };
+  assert.equal(vm.runInContext('animUkArrivalState(point, true).remaining', c), 3);
+  now += 5 * 60 * 1000 - 1;
+  assert.equal(vm.runInContext('animUkArrivalState(point).remaining', c), 2);
+  now++;
+  assert.equal(vm.runInContext('animUkArrivalState(point).remaining', c), 0);
+  assert.equal(vm.runInContext('animUkArrivalState(point).pending', c), false);
+});
 
 test('ordinary days, blocked holidays and disabled packs have no event stage', () => {
   for (const options of [{ day: '2026-10-06' }, { look: { block: ['seasons/open-christmas-tree'] } }, { look: { packsOff: ['seasons'] } }]) {

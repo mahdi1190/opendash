@@ -1,6 +1,7 @@
 /* One explicit source for weather and nearby illustrations. Device fixes are
  * requested only after choosing Device; manual coordinates never get replaced. */
 let _locationRequest = 0;
+let _locationAutoRefresh = null;
 function dashboardDevicePoint(pos) {
   const lat = Math.round(pos.coords.latitude * 100) / 100;
   const lon = Math.round(pos.coords.longitude * 100) / 100;
@@ -9,20 +10,41 @@ function dashboardDevicePoint(pos) {
   return { name: near ? near.town : 'Current location', admin: near ? near.name : '', country: near ? 'United Kingdom' : '', countryCode: near ? 'GB' : '', lat, lon, timezone: browserTimeZone() };
 }
 async function dashboardLocationSave(patch, refreshUI = true) {
+  if (typeof animUkArrivalState === 'function' && typeof animUkWhere === 'function') animUkArrivalState(animUkWhere());
   if (!await settingsSaveConfig(patch, false)) return false;
   _bf.weather = null;
   briefLoadWeather(true);
   if (refreshUI && typeof render === 'function') render();
   else if (typeof renderShell === 'function') renderShell();
+  if (typeof animUkCheck === 'function') {
+    animUkCheck();
+    setTimeout(() => animUkCheck(), 7000); // Retry after an active opening; pending arrivals are retained.
+  }
   return true;
 }
 async function dashboardDeviceRefresh(choose, quiet = false) {
   const request = ++_locationRequest;
   if (!navigator.geolocation) throw new Error('Device location is unavailable in this browser. Choose a manual location.');
-  const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, maximumAge: 300000, timeout: 12000 }));
+  const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, maximumAge: 0, timeout: 12000 }));
   if (request !== _locationRequest || (!choose && APP_CONFIG.locationMode !== 'device')) return false;
   const location = dashboardDevicePoint(pos);
   return dashboardLocationSave({ locationMode: 'device', location, ...(choose && APP_CONFIG.locationMode !== 'device' ? { manualLocation: APP_CONFIG.location || null } : {}) }, !quiet);
+}
+function dashboardLocationAutoRefresh(explicit = false) {
+  if (APP_CONFIG.locationMode !== 'device' || document.hidden) return Promise.resolve(false);
+  if (_locationAutoRefresh) return _locationAutoRefresh;
+  _locationAutoRefresh = Promise.resolve().then(async () => {
+    if (!explicit && navigator.permissions) {
+      try {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        if (permission.state !== 'granted') return false;
+      } catch (e) { /* Browsers without this permission query can still locate. */ }
+    }
+    if (APP_CONFIG.locationMode !== 'device' || document.hidden) return false;
+    try { return await dashboardDeviceRefresh(false, true); }
+    catch (e) { return false; } // Keep the last fix on denial, timeout or offline failure.
+  }).finally(() => { _locationAutoRefresh = null; });
+  return _locationAutoRefresh;
 }
 function dashboardLocationSettings() {
   const device = APP_CONFIG.locationMode === 'device';
@@ -54,16 +76,12 @@ function dashboardLocationSettings() {
     ctl.appendChild(refresh);
   }
   ctl.appendChild(status);
-  return _settingsRow('Your location', 'Choose one source for weather, opening titles and nearby art. Device location needs browser permission, refreshes while OpenDash is open, and is rounded to about 1 km. Town names are approximate. Weather coordinates go to Open-Meteo.', ctl);
+  return _settingsRow('Your location', 'Choose one source for weather, opening titles and nearby art. Device location needs browser permission and checks on page load, Refresh today, returning to the tab and every 15 minutes while visible. Coordinates are rounded to about 1 km; town names are approximate. Weather coordinates go to Open-Meteo.', ctl);
 }
 if (typeof window !== 'undefined') window.addEventListener('load', () => {
-  const refresh = async () => {
-    if (APP_CONFIG.locationMode !== 'device' || document.hidden || !navigator.permissions) return;
-    try {
-      const permission = await navigator.permissions.query({ name: 'geolocation' });
-      if (permission.state === 'granted') await dashboardDeviceRefresh(false, true);
-    } catch (e) { /* Retain the last device fix; the settings button permits a retry. */ }
-  };
-  refresh();
-  setInterval(refresh, 15 * 60 * 1000);
+  dashboardLocationAutoRefresh(true);
+  setInterval(() => dashboardLocationAutoRefresh(), 15 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) dashboardLocationAutoRefresh();
+  });
 }, { once: true });

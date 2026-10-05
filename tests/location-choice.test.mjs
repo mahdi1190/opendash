@@ -4,6 +4,67 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { validateConfig } from '../lib/datadir.mjs';
 const source = name => readFileSync(new URL('../src/app/' + name, import.meta.url), 'utf8');
+function deviceRefreshHarness(permissions) {
+  const events = {}, timers = [], requests = [], saves = [];
+  const context = vm.createContext({
+    APP_CONFIG: { locationMode: 'device', location: { name: 'Last fix' } },
+    window: { addEventListener(name, fn) { events[name] = fn; } },
+    document: { hidden: false, addEventListener(name, fn) { events[name] = fn; } },
+    setInterval(fn, ms) { timers.push({ fn, ms }); },
+    navigator: { permissions, geolocation: { getCurrentPosition(ok, fail, options) { requests.push({ ok, fail, options }); } } },
+    browserTimeZone: () => 'UTC', _bf: {}, briefLoadWeather() {},
+    settingsSaveConfig: async patch => { saves.push(patch); Object.assign(context.APP_CONFIG, patch); return true; },
+  });
+  vm.runInContext(source('78-location.js'), context);
+  const settle = async () => { for (let i = 0; i < 6; i++) await Promise.resolve(); };
+  return { context, events, timers, requests, saves, settle };
+}
+test('each page load requests a fresh device fix without requiring the Permissions API', async () => {
+  for (let load = 0; load < 2; load++) {
+    const h = deviceRefreshHarness();
+    h.events.load(); await h.settle();
+    assert.equal(h.requests.length, 1);
+    assert.equal(h.requests[0].options.maximumAge, 0);
+    h.requests[0].ok({ coords: { latitude: 53.381, longitude: -1.471 } });
+    await vm.runInContext('_locationAutoRefresh', h.context);
+    assert.equal(h.saves.length, 1);
+    assert.equal(h.saves[0].location.lat, 53.38);
+    assert.equal(h.saves[0].location.lon, -1.47);
+  }
+});
+test('periodic and tab-return checks coalesce, pause when hidden and retry after failure', async () => {
+  const h = deviceRefreshHarness();
+  h.events.load(); await h.settle();
+  h.requests[0].fail({ code: 3 }); await vm.runInContext('_locationAutoRefresh', h.context);
+  assert.equal(h.saves.length, 0);
+  assert.equal(h.context.APP_CONFIG.location.name, 'Last fix');
+  assert.equal(h.timers[0].ms, 15 * 60 * 1000);
+  h.context.document.hidden = true;
+  await h.timers[0].fn(); assert.equal(h.requests.length, 1);
+  h.context.document.hidden = false;
+  h.events.visibilitychange(); h.timers[0].fn(); await h.settle();
+  assert.equal(h.requests.length, 2);
+  h.requests[1].ok({ coords: { latitude: 53.48, longitude: -2.24 } });
+  await vm.runInContext('_locationAutoRefresh', h.context);
+  assert.equal(h.saves.length, 1);
+});
+test('automatic device checks preserve manual mode and avoid background permission prompts', async () => {
+  const h = deviceRefreshHarness({ query: async () => ({ state: 'prompt' }) });
+  h.context.APP_CONFIG.locationMode = 'manual';
+  h.events.load(); await h.timers[0].fn();
+  assert.equal(h.requests.length, 0);
+  h.context.APP_CONFIG.locationMode = 'device';
+  await h.timers[0].fn(); assert.equal(h.requests.length, 0);
+  const check = vm.runInContext('dashboardLocationAutoRefresh(true)', h.context);
+  await h.settle(); assert.equal(h.requests.length, 1);
+  h.requests[0].fail({ code: 1 }); assert.equal(await check, false);
+});
+test('device refresh falls back when the geolocation permission query is unsupported', async () => {
+  const h = deviceRefreshHarness({ query: async () => { throw new Error('Unsupported permission'); } });
+  const check = h.timers.length ? h.timers[0].fn() : vm.runInContext('dashboardLocationAutoRefresh()', h.context);
+  await h.settle(); assert.equal(h.requests.length, 1);
+  h.requests[0].fail({ code: 3 }); assert.equal(await check, false);
+});
 test('location source defaults to manual and retains a separately saved manual place', () => {
   const place = {name:'Sheffield',lat:53.38,lon:-1.47};
   const manual = validateConfig({location:place}).config;

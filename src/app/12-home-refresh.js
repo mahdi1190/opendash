@@ -38,6 +38,7 @@ function homeRefreshToday() {
   const btn = document.getElementById('tb-home-refresh');
   if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
   _homeTodayRefresh = Promise.resolve().then(async () => {
+    if (typeof dashboardLocationAutoRefresh === 'function') await dashboardLocationAutoRefresh(true);
     const jobs = [];
     if (typeof homeDataRefreshVisible === 'function') jobs.push(homeDataRefreshVisible());
     if (typeof _serverAvailable !== 'undefined' && _serverAvailable) {

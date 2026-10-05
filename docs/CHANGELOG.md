@@ -12,6 +12,9 @@ upgrades it.
 
 ### Changed
 
+- Device location requests a fresh fix on every page load and Refresh today, checks again on tab return and every 15 minutes while visible, and works without the browser Permissions API. Failed fixes retain the last location; manual locations remain unchanged.
+- UK town arrivals show “Welcome to” for three displayed openings or five minutes after detection, whichever comes first, including moves within one county. Device fixes must move at least 3 km and change the detected town/area; ordinary GPS drift does not restart the greeting. Counts and expiry persist on the device.
+
 - Yateley live-sky foundation: the 48 seasonal scenes can use the effective clock, active coordinates, calculated daylight and solar height, night stars and the existing lunar-phase approximation. Other packs and continuous in-place sky updates remain follow-up work.
 
 - Yateley detail follow-up across all 48 seasonal versions: fuller botanical sprays, layered grass clumps, gorse stems, textured ground and stones, duck feather markings, hovering bees, moving pond fish, perched birds, nibbling squirrels and a wagging dog tail. Reusable shape definitions keep the existing scene budget.

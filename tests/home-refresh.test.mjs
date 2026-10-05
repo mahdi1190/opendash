@@ -34,6 +34,20 @@ test('the live refresh runs once per minute, skips hidden tabs and catches up af
   h.ctx.document.hidden=false; vm.runInContext('homeRefreshClock()',h.ctx);
   assert.equal(h.paints(),2); assert.equal(vm.runInContext('homeUseCurrentSummary()',h.ctx),true);
 });
+test('Refresh today checks device location before refreshing location-dependent data', async () => {
+  const h = harness(), calls = [];
+  let finishLocation;
+  h.ctx.dashboardLocationAutoRefresh = explicit => {
+    assert.equal(explicit, true); calls.push('location');
+    return new Promise(resolve => { finishLocation = resolve; });
+  };
+  h.ctx.homeDataRefreshVisible = () => { calls.push('data'); return Promise.resolve(); };
+  const pending = vm.runInContext('homeRefreshToday()', h.ctx);
+  await Promise.resolve();
+  assert.deepEqual(calls, ['location']);
+  finishLocation(false); await pending;
+  assert.deepEqual(calls, ['location', 'data']);
+});
 test('Home refresh preserves notebook and capture editors and focused widget controls',()=>{
   const h=harness(),repaint=[];
   h.ctx.document.querySelectorAll=()=>['notebook','capture','suggest','schedule'].map(id=>({dataset:{wid:id},contains:()=>id==='schedule'}));
