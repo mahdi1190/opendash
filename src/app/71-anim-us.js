@@ -1,6 +1,7 @@
 /* ============================================================
-   US ANIMATION PACKS, the shared part. PURE classic script (no DOM, no fetches,
-   nothing looked up online). Loads before the packs (72-anim-pack-us-*.js).
+   US ANIMATION PACKS, the shared part: the US as a REGION CONFIG over the generic framework
+   (71-anim-0region.js, which owns the lookups, the builder and the scene kit). PURE classic script (no DOM,
+   no fetches, nothing looked up online). Loads before the packs (72-anim-pack-us-*.js).
    Where in the US the user is, offline:
      - travel: ctx.city is '<place id>-us' for a place in US_PLACES (New York is left to the
        world pack, which already draws it for travellers)
@@ -13,7 +14,9 @@
      state    priority 1: a signature opening (slot opening) and an element (slot symbol) per state
      city     priority 1.2: big city = a signature opening, small city = an element (symbol)
    A festival or the birthday (priority 2+) still wins the day.
-   Guide: docs/dev/US_PACK.md. Gate: tests/anim-packs.test.mjs, tests/us-pack.test.mjs.
+   The names the pack files and the scene files use (usPlace, usStateOf, usWhere, usBuilder, usSceneAdd, usSceneKit,
+   usSceneCss, US_SCENES) are one-line wrappers over the region, kept so those files need no edits.
+   Guide: docs/dev/US_PACK.md. Gate: tests/anim-packs.test.mjs, tests/us-pack.test.mjs, tests/region-framework.test.mjs.
    ============================================================ */
 /** The 50 states: code -> [name, group]. */
 const US_STATES = {
@@ -134,205 +137,37 @@ const US_PLACES = [
 ];
 const US_STATE_KM = 190;                       // beyond this from every row the position is not in the US (Canada, Mexico, the sea)
 const US_PLACE_KM = { big: 50, small: 30 };    // how close counts as "in" a city / a town
-const _usKm = (la1, lo1, la2, lo2) => {
-  const r = Math.PI / 180, dl = (la2 - la1) * r, dg = (lo2 - lo1) * r;
-  const a = Math.sin(dl / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin(dg / 2) ** 2;
-  return 12742 * Math.asin(Math.sqrt(a));
-};
-const _usHasPos = (ctx) => !!ctx && ctx.lat != null && ctx.lon != null && isFinite(ctx.lat) && isFinite(ctx.lon);
-const _usRow = (id) => US_PLACES.find(p => p[0] === id) || null;
-const _usObj = (p) => p ? { id: p[0], name: p[1], state: p[2], kind: p[5] } : null;
+
+/** The US as a region (71-anim-0region.js): the config is the whole definition, the functions below are its public names. */
+const US_REGION = animRegionDefine({
+  id: 'us', name: 'United States', over: 'USA', unitWord: 'state',
+  units: US_STATES, places: US_PLACES, unitKm: US_STATE_KM, placeKm: US_PLACE_KM,
+  worldTravel: ['new-york-us'],                                                  // a trip to New York is the world pack's
+  elsewhere: ['TX'],                                                             // Texas has its own pack: its rows only stop it reading as a neighbour
+  pseudo: { DC: { id: 'washington', name: 'Washington, DC', kind: 'big', group: 'northeast' } },   // DC is its own row: a big city item only
+  keys: { unit: 'state', unitName: 'stateName' }, fields: { unit: 'usState' }, tags: { root: 'usa' },
+  country: 'US', extra: (u) => ({ state: u }),
+});
 /** The art place (a big or small city) for a ctx, {id, name, state, kind} or null. Travel wins (a trip to New York is the world pack's). */
-function usPlace(ctx) {
-  if (!ctx) return null;
-  if (ctx.city) {
-    const m = /^(.+)-us$/.exec(String(ctx.city));
-    const p = m && m[1] !== 'new-york' ? _usRow(m[1]) : null;
-    return p && p[5] ? _usObj(p) : null;
-  }
-  if (!_usHasPos(ctx)) return null;
-  let best = null, bd = Infinity;
-  for (const p of US_PLACES) {
-    if (!p[5]) continue;
-    const d = _usKm(ctx.lat, ctx.lon, p[3], p[4]);
-    if (d <= US_PLACE_KM[p[5]] && d < bd) { bd = d; best = p; }
-  }
-  return _usObj(best);
-}
+function usPlace(ctx) { return US_REGION.place(ctx); }
 /** The state code for a ctx ('' = not in the US, or travelling somewhere that is not a US place). Nearest table row wins. */
-function usStateOf(ctx) {
-  if (!ctx) return '';
-  if (ctx.city) { const m = /^(.+)-us$/.exec(String(ctx.city)); const p = m && m[1] !== 'new-york' ? _usRow(m[1]) : null; return p ? p[2] : ''; }   // a trip to New York is the world pack's
-  if (!_usHasPos(ctx)) return '';
-  let best = '', bd = US_STATE_KM;
-  for (const p of US_PLACES) { const d = _usKm(ctx.lat, ctx.lon, p[3], p[4]); if (d < bd) { bd = d; best = p[2]; } }
-  return best;
-}
+function usStateOf(ctx) { return US_REGION.unitOf(ctx); }
 /** For the page (the opening sequence): where in the US, {id, name, state, stateName, kind} or null (Texas has its own pack). A town wins, else the state. */
-function usWhere(ctx) {
-  const st = usStateOf(ctx);
-  if (st === 'DC') return { id: 'washington', name: 'Washington, DC', state: 'DC', stateName: 'Washington, DC', kind: 'big' };
-  if (!st || st === 'TX' || !US_STATES[st]) return null;
-  const p = usPlace(ctx);
-  return p && p.state === st ? Object.assign({ stateName: US_STATES[st][0] }, p) : { id: '', name: US_STATES[st][0], state: st, stateName: US_STATES[st][0], kind: '' };
-}
+function usWhere(ctx) { return US_REGION.where(ctx); }
 /**
  * Full-screen scenes for the openings: US_SCENES['state:NY'] (a state's signature) or US_SCENES['place:buffalo'] (a big city),
  * filled by src/app/71-anim-us2-scenes-*.js through usSceneAdd(entry). An entry is {key, label, site, colour, mood, season,
  * tags, svg}; svg() returns the inside of a 1600 x 900 drawing built with usSceneKit(). usBuilder upgrades the matching
  * item to a full-screen one (full: true) and gives the pack usSceneCss().
  */
-const US_SCENES = {};
-function usSceneAdd(e) { US_SCENES[e.key] = e; }
+const US_SCENES = US_REGION.scenes;
+function usSceneAdd(e) { US_REGION.sceneAdd(e); }
 /**
  * A builder for a US pack file: const B = usBuilder('northeast'); B.state('NY', 'signature', {...}); B.place('buffalo', {...});
  * Then animRegisterPack(B.pack({id, name, description})). state(): kind 'signature' (opening) | 'element' (symbol).
  * place(): the place's kind decides the slot (big = opening, small = symbol). `o` is an ordinary item (id, label, colour, svg ...).
  */
-function usBuilder(group) {
-  const items = [];
-  const base = { mood: 'neutral', intensity: 'subtle', theme: 'any', season: 'any', region: ['US'], reduced: 'static', priority: 1, country: 'US' };
-  return {
-    items,
-    state(st, kind, o) {
-      const nm = US_STATES[st];
-      if (!nm || nm[1] !== group) throw new Error('us pack ' + group + ': ' + st + ' is not a ' + group + ' state');
-      if (kind !== 'signature' && kind !== 'element') throw new Error('us pack: kind ' + kind);
-      const sc = kind === 'signature' ? US_SCENES['state:' + st] : null;
-      if (sc) o = Object.assign({}, o, sc, { id: o.id, full: true, tags: (o.tags || []).concat(sc.tags || []) });
-      items.push(Object.assign({}, base, { slot: kind === 'signature' ? 'opening' : 'symbol', usKind: 'state', usState: st, usSignature: kind === 'signature', state: st,
-        when: (day, ctx) => usStateOf(ctx) === st }, o, { id: st.toLowerCase() + '-' + o.id, label: o.label + ', ' + nm[0], tags: ['usa', 'us-state', nm[0].toLowerCase(), st.toLowerCase(), kind].concat(o.tags || []) }));
-    },
-    place(id, o) {
-      const p = US_PLACES.find(x => x[0] === id);
-      if (!p || !p[5]) throw new Error('us pack: ' + id + ' is not an art place');
-      if (US_STATES[p[2]] && US_STATES[p[2]][1] !== group && p[2] !== 'DC') throw new Error('us pack ' + group + ': ' + id + ' belongs to another group');
-      const sc = p[5] === 'big' ? US_SCENES['place:' + id] : null;
-      if (sc) o = Object.assign({}, o, sc, { id: o.id, full: true, tags: (o.tags || []).concat(sc.tags || []) });
-      items.push(Object.assign({}, base, { slot: p[5] === 'big' ? 'opening' : 'symbol', usKind: 'city', usState: p[2], usPlace: id, usSize: p[5], state: p[2], priority: 1.2,
-        when: (day, ctx) => { const q = usPlace(ctx); return !!q && q.id === id; } }, o, { id: id + '-' + o.id, label: o.label + ', ' + p[1], tags: ['usa', 'us-city', p[1].toLowerCase(), p[2].toLowerCase(), p[5]].concat(o.tags || []) }));
-    },
-    pack(m) { return Object.assign({ version: '1.0.0', css: usSceneCss(), items }, m); },
-  };
-}
-
-/* ---------- the full-screen scene kit (88 US openings: 1600 x 900, sliced to fill any screen) ----------
-   Same toolkit as the Texas scenes (71-anim-texas-scenes.js), shared by the US packs. usSceneKit() returns the
-   helpers (U fresh gradient ids, lin/linU/radU gradients, mv a moving group, ridge, canopy, cloud, streak, haze, rays,
-   sun, stars, birds, shimmer, puffs, dots, lit, finish ...); usSceneCss() the motion classes (x-usdrift, x-uspar,
-   x-usglide, x-usflap, x-usshim, x-uspuff, x-usmove, x-usbob, x-usglow, x-usrise, x-ussway, x-ussway2, x-usspin,
-   x-usflag, x-usflicker, x-uslift, x-usfall) and the evening grade (.us-tint, .us-lit, .us-lamps, .us-star). */
-function usSceneKit() {
-    let _n = 0;
-    const U = () => 'us' + (++_n).toString(36);                     // a gradient id, unique per render
-    const R = (v) => Math.round(v);
-    const rnd = (seed) => { let s = seed >>> 0 || 1; return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296); };
-    const stops = (a) => a.map(([o, c, op]) => `<stop offset="${o}" stop-color="${c}"${op != null ? ` stop-opacity="${op}"` : ''}/>`).join('');
-    const lin = (id, a) => `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">${stops(a)}</linearGradient>`;
-    const linU = (id, a, x1, y1, x2, y2) => `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">${stops(a)}</linearGradient>`;
-    const radU = (id, a, cx, cy, r) => `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="${r}">${stops(a)}</radialGradient>`;
-    const st = (o) => Object.entries(o).map(([k, v]) => k === 'to' ? `transform-box:view-box;transform-origin:${v}` : `--${k}:${v}`).join(';');
-    /** A moving group: x-<cls> with its own timing (--ad duration, --d delay, --dx/--dy travel, to: transform origin). */
-    const mv = (cls, o, inner) => `<g class="x-${cls}"${o ? ` style="${st(o)}"` : ''}>${inner}</g>`;
-    const full = (fill, y) => `<rect y="${y || 0}" width="1600" height="${900 - (y || 0)}" fill="${fill}"/>`;
-    const star5 = (cx, cy, Ro, ri) => { const p = []; for (let i = 0; i < 10; i++) { const a = (-90 + 36 * i) * Math.PI / 180, q = i % 2 ? ri : Ro; p.push(`${R(cx + q * Math.cos(a))} ${R(cy + q * Math.sin(a))}`); } return 'M' + p.join('L') + 'z'; };
-    /** A smooth ridge from x -160 to 1760 (room to drift), filled down to the foot. */
-    const ridge = (fill, y, amp, n, seed, foot) => {
-      const r = rnd(seed), p = [];
-      for (let i = 0; i <= n; i++) p.push([-160 + i * (1920 / n), y - r() * amp]);
-      let d = `M-160 ${foot || 900}V${R(p[0][1])}`;
-      for (let i = 1; i <= n; i++) d += `Q${R(p[i - 1][0])} ${R(p[i - 1][1])} ${R((p[i - 1][0] + p[i][0]) / 2)} ${R((p[i - 1][1] + p[i][1]) / 2)}`;
-      return `<path fill="${fill}" d="${d}L1760 ${R(p[n][1])}V${foot || 900}z"/>`;
-    };
-    /** A line of tree crowns of uneven size along y. */
-    const canopy = (fill, y, amp, seed, x0, x1, foot) => {
-      const r = rnd(seed); let x = x0 == null ? -160 : x0, d = `M${x} ${foot || 900}V${y}`;
-      const end = x1 == null ? 1760 : x1;
-      while (x < end) { const w = 26 + r() * 64, h = 8 + r() * amp, j = r() * 10 - 5; d += `c${R(w * 0.1)} ${-R(h * 1.4)} ${R(w * 0.9)} ${-R(h * 1.4)} ${R(w)} ${R(j)}`; x += w; }
-      return `<path fill="${fill}" d="${d}V${foot || 900}H${x0 == null ? -160 : x0}z"/>`;
-    };
-    /** A flat-topped mesa: stepped, sheer sides. */
-    const mesa = (x, y, w, h, fill, top, cap) => `<path fill="${fill}" d="M${x} ${y + h}V${y + h * 0.35}l${R(w * 0.04)} ${-R(h * 0.12)}h${R(w * 0.1)}l${R(w * 0.03)} ${-R(h * 0.23)}h${R(w * 0.66)}l${R(w * 0.03)} ${R(h * 0.2)}h${R(w * 0.1)}l${R(w * 0.04)} ${R(h * 0.15)}V${y + h}z"/>`
-      + `<path fill="${top}" d="M${x + R(w * 0.14)} ${R(y + h * 0.23)}h${R(w * 0.72)}l${-R(w * 0.01)} ${R(h * 0.06)}h${-R(w * 0.7)}z"/>` + (cap || '');
-    const cloud = (x, y, s, tone, op, dur, del, top) => {
-      const g = U(), r = rnd(R(x * 7 + y)); let puffsD = '';
-      for (let i = 0; i < 6; i++) { const px = x - 120 * s + i * 48 * s + r() * 20 * s, pr = (34 + r() * 40) * s * (i === 2 || i === 3 ? 1.35 : 1); puffsD += `<circle cx="${R(px)}" cy="${R(y - pr * 0.55)}" r="${R(pr)}"/>`; }
-      return `<defs>${linU(g, [[0, top || '#fff'], [0.55, top || '#fff'], [1, tone]], 0, R(y - 110 * s), 0, R(y + 24 * s))}</defs>`
-        + mv('usdrift', { ad: (dur || 46) + 's', d: -(del || 0) + 's', dx: R(60 + s * 40) + 'px' }, `<g opacity="${op || 0.92}" fill="url(#${g})"><ellipse cx="${x}" cy="${y}" rx="${R(170 * s)}" ry="${R(26 * s)}"/>${puffsD}</g>`);
-    };
-    const streak = (x, y, w, col, op, dur) => mv('usdrift', { ad: (dur || 60) + 's', dx: '90px' }, `<ellipse cx="${x}" cy="${y}" rx="${w}" ry="${R(w / 22) + 3}" fill="${col}" opacity="${op || 0.5}"/><ellipse cx="${R(x + w * 0.3)}" cy="${y + 10}" rx="${R(w * 0.6)}" ry="${R(w / 30) + 2}" fill="${col}" opacity="${(op || 0.5) * 0.7}"/>`);
-    const haze = (y, h, col, op) => { const g = U(); return `<defs>${linU(g, [[0, col, 0], [0.5, col, op || 0.6], [1, col, 0]], 0, y, 0, y + h)}</defs><rect x="-200" y="${y}" width="2000" height="${h}" fill="url(#${g})"/>`; };
-    const rays = (x, y, len, col, op) => { const g = U(); let d = ''; const r = rnd(R(x + y)); for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2 + r() * 0.3, b = a + 0.025 + r() * 0.07; d += `M${x} ${y}L${R(x + Math.cos(a) * len)} ${R(y + Math.sin(a) * len)}L${R(x + Math.cos(b) * len)} ${R(y + Math.sin(b) * len)}z`; }
-      return `<defs>${radU(g, [[0, col, op || 0.4], [1, col, 0]], x, y, len)}</defs><g class="x-usspin" style="--ad:40s;transform-box:view-box;transform-origin:${x}px ${y}px"><path fill="url(#${g})" d="${d}"/></g>`; };
-    const sun = (x, y, r, core, halo, rise) => { const g = U(); return `<defs>${radU(g, [[0, halo, 0.85], [0.35, halo, 0.35], [1, halo, 0]], x, y, r * 6)}</defs>`
-      + mv(rise ? 'usrise' : 'usglow', { ad: rise ? '9s' : '6s' }, `<circle cx="${x}" cy="${y}" r="${r * 6}" fill="url(#${g})"/><circle cx="${x}" cy="${y}" r="${r}" fill="${core}"/>`); };
-    const tint = () => `<rect class="us-tint" width="1600" height="900"/>`;
-    /** Darkened edges and the evening grade (the dark theme, tod-dusk, tod-night). */
-    const finish = (op) => { const g = U(); return `<defs><radialGradient id="${g}" cx=".5" cy=".46" r=".75">${stops([[0.55, '#0b0d22', 0], [1, '#0b0d22', op || 0.38]])}</radialGradient></defs><rect width="1600" height="900" fill="url(#${g})"/>` + tint(); };
-    const stars = (seed, n, y1) => { const r = rnd(seed); let o = ''; for (let i = 0; i < n; i++) o += `<circle cx="${R(r() * 1600)}" cy="${R(r() * (y1 || 300))}" r="${(1 + r() * 1.6).toFixed(1)}"/>`; return `<g class="us-star" fill="#fff">${o}</g>`; };
-    const birds = (seed, n, x, y, col, size, dx) => {
-      const r = rnd(seed); let o = '';
-      for (let i = 0; i < n; i++) {
-        const s = (size || 1) * (0.7 + r() * 0.6), bx = R(x + r() * 260 - 130), by = R(y + r() * 120 - 60);
-        o += mv('usglide', { ad: R(16 + r() * 10) + 's', d: -R(r() * 14) + 's', dx: (dx || 520) + 'px', dy: R(-40 + r() * 60) + 'px' },
-          mv('usflap', { ad: (0.5 + r() * 0.4).toFixed(2) + 's', d: -(r()).toFixed(2) + 's' },
-            `<path fill="none" stroke="${col}" stroke-width="${(3.2 * s).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round" d="M${bx - R(18 * s)} ${by}q${R(9 * s)} ${-R(10 * s)} ${R(18 * s)} 0q${R(9 * s)} ${-R(10 * s)} ${R(18 * s)} 0"/>`));
-      }
-      return o;
-    };
-    const shimmer = (seed, n, x0, x1, y0, y1, col, w) => {
-      const r = rnd(seed); let o = '';
-      for (let i = 0; i < n; i++) {
-        const y = y0 + r() * (y1 - y0), k = (y - y0) / Math.max(1, y1 - y0), len = R((w || 40) * (0.5 + k) * (0.6 + r() * 0.8));
-        o += `<rect class="x-usshim" style="--ad:${(2 + r() * 2.6).toFixed(1)}s;--d:-${(r() * 3).toFixed(1)}s" x="${R(x0 + r() * (x1 - x0))}" y="${R(y)}" width="${len}" height="${R(2 + k * 3)}" rx="2" fill="${col}"/>`;
-      }
-      return o;
-    };
-    const puffs = (x, y, n, col, size, dx, dur, dy, sc) => {
-      let o = '';
-      for (let i = 0; i < n; i++) o += `<circle class="x-uspuff" style="--ad:${dur || 3.6}s;--d:-${((dur || 3.6) * i / n).toFixed(2)}s;--dx:${dx || -120}px${dy ? `;--dy:${dy}px` : ''}${sc ? `;--sc:${sc}` : ''}" cx="${x}" cy="${y}" r="${R((size || 30) * (0.8 + (i % 3) * 0.15))}" fill="${col}"/>`;
-      return o;
-    };
-    /** Dots along a line (a string of lamps or a carpet of city lights): a round-capped dashed stroke. */
-    const dots = (d, col, w, gap, cls, extra) => `<path class="${cls || ''}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="0 ${gap}" d="${d}"${extra || ''}/>`;
-    const lit = (x, y, w, h) => `<rect class="us-lit" x="${x}" y="${y}" width="${w}" height="${h}" rx="${R(Math.min(w, h) / 5)}"/>`;
-  return { U, R, rnd, stops, lin, linU, radU, st, mv, full, star5, ridge, canopy, mesa, cloud, streak, haze, rays, sun, tint, finish, stars, birds, shimmer, puffs, dots, lit };
-}
-/** The css the full scenes need (every US pack adds it to its own). */
-function usSceneCss() {
-  const A = '.anim-scene .x-';
-  return [
-    '.anim-scene.ap-full .us-tint { fill: #4a4f94; mix-blend-mode: multiply; opacity: 0; pointer-events: none; }',
-    '.anim-scene.ap-full .us-lit { fill: #ffd27a; stroke: #ffd27a; opacity: 0; }',
-    '.anim-scene.ap-full .us-lamps { opacity: 0; }',
-    '.anim-scene.ap-full .us-star { opacity: 0; }',
-    '[data-theme="dark"] .anim-scene.ap-full .us-tint, .anim-scene.ap-full.tod-dusk .us-tint { opacity: .6; }',
-    '.anim-scene.ap-full.tod-night .us-tint { opacity: .85; }',
-    '[data-theme="dark"] .anim-scene.ap-full :is(.us-lit, .us-lamps), .anim-scene.ap-full.tod-dusk :is(.us-lit, .us-lamps), .anim-scene.ap-full.tod-night :is(.us-lit, .us-lamps) { opacity: .92; }',
-    '[data-theme="dark"] .anim-scene.ap-full .us-star, .anim-scene.ap-full.tod-night .us-star { opacity: .8; }',
-    'html .anim-scene.ap-full:is(.tod-day, .tod-dawn) :is(.us-tint, .us-lit, .us-lamps, .us-star) { opacity: 0; }',
-    A + 'usdrift { --an: ap-usdrift; --ad: 46s; }', A + 'uspar { --an: ap-usdrift; --ad: 30s; }', A + 'usglide { --an: ap-usglide; --ad: 18s; --ae: linear; }',
-    A + 'usflap { --an: ap-usflap; --ad: .7s; }', A + 'usshim { --an: ap-usshim; --ad: 3s; }', A + 'uspuff { --an: ap-uspuff; --ad: 3.6s; --ae: cubic-bezier(.2, .6, .4, 1); }',
-    A + 'usmove { --an: ap-usmove; --ad: 24s; --ae: linear; }', A + 'usbob { --an: ap-usbob; --ad: 3s; }', A + 'usglow { --an: ap-usglow; --ad: 6s; }',
-    A + 'usrise { --an: ap-usrise; --ad: 9s; --ai: 1; --ae: cubic-bezier(.2, .7, .3, 1); }', A + 'ussway { --an: ap-ussway; --ad: 4s; }', A + 'ussway2 { --an: ap-ussway2; --ad: 6s; }',
-    A + 'usspin { --an: ap-usspin; --ad: 40s; --ae: linear; }', A + 'usflag { --an: ap-usflag; --ad: 2s; }', A + 'usflicker { --an: ap-usflicker; --ad: .22s; }',
-    A + 'uslift { --an: ap-uslift; --ad: 14s; --ai: 1; --ae: cubic-bezier(.5, 0, .7, .6); }', A + 'usfall { --an: ap-usfall; --ad: 10s; --ae: linear; }',
-    '@keyframes ap-usdrift { 0%, 100% { transform: translateX(calc(var(--dx, 80px) * -1)); } 50% { transform: translateX(var(--dx, 80px)); } }',
-    '@keyframes ap-usglide { 0% { transform: translate(calc(var(--dx, 500px) * -.5), 0); opacity: 0; } 10%, 85% { opacity: 1; } 100% { transform: translate(calc(var(--dx, 500px) * .5), var(--dy, -30px)); opacity: 0; } }',
-    '@keyframes ap-usflap { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(-.35); } }',
-    '@keyframes ap-usshim { 0%, 100% { opacity: .1; transform: translateX(-8px); } 50% { opacity: .9; transform: translateX(8px); } }',
-    '@keyframes ap-uspuff { 0% { transform: translate(0, 0) scale(.35); opacity: 0; } 12% { opacity: .95; } 100% { transform: translate(var(--dx, -120px), var(--dy, -260px)) scale(var(--sc, 2.6)); opacity: 0; } }',
-    '@keyframes ap-usmove { from { transform: translateX(calc(var(--dx, 400px) * -.5)); } to { transform: translateX(calc(var(--dx, 400px) * .5)); } }',
-    '@keyframes ap-usbob { 0%, 100% { transform: translateY(calc(var(--dy, 5px) * -1)); } 50% { transform: translateY(var(--dy, 5px)); } }',
-    '@keyframes ap-usglow { 0%, 100% { opacity: .82; transform: scale(.97); } 50% { opacity: 1; transform: scale(1.04); } }',
-    '@keyframes ap-usrise { from { transform: translateY(90px); opacity: .6; } to { transform: none; opacity: 1; } }',
-    '@keyframes ap-ussway { 0%, 100% { transform: skewX(-3deg); } 50% { transform: skewX(3deg); } }',
-    '@keyframes ap-ussway2 { 0%, 100% { transform: rotate(-.8deg); } 50% { transform: rotate(.8deg); } }',
-    '@keyframes ap-usspin { to { transform: rotate(1turn); } }',
-    '@keyframes ap-usflag { 0%, 100% { transform: skewY(0) scaleX(1); } 50% { transform: skewY(-4deg) scaleX(.94); } }',
-    '@keyframes ap-usflicker { 0%, 100% { transform: scaleY(1); opacity: .95; } 50% { transform: scaleY(1.18); opacity: .8; } }',
-    '@keyframes ap-uslift { from { transform: translateY(0); } to { transform: translateY(-620px); } }',
-    '@keyframes ap-usfall { 0% { transform: translate(0, -20px) rotate(0); opacity: 0; } 10%, 85% { opacity: 1; } 100% { transform: translate(var(--dx, 80px), 640px) rotate(380deg); opacity: 0; } }',
-  ].join('\n');
-}
-
+function usBuilder(group) { const b = US_REGION.builder(group); b.state = b.unit; return b; }
+/** The full-screen scene kit and its css (animSceneKit / animSceneCss in 71-anim-0region.js): kept under their old names for the scene files. */
+function usSceneKit() { return animSceneKit(); }
+function usSceneCss() { return animSceneCss(); }
