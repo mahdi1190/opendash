@@ -10,7 +10,7 @@ upgrades it.
 
 ## [Unreleased]
 
-## [2.4.4] - 2026-10-05
+## [2.4.5] - 2026-10-05
 
 ### Added
 
@@ -337,8 +337,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.4...HEAD
-[2.4.4]: https://github.com/mahdi1190/opendash/compare/v2.4.3...v2.4.4
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.5...HEAD
+[2.4.5]: https://github.com/mahdi1190/opendash/compare/v2.4.3...v2.4.5
 [2.4.3]: https://github.com/mahdi1190/opendash/compare/v2.4.2...v2.4.3
 [2.4.2]: https://github.com/mahdi1190/opendash/compare/v2.4.0...v2.4.2
 [2.4.0]: https://github.com/mahdi1190/opendash/compare/v2.3.0...v2.4.0

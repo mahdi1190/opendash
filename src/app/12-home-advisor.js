@@ -68,6 +68,7 @@ async function homeAdvisorReview(automatic) {
 }
 function homeAdvisorTick() {
   homeAdvisorPaint();
+  if(typeof briefPrefs!=='function')return;
   if(!briefPrefs().advisorAuto||!briefPrefs().ai||document.hidden||typeof _serverAvailable==='undefined'||!_serverAvailable||!connHas('claude')||_homeAdviceBusy)return;
   const key=todayStr()+'|'+Clock.zone()+'|'+homeAdvicePeriod();
   let attempts={};try{attempts=JSON.parse(localStorage.getItem(_HOME_ADVICE_KEY+'-attempts')||'{}');}catch(e){/* Private mode. */}
