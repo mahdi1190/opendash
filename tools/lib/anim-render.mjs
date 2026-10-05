@@ -1,15 +1,15 @@
 // Loading the animation registry and rendering its items, for the animation tools (tools/anim-pack.mjs).
 // Node >= 20, no dependencies: the headless Chrome driver is the repo's own (tools/release-chrome.mjs).
 //
-//   const reg = loadRegistry(root, { extraFiles })   the pure registry the build would assemble (memoised unless extraFiles)
+//   const reg = loadRegistry(root, { extraFiles, omit })   the pure registry the build would assemble (memoised unless extraFiles / omit; omit = file names left out)
 //   reg.items()                                      every item {ref, pack, id, slot, full, item, packObj}
 //   reg.packs()                                      the registered packs (id, css, items ...)
 //   reg.html(item, opts)                             animItemHtml (default: live, full scenes 'fill', small items 'hero')
 //   reg.classesFor(packObj)                          the css classes defined by the app css and the pack css
 //   reg.pageCss()                                    the css a rendered page needs (tokens, animation library, scene sizes, swatches)
 //   reg.limits                                       {item, scene}: the registry's byte budgets
-//   reg.R                                            the evaluated registry functions (animPacks, animItemHtml ...)
-//   registrySources(root, extraFiles)                the source files in build order, extra files placed where their name sorts
+//   reg.R                                            the evaluated registry functions (animPacks, animItemHtml ...) and the regions (ANIM_REGIONS, animRegion)
+//   registrySources(root, extraFiles, omit)          the source files in build order, extra files placed where their name sorts
 //   findBrowser()                                    Chrome / Edge / Chromium: CHROME_PATH, PATH, Playwright's folders
 //   itemPage(reg, entry, {mode, at})                 the HTML page for one item, animations paused at `at` ms
 //   renderItems(reg, entries, { mode, outDir, ... }) PNGs: scenes 1600 x 900 paused at 6.5 s, small items 512 x 512
@@ -28,10 +28,13 @@ export const repoRoot = () => resolve(dirname(fileURLToPath(import.meta.url)), '
    The registry
    --------------------------------------------------------------------------------------------- */
 
-/** The source files a registry load needs, in build order (one list sorted by name), with `extraFiles` (paths) placed where their name sorts. */
-export function registrySources(root, extraFiles = []) {
+/**
+ * The source files a registry load needs, in build order (one list sorted by name), with `extraFiles` (paths) placed where their name sorts.
+ * `omit` (file names) leaves registered files out: the baseline for "what does this file add?" when the file is already in src/app.
+ */
+export function registrySources(root, extraFiles = [], omit = []) {
   const app = join(root, 'src', 'app');
-  const files = new Map(animRegistryFiles(app).map(f => [f, join(app, f)]));
+  const files = new Map(animRegistryFiles(app).filter(f => !omit.includes(f)).map(f => [f, join(app, f)]));
   for (const p of extraFiles) {
     const abs = resolve(p), name = basename(abs);
     if (!existsSync(abs)) throw new Error(`no such file: ${p}`);
@@ -40,7 +43,7 @@ export function registrySources(root, extraFiles = []) {
   return [...files.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).map(([name, path]) => ({ name, path }));
 }
 
-const NAMES = ['animPacks', 'animPack', 'animItem', 'animItems', 'animItemHtml', 'animValidatePack', 'ANIM_ITEM_MAX_BYTES', 'ANIM_FULL_ITEM_MAX_BYTES'];
+const NAMES = ['animPacks', 'animPack', 'animItem', 'animItems', 'animItemHtml', 'animValidatePack', 'ANIM_ITEM_MAX_BYTES', 'ANIM_FULL_ITEM_MAX_BYTES', 'ANIM_REGIONS', 'animRegion'];
 
 const _registries = new Map();
 /**
@@ -48,14 +51,15 @@ const _registries = new Map();
  * A load without extra files is memoised per root for the life of the process (the sources do not change under a running tool);
  * pass `fresh: true` to read the files again.
  */
-export function loadRegistry(root = repoRoot(), { extraFiles = [], fresh = false } = {}) {
-  if (!extraFiles.length && !fresh && _registries.has(root)) return _registries.get(root);
-  const reg = loadRegistryUncached(root, extraFiles);
-  if (!extraFiles.length) _registries.set(root, reg);
+export function loadRegistry(root = repoRoot(), { extraFiles = [], omit = [], fresh = false } = {}) {
+  const plain = !extraFiles.length && !omit.length;
+  if (plain && !fresh && _registries.has(root)) return _registries.get(root);
+  const reg = loadRegistryUncached(root, extraFiles, omit);
+  if (plain) _registries.set(root, reg);
   return reg;
 }
-function loadRegistryUncached(root, extraFiles) {
-  const list = registrySources(root, extraFiles);
+function loadRegistryUncached(root, extraFiles, omit = []) {
+  const list = registrySources(root, extraFiles, omit);
   const texts = list.map(f => readFileSync(f.path, 'utf8'));
   let R;
   try {

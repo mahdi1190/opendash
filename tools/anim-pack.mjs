@@ -2,10 +2,13 @@
 // OpenDash animation pack tool: make animation packs EASY and CONSISTENT. Node >= 20, no npm dependencies.
 //
 //   node tools/anim-pack.mjs --help
-//   node tools/anim-pack.mjs lint [--pack <id>] [--ref <ref,ref>] [--file <path>] [--json] [--rules]
-//   node tools/anim-pack.mjs sheet <ref,ref | --pack <id> | --file <path>> [--mode light|dark|night] [--out <dir>] [--contact]
+//   node tools/anim-pack.mjs lint [--pack <id>] [--ref <ref,ref>] [--file <path>] [--only small|scenes] [--json] [--rules]
+//   node tools/anim-pack.mjs sheet <ref,ref | --pack <id> | --file <path>> [--only small|scenes] [--mode light|dark|night] [--out <dir>] [--contact]
 //   node tools/anim-pack.mjs reference [--render] [--mode light|dark|night]
 //   node tools/anim-pack.mjs calibrate [--propose]
+//   node tools/anim-pack.mjs new <id> "<Name>" [--unit-word country|state|...] [--groups a,b,c]      (tools/lib/anim-cmd/new.mjs)
+//   node tools/anim-pack.mjs status [<region>] [--json] [--strict] [--short] [--no-lint]               (tools/lib/anim-cmd/status.mjs)
+//   node tools/anim-pack.mjs brief <region> --kind scene|element [--batch N --of M] [--group g] [--out dir]   (tools/lib/anim-cmd/brief.mjs)
 //
 // lint      measures every full scene and small item against tools/anim-quality.json (calibrated on the accepted
 //           corpus) and prints PASS / FAIL per rule; exit code 2 when anything fails.
@@ -13,6 +16,10 @@
 // reference prints the gold-standard exemplars (tools/anim-reference.json): study them before drawing; --render
 //           writes their PNGs to .anim-ref/ (git-ignored).
 // calibrate compares every threshold with the corpus today (and proposes thresholds from it with --propose).
+// new       scaffolds a whole new region (config with starter tables, scene stub, a pack file per group, a generated coverage test,
+//           a doc skeleton); it refuses to overwrite and ships no example art. status shows what a region has and what is MISSING
+//           (units, big and small places, bytes, lint per pack; exit 2 under --strict). brief writes the ready-to-paste task briefs
+//           for the agents that draw it (tools/lib/anim-templates/*.md). Guide: docs/dev/ANIMATION_PACKS.md, "Making a new region".
 //
 // To add a subcommand, either drop a module in tools/lib/anim-cmd/<name>.mjs (it is found automatically; no edit here) or add an entry
 // to COMMANDS below. A command is {summary, usage, options, run(args, ctx)}: `options` is a node:util parseArgs spec with a `help`
@@ -23,7 +30,7 @@
 // Reusable parts: tools/lib/anim-quality.mjs (measure / check / lintMarkup / thinSpots), tools/lib/anim-render.mjs (registry, rendering),
 // and here lintRegistry / measureRegistry / selectEntries / loadThresholds / loadReference.
 import { readFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
+import { join, resolve, dirname, basename } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { measure, check, profileFor, applyWaivers, ruleTable, checkCss, richness, describe, proposeThresholds, shapeKeys, sharedShares, thinSpots, RULE_PLAN } from './lib/anim-quality.mjs';
@@ -44,6 +51,12 @@ export function loadReference(root = repoRoot()) {
   const p = [join(root, 'tools', 'anim-reference.json'), join(HERE, 'anim-reference.json')].find(existsSync);
   if (!p) throw new Error('tools/anim-reference.json not found');
   return JSON.parse(readFileSync(p, 'utf8'));
+}
+/** --only small | scenes: keep only the small items or only the full-screen scenes of a selection (an element agent lints its pack file without the scenes other agents are still drawing). */
+function onlyKind(args, entries) {
+  if (!args.only) return entries;
+  if (!['small', 'scenes'].includes(args.only)) throw new Error('--only must be small or scenes');
+  return entries.filter(e => (args.only === 'scenes' ? e.full : !e.full));
 }
 const splitList = (v) => [].concat(v || []).flatMap(x => String(x).split(',')).map(s => s.trim()).filter(Boolean);
 
@@ -134,22 +147,23 @@ function printRuleTable(out, r, thresholds) {
 
 const lint = {
   summary: 'measure every full scene and small item against the calibrated thresholds (exit 2 on any failure)',
-  usage: 'lint [--pack <id>] [--ref <ref,ref>] [--file <path>] [--json] [--rules]',
+  usage: 'lint [--pack <id>] [--ref <ref,ref>] [--file <path>] [--only small|scenes] [--json] [--rules]',
   options: {
     pack: { type: 'string', multiple: true, help: 'lint one pack (repeatable)' },
     ref: { type: 'string', multiple: true, help: 'lint these items (<pack>/<id>, comma separated)' },
-    file: { type: 'string', multiple: true, help: 'a scene or pack file that is not registered yet: it is loaded with the registry and its new or changed items are linted' },
+    file: { type: 'string', multiple: true, help: 'a scene or pack file (not registered yet, or already in src/app): it is loaded with the registry and what it adds (new or changed items) is linted' },
     json: { type: 'boolean', help: 'machine-readable output' },
     rules: { type: 'boolean', help: 'print the PASS / FAIL table of every rule for every selected item (default when 3 or fewer items)' },
+    only: { type: 'string', help: 'small | scenes: lint only the small items, or only the full-screen scenes, of the selection (e.g. a pack file with --file)' },
   },
   run(args, ctx) {
     const root = ctx.root, thresholds = loadThresholds(root);
     const files = splitList(args.file);
     const reg = loadRegistry(root, { extraFiles: files });
-    const baseline = files.length ? loadRegistry(root) : null;
+    const baseline = files.length ? loadRegistry(root, { omit: files.map(f => basename(f)) }) : null;   // without the files: a file already in src/app adds all its items
     const t0 = Date.now();
-    const entries = selectEntries(reg, { refs: splitList(args.ref), packs: splitList(args.pack), baseline });
-    if (files.length && !entries.length) { ctx.err('lint: the file(s) loaded but registered no new or changed item. A scene file only shows once a pack item uses its key; a pack file must call animRegisterPack.'); return 1; }
+    const entries = onlyKind(args, selectEntries(reg, { refs: splitList(args.ref), packs: splitList(args.pack), baseline }));
+    if (files.length && !entries.length) { ctx.err(`lint: the file(s) loaded but registered no new or changed ${args.only === 'small' ? 'small item' : args.only === 'scenes' ? 'scene' : 'item'}. A scene file only shows once a pack item uses its key; a pack file must call animRegisterPack.`); return 1; }
     const res = lintRegistry(reg, thresholds, entries);
     const ms = Date.now() - t0;
     const fail = res.summary.failing > 0 || res.packCss.length > 0;
@@ -198,13 +212,14 @@ const lint = {
 const MODES = ['light', 'dark', 'night'];
 const sheet = {
   summary: 'render items to PNG (scenes 1600 x 900 paused at 6.5 s, small items 512 x 512) so they can be looked at',
-  usage: 'sheet <ref,ref | --pack <id> | --file <path>> [--mode light|dark|night] [--out <dir>] [--contact]',
+  usage: 'sheet <ref,ref | --pack <id> | --file <path>> [--only small|scenes] [--mode light|dark|night] [--out <dir>] [--contact]',
   options: {
     pack: { type: 'string', multiple: true, help: 'render every item of this pack (repeatable)' },
-    file: { type: 'string', multiple: true, help: 'a scene or pack file not registered yet: renders its new or changed items' },
+    file: { type: 'string', multiple: true, help: 'a scene or pack file (not registered yet, or already in src/app): renders what it adds (new or changed items)' },
     mode: { type: 'string', default: 'light', help: 'light | dark | night (night = dark theme at night time: lit windows, stars)' },
     out: { type: 'string', help: 'output folder (default .anim-ref/sheets/)' },
     contact: { type: 'boolean', help: 'also write one contact-sheet PNG with all the renders' },
+    only: { type: 'string', help: 'small | scenes: render only the small items, or only the full-screen scenes, of the selection' },
   },
   positionals: '<ref,ref>',
   async run(args, ctx) {
@@ -212,10 +227,10 @@ const sheet = {
     if (!MODES.includes(mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
     const files = splitList(args.file);
     const reg = loadRegistry(ctx.root, { extraFiles: files });
-    const baseline = files.length ? loadRegistry(ctx.root) : null;
+    const baseline = files.length ? loadRegistry(ctx.root, { omit: files.map(f => basename(f)) }) : null;   // without the files: a file already in src/app adds all its items
     const refs = splitList(ctx.positionals);
     if (!refs.length && !splitList(args.pack).length && !files.length) throw new Error('sheet needs refs (us-pacific/ak-midnight-sun,...), --pack <id> or --file <path>');
-    const entries = selectEntries(reg, { refs, packs: splitList(args.pack), baseline });
+    const entries = onlyKind(args, selectEntries(reg, { refs, packs: splitList(args.pack), baseline }));
     if (!entries.length) throw new Error('nothing to render');
     const outDir = resolve(args.out || join(ctx.root, '.anim-ref', 'sheets'));
     const exe = findBrowser();
@@ -317,13 +332,29 @@ export const COMMANDS = { lint, sheet, reference, calibrate };
 /* ---------------------------------------------------------------------------------------------
    main
    --------------------------------------------------------------------------------------------- */
+/** The sections of the --help list (a command that is in none of them is listed last, under "Other"). */
+const HELP_GROUPS = [
+  ['Check and look at the art', ['lint', 'sheet', 'reference', 'calibrate']],
+  ['Make a whole region (docs/dev/ANIMATION_PACKS.md, "Making a new region")', ['new', 'status', 'brief']],
+];
 function usage(out, table = COMMANDS) {
   out('OpenDash animation pack tool\n');
   out('usage: node tools/anim-pack.mjs <command> [options]\n');
-  for (const [name, c] of Object.entries(table)) out(`  ${pad(name, 11)} ${c.summary}`);
+  const shown = new Set();
+  const section = (title, names) => {
+    const mine = names.filter(n => table[n]);
+    if (!mine.length) return;
+    out(title + ':');
+    for (const n of mine) { out(`  ${pad(n, 11)} ${table[n].summary}`); shown.add(n); }
+    out('');
+  };
+  for (const [title, names] of HELP_GROUPS) section(title, names);
+  section('Other', Object.keys(table).filter(n => !shown.has(n)));
+  out('A new region, start to finish: new <id> "<Name>"  ->  fill the tables  ->  status <id>  ->  brief <id> --kind scene / --kind element  ->');
+  out('  each agent: lint --file <its file>, sheet --file <its file> (light AND night), report  ->  status <id> --strict  ->  npm test.');
   out('\nRun `node tools/anim-pack.mjs <command> --help` for a command\'s options.');
   out('Global: --root <dir> works on another checkout of the repo.');
-  out('Exit codes: 0 ok, 1 error, 2 lint failures.');
+  out('Exit codes: 0 ok, 1 error, 2 lint failures (status --strict: anything missing or failing).');
 }
 function commandHelp(c, out) {
   out(`usage: node tools/anim-pack.mjs ${c.usage}\n\n${c.summary}\n`);

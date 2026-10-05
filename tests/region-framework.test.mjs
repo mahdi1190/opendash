@@ -86,7 +86,7 @@ test('file names: the framework sorts before the US and Asia configs; region fil
 
 test('toy region: defined through the framework, registered, and its tables are sound', () => {
   assert.equal(R.ANIM_REGIONS.at(-1), TOY);
-  assert.deepEqual(R.ANIM_REGIONS.map(r => r.id), ['asia', 'us', 'toy']);
+  assert.deepEqual(R.ANIM_REGIONS.map(r => r.id).filter(id => ['asia', 'us', 'toy'].includes(id)), ['asia', 'us', 'toy'], 'the two first regions and the toy one, in definition order (a region added since sits among them: that is fine)');
   assert.equal(R.animRegion('toy'), TOY); assert.equal(R.animRegion('nope'), null);
   assert.deepEqual(TOY.check(), []);
   assert.deepEqual(TOY.groups, ['north', 'south']);
@@ -439,7 +439,7 @@ test('build order: animRegistryFiles() lists the animation files exactly as buil
 });
 
 test('the animation files evaluate in build order: a config that touches a registry const at load fails here as it fails the app', () => {
-  assert.deepEqual(evalBuildOrder().ANIM_REGIONS.map(r => r.id), ['asia', 'us']);
+  assert.deepEqual(evalBuildOrder().ANIM_REGIONS.map(r => r.id).filter(id => ['asia', 'us'].includes(id)), ['asia', 'us'], 'a region added since is loaded too: only the first two are pinned');
   // a new region's config (71-anim-region-*) and an Asia-style file (71-anim-asia*) both load BEFORE the registry: its consts are in the dead zone
   assert.throws(() => evalBuildOrder({ '71-anim-region-zz.js': 'const _x = Object.keys(ANIM_SLOTS);\n' }), /ANIM_SLOTS|before initialization/);
   assert.throws(() => evalBuildOrder({ '71-anim-asia-zz.js': 'const _y = ANIM_SLOT_IDS.length;\n' }), ReferenceError);
