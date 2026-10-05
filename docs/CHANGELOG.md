@@ -18,6 +18,12 @@ upgrades it.
 
 - UK openings keep the current location as their title. Backgrounds rotate only among nearby places (approximately 25 km), with the actual landmark and county in the corner. A seasonal background fills gaps in local coverage.
 
+## [2.4.0] - 2026-10-04
+
+### Added
+
+- **Animation packs for Asia.** Every Asian country and territory (52, from Turkey to Japan and Indonesia) opens with a hand-drawn full-screen scene and has a small symbol; every major city (80) has its own full-screen opening, and every smaller city or famous town (73) a small symbol of its own. They play where you are (the weather town or the travel city), the opening welcomes you to your city or country, and each pack can be switched off in Settings > Animations. See `docs/dev/ASIA_PACK.md`.
+
 ## [2.3.0] - 2026-10-04
 
 ### Added
@@ -310,7 +316,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/mahdi1190/opendash/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/mahdi1190/opendash/compare/v2.2.5...v2.3.0
 [2.2.6]: https://github.com/mahdi1190/opendash/compare/v2.2.5...v2.2.6
 [2.2.5]: https://github.com/mahdi1190/opendash/compare/v2.2.4...v2.2.5

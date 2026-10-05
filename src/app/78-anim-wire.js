@@ -238,6 +238,8 @@ function animOpeningSequence() {
     if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, it: pick, over: 'Texas' }; } catch (e) { tx = null; }
     // Elsewhere in the US (71-anim-us.js, 72-anim-pack-us-*.js): the town or the state, with today's US opening as the emblem.
     if (!w && !tx) try { const u = typeof usWhere === 'function' ? usWhere(animCtx()) : null; const pick = u ? animToday('opening') : null; if (pick && /^us-/.test(pick.pack)) tx = { name: u.name, it: pick, over: 'USA' }; } catch (e) { tx = null; }
+    // Asia (71-anim-asia.js, 72-anim-pack-asia-*.js): the town or the country, with today's Asian opening on the stage.
+    if (!w && !tx) try { const a = typeof asiaWhere === 'function' ? asiaWhere(animCtx()) : null; const pick = a ? animToday('opening') : null; if (pick && /^asia-/.test(pick.pack)) tx = { name: a.name, it: pick, over: 'Asia' }; } catch (e) { tx = null; }
     // Anywhere else: today's opening from any pack (core, seasons, world ...), on the same full-screen stage.
     let gen = null;
     if (!w && !tx) try { gen = animToday('opening'); } catch (e) { gen = null; }

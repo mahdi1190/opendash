@@ -11,7 +11,7 @@ const app = join(root, 'src', 'app');
 const packId = process.argv[2] || 'uk-south-east';
 const out = resolve(process.argv[3] || join(root, '..', 'uk-art-review', packId));
 mkdirSync(out, { recursive: true });
-const files = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(app).filter(f => /^71-anim-us2?[-.]/.test(f)).sort(), ...readdirSync(app).filter(f => /^72-anim-pack-.*\.js$/.test(f)).sort()];
+const files = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(app).filter(f => /^71-anim-(us2?|asia2?)[-.]/.test(f)).sort(), ...readdirSync(app).filter(f => /^72-anim-pack-.*\.js$/.test(f)).sort()];
 const R = new Function(files.map(f => readFileSync(join(app, f), 'utf8')).join('\n;\n') + '\nreturn {animPack,animItemHtml};')();
 const pack = R.animPack(packId);
 if (!pack) throw new Error('Unknown pack: ' + packId);
