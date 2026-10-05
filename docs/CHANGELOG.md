@@ -10,6 +10,17 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.4.7] - 2026-10-05
+
+### Added
+
+- Local location history: first-seen arrivals, fresh confirmed presence, bounded departure estimates, sampled presence duration, unobserved gaps, visit counts, country returns and straight-line displacement between observed stops. Device fixes retain timestamps, reported accuracy and optional altitude/speed/heading; manual selections remain separate. History stays in this browser, bounded to 90 days, 250 visits and 1,000 rounded observations, with review and Clear location history in Settings.
+- Device mode watches for changes while the dashboard is visible, alongside fresh load/tab-return/manual checks and 15-minute polling. Hidden tabs and manual mode stop the watch; stale, future and inaccurate fixes cannot replace the last location. Offline city anchors can name nearby international cities without a new service.
+
+### Changed
+
+- Easter egg subtext uses actual country pairs, clock differences, latitude/longitude changes, distinct-place counts, visit counts, previous observed stays and estimated time away. Return timing uses departure bounds instead of the previous arrival; missing observation gaps cannot prove time spent or a month away.
+
 ## [2.4.6] - 2026-10-05
 
 - Exact-location arrival scenes: the first three openings or five minutes prefer artwork of your actual town, then nearby scenes rotate normally. City artwork in US, Texas and Asian openings uses the same preference where available; blocked scenes remain excluded.
@@ -368,7 +379,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.6...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.7...HEAD
+[2.4.7]: https://github.com/mahdi1190/opendash/compare/v2.4.6...v2.4.7
 [2.4.6]: https://github.com/mahdi1190/opendash/compare/v2.4.5...v2.4.6
 [2.4.5]: https://github.com/mahdi1190/opendash/compare/v2.4.3...v2.4.5
 [2.4.3]: https://github.com/mahdi1190/opendash/compare/v2.4.2...v2.4.3

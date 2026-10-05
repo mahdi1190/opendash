@@ -25,7 +25,7 @@ test('each page load requests a fresh device fix without requiring the Permissio
     h.events.load(); await h.settle();
     assert.equal(h.requests.length, 1);
     assert.equal(h.requests[0].options.maximumAge, 0);
-    h.requests[0].ok({ coords: { latitude: 53.381, longitude: -1.471 } });
+    h.requests[0].ok({ timestamp:Date.now(), coords: { latitude: 53.381, longitude: -1.471, accuracy:50 } });
     await vm.runInContext('_locationAutoRefresh', h.context);
     assert.equal(h.saves.length, 1);
     assert.equal(h.saves[0].location.lat, 53.38);
@@ -44,7 +44,7 @@ test('periodic and tab-return checks coalesce, pause when hidden and retry after
   h.context.document.hidden = false;
   h.events.visibilitychange(); h.timers[0].fn(); await h.settle();
   assert.equal(h.requests.length, 2);
-  h.requests[1].ok({ coords: { latitude: 53.48, longitude: -2.24 } });
+  h.requests[1].ok({ timestamp:Date.now(), coords: { latitude: 53.48, longitude: -2.24, accuracy:50 } });
   await vm.runInContext('_locationAutoRefresh', h.context);
   assert.equal(h.saves.length, 1);
 });
@@ -64,6 +64,35 @@ test('device refresh falls back when the geolocation permission query is unsuppo
   const check = h.timers.length ? h.timers[0].fn() : vm.runInContext('dashboardLocationAutoRefresh()', h.context);
   await h.settle(); assert.equal(h.requests.length, 1);
   h.requests[0].fail({ code: 3 }); assert.equal(await check, false);
+});
+
+test('stale and inaccurate fixes are recorded diagnostically without replacing the location', async()=>{
+  for(const fix of [{timestamp:Date.now()-180000,coords:{latitude:53.38,longitude:-1.47,accuracy:50}},{timestamp:Date.now(),coords:{latitude:53.38,longitude:-1.47,accuracy:5000}}]) {
+    const h=deviceRefreshHarness();const seen=[];h.context.dashboardLocationObserve=(p,source)=>seen.push({p,source});
+    const check=vm.runInContext('dashboardDeviceRefresh(false)',h.context);
+    h.requests[0].ok(fix);
+    assert.equal(await check,false);assert.equal(h.saves.length,0);assert.equal(seen.length,1);
+    assert.equal(h.context.APP_CONFIG.location.name,'Last fix');
+  }
+});
+
+test('visible device watch confirms presence and stops when hidden or switched to manual', async()=>{
+  const h=deviceRefreshHarness();let watch,cleared=[];const seen=[];
+  h.context.dashboardLocationObserve=(p,source)=>seen.push({p,source});
+  h.context.navigator.geolocation.watchPosition=(fn)=>{watch=fn;return 7;};
+  h.context.navigator.geolocation.clearWatch=id=>cleared.push(id);
+  h.events.load();await h.settle();
+  h.requests[0].ok({timestamp:Date.now(),coords:{latitude:53.38,longitude:-1.47,accuracy:30}});
+  await vm.runInContext('_locationAutoRefresh',h.context);assert.equal(typeof watch,'function');
+  await watch({timestamp:Date.now()+1,coords:{latitude:53.38,longitude:-1.47,accuracy:30,speed:0}});
+  assert.equal(seen.at(-1).source,'device');assert.equal(seen.at(-1).p.speed,0);
+  assert.equal(h.saves.length,1,'same-place watch confirmations do not repeatedly save configuration');
+  h.context.document.hidden=true;h.events.visibilitychange();assert.deepEqual(cleared,[7]);
+  const n=seen.length;await watch({timestamp:Date.now(),coords:{latitude:53.48,longitude:-2.24,accuracy:30}});
+  assert.equal(seen.length,n,'hidden callbacks cannot record presence');
+  h.context.document.hidden=false;vm.runInContext('dashboardDeviceWatchStart()',h.context);
+  await vm.runInContext("dashboardLocationSave({locationMode:'manual',location:{name:'Chosen',lat:53.38,lon:-1.47}},false)",h.context);
+  assert.deepEqual(cleared,[7,7]);assert.equal(seen.at(-1).source,'manual');
 });
 test('location source defaults to manual and retains a separately saved manual place', () => {
   const place = {name:'Sheffield',lat:53.38,lon:-1.47};

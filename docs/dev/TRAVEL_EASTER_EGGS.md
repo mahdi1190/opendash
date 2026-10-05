@@ -6,9 +6,9 @@ Location openings keep the real town title and landmark caption. UK, US, Texas, 
 
 During the first three actual openings or five minutes, exact-town artwork takes precedence over nearby scenes and a pin for another town. The first observed location also gets this artwork preference. After the window, normal nearby rotation resumes. Disabled/blocked scenes remain excluded; without exact-town artwork, the nearby pool remains the fallback.
 
-Distances measure displacement between locations, not a route or cumulative mileage. Manual location edits can trigger distance-based scene-change messages; they do not claim a physical trip or a geographical crossing. Easter egg arrivals promote the playful message to the main headline while keeping the town visible. Country and clock messages use the existing Travel feature and its known country/timezone inputs; no new reverse-geocoding service or background GPS tracking is added.
+Distances measure displacement between locations, not a route or cumulative mileage. Manual location edits can trigger distance-based scene-change messages; they do not claim a physical trip or a geographical crossing. Easter egg arrivals promote the playful message to the main headline while keeping the town visible. Country and clock messages use the existing Travel feature and its known country/timezone inputs; no new reverse-geocoding service is added. Device mode can watch for fresh fixes while the dashboard is visible; it stops when hidden, closed or switched to manual. International naming uses a known offline city anchor within 15 km, otherwise the name stays unknown.
 
-The per-device location memory is bounded: the current coordinate anchor, twelve town keys, twelve visit counters/timestamps and twelve recent arrival timestamps. It also keeps the current eligible message pool and at most three used message ids until the arrival window ends. It does not store a GPS route. Older installations begin learning patterns as new arrivals happen; missing history is not fabricated. Travel country returns reuse existing shown-moment keys.
+The per-device location memory is bounded: the current coordinate anchor, twelve town keys, twelve visit counters/timestamps and twelve recent arrival timestamps. It also keeps the current eligible message pool and at most three used message ids until the arrival window ends. A separate local location history retains up to 90 days, 250 visits and 1,000 rounded observations. It records fix/receipt timestamps, reported accuracy, optional altitude/speed/heading, first-seen arrival, last confirmed presence and bounded departure estimates. Coordinates retain approximately kilometre precision; this is an observation trail, not a measured travel route. Older installations begin learning patterns as new arrivals happen; missing history is not fabricated. Travel country returns reuse existing shown-moment keys.
 
 Openings choose the strongest unused matching message, with random selection between equally ranked choices. Only the strongest distance band is eligible. Once every matching message has played, reuse is allowed while avoiding an immediate repeat when alternatives exist. The next pick is saved across reloads. Travel arrival cards choose deterministically within the highest tier.
 
@@ -35,7 +35,7 @@ Tone is selectively cheeky: big distances and busy travel patterns can get mild 
 | 15 | This country gets a sequel. | Arrival in a previously welcomed country |
 | 16 | New country, new chapter. | Different known country codes |
 | 17 | Even the minutes moved. | Non-whole-hour shift from the home clock |
-| 18 | Your clock is eight hours away. Good luck explaining your sleep schedule. | 8+ hours from the home clock |
+| 18 | Your clock is at least eight hours away. Good luck explaining your sleep schedule. | 8+ hours from the home clock |
 | 19 | Same you. New clock. | 3+ hours from the home clock |
 | 20 | Already in tomorrow? Show-off. | Local date ahead of home |
 | 21 | You got yesterday back. Try not to waste it twice. | Local date behind home |
@@ -68,3 +68,11 @@ Tone is selectively cheeky: big distances and busy travel patterns can get mild 
 | 48 | A fresh chapter in Derry/Londonderry. | Arrival in derry |
 
 Implementation: `69-travel-moments-logic.js`, `69-travel-moments.js`, `78-anim-uk.js` and `78-anim-wire.js`. Tests cover all 48 reachable messages, eligibility, hierarchy, random ties, unused-message rotation, reload persistence, expiry, bounded history, escaping and the extra hold time.
+
+## Measured subtext and presence limits
+
+Fresh device fixes must be no older than two minutes, no more than five seconds in the future and have reported accuracy of 1,000 metres or better. Rejected fixes remain diagnostic observations and never confirm a visit. Same-place fixes update last confirmed presence without adding visits; intervals of up to 20 minutes contribute sampled presence time, while longer gaps are explicitly unobserved. Even sampled presence is an estimate, not proof of continuous presence.
+
+A departure lies between the last fix at the old place and the first fix at the new place; its midpoint is only an estimate. Return jokes use the full away-time range: quick returns need the upper bound within one day; month-long returns need the lower bound at least 30 days. Manual changes do not accrue physical presence or establish a physical departure. No historical presence is reconstructed from old welcome counters.
+
+Subtext reports the actual clock shift, geographic difference, observed/selected place counts, retained visit counts, previous observed span and sampled duration, last-confirmed date, or time-away range where relevant. Straight-line displacement is never labelled route or cumulative mileage. Settings shows recent history and can clear it. Implementation: `77-location-history-logic.js`, `78-location-history.js`, `78-location.js`; tests: `location-history.test.mjs`, `location-choice.test.mjs`.

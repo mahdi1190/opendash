@@ -45,9 +45,10 @@ function animLocationArrivalState(w, consume = false, acknowledge = false) {
       const eggChoices = typeof trJourneyEggChoices === 'function'
         ? trJourneyEggChoices({ from: p, to: point, returning: seen.includes(placeKey), visitCount: count, awayMs: previous && previous.at > 0 ? now - previous.at : 0,
           uniqueToday: new Set(recent.filter(v => v.at > now - 86400000).map(v => v.key)).size, uniqueWeek: new Set(recent.map(v => v.key)).size,
-          sequence: Number(rec.sequence) || 0, hour: local.h, dow: local.dow,
+          sequence: Number(rec.sequence) || 0, hour: local.h, minute: local.mi, dow: local.dow,
           birthday: !!(APP_CONFIG.birthday && local.iso && String(APP_CONFIG.birthday).slice(-5) === local.iso.slice(-5)),
-          source: APP_CONFIG.locationMode === 'manual' ? 'manual' : 'geo' }) : [];
+          source: APP_CONFIG.locationMode === 'manual' ? 'manual' : 'geo',
+          ...(typeof dashboardLocationHistoryContext === 'function' ? dashboardLocationHistoryContext(point) || {} : {}) }) : [];
       const egg = typeof trJourneyEggNext === 'function' ? trJourneyEggNext(eggChoices, [], '') : null;
       rec = { ...rec, point, remaining: 3, exactRemaining: 3, pending: true, until: Date.now() + 5 * 60 * 1000, egg, eggChoices, eggUsed: [],
         seen: [...seen.filter(x => x !== placeKey), placeKey].slice(-12), recent,

@@ -2,16 +2,24 @@
  * requested only after choosing Device; manual coordinates never get replaced. */
 let _locationRequest = 0;
 let _locationAutoRefresh = null;
+let _locationWatchId = null;
+let _locationWatchLastAt = 0;
 function dashboardDevicePoint(pos) {
   const lat = Math.round(pos.coords.latitude * 100) / 100;
   const lon = Math.round(pos.coords.longitude * 100) / 100;
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) throw new Error('The device returned an invalid location.');
   const near = typeof ukCountyNearest === 'function' ? ukCountyNearest(lat, lon) : null;
-  return { name: near ? near.town : 'Current location', admin: near ? near.name : '', country: near ? 'United Kingdom' : '', countryCode: near ? 'GB' : '', lat, lon, timezone: browserTimeZone() };
+  const world = !near && typeof trNearestCity === 'function' ? trNearestCity(lat,lon,{maxKm:15}) : null;
+  const city = world && world.city;
+  return { name: near ? near.town : city ? city.name : 'Current location', admin: near ? near.name : '', country: near ? 'United Kingdom' : city && typeof trCountry==='function' ? (trCountry(city.cc) || {}).name || '' : '', countryCode: near ? 'GB' : city ? city.cc : '', lat, lon, timezone: city && city.zone || browserTimeZone(),
+    observedAt: pos.timestamp, accuracy: pos.coords.accuracy, altitude: pos.coords.altitude,
+    altitudeAccuracy: pos.coords.altitudeAccuracy, speed: pos.coords.speed, heading: pos.coords.heading };
 }
 async function dashboardLocationSave(patch, refreshUI = true) {
   if (typeof animUkArrivalState === 'function' && typeof animUkWhere === 'function') animUkArrivalState(animUkWhere());
   if (!await settingsSaveConfig(patch, false)) return false;
+  if (patch.location && typeof dashboardLocationObserve === 'function') dashboardLocationObserve(patch.location, patch.locationMode === 'device' ? 'device' : 'manual');
+  if (patch.locationMode === 'manual') dashboardDeviceWatchStop();
   _bf.weather = null;
   briefLoadWeather(true);
   if (refreshUI && typeof render === 'function') render();
@@ -28,7 +36,33 @@ async function dashboardDeviceRefresh(choose, quiet = false) {
   const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, maximumAge: 0, timeout: 12000 }));
   if (request !== _locationRequest || (!choose && APP_CONFIG.locationMode !== 'device')) return false;
   const location = dashboardDevicePoint(pos);
-  return dashboardLocationSave({ locationMode: 'device', location, ...(choose && APP_CONFIG.locationMode !== 'device' ? { manualLocation: APP_CONFIG.location || null } : {}) }, !quiet);
+  if (!Number.isFinite(location.accuracy) || location.accuracy < 0 || location.accuracy > 1000 || !Number.isFinite(location.observedAt) || Date.now()-location.observedAt>120000 || location.observedAt>Date.now()+5000) {
+    if (typeof dashboardLocationObserve === 'function') dashboardLocationObserve(location,'device');
+    return false;
+  }
+  const saved = await dashboardLocationSave({ locationMode: 'device', location, ...(choose && APP_CONFIG.locationMode !== 'device' ? { manualLocation: APP_CONFIG.location || null } : {}) }, !quiet);
+  if (saved) dashboardDeviceWatchStart();
+  return saved;
+}
+function dashboardDeviceWatchStop() {
+  if (_locationWatchId !== null && navigator.geolocation && navigator.geolocation.clearWatch) navigator.geolocation.clearWatch(_locationWatchId);
+  _locationWatchId = null;
+}
+function dashboardDeviceWatchStart() {
+  if (_locationWatchId !== null || APP_CONFIG.locationMode !== 'device' || document.hidden || !navigator.geolocation.watchPosition) return;
+  _locationWatchId = navigator.geolocation.watchPosition(async pos => {
+    if (APP_CONFIG.locationMode !== 'device' || document.hidden) return;
+    try {
+      const location=dashboardDevicePoint(pos);
+      if (typeof dashboardLocationObserve === 'function') dashboardLocationObserve(location,'device');
+      const old=APP_CONFIG.location;
+      const moved=!old || location.name!==old.name || Math.abs(location.lat-old.lat)+Math.abs(location.lon-old.lon)>=0.03;
+      if (moved && Date.now()-_locationWatchLastAt>=60000 && Number.isFinite(location.accuracy) && location.accuracy>=0 && location.accuracy<=1000 && Date.now()-location.observedAt<=120000 && location.observedAt<=Date.now()+5000) {
+        _locationWatchLastAt=Date.now();
+        await dashboardLocationSave({locationMode:'device',location},false);
+      }
+    } catch (e) { /* Invalid fixes never replace the last location. */ }
+  }, error => { if (error && error.code===1) dashboardDeviceWatchStop(); }, {enableHighAccuracy:false,maximumAge:0,timeout:12000});
 }
 function dashboardLocationAutoRefresh(explicit = false) {
   if (APP_CONFIG.locationMode !== 'device' || document.hidden) return Promise.resolve(false);
@@ -76,12 +110,15 @@ function dashboardLocationSettings() {
     ctl.appendChild(refresh);
   }
   ctl.appendChild(status);
-  return _settingsRow('Your location', 'Choose one source for weather, opening titles and nearby art. Device location needs browser permission and checks on page load, Refresh today, returning to the tab and every 15 minutes while visible. Coordinates are rounded to about 1 km; town names are approximate. Weather coordinates go to Open-Meteo.', ctl);
+  if (typeof dashboardLocationHistoryPanel === 'function') ctl.appendChild(dashboardLocationHistoryPanel());
+  return _settingsRow('Your location', 'Choose one source for weather, opening titles and nearby art. Device mode checks on load, Refresh today and tab return, watches for changes while visible, and polls every 15 minutes. Local visit history keeps arrivals, confirmed presence, departure estimates and observation gaps. Coordinates are rounded to about 1 km; town names are approximate. Weather coordinates go to Open-Meteo.', ctl);
 }
 if (typeof window !== 'undefined') window.addEventListener('load', () => {
   dashboardLocationAutoRefresh(true);
   setInterval(() => dashboardLocationAutoRefresh(), 15 * 60 * 1000);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) dashboardLocationAutoRefresh();
+    else dashboardDeviceWatchStop();
   });
+  window.addEventListener('pagehide', dashboardDeviceWatchStop);
 }, { once: true });

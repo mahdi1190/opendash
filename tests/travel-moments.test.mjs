@@ -89,6 +89,21 @@ test('arrival selection ranks unused messages, randomises ties and avoids immedi
   assert.match(L.trJourneyEggNext(eligible,[],'',0).title,/7,500 miles\? Jesus Christ/);
 });
 
+test('Easter egg subtext uses measured distances, clock shifts, visit counts and bounded time away',()=>{
+  const choices=i=>L.trJourneyEggChoices(i), find=(i,id)=>choices(i).find(e=>e.id===id);
+  assert.match(find({diffMin:570},'clock-big').detail,/9 h 30 min ahead/);
+  assert.match(find({uniqueToday:7,historySource:'device'},'third-town-day').detail,/7 distinct places observed/);
+  assert.match(find({uniqueWeek:8,historySource:'manual'},'fifth-town-week').detail,/manual selections/);
+  const returning={returning:true,visitCount:5,historySource:'device',previousStayMs:3*3600000,previousSampledMs:3600000,previousLastSeenAt:Date.UTC(2026,9,1)};
+  assert.match(find(returning,'fifth-visit').detail,/5 recorded visits.*3 h.*1 h.*2026-10-01/);
+  const quick={...returning,awayMs:3600000,awayMinMs:1800000,awayMaxMs:3600000};
+  assert.match(find(quick,'return-quick').detail,/30 min–1 h/);
+  assert.equal(find({...quick,historySource:'manual'},'return-quick'),undefined);
+  assert.equal(find({...returning,awayMs:40*86400000,awayMinMs:0,awayMaxMs:40*86400000},'return-month'),undefined,'unknown departure gap cannot prove a month away');
+  assert.match(find({hour:6,minute:42},'early-bird').detail,/06:42/);
+  assert.match(find({from:{cc:'GB'},to:{cc:'JP'}},'new-country').detail,/United Kingdom.*Japan/);
+});
+
 /** Balanced tags, nothing executable. */
 function wellFormed(svg) {
   const stack = [];
@@ -259,7 +274,7 @@ test('the arrival card: a city from the calendar, the clocks, the greeting and u
   assert.match(m.chips[1].html, /18°.*until 18:00/);
   assert.match(m.chips[2].html, /¥190/);
   assert.match(m.stamp, /HND · 14:42/);
-  assert.equal(L.trMomentAnnounce(m), 'Welcome to Tokyo. It is 15:42 here, 8 hours ahead of London. New country, new chapter. Your dashboard came along for the ride.');
+  assert.equal(L.trMomentAnnounce(m), 'Welcome to Tokyo. It is 15:42 here, 8 hours ahead of London. New country, new chapter. United Kingdom → Japan. Your dashboard came along for the ride.');
 });
 
 test('zone-only, rail, night, half-hour and date-line arrivals', () => {

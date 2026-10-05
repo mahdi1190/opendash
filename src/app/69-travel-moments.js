@@ -618,7 +618,8 @@ async function _tmArrivalFor(mo, snap) {
   const landed = snap.landed && snap.landed.cc === place.cc ? `Your ${mo.leg && mo.leg.mode && mo.leg.mode !== 'flight' ? 'train' : 'flight'} arrived in ${snap.landed.label || place.label}. This computer still shows ${Clock.label(Clock.home())} time.` : '';
   const arrivals = Object.keys(_tmShownMap()).filter(k => k.startsWith('arrive:') && k !== mo.key);
   const m = trArrivalModel({ now, zone: place.zone || snap.zone, place, home: snap.home, leg: mo.leg, source: snap.where && snap.where.source, trip, weather, meetings: snap.meetings, nextEvent, holidays: snap.holidays, rate, h12: _tmH12(), banner: b, landed, key: mo.key,
-    returningCountry: arrivals.some(k => k.endsWith(':' + place.cc)), sequence: arrivals.length, birthday: APP_CONFIG.birthday });
+    returningCountry: arrivals.some(k => k.endsWith(':' + place.cc)), sequence: arrivals.length, birthday: APP_CONFIG.birthday,
+    locationHistory: typeof dashboardLocationHistoryContext==='function' ? dashboardLocationHistoryContext({name:place.label,cc:place.cc,...(typeof trCity==='function' && place.cityId ? trCity(place.cityId) || {} : {})}) : null });
   m.tripId = mo.tripId || m.tripId;
   if (place.cityId) m.cityId = place.cityId;   // the world pack's landmark on the card (78-anim-world.js)
   return m;

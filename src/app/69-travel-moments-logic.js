@@ -548,14 +548,14 @@ const TR_JOURNEY_EGGS = Object.freeze([
   ['return-country', 'This country gets a sequel.', 'You have welcomed this country before.', x => x.border && x.returningCountry && x.to.cc !== x.homeCc],
   ['new-country', 'New country, new chapter.', 'Your dashboard came along for the ride.', x => x.border && !x.returningCountry && x.to.cc !== x.homeCc],
   ['clock-minutes', 'Even the minutes moved.', 'This clock shift is not a whole number of hours.', x => Number.isFinite(x.diffMin) && x.diffMin !== 0 && Math.abs(x.diffMin) % 60 !== 0],
-  ['clock-big', 'Your clock is eight hours away. Good luck explaining your sleep schedule.', 'Eight hours or more from your home clock. Same dashboard.', x => Math.abs(x.diffMin) >= 480],
+  ['clock-big', 'Your clock is at least eight hours away. Good luck explaining your sleep schedule.', 'Eight hours or more from your home clock. Same dashboard.', x => Math.abs(x.diffMin) >= 480],
   ['clock-shift', 'Same you. New clock.', 'At least three hours from your home clock.', x => Math.abs(x.diffMin) >= 180],
   ['calendar-ahead', 'Already in tomorrow? Show-off.', 'The local date is ahead of the date at home.', x => x.dayDiff > 0],
   ['calendar-behind', 'You got yesterday back. Try not to waste it twice.', 'The local date is behind the date at home.', x => x.dayDiff < 0],
   ['third-town-day', 'Three towns in a day. Sit down for a bloody minute.', 'Three or more different towns in the last 24 hours.', x => x.uniqueToday >= 3],
   ['fifth-town-week', 'Five towns this week. The map would like a day off.', 'Five or more different towns in the last seven days.', x => x.uniqueWeek >= 5],
-  ['return-quick', 'Back already? Forget something, or just missed the entrance?', 'This place made another appearance within a day.', x => x.returning && x.awayMs > 0 && x.awayMs <= 86400000],
-  ['return-month', 'Previously, on your dashboard...', 'A familiar place, at least a month since the last visit.', x => x.returning && x.awayMs >= 30 * 86400000],
+  ['return-quick', 'Back already? Forget something, or just missed the entrance?', 'This place made another appearance within a day.', x => x.returning && x.awayMs > 0 && x.awayMs <= 86400000 && x.historySource !== 'manual'],
+  ['return-month', 'Previously, on your dashboard...', 'A familiar place, at least a month since the last visit.', x => x.returning && (x.awayMinMs === undefined ? x.awayMs : x.awayMinMs) >= 30 * 86400000 && x.historySource !== 'manual'],
   ['third-visit', 'A trilogy deserves a good entrance.', 'Your third recorded visit to this place.', x => x.visitCount === 3],
   ['fifth-visit', 'Five visits. Shall we just leave your name on the door?', 'Five or more recorded visits to this place.', x => x.visitCount >= 5],
   ['returning', 'The sequel looks good on you.', 'A familiar place. A fresh chapter.', x => x.returning],
@@ -620,7 +620,43 @@ function trJourneyEggChoices(i) {
   }); // The strongest distance band, rather than seven versions of the same fact.
   return candidates.map(e => ({ id: e.id,
     title: i.source === 'manual' && e.id === 'thousand-miles' ? 'Over 1,000 miles between settings. Subtle little scene change.' : e.title,
-    detail: typeof e.detail === 'function' ? e.detail(ctx) : e.detail, extraMs: 2500, priority: e.priority }));
+    detail: trJourneyEggDetail(e,ctx), extraMs: 2500, priority: e.priority }));
+}
+function trJourneyDuration(ms) {
+  const minutes=Math.max(0,Math.round(ms/60000));
+  if (minutes<60) return minutes+' min';
+  const hours=Math.floor(minutes/60), rest=minutes%60;
+  if (hours<24) return hours+' h'+(rest?' '+rest+' min':'');
+  const days=Math.floor(hours/24);
+  return days+' day'+(days===1?'':'s')+(hours%24?' '+hours%24+' h':'');
+}
+/** Relevant measured subtext; missing observations never become invented facts. */
+function trJourneyEggDetail(e,x) {
+  if (typeof e.detail==='function') return e.detail(x);
+  const id=e.id, observed=x.historySource==='device', count=x.visitCount;
+  const country=cc=>typeof _tmCountryName==='function'?_tmCountryName(cc):cc;
+  const latitude=n=>Math.abs(n).toFixed(1)+'° '+(n<0?'south':'north');
+  if (id==='equator') return latitude(x.from.lat)+' → '+latitude(x.to.lat)+'. '+x.distance;
+  if (id==='date-line') return 'Longitude '+x.from.lon.toFixed(1)+'° → '+x.to.lon.toFixed(1)+'°. '+x.distance;
+  if (id==='northward' || id==='southward') return Math.abs(x.to.lat-x.from.lat).toFixed(1)+'° of latitude '+(id==='northward'?'north':'south')+' between these places. '+x.distance;
+  if (id==='longitude') return Math.abs(x.to.lon-x.from.lon).toFixed(1)+'° of longitude between these places. '+x.distance;
+  if (['new-country','home-country','return-country'].includes(id)) return country(x.from.cc)+' → '+country(x.to.cc)+'.'+(x.miles>0?' '+x.distance:' Your dashboard came along for the ride.');
+  if (id.startsWith('clock-')) return trJourneyDuration(Math.abs(x.diffMin)*60000)+' '+(x.diffMin>0?'ahead of':'behind')+' your home clock.';
+  if (id==='calendar-ahead' || id==='calendar-behind') return 'Your local calendar is '+Math.abs(x.dayDiff)+' day'+(Math.abs(x.dayDiff)===1?'':'s')+' '+(x.dayDiff>0?'ahead of':'behind')+' home.';
+  if (id==='third-town-day') return x.uniqueToday+' distinct places '+(observed?'observed':'recorded')+' in the last 24 hours'+(x.historySource==='manual'?' through manual selections':'')+'.';
+  if (id==='fifth-town-week') return x.uniqueWeek+' distinct places '+(observed?'observed':'recorded')+' in seven days'+(x.historySource==='manual'?' through manual selections':'')+'.';
+  if (['return-quick','return-month'].includes(id) && observed && Number.isFinite(x.awayMinMs) && Number.isFinite(x.awayMaxMs)) {
+    return 'Estimated time away: '+trJourneyDuration(x.awayMinMs)+'–'+trJourneyDuration(x.awayMaxMs)+'. Departure falls between location checks.';
+  }
+  if (['returning','third-visit','fifth-visit','weekend-return'].includes(id) && Number.isFinite(count)) {
+    let detail=count+' recorded '+(observed?'visits':x.historySource==='manual'?'manual selections':'visits')+' here in the retained history.';
+    if (observed && x.previousStayMs>0) detail+=' Previous visit observed across '+trJourneyDuration(x.previousStayMs)+'; '+trJourneyDuration(x.previousSampledMs || 0)+' of sampled presence.';
+    if (observed && Number.isFinite(x.previousLastSeenAt)) detail+=' Last confirmed '+new Date(x.previousLastSeenAt).toISOString().slice(0,10)+' (UTC).'; // clock-ok: actual recorded presence timestamp
+    return detail;
+  }
+  if (id.startsWith('local-') && Number.isFinite(count)) return x.town.charAt(0).toUpperCase()+x.town.slice(1)+': '+count+' recorded '+(observed?'visit':x.historySource==='manual'?'selection':'visit')+(count===1?'':'s')+' in this browser.';
+  if (['late-arrival','early-bird','lunchtime','friday-arrival'].includes(id) && Number.isFinite(x.hour)) return 'Arrival detected around '+String(Math.floor(x.hour)).padStart(2,'0')+':'+String(Number.isFinite(x.minute)?x.minute:0).padStart(2,'0')+' on the local dashboard clock.';
+  return e.detail;
 }
 function trJourneyEgg(i) {
   let candidates = trJourneyEggChoices(i);
@@ -698,7 +734,7 @@ function trArrivalModel(i) {
   const origin = i.leg && i.leg.from || home;
   const originCity = origin.cityId && typeof trCity === 'function' ? trCity(origin.cityId) : null;
   const egg = trJourneyEgg({ from: { ...(originCity || origin), cc: origin.cc || home.cc }, to: { ...(city || place), cc, town: cityName }, source: i.source || 'trip',
-    hour: lp.h, dow: lp.dow, dayDiff, diffMin, homeCc: home.cc, returningCountry: !!i.returningCountry, sequence: i.sequence || 0,
+    ...(i.locationHistory || {}),hour: lp.h, minute: lp.mi, dow: lp.dow, dayDiff, diffMin, homeCc: home.cc, returningCountry: !!i.returningCountry || !!(i.locationHistory && i.locationHistory.returningCountry), sequence: i.sequence || 0,
     birthday: !!(i.birthday && String(i.birthday).slice(-5) === lp.iso.slice(-5)) });
   const note = i.landed ? String(i.landed) : i.banner ? String(i.banner) : '';
   return {

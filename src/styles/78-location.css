@@ -1,0 +1,2 @@
+.loc-history { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); max-height: 22rem; overflow-y: auto; font-size: 0.85rem; line-height: 1.5; }
+.loc-history p { margin: 8px 0; max-width: 70ch; }
