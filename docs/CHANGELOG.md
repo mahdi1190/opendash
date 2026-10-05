@@ -10,6 +10,14 @@ upgrades it.
 
 ## [Unreleased]
 
+### Added
+
+- UK Northern cities & Peaks: 20 animated full-screen scenes, with eight Sheffield views, eight Manchester views and four Peak District views, including The Diamond, Arts Tower and university heritage.
+
+### Changed
+
+- UK openings keep the current location as their title. Backgrounds rotate only among nearby places (approximately 25 km), with the actual landmark and county in the corner. A seasonal background fills gaps in local coverage.
+
 ## [2.3.0] - 2026-10-04
 
 ### Added

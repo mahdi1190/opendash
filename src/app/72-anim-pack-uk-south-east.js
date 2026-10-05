@@ -34,6 +34,7 @@
       id: county + '-' + o.id,
       label: o.label + ', ' + NAMES[county],
       tags: ['uk', region.replace(/-/g, ' '), NAMES[county].toLowerCase(), kind].concat(o.tags || []),
+      when: (day, ctx) => !!ctx && !!ctx.county && (!months || months.includes(+String(day).slice(5, 7))) && (ctx.county === county || (!!o.ukTown && animUkScenePools([{county,ukTown:o.ukTown}], ctx).nearby.length > 0)),
     }));
   };
 

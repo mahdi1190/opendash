@@ -139,29 +139,35 @@ function animTimeOfDay() {
 function animOpeningScene(w, rotate) {
   if (!w) return { it: null, origin: '' };
   const day = todayStr(), look = animLook();
-  const mine = animItems({ slot: 'opening', look }).filter(x => x.full && x.county === w.id && !look.block.includes(x.ref) && _animFitsLevel(x, _agLevel()) && _awWhen(x, day, w.id));
+  const eligible = animItems({ slot: 'opening', look }).filter(x => x.full && x.county && !look.block.includes(x.ref) && _animFitsLevel(x, _agLevel()) && _awWhen(x, day, w.id));
+  const ctx = { county: w.id, ukTown: w.town, ukLat: w.lat, ukLon: w.lon };
+  const mine = animUkRotationPool(eligible, ctx, 0);
   if (!mine.length) return { it: null, origin: '' };
   const key = 'dashboard-opening-last-' + w.id;
   let last = '';
   try { last = localStorage.getItem(key) || ''; } catch (e) { /* private mode */ }
   const signature = mine.find(x => x.signature);
   const pin = mine.find(x => look.pin && x.ref === look.pin.opening);
-  let rotation = { step: 0, nearby: '', wider: '' };
-  try { const saved = JSON.parse(localStorage.getItem(key + '-rotation') || 'null'); if (saved && Number.isSafeInteger(saved.step) && saved.step >= 0) rotation = saved; } catch (e) { /* private mode */ }
-  const ctx = { county: w.id, ukTown: w.town, ukLat: w.lat, ukLon: w.lon };
-  const groups = animUkScenePools(mine, ctx);
-  const pool = animUkRotationPool(mine, ctx, rotation.step);
-  const lane = groups.nearby.length && groups.wider.length ? (rotation.step % 3 === 2 ? 'wider' : 'nearby') : 'all';
-  const previous = pool.findIndex(x => x.ref === (rotation[lane] || last));
+  const pool = _awByPlace(mine);
+  const previous = pool.findIndex(x => x.ref === last);
   const next = pool[(previous >= 0 ? previous + 1 : Math.max(0, pool.indexOf(signature) + 1)) % pool.length];
-  const localIntro = groups.nearby.find(x => x.ukTown === w.town) || groups.nearby[0];
+  const localIntro = mine.find(x => x.ukTown === w.town);
   const it = rotate ? pin || next : pin || localIntro || signature || mine[0];
   try { localStorage.setItem(key, it.ref); } catch (e) { /* private mode */ }
-  if (rotate && !pin) try { rotation[lane] = it.ref; rotation.step = (rotation.step + 1) % 3000000; localStorage.setItem(key + '-rotation', JSON.stringify(rotation)); } catch (e) { /* private mode */ }
   const site = it.site || it.label.replace(new RegExp(', ' + w.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), '');
-  return { it, origin: site.includes(w.name) ? site : site + ' · ' + w.name };
+  const county = ukCounty(it.county);
+  const area = county ? county.name : it.ukLocality || '';
+  return { it, origin: !area || site.includes(area) ? site : site + ' · ' + area };
 }
-function animOpeningPlace(it, w) { return it && (it.ukLocality || it.ukTown) || w && w.name || ''; }
+/** Round-robin over places (ukPlace, else the item itself): A1 B1 C1 A2 B2 C2 ... */
+function _awByPlace(items) {
+  const groups = new Map();
+  for (const it of items) { const k = it.ukPlace || it.ref; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
+  const lists = [...groups.values()], out = [];
+  for (let i = 0; out.length < items.length; i++) for (const l of lists) if (l[i]) out.push(l[i]);
+  return out;
+}
+function animOpeningPlace(it, w) { return w && (w.town || w.name) || ''; }
 function _awWhen(it, day, county) { try { return typeof it.when !== 'function' || !!it.when(day, Object.assign(animCtx(), { county })); } catch (e) { return false; } }
 
 /** A date-based holiday or special event, following (never replacing) the

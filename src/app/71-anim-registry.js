@@ -207,27 +207,27 @@ function _animFitsLevel(it, lv) { return !ANIM_INTENSITIES.includes(lv) || _anim
  * the birthday, the moon tonight, sunrise now) whose rule holds; the highest priority wins,
  * then the day seeds the choice. Blocks, packs switched off and the intensity level apply.
  */
-/** Nearby means a scene's public town centre is within 15 km. No location lookup. */
+/** Nearby means within 25 km of a public place/town anchor. No location lookup. */
 function animUkScenePools(items, ctx) {
   const towns = typeof ukTowns === 'function' ? ukTowns() : [];
   const home = towns.find(t => t.id === ctx.county && t.town === ctx.ukTown);
   const lat = Number.isFinite(ctx.ukLat) ? ctx.ukLat : home && home.lat;
   const lon = Number.isFinite(ctx.ukLon) ? ctx.ukLon : home && home.lon;
   const nearby = items.filter(it => {
-    if (it.county !== ctx.county || !it.ukTown) return false;
+    if (!it.ukTown) return false;
     const town = towns.find(t => t.id === it.county && t.town === it.ukTown);
-    if (!town || !Number.isFinite(lat) || !Number.isFinite(lon)) return it.ukTown === ctx.ukTown;
-    const r = Math.PI / 180, a = (town.lat - lat) * r, b = (town.lon - lon) * r;
-    const h = Math.sin(a / 2) ** 2 + Math.cos(lat * r) * Math.cos(town.lat * r) * Math.sin(b / 2) ** 2;
-    return 12742 * Math.asin(Math.min(1, Math.sqrt(h))) <= 15;
+    const place = Number.isFinite(it.ukLat) && Number.isFinite(it.ukLon) ? {lat:it.ukLat,lon:it.ukLon} : town;
+    if (!place || !Number.isFinite(lat) || !Number.isFinite(lon)) return it.county === ctx.county && it.ukTown === ctx.ukTown;
+    const r = Math.PI / 180, a = (place.lat - lat) * r, b = (place.lon - lon) * r;
+    const h = Math.sin(a / 2) ** 2 + Math.cos(lat * r) * Math.cos(place.lat * r) * Math.sin(b / 2) ** 2;
+    return 12742 * Math.asin(Math.min(1, Math.sqrt(h))) <= 25;
   });
   const local = new Set(nearby);
   return { nearby, wider: items.filter(it => !local.has(it)) };
 }
 function animUkRotationPool(items, ctx, step) {
-  const { nearby, wider } = animUkScenePools(items, ctx);
-  if (!nearby.length || !wider.length) return items;
-  return Math.abs(step) % 3 === 2 ? wider : nearby;
+  if (!ctx.ukTown && !Number.isFinite(ctx.ukLat)) return items;
+  return animUkScenePools(items, ctx).nearby;
 }
 function animSpecialPick(slot, day, look, ctx) {
   look = animLookNormalize(look); ctx = ctx || {};
@@ -235,12 +235,12 @@ function animSpecialPick(slot, day, look, ctx) {
   if (!hits.length) return null;
   const top = Math.max(...hits.map(it => it.priority || 1));
   let pool = hits.filter(it => (it.priority || 1) === top);
-  // Town scenes are a local rotation within the already matched county.
-  // A national event still has higher priority; unavailable local art falls
-  // back to the whole county, including when local scenes are blocked.
-  if (top < 2 && ctx.county && ctx.ukTown) {
+  // Nearby art can cross county borders. National events keep their priority;
+  // missing or blocked local art never causes a distant county fallback.
+  if (top < 2 && ctx.county && (ctx.ukTown || Number.isFinite(ctx.ukLat))) {
     pool = animUkRotationPool(pool, ctx, Math.floor(Date.parse(day + 'T12:00:00Z') / 86400000));
   }
+  if (!pool.length) return null;
   const favs = pool.filter(it => look.fav.includes(it.ref));
   const bag = favs.length ? favs : pool;
   return bag[_animHash(`${day}|${slot}|special|${ctx.salt || ''}`) % bag.length];
@@ -250,7 +250,7 @@ function animDailyPick(slot, day, look, ctx) {
   const all = animItems({ slot, look }).filter(it => !look.block.includes(it.ref));
   if (!all.length) return null;
   const pinned = look.pin[slot] && all.find(it => it.ref === look.pin[slot]);
-  if (pinned) return pinned;
+  if (pinned && (!pinned.county || (!ctx.ukTown && !Number.isFinite(ctx.ukLat)) || animUkScenePools([pinned], ctx).nearby.length)) return pinned;
   const special = animSpecialPick(slot, day, look, ctx);
   if (special) return special;
   const plain = all.filter(it => typeof it.when !== 'function');

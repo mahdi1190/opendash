@@ -29,15 +29,19 @@ This is an authoring target; completed counts remain in the batch table.
 
 Expanded scenes carry `ukPlace`, `ukLocality`, `ukTown`, `ukView` and
 `viewReason`. `ukLocality` is the actual village or town; `ukTown` is a main-town
-cluster already in the offline county table. Town centres within 15 km of the
-current weather/travel point form the nearby pool. Two openings use that pool,
-then one uses the wider county, with independent cursors and county fallback
-when either pool is empty. The daily card follows the same two-to-one balance
-over days. Pins, blocks, disabled packs and holiday priority still apply.
-Openings show the illustrated place's own name, without "Welcome to". A first
-arrival prefers local art and otherwise uses the county signature.
+cluster already in the offline county table. Public landmark coordinates may
+override that anchor. Only scenes within approximately 25 km of the current
+weather/travel point enter the rotation, including across county borders.
+If none are available, a seasonal scene fills the screen. Distant scenes remain
+available in the gallery. The main title always names the current location;
+the corner names the illustrated landmark and its actual county. Pins and
+blocks respect proximity, while national events keep their priority.
 The gallery pages 80 scenes at a time and searches all scenes, including place
 and town names, so large packs remain entirely browsable.
+
+Northern pilot: `uk-north-west` combines Sheffield (8), Manchester (8) and
+Peak District (4): 20 full-screen scenes, two views of ten named places.
+This is a city pilot, not completion of the three county batches.
 
 ## How it plays
 

@@ -159,7 +159,7 @@ function animGalleryRender(el) {
     const nice = (r) => String(r).replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
     const gap = w && !has ? ` ${w.name} has no regional animations yet (drawn so far: ${drawn.length ? drawn.map(nice).join(', ') : 'none'}), so a seasonal scene shows its place name.` : '';
     const now = !look.ukRegional ? '' : w ? ` Now: ${w.name}, near ${w.town} (from ${w.source === 'travel' ? 'your travel location' : 'the weather town'}).${gap}` : ' No UK county found: set a weather town in the UK.';
-    packs.appendChild(_settingsRow('Regional animations (UK)', 'Uses your weather location or current travel location offline. Two nearby scenes then one from elsewhere in your county, when local art is available. Openings show the place name and landmark caption. Nothing is sent anywhere.' + now,
+    packs.appendChild(_settingsRow('Regional animations (UK)', 'Uses your weather or travel location offline. Backgrounds rotate among places within about 25 km. The title stays your location; the corner names the scene. Nothing is sent anywhere.' + now,
       _settingsSwitch(look.ukRegional, 'Regional animations (UK)', (v) => { animLookSave({ ukRegional: v }); if (v) animUkCheck({ first: true }); render(); })));
   }
   root.appendChild(packs);

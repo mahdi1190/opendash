@@ -85,7 +85,7 @@ test('returning county openings rotate on refresh; arrival keeps its signature',
   assert.notEqual(h.attributes['data-od-scene'], first, 'returning splash advances');
 });
 
-test('local openings name the scene town and mix two nearby views with one wider view', () => {
+test('local openings keep the current town in the title and only show nearby scenes', () => {
   const h = harness({ day: '2026-10-06', town: 'Yateley' });
   h.run(); h.next();
   assert.match(h.splash.children[0].innerHTML, /od-seq-place">Yateley</);
@@ -96,7 +96,8 @@ test('local openings name the scene town and mix two nearby views with one wider
     assert.ok(!seen.has(it.ref), 'the first thirty selections do not repeat'); seen.add(it.ref);
     if (it.ukPart === 'north-hampshire') nearby++;
   }
-  assert.equal(nearby, 20);
+  assert.equal(nearby, 30);
+  assert.equal(vm.runInContext('animOpeningPlace({ukTown:"Fleet",ukLocality:"Fleet"},animUkWhere())',h.context),'Yateley');
 });
 
 test('ordinary days, blocked holidays and disabled packs have no event stage', () => {

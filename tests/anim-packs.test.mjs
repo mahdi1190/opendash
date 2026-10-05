@@ -375,7 +375,7 @@ test('UK packs: county-only, one signature, bounded baseline and meaningful plac
     assert.ok(R.UK_REGIONS.some(r => r.id === region), `${p.id}: a UK region`);
     // The South East and London share one gallery pack, while each scene
     // keeps its authoritative county region. No county-only check is relaxed.
-    const regions = p.id === 'uk-south-east' ? ['south-east', 'london'] : [region];
+    const regions = p.id === 'uk-south-east' ? ['south-east', 'london'] : p.id === 'uk-north-west' ? ['north-west', 'yorkshire', 'east-midlands'] : [region];
     const per = new Map();
     for (const it of p.items) {
       const c = R.ukCounty(it.county);

@@ -20,7 +20,7 @@ test('every one of 1,044 gallery scenes is reachable exactly once, with bounded 
   assert.deepEqual(R.animGalleryPage([], 9), { page: 0, pages: 1, start: 0, end: 0, items: [] });
 });
 
-test('town rotations fall back within the county and retain pins, blocks and national events', () => {
+test('town rotations stay nearby and retain blocks and national events', () => {
   const R = load();
   const item = (id, town, extra = {}) => Object.assign({ id, slot: 'opening', label: id, tags: ['uk'], mood: 'calm', intensity: 'subtle', theme: 'any', season: 'any', region: ['GB-ENG'], county: 'hampshire', ukTown: town,
     reduced: 'static', svg: () => '<circle cx="32" cy="32" r="8"/>', when: (day, ctx) => ctx.county === 'hampshire' }, extra);
@@ -28,10 +28,10 @@ test('town rotations fall back within the county and retain pins, blocks and nat
   const ctx = { county: 'hampshire', ukTown: 'Lymington', level: 'standard' };
   let localDays = 0;
   for (let d = 1; d <= 27; d++) if (R.animDailyPick('opening', `2026-10-${String(d).padStart(2, '0')}`, {}, ctx).id === 'lymington') localDays++;
-  assert.equal(localDays, 18, 'two local days then one wider day');
-  assert.equal(R.animDailyPick('opening', '2026-10-03', { pin: { opening: 'local-demo/winchester' } }, ctx).id, 'winchester');
-  assert.notEqual(R.animDailyPick('opening', '2026-10-03', { block: ['local-demo/lymington'] }, ctx).id, 'lymington');
-  assert.ok(R.animDailyPick('opening', '2026-10-03', {}, { county: 'hampshire', ukTown: 'Undrawn town' }));
+  assert.equal(localDays, 27, 'every background is nearby');
+  assert.equal(R.animDailyPick('opening', '2026-10-03', { pin: { opening: 'local-demo/winchester' } }, ctx).id, 'lymington', 'a distant pin cannot replace nearby art');
+  assert.equal(R.animDailyPick('opening', '2026-10-03', { block: ['local-demo/lymington'] }, ctx), null);
+  assert.equal(R.animDailyPick('opening', '2026-10-03', {}, { county: 'hampshire', ukTown: 'Undrawn town' }), null);
   assert.equal(R.animDailyPick('opening', '2026-10-03', { packsOff: ['local-demo'] }, ctx), null);
   assert.equal(R.animDailyPick('opening', '2026-10-03', {}, { county: 'kent', ukTown: 'Lymington' }), null);
   R.animRegisterPack({ id: 'national-demo', name: 'Synthetic national event', items: [item('holiday', '', { county: undefined, priority: 3, when: day => day === '2026-12-25' })] });
@@ -39,7 +39,7 @@ test('town rotations fall back within the county and retain pins, blocks and nat
   assert.equal(R.animDailyPick('opening', '2026-12-25', { block: ['national-demo/holiday'] }, ctx).pack, 'local-demo');
 });
 
-test('nearby scenes span neighbouring towns and never remove wider county scenes', () => {
+test('nearby scenes span neighbouring towns but exclude distant county scenes', () => {
   const R = load(), ctx = { county: 'hampshire', ukTown: 'Yateley' };
   const items = ['Yateley', 'Fleet', 'Farnborough', 'Winchester', 'Portsmouth'].map(ukTown => ({ county: 'hampshire', ukTown }));
   const groups = R.animUkScenePools(items, ctx);
@@ -47,7 +47,13 @@ test('nearby scenes span neighbouring towns and never remove wider county scenes
   assert.deepEqual(groups.wider.map(x => x.ukTown), ['Winchester', 'Portsmouth']);
   assert.equal(R.animUkRotationPool(items, ctx, 0).length, 3);
   assert.equal(R.animUkRotationPool(items, ctx, 1).length, 3);
-  assert.equal(R.animUkRotationPool(items, ctx, 2).length, 2);
-  assert.equal(R.animUkRotationPool(items, { county: 'hampshire', ukTown: 'Unknown' }, 0), items);
+  assert.equal(R.animUkRotationPool(items, ctx, 2).length, 3);
+  assert.equal(R.animUkRotationPool(items, { county: 'hampshire', ukTown: 'Unknown' }, 0).length, 0);
   assert.equal(R.animUkScenePools(items, { ...ctx, ukLat: 51.06, ukLon: -1.31 }).nearby[0].ukTown, 'Winchester', 'current travel point takes precedence over town fallback');
+});
+
+test('nearby landscapes can cross county borders without admitting distant cities', () => {
+  const R = load(), ctx = {county:'south-yorkshire',ukTown:'Sheffield',ukLat:53.38,ukLon:-1.47};
+  const places = [{county:'derbyshire',ukTown:'Castleton',ukLat:53.347,ukLon:-1.632}, {county:'greater-manchester',ukTown:'Manchester',ukLat:53.48,ukLon:-2.24}];
+  assert.deepEqual(R.animUkRotationPool(places,ctx,0),[places[0]]);
 });
