@@ -74,7 +74,7 @@ function animCineShow(o) {
   const el = document.createElement('div');
   el.className = 'ap-cine' + (o.cls ? ' ' + o.cls : ''); el.setAttribute('role', 'status');
   el.style.setProperty('--ap-open-ms', ms + 'ms');
-  el.innerHTML = o.art + `<div class="ap-cine-t">${o.over ? `<span class="ap-cine-over">${esc(o.over)}</span>` : ''}<span class="ap-cine-place">${esc(o.place || '')}</span>${o.origin ? `<span class="ap-cine-origin">${esc(o.origin)}</span>` : ''}${o.egg ? `<span class="ap-cine-egg"><b>${esc(o.egg.title)}</b><span>${esc(o.egg.detail)}</span></span>` : ''}<span class="ap-cine-skip">Click or press any key to close</span></div>`;
+  el.innerHTML = o.art + `<div class="ap-cine-t${o.egg ? ' has-egg' : ''}">${o.over ? `<span class="ap-cine-over">${esc(o.over)}</span>` : ''}<span class="ap-cine-place">${esc(o.place || '')}</span>${o.origin ? `<span class="ap-cine-origin">${esc(o.origin)}</span>` : ''}${o.egg ? `<span class="ap-cine-egg"><b>${esc(o.egg.title)}</b><span>${esc(o.egg.detail)}</span></span>` : ''}<span class="ap-cine-skip">Click or press any key to close</span></div>`;
   const end = (reason) => { if (!el.isConnected) return; el.remove(); removeEventListener('keydown', skip, true); if (o.onEnd) o.onEnd(reason); };
   const skip = () => end('skip');
   el.addEventListener('click', skip);
@@ -141,7 +141,10 @@ function animOpeningScene(w, rotate) {
   const day = todayStr(), look = animLook();
   const eligible = animItems({ slot: 'opening', look }).filter(x => x.full && x.county && !look.block.includes(x.ref) && _animFitsLevel(x, _agLevel()) && _awWhen(x, day, w.id));
   const ctx = { county: w.id, ukTown: w.town, ukLat: w.lat, ukLon: w.lon };
-  const mine = animUkRotationPool(eligible, ctx, 0);
+  let mine = animUkRotationPool(eligible, ctx, 0);
+  const arrival = typeof animLocationArrivalState === 'function' ? animLocationArrivalState(w) : null;
+  const exact = mine.filter(x => x.ukTown && String(x.ukTown).toLowerCase() === String(w.town || '').toLowerCase());
+  if (arrival && arrival.exactRemaining > 0 && exact.length) mine = exact;
   if (!mine.length) return { it: null, origin: '' };
   const key = 'dashboard-opening-last-' + w.id;
   let last = '';
@@ -168,6 +171,33 @@ function _awByPlace(items) {
   return out;
 }
 function animOpeningPlace(it, w) { return w && (w.town || w.name) || ''; }
+/** Keep arrivals on the actual city when its enabled artwork exists. */
+function animOpeningExactScene(tx, arrival) {
+  if (!tx || !arrival || arrival.exactRemaining <= 0) return;
+  const look = animLook(), ctx = animCtx();
+  const exact = animItems({ slot: 'opening', look }).filter(it => it.pack === tx.it.pack && !look.block.includes(it.ref) && _animFitsLevel(it, _agLevel())
+    && (it.usPlace === tx.id || it.asiaPlace === tx.id || (it.txTown && it.txTown.toLowerCase() === tx.name.toLowerCase()))
+    && _animWhen(it, todayStr(), ctx));
+  if (!exact.length) return;
+  const key = 'dashboard-opening-exact-' + tx.cc + '-' + tx.id;
+  let last = '';
+  try { last = localStorage.getItem(key) || ''; } catch (e) { /* private mode */ }
+  tx.it = exact[(exact.findIndex(it => it.ref === last) + 1) % exact.length];
+  try { localStorage.setItem(key, tx.it.ref); } catch (e) { /* private mode */ }
+}
+function animOpeningLocation(w, tx) {
+  if (w) return w;
+  const loc = APP_CONFIG.location;
+  if (tx) return { id: (tx.cc || 'place') + ':' + (tx.id || tx.name).toLowerCase(), town: tx.name, cc: tx.cc || '',
+    lat: loc && loc.lat, lon: loc && loc.lon };
+  if (APP_CONFIG.locationMode && loc && loc.name) return { id: (loc.countryCode || 'place') + ':' + loc.name.toLowerCase(), town: loc.name, cc: loc.countryCode || '', lat: loc.lat, lon: loc.lon };
+  try {
+    const world = typeof animWorldWhere === 'function' ? animWorldWhere() : null;
+    const city = world && typeof trCity === 'function' ? trCity(world.city) : null;
+    if (city) return { id: city.cc + ':' + city.id, town: city.name, cc: city.cc, lat: city.lat, lon: city.lon };
+  } catch (e) { /* No inferred travel location. */ }
+  return null;
+}
 function _awWhen(it, day, county) { try { return typeof it.when !== 'function' || !!it.when(day, Object.assign(animCtx(), { county })); } catch (e) { return false; } }
 
 /** A date-based holiday or special event, following (never replacing) the
@@ -231,18 +261,20 @@ function animOpeningSequence() {
     let w = null;
     try { w = typeof animUkWhere === 'function' ? animUkWhere() : null; } catch (e) { w = null; }
     let returning = false;
-    const arrival = w && typeof animUkArrivalState === 'function' ? animUkArrivalState(w) : null;
-    const helloMs = ms[1] + (arrival && arrival.egg ? arrival.egg.extraMs : 0);
     if (w) try { returning = localStorage.getItem(_AUK_KEY) === w.id; localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ }   // no second welcome (78-anim-uk.js)
-    if (arrival && arrival.pending) returning = false;
     try { if (typeof animThemeApply === 'function') animThemeApply(); } catch (e) { /* the packs' css is injected there */ }
     // No UK county: in Texas (72-anim-pack-texas.js) the welcome names the town and today's Texas opening is the emblem.
     let tx = null;
-    if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, it: pick, over: 'Texas' }; } catch (e) { tx = null; }
+    if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, id: t.id, cc: 'US', it: pick, over: 'Texas' }; } catch (e) { tx = null; }
     // Elsewhere in the US (71-anim-us.js, 72-anim-pack-us-*.js): the town or the state, with today's US opening as the emblem.
-    if (!w && !tx) try { const u = typeof usWhere === 'function' ? usWhere(animCtx()) : null; const pick = u ? animToday('opening') : null; if (pick && /^us-/.test(pick.pack)) tx = { name: u.name, it: pick, over: 'USA' }; } catch (e) { tx = null; }
+    if (!w && !tx) try { const u = typeof usWhere === 'function' ? usWhere(animCtx()) : null; const pick = u ? animToday('opening') : null; if (pick && /^us-/.test(pick.pack)) tx = { name: u.name, id: u.id || u.state, cc: 'US', it: pick, over: 'USA' }; } catch (e) { tx = null; }
     // Asia (71-anim-asia.js, 72-anim-pack-asia-*.js): the town or the country, with today's Asian opening on the stage.
-    if (!w && !tx) try { const a = typeof asiaWhere === 'function' ? asiaWhere(animCtx()) : null; const pick = a ? animToday('opening') : null; if (pick && /^asia-/.test(pick.pack)) tx = { name: a.name, it: pick, over: 'Asia' }; } catch (e) { tx = null; }
+    if (!w && !tx) try { const a = typeof asiaWhere === 'function' ? asiaWhere(animCtx()) : null; const pick = a ? animToday('opening') : null; if (pick && /^asia-/.test(pick.pack)) tx = { name: a.name, id: a.id || a.cc, cc: a.cc, it: pick, over: 'Asia' }; } catch (e) { tx = null; }
+    const openingPoint = animOpeningLocation(w, tx);
+    const arrival = openingPoint && typeof animLocationArrivalState === 'function' ? animLocationArrivalState(openingPoint) : null;
+    try { animOpeningExactScene(tx, arrival); } catch (e) { /* location artwork unavailable */ }
+    const helloMs = ms[1] + (arrival && arrival.egg ? arrival.egg.extraMs : 0);
+    if (arrival && arrival.pending) returning = false;
     // Anywhere else: today's opening from any pack (core, seasons, world ...), on the same full-screen stage.
     let gen = null;
     if (!w && !tx) try { gen = animToday('opening'); } catch (e) { gen = null; }
@@ -255,12 +287,12 @@ function animOpeningSequence() {
     const emblem = '';
     const box = document.createElement('div'); box.className = 'od-seq';
     box.innerHTML = `<div class="od-seq-bg">${art}</div><div class="od-seq-shade"></div>${emblem}`
-      + `<div class="od-seq-title">${w ? (arrival && arrival.remaining > 0 ? '<span class="od-seq-over">Welcome to</span>' : '') : `<span class="od-seq-over">${esc(tx ? 'Welcome to' : 'Welcome back')}</span>`}${w || tx ? `<span class="od-seq-place">${esc(w ? animOpeningPlace(it, w) : tx.name)}</span>` : ''}${arrival && arrival.egg ? `<span class="od-seq-egg"><b>${esc(arrival.egg.title)}</b><span>${esc(arrival.egg.detail)}</span></span>` : ''}</div>`
+      + `<div class="od-seq-title${arrival && arrival.egg ? ' has-egg' : ''}">${openingPoint ? (arrival && arrival.remaining > 0 ? '<span class="od-seq-over">Welcome to</span>' : '') : '<span class="od-seq-over">Welcome back</span>'}${openingPoint ? `<span class="od-seq-place">${esc(openingPoint.town || openingPoint.name)}</span>` : ''}${arrival && arrival.egg ? `<span class="od-seq-egg"><b>${esc(arrival.egg.title)}</b><span>${esc(arrival.egg.detail)}</span></span>` : ''}</div>`
       + `<div class="od-seq-cap"><span class="od-seq-origin">${esc(cap)}</span><span class="od-seq-skip">Click or press any key to skip</span></div>`;
     sp.style.setProperty('--od-hello-ms', helloMs + 'ms');
     sp.style.setProperty('--od-scene-ms', ms[2] + 'ms');
     sp.appendChild(box);
-    if (w && arrival) animUkArrivalState(w, true);
+    if (openingPoint && arrival) animLocationArrivalState(openingPoint, true);
     sp.setAttribute('data-od-county', w ? w.id : '');
     sp.setAttribute('data-od-scene', it ? it.ref : stageIt ? stageIt.ref : 'fallback');
     sp.classList.add('od-st-hello');

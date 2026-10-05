@@ -59,6 +59,9 @@
 .od-seq-egg { display: grid; gap: 8px; margin-top: 18px; max-width: 42rem; font-size: clamp(0.95rem, 1.6vw, 1.3rem); line-height: 1.4; }
 .od-seq-egg b { font-size: 1.2em; }
 .od-seq-egg > span { opacity: 0.85; }
+.od-seq-title.has-egg .od-seq-place { font-size: clamp(1.5rem, 3vw, 2.5rem); }
+.od-seq-title.has-egg .od-seq-egg { max-width: 58rem; }
+.od-seq-title.has-egg .od-seq-egg b { font-size: clamp(2rem, 5vw, 4.5rem); line-height: 1.08; letter-spacing: -0.025em; }
 .od-seq-title:not(:has(.od-seq-place)) .od-seq-over { font-size: clamp(2.4rem, 6vw, 5.6rem); letter-spacing: -0.03em; text-transform: none; font-weight: 700; opacity: 1; }
 .od-seq-cap {
   position: absolute; z-index: 2; left: clamp(24px, 5vw, 88px); bottom: clamp(26px, 7vh, 80px); right: 24px; display: grid; gap: 8px; justify-items: start;

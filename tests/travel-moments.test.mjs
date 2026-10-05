@@ -23,7 +23,7 @@ function load() {
 const L = load();
 const HOME = { zone: 'Europe/London', label: 'London', cc: 'GB', ccy: 'GBP' };
 const T = Date.UTC(2026, 9, 4, 6, 42);   // Sun 4 Oct 2026, 07:42 London, 15:42 Tokyo
-test('journey Easter eggs use straight-line thresholds and never infer trips from manual edits', () => {
+test('journey Easter eggs compare straight-line distances and distinguish manual scene changes', () => {
   const from = { lat: 0, lon: 0, cc: 'GB' };
   const pick = lon => L.trJourneyEgg({ from, to: { lat: 0, lon, cc: 'GB' }, source: 'geo' });
   assert.equal(pick(1), null);
@@ -32,7 +32,10 @@ test('journey Easter eggs use straight-line thresholds and never infer trips fro
   assert.equal(pick(15).id, 'thousand-miles');
   assert.match(pick(15).detail, /as the crow flies/);
   assert.equal(pick(15).extraMs, 2500);
-  assert.equal(L.trJourneyEgg({ from, to: { lat: 0, lon: 15 }, source: 'manual' }), null);
+  const manual=L.trJourneyEgg({ from, to: { lat: 0, lon: 15 }, source: 'manual' });
+  assert.equal(manual.id,'thousand-miles');
+  assert.match(manual.title,/scene change/);
+  assert.doesNotMatch(manual.title,/you travelled/);
   assert.equal(L.trJourneyEgg({ from: {lat: NaN, lon: 0}, to: {lat: 0, lon: 200} }), null);
 });
 test('country, returning-place, town and late arrivals have distinct gentle surprises', () => {
@@ -44,7 +47,7 @@ test('country, returning-place, town and late arrivals have distinct gentle surp
   assert.equal(pick({hour:23}).id, 'late-arrival');
   assert.equal(pick({hour:12}).id, 'lunchtime');
 });
-test('all 48 authored Easter eggs are reachable from matching contexts and vary deterministically', () => {
+test('all 48 authored Easter eggs are eligible in matching contexts and the strongest wins', () => {
   assert.equal(L.TR_JOURNEY_EGGS.length, 48);
   assert.equal(new Set(L.TR_JOURNEY_EGGS.map(e => e.id)).size, 48);
   const contexts = [
@@ -64,9 +67,26 @@ test('all 48 authored Easter eggs are reachable from matching contexts and vary 
   const reached = new Set();
   for (const c of contexts) for (let sequence=0; sequence<48; sequence++) {
     const egg = L.trJourneyEgg({...c,sequence});
-    if (egg) { reached.add(egg.id); assert.equal(egg.extraMs,2500); assert.deepEqual(egg,L.trJourneyEgg({...c,sequence})); }
+    const choices=L.trJourneyEggChoices(c);
+    for(const choice of choices) reached.add(choice.id);
+    if (egg) { assert.equal(egg.priority,Math.max(...choices.map(e=>e.priority))); assert.equal(egg.extraMs,2500); assert.deepEqual(egg,L.trJourneyEgg({...c,sequence})); }
   }
   assert.deepEqual([...reached].sort(),L.TR_JOURNEY_EGGS.map(e=>e.id).sort());
+});
+
+test('arrival selection ranks unused messages, randomises ties and avoids immediate repeats', () => {
+  const choices=[{id:'a',priority:90},{id:'b',priority:90},{id:'c',priority:40}];
+  assert.equal(L.trJourneyEggNext(choices,[],'',0).id,'a');
+  assert.equal(L.trJourneyEggNext(choices,[],'',0.99).id,'b');
+  assert.equal(L.trJourneyEggNext(choices,['a'],'a',0).id,'b');
+  assert.equal(L.trJourneyEggNext(choices,['a','b'],'b',0).id,'c');
+  assert.equal(L.trJourneyEggNext(choices,['a','b','c'],'a',0).id,'b');
+  const context={birthday:true,from:{lat:0,lon:0,cc:'GB'},to:{lat:0,lon:170,cc:'JP'},source:'geo'};
+  assert.equal(L.trJourneyEgg(context).id,'birthday-arrival');
+  const eligible=L.trJourneyEggChoices({...context,birthday:false});
+  assert.equal(eligible.filter(e=>/miles|far-far|big-hop/.test(e.id)).length,1,'only the strongest distance band');
+  assert.equal(L.trJourneyEggNext(eligible,[],'',0).id,'far-far-away');
+  assert.match(L.trJourneyEggNext(eligible,[],'',0).title,/7,500 miles\? Jesus Christ/);
 });
 
 /** Balanced tags, nothing executable. */

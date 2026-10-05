@@ -6,8 +6,8 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const src = name => readFileSync(new URL('../src/app/' + name, import.meta.url), 'utf8');
-function harness({ day = '2026-12-25', look = {}, on = true, town = '' } = {}) {
-  const timers = [], attributes = {}, stored = new Map(); let gone = false;
+function harness({ day = '2026-12-25', look = {}, on = true, town = '', stored = new Map() } = {}) {
+  const timers = [], attributes = {}; let gone = false;
   const element = () => ({
     isConnected: true, innerHTML: '', children: [], className: '',
     classList: { add() {}, contains() { return false; } },
@@ -116,6 +116,60 @@ test('moving towns within a county welcomes the actual town for three displayed 
   }
   assert.equal(vm.runInContext('animUkCheck()', h.context), false, 'no extra arrival after the splash');
 });
+
+test('Yateley arrivals use exact-town art for three reloads, then rotate nearby scenes', () => {
+  const stored=new Map();
+  const seed=harness({stored});
+  vm.runInContext(src('78-anim-uk.js'),seed.context);
+  vm.runInContext("animUkArrivalState({id:'hampshire',town:'Fleet',lat:51.28,lon:-0.84})",seed.context);
+  const first=new Set();let nearby=0;
+  for(let load=0;load<20;load++) {
+    const h=harness({stored,day:'2026-10-06'});
+    vm.runInContext(src('78-anim-uk.js'),h.context);
+    h.context.APP_CONFIG.locationMode='manual';
+    h.context.animUkWhere=()=>({id:'hampshire',name:'Hampshire',town:'Yateley',lat:51.34,lon:-0.83});
+    h.run();h.next();
+    h.context.selected=h.attributes['data-od-scene'];
+    const it=vm.runInContext('animItem(selected)',h.context);
+    if(load<3) { assert.equal(it.ukTown,'Yateley');first.add(it.ref); }
+    else if(it.ukTown!=='Yateley')nearby++;
+  }
+  assert.equal(first.size,3,'different exact-town views');
+  assert.ok(nearby>0,'nearby art becomes available after the third display');
+});
+
+test('exact-place preference expires after five minutes and unavailable exact art falls back nearby', () => {
+  const h=harness({day:'2026-10-06'});let now=1000;
+  vm.runInContext(src('78-anim-uk.js'),h.context);
+  h.context.Date=class extends Date {static now(){return now;}};
+  h.context.animUkWhere=()=>({id:'hampshire',name:'Hampshire',town:'Yateley',lat:51.34,lon:-0.83});
+  assert.equal(vm.runInContext('animUkArrivalState(animUkWhere()).exactRemaining',h.context),3);
+  assert.equal(vm.runInContext('animOpeningScene(animUkWhere(),true).it.ukTown',h.context),'Yateley');
+  now+=5*60000;
+  assert.equal(vm.runInContext('animUkArrivalState(animUkWhere()).exactRemaining',h.context),0);
+  h.context.animLook=()=>({opening:'daily',packsOff:[],block:vm.runInContext('animItems({slot:"opening"}).filter(x=>x.ukTown==="Yateley").map(x=>x.ref)',h.context)});
+  assert.notEqual(vm.runInContext('animOpeningScene(animUkWhere(),true).it.ukTown',h.context),'Yateley');
+});
+
+test('US, Asian and Texas arrival art prefers enabled exact-city views over regional art', () => {
+  for(const [field,value,name,cc] of [['usPlace','boston','Boston','US'],['asiaPlace','tokyo','Tokyo','JP'],['txTown','Austin','Austin','US']]) {
+    const h=harness();
+    const regional={ref:'test/region',pack:'test',intensity:'subtle'};
+    const city=[1,2].map(n=>({ref:'test/city-'+n,pack:'test',intensity:'subtle',[field]:value,when:()=>true}));
+    h.context.animCtx=()=>({});h.context.animItems=()=>[regional,...city];
+    h.context.tx={id:value.toLowerCase(),name,cc,it:regional};
+    vm.runInContext('animOpeningExactScene(tx,{exactRemaining:3})',h.context);
+    assert.equal(h.context.tx.it.ref,'test/city-1');
+    vm.runInContext('animOpeningExactScene(tx,{exactRemaining:2})',h.context);
+    assert.equal(h.context.tx.it.ref,'test/city-2');
+    h.context.tx.it=regional;
+    vm.runInContext('animOpeningExactScene(tx,{exactRemaining:0})',h.context);
+    assert.equal(h.context.tx.it.ref,regional.ref,'expired window respects the ordinary pick');
+    h.context.animLook=()=>({block:city.map(it=>it.ref),packsOff:[]});
+    vm.runInContext('animOpeningExactScene(tx,{exactRemaining:3})',h.context);
+    assert.equal(h.context.tx.it.ref,regional.ref,'blocked exact-city art is excluded');
+  }
+});
 test('GPS boundary jitter does not restart welcome counts; accepted arrivals survive reload', () => {
   const stored = new Map();
   const make = () => {
@@ -163,7 +217,57 @@ test('arrival prefixes expire after five minutes even when fewer than three were
   assert.equal(vm.runInContext('animUkArrivalState(point).remaining', c), 0);
   assert.equal(vm.runInContext('animUkArrivalState(point).pending', c), false);
 });
-test('an arrival Easter egg adds 2.5 seconds once, preserves the title and respects skipping', () => {
+test('Fleet to Boston USA stops welcoming after three actual page loads with shared storage', () => {
+  const stored = new Map();
+  const fleet = harness({stored});
+  vm.runInContext(src('78-anim-uk.js'),fleet.context);
+  vm.runInContext("animUkArrivalState({id:'hampshire',town:'Fleet',lat:51.28,lon:-0.84})",fleet.context);
+  for (let load=0;load<7;load++) {
+    const h = harness({stored,day:'2026-10-06'});
+    vm.runInContext(src('71-anim-us.js')+'\n'+src('78-anim-uk.js'),h.context);
+    h.context.APP_CONFIG.locationMode='manual';
+    h.context.APP_CONFIG.location={name:'Boston',countryCode:'US',lat:42.36,lon:-71.06};
+    h.context.animUkWhere=()=>null;
+    h.context.animToday=()=>({...vm.runInContext('animItems({slot:"opening"})[0]',h.context),pack:'us-northeast'});
+    h.run();h.next();
+    const html=h.splash.children[0].innerHTML;
+    assert.match(html,/od-seq-place">Boston</);
+    assert.equal(html.includes('Welcome to'),load<3,'page load '+(load+1));
+    assert.equal(html.includes('Over 2,500 miles.'),load===1,'the distance surprise follows the country change');
+    assert.equal(html.includes('New country, new chapter.'),load===0||load===2,'reuse only after matching choices run out');
+    assert.equal(html.includes('od-seq-title has-egg'),load<3,'the Easter egg is the main headline within the budget');
+  }
+});
+test('foreign openings stop welcoming after five minutes, even across a reload', () => {
+  const stored=new Map();let now=1000;
+  const open = () => {
+    const h=harness({stored,day:'2026-10-06'});
+    vm.runInContext(src('78-anim-uk.js'),h.context);
+    h.context.Date=class extends Date { static now(){return now;} };
+    h.context.APP_CONFIG.locationMode='manual';
+    h.context.APP_CONFIG.location={name:'Boston',countryCode:'US',lat:42.36,lon:-71.06};
+    h.context.animUkWhere=()=>null;
+    h.context.usWhere=()=>({name:'Boston',id:'boston',state:'MA'});
+    h.context.animToday=()=>({...vm.runInContext('animItems({slot:"opening"})[0]',h.context),pack:'us-northeast'});
+    h.run();h.next();return h.splash.children[0].innerHTML;
+  };
+  assert.match(open(),/Welcome to/);
+  now+=5*60000;
+  assert.doesNotMatch(open(),/Welcome to/);
+});
+test('Texas, Asian and generic manual location openings share the same welcome budget', () => {
+  for(const target of [{name:'Austin',cc:'US',pack:'texas',fn:'animTexasWhere'}, {name:'Tokyo',cc:'JP',pack:'asia-japan',fn:'asiaWhere'}, {name:'Paris',cc:'FR',pack:'seasons',fn:''}]) {
+    const h=harness({day:'2026-10-06'});
+    vm.runInContext(src('78-anim-uk.js'),h.context);
+    h.context.APP_CONFIG.locationMode='manual';
+    h.context.APP_CONFIG.location={name:target.name,countryCode:target.cc};
+    h.context.animUkWhere=()=>null;
+    if(target.fn)h.context[target.fn]=()=>({name:target.name,id:target.name.toLowerCase(),cc:target.cc});
+    h.context.animToday=()=>({...vm.runInContext('animItems({slot:"opening"})[0]',h.context),pack:target.pack});
+    for(let i=0;i<4;i++){h.run();h.next();assert.equal(h.splash.children.at(-1).innerHTML.includes('Welcome to'),i<3,target.name+' '+i);h.timers.length=0;}
+  }
+});
+test('an arrival Easter egg adds 2.5 seconds, preserves the title and respects skipping', () => {
   const h = harness({ day: '2026-10-06' });
   vm.runInContext(src('78-anim-uk.js'), h.context);
   h.context.animUkWhere = () => ({ id: 'hampshire', name: 'Hampshire', town: 'Yateley', lat: 51.34, lon: -0.83 });
@@ -174,11 +278,11 @@ test('an arrival Easter egg adds 2.5 seconds once, preserves the title and respe
   assert.match(overlay.innerHTML, /Fleet by name/);
   assert.match(overlay.innerHTML, /ap-cine-place">Fleet</);
   assert.equal(h.timers[0].delay, 3400 + 2500 + 80);
-  assert.equal(vm.runInContext('animUkArrivalState(animUkWhere()).egg', h.context), null);
+  assert.equal(vm.runInContext('animUkArrivalState(animUkWhere()).remaining', h.context), 2);
   overlay.listeners.click(); h.next();
   assert.equal(h.context.document.body.children.length, 1, 'skip does not add another stage');
 });
-test('splash Easter eggs extend only their welcome stage and are consumed once', () => {
+test('splash Easter eggs extend only their welcome stage and share the display budget', () => {
   const h = harness({ day: '2026-10-06' });
   vm.runInContext(src('78-anim-uk.js'), h.context);
   h.context.animUkWhere = () => ({ id: 'hampshire', name: 'Hampshire', town: 'Yateley', lat: 51.34, lon: -0.83 });
@@ -188,7 +292,7 @@ test('splash Easter eggs extend only their welcome stage and are consumed once',
   assert.match(h.splash.children[0].innerHTML, /od-seq-egg/);
   assert.equal(h.timers[0].delay, 1600 + 2500);
   h.next(); assert.equal(h.timers[0].delay, 3600, 'the ordinary scene duration stays the same');
-  assert.equal(vm.runInContext('animUkArrivalState(animUkWhere()).egg', h.context), null);
+  assert.equal(vm.runInContext('animUkArrivalState(animUkWhere()).remaining', h.context), 2);
 });
 test('cinematic Easter egg copy is escaped and cannot insert markup', () => {
   const h = harness();
@@ -199,16 +303,21 @@ test('cinematic Easter egg copy is escaped and cannot insert markup', () => {
   assert.match(html,/&lt;script&gt;bad&lt;\/script&gt;/);
   assert.doesNotMatch(html,/<img|<script/);
 });
-test('local Easter eggs have a six-hour cooldown, expire with the welcome and keep bounded memories', () => {
+test('local Easter eggs expire with the welcome, stay stable on reads and keep bounded memories', () => {
   let now = 1000;
   const c = vm.createContext({ APP_CONFIG: { locationMode: 'manual' }, Date: { now: () => now } });
   vm.runInContext(src('69-travel-moments-logic.js') + '\n' + src('78-anim-uk.js'), c);
   const visit = (town, consume = false) => { c.point = { id: 'hampshire', town }; return vm.runInContext(`animUkArrivalState(point, ${consume})`, c); };
   visit('Yateley');
   assert.equal(visit('Fleet', true).egg.id, 'local-fleet');
-  assert.equal(visit('Yateley').egg, null);
-  now += 6 * 3600000;
-  assert.equal(visit('Fleet').egg.id, 'local-fleet', 'a later arrival can choose another matching surprise');
+  const back=visit('Yateley');
+  assert.equal(back.egg.id, 'returning');
+  assert.equal(visit('Yateley').egg.id, back.egg.id, 'a peek does not shuffle or spend');
+  assert.equal(visit('Yateley', true).remaining, 3);
+  assert.equal(visit('Yateley', true).egg.id, 'local-yateley', 'unused lower tiers get their turn');
+  assert.equal(visit('Yateley', true).remaining, 1);
+  assert.equal(visit('Yateley').egg, null, 'three displays exhaust the budget');
+  assert.equal(visit('Fleet').remaining, 3, 'a new arrival starts a fresh window');
   now += 5 * 60000;
   assert.equal(visit('Fleet').egg, null);
   for (let i = 0; i < 20; i++) visit('Town ' + i);

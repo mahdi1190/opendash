@@ -99,6 +99,8 @@ html[data-motion="reduced"][data-ap-page-tx]::view-transition-new(main-view) { a
 .ap-cine-egg { display: grid; gap: 4px; max-width: 44rem; margin: 12px 0; font-size: clamp(0.95rem, 1.5vw, 1.2rem); line-height: 1.4; animation: ap-cine-up 800ms cubic-bezier(0.22, 1, 0.36, 1) 620ms both; }
 .ap-cine-egg b { font-size: 1.2em; }
 .ap-cine-egg > span { opacity: 0.88; }
+.ap-cine-t.has-egg .ap-cine-place { font-size: clamp(1.5rem, 3vw, 2.5rem); }
+.ap-cine-t.has-egg .ap-cine-egg b { font-size: clamp(2rem, 4vw, 3.6rem); line-height: 1.1; letter-spacing: -0.025em; }
 .ap-cine-skip { font-size: 0.8rem; opacity: 0.7; animation: ap-cine-up 600ms ease 900ms both; }
 @keyframes ap-cine-life { 0% { opacity: 0; } 12%, 84% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes ap-cine-kb { from { transform: scale(1.1); } to { transform: none; } }

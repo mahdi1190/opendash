@@ -528,45 +528,45 @@ function _tmHours(hhmm) { const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || '')
  * nextEvent {title, start}, holidays [{cc, date, name}], rate {ccy, perHome}, h12, banner (the zone banner's words),
  * landed (TR7: the computer did not switch), month}
  */
-/** One gentle surprise per arrival. Distances are displacement, never route
- * mileage; manually changing a place does not establish that a trip occurred. */
+/** Ranked, contextual surprises. Distances are displacement, never route
+ * mileage. Manual changes can compare places, without claiming a physical trip. */
 const TR_JOURNEY_EGGS = Object.freeze([
   ['birthday-arrival', 'Birthday side quest unlocked.', 'A new setting for your birthday chapter.', x => x.birthday],
-  ['far-far-away', 'Same dashboard. Quite the plot twist.', x => x.distance, x => x.miles >= 7500],
-  ['five-thousand-miles', 'Your dashboard deserves a window seat.', x => x.distance, x => x.miles >= 5000],
-  ['two-thousand-miles', 'That is a serious scene change.', x => x.distance, x => x.miles >= 2500],
-  ['thousand-miles', 'Wow, you travelled a lot.', x => x.distance, x => x.miles >= 1000],
-  ['five-hundred-miles', 'Your dashboard packed light.', x => x.distance, x => x.miles >= 500],
-  ['big-hop', 'That was quite a hop.', x => x.distance, x => x.miles >= 250],
+  ['far-far-away', 'Over 7,500 miles? Jesus Christ, did you leave anything for tomorrow?', x => x.distance, x => x.miles >= 7500],
+  ['five-thousand-miles', 'Over 5,000 miles. Was the nearest coffee shop shut?', x => x.distance, x => x.miles >= 5000],
+  ['two-thousand-miles', 'Over 2,500 miles. Bit dramatic for a change of scenery.', x => x.distance, x => x.miles >= 2500],
+  ['thousand-miles', 'Jesus Christ, you travelled over 1,000 miles. Casual little outing?', x => x.distance, x => x.miles >= 1000],
+  ['five-hundred-miles', 'Over 500 miles. A tiny change of scenery, obviously.', x => x.distance, x => x.miles >= 500],
+  ['big-hop', 'Over 250 miles. Popping out, were you?', x => x.distance, x => x.miles >= 250],
   ['hundred-miles', 'New scenery unlocked.', x => x.distance, x => x.miles >= 100],
-  ['equator', 'New hemisphere. Same open tabs.', 'You crossed the equator between these locations.', x => x.geo && x.from.lat * x.to.lat < 0 && Math.abs(x.from.lat) >= 3 && Math.abs(x.to.lat) >= 3],
+  ['equator', 'Changed hemispheres. Still haven\'t closed those tabs.', 'You crossed the equator between these locations.', x => x.geo && x.from.lat * x.to.lat < 0 && Math.abs(x.from.lat) >= 3 && Math.abs(x.to.lat) >= 3],
   ['date-line', 'Longitude just did a plot twist.', 'These locations sit on opposite sides of the 180-degree meridian.', x => x.geo && Math.abs(x.to.lon - x.from.lon) > 180],
   ['northward', 'Your compass picked the upstairs option.', 'A change of at least ten degrees of latitude northward.', x => x.geo && x.to.lat - x.from.lat >= 10],
   ['southward', 'Your compass picked the downstairs option.', 'A change of at least ten degrees of latitude southward.', x => x.geo && x.from.lat - x.to.lat >= 10],
   ['longitude', 'A whole new column on the globe.', 'A change of at least 45 degrees of longitude.', x => x.geo && Math.abs(x.to.lon - x.from.lon) >= 45 && Math.abs(x.to.lon - x.from.lon) <= 180],
   ['home-country', 'Back on familiar map pages.', 'A little home territory. A fresh chapter.', x => x.border && x.to.cc === x.homeCc],
-  ['return-country', 'This country gets a sequel.', 'You have welcomed this country before.', x => x.border && x.returningCountry],
-  ['new-country', 'New country, new chapter.', 'Your dashboard came along for the ride.', x => x.border],
+  ['return-country', 'This country gets a sequel.', 'You have welcomed this country before.', x => x.border && x.returningCountry && x.to.cc !== x.homeCc],
+  ['new-country', 'New country, new chapter.', 'Your dashboard came along for the ride.', x => x.border && !x.returningCountry && x.to.cc !== x.homeCc],
   ['clock-minutes', 'Even the minutes moved.', 'This clock shift is not a whole number of hours.', x => Number.isFinite(x.diffMin) && x.diffMin !== 0 && Math.abs(x.diffMin) % 60 !== 0],
-  ['clock-big', 'Your clock has entered a new era.', 'Eight hours or more from your home clock. Same dashboard.', x => Math.abs(x.diffMin) >= 480],
+  ['clock-big', 'Your clock is eight hours away. Good luck explaining your sleep schedule.', 'Eight hours or more from your home clock. Same dashboard.', x => Math.abs(x.diffMin) >= 480],
   ['clock-shift', 'Same you. New clock.', 'At least three hours from your home clock.', x => Math.abs(x.diffMin) >= 180],
-  ['calendar-ahead', 'Tomorrow called. You answered.', 'The local date is ahead of the date at home.', x => x.dayDiff > 0],
-  ['calendar-behind', 'Today got an extended edition.', 'The local date is behind the date at home.', x => x.dayDiff < 0],
-  ['third-town-day', 'Your day has multiple filming locations.', 'Three or more different towns in the last 24 hours.', x => x.uniqueToday >= 3],
-  ['fifth-town-week', 'A week with quite the guest list.', 'Five or more different towns in the last seven days.', x => x.uniqueWeek >= 5],
-  ['return-quick', 'Back already? The sequel was fast.', 'This place made another appearance within a day.', x => x.returning && x.awayMs > 0 && x.awayMs <= 86400000],
+  ['calendar-ahead', 'Already in tomorrow? Show-off.', 'The local date is ahead of the date at home.', x => x.dayDiff > 0],
+  ['calendar-behind', 'You got yesterday back. Try not to waste it twice.', 'The local date is behind the date at home.', x => x.dayDiff < 0],
+  ['third-town-day', 'Three towns in a day. Sit down for a bloody minute.', 'Three or more different towns in the last 24 hours.', x => x.uniqueToday >= 3],
+  ['fifth-town-week', 'Five towns this week. The map would like a day off.', 'Five or more different towns in the last seven days.', x => x.uniqueWeek >= 5],
+  ['return-quick', 'Back already? Forget something, or just missed the entrance?', 'This place made another appearance within a day.', x => x.returning && x.awayMs > 0 && x.awayMs <= 86400000],
   ['return-month', 'Previously, on your dashboard...', 'A familiar place, at least a month since the last visit.', x => x.returning && x.awayMs >= 30 * 86400000],
   ['third-visit', 'A trilogy deserves a good entrance.', 'Your third recorded visit to this place.', x => x.visitCount === 3],
-  ['fifth-visit', 'This place is becoming a recurring character.', 'Five or more recorded visits to this place.', x => x.visitCount >= 5],
+  ['fifth-visit', 'Five visits. Shall we just leave your name on the door?', 'Five or more recorded visits to this place.', x => x.visitCount >= 5],
   ['returning', 'The sequel looks good on you.', 'A familiar place. A fresh chapter.', x => x.returning],
   ['weekend-return', 'Weekend sequel unlocked.', 'Back somewhere familiar for the weekend.', x => x.returning && (x.dow === 0 || x.dow === 6)],
-  ['late-arrival', 'A late entrance. Nicely done.', 'Unpack at your own pace.', x => x.hour >= 22 || x.hour < 5],
-  ['early-bird', 'The opening credits started early.', 'A new setting before eight. Take your time settling in.', x => x.hour >= 5 && x.hour < 8],
-  ['lunchtime', 'A new location on the lunch menu.', 'The scenery changed around lunchtime.', x => x.hour >= 11 && x.hour < 14],
+  ['late-arrival', 'Making an entrance at this hour? Very subtle.', 'Unpack at your own pace.', x => x.hour >= 22 || x.hour < 5],
+  ['early-bird', 'Before eight? Disgustingly organised.', 'A new setting before eight. Take your time settling in.', x => x.hour >= 5 && x.hour < 8],
+  ['lunchtime', 'New location. Please tell me lunch was involved.', 'The scenery changed around lunchtime.', x => x.hour >= 11 && x.hour < 14],
   ['friday-arrival', 'Friday got a location upgrade.', 'A fresh setting for the end of the week.', x => x.dow === 5 && x.hour >= 16],
   ['sunday-arrival', 'Sunday has a bonus scene.', 'A small scene change before the new week.', x => x.dow === 0],
   ['local-fleet', 'Fleet by name. No need to rush.', 'Settle in at your own pace.', x => x.town === 'fleet'],
-  ['local-yateley', 'Small town. Grand entrance.', 'Yateley has entered the chat.', x => x.town === 'yateley'],
+  ['local-yateley', 'Yateley. You can stop the dramatic entrance now.', 'Small town. Main-character arrival.', x => x.town === 'yateley'],
   ['local-sheffield', 'Sheffield has entered the chat.', 'A fresh setting for today.', x => x.town === 'sheffield'],
   ['local-manchester', 'Manchester has entered the chat.', 'Your dashboard made the guest list.', x => x.town === 'manchester'],
   ['local-reading', 'Reading? The plot thickens.', 'A new page for today.', x => x.town === 'reading'],
@@ -579,8 +579,25 @@ const TR_JOURNEY_EGGS = Object.freeze([
   ['local-cardiff', 'Cardiff has joined the cast.', 'A fresh backdrop for your next chapter.', x => x.town === 'cardiff'],
   ['local-belfast', 'Belfast gets a grand entrance.', 'Your dashboard is ready for its close-up.', x => x.town === 'belfast'],
   ['local-derry', 'A fresh chapter in Derry/Londonderry.', 'Same dashboard. New opening credits.', x => ['derry/londonderry', 'derry', 'londonderry'].includes(x.town)],
-].map(([id, title, detail, matches]) => Object.freeze({ id, title, detail, matches })));
-function trJourneyEgg(i) {
+].map(([id, title, detail, matches]) => Object.freeze({ id, title, detail, matches, priority: trJourneyEggPriority(id) })));
+function trJourneyEggPriority(id) {
+  if (id === 'birthday-arrival') return 100;
+  if (id === 'far-far-away') return 95;
+  if (id === 'five-thousand-miles') return 92;
+  if (['new-country', 'home-country', 'return-country'].includes(id)) return 90;
+  if (['equator', 'date-line', 'northward', 'southward', 'longitude'].includes(id)) return 85;
+  if (['two-thousand-miles', 'thousand-miles', 'five-hundred-miles'].includes(id)) return 80;
+  if (['calendar-ahead', 'calendar-behind'].includes(id)) return 75;
+  if (id.startsWith('clock-') || id === 'return-month') return 70;
+  if (['third-town-day', 'fifth-town-week', 'third-visit', 'fifth-visit'].includes(id)) return 65;
+  if (id === 'big-hop') return 60;
+  if (['return-quick', 'weekend-return'].includes(id)) return 55;
+  if (id === 'returning') return 50;
+  if (id === 'hundred-miles') return 45;
+  if (id.startsWith('local-')) return 40;
+  return 30;
+}
+function trJourneyEggChoices(i) {
   i = i || {};
   const from = i.from || {}, to = i.to || {};
   const valid = p => Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180;
@@ -591,16 +608,40 @@ function trJourneyEgg(i) {
     miles = 12742 * Math.asin(Math.min(1, Math.sqrt(h))) / 1.609344;
   }
   const observed = ['geo', 'calendar', 'trip', 'travel'].includes(i.source || 'geo');
-  const ctx = { ...i, from, to, miles: observed ? miles : 0, geo: observed && valid(from) && valid(to) && miles >= 100,
+  const ctx = { ...i, from, to, miles, geo: observed && valid(from) && valid(to) && miles >= 100,
     border: /^[A-Z]{2}$/.test(from.cc || '') && /^[A-Z]{2}$/.test(to.cc || '') && from.cc !== to.cc,
     town: String(to.town || to.name || '').trim().toLowerCase(),
     distance: `About ${Math.round(miles).toLocaleString('en-GB')} miles between these locations, as the crow flies.` };
-  const candidates = TR_JOURNEY_EGGS.filter(e => e.matches(ctx));
+  let distancePicked = false;
+  const candidates = TR_JOURNEY_EGGS.filter(e => {
+    if (!e.matches(ctx)) return false;
+    if (typeof e.detail === 'function') { if (distancePicked) return false; distancePicked = true; }
+    return true;
+  }); // The strongest distance band, rather than seven versions of the same fact.
+  return candidates.map(e => ({ id: e.id,
+    title: i.source === 'manual' && e.id === 'thousand-miles' ? 'Over 1,000 miles between settings. Subtle little scene change.' : e.title,
+    detail: typeof e.detail === 'function' ? e.detail(ctx) : e.detail, extraMs: 2500, priority: e.priority }));
+}
+function trJourneyEgg(i) {
+  let candidates = trJourneyEggChoices(i);
   if (!candidates.length) return null;
-  // Deterministic variety among genuinely matching triggers, never unrelated jokes.
+  const priority = Math.max(...candidates.map(e => e.priority));
+  candidates = candidates.filter(e => e.priority === priority);
+  i = i || {};
+  // Travel card content stays deterministic; location opening windows shuffle
+  // these matching choices and preserve their selection across reloads.
   const sequence = Math.max(0, Math.floor(Number(i.sequence) || 0));
-  const e = candidates[sequence % candidates.length];
-  return { id: e.id, title: e.title, detail: typeof e.detail === 'function' ? e.detail(ctx) : e.detail, extraMs: 2500 };
+  return candidates[sequence % candidates.length];
+}
+function trJourneyEggNext(choices, used, lastId, random = Math.random()) {
+  if (!Array.isArray(choices) || !choices.length) return null;
+  let pool = choices.filter(e => !(used || []).includes(e.id));
+  if (!pool.length) pool = choices.filter(e => e.id !== lastId);
+  if (!pool.length) pool = choices;
+  const priority = Math.max(...pool.map(e => e.priority || 0));
+  pool = pool.filter(e => (e.priority || 0) === priority);
+  const n = Number.isFinite(random) ? Math.max(0, Math.min(0.999999, random)) : 0;
+  return pool[Math.floor(n * pool.length)];
 }
 function trArrivalModel(i) {
   i = i || {};

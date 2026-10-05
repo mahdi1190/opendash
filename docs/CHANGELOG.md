@@ -10,9 +10,19 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.4.6] - 2026-10-05
+
+- Exact-location arrival scenes: the first three openings or five minutes prefer artwork of your actual town, then nearby scenes rotate normally. City artwork in US, Texas and Asian openings uses the same preference where available; blocked scenes remain excluded.
+
+### Fixed
+
+- Location welcomes now stop after three displayed openings or five minutes across US, Texas, Asian and other location scenes, preserving the location title after the prefix expires. Previously the limit only applied to UK scenes, so Boston, USA kept saying “Welcome to” on every reload.
+
 ### Changed
 
-- 48 contextual travel Easter eggs: straight-line distance bands, country/hemisphere changes, clock shifts, repeat visits, busy location days, birthdays and local wordplay. UK surprises appear once per arrival with a six-hour cooldown; timed Easter egg openings and welcome-home postcards last 2.5 seconds longer. Travel arrival dialogs remain dismissible at any time.
+- Easter egg arrivals lead with the playful headline while keeping the location visible. Choosing a distant place manually can show a straight-line distance comparison and a scene-change message.
+
+- 48 contextual travel Easter eggs: straight-line distance bands, country/hemisphere changes, clock shifts, repeat visits, busy location days, birthdays and local wordplay. Matching surprises follow a priority hierarchy, randomise equal tiers and rotate through unused messages for the first three displays or five minutes, whichever comes first; big journeys and travel patterns use selectively cheekier humour; timed Easter egg openings and welcome-home postcards last 2.5 seconds longer. Travel arrival dialogs remain dismissible at any time.
 
 - Device location requests a fresh fix on every page load and Refresh today, checks again on tab return and every 15 minutes while visible, and works without the browser Permissions API. Failed fixes retain the last location; manual locations remain unchanged.
 - UK town arrivals show “Welcome to” for three displayed openings or five minutes after detection, whichever comes first, including moves within one county. Device fixes must move at least 3 km and change the detected town/area; ordinary GPS drift does not restart the greeting. Counts and expiry persist on the device.
@@ -358,7 +368,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.5...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.6...HEAD
+[2.4.6]: https://github.com/mahdi1190/opendash/compare/v2.4.5...v2.4.6
 [2.4.5]: https://github.com/mahdi1190/opendash/compare/v2.4.3...v2.4.5
 [2.4.3]: https://github.com/mahdi1190/opendash/compare/v2.4.2...v2.4.3
 [2.4.2]: https://github.com/mahdi1190/opendash/compare/v2.4.0...v2.4.2

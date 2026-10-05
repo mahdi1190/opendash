@@ -20,14 +20,14 @@ let _aukArrivalMemory = null;
  * not a small GPS shift across a nearest-town boundary. Explicit manual choices
  * can change the name without moving. Welcomes last three displays or five
  * minutes from detection, whichever comes first. */
-function animUkArrivalState(w, consume = false, acknowledge = false) {
+function animLocationArrivalState(w, consume = false, acknowledge = false) {
   if (!w) return { remaining: 0, pending: false };
   let rec = _aukArrivalMemory;
   try { rec = JSON.parse(localStorage.getItem('dashboard-anim-uk-arrival') || 'null') || rec; } catch (e) { /* private mode */ }
   const town = w.town || w.name;
-  const point = { id: w.id, town, lat: w.lat, lon: w.lon, cc: 'GB' };
+  const point = { id: w.id, town, lat: w.lat, lon: w.lon, cc: w.cc === undefined ? 'GB' : w.cc };
   const placeKey = w.id + '|' + town.toLowerCase();
-  if (!rec || !rec.point) rec = { point, remaining: 0, pending: false, seen: [placeKey], visits: [{key: placeKey, at: Date.now(), count: 1}], recent: [{key: placeKey, at: Date.now()}], sequence: 0 };
+  if (!rec || !rec.point) rec = { point, exactRemaining: 3, remaining: point.cc !== 'GB' ? 3 : 0, pending: point.cc !== 'GB', until: Date.now() + 5 * 60 * 1000, seen: [placeKey], visits: [{key: placeKey, at: Date.now(), count: 1}], recent: [{key: placeKey, at: Date.now()}], sequence: 0 };
   else if (rec.point.id !== w.id || rec.point.town !== town) {
     const p = rec.point, r = Math.PI / 180;
     const valid = [p.lat, p.lon, w.lat, w.lon].every(v => typeof v === 'number' && Number.isFinite(v));
@@ -42,29 +42,40 @@ function animUkArrivalState(w, consume = false, acknowledge = false) {
       const recent = [...(Array.isArray(rec.recent) ? rec.recent.filter(v => v && typeof v.key === 'string' && v.at > now - 7 * 86400000 && v.at <= now) : []), {key: placeKey, at: now}].slice(-12);
       let local = {};
       try { if (typeof Clock !== 'undefined' && typeof _tmParts === 'function') local = _tmParts(Clock.now(), Clock.zone()); } catch (e) { /* Clock not ready. */ }
-      const egg = typeof trJourneyEgg === 'function' && (!rec.eggAt || Date.now() - rec.eggAt >= 6 * 3600000)
-        ? trJourneyEgg({ from: p, to: point, returning: seen.includes(placeKey), visitCount: count, awayMs: previous && previous.at > 0 ? now - previous.at : 0,
+      const eggChoices = typeof trJourneyEggChoices === 'function'
+        ? trJourneyEggChoices({ from: p, to: point, returning: seen.includes(placeKey), visitCount: count, awayMs: previous && previous.at > 0 ? now - previous.at : 0,
           uniqueToday: new Set(recent.filter(v => v.at > now - 86400000).map(v => v.key)).size, uniqueWeek: new Set(recent.map(v => v.key)).size,
           sequence: Number(rec.sequence) || 0, hour: local.h, dow: local.dow,
           birthday: !!(APP_CONFIG.birthday && local.iso && String(APP_CONFIG.birthday).slice(-5) === local.iso.slice(-5)),
-          source: APP_CONFIG.locationMode === 'manual' ? 'manual' : 'geo' }) : null;
-      rec = { ...rec, point, remaining: 3, pending: true, until: Date.now() + 5 * 60 * 1000, egg,
+          source: APP_CONFIG.locationMode === 'manual' ? 'manual' : 'geo' }) : [];
+      const egg = typeof trJourneyEggNext === 'function' ? trJourneyEggNext(eggChoices, [], '') : null;
+      rec = { ...rec, point, remaining: 3, exactRemaining: 3, pending: true, until: Date.now() + 5 * 60 * 1000, egg, eggChoices, eggUsed: [],
         seen: [...seen.filter(x => x !== placeKey), placeKey].slice(-12), recent,
         visits: [...visits.filter(v => v.key !== placeKey), {key: placeKey, at: now, count}].slice(-12), sequence: (Number(rec.sequence) || 0) + 1 };
     }
   }
-  if (rec.remaining > 0 && (!Number.isFinite(rec.until) || Date.now() >= rec.until)) { rec.remaining = 0; rec.pending = false; rec.egg = null; }
-  const result = { remaining: Math.max(0, Math.min(3, Number(rec.remaining) || 0)), pending: !!rec.pending, egg: rec.egg || null };
+  if (rec.exactRemaining === undefined) rec.exactRemaining = rec.remaining || 0;
+  if ((rec.remaining > 0 || rec.exactRemaining > 0) && (!Number.isFinite(rec.until) || Date.now() >= rec.until)) { rec.remaining = 0; rec.exactRemaining = 0; rec.pending = false; rec.egg = null; rec.eggChoices = []; rec.eggUsed = []; }
+  const result = { remaining: Math.max(0, Math.min(3, Number(rec.remaining) || 0)), exactRemaining: Math.max(0, Math.min(3, Number(rec.exactRemaining) || 0)), pending: !!rec.pending, egg: rec.egg || null };
   if (consume) {
     rec.remaining = Math.max(0, result.remaining - 1); rec.pending = false;
-    if (rec.egg) rec.eggAt = Date.now();
-    rec.egg = null;
+    rec.exactRemaining = Math.max(0, result.exactRemaining - 1);
+    if (rec.egg) {
+      rec.eggAt = Date.now();
+      rec.eggUsed = [...(Array.isArray(rec.eggUsed) ? rec.eggUsed : []), rec.egg.id].slice(-3);
+    }
+    const lastId = rec.egg && rec.egg.id;
+    rec.egg = rec.remaining > 0 && typeof trJourneyEggNext === 'function' ? trJourneyEggNext(rec.eggChoices, rec.eggUsed, lastId) : null;
+    if (!rec.remaining) { rec.eggChoices = []; rec.eggUsed = []; }
   }
   else if (acknowledge) { rec.pending = false; rec.egg = null; }
   _aukArrivalMemory = rec;
   try { localStorage.setItem('dashboard-anim-uk-arrival', JSON.stringify(rec)); } catch (e) { /* private mode */ }
   return result;
 }
+// Preserve callers and the existing per-device record while sharing the budget
+// with US, Asian and other location openings.
+function animUkArrivalState(w, consume = false, acknowledge = false) { return animLocationArrivalState(w, consume, acknowledge); }
 
 function animUkOn() { try { return !!animLook().ukRegional; } catch (e) { return false; } }
 function _aukTravelPoint() {
