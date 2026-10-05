@@ -12,6 +12,8 @@ upgrades it.
 
 ### Changed
 
+- Yateley art rebuild: 12 full-screen views across Yateley Common, Wyndham's Pool and Yateley Green, with individual birch leaves, flowering heather, detailed pond margins, swimming ducks and ducklings, darting dragonflies, flapping butterflies and a walking dog companion.
+
 - UK-priority art follow-up: both Stanage Edge views replace the repeated slab silhouette with a receding escarpment, irregular rock planes, bedding cracks and grounded moorland slopes.
 
 - UK animation art, first pass: stronger place palettes and different skies, horizons and ambient activity across 148 South East/London and 20 Northern scenes. North Hampshire adds heather, gorse, ferns and insects; selected landmarks gain structural detail, coastlines gain weathering and foam, and food scenes gain detailed still-life objects. The wider scene-by-scene review remains in progress.

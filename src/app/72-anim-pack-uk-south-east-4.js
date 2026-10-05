@@ -175,11 +175,94 @@ function ukSouthEastPart4(T) {
       },
     };
   };
+  /* Yateley redraw: separate full-screen compositions, authored from the
+     Common's heather/gorse/birch ecology and the Green's pond/wildflower setting.
+     References: hants.gov.uk/thingstodo/countryside/walking/yateleycommon
+     yateley-tc.gov.uk/our-services/open-spaces/ . Existing location ids survive. */
+  const yateleyScene = (place,v) => {
+    const {sun,stars,finish,reflect}=T;
+    const common=place==='yateley-common',green=place==='yateley-green',evening=v===3,autumn=v===2,close=v===1;
+    const seed=6200+(common?0:green?90:45)+v*7,r=rnd(seed);
+    const sky=U(),land=U(),lake=U(),leaf=U(),bloom=U(),rush=U(),bark=U(),rim=U(),rock=U(),shore=U(),soil=U(),heathGlow=U(),forest=U(),shadow=U(),cloudLight=U();
+    const top=evening?'#25366c':autumn?'#286997':common?'#167ab3':green?'#277fab':'#166c9c';
+    const middle=evening?'#b26da0':autumn?'#ffc58d':common?'#87dfdb':'#83d3d2';
+    const bottom=evening?'#ffc88d':autumn?'#ffeac1':'#fff1bf';
+    const sx=common?(close?405:1190):green?(close?1200:390):(close?1140:510),sy=evening?440:autumn?325:185;
+    let defs=`<defs>${linU(sky,[[0,top],[.57,middle],[1,bottom]],0,0,0,700)}${linU(land,[[0,autumn?'#a9b16c':'#98c57d'],[.55,autumn?'#8b9250':'#54894e'],[1,'#173f44']],0,525,0,900)}${linU(lake,[[0,evening?'#d28cab':'#94dbca'],[.45,evening?'#657fbc':'#238fb0'],[1,'#123e68']],0,540,0,900)}${linU(forest,[[0,autumn?'#a4b477':'#77b8a1'],[.4,evening?'#55658d':'#448878'],[1,'#23515e']],0,350,0,680)}${linU(shadow,[[0,'#172e52',0],[.5,'#172e52',.16],[1,'#172e52',0]],0,650,0,890)}${linU(cloudLight,[[0,'#fff8e8',.55],[1,'#c4e9e3',0]],0,-45,0,70)}${linU(soil,[[0,'#f4e1b9'],[1,'#bba077']],0,560,0,900)}${linU(heathGlow,[[0,autumn?'#b88172':'#de7bbe'],[.6,autumn?'#8c6b63':'#9b4f97'],[1,'#304b53']],0,790,0,950)}${linU(bark,[[0,'#faf1d7'],[.45,'#d9e5d8'],[1,'#7c9890']],-17,0,20,0)}${linU(rock,[[0,'#e4d0ad'],[1,'#718b84']],0,0,0,70)}
+      <g id="${leaf}"><path d="M0 0q-15-21-6-31l5 4 4-5 5 9 7 1-1 9 5 4-9 9z"/><path fill="none" stroke="#e1e5b1" stroke-width="1" opacity=".5" d="M0 0l3-25"/></g>
+      <g id="${bloom}"><path fill="none" stroke="#42594d" stroke-width="1.5" d="M0 0l1-60M0-5l-24-35M0-15l-16-39M0-15l18-37M0-5l25-28M1-32l-7-26M0-34l10-23"/><path fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 4" d="M1-60v41M-24-40l18 27M-16-54l11 25M18-52l-12 28M25-33L10-16M-6-58l5 17M10-57L4-41"/><path fill="none" stroke="#f9d8e3" opacity=".48" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="1 6" d="M-20-37l14 21M15-47L7-28M0-55v24"/></g>
+      <g id="${rush}"><path fill="none" stroke="#739943" stroke-width="3" d="M0 0q-20-48-9-117M0 0q25-65 18-96M0 0q-34-41-40-66M0 0q29-31 47-45"/><path stroke="#ab703e" stroke-width="8" stroke-linecap="round" d="M-9-116v-26M18-96v-23"/></g></defs>`;
+    const foliage=(x,y,k,which) => {
+      const q=rnd(which),a=autumn?'#d49942':'#63a461',b=autumn?'#f5c565':'#c1d886';let leaves='',twigs='';
+      // Slender, divided birch branches and individually painted leaf clusters.
+      for(let j=0;j<5;j++){const yy=-175-j*67,side=j%2?1:-1,reach=70+q()*90;twigs+=`M0 ${yy+24}q${side*reach*.4}-${36} ${side*reach}-${75}m${-side*reach*.25} 23l${side*26}-${45}`;
+        for(let i=0;i<6;i++){const xx=side*(22+q()*reach),ly=yy-18-q()*90;leaves+=`<use href="#${leaf}" fill="${i%3?a:b}" transform="translate(${R(xx)} ${R(ly)}) rotate(${R(-75+q()*150)}) scale(${(.65+q()*.7).toFixed(2)})"/>`;}}
+      return `<g transform="translate(${x} ${y}) scale(${k})"><ellipse rx="81" ry="15" fill="#0c343a" opacity=".23"/><path fill="url(#${bark})" d="M-18 0q22-199 4-538l12-18Q7-300 24 0z"/><path fill="none" stroke="#537872" stroke-width="3" d="M-12-46h15M-8-97h12M-5-155h17M-8-222h12M-8-301h9M-10-377h8M-12-446h8"/>${mv('ukybranch',{ad:`${5+which%4}s`,d:`-${which%3}s`,to:'0px -160px'},`<path fill="none" stroke="#829f83" stroke-width="4" d="${twigs}"/>${leaves}`)}</g>`;
+    };
+    const flowers=(which,n,x0,x1,y0,y1) => {
+      const q=rnd(which);let groups=['','',''];
+      for(let i=0;i<n;i++){const x=R(x0+q()*(x1-x0)),y=R(y0+q()*(y1-y0)),k=.38+(y-y0)/(y1-y0+1)*.85;groups[i%3]+=`<use href="#${bloom}" transform="translate(${x} ${y}) scale(${k.toFixed(2)})"/>`;}
+      return groups.map((d,i)=>mv('ukygrass',{ad:`${3.8+i*.7}s`,d:`-${i*.8}s`,to:'800px 900px'},`<g style="color:${autumn?['#cf8b62','#e9ba69','#d4828c'][i]:['#dc67c0','#ac64ba','#eea0d0'][i]}">${d}</g>`)).join('');
+    };
+    const flutter=(x,y,k,col,which) => `<g transform="translate(${x} ${y}) scale(${k})">${mv('ukywander',{ad:`${7+which%4}s`,d:`-${which%5}s`,dx:`${which%2?90:-110}px`,dy:'-48px'},mv('ukywing',{ad:'.42s',to:'0px 0px'},`<path fill="${col}" stroke="#243f58" stroke-width="2" d="M0 0C-33-35-42-15-24 3Q-34 28-6 15L0 0C33-35 42-15 24 3Q34 28 6 15z"/><path fill="none" stroke="#f0ecda" stroke-width="2" stroke-dasharray="2 4" d="M-5-2q-20-22-23-7M5-2q20-22 23-7"/><path stroke="#203c48" stroke-width="3" d="M0-9V18M0-7l-5-7M0-7l5-7"/>`))}</g>`;
+    const dart=(x,y,k,which) => `<g transform="translate(${x} ${y}) scale(${k})">${mv('ukydart',{ad:`${6+which%3}s`,d:`-${which%4}s`,dx:'130px',dy:'-48px'},`<g>${mv('ukywing',{ad:'.12s',to:'0px 0px'},'<path fill="#dafff4" opacity=".65" stroke="#81bac7" stroke-width="1" d="M0 0q-56-39-59-17 15 20 59 17-61 11-48 28 27 1 48-28 56-39 59-17-15 20-59 17 61 11 48 28-27 1-48-28z"/>')}<path stroke="#209aa7" stroke-width="5" stroke-linecap="round" d="M0-7v48"/><path stroke="#214865" stroke-width="2" stroke-dasharray="2 4" d="M0 5v38"/><circle cy="-10" r="6" fill="#2e6c77"/></g>`)}</g>`;
+    const swimmer=(x,y,k,which,young=false) => `<g transform="translate(${x} ${y}) scale(${k})">${mv('ukypaddle',{ad:`${14+which%5}s`,d:`-${which%7}s`,dx:which%2?'85px':'-70px',dy:'3px'},`<ellipse cx="-3" cy="18" rx="52" ry="9" fill="#0a4664" opacity=".23"/>${mv('ukyripple',{ad:'3.6s',d:`-${which%3}s`,to:'0px 18px'},'<path fill="none" stroke="#c9fff1" stroke-width="2" opacity=".7" d="M-65 20q60 16 129-2M-91 31q75 14 173-4"/>')}<path fill="${young?'#dcbd71':'#c8c8aa'}" d="M-40 0q-15-32 24-33 46-4 59 29L24 14H-19z"/><path fill="${young?'#886a44':'#376f5a'}" d="M20-6q-23-37-2-48 26-12 27 12l-7 38z"/><path fill="#eeb35b" d="M41-42l22 7-24 5z"/><circle cx="33" cy="-44" r="2.5" fill="#152d39"/><path fill="${young?'#ae8755':'#839983'}" d="M-28-16q32-24 48 3-20 17-48-3z"/><path fill="none" stroke="#ebe7c6" stroke-width="3" d="M15-19l17-4"/>`)}</g>`;
+    const pollen=(which) => {const q=rnd(which);let bits='';for(let i=0;i<8;i++){const x=R(210+q()*1170),y=R(430+q()*370);bits+=mv('ukypollen',{ad:`${8+i%4}s`,d:`-${i*.8}s`,dx:`${60+i*9}px`,dy:'-75px'},autumn?`<use href="#${leaf}" fill="${i%2?'#dc9b43':'#d26b53'}" transform="translate(${x} ${y}) rotate(${i*31}) scale(.35)"/>`:`<circle cx="${x}" cy="${y}" r="${1.3+q()*1.8}" fill="#fff3d0" opacity=".6"/>`);}return bits;};
+    const horizonY=common?480:green?435:405;
+    const bough = (flip=false) => {
+      const q=rnd(seed+49);let leaves='';for(let i=0;i<25;i++){const x=R(20+q()*660),y=R(18+q()*215),k=.9+q()*1.1;leaves+=`<use href="#${leaf}" fill="${autumn?(i%3?'#d99040':'#f3bc61'):(i%3?'#286f59':'#a8cc77')}" transform="translate(${x} ${y}) rotate(${R(-60+q()*160)}) scale(${k.toFixed(2)})"/>`;}
+      return `<g${flip?' transform="translate(1600 0) scale(-1 1)"':''}>${mv('ukybranch',{ad:'7.6s',to:'0px 60px'},`<path fill="none" stroke="#655b44" stroke-width="17" d="M-160 24Q192 144 647 176"/><path fill="none" stroke="#7d7952" stroke-width="4" d="M68 90l109-63M260 138l105-59M379 155l68 102M496 169l104-36"/>${leaves}`)}</g>`;
+    };
+    let out=`<g${evening?' class="hx-evening"':''}>${defs}<rect width="1600" height="900" fill="url(#${sky})"/>${stars(seed,24,310)}`;
+    out+=evening&&!common?`<path fill="#f8efc9" d="M${sx} 250a34 34 0 1 0 27 52 29 29 0 0 1-27-52z"/>`:sun(sx,sy,evening?44:39,'#fff5c9','#ffd493');
+    // Long, broken cloud veils with lit edges; each site has its own sky layout.
+    const veil=(x,y,k,delay) => mv('ukdrift',{ad:'71s',d:`-${delay}s`,dx:'90px'},`<g transform="translate(${x} ${y}) scale(${k})"><path fill="url(#${cloudLight})" d="M-300 30Q-227-4-181 14q44-67 101-36 61-44 110-14 82-23 127 13 80-12 128 34 34-8 77 23Q61 75-300 30z"/><path fill="none" stroke="#fff8e6" opacity=".3" stroke-width="3" d="M-218 16q45-21 82-8M21-9q47-9 81 10M180 17q48 1 75 18"/></g>`);
+    out+=common?veil(close?1170:340,100,.9,11)+veil(1130,235,.5,23):green?veil(1050,125,.7,9)+veil(245,240,.45,18):veil(350,115,.75,5)+veil(1230,235,.65,21);
+    const woodland=(fill,y,amp,which,x0=-160,x1=1760,foot=700,rimColour=fill) => {
+      const q=rnd(which);let edge=`M${x0} ${foot}V${y}`,glints='',trunks='';
+      for(let x=x0;x<x1;){const w=R(65+q()*80),h=R(15+q()*amp*1.6),yy=R(y+q()*22);
+        edge+=`l${R(w*.12)}-${R(h*.34)}q-${R(w*.12)}-${R(h*.4)} ${R(w*.21)}-${R(h*.44)}l${R(w*.15)}-${R(h*.3)}q${R(w*.24)}-${R(h*.11)} ${R(w*.24)} ${R(h*.38)}q${R(w*.28)}-${R(h*.08)} ${R(w*.28)} ${R(h*.44)}L${x+w} ${yy}`;
+        if(q()>.45)glints+=`M${R(x+w*.28)} ${yy-h+5}l${R(w*.18)}-${R(h*.18)} ${R(w*.2)} ${R(h*.1)}`;
+        if(h>48)trunks+=`M${R(x+w*.48)} ${y+95}v-${R(h+64)}m0 31l-13-18`;
+        x+=w;
+      }
+      return `<path fill="${fill}" d="${edge}V${foot}H${x0}z"/><path fill="none" stroke="${rimColour}" stroke-width="3" opacity=".32" d="${glints}"/><path fill="none" stroke="#264c50" stroke-width="2" opacity=".24" d="${trunks}"/>`;
+    };
+    out+=mv('ukpar',{ad:'49s',dx:'7px'},woodland(evening?'#687ba4':'#85b8b2',horizonY,32,seed+1,-160,1760,680,'#d0e6c4')+haze(horizonY-65,130,evening?'#ffcebc':'#e7ffc9',.32));
+    let canopyLight='';for(let i=0;i<36;i++){const x=R(-140+r()*1880),y=R(horizonY+40+r()*46);canopyLight+=`M${x} ${y}q12-10 25-3t24 4`;}
+    const trees=woodland(`url(#${forest})`,horizonY+65,common?34:70,seed+2,-160,1760,700,autumn?'#efbd61':'#8fcc91')+`<path fill="none" stroke="${autumn?'#d5c78a':'#abd0ab'}" stroke-width="4" opacity=".25" stroke-linecap="round" d="${canopyLight}"/>`;
+    out+=`<rect x="-160" y="550" width="1920" height="350" fill="url(#${land})"/>`;
+    out+=mv('ukpar',{ad:'38s',dx:'15px'},`<g id="${shore}">${trees}</g>`);
+    if(common){
+      const trail=close?'M430 900C1010 770 555 665 945 580l22 4C743 693 1290 787 690 900z':'M657 900C318 745 966 724 846 572l20 3C1031 746 581 777 987 900z';
+      out+=mv('ukpar',{ad:'31s',dx:'23px'},`<path fill="${autumn?'#b3a272':'#899f61'}" d="M-160 900V642Q300 580 850 620T1760 608V900z"/><path fill="url(#${soil})" d="${trail}"/><defs><clipPath id="${rim}"><path d="${trail}"/></clipPath></defs><g clip-path="url(#${rim})"><path stroke="#af966c" stroke-width="2" opacity=".5" d="${Array.from({length:26},()=>`M${R(400+r()*650)} ${R(650+r()*250)}h${R(2+r()*5)}`).join('')}"/></g><path fill="none" stroke="#fcdfb2" opacity=".6" stroke-width="5" d="M760 855Q629 774 865 646"/>${mv('ukdrift',{ad:'54s',dx:'130px'},`<path fill="url(#${shadow})" d="M-160 749q400-116 908-27t1012-63v139q-530 34-959-5T-160 842z"/>`)}${gorse(close?1170:410,730,.85)}${gorse(close?300:1260,770,.66)}${foliage(close?1300:1180,742,.54,seed+4)}${flowers(seed+8,23,-100,580,686,851)}${flowers(seed+9,24,1020,1740,657,856)}`);
+      out+=mv('ukpar',{ad:'24s',dx:'34px'},`<path fill="#215b4e" d="M-160 900V870Q280 817 530 900zM1060 900q302-104 700-65v65z"/><path fill="url(#${heathGlow})" d="M-160 900V876q108-35 203-12 94-48 184-7 112-27 238 45zM1120 900q60-38 158-22 111-40 209-2 119-25 273 30v32z"/><path fill="none" stroke="#efb7d7" stroke-width="3" opacity=".5" d="M-160 882q122-40 219-4M1310 872q159-37 289 8"/>${flowers(seed+11,19,-130,540,880,965)}${flowers(seed+12,20,1070,1720,875,953)}${close?foliage(164,941,1.08,seed+15):`<path fill="url(#${rock})" d="M140 900l31-59 54-11 56 26 13 44z"/><path fill="#627f65" d="M158 900l16-41 65-11 31 33z"/>`}${grass(seed+13,24,80,530,911,95,'#91b86b')}${autumn?'<path fill="#8b704e" d="M160 904l335-90 40 18-25 24-305 72z"/><path fill="none" stroke="#d4b587" stroke-width="5" d="M182 900l312-73 20 5"/><path fill="#688268" d="M205 900l57-43 35 21-9 22z"/>':''}`);
+      out+=`<g transform="translate(${close?872:862} 647) scale(.48)">${mv('ukywalk',{ad:'19s',dx:'48px',dy:'16px'},`<ellipse cy="2" rx="29" ry="5" fill="#263f43" opacity=".2"/><circle cy="-78" r="9" fill="#b98d6d"/><path fill="#bc704f" d="M-11-67h22l7 34h-36z"/><path fill="#496b73" d="M9-60l8 2 9 29-10 3z"/>${mv('ukyleg',{ad:'.9s',to:'-6px -33px'},'<path stroke="#364c57" stroke-width="7" stroke-linecap="round" d="M-6-33l-7 31"/>')}${mv('ukyleg',{ad:'.9s',d:'-.45s',to:'6px -33px'},'<path stroke="#364c57" stroke-width="7" stroke-linecap="round" d="M6-33l7 31"/>')}<path stroke="#b98d6d" stroke-width="5" d="M-10-55l-6 21"/><path fill="none" stroke="#70594d" stroke-width="2" d="M-16-34q-16 27-42 20"/><path fill="#aa8b62" d="M-82-13q19-12 40-3l8 12-13 4-1 9h-5v-12h-18l-4 12h-5v-15l-9-5z"/><path fill="#665b4b" d="M-43-17l8-7 8 11-9 5z"/>`)}</g>`;
+      out+=flutter(close?760:470,close?683:773,.56,'#65b8ea',seed)+flutter(1150,715,.34,'#ac87d1',seed+1)+pollen(seed+20);
+      if(evening)out+=mv('ukybranch',{ad:'3.4s',to:'1170px 690px'},'<path fill="#394552" d="M1140 686q19-24 42-9l12 13-32 6-18-4-19 5z"/><path fill="#ab9372" d="M1149 683l28-2-12 10z"/>');
+    }else{
+      const pondShape=green?'M310 900Q132 735 408 623Q665 566 1101 613Q1360 639 1530 900z':'M-160 605Q480 550 1760 608V900H-160z';
+      out+=`<defs><clipPath id="${rim}"><path d="${pondShape}"/></clipPath></defs><g clip-path="url(#${rim})"><path fill="url(#${lake})" d="${pondShape}"/>${reflect(shore,600,.23)}${shimmer(seed+23,22,-160,1760,625,890,evening?'#ffd9bc':'#cffff0',60)}${mv('ukyripple',{ad:'6.3s',to:'990px 762px'},'<ellipse cx="990" cy="762" rx="93" ry="12" fill="none" stroke="#c0f1dc" stroke-width="2" opacity=".6"/>')}<path fill="none" stroke="#c5f1d0" stroke-width="3" opacity=".5" d="M-160 613Q490 563 1760 615"/></g>`;
+      let plants='';for(let i=0;i<12;i++){const x=R((i<6?60:1180)+r()*300),y=R(875+r()*65);plants+=`<use href="#${rush}" transform="translate(${x} ${y}) scale(${(.6+r()*.75).toFixed(2)})"/>`;}
+      const bank=`<path fill="#346f58" d="M-160 900V792Q83 693 433 839L550 900zM1150 900Q1390 753 1760 778V900z"/><path fill="#7aaa67" d="M-160 806q274-92 563 45l-21 14q-269-130-542-41z"/>`;
+      out+=mv('ukpar',{ad:'27s',dx:'26px'},bank+mv('ukygrass',{ad:'4.2s',to:'800px 900px'},plants)+flowers(seed+26,14,1190,1720,840,943));
+      out+=green?mv('ukpar',{ad:'32s',dx:'16px'},foliage(close?1290:260,848,close?1.2:.97,seed+28)+bench(1150,685,.7)):
+        mv('ukpar',{ad:'29s',dx:'22px'},foliage(close?1370:180,918,close?1.3:1.12,seed+28)+`<path fill="#d1bd93" d="M-160 900l287-112 36 18-174 94z"/>${fern(close?370:1360,929,1.25)}`);
+      out+=bough(close)+`<path fill="url(#${rock})" d="M-160 900v-36l87-46 52 24 81 14 63 44zM1390 900l47-41 68-15 83 47 172-42v51z"/><path fill="none" stroke="#d8d6b0" stroke-width="3" d="M-113 883l47-46 39 20M1448 870l54-10 62 40"/>`;
+      out+=swimmer(close?780:960,green?775:719,close?.88:.65,seed+30)+swimmer(close?975:1120,green?829:785,.48,seed+31)+swimmer(1090,green?846:808,.29,seed+32,true)+swimmer(1040,green?863:825,.25,seed+33,true);
+      out+=dart(close?609:1260,close?748:787,close?.7:.43,seed+34)+dart(470,715,.35,seed+35)+flutter(green?1170:720,green?611:667,.35,'#f3bf66',seed+36)+pollen(seed+37);
+      // Small pads are simple local pond detail; their reflections rock gently.
+      let pads='';for(let i=0;i<8;i++){const x=R(445+r()*280),y=R(790+r()*85);pads+=`<path fill="#4c997b" stroke="#91d6aa" stroke-width="1" d="M${x} ${y}m-19 0a19 7 0 1 0 38 0 19 7 0 1 0-38 0l19 2-5-6z"/>`;}
+      out+=mv('ukypaddle',{ad:'11s',dx:'9px',dy:'2px'},pads);
+    }
+    return out+finish()+'</g>';
+  };
+
   const places = [
     ['yateley-common', 'Yateley Common', 'Yateley', 'landscape', ['heathland', 'heather', 'birch'], heath,
       ['Heather beside the sandy trail', 'Birches above a winding heath path', 'Autumn gorse and a fallen branch', 'A dusk perch above the open heath']],
     ['wyndhams-pool', "Wyndham's Pool", 'Yateley', 'landscape', ['pond', 'woodland', 'reeds'], v => pond('wyndham', v),
-      ['A wooded shoreline and open water', 'Dragonflies above the near reeds', 'Autumn oak beside the water', 'Evening water from the wooded bank']],
+      ['A wooded shoreline and open water', 'Dragonflies above the near reeds', 'Autumn birches beside the water', 'Evening water from the wooded bank']],
     ['yateley-green', 'Yateley Green', 'Yateley', 'landscape', ['village green', 'pond', 'wildflowers'], v => pond('green', v),
       ['The pond within the open green', 'A low view across the pond margin', 'Autumn shade beside the green', 'Evening beneath the pondside birches']],
     ['fleet-pond', 'Fleet Pond', 'Fleet', 'landscape', ['lake', 'reedbed', 'nature reserve'], v => pond('fleet', v),
@@ -199,6 +282,6 @@ function ukSouthEastPart4(T) {
     add('hampshire', kind, { id: `${place}-${view + 1}`, label, site: `${label} — ${reasons[view]}`,
       colour: kind === 'heritage' ? 'slate' : 'green', mood: view === 3 ? 'dreamy' : 'calm', tags,
       ukPlace: place, ukLocality: town, ukTown: town, ukView: ['wide', 'close', 'autumn', 'evening'][view], viewReason: reasons[view],
-      svg: () => vista(4700 + index * 17 + view, () => draw(view), { path: false, flat: true, edgeNear: true, y: 610, autumn: view === 2, time: view === 3 ? 'dusk' : 'day', atmosphere:localAtmosphere(place,view,index) }) });
+      svg: () => index < 3 ? yateleyScene(place,view) : vista(4700 + index * 17 + view, () => draw(view), { path: false, flat: true, edgeNear: true, y: 610, autumn: view === 2, time: view === 3 ? 'dusk' : 'day', atmosphere:localAtmosphere(place,view,index) }) });
   }
 }

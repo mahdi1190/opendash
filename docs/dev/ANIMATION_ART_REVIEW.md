@@ -90,3 +90,14 @@ Manchester eight and Derbyshire four. No new scenes were added in this pass.
 
 Review priority: UK location scenes first. Worldwide individual redraws and
 the thousand-scene expansion stay outside the current polish pass.
+
+Yateley composition rebuild (12 views): the Common, Wyndham's Pool and the
+Green now use a new renderer rather than the earlier vista overlays. Individual
+birch branches and leaves sway around their roots; heather stems, gorse, reed
+margins, ferns, textured paths, banks and foreground stones provide depth.
+Butterflies flap and travel, dragonflies hover and dart, ducks and ducklings
+swim with separate expanding wakes, and a walker leads a dog along the Common.
+Cloud veils, moving shadows, reflective water and floating leaves/pollen add
+slower motion. Autumn and evening views change vegetation, light and activity.
+The other 46 Hampshire views have not received this composition rebuild yet.
+Wooded horizons remain simplified; further tree-species detail is still desirable.
