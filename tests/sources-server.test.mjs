@@ -115,6 +115,20 @@ test('POST /api/sources/tools: read tools pre-selected, write tools locked', asy
   assert.equal(bad.status, 400, 'a server the dashboard cannot load on its own');
 });
 
+test('Test now persists readiness for an existing source without clearing the previous sync failure', async () => {
+  const { createSourcesService } = await import('../lib/sources.mjs');
+  const svc = createSourcesService({ dataDir: dir });
+  await svc.noteSync('bank-aureli', { ok: false, code: 'TOOL_MISSING', error: 'Old startup failure.' });
+  await new Promise(resolve => setTimeout(resolve, 2));
+  const testResult = await call('POST', '/api/sources/test', { source: { id: 'bank-aureli' } });
+  assert.equal(testResult.json.ok, true); assert.equal(testResult.json.level, 'tools');
+  const bank = (await call('GET', '/api/sources?discover=cached')).json.sources.find(s => s.id === 'bank-aureli');
+  assert.equal(bank.lastCheck.ok, true); assert.equal(bank.health.connectionState, 'ok');
+  assert.equal(bank.health.syncWarning.code, 'TOOL_MISSING'); assert.equal(bank.lastSync, null);
+  await svc.noteSync('bank-aureli', { ok: true });
+  assert.equal((await svc.get('bank-aureli')).lastError, null);
+});
+
 test('POST /api/sources/test: an iCal link inside the network is refused before anything is fetched', async () => {
   const r = await call('POST', '/api/sources/test', { source: { capability: 'calendar', kind: 'ical', url: 'https://192.168.1.10/cal.ics' } });
   assert.equal(r.status, 200);

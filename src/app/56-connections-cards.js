@@ -3,7 +3,16 @@
 const _connPageAccountOpen = new Set();
 
 function _connPageSourceState(s) {
-  return s.enabled === false ? 'off' : s.demo ? 'demo' : (s.health && s.health.state) || 'unknown';
+  return s.enabled === false ? 'off' : s.demo ? 'demo' : (s.health && (s.health.connectionState || s.health.state)) || 'unknown';
+}
+function _connPageSourceNeedsReconnect(s) {
+  const h = s.health || {}, st = _connPageSourceState(s);
+  const code = h.code || (s.lastCheck && !s.lastCheck.ok && s.lastCheck.code) || (s.lastError && s.lastError.code);
+  return (st === 'auth' || st === 'setup') && !['TOOL_MISSING', 'TIMEOUT', 'CLI_TIMEOUT', 'NETWORK', 'NETWORK_ERROR', 'RATE_LIMIT', 'RATE_LIMITED'].includes(code);
+}
+function _connPageToolsReady(s) {
+  const check = s.lastCheck;
+  return !!(check && check.ok && check.level === 'tools' && (!s.lastSync || Date.parse(check.at) > Date.parse(s.lastSync)));
 }
 function _connPageSourceService(s) {
   if (s.kind === 'microsoft') return 'outlook';
@@ -111,6 +120,7 @@ function _connPageSourceCard(s) {
   const pill = _srcPill(st); pill.classList.add('cp-card-status');
   if (st === 'off') pill.textContent = 'Paused';
   else if (s.kind === 'csv' && st === 'ok') { pill.textContent = 'Manual import'; pill.className = 'status off cp-card-status'; }
+  else if (st === 'ok' && _connPageToolsReady(s)) pill.textContent = 'Tools ready';
   const more = _connEl('button', 'btn-icon btn-sm cp-card-menu'); more.type = 'button';
   more.setAttribute('aria-label', 'Manage ' + s.label); more.innerHTML = icon('ellipsis');
   more.disabled = busy;
@@ -137,6 +147,12 @@ function _connPageSourceCard(s) {
   note.innerHTML = icon(st === 'auth' || st === 'error' ? 'circle-alert' : st === 'off' ? 'eye-off' : st === 'setup' || st === 'unknown' ? 'info' : s.capability === 'bank' ? 'landmark' : s.capability === 'calendar' ? 'calendar-days' : 'mail', 'i-xs');
   note.appendChild(_connEl('span', null, noteText));
   card.appendChild(note);
+  const warning = s.health && s.health.syncWarning;
+  const syncWarning = typeof warning === 'string' ? warning : warning && warning.message || '';
+  if (syncWarning && st !== 'off' && st !== 'demo') {
+    card.appendChild(_connEl('p', 'conn-note', 'Previous sync failed: ' + syncWarning + ' Retry sync to update your data.'));
+  }
+  if (st === 'ok' && _connPageToolsReady(s)) card.appendChild(_connEl('p', 'conn-note', 'Connector tools checked. Data will be read when you sync.'));
   const accountDetails = _connPageSourceAccounts(s, busy); if (accountDetails) card.appendChild(accountDetails);
 
   const foot = _connEl('div', 'cp-card-footer');
@@ -145,8 +161,8 @@ function _connPageSourceCard(s) {
   let action;
   if (s.kind === 'csv') action = _connBtn('Open Finances', 'arrow-right', 'btn-ghost', () => setView('finance'));
   else if (st === 'off') action = _connBtn(busy ? 'Resuming…' : 'Resume', busy ? null : 'eye', 'btn-secondary', () => _connPageResumeSource(s));
-  else if (st === 'auth' || st === 'setup') action = _connBtn('Reconnect', 'arrow-right', 'btn-secondary', () => { if (!SourcesStore.busy[s.id]) _connPageSourceHelp(s); });
-  else action = _connBtn(busy ? 'Syncing…' : 'Sync now', busy ? null : 'refresh-cw', 'btn-ghost', () => { if (!SourcesStore.busy[s.id]) _srcSync(s); });
+  else if (_connPageSourceNeedsReconnect(s)) action = _connBtn('Reconnect', 'arrow-right', 'btn-secondary', () => { if (!SourcesStore.busy[s.id]) _connPageSourceHelp(s); });
+  else action = _connBtn(busy ? 'Syncing…' : syncWarning || st === 'error' || st === 'setup' ? 'Retry sync' : 'Sync now', busy ? null : 'refresh-cw', 'btn-ghost', () => { if (!SourcesStore.busy[s.id]) _srcSync(s); });
   action.disabled = busy || (s.kind !== 'csv' && !!s.demo);
   if (busy && s.kind !== 'csv') action.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>');
   foot.append(time, action);

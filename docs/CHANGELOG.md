@@ -10,6 +10,14 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-10-06
+
+### Fixed
+
+- Connections cannot restore an old failure over a newer successful refresh. Sources are read after slow discovery finishes, so completed syncs appear immediately.
+- Test now records and displays current readiness separately from the previous data-sync result. Tools-only checks say Tools ready; actual read checks can confirm sign-in recovery. Tests do not claim data has been synced or erase its sync history.
+- Historical sync failures offer Retry sync rather than unnecessary reconnection. Real sign-in failures still require authentication; a tool-list check alone cannot clear them. Successful syncs clear equal-timestamp failures too.
+
 ## [2.5.0] - 2026-10-06
 
 ### Added
@@ -394,7 +402,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.5.1...HEAD
+[2.5.1]: https://github.com/mahdi1190/opendash/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/mahdi1190/opendash/compare/v2.4.7...v2.5.0
 [2.4.7]: https://github.com/mahdi1190/opendash/compare/v2.4.6...v2.4.7
 [2.4.6]: https://github.com/mahdi1190/opendash/compare/v2.4.5...v2.4.6

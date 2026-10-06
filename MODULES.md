@@ -614,7 +614,7 @@ enabled, own?, renamed?}], lastSync, lastError:{at, code, message}, createdAt}]}
 
 | Area | Files |
 |---|---|
-| Model, discovery, health, dedupe, service (`sourcesFor(ctx)` shares one per data folder) | `lib/sources.mjs` |
+| Model, discovery, health, dedupe, service (`sourcesFor(ctx)` shares one per data folder); lastCheck records tools/read readiness separately from lastSync/lastError, status reads sources after discovery | `lib/sources.mjs` |
 | Generic MCP adapter | `lib/source-adapter.mjs` |
 | iCal | `lib/ical.mjs` |
 | Direct Outlook/Hotmail and Microsoft 365 browser sign-in; PKCE, one-use state, read-only Graph, private refresh credentials | `lib/microsoft.mjs`, `server/routes/microsoft.mjs`, shared setup/Connections `src/app/56-microsoft.js`; `tests/microsoft.test.mjs` |

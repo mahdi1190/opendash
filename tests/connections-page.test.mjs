@@ -179,6 +179,66 @@ test('resuming enables a source without claiming its expired sign-in was repaire
   assert.deepEqual(calls.at(-1), ['view', 'finance']);
 });
 
+test('new connector readiness is separate from the historical sync warning and retries without reconnecting', () => {
+  const { context: c, calls } = page();
+  const s = source('bank', 'bank', 'error', { health: { state: 'error', connectionState: 'ok', message: 'Connector tools ready.', syncWarning: { code: 'TOOL_MISSING', message: 'A tool was unavailable.' } }, lastCheck: { ok: true, level: 'tools' } });
+  const card = c._connPageSourceCard(s);
+  assert.equal(c._connPageSourceState(s), 'ok');
+  assert.ok(nodes(card).some(e => e.textContent === 'Tools ready'));
+  assert.ok(nodes(card).some(e => e.textContent && e.textContent.includes('Previous sync failed:')));
+  assert.ok(nodes(card).some(e => e.textContent === 'Not synced yet'));
+  assert.ok(nodes(card).some(e => e.textContent === 'Connector tools checked. Data will be read when you sync.'));
+  const retry = nodes(card).find(e => e.tagName === 'BUTTON' && e.innerHTML.includes('Retry sync'));
+  click(retry); assert.deepEqual(calls.at(-1), ['sync', 'bank']);
+  for (const code of ['TOOL_MISSING', 'TIMEOUT', 'NETWORK_ERROR']) {
+    const failed = source(code, 'bank', 'setup', { health: { state: 'setup', code } });
+    assert.equal(c._connPageSourceNeedsReconnect(failed), false);
+  }
+  assert.equal(c._connPageSourceNeedsReconnect(source('auth', 'bank', 'auth', { health: { state: 'auth', code: 'AUTH_REQUIRED' } })), true);
+});
+
+test('overlapping source refreshes keep the newest snapshot and loading owner when responses resolve out of order', async () => {
+  const pending = [], renders = [];
+  const c = vm.createContext({ fetch: () => new Promise(resolve => pending.push(resolve)), state: { view: 'connections' }, renderMain: () => renders.push('render'), registerCommand() {} });
+  vm.runInContext(readFileSync(join(ROOT, 'src/app/56-sources.js'), 'utf8'), c);
+  const store = vm.runInContext('SourcesStore', c);
+  const first = store.load({ force: true }); const second = store.load({ force: true }); const loading = store.loading;
+  pending[0]({ ok: true, json: async () => ({ sources: [{ id: 'stale', health: { state: 'error' } }] }) });
+  await first;
+  assert.equal(store.loading, loading, 'an old response cannot clear the newer in-flight request');
+  pending[1]({ ok: true, json: async () => ({ sources: [{ id: 'fresh', health: { state: 'ok' } }] }) });
+  await second; assert.equal(store.data.sources[0].id, 'fresh');
+  const third = store.load({ force: true }); const fourth = store.load({ force: true });
+  pending[3]({ ok: true, json: async () => ({ sources: [{ id: 'newest' }] }) }); await fourth;
+  pending[2]({ ok: false, status: 500, json: async () => ({ error: 'old failure' }) }); await third;
+  assert.equal(store.data.sources[0].id, 'newest'); assert.equal(store.error, null); assert.equal(renders.length, 2);
+});
+
+test('a successful sync after a tools check restores working status rather than stale tools-only readiness', () => {
+  const { context: c } = page(); c._connAgo = () => 'recently';
+  const s = source('bank', 'bank', 'ok', { lastCheck: { ok: true, level: 'tools', at: '2026-01-01T10:00:00Z' }, lastSync: '2026-01-01T10:01:00Z' });
+  assert.equal(c._connPageToolsReady(s), false);
+  assert.ok(!nodes(c._connPageSourceCard(s)).some(e => e.textContent === 'Tools ready'));
+  assert.ok(nodes(c._connPageSourceCard(s)).some(e => e.textContent === 'ok'));
+  s.lastCheck.at = '2026-01-01T10:02:00Z'; assert.equal(c._connPageToolsReady(s), true);
+  const scope = vm.createContext({ registerCommand() {} });
+  vm.runInContext(readFileSync(join(ROOT, 'src/app/56-sources.js'), 'utf8'), scope);
+  assert.equal(scope._srcConnectionState({ enabled: true, health: { state: 'error', connectionState: 'ok', syncWarning: { message: 'old failure' } } }), 'ok');
+  assert.equal(scope._srcToolsReady(s), true); s.lastSync = '2026-01-01T10:03:00Z'; assert.equal(scope._srcToolsReady(s), false);
+});
+
+test('Test now awaits refreshed source status and never calls a tools check a successful data sync', async () => {
+  const events = [], c = vm.createContext({ state: { view: 'connections' }, renderMain: () => events.push('render'), registerCommand() {}, toast: message => events.push(message), window: {},
+    fetch: async () => ({ ok: true, json: async () => ({ ok: true, count: null }) }) });
+  vm.runInContext(readFileSync(join(ROOT, 'src/app/56-sources.js'), 'utf8'), c);
+  const store = vm.runInContext('SourcesStore', c);
+  let release; store.refresh = async () => { events.push('refresh'); await new Promise(resolve => { release = resolve; }); events.push('refreshed'); };
+  const check = c._srcTestExisting({ id: 'bank', label: 'Bank' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(events.some(e => e.includes('connector tools are ready'))); assert.equal(events.at(-1), 'refresh');
+  release(); await check; assert.deepEqual(events.slice(-2), ['refreshed', 'render']); assert.equal(store.busy.bank, undefined);
+});
+
 test('the Connections presentation leaves the shared welcome cards unchanged', () => {
   const { context: c } = page();
   const all = { cli: { installed: true }, claude: { state: 'ok' }, mcp: { installed: { claudeCode: 'installed' } }, assistants: { codex: { installed: true, configured: true }, gemini: { installed: true, configured: true } } };

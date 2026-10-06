@@ -26,19 +26,22 @@ const SRC_STATE = {
 };
 
 const SourcesStore = {
-  data: null, loading: null, error: null, busy: {},
+  data: null, loading: null, error: null, busy: {}, generation: 0,
   async load(opts) {
     opts = opts || {};
     if (this.loading && !opts.force) return this.loading;
+    const generation = ++this.generation;
     this.loading = (async () => {
       try {
         const r = await fetch('/api/sources' + (opts.refresh ? '?refresh=1' : opts.cached ? '?discover=cached' : ''), { cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
-        this.data = j; this.error = null;
-      } catch (e) { this.error = (e && e.message) || 'Could not load the sources.'; }
-      this.loading = null;
-      if (state.view === 'connections') renderMain();
+        if (generation === this.generation) { this.data = j; this.error = null; }
+      } catch (e) { if (generation === this.generation) this.error = (e && e.message) || 'Could not load the sources.'; }
+      if (generation === this.generation) {
+        this.loading = null;
+        if (state.view === 'connections') renderMain();
+      }
       return this.data;
     })();
     return this.loading;
@@ -46,7 +49,7 @@ const SourcesStore = {
   /** Reload sources and the connection gates together. */
   async refresh(opts) {
     await this.load(Object.assign({ force: true }, opts || {}));
-    if (window.Connections) Connections.refresh();
+    if (window.Connections) await Connections.refresh();
   },
   byCap(cap) { return ((this.data && this.data.sources) || []).filter(s => s.capability === cap); },
 };
@@ -74,17 +77,30 @@ function _srcKindText(s) {
   return (s.server || 'MCP server') + ' · read-only';
 }
 function _srcAgo(iso) { return iso ? _connAgo(iso) : 'never'; }
+function _srcConnectionState(s) { return s.enabled === false ? 'off' : s.demo ? 'demo' : (s.health && (s.health.connectionState || s.health.state)) || 'unknown'; }
+function _srcSyncWarning(s) { const warning = s.health && s.health.syncWarning; return typeof warning === 'string' ? warning : warning && warning.message || ''; }
+function _srcToolsReady(s) {
+  const check = s.lastCheck;
+  return !!(check && check.ok && check.level === 'tools' && (!s.lastSync || Date.parse(check.at) > Date.parse(s.lastSync)));
+}
+function _srcNeedsReconnect(s) {
+  const h = s.health || {}, st = _srcConnectionState(s);
+  const code = h.code || (s.lastCheck && !s.lastCheck.ok && s.lastCheck.code) || (s.lastError && s.lastError.code);
+  return (st === 'auth' || st === 'setup') && !['TOOL_MISSING', 'TIMEOUT', 'CLI_TIMEOUT', 'NETWORK', 'NETWORK_ERROR', 'RATE_LIMIT', 'RATE_LIMITED'].includes(code);
+}
 
 /* ---------- one source ---------- */
 function _srcRow(s) {
-  const h = s.health || { state: 'unknown' };
+  const h = Object.assign({}, s.health || { state: 'unknown' }, { state: _srcConnectionState(s) });
   const row = _connEl('div', 'src-row st-' + h.state + (s.enabled ? '' : ' is-off'));
   row.dataset.source = s.id;
   const sw = _connEl('span', 'src-sw c-' + (SRC_SWATCHES.includes(s.colour) ? s.colour : 'slate'));
   const t = _connEl('div', 'src-titles');
   t.append(_connEl('div', 'src-name', s.label), _connEl('div', 'src-sub', _srcKindText(s)));
   const right = _connEl('div', 'src-right');
-  right.appendChild(_srcPill(h.state));
+  const statusPill = _srcPill(h.state);
+  if (h.state === 'ok' && _srcToolsReady(s)) statusPill.textContent = 'Tools ready';
+  right.appendChild(statusPill);
   const more = document.createElement('button'); more.type = 'button'; more.className = 'btn-icon btn-sm';
   more.setAttribute('aria-label', 'Options for ' + s.label); more.innerHTML = icon('ellipsis');
   more.onclick = (e) => { e.stopPropagation(); _srcMenu(more, s); };
@@ -99,10 +115,12 @@ function _srcRow(s) {
     // We are on Connections already: "…: open Connections." says nothing here.
     m.appendChild(_connEl('span', null, String(h.message).replace(/:\s*open Connections( to connect it)?\.?$/i, '.')));
     row.appendChild(m);
-    if (h.state === 'auth' || h.state === 'setup') row.appendChild(_srcFixHelp(s));
+    if (_srcNeedsReconnect(s)) row.appendChild(_srcFixHelp(s));
   } else if (h.message && (h.state === 'ok' || h.state === 'demo')) {
     row.appendChild(_connEl('div', 'src-note', h.message));
   }
+  const syncWarning = _srcSyncWarning(s);
+  if (syncWarning && s.enabled !== false && !s.demo) row.appendChild(_connEl('div', 'src-note', 'Previous sync failed: ' + syncWarning + ' Retry sync to update your data.'));
 
   // Accounts / calendars / mailboxes, each with its own switch.
   if (s.accounts && s.accounts.length) {
@@ -127,7 +145,7 @@ function _srcRow(s) {
   foot.appendChild(_connEl('span', 'conn-when', when));
   if (s.kind !== 'csv') {
     const busy = !!SourcesStore.busy[s.id];
-    const b = _connBtn(busy ? 'Syncing…' : 'Sync now', busy ? null : 'refresh-cw', 'btn-ghost', () => _srcSync(s));
+    const b = _connBtn(busy ? 'Syncing…' : syncWarning ? 'Retry sync' : 'Sync now', busy ? null : 'refresh-cw', 'btn-ghost', () => _srcSync(s));
     if (busy) { b.disabled = true; b.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>'); }
     if (!s.enabled || h.state === 'off' || s.demo) b.disabled = true;
     foot.appendChild(b);
@@ -238,11 +256,12 @@ async function _srcTestExisting(s) {
   SourcesStore.busy[s.id] = true; renderMain();
   try {
     const r = await _srcApi('/api/sources/test', { method: 'POST', body: { source: { id: s.id } } });
-    if (r.ok) toast(r.count == null ? (r.note || `${s.label} works.`) : `${s.label} works: ${r.count} item${r.count === 1 ? '' : 's'} in a short test.`, { kind: 'ok' });
+    if (r.ok) toast(r.count == null ? `${s.label}: connector tools are ready. Sync now to read and update your data.` : `${s.label} works: ${r.count} item${r.count === 1 ? '' : 's'} in a short read-only test. This did not sync your data.`, { kind: 'ok' });
     else toast(r.error || 'The test failed.', { kind: 'err', timeout: 8000 });
   } catch (e) { toast(e.message, { kind: 'err' }); }
   delete SourcesStore.busy[s.id];
-  SourcesStore.refresh({ refresh: true });
+  await SourcesStore.refresh({ cached: true });
+  if (state.view === 'connections') renderMain();
 }
 
 /* ---------- the section ---------- */

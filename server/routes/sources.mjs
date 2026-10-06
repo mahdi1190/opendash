@@ -75,36 +75,42 @@ export default function register(app) {
       const tz = (c.clockNow && c.clockNow().timezone) || cfg.timezone || 'UTC';   // effective zone (travel spec S5)
       const today = isoDay(new Date(), tz);
       const t0 = Date.now();
+      const level = source.preset ? 'tools' : 'read';
+      const finish = async result => {
+        if (existing) await sources.noteCheck(existing.id, { ok: result.ok, level, at: new Date(t0).toISOString(), error: result.error, code: result.code, expected: source });
+        return { ...result, level };
+      };
       try {
         if (source.kind === 'csv') return { ok: true, count: 0, accounts: [], preview: [], note: 'CSV imports need no connection.' };
         if (source.preset) {
           // A tuned preset: checking the server answers is the test (its full job runs on Update).
           const r = await sources.listTools(source.server);
-          const ok = r.tools.length > 0;
-          return ok ? { ok: true, count: null, accounts: [], preview: [], note: `${source.label} answered with ${r.tools.length} tools.`, ms: Date.now() - t0 }
-            : { ok: false, error: `${source.label} answered, but without any tools. Try again in a minute.`, code: 'TOOL_MISSING' };
+          const required = { bank: 'list_transaction_accounts', calendar: 'list_calendars', email: 'search_threads' }[source.capability];
+          const ok = r.tools.some(t => t.name === required);
+          return await finish(ok ? { ok: true, count: null, accounts: [], preview: [], note: `${source.label} answered with ${r.tools.length} tools. This checks tool availability; Sync now checks and imports your account data.`, ms: Date.now() - t0 }
+            : { ok: false, error: `${source.label} did not offer its required read tool. Retry the check or sync; reconnect only if Claude asks you to sign in.`, code: 'TOOL_MISSING' });
         }
         if (source.capability === 'calendar') {
           const r = await fetchCalendarSource(source, { dataDir: app.ctx.dataDir, from: addDays(today, -7), to: addDays(today, 90), timeZone: tz, serverDef: sources.serverDef(source.server), denyServers: claudeAiServers() });
           log('note', `sources: test ${source.kind} calendar: ${r.count} events`);
-          return { ok: true, count: r.count, accounts: r.calendars, warnings: r.warnings, ms: Date.now() - t0,
-            preview: r.events.slice(0, 5).map(e => ({ title: e.summary, when: e.start.date || e.start.dateTime })) };
+          return await finish({ ok: true, count: r.count, accounts: r.calendars, warnings: r.warnings, ms: Date.now() - t0,
+            preview: r.events.slice(0, 5).map(e => ({ title: e.summary, when: e.start.date || e.start.dateTime })) });
         }
         if (source.capability === 'email') {
           const r = await fetchEmailSource(source, { dataDir: app.ctx.dataDir, days: 3, todayIso: today, serverDef: sources.serverDef(source.server), denyServers: claudeAiServers() });
           log('note', `sources: test email: ${r.count} messages`);
-          return { ok: true, count: r.count, accounts: r.accounts, warnings: r.warnings, ms: Date.now() - t0,
-            preview: r.messages.slice(0, 5).map(m => ({ title: m.subject, when: m.date, who: m.from.name || m.from.email })) };
+          return await finish({ ok: true, count: r.count, accounts: r.accounts, warnings: r.warnings, ms: Date.now() - t0,
+            preview: r.messages.slice(0, 5).map(m => ({ title: m.subject, when: m.date, who: m.from.name || m.from.email })) });
         }
         const r = await fetchFromSource(source, { from: addDays(today, -14), to: today, maxDate: addDays(today, 1), currency: cfg.currency || 'GBP', timeZone: tz,
           serverDef: sources.serverDef(source.server), denyServers: claudeAiServers() });
         log('note', `sources: test bank: ${r.rows.length} transactions`);
         const rej = describeRejected(r.rejected);
-        return { ok: true, count: r.rows.length, accounts: r.accounts, warnings: rej ? [`Left out: ${rej}.`] : [], ms: Date.now() - t0,
-          preview: r.rows.slice(0, 5).map(x => ({ title: x.memo, when: x.date })) };
+        return await finish({ ok: true, count: r.rows.length, accounts: r.accounts, warnings: rej ? [`Left out: ${rej}.`] : [], ms: Date.now() - t0,
+          preview: r.rows.slice(0, 5).map(x => ({ title: x.memo, when: x.date })) });
       } catch (e) {
         log('warn', `sources: test failed (${e.code || 'error'})`);
-        return fail(e);
+        return await finish(fail(e));
       }
     },
   });

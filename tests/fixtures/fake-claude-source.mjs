@@ -40,7 +40,7 @@ process.stdin.on('end', () => {
   const prefix = 'mcp__' + server.replace(/[^A-Za-z0-9_-]/g, '_') + '__';
   if (mode === 'needs-auth') { out({ type: 'system', subtype: 'init', tools: [], mcp_servers: [{ name: server, status: 'needs-auth' }] }); return; }
   if (mode === 'pending') { out({ type: 'system', subtype: 'init', tools: [], mcp_servers: [{ name: server, status: 'pending' }] }); setTimeout(() => out({ type: 'result', subtype: 'success', is_error: false, result: '{}' }), 50); return; }
-  const tools = ['list_items', 'get_item', 'create_item', 'delete_item'].map(t => prefix + t).concat(['mcp__other__read_all']);
+  const tools = ['list_items', 'get_item', 'create_item', 'delete_item', ...(server === 'claude.ai Bank' ? ['list_transaction_accounts'] : [])].map(t => prefix + t).concat(['mcp__other__read_all']);
   out({ type: 'system', subtype: 'init', tools, mcp_servers: [{ name: server, status: 'connected' }] });
   if (!allowed.length) { setTimeout(() => out({ type: 'result', subtype: 'success', is_error: false, result: 'x' }), 3000); return; }
   if (mode === 'write') {

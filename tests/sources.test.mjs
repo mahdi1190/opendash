@@ -228,6 +228,54 @@ test('calendarDefaultOn: only my stuff by default', () => {
   assert.equal(calendarDefaultOn({ id: 'feed' }, mine), true);
 });
 
+test('checks recover readiness without inventing a successful sync; tools do not prove account sign-in', () => {
+  const at = n => new Date(Date.parse('2026-10-02T12:00:00Z') + n * 1000).toISOString();
+  const servers = Object.assign([{ name: 'claude.ai Bank', status: 'ok' }], { at: Date.parse(at(3)) });
+  const src = validateSource({ id: 'bank-aureli', kind: 'mcp', capability: 'bank', server: 'claude.ai Bank',
+    lastSync: at(0), lastError: { at: at(1), code: 'TOOL_MISSING', message: 'Tools were still starting.' },
+    lastCheck: { at: at(2), ok: true, level: 'tools' } }).source;
+  const ready = sourceHealth(src, { servers });
+  assert.equal(ready.state, 'ok'); assert.equal(ready.connectionState, 'ok');
+  assert.equal(ready.syncWarning.code, 'TOOL_MISSING'); assert.equal(src.lastSync, at(0));
+  const auth = { ...src, lastError: { at: at(1), code: 'CONNECTOR_AUTH', message: 'Sign in again.' } };
+  assert.equal(sourceHealth(auth, { servers }).connectionState, 'auth');
+  assert.equal(sourceHealth({ ...auth, lastCheck: { at: at(2), ok: true, level: 'read' } }, { servers }).state, 'ok');
+  assert.equal(sourceHealth({ ...auth, lastCheck: { at: at(0), ok: true, level: 'read' } }, { servers }).state, 'auth');
+  const revoked = Object.assign([{ name: src.server, status: 'auth' }], { at: Date.parse(at(4)) });
+  assert.equal(sourceHealth(src, { servers: revoked }).connectionState, 'auth');
+  assert.equal(sourceHealth({ ...src, lastSync: at(4), lastCheck: { at: at(2), ok: false, level: 'read', code: 'CONNECTOR_AUTH' } }, { servers }).state, 'ok');
+});
+
+test('saved checks are ordered and tied to the tested connection, preserving sync history', async () => {
+  let t = Date.parse('2026-10-02T12:00:00Z');
+  const svc = createSourcesService({ dataDir: join(tmp, 'check-records'), now: () => t, userDefs: () => ({}) });
+  const src = await svc.get('bank-aureli');
+  await svc.noteSync(src.id, { ok: false, code: 'TOOL_MISSING', error: 'Startup failed.' });
+  t += 1000;
+  await svc.noteCheck(src.id, { ok: true, level: 'tools', expected: src });
+  let stored = await svc.get(src.id);
+  assert.equal(stored.lastCheck.ok, true); assert.equal(stored.lastSync, null); assert.equal(stored.syncCount, undefined);
+  assert.equal(stored.lastError.code, 'TOOL_MISSING');
+  await svc.noteCheck(src.id, { ok: false, level: 'read', at: new Date(t - 500).toISOString() });
+  assert.equal((await svc.get(src.id)).lastCheck.ok, true, 'late older response cannot replace newer check');
+  await svc.noteCheck(src.id, { ok: false, expected: { ...src, server: 'different' } });
+  assert.equal((await svc.get(src.id)).lastCheck.ok, true, 'testing an edited unsaved source cannot change the saved connection');
+  await svc.noteSync(src.id, { ok: false, error: 'Failed in this millisecond.' });
+  await svc.noteSync(src.id, { ok: true });
+  assert.equal((await svc.get(src.id)).lastError, null, 'successful sync clears an equal-timestamp failure');
+});
+
+test('a status request reads sync state after slow discovery, not before it', async () => {
+  let release, entered;
+  const begun = new Promise(resolve => { entered = resolve; });
+  const svc = createSourcesService({ dataDir: join(tmp, 'status-order'), userDefs: () => ({}), list: () => { entered(); return new Promise(resolve => { release = resolve; }); } });
+  const src = await svc.get('bank-aureli');
+  const loading = svc.status(); await begun;
+  await svc.noteSync(src.id, { ok: true });
+  release({ text: 'claude.ai Bank: https://bank.example.test/mcp - Connected', ms: 1 });
+  assert.ok((await loading).sources.find(s => s.id === src.id).lastSync, 'completed sync included in the slow response');
+});
+
 // ─── de-duplication across sources ───────────────────────────────────────────
 test('dedupe: events by iCalUID or start+title across sources (not within one); transactions; emails by message id', () => {
   const ev = (id, summary, start, extra = {}) => ({ id, summary, start: { dateTime: start }, end: { dateTime: start }, ...extra });

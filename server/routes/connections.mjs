@@ -74,7 +74,17 @@ export default function register(app) {
     handler: async (c) => {
       const { id } = await c.body();
       if (!['claude', 'gmail', 'calendar', 'bank', 'mcp'].includes(id)) throw new HttpError(400, 'unknown connection');
+      const checkAt = new Date().toISOString();
       const entry = await conns.check(id, { manual: true });
+      // Legacy connector tests perform an actual read. Record that separately
+      // from a full data sync, so an old import failure cannot hide recovery.
+      const preset = { bank: 'aureli', gmail: 'gmail', calendar: 'google-calendar' }[id];
+      if (preset && !entry.skipped) {
+        const sources = sourcesFor(app.ctx);
+        for (const s of await sources.all()) if (s.enabled && !s.demo && s.preset === preset) {
+          await sources.noteCheck(s.id, { ok: entry.status === 'connected', level: 'read', at: checkAt, code: entry.code, error: entry.message, expected: s });
+        }
+      }
       return { ...entry, state: (await conns.list())[id].state };
     },
   });
