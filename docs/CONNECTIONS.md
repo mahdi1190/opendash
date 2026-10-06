@@ -43,6 +43,26 @@ or your bank. Sign-in happens on claude.ai or in Claude's own window.
 people, AI summaries in the brief and stories, the auto-link judge, and every
 connector below.
 
+Press **Link Claude** in Setup or Connections. OpenDash looks for an existing
+local Claude Code installation first, reuses it, checks sign-in, and adds its
+MCP tools as part of the same connection. If Claude Code is missing, the button
+runs Anthropic's official native installer. Sign-in takes place in your browser;
+Claude Desktop and a hosted relay are unnecessary for this default connection.
+
+Claude Code requires a supported Claude subscription or a Console/provider
+account. Browser sign-in does not add hosting costs; AI use follows the account
+you select. A free claude.ai account alone does not provide Claude Code access.
+
+The local link enables AI inside the dashboard; you do not need to chat in
+Claude's website. For optional browser chat, **Open connected Claude** starts
+an official Remote Control terminal and opens `claude.ai/code`. Complete any
+Claude terminal confirmations, then select **OpenDash** in the browser. Keep
+the terminal running. Remote Control requires an eligible subscription and
+may be restricted by your organization. OpenDash does not treat launching a
+terminal as proof that the browser session is connected.
+
+If the automatic setup needs attention, the manual fallback is:
+
 1. **Install Claude Code**:
 
    - Windows (PowerShell):
@@ -79,10 +99,11 @@ If Claude Code is installed somewhere unusual, set the environment variable
 | **Google Calendar** | events next to your tasks, *Update calendar* |
 | **Bank** | *Sync bank* in Finances (CSV import works without it) |
 
-1. On the card, press *Open claude.ai connectors* (or go to claude.ai >
-   Settings > Connectors yourself).
+1. On the card, press *Sign in & verify* (or go to claude.ai >
+   Customize > Connectors yourself).
 2. Connect the service there, signing in with that service.
-3. Back in OpenDash, press *Check again*.
+3. Return to OpenDash. A user-started sign-in verifies and updates the source
+   automatically; a failed read stays visible for troubleshooting.
 
 The connectors live in your Claude account; Claude Code on this computer can
 use them once you are signed in. OpenDash only ever lets them use **read**

@@ -10,6 +10,21 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-10-06
+
+### Added
+
+- One Link Claude action in Setup and Connections: reuse an existing Claude Code installation, install the official native helper only when missing, sign in through the browser when needed, and automatically add and verify OpenDash tools. Dashboard AI uses the local connection, without Claude Desktop, a domain or an OpenDash relay.
+- Optional Open connected Claude action starts an official named Remote Control terminal and opens Claude Code in the browser. Finish Claude's own first-use confirmations and select OpenDash there; the terminal must remain running. Opening the terminal is not reported as a verified browser session.
+- Optional operator-configured hosted MCP relay and personal gateway implementations, with OAuth, local matching-code approval and revocation. The shared relay is not enabled in this release; its public deployment still needs verification.
+- Direct browser sign-in for personal Outlook/Hotmail and work or school Microsoft 365, with read-only email previews and calendars. Microsoft app registration is required before sign-in is available.
+
+### Fixed
+
+- Restricted Claude connector jobs load their read-only tools before startup checks, preventing newer Claude Code tool deferral from falsely reporting connected bank, email and calendar tools as missing. Failed reads remain visible in Connections until a later sync succeeds.
+- Device location is checked during the brand splash before opening titles and nearby art are selected. The opening waits up to four seconds, shares the load request, respects skipping and falls back to the last known location.
+- User-started Claude connector sign-ins verify and update their source automatically when returning to OpenDash.
+
 ## [2.4.7] - 2026-10-05
 
 ### Added
@@ -379,7 +394,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.4.7...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/mahdi1190/opendash/compare/v2.4.7...v2.5.0
 [2.4.7]: https://github.com/mahdi1190/opendash/compare/v2.4.6...v2.4.7
 [2.4.6]: https://github.com/mahdi1190/opendash/compare/v2.4.5...v2.4.6
 [2.4.5]: https://github.com/mahdi1190/opendash/compare/v2.4.3...v2.4.5

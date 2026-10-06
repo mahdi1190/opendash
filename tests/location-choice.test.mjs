@@ -2,11 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { setTimeout as delay } from 'node:timers/promises';
 import { validateConfig } from '../lib/datadir.mjs';
 const source = name => readFileSync(new URL('../src/app/' + name, import.meta.url), 'utf8');
 function deviceRefreshHarness(permissions) {
   const events = {}, timers = [], requests = [], saves = [];
   const context = vm.createContext({
+    setTimeout, clearTimeout,
     APP_CONFIG: { locationMode: 'device', location: { name: 'Last fix' } },
     window: { addEventListener(name, fn) { events[name] = fn; } },
     document: { hidden: false, addEventListener(name, fn) { events[name] = fn; } },
@@ -31,6 +33,26 @@ test('each page load requests a fresh device fix without requiring the Permissio
     assert.equal(h.saves[0].location.lat, 53.38);
     assert.equal(h.saves[0].location.lon, -1.47);
   }
+});
+test('opening waits for a fresh fix and shares its request with page load', async () => {
+  const h = deviceRefreshHarness();
+  const ready = h.context.dashboardLocationBeforeOpening(1000);
+  await h.settle(); h.events.load(); await h.settle();
+  assert.equal(h.requests.length, 1);
+  assert.equal(vm.runInContext('_locationOpeningPending', h.context), true);
+  h.requests[0].ok({ timestamp: Date.now(), coords: { latitude: 53.38, longitude: -1.47, accuracy: 30 } });
+  assert.equal(await ready, true);
+  assert.equal(h.context.APP_CONFIG.location.lat, 53.38);
+  assert.equal(vm.runInContext('_locationOpeningPending', h.context), false);
+});
+test('opening has a bounded fallback while a slow device request can finish later', async () => {
+  const h = deviceRefreshHarness();
+  const ready = h.context.dashboardLocationBeforeOpening(5);
+  await delay(10);
+  assert.equal(await ready, false);
+  assert.equal(h.context.APP_CONFIG.location.name, 'Last fix');
+  assert.equal(vm.runInContext('_locationOpeningPending', h.context), false);
+  h.requests[0].fail({ code: 3 }); await h.settle();
 });
 test('periodic and tab-return checks coalesce, pause when hidden and retry after failure', async () => {
   const h = deviceRefreshHarness();

@@ -323,17 +323,36 @@ each release; a clone of `main` may be ahead of it.
 OpenDash works fully without AI. To switch on the smart parts, open
 **Connections** (Settings > Connections):
 
-1. **Install Claude Code**
-   ([how](docs/CONNECTIONS.md#claude-claude-code-on-this-computer)) and sign
-   in with your own Claude account. The Claude card's
-   *Open sign-in window* button runs `claude` for you. OpenDash never sees a
-   password or API key, and calls use the Claude plan you already have.
+1. **Link Claude** checks for local Claude Code first, installs it only if
+   missing, opens browser sign-in if needed, and adds the OpenDash tools.
+   Claude Desktop and relay hosting are unnecessary. AI usage follows your
+   selected Claude subscription or API account; a free claude.ai account alone
+   does not include Claude Code. [Setup details](docs/CONNECTIONS.md#claude-claude-code-on-this-computer).
 2. **Add connectors** in claude.ai (Settings > Connectors) for Gmail, Google
    Calendar or your bank, then press *Check again*. OpenDash only ever lets
    them use **read** tools.
-3. **Use OpenDash from your own Claude**: *Connections > OpenDash MCP > Set up*
-   shows the exact `claude mcp add` command for your computer, with a copy
-   button, and *Test MCP* checks that it answers.
+3. **Use AI inside OpenDash**: once linked, use the dashboard's assistant,
+   task chat, smart suggestions and AI summaries. They use your local Claude
+   sign-in; no separate browser session is required.
+4. **Optional browser chat**: press **Open connected Claude** to start an
+   official Remote Control terminal and open `claude.ai/code`. Finish any
+   terminal confirmations, then select **OpenDash** in the browser. Keep the
+   terminal running. Remote Control requires an eligible Claude subscription;
+   ordinary Claude website chats do not inherit this local tool connection.
+
+For optional **ordinary Claude website access**, an operator-configured advanced relay card prepares a connection
+through the shared OpenDash relay and opens Claude with the connector details
+filled in. Sign in, confirm the connector and approve its matching code in your
+local dashboard. Claude
+Desktop and your own Cloudflare account are unnecessary. Keep OpenDash running;
+selected requests and responses pass through the relay, while your dashboard
+files stay on your computer. The shared relay is not enabled in this release;
+its public deployment still needs verification. See [the relay guide](docs/dev/HOSTED_RELAY.md).
+
+The **Microsoft** card supports personal Outlook/Hotmail and work/school
+Microsoft 365 through Microsoft's sign-in page, with read-only email and
+calendar permissions. A deployment needs a registered public Microsoft app
+before sign-in is available; see [Microsoft setup](docs/dev/MICROSOFT_CONNECT.md).
 
 Details: [docs/CONNECTIONS.md](docs/CONNECTIONS.md) and
 [docs/MCP.md](docs/MCP.md).

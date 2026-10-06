@@ -4,6 +4,23 @@ let _locationRequest = 0;
 let _locationAutoRefresh = null;
 let _locationWatchId = null;
 let _locationWatchLastAt = 0;
+let _locationInitialRefresh = null;
+let _locationOpeningPending = false;
+function dashboardLocationInitialRefresh() {
+  if (!_locationInitialRefresh) _locationInitialRefresh = dashboardLocationAutoRefresh(true);
+  return _locationInitialRefresh;
+}
+async function dashboardLocationBeforeOpening(budgetMs = 4000) {
+  if (APP_CONFIG.locationMode !== 'device') return false;
+  _locationOpeningPending = true;
+  let timer;
+  try {
+    return await Promise.race([
+      dashboardLocationInitialRefresh(),
+      new Promise(resolve => { timer = setTimeout(() => resolve(false), budgetMs); }),
+    ]);
+  } finally { clearTimeout(timer); _locationOpeningPending = false; }
+}
 function dashboardDevicePoint(pos) {
   const lat = Math.round(pos.coords.latitude * 100) / 100;
   const lon = Math.round(pos.coords.longitude * 100) / 100;
@@ -114,7 +131,7 @@ function dashboardLocationSettings() {
   return _settingsRow('Your location', 'Choose one source for weather, opening titles and nearby art. Device mode checks on load, Refresh today and tab return, watches for changes while visible, and polls every 15 minutes. Local visit history keeps arrivals, confirmed presence, departure estimates and observation gaps. Coordinates are rounded to about 1 km; town names are approximate. Weather coordinates go to Open-Meteo.', ctl);
 }
 if (typeof window !== 'undefined') window.addEventListener('load', () => {
-  dashboardLocationAutoRefresh(true);
+  dashboardLocationInitialRefresh();
   setInterval(() => dashboardLocationAutoRefresh(), 15 * 60 * 1000);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) dashboardLocationAutoRefresh();

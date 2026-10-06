@@ -6,6 +6,7 @@ function _connPageSourceState(s) {
   return s.enabled === false ? 'off' : s.demo ? 'demo' : (s.health && s.health.state) || 'unknown';
 }
 function _connPageSourceService(s) {
+  if (s.kind === 'microsoft') return 'outlook';
   if (s.kind !== 'mcp') return null;
   const server = String(s.server || '').toLowerCase();
   if (s.preset === 'gmail' || /\bgmail\b/.test(server)) return 'gmail';
@@ -26,6 +27,7 @@ function _connPageAccountCaption(s) {
     return `${n} of ${accounts.length} ${word}${accounts.length === 1 ? '' : 's'} selected`;
   }
   if (s.kind === 'ical') return s.urlHint || 'Read-only calendar feed';
+  if (s.kind === 'microsoft') return 'Microsoft browser sign-in · read-only';
   return s.server || 'Read-only account source';
 }
 function _connPageSourceDescription(s) {
@@ -37,6 +39,10 @@ function _connPageSourceDescription(s) {
   return 'Recent senders, subjects and previews for email triage and tasks.';
 }
 function _connPageSourceHelp(s) {
+  if (s.kind === 'microsoft') { microsoftConnectionSetup(); return; }
+  if (s.kind === 'mcp' && /^claude\.ai /.test(s.server || '') && typeof connCloudSignIn === 'function') {
+    connCloudSignIn(s); return;
+  }
   openDrawer({
     title: `Reconnect ${s.label}`, width: 520,
     body: (el, closeD) => {

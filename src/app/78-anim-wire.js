@@ -254,8 +254,13 @@ function animOpeningSequence() {
   if (!ms || !_awOn() || animOpeningMode() === 'off') { done(); return false; }
   const alive = () => sp.isConnected && !ctl.gone();
   const wait = (t, fn) => setTimeout(() => { if (alive()) fn(); }, Math.max(0, t));
+  // Start during the brand splash; select artwork only after a fresh fix or
+  // the bounded fallback. The load handler shares this same location request.
+  const locationReady = typeof dashboardLocationBeforeOpening === 'function' ? dashboardLocationBeforeOpening() : null;
   // The brand first; the rest is decided then (the state file has had time to load).
-  wait(ms[0] - (performance.now() - ctl.t0()), () => {
+  wait(ms[0] - (performance.now() - ctl.t0()), async () => {
+    if (locationReady) await locationReady;
+    if (!alive()) return;
     // the first-run set-up (a new data folder): nothing in front of it
     if (!APP_CONFIG.onboardedAt && typeof _serverAvailable !== 'undefined' && _serverAvailable && typeof getAllItems === 'function' && !getAllItems().length) { done(); return; }
     let w = null;

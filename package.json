@@ -1,6 +1,6 @@
 {
   "name": "opendash",
-  "version": "2.4.7",
+  "version": "2.5.0",
   "description": "OpenDash: a calm, local-first productivity dashboard for tasks, calendar, finances and people, with an optional Claude assistant.",
   "private": true,
   "license": "MIT",

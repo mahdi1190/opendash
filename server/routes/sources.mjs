@@ -85,13 +85,13 @@ export default function register(app) {
             : { ok: false, error: `${source.label} answered, but without any tools. Try again in a minute.`, code: 'TOOL_MISSING' };
         }
         if (source.capability === 'calendar') {
-          const r = await fetchCalendarSource(source, { from: addDays(today, -7), to: addDays(today, 90), timeZone: tz, serverDef: sources.serverDef(source.server), denyServers: claudeAiServers() });
+          const r = await fetchCalendarSource(source, { dataDir: app.ctx.dataDir, from: addDays(today, -7), to: addDays(today, 90), timeZone: tz, serverDef: sources.serverDef(source.server), denyServers: claudeAiServers() });
           log('note', `sources: test ${source.kind} calendar: ${r.count} events`);
           return { ok: true, count: r.count, accounts: r.calendars, warnings: r.warnings, ms: Date.now() - t0,
             preview: r.events.slice(0, 5).map(e => ({ title: e.summary, when: e.start.date || e.start.dateTime })) };
         }
         if (source.capability === 'email') {
-          const r = await fetchEmailSource(source, { days: 3, todayIso: today, serverDef: sources.serverDef(source.server), denyServers: claudeAiServers() });
+          const r = await fetchEmailSource(source, { dataDir: app.ctx.dataDir, days: 3, todayIso: today, serverDef: sources.serverDef(source.server), denyServers: claudeAiServers() });
           log('note', `sources: test email: ${r.count} messages`);
           return { ok: true, count: r.count, accounts: r.accounts, warnings: r.warnings, ms: Date.now() - t0,
             preview: r.messages.slice(0, 5).map(m => ({ title: m.subject, when: m.date, who: m.from.name || m.from.email })) };

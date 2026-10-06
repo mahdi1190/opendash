@@ -33,7 +33,7 @@ export default function register(app) {
     noteSync: (id, r) => sources.noteSync(id, r),
     fetchOther: async (s, { days, todayIso }) => {
       const disc = sources.cached();
-      const r = await fetchEmailSource(s, { days, todayIso, serverDef: sources.serverDef(s.server), denyServers: ((disc && disc.servers) || []).filter(x => x.kind === 'claude.ai').map(x => x.name) });
+      const r = await fetchEmailSource(s, { dataDir, days, todayIso, serverDef: sources.serverDef(s.server), denyServers: ((disc && disc.servers) || []).filter(x => x.kind === 'claude.ai').map(x => x.name) });
       await saveInboxSnapshot(paths, s.id, { days, ...r });
       log('note', `email source: ${r.count} messages`);
       return r;

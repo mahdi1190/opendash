@@ -82,6 +82,15 @@ test('probe profile allows exactly one tool', () => {
   assert.throws(() => buildArgs('probe:slack', {}), e => e.code === 'BAD_REQUEST');
 });
 
+test('restricted MCP jobs force upfront tools and blocking startup despite inherited deferral', async () => {
+  mode('connector-needs-auth');
+  await assert.rejects(runClaude({ profile: 'bank-read', prompt: 'probe',
+    env: { ENABLE_TOOL_SEARCH: 'true', MCP_CONNECTION_NONBLOCKING: '1' } }), e => e.code === 'CONNECTOR_AUTH');
+  const calls = readFileSync(log, 'utf8').trim().split('\n').map(l => JSON.parse(l)).filter(c => c.argv);
+  assert.equal(calls.at(-1).toolSearch, 'false');
+  assert.equal(calls.at(-1).nonblocking, '0');
+});
+
 test('mcp-propose: only dashboard read/propose tools, strict MCP config', () => {
   const ok = buildArgs('mcp-propose', { mcpConfig: { mcpServers: {} }, allowedTools: ['mcp__dashboard__list_tasks', 'mcp__dashboard__propose_changes'] });
   assert.ok(ok.args.includes('--strict-mcp-config'));

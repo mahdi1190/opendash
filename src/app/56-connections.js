@@ -8,11 +8,11 @@
    stores a password or token: sign-in always happens in Claude's own
    window or on claude.ai.
    ============================================================ */
-const CONNECTORS_URL = 'https://claude.ai/settings/connectors';
+const CONNECTORS_URL = 'https://claude.ai/customize/connectors';
 const CONNECTION_INFO = [
   { id: 'claude', name: 'Claude', icon: 'sparkles', sub: 'Claude Code on this computer',
     unlocks: ['Assistant', 'Smart suggestions', 'Link tasks to people', 'Task chat'],
-    text: 'The dashboard asks the Claude Code app on this computer, signed in to your own Claude account. Nothing extra to pay.' },
+    text: 'Uses Claude Code on this computer with your own Claude account. OpenDash tools are included, with no relay hosting costs.' },
   { id: 'gmail', name: 'Gmail', icon: 'mail', sub: 'claude.ai connector · read-only',
     unlocks: ['Email triage', 'Tasks from email', 'Recent mail on people'],
     text: 'Finds tasks in recent email and shows mail from the people you work with. It can never send, change or delete mail.' },
@@ -123,11 +123,14 @@ function _connHelp(c, e, all) {
     return box;
   }
   box.appendChild(_connEl('div', 'conn-help-t', st === 'auth' ? `Reconnect ${c.name}` : `Connect ${c.name}`));
-  const open = _connBtn('Open claude.ai connectors', 'external-link', 'btn-primary', () => { window.open(CONNECTORS_URL, '_blank', 'noopener'); });
+  const open = _connBtn('Sign in & verify', 'external-link', 'btn-primary', () => {
+    if (typeof connCloudSignIn === 'function') connCloudSignIn(null, c.id);
+    else window.open(CONNECTORS_URL, '_blank', 'noopener');
+  });
   box.appendChild(_connSteps([
     open,
     st === 'auth' ? `Find ${c.name} and choose Reconnect (or Disconnect, then Connect).` : `Find ${c.name} and choose Connect, then sign in and allow access.`,
-    'Come back here and click Check again.',
+    'Return here after sign-in. OpenDash checks the connection automatically.',
   ]));
   const fb = _connEl('div', 'conn-fallback');
   fb.appendChild(_connEl('span', null, 'Still not working? Run claude in a terminal and type /mcp, then pick the connector to sign in again.'));
@@ -484,6 +487,7 @@ registerSection('connections', {
     actions.append(check, _connBtn('Add connection', 'plus', 'btn-primary', () => srcAddFlow({})));
     heading.append(copy, actions);
     page.append(heading, _connPageHero(), _connPageOverview(sources, all, ready), _connPageSourceSection(sources, ready), _connPageAssistantSection(all));
+    if (typeof microsoftConnectionCard === 'function') page.appendChild(microsoftConnectionCard(all));
     const privacy = _connEl('section', 'cp-privacy-panel cp-privacy-wide');
     privacy.innerHTML = icon('shield-check');
     privacy.append(_connEl('h3', null, 'Connected doesn’t mean giving up control.'), _connEl('p', null, 'Account sources stay read-only. Choose what to include, and pause or disconnect whenever you like.'), _connBtn('How your data is handled', 'arrow-right', 'btn-ghost', _connPagePrivacy));
@@ -496,6 +500,8 @@ registerSection('connections', {
     summary.append(advancedTitle, _connEl('span', 'cp-advanced-label', 'Advanced'), chevron); advanced.appendChild(summary);
     const advancedBody = _connEl('div', 'cp-advanced-body');
     advancedBody.append(_connEl('p', 'cp-subtitle', 'Use OpenDash from your own AI tools. The OpenDash MCP can update dashboard tasks; account sources stay read-only.'), _connMcpCard(all), srcServersCard());
+    if (_connPageAdvanced && typeof hostedRelayCard === 'function') advancedBody.appendChild(hostedRelayCard());
+    if (_connPageAdvanced && typeof remoteMcpCard === 'function') advancedBody.appendChild(remoteMcpCard());
     const g = all.google;
     if (g && g.status && g.status !== 'not-set-up') {
       const adv = _connEl('div', 'conn-adv');

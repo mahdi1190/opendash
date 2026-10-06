@@ -27,7 +27,7 @@ export const TOP_FILES = [
   /^start-[\w-]+\.(bat|cmd|sh|command)$/i,
   /^\.(gitignore|gitattributes|editorconfig|nvmrc|node-version)$/,
 ];
-export const TOP_DIRS = ['src', 'server', 'lib', 'mcp', 'tools', 'vendor', 'tests', 'docs', '.github'];
+export const TOP_DIRS = ['src', 'server', 'lib', 'mcp', 'cloudflare', 'tools', 'vendor', 'tests', 'docs', '.github'];
 // Folders of which only some subfolders are published.
 export const PARTIAL_DIRS = { assets: ['brand'] };
 

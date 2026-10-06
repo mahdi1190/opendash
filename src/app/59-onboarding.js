@@ -51,11 +51,12 @@ function openOnboarding() {
     demo: false, myEmails: (APP_CONFIG.myEmails || []).join(', '),
   };
   let step = 0;
+  const stopConnections = window.Connections ? Connections.onChange(() => { if (_obOpen && step === 3) paint(); }) : null;
   const scrim = document.createElement('div'); scrim.className = 'ob-scrim';
   const card = document.createElement('div'); card.className = 'ob-card'; card.setAttribute('role', 'dialog'); card.setAttribute('aria-modal', 'true'); card.setAttribute('aria-labelledby', 'ob-title');
   document.body.append(scrim, card);
 
-  const close = () => { _obOpen = false; scrim.remove(); card.remove(); document.removeEventListener('keydown', onKey, true); };
+  const close = () => { _obOpen = false; if (stopConnections) stopConnections(); scrim.remove(); card.remove(); document.removeEventListener('keydown', onKey, true); };
   const onKey = (e) => { if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON' && !(e.target.closest && e.target.closest('.pop'))) { e.preventDefault(); next(); } };
   document.addEventListener('keydown', onKey, true);
 
@@ -176,6 +177,13 @@ function openOnboarding() {
       body.appendChild(el('h2', 'conn-name', 'Choose your assistant (optional)'));
       body.appendChild(el('p', 'conn-note', 'Connect your assistant and its OpenDash tools together. Everything else works without an assistant.'));
       body.appendChild(assistantConnectionCards((window.Connections && Connections.all()) || {}, paint, true));
+      body.appendChild(microsoftConnectionCard((window.Connections && Connections.all()) || {}, true));
+      if (typeof hostedRelayCard === 'function') {
+        const browser = el('details'), summary = el('summary', 'conn-note', 'Advanced: browser-only Claude connection');
+        browser.appendChild(summary);
+        browser.ontoggle = () => { if (browser.open && browser.childNodes.length === 1) browser.appendChild(hostedRelayCard(true)); };
+        body.appendChild(browser);
+      }
     }
     card.appendChild(body);
     const foot = el('div', 'ob-foot');

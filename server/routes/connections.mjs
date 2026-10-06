@@ -23,7 +23,9 @@ import { googleStatus } from '../../lib/google.mjs';
 import { installInfo } from '../../mcp/install.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
 import { HttpError } from '../http.mjs';
+import { microsoftFor } from '../../lib/microsoft.mjs';
 import { assistantFacts, connectCodex, connectGemini } from '../../lib/assistant-connections.mjs';
+import { localClaudeConnectFor } from '../../lib/local-claude-connect.mjs';
 
 export default function register(app) {
   const { dataDir, log } = app.ctx;
@@ -39,8 +41,10 @@ export default function register(app) {
       const g = await googleStatus().catch(() => null);
       if (g) all.google = { ...all.google, status: g.connected ? 'connected' : g.configured ? 'configured' : 'not-set-up', state: g.connected ? 'ok' : g.configured ? 'auth' : 'setup', account: g.account || null };
       all.cli = cliFacts();
+      all.microsoft = await microsoftFor(dataDir).status();
       delete all.cli.path;              // the page does not need the executable's path
       all.assistants = assistantFacts({ dataDir });
+      all.localClaude = localClaudeConnectFor(app.ctx).status();
       // Sources (lib/sources.mjs): per capability, is at least one enabled source healthy?
       // The page gates bank/calendar/email features on these first, the old entries second.
       try {

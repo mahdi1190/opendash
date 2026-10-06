@@ -58,6 +58,20 @@ test('Christmas plays after the welcome and county scene, then closes', () => {
   assert.equal(h.gone(), false); h.next(); assert.equal(h.gone(), true);
 });
 
+test('opening selects its scene after location preparation and respects skipping while waiting', async () => {
+  for (const skip of [false, true]) {
+    const h = harness({ day: '2026-10-06' }); let resolve;
+    h.context.dashboardLocationBeforeOpening = () => new Promise(r => { resolve = r; });
+    h.run(); h.next();
+    assert.equal(h.attributes['data-od-scene'], undefined);
+    h.context.animUkWhere = () => ({ id: 'hampshire', name: 'Hampshire', town: 'Fleet' });
+    if (skip) h.skip();
+    resolve(true); await new Promise(r => setImmediate(r));
+    if (skip) assert.equal(h.attributes['data-od-scene'], undefined);
+    else assert.match(h.splash.children[0].innerHTML, /od-seq-place">Fleet</);
+  }
+});
+
 test('county arrivals continue with the holiday only on natural completion', () => {
   const h = harness(); const overlays = h.arrival();
   assert.equal(overlays.length, 1); assert.match(overlays[0].innerHTML, /Hampshire/); assert.doesNotMatch(overlays[0].innerHTML, /Welcome to/);

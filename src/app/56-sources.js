@@ -68,6 +68,7 @@ function _srcPill(st) {
   return _connEl('span', 'status ' + kind, label);
 }
 function _srcKindText(s) {
+  if (s.kind === 'microsoft') return 'Microsoft browser sign-in · read-only';
   if (s.kind === 'csv') return 'CSV export · imported in Finances';
   if (s.kind === 'ical') return 'iCal link · ' + (s.urlHint || 'calendar feed') + ' · read-only';
   return (s.server || 'MCP server') + ' · read-only';
@@ -139,6 +140,7 @@ function _srcRow(s) {
 
 function _srcFixHelp(s) {
   const box = _connEl('div', 'conn-help src-help');
+  if (s.kind === 'microsoft') { box.appendChild(_connBtn('Sign in with Microsoft', 'log-in', 'btn-primary', microsoftSignIn)); return box; }
   const claudeAi = /^claude\.ai /.test(s.server || '');
   if (claudeAi) {
     box.appendChild(_connSteps([
@@ -472,6 +474,7 @@ function srcAddFlow(o) {
       const used = new Set(((SourcesStore.data && SourcesStore.data.sources) || []).filter(s => s.kind === 'mcp' && s.capability === f.capability).map(s => s.server));
       const g = _connEl('div', 'src-choices');
       const ranked = servers.slice().sort((a, b) => ((b.capability === f.capability) - (a.capability === f.capability)) || ((b.status === 'ok') - (a.status === 'ok')) || a.name.localeCompare(b.name));
+      if (['calendar', 'email'].includes(f.capability)) g.appendChild(choice('mail', 'Outlook / Microsoft 365', 'Personal Outlook/Hotmail or work and school accounts. Browser sign-in, read-only.', false, () => { closeFn && closeFn(); microsoftConnectionSetup(); }));
       for (const sv of ranked) {
         const badge = _connEl('span', 'src-srv-dot st-' + ({ ok: 'ok', auth: 'auth', error: 'error' }[sv.status] || 'unknown'));
         const sub = used.has(sv.name) ? 'Already a source' : !sv.usable ? 'Only user-scope servers can be used' : sv.status === 'auth' ? 'Needs sign-in in Claude first' : sv.status === 'error' ? 'Not working in Claude right now' : (sv.capability === f.capability ? 'Looks like a ' + cap.one + ' · ' : '') + (sv.kind === 'claude.ai' ? 'claude.ai connector' : 'MCP server');

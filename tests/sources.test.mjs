@@ -189,6 +189,13 @@ test('health: claude mcp list first, a real sign-in failure sticks, probes as fa
   const g2 = { ...gmail, lastError: { at: new Date(now - 3600e3).toISOString(), code: 'CONNECTOR_AUTH', message: 'Gmail needs re-authorising.' } };
   assert.equal(sourceHealth(g2, { servers }).state, 'auth');
   assert.equal(sourceHealth({ ...g2, lastSync: new Date(now).toISOString() }, { servers }).state, 'ok');
+  for (const code of ['TOOL_MISSING', 'BAD_OUTPUT']) {
+    const failed = { ...gmail, lastError: { at: new Date(now - 1000).toISOString(), code, message: 'Read failed.' } };
+    const expected = code === 'TOOL_MISSING' ? 'setup' : 'error';
+    assert.equal(sourceHealth(failed, { servers }).state, expected, 'transport discovery cannot erase a failed read');
+    assert.equal(sourceHealth(failed, { connections: { gmail: { status: 'connected' } } }).state, expected);
+    assert.equal(sourceHealth({ ...failed, lastSync: new Date(now).toISOString() }, { servers }).state, 'ok');
+  }
   assert.equal(sourceHealth(bank, { servers }).state, 'auth');
   assert.equal(sourceHealth(cal, { servers }).state, 'error');
   assert.equal(sourceHealth({ ...cal, server: 'gone' }, { servers }).state, 'setup');

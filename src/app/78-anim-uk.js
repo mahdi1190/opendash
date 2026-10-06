@@ -122,6 +122,7 @@ let _aukShowing = false;
 function animUkCheck(o) {
   o = o || {};
   try {
+    if (typeof _locationOpeningPending !== 'undefined' && _locationOpeningPending) return false;
     const w = animUkWhere();
     if (!w) return false;
     const arrival = animUkArrivalState(w);

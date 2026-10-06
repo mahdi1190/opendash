@@ -103,11 +103,12 @@ test('every /api/ route refuses another site, reads included; only the sign-in c
     const b = bodyFor(m);
     for (const [why, h] of Object.entries(forged)) {
       const s = (await raw(port, m, p, { ...b.headers, ...h }, b.body)).status;
-      if (r.crossSite === true && m === 'GET') { assert.notEqual(s, 403, `${m} ${p} must still take Google's redirect`); exempt.push(p); continue; }
+      if (r.crossSite === true && m === 'GET') { assert.notEqual(s, 403, `${m} ${p} must still take the OAuth redirect`); exempt.push(p); continue; }
       assert.equal(s, 403, `${m} ${p} ${why}`);
     }
   }
-  assert.deepEqual([...new Set(exempt)], ['/api/google/callback'], 'exactly one cross-site GET');
+  assert.deepEqual([...new Set(exempt)].sort(), ['/api/google/callback', '/api/microsoft/callback'], 'only state-protected OAuth callbacks accept cross-site GETs');
+  assert.equal((await raw(port, 'GET', '/api/microsoft/callback?state=forged&code=forged', forged['Origin only'])).status, 400, 'Microsoft rejects an unsolicited OAuth callback');
 });
 
 test('reads that start work are refused cross-site, and still answer the page, the address bar and local programs', async () => {

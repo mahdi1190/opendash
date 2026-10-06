@@ -46,7 +46,8 @@
   document.addEventListener('DOMContentLoaded', function () { ready = true; });
   requestAnimationFrame(function () {
     t0 = performance.now();
-    if (hold) { setTimeout(function () { out(false); }, 12000); return; }
+    // Four seconds for a fresh device fix, then the complete scene/event chain.
+    if (hold) { setTimeout(function () { out(false); }, 16000); return; }
     setTimeout(maybe, 640);
     setTimeout(function () { out(false); }, 900);
   });

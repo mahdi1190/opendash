@@ -76,14 +76,15 @@ test('no provider detection accepts Windows shell shims or arbitrary executable 
   assert.equal(codexExecutable({ env: {}, home: '/none', exists: () => false }), null);
 });
 
-test('one Claude action registers its tools before checking sign-in; setup never runs a provider installer', async () => {
+test('one Link Claude action uses local setup flow for existing and missing CLI, without model probes or client-side installer commands', async () => {
   const calls = [];
-  let installed = true, ready = false;
+  let installed = true;
   const scope = vm.createContext({
-    Connections: { all: () => ({ cli: { installed } }), has: () => ready },
-    _connInstallMcp: async () => { calls.push('tools'); return true; },
-    connCheck: async () => { calls.push('check'); },
-    _connOpenTerminal: async () => { calls.push('sign-in'); },
+    Connections: { all: () => ({ cli: { installed } }) },
+    fetch: async (path, options) => { calls.push(options && options.method === 'POST' ? 'link' : 'status'); assert.ok(path.startsWith('/api/connections/local-claude')); return { ok: true, json: async () => options && options.method === 'POST' ? { busy: true, phase: 'awaiting-login' } : { busy: false, connected: true, phase: 'connected' } }; },
+    setTimeout: resolve => resolve(),
+    connRefresh: async () => { calls.push('refresh'); },
+    connCheck: () => { throw new Error('must not run a model check'); },
     toast: () => {},
   });
   vm.runInContext(readFileSync(new URL('../src/app/56-assistant-cards.js', import.meta.url), 'utf8'), scope);
@@ -91,11 +92,51 @@ test('one Claude action registers its tools before checking sign-in; setup never
   scope.guide = () => calls.push('guide');
   vm.runInContext('assistantConnectionGuide = guide', scope);
   await scope.assistantConnect('claude', () => {});
-  assert.deepEqual(calls, ['tools', 'check', 'sign-in']);
+  assert.deepEqual(calls, ['link', 'status', 'refresh']);
   calls.length = 0; installed = false;
   await scope.assistantConnect('claude', () => {});
-  assert.deepEqual(calls, ['guide']);
-  calls.length = 0; installed = true; ready = true;
+  assert.deepEqual(calls, ['link', 'status', 'refresh']);
+  calls.length = 0; installed = true;
   await scope.assistantConnect('claude', () => {});
-  assert.deepEqual(calls, ['tools', 'check']);
+  assert.deepEqual(calls, ['link', 'status', 'refresh']);
+});
+
+test('optional Claude browser opens popup synchronously, hands off only after native launch and preserves confirmation guidance', async () => {
+  const calls = [], notices = [];
+  const popup = { opener: {}, closed: false, location: { replace: url => calls.push(['navigate', url]) }, close: () => calls.push('close') };
+  const final = { connected: true, busy: false, phase: 'browser-opened', browserReady: false, browserUrl: 'https://claude.ai/code', message: 'Finish terminal confirmations, then select OpenDash.' };
+  const scope = vm.createContext({ URL, window: { open: () => { calls.push('popup'); return popup; } }, setTimeout: resolve => resolve(),
+    fetch: async (path, options) => { calls.push(path); return { ok: true, json: async () => options && options.method === 'POST' ? { busy: true, phase: 'opening-browser' } : final }; },
+    connRefresh: async () => calls.push('refresh'), toast: (message) => notices.push(message), connCheck: () => assert.fail('no model check') });
+  vm.runInContext(readFileSync(new URL('../src/app/56-assistant-cards.js', import.meta.url), 'utf8'), scope);
+  await scope.assistantConnect('claude', () => {}, 'browser');
+  assert.equal(calls[0], 'popup'); assert.equal(calls[1], '/api/connections/local-claude/browser');
+  assert.equal(popup.opener, null); assert.deepEqual(calls.at(-2), ['navigate', 'https://claude.ai/code']);
+  assert.ok(notices[0].includes('Finish terminal confirmations')); assert.ok(!notices[0].includes('Connected Claude is open'));
+});
+
+test('blocked popup offers an explicit browser action; failed browser launch keeps local connection and closes blank popup', async () => {
+  for (const failed of [false, true]) {
+    const notices = [], calls = [];
+    const popup = failed ? { closed: false, close: () => calls.push('close') } : null;
+    const flow = failed ? { connected: true, busy: false, phase: 'browser-error', message: 'Local connection remains ready; terminal unavailable.' } : { connected: true, busy: false, phase: 'browser-opened', browserReady: false, browserUrl: 'https://claude.ai/code', message: 'Select OpenDash.' };
+    const scope = vm.createContext({ URL, window: { open: () => popup }, fetch: async () => ({ ok: true, json: async () => flow }),
+      connRefresh: async () => {}, toast: message => notices.push(message), _connBtn: (label, _icon, _style, click) => ({ label, click }) });
+    vm.runInContext(readFileSync(new URL('../src/app/56-assistant-cards.js', import.meta.url), 'utf8'), scope);
+    await scope.assistantConnect('claude', () => {}, 'browser');
+    assert.equal(scope.assistantBrowserButton({ id: 'claude' }, {}, () => {}).label, 'Open connected Claude');
+    assert.ok(notices[0].includes(failed ? 'Local connection remains ready' : 'Press Open connected Claude'));
+    assert.equal(calls.includes('close'), failed);
+    assert.equal(scope.localClaudeProgress({}).connected, true);
+  }
+});
+
+test('Claude browser URL gate rejects external origins and unverified session URLs', () => {
+  const scope = vm.createContext({ URL });
+  vm.runInContext(readFileSync(new URL('../src/app/56-assistant-cards.js', import.meta.url), 'utf8'), scope);
+  for (const browserUrl of ['https://evil.example/code', 'https://claude.ai.evil.example/code', 'javascript:alert(1)', 'https://user@claude.ai/code', 'https://claude.ai/chat/test']) {
+    assert.equal(scope.localClaudeBrowserUrl({ browserReady: true, browserUrl }), null);
+  }
+  assert.equal(scope.localClaudeBrowserUrl({ phase: 'browser-opened', browserReady: false, browserUrl: 'https://claude.ai/code/unverified' }), null);
+  assert.equal(scope.localClaudeBrowserUrl({ browserReady: true, browserUrl: 'https://claude.ai/code/session-test' }), 'https://claude.ai/code/session-test');
 });

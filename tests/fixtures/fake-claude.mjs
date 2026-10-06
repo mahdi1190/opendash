@@ -12,7 +12,7 @@ process.stdin.setEncoding('utf8');
 process.stdin.on('data', d => { stdin += d; });
 process.stdin.on('end', async () => {
   const t0 = Date.now();
-  if (process.env.FAKE_CLAUDE_LOG) appendFileSync(process.env.FAKE_CLAUDE_LOG, JSON.stringify({ argv, stdin, t0, pid: process.pid }) + '\n');
+  if (process.env.FAKE_CLAUDE_LOG) appendFileSync(process.env.FAKE_CLAUDE_LOG, JSON.stringify({ argv, stdin, t0, pid: process.pid, toolSearch: process.env.ENABLE_TOOL_SEARCH, nonblocking: process.env.MCP_CONNECTION_NONBLOCKING }) + '\n');
   if (delay) await new Promise(r => setTimeout(r, delay));
   if (process.env.FAKE_CLAUDE_LOG) appendFileSync(process.env.FAKE_CLAUDE_LOG, JSON.stringify({ end: Date.now(), pid: process.pid }) + '\n');
   const out = (o) => process.stdout.write(JSON.stringify(o) + '\n');

@@ -73,7 +73,7 @@ node tools/release-export.mjs --force          # replace a non-empty --out that 
 
 The file set is an **allowlist** (`tools/release-rules.mjs`):
 
-- folders: `src/`, `server/`, `lib/`, `mcp/`, `tools/`, `vendor/`, `tests/`,
+- folders: `src/`, `server/`, `lib/`, `mcp/`, `cloudflare/`, `tools/`, `vendor/`, `tests/`,
   `docs/`, `.github/`, and `assets/brand/` only;
 - files: `README*.md`, `LICENSE`, `CHANGELOG`, `CONTRIBUTING`,
   `CODE_OF_CONDUCT`, `SECURITY`, `SUPPORT`, `THIRD_PARTY_NOTICES`,

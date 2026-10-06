@@ -57,7 +57,7 @@ export default function register(app) {
     fetchOther: async (s, { from, to, timeZone }) => {
       const disc = sources.cached();
       const r = await fetchCalendarSource(s, {
-        from, to, timeZone, serverDef: s.kind === 'mcp' ? sources.serverDef(s.server) : null,
+        dataDir, from, to, timeZone, serverDef: s.kind === 'mcp' ? sources.serverDef(s.server) : null,
         denyServers: ((disc && disc.servers) || []).filter(x => x.kind === 'claude.ai').map(x => x.name),
       });
       await saveSourceSnapshot(paths, s.id, { from, to, ...r });
