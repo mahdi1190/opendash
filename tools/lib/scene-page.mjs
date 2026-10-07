@@ -160,6 +160,9 @@ async function loadPage(chrome, opts) {
   const size = opts.size || { w: 1600, h: 900 };
   const cols = opts.compare ? 2 : 1, rows = Math.max(1, (opts.refs || []).length + (opts.data != null ? 1 : 0));
   const W = opts.compare ? size.w * 2 + 8 : size.w, H = opts.compare ? (size.h + 24) * rows : size.h * rows;
+  // Stillness is decided by the page (data-sc-still), never by the machine. The Windows and macOS CI runners report the
+  // OS setting "reduce animations", which parks the scene host: the dense-scene test saw 0 frames drawn on both.
+  if (chrome.emulateMedia) await chrome.emulateMedia([{ name: 'prefers-reduced-motion', value: opts.reducedMotion ? 'reduce' : 'no-preference' }]);
   await chrome.screenshot({ html: scenePageHtml(opts), width: W, height: H, scale: opts.dpr || 1, transparent: false });
   const ok = await chrome.evaluate('Promise.race([window.__sceneReady, new Promise(r => setTimeout(() => r("timeout"), 20000))])');
   if (ok !== true) throw new Error('scene page did not get ready: ' + ok + ' ' + JSON.stringify(await chrome.evaluate('window.__sceneErrors')));
