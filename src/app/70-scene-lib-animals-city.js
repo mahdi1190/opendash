@@ -8,6 +8,7 @@
    (shapeBySeason). v0 a bright vixen, v1 a darker, greyer dog fox, v2 a
    pale sandy young fox. Parts: far legs, tail (sways), body, near legs,
    head (turns: a glance or a sniff). The legs walk. Anchor: the feet.
+   Night: rim() glow shapes (a coat sheen by day) light as a cool edge.
    ============================================================ */
 (function () {
   if (typeof sceneObjDefine !== 'function') return;   // the engine core (70-scene-0core.js) is not in this build
@@ -29,13 +30,14 @@
   defineObj({
     id: 'animal.fox', category: 'animal', size: [104, 50], variants: 3, seasonal: true, shapeBySeason: true, flippable: true, parts: ['legsFar', 'tail', 'body', 'legsNear', 'head'],
     palette: pal,
+    night: { glow: { lamp: '#a4b6d8' }, on: 1 },
     anim: { walk: { parts: ['legsNear', 'legsFar'], pivot: [4, -22], deg: 16, period: .5, bob: 1 }, sway: { part: 'tail', pivot: [-26, -26], deg: 8 }, turn: { part: 'head', pivot: [22, -28], deg: 10, period: 7, hold: .6 } },
     shadow: { rx: 34, ry: 3, h: 40 },
     tags: ['uk', 'london', 'city', 'street', 'garden', 'night', 'fox', 'urban-fox', 'kit:urban', 'kit:animals', 'kit:london', 'role:animal'],
     credit: 'city kit: the urban red fox',
     build(v, r, ctx) {
       const s = ctx.season, thick = s === 'winter' || s === 'autumn', i = v, C = `@coat.${i}`, D = `@coatD.${i}`, L = `@coatL.${i}`;
-      const fur = thick ? 2.4 : 0;
+      const fur = thick ? 2.4 : 0, F = fur / 2, rim = d => ({ f: L, d, glow: 'lamp', detail: true });
       // legs: thin with black stockings; the far pair darker
       const leg = (x, back, far) => {
         const c = far ? D : C;
@@ -45,15 +47,18 @@
       };
       const legsFar = [...leg(-12, true, true), ...leg(22, false, true)], legsNear = [...leg(-18, true, false), ...leg(28, false, false)];
       // the brush: long, low, a white tip; full in winter
-      const tail = [[C, `M-26-28q-16-2-28 4q-12 6-16 14q8-2 18-6q14-4 26-6z`], [D, `M-70-10q10-2 20-6q12-4 24-6l1 3q-14 2-24 6q-10 4-21 3z`, .7], ['@white', `M-70-10q2-5 7-7q-1 4-1 6z`]];
+      const tail = [[C, `M-26-28q-16-2-28 4q-12 6-16 14q8-2 18-6q14-4 26-6z`], [D, `M-70-10q10-2 20-6q12-4 24-6l1 3q-14 2-24 6q-10 4-21 3z`, .7], ['@white', `M-71-9.6q1-6 9-9q-2 5-1 8z`]];
       if (thick) tail.push([C, `M-30-29q-18-6-32 2q-10 6-10 14q6-8 18-10z`, .9]);
+      tail.push(rim('M-26-28q-16-2-28 4q-11 5-15 13l1-1q4-7 14-11q11-5 29-4z'));
       // the body: deep chest, slim waist, a white bib under the throat
-      const body = [[C, `M-30-26q2-${8 + fur} 16-${10 + fur * .5}q18-2 34 0q10 2 12 10q2 8-4 10q-6 4-14 2q-14-2-24 0q-14 2-20-8z`], [D, `M-28-20q12 4 24 0q14-2 26 2q6 2 10 0q-2 6-10 6q-12-2-24 0q-16 2-26-8z`, .7], [L, `M-14-35q14-3 28-1q-12 1-28 3z`, .7], ['@white', `M18-22q8 2 12-4q1 8-6 10q-4 0-6-6z`]];
+      const body = [[C, `M-30-26q2-${8 + fur} 16-${10 + fur * .5}q18-2 34 0q10 2 12 10q2 8-4 10q-6 4-14 2q-14-2-24 0q-14 2-20-8z`], [D, `M-28-20q12 4 24 0q14-2 26 2q6 2 10 0q-2 6-10 6q-12-2-24 0q-16 2-26-8z`, .7], ['@white', `M18-22q8 2 12-4q1 8-6 10q-4 0-6-6z`]];
       if (s === 'spring') body.push([L, ell(-6, -24, 6, 3) + ell(8, -30, 5, 2.4), .5]);
       if (thick) body.push({ s: L, w: 1, op: .6, d: 'M-20-34l-2-3M-10-36l-1-3M0-36l0-3M10-36l1-3' });
+      body.push(['@whiteD', 'M-14-17q16 2 32-1q-6 4-16 4q-10 0-16-3z', .6], rim(`M-29-30q3-${5 + F} 15-${6 + F}q18-2 34 0l-1 1.4q-15-1.8-33 0q-11 1-15 ${5 + F}z`));
       // the head: pointed muzzle, white cheeks, black-backed ears
       const head = [[C, `M18-36q4-8 12-8q8 0 12 6l10 6q-2 3-8 3q-6 2-12 0q-8 2-14-7z`], ['@white', `M34-29q8 2 17-1q-2 3-8 3q-5 2-9-2z`], ['@ink', ell(51, -32, 1.6, 1.2)], ['@eye', ell(38, -36, 1.4, 1)], ['@ink', ell(38.4, -36, .6, .6)],
-        ['@black', `M24-42l2-12l8 9z`], [C, `M26-42l1.8-9l5.6 6.4z`], ['@black', `M30-43l5-10l4 11z`], [D, `M31.4-43l3.4-7l2.6 7.6z`]];
+        ['@black', `M24-42l2-12l8 9z`], [C, `M26-42l1.8-9l5.6 6.4z`], ['@black', `M30-43l5-10l4 11z`], ['@white', `M31.4-43l3.4-7l2.6 7.6z`, .7],
+        rim('M23-39q3-5 8-5q7 0 11 6l10 6-1 1-10-6q-4-5-10-5q-5 0-8 4zM30-43l5-10 1 2-4 8z')];
       return { legsFar, tail, body, legsNear, head };
     },
   });

@@ -70,13 +70,16 @@
         { s: '@spar', w: 3, d: 'M7 -30L-60 -32' }, { s: '@rope', w: .8, op: .8, d: 'M-56 -32L-40 -12M7 -150L62 -10', detail: true },
         [`@jib.${v}`, 'M10 -146L58 -16L14 -24Q22 -90 10 -146z'], { f: `@jibD.${v}`, d: 'M10 -146Q22 -90 14 -24L22 -22Q26 -90 10 -146z', op: .5, detail: true },
       ], heel);
+      const C = `@crew.${1 + v}`;
       const hull = [
         { s: '@wake', w: 1.6, op: .55, d: 'M-70 4h50M30 4h40', detail: true },
-        [`@hull.${v}`, 'M-64 -14H58Q68 -14 66 -8L56 4H-60Q-64 -4 -64 -14z'], { f: `@hullD.${v}`, d: 'M-62 -4H62L56 4H-60z', op: .7, detail: true }, { f: `@boot.${v}`, d: 'M-63 -6H64L62 -3H-62z', detail: true },
-        [`@deck.${v}`, 'M-64 -16H58Q66 -16 68 -12H-64z'],
-        // the helm: one small anonymous figure sitting out on the side deck, hand on the tiller (detail: a tile still draws the boat)
-        { f: `@crew.${1 + v}`, d: 'M-38 -14Q-40 -30 -34 -36Q-26 -38 -24 -30L-24 -14z', detail: true }, { f: '@crew.0', d: 'M-36 -14L-14 -10L-12 -14L-26 -18z', detail: true }, { f: '@skin', d: circ(-31, -42, 5), detail: true }, { f: '@crew.0', d: 'M-36 -44Q-31 -50 -26 -44z', detail: true },
-        { s: '@spar', w: 1.6, d: 'M-62 -14L-40 -22', detail: true },
+        // the far topside's inside over the near sheer; the helm IN the cockpit (hidden below the waist), tiller, rudder (detail)
+        [`@deck.${v}`, 'M-64-18q54-2.6 104-3q18-.6 28-4.4q-8 6.4-28 8.4q-50 3-104-1z'], { s: `@hull.${v}`, w: 1.2, d: 'M-63-18.6q53-2.6 103-3q18-.6 27-4', detail: true },
+        { f: C, d: 'M-38-15q-1-14 5-18q7-1 9 6l1 12z', detail: true }, { f: '@skin', d: circ(-30.6, -38, 4.6), detail: true }, { f: '@crew.0', d: 'M-35.2-39q4.6-6 9.2 0z', detail: true },
+        { s: C, w: 2.4, d: 'M-29-30q-5 4-11 7', detail: true }, { s: '@spar', w: 1.6, d: 'M-62-19l22-4', detail: true }, { f: `@hullD.${v}`, d: 'M-64-17l-5 20 5 3 2-18z', detail: true },
+        // the near side: sheer rising to the bow, bilge, boot-top on the waterline, gunwale
+        [`@hull.${v}`, 'M-64-18q54 4 104 1q20-2 28-8q-1 13-11 24q-13 7-73 7q-36 0-46-4z'], { f: `@hullD.${v}`, d: 'M-63-5q63 3 124-1q-5 6-17 10q-24 2-60 2q-36 0-46-4z', op: .7, detail: true },
+        { f: `@boot.${v}`, d: 'M-63-6q63 3 125-1.4l-1 2.4q-61 4.2-124 1.4z', detail: true }, { f: `@deck.${v}`, d: 'M-64-18q54 4 104 1q20-2 28-8l.4 2q-8 6-28.4 7.8q-50 3-104-1.2z', detail: true },
       ];
       return { sails, hull: withM(hull, heel) };
     },
