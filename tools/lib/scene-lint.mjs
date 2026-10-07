@@ -26,7 +26,7 @@ const ENGINE_NAMES = {
   signText: 'sceneSignText', archetype: 'sceneArchetype', table: 'sceneTable', tableDefine: 'sceneTableDefine', batch: 'sceneBatch', fromArchetype: 'sceneFromArchetype',
   kitPick: 'sceneKitPick', item: 'sceneItem', scaleBucket: 'sceneScaleBucket', light: 'sceneLight', colour: 'sceneColour', line: 'sceneLine',
   index: 'SCENE_ARCHETYPE_INDEX', regionKits: 'SCENE_REGION_KITS', regionParams: 'SCENE_REGION_PARAMS', kits: 'SCENE_KITS', roles: 'SCENE_ROLES', categories: 'SCENE_CATEGORIES',
-  retroMax: 'SCENE_RETRO_MAX_BYTES',
+  retroMax: 'SCENE_RETRO_MAX_BYTES', dups: 'sceneObjDups',
 };
 export function engineOf(reg) {
   const get = (reg && reg.R && typeof reg.R.get === 'function') ? reg.R.get : () => undefined;
@@ -516,6 +516,8 @@ export function lintObject(id, { E, thresholds = {} } = {}) {
   if (!d) return { id, pass: false, rules: [rule('object', 'identity', false, id, 'a defined object', `no object ${id}`)], stats: {} };
   const cats = E.categories || ['tree', 'plant', 'ground', 'rock', 'water', 'bird', 'animal', 'person', 'vehicle', 'boat', 'building', 'street', 'rail', 'structure', 'prop', 'sky', 'landmark'];
   add('identity', ID_RE.test(id) && cats.includes(d.category) && id.split('.')[0] === d.category, id, '<category>.<name>, a known category', `${id}: the id must be <category>.<name> (${cats.join(' ')}) and match its category (${d.category})`);
+  const dupes = typeof E.dups === 'function' ? E.dups().filter(x => x === id).length : 0;
+  add('unique', !dupes, dupes ? `defined ${dupes + 1} times` : 'once', 'one definition', `${id} is defined ${dupes + 1} times (the last definition wins and hides the others): keep one, in its own 70-scene-lib-* file`);
   const [smin, smax] = O.size || [4, 2000];
   const size = Array.isArray(d.size) ? d.size : null;
   add('size', size && size.every(v => v >= smin && v <= smax), size ? size.join(' x ') : 'none', `${smin} to ${smax}`, `size [w, h] within ${smin} to ${smax} units`);

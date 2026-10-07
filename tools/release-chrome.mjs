@@ -149,6 +149,10 @@ export async function launchChrome({ executable = findChrome(), timeoutMs = 3000
       const timer = setTimeout(() => { try { proc.kill(); } catch {} }, 3000);
       await exited;
       clearTimeout(timer);
+      // release the DevTools pipes and stderr explicitly once Chrome has exited: a process that launches many Chromes
+      // (the CLI tests, a sheet of many refs) must not keep their pipe handles open (Windows crashed with an access violation)
+      listeners.clear();
+      for (const st of [toChrome, fromChrome, proc.stderr]) { try { st.removeAllListeners('data'); st.destroy(); } catch { /* already closed */ } }
       for (let i = 0; i < 5; i++) {
         try { rmSync(profile, { recursive: true, force: true }); break; } catch { await new Promise(r => setTimeout(r, 300)); }
       }
