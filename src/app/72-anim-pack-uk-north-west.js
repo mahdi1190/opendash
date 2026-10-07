@@ -244,7 +244,7 @@
       +stoneWindow(490,292,162,287)+stoneWindow(510,627,123,117)
       +stoneWall('M394 744V228l22-20 23 20v516zM701 744V230l22-20 24 20v514z','#c39270','#77535d')
       +`<path fill="#d1a281" d="M390 231v-24h11v12h11v-12h12v12h12v-12h11v24zM696 230v-24h12v12h12v-12h12v12h12v-12h10v24z"/>`
-      +tracery+`<g fill="none" stroke="#bc9278" stroke-width="5">${rail}</g><path stroke="#705660" stroke-width="8" d="M747 374l453 61"/>`
+      +tracery+`<path fill="none" stroke="#bc9278" stroke-width="5" d="${rail}"/><path stroke="#705660" stroke-width="8" d="M747 374l453 61"/>`
       +stoneWindow(793,680,94,64)+stoneWindow(1043,680,94,64)
       +`<path fill="#3e3843" d="M938 744v-99q35-62 70 0v99z"/><path fill="none" stroke="#dab08b" stroke-width="5" d="M927 744v-108q46-86 92 0v108"/><path fill="#946c66" d="M757 744v-91h19v91zM1157 744V462h19v282z"/>`
       +Array.from({length:12},(_,i)=>`<path stroke="#6d535a" stroke-width="4" d="M${421+i*63} 780v-31"/>`).join('')+`<path stroke="#82616a" stroke-width="5" d="M414 760h763"/>`;

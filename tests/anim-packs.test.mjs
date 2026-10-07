@@ -5,21 +5,22 @@
 // Then the daily look (seeded, stable within a day) and the look prefs. Synthetic data only.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { animRegistryFiles, packSourceFiles } from '../tools/lib/anim-sources.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
-const PACK_FILES = readdirSync(APP).filter(f => /^72-anim-pack-[a-z0-9-]+\.js$/.test(f)).sort();
+const PACK_FILES = packSourceFiles(APP);
 const PART_FILES = PACK_FILES.filter(f => /\/\/ UK_SCENE_PART: ([a-z0-9-]+)\/([a-z0-9-]+)/.test(src(f)));
 const NAMES = ['ANIM_SLOTS', 'ANIM_SLOT_IDS', 'ANIM_THEMES', 'ANIM_THEME_IDS', 'ANIM_ITEM_MAX_BYTES', 'ANIM_FULL_ITEM_MAX_BYTES', 'ANIM_RICH_ITEM_MAX_BYTES', 'ANIM_RICH_TILE_MAX_BYTES', 'ANIM_PACK_MAX_BYTES', 'animItemMaxBytes', 'animPackMaxBytes', 'animValidatePack', 'animRegisterPack',
   'animPacks', 'animPack', 'animItem', 'animItems', 'animLookNormalize', 'animSeasonOf', 'animDailyPick', 'animDailyLook', 'animThemeFor', 'animItemHtml',
   'animSpecialPick', 'animPickFor', 'animCountdownHeat', 'animCountdownStage', 'animStreakGrow', 'almDay', 'almAddDays', 'almEaster', 'almFestivals', 'almIsFestival', 'almSeasonMark', 'almClocksChange', 'almSunTimes', 'almSkyMoment',
-  'almMoonPhase', 'almSceneLight', 'almMoonDiscPath', 'almMeteorShower', 'almAuroraNights', 'ALM_MOVING', 'UK_REGIONS', 'UK_COUNTIES', 'ukCounty', 'ukCountiesIn', 'ukCountyNearest', 'ukTowns'];
-// The same order the build concatenates: the almanac, the libraries, the registry, then every pack.
-const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(APP).filter(f => /^71-anim-(us2?|asia2?|uk)[-.]/.test(f)).sort(), ...PACK_FILES].map(src).join('\n;\n');
+  'almMoonPhase', 'almSceneLight', 'almMoonDiscPath', 'almMeteorShower', 'almAuroraNights', 'ALM_MOVING', 'UK_REGIONS', 'UK_COUNTIES', 'ukCounty', 'ukCountiesIn', 'ukCountyNearest', 'ukTowns', 'animRegion'];
+// The same order the build concatenates (one sorted list: the region files, the almanac, the libraries, the registry, the scene kits ... then every pack).
+const body = animRegistryFiles(APP).map(src).join('\n;\n');
 // eslint-disable-next-line no-new-func
 const R = new Function(`"use strict";\n${body}\nreturn { ${NAMES.join(', ')}, ANIM_SCENES, Delight };`)();
 
@@ -37,11 +38,20 @@ function markupProblem(html) {
   return stack.length ? `unclosed <${stack[stack.length - 1]}>` : '';
 }
 
-test('there is at least the core pack, and every pack file registered a valid pack', () => {
+/** Pack files of a region that is still being drawn (complete: false in its config): the scaffold's pack file registers nothing until it has an item (animRegisterPack answers {ok: false} for an empty pack), so it is not a failure yet. Once the region says complete: true every pack file must register. */
+function emptyScaffoldFiles(ids) {
+  return PACK_FILES.filter(f => !PART_FILES.includes(f)).filter(f => {
+    const pack = f.replace(/^72-anim-pack-|\.js$/g, ''), region = R.animRegion(pack.split('-')[0]);
+    return !ids.includes(pack) && region && region.owns(pack) && region.complete === false;
+  });
+}
+
+test('there is at least the core pack, and every pack file registered a valid pack (an empty scaffold pack file of a region that is not complete yet may register nothing)', () => {
   assert.ok(PACK_FILES.includes('72-anim-pack-core.js'));
   const ids = R.animPacks().map(p => p.id);
   assert.ok(ids.includes('core'));
-  assert.ok(ids.length >= PACK_FILES.length - PART_FILES.length, `registration files ${PACK_FILES.length - PART_FILES.length}, registered ${ids.length}`);
+  const waiting = emptyScaffoldFiles(ids);
+  assert.ok(ids.length >= PACK_FILES.length - PART_FILES.length - waiting.length, `registration files ${PACK_FILES.length - PART_FILES.length}, registered ${ids.length}${waiting.length ? ` (${waiting.length} empty scaffold pack file(s) of a region that is not complete: ${waiting.join(', ')})` : ''}   (node tools/anim-pack.mjs status <region>)`);
   for (const file of PART_FILES) {
     const [, pack, part] = /\/\/ UK_SCENE_PART: ([a-z0-9-]+)\/([a-z0-9-]+)/.exec(src(file));
     assert.ok(R.animPack(pack)?.items.some(it => it.ukPart === part), `${file}: its drawing builder contributed scenes`);

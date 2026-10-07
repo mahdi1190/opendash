@@ -244,7 +244,7 @@ test('Fleet to Boston USA stops welcoming after three actual page loads with sha
   vm.runInContext("animUkArrivalState({id:'hampshire',town:'Fleet',lat:51.28,lon:-0.84})",fleet.context);
   for (let load=0;load<7;load++) {
     const h = harness({stored,day:'2026-10-06'});
-    vm.runInContext(src('71-anim-us.js')+'\n'+src('78-anim-uk.js'),h.context);
+    vm.runInContext(src('71-anim-0region.js')+'\n'+src('71-anim-us.js')+'\n'+src('78-anim-uk.js'),h.context);   // the US is a region (71-anim-0region.js)
     h.context.APP_CONFIG.locationMode='manual';
     h.context.APP_CONFIG.location={name:'Boston',countryCode:'US',lat:42.36,lon:-71.06};
     h.context.animUkWhere=()=>null;

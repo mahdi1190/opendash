@@ -3,15 +3,15 @@
 // (the travel city or the home weather town), and Texas stays the Texas pack's. Synthetic data only.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { animRegistryFiles } from '../tools/lib/anim-sources.mjs';
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
-const PACK_FILES = readdirSync(APP).filter(f => /^72-anim-pack-[a-z0-9-]+\.js$/.test(f)).sort();
 const NAMES = ['US_STATES', 'US_PLACES', 'usPlace', 'usStateOf', 'usWhere', 'animPacks', 'animSpecialPick', 'animDailyPick', 'animItems'];
-const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(APP).filter(f => /^71-anim-(us2?|asia2?|uk)[-.]/.test(f)).sort(), ...PACK_FILES].map(src).join('\n;\n');
+const body = animRegistryFiles(APP).map(src).join('\n;\n');   // the animation files in the order the build concatenates them
 // eslint-disable-next-line no-new-func
 const R = new Function(`"use strict";\n${body}\nreturn { ${NAMES.join(', ')} };`)();
 

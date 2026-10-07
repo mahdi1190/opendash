@@ -361,6 +361,9 @@ test('a folder scan never reads data/, state/ or secrets/ and flags them, and a 
   assert.ok(!r.findings.some(f => f.rule === 'email'), 'nothing inside data/ was read');
   assert.equal(forbiddenPath('.claude/settings.json', false), null, 'a reviewed project settings file may be scanned');
   assert.equal(forbiddenPath('.claude/settings.local.json', false).rule, 'forbidden-path');
+  assert.equal(forbiddenPath('.claude/skills', true), null, 'the shared project skills folder may be scanned');
+  assert.equal(forbiddenPath('.claude/skills/animation-pack/SKILL.md', false), null, 'a shared project skill is committed content (its text is still scanned)');
+  assert.equal(forbiddenPath('.claude/worktrees', true).rule, 'forbidden-path', 'the rest of .claude/ stays per-machine');
 });
 
 test('allowlist: narrow, reasoned exceptions; private terms by a glob and forbidden paths can never be allowed', (t) => {

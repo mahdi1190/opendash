@@ -1,5 +1,8 @@
-# Local Claude Code config (per-machine paths and permissions): never committed
-.claude/
+# Local Claude Code config (per-machine paths, permissions, worktrees) stays
+# ignored; the shared PROJECT skills (.claude/skills/) are committed content.
+.claude/*
+!.claude/skills/
+!.claude/skills/**
 
 # Editor / OS noise
 .vscode/
@@ -48,3 +51,4 @@ tasks-*.md
 # Google OAuth client + refresh tokens — NEVER commit (public repo)
 secrets/
 .env
+.anim-ref/

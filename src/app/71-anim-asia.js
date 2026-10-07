@@ -1,5 +1,6 @@
 /* ============================================================
-   ASIA ANIMATION PACKS, the shared part. PURE classic script (no DOM, no fetches, nothing
+   ASIA ANIMATION PACKS, the shared part: Asia as a REGION CONFIG over the generic framework (71-anim-0region.js,
+   which owns the lookups, the builder and the scene kit). PURE classic script (no DOM, no fetches, nothing
    looked up online). Loads before the packs (72-anim-pack-asia-*.js). Where in Asia the user is, offline:
      - travel: ctx.city is '<place id>-<cc>' for a place in ASIA_PLACES (the travel tables' ids; Tokyo,
        Singapore and Dubai are the world pack's while travelling: ASIA_WORLD_TRAVEL)
@@ -11,7 +12,8 @@
      city     priority 1.2: big city = a full-screen signature opening, small city = a small element (symbol)
    The full-screen scenes are drawn in 71-anim-asia2-scenes-*.js and registered with asiaSceneAdd();
    the pack builders turn every registered scene into its opening item. A festival or the birthday
-   (priority 2+) still wins the day. Guide: docs/dev/ASIA_PACK.md. Gate: tests/anim-packs.test.mjs, tests/asia-pack.test.mjs.
+   (priority 2+) still wins the day. Guide: docs/dev/ASIA_PACK.md. Gate: tests/anim-packs.test.mjs,
+   tests/asia-pack.test.mjs, tests/region-framework.test.mjs.
    ============================================================ */
 /** Asian countries and territories: code -> [name, group]. Groups: west, central (with Asian Russia), south, east, southeast. */
 const ASIA_COUNTRIES = {
@@ -116,54 +118,28 @@ const ASIA_PLACES = [
 const ASIA_WORLD_TRAVEL = ['tokyo-jp', 'dubai-ae', 'singapore-sg'];
 const ASIA_COUNTRY_KM = 300;                       // beyond this from every row the position is not in Asia (or is a country this table does not cover)
 const ASIA_PLACE_KM = { big: 50, small: 30 };     // how close counts as "in" a city / a town
-const _asKm = (la1, lo1, la2, lo2) => {
-  const r = Math.PI / 180, dl = (la2 - la1) * r, dg = (lo2 - lo1) * r;
-  const a = Math.sin(dl / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin(dg / 2) ** 2;
-  return 12742 * Math.asin(Math.sqrt(a));
-};
-const _asHasPos = (ctx) => !!ctx && ctx.lat != null && ctx.lon != null && isFinite(ctx.lat) && isFinite(ctx.lon);
-const _asObj = (p) => p ? { id: p[0], name: p[1], cc: p[2], kind: p[5] } : null;
-/** The row a travel city id ('tokyo-jp') names, or null. */
-function _asTravelRow(cityId) {
-  const m = /^(.+)-([a-z]{2})$/.exec(String(cityId || ''));
-  return m ? ASIA_PLACES.find(p => p[0] === m[1] && p[2] === m[2].toUpperCase()) || null : null;
-}
+
+/** Asia as a region (71-anim-0region.js): the config is the whole definition, the functions below are its public names. */
+const ASIA_REGION = animRegionDefine({
+  id: 'asia', name: 'Asia', over: 'Asia', unitWord: 'country',
+  units: ASIA_COUNTRIES, places: ASIA_PLACES, unitKm: ASIA_COUNTRY_KM, placeKm: ASIA_PLACE_KM,
+  worldTravel: ASIA_WORLD_TRAVEL,
+  placeKinds: ['small'],                              // the big cities come from their scenes (B.scenes())
+  keys: { unit: 'cc', unitName: 'countryName' }, fields: { unit: 'asiaCc' },
+});
 /** The art place (a big or small city) for a ctx, {id, name, cc, kind} or null. Travel wins. */
-function asiaPlace(ctx) {
-  if (!ctx) return null;
-  if (ctx.city) { const p = ASIA_WORLD_TRAVEL.includes(ctx.city) ? null : _asTravelRow(ctx.city); return p && p[5] ? _asObj(p) : null; }
-  if (!_asHasPos(ctx)) return null;
-  let best = null, bd = Infinity;
-  for (const p of ASIA_PLACES) {
-    if (!p[5]) continue;
-    const d = _asKm(ctx.lat, ctx.lon, p[3], p[4]);
-    if (d <= ASIA_PLACE_KM[p[5]] && d < bd) { bd = d; best = p; }
-  }
-  return _asObj(best);
-}
+function asiaPlace(ctx) { return ASIA_REGION.place(ctx); }
 /** The country code for a ctx ('' = not in Asia, or travelling somewhere that is not an Asian place). Nearest table row wins. */
-function asiaCountryOf(ctx) {
-  if (!ctx) return '';
-  if (ctx.city) { const p = ASIA_WORLD_TRAVEL.includes(ctx.city) ? null : _asTravelRow(ctx.city); return p ? p[2] : ''; }
-  if (!_asHasPos(ctx)) return '';
-  let best = '', bd = ASIA_COUNTRY_KM;
-  for (const p of ASIA_PLACES) { const d = _asKm(ctx.lat, ctx.lon, p[3], p[4]); if (d < bd) { bd = d; best = p[2]; } }
-  return best;
-}
+function asiaCountryOf(ctx) { return ASIA_REGION.unitOf(ctx); }
 /** For the page (the opening sequence): where in Asia, {id, name, cc, countryName, kind} or null. A town wins, else the country. */
-function asiaWhere(ctx) {
-  const cc = asiaCountryOf(ctx);
-  if (!cc || !ASIA_COUNTRIES[cc]) return null;
-  const p = asiaPlace(ctx);
-  return p && p.cc === cc ? Object.assign({ countryName: ASIA_COUNTRIES[cc][0] }, p) : { id: '', name: ASIA_COUNTRIES[cc][0], cc, countryName: ASIA_COUNTRIES[cc][0], kind: '' };
-}
+function asiaWhere(ctx) { return ASIA_REGION.where(ctx); }
 /**
  * Full-screen scenes (the openings): ASIA_SCENES['country:JP'] (a country's signature) or ASIA_SCENES['place:tokyo'] (a big city), filled by
  * src/app/71-anim-asia2-scenes-*.js through asiaSceneAdd(entry). An entry is {key, id?, label, site, colour, mood, season, tags, svg}; svg() returns
- * the inside of a 1600 x 900 drawing built with usSceneKit() (71-anim-us.js, the shared full-scene toolkit).
+ * the inside of a 1600 x 900 drawing built with usSceneKit() (an alias of animSceneKit(), the shared full-scene toolkit in 71-anim-0region.js).
  */
-const ASIA_SCENES = {};
-function asiaSceneAdd(e) { ASIA_SCENES[e.key] = e; }
+const ASIA_SCENES = ASIA_REGION.scenes;
+function asiaSceneAdd(e) { ASIA_REGION.sceneAdd(e); }
 /**
  * A builder for an Asia pack file: const B = asiaBuilder('west');
  *   B.scenes()                      every registered scene of this group becomes a full-screen opening item (country signatures and big cities)
@@ -171,45 +147,4 @@ function asiaSceneAdd(e) { ASIA_SCENES[e.key] = e; }
  *   B.place('kyoto', {...})         a small city's element (slot symbol); big cities come from their scene
  * Then animRegisterPack(B.pack({id, name, description})).
  */
-function asiaBuilder(group) {
-  const items = [];
-  const base = { mood: 'neutral', intensity: 'subtle', theme: 'any', season: 'any', reduced: 'static', priority: 1 };
-  const inGroup = (cc) => ASIA_COUNTRIES[cc] && ASIA_COUNTRIES[cc][1] === group;
-  return {
-    items,
-    scenes() {
-      for (const key of Object.keys(ASIA_SCENES).sort()) {
-        const e = ASIA_SCENES[key];
-        const [kind, ref] = key.split(':');
-        if (kind === 'country') {
-          if (!inGroup(ref)) continue;
-          const nm = ASIA_COUNTRIES[ref][0];
-          items.push(Object.assign({}, base, { slot: 'opening', full: true, asiaKind: 'country', asiaCc: ref, asiaSignature: true, region: [ref], country: ref,
-            when: (day, ctx) => asiaCountryOf(ctx) === ref }, e, { key: undefined, id: ref.toLowerCase() + '-' + (e.id || 'signature'), label: e.label + ', ' + nm,
-            tags: ['asia', 'asia-country', nm.toLowerCase(), ref.toLowerCase(), 'signature'].concat(e.tags || []) }));
-        } else if (kind === 'place') {
-          const p = ASIA_PLACES.find(x => x[0] === ref);
-          if (!p || p[5] !== 'big' || !inGroup(p[2])) continue;
-          items.push(Object.assign({}, base, { slot: 'opening', full: true, asiaKind: 'city', asiaCc: p[2], asiaPlace: ref, asiaSize: 'big', region: [p[2]], country: p[2], priority: 1.2,
-            when: (day, ctx) => { const q = asiaPlace(ctx); return !!q && q.id === ref; } }, e, { key: undefined, id: ref + '-' + (e.id || 'skyline'), label: e.label + ', ' + p[1],
-            tags: ['asia', 'asia-city', p[1].toLowerCase(), p[2].toLowerCase(), 'big'].concat(e.tags || []) }));
-        }
-      }
-    },
-    element(cc, o) {
-      if (!inGroup(cc)) throw new Error('asia pack ' + group + ': ' + cc + ' is not a ' + group + ' country');
-      const nm = ASIA_COUNTRIES[cc][0];
-      items.push(Object.assign({}, base, { slot: 'symbol', asiaKind: 'country', asiaCc: cc, asiaSignature: false, region: [cc], country: cc, when: (day, ctx) => asiaCountryOf(ctx) === cc },
-        o, { id: cc.toLowerCase() + '-' + o.id, label: o.label + ', ' + nm, tags: ['asia', 'asia-country', nm.toLowerCase(), cc.toLowerCase(), 'element'].concat(o.tags || []) }));
-    },
-    place(id, o) {
-      const p = ASIA_PLACES.find(x => x[0] === id);
-      if (!p || p[5] !== 'small') throw new Error('asia pack: ' + id + ' is not a small art place');
-      if (!inGroup(p[2])) throw new Error('asia pack ' + group + ': ' + id + ' belongs to another group');
-      items.push(Object.assign({}, base, { slot: 'symbol', asiaKind: 'city', asiaCc: p[2], asiaPlace: id, asiaSize: 'small', region: [p[2]], country: p[2], priority: 1.2,
-        when: (day, ctx) => { const q = asiaPlace(ctx); return !!q && q.id === id; } }, o, { id: id + '-' + o.id, label: o.label + ', ' + p[1],
-        tags: ['asia', 'asia-city', p[1].toLowerCase(), p[2].toLowerCase(), 'small'].concat(o.tags || []) }));
-    },
-    pack(m) { return Object.assign({ version: '1.0.0', css: usSceneCss(), items }, m); },
-  };
-}
+function asiaBuilder(group) { return ASIA_REGION.builder(group); }

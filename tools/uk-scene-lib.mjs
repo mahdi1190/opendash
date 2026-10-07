@@ -2,19 +2,19 @@
 // loads the animation sources the way the build orders them, builds a full-screen review page,
 // and works out the review moments (dawn, noon, sunset, night, full-moon and new-moon nights)
 // for a scene's season at a place. Visual QA only; nothing here ships in the app.
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { animRegistryFiles } from './lib/anim-sources.mjs';
 
 export const root = fileURLToPath(new URL('../', import.meta.url));
 export const app = join(root, 'src', 'app');
 /** Yateley (the default place for live-sky reviews), in this computer's zone (only the calendar date depends on it). */
 export const DEFAULT_PLACE = { lat: 51.34, lon: -0.83, zone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' };
 
-/** The animation sources in build order, evaluated once: the registry, the almanac, the nature kit and every pack. */
+/** The animation sources in build order, evaluated once: the region framework, the registry, the almanac, the nature kit and every pack. */
 export function loadAnim() {
-  const files = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js',
-    ...readdirSync(app).filter(f => /^71-anim-(us2?|asia2?|uk)[-.]/.test(f)).sort(), ...readdirSync(app).filter(f => /^72-anim-pack-.*\.js$/.test(f)).sort()];
+  const files = animRegistryFiles(app);   // one list sorted as build.mjs sorts it (tools/lib/anim-sources.mjs)
   // eslint-disable-next-line no-new-func
   return new Function(files.map(f => readFileSync(join(app, f), 'utf8')).join('\n;\n') +
     '\nreturn {animPack,animItem,animItemHtml,animItemMaxBytes,almSceneLight,almSunTimes,almMoonPhase,almMoonPosition,almSunPosition,ukNatureKit};')();

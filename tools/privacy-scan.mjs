@@ -677,10 +677,12 @@ export function scanPathName(rel, { terms = null } = {}) {
 
 /** Is a path forbidden in a public tree? -> finding or null. */
 export function forbiddenPath(rel, isDir) {
-  // A reviewed project .claude/settings.json may be published (its text is still
-  // scanned); everything else in .claude/ is per-machine.
+  // A reviewed project .claude/settings.json and the shared project skills
+  // (.claude/skills/**, committed like any other source: their text is still
+  // scanned) may be published; everything else in .claude/ is per-machine.
   if (isDir && /^\.claude$/i.test(rel)) return null;
   if (/^\.claude\/settings\.json$/i.test(rel)) return null;
+  if (/^\.claude\/skills(\/|$)/i.test(rel)) return null;
   const r = neverRule(rel + (isDir ? '/' : ''));
   if (!r || (r.kind !== 'private' && r.kind !== 'local')) return null;
   return { file: rel + (isDir ? '/' : ''), line: 0, col: 0, rule: 'forbidden-path', severity: 'error', message: `${r.why}: must not be published`, text: '' };

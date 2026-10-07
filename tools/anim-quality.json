@@ -1,0 +1,1168 @@
+{
+ "_about": "Quality thresholds for animation packs (tools/lib/anim-quality.mjs reads them; `node tools/anim-pack.mjs lint` and tests/anim-quality.test.mjs apply them). CALIBRATED on the accepted corpus: every existing scene and small item passes, and each floor sits at the corpus MINIMUM (a ceiling at its maximum), so work thinner, flatter or more padded than anything already accepted fails. Each rule has min and/or max, the corpus median, the advisory levels warnMin / warnMax (the 10th / 90th percentile) and a note with the measured distribution it was set from.",
+ "_how": [
+  "profiles: \"scene\" judges every full-screen scene (item.full, 1600 x 900) and \"item\" every small 64 x 64 item, EXCEPT a rich local scene (item.rich), always judged by \"scene-rich\", and the frozen legacy lists: \"scene-legacy\" (the templated UK packs) and \"item-classic\" (functional marks and the first regional waves), each calibrated on its own corpus. A new pack is always judged by the strict \"scene\" / \"item\".",
+  "\"scene-rich\": the rich local scenes (dense nature art placed from a library of reusable objects, 71-anim-uk-nature-kit.js, with a live sky). Reuse is the point there, so the copy rules (sharedShare, distinctRatio ...) do not apply; the picture is held to its own corpus floors (palette, depth, detail spread, life) and the RENDER COST to ceilings at the heaviest accepted scene: bytes up to the registry budget ANIM_RICH_ITEM_MAX_BYTES, renderedNodes (the DOM nodes painted, every <use> expanded to the object it shows) and movingGroups (what is animated each frame). Lower is faster: aim for the median, not the ceiling.",
+  "warnMin / warnMax: the corpus 10th / 90th percentile. A drawing that passes but is thinner than that is listed as a thin spot by `lint` (advisory, never a failure): aim for the median.",
+  "advisory-only metrics (no min and no max, never a failure): \"detailPerKB\" (scenes: shapes plus path segments per KB, the \"too little drawn for its size\" advisory; shapesPerKB keeps its hard floor and carries \"advisoryIn\": \"detailPerKB\" instead of a warnMin, because a path-heavy hand-drawn scene has few shapes per KB and is rich, not padded) and \"sameDelay\" (small items: the most moving elements that share one --d, a bare x-* counting as delay 0; the level is the corpus 90th percentile, 5, because the accepted items have a median of 3 and all six gold exemplars have 3 to 5 on delay 0). `calibrate --propose` regenerates them.",
+  "A rule is a metric of tools/lib/anim-quality.mjs measure() (sharedShare / sharedShareAll are added by the registry lint: how much of a scene is identical to other scenes of its pack / of any pack): min is the least allowed, max the most. Keys starting with \"_\" and \"note\" are documentation. The structural rules (valid markup, unique ids, refs resolve, no transform on an x-* element, classes defined in css, sky gradient first, evening grade last) are always on and have no threshold.",
+  "richness: a composite. Each component is its value over the corpus median (capped at 125 %), averaged: 1.0 is the median accepted drawing. It stops one inflated count from hiding thin everything else. Its floor for scenes (0.66) is about the 3rd percentile, above the five thinnest accepted scenes, which are listed under waivers.",
+  "waivers: [{ref, rule, reason}]: an accepted item that does not meet one rule. Every waiver must still be needed (tests/anim-quality.test.mjs fails when a waived rule passes, so the list only shrinks), and the list is capped. Never add one for new work: fix the drawing.",
+  "To raise the bar after better scenes land: `node tools/anim-pack.mjs calibrate` shows threshold vs corpus; `calibrate --propose` prints thresholds computed from today's corpus. Never lower a threshold to let a drawing pass."
+ ],
+ "_corpus": {
+  "measured": "2026-10-07",
+  "scenes": 457,
+  "items": 575,
+  "scene": "us-*, asia-*, texas full scenes (229)",
+  "scene-legacy": "uk-north-west, uk-south-east full scenes that are not rich (148)",
+  "scene-rich": "the rich local scenes (item.rich: the Yateley and Fleet views of uk-south-east) (80)",
+  "item": "us-*, asia-* small items (245)",
+  "item-classic": "core, moments, rewards, seasons, sky, texas, world, uk-south-west small items (330)",
+  "recalibrated": "2026-10-07, at the merge of the scene-engine branch: scene and scene-legacy on the merged corpus, scene-rich added"
+ },
+ "profiles": {
+  "scene": {
+   "for": "every full-screen scene (item.full) of any pack not in scene-legacy: the strict profile, calibrated on the hand-drawn US, Asia and Texas scenes (229)"
+  },
+  "scene-legacy": {
+   "for": "the UK scenes (frozen list: do not add a pack here): drawn from one template, so calibrated on their own corpus (168); they share most shapes with each other, which the strict profile forbids",
+   "packs": [
+    "uk-north-west",
+    "uk-south-east"
+   ]
+  },
+  "scene-rich": {
+   "for": "every rich local scene (item.rich: dense nature art from a library of reusable objects, 71-anim-uk-nature-kit.js, live sky), whatever its pack: calibrated on its own corpus. Reuse is the point (<use> of library objects), so the copy rules do not apply; the render cost (renderedNodes, movingGroups, bytes) is capped at the heaviest accepted scene"
+  },
+  "item": {
+   "for": "every small 64 x 64 item of any pack not in item-classic: symbols, small-town marks, celebrations; calibrated on the US and Asia small items (245)"
+  },
+  "item-classic": {
+   "for": "the legacy small items (frozen list: do not add a pack here); calibrated on their own corpus (330)",
+   "packs": [
+    "core",
+    "moments",
+    "rewards",
+    "seasons",
+    "sky",
+    "texas",
+    "world",
+    "uk-south-west"
+   ]
+  }
+ },
+ "scene": {
+  "bytes": {
+   "min": 9781,
+   "warnMin": 14989,
+   "max": 32000,
+   "warnMax": 29101,
+   "median": 22899,
+   "note": "corpus n=229: min 9781, p3 12158, p10 14989, median 22899, p90 29101, max 31976"
+  },
+  "shapes": {
+   "min": 65,
+   "warnMin": 111,
+   "median": 208,
+   "note": "corpus n=229: min 65, p3 88, p10 111, median 208, p90 299, max 407"
+  },
+  "paths": {
+   "min": 13,
+   "warnMin": 28,
+   "median": 53,
+   "note": "corpus n=229: min 13, p3 23, p10 28, median 53, p90 100, max 318"
+  },
+  "pathSegments": {
+   "min": 105,
+   "warnMin": 224,
+   "median": 416,
+   "note": "corpus n=229: min 105, p3 179, p10 224, median 416, p90 849, max 1858"
+  },
+  "segmentsPerShape": {
+   "min": 0.42,
+   "warnMin": 1.09,
+   "median": 2.16,
+   "note": "corpus n=229: min 0.42, p3 0.71, p10 1.09, median 2.16, p90 4.66, max 21.17"
+  },
+  "bytesPerShape": {
+   "min": 73,
+   "warnMin": 88,
+   "median": 106,
+   "note": "corpus n=229: min 73, p3 82, p10 88, median 106, p90 156, max 330"
+  },
+  "shapesPerKB": {
+   "min": 3.1,
+   "advisoryIn": "detailPerKB",
+   "median": 9.69,
+   "note": "corpus n=229: min 3.1, p3 5.45, p10 6.57, median 9.69, p90 11.66, max 13.98"
+  },
+  "distinctShapes": {
+   "min": 57,
+   "warnMin": 105,
+   "median": 195,
+   "note": "corpus n=229: min 57, p3 87, p10 105, median 195, p90 292, max 397"
+  },
+  "distinctForms": {
+   "min": 47,
+   "warnMin": 79,
+   "median": 135,
+   "note": "corpus n=229: min 47, p3 60, p10 79, median 135, p90 208, max 304"
+  },
+  "distinctRatio": {
+   "min": 0.68,
+   "warnMin": 0.885,
+   "median": 0.986,
+   "note": "corpus n=229: min 0.68, p3 0.833, p10 0.885, median 0.986, p90 1, max 1"
+  },
+  "colours": {
+   "min": 27,
+   "warnMin": 33,
+   "median": 43,
+   "note": "corpus n=229: min 27, p3 30, p10 33, median 43, p90 52, max 68"
+  },
+  "colourClusters": {
+   "min": 15,
+   "warnMin": 20,
+   "median": 27,
+   "note": "corpus n=229: min 15, p3 18, p10 20, median 27, p90 33, max 45"
+  },
+  "coloursWithArea": {
+   "min": 13,
+   "warnMin": 20,
+   "median": 25,
+   "note": "corpus n=229: min 13, p3 17, p10 20, median 25, p90 32, max 42"
+  },
+  "tonalRange": {
+   "min": 0.824,
+   "warnMin": 0.925,
+   "median": 0.977,
+   "note": "corpus n=229: min 0.824, p3 0.874, p10 0.925, median 0.977, p90 1, max 1"
+  },
+  "hueSectors": {
+   "max": 7,
+   "warnMax": 5,
+   "median": 3,
+   "note": "corpus n=229: min 1, p3 1, p10 2, median 3, p90 5, max 7"
+  },
+  "gradients": {
+   "min": 5,
+   "warnMin": 7,
+   "median": 9,
+   "note": "corpus n=229: min 5, p3 6, p10 7, median 9, p90 11, max 14"
+  },
+  "gradientsUsed": {
+   "min": 5,
+   "warnMin": 7,
+   "median": 9,
+   "note": "corpus n=229: min 5, p3 6, p10 7, median 9, p90 11, max 14"
+  },
+  "gradientFilledShapes": {
+   "min": 5,
+   "warnMin": 17,
+   "median": 22,
+   "note": "corpus n=229: min 5, p3 12, p10 17, median 22, p90 30, max 67"
+  },
+  "translucentLayers": {
+   "min": 14,
+   "warnMin": 26,
+   "median": 40,
+   "note": "corpus n=229: min 14, p3 21, p10 26, median 40, p90 82, max 174"
+  },
+  "skyStops": {
+   "min": 2,
+   "warnMin": 3,
+   "median": 4,
+   "note": "corpus n=229: min 0, p3 3, p10 3, median 4, p90 5, max 5. Floor 2 (not the corpus 0): see the waiver for the one scene whose base is a flat fill"
+  },
+  "bands": {
+   "min": 2,
+   "warnMin": 4,
+   "median": 8,
+   "note": "corpus n=229: min 2, p3 3, p10 4, median 8, p90 13, max 32"
+  },
+  "bandFills": {
+   "min": 2,
+   "warnMin": 4,
+   "median": 6,
+   "note": "corpus n=229: min 2, p3 3, p10 4, median 6, p90 10, max 17"
+  },
+  "detailShapes": {
+   "min": 49,
+   "warnMin": 93,
+   "median": 196,
+   "note": "corpus n=229: min 49, p3 66, p10 93, median 196, p90 289, max 393"
+  },
+  "detailCells": {
+   "min": 25,
+   "warnMin": 48,
+   "median": 76,
+   "note": "corpus n=229: min 25, p3 34, p10 48, median 76, p90 98, max 113"
+  },
+  "detailColumns": {
+   "min": 8,
+   "warnMin": 15,
+   "median": 16,
+   "note": "corpus n=229: min 8, p3 14, p10 15, median 16, p90 16, max 16"
+  },
+  "detailRows": {
+   "min": 6,
+   "warnMin": 8,
+   "median": 9,
+   "note": "corpus n=229: min 6, p3 7, p10 8, median 9, p90 9, max 9"
+  },
+  "focusShare": {
+   "min": 0.109,
+   "warnMin": 0.157,
+   "median": 0.222,
+   "note": "corpus n=229: min 0.109, p3 0.135, p10 0.157, median 0.222, p90 0.319, max 0.665"
+  },
+  "sizeClasses": {
+   "min": 8,
+   "warnMin": 11,
+   "median": 13,
+   "note": "corpus n=229: min 8, p3 9, p10 11, median 13, p90 16, max 17"
+  },
+  "tinyShare": {
+   "max": 0.747,
+   "warnMax": 0.313,
+   "median": 0.136,
+   "note": "corpus n=229: min 0, p3 0, p10 0, median 0.136, p90 0.313, max 0.747"
+  },
+  "hiddenShare": {
+   "max": 0.174,
+   "warnMax": 0.094,
+   "median": 0.041,
+   "note": "corpus n=229: min 0, p3 0, p10 0, median 0.041, p90 0.094, max 0.174"
+  },
+  "bottomCover": {
+   "min": 1,
+   "warnMin": 1,
+   "median": 1,
+   "note": "corpus n=229: min 1, p3 1, p10 1, median 1, p90 1, max 1"
+  },
+  "movingGroups": {
+   "min": 12,
+   "warnMin": 22,
+   "median": 60,
+   "note": "corpus n=229: min 12, p3 18, p10 22, median 60, p90 94, max 131"
+  },
+  "motionKinds": {
+   "min": 5,
+   "warnMin": 7,
+   "median": 9,
+   "note": "corpus n=229: min 5, p3 6, p10 7, median 9, p90 10, max 13"
+  },
+  "driftGroups": {
+   "min": 3,
+   "warnMin": 5,
+   "median": 7,
+   "note": "corpus n=229: min 3, p3 4, p10 5, median 7, p90 10, max 16"
+  },
+  "ambientGroups": {
+   "min": 7,
+   "warnMin": 13,
+   "median": 53,
+   "note": "corpus n=229: min 7, p3 9, p10 13, median 53, p90 85, max 119"
+  },
+  "ambientKinds": {
+   "min": 1,
+   "warnMin": 3,
+   "median": 5,
+   "note": "corpus n=229: min 1, p3 3, p10 3, median 5, p90 6, max 8"
+  },
+  "motionZones": {
+   "min": 2,
+   "warnMin": 3,
+   "median": 3,
+   "note": "corpus n=229: min 2, p3 3, p10 3, median 3, p90 3, max 3"
+  },
+  "distinctDurations": {
+   "min": 11,
+   "warnMin": 18,
+   "median": 37,
+   "note": "corpus n=229: min 11, p3 16, p10 18, median 37, p90 47, max 58"
+  },
+  "staggerDelays": {
+   "min": 6,
+   "warnMin": 13,
+   "median": 35,
+   "note": "corpus n=229: min 6, p3 9, p10 13, median 35, p90 46, max 59"
+  },
+  "movingPerShape": {
+   "min": 0.073,
+   "warnMin": 0.137,
+   "max": 0.71,
+   "warnMax": 0.529,
+   "median": 0.286,
+   "note": "corpus n=229: min 0.073, p3 0.097, p10 0.137, median 0.286, p90 0.529, max 0.71"
+  },
+  "sharedShare": {
+   "max": 0.263,
+   "warnMax": 0.058,
+   "median": 0.016,
+   "note": "corpus n=229: min 0.006, p3 0.007, p10 0.008, median 0.016, p90 0.058, max 0.263"
+  },
+  "sharedShareAll": {
+   "max": 0.361,
+   "warnMax": 0.196,
+   "median": 0.042,
+   "note": "corpus n=229: min 0.006, p3 0.011, p10 0.013, median 0.042, p90 0.196, max 0.361"
+  },
+  "unknownClasses": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=229: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "coverUps": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=229: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "richness": {
+   "min": 0.66,
+   "warnMin": 0.772,
+   "median": 0.981,
+   "cap": 1.25,
+   "components": {
+    "shapes": 208,
+    "pathSegments": 416,
+    "colourClusters": 27,
+    "gradients": 9,
+    "translucentLayers": 40,
+    "movingGroups": 60,
+    "motionKinds": 9,
+    "ambientGroups": 53,
+    "bands": 8,
+    "detailCells": 76,
+    "sizeClasses": 13,
+    "distinctForms": 135,
+    "bytes": 22899
+   },
+   "note": "composite of shapes, pathSegments, colourClusters, gradients, translucentLayers, movingGroups, motionKinds, ambientGroups, bands, detailCells, sizeClasses, distinctForms, bytes, each capped at 125% of its corpus median; corpus index n=229: min 0.555, p3 0.684, p10 0.772, median 0.981, max 1.221"
+  },
+  "detailPerKB": {
+   "warnMin": 21,
+   "median": 30.64,
+   "note": "corpus n=229: min 15.62, p3 18.9, p10 21.64, median 30.64, p90 44.96, max 81.68"
+  }
+ },
+ "scene-legacy": {
+  "bytes": {
+   "min": 11349,
+   "warnMin": 15045,
+   "max": 32000,
+   "warnMax": 28751,
+   "median": 20631,
+   "note": "corpus n=148: min 11349, p3 14201, p10 15045, median 20631, p90 28751, max 31838"
+  },
+  "shapes": {
+   "min": 81,
+   "warnMin": 103,
+   "median": 166,
+   "note": "corpus n=148: min 81, p3 83, p10 103, median 166, p90 252, max 374"
+  },
+  "paths": {
+   "min": 15,
+   "warnMin": 18,
+   "median": 52,
+   "note": "corpus n=148: min 15, p3 16, p10 18, median 52, p90 139, max 236"
+  },
+  "pathSegments": {
+   "min": 190,
+   "warnMin": 372,
+   "median": 664,
+   "note": "corpus n=148: min 190, p3 283, p10 372, median 664, p90 1262, max 1647"
+  },
+  "segmentsPerShape": {
+   "min": 0.76,
+   "warnMin": 2.54,
+   "median": 3.96,
+   "note": "corpus n=148: min 0.76, p3 2.1, p10 2.54, median 3.96, p90 7.03, max 11.92"
+  },
+  "bytesPerShape": {
+   "min": 77,
+   "warnMin": 97,
+   "median": 128,
+   "note": "corpus n=148: min 77, p3 90, p10 97, median 128, p90 163, max 235"
+  },
+  "shapesPerKB": {
+   "min": 4.36,
+   "advisoryIn": "detailPerKB",
+   "median": 8.04,
+   "note": "corpus n=148: min 4.36, p3 5.38, p10 6.29, median 8.04, p90 10.57, max 13.32"
+  },
+  "distinctShapes": {
+   "min": 73,
+   "warnMin": 95,
+   "median": 151,
+   "note": "corpus n=148: min 73, p3 81, p10 95, median 151, p90 244, max 374"
+  },
+  "distinctForms": {
+   "min": 36,
+   "warnMin": 52,
+   "median": 84,
+   "note": "corpus n=148: min 36, p3 44, p10 52, median 84, p90 135, max 201"
+  },
+  "distinctRatio": {
+   "min": 0.421,
+   "warnMin": 0.88,
+   "median": 1,
+   "note": "corpus n=148: min 0.421, p3 0.604, p10 0.88, median 1, p90 1, max 1"
+  },
+  "colours": {
+   "min": 30,
+   "warnMin": 36,
+   "median": 43,
+   "note": "corpus n=148: min 30, p3 34, p10 36, median 43, p90 55, max 73"
+  },
+  "colourClusters": {
+   "min": 19,
+   "warnMin": 23,
+   "median": 29,
+   "note": "corpus n=148: min 19, p3 21, p10 23, median 29, p90 35, max 42"
+  },
+  "coloursWithArea": {
+   "min": 13,
+   "warnMin": 16,
+   "median": 20,
+   "note": "corpus n=148: min 13, p3 15, p10 16, median 20, p90 28, max 37"
+  },
+  "tonalRange": {
+   "min": 0.892,
+   "warnMin": 0.918,
+   "median": 0.957,
+   "note": "corpus n=148: min 0.892, p3 0.918, p10 0.918, median 0.957, p90 0.969, max 1"
+  },
+  "hueSectors": {
+   "max": 8,
+   "warnMax": 5,
+   "median": 4,
+   "note": "corpus n=148: min 1, p3 2, p10 3, median 4, p90 5, max 8"
+  },
+  "gradients": {
+   "min": 5,
+   "warnMin": 8,
+   "median": 11,
+   "note": "corpus n=148: min 5, p3 6, p10 8, median 11, p90 14, max 28"
+  },
+  "gradientsUsed": {
+   "min": 5,
+   "warnMin": 8,
+   "median": 10,
+   "note": "corpus n=148: min 5, p3 6, p10 8, median 10, p90 13, max 27"
+  },
+  "gradientFilledShapes": {
+   "min": 5,
+   "warnMin": 8,
+   "median": 18,
+   "note": "corpus n=148: min 5, p3 7, p10 8, median 18, p90 27, max 35"
+  },
+  "translucentLayers": {
+   "min": 14,
+   "warnMin": 15,
+   "median": 25,
+   "note": "corpus n=148: min 14, p3 15, p10 15, median 25, p90 39, max 52"
+  },
+  "skyStops": {
+   "min": 2,
+   "warnMin": 3,
+   "median": 3,
+   "note": "corpus n=148: min 2, p3 3, p10 3, median 3, p90 4, max 5"
+  },
+  "bands": {
+   "min": 3,
+   "warnMin": 6,
+   "median": 10,
+   "note": "corpus n=148: min 3, p3 4, p10 6, median 10, p90 14, max 41"
+  },
+  "bandFills": {
+   "min": 3,
+   "warnMin": 6,
+   "median": 9,
+   "note": "corpus n=148: min 3, p3 4, p10 6, median 9, p90 12, max 15"
+  },
+  "detailShapes": {
+   "min": 47,
+   "warnMin": 84,
+   "median": 150,
+   "note": "corpus n=148: min 47, p3 61, p10 84, median 150, p90 237, max 359"
+  },
+  "detailCells": {
+   "min": 37,
+   "warnMin": 46,
+   "median": 63,
+   "note": "corpus n=148: min 37, p3 41, p10 46, median 63, p90 80, max 109"
+  },
+  "detailColumns": {
+   "min": 14,
+   "warnMin": 15,
+   "median": 16,
+   "note": "corpus n=148: min 14, p3 15, p10 15, median 16, p90 16, max 16"
+  },
+  "detailRows": {
+   "min": 5,
+   "warnMin": 7,
+   "median": 8,
+   "note": "corpus n=148: min 5, p3 6, p10 7, median 8, p90 9, max 9"
+  },
+  "focusShare": {
+   "min": 0.144,
+   "warnMin": 0.159,
+   "median": 0.256,
+   "note": "corpus n=148: min 0.144, p3 0.148, p10 0.159, median 0.256, p90 0.474, max 0.664"
+  },
+  "sizeClasses": {
+   "min": 8,
+   "warnMin": 12,
+   "median": 14,
+   "note": "corpus n=148: min 8, p3 10, p10 12, median 14, p90 16, max 17"
+  },
+  "tinyShare": {
+   "max": 0.53,
+   "warnMax": 0.337,
+   "median": 0.219,
+   "note": "corpus n=148: min 0, p3 0.018, p10 0.116, median 0.219, p90 0.337, max 0.53"
+  },
+  "hiddenShare": {
+   "max": 0.157,
+   "warnMax": 0.108,
+   "median": 0.041,
+   "note": "corpus n=148: min 0, p3 0, p10 0.005, median 0.041, p90 0.108, max 0.157"
+  },
+  "bottomCover": {
+   "min": 1,
+   "warnMin": 1,
+   "median": 1,
+   "note": "corpus n=148: min 1, p3 1, p10 1, median 1, p90 1, max 1"
+  },
+  "movingGroups": {
+   "min": 10,
+   "warnMin": 14,
+   "median": 20,
+   "note": "corpus n=148: min 10, p3 12, p10 14, median 20, p90 67, max 117"
+  },
+  "motionKinds": {
+   "min": 4,
+   "warnMin": 5,
+   "median": 8,
+   "note": "corpus n=148: min 4, p3 4, p10 5, median 8, p90 10, max 12"
+  },
+  "driftGroups": {
+   "min": 3,
+   "warnMin": 6,
+   "median": 7,
+   "note": "corpus n=148: min 3, p3 4, p10 6, median 7, p90 8, max 18"
+  },
+  "ambientGroups": {
+   "min": 0,
+   "warnMin": 7,
+   "median": 13,
+   "note": "corpus n=148: min 0, p3 2, p10 7, median 13, p90 60, max 97"
+  },
+  "ambientKinds": {
+   "min": 0,
+   "warnMin": 2,
+   "median": 4,
+   "note": "corpus n=148: min 0, p3 1, p10 2, median 4, p90 6, max 8"
+  },
+  "motionZones": {
+   "min": 2,
+   "warnMin": 2,
+   "median": 3,
+   "note": "corpus n=148: min 2, p3 2, p10 2, median 3, p90 3, max 3"
+  },
+  "distinctDurations": {
+   "min": 9,
+   "warnMin": 10,
+   "median": 17,
+   "note": "corpus n=148: min 9, p3 9, p10 10, median 17, p90 36, max 51"
+  },
+  "staggerDelays": {
+   "min": 0,
+   "warnMin": 2,
+   "median": 9,
+   "note": "corpus n=148: min 0, p3 1, p10 2, median 9, p90 31, max 46"
+  },
+  "movingPerShape": {
+   "min": 0.034,
+   "warnMin": 0.069,
+   "max": 0.631,
+   "warnMax": 0.466,
+   "median": 0.169,
+   "note": "corpus n=148: min 0.034, p3 0.051, p10 0.069, median 0.169, p90 0.466, max 0.631"
+  },
+  "sharedShare": {
+   "max": 0.992,
+   "warnMax": 0.986,
+   "median": 0.354,
+   "note": "corpus n=148: min 0.007, p3 0.011, p10 0.028, median 0.354, p90 0.986, max 0.992"
+  },
+  "sharedShareAll": {
+   "max": 0.992,
+   "warnMax": 0.986,
+   "median": 0.354,
+   "note": "corpus n=148: min 0.007, p3 0.02, p10 0.032, median 0.354, p90 0.986, max 0.992"
+  },
+  "unknownClasses": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=148: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "coverUps": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=148: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "richness": {
+   "min": 0.684,
+   "warnMin": 0.819,
+   "median": 0.962,
+   "cap": 1.25,
+   "components": {
+    "shapes": 166,
+    "pathSegments": 664,
+    "colourClusters": 29,
+    "gradients": 11,
+    "translucentLayers": 25,
+    "movingGroups": 20,
+    "motionKinds": 8,
+    "ambientGroups": 13,
+    "bands": 10,
+    "detailCells": 63,
+    "sizeClasses": 14,
+    "distinctForms": 84,
+    "bytes": 20631
+   },
+   "note": "composite of shapes, pathSegments, colourClusters, gradients, translucentLayers, movingGroups, motionKinds, ambientGroups, bands, detailCells, sizeClasses, distinctForms, bytes, each capped at 125% of its corpus median; corpus index n=148: min 0.684, p3 0.766, p10 0.819, median 0.962, max 1.227"
+  },
+  "detailPerKB": {
+   "warnMin": 28,
+   "median": 42.77,
+   "note": "corpus n=148: min 19.45, p3 26.22, p10 28.95, median 42.77, p90 60.7, max 76.69"
+  }
+ },
+ "scene-rich": {
+  "bytes": {
+   "min": 258152,
+   "warnMin": 359208,
+   "max": 1000000,
+   "warnMax": 575761,
+   "median": 493377,
+   "note": "corpus n=80: min 258152, p3 340065, p10 359208, median 493377, p90 575761, max 643916"
+  },
+  "renderedNodes": {
+   "min": 3547,
+   "warnMin": 10191,
+   "max": 46730,
+   "warnMax": 37393,
+   "median": 24265,
+   "note": "corpus n=80: min 3547, p3 3876, p10 10191, median 24265, p90 37393, max 46730"
+  },
+  "movingGroups": {
+   "min": 77,
+   "warnMin": 99,
+   "max": 250,
+   "warnMax": 200,
+   "median": 152,
+   "note": "corpus n=80: min 77, p3 85, p10 99, median 152, p90 200, max 250"
+  },
+  "shapesPerKB": {
+   "min": 0.98,
+   "advisoryIn": "detailPerKB",
+   "median": 1.4,
+   "note": "corpus n=80: min 0.98, p3 1.02, p10 1.11, median 1.4, p90 1.88, max 2.09"
+  },
+  "colours": {
+   "min": 162,
+   "warnMin": 206,
+   "median": 270,
+   "note": "corpus n=80: min 162, p3 183, p10 206, median 270, p90 324, max 362"
+  },
+  "colourClusters": {
+   "min": 46,
+   "warnMin": 56,
+   "median": 70,
+   "note": "corpus n=80: min 46, p3 52, p10 56, median 70, p90 88, max 96"
+  },
+  "coloursWithArea": {
+   "min": 23,
+   "warnMin": 37,
+   "median": 56,
+   "note": "corpus n=80: min 23, p3 33, p10 37, median 56, p90 127, max 138"
+  },
+  "tonalRange": {
+   "min": 0.632,
+   "warnMin": 0.719,
+   "median": 0.976,
+   "note": "corpus n=80: min 0.632, p3 0.684, p10 0.719, median 0.976, p90 0.996, max 1"
+  },
+  "gradients": {
+   "min": 10,
+   "warnMin": 11,
+   "median": 15,
+   "note": "corpus n=80: min 10, p3 10, p10 11, median 15, p90 23, max 29"
+  },
+  "gradientsUsed": {
+   "min": 10,
+   "warnMin": 11,
+   "median": 15,
+   "note": "corpus n=80: min 10, p3 10, p10 11, median 15, p90 23, max 29"
+  },
+  "translucentLayers": {
+   "min": 152,
+   "warnMin": 196,
+   "median": 231,
+   "note": "corpus n=80: min 152, p3 174, p10 196, median 231, p90 287, max 367"
+  },
+  "bands": {
+   "min": 10,
+   "warnMin": 16,
+   "median": 25,
+   "note": "corpus n=80: min 10, p3 14, p10 16, median 25, p90 38, max 41"
+  },
+  "detailShapes": {
+   "min": 373,
+   "warnMin": 479,
+   "median": 594,
+   "note": "corpus n=80: min 373, p3 402, p10 479, median 594, p90 774, max 829"
+  },
+  "detailCells": {
+   "min": 54,
+   "warnMin": 66,
+   "median": 85,
+   "note": "corpus n=80: min 54, p3 59, p10 66, median 85, p90 100, max 110"
+  },
+  "detailColumns": {
+   "min": 15,
+   "warnMin": 16,
+   "median": 16,
+   "note": "corpus n=80: min 15, p3 16, p10 16, median 16, p90 16, max 16"
+  },
+  "detailRows": {
+   "min": 8,
+   "warnMin": 8,
+   "median": 9,
+   "note": "corpus n=80: min 8, p3 8, p10 8, median 9, p90 9, max 9"
+  },
+  "sizeClasses": {
+   "min": 17,
+   "warnMin": 18,
+   "median": 20,
+   "note": "corpus n=80: min 17, p3 17, p10 18, median 20, p90 20, max 21"
+  },
+  "bottomCover": {
+   "min": 1,
+   "warnMin": 1,
+   "median": 1,
+   "note": "corpus n=80: min 1, p3 1, p10 1, median 1, p90 1, max 1"
+  },
+  "motionKinds": {
+   "min": 18,
+   "warnMin": 19,
+   "median": 23,
+   "note": "corpus n=80: min 18, p3 18, p10 19, median 23, p90 28, max 29"
+  },
+  "ambientGroups": {
+   "min": 77,
+   "warnMin": 99,
+   "median": 152,
+   "note": "corpus n=80: min 77, p3 85, p10 99, median 152, p90 200, max 250"
+  },
+  "ambientKinds": {
+   "min": 18,
+   "warnMin": 19,
+   "median": 23,
+   "note": "corpus n=80: min 18, p3 18, p10 19, median 23, p90 28, max 29"
+  },
+  "motionZones": {
+   "min": 3,
+   "warnMin": 3,
+   "median": 3,
+   "note": "corpus n=80: min 3, p3 3, p10 3, median 3, p90 3, max 3"
+  },
+  "distinctDurations": {
+   "min": 45,
+   "warnMin": 58,
+   "median": 102,
+   "note": "corpus n=80: min 45, p3 50, p10 58, median 102, p90 128, max 158"
+  },
+  "staggerDelays": {
+   "min": 43,
+   "warnMin": 56,
+   "median": 98,
+   "note": "corpus n=80: min 43, p3 46, p10 56, median 98, p90 133, max 159"
+  },
+  "hiddenShare": {
+   "max": 0.203,
+   "warnMax": 0.141,
+   "median": 0.045,
+   "note": "corpus n=80: min 0.005, p3 0.009, p10 0.013, median 0.045, p90 0.141, max 0.203"
+  },
+  "unknownClasses": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=80: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "richness": {
+   "min": 0.657,
+   "warnMin": 0.886,
+   "median": 0.982,
+   "cap": 1.25,
+   "components": {
+    "shapes": 655,
+    "pathSegments": 14379,
+    "colourClusters": 70,
+    "gradients": 15,
+    "translucentLayers": 231,
+    "movingGroups": 152,
+    "motionKinds": 23,
+    "ambientGroups": 152,
+    "bands": 25,
+    "detailCells": 85,
+    "sizeClasses": 20,
+    "distinctForms": 528,
+    "bytes": 493377
+   },
+   "note": "composite of shapes, pathSegments, colourClusters, gradients, translucentLayers, movingGroups, motionKinds, ambientGroups, bands, detailCells, sizeClasses, distinctForms, bytes, each capped at 125% of its corpus median; corpus index n=80: min 0.657, p3 0.787, p10 0.886, median 0.982, max 1.153"
+  },
+  "detailPerKB": {
+   "warnMin": 25,
+   "median": 32.65,
+   "note": "corpus n=80: min 19.26, p3 21.28, p10 25.41, median 32.65, p90 48.89, max 57.43"
+  }
+ },
+ "item": {
+  "bytes": {
+   "min": 600,
+   "warnMin": 786,
+   "max": 14000,
+   "warnMax": 1449,
+   "median": 1018,
+   "note": "corpus n=245: min 600, p3 718, p10 786, median 1018, p90 1449, max 2003"
+  },
+  "shapes": {
+   "min": 7,
+   "warnMin": 9,
+   "median": 12,
+   "note": "corpus n=245: min 7, p3 8, p10 9, median 12, p90 18, max 31"
+  },
+  "paths": {
+   "min": 3,
+   "warnMin": 6,
+   "median": 9,
+   "note": "corpus n=245: min 3, p3 4, p10 6, median 9, p90 13, max 23"
+  },
+  "pathSegments": {
+   "min": 14,
+   "warnMin": 24,
+   "median": 44,
+   "note": "corpus n=245: min 14, p3 19, p10 24, median 44, p90 88, max 130"
+  },
+  "distinctShapes": {
+   "min": 4,
+   "warnMin": 9,
+   "median": 12,
+   "note": "corpus n=245: min 4, p3 8, p10 9, median 12, p90 18, max 31"
+  },
+  "distinctForms": {
+   "min": 4,
+   "warnMin": 8,
+   "median": 11,
+   "note": "corpus n=245: min 4, p3 7, p10 8, median 11, p90 13, max 23"
+  },
+  "distinctFills": {
+   "min": 1,
+   "warnMin": 3,
+   "median": 4,
+   "note": "corpus n=245: min 1, p3 2, p10 3, median 4, p90 5, max 5"
+  },
+  "inkCells": {
+   "min": 30,
+   "warnMin": 42,
+   "median": 52,
+   "note": "corpus n=245: min 30, p3 35, p10 42, median 52, p90 61, max 64"
+  },
+  "extentW": {
+   "min": 0.591,
+   "warnMin": 0.875,
+   "median": 1,
+   "note": "corpus n=245: min 0.591, p3 0.741, p10 0.875, median 1, p90 1, max 1"
+  },
+  "extentH": {
+   "min": 0.534,
+   "warnMin": 0.725,
+   "median": 0.875,
+   "note": "corpus n=245: min 0.534, p3 0.631, p10 0.725, median 0.875, p90 0.952, max 1"
+  },
+  "colours": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=245: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "gradients": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=245: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "inlinePaint": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=245: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "unknownClasses": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=245: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "movingGroups": {
+   "min": 1,
+   "warnMin": 3,
+   "median": 5,
+   "note": "corpus n=245: min 1, p3 2, p10 3, median 5, p90 9, max 20"
+  },
+  "motionKinds": {
+   "min": 1,
+   "warnMin": 2,
+   "median": 3,
+   "note": "corpus n=245: min 1, p3 2, p10 2, median 3, p90 5, max 7"
+  },
+  "motionShare": {
+   "min": 0.1,
+   "warnMin": 0.357,
+   "median": 0.667,
+   "note": "corpus n=245: min 0.1, p3 0.267, p10 0.357, median 0.667, p90 0.9, max 1"
+  },
+  "hiddenShapes": {
+   "max": 3,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=245: min 0, p3 0, p10 0, median 0, p90 0, max 3"
+  },
+  "sharedShare": {
+   "max": 0.563,
+   "warnMax": 0.231,
+   "median": 0.077,
+   "note": "corpus n=245: min 0, p3 0, p10 0, median 0.077, p90 0.231, max 0.563"
+  },
+  "sharedShareAll": {
+   "max": 0.632,
+   "warnMax": 0.333,
+   "median": 0.133,
+   "note": "corpus n=245: min 0, p3 0, p10 0, median 0.133, p90 0.333, max 0.632"
+  },
+  "richness": {
+   "min": 0.642,
+   "warnMin": 0.763,
+   "median": 1.002,
+   "cap": 1.25,
+   "components": {
+    "shapes": 12,
+    "pathSegments": 44,
+    "distinctForms": 11,
+    "movingGroups": 5,
+    "inkCells": 52,
+    "bytes": 1018
+   },
+   "note": "composite of shapes, pathSegments, distinctForms, movingGroups, inkCells, bytes, each capped at 125% of its corpus median; corpus index n=245: min 0.642, p3 0.685, p10 0.763, median 1.002, max 1.244"
+  },
+  "sameDelay": {
+   "warnMax": 5,
+   "median": 3,
+   "note": "corpus n=245: min 1, p3 1, p10 2, median 3, p90 5, max 10"
+  }
+ },
+ "item-classic": {
+  "bytes": {
+   "min": 321,
+   "warnMin": 453,
+   "max": 14000,
+   "warnMax": 1408,
+   "median": 743,
+   "note": "corpus n=330: min 321, p3 384, p10 453, median 743, p90 1408, max 3690"
+  },
+  "shapes": {
+   "min": 1,
+   "warnMin": 3,
+   "median": 7,
+   "note": "corpus n=330: min 1, p3 2, p10 3, median 7, p90 14, max 49"
+  },
+  "paths": {
+   "min": 0,
+   "warnMin": 1,
+   "median": 4,
+   "note": "corpus n=330: min 0, p3 0, p10 1, median 4, p90 8, max 27"
+  },
+  "pathSegments": {
+   "min": 0,
+   "warnMin": 3,
+   "median": 18,
+   "note": "corpus n=330: min 0, p3 0, p10 3, median 18, p90 43, max 94"
+  },
+  "distinctShapes": {
+   "min": 1,
+   "warnMin": 3,
+   "median": 7,
+   "note": "corpus n=330: min 1, p3 2, p10 3, median 7, p90 13, max 49"
+  },
+  "distinctForms": {
+   "min": 1,
+   "warnMin": 3,
+   "median": 5,
+   "note": "corpus n=330: min 1, p3 2, p10 3, median 5, p90 10, max 27"
+  },
+  "distinctFills": {
+   "min": 0,
+   "warnMin": 1,
+   "median": 3,
+   "note": "corpus n=330: min 0, p3 1, p10 1, median 3, p90 4, max 5"
+  },
+  "inkCells": {
+   "min": 10,
+   "warnMin": 29,
+   "median": 40,
+   "note": "corpus n=330: min 10, p3 24, p10 29, median 40, p90 50, max 64"
+  },
+  "extentW": {
+   "min": 0.219,
+   "warnMin": 0.625,
+   "median": 0.823,
+   "note": "corpus n=330: min 0.219, p3 0.531, p10 0.625, median 0.823, p90 1, max 1"
+  },
+  "extentH": {
+   "min": 0.125,
+   "warnMin": 0.584,
+   "median": 0.75,
+   "note": "corpus n=330: min 0.125, p3 0.464, p10 0.584, median 0.75, p90 0.878, max 0.984"
+  },
+  "colours": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=330: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "gradients": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=330: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "inlinePaint": {
+   "max": 0,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=330: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+  },
+  "unknownClasses": {
+   "max": 6,
+   "warnMax": 3,
+   "median": 0,
+   "note": "corpus n=330: min 0, p3 0, p10 0, median 0, p90 3, max 6"
+  },
+  "movingGroups": {
+   "min": 0,
+   "warnMin": 0,
+   "median": 2,
+   "note": "corpus n=330: min 0, p3 0, p10 0, median 2, p90 6, max 12"
+  },
+  "motionKinds": {
+   "min": 0,
+   "warnMin": 0,
+   "median": 1,
+   "note": "corpus n=330: min 0, p3 0, p10 0, median 1, p90 3, max 4"
+  },
+  "motionShare": {
+   "min": 0,
+   "warnMin": 0,
+   "median": 0.6,
+   "note": "corpus n=330: min 0, p3 0, p10 0, median 0.6, p90 1, max 1"
+  },
+  "hiddenShapes": {
+   "max": 5,
+   "warnMax": 0,
+   "median": 0,
+   "note": "corpus n=330: min 0, p3 0, p10 0, median 0, p90 0, max 5"
+  },
+  "richness": {
+   "min": 0.359,
+   "warnMin": 0.632,
+   "median": 0.989,
+   "cap": 1.25,
+   "components": {
+    "shapes": 7,
+    "pathSegments": 18,
+    "distinctForms": 5,
+    "movingGroups": 2,
+    "inkCells": 40,
+    "bytes": 743
+   },
+   "note": "composite of shapes, pathSegments, distinctForms, movingGroups, inkCells, bytes, each capped at 125% of its corpus median; corpus index n=330: min 0.359, p3 0.515, p10 0.632, median 0.989, max 1.25"
+  },
+  "sameDelay": {
+   "warnMax": 2,
+   "median": 1,
+   "note": "corpus n=330: min 0, p3 0, p10 0, median 1, p90 2, max 6"
+  }
+ },
+ "waivers": [
+  {
+   "ref": "asia-central/uz-signature",
+   "rule": "structure",
+   "reason": "Known art defect: in iwan() of src/app/71-anim-asia2-scenes-4.js the first two <path> template pieces end at 'z' without the closing quote and slash, so the markup is malformed (the browser drops those paths). Fix the source, then delete this waiver."
+  },
+  {
+   "ref": "asia-south/af-signature",
+   "rule": "structure",
+   "reason": "Known art defect: in lake() of src/app/71-anim-asia2-scenes-6.js the first <path> template piece ends at 'z' without the closing quote and slash, so the markup is malformed (the browser drops those paths). Fix the source, then delete this waiver."
+  },
+  {
+   "ref": "core/scene-passport",
+   "rule": "x-transform",
+   "reason": "Known art defect: in src/app/71-anim-library.js the x-mark rect keeps a static rotate() that its own animation replaces; wrap it in <g transform>. Fix the source, then delete this waiver."
+  },
+  {
+   "ref": "asia-west/jo-signature",
+   "rule": "sky-gradient",
+   "reason": "Deliberate composition: a flat base with the sky only in a gradient window between the canyon walls. Strong picture, thin by count."
+  },
+  {
+   "ref": "asia-west/jo-signature",
+   "rule": "skyStops",
+   "reason": "Same: the sky gradient is a window, not the base layer."
+  },
+  {
+   "ref": "asia-west/jo-signature",
+   "rule": "richness",
+   "reason": "One of the five thinnest accepted scenes (12 moving groups); on the do-better list."
+  },
+  {
+   "ref": "us-mountain/nm-white-sands",
+   "rule": "richness",
+   "reason": "One of the five thinnest accepted scenes: pale blob dunes, little life; on the do-better list."
+  },
+  {
+   "ref": "asia-west/sa-signature",
+   "rule": "richness",
+   "reason": "One of the five thinnest accepted scenes: five cloned camels, boxy rock arch; on the do-better list."
+  },
+  {
+   "ref": "texas/el-paso-star-scene",
+   "rule": "richness",
+   "reason": "One of the five thinnest accepted scenes: a flat strip of silhouettes; on the do-better list."
+  },
+  {
+   "ref": "texas/west-texas-sunset",
+   "rule": "richness",
+   "reason": "One of the five thinnest accepted scenes (still a good sunset): few moving groups."
+  }
+ ]
+}

@@ -16,19 +16,27 @@ Texas keeps its own pack (`docs/dev/TEXAS_PACK.md`), so every one of the 50 stat
 
 ## Where the user is (offline, no setting)
 
-`src/app/71-anim-us.js` (pure, loads before the packs) holds `US_STATES` and `US_PLACES`:
+`src/app/71-anim-us.js` (pure, loads before the packs) holds `US_STATES` and `US_PLACES` and the US's
+region config (`animRegionDefine`, see "Regions" in `docs/dev/ANIMATION_PACKS.md`): the lookups, the
+builder and the scene kit are the generic framework in `src/app/71-anim-0region.js`, and `usPlace`,
+`usStateOf`, `usWhere`, `usBuilder`, `usSceneAdd`, `usSceneKit` and `usSceneCss` are one-line wrappers
+over it that keep the pack files and the scene files unchanged. `US_PLACES` rows are
 `[id, name, state, lat, lon, kind]`, `kind` = `big` (a big city: a signature opening), `small` (a
 small city or town: an element for the symbol slot) or `''` (an anchor, which only tells which state
 a position is in).
 
 - `usStateOf(ctx)`: the state of the nearest row within `US_STATE_KM` (190 km) of the weather town
   (`ctx.lat`, `ctx.lon`). While travelling, `ctx.city` = `<place id>-us` decides. Right beside a
-  border the neighbour can win, and the edge of Canada or Mexico can read as a US state: add rows
-  to sharpen a region.
+  border the neighbour can win. A position in Canada or Mexico within 190 km of a US row reads as a US
+  state until a Canada or Mexico region has rows there (where two regions' reaches overlap the nearer row wins,
+  `animRegionsWhere`). Regions must not overlap, so do not add US rows outside the US to sharpen the edge:
+  add the neighbour's rows in its own region, or move the edge by lowering `US_STATE_KM`, and re-run
+  `tests/region-framework.test.mjs` (it pins the radii and rejects a row inside another region's reach).
 - `usPlace(ctx)`: an art place within 50 km (big) or 30 km (small). A trip to New York is the
   world pack's (it already draws the Empire State skyline for travellers).
-- `usWhere(ctx)`: for the opening sequence in `78-anim-wire.js` ("Welcome to Seattle" with the
-  day's US opening as the emblem; the town if there is one, else the state).
+- `usWhere(ctx)`: where in the US (the town if there is one, else the state; Texas is the Texas pack's, DC
+  is one fixed place). The opening sequence in `78-anim-wire.js` reaches it through the generic
+  `animRegionWhere(animCtx())` ("Welcome to Seattle" with the day's US opening as the emblem).
 
 ## What is in a pack
 
@@ -45,12 +53,13 @@ A city beats the state's art in its slot while you are there; a festival or the 
 
 ## Full-screen openings
 
-Every state signature and every big-city opening (88) is a **full-screen scene** (`full: true`, 1600 x 900,
+Every state signature and every big-city opening (49 states and 39 big places) is a **full-screen scene** (`full: true`, 1600 x 900,
 sliced to fill any screen, <= 32 KB rendered), drawn in `src/app/71-anim-us2-scenes-1..8.js` with the shared
-kit `usSceneKit()` / `usSceneCss()` in `71-anim-us.js` (the Texas scenes' toolkit: layered sky, parallax,
+kit `animSceneKit()` / `animSceneCss()` in `71-anim-0region.js` (`usSceneKit()` / `usSceneCss()` in
+`71-anim-us.js` are aliases; the Texas scenes' toolkit: layered sky, parallax,
 ambient life, evening grade `.us-tint` / `.us-lit` / `.us-lamps` / `.us-star`). A scene file calls
-`usSceneAdd({key: 'state:NY' | 'place:buffalo', label, site, colour, mood, season, tags, svg})` and
-`usBuilder` upgrades the matching item. The small 64 x 64 art in the pack files for those items is
+`usSceneAdd({key: 'state:NY' | 'place:buffalo', label, site, colour, mood, season, tags, svg})` (the same as
+`animRegionSceneAdd('us', {...})`) and `usBuilder` upgrades the matching item. The small 64 x 64 art in the pack files for those items is
 superseded (kept as the item's source only). Elements (symbols) and small-town items stay small.
 
 All other openings (core, festivals, world cities, Texas, the UK South West) are small items: the opening

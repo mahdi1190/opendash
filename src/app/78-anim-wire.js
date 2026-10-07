@@ -176,7 +176,7 @@ function animOpeningExactScene(tx, arrival) {
   if (!tx || !arrival || arrival.exactRemaining <= 0) return;
   const look = animLook(), ctx = animCtx();
   const exact = animItems({ slot: 'opening', look }).filter(it => it.pack === tx.it.pack && !look.block.includes(it.ref) && _animFitsLevel(it, _agLevel())
-    && (it.usPlace === tx.id || it.asiaPlace === tx.id || (it.txTown && it.txTown.toLowerCase() === tx.name.toLowerCase()))
+    && ((tx.placeField && it[tx.placeField] === tx.id) || it.usPlace === tx.id || it.asiaPlace === tx.id || (it.txTown && it.txTown.toLowerCase() === tx.name.toLowerCase()))
     && _animWhen(it, todayStr(), ctx));
   if (!exact.length) return;
   const key = 'dashboard-opening-exact-' + tx.cc + '-' + tx.id;
@@ -271,10 +271,14 @@ function animOpeningSequence() {
     // No UK county: in Texas (72-anim-pack-texas.js) the welcome names the town and today's Texas opening is the emblem.
     let tx = null;
     if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, id: t.id, cc: 'US', it: pick, over: 'Texas' }; } catch (e) { tx = null; }
-    // Elsewhere in the US (71-anim-us.js, 72-anim-pack-us-*.js): the town or the state, with today's US opening as the emblem.
-    if (!w && !tx) try { const u = typeof usWhere === 'function' ? usWhere(animCtx()) : null; const pick = u ? animToday('opening') : null; if (pick && /^us-/.test(pick.pack)) tx = { name: u.name, id: u.id || u.state, cc: 'US', it: pick, over: 'USA' }; } catch (e) { tx = null; }
-    // Asia (71-anim-asia.js, 72-anim-pack-asia-*.js): the town or the country, with today's Asian opening on the stage.
-    if (!w && !tx) try { const a = typeof asiaWhere === 'function' ? asiaWhere(animCtx()) : null; const pick = a ? animToday('opening') : null; if (pick && /^asia-/.test(pick.pack)) tx = { name: a.name, id: a.id || a.cc, cc: a.cc, it: pick, over: 'Asia' }; } catch (e) { tx = null; }
+    // A region (71-anim-0region.js: the US in 71-anim-us.js, Asia in 71-anim-asia.js, and every region added since): the town or the
+    // region's own unit (state, country...), with today's opening from that region's packs (<id>-*) as the emblem. Two regions can reach
+    // the same spot (animRegionsWhere lists them nearest first): the welcome names the match of the region that owns the picked opening.
+    // id / cc / placeField let animOpeningExactScene keep a first arrival on that exact city's artwork.
+    if (!w && !tx) try {
+      const gs = typeof animRegionsWhere === 'function' ? animRegionsWhere(animCtx()) : []; const pick = gs.length ? animToday('opening') : null; const g = pick ? gs.find(m => animRegionOwns(m.region, pick.pack)) : null;
+      if (g) { const reg = animRegion(g.region), unit = reg ? g[reg.keys.unit] : ''; tx = { name: g.name, id: g.id || unit, cc: reg ? reg.countryOf(unit) : '', placeField: reg && reg.fields ? reg.fields.place : '', it: pick, over: g.over }; }
+    } catch (e) { tx = null; }
     const openingPoint = animOpeningLocation(w, tx);
     const arrival = openingPoint && typeof animLocationArrivalState === 'function' ? animLocationArrivalState(openingPoint) : null;
     try { animOpeningExactScene(tx, arrival); } catch (e) { /* location artwork unavailable */ }
@@ -291,8 +295,9 @@ function animOpeningSequence() {
     const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : stageIt ? animOpeningStageHtml(stageIt, season, tod) : animOpeningFallbackHtml(season, tod);
     const emblem = '';
     const box = document.createElement('div'); box.className = 'od-seq';
+    // The arrival budget (78-anim-uk.js) decides the regional "Welcome to"; without it (a stripped-down load) a region's match still gets it.
     box.innerHTML = `<div class="od-seq-bg">${art}</div><div class="od-seq-shade"></div>${emblem}`
-      + `<div class="od-seq-title${arrival && arrival.egg ? ' has-egg' : ''}">${openingPoint ? (arrival && arrival.remaining > 0 ? '<span class="od-seq-over">Welcome to</span>' : '') : '<span class="od-seq-over">Welcome back</span>'}${openingPoint ? `<span class="od-seq-place">${esc(openingPoint.town || openingPoint.name)}</span>` : ''}${arrival && arrival.egg ? `<span class="od-seq-egg"><b>${esc(arrival.egg.title)}</b><span>${esc(arrival.egg.detail)}</span></span>` : ''}</div>`
+      + `<div class="od-seq-title${arrival && arrival.egg ? ' has-egg' : ''}">${openingPoint ? ((arrival ? arrival.remaining > 0 : !w && !!tx) ? '<span class="od-seq-over">Welcome to</span>' : '') : '<span class="od-seq-over">Welcome back</span>'}${openingPoint ? `<span class="od-seq-place">${esc(openingPoint.town || openingPoint.name)}</span>` : ''}${arrival && arrival.egg ? `<span class="od-seq-egg"><b>${esc(arrival.egg.title)}</b><span>${esc(arrival.egg.detail)}</span></span>` : ''}</div>`
       + `<div class="od-seq-cap"><span class="od-seq-origin">${esc(cap)}</span><span class="od-seq-skip">Click or press any key to skip</span></div>`;
     sp.style.setProperty('--od-hello-ms', helloMs + 'ms');
     sp.style.setProperty('--od-scene-ms', ms[2] + 'ms');
