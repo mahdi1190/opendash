@@ -229,6 +229,144 @@
       "path": "src/app/71-anim-us2-scenes-6.js",
       "line_sha256": "9605244fe07e487cae62f8c72b8f63dfcbe9ec4f9f88e69464259c7c1475ad19",
       "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": ".claude/skills/animation-pack/references/style-guide.md",
+      "line_sha256": "b0cbaa9fbca07378103823eee10cc7dff1d2aa778cad8d0f6b7d73623d0858c0",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/ANIMATION_ART_REVIEW.md",
+      "line_sha256": "17b8d34c717e209971331b7386fa30fd924b85c8f63cd927849f0de603c4120e",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/YATELEY_HANDOFF.md",
+      "line_sha256": "c2a9e2d2be1ec3612d2b2a5ccc0585711d90b455cb5dc514b1ba899fa70febca",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-animals.js",
+      "line_sha256": "7e372c655a795b37ea75df3966468203ba13b6913eefd830260520eeea7db218",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-birds-towers.js",
+      "line_sha256": "98e714537152044c1191aadfd9ddcb1ac1e95ead25acafd10e6a17693eb28fb8",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-birds-tropical.js",
+      "line_sha256": "20902c1cb656211da2ab563ede573541db38eefa7b5868e331c2e65a68ad5b23",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-birds.js",
+      "line_sha256": "418b345596b6b3a6dfa1d4dbe1ec3674f56ff15a43f8010b5ef167129eb8154d",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-birds.js",
+      "line_sha256": "a1a833b54b4e6742e0deb8eb2afcabf8e84eda9e3d6db5ff06bff226fdabf1b8",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-birds.js",
+      "line_sha256": "5a57e8edc6babcb72da14883629241203a78b5e04f472fb669384803f1ee317a",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-birds.js",
+      "line_sha256": "b8ad4862949c6fbe09f14989fe3f214741bfd97e4940245d9beb6140b2825eaa",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-birds.js",
+      "line_sha256": "f02164ddf476983dcff0d398e8d8adfd72a2d68897a5be946aa0995747c6c484",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-boats-tropical.js",
+      "line_sha256": "fbda8553323285dd3776995cdfb2ddf03c768f772294d12e62af3e4c8b2e79ec",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-ground.js",
+      "line_sha256": "b558469dd4a56620a9e6d5073adf7670ba1c328149269a4481bdddd1faef883e",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-landmark-chureito-pagoda.js",
+      "line_sha256": "de2a3f87dd629cf1fa5e64199d807ee855889e89b7461ecd98c7cb859b26bac7",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-plants-canal.js",
+      "line_sha256": "e61711efdff3c32506c8f8a65305f30b5e5b62533b89592b0f40f309176b6a80",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-trees-heath.js",
+      "line_sha256": "4a6202d06167820e1fd6572bdde28611e60ae72bd694b7cc52e132e204cedb17",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-trees-heath.js",
+      "line_sha256": "50a0dd015228fd6f66af71c90ba1feee85b2911e5c27400df6e3b84f67de62ad",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-trees-heath.js",
+      "line_sha256": "f46f52c78689421cb8db4b40f0182aa9585260a2ee40d59c6df5de99200d65c9",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-trees-heath.js",
+      "line_sha256": "69410de1f6739c73817ef2c8b9d1199aae203e4111968585a2793c4caf4977b9",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-trees-water.js",
+      "line_sha256": "7c14122e2901535b5992a76da089a231ec91b7b433aba9b5f74509303e60f981",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-trees-water.js",
+      "line_sha256": "eedc31136d9da407cab2c432ed4302ea933252e9bd7159dbab2f21e21bb6a094",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-trees-water.js",
+      "line_sha256": "a3cae828b5e922be90b6e5c1c7f5c7408e7e06e1084db273e9a82971bbdbcc10",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-water.js",
+      "line_sha256": "91c485731169621d2f8b8508a0a93be41d6de6fc5977fd07c16ce49264c0329c",
+      "why": "reviewed ordinary word"
     }
   ]
 }

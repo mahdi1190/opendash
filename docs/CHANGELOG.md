@@ -10,6 +10,19 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-10-07
+
+### Added
+
+- **Scene engine:** an object library (trees, plants, birds, animals, people, buildings, boats, landmarks) with variants, four seasons, night-lit versions and built-in motion; composed scenes as small recipes; a Canvas renderer that caches sprites, bakes still layers and redraws only what moves (about 10–20 times faster than the old SVG scenes).
+- **Animation tooling:** the region framework and `tools/anim-pack.mjs` (lint, sheet, reference, new, status, brief, guard) plus object and scene commands, a new quality standard with speed budgets, archetypes and data tables for mass scenes, and safe place-name signage.
+- **Yateley and Fleet:** 20 views rebuilt with the engine (Yateley Common, Wyndham's Pool, Yateley Green, Fleet Pond, the Basingstoke Canal), each in four seasons with the live sky.
+- **Upgrade pilot:** Singapore, New York and Mount Fuji rebuilt to the new standard.
+
+### Fixed
+
+- Flicker and lag from animated scenes on Home, the sidebar logo and the gallery.
+
 ### Added
 
 - Scene engine: scenes composed from a shared library of objects (trees, plants, birds, people, buildings, boats and landmarks drawn once, with variants, seasons and night lights), drawn on a canvas that bakes the still parts into layers, so only the moving parts cost anything per frame. Every scene follows the real sky, sun, moon, season and weather where you are.
@@ -413,7 +426,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.5.1...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/mahdi1190/opendash/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/mahdi1190/opendash/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/mahdi1190/opendash/compare/v2.4.7...v2.5.0
 [2.4.7]: https://github.com/mahdi1190/opendash/compare/v2.4.6...v2.4.7
