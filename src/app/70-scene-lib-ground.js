@@ -148,9 +148,12 @@
     tags: ['uk', 'woodland', 'leaf-litter', 'autumn', 'kit:temperate', 'kit:urban', 'role:ground'],
     credit: 'library: leaf litter',
     build(v, r, ctx) {
-      const n = { spring: 10, summer: 12, autumn: 60, winter: 34 }[ctx.season] + v * 8, lv = ['', '', ''];
-      for (let i = 0; i < n; i++) { const a = rr(r, 0, Math.PI * 2), d = Math.sqrt(r()), x = Math.cos(a) * 64 * d, y = Math.sin(a) * 10 * d; lv[i % 3] += sceneD.leaf(x, y, rr(r, 0, 6.3), rr(r, 6, 10), rr(r, 2.4, 3.6)); }
-      return { body: [['@leaves.2', lv[2]], ['@leaves.0', lv[0]], ['@leaves.1', lv[1]]] };
+      const n = { spring: 10, summer: 12, autumn: 60, winter: 34 }[ctx.season] + v * 8, lv = ['', '', ''], dv = ['', '', ''];
+      // the first 18 leaves draw at every size; the rest of a thick autumn drift is fine detail (tile stills leave it out)
+      for (let i = 0; i < n; i++) { const a = rr(r, 0, Math.PI * 2), d = Math.sqrt(r()), x = Math.cos(a) * 64 * d, y = Math.sin(a) * 10 * d, lf = sceneD.leaf(x, y, rr(r, 0, 6.3), rr(r, 6, 10), rr(r, 2.4, 3.6)); if (i < 18) lv[i % 3] += lf; else dv[i % 3] += lf; }
+      const body = [['@leaves.2', lv[2]], ['@leaves.0', lv[0]], ['@leaves.1', lv[1]]];
+      for (const k of [2, 0, 1]) if (dv[k]) body.push({ f: '@leaves.' + k, d: dv[k], detail: true });
+      return { body };
     },
   });
 })();

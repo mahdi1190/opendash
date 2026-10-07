@@ -1786,7 +1786,7 @@ the ground rules for the expected forbidden-file reasons).
      then the legacy exemplars.
    - `status --all` prints the tiers for every pack: the rich UK scenes as
      `rich`, the demo as `gold`, everything else as `legacy`.
-   - In a scratch copy (`--root C:/tmp/scene-review/root`, never this
+   - In a scratch copy (`--root <tmp>/scene-review/root`, never this
      checkout): `scene upgrade asia-southeast/singapore-skyline --box
      560,160,1120,640`, then `node build.mjs --syntax`, then `scene sheet
      asia-southeast/singapore-skyline --compare --upgrades` writes old vs
@@ -2148,7 +2148,7 @@ ground rules as the builders; ports 4394 to 4396, Chrome debug ports 9334 to
   data and perf rules); then the upgrade is set to `state: 'live'`.
 - `scene sheet <ref> --compare --times --contact` (old vs new at dawn, noon,
   golden hour, dusk and night) and `scene sheet <ref> --seasons` are saved in
-  `C:/tmp/scene-convert/compare/` and SHOWN to the user, side by side.
+  `<tmp>/scene-convert/compare/` and SHOWN to the user, side by side.
 - The item id, label, site and place fields are unchanged, and pinning the
   old id opens the new scene.
 - `status asia` and `status us` report the upgrades as gold.

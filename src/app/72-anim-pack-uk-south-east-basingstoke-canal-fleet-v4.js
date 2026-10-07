@@ -418,6 +418,6 @@ function ukSouthEastFleetCanalV4(T) {
       colour: 'slate', mood: 'dreamy', tags: tags.concat(season),
       ukPlace: place, ukLocality: town, ukTown: town, ukView: 'evening', viewReason: reason,
       ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON },
-      ...(composed ? { composed: true, full: true, scene: composed.scene, svg: composed.svg, legacySvg: (o = {}) => scene(season, o), reduced: 'static' } : { svg: (o = {}) => scene(season, o) }) });
+      ...(composed ? { composed: true, full: true, scene: composed.scene, svg: (o = {}) => composed.svg(o.season || (o.sky && Number.isFinite(o.sky.ms)) ? o : Object.assign({}, o, { season })), legacySvg: (o = {}) => scene(season, o), reduced: 'static' } : { svg: (o = {}) => scene(season, o) }) });
   }
 }

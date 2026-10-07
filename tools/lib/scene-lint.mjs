@@ -151,7 +151,11 @@ function dataRules(C, data, item, { E, thresholds, svg = true }) {
   if (arch && T.rowBytes) max('rowBytes', JSON.stringify(arch.params || {}).length, 'an archetype row (its params) is too large');
   if (svg && typeof E.svg === 'function') {
     let fill = '', tile = '';
-    try { fill = E.svg(data, { size: 'fill' }) || ''; tile = E.svg(data, { size: 'lg' }) || ''; } catch (e) { out.push(rule('data', 'svg', false, 'error', 'renders', `sceneSvg threw: ${e.message}`)); }
+    try {
+      fill = E.svg(data, { size: 'fill' }) || ''; tile = E.svg(data, { size: 'lg' }) || '';
+      // an auto-season scene is a tile in every season: the budget holds for the heaviest one (spring blossom, autumn leaves)
+      if ((data.season === 'auto' || data.season == null) && !(data.view && Math.abs(data.view.lat) < 23.5)) for (const season of ['spring', 'autumn', 'winter']) { const t = E.svg(data, { size: 'lg', season }) || ''; if (t.length > tile.length) tile = t; }
+    } catch (e) { out.push(rule('data', 'svg', false, 'error', 'renders', `sceneSvg threw: ${e.message}`)); }
     if (fill) { max('svgFillBytes', fill.length, 'the SVG still at fill is too large: fewer distinct sprites'); max('svgTileBytes', tile.length, 'the SVG still at tile size is too large'); out.push(...svgTextCheck(fill, data.signs || [])); }
   }
   return out;

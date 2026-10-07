@@ -193,10 +193,21 @@ function animTexasWhere(ctx) { const id = ANIM_TX.place(ctx); return id ? { id, 
   const SCENE_CITY = { 'fort-worth-stockyards-scene': 'fort-worth', 'dallas-skyline': 'dallas', 'houston-liftoff-scene': 'houston', 'austin-capitol-walk': 'austin', 'alamo-morning': 'san-antonio', 'el-paso-star-scene': 'el-paso' };
   const SCENE_MONTHS = { 'hill-country-bluebonnets': [3, 4, 5] };
   const scenes = typeof animTexasScenes === 'function' ? animTexasScenes() : [];
+  /* The live sky (docs/dev/SCENE_ENGINE.md section 7): each scene carries liveSky (its own place when no location is set), so
+     the real sun sets its tod class (the scenes' own dusk / night tint, lit windows and stars), and the retrofit overlay adds
+     the real moon, the season and the live weather. The paintings keep their own light: no sky veil and no land grade
+     (they would cut the skylines, mesas and trees out of the sky), and no live moon where a moon is painted. Without a live
+     sky (Node, the lint corpus) the art is byte-identical. */
+  const SCENE_PLACE = { 'hill-country-bluebonnets': [30.27, -98.87], 'west-texas-sunset': [30.31, -104.02], 'gulf-coast-sunrise': [29.3, -94.8] };
+  const SCENE_RETRO = { veil: false, grade: false, lamps: false, stars: 0, sun: 'painted', horizon: 190 };
+  const PAINTED_MOON = { 'fort-worth-stockyards-scene': 1, 'houston-liftoff-scene': 1, 'austin-capitol-walk': 1 };
   for (const o of scenes) {
     const town = SCENE_CITY[o.id] || '', months = SCENE_MONTHS[o.id] || null;
-    items.push(Object.assign({}, base, { slot: 'opening', full: true, mood: 'calm', intensity: 'subtle', texasKind: 'scene', priority: town ? 1.3 : 1, txTown: town || undefined, worldKind: town ? 'scene' : undefined,
-      when: (day, ctx) => (town ? txPlace(ctx) === town : !!txPlace(ctx)) && (!months || months.includes(+String(day).slice(5, 7))) }, o, { tags: ['texas', 'lone-star', 'scene'].concat(o.tags || []) }));
+    const t = TX_TOWNS.find(x => x[0] === town), at = SCENE_PLACE[o.id] || (t ? [t[2], t[3]] : [31, -100]);
+    let it = Object.assign({}, base, { slot: 'opening', full: true, mood: 'calm', intensity: 'subtle', texasKind: 'scene', priority: town ? 1.3 : 1, txTown: town || undefined, worldKind: town ? 'scene' : undefined,
+      when: (day, ctx) => (town ? txPlace(ctx) === town : !!txPlace(ctx)) && (!months || months.includes(+String(day).slice(5, 7))) }, o, { tags: ['texas', 'lone-star', 'scene'].concat(o.tags || []), liveSky: { lat: at[0], lon: at[1] } });
+    if (typeof sceneRetrofit === 'function') it = sceneRetrofit(it, Object.assign({}, SCENE_RETRO, PAINTED_MOON[o.id] ? { moon: false } : {}));
+    items.push(it);
   }
   animRegisterPack({
     id: 'texas', name: 'Texas', version: '1.0.0',

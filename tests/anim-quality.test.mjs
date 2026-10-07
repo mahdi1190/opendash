@@ -11,7 +11,7 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { measure, check, richness, proposeThresholds, RULE_HINTS, thinSpots, parseMarkup, pathBox, colourClusters, motionKind, checkCss, shapeKeys, sharedShares, profileFor, applyWaivers, RULE_PLAN, RICHNESS_COMPONENTS, ruleTable, stableIds, ADVISORY_PLAN, ADVISORY_MOVED, THIN_HINTS, HUE_NAMES, describe, isLegacyProfile, bytesCapFor, TARGETS, allowedTagList, forbiddenTagList, lintMarkup } from '../tools/lib/anim-quality.mjs';
-import { main, lintRegistry, loadThresholds, loadReference, loadCommands, COMMANDS } from '../tools/anim-pack.mjs';
+import { main, lintRegistry, measureRegistry, loadThresholds, loadReference, loadCommands, COMMANDS } from '../tools/anim-pack.mjs';
 import { loadRegistry, findBrowser, registrySources, CROPS, SIZES, DEFAULT_AT, itemPage, sizesPage, contactPage } from '../tools/lib/anim-render.mjs';
 import { mkdirSync } from 'node:fs';
 
@@ -20,6 +20,14 @@ const TH = loadThresholds(ROOT);
 const REG = loadRegistry(ROOT);
 const RES = lintRegistry(REG, TH);                       // measures every item once
 const BY_REF = new Map(RES.results.map(r => [r.ref, r]));
+// The convert stage (docs/dev/SCENE_ENGINE.md 17) turned every rich hand-drawn scene into a composed one, so nothing in the live
+// registry is judged by scene-rich any more. Its floors were calibrated on that art, which each converted item keeps as
+// legacySvg: the scene-rich corpus is that legacy art, measured exactly as lintRegistry measured it (shares against the registry).
+const RICH_LEGACY = RES.results.some(r => r.profile === 'scene-rich') ? [] : measureRegistry(REG,
+  REG.items().filter(e => e.full && e.composed && typeof e.item.legacySvg === 'function')
+    .map(e => Object.assign({}, e, { composed: false, rich: true, item: Object.assign({}, e.item, { composed: false, rich: true, svg: e.item.legacySvg }) }))
+, TH).map(r => ({ ref: r.entry.ref, pack: r.entry.pack, profile: 'scene-rich', metrics: r.metrics, failures: [], waived: [] }));
+const CORPUS = RES.results.concat(RICH_LEGACY);   // calibration and advisory checks: the live corpus plus the retired rich art
 const PACK_CSS = (id) => (REG.packs().find(p => p.id === id) || {}).css || '';
 const SCENE_CLASSES = REG.classesFor({ css: PACK_CSS('us-pacific') });
 
@@ -32,7 +40,8 @@ const lintItem = (inner, profile = 'item') => { const m = measure(wrapItem(inner
 
 test('the registry has full scenes and small items to lint, in every profile', () => {
   assert.ok(RES.summary.scenes >= 390 && RES.summary.small >= 570, `${RES.summary.scenes} scenes, ${RES.summary.small} small items`);
-  for (const p of ['scene', 'scene-legacy', 'scene-rich', 'item', 'item-classic']) assert.ok(RES.results.some(r => r.profile === p), `something is judged by ${p}`);
+  for (const p of ['scene', 'scene-legacy', 'scene-rich', 'item', 'item-classic']) assert.ok(CORPUS.some(r => r.profile === p), `something is judged by ${p}`);
+  assert.ok(RES.results.some(r => r.profile === 'composed'), 'something is judged by composed');
 });
 
 for (const id of [...new Set(RES.results.map(r => r.pack))]) {
@@ -253,7 +262,7 @@ test('thresholds: valid, documented, and covering every rule of every profile', 
 
 test('advisory-only metrics (detailPerKB, sameDelay): no floor, no ceiling, a level at the corpus 10th / 90th percentile, and shapesPerKB hands its advisory to detailPerKB', () => {
   for (const [profile, plan] of Object.entries(RULE_PLAN)) {
-    const kind = profile.startsWith('scene') ? 'scene' : 'item', rs = RES.results.filter(r => r.profile === profile);
+    const kind = profile.startsWith('scene') ? 'scene' : 'item', rs = CORPUS.filter(r => r.profile === profile);
     for (const [metric, side] of Object.entries(ADVISORY_PLAN[kind])) {
       const t = TH[profile][metric];
       assert.deepEqual(plan[metric], [], `${profile}.${metric} is in the plan with no limited side`);
@@ -273,7 +282,7 @@ test('advisory-only metrics (detailPerKB, sameDelay): no floor, no ceiling, a le
   }
   // calibrate --propose regenerates exactly these entries (the file is the corpus' answer, not a hand edit)
   for (const profile of Object.keys(RULE_PLAN)) {
-    const kind = profile.startsWith('scene') ? 'scene' : 'item', rs = RES.results.filter(r => r.profile === profile);
+    const kind = profile.startsWith('scene') ? 'scene' : 'item', rs = CORPUS.filter(r => r.profile === profile);
     const proposed = proposeThresholds(rs.map(r => r.metrics), profile, { caps: { bytes: bytesCapFor(profile, REG.limits) } });
     for (const metric of Object.keys(ADVISORY_PLAN[kind])) assert.deepEqual(proposed[metric], TH[profile][metric], `${profile}.${metric}`);
     for (const [metric, by] of Object.entries(ADVISORY_MOVED[kind])) { assert.equal(proposed[metric].advisoryIn, by); assert.equal(proposed[metric].warnMin, undefined); }
@@ -316,7 +325,7 @@ test('thresholds: the byte caps are the registry budgets and the floors are not 
   assert.equal(TH['scene-rich'].bytes.max, REG.limits.rich, 'a rich scene: the registry budget ANIM_RICH_ITEM_MAX_BYTES');
   // each floor is at the corpus minimum of its profile: raising it would fail an accepted drawing, lowering it lets weaker work in
   for (const profile of Object.keys(RULE_PLAN)) {
-    const rs = RES.results.filter(r => r.profile === profile);
+    const rs = CORPUS.filter(r => r.profile === profile);
     for (const [metric, t] of Object.entries(TH[profile])) {
       if (metric.startsWith('_') || metric === 'richness' || t.min == null) continue;
       const floor = Math.min(...rs.filter(r => !r.waived.some(w => w.rule === metric)).map(r => r.metrics[metric]));
@@ -485,7 +494,7 @@ test('cli: reference prints the exemplars and the weaker scenes', async () => {
 
 test('calibration: proposing thresholds from today\'s corpus reproduces the committed floors (only the two documented overrides differ)', () => {
   for (const profile of Object.keys(RULE_PLAN)) {
-    const rs = RES.results.filter(r => r.profile === profile);
+    const rs = CORPUS.filter(r => r.profile === profile);
     const caps = { bytes: bytesCapFor(profile, REG.limits) };
     const proposed = proposeThresholds(rs.map(r => r.metrics), profile, { caps });
     const differs = [];

@@ -289,13 +289,14 @@ test('small helpers: synthetic rows and samples are seeded, the brief card is re
 /* ---------------------------------------------------------------------------------------------
    The CLI (no engine needed)
    --------------------------------------------------------------------------------------------- */
-test('CLI: lint prints the tier (legacy floors: below the new standard) and the STANDARD summary; --json carries tier', async () => {
+test('CLI: lint prints the tier (legacy floors: below the new standard; an upgrade is drafted) and the STANDARD summary; --json carries tier', async () => {
+  // New York has a DRAFT upgrade (the pilot, 71-scene-upgrade-us-new-york.js): still the legacy art, tier 'upgrading'
   const r = await run(['lint', '--ref', 'us-northeast/new-york-skyline']);
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /PASS {2}us-northeast\/new-york-skyline {2}\(scene\) {2}\(legacy floors: below the new standard\)/);
-  assert.match(r.out, /standard: 0 of 1 full scenes at the new standard \(gold\); 1 legacy \(below the new standard\)/);
+  assert.match(r.out, /PASS {2}us-northeast\/new-york-skyline {2}\(scene\) {2}\(legacy floors: below the new standard; an upgrade is drafted\)/);
+  assert.match(r.out, /standard: 0 of 1 full scenes at the new standard \(gold\); 1 upgrading \(below the new standard\)/);
   const j = JSON.parse((await run(['lint', '--ref', 'us-northeast/new-york-skyline,us-northeast/ny-statue', '--json'])).out);
-  assert.equal(j.items[0].tier, 'legacy');
+  assert.equal(j.items[0].tier, 'upgrading');
   const at = await run(['lint', '--ref', 'us-northeast/new-york-skyline', '--at', 'not-a-time']);
   assert.equal(at.code, 1); assert.match(at.err, /--at must be an ISO time/);
 });
@@ -309,9 +310,9 @@ test('CLI: status prints the STANDARD line and per-pack tier columns; --standard
   assert.equal(j.standard.list.length, 132); assert.equal(TIERS.reduce((n, t) => n + j.standard[t], 0), 132, 'every scene has exactly one tier');
   assert.ok(j.standard.legacy > 100, 'most of Asia is hand-drawn (legacy) until the upgrades land');
   const all = await run(['status', '--all']);
-  assert.match(all.out, /uk-south-east .* \s+80 \s+\d+/); assert.match(all.out, /us-northeast/); assert.match(all.out, /texas/);
+  assert.match(all.out, /uk-south-east \s+80 \s/, 'the convert stage: the 80 Yateley and Fleet items are composed and gold'); assert.match(all.out, /us-northeast/); assert.match(all.out, /texas/);
   const aj = JSON.parse((await run(['status', '--all', '--json'])).out).standard;
-  assert.ok(aj.rich >= 80 && aj.legacy > 300);
+  assert.ok(aj.gold >= 80 && aj.legacy > 300);
 });
 
 test('CLI: reference prints THE BAR first, then the legacy exemplars', async () => {
@@ -362,7 +363,8 @@ test('CLI with the engine: scene lint over the demo pack and a 50-row batch with
 });
 
 test('CLI with the engine: scene upgrade --dry-run suggests skyline-water for Singapore, falls back to basic while it is not built, and lists the two files', { skip: ENGINE || (!INDEX && 'the archetype index is not in this checkout yet') }, async () => {
-  const r = await run(['scene', 'upgrade', 'asia-southeast/singapore-skyline', '--box', '560,160,1120,640', '--dry-run', '--json']);
+  // Singapore already has the pilot's draft upgrade: --force scaffolds over it (--dry-run still writes nothing)
+  const r = await run(['scene', 'upgrade', 'asia-southeast/singapore-skyline', '--box', '560,160,1120,640', '--dry-run', '--force', '--json']);
   assert.equal(r.code, 0, r.err);
   const j = JSON.parse(r.out);
   assert.equal(j.suggest[0].id, 'skyline-water'); assert.equal(j.key, 'place:singapore');

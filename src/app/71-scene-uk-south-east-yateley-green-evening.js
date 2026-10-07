@@ -97,7 +97,7 @@
       { obj: { 'plant.wildflowers': 1, 'plant.grass': 3 }, layer: 'fore', variant: 0, seed: 49, area: { poly: [[-160, 790], [200, 812], [700, 806], [700, 866], [-160, 874]] }, n: 170, minGap: 10, s: [0.7, 1.1], sByY: [[790, 0.85], [870, 1.2]], anim: false, tint: { col: '#b8a050', k: [0.08, 0.08] } },
       { obj: { 'plant.wildflowers': 1, 'plant.grass': 3 }, layer: 'fore', variant: 1, seed: 50, area: { poly: [[1000, 806], [1400, 800], [1760, 770], [1760, 866], [1000, 866]] }, n: 160, minGap: 10, s: [0.7, 1.1], sByY: [[780, 0.85], [866, 1.2]], anim: false,
         mask: { avoid: [{ rect: [1090, 800, 1270, 852] }] } },
-      { obj: 'plant.bluebells', layer: 'fore', variant: [0, 1], seed: 51, area: { rect: [-160, 846, 260, 870] }, n: 10, minGap: 26, s: [0.7, 1.1], anim: false },
+      // (no bluebell clump here: its spring sprites put the tile still over the 150 KB budget, reviewer 7 Oct)
       { obj: 'plant.grass', layer: 'front', variant: [0, 1], seed: 52, area: { rect: [-160, 884, 620, 906] }, n: 26, minGap: 18, s: [1.3, 1.7], anim: 'strip' },
       { obj: 'plant.grass', layer: 'front', variant: [0, 1], seed: 53, area: { rect: [1060, 884, 1760, 906] }, n: 26, minGap: 18, s: [1.3, 1.7], anim: 'strip' },
     ],

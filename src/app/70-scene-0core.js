@@ -348,9 +348,14 @@ function sceneCompile(data, opt) {
     // stratified flips and sizes: exactly round(n * flip) mirrored and the size range covered evenly (seeded order), so a
     // small group never comes out all one way or all one size by chance (the variety rule, 10.2)
     if (got.length > 1) {
-      const sr = sceneRnd(sceneHash(data.id + '|strat|' + ri)), order = got.map((g, i) => [sr(), i]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
-      const nf = Math.round(got.length * (rule.flip == null ? 0.5 : rule.flip));
-      order.forEach((gi, k) => { got[gi].flip = k < nf; });
+      // flips per object of the rule (a mixed rule's minor object is its own small group: the variety rule judges each object)
+      const sr = sceneRnd(sceneHash(data.id + '|strat|' + ri)), keys = got.map(() => sr()), fs = rule.flip == null ? 0.5 : rule.flip, byObj = new Map();
+      got.forEach((g, i) => { const k = String(g.obj); if (!byObj.has(k)) byObj.set(k, []); byObj.get(k).push(i); });
+      for (const idx of byObj.values()) {
+        if (idx.length < 2 && byObj.size > 1) continue;
+        const nf = Math.round(idx.length * fs);
+        idx.slice().sort((a, b) => keys[a] - keys[b]).forEach((gi, k) => { got[gi].flip = k < nf; });
+      }
       if (Array.isArray(rule.s)) {
         const o2 = got.map((g, i) => [sr(), i]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
         o2.forEach((gi, k) => { const g = got[gi], s0 = rule.s[0] + (rule.s[1] - rule.s[0]) * (k + sr()) / got.length; g.s = Math.round(s0 * _scLerpY(rule.sByY, g.y) * 100) / 100; });
@@ -423,7 +428,12 @@ function sceneItem(meta, data) {
   else if (meta.liveSky) item.liveSky = meta.liveSky;
   else if (Number.isFinite(meta.lat) && Number.isFinite(meta.lon)) item.liveSky = { lat: meta.lat, lon: meta.lon };
   else item.liveSky = true;
-  item.svg = (o) => sceneSvg(item, o);
+  // a still with no clock (Node, gallery sheets, tiles) draws the item's own season when it has one (ukSeason / sceneSeason:
+  // the seasonal items of one auto-season view), so its four items are four pictures; a live sky or o.season decides otherwise
+  item.svg = (o) => {
+    const own = item.sceneSeason || item.ukSeason;
+    return sceneSvg(item, own && !(o && (o.season || (o.sky && Number.isFinite(o.sky.ms)))) ? Object.assign({}, o, { season: own }) : o);
+  };
   return item;
 }
 const _scPacks = Object.create(null);

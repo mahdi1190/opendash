@@ -222,7 +222,7 @@
     credit: "the nature kit's flower symbols (flowerSym)",
     build(v, r, ctx) {
       const body = [], stems = [];
-      const leafs = [];
+      const leafs = [], umbels = [];
       if (ctx.season === 'winter') {
         // winter: dead seed heads and a dandelion clock or two
         let st = '', hd = '', fl = '';
@@ -239,12 +239,14 @@
         if (i % 2) leafs.push(leafD(bx, -h * .25, lean + (i % 4 ? .9 : -.9), 9, 3));
         if (kind === 'harebell') add(c[0], leafD(tx, ty, Math.PI * .9, 7, 3) + leafD(tx + 3, ty + 6, Math.PI * .85, 6, 2.6));
         else if (kind === 'foxglove') { let d = ''; for (let j = 0; j < 7; j++) d += leafD(tx + 2, ty + j * 5, 2.2, 6.4 * (1 - j * .06), 2.6); add(c[0], d); }
-        else if (kind === 'cowparsley') { let d = '', ray = ''; for (let u = 0; u < 4; u++) { const ua = (u / 3 - .5) * 1.6, ux = tx + Math.sin(ua) * 7, uy = ty - Math.cos(ua) * 5; ray += `M${f1(tx)} ${f1(ty + 3)}L${f1(ux)} ${f1(uy)}`; for (let j = 0; j < 6; j++) { const a = rr(r, 0, 6.28), q = rr(r, 0, 3.2); d += circ(ux + Math.cos(a) * q, uy + Math.sin(a) * q * .6 - 1, 1.2); } } stems.push(ray); add(c[0], d); }
+        else if (kind === 'cowparsley') { let d = '', ray = '', cap = ''; for (let u = 0; u < 4; u++) { const ua = (u / 3 - .5) * 1.6, ux = tx + Math.sin(ua) * 7, uy = ty - Math.cos(ua) * 5; ray += `M${f1(tx)} ${f1(ty + 3)}L${f1(ux)} ${f1(uy)}`; cap += circ(ux, uy - 1, 3); for (let j = 0; j < 6; j++) { const a = rr(r, 0, 6.28), q = rr(r, 0, 3.2); d += circ(ux + Math.cos(a) * q, uy + Math.sin(a) * q * .6 - 1, 1.2); } } stems.push(ray); add(c[0], cap); umbels.push(d); }
         else if (kind === 'ragwort') add(c[0], circ(tx - 3, ty, 2.2) + circ(tx + 3, ty - 1, 2.2) + circ(tx, ty - 3, 2.2) + circ(tx + 1, ty + 2, 2));
         else { let pet = ''; for (let j = 0; j < 5; j++) { const a = j / 5 * Math.PI * 2 + i; pet += leafD(tx, ty, a, c[2] * 1.3, c[2] * .55); } add(c[0], pet); add(c[1], circ(tx, ty, c[2] * .38)); }
       }
       body.push({ s: '@stem', w: 1.2, d: st + stems.join('') }, ['@stem', leafs.join('')]);
       for (const [c, d] of byCol) body.push([c, d]);
+      // cow parsley florets are fine detail: tile stills draw only the umbel caps (the florets were most of the spring bytes)
+      if (umbels.length) body.push({ f: FL.cowparsley[0], d: umbels.join(''), detail: true });
       return { body };
     },
   });

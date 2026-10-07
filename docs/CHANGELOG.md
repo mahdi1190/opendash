@@ -10,6 +10,17 @@ upgrades it.
 
 ## [Unreleased]
 
+### Added
+
+- Scene engine: scenes composed from a shared library of objects (trees, plants, birds, people, buildings, boats and landmarks drawn once, with variants, seasons and night lights), drawn on a canvas that bakes the still parts into layers, so only the moving parts cost anything per frame. Every scene follows the real sky, sun, moon, season and weather where you are.
+- The Yateley Common, Yateley Green, Wyndham's Pool, Fleet Pond and Basingstoke Canal openings are rebuilt on the engine: the same places, views and pins, now with the live sky, the season by date and lit windows and lamps after dark.
+- Draft composed versions of the Singapore, New York and Mount Fuji openings (not shown yet), and a London station demo.
+- The Texas scenes now follow the real time of day (their own dusk and night light and lit windows), the real moon, the season and the live weather.
+
+### Fixed
+
+- The live-sky overlay on hand-drawn regional scenes no longer covers the land with a flat colour (the blend was isolated inside a masked group).
+
 ## [2.5.1] - 2026-10-06
 
 ### Fixed

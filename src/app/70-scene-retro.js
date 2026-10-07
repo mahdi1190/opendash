@@ -67,10 +67,12 @@ const sceneRetrofitSvg = (function () {
       const op = L.shadeOp || 0, sh = hx(L.shade), mul = hex(sh.map(c => 255 * (1 - op * (1 - c / 255))));
       const warm = clamp(1 - Math.abs((L.alt || 0) - 3) / 10, 0, 1) * (1 - (L.cover || 0)) * 0.16;
       let g = '';
-      if (op > 0.01) g += `<rect x="-160" y="-80" width="1920" height="1060" fill="${mul}" style="mix-blend-mode:multiply"/>`;
-      if (dark > 0.02) g += `<rect x="-160" y="-80" width="1920" height="1060" fill="#2a3a6a" opacity="${F(dark * 0.35)}" style="mix-blend-mode:multiply"/>`;
-      if (warm > 0.01) g += `<rect x="-160" y="-80" width="1920" height="1060" fill="${L.light}" opacity="${F(warm)}"/>`;
-      if (g) parts.grade = `<g mask="url(#${u}l)">${g}</g>`;
+      if (op > 0.01) g += `<rect mask="url(#${u}l)" x="-160" y="-80" width="1920" height="1060" fill="${mul}" style="mix-blend-mode:multiply"/>`;
+      if (dark > 0.02) g += `<rect mask="url(#${u}l)" x="-160" y="-80" width="1920" height="1060" fill="#2a3a6a" opacity="${F(dark * 0.35)}" style="mix-blend-mode:multiply"/>`;
+      if (warm > 0.01) g += `<rect mask="url(#${u}l)" x="-160" y="-80" width="1920" height="1060" fill="${L.light}" opacity="${F(warm)}"/>`;
+      // the mask goes on each rect, not on a wrapping <g>: a masked group is isolated, so mix-blend-mode inside it would
+      // blend with transparent and paint the land over (the land went white at noon, a slab at night)
+      if (g) parts.grade = g;
     }
     // windows and lamps: copies of the art's lit groups ABOVE the grade (they light at real dusk through the tod-* class)
     // (the art gets an id on each lit group, so the copy is a few bytes of <use> however big the windows are)
