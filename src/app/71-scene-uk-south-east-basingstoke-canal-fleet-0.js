@@ -85,7 +85,7 @@ function sceneCanalView(V) {
   // ---------- the water: the far reach (reflecting the sky and the far tree line), the near reach (reflecting everything beyond it)
   const zW = B[3];
   water.push({ layer: 'far', d: strip(W.WE, W.WY, W.WF, W.WY, zW * 0.98, ZM, 6), y0: r1(yOf(ZM, W.WY)), y1: r1(yOf(zW, W.WY)), base: ['#a8ccc4', '#7aaaa0', '#5a8a82'], reflect: true });
-  water.push({ layer: 'mid', d: strip(W.WE, W.WY, W.WF, W.WY, zA, zW, 7), y0: r1(yOf(zW, W.WY)), y1: 900, base: ['#86b4aa', '#4f8a80', '#2a5a54'], reflect: true, shimmer: 26, lightPath: true });
+  water.push({ layer: 'mid', d: strip(W.WE, W.WY, W.WF, W.WY, zA, zW, 7), y0: r1(yOf(zW, W.WY)), y1: 900, base: ['#86b4aa', '#4f8a80', '#2a5a54'], reflect: true, shimmer: 16, lightPath: true });
   const yW = yOf(zW, W.WY), wl = P(W.WE, W.WY, zA), wr = P(W.WF, W.WY, zA);
   const edgeAvoid = [{ rect: [r1(Math.min(wl[0], wr[0]) - 60), r1(yW - 44), r1(Math.max(wl[0], wr[0]) + 60), r1(yW + 44)] }, { rect: [-200, r1(yOf(ZM, W.WY) - 44), 1800, r1(yOf(ZM, W.WY) + 44)] }];
   // ---------- tree lines: scatter rules on strips along both banks, a band at a time (far bands thinner, fewer kinds)
@@ -123,7 +123,10 @@ function sceneCanalView(V) {
   rule({ obj: 'plant.towpath-hedge', layer: 'mid', seed: 51, area: { poly: poly(W.HEDGE - 0.5, 0, W.HEDGE + 0.1, 0, zN, zF) }, n: 40, minGap: 3, s: [0.85, 1.15], sByY: sBy('plant.towpath-hedge', 2.4) });
   rule({ obj: 'plant.towpath-hedge', layer: 'near', seed: 52, area: { poly: poly(W.OFF, 0.3, W.OFF + 1.4, 0.3, zH, zN) }, n: 18, minGap: 14, s: [0.8, 1.2], sByY: sBy('plant.towpath-hedge', 2.2, 0.3, 1.1) });
   rule({ obj: 'plant.towpath-hedge', layer: 'mid', seed: 53, area: { poly: poly(W.OFF, 0.3, W.OFF + 1.4, 0.3, zN, zF) }, n: 30, minGap: 3, s: [0.8, 1.2], sByY: sBy('plant.towpath-hedge', 2.2, 0.3) });
-  rule({ obj: { 'plant.grass': 5, 'plant.wildflowers': 2 }, layer: 'fore', seed: 11, area: { poly: poly(W.HEDGE, 0, W.TP0 + 0.1, 0, zA, zN) }, n: V.foreN ? V.foreN[0] : 340, minGap: 7, s: [0.75, 1.25], sByY: sBy('plant.grass', 0.55), anim: 'strip' });
+  // the verge: wind strips only on the nearest stretch (the animated part of the frame), static beyond it
+  const zS = Math.min(zN - 1, zA * 2.2), nV = V.foreN ? V.foreN[0] : 340, fS = Math.log(zS / zA) / Math.log(zN / zA);
+  rule({ obj: { 'plant.grass': 5, 'plant.wildflowers': 2 }, layer: 'fore', seed: 11, area: { poly: poly(W.HEDGE, 0, W.TP0 + 0.1, 0, zA, zS) }, n: Math.round(nV * 0.55), minGap: 7, s: [0.75, 1.25], sByY: sBy('plant.grass', 0.55), anim: 'strip' });
+  rule({ obj: { 'plant.grass': 5, 'plant.wildflowers': 2 }, layer: 'fore', seed: 25, area: { poly: poly(W.HEDGE, 0, W.TP0 + 0.1, 0, zS, zN) }, n: Math.round(nV * 0.45), minGap: 7, s: [0.75, 1.25], sByY: sBy('plant.grass', 0.55) });
   rule({ obj: { 'plant.grass': 4, 'plant.wildflowers': 1 }, layer: 'fore', seed: 12, area: { poly: poly(W.TP1 - 0.1, 0, W.WE, W.WY, zA, zN) }, n: V.foreN ? V.foreN[1] : 180, minGap: 7, s: [0.8, 1.3], sByY: sBy('plant.grass', 0.6) });   // static: y-sorted with the moored boats beside it
   rule({ obj: { 'plant.grass': 3, 'plant.wildflowers': 2 }, layer: 'mid', seed: 13, area: { poly: poly(W.HEDGE, 0, W.TP0, 0, zN, zF) }, n: 80, minGap: 3, s: [0.7, 1.3], sByY: sBy('plant.grass', 0.6) });
   rule({ obj: { 'plant.grass': 3, 'plant.wildflowers': 1 }, layer: 'mid', seed: 20, area: { poly: poly(W.TP1, 0, W.WE, W.WY, zN, zF) }, n: 40, minGap: 3, s: [0.7, 1.3], sByY: sBy('plant.grass', 0.6) });
