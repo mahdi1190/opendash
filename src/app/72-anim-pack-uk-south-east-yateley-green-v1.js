@@ -130,12 +130,20 @@ function ukSouthEastYateleyGreenV1(T) {
     autumn: ["Golden leaves around the green pond","Autumn reeds along the water margin","Autumn shade beside the open green","Autumn dusk beneath the birches"],
     winter: ["Bare birches around the green pond","Frosted reeds and winter waterbirds","Snow around the frozen green pond","Winter dusk beneath the bare branches"],
   };
+  // COMPOSED (docs/dev/SCENE_ENGINE.md, sections 3 and 17): when the scene engine is in the build, the four seasonal items
+  // of this view share ONE auto-season composed scene (71-scene-uk-south-east-yateley-green-wide.js, drawn by the canvas renderer: the
+  // date picks the season, the live sky the light). Every id, ukPlace, ukView, ukSeason, season and the rotation stay as
+  // they were; the hand-drawn art above is kept as legacySvg (the old-versus-new sheets) and is the scene without the engine.
+  const ygFound = typeof sceneItems === 'function' && typeof sceneItem === 'function' ? sceneItems('uk-south-east-yateley-green').find(i => i.id === 'yateley-green-1') : null;
+  const ygScene = ygFound ? ygFound.scene : null;
   for (const view of [0]) for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     const originalSeason = view === 2 ? 'autumn' : 'summer', reason = seasonalReasons[season][view];
-    add('hampshire', kind, { id: `${place}-${view + 1}${season !== originalSeason ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
+    const legacy = (o = {}) => scene(season, o);
+    const o = { id: `${place}-${view + 1}${season !== originalSeason ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
       colour: season === 'winter' ? 'blue' : season === 'autumn' ? 'amber' : 'green', mood: view === 3 ? 'dreamy' : 'calm', tags: tags.concat(season),
       ukPlace: place, ukLocality: town, ukTown: town, ukView: ['wide', 'close', 'detail', 'evening'][view], viewReason: reason,
       ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON },
-      svg: (o = {}) => scene(season, o) });
+      svg: legacy };
+    add('hampshire', kind, ygScene ? Object.assign(sceneItem(Object.assign({ intensity: 'subtle' }, o), ygScene), { season: [season], liveSky: o.liveSky, legacySvg: legacy }) : o);
   }
 }

@@ -152,12 +152,20 @@ function ukSouthEastYateleyGreenV2(T) {
   const place = 'yateley-green', label = 'Yateley Green', town = 'Yateley', kind = 'landscape', tags = ['village green', 'pond', 'wildflowers'];
   const reasons = { spring: 'Spring flowers along the pond margin', summer: 'Summer insects across the pond margin', autumn: 'Autumn reeds along the water margin', winter: 'Frosted reeds and winter waterbirds' };
   const view = 1;
+  // COMPOSED (docs/dev/SCENE_ENGINE.md, sections 3 and 17): when the scene engine is in the build, the four seasonal items
+  // of this view share ONE auto-season composed scene (71-scene-uk-south-east-yateley-green-close.js, drawn by the canvas renderer: the
+  // date picks the season, the live sky the light). Every id, ukPlace, ukView, ukSeason, season and the rotation stay as
+  // they were; the hand-drawn art above is kept as legacySvg (the old-versus-new sheets) and is the scene without the engine.
+  const ygFound = typeof sceneItems === 'function' && typeof sceneItem === 'function' ? sceneItems('uk-south-east-yateley-green').find(i => i.id === 'yateley-green-2') : null;
+  const ygScene = ygFound ? ygFound.scene : null;
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     const reason = reasons[season];
-    add('hampshire', kind, { id: `${place}-${view + 1}${season !== 'summer' ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
+    const legacy = (o = {}) => scene(season, o);
+    const o = { id: `${place}-${view + 1}${season !== 'summer' ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
       colour: season === 'winter' ? 'blue' : season === 'autumn' ? 'amber' : 'green', mood: 'calm', tags: tags.concat(season),
       ukPlace: place, ukLocality: town, ukTown: town, ukView: 'close', viewReason: reason,
       ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON },
-      svg: (o = {}) => scene(season, o) });
+      svg: legacy };
+    add('hampshire', kind, ygScene ? Object.assign(sceneItem(Object.assign({ intensity: 'subtle' }, o), ygScene), { season: [season], liveSky: o.liveSky, legacySvg: legacy }) : o);
   }
 }
