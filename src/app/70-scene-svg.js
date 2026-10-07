@@ -1,0 +1,475 @@
+/* ============================================================
+   SCENE ENGINE: the SVG still renderer and the helpers both renderers share
+   (docs/dev/SCENE_ENGINE.md sections 4, 6.1, 6.2, 6.5 and 8.3; builder B).
+   PURE classic script: no DOM and no page globals at load; it only defines
+   functions and consts. The core (70-scene-0core.js: sceneCompile, sceneLight,
+   sceneObjShapes, sceneColour, sceneWind ...) is called lazily, inside functions.
+
+   sceneSvg(dataOrThunk, o)    ONE still frame of a composed scene (t = 0: every actor at its
+                               offset, every hook at its phase) as the inner markup of a
+                               <svg viewBox="0 0 1600 900">. Used by Node, tests, PNG sheets, tiny
+                               sizes and browsers without a canvas. Symbols + <use>, fresh ids.
+   sceneRendererFor(it, o)     'canvas' | 'svg' (the table in 6.1)
+   sceneHostAttrs(it, o)       the data-sc-* attributes and the placeholder sky colours of a canvas host
+   sceneSvgCss()               '' (a still needs no keyframes)
+   Shared with 78-scene-canvas.js (pure, so Node tests them):
+   sceneLodFor(size, detail)   the level of detail of a size (fill/hero 1, tile .5, lg/xl .3, smaller .15)
+   sceneLightKey(L, season)    the quantised light: sprites and bitmaps re-bake only when it changes
+   sceneSpriteKey(...)         the sprite cache key (6.3)
+   sceneAnimPose(a, t, L, x)   one hook's object-local affine matrix [a b c d e f] and alpha at time t
+   sceneActorAt(a, t)          an actor's place on its path at t: {x, y, s, dir, alpha}
+   sceneFlockAt(f, i, t)       bird i of a flock at t: {x, y, s, dir}
+   sceneParticleSet / sceneParticleAt   seeded season particles (petals, motes, leaves, snow) and rain
+   sceneBakePlan(C)            which layers share a bake bitmap (at most 5 land bitmaps + the sky)
+   sceneFrameDraws(C)          the animated draws per frame (the 300 budget)
+   scenePathBox(d, m)          the (conservative) bounds of SVG path data, through a matrix
+   sceneSignLayout(sign)       the board, bars and text box of a sign (both renderers draw the same)
+   ============================================================ */
+const SCENE_SVG_FILL_MAX_BYTES = 1000000, SCENE_SVG_TILE_MAX_BYTES = 150000;
+const SCENE_SIGN_FAMILY = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const SCENE_DRAW_BUDGET = 300;
+const SCENE_MAX_BITMAPS = 6;
+
+/** The level of detail for a size (6.1): fill / hero 1 (0.5 for Home's card, detail 'tile'), lg / xl 0.3, smaller 0.15. */
+function sceneLodFor(size, detail) {
+  if (!size || size === 'fill' || size === 'hero') return detail === 'tile' ? 0.5 : 1;
+  return size === 'lg' || size === 'xl' ? 0.3 : 0.15;
+}
+const _SC_SMALL_SIZES = ['xs', 'sm', 'md', 'tip', 'dense'];
+/** Which renderer draws a composed item at these options (6.1). The canvas only exists in the browser bundle. */
+function sceneRendererFor(it, o) {
+  o = o || {};
+  if (o.renderer === 'svg') return 'svg';
+  if (typeof sceneCanvasSupported !== 'function' || !sceneCanvasSupported()) return 'svg';
+  if (_SC_SMALL_SIZES.includes(o.size || 'md')) return 'svg';
+  return 'canvas';
+}
+/** The scene data of an item, a data object or a thunk (thunks are evaluated once). */
+const _scThunks = new WeakMap();
+function _scDataOf(x) {
+  if (x && x.composed && typeof sceneData === 'function') return sceneData(x);
+  const s = x && x.scene !== undefined && !x.layers && !x.place ? x.scene : x;
+  if (typeof s !== 'function') return s;
+  if (!_scThunks.has(s)) _scThunks.set(s, s());
+  return _scThunks.get(s);
+}
+/** The season to draw (5.1): o.season, else a fixed scene season, else from the live clock, else 'summer'. */
+function _scSeasonOf(data, o) {
+  if (o && o.season) return o.season;
+  if (data.season && data.season !== 'auto') return data.season;
+  if (o && o.sky && Number.isFinite(o.sky.ms) && typeof sceneSeason === 'function') return sceneSeason(o.sky.ms, data.view && data.view.lat, data);
+  return 'summer';
+}
+/** The light for a scene at these options (sceneLight with the view, the season and the authored moment). */
+function _scLightOf(data, o, season) {
+  const view = Object.assign({}, data.view || {}, { season, at: data.at || (data.view && data.view.at) });
+  return typeof sceneLight === 'function' ? sceneLight(o || {}, view) : null;
+}
+/** The data-sc-* attributes of a canvas host (6.2) and the placeholder sky colours. */
+function sceneHostAttrs(it, o) {
+  o = o || {};
+  const lod = sceneLodFor(o.size, o.detail);
+  const reduced = !!o.reduced, still = reduced || !(o.live || o.hover);
+  let top = '#3a80c4', low = '#dcebf2';
+  try {
+    const data = _scDataOf(it), season = _scSeasonOf(data, o), L = _scLightOf(data, o, season);
+    if (L && /^#[0-9a-f]{6}$/i.test(L.top || '')) top = L.top;
+    if (L && /^#[0-9a-f]{6}$/i.test(L.low || '')) low = L.low;
+  } catch (e) { /* the placeholder stays the day sky */ }
+  // the sky the host draws: "off" (the authored moment, QA), "ms,lat,lon" (the host keeps it fixed when it is far from now), else live
+  const sk = o.sky && Number.isFinite(o.sky.ms) ? ` data-sc-sky="${Math.round(o.sky.ms)},${_scR2(o.sky.lat)},${_scR2(o.sky.lon)}"` : o.lighting === false ? ' data-sc-sky="off"' : '';
+  const se = o.season && /^(spring|summer|autumn|winter)$/.test(o.season) ? ` data-sc-season="${o.season}"` : '';
+  return ` data-sc-lod="${lod}" data-sc-still="${still ? 1 : 0}" data-sc-hover="${o.hover && !reduced ? 1 : 0}"${sk}${se} style="--sc-top:${top};--sc-low:${low}"`;
+}
+/** Keyframes the still SVG needs: none. */
+function sceneSvgCss() { return ''; }
+
+/* ---------- small pure helpers ---------- */
+const _scR1 = v => Math.round(v * 10) / 10, _scR2 = v => Math.round(v * 100) / 100;
+const _scClamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const _scFrac = v => v - Math.floor(v);
+function _scEsc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+function _scHex(c) { let s = String(c || '').replace('#', ''); if (s.length === 3) s = s.replace(/./g, '$&$&'); const n = parseInt(s, 16) || 0; return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function _scMixHex(a, b, t) { if (!t || !b) return a; const A = _scHex(a), B = _scHex(b), k = _scClamp(t, 0, 1); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * k).toString(16).padStart(2, '0')).join(''); }
+/** A colour graded for the light (sceneColour when the core is loaded). */
+function _scCol(c, L, haze, tint) { return typeof sceneColour === 'function' && L ? sceneColour(c, { L, haze, tint }) : c; }
+function _scRndOf(seed) { let s = (seed >>> 0) || 1; return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296); }
+
+/** Conservative bounds [x0, y0, x1, y1] of SVG path data (control points included), mapped through m. */
+function scenePathBox(d, m) {
+  const tok = String(d || '').match(/[MLHVCSQTAZmlhvcsqtaz]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g);
+  if (!tok) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, cx = 0, cy = 0, sx = 0, sy = 0, cmd = 'M', i = 0;
+  const add = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
+  const N = { M: 2, L: 2, H: 1, V: 1, C: 6, S: 4, Q: 4, T: 2, A: 7, Z: 0 };
+  while (i < tok.length) {
+    if (/[A-Za-z]/.test(tok[i])) { cmd = tok[i++]; if (cmd === 'Z' || cmd === 'z') { cx = sx; cy = sy; continue; } }
+    const U = cmd.toUpperCase(), rel = cmd !== U, n = N[U];
+    if (!n || i + n > tok.length) break;
+    const a = tok.slice(i, i + n).map(Number); i += n;
+    const ox = rel ? cx : 0, oy = rel ? cy : 0;
+    if (U === 'H') { cx = ox + a[0]; add(cx, cy); }
+    else if (U === 'V') { cy = oy + a[0]; add(cx, cy); }
+    else if (U === 'A') { const ex = ox + a[5], ey = oy + a[6], r = Math.max(Math.abs(a[0]), Math.abs(a[1])); add(cx - r, cy - r); add(cx + r, cy + r); add(ex - r, ey - r); add(ex + r, ey + r); cx = ex; cy = ey; }
+    else { for (let k = 0; k < n; k += 2) add(ox + a[k], oy + a[k + 1]); cx = ox + a[n - 2]; cy = oy + a[n - 1]; }
+    if (U === 'M') { sx = cx; sy = cy; cmd = rel ? 'l' : 'L'; }
+  }
+  if (!isFinite(x0)) return null;
+  if (!m) return [x0, y0, x1, y1];
+  const pts = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map(([x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]);
+  return [Math.min(...pts.map(p => p[0])), Math.min(...pts.map(p => p[1])), Math.max(...pts.map(p => p[0])), Math.max(...pts.map(p => p[1]))];
+}
+
+/**
+ * The quantised light (6.3): alt to 1 degree while |alt| < 12, else 5; cover to .1; the moon to .2; windows;
+ * fog (the mist is baked); and the season. Sprites and bitmaps are re-made only when this changes.
+ */
+function sceneLightKey(L, season) {
+  if (!L) return 'noL|' + (season || '');
+  const alt = Number(L.alt) || 0, a = Math.abs(alt) < 12 ? Math.round(alt) : Math.round(alt / 5) * 5;
+  const moon = L.moon && L.moon.show ? Math.round((L.moon.illum || 0) * 5) / 5 : 0;
+  return [a, Math.round((L.cover || 0) * 10) / 10, moon, L.windows ? 1 : 0, L.fog ? 1 : 0, season || ''].join('|');
+}
+/** The sprite cache key: (obj, v, part, season, haze, tint, device scale, light). */
+function sceneSpriteKey(o, v, part, season, haze, tint, scale, lightKey) {
+  return o + '|' + v + '|' + part + '|' + season + '|' + _scR1(haze || 0) + '|' + (tint ? tint[0] + ':' + _scR2(tint[1]) : '-') + '|' + Math.round(scale * 64) / 64 + '|' + lightKey;
+}
+
+/* ---------- motion (shared by the canvas frames and the SVG still at t = 0) ---------- */
+const _SC_ID = [1, 0, 0, 1, 0, 0];
+function _scMul(A, B) { return [A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1], A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3], A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5]]; }
+/** Rotate (degrees) and scale (sx, sy) about a pivot, then translate (tx, ty): an object-local matrix. */
+function _scAbout(px, py, deg, sx, sy, tx, ty) {
+  const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+  const a = c * sx, b = s * sx, cc = -s * sy, d = c * sy;
+  return [a, b, cc, d, px - a * px - cc * py + tx, py - b * px - d * py + ty];
+}
+/**
+ * One hook's pose at time t (seconds): { m: [a b c d e f] object-local, alpha, parts }. x: the placement's world x
+ * (the wind is one shared field across the scene, 5.4). Kinds and parameters as in 2.4.
+ */
+function sceneAnimPose(a, t, L, x) {
+  const k = a.k == null ? 1 : a.k, per = a.period || 3, ph = a.phase || 0, p = a.pivot || [0, 0], w = 2 * Math.PI * (t / per + ph);
+  switch (a.kind) {
+    case 'sway': { const wind = typeof sceneWind === 'function' ? sceneWind(t, x || 0, L) : Math.sin(t); return { m: _scAbout(p[0], p[1], (a.deg || 2) * k * wind, 1, 1, 0, 0), alpha: 1 }; }
+    case 'bob': return { m: _scAbout(0, 0, 0, 1, 1, 0, (a.dy || 2) * k * Math.sin(w)), alpha: 1 };
+    case 'flap': { const sy = a.sy || [0.3, 1], v = sy[0] + (sy[1] - sy[0]) * (0.5 + 0.5 * Math.sin(w)); return { m: _scAbout(p[0], p[1], 0, 1, v, 0, 0), alpha: 1 }; }
+    case 'walk': return { m: _scAbout(p[0], p[1], (a.deg || 22) * k * Math.sin(w), 1, 1, 0, 0), m2: _scAbout(p[0], p[1], -(a.deg || 22) * k * Math.sin(w), 1, 1, 0, 0), bob: -(a.bob == null ? 1.5 : a.bob) * Math.abs(Math.sin(w)), alpha: 1 };
+    case 'paddle': return { m: _scAbout(0, 0, (a.deg || 2) * k * Math.sin(w + 1.3), 1, 1, 0, (a.dy || 1.5) * k * Math.sin(w)), alpha: 1 };
+    case 'turn': { const hold = a.hold == null ? 0.6 : a.hold, u = _scFrac(t / per + ph), v = u < hold ? 0 : Math.sin(Math.PI * (u - hold) / (1 - hold)); return { m: _scAbout(p[0], p[1], (a.deg || 14) * k * v, 1, 1, 0, 0), alpha: 1 }; }
+    case 'flicker': { const op = a.op || [0.6, 1]; return { m: _SC_ID, alpha: op[0] + (op[1] - op[0]) * (0.5 + 0.5 * Math.sin(w)) }; }
+    case 'spin': return { m: _scAbout(p[0], p[1], 360 * _scFrac(t / per + ph), 1, 1, 0, 0), alpha: 1 };
+    default: return { m: _SC_ID, alpha: 1 };
+  }
+}
+/** The parts a hook moves ('*' = the whole object). */
+function _scAnimParts(a) { return a.parts ? a.parts : [a.part || '*']; }
+function _scLerpTab(tab, y) {
+  if (!tab || !tab.length) return 1;
+  if (y <= tab[0][0]) return tab[0][1];
+  for (let i = 1; i < tab.length; i++) if (y <= tab[i][0]) { const [y0, s0] = tab[i - 1], [y1, s1] = tab[i]; return s0 + (s1 - s0) * (y - y0) / ((y1 - y0) || 1); }
+  return tab[tab.length - 1][1];
+}
+/** An actor's place at t: along its path at `speed` units per second from `offset` (0..1 of the length). */
+function sceneActorAt(a, t) {
+  const path = a.path || [[0, 0], [1, 0]], len = a.len || 1, d0 = (a.offset || 0) * len + (a.speed || 0) * t;
+  let d, back = false, alpha = 1;
+  if (a.loop === 'pingpong') { const u = ((d0 % (2 * len)) + 2 * len) % (2 * len); back = u > len; d = back ? 2 * len - u : u; }
+  else { d = ((d0 % len) + len) % len; if (a.loop === 'fade') alpha = _scClamp(Math.min(d, len - d) / 60, 0, 1); }
+  let i = 1, acc = 0;
+  for (; i < path.length; i++) { const sl = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); if (acc + sl >= d || i === path.length - 1) { const u = sl ? _scClamp((d - acc) / sl, 0, 1) : 0, x = path[i - 1][0] + (path[i][0] - path[i - 1][0]) * u, y = path[i - 1][1] + (path[i][1] - path[i - 1][1]) * u, dx = path[i][0] - path[i - 1][0];
+    const dir = (dx < 0) !== back ? -1 : 1;
+    return { x, y, s: (a.s || 1) * (a.sByY ? _scLerpTab(a.sByY, y) : 1), dir, alpha }; } acc += sl; }
+  return { x: path[0][0], y: path[0][1], s: a.s || 1, dir: 1, alpha };
+}
+/** Bird i of a flock at t: seeded height, speed and drift; the flock crosses its area and wraps. */
+function sceneFlockAt(f, i, t) {
+  const r = _scRndOf((f.seed || 1) * 977 + i * 131 + 7), a = f.area || [0, 100, 1600, 300], W = a[2] - a[0] + 240;
+  const r0 = r(), r1 = r(), r2 = r(), r3 = r(), dir = (f.seed + i) % 5 === 0 ? -1 : 1, sp = (f.speed || 30) * (0.8 + 0.4 * r1);
+  const u = ((r0 * W + sp * t) % W + W) % W, x = dir > 0 ? a[0] - 120 + u : a[2] + 120 - u;
+  const y = a[1] + r2 * (a[3] - a[1]) + 10 * Math.sin(t * 0.6 + r3 * 6.28);
+  return { x, y, s: (f.s || 0.5) * (0.85 + 0.3 * r3), dir, phase: r3 };
+}
+/** Season particles (petals, motes, leaves, snow) and weather (rain, snow): seeded, positions are pure functions of t. */
+function sceneParticleSet(kind, n, seed) {
+  const r = _scRndOf(seed || 17), out = [];
+  const pal = { petals: ['#fff4f6', '#f6c9d7', '#ffffff'], motes: ['#fff6d0', '#ffffff'], leaves: ['#c0702a', '#e0a040', '#8a4a1e'], snow: ['#ffffff', '#eef4fa'], rain: ['#c8d4e0'], wsnow: ['#ffffff'] }[kind] || ['#ffffff'];
+  for (let i = 0; i < n; i++) out.push({ x0: -60 + r() * 1720, y0: r() * 1000, vy: kind === 'rain' ? 700 + r() * 300 : kind === 'motes' ? -4 - r() * 6 : kind === 'snow' || kind === 'wsnow' ? 22 + r() * 30 : 26 + r() * 30,
+    vx: kind === 'rain' ? -60 : kind === 'motes' ? 3 : 10 + r() * 14, amp: kind === 'rain' ? 0 : 6 + r() * 18, f: 0.4 + r() * 0.9, ph: r() * 6.28, size: kind === 'rain' ? 14 + r() * 10 : kind === 'motes' ? 1.2 + r() * 1.6 : 2 + r() * 3, col: pal[i % pal.length], tw: r() });
+  return out;
+}
+function sceneParticleAt(p, t) {
+  const y = ((p.y0 + p.vy * t) % 1000 + 1000) % 1000 - 50, x = ((p.x0 + p.vx * t + p.amp * Math.sin(p.f * t + p.ph)) % 1760 + 1760) % 1760 - 80;
+  return { x, y, a: 0.55 + 0.45 * Math.sin(t * (0.8 + p.tw) + p.ph) };
+}
+/** Is a layer drawn with moving content (animated parts, strips, actors, flocks, water shimmer)? */
+function _scLayerDyn(C) {
+  const dyn = C.layers.map(() => 0);
+  for (const it of C.items) if (it.anim && it.anim.length && it.strip < 0) dyn[it.layer] += it.anim.length;
+  for (const s of C.strips) dyn[s.layer] += 1;
+  for (const a of C.actors) dyn[a.layer] += 1 + (a.anim ? a.anim.length : 0);
+  for (const f of C.flocks) dyn[f.layer] += f.n;
+  for (const w of C.water) if (w.shimmer || w.lightPath) dyn[w.layer] += 1;
+  return dyn;
+}
+/**
+ * Which layers share a bake bitmap (6.3): a new bitmap starts after a layer with moving content (so that content is drawn
+ * between the bitmaps, in depth order). At most SCENE_MAX_BITMAPS - 1 land bitmaps (the sky is one): when there would be more,
+ * the group with the fewest moving draws is merged into the next (its movers then draw over the next group's static layers).
+ * Returns [{ layers: [i...], dyn: draws }].
+ */
+function sceneBakePlan(C) {
+  const dyn = _scLayerDyn(C), groups = [];
+  let cur = [];
+  for (const l of C.layers) { cur.push(l.i); if (dyn[l.i]) { groups.push({ layers: cur, dyn: cur.reduce((n, i) => n + dyn[i], 0) }); cur = []; } }
+  if (cur.length) groups.push({ layers: cur, dyn: 0 });
+  while (groups.length > SCENE_MAX_BITMAPS - 1) {
+    let k = 0;
+    for (let i = 1; i < groups.length - 1; i++) if (groups[i].dyn < groups[k].dyn) k = i;
+    const a = groups[k], b = groups[k + 1];
+    groups.splice(k, 2, { layers: a.layers.concat(b.layers), dyn: a.dyn + b.dyn });
+  }
+  return groups;
+}
+/** The sprites drawn per frame (6.3, the 300 budget): animated parts, strips, actors (body + moving parts), flock birds. */
+function sceneFrameDraws(C) {
+  let n = 0;
+  for (const it of C.items) if (it.strip < 0) for (const a of it.anim || []) n += _scAnimParts(a).length;
+  n += C.strips.length;
+  for (const a of C.actors) n += 1 + (a.anim || []).reduce((m, h) => m + (_scAnimParts(h)[0] === '*' ? 0 : _scAnimParts(h).length), 0);
+  for (const f of C.flocks) n += f.n;
+  return n;
+}
+/** A sign's layout in scene units (8.3): the board, up to 6 line-colour stripes below it, the text box and font size estimate. */
+function sceneSignLayout(s) {
+  const style = s.style || 'board', bars = (s.bars || []).slice(0, 6).filter(c => /^#[0-9a-f]{6}$/i.test(c));
+  if (style === 'totem') {
+    const bw = s.w, bh = s.h, bx = s.x - bw / 2, by = s.y - bh - s.h * 1.6;
+    return { style, post: [s.x - 3, by + bh, 6, s.y - by - bh], board: [bx, by, bw, bh], frame: true, bars: bars.map((c, i) => [bx, by + bh + i * 4, bw, 4, c]), text: [s.x, by + bh / 2], tw: bw * 0.86, fs: bh * 0.5 };
+  }
+  const bx = s.x - s.w / 2, by = s.y - s.h, bh = Math.max(3, s.h * 0.1);
+  const stripes = style === 'fascia' ? bars.map((c, i) => [bx + i * s.w / Math.max(1, bars.length), by - bh, s.w / Math.max(1, bars.length), bh, c]) : bars.map((c, i) => [bx, s.y + i * bh, s.w, bh, c]);
+  return { style, post: null, board: [bx, by, s.w, s.h], frame: style === 'board', bars: stripes, text: [s.x, by + s.h / 2], tw: s.w * 0.9, fs: s.h * (style === 'fascia' ? 0.6 : 0.56) };
+}
+/** The sign text after the core's rules (8.3), or null when it is not allowed. */
+function _scSignOk(s) {
+  if (typeof sceneSignText !== 'function') return null;
+  const r = sceneSignText(s.text);
+  return r && r.ok ? r.text : null;
+}
+
+/* ---------- the SVG still (6.5) ---------- */
+let _scSvgN = 0;
+/** Give the kit's ids (us1, us2 ...) a per-render prefix, so two drawings on one page never share an id. */
+function _scPrefixIds(markup, pre) { return String(markup).replace(/(id="|url\(#|href="#)(us[0-9a-z]+)/g, (_, a, id) => a + pre + id); }
+function _scPaintSvg(p, colour, defs, nid, box) {
+  if (!p) return 'none';
+  if (typeof p === 'string') return colour(p);
+  const id = nid(), stops = (p.lin || p.rad).map(([o, c, op]) => `<stop offset="${o}" stop-color="${colour(c)}"${op != null && op !== 1 ? ` stop-opacity="${op}"` : ''}/>`).join('');
+  defs.push(p.lin ? `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${p.x1 || 0}" y1="${p.y1 || 0}" x2="${p.x2 || 0}" y2="${p.y2 != null ? p.y2 : 1}">${stops}</linearGradient>`
+    : `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${p.cx || 0}" cy="${p.cy || 0}" r="${p.r || 1}">${stops}</radialGradient>`);
+  return `url(#${id})`;
+}
+function _scShapeSvg(sh, colour, defs, nid) {
+  const f = _scPaintSvg(sh.f, colour, defs, nid);
+  let a = `<path fill="${f}"`;
+  if (sh.s) a += ` stroke="${_scPaintSvg(sh.s, colour, defs, nid)}" stroke-width="${sh.w || 1}"${sh.cap ? ` stroke-linecap="${sh.cap}"` : ''}`;
+  if (sh.op != null && sh.op !== 1) a += ` opacity="${sh.op}"`;
+  if (sh.m) a += ` transform="matrix(${sh.m.map(_scR2).join(' ')})"`;
+  return a + ` d="${sh.d}"/>`;
+}
+/**
+ * One still frame of a composed scene. o: the registry's svg options (size, sky, season, reduced, lod).
+ * Returns the inner markup of <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">.
+ */
+function sceneSvg(x, o) {
+  o = o || {};
+  const data = _scDataOf(x);
+  if (!data || typeof sceneCompile !== 'function') return '';
+  const lod = o.lod != null ? o.lod : sceneLodFor(o.size, o.detail), season = _scSeasonOf(data, o), L = _scLightOf(data, o, season);
+  const C = sceneCompile(data, { season, lod, L });
+  const pre = 'sc' + (++_scSvgN).toString(36) + '-';
+  let n = 0;
+  const nid = () => pre + (++n).toString(36), defs = [], ids = new Map();
+  const lit = !!(L && L.windows), detailOk = lod >= 0.5;
+  const toneFor = (haze, tint) => {
+    const memo = new Map();
+    return c => { let v = memo.get(c); if (v) return v; v = typeof sceneColour === 'function' ? sceneColour(c, { L, haze, tint }) : c; memo.set(c, v); return v; };
+  };
+  const plain = c => c;
+  /** The <g id> for (obj, v, season, haze, tint, part): '*' = every part except 'lit'; 'lit' is drawn ungraded. */
+  const sym = (it, part) => {
+    const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', part].join('|');
+    if (ids.has(key)) return ids.get(key);
+    const sh = sceneObjShapes(it.o, it.v, it.season);
+    if (!sh) { ids.set(key, null); return null; }
+    const names = part === '*' ? sh.order.filter(p => p !== 'lit') : [part];
+    const colour = part === 'lit' ? plain : toneFor(it.haze, it.tint);
+    let inner = '';
+    for (const p of names) for (const s of sh.parts[p] || []) if (detailOk || !s.detail) inner += _scShapeSvg(s, colour, defs, nid);
+    const id = nid();
+    defs.push(`<g id="${id}">${inner}</g>`);
+    ids.set(key, id);
+    return id;
+  };
+  /** Shapes of `parts` not moved by any hook (the static rest of an animated object). */
+  const restSym = (it, moved) => {
+    const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', 'rest:' + moved.join(',')].join('|');
+    if (ids.has(key)) return ids.get(key);
+    const sh = sceneObjShapes(it.o, it.v, it.season), colour = toneFor(it.haze, it.tint);
+    let inner = '';
+    for (const p of sh.order) if (p !== 'lit' && !moved.includes(p)) for (const s of sh.parts[p] || []) if (detailOk || !s.detail) inner += _scShapeSvg(s, colour, defs, nid);
+    const id = inner ? nid() : null;
+    if (id) defs.push(`<g id="${id}">${inner}</g>`);
+    ids.set(key, id);
+    return id;
+  };
+  const P = lod < 1 ? Math.round : _scR1;   // tiles: whole-unit positions (invisible at tile size, lighter markup)
+  const tf = (x, y, s, flip, m) => `translate(${P(x)} ${P(y)})` + (s !== 1 || flip ? ` scale(${_scR2(flip ? -s : s)} ${_scR2(s)})` : '') + (m && m !== _SC_ID ? ` matrix(${m.map(v => _scR2(v)).join(' ')})` : '');
+  const use = (id, x, y, s, flip, m, op) => id ? `<use href="#${id}" transform="${tf(x, y, s, flip, m)}"${op != null && op < 1 ? ` opacity="${_scR2(op)}"` : ''}/>` : '';
+  /** Lit windows and lamps of one placement (only with L.windows): the glow shapes in the object's night colours. */
+  const glows = (it, x, y, s, flip) => {
+    if (!lit || !it.glowOn) return '';
+    const sh = sceneObjShapes(it.o, it.v, it.season), def = typeof sceneObj === 'function' ? sceneObj(it.o) : null, nc = (def && def.night && def.night.glow) || {};
+    let gi = 0, out = '';
+    for (const p of sh.order) for (const s0 of sh.parts[p] || []) if (s0.glow) { if (it.glowOn[gi % it.glowOn.length]) out += _scShapeSvg(Object.assign({}, s0, { f: nc[s0.glow] || (s0.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain, defs, nid); gi++; }
+    return out ? `<g transform="${tf(x, y, s, flip)}">${out}</g>` : '';
+  };
+  let fade = null;
+  /** One shared fade (dark at the foot, clear at the tip) for every cast shadow, as the kit's shadowFade. */
+  const fadeId = () => { if (!fade) { fade = nid(); defs.push(`<linearGradient id="${fade}"><stop offset="0" stop-color="#142030"/><stop offset=".55" stop-color="#142030" stop-opacity=".7"/><stop offset="1" stop-color="#142030" stop-opacity="0"/></linearGradient>`); } return fade; };
+  const shadowSyms = new Map();
+  /** One shadow symbol per object (the foot and the cast shadow along the live sun at scale 1), placed with a <use>. Tiles (LOD < .5) skip shadows. */
+  const shadowOf = (it) => {
+    const def = typeof sceneObj === 'function' ? sceneObj(it.o) : null, sd = def && def.shadow;
+    if (!it.shadow || !sd || !L || !detailOk) return '';
+    let id = shadowSyms.get(it.o);
+    if (id === undefined) {
+      const w = (sd.rx || 20) * 2, h = sd.h || 40, sh = L.shadow || {};
+      let g = `<ellipse rx="${_scR1(w / 2)}" ry="${_scR1(Math.max(2, sd.ry || w * 0.08))}" fill="#14261e" opacity="${_scR2(0.2 * (1 - (L.dark || 0) * 0.6))}"/>`;
+      if (sh.op) {
+        const Lg = Math.min(h * sh.len, h * 2.2), ax = sh.gx * Lg, ay = sh.gy * Lg * 0.3, rx = Math.max(w * 0.3, Math.hypot(ax, ay) / 2), ry = Math.max(2, Math.hypot(-sh.gy * w * 0.5, sh.gx * w * 0.15)), deg = Math.atan2(ay, ax) * 180 / Math.PI;
+        g += `<ellipse rx="${_scR1(rx)}" ry="${_scR1(ry)}" transform="translate(${_scR1(ax / 2)} ${_scR1(ay / 2)}) rotate(${_scR1(deg)})" fill="url(#${fadeId()})" opacity="${_scR2(sh.op)}"/>`;
+      }
+      id = nid();
+      defs.push(`<g id="${id}">${g}</g>`);
+      shadowSyms.set(it.o, id);
+    }
+    return `<use href="#${id}" transform="translate(${_scR1(it.x)} ${_scR1(it.y)})${it.s !== 1 ? ` scale(${_scR2(it.s)})` : ''}"/>`;
+  };
+  /** One placement at t = 0: a whole-object <use>, or the static rest plus each moving part at its pose. */
+  const placed = (it) => {
+    const moving = it.strip < 0 && it.anim && it.anim.length ? it.anim : null;
+    let out = '';
+    if (!moving) out += use(sym(it, '*'), it.x, it.y, it.s, it.flip);
+    else {
+      const whole = moving.find(a => _scAnimParts(a)[0] === '*');
+      if (whole) { const p = sceneAnimPose(whole, 0, L, it.x); out += use(sym(it, '*'), it.x, it.y, it.s, it.flip, p.m, p.alpha); }
+      else {
+        const moved = [...new Set(moving.flatMap(_scAnimParts))];
+        out += use(restSym(it, moved), it.x, it.y, it.s, it.flip);
+        for (const a of moving) { const p = sceneAnimPose(a, 0, L, it.x), parts = _scAnimParts(a); parts.forEach((part, j) => { out += use(sym(it, part), it.x, it.y, it.s, it.flip, j === 1 && p.m2 ? p.m2 : p.m, p.alpha); }); }
+      }
+    }
+    if (lit && it.lit) out += use(sym(it, 'lit'), it.x, it.y, it.s, it.flip);
+    return out + glows(it, it.x, it.y, it.s, it.flip);
+  };
+  const actorSvg = (a) => {
+    const at = sceneActorAt(a, 0), it = { o: a.o, v: a.v, season: C.season, haze: C.layers[a.layer] ? Math.round(C.layers[a.layer].haze * 10) / 10 : 0, tint: null };
+    const flip = at.dir < 0;
+    let out = '';
+    if (!a.anim || !a.anim.length) out = use(sym(it, '*'), at.x, at.y, at.s, flip, null, at.alpha);
+    else {
+      const moved = [...new Set(a.anim.flatMap(_scAnimParts))].filter(p => p !== '*');
+      const whole = a.anim.find(h => _scAnimParts(h)[0] === '*'), wp = whole ? sceneAnimPose(whole, 0, L, at.x) : null;
+      out += use(moved.length ? restSym(it, moved) : sym(it, '*'), at.x, at.y, at.s, flip, wp ? wp.m : null, at.alpha);
+      for (const h of a.anim) { const parts = _scAnimParts(h); if (parts[0] === '*') continue; const p = sceneAnimPose(h, 0, L, at.x); parts.forEach((part, j) => { out += use(sym(it, part), at.x, at.y, at.s, flip, j === 1 && p.m2 ? p.m2 : p.m, at.alpha); }); }
+    }
+    return out;
+  };
+  const flockSvg = (f) => {
+    const it = { o: f.o, v: 0, season: C.season, haze: C.layers[f.layer] ? Math.round(C.layers[f.layer].haze * 10) / 10 : 0, tint: null };
+    let out = '';
+    for (let i = 0; i < f.n; i++) { const b = sceneFlockAt(f, i, 0); out += use(sym(it, '*'), b.x, b.y, b.s, b.dir < 0); }
+    return out;
+  };
+  const signSvg = (s) => {
+    const text = _scSignOk(s);
+    if (text == null) return '';
+    const g = sceneSignLayout(s), [bx, by, bw, bh] = g.board;
+    let out = '<g class="sc-sign">';
+    if (g.post) out += `<rect x="${_scR1(g.post[0])}" y="${_scR1(g.post[1])}" width="${_scR1(g.post[2])}" height="${_scR1(g.post[3])}" fill="#3a3f44"/>`;
+    out += `<rect x="${_scR1(bx)}" y="${_scR1(by)}" width="${_scR1(bw)}" height="${_scR1(bh)}" fill="${_scCol(s.board || "#f4f1e8", L)}"${g.frame ? ` stroke="${_scCol("#2a2e33", L)}" stroke-width="1.5"` : ''}/>`;
+    for (const b of g.bars) out += `<rect x="${_scR1(b[0])}" y="${_scR1(b[1])}" width="${_scR1(b[2])}" height="${_scR1(b[3])}" fill="${b[4]}"/>`;
+    const fs = Math.max(9, Math.min(g.fs, g.tw / Math.max(1, text.length * 0.56)));
+    out += `<text x="${_scR1(g.text[0])}" y="${_scR1(g.text[1])}" font-family="${_scEsc(SCENE_SIGN_FAMILY)}" font-weight="600" font-size="${_scR1(fs)}" text-anchor="middle" dominant-baseline="central" fill="${_scCol(s.ink || "#1d2226", L)}">${_scEsc(text)}</text>`;
+    return out + '</g>';
+  };
+  const waterSvg = (w, before) => {
+    const cols = L && L.water ? L.water(w.base) : w.base, gid = nid(), cid = nid();
+    defs.push(`<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="0" y1="${w.y0}" x2="0" y2="${w.y1}"><stop offset="0" stop-color="${cols[0]}"/><stop offset=".5" stop-color="${cols[1]}"/><stop offset="1" stop-color="${cols[2]}"/></linearGradient><clipPath id="${cid}"><path d="${w.d}"/></clipPath>`);
+    let out = `<path fill="url(#${gid})" d="${w.d}"/>`;
+    if (w.reflect && before) out += `<g clip-path="url(#${cid})"><g opacity=".35" transform="matrix(1 0 0 -1 0 ${2 * w.y0})">${before}</g></g>`;
+    if (w.shimmer) {
+      const r = _scRndOf(_scHashS(C.id + '|w|' + w.y0));
+      let d = '';
+      for (let i = 0; i < Math.min(40, w.shimmer); i++) { const y = w.y0 + 4 + r() * (w.y1 - w.y0 - 8), x = -100 + r() * 1800; d += `M${Math.round(x)} ${Math.round(y)}h${Math.round(10 + r() * 26)}`; }
+      out += `<path fill="none" stroke="${_scMixHex(cols[0], '#ffffff', 0.5)}" stroke-width="1.6" stroke-linecap="round" opacity=".45" clip-path="url(#${cid})" d="${d}"/>`;
+    }
+    const src = L && w.lightPath ? (L.sun && L.sun.show && L.alt < 35 ? L.sun : L.moon && L.moon.show ? L.moon : null) : null;
+    if (src) {
+      const r = _scRndOf(43);
+      let d = '';
+      for (let i = 0; i < 30; i++) { const t = Math.pow(r(), 0.8), y = w.y0 + t * (w.y1 - w.y0), hw = 60 * (0.3 + t * 1.6); d += `M${Math.round(src.x + (r() * 2 - 1) * hw)} ${Math.round(y)}h${Math.round((6 + r() * 16) * (0.4 + t))}`; }
+      out += `<path fill="none" stroke="${src === L.sun ? _scMixHex('#fff4d8', L.lowSun, 0.4) : '#e8eef6'}" stroke-width="2.4" stroke-linecap="round" opacity=".7" clip-path="url(#${cid})" d="${d}"/>`;
+    }
+    return out;
+  };
+  const K = typeof sceneKit === 'function' ? sceneKit('svg') : null;
+  const ko = { size: o.size === 'fill' || o.size === 'hero' || !o.size ? 'fill' : 'lg' };
+  // the sky: the kit's own live sky and clouds (identical skies to the Yateley scenes)
+  let sky = '';
+  if (C.sky && L && K) sky = _scPrefixIds(K.scene(ko, () => K.liveSky(L, { stars: C.sky.stars, sunR: C.sky.sunR, moonR: C.sky.moonR, seed: 41 }) + K.liveClouds(L, { seed: 5, n: Math.max(1, Math.round(C.sky.clouds.n / 2)), y0: C.sky.clouds.y0, y1: C.sky.clouds.y1 })), pre);
+  else if (L) sky = `<rect x="-160" y="-80" width="1920" height="1060" fill="${L.top || '#3a80c4'}"/>`;
+  // the land, far to near
+  const byLayer = C.layers.map(() => []);
+  C.items.forEach(it => byLayer[it.layer] && byLayer[it.layer].push(it));
+  let land = '';
+  const done = [];   // markup above each water line, for reflections
+  for (const l of C.layers) {
+    let out = '';
+    for (const g of C.ground) if (g.layer === l.i) out += `<path fill="${_scPaintSvg(g.fill, toneFor(Math.round(l.haze * 10) / 10, null), defs, nid)}" d="${g.d}"/>`;
+    for (const w of C.water) if (w.layer === l.i) {
+      const near = byLayer[l.i].filter(it => it.reflect && it.y <= w.y0 + 8).map(placed).join('');
+      out += waterSvg(w, w.reflect ? done.join('') + out + near : '');
+    }
+    let sh = '';
+    for (const it of byLayer[l.i]) sh += shadowOf(it);
+    out += sh;
+    const movers = [];
+    for (const a of C.actors) if (a.layer === l.i) movers.push([sceneActorAt(a, 0).y, actorSvg(a)]);
+    for (const it of byLayer[l.i]) movers.push([it.y, placed(it)]);
+    movers.sort((a, b) => a[0] - b[0]);
+    out += movers.map(m => m[1]).join('');
+    for (const f of C.flocks) if (f.layer === l.i) out += flockSvg(f);
+    for (const s of C.signs) if (s.layer === l.i) out += signSvg(s);
+    done.push(out);
+    land += out;
+  }
+  // particles (season) at t = 0
+  let parts = '';
+  if (C.particles && C.particles.kind !== 'none' && C.particles.n) {
+    const ps = sceneParticleSet(C.particles.kind, Math.min(250, Math.round(C.particles.n * Math.max(0.3, lod))), _scHashS(C.id + '|p'));
+    const byCol = new Map();
+    for (const p of ps) { const q = sceneParticleAt(p, 0); const r = _scR1(p.size); byCol.set(p.col, (byCol.get(p.col) || '') + `M${_scR1(q.x - r)} ${_scR1(q.y)}a${r} ${r} 0 1 0 ${_scR1(2 * r)} 0a${r} ${r} 0 1 0 ${_scR1(-2 * r)} 0z`); }
+    for (const [c, d] of byCol) parts += `<path fill="${C.particles.kind !== "motes" ? _scCol(c, L) : c}" opacity=".8" d="${d}"/>`;
+  }
+  // the kit's .hx-tint rect (an unlit authored scene's dark-theme grade) needs a pack's css: composed scenes leave it out
+  const over = L && K ? _scPrefixIds(K.scene(ko, () => K.weather(L) + K.grade(L)), pre).replace(/<rect class="hx-tint"[^>]*\/>/g, '') : '';
+  return `<g class="sc-svg"><defs>${defs.join('')}</defs>${sky}${land}${parts}${over}</g>`;
+}
+/** sceneHash when the core has it (it always does once 70-scene-0core.js is in); a small FNV-1a otherwise. */
+function _scHashS(s) {
+  if (typeof sceneHash === 'function') return sceneHash(s);
+  let h = 2166136261; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0;
+}
