@@ -81,7 +81,8 @@
       // the head (shifted up and tilted back when calling)
       const head = [[juv ? '@juv.0' : '@headW', 'M8 -36Q6 -50 16 -52Q26 -52 26 -44Q24 -38 18 -36z'], [`${P}.2`, 'M10 -46Q14 -52 20 -51Q14 -49 11 -44z', .7]];
       if (!juv) head.push({ s: '@streak', w: .9, op: .8, d: 'M12 -48l3 -1M11 -45l4 -1M14 -50l3 -.5M18 -50l2 0M12 -42l3 -1M16 -41l3 -1' });
-      if (v === 1) head.push([juv ? '@jbill.0' : '@bill.0', 'M24 -46L36 -51L37 -49L26 -44z'], [juv ? '@jbill.0' : '@bill.0', 'M24 -43L36 -41L35 -39L24 -41z'], ['@bill.1', ell(33.5, -40.4, 1.2, 1)]);
+      // calling: both mandibles rooted in the face, hinged at the gape, the dark mouth between them
+      if (v === 1) head.push(['#5a2624', 'M22.5 -44L35 -48.4L34.4 -41.6z'], ['@bill.0', 'M22 -47.6Q24 -48.2 26.4 -47.8L35.4 -49.8Q37.6 -50 37.2 -48.2Q36.6 -46.8 35 -47.4L26 -45Q24 -44.2 22.5 -44z'], ['@bill.0', 'M22.5 -44L26.4 -42.8L33.6 -42Q35.6 -41.6 35.2 -40L32.6 -39.8Q29 -39.4 25.6 -40Q23.6 -40.4 22.4 -41.4z'], ['@bill.1', ell(33, -41, 1.3, 1)]);
       else head.push([juv ? '@jbill.0' : '@bill.0', 'M24 -45L36 -44Q38 -43 36 -41L24 -41z'], [juv ? '@jbill.1' : '@bill.2', 'M24 -42.5H35L34 -41H24z', .6], [juv ? '@jbill.1' : '@bill.1', ell(32.5, -41.5, 1.3, 1)]);
       head.push(...eye(19.5, -46, 1.6, juv ? '#3a302a' : GULL.ring));
       const hm = v === 1 ? rot(-22, 14, -38) : undefined;
@@ -98,11 +99,13 @@
     credit: 'coast-country kit (herring gull in flight)',
     build(v) {
       const juv = v === 1, P = juv ? '@juv' : '@plum', M = juv ? '@juv.1' : '@mantle.0', T = juv ? '@juv.3' : '@tip.0';
-      // one wing drawn once: up from the shoulder to the wrist, the hand swept back, a black tip with a white mirror
-      // (the wing's shading, mirror and edge line are detail: a tile still draws the wing, its tip and the body)
-      const wing = [[M, 'M4 -3Q8 -10 7 -18Q4 -24 -8 -28L-32 -33Q-20 -28 -6 -22Q0 -12 -3 -2z'], { f: juv ? '@juv.2' : '@mantle.2', d: 'M4 -4Q7 -11 6 -17Q2 -11 0 -4z', op: .6, detail: true },
-        [T, 'M-12 -27.4L-32 -33Q-24 -29 -18 -25.6z'], { f: juv ? '@juv.2' : '@tip.1', d: ell(-25, -30.6, 1.5, .9), op: .9, detail: true }, { s: juv ? '@juv.2' : '@plum.2', w: 1.1, op: .85, d: 'M-3 -2Q0 -12 -6 -22L-18 -26', detail: true }];
-      const wingFar = withM(wing.map(sh => Array.isArray(sh) ? [sh[0], sh[1], (sh[2] || 1) * .8] : Object.assign({}, sh, sh.f ? { op: (sh.op || 1) * .8 } : {})), [.82, 0, -.12, .9, -9, -1]);
+      // the near wing flaps by squashing in y, so it is broad (14 at the root): squashed, it reads as a foreshortened
+      // wing, never a stick. Black tip, white mirror; the shading, mirror and trailing edge are detail
+      const wing = [[M, 'M6 -4Q9 -12 5 -19L-12 -25L-36 -30Q-26 -22 -14 -17Q-6 -12 -8 -3z'], { f: juv ? '@juv.3' : '@mantle.1', d: 'M-8 -3Q-6 -12 -14 -17Q-22 -21 -30 -26.4Q-18 -17.6 -10 -14Q-3 -10 -4 -3z', op: .5, detail: true },
+        { f: juv ? '@juv.2' : '@mantle.2', d: 'M5 -18Q8 -11 5 -4L1 -4Q3 -11 2 -16z', op: .6, detail: true },
+        [T, 'M-20 -26.7L-36 -30Q-30 -25.4 -23.5 -22.6z'], { f: juv ? '@juv.2' : '@tip.1', d: ell(-29, -27.4, 1.5, .9), op: .9, detail: true }, { s: juv ? '@juv.2' : '@plum.2', w: 1.1, op: .85, d: 'M-8 -3Q-6 -12 -14 -17Q-19 -20 -23 -22', detail: true }];
+      // the far wing never flaps: held low, swept back along the body
+      const wingFar = [[juv ? '@juv.3' : '@mantle.1', 'M3 -4Q-1 -10 -9 -11.6L-26 -12.6Q-18 -8 -10 -5.6Q-4 -4.4 -2 -2z', .9], [T, 'M-19 -12.2L-26 -12.6Q-23 -10.4 -20 -9.4z', .9]];
       const body = [[`${P}.0`, 'M-20 -1Q-10 -6 6 -5Q16 -5 20 -2Q16 2 6 3Q-8 4 -20 1L-26 0z'], { f: `${P}.3`, d: 'M-16 1Q0 4 14 0Q8 3 2 3Q-8 4 -16 1z', op: .5, detail: true }, [`${P}.0`, ell(18, -3.5, 5, 4)],
         [juv ? '@jbill.0' : '@bill.0', 'M22 -4L29 -3.4L22 -2z'], ['#141010', circ(19.5, -4.5, .9)], [`${P}.0`, 'M-20 -1L-28 0L-20 1z']];
       const wings = wing;
