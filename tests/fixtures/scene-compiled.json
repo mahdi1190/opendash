@@ -1,0 +1,50 @@
+{
+  "_about": "A hand-written COMPILED scene (docs/dev/SCENE_ENGINE.md section 4), the A-to-B contract the renderers develop and test against. Object ids are the placeholder objects of tests/fixtures/scene-test-objects.js.",
+  "v": 1, "id": "renderer-fixture", "w": 1600, "h": 900, "season": "summer", "lod": 1, "setting": "mixed", "arch": null,
+  "view": { "lat": 51.5, "lon": -0.12, "heading": 200, "fov": 78, "horizon": 520, "lift": 1 },
+  "sky": { "stars": 160, "clouds": { "n": 3, "y0": 80, "y1": 300, "speed": 6 }, "sunR": 26, "moonR": 20 },
+  "layers": [
+    { "id": "horizon", "i": 0, "depth": 0.08, "haze": 0.65 }, { "id": "far", "i": 1, "depth": 0.2, "haze": 0.45 },
+    { "id": "mid", "i": 2, "depth": 0.45, "haze": 0.2 }, { "id": "near", "i": 3, "depth": 0.75, "haze": 0.06 },
+    { "id": "fore", "i": 4, "depth": 1, "haze": 0 }, { "id": "front", "i": 5, "depth": 1.25, "haze": 0 }
+  ],
+  "ground": [
+    { "layer": 0, "d": "M-160 520Q300 488 800 508T1760 500V900H-160Z", "fill": "#8aa0a8" },
+    { "layer": 1, "d": "M-160 548Q400 520 900 540T1760 536V900H-160Z", "fill": { "lin": [[0, "#6f8a4a", 1], [1, "#5f7a3a", 1]], "x1": 0, "y1": 520, "x2": 0, "y2": 700 } },
+    { "layer": 2, "d": "M-160 600Q500 584 1000 596T1760 590V900H-160Z", "fill": "#5f7a3a" },
+    { "layer": 3, "d": "M-160 700Q400 680 900 694T1760 690V900H-160Z", "fill": "#55702f" },
+    { "layer": 4, "d": "M-160 800Q500 786 1000 796T1760 792V900H-160Z", "fill": "#4a6428" }
+  ],
+  "water": [
+    { "layer": 2, "d": "M200 640Q600 628 1000 636T1500 640V700H200Z", "y0": 630, "y1": 700, "base": ["#7fb0c0", "#3f7e96", "#1d4c64"], "reflect": true, "shimmer": 24, "lightPath": true }
+  ],
+  "items": [
+    { "o": "tree.oak-test", "v": 0, "x": 300, "y": 545, "s": 0.35, "flip": false, "layer": 1, "haze": 0.5, "tint": null, "season": "summer", "seed": 11, "z": 545, "strip": -1, "anim": [], "glowOn": null, "shadow": true, "reflect": true, "lit": false },
+    { "o": "tree.oak-test", "v": 1, "x": 1200, "y": 548, "s": 0.4, "flip": true, "layer": 1, "haze": 0.5, "tint": null, "season": "summer", "seed": 12, "z": 548, "strip": -1, "anim": [], "glowOn": null, "shadow": true, "reflect": true, "lit": false },
+    { "o": "tree.oak-test", "v": 0, "x": 160, "y": 620, "s": 1, "flip": false, "layer": 2, "haze": 0.2, "tint": null, "season": "summer", "seed": 1, "z": 620, "strip": -1,
+      "anim": [{ "kind": "sway", "part": "crown", "pivot": [0, -120], "deg": 2.2, "period": 4, "phase": 0.21, "k": 1 }], "glowOn": null, "shadow": true, "reflect": true, "lit": false },
+    { "o": "building.house-test", "v": 0, "x": 760, "y": 626, "s": 0.9, "flip": false, "layer": 2, "haze": 0.2, "tint": null, "season": "summer", "seed": 4, "z": 626, "strip": -1, "anim": [],
+      "glowOn": [true, false, true, true, false, true, false, true], "shadow": true, "reflect": true, "lit": true },
+    { "o": "bird.duck-test", "v": 0, "x": 640, "y": 668, "s": 1, "flip": false, "layer": 2, "haze": 0.2, "tint": null, "season": "summer", "seed": 7, "z": 668, "strip": -1,
+      "anim": [{ "kind": "paddle", "dy": 1.5, "deg": 3, "period": 2.4, "phase": 0.6, "k": 1 }], "glowOn": null, "shadow": false, "reflect": true, "lit": false },
+    { "o": "plant.grass-test", "v": 0, "x": 420, "y": 742, "s": 1, "flip": false, "layer": 3, "haze": 0.1, "tint": null, "season": "summer", "seed": 21, "z": 742, "strip": 0, "anim": [], "glowOn": null, "shadow": false, "reflect": false, "lit": false },
+    { "o": "plant.grass-test", "v": 1, "x": 470, "y": 750, "s": 1.1, "flip": true, "layer": 3, "haze": 0.1, "tint": ["#8a7a40", 0.08], "season": "summer", "seed": 22, "z": 750, "strip": 0, "anim": [], "glowOn": null, "shadow": false, "reflect": false, "lit": false },
+    { "o": "plant.bush-test", "v": 0, "x": 520, "y": 756, "s": 1, "flip": false, "layer": 3, "haze": 0.1, "tint": null, "season": "summer", "seed": 23, "z": 756, "strip": 0, "anim": [], "glowOn": null, "shadow": false, "reflect": false, "lit": false },
+    { "o": "street.lamp-test", "v": 0, "x": 1040, "y": 770, "s": 1, "flip": false, "layer": 3, "haze": 0.1, "tint": null, "season": "summer", "seed": 6, "z": 770, "strip": -1,
+      "anim": [{ "kind": "flicker", "part": "head", "op": [0.85, 1], "period": 3, "phase": 0.4, "k": 1, "pivot": [0, 0] }], "glowOn": [true], "shadow": true, "reflect": false, "lit": false },
+    { "o": "rock.stone-test", "v": 1, "x": 420, "y": 840, "s": 1.4, "flip": false, "layer": 4, "haze": 0, "tint": null, "season": "summer", "seed": 9, "z": 840, "strip": -1, "anim": [], "glowOn": null, "shadow": false, "reflect": false, "lit": false }
+  ],
+  "strips": [ { "layer": 3, "x0": 400, "x1": 540, "y0": 742, "y1": 756, "items": [5, 6, 7], "amp": 1 } ],
+  "actors": [
+    { "o": "person.walker-test", "v": 0, "layer": 3, "path": [[-60, 772], [700, 760], [1660, 780]], "len": 1720.4, "speed": 22, "loop": "pingpong", "s": 1, "sByY": null, "seed": 5, "offset": 0.3,
+      "anim": [{ "kind": "walk", "parts": ["legA", "legB"], "pivot": [0, -24], "deg": 22, "period": 0.9, "phase": 0.1, "k": 1 }] },
+    { "o": "vehicle.car-test", "v": 1, "layer": 4, "path": [[-120, 870], [1720, 870]], "len": 1840, "speed": 90, "loop": "loop", "s": 1.2, "sByY": null, "seed": 7, "offset": 0.1, "anim": [] }
+  ],
+  "flocks": [ { "o": "bird.gull-test", "n": 4, "area": [200, 120, 1400, 280], "speed": 34, "s": 0.8, "seed": 9, "layer": 1 } ],
+  "signs": [ { "layer": 3, "x": 300, "y": 742, "w": 200, "h": 34, "text": "Elephant & Castle", "bars": ["#b36305", "#0098d4"], "style": "board", "ink": "#1d2226", "board": "#f4f1e8", "seed": 0 } ],
+  "particles": { "kind": "motes", "n": 40 },
+  "camera": { "pan": 0, "period": 90 },
+  "stats": { "placements": 10, "staticItems": 4, "animatedParts": 3, "stripItems": 3, "strips": 1, "actors": 2, "flockBirds": 4, "signs": 1, "animatedDraws": 13,
+    "objects": { "tree.oak-test": 3, "building.house-test": 1, "bird.duck-test": 1, "plant.grass-test": 2, "plant.bush-test": 1, "street.lamp-test": 1, "rock.stone-test": 1 },
+    "categories": { "tree": 3, "building": 1, "bird": 1, "plant": 3, "street": 1, "rock": 1 }, "layersUsed": 5, "distinctSprites": 12, "dataBytes": 0 }
+}
