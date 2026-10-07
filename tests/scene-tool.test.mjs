@@ -127,8 +127,8 @@ test('care: crowds, tall people and signs outside signage fail; sign text keeps 
   C.actors = [0, 1, 2, 3].map(i => ({ o: 'person.w', v: 0, layer: 3, path: [[800 + i * 10, 760], [810 + i * 10, 760]], s: 1, offset: 0, anim: [] }));
   const rules = careCheck(C, { signs: [] }, null, { E, thresholds: TH });
   assert.equal(rules.find(r => r.rule === 'crowd').ok, false);
-  C.actors = [{ o: 'person.w', v: 0, layer: 3, path: [[0, 760], [10, 760]], s: 2, offset: 0, anim: [] }];
-  assert.equal(careCheck(C, { signs: [] }, null, { E, thresholds: TH }).find(r => r.rule === 'personHeight').ok, false, '120 units tall');
+  C.actors = [{ o: 'person.w', v: 0, layer: 3, path: [[0, 760], [10, 760]], s: 2.7, offset: 0, anim: [] }];
+  assert.equal(careCheck(C, { signs: [] }, null, { E, thresholds: TH }).find(r => r.rule === 'personHeight').ok, false, '162 units tall');
   assert.equal(careCheck(C, { signs: [{ text: 'Arnos Grove' }] }, null, { E, thresholds: TH }).find(r => r.rule === 'signs').ok, false, 'no signage: no signs');
   assert.equal(careCheck(C, { signage: true, signs: [{ text: 'Arnos Grove', style: 'board' }] }, null, { E, thresholds: TH }).find(r => r.rule === 'signs').ok, true);
   assert.equal(careCheck(C, { signage: true, signs: [{ text: 'Arnos Grove' }] }, { upgrade: { state: 'draft' } }, { E, thresholds: TH }).find(r => r.rule === 'signs').ok, false, 'a region upgrade never has signs');
@@ -137,6 +137,21 @@ test('care: crowds, tall people and signs outside signage fail; sign text keeps 
   assert.equal(svgTextCheck('<g class="sc-sign"><rect/><text x="1">Arnos Grove</text></g>', [{ text: 'Arnos Grove' }])[0].ok, true);
   assert.equal(svgTextCheck('<g><text>Arnos Grove</text></g>', [{ text: 'Arnos Grove' }])[0].ok, false, 'text outside a sign');
   assert.equal(svgTextCheck('<g class="sc-sign"><text>Other</text></g>', [{ text: 'Arnos Grove' }])[0].ok, false, 'text that is not a sign\'s');
+});
+
+test('care: the people limits (8.5): a silhouette of 170 shapes passes and 190 fails; 140 units tall passes and 160 fails', () => {
+  assert.equal(TH.composed.care.personShapes.max, 180); assert.equal(TH.composed.care.personHeight.max, 150);
+  const withShapes = (n) => Object.assign(fakeE(), { shapes: (id, v, season) => (id === 'person.w'
+    ? { box: [-10, -60, 10, 2], parts: { body: Array.from({ length: n }, (_, i) => ({ f: '#806040', d: rect(-10, -60 + (i % 60), 20, 1) })) }, order: ['body'], anim: [] }
+    : SHAPES(id, v, season)) });
+  const care = (C, E) => careCheck(C, { signs: [] }, null, { E, thresholds: TH });
+  const one = (s) => { const C = goodC(); C.actors = [{ o: 'person.w', v: 0, layer: 3, path: [[0, 760], [10, 760]], s, offset: 0, anim: [] }]; return C; };
+  assert.equal(care(one(1), withShapes(170)).find(r => r.rule === 'silhouettes').ok, true, '170 shapes');
+  const big = care(one(1), withShapes(190)).find(r => r.rule === 'silhouettes');
+  assert.equal(big.ok, false, '190 shapes'); assert.match(big.message, /person\.w: people are anonymous silhouettes \(tag 'silhouette', at most 180 shapes, no faces\)/);
+  assert.equal(care(one(140 / 60), fakeE()).find(r => r.rule === 'personHeight').ok, true, '140 units tall');
+  const tall = care(one(160 / 60), fakeE()).find(r => r.rule === 'personHeight');
+  assert.equal(tall.ok, false, '160 units tall'); assert.match(tall.message, /taller than 150 units: size them with the depth ladder/);
 });
 
 test('perf rules: the laptop budget with --gpu, x swFactor in software, the first bake warns before it fails', () => {

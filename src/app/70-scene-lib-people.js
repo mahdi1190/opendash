@@ -2,6 +2,8 @@
    SCENE LIBRARY: people (docs/dev/SCENE_ENGINE.md, section 2).
    PURE: sceneObjDefine calls only, built lazily per (variant, season).
 
+   person.walker is drawn by the shared, faceless builder (scenePeople, 70-scene-lib-people-0figure.js);
+   the others still use the local figure() below until they move to it.
    Small, anonymous figures after the nature kit's walkers (K.walker,
    K.jogger, K.family, K.cyclist and the anglers of the Wyndhams Pool views):
    side views about 58 units tall (66 with a hat) (the care rule: silhouettes at most 70),
@@ -89,13 +91,16 @@
   const walkAnim = (hip, period, deg) => ({ walk: { parts: ['legA', 'legB'], pivot: [0, Math.round(hip)], deg, period, bob: 1.5 } });
   const peopleTags = extra => ['uk', 'people', 'anonymous', 'silhouette', ...extra, 'kit:people', 'kit:temperate', 'kit:urban', 'role:walker'];
 
-  /* ---------- person.walker ---------- */
-  defineObj({
-    id: 'person.walker', category: 'person', size: [29, 64], variants: 4, seasonal: true, shapeBySeason: true, flippable: true, parts: ['legB', 'body', 'legA'],
-    palette: PAL, anim: walkAnim(-26, .9, 22), shadow: { rx: 11, ry: 2.4, h: 64 },
-    tags: peopleTags(['walker', 'path']),
-    credit: "the nature kit's K.walker figure, redrawn with seasonal clothes",
-    build(v, r, ctx) { const f = figure({ season: ctx.season, v, pack: v === 3 }); return { legB: f.legB, body: f.body, legA: f.legA }; },
+  /* ---------- person.walker: the reference person on the shared builder (70-scene-lib-people-0figure.js) ----------
+     8 presets (scenePeople.PRESETS): age, build, skin, hair and a wardrobe per season; faceless; 100 to 150 shapes
+     near, the fine ones (detail: true) dropped under 48 px (detailPx); at night a cool rim light, lit strips and screens. */
+  const PP = typeof scenePeople !== 'undefined' ? scenePeople : null;
+  if (PP) PP.define({
+    id: 'person.walker', category: 'person', size: [29, 64], variants: PP.PRESETS.length, seasonal: true, shapeBySeason: true, flippable: true, parts: ['legB', 'body', 'legA'],
+    palette: PP.palette(), anim: PP.walkAnim(0.9, 22, 1.5), shadow: { rx: 11, ry: 2.4, h: 64 }, night: PP.NIGHT, detailPx: true,
+    tags: PP.tags(['walker', 'path']),
+    credit: 'the shared people builder (scenePeople.figure, 8 presets with a seasonal wardrobe)',
+    build(v, r, ctx) { const f = PP.figure(PP.outfit(PP.PRESETS[v], ctx.season)); return { legB: f.legB, body: f.body, legA: f.legA }; },
   });
 
   /* ---------- person.jogger: sportswear, bent arms, a forward lean ---------- */

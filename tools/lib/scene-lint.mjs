@@ -412,15 +412,15 @@ export function careCheck(C, data, item, { E, thresholds = {} } = {}) {
   for (const it of C.items || []) { const d = F.def(it.o); if (d && d.category === 'person') people.push({ o: it.o, x: it.x, y: it.y, h: it.s * heightOf(d) }); }
   for (const a of C.actors || []) { const d = F.def(a.o); if (d && d.category === 'person') { const [x, y] = actorAt(a); const sMax = Math.max(a.s || 1, ...((a.sByY || []).map(p => (a.s || 1) * p[1]))); people.push({ o: a.o, x, y, h: sMax * heightOf(d) }); } }
   const maxP = station ? ((K.people && K.people.station) || 10) : ((K.people && K.people.max) || 8);
-  out.push(rule('care', 'people', people.length <= maxP, people.length, `<= ${maxP}${station ? ' (station)' : ''}`, `people ${people.length} > ${maxP}: life comes from animals, birds, boats and vehicles; people are a few tiny silhouettes for scale`));
+  out.push(rule('care', 'people', people.length <= maxP, people.length, `<= ${maxP}${station ? ' (station)' : ''}`, `people ${people.length} > ${maxP}: life comes from animals, birds, boats and vehicles; people are a few anonymous silhouettes for scale`));
   const cn = (K.crowd && K.crowd.n) || 4, cw = (K.crowd && K.crowd.within) || 120;
   const crowded = people.filter(p => people.filter(q => q !== p && Math.hypot(q.x - p.x, q.y - p.y) <= cw).length >= cn - 1);
   out.push(rule('care', 'crowd', !crowded.length, crowded.length, `no ${cn} people within ${cw}`, `crowd: ${crowded.length} people stand in a group of ${cn} or more within ${cw} units: spread them out (no crowds, 8.5)`));
-  const maxShapes = (K.personShapes && K.personShapes.max) || 60, maxH = (K.personHeight && K.personHeight.max) || 70;
+  const maxShapes = (K.personShapes && K.personShapes.max) || 180, maxH = (K.personHeight && K.personHeight.max) || 150;
   const badObj = [...new Set(people.map(p => p.o))].filter(o => { const d = F.def(o); const f = F.shapes(o, 0, C.season); return !tagsOf(d).includes('silhouette') || f.n > maxShapes; });
   out.push(rule('care', 'silhouettes', !badObj.length, badObj.length ? badObj.join(', ') : 'ok', `person objects tagged silhouette, <= ${maxShapes} shapes`, `${badObj.join(', ')}: people are anonymous silhouettes (tag 'silhouette', at most ${maxShapes} shapes, no faces)`));
   const tall = people.filter(p => p.h > maxH);
-  out.push(rule('care', 'personHeight', !tall.length, tall.length ? Math.round(Math.max(...tall.map(p => p.h))) : people.length ? Math.round(Math.max(...people.map(p => p.h))) : 0, `<= ${maxH} units`, `${tall.length} people drawn taller than ${maxH} units: keep them small (a scale cue, not a portrait)`));
+  out.push(rule('care', 'personHeight', !tall.length, tall.length ? Math.round(Math.max(...tall.map(p => p.h))) : people.length ? Math.round(Math.max(...people.map(p => p.h))) : 0, `<= ${maxH} units`, `${tall.length} people drawn taller than ${maxH} units: size them with the depth ladder (scenePersonScale; at most ${maxH} in the near foreground), a scale cue, not a portrait`));
   const signs = (data && data.signs) || [];
   const regionUpgrade = !!(item && item.upgrade) || (archId && REGION_ARCHS.has(archId) && !(data && data.signage));
   const sMax = (thresholds.composed && thresholds.composed.data && thresholds.composed.data.signs && thresholds.composed.data.signs.max) || 6;

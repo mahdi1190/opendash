@@ -297,16 +297,18 @@ function sceneSvg(x, o) {
     return c => { let v = memo.get(c); if (v) return v; v = typeof sceneColour === 'function' ? sceneColour(c, { L, haze, tint }) : c; memo.set(c, v); return v; };
   };
   const plain = c => c;
-  /** The <g id> for (obj, v, season, haze, tint, part): '*' = every part except 'lit'; 'lit' is drawn ungraded. */
+  /** Keep the detail shapes of `it` drawn at its scale? LOD 0.5 and up, and the object's size tier (sceneDetailAt, scene units). */
+  const detailFor = (it, sh) => detailOk && (typeof sceneDetailAt !== 'function' || sceneDetailAt(it.o, sh, it.s == null ? 1 : it.s));
+  /** The <g id> for (obj, v, season, haze, tint, part, detail tier): '*' = every part except 'lit'; 'lit' is drawn ungraded. */
   const sym = (it, part) => {
-    const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', part].join('|');
+    const sh = sceneObjShapes(it.o, it.v, it.season), det = !!sh && detailFor(it, sh);
+    const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', part, det ? 1 : 0].join('|');
     if (ids.has(key)) return ids.get(key);
-    const sh = sceneObjShapes(it.o, it.v, it.season);
     if (!sh) { ids.set(key, null); return null; }
     const names = part === '*' ? sh.order.filter(p => p !== 'lit') : [part];
     const colour = part === 'lit' ? plain : toneFor(it.haze, it.tint);
     let inner = '';
-    for (const p of names) for (const s of sh.parts[p] || []) if (detailOk || !s.detail) inner += _scShapeSvg(s, colour, defs, nid);
+    for (const p of names) for (const s of sh.parts[p] || []) if (det || !s.detail) inner += _scShapeSvg(s, colour, defs, nid);
     const id = nid();
     defs.push(`<g id="${id}">${inner}</g>`);
     ids.set(key, id);
@@ -314,11 +316,12 @@ function sceneSvg(x, o) {
   };
   /** Shapes of `parts` not moved by any hook (the static rest of an animated object). */
   const restSym = (it, moved) => {
-    const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', 'rest:' + moved.join(',')].join('|');
+    const sh = sceneObjShapes(it.o, it.v, it.season), det = detailFor(it, sh);
+    const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', 'rest:' + moved.join(','), det ? 1 : 0].join('|');
     if (ids.has(key)) return ids.get(key);
-    const sh = sceneObjShapes(it.o, it.v, it.season), colour = toneFor(it.haze, it.tint);
+    const colour = toneFor(it.haze, it.tint);
     let inner = '';
-    for (const p of sh.order) if (p !== 'lit' && !moved.includes(p)) for (const s of sh.parts[p] || []) if (detailOk || !s.detail) inner += _scShapeSvg(s, colour, defs, nid);
+    for (const p of sh.order) if (p !== 'lit' && !moved.includes(p)) for (const s of sh.parts[p] || []) if (det || !s.detail) inner += _scShapeSvg(s, colour, defs, nid);
     const id = inner ? nid() : null;
     if (id) defs.push(`<g id="${id}">${inner}</g>`);
     ids.set(key, id);
@@ -375,7 +378,7 @@ function sceneSvg(x, o) {
     return out + glows(it, it.x, it.y, it.s, it.flip);
   };
   const actorSvg = (a) => {
-    const at = sceneActorAt(a, 0), it = { o: a.o, v: a.v, season: C.season, haze: C.layers[a.layer] ? Math.round(C.layers[a.layer].haze * 10) / 10 : 0, tint: null };
+    const at = sceneActorAt(a, 0), it = { o: a.o, v: a.v, season: C.season, haze: C.layers[a.layer] ? Math.round(C.layers[a.layer].haze * 10) / 10 : 0, tint: null, s: at.s };
     const flip = at.dir < 0;
     let out = '';
     if (!a.anim || !a.anim.length) out = use(sym(it, '*'), at.x, at.y, at.s, flip, null, at.alpha);

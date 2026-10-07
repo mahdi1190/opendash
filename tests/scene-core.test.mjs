@@ -142,3 +142,52 @@ test('composed items pass animValidatePack and draw through animItemHtml (SVG in
   assert.ok(!/sc-canvas/.test(html), 'Node has no canvas: the SVG still');
   assert.equal(G('sceneItems')('nope').length, 0);
 });
+
+test('people: the depth ladder is 16 units at the horizon, linear below it, 150 at most; the archetypes size their walkers with it', () => {
+  const view = { horizon: 520 };
+  assert.equal(E.scenePersonHeight(view, 520), 16);
+  assert.equal(E.scenePersonHeight(view, 900), 132);
+  const [a, b, c] = [600, 700, 800].map(y => E.scenePersonHeight(view, y));
+  assert.ok(a < b && b < c && Math.abs((b - a) - (c - b)) < 0.2, 'linear in y below the horizon');
+  assert.equal(E.scenePersonHeight(view, 1000), 150, 'never above the care limit');
+  assert.ok(Math.abs(E.scenePersonScale(64, 700, view) * 64 - b) < 0.1, 'the scale draws a 64-unit object at the ladder height');
+  const data = E.sceneFromArchetype('basic', { id: 'ladder-test', lat: 51.5, lon: -0.1 });
+  const people = data.actors.filter(x => E.sceneObj(x.obj).category === 'person');
+  assert.ok(people.length >= 3);
+  for (const x of people) assert.ok(Math.abs(x.s * E.sceneObj(x.obj).size[1] - E.scenePersonHeight(data.view, x.path[0][1])) < 0.2, x.obj + ' at its row');
+});
+
+test('size-tiered detail: two scale buckets of one person draw different shapes; objects without detailPx keep theirs', () => {
+  const sh = E.sceneObjShapes('person.walker', 0, 'summer'), all = sh.order.flatMap(p => sh.parts[p]), tall = sh.box[3] - sh.box[1];
+  const far = E.sceneScaleBucket(0.4), near = E.sceneScaleBucket(1.5), drawn = (sc) => all.filter(s => !s.detail || E.sceneDetailAt('person.walker', sh, sc));
+  assert.ok(tall * far < E.SCENE_DETAIL_PX && tall * near >= E.SCENE_DETAIL_PX);
+  assert.equal(drawn(near).length, all.length, 'near: every shape');
+  assert.ok(drawn(far).length < all.length / 2 && drawn(far).length >= 15, 'far: the silhouette only (' + drawn(far).length + ' of ' + all.length + ')');
+  assert.notEqual(E.sceneSpriteKey('person.walker', 0, '*', 'summer', 0, null, far, 'L'), E.sceneSpriteKey('person.walker', 0, '*', 'summer', 0, null, near, 'L'), 'the sprite key carries the scale');
+  assert.equal(E.sceneDetailAt('building.coretest', E.sceneObjShapes('building.coretest', 0, 'summer'), 0.01), true, 'no detailPx: detail at any size');
+  // the SVG renderer: the same walker far and near in one still
+  const svg = E.sceneSvg({ v: 1, id: 'tier-test', view: { lat: 51.5, lon: -0.1, horizon: 500 }, season: 'summer', sky: false, particles: 'none', weather: 'none',
+    place: [{ obj: 'person.walker', x: 400, y: 800, s: 0.4, layer: 'near', anim: false }, { obj: 'person.walker', x: 1200, y: 800, s: 1.5, layer: 'near', anim: false }] }, { size: 'fill' });
+  const syms = [...svg.matchAll(/<g id="[^"]+">(.*?)<\/g>/g)].map(m => (m[1].match(/<path/g) || []).length).filter(n => n >= 15).sort((x, y) => x - y);
+  assert.deepEqual(syms, [drawn(far).length, all.length], 'one symbol per tier');
+});
+
+test('people: the shared builder draws faceless heads (no mark inside the face) for every preset and season', () => {
+  const P = G('scenePeople'), box = E.scenePathBox;
+  const faceMarks = (f, extra = []) => {
+    const h = f.head, zone = [h.x + 0.1 * h.rx, h.y - 0.4 * h.ry, h.x + 1.6 * h.rx, h.y + 0.85 * h.ry];   // the face side of the head (it faces right), a nose's reach
+    return [...f.legB, ...f.body, ...f.legA, ...extra].map(sh => (Array.isArray(sh) ? { d: sh[1] } : sh)).filter(o => {
+      const b = box(o.d, o.m), w = o.s ? (o.w || 1) / 2 : 0;
+      return b && b[0] - w >= zone[0] && b[1] - w >= zone[1] && b[2] + w <= zone[2] && b[3] + w <= zone[3];
+    });
+  };
+  assert.ok(P.PRESETS.length >= 8, '8 presets');
+  for (const [i, p] of P.PRESETS.entries()) for (const season of ['spring', 'summer', 'autumn', 'winter']) {
+    const f = P.figure(P.outfit(p, season));
+    assert.ok(f.head && f.head.rx > 3 && f.head.y < -50, 'a head');
+    assert.deepEqual(faceMarks(f).map(o => o.d), [], `preset ${i} ${season}: nothing on the face`);
+  }
+  // the check finds a face: an eye dot and a nose (the old figure's marks) inside the zone are caught
+  const f = P.figure(P.outfit(P.PRESETS[0], 'summer')), h = f.head;
+  assert.equal(faceMarks(f, [['#141010', E.sceneD.circ(h.x + 2.2, h.y - 0.6, 0.5)], ['#e8bfa0', `M${h.x + 3.4} ${h.y - 0.8}l1.6 1.8l-1.6 .6z`]]).length, 2);
+});

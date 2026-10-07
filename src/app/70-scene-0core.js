@@ -13,7 +13,9 @@
                sceneObjCheck(id) -> [problem], sceneObjDups()
    Light       sceneKit(name), sceneSeason(ms, lat, scene), sceneLight(o, view), sceneTone(L),
                sceneColour(hex, {L, haze, hazeCol, tint}), sceneWind(t, x, L), sceneScaleBucket(s)
-   Scenes      sceneValidate(data), sceneCompile(data, {season, lod, L}), sceneData(itemOrThunk),
+   Detail      sceneDetailAt(id, sh, scale), SCENE_DETAIL_PX (size-tiered detail shapes)
+   People      scenePersonHeight(view, y), scenePersonScale(objHeight, y, view), SCENE_PERSON (the depth ladder)
+   Scenes     sceneValidate(data), sceneCompile(data, {season, lod, L}), sceneData(itemOrThunk),
                sceneItem(meta, data), sceneAdd(pack, meta, data), sceneItems(pack)
    Archetypes  sceneArchetypeDefine(id, a), sceneArchetype(id), sceneArchetypes(),
                sceneArchetypeCheck(id, row), sceneFromArchetype(archId, params, patch),
@@ -200,6 +202,31 @@ function sceneWind(t, x, L) {
   return w * (base + gust);
 }
 function sceneScaleBucket(s) { return 2 ** (Math.round(Math.log2(Math.max(1e-3, s)) * 4) / 4); }
+/**
+ * Size-tiered detail (2.2): may a drawing of object `id` (resolved form sh) at `scale` keep its `detail: true` shapes?
+ * An object that opts in with `detailPx` (true: SCENE_DETAIL_PX, or a number) keeps them only when drawn at least that
+ * tall (box height x scale: device px on the canvas, scene units in the SVG); other objects always do (LOD < 0.5 still
+ * drops every detail shape). A pure function of (object, variant, season, scale), all in the sprite key.
+ */
+const SCENE_DETAIL_PX = 48;
+function sceneDetailAt(id, sh, scale) {
+  const def = sceneObj(id), px = def && def.detailPx;
+  if (!px || !sh) return true;
+  return (sh.box[3] - sh.box[1]) * (scale || 0) >= (px === true ? SCENE_DETAIL_PX : px);
+}
+/**
+ * The depth ladder for people (2.8): the on-screen height, in units, of a 1.72 m person whose feet are on row y of a
+ * view. 16 at the view's horizon row, 132 at the ground row (the frame's foot, SCENE_H), linear in y between (a flat
+ * ground seen in perspective), never above 150 (the care limit, 8.5) nor below 6.
+ */
+const SCENE_PERSON = Object.freeze({ metres: 1.72, horizon: 16, ground: 132, max: 150, min: 6 });
+function scenePersonHeight(view, y) {
+  const P = SCENE_PERSON, H = view && Number.isFinite(view.horizon) ? view.horizon : 560;
+  const h = P.horizon + (P.ground - P.horizon) * (y - H) / Math.max(1, SCENE_H - H);
+  return Math.round(Math.max(P.min, Math.min(P.max, h)) * 10) / 10;
+}
+/** The scale that draws a person object `objHeight` units tall (its size[1] stands for 1.72 m) at row y of the view. */
+function scenePersonScale(objHeight, y, view) { return Math.floor(scenePersonHeight(view, y) / Math.max(1, objHeight) * 1000) / 1000; }
 /** Sign text (8.3): trimmed, 1 to 40 letters / digits / ' & . , ( ) - /, not on the deny-list. */
 function sceneSignText(s) {
   const text = String(s == null ? '' : s).trim().replace(/\s+/g, ' ');
