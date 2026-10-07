@@ -133,6 +133,12 @@ export async function launchChrome({ executable = findChrome(), timeoutMs = 3000
       const shot = await s('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false, clip: { x: 0, y: 0, width, height, scale: 1 } });
       return Buffer.from(shot.data, 'base64');
     },
+    /** Capture the CURRENT page without navigating again (after a page has drawn itself: a second navigation would restart it). */
+    async capture({ width, height, scale = 1 }) {
+      await s('Runtime.evaluate', { expression: 'new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))', awaitPromise: true });
+      const shot = await s('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false, clip: { x: 0, y: 0, width, height, scale: 1 } });
+      return Buffer.from(shot.data, 'base64');
+    },
     /** Evaluate an expression in the current page (returns its value). */
     async evaluate(expression) {
       const r = await s('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });

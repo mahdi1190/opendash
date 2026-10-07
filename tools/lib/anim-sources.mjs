@@ -39,6 +39,12 @@ export function packSourceFiles(app) {
  * sort build.mjs uses), made of the fixed animation files, the kit files, the region files and the pack files. `extra` adds other src/app
  * file names that must be in the load (a test that needs 71-anim-sanitize.js or 69-travel-data.js): they are sorted into place.
  */
+/** The scene engine's files (docs/dev/SCENE_ENGINE.md): 70-scene-* (pure engine, library, archetypes), 71-scene-<pack>-N and
+ *  71-scene-upgrade-*. The browser-only 78-scene-* files are not part of a pure load. */
+export const SCENE_FILE_RE = /^7[01]-scene-[a-z0-9-]+\.js$/;
+export function sceneEngineFiles(app) {
+  return readdirSync(app).filter(f => SCENE_FILE_RE.test(f)).sort();
+}
 export function animRegistryFiles(app, extra = []) {
-  return [...new Set([...ANIM_BASE_FILES, ...kitSourceFiles(app), ...regionSourceFiles(app), ...packSourceFiles(app), ...extra])].sort();
+  return [...new Set([...sceneEngineFiles(app), ...ANIM_BASE_FILES, ...kitSourceFiles(app), ...regionSourceFiles(app), ...packSourceFiles(app), ...extra])].sort();
 }

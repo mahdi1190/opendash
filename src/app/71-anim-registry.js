@@ -148,6 +148,12 @@ function animValidatePack(p) {
     if (it.full != null && typeof it.full !== 'boolean') errors.push(w + 'full must be true or false (a full-viewport scene)');
     if (it.rich != null && typeof it.rich !== 'boolean') errors.push(w + 'rich must be true or false (a rich local scene)');
     if (it.rich && !it.full) errors.push(w + 'rich scenes must be full-viewport scenes (full: true)');
+    // composed scenes (docs/dev/SCENE_ENGINE.md 6.2, 16.2): the scene engine draws them from data
+    if (it.composed != null && typeof it.composed !== 'boolean') errors.push(w + 'composed must be true or false (a scene-engine scene)');
+    if (it.composed && !it.full) errors.push(w + 'composed scenes must be full-viewport scenes (full: true)');
+    if (it.composed && !(typeof it.scene === 'function' || (it.scene && typeof it.scene === 'object'))) errors.push(w + 'a composed item needs scene: the data or a thunk () => data');
+    if (it.retro != null && (typeof it.retro !== 'object' || Array.isArray(it.retro))) errors.push(w + 'retro must be an object (the retrofit overrides)');
+    if (it.upgrade != null && !(it.upgrade && typeof it.upgrade === 'object' && (it.upgrade.state === 'draft' || it.upgrade.state === 'live'))) errors.push(w + 'upgrade must be {state: draft|live, ...}');
     if (it.slot === 'theme-switch' && !(it.vt && /^(circle|wipe|fade)$/.test(it.vt.kind))) errors.push(w + 'theme-switch items need vt: {kind: circle|wipe|fade}');
   }
   return { ok: !errors.length, errors };
@@ -367,7 +373,8 @@ function animItemHtml(x, o) {
   // o.detail 'tile': a rich scene filling a card (Home's animation of the day) draws the tile level of
   // detail (about a fifth of the nodes, a quarter of the frame cost) while still filling its box and moving.
   const ao = it.rich && o.detail === 'tile' && (o.size === 'fill' || o.size === 'hero') ? Object.assign({}, o, { size: 'lg' }) : o;
-  const body = reduced ? (it.reduced === 'static' ? it.svg(ao) : it.reduced(ao)) : it.svg(ao);
+  // the body is drawn only on the SVG path (a composed scene on the canvas never renders its SVG still)
+  const bodyOf = () => reduced ? (it.reduced === 'static' ? it.svg(ao) : it.reduced(ao)) : it.svg(ao);
   const cls = ['anim-scene', 'ap-art', 'c-' + it.colour, 'sz-' + (o.size || 'md'), 'ap-' + it.slot];
   // A rich scene (thousands of nodes, hundreds of loops) never loops in a small tile: every frame of an SVG
   // animation repaints the whole drawing on the main thread, so a 22-px badge cost as much as the full screen.
@@ -381,7 +388,11 @@ function animItemHtml(x, o) {
   if (o.tod && /^(dawn|day|dusk|night)$/.test(o.tod)) cls.push('tod-' + o.tod);
   const theme = o.theme && ANIM_THEME_IDS.includes(o.theme) ? ` data-anim-theme="${o.theme}"` : '';
   const aria = o.label ? ` role="img" aria-label="${_animAttr(o.label)}"` : ' aria-hidden="true"';
+  // A composed scene at a canvas size (docs/dev/SCENE_ENGINE.md 6.1, 6.2): no <svg>, a canvas the scene host (78-scene-host.js) fills.
+  if (it.composed && typeof sceneRendererFor === 'function' && sceneRendererFor(it, o) === 'canvas') {
+    return `<span class="${cls.join(' ')} ap-composed" data-anim="${_animAttr(it.ref)}"${theme}${aria}${sceneHostAttrs(it, o)}><canvas class="sc-canvas" aria-hidden="true"></canvas></span>`;
+  }
   // A full scene keeps its 16:9 drawing and fills its box (slice): edge to edge on any screen, the middle in a square tile.
   const vb = it.full ? `viewBox="0 0 ${ANIM_FULL_W} ${ANIM_FULL_H}" preserveAspectRatio="xMidYMid slice"` : 'viewBox="0 0 64 64"';
-  return `<span class="${cls.join(' ')}" data-anim="${_animAttr(it.ref)}"${theme}${aria}><svg class="as ap-svg as-${_animAttr(it.id)}" ${vb} aria-hidden="true" focusable="false">${body}</svg></span>`;
+  return `<span class="${cls.join(' ')}" data-anim="${_animAttr(it.ref)}"${theme}${aria}><svg class="as ap-svg as-${_animAttr(it.id)}" ${vb} aria-hidden="true" focusable="false">${bodyOf()}</svg></span>`;
 }

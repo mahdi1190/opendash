@@ -335,7 +335,7 @@ test('thresholds: profiles are frozen lists, new packs get the strict profiles',
   assert.equal(profileFor({ pack: 'uk-south-east', full: true, rich: true }, TH), 'scene-rich', 'a rich scene has its own profile, whatever its pack');
   assert.equal(profileFor({ pack: 'europe-west', full: true, rich: true }, TH), 'scene-rich');
   assert.equal(profileFor({ pack: 'europe-west', full: false, rich: true }, TH), 'item', 'rich is for full scenes only');
-  for (const r of RES.results) assert.equal(r.profile, profileFor({ pack: r.pack, full: r.full, rich: r.rich }, TH));
+  for (const r of RES.results) assert.equal(r.profile, profileFor({ pack: r.pack, full: r.full, rich: r.rich, composed: r.composed }, TH));
 });
 
 // The waivers granted on 2026-10-05, to accepted art that predates the lint. The list only shrinks: a NEW drawing is never waived

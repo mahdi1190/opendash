@@ -93,8 +93,8 @@
 
   /* ---------- rock.stones: a scatter of pebbles and a few larger stones, lit from the left ---------- */
   defineObj({
-    id: 'rock.stones', category: 'rock', size: [133, 31], variants: 4, seasonal: true, flippable: true,
-    palette: Object.assign({ base: { stone: ['#7a7468', '#a29a8a', '#d2cab8'], shade: '#2a2a24' } }, bySeason({ moss: { spring: '#5a7a3a', summer: '#5a7a3a', autumn: '#6a7238', winter: '#6a7458' } })),
+    id: 'rock.stones', category: 'rock', size: [133, 31], variants: 4, seasonal: false, flippable: true,
+    palette: { base: { stone: ['#7a7468', '#a29a8a', '#d2cab8'], shade: '#2a2a24', moss: '#5a7a3a' } },
     tags: ['uk', 'heath', 'waterside', 'stones', 'pebbles', 'kit:temperate', 'kit:water', 'role:rock'],
     credit: "the nature kit's K.stones, as a placeable cluster",
     build(v, r) {

@@ -116,6 +116,25 @@ function animRegion(id) { return ANIM_REGIONS.find(r => r.id === id) || null; }
 function animRegionOwns(regionId, packId) { packId = String(packId || ''); return packId === regionId || packId.startsWith(regionId + '-'); }
 /** Register a full-screen scene for a region: animRegionSceneAdd('asia', {key: 'country:JP', label, site, colour, mood, season, tags, svg}). Works before or after the region is defined. */
 function animRegionSceneAdd(regionId, e) { _arSceneStore(String(regionId), e); }
+/** Upgrades per region id (docs/dev/SCENE_ENGINE.md 16.2): { regionId: { key: up } }, and the keys upgraded more than once. */
+const _ANIM_REGION_UPGRADES = Object.create(null);
+const _ANIM_REGION_UPGRADE_DUPES = Object.create(null);
+/**
+ * Upgrade a hand-drawn region scene to a composed one, keeping its identity (16.2):
+ * animRegionSceneUpgrade('asia', 'place:singapore', { state: 'draft' | 'live', archetype, landmarks: [...], scene: () => sceneFromArchetype(...) }).
+ * Works before or after the region is defined. The scene thunk runs only when the item is shown, linted or sheeted.
+ * draft: the app keeps the (retrofitted) legacy art and the item gains upgrade: {state, archetype, landmarks, scene} (the tools show it with --upgrades).
+ * live: the item becomes composed (same id, fields, label, site, tags, when), with legacySvg = the old art; it is not retrofitted.
+ */
+function animRegionSceneUpgrade(regionId, key, up) {
+  regionId = String(regionId);
+  if (typeof key !== 'string' || !_arSceneKey.test(key)) throw new Error('region ' + regionId + ' upgrade: key "<unit word>:<CODE>" or "place:<id>"');
+  if (!up || typeof up !== 'object' || (up.state !== 'draft' && up.state !== 'live')) throw new Error('region ' + regionId + ' upgrade ' + key + ': state is draft or live');
+  if (typeof up.scene !== 'function' && !(up.scene && typeof up.scene === 'object')) throw new Error('region ' + regionId + ' upgrade ' + key + ': scene is a thunk () => data (or the data)');
+  const ups = _ANIM_REGION_UPGRADES[regionId] || (_ANIM_REGION_UPGRADES[regionId] = {});
+  if (_arHas(ups, key)) { const d = _ANIM_REGION_UPGRADE_DUPES[regionId] || (_ANIM_REGION_UPGRADE_DUPES[regionId] = {}); d[key] = (d[key] || 1) + 1; }
+  ups[key] = up;
+}
 /**
  * Where in every region the user is, for the opening sequence: one entry per region that matches, NEAREST first
  * (km = the distance to that region's nearest row, 0 for a travel match; ties in definition order), each
@@ -165,6 +184,11 @@ function animRegionDefine(cfg) {
   const K = Object.assign({ unit: 'unit', unitName: 'unitName' }, cfg.keys);
   if (K.unit === K.unitName || [K.unit, K.unitName].some(k => ['id', 'name', 'kind', 'region', 'over', 'km'].includes(k))) bad('keys: unit and unitName must be two names other than id, name, kind, region, over, km');
   const placeKinds = Array.isArray(cfg.placeKinds) ? cfg.placeKinds : ['big', 'small'];
+  // the retrofit (7.3): {} (default) = on with SCENE_RETRO_DEFAULTS, an object of overrides, or false
+  const retrofit = cfg.retrofit === false ? false : Object.assign({}, cfg.retrofit || {});
+  // selection (9.4): { rule: 'dense', params, kinds: ['station', 'area'] }; without it the region behaves exactly as before
+  const select = cfg.select && typeof cfg.select === 'object' ? Object.assign({ rule: 'nearest', params: {}, kinds: [] }, cfg.select) : null;
+  const rowKinds = ['', 'big', 'small'].concat(select && Array.isArray(select.kinds) ? select.kinds : []);
   const pseudo = Object.assign({}, cfg.pseudo);
   const elsewhere = Object.freeze(Array.isArray(cfg.elsewhere) ? cfg.elsewhere.slice() : []);
   const worldTravel = Object.freeze(Array.isArray(cfg.worldTravel) ? cfg.worldTravel.slice() : []);
@@ -241,6 +265,64 @@ function animRegionDefine(cfg) {
   /** The scene registered for a unit or a place, or null. A unit scene's key is '<unitWord>:<CODE>' ('unit:<CODE>' also works). */
   const sceneFor = (kind, ref) => (kind === 'place' ? scenes['place:' + ref] : scenes[unitWord + ':' + ref] || scenes['unit:' + ref]) || null;
   function sceneAdd(e) { _arSceneStore(id, e); }
+  /** The scene's own position (liveSky) for a scene key: a place's row; a unit's first big row, else the mean of its rows. */
+  function liveSkyOf(key) {
+    const [kind, ref] = String(key).split(':');
+    if (kind === 'place') { const p = rowById.get(ref); return p ? { lat: p[3], lon: p[4] } : null; }
+    const mine = rows.filter(p => p[2] === ref);
+    if (!mine.length) return null;
+    const big = mine.find(p => p[5] === 'big');
+    if (big) return { lat: big[3], lon: big[4] };
+    return { lat: Math.round(mine.reduce((n, p) => n + p[3], 0) / mine.length * 1e4) / 1e4, lon: Math.round(mine.reduce((n, p) => n + p[4], 0) / mine.length * 1e4) / 1e4 };
+  }
+  const upgradesOf = () => _ANIM_REGION_UPGRADES[id] || {};
+  /** The upgrades of this region for the tools: [{ key, state, archetype, landmarks }]. */
+  function upgrades() { return Object.keys(upgradesOf()).sort().map(key => { const u = upgradesOf()[key]; return { key, state: u.state, archetype: u.archetype || null, landmarks: (u.landmarks || []).slice() }; }); }
+  /**
+   * A full item made from a scene entry gets the live sky, then either its LIVE upgrade (composed, same identity) or the
+   * retrofit overlay (7.3, 16.2). A draft upgrade only adds item.upgrade.
+   */
+  function finishFull(it, key) {
+    if (!it || !it.full || typeof it.svg !== 'function') return it;
+    const sky = liveSkyOf(key), up = upgradesOf()[key];
+    if (sky && !it.liveSky) it.liveSky = sky;
+    if (up && up.state === 'live') {
+      const legacySvg = it.svg, thunk = typeof up.scene === 'function' ? up.scene : () => up.scene;
+      // view.lat / view.lon default to the scene's own position
+      const scene = () => { const d = thunk(); if (d && sky) { d.view = d.view || {}; if (!Number.isFinite(d.view.lat)) d.view.lat = sky.lat; if (!Number.isFinite(d.view.lon)) d.view.lon = sky.lon; } return d; };
+      const out = Object.assign(it, { composed: true, rich: true, full: true, scene, legacySvg, reduced: 'static',
+        upgrade: { state: 'live', archetype: up.archetype || null, landmarks: (up.landmarks || []).slice() } });
+      delete out.retro;
+      out.svg = (o) => sceneSvg(out, o);
+      return out;
+    }
+    const entryRetro = it.retro;
+    if (typeof sceneRetrofit === 'function' && retrofit !== false && entryRetro !== false) it = sceneRetrofit(it, Object.assign({}, retrofit, entryRetro || {}));
+    else delete it.retro;
+    if (up) it.upgrade = { state: 'draft', archetype: up.archetype || null, landmarks: (up.landmarks || []).slice(), scene: up.scene };
+    return it;
+  }
+  const _selCache = new WeakMap();
+  /**
+   * Which place plays, by the region's selection rule (9.4): a Result {kind, id, ids?, km, reason} or null. Cached per (ctx, minute).
+   * The input: ctx.fix / ctx.track / ctx.seen when the page supplies them (in memory only), else a coarse fix from ctx.lat / ctx.lon (at 0: never an arrival).
+   */
+  function selectFor(ctx) {
+    if (!select || typeof sceneSelect !== 'function' || !ctx) return null;
+    const now = Number.isFinite(ctx.now) ? ctx.now : (typeof Clock !== 'undefined' && Clock.now ? Clock.now() : Date.now()); // clock-ok: pure fallback
+    const minute = Math.floor(now / 60000);
+    const c = _selCache.get(ctx);
+    if (c && c.minute === minute) return c.res;
+    const kinds = new Set(select.kinds || []);
+    const placesIn = rows.filter(p => p[5]).map(p => ({ id: p[0], name: p[1], kind: kinds.has(p[5]) ? p[5] : 'station', lat: p[3], lon: p[4], unit: p[2], lines: [] }));
+    const fix = ctx.fix && Number.isFinite(ctx.fix.lat) ? ctx.fix : _arHasPos(ctx) ? { lat: +ctx.lat, lon: +ctx.lon, acc: 1000, at: 0 } : null;
+    if (!fix || !nearest({ lat: fix.lat, lon: fix.lon }).u) { _selCache.set(ctx, { minute, res: null }); return null; }   // not in this region at all
+    const unitRows = Object.keys(units).map(u => { const s = liveSkyOf(unitWord + ':' + u); return s ? { id: u, lat: s.lat, lon: s.lon } : null; }).filter(Boolean);
+    const slot = Math.floor((now % 86400000) / (60000 * ((select.params && select.params.rotateMin) || 60)));
+    const res = sceneSelect(select.rule, { now, places: placesIn, units: unitRows, fix, track: Array.isArray(ctx.track) ? ctx.track : [], seen: ctx.seen || {}, params: select.params || {}, seed: Math.floor(now / 86400000) + ':' + slot });
+    _selCache.set(ctx, { minute, res });
+    return res;
+  }
 
   /**
    * A builder for a pack file of one group: const B = REGION.builder('east');
@@ -256,13 +338,15 @@ function animRegionDefine(cfg) {
     if (!groups.includes(group)) throw new Error(id + ' pack: no group "' + group + '" (groups: ' + groups.join(', ') + ')');
     const items = [], ids = new Set();
     /** Every item goes through here: a second item with the same id would make the whole pack fail to register, silently, so it throws at the call site. */
-    const push = (it) => {
+    const push = (it, key) => {
+      if (key) it = finishFull(it, key);
       if (ids.has(it.id)) throw new Error(id + ' pack ' + group + ': duplicate item id "' + it.id + '" (every item id is used once per pack; a scene registered for a unit or a place already makes "<unit>-signature" / "<place>-skyline" unless it has its own id)');
       ids.add(it.id); items.push(it);
     };
     const base = { mood: 'neutral', intensity: 'subtle', theme: 'any', season: 'any', reduced: 'static', priority: P.unit };
-    const unitWhen = (u) => (day, ctx) => unitOf(ctx) === u;
-    const placeWhen = (pid) => (day, ctx) => { const q = place(ctx); return !!q && q.id === pid; };
+    const dense = !!select && select.rule !== 'nearest';
+    const unitWhen = dense ? (u) => (day, ctx) => { const s = selectFor(ctx); return !!s && s.kind === 'borough' && s.id === u; } : (u) => (day, ctx) => unitOf(ctx) === u;
+    const placeWhen = dense ? (pid) => (day, ctx) => { const s = selectFor(ctx); return !!s && s.id === pid; } : (pid) => (day, ctx) => { const q = place(ctx); return !!q && q.id === pid; };
     const upgrade = (o, sc) => sc ? Object.assign({}, o, sc, { id: o.id, full: true, tags: (o.tags || []).concat(sc.tags || []) }) : o;
     const unitTags = (nm, u, last) => [T.root, T.unit, nm.toLowerCase(), u.toLowerCase(), last];
     const cityTags = (p) => [T.root, T.city, p[1].toLowerCase(), p[2].toLowerCase(), p[5]];
@@ -272,9 +356,10 @@ function animRegionDefine(cfg) {
       if (kind !== 'signature' && kind !== 'element') throw new Error(id + ' pack: kind ' + kind);
       if (!o || typeof o.id !== 'string') throw new Error(id + ' pack ' + group + ': ' + u + ' ' + kind + ' needs an id');
       const sig = kind === 'signature';
-      o = upgrade(o, sig ? sceneFor(unitWord, u) : null);
+      const sc = sig ? sceneFor(unitWord, u) : null;
+      o = upgrade(o, sc);
       push(Object.assign({}, base, itemFields(u), { slot: sig ? 'opening' : 'symbol', [F.kind]: unitWord, [F.unit]: u, [F.signature]: sig, when: unitWhen(u) },
-        o, { id: u.toLowerCase() + '-' + o.id, label: o.label + ', ' + nm[0], tags: unitTags(nm[0], u, kind).concat(o.tags || []) }));
+        o, { id: u.toLowerCase() + '-' + o.id, label: o.label + ', ' + nm[0], tags: unitTags(nm[0], u, kind).concat(o.tags || []) }), sc ? sc.key : null);
     }
     function placeItem(pid, o) {
       const p = rowById.get(pid);
@@ -282,9 +367,10 @@ function animRegionDefine(cfg) {
       if (!inGroup(p[2], group)) throw new Error(id + ' pack ' + group + ': ' + pid + ' belongs to another group');
       if (!o || typeof o.id !== 'string') throw new Error(id + ' pack ' + group + ': ' + pid + ' needs an id');
       const big = p[5] === 'big';
-      o = upgrade(o, big ? sceneFor('place', pid) : null);
+      const sc = big ? sceneFor('place', pid) : null;
+      o = upgrade(o, sc);
       push(Object.assign({}, base, itemFields(p[2]), { slot: big ? 'opening' : 'symbol', [F.kind]: 'city', [F.unit]: p[2], [F.place]: pid, [F.size]: p[5], priority: P.city, when: placeWhen(pid) },
-        o, { id: pid + '-' + o.id, label: o.label + ', ' + p[1], tags: cityTags(p).concat(o.tags || []) }));
+        o, { id: pid + '-' + o.id, label: o.label + ', ' + p[1], tags: cityTags(p).concat(o.tags || []) }), sc ? 'place:' + pid : null);
     }
     function scenesToItems() {
       for (const key of Object.keys(scenes).sort()) {
@@ -294,12 +380,12 @@ function animRegionDefine(cfg) {
           const nm = unitRow(ref);
           if (!nm || nm[1] !== group) continue;
           push(Object.assign({}, base, itemFields(ref), { slot: 'opening', full: true, [F.kind]: unitWord, [F.unit]: ref, [F.signature]: true, when: unitWhen(ref) },
-            e, { key: undefined, id: ref.toLowerCase() + '-' + (e.id || 'signature'), label: e.label + ', ' + nm[0], tags: unitTags(nm[0], ref, 'signature').concat(e.tags || []) }));
+            e, { key: undefined, id: ref.toLowerCase() + '-' + (e.id || 'signature'), label: e.label + ', ' + nm[0], tags: unitTags(nm[0], ref, 'signature').concat(e.tags || []) }), key);
         } else if (kind === 'place') {
           const p = rowById.get(ref);
           if (!p || p[5] !== 'big' || !inGroup(p[2], group)) continue;
           push(Object.assign({}, base, itemFields(p[2]), { slot: 'opening', full: true, [F.kind]: 'city', [F.unit]: p[2], [F.place]: ref, [F.size]: 'big', priority: P.city, when: placeWhen(ref) },
-            e, { key: undefined, id: ref + '-' + (e.id || 'skyline'), label: e.label + ', ' + p[1], tags: cityTags(p).concat(e.tags || []) }));
+            e, { key: undefined, id: ref + '-' + (e.id || 'skyline'), label: e.label + ', ' + p[1], tags: cityTags(p).concat(e.tags || []) }), key);
         }
       }
     }
@@ -377,7 +463,7 @@ function animRegionDefine(cfg) {
       if (!name || typeof name !== 'string') out.push(pid + ': no name');
       if (!unitRow(u) && !_arHas(pseudo, u)) out.push(pid + ': ' + u + ' is not in units');
       if (!(typeof lat === 'number' && lat >= -90 && lat <= 90 && typeof lon === 'number' && lon >= -180 && lon <= 180)) out.push(pid + ': lat / lon out of range');
-      if (!['', 'big', 'small'].includes(kind)) out.push(pid + ': kind is big, small or ""');
+      if (!rowKinds.includes(kind)) out.push(pid + ': kind is ' + rowKinds.filter(Boolean).join(', ') + ' or ""');
       anchored.add(u);
       const t = travelIdOf(p);
       if (!t) out.push(pid + ': no travel id (the travelId hook threw or returned no string for this row)');
@@ -399,6 +485,8 @@ function animRegionDefine(cfg) {
     const xxIds = [...travel.keys()].filter(t => /-xx$/.test(t));
     const countryOr = (u) => { try { return countryOf(u); } catch (e) { return ''; } };
     if (Object.keys(units).some(u => countryOr(u) === _AR_PLACEHOLDER_COUNTRY) || xxIds.length) out.push('starter: the country is still the placeholder XX' + (xxIds.length ? ' (' + xxIds.length + ' of the travel ids end in -xx, for example ' + xxIds[0] + ')' : '') + ': set country: \'<ISO 3166-1 alpha-2 code>\' in the config (items carry it as their region, and a travel id is <place id>-<country code>)');
+    for (const key of Object.keys(upgradesOf())) if (!_arHas(scenes, key)) out.push('upgrade ' + key + ': no scene entry has this key (an upgrade replaces a registered hand-drawn scene; register the scene or fix the key)');
+    for (const [key, n] of Object.entries(_ANIM_REGION_UPGRADE_DUPES[id] || {})) out.push('DUPLICATE UPGRADE ' + key + ' (registered ' + n + ' times; keep one upgrade file per scene)');
     for (const key of Object.keys(scenes)) {
       if (!_arSceneKey.test(key)) { out.push(key + ': a scene key is "' + unitWord + ':<CODE>" or "place:<id>"'); continue; }
       const [kind, ref] = key.split(':');
@@ -409,7 +497,7 @@ function animRegionDefine(cfg) {
     return out;
   }
 
-  const region = { id, name: cfg.name || id, over: cfg.over || cfg.name || id, unitWord, units, places, groups, keys: K, fields: F, tags: T, priority: P, scenes, place, unitOf, nearestRow, where, locate, builder, sceneAdd, sceneDuplicates, check, overlaps, travelRow, travelId: travelIdOf, countryOf: (u) => { try { return String(countryOf(u)); } catch (e) { return ''; } }, worldTravel, elsewhere, unitKm, placeKm: Object.freeze(Object.assign({}, placeKm)), complete, owns: (packId) => animRegionOwns(id, packId) };
+  const region = { id, name: cfg.name || id, over: cfg.over || cfg.name || id, unitWord, units, places, groups, keys: K, fields: F, tags: T, priority: P, scenes, place, unitOf, nearestRow, where, locate, builder, sceneAdd, sceneDuplicates, check, overlaps, upgrades, select: selectFor, retrofit, liveSkyOf, travelRow, travelId: travelIdOf, countryOf: (u) => { try { return String(countryOf(u)); } catch (e) { return ''; } }, worldTravel, elsewhere, unitKm, placeKm: Object.freeze(Object.assign({}, placeKm)), complete, owns: (packId) => animRegionOwns(id, packId) };
   ANIM_REGIONS.push(region);
   return region;
 }

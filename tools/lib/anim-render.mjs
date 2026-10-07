@@ -52,7 +52,7 @@ export function registrySources(root, extraFiles = [], omit = []) {
 
 const NAMES = ['animPacks', 'animPack', 'animItem', 'animItems', 'animItemHtml', 'animValidatePack', 'ANIM_ITEM_MAX_BYTES', 'ANIM_FULL_ITEM_MAX_BYTES', 'ANIM_REGIONS', 'animRegion', 'almSceneLight'];
 
-const _registries = new Map();
+const _registries = new Map(), _REGISTRY_CACHE_MAX = 3;
 /**
  * Evaluate the registry the way the build concatenates it (one scope). Throws with the culprit file on a syntax error.
  * A load without extra files is memoised per root for the life of the process (the sources do not change under a running tool);
@@ -60,9 +60,15 @@ const _registries = new Map();
  */
 export function loadRegistry(root = repoRoot(), { extraFiles = [], omit = [], fresh = false } = {}) {
   const plain = !extraFiles.length && !omit.length;
-  if (plain && !fresh && _registries.has(root)) return _registries.get(root);
+  if (plain && !fresh && _registries.has(root)) { const hit = _registries.get(root); _registries.delete(root); _registries.set(root, hit); return hit; }
   const reg = loadRegistryUncached(root, extraFiles, omit);
-  if (plain) _registries.set(root, reg);
+  if (plain) {
+    _registries.delete(root);
+    _registries.set(root, reg);
+    // keep the most recently used few: a process that loads many roots (the CLI tests' temp checkouts) must not hold every
+    // bundle (each holds the whole corpus and the scene engine's memoised shapes) for its whole life
+    while (_registries.size > _REGISTRY_CACHE_MAX) _registries.delete(_registries.keys().next().value);
+  }
   return reg;
 }
 const BUNDLE = 'anim-registry-bundle.js';

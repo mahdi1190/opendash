@@ -179,6 +179,8 @@ function _schMount(el) {
     rec.r = gone.rec.r; rec.data = gone.rec.data;
     if (gone.rec.canvas !== canvas) { canvas.replaceWith(gone.rec.canvas); rec.canvas = gone.rec.canvas; }
     rec.r.attach(rec.canvas);
+    // the new markup may carry another sky or season (data-sc-sky / data-sc-season): the renderer re-bakes only when the light key changes
+    try { const { L, season } = _schLight(rec); rec.r.setSeason(season); rec.r.setLight(L); } catch (e) { /* keep the current light */ }
   } else {
     try {
       rec.data = typeof sceneData === 'function' && item.composed ? sceneData(item) : _scDataOf(item);

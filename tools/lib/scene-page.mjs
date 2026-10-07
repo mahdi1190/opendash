@@ -169,7 +169,7 @@ async function loadPage(chrome, opts) {
 export async function sceneRenderPng(chrome, opts, file) {
   const { W, H } = await loadPage(chrome, opts);
   // the page is ready: capture it again (the first capture may predate the first bake)
-  const png = await chrome.screenshot({ html: scenePageHtml(opts), width: W, height: H, scale: opts.dpr || 1, transparent: false });
+  const png = chrome.capture ? await chrome.capture({ width: W, height: H, scale: opts.dpr || 1 }) : await chrome.screenshot({ html: scenePageHtml(opts), width: W, height: H, scale: opts.dpr || 1, transparent: false });
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, png);
   return file;

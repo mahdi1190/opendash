@@ -87,7 +87,7 @@
     return { legB: leg(false), body, legA: leg(true), hip };
   };
   const walkAnim = (hip, period, deg) => ({ walk: { parts: ['legA', 'legB'], pivot: [0, Math.round(hip)], deg, period, bob: 1.5 } });
-  const peopleTags = extra => ['uk', 'people', 'anonymous', ...extra, 'kit:people', 'kit:temperate', 'kit:urban', 'role:walker'];
+  const peopleTags = extra => ['uk', 'people', 'anonymous', 'silhouette', ...extra, 'kit:people', 'kit:temperate', 'kit:urban', 'role:walker'];
 
   /* ---------- person.walker ---------- */
   defineObj({
@@ -135,7 +135,7 @@
   defineObj({
     id: 'person.family', category: 'person', size: [70, 70], variants: 3, seasonal: true, shapeBySeason: true, flippable: true, parts: ['legB', 'body', 'legA'],
     palette: PAL, anim: walkAnim(-26, .8, 18), shadow: { rx: 32, ry: 2.6, h: 64 },
-    tags: peopleTags(['family', 'child', 'path']),
+    tags: peopleTags(['family', 'child', 'path']).filter(t => t !== 'silhouette'),   // a group (66 shapes): not a single silhouette for the care rule
     credit: "the nature kit's K.family",
     build(v, r, ctx) {
       // the lead adult (front, right) carries the walk; the child and the second adult step in a held mid-stride
@@ -177,7 +177,7 @@
     id: 'person.angler', category: 'person', size: [184, 83], variants: 3, seasonal: true, shapeBySeason: true, flippable: true, parts: ['gear', 'body', 'rod'],
     palette: Object.assign({}, PAL, { base: Object.assign({}, PAL.base, { box: ['#3a6a4a', '#5a7a5a', '#e8e0c8'], rod: '#2a2420', line: '#e8f0f0', brolly: ['#2f5a3a', '#4a7a4a', '#6a4a3a'], float: '#e0402a' }) }),
     anim: { turn: { part: 'rod', pivot: [10, -30], deg: 3, period: 5, hold: .5 } },
-    tags: ['uk', 'people', 'anonymous', 'angler', 'fishing', 'pond', 'canal', 'kit:people', 'kit:temperate', 'kit:water', 'role:walker'],
+    tags: ['uk', 'people', 'anonymous', 'silhouette', 'angler', 'fishing', 'pond', 'canal', 'kit:people', 'kit:temperate', 'kit:water', 'role:walker'],
     credit: 'the Wyndhams Pool view art (anglers on the bank)',
     build(v, r, ctx) {
       const f = figure({ season: ctx.season, v, salt: 6 });
