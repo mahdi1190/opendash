@@ -97,6 +97,11 @@ up privacy.
   placement lists, and instanced rendering. Much smaller scenes, and easy
   variations (seasons, angles, weather). See
   [docs/dev/SCENE_ENGINE.md](dev/SCENE_ENGINE.md).
+- Growing up: load animation packs on demand (the page is about 11 MB today),
+  performance budgets in CI, local secrets and real-sky coincidences in
+  scenes, and gentle gamification: a scene passport, a field guide of spotted
+  animals, place achievements and a year in scenes. See
+  [docs/dev/GROWTH_PLAN.md](dev/GROWTH_PLAN.md).
 
 ## Principles that will not change
 
