@@ -271,6 +271,17 @@ leaves.
 There is no `url()`, no text and no images.
 
 **Detail.** `detail: true` shapes are dropped at LOD < 0.5, in tiles.
+**Size-tiered detail.** An object that sets `detailPx` (`true` for
+`SCENE_DETAIL_PX`, 48, or a number of pixels) also drops them wherever it is
+drawn shorter than that: its box height times the drawing's scale, in device
+pixels on the canvas (the sprite bake) and in scene units in the SVG still
+(`sceneDetailAt(id, sh, scale)` in the core, used by both). The test is a
+function of (object, variant, season, scale), and the sprite key carries all
+four, so cached sprites stay valid; the SVG keys its symbols by tier too. The
+people set it: a far walker is its 20 to 30 silhouette shapes, a near one its
+100 to 150. Why 48: the people's fine strokes are 0.3 to 0.6 units wide on a
+62-unit figure, so under about 48 px they are under half a pixel (noise, and
+bytes). Objects without `detailPx` keep the old rule only.
 
 **The night-lit variant.** A part named `lit` holds what only shows after
 real dusk (`L.windows` true): floodlight washes, light beams, LED outlines,
@@ -499,13 +510,66 @@ tropical dry season; snow lies on roofs and on a pagoda in winter).
 | `south-asian` / `islamic` | `building.ghat-steps`, `building.mosque-dome`, `building.minaret`, `building.haveli` |
 | `adobe` / `colonial` / `brownstone` | `building.adobe`, `building.mission`, `building.colonial-house`, `building.brownstone P` (row houses with stoops), `structure.water-tower P` |
 | `london` | `building.station-victorian*`, `building.station-holden*`, `building.station-modern*`, `building.terrace*`, `vehicle.bus*`, `rail.platform*`, `rail.track*`, `rail.train*`, `building.mansion-block`, `vehicle.taxi-black` |
-| `people` | `person.walker*` (4 variants, seasonal clothes), `person.cyclist`, `person.jogger`, `person.dog-walker`, `person.sitter` |
+| `people` | `person.walker*` (8 variants on the shared builder, 2.8), `person.cyclist`, `person.jogger`, `person.dog-walker`, `person.sitter` |
 | `vehicles` | `vehicle.car P` (6 variants), `vehicle.taxi P`, `vehicle.tram`, `vehicle.tuk-tuk`, `vehicle.bike` |
 | `boats` | `boat.ferry P`, `boat.bumboat P`, `boat.tug P`, `boat.yacht P`, `boat.longtail`, `boat.sampan`, `boat.narrowboat`, `boat.kayak` |
 | `birds` / `animals` | `bird.mallard*`, `bird.swan*`, `bird.pigeon*`, `bird.gull P`, `bird.egret P`, `bird.kite`, `bird.swift`, `animal.deer`, `animal.dog` |
 | `water` | `water.lily`, `water.lotus`, `water.buoy P`, `water.jetty P` |
 
 Landmarks are not in kits: each upgraded scene adds its own (16.3).
+
+### 2.8 People: the depth ladder, the size tier and the shared builder
+
+**The depth ladder** (`70-scene-0core.js`). A person is 1.72 m
+(`SCENE_PERSON.metres`), and one pure function says how tall that is on
+screen: `scenePersonHeight(view, y)` gives the height in units of a person
+whose feet are on row y: 16 at the view's horizon row (`view.horizon`), 132
+at the ground row (the frame's foot, y 900), linear in y between (a flat
+ground in perspective: the height grows with the distance below the vanishing
+line), never more than 150 (the care limit, 8.5) nor less than 6.
+`scenePersonScale(objHeight, y, view)` is the scale that draws a person
+object of that height (its `size[1]` stands for 1.72 m) at row y. The four
+archetypes (`basic`, `skyline-water`, `temple-mountain`, `station` through
+`basic`) place their walkers with it instead of hand-set scales (a walker
+on a slope gets the ladder's ratio as `sByY`); the care lint checks the same
+150 cap. With the default horizon 520 a walker is about 76 units at y 720 and
+85 to 93 on the station forecourt; Fleet's canal views keep their own metric
+(1.72 m over the distance) and the hand-placed named scenes keep their scales.
+
+**The size tier** (2.2): people set `detailPx: true`, so under 48 px their
+`detail: true` shapes (folds, seams, straps, cuffs, soles, laces, hair
+strands, buttons) are not drawn: far people are cheap (20 to 30 shapes), near
+people detailed (100 to 150).
+
+**The shared builder** (`70-scene-lib-people-0figure.js`, `scenePeople`,
+sorted before the other people files). One faceless figure for every
+`person.*` object: `scenePeople.figure(o)` returns the walk-cycle parts
+`legB`, `body`, `legA` (the walk hook `scenePeople.walkAnim()` swings the legs
+about the hip, `scenePeople.HIP`, and bobs the body), the head's ellipse and
+the hands' positions (for leads, rods, handlebars). The body plan: an adult
+62 units to the crown, side view facing right, the head a plain egg (hair, a
+hat or a hood; never eyes, a nose, ears or a mouth: a test checks the face
+side of every preset's head), neck, shoulders, torso, two-segment arms and
+legs, feet. Builds: slim, average, broad, stout; ages young, adult, older (a
+slight stoop). Tops: tee, blouse, shirt, jumper, cardigan, hoodie (hood up or
+down), jacket, rain, parka, coat (a belt); bottoms: trousers, jeans, joggers,
+shorts, skirt (knee or midi, with tights or bare legs); shoes: trainer, shoe,
+boot, sandal; accessories: beanie (a pompom), cap, flat cap, sun hat, scarf,
+gloves, crossbody or shoulder bag, backpack, an open umbrella, a closed one
+or a walking stick (held in the FAR hand), a phone. `scenePeople.PRESETS` are
+8 people (body and a wardrobe per season) and `scenePeople.outfit(preset,
+season)` dresses one for the season. Colours are tone4 palette slots
+(`scenePeople.palette()`: `@navy.0` base, `.1` dark, `.2` light, `.3` deep).
+The night look (`scenePeople.NIGHT` as the object's `night`): glow shapes, so
+after dusk a cool rim light runs along the back of the head and the back,
+reflective strips and an umbrella's edge catch the lamps and a phone screen
+shines; by day they take the colour under them. Layering that holds in every
+renderer (they draw the moving legs after the body): the legs start below the
+lowest body edge they meet, no hand or held thing hangs over a thigh, and
+things that reach the ground are held in the far hand. `scenePeople` also
+holds the one `tidy`, `define` and colour helpers for every people file.
+`person.walker` is the reference object (8 presets); the other `person.*`
+objects move onto the builder next.
 
 ## 3. Scene format
 
@@ -818,6 +882,10 @@ sceneSprites;                // the shared sprite cache { get(key, build), bytes
 - It is filled with `Path2D(d)`, with colours from `sceneColour` (so the
   live grade is already in the pixels), strokes and gradients. A shape's `m`
   is applied with `setTransform`.
+- `detail: true` shapes are left out at LOD < 0.5, and for an object with
+  `detailPx` (the people) when the sprite is under that many device pixels
+  tall (`sceneDetailAt`, 2.2): a function of the key's scale, so the cache
+  stays valid.
 - Glow shapes are rasterised in their lit or day colour, as a separate glow
   sprite.
 
@@ -962,8 +1030,9 @@ A still keeps this renderer small, keeps the fallback cheap, and makes PNG
 sheets and tests deterministic. Animated SVG output is a later option
 (section 18), not this round.
 
-- **Defs.** One `<g id>` per `(obj, v, part, season, haze, tint)` actually
-  used, with toned colours. The ids are fresh per render (`U()` style), so
+- **Defs.** One `<g id>` per `(obj, v, part, season, haze, tint, detail
+  tier)` actually used, with toned colours (the tier: `sceneDetailAt` at the
+  placement's scale, 2.2). The ids are fresh per render (`U()` style), so
   the tests' "fresh ids" rule holds.
 - **Placements.** `<use href="#id" transform="translate(x y) scale(+-s s)">`.
   An animated part is drawn at its t = 0 pose (one extra `rotate` /
@@ -1310,13 +1379,16 @@ archetypes have no `meta`: the region entry supplies the item fields (16.2).
 | `park` | Central Park, Gardens by the Bay, city parks | far skyline, mid trees, lawn, near paths, fore | 0 to 2 | `tree`, `ground`, `street` | dogs, birds, squirrels, a kite, a few tiny walkers and joggers |
 | `snow-town` | Anchorage, Hokkaido, alpine villages | far peaks, mid town, near street, fore, sky aurora | 0 to 1 | `building-mid` (lit), `tree` (snow spruce) | sleds, chimney smoke, snowfall, ravens, a few tiny walkers |
 | `plains` | prairie, farmland, rice terraces, savannah | horizon, far fields, mid farm, near crop rows, fore | 0 to 1 (a barn, a lone tree) | `ground` (crops), `tree`, `animal` | animals, a tractor, birds, wind waves over the crop |
-| `station` | London rail stations (section 11) | far terraces / towers, mid station, street, platform, fore | 1 (the station building) | `building-far`, `street`, `ground` (planters, hedges) | a bus, a train, cars, pigeons, up to 10 tiny walkers |
+| `station` | London rail stations (section 11) | far terraces / towers, mid station, street, platform, fore | 1 (the station building) | `building-far`, `street`, `ground` (planters, hedges) | a bus, a train, cars, pigeons, up to 10 walkers (sized by the depth ladder, 2.8) |
 
 **The care rules hold for composed scenes too** (`CARE_RULES` in
 `tools/lib/anim-region.mjs`). Life comes mostly from animals, birds, boats
-and ordinary vehicles. People are tiny anonymous silhouettes without
-features, used as a scale cue: `person.*` objects are tagged `silhouette`,
-have at most 60 shapes, and are placed at most 70 world units tall. The
+and ordinary vehicles. People are anonymous, FACELESS silhouettes (no eyes,
+nose, ears or mouth, no portraits, nobody identifiable), used as a scale cue
+and sized by the depth ladder (2.8): `person.*` objects are tagged
+`silhouette`, have at most 180 shapes in variant 0 (the size tier drops the
+fine ones far away), and are placed at most 150 world units tall (the
+ladder's cap, in the near foreground). The
 `composed` lint enforces `people` at most 8 per region scene (10 for
 `station`) and `crowd`: no 4 people within 120 units of each other. No
 flags, emblems, holy figures or brands in any object. Region upgrades have
@@ -1674,7 +1746,7 @@ scenes, the object library and the new standard" section, plus
 | object | at most 600 shapes, at most 60 KB path data, at most 25 ms build per (v, season) | `object lint` |
 | landmark | at least 80 shapes, at most 600; night-lit (`lit` or 10+ glow shapes) | `object lint` |
 | retrofit overlay | at most 6,000 B; none without a live sky | `tests/scene-retrofit.test.mjs` |
-| people | at most 8 per region scene (10 per station), silhouettes at most 70 units tall | `scene lint` (care) |
+| people | at most 8 per region scene (10 per station), no 4 within 120 units; faceless silhouettes of at most 180 shapes (variant 0), at most 150 units tall (the depth ladder, 2.8) | `scene lint` (care) |
 
 ## 13. Ownership map
 

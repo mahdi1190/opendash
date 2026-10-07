@@ -9,7 +9,7 @@
      mid      the temple hill rising on the temple's side: the TEMPLE (landmark slot 2), cedars
               behind it, cherries and maples round it, lanterns on its terrace
      near     the hillside: trees by role (static), shrubs, a stair path up to the terrace with
-              stone lanterns along it and up to 3 tiny walkers on it
+              stone lanterns along it and up to 3 walkers on it (sized by the depth ladder)
      fore     dense ground cover by role (wind strips)
      front    two framing trees whose crowns fill the top corners (they sway)
    Water: 'lake' or 'pond' lays a lake across the valley floor (reflections, shimmer) instead of
@@ -87,9 +87,11 @@ function sceneArchTempleMountain(p, u) {
   data.ground.push({ layer: 'near', d: `M${sx0 - 18} ${yT + 8}H${sx0 + 18}L${sx1 + 58} ${yN + 40}H${sx1 - 58}Z`, fill: { lin: [[0, '@path.0'], [1, '@path.1']], x1: 0, y1: yT, x2: 0, y2: yN + 40 } }, { layer: 'near', d: steps, fill: '@step' });
   if (lanterns.length) for (let k = 0; k < 4; k++) { const t = 0.2 + k * 0.24, y = yT + 8 + t * (yN + 40 - yT - 8), x = sx0 + (sx1 - sx0) * t, w = 18 + t * 40 + 12; data.place.push({ obj: lanterns[k % lanterns.length], x: Math.round(x - w), y: Math.round(y), s: 0.42 + t * 0.3, layer: 'near', seed: 15 + k, variant: k % 2 }, { obj: lanterns[k % lanterns.length], x: Math.round(x + w), y: Math.round(y), s: 0.42 + t * 0.3, layer: 'near', seed: 25 + k, flip: true, variant: (k + 1) % 2 }); }
   const walkers = Object.keys(u.kit('walker', ['silhouette'])).filter(id => anim(id, 'walk') && !/cyclist|angler|jogger/.test(id));
+  // sized by the depth ladder (2.8): full size at the foot of the stair, the ladder's ratio at its head
+  const ladder = [[yT + 10, Math.round(scenePersonHeight(data.view, yT + 10) / scenePersonHeight(data.view, yN + 36) * 1000) / 1000], [yN + 36, 1]];
   for (let i = 0; i < 3 && walkers.length; i++) {
-    const down = i === 1, a = [sx0, yT + 10], b = [sx1, yN + 36];
-    data.actors.push({ obj: walkers[i % walkers.length], layer: 'near', path: down ? [a, b] : [b, a], speed: 7 + i * 2, loop: 'pingpong', s: 0.36, sByY: [[yT, 0.3], [yN + 40, 0.52]], seed: 50 + i, offset: (0.2 + i * 0.31) % 1 });
+    const down = i === 1, a = [sx0, yT + 10], b = [sx1, yN + 36], id = walkers[i % walkers.length];
+    data.actors.push({ obj: id, layer: 'near', path: down ? [a, b] : [b, a], speed: 7 + i * 2, loop: 'pingpong', s: scenePersonScale(sceneObj(id).size[1], yN + 36, data.view), sByY: ladder, seed: 50 + i, offset: (0.2 + i * 0.31) % 1 });
   }
   // the near hillside: trees (static), shrubs; the cover in near and fore
   if (any(trees)) data.scatter.push({ obj: trees, layer: 'near', seed: 7, area: { rect: [-140, yN + 20, 1740, yN + 70] }, n: n(9), minGap: 150, s: [0.75, 1.05], flip: 0.5, variant: 'random', mask: { avoid: [{ rect: [sx1 - 120, yN - 40, sx1 + 120, yN + 80] }] }, anim: false });

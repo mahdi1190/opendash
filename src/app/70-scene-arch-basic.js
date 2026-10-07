@@ -92,12 +92,12 @@ function sceneArchBasic(p, u, opts) {
     const veh = Object.keys(pick('vehicle', id => !/^rail\./.test(id)));
     veh.slice(0, 2).forEach((id, i) => data.actors.push({ obj: id, layer: 'near', path: i ? [[1860, yr - 8], [-260, yr - 8]] : [[-260, yr + 6], [1860, yr + 6]], speed: 46 + i * 8, loop: 'loop', s: 1, seed: 40 + i, offset: 0.15 + i * 0.5, flip: !!i }));
   }
-  // walkers: tiny anonymous silhouettes, spread out (care rules 8.5)
+  // walkers: anonymous silhouettes, spread out (care rules 8.5), sized by the depth ladder at their row (2.8)
   const walkers = Object.keys(pick('walker', id => { const d = sceneObj(id); return !!d && (d.tags || []).includes('silhouette') && !(d.anim && d.anim.turn && !d.anim.walk); }));
   const nw = Math.min(opts.walkers == null ? 6 : opts.walkers, 10);
   for (let i = 0; i < nw && walkers.length; i++) {
     const id = walkers[i % walkers.length], y = (opts.walkY || H + 200) + (i % 3) * 14, back = i % 2 === 1;
-    data.actors.push({ obj: id, layer: 'near', path: back ? [[1720, y], [-120, y]] : [[-120, y], [1720, y]], speed: 16 + (i % 4) * 3, loop: 'loop', s: 0.92, seed: 50 + i, offset: (i * 0.137 + 0.05) % 1, flip: back });
+    data.actors.push({ obj: id, layer: 'near', path: back ? [[1720, y], [-120, y]] : [[-120, y], [1720, y]], speed: 16 + (i % 4) * 3, loop: 'loop', s: scenePersonScale(sceneObj(id).size[1], y, data.view), seed: 50 + i, offset: (i * 0.137 + 0.05) % 1, flip: back });
   }
   // reflections (15.2): everything within 40 units of the water's edge mirrors in it
   if (water) {

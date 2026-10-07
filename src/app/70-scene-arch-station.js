@@ -9,7 +9,8 @@
    - A street and a pavement; lamps, benches, planters and hedges as the dense urban cover.
    - Trees (plane-trees, trees, suburb), terraces (terrace, suburb) or towers (towers) far, a dock
      (water) with reflections.
-   - Movers: walkers, a bus (bus), a train on the embankment, a flock, pecking pigeons.
+   - Movers: walkers (8, on the forecourt rows; basic sizes them with the depth ladder, 2.8), a bus (bus),
+     a train on the embankment, a flock, pecking pigeons.
    ============================================================ */
 (function () {
   if (typeof sceneArchetypeDefine !== 'function') return;

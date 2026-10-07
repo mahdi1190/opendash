@@ -8,7 +8,7 @@
      mid      the far quay (a low embankment with trees and lamps) carrying the LANDMARK slots,
               then the water: reflection, shimmer and the glitter road; boats crossing at three
               depths (scaled by y), birds on the water where the kit has swimmers
-     near     the promenade: paving, a railing, lamps, benches and up to 6 tiny walkers
+     near     the promenade: paving, a railing, lamps, benches and up to 6 walkers (sized by the depth ladder)
      fore     the planting bed: dense ground cover by role (wind strips), shrubs
      front    two framing trees, one per side
    Landmarks (the `landmarks` list): an id, or 'id@x@h' (the x of its anchor and its drawn height),
@@ -115,7 +115,7 @@ function sceneArchSkylineWater(p, u) {
   const walkers = Object.keys(pick('walker', id => { const d = sceneObj(id); return !!d && (d.tags || []).includes('silhouette') && anim(id, 'walk') && !/angler|cyclist/.test(id); }));
   for (let i = 0; i < 5 && walkers.length; i++) {
     const id = walkers[i % walkers.length], y = yP + 18 + (i % 3) * 8, back = i % 2 === 1;
-    data.actors.push({ obj: id, layer: 'near', path: back ? [[1720, y], [-120, y]] : [[-120, y], [1720, y]], speed: 14 + (i % 4) * 3, loop: 'loop', s: 0.72, seed: 50 + i, offset: (i * 0.173 + 0.05) % 1, flip: back });
+    data.actors.push({ obj: id, layer: 'near', path: back ? [[1720, y], [-120, y]] : [[-120, y], [1720, y]], speed: 14 + (i % 4) * 3, loop: 'loop', s: scenePersonScale(sceneObj(id).size[1], y, data.view), seed: 50 + i, offset: (i * 0.173 + 0.05) % 1, flip: back });
   }
   // the planting bed: dense ground cover (wind strips) and shrubs
   const cover = pick('ground', id => /^plant\./.test(id));

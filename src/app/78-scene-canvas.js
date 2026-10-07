@@ -3,7 +3,8 @@
 
    Static is free, motion is budgeted. Every library object is rasterised ONCE per (object, variant,
    part, season, haze, tint, scale bucket, light) into a cached sprite, with the live grade already in
-   its pixels. Static placements (thousands of them) are drawn once into at most 5 layer bitmaps
+   its pixels (an object with detailPx drops its detail shapes below that on-screen height: sceneDetailAt,
+   a function of the key's scale, so the cache stays valid). Static placements (thousands of them) are drawn once into at most 5 layer bitmaps
    (plus the sky), each cropped to what it holds. A frame then draws: the sky bitmap, stars, clouds,
    and per bitmap: the bitmap, its wind strips (one skewed blit each), its water shimmer, its animated
    parts, actors and flocks (one setTransform + drawImage each, y-sorted), then particles and weather.
@@ -196,7 +197,7 @@ function sceneRendererCreate(canvas, src, o) {
       const sh = sceneObjShapes(oid, v, se);
       if (!sh) return null;
       const names = which === '*' ? sh.order.filter(p => p !== 'lit') : which.startsWith('rest:') ? sh.order.filter(p => p !== 'lit' && !which.slice(5).split(',').includes(p)) : [which];
-      const detail = lod >= 0.5, def = litGlow && typeof sceneObj === 'function' ? sceneObj(oid) : null, nc = (def && def.night && def.night.glow) || {};
+      const detail = lod >= 0.5 && (typeof sceneDetailAt !== 'function' || sceneDetailAt(oid, sh, sc)), def = litGlow && typeof sceneObj === 'function' ? sceneObj(oid) : null, nc = (def && def.night && def.night.glow) || {};
       const tb = _sccPartsBox(sh, names, detail);
       if (!tb) return { c: null, x0: 0, y0: 0, w: 0, h: 0, sc, bytes: 0 };
       let [x0, y0, x1, y1] = tb;
