@@ -148,10 +148,13 @@ function ukSouthEastYateleyCommonV1(T) {
   const reasons = { spring: 'Fresh heath shoots and flowering gorse', summer: 'Flowering heather beside the sandy trail', autumn: 'Golden birches and dry heath seed heads', winter: 'Frosted heath and a winter robin' };
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     const reason = reasons[season];
-    add('hampshire', kind, { id: `${place}-1${season !== 'summer' ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
+    const it = { id: `${place}-1${season !== 'summer' ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
       colour: season === 'winter' ? 'blue' : season === 'autumn' ? 'amber' : 'green', mood: 'calm', tags: tags.concat(season),
       ukPlace: place, ukLocality: town, ukTown: town, ukView: 'wide', viewReason: reason,
       ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON },
-      svg: (o = {}) => draw(season, o) });
+      svg: (o = {}) => draw(season, o) };
+    // The composed scene (71-scene-uk-south-east-yateley-common-1.js) when the scene engine is in the build; the
+    // hand-drawn art above stays as legacySvg (and is the item's art without the engine).
+    add('hampshire', kind, typeof _scYc === 'object' ? _scYc.composed(it, season, typeof sceneYateleyCommon1 === 'function' ? sceneYateleyCommon1 : null) : it);
   }
 }
