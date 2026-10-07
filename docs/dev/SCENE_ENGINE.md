@@ -291,6 +291,15 @@ includes `windows`, 6.3), so it costs nothing per frame. The SVG renderer
 emits it only when `L.windows`. Window and lamp shapes with `glow` light up as
 before; `lit` is for everything else that changes at night.
 
+**Objects that move keep their night look** (both renderers). The glow
+shapes of a moving part are lit inside that part's sprite or symbol (all of
+them when any of the placement's `glowOn` is on; an actor has no `glowOn`, so
+all its glows light). The parts that stay light as a static placement's. The
+`lit` part rides with the motion: on the canvas it is baked into an actor's
+rest sprite, or into the whole-object sprite of a placement with a `'*'`
+hook (no extra draw); in the SVG it is one more `<use>` with the same pose.
+By day nothing changes (the night variants are separate cache keys).
+
 **Resolved form.** `sceneObjShapes(id, v, season)` returns:
 
 ```js

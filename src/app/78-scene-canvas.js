@@ -189,14 +189,16 @@ function sceneRendererCreate(canvas, src, o) {
   };
   /**
    * A sprite: the shapes of `which` ('*' every part but 'lit'; 'rest:a,b' every part but those; a part name; 'lit')
-   * at device scale sc. lit: glow shapes in their night colours (moving parts and actors after real dusk).
+   * at device scale sc. litGlow: glow shapes in their night colours (moving parts and actors after real dusk). withLit: the
+   * object's 'lit' part too, on top and ungraded (after real dusk, so a moving object's halo moves with it at no extra draw).
    */
-  const sprite = (Lx, lk, oid, v, se, which, haze, tint, sc, litGlow) => {
-    const key = sceneSpriteKey(oid, v, which + (litGlow ? '+g' : ''), se, haze, tint, sc, lk);
+  const sprite = (Lx, lk, oid, v, se, which, haze, tint, sc, litGlow, withLit) => {
+    const key = sceneSpriteKey(oid, v, which + (litGlow ? '+g' : '') + (withLit ? '+l' : ''), se, haze, tint, sc, lk);
     return sceneSprites.get(key, () => {
       const sh = sceneObjShapes(oid, v, se);
       if (!sh) return null;
-      const names = which === '*' ? sh.order.filter(p => p !== 'lit') : which.startsWith('rest:') ? sh.order.filter(p => p !== 'lit' && !which.slice(5).split(',').includes(p)) : [which];
+      const names = (which === '*' ? sh.order.filter(p => p !== 'lit') : which.startsWith('rest:') ? sh.order.filter(p => p !== 'lit' && !which.slice(5).split(',').includes(p)) : [which])
+        .concat(withLit && which !== 'lit' && sh.parts.lit ? ['lit'] : []);
       const detail = lod >= 0.5 && (typeof sceneDetailAt !== 'function' || sceneDetailAt(oid, sh, sc)), def = litGlow && typeof sceneObj === 'function' ? sceneObj(oid) : null, nc = (def && def.night && def.night.glow) || {};
       const tb = _sccPartsBox(sh, names, detail);
       if (!tb) return { c: null, x0: 0, y0: 0, w: 0, h: 0, sc, bytes: 0 };
@@ -212,7 +214,7 @@ function sceneRendererCreate(canvas, src, o) {
       for (const p of names) for (const s0 of sh.parts[p] || []) {
         if (!detail && s0.detail) continue;
         if (litGlow && s0.glow) drawShape(cx, Object.assign({}, s0, { f: nc[s0.glow] || (s0.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain);
-        else drawShape(cx, s0, col);
+        else drawShape(cx, s0, p === 'lit' ? plain : col);
         any = true;
       }
       if (!any) { c.width = 0; return { c: null, x0, y0, w: 0, h: 0, sc: k, bytes: 0 }; }
@@ -354,18 +356,23 @@ function sceneRendererCreate(canvas, src, o) {
           if (it.strip >= 0) continue;
           const M = placeM(it.x, it.y, it.s, it.flip), sc = bucket(it.s) * vs;
           const moving = it.anim && it.anim.length ? it.anim : null;
+          const night = !!(Lx && Lx.windows);
+          let skip = null, litMoves = false;
           if (!moving) { if (gx) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, false)), toG(M)); }
           else {
+            // after real dusk: the moving sprites carry their lit glows (every one, when any of the placement's is on) and, for
+            // a whole-object hook, the lit part; the parts that stay get their glows in the bitmap below, as a static placement
             const whole = moving.find(a => _scAnimParts(a)[0] === '*'), moved = whole ? [] : [...new Set(moving.flatMap(_scAnimParts))];
             if (!whole && gx) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'rest:' + moved.join(','), haze, it.tint, sc, false)), toG(M));
-            const lit = !!(Lx && Lx.windows && it.glowOn && it.glowOn.some(Boolean));
-            const parts = whole ? [{ a: whole, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, lit)) }]
+            const lit = night && !!it.glowOn && it.glowOn.some(Boolean);
+            litMoves = !!whole && night && it.lit; skip = whole ? sceneObjShapes(it.o, it.v, it.season).order : moved;
+            const parts = whole ? [{ a: whole, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, lit, litMoves)) }]
               : moving.flatMap(a => _scAnimParts(a).map((p, j) => ({ a, j, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, p, haze, it.tint, sc, lit)) })));
             grp.movers.push({ kind: 'item', y: it.y, x: it.x, M, parts, b: itemBox(it, sceneObjShapes(it.o, it.v, it.season)) });
           }
-          if (gx && Lx && Lx.windows) {
-            if (it.lit) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'lit', 0, null, sc, false)), toG(M));
-            if (it.glowOn && !moving) _sccGlows(gx, toG(M), it);
+          if (gx && night) {
+            if (it.lit && !litMoves) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'lit', 0, null, sc, false)), toG(M));
+            if (it.glowOn) _sccGlows(gx, toG(M), it, skip);
           }
           yield* slice(gx);
         }
@@ -386,7 +393,8 @@ function sceneRendererCreate(canvas, src, o) {
           const sh = sceneObjShapes(a.o, a.v, C.season); if (!sh) continue;
           const sMax = (a.s || 1) * (a.sByY ? Math.max(...a.sByY.map(p => p[1])) : 1), sc = bucket(sMax) * vs, lit = !!(Lx && Lx.windows);
           const anim = a.anim || [], whole = anim.find(h => _scAnimParts(h)[0] === '*'), moved = [...new Set(anim.flatMap(_scAnimParts))].filter(p => p !== '*');
-          const parts = [{ a: whole || null, sp: keep(sprite(Lx, lk, a.o, a.v, C.season, moved.length ? 'rest:' + moved.join(',') : '*', hz(l), null, sc, lit)), rest: true }]
+          // the lit part rides in the rest sprite (it moves with the body, at no extra draw)
+          const parts = [{ a: whole || null, sp: keep(sprite(Lx, lk, a.o, a.v, C.season, moved.length ? 'rest:' + moved.join(',') : '*', hz(l), null, sc, lit, lit && !!(sh.parts.lit && sh.parts.lit.length))), rest: true }]
             .concat(anim.filter(h => _scAnimParts(h)[0] !== '*').flatMap(h => _scAnimParts(h).map((p, j) => ({ a: h, j, sp: keep(sprite(Lx, lk, a.o, a.v, C.season, p, hz(l), null, sc, lit)) }))));
           grp.movers.push({ kind: 'actor', actor: a, parts, box: sh.box, y: 0 });
         }
@@ -680,13 +688,16 @@ function _sccShadow(gx, TG, it, L) {
   gx.beginPath(); gx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); gx.fill();
   gx.globalAlpha = 1;
 }
-/** Lit windows and lamps of a static placement (after real dusk), in the object's night colours, as its glowOn says. */
-function _sccGlows(gx, M, it) {
+/**
+ * Lit windows and lamps of a placement (after real dusk), in the object's night colours, as its glowOn says. skip: parts
+ * left out (an animated placement's moving parts, whose sprites carry their own lit glows).
+ */
+function _sccGlows(gx, M, it, skip) {
   const sh = sceneObjShapes(it.o, it.v, it.season), def = sceneObj(it.o), nc = (def && def.night && def.night.glow) || {};
   gx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
   let gi = 0;
   for (const p of sh.order) for (const s of sh.parts[p] || []) if (s.glow) {
-    if (it.glowOn[gi % it.glowOn.length]) {
+    if (it.glowOn[gi % it.glowOn.length] && !(skip && skip.includes(p))) {
       if (s.m) { gx.save(); gx.transform(...s.m); }
       gx.globalAlpha = 1; gx.fillStyle = nc[s.glow] || (s.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'); gx.fill(_sccPath(s.d));
       if (s.m) gx.restore();
