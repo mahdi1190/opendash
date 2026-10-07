@@ -51,10 +51,11 @@
         const ry = v === 1 ? Math.min(rise, span / 2) : rise;
         const arc = `M${f1(xa)} ${f1(-spring)}A${f1(span / 2)} ${f1(ry)} 0 0 1 ${f1(xb)} ${f1(-spring)}`;
         if (M) {
-          // cast iron: a solid outer rib, open spandrels with vertical posts, a lighter inner rib
-          body.push([`@${M}.0`, `${arc}V${f1(-spring - 10)}A${f1(span / 2)} ${f1(ry - 10)} 0 0 0 ${f1(xa)} ${f1(-spring - 10)}z`], { s: `@${M}.2`, w: 1.4, op: .7, d: `M${f1(xa + 6)} ${f1(-spring - 6)}A${f1(span / 2 - 6)} ${f1(ry - 6)} 0 0 1 ${f1(xb - 6)} ${f1(-spring - 6)}` });
+          // cast iron: a CONTINUOUS arch rib springing from pier to pier (10 deep at the springing, 8 at the crown, where it meets the deck girder),
+          // its lit edge, open spandrels with vertical posts standing on the rib
+          body.push([`@${M}.0`, `${arc}V${f1(-spring - 10)}A${f1(span / 2)} ${f1(ry - 2)} 0 0 0 ${f1(xa)} ${f1(-spring - 10)}z`], [`@${M}.1`, `${arc}V${f1(-spring - 3)}A${f1(span / 2)} ${f1(ry + 1)} 0 0 0 ${f1(xa)} ${f1(-spring - 3)}z`, .8], { s: `@${M}.2`, w: 1.4, op: .8, d: `M${f1(xa + 2)} ${f1(-spring - 7)}A${f1(span / 2 - 2)} ${f1(ry - 1)} 0 0 1 ${f1(xb - 2)} ${f1(-spring - 7)}` });
           let posts = '';
-          for (let k = 1; k < 12; k++) { const x = xa + span * k / 12, t = (x - mid) / (span / 2), y = -spring - ry * Math.sqrt(Math.max(0, 1 - t * t)); posts += `M${f1(x)} ${f1(y - 8)}V${f1(-soffit)}`; }
+          for (let k = 1; k < 12; k++) { const x = xa + span * k / 12, t = (x - mid) / (span / 2), y = -spring - 8 - ry * Math.sqrt(Math.max(0, 1 - t * t)); if (y > -soffit + 3) posts += `M${f1(x)} ${f1(y)}V${f1(-soffit)}`; }
           body.push({ s: `@${M}.0`, w: 3, d: posts }, { s: `@${M}.1`, w: 1, op: .6, d: posts.replace(/M(-?[\d.]+)/g, (m, x) => `M${f1(+x + 1.6)}`) });
           body.push([`@${M}.0`, rect(xa - 2, -soffit - 2, span + 4, 8)]);
         } else {
@@ -64,6 +65,8 @@
         }
         // under the arch at night: a warm light strip along the soffit
         lit.push({ s: '@strip', w: 2.2, op: .75, d: `M${f1(xa + 4)} ${f1(-spring - 2)}A${f1(span / 2 - 4)} ${f1(ry - 2)} 0 0 1 ${f1(xb - 4)} ${f1(-spring - 2)}` }, { f: { lin: [[0, '@strip', .22], [1, '@strip', 0]], x1: 0, y1: -spring - ry, x2: 0, y2: -spring }, d: `M${f1(xa + 4)} ${f1(-spring)}A${f1(span / 2 - 4)} ${f1(ry - 4)} 0 0 1 ${f1(xb - 4)} ${f1(-spring)}z` });
+        // the iron rib catches the uplight along its whole run, so the arch reads at night too
+        if (M) lit.push({ s: '@strip', w: 2.6, op: .5, d: `M${f1(xa + 1)} ${f1(-spring - 6)}A${f1(span / 2 - 1)} ${f1(ry)} 0 0 1 ${f1(xb - 1)} ${f1(-spring - 6)}` });
       }
       // the piers with their cutwaters (lit face on the left), wet at the waterline
       for (let i = 1; i < n; i++) {
@@ -127,13 +130,14 @@
       // the bank abutments and anchorages
       for (const sx of [-1, 1]) { const ax = sx < 0 ? x0 - 20 : -x0 - 60; body.push(['@granite.0', rect(ax, -deck - 20, 80, deck + 20)], ['@granite.1', rect(ax, -deck - 20, 80, 6)], ['@wet', rect(ax, -10, 80, 10), .6]); }
       // the deck: a stiffening truss under the roadway
-      body.push(['@deck.0', rect(x0 - 10, -deck, W + 20, 12)], ['@deck.1', rect(x0 - 10, -deck + 12, W + 20, 14)]);
-      let truss = ''; for (let x = x0; x < -x0; x += 16) truss += `M${f1(x)} ${f1(-deck + 12)}l8 14l8 -14`;
-      body.push({ s: '@deck.2', w: 1.2, op: .8, d: truss }, { s: '@deck.2', w: 1.4, d: `M${f1(x0 - 10)} ${f1(-deck + 26)}h${W + 20}` });
+      // a deep deck: the roadway slab with a lit fascia, then a stiffening truss 26 deep with a heavy bottom chord, reading as a solid band at any scale
+      body.push(['@deck.0', rect(x0 - 10, -deck, W + 20, 12)], ['@deck.2', rect(x0 - 10, -deck + 1, W + 20, 2.4), .7], ['@deck.1', rect(x0 - 10, -deck + 12, W + 20, 26)], ['@deck.0', rect(x0 - 10, -deck + 12, W + 20, 26), .35]);
+      let truss = ''; for (let x = x0; x < -x0; x += 24) truss += `M${f1(x)} ${f1(-deck + 13)}l12 24l12 -24`;
+      body.push({ s: '@deck.2', w: 1.8, op: .85, d: truss }, { s: '@deck.2', w: 1.2, op: .6, d: Array.from({ length: R(W / 24) + 1 }, (_, k) => `M${f1(x0 + k * 24)} ${f1(-deck + 13)}v24`).join('') }, ['@deck.1', rect(x0 - 10, -deck + 36, W + 20, 4)], { s: '@deck.2', w: 1.4, d: `M${f1(x0 - 10)} ${f1(-deck + 13)}h${W + 20}` });
       body.push({ s: '@deck.1', w: 1.4, d: `M${f1(x0 - 10)} ${f1(-deck - 12)}h${W + 20}M${f1(x0 - 10)} ${f1(-deck - 5)}h${W + 20}` }, { s: '@deck.1', w: 1, d: Array.from({ length: 80 }, (_, k) => `M${f1(x0 + k * W / 79)} ${f1(-deck)}v-12`).join('') });
       // hangers from the cables to the deck
       let hang = ''; for (let x = x0 + 40; x < -x0 - 40; x += 20) { if (Math.abs(Math.abs(x) - tx) < tW) continue; const y = cy(x); if (y < -deck - 6) hang += `M${f1(x)} ${f1(y)}V${f1(-deck)}`; }
-      body.push({ s: cab, w: 1, op: .8, d: hang });
+      body.push({ s: cab, w: 2.2, d: hang });   // hangers with visible weight (a hairline vanishes at 0.4x)
       // the main cables (two in step; the near one drawn bolder)
       let cable = `M${f1(x0 + 20)} ${f1(-deck - 20)}`; for (let x = x0 + 30; x <= -x0 - 20; x += 10) cable += `L${f1(x)} ${f1(cy(x))}`;
       body.push({ s: cab, w: v === 1 ? 5 : 3.4, d: cable }, { s: v === 1 ? '@chain.1' : '@deck.2', w: 1, op: .6, d: cable.replace(/(-?[\d.]+) (-?[\d.]+)/g, (m, a, b) => `${a} ${f1(+b - 1.4)}`) });

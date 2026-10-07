@@ -51,14 +51,16 @@
   const glass = (x, y, w, h, op) => [{ f: '@glass.0', d: rect(x, y, w, h), glow: 'window', op: op == null ? 1 : op }, ['@glass.1', `M${f1(x)} ${f1(y)}h${f1(w * .5)}l${f1(-w * .5)} ${f1(Math.min(h, w * 1.4))}z`, .28]];
   const courses = (x, y, w, h, slot, step = 3.2) => { let d = ''; for (let yy = y + step; yy < y + h - .5; yy += step) d += `M${f1(x)} ${f1(yy)}h${f1(w)}`; return { s: slot, w: .55, op: .32, d, detail: true }; };
   const wash = (cx, cy, rx, ry, op, slot = '@flood') => ({ f: { rad: [[0, slot, op], [.5, slot, op * .45], [1, slot, 0]], cx, cy, r: Math.max(rx, ry) }, d: ell(cx, cy, rx, ry) });
-  /** Seasonal dressing: planters [x, w], hanging baskets [x, y], buddleia [x, y, s], snow ledges [x, y, w], autumn leaves [x0, x1]. */
+  /** Seasonal dressing: planters [x, w, ground y = 0, plinth height = 0] (a plinth is a stone base the planter stands on), hanging baskets [x, y], buddleia [x, y, s], snow ledges [x, y, w], autumn leaves [x0, x1]. */
   const dress = (out, ctx, r, o) => {
     const s = ctx.season, winter = s === 'winter';
-    for (const [x, w] of o.planters || []) {
-      out.push(['@tub.0', rect(x - w / 2, -11, w, 11)], ['@tub.2', rect(x - w / 2 - 1, -12, w + 2, 2)], ['#000000', rect(x + w * .2, -11, w * .3, 11), .18]);
-      out.push(['@leaf.0', lobed(r, x, -16, w * .52, 8, 9, .35)], ['@leaf.1', lobed(r, x - w * .12, -19, w * .3, 5, 7, .3)]);
-      if (!winter) { let b = ''; for (let i = 0; i < 7; i++) b += ell(x + rr(r, -w * .45, w * .45), rr(r, -22, -12), 1.5, 1.5); out.push(['@bloom.' + (Math.floor(x) & 1), b]); }
-      else out.push(['@snow.0', `M${f1(x - w * .5)} -18q${f1(w * .5)} -9 ${f1(w)} 0z`]);
+    for (const [x, w, g = 0, pl = 0] of o.planters || []) {
+      const y = g - pl;   // the planter's foot
+      if (pl) out.push(['@tub.2', rect(x - w / 2 - 3, y, w + 6, pl)], ['@tub.0', rect(x - w / 2 - 3, g - 1.2, w + 6, 1.2), .3]);
+      out.push(['@tub.0', rect(x - w / 2, y - 11, w, 11)], ['@tub.2', rect(x - w / 2 - 1, y - 12, w + 2, 2)], ['#000000', rect(x + w * .2, y - 11, w * .3, 11), .18]);
+      out.push(['@leaf.0', lobed(r, x, y - 16, w * .52, 8, 9, .35)], ['@leaf.1', lobed(r, x - w * .12, y - 19, w * .3, 5, 7, .3)]);
+      if (!winter) { let b = ''; for (let i = 0; i < 7; i++) b += ell(x + rr(r, -w * .45, w * .45), y + rr(r, -22, -12), 1.5, 1.5); out.push(['@bloom.' + (Math.floor(x) & 1), b]); }
+      else out.push(['@snow.0', `M${f1(x - w * .5)} ${f1(y - 18)}q${f1(w * .5)} -9 ${f1(w)} 0z`]);
     }
     for (const [x, y] of o.baskets || []) {
       out.push({ s: '@tub.0', w: .6, d: `M${f1(x)} ${f1(y)}v8M${f1(x)} ${f1(y + 8)}l-5 6M${f1(x)} ${f1(y + 8)}l5 6` }, ['@tub.0', `M${f1(x - 6)} ${f1(y + 14)}h12q0 6 -6 6q-6 0 -6 -6z`]);
@@ -159,7 +161,7 @@
     id: 'building.station-terminus', category: 'building', size: [540, 400], variants: 3, seasonal: true, shapeBySeason: true, flippable: false, parts: ['body', 'lit'],
     palette: pal({ stock: ['#d0bc90', '#a8946c', '#e2d2aa', '#8a7856'], red: ['#a24c36', '#7e3828', '#bc6a50', '#5a2a1e'], stone: ['#dcd2bc', '#b8ae96', '#eee6d2', '#968c76'], slate: ['#4a4e58', '#383c46', '#6a6e7a'],
       glass: ['#3a4856', '#a8bccc'], iron: ['#2e3438', '#4a5258', '#1e2226'], door: '#2a2620', clock: ['#f2ecdc', '#1e1e22'], copper: ['#5a8a7a', '#3e6a5a'] }),
-    night: { glow: { window: '#ffd98a', lamp: '#fff2cc' }, on: .85 },
+    night: { glow: { window: '#ffd98a', lamp: '#fff2cc' }, on: .68 },   // a seeded share of the windows lit, not every one
     shadow: { rx: 270, ry: 16, h: 260 },
     tags: ['uk', 'london', 'station', 'terminus', 'victorian', 'brick', 'signature', 'kit:london', 'role:building-mid'],
     credit: 'after the great London termini (twin-arch, gothic and Italianate frontages); generic, no marks',
@@ -278,11 +280,11 @@
       body.push({ f: { lin: [[0, '@dark.1', 0], [1, '@dark.1', 1]], x1: 0, y1: -112, x2: 0, y2: 0 }, d: rect(ix0, -112, ix1 - ix0, 112), op: .8 });
       // the roof receding into the shed: converging ribs and a lit band where the far end opens
       body.push(['@glass.0', rect(-60, -70, 120, 30), .35], { s: '@iron.1', w: .8, op: .6, d: Array.from({ length: 9 }, (_, i) => `M${ix0 + i * 60} -112L${-60 + i * 15} -70`).join('') });
-      // a train standing at a platform, its windows lit
-      body.push(['@train.0', 'M-120 -16V-40q0-6 6-6H-28q10 0 14 10l2 20z'], ['@train.1', rect(-120, -24, 106, 3)], ['@train.2', 'M-20-40q6 1 8 8h-8z']);
-      for (let i = 0; i < 6; i++) body.push({ f: '@glass.0', d: rect(-114 + i * 15, -40, 10, 8), glow: 'window' });
       for (const px of [-170, -50, 70, 190]) body.push(['@plat.0', `M${px - 30} 0L${px - 14} -16H${px + 14}L${px + 30} 0z`], ['@plat.1', `M${px - 14} -16h28v1.4h-28z`], ['@plat.2', `M${px - 14} -14.6h28v.8h-28z`]);
       let rl = ''; for (const px of [-110, 10, 130]) rl += `M${px - 22} 0L${px - 8} -16M${px + 22} 0L${px + 8} -16`; body.push({ s: '@rail', w: 1, d: rl });
+      // a train standing in the shed, seen end on: its cab front stands on the rails of the left road (yellow warning panel, lit windscreen, lamps)
+      body.push(['@train.2', ell(-110, -5, 22, 2.4), .45], ['@train.0', 'M-129 -6V-40q0-10 10-10h18q10 0 10 10V-6z'], ['@train.1', rect(-129, -30, 38, 3)], ['@plat.2', rect(-129, -27, 38, 18)], ['@train.2', rect(-129, -9, 38, 3)], ['@train.2', rect(-115, -13, 10, 4)]);
+      body.push({ f: '@glass.0', d: 'M-124 -45h28v13h-28z', glow: 'window' }, { s: '@train.2', w: 1.2, d: 'M-110 -45v13' }, { f: '@lamp', d: rect(-126, -22, 6, 3.4), glow: 'lamp' }, { f: '@lamp', d: rect(-100, -22, 6, 3.4), glow: 'lamp' });
       if (spans) {
         for (const [cx, R] of spans) {
           const ys = -60, top = ys - R * .82;
@@ -293,7 +295,9 @@
             const xa = cx - R + i * cw, xb = xa + cw;
             body.push({ f: '@glass.0', d: `M${f1(xa)} ${yv}V${f1(archY(xa))}L${f1((xa + xb) / 2)} ${f1(archY((xa + xb) / 2))}L${f1(xb)} ${f1(archY(xb))}V${yv}z`, glow: 'window', op: .92 });
           }
-          body.push(['@glass.1', `M${cx - R} ${yv}V${ys}Q${cx - R} ${f1(top + 30)} ${f1(cx - R * .55)} ${f1(top + 12)}V${yv}z`, .18]);
+          // the sky sheen on the left of the glazing, kept inside the arch (it follows the arch curve, a few units in)
+          let sh = ''; for (let x = cx - R; x <= cx - R * .45; x += R * .05) { const y = Math.min(yv, archY(x) + 6); if (y < yv) sh += `${sh ? 'L' : 'M'}${f1(x)} ${f1(y)}`; }
+          body.push(['@glass.1', sh + `L${f1(cx - R * .45)} ${yv}H${f1(cx - R * .9)}z`, .18]);
           let m = ''; for (let i = 1; i < cols; i++) { const x = cx - R + i * cw; m += `M${f1(x)} ${yv}V${f1(archY(x))}`; }
           for (let j = 1; j < 5; j++) { const y = yv - j * 26; if (y < top + 8) break; let xa = cx - R; while (xa < cx + R && archY(xa) > y) xa += 2; m += `M${f1(xa)} ${y}H${f1(2 * cx - xa)}`; }
           body.push({ s: '@iron.1', w: 1, d: m });
@@ -346,16 +350,23 @@
         const yAt = t => { const u = 1 - t; return { x: u * u * u * -180 + 3 * u * u * t * -150 + 3 * u * t * t * 70 + t * t * t * 180, y: 3 * u * u * t * -82 + 3 * u * t * t * -130 + t * t * t * -112 }; };
         const P = []; for (let i = 0; i <= 24; i++) P.push(yAt(i / 24));
         const shell = 'M-180 -4' + P.map(p => `L${f1(p.x)} ${f1(p.y - 4)}`).join('') + 'L180 -4z';
-        body.push(['@esc.1', 'M-60 -4L120 -96H150L-20 -4z', .8], ['@esc.0', 'M-60 -4L120 -96', .0], { s: '@esc.0', w: 1.6, d: 'M-60 -6L120 -98M-20 -6L150 -98' });
+        body.push(['@esc.1', 'M-60 -4L120 -96H150L-20 -4z', .55], { s: '@esc.0', w: 1.6, d: 'M-60 -6L120 -98M-20 -6L150 -98' });
         let k = 0;
         for (let i = 0; i < 24; i += 2) { const a = P[i], b = P[i + 2]; body.push({ f: '@glass.0', d: `M${f1(a.x)} -4L${f1(a.x)} ${f1(a.y - 4)}L${f1(b.x)} ${f1(b.y - 4)}L${f1(b.x)} -4z`, glow: 'window', op: .55 }); k++; }
         body.push({ f: { lin: [[0, '@glass.1', .6], [1, '@glass.1', 0]], x1: -120, y1: -120, x2: 40, y2: 0 }, d: shell });
         let ribs = ''; for (let i = 2; i < 24; i += 2) ribs += `M${f1(P[i].x)} -4V${f1(P[i].y - 4)}`;
-        body.push({ s: '@steel.1', w: 1.2, d: ribs }, { s: '@steel.3', w: 3.2, d: 'M-180 -4' + P.map(p => `L${f1(p.x)} ${f1(p.y - 4)}`).join('') }, { s: '@steel.2', w: .8, op: .8, d: 'M-176 -8' + P.slice(1, 23).map(p => `L${f1(p.x)} ${f1(p.y - 1)}`).join('') });
+        // primary portal ribs (every third, heavy) over the light secondary ribs, a transom at door-head height
+        let prim = ''; for (let i = 6; i < 24; i += 6) prim += `M${f1(P[i].x)} -16V${f1(P[i].y - 4)}`;
+        body.push({ s: '@steel.1', w: 1.2, d: ribs }, { s: '@steel.3', w: 2.8, d: prim }, { s: '@steel.1', w: 1.4, d: `M${f1(P[5].x)} -52H178` }, { s: '@steel.3', w: 3.2, d: 'M-180 -4' + P.map(p => `L${f1(p.x)} ${f1(p.y - 4)}`).join('') }, { s: '@steel.2', w: .8, op: .8, d: 'M-176 -8' + P.slice(1, 23).map(p => `L${f1(p.x)} ${f1(p.y - 1)}`).join('') });
+        // the base: a solid plinth wall the glass stands on, rising from the low end
+        body.push(['@steel.1', 'M-176 -4L-158 -16H180V-4z'], ['@steel.2', 'M-158 -16H180v1.6H-159.6z'], ['@steel.3', rect(-158, -6, 338, 2), .5]);
         body.push({ s: '@steel.3', w: 3, d: 'M180 -4V-116' }, { s: '@steel.1', w: 1, d: 'M180 -40h-8M180 -76h-8' });
+        // the entrance in the tall mouth: a dark door bay, two pairs of glazed doors, a cantilevered canopy over them
+        body.push(['@steel.3', rect(112, -48, 62, 44)], { f: '@glass.0', d: rect(116, -44, 26, 40), glow: 'window', op: .9 }, { f: '@glass.0', d: rect(145, -44, 26, 40), glow: 'window', op: .9 }, { s: '@steel.3', w: 1.4, d: 'M129 -44V-4M158 -44V-4' }, ['@steel.0', rect(104, -54, 80, 6)], ['@steel.2', rect(104, -54, 80, 1.4)], ['@steel.3', rect(104, -49, 80, 1.4), .6]);
         for (let i = 3; i < 22; i += 3) body.push({ f: '@light', d: rect(P[i].x - 3, P[i].y + 2, 6, 2), glow: 'lamp' });
-        dress(body, ctx, r, { planters: [[-170, 26], [190, 18]], snow: [[-180, -6, 120]], leaves: [-200, 200] });
-        lit.push(wash(40, -60, 170, 80, .26), wash(150, 0, 80, 14, .4, '@spill'));
+        body.push({ f: '@light', d: rect(128, -47.6, 32, 1.6), glow: 'lamp' });
+        dress(body, ctx, r, { planters: [[-150, 22, 0, 5], [196, 16, 0, 5]], snow: [[-180, -6, 120], [104, -54, 80]], leaves: [-200, 200] });
+        lit.push(wash(40, -60, 170, 80, .26), wash(143, -30, 46, 30, .3, '@spill'), wash(143, 0, 70, 12, .4, '@spill'));
       } else if (v === 1) {
         // a glass drum under a thin overhanging roof disc, one floor slab, a spiral of escalator inside
         const R = 92, H = 118;
@@ -370,7 +381,7 @@
         body.push({ s: '@steel.0', w: 1.1, d: mul + `M${-R} -34H${R}M${-R} -90H${R}` }, ['@glass.1', rect(-R + 8, -H, 26, H - 4), .2]);
         body.push(['@steel.3', `M${-R - 22} ${-H - 8}h${2 * R + 44}v6h${-2 * R - 44}z`], ['@steel.2', rect(-R - 22, -H - 8, 2 * R + 44, 1.6)], ['@steel.1', `M${-R - 22} ${-H - 2}h${2 * R + 44}l-6 3h${-2 * R - 32}z`]);
         for (let x = -R + 16; x < R; x += 30) body.push({ f: '@light', d: rect(x - 3, -H + 2, 6, 2), glow: 'lamp' });
-        dress(body, ctx, r, { planters: [[-140, 34], [140, 34]], snow: [[-R - 22, -H - 8, 2 * R + 44]], leaves: [-190, 190] });
+        dress(body, ctx, r, { planters: [[-140, 34, 0, 5], [140, 34, 0, 5]], snow: [[-R - 22, -H - 8, 2 * R + 44]], leaves: [-190, 190] });
         lit.push(wash(0, -60, 140, 90, .28), wash(0, 2, 120, 14, .4, '@spill'));
       } else {
         // a tall glass hall with a blue-glazed core, under a sweeping wave roof on raking steel struts
@@ -387,7 +398,7 @@
         body.push(['@steel.2', top + bot + 'z'], ['@steel.1', `M-212 ${f1(wave(-212) + 6)}` + Array.from({ length: 36 }, (_, i) => `L${-212 + (i + 1) * 12} ${f1(wave(-212 + (i + 1) * 12) + 6)}`).join('') + `L212 ${f1(wave(212) + 8)}` + Array.from({ length: 36 }, (_, i) => `L${212 - (i + 1) * 12} ${f1(wave(212 - (i + 1) * 12) + 8)}`).join('') + 'z']);
         let st = ''; for (const x of [-200, -120, 120, 200]) st += `M${x} -4L${x + (x < 0 ? 22 : -22)} ${f1(wave(x) + 8)}`; body.push({ s: '@steel.3', w: 2.6, d: st });
         for (let x = -150; x <= 150; x += 50) body.push({ f: '@light', d: rect(x - 4, f1(wave(x) + 9), 8, 2), glow: 'lamp' });
-        dress(body, ctx, r, { planters: [[-186, 22], [186, 22]], snow: [[-212, f1(wave(-212)), 140], [100, f1(wave(100)), 110]], leaves: [-200, 200] });
+        dress(body, ctx, r, { planters: [[-186, 22, 0, 5], [186, 22, 0, 5]], snow: [[-212, f1(wave(-212)), 140], [100, f1(wave(100)), 110]], leaves: [-200, 200] });
         lit.push(wash(0, -54, 200, 70, .26), wash(0, 2, 170, 14, .4, '@spill'));
       }
       return { body, lit };
@@ -482,9 +493,12 @@
     build(v, r, ctx) {
       const body = [], lit = [];
       const W = 200, dy = -86;
-      // the piers (a tapering stem and a Y head) and the deck beam; the shadowed soffit
-      for (const px of [-140, 0, 140]) body.push(['@conc.0', `M${px - 9} 0L${px - 7} ${dy + 26}L${px - 18} ${dy + 14}H${px + 18}L${px + 7} ${dy + 26}L${px + 9} 0z`], ['@conc.3', `M${px + 3} 0L${px + 4} ${dy + 26}L${px + 18} ${dy + 14}H${px + 10}L${px + 7} ${dy + 26}L${px + 9} 0z`, .5]);
-      body.push(['@conc.0', rect(-W - 10, dy, 2 * W + 20, 14)], ['@conc.3', rect(-W - 10, dy + 12, 2 * W + 20, 2)], ['@conc.2', rect(-W - 10, dy, 2 * W + 20, 2)], { s: '@conc.1', w: .6, op: .5, d: Array.from({ length: 10 }, (_, i) => `M${-W - 10 + i * 46} ${dy}v14`).join('') });
+      // the piers (a tapering stem and a Y head, shaded on the right) and the deep deck beam with a lit top edge and a dark soffit
+      const yb = dy + 22;   // the beam's underside
+      for (const px of [-140, 0, 140]) body.push(['@conc.0', `M${px - 11} 0L${px - 8} ${yb + 12}L${px - 20} ${yb}H${px + 20}L${px + 8} ${yb + 12}L${px + 11} 0z`], ['@conc.3', `M${px + 3} 0L${px + 3} ${yb + 12}L${px + 20} ${yb}H${px + 9}L${px + 8} ${yb + 12}L${px + 11} 0z`, .7], ['@conc.3', rect(px - 20, yb, 40, 3), .5]);
+      body.push(['@conc.0', rect(-W - 10, dy + 6, 2 * W + 20, 16)], ['@conc.1', rect(-W - 10, dy + 14, 2 * W + 20, 8), .6], ['@conc.3', rect(-W - 10, yb - 3, 2 * W + 20, 3)], ['@conc.2', rect(-W - 10, dy + 6, 2 * W + 20, 2)], { s: '@conc.3', w: .8, op: .6, d: Array.from({ length: 10 }, (_, i) => `M${-W - 10 + i * 46} ${dy + 6}v16`).join(''), detail: true });
+      // the trackbed on the deck in front of the platform: a dark slab, the running rail and its fixings
+      body.push(['@dark', rect(-W - 10, dy, 2 * W + 20, 6)], ['@steel.2', rect(-W - 10, dy + 3, 2 * W + 20, 1.4)], { s: '@steel.0', w: .7, op: .7, d: Array.from({ length: 30 }, (_, i) => `M${-W - 6 + i * 14} ${dy + 4.4}v1.6`).join(''), detail: true });
       // the platform: edge line, a parapet screen of glass panels
       body.push(['@edge.1', rect(-W, dy - 3, 2 * W, 3)], ['@edge.0', rect(-W, dy - 3, 2 * W, .9)]);
       for (let x = -W; x < W; x += 20) body.push(['@glass.1', rect(x + 1, dy - 14, 18, 11), .35]);
@@ -516,13 +530,13 @@
         body.push(['@steel.1', rect(lx, dy - 30, 26, -dy + 30)], { f: '@glass.0', d: rect(lx + 3, dy - 27, 20, -dy + 25), glow: 'window', op: .8 }, ['@steel.2', rect(lx - 2, dy - 34, 30, 4)], { s: '@steel.1', w: .8, d: `M${lx + 13} ${dy - 27}V-2M${lx + 3} ${dy / 2}h20` }, ['@steel.1', rect(lx + 26, dy - 3, 14, 4)]);
         body.push({ f: '@glass.1', d: rect(lx + 6, dy / 2 - 12, 14, 18), op: .7 });
       }
-      dress(body, ctx, r, { planters: [[-70, 30], [70, 30]], snow: [[cx0 - 8, ch, cx1 - cx0 + 16], [-W - 10, dy, 2 * W + 20]], leaves: [-W, W] });
+      dress(body, ctx, r, { snow: [[cx0 - 8, ch, cx1 - cx0 + 16], [-W - 10, dy, 2 * W + 20]], leaves: [-W, W] });   // no planters: nothing stands loose under the viaduct
       lit.push(wash(0, ch + 30, (cx1 - cx0) / 2 + 30, 34, .3), wash(0, 2, 160, 12, .22, '@spill'));
       return { body, lit };
     },
   });
 
-  /* ---------- building.station-brick: a suburban rail station building; v0 single-storey Victorian with round arches, v1 two-storey Italianate station house, v2 1930s concrete with a fin tower ---------- */
+  /* ---------- building.station-brick: a suburban rail station building; v0 single-storey Victorian with round arches, v1 two-storey Italianate station house, v2 1930s brick with a concrete canopy and a tower ---------- */
   defineObj({
     id: 'building.station-brick', category: 'building', size: [290, 180], variants: 3, seasonal: true, shapeBySeason: true, flippable: true, parts: ['body', 'lit'],
     palette: pal({ stock: ['#ccb88e', '#a6926c', '#e0cea6', '#86744e'], red: ['#a24c36', '#7a3626', '#bc6a50', '#5a2a1e'], render: ['#ece6d6', '#c8c0ac', '#faf6ec', '#a29a88'], slate: ['#4a4e58', '#383c46', '#6a6e7a'],
@@ -566,9 +580,9 @@
         dress(body, ctx, r, { planters: [[hx1 + 2, 18]], baskets: [[wx0 + 30, cy + 2], [hx0 - 30, cy + 2]], buddleia: [[hx1 - 8, -60, .6]], snow: [[hx0 - 10, -hh, hx1 - hx0 + 20], [wx0 - 6, -wh, hx0 - wx0 + 6]], leaves: [wx0, hx1] });
         lit.push(wash(-70, cy + 16, 80, 30, .3, '@spill'), wash(0, 2, 140, 12, .3, '@spill'));
       } else {
-        // 1930s: a rendered booking hall with a long window band and a cantilever canopy, beside a tall fin tower with a slot window
+        // 1930s brick: a red-brick booking hall with a long window band and a concrete cantilever canopy, beside a tall brick tower with a slot window and concrete fins
         const W = 120, H = 70;
-        body.push(['@render.0', rect(-W, -H, 2 * W, H)], ['#000000', rect(W - 22, -H, 22, H), .1], ['@render.2', rect(-W - 3, -H - 4, 2 * W + 6, 4)]);
+        body.push(['@red.0', rect(-W, -H, 2 * W, H)], courses(-W, -H, 2 * W, H, '@red.3', 3.4), ['#000000', rect(W - 22, -H, 22, H), .12], ['@render.2', rect(-W - 3, -H - 4, 2 * W + 6, 4)]);
         body.push(['@frame.2', rect(-W + 12, -60, 2 * W - 24, 18)]);
         for (let i = 0; i < 12; i++) body.push(...glass(-W + 13 + i * 18.8, -59, 17, 16));
         body.push(['@frame.2', rect(-40, -34, 80, 34)]); for (let i = 0; i < 4; i++) body.push(...glass(-38 + i * 19.5, -32, 18, 32));
@@ -576,7 +590,7 @@
         body.push(['@render.2', rect(-W - 10, -40, 2 * W + 20, 5)], ['@render.1', rect(-W - 10, -36, 2 * W + 20, 1.2)], ['@fascia.0', rect(-70, -68, 160, 7)]);
         body.push(['@red.3', rect(-W, -4, 2 * W, 4)]);
         const tx = -W - 30, tw = 34, th = 168;
-        body.push(['@render.0', rect(tx, -th, tw, th)], ['#000000', rect(tx + tw * .62, -th, tw * .38, th), .14], ['@frame.2', rect(tx + 12, -th + 18, 10, 110)]);
+        body.push(['@red.0', rect(tx, -th, tw, th)], courses(tx, -th, tw, th, '@red.3', 3.4), ['#000000', rect(tx + tw * .62, -th, tw * .38, th), .16], ['@frame.2', rect(tx + 12, -th + 18, 10, 110)]);
         for (let j = 0; j < 5; j++) body.push({ f: '@glass.0', d: rect(tx + 13, -th + 19 + j * 22, 8, 20.4), glow: 'window' });
         let fins = ''; for (let j = 0; j < 4; j++) fins += rect(tx - 2, -th + 6 + j * 4, tw + 4, 1.6); body.push(['@render.2', fins], ['@render.2', rect(tx - 4, -th - 4, tw + 8, 4)]);
         dress(body, ctx, r, { planters: [[W + 16, 22], [-W + 30, 22]], snow: [[-W - 10, -40, 2 * W + 20], [-W - 3, -H - 4, 2 * W + 6], [tx - 4, -th - 4, tw + 8]], leaves: [tx, W] });
@@ -610,13 +624,18 @@
         body.push(['@glass.1', `M${-W} ${-H}h80l-80 64z`, .22]);
         let g = `M${-W + 2} ${-H}V0M${W - 2} ${-H}V0`; for (let i = 1; i < cols; i++) g += `M${f1(-W + 4 + i * cw)} ${-H}V0`; for (let j = 1; j < 3; j++) g += `M${-W} ${f1(-H + 4 + j * rh)}H${W}`;
         body.push({ s: '@frame.0', w: 3, d: g }, { s: '@frame.0', w: .7, d: Array.from({ length: cols }, (_, i) => `M${f1(-W + 4 + (i + .5) * cw)} ${-H + 4}V${f1(-H + 4 + rh)}`).join('') }, ['@frame.0', rect(-W, -H, 2 * W, 4)]);
-        body.push(['@frame.0', rect(-30, -50, 60, 50), .0], { s: '@frame.0', w: 2, d: 'M0 0V-50' });
+        // the entrance: a deep bronze door case with two pairs of glazed doors under a flat hood
+        body.push(['@frame.2', rect(-34, -54, 68, 54)], { f: '@glass.0', d: rect(-30, -50, 29, 50), glow: 'window', op: .85 }, { f: '@glass.0', d: rect(1, -50, 29, 50), glow: 'window', op: .85 }, { s: '@frame.0', w: 2, d: 'M-15.5 -50V0M15.5 -50V0M-30 -26h60' }, ['@frame.0', rect(-42, -62, 84, 8)], ['@frame.1', rect(-42, -62, 84, 1.4)], ['#000000', rect(-42, -54, 84, 2), .25]);
         body.push(['@frame.0', rect(-W - 4, -H - 8, 2 * W + 8, 8)], ['@frame.1', rect(-W - 4, -H - 8, 2 * W + 8, 1.4)]);
+        // massing: Portland-stone end piers and an attic over the frame, a plinth step along the foot
+        body.push(['@wall.2', rect(-W - 12, -H - 20, 2 * W + 24, 12)], ['#000000', rect(-W - 12, -H - 9, 2 * W + 24, 1.4), .2], ['@wall.2', rect(-W - 12, -H - 8, 12, H + 8)], ['@wall.2', rect(W, -H - 8, 12, H + 8)], ['#000000', rect(W + 6, -H - 20, 6, H + 20), .14], ['@wall.2', rect(-W - 14, -4, 2 * W + 28, 5.6)]);
       } else if (v === 1) {
         body.push({ f: '@glass.0', d: rect(-W, -H, 2 * W, H), glow: 'window', op: .38 }, ['@glass.1', `M${-W} ${-H}h90l-90 70z`, .25]);
         let fin = ''; for (let x = -W; x <= W; x += 2 * W / 5) fin += `M${f1(x)} ${-H}V0`; body.push({ s: '@frame.1', w: 2.4, d: fin }, { s: '@frame.2', w: .6, d: fin, op: .5 });
         for (const x of [-30, 30]) body.push({ f: '@glass.0', d: rect(x - 18, -60, 36, 60), glow: 'window', op: .3 }, { s: '@frame.1', w: 1.4, d: `M${x} -60V0M${x - 18} -60h36` });
         body.push(['@frame.1', `M${-W - 14} ${-H - 10}H${W + 14}l-4 6H${-W - 10}z`], ['@frame.2', rect(-W - 14, -H - 10, 2 * W + 28, 1.4)]);
+        // massing: dark-clad end walls framing the glass and a deep roof edge over the doors
+        body.push(['@frame.2', rect(-W - 10, -H - 4, 12, H + 4)], ['@frame.2', rect(W - 2, -H - 4, 12, H + 4)], ['@frame.2', rect(-W - 14, -H - 20, 2 * W + 28, 10)], ['@frame.1', rect(-W - 14, -H - 20, 2 * W + 28, 1.4)], ['@frame.1', rect(-56, -66, 112, 4)], ['@floor.1', rect(-W - 10, -3, 2 * W + 20, 4.6)]);
       } else {
         body.push(['@wall.0', rect(-W - 10, -H - 10, 2 * W + 20, H + 10)]);
         let cour = ''; for (let y = -H - 10; y < 0; y += 3.4) cour += `M${-W - 10} ${f1(y)}h${2 * W + 20}`; body.push({ s: '@wall.3', w: .5, op: .3, d: cour, detail: true });
@@ -632,7 +651,8 @@
         }
         body.push(['@wall.2', rect(-W - 12, -H - 14, 2 * W + 24, 5)]);
       }
-      dress(body, ctx, r, { planters: v === 2 ? [] : [[-W - 14, 22]], snow: [[-W - 14, -H - 10, 2 * W + 28]], leaves: [-W, W] });
+      // planters stand on stone plinths on the step, against the glazing at both ends (never loose beside the wall)
+      dress(body, ctx, r, { planters: v ? [] : [[-W + 20, 24, -4, 5], [W - 20, 24, -4, 5]], snow: [[-W - 14, v === 2 ? -H - 10 : -H - 20, 2 * W + 28]], leaves: [-W, W] });
       if (ctx.season === 'winter' && v === 2) body.push(['@floor.0', rect(-W, -2, 2 * W, 2), .4]);
       lit.push(wash(0, -50, 140, 60, .25), wash(0, 4, 130, 16, .45, '@spill'));
       return { body, lit };

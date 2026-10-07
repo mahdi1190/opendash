@@ -63,7 +63,8 @@
     build(v, r, ctx) {
       const body = [], lit = [], W = 180, winter = ctx.season === 'winter', bloom = !winter;
       const cols = [-144, -72, 0, 72, 144];
-      const tub = (x) => { body.push(['@tub.0', rect(x - 9, -9, 18, 9)], ['@tub.1', rect(x - 10, -10, 20, 1.6)], ['@leaf.0', lobed(r, x, -13, 10, 6, 8, .35)]); if (bloom) { let b = ''; for (let i = 0; i < 5; i++) b += ell(x + rr(r, -8, 8), rr(r, -18, -10), 1.4, 1.4); body.push(['@bloom.0', b]); } else body.push(['@snow.0', `M${x - 10} -15q10 -7 20 0z`]); };
+      // a planter standing on a stone plinth by the column (never loose on the platform)
+      const tub = (x) => { body.push(['@tub.1', rect(x - 12, -5, 24, 5)], ['@tub.0', rect(x - 12, -1.2, 24, 1.2), .3], ['@tub.0', rect(x - 9, -14, 18, 9)], ['@tub.1', rect(x - 10, -15, 20, 1.6)], ['@leaf.0', lobed(r, x, -18, 10, 6, 8, .35)]); if (bloom) { let b = ''; for (let i = 0; i < 5; i++) b += ell(x + rr(r, -8, 8), rr(r, -23, -15), 1.4, 1.4); body.push(['@bloom.0', b]); } else body.push(['@snow.0', `M${x - 10} -20q10 -7 20 0z`]); };
       if (v === 0) {
         // cast-iron columns with capitals and curved spandrel brackets; a longitudinal girder; the pitched roof behind a deep valance of dagger boards
         let c = ''; for (const x of cols) c += `M${x} 0V-40`; body.push({ s: '@iron.0', w: 3.2, d: c });
@@ -106,26 +107,34 @@
     credit: 'after London deep-level tube stock (generic livery: the line colour on the doors and cab)',
     params: { variant: 'line colour index into LINE_COLOURS (0 red, 1 dark blue, 2 green, 3 yellow, 4 brown, 5 pink, 6 purple, 7 light blue, 8 grey, 9 black, 10 teal, 11 orange)' },
     build(v) {
-      const L = `@line.${v}`, LD = `@lineD.${v}`, body = [], cw = 160, gap = 4, n = 3, x0 = -(n * cw + (n - 1) * gap) / 2, top = -31, bot = -6;
+      // the low ROUND tube profile: vertical sides to a cantrail, then a big-radius roof curve (shaded as a band) into a flat roof;
+      // doors rise into the curve, the windows are small. Variety beyond the line colour: v % 2 gives three or four cars, v % 3 === 2 two doors a car
+      const L = `@line.${v}`, LD = `@lineD.${v}`, body = [], gap = 4, n = 3 + (v % 2), cw = (488 - (n - 1) * gap) / n, x0 = -244, top = -30, bot = -6, ct = top + 9;
+      const doorAt = v % 3 === 2 ? [.2, .62] : [.125, .4, .675], dw = 20;
       for (let i = 0; i < n; i++) {
-        const cx = x0 + i * (cw + gap), front = i === n - 1, back = i === 0;
-        // the shell: a low round-shouldered body; the cab ends slope and round
-        const shell = front ? `M${cx} ${bot}V${top + 4}q0 -4 6 -4H${cx + cw - 16}q12 0 15 12l1 ${bot - top - 12}V${bot}z`
-          : back ? `M${cx + 1} ${bot}V${top + 12}q3 -12 15 -12H${cx + cw}V${bot}z` : `M${cx} ${bot}V${top + 4}q0 -4 6 -4H${cx + cw - 6}q6 0 6 4V${bot}z`;
-        body.push(['@body.0', shell], ['@body.1', rect(cx + (back ? 2 : 0), bot - 7, cw - (front ? 2 : 0), 7)], ['@body.2', rect(cx + 6, top + 1, cw - 14, 1.6), .8], ['@skirt', rect(cx + (back ? 2 : 0), bot - 2, cw - (front ? 1 : 0), 2)]);
-        // doors (line colour) rising into the roof, windows between, a line-colour cantline
-        const doors = [cx + 20, cx + 64, cx + 108];
-        for (const dx of doors) body.push([L, `M${dx} ${bot}V${top + 2}q0 -2 2 -2h16q2 0 2 2V${bot}z`], { f: '@glass.0', d: rrect(dx + 2.5, top + 3, 6, 10, 1.5), glow: 'window' }, { f: '@glass.0', d: rrect(dx + 11.5, top + 3, 6, 10, 1.5), glow: 'window' }, ['@lineD.' + v, rect(dx + 9.6, top + 1, .8, -top + bot - 1)]);
-        for (const [wx, ww] of [[cx + 44, 16], [cx + 88, 16], [cx + 132, front ? 8 : 16], [cx + (back ? 6 : 4), 12]]) if (ww) body.push({ f: '@glass.0', d: rrect(wx, top + 5, ww, 11, 2), glow: 'window' }, ['@glass.1', `M${wx + 1} ${top + 6}h${ww * .4}l-${ww * .4} 6z`, .5]);
-        body.push(['@lineD.' + v, rect(cx + (back ? 4 : 0), top + 18, cw - (front ? 10 : back ? 4 : 0), 1.2), .9]);
+        const cx = x0 + i * (cw + gap), front = i === n - 1, back = i === 0, xe = cx + cw;
+        const shell = front ? `M${f1(cx)} ${bot}V${ct}Q${f1(cx)} ${top} ${f1(cx + 9)} ${top}H${f1(xe - 18)}Q${f1(xe - 1)} ${top} ${f1(xe - 1)} ${top + 16}V${bot}z`
+          : back ? `M${f1(cx + 1)} ${bot}V${top + 16}Q${f1(cx + 1)} ${top} ${f1(cx + 18)} ${top}H${f1(xe - 9)}Q${f1(xe)} ${top} ${f1(xe)} ${ct}V${bot}z`
+          : `M${f1(cx)} ${bot}V${ct}Q${f1(cx)} ${top} ${f1(cx + 9)} ${top}H${f1(xe - 9)}Q${f1(xe)} ${top} ${f1(xe)} ${ct}V${bot}z`;
+        const a = cx + (back ? 12 : 4), b = xe - (front ? 12 : 4);   // the roof band's run
+        body.push(['@body.0', shell], ['@body.1', `M${f1(a - 2)} ${ct}Q${f1(a - 2)} ${top + 2} ${f1(a + 6)} ${top + 2}H${f1(b - 6)}Q${f1(b + 2)} ${top + 2} ${f1(b + 2)} ${ct}z`, .5], ['@body.2', rect(a + 4, top + 1, b - a - 8, 1.4), .8], ['@body.1', rect(a - 2, ct, b - a + 4, .8)]);
+        body.push(['@body.1', rect(cx + (back ? 2 : 0), bot - 7, cw - (front ? 2 : 0), 7)], ['@skirt', rect(cx + (back ? 2 : 0), bot - 2, cw - (front ? 1 : 0), 2)], [LD, rect(cx + (back ? 4 : 0), bot - 8.4, cw - (front ? 8 : back ? 4 : 0), 1.2), .9]);
+        // doors (line colour) cut up into the roof curve, a small window in each leaf
+        const doors = doorAt.map(t => f1(cx + t * cw));
+        for (const dx of doors) body.push([L, `M${dx} ${bot}V${top + 4}q0 -2 2 -2h${dw - 4}q2 0 2 2V${bot}z`], { f: '@glass.0', d: rrect(dx + 2.5, ct, 6, 9, 1.5), glow: 'window' }, { f: '@glass.0', d: rrect(dx + 11.5, ct, 6, 9, 1.5), glow: 'window' }, [LD, rect(dx + 9.6, top + 3, .8, -top + bot - 3)]);
+        // small windows in the bays between the doors and the car ends
+        const edges = [cx + (back ? 18 : 4), ...doors.flatMap(d => [d, d + dw]), xe - (front ? 18 : 4)];
+        for (let k = 0; k < edges.length; k += 2) {
+          const g0 = edges[k] + 3, g1 = edges[k + 1] - 3, m = Math.max(g1 - g0 >= 6 ? 1 : 0, Math.floor((g1 - g0 + 3) / 14)), ww = Math.min(11, g1 - g0);
+          for (let j = 0; j < m; j++) { const wx = g0 + (g1 - g0 - (m * (ww + 3) - 3)) / 2 + j * (ww + 3); body.push({ f: '@glass.0', d: rrect(wx, ct + 1, ww, 8, 2), glow: 'window' }, ['@glass.1', `M${f1(wx + 1)} ${ct + 2}h4l-4 4z`, .5]); }
+        }
         bogies(body, cx, cw, 0, 2.6);
-        if (!front) body.push(['@under.0', rect(cx + cw, top + 6, gap, -top + bot - 6)]);
+        if (!front) body.push(['@under.0', rect(xe, ct, gap, bot - ct)]);
       }
-      // the cab: the line-colour front, a deep windscreen, lamps
-      const fx = x0 + n * (cw + gap) - gap;
-      body.push([L, `M${fx - 10} ${bot}V${top + 10}q6 0 9 6l1 ${-top + bot - 16}z`], { f: '@glass.0', d: `M${fx - 13} ${top + 2}q8 0 11 9h-11z`, glow: 'window' }, ['@lamp.0', rect(fx - 4, bot - 6, 3, 2)], ['@lamp.1', rect(fx - 4, bot - 3.4, 3, 1.4)]);
-      body.push([L, `M${x0 + 1} ${bot}V${top + 12}q1 -4 4 -7v${-top + bot - 5}z`]);
-      body.push({ f: '@glass.0', d: `M${x0 + 12} ${top + 2}q-7 1 -9 9h9z`, glow: 'window' }, ['@lamp.1', rect(x0 + 1.4, bot - 5, 2.4, 1.6)], ['@body.1', rect(x0 + 8, top + .2, cw - 16, 1.6), .7], ['@body.1', rect(x0 + cw + gap + 6, top + .2, cw - 12, 1.6), .7], ['@body.1', rect(x0 + 2 * (cw + gap) + 6, top + .2, cw - 24, 1.6), .7]);
+      // the cabs: the line-colour ends, the deep windscreens, lamps
+      const fx = x0 + 488;
+      body.push([L, `M${fx - 10} ${bot}V${top + 8}q7 1 9 8V${bot}z`], { f: '@glass.0', d: `M${fx - 15} ${top + 3}q9 0 12 9h-12z`, glow: 'window' }, ['@lamp.0', rect(fx - 4, bot - 6, 3, 2)], ['@lamp.1', rect(fx - 4, bot - 3.4, 3, 1.4)]);
+      body.push([L, `M${x0 + 11} ${bot}V${top + 8}q-7 1 -9 8V${bot}z`], { f: '@glass.0', d: `M${x0 + 16} ${top + 3}q-9 0 -12 9h12z`, glow: 'window' }, ['@lamp.1', rect(x0 + 1.4, bot - 5, 2.4, 1.6)]);
       return { body };
     },
   });
