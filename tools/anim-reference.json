@@ -1,9 +1,88 @@
 {
-  "_about": "The gold-standard set: match the CRAFT of these, never copy their drawing. Chosen from the existing corpus by measured richness AND by looking at every candidate rendered (light and night). `node tools/anim-pack.mjs reference` prints it; `reference --render` writes the PNGs to .anim-ref/ so you can open them and compare your own render side by side. 'weaker' lists accepted scenes that fall short: do better than them.",
+  "_about": "THE NEW STANDARD (docs/dev/SCENE_ENGINE.md section 15, user decision 7 Oct 2026): `bar` is what every scene must reach: the rich Yateley and Fleet scenes (depth layers, dense ground cover, life at every depth, a signature, the live sky, seasons, shadows, reflections and night lights) at a frame budget. The composed profile measures it (scene lint), and new scenes are COMPOSED from the object library (scene new, scene upgrade). `scenes` and `items` are the earlier gold set, now the LEGACY exemplars: hand-drawn craft to learn from, below the new bar. `weaker` lists accepted scenes that fall short: do better than them. `node tools/anim-pack.mjs reference` prints it; `reference --render` writes the PNGs to .anim-ref/.",
+  "standard": 2,
+  "bar": [
+    {
+      "ref": "uk-south-east/hampshire-yateley-common-1",
+      "kind": "rich",
+      "source": "src/app/72-anim-pack-uk-south-east-yateley-common-v1.js",
+      "why": "THE BAR for open country. Depth: a hazy far tree line, a mid band of birch and pine, near heath and a framing foreground, each in its own layer with haze between them. Cover: heather, gorse and grass carpet the whole lower ground, no bare columns. Life: walkers with a dog, rabbits, butterflies, bees, birds crossing and swaying plants at three depths. Light: the live sky of the real sun, shadows along it, the season by date.",
+      "tags": [
+        "heath",
+        "depth-layers",
+        "dense-cover",
+        "live-sky",
+        "shadows"
+      ]
+    },
+    {
+      "ref": "uk-south-east/hampshire-yateley-common-4",
+      "kind": "rich",
+      "source": "src/app/72-anim-pack-uk-south-east-yateley-common-v4.js",
+      "why": "The same heath at evening: match the low warm light, the long shadows and the way the far layers fade into the glow while the near cover stays crisp.",
+      "tags": [
+        "evening",
+        "golden-light",
+        "long-shadows",
+        "depth-layers"
+      ]
+    },
+    {
+      "ref": "uk-south-east/hampshire-wyndhams-pool-1-winter",
+      "kind": "rich",
+      "source": "src/app/72-anim-pack-uk-south-east-wyndhams-pool-v1.js",
+      "why": "Winter done right: bare twig lattices, frost and russet cover instead of summer green, a still pool reflecting the trees, and life that still moves (water birds, a walker) under a low winter sun.",
+      "tags": [
+        "winter",
+        "reflection",
+        "bare-trees",
+        "water-birds"
+      ]
+    },
+    {
+      "ref": "uk-south-east/hampshire-yateley-green-2-spring",
+      "kind": "rich",
+      "source": "src/app/72-anim-pack-uk-south-east-yateley-green-v2.js",
+      "why": "Spring and a mixed setting: a village green with houses, a pond and wild flowers. Match the density of the meadow cover, the blossom, and the windows that light at real dusk.",
+      "tags": [
+        "spring",
+        "village",
+        "pond",
+        "wildflowers",
+        "lit-windows"
+      ]
+    },
+    {
+      "ref": "uk-south-east/hampshire-fleet-pond-1",
+      "kind": "rich",
+      "source": "src/app/72-anim-pack-uk-south-east-fleet-pond-v1.js",
+      "why": "THE BAR for water: a wide lake with reflections of everything at its edge, reed beds along the margins, swans, ducks and dragonflies on and over the water, walkers on the shore, shimmer and the glitter road of the real sun.",
+      "tags": [
+        "lake",
+        "reflections",
+        "reedbed",
+        "water-birds",
+        "glitter-road"
+      ]
+    },
+    {
+      "ref": "uk-south-east/hampshire-fleet-pond-2-autumn",
+      "kind": "rich",
+      "source": "src/app/72-anim-pack-uk-south-east-fleet-pond-v2.js",
+      "why": "Autumn: copper and gold crowns, falling leaves, reeds gone tawny; the same depth, cover and life as summer in the colours of the season.",
+      "tags": [
+        "autumn",
+        "falling-leaves",
+        "reflections",
+        "seasons"
+      ]
+    }
+  ],
   "_use": [
     "Before drawing: render the exemplars nearest your subject (skyline, mountains, monument, water, desert, snow, tropics, night lights, wildlife) and read their source (the 'source' field).",
     "After drawing: `node tools/anim-pack.mjs sheet <your refs> --contact` (light) and `--mode night`, then hold your render next to the exemplar: same depth layers, same finish, same life. Passing the lint is the floor; this comparison is the bar.",
-    "Study technique, not content: ask what each exemplar does that makes it look finished (layers, haze between them, a reflection, framing foreground, motion at three depths, a lit evening grade) and do the same for your subject."
+    "Study technique, not content: ask what each exemplar does that makes it look finished (layers, haze between them, a reflection, framing foreground, motion at three depths, a lit evening grade) and do the same for your subject.",
+    "For a NEW scene: render the bar (reference --render) and match it: compose from the library and check with scene lint --perf and scene sheet --times --seasons. The convert stage replaces the bar entries by their composed versions (kind: composed) and adds the pilot upgrades."
   ],
   "scenes": [
     {

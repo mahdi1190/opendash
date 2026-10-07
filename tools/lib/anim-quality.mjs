@@ -6,7 +6,8 @@
 //   ruleTable(metrics, profile, thresholds)   -> [{rule, value, limit, ok}]   a PASS / FAIL row per rule
 //   thinSpots(metrics, profile, thresholds)   -> advisory: passes that are still thinner than 90 % of the corpus
 //   checkCss(css)                             -> failures for a pack's css (keyframes move transform and opacity only)
-//   profileFor({pack, full, rich}, thresholds) -> 'scene' | 'scene-legacy' | 'scene-rich' | 'item' | 'item-classic'
+//   profileFor({pack, full, rich, composed}, thresholds) -> 'composed' | 'scene' | 'scene-legacy' | 'scene-rich' | 'item' | 'item-classic'
+//                                             ('composed' items are judged by tools/lib/scene-lint.mjs, never by measure / check)
 //   applyWaivers(failures, ref, thresholds)   -> { failures, waived }
 //   shapeKeys / sharedShares                  how much of a scene is identical to other scenes (templated or copied art)
 //   RULE_PLAN / RULE_HINTS / proposeThresholds / describe    which metrics are rules, how to fix them, and calibration
@@ -16,6 +17,10 @@
 // what animItemHtml() returns (a wrapper span plus the svg), or just the svg, or its inside.
 // `opts.css` / `opts.classes`: the css the item ships with (library, registry and pack css): every motion
 // and evening class the drawing uses must be defined there, or it silently does nothing.
+//
+// 'composed' (a composed scene, item.composed) is NOT in RULE_PLAN: it has no measure() metrics. tools/lib/scene-lint.mjs judges its
+// COMPILED data against the "composed" block of the thresholds file (designed: true; calibrate skips it until the convert stage re-bases
+// it), and there <text> is allowed ONLY as a direct child of g.sc-sign holding a sign's own escaped text (svgTextCheck).
 //
 // The thresholds (tools/anim-quality.json) are CALIBRATED on the accepted corpus: every existing scene
 // and item passes, and the floors sit at the corpus minimum (or just under it), so a thin, flat or
@@ -721,9 +726,16 @@ export function stableIds(html, legacy = false) {
  */
 export const TARGETS = Object.freeze({ richness: 0.9, maxThinSpots: 4, maxRedraws: 3 });
 
-/** Which thresholds profile an item is judged by: 'scene-rich' for a rich local scene (item.rich), 'scene' / 'item' (the strict ones, every new pack), or the legacy 'scene-legacy' / 'item-classic' for the frozen list of packs calibrated on their own older corpus. */
+/**
+ * Which thresholds profile an item is judged by: 'composed' for a composed scene (item.composed: library objects drawn by the scene engine;
+ * checked FIRST, and judged by lintScene in tools/lib/scene-lint.mjs: data, perf, the bar, variety, care), 'scene-rich' for a rich local
+ * scene (item.rich), 'scene' / 'item' (the strict ones, every new pack), or the legacy 'scene-legacy' / 'item-classic' for the frozen list of
+ * packs calibrated on their own older corpus. Since the new standard (docs/dev/SCENE_ENGINE.md section 15) every full-scene profile other
+ * than 'composed' is the LEGACY tier.
+ */
 export function profileFor(it, thresholds) {
   const prof = (thresholds && thresholds.profiles) || {};
+  if (it.full && (it.composed || (it.item && it.item.composed))) return 'composed';
   const legacy = (name) => (prof[name] && prof[name].packs || []).includes(it.pack);
   if (it.full && it.rich && thresholds && thresholds['scene-rich']) return 'scene-rich';   // a rich local scene (item.rich), whatever its pack
   if (it.full) return legacy('scene-legacy') ? 'scene-legacy' : 'scene';

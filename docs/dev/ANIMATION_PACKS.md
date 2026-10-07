@@ -486,7 +486,71 @@ shows them, `calibrate` prints the corpus for every profile. The kit files
 (`71-anim-uk-*.js`) are part of the registry load the tools and tests share
 (`tools/lib/anim-sources.mjs`).
 
-## Checklist
+## Composed scenes and the new standard
+
+The full contract is `docs/dev/SCENE_ENGINE.md`; this is the working summary.
+
+**The bar.** Since 7 Oct 2026 the rich Yateley and Fleet scenes are THE BAR every scene must reach (`tools/anim-reference.json`
+`bar`; `node tools/anim-pack.mjs reference` prints it first). A scene looks bad next to them when it is flat, bare, still, generic or lit
+wrong. New scenes are COMPOSED: objects from a library (variants, four seasons, animation hooks, night lights) placed by scene data
+(layers, ground, water, hand placements, seeded scatter rules, actors, flocks) and drawn by a canvas renderer that bakes everything
+static into a few layer bitmaps. Every hand-drawn profile (`scene`, `scene-legacy`, `scene-rich`) keeps its floors, but as the LEGACY
+tier: `lint` prints "(legacy floors: below the new standard)" after a passing hand-drawn scene and GOLD after a composed one that passes.
+
+**The composed profile** (`tools/lib/scene-lint.mjs`, thresholds `tools/anim-quality.json` "composed", designed, re-based at the convert stage):
+
+- data: placements, animated draws (at most 300), actors, flock birds, particles, layers used (5 to 8), bake bitmaps (at most 6), distinct
+  sprites, sprite memory, data bytes, the SVG fallback's size, signs (only with `signage: true`, safe text, no TfL marks);
+- perf (`scene lint --perf`, `scene perf`): the median dynamic part of the frame at most 6 ms and the whole frame at most 8 ms on a laptop
+  (x `swFactor` 1.75 under headless software raster), p95, the first bake;
+- the bar: depth layers, ground cover, movers, scene crossers, kinds of motion, a signature, the live sky, seasons (delta E), the sun,
+  shadows, reflections, night lights;
+- placement variety: reuse is GOOD, stamps are not (scale spread, flips, variants, tints, no grids, no stacked copies, species per category);
+- care: tiny anonymous silhouettes (at most 8, 10 at a station), no crowds, signs only where allowed.
+
+**The workflow:** brief -> compose from the library (an archetype when one fits) -> add objects if needed -> lint (quality + perf) -> sheet -> review.
+
+```bash
+node tools/anim-pack.mjs brief my-pack --kind composed                       # the brief, with the bar, the budget and the scene card
+node tools/anim-pack.mjs object list --kit temperate                         # what the library holds
+node tools/anim-pack.mjs scene new my-pack my-scene --lat 51.34 --lon=-0.83  # a scene that compiles at once (or --brief <file>, --archetype <id> --row '<json>')
+node tools/anim-pack.mjs object new tree.rowan --kits temperate --role tree  # only when the subject needs a new object
+node tools/anim-pack.mjs object lint tree.rowan
+node tools/anim-pack.mjs object sheet tree.rowan --mode night
+node tools/anim-pack.mjs scene lint my-pack/my-scene --perf                  # until GOLD
+node tools/anim-pack.mjs scene sheet my-pack/my-scene --times --seasons --contact
+```
+
+**Many scenes cheaply (a London pack).** An archetype (`station`) plus a data table (one row per station: id, name, lines, lat, lon,
+era, features) gives one scene per row, each built only when it is shown or linted. Batch commands run over the table and end with
+a summary table (rows, pass, fail, the worst animated draws and dynMs, the means, the rows nearest to failing):
+
+```bash
+node tools/anim-pack.mjs scene lint --archetype station --table london-demo --rows 200
+node tools/anim-pack.mjs scene perf --archetype station --table london-demo --sample 3
+node tools/anim-pack.mjs scene sheet --archetype station --table london-demo --sample 3 --times --contact
+```
+
+**Upgrading the hand-drawn region scenes.** `status <region> --standard` (or `status --all --standard`) is the worklist, grouped by
+suggested archetype; `brief <region> --kind upgrade` makes the batches of 7. Per scene:
+
+```bash
+node tools/anim-pack.mjs scene upgrade asia-southeast/singapore-skyline                          # the largest shape clusters of the old art
+node tools/anim-pack.mjs scene upgrade asia-southeast/singapore-skyline --box 560,160,1120,640   # landmark extracted, archetype suggested, a DRAFT written
+node tools/anim-pack.mjs scene sheet asia-southeast/singapore-skyline --compare --upgrades       # old vs new, at noon and at night
+node tools/anim-pack.mjs scene lint asia-southeast/singapore-skyline --upgrades --perf
+```
+
+The draft keeps the item's identity (id, key, place fields, label, site, tags, `when`); it goes live only at GOLD, with the compare
+sheet looked at in light and night. Hand-drawn scenes still get the Yateley rules (seasons, the live sky, weather) through the retrofit
+overlay; check it with `node tools/anim-pack.mjs lint --pack us-northeast --at 2026-10-07T21:30:00Z` and
+`node tools/anim-pack.mjs sheet --pack us-northeast --at 2026-10-07T21:30:00Z --contact`.
+
+**Signs and the legal note.** Text in a drawing stays forbidden. The one exception is the engine's place-name sign, only in scenes whose
+archetype declares signs (`signage: true`): a plain sans-serif board in the system font with line-colour bars, drawn from data, escaped,
+with a deny-list. The TfL roundel, the "Underground" logotype, the line-diagram style and New Johnston are TfL marks: never reproduce
+or approximate them; the object lint rejects a ring with a bar across it in street, rail and building objects.
+
 
 1. `src/app/72-anim-pack-<id>.js` with the manifest above.
 2. A reduced variant for every item; nothing fetched; no user text.
