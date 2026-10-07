@@ -175,6 +175,102 @@ test('the page harness: one box per ref, two captioned boxes per ref with compar
   assert.match(html, /\.ap-composed \.sc-canvas/);
 });
 
+/* ---------- the canvas clouds (6.3): the natural sky's plan, pure data the renderer paints ---------- */
+// sceneCloudPlan and sceneCloudX are not in the harness's name list: the same bundle, returning them (extra is test-only source)
+const SC = loadScenes(ROOT, { fixtures: true, extra: 'return { sceneCloudPlan, sceneCloudX, sceneCompile, sceneLight, SCENE_TEST_TINY };' });
+const VIEW = { lat: 51.34, lon: -0.83, heading: 200, season: 'summer' };
+const skyAt = (at, o) => Object.assign(SC.sceneLight({}, Object.assign({ at }, VIEW)), o || {});
+const skyOf = (id, n, o) => ({ id, sky: { clouds: Object.assign({ n, y0: 60, y1: 320, speed: 6 }, o || {}) } });
+const cloudCount = (n, cover) => Math.min(10, Math.max(1, Math.round(n * (0.45 + cover * 1.6))));
+const shapeOf = (c) => JSON.stringify([c.kind, c.band, c.w, c.h, c.x0, c.y, c.sp, c.base, c.lobes, c.shelf, c.rag, c.streaks, c.fibres]);
+
+test('clouds: the same scene bakes the same sky, another scene its own', () => {
+  const C = SC.sceneCompile(SC.SCENE_TEST_TINY, { season: 'summer', lod: 1 }), L = skyAt('noon');
+  const a = SC.sceneCloudPlan(C, L), b = SC.sceneCloudPlan(SC.sceneCompile(SC.SCENE_TEST_TINY, { season: 'summer', lod: 1 }), skyAt('noon'));
+  assert.ok(a.length > 0);
+  assert.deepEqual(a, b, 'same scene, same light: the same clouds');
+  const other = SC.sceneCloudPlan(Object.assign({}, C, { id: C.id + '-other' }), L);
+  assert.equal(other.length, a.length, 'the count is the formula, not the seed');
+  assert.notDeepEqual(other.map(shapeOf), a.map(shapeOf), 'seeded by the scene: another id, another sky');
+  assert.deepEqual(SC.sceneCloudPlan(null, L), []);
+  assert.deepEqual(SC.sceneCloudPlan(C, null), [], 'no light, no clouds (as before)');
+});
+
+test('clouds: the count keeps the formula and the cap of 10 (cirrus inside it); kinds follow cover and weather', () => {
+  const L = skyAt('noon');
+  for (const n of [1, 3, 4, 6, 10]) for (const cover of [0, 0.08, 0.3, 0.45, 0.62, 0.92, 1]) {
+    const plan = SC.sceneCloudPlan(skyOf('count-' + n + '-' + cover, n), Object.assign({}, L, { cover }));
+    assert.equal(plan.length, cloudCount(n, cover), `n ${n}, cover ${cover}`);
+    assert.ok(plan.length <= 10);
+  }
+  const kinds = (o) => { const k = { heap: 0, strip: 0, cirrus: 0 }; for (let i = 0; i < 24; i++) for (const c of SC.sceneCloudPlan(skyOf('kinds-' + i, 6), Object.assign({}, L, o))) k[c.kind]++; return k; };
+  const clear = kinds({ cover: 0.08 }), overcast = kinds({ cover: 0.92 }), rain = kinds({ cover: 0.62, rain: true });
+  assert.ok(clear.cirrus > 0 && clear.heap > clear.strip, 'a clear sky: fair-weather heaps and a few cirrus ' + JSON.stringify(clear));
+  assert.ok(overcast.cirrus === 0 && overcast.strip > overcast.heap, 'overcast: low strips, no cirrus ' + JSON.stringify(overcast));
+  assert.ok(rain.cirrus === 0 && rain.strip > rain.heap, 'rain: strips ' + JSON.stringify(rain));
+});
+
+test('clouds: depth bands give parallax (far small and slow, near large and fast), drawn far to near', () => {
+  const L = skyAt('noon'), all = [];
+  for (let i = 0; i < 16; i++) {
+    const plan = SC.sceneCloudPlan(skyOf('bands-' + i, 6), L);
+    assert.deepEqual(plan.map(c => c.band), plan.map(c => c.band).sort((a, b) => a - b), 'sorted far to near');
+    assert.ok(new Set(plan.filter(c => c.band >= 0).map(c => c.band)).size >= 2, 'at least two depth bands');
+    all.push(...plan);
+  }
+  const mean = (band, k) => { const l = all.filter(c => c.band === band && c.kind === 'heap'); return l.reduce((s, c) => s + c[k], 0) / l.length; };
+  assert.ok(mean(0, 'sp') < mean(1, 'sp') && mean(1, 'sp') < mean(2, 'sp'), 'farther is slower');
+  assert.ok(mean(0, 'w') < mean(2, 'w'), 'farther is smaller');
+  const far = all.find(c => c.band === 0 && c.kind === 'heap'), near = all.find(c => c.band === 2 && c.kind === 'heap');
+  assert.ok(far.tone.op < near.tone.op && far.tone.rimK < near.tone.rimK, 'farther is paler');
+});
+
+test('clouds: each wraps on its own width (enters and leaves fully off-screen); at t = 0 every cloud is in the frame', () => {
+  const plans = [];
+  for (let i = 0; i < 12; i++) plans.push(...SC.sceneCloudPlan(skyOf('wrap-' + i, 6), skyAt('noon', { cover: [0.08, 0.45, 0.92][i % 3] })));
+  assert.ok(plans.some(c => c.w > 260), 'wider than the old fixed 260-unit margin (the old wrap popped these in)');
+  for (const c of plans) {
+    const x0 = SC.sceneCloudX(c, 0);
+    assert.ok(x0 < 1600 && x0 + c.w > 0, 'the still (t = 0) is a finished sky: on screen at ' + x0);
+    let prev = x0, wraps = 0;
+    const dt = 2 / c.sp, period = (1600 + c.w + 48) / c.sp;
+    for (let t = dt; t <= period + dt; t += dt) {
+      const x = SC.sceneCloudX(c, t);
+      if (x < prev) {
+        wraps++;
+        assert.ok(prev >= 1600, `leaves fully off the right edge (x ${prev}, w ${c.w})`);
+        assert.ok(x + c.w <= 0, `enters fully off the left edge (x ${x}, w ${c.w})`);
+      } else assert.ok(Math.abs(x - prev - c.sp * dt) < 1e-6, 'a steady drift between wraps');
+      prev = x;
+    }
+    assert.equal(wraps, 1, 'one wrap per period');
+  }
+});
+
+test('clouds: the light colours them (noon white, dusk glowing from under, deep night dim with a moon rim) and never moves them', () => {
+  const C = skyOf('light', 6), noon = skyAt('noon'), dusk = skyAt('dusk'), night = skyAt('night');
+  assert.equal(noon.cover, dusk.cover);
+  const pn = SC.sceneCloudPlan(C, noon), pd = SC.sceneCloudPlan(C, dusk), pk = SC.sceneCloudPlan(C, night);
+  assert.deepEqual(pd.map(shapeOf), pn.map(shapeOf), 'a re-bake at another light keeps every cloud where it is');
+  assert.deepEqual(pk.map(shapeOf), pn.map(shapeOf));
+  const warm = (hex) => parseInt(hex.slice(1, 3), 16) - parseInt(hex.slice(5, 7), 16);
+  pn.forEach((c, i) => {
+    assert.notDeepEqual(pd[i].tone, c.tone, 'noon and dusk colours differ');
+    assert.ok(warm(pd[i].tone.baseCol) > warm(c.tone.baseCol), 'the base glows warm at dusk: ' + pd[i].tone.baseCol + ' vs ' + c.tone.baseCol);
+  });
+  const heaps = (p) => p.filter(c => c.kind === 'heap' && c.band > 0);
+  assert.ok(heaps(pn).length > 0);
+  for (const c of heaps(pn)) assert.equal(c.tone.op, 0.92, 'by day: as before');
+  for (const c of heaps(pk)) assert.equal(c.tone.op, 0.7, 'deep night: as before');
+  for (const c of pn) assert.ok(c.tone.rimK > 0.3 && c.tone.side === noon.side, 'a lit rim on the sun side by day');
+  const moon = SC.sceneCloudPlan(C, Object.assign({}, night, { cover: 0.3, moon: { show: true, illum: 1, rel: 12, x: 1040 } }));
+  const dark = SC.sceneCloudPlan(C, Object.assign({}, night, { cover: 0.3, moon: { show: false, illum: 0 } }));
+  moon.forEach((c, i) => {
+    assert.ok(c.tone.rimK > dark[i].tone.rimK, 'a faint moon rim when the moon shows');
+    assert.ok(c.tone.rimK <= 0.6 && c.tone.side === 1, 'faint, on the moon side');
+  });
+});
+
 /* ---------- the canvas renderer, in headless Chrome ---------- */
 const browser = findBrowser();
 let chrome = null;
@@ -205,6 +301,23 @@ test('canvas: the compiled fixture renders, a still frame is the frame at t = 0,
   assert.ok(r.st.bitmaps >= 2 && r.st.bitmaps <= 6, 'bitmaps ' + r.st.bitmaps);
   assert.ok(r.st.animatedDraws > 0 && r.st.animatedDraws <= 300, 'animated draws ' + r.st.animatedDraws);
   assert.ok(r.st.firstBakeMs > 0 && r.st.sprites > 0);
+});
+
+test('canvas: two bakes of a scene draw the same sky; another scene id draws other clouds', { skip: !browser && 'no Chrome / Chromium found' }, async () => {
+  await chrome.screenshot({ html: scenePageHtml({ root: ROOT, data: 'SCENE_TEST_TINY', still: true }), width: 400, height: 225, transparent: false });
+  const fx = JSON.stringify(Object.assign(clone(FIXTURE), { particles: { kind: 'none', n: 0 } }));
+  const r = await chrome.evaluate(`(async () => {
+    await window.__sceneReady;
+    const C = ${fx}, L = sceneLight({}, Object.assign({ at: 'noon' }, C.view));
+    // the sky rows only (above the far land): nothing else there depends on the scene id
+    const skyHash = (c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, Math.round(c.height * 0.4)).data; let h = 2166136261; for (let i = 0; i < d.length; i += 4) h = Math.imul(h ^ d[i] ^ (d[i + 1] << 8) ^ (d[i + 2] << 16), 16777619); return h >>> 0; };
+    const bake = (CC) => { const c = document.createElement('canvas'); c.style.cssText = 'width:640px;height:360px'; document.body.appendChild(c); const r = sceneRendererCreate(c, { compiled: CC }, { dpr: 1, still: true, L }); r.resize(640, 360); r.frame(0); const h = skyHash(c), n = r.stats().animatedDraws; r.destroy(); c.remove(); return [h, n]; };
+    return { a: bake(C), b: bake(JSON.parse(JSON.stringify(C))), other: bake(Object.assign({}, C, { id: C.id + '-other' })), clouds: sceneCloudPlan(C, L).length };
+  })()`);
+  assert.ok(r.clouds > 0);
+  assert.equal(r.a[0], r.b[0], 'two bakes of the same scene: the same sky');
+  assert.notEqual(r.other[0], r.a[0], 'another scene id: other clouds');
+  assert.equal(r.a[1], r.other[1], 'the same number of draws (one per cloud)');
 });
 
 test('canvas: the dense scene (3,000 placements, 40 actors) through the host at 1600 x 900', { skip: !browser && 'no Chrome / Chromium found' }, async () => {
