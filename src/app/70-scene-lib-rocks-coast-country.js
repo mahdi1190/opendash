@@ -51,7 +51,8 @@
   /* ---------- rock.chalk-cliff: white chalk cliffs under a turf cap; v0 a long face rolling over two summits with a dip between,
      v1 a headland rising to its point with a sea stack off it, v2 a lower face above a green landslip ----------
      Everything is seeded per variant (srnd), so a season changes colours only: the turf cap, the landslip's grass and scrub and a
-     little of the algae. The chalk stays white; the night look is the engine's night grade of these tones. Light from the left. */
+     little of the algae. The chalk stays white; the night look is the engine's night grade of these tones, with a pale rim slot on the
+     turf and the landslip so they keep an edge at night. Light from the left. */
   const gs = (x, c, w) => Math.exp(-(((x - c) / w) ** 2));
   /** The same polygon wound clockwise on screen, so overlapping pieces in one path add up instead of cutting holes. */
   const cw = P => (P.reduce((s, p, i) => { const q = P[(i + 1) % P.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0) < 0 ? P.slice().reverse() : P);
@@ -102,27 +103,42 @@
     return { x0, x1, T, bite, kind, pts, left, right, face: poly([...left, ...pts, ...right]) };
   };
   /** v2's landslip: a hummocky green mass at the foot, slipped chalk blocks tilted in it (their flint bands tilted too), scrub, flowers. */
+  /** A smooth line through points (quadratic curves between their midpoints), continuing a path: the lumpy top of a clod. */
+  const smooth = P => P.slice(1, -1).map((p, i) => { const q = P[i + 2]; return `Q${f1(p[0])} ${f1(p[1])} ${f1((p[0] + q[0]) / 2)} ${f1((p[1] + q[1]) / 2)}`; }).join('') + `L${f1(P[P.length - 1][0])} ${f1(P[P.length - 1][1])}`;
   const chalkSlump = (r, [x0, x1], Y) => {
-    let mass = `M${x0} 2`, hum = '', bare = '', cast = '', bk = '', bkS = '', cap = '', capH = '', nod = '', fl = '';
-    for (let x = x0; x <= x1; x += rr(r, 8, 14)) mass += `L${f1(x)} ${f1(Y(x) + rr(r, -1.5, 1.5))}`;
+    let mass = `M${x0} 2`, mTop = '', hum = '', hSheen = '', bare = '', cast = '', bk = '', bkL = '', bkS = '', bkE = '', fb = '', cap = '', capU = '', capS = '', capH = '', nod = '', fl = '';
+    for (let x = x0; x <= x1; x += rr(r, 8, 14)) { const p = `${f1(x)} ${f1(Y(x) + rr(r, -1.5, 1.5))}`; mass += 'L' + p; mTop += (mTop ? 'L' : 'M') + p; }
     mass += `L${x1} 2z`;
-    for (let i = 0; i < 9; i++) { const x = rr(r, x0 + 20, x1 - 30); hum += lobed(r, x, Y(x) + rr(r, 7, 14), rr(r, 16, 34), rr(r, 6, 11), 7, .22); }
+    for (let i = 0; i < 9; i++) { const x = rr(r, x0 + 20, x1 - 30), cy = Y(x) + rr(r, 7, 14), rx = rr(r, 16, 34), ry = rr(r, 6, 11); hum += lobed(r, x, cy, rx, ry, 7, .22); hSheen += lens(x - rx * .85, x + rx * .5, cy - ry * .6, -ry * .6, ry * .25); }
     for (let i = 0; i < 5; i++) { const x = rr(r, x0 + 30, x1 - 40), y = Y(x) + rr(r, 14, 40); bare += lens(x, x + rr(r, 10, 24), y, rr(r, 1.8, 3.6), rr(r, -2, 2)); }
+    // the slipped blocks: a grey body (darker than the face behind), a lit left facet, a cool shaded right side, a dark crevice
+    // round them and a tilted flint band; each carries a clod of turf with hanging ends, its earthy underside and a cool rim
     for (const [u, bw, bh, tilt] of [[.24, 50, 40, -9], [.53, 64, 50, -13], [.8, 40, 28, 6]]) {
-      const x = x0 + (x1 - x0) * u, base = Y(x) + 12, top = Y(x) - bh * .55, l = x - bw / 2, rt = x + bw / 2, ty = t => top + tilt * t;
+      const x = x0 + (x1 - x0) * u, base = Y(x) + 12, top = Y(x) - bh * .85, l = x - bw / 2, rt = x + bw / 2, ty = t => top + tilt * t;
       const rim = [[l + 4, ty(0)], [x - bw * .15, ty(.35) - rr(r, 1, 4)], [x + bw * .2, ty(.7) + rr(r, 0, 3)], [rt - 3, ty(1)]];
-      cast += poly([[rt - 3, ty(1) + 3], [rt + 8, ty(1) + 9], [rt + 12, base], [rt + 2, base]]);
-      bk += poly([[l, base], [l + rr(r, 0, 3), top + bh * .3], ...rim, [rt + rr(r, 0, 3), top + bh * .4], [rt + 2, base]]);
-      bkS += poly([rim[2], rim[3], [rt + 2, base], [x + bw * .12, base]]);
-      const up = rim.map(([px, py]) => [px, py - rr(r, 3.5, 6.5)]), dn = rim.map(([px, py]) => [px, py + rr(r, 1, 3.5)]);
-      cap += poly(up.concat(dn.reverse())); capH += 'M' + up.map(([px, py]) => `${f1(px)} ${f1(py + .8)}`).join('L');
+      const B = [l + rr(r, 0, 3), top + bh * .3], C = [rt + rr(r, 0, 3), top + bh * .4], out = poly([[l, base], B, ...rim, C, [rt + 2, base]]);
+      cast += poly([[rt - 3, ty(1) + 3], [rt + 10, ty(1) + 10], [rt + 14, base], [rt + 2, base]]);
+      bk += out; bkE += out;
+      bkL += poly([[l, base], B, rim[0], [l + bw * .24, ty(.24) + 4], [l + bw * .3, base]]);
+      bkS += poly([rim[2], rim[3], C, [rt + 2, base], [x + bw * .14, base]]);
+      const fy = bh * rr(r, .42, .6); fb += `M${f1(l + 3)} ${f1(ty(0) + fy)}L${f1(x - 2)} ${f1(ty(.5) + fy + rr(r, -1, 1))}M${f1(x + rr(r, 3, 7))} ${f1(ty(.55) + fy)}L${f1(rt - 2)} ${f1(ty(1) + fy)}`;
+      // the clod: a mound of turf on the top, lumpy, thickest in the middle, its ends drooping a little over the edges
+      const up = rim.map(([px, py], i) => [px + rr(r, -2, 2), py - (i % 3 ? rr(r, 5, 8) : rr(r, 3, 4.5))]), dn = rim.map(([px, py]) => [px, py + rr(r, 1.5, 3.5)]);
+      const hl = [l + 1, ty(0) + rr(r, 3, 6)], hr = [rt, ty(1) + rr(r, 3, 5)];
+      const topD = `M${f1(l)} ${f1(ty(0) - 1)}` + smooth([[l, ty(0) - 1], ...up, [rt + 1, ty(1) - 1]]);
+      cap += `M${f1(hl[0])} ${f1(hl[1])}L` + topD.slice(1) + `L${f1(hr[0])} ${f1(hr[1])}` + dn.slice().reverse().map(([px, py]) => `L${f1(px)} ${f1(py)}`).join('') + 'z';
+      capU += poly([hl, ...dn, hr, ...dn.slice().reverse().map(([px, py]) => [px, py + rr(r, 2, 3.5)])]);
+      capS += poly([...dn.map(([px, py]) => [px, py + 1]), ...dn.slice().reverse().map(([px, py]) => [px, py + rr(r, 4, 7)])]);
+      capH += topD;
       nod += `M${f1(x - bw * .1)} ${f1(ty(.4) + 5)}l${f1(rr(r, -3, 3))} ${f1(bh * .3)}l${f1(rr(r, -3, 3))} ${f1(bh * .25)}`;   // a crack down the slipped block
     }
     const sc = ['', ''];
     for (let i = 0; i < 28; i++) { const x = rr(r, x0 + 8, x1 - 6), y = Math.min(Y(x) + rr(r, 3, 26), -10); sc[i % 2] += lobed(r, x, y, rr(r, 8, 19), rr(r, 5, 10), 7, .3); if (i % 3 < 2) for (let k = 0; k < 2; k++) fl += dash(x + rr(r, -8, 8), y - rr(r, 1, 6), .1, 0); }
     const tf = ['', '', '']; for (let i = 0; i < 6; i++) { const x = rr(r, x0 + 20, x1 - 30); tufts(r, x - 10, x + 10, 3, rr(r, 4, 7), Y(x) + 3).forEach((sh, k) => { tf[k] += sh[1]; }); }
-    return [['@turf.2', mass], ['@turf.0', hum, .9], ['@chalk.2', bare, .85], ['@chalk.3', cast, .3], ['@chalk.2', bk], ['@chalk.1', bkS, .8], { s: '@chalk.3', w: 1, op: .55, d: nod, detail: true },
-      ['@turf.0', cap], { s: '@turf.1', w: 1.4, op: .9, d: capH }, ['@scrub.0', sc[0]], ['@scrub.1', sc[1]], { s: '@scrub.2', w: 2.6, d: fl, detail: true },
+    return [['@turf.2', mass], ['@turf.0', hum, .9], ['@rim', hSheen, .45], { s: '@rim', w: 2.2, op: .85, d: mTop }, ['@chalk.2', bare, .85], ['@chalk.3', cast, .4],
+      ['@chalk.1', bk], ['@chalk.2', bkL], ['@cool.0', bkS, .95], { s: '@flint.0', w: 1.8, op: .45, d: fb, detail: true }, { s: '@cool.1', w: 1, op: .5, d: nod, detail: true }, { s: '@cool.1', w: 1.5, op: .7, d: bkE, detail: true },
+      ['@chalk.3', capS, .35], ['@turf.0', cap], ['@turf.2', capU], { s: '@turf.1', w: 2, op: .9, d: capH }, { s: '@rim', w: 1.8, op: .9, d: capH },
+      ['@scrub.0', sc[0]], ['@scrub.1', sc[1]], { s: '@scrub.2', w: 2.6, d: fl, detail: true },
       { f: '@turf.2', d: tf[0], detail: true }, { f: '@turf.0', d: tf[1], detail: true }, { f: '@turf.1', d: tf[2], detail: true }];
   };
   /** The variants: the top line, how many gullies, the dip of the bedding, the big lit (1) and shaded (-1) turns of the face. */
@@ -138,6 +154,10 @@
     id: 'rock.chalk-cliff', category: 'rock', size: [740, 330], variants: 3, seasonal: true, flippable: true,
     palette: Object.assign({ base: {
       chalk: ['#eeebe2', '#c9c5ba', '#dcd8cc', '#9e9a90', '#fbfaf5'], flint: ['#4a4a4e', '#6a6a6e'], rubble: ['#d8d4c8', '#b8b4a8', '#f2f0e8'], shingle: ['#a8a093', '#867f73', '#c9c2b3'],
+      cool: ['#aab2b9', '#7e8790'],   // the cool shaded side of a slipped block, its crevice
+      // the rim of light on the turf and the landslip: a sunlit grass edge by day; pale enough that the night grade keeps it about as
+      // bright as the chalk (and cool), so the turf cap and the landslip read at night instead of sinking into the dark
+      rim: '#d8ecc0',
     } }, bySeason({
       turf: { spring: ['#6aa040', '#8cc050', '#4a7a2e'], summer: ['#5e9038', '#86ac48', '#3e6a28'], autumn: ['#7e8a3e', '#a0a050', '#5a6230'], winter: ['#6a7458', '#86886a', '#4a5440'] },
       scrub: { spring: ['#4f7a30', '#7aa040', '#e8e0a0'], summer: ['#3e6a2a', '#5e8a36', '#d8c8e0'], autumn: ['#7a6a2a', '#9a7a34', '#b0402a'], winter: ['#5a5a44', '#6a6a52', '#7a5a4a'] },
@@ -167,7 +187,7 @@
         // the downs rising behind the dip: only the part above the cliff top shows (the face covers the rest)
         const back = x => -228 - 16 * gs(x, 46, 80) - 3 * Math.sin(x * .05); let d = '', d2 = '';
         for (let x = -100; x <= 200; x += 10) { d += `L${x} ${f1(back(x))}`; if (x >= 40) d2 += `L${x} ${f1(back(x) + 1)}`; }
-        body.push(['@turf.1', `M-100 -150${d}L200 -150z`], ['@turf.0', `M40 -150${d2}L200 -150z`, .5]);
+        body.push(['@turf.1', `M-100 -150${d}L200 -150z`], ['@turf.0', `M40 -150${d2}L200 -150z`, .5], { s: '@rim', w: 1.8, op: .75, d: 'M' + d.slice(1) });
       }
       body.push(['@chalk.0', faces], { f: { lin: [[0, '#ffffff', .2], [.5, '#ffffff', 0], [1, '#5a5a50', .2]], x1: 0, y1: hiY, x2: 0, y2: 0 }, d: faces });
       // 3. the big turns of the face: each bulge brightest on its left flank, darkening round its right flank into the re-entrant
@@ -301,7 +321,7 @@
         th += 'M' + p.map(([x, y], i) => `${f1(x)} ${f1(y - hi[i] + .7)}`).join('L'); tu += 'M' + p.map(([x, y], i) => `${f1(x)} ${f1(y + lip[i] - .6)}`).join('L');
       }
       const tf = ['', '', '']; for (let i = 0; i < 10; i++) { const s = pick(i), [x, y] = s.pts[Math.floor(sr() * s.pts.length)]; tufts(sr, x - 7, x + 7, 3, rr(sr, 4, 7), y - 3).forEach((sh, k) => { tf[k] += sh[1]; }); }
-      body.push(['@chalk.3', ts, .3], ['@turf.0', tb], { s: '@turf.1', w: 1.4, op: .9, d: th }, { s: '@turf.2', w: 1.2, op: .8, d: tu }, ['@chalk.3', slabS, .3], ['@turf.2', slabU], ['@turf.0', slab],
+      body.push(['@chalk.3', ts, .3], ['@turf.0', tb], { s: '@turf.1', w: 1.4, op: .9, d: th }, { s: '@rim', w: 1.8, op: .85, d: th }, { s: '@turf.2', w: 1.2, op: .8, d: tu }, ['@chalk.3', slabS, .3], ['@turf.2', slabU], ['@turf.0', slab],
         { f: '@turf.2', d: tf[0], detail: true }, { f: '@turf.0', d: tf[1], detail: true }, { f: '@turf.1', d: tf[2], detail: true });
       // 13. v2: the green landslip at the foot
       if (S) body.push(...chalkSlump(sr, S, slumpY));
