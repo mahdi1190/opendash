@@ -25,6 +25,14 @@ function homeRefreshDerived() {
       // Editors and receipt controls keep their DOM and focus during a refresh.
       const id = frame.dataset.wid, base = id.split('~')[0];
       if (['notebook', 'capture', 'launchpad'].includes(base) || frame.contains(document.activeElement)) continue;
+      // A widget whose content only changes with its refreshKey() (the animation of the day: a 1 MB scene)
+      // is left alone while the key is the one it painted (frame.dataset.refreshKey).
+      const def = typeof homeWidgetDef === 'function' ? homeWidgetDef(id) : null;
+      if (def && typeof def.refreshKey === 'function') {
+        let k = '';
+        try { k = String(def.refreshKey() || ''); } catch (e) { k = ''; }
+        if (k && frame.dataset.refreshKey === k) continue;
+      }
       homeRerenderWidget(id);
     }
   }

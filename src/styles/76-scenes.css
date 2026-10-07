@@ -57,6 +57,10 @@ html[data-density="compact"] { --scene-xs: 22px; --scene-sm: 30px; --scene-md: 4
 /* continuity: keep the timeline across re-renders (transform/opacity untouched) */
 .anim-scene.is-live [class*="x-"] { animation-delay: calc(var(--d, 0s) - var(--as-t, 0s)); }
 .anim-scene.is-urgent.is-live svg { animation-delay: calc(0.6s - var(--as-t, 0s)); }
+/* rich scenes (71-anim-continuity.js _ascRich): only one plays at a time (.is-held), and none while
+   scrolled out of view (.is-offscreen) or resting after its play time (.is-rested, Home card).
+   Paused loops cost no repaint; the drawing stays as it is. */
+.anim-scene.ap-rich.is-held *, .anim-scene.ap-rich.is-offscreen *, .anim-scene.ap-rich.is-rested * { animation-play-state: paused !important; }
 
 /* the hover badge: bigger, still anchored on the entry's top-right corner (78 places it for a 30px badge) */
 .anim-tip .anim-scene { --as-size: var(--scene-tip); }

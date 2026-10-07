@@ -11,7 +11,7 @@ const APP = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
 const PACK_FILES = readdirSync(APP).filter(f => /^72-anim-pack-[a-z0-9-]+\.js$/.test(f)).sort();
 const NAMES = ['ASIA_COUNTRIES', 'ASIA_PLACES', 'asiaPlace', 'asiaCountryOf', 'asiaWhere', 'animPacks', 'animSpecialPick', 'animDailyPick'];
-const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(APP).filter(f => /^71-anim-(us2?|asia2?)[-.]/.test(f)).sort(), ...PACK_FILES].map(src).join('\n;\n');
+const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(APP).filter(f => /^71-anim-(us2?|asia2?|uk)[-.]/.test(f)).sort(), ...PACK_FILES].map(src).join('\n;\n');
 // eslint-disable-next-line no-new-func
 const R = new Function(`"use strict";\n${body}\nreturn { ${NAMES.join(', ')} };`)();
 

@@ -963,16 +963,40 @@
 
   // Numbered parts sort before this base file. They are pure drawing builders,
   // sharing this one toolkit and U() sequence; only this base registers a pack.
+  // T.K is the rich nature kit (71-anim-uk-nature-kit.js), built on this toolkit.
+  const T = { U, R, rnd, mv, full, ridge, canopy, lin, rad, linU, radU, cloud, streak,
+    rays, haze, finish, birds, shimmer, puffs, stars, sun, grass, meadow, oak,
+    lit, reflect, arch, sashes, battlements, town, sail, boat, chalk, vista, placeAtmosphere };
+  T.K = typeof ukNatureKit === 'function' ? ukNatureKit(T) : null;
   const appendPart = (part, build) => {
     if (typeof build !== 'function') return;
-    build({ add: (county, kind, o) => add(county, kind, Object.assign({ ukPart: part }, o)),
-      U, R, rnd, mv, full, ridge, canopy, lin, rad, linU, radU, cloud, streak,
-      rays, haze, finish, birds, shimmer, puffs, stars, sun, grass, meadow, oak,
-      lit, reflect, arch, sashes, battlements, town, sail, boat, chalk, vista, placeAtmosphere });
+    build(Object.assign({}, T, { add: (county, kind, o) => add(county, kind, Object.assign({ ukPart: part }, o)) }));
   };
   appendPart('hampshire-towns', typeof ukSouthEastPart2 === 'function' ? ukSouthEastPart2 : null);
   appendPart('kent-towns', typeof ukSouthEastPart3 === 'function' ? ukSouthEastPart3 : null);
   appendPart('north-hampshire', typeof ukSouthEastPart4 === 'function' ? ukSouthEastPart4 : null);
+  // One file per VIEW of each place around Yateley and Fleet (four views a place), so each view
+  // can be redrawn on its own (rich scenes): 72-anim-pack-uk-south-east-<place>-v1..v4.js.
+  appendPart('yateley-common-v1', typeof ukSouthEastYateleyCommonV1 === 'function' ? ukSouthEastYateleyCommonV1 : null);
+  appendPart('yateley-common-v2', typeof ukSouthEastYateleyCommonV2 === 'function' ? ukSouthEastYateleyCommonV2 : null);
+  appendPart('yateley-common-v3', typeof ukSouthEastYateleyCommonV3 === 'function' ? ukSouthEastYateleyCommonV3 : null);
+  appendPart('yateley-common-v4', typeof ukSouthEastYateleyCommonV4 === 'function' ? ukSouthEastYateleyCommonV4 : null);
+  appendPart('wyndhams-pool-v1', typeof ukSouthEastWyndhamsPoolV1 === 'function' ? ukSouthEastWyndhamsPoolV1 : null);
+  appendPart('wyndhams-pool-v2', typeof ukSouthEastWyndhamsPoolV2 === 'function' ? ukSouthEastWyndhamsPoolV2 : null);
+  appendPart('wyndhams-pool-v3', typeof ukSouthEastWyndhamsPoolV3 === 'function' ? ukSouthEastWyndhamsPoolV3 : null);
+  appendPart('wyndhams-pool-v4', typeof ukSouthEastWyndhamsPoolV4 === 'function' ? ukSouthEastWyndhamsPoolV4 : null);
+  appendPart('yateley-green-v1', typeof ukSouthEastYateleyGreenV1 === 'function' ? ukSouthEastYateleyGreenV1 : null);
+  appendPart('yateley-green-v2', typeof ukSouthEastYateleyGreenV2 === 'function' ? ukSouthEastYateleyGreenV2 : null);
+  appendPart('yateley-green-v3', typeof ukSouthEastYateleyGreenV3 === 'function' ? ukSouthEastYateleyGreenV3 : null);
+  appendPart('yateley-green-v4', typeof ukSouthEastYateleyGreenV4 === 'function' ? ukSouthEastYateleyGreenV4 : null);
+  appendPart('fleet-pond-v1', typeof ukSouthEastFleetPondV1 === 'function' ? ukSouthEastFleetPondV1 : null);
+  appendPart('fleet-pond-v2', typeof ukSouthEastFleetPondV2 === 'function' ? ukSouthEastFleetPondV2 : null);
+  appendPart('fleet-pond-v3', typeof ukSouthEastFleetPondV3 === 'function' ? ukSouthEastFleetPondV3 : null);
+  appendPart('fleet-pond-v4', typeof ukSouthEastFleetPondV4 === 'function' ? ukSouthEastFleetPondV4 : null);
+  appendPart('basingstoke-canal-fleet-v1', typeof ukSouthEastFleetCanalV1 === 'function' ? ukSouthEastFleetCanalV1 : null);
+  appendPart('basingstoke-canal-fleet-v2', typeof ukSouthEastFleetCanalV2 === 'function' ? ukSouthEastFleetCanalV2 : null);
+  appendPart('basingstoke-canal-fleet-v3', typeof ukSouthEastFleetCanalV3 === 'function' ? ukSouthEastFleetCanalV3 : null);
+  appendPart('basingstoke-canal-fleet-v4', typeof ukSouthEastFleetCanalV4 === 'function' ? ukSouthEastFleetCanalV4 : null);
 
   const css = [
     /* the evening grade: dark theme, or the time of day the opening asks for (71-anim-wire.css lays the same on the splash) */
@@ -1077,7 +1101,7 @@
     '@keyframes ap-ukspin { 0%, 100% { transform: rotate(-4deg); opacity: .8; } 50% { transform: rotate(4deg); opacity: 1; } }',
     '@keyframes ap-ukwheel { to { transform: rotate(1turn); } }',
     '@keyframes ap-ukflutter { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(60px, -40px); } 50% { transform: translate(120px, 10px); } 75% { transform: translate(50px, 30px); } }',
-  ].join('\n');
+  ].join('\n') + (T.K && T.K.css ? '\n' + T.K.css : '');   // the nature kit's keyframes (ap-ukn*)
 
   animRegisterPack({ id: 'uk-south-east', name: 'UK: South East & London', version: '2.4.1', css,
     description: 'Full-screen illustrated scenes across all nine South East counties and Greater London, together in one neighbouring-region gallery pack. County detection remains opt-in and every scene plays only in its own county.', items });

@@ -129,7 +129,7 @@ html[data-motion="reduced"] .ap-cine, html.anim-off .ap-cine { display: none; }
 html[data-motion-level="subtle"] .dl-moment.is-app::before, html[data-motion-level="subtle"] .ap-moment.is-center::before { display: none; }
 
 /* ---------- Animation of the day (12-home-w-animday.js): the art fills the card, the words over it ---------- */
-.hwa.hwa-full { position: relative; display: block; min-height: 100%; height: 100%; padding: 0; overflow: hidden; }
+.hwa.hwa-full { position: relative; display: block; min-height: 100%; height: 100%; padding: 0; overflow: hidden; aspect-ratio: 16 / 9; }   /* everything inside is absolute: alone in an auto row the card collapsed to 2 px */
 .hwa-full .hwa-art { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; }
 .hwa-full .hwa-art > .anim-scene { width: 100%; height: 100%; border-radius: 0; --as-size: 100%; }
 .hwa-full .hwa-art > .anim-scene:not(.ap-full) svg { width: 70%; height: 70%; }

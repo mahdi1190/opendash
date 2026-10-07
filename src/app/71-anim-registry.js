@@ -31,7 +31,14 @@
      animItemHtml(ref|item, o)       trusted markup: o {size, live, hover, reduced, theme, label, cls, tod}
          item.full: a full-viewport scene (1600 x 900, sliced to fill: the opening, the
          county welcome, the gallery stage); o.tod dawn|day|dusk|night tints it; size 'fill'
-         fills the parent box
+         fills the parent box. item.rich (full scenes only): a dense local scene with its
+         own budget, ANIM_RICH_ITEM_MAX_BYTES (about 1 MB full screen) and ANIM_RICH_TILE_MAX_BYTES
+         in small tiles; animItemMaxBytes(item, size) / animPackMaxBytes(items) give the
+         budgets the quality gate enforces. A rich scene only moves at 'fill' / 'hero' (smaller
+         sizes draw it still; hover still plays it); o.detail 'tile' draws the tile detail at 'fill'
+         (a card). item.liveSky (true, or {lat, lon}: the scene's own
+         place when no location is set): o.sky = almSceneLight(clock, location, zone) plus
+         o.sky.wx (the weather now, when the page has it) unless o.sky or o.lighting === false is given
      animLocked(item, look) / animThemeOpen(id, look)   wave 5: items and themes with
          `unlock: '<achievement id>'` stay out of every pick (and the theme list) until
          look.unlocked (filled by the page from state.achievements) holds that id
@@ -84,7 +91,19 @@ const ANIM_SWATCHES = Object.freeze(['blue', 'indigo', 'violet', 'pink', 'red', 
 /* Budgets the quality gate enforces (tests/anim-packs.test.mjs). */
 const ANIM_ITEM_MAX_BYTES = 14000;     // one rendered item (either variant)
 const ANIM_FULL_ITEM_MAX_BYTES = 32000;   // a full-viewport scene (item.full; 1600 x 900, sliced to fill any screen)
-const ANIM_PACK_MAX_BYTES = 400000;    // every item of a pack, rendered, plus its css (plus 2 x the full budget per full scene)
+const ANIM_RICH_ITEM_MAX_BYTES = 1000000;  // a rich local scene (item.rich, full scenes only) full screen: dense, layered nature art (71-anim-uk-nature-kit.js)
+const ANIM_RICH_TILE_MAX_BYTES = 150000;   // the same rich scene drawn in a small tile (gallery grid, cards): up to 80 tiles share a gallery page (12 MB at most)
+const ANIM_PACK_MAX_BYTES = 400000;    // every item of a pack, rendered as a tile, plus its css (plus 2 x its own tile budget per full or rich scene)
+/** The rendered-size budget of one item (either variant): full and rich scenes have their own. A rich
+ *  scene has about 1 MB full screen ('fill', 'hero') and the smaller tile budget at any other size. */
+function animItemMaxBytes(it, size) {
+  if (!it || !it.full) return ANIM_ITEM_MAX_BYTES;
+  if (!it.rich) return ANIM_FULL_ITEM_MAX_BYTES;
+  return size && size !== 'fill' && size !== 'hero' ? ANIM_RICH_TILE_MAX_BYTES : ANIM_RICH_ITEM_MAX_BYTES;
+}
+/** A pack's total budget for its tiles: the shared allowance, plus each full or rich scene's own tile
+ *  budget (both variants). Rich scenes full screen are held to their own per-item cap, not the pack's. */
+function animPackMaxBytes(items) { return ANIM_PACK_MAX_BYTES + (items || []).reduce((n, it) => n + (it.full ? 2 * animItemMaxBytes(it, 'lg') : 0), 0); }
 /** The viewBox of a full-viewport scene: drawn at 16:9, preserveAspectRatio slice fills any screen edge to edge. */
 const ANIM_FULL_W = 1600, ANIM_FULL_H = 900;
 const ANIM_PACK_CSS_MAX_BYTES = 24000;
@@ -127,6 +146,8 @@ function animValidatePack(p) {
     if (it.fx != null && !(typeof it.fx === 'string' && /^[a-z][a-z0-9-]{0,23}$/.test(it.fx))) errors.push(w + 'fx must be a short lower-case name');
     if (it.unlock != null && !_ANIM_ID_RE.test(String(it.unlock))) errors.push(w + 'unlock must be an achievement id');
     if (it.full != null && typeof it.full !== 'boolean') errors.push(w + 'full must be true or false (a full-viewport scene)');
+    if (it.rich != null && typeof it.rich !== 'boolean') errors.push(w + 'rich must be true or false (a rich local scene)');
+    if (it.rich && !it.full) errors.push(w + 'rich scenes must be full-viewport scenes (full: true)');
     if (it.slot === 'theme-switch' && !(it.vt && /^(circle|wipe|fade)$/.test(it.vt.kind))) errors.push(w + 'theme-switch items need vt: {kind: circle|wipe|fade}');
   }
   return { ok: !errors.length, errors };
@@ -330,16 +351,30 @@ function animItemHtml(x, o) {
     // Explicit sky/lighting options keep gallery QA deterministic.
     try {const ctx=typeof animCtx==='function'?animCtx():null;
       if(ctx){const ms=typeof Clock!=='undefined'?Clock.now():Date.now(); // clock-ok: pre-clock fallback
-        const lat=Number.isFinite(ctx.ukLat)?ctx.ukLat:ctx.lat,lon=Number.isFinite(ctx.ukLon)?ctx.ukLon:ctx.lon;
+        let lat=Number.isFinite(ctx.ukLat)?ctx.ukLat:ctx.lat,lon=Number.isFinite(ctx.ukLon)?ctx.ukLon:ctx.lon;
+        // No location set: the scene's own place (liveSky: {lat, lon}) with the computer's clock.
+        if(!Number.isFinite(lat)&&it.liveSky&&Number.isFinite(it.liveSky.lat)){lat=it.liveSky.lat;lon=it.liveSky.lon;}
         const sky=almSceneLight(ms,lat,lon,typeof Clock!=='undefined'?Clock.zone():ctx.tz);
-        if(sky)o=Object.assign({},o,{sky,tod:sky.tod});}
+        if(sky){
+          // The weather now (the brief's Open-Meteo forecast, when the page has one): cloud, rain, fog, snow, wind (km/h).
+          const w=typeof _bf!=='undefined'&&_bf.weather&&_bf.weather.ok&&_bf.weather.current?_bf.weather:null;
+          if(w&&Number.isFinite(lat)){const c=w.current,mph=/mp/i.test((w.units&&w.units.wind)||'');sky.wx={cond:c.cond,wind:Number.isFinite(c.wind)?c.wind*(mph?1.609:1):null,temp:c.temp};}
+          o=Object.assign({},o,{sky,tod:sky.tod});}}
     }catch(e){ /* No location: the complete authored illustration remains. */ }
   }
   if(o.sky&&it.liveSky)o=Object.assign({},o,{tod:o.sky.tod});
   const reduced = !!o.reduced;
-  const body = reduced ? (it.reduced === 'static' ? it.svg(o) : it.reduced(o)) : it.svg(o);
+  // o.detail 'tile': a rich scene filling a card (Home's animation of the day) draws the tile level of
+  // detail (about a fifth of the nodes, a quarter of the frame cost) while still filling its box and moving.
+  const ao = it.rich && o.detail === 'tile' && (o.size === 'fill' || o.size === 'hero') ? Object.assign({}, o, { size: 'lg' }) : o;
+  const body = reduced ? (it.reduced === 'static' ? it.svg(ao) : it.reduced(ao)) : it.svg(ao);
   const cls = ['anim-scene', 'ap-art', 'c-' + it.colour, 'sz-' + (o.size || 'md'), 'ap-' + it.slot];
-  if (reduced) cls.push('ap-still'); else if (o.live) cls.push('is-live');
+  // A rich scene (thousands of nodes, hundreds of loops) never loops in a small tile: every frame of an SVG
+  // animation repaints the whole drawing on the main thread, so a 22-px badge cost as much as the full screen.
+  // Tiles draw it still (hover still plays it); it moves full screen ('fill', 'hero') only.
+  const tileRich = it.rich && o.size !== 'fill' && o.size !== 'hero';
+  if (reduced) cls.push('ap-still'); else if (o.live && !tileRich) cls.push('is-live');
+  if (it.rich) cls.push('ap-rich');
   if (o.hover && !reduced) cls.push('anim-hover-only');
   if (o.cls) cls.push(o.cls);
   if (it.full) cls.push('ap-full');

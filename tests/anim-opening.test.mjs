@@ -4,6 +4,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+// North Hampshire scenes: part 4 (Southwood, Farnborough) and one part file per Yateley/Fleet place.
+// (one file per view: <place>-v1..v4)
+const NORTH_HANTS_PLACES = ['yateley-common', 'wyndhams-pool', 'yateley-green', 'fleet-pond', 'basingstoke-canal-fleet'];
+const NORTH_HANTS_VIEWS = NORTH_HANTS_PLACES.flatMap(p => [1, 2, 3, 4].map(v => `${p}-v${v}`));
+const NORTH_HANTS_PARTS = ['north-hampshire', ...NORTH_HANTS_VIEWS];
+const NORTH_HANTS_FILES = ['72-anim-pack-uk-south-east-4.js', ...NORTH_HANTS_VIEWS.map(pv => `72-anim-pack-uk-south-east-${pv}.js`)];
 
 const src = name => readFileSync(new URL('../src/app/' + name, import.meta.url), 'utf8');
 function harness({ day = '2026-12-25', look = {}, on = true, town = '', stored = new Map() } = {}) {
@@ -30,7 +36,7 @@ function harness({ day = '2026-12-25', look = {}, on = true, town = '', stored =
     animUkWhere: () => ({ id: 'hampshire', name: 'Hampshire', welcome: 'Hampshire', town }),
     animUkCountyId: () => 'hampshire', _AUK_KEY: 'synthetic-county',
   });
-  for (const file of ['69-travel-moments-logic.js', '71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-uk-counties.js', '72-anim-pack-seasons.js', '72-anim-pack-uk-south-east-4.js', '72-anim-pack-uk-south-east.js']) vm.runInContext(src(file), context);
+  for (const file of ['69-travel-moments-logic.js', '71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-uk-counties.js', '71-anim-uk-nature-kit.js', '72-anim-pack-seasons.js', ...NORTH_HANTS_FILES, '72-anim-pack-uk-south-east.js']) vm.runInContext(src(file), context);
   vm.runInContext("function animToday(slot) { return animDailyPick(slot, todayStr(), animLook(), { county: 'hampshire', level: 'standard' }); }", context);
   vm.runInContext(src('78-anim-wire.js'), context);
   const arrival = () => {
@@ -108,7 +114,7 @@ test('local openings keep the current town in the title and only show nearby sce
   for (let i = 0; i < 30; i++) {
     const it = vm.runInContext('animOpeningScene(animUkWhere(), true).it', h.context);
     assert.ok(!seen.has(it.ref), 'the first thirty selections do not repeat'); seen.add(it.ref);
-    if (it.ukPart === 'north-hampshire') nearby++;
+    if (NORTH_HANTS_PARTS.includes(it.ukPart)) nearby++;
   }
   assert.equal(nearby, 30);
   assert.equal(vm.runInContext('animOpeningPlace({ukTown:"Fleet",ukLocality:"Fleet"},animUkWhere())',h.context),'Yateley');

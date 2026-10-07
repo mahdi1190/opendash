@@ -57,6 +57,30 @@ function _ascSkyIO(sky) {
   _ascSkies.add(sky);
   _ascIO.observe(sky);
 }
+/** A live scene node moved back into the page (kept across a re-render, 12-home-w-animday.js): the browser
+ *  restarts its CSS animations on re-insertion, so give it its key's age again and it carries on. */
+function animSceneResume(root) {
+  if (!root) return;
+  const now = _ascNow();
+  const list = root.matches && root.matches('.anim-scene.is-live') ? [root] : [...(root.querySelectorAll ? root.querySelectorAll('.anim-scene.is-live') : [])];
+  for (const el of list) { _ascStamped.delete(el); _ascStamp(el, now); }
+}
+/* Rich scenes (item.rich: thousands of SVG nodes, hundreds of loops; every frame repaints the whole
+   drawing on the main thread). Only ONE plays at a time: the one in a full-screen overlay (the opening,
+   the county welcome) wins, else the last one added; a rich scene scrolled out of view pauses too.
+   Both are just classes (.is-held, .is-offscreen) that pause the loops (76-scenes.css). */
+let _ascRichIO = null;
+const _ascRichSeen = new WeakSet();
+function _ascRich() {
+  const live = [...document.querySelectorAll('.anim-scene.ap-rich.is-live')];
+  if (!live.length) return;
+  if (typeof IntersectionObserver === 'function') {
+    if (!_ascRichIO) _ascRichIO = new IntersectionObserver((es) => { for (const e of es) e.target.classList.toggle('is-offscreen', !e.isIntersecting); });
+    for (const el of live) if (!_ascRichSeen.has(el)) { _ascRichSeen.add(el); _ascRichIO.observe(el); }
+  }
+  const top = live.filter(el => el.closest('#od-splash, .od-seq, .ap-cine, .auk-welcome')).pop() || live[live.length - 1];
+  for (const el of live) if (el.classList.contains('is-held') !== (el !== top)) el.classList.toggle('is-held', el !== top);
+}
 function _ascSweep() {
   let view = '';
   // Keys start fresh on a SECTION change only: a sub move (person A to B, a Settings group,
@@ -78,6 +102,7 @@ function _ascSweep() {
     else if (now - e.goneAt > _ASC_FORGET_MS) _ascKeys.delete(k);
   }
   for (const el of document.querySelectorAll('.anim-scene.is-live')) if (!_ascStamped.has(el)) _ascStamp(el, now);
+  _ascRich();
 }
 if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined' && document.documentElement) {
   new MutationObserver((list) => {

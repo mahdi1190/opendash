@@ -21,6 +21,10 @@
      almMoonPhase(ms)                {age (days), frac (0 new, 0.5 full), index 0-7, name}
      almMeteorShower(day)            {id, name} on a shower's peak night (or null)
      almAuroraNights(year, lat)      at most four seeded nights a year, only far enough north (or south)
+     almSunPosition(ms, lat, lon)    {alt, az} degrees (az from north, clockwise)
+     almMoonPosition(ms, lat, lon)   {alt, az, illum 0..1, frac (phase), limb}: limb is the bright
+                                     limb's direction (deg clockwise from up) for a viewer facing the moon
+     almSceneLight(ms, lat, lon, tz) the live-scene snapshot (tod, altitude, azimuth, moonPos, ms, lat, lon, tz ...)
    ============================================================ */
 const ALM_DAY_MS = 86400000;
 function almDay(y, m, d) { return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
@@ -225,7 +229,49 @@ function almSceneLight(ms, lat, lon, tz) {
   const progress=times.rise==null?((ms-noon)/ALM_DAY_MS+.5):Math.max(0,Math.min(1,(ms-times.rise)/(times.set-times.rise)));
   const tod=altitude < -6?'night':altitude < 7?(ms<noon?'dawn':'dusk'):'day';
   const grade=tod==='night'?.66:tod==='day'?0:.16+Math.max(0,-altitude)*.025;
-  return {day,tod,altitude,progress,x:Math.round(240+1120*progress),y:Math.round(480-Math.max(0,altitude)*5.2),sun:altitude>=-.833,grade,moon:almMoonPhase(ms),...times};
+  // ms / lat / lon / tz, the sun's azimuth and the moon's place let a live scene (the UK nature kit's
+  // K.live) put the sun and moon where they really stand in its view, with the real phase and tilt.
+  return {day,tod,altitude,progress,x:Math.round(240+1120*progress),y:Math.round(480-Math.max(0,altitude)*5.2),sun:altitude>=-.833,grade,moon:almMoonPhase(ms),...times,
+    ms,lat,lon,tz:tz||'UTC',azimuth:almSunPosition(ms,lat,lon).az,moonPos:almMoonPosition(ms,lat,lon)};
+}
+
+/* ---------- where the sun and moon stand (live scenes) ---------- */
+// Low-precision positions (the sun to about 0.1 deg, the moon to about 1 deg: plenty for art).
+// Formulas: NOAA / Meeus via the widely used "suncalc" set (sidereal time 280.16 + 360.9856235 d).
+const _ALM_OBL = 23.4397 * _ALM_RAD;
+function _almEquatorial(l, b) {
+  return { ra: Math.atan2(Math.sin(l) * Math.cos(_ALM_OBL) - Math.tan(b) * Math.sin(_ALM_OBL), Math.cos(l)),
+    dec: Math.asin(Math.sin(b) * Math.cos(_ALM_OBL) + Math.cos(b) * Math.sin(_ALM_OBL) * Math.sin(l)) };
+}
+/** Altitude and azimuth (degrees; azimuth from north, clockwise) of a body at right ascension / declination. */
+function _almHorizontal(ms, lat, lon, eq) {
+  const d = _almJd(ms) - 2451545.0, H = (280.16 + 360.9856235 * d + lon) * _ALM_RAD - eq.ra, phi = lat * _ALM_RAD;
+  const alt = Math.asin(Math.sin(phi) * Math.sin(eq.dec) + Math.cos(phi) * Math.cos(eq.dec) * Math.cos(H));
+  const az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(phi) - Math.tan(eq.dec) * Math.cos(phi));
+  return { alt: alt / _ALM_RAD, az: ((az / _ALM_RAD + 180) % 360 + 360) % 360 };
+}
+/** Where the sun stands: {alt, az} in degrees (az from north, clockwise). */
+function almSunPosition(ms, lat, lon) {
+  if (!Number.isFinite(ms) || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const s = _almSun(_almJd(ms));
+  return _almHorizontal(ms, lat, lon, _almEquatorial(s.lambda * _ALM_RAD, 0));
+}
+/**
+ * Where the moon stands, how much of it is lit and which way its bright limb faces:
+ * {alt, az, illum (0..1), frac (phase, as almMoonPhase), waxing, limb (degrees clockwise from
+ * straight up, for a viewer facing the moon: the bright limb points along the sky toward the sun)}.
+ */
+function almMoonPosition(ms, lat, lon) {
+  if (!Number.isFinite(ms) || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const d = _almJd(ms) - 2451545.0;
+  const L = (218.316 + 13.176396 * d) * _ALM_RAD, M = (134.963 + 13.064993 * d) * _ALM_RAD, F = (93.272 + 13.22935 * d) * _ALM_RAD;
+  const m = _almHorizontal(ms, lat, lon, _almEquatorial(L + 6.289 * _ALM_RAD * Math.sin(M), 5.128 * _ALM_RAD * Math.sin(F)));
+  const s = almSunPosition(ms, lat, lon), a1 = m.alt * _ALM_RAD, a2 = s.alt * _ALM_RAD, dz = (s.az - m.az) * _ALM_RAD;
+  // the great-circle bearing from the moon to the sun in the local sky (up = towards the zenith, right = increasing azimuth)
+  const limb = Math.atan2(Math.sin(dz) * Math.cos(a2), Math.cos(a1) * Math.sin(a2) - Math.sin(a1) * Math.cos(a2) * Math.cos(dz)) / _ALM_RAD;
+  const elong = Math.acos(Math.max(-1, Math.min(1, Math.sin(a1) * Math.sin(a2) + Math.cos(a1) * Math.cos(a2) * Math.cos(dz))));
+  const ph = almMoonPhase(ms);
+  return { alt: m.alt, az: m.az, illum: (1 - Math.cos(elong)) / 2, frac: ph.frac, waxing: ph.frac < .5, limb: Math.round(limb * 10) / 10 };
 }
 /** The illuminated moon silhouette (right = waxing, left = waning). */
 function almMoonDiscPath(frac,r) {

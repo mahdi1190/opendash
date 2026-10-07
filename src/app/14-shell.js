@@ -421,12 +421,14 @@ function setBrandMark(el, name, pref) {
   const local = !kind && typeof animProfileScene === 'function' ? animProfileScene() : null;
   el.classList.toggle('has-local-scene', !!local);
   if (local) {
-    const key = 'nearby:' + local.ref + ':' + _agLevel() + ':' + animTimeOfDay();
+    const key = 'nearby:' + local.ref + ':' + _agLevel() + ':' + animTimeOfDay() + ':still';
     if (el.dataset.mark === key) return;
     el.dataset.mark = key;
     el.classList.toggle('has-logo', false); el.classList.toggle('has-sym', false);
     el.title = local.site || local.label;
-    el.innerHTML = animItemHtml(local, { size: 'fill', live: animEnabled(), reduced: !animEnabled(), tod: animTimeOfDay() });
+    // A still, tile-detail drawing: a full scene with hundreds of loops in a 22-px badge repainted
+    // every frame on every page (the app-wide lag); at this size the motion was not visible anyway.
+    el.innerHTML = animItemHtml(local, { size: local.full ? 'sm' : 'fill', live: !local.full && animEnabled(), reduced: !!local.full || !animEnabled(), tod: animTimeOfDay() });
     return;
   }
   el.removeAttribute('title');

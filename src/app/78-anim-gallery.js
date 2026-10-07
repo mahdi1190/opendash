@@ -182,15 +182,18 @@ function animGalleryRender(el) {
   const paging = document.createElement('nav'); paging.className = 'apg-bar'; paging.setAttribute('aria-label', 'Animation pages');
   root.append(stage, grid, paging);
 
-  function showStage(it) {
-    if (!it) { stage.hidden = true; return; }
+  function showStage(it, again) {
+    if (!it) { stage.hidden = true; stage.removeAttribute('data-ref'); return; }
+    // The same item already on the stage keeps playing (a repaint of the grid must not rebuild a 1 MB scene).
+    if (!again && !stage.hidden && stage.getAttribute('data-ref') === it.ref && stage.querySelector('.anim-scene')) return;
+    stage.setAttribute('data-ref', it.ref);
     stage.hidden = false;
     stage.classList.toggle('is-full', !!it.full);   // a full scene plays large, at 16:9 (71-anim-wire.css)
     const meta = [_agSlotLabel(it.slot), it.mood, it.intensity, it.season === 'any' ? '' : it.season.join(', '), it.region === 'any' ? '' : it.region.join(', '), animPack(it.pack).name].filter(Boolean);
     stage.innerHTML = `<div class="apg-stage-art">${animItemHtml(it, { size: it.full ? 'fill' : 'hero', live: true, reduced })}</div><div class="apg-stage-meta"><b>${esc(it.label)}</b><span class="muted">${esc(meta.join(' · '))}</span><span class="apg-tags">${it.tags.slice(0, 8).map(t => `<span class="chip">${esc(t)}</span>`).join('')}</span></div>`;
     const acts = document.createElement('div'); acts.className = 'apg-stage-acts';
     const replay = document.createElement('button'); replay.type = 'button'; replay.className = 'btn btn-secondary btn-sm'; replay.innerHTML = icon('sparkles', 'i-sm') + '<span>Play again</span>';
-    replay.onclick = () => showStage(it);
+    replay.onclick = () => showStage(it, true);
     acts.appendChild(replay);
     if (it.slot === 'theme-switch') {
       const tryIt = document.createElement('button'); tryIt.type = 'button'; tryIt.className = 'btn btn-secondary btn-sm'; tryIt.innerHTML = icon(state.theme === 'dark' ? 'sun' : 'moon', 'i-sm') + '<span>Try it</span>';
@@ -234,8 +237,18 @@ function animGalleryRender(el) {
       f.tabIndex = 0; f.setAttribute('role', 'button'); f.setAttribute('aria-label', `Preview ${it.label}`);
       f.innerHTML = `${animItemHtml(it, { size: 'lg', hover: true, reduced })}<figcaption><b>${esc(it.label)}</b><span>${esc(_agUI.by === 'slot' ? animPack(it.pack).name : _agSlotLabel(it.slot))}${t[it.slot] === it.ref ? ' · today' : ''}</span></figcaption>`;
       const acts = document.createElement('div'); acts.className = 'apg-acts';
+      // A favourite changes only its star (in place): repainting the page rebuilt every tile and the
+      // playing stage (about 50 rich drawings, seconds of work, and the stage restarted: a flicker).
+      const favB = _agBtn('star', fav ? 'Favourite (comes up more often)' : 'Favourite', fav, () => {
+        const before = JSON.stringify(animTodayLook());
+        animLookSave({ fav: _agToggle(animLook().fav, it.ref) });
+        if (JSON.stringify(animTodayLook()) !== before) { paint(); return; }   // today's picks moved: the "today" marks follow
+        const on = animLook().fav.includes(it.ref), label = on ? 'Favourite (comes up more often)' : 'Favourite';
+        favB.classList.toggle('is-on', on); favB.setAttribute('aria-pressed', on ? 'true' : 'false');
+        favB.setAttribute('aria-label', label); favB.setAttribute('data-tip', label);
+      });
       acts.append(
-        _agBtn('star', fav ? 'Favourite (comes up more often)' : 'Favourite', fav, () => { animLookSave({ fav: _agToggle(lk.fav, it.ref) }); paint(); }),
+        favB,
         _agBtn('pin', pin ? 'Pinned for this slot' : 'Pin for this slot', pin, () => { const p = Object.assign({}, lk.pin); if (pin) delete p[it.slot]; else p[it.slot] = it.ref; animLookSave({ pin: p }); render(); }),
         _agBtn('eye-off', blk ? 'Blocked (never picked)' : 'Block', blk, () => { animLookSave({ block: _agToggle(lk.block, it.ref) }); render(); }));
       f.appendChild(acts);

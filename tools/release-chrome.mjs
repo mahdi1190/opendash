@@ -34,19 +34,20 @@ export function findChrome(env = process.env, platform = process.platform) {
   return c.find(p => existsSync(p)) || null;
 }
 
-export async function launchChrome({ executable = findChrome(), timeoutMs = 30000 } = {}) {
+export async function launchChrome({ executable = findChrome(), timeoutMs = 30000, extraArgs = [] } = {}) {
   if (!executable) throw new Error('Chrome or Chromium not found: set CHROME_PATH to its executable.');
   const profile = mkdtempSync(join(tmpdir(), 'opendash-chrome-'));
   const args = [
     '--headless=new', '--remote-debugging-pipe', `--user-data-dir=${profile}`,
     '--no-first-run', '--no-default-browser-check', '--disable-extensions',
     '--disable-background-networking', '--disable-sync', '--disable-component-update',
-    '--disable-gpu', '--hide-scrollbars', '--mute-audio',
+    ...(extraArgs.includes('--enable-gpu') ? [] : ['--disable-gpu']), '--hide-scrollbars', '--mute-audio',
     // Same colours on every machine, and pages under assets/ may load the
     // repo's own font file from disk.
     '--force-color-profile=srgb', '--allow-file-access-from-files',
     // Chrome refuses to start as root with its sandbox on (Docker, some CI).
     ...(process.platform === 'linux' && process.getuid?.() === 0 ? ['--no-sandbox'] : []),
+    ...extraArgs.filter(a => a !== '--enable-gpu'),   // e.g. the perf check's --gpu (tools/perf-uk-scene.mjs)
     'about:blank',
   ];
   const proc = spawn(executable, args, { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'], windowsHide: true });

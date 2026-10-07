@@ -14,12 +14,12 @@ const APP = join(ROOT, 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
 const PACK_FILES = readdirSync(APP).filter(f => /^72-anim-pack-[a-z0-9-]+\.js$/.test(f)).sort();
 const PART_FILES = PACK_FILES.filter(f => /\/\/ UK_SCENE_PART: ([a-z0-9-]+)\/([a-z0-9-]+)/.test(src(f)));
-const NAMES = ['ANIM_SLOTS', 'ANIM_SLOT_IDS', 'ANIM_THEMES', 'ANIM_THEME_IDS', 'ANIM_ITEM_MAX_BYTES', 'ANIM_FULL_ITEM_MAX_BYTES', 'ANIM_PACK_MAX_BYTES', 'animValidatePack', 'animRegisterPack',
+const NAMES = ['ANIM_SLOTS', 'ANIM_SLOT_IDS', 'ANIM_THEMES', 'ANIM_THEME_IDS', 'ANIM_ITEM_MAX_BYTES', 'ANIM_FULL_ITEM_MAX_BYTES', 'ANIM_RICH_ITEM_MAX_BYTES', 'ANIM_RICH_TILE_MAX_BYTES', 'ANIM_PACK_MAX_BYTES', 'animItemMaxBytes', 'animPackMaxBytes', 'animValidatePack', 'animRegisterPack',
   'animPacks', 'animPack', 'animItem', 'animItems', 'animLookNormalize', 'animSeasonOf', 'animDailyPick', 'animDailyLook', 'animThemeFor', 'animItemHtml',
   'animSpecialPick', 'animPickFor', 'animCountdownHeat', 'animCountdownStage', 'animStreakGrow', 'almDay', 'almAddDays', 'almEaster', 'almFestivals', 'almIsFestival', 'almSeasonMark', 'almClocksChange', 'almSunTimes', 'almSkyMoment',
   'almMoonPhase', 'almSceneLight', 'almMoonDiscPath', 'almMeteorShower', 'almAuroraNights', 'ALM_MOVING', 'UK_REGIONS', 'UK_COUNTIES', 'ukCounty', 'ukCountiesIn', 'ukCountyNearest', 'ukTowns'];
 // The same order the build concatenates: the almanac, the libraries, the registry, then every pack.
-const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(APP).filter(f => /^71-anim-(us2?|asia2?)[-.]/.test(f)).sort(), ...PACK_FILES].map(src).join('\n;\n');
+const body = ['71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-delight-library.js', '71-uk-counties.js', '71-anim-texas-scenes.js', ...readdirSync(APP).filter(f => /^71-anim-(us2?|asia2?|uk)[-.]/.test(f)).sort(), ...PACK_FILES].map(src).join('\n;\n');
 // eslint-disable-next-line no-new-func
 const R = new Function(`"use strict";\n${body}\nreturn { ${NAMES.join(', ')}, ANIM_SCENES, Delight };`)();
 
@@ -70,8 +70,10 @@ for (const pack of R.animPacks()) {
         assert.doesNotThrow(() => { html = R.animItemHtml(it, { reduced, live: true, size: 'lg' }); }, `${it.ref} renders`);
         assert.ok(html && html.includes('<svg') && html.length > 120, `${it.ref} renders something`);
         assert.equal(markupProblem(html), '', `${it.ref}${reduced ? ' (reduced)' : ''}`);
-        const max = it.full ? R.ANIM_FULL_ITEM_MAX_BYTES : R.ANIM_ITEM_MAX_BYTES;   // a full-viewport scene has its own budget
+        const max = R.animItemMaxBytes(it, 'lg');   // a full-viewport scene has its own budget; a rich local scene its tile budget here
         assert.ok(html.length <= max, `${it.ref}: ${html.length} bytes > ${max}`);
+        // rich scenes draw less in small tiles: check the full-screen detail against its own cap (about 1 MB)
+        if (it.rich) { const big = R.animItemHtml(it, { reduced, live: true, size: 'fill' }), bigMax = R.animItemMaxBytes(it, 'fill'); assert.equal(markupProblem(big), '', `${it.ref} full screen`); assert.ok(big.length <= bigMax, `${it.ref} full screen: ${big.length} bytes > ${bigMax}`); }
         if (it.full) assert.match(html, /viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice"/, `${it.ref}: a full scene fills any screen`);
         total += html.length;
         if (reduced) {
@@ -84,7 +86,7 @@ for (const pack of R.animPacks()) {
       assert.ok(!seen.has(key), `${it.ref} draws the same as ${seen.get(key)}`);
       seen.set(key, it.ref);
     }
-    const budget = R.ANIM_PACK_MAX_BYTES + pack.items.filter(i => i.full).length * 2 * R.ANIM_FULL_ITEM_MAX_BYTES;
+    const budget = R.animPackMaxBytes(pack.items);   // shared allowance + each full or rich scene's own tile budget
     assert.ok(total <= budget, `pack ${pack.id}: ${total} bytes > ${budget}`);
   });
 }
@@ -134,6 +136,23 @@ test('moments (wave 4): the moments pack covers every moment slot; picks respect
   assert.equal(R.animStreakGrow(7), 1);
   assert.equal(R.animStreakGrow(30), 1);
   assert.match(R.animValidatePack({ id: 'x', name: 'X', items: [{ id: 'a', slot: 'progress', label: 'A', tags: [], mood: 'calm', intensity: 'subtle', fx: 'Bad Fx', svg: () => '<circle class="c" cx="3" cy="3" r="2"/>', reduced: 'static' }] }).errors.join(), /fx/);
+});
+
+test('rich local scenes: their own per-item budget, full-viewport only, counted sensibly in the pack', () => {
+  assert.ok(R.ANIM_RICH_ITEM_MAX_BYTES > R.ANIM_FULL_ITEM_MAX_BYTES && R.ANIM_RICH_ITEM_MAX_BYTES <= 1048576, 'about 1 MB full screen');
+  assert.ok(R.ANIM_RICH_TILE_MAX_BYTES > R.ANIM_FULL_ITEM_MAX_BYTES && R.ANIM_RICH_TILE_MAX_BYTES * 80 <= 12000000, 'a gallery page of 80 rich tiles stays light');
+  assert.equal(R.animItemMaxBytes({ full: true, rich: true }), R.ANIM_RICH_ITEM_MAX_BYTES);
+  assert.equal(R.animItemMaxBytes({ full: true, rich: true }, 'fill'), R.ANIM_RICH_ITEM_MAX_BYTES);
+  assert.equal(R.animItemMaxBytes({ full: true, rich: true }, 'hero'), R.ANIM_RICH_ITEM_MAX_BYTES);
+  assert.equal(R.animItemMaxBytes({ full: true, rich: true }, 'lg'), R.ANIM_RICH_TILE_MAX_BYTES, 'small tiles have the tile budget');
+  assert.equal(R.animItemMaxBytes({ full: true }), R.ANIM_FULL_ITEM_MAX_BYTES, 'other full scenes keep 32 KB');
+  assert.equal(R.animItemMaxBytes({ full: true }, 'fill'), R.ANIM_FULL_ITEM_MAX_BYTES);
+  assert.equal(R.animItemMaxBytes({ rich: true }), R.ANIM_ITEM_MAX_BYTES, 'rich applies to full scenes only');
+  assert.equal(R.animPackMaxBytes([{ full: true, rich: true }, { full: true }, {}]), R.ANIM_PACK_MAX_BYTES + 2 * R.ANIM_RICH_TILE_MAX_BYTES + 2 * R.ANIM_FULL_ITEM_MAX_BYTES);
+  const item = { id: 'a', slot: 'opening', label: 'A', tags: [], mood: 'calm', intensity: 'subtle', svg: () => '<rect width="9" height="9"/>', reduced: 'static' };
+  assert.match(R.animValidatePack({ id: 'x-rich', name: 'X', items: [Object.assign({}, item, { rich: true })] }).errors.join(), /rich scenes must be full-viewport/);
+  assert.match(R.animValidatePack({ id: 'x-rich', name: 'X', items: [Object.assign({}, item, { full: true, rich: 'yes' })] }).errors.join(), /rich must be true or false/);
+  assert.deepEqual(R.animValidatePack({ id: 'x-rich', name: 'X', items: [Object.assign({}, item, { full: true, rich: true })] }).errors, []);
 });
 
 test('validation names what is wrong', () => {
@@ -506,9 +525,9 @@ test('Yateley live skies: astronomical daylight, local timezone and lunar phase 
     for(const sky of [summer,winter,dawn,dusk,night]) {
       const html=R.animItemHtml(it,{sky,live:true});
       assert.equal(markupProblem(html),'',it.ref);
-      assert.ok(html.length<=R.ANIM_FULL_ITEM_MAX_BYTES,`${it.ref}/${sky.tod}: ${html.length}`);
+      assert.ok(html.length<=R.animItemMaxBytes(it,it.rich?'fill':'md'),`${it.ref}/${sky.tod}: ${html.length}`);   // a rich scene renders full detail without a size
       assert.ok(html.includes(`tod-${sky.tod}`));
-      if(sky.tod==='night')assert.ok(html.includes('x-ukystar'));
+      if(sky.tod==='night')assert.ok(html.includes('x-ukystar')||html.includes('x-ukntwinkle'),`${it.ref}: stars at night`);   // the old Yateley stars or the nature kit's
     }
   }
 });

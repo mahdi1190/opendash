@@ -92,6 +92,11 @@ up privacy.
 - More assistant skills (still propose-then-apply, never silent changes).
 - Desktop app wrapper (tray icon, start at login, global quick-capture hotkey).
 - Wearables: a glanceable "next up" and quick capture.
+- A scene engine for animations, like 2D games: a shared library of detailed
+  objects (trees, plants, animals, people, landmarks), scenes stored as small
+  placement lists, and instanced rendering. Much smaller scenes, and easy
+  variations (seasons, angles, weather). See
+  [docs/dev/SCENE_ENGINE.md](dev/SCENE_ENGINE.md).
 
 ## Principles that will not change
 
