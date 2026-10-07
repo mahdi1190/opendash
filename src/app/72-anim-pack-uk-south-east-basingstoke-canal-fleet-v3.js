@@ -407,12 +407,16 @@ function ukSouthEastFleetCanalV3(T) {
     autumn: 'Autumn on the wooded towpath',
     winter: 'A frosty towpath by the still canal',
   };
+  // The composed version (scene engine, 71-scene-uk-south-east-basingstoke-canal-fleet-3.js): the SAME items (ids, place, view and
+  // season fields), drawn by the canvas renderer with the season by date and the live sky. The hand-drawn art above stays as
+  // legacySvg (old-vs-new sheets) and is the art itself when the engine is not in the build.
+  const composed = typeof sceneItems === 'function' ? sceneItems('uk-south-east').find(it => it.id === 'fleet-canal-3') : null;
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     const reason = reasons[season];
     add('hampshire', kind, { id: `fleet-canal-3${season !== 'autumn' ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
       colour: 'slate', mood: 'calm', tags: tags.concat(season),
       ukPlace: place, ukLocality: town, ukTown: town, ukView: 'autumn', viewReason: reason,
       ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON },
-      svg: (o = {}) => scene(season, o) });
+      ...(composed ? { composed: true, full: true, scene: composed.scene, svg: composed.svg, legacySvg: (o = {}) => scene(season, o), reduced: 'static' } : { svg: (o = {}) => scene(season, o) }) });
   }
 }

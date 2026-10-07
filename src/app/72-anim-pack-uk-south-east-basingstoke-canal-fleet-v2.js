@@ -404,12 +404,16 @@ function ukSouthEastFleetCanalV2(T) {
   const place = 'fleet-canal', label = 'Basingstoke Canal', town = 'Fleet', kind = 'heritage', tags = ['canal', 'towpath', 'narrowboat'];
   const view = 1, originalSeason = 'summer';
   const reasons = { spring: 'Hawthorn blossom as a narrowboat chugs past', summer: 'Close alongside a passing narrowboat', autumn: 'Falling leaves and wood smoke on the towpath', winter: 'A narrowboat chugging past bare winter trees' };
+  // The composed version (scene engine, 71-scene-uk-south-east-basingstoke-canal-fleet-2.js): the SAME items (ids, place, view and
+  // season fields), drawn by the canvas renderer with the season by date and the live sky. The hand-drawn art above stays as
+  // legacySvg (old-vs-new sheets) and is the art itself when the engine is not in the build.
+  const composed = typeof sceneItems === 'function' ? sceneItems('uk-south-east').find(it => it.id === 'fleet-canal-2') : null;
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     const reason = reasons[season];
     add('hampshire', kind, { id: `${place}-${view + 1}${season !== originalSeason ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
       colour: 'slate', mood: 'calm', tags: tags.concat(season),
       ukPlace: place, ukLocality: town, ukTown: town, ukView: 'close', viewReason: reason,
       ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON },
-      svg: (o = {}) => scene(season, o) });
+      ...(composed ? { composed: true, full: true, scene: composed.scene, svg: composed.svg, legacySvg: (o = {}) => scene(season, o), reduced: 'static' } : { svg: (o = {}) => scene(season, o) }) });
   }
 }
