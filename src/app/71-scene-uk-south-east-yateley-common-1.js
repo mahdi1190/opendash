@@ -81,7 +81,7 @@ function sceneYateleyCommon1(season) {
       { obj: 'plant.gorse', x: 1210, y: 900, s: 1.25, layer: 'fore', variant: 1, flip: true, seed: 52, anim: false },
       { obj: 'bird.stonechat', x: 404, y: 766, s: 1.9, layer: 'fore', variant: 0, seed: 53 },
       // framing: a big Scots pine right, a silver birch left
-      { obj: 'tree.pine-veteran', x: 1520, y: 905, s: 1.2, layer: 'front', variant: 0, seed: 61 },
+      { obj: 'tree.pine-veteran', x: 1520, y: 905, s: 1.2, layer: 'fore', variant: 0, seed: 61 },
       { obj: 'tree.birch-heath', x: 210, y: 900, s: 1.15, layer: 'front', variant: 1, flip: true, seed: 62, anim: { sway: { k: 0.8 } } },
     ],
     scatter: [

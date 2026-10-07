@@ -76,7 +76,7 @@ function sceneYateleyCommon2(season) {
       // framing: two big silver birches left, the red-barked Scots pine right
       { obj: 'tree.birch-heath', x: 170, y: 905, s: 1.5, layer: 'front', variant: 1, seed: 61, anim: { sway: { k: 0.8 } } },
       { obj: 'tree.birch-heath', x: 400, y: 880, s: 1.2, layer: 'front', variant: 0, flip: true, seed: 62, anim: { sway: { k: 0.7 } } },
-      { obj: 'tree.pine-veteran', x: 1520, y: 905, s: 1.25, layer: 'front', variant: 0, seed: 63 },
+      { obj: 'tree.pine-veteran', x: 1520, y: 905, s: 1.25, layer: 'fore', variant: 0, seed: 63 },
     ],
     scatter: [
       // the far tree line: the pine and birch belts toward Blackbushe, hazed, static

@@ -69,7 +69,7 @@ function sceneYateleyCommon4(season) {
       { obj: 'plant.gorse', x: 300, y: 900, s: 1.2, layer: 'fore', variant: 1, seed: 52, anim: false },
       // framing: silver birches at both edges
       { obj: 'tree.birch-heath', x: 70, y: 860, s: 1.3, layer: 'front', variant: 1, seed: 61, anim: { sway: { k: 0.8 } } },
-      { obj: 'tree.birch-heath', x: 1540, y: 880, s: 1.2, layer: 'front', variant: 0, flip: true, seed: 62, anim: { sway: { k: 0.7 } } },
+      { obj: 'tree.birch-heath', x: 1540, y: 880, s: 1.2, layer: 'fore', variant: 0, flip: true, seed: 62, anim: { sway: { k: 0.7 } } },
     ],
     scatter: [
       { obj: 'tree.woods-edge', layer: 'horizon', seed: 1, area: { rect: [-160, 484, 1760, 492] }, n: 12, minGap: 130, s: [0.36, 0.6], flip: 0.5, variant: [0, 1], anim: false },
