@@ -158,12 +158,17 @@ function ukSouthEastFleetPondV2(T) {
   const place = 'fleet-pond', label = 'Fleet Pond', town = 'Fleet', kind = 'landscape', tags = ['lake', 'reedbed', 'nature reserve'];
   const view = 1, originalSeason = 'summer';
   const reasons = { spring: 'Yellow flag iris along the reedbed boardwalk', summer: 'Reedbed and hovering dragonflies', autumn: 'Reed plumes and grebes from the boardwalk', winter: 'Frosted reeds and wildfowl on the pond' };
+  // The scene engine (docs/dev/SCENE_ENGINE.md section 17): when it is in the build, the four seasonal items share ONE
+  // composed, auto-season scene (71-scene-uk-south-east-fleet-pond-v2.js on the canvas renderer: the date picks the
+  // season, the live sky the light). Every id, ukPlace, ukView, ukSeason, season and the rotation stay as they were;
+  // the hand-drawn art above is kept as legacySvg (old-versus-new sheets), and is the scene when the engine is absent.
+  const composed = typeof sceneUkFleetPondV2 === 'function' && typeof sceneItem === 'function' && typeof sceneSvg === 'function';
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
-    const reason = reasons[season];
-    add('hampshire', kind, { id: `${place}-${view + 1}${season !== originalSeason ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
+    const reason = reasons[season], legacy = (o = {}) => draw(season, o);
+    const o = { id: `${place}-${view + 1}${season !== originalSeason ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
       colour: season === 'winter' ? 'blue' : season === 'autumn' ? 'amber' : 'green', mood: 'calm', tags: tags.concat(season),
       ukPlace: place, ukLocality: town, ukTown: town, ukView: 'close', viewReason: reason,
-      ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON },
-      svg: (o = {}) => draw(season, o) });
+      ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON }, svg: legacy };
+    add('hampshire', kind, composed ? Object.assign(sceneItem(Object.assign({ intensity: 'subtle' }, o), sceneUkFleetPondV2), { season: [season], liveSky: o.liveSky, legacySvg: legacy }) : o);
   }
 }

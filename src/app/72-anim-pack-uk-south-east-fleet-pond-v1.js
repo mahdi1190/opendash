@@ -205,12 +205,17 @@ function ukSouthEastFleetPondV1(T) {
     autumn: 'Golden shore and geese over the open water',
     winter: 'Winter wildfowl from the boardwalk platform',
   };
+  // The scene engine (docs/dev/SCENE_ENGINE.md section 17): when it is in the build, the four seasonal items share ONE
+  // composed, auto-season scene (71-scene-uk-south-east-fleet-pond-v1.js on the canvas renderer: the date picks the
+  // season, the live sky the light). Every id, ukPlace, ukView, ukSeason, season and the rotation stay as they were;
+  // the hand-drawn art above is kept as legacySvg (old-versus-new sheets), and is the scene when the engine is absent.
+  const composed = typeof sceneUkFleetPondV1 === 'function' && typeof sceneItem === 'function' && typeof sceneSvg === 'function';
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
-    const reason = reasons[season];
-    add('hampshire', kind, { id: `${place}-1${season !== 'summer' ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
+    const reason = reasons[season], legacy = (o = {}) => scene(season, o);
+    const o = { id: `${place}-1${season !== 'summer' ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
       colour: season === 'winter' ? 'blue' : season === 'autumn' ? 'amber' : 'green', mood: 'calm', tags: tags.concat(season),
       ukPlace: place, ukLocality: town, ukTown: town, ukView: 'wide', viewReason: reason,
-      ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON },
-      svg: (o = {}) => scene(season, o) });
+      ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON }, svg: legacy };
+    add('hampshire', kind, composed ? Object.assign(sceneItem(Object.assign({ intensity: 'subtle' }, o), sceneUkFleetPondV1), { season: [season], liveSky: o.liveSky, legacySvg: legacy }) : o);
   }
 }
