@@ -1,26 +1,79 @@
-// node tools/anim-pack.mjs status [<region>] [--json] [--strict] [--short] [--no-lint] [--declare-complete]
+// node tools/anim-pack.mjs status [<region>] [--json] [--strict] [--short] [--no-lint] [--declare-complete] [--standard] [--all]
 // Coverage of a region (a config made with animRegionDefine, src/app/71-anim-0region.js): per group the units with their signature
 // (a full-screen scene) and element (a small symbol), the big places with their full-screen scene, the small places with their element,
 // what is MISSING, the bytes, and the lint result per pack. Also: the overlaps with other regions (the border cases), the trips that match
 // nothing (travel cities of the region's countries with no row) and the REACH line (how far the farthest travel city is from its nearest row).
+// THE NEW STANDARD (docs/dev/SCENE_ENGINE.md 15.3): the STANDARD line counts the scenes at the new standard (gold: composed and passing the
+// composed profile), upgrading (a draft upgrade), rich and legacy (below the new standard), with the columns gold / upgr / legacy per pack;
+// --standard lists every non-gold scene with its tier and suggested archetype, grouped by archetype (the upgrade worklist, in batches of 7);
+// --all prints the tier table for EVERY pack, regions or not (UK, Texas, world, the demo).
 // Exit 2 under --strict when anything is missing or failing, or when everything is drawn but the config still says `complete: false`.
 // --declare-complete sets `complete: true` in the config (only when --strict would pass): from then on the coverage tests fail hard.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadRegistry } from '../anim-render.mjs';
 import { lintRegistry, loadThresholds } from '../../anim-pack.mjs';
-import { regions, findRegion, regionCoverage, configFileOf, kb, plural } from '../anim-region.mjs';
+import { regions, findRegion, regionCoverage, configFileOf, kb, plural, SCENES_PER_AGENT } from '../anim-region.mjs';
+import { engineOf, lintScene, standardOf, TIERS } from '../scene-lint.mjs';
+import { suggestArchetype } from '../scene-upgrade.mjs';
 
 const pad = (s, n) => String(s).padEnd(n);
 const lpad = (s, n) => String(s).padStart(n);
 const mark = (x) => (x.state === 'ok' ? `ok ${lpad(kb(x.bytes), 8)}` : x.state === 'small' ? 'NOT FULL SCREEN' : 'MISSING');
 const TRAVEL_SHOWN = 15;
 
+/**
+ * The new standard of some registry entries (15.3): { gold, composed, upgrading, rich, legacy, list: [{ ref, pack, tier, suggest }], packs: { pack: counts } }.
+ * A composed item is gold when it passes the composed profile (the lint result when given, else lintScene here: it is fast); `suggest` is
+ * the best archetype of SCENE_ARCHETYPE_INDEX for a non-gold scene ('basic' when nothing scores; null without the index).
+ */
+export function standardBlock(reg, entries, thresholds, res = null) {
+  const E = engineOf(reg), byRef = new Map(((res && res.results) || []).map(r => [r.ref, r]));
+  const out = Object.fromEntries(TIERS.map(t => [t, 0]));
+  out.list = []; out.packs = {};
+  for (const e of entries.filter(x => x.full)) {
+    let tier;
+    const r = byRef.get(e.ref);
+    if (r && r.tier) tier = r.tier;
+    else if (e.item.composed) {
+      let pass = false;
+      try { pass = E.ready && lintScene(e.item, thresholds, { E, item: e.item, ref: e.ref }).pass; } catch { pass = false; }
+      tier = standardOf(e, { pass }, null);
+    } else tier = standardOf(e, null, null);
+    out[tier]++;
+    const pk = out.packs[e.pack] || (out.packs[e.pack] = Object.fromEntries(TIERS.map(t => [t, 0])));
+    pk[tier]++;
+    const sug = tier !== 'gold' && E.index ? suggestArchetype(e.item, E.index)[0] : null;
+    out.list.push({ ref: e.ref, pack: e.pack, tier, suggest: tier === 'gold' ? null : !E.index ? null : sug && sug.score > 0 ? sug.id : 'basic' });
+  }
+  return out;
+}
 /** The coverage of one region as the command computes it (exported for the tests and other tools). `travel: false` skips the travel-table gaps. */
 export function statusOf(reg, region, thresholds, { lint = true, travel = true } = {}) {
   let res = null;
-  if (lint) res = lintRegistry(reg, thresholds, reg.items().filter(e => region.owns(e.pack)));
-  return regionCoverage(reg, region, res, { travel });
+  const mine = reg.items().filter(e => region.owns(e.pack));
+  if (lint) res = lintRegistry(reg, thresholds, mine);
+  const st = regionCoverage(reg, region, res, { travel });
+  st.standard = standardBlock(reg, mine, thresholds, res);
+  return st;
+}
+/** The STANDARD line (15.3). */
+export function standardLine(sd) {
+  const n = TIERS.reduce((a, t) => a + sd[t], 0), below = sd.upgrading + sd.rich + sd.legacy;
+  return `standard  ${sd.gold} of ${n} scenes at the new standard (gold)${sd.composed ? `; ${sd.composed} composed but below the bar` : ''}${sd.upgrading ? `; ${sd.upgrading} upgrading` : ''}${sd.rich ? `; ${sd.rich} rich (hand-drawn, too slow)` : ''}${sd.legacy ? `; ${sd.legacy} legacy` : ''}${below ? ' (below the new standard)' : ''}`;
+}
+/** The --standard worklist: every non-gold scene with its tier, grouped by suggested archetype, briefed in batches of SCENES_PER_AGENT. */
+function printWorklist(out, sd) {
+  const todo = sd.list.filter(x => x.tier !== 'gold');
+  out('');
+  out(`UPGRADE WORKLIST (${todo.length} scene(s) below the new standard, by suggested archetype; brief them in batches of ${SCENES_PER_AGENT}):`);
+  const by = new Map();
+  for (const x of todo) { const k = x.suggest || 'basic'; if (!by.has(k)) by.set(k, []); by.get(k).push(x); }
+  for (const [arch, xs] of [...by.entries()].sort((a, b) => b[1].length - a[1].length)) {
+    out(`  ${arch} (${xs.length})`);
+    for (const x of xs) out(`    ${pad(x.ref, 52)} ${x.tier}`);
+  }
+  if (!todo.length) out('  (none: every scene is gold)');
 }
 
 /** The lines about the travel tables: the trips that match nothing, and the reach. */
@@ -46,6 +99,7 @@ function printRegion(out, st, { short }) {
   out(`  scenes   ${t.scenes} of ${t.scenesNeeded} full-screen scenes   (${t.units} ${w} signatures + ${t.big} big places)`);
   out(`  elements ${t.elements} of ${t.elementsNeeded} small elements        (${t.units} ${w} elements + ${t.small} small places)`);
   out(`  bytes    ${kb(t.bytes)} rendered: scenes ${kb(t.sceneBytes)}, small ${kb(t.smallBytes)}`);
+  if (st.standard) out(`  ${standardLine(st.standard)}`);
   if (!short) {
     for (const g of st.groups) {
       out('');
@@ -58,8 +112,9 @@ function printRegion(out, st, { short }) {
   }
   out('');
   out(`PACKS${st.lint.ran ? '' : '  (lint skipped: --no-lint)'}`);
-  out(`${pad('pack', 24)} ${lpad('scenes', 6)} ${lpad('small', 6)} ${lpad('bytes', 10)} ${lpad('largest scene', 14)}${st.lint.ran ? ` ${lpad('pass', 5)} ${lpad('FAIL', 5)} ${lpad('waived', 6)}` : ''}`);
-  for (const p of st.packs) out(`${pad(p.pack, 24)} ${lpad(p.scenes, 6)} ${lpad(p.small, 6)} ${lpad(kb(p.sceneBytes + p.smallBytes), 10)} ${lpad(p.largestScene.ref ? kb(p.largestScene.bytes) : '-', 14)}${p.lint ? ` ${lpad(p.lint.pass, 5)} ${lpad(p.lint.fail, 5)} ${lpad(p.lint.waived, 6)}` : ''}`);
+  const sp = (st.standard && st.standard.packs) || {}, tcols = (p) => { const c = sp[p] || {}; return ` ${lpad(c.gold || 0, 5)} ${lpad(c.upgrading || 0, 5)} ${lpad((c.legacy || 0) + (c.rich || 0) + (c.composed || 0), 6)}`; };
+  out(`${pad('pack', 24)} ${lpad('scenes', 6)} ${lpad('small', 6)} ${lpad('bytes', 10)} ${lpad('largest scene', 14)}${st.lint.ran ? ` ${lpad('pass', 5)} ${lpad('FAIL', 5)} ${lpad('waived', 6)}` : ''} ${lpad('gold', 5)} ${lpad('upgr', 5)} ${lpad('legacy', 6)}`);
+  for (const p of st.packs) out(`${pad(p.pack, 24)} ${lpad(p.scenes, 6)} ${lpad(p.small, 6)} ${lpad(kb(p.sceneBytes + p.smallBytes), 10)} ${lpad(p.largestScene.ref ? kb(p.largestScene.bytes) : '-', 14)}${p.lint ? ` ${lpad(p.lint.pass, 5)} ${lpad(p.lint.fail, 5)} ${lpad(p.lint.waived, 6)}` : ''}${tcols(p.pack)}`);
   if (!st.packs.length) out('  (no pack of this region has registered an item yet)');
   for (const p of st.packs) {
     if (!p.lint) continue;
@@ -113,13 +168,15 @@ export function declareComplete(root, region) {
 
 export default {
   summary: 'coverage of a region: units, places, MISSING, bytes, lint per pack, overlaps, trips with no row, reach (exit 2 under --strict; --declare-complete sets complete: true)',
-  usage: 'status [<region>] [--json] [--strict] [--short] [--no-lint] [--declare-complete]',
+  usage: 'status [<region>] [--json] [--strict] [--short] [--no-lint] [--declare-complete] [--standard] [--all]',
   positionals: '<region>',
   options: {
     json: { type: 'boolean', help: 'machine-readable output' },
     strict: { type: 'boolean', help: 'exit 2 when anything is missing, orphaned, wrong in the tables, overlapping another region, failing the lint, or still starter data; also when everything is done but the config still says complete: false (so the flag is never forgotten)' },
     short: { type: 'boolean', help: 'totals, packs and the missing lists only (no row per unit and place)' },
     'no-lint': { type: 'boolean', help: 'skip the lint (faster; the lint columns and the lint part of --strict are left out)' },
+    standard: { type: 'boolean', help: 'list every scene below the new standard (not gold) with its tier and suggested archetype, grouped by archetype: the upgrade worklist (docs/dev/SCENE_ENGINE.md 15.3)' },
+    all: { type: 'boolean', help: 'the tier table (gold, composed, upgrading, rich, legacy) for EVERY pack, regions or not (UK, Texas, world, the demo)' },
     'declare-complete': { type: 'boolean', help: 'when --strict would pass: set `complete: true` in the region\'s config (the generated test, the "every region" tests and the pack-registration test then fail hard on any missing art); refuses, exit 2, when anything is missing. Needs the lint (no --no-lint)' },
   },
   notes: [
@@ -131,6 +188,18 @@ export default {
     if (args['declare-complete'] && args['no-lint']) throw new Error('--declare-complete needs the lint: a region is complete only when every item passes it (drop --no-lint)');
     const reg = loadRegistry(ctx.root, { fresh: true });
     const id = ctx.positionals[0];
+    if (args.all) {
+      const thresholds = loadThresholds(ctx.root), sd = standardBlock(reg, reg.items(), thresholds, null);
+      if (args.json) { ctx.out(JSON.stringify({ standard: sd }, null, 1)); return 0; }
+      ctx.out('anim-pack status --all: the new standard (docs/dev/SCENE_ENGINE.md section 15) for every pack');
+      ctx.out(`${pad('pack', 46)} ${TIERS.map(t => lpad(t, 9)).join(' ')}`);
+      for (const [p, c] of Object.entries(sd.packs).sort()) ctx.out(`${pad(p, 46)} ${TIERS.map(t => lpad(c[t] || '-', 9)).join(' ')}`);
+      ctx.out(`${pad('total', 46)} ${TIERS.map(t => lpad(sd[t], 9)).join(' ')}`);
+      ctx.out('');
+      ctx.out(standardLine(sd));
+      if (args.standard) printWorklist(ctx.out, sd);
+      return 0;
+    }
     if (!id) {
       if (args['declare-complete']) throw new Error('--declare-complete needs a region: node tools/anim-pack.mjs status <region> --declare-complete');
       // no region: one line per region
@@ -155,6 +224,7 @@ export default {
     if (args.json) ctx.out(JSON.stringify(declared ? { ...st, declare: { ok: true, ...declared } } : st, null, 1));
     else {
       printRegion(ctx.out, st, { short: !!args.short });
+      if (args.standard) printWorklist(ctx.out, st.standard);
       if (declared) ctx.out(declared.changed ? `\nDECLARED: set complete: true in ${declared.file}. The coverage tests of tests/${st.region}-pack.test.mjs, tests/region-framework.test.mjs and tests/anim-packs.test.mjs now fail hard. Run npm test.` : `\nNothing to change: ${declared.why}.`);
     }
     if (args.strict && !st.complete) return 2;

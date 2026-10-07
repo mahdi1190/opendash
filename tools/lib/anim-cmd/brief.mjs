@@ -1,4 +1,6 @@
 // node tools/anim-pack.mjs brief <region> --kind scene|element [--batch N --of M] [--group g] [--out dir] [--clean] [--note text] [--json]
+// node tools/anim-pack.mjs brief <subject> --kind composed|upgrade|archetype|object [--batch N] [--out dir] [--note text] [--json]   (the new standard:
+//   tools/lib/scene-briefs.mjs; the subject is a pack id, a region, an archetype id or a kit). Hand-drawn scene briefs are the LEGACY tier.
 // Ready-to-paste task briefs for the agents that draw a region: made from tools/lib/anim-templates/scene-brief.md and element-brief.md
 // ({{placeholders}}, listed in docs/dev/ANIMATION_PACKS.md), filled with the region's facts, the exact keys of the batch (each with a suggested time of day,
 // season, scene type and palette, or motif kind and colour, from a rotation over the whole region so that parallel batches differ), the file the agent owns,
@@ -16,6 +18,7 @@ import { loadReference, loadThresholds, measureRegistry, selectEntries } from '.
 import { TARGETS, allowedTagList, forbiddenTagList } from '../anim-quality.mjs';
 import { findRegion, regionNeeds, regionCoverage, planBatches, readTemplate, renderTemplate, careFor, careInfo, varietyOf, suggestionsInfo, applySuggestions, plural, sceneFileOf, packFileOf, configFileOf, sceneStubText, SEASON_NOTE, SCENES_PER_AGENT, RUBRIC_PASS } from '../anim-region.mjs';
 import { gitScaffoldState, GUARD_PROOF } from './guard.mjs';
+import { sceneBriefPlan, SCENE_KINDS } from '../scene-briefs.mjs';
 export { sceneFileOf, packFileOf, configFileOf };
 
 const KINDS = ['scene', 'element'];
@@ -238,12 +241,35 @@ function planCommands(plan, base, commit = '') {
 /** The files of a region's scaffold, as git pathspecs (for "is the scaffold committed?"). */
 const scaffoldPaths = (root, id) => [configFileOf(root, id), `docs/dev/${id.toUpperCase()}_PACK.md`, `tests/${id}-pack.test.mjs`, `src/app/71-anim-region-${id}-scenes-*.js`, `src/app/72-anim-pack-${id}-*.js`];
 
+/** brief <subject> --kind composed|upgrade|archetype|object: the briefs of the new standard (tools/lib/scene-briefs.mjs). */
+function sceneBriefs(args, ctx) {
+  const subject = ctx.positionals[0];
+  if (ctx.positionals.length > 1) throw new Error(`brief --kind ${args.kind} takes one subject, got ${ctx.positionals.length}`);
+  if (!subject) throw new Error(`brief --kind ${args.kind} needs a subject: ${{ composed: 'a pack id', upgrade: 'a region', archetype: 'an archetype id', object: 'a kit' }[args.kind]}`);
+  const reg = loadRegistry(ctx.root, { fresh: true });
+  const notes = [].concat(args.note || []).map(x => String(x).trim()).filter(Boolean);
+  const plan = sceneBriefPlan(reg, ctx.root, args.kind, subject, { notes, batch: toInt(args.batch, 'batch') });
+  const written = [];
+  if (args.out) {
+    const dir = resolve(args.out);
+    mkdirSync(dir, { recursive: true });
+    for (const b of plan.batches) { const f = join(dir, `${args.kind}-brief-${plan.subject}-${b.n}.md`); writeFileSync(f, b.markdown); written.push(f); }
+  }
+  if (args.json) { ctx.out(JSON.stringify({ kind: plan.kind, subject: plan.subject, of: plan.of || plan.batches.length, written, batches: plan.batches.map(b => ({ batch: b.n, title: b.title, items: b.items, archetype: b.archetype || null, markdown: args.batch || plan.batches.length === 1 ? b.markdown : undefined })) }, null, 1)); return 0; }
+  if (written.length) { written.forEach(f => ctx.out(f)); return 0; }
+  if (plan.batches.length === 1) { ctx.out(plan.batches[0].markdown.replace(/\s+$/, '')); return 0; }
+  ctx.out(`brief ${args.kind}, ${plan.subject}: ${plan.batches.length} batches`);
+  for (const b of plan.batches) ctx.out(`  batch ${String(b.n).padStart(2)}  ${b.title}: ${b.items.join(', ')}`);
+  ctx.out(`\nPrint one: node tools/anim-pack.mjs brief ${plan.subject} --kind ${args.kind} --batch N\nWrite all: node tools/anim-pack.mjs brief ${plan.subject} --kind ${args.kind} --out .anim-ref/briefs`);
+  return 0;
+}
+
 export default {
   summary: 'ready-to-paste task briefs for the agents that draw a region (batched scene briefs, per-group element briefs)',
-  usage: 'brief <region> --kind scene|element [--batch N --of M] [--group <g>] [--out <dir> [--clean]] [--note <text>] [--clear-notes] [--json]',
+  usage: 'brief <region> --kind scene|element [--batch N --of M] [--group <g>] [--out <dir> [--clean]] [--note <text>] [--clear-notes] [--json]  |  brief <pack|region|archetype|kit> --kind composed|upgrade|archetype|object [--batch N] [--out <dir>] [--note <text>] [--json]',
   positionals: '<region>',
   options: {
-    kind: { type: 'string', help: `scene (full-screen scenes, batches of about ${SCENES_PER_AGENT} keys) | element (small symbols, one batch per group) (required)` },
+    kind: { type: 'string', help: `scene (hand-drawn full-screen scenes: the LEGACY tier, batches of about ${SCENES_PER_AGENT} keys) | element (small symbols, one batch per group) | composed (a new composed scene; the subject is its pack id) | upgrade (the region scenes below the new standard, in batches of ${SCENES_PER_AGENT} by suggested archetype) | archetype (build one; the subject is its id) | object (add objects to a kit; the subject is the kit) (required)` },
     batch: { type: 'string', help: 'print the brief of batch N (1-based); without it the plan is printed (and with --out every brief is written)' },
     of: { type: 'string', help: `the number of batches (default: scenes ceil(keys / ${SCENES_PER_AGENT}), elements one per group). Scene batches are cut at group boundaries where that costs little, so the sizes can differ; elements never split a group` },
     group: { type: 'string', help: 'only this group' },
@@ -259,10 +285,11 @@ export default {
     GUARD_PROOF,
   ],
   run(args, ctx) {
+    if (SCENE_KINDS.includes(args.kind)) return sceneBriefs(args, ctx);
     if (ctx.positionals.length > 1) throw new Error(`brief takes one region, got ${ctx.positionals.length} (${ctx.positionals.join(', ')}): run it once per region`);
     const id = ctx.positionals[0];
     if (!id) throw new Error('brief needs a region: node tools/anim-pack.mjs brief <region> --kind scene|element');
-    if (!KINDS.includes(args.kind)) throw new Error(`--kind must be one of ${KINDS.join(', ')}`);
+    if (!KINDS.includes(args.kind)) throw new Error(`--kind must be one of ${[...KINDS, ...SCENE_KINDS].join(', ')}`);
     if (args.clean && !args.out) throw new Error('--clean goes with --out <dir>');
     if (args['clear-notes'] && !args.out) throw new Error('--clear-notes goes with --out <dir> (the notes are stored in its plan.json)');
     const reg = loadRegistry(ctx.root, { fresh: true });

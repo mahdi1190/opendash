@@ -1,5 +1,7 @@
 # Brief: draw {{todo_count}} full-screen scene{{todo_s}} for the {{region_name}} region (batch {{batch}} of {{batches}})
 
+Hand-drawn scenes are the LEGACY tier: below the new standard (docs/dev/SCENE_ENGINE.md section 15). Prefer `--kind composed` or `--kind upgrade` briefs (a composed scene from the object library); this brief is for maintaining a hand-drawn region.
+
 You are one of several agents drawing the full-screen opening scenes (1600 x 900 animated inline SVG) of the **{{region_name}}** region
 (`{{region_id}}`) of OpenDash, a local dashboard. Your batch: {{batch_groups}}. This brief is your whole task. Read all of it before you draw
 anything. Sections 3 to 8 are the quality contract and are not negotiable: your scenes must look like part of the same body of work as the existing

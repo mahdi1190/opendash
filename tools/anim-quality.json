@@ -8,7 +8,8 @@
   "A rule is a metric of tools/lib/anim-quality.mjs measure() (sharedShare / sharedShareAll are added by the registry lint: how much of a scene is identical to other scenes of its pack / of any pack): min is the least allowed, max the most. Keys starting with \"_\" and \"note\" are documentation. The structural rules (valid markup, unique ids, refs resolve, no transform on an x-* element, classes defined in css, sky gradient first, evening grade last) are always on and have no threshold.",
   "richness: a composite. Each component is its value over the corpus median (capped at 125 %), averaged: 1.0 is the median accepted drawing. It stops one inflated count from hiding thin everything else. Its floor for scenes (0.66) is about the 3rd percentile, above the five thinnest accepted scenes, which are listed under waivers.",
   "waivers: [{ref, rule, reason}]: an accepted item that does not meet one rule. Every waiver must still be needed (tests/anim-quality.test.mjs fails when a waived rule passes, so the list only shrinks), and the list is capped. Never add one for new work: fix the drawing.",
-  "To raise the bar after better scenes land: `node tools/anim-pack.mjs calibrate` shows threshold vs corpus; `calibrate --propose` prints thresholds computed from today's corpus. Never lower a threshold to let a drawing pass."
+  "To raise the bar after better scenes land: `node tools/anim-pack.mjs calibrate` shows threshold vs corpus; `calibrate --propose` prints thresholds computed from today's corpus. Never lower a threshold to let a drawing pass.",
+  "\"composed\": a composed scene (item.composed: library objects, scene data, the canvas renderer) is judged ONLY by the composed profile (tools/lib/scene-lint.mjs): data, perf, the bar, placement variety and care. Its floors are designed (designed: true) and re-based at the convert stage. \"standard\" says which profile is the new standard and which are the legacy tier; \"object\" holds the object lint limits."
  ],
  "_corpus": {
   "measured": "2026-10-07",
@@ -1111,6 +1112,188 @@
    "warnMax": 2,
    "median": 1,
    "note": "corpus n=330: min 0, p3 0, p10 0, median 1, p90 2, max 6"
+  }
+ },
+ "standard": {
+  "profile": "composed",
+  "legacyProfiles": [
+   "scene",
+   "scene-legacy",
+   "scene-rich"
+  ],
+  "note": "THE NEW STANDARD (docs/dev/SCENE_ENGINE.md section 15, user decision 7 Oct 2026): the rich Yateley and Fleet scenes are the bar. A full scene is GOLD when it is composed (object library, canvas renderer) and passes the whole composed profile, perf included. Every other profile keeps its floors and keeps passing, but those floors are now the LEGACY tier: a full scene judged by them is below the new standard, whatever its score. Tiers: gold, composed (failing a bar or perf rule), upgrading (a legacy scene with a draft upgrade), rich (the hand-drawn Yateley and Fleet views: the look of the bar, too slow), legacy."
+ },
+ "composed": {
+  "designed": true,
+  "_note": "DESIGNED floors (section 10.2 and 15.2), not calibrated: no composed scene existed when they were set. `calibrate` skips this profile until the convert stage re-bases it on the composed bar scenes (15.4: calibrate --profile composed --on bar), and a re-base only ever RAISES a floor. lintScene (tools/lib/scene-lint.mjs) reads every block below.",
+  "data": {
+   "_note": "From the COMPILED scene at LOD 1 in the default season (sceneCompile stats). Static placements are free per frame (baked into the layer bitmaps); animatedDraws are the sprites drawn per frame.",
+   "placements": {
+    "max": 8000
+   },
+   "animatedDraws": {
+    "max": 300
+   },
+   "actors": {
+    "max": 40
+   },
+   "flockBirds": {
+    "max": 30
+   },
+   "particles": {
+    "max": 250
+   },
+   "layersUsed": {
+    "min": 5,
+    "max": 8
+   },
+   "bitmaps": {
+    "max": 6
+   },
+   "distinctSprites": {
+    "warnMax": 300,
+    "max": 600
+   },
+   "spriteMB": {
+    "max": 64
+   },
+   "dataBytes": {
+    "max": 24000
+   },
+   "rowBytes": {
+    "max": 400
+   },
+   "svgFillBytes": {
+    "max": 1000000
+   },
+   "svgTileBytes": {
+    "max": 150000
+   },
+   "signs": {
+    "max": 6
+   }
+  },
+  "perf": {
+   "_note": "scene perf (or scene lint --perf): the real canvas renderer in headless Chrome at 1600 x 900, dpr 1, over 3 s. The limits are for a normal laptop or --gpu; under software raster (the headless default) they are multiplied by swFactor. The reviewer re-measures swFactor on the demo and corrects it when the measured ratio differs by more than 20 %.",
+   "swFactor": 1.75,
+   "dynMs": {
+    "max": 6
+   },
+   "drawMs": {
+    "max": 8
+   },
+   "drawP95": {
+    "max": 12
+   },
+   "firstBakeMs": {
+    "warnMax": 300,
+    "max": 600
+   }
+  },
+  "bar": {
+   "_note": "The bar rules (15.2): what makes the rich Yateley and Fleet scenes look finished. groundCover and coverItems are per setting; seasonDeltaE is the CIE76 colour change of the nature fills (summer to winter, summer to autumn) away from the tropics.",
+   "depthLayers": {
+    "min": 5
+   },
+   "groundCover": {
+    "natural": 0.85,
+    "mixed": 0.85,
+    "urban": 0.75,
+    "interior": 0
+   },
+   "coverItems": {
+    "natural": 300,
+    "mixed": 300,
+    "urban": 120,
+    "interior": 0
+   },
+   "movers": {
+    "min": 15
+   },
+   "travellers": {
+    "min": 6
+   },
+   "motionKinds": {
+    "min": 4
+   },
+   "signature": {
+    "min": 1,
+    "minHeight": 180
+   },
+   "seasonDeltaE": {
+    "min": 6
+   },
+   "shadows": {
+    "min": 0.6
+   },
+   "nightLights": {
+    "min": 12
+   }
+  },
+  "variety": {
+   "_note": "Placement variety (10.2): REUSE of library objects is good; stamps, rows and stacks are not. Per object placed minPlaced or more times, per category with categoryAt or more placements.",
+   "minPlaced": 6,
+   "scaleSpread": {
+    "min": 0.25
+   },
+   "flipShare": {
+    "min": 0.2,
+    "max": 0.8
+   },
+   "tintUseAt": 20,
+   "grid": {
+    "max": 0.5
+   },
+   "categoryAt": 15,
+   "species": {
+    "min": 2
+   },
+   "topShare": {
+    "max": 0.8
+   },
+   "stackedGap": 6
+  },
+  "care": {
+   "_note": "The care rules for composed scenes (8.5, CARE_RULES in tools/lib/anim-region.mjs): life comes from animals, birds, boats and vehicles; people are a few tiny anonymous silhouettes; no crowds.",
+   "people": {
+    "max": 8,
+    "station": 10
+   },
+   "crowd": {
+    "n": 4,
+    "within": 120
+   },
+   "personShapes": {
+    "max": 60
+   },
+   "personHeight": {
+    "max": 70
+   }
+  }
+ },
+ "object": {
+  "_note": "The object lint (2.6): node tools/anim-pack.mjs object lint.",
+  "size": [
+   4,
+   2000
+  ],
+  "shapes": {
+   "max": 600
+  },
+  "pathKB": {
+   "max": 60
+  },
+  "buildMs": {
+   "max": 25
+  },
+  "landmarkShapes": {
+   "min": 80
+  },
+  "landmarkGlow": {
+   "min": 10
+  },
+  "glow": {
+   "min": 4
   }
  },
  "waivers": [

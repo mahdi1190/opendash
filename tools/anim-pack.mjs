@@ -11,6 +11,21 @@
 //   node tools/anim-pack.mjs brief <region> --kind scene|element [--batch N --of M] [--group g] [--out dir] [--clean] [--note text] [--clear-notes]   (tools/lib/anim-cmd/brief.mjs)
 //   node tools/anim-pack.mjs guard --owned <file>[,<file>...] [--base <ref>]                           (tools/lib/anim-cmd/guard.mjs)
 //
+// Composed scenes, the object library and THE NEW STANDARD (docs/dev/SCENE_ENGINE.md; tools/lib/anim-cmd/object.mjs, scene.mjs):
+//   node tools/anim-pack.mjs object new <cat>.<name> [--kit "K.tree('alder')"] [--variants N] [--kits a,b] [--role r]
+//   node tools/anim-pack.mjs object lint [<id>,...] [--json]  |  object sheet <id>[,...] [--canvas] [--mode night]  |  object list [--kit k] [--role r]
+//   node tools/anim-pack.mjs scene new <pack> <id> [--brief f.md | --archetype <id> --row '<json>'] [--lat .. --lon=.. --heading ..]
+//   node tools/anim-pack.mjs scene upgrade <ref> [--box x0,y0,x1,y1 | --landmark <id>] [--archetype <id>] [--slug s] [--dry-run]
+//   node tools/anim-pack.mjs scene lint|sheet|perf [<ref>,... | --pack <id> | --region <id> | --archetype <id> --table <id> [--rows N | --sample N]]
+//                            [--upgrades] [--perf] [--gpu] [--times] [--seasons] [--compare] [--contact] [--json]
+//   lint and sheet also take --at <ISO> [--location lat,lon] [--season s] (the live sky and the retrofit overlay); status takes --standard and --all.
+//
+// THE NEW STANDARD: the rich Yateley and Fleet scenes are the bar (reference prints it first). A composed scene (item.composed) is judged by the
+// composed profile (tools/lib/scene-lint.mjs: data, the bar, placement variety, care, and perf with scene lint --perf) and is GOLD when it
+// passes; every hand-drawn scene keeps its own floors as the LEGACY tier ("below the new standard"). The workflow for a new scene:
+//   brief -> compose from the library (object list --kit; an archetype when one fits) -> add objects if needed (object new / lint / sheet)
+//   -> scene lint --perf -> scene sheet --times --seasons -> review.
+//
 // lint      measures every full scene and small item against tools/anim-quality.json (calibrated on the accepted
 //           corpus) and prints PASS / FAIL per rule; exit code 2 when anything fails. A pass is still checked against the redraw
 //           targets (richness, thin spots): the thin spots of every selected item are printed (--quiet silences them).
@@ -41,7 +56,8 @@ import { join, resolve, dirname, basename } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { measure, check, profileFor, applyWaivers, ruleTable, checkCss, richness, describe, proposeThresholds, shapeKeys, sharedShares, thinSpots, stableIds, isLegacyProfile, bytesCapFor, TARGETS, RULE_PLAN } from './lib/anim-quality.mjs';
-import { loadRegistry, renderItems, contactSheet, repoRoot, findBrowser, CROPS, SIZES, DEFAULT_AT } from './lib/anim-render.mjs';
+import { loadRegistry, renderItems, contactSheet, repoRoot, findBrowser, skyFor, parseLocation, CROPS, SIZES, DEFAULT_AT } from './lib/anim-render.mjs';
+import { engineOf, lintScene, retroCheck, standardOf } from './lib/scene-lint.mjs';
 import { fileProblems, regions } from './lib/anim-region.mjs';
 import { launchChrome } from './release-chrome.mjs';
 
@@ -140,20 +156,46 @@ export function measureRegistry(reg, entries = reg.items(), thresholds = loadThr
     if (!mine.length) continue;
     const inSet = new Set(mine.map(r => r.entry.ref));
     const list = mine.map(r => ({ ref: r.entry.ref, pack: r.entry.pack, keys: r.metrics._keys }));
-    for (const e of reg.items()) if (e.full === full && !inSet.has(e.ref)) list.push({ ref: e.ref, pack: e.pack, keys: cache.get(e.ref) || cache.set(e.ref, shapeKeys(reg.html(e.item))).get(e.ref) });
+    for (const e of reg.items()) if (e.full === full && !e.composed && !inSet.has(e.ref)) list.push({ ref: e.ref, pack: e.pack, keys: cache.get(e.ref) || cache.set(e.ref, shapeKeys(reg.html(e.item))).get(e.ref) });
     const shares = sharedShares(list);
     mine.forEach((r, i) => { r.metrics.sharedShare = shares[i].pack; r.metrics.sharedShareAll = shares[i].all; });
   }
   return rows;
 }
 
-/** Lint registry entries. Returns {results, packCss, staleWaivers, summary}; a result is {ref, pack, profile, metrics, failures, waived}. */
-export function lintRegistry(reg, thresholds, entries = reg.items()) {
-  const results = measureRegistry(reg, entries, thresholds).map(({ entry: e, metrics }) => {
+/**
+ * Lint registry entries. Returns {results, packCss, staleWaivers, summary}; a result is {ref, pack, profile, metrics, failures, waived, tier}.
+ * A COMPOSED item (item.composed) is judged by the composed profile (lintScene, tools/lib/scene-lint.mjs: data, the bar, variety, care;
+ * its result also carries `rules`, every PASS / FAIL row); every other item by measure / check as before. `tier` is the new standard's
+ * (standardOf: gold, composed, upgrading, rich, legacy; null for small items). With `sky` (an o.sky, or a function entry -> o.sky: the
+ * tools' --at / --location), a scene whose markup then carries the retrofit overlay (g.sr-retro) is also checked against the retro rules;
+ * the base art is still measured without it.
+ */
+export function lintRegistry(reg, thresholds, entries = reg.items(), { sky = null } = {}) {
+  const composed = entries.filter(e => profileFor(e, thresholds) === 'composed'), plain = entries.filter(e => !composed.includes(e));
+  const results = measureRegistry(reg, plain, thresholds).map(({ entry: e, metrics }) => {
     const profile = profileFor(e, thresholds);
-    const split = applyWaivers(check(metrics, profile, thresholds), e.ref, thresholds);
-    return { ref: e.ref, pack: e.pack, slot: e.slot, full: e.full, rich: !!e.rich, profile, metrics, failures: split.failures, waived: split.waived };
+    let fails = check(metrics, profile, thresholds);
+    if (sky && e.full) {
+      const o = typeof sky === 'function' ? sky(e) : sky;
+      if (o) fails = fails.concat(retroCheck(reg.html(e.item, { live: true, size: 'fill', sky: o }), { classes: reg.classesFor(e.packObj) }).filter(r => !r.ok).map(r => ({ rule: r.rule, message: r.message, value: r.value })));
+    }
+    const split = applyWaivers(fails, e.ref, thresholds);
+    return { ref: e.ref, pack: e.pack, slot: e.slot, full: e.full, rich: !!e.rich, profile, metrics, failures: split.failures, waived: split.waived, tier: standardOf(e, null, null) };
   });
+  if (composed.length) {
+    const E = engineOf(reg);
+    for (const e of composed) {
+      let r;
+      try { r = E.ready ? lintScene(e.item, thresholds, { E, item: e.item, ref: e.ref }) : null; } catch (err) { r = { pass: false, rules: [{ group: 'data', rule: 'compile', ok: false, value: 'error', limit: 'compiles', message: err.message }], metrics: {} }; }
+      if (!r) r = { pass: false, rules: [{ group: 'data', rule: 'engine', ok: false, value: 'missing', limit: 'the scene engine', message: 'a composed item needs the scene engine (src/app/70-scene-0core.js), which this checkout does not load' }], metrics: {} };
+      const split = applyWaivers(r.rules.filter(x => !x.ok).map(x => ({ rule: x.rule, group: x.group, message: x.message, value: x.value })), e.ref, thresholds);
+      const lint = { pass: !split.failures.length };
+      results.push({ ref: e.ref, pack: e.pack, slot: e.slot, full: true, rich: true, composed: true, profile: 'composed', metrics: r.metrics, rules: r.rules, warnings: r.warnings || [], failures: split.failures, waived: split.waived, tier: standardOf(e, lint, null) });
+    }
+    const order = new Map(entries.map((e, i) => [e.ref, i]));
+    results.sort((a, b) => order.get(a.ref) - order.get(b.ref));
+  }
   const packCss = [];
   for (const id of new Set(entries.map(e => e.pack))) {
     const p = reg.packs().find(x => x.id === id);
@@ -173,6 +215,10 @@ const pad = (s, n) => String(s).padEnd(n);
 const lpad = (s, n) => String(s).padStart(n);
 
 function printRuleTable(out, r, thresholds) {
+  if (r.profile === 'composed') {
+    for (const row of r.rules || []) out(`    ${row.ok ? (row.warn ? 'WARN' : 'PASS') : r.waived.some(f => f.rule === row.rule) ? 'WAIV' : 'FAIL'}  ${pad(row.group, 8)} ${pad(row.rule, 16)} ${lpad(row.value == null ? '-' : row.value, 12)}   ${row.limit || ''}`);
+    return;
+  }
   for (const row of ruleTable(r.metrics, r.profile, thresholds, [...r.failures, ...r.waived])) {
     const waived = r.waived.some(f => f.rule === row.rule);
     out(`    ${row.ok ? 'PASS' : waived ? 'WAIV' : 'FAIL'}  ${pad(row.rule, 22)} ${lpad(row.value, 8)}   ${row.limit}`);
@@ -181,6 +227,7 @@ function printRuleTable(out, r, thresholds) {
 
 /** How an item stands against the redraw targets (TARGETS): its richness index, its thin spots and what misses. */
 function targetOf(r, thresholds) {
+  if (r.profile === 'composed') return { index: null, thin: [], miss: [] };   // judged by the bar, not by the corpus targets
   const rs = thresholds[r.profile] && thresholds[r.profile].richness;
   const index = rs ? richness(r.metrics, rs).index : null;
   const thin = thinSpots(r.metrics, r.profile, thresholds);
@@ -192,7 +239,7 @@ function targetOf(r, thresholds) {
 
 const lint = {
   summary: 'measure every full scene and small item against the calibrated thresholds, print the thin spots (exit 2 on any failure)',
-  usage: 'lint [--pack <id>] [--ref <ref,ref>] [--key <key,key>] [--file <path>] [--only small|scenes] [--json] [--rules] [--quiet]',
+  usage: 'lint [--pack <id>] [--ref <ref,ref>] [--key <key,key>] [--file <path>] [--only small|scenes] [--at <ISO> [--location lat,lon]] [--season s] [--json] [--rules] [--quiet]',
   options: {
     pack: { type: 'string', multiple: true, help: 'lint one pack (repeatable)' },
     ref: { type: 'string', multiple: true, help: 'lint these items (<pack>/<id>, comma separated)' },
@@ -202,8 +249,12 @@ const lint = {
     rules: { type: 'boolean', help: 'print the PASS / FAIL table of every rule for every selected item (default when 3 or fewer items)' },
     quiet: { type: 'boolean', help: 'print only failures and the summary: no thin spots, no redraw-target lines' },
     only: { type: 'string', help: 'small | scenes: lint only the small items, or only the full-screen scenes, of the selection (e.g. a pack file with --file)' },
+    at: { type: 'string', help: 'an ISO time (2026-10-07T21:30:00Z): also render each scene with the LIVE sky of that moment (at --location, else the place of the scene) and check the retrofit overlay it carries (at most 6,000 bytes, every sr-* class defined). The base art is still judged without it' },
+    location: { type: 'string', help: 'lat,lon for --at (default: the place of each scene)' },
+    season: { type: 'string', help: 'spring | summer | autumn | winter: the season passed to the renderers (composed scenes and the retrofit overlay)' },
   },
   notes: [
+    'THE NEW STANDARD (docs/dev/SCENE_ENGINE.md section 15): a composed scene (item.composed) is judged by the composed profile (data, the bar, placement variety, care; scene lint adds perf) and prints GOLD when it passes. Every hand-drawn full scene is judged by its own (legacy) floors and prints "(legacy floors: below the new standard)" even when it passes: new scenes are composed (scene new, scene upgrade).',
     'A pass is still measured against the redraw targets (richness, thin spots). Thin spots are ADVISORY, never a failure: the levels in tools/anim-quality.json (warnMin / warnMax) are the 10th / 90th percentile of the accepted corpus, and each thin spot prints what to do about it.',
     'Counting: a <path> that carries the class us-lit (a row of lit panes drawn as ONE path of many sub-paths) counts as ONE shape and ONE lit pane group, however many panes it holds. That is the cheap way to draw a lit row (one path, not forty rects), but the pane count does not raise `shapes`.',
     'Seeds: stars(), birds(), shimmer(), puffs(), ridge() and canopy() draw the SAME shapes for the same seed, and identical shapes count as copies (sharedShare / sharedShareAll): give every call its own seed, also across scenes and files.',
@@ -222,12 +273,14 @@ const lint = {
     const t0 = Date.now();
     const entries = keyFilter(reg, onlyKind(args, selectEntries(reg, { refs: splitList(args.ref), packs: splitList(args.pack), baseline })), splitList(args.key));
     if (files.length && !entries.length) { ctx.err(`lint: the file(s) loaded but registered no new or changed ${args.only === 'small' ? 'small item' : args.only === 'scenes' ? 'scene' : 'item'}, so there is nothing to lint. A scene file only shows once a pack item uses its key (the pack file of its group calls B.scenes()); a pack file must call animRegisterPack; the file must be saved with a scene in it.`); return 1; }
-    const res = lintRegistry(reg, thresholds, entries);
+    const loc = parseLocation(args.location);
+    if (args.season && !['spring', 'summer', 'autumn', 'winter'].includes(args.season)) throw new Error('--season must be spring, summer, autumn or winter');
+    const res = lintRegistry(reg, thresholds, entries, { sky: args.at ? (e) => skyFor(reg, e.item, { at: args.at, location: loc }) : null });
     const ms = Date.now() - t0;
     const fail = res.summary.failing > 0 || res.packCss.length > 0;
     const targets = new Map(res.results.map(r => [r.ref, targetOf(r, thresholds)]));
     if (args.json) {
-      ctx.out(JSON.stringify({ ok: !fail, ms, summary: res.summary, packCss: res.packCss, staleWaivers: res.staleWaivers, targets: TARGETS, items: res.results.map(r => ({ ref: r.ref, pack: r.pack, profile: r.profile, pass: !r.failures.length, failures: r.failures, waived: r.waived, thin: targets.get(r.ref).thin, richness: targets.get(r.ref).index, targetMiss: targets.get(r.ref).miss, metrics: r.metrics })) }, null, 1));
+      ctx.out(JSON.stringify({ ok: !fail, ms, summary: res.summary, packCss: res.packCss, staleWaivers: res.staleWaivers, targets: TARGETS, items: res.results.map(r => ({ ref: r.ref, pack: r.pack, profile: r.profile, tier: r.tier, pass: !r.failures.length, rules: r.rules, failures: r.failures, waived: r.waived, thin: targets.get(r.ref).thin, richness: targets.get(r.ref).index, targetMiss: targets.get(r.ref).miss, metrics: r.metrics })) }, null, 1));
       return fail ? 2 : 0;
     }
     const out = ctx.out, quiet = !!args.quiet;
@@ -247,13 +300,15 @@ const lint = {
       const tg = targets.get(r.ref);
       if (!r.failures.length && !showRules && !(selected && !quiet)) continue;
       out('');
-      out(`${r.failures.length ? 'FAIL' : 'PASS'}  ${r.ref}  (${r.profile}${r.waived.length ? `, waived: ${r.waived.map(f => f.rule).join(', ')}` : ''})`);
+      const tierNote = r.tier === 'gold' ? '  GOLD' : r.tier === 'composed' ? '  (composed: below the bar until it passes)' : r.tier && !r.failures.length ? `  (legacy floors: below the new standard${r.tier === 'rich' ? '; rich: the look of the bar, converted at the convert stage' : r.tier === 'upgrading' ? '; an upgrade is drafted' : ''})` : '';
+      out(`${r.failures.length ? 'FAIL' : 'PASS'}  ${r.ref}  (${r.profile}${r.waived.length ? `, waived: ${r.waived.map(f => f.rule).join(', ')}` : ''})${tierNote}`);
+      for (const w of r.warnings || []) out(`    warn: ${w}`);
       if (showRules) printRuleTable(out, r, thresholds);
       if (r.failures.length) {
         if (showRules) out('    how to fix:');
         for (const f of r.failures) out(`    - [${f.rule}] ${f.message}`);
       }
-      if (quiet) continue;
+      if (quiet || r.profile === 'composed') continue;
       const shown = tg.thin.slice(0, showRules ? 8 : 6);
       out(`    ${tg.index != null ? `richness ${tg.index} (target >= ${TARGETS.richness.toFixed(2)}, 1.0 = the median accepted ${r.full ? 'scene' : 'item'}); ` : ''}thin spots ${tg.thin.length} (target <= ${TARGETS.maxThinSpots})${tg.miss.length ? `   MISSES THE TARGET: ${tg.miss.join(', ')}: redraw, do not pad` : '   target met'}${tg.thin.length ? `; a pass, but ${tg.thin.some(t => t.side === 'high') ? 'beyond the 10th / 90th percentile of' : 'thinner than 90 % of'} the accepted ${r.full ? 'scenes' : 'items'}, aim for the median:` : ''}`);
       for (const t of shown) out(thinLine(t));
@@ -266,6 +321,8 @@ const lint = {
     const missed = res.results.filter(r => !r.failures.length && targets.get(r.ref).miss.length);
     if (!quiet && missed.length) out(`\nredraw target missed by ${missed.length} passing item(s): ${missed.map(r => r.ref).join(', ')} (richness >= ${TARGETS.richness.toFixed(2)} and at most ${TARGETS.maxThinSpots} thin spots; a redraw is at most ${TARGETS.maxRedraws} attempts, then it is reported as NOT DONE)`);
     out('');
+    const tiers = {}; for (const r of res.results) if (r.tier) tiers[r.tier] = (tiers[r.tier] || 0) + 1;
+    if (Object.keys(tiers).length) out(`standard: ${tiers.gold || 0} of ${res.summary.scenes} full scenes at the new standard (gold)${['composed', 'upgrading', 'rich', 'legacy'].filter(t => tiers[t]).map(t => `; ${tiers[t]} ${t}`).join('')}${tiers.legacy || tiers.rich || tiers.upgrading ? ' (below the new standard)' : ''}`);
     out(fail ? `FAIL: ${res.summary.failing} item(s) with ${res.summary.failures} failing rule(s). Compare with \`node tools/anim-pack.mjs reference\`, fix, re-run.`
       : `PASS: ${res.summary.items} items clean${res.summary.waived ? ` (${res.summary.waived} documented waivers)` : ''}.`);
     return fail ? 2 : 0;
@@ -278,7 +335,7 @@ const lint = {
 const MODES = ['light', 'dark', 'night'];
 const sheet = {
   summary: 'render items to PNG (scenes 1600 x 900 paused at 6.5 s, small items 512 x 512) so they can be looked at; --still, --at, --sizes, --key',
-  usage: 'sheet <ref,ref | --pack <id> | --file <path>> [--key <key,key>] [--only small|scenes] [--mode light|dark|night] [--crop square|phone] [--still] [--at <ms>] [--sizes] [--out <dir>] [--contact]',
+  usage: 'sheet <ref,ref | --pack <id> | --file <path>> [--key <key,key>] [--only small|scenes] [--mode light|dark|night] [--crop square|phone] [--still] [--at <ms> | --at <ISO> [--location lat,lon]] [--season s] [--sizes] [--out <dir>] [--contact]',
   options: {
     pack: { type: 'string', multiple: true, help: 'render every item of this pack (repeatable)' },
     file: { type: 'string', multiple: true, help: 'a scene or pack file (not registered yet, or already in src/app): renders what it adds (new or changed items)' },
@@ -286,7 +343,9 @@ const sheet = {
     mode: { type: 'string', default: 'light', help: 'light | dark | night (night = dark theme at night time: lit windows, stars)' },
     crop: { type: 'string', help: 'square | phone: render only what a square tile (the central 900 of the 1600 units) or a portrait phone (the central 420) shows of a scene: the subject must still be the picture there (files get a -square / -phone suffix)' },
     still: { type: 'boolean', help: 'animations OFF: the rest frame, exactly what reduced motion shows (a rising sun is at its place, a falling leaf or a half-faded drop is not caught mid-animation). Files get a -still suffix. Without it the animations are paused at --at' },
-    at: { type: 'string', help: `the time the animations are paused at, in ms (default ${DEFAULT_AT}); ignored with --still. A non-default time gets a -t<ms> suffix, so the renders do not overwrite each other` },
+    at: { type: 'string', help: `a whole number: the time the animations are paused at, in ms (default ${DEFAULT_AT}; ignored with --still; a -t<ms> suffix). An ISO time (2026-10-07T21:30:00Z): the LIVE sky of that moment (at --location, else the place of each scene): the real sun, moon and stars, the grade, lit windows after dusk, and on a hand-drawn region scene the retrofit overlay (a -<time> suffix)` },
+    location: { type: 'string', help: 'lat,lon for --at <ISO> (default: the place of each scene)' },
+    season: { type: 'string', help: 'spring | summer | autumn | winter: the season passed to the renderers (a -<season> suffix)' },
     sizes: { type: 'boolean', help: `also write <...>-sizes.png for every small item: the item at ${SIZES.join(', ')} px, at its real pixel size (1x), so "reads at 28 px" can be checked. With --contact a contact sheet of the strips is written too. Scenes have no strip` },
     out: { type: 'string', help: 'output folder (default .anim-ref/sheets/)' },
     contact: { type: 'boolean', help: 'also write one contact-sheet PNG with all the renders (on a page that matches --mode: a light render sits on a light page)' },
@@ -302,7 +361,11 @@ const sheet = {
     if (!MODES.includes(mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
     const crop = args.crop || '';
     if (crop && !CROPS[crop]) throw new Error(`--crop must be one of ${Object.keys(CROPS).join(', ')}`);
-    const at = args.at == null ? DEFAULT_AT : toMs(args.at), still = !!args.still;
+    const iso = args.at != null && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(args.at).trim());   // an ISO time (YYYY-MM-DDTHH:MM ...) is a live sky; anything else is the pause time in ms
+    const at = args.at == null || iso ? DEFAULT_AT : toMs(args.at), still = !!args.still;
+    const loc = parseLocation(args.location);
+    if (args.season && !['spring', 'summer', 'autumn', 'winter'].includes(args.season)) throw new Error('--season must be spring, summer, autumn or winter');
+    if (iso && !Number.isFinite(Date.parse(args.at))) throw new Error(`--at: "${args.at}" is not a valid ISO time (such as 2026-10-07T21:30:00Z)`);
     const files = splitList(args.file);
     const reg = loadRegistry(ctx.root, { extraFiles: files });
     const baseline = files.length ? loadRegistry(ctx.root, { omit: files.map(f => basename(f)) }) : null;   // without the files: a file already in src/app adds all its items
@@ -317,9 +380,10 @@ const sheet = {
     if (args.sizes && entries.every(e => e.full)) ctx.err('note: --sizes draws a strip for small items only; the selection is all full-screen scenes (--crop phone shows what a narrow screen keeps)');
     const chrome = await launchChrome({ executable: exe });
     try {
-      const done = await renderItems(reg, entries, { mode, outDir, chrome, crop, still, at, sizes: !!args.sizes, onProgress: (i, n, ref) => { if (!args.json) ctx.err(`  [${i}/${n}] ${ref}`); } });
+      const liveTag = (iso ? '-' + String(args.at).replace(/[:]/g, '').replace(/\.\d+Z$/, 'Z') : '') + (args.season ? '-' + args.season : '');
+      const done = await renderItems(reg, entries, { mode, outDir, chrome, crop, still, at, sizes: !!args.sizes, sky: iso ? (e) => skyFor(reg, e.item, { at: args.at, location: loc }) : null, season: args.season || null, tag: liveTag, onProgress: (i, n, ref) => { if (!args.json) ctx.err(`  [${i}/${n}] ${ref}`); } });
       for (const d of done) { ctx.out(d.file); if (d.sizesFile) ctx.out(d.sizesFile); }
-      const tag = still ? '-still' : at !== DEFAULT_AT ? `-t${at}` : '';
+      const tag = (still ? '-still' : at !== DEFAULT_AT ? `-t${at}` : '') + liveTag;
       if (args.contact) {
         ctx.out(await contactSheet(done, { file: join(outDir, `contact-${mode}${crop && entries.some(e => e.full) ? '-' + crop : ''}${tag}.png`), chrome, mode, columns: entries.every(e => !e.full) ? 6 : crop === 'phone' ? 8 : crop === 'square' ? 5 : 3 }));
         if (args.sizes && done.some(d => d.sizesFile)) ctx.out(await contactSheet(done, { file: join(outDir, `contact-${mode}-sizes${tag}.png`), chrome, mode, sizes: true, columns: 2 }));
@@ -333,18 +397,18 @@ const sheet = {
    reference
    --------------------------------------------------------------------------------------------- */
 const reference = {
-  summary: 'print the gold-standard exemplars to match (and the weaker scenes and small items to beat); --render writes their PNGs to .anim-ref/ (light, night and dark)',
+  summary: 'print THE BAR (the new standard: the rich Yateley and Fleet scenes), then the legacy exemplars and the weaker ones to beat; --render writes their PNGs to .anim-ref/',
   usage: 'reference [--render] [--mode light|dark|night] [--json]',
   options: {
-    render: { type: 'boolean', help: 'render the exemplars to .anim-ref/ (git-ignored) and print the paths. Without --mode: the exemplars in light, night AND dark (every PNG the briefs cite: scenes light + night, small items light + dark), the weaker ones in light' },
+    render: { type: 'boolean', help: 'render the exemplars to .anim-ref/ (git-ignored) and print the paths. Without --mode: the exemplars in light, night AND dark (every PNG the briefs cite: scenes light + night, small items light + dark), the bar (the new standard) in light and night, the weaker ones in light. A composed bar scene is also rendered in its four seasons' },
     mode: { type: 'string', help: 'with --render: only this mode (light | dark | night) for everything' },
     json: { type: 'boolean', help: 'machine-readable output (with --render: rendered is {ref: {mode: path}})' },
   },
   async run(args, ctx) {
     const ref = loadReference(ctx.root);
     if (args.json && !args.render) { ctx.out(JSON.stringify(ref, null, 1)); return 0; }
-    const weakerItems = ref.weakerItems || [];
-    const all = [...ref.scenes, ...ref.items, ...ref.weaker, ...weakerItems];
+    const weakerItems = ref.weakerItems || [], bar = ref.bar || [];
+    const all = [...bar, ...ref.scenes, ...ref.items, ...ref.weaker, ...weakerItems];
     const paths = new Map();   // ref -> {mode: path}
     if (args.mode && !MODES.includes(args.mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
     if (args.render) {
@@ -353,12 +417,20 @@ const reference = {
       if (!exe) throw new Error('No Chrome, Edge or Chromium found. Set CHROME_PATH to its executable (or PLAYWRIGHT_BROWSERS_PATH to a Playwright browsers folder).');
       const outDir = join(ctx.root, '.anim-ref');
       mkdirSync(outDir, { recursive: true });
-      const jobs = args.mode ? [[args.mode, all.map(x => x.ref)]] : [['light', all.map(x => x.ref)], ['night', [...ref.scenes, ...ref.items].map(x => x.ref)], ['dark', [...ref.scenes, ...ref.items].map(x => x.ref)]];
+      const jobs = args.mode ? [[args.mode, all.map(x => x.ref)]] : [['light', all.map(x => x.ref)], ['night', [...bar, ...ref.scenes, ...ref.items].map(x => x.ref)], ['dark', [...ref.scenes, ...ref.items].map(x => x.ref)]];
       const chrome = await launchChrome({ executable: exe });   // one browser for every mode
       try {
         for (const [mode, refs] of jobs) {
           const done = await renderItems(reg, selectEntries(reg, { refs }), { mode, outDir, chrome, onProgress: (i, n, r) => ctx.err(`  ${mode} [${i}/${n}] ${r}`) });
           for (const d of done) paths.set(d.ref, { ...(paths.get(d.ref) || {}), [mode]: d.file });
+        }
+        // a COMPOSED bar scene adapts to the date: render it in its four seasons too (a rich hand-drawn one is one season per item)
+        for (const b of bar.filter(x => x.kind === 'composed')) {
+          const e = selectEntries(reg, { refs: [b.ref] });
+          for (const season of ['spring', 'summer', 'autumn', 'winter']) {
+            const done = await renderItems(reg, e, { mode: 'light', outDir, chrome, season, tag: '-' + season });
+            for (const d of done) paths.set(d.ref, { ...(paths.get(d.ref) || {}), [season]: d.file });
+          }
         }
       } finally { await chrome.close(); }
     }
@@ -374,7 +446,8 @@ const reference = {
       }
     };
     ctx.out(ref._about || 'Gold-standard exemplars: match their craft, never copy their drawing.');
-    show(`FULL-SCREEN SCENES to study (${ref.scenes.length})`, ref.scenes, 'why');
+    if (bar.length) show(`THE BAR: the new standard every scene must reach (${bar.length}; docs/dev/SCENE_ENGINE.md section 15). Match their depth, cover, life and light, at the frame budget`, bar, 'why');
+    show(`LEGACY EXEMPLARS: FULL-SCREEN SCENES to study (${ref.scenes.length}): hand-drawn craft to learn from; below the new bar`, ref.scenes, 'why');
     show(`SMALL 64 x 64 ITEMS to study (${ref.items.length})`, ref.items, 'why');
     show(`DO BETTER THAN THESE SCENES (${ref.weaker.length}): accepted, but flat, blobby or crude`, ref.weaker, 'wrong');
     show(`DO BETTER THAN THESE SMALL ITEMS (${weakerItems.length}): accepted, but flat, blobby or crude`, weakerItems, 'wrong');
@@ -396,7 +469,7 @@ const calibrate = {
     const res = lintRegistry(reg, thresholds);
     for (const profile of Object.keys(RULE_PLAN)) {
       const rs = res.results.filter(r => r.profile === profile);
-      if (!rs.length) continue;
+      if (!rs.length || (thresholds[profile] && thresholds[profile].designed)) continue;   // a DESIGNED profile (composed) is re-based at the convert stage, not calibrated
       if (args.propose) {
         const caps = { bytes: bytesCapFor(profile, reg.limits) };
         ctx.out(JSON.stringify({ [profile]: proposeThresholds(rs.map(r => r.metrics), profile, { caps }) }, null, 1));
@@ -424,6 +497,7 @@ export const COMMANDS = { lint, sheet, reference, calibrate };
    --------------------------------------------------------------------------------------------- */
 /** The sections of the --help list (a command that is in none of them is listed last, under "Other"). */
 const HELP_GROUPS = [
+  ['Composed scenes and the object library: THE NEW STANDARD (docs/dev/SCENE_ENGINE.md)', ['object', 'scene']],
   ['Check and look at the art', ['lint', 'sheet', 'reference', 'calibrate']],
   ['Make a whole region (docs/dev/ANIMATION_PACKS.md, "Making a new region")', ['new', 'status', 'brief', 'guard']],
 ];
@@ -440,6 +514,9 @@ function usage(out, table = COMMANDS) {
   };
   for (const [title, names] of HELP_GROUPS) section(title, names);
   section('Other', Object.keys(table).filter(n => !shown.has(n)));
+  out('A new scene (the new standard): brief -> compose from the library (object list --kit <kit>; an archetype when one fits) -> object new / lint / sheet only if the subject needs a new object ->');
+  out('  scene lint <ref> --perf (GOLD) -> scene sheet <ref> --times --seasons --contact -> review. A hand-drawn region scene: scene upgrade <ref> --box ... -> scene sheet <ref> --compare --upgrades.');
+  out('');
   out('A new region, start to finish: new <id> "<Name>"  ->  fill the tables and the "Cultural care" section of its doc  ->  status <id>  ->  COMMIT the scaffold  ->  reference --render (once)  ->');
   out('  brief <id> --kind scene / --kind element  ->  each agent: lint --file <its file>, sheet --file <its file> (light AND night), report  ->  guard --owned <the files of every agent>  ->  status <id> --strict  ->  status <id> --declare-complete  ->  npm test.');
   out('\nRun `node tools/anim-pack.mjs <command> --help` for a command\'s options.');

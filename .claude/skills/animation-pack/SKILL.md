@@ -1,6 +1,6 @@
 ---
 name: animation-pack
-description: Make, extend and review OpenDash animation packs, regions and pieces - full-screen 1600x900 scenes (openings, signatures, "Welcome to <place>"), small 64x64 symbols and elements, place icons - at the exact style and quality of the existing US and Asia work. Use whenever someone adds, draws, redraws, extends or reviews animations for a place, country, state, city or region ("make animations for <place>", "add a Europe pack", "draw a scene for <city>", "an icon for <town>"), touches src/app/71-anim-*.js, 72-anim-pack-*.js or tools/anim-pack.mjs, or scores animation art. Enforces hard gates - study the gold standard, draw with the kit, lint pass with no waiver, look at light and night renders, score the rubric, independent review - so nothing below the corpus median ships.
+description: Make, extend and review OpenDash animation packs, regions and pieces - full-screen 1600x900 scenes (openings, signatures, "Welcome to <place>"), small 64x64 symbols and elements, place icons - at the exact style and quality of the existing US and Asia work. Use whenever someone adds, draws, redraws, extends or reviews animations for a place, country, state, city or region ("make animations for <place>", "add a Europe pack", "draw a scene for <city>", "an icon for <town>"), touches src/app/71-anim-*.js, 72-anim-pack-*.js or tools/anim-pack.mjs, or scores animation art; also composing scenes from the object library at THE NEW STANDARD (object, scene new / upgrade / lint / sheet / perf, archetypes, data tables). Enforces hard gates - study the gold standard, draw with the kit, lint pass with no waiver, look at light and night renders, score the rubric, independent review - so nothing below the corpus median ships.
 ---
 
 # Animation packs (OpenDash)
@@ -156,6 +156,27 @@ shared gradients through `U()` ids; no duplicate near-identical paths (draw the 
 
 **You do not know what a place looks like.** Draw what you are sure of (the landscape, the skyline) rather than a guess; never a stereotype, never a cliche stacked with every symbol of the place; the right season, climate and architecture.
 
+## Composed scenes, the object library and the new standard
+
+**The new standard (docs/dev/SCENE_ENGINE.md section 15).** The rich Yateley and Fleet scenes are THE BAR (`node tools/anim-pack.mjs reference` prints it first). Every NEW scene is COMPOSED: library objects placed by scene data and drawn by the canvas renderer, judged by the `composed` lint profile (data, the bar, placement variety, care; perf with `--perf`) and GOLD when it passes. Hand-drawn scenes are the LEGACY tier: they keep their own floors and are maintained, not added. A scene looks bad next to the bar when it is flat (one or two depth layers), bare (no ground cover), still (a few movers), generic (no signature) or lit wrong; the bar rules measure exactly those.
+
+**The workflow:** brief -> compose from the library (an archetype when one fits) -> add objects only if the subject needs one -> lint (quality + perf) -> sheet -> review.
+
+1. Brief: `node tools/anim-pack.mjs brief <pack> --kind composed` (a new scene), `brief <region> --kind upgrade` (hand-drawn region scenes, batches of 7 by suggested archetype), `brief <archetype> --kind archetype`, `brief <kit> --kind object`.
+2. Compose: `node tools/anim-pack.mjs object list --kit <kit>` shows what there is; `node tools/anim-pack.mjs scene new <pack> <id> --brief <file>` (or `--archetype <id> --row '<json>'`) writes a scene that compiles at once. Archetypes name ROLES, never object ids, so a new object reaches every scene of its kit.
+3. Objects (only when needed): `node tools/anim-pack.mjs object new <cat>.<name> --kits <kit> --role <role>`, then `object lint` and `object sheet <id> --mode night` (variants x seasons x night). Draw it once, well: variants, four seasons, hooks, glow on windows; a landmark has at least 80 shapes, the real structure and a night look.
+4. Lint: `node tools/anim-pack.mjs scene lint <ref> --perf` until it prints GOLD. Each failing rule says how far off it is and the fix.
+5. Look: `node tools/anim-pack.mjs scene sheet <ref> --times --seasons --contact` (dawn, noon, golden hour, dusk and night from the real sun; the four seasons), `--crop phone`, and for an upgrade `--compare --upgrades` (old vs new at noon and night). The LOOK gate stays: hold every sheet next to the bar.
+6. Batches (a London pack of hundreds of stations): `node tools/anim-pack.mjs scene lint --archetype station --table <table> --rows 200` prints one summary table; `scene perf --archetype ... --sample 3`, `scene sheet --archetype ... --sample 6 --contact`.
+
+**Performance: static is free, motion is budgeted.** Thousands of static placements are baked into at most 6 layer bitmaps and cost nothing per frame. Only animated sprites and effects cost: at most 300 animated draws and 6 ms of dynamic drawing in an 8 ms frame (x 1.75 under headless software raster). A rich look is dense static detail plus a measured number of well-chosen movers; when a scene is over budget the fix is in the DATA (wind strips instead of per-plant sway, fewer flock birds and particles), never a lower frame rate.
+
+**Upgrading a hand-drawn region scene:** `node tools/anim-pack.mjs scene upgrade <ref>` lists the old art's largest shape clusters; `--box x0,y0,x1,y1` extracts the landmark into a library object, suggests the archetype and writes a DRAFT (the app keeps the old art). Refine the landmark, compose around it, compare, lint; set `state: 'live'` only at GOLD with the compare sheet looked at in light and night. The item keeps its id, key, place fields, label, site, tags and `when`.
+
+**Care for composed scenes** (the same rules, the care text and the place win): people are tiny anonymous silhouettes (at most 8 per scene, 10 at a station, no crowds); life comes from animals, birds, boats and vehicles; no flags, emblems, holy figures or brands. The ONE exception to "no text" is the engine's place-name sign, only where the archetype declares signs (a station): a plain sans-serif board with line-colour bars, drawn from data. Never the TfL roundel, the Underground logotype, the line-diagram style or New Johnston, not even as decoration (the object lint rejects a ring with a bar across it).
+
+Cheat sheet: `references/scene-engine.md`. The spec: `docs/dev/SCENE_ENGINE.md`.
+
 ## Commands (all run from the repository root; `--root <dir>` works on another checkout)
 
 | Command | Use |
@@ -168,6 +189,8 @@ shared gradients through `U()` ids; no duplicate near-identical paths (draw the 
 | `node tools/anim-pack.mjs status [<id>] [--strict] [--short] [--json] [--no-lint] [--declare-complete]` | what is missing, orphaned, overlapping, failing; trips with no row; the reach; `--strict` exits 2 unless complete and clean (and the flag is set); `--declare-complete` sets `complete: true` |
 | `node tools/anim-pack.mjs brief <id> --kind scene\|element [--batch N] [--of M] [--group g] [--out dir [--clean]] [--note t] [--clear-notes]` | the agent briefs (about 7 scenes each; `--of M` is the number of batches, cut at group boundaries where that costs little, so sizes can differ; they cite this skill) and a `plan.json` to dispatch from; `--out` creates the scene stubs and stores the notes |
 | `node tools/anim-pack.mjs guard --owned <file>[,<file>...] [--base <ref>]` | the orchestrator's proof that only the batch's own files changed (exit 2 on any other file, a threshold, waiver, gold-standard or test change); an agent runs it on its own file for the GIT line |
+| `node tools/anim-pack.mjs object new\|lint\|sheet\|list ...` | the object library (`object new <cat>.<name> --kits k --role r`, `object lint [<id>]`, `object sheet <id> [--mode night] [--canvas]`, `object list [--kit k] [--role r]`) |
+| `node tools/anim-pack.mjs scene new\|upgrade\|lint\|sheet\|perf ...` | composed scenes: `scene new <pack> <id> --brief f`, `scene upgrade <ref> --box ...`, `scene lint <ref> --perf` (GOLD), `scene sheet <ref> --times --seasons --compare`, `scene perf`; batches with `--archetype a --table t [--rows N] [--sample N]` |
 | `node build.mjs --syntax` / `node build.mjs` / `npm test` / `node tools/privacy-scan.mjs` | the repo gates |
 
 Files: `src/app/71-anim-0region.js` (framework and the kit), `71-anim-region-<id>.js` (config), `71-anim-region-<id>-scenes-N.js` (scenes), `72-anim-pack-<id>-<group>.js` (packs); US scenes `71-anim-us2-scenes-*.js`, Asia `71-anim-asia2-scenes-*.js`;
