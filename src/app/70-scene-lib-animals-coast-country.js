@@ -86,6 +86,7 @@
     id: 'animal.pony', category: 'animal', size: [150, 140], variants: 3, seasonal: true, shapeBySeason: true, flippable: true, parts: ['legsFar', 'tail', 'body', 'legsNear', 'head'],
     palette: Object.assign({ base: {
       mane: ['#1e1a18', '#5a2e16', '#e6e2da'], maneL: ['#3a3430', '#7a4626', '#fbf8f2'], point: ['#1e1a18', '#6e3a1c', '#8a8680'], hoof: '#2a2420', nose: ['#2a2220', '#3a2a24', '#5a5654'], blaze: '#f2eee4',
+      rim: '#e2eaf8',   // the cool rim of light on the dark coats (back line, crest, face, knees): a sheen by day, the edge that keeps them readable at night
     } }, bySeason({
       c0: { spring: tone4('#6e4428'), summer: tone4('#7a4626'), autumn: tone4('#6a4430'), winter: tone4('#5e4634') },
       c1: { spring: tone4('#9a5430'), summer: tone4('#a8582c'), autumn: tone4('#94563a'), winter: tone4('#86583e') },
@@ -96,25 +97,48 @@
     tags: ['uk', 'new-forest', 'heath', 'common', 'countryside', 'pony', 'horse', 'grazing', 'kit:animals', 'kit:temperate', 'role:animal'],
     credit: 'coast-country kit (New Forest pony)',
     build(v, r, ctx) {
-      const s = ctx.season, C = `@c${v}`, shaggy = s === 'winter' || s === 'autumn';
-      const fore = x => `M${x - 6} -62L${x - 4} -32Q${x - 5} -14 ${x - 4} 0H${x + 4}Q${x + 4} -14 ${x + 4} -32L${x + 6} -62z`;
-      const hind = x => `M${x - 8} -70Q${x - 10} -46 ${x - 2} -34Q${x - 3} -14 ${x - 2} 0H${x + 6}Q${x + 5} -16 ${x + 6} -34Q${x + 10} -50 ${x + 10} -68z`;
-      const pts = x => `M${x - 4.2} -26H${x + 4.4}V0H${x - 4.2}z`;
-      const legsFar = [[`${C}.1`, fore(24) + hind(-28)], [`@point.${v}`, pts(24) + pts(-26), .9], ['#000000', fore(24) + hind(-28), .2], ['@hoof', rect(19.5, -3, 9, 3.4) + rect(-31, -3, 9, 3.4)]];
-      const legsNear = [[`${C}.0`, fore(34) + hind(-38)], [`${C}.2`, `M28 -60l2 24h3l-1 -24z`, .4], [`@point.${v}`, pts(34) + pts(-36)], ['@hoof', rect(29.5, -3, 9, 3.6) + rect(-41, -3, 9, 3.6)]];
+      const s = ctx.season, C = `@c${v}`, shaggy = s === 'winter' || s === 'autumn', graze = v === 1, rim = v < 2, kf = graze ? 6 : 0;
+      // the legs: a knee (hock) and a fetlock, the darker points hugging the lower leg and blending in below the knee (no
+      // block); X shears a foreleg forward by k at the hoof (the grazer sets its near foreleg forward)
+      const X = (x, k, y) => f1(x + k * (1 + y / 62)), P = (x, k = 0) => (dx, y) => `${X(x + dx, k, y)} ${y}`;
+      const fore = (x, k = 0) => { const p = P(x, k); return `M${p(-6, -62)}L${p(-4.2, -34)}Q${p(-5.2, -31)} ${p(-4, -28)}L${p(-3.4, -12)}Q${p(-4.6, -8)} ${p(-3.6, -4)}L${p(-4, 0)}H${X(x + 4, k, 0)}L${p(3.8, -4)}Q${p(5, -8)} ${p(3.6, -12)}L${p(3.6, -28)}Q${p(5.2, -31)} ${p(4.4, -34)}L${p(6, -62)}z`; };
+      const foreLow = (x, k = 0) => { const p = P(x, k); return `M${p(-4, -28)}L${p(3.6, -28)}L${p(3.6, -12)}Q${p(5, -8)} ${p(3.8, -4)}L${p(4, 0)}H${X(x - 4, k, 0)}L${p(-3.6, -4)}Q${p(-4.6, -8)} ${p(-3.4, -12)}z`; };
+      const hind = x => { const p = P(x); return `M${p(-8, -70)}Q${p(-11, -50)} ${p(-4, -38)}Q${p(-3.4, -34)} ${p(-2.4, -31)}L${p(-2.2, -12)}Q${p(-3.6, -8)} ${p(-2.4, -4)}L${p(-2.6, 0)}H${f1(x + 5.4)}L${p(5, -4)}Q${p(6.2, -8)} ${p(5, -12)}L${p(5, -28)}Q${p(6.4, -34)} ${p(6, -38)}Q${p(10, -52)} ${p(10, -68)}z`; };
+      const hindLow = x => { const p = P(x); return `M${p(-2.4, -31)}L${p(5, -28)}L${p(5, -12)}Q${p(6.2, -8)} ${p(5, -4)}L${p(5.4, 0)}H${f1(x - 2.6)}L${p(-2.4, -4)}Q${p(-3.6, -8)} ${p(-2.2, -12)}z`; };
+      const pn = P(34, kf), pt = { lin: [[0, `@point.${v}`, 0], [1, `@point.${v}`, 1]], x1: 0, y1: -29, x2: 0, y2: -20 };
+      const legsFar = [[`${C}.1`, fore(24) + hind(-28)], [pt, foreLow(24) + hindLow(-28), .9], ['#000000', fore(24) + hind(-28), .2], ['@hoof', rect(19.5, -3, 9, 3.4) + rect(-31, -3, 9, 3.4)]];
+      const legsNear = [[`${C}.0`, fore(34, kf) + hind(-38)], [`${C}.2`, `M${pn(-6, -60)}L${pn(-4, -36)}H${X(33, kf, -36)}L${pn(-2, -60)}z`, .4], [pt, foreLow(34, kf) + hindLow(-38)], ['@hoof', rect(29.5 + kf, -3, 9, 3.6) + rect(-41, -3, 9, 3.6)]];
+      if (rim) legsNear.push({ s: '@rim', w: 1.4, op: .85, d: `M${pn(4, -38)}Q${pn(4.8, -31)} ${pn(3.4, -25)}M-43.6 -43Q-41.6 -37.6 -39.8 -32` });
       const tail = [[`@mane.${v}`, 'M-46 -94Q-62 -88 -64 -64Q-66 -46 -58 -34Q-54 -30 -50 -36Q-56 -54 -48 -78z'], { s: `@maneL.${v}`, w: 1, op: .6, d: 'M-52 -86Q-60 -70 -58 -42M-56 -84Q-62 -66 -60 -46' }];
+      if (rim) tail.push({ s: '@rim', w: 1.3, op: .6, d: 'M-48.5 -92.5Q-60.5 -87 -62.4 -66' });
       const body = [[`${C}.0`, 'M-52 -80Q-54 -98 -32 -100H18Q40 -100 46 -84Q48 -64 36 -56Q20 -52 -2 -54H-34Q-54 -58 -52 -80z'],
         [`${C}.2`, 'M-44 -94Q-20 -102 18 -98Q-10 -96 -44 -90z', .55], [`${C}.1`, 'M-50 -66Q-10 -54 40 -62Q34 -56 20 -54H-34Q-46 -58 -50 -66z', .6], [`${C}.3`, 'M-48 -86Q-54 -76 -48 -66Q-44 -80 -40 -92z', .35]];
       if (!shaggy) body.push({ s: `${C}.2`, w: 1.2, op: .45, d: 'M-40 -88Q-20 -92 6 -90M-30 -80q14 -2 30 0' });
       else { let h = ''; for (let i = 0; i < 18; i++) { const x = -46 + i * 4.8 + rr(r, -1, 1); h += `M${f1(x)} ${f1(-56 + Math.abs(x) * .04)}l${f1(rr(r, -1, 1))} ${f1(rr(r, 3, 5))}`; } body.push({ s: `${C}.1`, w: 1.4, op: .7, d: h }, { s: `${C}.2`, w: .9, op: .3, d: 'M-40 -90l2 4M-30 -92l2 4M-20 -93l2 4M-8 -93l2 4M4 -92l2 4M-36 -80l2 4M-22 -82l2 4M-6 -82l2 4', detail: true }); }
-      // the neck and head as one part (it lowers to graze); mane along the crest, forelock, a white star on the bay
-      const head = [[`${C}.0`, 'M12 -96Q26 -114 48 -130L64 -116Q56 -96 46 -80Q30 -76 20 -82z'], [`${C}.1`, 'M46 -80Q56 -96 64 -116L58 -112Q50 -96 40 -82z', .5],
-        [`${C}.0`, 'M46 -128Q56 -138 64 -130L84 -104Q86 -96 78 -94L70 -95Q62 -102 56 -112z'], [`${C}.2`, 'M50 -128Q56 -134 62 -130L58 -126z', .6], [`${C}.1`, 'M66 -104Q76 -100 84 -102L82 -96Q76 -94 68 -96z', .5],
-        [`@nose.${v}`, 'M76 -104Q86 -102 84 -96Q80 -93 74 -96z', .8], ['#141010', ell(80, -100, 1.4, 1)], ...eye(62, -121, 1.8), [`${C}.1`, 'M51 -131l1 -11l6 9z'], [`${C}.1`, 'M56 -132l3 -10l4 9z'],
-        [`@mane.${v}`, 'M10 -96Q26 -116 48 -134L52 -128Q36 -114 24 -96Q18 -90 10 -96z'], { s: `@maneL.${v}`, w: 1, op: .6, d: 'M16 -98Q30 -114 46 -128M22 -98Q32 -108 44 -120' }, [`@mane.${v}`, 'M52 -132Q58 -128 58 -118Q54 -124 50 -126z']];
-      if (v === 0) head.push(['@blaze', 'M60 -126l3 -4l2 4l-2 3z']);
-      if (shaggy) head.push({ s: `${C}.1`, w: 1.2, op: .6, d: 'M60 -102l-2 4M64 -100l-1 4M56 -106l-3 3' });
-      return { legsFar, tail, body, legsNear, head: v === 1 ? withM(head, (m => (m[5] = f1(m[5] + 12), m))(rot(80, 18, -88))) : head };
+      if (rim) body.push(['@rim', 'M-51 -84Q-52.6 -98.4 -32 -99.6H14Q-8 -97.6 -32 -97Q-48 -96 -51 -84z', .9]);
+      // the neck and head as one part (the turn hook pivots it about the neck end at the withers); mane along the crest, forelock, a white star on the bay
+      let head;
+      if (graze) {
+        // grazing: the crest rises from the withers in a long arch and drops in front of the chest, thick at the shoulder and
+        // slim at the throat; the head hangs nearly vertical from the poll, the muzzle by the grass, the ears back
+        head = [[`${C}.0`, 'M6 -99C28 -110 52 -106 61 -88C67 -76 69 -66 68 -57L56 -50Q48 -62 46 -79L28 -88z'], [`${C}.1`, 'M46 -79Q48 -62 56 -50L58.6 -52Q51 -63 49 -76z', .45],
+          [`${C}.0`, 'M57 -55L66 -61Q71 -60 72.5 -53C74.5 -40 76.5 -27 77.5 -17Q79.5 -10 77 -6.5Q73 -3.5 68 -5.5Q64.5 -8 63.5 -14Q62 -24 58 -31C52.6 -35 51.4 -46 57 -55z'],
+          [`${C}.1`, 'M74 -46C75.4 -36 76.8 -27 77.5 -17Q79.5 -10 77 -6.5Q76 -14 75.2 -24Q74.4 -36 74 -46z', .5], [`${C}.2`, 'M56 -51Q52.4 -44 56.4 -36Q55.6 -44 58.6 -49z', .45],
+          [`@nose.${v}`, 'M63.5 -14Q70.5 -17 78 -13.5Q79.5 -9.5 77 -6.5Q73 -3.5 68 -5.5Q64.5 -8 63.5 -14z', .8], ['#141010', ell(75, -10.5, 1, 1.5)], { s: `${C}.3`, w: .8, op: .6, d: 'M68 -6.8Q71 -5.8 74 -7', detail: true }, ...eye(68.5, -46, 1.8),
+          [`@mane.${v}`, 'M5 -100C28 -112 54 -108 63 -89C69 -77 71 -66 69 -57L65 -59C65 -68 62 -78 57 -87C48 -101 28 -103 12 -96z'], { s: `@maneL.${v}`, w: 1, op: .6, d: 'M14 -101C32 -108 50 -104 58 -90M26 -103C40 -106 52 -100 60 -84', detail: true },
+          [`${C}.1`, 'M63 -60l1 -12l5 9z'], [`${C}.1`, 'M66 -59l4 -12l3 11z'], [`@mane.${v}`, 'M64 -61Q72 -63 73.5 -55Q74.5 -48 72 -43Q70.5 -51 65 -56z']];
+        if (shaggy) head.push({ s: `${C}.1`, w: 1.2, op: .6, d: 'M64 -13l-3 2M65.5 -9l-2 3M62 -20l-3 1', detail: true });
+        if (rim) head.push({ s: '@rim', w: 1.8, op: .85, d: 'M8 -100.6C29 -110.6 53 -106.6 61.8 -88.6C67.6 -77 69.6 -67 68.2 -59' }, { s: '@rim', w: 1.4, op: .85, d: 'M72.9 -44C74.3 -34 75.3 -25 76.1 -17Q77.7 -10.5 75.6 -7.8' });
+      } else {
+        head = [[`${C}.0`, 'M12 -96Q26 -114 48 -130L64 -116Q56 -96 46 -80Q30 -76 20 -82z'], [`${C}.1`, 'M46 -80Q56 -96 64 -116L58 -112Q50 -96 40 -82z', .5],
+          [`${C}.0`, 'M46 -128Q56 -138 64 -130L84 -104Q86 -96 78 -94L70 -95Q62 -102 56 -112z'], [`${C}.2`, 'M50 -128Q56 -134 62 -130L58 -126z', .6], [`${C}.1`, 'M66 -104Q76 -100 84 -102L82 -96Q76 -94 68 -96z', .5],
+          [`@nose.${v}`, 'M76 -104Q86 -102 84 -96Q80 -93 74 -96z', .8], ['#141010', ell(80, -100, 1.4, 1)], ...eye(62, -121, 1.8), [`${C}.1`, 'M51 -131l1 -11l6 9z'], [`${C}.1`, 'M56 -132l3 -10l4 9z'],
+          [`@mane.${v}`, 'M10 -96Q26 -116 48 -134L52 -128Q36 -114 24 -96Q18 -90 10 -96z'], { s: `@maneL.${v}`, w: 1, op: .6, d: 'M16 -98Q30 -114 46 -128M22 -98Q32 -108 44 -120' }, [`@mane.${v}`, 'M52 -132Q58 -128 58 -118Q54 -124 50 -126z']];
+        if (v === 0) head.push(['@blaze', 'M60 -126l3 -4l2 4l-2 3z']);
+        if (shaggy) head.push({ s: `${C}.1`, w: 1.2, op: .6, d: 'M60 -102l-2 4M64 -100l-1 4M56 -106l-3 3' });
+        if (rim) head.push({ s: '@rim', w: 1.8, op: .85, d: 'M14 -99Q28 -115 47 -131' }, { s: '@rim', w: 1.4, op: .85, d: 'M64.4 -128.4L83 -104.6Q85 -96.6 78.4 -95' });
+      }
+      return { legsFar, tail, body, legsNear, head };
     },
   });
 })();
