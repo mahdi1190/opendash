@@ -117,14 +117,14 @@
       /** The umbrella roof: hexagonal in elevation, curled tips (warabi), a jewel on top. Returns its top y. */
       const kasa = (y, w, h) => {
         body.push([S(0), `M${f1(-w)} ${f1(y)}Q${f1(-w - 3)} ${f1(y - 4)} ${f1(-w + 1)} ${f1(y - 6)}L${f1(-w * .2)} ${f1(y - h)}H${f1(w * .2)}L${f1(w - 1)} ${f1(y - 6)}Q${f1(w + 3)} ${f1(y - 4)} ${f1(w)} ${f1(y)}Q0 ${f1(y - 3)} ${f1(-w)} ${f1(y)}z`]);
-        body.push([S(1), `M0 ${f1(y - h)}H${f1(w * .2)}L${f1(w - 1)} ${f1(y - 6)}Q${f1(w + 3)} ${f1(y - 4)} ${f1(w)} ${f1(y)}Q${f1(w * .5)} ${f1(y - 2.4)} 0 ${f1(y - 2.2)}z`, .55], { s: S(2), w: 1, op: .7, d: `M${f1(-w + 1)} ${f1(y - 6)}L${f1(-w * .2)} ${f1(y - h)}` }, { s: S(3), w: .8, op: .5, d: `M${f1(-w)} ${f1(y)}Q0 ${f1(y - 3)} ${f1(w)} ${f1(y)}` });
-        body.push([S(0), rect(-w * .2, y - h - 3, w * .4, 3)], [S(0), `M-3.4 ${f1(y - h - 3)}q-1 -5 3.4 -9q4.4 4 3.4 9z`], [S(2), `M-2 ${f1(y - h - 5)}q0 -3 2 -5.5q-.6 3 -.4 5.5z`, .7]);
+        body.push([S(1), `M0 ${f1(y - h)}H${f1(w * .2)}L${f1(w - 1)} ${f1(y - 6)}Q${f1(w + 3)} ${f1(y - 4)} ${f1(w)} ${f1(y)}Q${f1(w * .5)} ${f1(y - 2.4)} 0 ${f1(y - 2.2)}z`, .55], { s: S(2), w: 1, op: .7, d: `M${f1(-w + 1)} ${f1(y - 6)}L${f1(-w * .2)} ${f1(y - h)}`, detail: true }, { s: S(3), w: .8, op: .5, d: `M${f1(-w)} ${f1(y)}Q0 ${f1(y - 3)} ${f1(w)} ${f1(y)}`, detail: true });
+        body.push([S(0), rect(-w * .2, y - h - 3, w * .4, 3)], [S(0), `M-3.4 ${f1(y - h - 3)}q-1 -5 3.4 -9q4.4 4 3.4 9z`], { f: S(2), d: `M-2 ${f1(y - h - 5)}q0 -3 2 -5.5q-.6 3 -.4 5.5z`, op: .7, detail: true });
         if (s === 'winter') body.push(['@snow.0', `M${f1(-w + 2)} ${f1(y - 6.5)}L${f1(-w * .2)} ${f1(y - h - 1)}H${f1(w * .2)}L${f1(w - 2)} ${f1(y - 6.5)}q${f1(-w * .5)} 3 ${f1(-w + 2)} 1.5q${f1(-w * .5)} 1.5 ${f1(-w + 2)} -1.5z`], ['@snow.1', `M0 ${f1(y - h - 1)}H${f1(w * .2)}L${f1(w - 2)} ${f1(y - 6.5)}q${f1(-w * .5)} 3 ${f1(-w + 2)} 1.5z`, .5]);
         return y - h - 12;
       };
       /** The fire box: a block with a lit window (glow) and the flame part. */
       const box = (y, w, h) => {
-        body.push([S(0), rect(-w / 2, y - h, w, h)], [S(1), rect(w * .2, y - h, w * .3, h), .55], { f: '@glow.0', d: rect(-w * .26, y - h * .78, w * .52, h * .6), glow: 'lamp' }, { s: S(3), w: .8, op: .6, d: `M0 ${f1(y - h * .78)}v${f1(h * .6)}` });
+        body.push([S(0), rect(-w / 2, y - h, w, h)], [S(1), rect(w * .2, y - h, w * .3, h), .55], { f: '@glow.0', d: rect(-w * .26, y - h * .78, w * .52, h * .6), glow: 'lamp' }, { s: S(3), w: .8, op: .6, d: `M0 ${f1(y - h * .78)}v${f1(h * .6)}`, detail: true });
         flame.push({ f: '@fire', d: `M0 ${f1(y - h * .26)}q${f1(-w * .12)} ${f1(-h * .14)} 0 ${f1(-h * .34)}q${f1(w * .12)} ${f1(h * .2)} 0 ${f1(h * .34)}z`, glow: 'lamp' });
         lit.push({ f: { rad: [[0, '@halo', .5], [1, '@halo', 0]], cx: 0, cy: y - h * .5, r: w * 1.8 }, d: rect(-w * 1.8, y - h * .5 - w * 1.8, w * 3.6, w * 3.6) });
       };
@@ -149,7 +149,8 @@
       let ms = '';
       const nm = v === 2 ? 9 : 3;
       for (let i = 0; i < nm; i++) ms += lobed(r, rr(r, -12, 10), -rr(r, 1, v === 2 ? 70 : 8), rr(r, 2.5, 5), rr(r, 1.4, 2.6), 6, .4);
-      body.push(['@moss.0', ms, .9], ['@grass.0', tufts(r, 0, 20, 8)], ['@grass.1', tufts(r, 4, 16, 5)]);
+      // the moss and the grass tufts are detail (a tile still draws the stone lantern alone)
+      body.push({ f: '@moss.0', d: ms, op: .9, detail: true }, { f: '@grass.0', d: tufts(r, 0, 20, 8), detail: true }, { f: '@grass.1', d: tufts(r, 4, 16, 5), detail: true });
       return { body, flame, lit };
     },
   });

@@ -22,8 +22,8 @@
   const lantern = (x, y, s = 1) => [
     ['@iron.0', `M${f1(x - 5 * s)} ${f1(y)}h${f1(10 * s)}l${f1(-2 * s)} ${f1(4 * s)}h${f1(-6 * s)}z`],
     { f: '@glass.0', d: `M${f1(x - 7 * s)} ${f1(y - 20 * s)}h${f1(14 * s)}l${f1(-2 * s)} ${f1(20 * s)}h${f1(-10 * s)}z`, glow: 'lamp' },
-    { s: '@iron.0', w: f1(1.1 * s), d: `M${f1(x)} ${f1(y - 20 * s)}v${f1(20 * s)}M${f1(x - 7 * s)} ${f1(y - 20 * s)}l${f1(2 * s)} ${f1(20 * s)}M${f1(x + 7 * s)} ${f1(y - 20 * s)}l${f1(-2 * s)} ${f1(20 * s)}` },
-    ['@iron.0', `M${f1(x - 10 * s)} ${f1(y - 20 * s)}h${f1(20 * s)}l${f1(-6 * s)} ${f1(-8 * s)}h${f1(-8 * s)}z`], ['@iron.1', `M${f1(x + 2 * s)} ${f1(y - 28 * s)}h${f1(2 * s)}l${f1(6 * s)} ${f1(8 * s)}h${f1(-3 * s)}z`, .6],
+    { s: '@iron.0', w: f1(1.1 * s), d: `M${f1(x)} ${f1(y - 20 * s)}v${f1(20 * s)}M${f1(x - 7 * s)} ${f1(y - 20 * s)}l${f1(2 * s)} ${f1(20 * s)}M${f1(x + 7 * s)} ${f1(y - 20 * s)}l${f1(-2 * s)} ${f1(20 * s)}`, detail: true },
+    ['@iron.0', `M${f1(x - 10 * s)} ${f1(y - 20 * s)}h${f1(20 * s)}l${f1(-6 * s)} ${f1(-8 * s)}h${f1(-8 * s)}z`], { f: '@iron.1', d: `M${f1(x + 2 * s)} ${f1(y - 28 * s)}h${f1(2 * s)}l${f1(6 * s)} ${f1(8 * s)}h${f1(-3 * s)}z`, op: .6, detail: true },
     ['@iron.0', ell(x, y - 31 * s, 2.2 * s, 2.6 * s)],
   ];
 
@@ -44,7 +44,7 @@
       if (v === 0 || v === 1 || v === 3) {
         // the base: a stepped plinth, a fluted shaft tapering to a collar
         const top = v === 1 ? -168 : -186;
-        body.push([`${I}.0`, 'M-11 0v-8h22v8zM-9-8v-6h18v6zM-7-14l1-26h12l1 26z'], [`${I}.1`, 'M-5-16v-22h2v22zM1-16v-22h2v22z', .6], { s: `${I}.0`, w: 5, d: `M0-40V${top}` }, { s: `${I}.1`, w: 1, op: .6, d: `M-1.2-42V${top + 2}` }, [`${I}.0`, rect(-4.5, -96, 9, 4)], [`${I}.0`, rect(-5, top - 2, 10, 4)]);
+        body.push([`${I}.0`, 'M-11 0v-8h22v8zM-9-8v-6h18v6zM-7-14l1-26h12l1 26z'], { f: `${I}.1`, d: 'M-5-16v-22h2v22zM1-16v-22h2v22z', op: .6, detail: true }, { s: `${I}.0`, w: 5, d: `M0-40V${top}` }, { s: `${I}.1`, w: 1, op: .6, d: `M-1.2-42V${top + 2}`, detail: true }, [`${I}.0`, rect(-4.5, -96, 9, 4)], [`${I}.0`, rect(-5, top - 2, 10, 4)]);
         if (v === 0) {
           // a scrolled crossarm carrying two hanging lanterns
           body.push({ s: '@iron.0', w: 3, d: `M-34 ${top + 8}q34-16 68 0M0 ${top}v-8` }, { s: '@iron.0', w: 1.6, d: `M-6 ${top + 4}q-10 10-20 4q-4-6 2-8M6 ${top + 4}q10 10 20 4q4-6-2-8` });

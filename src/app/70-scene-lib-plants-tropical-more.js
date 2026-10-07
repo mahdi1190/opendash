@@ -36,6 +36,8 @@
   const bzT = (A, B, C, t) => nrm(2 * (1 - t) * (B[0] - A[0]) + 2 * t * (C[0] - B[0]), 2 * (1 - t) * (B[1] - A[1]) + 2 * t * (C[1] - B[1]));
   /** Geometry that stays put across the seasons (shapeBySeason objects get a new rnd per season). */
   const stable = (id, v) => sceneRnd(sceneHash(id + '#' + v));
+  /** An opaque fill split for tile stills: every k-th subpath stays (what a tile draws), the rest is detail (full size only), so the full-size picture is unchanged. */
+  const thinned = (f, d, k) => { let keep = '', rest = ''; d.split(/(?=M)/).forEach((q, i) => { if (i % k === 0) keep += q; else rest += q; }); return [[f, keep], { f, d: rest, detail: true }]; };
   /** A lobed blob (a cluster of leaves or bracts). */
   const lobed = (r, cx, cy, rx, ry, n, rag) => {
     const a0 = r() * 6.283, pts = [];
@@ -44,10 +46,13 @@
     for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n], b = 1.22 + rag * r() * .3; d += `Q${f1(cx + ((p[0] + q[0]) / 2 - cx) * b)} ${f1(cy + ((p[1] + q[1]) / 2 - cy) * b)} ${P(q)}`; }
     return d + 'z';
   };
-  /** A pointed leaf from (x, y) along `ang` (radians). */
+  /** A path in whole units (for large soft shapes: half a unit of rounding is invisible), and lobed() so (the same random draws). */
+  const whole = d => d.replace(/-?\d+\.\d+/g, q => String(Math.round(+q)));
+  const lobedI = (r, cx, cy, rx, ry, n, rag) => whole(lobed(r, cx, cy, rx, ry, n, rag));
+  /** A pointed leaf from (x, y) along `ang` (radians); half-unit coordinates (the leaves are many and small: a quarter unit is invisible). */
   const leafD = (x, y, ang, len, w) => {
-    const c = Math.cos(ang), s = Math.sin(ang), tx = x + c * len, ty = y + s * len, mx = x + c * len * .45, my = y + s * len * .45;
-    return `M${f1(x)} ${f1(y)}Q${f1(mx - s * w)} ${f1(my + c * w)} ${f1(tx)} ${f1(ty)}Q${f1(mx + s * w)} ${f1(my - c * w)} ${f1(x)} ${f1(y)}z`;
+    const h = v => Math.round(v * 2) / 2, c = Math.cos(ang), s = Math.sin(ang), tx = x + c * len, ty = y + s * len, mx = x + c * len * .45, my = y + s * len * .45;
+    return `M${h(x)} ${h(y)}Q${h(mx - s * w)} ${h(my + c * w)} ${h(tx)} ${h(ty)}Q${h(mx + s * w)} ${h(my - c * w)} ${h(x)} ${h(y)}z`;
   };
   /** A tapered stem along a quadratic: outline, shaded right flank, lit left edge, and the two edges (for rings). */
   const stem = (A, B, C, w, n = 22) => {
@@ -79,11 +84,13 @@
         if (ny < -.05) { up += str; ends.up.push([p[0] + d[0] * l * .8, p[1] + d[1] * l * .8]); } else { lo += str; ends.lo.push([p[0] + d[0] * l * .8, p[1] + d[1] * l * .8]); }
       }
     }
-    const env = k => ends[k].length > 2 ? poly(rach.concat(ends[k].slice().reverse())) : '';
+    // the envelope (the frond's silhouette under its leaflets): every third point, whole units (it is soft-edged and half covered)
+    const Pi = p => `${Math.round(p[0])} ${Math.round(p[1])}`, half = a => a.filter((q, i) => i % 3 === 0 || i === a.length - 1);
+    const env = k => ends[k].length > 2 ? 'M' + half(rach).concat(half(ends[k]).reverse()).map(Pi).join('L') + 'z' : '';
     return { rach: `M${P(A)}Q${P(B)} ${P(E)}`, up, lo, envUp: env('up'), envLo: env('lo') };
   };
   defineObj({
-    id: 'plant.palm-coconut-tall', category: 'plant', size: [330, 560], variants: 4, seasonal: true, flippable: true,
+    id: 'plant.palm-coconut-tall', category: 'plant', size: [330, 560], variants: 4, seasonal: true, flippable: true, weight: 0.3,
     palette: Object.assign({ base: {
       bark: ['#8c7c66', '#5e5244', '#b8aa90', '#4a4036'], boot: ['#6a5638', '#4a3a26'], dead: ['#9a7a44', '#7a5c30', '#b8995c'],
       ground: ['#7a6a4a', '#5a4c34'],
@@ -104,10 +111,10 @@
       const tr = stem(A, B, C, t => (young ? 22 : 26) - 10 * t + (t < .07 ? (.07 - t) / .07 * 14 : 0), 28);
       let tuft = '';
       for (let i = 0; i < 9; i++) { const x = rr(r, -26, 26); tuft += `M${f1(x - 4)} 1q${f1(rr(r, -6, 6))} ${f1(-rr(r, 8, 15))} ${f1(rr(r, -3, 3))} ${f1(-rr(r, 10, 16))}q2 8 8 ${f1(rr(r, 9, 15))}z`; }
-      body.push(['@ground.0', ell(0, 0, 22, 3.5), .6], ['@frond.1', tuft], ['@bark.0', tr.all], ['@bark.1', tr.shade, .75], ['@bark.2', tr.lit, .55]);
+      body.push(['@ground.0', ell(0, 0, 22, 3.5), .6], { f: '@frond.1', d: tuft, detail: true }, ['@bark.0', whole(tr.all)], { f: '@bark.1', d: tr.shade, op: .75, detail: true }, { f: '@bark.2', d: tr.lit, op: .55, detail: true });
       let rings = '';
       for (let i = 1; i < tr.L.length - 1; i++) { const a = tr.L[i], b = tr.R[i]; rings += `M${P(a)}Q${f1((a[0] + b[0]) / 2)} ${f1((a[1] + b[1]) / 2 + 2.2)} ${P(b)}`; }
-      body.push({ s: '@bark.3', w: 1.1, op: .55, d: rings });
+      body.push({ s: '@bark.3', w: 1.1, op: .55, d: rings, detail: true });
       // the crown: old dead fronds hang behind, then fronds sorted back to front, nuts in the middle
       const fr = [], n = young ? 14 : 18;
       for (let i = 0; i < n; i++) {
@@ -119,14 +126,16 @@
       fr.sort((a, b) => a.depth - b.depth);
       for (let k = 0; k < 3; k++) {
         const f = frond(C, nrm(rr(r, -.45, .45), 1), rr(r, 90, 125), 0, .05, 20, 2.2, 14);
-        body.push({ s: '@dead.1', w: 1.6, d: f.lo + f.up }, { s: '@dead.2', w: 2, d: f.rach });
+        body.push({ s: '@dead.1', w: 1.6, d: f.lo + f.up, detail: true }, { s: '@dead.2', w: 2, d: f.rach, detail: true });
       }
-      body.push(['@boot.1', ell(C[0], C[1] + 4, 13, 10)]);
+      body.push({ f: '@boot.1', d: ell(C[0], C[1] + 4, 13, 10), detail: true });
+      let nf = 0;   // front fronds drawn so far: a tile still keeps the upper envelope and the rachis of every other one
       const drawFrond = (f, back) => {
         const g = frond(C, f.dir, f.L, f.lift, f.droop, young ? 24 : 30, .95, 21);
         const lit = f.dir[0] < .15;
         const up = back ? '@frond.1' : lit ? '@frond.3' : '@frond.2', lo = back ? '@frond.0' : '@frond.1';
-        body.push([lo, g.envLo, .5], [up, g.envUp, .45], { s: lo, w: back ? 1.6 : 1.8, d: g.lo }, { s: up, w: back ? 1.6 : 1.8, d: g.up }, { s: back ? '@rachis.1' : '@rachis.0', w: 2.4, d: g.rach });
+        // the leaflets are the frond's texture (detail): a tile draws the frond's envelope and its rachis
+        body.push({ f: lo, d: g.envLo, op: .5, detail: true }, { f: up, d: g.envUp, op: .45, detail: back || nf % 2 === 1 }, { s: lo, w: back ? 1.6 : 1.8, d: g.lo, detail: true }, { s: up, w: back ? 1.6 : 1.8, d: g.up, detail: true }, { s: back ? '@rachis.1' : '@rachis.0', w: 2.4, d: g.rach, detail: back || nf++ % 2 === 1 });
       };
       for (const f of fr) if (f.depth < 0) drawFrond(f, true);
       // the nuts and the frond bases
@@ -138,11 +147,11 @@
           (i % 3 === 2 ? (nut2 += circ(x, y, rad)) : (nut0 += circ(x, y, rad)));
           nut1 += ell(x - rad * .3, y - rad * .35, rad * .45, rad * .35);
         }
-        body.push(['@nut.0', nut0], ['@nut.2', nut2], ['@nut.1', nut1, .7], ['@nut.3', ell(C[0] + 4, C[1] + 14, 14, 4), .35]);
+        body.push({ f: '@nut.0', d: nut0, detail: true }, { f: '@nut.2', d: nut2, detail: true }, { f: '@nut.1', d: nut1, op: .7, detail: true }, { f: '@nut.3', d: ell(C[0] + 4, C[1] + 14, 14, 4), op: .35, detail: true });
       }
       let boots = '';
       for (let i = 0; i < 6; i++) { const a = (-150 + i * 24) * D, x = C[0] + Math.cos(a) * 9, y = C[1] + 6 + Math.sin(a) * 6; boots += `M${f1(C[0])} ${f1(C[1] + 8)}L${f1(x - 3)} ${f1(y)}L${f1(x + 3)} ${f1(y - 2)}z`; }
-      body.push(['@boot.0', boots]);
+      body.push({ f: '@boot.0', d: boots, detail: true });
       for (const f of fr) if (f.depth >= 0) drawFrond(f, false);
       return { body };
     },
@@ -168,14 +177,14 @@
           const t = ta + (tb - ta) * k / 6, p = bz(B, M, E, t), T = bzT(B, M, E, t), nx = -T[1] * s, ny = T[0] * s, h = hw(t);
           pts.push(p); edge.push([p[0] + nx * h + T[0] * h * .25, p[1] + ny * h + T[1] * h * .25]); side += ny;
         }
-        d += poly(pts.concat(edge.reverse()));
+        d += 'M' + pts.concat(edge.reverse()).map(q => `${Math.round(q[0])} ${Math.round(q[1])}`).join('L') + 'z';   // whole units: a strip is 5 or more across
       }
       if (side < 0) out.up += d; else out.lo += d;
     }
     return out;
   };
   defineObj({
-    id: 'plant.banana-grove', category: 'plant', size: [230, 190], variants: 3, seasonal: true, flippable: true, parts: ['stem', 'leaves'],
+    id: 'plant.banana-grove', category: 'plant', size: [230, 190], variants: 3, seasonal: true, flippable: true, parts: ['stem', 'leaves'], weight: 0.3,
     palette: Object.assign({ base: {
       stem: ['#7a8a3a', '#56622a', '#9cac54', '#7a5a34'], dry: ['#9a7a44', '#7a5a30', '#b8975a'], fruit: ['#6a8a2a', '#9ab83c', '#4a6420'], bell: ['#6a2a4a', '#4a1a34', '#8a4a66'], stalk: '#6a6a34', ground: '#5a4c34',
     } }, bySeason({
@@ -194,16 +203,16 @@
       const suck = v === 1 ? [[-26, 30], [22, 46]] : [[-24, 40], [26, 26]];
       for (const [sx, sh] of suck) {
         const st = stem([sx, 0], [sx * 1.05, -sh * .5], [sx * 1.12, -sh], t => 9 - 4 * t);
-        stemP.push(['@stem.0', st.all], ['@stem.1', st.shade, .7]);
-        for (let i = 0; i < 3; i++) { const b = blade(r, [sx * 1.12, -sh], (-90 + (i - 1) * 50 + (sx > 0 ? 20 : -20)) * D, rr(r, 34, 46), 12, .12, 0); stemP.push(['@leaf.1', b.lo], ['@leaf.2', b.up], { s: '@rib', w: .9, d: b.rib }); }
+        stemP.push(['@stem.0', st.all], { f: '@stem.1', d: st.shade, op: .7, detail: true });
+        for (let i = 0; i < 3; i++) { const b = blade(r, [sx * 1.12, -sh], (-90 + (i - 1) * 50 + (sx > 0 ? 20 : -20)) * D, rr(r, 34, 46), 12, .12, 0); stemP.push({ f: '@leaf.1', d: b.lo, detail: true }, { f: '@leaf.2', d: b.up, detail: true }, { s: '@rib', w: .9, d: b.rib, detail: true }); }
       }
       const ms = stem([0, 0], [2, -H * .5], [3, -H], t => 21 - 8 * t + (t < .06 ? 6 * (.06 - t) / .06 : 0));
-      stemP.push(['@stem.0', ms.all], ['@stem.1', ms.shade, .8], ['@stem.2', ms.lit, .5]);
+      stemP.push(['@stem.0', ms.all], { f: '@stem.1', d: ms.shade, op: .8, detail: true }, { f: '@stem.2', d: ms.lit, op: .5, detail: true });
       let sheath = '';
       for (let i = 0; i < 3; i++) { const y = -6 - i * 22 - rr(r, 0, 6), x = rr(r, -8, 2); sheath += `M${f1(x)} ${f1(y)}q${f1(2 + r() * 3)} -12 ${f1(3 + r() * 3)} -26l2.5 1q-1 14 -2 26z`; }
-      stemP.push(['@stem.3', sheath, .75]);
+      stemP.push({ f: '@stem.3', d: sheath, op: .75, detail: true });
       // dead leaves hanging down the stem (the dry season keeps more)
-      for (const a of [96, 78]) { const b = blade(r, [3, -H + 4], a * D, rr(r, 54, 66), 16, .05, 4); stemP.push(['@dry.1', b.lo], ['@dry.0', b.up], { s: '@dry.2', w: 1, d: b.rib }); }
+      for (const a of [96, 78]) { const b = blade(r, [3, -H + 4], a * D, rr(r, 54, 66), 16, .05, 4); stemP.push({ f: '@dry.1', d: b.lo, detail: true }, { f: '@dry.0', d: b.up, detail: true }, { s: '@dry.2', w: 1, d: b.rib, detail: true }); }
       // the fruit bunch (v0, v2): a peduncle arching out and down, hands of fingers, the purple bell
       const top = [3, -H];
       const fruit = [];
@@ -215,7 +224,7 @@
           const p = bz(p0, p1, p2, .42 + h * .1);
           for (let k = 0; k < 6; k++) { const x = p[0] - 9 + k * 3.4, y = p[1] + 2; f0 += `M${f1(x)} ${f1(y)}q${f1(-3 + k * .6)} -5 ${f1(-1 + k * .8)} -11`; f1s += `M${f1(x - .8)} ${f1(y - 1)}q${f1(-3 + k * .6)} -4 ${f1(-1.2 + k * .8)} -9`; }
         }
-        fruit.push({ s: '@fruit.0', w: 3.2, d: f0 }, { s: '@fruit.1', w: 1.2, op: .7, d: f1s });
+        fruit.push({ s: '@fruit.0', w: 3.2, d: f0 }, { s: '@fruit.1', w: 1.2, op: .7, d: f1s, detail: true });
         fruit.push(['@bell.0', `M${f1(p2[0] - 5)} ${f1(p2[1])}q5 -4 10 0q1 9 -5 16q-6 -7 -5 -16z`], ['@bell.1', `M${f1(p2[0] + 1)} ${f1(p2[1] - 1)}q4 1 4 1q1 9 -5 16q2 -8 1 -17z`, .8], ['@bell.2', `M${f1(p2[0] - 3)} ${f1(p2[1] + 1)}q1 6 1 10`, .6]);
       }
       // the leaf fan: upright young leaves, then the older ones arching and drooping
@@ -227,7 +236,9 @@
         const B = [top[0] + Math.cos(a * D) * 10, top[1] + Math.sin(a * D) * 8];
         const pet = { s: '@stem.2', w: 2.6, d: `M${P(top)}L${P(B)}` };
         const b = blade(r, B, (a + rr(r, -9, 9)) * D, L, W, dr * rr(r, .85, 1.15), i < 3 ? Math.max(0, tears - 2) : tears);
-        (i % 2 ? back : front).push(pet, { f: i % 2 ? '@leaf.0' : '@leaf.1', d: b.lo }, { f: i % 2 ? '@leaf.1' : (a < -90 && a > -150 ? '@leaf.3' : '@leaf.2'), d: b.up }, { s: '@rib', w: 1.1, op: .85, d: b.rib });
+        // the back leaves are detail: a tile still draws the front of the fan and the stem
+        const bk = i % 2 === 1;
+        (bk ? back : front).push(Object.assign(pet, { detail: bk }), { f: bk ? '@leaf.0' : '@leaf.1', d: b.lo, detail: bk }, { f: bk ? '@leaf.1' : (a < -90 && a > -150 ? '@leaf.3' : '@leaf.2'), d: b.up, detail: bk }, { s: '@rib', w: 1.1, op: .85, d: b.rib, detail: true });
       });
       leaves.push(...back, ...fruit, ...front);
       return { stem: stemP, leaves };
@@ -254,7 +265,7 @@
     }
   };
   defineObj({
-    id: 'plant.frangipani', category: 'plant', size: [230, 210], variants: 3, seasonal: true, shapeBySeason: true, flippable: true, parts: ['trunk', 'crown'],
+    id: 'plant.frangipani', category: 'plant', size: [230, 210], variants: 3, seasonal: true, shapeBySeason: true, flippable: true, parts: ['trunk', 'crown'], weight: 0.3,
     palette: Object.assign({ base: {
       bark: ['#8a8478', '#625c52', '#b2ac9e'], bloom: ['#fbf8ee', '#f4a6c0', '#c8243a'], bloomS: ['#e4dcc4', '#d27898', '#901828'], eye: ['#f2c63a', '#f6d860', '#f4c040'], ground: '#5a4c34',
     } }, bySeason({
@@ -270,13 +281,13 @@
       const TH = 56;
       trunk.push(['@ground', ell(0, 0, 30, 3.5), .5]);
       const tr = stem([0, 0], [-4, -TH * .5], [2, -TH], t => 18 - 6 * t + (t < .08 ? 8 * (.08 - t) / .08 : 0));
-      trunk.push(['@bark.0', tr.all], ['@bark.1', tr.shade, .8], ['@bark.2', tr.lit, .5]);
+      trunk.push(['@bark.0', tr.all], { f: '@bark.1', d: tr.shade, op: .8, detail: true }, { f: '@bark.2', d: tr.lit, op: .5, detail: true });
       const limbs = v === 2 ? [-128, -92, -56] : [-140, -108, -74, -42];
       for (const a of limbs) growF(r, 2, -TH, (a + rr(r, -6, 6)) * D, rr(r, 40, 52), 11, 2, segs, tips);
       for (let dpt = 2; dpt >= 0; dpt--) {
         const g = segs.filter(q => q.depth === dpt); if (!g.length) continue;
         const w = g[0].w, d = g.map(q => q.d).join('');
-        (dpt === 2 ? trunk : crown).push({ s: '@bark.0', w, d }, { s: '@bark.1', w: w * .45, op: .8, d, m: [1, 0, 0, 1, w * .26, 0] }, { s: '@bark.2', w: w * .25, op: .55, d, m: [1, 0, 0, 1, -w * .28, 0] });
+        (dpt === 2 ? trunk : crown).push({ s: '@bark.0', w, d }, { s: '@bark.1', w: w * .45, op: .8, d, m: [1, 0, 0, 1, w * .26, 0], detail: true }, { s: '@bark.2', w: w * .25, op: .55, d, m: [1, 0, 0, 1, -w * .28, 0], detail: true });
       }
       // leaf rosettes at the tips (the dry season strips them) and the flower heads above
       const nLeaf = { spring: 7, summer: 8, autumn: 6, winter: 1 }[s], nFl = { spring: 3, summer: 4, autumn: 2, winter: 4 }[s];
@@ -295,9 +306,10 @@
         }
       });
       for (let i = 0; i < 6; i++) fallen += flower(rr(r, -60, 60), rr(r, -3, 2), 3.6, r() * 72);
-      crown.push(['@leaf.0', L[0]], ['@leaf.1', L[1]], ['@leaf.2', L[2]], ['@leaf.3', L[3]]);
-      crown.push([`@bloom.${v}`, petals[0]], [`@bloomS.${v}`, petals[1]], { s: `@eye.${v}`, w: 2.4, d: eyes });
-      trunk.push([`@bloom.${v}`, fallen, .85]);
+      // a tile draws one leaf and petal in sixteen (the full-size picture is unchanged)
+      for (let t = 0; t < 4; t++) crown.push(...thinned('@leaf.' + t, L[t], 16));
+      crown.push(...thinned(`@bloom.${v}`, petals[0], 16), ...thinned(`@bloomS.${v}`, petals[1], 16), { s: `@eye.${v}`, w: 2.4, d: eyes, detail: true });
+      trunk.push({ f: `@bloom.${v}`, d: fallen, op: .85, detail: true });
       return { trunk, crown };
     },
   });
@@ -325,7 +337,7 @@
         baseY = -52;
         wall.push(['@wall.0', rect(-104, -52, 208, 52)], ['@wall.3', rect(-108, -58, 216, 7)], ['@wall.1', rect(-108, -51, 216, 2.5)], ['@wall.2', rect(60, -51, 44, 51), .35]);
         let st = ''; for (let i = 0; i < 9; i++) st += `M${f1(-100 + i * 25 + r() * 6)} ${f1(-44 + r() * 30)}q${f1(4 + r() * 8)} ${f1(2)} ${f1(10 + r() * 10)} ${f1(-1)}`;
-        wall.push({ s: '@wall.2', w: .9, op: .45, d: st });
+        wall.push({ s: '@wall.2', w: .9, op: .45, d: st, detail: true });
       } else wall.push(['@ground', ell(0, 0, spread * .4, 4), .5]);
       // the inner foliage mass (dark), then woody canes arching out and drooping at the tips
       const h = q => Math.round(q * 2) / 2;
@@ -334,10 +346,10 @@
       const nm = v === 2 ? 7 : 6;
       for (let i = 0; i < nm; i++) {
         const t = (i + .5) / nm, x = (t - .5) * spread * .78, y = v === 2 ? baseY - rr(r, 4, 16) : baseY - hgt * (.22 + .42 * Math.sin(t * Math.PI)) * rr(r, .8, 1);
-        mass[i % 2] += lobed(r, x, y, spread * rr(r, .14, .2), hgt * rr(r, .2, .28), 12, .4);
+        mass[i % 2] += lobedI(r, x, y, spread * rr(r, .14, .2), hgt * rr(r, .2, .28), 12, .4);
       }
-      if (v === 2) for (let i = 0; i < 5; i++) mass[i % 2] += lobed(r, rr(r, -90, 90), baseY + rr(r, 8, 30), rr(r, 12, 22), rr(r, 10, 18), 10, .4);
-      body.push(['@leaf.0', mass[0]], ['@leaf.1', mass[1]]);
+      if (v === 2) for (let i = 0; i < 5; i++) mass[i % 2] += lobedI(r, rr(r, -90, 90), baseY + rr(r, 8, 30), rr(r, 12, 22), rr(r, 10, 18), 10, .4);
+      body.push(...thinned('@leaf.0', mass[0], 2), ...thinned('@leaf.1', mass[1], 2));   // a tile still draws every other mass
       const sprays = [], n = [18, 16, 20][v];
       let wood = '';
       for (let i = 0; i < n; i++) {
@@ -349,7 +361,7 @@
         sprays.push([S, M, E]);
         wood += `M${P(S)}Q${P(M)} ${P(bz(S, M, E, .7))}`;
       }
-      body.push({ s: '@stem.0', w: 1.6, d: wood });
+      body.push({ s: '@stem.0', w: 1.6, d: wood, detail: true });
       // pointed leaves along the canes, then bract clusters thickest at the arching ends (three tones, lit on the upper left)
       const lf = ['', '', '', ''], br = ['', '', '', ''];
       for (const [S, M, E] of sprays) {
@@ -360,11 +372,12 @@
           for (let k = 0; k < nb; k++) br[Math.min(3, lit + (r() < .55 ? 0 : 1))] += blob(p[0] + rr(r, -7, 7), p[1] + rr(r, -7, 5), rr(r, 3, 5));
         }
       }
-      body.push(['@leaf.0', lf[0]], ['@leaf.1', lf[1]], ['@leaf.2', lf[2]], ['@leaf.3', lf[3]]);
-      body.push([`@bract.${base}`, br[0]], [`@bract.${base + 1}`, br[1]], [`@bract.${base + 2}`, br[2]], [`@bract.${base + 3}`, br[3]]);
+      // a tile draws one leaf in forty-eight and one bract cluster in twenty-four over the masses (the full-size picture is unchanged)
+      for (let t = 0; t < 4; t++) body.push(...thinned('@leaf.' + t, lf[t], 48));
+      for (let t = 0; t < 4; t++) body.push(...thinned(`@bract.${base + t}`, br[t], 24));
       // fallen bracts on the ground
       let fallen = ''; for (let i = 0; i < Math.round(10 * dens); i++) fallen += ell(rr(r, -spread * .45, spread * .45), rr(r, -2, 2), 2, 1.2);
-      wall.push([`@bract.${base + 1}`, fallen, .8]);
+      wall.push({ f: `@bract.${base + 1}`, d: fallen, op: .8, detail: true });
       return { wall, body };
     },
   });
@@ -388,10 +401,10 @@
       const culms = [];
       for (let i = 0; i < n; i++) { const x = rr(r, -84, 84), z = r(); culms.push({ x, z, H: Hm * rr(r, .72, 1) * (.85 + z * .15), w: (v === 2 ? 3.6 : 4.6) + z * 1.6 }); }
       culms.sort((a, b) => a.z - b.z);
-      ground.push(['@litter.1', lobed(r, 0, -1, 104, 5, 12, .4), .7]);
+      ground.push({ f: '@litter.1', d: lobed(r, 0, -1, 104, 5, 12, .4), op: .7, detail: true });
       let lit = '';
       for (let i = 0; i < 40; i++) lit += leafD(rr(r, -100, 100), rr(r, -3, 2), rr(r, -.4, .4) + (r() < .5 ? 0 : Math.PI), rr(r, 5, 8), 1.2);
-      ground.push(['@litter.2', lit, .8]);
+      ground.push({ f: '@litter.2', d: lit, op: .8, detail: true });
       const lf = ['', '', '', ''];
       let nodes = '', twigs = '';
       for (const c of culms) {
@@ -399,10 +412,10 @@
         const A = [c.x, 0], B = [c.x + lean * .15, -c.H * .55], E = [c.x + lean, -c.H];
         const tip = `M${P(E)}q${f1(side * 10)} -4 ${f1(side * 22)} 10`;
         const d = `M${P(A)}Q${P(B)} ${P(E)}` + tip;
-        const back = c.z < .45;
-        body.push({ s: `@culm.${cb + (back ? 2 : 0)}`, w: c.w, d }, { s: `@culm.${cb + (back ? 2 : 1)}`, w: c.w * .45, op: .8, d, m: [1, 0, 0, 1, c.w * .24, 0] });
-        if (!back) body.push({ s: `@culm.${cb + 3}`, w: c.w * .22, op: .7, d: `M${P(A)}Q${P(B)} ${P(E)}`, m: [1, 0, 0, 1, -c.w * .26, 0] });
-        if (v === 1 && !back) body.push({ s: '@stripe', w: .9, op: .7, d: `M${P(A)}Q${P(B)} ${P(E)}`, m: [1, 0, 0, 1, c.w * .1, 0] });
+        const back = c.z < .45, keep = !back && culms.indexOf(c) % 2 === 0;   // a tile still draws every other front culm
+        body.push({ s: `@culm.${cb + (back ? 2 : 0)}`, w: c.w, d, detail: !keep }, { s: `@culm.${cb + (back ? 2 : 1)}`, w: c.w * .45, op: .8, d, m: [1, 0, 0, 1, c.w * .24, 0], detail: true });
+        if (!back) body.push({ s: `@culm.${cb + 3}`, w: c.w * .22, op: .7, d: `M${P(A)}Q${P(B)} ${P(E)}`, m: [1, 0, 0, 1, -c.w * .26, 0], detail: true });
+        if (v === 1 && !back) body.push({ s: '@stripe', w: .9, op: .7, d: `M${P(A)}Q${P(B)} ${P(E)}`, m: [1, 0, 0, 1, c.w * .1, 0], detail: true });
         // nodes, branch twigs and drooping leaf sprays in the upper half
         let k = 0;
         for (let t = .06; t < .98; t += 22 / c.H, k++) {
@@ -422,10 +435,11 @@
         // a tuft at the very top
         for (let j = 0; j < 9; j++) lf[back ? 1 : 2] += leafD(E[0] + side * rr(r, 4, 24), E[1] + rr(r, -2, 8), (90 - side * rr(r, 20, 70)) * D, rr(r, 10, 15), 2);
       }
-      body.push({ s: '@node.' + (v === 1 ? 1 : v === 2 ? 2 : 0), w: 1.3, op: .8, d: nodes }, { s: `@culm.${cb + 2}`, w: 1, d: twigs });
-      body.push(['@leaf.0', lf[0]], ['@leaf.1', lf[1]], ['@leaf.2', lf[2]], ['@leaf.3', lf[3]]);
+      body.push({ s: '@node.' + (v === 1 ? 1 : v === 2 ? 2 : 0), w: 1.3, op: .8, d: nodes, detail: true }, { s: `@culm.${cb + 2}`, w: 1, d: twigs, detail: true });
+      // the leaves: a tile draws one in forty-eight (the sprays still read; the full-size picture is unchanged)
+      for (let t = 0; t < 4; t++) body.push(...thinned('@leaf.' + t, lf[t], 48));
       // two new shoots in their papery sheaths
-      body.push(['@sheath.0', `M-34 0l5 -26l5 26zM46 0l4 -18l4 18z`], ['@sheath.1', `M-34 0l5 -26l1 26zM46 0l4 -18l1 18z`, .7]);
+      body.push(['@sheath.0', `M-34 0l5 -26l5 26zM46 0l4 -18l4 18z`], { f: '@sheath.1', d: `M-34 0l5 -26l1 26zM46 0l4 -18l1 18z`, op: .7, detail: true });
       return { body: ground.concat(body) };
     },
   });

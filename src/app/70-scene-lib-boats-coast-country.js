@@ -65,18 +65,18 @@
       const heel = rot(5, 0, 0);
       const sails = withM([
         { s: '@spar', w: 2.4, d: 'M6 -14V-192' },
-        [`@sail.${v}`, 'M7 -188Q-24 -120 -58 -32L7 -30z'], [`@sailD.${v}`, 'M7 -188L7 -30L-6 -30Q-2 -110 7 -188z', .7], [`@sailD.${v}`, 'M7 -188Q-24 -120 -58 -32L-50 -32Q-20 -112 7 -180z', .45],
-        { s: `@sailD.${v}`, w: 1, op: .8, d: 'M-6 -150L5 -150M-18 -118L5 -118M-32 -86L5 -86M-44 -56L5 -56' },
-        { s: '@spar', w: 3, d: 'M7 -30L-60 -32' }, { s: '@rope', w: .8, op: .8, d: 'M-56 -32L-40 -12M7 -150L62 -10' },
-        [`@jib.${v}`, 'M10 -146L58 -16L14 -24Q22 -90 10 -146z'], [`@jibD.${v}`, 'M10 -146Q22 -90 14 -24L22 -22Q26 -90 10 -146z', .5],
+        [`@sail.${v}`, 'M7 -188Q-24 -120 -58 -32L7 -30z'], { f: `@sailD.${v}`, d: 'M7 -188L7 -30L-6 -30Q-2 -110 7 -188z', op: .7, detail: true }, { f: `@sailD.${v}`, d: 'M7 -188Q-24 -120 -58 -32L-50 -32Q-20 -112 7 -180z', op: .45, detail: true },
+        { s: `@sailD.${v}`, w: 1, op: .8, d: 'M-6 -150L5 -150M-18 -118L5 -118M-32 -86L5 -86M-44 -56L5 -56', detail: true },
+        { s: '@spar', w: 3, d: 'M7 -30L-60 -32' }, { s: '@rope', w: .8, op: .8, d: 'M-56 -32L-40 -12M7 -150L62 -10', detail: true },
+        [`@jib.${v}`, 'M10 -146L58 -16L14 -24Q22 -90 10 -146z'], { f: `@jibD.${v}`, d: 'M10 -146Q22 -90 14 -24L22 -22Q26 -90 10 -146z', op: .5, detail: true },
       ], heel);
       const hull = [
-        { s: '@wake', w: 1.6, op: .55, d: 'M-70 4h50M30 4h40' },
-        [`@hull.${v}`, 'M-64 -14H58Q68 -14 66 -8L56 4H-60Q-64 -4 -64 -14z'], [`@hullD.${v}`, 'M-62 -4H62L56 4H-60z', .7], [`@boot.${v}`, 'M-63 -6H64L62 -3H-62z'],
+        { s: '@wake', w: 1.6, op: .55, d: 'M-70 4h50M30 4h40', detail: true },
+        [`@hull.${v}`, 'M-64 -14H58Q68 -14 66 -8L56 4H-60Q-64 -4 -64 -14z'], { f: `@hullD.${v}`, d: 'M-62 -4H62L56 4H-60z', op: .7, detail: true }, { f: `@boot.${v}`, d: 'M-63 -6H64L62 -3H-62z', detail: true },
         [`@deck.${v}`, 'M-64 -16H58Q66 -16 68 -12H-64z'],
-        // the helm: one small anonymous figure sitting out on the side deck, hand on the tiller
-        [`@crew.${1 + v}`, 'M-38 -14Q-40 -30 -34 -36Q-26 -38 -24 -30L-24 -14z'], ['@crew.0', 'M-36 -14L-14 -10L-12 -14L-26 -18z'], ['@skin', circ(-31, -42, 5)], ['@crew.0', 'M-36 -44Q-31 -50 -26 -44z'],
-        { s: '@spar', w: 1.6, d: 'M-62 -14L-40 -22' },
+        // the helm: one small anonymous figure sitting out on the side deck, hand on the tiller (detail: a tile still draws the boat)
+        { f: `@crew.${1 + v}`, d: 'M-38 -14Q-40 -30 -34 -36Q-26 -38 -24 -30L-24 -14z', detail: true }, { f: '@crew.0', d: 'M-36 -14L-14 -10L-12 -14L-26 -18z', detail: true }, { f: '@skin', d: circ(-31, -42, 5), detail: true }, { f: '@crew.0', d: 'M-36 -44Q-31 -50 -26 -44z', detail: true },
+        { s: '@spar', w: 1.6, d: 'M-62 -14L-40 -22', detail: true },
       ];
       return { sails, hull: withM(hull, heel) };
     },
@@ -97,23 +97,24 @@
     credit: 'coast-country kit (generic inshore fishing boat, no registration marks)',
     build(v) {
       const body = [];
-      body.push({ s: '@wake', w: 1.8, op: .5, d: 'M-120 6h60M70 6h50' });
+      // a tile still (LOD < .5) draws the hull, the top strake, the wheelhouse and the mast: the rest is detail
+      body.push({ s: '@wake', w: 1.8, op: .5, d: 'M-120 6h60M70 6h50', detail: true });
       // the mast, stays and derrick (behind the house)
-      body.push({ s: '@iron.1', w: 3.4, d: 'M40 -46V-150' }, { s: '@iron.1', w: 1, op: .8, d: 'M40 -146L116 -48M40 -146L-100 -40' }, { s: '@iron.0', w: 2.2, d: 'M40 -96L96 -66' }, { s: '@iron.1', w: 1.4, d: 'M40 -132h8M40 -110h6' });
-      body.push({ f: '@buoy.1', d: rect(34, -150, 12, 5), glow: 'lamp' }, { f: '@buoy.1', d: circ(40, -154, 2.6), glow: 'lamp' });
+      body.push({ s: '@iron.1', w: 3.4, d: 'M40 -46V-150' }, { s: '@iron.1', w: 1, op: .8, d: 'M40 -146L116 -48M40 -146L-100 -40', detail: true }, { s: '@iron.0', w: 2.2, d: 'M40 -96L96 -66', detail: true }, { s: '@iron.1', w: 1.4, d: 'M40 -132h8M40 -110h6', detail: true });
+      body.push({ f: '@buoy.1', d: rect(34, -150, 12, 5), glow: 'lamp', detail: true }, { f: '@buoy.1', d: circ(40, -154, 2.6), glow: 'lamp', detail: true });
       // the hull: a sheer rising to the bow, clinker strakes, a contrasting top strake, antifouling at the waterline
-      body.push(['@hull.' + v, 'M-112 -38L104 -50Q118 -52 118 -44L98 6H-102Q-114 -12 -112 -38z'], ['@hullD.' + v, 'M-108 -14L110 -18L98 6H-102z', .55], ['@top.' + v, 'M-113 -40L104 -52Q118 -54 119 -46L104 -44L-113 -34z']);
-      body.push({ s: '@hullD.' + v, w: 1, op: .6, d: 'M-110 -26L112 -34M-106 -16L108 -22M-104 -6L104 -10' }, ['@anti.' + v, 'M-103 0H100L98 6H-102z']);
-      body.push(['@fender', ell(-60, -26, 4, 7) + ell(-10, -28, 4, 7) + ell(40, -31, 4, 7)], { s: '@rope', w: 1, d: 'M-60 -40v8M-10 -42v8M40 -45v8' });
+      body.push(['@hull.' + v, 'M-112 -38L104 -50Q118 -52 118 -44L98 6H-102Q-114 -12 -112 -38z'], { f: '@hullD.' + v, d: 'M-108 -14L110 -18L98 6H-102z', op: .55, detail: true }, ['@top.' + v, 'M-113 -40L104 -52Q118 -54 119 -46L104 -44L-113 -34z']);
+      body.push({ s: '@hullD.' + v, w: 1, op: .6, d: 'M-110 -26L112 -34M-106 -16L108 -22M-104 -6L104 -10', detail: true }, ['@anti.' + v, 'M-103 0H100L98 6H-102z']);
+      body.push({ f: '@fender', d: ell(-60, -26, 4, 7) + ell(-10, -28, 4, 7) + ell(40, -31, 4, 7), detail: true }, { s: '@rope', w: 1, d: 'M-60 -40v8M-10 -42v8M40 -45v8', detail: true });
       // the wheelhouse: windows that light at dusk, a door, the roof with its lamp and exhaust
-      body.push(['@house.0', rect(-84, -92, 54, 52)], ['@house.1', rect(-42, -92, 12, 52), .7], ['@iron.1', rect(-88, -96, 62, 5)], ['@iron.0', rect(-74, -110, 7, 16)], ['@iron.1', rect(-75, -112, 9, 3)]);
-      body.push({ f: '@glass.0', d: rect(-80, -84, 14, 14), glow: 'window' }, { f: '@glass.0', d: rect(-62, -84, 14, 14), glow: 'window' }, { f: '@glass.0', d: 'M-44 -84h11v14h-11z', glow: 'window' }, ['@glass.1', 'M-80 -84h6l-6 6z', .4], ['@glass.1', 'M-62 -84h6l-6 6z', .4]);
-      body.push(['@house.1', rect(-60, -64, 14, 24)], { f: '@buoy.1', d: rect(-50, -100, 6, 4), glow: 'lamp' }, { s: '@iron.1', w: 1.4, d: 'M-56 -96v-14M-62 -110h12' });
+      body.push(['@house.0', rect(-84, -92, 54, 52)], { f: '@house.1', d: rect(-42, -92, 12, 52), op: .7, detail: true }, ['@iron.1', rect(-88, -96, 62, 5)], { f: '@iron.0', d: rect(-74, -110, 7, 16), detail: true }, { f: '@iron.1', d: rect(-75, -112, 9, 3), detail: true });
+      body.push({ f: '@glass.0', d: rect(-80, -84, 14, 14), glow: 'window', detail: true }, { f: '@glass.0', d: rect(-62, -84, 14, 14), glow: 'window', detail: true }, { f: '@glass.0', d: 'M-44 -84h11v14h-11z', glow: 'window', detail: true }, { f: '@glass.1', d: 'M-80 -84h6l-6 6z', op: .4, detail: true }, { f: '@glass.1', d: 'M-62 -84h6l-6 6z', op: .4, detail: true });
+      body.push({ f: '@house.1', d: rect(-60, -64, 14, 24), detail: true }, { f: '@buoy.1', d: rect(-50, -100, 6, 4), glow: 'lamp', detail: true }, { s: '@iron.1', w: 1.4, d: 'M-56 -96v-14M-62 -110h12', detail: true });
       // the gear
-      if (v === 0) body.push({ s: '@iron.0', w: 4, d: 'M-108 -38L-100 -96L-92 -38' }, { s: '@iron.0', w: 3, d: 'M-104 -96h12' }, { s: '@rust', w: 1.2, op: .6, d: 'M-100 -96v-6' }, ['@net.0', 'M-20 -46q10 -16 30 -8q10 6 0 10z'], ['@buoy.0', circ(70, -54, 5) + circ(80, -55, 5)]);
-      if (v === 1) body.push(['@iron.1', rect(-24, -64, 34, 22)], ['@net.0', ell(-7, -56, 15, 10)], ['@net.1', ell(-10, -58, 9, 5), .7], { s: '@net.1', w: .8, op: .7, d: 'M-20 -60h26M-20 -54h26M-20 -48h26' }, ['@buoy.0', circ(70, -55, 5) + circ(82, -56, 5)]);
-      if (v === 2) { let pt = '', mesh = ''; for (const [x, y] of [[-20, -46], [2, -46], [24, -47], [-10, -60], [12, -61]]) { pt += `M${x} ${y}h20v-13q-10 -6 -20 0z`; mesh += `M${x + 4} ${y}v-14M${x + 10} ${y}v-16M${x + 16} ${y}v-14M${x} ${y - 6}h20`; } body.push(['@pot.0', pt], { s: '@pot.1', w: .8, op: .8, d: mesh }, ['@buoy.0', circ(74, -56, 5)], { s: '@iron.1', w: 1.2, d: 'M74 -61v-16' }, ['@iron.1', circ(74, -79, 3)]); }
-      body.push({ s: '@iron.0', w: 1.4, d: 'M70 -50v-10h40v6' }, { s: '@rope', w: 1.4, d: 'M114 -50q8 18 2 40' });
+      if (v === 0) body.push({ s: '@iron.0', w: 4, d: 'M-108 -38L-100 -96L-92 -38', detail: true }, { s: '@iron.0', w: 3, d: 'M-104 -96h12', detail: true }, { s: '@rust', w: 1.2, op: .6, d: 'M-100 -96v-6', detail: true }, { f: '@net.0', d: 'M-20 -46q10 -16 30 -8q10 6 0 10z', detail: true }, { f: '@buoy.0', d: circ(70, -54, 5) + circ(80, -55, 5), detail: true });
+      if (v === 1) body.push({ f: '@iron.1', d: rect(-24, -64, 34, 22), detail: true }, { f: '@net.0', d: ell(-7, -56, 15, 10), detail: true }, { f: '@net.1', d: ell(-10, -58, 9, 5), op: .7, detail: true }, { s: '@net.1', w: .8, op: .7, d: 'M-20 -60h26M-20 -54h26M-20 -48h26', detail: true }, { f: '@buoy.0', d: circ(70, -55, 5) + circ(82, -56, 5), detail: true });
+      if (v === 2) { let pt = '', mesh = ''; for (const [x, y] of [[-20, -46], [2, -46], [24, -47], [-10, -60], [12, -61]]) { pt += `M${x} ${y}h20v-13q-10 -6 -20 0z`; mesh += `M${x + 4} ${y}v-14M${x + 10} ${y}v-16M${x + 16} ${y}v-14M${x} ${y - 6}h20`; } body.push({ f: '@pot.0', d: pt, detail: true }, { s: '@pot.1', w: .8, op: .8, d: mesh, detail: true }, { f: '@buoy.0', d: circ(74, -56, 5), detail: true }, { s: '@iron.1', w: 1.2, d: 'M74 -61v-16', detail: true }, { f: '@iron.1', d: circ(74, -79, 3), detail: true }); }
+      body.push({ s: '@iron.0', w: 1.4, d: 'M70 -50v-10h40v6', detail: true }, { s: '@rope', w: 1.4, d: 'M114 -50q8 18 2 40', detail: true });
       return { body };
     },
   });
