@@ -142,6 +142,65 @@ test('lit parts and lit windows appear only after real dusk', () => {
   assert.ok((night.match(/fill="#ffd98a"/g) || []).length > (day.match(/fill="#ffd98a"/g) || []).length, 'lit windows at night');
 });
 
+/* ---------- night lights on objects that MOVE (glow shapes and the lit part, 2.2, in both renderers) ---------- */
+// Test-only lantern boats in loud colours (no other source draws them): a lamp glow on the part that stays, a window glow on
+// the oar that turns, a radial halo in the 'lit' part; an unlit twin (no 'lit' part) and a bobbing one (a whole-object hook).
+// Plain path strings, so the same function defines them in Node and, as source, in the Chrome page.
+function defineLanterns(define) {
+  const ring = (cx, cy, r) => `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0z`;
+  const boat = (id, lit, anim) => define({
+    id, category: 'boat', size: [140, 80], variants: 1, seasonal: false, flippable: true,
+    palette: { base: { hull: ['#4a3a2a'], lamp: ['#5a5040'] } }, night: { glow: { lamp: '#40ffa0', window: '#a0ff40' }, on: 1 },
+    parts: lit ? ['body', 'oar', 'lit'] : ['body', 'oar'], anim, tags: ['test', 'kit:boats', 'role:boat'],
+    build() {
+      const out = { body: [['@hull.0', 'M-70-20H70L56 0H-56z'], { f: '@lamp.0', d: 'M20-62h26v26h-26z', glow: 'lamp' }],
+        oar: [['@hull.0', 'M-50-12L-84 14l5 3L-44-8z'], { f: '@lamp.0', d: 'M-44-50h22v22h-22z', glow: 'window' }] };
+      if (lit) out.lit = [{ f: { rad: [[0, '#ff40c0', 0.8], [1, '#ff40c0', 0]], cx: 0, cy: -110, r: 30 }, d: ring(0, -110, 30) }];
+      return out;
+    },
+  });
+  boat('boat.lantern-test', true, { turn: { part: 'oar', pivot: [-47, -10], deg: 6, period: 3 } });
+  boat('boat.lantern-unlit-test', false, { turn: { part: 'oar', pivot: [-47, -10], deg: 6, period: 3 } });
+  boat('boat.lantern-bob-test', true, { bob: { part: '*', dy: 2, period: 4 } });
+}
+defineLanterns(S.sceneObjDefine);
+const lanternScene = (o) => ({ v: 1, id: 'renderer-test-lanterns', view: { lat: 51.5, lon: -0.12, heading: 200, fov: 78, horizon: 520 }, season: 'summer', setting: 'natural',
+  particles: 'none', weather: 'none', sky: { stars: 0, clouds: { n: 1, y: [60, 120], speed: 6 }, sunR: 26, moonR: 20 },
+  ground: [{ layer: 'near', d: 'M-160 600H1760V900H-160Z', fill: '#3a4a30' }], place: o.place || [], actors: o.actors || [] });
+const LANTERN_ACTOR = (obj) => ({ obj, layer: 'near', path: [[500, 760], [1100, 760]], speed: 10, s: 2, seed: 3, offset: 0.5 });
+const LANTERN_ITEM = (obj) => ({ obj, x: 800, y: 760, s: 2, layer: 'near', seed: 4 });
+const NIGHT = Date.parse('2026-10-07T21:30:00Z'), NOON = Date.parse('2026-10-07T12:00:00Z');
+/** What an SVG still really draws: its body plus each <g id> in the defs that some <use> places, gradients resolved. */
+function usedColours(svg) {
+  const defs = svg.slice(0, svg.indexOf('</defs>')), body = svg.slice(svg.indexOf('</defs>'));
+  const grads = new Map([...defs.matchAll(/<(?:radial|linear)Gradient id="([^"]+)"[^>]*>(.*?)<\/(?:radial|linear)Gradient>/g)].map(m => [m[1], m[2]]));
+  let out = body;
+  for (const m of defs.matchAll(/<g id="([^"]+)">/g)) {
+    if (!body.includes(`href="#${m[1]}"`)) continue;
+    const start = m.index + m[0].length, next = defs.indexOf('<g id="', start), inner = defs.slice(start, next < 0 ? defs.length : next);
+    out += inner.replace(/url\(#([^)]+)\)/g, (u, id) => grads.get(id) || u);
+  }
+  return out;
+}
+
+test('SVG: an actor (a boat crossing) shows its glow shapes and its lit part at night, in what it places, and none by day', () => {
+  const svg = (actors, at) => S.sceneSvg(lanternScene({ actors }), { size: 'fill', sky: S.almSceneLight(at, 51.5, -0.12, 'UTC') });
+  for (const obj of ['boat.lantern-test', 'boat.lantern-bob-test']) {
+    const night = usedColours(svg([LANTERN_ACTOR(obj)], NIGHT)), day = svg([LANTERN_ACTOR(obj)], NOON);
+    assert.ok(/#40ffa0/i.test(night), obj + ': the lamp on the part that stays is lit at night');
+    assert.ok(/#ff40c0/i.test(night), obj + ': the lit part (the halo) is drawn at night');
+    if (obj === 'boat.lantern-test') assert.ok(/#a0ff40/i.test(night), obj + ': the window on the moving oar is lit at night');
+    assert.ok(!/#40ffa0|#a0ff40|#ff40c0/i.test(day), obj + ': no night lights by day');
+  }
+  // the same boat placed (not crossing) keeps its night look, and the day still has no extra bytes for it
+  const placed = (at) => S.sceneSvg(lanternScene({ place: [LANTERN_ITEM('boat.lantern-test')] }), { size: 'fill', sky: S.almSceneLight(at, 51.5, -0.12, 'UTC') });
+  const pn = usedColours(placed(NIGHT));
+  for (const c of ['#40ffa0', '#a0ff40', '#ff40c0']) assert.ok(pn.toLowerCase().includes(c), 'placed at night: ' + c);
+  assert.ok(!/#40ffa0|#a0ff40|#ff40c0/i.test(placed(NOON)), 'placed by day: no night lights');
+  // by day an actor's markup is unchanged by the night support: the unlit twin draws the same bytes (no lit symbol)
+  assert.equal(noIds(svg([LANTERN_ACTOR('boat.lantern-test')], NOON)).length, noIds(svg([LANTERN_ACTOR('boat.lantern-unlit-test')], NOON)).length, 'by day the lit part costs nothing');
+});
+
 test('sceneRendererFor and the host markup', () => {
   const C = loadScenes(ROOT, { fixtures: true, extra: 'function sceneCanvasSupported() { return true; }' });
   const it = C.sceneItem(meta('renderer-host'), C.SCENE_TEST_TINY);
@@ -318,6 +377,45 @@ test('canvas: two bakes of a scene draw the same sky; another scene id draws oth
   assert.equal(r.a[0], r.b[0], 'two bakes of the same scene: the same sky');
   assert.notEqual(r.other[0], r.a[0], 'another scene id: other clouds');
   assert.equal(r.a[1], r.other[1], 'the same number of draws (one per cloud)');
+});
+
+test('canvas: animated objects light up at night (glows on parts that stay and parts that move, the lit part baked in, no extra draws)', { skip: !browser && 'no Chrome / Chromium found' }, async () => {
+  await chrome.screenshot({ html: scenePageHtml({ root: ROOT, data: 'SCENE_TEST_TINY', still: true }), width: 400, height: 225, transparent: false });
+  const scenes = {
+    actor: lanternScene({ actors: [LANTERN_ACTOR('boat.lantern-test')] }), actorUnlit: lanternScene({ actors: [LANTERN_ACTOR('boat.lantern-unlit-test')] }),
+    bobActor: lanternScene({ actors: [LANTERN_ACTOR('boat.lantern-bob-test')] }),
+    item: lanternScene({ place: [LANTERN_ITEM('boat.lantern-test')] }), itemUnlit: lanternScene({ place: [LANTERN_ITEM('boat.lantern-unlit-test')] }),
+    bobItem: lanternScene({ place: [LANTERN_ITEM('boat.lantern-bob-test')] }),
+  };
+  const r = await chrome.evaluate(`(async () => {
+    await window.__sceneReady;
+    (${defineLanterns.toString()})(sceneObjDefine);
+    const scenes = ${JSON.stringify(scenes)}, out = {};
+    // pixels of a solid night colour (the glows are drawn ungraded at full opacity), and a hash of the whole frame
+    const near = (d, i, c) => Math.abs(d[i] - c[0]) + Math.abs(d[i + 1] - c[1]) + Math.abs(d[i + 2] - c[2]) < 12;
+    for (const [name, data] of Object.entries(scenes)) for (const at of ['night', 'noon']) {
+      const L = sceneLight({}, Object.assign({ at }, data.view)), C = sceneCompile(data, { season: 'summer', lod: 1, L });
+      const c = document.createElement('canvas'); c.style.cssText = 'width:640px;height:360px'; document.body.appendChild(c);
+      const r = sceneRendererCreate(c, { compiled: C }, { dpr: 1, still: true, L }); r.resize(640, 360); r.frame(0);
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let h = 2166136261, lamp = 0, win = 0;
+      for (let i = 0; i < d.length; i += 4) { h = Math.imul(h ^ d[i] ^ (d[i + 1] << 8) ^ (d[i + 2] << 16), 16777619); if (near(d, i, [0x40, 0xff, 0xa0])) lamp++; if (near(d, i, [0xa0, 0xff, 0x40])) win++; }
+      out[name + '@' + at] = { h: h >>> 0, lamp, win, draws: r.stats().animatedDraws, windows: !!L.windows };
+      r.destroy(); c.remove();
+    }
+    return out;
+  })()`);
+  assert.ok(r['actor@night'].windows && !r['actor@noon'].windows, 'night lights the windows, noon does not');
+  for (const k of ['actor', 'bobActor', 'item', 'bobItem']) {
+    assert.ok(r[k + '@night'].lamp > 20, k + ': the lamp on the part that stays is lit at night (' + r[k + '@night'].lamp + ' px)');
+    assert.equal(r[k + '@noon'].lamp + r[k + '@noon'].win, 0, k + ': no night colours by day');
+    assert.equal(r[k + '@night'].draws, r[k + '@noon'].draws, k + ': the night look adds no animated draws');
+  }
+  for (const k of ['actor', 'item']) assert.ok(r[k + '@night'].win > 20, k + ': the window on the moving oar is lit at night (' + r[k + '@night'].win + ' px)');
+  for (const k of ['actor', 'item']) {
+    assert.notEqual(r[k + '@night'].h, r[k + 'Unlit@night'].h, k + ': the lit part (the halo) is drawn at night');
+    assert.equal(r[k + '@noon'].h, r[k + 'Unlit@noon'].h, k + ': by day the lit part is not drawn');
+  }
 });
 
 test('canvas: the dense scene (3,000 placements, 40 actors) through the host at 1600 x 900', { skip: !browser && 'no Chrome / Chromium found' }, async () => {
