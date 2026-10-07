@@ -118,14 +118,26 @@ function ukSouthEastWyndhamsPoolV3(T) {
   });
 
   const place = "wyndhams-pool", label = "Wyndham's Pool", town = 'Yateley', kind = 'landscape', tags = ["pond","woodland","reeds"];
+  // The scene engine (docs/dev/SCENE_ENGINE.md section 17): when it is in the build, the four seasonal items share ONE
+  // composed, auto-season scene (71-scene-uk-south-east-wyndhams-pool-detail.js, drawn by the canvas renderer: the date
+  // picks the season, the live sky the light). Every id, ukPlace, ukView, ukSeason, season and the rotation stay as they
+  // were; the hand-drawn art above is kept as legacySvg (old-versus-new sheets) and is the look when the engine is absent.
+  // A still with no clock (Node, the gallery's sheets, the tile) shows the item's own season; with a live sky, the date's.
+  const composed = it => {
+    if (typeof sceneUkWyndhamsPoolDetail !== 'function' || typeof sceneItem !== 'function' || typeof sceneSvg !== 'function') return it;
+    const c = Object.assign(sceneItem(it, sceneUkWyndhamsPoolDetail), { season: it.season, liveSky: it.liveSky, legacySvg: it.svg, sceneSeason: it.ukSeason });
+    const own = (o) => (o.season || (o.sky && Number.isFinite(o.sky.ms)) ? o : Object.assign({}, o, { season: it.ukSeason }));
+    c.svg = (o = {}) => sceneSvg(c, own(o));
+    return c;
+  };
   const view = 2, originalSeason = 'autumn';   // the detail view; its autumn scene keeps the original saved ref
   const reasons = { spring: 'Catkins over the woodland margin', summer: 'Summer waterbirds at the woodland margin', autumn: 'Autumn birches along the water', winter: 'Snow over the frozen woodland pool' };
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     const reason = reasons[season];
-    add('hampshire', kind, { id: `${place}-${view + 1}${season !== originalSeason ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
+    add('hampshire', kind, composed({ id: `${place}-${view + 1}${season !== originalSeason ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
       colour: season === 'winter' ? 'blue' : season === 'autumn' ? 'amber' : 'green', mood: 'calm', tags: tags.concat(season),
       ukPlace: place, ukLocality: town, ukTown: town, ukView: 'detail', viewReason: reason,
       ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON },
-      svg: (o = {}) => scene(season, o) });
+      svg: (o = {}) => scene(season, o) }));
   }
 }

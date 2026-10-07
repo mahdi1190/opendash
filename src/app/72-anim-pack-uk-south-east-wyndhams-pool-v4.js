@@ -137,12 +137,24 @@ function ukSouthEastWyndhamsPoolV4(T) {
     winter: "Winter evening at the misty pool",
   };
   const view = 3, originalSeason = 'summer';
+  // The scene engine (docs/dev/SCENE_ENGINE.md section 17): when it is in the build, the four seasonal items share ONE
+  // composed, auto-season scene (71-scene-uk-south-east-wyndhams-pool-evening.js, drawn by the canvas renderer: the date
+  // picks the season, the live sky the light). Every id, ukPlace, ukView, ukSeason, season and the rotation stay as they
+  // were; the hand-drawn art above is kept as legacySvg (old-versus-new sheets) and is the look when the engine is absent.
+  // A still with no clock (Node, the gallery's sheets, the tile) shows the item's own season; with a live sky, the date's.
+  const composed = it => {
+    if (typeof sceneUkWyndhamsPoolEvening !== 'function' || typeof sceneItem !== 'function' || typeof sceneSvg !== 'function') return it;
+    const c = Object.assign(sceneItem(it, sceneUkWyndhamsPoolEvening), { season: it.season, liveSky: it.liveSky, legacySvg: it.svg, sceneSeason: it.ukSeason });
+    const own = (o) => (o.season || (o.sky && Number.isFinite(o.sky.ms)) ? o : Object.assign({}, o, { season: it.ukSeason }));
+    c.svg = (o = {}) => sceneSvg(c, own(o));
+    return c;
+  };
   for (const season of ['spring', 'summer', 'autumn', 'winter']) {
     const reason = seasonalReasons[season];
-    add('hampshire', kind, { id: `${place}-${view + 1}${season !== originalSeason ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
+    add('hampshire', kind, composed({ id: `${place}-${view + 1}${season !== originalSeason ? '-' + season : ''}`, label, site: `${label} — ${reason}`,
       colour: season === 'winter' ? 'blue' : season === 'autumn' ? 'amber' : 'green', mood: 'dreamy', tags: tags.concat(season),
       ukPlace: place, ukLocality: town, ukTown: town, ukView: 'evening', viewReason: reason,
       ukSeason: season, season: [season], rich: true, liveSky: { lat: LAT, lon: LON },
-      svg: (o = {}) => scene(season, o) });
+      svg: (o = {}) => scene(season, o) }));
   }
 }
