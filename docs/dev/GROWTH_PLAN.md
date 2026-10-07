@@ -9,10 +9,14 @@ and the playful features that make the app worth opening.
 
 ## 1. Performance (do first)
 
-- **Load packs on demand.** Ship the core app plus the user's own region. The
-  scene recipes for other regions are fetched from the local server only when
-  needed (travel, the gallery) and cached by the service worker. Target: the
-  first page well under 3 MB.
+- **Every pack is installed; only what is needed is loaded into the page.**
+  The user's decision (7 Oct): all packs ship with every install, so travel
+  scenes always work, even offline. The scene engine makes the recipes small,
+  so this is affordable. The page then parses only the core app, the user's
+  region and the scenes in use. Other regions' recipes are read from the
+  local install (never the internet) when needed: travel, the gallery or an
+  arrival. Precache the likely next region when a trip is detected. Target:
+  the first page well under 3 MB.
 - **Scene engine (in progress, branch `scene-engine`).** Scenes become small
   recipes drawn from a shared object library by a Canvas renderer. It uses a
   sprite cache and baked static layers, and redraws only the moving parts each
