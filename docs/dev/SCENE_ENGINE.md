@@ -867,7 +867,15 @@ sky covers the whole canvas.
 
 1. The sky bitmap.
 2. Stars, if `L.stars > 0`: up to 220 `fillRect`s with seeded twinkle alpha.
-3. Clouds: up to 10 cloud sprites drifting at `clouds.speed`.
+3. Clouds: up to 10 cloud sprites drifting at `clouds.speed`, one
+   `drawImage` each at whole device pixels. `sceneCloudPlan(C, L)` (the
+   core, pure and seeded by the scene id) picks the kinds by cover and
+   weather (cumulus heaps, low stratus strips, a few cirrus wisps in a clear
+   sky), 2 or 3 depth bands (far: small, pale, slow; near: larger, brighter,
+   faster) and the colours from `L.cloud` (a rim on the sun's or moon's
+   side, a glowing base round sunrise and sunset); the bake paints each
+   cloud once. `sceneCloudX(c, t)` wraps a cloud on its own width, so it
+   enters and leaves fully off-screen; at t = 0 every cloud is in the frame.
 4. For each land bitmap, far to near:
    1. the bitmap (offset by `camera.pan * depth * sin(2 pi t / period)`
       when the camera is on)

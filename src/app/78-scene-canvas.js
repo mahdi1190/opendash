@@ -87,6 +87,50 @@ function _sccStat(a) {
   return { median: r(q(0.5)), p95: r(q(0.95)), max: r(s[s.length - 1]), n: s.length };
 }
 const _sccIdle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 120 }) : setTimeout(fn, 16));
+/**
+ * One planned cloud (sceneCloudPlan) painted into its own sprite at device scale k, once per bake (a frame only draws it).
+ * Heaps and strips: overlapping lobes whose radial gradients fade to nothing (the soft edge: no outline), cut flat and soft
+ * at the base; then, only where the cloud is, the shade toward the base (or the low sun's glow under it) and on the side away
+ * from the light, a lit top on every lobe and a bright rim on the sun's (or the moon's) side; a ragged soft underside.
+ * Cirrus: soft streaks and a few fine fibres. The opacity is baked in.
+ */
+function _sccCloudSprite(p, k) {
+  const c = _sccCanvas(p.w * k + 4, p.h * k + 4), cx = c.getContext('2d', _SCC_CPU), t = p.tone, sd = t.side;
+  const rgba = (hex, a) => { const v = _scHex(hex); return `rgba(${v[0]},${v[1]},${v[2]},${Math.round(a * 1000) / 1000})`; };
+  const grad = (g, col, stops) => { for (const [o, a] of stops) g.addColorStop(o, rgba(col, a)); return g; };
+  const blob = (x, y, rx, ry, col, stops, ang) => {      // a soft ellipse: a radial gradient in a scaled (and turned) frame
+    cx.setTransform(k, 0, 0, k, 2, 2); cx.translate(x, y); if (ang) cx.rotate(ang); cx.scale(1, ry / rx);
+    cx.fillStyle = grad(cx.createRadialGradient(0, 0, 0, 0, 0, rx), col, stops); cx.fillRect(-rx, -rx, 2 * rx, 2 * rx);
+  };
+  const cover = (fill) => { cx.setTransform(k, 0, 0, k, 2, 2); cx.fillStyle = fill; cx.fillRect(0, 0, p.w, p.h); };
+  if (p.kind === 'cirrus') {
+    for (const s of p.streaks) blob(s[0], s[1], s[2], s[3], t.wisp, [[0, 0.6], [0.5, 0.32], [1, 0]], s[4]);
+    cx.setTransform(k, 0, 0, k, 2, 2); cx.lineCap = 'round';
+    for (const f of p.fibres) {
+      cx.strokeStyle = grad(cx.createLinearGradient(f[0], 0, f[4], 0), t.wisp, [[0, 0], [0.35, 0.55], [1, 0]]); cx.lineWidth = f[6];
+      cx.beginPath(); cx.moveTo(f[0], f[1]); cx.quadraticCurveTo(f[2], f[3], f[4], f[5]); cx.stroke();
+    }
+  } else {
+    const strip = p.kind === 'strip', edge = strip ? 0.55 : 0.8, hk = t.hk * (strip ? 0.6 : 0.85), rk = t.rimK * (strip ? 0.6 : 1);
+    for (const l of [p.shelf, ...p.lobes]) blob(l[0], l[1], l[2], l[3], t.body, [[0, 1], [edge, 1], [1, 0]]);
+    cx.globalCompositeOperation = 'destination-out';
+    cover(grad(cx.createLinearGradient(0, p.base - 5, 0, p.base + 3), '#000000', [[0, 0], [1, 1]]));
+    cx.globalCompositeOperation = 'source-atop';
+    cover(grad(cx.createLinearGradient(0, 0, 0, p.base), t.baseCol, [[0, 0], [0.45, 0], [1, strip ? 0.6 : 0.82]]));
+    cover(grad(cx.createLinearGradient(sd > 0 ? 0 : p.w, 0, sd > 0 ? p.w : 0, 0), t.shade, [[0, 0.38], [0.55, 0], [1, 0]]));
+    for (const l of p.lobes) {
+      blob(l[0] - sd * 0.15 * l[2], l[1] + 0.35 * l[3], l[2] * 0.85, l[3] * 0.85, t.shade, [[0, 0.2], [1, 0]]);
+      blob(l[0] + sd * 0.28 * l[2], l[1] - 0.32 * l[3], l[2] * 0.78, l[3] * 0.78, t.lit, [[0, 0.9 * hk], [0.55, 0.5 * hk], [1, 0]]);
+      if (rk > 0.02 && l[1] - l[3] < p.base * 0.55) blob(l[0] + sd * 0.5 * l[2], l[1] - 0.5 * l[3], l[2] * 0.55, l[3] * 0.55, t.rim, [[0, rk], [1, 0]]);
+    }
+    cx.globalCompositeOperation = 'source-over';
+    for (const g of p.rag) blob(g[0], g[1], g[2], g[3], t.ragCol, [[0, 0.5], [1, 0]]);
+  }
+  cx.globalCompositeOperation = 'destination-out';
+  cover(`rgba(0,0,0,${Math.round((1 - t.op) * 1000) / 1000})`);
+  cx.globalCompositeOperation = 'source-over';
+  return c;
+}
 
 /**
  * Create a renderer for one canvas. src: scene data, a thunk, a composed item, or (tests) { compiled: C }.
@@ -237,24 +281,17 @@ function sceneRendererCreate(canvas, src, o) {
       const ns = Math.min(220, Math.round((C.sky.stars || 0) * (Lx.stars || 0) * Math.max(0.3, lod)));
       const r = _scRndOf(41);
       for (let i = 0; i < ns; i++) { const x = -100 + r() * 1800, y = Math.pow(r(), 1.4) * (hor - 30), s = 0.7 + r() * 1.2; out.stars.push([x * vs + ox, y * vs + oy, Math.max(1, s * vs * 1.2), i % 3]); }
-      // clouds: sprites lit by the light, drifting at their own speeds
-      const cn = Math.min(10, Math.max(1, Math.round((C.sky.clouds.n || 4) * (0.45 + (Lx.cover || 0) * 1.6))));
-      const rc = _scRndOf(5), cols = Lx.cloud || ['#c4d3e3', '#f4f7fa', '#ffffff'];
-      for (let i = 0; i < cn; i++) {
-        const s = 0.5 + rc() * 1.1, cw = 360 * s, ch = 120 * s, k = vs, c = _sccCanvas(cw * k + 4, ch * k + 4), cx = c.getContext('2d', _SCC_CPU);
-        cx.setTransform(k, 0, 0, k, 2, 2);
-        const cg = cx.createLinearGradient(0, 0, 0, ch); cg.addColorStop(0, cols[2]); cg.addColorStop(0.55, cols[1]); cg.addColorStop(1, cols[0]);
-        cx.fillStyle = cg; cx.globalAlpha = (Lx.dark > 0.9 ? 0.7 : 0.92);
-        const n = 5 + Math.floor(rc() * 3);
-        cx.beginPath(); cx.ellipse(cw / 2, ch * 0.78, cw * 0.46, ch * 0.18, 0, 0, Math.PI * 2);
-        for (let j = 0; j < n; j++) { const px = cw * (0.15 + 0.7 * j / (n - 1)) + (rc() - 0.5) * 20 * s, pr = (22 + rc() * 38) * s; cx.moveTo(px + pr, ch * 0.72 - pr * 0.5); cx.ellipse(px, ch * 0.72 - pr * 0.5, pr, pr * 0.9, 0, 0, Math.PI * 2); }
-        cx.fill();
-        out.clouds.push({ c, w: cw, h: ch, x0: rc() * 1920 - 160, y: C.sky.clouds.y0 + rc() * Math.max(10, C.sky.clouds.y1 - C.sky.clouds.y0), sp: (C.sky.clouds.speed || 6) * (0.6 + rc() * 0.8) });
-        out.sprites.add({ c, bytes: c.width * c.height * 4 });
-      }
     }
     flushCx(sx);
-    for (const c of out.clouds) flushCx(c.c.getContext('2d'));
+    // clouds: the scene's own natural sky (sceneCloudPlan: kinds by cover, depth bands, lit by the light), each painted once
+    // into its own sprite here, a slice per cloud; a frame drifts them (one drawImage each)
+    for (const p of sceneCloudPlan(C, Lx)) {
+      const c = _sccCloudSprite(p, vs);
+      out.clouds.push({ c, w: p.w, h: p.h, x0: p.x0, y: p.y, sp: p.sp, kind: p.kind, band: p.band });
+      out.sprites.add({ c, bytes: c.width * c.height * 4 });
+      flushCx(c.getContext('2d'));
+      yield* slice();
+    }
     out.sky = sky;
     yield* slice();
 
@@ -427,10 +464,11 @@ function sceneRendererCreate(canvas, src, o) {
     }
     mark('stars');
     for (const c of S.clouds) {
-      const x = ((c.x0 + c.sp * t) % 2120 + 2120) % 2120 - 260;
-      if ((c.y - c.h) * vs + oy > hb) continue;
+      // whole device pixels: an unscaled blit at an integer offset is a plain copy (no filtering) in a software raster
+      const x = Math.round(sceneCloudX(c, t) * vs + ox), y = Math.round((c.y - c.h) * vs + oy);
+      if (y > hb || x > W || x + c.c.width < 0) continue;   // hidden by the land, or wrapping off-screen
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(c.c, x * vs + ox, (c.y - c.h) * vs + oy, c.c.width, c.c.height); draws++;
+      ctx.drawImage(c.c, x, y); draws++;
     }
     S.groups.forEach((g, gi) => {
       const below = hideBelow[gi];

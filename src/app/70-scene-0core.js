@@ -200,6 +200,116 @@ function sceneWind(t, x, L) {
   return w * (base + gust);
 }
 function sceneScaleBucket(s) { return 2 ** (Math.round(Math.log2(Math.max(1e-3, s)) * 4) / 4); }
+
+/* ---------- clouds (6.3): the natural sky as pure data; the canvas paints each cloud once into a sprite ---------- */
+const SCENE_CLOUD_PAD = 24;   // scene units beyond the frame where a cloud wraps: it enters and leaves fully off-screen
+const _scRr = (r, a, b) => a + r() * (b - a);
+const _scCl = (v, a, b) => Math.max(a, Math.min(b, v));
+// depth bands (far: small, pale, slow, low in the sky; near: larger, brighter, faster, higher) and the high cirrus band
+const _SC_CLOUD_BANDS = { '-1': { s: [0.6, 1], y: [0.05, 0.35], v: 0.35 }, 0: { s: [0.5, 0.72], y: [0.7, 1], v: 0.55 }, 1: { s: [0.75, 1], y: [0.45, 0.8], v: 0.8 }, 2: { s: [1, 1.3], y: [0.3, 0.65], v: 1.1 } };
+/** A heap's or a strip's lobes [x, y, rx, ry] round its centre, its flat base at y = 0: heaps tower in a bell, strips stay low and flat. */
+function _scCloudLobes(strip, r, W) {
+  const k = strip ? 9 + Math.floor(r() * 5) : 7 + Math.floor(r() * 4), tall = strip ? 0.45 : _scRr(r, 0.9, 1.35), skew = _scRr(r, -0.25, 0.25), lobes = [];
+  // a cauliflower edge: small florets on the upper rim of a lobe (angles across its top, never under it)
+  const florets = (x, y, rad, n) => { for (let f = 0; f < n; f++) { const a = _scRr(r, -2.6, -0.55), q = rad * _scRr(r, 0.3, 0.46); lobes.push([x + Math.cos(a) * rad * 0.78, y + Math.sin(a) * rad * 0.78, q * 1.04, q * 0.96]); } };
+  // a strip is not a smooth lens: its thickness rises and falls in a few cells along its length
+  const cells = 2 + Math.floor(r() * 2), ph = r() * Math.PI;
+  for (let j = 0; j < k; j++) {
+    // the lobes overlap along the whole length (no loose bubbles at the ends): spacing 0.8 W / (k - 1), radii from a bell
+    const t = (j + _scRr(r, -0.25, 0.25)) / (k - 1) - 0.5, bell = Math.max(0.15, 1 - Math.abs(t - skew * 0.5) * 1.8) ** 0.7;
+    const cell = strip ? 0.55 + 0.45 * Math.abs(Math.sin((t + 0.5) * cells * Math.PI + ph)) : 1;
+    const pr = W * (strip ? 0.032 + 0.05 * bell * cell : 0.06 + 0.12 * bell) * _scRr(r, 0.8, 1.2), px = t * W * 0.8, py = -pr * _scRr(r, 0.3, 0.7) * tall;
+    lobes.push([px, py, pr * (strip ? 1.6 : 1.08), pr * (strip ? 0.55 : 0.92)]);
+    if (strip) { if (bell * cell > 0.4 && r() < 0.5) florets(px, py, pr * 0.8, 1); continue; }
+    // towers: a smaller head on the tall middle lobes
+    if (bell > 0.5 && r() < 0.8) { const q = pr * _scRr(r, 0.45, 0.7), qy = -pr * (1 + _scRr(r, 0.1, 0.5) * tall) - q * 0.2; lobes.push([px + _scRr(r, -0.6, 0.6) * pr, qy, q * 1.05, q * 0.95]); florets(px, qy, q, 1 + Math.floor(r() * 2)); }
+    else if (bell > 0.3 && r() < 0.6) florets(px, py, pr, 1);
+  }
+  lobes.sort((a, b) => (a[1] + a[3] * 0.3) - (b[1] + b[3] * 0.3));   // towers behind, lower heads in front
+  const rag = [];
+  for (let j = 0; j < 4; j++) rag.push([_scRr(r, -0.38, 0.38) * W, _scRr(r, -2, 1.5), W * _scRr(r, 0.08, 0.18), Math.max(2, W * _scRr(r, 0.012, 0.022))]);
+  // one wide low lobe under the middle keeps the underside a level shelf; rag: the soft ragged underside below it
+  return { lobes, shelf: [W * skew * 0.2, -W * 0.03, W * (strip ? 0.46 : 0.42), W * (strip ? 0.05 : 0.07)], rag };
+}
+/** A cirrus wisp: soft streaks [x, y, rx, ry, angle] along a slight slope and fine hooked fibres [x0, y0, cx, cy, x1, y1, width]. */
+function _scCirrus(r, W) {
+  const slope = _scRr(r, -0.12, 0.05), hook = _scRr(r, -1, 1) * 14, streaks = [], fibres = [], n = 3 + Math.floor(r() * 2), f = 3 + Math.floor(r() * 4);
+  for (let j = 0; j < n; j++) { const x = _scRr(r, -0.22, 0.22) * W; streaks.push([x, x * slope + _scRr(r, -4, 6), W * _scRr(r, 0.24, 0.42), _scRr(r, 2.5, 6), Math.atan(slope)]); }
+  for (let j = 0; j < f; j++) {
+    const len = W * _scRr(r, 0.35, 0.75), x0 = _scRr(r, -0.45, 0.05) * W, y0 = x0 * slope + _scRr(r, -5, 7), x1 = x0 + len;
+    fibres.push([x0, y0, x0 + len * 0.55, y0 + len * 0.55 * slope + _scRr(r, -3, 3), x1, x1 * slope + hook * _scRr(r, 0.3, 1), _scRr(r, 1.2, 2.6)]);
+  }
+  return { streaks, fibres };
+}
+/**
+ * A cloud's colours under L: [shade, body, lit] from L.cloud (dawn and dusk pink and gold, night blue-grey), a rim on the
+ * sun's side (or a faint one on the moon's side at night), the low sun's glow under the base round sunrise and sunset,
+ * far clouds hazed toward the horizon, near ones brighter; the opacity as before (0.92, 0.7 in deep night).
+ */
+function _scCloudTone(L, kind, band) {
+  const cover = _scCl(L.cover || 0, 0, 1), alt = L.alt == null ? 30 : L.alt, back = _scCl(L.backlit || 0, 0, 1), m = L.moon || {};
+  const sunK = _scCl((alt + 3) / 6, 0, 1) * (1 - cover * 0.8), moonK = m.show ? (0.2 + 0.4 * (m.illum || 0)) * (1 - cover) : 0, byMoon = sunK < 0.25 && moonK > 0;
+  let [shade, body, lit] = L.cloud || ['#c4d3e3', '#f4f7fa', '#ffffff'];
+  let rimK = byMoon ? moonK : Math.min(1, sunK * (0.75 + back * 0.5));
+  const rim = byMoon ? _scMix(body, '#c8d4ee', 0.55) : _scMix(_scMix(lit, '#ffffff', 0.4), L.lowSun || lit, _scCl(1 - alt / 12, 0, 1) * 0.5);
+  const under = _scCl((2 - alt) / 3, 0, 1) * _scCl((alt + 6) / 3, 0, 1) * (1 - cover * 0.7);
+  body = _scMix(body, shade, back * 0.3);
+  if (band === 0) { const hz = L.low || body; shade = _scMix(shade, hz, 0.3); body = _scMix(body, hz, 0.25); lit = _scMix(lit, hz, 0.2); rimK *= 0.6; }
+  if (band === 2) { body = _scMix(body, lit, 0.12); rimK = Math.min(1, rimK * 1.15); }
+  const op = (L.dark > 0.9 ? 0.7 : 0.92) * (kind === 'cirrus' ? 0.6 : kind === 'strip' ? 0.96 : 1) * (band === 0 ? 0.9 : 1);
+  const side = byMoon ? ((m.rel != null ? m.rel : (m.x || 800) - 800) >= 0 ? 1 : -1) : (L.side || 1);
+  const r2 = v => Math.round(v * 100) / 100;
+  // round sunrise and sunset the sun below the horizon lights the cloud from under: a glowing base, a duller top
+  return { shade, body, lit, rim, rimK: r2(rimK), hk: r2((0.35 + 0.55 * sunK + 0.1 * moonK) * (1 - 0.5 * under)), side, op: r2(op),
+    baseCol: _scMix(shade, lit, under), ragCol: _scMix(_scMix(body, shade, 0.6), lit, under * 0.6), wisp: _scMix(lit, rim, 0.5) };
+}
+/** The extent [x0, y0, x1, y1] of a cloud's shapes (round its centre and base), so its sprite holds every soft edge. */
+function _scCloudBox(sh) {
+  const b = [Infinity, Infinity, -Infinity, -Infinity], add = (x0, y0, x1, y1) => { b[0] = Math.min(b[0], x0); b[1] = Math.min(b[1], y0); b[2] = Math.max(b[2], x1); b[3] = Math.max(b[3], y1); };
+  for (const e of [...(sh.lobes || []), ...(sh.shelf ? [sh.shelf] : []), ...(sh.rag || [])]) add(e[0] - e[2], e[1] - e[3], e[0] + e[2], e[1] + e[3]);
+  for (const s of sh.streaks || []) { const dy = s[3] + Math.abs(Math.sin(s[4])) * s[2]; add(s[0] - s[2], s[1] - dy, s[0] + s[2], s[1] + dy); }
+  for (const f of sh.fibres || []) for (let i = 0; i < 6; i += 2) add(f[i] - f[6], f[i + 1] - f[6], f[i] + f[6], f[i + 1] + f[6]);
+  return b;
+}
+/**
+ * The clouds of a compiled scene under the light L (6.3): count min(10, max(1, round(n * (0.45 + cover * 1.6)))) as before,
+ * cirrus wisps inside it. Kinds by cover and weather: fair-weather cumulus heaps (and a few high cirrus wisps in a clear sky),
+ * low stratus strips under overcast, rain, snow or fog. Two or three depth bands drift at their own speeds (parallax).
+ * Seeded by the scene id (two scenes never share a sky); a cloud's place, size, shape and speed do not depend on the light,
+ * so a re-bake at a new light recolours the sky without moving it. Sorted far to near (the draw order). Each:
+ * { kind, band (-1 cirrus, 0 far, 1 mid, 2 near), w, h (the sprite, scene units), x0 (drift phase), y (the sprite's bottom
+ * edge), sp (units / s), base (the flat base's y in the sprite), lobes, shelf, rag | streaks, fibres (sprite units), tone }.
+ * At t = 0 every cloud is on screen (the reduced-motion still is a finished sky).
+ */
+function sceneCloudPlan(C, L) {
+  const sk = C && C.sky && C.sky.clouds;
+  if (!sk || !L) return [];
+  const cover = _scCl(L.cover || 0, 0, 1), n = Math.min(10, Math.max(1, Math.round((sk.n || 4) * (0.45 + cover * 1.6))));
+  const wet = !!(L.rain || L.snow || L.fog), id = String(C.id), off = sceneHash(id + '|clouds'), span = Math.max(10, sk.y1 - sk.y0);
+  // cumulative weights heap | strip | cirrus, and at most this many cirrus
+  const kw = wet || cover > 0.75 ? [0.3, 1] : cover > 0.5 ? [0.55, 1] : cover < 0.2 ? [0.6, 0.72] : [0.7, 0.86];
+  const maxCi = wet || cover > 0.5 ? 0 : cover < 0.2 ? Math.max(1, Math.round(n / 3)) : 1, bands = n > 2 ? 3 : 2;
+  const out = [];
+  let cirri = 0;
+  for (let i = 0; i < n; i++) {
+    const r = sceneRnd(sceneHash(id + '|cloud|' + i)), u = (off % 997 / 997 + i * 0.6180339887 + _scRr(r, -0.12, 0.12) + 1) % 1, yr = r(), sr = r(), vr = r(), kr = r();
+    let kind = kr < kw[0] ? 'heap' : kr < kw[1] ? 'strip' : 'cirrus';
+    if (kind === 'cirrus' && cirri++ >= maxCi) kind = 'heap';
+    const band = kind === 'cirrus' ? -1 : bands === 3 ? (i + off) % 3 : ((i + off) % 2) * 2, B = _SC_CLOUD_BANDS[band], s = B.s[0] + sr * (B.s[1] - B.s[0]);
+    const W = 280 * s * (kind === 'cirrus' ? _scRr(r, 1, 1.7) : kind === 'strip' ? _scRr(r, 1.7, 2.6) : _scRr(r, 0.85, 1.2));
+    const sh = kind === 'cirrus' ? _scCirrus(r, W) : _scCloudLobes(kind === 'strip', r, W), bx = _scCloudBox(sh), pad = 4, dx = pad - bx[0], dy = pad - bx[1];
+    const mv = (e) => { const c = e.slice(); c[0] += dx; c[1] += dy; if (e.length === 7) { c[2] += dx; c[3] += dy; c[4] += dx; c[5] += dy; } return c; };
+    const w = bx[2] - bx[0] + 2 * pad, h = bx[3] - bx[1] + 2 * pad, yBase = sk.y0 + span * (B.y[0] + yr * (B.y[1] - B.y[0]));
+    const left0 = 80 + u * 1440 - dx;   // the cloud's centre at t = 0 lies between x 80 and 1520
+    const p = { kind, band, w, h, x0: left0 + w + SCENE_CLOUD_PAD, y: yBase + h - dy, sp: (sk.speed || 6) * B.v * (0.9 + vr * 0.2), base: dy, tone: _scCloudTone(L, kind, band) };
+    if (kind === 'cirrus') { p.streaks = sh.streaks.map(mv); p.fibres = sh.fibres.map(mv); }
+    else { p.lobes = sh.lobes.map(mv); p.shelf = mv(sh.shelf); p.rag = sh.rag.map(mv); }
+    out.push(p);
+  }
+  return out.sort((a, b) => a.band - b.band || a.y - b.y);
+}
+/** A cloud's x (scene units) at t seconds: it drifts right and wraps on its own width, entering and leaving fully off-screen. */
+function sceneCloudX(c, t) { const P = SCENE_W + c.w + 2 * SCENE_CLOUD_PAD; return ((c.x0 + c.sp * t) % P + P) % P - c.w - SCENE_CLOUD_PAD; }
 /** Sign text (8.3): trimmed, 1 to 40 letters / digits / ' & . , ( ) - /, not on the deny-list. */
 function sceneSignText(s) {
   const text = String(s == null ? '' : s).trim().replace(/\s+/g, ' ');
