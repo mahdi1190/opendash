@@ -36,14 +36,18 @@
     for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n], b = 1.22 + rag * r() * .3; d += `Q${f1(cx + ((p[0] + q[0]) / 2 - cx) * b)} ${f1(cy + ((p[1] + q[1]) / 2 - cy) * b)} ${P(q)}`; }
     return d + 'z';
   };
-  const h2 = v => Math.round(v * 2) / 2, PH = p => `${h2(p[0])} ${h2(p[1])}`;
+  const h2 = v => Math.round(v * 2) / 2;
   const lobedC = (r, cx, cy, rx, ry, n, rag) => {
     const a0 = r() * 6.283, pts = [];
     for (let i = 0; i < n; i++) { const a = a0 + i / n * 6.283, k = 1 - rag * r() * .6; pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]); }
-    let d = 'M' + PH(pts[0]);
-    for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n], b = 1.22 + rag * r() * .3; d += `Q${h2(cx + ((p[0] + q[0]) / 2 - cx) * b)} ${h2(cy + ((p[1] + q[1]) / 2 - cy) * b)} ${PH(q)}`; }
+    // whole units: a ragged leaf cluster is 8 or more across, half a unit of rounding is invisible (the crowns hold hundreds)
+    const R = Math.round, PR = p => `${R(p[0])} ${R(p[1])}`;
+    let d = 'M' + PR(pts[0]);
+    for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n], b = 1.22 + rag * r() * .3; d += `Q${R(cx + ((p[0] + q[0]) / 2 - cx) * b)} ${R(cy + ((p[1] + q[1]) / 2 - cy) * b)} ${PR(q)}`; }
     return d + 'z';
   };
+  /** An opaque fill split for tile stills: every k-th subpath stays (what a tile draws), the rest is detail (full size only). */
+  const thinned = (f, d, k) => { let keep = '', rest = ''; d.split(/(?=M)/).forEach((q, i) => { if (i % k === 0) keep += q; else rest += q; }); return [[f, keep], { f, d: rest, detail: true }]; };
   const SEAS = ['spring', 'summer', 'autumn', 'winter'];
   const bySeason = (o) => { const p = {}; for (const s of SEAS) p[s] = {}; for (const [slot, v] of Object.entries(o)) for (const s of SEAS) p[s][slot] = v[s]; return p; };
 
@@ -61,29 +65,34 @@
       grow(r, ex, ey, a, len * o.lk * rr(r, .85, 1.1), w * o.wk, depth - 1, o, segs, tips, lvl + 1);
     }
   };
-  /** Limb strokes by level: bark, shaded right flank, lit left edge. */
+  /** Limb strokes by level: bark, shaded right flank, lit left edge (the flanks and the finest twigs are detail). */
   const limbs = (segs, from, to, out) => {
     for (let l = from; l <= to; l++) {
       const g = segs.filter(q => q.lvl === l); if (!g.length) continue;
       const w = g.reduce((a, q) => a + q.w, 0) / g.length, d = g.map(q => q.d).join('');
-      out.push({ s: '@bark.0', w, d }, { s: '@bark.1', w: w * .45, op: .85, d, m: [1, 0, 0, 1, w * .26, 0] });
-      if (w > 3) out.push({ s: '@bark.2', w: w * .22, op: .5, d, m: [1, 0, 0, 1, -w * .28, 0] });
+      out.push({ s: '@bark.0', w, d, detail: l >= 2 }, { s: '@bark.1', w: w * .45, op: .85, d, m: [1, 0, 0, 1, w * .26, 0], detail: true });
+      if (w > 3) out.push({ s: '@bark.2', w: w * .22, op: .5, d, m: [1, 0, 0, 1, -w * .28, 0], detail: true });
     }
   };
   /** A trunk with root flare, as a filled outline (bottom width w0, top w1, height th, a slight lean). */
   const trunkD = (w0, w1, th, lean) => `M${f1(-w0 * .9)} 0Q${f1(-w0 * .45)} ${f1(-th * .12)} ${f1(-w0 * .5)} ${f1(-th * .3)}L${f1(lean - w1 / 2)} ${f1(-th)}H${f1(lean + w1 / 2)}L${f1(w0 * .5)} ${f1(-th * .3)}Q${f1(w0 * .45)} ${f1(-th * .12)} ${f1(w0 * .9)} 0z`;
-  /** Crown clusters toned by where they sit against the light (upper left lit), sorted shade to light. */
+  /** Crown clusters toned by where they sit against the light (upper left lit), sorted shade to light.
+      Tile stills (LOD < .5) draw a plain ellipse for every third cluster in its tone instead (the clusters and highlights are detail): each
+      ellipse is 0.6 of the cluster's radii, inside its ragged outline (whose points sit at 0.7 or more), and is drawn just under
+      its own tone, so the full-size picture is unchanged. */
   const clusters = (r, list, cx, cy, W, H, n6, o = {}) => {
-    const tone = ['', '', '', '', '', ''], hi = ['', '', '', '', '', ''];
-    for (const c of list) {
+    const tone = ['', '', '', '', '', ''], hi = ['', '', '', '', '', ''], core = ['', '', '', '', '', ''];
+    list.forEach((c, ci) => {
       const s = -(c.x - cx) / W * .9 - (c.y - cy) / H * .9 + rr(r, -.35, .35);
       const t = Math.max(0, Math.min(5, Math.round(2.4 + s * 2.6)));
+      const ex = Math.round(c.rx * .6), ey = Math.round(c.ry * .6);
+      if (ci % 3 === 0 && ex >= 2 && ey >= 2) core[t] += `M${Math.round(c.x) - ex} ${Math.round(c.y)}a${ex} ${ey} 0 1 0 ${2 * ex} 0a${ex} ${ey} 0 1 0 ${-2 * ex} 0`;
       tone[t] += lobedC(r, c.x, c.y, c.rx, c.ry, o.n || 9, o.rag || .3);
       if (t < 5 && r() < (o.hi || .7)) hi[t + 1] += lobedC(r, c.x - c.rx * .22, c.y - c.ry * .28, c.rx * .55, c.ry * .5, 7, o.rag || .3);
-    }
+    });
     // interleave: tone t, then the highlights of the clusters one tone darker (drawn in tone t)
     const res = [];
-    for (let t = 0; t < 6; t++) { res.push([`@${n6}.${t}`, tone[t]]); if (hi[t]) res.push([`@${n6}.${t}`, hi[t], .95]); }
+    for (let t = 0; t < 6; t++) { res.push([`@${n6}.${t}`, core[t]], { f: `@${n6}.${t}`, d: tone[t], detail: true }); if (hi[t]) res.push({ f: `@${n6}.${t}`, d: hi[t], op: .95, detail: true }); }
     return res;
   };
 
@@ -116,7 +125,7 @@
       trunk.push(['@bark.0', trunkD(cfg.w0, cfg.w1, TH + 4, cfg.lean)], ['@bark.1', `M${f1(cfg.w0 * .1)} 0L${f1(cfg.lean + cfg.w1 * .1)} ${-TH - 4}H${f1(cfg.lean + cfg.w1 / 2)}L${f1(cfg.w0 * .5)} ${f1(-TH * .3)}Q${f1(cfg.w0 * .45)} ${f1(-TH * .12)} ${f1(cfg.w0 * .9)} 0z`, .7]);
       let lent = '';   // cherry bark: horizontal lenticel bands
       for (let i = 0; i < 12; i++) { const y = -6 - i * 6.2 - r() * 2, w = cfg.w0 * (1 - i / 16) * .4; lent += `M${f1(cfg.lean * i / 12 - w + r() * 3)} ${f1(y)}h${f1(w * rr(r, .6, 1.3))}`; }
-      trunk.push({ s: '@lent', w: 1.2, op: .6, d: lent });
+      trunk.push({ s: '@lent', w: 1.2, op: .6, d: lent, detail: true });
       for (const a of cfg.limbs) grow(r, cfg.lean, -TH, (a + rr(r, -6, 6)) * D, cfg.len * rr(r, .85, 1.1), cfg.w1 * .62, cfg.depth, cfg.o, segs, tips);
       limbs(segs, 0, 0, trunk);
       // winter: snow lying along the upper side of the bigger limbs (drawn on the trunk part, with the limbs)
@@ -125,7 +134,7 @@
       if (bare) {
         let tw = '';
         for (const t of tips) if (!t.inner) for (let k = 0; k < 3; k++) { const a = t.ang + rr(r, -.7, .7), l = rr(r, 10, 22); tw += `M${f1(t.x)} ${f1(t.y)}q${f1(Math.cos(a) * l * .5 + 2)} ${f1(Math.sin(a) * l * .5)} ${f1(Math.cos(a) * l)} ${f1(Math.sin(a) * l)}`; }
-        twigs.push({ s: '@twig', w: .9, d: tw });
+        twigs.push({ s: '@twig', w: .9, d: tw, detail: true });
       }
       const crownLimbs = [];
       limbs(segs, 1, 4, crownLimbs);
@@ -155,7 +164,7 @@
           if (!bare) list.push({ x: t.x, y: t.y + 4, rx: rr(r, 13, 20), ry: rr(r, 9, 14) });
         }
         crown.push(...crownLimbs, { s: '@twig', w: .8, op: .85, d: st });
-        if (!bare) { crown.push(...clusters(r, list, 0, cy, W, 200, 'leaf', { n: 8, rag: .35, hi: .5 })); for (let t = 0; t < 6; t++) crown.push([`@leaf.${t}`, dots[t]]); }
+        if (!bare) { crown.push(...clusters(r, list, 0, cy, W, 200, 'leaf', { n: 8, rag: .35, hi: .5 })); for (let t = 0; t < 6; t++) crown.push(...thinned(`@leaf.${t}`, dots[t], 4)); }
         crown.push(...twigs);
       } else {
         if (!bare) {
@@ -174,10 +183,10 @@
             for (let i = 0; i < 22; i++) { const c = list[(r() * list.length) | 0]; fr += ell(c.x + rr(r, -c.rx, c.rx), c.y + rr(r, -c.ry, c.ry) * .6, 1.8, 1.2); }
             for (let i = 0; i < 14; i++) pt += ell(rr(r, -150, 150), rr(r, -TH - 40, -10), 1.4, 1);
             for (let i = 0; i < 26; i++) pg += ell(rr(r, -120, 120), rr(r, -3, 2), rr(r, 1.2, 2.2), .9);
-            crown.push(['@fresh.0', fr, .8], ['@petal.1', pt, .9]);
-            trunk.push(['@petal.0', pg, .9]);
+            crown.push({ f: '@fresh.0', d: fr, op: .8, detail: true }, { f: '@petal.1', d: pt, op: .9, detail: true });
+            trunk.push({ f: '@petal.0', d: pg, op: .9, detail: true });
           }
-          if (s === 'autumn') { let lg = ''; for (let i = 0; i < 30; i++) lg += ell(rr(r, -110, 110), rr(r, -3, 2), 1.8, .9); trunk.push(['@fresh.0', lg, .8]); }
+          if (s === 'autumn') { let lg = ''; for (let i = 0; i < 30; i++) lg += ell(rr(r, -110, 110), rr(r, -3, 2), 1.8, .9); trunk.push({ f: '@fresh.0', d: lg, op: .8, detail: true }); }
         } else crown.push(...crownLimbs);
         crown.push(...twigs);
       }
@@ -231,7 +240,7 @@
       if (bare) {
         let tw = '';
         for (const t of tips) for (let k = 0; k < (t.inner ? 2 : 4); k++) { const a = t.ang + rr(r, -.8, .8), l = rr(r, 8, 18); tw += `M${f1(t.x)} ${f1(t.y)}q${f1(Math.cos(a) * l * .5)} ${f1(Math.sin(a) * l * .5 - 2)} ${f1(Math.cos(a) * l)} ${f1(Math.sin(a) * l)}`; }
-        crown.push(...crownLimbs, { s: '@twig', w: .8, d: tw }, { s: '@snow.0', w: 2, op: .9, d: segs.filter(q => q.lvl <= 1).map(q => q.d).join(''), m: [1, 0, 0, 1, -.4, -2.8] });
+        crown.push(...crownLimbs, { s: '@twig', w: .8, d: tw, detail: true }, { s: '@snow.0', w: 2, op: .9, d: segs.filter(q => q.lvl <= 1).map(q => q.d).join(''), m: [1, 0, 0, 1, -.4, -2.8] });
         let lg = ''; for (let i = 0; i < 16; i++) lg += ell(rr(r, -90, 90), rr(r, -2, 2), 2, .9);
         trunk.push(['@fallen.0', lg, .8]);
         return { trunk, crown };
@@ -252,8 +261,8 @@
         const a = rr(r, 0, 6.28), x = c.x + Math.cos(a) * c.rx * 1.05, y = c.y + Math.sin(a) * c.ry * 1.1;
         st[x < 0 || y < -TH - 90 ? 1 : 0] += star(x, y, rr(r, 3, 4.2), rr(r, -.6, .6));
       }
-      crown.push([`@${slot}.3`, st[0]], [`@${slot}.5`, st[1]]);
-      if (s === 'autumn' || s === 'spring') { let lg = ''; for (let i = 0; i < (s === 'autumn' ? 18 : 5); i++) lg += star(rr(r, -100, 100), rr(r, -3, 1), 2.6, rr(r, 0, 6)); trunk.push(['@fallen.0', lg, .9]); }
+      crown.push({ f: `@${slot}.3`, d: st[0], detail: true }, { f: `@${slot}.5`, d: st[1], detail: true });
+      if (s === 'autumn' || s === 'spring') { let lg = ''; for (let i = 0; i < (s === 'autumn' ? 18 : 5); i++) lg += star(rr(r, -100, 100), rr(r, -3, 1), 2.6, rr(r, 0, 6)); trunk.push({ f: '@fallen.0', d: lg, op: .9, detail: true }); }
       return { trunk, crown };
     },
   });

@@ -162,7 +162,7 @@
       trunk.push({ s: '@mark', w: 2, d: marks }, { s: '@bark.2', w: f2(tw * .45), op: .5, d: `M${R(lean * .36)} ${R(-th * .6)}L${R(lean)} ${R(-th)}` });
     } else {
       for (let i = 0; i < 12; i++) { const t = rr(r, .05, .9), mx = lean * t * t + rr(r, -.35, .35) * tw * (1 - t * .5); marks += `M${R(mx)} ${R(-th * t)}q${R(rr(r, -3, 3))} ${-R(rr(r, 8, 18))} 0 ${-R(rr(r, 16, 30))}`; }
-      trunk.push({ s: '@bark.1', w: 1.6, op: .6, d: marks });
+      trunk.push({ s: '@bark.1', w: 1.6, op: .6, d: marks, detail: true });
     }
     // limbs by width class: thick ones stay with the trunk, thin ones sway with the crown
     const byW = (min, max) => { const m = new Map(); for (const [a, b, c, d, e, f, w] of segs) { if (w < min || w >= max) continue; const k = w > 6 ? R(w) : w > 2.5 ? f2(Math.round(w * 2) / 2) : w > 1.4 ? 1.6 : 1; m.set(k, (m.get(k) || '') + `M${R(a)} ${R(b)}Q${R(c)} ${R(d)} ${R(e)} ${R(f)}`); } return m; };
@@ -174,7 +174,7 @@
     if (bare) {
       // winter: the full twig lattice, frost on the upper edges, catkins
       crown.push(...thin);
-      crown.push(...[...byW(0, 99)].map(([w, d]) => ({ s: '@frost', w: f2(Math.max(.8, w * .35)), d, op: .45, m: [1, 0, 0, 1, 0, -1], detail: w < 2 })));
+      crown.push(...[...byW(0, 99)].map(([w, d]) => ({ s: '@frost', w: f2(Math.max(.8, w * .35)), d, op: .45, m: [1, 0, 0, 1, 0, -1], detail: true })));
       if (kind === 'birch' || kind === 'willow') crown.push({ s: '@catkin', w: 1, op: .7, d: tips.filter(t => t[2] >= 2).map(([tx, ty]) => { const L = Math.min(rr(r, 26, kind === 'willow' ? 160 : 50), -ty - 6); return L < 8 ? '' : `M${R(tx)} ${R(ty)}q${R(rr(r, -4, 4))} ${R(Math.min(L * .5, rr(r, 10, 30)))} ${R(rr(r, -6, 6))} ${R(L)}`; }).join('') });
       if (kind === 'alder') { let cat = ''; for (const [tx, ty] of tips.filter((t, i) => i % 3 === 0)) cat += `M${R(tx)} ${R(ty)}l${R(rr(r, -2, 2))} 9`; crown.push({ s: '@catkin', w: 3.2, d: cat }); }
       if (kind === 'chestnut') { let bud = ''; for (const [tx, ty] of tips.filter((t, i) => i % 2 === 0)) bud += sceneD.ell(tx, ty - 2, 2, 3); crown.push(['@catkin', bud]); }
@@ -182,7 +182,7 @@
         // the plane's seed balls hang all winter, singly or in pairs, on long thin stalks
         let st = '', ball = '';
         for (const [tx, ty, dp] of tips.filter((t, i) => t[2] >= 2 && i % 3 === 0)) { const L = rr(r, 8, 15), sx = rr(r, -3, 3); st += `M${R(tx)} ${R(ty)}q${f1(sx)} ${f1(L * .6)} ${f1(sx * .6)} ${f1(L)}`; ball += sceneD.circ(tx + sx * .6, ty + L + 3, 3.2); if (r() < .35) ball += sceneD.circ(tx + sx * .6 + 4, ty + L + 8, 2.8); }
-        crown.push({ s: '@twig', w: .8, d: st, op: .8 }, ['@catkin', ball]);
+        crown.push({ s: '@twig', w: .8, d: st, op: .8, detail: true }, { f: '@catkin', d: ball, detail: true });
         if (sp.knuckle) { let kn = ''; for (const [a, b, c, d, e, f, w, dp] of segs) if (dp === 1) kn += sceneD.ell(e, f, 7, 6); trunk.push(['@bark.0', kn], ['@bark.2', kn, .25]); }
       }
       return { trunk, crown, pivot: [R(lean), R(-th)] };
@@ -209,7 +209,12 @@
     let bx0 = 1e9, bx1 = -1e9; for (const c of cl) { bx0 = Math.min(bx0, c[0] - c[2]); bx1 = Math.max(bx1, c[0] + c[2]); }
     const mx = (bx0 + bx1) / 2, W = Math.max(40, bx1 - bx0), H = Math.max(40, maxY - minY);
     // the dark heart of the crown behind its limbs: gaps between clusters read as depth, not sky
-    if (topLimbs) crownBack.push(['@leaf.0', cl.map(([cx, cy, rad]) => sp.gaps ? lobedD(r, cx, cy + rad * .2, rad * .62, rad * .5, 7, .3) : sceneD.circ(cx, cy + rad * .1, rad * .8)).join('')], ...thick);
+    // (a tile draws a disc inside each lobe of it instead: the lobes are detail; the discs are hidden under them at full size)
+    if (topLimbs) {
+      const heart = cl.map(([cx, cy, rad]) => sp.gaps ? lobedD(r, cx, cy + rad * .2, rad * .62, rad * .5, 7, .3) : sceneD.circ(cx, cy + rad * .1, rad * .8)).join('');
+      const core = cl.map(([cx, cy, rad]) => { const q = R(rad * .4), y = R(cy + rad * (sp.gaps ? .2 : .1)); return q < 2 ? '' : `M${R(cx) - q} ${y}a${q} ${q} 0 1 0 ${2 * q} 0a${q} ${q} 0 1 0 ${-2 * q} 0`; }).join('');
+      crownBack.push(['@leaf.0', core], { f: '@leaf.0', d: heart, detail: true }, ...thick);
+    }
     else if (!sp.ever) crownBack.push(['@leaf.0', cl.filter((c, i) => i % 2).map(([cx, cy, rad]) => sceneD.circ(cx, cy + rad * .15, rad * .6)).join(''), .7]);
     else crownBack.push(['@leaf.0', cl.map(([cx, cy, rad]) => ell(cx * .85 + lean * .15, cy + rad * .2, rad * 1.1, rad * .5)).join('')]);
     crownBack.push(...thin);
@@ -223,12 +228,21 @@
       const m = [f2(Math.cos(a) * sx), f2(Math.sin(a) * sx), f2(-Math.sin(a) * sy), f2(Math.cos(a) * sy), f1(cx), f1(cy)];
       groups.push({ ti, set, m, cv });
     }
+    // tile stills (LOD < .5) draw one disc per cluster in its tone instead of the clusters (detail, full size only): each disc
+    // lies inside its cluster's opaque body (radius 25 of the body's 30 or more, through the cluster's matrix), so the full-size
+    // picture is unchanged and a tile costs a few short paths instead of every cluster's leaves
+    const discs = {};
+    for (const g of groups) {
+      const [a, b, c, d, e, f] = g.m, q = 25 * Math.min(Math.hypot(a, b), Math.hypot(c, d)), x = a * 2 + c * 3 + e, y = b * 2 + d * 3 + f, k = `@${g.set}.${g.ti}`;
+      if (q >= 2) discs[k] = (discs[k] || '') + `M${R(x - q)} ${R(y)}a${R(q)} ${R(q)} 0 1 0 ${2 * R(q)} 0a${R(q)} ${R(q)} 0 1 0 ${-2 * R(q)} 0`;
+    }
+    for (const [f, d] of Object.entries(discs)) crown.push([f, d]);
     // draw tone by tone (as K.tree's grouped <g>s), each cluster's shapes together
     for (let ti = 0; ti < 5; ti++) for (const set of ['leaf', 'leafAlt']) for (const g of groups) {
       if (g.ti !== ti || g.set !== set) continue;
       for (const s of clump(kind, g.cv, false)) {
         const f = s.t === 'F' ? `@${set}.${ti}` : s.t === 'C' ? `@${set}.${ti + 1}` : s.t === 'K' ? '#000000' : '@frost';
-        crown.push(s.line ? { s: f, w: s.line, d: s.d, op: s.op, m: g.m, detail: s.detail } : { f, d: s.d, op: s.op, m: g.m, detail: s.detail });
+        crown.push(s.line ? { s: f, w: s.line, d: s.d, op: s.op, m: g.m, detail: true } : { f, d: s.d, op: s.op, m: g.m, detail: true });
       }
     }
     // loose single leaves round the edge of the crown, catching the light
@@ -292,7 +306,7 @@
       const t = rr(r, .03, .95), w = tw * (1 - t * .45), x = lean * t * t + rr(r, -.42, .42) * w, y = -th * t;
       p[i % 3] += lobedD(r, x, y, rr(r, 2.5, 5.5) * (tw / 28 + .4), rr(r, 3.5, 8) * (tw / 28 + .4), 6, .35);
     }
-    return [['@mark', p[0], .8], ['@bark.2', p[1], .7], ['@moss', p[2], .55]];
+    return [{ f: '@mark', d: p[0], op: .8, detail: true }, { f: '@bark.2', d: p[1], op: .7, detail: true }, { f: '@moss', d: p[2], op: .55, detail: true }];
   };
   defineObj({
     id: 'tree.plane-avenue', category: 'tree', size: [640, 600], variants: 3, seasonal: true, shapeBySeason: true, flippable: true,

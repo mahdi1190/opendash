@@ -38,27 +38,28 @@
       const X = 158, Y = -116, sag = -64;
       for (const sd of [-1, 1]) {
         const x = sd * X;
-        poles.push(['@ground', ell(x, 0, 8, 2), .5], ['@pole.0', rect(x - 2.6, -124, 5.2, 124)], ['@pole.1', rect(x + .4, -124, 2.2, 124), .7], ['@pole.2', rect(x - 2.6, -124, 1.2, 124), .6], ['@pole.1', rect(x - 4, -126, 8, 3)]);
+        poles.push({ f: '@ground', d: ell(x, 0, 8, 2), op: .5, detail: true }, ['@pole.0', rect(x - 2.6, -124, 5.2, 124)], { f: '@pole.1', d: rect(x + .4, -124, 2.2, 124), op: .7, detail: true }, { f: '@pole.2', d: rect(x - 2.6, -124, 1.2, 124), op: .6, detail: true }, { f: '@pole.1', d: rect(x - 4, -126, 8, 3), detail: true });
       }
       poles.push({ s: '@cord', w: 1, d: `M${-X} ${Y}Q0 ${sag} ${X} ${Y}` });
       const n = v === 1 ? 6 : 8;
       for (let i = 0; i < n; i++) {
         const t = (i + 1) / (n + 1), x = -X + 2 * X * t, y = (1 - t) * (1 - t) * Y + 2 * (1 - t) * t * sag + t * t * Y;
         const c = v === 0 ? 0 : v === 1 ? 1 : [0, 2, 3, 4, 6, 0, 3, 2][i];
-        lanterns.push({ s: '@cord', w: .7, d: `M${f1(x)} ${f1(y)}v4` });
+        // a tile still (LOD < .5) draws each lantern's body and band; the shading, ribs, caps and tassels are detail
+        lanterns.push({ s: '@cord', w: .7, d: `M${f1(x)} ${f1(y)}v4`, detail: true });
         if (v === 1) {
           // a tall cream lantern: rounded body, dark ribs, black rims, a red band
           const cy = y + 18;
-          lanterns.push([`@lan.${c}`, `M${f1(x - 6)} ${f1(cy - 11)}q-2.4 11 0 22h12q2.4 -11 0 -22z`], [`@lanD.${c}`, `M${f1(x + 2)} ${f1(cy - 11)}h4q2.4 11 0 22h-4q2 -11 0 -22z`, .8], { f: `@lanL.${c}`, d: `M${f1(x - 4)} ${f1(cy - 8)}q-1.4 8 0 16h4q-1 -8 0 -16z`, glow: 'lamp' });
+          lanterns.push([`@lan.${c}`, `M${f1(x - 6)} ${f1(cy - 11)}q-2.4 11 0 22h12q2.4 -11 0 -22z`], { f: `@lanD.${c}`, d: `M${f1(x + 2)} ${f1(cy - 11)}h4q2.4 11 0 22h-4q2 -11 0 -22z`, op: .8, detail: true }, { f: `@lanL.${c}`, d: `M${f1(x - 4)} ${f1(cy - 8)}q-1.4 8 0 16h4q-1 -8 0 -16z`, glow: 'lamp', detail: true });
           let rb = ''; for (let k = 1; k < 7; k++) rb += `M${f1(x - 7)} ${f1(cy - 11 + k * 22 / 7)}h14`;
-          lanterns.push({ s: '@rib.1', w: .5, op: .5, d: rb }, ['@band', rect(x - 7.4, cy + 2, 14.8, 4)], ['@rib.1', rect(x - 4.5, cy - 13, 9, 2.4) + rect(x - 4.5, cy + 11, 9, 2.4)], { s: '@rib.1', w: .8, d: `M${f1(x)} ${f1(cy + 13.4)}v3` });
+          lanterns.push({ s: '@rib.1', w: .5, op: .5, d: rb, detail: true }, ['@band', rect(x - 7.4, cy + 2, 14.8, 4)], { f: '@rib.1', d: rect(x - 4.5, cy - 13, 9, 2.4) + rect(x - 4.5, cy + 11, 9, 2.4), detail: true }, { s: '@rib.1', w: .8, d: `M${f1(x)} ${f1(cy + 13.4)}v3`, detail: true });
           lit.push({ f: { rad: [[0, '@lanL.1', .45], [1, '@lanL.1', 0]], cx: x, cy, r: 26 }, d: rect(x - 26, cy - 26, 52, 52) }, { f: { rad: [[0, '#fff2c8', .95], [1, '@lanL.1', .75]], cx: x - 1, cy, r: 12 }, d: `M${f1(x - 6)} ${f1(cy - 11)}q-2.4 11 0 22h12q2.4 -11 0 -22z` }, ['@band', rect(x - 7.4, cy + 2, 14.8, 4), .8]);
         } else {
           // a round lantern: body, shaded right, lit core, ribs, gold caps, a tassel
           const cy = y + 14;
-          lanterns.push([`@lan.${c}`, ell(x, cy, 9.5, 8.4)], [`@lanD.${c}`, `M${f1(x + 2)} ${f1(cy - 8.2)}a9.5 8.4 0 0 1 0 16.4q4 -8.2 0 -16.4z`, .85], { f: `@lanL.${c}`, d: ell(x - 2, cy - 1, 4.4, 4.6), glow: 'lamp', op: .9 });
-          lanterns.push({ s: '@rib.0', w: .6, op: .55, d: `M${f1(x - 5)} ${f1(cy - 7)}q-3 7 0 14M${f1(x)} ${f1(cy - 8.4)}v16.8M${f1(x + 5)} ${f1(cy - 7)}q3 7 0 14` });
-          lanterns.push(['@gold.0', rect(x - 4.4, cy - 10.4, 8.8, 2.6) + rect(x - 4.4, cy + 7.8, 8.8, 2.6)], ['@gold.1', rect(x, cy - 10.4, 4.4, 2.6), .6], { s: '@tassel.' + (c === 0 ? 1 : 0), w: 1.6, d: `M${f1(x)} ${f1(cy + 10.4)}v8` });
+          lanterns.push([`@lan.${c}`, ell(x, cy, 9.5, 8.4)], { f: `@lanD.${c}`, d: `M${f1(x + 2)} ${f1(cy - 8.2)}a9.5 8.4 0 0 1 0 16.4q4 -8.2 0 -16.4z`, op: .85, detail: true }, { f: `@lanL.${c}`, d: ell(x - 2, cy - 1, 4.4, 4.6), glow: 'lamp', op: .9, detail: true });
+          lanterns.push({ s: '@rib.0', w: .6, op: .55, d: `M${f1(x - 5)} ${f1(cy - 7)}q-3 7 0 14M${f1(x)} ${f1(cy - 8.4)}v16.8M${f1(x + 5)} ${f1(cy - 7)}q3 7 0 14`, detail: true });
+          lanterns.push({ f: '@gold.0', d: rect(x - 4.4, cy - 10.4, 8.8, 2.6) + rect(x - 4.4, cy + 7.8, 8.8, 2.6), detail: true }, { f: '@gold.1', d: rect(x, cy - 10.4, 4.4, 2.6), op: .6, detail: true }, { s: '@tassel.' + (c === 0 ? 1 : 0), w: 1.6, d: `M${f1(x)} ${f1(cy + 10.4)}v8`, detail: true });
           lit.push({ f: { rad: [[0, `@lan.${c}`, .4], [.5, `@lanL.${c}`, .14], [1, `@lanL.${c}`, 0]], cx: x, cy, r: 24 }, d: rect(x - 24, cy - 24, 48, 48) }, { f: { rad: [[0, '#fff0c0', .95], [.45, `@lanL.${c}`, .9], [1, `@lan.${c}`, .85]], cx: x - 1.5, cy: cy - 1, r: 10 }, d: ell(x, cy, 9.5, 8.4) });
         }
       }

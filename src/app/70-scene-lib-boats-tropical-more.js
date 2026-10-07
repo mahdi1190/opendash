@@ -29,11 +29,12 @@
   /** A standing figure facing right at (x, 0 = the deck), h about 54: returns shapes. o: shirt, trou, hat, arms ('tiller' | 'oar' | 'rest'). */
   const standing = (x, y, o) => {
     const sk = o.skin;
+    // (the arms and the neck are detail: a tile still draws the legs, the body, the head and the hat)
     const out = [{ s: o.trou, w: 5, d: `M${f1(x - 2)} ${f1(y - 26)}L${f1(x - 4)} ${f1(y)}M${f1(x + 2)} ${f1(y - 26)}L${f1(x + 4)} ${f1(y)}` }, { s: o.shirt, w: 10, d: `M${f1(x)} ${f1(y - 26)}L${f1(x + 1)} ${f1(y - 44)}` }];
-    if (o.arms === 'tiller') out.push({ s: o.shirt, w: 3.4, d: `M${f1(x + 1)} ${f1(y - 42)}L${f1(x - 6)} ${f1(y - 32)}` }, { s: sk, w: 2.6, d: `M${f1(x - 6)} ${f1(y - 32)}L${f1(x - 12)} ${f1(y - 29)}` });
-    else if (o.arms === 'oar') out.push({ s: o.shirt, w: 3.4, d: `M${f1(x + 1)} ${f1(y - 42)}L${f1(x - 5)} ${f1(y - 34)}` }, { s: sk, w: 2.6, d: `M${f1(x - 5)} ${f1(y - 34)}L${f1(x - 9)} ${f1(y - 33)}` });
-    else out.push({ s: o.shirt, w: 3.4, d: `M${f1(x + 1)} ${f1(y - 42)}L${f1(x + 3)} ${f1(y - 30)}` });
-    out.push({ s: sk, w: 3, d: `M${f1(x + 1)} ${f1(y - 45)}v-3` }, [sk, circ(x + 1.4, y - 51, 4.2)]);
+    if (o.arms === 'tiller') out.push({ s: o.shirt, w: 3.4, d: `M${f1(x + 1)} ${f1(y - 42)}L${f1(x - 6)} ${f1(y - 32)}`, detail: true }, { s: sk, w: 2.6, d: `M${f1(x - 6)} ${f1(y - 32)}L${f1(x - 12)} ${f1(y - 29)}`, detail: true });
+    else if (o.arms === 'oar') out.push({ s: o.shirt, w: 3.4, d: `M${f1(x + 1)} ${f1(y - 42)}L${f1(x - 5)} ${f1(y - 34)}`, detail: true }, { s: sk, w: 2.6, d: `M${f1(x - 5)} ${f1(y - 34)}L${f1(x - 9)} ${f1(y - 33)}`, detail: true });
+    else out.push({ s: o.shirt, w: 3.4, d: `M${f1(x + 1)} ${f1(y - 42)}L${f1(x + 3)} ${f1(y - 30)}`, detail: true });
+    out.push({ s: sk, w: 3, d: `M${f1(x + 1)} ${f1(y - 45)}v-3`, detail: true }, [sk, circ(x + 1.4, y - 51, 4.2)]);
     if (o.hat) out.push([o.hat, `M${f1(x - 9)} ${f1(y - 52)}L${f1(x + 1.4)} ${f1(y - 60)}L${f1(x + 12)} ${f1(y - 52)}q${f1(-10.5)} 2 ${f1(-21)} 0z`]);
     else out.push(['#1f1a18', `M${f1(x - 3)} ${f1(y - 52)}a4.6 4.6 0 0 1 9 -1q-4 -2 -9 1z`]);
     return out;
@@ -91,19 +92,20 @@
     credit: 'drawn for the tropical and east-asian boats kits',
     build(v) {
       const body = [], oar = [];
-      body.push({ s: '@wake', w: 1.4, op: .6, d: 'M-90 4h40M60 3q20 -1 40 2' });
+      // a tile still (LOD < .5) draws the hull, the canopy or cargo and the rower: the shading and the wake are detail
+      body.push({ s: '@wake', w: 1.4, op: .6, d: 'M-90 4h40M60 3q20 -1 40 2', detail: true });
       // the hull: a flat sheer, a squared bow lifting forward, a raised stern
-      body.push(['@hull.0', 'M-96 -22L-90 -14H84L104 -26L106 -22Q96 -2 80 4H-82Q-94 -6 -96 -22z'], ['@hull.1', 'M-82 4H80Q96 -2 102 -16Q90 -4 78 0H-84z', .75], ['@hull.2', 'M-94 -21L-89 -14H84L104 -26l.4 2L85 -11H-88z', .8]);
+      body.push(['@hull.0', 'M-96 -22L-90 -14H84L104 -26L106 -22Q96 -2 80 4H-82Q-94 -6 -96 -22z'], { f: '@hull.1', d: 'M-82 4H80Q96 -2 102 -16Q90 -4 78 0H-84z', op: .75, detail: true }, { f: '@hull.2', d: 'M-94 -21L-89 -14H84L104 -26l.4 2L85 -11H-88z', op: .8, detail: true });
       let pl = ''; for (let i = 0; i < 3; i++) pl += `M-88 ${-8 + i * 4}H${84 - i * 3}`;
-      body.push({ s: '@hull.3', w: .7, op: .5, d: pl });
+      body.push({ s: '@hull.3', w: .7, op: .5, d: pl, detail: true });
       if (v === 0) {
         // a long arched canopy of woven matting over the middle
-        body.push(['@mat.0', 'M-46 -14V-34Q-40 -52 0 -54Q40 -52 46 -34V-14z'], ['@mat.1', 'M10 -14V-53Q40 -50 46 -34V-14z', .55], ['@hull.3', 'M-38 -14V-30Q-34 -44 0 -46Q34 -44 38 -30V-14z', .85]);
+        body.push(['@mat.0', 'M-46 -14V-34Q-40 -52 0 -54Q40 -52 46 -34V-14z'], { f: '@mat.1', d: 'M10 -14V-53Q40 -50 46 -34V-14z', op: .55, detail: true }, ['@hull.3', 'M-38 -14V-30Q-34 -44 0 -46Q34 -44 38 -30V-14z', .85]);
         let wv = ''; for (let i = 0; i < 8; i++) wv += `M${-46 + i * 13} -14V${f1(-34 - Math.sin(((i + .3) / 7.3) * Math.PI) * 18)}`;
-        body.push({ s: '@mat.2', w: .9, op: .6, d: wv + 'M-46 -34Q-40 -52 0 -54Q40 -52 46 -34' });
+        body.push({ s: '@mat.2', w: .9, op: .6, d: wv + 'M-46 -34Q-40 -52 0 -54Q40 -52 46 -34', detail: true });
       } else {
-        body.push(['@mat.0', 'M-60 -14V-30Q-56 -44 -32 -46Q-10 -44 -6 -30V-14z'], ['@mat.1', 'M-34 -14V-46Q-10 -44 -6 -30V-14z', .5], ['@hull.3', 'M-54 -14V-28Q-50 -38 -32 -40Q-14 -38 -12 -28V-14z', .85]);
-        for (const [x, k] of [[8, 0], [34, 1], [58, 2]]) body.push(['@basket.0', `M${x - 11} -14l2 -10h18l2 10z`], { s: '@basket.1', w: .8, d: `M${x - 9} -20h18M${x - 8} -17h16` }, [`@fruit.${k}`, ell(x - 3, -25, 4, 3) + ell(x + 4, -25.4, 3.6, 3)], [`@fruit.${(k + 1) % 4}`, ell(x, -27, 3, 2.4)]);
+        body.push(['@mat.0', 'M-60 -14V-30Q-56 -44 -32 -46Q-10 -44 -6 -30V-14z'], { f: '@mat.1', d: 'M-34 -14V-46Q-10 -44 -6 -30V-14z', op: .5, detail: true }, ['@hull.3', 'M-54 -14V-28Q-50 -38 -32 -40Q-14 -38 -12 -28V-14z', .85]);
+        for (const [x, k] of [[8, 0], [34, 1], [58, 2]]) body.push(['@basket.0', `M${x - 11} -14l2 -10h18l2 10z`], { s: '@basket.1', w: .8, d: `M${x - 9} -20h18M${x - 8} -17h16`, detail: true }, [`@fruit.${k}`, ell(x - 3, -25, 4, 3) + ell(x + 4, -25.4, 3.6, 3)], [`@fruit.${(k + 1) % 4}`, ell(x, -27, 3, 2.4)]);
       }
       // the rower at the stern; the long oar is its own part (it sculls)
       body.push(...standing(-80, -14, { skin: '@skin.0', shirt: `@shirt.${v}`, trou: '@trou', hat: '@hat', arms: 'oar' }));

@@ -99,10 +99,11 @@
     build(v) {
       const juv = v === 1, P = juv ? '@juv' : '@plum', M = juv ? '@juv.1' : '@mantle.0', T = juv ? '@juv.3' : '@tip.0';
       // one wing drawn once: up from the shoulder to the wrist, the hand swept back, a black tip with a white mirror
-      const wing = [[M, 'M4 -3Q8 -10 7 -18Q4 -24 -8 -28L-32 -33Q-20 -28 -6 -22Q0 -12 -3 -2z'], [juv ? '@juv.2' : '@mantle.2', 'M4 -4Q7 -11 6 -17Q2 -11 0 -4z', .6],
-        [T, 'M-12 -27.4L-32 -33Q-24 -29 -18 -25.6z'], [juv ? '@juv.2' : '@tip.1', ell(-25, -30.6, 1.5, .9), .9], { s: juv ? '@juv.2' : '@plum.2', w: 1.1, op: .85, d: 'M-3 -2Q0 -12 -6 -22L-18 -26' }];
-      const wingFar = withM(wing.map(sh => Array.isArray(sh) ? [sh[0], sh[1], (sh[2] || 1) * .8] : sh), [.82, 0, -.12, .9, -9, -1]);
-      const body = [[`${P}.0`, 'M-20 -1Q-10 -6 6 -5Q16 -5 20 -2Q16 2 6 3Q-8 4 -20 1L-26 0z'], [`${P}.3`, 'M-16 1Q0 4 14 0Q8 3 2 3Q-8 4 -16 1z', .5], [`${P}.0`, ell(18, -3.5, 5, 4)],
+      // (the wing's shading, mirror and edge line are detail: a tile still draws the wing, its tip and the body)
+      const wing = [[M, 'M4 -3Q8 -10 7 -18Q4 -24 -8 -28L-32 -33Q-20 -28 -6 -22Q0 -12 -3 -2z'], { f: juv ? '@juv.2' : '@mantle.2', d: 'M4 -4Q7 -11 6 -17Q2 -11 0 -4z', op: .6, detail: true },
+        [T, 'M-12 -27.4L-32 -33Q-24 -29 -18 -25.6z'], { f: juv ? '@juv.2' : '@tip.1', d: ell(-25, -30.6, 1.5, .9), op: .9, detail: true }, { s: juv ? '@juv.2' : '@plum.2', w: 1.1, op: .85, d: 'M-3 -2Q0 -12 -6 -22L-18 -26', detail: true }];
+      const wingFar = withM(wing.map(sh => Array.isArray(sh) ? [sh[0], sh[1], (sh[2] || 1) * .8] : Object.assign({}, sh, sh.f ? { op: (sh.op || 1) * .8 } : {})), [.82, 0, -.12, .9, -9, -1]);
+      const body = [[`${P}.0`, 'M-20 -1Q-10 -6 6 -5Q16 -5 20 -2Q16 2 6 3Q-8 4 -20 1L-26 0z'], { f: `${P}.3`, d: 'M-16 1Q0 4 14 0Q8 3 2 3Q-8 4 -16 1z', op: .5, detail: true }, [`${P}.0`, ell(18, -3.5, 5, 4)],
         [juv ? '@jbill.0' : '@bill.0', 'M22 -4L29 -3.4L22 -2z'], ['#141010', circ(19.5, -4.5, .9)], [`${P}.0`, 'M-20 -1L-28 0L-20 1z']];
       const wings = wing;
       return { wingFar, body, wings };

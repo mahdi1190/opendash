@@ -29,8 +29,9 @@
   const quad = (a, b, c, d) => `M${f1(a[0])} ${f1(a[1])}L${f1(b[0])} ${f1(b[1])}L${f1(c[0])} ${f1(c[1])}L${f1(d[0])} ${f1(d[1])}z`;
   const SEAS = ['spring', 'summer', 'autumn', 'winter'];
   const bySeason = (o) => { const p = {}; for (const s of SEAS) p[s] = {}; for (const [slot, v] of Object.entries(o)) for (const s of SEAS) p[s][slot] = v[s]; return p; };
-  /** Glow groups: N strings; add(i, d) appends a window to group i. shapes(paint) returns one glow shape per group. */
-  const groups = (n) => { const g = Array.from({ length: n }, () => ''); return { g, add: (i, d) => { g[((i % n) + n) % n] += d; }, shapes: (paint, op) => g.map((d, i) => ({ f: typeof paint === 'function' ? paint(i) : paint, d, op, glow: 'window' })) }; };
+  /** Glow groups: N strings; add(i, d) appends a window to group i. shapes(paint) returns one glow shape per group.
+      The windows are detail: a tile still (LOD < .5) draws the tower's massing without them (they light up at night all the same). */
+  const groups = (n) => { const g = Array.from({ length: n }, () => ''); return { g, add: (i, d) => { g[((i % n) + n) % n] += d; }, shapes: (paint, op) => g.map((d, i) => ({ f: typeof paint === 'function' ? paint(i) : paint, d, op, glow: 'window', detail: true })) }; };
 
   /* =====================================================================
      building.skyscraper: a GENERATOR. v % 4 picks the style, v the seed:
@@ -66,13 +67,13 @@
       for (let c = 1; c < cols; c++) mull += `M${f1(x0 + c * cw)} ${f1(y0 + 2)}V${f1(y1)}`;
       // a band of sky reflected across the glass, and a cloud
       const rx = x0 + w * rr(r, .1, .5);
-      body.push([`@${tint}.4`, `M${f1(rx)} ${f1(y1)}L${f1(rx + w * .35)} ${f1(y1)}L${f1(Math.min(x0 + w, rx + w * .9))} ${f1(Math.max(y0, y1 - (y1 - y0) * .7))}L${f1(Math.min(x0 + w, rx + w * .55))} ${f1(Math.max(y0, y1 - (y1 - y0) * .7))}z`, .16]);
-      body.push(['#ffffff', ell(x0 + w * rr(r, .25, .75), y0 + (y1 - y0) * rr(r, .2, .6), w * .18, 14), .1]);
+      body.push({ f: `@${tint}.4`, d: `M${f1(rx)} ${f1(y1)}L${f1(rx + w * .35)} ${f1(y1)}L${f1(Math.min(x0 + w, rx + w * .9))} ${f1(Math.max(y0, y1 - (y1 - y0) * .7))}L${f1(Math.min(x0 + w, rx + w * .55))} ${f1(Math.max(y0, y1 - (y1 - y0) * .7))}z`, op: .16, detail: true });
+      body.push({ f: '#ffffff', d: ell(x0 + w * rr(r, .25, .75), y0 + (y1 - y0) * rr(r, .2, .6), w * .18, 14), op: .1, detail: true });
       // the setback ledge and its parapet
       body.push(['@metal.0', rect(x0 - 3, y0 - 4, w + s + 3, 6)], ['@metal.1', rect(x0 + w, y0 - 4, s, 6), .6]);
     });
     body.push(...glow.shapes(i => `@${tint}.${[0, 1, 2, 1, 0][i % 5]}`, .5), ...g2.shapes(`@${tint}.3`, .7));
-    body.push({ s: '@mull.1', w: 1.1, op: .55, d: mull }, { s: '@mull.1', w: 3.2, op: .5, d: span }, { s: '@mull.1', w: 2.6, op: .45, d: sideL }, ['@mull.0', rect(tiers[0].x0, -3, tiers[0].w, 3), .6]);
+    body.push({ s: '@mull.1', w: 1.1, op: .55, d: mull, detail: true }, { s: '@mull.1', w: 3.2, op: .5, d: span, detail: true }, { s: '@mull.1', w: 2.6, op: .45, d: sideL, detail: true }, ['@mull.0', rect(tiers[0].x0, -3, tiers[0].w, 3), .6]);
     // the entrance: a double-height lobby
     const lx = tiers[0].x0, lw = tiers[0].w;
     body.push(['@dark', rect(lx + lw * .3, -34, lw * .4, 34)], { f: '@glass.2', d: rect(lx + lw * .32, -32, lw * .36, 30), glow: 'window', op: .6 }, ['@metal.0', rect(lx + lw * .26, -40, lw * .48, 6)]);
@@ -124,10 +125,10 @@
       // the return face: narrow punched windows in shade
       for (let fy = y0 + 16; fy < y1 - (ti === 0 ? 62 : 8); fy += fh) glow.add(ti + R(fy / fh) * 3, rect(x0 + w + s * .3, fy + 2, s * .4, fh - 8));
       // the setback: a fluted parapet with chevrons
-      body.push([`@${st}.2`, rect(x0 - 2, y0 - 8, w + s + 2, 10)], { s: `@${st}.3`, w: 1, op: .6, d: Array.from({ length: R(w / 10) }, (_, i) => `M${f1(x0 + 4 + i * 10)} ${f1(y0 - 6)}l3 4 3-4`).join('') });
+      body.push([`@${st}.2`, rect(x0 - 2, y0 - 8, w + s + 2, 10)], { s: `@${st}.3`, w: 1, op: .6, d: Array.from({ length: R(w / 10) }, (_, i) => `M${f1(x0 + 4 + i * 10)} ${f1(y0 - 6)}l3 4 3-4`).join(''), detail: true });
       lit.push({ f: { lin: [[0, '@flood', .38], [1, '@flood', 0]], x1: 0, y1: y0, x2: 0, y2: y0 + 160 }, d: rect(x0, y0, w, Math.min(160, y1 - y0)) });
     });
-    body.push(['@dark', recess], ...glow.shapes(i => (i % 3 ? '@dglass.0' : '@dglass.1'), .9), [`@${st}.1`, spand], [`@${st}.2`, piers, .9]);
+    body.push(['@dark', recess], ...glow.shapes(i => (i % 3 ? '@dglass.0' : '@dglass.1'), .9), { f: `@${st}.1`, d: spand, detail: true }, { f: `@${st}.2`, d: piers, op: .9, detail: true });
     // the base: a tall entrance arch, bronze doors, a stone plinth
     const b0 = tiers[0];
     body.push([`@${st}.3`, rect(b0.x0, -60, b0.w, 60), .35], [`@${st}.2`, rect(b0.x0, -64, b0.w, 5)], ['@bronze.0', `M-26 0V-46q26-30 52 0V0z`], { f: '@dglass.1', d: 'M-20-2V-44q20-22 40 0V-2z', glow: 'window' }, { s: '@bronze.1', w: 1.2, d: 'M0-2V-62M-20-30h40M-14-46l14 8 14-8' });
@@ -139,7 +140,7 @@
       body.push([`@${st}.${k === 1 ? 2 : 0}`, rect(cx - ww / 2, yy, ww, ch / 3 + 1)], [`@${st}.1`, rect(cx + ww / 2 - ww * .18, yy, ww * .18, ch / 3 + 1), .7]);
       // sunburst: nested arches in each step (the deco signature)
       const arc = Array.from({ length: 3 }, (_, j) => { const rw = ww * .32 * (1 - j * .28); return `M${f1(cx - rw)} ${f1(yy + ch / 3)}a${f1(rw)} ${f1(rw * .9)} 0 0 1 ${f1(2 * rw)} 0`; }).join('');
-      body.push({ s: `@${st}.3`, w: 1.4, op: .7, d: arc });
+      body.push({ s: `@${st}.3`, w: 1.4, op: .7, d: arc, detail: true });
       glow.add(0, '');
       body.push({ f: '@dglass.0', d: Array.from({ length: 4 }, (_, j) => rect(cx - ww * .38 + j * ww * .22, yy + ch / 3 * .3, ww * .08, ch / 3 * .55)).join(''), glow: 'window' });
     }
@@ -175,7 +176,12 @@
       }
       if (i % 2 === 0) { let best = 0, bz = -9; for (let j = 0; j < 4; j++) if (c0[j][1] > bz) { bz = c0[j][1]; best = j; } edges.push([c0[best][0], y0]); }
     }
-    body.push([`@${tint}.4`, tone[0]], [`@${tint}.2`, tone[1]], [`@${tint}.1`, tone[2]], [`@${tint}.3`, tone[3]]);
+    // a tile still draws the tower's outline in its mid tone (hidden under the faces at full size) instead of every floor's faces
+    const sil = [];
+    for (let i = 0; i <= nb; i += 4) { const xs = facesAt(Math.min(i, nb)).map(c => c[0]); sil.push([Math.min(...xs), -Math.min(i, nb) * bh, Math.max(...xs)]); }
+    if (sil[sil.length - 1][1] !== -nb * bh) { const xs = facesAt(nb).map(c => c[0]); sil.push([Math.min(...xs), -nb * bh, Math.max(...xs)]); }
+    body.push([`@${tint}.2`, 'M' + sil.map(q => `${R(q[0]) + 1} ${q[1]}`).concat(sil.slice().reverse().map(q => `${R(q[2]) - 1} ${q[1]}`)).join('L') + 'z']);
+    body.push({ f: `@${tint}.4`, d: tone[0], detail: true }, { f: `@${tint}.2`, d: tone[1], detail: true }, { f: `@${tint}.1`, d: tone[2], detail: true }, { f: `@${tint}.3`, d: tone[3], detail: true });
     body.push(...glow.shapes(i => `@${tint}.${[3, 0, 1][i % 3]}`, .55));
     // the leading corner reads as a helix: a bright line up the nearest edge (broken where it jumps to the next corner)
     let prev = null; for (const [x, y] of edges) { edge += (prev && Math.abs(prev[0] - x) < 30 ? `L${f1(x)} ${f1(y)}` : `M${f1(x)} ${f1(y)}`); prev = [x, y]; }
@@ -193,7 +199,7 @@
     const wall = brick ? 'brickT' : 'conc', bays = ri(r, 4, 6), bw = W / bays, x0 = -W / 2, y0 = -H;
     const accent = ri(r, 0, 3);
     body.push([`@${wall}.1`, rect(W / 2, y0, sw, H)], [`@${wall}.0`, rect(x0, y0, W, H)]);
-    if (brick) body.push({ s: '@brickT.3', w: .7, op: .3, d: Array.from({ length: R(H / 8) }, (_, i) => `M${x0} ${f1(y0 + 4 + i * 8)}h${W}`).join('') });
+    if (brick) body.push({ s: '@brickT.3', w: .7, op: .3, d: Array.from({ length: R(H / 8) }, (_, i) => `M${x0} ${f1(y0 + 4 + i * 8)}h${W}`).join(''), detail: true });
     const glow = groups(44); let slab = '', rail = '', panel = '', frame = '';
     for (let fy = y0 + 10, fl = 0; fy < -60; fy += fh, fl++) {
       for (let b = 0; b < bays; b++) {
@@ -207,7 +213,7 @@
       glow.add(fl * 3, rect(W / 2 + sw * .25, fy + 5, sw * .5, fh - 9));
     }
     body.push(...glow.shapes(i => (i % 4 ? '@wglass.0' : '@wglass.1'), 1));
-    body.push({ s: `@${wall}.2`, w: 1.4, op: .8, d: frame }, ['@clad.' + accent, panel], ['@rail.0', rail, .45], { s: '@rail.1', w: 1, op: .8, d: rail.replace(/z/g, '') }, [`@${wall}.2`, slab], [`@${wall}.3`, slab, .25]);
+    body.push({ s: `@${wall}.2`, w: 1.4, op: .8, d: frame, detail: true }, { f: '@clad.' + accent, d: panel, detail: true }, { f: '@rail.0', d: rail, op: .45, detail: true }, { s: '@rail.1', w: 1, op: .8, d: rail.replace(/z/g, ''), detail: true }, { f: `@${wall}.2`, d: slab, detail: true }, { f: `@${wall}.3`, d: slab, op: .25, detail: true });
     // a glazed ground floor with a canopy; a plant room and a water tank on the roof
     body.push(['@dark', rect(x0, -60, W, 60)], { f: '@wglass.0', d: rect(x0 + 6, -54, W - 12, 50), glow: 'window', op: .8 }, { s: `@${wall}.0`, w: 3, d: Array.from({ length: bays + 1 }, (_, i) => `M${f1(x0 + i * bw)} -60V0`).join('') }, ['@metal.0', rect(x0 - 4, -64, W + 8, 5)]);
     body.push([`@${wall}.2`, rect(x0 - 2, y0 - 6, W + sw + 2, 8)], ['@metal.1', rect(x0 + W * .2, y0 - 40, W * .4, 34)], ['@metal.0', rect(x0 + W * .2, y0 - 40, W * .4, 4)], ['@metal.1', rect(x0 + W * .66, y0 - 26, W * .16, 20), .9], { s: '@metal.0', w: 1, op: .6, d: Array.from({ length: 6 }, (_, i) => `M${f1(x0 + W * .22 + i * W * .065)} ${f1(y0 - 34)}v26`).join('') });
@@ -216,7 +222,7 @@
   };
 
   defineObj({
-    id: 'building.skyscraper', category: 'building', size: [340, 1700], variants: 16, seasonal: false, flippable: true, parts: ['body', 'beacon', 'lit'],
+    id: 'building.skyscraper', category: 'building', size: [340, 1700], variants: 16, seasonal: false, flippable: true, parts: ['body', 'beacon', 'lit'], weight: 0.3,
     palette: { base: {
       glass: ['#5d7d98', '#7896b0', '#a2bcd2', '#3d566e', '#cadbe8'], glassG: ['#4e7470', '#6f9690', '#a0c4bc', '#344f4c', '#c8e0d8'], glassD: ['#3c4656', '#56647a', '#8696aa', '#262e3a', '#aebaca'],
       dglass: ['#2a2e36', '#3a4048'], wglass: ['#3a4654', '#5a6a7c'], mull: ['#d4d8dc', '#7a828a'], dark: '#1c2128',
