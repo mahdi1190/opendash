@@ -145,8 +145,10 @@ test('painted night skies and painted moons keep their own moon: no second one; 
   for (const r of ['asia-east/tokyo-skyline', 'us-northeast/ny-statue', 'asia-east/jp-signature']) assert.ok(moon(ref(r).svg({ size: 'fill', sky })), r + ': the real moon');
   for (const r of ['us-mountain/id-sawtooth-lake', 'us-southeast/sc-palmetto-crescent', 'us-southeast/memphis-beale-bridge', 'us-mountain/nv-pyramid-lake', 'us-mountain/las-vegas-neon-strip',
     'us-pacific/hi-volcano-night', 'us-pacific/or-crater-lake', 'us-pacific/anchorage-aurora-moose', 'asia-west/jeddah-skyline']) assert.ok(!moon(ref(r).svg({ size: 'fill', sky })), r + ': its own painted night or moon, no second moon');
-  // the fix is central: no US or Asia scene needs a retro exemption
-  for (const it of regionFull()) assert.deepEqual(it.retro, {}, it.ref + ': no per-scene retro override');
+  // the fix is central; the only per-scene override is a big low sun painted by hand (not the kit's sun(), so never faded), which reads as the moon at night
+  const exempt = { 'us-midwest/nd-pumpjack': { moon: false } };
+  for (const it of regionFull()) assert.deepEqual(it.retro, exempt[it.ref] || {}, it.ref + ': per-scene retro override');
+  assert.ok(!moon(ref('us-midwest/nd-pumpjack').svg({ size: 'fill', sky })), 'us-midwest/nd-pumpjack: its painted sun stands in for the moon, no second one');
   // the kit's painted sun (sun()) is gone at night, at full strength at noon
   const nv = ref('us-mountain/nv-pyramid-lake'), sun = /<g class="x-us(glow|rise)" style="--ad:(6|9)s"><circle/;
   assert.ok(sun.test(nv.svg({ size: 'fill' })) && !sun.test(nv.svg({ size: 'fill', sky })), 'the painted sun is gone at night');
