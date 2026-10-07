@@ -111,7 +111,8 @@
     credit: 'after London street entrances to sub-surface and deep stations; generic, no marks',
     build(v, r, ctx) {
       const body = [], lit = [], winter = ctx.season === 'winter', s = ctx.season;
-      const trough = (x) => { body.push(['@tub.0', rect(x - 11, -10, 22, 10)], ['@tub.1', rect(x - 12, -11, 24, 1.6)], ['@leaf.0', lobed(r, x, -14, 12, 6, 8, .35)], ['@leaf.1', lobed(r, x - 3, -17, 6, 3, 6, .3)]); if (!winter) { let b = ''; for (let i = 0; i < 6; i++) b += ell(x + rr(r, -10, 10), rr(r, -20, -11), 1.4, 1.4); body.push(['@bloom.0', b]); } else body.push(['@snow.0', `M${x - 12} -16q12 -8 24 0z`]); };
+      // a planting trough on a stone plinth (never loose on the pavement)
+      const trough = (x) => { body.push(['@stone.1', rect(x - 14, -5, 28, 5)], ['@stone.3', rect(x - 14, -1.2, 28, 1.2), .5], ['@tub.0', rect(x - 11, -15, 22, 10)], ['@tub.1', rect(x - 12, -16, 24, 1.6)], ['@leaf.0', lobed(r, x, -19, 12, 6, 8, .35)], ['@leaf.1', lobed(r, x - 3, -22, 6, 3, 6, .3)]); if (!winter) { let b = ''; for (let i = 0; i < 6; i++) b += ell(x + rr(r, -10, 10), rr(r, -25, -16), 1.4, 1.4); body.push(['@bloom.0', b]); } else body.push(['@snow.0', `M${x - 12} -21q12 -8 24 0z`]); };
       if (v === 0 || v === 1) {
         // the stairwell: a dark opening in the pavement, treads going down into the dark, the tiled far wall
         const W = 46, D = 18;
@@ -121,8 +122,8 @@
         if (v === 0) {
           // side and back railings in perspective, stone piers at the front corners with lanterns, an iron arch over the head of the stairs
           const rail = (x0, y0, x1, y1, h) => { let d = `M${x0} ${y0 - h}L${x1} ${y1 - h}M${x0} ${y0 - 3}L${x1} ${y1 - 3}`; const n = Math.round(Math.hypot(x1 - x0, y1 - y0) / 4); for (let i = 1; i < n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; d += `M${f1(x)} ${f1(y)}V${f1(y - h)}`; } return { s: '@iron.0', w: 1, d }; };
-          body.push(rail(-W + 6, -D, W - 6, -D, 28), { s: '@iron.0', w: 2, d: `M${-W + 6} ${-D - 28}H${W - 6}` });
-          body.push(rail(-W - 2, 0, -W + 6, -D, 30), rail(W + 2, 0, W - 6, -D, 30), { s: '@iron.0', w: 2, d: `M${-W - 2} -30L${-W + 6} ${-D - 28}M${W + 2} -30L${W - 6} ${-D - 28}` });
+          // the railings FLANK the stairs (left and right sides only): nothing crosses the head of the flight, so it reads open
+          body.push(rail(-W - 2, 0, -W + 6, -D, 30), rail(W + 2, 0, W - 6, -D, 30), { s: '@iron.0', w: 2, d: `M${-W - 2} -30L${-W + 6} ${-D - 28}M${W + 2} -30L${W - 6} ${-D - 28}` }, { s: '@iron.0', w: 2.4, d: `M${-W + 6} ${-D}v-28M${W - 6} ${-D}v-28` });
           for (const sx of [-1, 1]) {
             const px = sx * (W + 6);
             body.push(['@stone.0', rect(px - 7, -40, 14, 40)], ['@stone.3', rect(px + (sx < 0 ? 3 : 3), -40, 4, 40), .4], ['@stone.2', rect(px - 9, -44, 18, 5)], ['@stone.1', rect(px - 6, -48, 12, 4)]);
