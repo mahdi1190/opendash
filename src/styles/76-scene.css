@@ -3,8 +3,8 @@
    Composed scenes on the canvas host (78-scene-host.js): the host span shows the live sky's top and
    low colours (--sc-top / --sc-low, from sceneHostAttrs) until the first frame, then the canvas fades
    in. The light's warm glow and vignette are composited here (--sc-warm / --sc-vig), never drawn per frame.
-   The retrofit overlay of hand-drawn scenes (70-scene-retro.js) uses the sr-* classes and x-sr* motion:
-   transform and opacity only, stopped with reduced motion.
+   The retrofit of hand-drawn scenes (70-scene-retro.js) uses the sr-* classes (sr-retro, sr-back, sr-lamps,
+   sr-sky) and x-sr* motion: transform and opacity only, stopped with reduced motion.
    ============================================================ */
 .anim-scene.ap-composed { position: relative; overflow: hidden; background: linear-gradient(var(--sc-top, #3a80c4), var(--sc-low, #dcebf2)); }
 .anim-scene.ap-composed .sc-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity .2s; }
@@ -17,8 +17,13 @@
 }
 @media (prefers-reduced-motion: reduce) { .anim-scene.ap-composed .sc-canvas { transition: none; } }
 
-/* ---------- the retrofit overlay (section 7): the live grade replaces the old evening tint ---------- */
-.sr-retro .us-tint { opacity: 0 !important; }
+/* ---------- the retrofit (section 7): the art re-lit by the live sky replaces the old evening tint and painted stars ---------- */
+.sr-retro :is(.us-tint, .us-star) { opacity: 0 !important; }
+/* windows and lamps are the art's own us-lit / us-lamps: dark in the re-lit art (.sr-back), lit at real dusk (.sr-lamps round the art).
+   The selectors outrank the kit's theme and tod-* rules (71-anim-0region.js animSceneCss), so the real light decides, not the theme. */
+html .anim-scene.ap-full .sr-back :is(.us-lit, .us-lamps) { opacity: 0; }
+html .anim-scene.ap-full .sr-back .sr-lamps :is(.us-lit, .us-lamps) { opacity: .92; }
+.sr-retro .sr-sky { pointer-events: none; }
 .sr-retro .x-srtw { animation: x-srtw var(--ad, 3.2s) ease-in-out var(--d, 0s) infinite alternate; }
 .sr-retro .x-srfall { animation: x-srfall var(--ad, 14s) linear var(--d, 0s) infinite; }
 .sr-retro .x-srglow { animation: x-srglow var(--ad, 5s) ease-in-out var(--d, 0s) infinite alternate; }
@@ -26,5 +31,8 @@
 @keyframes x-srfall { from { transform: translate(0, -60px); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } to { transform: translate(var(--dx, 40px), 980px); opacity: 0; } }
 @keyframes x-srglow { from { opacity: .75; } to { opacity: 1; } }
 .anim-scene.ap-still .sr-retro [class*="x-sr"], .anim-scene.ap-rich.is-held .sr-retro [class*="x-sr"], .anim-scene.is-offscreen .sr-retro [class*="x-sr"] { animation-play-state: paused; }
+/* the still frame is a finished picture: stars at a steady mid twinkle, no falling petals or leaves frozen in a band at the top */
 .anim-scene.ap-still .sr-retro [class*="x-sr"] { animation: none; }
-@media (prefers-reduced-motion: reduce) { .sr-retro [class*="x-sr"] { animation: none !important; } }
+.anim-scene.ap-still .sr-retro .x-srtw { opacity: .75; }
+.anim-scene.ap-still .sr-retro .x-srfall { display: none; }
+@media (prefers-reduced-motion: reduce) { .sr-retro [class*="x-sr"] { animation: none !important; } .sr-retro .x-srtw { opacity: .75; } .sr-retro .x-srfall { display: none; } }

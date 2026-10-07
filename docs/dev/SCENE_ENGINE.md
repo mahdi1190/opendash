@@ -1005,7 +1005,7 @@ Hand-drawn region scenes (US, Asia and every region since) stay as they are,
 as SVG. They are already light: at most 32 KB each.
 
 `sceneRetrofit(item, retro)` wraps the item. With a live sky (`o.sky`), its
-`svg(o)` returns the original art plus a small overlay. With no `o.sky`
+`svg(o)` returns the art re-lit by that sky plus a small overlay. With no `o.sky`
 (Node, the lint corpus, sheets without `--at`), it returns the original art
 BYTE-IDENTICAL. So the calibrated corpus, the tests and the existing lint
 results do not move.
@@ -1016,26 +1016,58 @@ LEGACY tier (15.3), "below the new standard", until it is upgraded (section
 16). A retrofitted scene that is later upgraded drops the overlay: the
 composed renderer does all of it natively.
 
-### 7.2 The overlay (`70-scene-retro.js`, builder A; at most 6,000 bytes, `SCENE_RETRO_MAX_BYTES`)
+### 7.2 The re-lit art and the overlay (`70-scene-retro.js`, builder A; at most 6,000 bytes added, `SCENE_RETRO_MAX_BYTES`)
+
+The art is re-lit in place, never veiled. A veil over the art (a flat sky
+rect above the horizon) buried every skyline, mountain and landmark above
+y = 520 at night with a hard band, and copies of the lit windows (`<use>`)
+rendered black and drifted (they lose the ancestors' parallax, motion and
+transforms). Two ways were prototyped on twelve scenes in round 2: grading
+the art's own colours (below) and one multiply blend over the whole drawing.
+The blend darkens the lit windows to brown and dims the real moon and stars
+(only copies above it could escape it), so grading won; it also costs no
+blend layer per frame.
 
 ```
 <g class="sr-retro">
-  <g class="sr-back">ORIGINAL ART</g>                   the drawing as the backdrop layer
-  sky veil     clip = retro.sky: the live sky gradient (L.top, L.mid, L.low) at opacity clamp(L.dark * 1.1, 0, .92);
-               at golden hour a glow of L.lowSun at .25 round the real sun position (the painted day sky becomes the real dusk / night sky)
-  stars        up to retro.stars dots in the sky path, opacity L.stars, in 3 groups with x-srtw twinkle
-  moon         at L.moon (real azimuth / altitude through retro.heading / fov / horizon), real phase and limb (almMoonDiscPath), glow
-  sun          only with retro.sun === 'live': the disc and glow at L.sun
-  land grade   below the sky: rect fill = 1 - shadeOp * (1 - shade) per channel, mix-blend-mode: multiply  (the K.tone multiply, exact);
-               night: rect #2a3a6a, mix-blend-mode: multiply, opacity L.dark * .35; warm: rect L.light at the K.tone warm factor
-  lamps        copies of the art's .us-lit / .us-lamps elements ABOVE the grade (they light at real dusk via the tod-* class
-               animItemHtml sets from the live sky), so windows and lamps glow instead of being darkened
-  season       when retro.season === 'auto', the item's season label is 'any' and |lat| >= 23.5:
+  <g class="sr-back">                                   the art, re-lit
+    <g class="sr-lamps">                                at real dusk (L.windows): lights the art's own .us-lit / .us-lamps (76-scene.css)
+      SKY          the art's first element, the kit's full(sky) (a 1600 x 900 rect with a gradient): its stops turn into
+                   the live sky (L.top, L.mid, L.low by height over retro.horizon) by k = clamp(L.dark * 1.15, 0, 1); never graded
+      <g class="sr-sky">                                straight after the sky, so the land, skyline and clouds drawn later stand in front
+        glow       at golden hour, L.lowSun at .25 round the real sun position
+        stars      up to retro.stars round dots (zero-length strokes), opacity L.stars, 3 groups with x-srtw twinkle
+        moon       at L.moon (real azimuth / altitude through retro.heading / fov / horizon), real phase and limb, soft glow
+        sun        only with retro.sun === 'live': the disc and glow at L.sun
+      </g>
+      LAND         every fill / stroke / stop-color after the sky graded in place: toward night blue and darker by the real
+                   darkness the painting does not already have (a sky painted at night is graded less), the K.tone shade
+                   multiply and golden warmth by day; the lit pieces (us-lit, us-lamps) are left exactly as drawn
+      PAINTED SUN  the kit's sun() and rays() fade out by k (gone at night)
+    </g>
+  </g>
+  season       when retro.season === 'auto', the item's season label is 'any' and the scene's own |lat| >= 23.5:
                spring #cfe8a0 soft-light .10 + 12 petals; summer: 8 motes; autumn #d27a2c soft-light .20 + 16 leaves;
-               winter #e8eef6 screen .18 + a grey saturation rect .25 + 30 snowflakes (more when L.snow)
+               winter #e8eef6 screen .18 (fading to a fifth at night, where it would grey the dark sky) + a grey
+               saturation rect .25 + 30 snowflakes (more when L.snow)
   weather      rain lines / snow / fog veil from L (shared with the canvas renderer's constants)
 </g>
 ```
+
+- A sky painted at night (its top luminance under 0.13) or with a painted
+  moon (a pale disc high in the first third of the drawing) keeps its own
+  moon: no second, live one. This covers the painted night, dusk and moon
+  scenes centrally (Sawtooth, Palmetto crescent, Memphis, Pyramid Lake, Las
+  Vegas, Hawaii volcano, Crater Lake, Anchorage aurora, Jeddah and others),
+  so no scene needs a `retro` exemption.
+- Art can only be darkened, never brightened: a painted sunset stays a
+  sunset at noon, and a painted night stays a night by day.
+- The budget counts every byte the retrofit adds (the graded art's growth
+  and the live sky inside `sr-back` included); over it, particles, stars,
+  weather and the season go first. `lint --at` measures what is outside
+  `sr-back` and checks every `sr-*` class has css.
+- Reduced motion (`.ap-still`): stars hold a steady .75, the falling
+  particles are hidden (frozen they would sit in a band at the top).
 
 `sceneRetrofitSvg(markup, L, retro, { season, lat })` builds it.
 
@@ -1047,8 +1079,11 @@ composed renderer does all of it natively.
   season: 'auto', particles: true, weather: true, lamps: true }
 ```
 
-- `sky` is a path (`'M-160 -80H1760V520H-160z'`) when the skyline is not
-  flat. For example, mountains need the sky to stop at the ridge.
+- `veil` restyles the art's own sky and fades its painted sun; `grade`
+  grades its land; `lamps` lights its own lit pieces at real dusk.
+- `horizon` places the live sun, moon and stars. `sky` (a path) is optional:
+  it clips the live sky pieces; without it the art itself hides them behind
+  its land, skyline and mountains.
 - `sun: 'painted'` keeps the painted sun by day, which is the safe default.
   `'live'` is for art without a sun.
 
@@ -1075,16 +1110,17 @@ later with `tools/anim-pack.mjs new`.
    `sheet` and `lint` gain `--at <ISO>` and `--location lat,lon`, which pass
    `o.sky` (builder C).
 2. Run the same at dawn, noon and golden hour, and in each season, and for
-   one pack of every region: `asia-east` (Japan's Fuji ridge needs a `sky`
-   path), `asia-southeast` (tropical: no season tint), `asia-west`,
-   `us-mountain` (mountain skylines) and `us-pacific` (the aurora scene: the
-   painted night must not be veiled twice). Every region scene the friend's
-   agent drew gets the rules from the one region hook; scenes whose skyline
-   needs it get a `retro: { sky, horizon }` entry in their scene file (the
-   only edit to hand-drawn scene files this round, made by the reviewer).
+   one pack of every region: `asia-east` (Japan's Fuji ridge),
+   `asia-southeast` (tropical: no season tint), `asia-west`, `us-mountain`
+   (mountain skylines, painted night and moon scenes) and `us-pacific` (the
+   aurora scene). Every region scene gets the rules from the one region hook;
+   no scene needs a `retro` entry since round 2 (the sky is restyled, not
+   veiled, so ridges and skylines need no `sky` path).
 3. Run `lint --pack us-northeast --at <ISO>`. With the overlay present it
    checks the retro rules: overlay at most 6,000 bytes, classes defined,
-   transform and opacity only.
+   transform and opacity only. `tests/scene-retrofit.test.mjs` holds every
+   scene to the 6,000 bytes added in 4 seasons x 12 hours and reports the
+   html with a sky over the 32,000-byte full budget (none over 40,000).
 
 The base art is still judged by its own profile, without the overlay.
 
