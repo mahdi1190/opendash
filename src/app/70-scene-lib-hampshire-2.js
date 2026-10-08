@@ -161,7 +161,7 @@
     credit: 'hampshire library (south)',
     build(v) {
       const r = sceneRnd(907 + v * 41), b = [];
-      const ridge = (base, amp, ph, n) => { let d = `M-700 0V${base}`; for (let i = 0; i <= n; i++) { const x = -700 + i * 1400 / n, y = base - amp * (.55 + .45 * Math.sin(i * 1.3 + ph + v)) ; d += `Q${f1(x - 700 / n)} ${f1(y - amp * .25)} ${f1(x)} ${f1(y)}`; } return d + 'V0z'; };
+      const ridge = (base, amp, ph, n) => { const Y = (i) => base - amp * (.55 + .45 * Math.sin(i * 1.3 + ph + v)); let d = `M-700 0V${f1(Y(0))}`; for (let i = 1; i <= n; i++) { const x = -700 + i * 1400 / n, y = Y(i); d += `Q${f1(x - 700 / n)} ${f1(y - amp * .25)} ${f1(x)} ${f1(y)}`; } return d + 'V0z'; };
       b.push(['@down.2', ridge(-150, 70, 0, 5)], ['@down.0', ridge(-100, 60, 2, 6)], ['@down.1', ridge(-50, 40, 4, 7)]);
       // field strips and hedgerows across the near slope (the summer barley gold, the autumn plough)
       for (let i = 0; i < 9; i++) { const x = -660 + i * 150 + r() * 30, w = 70 + r() * 40, y = -30 - r() * 30; b.push({ f: '@down.' + (i % 2 ? 3 : 0), d: poly([x, y + 8], [x + w * .1, y - 8], [x + w, y - 10], [x + w * 1.05, y + 6]), op: .7 }, { s: '@wood.0', w: 1.6, op: .7, d: `M${f1(x)} ${f1(y + 8)}L${f1(x + w * 1.05)} ${f1(y + 6)}` }); }
@@ -239,6 +239,100 @@
       for (const bx of [-80, 80]) { P(['@metal.1', rect(bx - 26, -12, 52, 5)]); for (const dx of [-16, 16]) P(['@metal.0', ell(bx + dx, -6, 6)], ['@metal.1', ell(bx + dx, -6, 2)]); }
       P(['@metal.0', rect(-126, -24, 8, 3)], ['@metal.0', rect(118, -24, 8, 3)], ['@metal.0', rect(-120, -1, 240, 1.6)]);
       return { body: b };
+    },
+  });
+
+  /* ---------------- the port: a generic cruise liner, an island car ferry and a ship-to-shore crane (no names, no logos) ---------------- */
+  const SEA = { spring: ['#4a7a88', '#6a9aa6', '#a8c8d0'], summer: ['#3a7088', '#5a94aa', '#b0d4dc'], autumn: ['#4a6670', '#6a868e', '#98b0b4'], winter: ['#4a5e68', '#6a7e86', '#9aaab0'] };
+  const waterline = (x0, x1) => [['@sea.0', rect(x0, -3, x1 - x0, 9)], { s: '@sea.2', w: 1, op: .7, d: `M${x0 + 10} 1h${f1((x1 - x0) * .2)}M${f1(x0 + (x1 - x0) * .5)} 3h${f1((x1 - x0) * .15)}` }];
+
+  define({
+    id: 'boat.cruise-liner', category: 'boat', size: [660, 190], variants: 2, seasonal: true, shapeBySeason: true, flippable: true,
+    palette: pal({ hull: ['#f4f4f2', '#d0d4d8', '#ffffff'], lower: ['#1e2a40', '#2e3c58'], boot: ['#8a2e22'], glass: ['#2e3a4a', '#6a8aa8'], boat: ['#e87a28', '#f4a050'], funnel: ['#f4f4f2', '#1e1e22', '#3a4a6a'], deck: ['#b8bcc0'], snow: ['#f2f5f8'] }, { sea: SEA }),
+    night: { glow: { window: '#f4d08a', lamp: '#fff2c8' }, on: .75 },
+    anim: { bob: { part: '*', dy: .8, period: 7 } },
+    shadow: false, reflect: true, weight: 0,
+    tags: ['uk', 'hampshire', 'southampton', 'liner', 'cruise', 'ship', 'port', 'kit:boats', 'kit:water', 'role:boat'],
+    credit: 'hampshire library (south)',
+    build(v, rnd, ctx) {
+      const b = [], P = (...s) => b.push(...s), W = ctx.season === 'winter';
+      const hull = 'M-320-60L-316-6H286Q318-30 334-64z';
+      P([v ? '@hull.0' : '@lower.0', hull], ['@hull.0', 'M-320-60L-319-40H326Q330-52 334-64z'], ['@boot', 'M-316-10H290L286-6H-316z'], ['@hull.2', 'M-320-60H334L332-58H-320z', .7]);
+      if (v) P(['@lower.0', 'M-319-36H322L320-30H-318z']);
+      // the stacked decks: balconies and windows, stepping back toward the bow, the bridge with its wings
+      const decks = [[-300, 280, -76], [-296, 266, -92], [-286, 250, -108], [-272, 236, -124], [-240, 210, -140], [-200, 150, -156]];
+      decks.forEach(([x0, x1, y]) => {
+        P(['@hull.0', rect(x0, y, x1 - x0, 16)], ['@hull.1', rect(x0, y + 14, x1 - x0, 2), .8]);
+        for (let x = x0 + 6; x < x1 - 30; x += 46) P({ f: '@glass.0', d: rect(x, y + 4, 40, 7), glow: 'window' }, ['@glass.1', rect(x, y + 4, 14, 3), .4]);
+        P({ s: '@hull.1', w: .6, op: .7, d: Array.from({ length: Math.floor((x1 - x0) / 8) }, (_, i) => `M${x0 + 4 + i * 8} ${y + 4}v8`).join('') });
+      });
+      P(['@hull.0', rect(140, -172, 80, 16)], { f: '@glass.0', d: rect(146, -168, 70, 6), glow: 'window' }, ['@hull.0', rect(214, -168, 30, 4)]);
+      // the lifeboats along the promenade deck
+      for (let x = -260; x < 230; x += 34) P(['@boat.0', `M${x} -70h26q-2 6-13 6t-13-6z`], ['@boat.1', rect(x + 2, -72, 22, 2), .8]);
+      // the funnel and the mast
+      P(['@funnel.0', poly([-150, -156], [-90, -156], [-96, -196], [-140, -196])], [v ? '@funnel.2' : '@funnel.1', poly([-141, -190], [-95, -190], [-96, -198], [-140, -198])], ['@hull.1', poly([-110, -156], [-90, -156], [-96, -196], [-104, -196]), .5]);
+      P({ s: '@deck.0', w: 2, d: 'M190-172V-200M182-192H198' }, { f: '#ff4040', d: ell(190, -201, 1.6), glow: 'lamp' }, { f: '#fff2c8', d: ell(320, -62, 1.6), glow: 'lamp' }, { f: '#40ff80', d: ell(240, -170, 1.4), glow: 'lamp' });
+      if (W) P(['@snow', rect(-200, -157, 350, 2)], ['@snow', rect(140, -173, 80, 2)]);
+      P(...waterline(-340, 350));
+      return { body: b };
+    },
+  });
+
+  define({
+    id: 'boat.island-ferry', category: 'boat', size: [320, 110], variants: 3, seasonal: true, flippable: true,
+    palette: pal({ hull: ['#f2f2f0', '#cfd3d6'], band: ['#c03a2e', '#2e5aa8', '#2e8a5a'], boot: ['#2a2a2e'], glass: ['#2e3a4a', '#6a8aa8'], deck: ['#9aa0a6'] }, { sea: SEA }),
+    night: { glow: { window: '#f4d08a', lamp: '#fff2c8' }, on: .85 },
+    anim: { bob: { part: '*', dy: 1.2, period: 5 } },
+    shadow: false, reflect: true, weight: .2,
+    tags: ['uk', 'hampshire', 'solent', 'ferry', 'isle-of-wight', 'port', 'kit:boats', 'kit:water', 'role:boat'],
+    credit: 'hampshire library (south)',
+    build(v) {
+      const b = [], P = (...s) => b.push(...s), B = `@band.${v}`;
+      P(['@hull.0', 'M-150-40L-144-4H130Q150-20 158-42z'], [B, 'M-150-30H155L152-22H-148z'], ['@boot', 'M-144-8H134L130-4H-144z'], ['@hull.1', 'M-150-40H158L157-38H-150z', .8]);
+      P(['@deck.0', rect(120, -36, 30, 4)], { s: '@deck.0', w: 1, d: 'M-140-40V-32M-120-40V-32' });
+      // two passenger decks, the bridge and the funnel in the band colour
+      P(['@hull.0', rect(-110, -60, 210, 20)], ['@hull.0', rect(-80, -76, 160, 16)], ['@hull.0', rect(40, -90, 50, 14)]);
+      for (let x = -104; x < 96; x += 14) P({ f: '@glass.0', d: rect(x, -55, 10, 8), glow: 'window' });
+      for (let x = -74; x < 76; x += 14) P({ f: '@glass.0', d: rect(x, -72, 10, 7), glow: 'window' });
+      P({ f: '@glass.0', d: rect(44, -87, 42, 6), glow: 'window' }, ['@glass.1', rect(44, -87, 14, 3), .4], ['@hull.1', rect(-110, -42, 210, 2), .8]);
+      P(['@hull.0', poly([-60, -76], [-30, -76], [-34, -100], [-58, -100])], [B, poly([-58.6, -94], [-34.6, -94], [-34, -100], [-58, -100])]);
+      P({ s: '@deck.0', w: 1.6, d: 'M66-90V-108M60-102H72' }, { f: '#ff4040', d: ell(66, -109, 1.4), glow: 'lamp' }, { f: '#fff2c8', d: ell(150, -40, 1.6), glow: 'lamp' });
+      for (const x of [-150, -110, -70]) P(['@boot', rect(x, -12, 4, 4), .6]);
+      P(...waterline(-160, 170));
+      return { body: b };
+    },
+  });
+
+  define({
+    id: 'structure.dock-crane', category: 'structure', size: [300, 300], variants: 3, seasonal: true, shapeBySeason: true, flippable: true,
+    parts: ['body', 'beacon'],
+    palette: pal({ paint: ['#2e6aa8', '#1e4a7a', '#5a8ac0'], paint2: ['#c83a2e', '#8a2620', '#f2f0ea'], house: ['#e8e8e4', '#b8bcc0'], cable: ['#2a2a2c'], quay: ['#9a948a', '#7a756c'], snow: ['#f2f5f8'] }, { sea: SEA }),
+    night: { glow: { window: '#f4d08a', lamp: '#fff2c8' }, on: 1 },
+    anim: { flicker: { part: 'beacon', op: [.2, 1], period: 1.5 } },
+    shadow: { rx: 80, ry: 6, h: 260 }, weight: 0,
+    tags: ['uk', 'hampshire', 'southampton', 'port', 'crane', 'docks', 'kit:urban', 'kit:water', 'role:building-far'],
+    credit: 'hampshire library (south)',
+    build(v, rnd, ctx) {
+      const b = [], P = (...s) => b.push(...s), W = ctx.season === 'winter', red = v === 2, C = red ? '@paint2' : '@paint', up = v === 1;
+      P(['@quay.0', rect(-150, -6, 300, 8)], ['@quay.1', rect(-150, 0, 300, 2)], ...waterline(90, 200));
+      // the portal legs and their bracing (two legs seen side on, the far pair lighter)
+      for (const [x, op] of [[-56, .55], [40, .55], [-64, 1], [48, 1]]) P({ f: `${C}.${op < 1 ? 2 : 0}`, d: rect(x, -150, 10, 150), op });
+      P({ s: `${C}.1`, w: 3, d: 'M-60-150L44-60M44-150L-60-60M-60-60H44' }, [`${C}.0`, rect(-70, -158, 132, 10)]);
+      for (const x of [-64, 48]) P(['@quay.1', rect(x - 6, -8, 22, 6)]);
+      // the A-frame above, the stays and the boom (lowered over the ship, or raised for passage)
+      P({ s: `${C}.0`, w: 5, d: 'M-60-158L-20-250L20-158' }, { s: `${C}.1`, w: 2, d: 'M-40-204H0' });
+      if (!up) {
+        P([`${C}.0`, rect(-130, -176, 330, 12)], { s: `${C}.1`, w: 1, d: Array.from({ length: 16 }, (_, i) => `M${-128 + i * 20} -164l10 -12l10 12`).join('') }, ['@house.0', rect(-130, -196, 50, 20)], ['@house.1', rect(-130, -184, 50, 3)]);
+        P({ s: '@cable', w: 1.2, d: 'M-20-250L190-174M-20-250L-128-174M-20-250L90-174' });
+        P(['@house.0', rect(110, -166, 20, 10)], { s: '@cable', w: .8, d: 'M114-156V-60M126-156V-60' }, [`${C}.1`, rect(104, -60, 32, 6)]);
+      } else {
+        P({ f: `${C}.0`, d: poly([-10, -176], [140, -330], [150, -322], [4, -164]) }, [`${C}.0`, rect(-130, -176, 140, 12)], ['@house.0', rect(-130, -196, 50, 20)]);
+        P({ s: '@cable', w: 1.2, d: 'M-20-250L140-326M-20-250L-128-174' });
+      }
+      P({ f: '@house.0', d: rect(-74, -190, 18, 12) }, { f: '#3e4a58', d: rect(-72, -188, 14, 6), glow: 'window' });
+      for (const x of [-100, -20, 60, 140]) if (!up || x < 0) P({ f: '#fff2c8', d: rect(x, -164, 6, 2), glow: 'lamp' });
+      if (W) P(['@snow', rect(-130, -177, up ? 140 : 330, 2)], ['@snow', rect(-130, -197, 50, 2)]);
+      return { body: b, beacon: [{ f: '#ff3030', d: ell(-20, -253, 2.4), glow: 'lamp' }, { f: '#ff3030', d: up ? ell(145, -330, 2) : ell(198, -178, 2), glow: 'lamp' }] };
     },
   });
 })();
