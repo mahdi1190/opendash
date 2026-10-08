@@ -21,6 +21,7 @@
 //   standardOf(entry, lint, perf)                 -> 'gold' | 'composed' | 'upgrading' | 'rich' | 'legacy' | null (small items)
 //   SIGN_DENY / signTextCheck(text)                the signage rule when the core's sceneSignText is not loaded
 import { scenePathBox, scenePathPts } from './scene-svg.mjs';
+import { lintRasterObject } from './raster-lint.mjs';
 import { sanityRules } from './scene-sanity.mjs';
 
 /** G's composition lint (V2 20.4), when the checkout has it: a dynamic import, never a static one (a missing builder removes its group only). */
@@ -39,6 +40,8 @@ const ENGINE_NAMES = {
   // scene engine v2 (each optional: a builder that has not landed leaves its name undefined)
   real: 'sceneObjReal', objClass: 'sceneObjClass', placeRules: 'SCENE_PLACE_RULES', surfaceKinds: 'SCENE_SURFACE_KINDS', camera: 'sceneCamera', hazeAt: 'sceneHazeAt',
   objViews: 'sceneObjViews', flowReal: '_scflReal', flowViewOf: 'sceneFlowViewOf', flowStats: 'sceneFlowStats', flowCompile: 'sceneFlowCompile', compositionOf: 'sceneCompositionOf',
+  rasterUrl: 'sceneRasterUrl', rasterKeys: 'sceneRasterKeys', rasterMatrix: 'sceneRasterMatrix', rasterFilter: 'sceneRasterFilter', rasterIsId: 'sceneRasterIsId',
+  rasterPick: 'sceneRasterPick', rasterBudget: 'SCENE_RASTER_BUDGET', rasterFx: 'SCENE_RASTER_FX',
 };
 export function engineOf(reg) {
   const get = (reg && reg.R && typeof reg.R.get === 'function') ? reg.R.get : () => undefined;
@@ -82,7 +85,7 @@ function objFacts(E) {
       if (R) for (const p of R.order || Object.keys(R.parts || {})) for (const s of (R.parts[p] || [])) {
         all.push(s); n++;
         if (s.glow) glow++;
-        const hex = firstHex(s.f);
+        const hex = firstHex(s.f) || (s.img && s.img.mean) || null;   // a raster image: its mean colour (meta.json, from the import)
         if (hex && p !== 'lit' && !s.glow) { const b = scenePathBox(s.d, s.m); if (b) { const a = Math.max(1, (b[2] - b[0]) * (b[3] - b[1])) * (s.op == null ? 1 : s.op); const c = hexRgb(hex); area += a; sum = sum.map((x, i) => x + c[i] * a); } }
       }
       const lit = !!(R && R.parts && R.parts.lit && R.parts.lit.length);
@@ -343,7 +346,8 @@ function seasonRule(data, C, E, T) {
   for (const o of new Set((C.items || []).map(i => i.o))) {
     const d = F.def(o); if (!d || d.seasonal === false) continue;
     const pal = d.palette || {};
-    if (!d.shapeBySeason && !d.fromKit && !['spring', 'summer', 'autumn', 'winter'].every(s => pal[s])) missing.push(o);
+    // a raster object has four seasons by construction: its own season images, or derived ones (70-scene-0raster.js)
+    if (d.kind !== 'raster' && !d.shapeBySeason && !d.fromKit && !['spring', 'summer', 'autumn', 'winter'].every(s => pal[s])) missing.push(o);
   }
   const out = { missing, tropic: !Number.isFinite(lat) || Math.abs(lat) < 23.5, dWinter: null, dAutumn: null };
   if (!out.tropic && data && (data.season == null || data.season === 'auto')) {
@@ -628,6 +632,7 @@ export function lintObject(id, { E, thresholds = {} } = {}) {
   const O = thresholds.object || {}, d = E.obj(id), rules = [];
   const add = (name, ok, value, limit, message) => rules.push(rule('object', name, ok, value, limit, message));
   if (!d) return { id, pass: false, rules: [rule('object', 'identity', false, id, 'a defined object', `no object ${id}`)], stats: {} };
+  if (d.kind === 'raster') return lintRasterObject(id, { E, thresholds, rule });   // image-backed objects: tools/lib/raster-lint.mjs
   const cats = E.categories || ['tree', 'plant', 'ground', 'rock', 'water', 'bird', 'animal', 'person', 'vehicle', 'boat', 'building', 'street', 'rail', 'structure', 'prop', 'sky', 'landmark'];
   add('identity', ID_RE.test(id) && cats.includes(d.category) && id.split('.')[0] === d.category, id, '<category>.<name>, a known category', `${id}: the id must be <category>.<name> (${cats.join(' ')}) and match its category (${d.category})`);
   const dupes = typeof E.dups === 'function' ? E.dups().filter(x => x === id).length : 0;

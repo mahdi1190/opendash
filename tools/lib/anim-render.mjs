@@ -25,6 +25,7 @@ import { homedir } from 'node:os';
 import vm from 'node:vm';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { animRegistryFiles } from './anim-sources.mjs';
+import { installRasterSource } from './raster-assets.mjs';
 import { launchChrome, findChrome } from '../release-chrome.mjs';
 import { cssClasses } from './anim-quality.mjs';
 
@@ -115,6 +116,7 @@ function loadRegistryUncached(root, extraFiles, omit = []) {
   const list = registrySources(root, extraFiles, omit);
   const texts = list.map(f => readFileSync(f.path, 'utf8'));
   const R = evalRegistry(list, texts);
+  installRasterSource(R.get, root);   // raster objects: the SVG still and the lint read their images from assets/objects
   const styles = join(root, 'src', 'styles');
   const cssFiles = existsSync(styles) ? readdirSync(styles).filter(f => f.endsWith('.css')).sort() : [];
   let appCss = null;

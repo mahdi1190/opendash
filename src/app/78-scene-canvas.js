@@ -15,6 +15,7 @@
      r.resize(cssW, cssH)  r.bakeIdle(cssW, cssH)  r.setLight(L)  r.setSeason(s)  r.setLod(k)  r.start()  r.stop()
      r.frame(tSec)  r.attach(canvas)  r.stats()  r.resetStats()  r.destroy()
      sceneCanvasSupported()   sceneSprites (the shared LRU sprite cache, 96 MB)
+     sceneRasterImage(key)   sceneRasterWhenReady()   (raster objects: lazy decoding of the embedded images; r.waiting while one decodes)
 
    Bake canvases (sprites, bitmaps) are CPU-backed (willReadFrequently): 2D canvases record their drawing and
    rasterise it on first use, so the bake forces that work inside its own slices with a 1-pixel read (cheap on the
@@ -170,7 +171,10 @@ function sceneRendererCreate(canvas, src, o) {
     const key = sceneLightKey(Lx, season) + '|' + (Lx.alt != null ? Math.round(Lx.alt * 4) : '') + '|' + (haze || 0) + '|' + (tint ? tint[0] + ':' + tint[1] : '') + (lift ? '|l' + lift + (liftCol || '') : '');
     let f = colourFns.get(key);
     // v2 (V2 7.4): a placement near a night light is lifted: its graded colours mixed toward the (ungraded) light colour
-    if (!f) { const memo = new Map(); f = c => { let v = memo.get(c); if (!v) { v = typeof sceneColour === 'function' ? sceneColour(c, { L: Lx, haze, tint }) : c; if (lift) v = _scMixHex(v, liftCol || '#ffd9a0', lift); memo.set(c, v); } return v; }; colourFns.set(key, f); }
+    if (!f) { const memo = new Map(); f = c => { let v = memo.get(c); if (!v) { v = typeof sceneColour === 'function' ? sceneColour(c, { L: Lx, haze, tint }) : c; if (lift) v = _scMixHex(v, liftCol || '#ffd9a0', lift); memo.set(c, v); } return v; }; 
+      // ng: tint and haze without the light's grade (a raster object's own night image is already a night picture)
+      f.ng = c => (typeof sceneColour === 'function' ? sceneColour(c, { haze, tint, hazeCol: Lx.haze }) : c);
+      colourFns.set(key, f); }
     return f;
   };
   const paint = (cx, p, col) => {
@@ -179,7 +183,9 @@ function sceneRendererCreate(canvas, src, o) {
     for (const [off, c, op] of stops) { const rgb = _scHex(col(c)); g.addColorStop(_scClamp(off, 0, 1), op == null || op === 1 ? col(c) : `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${op})`); }
     return g;
   };
-  const drawShape = (cx, sh, col) => {
+  let rasterWait = false;   // a raster image was not decoded yet during this bake: bake again once it is (sceneRasterWhenReady)
+  const drawShape = (cx, sh, col, Lx) => {
+    if (sh.img) { if (!_sccRasterDraw(cx, sh, col, Lx)) rasterWait = true; return; }
     const m = sh.m;
     if (m) { cx.save(); cx.transform(m[0], m[1], m[2], m[3], m[4], m[5]); }
     cx.globalAlpha = sh.op == null ? 1 : sh.op;
@@ -204,10 +210,10 @@ function sceneRendererCreate(canvas, src, o) {
       if (x.lift) key += '|l' + x.lift;
       if (!sp.length && !x.lift) req = null;
     }
-    return sceneSprites.get(key, () => {
+    const sp = sceneSprites.get(key, () => {
       const sh = sceneObjShapes(oid, v, se);
       if (!sh) return null;
-      const names = (which === '*' ? sh.order.filter(p => p !== 'lit') : which.startsWith('rest:') ? sh.order.filter(p => p !== 'lit' && !which.slice(5).split(',').includes(p)) : [which])
+      const names = (which === '*' ? _scStillParts(sh) : which.startsWith('rest:') ? _scStillParts(sh).filter(p => !which.slice(5).split(',').includes(p)) : [which])
         .concat(withLit && which !== 'lit' && sh.parts.lit ? ['lit'] : []);
       const detail = lod >= 0.5 && (typeof sceneDetailAt !== 'function' || sceneDetailAt(oid, sh, sc)), def = litGlow && typeof sceneObj === 'function' ? sceneObj(oid) : null, nc = (def && def.night && def.night.glow) || {};
       const tb = _sccPartsBox(sh, names, detail);
@@ -220,14 +226,19 @@ function sceneRendererCreate(canvas, src, o) {
       const c = _sccCanvas(w, h), cx = c.getContext('2d', _SCC_CPU);
       cx.setTransform(k, 0, 0, k, _SCC_PAD - x0 * k, _SCC_PAD - y0 * k);
       const col = req && req.lift ? colourFn(Lx, haze, tint, which === 'lit', req.lift, x.liftCol) : colourFn(Lx, haze, tint, which === 'lit'), plain = x => x;
-      const litCol = (typeof sceneLitColourFn === 'function' && sceneLitColourFn(Lx, oid)) || plain;
+      const litCol = (typeof sceneLitColourFn === 'function' && sceneLitColourFn(Lx, oid)) || plain;   // v2 light only (V2 7.3): mist kept in 'lit' is not a light
       let any = false;
+      const waitBefore = rasterWait;
+      rasterWait = false;
       for (const p of names) for (const s0 of sh.parts[p] || []) {
         if (!detail && s0.detail) continue;
-        if (litGlow && s0.glow) drawShape(cx, Object.assign({}, s0, { f: nc[s0.glow] || (s0.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain);
-        else drawShape(cx, s0, p === 'lit' ? litCol : col);
+        if (litGlow && s0.glow) drawShape(cx, Object.assign({}, s0, { f: nc[s0.glow] || (s0.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain, Lx);
+        else drawShape(cx, s0, p === 'lit' ? litCol : col, Lx);
         any = true;
       }
+      // an image still decoding: no sprite this time (not cached); the bake runs again when the image is ready
+      if (rasterWait) { c.width = 0; return null; }
+      rasterWait = waitBefore;
       if (!any) { c.width = 0; return { c: null, x0, y0, w: 0, h: 0, sc: k, bytes: 0 }; }
       if (req) {
         // the sprite passes (V2 13.1): shading, rim light, snow caps, frost; they see the box in device px and the local frame
@@ -239,6 +250,8 @@ function sceneRendererCreate(canvas, src, o) {
       }
       return { c, x0: x0 - _SCC_PAD / k, y0: y0 - _SCC_PAD / k, w: w / k, h: h / k, sc: k, bytes: w * h * 4 };
     });
+    if (!sp && sceneObjShapes(oid, v, se)) rasterWait = true;
+    return sp;
   };
   /**
    * A projected building (V2 13.2, 19): its shapes (scene units) filled straight into the layer bitmap with the item's colour
@@ -268,6 +281,7 @@ function sceneRendererCreate(canvas, src, o) {
 
   /* ---------- the bake (a generator: run to the end at once, or in idle slices) ---------- */
   function* bake(W, H, Lx, C) {
+    rasterWait = false;
     // v2 (V2 13): a v2 compiled scene, or a v1 one with fx, runs the render passes at the hook points below; v1: none of it
     const v2 = typeof sceneRenderIsV2 === 'function' && typeof sceneRunPasses === 'function' && sceneRenderIsV2(C);
     const lk = sceneLightKey(Lx, C.season, v2 ? C : undefined), vs = Math.max(W / SCENE_W_SAFE, H / SCENE_H_SAFE), ox = (W - SCENE_W_SAFE * vs) / 2, oy = (H - SCENE_H_SAFE * vs) / 2;
@@ -500,6 +514,7 @@ function sceneRendererCreate(canvas, src, o) {
     if (Lx && Lx.snow) out.snow = sceneParticleSet('wsnow', Math.round(200 * Math.max(0.4, lod)), 93);
     out.fogVeil = Lx && Lx.fog ? `rgba(${_scHex(_scMixHex('#dfe4e6', '#2a3040', Lx.dark || 0)).join(',')},0.32)` : null;
     out.pcol = (c) => (C.particles.kind === 'motes' || !Lx ? c : colourFn(Lx, 0, null)(c));
+    out.rasterWait = rasterWait;
     return out;
   }
 
@@ -572,8 +587,8 @@ function sceneRendererCreate(canvas, src, o) {
         if (m.kind === 'item') {
           if (m.b[1] * vs + oy > below) return;
           for (const pt of m.parts) {
-            const pose = sceneAnimPose(pt.a, t, Lx, m.x), A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m;
-            if (drawSprite(ctx, pt.sp, _scMul(m.M, A), pose.alpha)) draws++;
+            const pose = sceneAnimPose(pt.a, t, Lx, m.x), A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m, al = _scPartAlpha(pose, pt.j || 0);
+            if (al > 0 && drawSprite(ctx, pt.sp, _scMul(m.M, A), al)) draws++;
           }
         } else {
           const p = m.p, b = m.box, fl = p.dir < 0;
@@ -583,14 +598,16 @@ function sceneRendererCreate(canvas, src, o) {
           let bob = 0;
           if (m.kind === 'actor') for (const pt of m.parts) if (pt.a && pt.a.kind === 'walk') { bob = sceneAnimPose(pt.a, t, Lx, p.x).bob || 0; break; }
           for (const pt of m.parts) {
-            let A = _SC_ID;
+            let A = _SC_ID, al = 1;
             if (pt.a) {
               const a = m.kind === 'bird' ? Object.assign({}, pt.a, { phase: p.phase }) : pt.a, pose = sceneAnimPose(a, t, Lx, p.x);
               A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m;
+              if (!pt.rest) al = _scPartAlpha(pose, pt.j || 0);
             }
+            if (al <= 0) continue;
             const MM = _scMul(M, A);
             if (pt.rest && bob) MM[5] += bob * vs * p.s;
-            if (drawSprite(ctx, pt.sp, MM, p.alpha)) draws++;
+            if (drawSprite(ctx, pt.sp, MM, p.alpha * al)) draws++;
           }
         }
       };
@@ -632,10 +649,16 @@ function sceneRendererCreate(canvas, src, o) {
     if (!st.bakes) st.firstBakeMs = st.bakeMs;
     st.bakes++;
   }
+  let rasterRetry = 0, rasterBake = false;
   function adopt(next, W, H) {
     if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
     const old = S;
     S = next;
+    // raster objects decode lazily: when an image was not ready, bake again once every pending image has decoded (a few tries)
+    if (next.rasterWait && rasterRetry < 4 && typeof sceneRasterWhenReady === 'function') {
+      rasterRetry++; rasterBake = true;
+      sceneRasterWhenReady().then(() => { rasterBake = false; if (!destroyed && S === next) bakeLater(next.W, next.H); });
+    }
     if (old) for (const g of old.groups) if (g.c && g.c !== null) { g.c.width = 0; }
     if (old && old.sky) old.sky.width = 0;
   }
@@ -671,6 +694,8 @@ function sceneRendererCreate(canvas, src, o) {
     get baked() { return !!S; },
     /** The v2 env of the current bake (V2 13.1; tests and tools read the passes' state), or null (v1). */
     get env() { return S ? S.env || null : null; },
+    /** The last bake left out a raster image that is still decoding (a re-bake follows when it is ready). */
+    get waiting() { return rasterBake || (!!pending && !!S && !!S.rasterWait); },
     /** A bake is running in idle slices. */
     get baking() { return !!pending; },
     /** The first bake in idle slices (gallery tiles: no long task while a page of tiles mounts). */
@@ -728,6 +753,71 @@ function sceneRendererCreate(canvas, src, o) {
 /** sceneWind when the core has it, else a gentle sine (the renderer never fails on a missing core function). */
 function sceneWindSafe(t, x, L) { return typeof sceneWind === 'function' ? sceneWind(t, x, L) : Math.sin(t + x * 0.003); }
 const SCENE_W_SAFE = 1600, SCENE_H_SAFE = 900;
+
+/* ---------- raster objects (70-scene-0raster.js): lazy decoding and drawing ---------- */
+const _sccRasterImgs = new Map();   // asset key -> { img, ready, failed, p }
+/**
+ * The decoded image of an asset key, or null while it decodes (the first call starts it: the embedded base64 block becomes a
+ * data: URL, decoded off the main thread by img.decode()). A key without bytes is marked failed and draws nothing.
+ */
+function sceneRasterImage(key) {
+  let r = _sccRasterImgs.get(key);
+  if (!r) {
+    const url = typeof sceneRasterUrl === 'function' ? sceneRasterUrl(key) : null;
+    r = { img: null, ready: false, failed: !url, p: null };
+    _sccRasterImgs.set(key, r);
+    if (url && typeof Image === 'function') {
+      const img = new Image();
+      r.img = img;
+      img.src = url;
+      r.p = (typeof img.decode === 'function' ? img.decode() : new Promise((res, rej) => { img.onload = res; img.onerror = rej; }))
+        .then(() => { r.ready = true; }, () => { r.failed = true; });
+    } else r.failed = true;
+  }
+  return r.ready ? r.img : null;
+}
+/** Resolves when every image asked for so far has decoded (or failed). */
+function sceneRasterWhenReady() { return Promise.all([..._sccRasterImgs.values()].map(r => r.p).filter(Boolean)).then(() => true); }
+/**
+ * Draw one image shape into a sprite (cx carries the sprite's transform): the image at device size into a scratch canvas,
+ * its pixels through the colour matrix (the season derivation, then the fitted grade: sceneRasterMatrix), mask_lit as alpha,
+ * then onto the sprite. Once per sprite (object, variant, part, season, haze, tint, scale bucket, light key): the cache keeps it.
+ * Returns false while an image is still decoding.
+ */
+function _sccRasterDraw(cx, sh, col, Lx) {
+  const im = sh.img, pick = sceneRasterPick(im, Lx);
+  if (pick.skip) return true;
+  sceneRasterImage(pick.key);
+  const rec = _sccRasterImgs.get(pick.key);
+  if (rec.failed) return true;
+  if (!rec.ready) return false;
+  let mrec = null;
+  if (im.mask) { sceneRasterImage(im.mask); mrec = _sccRasterImgs.get(im.mask); if (mrec.failed) return true; if (!mrec.ready) return false; }
+  cx.save();
+  if (sh.m) cx.transform(sh.m[0], sh.m[1], sh.m[2], sh.m[3], sh.m[4], sh.m[5]);
+  const T = cx.getTransform(), kx = Math.hypot(T.a, T.b), ky = Math.hypot(T.c, T.d);
+  const dw = Math.max(1, Math.min(2048, Math.ceil(im.w * kx))), dh = Math.max(1, Math.min(2048, Math.ceil(im.h * ky)));
+  const tmp = _sccCanvas(dw, dh), tx = tmp.getContext('2d', _SCC_CPU);
+  tx.imageSmoothingEnabled = true; tx.imageSmoothingQuality = 'high';
+  tx.drawImage(rec.img, 0, 0, dw, dh);
+  const M = sceneRasterMatrix(pick.night && col.ng ? col.ng : col, pick.night ? null : im.fx);
+  if (!sceneRasterIsId(M) || mrec) {
+    const data = tx.getImageData(0, 0, dw, dh), px = data.data;
+    if (!sceneRasterIsId(M)) sceneRasterApply(M, px);
+    if (mrec) {
+      const mc = _sccCanvas(dw, dh), mx = mc.getContext('2d', _SCC_CPU);
+      mx.drawImage(mrec.img, 0, 0, dw, dh);
+      const mp = mx.getImageData(0, 0, dw, dh).data;
+      for (let i = 0; i < px.length; i += 4) px[i + 3] = (px[i + 3] * ((mp[i] * 0.3 + mp[i + 1] * 0.59 + mp[i + 2] * 0.11) / 255) * (mp[i + 3] / 255)) | 0;
+      mc.width = 0;
+    }
+    tx.putImageData(data, 0, 0);
+  }
+  cx.globalAlpha = sh.op == null ? 1 : sh.op;
+  cx.drawImage(tmp, im.x, im.y, im.w, im.h);
+  cx.restore();
+  return true;
+}
 
 const _sccBoxes = new WeakMap();
 /** The tight bounds of some parts of a resolved object (memoised per resolved form): a swaying crown's sprite is the crown, not the whole tree. */

@@ -598,6 +598,26 @@ holds the one `tidy`, `define` and colour helpers for every people file.
 `person.walker` is the reference object (8 presets); the other `person.*`
 objects move onto the builder next.
 
+### 2.9 Raster objects (images and AI sprite sheets)
+
+An object can be backed by PNG (or WebP) images instead of shapes:
+`sceneObjDefine({ id, kind: 'raster', images: { base, night?, spring?, summer?, autumn?, winter?, lit?, snow?, mask_lit? },
+anchor, size, parts?: [{ name, image, box, pivot, anim }], frames?: { images, period } })` (`src/app/70-scene-0raster.js`).
+
+- It resolves to ordinary parts whose shapes carry an `img`, so hooks, scatter, actors, sprite keys and the compiled
+  scene are unchanged.
+- Missing seasons are derived by colour matrices, and winter adds a snow cap made at import. Night is the live grade
+  unless there is a real night image. Lit windows come from the sheet's lit column, `mask_lit` or auto-detection.
+- A new hook kind, `frames`, swaps between 2 and 6 frame images.
+- The images live in `assets/objects/<category>/<name>/`. They are embedded in the page as non-running blocks and
+  decoded lazily, the first time a scene draws them.
+- `src/app/70-scene-lib-raster.js` is GENERATED from their `meta.json` files by `object import`, `import-batch` and
+  `import-sheet`.
+
+The whole design is in **docs/dev/OBJECT_IMPORT.md**: the fixed sprite-sheet template an AI fills (rows = variants, columns =
+spring, summer, autumn, winter, night and lit, plus a frames row), the slicer and its consistency lint, the commands, the
+derivations, the budgets and the demo.
+
 ## 3. Scene format
 
 A composed scene is plain data (the object ids in this example are illustrative). It is JSON-safe, apart from the optional
@@ -850,6 +870,8 @@ weather" by default.
 | `fill` with `detail: 'tile'` (Home's animation of the day) | canvas, live at LOD 0.5 |
 | `reduced` (any size) | canvas still frame (SVG still for xs to md) |
 | `o.renderer === 'svg'`, Node, or no canvas support | SVG (`sceneSvg`) |
+
+Raster objects (2.9) draw through both renderers. The canvas renderer draws each image once per sprite (its scale bucket, season and light), with the season derivation and the fitted light grade applied to its pixels, and bakes again when a lazily decoded image becomes ready (`r.waiting`). The SVG still embeds the images as `<image>` elements with one `feColorMatrix` per grade (docs/dev/OBJECT_IMPORT.md section 4).
 
 The canvas is used only when `typeof sceneCanvasSupported === 'function' &&
 sceneCanvasSupported()`. Those functions exist only in the browser bundle
@@ -1574,6 +1596,10 @@ object new <cat>.<name> [--kit "<K call>"] [--variants N] [--kits a,b] [--role r
 object lint [<id>,...] [--json]                                     section 2.6 rules
 object sheet <id>[,...] [--out dir] [--canvas] [--mode light|night]  variants x seasons (+ night, + lit) grid, size strip, 3 animation phases
 object list [--category c] [--kit k] [--role r] [--tag t]           id, category, kits, role, variants, seasons, parts, anim kinds, used by N scenes
+object import <file-or-folder> --id <id> [--size WxH] [--kit k] ...   a RASTER object from images (docs/dev/OBJECT_IMPORT.md)
+object import-batch <folder> [--manifest m.csv] [--dry-run] [--force]  many raster objects from ONE CSV (rows with `rows` set are sheets)
+object import-sheet <sheet.png> --id <id> --rows N [--frames K]       one AI sprite sheet -> a raster object with real seasons, night, lit and frames
+object template [--rows 2] [--frames 4] [--examples]                the blank sheet template, example sheets and the prompt pack
 scene new <pack> <id> [--brief file.md | --archetype <id> --row '<json>'] [--lat .. --lon .. --heading ..]   writes 71-scene-<pack>-<n>.js (+ the pack file if missing)
 scene upgrade <ref> [--archetype <id>] [--box x0,y0,x1,y1 | --landmark <obj id>] [--slug s] [--dry-run] [--force]   section 16.3
 scene lint [<ref>,... | --pack <id> | --region <id> | --archetype <id> --table <id> [--rows N]] [--upgrades] [--perf] [--json]

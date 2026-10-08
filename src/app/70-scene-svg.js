@@ -163,11 +163,19 @@ function sceneAnimPose(a, t, L, x) {
     case 'turn': { const hold = a.hold == null ? 0.6 : a.hold, u = _scFrac(t / per + ph), v = u < hold ? 0 : Math.sin(Math.PI * (u - hold) / (1 - hold)); return { m: _scAbout(p[0], p[1], (a.deg || 14) * k * v, 1, 1, 0, 0), alpha: 1 }; }
     case 'flicker': { const op = a.op || [0.6, 1]; return { m: _SC_ID, alpha: op[0] + (op[1] - op[0]) * (0.5 + 0.5 * Math.sin(w)) }; }
     case 'spin': return { m: _scAbout(p[0], p[1], 360 * _scFrac(t / per + ph), 1, 1, 0, 0), alpha: 1 };
+    case 'frames': {   // a raster object's frames (70-scene-0raster.js): one part shows at a time; hide: the first part (the body) never shows
+      const ps = a.parts || [], h = a.hide ? 1 : 0, n = Math.max(1, ps.length - h), i = Math.floor(_scFrac(t / per + ph) * n) % n;
+      return { m: _SC_ID, alpha: 1, alphas: ps.map((_, j) => (j - h === i ? 1 : 0)) };
+    }
     default: return { m: _SC_ID, alpha: 1 };
   }
 }
 /** The parts a hook moves ('*' = the whole object). */
 function _scAnimParts(a) { return a.parts ? a.parts : [a.part || '*']; }
+/** The parts a still or a whole-object sprite draws: every part but 'lit' and the frames only a frames hook shows. */
+function _scStillParts(sh) { return sh.still || sh.order.filter(p => p !== 'lit'); }
+/** A pose's opacity for part j of its hook (a frames hook shows one part at a time). */
+function _scPartAlpha(p, j) { return p.alphas ? p.alphas[j] * p.alpha : p.alpha; }
 function _scLerpTab(tab, y) {
   if (!tab || !tab.length) return 1;
   if (y <= tab[0][0]) return tab[0][1];
@@ -506,7 +514,47 @@ function _scPaintSvg(p, colour, defs, nid, box) {
     : `<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${p.cx || 0}" cy="${p.cy || 0}" r="${p.r || 1}">${stops}</radialGradient>`);
   return `url(#${id})`;
 }
-function _scShapeSvg(sh, colour, defs, nid) {
+/**
+ * A raster object's image shape (70-scene-0raster.js): the image once per render in the defs, placed with a <use>; the grade and
+ * the season derivation as ONE feColorMatrix (sceneRasterMatrix fits the colour function); mask_lit as a luminance mask.
+ * rs: the render's raster state { imgs, filters, L }. An image whose bytes are not available draws nothing.
+ */
+function _scImgSvg(sh, colour, defs, nid, rs) {
+  const im = sh.img, pick = typeof sceneRasterPick === 'function' ? sceneRasterPick(im, rs && rs.L) : { key: im.key, night: false, skip: false };
+  if (pick.skip) return '';
+  const imgId = (key) => {
+    const k = key + '|' + im.w + '|' + im.h;
+    if (rs && rs.imgs.has(k)) return rs.imgs.get(k);
+    const url = typeof sceneRasterUrl === 'function' ? sceneRasterUrl(key) : null;
+    const id = url ? nid() : null;
+    if (id) defs.push(`<image id="${id}" href="${url}" width="${_scR2(im.w)}" height="${_scR2(im.h)}" preserveAspectRatio="none"/>`);
+    if (rs) rs.imgs.set(k, id);
+    return id;
+  };
+  const id = imgId(pick.key);
+  if (!id) return '';
+  const col = pick.night && colour.ng ? colour.ng : colour;
+  const M = typeof sceneRasterMatrix === 'function' ? sceneRasterMatrix(col, pick.night ? null : im.fx) : null;
+  let a = `<use href="#${id}" x="${_scR2(im.x)}" y="${_scR2(im.y)}"`;
+  if (M && !sceneRasterIsId(M)) {
+    const vals = sceneRasterFilter(M);
+    let fid = rs ? rs.filters.get(vals) : null;
+    if (!fid) { fid = nid(); defs.push(`<filter id="${fid}" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="${vals}"/></filter>`); if (rs) rs.filters.set(vals, fid); }
+    a += ` filter="url(#${fid})"`;
+  }
+  if (im.mask) {
+    const mid = imgId(im.mask);
+    if (!mid) return '';
+    const mk = nid();
+    defs.push(`<mask id="${mk}" maskUnits="userSpaceOnUse" x="${_scR2(im.x)}" y="${_scR2(im.y)}" width="${_scR2(im.w)}" height="${_scR2(im.h)}"><use href="#${mid}" x="${_scR2(im.x)}" y="${_scR2(im.y)}"/></mask>`);
+    a += ` mask="url(#${mk})"`;
+  }
+  if (sh.op != null && sh.op !== 1) a += ` opacity="${sh.op}"`;
+  if (sh.m) a += ` transform="matrix(${sh.m.map(_scR2).join(' ')})"`;
+  return a + '/>';
+}
+function _scShapeSvg(sh, colour, defs, nid, rs) {
+  if (sh.img) return _scImgSvg(sh, colour, defs, nid, rs);
   const f = _scPaintSvg(sh.f, colour, defs, nid);
   let a = `<path fill="${f}"`;
   if (sh.s) a += ` stroke="${_scPaintSvg(sh.s, colour, defs, nid)}" stroke-width="${sh.w || 1}"${sh.cap ? ` stroke-linecap="${sh.cap}"` : ''}`;
@@ -530,9 +578,13 @@ function sceneSvg(x, o) {
   let n = 0;
   const nid = () => pre + (++n).toString(36), defs = [], ids = new Map();
   const lit = !!(L && L.windows), detailOk = lod >= 0.5;
+  const rs = { imgs: new Map(), filters: new Map(), L };   // raster objects: each image and colour matrix once per render
   const toneFor = (haze, tint) => {
     const memo = new Map();
-    return c => { let v = memo.get(c); if (v) return v; v = typeof sceneColour === 'function' ? sceneColour(c, { L, haze, tint }) : c; memo.set(c, v); return v; };
+    const f = c => { let v = memo.get(c); if (v) return v; v = typeof sceneColour === 'function' ? sceneColour(c, { L, haze, tint }) : c; memo.set(c, v); return v; };
+    // ng: the same without the light's grade (a raster object's own night image is already a night picture)
+    f.ng = c => (typeof sceneColour === 'function' ? sceneColour(c, { haze, tint, hazeCol: L ? L.haze : null }) : c);
+    return f;
   };
   const plain = c => c;
   /** Keep the detail shapes of `it` drawn at its scale? LOD 0.5 and up, and the object's size tier (sceneDetailAt, scene units). */
@@ -544,7 +596,7 @@ function sceneSvg(x, o) {
   const partsSvg = (it, sh, names, det, colour, glowLit) => {
     const nc = glowLit ? nightGlow(it.o) : null;
     let inner = '';
-    for (const p of names) for (const s of sh.parts[p] || []) if (det || !s.detail) inner += glowLit && s.glow ? _scShapeSvg(litShape(s, nc), plain, defs, nid) : _scShapeSvg(s, colour, defs, nid);
+    for (const p of names) for (const s of sh.parts[p] || []) if (det || !s.detail) inner += glowLit && s.glow ? _scShapeSvg(litShape(s, nc), plain, defs, nid) : _scShapeSvg(s, colour, defs, nid, rs);
     return inner;
   };
   /** The <g id> for (obj, v, season, haze, tint, part, detail tier, lit glows): '*' = every part except 'lit'; 'lit' is drawn ungraded. */
@@ -553,7 +605,7 @@ function sceneSvg(x, o) {
     const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', part, det ? 1 : 0].join('|') + (glowLit ? '|g' : '');
     if (ids.has(key)) return ids.get(key);
     if (!sh) { ids.set(key, null); return null; }
-    const names = part === '*' ? sh.order.filter(p => p !== 'lit') : [part];
+    const names = part === '*' ? _scStillParts(sh) : [part];
     const inner = partsSvg(it, sh, names, det, part === 'lit' ? plain : toneFor(it.haze, it.tint), glowLit && part !== 'lit');
     const id = nid();
     defs.push(`<g id="${id}">${inner}</g>`);
@@ -565,7 +617,7 @@ function sceneSvg(x, o) {
     const sh = sceneObjShapes(it.o, it.v, it.season), det = detailFor(it, sh);
     const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', 'rest:' + moved.join(','), det ? 1 : 0].join('|') + (glowLit ? '|g' : '');
     if (ids.has(key)) return ids.get(key);
-    const inner = partsSvg(it, sh, sh.order.filter(p => p !== 'lit' && !moved.includes(p)), det, toneFor(it.haze, it.tint), glowLit);
+    const inner = partsSvg(it, sh, _scStillParts(sh).filter(p => !moved.includes(p)), det, toneFor(it.haze, it.tint), glowLit);
     const id = inner ? nid() : null;
     if (id) defs.push(`<g id="${id}">${inner}</g>`);
     ids.set(key, id);
@@ -660,7 +712,7 @@ function sceneSvg(x, o) {
       else {
         const moved = skip = [...new Set(moving.flatMap(_scAnimParts))];
         out += use(restSym(it, moved), it.x, it.y, it.s, it.flip);
-        for (const a of moving) { const p = sceneAnimPose(a, 0, L, it.x), parts = _scAnimParts(a); parts.forEach((part, j) => { out += use(sym(it, part, g), it.x, it.y, it.s, it.flip, j === 1 && p.m2 ? p.m2 : p.m, p.alpha); }); }
+        for (const a of moving) { const p = sceneAnimPose(a, 0, L, it.x), parts = _scAnimParts(a); parts.forEach((part, j) => { const al = _scPartAlpha(p, j); if (al > 0) out += use(sym(it, part, g), it.x, it.y, it.s, it.flip, j === 1 && p.m2 ? p.m2 : p.m, al); }); }
       }
     }
     if (lit && it.lit) out += use(sym(it, 'lit'), it.x, it.y, it.s, it.flip, pm, pa);
@@ -676,7 +728,7 @@ function sceneSvg(x, o) {
       const whole = a.anim.find(h => _scAnimParts(h)[0] === '*');
       wp = whole ? sceneAnimPose(whole, 0, L, at.x) : null;
       out += use(moved.length ? restSym(it, moved, lit) : sym(it, '*', lit), at.x, at.y, at.s, flip, wp ? wp.m : null, at.alpha);
-      for (const h of a.anim) { const parts = _scAnimParts(h); if (parts[0] === '*') continue; const p = sceneAnimPose(h, 0, L, at.x); parts.forEach((part, j) => { out += use(sym(it, part, lit), at.x, at.y, at.s, flip, j === 1 && p.m2 ? p.m2 : p.m, at.alpha); }); }
+      for (const h of a.anim) { const parts = _scAnimParts(h); if (parts[0] === '*') continue; const p = sceneAnimPose(h, 0, L, at.x); parts.forEach((part, j) => { const al = _scPartAlpha(p, j) * at.alpha; if (al > 0) out += use(sym(it, part, lit), at.x, at.y, at.s, flip, j === 1 && p.m2 ? p.m2 : p.m, al); }); }
     }
     if (lit && sh && sh.parts.lit && sh.parts.lit.length) out += use(sym(it, 'lit'), at.x, at.y, at.s, flip, wp ? wp.m : null, at.alpha);
     return out;

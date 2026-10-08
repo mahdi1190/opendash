@@ -9,7 +9,7 @@
    Constants   SCENE_W / SCENE_H, SCENE_CATEGORIES, SCENE_ANIM_KINDS, SCENE_LAYERS_DEFAULT,
                SCENE_MOMENTS, SCENE_SETTINGS, SCENE_SEASONS_4, SCENE_SIGN_FONT, SCENE_SIGN_DENY
    Randomness  sceneHash(str), sceneRnd(seed), sceneD (circ, ell, rect, poly, lobed, leaf)
-   Objects     sceneObjDefine(def), sceneObj(id), sceneObjs(), sceneObjShapes(id, v, season),
+   Objects     sceneObjDefine(def) (kind 'raster': 70-scene-0raster.js), sceneObj(id), sceneObjs(), sceneObjShapes(id, v, season),
                sceneObjCheck(id) -> [problem], sceneObjDups()
    Light       sceneKit(name), sceneSeason(ms, lat, scene), sceneLight(o, view), sceneTone(L),
                sceneColour(hex, {L, haze, hazeCol, tint}), sceneWind(t, x, L), sceneScaleBucket(s)
@@ -32,7 +32,7 @@
    ============================================================ */
 const SCENE_W = 1600, SCENE_H = 900;
 const SCENE_CATEGORIES = Object.freeze(['tree', 'plant', 'ground', 'rock', 'water', 'bird', 'animal', 'person', 'vehicle', 'boat', 'building', 'street', 'rail', 'structure', 'prop', 'sky', 'landmark']);
-const SCENE_ANIM_KINDS = Object.freeze(['sway', 'bob', 'flap', 'walk', 'paddle', 'turn', 'flicker', 'spin']);
+const SCENE_ANIM_KINDS = Object.freeze(['sway', 'bob', 'flap', 'walk', 'paddle', 'turn', 'flicker', 'spin', 'frames']);
 const SCENE_LAYERS_DEFAULT = Object.freeze([
   { id: 'horizon', depth: 0.08, haze: 0.65 }, { id: 'far', depth: 0.2, haze: 0.45 }, { id: 'mid', depth: 0.45, haze: 0.2 },
   { id: 'near', depth: 0.75, haze: 0.06 }, { id: 'fore', depth: 1, haze: 0 }, { id: 'front', depth: 1.25, haze: 0 },
@@ -42,7 +42,7 @@ const SCENE_SETTINGS = Object.freeze(['natural', 'urban', 'mixed', 'interior']);
 const SCENE_SEASONS_4 = Object.freeze(['spring', 'summer', 'autumn', 'winter']);
 const SCENE_SIGN_FONT = '600 {px}px system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 const SCENE_SIGN_DENY = Object.freeze(['underground', 'tfl', 'transport for london', 'johnston', 'mind the gap', 'oyster', 'roundel', 'london overground', 'elizabeth line', 'docklands light railway']);
-const _SC_PERIODS = { sway: 4, bob: 3, flap: 0.5, walk: 0.9, paddle: 2.4, turn: 6, flicker: 2, spin: 4 };
+const _SC_PERIODS = { sway: 4, bob: 3, flap: 0.5, walk: 0.9, paddle: 2.4, turn: 6, flicker: 2, spin: 4, frames: 0.9 };
 const _SC_IS_NODE = typeof window === 'undefined';
 
 /* ---------- randomness and path helpers (2.5) ---------- */
@@ -70,6 +70,7 @@ const _SC_OBJ_ID_RE = /^[a-z]+\.[a-z0-9-]{1,40}$/;
 /** Define (or, for tests, redefine) an object. A second definition of an id replaces the first and is reported by sceneObjCheck / sceneObjDups. */
 function sceneObjDefine(def) {
   if (!def || !_SC_OBJ_ID_RE.test(def.id || '')) throw new Error('sceneObjDefine: bad id ' + (def && def.id) + ' (the form is <category>.<name>)');
+  if (def.kind === 'raster') def = sceneRasterPrep(def);   // image-backed objects (70-scene-0raster.js): a build() of image shapes
   if (typeof def.build !== 'function') throw new Error('sceneObjDefine ' + def.id + ': build(v, rnd, ctx) is required');
   if (_scObjs.has(def.id)) _scObjDups.push(def.id);
   _scObjs.set(def.id, def);
@@ -108,8 +109,9 @@ function _scBox(parts) {
 }
 /**
  * The resolved drawing of (id, v, season), memoised: { box, parts: {name: [Shape]}, order, anim: [AnimTemplate] }.
- * Shape = { f, d, op, s, w, cap, m, glow, detail } with paints resolved. Parts come in def.parts order, then any
+ * Shape = { f, d, op, s, w, cap, m, glow, detail, img? } with paints resolved. Parts come in def.parts order, then any
  * extra part build() returned. Hooks: def.anim, else the non-enumerable $anim a kit adapter (sceneObjFromKit) attaches.
+ * still: the parts a still (or a '*' sprite) draws: every part but 'lit' and def.animOnly (a raster object's frames).
  */
 function sceneObjShapes(id, v, season) {
   const def = sceneObj(id);
@@ -124,11 +126,13 @@ function sceneObjShapes(id, v, season) {
   for (const name of order) {
     parts[name] = (raw[name] || []).filter(sh => sh && (Array.isArray(sh) ? sh[1] : sh.d)).map(sh => {
       const o = Array.isArray(sh) ? { f: sh[0], d: sh[1], op: sh[2] } : sh;
-      return { f: o.f == null ? null : _scPaint(def, se, o.f), d: o.d, op: o.op == null ? 1 : o.op, s: o.s ? _scPaint(def, se, o.s) : null, w: o.w || 0, cap: o.cap || null, m: o.m || null, glow: o.glow || null, detail: !!o.detail };
+      const r = { f: o.f == null ? null : _scPaint(def, se, o.f), d: o.d, op: o.op == null ? 1 : o.op, s: o.s ? _scPaint(def, se, o.s) : null, w: o.w || 0, cap: o.cap || null, m: o.m || null, glow: o.glow || null, detail: !!o.detail };
+      if (o.img) r.img = o.img;   // a raster object's image (70-scene-0raster.js)
+      return r;
     });
   }
   const hooks = def.anim ? Object.entries(def.anim).map(([kind, a]) => Object.assign({ kind, k: 1 }, a)) : (raw.$anim || []).map(a => Object.assign({ k: 1 }, a));
-  const out = { box: def.box || _scBox(parts), parts, order, anim: hooks };
+  const out = { box: def.box || _scBox(parts), parts, order, anim: hooks, still: order.filter(n => n !== 'lit' && !(def.animOnly || []).includes(n)) };
   _scShapeMemo.set(key, out);
   return out;
 }

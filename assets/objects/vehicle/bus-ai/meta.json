@@ -1,0 +1,40 @@
+{
+ "id": "vehicle.bus-ai",
+ "category": "vehicle",
+ "size": [
+  156.6,
+  73
+ ],
+ "anchor": "bottom-centre",
+ "res": 1,
+ "variants": [
+  {
+   "base": "base.png",
+   "lit": "lit.png"
+  }
+ ],
+ "tags": [
+  "kit:london",
+  "role:vehicle",
+  "demo",
+  "raster"
+ ],
+ "source": "import-batch",
+ "derived": {
+  "lit": "auto (32 windows)",
+  "seasons": [
+   "spring",
+   "autumn",
+   "winter"
+  ]
+ },
+ "means": [
+  "#853836"
+ ],
+ "shadow": {
+  "rx": 56,
+  "ry": 8,
+  "h": 62
+ },
+ "bytes": 2805
+}
