@@ -20,6 +20,10 @@
                                        weekday, wx (sceneWeather), atmos; in a v2 scene the view's horizon, fov and heading
                                        come from the camera, L.haze is the atmosphere's colour, and the v1 weather flags
                                        (L.rain, L.snow, L.fog) are cleared: the v2 weather pass draws the weather from L.wx.
+   The v2 grade (v2 scenes only; v1 light untouched)
+     sceneGradeAt(L)                   -> { golden, dusk }: how golden / dusky the light is now
+     sceneLightGradeV2(L)              amber golden hour (split tone, warm low sky and haze), cool pink dusk, dark night masses,
+                                       night water mirroring the sky: L.grade, L.grade2 (applied by sceneTone), L.low / lowSun / mid
    Helpers shared with the passes: sceneAtmosIsV2(data), sceneAtmosProject(cam, x, d, h)
    ============================================================ */
 const SCENE_ATMOS = Object.freeze({
@@ -362,7 +366,7 @@ function sceneLightV2(o, view, data) {
 function sceneGradeAt(L) {
   if (!L || !Number.isFinite(L.alt)) return { golden: 0, dusk: 0 };
   const alt = L.alt, cover = _scatClamp(L.cover || 0, 0, 1);
-  const golden = _scatClamp((16 - alt) / 10, 0, 1) * _scatClamp((alt + 1.5) / 3, 0, 1) * (1 - 0.8 * cover);
+  const golden = _scatClamp((16 - alt) / 10, 0, 1) * _scatClamp((alt + 1.5) / 3, 0, 1) * (1 - 0.6 * cover);
   const dusk = _scatClamp((1 - alt) / 3, 0, 1) * _scatClamp((alt + 12) / 6, 0, 1) * (1 - 0.5 * cover);
   return { golden: Math.round(golden * 100) / 100, dusk: Math.round(dusk * 100) / 100 };
 }
@@ -372,7 +376,7 @@ function sceneGradeAt(L) {
  *    low sky (strongest on the sun's side), a warmer haze;
  *  - dusk: cooler and pinker (green pulled down, blue and a little red up), a pink low sky;
  *  - noon: neutral (nothing added);
- *  - night: the water reflects the night sky (never brighter than it); lamps and lit windows come from the light pass.
+ *  - night: surfaces lit by nothing stay dark masses (highlights compressed); the water reflects the night sky (never brighter than it); lamps and lit windows come from the light pass.
  * Sets L.grade (the factors), L.grade2 (hex -> hex, applied by sceneTone after the kit's grade), and adjusts L.low, L.lowSun,
  * L.mid, L.atmos.col, L.water in place.
  */
@@ -382,18 +386,19 @@ function sceneLightGradeV2(L) {
   L.grade = G;
   const sunSide = 0.4 + 0.6 * _scatClamp((L.backlit || 0) * 1.6, 0, 1);
   if (g > 0.01) {
-    L.low = _scatMix(L.low, '#f6c596', 0.38 * g * sunSide);
-    L.lowSun = _scatMix(L.lowSun, '#ffaa62', 0.35 * g);
-    L.mid = _scatMix(L.mid, '#d9c4b4', 0.14 * g);
-    if (L.atmos) L.atmos.col = _scatMix(L.atmos.col, '#efc497', 0.32 * g);
-    if (L.light) L.light = _scatMix(L.light, '#ffb066', 0.4 * g);
+    L.low = _scatMix(L.low, '#f6c08c', 0.45 * g * sunSide);
+    L.lowSun = _scatMix(L.lowSun, '#ffa458', 0.4 * g);
+    L.mid = _scatMix(L.mid, '#d9c0aa', 0.18 * g);
+    if (L.atmos) L.atmos.col = _scatMix(L.atmos.col, '#efc08e', 0.4 * g);
+    if (L.light) L.light = _scatMix(L.light, '#ffa858', 0.45 * g);
   }
   if (du > 0.01) {
     L.low = _scatMix(L.low, '#d99aae', 0.22 * du);
     L.mid = _scatMix(L.mid, '#8a86b8', 0.12 * du);
     if (L.atmos) L.atmos.col = _scatMix(L.atmos.col, '#a98fb0', 0.25 * du);
   }
-  if (g > 0.01 || du > 0.01) {
+  const night = _scatClamp((dark - 0.6) / 0.4, 0, 1);
+  if (g > 0.01 || du > 0.01 || night > 0.01) {
     const memo = new Map();
     L.grade2 = (hex) => {
       let v = memo.get(hex);
@@ -404,8 +409,10 @@ function sceneLightGradeV2(L) {
       const lum = 0.3 * r + 0.59 * gr + 0.11 * b;
       if (g > 0.01) {
         const wk = g * (0.4 + 0.6 * lum), ck = g * (1 - lum);
-        r *= 1 + 0.17 * wk - 0.04 * ck; gr *= 1 + 0.02 * wk; b *= 1 - 0.32 * wk + 0.08 * ck;
+        r *= 1 + 0.26 * wk - 0.04 * ck; gr *= 1 + 0.05 * wk; b *= 1 - 0.42 * wk + 0.08 * ck;
       }
+      // night: surfaces lit by nothing (pale walls, light stone) stay dark masses: the highlights are compressed
+      if (night > 0.01) { const q = 1 - 0.32 * night * _scatClamp((lum - 0.06) * 4, 0, 1); r *= q; gr *= q; b *= q; }
       if (du > 0.01) { r *= 1 + 0.03 * du; gr *= 1 - 0.1 * du; b *= 1 + 0.1 * du; }
       v = '#' + [r, gr, b].map(x => Math.round(_scatClamp(x, 0, 1) * 255).toString(16).padStart(2, '0')).join('');
       memo.set(hex, v);

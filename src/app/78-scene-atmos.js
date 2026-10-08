@@ -8,7 +8,10 @@
                 the fog-bank sprites
      sprite     soft shading (a horizontal gradient away from the sun) and the rim light on the sun's edge (backlit or
                 golden hour), for the classes tree building structure landmark vehicle person animal rock; the sprite's
-                on-screen orientation (req.flip) is honoured, and spriteKey carries it
+                on-screen orientation (req.flip) is honoured, and spriteKey carries it; facades (building structure
+                landmark) lit or shaded as a whole by the sun's azimuth (sceneFacadeLight); 'lit' parts reshaped
+                (sceneAtmosLitSprite: floods become a soft wash from below, a lamp's own ground pool gives way to the
+                pass's perspective pool); sceneLitColourFn: mist kept in 'lit' takes the night sky's colour
      ground     v2: the haze the weather adds to the ground beyond what the compile baked into the surfaces (fog, mist)
      layer      under (v2, after dusk): lamp pools (perspective ellipses, 'lighter') and window / shopfront spill;
                 over: halos round lamp heads and lit signs
@@ -183,6 +186,19 @@ function sceneAtmosLitSprite(cx, req, o) {
   }
   cx.restore();
   return true;
+}
+
+/**
+ * The colours of an object's 'lit' part under a v2 light (L.grade is set only by sceneLightV2), or null (drawn as authored).
+ * Mist and haze kept in 'lit' (category sky, class air) are not lights: after dark they take the colour of the sky low down,
+ * so they never glow brighter than the sky (the drifting wisps carry their lit part inside their sprite: this reaches them too).
+ */
+function sceneLitColourFn(L, oid) {
+  if (!L || !L.grade || !(L.dark > 0.05) || typeof sceneObj !== 'function') return null;
+  const def = sceneObj(oid);
+  if (!def || !(def.category === 'sky' || (def.tags || []).includes('class:air'))) return null;
+  const sky = _scatPMix(L.low || '#2a3450', L.mid || '#1c2440', 0.4), k = 0.85 * _scatPClamp(L.dark, 0, 1), memo = new Map();
+  return c => { if (typeof c !== 'string' || c[0] !== '#') return c; let v = memo.get(c); if (!v) { v = _scatPMix(c, sky, k); memo.set(c, v); } return v; };
 }
 
 /* ---------- night lights (7.3) ---------- */
@@ -371,8 +387,11 @@ const sceneAtmosPass = {
     const cls = _scatPCls(req), def = typeof sceneObj === 'function' ? sceneObj(req.o) : null;
     if (req.part === 'lit') {
       // a lamp (a light source the pass pools itself): keep its head's glow, drop its own ground pool; a facade: a soft wash
-      const st = env._scat, lamp = !!(st && st.lights && st.lights.some(l => l.i === req.i && l.kind !== 'spill'));
-      sceneAtmosLitSprite(cx, req, { lamp, flood: !lamp && _SCATP_FACADE.has(cls) });
+      // a facade lit over a good share of its height is a floodlight, even when it has a lamp (a porch lamp, a lit clock) too
+      const st = env._scat, sh = req.shapes, tb = req.box, H = sh && sh.box ? Math.max(1, -sh.box[1]) : 1;
+      const flood = _SCATP_FACADE.has(cls) && !!tb && (tb[3] - tb[1]) > 0.3 * H;
+      const lamp = !flood && !!(st && st.lights && st.lights.some(l => l.i === req.i && l.kind !== 'spill'));
+      sceneAtmosLitSprite(cx, req, { lamp, flood });
       return;
     }
     if (!_SCATP_SHADE.has(cls) || (def && def.shade === false)) return;

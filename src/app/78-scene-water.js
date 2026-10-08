@@ -329,9 +329,10 @@ function _scwaBake(env, R, gx) {
     const M = env.placeM(it.x, Ym, it.s, it.flip), MR = toR([M[0], 0, 0, -M[3], M[4], M[5]]);
     rc.setTransform(...MR);
     rc.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h);
-    // after real dusk the lit things mirror too: the lit part, lit windows and lamps (the brightest thing in a night canal)
+    // after real dusk the lit things mirror too: the lit part (through the atmos pass's lit treatment: no lamp pools or mist
+    // mirrored as light), lit windows and lamps (the brightest thing in a night canal)
     if (night) {
-      if (it.lit) { const lp = env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: 'lit', scale: bucket(it.s) * vs, plain: true })); if (lp && lp.c) { rc.setTransform(...MR); rc.drawImage(lp.c, lp.x0, lp.y0, lp.w, lp.h); } }
+      if (it.lit) { const lp = env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: 'lit', scale: bucket(it.s) * vs, flip: it.flip, cls: it.cls, i })); if (lp && lp.c) { rc.setTransform(...MR); rc.drawImage(lp.c, lp.x0, lp.y0, lp.w, lp.h); } }
       if (it.glowOn && typeof _sccGlows === 'function') _sccGlows(rc, MR, it, null, env.windowShare);
     }
   }

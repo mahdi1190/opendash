@@ -155,7 +155,7 @@ test('the atmos and weather passes: applies (v1 untouched unless fx), keys, spri
   assert.ok(S.sceneObj(tree), 'fixture tree');
   assert.notEqual(P.spriteKey(L, v2, req(tree, true)), P.spriteKey(L, v2, req(tree, false)), 'the flip bit for shaded classes');
   assert.equal(P.spriteKey(L, v1, req(tree, true)), '', 'v1: no change to sprite keys');
-  assert.equal(P.spriteKey(L, v2, Object.assign(req(tree, true), { part: 'lit' })), '', 'the lit part is never shaded');
+  assert.equal(P.spriteKey(L, v2, Object.assign(req(tree, true), { part: 'lit' })), 'lit2', 'the lit part is never shaded: it takes the lit treatment (soft floods, no own lamp pool) only');
   const rainL = S.sceneLightV2({ wx: 'rain' }, VIEW({ at: 'noon' }), DATA), snowL = S.sceneLightV2({ wx: 'snow' }, VIEW({ at: 'noon' }), DATA);
   assert.notEqual(W.key(rainL, v2), W.key(snowL, v2), 'rain and snow bake differently');
   assert.match(W.spriteKey(snowL, v2, req(tree, false)), /^s\d/, 'snow caps key the tree sprite');

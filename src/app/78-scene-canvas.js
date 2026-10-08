@@ -220,11 +220,12 @@ function sceneRendererCreate(canvas, src, o) {
       const c = _sccCanvas(w, h), cx = c.getContext('2d', _SCC_CPU);
       cx.setTransform(k, 0, 0, k, _SCC_PAD - x0 * k, _SCC_PAD - y0 * k);
       const col = req && req.lift ? colourFn(Lx, haze, tint, which === 'lit', req.lift, x.liftCol) : colourFn(Lx, haze, tint, which === 'lit'), plain = x => x;
+      const litCol = (typeof sceneLitColourFn === 'function' && sceneLitColourFn(Lx, oid)) || plain;
       let any = false;
       for (const p of names) for (const s0 of sh.parts[p] || []) {
         if (!detail && s0.detail) continue;
         if (litGlow && s0.glow) drawShape(cx, Object.assign({}, s0, { f: nc[s0.glow] || (s0.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain);
-        else drawShape(cx, s0, p === 'lit' ? plain : col);
+        else drawShape(cx, s0, p === 'lit' ? litCol : col);
         any = true;
       }
       if (!any) { c.width = 0; return { c: null, x0, y0, w: 0, h: 0, sc: k, bytes: 0 }; }
