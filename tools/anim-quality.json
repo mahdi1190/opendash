@@ -1170,6 +1170,9 @@
    },
    "signs": {
     "max": 6
+   },
+   "flowMax": {
+    "max": 60
    }
   },
   "perf": {
@@ -1268,6 +1271,104 @@
    "personHeight": {
     "max": 150
    }
+  },
+  "sanity": {
+   "designed": true,
+   "_note": "The placement-sanity rules (docs/dev/SCENE_ENGINE_V2.md 15.1; tools/lib/scene-sanity.mjs): DESIGNED, not calibrated. G's golden calibration (V2 22.3) proposes calibrated values and the reviewer applies raises only. v1 scenes: every finding is a warning until the pack migrates (14.1); --strict-placement makes every warning a failure.",
+   "scale": {
+    "range": [
+     0.7,
+     1.45
+    ],
+    "people": [
+     0.85,
+     1.2
+    ]
+   },
+   "scalePairs": {
+    "ratio": 1.3,
+    "within": 40
+   },
+   "landmarkOccluded": {
+    "max": 0.3,
+    "weights": {
+     "building": 1,
+     "structure": 0.9,
+     "landmark": 1,
+     "tree": 0.75,
+     "shrub": 0.6,
+     "cover": 0.6,
+     "person": 0.5,
+     "cyclist": 0.5,
+     "car": 0.9,
+     "bus": 0.9,
+     "tram": 0.9,
+     "train": 0.9,
+     "boat": 0.8,
+     "street": 0.4,
+     "rail": 0.6,
+     "rock": 0.9
+    }
+   },
+   "ghost": {
+    "haze": 0.4,
+    "tall": 0.25,
+    "opacity": 0.7,
+    "area": 0.3
+   },
+   "stamp": {
+    "n": 4,
+    "tol": 0.05
+   },
+   "haze": {
+    "v2Mean": 0.12,
+    "v1Layer": 0.45,
+    "v1Mean": 0.25
+   },
+   "clutter": {
+    "n": 9,
+    "window": [
+     400,
+     300
+    ],
+    "overlap": 0.5,
+    "salient": 40
+   },
+   "floating": {
+    "tol": 3
+   },
+   "view": {
+    "near": 30
+   }
+  },
+  "flows": {
+   "designed": true,
+   "_note": "Crowds and traffic (V2 9; 70-scene-1flow.js, 78-scene-flow.js): at most 60 visible agents across the flows and 120 flow sprites; flowDraws (max x draws per agent, an upper bound) counts toward the 300 animated draws; when they would pass it the compile scales every max down (flowBudget, an info).",
+   "maxAgents": 60,
+   "maxSprites": 120,
+   "drawsPerAgent": {
+    "walk": 4,
+    "cycle": 4,
+    "drive": 4,
+    "tram": 4,
+    "train": 3,
+    "boat": 4,
+    "graze": 2
+   },
+   "period": 600
+  },
+  "fx": {
+   "designed": true,
+   "_note": "The v2 per-frame effects (V2 13.3, 25), counted as fxDraws in animatedDraws (at most 300 with everything else): ripple bands (at most 90 a region, 160 a scene, re-made at 15 Hz), glints (30), rings (16), puddle rings (20), fog banks (4), wakes, mover reflections, actor shadows and headlights (one each).",
+   "rippleBands": {
+    "region": 90,
+    "scene": 160
+   },
+   "glints": 30,
+   "rings": 16,
+   "puddleRings": 20,
+   "fogBanks": 4,
+   "shadowPairs": 40
   }
  },
  "object": {

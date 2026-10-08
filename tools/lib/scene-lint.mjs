@@ -3,9 +3,13 @@
 // sceneCompile, sceneObj, sceneObjShapes ...), so the rules judge exactly what the renderers draw: the COMPILED scene (section 4).
 //
 //   engineOf(reg)                                  -> E: the engine functions of a loaded registry (E.ready false without the core)
-//   lintScene(dataOrItem, thresholds, { E, item, perf, ref, gpu, svg }) -> { ref, profile: 'composed', pass, gold, rules: [Rule], failures, warnings, metrics, compiled }
+//   lintScene(dataOrItem, thresholds, { E, item, perf, ref, gpu, svg, strict, reg, pack }) -> { ref, profile: 'composed', pass, gold, rules: [Rule], failures, warnings, metrics, compiled }
 //       (svg: false skips rendering the SVG fallback for its byte and text rules: a batch checks it on a sample of rows)
-//       the four rule groups of the profile: DATA (and PERF when `perf` is given), the BAR (15.2), placement VARIETY (10.2), CARE (8.5).
+//       the rule groups of the profile: DATA (and PERF when `perf` is given), the BAR (15.2), placement VARIETY (10.2), CARE (8.5),
+//       SANITY (docs/dev/SCENE_ENGINE_V2.md 15.1, tools/lib/scene-sanity.mjs) and COMPOSITION (V2 20.4, tools/lib/scene-composition.mjs
+//       when it is in the checkout: imported dynamically). strict (--strict-placement): every sanity and composition WARNING is a
+//       failure. GOLD also needs no sanity error and no refused placement (V2 15.2); v1 scenes keep their tier: their sanity findings
+//       are warnings until the pack migrates (V2 14.1), unless strict.
 //       Rule = { group, rule, ok, value, limit, message, warn? }; a failing rule's message says how far off it is and the fix.
 //   barMetrics(C, data, { E, thresholds })        -> { depthLayers, groundCover, coverItems, movers, travellers, motionKinds, signature, ... }
 //   placementVariety(C, { E, thresholds })        -> { objects: [...], categories: [...], stacked: [...], fails: [Rule] }
@@ -17,6 +21,11 @@
 //   standardOf(entry, lint, perf)                 -> 'gold' | 'composed' | 'upgrading' | 'rich' | 'legacy' | null (small items)
 //   SIGN_DENY / signTextCheck(text)                the signage rule when the core's sceneSignText is not loaded
 import { scenePathBox } from './scene-svg.mjs';
+import { sanityRules } from './scene-sanity.mjs';
+
+/** G's composition lint (V2 20.4), when the checkout has it: a dynamic import, never a static one (a missing builder removes its group only). */
+let COMPOSITION = null;
+try { COMPOSITION = await import('./scene-composition.mjs'); } catch { COMPOSITION = null; }
 
 /* ---------------------------------------------------------------------------------------------
    The engine of a loaded registry
@@ -27,6 +36,9 @@ const ENGINE_NAMES = {
   kitPick: 'sceneKitPick', item: 'sceneItem', scaleBucket: 'sceneScaleBucket', light: 'sceneLight', colour: 'sceneColour', line: 'sceneLine',
   index: 'SCENE_ARCHETYPE_INDEX', regionKits: 'SCENE_REGION_KITS', regionParams: 'SCENE_REGION_PARAMS', kits: 'SCENE_KITS', roles: 'SCENE_ROLES', categories: 'SCENE_CATEGORIES',
   retroMax: 'SCENE_RETRO_MAX_BYTES', dups: 'sceneObjDups',
+  // scene engine v2 (each optional: a builder that has not landed leaves its name undefined)
+  real: 'sceneObjReal', objClass: 'sceneObjClass', placeRules: 'SCENE_PLACE_RULES', surfaceKinds: 'SCENE_SURFACE_KINDS', camera: 'sceneCamera', hazeAt: 'sceneHazeAt',
+  objViews: 'sceneObjViews', flowReal: '_scflReal', flowViewOf: 'sceneFlowViewOf', flowStats: 'sceneFlowStats', flowCompile: 'sceneFlowCompile', compositionOf: 'sceneCompositionOf',
 };
 export function engineOf(reg) {
   const get = (reg && reg.R && typeof reg.R.get === 'function') ? reg.R.get : () => undefined;
@@ -149,6 +161,15 @@ function dataRules(C, data, item, { E, thresholds, svg = true }) {
   const dataBytes = arch ? JSON.stringify({ params: arch.params || {}, patch: arch.patch || {} }).length : JSON.stringify(data, (k, v) => (typeof v === 'function' ? undefined : v)).length;
   max('dataBytes', dataBytes, 'the scene data is too large: use scatter rules instead of hand placements, or an archetype');
   if (arch && T.rowBytes) max('rowBytes', JSON.stringify(arch.params || {}).length, 'an archetype row (its params) is too large');
+  // v2 (V2 15.2): the flows' agents at most 60; the compile's errors (refused placements, bad flows) must be none for GOLD
+  if (C.v === 2 || (C.flows && C.flows.length)) {
+    const fm = (C.stats && C.stats.v2 && C.stats.v2.flowMax != null) ? C.stats.v2.flowMax : (C.flows || []).reduce((n, f) => n + (f.max || 0), 0);
+    max('flowMax', fm, 'at most 60 agents across the flows: lower their max (or density)');
+  }
+  if (C.v === 2) {
+    const errs = (C.problems || []).filter(p => p && p.sev === 'error');
+    out.push(rule('data', 'problems', !errs.length, errs.length, '0 errors', `the compile reports ${errs.length} error(s): ${errs.slice(0, 4).map(p => `${p.rule}: ${p.msg}`).join('; ')}${errs.length > 4 ? ' ...' : ''}`));
+  }
   if (svg && typeof E.svg === 'function') {
     let fill = '', tile = '';
     try {
@@ -220,13 +241,17 @@ export function barMetrics(C, data, { E, thresholds = {} } = {}) {
   // life
   const hooked = items.filter(it => it.strip < 0 && (it.anim || []).some(a => MOVER_HOOKS.has(a.kind))).length;
   const flockBirds = flocks.reduce((n, f) => n + (f.n || 0), 0);
-  m.movers = actors.length + flockBirds + hooked;
-  m.travellers = actors.length + flockBirds;
+  // v2: each flow counts its max agents (at most 15 per flow) as movers, and as travellers
+  const flowAgents = (C.flows || []).reduce((n, f) => n + Math.min(15, f.max || 0), 0);
+  m.movers = actors.length + flockBirds + hooked + flowAgents;
+  m.travellers = actors.length + flockBirds + flowAgents;
+  m.flowAgents = flowAgents;
   const kinds = new Set();
   for (const it of items) for (const a of it.anim || []) kinds.add(a.kind);
   for (const a of actors) for (const h of a.anim || []) kinds.add(h.kind);
   for (const f of flocks) { const fx = F.shapes(f.o, 0, C.season); for (const h of (fx.R && fx.R.anim) || []) kinds.add(h.kind); }
-  if (actors.length || flocks.length) kinds.add('travel');
+  if (actors.length || flocks.length || flowAgents) kinds.add('travel');
+  for (const f of C.flows || []) if (f.kind === 'walk' || f.kind === 'cycle') kinds.add('walk');
   if ((C.strips || []).length || kinds.has('sway')) { kinds.delete('sway'); kinds.add('wind'); }
   m.motionKinds = kinds.size;
   m.motionKindList = [...kinds].sort();
@@ -250,11 +275,12 @@ export function barMetrics(C, data, { E, thresholds = {} } = {}) {
   // shadows (mid to fore)
   const midFore = new Set((C.layers || []).filter(l => l.depth >= 0.4 && l.depth <= 1.0).map(l => l.i));
   const casters = items.filter(it => midFore.has(it.layer) && SHADOW_CATS.has((F.def(it.o) || {}).category));
-  m.shadows = casters.length ? r2(casters.filter(it => it.shadow).length / casters.length) : 1;
+  m.shadows = C.v === 2 ? 1 : casters.length ? r2(casters.filter(it => it.shadow).length / casters.length) : 1;   // v2: every object casts (the shadow pass)
   m.shadowCasters = casters.length;
   // reflections
   const waters = C.water || [];
   if (!waters.length) m.reflections = null;
+  else if (C.v === 2 && waters.every(w => w.v2)) m.reflections = { areas: waters.length, reflecting: waters.length, near: 0, nearOk: 0, share: 1, auto: true };   // v2 water mirrors by itself
   else {
     const refl = waters.filter(w => w.reflect);
     let near = 0, nearOk = 0;
@@ -269,7 +295,7 @@ export function barMetrics(C, data, { E, thresholds = {} } = {}) {
   let lights = 0, lightSources = 0;
   for (const it of items) { const d = F.def(it.o); if (!d) continue; if (LIGHT_CATS.has(d.category)) lightSources++; const f = F.shapes(it.o, it.v, it.season || C.season); lights += it.glowOn ? it.glowOn.length : f.glow; if (f.lit) lights++; }
   for (const a of actors) { const d = F.def(a.o); if (!d) continue; if (LIGHT_CATS.has(d.category)) lightSources++; const f = F.shapes(a.o, a.v || 0, C.season); lights += f.glow + (f.lit ? 1 : 0); }
-  m.nightLights = lights;
+  m.nightLights = lights + (C.v === 2 ? (C.lights || []).length : 0);   // v2: plus the light sources (lamps, spill)
   m.needsLights = lightSources > 0 || setting === 'urban';
   return m;
 }
@@ -474,7 +500,7 @@ export function perfRules(perf, thresholds = {}, { gpu = false } = {}) {
 /* ---------------------------------------------------------------------------------------------
    The whole profile
    --------------------------------------------------------------------------------------------- */
-export function lintScene(input, thresholds, { E, item = null, perf = null, ref = '', gpu = false, season = null, svg = true } = {}) {
+export function lintScene(input, thresholds, { E, item = null, perf = null, ref = '', gpu = false, season = null, svg = true, strict = false, reg = null, pack = null, siblings = null } = {}) {
   if (!E || !E.ready) throw new Error('lintScene needs the scene engine (engineOf(reg))');
   const it = item || (input && (input.composed || input.scene) ? input : null);
   const data = dataOf(input, E);
@@ -490,10 +516,36 @@ export function lintScene(input, thresholds, { E, item = null, perf = null, ref 
   rules.push(variety.fails.length ? variety.fails[0] : rule('variety', 'variety', true, `${variety.objects.length} objects, ${variety.categories.length} categories`, 'scale, flip, variants, tints, no grids, no stacks', ''));
   for (const f of variety.fails.slice(1)) rules.push(f);
   rules.push(...careCheck(C, data, it, { E, thresholds }));
+  rules.push(...placementSanity(C, data, { E, thresholds, strict }));
+  rules.push(...compositionGroup(C, data, { E, thresholds, strict, reg, pack, siblings, ref }));
   rules.push(...perfRules(perf, thresholds, { gpu }));
   const failures = rules.filter(r => !r.ok), warnings = rules.filter(r => r.ok && r.warn).map(r => r.warn);
   const pass = !failures.length;
-  return { ref, profile: 'composed', pass, gold: pass && !!perf && !perf.skipped, rules, failures, warnings, metrics: { stats: C.stats, bar: bar.metrics, variety: { objects: variety.objects, categories: variety.categories, stacked: variety.stacked } }, compiled: C, data };
+  const refused = (C.problems || []).some(p => p && p.rule === 'refused');
+  const sanity = { errors: rules.filter(r => r.group === 'sanity' && !r.ok).length, warnings: rules.filter(r => r.group === 'sanity' && r.ok && r.warn).length };
+  return { ref, profile: 'composed', v: C.v === 2 ? 2 : 1, strict: !!strict, pass, gold: pass && !refused && !!perf && !perf.skipped, rules, failures, warnings, metrics: { stats: C.stats, bar: bar.metrics, variety: { objects: variety.objects, categories: variety.categories, stacked: variety.stacked }, sanity }, compiled: C, data };
+}
+
+/** The sanity group (V2 15.1): a broken check never breaks the lint (it reports itself as one failing rule). */
+function placementSanity(C, data, { E, thresholds, strict }) {
+  try { return sanityRules(C, data, { E, thresholds, strict }); }
+  catch (e) { return [rule('sanity', 'sanity', false, 'error', 'runs', `the sanity lint threw: ${e.message}`)]; }
+}
+/**
+ * The composition group (V2 20.4, builder G) when tools/lib/scene-composition.mjs is in the checkout. Its warnings are ok (the text in
+ * warn) unless strict; for a v1 scene a composition finding never fails without strict (v1 keeps its tier, 14.1).
+ */
+function compositionGroup(C, data, { E, thresholds, strict, reg, pack, siblings, ref }) {
+  if (!COMPOSITION || typeof COMPOSITION.compositionRules !== 'function') return [];
+  let rs = [];
+  try { rs = COMPOSITION.compositionRules(C, data, { E, thresholds, strict, reg, pack, siblings, ref }) || []; }
+  catch (e) { return [rule('composition', 'composition', !strict, 'error', 'runs', `the composition lint threw: ${e.message}`, strict ? {} : { warn: `composition: the lint threw: ${e.message}` })]; }
+  return rs.map(r => {
+    const x = Object.assign({ group: 'composition' }, r);
+    if (!x.ok && !strict && C.v !== 2) { x.ok = true; x.warn = x.warn || x.message; x.message = ''; }
+    if (x.ok && x.warn && strict) { x.ok = false; x.message = x.message || x.warn; }
+    return x;
+  });
 }
 
 /* ---------------------------------------------------------------------------------------------
