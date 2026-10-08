@@ -512,7 +512,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.9.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.10.0...HEAD
+[2.10.0]: https://github.com/mahdi1190/opendash/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/mahdi1190/opendash/compare/v2.8.1...v2.9.0
 [2.8.1]: https://github.com/mahdi1190/opendash/compare/v2.8.0...v2.8.1
 [2.8.0]: https://github.com/mahdi1190/opendash/compare/v2.7.0...v2.8.0
