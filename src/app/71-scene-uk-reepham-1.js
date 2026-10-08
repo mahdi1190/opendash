@@ -48,11 +48,11 @@
   const GRASS = { 'plant.grass': 3, 'plant.wildflowers': 1 };
   const TINT = col => ({ col, k: [0, 0.16] });
   /** the horizon layer: a thin row of distant trees or hedges along the skyline. */
-  const hz = (H, obj, n, seed) => ({ obj: obj === 'tree.far-broad' ? { 'tree.far-broad': 2, 'tree.far-pine': 1 } : obj, layer: 'horizon', seed, area: { rect: [-40, H - 12, 1640, H + 12] }, n, minGap: 18, s: [0.6, 1.4], flip: 0.5, variant: 'random', tint: TINT('#4a6a50') });
+  const hz = (H, obj, n, seed) => ({ obj: obj === 'tree.far-broad' ? { 'tree.far-broad': 2, 'tree.far-pine': 1 } : obj, layer: 'horizon', seed, area: { rect: [-40, H - 12, 1640, H + 12] }, n, minGap: 18, s: [0.6, 1.4], flip: 0.5, variant: 'random', anim: false, tint: TINT('#4a6a50') });
   /** the fore layer: grass tufts at the very bottom edge. */
-  const fore = (obj, n, seed) => ({ obj, layer: 'fore', seed, area: { rect: [-40, 862, 1640, 900] }, n, minGap: 20, s: [0.8, 1.2], flip: 0.5, variant: 'random', anim: 'strip', tint: TINT('#5a4a2a') });
+  const fore = (obj, n, seed) => ({ obj, layer: 'fore', seed, area: { rect: [-40, 862, 1640, 900] }, n, minGap: 20, s: [0.8, 1.2], flip: 0.5, variant: 'random', anim: false, tint: TINT('#5a4a2a') });
   /** cover in a band of the picture (the lower ground). */
-  const cover = (obj, layer, y0, y1, n, seed, s, o) => Object.assign({ obj, layer, seed, area: { rect: [-40, y0, 1640, y1] }, n, minGap: 10, s, sByY: [[y0, 0.7], [y1, 1.3]], flip: 0.5, variant: 'random', tint: TINT('#5a6a3a') }, o || {});
+  const cover = (obj, layer, y0, y1, n, seed, s, o) => Object.assign({ obj, layer, seed, area: { rect: [-40, y0, 1640, y1] }, n, minGap: 10, s, sByY: [[y0, 0.7], [y1, 1.3]], flip: 0.5, variant: 'random', anim: false, tint: TINT('#5a6a3a') }, o || {});
   /** a walker or cyclist on a path, sized by the people ladder at its height. */
   const walker = (obj, layer, path, y, speed, seed, view, loop) => ({ obj, layer, path, speed, loop: loop || 'pingpong', s: pS(obj, y, view), seed, offset: (seed % 10) / 10 });
 
@@ -80,7 +80,7 @@
       hz(470, 'tree.plane', 5, 201),
       cover('plant.towpath-hedge', 'mid', 630, 662, 24, 202, [0.7, 0.95], { minGap: 12 }),
       cover({ 'street.bollard': 2, 'street.lamp': 1, 'street.bench': 1 }, 'near', 716, 880, 60, 203, [0.8, 1.2]),
-      cover(GRASS, 'near', 700, 900, 120, 204, [0.6, 1.1], { anim: 'strip' }),
+      cover(GRASS, 'near', 700, 900, 120, 204, [0.6, 1.1], { anim: false }),
       { obj: 'bird.pigeon', layer: 'near', seed: 205, area: { rect: [120, 760, 1100, 900] }, n: 10, minGap: 40, s: [0.6, 1.3], flip: 0.5, variant: 'random', tint: TINT('#7a7068'), mask: { noise: { scale: 180, cut: 0.4 } } },
       fore(GRASS, 16, 206),
     ];
@@ -111,10 +111,10 @@
     ];
     const scatter = [
       hz(250, 'tree.far-broad', 14, 211),
-      { obj: { 'structure.sheffield2-headstones': 3, 'structure.fence': 1 }, layer: 'near', seed: 22, area: { rect: [330, 740, 1560, 900] }, n: 16, minGap: 60, s: [0.9, 1.25], sByY: [[740, 0.8], [900, 1.25]], flip: 0.5, variant: 'random', tint: TINT('#7a7a72') },
+      { obj: { 'structure.sheffield2-headstones': 3, 'structure.fence': 1 }, layer: 'near', seed: 22, area: { rect: [330, 740, 1560, 900] }, n: 16, minGap: 60, s: [0.9, 1.25], sByY: [[740, 0.8], [900, 1.25]], flip: 0.5, variant: 'random', anim: false, tint: TINT('#7a7a72') },
       { obj: { 'bird.pigeon': 1 }, layer: 'near', seed: 216, area: { rect: [330, 760, 1560, 900] }, n: 8, minGap: 40, s: [0.7, 1.2], flip: 0.5, variant: 'random', tint: TINT('#7a7068') },
-      cover(GRASS, 'near', 650, 900, 300, 212, [0.6, 1.1], { anim: 'strip' }),
-      cover('plant.wildflowers', 'near', 660, 900, 60, 213, [0.6, 0.9], { anim: 'strip' }),
+      cover(GRASS, 'near', 650, 900, 300, 212, [0.6, 1.1], { anim: false }),
+      cover('plant.wildflowers', 'near', 660, 900, 60, 213, [0.6, 0.9], { anim: false }),
       cover('plant.towpath-hedge', 'near', 686, 730, 10, 214, [0.8, 1.0], { area: { rect: [-40, 686, 540, 730] } }),
       fore(GRASS, 18, 215),
     ];
@@ -146,9 +146,9 @@
     ];
     const scatter = [
       hz(360, 'tree.far-broad', 10, 221),
-      { obj: { 'plant.towpath-hedge': 2, 'tree.far-broad': 1 }, layer: 'far', seed: 31, area: { rect: [-160, 380, 1760, 440] }, n: 30, minGap: 14, s: [0.5, 0.9], flip: 0.5, variant: 'random', anim: 'strip', tint: TINT('#4a6a36') },
+      { obj: { 'plant.towpath-hedge': 2, 'tree.far-broad': 1 }, layer: 'far', seed: 31, area: { rect: [-160, 380, 1760, 440] }, n: 30, minGap: 14, s: [0.5, 0.9], flip: 0.5, variant: 'random', anim: false, tint: TINT('#4a6a36') },
       cover('plant.towpath-hedge', 'mid', 556, 600, 20, 222, [0.7, 1.0], { minGap: 16 }),
-      cover(GRASS, 'near', 620, 900, 320, 223, [0.6, 1.1], { anim: 'strip' }),
+      cover(GRASS, 'near', 620, 900, 320, 223, [0.6, 1.1], { anim: false }),
       { obj: 'bird.goose', layer: 'mid', seed: 33, area: { rect: [900, 640, 1500, 760] }, n: 6, minGap: 40, s: [0.5, 1.2], sByY: [[640, 0.7], [760, 1.2]], flip: 0.5, variant: 'random' },
       fore(GRASS, 14, 224),
     ];
@@ -182,10 +182,10 @@
     ];
     const scatter = [
       hz(430, 'tree.bank-birch', 12, 231),
-      { obj: 'plant.towpath-hedge', layer: 'far', seed: 91, area: { rect: [-160, 440, 1760, 500] }, n: 40, minGap: 12, s: [0.6, 0.9], flip: 0.5, variant: 'random', anim: 'strip', tint: TINT('#4a6a36') },
+      { obj: 'plant.towpath-hedge', layer: 'far', seed: 91, area: { rect: [-160, 440, 1760, 500] }, n: 40, minGap: 12, s: [0.6, 0.9], flip: 0.5, variant: 'random', anim: false, tint: TINT('#4a6a36') },
       cover('plant.towpath-hedge', 'mid', 600, 650, 40, 232, [0.8, 1.1], { minGap: 18 }),
-      cover(GRASS, 'near', 640, 900, 240, 233, [0.6, 1.1], { anim: 'strip' }),
-      cover('plant.wildflowers', 'near', 650, 760, 30, 234, [0.6, 0.9], { anim: 'strip' }),
+      cover(GRASS, 'near', 640, 900, 240, 233, [0.6, 1.1], { anim: false }),
+      cover('plant.wildflowers', 'near', 650, 760, 30, 234, [0.6, 0.9], { anim: false }),
       { obj: 'bird.robin', layer: 'near', seed: 236, area: { rect: [200, 760, 1600, 900] }, n: 6, minGap: 60, s: [0.6, 1.1], flip: 0.5, variant: 'random', tint: TINT('#8a6a4a') },
       fore(GRASS, 16, 235),
     ];
@@ -218,8 +218,8 @@
       hz(330, 'plant.towpath-hedge', 20, 241),
       cover('plant.towpath-hedge', 'mid', 530, 700, 30, 242, [0.8, 1.2], { area: { poly: [[-160, 520], [620, 500], [820, 540], [-160, 900]] }, minGap: 22 }),
       cover('plant.towpath-hedge', 'mid', 520, 700, 30, 243, [0.8, 1.2], { area: { poly: [[1200, 500], [1760, 480], [1760, 900], [1440, 900]] }, minGap: 22 }),
-      cover(GRASS, 'near', 700, 900, 260, 244, [0.6, 1.2], { anim: 'strip' }),
-      cover('plant.wildflowers', 'near', 720, 900, 30, 245, [0.6, 1.0], { anim: 'strip' }),
+      cover(GRASS, 'near', 700, 900, 260, 244, [0.6, 1.2], { anim: false }),
+      cover('plant.wildflowers', 'near', 720, 900, 30, 245, [0.6, 1.0], { anim: false }),
       { obj: { 'animal.rabbit': 1, 'bird.robin': 1 }, layer: 'near', seed: 246, area: { rect: [640, 780, 1100, 900] }, n: 6, minGap: 60, s: [0.6, 1.3], sByY: [[780, 0.8], [900, 1.2]], flip: 0.5, variant: 'random', tint: TINT('#8a7058'), mask: { noise: { scale: 110, cut: 0.3 } } },
       fore(GRASS, 16, 247),
     ];
@@ -254,8 +254,8 @@
       hz(400, 'tree.far-broad', 14, 251),
       cover('plant.towpath-hedge', 'mid', 560, 900, 30, 252, [0.8, 1.25], { area: { poly: [[-160, 470], [700, 470], [340, 900], [-160, 900]] }, minGap: 22 }),
       cover('plant.towpath-hedge', 'mid', 560, 900, 24, 253, [0.8, 1.25], { area: { poly: [[900, 470], [1760, 470], [1760, 900], [1260, 900]] }, minGap: 20 }),
-      cover(GRASS, 'near', 740, 900, 270, 254, [0.6, 1.2], { anim: 'strip' }),
-      cover('plant.wildflowers', 'near', 760, 900, 30, 255, [0.6, 1.0], { anim: 'strip' }),
+      cover(GRASS, 'near', 740, 900, 270, 254, [0.6, 1.2], { anim: false }),
+      cover('plant.wildflowers', 'near', 760, 900, 30, 255, [0.6, 1.0], { anim: false }),
       { obj: 'bird.pigeon', layer: 'near', seed: 256, area: { rect: [420, 800, 1200, 900] }, n: 6, minGap: 40, s: [0.6, 1.2], flip: 0.5, variant: 'random' },
       fore(GRASS, 16, 257),
     ];
