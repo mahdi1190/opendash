@@ -99,7 +99,7 @@
       // floor plates and the glazing behind the lattice (lit at dusk)
       for (let f = 0; f < floors; f++) {
         const y = top + 4 + f * fh;
-        for (let k = 0; k < 15; k++) b.push({ f: '@glass.' + ((k + f) % 3 === 0 ? 1 : 0), d: R(x0 + 3 + k * 36, y, 33, fh - 5), glow: 'window' });
+        for (let k = 0; k < 15; k++) b.push({ f: '@glass.' + ((k + f) % 3 === 0 ? 1 : 0), d: R(x0 + 3 + k * 36, y, 33, fh - 5) }, { f: '@glass.0', d: R(x0 + 9 + k * 36, y + 4, 12, fh - 12), glow: 'window' });
         b.push(['@frame.0', R(x0, y + fh - 5, W, 3)]);
       }
       // the recessed, glazed ground floor and the entrance canopy
@@ -144,7 +144,8 @@
         for (let t = 0; t < 3; t++) {
           const y0 = yt + (-12 - yt) * t / 3, y1 = yt + (-12 - yt) * (t + 1) / 3;
           if (y1 - y0 < 6) continue;
-          b.push({ f: '@glass.' + ((k + t) % 2), d: R(xa, y0, xb - xa, y1 - y0 - 1.5), op: .55, glow: 'window' });
+          b.push({ f: '@glass.' + ((k + t) % 2), d: R(xa, y0, xb - xa, y1 - y0 - 1.5), op: .55 });
+          if (t === 2 && k % 2 === 0) b.push({ f: '@glass.0', d: R(xa + 3, y1 - 16, xb - xa - 6, 12), op: .7, glow: 'window' });
         }
       }
       // the larch arches (seen edge on) and the transoms

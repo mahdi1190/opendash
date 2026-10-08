@@ -58,7 +58,7 @@ function sceneArchSheffield(p, u) {
     data.scatter.push({ obj: 'tree.distant', layer: 'horizon', variant: [0, 1], seed: 4, area: { rect: [-140, hTop, 1740, H + 6] }, n: n(12), minGap: 40, s: [0.1, 0.24], sByY: [[hTop, 0.8], [H, 1.2]], flip: 0.5, tint: { col: '#8a9aa0', k: [0.2, 0.3] }, anim: false });
   }
   data.scatter.push({ obj: { 'building.sheffield-terrace': 2, 'building.sheffield-works': 1 }, layer: 'far', variant: 'random', seed: 5, area: { rect: [-140, H + 12, 1740, H + 30] }, n: n(6), minGap: 160, s: [0.3, 0.52], flip: 0.5, tint: { col: '#a0aab0', k: [0.08, 0.18] }, anim: false, mask: { noise: { scale: 260, cut: 0.4 } } });
-  data.scatter.push({ obj: { 'tree.distant': 1, 'tree.far-broad': 1 }, layer: 'far', variant: [0, 1], seed: 6, area: { rect: [-140, H + 14, 1740, H + 40] }, n: n(14), minGap: 36, s: [0.18, 0.42], sByY: [[H + 14, 0.85], [H + 40, 1.15]], flip: 0.5, tint: { col: '#6a8070', k: [0.04, 0.14] }, anim: false });
+  data.scatter.push({ obj: { 'tree.distant': 1, 'tree.far-broad': 1 }, layer: 'far', variant: [0, 1], seed: 6, area: { rect: [-140, H + 14, 1740, H + 40] }, n: n(14), minGap: 36, s: [0.18, 0.42], sByY: [[H + 14, 0.85], [H + 40, 1.15]], flip: 0.5, tint: { col: '#6a8070', k: [0.04, 0.14] }, anim: false, mask: { noise: { scale: 150, cut: 0.3 } } });
   // the landmarks: 'id@x@h' (default: centred, 300 tall)
   const lmAvoid = [];
   (p.landmarks || []).forEach((spec, i) => {
@@ -126,7 +126,7 @@ function sceneArchSheffield(p, u) {
       data.actors.push({ obj: 'bird.mallard', layer: 'near', path: [[cx - 200, cy - 10], [cx + 40, cy - 6]], speed: 5, loop: 'pingpong', s: 0.36, seed: 45, offset: 0.3 });
       data.actors.push({ obj: 'bird.mallard', layer: 'near', path: [[cx + 220, cy + 14], [cx + 20, cy + 18]], speed: 4, loop: 'pingpong', s: 0.4, seed: 46, variant: 1, offset: 0.7, flip: true });
       data.actors.push({ obj: 'bird.moorhen', layer: 'near', path: [[cx - 80, cy + 20], [cx + 100, cy + 22]], speed: 4, loop: 'pingpong', s: 0.32, seed: 47, offset: 0.5 });
-      data.scatter.push({ obj: { 'plant.reed': 2, 'plant.bulrush': 1 }, layer: 'near', variant: 'random', seed: 48, area: { rect: [cx - rx, cy - ry - 4, cx - rx + 160, cy - ry + 10] }, n: 14, minGap: 12, s: [0.36, 0.5], flip: 0.5, anim: false, reflect: true });
+      data.scatter.push({ obj: { 'plant.reed': 2, 'plant.bulrush': 1 }, layer: 'near', variant: 'random', seed: 48, area: { rect: [cx - rx, cy - ry - 4, cx - rx + 160, cy - ry + 10] }, n: 14, minGap: 12, s: [0.28, 0.56], flip: 0.5, anim: false, reflect: true });
       data.scatter.push({ obj: 'water.fish-ring', layer: 'near', variant: [0, 1], seed: 49, area: { rect: [cx - rx * 0.6, cy - ry * 0.5, cx + rx * 0.6, cy + ry * 0.5] }, n: 3, minGap: 80, s: [0.4, 0.6] });
     } else {
       // the fountain jets: glinting water rings, and pigeons at the rim
@@ -137,8 +137,8 @@ function sceneArchSheffield(p, u) {
     const bx = Number.isFinite(p.poolx) ? p.poolx : 800;
     const d = `M${bx - 40} ${lmy + 4}Q${bx - 160} ${yN + 20} ${bx - 60} ${yF}T${bx - 280} 905H${bx + 60}Q${bx + 60} ${yF + 20} ${bx + 70} ${yF - 10}T${bx + 10} ${lmy + 4}Z`;
     G('mid', `M${bx - 60} ${lmy}Q${bx - 190} ${yN + 20} ${bx - 90} ${yF}T${bx - 320} 905H${bx + 100}Q${bx + 90} ${yF + 20} ${bx + 100} ${yF - 10}T${bx + 30} ${lmy}Z`, '@bank');
-    data.water.push({ layer: 'mid', d, y0: lmy + 4, y1: 900, base: ['#8aaab0', '#4e7480', '#2a4a54'], reflect: true, shimmer: 30, lightPath: false });
-    data.scatter.push({ obj: 'rock.stones', layer: 'near', variant: 'random', seed: 50, area: { poly: [[bx - 100, yN], [bx + 60, yN], [bx + 70, 900], [bx - 300, 900]] }, n: 16, minGap: 50, s: [0.3, 0.7], sByY: [[yN, 0.7], [900, 1.3]], flip: 0.5, reflect: true });
+    data.water.push({ layer: 'mid', d, y0: lmy + 4, y1: 900, base: ['#8aaab0', '#4e7480', '#2a4a54'], reflect: true, shimmer: 16, lightPath: false });
+    data.scatter.push({ obj: { 'rock.stones': 2, 'rock.boulder': 1 }, layer: 'near', variant: 'random', seed: 50, area: { poly: [[bx - 100, yN], [bx + 60, yN], [bx + 70, 900], [bx - 300, 900]] }, n: 16, minGap: 50, s: [0.3, 0.7], sByY: [[yN, 0.7], [900, 1.3]], flip: 0.5, reflect: true });
     data.actors.push({ obj: 'bird.mallard', layer: 'near', path: [[bx - 80, yN + 30], [bx - 20, yN + 40]], speed: 3, loop: 'pingpong', s: 0.34, seed: 51, offset: 0.2 });
     data.actors.push({ obj: 'bird.mallard', layer: 'near', path: [[bx - 140, yF + 30], [bx - 60, yF + 10]], speed: 3, loop: 'pingpong', s: 0.44, seed: 52, variant: 1, offset: 0.6 });
   }
