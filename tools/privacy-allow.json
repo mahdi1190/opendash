@@ -367,6 +367,66 @@
       "path": "src/app/70-scene-lib-water.js",
       "line_sha256": "91c485731169621d2f8b8508a0a93be41d6de6fc5977fd07c16ce49264c0329c",
       "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_ENGINE.md",
+      "line_sha256": "cda115610ec474b546b84e1f5e49ce3e810ee250d455422ddf7a908c22506e19",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-birds-coast-country.js",
+      "line_sha256": "5d79f5e3768d67091e3cfebd64f05930fb3f0bae7b10a7d1cfb04c41ca950496",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-boat-east-asian-junk.js",
+      "line_sha256": "cecb192cef99957144d742555a6d270ce9df8d3613117462d23aab642802c437",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-plants-coast-country.js",
+      "line_sha256": "83d417b857242140d692c2a5a8c67a22c0f8b8f0174d353418d5723be403ab8a",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-plants-coast-country.js",
+      "line_sha256": "be3cc7c7ee7394eaa8b710909f5ea98c6b09df38a33bdb344daa93a749051c76",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-plants-tropical-more.js",
+      "line_sha256": "3ce283587bdca9e1694dbd77369cde1d505be981c477a1571b40753fa1f6738b",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-rail-london-stations.js",
+      "line_sha256": "8283e98359bfb99add6c70757da3bf50c9b2225ab5aadbf768979e6a34075180",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-rail-london-stations.js",
+      "line_sha256": "659e84f5479ed97055f916a75a11626c6886480a684267a7308e102b1666a984",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-trees-city.js",
+      "line_sha256": "101114d10b7185efc885bf074dc6a6ec6f813d8cb681f1c0cf5c754f4d704cb6",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/fin-connect-ui.test.mjs",
+      "line_sha256": "e7ab920182f220014db17b55ef1361aa3d76e29fc09f58a19bf38a79a5a7c93f",
+      "why": "reviewed ordinary word"
     }
   ]
 }

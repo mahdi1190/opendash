@@ -10,6 +10,8 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-10-08
+
 ### Added
 
 - **Connections > Money:** one place for every bank and wallet. *Your accounts* lists every account from every provider (rename, colour, *Show in Finances*, last sync, the date to sign in again by, *Sync now*, disconnect with keep or remove and Undo). A provider chooser with a bank search: Aureli (via Claude), Plasma One, Monzo, other UK and EU banks through Enable Banking, and CSV import, each with what it covers, its cost, limits, what you need and how long it takes.
@@ -473,7 +475,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.7.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/mahdi1190/opendash/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/mahdi1190/opendash/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/mahdi1190/opendash/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/mahdi1190/opendash/compare/v2.5.0...v2.5.1
