@@ -219,3 +219,8 @@ function sceneArchNewForest(p, u) {
     build: (p, u) => sceneArchNewForest(p, u),
   });
 })();
+/** Add one New Forest scene: meta (the item fields), the archetype row and the scene's own touches (a THUNK: built when shown or linted). */
+function nfSceneAdd(meta, row, patch) {
+  if (typeof sceneAdd !== 'function' || typeof sceneFromArchetype !== 'function') return;
+  sceneAdd('uk-area-newforest', Object.assign({ lat: row.lat, lon: row.lon, county: 'hampshire' }, meta), () => sceneFromArchetype('newforest', row, patch || {}));
+}

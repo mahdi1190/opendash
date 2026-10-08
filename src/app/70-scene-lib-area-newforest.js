@@ -365,4 +365,56 @@
       return { body };
     },
   });
+
+  /* ---------- tree.ancient-oak: a veteran pollard oak of the Forest's ancient woods (the Knightwood Oak kind) ---------- */
+  sceneObjDefine({
+    id: 'tree.ancient-oak', category: 'tree', size: [620, 520], variants: 2, seasonal: true, shapeBySeason: true, flippable: true,
+    palette: {
+      base: { bark: ['#5a4a3a', '#3e3228', '#7a6a56'], moss: ['#6a7a3e'], leaf: ['#2f5a2a', '#47732f', '#6f9a42', '#94b858'] },
+      spring: { leaf: ['#4a7a30', '#6a9a3a', '#94bc4a', '#c0da6a'] },
+      summer: { leaf: ['#2a5226', '#406c2e', '#62903e', '#86ae50'] },
+      autumn: { leaf: ['#6e4a1e', '#9a6426', '#c08a34', '#dcb04a'] },
+      winter: { leaf: ['#6a5a40', '#7e6c4e', '#94825e', '#a89874'] },
+    },
+    parts: ['trunk', 'crown'],
+    anim: { sway: { part: 'crown', pivot: [0, -220], deg: 1.4 } },
+    shadow: { rx: 260, ry: 22, h: 500 },
+    reflect: true,
+    tags: ['uk', 'new-forest', 'woodland', 'deciduous', 'oak', 'veteran', 'ancient', 'pollard', 'signature', 'kit:temperate', 'role:tree'],
+    credit: 'area-newforest: an ancient pollard oak of the New Forest woods',
+    build(v, rnd, ctx) {
+      const r = sceneRnd(7100 + v * 37), season = (ctx && ctx.season) || 'summer', bare = season === 'winter';
+      const trunk = [], crown = [];
+      // the short massive bole with burrs and fluting, flaring at the foot; the pollard head where the limbs spring
+      trunk.push(['@bark.0', 'M-90 0C-70-30-62-90-68-150C-72-190-58-214-30-222H34C62-214 74-190 70-150C64-90 72-30 96 0z']);
+      trunk.push({ f: '@bark.1', d: 'M20 0C34-50 40-120 34-200L56-200C70-160 62-80 96 0z', op: .7 }, { f: '@bark.2', d: 'M-80-4C-62-40-56-100-60-160L-44-170C-46-110-48-50-60-4z', op: .6 });
+      trunk.push({ s: '@bark.1', w: 2.4, op: .55, d: 'M-30-10C-26-70-34-130-24-200M6-6C10-80 2-150 10-210M-56-30C-48-70-50-110-44-150', detail: true });
+      for (let i = 0; i < 6; i++) { const x = -50 + r() * 100, y = -40 - r() * 150; trunk.push({ f: '@bark.' + (i % 2 ? 1 : 2), d: `M${f1(x - 10)} ${f1(y)}a10 8 0 1 0 20 0a10 8 0 1 0 -20 0z`, op: .8, detail: true }); }
+      trunk.push({ f: '@moss.0', d: 'M-86-2C-74-20-70-50-72-80L-62-80C-62-50-64-20-70-2z', op: .7 });
+      // the great limbs: low, spreading, twisting out from the pollard head
+      const limbs = [[-30, -210, -250, -330, 22], [-10, -220, -120, -420, 18], [20, -220, 140, -440, 18], [30, -210, 270, -320, 22], [0, -222, 20, -470, 14]];
+      for (const [x0, y0, x1, y1, w] of limbs) {
+        const mx = (x0 + x1) / 2 + (r() - .5) * 60, my = (y0 + y1) / 2 - 30;
+        trunk.push({ s: '@bark.0', w, cap: 'round', d: `M${x0} ${y0}Q${f1(mx)} ${f1(my)} ${x1} ${y1}` });
+        trunk.push({ s: '@bark.2', w: w * .3, cap: 'round', op: .5, d: `M${x0 - w * .3} ${y0}Q${f1(mx - w * .3)} ${f1(my)} ${x1 - w * .2} ${y1}`, detail: true });
+        // twigs
+        for (let k = 0; k < (bare ? 5 : 2); k++) { const a = r() * Math.PI - Math.PI, l = 40 + r() * 70; trunk.push({ s: '@bark.1', w: Math.max(2, w * .25), cap: 'round', d: `M${x1} ${y1}l${f1(Math.cos(a) * l)} ${f1(Math.sin(a) * l * .7)}`, detail: !bare }); }
+      }
+      // the crown: big lobed masses, darker below, lit on the left; in winter a few dead leaves only
+      const lobes = [];
+      for (let i = 0; i < 15; i++) { const t = -1 + 2 * i / 14 + (r() - .5) * .08, x = t * 270 + (r() - .5) * 30, y = -290 - (1 - t * t) * 160 + (r() - .5) * 50 - (i % 2) * 30; lobes.push([Math.round(x), Math.round(y), 58 + Math.round(r() * 40), 44 + Math.round(r() * 28)]); }
+      for (let i = 0; i < 4; i++) lobes.push([Math.round(-150 + i * 100 + (r() - .5) * 40), Math.round(-360 - r() * 60), 80, 56]);
+      if (!bare) {
+        for (const [x, y, rx, ry] of lobes) crown.push(['@leaf.0', `M${x - rx} ${y + 10}a${rx} ${ry} 0 1 1 ${2 * rx} 0q-${rx * .5} ${ry * .5}-${rx} ${ry * .4}t-${rx} -${ry * .4}z`]);
+        for (const [x, y, rx, ry] of lobes) crown.push(['@leaf.1', `M${x - rx * .85} ${y}a${rx * .85} ${ry * .75} 0 1 1 ${1.7 * rx} 0q-${rx * .4} ${ry * .3}-${rx * .85} ${ry * .25}t-${rx * .85} -${ry * .25}z`]);
+        for (const [x, y, rx, ry] of lobes) crown.push(['@leaf.2', `M${x - rx * .7} ${y - ry * .2}a${rx * .55} ${ry * .5} 0 1 1 ${1.1 * rx} 0q-${rx * .3} ${ry * .2}-${rx * .55} ${ry * .15}t-${rx * .55} -${ry * .15}z`, .9]);
+        for (let i = 0; i < 22; i++) { const [x, y, rx, ry] = lobes[(i * 7) % lobes.length], px = x - rx * .7 + r() * rx * .9, py = y - ry * .6 + r() * ry * .5; crown.push({ f: '@leaf.3', d: `M${f1(px - 14)} ${f1(py)}a14 9 0 1 1 28 0z`, op: .8, detail: true }); }
+      } else {
+        for (let i = 0; i < 14; i++) { const [x, y, rx, ry] = lobes[i % lobes.length], px = x - rx * .6 + r() * rx * 1.2, py = y - ry * .4 + r() * ry * .7; crown.push({ f: '@leaf.' + (i % 4), d: `M${f1(px - 6)} ${f1(py)}a6 4 0 1 1 12 0z`, op: .7 }); }
+      }
+      // ivy and a hollow at the foot
+      trunk.push({ f: '#1e1814', d: 'M-14 0C-12-24-4-40 4-40C12-40 16-20 18 0z', op: .85 }, { f: '@moss.0', d: 'M40-20C46-60 44-120 50-160L58-158C54-110 56-60 50-20z', op: .5, detail: true });
+      return { trunk, crown };
+    },
+  });
 })();
