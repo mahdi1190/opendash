@@ -68,7 +68,7 @@
         .map(([i, t, d]) => h('li', null, h('span', { class: 'fv-step-ic' }, ic(i)), h('b', { text: t }), h('span', { text: d }))));
     const el = emptyState({ icon: 'wallet', cls: 'fv-welcome', title: 'Bring in your transactions',
       text: 'Import a CSV export from your bank, or connect your bank to sync it automatically (read-only). Your data stays in your data folder.',
-      actions: [imp, sync], after: h('div', null, pending, steps) });
+      actions: [imp, sync, h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => (window.Connections && Connections.open ? Connections.open('money') : setView('connections')) }, ic('landmark'), h('span', { text: 'Connect a bank or wallet' }))], after: h('div', null, pending, steps) });
     // One calm animated scene (a coin dropping into a jar) instead of a static icon.
     try {
       const FS = window.FinSymbols, box = el.querySelector('.es-icon');
@@ -225,6 +225,8 @@
       msg = a.sample ? ['info', 'Sample data.', 'These figures are made up to show the layout. Import a CSV from your bank to see your own.']
         : days > 4 ? ['triangle-alert', `Your data is ${days} days old.`, bankOk() ? 'Sync your bank, or import a recent CSV export.' : 'Import a recent CSV export from your bank, or connect your bank to sync it.'] : null;
     }
+    // A direct bank connection that needs (or soon needs) a new sign-in (56-fin-connect.js).
+    if (!msg && a && !a.sample && typeof window.finConnectReauthNotice === 'function') { try { const n = window.finConnectReauthNotice(); if (n) msg = ['triangle-alert', n[1], n[2]]; } catch (e) { /* no notice */ } }
     E.banner.hidden = !msg;
     E.banner.className = 'callout fv-banner' + (msg && msg[0] === 'triangle-alert' ? ' warn' : '');
     if (msg) E.banner.append(ic(msg[0]), h('div', null, h('b', { text: msg[1] }), ' ' + msg[2]));

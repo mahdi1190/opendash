@@ -15,7 +15,7 @@
    or esc(). Nothing here sends or stores a password or token.
    ============================================================ */
 const SRC_CAPS = [
-  { id: 'bank', name: 'Banks', one: 'bank', icon: 'landmark', unlocks: 'Bank sync in Finances', hint: 'Transactions and balances. Importing a CSV export works without any connection.' },
+  { id: 'bank', name: 'Banks and wallets', one: 'bank', icon: 'landmark', unlocks: 'Bank sync in Finances', hint: 'Monzo, Plasma One, other UK and EU banks, Aureli through Claude, or a CSV export.' },
   { id: 'calendar', name: 'Calendars', one: 'calendar', icon: 'calendar-days', unlocks: 'Events next to your tasks', hint: 'Events from Google, Outlook or any calendar with an iCal link.' },
   { id: 'email', name: 'Email', one: 'mailbox', icon: 'mail', unlocks: 'Email triage, mail on people', hint: 'Recent subjects, senders and previews. Never full messages; nothing is ever sent.' },
 ];
@@ -373,6 +373,9 @@ function srcServersCard() {
  */
 function srcAddFlow(o) {
   o = o || {};
+  // Banks and wallets are added from the Money block (56-fin-connect.js), which
+  // offers every provider; only a named MCP server or "another bank MCP" comes here.
+  if (o.capability === 'bank' && !o.edit && !o.server && !o.mcpBank && typeof finMoneyBlock === 'function') { connOpen('money'); return; }
   const f = {
     step: o.edit ? (o.edit.kind === 'ical' ? 'url' : 'tools') : o.capability ? (o.server ? 'tools' : 'from') : 'what',
     capability: o.edit ? o.edit.capability : o.capability || null,
@@ -481,7 +484,10 @@ function srcAddFlow(o) {
     if (f.step === 'what') {
       bodyEl.appendChild(_connEl('p', 'src-lead', 'What should the dashboard read?'));
       const g = _connEl('div', 'src-choices');
-      for (const c of SRC_CAPS) g.appendChild(choice(c.icon, c.name, c.hint, f.capability === c.id, () => { f.capability = c.id; go(f.server ? 'tools' : 'from'); }));
+      for (const c of SRC_CAPS) g.appendChild(choice(c.icon, c.name, c.hint, f.capability === c.id, () => {
+        if (c.id === 'bank' && !f.server && typeof finMoneyBlock === 'function') { closeFn && closeFn(); connOpen('money'); return; }
+        f.capability = c.id; go(f.server ? 'tools' : 'from');
+      }));
       bodyEl.appendChild(g);
       spacer();
       return;

@@ -86,6 +86,8 @@
     setSection: (id) => setSection(id),
     // Select a merchant (the bar's chip clears it): Home's Payday & safe to spend opens a bill in Recurring with it.
     setMerchant: (m) => { m = typeof m === 'string' ? m : ''; if (m !== F.merchant) setMerchant(m); },
+    // Connections > Money's "Import a CSV" opens the same file picker (inside the user's click).
+    importCsv: () => pickCsv(),
   };
   // @c3 The shell's pure helpers, for tests/finance-shell.test.mjs and the console (not an API for other modules).
   window.FinanceView._shell = {

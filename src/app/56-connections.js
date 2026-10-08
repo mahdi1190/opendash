@@ -4,9 +4,12 @@
    guided way to connect. Status comes from GET /api/connections (cached
    in <data>/connections.json, re-checked at most hourly); "Check again"
    runs one harmless check. Gating of features lives in
-   56-connections-gate.js (window.Connections). Nothing here asks for or
-   stores a password or token: sign-in always happens in Claude's own
-   window or on claude.ai.
+   56-connections-gate.js (window.Connections). The cards here never ask
+   for a password: sign-in happens in Claude's own window, on claude.ai or
+   on the provider's own page. Money (banks and wallets) is its own block,
+   56-fin-connect.js: its direct connections save a Monzo client or an
+   Enable Banking key file in the data folder's secrets area, never in the
+   page.
    ============================================================ */
 const CONNECTORS_URL = 'https://claude.ai/customize/connectors';
 const CONNECTION_INFO = [
@@ -19,9 +22,6 @@ const CONNECTION_INFO = [
   { id: 'calendar', name: 'Google Calendar', icon: 'calendar-days', sub: 'claude.ai connector · read-only',
     unlocks: ['Events next to tasks', 'Update calendar', 'Meeting prep'],
     text: 'Shows your events next to your tasks. It can never create, change or answer events.' },
-  { id: 'bank', name: 'Bank', icon: 'landmark', sub: 'claude.ai connector · read-only',
-    unlocks: ['Bank sync in Finances'],
-    text: 'Pulls recent transactions into Finances. Importing a CSV export from your bank works without it.' },
 ];
 const CONN_STATE_LABEL = {
   ok: ['ok', 'Connected'], auth: ['warn', 'Needs sign-in'], setup: ['off', 'Not set up'], limited: ['warn', 'Usage limit reached'],
@@ -397,10 +397,11 @@ function _connPageSourceSection(sources, ready) {
   const results = _connEl('span', 'cp-results'); results.setAttribute('role', 'status'); results.setAttribute('aria-live', 'polite');
   const paint = () => {
     grid.replaceChildren();
-    const visible = sources.filter(s => _connPageMatchesSource(s, _connPageFilter, _connPageQuery));
+    // Banks and wallets live in the Money block below (56-fin-connect.js).
+    const visible = sources.filter(s => s.capability !== 'bank' && _connPageMatchesSource(s, _connPageFilter, _connPageQuery));
     for (const s of visible) grid.appendChild(_connPageSourceCard(s));
     // CSVs and demo sources never stand in for a connected account.
-    const missing = ['bank', 'calendar', 'email'].filter(cap => !sources.some(s => s.capability === cap && s.kind !== 'csv' && !s.demo));
+    const missing = ['calendar', 'email'].filter(cap => !sources.some(s => s.capability === cap && s.kind !== 'csv' && !s.demo));
     if (ready && _connPageFilter === 'all') for (const cap of missing) {
       const suggestion = _connPageSuggestion(cap);
       if (!_connPageQuery.trim() || suggestion.textContent.toLowerCase().includes(_connPageQuery.trim().toLowerCase())) grid.appendChild(suggestion);
@@ -415,9 +416,10 @@ function _connPageSourceSection(sources, ready) {
     results.textContent = ready ? `${visible.length} source${visible.length === 1 ? '' : 's'} shown` : 'Loading connections';
     for (const button of filters.children) { const active = button.dataset.filter === _connPageFilter; button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); }
   };
+  const listed = sources.filter(s => s.capability !== 'bank');
   for (const [id, label, count] of [
-    ['all', 'All', sources.length], ['connected', 'Connected', sources.filter(s => _connPageLiveSource(s) && _connPageSourceState(s) === 'ok').length],
-    ['attention', 'Needs attention', sources.filter(_connPageNeedsAttention).length], ['paused', 'Paused', sources.filter(s => _connPageSourceState(s) === 'off').length],
+    ['all', 'All', listed.length], ['connected', 'Connected', listed.filter(s => _connPageLiveSource(s) && _connPageSourceState(s) === 'ok').length],
+    ['attention', 'Needs attention', listed.filter(_connPageNeedsAttention).length], ['paused', 'Paused', listed.filter(s => _connPageSourceState(s) === 'off').length],
   ]) {
     const button = _connEl('button', 'cp-filter'); button.type = 'button'; button.dataset.filter = id;
     button.append(_connEl('span', null, label), _connEl('span', 'cp-count', ready ? String(count) : '—'));
@@ -486,7 +488,9 @@ registerSection('connections', {
     const check = _connBtn(_connPageChecking ? 'Checking…' : 'Check status', 'refresh-cw', 'btn-secondary', _connPageCheck); check.disabled = _connPageChecking;
     actions.append(check, _connBtn('Add connection', 'plus', 'btn-primary', () => srcAddFlow({})));
     heading.append(copy, actions);
-    page.append(heading, _connPageHero(), _connPageOverview(sources, all, ready), _connPageSourceSection(sources, ready), _connPageAssistantSection(all));
+    page.append(heading, _connPageHero(), _connPageOverview(sources, all, ready), _connPageSourceSection(sources, ready));
+    if (typeof finMoneyBlock === 'function') page.appendChild(finMoneyBlock());
+    page.appendChild(_connPageAssistantSection(all));
     if (typeof microsoftConnectionCard === 'function') page.appendChild(microsoftConnectionCard(all));
     const privacy = _connEl('section', 'cp-privacy-panel cp-privacy-wide');
     privacy.innerHTML = icon('shield-check');
@@ -521,14 +525,15 @@ registerSection('connections', {
     }
     if (_connFocus) {
       const id = _connFocus;
-      const cap = { gmail: 'email', email: 'email', calendar: 'calendar', bank: 'bank' }[id];
+      const money = id === 'bank' || id === 'money';
+      const cap = money ? null : { gmail: 'email', email: 'email', calendar: 'calendar' }[id];
       if (!cap || ready || SourcesStore.error) _connFocus = null;
       const source = cap && sources.find(s => s.capability === cap && s.kind !== 'csv' && !s.demo);
-      const el = cap ? (source && container.querySelector(`[data-source="${CSS.escape(source.id)}"]`)) || container.querySelector(`.cp-suggestion[data-cap="${cap}"]`) : container.querySelector(`[data-conn="${CSS.escape(id)}"]`);
-      if (el) { el.scrollIntoView({ block: 'center', behavior: (window.Motion && Motion.prefersReduced()) ? 'auto' : 'smooth' }); el.classList.add('is-focus'); setTimeout(() => el.classList.remove('is-focus'), 1800); }
+      const el = money ? container.querySelector('[data-conn="money"]') : cap ? (source && container.querySelector(`[data-source="${CSS.escape(source.id)}"]`)) || container.querySelector(`.cp-suggestion[data-cap="${cap}"]`) : container.querySelector(`[data-conn="${CSS.escape(id)}"]`);
+      if (el) { el.scrollIntoView({ block: money ? 'start' : 'center', behavior: (window.Motion && Motion.prefersReduced()) ? 'auto' : 'smooth' }); el.classList.add('is-focus'); setTimeout(() => el.classList.remove('is-focus'), 1800); }
     }
   },
-  unmount() { _connPageSearchFocus = false; _connPageAccountFocus = null; /* keep the caches: no flash on return */ },
+  unmount() { _connPageSearchFocus = false; _connPageAccountFocus = null; if (typeof finMoneyUnmount === 'function') finMoneyUnmount(); /* keep the caches: no flash on return */ },
 });
 
 registerCommand({ id: 'open-connections', label: 'Connections', icon: 'plug', group: 'Go to', keywords: 'connect claude gmail calendar bank mcp sign in', run: () => setView('connections') });
