@@ -87,10 +87,10 @@ function sceneSh2Bar(d, o) {
   const opt = o || {}, H = d.view.horizon, yc = Math.round(H + (900 - H) * 0.35), seed = opt.seed || 7000;
   sceneSh2Ground(d, 'horizon', sceneSh2Rect(-160, H - 34, 1760, H + 4), sceneSh2Lin('@hills.1', '@hills.0', H - 34, H + 4));
   sceneSh2Ground(d, 'far', sceneSh2Rect(-160, H - 40, 1760, H + 30), sceneSh2Lin('@wood.1', '@wood.2', H - 40, H + 30));
-  sceneSh2Cover(d, 'far', [-160, H - 12, 1760, H + 32], opt.far || { 'tree.distant': 2, 'tree.far-broad': 1 }, opt.farN || 22, [0.2, 0.5], seed + 1, { flip: 0.5 });
+  sceneSh2Cover(d, 'far', [-160, H - 12, 1760, H + 32], opt.far || { 'tree.distant': 2, 'tree.far-broad': 1 }, opt.farN || 22, [0.2, 0.5], seed + 1, { flip: 0.5, mask: { noise: { scale: 160, cut: 0.3 } } });
   if (opt.verge) sceneSh2Ground(d, 'near', sceneSh2Rect(-160, opt.verge[0], 1760, opt.verge[1]), sceneSh2Lin('@ground.0', '@ground.2', opt.verge[0], opt.verge[1]));
   sceneSh2Cover(d, 'near', [-160, yc, 1760, 900], opt.cover || { 'street.bollard': 2, 'plant.planter': 1, 'bird.pigeon': 3 }, opt.n || 300, [0.45, 1.0], seed + 2, { flip: 0.5, minGap: 16, reflect: !!opt.reflect });
   const fy = Math.round(yc + (900 - yc) * 0.6);
-  sceneSh2Flock(d, 'bird.small-flight', 4, [200, 110, 1500, Math.max(200, H - 60)], seed + 9, { speed: 24, s: 0.5 });
+  sceneSh2Flock(d, 'bird.small-flight', 6, [200, 110, 1500, Math.max(200, H - 60)], seed + 9, { speed: 24, s: 0.5 });
   sceneSh2Cover(d, 'fore', [-160, fy, 1760, 905], opt.fore || { 'plant.grass': 2, 'plant.wildflowers': 1 }, opt.foreN || 40, [0.5, 1.2], seed + 3, { flip: 0.5, minGap: 22, reflect: !!opt.reflect });
 }

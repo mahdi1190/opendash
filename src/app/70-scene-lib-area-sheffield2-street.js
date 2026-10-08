@@ -72,3 +72,35 @@
     },
   });
 })();
+
+/* Works chimney (Neepsend and Kelham Island): a brick stack on a stone base, with a band near the top. Generic, no lettering. */
+(function () {
+  if (typeof sceneObjDefine !== 'function') return;
+  const f1 = (n) => Math.round(n * 10) / 10;
+  const R = (x, y, w, h) => `M${f1(x)} ${f1(y)}h${f1(w)}v${f1(h)}h${f1(-w)}z`;
+  const P = (pts) => 'M' + pts.map(p => f1(p[0]) + ' ' + f1(p[1])).join('L') + 'z';
+  const NIGHT = { glow: { window: '#f6d48a', lamp: '#ffe6a8' }, on: 0.6 };
+  sceneObjDefine({
+    id: 'landmark.sheffield2-chimney', category: 'landmark', size: [240, 380], variants: 1, seasonal: false, flippable: true,
+    palette: { base: {
+      brick: ['#8a4a3a', '#6e3a2e', '#a25a46'], stone: ['#a69e8c', '#8a8270'], dark: ['#2e3236', '#44484d'], band: ['#d8d0c0', '#b8b0a0'],
+      warm: ['#f0c070'], soot: ['#3a3836', '#2a2826'],
+    } },
+    night: NIGHT, parts: ['body', 'lit'], shadow: { rx: 80, ry: 10, h: 360 }, reflect: false,
+    tags: ['landmark', 'signature', 'place:uk/sheffield', 'uk', 'sheffield', 'industry', 'chimney', 'works', 'kit:urban'],
+    credit: 'drawn for the Sheffield area scenes (a generic works chimney, no lettering)',
+    build() {
+      const b = [];
+      b.push(['@stone.0', R(-14, 336, 268, 44)], ['@stone.1', R(-18, 326, 276, 12)]);
+      b.push(['@brick.0', P([[12, 330], [48, 16], [192, 16], [228, 330]])]);
+      b.push(['@brick.1', P([[178, 330], [192, 16], [228, 330]])]);
+      b.push(['@band.0', R(44, 40, 152, 8)], ['@band.1', R(40, 96, 160, 5)]);
+      b.push(['@soot.0', R(54, 16, 132, 6)]);
+      b.push(['@stone.1', R(40, 4, 160, 14)], ['@stone.0', R(36, 0, 168, 6)]);
+      for (let k = 0; k < 4; k++) b.push({ s: '@dark.1', w: 1, d: `M${80 + k * 24} 258V292` });
+      b.push(['@dark.0', R(108, 290, 24, 40)]);
+      const lit = [{ f: '@warm', d: R(108, 290, 24, 40), op: 0.5 }];
+      return { body: b, lit };
+    },
+  });
+})();

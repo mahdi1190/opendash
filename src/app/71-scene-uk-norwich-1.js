@@ -40,8 +40,8 @@
     const d = nwLand(nwData({ id: 'norwich-castle-mound', lat: 52.6284, lon: 1.2952, heading: 25, H: 660, at: 'morning', setting: 'mixed', clouds: 7 }), 660);
     nwGround(d, 'mid', 'M-160 900L-160 700Q300 600 600 790Q900 640 1760 690L1760 900Z', '@lawn.0');
     nwGround(d, 'near', 'M1100 900L1290 900L1000 790L960 790Z', '@path.0');
-    nwPut(d, 'landmark.norwich-castle', 'far', 800, 700, 470);
-    nwPut(d, 'tree.cherry', 'near', 1440, 740, 380);
+    nwPut(d, 'landmark.norwich-castle', 'far', 430, 700, 470);
+    nwPut(d, 'tree.cherry', 'near', 1400, 740, 380);
     nwPut(d, 'tree.cherry', 'mid', -40, 760, 420);
     nwPut(d, 'structure.stone-wall', 'near', 1210, 812, 110, { flip: true });
     nwPerson(d, 'person.bench-reader', 'near', 380, 830);
@@ -70,7 +70,7 @@
     nwPut(d, 'building.norwich-market', 'mid', 250, 620, 170, { variant: 2 });
     nwPut(d, 'building.norwich-market', 'mid', 1170, 610, 180, { variant: 0, flip: true });
     nwPut(d, 'building.norwich-market', 'near', 720, 900, 250, { variant: 1 });
-    nwFloor(d, ['ground.leaves', 'ground.puddle', 'street.bollard', 'street.bench', 'plant.planter', 'plant.shrub'], 330, 120);
+    nwFloor(d, ['ground.leaves', 'ground.puddle', 'street.bollard', 'street.bench', 'street.lamp'], 330, 120);
     nwScat(d, 'bird.pigeon', 'near', [0, 700, 1600, 900], 10, 0.9, 1.2, { minGap: 50 });
     nwFlock(d, 'bird.gull', 'far', 4, [200, 60, 1400, 240], 30, 0.6);
     nwAct(d, 'person.shopper', 'near', [[-120, 790], [1720, 776]], 14, ps(d, 'person.shopper', 790), { flip: false });
@@ -92,7 +92,7 @@
     nwPut(d, 'building.elm-hill-house', 'far', 1040, 484, 150, { variant: 1 });
     nwPut(d, 'plant.planter', 'near', 220, 760, 80);
     nwPut(d, 'plant.planter', 'mid', 1330, 700, 70);
-    nwFloor(d, ['ground.leaves', 'ground.puddle', 'street.bollard', 'street.bench', 'plant.planter', 'plant.shrub'], 420, 120);
+    nwFloor(d, ['ground.leaves', 'ground.puddle', 'street.bollard', 'street.bench', 'street.lamp'], 420, 120);
     nwScat(d, 'bird.pigeon', 'near', [200, 780, 1500, 900], 8, 0.9, 1.2, { minGap: 60 });
     nwFlock(d, 'bird.pigeon', 'far', 4, [400, 120, 1200, 260], 28, 0.6);
     nwFlock(d, 'bird.gull', 'far', 3, [600, 60, 1100, 200], 22, 0.5);
@@ -114,7 +114,7 @@
     nwPut(d, 'street.bollard', 'near', 170, 860, 70);
     nwPut(d, 'plant.planter', 'near', 1400, 830, 80);
     nwPerson(d, 'person.couple', 'near', 1040, 830);
-    nwFloor(d, ['ground.leaves', 'ground.puddle', 'street.bollard', 'street.bench', 'plant.planter', 'plant.shrub'], 520, 120);
+    nwFloor(d, ['ground.leaves', 'ground.puddle', 'street.bollard', 'street.bench', 'street.lamp'], 520, 120);
     nwScat(d, 'bird.pigeon', 'near', [0, 760, 1500, 900], 8, 0.9, 1.1, { minGap: 60 });
     nwFlock(d, 'bird.gull', 'far', 4, [300, 70, 1400, 230], 32, 0.6);
     nwAct(d, 'person.cyclist', 'near', [[-150, 880], [1720, 870]], 22, ps(d, 'person.cyclist', 880), { flip: false });
@@ -132,7 +132,7 @@
     nwPut(d, 'plant.planter', 'near', 120, 860, 90);
     nwPerson(d, 'person.cafe-goer', 'near', 1000, 760);
     nwPerson(d, 'person.phone-idler', 'near', 1130, 830);
-    nwFloor(d, ['ground.leaves', 'ground.puddle', 'street.bollard', 'street.bench', 'plant.planter', 'plant.shrub'], 560, 120);
+    nwFloor(d, ['ground.leaves', 'ground.puddle', 'street.bollard', 'street.bench', 'street.lamp'], 560, 120);
     nwScat(d, 'bird.pigeon', 'near', [0, 720, 1600, 900], 12, 0.9, 1.2, { minGap: 40 });
     nwFlock(d, 'bird.pigeon', 'far', 8, [200, 110, 1200, 300], 30, 0.7);
     nwFlock(d, 'bird.gull', 'far', 5, [200, 60, 1500, 250], 34, 0.6);

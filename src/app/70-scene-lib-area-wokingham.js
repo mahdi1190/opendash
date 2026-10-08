@@ -522,4 +522,41 @@
       return { body: b };
     },
   });
+
+  /* ---------- a stand of Scots pines on the heath (natural landmark, California Country Park) ---------- */
+  sceneObjDefine({
+    id: 'landmark.heath-pine-stand',
+    category: 'landmark',
+    size: [700, 600],
+    variants: 1,
+    seasonal: true,
+    flippable: false,
+    palette: {
+      base: { trunk: ['#b0623e', '#8a4a30', '#c47a52'], crown: ['#2c4a36', '#3a5a40', '#243e2e'] },
+      spring: { crown: ['#34563e', '#44683f', '#2a4636'] }, summer: {},
+      autumn: { crown: ['#34503a', '#42603e', '#2a4230'] },
+      winter: { crown: ['#2a3e34', '#34483a', '#20342a'] },
+    },
+    parts: ['body'],
+    shadow: { rx: 320, ry: 14, h: 520 },
+    reflect: false,
+    tags: ['landmark', 'signature', 'natural', 'place:uk/california-country-park', 'uk', 'berkshire', 'heath', 'scots pine', 'kit:temperate'],
+    credit: 'drawn for the Wokingham area pack: a stand of Scots pines on the heath, California Country Park',
+    build(v, rnd) {
+      const b = [], P = (...s) => b.push(...s), r = sceneRnd(7317);
+      const R = x => Math.round(x * 10) / 10;
+      // one Scots pine: a tall orange-red trunk, bare to a flat, lobed crown of needles
+      const pine = (x, h, w, cw) => {
+        const t = h * 0.6;
+        P({ f: '@trunk.1', d: `M${R(x - w * 0.5)} 0Q${R(x - w * 0.2)} ${R(-t * 0.4)} ${R(x - w * 0.12)} ${R(-t)}H${R(x + w * 0.12)}Q${R(x + w * 0.2)} ${R(-t * 0.4)} ${R(x + w * 0.5)} 0z` });
+        P({ f: '@trunk.2', d: `M${R(x + w * 0.04)} ${R(-t * 0.1)}Q${R(x + w * 0.08)} ${R(-t * 0.5)} ${R(x + w * 0.06)} ${R(-t)}H${R(x + w * 0.12)}Q${R(x + w * 0.2)} ${R(-t * 0.4)} ${R(x + w * 0.5)} 0z`, op: 0.6 });
+        P({ f: '@crown.0', d: sceneD.lobed(r, x, -h + 38, cw * 0.5, 34 + r() * 8, 9, 0.18) });
+        P({ f: '@crown.1', d: sceneD.lobed(r, x - cw * 0.22, -h + 62, cw * 0.34, 24, 8, 0.2) });
+        P({ f: '@crown.2', d: sceneD.lobed(r, x + cw * 0.26, -h + 68, cw * 0.28, 20, 7, 0.2) });
+      };
+      // a loose stand: the tallest in the middle and to the left, smaller ones behind and to the right
+      pine(-250, 520, 30, 150); pine(-40, 580, 34, 170); pine(160, 470, 26, 130); pine(300, 400, 22, 110); pine(-120, 360, 20, 100); pine(70, 430, 24, 120);
+      return { body: b };
+    },
+  });
 })();

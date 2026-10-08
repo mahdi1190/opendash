@@ -502,105 +502,165 @@
       return { poles, flags, lit };
     },
   });
+
+  /* ---------- landmark.iwm-north (Salford Quays, Trafford Wharf): three leaning concrete shards over glass ---------- */
+  define({
+    id: 'landmark.iwm-north', category: 'landmark', size: [620, 400], variants: 1, seasonal: false, flippable: false,
+    parts: ['body', 'lit'],
+    palette: { base: {
+      conc: ['#b4b9be', '#8e949a', '#6c7278', '#4a5056'], glass: ['#2c4252', '#4a6a7c'], warm: '#ffd890',
+    } },
+    night: { glow: { window: '#ffd890' }, on: 0.6 },
+    shadow: { rx: 300, ry: 9, h: 200 },
+    reflect: true,
+    tags: ['landmark', 'signature', 'place:uk/iwm-north', 'uk', 'salford', 'quays', 'museum', 'shards', 'kit:urban'],
+    credit: 'native: drawn for the Manchester (more) batch (three slanting concrete shards on the quays; no lettering)',
+    build() {
+      const body = [], lit = [];
+      body.push(['@conc.3', rect(-300, -14, 620, 14)]);
+      body.push(['@conc.1', poly([[-250, 0], [-190, 0], [-60, -340], [-120, -340]])]);
+      body.push(['@conc.2', poly([[-150, 0], [-80, 0], [-10, -400], [-70, -400]])]);
+      body.push(['@conc.0', poly([[30, 0], [110, 0], [220, -220], [160, -220]])]);
+      body.push(['@conc.2', poly([[150, 0], [200, 0], [290, -140], [250, -140]]), 0.9]);
+      // the glazed foot of the tall shard and the glass wall between the shards
+      const glassA = poly([[-132, -10], [-88, -10], [-30, -352], [-60, -352]]);
+      body.push({ f: '@glass.0', d: glassA, glow: 'window' }, { f: '@glass.1', d: poly([[-160, -6], [-120, -6], [-130, -40], [-154, -40]]), glow: 'window' });
+      body.push({ f: '@glass.1', d: poly([[72, -6], [108, -6], [186, -180], [150, -180]]), glow: 'window' });
+      let grid = '';
+      for (let y = -40; y > -340; y -= 34) grid += `M${f1(-120 - (-y - 40) * 0.06)} ${y}H${f1(-100 - (-y - 40) * 0.06)}`;
+      body.push({ s: '@conc.3', w: 1, op: 0.55, d: grid, detail: true });
+      body.push({ s: '@conc.3', w: 1.2, op: 0.5, d: 'M-240 -70L-170 -300M-180 -40L-90 -330M-20 -120L120 -20M120 -150L240 -90', detail: true });
+      lit.push({ f: '@warm', d: glassA, op: 0.35 });
+      lit.push({ f: { lin: [[0, '@warm', 0], [1, '@warm', 0.25]], x1: 0, y1: -220, x2: 0, y2: 0 }, d: rect(-300, -220, 620, 210) });
+      return { body, lit };
+    },
+  });
+
+  /* ---------- landmark.ordsall-chord (Salford, the Irwell): a single leaning pylon and a fan of harp cables ---------- */
+  define({
+    id: 'landmark.ordsall-chord', category: 'landmark', size: [720, 380], variants: 1, seasonal: false, flippable: false,
+    parts: ['body', 'lit'],
+    palette: { base: {
+      deck: ['#c8ccd0', '#9aa0a6', '#7a8086'], pylon: ['#b8bcc2', '#8a9096'], cable: ['#6a7078', '#4e5460'], warm: '#ffe0a0',
+    } },
+    night: { glow: { light: '#ffe0a0' }, on: 0.6 },
+    shadow: { rx: 330, ry: 8, h: 260 },
+    reflect: true,
+    tags: ['landmark', 'signature', 'place:uk/ordsall-chord', 'uk', 'salford', 'bridge', 'cable-stayed', 'harp', 'kit:urban'],
+    credit: 'native: drawn for the Manchester (more) batch (the cable-stayed footbridge over the Irwell, a fan of harp cables)',
+    build() {
+      const body = [], lit = [];
+      let cab = '';
+      for (let x = -300; x <= 300; x += 22) if (Math.abs(x - 9) > 14) cab += `M9 -340L${x} -30`;
+      body.push({ s: '@cable.0', w: 0.9, op: 0.8, d: cab, detail: true });
+      body.push({ f: '@pylon.0', d: poly([[-14, -26], [12, -26], [22, -340], [-4, -340]]) }, { f: '@pylon.1', d: poly([[12, -26], [22, -26], [22, -340], [12, -340]]) });
+      body.push(['@deck.0', rect(-340, -26, 680, 14)], ['@deck.2', rect(-340, -14, 680, 4)], ['@deck.1', rect(-340, -12, 680, 12)]);
+      body.push(['@deck.2', rect(-262, -40, 14, 14)], ['@deck.2', rect(240, -40, 14, 14)]);
+      body.push({ s: '@deck.2', w: 1, op: 0.5, d: 'M-330 -20H330', detail: true });
+      body.push(['@deck.2', rect(-258, 0, 12, -40), 0.7], ['@deck.2', rect(240, 0, 12, -40), 0.7]);
+      lit.push(['@warm', circ(9, -340, 5), 0.9], { f: '@warm', d: rect(-340, -26, 680, 14), op: 0.4 });
+      return { body, lit };
+    },
+  });
+
+  /* ---------- landmark.stockport-viaduct (the Mersey, Stockport): a long brick viaduct of round arches ---------- */
+  define({
+    id: 'landmark.stockport-viaduct', category: 'landmark', size: [940, 300], variants: 1, seasonal: false, flippable: false,
+    parts: ['body', 'lit'],
+    palette: { base: {
+      brick: ['#9a5238', '#7e4130', '#b06a4c', '#5c2e20'], arch: ['#2a1e1a', '#3a2a24'], stone: ['#b8aca0', '#8a8076'], warm: '#ffc878',
+    } },
+    night: { glow: { lamp: '#ffc878' }, on: 0.5 },
+    shadow: { rx: 430, ry: 9, h: 300 },
+    tags: ['landmark', 'signature', 'place:uk/stockport-viaduct', 'uk', 'stockport', 'viaduct', 'brick', 'railway', 'kit:urban'],
+    credit: 'native: drawn for the Manchester (more) batch (a long brick railway viaduct on round arches over the river)',
+    build() {
+      const body = [], lit = [];
+      body.push(['@brick.0', rect(-460, -256, 920, 256)]);
+      body.push(['@stone.0', rect(-466, -268, 932, 12)], ['@stone.1', rect(-466, -258, 932, 4)]);
+      let course = '';
+      for (let y = -240; y < -6; y += 14) course += `M-460 ${y}H460`;
+      body.push({ s: '@brick.3', w: 1, op: 0.35, d: course, detail: true });
+      for (let i = 0; i < 8; i++) {
+        const x = -440 + i * 110;
+        body.push(['@arch.0', archW(x, -150, 64, 144)]);
+        body.push(['@stone.0', rect(x + 60, -158, 12, 150), 0.7], ['@brick.2', rect(x - 6, -6, 76, 6)]);
+        body.push({ s: '@stone.1', w: 1.4, op: 0.8, d: `M${x - 2} -152Q${x + 32} -176 ${x + 66} -152`, detail: true });
+      }
+      body.push(['@arch.1', rect(-460, -6, 920, 6)]);
+      lit.push(['@warm', rect(-466, -268, 932, 12), 0.5]);
+      for (let i = 0; i < 8; i++) lit.push(['@warm', archW(-440 + i * 110, -150, 64, 144), 0.12]);
+      return { body, lit };
+    },
+  });
 })();
 
 /* ============================================================
-   ARCHETYPE mcr2-city: the second batch of Manchester views. It builds on the 'mcr-city' archetype
-   (70-scene-lib-area-manchester.js: the street, square, canal or quay with its landmarks, traffic,
-   tram, people, cover and the framing trees) and adds what this batch needs. PURE.
-   Extra params: water also 'lake' (a park lake with rowing boats and wildfowl) and 'marina' (a
-   canal basin with moored narrowboats); crowd (walkers | students | shoppers | fans | night | park)
-   picks the passers-by; features also: rain (wet paving, puddles), lanterns (strings of lanterns),
-   bunting (rainbow pennants), tram2 (a second, newer tram the other way), steam (a heritage engine
-   and carriage shunting on a short track), photographer, cafe (a cafe table), bench (a bench reader),
-   far also 'trees' (woodland instead of the far row of mills).
+   ARCHETYPE mcr2-street: the ground of the second Manchester batch. PURE. It gives the SKY, the
+   horizon, the far and mid bands, the water (canal, quays, lake, marina) and the road when a view has one.
+   It gives NO composition: no landmarks, no scatter, no people, no vehicles. Each scene's own
+   place, view and things come from its patch (71-scene-uk-manchester2-0.js), so every picture is
+   built for its real spot. The ground kinds are: square (a paved plaza), street (a street and its
+   pavements), towpath (a canal or river bank, grass and gravel), quay (a dockside, paved) and park
+   (lawns). Seasons only change the grass and the park's ground; the paving stays.
+   Params: id, lat, lon, heading, at, horizon, ground, water, road (the y of a road, 0 for none).
    ============================================================ */
-function sceneArchMcr2City(p, u) {
-  const R = Math.round, feats = p.features || [], has = f => feats.includes(f);
-  const lake = p.water === 'lake', marina = p.water === 'marina';
-  const water = lake || marina ? 'canal' : (p.water || 'none');
-  const trees = p.far === 'trees';
-  const data = sceneArchMcrCity(Object.assign({}, p, { water, far: trees ? 'brick' : p.far }), u);
-  // every far row uses all its variants; the fore cover is a little lighter (the tile still stays small);
-  // reseed (a row param) shifts the base rules' seeds when a view's scatter falls into a row by chance
-  const shift = Number.isFinite(p.reseed) ? p.reseed : 0;
-  for (const sc of data.scatter) {
-    if (sc.layer === 'far' && sc.seed === 4) sc.variant = 'random';
-    if ((sc.layer === 'fore' && (sc.seed === 7 || sc.seed === 8)) || (sc.layer === 'near' && sc.seed === 18)) sc.n = Math.round(sc.n * 0.72);
-    sc.seed += shift;
-  }
-  // a park: the far row is woodland, not mills
-  if (trees) for (const sc of data.scatter) if (sc.layer === 'far' && sc.seed === 4 + shift) { sc.obj = { 'tree.far-broad': 3, 'tree.distant': 2, 'tree.far-birch': 1 }; sc.n = 22; sc.minGap = 50; sc.s = [0.3, 0.6]; sc.tint = { col: '#6a8a9a', k: [0.06, 0.12] }; }
-  const H = Number.isFinite(p.horizon) ? p.horizon : 500, wet = water !== 'none';
-  const yL = wet ? H + 120 : H + 150, yW0 = yL + 6, yW1 = wet ? yL + 96 : yL, yR = wet ? yW1 + 40 : yL + 70, yF = Math.max(yR + 70, 800);
-  const pS = (id, y) => scenePersonScale(sceneObj(id).size[1], y, data.view);
-  // the passers-by, by crowd
-  const crowds = {
-    students: ['person.student', 'person.takeaway-walker', 'person.student', 'person.skateboarder', 'person.couple', 'person.phone-idler'],
-    shoppers: ['person.shopper', 'person.couple', 'person.shopper', 'person.buggy-walker', 'person.elderly-couple', 'person.wheelchair-user'],
-    fans: ['person.football-fan', 'person.walker', 'person.football-fan', 'person.couple', 'person.football-fan', 'person.takeaway-walker'],
-    night: ['person.couple', 'person.walker', 'person.takeaway-walker', 'person.couple', 'person.phone-idler', 'person.walker'],
-    park: ['person.dog-walker', 'person.jogger', 'person.couple', 'person.child-scooter', 'person.elderly-walker', 'person.buggy-walker'],
+const MCR2_KINDS = Object.freeze({
+  square: { setting: 'urban', hills: ['#8e98a0', '#aab2b8'], ground: ['#b8ae9c', '#9a9080'], pave: ['#cabfae', '#b0a594', '#938a7a'], road: ['#5c6064', '#72777c'] },
+  street: { setting: 'urban', hills: ['#9a8a80', '#b8a89a'], ground: ['#8a8478', '#6e6a62'], pave: ['#a9a39a', '#8e8880'], road: ['#4e5256', '#62676c'] },
+  towpath: { setting: 'urban', hills: ['#7f9aa6', '#9fb4bc'], ground: ['#6a8a44', '#4e6e36'], pave: ['#9a8e74', '#7a705e'], road: ['#5a5e62', '#70747a'] },
+  quay: { setting: 'urban', hills: ['#8a98a0', '#aab6be'], ground: ['#8a8e90', '#6e7478'], pave: ['#b8b2a6', '#9a948a'], road: ['#4a4e52', '#5e6266'] },
+  park: { setting: 'mixed', hills: ['#7f9aa6', '#9fb4bc'], ground: ['#6a8a44', '#4e6e36', '#3e5a2c'], pave: ['#7a9a4a', '#5e7a36'], road: ['#5a5e62', '#70747a'] },
+});
+const MCR2_SEASONS = Object.freeze({
+  spring: { square: { ground: ['#c4b8a0', '#a8a08c'] }, street: { ground: ['#9a9a88', '#7e7e6e'] }, quay: { ground: ['#9a9e9c', '#7e8482'] },
+    towpath: { ground: ['#7aa046', '#5a7e34'], pave: ['#8c8a58', '#6e6c44'] }, park: { ground: ['#74983e', '#57782f'], pave: ['#8ca84a', '#6a8a38'] } },
+  autumn: { square: { ground: ['#b08e5a', '#8e6e40'], hills: ['#a88a64', '#c8a878'] }, street: { ground: ['#9a7a4a', '#7e6036'], pave: ['#a48e6a', '#8a7450'] }, street: { ground: ['#8e7e62', '#6e604a'] }, quay: { ground: ['#8a8068', '#6e6650'] },
+    towpath: { ground: ['#9a7a3e', '#7a5e2e'], pave: ['#8a7a5a', '#6a5e44'] }, park: { ground: ['#a0782e', '#7e5e24', '#5e4618'], pave: ['#8a7a3e', '#6a5c2e'] } },
+  winter: { square: { ground: ['#dfe4ea', '#c0c8d0'], hills: ['#a8b4c0', '#c8d2dc'], pave: ['#d0d6dc', '#b4bcc4', '#98a0a8'] },
+    street: { ground: ['#d0d4d8', '#b4b8bc'], hills: ['#a8a8a8', '#c4c4c4'], pave: ['#c8ccd0', '#aab0b4'] },
+    quay: { ground: ['#c8ced4', '#aab2b8'], hills: ['#9aa8b4', '#b8c4cc'], pave: ['#d0d4d8', '#b0b6bc'] },
+    towpath: { ground: ['#8a9088', '#6e766c'], pave: ['#a8b0a8', '#8a928a'], hills: ['#9aa8b4', '#b8c4cc'] }, park: { ground: ['#8a9088', '#6e766c'], pave: ['#a8b0a8', '#8a928a'], hills: ['#9aa8b4', '#b8c4cc'] } },
+});
+function sceneArchMcr2Street(p, u) {
+  const H = Number.isFinite(p.horizon) ? p.horizon : 500;
+  const kind = MCR2_KINDS[p.ground] ? p.ground : 'street', K = MCR2_KINDS[kind];
+  const wet = !!p.water && p.water !== 'none', lake = p.water === 'lake';
+  const yW0 = H + 84, yW1 = H + 150, yWall = wet ? yW0 : 900, yNear = wet ? yW1 : H + 170;
+  const palette = { base: { hills: K.hills, ground: K.ground, pave: K.pave, road: K.road } };
+  for (const s of ['spring', 'autumn', 'winter']) if (MCR2_SEASONS[s][kind]) palette[s] = Object.assign({}, MCR2_SEASONS[s][kind]);
+  const data = {
+    v: 1, id: String(p.id), view: { lat: p.lat, lon: p.lon, heading: Number.isFinite(p.heading) ? p.heading : 180, fov: 78, horizon: H, lift: 1 },
+    at: p.at || 'afternoon', season: 'auto', tropic: 'summer', setting: p.setting && p.setting !== 'auto' ? p.setting : K.setting, signage: false, palette,
+    sky: { stars: 180, clouds: { n: 5, y: [60, Math.max(160, H - 200)], speed: 6 }, sunR: 26, moonR: 20 },
+    layers: SCENE_LAYERS_DEFAULT.map(l => Object.assign({}, l)),
+    ground: [
+      { layer: 'horizon', d: `M-160 ${H}Q200 ${H - 46} 520 ${H - 22}T1120 ${H - 34}T1760 ${H - 18}V${H + 40}H-160Z`, fill: { lin: [[0, '@hills.0'], [1, '@hills.1']], x1: 0, y1: H - 50, x2: 0, y2: H + 40 } },
+      { layer: 'far', d: `M-160 ${H + 6}Q500 ${H - 10} 900 ${H + 4}T1760 ${H}V${H + 90}H-160Z`, fill: { lin: [[0, '@ground.1'], [1, '@ground.0']], x1: 0, y1: H, x2: 0, y2: H + 90 } },
+      { layer: 'mid', d: `M-160 ${H + 60}Q600 ${H + 44} 1000 ${H + 58}T1760 ${H + 52}V${yWall}H-160Z`, fill: { lin: [[0, '@ground.0'], [1, '@ground.1']], x1: 0, y1: H + 50, x2: 0, y2: yWall } },
+      { layer: 'near', d: `M-160 ${yNear}Q500 ${yNear - 12} 900 ${yNear + 2}T1760 ${yNear - 6}V900H-160Z`, fill: { lin: [[0, '@pave.0'], [1, '@pave.2']], x1: 0, y1: yNear, x2: 0, y2: 900 } },
+    ],
+    water: [], place: [], scatter: [], actors: [], flocks: [],
+    particles: 'season', weather: 'live', camera: { pan: 0, period: 90 },
   };
-  const mix = crowds[p.crowd];
-  if (mix) {
-    let i = 0;
-    for (const a of data.actors) {
-      if (!/^person\./.test(a.obj) || a.obj === 'person.cyclist' || a.layer !== 'near') continue;
-      const id = mix[i++ % mix.length]; if (!sceneObj(id)) continue;
-      a.obj = id; a.s = pS(id, a.path[0][1]);
-      if (/idler|skateboarder|child-scooter/.test(id)) { a.speed = Math.min(a.speed, 9); }
-    }
+  if (p.road > 0) {
+    const yr = p.road;
+    data.ground.push({ layer: 'near', d: `M-160 ${yr - 22}H1760V${yr + 14}H-160Z`, fill: '@road.0' }, { layer: 'near', d: `M-160 ${yr - 34}H1760V${yr - 22}H-160Z`, fill: '@pave.1' });
   }
-  // wet days: darker paving and road, puddles that hold the sky
-  if (has('rain')) {
-    const wetP = { pave: ['#8e8a84', '#76726c', '#5e5a56'], road: ['#3e4246', '#50545a'], kerb: ['#a8a29a', '#86827a'] };
-    for (const s of ['base', 'spring', 'summer', 'autumn']) data.palette[s] = Object.assign({}, data.palette[s] || {}, wetP);
-    data.scatter.push({ obj: 'ground.puddle', layer: 'near', seed: 71, area: { rect: [-100, yR + 34, 1700, yR + 66] }, n: 9, minGap: 90, s: [0.45, 0.95], flip: 0.5, variant: 'random', mask: { noise: { scale: 170, cut: 0.35 } }, anim: false });
-    data.scatter.push({ obj: 'ground.puddle', layer: 'fore', seed: 72, area: { rect: [-100, yF + 4, 1700, yF + 30] }, n: 4, minGap: 320, s: [0.8, 1.2], flip: 0.5, variant: 'random', anim: false });
+  if (wet) {
+    const base = lake ? ['#9cc0c8', '#4f8a98', '#2a5e6c'] : ['#86b4c4', '#4a8aa0', '#24566e'];
+    data.water.push({ layer: 'mid', d: `M-160 ${yW0}Q400 ${yW0 - 6} 800 ${yW0}T1760 ${yW0 - 4}V${yW1}Q1200 ${yW1 + 6} 800 ${yW1}T-160 ${yW1}Z`, y0: yW0, y1: yW1, base, reflect: true, shimmer: 30, lightPath: true });
   }
-  // a park lake: rowing boats and wildfowl instead of narrowboats
-  if (lake) {
-    data.actors = data.actors.filter(a => !/^boat\.narrowboat/.test(a.obj));
-    data.actors.push({ obj: 'person.rower', layer: 'mid', path: [[260, R(yW0 + 30)], [900, R(yW0 + 34)]], speed: 6, loop: 'pingpong', s: pS('person.rower', yW0 + 30), seed: 73, offset: 0.3 });
-    data.actors.push({ obj: 'bird.swan', layer: 'mid', path: [[1000, R(yW0 + 60)], [1400, R(yW0 + 58)]], speed: 3, loop: 'pingpong', s: 0.5, seed: 74, offset: 0.6 });
-    data.actors.push({ obj: 'bird.goose', layer: 'mid', path: [[120, R(yW1 - 30)], [420, R(yW1 - 28)]], speed: 3, loop: 'pingpong', s: 0.46, seed: 75, offset: 0.1 });
-    data.scatter.push({ obj: 'plant.reed', layer: 'mid', seed: 76, area: { rect: [-140, yW1 - 6, 1740, yW1] }, n: 16, minGap: 50, s: [0.4, 0.7], flip: 0.5, variant: [0, 1], mask: { noise: { scale: 160, cut: 0.35 } }, anim: false, reflect: true });
-  }
-  // a marina: moored narrowboats along the far wall
-  if (marina) {
-    [[180, 0.5, false], [620, 0.46, true], [1160, 0.5, false], [1480, 0.44, true]].forEach(([x, s, f], i) => data.place.push({ obj: 'boat.narrowboat', x, y: R(yW0 + 18), s, layer: 'mid', seed: 77 + i, flip: f, variant: i % 3, reflect: true }));
-  }
-  // strings of lanterns or bunting across the street
-  if (has('lanterns')) [[220, 0], [1380, 2]].forEach(([x, v], i) => data.place.push({ obj: 'street.lantern-string', x, y: R(yR + 36), s: 0.95, layer: 'near', seed: 80 + i, variant: v, flip: i === 1 }));
-  if (has('bunting')) [[260, 0], [1360, 1]].forEach(([x, v], i) => data.place.push({ obj: 'street.mcr-bunting', x, y: R(yR + 36), s: 0.95, layer: 'near', seed: 84 + i, variant: v, flip: i === 1 }));
-  // a second tram the other way
-  if (has('tram2')) {
-    const y = yR - 18, s = Math.round((0.32 + (y - H) / (900 - H) * 0.32) * 0.66 * 100) / 100;
-    data.actors.push({ obj: 'vehicle.metrolink-m5000', layer: 'near', path: [[2100, y], [-500, y]], speed: 30, loop: 'loop', s, seed: 88, offset: 0.8, flip: true });
-  }
-  // a heritage engine and carriage on a short demonstration track
-  if (has('steam')) {
-    const y = R(yR - 14);
-    data.actors = data.actors.filter(a => !(a.layer === 'near' && /^vehicle./.test(a.obj)));
-    data.ground.push({ layer: 'near', d: `M-160 ${y - 2}H1760V${y + 4}H-160Z`, fill: '#5a524a' }, { layer: 'near', d: `M-160 ${y - 1}H1760V${y}H-160Z`, fill: '#9a9aa0' });
-    data.actors.push({ obj: 'rail.heritage-steam-loco', layer: 'near', path: [[300, y], [1200, y]], speed: 10, loop: 'pingpong', s: 0.62, seed: 90, offset: 0.3 });
-    data.actors.push({ obj: 'rail.heritage-coach', layer: 'near', path: [[146, y], [1046, y]], speed: 10, loop: 'pingpong', s: 0.62, seed: 91, offset: 0.3 });
-  }
-  if (has('photographer')) data.place.push({ obj: 'person.photographer', x: 1180, y: R(yR + 44), s: pS('person.photographer', yR + 44), layer: 'near', seed: 92 });
-  if (has('cafe')) data.place.push({ obj: 'person.cafe-goer', x: 420, y: R(yR + 46), s: pS('person.cafe-goer', yR + 46), layer: 'near', seed: 93, flip: true });
-  if (has('bench')) data.place.push({ obj: 'person.bench-reader', x: 1300, y: R(yR + 46), s: pS('person.bench-reader', yR + 46), layer: 'near', seed: 94 });
   return data;
 }
 (function () {
-  if (typeof sceneArchetypeDefine !== 'function' || typeof sceneArchMcrCity !== 'function') return;
-  sceneArchetypeDefine('mcr2-city', {
-    params: { id: 'id', lat: 'number', lon: 'number', heading: 'number', at: typeof SCENE_AT_MOMENTS !== 'undefined' ? SCENE_AT_MOMENTS : 'id', horizon: 'number', landmarks: 'list',
-      ground: ['street', 'square', 'towpath', 'quay', 'park'], water: ['none', 'canal', 'quays', 'lake', 'marina'], tram: ['none', 'street', 'viaduct'], far: ['mixed', 'brick', 'glass', 'trees'],
-      crowd: ['walkers', 'students', 'shoppers', 'fans', 'night', 'park'], reseed: 'number', features: 'list', palette: 'object' },
+  if (typeof sceneArchetypeDefine !== 'function' || typeof SCENE_AT_MOMENTS === 'undefined') return;
+  sceneArchetypeDefine('mcr2-street', {
+    params: { id: 'id', lat: 'number', lon: 'number', heading: 'number', at: SCENE_AT_MOMENTS, horizon: 'number', setting: ['auto', 'urban', 'mixed'],
+      ground: ['street', 'square', 'towpath', 'quay', 'park'], water: ['none', 'canal', 'quays', 'lake'], road: 'number' },
     kits: ['urban', 'temperate', 'people', 'birds', 'boats'],
-    slots: [{ id: 'landmark', layer: 'mid', x: 800, y: 650, s: 1 }],
+    slots: [],
     meta: () => null,
-    build: (p, u) => sceneArchMcr2City(p, u),
+    build: (p, u) => sceneArchMcr2Street(p, u),
   });
 })();

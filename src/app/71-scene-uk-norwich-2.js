@@ -29,8 +29,9 @@
     nwPut(d, 'tree.bank-alder', 'mid', 1480, 600, 330);
     nwPut(d, 'bird.heron', 'near', 330, 752, 130);
     nwScat(d, 'bird.swan', 'mid', [0, 618, 1600, 680], 5, 0.5, 0.7, { minGap: 90 });
-    nwFloor(d, ['plant.reed', 'plant.bulrush', 'plant.grass'], 540, 230);
+    nwFloor(d, ['plant.grass', 'plant.reed'], 540, 200, { minGap: 16 });
     nwScat(d, 'bird.mallard', 'mid', [-160, 618, 1760, 676], 4, 0.6, 0.8, { minGap: 120 });
+    nwScat(d, 'plant.grass', 'near', [-150, 730, 1750, 790], 40, 0.6, 0.9, { minGap: 16 });
     nwAct(d, 'person.dog-walker', 'near', [[-120, 780], [1720, 772]], 12, ps(d, 'person.dog-walker', 780), { flip: false });
     nwFlock(d, 'bird.gull', 'far', 4, [400, 80, 1300, 260], 30, 0.6);
     nwAct(d, 'boat.broads-cruiser', 'mid', [[-200, 660], [1800, 676]], 8, 0.5, { flip: false, loop: 'loop' });
@@ -47,8 +48,8 @@
     nwPut(d, 'tree.bank-willow', 'mid', 240, 660, 460);
     nwPut(d, 'tree.bank-birch', 'far', 1500, 610, 280);
     nwPut(d, 'bird.kingfisher', 'near', 760, 748, 60);
-    nwFloor(d, ['plant.reed', 'plant.bulrush', 'plant.grass'], 600, 220);
-    nwScat(d, 'plant.reed', 'mid', [-160, 690, 1760, 716], 70, 0.5, 0.8, { minGap: 22 });
+    nwFloor(d, ['plant.grass', 'plant.reed'], 600, 200, { minGap: 17 });
+    nwScat(d, 'plant.reed', 'mid', [-160, 690, 1760, 716], 60, 0.5, 0.8, { minGap: 22 });
     nwScat(d, 'bird.mallard', 'mid', [-160, 690, 1760, 716], 4, 0.6, 0.8, { minGap: 120 });
     nwScat(d, 'bird.heron', 'mid', [-160, 690, 1760, 716], 2, 0.5, 0.6, { minGap: 300 });
     nwFlock(d, 'bird.small-flight', 'far', 6, [200, 90, 1400, 280], 28, 0.6);
@@ -87,7 +88,7 @@
     nwPut(d, 'tree.pond-alder', 'far', 240, 600, 260);
     nwScat(d, 'animal.cattle', 'mid', [-160, 676, 1760, 712], 4, 0.45, 0.6, { minGap: 200, reflect: true });
     nwScat(d, 'bird.mallard', 'mid', [-160, 652, 1760, 666], 4, 0.6, 0.8, { minGap: 120, reflect: true });
-    nwFloor(d, ['plant.reed', 'plant.bulrush', 'plant.grass'], 560, 200);
+    nwFloor(d, ['plant.grass', 'plant.heather', 'plant.bracken', 'plant.reed'], 560, 200);
     nwScat(d, 'plant.reed', 'near', [-160, 700, 1760, 760], 60, 0.7, 1.1, { minGap: 26 });
     nwPut(d, 'bird.heron', 'near', 180, 760, 150);
     nwFlock(d, 'bird.small-flight', 'far', 6, [200, 120, 1400, 300], 30, 0.6);
@@ -110,8 +111,8 @@
     nwScat(d, ['plant.reed', 'plant.grass', 'plant.bulrush'], 'mid', { poly: [[-160, 500], [640, 500], [380, 900], [-160, 900]] }, 120, 0.6, 1.0, { minGap: 19, reflect: true });
     nwScat(d, ['plant.reed', 'plant.grass', 'plant.bulrush'], 'mid', { poly: [[960, 500], [1760, 500], [1760, 900], [1220, 900]] }, 120, 0.6, 1.0, { minGap: 19, reflect: true });
     nwFloor(d, ['plant.reed', 'plant.grass', 'plant.bulrush'], 480, 200, { reflect: true, minGap: 22 });
-    nwScat(d, 'bird.mallard', 'mid', { poly: [[600, 560], [1000, 560], [1220, 900], [380, 900]] }, 8, 0.6, 0.9, { minGap: 60 });
-    nwFlock(d, 'bird.small-flight', 'far', 6, [240, 90, 1360, 260], 30, 0.6);
+    nwScat(d, 'bird.mallard', 'mid', { poly: [[600, 560], [1000, 560], [1220, 900], [380, 900]] }, 6, 0.6, 0.9, { minGap: 60 });
+    nwFlock(d, 'bird.small-flight', 'far', 4, [240, 90, 1360, 260], 30, 0.6);
     nwAct(d, 'boat.broads-cruiser', 'mid', [[820, 530], [1000, 900]], 10, 0.5, { sByY: [[530, 0.22], [900, 0.9]], loop: 'loop' });
     nwAct(d, 'boat.broads-sail', 'mid', [[1800, 690], [-200, 700]], 6, 0.5, { flip: false, variant: 1 });
     nwAct(d, 'person.walker', 'near', [[-120, 822], [1720, 812]], 15, ps(d, 'person.walker', 822), { flip: false });

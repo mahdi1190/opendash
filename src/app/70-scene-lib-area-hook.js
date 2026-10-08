@@ -512,9 +512,94 @@ const _hookArch = (function () {
   const AT = ['afternoon', 'dawn', 'morning', 'day', 'noon', 'golden', 'sunset', 'dusk', 'night'];
   const params = { id: 'id', lat: 'number', lon: 'number', heading: 'number', horizon: 'number', at: AT, form: ['tunnel', 'canal', 'river', 'fields', 'station', 'street'], side: ['left', 'right'],
     landmark: 'string', lmx: 'number', lmy: 'number', lms: 'number', lmlayer: ['mid', 'far', 'near', 'fore', 'horizon'], vx: 'number', wy0: 'number', wy1: 'number', fronty: 'number', boatx: 'number', brx: 'number', signx: 'number', sign: 'sign', features: 'list' };
-  return { build, params };
+  return { build, params, palette: pal };
 })();
 (function () {
   if (typeof sceneArchetypeDefine !== 'function') return;
   sceneArchetypeDefine('hook-country', { params: _hookArch.params, signs: true, kits: ['temperate', 'water', 'birds', 'boats', 'people', 'urban', 'vehicles'], meta: () => null, build: (p, u) => _hookArch.build(p, u) });
+})();
+
+/* ---------- two landmarks for the bespoke Hook views (71-scene-uk-hook-scenes.js) ---------- */
+(function () {
+  if (typeof sceneObjDefine !== 'function') return;
+  /* A veteran oak in Butter Wood: the bole with a hollow, the limbs, the crown in blobs. Generic, not a named tree. */
+  sceneObjDefine({
+    id: 'landmark.butter-wood-oak',
+    category: 'landmark',
+    size: [420, 420],
+    variants: 1,
+    seasonal: true,
+    flippable: true,
+    palette: {
+      base: { bark: ['#5a4a38', '#463a2c', '#6e5e46'], leaf: ['#4e7a34', '#3c6428', '#66904a'], under: ['#2e4a22', '#243a1a'], hollow: ['#1a1410'], moss: ['#6a8a3a'], dusk: ['#ffcf8a'] },
+      spring: { leaf: ['#7eb252', '#5a8a34', '#8cc060'] },
+      summer: { leaf: ['#4e7a34', '#3c6428', '#66904a'] },
+      autumn: { leaf: ['#a0702e', '#8a5a26', '#b8843e'], under: ['#5a4020', '#4a3418'] },
+      winter: { leaf: ['#6a6e5c', '#585c4c', '#7a7e68'], under: ['#3a3e34', '#2e3228'] },
+    },
+    night: { glow: { lamp: '#ffd890' }, on: 0 },
+    parts: ['body'],
+    shadow: { rx: 130, ry: 12, h: 420 },
+    reflect: false,
+    tags: ['landmark', 'signature', 'place:uk/butter-wood', 'uk', 'hook', 'butter wood', 'woodland', 'oak', 'veteran tree', 'kit:temperate'],
+    credit: 'drawn for the Hook area pack: a generic veteran oak for the Butter Wood ride (not a named tree)',
+    build() {
+      const b = [];
+      b.push({ f: { lin: [[0, '@bark.2'], [1, '@bark.1']], x1: -40, y1: 0, x2: 40, y2: 0 }, d: 'M-50 0Q-34-70-28-170H28Q36-70 52 0Z' });
+      b.push({ f: '@bark.0', d: 'M-46 0Q-40-30-34-60H-26Q-30-30-24 0Z', op: 0.6 });
+      b.push({ f: '@hollow.0', d: 'M-14-96Q4-120 16-96Q18-70 4-62Q-12-70-14-96Z', op: 0.9 });
+      for (const [x, y, w] of [[-60, -20, 26], [60, -14, 22], [-22, -6, 18]]) b.push({ f: '@bark.1', d: sceneD.ell(x, y, w, 9), op: 0.8 });
+      // the limbs, thick at the bole and forking out
+      b.push({ s: '@bark.1', w: 14, d: 'M-16-160Q-110-210-170-250' }, { s: '@bark.1', w: 16, d: 'M18-164Q110-214 176-258' }, { s: '@bark.0', w: 9, d: 'M-6-168Q-40-260-30-330' }, { s: '@bark.0', w: 9, d: 'M10-170Q60-270 38-340' });
+      b.push({ s: '@bark.0', w: 6, d: 'M-120-220L-150-280' }, { s: '@bark.0', w: 6, d: 'M120-228L150-290' });
+      // the crown: a broken mass of leaf blobs, darker underneath
+      const blobs = [[-190, -270, 80, 56], [-110, -330, 84, 60], [-20, -372, 96, 60], [84, -340, 88, 60], [182, -272, 80, 56], [-150, -220, 66, 40], [150, -226, 66, 42], [0, -300, 110, 52], [-70, -280, 70, 46], [60, -282, 72, 46]];
+      blobs.forEach(([x, y, rx, ry], i) => b.push({ f: i % 3 === 0 ? '@leaf.1' : i % 3 === 1 ? '@leaf.0' : '@leaf.2', d: sceneD.ell(x, y, rx, ry), op: 0.95 }));
+      for (let i = 0; i < 9; i++) b.push({ f: '@under.0', d: sceneD.ell(-170 + i * 46, -206 + (i % 3) * 6, 28, 10), op: 0.7 });
+      // ivy and moss on the bole, a patch of shade on the ground
+      b.push({ f: '@moss.0', d: sceneD.ell(-30, -40, 14, 22), op: 0.5 }, { f: '@moss.0', d: sceneD.ell(30, -110, 8, 16), op: 0.5 });
+      b.push({ f: '@under.1', d: sceneD.ell(0, 4, 150, 14), op: 0.5 });
+      return { body: b, lit: [] };
+    },
+  });
+
+  /* A brick arch bridge over a chalk stream: the parapets, the piers, the arch and its voussoirs. Generic. */
+  sceneObjDefine({
+    id: 'landmark.whitewater-brick-bridge',
+    category: 'landmark',
+    size: [380, 200],
+    variants: 1,
+    seasonal: true,
+    flippable: true,
+    palette: {
+      base: { brick: ['#8e4a34', '#6c3626', '#a85c42'], coping: ['#a8a294', '#868074'], dark: ['#1e2420', '#2c3430'], moss: ['#5e7a3a', '#4a6230'], dusk: ['#ffcf8a'] },
+      spring: { moss: ['#7eb252', '#5a8a34'] },
+      autumn: { moss: ['#8a7a40', '#6e6232'] },
+      summer: { moss: ['#5e7a3a', '#4a6230'] },
+      winter: { moss: ['#7a8070', '#62685a'] },
+    },
+    night: { glow: { lamp: '#ffd890' }, on: 0 },
+    parts: ['body'],
+    shadow: { rx: 170, ry: 10, h: 190 },
+    reflect: true,
+    tags: ['landmark', 'signature', 'place:uk/whitewater-bridge', 'uk', 'hook', 'greywell', 'river whitewater', 'bridge', 'brick', 'kit:temperate'],
+    credit: 'drawn for the Hook area pack: a generic brick arch bridge over a chalk stream (not a named structure)',
+    build() {
+      const b = [];
+      // the arch: the opening, the voussoirs in a ring, the piers, the deck and the coping
+      b.push({ f: '@dark.0', d: 'M-112 0Q-112-96 0-100Q112-96 112 0Z' });
+      for (let i = 0; i < 13; i++) {
+        const a0 = Math.PI - Math.PI * i / 13, a1 = Math.PI - Math.PI * (i + 1) / 13, r0 = 112, r1 = 130;
+        const q = (a, r) => [Math.cos(a) * r, -Math.sin(a) * (r / 112) * 100];
+        b.push({ f: i % 2 ? '@brick.2' : '@brick.1', d: sceneD.poly([q(a0, r0), q(a0, r1), q(a1, r1), q(a1, r0)]) });
+      }
+      b.push({ f: '@brick.0', d: sceneD.rect(-190, -84, 80, 84) }, { f: '@brick.0', d: sceneD.rect(110, -84, 80, 84) });
+      b.push({ f: '@brick.2', d: sceneD.rect(-190, -84, 80, 6), op: 0.5 }, { f: '@brick.2', d: sceneD.rect(110, -84, 80, 6), op: 0.5 });
+      for (let y = -80; y < 0; y += 8) b.push({ s: '@brick.1', w: 0.7, op: 0.4, detail: true, d: `M-190 ${y}H-110M110 ${y}H190` });
+      b.push({ f: '@coping.0', d: sceneD.rect(-196, -94, 392, 10) }, { f: '@coping.1', d: sceneD.rect(-196, -94, 392, 3), op: 0.7 });
+      // moss at the foot of the piers and the water line
+      for (let i = 0; i < 10; i++) b.push({ f: '@moss.0', d: sceneD.ell(-180 + i * 9, -2 - (i % 3) * 3, 9, 4), op: 0.7 });
+      return { body: b, lit: [] };
+    },
+  });
 })();

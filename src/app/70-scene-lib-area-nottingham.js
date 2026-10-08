@@ -390,10 +390,9 @@
       wheel.push({ s: '@steel.0', w: 4, d: ell(0, HY, R, R) }, { s: '@steel.1', w: 2, d: ell(0, HY, R - 14, R - 14) });
       let sp = ''; for (let i = 0; i < N; i++) { const a = i / N * Math.PI * 2; sp += `M0 ${HY}L${f1(Math.cos(a) * R)} ${f1(HY + Math.sin(a) * R)}`; }
       wheel.push({ s: '@steel.1', w: 1.6, d: sp }, ['@hub', circ(0, HY, 14)]);
-      for (let i = 0; i < N; i++) {
-        const a = (i + 0.5) / N * Math.PI * 2, cx = Math.cos(a) * (R + 4), cy = HY + Math.sin(a) * (R + 4);
-        wheel.push(['@cab.' + (i % 5), ell(cx, cy, 10, 10)]);
-      }
+      const cabs = ['', '', '', '', ''];
+      for (let i = 0; i < N; i++) { const a = (i + 0.5) / N * Math.PI * 2; cabs[i % 5] += ell(Math.cos(a) * (R + 4), HY + Math.sin(a) * (R + 4), 10, 10); }
+      cabs.forEach((d, k) => wheel.push(['@cab.' + k, d]));
       let bl = ''; for (let i = 0; i < N * 2; i++) { const a = i / (N * 2) * Math.PI * 2; bl += circ(Math.cos(a) * R, HY + Math.sin(a) * R, 2.4); }
       wheel.push({ f: '@bulb', d: bl, glow: 'lamp' });
       lit.push({ s: '@bulb', w: 3, op: 0.5, d: ell(0, HY, R, R) }, { s: '@bulb', w: 2, op: 0.35, d: sp });
@@ -536,137 +535,184 @@
       return { body, lit };
     },
   });
-})();
 
+  /* ---------- structure.sandstone-steps (a flight of cut sandstone steps with a rail; no marks) ---------- */
+  define({
+    id: 'structure.sandstone-steps', category: 'structure', size: [360, 300], variants: 1, seasonal: false, flippable: true,
+    parts: ['body'],
+    palette: { base: { stone: ['#dcc49a', '#c0a474', '#947a52'], tread: ['#efe0bc', '#d4bc8e'], rail: ['#4a4036', '#2e2820'] } },
+    shadow: { rx: 170, ry: 8, h: 40 },
+    tags: ['uk', 'nottingham', 'steps', 'sandstone', 'structure', 'kit:urban'],
+    credit: 'native: drawn for the Nottingham area scenes (a flight of cut sandstone steps)',
+    build() {
+      const body = [], N = 7, w = 360 / N, h = 260 / N;
+      for (let i = 0; i < N; i++) {
+        const x0 = -180 + i * w, top = -(i + 1) * h;
+        body.push(['@stone.0', rect(x0, top, w, (i + 1) * h)]);
+        body.push(['@stone.2', rect(x0, top + 4, 2.5, (i + 1) * h - 4)]);
+        body.push(['@tread.0', rect(x0 - 2, top, w + 3, 5)]);
+      }
+      body.push({ s: '@rail.0', w: 2.5, d: `M${-180 + w / 2} ${-h - 46}L${180 - w / 2} ${-N * h - 46}` });
+      for (let i = 0; i < N; i += 2) body.push({ s: '@rail.1', w: 2, d: `M${-180 + w / 2 + i * w} ${-(i + 1) * h - 2}V${-h - 46 - (i) * (N * h - h) / (N - 1)}` });
+      return { body };
+    },
+  });
+
+  /* ---------- street.tram-shelter (a glass-backed tram shelter with a bench; no timetable or marks) ---------- */
+  define({
+    id: 'street.tram-shelter', category: 'street', size: [220, 170], variants: 1, seasonal: false, flippable: true,
+    parts: ['body', 'lit'],
+    palette: { base: { frame: ['#4a5258', '#333a40', '#252b30'], roof: ['#8a949a', '#6a7478'], glass: ['#2a3a44', '#5a7480'], seat: ['#5a4a38', '#3e3226'], warm: '#fff2cc' } },
+    night: { glow: { window: '#fff2cc' }, on: 0.8 },
+    shadow: { rx: 110, ry: 6, h: 60 },
+    tags: ['uk', 'nottingham', 'tram', 'shelter', 'street', 'kit:urban', 'role:street'],
+    credit: 'native: drawn for the Nottingham area scenes (a glass tram shelter, no marks)',
+    build() {
+      const body = [], lit = [];
+      body.push(['@frame.0', rect(-104, -8, 208, 8)]);
+      body.push(['@frame.1', rect(-98, -150, 8, 142)], ['@frame.1', rect(90, -150, 8, 142)]);
+      body.push(['@roof.0', rect(-112, -164, 224, 14)], ['@roof.1', rect(-112, -152, 224, 4)]);
+      body.push({ f: '@glass.0', d: rect(-90, -138, 180, 128), glow: 'window' });
+      body.push(['@frame.2', rect(-3, -138, 6, 128)]);
+      body.push(['@seat.0', rect(-72, -58, 144, 8)], ['@seat.1', rect(-68, -50, 6, 42)], ['@seat.1', rect(62, -50, 6, 42)]);
+      lit.push({ f: '@warm', d: rect(-90, -138, 180, 128), op: 0.22 });
+      return { body, lit };
+    },
+  });
+
+  /* ---------- landmark.edwinstowe-church (a Gothic church tower and nave, no marks; for the Sherwood views) ---------- */
+  define({
+    id: 'landmark.edwinstowe-church', category: 'landmark', size: [360, 380], variants: 1, seasonal: false, flippable: false,
+    parts: ['body', 'lit'],
+    palette: { base: {
+      stone: ['#d8c9a6', '#bca982', '#8a7a5c', '#ece2c8'], roof: ['#5a5e5c', '#44484a'], glass: ['#2e3a40', '#1e262c'], warm: '#ffd894',
+    } },
+    night: { glow: { window: '#ffd894' }, on: 0.6 },
+    shadow: { rx: 170, ry: 8, h: 90 },
+    tags: ['landmark', 'signature', 'place:uk/edwinstowe', 'uk', 'nottingham', 'sherwood', 'church', 'gothic', 'tower', 'kit:temperate'],
+    credit: 'native: drawn for the Nottingham area scenes (a Gothic parish church tower and nave, no marks)',
+    build() {
+      const body = [], lit = [];
+      // the nave and aisles (low, with a steep roof), the west tower with battlements and a lancet pair
+      body.push(['@stone.0', rect(-170, -150, 260, 150)]);
+      body.push(['@roof.0', poly([[-180, -150], [-40, -236], [100, -150]])]);
+      body.push(['@stone.2', rect(-170, -150, 260, 6)]);
+      body.push(['@stone.1', rect(-110, -300, 120, 150)]);
+      body.push(['@stone.0', rect(-118, -340, 136, 42)]);
+      for (let i = -118; i < 18; i += 22) body.push(['@stone.3', rect(i, -352, 12, 14)]);
+      body.push(['@roof.1', poly([[-118, -300], [-50, -300], [-84, -270]])]);
+      for (const x of [-80, -50]) body.push({ f: '@glass.0', d: `M${x} -272a8 14 0 0 1 16 0V-240h-16z`, glow: 'window' });
+      body.push({ f: '@glass.0', d: `M-30 -150v-40a10 18 0 0 1 20 0v40z`, glow: 'window' });
+      for (const x of [20, 50, 80, 120]) body.push({ f: '@glass.0', d: `M${x} -128a7 14 0 0 1 14 0V-108h-14z`, glow: 'window' });
+      lit.push({ f: '@warm', d: poly([[-118, -150], [140, -150], [140, -20], [-118, -20]]), op: 0.12 });
+      return { body, lit };
+    },
+  });
+})();
 /* ============================================================
-   ARCHETYPE notts-city: a Nottingham street, square, riverside, park, forest or fairground with its
-   landmark. PURE.
-   Layers: horizon (distant city or wooded skyline, hazed), far (a row of warehouses and towers, or
-   woodland), mid (the landmarks on their ground line; the Trent in front of them), near (the road,
-   towpath, path or grass with traffic, a tram, people, deer; lamps and benches), fore (cover by
-   ground type; wind strips), front (two framing trees).
-   Params: id, lat, lon, heading, at, horizon, landmarks ('id@x@h@layer@dy@variant@flip' list),
-   ground (street | square | riverside | park | forest | fair), water (none | river), tram (none |
-   street), far (brick | mixed | trees), features list (buses, cyclists, gulls, deer, rowers, bracken,
-   crowd), palette.
+   THE NOTTINGHAM SCENE KIT (PURE helpers, docs/dev/SCENE_ENGINE.md 8.1). NOTTS.make(o) gives a
+   scene SKELETON: the view, the sky, the six layers, the palette, the horizon and far strips and a
+   foreground strip. Every scene then composes its own ground (roads, pavements, cobbles, water,
+   grass), its own placements, scatter, actors and flocks by calling the helpers, and names its own
+   cover mix (o.cover). No archetype composes a picture for a scene.
+   Data only; the seasons come from the date ('auto') and the light from the live sky.
    ============================================================ */
-function sceneArchNottsCity(p, u) {
-  const R = Math.round, H = Number.isFinite(p.horizon) ? p.horizon : 500, has = f => (p.features || []).includes(f);
-  const water = p.water || 'none', ground = p.ground || 'street', tram = p.tram || 'none', far = p.far || 'mixed';
-  const green = ground === 'park' || ground === 'forest' || ground === 'riverside', roadless = green || ground === 'fair';
-  const sOf = (id, h) => { const d = sceneObj(id); return d && d.size ? Math.round(h / d.size[1] * 100) / 100 : 1; };
-  const wet = water !== 'none', yL = wet ? H + 60 : H + 150;
-  const yW0 = yL + 6, yW1 = wet ? yL + 170 : yL;
-  const yR = wet ? yW1 + 40 : yL + 70;
-  const yF = Math.max(yR + 70, 800);
-  const palette = {
-    base: { far: ['#a8b4c0', '#c0c8d0'], pave: ['#bcb2a2', '#a09686', '#847a6c'], road: ['#5e6266', '#74787a'], kerb: ['#cfc8ba', '#a8a294'],
-      grass: ['#5e8a3e', '#4a7232'], path: ['#b49a74', '#94805e'], floor: ['#7a6a4e', '#5e5240'], wall: ['#8a7a62', '#6a5c48'], water: ['#7a9eaa', '#4a7080', '#2a4a58'] },
+const NOTTS = (function () {
+  const hash = s => { let h = 2166136261; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) % 1000000; };
+  const size = id => { const d = sceneObj(id); return d && d.size ? d.size : [100, 100]; };
+  // the object's scale for a target height in scene units (the anchor is its foot)
+  const sFor = (id, px) => Math.round(px / size(id)[1] * 1000) / 1000;
+  // a gradient from palette key 'key' (its .0 and .1 slots) between two y values
+  const lin = (key, y0, y1) => ({ lin: [[0, '@' + key + '.0'], [1, '@' + key + '.1']], x1: 0, y1: y0, x2: 0, y2: y1 });
+  const pathRect = (x0, y0, x1, y1) => `M${x0} ${y0}H${x1}V${y1}H${x0}Z`;
+  // objects whose placements cast a shadow along the live sun (the shadow rule, 15.2)
+  const SHADOWED = /^(tree|building|person|vehicle|structure|landmark|animal)\./;
+  const PAL = {
+    base: {
+      far: ['#a8b4c0', '#c0c8d0'], pave: ['#bcb2a2', '#a09686', '#847a6c'], road: ['#5e6266', '#74787a'], kerb: ['#cfc8ba', '#a8a294'],
+      grass: ['#5e8a3e', '#4a7232'], path: ['#b49a74', '#94805e'], floor: ['#7a6a4e', '#5e5240'], wall: ['#8a7a62', '#6a5c48'],
+      water: ['#7a9eaa', '#4a7080', '#2a4a58'], stone: ['#d2c09a', '#b8a27c', '#8a7a5e'], cobble: ['#8e8476', '#726a5e', '#5a544c'],
+      sand: ['#d8c49a', '#bca678'], tarmac: ['#4e5256', '#646a6e'], rail: ['#7c7468', '#5c564c'],
+    },
     spring: { grass: ['#6a9a40', '#527c34'] },
-    autumn: { grass: ['#7a8a3e', '#5e6e30'], pave: ['#b4a48a', '#988a72', '#7e725e'], floor: ['#8a5a2e', '#6a4626'] },
-    winter: { grass: ['#c8d0d0', '#a8b4b8'], pave: ['#d8dcdc', '#bcc2c4', '#9aa2a6'], far: ['#b8c0c8', '#ccd2d8'], road: ['#6a6e72', '#82868a'], path: ['#c8c0b0', '#aaa290'], floor: ['#b8b4a8', '#9a968a'] },
+    autumn: { tarmac: ['#4e4a40', '#5e5848'], rail: ['#6e5e44', '#58492f'], wall: ['#8a6a44', '#6a4e30'], kerb: ['#b8a078', '#9a8258'], grass: ['#7a8a3e', '#5e6e30'], sand: ['#b89050', '#9a7444'], path: ['#8a6a3c', '#6e5230'], pave: ['#b4a48a', '#988a72', '#7e725e'], floor: ['#8a5a2e', '#6a4626'], cobble: ['#8e7e62', '#72644c'] },
+    winter: { tarmac: ['#7a8084', '#8a9094'], rail: ['#a8a8a4', '#8e8e8a'], wall: ['#b8b0a0', '#a09684'], kerb: ['#e6e4de', '#c8c6be'], grass: ['#c8d0d0', '#a8b4b8'], pave: ['#d8dcdc', '#bcc2c4', '#9aa2a6'], far: ['#b8c0c8', '#ccd2d8'], road: ['#6a6e72', '#82868a'],
+      path: ['#c8c0b0', '#aaa290'], floor: ['#b8b4a8', '#9a968a'], cobble: ['#b8bcbc', '#9aa0a2'], sand: ['#e4dccb', '#cdc4ad'], stone: ['#e4dccb', '#cfc4ad', '#a69c86'] },
   };
-  if (p.palette && typeof p.palette === 'object') for (const [s, slots] of Object.entries(p.palette)) palette[s] = Object.assign({}, palette[s] || {}, slots);
-  const grassFill = (y0, y1) => ({ lin: [[0, '@grass.0'], [1, '@grass.1']], x1: 0, y1: y0, x2: 0, y2: y1 });
-  const nearFill = ground === 'forest' ? { lin: [[0, '@floor.0'], [1, '@floor.1']], x1: 0, y1: yR - 30, x2: 0, y2: yF } : green ? grassFill(yR - 30, yF)
-    : ground === 'fair' ? { lin: [[0, '@pave.1'], [1, '@pave.2']], x1: 0, y1: yR - 30, x2: 0, y2: yF } : { lin: [[0, '@road.1'], [1, '@road.0']], x1: 0, y1: yR - 30, x2: 0, y2: yF };
-  const data = {
-    v: 1, id: String(p.id), view: { lat: p.lat, lon: p.lon, heading: Number.isFinite(p.heading) ? p.heading : 180, fov: 70, horizon: H, lift: 1 },
-    at: p.at || 'afternoon', season: 'auto', tropic: 'summer', setting: green ? 'natural' : 'urban', signage: false, palette,
-    sky: { stars: 140, clouds: { n: 6, y: [40, Math.max(200, H - 200)], speed: 6 }, sunR: 24, moonR: 20 },
-    layers: [{ id: 'horizon', depth: 0.08, haze: 0.6 }, { id: 'far', depth: 0.2, haze: 0.36 }, { id: 'mid', depth: 0.45, haze: 0.12 },
-      { id: 'near', depth: 0.75, haze: 0.04 }, { id: 'fore', depth: 1, haze: 0 }, { id: 'front', depth: 1.25, haze: 0 }],
-    ground: [
-      { layer: 'horizon', d: `M-160 ${H - 2}H1760V${H + 14}H-160Z`, fill: { lin: [[0, '@far.0'], [1, '@far.1']], x1: 0, y1: H - 2, x2: 0, y2: H + 14 } },
-      { layer: 'far', d: `M-160 ${H + 10}H1760V${yL + 4}H-160Z`, fill: green ? grassFill(H + 10, yL) : { lin: [[0, '@pave.0'], [1, '@pave.1']], x1: 0, y1: H + 10, x2: 0, y2: yL } },
-      { layer: 'mid', d: `M-160 ${yL - 6}H1760V${(wet ? yW0 : yR) + 2}H-160Z`, fill: green || ground === 'fair' ? grassFill(yL - 6, yR) : { lin: [[0, '@pave.0'], [1, '@pave.1']], x1: 0, y1: yL - 6, x2: 0, y2: yR } },
-      { layer: 'near', d: `M-160 ${yR - 30}H1760V${yF + 4}H-160Z`, fill: nearFill },
-      { layer: 'fore', d: `M-160 ${yF}Q400 ${yF - 6} 800 ${yF}T1760 ${yF}V905H-160Z`, fill: ground === 'square' || ground === 'fair' ? { lin: [[0, '@pave.0'], [1, '@pave.2']], x1: 0, y1: yF, x2: 0, y2: 900 } : ground === 'forest' ? { lin: [[0, '@floor.0'], [1, '@floor.1']], x1: 0, y1: yF, x2: 0, y2: 900 } : grassFill(yF, 900) },
-    ],
-    water: [], place: [], scatter: [], actors: [], flocks: [],
-    particles: 'season', weather: 'live', camera: { pan: 0, period: 90 },
-  };
-  if (!roadless) data.ground.push({ layer: 'near', d: `M-160 ${yR + 26}H1760V${yR + 32}H-160Z`, fill: '@kerb.0' });
-  // a path through the grass, the forest or along the river
-  if (green) data.ground.push({ layer: 'near', d: `M-160 ${yR + 34}Q500 ${yR + 22} 800 ${yR + 30}T1760 ${yR + 28}V${yR + 60}Q1100 ${yR + 54} 800 ${yR + 62}T-160 ${yR + 58}Z`, fill: { lin: [[0, '@path.0'], [1, '@path.1']], x1: 0, y1: yR + 22, x2: 0, y2: yR + 62 } });
-  if (wet) {
-    data.water.push({ layer: 'mid', d: `M-160 ${yW0}H1760V${yW1}H-160Z`, y0: yW0, y1: yW1, base: ['@water.0', '@water.1', '@water.2'], reflect: true, shimmer: 34, lightPath: true });
-    data.ground.push({ layer: 'mid', d: `M-160 ${yW0 - 6}H1760V${yW0 + 1}H-160Z`, fill: '@wall.0' }, { layer: 'near', d: `M-160 ${yW1 - 2}H1760V${yW1 + 6}H-160Z`, fill: '@wall.1' });
+  function make(o) {
+    const H = o.H, view = { lat: o.lat, lon: o.lon, heading: o.heading, fov: o.fov || 70, horizon: H, lift: 1 };
+    const pal = JSON.parse(JSON.stringify(PAL));
+    if (o.palette) for (const [s, slots] of Object.entries(o.palette)) pal[s] = Object.assign({}, pal[s] || {}, slots);
+    const setting = o.setting || 'urban';
+    const d = {
+      v: 1, id: String(o.id), view, at: o.at || 'afternoon', season: 'auto', tropic: 'summer', setting, signage: false, palette: pal,
+      sky: { stars: 140, clouds: { n: 6, y: [40, Math.max(200, H - 200)], speed: 6 }, sunR: 24, moonR: 20 },
+      layers: [{ id: 'horizon', depth: 0.08, haze: 0.6 }, { id: 'far', depth: 0.2, haze: 0.36 }, { id: 'mid', depth: 0.45, haze: 0.12 },
+        { id: 'near', depth: 0.75, haze: 0.04 }, { id: 'fore', depth: 1, haze: 0 }, { id: 'front', depth: 1.25, haze: 0 }],
+      ground: [{ layer: 'horizon', d: `M-160 ${H - 2}H1760V${H + 14}H-160Z`, fill: lin('far', H - 2, H + 14) }],
+      water: [], place: [], scatter: [], actors: [], flocks: [],
+      particles: 'season', weather: 'live', camera: { pan: 0, period: 90 },
+    };
+    const bandTop = Math.round(H + 0.35 * (900 - H));
+    d.ground.push({ layer: 'far', d: pathRect(-160, H + 6, 1760, H + 40), fill: lin('far', H + 6, H + 40) });
+    // the foreground strip: grass in the natural views, paving in the urban ones (the scene paints over it)
+    d.ground.push({ layer: 'fore', d: pathRect(-160, 884, 1760, 905), fill: setting === 'natural' ? lin('grass', 884, 905) : lin('pave', 884, 905) });
+    const k = {
+      data: d, view, H, bandTop,
+      // a ground polygon in a layer; fill is a palette key name, a lin() gradient or a raw colour
+      ground(layer, dpath, fill) { d.ground.push({ layer, d: dpath, fill: typeof fill === 'string' && /^[a-z]+$/.test(fill) ? '@' + fill + '.0' : fill }); return k; },
+      rect(layer, x0, y0, x1, y1, fill) { return k.ground(layer, pathRect(x0, y0, x1, y1), fill); },
+      water(layer, y0, y1, o2) { d.water.push(Object.assign({ layer, d: pathRect(-160, y0, 1760, y1), y0, y1, base: ['@water.0', '@water.1', '@water.2'], reflect: true, shimmer: 30, lightPath: true }, o2 || {})); return k; },
+      // one hand-placed object: h is its height in scene units (or o.s its scale)
+      place(obj, x, y, h, layer, o3) {
+        o3 = o3 || {};
+        const p = { obj, x, y, s: o3.s != null ? o3.s : sFor(obj, h), layer, seed: o3.seed != null ? o3.seed : hash(d.id + '|' + obj + '|' + x + '|' + y),
+          variant: o3.variant != null ? o3.variant : 0, flip: !!o3.flip, reflect: o3.reflect != null ? !!o3.reflect : d.water.length > 0, season: o3.season };
+        if (SHADOWED.test(obj)) p.shadow = true;
+        d.place.push(p);
+        return k;
+      },
+      // a seeded scatter rule over an area (rect [x0,y0,x1,y1]); a size range grows with the depth, the colour varies a little
+      scatter(obj, layer, rect, n, o4) {
+        o4 = o4 || {};
+        const extra = o4.extra || {}, rest = Object.assign({}, o4); delete rest.extra;
+        const first = typeof obj === 'string' ? obj : Object.keys(obj)[0];
+        const rule = Object.assign({ obj, layer, seed: hash(d.id + '|s|' + obj + '|' + layer), area: { rect }, n, minGap: 20,
+          s: [0.55, 1.0], flip: 0.5, variant: 'random', anim: false, tint: { col: '#6a7a40', k: [0, 0.12] } }, rest, extra);
+        if (Array.isArray(rule.s) && !rule.sByY) rule.sByY = [[rect[1], 0.7], [905, 1.25]];
+        if (/bollard|pigeon|planter|puddle/.test(first) && !rule.mask) rule.mask = { noise: { scale: 120, cut: 0.3 } };
+        if (SHADOWED.test(first)) rule.shadow = true;
+        if (rule.reflect == null && d.water.length > 0) rule.reflect = true;
+        d.scatter.push(rule);
+        return k;
+      },
+      // a person (or any walker) along a line at y, from x0 to x1 and back as a loop; its scale follows the depth
+      walk(obj, layer, y, x0, x1, speed, o5) {
+        o5 = o5 || {};
+        const s = o5.s != null ? o5.s : Math.round(scenePersonScale(size(obj)[1], y, view) * (o5.k || 1) * 1000) / 1000;
+        d.actors.push({ obj, layer, path: o5.pingpong ? [[x0, y], [x1, y]] : (o5.back ? [[x1, y], [x0, y]] : [[x0, y], [x1, y]]), speed, loop: o5.pingpong ? 'pingpong' : 'loop',
+          s, seed: o5.seed != null ? o5.seed : hash(d.id + '|w|' + obj + '|' + y), offset: o5.offset != null ? o5.offset : (hash(obj + y) % 100) / 100, flip: !!o5.flip });
+        return k;
+      },
+      // a vehicle or any mover along a path (points [[x,y],...]); h is its height in scene units
+      drive(obj, layer, path, speed, h, o6) {
+        o6 = o6 || {};
+        d.actors.push({ obj, layer, path, speed, loop: o6.pingpong ? 'pingpong' : 'loop', s: o6.s != null ? o6.s : sFor(obj, h), seed: o6.seed != null ? o6.seed : hash(d.id + '|d|' + obj),
+          offset: o6.offset != null ? o6.offset : 0.3, flip: !!o6.flip, variant: o6.variant != null ? o6.variant : 0 });
+        return k;
+      },
+      flock(obj, n, area, speed, s, layer, seed) { d.flocks.push({ obj, n, area, speed, s, layer, seed: seed != null ? seed : hash(d.id + '|f|' + obj) }); return k; },
+      // the scene's own cover mix across the lower band (the bar counts it); o.cover = { 'plant.grass': 3, 'ground.leaves': 1 }
+      done() {
+        const mix = o.cover || (setting === 'natural' ? { 'plant.grass': 3, 'plant.wildflowers': 1 } : { 'ground.leaves': 2, 'plant.planter': 1 });
+        const plantOnly = Object.keys(mix).every(x => x.startsWith('plant.'));
+        d.scatter.push({ obj: mix, layer: 'near', seed: hash(d.id + '|cover'), area: { rect: [-150, bandTop, 1750, 905] },
+          n: o.coverN || 150, minGap: 10, s: [0.5, 0.9], sByY: [[bandTop, 0.6], [905, 1.25]], flip: 0.5, variant: 'random', shadow: false,
+          tint: { col: '#6a7a40', k: [0, 0.12] }, anim: plantOnly ? 'strip' : false });
+        return d;
+      },
+    };
+    return k;
   }
-  // the distant skyline and the far row (warehouses and towers, or woodland)
-  if (far === 'trees') data.scatter.push({ obj: { 'tree.bank-distant': 2, 'tree.distant': 1 }, layer: 'horizon', seed: 2, area: { rect: [-140, H, 1740, H + 3] }, n: 30, minGap: 40, s: [0.5, 0.8], flip: 0.5, variant: 'random', tint: { col: '#8aa0a8', k: [0.18, 0.18] }, shadow: false, anim: false });
-  else data.scatter.push({ obj: 'building.skyline-band', layer: 'horizon', seed: 2, area: { rect: [-120, H, 1720, H + 2] }, n: 3, minGap: 420, s: [0.36, 0.6], flip: 0.5, variant: [0, 1], tint: { col: '#a8b4c4', k: [0.16, 0.16] }, shadow: false, anim: false });
-  const farMix = far === 'trees' ? { 'tree.woods-edge': 3, 'tree.far-broad': 2, 'tree.far-birch': 1 } : far === 'brick' ? { 'building.lace-market-warehouse': 3, 'building.tower-stone': 1 } : { 'building.lace-market-warehouse': 2, 'building.tower': 1, 'building.terrace-victorian': 1 };
-  const avoid = [];
-  (p.landmarks || []).map(s => String(s).split('@')).filter(a => sceneObj(a[0])).forEach((a, i) => {
-    const id = a[0], x = a[1] ? +a[1] : 800, h = a[2] ? +a[2] : 360, layer = a[3] || 'mid', yy = a[4] ? yL + +a[4] : yL, d = sceneObj(id), s = sOf(id, h), w = d.size[0] * s / 2;
-    data.place.push({ obj: id, x, y: yy, s, layer, seed: 11 + i, reflect: wet, shadow: false, variant: a[5] ? +a[5] : 0, flip: a[6] === 'flip' });
-    if (layer === 'mid' && h > 150) avoid.push({ rect: [x - w - 10, H - 40, x + w + 10, yL + 8] });
-  });
-  data.scatter.push({ obj: farMix, layer: 'far', seed: 4, area: { rect: [-150, H + 24, 1750, H + 30] }, n: far === 'trees' ? 22 : 13, minGap: far === 'trees' ? 50 : 64, s: far === 'trees' ? [0.5, 0.9] : [0.24, 0.6], maxH: Math.round(H * 0.6), flip: 0.5, variant: [0, 1], tint: { col: '#9aa6b4', k: [0.08, 0.08] }, mask: { noise: { scale: 90, cut: 0.25 }, avoid }, shadow: false, anim: false });
-  // trees along the landmarks' ground line (oak and birch in the forest)
-  const midTrees = ground === 'forest' ? { 'tree.oak': 3, 'tree.birch': 2, 'tree.ancient-oak': 1 } : green ? { 'tree.oak': 2, 'tree.horse-chestnut': 1, 'tree.far-broad': 1 } : { 'tree.plane': 1, 'tree.far-broad': 1, 'tree.far-birch': 1 };
-  data.scatter.push({ obj: midTrees, layer: 'mid', seed: 15, area: { rect: [-140, yL - 2, 1740, yL + 3] }, n: ground === 'forest' ? 14 : 10, minGap: ground === 'forest' ? 90 : 80, s: ground === 'forest' ? [0.4, 0.75] : [0.18, 0.38], flip: 0.5, variant: 'random', tint: { col: '#6a8a9a', k: [0, 0.08] }, mask: { noise: { scale: 110, cut: 0.2 }, avoid: avoid.map(a => ({ rect: [a.rect[0] + 40, a.rect[1], a.rect[2] - 40, a.rect[3]] })) }, anim: false, reflect: wet });
-  if (!green || ground === 'riverside') data.scatter.push({ obj: 'street.lamppost', layer: 'near', seed: 13, area: { rect: [-100, yR + 34, 1700, yR + 38] }, n: 5, minGap: 260, s: [0.4, 0.62], flip: 0.5, variant: [0, 3], anim: false });
-  if (ground !== 'forest') data.scatter.push({ obj: 'street.bench', layer: 'near', seed: 14, area: { rect: [-60, yR + 40, 1660, yR + 44] }, n: 3, minGap: 340, s: [0.5, 0.6], flip: 0.5, variant: 'random' });
-  if (!roadless) data.scatter.push({ obj: { 'street.bollard': 2 }, layer: 'near', seed: 16, area: { rect: [-140, yR + 30, 1740, yR + 34] }, n: 20, minGap: 54, s: [0.5, 0.82], flip: 0.5, variant: 'random', tint: { col: '#3a4048', k: [0, 0.16] }, mask: { noise: { scale: 200, cut: 0.2 } }, anim: false });
-  // traffic and the tram
-  const lane = (k) => yR - 22 + k * 22, carS = y => Math.round((0.32 + (y - H) / (900 - H) * 0.32) * 100) / 100;
-  if (!roadless) {
-    const cars = [['vehicle.car-city', 0], ['vehicle.taxi-black', 1], ['vehicle.car', 0], has('buses') ? ['vehicle.bus', 1] : ['vehicle.car-city', 1]];
-    if (tram === 'none') cars.push(['vehicle.car', 1]);
-    cars.forEach(([obj, k], i) => { const y = lane(k), back = k === 1; data.actors.push({ obj, layer: 'near', path: back ? [[1800, y], [-200, y]] : [[-200, y], [1800, y]], speed: 40 + i * 7, loop: 'loop', s: carS(y), seed: 30 + i, offset: (0.11 + i * 0.23) % 1, flip: back, variant: i % 2 }); });
-  }
-  if (has('cyclists')) data.actors.push({ obj: 'person.cyclist', layer: 'near', path: [[-120, lane(0) + 10], [1720, lane(0) + 10]], speed: 26, loop: 'loop', s: scenePersonScale(sceneObj('person.cyclist').size[1], lane(0) + 10, data.view), seed: 41, offset: 0.4 });
-  if (tram === 'street') data.actors.push({ obj: 'vehicle.nottingham-tram', layer: 'near', path: [[-440, yR - 34], [2040, yR - 34]], speed: 34, loop: 'loop', s: carS(yR - 34) * 1.05, seed: 44, offset: 0.35 });
-  if (wet) {
-    const craft = has('rowers') ? ['person.rower', 'person.kayaker', 'boat.narrowboat'] : ['boat.narrowboat', 'person.kayaker', 'boat.narrowboat-receding'];
-    const lanesW = [yW0 + (yW1 - yW0) * 0.35, yW0 + (yW1 - yW0) * 0.75, yW0 + (yW1 - yW0) * 0.55];
-    craft.forEach((obj, i) => { const y = R(lanesW[i]), back = i % 2 === 1, boat = obj.startsWith('boat.'); data.actors.push({ obj, layer: 'mid', path: back ? [[1800, y], [-200, y]] : [[-200, y], [1800, y]], speed: boat ? 6 + i * 2 : 12 + i * 3, loop: 'loop', s: 1, sByY: boat ? [[yW0, 0.34], [yW1, 0.6]] : [[yW0, 0.5], [yW1, 0.8]], seed: 50 + i, offset: (0.2 + i * 0.31) % 1, flip: back }); });
-    data.actors.push({ obj: 'bird.swan', layer: 'mid', path: [[1000, R(yW1 - 16)], [1300, R(yW1 - 14)]], speed: 2.5, loop: 'pingpong', s: 0.44, seed: 55, offset: 0.7 });
-    data.actors.push({ obj: 'bird.mallard', layer: 'mid', path: [[260, R(yW1 - 12)], [560, R(yW1 - 10)]], speed: 3, loop: 'pingpong', s: 0.42, seed: 54, offset: 0.2 });
-  }
-  // deer grazing on the park grass
-  if (has('deer')) {
-    const spots = [[260, yL + 30], [420, yL + 52], [1180, yL + 36], [1330, yL + 58], [1460, yL + 24], [640, yR + 6]];
-    spots.forEach(([x, y], i) => data.place.push({ obj: 'animal.deer', x, y, s: Math.round((0.32 + (y - H) / (900 - H) * 0.55) * 100) / 100, layer: y > yR - 20 ? 'near' : 'mid', seed: 70 + i, variant: i % 2, flip: i % 3 === 1 }));
-  }
-  // people: tiny anonymous walkers (at most 7)
-  const people = ground === 'forest' ? ['person.hiker', 'person.dog-walker', 'person.elderly-walker', 'person.walker', 'person.photographer', 'person.jogger']
-    : ground === 'fair' ? ['person.couple', 'person.walker', 'person.child-scooter', 'person.elderly-couple', 'person.shopper', 'person.student', 'person.dog-walker']
-    : green ? ['person.walker', 'person.dog-walker', 'person.jogger', 'person.couple', 'person.buggy-walker']
-    : ['person.walker', 'person.shopper', 'person.student', 'person.couple', 'person.buggy-walker', 'person.commuter'];
-  const nPeople = has('crowd') ? Math.min(7, people.length) : Math.min(5, people.length), pBase = green ? yR + 36 : yR + 40;
-  for (let i = 0; i < nPeople; i++) {
-    const id = people[i], y = pBase + (i % 3) * 12, back = i % 2 === 1;
-    data.actors.push({ obj: id, layer: 'near', path: back ? [[1720, y], [-120, y]] : [[-120, y], [1720, y]], speed: 12 + (i % 4) * 3, loop: 'loop', s: scenePersonScale(sceneObj(id).size[1], y, data.view), seed: 60 + i, offset: (i * 0.19 + 0.07) % 1, flip: back });
-  }
-  // birds
-  data.flocks.push({ obj: 'bird.small-flight', n: 5, area: [160, 100, 1440, Math.max(220, H - 140)], speed: 26, s: 0.5, seed: 9, layer: 'far' });
-  data.flocks.push({ obj: has('gulls') ? 'bird.herring-gull-flight' : 'bird.small-flight', n: 4, area: [80, 160, 1500, Math.max(300, H - 80)], speed: 20, s: 0.7, seed: 10, layer: 'mid' });
-  if (!green) data.scatter.push({ obj: 'bird.pigeon-feral', layer: 'near', seed: 17, area: { rect: [100, yR + 50, 1500, yR + 76] }, n: 5, minGap: 50, s: [0.6, 1.15], sByY: [[yR + 50, 0.85], [yR + 76, 1.15]], flip: 0.5, variant: 'random', mask: { noise: { scale: 120, cut: 0.3 } } });
-  // the near and fore cover by ground type
-  const nearCover = ground === 'forest' ? { 'plant.bracken': 3, 'plant.fern': 2, 'plant.grass': 1 } : { 'plant.grass': 3, 'plant.wildflowers': 2 };
-  const cover = ground === 'square' || ground === 'fair' ? { 'plant.planter': 1, 'plant.grass': 2, 'plant.wildflowers': 1 } : ground === 'forest' ? { 'plant.bracken': 3, 'plant.fern': 2, 'plant.grass': 1 } : ground === 'riverside' ? { 'plant.grass': 2, 'plant.reed': 1, 'plant.wildflowers': 1 } : { 'plant.grass': 3, 'plant.wildflowers': 2 };
-  data.scatter.push({ obj: nearCover, layer: 'near', seed: 18, area: { rect: [-150, yR + 46, 1750, yF] }, n: 90, minGap: 24, s: [0.45, 0.75], flip: 0.5, variant: [0, 1], tint: { col: '#6a7a40', k: [0, 0.08] }, anim: false });
-  data.scatter.push({ obj: cover, layer: 'fore', seed: 7, area: { rect: [-150, yF + 2, 1750, yF + 50] }, n: 150, minGap: 15, s: [0.55, 0.9], flip: 0.5, variant: [0, 1], tint: { col: '#6a7a40', k: [0, 0.08] }, anim: false });
-  data.scatter.push({ obj: ground === 'forest' ? { 'plant.bracken': 2, 'plant.grass': 2 } : { 'plant.grass': 3, 'plant.wildflowers': 2 }, layer: 'fore', seed: 8, area: { rect: [-150, yF + 50, 1750, 905] }, n: 110, minGap: 22, s: [0.9, 1.3], flip: 0.5, variant: [1, 2], tint: { col: '#6a7a40', k: [0.08, 0.16] }, anim: 'strip' });
-  data.scatter.push({ obj: ground === 'forest' ? { 'plant.holly': 1, 'plant.hedgerow-blackberry': 1 } : { 'plant.shrub': 2, 'plant.hedge': 1 }, layer: 'fore', seed: 19, area: { rect: [-150, yF + 6, 1750, yF + 40] }, n: 5, minGap: 150, s: [0.45, 1.1], flip: 0.5, variant: 'random', mask: { noise: { scale: 220, cut: 0.3 } }, anim: false });
-  data.scatter.push({ obj: 'ground.leaves', layer: 'fore', seed: 20 + String(p.id).length * 3, area: { rect: [-150, yF + 10, 1750, 900] }, n: 14, minGap: 60, s: [0.7, 1.1], flip: 0.5, variant: 'random', anim: false });
-  if (ground === 'forest') data.scatter.push({ obj: 'ground.log', layer: 'near', seed: 24, area: { rect: [-100, yR + 10, 1700, yR + 20] }, n: 2, minGap: 500, s: [0.5, 0.7], flip: 0.5, variant: 'random', anim: false });
-  // the framing trees
-  const frame = ground === 'forest' ? 'tree.oak' : green ? 'tree.horse-chestnut' : 'tree.plane';
-  data.place.push({ obj: frame, x: 20, y: 910, s: sOf(frame, 500), layer: 'front', seed: 21, variant: 2 }, { obj: frame, x: 1600, y: 912, s: sOf(frame, 470), layer: 'front', seed: 22, flip: true, variant: 1 });
-  return data;
-}
-(function () {
-  if (typeof sceneArchetypeDefine !== 'function') return;
-  sceneArchetypeDefine('notts-city', {
-    params: { id: 'id', lat: 'number', lon: 'number', heading: 'number', at: typeof SCENE_AT_MOMENTS !== 'undefined' ? SCENE_AT_MOMENTS : 'id', horizon: 'number', landmarks: 'list',
-      ground: ['street', 'square', 'riverside', 'park', 'forest', 'fair'], water: ['none', 'river'], tram: ['none', 'street'], far: ['mixed', 'brick', 'trees'], features: 'list', palette: 'object' },
-    kits: ['urban', 'temperate', 'people', 'birds', 'boats', 'animals'],
-    slots: [{ id: 'landmark', layer: 'mid', x: 800, y: 650, s: 1 }],
-    meta: () => null,
-    build: (p, u) => sceneArchNottsCity(p, u),
-  });
+  return { make, sFor, lin, pathRect, hash, PAL };
 })();
