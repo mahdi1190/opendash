@@ -626,13 +626,13 @@ function sceneArchMcrCity(p, u) {
     data.actors.push({ obj: id, layer: 'near', path: back ? [[1720, y], [-120, y]] : [[-120, y], [1720, y]], speed: 12 + (i % 4) * 3, loop: 'loop', s: scenePersonScale(sceneObj(id).size[1], y, data.view), seed: 60 + i, offset: (i * 0.19 + 0.07) % 1, flip: back });
   }
   // birds: pigeons and gulls over the city
-  data.flocks.push({ obj: 'bird.small-flight', n: 6, area: [160, 100, 1440, Math.max(220, H - 140)], speed: 26, s: 0.5, seed: 9, layer: 'far' });
+  data.flocks.push({ obj: 'bird.small-flight', n: 5, area: [160, 100, 1440, Math.max(220, H - 140)], speed: 26, s: 0.5, seed: 9, layer: 'far' });
   data.flocks.push({ obj: has('gulls') ? 'bird.herring-gull-flight' : 'bird.small-flight', n: 4, area: [80, 160, 1500, Math.max(300, H - 80)], speed: 20, s: 0.7, seed: 10, layer: 'mid' });
   data.scatter.push({ obj: 'bird.pigeon-feral', layer: 'near', seed: 17, area: { rect: [100, yR + 50, 1500, yR + 76] }, n: 5, minGap: 50, s: [0.6, 1.15], sByY: [[yR + 50, 0.85], [yR + 76, 1.15]], flip: 0.5, variant: 'random', mask: { noise: { scale: 120, cut: 0.3 } } });
   // the fore: cover by ground type (wind strips), shrubs and planters, leaves in autumn
   const cover = ground === 'square' || ground === 'quay' ? { 'plant.planter': 1, 'plant.grass': 2, 'plant.wildflowers': 1 } : ground === 'towpath' ? { 'plant.grass': 2, 'plant.wildflowers': 1, 'plant.towpath-hedge': 1 } : { 'plant.grass': 3, 'plant.wildflowers': 2 };
   data.scatter.push({ obj: { 'plant.grass': 3, 'plant.wildflowers': 2 }, layer: 'near', seed: 18, area: { rect: [-150, yR + 46, 1750, yF] }, n: 90, minGap: 24, s: [0.45, 0.75], flip: 0.5, variant: [0, 1], tint: { col: '#6a7a40', k: [0, 0.08] }, anim: false });
-  data.scatter.push({ obj: cover, layer: 'fore', seed: 7, area: { rect: [-150, yF + 2, 1750, yF + 50] }, n: 150, minGap: 15, s: [0.55, 0.9], flip: 0.5, variant: [0, 1], tint: { col: '#6a7a40', k: [0, 0.08] }, anim: 'strip' });
+  data.scatter.push({ obj: cover, layer: 'fore', seed: 7, area: { rect: [-150, yF + 2, 1750, yF + 50] }, n: 150, minGap: 15, s: [0.55, 0.9], flip: 0.5, variant: [0, 1], tint: { col: '#6a7a40', k: [0, 0.08] }, anim: false });
   data.scatter.push({ obj: { 'plant.grass': 3, 'plant.wildflowers': 2 }, layer: 'fore', seed: 8, area: { rect: [-150, yF + 50, 1750, 905] }, n: 110, minGap: 22, s: [0.9, 1.3], flip: 0.5, variant: [1, 2], tint: { col: '#6a7a40', k: [0.08, 0.16] }, anim: 'strip' });
   data.scatter.push({ obj: { 'plant.shrub': 2, 'plant.hedge': 1 }, layer: 'fore', seed: 19, area: { rect: [-150, yF + 6, 1750, yF + 40] }, n: 5, minGap: 150, s: [0.45, 1.15], flip: 0.5, variant: 'random', mask: { noise: { scale: 220, cut: 0.3 } }, anim: false });
   data.scatter.push({ obj: 'ground.leaves', layer: 'fore', seed: 20, area: { rect: [-150, yF + 10, 1750, 900] }, n: 14, minGap: 60, s: [0.7, 1.1], flip: 0.5, variant: 'random', anim: false });
