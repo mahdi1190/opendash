@@ -70,7 +70,10 @@ test('Monzo direct next to the same Monzo through another connection: the new ac
   assert.equal(main.duplicateOf, 'AureliToken0001');
   assert.equal(joint.enabled, true);
   const csv = readFileSync(STORE(), 'utf8');
-  assert.ok(!csv.includes(`${id}.acc_fake0000000000000000a1`), 'its rows were not imported');
+  // Its rows are stored (Monzo's full history can be read only once) but left out of Finances.
+  assert.ok(csv.includes(`${id}.acc_fake0000000000000000a1`), 'its rows are kept in the store');
+  const an = (await call('GET', '/api/finance')).json.analysis;
+  assert.ok(!an.transactions.some(t => t.acct === `${id}.acc_fake0000000000000000a1`), 'a hidden duplicate is not counted in Finances');
   assert.ok(csv.includes(`${id}.acc_fake0000000000000000b2`));
   assert.ok(csv.trim().split(/\r?\n/).length > before);
 
@@ -81,10 +84,12 @@ test('Monzo direct next to the same Monzo through another connection: the new ac
   assert.equal(k.json.account.dupChoice, 'this');
   const cursor = JSON.parse(readFileSync(join(dir, 'finance', '_system', 'connectors', `${id}.json`), 'utf8'));
   assert.ok(!cursor.accounts.acc_fake0000000000000000a1, 'its cursor starts again');
-  assert.equal((await call('POST', `/api/fin-connect/sources/${id}/sync`, {})).status, 202);
+  // Keeping it starts an update for this source by itself (its rows were never stored).
+  await new Promise(r => setTimeout(r, 300));
   const fin = await idle();
   assert.equal(fin.job.state, 'ok', JSON.stringify(fin.job));
-  assert.ok(readFileSync(STORE(), 'utf8').includes(`${id}.acc_fake0000000000000000a1`));
+  const an2 = (await call('GET', '/api/finance')).json.analysis;
+  assert.ok(an2.transactions.some(t => t.acct === `${id}.acc_fake0000000000000000a1`), 'kept: now counted in Finances');
   // The choice is remembered: a later sync does not hide it again.
   await call('POST', `/api/fin-connect/sources/${id}/sync`, {});
   await idle();

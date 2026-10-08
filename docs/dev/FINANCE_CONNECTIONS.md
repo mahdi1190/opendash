@@ -93,7 +93,7 @@ Card B1, **Plasma One** (wallet)
 |---|---|
 | Covers | Your Plasma One USDT balance and transfers in and out, from the public Plasma blockchain. |
 | Cost | Free. |
-| Limits | Card purchases may show only as "Plasma One card" without the shop name, and some may not show one by one. Amounts are converted from USD at that day's rate. |
+| Limits | Card purchases show as "Plasma One payment" without the shop name, and some may not show one by one. Amounts are converted from USD at that day's rate. |
 | You'll need | Your Plasma wallet address (starts with 0x). Never your recovery phrase or password: OpenDash will refuse them. |
 | Time | 10 seconds. |
 | Button | **Paste address** (opens a one-field sheet, see 2.1). |
@@ -197,7 +197,7 @@ address." The field is cleared; nothing is logged. A contract address
 not your wallet".
 
 Honesty text under the result: "Card purchases come from the blockchain, so
-they may show as 'Plasma One card' without the shop name, and some may be
+they show as 'Plasma One payment' without the shop name, and some may be
 combined. Transfers show the other address; you can name addresses you
 recognise."
 

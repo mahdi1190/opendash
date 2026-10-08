@@ -10,6 +10,25 @@ upgrades it.
 
 ## [Unreleased]
 
+### Added
+
+- **Connections > Money:** one place for every bank and wallet. *Your accounts* lists every account from every provider (rename, colour, *Show in Finances*, last sync, the date to sign in again by, *Sync now*, disconnect with keep or remove and Undo). A provider chooser with a bank search: Aureli (via Claude), Plasma One, Monzo, other UK and EU banks through Enable Banking, and CSV import, each with what it covers, its cost, limits, what you need and how long it takes.
+- **Plasma One:** paste your public wallet address and it is added: USDT balance and transfers from the public Plasma blockchain, converted to pounds at each day's rate. Recovery phrases and private keys are refused.
+- **Monzo, directly:** with your own free Monzo developer client. A 5-minute countdown to approve in the Monzo app brings in your full history; otherwise the last 90 days, with *Get full history* to try again. Pots show as balances.
+- **Enable Banking:** UK and EU banks through open banking with your own free application and key file: *Is my bank supported?*, bank sign-in with a paste-the-address return, and reminders before a bank's access ends.
+- **Possible duplicates:** an account connected twice (for example Monzo through Aureli and directly) starts hidden, so nothing is counted twice; choose *Keep this one* or *Keep the other*.
+- Finances: *Connect a bank or wallet* on the welcome screen, and a banner when a bank needs you to sign in again.
+
+### Changed
+
+- Accounts switched off in Connections (*Show in Finances* off) are now left out of the Finances analysis; their transactions stay stored and come back when you show the account again.
+- Every finance connector is read-only by construction: each provider has a fixed list of allowed requests, and anything else (payments, moving money to or from pots) is refused before it is sent. Credentials stay on this computer in the data folder's `secrets/fin/`, never on the page or in the logs.
+
+### Fixed
+
+- Exchange rates: the Frankfurter service moved to `api.frankfurter.dev`, and the old address's redirect was refused, so rates never loaded.
+- Converted payments no longer turn each "(amount USD @ rate)" note into a separate merchant.
+
 ## [2.6.0] - 2026-10-07
 
 ### Added

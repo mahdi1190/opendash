@@ -45,7 +45,7 @@ const FIN_PROVIDERS = [
     facts: {
       covers: 'Your Plasma One USDT balance and transfers in and out, read from the public Plasma blockchain.',
       cost: 'Free.',
-      limits: 'Card purchases may show as “Plasma One card” without the shop name, and some may be combined. Converted from USD at each day’s rate.',
+      limits: 'Card purchases show as “Plasma One payment” without the shop name, and some may be combined. Converted from USD at each day’s rate.',
       need: 'Your Plasma wallet address (starts with 0x). Never your recovery phrase: OpenDash refuses it.',
       time: '10 seconds',
     },
@@ -138,10 +138,16 @@ function finAddressCheck(text) {
 /** Days from today (local) to an ISO date; negative when it is past. */
 function finDaysUntil(iso, now) {
   if (!iso) return null;
-  const d = Date.parse(String(iso).length === 10 ? iso + 'T12:00:00' : iso);
+  const s = String(iso);
+  const d = Date.parse(s.length === 10 ? s + 'T12:00:00' : s);
   if (!Number.isFinite(d)) return null;
-  const t = new Date(now == null ? Date.now() : now); t.setHours(12, 0, 0, 0);
-  return Math.round((d - t.getTime()) / 86400000);
+  // "Today" comes from window.Clock (the effective zone); a given `now` (tests) is read locally.
+  const today = now == null && typeof Clock !== 'undefined' && Clock.today ? Clock.today()
+    : new Date(now == null ? Date.now() : now).toLocaleDateString('en-CA');
+  const day = s.length === 10 ? s : new Date(d).toLocaleDateString('en-CA');
+  const p = (x) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(x); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : NaN; };
+  const n = Math.round((p(day) - p(today)) / 86400000);
+  return Number.isFinite(n) ? n : null;
 }
 /** How urgent a sign-in-again date is: amber 14 days before, red 3 days before or once past. */
 function finDueTone(iso, now) {
@@ -160,7 +166,7 @@ function finDateLabel(iso) {
   const t = Date.parse(String(iso).length === 10 ? iso + 'T12:00:00' : iso);
   if (!Number.isFinite(t)) return '';
   try { return new Date(t).toLocaleDateString((typeof APP_CONFIG !== 'undefined' && APP_CONFIG.locale) || 'en-GB', { day: 'numeric', month: 'short' }); }
-  catch (e) { return new Date(t).toISOString().slice(0, 10); }
+  catch (e) { return new Date(t).toISOString().slice(0, 10); }   // clock-ok: formats a stored date (bad locale fallback), never "today"
 }
 function finDueText(iso, now) {
   const { tone, days } = finDueTone(iso, now);
@@ -609,7 +615,7 @@ function _finAccountRow(group, a, nameOf) {
     add('Last sync', a.lastSync ? new Date(a.lastSync).toLocaleString() : 'Not synced yet');
     if (a.reauthDue) add('Sign in again', finDateLabel(a.reauthDue));
     add('In Finances', a.enabled ? 'Shown' : a.hiddenReason === 'duplicate' ? 'Hidden (possible duplicate)' : 'Hidden; its data is kept');
-    if (group.provider === 'plasma') add('Note', 'Card purchases may show as “Plasma One card” without the shop name.');
+    if (group.provider === 'plasma') add('Note', 'Card purchases show as “Plasma One payment” without the shop name.');
     row.appendChild(det);
   }
   return row;

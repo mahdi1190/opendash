@@ -656,7 +656,8 @@ and own-transfer matching work unchanged.
   `DASHBOARD_PLASMA_FAKE=1`, `DASHBOARD_ENABLEBANKING_FAKE=1` load
   `tests/fixtures/fin-fake-<provider>.mjs` (same URLs, same allowlist, an
   in-process fetch); `GET/POST /api/fin-connect/fake {provider, ...}` changes
-  them at run time. Monzo: `_APPROVE_MS` (or `never`), `_WINDOW_MS`, `_POLL_MS`,
+  them at run time. A fake provider's rows use fixed made-up exchange rates
+  (no network at all). Monzo: `_APPROVE_MS` (or `never`), `_WINDOW_MS`, `_POLL_MS`,
   `_APPROVAL_WAIT_MS`, `_DELAY_MS`, `_FAIL` (`auth|consent|rate|rate:0.3|network|bad`).
 - Monzo specifics: the user's own Confidential client; one-time refresh tokens
   are refreshed under the secret file's lock and saved before use; after the
@@ -677,7 +678,7 @@ and own-transfer matching work unchanged.
 | Monzo | `lib/fin-connect/monzo.mjs`, fake `tests/fixtures/fin-fake-monzo.mjs` |
 | Plasma One / Enable Banking | `lib/fin-connect/plasma.mjs`, `lib/fin-connect/enable-banking.mjs` (+ their fakes and tests) |
 | API `/api/fin-connect/` (providers, accounts, PATCH accounts/:key, sources/:id/sync, sources/:id/disconnect, undo, fake; providers add theirs via `provider.routes`) | `server/routes/fin-connect.mjs` |
-| Hooks | `lib/sources.mjs` (`kind:'direct'`, `setDirectHealth`), `lib/finance.mjs` (`only:[ids]`, `manual`, direct sources read), `server/routes/finance.mjs` (`fetchSource` dispatch) |
+| Hooks | `lib/sources.mjs` (`kind:'direct'`, `setDirectHealth`), `lib/finance.mjs` (`only:[ids]`, `manual`, direct sources read; accounts with `enabled:false` are passed to the pipeline as `hideAccounts` and left out of the analysis, rows kept; `refreshFinanceAnalysis()` rebuilds after Show/Hide), `server/routes/finance.mjs` (`fetchSource` dispatch) |
 | Tests | `tests/fin-connect-core.test.mjs`, `tests/fin-connect-monzo.test.mjs`, `tests/fin-connect-security.test.mjs`, `tests/fin-connect-integration.test.mjs` |
 
 ### lib/fsutil.mjs - the only way to write user data

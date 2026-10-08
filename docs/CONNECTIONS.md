@@ -13,6 +13,7 @@ the page and at most once an hour; *Check again* runs one now.
 - [How it fits together](#how-it-fits-together)
 - [Claude (Claude Code on this computer)](#claude-claude-code-on-this-computer)
 - [Gmail, Google Calendar and your bank (claude.ai connectors)](#gmail-google-calendar-and-your-bank-claudeai-connectors)
+- [Money: banks and wallets](#money-banks-and-wallets)
 - [Data sources: several banks, calendars and mailboxes](#data-sources-several-banks-calendars-and-mailboxes)
 - [Calendars from an iCal link](#calendars-from-an-ical-link)
 - [Bank CSV files](#bank-csv-files)
@@ -31,11 +32,18 @@ the page and at most once an hour; *Check again* runs one now.
    │         a bank, any MCP server you added ── read tools only
    │
    ├── iCal links ── fetched directly, no AI involved
+   ├── direct bank and wallet connections (Monzo, Plasma One, Enable Banking)
+   │     ── read directly by OpenDash, no AI involved, read-only
    └── bank CSV files ── imported directly, no connection needed
 ```
 
-OpenDash never asks for, sees or stores a password or token for Claude, Google
-or your bank. Sign-in happens on claude.ai or in Claude's own window.
+OpenDash never asks for, sees or stores a password for Claude, Google or your
+bank. Sign-in happens on claude.ai, in Claude's own window or on your bank's
+own page. The direct bank connections are the one place OpenDash keeps a
+credential: the Monzo client and sign-in you create, or your Enable Banking key
+file. They stay in your data folder on this computer (`secrets/fin/`), are
+never shown on the page or written to the logs, and are deleted when you
+disconnect.
 
 ## Claude (Claude Code on this computer)
 
@@ -111,6 +119,124 @@ tools: it can look things up, never send, change or delete anything.
 
 If a card says the connector "needs you to sign in again", run `claude` in a
 terminal, type `/mcp`, and pick the connector to sign in again.
+
+## Money: banks and wallets
+
+Connections > **Money** is one place for every bank and wallet that feeds
+Finances. Open it from Connections, from *Connect a bank or wallet* on the
+Finances welcome screen, from Home's money card, or with Ctrl+K "connect a
+bank".
+
+Every connection is **read-only**: OpenDash can read balances and
+transactions and can never move money, make a payment or move money in or out
+of a pot. Each provider has a fixed list of the requests OpenDash may make,
+and anything else is refused before it leaves your computer.
+
+### Your accounts
+
+Every account from every provider, in one list: rename it, give it a colour,
+switch *Show in Finances* off or on, see when it last synced and, for banks
+that need it, the date to sign in again by (amber two weeks before, red three
+days before). *Sync now* updates one connection.
+
+**Possible duplicates.** If you connect the same account twice (for example
+Monzo through Aureli and Monzo directly), the new one starts hidden with a
+"Possible duplicate" note, so nothing is counted twice. Choose *Keep this
+one* or *Keep the other*. A hidden account keeps its transactions; they are
+left out of Finances until you show it again.
+
+**Disconnecting** (the ··· menu on a connection) deletes the saved sign-in.
+You choose whether its past transactions stay in Finances (the default) or are
+removed; removing them can be undone straight after.
+
+### Choosing a provider
+
+The *Search your bank* box points you to the right card. Each card lists what
+it covers, what it costs, its limits, what you will need and how long it
+takes.
+
+| Provider | Covers | Cost | You need |
+|---|---|---|---|
+| **Aureli** (via Claude) | the banks Aureli supports, synced through the claude.ai Bank connector | an Aureli account; one bank is free, more need a paid Aureli plan | Claude on this computer and the Bank connector on claude.ai |
+| **Plasma One** | your Plasma One USDT balance and transfers, read from the public Plasma blockchain | free | your wallet's public address |
+| **Monzo** | your Monzo current and joint accounts, pots (balances only) and transactions with shop names and Monzo's categories | free | the Monzo app and a free Monzo developer client |
+| **Other UK and EU banks** (Enable Banking) | the banks Enable Banking supports in your country | free for your own accounts | a free Enable Banking application and its key file |
+| **Import a CSV** | any bank that lets you download a statement | free | a CSV export |
+
+### Plasma One (one click)
+
+1. Press *Paste address*. In Plasma One, open **Receive** and copy your
+   address (it starts with `0x`).
+2. Paste it. OpenDash shows the balance and the last 30 days of transfers.
+3. Press *Add wallet*. The first update brings in the whole history.
+
+An address is public, so it can only ever be read. **Never paste your recovery
+phrase or a private key anywhere**: OpenDash refuses anything that looks like
+one and clears the box. Amounts are converted from USD to pounds at each day's
+rate (the dollar amount stays in the description). Card purchases are settled
+on the blockchain, so they show as "Plasma One payment" without the shop's
+name, and some may be combined. OpenDash reads the address through
+Routescan's free public API (Plasmascan's data); a free Routescan key is
+optional.
+
+### Monzo (about 4 minutes)
+
+Monzo lets you read your own account through its free developer API. You
+create your own "client" once:
+
+1. Sign in at [developers.monzo.com](https://developers.monzo.com/) with your
+   email. Monzo emails you a link and asks you to approve in the app.
+2. Open *Clients* > *New OAuth Client* and copy in the fields OpenDash shows
+   you: the name, the **Redirect URL** (it has your OpenDash port in it) and
+   **Confidential** (needed so you stay signed in). Press *Submit*.
+3. Paste the **Client ID** and **Client secret** into OpenDash and press
+   *Connect Monzo*, then sign in on Monzo's page.
+4. **Open the Monzo app within 5 minutes and tap *Allow access*.** OpenDash
+   counts down. During those 5 minutes Monzo lets your whole history be read;
+   after that only the last 90 days. If you miss the window, Monzo is still
+   connected with 90 days, and *Get full history* lets you try again.
+
+Monzo's developer API is for your own account only. Only one sign-in is active
+at a time, so signing in somewhere else with the same client signs OpenDash
+out (the account then shows *Needs sign-in*).
+
+### Other UK and EU banks: Enable Banking (about 10 minutes)
+
+Enable Banking connects to banks through open banking. Its free "restricted"
+mode reads the accounts you link yourself, for personal use.
+
+1. Press *Is my bank supported?* and search. Until you have an application,
+   OpenDash cannot check Enable Banking's live list, and it says so.
+2. Sign up at [enablebanking.com](https://enablebanking.com/) (free). Under
+   *API applications* press *Add* and fill in the fields OpenDash shows you,
+   including the return address. Keep "Generate in the browser": submitting
+   downloads a `.pem` key file.
+3. In OpenDash, choose the key file and paste the **Application ID**. OpenDash
+   tests them with one read before saving. The key never leaves this computer:
+   it only signs OpenDash's own requests.
+4. Choose your bank (personal or business where both exist), then sign in on
+   your bank's own page.
+5. When the bank sends you back, the browser shows an address starting with
+   `https://localhost/opendash-eb-callback`. The page does not load: that is
+   expected. **Copy the whole address from the address bar** and paste it
+   into OpenDash.
+
+Banks only allow access for a limited time (often 90 or 180 days). OpenDash
+shows the date and reminds you before it ends; *Sign in again* keeps your
+accounts and history. Automatic updates run at most 4 times a day per bank
+(*Sync now* always runs). Which UK banks Enable Banking covers has not been
+confirmed; if yours is not listed, use a CSV export.
+
+### What stays on this computer
+
+| Provider | Kept in your data folder's `secrets/fin/` |
+|---|---|
+| Plasma One | your public address, and the optional Routescan key |
+| Monzo | your client ID and secret, and the current sign-in |
+| Enable Banking | your application ID and key file, and each bank's session |
+
+None of it is ever sent to the page, written to the logs or included in
+exports. Disconnecting deletes the connection's file.
 
 ## Data sources: several banks, calendars and mailboxes
 
@@ -201,6 +327,11 @@ calendar without Claude, use [an iCal link](#calendars-from-an-ical-link).
 | Claude card: "not installed" | install Claude Code (above), then *Check again*; or set `CLAUDE_CLI_PATH` |
 | Claude card: "not signed in" | run `claude` in a terminal and sign in |
 | A connector "needs you to sign in again" | `claude`, then `/mcp`, pick the connector |
+| Monzo shows *Needs sign-in* | Monzo signed OpenDash out (another sign-in with the same client, or a client that is not Confidential): *Sign in again* on the account |
+| Monzo connected with only 90 days | the app approval came after Monzo's 5-minute window: *Get full history*, then approve in the app straight away |
+| An Enable Banking bank's *Sign in again by* date is red | the bank's access ends soon: *Sign in again* on the connection |
+| Enable Banking says the key was not accepted | the application ID and key file do not match, or the app is not active yet on enablebanking.com |
+| Plasma One shows no shop names for card purchases | expected: card purchases settle on the blockchain without them |
 | "Couldn't fetch from your bank" | the bank connector is disconnected or needs signing in (claude.ai > Settings > Connectors), or Claude is signed out; Connections shows which |
 | A source's tool list is empty | the MCP server may still be starting: wait a moment and *Check again*; `claude mcp list` shows its status |
 | Usage limit reached | your Claude plan's limit; try again later |

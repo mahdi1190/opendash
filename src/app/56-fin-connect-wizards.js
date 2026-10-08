@@ -233,7 +233,7 @@ function _finPlasmaStep(ctx, body) {
   const nameInput = _finEl('input', 'fc-input'); nameInput.value = w.label || ''; nameInput.placeholder = 'Plasma One'; nameInput.maxLength = 60;
   nameInput.oninput = () => { w.label = nameInput.value; };
   body.appendChild(_finField('Name (optional)', nameInput, 'Shown in Finances and on Connections.'));
-  body.appendChild(_finCallout('info', 'info', 'Card purchases come from the blockchain, so they may show as “Plasma One card” without the shop name, and some may be combined. Transfers show the other address; you can name addresses you recognise. Amounts are converted from USD at each day’s rate.'));
+  body.appendChild(_finCallout('info', 'info', 'Card purchases come from the blockchain, so they show as “Plasma One payment” without the shop name, and some may be combined. Transfers show the other address; you can name addresses you recognise. Amounts are converted from USD at each day’s rate.'));
   const add = ctx.foot.add('Add wallet', 'plus', 'btn-primary', async () => {
     const chk = finAddressCheck(input.value);
     if (chk.state !== 'ok' || w.adding) return;

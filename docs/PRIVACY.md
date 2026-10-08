@@ -27,6 +27,7 @@ or the folder you chose with `--data-dir`):
 | Auto-linking | `index/` | names, sizes and dates of files in the workspace folders you chose, short excerpts (never from "names only" folders) |
 | Logs | `logs/` | what the server did: requests, timings, counts, errors. No task text, email content, names or money |
 | Local token | `local-token` | a random secret for local programs |
+| Bank and wallet connections | `secrets/fin/` | your Monzo client and sign-in, your Enable Banking application key and bank sessions, your Plasma One address: only if you set those up in Connections > Money; deleted when you disconnect |
 | Google sign-in files from older setups | `secrets/` | only if an earlier version's direct Google route was set up (see [CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)) |
 
 Your browser keeps interface preferences, a fallback copy of unsaved edits
@@ -83,7 +84,13 @@ Nothing else. In particular:
 - **The assistant looks things up itself** through OpenDash's MCP server in
   propose mode, so it reads only what it needs to answer, and it cannot change
   anything without your click.
-- **Bank data**: sync asks Claude to call your bank connector's read-only
+- **Direct bank and wallet connections** (Monzo, Plasma One, Enable Banking)
+  are read by OpenDash itself, with no AI involved: your transactions go
+  straight from Monzo, Enable Banking or the public Plasma blockchain (through
+  Routescan's API) to your data folder. To convert other currencies, OpenDash
+  asks the public Frankfurter service for the day's exchange rate (only the
+  currencies and dates, never amounts).
+- **Bank data through Claude**: sync asks Claude to call your bank connector's read-only
   tools, so the transactions it fetches pass through Claude on their way into
   your data folder. If you would rather they did not, import your bank's CSV
   export instead: that never leaves your computer. After that, models see

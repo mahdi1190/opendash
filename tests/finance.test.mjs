@@ -191,3 +191,20 @@ test('demo data goes through the same pipeline and never replaces real data', as
     rmSync(real, { recursive: true, force: true });
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('pipeline: hideAccounts leaves an account out of the analysis but keeps its rows stored', async () => {
+  const dir = tmp('fin-pipe-hide-');
+  try {
+    makeFinanceFixture(dir);
+    await runPipeline(dir, { today: '2026-09-10' });
+    const all = JSON.parse(readFileSync(join(dir, '_system', 'analysis.json'), 'utf8'));
+    const accts = [...new Set(all.transactions.map(t => t.acct))];
+    assert.ok(accts.length >= 1);
+    const hide = accts[0];
+    const store = readFileSync(join(dir, '_system', 'transactions.csv'), 'utf8');
+    await runPipeline(dir, { today: '2026-09-10', hideAccounts: [hide] });
+    const a = JSON.parse(readFileSync(join(dir, '_system', 'analysis.json'), 'utf8'));
+    assert.ok(!a.transactions.some(t => t.acct === hide), 'the hidden account is not analysed');
+    assert.equal(readFileSync(join(dir, '_system', 'transactions.csv'), 'utf8'), store, 'its rows stay in the store');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
