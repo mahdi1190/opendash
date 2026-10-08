@@ -88,7 +88,16 @@ test('status: the US and Asia are complete (every unit, big place and small plac
   assert.deepEqual(st.groups.map(g => g.group), region.groups);
   assert.ok(st.totals.bytes > 1e6 && st.totals.sceneBytes > st.totals.smallBytes);
   assert.deepEqual(st.packs.map(p => p.pack), ['asia-central', 'asia-east', 'asia-south', 'asia-southeast', 'asia-west']);
-  for (const p of st.packs) { assert.equal(p.lint.fail, 0, p.pack); assert.ok(p.lint.pass > 0 && p.largestScene.bytes <= 32000, p.pack); }
+  // the 32,000-byte cap is the HAND-DRAWN scene budget: a LIVE upgrade (docs/dev/SCENE_ENGINE.md 16.5) is a composed scene, held to
+  // the composed lint (its own budgets; tests/scene-upgrades-live.test.mjs) instead. A pack with no live upgrade is checked on the
+  // status's largest scene exactly as before; a pack with one on its largest hand-drawn scene, measured the same way (html bytes).
+  const reg = loadRegistry(ROOT), composedOf = id => reg.items().filter(e => e.pack === id && e.full && e.composed);
+  const largestDrawn = id => Math.max(0, ...reg.items().filter(e => e.pack === id && e.full && !e.composed).map(e => reg.html(e.item).length));
+  for (const p of st.packs) {
+    assert.equal(p.lint.fail, 0, p.pack);
+    for (const e of composedOf(p.pack)) assert.equal(e.item.upgrade && e.item.upgrade.state, 'live', e.ref + ': a composed scene in a region pack is a live upgrade');
+    assert.ok(p.lint.pass > 0 && (composedOf(p.pack).length ? largestDrawn(p.pack) : p.largestScene.bytes) <= 32000, p.pack);
+  }
   const jp = st.groups.find(g => g.group === 'east').units.find(u => u.code === 'JP');
   assert.deepEqual([jp.signature.state, jp.element.state, jp.signature.ref], ['ok', 'ok', 'asia-east/jp-signature']);
   assert.ok(jp.signature.bytes > 9000 && jp.element.bytes < 3000);

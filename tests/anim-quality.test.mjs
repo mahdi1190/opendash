@@ -23,11 +23,21 @@ const BY_REF = new Map(RES.results.map(r => [r.ref, r]));
 // The convert stage (docs/dev/SCENE_ENGINE.md 17) turned every rich hand-drawn scene into a composed one, so nothing in the live
 // registry is judged by scene-rich any more. Its floors were calibrated on that art, which each converted item keeps as
 // legacySvg: the scene-rich corpus is that legacy art, measured exactly as lintRegistry measured it (shares against the registry).
-const RICH_LEGACY = RES.results.some(r => r.profile === 'scene-rich') ? [] : measureRegistry(REG,
-  REG.items().filter(e => e.full && e.composed && typeof e.item.legacySvg === 'function')
-    .map(e => Object.assign({}, e, { composed: false, rich: true, item: Object.assign({}, e.item, { composed: false, rich: true, svg: e.item.legacySvg }) }))
-, TH).map(r => ({ ref: r.entry.ref, pack: r.entry.pack, profile: 'scene-rich', metrics: r.metrics, failures: [], waived: [] }));
-const CORPUS = RES.results.concat(RICH_LEGACY);   // calibration and advisory checks: the live corpus plus the retired rich art
+// A LIVE region upgrade (16.5) is composed too and keeps its hand-drawn art as legacySvg, but that art was calibrated under its
+// region's legacy profile (scene), not scene-rich: it stays in the corpus under that profile, measured, checked and waived exactly
+// as lintRegistry judges a hand-drawn item. So a scene going live never moves the scene corpus or its pins, and RICH_LEGACY keeps
+// meaning the retired rich art of the convert stage (composed items that are not live upgrades).
+const isLiveUpgrade = e => !!(e.item.upgrade && e.item.upgrade.state === 'live');
+const RETIRED = REG.items().filter(e => e.full && e.composed && typeof e.item.legacySvg === 'function');
+const retiredAs = (e, rich) => Object.assign({}, e, { composed: false, rich, item: Object.assign({}, e.item, { composed: false, rich, svg: e.item.legacySvg }) });
+const RICH_LEGACY = RES.results.some(r => r.profile === 'scene-rich') ? [] : measureRegistry(REG, RETIRED.filter(e => !isLiveUpgrade(e)).map(e => retiredAs(e, true)), TH)
+  .map(r => ({ ref: r.entry.ref, pack: r.entry.pack, profile: 'scene-rich', metrics: r.metrics, failures: [], waived: [] }));
+const UPGRADE_LEGACY = measureRegistry(REG, RETIRED.filter(isLiveUpgrade).map(e => retiredAs(e, false)), TH).map(({ entry: e, metrics }) => {
+  const profile = profileFor(e, TH), split = applyWaivers(check(metrics, profile, TH), e.ref, TH);
+  return { ref: e.ref, pack: e.pack, profile, metrics, failures: split.failures, waived: split.waived };
+});
+// calibration and advisory checks: the live corpus plus the retired art (rich, and the live upgrades' hand-drawn scenes)
+const CORPUS = RES.results.concat(RICH_LEGACY, UPGRADE_LEGACY);
 const PACK_CSS = (id) => (REG.packs().find(p => p.id === id) || {}).css || '';
 const SCENE_CLASSES = REG.classesFor({ css: PACK_CSS('us-pacific') });
 
@@ -309,6 +319,19 @@ const PINNED = {
   'item': { bytes: { min: 600, max: 14000 }, shapes: { min: 7 }, paths: { min: 3 }, pathSegments: { min: 14 }, distinctShapes: { min: 4 }, distinctForms: { min: 4 }, distinctFills: { min: 1 }, inkCells: { min: 30 }, extentW: { min: 0.591 }, extentH: { min: 0.534 }, colours: { max: 0 }, gradients: { max: 0 }, inlinePaint: { max: 0 }, unknownClasses: { max: 0 }, movingGroups: { min: 1 }, motionKinds: { min: 1 }, motionShare: { min: 0.1 }, hiddenShapes: { max: 3 }, sharedShare: { max: 0.563 }, sharedShareAll: { max: 0.632 }, richness: { min: 0.642 } },
   'item-classic': { bytes: { min: 321, max: 14000 }, shapes: { min: 1 }, paths: { min: 0 }, pathSegments: { min: 0 }, distinctShapes: { min: 1 }, distinctForms: { min: 1 }, distinctFills: { min: 0 }, inkCells: { min: 10 }, extentW: { min: 0.219 }, extentH: { min: 0.125 }, colours: { max: 0 }, gradients: { max: 0 }, inlinePaint: { max: 0 }, unknownClasses: { max: 6 }, movingGroups: { min: 0 }, motionKinds: { min: 0 }, motionShare: { min: 0 }, hiddenShapes: { max: 5 }, richness: { min: 0.359 } },
 };
+
+test('a live region upgrade: the app judges the composed scene (composed profile), and its retired hand-drawn art (legacySvg) still passes its legacy profile, in the corpus', () => {
+  const live = REG.items().filter(e => e.full && e.composed && isLiveUpgrade(e));
+  assert.deepEqual(UPGRADE_LEGACY.map(r => r.ref).sort(), live.map(e => e.ref).sort(), 'every live upgrade\'s hand-drawn art is measured');
+  for (const e of live) assert.equal(BY_REF.get(e.ref).profile, 'composed', e.ref + ': the live item is judged by the composed profile');
+  for (const r of UPGRADE_LEGACY) {
+    assert.equal(r.profile, profileFor({ pack: r.pack, full: true }, TH), r.ref + ': the profile of its region\'s hand-drawn scenes');
+    assert.ok(TH.standard.legacyProfiles.includes(r.profile), r.ref + ': a legacy-tier profile (' + r.profile + ')');
+    assert.deepEqual(r.failures.map(f => f.rule + ': ' + f.message), [], r.ref + ': the hand-drawn art still passes its legacy profile');
+    assert.ok(CORPUS.includes(r), r.ref + ': in the calibration corpus');
+  }
+  assert.ok(!RICH_LEGACY.some(r => UPGRADE_LEGACY.some(u => u.ref === r.ref)), 'scene-rich holds only the retired rich art');
+});
 
 test('thresholds: the ratchet, no limit is looser than it was (raise floors, never lower them)', () => {
   for (const [profile, rules] of Object.entries(PINNED)) for (const [metric, pin] of Object.entries(rules)) {
