@@ -296,6 +296,7 @@ registerSettingsGroup({
   id: 'animations', title: 'Animations', icon: 'sparkles', order: 56,
   description: 'The little scenes for events and tasks, the weather sky and the small celebrations.',
   render(el) {
+    animGalleryRender(el);
     const p = briefPrefs();
     const sys = !!(window.Motion && Motion.prefersReduced());
     const save = (patch) => settingsSaveConfig({ brief: patch }, false).then(ok => { if (ok) { _animSyncRoot(); render(); } });
@@ -395,8 +396,6 @@ registerSettingsGroup({
     };
     el.appendChild(_settingsRow('Unmatched titles', 'Titles no keyword fits get a plain calendar scene. Claude (Haiku) can suggest better ones; the answers are remembered per title.', ask));
 
-    // The animation gallery (every slot and pack, today's look, themes): 78-anim-gallery.js
-    animGalleryRender(el);
     // Achievements and recaps (v2.2 wave 5): 78-achievements.js
     if (typeof achPanelRender === 'function') achPanelRender(el);
   },

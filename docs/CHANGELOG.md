@@ -10,6 +10,15 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.8.1] - 2026-10-08
+
+### Changed
+
+- **Find animations by location:** Settings > Animations now starts with a searchable gallery across every pack, with filters for pack, animation type and season. Matching places group their views, seasonal versions and retained original artwork together.
+- **Compare old and new techniques:** every version is labeled Old technique or New technique. Where an opening was rebuilt, its retained original can be previewed alongside the new version; favourites and blocks stay shared between them.
+- **See every time of day:** preview Live, Dawn, Day, Dusk or Night, or compare all four times together. Previewing a time leaves the dashboard clock and daily animation choices unchanged.
+- Daily look, themes and pack switches sit in an expandable section below the gallery. Larger preview buttons, keyboard controls and a compact mobile layout make browsing easier.
+
 ## [2.8.0] - 2026-10-08
 
 ### Added
