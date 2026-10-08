@@ -44,6 +44,7 @@ const TOP_WHY = {
   '.git': 'history stays private: the public repo starts from one clean commit',
   '.claude': 'local Claude Code config: settings.json was reviewed and holds machine-specific paths and permissions; settings.local.json is per-machine',
   'node_modules': 'the app has zero npm dependencies',
+  'ai-objects': 'the inbox of AI sprite sheets from external agents: working files (the imported objects ship in assets/objects)',
 };
 
 // ─── Never published, wherever they are ───────────────────────────────────
