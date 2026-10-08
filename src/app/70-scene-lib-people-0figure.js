@@ -137,6 +137,7 @@ const scenePeople = (function () {
     rain: { hem: -24.5, g: 0.6, fl: 1.2, sleeve: 'long', hood: 1, zip: 1, long: 1 }, parka: { hem: -22.5, g: 1.1, fl: 1, sleeve: 'long', hood: 1, zip: 1, long: 1, quilt: 1 },
     coat: { hem: -17.2, g: 0.7, fl: 1.8, sleeve: 'long', collar: 1, long: 1, buttons: 1 },
   };
+  for (const k in TOPS) TOPS[k].kind = k;   // each top knows its name: the garment details below test T.kind
   const t = (slot, k) => `@${slot}.${k || 0}`;
 
   /**
@@ -402,11 +403,11 @@ const scenePeople = (function () {
       body.push(det(strokeD(t(tc, 3), 0.4, P('M', xf - 0.9 + lean, ys + 1.2, 'Q', xf - 0.2 + bel * 0.4, -41, xf - 0.9 + bel, hem + 0.4), 0.45)));
       for (let i = 0; i < 3; i++) body.push(det([t(tc, 3), circ(X(xf - 1.3 + (i ? bel * 0.5 : lean * 0.6)), Y(ys + 3.4 + i * 5.4), 0.35), 0.8]));
     }
-    if (T.long || T.kind === 'jacket' || T.kind === 'hoodie') body.push(det(strokeD(t(tc, 3), 0.45, P('M', 0.4, -34.2, 'L', 3.4, -34.6, 'L', 3.0, -31.6), 0.5)));   // a hip pocket
-    if (T.kind === 'jacket' || T.kind === 'shirt') body.push(det(strokeD(t(tc, 3), 0.4, P('M', 0.8 + lean, -45.4, 'L', 3.2 + lean, -45.6), 0.45)));          // a chest pocket
+    if (T.long || T.kind === 'jacket') body.push(det(strokeD(t(tc, 3), 0.45, P('M', 0.4, -34.2, 'L', 3.4, -34.6, 'L', 3.0, -31.6), 0.5)));   // a hip pocket (a hoodie has its pocket below)
+    if (T.kind === 'jacket' || T.kind === 'shirt') body.push(det(strokeD(t(tc, 3), 0.4, P('M', 2.0 + lean, ys + 5.4, 'L', 3.5 + lean, ys + 5.2), 0.45)));          // a chest pocket (clear of the armpit fold)
     if (T.quilt) for (let i = 1; i <= 4; i++) { const qy = ys + i * 5.2; body.push(det(strokeD(t(tc, 3), 0.4, P('M', xb + 0.3, qy, 'Q', 0, qy + 0.8, xf + bel * 0.3, qy - 0.2), 0.4))); }
     if (T.long) body.push(det(strokeD(t(tc, 3), 0.4, P('M', xb - fl + 1.6, hem + 0.2, 'L', xb + 1.6, -30), 0.4)), det(strokeD(t(tc, 3), 0.45, P('M', 2.4, hem + 0.4, 'Q', 2.8, -26, 1.8, -31), 0.35)));   // the back vent and a front fold
-    if (T.kind === 'coat' && top.belt) body.push([t(tc, 1), P('M', xb + 0.2, -37.8, 'L', xf + bel - 0.3, -37.8, 'L', xf + bel - 0.3, -36.6, 'L', xb + 0.2, -36.6, 'Z')], det([t('mustard', 1), rect(X(xf - 1.7 + bel), Y(-38.1), 1.3, 1.8), 0.9]));
+    if (T.kind === 'coat' && top.belt) body.push(det([t(tc, 1), P('M', xb + 0.2, -37.8, 'L', xf + bel - 0.3, -37.8, 'L', xf + bel - 0.3, -36.6, 'L', xb + 0.2, -36.6, 'Z')]), det([t('mustard', 1), rect(X(xf - 1.7 + bel), Y(-38.1), 1.3, 1.8), 0.9]));
     if (T.kind === 'hoodie') body.push(det(strokeD(t(tc, 3), 0.45, P('M', 0, -36.2, 'L', 3.6, -36.4, 'L', 3.4, -32.8, 'L', 0.2, -32.6), 0.5)), det(strokeD(t('white', 1), 0.35, P('M', 2.4 + lean, ys + 0.6, 'L', 2.6 + lean, ys + 6.6), 0.7)));   // the pocket, a drawstring
     const sty = bent && T.long ? hem - 2.4 : -27.6;   // a reflective strip round the coat (above a seated lap)
     if (top.strip) body.push({ f: t('stone', 2), d: P('M', xb - fl + 0.2, sty, 'L', xf + fl * 0.6 + bel * 0.3, sty, 'L', xf + fl * 0.6 + bel * 0.3, sty + 1, 'L', xb - fl + 0.2, sty + 1, 'Z'), op: 0.7, glow: 'lamp' });
@@ -434,7 +435,8 @@ const scenePeople = (function () {
     }
     if (!hoodUp && hair.style === 'bald') body.push([hc, P('M', hx0 - rx - 0.3, hy + ry * 0.3, 'Q', hx0 - rx - 0.4, hy - ry * 0.6, hx0 - rx * 0.3, hy - ry * 0.55, 'Q', hx0 - rx * 0.62, hy - 0.2, hx0 - rx * 0.5, hy + ry * 0.4, 'Z')], det([t(sk, 2), ell(X(hx0 - 0.4), Y(hy - ry * 0.82), 1.6, 0.6), 0.5]));
     if (hoodUp) body.push([t(tc, 0), P('M', hx0 + rx * 0.62, hy - ry * 1.08, 'C', hx0 - rx - 1.8, hy - ry * 1.55, hx0 - rx - 2.4, hy + ry * 0.6, hx0 - 1.2, hy + ry + 0.8, 'L', hx0 + rx * 0.3, hy + ry * 0.75, 'Q', hx0 + rx * 0.2, hy - 0.4, hx0 + rx * 0.62, hy - ry * 1.08, 'Z')], det(strokeD(t(tc, 3), 0.55, P('M', hx0 + rx * 0.6, hy - ry * 1.02, 'Q', hx0 + rx * 0.1, hy - 0.4, hx0 + rx * 0.3, hy + ry * 0.75), 0.6)), det(strokeD(t(tc, 2), 0.4, P('M', hx0 - rx * 0.2, hy - ry * 1.2, 'Q', hx0 - rx - 1.6, hy - ry * 0.6, hx0 - rx - 1.2, hy + ry * 0.6), 0.5)));
-    if (hoodUp && T.kind === 'parka') body.push([t('stone', 1), P('M', hx0 + rx * 0.62, hy - ry * 1.08, 'Q', hx0 + rx * 0.1, hy - 0.4, hx0 + rx * 0.3, hy + ry * 0.75, 'L', hx0 + rx * 0.9, hy + ry * 0.8, 'Q', hx0 + rx * 0.8, hy - 0.2, hx0 + rx * 1.2, hy - ry * 1.12, 'Z')], det(strokeD(t('stone', 2), 0.4, P('M', hx0 + rx * 0.9, hy - ry * 0.9, 'Q', hx0 + rx * 0.6, hy, hx0 + rx * 0.75, hy + ry * 0.6), 0.6)));   // the fur trim
+    // the fur trim: a band along the hood's opening (on the hood, puffing just past its edge), never over the face
+    if (hoodUp && T.kind === 'parka') body.push(det([t('stone', 1), P('M', hx0 + rx * 0.62 + 0.5, hy - ry * 1.08, 'Q', hx0 + rx * 0.1 + 0.5, hy - 0.4, hx0 + rx * 0.3 + 0.4, hy + ry * 0.75, 'L', hx0 + rx * 0.3 - 1.1, hy + ry * 0.8, 'Q', hx0 + rx * 0.1 - 1.2, hy - 0.4, hx0 + rx * 0.62 - 1.0, hy - ry * 1.12, 'Q', hx0 + rx * 0.62 - 0.2, hy - ry * 1.3, hx0 + rx * 0.62 + 0.5, hy - ry * 1.08, 'Z')]), det(strokeD(t('stone', 2), 0.4, P('M', hx0 + rx * 0.62 - 0.3, hy - ry * 0.95, 'Q', hx0 + rx * 0.1 - 0.3, hy - 0.3, hx0 + rx * 0.3 - 0.3, hy + ry * 0.6), 0.6)));
     if (hatTop && !hoodUp) {
       const hk = hat.kind, hcol = hat.col;
       body.push(det([t(sk, 3), P('M', hx0 - rx + 0.2, hy - ry * 0.5, 'Q', hx0, hy - ry * 0.62, hx0 + rx * 0.95, hy - ry * 0.45, 'L', hx0 + rx * 0.98, hy - ry * 0.2, 'Q', hx0, hy - ry * 0.32, hx0 - rx + 0.1, hy - ry * 0.12, 'Z'), 0.3]));   // the hat's shadow on the brow
