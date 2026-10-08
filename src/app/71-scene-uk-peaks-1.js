@@ -186,4 +186,39 @@
       village: { rect: [-100, 560, 1700, 640], n: 18, gap: 80, s: [0.36, 0.52], obj: { 'building.peak-cottage': 2, 'building.sheffield-terrace': 1 } },
       woods: { rect: [-150, 520, 1750, 570], n: 18, s: [0.24, 0.36], layer: 'far' },
       avoidMid: [{ rect: [900, 520, 1200, 600] }], farms: [[200, 520, 0.5, 0, 'far'], [600, 510, 0.45, 1, 'far']], walls: 4, sheep: 6, walkers: 2 });
+
+  /* ---------- new views: Winnats Pass, Bamford Edge over Ladybower, Hollins Cross at dawn ---------- */
+  row({ id: 'winnats-pass', label: 'Winnats Pass', place: 'winnats-pass', town: 'Castleton', view: 'gorge', reason: 'The road winding up between the limestone walls', kind: 'landscape', tags: ['limestone', 'gorge', 'road'] },
+    { id: 'winnats-pass', lat: 53.337, lon: -1.797, heading: 270, horizon: 470, at: 'afternoon', land: 'dale', seed: 700,
+      sig: [{ obj: 'landmark.mam-tor', x: 1120, y: 540, s: 0.6, layer: 'far' }], nFar: 36, nMid: 60,
+      farms: [[760, 560, 0.4, 0, 'far']], walls: 1, sheep: 9, walkers: 3, walkLayer: 'near', frame: [{ obj: 'rock.boulder', x: 90, y: 905, s: 1.6, layer: 'front' }, { obj: 'rock.boulder', x: 1530, y: 912, s: 2, layer: 'front', flip: true }],
+      walk: [[560, 905], [700, 760], [780, 620], [820, 560]],
+      extra: { ground: [
+        { layer: 'mid', d: 'M780 905L800 700L830 600L850 548L870 548L860 600L880 700L1000 905Z', fill: { lin: [[0, '@road.1'], [1, '@road.0']], y1: 548, y2: 905 } },
+        { layer: 'near', d: 'M-160 905L-160 340L60 380L240 470L380 600L520 760L600 905Z', fill: { lin: [[0, '@scree.0'], [1, '@pasture.2']], y1: 340, y2: 905 } },
+        { layer: 'near', d: 'M1760 905L1760 320L1500 360L1300 470L1150 620L1060 780L1020 905Z', fill: { lin: [[0, '@scree.0'], [1, '@pasture.2']], y1: 320, y2: 905 } },
+      ], scatter: [
+        { obj: { 'rock.boulder': 1, 'rock.stones': 1.4, 'plant.grass': 3 }, layer: 'near', seed: 705, area: { poly: [[-150, 400], [240, 490], [580, 900], [-150, 900]] }, n: 28, minGap: 34, s: [0.3, 1.0], flip: 0.5, variant: 'random', tint: { col: '#6a6458', k: [0, 0.08] }, anim: false },
+        { obj: { 'rock.boulder': 1, 'rock.stones': 1.4, 'plant.grass': 3 }, layer: 'near', seed: 706, area: { poly: [[1750, 380], [1300, 490], [1040, 900], [1750, 900]] }, n: 28, minGap: 34, s: [0.3, 1.0], flip: 0.5, variant: 'random', tint: { col: '#6a6458', k: [0, 0.08] }, anim: false },
+      ] } });
+
+  row({ id: 'ladybower-reservoir-3', label: 'Ladybower Reservoir', place: 'ladybower', town: 'Castleton', view: 'bamford-edge', reason: 'Looking down from Bamford Edge over the arms of the reservoir', kind: 'landscape', tags: ['reservoir', 'gritstone', 'viewpoint'] },
+    { id: 'ladybower-reservoir-3', lat: 53.360, lon: -1.690, heading: 300, horizon: 380, at: 'golden', land: 'moor', seed: 710, nFar: 40, nMid: 80,
+      hills: [[-160, 350], [200, 330], [600, 300], [900, 340], [1200, 320], [1500, 350], [1760, 340]],
+      water: { y0: 470, y1: 560, kind: 'lake', wob: 12 },
+      sig: [{ obj: 'landmark.ladybower-viaduct', x: 1000, y: 530, s: 0.92, layer: 'far' }],
+      woods: [{ rect: [-150, 420, 1750, 466], obj: { 'tree.far-pine': 3, 'tree.distant-pine': 2 }, layer: 'far', n: 30, gap: 34, s: [0.14, 0.24] }],
+      farms: [[1400, 576, 0.4, 0, 'mid'], [500, 580, 0.35, 1, 'mid']], walls: 2, sheep: 4, walkers: 2,
+      walk: [[-60, 790], [700, 770], [1660, 800]],
+      frame: [{ obj: 'rock.boulder', x: 1480, y: 905, s: 2.2, layer: 'front', flip: true }, { obj: 'rock.boulder', x: 420, y: 840, s: 1.6, layer: 'front', variant: 1 }],
+      extra: { ground: [
+        { layer: 'front', d: 'M-160 905L-160 790L40 770L120 782L260 760L420 772L560 800L640 840L700 905Z', fill: { lin: [[0, '@scree.0'], [1, '@scree.1']], y1: 760, y2: 905 } },
+        { layer: 'front', d: 'M-160 820L60 800L240 790L420 800L560 826L560 834L420 810L240 800L60 812L-160 832Z', fill: '@scree.1' },
+      ] } });
+
+  row({ id: 'mam-tor-5', label: 'Mam Tor', place: 'mam-tor', town: 'Castleton', view: 'hollins-cross-dawn', reason: 'First light along the ridge from Hollins Cross', kind: 'landscape', tags: ['great ridge', 'dawn', 'hope valley'] },
+    { id: 'mam-tor-5', lat: 53.352, lon: -1.788, heading: 260, horizon: 500, at: 'dawn', land: 'moor', seed: 723,
+      sig: [{ obj: 'landmark.mam-tor', x: 1000, y: 560, s: 1.2, layer: 'far' }],
+      farms: [[260, 620, 0.6, 0], [1360, 640, 0.55, 2]], walls: 4, sheep: 6, walkers: 3, gliders: 0,
+      walk: [[-60, 720], [600, 690], [1200, 676], [1660, 700]] });
 })();
