@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ALxN8qiZLFV4jrmebmQJxbVz5VKckF/NMHz5W+P601k='; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex">
+<title>Returning to OpenDash</title>
+<!--
+  OpenDash: the Enable Banking return page (docs/dev/FINANCE_CONNECTIONS.md 2.3.1 A).
+
+  Enable Banking only sends people back to an https:// address, and OpenDash
+  runs on http://localhost on the user's own computer. This static page is
+  that https:// address: the bank sends the browser here with ?code=&state=
+  (or ?error=), and this page at once sends it on to OpenDash on the same
+  computer: http://localhost:<port>/api/fin-connect/eb/callback.
+
+  - No network requests, no cookies, no storage, no analytics. Nothing is sent
+    anywhere except the browser's own next address, on this computer.
+  - The port comes from the first part of `state` ("<port>.<random>"), and only
+    1024-65535 is accepted. Only code, state and error are passed on.
+  - The code is single-use, expires in minutes and is useless without the
+    user's private key, which never leaves their computer.
+  - location.replace: this page does not stay in the browser history.
+-->
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 34rem; margin: 12vh auto; padding: 0 1.5rem; }
+  h1 { font-size: 1.3rem; margin: 0 0 .5rem; }
+  p { margin: .5rem 0; opacity: .85; }
+  a { color: inherit; }
+  .bad { color: #c0392b; }
+</style>
+</head>
+<body>
+<h1 id="t">Returning to OpenDash…</h1>
+<p id="m">If nothing happens, make sure OpenDash is running on this computer, then use the link below.</p>
+<p><a id="go" href="#" hidden>Continue to OpenDash</a></p>
+<noscript><p class="bad">This page needs JavaScript to hand the bank's answer back to OpenDash. You can instead copy this tab's whole address and paste it into OpenDash (Connections, Enable Banking, "Paste the address").</p></noscript>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var state = q.get('state') || '';
+  var m = /^(\d{4,5})\.[A-Za-z0-9_-]{43}$/.exec(state);
+  var port = m ? Number(m[1]) : 0;
+  var t = document.getElementById('t'), msg = document.getElementById('m');
+  if (!(port >= 1024 && port <= 65535)) {
+    t.textContent = 'This link is not for OpenDash';
+    msg.className = 'bad';
+    msg.textContent = 'It did not come from a bank sign-in that OpenDash started. Start again from Connections in OpenDash.';
+    return;
+  }
+  var out = new URLSearchParams();
+  ['code', 'state', 'error'].forEach(function (k) {
+    var v = q.get(k);
+    if (v != null && v.length <= 1024) out.set(k, v);
+  });
+  var next = 'http://localhost:' + port + '/api/fin-connect/eb/callback?' + out.toString();
+  var a = document.getElementById('go');
+  a.href = next;
+  a.hidden = false;
+  location.replace(next);
+})();
+</script>
+</body>
+</html>

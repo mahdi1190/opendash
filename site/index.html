@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenDash: plan your day, keep your data</title>
+<meta name="description" content="A calm, local-first dashboard for your tasks, calendar, money and people, running on your own computer. Free and open source.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bar">
+  <div class="wrap bar-in">
+    <a class="brand" href="./">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="img/lockup-dark.svg">
+        <img src="img/lockup.svg" alt="OpenDash" height="32">
+      </picture>
+    </a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#start">Quick start</a>
+      <a href="https://github.com/mahdi1190/opendash">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap">
+  <h1>Plan your day. Keep your data.</h1>
+  <p class="lead">A calm, local-first dashboard for your tasks, calendar, money and people. It runs on your own computer, with no account and no cloud.</p>
+  <p class="cta">
+    <a class="btn" href="https://github.com/mahdi1190/opendash/releases/latest">Download the latest release</a>
+    <a class="btn ghost" href="https://github.com/mahdi1190/opendash">View on GitHub</a>
+  </p>
+  <p class="small">Free and open source (MIT). Windows, macOS and Linux. Needs Node.js 20 or newer.</p>
+  <figure class="shot hero-shot">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="img/home-dark.png">
+      <img src="img/home-light.png" alt="OpenDash Home: good morning, today in a sentence, the first Focus task and ideas for today (demo data)" width="1440" height="900">
+    </picture>
+  </figure>
+</section>
+
+<section id="features" class="wrap">
+  <h2>Everything for your day, on one page</h2>
+
+  <article class="feature">
+    <div class="text">
+      <h3>Home and the morning brief</h3>
+      <p>Today in a few sentences, the tasks that matter now, your schedule and its free stretches, the weather and your countdowns. <strong>Play my morning</strong> opens the day as a story, read aloud; <strong>Finish the day</strong> and the <strong>Weekly review</strong> close the loop.</p>
+    </div>
+  </article>
+
+  <article class="feature">
+    <div class="text">
+      <h3>Tasks</h3>
+      <p>Streams, priorities, tags, subtasks, people, repeats and estimates. List or board, quick add in plain words, search with operators, a Bin, and undo everywhere.</p>
+    </div>
+    <figure class="shot">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="img/task-card-dark.png">
+        <img src="img/task-card-light.png" alt="A task open in the centre card, with subtasks and details (demo data)" width="1440" height="900" loading="lazy">
+      </picture>
+    </figure>
+  </article>
+
+  <article class="feature flip">
+    <div class="text">
+      <h3>Calendar</h3>
+      <p>Month, week, day and agenda views with tasks, planned blocks and countdowns beside your events. Drag a task onto the week to plan it. Events come from Google Calendar through Claude, a read-only source, or a plain iCal link.</p>
+    </div>
+    <figure class="shot">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="img/calendar-week-dark.png">
+        <img src="img/calendar-week-light.png" alt="The calendar week view with events and due tasks (demo data)" width="1440" height="900" loading="lazy">
+      </picture>
+    </figure>
+  </article>
+
+  <article class="feature">
+    <div class="text">
+      <h3>Finances</h3>
+      <p><strong>Connections &gt; Money</strong> brings every bank and wallet into one place: Aureli (via Claude), Plasma One, Monzo directly, UK and EU banks through Enable Banking, or a CSV export with no connection at all. Every connector is read-only and credentials stay on your computer. The money brief tells you what is safe to spend.</p>
+    </div>
+    <figure class="shot">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="img/connections-money-dark.png">
+        <img src="img/connections-money-light.png" alt="Connections &gt; Money: Aureli, Plasma One, Monzo and Enable Banking side by side (demo data)" width="1440" height="900" loading="lazy">
+      </picture>
+    </figure>
+  </article>
+
+  <article class="feature flip">
+    <div class="text">
+      <h3>Stories and animations with the live sky</h3>
+      <p>Openings and scenes for places around the world that follow the real sky where you are: sun, moon, season and weather. Browse them all in a searchable gallery with dawn, day, dusk and night previews. Motion can be reduced or switched off.</p>
+    </div>
+    <figure class="shot">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="img/animations-dark.png">
+        <img src="img/animations-light.png" alt="Settings &gt; Animations: the Dallas skyline at dusk with time-of-day previews" width="1440" height="900" loading="lazy">
+      </picture>
+    </figure>
+  </article>
+
+  <article class="feature">
+    <div class="text">
+      <h3>The assistant and MCP</h3>
+      <p>Ask in plain words. The optional Claude assistant proposes changes with a preview, and nothing changes until you press <strong>Apply</strong>. OpenDash also ships its own MCP server, so Claude Code, T3 Code or Claude Desktop can work with your dashboard, with the safety rails enforced by OpenDash.</p>
+    </div>
+    <figure class="shot">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="img/assistant-dark.png">
+        <img src="img/assistant-light.png" alt="The assistant panel beside Home, with suggested questions (demo data)" width="1440" height="900" loading="lazy">
+      </picture>
+    </figure>
+  </article>
+  <p class="small center">Every screenshot shows invented demo data.</p>
+</section>
+
+<section id="privacy" class="band">
+  <div class="wrap">
+    <h2>Local-first and private</h2>
+    <ul class="grid">
+      <li><strong>Your data stays home.</strong> Plain files in one folder on your computer, with automatic backups. The server only listens on 127.0.0.1.</li>
+      <li><strong>No account, no cloud.</strong> No analytics and no telemetry. Nothing is ever sent to the OpenDash project.</li>
+      <li><strong>Only what you switch on.</strong> The network is used only by features you turn on, and only to reach the service they name.</li>
+      <li><strong>Works offline.</strong> Tasks, the calendar view, Finances with CSV, people and the brief all work without a connection.</li>
+    </ul>
+    <p><a href="https://github.com/mahdi1190/opendash/blob/main/docs/PRIVACY.md">Exactly what is stored where</a></p>
+  </div>
+</section>
+
+<section id="start" class="wrap">
+  <h2>Quick start</h2>
+  <ol class="steps">
+    <li><strong>Download</strong> the zip from the <a href="https://github.com/mahdi1190/opendash/releases/latest">latest release</a> and unzip it. You need <a href="https://nodejs.org">Node.js</a> 20 or newer.</li>
+    <li><strong>Run</strong> <code>start-opendash.bat</code> on Windows, or <code>sh start-opendash.sh</code> on macOS and Linux.</li>
+    <li><strong>Open</strong> <code>http://localhost:4173</code> in your browser (the launcher does it for you) and follow the short welcome.</li>
+  </ol>
+  <p>Updates are built in: <strong>Settings &gt; Updates</strong> checks GitHub for the newest release and installs it, verified and backed up.</p>
+  <p class="cta"><a class="btn" href="https://github.com/mahdi1190/opendash/releases/latest">Download OpenDash</a>
+    <a class="btn ghost" href="https://github.com/mahdi1190/opendash/blob/main/docs/INSTALL.md">Install guide</a></p>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>OpenDash is free and open source under the MIT licence. <a href="https://github.com/mahdi1190/opendash">Source</a> · <a href="https://github.com/mahdi1190/opendash/tree/main/docs">Documentation</a> · <a href="https://github.com/mahdi1190/opendash/blob/main/docs/CHANGELOG.md">Changelog</a></p>
+    <p class="small">This page has no trackers, cookies, scripts or external fonts.</p>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,94 @@
+:root {
+  --bg: #fbfbfd;
+  --fg: #1c1d22;
+  --muted: #5d6070;
+  --line: #e4e5ec;
+  --band: #f1f1f8;
+  --accent: #5b5bd6;
+  --accent-fg: #ffffff;
+  --shadow: 0 12px 40px rgba(30, 30, 60, 0.12);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111216;
+    --fg: #ececf1;
+    --muted: #a3a5b3;
+    --line: #2a2c35;
+    --band: #181a21;
+    --accent: #8b8bf0;
+    --accent-fg: #111216;
+    --shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+a { color: var(--accent); }
+img { max-width: 100%; height: auto; display: block; }
+code { font: 0.92em ui-monospace, "Cascadia Code", Menlo, Consolas, monospace; background: var(--band); padding: 0.1em 0.35em; border-radius: 4px; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+.bar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.bar-in { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 60px; }
+.bar nav { display: flex; gap: 20px; }
+.bar nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+.bar nav a:hover { color: var(--fg); }
+
+.hero { text-align: center; padding-top: 72px; }
+h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 16px; }
+h2 { font-size: clamp(1.6rem, 3vw, 2.1rem); letter-spacing: -0.01em; margin: 72px 0 24px; text-align: center; }
+h3 { font-size: 1.3rem; margin: 0 0 8px; }
+.lead { font-size: 1.2rem; color: var(--muted); max-width: 640px; margin: 0 auto 28px; }
+.small { font-size: 14px; color: var(--muted); }
+.center { text-align: center; }
+
+.cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 0 0 12px; }
+.btn { display: inline-block; padding: 12px 22px; border-radius: 10px; background: var(--accent); color: var(--accent-fg); text-decoration: none; font-weight: 600; border: 1px solid var(--accent); }
+.btn:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; color: var(--accent); }
+
+.shot { margin: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); }
+.hero-shot { margin-top: 40px; }
+
+.feature { display: grid; grid-template-columns: 1fr 1.6fr; gap: 40px; align-items: center; margin: 0 0 64px; }
+.feature:not(:has(.shot)) { grid-template-columns: 1fr; max-width: 720px; margin-left: auto; margin-right: auto; text-align: center; }
+.feature.flip .text { order: 2; }
+.feature p { color: var(--muted); margin: 0; }
+
+.band { background: var(--band); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 8px 0 40px; margin-top: 40px; }
+.band h2 { margin-top: 48px; }
+.grid { list-style: none; padding: 0; margin: 0 0 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; }
+.grid li { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 20px; color: var(--muted); }
+.grid strong { display: block; color: var(--fg); margin-bottom: 4px; }
+.band p { text-align: center; }
+
+.steps { max-width: 720px; margin: 0 auto 24px; padding-left: 1.4em; }
+.steps li { margin-bottom: 12px; }
+#start > p { max-width: 720px; margin-left: auto; margin-right: auto; }
+#start .cta { margin-top: 24px; }
+
+.foot { border-top: 1px solid var(--line); margin-top: 72px; padding: 24px 0 40px; color: var(--muted); font-size: 15px; text-align: center; }
+
+@media (max-width: 800px) {
+  .bar nav a:not(:last-child) { display: none; }
+  .hero { padding-top: 40px; }
+  .feature { grid-template-columns: 1fr; gap: 20px; }
+  .feature.flip .text { order: 0; }
+}
+
+.brand img { height: 32px; width: auto; }
+.feature.flip { grid-template-columns: 1.6fr 1fr; }
+@media (max-width: 800px) { .feature.flip { grid-template-columns: 1fr; } }
