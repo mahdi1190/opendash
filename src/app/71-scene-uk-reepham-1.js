@@ -246,8 +246,8 @@
     { let d = ''; for (let k = 0; k < 12; k++) { const y = 470 + Math.pow(k / 12, 1.6) * 430; d += `M700 ${f1(y)}L740 ${f1(y)}L740 ${f1(y + 1)}Z`; } ground.push({ layer: 'mid', d, fill: '@sett.1' }); }
     const place = [
       { obj: 'landmark.reepham-market-place', x: 860, y: 432, s: 0.82, layer: 'far', seed: 141 },
-      { obj: 'tree.ancient-oak', x: 96, y: 680, s: 1.7, layer: 'near', seed: 142, anim: { sway: { k: 1 } } },
-      { obj: 'tree.plane', x: 1520, y: 610, s: 1.3, layer: 'mid', seed: 143, anim: { sway: { k: 1 } } },
+      { obj: 'tree.ancient-oak', x: 1530, y: 680, s: 1.7, layer: 'near', seed: 142, anim: { sway: { k: 1 } } },
+      { obj: 'tree.plane', x: 110, y: 612, s: 1.3, layer: 'mid', seed: 143, anim: { sway: { k: 1 } } },
       { obj: 'animal.deer', x: 430, y: 600, s: 1.0, layer: 'mid', seed: 144, flip: false },
     ];
     const scatter = [
