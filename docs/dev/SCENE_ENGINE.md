@@ -495,7 +495,8 @@ SCENE_REGION_KITS = {                      // the default kits for a region scen
 `sceneKitPick(kits, role, { tags, exclude })` (builder A, core) returns
 `{ id: weight }`: every object with one of the `kit:<k>` tags and the
 `role:<role>` tag (and every extra tag in `tags`), weighted by `weight`
-(default 1). It is memoised per call signature and EMPTY-SAFE: with no match
+(default 1; `weight: 0` excludes the object, so only a scene that names it
+gets it), keyed in id order. It is memoised per call signature and EMPTY-SAFE: with no match
 it returns `{}`, and the archetype skips that rule (the lint's ground-cover
 and mover rules then say what is thin).
 
@@ -1411,6 +1412,39 @@ This round only `basic` (the generic fallback) and `station` are BUILT
 all of them so `scene upgrade` can suggest one (16.3). The convert stage
 builds `skyline-water` and `temple-mountain` (section 17); the others follow
 as upgrades need them, each in `src/app/70-scene-arch-<id>.js`.
+
+### 8.6 How archetypes pick objects (order never matters)
+
+Library files load in file-name order, and a new file can sort anywhere
+(`-` sorts before `.`, so `...-more.js` loads before `....js`). An archetype's
+output must therefore be a function of the scene's own params (its id) and
+of the SET of objects eligible by kit and role, never of load order:
+`sceneKitPick` keys its result in id order, so a scatter's weighted mix is
+order-free, and every FIXED slot (the framing trees, the lamp, the bench,
+the lanterns, the boats, the flock birds, the vehicles, the walkers' order)
+comes from `sceneSlotRank(w, '<scene id>|<slot>')` (or `sceneSlotPick`, its
+first): a weighted rendezvous hash of (slot key, object id). A new object
+moves a slot only when it is eligible for that slot's kit and role AND wins
+the hash there; adding or removing any other object moves nothing. A light
+`weight` (0.3) makes a heavy object rare in slots and scatters alike;
+`weight: 0` keeps it out. Tests register the library reversed and shuffled
+and require identical compiled pilots and station demo
+(`tests/scene-core.test.mjs`). A scatter rule's `maxH` (units) caps the
+placed height of each of its objects by scaling that object's placements
+down together (their spread kept); `skyline-water` and `basic` cap their far
+row at 0.8 (`skyline-water` its horizon haze at 0.5) of the horizon-to-top
+space, so a 1,700-unit tower never overtops the sky or the landmarks.
+
+A scene that must not move at all (a GOLD scene near its tile budget) names
+its own picks in its PATCH, never its params row (a row stays under
+`rowBytes`): `picks: { <slot>: [ids] }` puts those ids first in that slot,
+in that order (`u.slot`), and `mix: { <role>: { id: weight } }` replaces the
+kit's dict for that role, in the scene's own order and weights (`u.mix`).
+Both are cut to the ids the archetype allows there (kit, role, its own
+filters); a named id that is gone or not allowed falls back to the hash or
+to the kit's dict. The pilots name their framing trees, lamps, lanterns and
+their heaviest mixes this way, and the `station` archetype names London's
+dock boats, town birds and the avenue plane first for every station.
 
 ## 9. Selection rules per region (London and dense cities)
 

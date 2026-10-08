@@ -23,6 +23,10 @@
     palette: { base: { water: ['#7ab4c0', '#357688', '#183e52'] } } };
   const glass = { 'building.tower-glass': 1 };   // Marina Bay's skyline is curtain-wall glass: no masonry setback towers
   const patch = {
+    // the scene's own picks (8.6), so a new library object never moves them: a tall coconut palm and a rain tree framing the
+    // view, lampposts on the promenade; rain trees and palms on the quay, banana plants in the beds (heavier mixes overran the tile)
+    picks: { frame: ['plant.palm-coconut-tall', 'tree.rain-tree'], lamp: ['street.lamppost'] },
+    mix: { tree: { 'tree.rain-tree': 1, 'plant.palm-coconut-tall': 0.3, 'plant.palm-royal': 1 }, shrub: { 'plant.banana': 1 } },
     drop: { scatter: [1] },
     scatter: [
       { obj: glass, layer: 'far', seed: 4, area: { rect: [-150, 544, 1750, 549] }, n: 28, minGap: 40, s: [0.5, 0.9], flip: 0.5, variant: 'random', tint: { col: '#8a9aac', k: [0.08, 0.08] }, mask: { noise: { scale: 140, cut: 0.32 }, avoid: [{ rect: [380, 500, 1220, 570] }] }, shadow: false, anim: false },
