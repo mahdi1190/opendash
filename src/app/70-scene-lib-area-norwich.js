@@ -27,7 +27,7 @@
   const pointed = (x, y, w, h) => `M${f1(x)} ${f1(y + h)}V${f1(y + w * .55)}Q${f1(x + w * .05)} ${f1(y)} ${f1(x + w / 2)} ${f1(y - w * .15)}Q${f1(x + w * .95)} ${f1(y)} ${f1(x + w)} ${f1(y + w * .55)}V${f1(y + h)}z`;
   const round = (x, y, w, h) => `M${f1(x)} ${f1(y + h)}V${f1(y + w / 2)}A${f1(w / 2)} ${f1(w / 2)} 0 0 1 ${f1(x + w)} ${f1(y + w / 2)}V${f1(y + h)}z`;
   /** Flint: many small cobbles over a rectangle, in three tones. */
-  const flints = (push, r, x, y, w, h, n, keys) => { const s = ['', '', '']; for (let i = 0; i < n; i++) s[i % 3] += ell(rr(r, x + 2, x + w - 2), rr(r, y + 2, y + h - 2), rr(r, 1.2, 2.6), rr(r, .9, 1.8)); push([keys[0], s[0], .85], [keys[1], s[1], .75], [keys[2], s[2], .6]); };
+  const flints = (push, r, x, y, w, h, n, keys) => { const s = ['', '', '']; for (let i = 0; i < n; i++) s[i % 3] += ell(rr(r, x + 2, x + w - 2), rr(r, y + 2, y + h - 2), rr(r, 1.2, 2.6), rr(r, .9, 1.8)); push({ f: keys[0], d: s[0], op: .85, detail: true }, { f: keys[1], d: s[1], op: .75, detail: true }, { f: keys[2], d: s[2], op: .6, detail: true }); };
 
   /* ---------- landmark.norwich-cathedral (from the south-west, across the lower Close; lit from the left) ---------- */
   def({
@@ -44,16 +44,16 @@
     credit: 'drawn for the Norwich area scenes (from public views of the cathedral from the Close)',
     build() {
       const b = [], lit = [], push = (...s) => b.push(...s);
-      const rwin = (x, y, w, h) => push(['@shade.1', round(x - 2, y - 2, w + 4, h + 3)], { f: '@glass.0', d: round(x, y, w, h), glow: 'window' }, ['@glass.1', round(x + 1, y + 1, w * .45, h * .5), .3]);
-      const pwin = (x, y, w, h, mull) => { push(['@shade.1', pointed(x - 2, y - 2, w + 4, h + 3)], { f: '@glass.0', d: pointed(x, y, w, h), glow: 'window' }); let m = ''; for (let i = 1; i <= mull; i++) m += `M${f1(x + i * w / (mull + 1))} ${f1(y + w * .25)}V${f1(y + h)}`; push({ s: '@tracery', w: .9, d: m + `M${f1(x)} ${f1(y + h * .5)}h${f1(w)}`, op: .85 }); };
+      const rwin = (x, y, w, h) => push({ f: '@shade.1', d: round(x - 2, y - 2, w + 4, h + 3), detail: true }, { f: '@glass.0', d: round(x, y, w, h), glow: 'window' });
+      const pwin = (x, y, w, h, mull) => { push(['@shade.1', pointed(x - 2, y - 2, w + 4, h + 3)], { f: '@glass.0', d: pointed(x, y, w, h), glow: 'window' }); let m = ''; for (let i = 1; i <= mull; i++) m += `M${f1(x + i * w / (mull + 1))} ${f1(y + w * .25)}V${f1(y + h)}`; push({ s: '@tracery', w: .9, d: m + `M${f1(x)} ${f1(y + h * .5)}h${f1(w)}`, op: .85, detail: true }); };
       // ---- the spire (behind everything): an octagon seen on the angle, lit face and shaded face, ribs, crockets, lucarnes
       const sx = 30, sb = -300, st = -560;
       push(['@stone.1', `M${sx - 40} ${sb}L${sx} ${st}L${sx + 40} ${sb}z`], ['@stone.2', `M${sx - 40} ${sb}L${sx} ${st}L${sx - 6} ${sb}z`, .7], ['@shade.0', `M${sx + 12} ${sb}L${sx} ${st}L${sx + 40} ${sb}z`, .55]);
       push({ s: '@shade.1', w: 1.4, d: `M${sx - 6} ${sb}L${sx} ${st}M${sx + 12} ${sb}L${sx} ${st}` });
       let crk = ''; for (let i = 1; i < 14; i++) { const t = i / 14, y = sb + (st - sb) * t, hw = 40 * (1 - t); crk += rect(sx - hw - 3, y, 4, 3) + rect(sx + hw - 1, y, 4, 3); }
-      push(['@stone.3', crk]);
+      push({ f: '@stone.3', d: crk, detail: true });
       let band = ''; for (const t of [.22, .48, .72]) { const y = sb + (st - sb) * t, hw = 40 * (1 - t); band += `M${f1(sx - hw)} ${f1(y)}H${f1(sx + hw)}`; }
-      push({ s: '@shade.1', w: 1.2, d: band, op: .7 });
+      push({ s: '@shade.1', w: 1.2, d: band, op: .7, detail: true });
       for (const [t, w] of [[.12, 12], [.36, 9], [.6, 6]]) { const y = sb + (st - sb) * t; for (const dx of [-14, 14]) { const x = sx + dx * (1 - t) - w / 2; push(['@stone.0', `M${f1(x - 2)} ${f1(y)}L${f1(x + w / 2)} ${f1(y - w * 1.4)}L${f1(x + w + 2)} ${f1(y)}V${f1(y + w * 1.5)}H${f1(x - 2)}z`], { f: '@glass.0', d: pointed(x + 1.5, y - w * .2, w - 3, w * 1.5), glow: 'window' }); } }
       push(['@stone.3', `M${sx - 2} ${st + 4}h4v-14h-4z`], ['@stone.2', ell(sx, st - 10, 3, 3)]);
       // ---- the crossing tower: four tiers of Norman decoration (blind arcade, roundels, lozenges, the belfry)
@@ -61,7 +61,7 @@
       push(['@stone.1', rect(tx0, -300, tx1 - tx0, 130)], ['@stone.2', rect(tx0, -300, 24, 130), .5], ['@shade.0', rect(tx1 - 20, -300, 20, 130), .5]);
       for (let i = 0; i < 7; i++) { const x = tx0 + 6 + i * 13.2; push(['@shade.1', round(x, -196, 9, 22)]); }
       let lz = ''; for (let i = 0; i < 8; i++) { const x = tx0 + 8 + i * 12; lz += `M${x} -222l6 -8l6 8l-6 8z`; }
-      push(['@shade.1', lz, .85]);
+      push({ f: '@shade.1', d: lz, op: .85, detail: true });
       for (let i = 0; i < 4; i++) { const x = tx0 + 16 + i * 22; push(['@shade.1', ell(x, -246, 7, 7)], ['@stone.3', ell(x, -246, 3, 3)]); }
       for (let i = 0; i < 4; i++) { const x = tx0 + 7 + i * 23; push(['@shade.1', round(x - 1, -292, 18, 36)], { f: '@glass.0', d: round(x + 3, -286, 10, 28), glow: 'window' }); }
       push({ s: '@shade.1', w: 1, d: `M${tx0} -204H${tx1}M${tx0} -232H${tx1}M${tx0} -260H${tx1}`, op: .8 });
@@ -78,13 +78,15 @@
       // ---- the nave (left): aisle, gallery and clerestory, fourteen bays of round-headed windows, the long lead roof
       push(['@stone.0', rect(-330, -88, 312, 88)], ['@lead.1', 'M-330 -88L-330 -102H-18V-88z'], ['@stone.1', rect(-330, -168, 312, 72)]);
       push(['@lead.0', 'M-336 -168L-316 -192H-16L-10 -168z'], ['@lead.2', 'M-316 -192H-16L-14 -188H-314z', .8], ['@lead.3', 'M-336 -168H-10v3H-336z', .7]);
+      const naveLo = ['', '']; let naveHi = '', naveSh = '';
       for (let i = 0; i < 14; i++) {
         const x = -326 + i * 22;
-        rwin(x + 5, -76, 10, 40); rwin(x + 5, -160, 10, 30);
+        naveLo[i < 7 ? 0 : 1] += round(x + 5, -76, 10, 40); naveHi += round(x + 5, -160, 10, 30); naveSh += round(x + 3, -78, 14, 43) + round(x + 3, -162, 14, 33);
         push(['@shade.0', `M${f1(x + 18)} 0V-88h4V0z`], ['@shade.0', `M${f1(x + 18)} -100V-168h3v68z`, .7]);
       }
+      push({ f: '@shade.1', d: naveSh, detail: true }, { f: '@glass.0', d: naveLo[0], glow: 'window' }, { f: '@glass.0', d: naveLo[1], glow: 'window' }, { f: '@glass.0', d: naveHi, glow: 'window' });
       let pc = ''; for (let i = 0; i < 38; i++) pc += rect(-330 + i * 8.2, -173, 4.2, 5);
-      push(['@stone.1', pc], ['@stone.3', rect(-330, -6, 312, 6), .55]);
+      push({ f: '@stone.1', d: pc, detail: true }, ['@stone.3', rect(-330, -6, 312, 6), .55]);
       // ---- the south transept (nearest, under the tower): gable, three tiers of round-headed windows, turrets
       push(['@stone.0', rect(-10, -168, 84, 168)], ['@stone.2', rect(-10, -168, 18, 168), .45], ['@shade.0', rect(58, -168, 16, 168), .5]);
       push(['@lead.0', 'M-14 -168L32 -212L78 -168z'], ['@stone.1', 'M-6 -168L32 -204L70 -168z']);
@@ -224,7 +226,7 @@
       let cs = ''; for (let i = 1; i < 30; i++) { const y = T + 10 + i * 6.4; cs += `M${-R} ${f1(y)}Q0 ${f1(y + 5)} ${R} ${f1(y)}`; }
       push({ s: '@brick.3', w: .6, d: cs, op: .4, detail: true });
       let pat = ''; for (let i = 0; i < 70; i++) { const x = rr(r, -R + 4, R - 4), y = rr(r, T + 16, -10); pat += rect(x, y, 5, 2.4); }
-      push(['@brick.2', pat, .45], ['@brick.3', pat.split('z').slice(0, 30).join('z') + 'z', .3]);
+      push({ f: '@brick.2', d: pat, op: .45, detail: true }, { f: '@brick.3', d: pat.split('z').slice(0, 30).join('z') + 'z', op: .3, detail: true });
       // the flint and stone plinth, the stair turret bulge on the right
       push({ f: { lin: [[0, '@flint.2'], [1, '@flint.1']], x1: -R, y1: 0, x2: R, y2: 0 }, d: `M${-R - 3} 0V-26Q0 -20 ${R + 3} -26V0Q0 8 ${-R - 3} 0z` }, ['@stone.0', `M${-R - 3} -26Q0 -20 ${R + 3} -26v-4Q0 -24 ${-R - 3} -30z`]);
       push(['@brick.1', `M${R - 14} -26V${T + 14}Q${R - 4} ${T + 10} ${R + 4} ${T + 14}V-26z`, .9], ['@brick.3', `M${R - 2} -26V${T + 14}h6V-26z`, .5]);
@@ -338,17 +340,18 @@
         const x = -318 + i * 106, w = 102, c = sets[i];
         // the dark interior and the back shelves
         push(['@dark.1', rect(x + 2, -116, w - 4, 116)], ['@dark.0', rect(x + 2, -116, w - 4, 20), .7]);
-        for (const y of [-92, -70]) { push(['@counter.1', rect(x + 6, y, w - 12, 4)]); let g = ''; for (let k = 0; k < 9; k++) g += ell(x + 12 + k * 10, y - 4, 4, 4); push(['@fruit.' + ((i + (y > -80 ? 2 : 0)) % 6), g, .9]); }
+        for (const y of [-92, -70]) { push(['@counter.1', rect(x + 6, y, w - 12, 4)]); let g = ''; for (let k = 0; k < 9; k++) g += ell(x + 12 + k * 10, y - 4, 4, 4); push({ f: '@fruit.' + ((i + (y > -80 ? 2 : 0)) % 6), d: g, op: .9, detail: true }); }
         // the counter with produce piled on it (fruit, veg, flowers, crates)
         push(['@counter.0', rect(x + 4, -40, w - 8, 40)], ['@counter.1', rect(x + 4, -40, w - 8, 4)]);
         let pile = ['', '', '']; for (let k = 0; k < 24; k++) pile[k % 3] += ell(x + 10 + (k % 12) * 7.4, -44 - Math.floor(k / 12) * 6 + rr(r, -1, 1), 4, 3.6);
-        push(['@fruit.' + (i % 6), pile[0]], ['@fruit.' + ((i + 1) % 6), pile[1]], ['@fruit.' + ((i + 3) % 6), pile[2]]);
+        push(['@fruit.' + (i % 6), rect(x + 8, -52, w - 16, 12)], { f: '@fruit.' + ((i + 1) % 6), d: pile[1], detail: true }, { f: '@fruit.' + ((i + 3) % 6), d: pile[2], detail: true }, { f: '@fruit.' + (i % 6), d: pile[0], detail: true });
         push(['@white.1', rect(x + 8, -36, w - 16, 3), .6]);
         // the posts
         push(['@post.0', rect(x + 2, -128, 4, 128)], ['@post.0', rect(x + w - 6, -128, 4, 128)]);
         // the canopy: a sloped roof of stripes and a scalloped valance
         const y0 = -164, y1 = -122, n = 8;
-        for (let k = 0; k < n; k++) { const xa = x - 2 + k * (w + 4) / n, xb = xa + (w + 4) / n, ta = x + 8 + k * (w - 16) / n, tb = ta + (w - 16) / n; push([k % 2 ? '@white.0' : '@a.' + c, `M${f1(ta)} ${y0}L${f1(tb)} ${y0}L${f1(xb)} ${y1}L${f1(xa)} ${y1}z`]); }
+        const strp = ['', '']; for (let k = 0; k < n; k++) { const xa = x - 2 + k * (w + 4) / n, xb = xa + (w + 4) / n, ta = x + 8 + k * (w - 16) / n, tb = ta + (w - 16) / n; strp[k % 2] += `M${f1(ta)} ${y0}L${f1(tb)} ${y0}L${f1(xb)} ${y1}L${f1(xa)} ${y1}z`; }
+        push(['@a.' + c, strp[0]], ['@white.0', strp[1]]);
         push(['#000000', `M${x + 8} ${y0}H${x + w - 8}L${x + w + 2} ${y1}H${x - 2}z`, .08]);
         let val = `M${x - 2} ${y1}H${x + w + 2}V${y1 + 6}`; for (let k = 8; k > 0; k--) val += `Q${f1(x - 2 + (k - .5) * (w + 4) / 8)} ${y1 + 14} ${f1(x - 2 + (k - 1) * (w + 4) / 8)} ${y1 + 6}`;
         push(['@a.' + c, val + 'z'], ['@white.0', `M${x - 2} ${y1}H${x + w + 2}v2H${x - 2}z`]);
@@ -371,7 +374,7 @@
     credit: 'drawn for the Norwich area scenes (the colour-washed jettied houses of the old city)',
     build(v, r) {
       const b = [], push = (...s) => b.push(...s);
-      const leaded = (x, y, w, h) => { push(['@frame', rect(x - 2, y - 2, w + 4, h + 4)], { f: '@glass.0', d: rect(x, y, w, h), glow: 'window' }, ['@glass.1', rect(x + 1, y + 1, w * .4, h * .4), .35]); let m = ''; for (let i = 1; i < 3; i++) m += `M${f1(x + i * w / 3)} ${y}v${h}`; push({ s: '@frame', w: .8, d: m + `M${x} ${f1(y + h / 2)}h${w}` }); };
+      const leaded = (x, y, w, h) => { push(['@frame', rect(x - 2, y - 2, w + 4, h + 4)], { f: '@glass.0', d: rect(x, y, w, h), glow: 'window' }, ['@glass.1', rect(x + 1, y + 1, w * .4, h * .4), .35]); let m = ''; for (let i = 1; i < 3; i++) m += `M${f1(x + i * w / 3)} ${y}v${h}`; push({ s: '@frame', w: .8, d: m + `M${x} ${f1(y + h / 2)}h${w}`, detail: true }); };
       // the ground floor on a flint plinth
       push(['@wash.' + v, rect(-100, -84, 200, 84)], ['@washD.' + v, rect(70, -84, 30, 84), .7], ['@flint.0', rect(-100, -12, 200, 12)]);
       leaded(-80, -64, 44, 32); leaded(30, -64, 44, 32);
@@ -379,7 +382,7 @@
       // the jettied first floor, overhanging on joist ends
       push(['@timber.0', rect(-110, -92, 220, 8)]);
       let joist = ''; for (let i = 0; i < 18; i++) joist += rect(-106 + i * 12.3, -86, 5, 4);
-      push(['@timber.1', joist]);
+      push({ f: '@timber.1', d: joist, detail: true });
       push(['@wash.' + v, rect(-110, -160, 220, 68)], ['@washD.' + v, rect(76, -160, 34, 68), .7]);
       if (v === 2) { let st = ''; for (let i = 0; i < 12; i++) st += `M${-106 + i * 19} -160v68`; st += 'M-110 -126h220'; push({ s: '@timber.0', w: 3.2, d: st }); }
       else push({ s: '@timber.0', w: 3, d: 'M-110 -160v68M110 -160v68M-110 -94h220', op: .8 });
@@ -387,7 +390,7 @@
       // the pantile roof: rippled courses, a dormer, a brick stack
       push(['@tile.0', 'M-118 -158L-74 -226H84L118 -158z'], ['@tile.1', 'M40 -226H84L118 -158H70z', .5]);
       let pt = ''; for (let i = 1; i < 9; i++) { const y = -226 + i * 7.6, k = (y + 226) / 68, xa = -74 - 44 * k, xb = 84 + 34 * k; pt += `M${f1(xa)} ${f1(y)}`; for (let x = xa; x < xb; x += 9) pt += `q4.5 3 9 0`; }
-      push({ s: '@tile.1', w: .9, d: pt, op: .5 }, ['@tile.2', 'M-74 -226H84l2 4H-76z', .8]);
+      push({ s: '@tile.1', w: .9, d: pt, op: .5, detail: true }, ['@tile.2', 'M-74 -226H84l2 4H-76z', .8]);
       push(['@wash.' + v, 'M-26 -170V-194L-6 -208L14 -194V-170z'], ['@tile.1', 'M-32 -192L-6 -212L20 -192h-6L-6 -206L-26 -192z']);
       leaded(-17, -192, 22, 18);
       push(['@brick.0', rect(54, -252, 22, 40)], ['@brick.1', rect(54, -252, 22, 4)], ['@brick.1', rect(66, -252, 10, 40), .5]);
@@ -452,6 +455,84 @@
         push({ s: '@sailD.' + v, w: .7, d: `M10 ${h + 80}L-60 ${h + 120}M10 ${h + 150}L-80 ${h + 170}`, op: .6, detail: true }, { f: '@lamp', d: rect(12, h - 6, 5, 5), glow: 'lamp' }, { f: '@lamp', d: rect(94, -34, 4, 4), glow: 'lamp' });
       }
       return { body: b };
+    },
+  });
+
+  /* ---------- landmark.norfolk-windpump: a tapering drainage windpump on the marsh (anchor: the foot of the tower; the sails turn about the hub) ---------- */
+  def({
+    id: 'landmark.norfolk-windpump', category: 'landmark', size: [200, 340], variants: 2, seasonal: false, flippable: false,
+    palette: { base: {
+      brick: ['#a65a3e', '#84432e', '#c27a58', '#5e2e20'], white: ['#f2efe6', '#cfcabd', '#ffffff'], tar: ['#2e2c2a', '#1a1918', '#454038'],
+      wood: ['#6a5a48', '#4a3e32'], sail: ['#efe8d6', '#d6ccb2'], glass: ['#3a4a5a', '#c8dce8'], door: ['#2f4a3a', '#1f2e26'],
+    } },
+    night: { glow: { window: '#ffd98a' }, on: .6 },
+    parts: ['body', 'sails'],
+    anim: { spin: { part: 'sails', pivot: [0, -270], period: 22 } },
+    shadow: { rx: 60, ry: 8, h: 330 },
+    reflect: false,
+    tags: ['landmark', 'signature', 'place:uk/norfolk', 'uk', 'norfolk', 'broads', 'windpump', 'marsh', 'drainage', 'kit:temperate'],
+    credit: 'drawn for the Norwich area scenes (a generic Broads drainage windpump; not a particular mill)',
+    build(v) {
+      const b = [], sl = [], hub = [0, -270];
+      const poly = pts => 'M' + pts.map(p => f1(p[0]) + ' ' + f1(p[1])).join('L') + 'z';
+      const tower = v === 0 ? ['@brick.0', '@brick.1'] : ['@tar.0', '@tar.1'];
+      b.push([tower[0], poly([[-46, 0], [46, 0], [26, -252], [-26, -252]])], [tower[1], poly([[12, 0], [46, 0], [26, -252], [12, -252]]), .7]);
+      const courses = []; for (let i = 0; i < 22; i++) courses.push(`M-44 ${f1(-6 - i * 11)}h88`);
+      b.push({ s: v === 0 ? '@brick.3' : '@tar.2', w: .8, op: .35, d: courses.join(''), detail: true });
+      if (v === 1) b.push(['@white.0', poly([[-40, -150], [40, -150], [36, -132], [-36, -132]])], ['@white.1', poly([[10, -150], [40, -150], [36, -132], [10, -132]]), .6]);
+      b.push(['@white.0', poly([[-30, -252], [30, -252], [14, -292], [-14, -292]])], ['@white.1', poly([[6, -252], [30, -252], [14, -292], [6, -292]]), .7], ['@white.0', 'M0 -300 L5 -290 L-5 -290 Z']);
+      b.push({ s: '@wood.0', w: 2.2, d: 'M10 -282 L70 -284 M44 -292 L44 -270 M28 -276 L60 -292' }, { s: '@wood.1', w: 1.2, d: 'M28 -276 A14 14 0 1 1 28 -277' });
+      b.push(['@wood.1', 'M-8 -208 V-176 h16 V-208 z']);
+      for (const y of [-200, -170, -140, -110, -80, -50]) for (const x of [-14, 14]) b.push({ f: '@glass.0', d: `M${x - 4} ${y}V${y - 14}h8V${y}z`, glow: 'window' }, { s: '@white.2', w: .8, op: .6, d: `M${x - 5} ${y}h10` });
+      for (const y of [-160, -110, -60]) b.push({ s: '@wood.1', w: 1, op: .5, d: `M-7 ${y - 8}h14` });
+      b.push({ f: '@glass.0', d: 'M-7 -160 V-176 Q0 -184 7 -176 V-160 z', glow: 'window' });
+      b.push(['@door.0', 'M-10 0 V-34 Q0 -46 10 -34 V0 z']);
+      // the sails: one arm, drawn along +x from the hub, then rotated to four (a ribbon of cloth with lattice bars and the stock)
+      const rot = (x, y, a) => [hub[0] + x * Math.cos(a) - y * Math.sin(a), hub[1] + x * Math.sin(a) + y * Math.cos(a)];
+      const ribbon = (a, x0, x1, w) => poly([rot(x0, -w / 2, a), rot(x1, -w / 2, a), rot(x1, w / 2, a), rot(x0, w / 2, a)]);
+      for (let k = 0; k < 4; k++) {
+        const a = k * Math.PI / 2 + Math.PI / 4;
+        sl.push(['@sail.0', ribbon(a, 16, 150, 26)], ['@sail.1', ribbon(a, 16, 60, 26), .6]);
+        for (let i = 0; i < 8; i++) { const x = 26 + i * 17, p0 = rot(x, -13, a), p1 = rot(x, 13, a); sl.push({ s: '@wood.1', w: .9, d: `M${f1(p0[0])} ${f1(p0[1])}L${f1(p1[0])} ${f1(p1[1])}`, op: .7, detail: true }); }
+        const s0 = rot(4, 0, a), s1 = rot(158, 0, a);
+        sl.push({ s: '@wood.0', w: 3, d: `M${f1(s0[0])} ${f1(s0[1])}L${f1(s1[0])} ${f1(s1[1])}` });
+      }
+      sl.push(['@wood.1', 'M-6 -270 h12 v-6 h-12z']);
+      return { body: b, sails: sl };
+    },
+  });
+
+  /* ---------- building.riverside-stand: a generic riverside football stand (tiered seats under a sloping roof, floodlight masts; anchor: the foot of the front) ---------- */
+  def({
+    id: 'building.riverside-stand', category: 'building', size: [520, 230], variants: 2, seasonal: false, flippable: true,
+    palette: { base: {
+      steel: ['#c9ced3', '#9aa2aa', '#e4e8ec'], seat: ['#2f6a4a', '#24543b', '#3d8058'], roof: ['#8e969e', '#6a727a', '#b4bcc4'], lamp: ['#fff6d8', '#ffffff'], concrete: ['#b8b2a8', '#948e84'],
+    } },
+    night: { glow: { lamp: '#fff3c0' }, on: .9 },
+    parts: ['body', 'lit'],
+    shadow: { rx: 240, ry: 12, h: 120 },
+    reflect: false,
+    tags: ['building', 'signature', 'stadium', 'stand', 'football', 'riverside', 'floodlights', 'city', 'kit:urban', 'role:building-mid'],
+    credit: 'drawn for the Norwich area scenes (a generic football stand and floodlight masts; no club, crest or name)',
+    build(v) {
+      const b = [], lit = [];
+      const poly = pts => 'M' + pts.map(p => f1(p[0]) + ' ' + f1(p[1])).join('L') + 'z';
+      b.push(['@concrete.0', rect(-250, -22, 500, 22)], ['@concrete.1', rect(-250, -22, 500, 4), .6]);
+      for (let i = 0; i < 8; i++) {
+        const y = -22 - i * 15;
+        b.push(['@concrete.1', rect(-244, y - 15, 488, 15), .9], { s: '@seat.' + (v ? (i % 2 ? 0 : 2) : (i % 2 ? 2 : 1)), w: 1, d: '', op: 1 }, ['@seat.' + (i % 3), rect(-240, y - 19, 480, 5)]);
+      }
+      b.push({ s: '@steel.1', w: .9, op: .5, d: Array.from({ length: 20 }, (_, i) => `M${-240 + i * 25} -22V-140`).join(''), detail: true });
+      b.push(['@steel.0', poly([[-258, -150], [258, -150], [258, -136], [-258, -112]])], ['@roof.0', poly([[-258, -150], [258, -150], [258, -144], [-258, -120]])], ['@roof.2', poly([[-258, -150], [258, -150], [258, -147], [-258, -128]]), .8]);
+      b.push({ s: '@steel.0', w: 2.4, d: 'M-240 -22V-132M-120 -22V-140M0 -22V-144M120 -22V-140M240 -22V-132' });
+      b.push({ s: '@roof.1', w: 1.2, op: .7, d: 'M-258 -134H258M-258 -118H258' });
+      // floodlight masts at both ends, with lamp heads (lit at night)
+      for (const x of [-300, 300]) {
+        b.push({ s: '@steel.0', w: 4, d: `M${x} 0V-210` }, ['@steel.1', poly([[x - 26, -210], [x + 26, -210], [x + 20, -232], [x - 20, -232]])]);
+        lit.push({ f: '@lamp.0', d: poly([[x - 22, -232], [x + 22, -232], [x + 18, -240], [x - 18, -240]]), glow: 'lamp' }, { s: '@lamp.1', w: 1, d: `M${x - 20} -236H${x + 20}`, op: .8 });
+        for (let k = 0; k < 4; k++) lit.push({ f: '@lamp.0', d: rect(x - 16 + k * 9, -226, 6, 5), glow: 'lamp' });
+      }
+      return { body: b, lit };
     },
   });
 })();
