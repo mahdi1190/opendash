@@ -1,7 +1,7 @@
 /* ============================================================
-   UPGRADE (draft) of asia-southeast/da-nang-skyline (docs/dev/SCENE_ENGINE.md section 16)
+   UPGRADE (live) of asia-southeast/da-nang-skyline (docs/dev/SCENE_ENGINE.md section 16)
    Scaffolded by `node tools/anim-pack.mjs scene upgrade asia-southeast/da-nang-skyline`.
-   DRAFT: the app keeps the hand-drawn art; the tool shows this scene with --upgrades.
+   LIVE: the app shows this composed scene in place of the hand-drawn art (kept as the item's legacySvg).
    The item keeps its identity: the id, key, place fields, label, site, tags and when
    come from the region entry (tests/scene-upgrades-live.test.mjs). After any change, re-check:
      node tools/anim-pack.mjs scene sheet asia-southeast/da-nang-skyline --compare --upgrades --times
@@ -48,7 +48,7 @@
     flocks: [{ obj: 'bird.egret-flight', n: 3, area: [200, 520, 1400, 580], speed: 16, s: 0.7, seed: 12, layer: 'mid' }],
   };
   animRegionSceneUpgrade('asia', 'place:da-nang', {
-    state: 'draft',
+    state: 'live',
     archetype: 'skyline-water',
     landmarks: ['landmark.dragon-bridge'],
     scene: () => sceneFromArchetype('skyline-water', params, patch),

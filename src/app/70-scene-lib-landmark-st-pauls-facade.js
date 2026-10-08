@@ -71,7 +71,7 @@
       body.push(['@stone.2', rect(-16, -126, 6, 9) + rect(10, -126, 6, 9), 0.55]);
       for (const sg of [-1, 1]) {
         body.push([sg < 0 ? '@stone.1' : '@stone.2', `M${sg * 21} -128Q${sg * 23} -117 ${sg * 30} -114H${sg * 21}z`]);
-        body.push({ s: '@stone.3', w: 0.7, op: 0.8, d: `M${sg * 21} -128Q${sg * 23} -117 ${sg * 30} -114` }, [sg < 0 ? '@stone.0' : '@stone.2', ell(sg * 29, -115.6, 1.6, 1.6)]);
+        body.push({ s: '@stone.3', w: 0.7, op: 0.8, d: `M${sg * 21} -128Q${sg * 23} -117 ${sg * 30} -114`, detail: true }, [sg < 0 ? '@stone.0' : '@stone.2', ell(sg * 29, -115.6, 1.6, 1.6)]);
       }
       // the pediment: the triangle, its recessed field, the plain finial and the corner balls
       body.push(['@stone.1', poly([[-23, -131], [0, -147], [23, -131]])], ['@stone.2', poly([[-17, -132.4], [0, -143.6], [17, -132.4]]), 0.6], ['@stone.0', poly([[-23, -131], [0, -147], [-1.5, -146]]), 0.6]);
@@ -83,16 +83,16 @@
       const cols = (xs, y0, y1, w) => {
         let a = '', b = '', c = '';
         for (const x of xs) { a += rect(x - w / 2, y1, w, y0 - y1); b += rect(x + w / 6, y1, w / 3, y0 - y1); c += rect(x - w / 2 - 0.7, y0 - 1.4, w + 1.4, 1.4) + rect(x - w / 2 - 0.9, y1, w + 1.8, 1.6); }
-        body.push(['@stone.0', a], ['@stone.2', b, 0.8], ['@stone.2', c]);
+        body.push(['@stone.0', a], { f: '@stone.2', d: b, op: 0.8, detail: true }, { f: '@stone.2', d: c, detail: true });
       };
       const X1 = [-44, -34, -30, -14, -10, 10, 14, 30, 34, 44];
       cols(X1, -35, -61, 2.8); cols(X1, -64, -88, 2.6); cols([-32, -28, -12, -8, 8, 12, 28, 32], -91, -111, 2.4); cols([-19, -6, 6, 19], -113.5, -129, 2);
       // the obelisks on the second and third cornices, with their ball tips
-      const ob = (x, y, h, w) => { body.push(['@stone.2', rect(x - w * 0.6, y - 2.4, w * 1.2, 2.4)], [x < 0 ? '@stone.0' : '@stone.1', poly([[x - w / 2, y - 2.4], [x, y - 2.4 - h], [x + w / 2, y - 2.4]])], ['@stone.2', poly([[x, y - 2.4 - h], [x + w / 2, y - 2.4], [x + w * 0.1, y - 2.4]]), 0.7], ['@stone.1', ell(x, y - 3.4 - h, 1, 1)]); };
+      const ob = (x, y, h, w) => { body.push(['@stone.2', rect(x - w * 0.6, y - 2.4, w * 1.2, 2.4)], [x < 0 ? '@stone.0' : '@stone.1', poly([[x - w / 2, y - 2.4], [x, y - 2.4 - h], [x + w / 2, y - 2.4]])], { f: '@stone.2', d: poly([[x, y - 2.4 - h], [x + w / 2, y - 2.4], [x + w * 0.1, y - 2.4]]), op: 0.7, detail: true }, ['@stone.1', ell(x, y - 3.4 - h, 1, 1)]); };
       ob(-42, -91, 13, 5); ob(42, -91, 13, 5); ob(-32, -113.5, 9, 4); ob(32, -113.5, 9, 4);
       // weathering: dark streaks below the cornices and round the openings (fine), the openings' reveals
       let wx = ''; for (const [x, y, h] of [[-38, -61, 9], [-6, -61, 6], [26, -61, 11], [-25, -88, 7], [17, -88, 5], [40, -88, 8], [-28, -111, 6], [9, -111, 5]]) wx += rect(x, y, 1.6, h);
-      body.push(['@stone.3', wx, 0.3], { s: '@deep.0', w: 0.9, op: 0.55, d: arch(0, -35, 13, 22) + box(-22, -35, 9, 17) + box(22, -35, 9, 17) + arch(0, -67, 11, 16) + arch(-22, -68, 8, 13) + arch(22, -68, 8, 13) + arch(-21, -94, 7, 12) + arch(21, -94, 7, 12), detail: true });
+      body.push({ f: '@stone.3', d: wx, op: 0.3, detail: true }, { s: '@deep.0', w: 0.9, op: 0.55, d: arch(0, -35, 13, 22) + box(-22, -35, 9, 17) + box(22, -35, 9, 17) + arch(0, -67, 11, 16) + arch(-22, -68, 8, 13) + arch(22, -68, 8, 13) + arch(-21, -94, 7, 12) + arch(21, -94, 7, 12), detail: true });
       let jt = ''; for (const [y0, y1, w] of [[-35, -61, 46], [-64, -88, 46], [-91, -111, 34]]) for (let y = y0 - 5; y > y1; y -= 5) jt += `M${-w} ${y}H${w}`;
       body.push({ s: '@stone.2', w: 0.4, op: 0.45, d: jt, detail: true });
       // night: the facade floodlit warm from below (stronger low down), the cornices' edges, the stair's nosings
