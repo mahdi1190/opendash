@@ -26,6 +26,20 @@ const scene = (over = {}) => Object.assign({ v: 1, id: 'core-test', view: { lat:
     { obj: 'plant.coretest', layer: 'fore', seed: 4, area: { poly: [[0, 820], [1600, 820], [1600, 900], [0, 900]] }, n: 120, minGap: 10, anim: 'strip', mask: { noise: { scale: 200, cut: 0.4 }, avoid: [{ rect: [700, 820, 900, 900] }] } }],
   actors: [{ obj: 'plant.coretest', layer: 'near', path: [[0, 800], [1600, 800]], speed: 10 }] }, over);
 
+test('seasonal particles: mild coastal climate avoids decorative snow while live weather remains enabled', () => {
+  const mild = scene({ particles: 'season', weather: 'live', particleSeasons: { autumn: 'motes', winter: 'motes' } });
+  assert.deepEqual(E.sceneValidate(mild), []);
+  const winter = E.sceneCompile(mild, { season: 'winter' });
+  assert.equal(winter.particles.kind, 'motes');
+  assert.equal(winter.weather, 'live', 'actual rain or snow remains a weather effect');
+  assert.equal(E.sceneCompile(mild, { season: 'autumn' }).particles.kind, 'motes');
+  assert.equal(E.sceneCompile(mild, { season: 'spring' }).particles.kind, 'petals', 'unmapped seasons retain their decoration');
+  assert.equal(E.sceneCompile(scene({ particles: 'season' }), { season: 'winter' }).particles.kind, 'snow', 'existing scenes retain their default');
+  assert.equal(E.sceneCompile({ ...mild, particles: 'none' }, { season: 'winter' }).particles.kind, 'none');
+  assert.equal(E.sceneCompile({ ...mild, particles: { kind: 'leaves', n: 9 } }, { season: 'winter' }).particles.n, 9);
+  assert.ok(E.sceneValidate(scene({ particleSeasons: { winter: 'unknown' } })).length);
+});
+
 test('objects: define, resolve palettes per season, memoise, box, kit hooks, problems', () => {
   const a = E.sceneObjShapes('plant.coretest', 1, 'summer'), b = E.sceneObjShapes('plant.coretest', 1, 'summer');
   assert.equal(a, b, 'memoised per (id, v, season)');

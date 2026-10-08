@@ -377,6 +377,12 @@ function sceneValidate(data) {
   const ids = new Set((Array.isArray(layers) ? layers : []).map(l => l.id));
   if (data.setting != null && !SCENE_SETTINGS.includes(data.setting)) p.push('unknown setting ' + data.setting + ' (' + SCENE_SETTINGS.join(' ') + ')');
   if (data.at != null && !SCENE_MOMENTS.includes(data.at)) p.push('unknown moment at: ' + data.at);
+  if (data.particleSeasons != null) {
+    if (typeof data.particleSeasons !== 'object' || Array.isArray(data.particleSeasons)) p.push('particleSeasons must map seasons to particle kinds');
+    else for (const [s, kind] of Object.entries(data.particleSeasons)) {
+      if (!['spring', 'summer', 'autumn', 'winter'].includes(s) || !['petals', 'motes', 'leaves', 'snow', 'none'].includes(kind)) p.push('unknown particleSeasons entry ' + s + ': ' + kind);
+    }
+  }
   const layerOk = (k, e) => { if (e.layer != null && !ids.has(e.layer)) p.push(`${k}: unknown layer ${e.layer}`); };
   for (const k of ['place', 'scatter', 'actors', 'flocks']) for (const e of data[k] || []) {
     const objs = _scObjIds(e.obj);
@@ -529,7 +535,10 @@ function sceneCompile(data, opt) {
   const water = (data.water || []).map(w => ({ layer: li(w.layer), d: w.d, y0: w.y0, y1: w.y1, base: (w.base || ['#7fb0c0', '#3f7e96', '#1d4c64']).map(c => pal(c)), reflect: !!w.reflect, shimmer: w.shimmer || 0, lightPath: !!w.lightPath }));
   const sky = data.sky === false ? null : Object.assign({ stars: 180, sunR: 26, moonR: 20 }, data.sky || {}, { clouds: Object.assign({ n: 4, y: [60, 320], speed: 6 }, (data.sky && data.sky.clouds) || {}) });
   if (sky) { sky.clouds = { n: Math.min(10, sky.clouds.n), y0: sky.clouds.y[0], y1: sky.clouds.y[1], speed: sky.clouds.speed }; }
-  const pk = data.particles === 'none' ? 'none' : data.particles && typeof data.particles === 'object' ? data.particles.kind : { spring: 'petals', summer: 'motes', autumn: 'leaves', winter: 'snow' }[season];
+  // Ambient decoration follows the scene's climate; live precipitation is
+  // still drawn independently from actual weather by both renderers.
+  const seasonalParticle = (data.particleSeasons && data.particleSeasons[season]) || { spring: 'petals', summer: 'motes', autumn: 'leaves', winter: 'snow' }[season];
+  const pk = data.particles === 'none' ? 'none' : data.particles && typeof data.particles === 'object' ? data.particles.kind : seasonalParticle;
   const animatedParts = items.reduce((n, it) => n + it.anim.reduce((m, a) => m + (a.parts ? a.parts.length : 1), 0), 0);
   const actorParts = actors.reduce((n, a) => n + 1 + a.anim.length, 0), flockBirds = flocks.reduce((n, f) => n + f.n, 0);
   const objects = {}, categories = {};

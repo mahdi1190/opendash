@@ -195,7 +195,8 @@ export function lintRegistry(reg, thresholds, entries = reg.items(), { sky = nul
       let r;
       try { r = E.ready ? lintScene(e.item, thresholds, { E, item: e.item, ref: e.ref }) : null; } catch (err) { r = { pass: false, rules: [{ group: 'data', rule: 'compile', ok: false, value: 'error', limit: 'compiles', message: err.message }], metrics: {} }; }
       if (!r) r = { pass: false, rules: [{ group: 'data', rule: 'engine', ok: false, value: 'missing', limit: 'the scene engine', message: 'a composed item needs the scene engine (src/app/70-scene-0core.js), which this checkout does not load' }], metrics: {} };
-      const split = applyWaivers(r.rules.filter(x => !x.ok).map(x => ({ rule: x.rule, group: x.group, message: x.message, value: x.value })), e.ref, thresholds);
+      const failures = r.rules.filter(x => !x.ok).map(x => ({ rule: x.rule, group: x.group, message: x.message, value: x.value }));
+      const split = e.item.upgrade?.state === 'live' ? { failures, waived: [] } : applyWaivers(failures, e.ref, thresholds);
       const lint = { pass: !split.failures.length };
       results.push({ ref: e.ref, pack: e.pack, slot: e.slot, full: true, rich: true, composed: true, profile: 'composed', metrics: r.metrics, rules: r.rules, warnings: r.warnings || [], failures: split.failures, waived: split.waived, tier: standardOf(e, lint, null) });
     }
@@ -209,7 +210,17 @@ export function lintRegistry(reg, thresholds, entries = reg.items(), { sky = nul
     if (f.length) packCss.push({ pack: id, failures: f });
   }
   const seen = new Set(results.map(r => r.ref));
-  const staleWaivers = (thresholds.waivers || []).filter(w => seen.has(w.ref) && !results.find(r => r.ref === w.ref).waived.some(f => f.rule === w.rule));
+  // A live upgrade retains its calibrated original as legacySvg. Legacy
+  // exceptions belong to that original, never to the new composed drawing.
+  // Keep checking whether they are needed without moving the old corpus or
+  // applying its exceptions to the replacement's composed quality profile.
+  const waiverOwners = new Map(results.map(r => [r.ref, r]));
+  const retired = composed.filter(e => e.item.upgrade?.state === 'live' && typeof e.item.legacySvg === 'function'
+    && (thresholds.waivers || []).some(w => w.ref === e.ref)).map(e => ({ ...e, composed: false, rich: false,
+      item: { ...e.item, composed: false, rich: false, svg: e.item.legacySvg } }));
+  for (const { entry: e, metrics } of measureRegistry(reg, retired, thresholds))
+    waiverOwners.set(e.ref, applyWaivers(check(metrics, profileFor(e, thresholds), thresholds), e.ref, thresholds));
+  const staleWaivers = (thresholds.waivers || []).filter(w => seen.has(w.ref) && !waiverOwners.get(w.ref).waived.some(f => f.rule === w.rule));
   const failing = results.filter(r => r.failures.length);
   return {
     results, packCss, staleWaivers,

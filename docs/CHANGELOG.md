@@ -10,6 +10,19 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-10-08
+
+### Changed
+
+- **All nine Texas openings rebuilt:** Fort Worth, Dallas, Houston, Austin, San Antonio, El Paso, the Hill Country, West Texas and the Gulf Coast each have their own layered scenery, moving wildlife and people, and lighting that follows the time of day. The original artwork remains available in the animation gallery.
+- **Dallas is now live:** the finished skyline opening brings together Reunion Tower, Bank of America Plaza, the Margaret Hunt Hill Bridge and the Trinity River.
+- Fort Worth features the Stockyards gate and three crossing longhorns; Houston has a space-park view; Austin and San Antonio frame the Capitol and Alamo. The natural openings add bluebonnets, desert ranges and a coastal pier with pelicans and surf.
+
+### Fixed
+
+- Texas openings use climate-appropriate seasonal decoration instead of automatic winter snow. Actual weather effects still follow live conditions, and reduced-motion preferences retain a still opening.
+- Animation quality checks keep exceptions for retained original artwork separate from the rebuilt scenes. Every rebuilt Texas opening passes without an exception.
+
 ## [2.8.1] - 2026-10-08
 
 ### Changed

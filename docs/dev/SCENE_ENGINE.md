@@ -637,6 +637,7 @@ thunk wrapper described below.
   flocks: [ { obj: 'bird.gull', n: 5, area: [200, 80, 1400, 260], speed: 30, s: 0.5, seed: 9 } ],
   signs: [ { layer: 'mid', x: 800, y: 520, w: 360, h: 46, text: 'Arnos Grove', bars: ['#003688'], style: 'board' } ],   // section 8.3; only with signage: true
   particles: 'season',                  // 'season' (petals / motes / leaves / snow by season) | 'none' | { kind, n }
+  particleSeasons: { winter: 'motes' },  // optional climate overrides for seasonal decoration; live weather stays independent
   weather: 'live',                      // rain / snow / fog / wind from the live weather (o.sky.wx) | 'none'
   camera: { pan: 0, period: 90 },       // optional parallax drift (px at depth 1); 0 = off (cheapest)
 }
