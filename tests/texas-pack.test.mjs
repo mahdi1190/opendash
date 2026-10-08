@@ -7,6 +7,8 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { animRegistryFiles } from '../tools/lib/anim-sources.mjs';
+import { loadRegistry } from '../tools/lib/anim-render.mjs';
+import { retroCheck } from '../tools/lib/scene-lint.mjs';
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
@@ -108,4 +110,40 @@ test('texas pack: nine full-screen scenes; a city\'s own scene wins its opening,
   assert.equal(R.animSpecialPick('opening', '2026-10-05', {}, { ...LONDON }), null);
   assert.ok(!R.animItems({}).some(i => i.ref === 'texas/hill-country-bluebonnets' && i.when('2026-10-05', { ...HOUSTON })), 'no bluebonnets in October');
   assert.ok(R.animItems({}).some(i => i.ref === 'texas/hill-country-bluebonnets' && i.when('2026-04-05', { ...HOUSTON })), 'bluebonnets in April');
+});
+
+test('texas pack: the nine scenes take the shared live sky (docs/dev/SCENE_ENGINE.md section 7): re-lit at night, a small overlay, their own lamps, one moon', () => {
+  const REG = loadRegistry(join(APP, '..', '..')), G = REG.R.get, max = G('SCENE_RETRO_MAX_BYTES');
+  const entries = REG.items().filter(e => e.packObj.id === 'texas' && e.full);
+  assert.equal(entries.length, 9);
+  const classes = REG.classesFor(entries[0].packObj);
+  // under the retrofit the paintings' own evening tint and stars step aside (the real sky and stars replace them)
+  assert.match(entries[0].packObj.css, /\.sr-retro :is\(\.tx-tint, \.tx-star\) \{ opacity: 0 !important; \}/);
+  const lum = c => { let s = c.replace('#', ''); if (s.length === 3) s = s.replace(/./g, '$&$&'); const n = parseInt(s, 16); return (0.3 * (n >> 16 & 255) + 0.59 * (n >> 8 & 255) + 0.11 * (n & 255)) / 255; };
+  const moons = s => (s.match(/rotate\([-0-9.]+\)" d="M0 -16A/g) || []).length;
+  const opens = s => [...s.matchAll(/<[a-z]+\b[^>]*class="[^"]*\b(tx-lit|tx-lamps)\b[^"]*"[^>]*>/g)].map(m => m[0]);
+  // a moon (or a low sun that reads as one at night) is painted in these skies: they keep it and get no second one
+  const painted = new Set(['fort-worth-stockyards-scene', 'houston-liftoff-scene', 'west-texas-sunset', 'gulf-coast-sunrise']);
+  let live = 0;
+  for (const { item: it } of entries) {
+    assert.ok(it.liveSky && Number.isFinite(it.liveSky.lat) && Number.isFinite(it.liveSky.lon), it.ref + ' liveSky');
+    assert.ok(it.retro && typeof it.retro === 'object', it.ref + ' retro');
+    for (const k of ['veil', 'grade', 'lamps', 'stars', 'horizon']) assert.ok(!(k in it.retro), it.ref + ': the shared overlay, no ' + k + ' override');
+    const raw = it.svg({ size: 'fill' });
+    assert.ok(!/sr-retro/.test(raw), it.ref + ': no overlay without a live sky');
+    // deep night at the scene's own place, the moon up
+    const sky = G('almSceneLight')(Date.parse('2026-07-28T05:05:00Z'), it.liveSky.lat, it.liveSky.lon, 'UTC');
+    assert.equal(G('sceneLight')({ sky }, { lat: it.liveSky.lat, lon: it.liveSky.lon }).dark, 1, it.ref + ': night');
+    const html = REG.html(it, { live: true, size: 'fill', sky }), svg = html.slice(html.indexOf('>', html.indexOf('<svg')) + 1, html.lastIndexOf('</svg>'));
+    const rules = retroCheck(svg, { classes, maxBytes: max });
+    assert.ok(rules.every(r => r.ok), it.ref + ': ' + rules.filter(r => !r.ok).map(r => r.message).join('; '));
+    assert.ok(svg.length - raw.length <= max, it.ref + ': the retrofit adds ' + (svg.length - raw.length) + ' bytes');
+    // re-lit, not veiled: its own sky first, now the dark real sky, with the real stars behind the land
+    assert.match(svg, /^<g class="sr-retro"><g class="sr-back">(<g class="sr-lamps">)?(<defs>[\s\S]*?<\/defs>)*<rect y="0" width="1600" height="900" fill="[^"]+"\/><g class="sr-sky">/, it.ref + ': the live sky behind the land');
+    assert.ok(lum(/stop-color="(#[0-9a-fA-F]{3,6})"/.exec(svg)[1]) < 0.12, it.ref + ': the real night sky is dark');
+    assert.deepEqual(opens(svg), opens(raw), it.ref + ': its windows and lamps, byte for byte (lit by the tod class, never graded)');
+    if (painted.has(it.id)) assert.equal(moons(svg), 0, it.ref + ': its own painted moon, no second one');
+    else { assert.ok(moons(svg) <= 1, it.ref + ': one moon at most'); live += moons(svg); }
+  }
+  assert.ok(live >= 3, 'the scenes without a painted moon get the real one (' + live + ')');
 });
