@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+### Changed
+
+- **UK scenes rebuilt:** Hampshire and the North now play composed scenes with the live sky and all four seasons, in eight area packs: Yateley (80), Fleet and Farnborough (52), Winchester and the chalk country (20), the New Forest (19), the Solent coast (17), Sheffield (18), Manchester (18) and the Peak District (21). That is 245 scenes, about half of them new views, built with about 140 new library objects (people, Hampshire and Northern landmarks, trains, ships, moorland).
+- The 130 hand-drawn items these packs replace have been removed, along with the old North West pack. Pins, favourites and blocks saved on an old scene now point to its rebuilt version.
+- Scene library: the newer people join a random street crowd only when they are on foot, so a station never draws a sailor or someone on a bench.
+
 ## [2.8.1] - 2026-10-08
 
 ### Changed
