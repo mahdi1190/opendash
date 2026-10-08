@@ -16,7 +16,12 @@
    Detail      sceneDetailAt(id, sh, scale), SCENE_DETAIL_PX (size-tiered detail shapes)
    People      scenePersonHeight(view, y), scenePersonScale(objHeight, y, view), SCENE_PERSON (the depth ladder)
    Scenes     sceneValidate(data), sceneCompile(data, {season, lod, L}), sceneData(itemOrThunk),
-               sceneItem(meta, data), sceneAdd(pack, meta, data), sceneItems(pack)
+               sceneItem(meta, data), sceneAdd(pack, meta, data), sceneItems(pack), sceneItemDups()
+   Scene engine v2 (docs/dev/SCENE_ENGINE_V2.md 12, 14): data whose camera has eye / fov / horizon / preset (sceneIsV2) compiles
+               through the guarded v2 stages of 70-scene-1ground.js, -1scatter.js and the other builders' files: the camera,
+               surfaces, water geometry, ground placements, scatter, cover, flows, atmosphere, weather, lights, draw order. v1
+               data takes exactly the path below (byte-identical compiles: tests/scene-compat.test.mjs). A recipe item
+               (item.recipe, 70-scene-1recipe.js) supersedes a v1 item of the same pack and id in sceneItems.
    Archetypes  sceneArchetypeDefine(id, a), sceneArchetype(id), sceneArchetypes(),
                sceneArchetypeCheck(id, row), sceneFromArchetype(archId, params, patch),
                sceneKitPick(kits, role, {tags, exclude}), sceneTableDefine(id, t), sceneTable(id),
@@ -370,6 +375,7 @@ const _scObjIds = o => (typeof o === 'string' ? [o] : Array.isArray(o) ? o : Obj
 function sceneValidate(data) {
   const p = [];
   if (!data || typeof data !== 'object') return ['the scene is not an object'];
+  if (typeof sceneIsV2 === 'function' && typeof sceneValidateV2 === 'function' && sceneIsV2(data)) return sceneValidateV2(data);   // v2 (70-scene-1recipe.js)
   if (!data.view || !Number.isFinite(data.view.lat) || !Number.isFinite(data.view.lon)) p.push('view.lat / view.lon missing');
   const layers = data.layers || SCENE_LAYERS_DEFAULT;
   if (!Array.isArray(layers) || !layers.length) p.push('layers must be a non-empty list');
@@ -434,7 +440,9 @@ function sceneCompile(data, opt) {
   const memoKey = season + '|' + lod;
   let m = _scCompiled.get(data);
   if (m && m.has(memoKey)) return m.get(memoKey);
-  const layersIn = (data.layers || SCENE_LAYERS_DEFAULT).slice(0, 8), layers = layersIn.map((l, i) => ({ id: l.id, i, depth: l.depth, haze: l.haze || 0 }));
+  // v2 (V2 12): the camera, surfaces, water, ridges and generated buildings first; G is null for v1 data
+  const G = typeof sceneIsV2 === 'function' && typeof sceneCompileV2Begin === 'function' && sceneIsV2(data) ? sceneCompileV2Begin(data, { season, lod }) : null;
+  const layersIn = G ? G.layers : (data.layers || SCENE_LAYERS_DEFAULT).slice(0, 8), layers = layersIn.map((l, i) => ({ id: l.id, i, depth: l.depth, haze: l.haze || 0 }));
   const li = id => { const l = layers.find(x => x.id === id); return l ? l.i : layers.length - 1; };
   const pal = (paint) => _scPaint({ palette: data.palette || {} }, season, paint);
   const items = [], strips = [];
@@ -453,8 +461,21 @@ function sceneCompile(data, opt) {
     return it;
   };
   let order = 0;
-  (data.place || []).forEach((p, i) => push(Object.assign({}, p, { seed: p.seed != null ? p.seed : sceneHash(data.id + '|p|' + i) % 1e6 }), order++));
+  // v2: a resolved placement (pixel form + its ground record $v2) is pushed as v1, then gains its v2 fields
+  const pushV2 = (q, seedOf) => {
+    const it = push(seedOf != null ? Object.assign({}, q, { seed: q.seed != null ? q.seed : seedOf }) : q, order++);
+    if (it) { sceneCompileV2Attach(G, it, q); G.placed.push(q); if (typeof sceneScatterFootAdd === 'function' && q.$v2 && !q.$v2.cover) sceneScatterFootAdd(G, it.o, q.$v2.g, q.$v2.k); }
+    return it;
+  };
+  if (G) (data.place || []).forEach((p, i) => { const q = sceneCompileV2Place(G, p, i); if (q) pushV2(q, sceneHash(data.id + '|p|' + i) % 1e6); });
+  else (data.place || []).forEach((p, i) => push(Object.assign({}, p, { seed: p.seed != null ? p.seed : sceneHash(data.id + '|p|' + i) % 1e6 }), order++));
   (data.scatter || []).forEach((rule, ri) => {
+    if (G && rule && !rule.area) {
+      // a v2 rule (V2 11): ground metres, surfaces, Poisson disk, clusters, footprints; wind strips per layer
+      const made = (typeof sceneScatterV2 === 'function' ? sceneScatterV2(G, rule, ri) : []).map(q => pushV2(q)).filter(Boolean);
+      if (rule.anim === 'strip' && made.length && typeof sceneScatterStrips === 'function') strips.push(...sceneScatterStrips(made, rule));
+      return;
+    }
     if (!_scAreaOk(rule.area)) return;
     const r = sceneRnd(sceneHash(data.id + '|' + ri + '|' + (rule.seed | 0)));
     const box = _scAreaBox(rule.area), aw = box[2] - box[0], ah = box[3] - box[1];
@@ -512,21 +533,26 @@ function sceneCompile(data, opt) {
       for (const [c, list] of byCol) strips.push({ layer: li(rule.layer), x0: -160 + c * w, x1: -160 + (c + 1) * w, y0: Math.min(...list.map(i => i.y)), y1: Math.max(...list.map(i => i.y)), items: list, amp: rule.amp || 1 });
     }
   });
+  if (G && typeof sceneCoverAuto === 'function') for (const q of sceneCoverAuto(G, G.placed)) pushV2(q);   // seasonal cover (V2 10)
   items.sort((a, b) => a.layer - b.layer || a.z - b.z || a.order - b.order);
   items.forEach(it => { delete it.order; });
   const index = new Map(items.map((it, i) => [it, i]));
   strips.sort((a, b) => a.layer - b.layer || a.x0 - b.x0);
   strips.forEach((st, si) => { st.items = st.items.map(it => { it.strip = si; return index.get(it); }); });
-  const actors = (data.actors || []).map((a, i) => {
+  // v2 actors on the ground (V2 4.8) arrive in the v1 form (a projected path, sByY), their ground record riding along
+  const actorsIn = G ? (data.actors || []).map((a, i) => (a && Array.isArray(a.path) ? a : (typeof sceneCompileV2Actor === 'function' && sceneCompileV2Actor(G, a || {}, i)) || {})) : (data.actors || []);
+  const actors = actorsIn.map((a, i) => {
     const def = sceneObj(a.obj); if (!def || !Array.isArray(a.path) || a.path.length < 2) return null;
     const v = Math.max(0, Math.min((def.variants || 1) - 1, a.variant | 0)), seed = a.seed != null ? a.seed : i + 1;
     return { o: a.obj, v, layer: li(a.layer), path: a.path, len: _scPathLen(a.path), speed: a.speed || 20, loop: a.loop || 'pingpong', s: a.s || 1, flip: !!a.flip,
       sByY: a.sByY === true ? [[500, 0.5], [900, 1.2]] : a.sByY || null, seed, offset: a.offset != null ? a.offset : sceneRnd(seed)(), anim: _scAnims(a.obj, v, a.season || season, seed, a.anim) };
-  }).filter(Boolean);
+  }).map((c, i) => (c && G && actorsIn[i].$ground ? Object.assign(c, actorsIn[i].$ground) : c)).filter(Boolean);
   const flocks = (data.flocks || []).filter(f => sceneObj(f.obj)).map((f, i) => ({ o: f.obj, v: f.variant | 0, n: Math.max(0, f.n == null ? 5 : f.n), area: f.area, speed: f.speed || 30, s: f.s || 0.5, seed: f.seed != null ? f.seed : i + 1, layer: li(f.layer || 'far') }));
   const signs = (data.signage ? data.signs || [] : []).slice(0, 6).map((s, i) => ({ s, t: sceneSignText(s.text), i })).filter(x => x.t.ok).map(({ s, t, i }) => ({ layer: li(s.layer), x: s.x, y: s.y, w: s.w, h: s.h, text: t.text, bars: (s.bars || []).slice(0, 6), style: ['board', 'fascia', 'totem'].includes(s.style) ? s.style : 'board', ink: s.ink || '#1d2226', board: s.board || '#f4f1e8', seed: i }));
-  const ground = (data.ground || []).map(g => ({ layer: li(g.layer), d: g.d, fill: pal(g.fill) }));
-  const water = (data.water || []).map(w => ({ layer: li(w.layer), d: w.d, y0: w.y0, y1: w.y1, base: (w.base || ['#7fb0c0', '#3f7e96', '#1d4c64']).map(c => pal(c)), reflect: !!w.reflect, shimmer: w.shimmer || 0, lightPath: !!w.lightPath }));
+  // v2: data.ground may be { relief, fills }; the surfaces' and ridges' fills come first, then any pixel fills; v2 water regions after any pixel water
+  const groundIn = G ? (Array.isArray(data.ground) ? data.ground : (data.ground && Array.isArray(data.ground.fills) ? data.ground.fills : [])) : (data.ground || []);
+  const ground = (G ? G.ground : []).concat(groundIn.map(g => ({ layer: li(g.layer), d: g.d, fill: pal(g.fill) })));
+  const water = (G ? (data.water || []).filter(w => w && w.d != null) : (data.water || [])).map(w => ({ layer: li(w.layer), d: w.d, y0: w.y0, y1: w.y1, base: (w.base || ['#7fb0c0', '#3f7e96', '#1d4c64']).map(c => pal(c)), reflect: !!w.reflect, shimmer: w.shimmer || 0, lightPath: !!w.lightPath })).concat(G ? G.water : []);
   const sky = data.sky === false ? null : Object.assign({ stars: 180, sunR: 26, moonR: 20 }, data.sky || {}, { clouds: Object.assign({ n: 4, y: [60, 320], speed: 6 }, (data.sky && data.sky.clouds) || {}) });
   if (sky) { sky.clouds = { n: Math.min(10, sky.clouds.n), y0: sky.clouds.y[0], y1: sky.clouds.y[1], speed: sky.clouds.speed }; }
   const pk = data.particles === 'none' ? 'none' : data.particles && typeof data.particles === 'object' ? data.particles.kind : { spring: 'petals', summer: 'motes', autumn: 'leaves', winter: 'snow' }[season];
@@ -542,6 +568,9 @@ function sceneCompile(data, opt) {
     stats: { placements: items.length, staticItems: items.filter(i => !i.anim.length && i.strip < 0).length, animatedParts, stripItems: items.filter(i => i.strip >= 0).length, strips: strips.length,
       actors: actors.length, flockBirds, signs: signs.length, animatedDraws: animatedParts + strips.length + actorParts + flockBirds, objects, categories, layersUsed: used.size,
       distinctSprites: new Set(items.map(i => [i.o, i.v, i.season, i.haze, i.tint ? i.tint[1] : 0, sceneScaleBucket(i.s)].join('|'))).size, dataBytes: _scDataBytes(data) } };
+  if (G && typeof sceneCompileV2Finish === 'function') sceneCompileV2Finish(G, C);   // flows, atmosphere, weather, lights, draw order, stats.v2
+  // v1 opt-in effects (V2 14.2): fx { shadows, water, atmos, weather: 2 } rides on the compiled scene for the render passes (only when set)
+  if (data.fx && typeof data.fx === 'object') { const fx = {}; for (const k of ['shadows', 'water', 'atmos', 'weather']) if (data.fx[k] === 2) fx[k] = 2; if (Object.keys(fx).length) C.fx = fx; }
   if (!m) { m = new Map(); _scCompiled.set(data, m); }
   m.set(memoKey, C);
   return C;
@@ -582,7 +611,33 @@ function sceneItem(meta, data) {
 const _scPacks = Object.create(null);
 /** A scene file registers its scene: sceneAdd('<pack>', meta, data). The pack file lists them with sceneItems('<pack>'). */
 function sceneAdd(pack, meta, data) { (_scPacks[pack] = _scPacks[pack] || []).push(sceneItem(meta, data)); }
-function sceneItems(pack) { return (_scPacks[pack] || []).slice(); }
+/**
+ * The items of a pack. A recipe item (item.recipe, V2 14.3) wins over a v1 item with the same id and takes its place in the
+ * list (pins, favourites and rotation keep the id); two items of one kind keep both, as before. A pack with no recipe: as v1.
+ */
+function sceneItems(pack) {
+  const list = _scPacks[pack] || [];
+  if (!list.some(it => it && it.recipe)) return list.slice();
+  const out = [], at = new Map();
+  for (const it of list) {
+    const k = at.get(it.id);
+    if (k == null) { at.set(it.id, out.length); out.push(it); continue; }
+    if (it.recipe && !out[k].recipe) out[k] = it;
+    else if (!it.recipe && out[k].recipe) continue;
+    else out.push(it);
+  }
+  return out;
+}
+/** The superseded pairs (V2 14.3, information, not an error): [{ pack, id, kind: 'superseded', by: 'recipe' }]. */
+function sceneItemDups() {
+  const out = [];
+  for (const pack of Object.keys(_scPacks)) {
+    const byId = new Map();
+    for (const it of _scPacks[pack]) { const e = byId.get(it.id) || { r: 0, v: 0 }; if (it.recipe) e.r++; else e.v++; byId.set(it.id, e); }
+    for (const [id, e] of byId) if (e.r && e.v) out.push({ pack, id, kind: 'superseded', by: 'recipe' });
+  }
+  return out;
+}
 
 /* ---------- archetypes, kits, tables, lines (2.7, 8) ---------- */
 const _scArch = Object.create(null), _scTables = Object.create(null), _scLines = Object.create(null);
