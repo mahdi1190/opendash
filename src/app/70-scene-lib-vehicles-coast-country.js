@@ -48,12 +48,13 @@
     return [['@grass.2', p[2]], ['@grass.0', p[0]], ['@grass.1', p[1]]];
   };
 
-  /* ---------- vehicle.tractor: a farm tractor (big rear wheels, small front, a glazed cab); v0 green, v1 red, v2 blue, v3 an old grey tractor with no cab. No maker's marks ---------- */
+  /* ---------- vehicle.tractor: a farm tractor (big rear wheels, small front, a glazed cab); v0 brick red, v1 slate blue, v2 teal, v3 an old faded tractor with no cab. No maker's marks or liveries ---------- */
   defineObj({
     id: 'vehicle.tractor', category: 'vehicle', size: [200, 148], variants: 4, seasonal: false, flippable: true,
     palette: { base: {
-      paint: ['#3a7a34', '#b8322a', '#2a5a9a', '#8a8e88'], paintD: ['#28582a', '#86241e', '#1e4270', '#666a64'], paintL: ['#5a9a4a', '#d8524a', '#4a7aba', '#a8aca6'],
-      rim: ['#f0c838', '#a8acb0', '#eeeeea', '#b8322a'], tyre: ['#262626', '#3a3a3a', '#141414'], glass: ['#3e5260', '#a8c4d0'], frame: '#1e2226', iron: ['#3a3e44', '#5a5e64', '#22262a'],
+      // body and rim pairs that match no single maker's livery: muted brick red / grey, slate blue / dark grey, deep teal / pale grey, faded stone / grey-green
+      paint: ['#9a4636', '#4a6680', '#3e6e6a', '#c4b896'], paintD: ['#6e3026', '#344a5e', '#2c4e4c', '#968c6e'], paintL: ['#b8604e', '#6a86a0', '#5e8c86', '#ddd3b4'],
+      rim: ['#9a9c98', '#5e6266', '#b4b8b6', '#5e6660'], tyre: ['#262626', '#3a3a3a', '#141414'], glass: ['#3e5260', '#a8c4d0'], frame: '#1e2226', iron: ['#3a3e44', '#5a5e64', '#22262a'],
       lamp: '#f4ecd0', tail: '#c02a20', mud: ['#6a5a44', '#4a3e30'], seat: '#2a2a2a',
     } },
     night: { glow: { window: '#ffe6a8', lamp: '#fff4c8' }, on: .9 },

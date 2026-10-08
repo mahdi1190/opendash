@@ -8,9 +8,11 @@
    destination blind and the cab's roof sign are plain lit panels.
 
    Parts: 'wheels' (still) and 'body' (bobs a little on its suspension).
-   Windows glow at real dusk (glow 'window', a seeded share lit), lamps
-   glow (glow 'lamp'); the 'lit' part holds the headlight beam and the red
-   tail glow. Anchor: the road under the middle of the vehicle.
+   The bus's windows glow at real dusk (glow 'window', a seeded share
+   lit); a car's or a cab's glass stays dark (no one lights a car inside),
+   only its lamps glow (head, tail, marker). Lamps glow (glow 'lamp'); the
+   'lit' part holds the headlight beam and the red tail glow. Anchor: the
+   road under the middle of the vehicle.
    ============================================================ */
 (function () {
   if (typeof sceneObjDefine !== 'function') return;   // the engine core (70-scene-0core.js) is not in this build
@@ -96,18 +98,20 @@
   });
 
   /* =====================================================================
-     vehicle.taxi-black: a generic city cab (tall roof, a turning circle's
-     short wheelbase, a plain amber roof light with no lettering).
-     v0 a classic rounded cab with separate front wings, v1 a modern cab
-     (smooth, raked glass), v2 the classic in deep maroon, v3 the modern in
-     dark silver-grey.
+     vehicle.taxi-black: a generic city cab (a tall upright body and high
+     rounded roof, a turning circle's short wheelbase, a luggage bay, a
+     plain amber roof light with no lettering).
+     v0 a classic cab with separate front wings and a sloping boot, v1 a
+     modern cab (one smooth tall body, a dark glazed band, a flat tail with
+     a big hatch), v2 the classic in deep maroon, v3 the modern in dark
+     silver-grey.
      ===================================================================== */
   defineObj({
     id: 'vehicle.taxi-black', category: 'vehicle', size: [170, 72], variants: 4, seasonal: false, flippable: true, parts: ['wheels', 'body', 'lit'],
     palette: { base: Object.assign({}, COMMON, {
-      paint: ['#18191c', '#18191c', '#4a1a22', '#4a5058'], shine: ['#5a5e66', '#5a5e66', '#8a4a52', '#9aa2aa'], chrome: ['#c8ccd0', '#8a8e92'], glass: ['#1e2630', '#4a6070', '#7a94a6'], sign: '#5a4a20',
+      paint: ['#18191c', '#18191c', '#4a1a22', '#4a5058'], shine: ['#5a5e66', '#5a5e66', '#8a4a52', '#9aa2aa'], chrome: ['#c8ccd0', '#8a8e92'], glass: ['#1e2630', '#4a6070', '#7a94a6'], sign: '#c89a3a',   // the roof sign: a plain amber panel, no lettering
     }) },
-    night: { glow: { window: '#6a5e44', lamp: '#ffc860' }, on: .7 },
+    night: { glow: { lamp: '#fff0c8', sign: '#ffc860', tail: '#ff4a3a' }, on: 1 },   // dark glass at night: the lamps and the blank sign light
     anim: { bob: { part: 'body', dy: .5, period: .6 } },
     shadow: { rx: 86, ry: 6, h: 66 },
     tags: ['uk', 'london', 'city', 'street', 'taxi', 'cab', 'traffic', 'kit:london', 'kit:vehicles', 'kit:urban', 'role:vehicle'],
@@ -115,24 +119,29 @@
     build(v) {
       const body = [], lit = [], P = `@paint.${v}`, S = `@shine.${v}`, classic = v % 2 === 0, rw = 11;
       const xF = 50, xR = -48;
+      // the cab is TALL and upright: a high rounded roof over a deep glasshouse (glass dark at night: only the lamps and the plain sign light)
       if (classic) {
-        body.push([P, 'M-80-10V-36q0-6 8-8l8-2 10-18q3-4 10-4H24q6 0 9 4l12 16 26 2q10 1 11 10V-10z']);
-        body.push([P, `M${xF - 20}-12q0-26 20-28h10q12 0 14 14V-12z`], [P, `M${xR - 22}-12q0-26 20-28h12q10 0 10 14V-12z`]);
-        body.push({ f: '@glass.0', d: 'M-50-44l8-16h28v16z', glow: 'window' }, { f: '@glass.0', d: 'M-10-60h30q4 0 6 3l9 13H-10z', glow: 'window' }, ['@glass.2', 'M-42-58h8l-10 12z', .3]);
-        body.push(['@chrome.0', rect(76, -32, 6, 14)], { s: '@chrome.1', w: .7, d: 'M77-30v10M79-30v10M81-30v10' }, ['@chrome.0', rect(-82, -16, 10, 3)], ['@chrome.0', rect(70, -16, 14, 3)]);
-        body.push({ s: S, w: 1.2, op: .7, d: 'M-74-38H70M-12-60v46' }, ['@dark', rect(-14, -40, 1.6, 26)]);
-        body.push({ f: '@head', d: circ(70, -30, 4.4), glow: 'lamp' }, ['@chrome.1', circ(70, -30, 5.4), .5], { f: '@head', d: circ(70, -30, 3.6), glow: 'lamp' });
-        body.push(['@trim.0', rect(-24, -72, 22, 6)], { f: '@sign', d: rect(-22, -71, 18, 4), glow: 'lamp' });
+        // classic: a short bonnet, an upright screen, separate bulbous front wings, round lamps, chrome bumpers and a sloping boot (the luggage)
+        body.push([P, 'M-78-12V-34q0-5 4-6l14-4l4-16q2-8 10-8H20q8 0 10 6l6 18l30 2q10 1 12 8V-12z']);
+        body.push([P, `M${xF - 22}-12q0-28 22-30h8q14 0 18 16V-12z`], [P, `M${xR - 22}-12q0-26 20-28h12q10 0 10 14V-12z`], ['@dark', rect(-26, -15, 50, 3)]);
+        body.push(['@glass.0', 'M-58-46l3-14q1-4 5-4h8v18z'], ['@glass.0', 'M-37-46V-64H-6v18z'], ['@glass.0', 'M-1-46V-64h21q5 0 7 5l5 13z'], ['@glass.2', 'M-30-62h7l-9 13h-3z', .3]);
+        body.push(['#6a5644', 'M6-46v-7q0-2 2-2h12q2 0 2 2v7z'], { s: '#3a3028', w: 1.2, d: 'M11-55v-2h6v2M14-55v9' });   // a suitcase in the luggage bay beside the driver
+        body.push({ s: S, w: 1.4, d: 'M-74-41L-60-44' }, { s: '@dark', w: .9, op: .5, d: 'M-74-38L-61-42M-39-64V-14M-3-64V-14' }, ['@chrome.0', rect(-71, -38, 6, 1.6)], { s: S, w: 1.2, op: .7, d: 'M-56-44H66' });
+        body.push(['@chrome.0', rect(75, -32, 5, 13)], { s: '@chrome.1', w: .7, d: 'M76-30v10M78-30v10' }, ['@chrome.0', rect(-81, -16, 10, 3)], ['@chrome.0', rect(68, -16, 14, 3)]);
+        body.push(['@chrome.1', circ(68, -33, 5.4), .5], { f: '@head', d: circ(68, -33, 4.4), glow: 'lamp' }, { f: '@head', d: circ(68, -33, 2.2), glow: 'lamp' });
+        body.push(['@trim.0', rect(-14, -72, 24, 5)], { f: '@sign', d: rect(-12, -71, 20, 3.4), glow: 'sign' }, { f: '@tailL', d: rect(-79, -33, 3, 8), glow: 'tail' });
       } else {
-        body.push([P, 'M-82-12V-38q0-8 8-10l10-2 10-16q4-6 12-6H20q8 0 12 6l14 16 22 2q12 2 14 14V-12z']);
-        body.push({ f: '@glass.0', d: 'M-54-48l10-16h30v16z', glow: 'window' }, { f: '@glass.0', d: 'M-10-64h28q6 0 9 5l9 11H-10z', glow: 'window' }, ['@glass.0', 'M40-48l-10-14h4l14 14z'], ['@glass.2', 'M-44-62h8l-12 12z', .3]);
-        body.push({ s: S, w: 1.2, op: .7, d: 'M-78-40H74M-12-64v50' }, ['@dark', rect(-14, -44, 1.6, 30)], ['@trim.0', rect(-82, -18, 164, 6)]);
-        body.push({ f: '@head', d: 'M70-38h10q3 0 3 4h-14z', glow: 'lamp' }, ['@trim.1', rect(74, -28, 8, 6)]);
-        body.push(['@trim.0', rect(-26, -76, 24, 6)], { f: '@sign', d: rect(-24, -75, 20, 4), glow: 'lamp' });
+        // modern: one smooth tall body, a raked screen, a dark glazed band with black pillars, a flat tail with a big hatch (the luggage bay behind the glass)
+        body.push([P, 'M-80-12V-52q0-5 3-9q5-8 15-8H14q10 0 15 6l15 19q14 0 26 4q12 4 13 14V-12z']);
+        body.push(['@glass.0', 'M-75-46V-56q0-6 6-7H13q7 0 11 5l11 12z'], ['@dark', rect(-54, -63, 4, 17)], ['@dark', rect(-16, -63, 4, 17)], ['@glass.2', 'M-8-61h8l-10 13h-3z', .3]);
+        body.push(['#6a5644', 'M-72-46v-8q0-2 2-2h10q2 0 2 2v8z'], { s: '#3a3028', w: 1.2, d: 'M-68-56v-2h4v2M-66-56v10' });   // luggage behind the rear glass
+        body.push({ s: '@dark', w: .9, op: .5, d: 'M-76-62V-14M-52-46V-14M-14-46V-14' }, { s: S, w: 1.4, op: .7, d: 'M-78-44H60' }, ['@trim.0', rect(-82, -18, 164, 6)], ['@trim.0', rect(-80, -40, 3, 10)]);
+        body.push({ f: '@head', d: 'M68-40h12q3 0 3 4h-15z', glow: 'lamp' }, { f: '@head', d: rect(72, -31, 9, 2), glow: 'lamp' }, ['@trim.1', rect(76, -28, 6, 6)]);
+        body.push(['@trim.0', rect(-14, -74, 24, 5)], { f: '@sign', d: rect(-12, -73, 20, 3.4), glow: 'sign' }, { f: '@tailL', d: rect(-81, -52, 3, 12), glow: 'tail' });
       }
-      body.push(['@dark', arch(xF, rw, -12)], ['@dark', arch(xR, rw, -12)], ['@tailL', rect(-82, -36, 3, 8)], ['@dark', rect(-6, -36, 8, 2)]);
+      body.push(['@dark', arch(xF, rw, -12)], ['@dark', arch(xR, rw, -12)]);
       const wheels = [...wheel(xF, rw), ...wheel(xR, rw)];
-      lit.push(beam(82, -30, 90), tail(-81, -32));
+      lit.push(beam(classic ? 74 : 84, classic ? -33 : -38, 90), tail(-80, classic ? -29 : -46));
       return { wheels, body, lit };
     },
   });
@@ -155,7 +164,7 @@
   defineObj({
     id: 'vehicle.car-city', category: 'vehicle', size: [180, 80], variants: 12, seasonal: false, flippable: true, parts: ['wheels', 'body', 'lit'],
     palette: { base: Object.assign({}, COMMON, { paint: CAR_PAINT, shine: CAR_PAINT.map(c => { const n = parseInt(c.slice(1), 16), m = k => Math.min(255, Math.round(((n >> k) & 255) * .6 + 102)); return '#' + [16, 8, 0].map(k => m(k).toString(16).padStart(2, '0')).join(''); }), shade: CAR_PAINT.map(c => { const n = parseInt(c.slice(1), 16), m = k => Math.round(((n >> k) & 255) * .62); return '#' + [16, 8, 0].map(k => m(k).toString(16).padStart(2, '0')).join(''); }), glass: ['#22303c', '#5a7486', '#8aa4b6'] }) },
-    night: { glow: { window: '#5a5444', lamp: '#fff0c8' }, on: .6 },
+    night: { glow: { lamp: '#fff0c8', amber: '#ffb24a', tail: '#ff4a3a' }, on: 1 },   // dark glass at night: only the lamps light
     anim: { bob: { part: 'body', dy: .5, period: .55 } },
     shadow: { rx: 86, ry: 6, h: 60 },
     tags: ['city', 'street', 'car', 'traffic', 'kit:vehicles', 'kit:urban', 'kit:london', 'role:vehicle'],
@@ -169,19 +178,19 @@
         ? `M${xB} ${-g}V${-roof + 4}q0-4 4-4H${X(C.ws1)}L${X(C.ws0)} ${-belt - 6}q14 2 ${C.ws0 - 14} 10L${xF} ${-belt + 6}V${-g}z`
         : `M${xB + 2} ${-g}L${xB} ${-belt + 2}L${X(C.rr0)} ${-belt - (C.boot || 0)}L${X(C.rr1)} ${-roof}H${X(C.ws1)}L${X(C.ws0)} ${-belt - 4}Q${xF - 6} ${-belt - 2} ${xF} ${-belt + C.nose}V${-g}z`;
       body.push([P, out], [D, `M${xB + 2} ${-g}H${xF}V${-g - 8}H${xB + 1}z`, .8], { s: S, w: 1.4, op: .7, d: `M${xB + 3} ${-belt + 4}H${xF - 4}` });
-      // windows: front and rear side glass split by the B pillar (glow), plus the van's single cab window
+      // windows: front and rear side glass split by the B pillar, plus the van's single cab window (dark glass, never lit)
       const gy = -belt - 3, top = -roof + 4, mid = (X(C.ws0) + X(C.rr0)) / 2;
       if (C.van) {
-        body.push({ f: '@glass.0', d: poly([[X(C.ws0) - 6, gy], [X(C.ws1) - 2, top], [X(C.ws1) - 26, top], [X(C.ws1) - 26, gy]]), glow: 'window' }, { f: '@glass.0', d: poly([[X(C.ws0) + 1, gy + 2], [X(C.ws1) + 2, top + 2], [X(C.ws1) + 4, top + 2], [X(C.ws0) + 4, gy + 2]]), glow: 'window' }, { s: D, w: 1, op: .6, d: `M${X(C.ws1) - 30} ${-roof + 2}V${-g - 2}M${xB + 50} ${-roof + 2}V${-g - 2}` });
+        body.push(['@glass.0', poly([[X(C.ws0) - 6, gy], [X(C.ws1) - 2, top], [X(C.ws1) - 26, top], [X(C.ws1) - 26, gy]])], ['@glass.0', poly([[X(C.ws0) + 1, gy + 2], [X(C.ws1) + 2, top + 2], [X(C.ws1) + 4, top + 2], [X(C.ws0) + 4, gy + 2]])],{ s: D, w: 1, op: .6, d: `M${X(C.ws1) - 30} ${-roof + 2}V${-g - 2}M${xB + 50} ${-roof + 2}V${-g - 2}` });
         body.push(['@trim.0', rect(xB + 60, -belt - 4, 40, 2)]);
       } else {
         const bx = mid + (C.ws1 - C.ws0) * .1;
         const xA = X(C.ws0) - 5, xAt = X(C.ws1) - 2, xCt = X(C.rr1) + 3, xC = X(C.rr0) + 5;
-        body.push({ f: '@glass.0', d: poly([[xA, gy], [xAt, top], [bx + 2, top], [bx + 2, gy]]), glow: 'window' }, { f: '@glass.0', d: poly([[bx - 2, gy], [bx - 2, top], [xCt, top], [xC, gy]]), glow: 'window' }, ['@glass.2', poly([[xAt - 2, top + 1], [xAt - 10, top + 1], [xA - 12, gy - 2], [xA - 6, gy - 2]]), .25], [P, rect(bx - 2, top, 4, gy - top)]);
+        body.push(['@glass.0', poly([[xA, gy], [xAt, top], [bx + 2, top], [bx + 2, gy]])], ['@glass.0', poly([[bx - 2, gy], [bx - 2, top], [xCt, top], [xC, gy]])],['@glass.2', poly([[xAt - 2, top + 1], [xAt - 10, top + 1], [xA - 12, gy - 2], [xA - 6, gy - 2]]), .25], [P, rect(bx - 2, top, 4, gy - top)]);
         body.push({ s: D, w: .9, op: .6, d: `M${f1(bx)} ${f1(gy)}V${-g - 4}M${f1(X(C.ws0) - 2)} ${f1(gy)}V${-g - 4}` }, ['@trim.0', rect(bx + 6, gy + 6, 7, 2)], ['@trim.0', rect(xC + 10, gy + 6, 7, 2)]);
       }
-      // lamps: the headlamp (glow), a side indicator (glow), the tail lamp, a mirror
-      body.push({ f: '@head', d: `M${xF - 9} ${-belt + 2}h7q2 0 2 4h-9z`, glow: 'lamp' }, { f: '#e89a3a', d: rect(xF - 22, -belt + 2, 4, 2), glow: 'lamp' }, ['@tailL', rect(xB, -belt + 2, 4, 7)], [D, `M${X(C.ws0) - 4} ${gy}h6v-4h-4z`]);
+      // lamps (all glow): the headlamp and its bright core, an amber side marker, the tail lamp; a mirror
+      body.push({ f: '@head', d: `M${xF - 9} ${-belt + 2}h7q2 0 2 4h-9z`, glow: 'lamp' }, { f: '@head', d: rect(xF - 5, -belt + 3, 3, 2), glow: 'lamp' }, { f: '#e89a3a', d: rect(xF - 22, -belt + 2, 4, 2), glow: 'amber' }, { f: '@tailL', d: rect(xB, -belt + 2, 4, 7), glow: 'tail' }, [D, `M${X(C.ws0) - 4} ${gy}h6v-4h-4z`]);
       body.push(['@trim.0', rect(xF - 6, -g - 6, 6, 5)], ['@trim.0', rect(xB, -g - 6, 6, 5)]);
       const xFw = xF - C.rw - 14 - (C.van ? 4 : 0), xRw = xB + C.rw + 16;
       body.push(['@dark', arch(xFw, C.rw, -g + 1)], ['@dark', arch(xRw, C.rw, -g + 1)]);

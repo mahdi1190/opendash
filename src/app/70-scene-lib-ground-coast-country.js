@@ -62,24 +62,32 @@
     build(v) {
       const sr = srnd('beach|' + v), body = [], L = -320, R = 320;
       const edge = (y, amp) => { let d = ''; for (let x = L + 30; x <= R - 30; x += 20) d += `L${x} ${f1(y + Math.sin(x * .021 + v) * amp + rr(sr, -1.5, 1.5))}`; return d; };
+      /** A wavy line along the beach at y (a berm crest, a tideline), open. */
+      const line = (y, amp, k = .017) => { let d = `M${L + 40} ${f1(y)}`; for (let x = L + 60; x <= R - 40; x += 20) d += `L${x} ${f1(y + Math.sin(x * k + v * 2) * amp)}`; return d; };
       // the dry sand (the whole strip), feathered at the ends
       body.push(['@sand.0', `M${L} 6Q${L - 8} -16 ${L + 30} -30${edge(-32, 4)}L${R - 30} -30Q${R + 8} -16 ${R} 6z`]);
-      // the shingle bank: a ridge along the back (v0), everywhere (v1), a scatter (v2)
-      const pebN = [420, 900, 120][v], band = v === 1 ? [-34, 4] : v === 0 ? [-34, -12] : [-30, 2];
-      if (v !== 2) body.push(['@peb.0', `M${L + 20} ${band[1] + 2}Q${L + 10} -24 ${L + 40} -34${edge(-38, 5)}L${R - 40} -34Q${R - 10} -24 ${R - 20} ${band[1] + 2}${v === 1 ? '' : `Q0 ${band[1] - 6} ${L + 20} ${band[1] + 2}`}z`, .85]);
+      // v0: a solid grey shingle ridge along the back, its crest lit; v1: all shingle, a storm beach in two berms (lit crest, shadowed face)
+      if (v === 0) body.push(['@peb.2', `M${L + 40} -20Q${L + 16} -26 ${L + 30} -34${edge(-37, 4)}L${R - 30} -34Q${R - 16} -26 ${R - 40} -20Q0 -27 ${L + 40} -20z`], { s: '@peb.3', w: 2, op: .8, d: line(-35, 3) });
+      if (v === 1) body.push(['@peb.0', `M${L + 6} 6Q${L - 4} -18 ${L + 34} -34${edge(-38, 4)}L${R - 34} -34Q${R + 4} -18 ${R - 6} 6z`], { s: '@peb.2', w: 3, op: .7, d: line(-23, 3) + line(-9, 2.4, .023) }, { s: '@peb.3', w: 2.4, d: line(-26, 3) + line(-12, 2.4, .023) });
+      // the pebbles: coarse ones on the ridge (v0), big rounded cobbles growing toward the sea (v1), a scatter (v2)
+      const pebN = [150, 300, 120][v], band = [[-35, -22], [-36, 0], [-30, 2]][v], sz0 = [[1.6, 3.6], [1.8, 4.6], [1.4, 3.4]][v];
       const pb = ['', '', '', '', '', ''];
-      for (let i = 0; i < pebN; i++) { const x = rr(sr, L + 24, R - 24), y = rr(sr, band[0], band[1]), sz = rr(sr, 1.4, v === 1 ? 4.2 : 3.4); if (Math.abs(x) > R - 40 && y < -24) continue; pb[Math.floor(sr() * 6)] += ell(x, y, sz, sz * rr(sr, .6, .85)); }
+      for (let i = 0; i < pebN; i++) { const x = rr(sr, L + 30, R - 30), y = rr(sr, band[0], band[1]), sz = rr(sr, sz0[0], sz0[1]) * (.8 + .4 * (y - band[0]) / (band[1] - band[0])); if (Math.abs(x) > R - 50 && y < -24) continue; pb[Math.floor(sr() * 6)] += ell(x, y, sz, sz * rr(sr, .6, .8)); }
       pb.forEach((d, i) => body.push([`@peb.${i}`, d]));
-      body.push(['#ffffff', pb[3].split('M').slice(1, 80).map(p => 'M' + p).join(''), .18]);
-      // the strandline: dried weed, shells and the odd bit of driftwood
+      body.push(['#ffffff', pb[3].split('M').slice(1, 60).map(p => 'M' + p).join(''), .22]);
+      // the strandline: v0 a bold dark tideline of weed with shells and a big driftwood log; v1 a bleached branch on the upper berm; v2 a scatter of weed
       let wd = '', sh = '';
-      for (let i = 0; i < 46; i++) { const x = rr(sr, L + 40, R - 40), y = -12 + Math.sin(x * .013) * 3 + rr(sr, -2, 2); wd += `M${f1(x)} ${f1(y)}q3 -2 6 0q3 2 6 -1`; if (sr() < .4) sh += `M${f1(x + 4)} ${f1(y + 2)}a2.2 1.6 0 0 1 4.4 0z`; }
-      body.push({ s: '@weed.0', w: 1.4, op: .7, d: wd }, ['@shell.0', sh], ['@drift', `M${f1(rr(sr, -150, 150))} -14l34 -3l1 2.4l-34 3z`]);
+      for (let i = 0; i < (v === 1 ? 0 : v === 0 ? 24 : 46); i++) { const x = rr(sr, L + 40, R - 40), y = -12 + Math.sin(x * .013) * 3 + rr(sr, -2, 2); wd += `M${f1(x)} ${f1(y)}q3 -2 6 0q3 2 6 -1`; if (sr() < .4) sh += `M${f1(x + 4)} ${f1(y + 2)}a2.2 1.6 0 0 1 4.4 0z`; }
+      body.push({ s: '@weed.0', w: 1.4, op: .7, d: wd }, ['@shell.0', sh]);
+      if (v === 0) body.push({ s: '@weed.0', w: 2.6, op: .85, d: line(-11, 2.4, .013) }, ['@drift', 'M-134 -2l74 -6q5 0 5 3t-4 3l-74 6q-5 0 -5 -3t4 -3z'], { s: '@shell.1', w: 1.2, op: .7, d: 'M-132 -4l72 -6' }, ['@sand.3', ell(-56, -6, 2, 2.6)], { s: '@drift', w: 2, d: 'M-136 0l-9 -6M-136 0l-10 2' });
+      else if (v === 1) body.push({ s: '@drift', w: 3, d: 'M60 -26q30 -5 62 -3M96 -28q8 -6 18 -11' }, { s: '@shell.0', w: 1, op: .7, d: 'M62 -27q30 -5 58 -3' });
+      else body.push(['@drift', `M${f1(rr(sr, -150, 150))} -14l34 -3l1 2.4l-34 3z`]);
       // ripples and a rock pool (v2)
       if (v === 2) { let rp = ''; for (let i = 0; i < 30; i++) { const x = rr(sr, L + 60, R - 60), y = rr(sr, -20, -2); rp += `M${f1(x)} ${f1(y)}q6 -2.2 12 0q6 2.2 12 0`; } body.push({ s: '@sand.3', w: 1, op: .45, d: rp }, { s: '@sand.2', w: .8, op: .6, d: rp.replace(/M(-?[\d.]+) (-?[\d.]+)/g, (m, a, b) => `M${a} ${f1(+b - 1.2)}`) });
         body.push(['@pool.0', 'M120 -8q20 -10 60 -6q22 4 4 10q-30 6 -60 2q-14 -2 -4 -6z'], ['@pool.1', 'M134 -8q16 -4 34 -3', .6], ['@peb.2', ell(118, -6, 8, 4) + ell(186, -4, 6, 3.4) + ell(160, -12, 5, 2.6)]); }
-      // the wet sand at the water's edge, with a sheen
-      body.push(['@wet.0', `M${L + 4} 6Q${L + 20} -2 ${L + 60} -1${edge(-1, 2)}L${R - 60} -1Q${R - 20} -2 ${R - 4} 6z`, .9], { s: '@wet.1', w: 1.2, op: .55, d: `M${L + 80} 2h90M${L + 260} 3h140M${R - 200} 2h110` });
+      // the wet edge, with a sheen: sand (v0, v2), dark wet stones (v1)
+      if (v === 1) body.push(['@peb.2', `M${L + 8} 6Q${L + 20} -1 ${L + 60} -1${edge(-1, 2)}L${R - 60} -1Q${R - 20} -1 ${R - 8} 6z`, .6], { s: '@wet.1', w: 1.2, op: .6, d: `M${L + 70} 2h40M${L + 200} 3h70M${L + 380} 2h50M${R - 120} 3h60` });
+      else body.push(['@wet.0',`M${L + 4} 6Q${L + 20} -2 ${L + 60} -1${edge(-1, 2)}L${R - 60} -1Q${R - 20} -2 ${R - 4} 6z`, .9], { s: '@wet.1', w: 1.2, op: .55, d: `M${L + 80} 2h90M${L + 260} 3h140M${R - 200} 2h110` });
       return { body };
     },
   });

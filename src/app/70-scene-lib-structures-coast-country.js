@@ -164,8 +164,9 @@
       }
       gate.push(['@iron', rect(hx + 2, -66, 8, 3) + rect(hx + 2, -20, 8, 3)], ['@iron', rect(lx - 10, -48, 12, 3)]);
       if (s === 'winter') gate.push(['@snow', `M${hx + 6} -68h${lx - hx - 11}v-2.5q-40 -2 -${lx - hx - 11} 0z`, .9]);
-      // v2 swung open toward the viewer: the gate foreshortened about the hanging post
-      body.push(...(v === 2 ? withM(gate, [.42, .16, 0, 1, f1(hx * (1 - .42)), f1(-hx * .16 + 4)]) : gate));
+      // v2 swung open toward the viewer: the gate foreshortened about the hanging post, its free end dipping only a little
+      // (the hinge end stays put and the bottom rail stays clear of the ground: -12 + .035 * 161 is about -6)
+      body.push(...(v === 2 ? withM(gate, [.42, .035, 0, 1, f1(hx * (1 - .42)), f1(-hx * .035)]) : gate));
       if (v === 2) body.push(['@post.0', rect(lx - 5, -70, 10, 72)], ['@post.1', rect(lx + 1, -70, 4, 72), .7]);
       if (s === 'winter') body.push(['@snow', `M${hx - 8} -80l8 -6l8 6zM${lx - 6} -70l6 -5l6 5z`]);
       // grass and nettles round the posts
