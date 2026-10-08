@@ -1,7 +1,7 @@
 /* ============================================================
-   SCENE LIBRARY + ARCHETYPES: Farnborough (Rushmoor, Hampshire)
-   (docs/dev/SCENE_ENGINE.md sections 2 and 8). PURE: sceneObjDefine and
-   sceneArchetypeDefine calls inside IIFEs and nothing else; every build
+   SCENE LIBRARY: Farnborough (Rushmoor, Hampshire)
+   (docs/dev/SCENE_ENGINE.md sections 2 and 8). PURE: sceneObjDefine
+   calls inside IIFEs and nothing else; every build
    runs lazily (objects once per variant and season, scenes once when shown).
 
    The area: the Farnborough International Airshow (flying displays over the
@@ -29,10 +29,9 @@
      structure.airshow-chalet            a run of white two-storey hospitality chalets with glazed balconies
      vehicle.display-jet                 a generic jet (v0 / v1 trainer with white / blue smoke, v2 business jet)
      vehicle.airliner                    a generic twin-engine airliner, plain white
-   Archetypes (the scenes are data rows in 71-scene-uk-farnborough-*.js):
-     farnborough-airfield   the airshow crowd line, the static park, the business park (form: showline | static | business | precinct)
-     farnborough-place      the town views: station, church, street, lawn and canal (built on the Fleet
-                            archetypes' ground) with Farnborough's aircraft overhead
+   Scenes: each of the eight is its own composition in 71-scene-uk-farnborough-scenes.js (no shared
+     archetype); this file holds the objects only. The Basingstoke Canal bridge (landmark.farnborough-cut-bridge)
+     is drawn here: a brick accommodation bridge over the cut, with lamps on the parapet.
    ============================================================ */
 (function () {
   if (typeof sceneObjDefine !== 'function') return;
@@ -65,7 +64,7 @@
       const b = [], lit = [], W = ctx.season === 'winter';
       const pin = (x, y, h, w = 8) => {
         b.push({ f: '@stone.0', d: rect(x - w / 2, y - h * 0.45, w, h * 0.45) }, { f: '@stone.1', d: poly([x - w / 2, y - h * 0.45], [x, y - h], [x + w / 2, y - h * 0.45]) });
-        for (let k = 1; k < 4; k++) b.push({ f: '@stone.2', d: sceneD.circ(x - w * 0.35 * (1 - k / 4), y - h * 0.45 - k * h * 0.13, 1.6), detail: true }, { f: '@stone.2', d: sceneD.circ(x + w * 0.35 * (1 - k / 4), y - h * 0.45 - k * h * 0.13, 1.6), detail: true });
+        if (h >= 46) for (let k = 1; k < 4; k++) b.push({ f: '@stone.2', d: sceneD.circ(x - w * 0.35 * (1 - k / 4), y - h * 0.45 - k * h * 0.13, 1.6), detail: true }, { f: '@stone.2', d: sceneD.circ(x + w * 0.35 * (1 - k / 4), y - h * 0.45 - k * h * 0.13, 1.6), detail: true });
       };
       const lancet = (x, y, w, h, tracery) => {
         b.push({ f: '@stone.3', d: `M${x - 2} ${y + h + 1}V${y + w * 0.6}Q${x + w / 2} ${y - w * 0.9} ${x + w + 2} ${y + w * 0.6}V${y + h + 1}z` });
@@ -118,7 +117,7 @@
       // stone courses (detail)
       for (let y = -12; y > -86; y -= 12) b.push({ s: '@stone.3', w: 0.6, op: 0.3, detail: true, d: `M-210 ${y}H110` });
       for (let y = -12; y > -200; y -= 14) b.push({ s: '@stone.3', w: 0.6, op: 0.25, detail: true, d: `M-290 ${y}H-202` });
-      b.push(...shrubs(rnd, -320, 300, 16, 2, 16));
+      b.push(...shrubs(rnd, -320, 300, 9, 2, 18));
       if (W) b.push({ f: '@snow.0', d: rect(-170, -265, 266, 3) }, { f: '@snow.0', d: 'M-204-104H112V-100H-204z' }, { f: '@snow.0', d: 'M200-238C202-282 266-282 268-238C260-276 208-276 200-238z' });
       lit.push({ f: { rad: [[0, '@flood', 0.32], [1, '@flood', 0]], cx: -246, cy: -150, r: 170 }, d: 'M-310 0V-220L-246-300L-180-220V0z' });
       lit.push({ f: { rad: [[0, '@flood', 0.18], [1, '@flood', 0]], cx: 0, cy: -140, r: 240 }, d: rect(-210, -270, 500, 270) });
@@ -136,7 +135,7 @@
     flippable: false,
     palette: {
       base: { brick: ['#a4553c', '#7e3e2c', '#bc6c50'], white: ['#f0ece2', '#c8c2b4'], roof: ['#575558', '#403e42', '#6e6a6c'], glass: ['#3a4656', '#9ab0c4'], door: ['#2e4a3e'], jet: ['#c4cad0', '#9aa2aa', '#e2e6ea', '#6a727a'], stand: ['#5a5e62'], lawn: ['#5e8a3e', '#4a7032'], snow: ['#f2f4f6'], flood: ['#ffe2a8'] },
-      autumn: { lawn: ['#7a8442', '#5e6a34'] }, winter: { lawn: ['#8a9480', '#6e786a'] },
+      spring: { lawn: ['#6a9a40', '#548034'] }, summer: { lawn: ['#5e8a3e', '#4a7032'] }, autumn: { lawn: ['#7a8442', '#5e6a34'] }, winter: { lawn: ['#8a9480', '#6e786a'] },
     },
     night: { glow: { window: '#f6cc7c', lamp: '#ffe2a0' }, on: 0.8 },
     parts: ['body', 'lit'],
@@ -201,14 +200,14 @@
     credit: 'drawn for the Farnborough area pack: Farnborough (Main) station on the South Western main line',
     build(v, rnd, ctx) {
       const b = [], lit = [], W = ctx.season === 'winter';
-      b.push(...shrubs(rnd, -260, 260, 14, -24, 14));
+      b.push(...shrubs(rnd, -260, 260, 7, -24, 16));
       // the station house: two storeys, stone bands and quoins, a hipped roof with tall chimneys
       b.push({ f: '@roof.0', d: poly([-236, -130], [-200, -176], [-20, -176], [16, -130]) }, { f: '@roof.1', d: poly([-50, -176], [-20, -176], [16, -130], [-20, -130]), op: 0.6 });
       for (const x of [-196, -110, -40]) b.push({ f: '@brick.2', d: rect(x, -206, 16, 44) }, { f: '@dress.0', d: rect(x - 2, -208, 20, 5) }, { f: '@roof.2', d: rect(x + 3, -214, 4, 6) }, { f: '@roof.2', d: rect(x + 9, -214, 4, 6) });
       b.push({ f: '@brick.0', d: rect(-230, -132, 240, 132) }, { f: '@brick.1', d: rect(-40, -132, 50, 132), op: 0.4 });
       for (const y of [-134, -70]) b.push({ f: '@dress.0', d: rect(-234, y, 248, 5) });
-      for (let y = -6; y > -130; y -= 8) b.push({ s: '@brick.1', w: 0.5, op: 0.3, detail: true, d: `M-230 ${y}H10` });
-      for (const x of [-230, 2]) for (let k = 0; k < 8; k++) b.push({ f: '@dress.1', d: rect(x + (k % 2 ? 0 : 0), -14 - k * 16, k % 2 ? 8 : 12, 10), detail: true });
+      for (let y = -10; y > -130; y -= 12) b.push({ s: '@brick.1', w: 0.5, op: 0.3, detail: true, d: `M-230 ${y}H10` });
+      for (const x of [-230, 2]) b.push({ f: '@dress.1', d: rect(x, -132, 8, 132), op: 0.6 });
       for (let i = 0; i < 5; i++) {
         const x = -214 + i * 44;
         b.push({ f: '@dress.0', d: rect(x - 3, -122, 28, 42) }, { f: '@glass.0', d: rect(x, -118, 22, 36), glow: 'window' }, { s: '@dress.0', w: 1.2, d: `M${x} -100H${x + 22}` });
@@ -222,7 +221,7 @@
       // the platform, its yellow line and the line in front
       b.push({ f: '@plat.0', d: rect(-260, -24, 520, 8) }, { f: '@plat.2', d: rect(-260, -24, 520, 1.6) }, { f: '@plat.1', d: rect(-260, -16, 520, 16) });
       b.push({ f: '@ballast.0', d: rect(-260, 0, 520, 8) });
-      let s = ''; for (let x = -256; x < 260; x += 9) s += rect(x, 2, 4, 5); b.push({ f: '@ballast.1', d: s });
+      let s = ''; for (let x = -256; x < 260; x += 14) s += rect(x, 2, 5, 5); b.push({ f: '@ballast.1', d: s });
       b.push({ f: '@rail.0', d: rect(-260, 1, 520, 1.6) }, { f: '@rail.1', d: rect(-260, 5, 520, 1.6) });
       if (W) b.push({ f: '@snow.0', d: poly([-200, -176], [-20, -176], [-14, -170], [-206, -170]) }, { f: '@snow.0', d: rect(10, -100, 244, 3) });
       lit.push({ f: { lin: [[0, '#ffe8b0', 0.3], [1, '#ffe8b0', 0]], x1: 0, y1: -88, x2: 0, y2: -20 }, d: rect(10, -88, 244, 66) });
@@ -270,7 +269,7 @@
       b.push({ f: '@plat.1', d: poly([150, -24], [176, 0], [150, 0]) });
       // the line, crossing the road on the right
       b.push({ f: '@ballast.0', d: rect(-260, 0, 520, 8) });
-      let s = ''; for (let x = -256; x < 260; x += 9) s += rect(x, 2, 4, 5); b.push({ f: '@ballast.1', d: s });
+      let s = ''; for (let x = -256; x < 260; x += 14) s += rect(x, 2, 5, 5); b.push({ f: '@ballast.1', d: s });
       b.push({ f: '@road', d: rect(196, -2, 70, 10) });
       b.push({ f: '@rail.0', d: rect(-260, 1, 520, 1.6) }, { f: '@rail.1', d: rect(-260, 5, 520, 1.6) });
       // the level crossing: barrier posts and booms (raised), red and white; the warning lights
@@ -337,6 +336,57 @@
       if (W) for (let i = 0; i < 3; i++) { const x = -440 + i * 140; b.push({ f: '@snow.0', d: `M${x + 6} -46Q${x + 68} -104 ${x + 130} -46Q${x + 68} -96 ${x + 6} -46z` }); }
       lit.push({ f: { lin: [[0, '#fff0c8', 0.3], [1, '#fff0c8', 0]], x1: 0, y1: -46, x2: 0, y2: 0 }, d: rect(tx, -46, tw, 46) });
       lit.push({ f: { rad: [[0, '#fff0c8', 0.35], [1, '#fff0c8', 0]], cx, cy: -230, r: 70 }, d: sceneD.circ(cx, -230, 70) });
+      return { body: b, lit };
+    },
+  });
+
+  /* ---------- Queensmead: the rebuilt shopping street (shops below, flats above; blank fascias) ---------- */
+  sceneObjDefine({
+    id: 'landmark.queensmead',
+    category: 'landmark',
+    size: [900, 230],
+    variants: 1,
+    seasonal: true,
+    flippable: false,
+    palette: {
+      base: { brick: ['#a8644a', '#844c38', '#c07c5e'], clad: ['#b08a5e', '#8e6c48', '#cfa878'], render: ['#e8e4da', '#c4c0b6'], glass: ['#3e5262', '#8cb0c8'], fascia: ['#3a4048', '#5a6470', '#2e5a52', '#7a3a34'], awning: ['#d8d2c4'], roof: ['#6a6e72'], leaf: ['#3e6a2a', '#5a8a36'], snow: ['#f2f4f6'] },
+      spring: LEAF.spring, summer: LEAF.summer, autumn: LEAF.autumn, winter: LEAF.winter,
+    },
+    night: { glow: { window: '#f6d08a', shop: '#fff0c8' }, on: 0.85 },
+    parts: ['body', 'lit'],
+    shadow: { rx: 430, ry: 10, h: 200 },
+    reflect: false,
+    tags: ['landmark', 'signature', 'place:uk/farnborough-queensmead', 'uk', 'hampshire', 'farnborough', 'shopping', 'town centre', 'kit:urban', 'kit:temperate'],
+    credit: 'drawn for the Farnborough area pack: the Queensmead shopping street, Farnborough town centre (generic shopfronts, no names)',
+    build(v, rnd, ctx) {
+      const b = [], lit = [], W = ctx.season === 'winter';
+      const blocks = [[-450, 200, 'brick', 4], [-250, 180, 'clad', 3], [-70, 220, 'brick', 4], [150, 140, 'render', 3], [290, 160, 'clad', 4]];
+      blocks.forEach(([x, w, mat, fl], bi) => {
+        const H = 50 + fl * 36;
+        b.push({ f: '@' + mat + '.0', d: rect(x, -H, w, H - 50) }, { f: '@' + mat + '.1', d: rect(x + w - 24, -H, 24, H - 50), op: 0.5 });
+        b.push({ f: '@roof', d: rect(x - 4, -H - 6, w + 8, 7) });
+        if (mat === 'clad') for (let k = x + 6; k < x + w; k += 8) b.push({ s: '@' + mat + '.1', w: 0.8, op: 0.5, detail: true, d: `M${k} ${-H}V-50` });
+        else if (mat === 'brick') for (let y = -56; y > -H; y -= 8) b.push({ s: '@brick.1', w: 0.5, op: 0.3, detail: true, d: `M${x} ${y}H${x + w}` });
+        // the flats' windows and balconies
+        for (let f2 = 0; f2 < fl; f2++) for (let k = 0; k < Math.floor(w / 44); k++) {
+          const wx = x + 12 + k * 44, wy = -H + 10 + f2 * 36;
+          b.push({ f: '@glass.0', d: rect(wx, wy, 22, 24), glow: 'window' }, { f: '@glass.1', d: rect(wx, wy, 7, 9), op: 0.35 });
+          if ((k + f2 + bi) % 3 === 0) b.push({ s: '@render.1', w: 1.4, d: `M${wx - 4} ${wy + 20}H${wx + 30}M${wx - 4} ${wy + 26}H${wx + 30}` });
+        }
+        // the shop units: glazed fronts, plain fascias (no names), awnings on some
+        const n = Math.max(1, Math.round(w / 70));
+        for (let k = 0; k < n; k++) {
+          const sx = x + k * w / n, sw = w / n;
+          b.push({ f: '@fascia.' + ((k + bi) % 4), d: rect(sx + 2, -50, sw - 4, 10) });
+          b.push({ f: '@glass.0', d: rect(sx + 6, -38, sw - 12, 38), glow: 'shop' }, { f: '@glass.1', d: rect(sx + 6, -38, (sw - 12) * 0.3, 14), op: 0.3 });
+          b.push({ s: '@render.1', w: 1.2, d: `M${sx + sw / 2} -38V0` });
+          if ((k + bi) % 2 === 0) b.push({ f: '@awning', d: poly([sx + 4, -40], [sx + sw - 4, -40], [sx + sw, -30], [sx, -30]) });
+          lit.push({ f: { lin: [[0, '#fff0c8', 0.35], [1, '#fff0c8', 0]], x1: 0, y1: 0, x2: 0, y2: 30 }, d: rect(sx, 0, sw, 30) });
+        }
+      });
+      // street trees in planters along the frontage
+      for (const x of [-360, -160, 60, 260, 420]) b.push({ f: '@roof', d: rect(x - 2, -60, 4, 60) }, { f: '@leaf.0', d: sceneD.lobed(rnd, x, -84, 34, 30, 8, 0.25) }, { f: '@leaf.1', d: sceneD.lobed(rnd, x - 8, -92, 22, 18, 7, 0.25) }, { f: '@brick.1', d: rect(x - 14, -10, 28, 10) });
+      if (W) for (const [x, w, , fl] of blocks) b.push({ f: '@snow.0', d: rect(x - 4, -50 - fl * 36 - 8, w + 8, 3) });
       return { body: b, lit };
     },
   });
@@ -485,159 +535,44 @@
 })();
 
 /* ============================================================
-   ARCHETYPES (8.1): Farnborough's repeated scene types. Each build is pure
-   and seeded from the row's id; the rows live in 71-scene-uk-farnborough-*.js.
+   THE FARNBOROUGH SCENE HELPERS and one new landmark. Each scene in
+   71-scene-uk-farnborough-scenes.js is its OWN composition (no shared archetype):
+   these helpers only make the scene record (view, sky, palette, empty arrays), the
+   scatter rules, and the people / vehicle / actor entries. Nothing here decides a layout.
    ============================================================ */
-const _farnArch = (function () {
-  const R = v => Math.round(v);
-  const has = (p, f) => (p.features || []).includes(f);
-  const band = (y, amp, ph, foot = 905) => `M-160 ${R(foot)}V${R(y)}Q${R(300 + ph)} ${R(y - amp)} ${R(800 + ph / 2)} ${R(y + amp * 0.4)}T1760 ${R(y - amp * 0.3)}V${R(foot)}Z`;
-  const pal = {
-    base: { wood: ['#4e6844', '#3c5436'], ground: ['#6a8a44', '#557236', '#42602c'], lawn: ['#6e9246', '#5a7c3a', '#486832'], tarmac: ['#6a6c6e', '#56585a', '#808284'], pave: ['#b8b0a2', '#9c958a', '#cfc8ba'], path: ['#b49c76', '#9a8462'] },
-    spring: { wood: ['#5f7e48', '#486640'], ground: ['#74983e', '#5a7a30', '#466228'], lawn: ['#78a048', '#628a3c', '#4e7432'] },
-    autumn: { wood: ['#8a6a3a', '#6a5232'], ground: ['#8a7e40', '#6e6232', '#54502a'], lawn: ['#7e8a44', '#687236', '#545c2c'] },
-    winter: { wood: ['#5a5a50', '#47483f'], ground: ['#8a9080', '#6e766a', '#586058'], lawn: ['#8a9480', '#727c6a', '#5e6858'], pave: ['#bcb8b0', '#a29e96', '#d4d0c8'] },
-  };
-  const layers = () => [{ id: 'horizon', depth: 0.08, haze: 0.45 }, { id: 'far', depth: 0.2, haze: 0.24 }, { id: 'mid', depth: 0.45, haze: 0.1 }, { id: 'near', depth: 0.75, haze: 0 }, { id: 'fore', depth: 1, haze: 0 }, { id: 'front', depth: 1.25, haze: 0 }];
-  const base = (p, setting) => ({
-    v: 1, id: String(p.id), view: { lat: p.lat, lon: p.lon, heading: Number.isFinite(p.heading) ? p.heading : 200, fov: 78, horizon: p.horizon || 480, lift: 1 },
-    at: p.at || 'afternoon', season: 'auto', tropic: 'summer', setting, signage: false, palette: JSON.parse(JSON.stringify(pal)),
-    layers: layers(), sky: { stars: 200, clouds: { n: 4, y: [40, Math.max(200, (p.horizon || 480) - 140)], speed: 5 }, sunR: 24, moonR: 18 },
-    ground: [], water: [], place: [], scatter: [], actors: [], flocks: [], particles: 'season', weather: 'live', camera: { pan: 0, period: 90 },
-  });
-  const ppl = (d, id, y) => scenePersonScale((sceneObj(id) || { size: [30, 64] }).size[1], y, d.view);
-  const farWood = (d, H, seed, n) => {
-    d.ground.push({ layer: 'horizon', d: band(H - 8, 10, seed * 7 % 200, H + 40), fill: '@wood.0' });
-    d.scatter.push({ obj: 'tree.pond-wood', layer: 'horizon', seed, area: { rect: [-150, H - 2, 1750, H + 16] }, n: n || 20, minGap: 24, s: [0.2, 0.55], flip: 0.5, variant: [0, 1], tint: { col: '#7a8a9a', k: [0, 0.1] }, mask: { noise: { scale: 200, cut: 0.25 } }, anim: false });
-  };
-  const flocks = (d, H, seed) => d.flocks.push({ obj: 'bird.small-flight', n: 4, area: [300, 160, 1500, Math.max(240, H - 100)], speed: 40, s: 0.45, seed, layer: 'horizon' });
-  /** Farnborough's sky: a display pair trailing smoke, a business jet climbing out, an airliner fly-by (by features). */
-  const sky = (d, p, H) => {
-    if (has(p, 'display')) {
-      d.actors.push({ obj: 'vehicle.display-jet', layer: 'horizon', path: [[-400, 230], [700, 150], [2000, 210]], speed: 120, loop: 'loop', s: 0.9, seed: 201, variant: 0, offset: 0.1 });
-      d.actors.push({ obj: 'vehicle.display-jet', layer: 'horizon', path: [[-460, 262], [640, 182], [1940, 242]], speed: 120, loop: 'loop', s: 0.9, seed: 202, variant: 1, offset: 0.1 });
-      d.actors.push({ obj: 'vehicle.display-jet', layer: 'horizon', path: [[2000, 120], [-400, 170]], speed: 110, loop: 'loop', s: 0.7, seed: 203, variant: 0, flip: true, offset: 0.6 });
-    }
-    if (has(p, 'flypast')) d.actors.push({ obj: 'vehicle.airliner', layer: 'horizon', path: [[-500, Math.max(220, H - 170)], [2100, Math.max(160, H - 260)]], speed: 55, loop: 'loop', s: 0.9, seed: 204, offset: 0.35 });
-    if (has(p, 'bizjet')) d.actors.push({ obj: 'vehicle.display-jet', layer: 'horizon', path: [[-200, Math.max(220, H - 120)], [1900, 110]], speed: 70, loop: 'loop', s: 0.55, seed: 205, variant: 2, offset: 0.5 });
-  };
-  const finish = (d) => {
-    const out = [];
-    d.scatter.forEach((r, i) => {
-      if (r.variant === 'random') r.variant = [0, 1];
-      if (r.n >= 30 && !r.tint && Array.isArray(r.variant) && r.variant[0] === 0 && r.variant[1] === 1) {
-        const h = Math.round(r.n / 2);
-        out.push(Object.assign({}, r, { n: h, variant: 0 }), Object.assign({}, r, { n: r.n - h, variant: 1, seed: r.seed + 500, anim: r.anim === 'strip' ? false : r.anim, tint: { col: i % 2 ? '#8a7a40' : '#6a7a3a', k: [0.08, 0.08] } }));
-      } else { if (!r.tint && r.n >= 20) r.tint = { col: '#7a8a6a', k: [0, 0.1] }; out.push(r); }
-    });
-    d.scatter = out;
-    if (d.water.length) for (const e of d.scatter.concat(d.place)) if (['horizon', 'far', 'mid'].includes(e.layer) && e.reflect == null) e.reflect = true;
-    return d;
-  };
-  const landmark = (d, p, y, layer) => {
-    if (!p.landmark || !sceneObj(p.landmark)) return;
-    d.place.push({ obj: p.landmark, x: Number.isFinite(p.lmx) ? p.lmx : 800, y, s: Number.isFinite(p.lms) ? p.lms : 1, variant: Number.isFinite(p.lmv) ? p.lmv : 0, layer: layer || 'mid', seed: 3, anim: false });
-  };
-  const AT = ['afternoon', 'dawn', 'morning', 'day', 'noon', 'golden', 'sunset', 'dusk', 'night'];
-  const common = { id: 'id', name: 'sign', lat: 'number', lon: 'number', heading: 'number', horizon: 'number', at: AT, lmx: 'number', lmy: 'number', lms: 'number', lmv: 'number', features: 'list' };
-
-  /* ---------- farnborough-airfield: the airshow crowd line, the static park, the business park, the precinct ---------- */
-  function airfield(p, u) {
-    const form = p.form || 'showline';
-    const d = base(p, form === 'precinct' ? 'urban' : 'mixed'), H = d.view.horizon;
-    farWood(d, H, 11, form === 'precinct' ? 10 : 22);
-    if (form === 'showline' || form === 'static') {
-      // the airfield: grass to the far trees, the runway band, the taxiway and the crowd-line fence
-      d.ground.push({ layer: 'far', d: band(H + 4, 3, 30), fill: { lin: [[0, '@ground.0'], [1, '@ground.1']], y1: H, y2: H + 120 } });
-      const ry = H + 26;
-      d.ground.push({ layer: 'far', d: `M-160 ${ry}H1760V${ry + 18}H-160Z`, fill: '@tarmac.1' }, { layer: 'far', d: `M-160 ${ry + 8}H1760V${ry + 10}H-160Z`, fill: '#e8e8e0' });
-      landmark(d, p, Number.isFinite(p.lmy) ? p.lmy : H + 22, p.lmlayer || 'far');
-      d.scatter.push({ obj: { 'plant.grass': 4 }, layer: 'far', seed: 12, area: { rect: [-150, ry + 20, 1750, H + 90] }, n: 140, minGap: 12, s: [0.2, 0.4], flip: 0.5, variant: 'random', anim: false });
-      // the near apron / showground: tarmac (static) or grass (crowd line)
-      const cy = H + 110;
-      d.ground.push({ layer: 'mid', d: band(H + 86, 4, 140), fill: form === 'static' ? { lin: [[0, '@tarmac.2'], [1, '@tarmac.0']], y1: H + 86, y2: 905 } : { lin: [[0, '@lawn.0'], [1, '@lawn.1']], y1: H + 86, y2: 905 } });
-      if (form === 'showline') {
-        // the hospitality chalets along the crowd line, plain flags
-        for (let i = 0; i < 4; i++) d.place.push({ obj: 'structure.airshow-chalet', x: -40 + i * 420 + (p.chx || 0), y: cy, s: 1.0, variant: i % 2, flip: i % 2 === 1, layer: 'mid', seed: 20 + i });
-        d.ground.push({ layer: 'near', d: band(cy + 60, 4, 60), fill: { lin: [[0, '@lawn.1'], [1, '@lawn.2']], y1: cy + 60, y2: 905 } });
-        d.scatter.push({ obj: { 'plant.grass': 4, 'plant.wildflowers': 0.5 }, layer: 'near', seed: 28, area: { rect: [-150, cy + 70, 1750, 905] }, n: 220, minGap: 18, s: [0.5, 1.0], sByY: [[cy + 70, 0.7], [900, 1.3]], flip: 0.5, variant: 'random', anim: false });
-        // the crowd: watchers, photographers, families, picnickers
-        const crowd = ['person.photographer', 'person.family', 'person.couple', 'person.walker', 'person.picnicker', 'person.phone-idler', 'person.child-ball', 'person.elderly-couple'];
-        for (let i = 0; i < 14; i++) {
-          const id = crowd[i % crowd.length], y = cy + 90 + (i % 3) * 60;
-          d.place.push({ obj: id, x: 40 + i * 116 + (i % 2) * 30, y, s: ppl(d, id, y), variant: i % 4, flip: i % 3 === 0, layer: y > cy + 160 ? 'fore' : 'near', seed: 40 + i, anim: i % 4 === 0 });
-        }
-        d.actors.push({ obj: 'person.walker', layer: 'fore', path: [[-80, 850], [1680, 860]], speed: 12, loop: 'loop', s: ppl(d, 'person.walker', 850), seed: 60, offset: 0.3, variant: 5 });
-        d.actors.push({ obj: 'person.buggy-walker', layer: 'near', path: [[1680, cy + 110], [-80, cy + 110]], speed: 9, loop: 'loop', s: ppl(d, 'person.buggy-walker', cy + 110), seed: 61, offset: 0.7, flip: true });
-      } else {
-        // the static park: aircraft parked on the apron with visitors among them
-        d.place.push({ obj: 'vehicle.airliner', x: 520, y: H + 150, s: 1.5, layer: 'mid', seed: 21 }, { obj: 'vehicle.display-jet', x: 1180, y: H + 190, s: 1.6, variant: 2, flip: true, layer: 'mid', seed: 22, anim: false });
-        d.place.push({ obj: 'vehicle.display-jet', x: 1400, y: H + 300, s: 2.2, variant: 0, layer: 'near', seed: 23, anim: false }, { obj: 'structure.airshow-chalet', x: 1400, y: H + 100, s: 0.7, layer: 'mid', seed: 24 });
-        const vis = ['person.photographer', 'person.family', 'person.couple', 'person.child-scooter', 'person.walker', 'person.student'];
-        for (let i = 0; i < 10; i++) { const id = vis[i % vis.length], y = H + 200 + (i % 3) * 70; d.place.push({ obj: id, x: 80 + i * 150, y, s: ppl(d, id, y), variant: i % 4, flip: i % 2 === 0, layer: y > H + 300 ? 'fore' : 'near', seed: 70 + i, anim: false }); }
-        d.actors.push({ obj: 'person.walker', layer: 'fore', path: [[-80, 860], [1680, 850]], speed: 11, loop: 'loop', s: ppl(d, 'person.walker', 850), seed: 80, offset: 0.2, variant: 2 });
-        d.actors.push({ obj: 'person.family', layer: 'near', path: [[1680, H + 250], [-80, H + 250]], speed: 7, loop: 'loop', s: ppl(d, 'person.family', H + 250), seed: 81, offset: 0.6, flip: true });
-        d.scatter.push({ obj: { 'street.bollard': 1 }, layer: 'near', seed: 82, area: { rect: [-150, H + 160, 1750, H + 170] }, n: 18, minGap: 80, s: [0.7, 0.8], flip: 0.5, variant: 'random', anim: false });
-      }
-    } else if (form === 'business') {
-      // the business park: offices round a lawn and a pond, the airport beyond, jets climbing out
-      d.ground.push({ layer: 'far', d: band(H + 4, 3, 30), fill: { lin: [[0, '@lawn.0'], [1, '@lawn.1']], y1: H, y2: H + 160 } });
-      landmark(d, p, Number.isFinite(p.lmy) ? p.lmy : H + 10, p.lmlayer || 'horizon');
-      for (let i = 0; i < 5; i++) d.place.push({ obj: 'building.business-park-office', x: -40 + i * 380 + (i % 2) * 40, y: H + 70 + (i % 2) * 20, s: 1.15 + (i % 2) * 0.2, variant: i % 3, flip: i % 2 === 1, layer: 'mid', seed: 30 + i });
-      d.scatter.push({ obj: { 'tree.plane': 2, 'tree.bank-birch': 1, 'tree.bank-oak': 1 }, layer: 'mid', seed: 36, area: { rect: [-150, H + 96, 1750, H + 120] }, n: 9, minGap: 150, s: [0.45, 0.65], flip: 0.5, variant: 'random', anim: false });
-      const wy = H + 180;
-      d.ground.push({ layer: 'near', d: band(H + 130, 4, 80), fill: { lin: [[0, '@lawn.1'], [1, '@lawn.2']], y1: H + 130, y2: 905 } });
-      d.water.push({ layer: 'near', d: `M200 ${wy}Q800 ${wy - 18} 1400 ${wy}Q1460 ${wy + 40} 1300 ${wy + 70}Q800 ${wy + 90} 260 ${wy + 66}Q140 ${wy + 40} 200 ${wy}Z`, y0: wy - 18, y1: wy + 90, base: ['#8ab6c4', '#4f8ca0', '#2c5f74'], reflect: true, shimmer: 18, lightPath: true });
-      d.actors.push({ obj: 'bird.mallard', layer: 'near', path: [[500, wy + 30], [1000, wy + 36]], speed: 4, loop: 'pingpong', s: 0.4, seed: 37 });
-      d.ground.push({ layer: 'fore', d: `M-160 905V${wy + 110}Q800 ${wy + 96} 1760 ${wy + 110}V905Z`, fill: { lin: [[0, '@pave.0'], [1, '@pave.1']], y1: wy + 100, y2: 905 } });
-      d.scatter.push({ obj: { 'plant.grass': 4, 'plant.wildflowers': 0.6, 'plant.reed': 0.6 }, layer: 'near', seed: 38, area: { rect: [-150, H + 136, 1750, wy + 100] }, n: 200, minGap: 16, s: [0.4, 0.8], flip: 0.5, variant: 'random', anim: false, mask: { avoid: [{ poly: [[200, wy - 10], [1420, wy - 10], [1420, wy + 80], [200, wy + 80]] }] } });
-      d.scatter.push({ obj: { 'plant.planter': 2, 'street.bench': 1, 'plant.shrub': 2, 'street.bollard': 1 }, layer: 'fore', seed: 39, area: { rect: [-150, wy + 130, 1750, 905] }, n: 40, minGap: 70, s: [0.8, 1.2], flip: 0.5, variant: 'random', anim: false });
-      for (const [x, id, v] of [[300, 'person.commuter', 0], [700, 'person.phone-idler', 1], [1240, 'person.commuter', 2]]) d.place.push({ obj: id, x, y: wy + 170, s: ppl(d, id, wy + 170), variant: v, layer: 'fore', seed: 90 + v, anim: false });
-      d.actors.push({ obj: 'person.jogger', layer: 'fore', path: [[-80, wy + 150], [1680, wy + 150]], speed: 20, loop: 'loop', s: ppl(d, 'person.jogger', wy + 150), seed: 94, offset: 0.2 });
-      d.actors.push({ obj: 'person.cyclist-commuter', layer: 'fore', path: [[1680, wy + 200], [-80, wy + 200]], speed: 24, loop: 'loop', s: ppl(d, 'person.cyclist-commuter', wy + 200), seed: 95, offset: 0.6, flip: true });
-      d.place.push({ obj: 'street.lamppost', x: 160, y: wy + 140, s: 1, layer: 'fore', seed: 96 }, { obj: 'street.lamppost', x: 1460, y: wy + 140, s: 1, layer: 'fore', seed: 97 });
-    } else {
-      // precinct: Queensmead, a pedestrian street of shopfronts, paving, planters and trees
-      d.ground.push({ layer: 'far', d: band(H + 4, 2, 30), fill: '@pave.1' });
-      const fy = H + 140;
-      d.scatter.push({ obj: { 'building.shopfront': 1 }, layer: 'mid', seed: 52, area: { rect: [-150, fy - 4, 1750, fy] }, n: 12, minGap: 140, s: [0.5, 0.62], flip: 0.5, variant: 'random' });
-      d.scatter.push({ obj: { 'building.business-park-office': 1 }, layer: 'far', seed: 53, area: { rect: [-150, H + 40, 1750, H + 50] }, n: 4, minGap: 360, s: [0.8, 1.0], flip: 0.5, variant: [0, 1, 2], tint: { col: '#9aa8b4', k: [0.1, 0.2] } });
-      d.ground.push({ layer: 'near', d: `M-160 905V${fy}H1760V905Z`, fill: { lin: [[0, '@pave.0'], [1, '@pave.1']], y1: fy, y2: 905 } });
-      for (let i = 0; i < 9; i++) d.ground.push({ layer: 'near', d: `M${-160 + i * 240} 905L${640 + i * 40} ${fy}H${646 + i * 40}L${-150 + i * 240} 905Z`, fill: '@pave.2' });
-      for (let i = 0; i < 5; i++) d.place.push({ obj: i % 2 ? 'tree.plane' : 'street.lamppost', x: 80 + i * 360, y: fy + 120, s: i % 2 ? 0.7 : 1.0, variant: i % 3, layer: 'near', seed: 60 + i, anim: false });
-      d.scatter.push({ obj: { 'plant.planter': 3, 'street.bench': 1.5, 'street.bollard': 1 }, layer: 'near', seed: 66, area: { rect: [-150, fy + 60, 1750, fy + 140] }, n: 16, minGap: 90, s: [0.8, 1.0], flip: 0.5, variant: 'random', anim: false });
-      const shop = ['person.shopper', 'person.couple', 'person.buggy-walker', 'person.elderly-walker', 'person.takeaway-walker', 'person.student', 'person.child-scooter'];
-      for (let i = 0; i < 7; i++) { const y = fy + 40 + (i % 3) * 50, id = shop[i]; d.actors.push({ obj: id, layer: y > fy + 120 ? 'fore' : 'near', path: i % 2 ? [[1700, y], [-100, y]] : [[-100, y], [1700, y]], speed: 7 + i, loop: 'loop', s: ppl(d, id, y), seed: 70 + i, offset: i / 7, flip: i % 2 === 1 }); }
-      d.place.push({ obj: 'person.bench-sitter', x: 560, y: fy + 200, s: ppl(d, 'person.bench-sitter', fy + 200), layer: 'fore', seed: 80 }, { obj: 'person.busker', x: 1220, y: fy + 210, s: ppl(d, 'person.busker', fy + 210), layer: 'fore', seed: 81 });
-      d.place.push({ obj: 'bird.pigeon', x: 900, y: fy + 230, s: 0.9, layer: 'fore', seed: 82 }, { obj: 'bird.pigeon', x: 950, y: fy + 236, s: 0.85, flip: true, variant: 1, layer: 'fore', seed: 83 });
-    }
-    sky(d, p, H);
-    flocks(d, H, 99);
-    return finish(d);
-  }
-
-  /* ---------- farnborough-place: the Fleet archetypes' ground with Farnborough's own sky ---------- */
-  function place(p, u) {
-    const fa = typeof _fleetArch !== 'undefined' ? _fleetArch : null;
-    const form = p.form || 'street';
-    let d;
-    if (fa && ['band', 'channel', 'lake'].includes(form)) d = fa.water(p, u);
-    else if (fa && ['meadow', 'wood', 'wetland', 'lawn'].includes(form)) d = fa.green(p, u);
-    else if (fa) d = fa.town(p, u);
-    else d = airfield(Object.assign({}, p, { form: 'precinct' }), u);
-    sky(d, p, d.view.horizon);
-    return d;
-  }
-
-  return { airfield, place, common };
-})();
 (function () {
-  if (typeof sceneArchetypeDefine !== 'function') return;
-  const c = _farnArch.common;
-  const extra = { form: ['showline', 'static', 'business', 'precinct', 'lake', 'channel', 'band', 'meadow', 'wood', 'wetland', 'lawn', 'street', 'church', 'station'], side: ['right', 'left'] };
-  const num = ['nearbank', 'vx', 'wy0', 'wy1', 'walky', 'walkx0', 'walkx1', 'trainx', 'boatx', 'pathx', 'brooky', 'bwx', 'benchx', 'logx', 'fronty', 'chx'];
-  const params = Object.assign({}, c, extra, Object.fromEntries(num.map(k => [k, 'number'])), { lmlayer: ['mid', 'far', 'near', 'fore', 'horizon'], landmark: 'string' });
-  const meta = () => null;
-  sceneArchetypeDefine('farnborough-airfield', { params, kits: ['temperate', 'urban', 'vehicles', 'people'], meta, build: (p, u) => _farnArch.airfield(p, u) });
-  sceneArchetypeDefine('farnborough-place', { params, kits: ['temperate', 'urban', 'water', 'vehicles', 'people'], meta, build: (p, u) => _farnArch.place(p, u) });
+  if (typeof sceneObjDefine !== 'function') return;
+  /* ---------- the Basingstoke Canal bridge at Farnborough: a brick accommodation bridge over the cut ---------- */
+  sceneObjDefine({
+    id: 'landmark.farnborough-cut-bridge',
+    category: 'landmark',
+    size: [440, 210],
+    variants: 1,
+    seasonal: false,
+    flippable: false,
+    palette: {
+      base: { brick: ['#9a5a40', '#84492f', '#a86a4c'], coping: ['#cfc7b6', '#aaa294'], arch: ['#b8aa96', '#9e9180'], dark: ['#2c2a28', '#3a3430'], joint: ['#c8b8a4'], lamp: ['#fff0c0'], post: ['#2e3a3a'] },
+    },
+    night: { glow: { lamp: '#ffe2a0' }, on: 0.85 },
+    parts: ['body', 'lit'],
+    shadow: { rx: 210, ry: 12, h: 120 },
+    reflect: true,
+    tags: ['landmark', 'signature', 'place:uk/farnborough-canal', 'uk', 'hampshire', 'farnborough', 'bridge', 'canal', 'brick', 'kit:temperate'],
+    credit: 'drawn for the Farnborough area pack: a brick accommodation bridge over the Basingstoke Canal',
+    build() {
+      const b = [], lit = [];
+      b.push({ f: '@brick.0', d: sceneD.rect(-210, -112, 420, 112) });
+      for (let r = 0; r < 10; r++) {
+        const y = -106 + r * 11;
+        b.push({ s: '@joint.0', w: 0.8, op: 0.45, detail: true, d: `M-210 ${y}H210` });
+        for (let c = -20; c < 20; c++) { const x = c * 10.5 + (r % 2) * 5; if (Math.abs(x) < 210) b.push({ s: '@joint.0', w: 0.7, op: 0.35, detail: true, d: `M${x} ${y}V${y + 11}` }); }
+      }
+      b.push({ f: '@dark.0', d: 'M-150 0V-40Q0-150 150-40V0z' });
+      b.push({ s: '@arch.0', w: 14, d: 'M-158 0Q0-162 158 0' });
+      b.push({ s: '@arch.1', w: 4, op: 0.8, d: 'M-150 -8Q0-148 150 -8' });
+      b.push({ f: '@coping.0', d: sceneD.rect(-222, -124, 444, 12) }, { f: '@coping.1', d: sceneD.rect(-222, -114, 444, 3) });
+      for (const x of [-196, 196]) { b.push({ f: '@post.0', d: sceneD.rect(x - 2.5, -168, 5, 44) }); b.push({ f: '@post.0', d: sceneD.circ(x, -170, 5) }); lit.push({ f: '@lamp.0', d: sceneD.circ(x, -170, 3.2), glow: 'lamp' }); }
+      return { body: b, lit };
+    },
+  });
 })();
