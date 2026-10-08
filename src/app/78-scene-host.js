@@ -18,6 +18,11 @@
      still frame; data-sc-hover="1" plays on pointer enter and returns to the still on leave).
    - Fallback: no 2d context, or a bake that throws: the host gets the SVG still (sceneSvg) instead.
    - Debug: window.__sceneStats() -> [{ ref, ...renderer.stats() }] for every live host.
+   - v2 (docs/dev/SCENE_ENGINE_V2.md 7.5, 8.1, 14.2; builder C): a v2 scene (data.camera) and a v1 scene that opted in to
+     effects (data.fx) are lit with sceneLightV2 (the light plus the sun on the ground, the local hour, the resolved weather
+     and atmosphere); every other scene keeps sceneLight exactly as before. Previews: sceneHostSet(el, { at, wx, season })
+     (the editor, the gallery, the console) and the attribute data-sc-wx (a weather kind or a JSON object). ?scenefx=2 in the
+     page address turns on every v2 effect for the v1 scenes in the animation gallery (review only; nothing is stored).
    ============================================================ */
 const _SCH_FORGET_MS = 2500, _SCH_RELIGHT_MS = 120000, _SCH_RESIZE_MS = 150;
 const _schHosts = new Map();       // host element -> record
@@ -70,8 +75,37 @@ function _schLight(rec) {
   const fixedSeason = rec.el.getAttribute('data-sc-season');
   if (fixedSeason) o.season = fixedSeason;
   const season = _scSeasonOf(data, o);
-  const view = Object.assign({}, data.view || {}, { season, at: data.at || (data.view && data.view.at) });
+  const at = rec.el.getAttribute('data-sc-at');
+  const view = Object.assign({}, data.view || {}, { season, at: at || data.at || (data.view && data.view.at) });
+  // v2 scenes and v1 scenes with effects: the v2 light (7.5) with the weather override; every other scene exactly as before
+  if (_schIsV2(data) && typeof sceneLightV2 === 'function') {
+    const wx = _schWx(rec);
+    if (wx != null) o.wx = wx;
+    return { L: sceneLightV2(o, view, data), season };
+  }
   return { L: typeof sceneLight === 'function' ? sceneLight(o, view) : null, season };
+}
+/** Is this data lit with sceneLightV2? A v2 camera, or v1 effects (fx). */
+function _schIsV2(data) {
+  if (!data) return false;
+  if (typeof sceneAtmosIsV2 === 'function' && sceneAtmosIsV2(data)) return true;
+  return !!(data.fx && typeof data.fx === 'object' && Object.keys(data.fx).length);
+}
+/** The host's weather override: data-sc-wx ('rain', 'snow', ... or a JSON object), else null (the scene's own weather). */
+function _schWx(rec) {
+  const a = rec.el.getAttribute('data-sc-wx');
+  if (!a) return null;
+  if (a.charAt(0) === '{') { try { const o = JSON.parse(a); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } }
+  return /^[a-z]{2,12}$/.test(a) ? a : null;
+}
+/** ?scenefx=2 in the page address: every v2 effect on the v1 scenes in the animation gallery (14.2; review only). */
+const SCENE_FX_ALL = Object.freeze({ shadows: 2, water: 2, atmos: 2, weather: 2 });
+function _schFxPreview(el, data) {
+  if (!data || (typeof sceneAtmosIsV2 === 'function' && sceneAtmosIsV2(data)) || data.fx) return data;
+  let on = false;
+  try { on = typeof location !== 'undefined' && /(?:[?&#]|^)scenefx=2(?:&|$)/.test(String(location.search || '') + '&' + String(location.hash || '').replace(/^#/, '')); } catch (e) { on = false; }
+  if (!on || !el || typeof el.closest !== 'function' || !el.closest('.apg')) return data;
+  return Object.assign({}, data, { fx: SCENE_FX_ALL });
 }
 /** Should this host be animating right now? */
 function _schShouldPlay(rec) {
@@ -183,7 +217,7 @@ function _schMount(el) {
     try { const { L, season } = _schLight(rec); rec.r.setSeason(season); rec.r.setLight(L); } catch (e) { /* keep the current light */ }
   } else {
     try {
-      rec.data = typeof sceneData === 'function' && item.composed ? sceneData(item) : _scDataOf(item);
+      rec.data = _schFxPreview(el, typeof sceneData === 'function' && item.composed ? sceneData(item) : _scDataOf(item));
       const { L, season } = _schLight(rec);
       const lod = Number(el.getAttribute('data-sc-lod')) || 1;
       const so = typeof window !== 'undefined' && window.__sceneOpts ? window.__sceneOpts : {}, flush = so.flush || false, profile = !!so.profile;
@@ -223,6 +257,32 @@ function sceneHostScan(root) {
   if (root.querySelectorAll) list.push(...root.querySelectorAll('.ap-composed[data-anim]'));
   for (const el of list) if (el.isConnected) _schMount(el);
   return list.length;
+}
+/**
+ * Preview a host at another moment, weather or season (V2 8.1; the editor's environment panel, the gallery, the console),
+ * without changing the scene: o.at: a time (ms or an ISO string: that moment's live sky at the scene's place), a moment
+ * name ('dawn' ... 'night': the authored moment) or null (back to the host's own sky); o.wx: a weather kind or object
+ * ({ kind, intensity, wind, ... }), or null (the scene's own); o.season: a season or null. Only the keys given change.
+ * The renderer re-bakes in idle slices when the light key changes. Returns true when el is a mounted scene host.
+ */
+function sceneHostSet(el, o) {
+  o = o || {};
+  const rec = el ? _schHosts.get(el) : null;
+  if (!el || typeof el.setAttribute !== 'function') return false;
+  const set = (k, v) => { if (v == null || v === '') el.removeAttribute(k); else el.setAttribute(k, String(v)); };
+  if ('at' in o) {
+    const at = o.at, data = rec && rec.data ? rec.data : {}, v = data.view || {}, cam = data.camera || {};
+    const lat = Number.isFinite(cam.lat) ? cam.lat : v.lat || 0, lon = Number.isFinite(cam.lon) ? cam.lon : v.lon || 0;
+    const ms = typeof at === 'number' ? at : typeof at === 'string' && /^\d{4}-\d\d-\d\d/.test(at) ? Date.parse(at) : NaN;
+    if (Number.isFinite(ms)) { set('data-sc-sky', Math.round(ms) + ',' + lat + ',' + lon); set('data-sc-at', null); }
+    else if (typeof at === 'string' && typeof SCENE_MOMENTS !== 'undefined' && SCENE_MOMENTS.includes(at)) { set('data-sc-sky', 'off'); set('data-sc-at', at); }
+    else if (at == null) { set('data-sc-sky', null); set('data-sc-at', null); }
+  }
+  if ('wx' in o) set('data-sc-wx', o.wx == null ? null : typeof o.wx === 'object' ? JSON.stringify(o.wx) : o.wx);
+  if ('season' in o) set('data-sc-season', o.season && /^(spring|summer|autumn|winter)$/.test(o.season) ? o.season : null);
+  if (!rec || !rec.r) return !!rec;
+  try { const { L, season } = _schLight(rec); rec.r.setSeason(season); rec.r.setLight(L); } catch (e) { /* keep the current light */ }
+  return true;
 }
 /** Resolves (with the number of hosts) once every mounted, on-screen host has drawn its first frame or fallen back (at most 15 s). */
 function sceneHostReady() {

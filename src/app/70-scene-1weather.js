@@ -160,23 +160,27 @@ function _scwxBand(C, d) {
   return C.layers ? C.layers.length - 1 : 0;
 }
 /**
- * Seeded puddles on a compiled v2 scene (8.2): 3 to 12 (by wx.wet and the area of the hard and path surfaces within 60 m), only
- * where a puddle is at least 6 units across, never overlapping, each a small still mirror: a water region in the C.water form
+ * Seeded puddles on a compiled v2 scene (8.2): 3 to 12 (by wx.wet, from 0.45: drizzle, showers, rain, and the area of the hard and
+ * path surfaces from 8 to 60 m), only where a puddle is 6 to 240 units across (smooth lobed outlines), never overlapping, each a small still mirror: a water region in the C.water form
  * with a v2 record (kind 'puddle', mirror 0.7, ripple 0.25, clarity 0), handed to the water pass (env.waterExtra). [] when dry.
  */
 function scenePuddles(C, wx, o) {
   o = o || {};
-  if (!C || !C.cam || !C.surfaces || !wx || !(wx.wet > 0.2) || wx.snowDepth > 0.5) return [];
-  const cam = C.cam, f = cam.f || 800 / Math.tan((cam.fov || 66) * Math.PI / 360), dMin = Math.max(cam.dMin || 3, 2.5), dLim = 60;
+  if (!C || !C.cam || !C.surfaces || !wx || !(wx.wet >= 0.45) || wx.snowDepth > 0.5) return [];
+  // from 8 m (a puddle at the camera's feet would fill the foreground) to 60 m
+  const cam = C.cam, f = cam.f || 800 / Math.tan((cam.fov || 66) * Math.PI / 360), dMin = Math.max((cam.dMin || 3) * 1.6, 8), dLim = 60;
+  // only what is in view: the x span of the frame at a depth (x0 the principal column)
+  const x0c = cam.x0 == null ? 800 : cam.x0, vis = (d) => [(-x0c + 20) * d / f, (1600 - x0c - 20) * d / f];
   const cands = [];
   for (const s of C.surfaces) {
     if (!_SCWX_PUDDLE_KINDS.includes(s.kind) || !s.polyM || s.polyM.length < 3) continue;
-    const clip = s.polyM.filter(p => p[1] <= dLim * 1.5);
-    if (clip.length < 3) continue;
     const xs = s.polyM.map(p => p[0]), ds = s.polyM.map(p => p[1]);
     const box = [Math.min(...xs), Math.max(dMin, Math.min(...ds)), Math.max(...xs), Math.min(dLim, Math.max(...ds))];
     if (box[3] <= box[1]) continue;
-    cands.push({ s, box, area: Math.min(_scwxArea(s.polyM), (box[2] - box[0]) * (box[3] - box[1])) });
+    // the visible area (metres squared), from 8 depth slices
+    let area = 0;
+    for (let k = 0; k < 8; k++) { const d = box[1] + (box[3] - box[1]) * (k + 0.5) / 8, v = vis(d); area += Math.max(0, Math.min(box[2], v[1]) - Math.max(box[0], v[0])) * (box[3] - box[1]) / 8; }
+    if (area > 0.5) cands.push({ s, box, area });
   }
   if (!cands.length) return [];
   const area = cands.reduce((n, c) => n + c.area, 0);
@@ -186,13 +190,15 @@ function scenePuddles(C, wx, o) {
   for (let tries = 0; got.length < n && tries < n * 40; tries++) {
     let u = r() * area, c = cands[0];
     for (const k of cands) { if ((u -= k.area) <= 0) { c = k; break; } }
-    // more puddles nearer the camera (uniform on the screen, not on the ground)
-    const d = 1 / (1 / c.box[1] + r() * (1 / c.box[3] - 1 / c.box[1])), x = c.box[0] + r() * (c.box[2] - c.box[0]);
+    // more puddles nearer the camera (uniform on the screen, not on the ground), across what is in view at that depth
+    const d = 1 / (1 / c.box[1] + r() * (1 / c.box[3] - 1 / c.box[1])), v = vis(d), xa = Math.max(c.box[0], v[0]), xb = Math.min(c.box[2], v[1]);
+    if (!(xb > xa)) continue;
+    const x = xa + r() * (xb - xa);
     if (!_scwxInPoly(x, d, c.s.polyM)) continue;
     const at = _scwxSurfaceAt(C, x, d);
     if (!at || !_SCWX_PUDDLE_KINDS.includes(at.kind)) continue;
     const rx = 0.5 + r() * 1.1, rd = rx * (0.45 + r() * 0.35);
-    if (2 * rx * f / d < 6) continue;
+    if (2 * rx * f / d < 6 || 2 * rx * f / d > 240) continue;   // at least 6 units across, at most 240
     if (got.some(p => Math.hypot((p.x - x) / (p.rx + rx), (p.d - d) / (p.rd + rd)) < 1.15)) continue;
     // the whole puddle on the same surface
     if (![[x - rx, d], [x + rx, d], [x, d - rd], [x, d + rd]].every(([px, pd]) => { const q = _scwxSurfaceAt(C, px, pd); return q && _SCWX_PUDDLE_KINDS.includes(q.kind); })) continue;
@@ -201,7 +207,8 @@ function scenePuddles(C, wx, o) {
   const proj = (x, d) => (typeof sceneAtmosProject === 'function' ? sceneAtmosProject(cam, x, d, 0) : { X: (cam.x0 == null ? 800 : cam.x0) + f * x / d, Y: cam.horizon + f * cam.eye / d });
   return got.map((p, i) => {
     const pr = _scwxRnd(p.seed), polyM = [];
-    for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, wob = 0.82 + 0.3 * pr(); polyM.push([Math.round((p.x + Math.cos(a) * p.rx * wob) * 100) / 100, Math.round((p.d + Math.sin(a) * p.rd * wob) * 100) / 100]); }
+    const ph = [pr() * 6.283, pr() * 6.283], am = [0.06 + 0.08 * pr(), 0.04 + 0.06 * pr()];
+    for (let k = 0; k < 20; k++) { const a = k / 20 * Math.PI * 2, wob = 1 + am[0] * Math.sin(2 * a + ph[0]) + am[1] * Math.sin(3 * a + ph[1]); polyM.push([Math.round((p.x + Math.cos(a) * p.rx * wob) * 100) / 100, Math.round((p.d + Math.sin(a) * p.rd * wob) * 100) / 100]); }
     const scr = polyM.map(([x, d]) => proj(x, d)), ys = scr.map(q => q.Y);
     const path = 'M' + scr.map(q => Math.round(q.X * 10) / 10 + ' ' + Math.round(q.Y * 10) / 10).join('L') + 'Z';
     const dNear = Math.min(...polyM.map(q => q[1])), dFar = Math.max(...polyM.map(q => q[1])), level = -0.01;   // a film of water on the ground
