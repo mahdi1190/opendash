@@ -9,7 +9,7 @@
    - A street and a pavement; lamps, benches, planters and hedges as the dense urban cover.
    - Trees (plane-trees, trees, suburb), terraces (terrace, suburb) or towers (towers) far, a dock
      (water) with reflections.
-   - Movers: walkers (8, on the forecourt rows; basic sizes them with the depth ladder, 2.8), a bus (bus),
+   - Movers: walkers (6, on the forecourt rows; basic sizes them with the depth ladder, 2.8), a bus (bus),
      a train on the embankment, a flock, pecking pigeons.
    ============================================================ */
 (function () {
@@ -37,7 +37,7 @@
           if (role === 'edge') { const w = sceneKitPick(['water'], role, { tags }); for (const k of Object.keys(w)) if (!/^plant\./.test(k)) delete w[k]; return w; }   // a dock has hard edges: a few reeds only   // the hedge is heavy for the SVG tile budget
           return sceneKitPick(['london', 'urban', 'temperate', 'people', 'birds', 'vehicles', 'boats', 'water'], role, { tags });
         } }),
-        { setting: 'urban', road: H + 280, walkers: 8, walkY: H + 238 });
+        { setting: 'urban', road: H + 280, walkers: 6, walkY: H + 238 });
       data.id = 'station-' + p.id;
       // a station forecourt has a few street trees, not a wood (fewer than 15: one species is fine)
       for (const r of data.scatter) if (Object.keys(r.obj || {}).some(id => /^tree\./.test(id))) r.n = Math.min(r.n, r.layer === 'mid' ? 8 : 4);

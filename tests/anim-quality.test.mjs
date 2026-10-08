@@ -38,6 +38,8 @@ const UPGRADE_LEGACY = measureRegistry(REG, RETIRED.filter(isLiveUpgrade).map(e 
 });
 // calibration and advisory checks: the live corpus plus the retired art (rich, and the live upgrades' hand-drawn scenes)
 const CORPUS = RES.results.concat(RICH_LEGACY, UPGRADE_LEGACY);
+// a profile whose whole corpus is gone (scene-rich since the UK rebuild): its committed floors stay, nothing recalibrates them
+const RETIRED_PROFILES = ['scene-rich'].filter(p => !CORPUS.some(r => r.profile === p));
 const PACK_CSS = (id) => (REG.packs().find(p => p.id === id) || {}).css || '';
 const SCENE_CLASSES = REG.classesFor({ css: PACK_CSS('us-pacific') });
 
@@ -50,7 +52,10 @@ const lintItem = (inner, profile = 'item') => { const m = measure(wrapItem(inner
 
 test('the registry has full scenes and small items to lint, in every profile', () => {
   assert.ok(RES.summary.scenes >= 390 && RES.summary.small >= 570, `${RES.summary.scenes} scenes, ${RES.summary.small} small items`);
-  for (const p of ['scene', 'scene-legacy', 'scene-rich', 'item', 'item-classic']) assert.ok(CORPUS.some(r => r.profile === p), `something is judged by ${p}`);
+  // scene-rich: its corpus (the rich Yateley and Fleet views, kept as legacySvg after the convert stage) was deleted at the UK rebuild
+  // (2026-10-08, the composed uk-area-* packs replace them); its floors stay as calibrated, and RETIRED_PROFILES skip the corpus checks
+  for (const p of ['scene', 'scene-legacy', 'item', 'item-classic']) assert.ok(CORPUS.some(r => r.profile === p), `something is judged by ${p}`);
+  for (const p of RETIRED_PROFILES) assert.ok(!RES.results.some(r => r.profile === p), `nothing live is judged by the retired ${p}`);
   assert.ok(RES.results.some(r => r.profile === 'composed'), 'something is judged by composed');
 });
 
@@ -273,6 +278,7 @@ test('thresholds: valid, documented, and covering every rule of every profile', 
 test('advisory-only metrics (detailPerKB, sameDelay): no floor, no ceiling, a level at the corpus 10th / 90th percentile, and shapesPerKB hands its advisory to detailPerKB', () => {
   for (const [profile, plan] of Object.entries(RULE_PLAN)) {
     const kind = profile.startsWith('scene') ? 'scene' : 'item', rs = CORPUS.filter(r => r.profile === profile);
+    if (RETIRED_PROFILES.includes(profile)) continue;
     for (const [metric, side] of Object.entries(ADVISORY_PLAN[kind])) {
       const t = TH[profile][metric];
       assert.deepEqual(plan[metric], [], `${profile}.${metric} is in the plan with no limited side`);
@@ -293,6 +299,7 @@ test('advisory-only metrics (detailPerKB, sameDelay): no floor, no ceiling, a le
   // calibrate --propose regenerates exactly these entries (the file is the corpus' answer, not a hand edit)
   for (const profile of Object.keys(RULE_PLAN)) {
     const kind = profile.startsWith('scene') ? 'scene' : 'item', rs = CORPUS.filter(r => r.profile === profile);
+    if (RETIRED_PROFILES.includes(profile)) continue;
     const proposed = proposeThresholds(rs.map(r => r.metrics), profile, { caps: { bytes: bytesCapFor(profile, REG.limits) } });
     for (const metric of Object.keys(ADVISORY_PLAN[kind])) assert.deepEqual(proposed[metric], TH[profile][metric], `${profile}.${metric}`);
     for (const [metric, by] of Object.entries(ADVISORY_MOVED[kind])) { assert.equal(proposed[metric].advisoryIn, by); assert.equal(proposed[metric].warnMin, undefined); }
@@ -367,6 +374,7 @@ test('thresholds: the byte caps are the registry budgets and the floors are not 
   // each floor is at the corpus minimum of its profile: raising it would fail an accepted drawing, lowering it lets weaker work in
   for (const profile of Object.keys(RULE_PLAN)) {
     const rs = CORPUS.filter(r => r.profile === profile);
+    if (RETIRED_PROFILES.includes(profile)) continue;
     for (const [metric, t] of Object.entries(TH[profile])) {
       if (metric.startsWith('_') || metric === 'richness' || t.min == null) continue;
       const floor = Math.min(...rs.filter(r => !r.waived.some(w => w.rule === metric)).map(r => r.metrics[metric]));
@@ -377,7 +385,7 @@ test('thresholds: the byte caps are the registry budgets and the floors are not 
 
 test('thresholds: profiles are frozen lists, new packs get the strict profiles', () => {
   assert.deepEqual(TH.profiles['item-classic'].packs, ['core', 'moments', 'rewards', 'seasons', 'sky', 'texas', 'world', 'uk-south-west']);
-  assert.deepEqual(TH.profiles['scene-legacy'].packs, ['uk-north-west', 'uk-south-east']);
+  assert.deepEqual(TH.profiles['scene-legacy'].packs, ['uk-south-east']);   // uk-north-west: rebuilt as the composed uk-area-* packs (2026-10-08)
   assert.equal(profileFor({ pack: 'europe-west', full: true }, TH), 'scene');
   assert.equal(profileFor({ pack: 'europe-west', full: false }, TH), 'item');
   assert.equal(profileFor({ pack: 'uk-south-east', full: true }, TH), 'scene-legacy');
@@ -536,6 +544,7 @@ test('cli: reference prints the exemplars and the weaker scenes', async () => {
 test('calibration: proposing thresholds from today\'s corpus reproduces the committed floors (only the two documented overrides differ)', () => {
   for (const profile of Object.keys(RULE_PLAN)) {
     const rs = CORPUS.filter(r => r.profile === profile);
+    if (RETIRED_PROFILES.includes(profile)) continue;
     const caps = { bytes: bytesCapFor(profile, REG.limits) };
     const proposed = proposeThresholds(rs.map(r => r.metrics), profile, { caps });
     const differs = [];

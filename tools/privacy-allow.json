@@ -143,12 +143,6 @@
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east.js",
-      "line_sha256": "0e814f215adf1784cbcb6379fca274529dbac69cf0a4c80204c9463e2d786005",
-      "why": "a fish species name in a scene comment, an ordinary word"
-    },
-    {
-      "rule": "private-term",
-      "path": "src/app/72-anim-pack-uk-south-east.js",
       "line_sha256": "b207bcb8f6604ae37a3688d0205a81fb6b2f1adc980b83388848173c167b4b87",
       "why": "a fish species name in a scene comment, an ordinary word"
     },
@@ -426,6 +420,66 @@
       "rule": "private-term",
       "path": "tests/fin-connect-ui.test.mjs",
       "line_sha256": "e7ab920182f220014db17b55ef1361aa3d76e29fc09f58a19bf38a79a5a7c93f",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-area-sheffield2.js",
+      "line_sha256": "b38bf37316b5fc6a4f39eead03b2c737bee329083a00fbf1fcd6778cb5cad6ca",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-area-sheffield2.js",
+      "line_sha256": "d66b3f0ae0ea460d579134bcfbc80064c29cbe22cf1c564dd65c42ee691d2e83",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-area-winchester.js",
+      "line_sha256": "cf97fac886fd6a18eb90e1e51ec0fbe1a99f6c4c45d00f4152bdf71875766b33",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-area-winchester.js",
+      "line_sha256": "669465245329aeb91e2b2fde96da94c63d0240be4cf2c70c181f0b5d71957fc8",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-area-winchester.js",
+      "line_sha256": "b92dbd1222acb7bc3db2450a24aac5a7aa6a59955575887c659624c2774aa9f5",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-hampshire-2.js",
+      "line_sha256": "f05052dfc0ca6f8a87793091c83301c89353a3ef6f863ee7884a357a7c5df7d2",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-uk-sheffield2-b.js",
+      "line_sha256": "3104e96ab6f00b37b67fba06aa0bb5c6b9ffbf273de12988c9f2790da647be2b",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-uk-sheffield2-b.js",
+      "line_sha256": "9d5b9ff1379a244c1898ae25bdc4ec0db17a269aa29a6306e9488a1bcd6cfc22",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-uk-sheffield2-b.js",
+      "line_sha256": "8ca2bd91b7c89607bc4b81528179ad243d03b5cdb760d4cf5eb3dc0e21d1185e",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-uk-sheffield2-b.js",
+      "line_sha256": "4ca7af71091ce1f4cbbe66df56093a8bb0290dae8b7c6140911eb66dc25f9d69",
       "why": "reviewed ordinary word"
     }
   ]

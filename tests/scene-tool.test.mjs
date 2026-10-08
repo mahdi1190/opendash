@@ -325,7 +325,7 @@ test('CLI: status prints the STANDARD line and per-pack tier columns; --standard
   assert.equal(j.standard.list.length, 132); assert.equal(TIERS.reduce((n, t) => n + j.standard[t], 0), 132, 'every scene has exactly one tier');
   assert.ok(j.standard.legacy > 100, 'most of Asia is hand-drawn (legacy) until the upgrades land');
   const all = await run(['status', '--all']);
-  assert.match(all.out, /uk-south-east \s+80 \s/, 'the convert stage: the 80 Yateley and Fleet items are composed and gold'); assert.match(all.out, /us-northeast/); assert.match(all.out, /texas/);
+  assert.match(all.out, /uk-area-yateley \s+80 \s/, 'the UK rebuild: the 80 Yateley items are composed and gold'); assert.match(all.out, /uk-area-fleet \s+\d{2,} \s/); assert.match(all.out, /us-northeast/); assert.match(all.out, /texas/);
   const aj = JSON.parse((await run(['status', '--all', '--json'])).out).standard;
   assert.ok(aj.gold >= 80 && aj.legacy > 300);
 });
@@ -334,7 +334,7 @@ test('CLI: reference prints THE BAR first, then the legacy exemplars', async () 
   const r = await run(['reference']);
   assert.equal(r.code, 0);
   assert.ok(r.out.indexOf('THE BAR') > 0 && r.out.indexOf('THE BAR') < r.out.indexOf('LEGACY EXEMPLARS'));
-  assert.match(r.out, /uk-south-east\/hampshire-fleet-pond-1/);
+  assert.match(r.out, /uk-area-fleet\/hampshire-fleet-pond-1/);
 });
 
 test('CLI: the briefs of the new standard (upgrade in batches by archetype, composed with the scene card, object, archetype); the help lists object and scene', async () => {

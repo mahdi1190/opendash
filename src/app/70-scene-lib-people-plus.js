@@ -79,7 +79,9 @@
     rug: tone4('#c25a4a'), rug2: tone4('#e9d9b0'), cone: tone4('#d6a35c'), scoop: tone4('#f3dcc2'), paper: tone4('#f2efe6'), cup: tone4('#f0ece2'), ink2: tone4('#1d1f24'),
     water: tone4('#6f95ac') });
   const NIGHT = { on: 1, glow: Object.assign({}, PP.NIGHT.glow, { led: '#ff4d3d', beam: '#fff4d6', candle: '#ffc46a', kicks: '#ff6ad5' }) };
-  const TAGS = (extra, kits) => ['uk', 'people', 'anonymous', 'silhouette', ...(extra || []), 'kit:people', ...(kits || ['kit:temperate', 'kit:urban']), 'role:walker'];
+  // role:walker only for the people on foot: a kit pick of a walker (a station, a street) must never draw a sailor, a reader on a
+  // bench or a child on a scooter; those are placed by name (the UK rebuild integration, 8 Oct)
+  const TAGS = (extra, kits) => ['uk', 'people', 'anonymous', 'silhouette', ...(extra || []), 'kit:people', ...(kits || ['kit:temperate', 'kit:urban'])].concat((extra || []).includes('walker') ? ['role:walker'] : []);
 
   /* ---------- the POOL: twelve adults (A) and four children (K), each a body and a wardrobe per season ---------- */
   const W = (top, tcol, bot, bcol, shoe, scol, more) => Object.assign({ top: { kind: top, col: tcol }, bottom: { kind: bot, col: bcol }, shoes: { kind: shoe, col: scol } }, more || {});
@@ -145,6 +147,7 @@
     PP.define(Object.assign({
       id, category: 'person', variants: spec.pick.length, seasonal: true, shapeBySeason: true, flippable: true,
       palette: PAL, night: NIGHT, detailPx: true, shadow: spec.shadow || { rx: 11, ry: 2.4, h: 64 },
+      weight: 0.3,   // richer (and heavier) than the first walkers: a kit pick favours those, so a busy scene stays inside its tile budget
       credit: 'the shared people builder (scenePeople.figure) with a pool of twelve adults and four children',
     }, spec.def, {
       build(v, r, ctx) {
