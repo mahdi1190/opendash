@@ -1,4 +1,4 @@
-// node tools/anim-pack.mjs scene new|upgrade|lint|sheet|perf ...   composed scenes (docs/dev/SCENE_ENGINE.md sections 3, 8, 10, 15, 16)
+// node tools/anim-pack.mjs scene new|upgrade|lint|sheet|perf|capture ...   composed scenes (docs/dev/SCENE_ENGINE.md sections 3, 8, 10, 15, 16)
 //
 //   scene new <pack> <id> [--brief file.md | --archetype <id> --row '<json>'] [--lat .. --lon .. --heading ..] [--setting s] [--kits a,b]
 //       writes src/app/71-scene-<pack>-<n>.js (and src/app/72-anim-pack-<pack>.js when missing): a composed scene that compiles at once,
@@ -12,6 +12,9 @@
 //       [--crop phone|square] [--contact] [--svg] [--upgrades] [--out dir]   PNGs from the real renderer in headless Chrome
 //   scene perf [<ref>,... | --pack | --region | --archetype --table [--sample N]] [--seconds 3] [--gpu] [--rebake] [--upgrades] [--json]
 //       drawMs and dynMs in the real canvas renderer against the budget (x swFactor in software raster)
+//   scene capture <ref> [--seconds 3] [--fps 12] [--width 640] [--at ISO | --mode light|night] [--date D] [--dither] [--frames] [--upgrades] [--out file.gif]
+//       a few seconds of one scene as an animated GIF (tools/lib/scene-capture.mjs, no dependencies): frame k is drawn at t = k / fps,
+//       so the same command gives the same file on any machine; default .anim-ref/capture/<ref with / as __>.gif
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -262,6 +265,21 @@ function gridHtml(title, rows, { dark = false } = {}) {
   return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;padding:10px;background:${dark ? '#121820' : '#eceef2'};color:${dark ? '#eef' : '#1b2430'};font:13px system-ui,sans-serif}h1{font-size:15px;margin:0 0 8px}.r{display:flex;gap:8px;margin:0 0 8px}figure{margin:0;flex:1}img{display:block;width:100%;height:auto}figcaption{padding:3px 0}</style></head><body><h1>${esc(title)}</h1>${cells}</body></html>`;
 }
 const fileSafe = (ref) => ref.replace(/[/:]/g, '__');
+/** scene capture's options, checked: seconds, fps, width (height 9 / 16 of it), mode, --at, --out. */
+function captureOptions(args) {
+  const num = (name, def, lo, hi, whole) => {
+    if (args[name] == null) return def;
+    const v = Number(args[name]);
+    if (args[name] === '' || !Number.isFinite(v) || v < lo || v > hi || (whole && !Number.isInteger(v))) throw new Error(`--${name} must be ${whole ? 'a whole number' : 'a number'} from ${lo} to ${hi} (got "${args[name]}")`);
+    return v;
+  };
+  const seconds = num('seconds', 3, 0.1, 20), fps = num('fps', 12, 1, 50, true), width = num('width', 640, 64, 1600, true);
+  const mode = args.mode || 'light';
+  if (!['light', 'night'].includes(mode)) throw new Error('--mode must be light or night');
+  if (args.at != null && !Number.isFinite(Date.parse(args.at))) throw new Error(`--at must be an ISO moment such as 2026-10-07T17:30:00Z (got "${args.at}")`);
+  if (args.out != null && !/\.gif$/i.test(args.out)) throw new Error('--out must name a .gif file');
+  return { seconds, fps, width, height: Math.round((width * 9) / 16), mode };
+}
 /** The moments of a scene: its lat / lon from the data, the real sun on --date (default today). */
 function momentsOf(data, date) {
   const v = (data && data.view) || {};
@@ -270,9 +288,9 @@ function momentsOf(data, date) {
 }
 
 export default {
-  summary: 'composed scenes: new (scaffold), upgrade (a hand-drawn region scene to its composed draft), lint (the bar, perf, variety, care), sheet (PNG: times, seasons, old vs new), perf (frame times)',
-  usage: 'scene new <pack> <id> [--brief f.md | --archetype a --row \'<json>\'] | scene upgrade <ref> [--box x0,y0,x1,y1 | --landmark id] [--archetype a] [--slug s] [--dry-run] [--force] | scene lint|sheet|perf [<ref>,... | --pack p | --region r | --archetype a --table t [--rows N | --sample N]] [--upgrades] [--perf] [--times] [--seasons] [--compare] [--json]',
-  positionals: '<new|upgrade|lint|sheet|perf> [<ref,...>]',
+  summary: 'composed scenes: new (scaffold), upgrade (a hand-drawn region scene to its composed draft), lint (the bar, perf, variety, care), sheet (PNG: times, seasons, old vs new), perf (frame times), capture (an animated GIF)',
+  usage: 'scene new <pack> <id> [--brief f.md | --archetype a --row \'<json>\'] | scene upgrade <ref> [--box x0,y0,x1,y1 | --landmark id] [--archetype a] [--slug s] [--dry-run] [--force] | scene lint|sheet|perf [<ref>,... | --pack p | --region r | --archetype a --table t [--rows N | --sample N]] [--upgrades] [--perf] [--times] [--seasons] [--compare] [--json] | scene capture <ref> [--seconds 3] [--fps 12] [--width 640] [--at ISO | --mode light|night] [--dither] [--frames] [--out file.gif]',
+  positionals: '<new|upgrade|lint|sheet|perf|capture> [<ref,...>]',
   options: {
     pack: { type: 'string', multiple: true, help: 'lint / sheet / perf: every composed scene of this pack (repeatable)' },
     region: { type: 'string', help: 'lint / sheet / perf: every pack of this region (asia, us ...)' },
@@ -288,23 +306,28 @@ export default {
     setting: { type: 'string', help: 'new: natural | urban | mixed | interior (picks the ground-cover and lighting floors)' },
     kits: { type: 'string', help: 'new: the kits it composes from (comma separated; default temperate, birds, people)' },
     label: { type: 'string', help: 'new: the caption (label)' },
-    upgrades: { type: 'boolean', help: 'lint / sheet / perf: use the DRAFT upgrade of a hand-drawn region scene (its composed scene) instead of the legacy art' },
+    upgrades: { type: 'boolean', help: 'lint / sheet / perf / capture: use the DRAFT upgrade of a hand-drawn region scene (its composed scene) instead of the legacy art' },
     perf: { type: 'boolean', help: 'lint: also time each scene in the real renderer (headless Chrome) and apply the perf rules: GOLD needs them' },
     gpu: { type: 'boolean', help: 'lint --perf / perf: Chrome with the GPU, so the budget is the laptop one (no swFactor)' },
-    seconds: { type: 'string', help: 'perf: how long to run the animation (default 3)' },
+    seconds: { type: 'string', help: 'perf / capture: how long to run (perf) or record (capture) the animation (default 3; capture: at most 20)' },
+    fps: { type: 'string', help: 'capture: frames per second of the GIF (default 12; 1 to 50)' },
+    width: { type: 'string', help: 'capture: the GIF width in pixels (default 640; 64 to 1600); the height is 9 / 16 of it' },
+    mode: { type: 'string', help: 'capture: light (default: the scene\'s authored moment) or night (the real night moment at the scene\'s place on --date, on a dark page); --at wins' },
+    dither: { type: 'boolean', help: 'capture: ordered (4 x 4 Bayer) dither when mapping to the 256-colour palette (default off)' },
+    frames: { type: 'boolean', help: 'capture: also write every GIF frame, as the viewer sees it, to <out>-frames/frame-NNN.png (to look at them)' },
     rebake: { type: 'boolean', help: 'perf: force a light change mid-run and report the worst frame (the re-bake must not drop frames)' },
     json: { type: 'boolean', help: 'lint / perf / upgrade: machine-readable output' },
     times: { type: 'boolean', help: 'sheet: dawn, noon, golden hour, dusk and night, found from the real sun at the scene\'s lat / lon on --date' },
     seasons: { type: 'boolean', help: 'sheet: all four seasons at noon (the 15th of January, April, July and October; flipped south of the equator)' },
     compare: { type: 'boolean', help: 'sheet: old (the hand-drawn art with the retrofit overlay) vs new (composed) side by side, at noon and at night (--times: every moment). Writes <ref>--compare.png' },
-    date: { type: 'string', help: 'sheet: the day for --times / --compare (YYYY-MM-DD, default today)' },
-    at: { type: 'string', help: 'sheet: one ISO moment for the live sky (default: the scene\'s authored moment)' },
-    location: { type: 'string', help: 'sheet: lat,lon for the live sky (default: the scene\'s own place)' },
+    date: { type: 'string', help: 'sheet: the day for --times / --compare; capture: for --mode night (YYYY-MM-DD, default today)' },
+    at: { type: 'string', help: 'sheet / capture: one ISO moment for the live sky (default: the scene\'s authored moment)' },
+    location: { type: 'string', help: 'sheet / capture: lat,lon for the live sky (default: the scene\'s own place)' },
     season: { type: 'string', help: 'sheet: one season' },
     crop: { type: 'string', help: 'sheet: phone | square: what a portrait phone (420 of the 1600) or a square tile (900) shows' },
     contact: { type: 'boolean', help: 'sheet: also one contact sheet with every render' },
     svg: { type: 'boolean', help: 'sheet: draw with the SVG fallback renderer (one still frame) instead of the canvas' },
-    out: { type: 'string', help: 'sheet: the output folder (default .anim-ref/scenes/, compare: .anim-ref/compare/)' },
+    out: { type: 'string', help: 'sheet: the output folder (default .anim-ref/scenes/, compare: .anim-ref/compare/); capture: the GIF file (default .anim-ref/capture/<ref with / as __>.gif)' },
     box: { type: 'string', help: 'upgrade: x0,y0,x1,y1 of the landmark in the old art (without it: the 5 largest shape clusters are listed to choose from)' },
     landmark: { type: 'string', help: 'upgrade: use this existing library object as the landmark instead of extracting one' },
     slug: { type: 'string', help: 'upgrade: the file and object slug (default: the key\'s place or unit, e.g. singapore)' },
@@ -315,12 +338,14 @@ export default {
     'The workflow: brief -> compose from the library (object list --kit <kit>; an archetype when one fits) -> add objects only if needed (object new / lint / sheet) -> scene lint --perf -> scene sheet --times --seasons -> review.',
     'Static placements are FREE per frame (baked into the layer bitmaps); only animated draws cost (at most 300, dynMs at most 6 ms on a laptop). A rich look comes from dense static detail plus a measured number of movers.',
     'Batches: --archetype <id> --table <id> runs over every row of a data table (one scene per row, built only when needed); --rows N adds synthetic rows; --sample N picks N rows for sheet and perf. A batch ends with one summary table.',
+    'capture records ONE scene as a looping animated GIF with no dependencies (headless Chrome + node:zlib): the clock is stopped and frame k is drawn at t = k / fps, so the same command writes the same bytes on any machine. 640 x 360, 3 s at 12 fps is well under 1 MB (only the changed rectangle of each frame is stored).',
     'Signs (place names) only where the archetype declares signs (signage: true): plain sans-serif boards with line-colour bars, never the TfL roundel, the Underground logotype, the line-diagram style or New Johnston (section 8.4).',
   ],
   async run(args, ctx) {
     const [sub, ...rest] = ctx.positionals;
-    if (!sub || !['new', 'upgrade', 'lint', 'sheet', 'perf'].includes(sub)) throw new Error('scene needs a subcommand: new, upgrade, lint, sheet or perf (node tools/anim-pack.mjs scene --help)');
+    if (!sub || !['new', 'upgrade', 'lint', 'sheet', 'perf', 'capture'].includes(sub)) throw new Error('scene needs a subcommand: new, upgrade, lint, sheet, perf or capture (node tools/anim-pack.mjs scene --help)');
     const root = ctx.root;
+    const co = sub === 'capture' ? captureOptions(args) : null;   // bad options fail before the registry loads
     const reg = loadRegistry(root, { fresh: true }), E = engineOf(reg);
 
     /* ----- new ----- */
@@ -413,6 +438,23 @@ export default {
     if (!list.length) throw new Error(`nothing to ${sub}: give refs (composed items), --pack, --region, or --archetype with --table${args.upgrades ? '' : ' (a hand-drawn scene with a draft upgrade needs --upgrades)'}`);
     const isBatch = !!args.archetype;
     if (args.sample && sub !== 'lint') list = sampleOf(list, Number(args.sample));
+
+    if (sub === 'capture') {
+      if (list.length !== 1) throw new Error(`scene capture records one scene; this selection has ${list.length} (give one ref)`);
+      const s = list[0], cap = await import('../scene-capture.mjs');
+      await harness();
+      const at = args.at || (co.mode === 'night' ? momentsOf(s.data(), args.date).night : null);
+      const out = resolve(args.out || join(root, '.anim-ref', 'capture', `${fileSafe(s.ref)}.gif`));
+      const framesDir = args.frames ? out.replace(/\.gif$/i, '') + '-frames' : null;
+      const res = await withChrome(args, (chrome) => cap.sceneCapture(chrome, pageOpts(root, s, { size: { w: co.width, h: co.height }, at, mode: co.mode, location: parseLocation(args.location) }),
+        { seconds: co.seconds, fps: co.fps, dither: !!args.dither, framesDir }));
+      mkdirSync(dirname(out), { recursive: true });
+      writeFileSync(out, res.gif);
+      ctx.out(out);
+      ctx.out(`  ${res.width} x ${res.height}, ${res.frames} frames at ${co.fps} fps (${r2(res.seconds)} s, looping), ${res.colours} colours${args.dither ? ' (dithered)' : ''}, ${r2(res.gif.length / 1048576)} MB; sky: ${at || 'the authored moment'}`);
+      if (framesDir) ctx.out(`  frames: ${framesDir}`);
+      return 0;
+    }
 
     if (sub === 'lint') {
       const t0 = Date.now(), results = [];

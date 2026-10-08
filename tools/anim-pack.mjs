@@ -18,6 +18,8 @@
 //   node tools/anim-pack.mjs scene upgrade <ref> [--box x0,y0,x1,y1 | --landmark <id>] [--archetype <id>] [--slug s] [--dry-run]
 //   node tools/anim-pack.mjs scene lint|sheet|perf [<ref>,... | --pack <id> | --region <id> | --archetype <id> --table <id> [--rows N | --sample N]]
 //                            [--upgrades] [--perf] [--gpu] [--times] [--seasons] [--compare] [--contact] [--json]
+//   node tools/anim-pack.mjs scene capture <ref> [--seconds 3] [--fps 12] [--width 640] [--at <ISO> | --mode light|night] [--dither] [--frames] [--out f.gif]
+//                            a few seconds of one scene as a looping animated GIF (tools/lib/scene-capture.mjs; headless Chrome + node:zlib, no dependencies)
 //   lint and sheet also take --at <ISO> [--location lat,lon] [--season s] (the live sky and the retrofit overlay); status takes --standard and --all.
 //
 // THE NEW STANDARD: the rich Yateley and Fleet scenes are the bar (reference prints it first). A composed scene (item.composed) is judged by the
