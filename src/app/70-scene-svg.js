@@ -123,12 +123,16 @@ function scenePathBox(d, m) {
 /**
  * The quantised light (6.3): alt to 1 degree while |alt| < 12, else 5; cover to .1; the moon to .2; windows;
  * fog (the mist is baked); and the season. Sprites and bitmaps are re-made only when this changes.
+ * C (optional): a compiled scene; for a v2 one (or a v1 one with fx) the render passes' keys are appended (V2 7.5).
  */
-function sceneLightKey(L, season) {
+function sceneLightKey(L, season, C) {
   if (!L) return 'noL|' + (season || '');
   const alt = Number(L.alt) || 0, a = Math.abs(alt) < 12 ? Math.round(alt) : Math.round(alt / 5) * 5;
   const moon = L.moon && L.moon.show ? Math.round((L.moon.illum || 0) * 5) / 5 : 0;
-  return [a, Math.round((L.cover || 0) * 10) / 10, moon, L.windows ? 1 : 0, L.fog ? 1 : 0, season || ''].join('|');
+  const k = [a, Math.round((L.cover || 0) * 10) / 10, moon, L.windows ? 1 : 0, L.fog ? 1 : 0, season || ''].join('|');
+  // v2 scenes only (V2 7.5, 13.1): the render passes' own keys (the sun's side, the weather ...); v1 keys are unchanged
+  const pk = C && typeof sceneRenderPassKey === 'function' ? sceneRenderPassKey(L, C) : '';
+  return pk ? k + '|' + pk : k;
 }
 /** The sprite cache key: (obj, v, part, season, haze, tint, device scale, light). */
 function sceneSpriteKey(o, v, part, season, haze, tint, scale, lightKey) {
@@ -238,8 +242,220 @@ function sceneFrameDraws(C) {
   n += C.strips.length;
   for (const a of C.actors) n += 1 + (a.anim || []).reduce((m, h) => m + (_scAnimParts(h)[0] === '*' ? 0 : _scAnimParts(h).length), 0);
   for (const f of C.flocks) n += f.n;
+  // v2 (V2 12, 25): the flows' agents and the passes' effects (ripple bands, glints, rings, wakes, actor shadows ...), estimated by the compile
+  const v2 = C.stats && C.stats.v2;
+  if (v2) n += (v2.flowDraws || 0) + (v2.fxDraws || 0);
   return n;
 }
+/* ---------- v2 shared geometry: camera, water rows, ripple bands, glint, shadows (pure; V2 5, 6, 13.4; builder B) ----------
+   Both renderers and the Node tests use these. The camera is A's C.cam in a v2 scene; a v1 scene that opted into an effect
+   (fx, V2 14.2) gets the camera `scene migrate` would infer: eye 1.65 m, its view's fov and horizon, no water offset.
+
+     sceneRenderCam(C)                     C.cam, or the inferred camera { eye, fov, horizon, x0, f, water, dMin, dMax, inferred }
+     sceneCamProject(cam, x, d, h)         { X, Y, k } (A's sceneProject when the camera is real and A has landed)
+     sceneCamDepthAt(cam, Y, h)            the ground depth of a screen row (Infinity at or above the horizon)
+     sceneWaterRow(cam, d, level)          Yw(d): the waterline row of depth d (V2 5.3)
+     sceneWaterMirrorY(cam, d, level, hb)  the row a base hb metres above the water mirrors to: Yw(d) + f * hb / d
+     sceneWaterFresnel(mirror, u)          the reflection alpha at u (0 the near edge .. 1 the far edge)
+     sceneWaterBands(y0, y1, unit, max)    the ripple bands [{ y, h }] of a region's device rows (2 px far .. 6 px near)
+     sceneWaterRippleA(ripple, wind, u, unit)   the ripple amplitude (device px) at u (0 far .. 1 near)
+     sceneWaterGlintSource(L, cam)         { kind: 'sun' | 'moon', x, col, k } or null: what makes the glitter road now
+     sceneObjClassOf(id)                   A's sceneObjClass, or a fallback from the category and tags
+     sceneShadowSun(L, C)                  the cast-shadow light now: { kind, g: [gx, gd], tan, op, blur, fade, contact } (V2 6.1)
+     sceneShadowTip(cam, x, d, H, g, tan)  the ground tip [x, d] of a caster H metres tall (clamped in front of the camera)
+     sceneShadowMatrix(cam, foot, s, hTop, flip, sh, vs, ox, oy)   the affine matrix that lays a sprite flat along a shadow
+     sceneContactOf(id, cls, sh, s, d, cam)   the contact ellipses [[X offset, rx, ry]] (scene units) under a caster (V2 6.3)
+     sceneWaterEdgeQuads(wv, d, cam)       a v2 region's bank edges as filled quads (coping, quay, wall, natural, beach)
+     scenePolyPoints(d)                    polyline path data to points (null with curves) */
+const SCENE_EYE_DEFAULT = 1.65;
+const SCENE_SHADOW_CLASSES = Object.freeze(['person', 'animal', 'animal-graze', 'animal-dog', 'car', 'bus', 'tram', 'bike', 'cyclist', 'tractor', 'tree', 'building', 'structure', 'landmark', 'street', 'rock']);
+const _scCamInferred = new WeakMap();
+function sceneRenderCam(C) {
+  if (!C) return null;
+  if (C.cam && Number.isFinite(C.cam.f)) return C.cam;
+  if (C.cam && Number.isFinite(C.cam.fov)) {
+    const c = C.cam, f = 800 / Math.tan((c.fov / 2) * Math.PI / 180);
+    return Object.assign({ x0: 800, water: 0, eye: SCENE_EYE_DEFAULT }, c, { f, dMin: f * (c.eye || SCENE_EYE_DEFAULT) / Math.max(1, 900 - c.horizon), dMax: 20000 });
+  }
+  let cam = _scCamInferred.get(C);
+  if (!cam) {
+    const v = C.view || {}, fov = v.fov || 80, horizon = v.horizon != null ? v.horizon : 560, f = 800 / Math.tan((fov / 2) * Math.PI / 180);
+    cam = { eye: SCENE_EYE_DEFAULT, fov, horizon, heading: v.heading != null ? v.heading : 180, x0: 800, f, water: 0, dMin: f * SCENE_EYE_DEFAULT / Math.max(1, 900 - horizon), dMax: 20000, inferred: true };
+    _scCamInferred.set(C, cam);
+  }
+  return cam;
+}
+function sceneCamProject(cam, x, d, h) {
+  if (!cam.inferred && typeof sceneProject === 'function') { try { const p = sceneProject(cam, x, d, h == null ? null : h); if (p && Number.isFinite(p.Y)) return p; } catch (e) { /* the flat formula */ } }
+  const dd = Math.max(1e-3, d);
+  return { X: cam.x0 + cam.f * x / dd, Y: cam.horizon + cam.f * (cam.eye - (h || 0)) / dd, k: cam.f / dd };
+}
+function sceneCamDepthAt(cam, Y, h) { const dy = Y - cam.horizon; return dy > 1e-6 ? cam.f * (cam.eye - (h || 0)) / dy : Infinity; }
+function sceneWaterRow(cam, d, level) { return cam.horizon + cam.f * (cam.eye - (level == null ? cam.water || 0 : level)) / Math.max(1e-3, d); }
+function sceneWaterMirrorY(cam, d, level, hb) { return sceneWaterRow(cam, d, level) + cam.f * (hb || 0) / Math.max(1e-3, d); }
+/** Fresnel (5.3): mirror * 0.25 at the near edge rising to mirror * 0.8 at the far edge (a grazing view reflects more). */
+function sceneWaterFresnel(mirror, u) { const m = _scClamp(mirror == null ? 0.6 : mirror, 0, 1); return m * (0.25 + 0.55 * _scClamp(u, 0, 1)); }
+/** Ripple bands over device rows y0..y1 (y0 the far edge): 2 px far .. 6 px near (times unit), at most max bands. */
+function sceneWaterBands(y0, y1, unit, max) {
+  unit = unit || 1; max = max || 90;
+  const span = Math.max(0, y1 - y0);
+  if (!span) return [];
+  let k = 1;
+  const plan = (kk) => { const out = []; let y = y0; while (y < y1) { const u = (y - y0) / span, h = Math.max(1, Math.round((2 + 4 * u) * unit * kk)); out.push({ y: Math.floor(y), h: Math.min(h, Math.ceil(y1 - y)) }); y += h; } return out; };
+  let b = plan(k);
+  while (b.length > max) { k *= b.length / max * 1.02; b = plan(k); }
+  return b;
+}
+function sceneWaterRippleA(ripple, wind, u, unit) { return (ripple || 0) * (wind == null ? 1 : wind) * (2 + 10 * _scClamp(u, 0, 1)) * (unit || 1); }
+/** What makes the glitter road now (5.3): the sun when it shows, low (under 35 degrees) and in view; else a bright moon (over 0.3 lit). */
+function sceneWaterGlintSource(L, cam) {
+  if (!L) return null;
+  const fov = (cam && cam.fov) || L.fov || 80, inView = (b) => b && Number.isFinite(b.rel) && Math.abs(b.rel) < fov / 2 + 8;
+  if (L.sun && L.sun.show && L.alt > -0.5 && L.alt < 35 && inView(L.sun)) return { kind: 'sun', x: L.sun.x, col: _scMixHex('#fff4d8', L.lowSun || '#ffffff', 0.4), k: _scClamp(1 - (L.cover || 0), 0.2, 1) };
+  const m = L.moon;
+  if (m && m.show && (L.dark || 0) > 0.5 && (m.illum || 0) > 0.3 && inView(m)) return { kind: 'moon', x: m.x, col: '#e8eef6', k: 0.6 * m.illum + 0.2 };
+  return null;
+}
+/** A's sceneObjClass, or a fallback from the category and tags (class:<c> wins). */
+function sceneObjClassOf(id) {
+  if (typeof sceneObjClass === 'function') { try { const c = sceneObjClass(id); if (c) return c; } catch (e) { /* the fallback */ } }
+  const def = typeof sceneObj === 'function' ? sceneObj(id) : null;
+  if (!def) return null;
+  const tags = def.tags || [], tag = (t) => tags.includes(t), ct = tags.find(t => /^class:/.test(t));
+  if (ct) return ct.slice(6);
+  const cat = def.category || String(id).split('.')[0];
+  if (cat === 'vehicle') return tag('tram') ? 'tram' : tag('bus') ? 'bus' : tag('train') || /train/.test(id) ? 'train' : tag('tractor') ? 'tractor' : /bike|cycle/.test(id) ? 'bike' : 'car';
+  if (cat === 'boat') return 'boat';
+  if (cat === 'bird') return /flight|-fly/.test(id) || tag('air') || tag('flight') ? 'bird-air' : tag('water') || /swan|mallard|duck|coot|moorhen|grebe|goose/.test(id) ? 'bird-water' : 'bird-ground';
+  if (cat === 'person') return /cyclist/.test(id) ? 'cyclist' : 'person';
+  if (cat === 'animal') return /dog/.test(id) ? 'animal-dog' : /cow|sheep|horse|pony|deer/.test(id) ? 'animal-graze' : 'animal';
+  if (cat === 'plant') return 'shrub';
+  if (cat === 'ground') return 'cover';
+  if (cat === 'sky') return 'air';
+  return { tree: 'tree', building: 'building', street: 'street', rail: 'rail', structure: 'structure', landmark: 'landmark', rock: 'rock', prop: 'street', water: 'cover' }[cat] || null;
+}
+/**
+ * The cast-shadow light (6.1): the sun by day; a bright high moon on a clear night; else none (contact shadows only).
+ * Returns { kind: 'sun' | 'moon' | null, g: [gx, gd] (the ground way shadows fall, camera space), tan (length per metre of
+ * height, at most 12), op, blur (scene px), fade (long shadows fade from the foot), contact (contact-shadow opacity) }.
+ */
+function sceneShadowSun(L, C) {
+  const out = { kind: null, g: [0, 1], tan: 0, op: 0, blur: 0, fade: false, contact: 0.35 };
+  if (!L) return out;
+  const cover = _scClamp(L.cover || 0, 0, 1), alt = Number(L.alt) || 0, D = Math.PI / 180;
+  const over = cover > 0.75 ? 0.25 : cover > 0.45 ? 1 - 0.75 * (cover - 0.45) / 0.3 : 1;
+  out.contact = alt < 0 || cover > 0.75 ? 0.25 : 0.35;
+  const gOf = (G, rel) => (Array.isArray(G) && G.length === 2 && G.every(Number.isFinite) ? [G[0], G[1]] : [-Math.sin((rel || 0) * D), -Math.cos((rel || 0) * D)]);
+  if (alt > -1) {
+    out.kind = 'sun';
+    out.g = gOf(L.sunG, L.sun && L.sun.rel);
+    out.tan = Number.isFinite(L.sunTan) ? Math.min(12, L.sunTan) : alt > 0.08 ? Math.min(12, 1 / Math.tan(alt * D)) : 12;
+    // clear noon .42 / 1.5 px; golden hour (3..12) .34 / 4 px; between, a blend; under 3 degrees fading to nothing at -1
+    let op, blur;
+    if (alt >= 45) { op = 0.42; blur = 1.5; }
+    else if (alt >= 12) { const u = (alt - 12) / 33; op = 0.34 + 0.08 * u; blur = 4 - 2.5 * u; }
+    else if (alt >= 3) { op = 0.34; blur = 4; }
+    else { op = 0.34 * _scClamp((alt + 1) / 4, 0, 1); blur = 4; }
+    out.op = op * over; out.blur = over < 1 ? blur + (10 - blur) * (1 - over) / 0.75 : blur;
+    out.fade = out.tan > 2.5;
+    if (out.op < 0.01) out.kind = null;
+    return out;
+  }
+  const m = L.moon;
+  if (m && (m.alt || 0) > 15 && (m.illum || 0) > 0.6 && cover < 0.5) {
+    out.kind = 'moon'; out.g = gOf(L.moonG, m.rel);
+    out.tan = Number.isFinite(L.moonTan) ? Math.min(12, L.moonTan) : Math.min(12, 1 / Math.tan(m.alt * D));
+    out.op = 0.12; out.blur = 6; out.fade = out.tan > 2.5;
+  }
+  return out;
+}
+/** The ground tip [x, d] of the shadow of a caster H metres tall standing at (x, d); kept in front of the camera. */
+function sceneShadowTip(cam, x, d, H, g, tan) {
+  let L = H * tan;
+  const dMinTip = Math.max((cam.dMin || 1) * 0.6, d * 0.3);
+  if (g[1] < 0 && d + g[1] * L < dMinTip) L = Math.max(0, (d - dMinTip) / -g[1]);
+  const dMaxTip = d * 20;
+  if (g[1] > 0 && d + g[1] * L > dMaxTip) L = (dMaxTip - d) / g[1];
+  return [x + g[0] * L, d + g[1] * L];
+}
+/**
+ * The device matrix that lays a sprite flat on the ground along a shadow (6.2): the foot stays put, sprite "up" (local -y,
+ * hTop units to the top) goes to the projected tip, and sprite x goes along the ground perpendicular to the shadow (the
+ * caster's width), so a side-lit shadow is foreshortened rather than flattened to a line.
+ * foot: { X, Y, x, d } (scene units and ground metres); s: the placement scale; sh: { g, tan } (sceneShadowSun or a lamp's).
+ */
+function sceneShadowMatrix(cam, foot, s, hTop, flip, sh, vs, ox, oy) {
+  const d = Math.max(0.5, foot.d), Hm = hTop * s * d / cam.f;
+  const tip = sceneShadowTip(cam, foot.x, d, Hm, sh.g, sh.tan);
+  const p0 = sceneCamProject(cam, foot.x, d), p1 = sceneCamProject(cam, tip[0], tip[1]);
+  const tx = foot.X + (p1.X - p0.X), ty = foot.Y + (p1.Y - p0.Y);
+  // the perpendicular on the ground, oriented so sprite +x keeps going right on the screen where it can
+  let px = sh.g[1], pd = -sh.g[0];
+  if (px < 0 || (px === 0 && pd < 0)) { px = -px; pd = -pd; }
+  const ax = s * px, ay = -s * cam.eye * pd / d;                // linearised: per local unit along the ground perpendicular
+  const fl = flip ? -1 : 1, h = Math.max(1e-3, hTop);
+  return [vs * ax * fl, vs * ay * fl, vs * (foot.X - tx) / h, vs * (foot.Y - ty) / h, vs * foot.X + ox, vs * foot.Y + oy];
+}
+/** Polyline path data ('M x y L x y ... Z') to points, or null when it has curves. */
+function scenePolyPoints(d) {
+  if (/[CQSTAHVcqstahv]/.test(d || '')) return null;
+  const n = String(d || '').match(/-?\d+(?:\.\d+)?(?:e[-+]?\d+)?/g);
+  if (!n || n.length < 6) return null;
+  const P = [];
+  for (let i = 0; i + 1 < n.length; i += 2) P.push([+n[i], +n[i + 1]]);
+  return P;
+}
+function _scInPts(x, y, P) { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+/**
+ * The bank edges of a v2 water region (V2 5.3 step 2) as filled quads in scene units, in projected widths (dropped under 1
+ * unit): [{ col, kind, quads: [[[x, y] x 4] ...] }]. Per segment the water side is found from the outline: seen from above, a
+ * near bank's coping overlaps the water beyond it (the water lies just ABOVE the edge), else it is a far bank whose face looks
+ * at the camera. coping: a .3 m stone strip on the land and its face down to the water with a dark wet band; quay and wall:
+ * a top and a face; natural: a muddy band; beach: a wet sand band. Both renderers draw these.
+ */
+const SCENE_WATER_EDGES = Object.freeze({ coping: [['#b8b2a2', 0.3, 'top'], ['#5e5a50', 'level', 'face'], ['#262a26', 0.15, 'face']], quay: [['#6a665e', 0.25, 'top'], ['#34332f', 'level', 'face']],
+  wall: [['#8a7a66', 0.2, 'top'], ['#3e3a34', 'level', 'face']], natural: [['#5a4a32', 0.5, 'band']], beach: [['#9a8a6a', 0.9, 'band']], none: [] });
+function sceneWaterEdgeQuads(wv, d, cam) {
+  const P = scenePolyPoints(d), out = [];
+  if (!wv || !Array.isArray(wv.edges) || !cam) return out;
+  const level = Number.isFinite(wv.level) ? wv.level : cam.water || 0;
+  const inW = (x, y) => (P ? _scInPts(x, y, P) : false);
+  for (const e of wv.edges) {
+    const pts = e.pts || [];
+    if (pts.length < 2) continue;
+    for (const [col, m, part] of SCENE_WATER_EDGES[e.kind] || SCENE_WATER_EDGES.coping) {
+      const quads = [];
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dd = sceneCamDepthAt(cam, my, level);
+        if (!Number.isFinite(dd)) continue;
+        const farBank = !inW(mx, my - 3), wDir = farBank ? 1 : -1;
+        if (part === 'face' && !farBank) continue;
+        const mm = m === 'level' ? Math.max(0.15, -level) : m, dir = part === 'top' ? -wDir : wDir;
+        const h = part === 'top' ? cam.f * mm * cam.eye / (dd * dd) * 1.6 : cam.f * mm / dd;
+        if (h < 1) continue;
+        quads.push([[a[0], a[1]], [b[0], b[1]], [b[0], b[1] + dir * h], [a[0], a[1] + dir * h]]);
+      }
+      if (quads.length) out.push({ col, kind: e.kind, quads });
+    }
+  }
+  return out;
+}
+const _SC_FOOT = { person: [0.32, 0.26], cyclist: [0.8, 0.25], 'animal-dog': [0.45, 0.2], 'animal-graze': [1, 0.45], animal: [0.5, 0.3], tree: [0.9, 0.9], street: [0.3, 0.3], rock: [0.8, 0.6], bike: [0.8, 0.25], tractor: [1.6, 1], car: [0.55, 0.9], bus: [0.7, 1.2], tram: [0.7, 1.3] };
+/**
+ * The contact shadows (6.3) under a caster: [[dx, rx, ry]] in scene units (dx from the anchor). Vehicles get one per axle
+ * (from the sprite's length); buildings, structures and landmarks a long soft band along their base.
+ */
+function sceneContactOf(id, cls, sh, s, d, cam) {
+  if (!sh || !cam) return [];
+  const def = typeof sceneObj === 'function' ? sceneObj(id) : null, k = cam.f / Math.max(0.5, d), fk = cam.eye / Math.max(0.5, d);
+  const w = (sh.box[2] - sh.box[0]) * s, cx = (sh.box[0] + sh.box[2]) / 2 * s;
+  if (cls === 'building' || cls === 'structure' || cls === 'landmark') return [[cx, w * 0.5, Math.max(1.2, k * fk * 1.2)]];
+  const foot = def && Array.isArray(def.foot) ? def.foot : _SC_FOOT[cls] || [0.4, 0.3];
+  const rx = Math.max(1, Math.min(w * 0.55, k * foot[0])), ry = Math.max(0.8, Math.min(rx * 0.6, k * foot[1] * fk * 2));
+  if (cls === 'car' || cls === 'bus' || cls === 'tram' || cls === 'tractor') return [[cx - w * 0.3, rx, ry], [cx + w * 0.3, rx, ry]];
+  return [[0, rx, ry]];
+}
+
 /** A sign's layout in scene units (8.3): the board, up to 6 line-colour stripes below it, the text box and font size estimate. */
 function sceneSignLayout(s) {
   const style = s.style || 'board', bars = (s.bars || []).slice(0, 6).filter(c => /^#[0-9a-f]{6}$/i.test(c));
@@ -288,6 +504,8 @@ function sceneSvg(x, o) {
   if (!data || typeof sceneCompile !== 'function') return '';
   const lod = o.lod != null ? o.lod : sceneLodFor(o.size, o.detail), season = _scSeasonOf(data, o), L = _scLightOf(data, o, season);
   const C = sceneCompile(data, { season, lod, L });
+  // v2 (V2 13.4): a v2 compiled scene, or a v1 one with fx shadows / water; v1 scenes draw exactly as before
+  const v2 = C.v === 2 || !!(C.fx && (C.fx.shadows === 2 || C.fx.water === 2)), v2Shadow = C.v === 2 || !!(C.fx && C.fx.shadows === 2);
   const pre = 'sc' + (++_scSvgN).toString(36) + '-';
   let n = 0;
   const nid = () => pre + (++n).toString(36), defs = [], ids = new Map();
@@ -369,6 +587,45 @@ function sceneSvg(x, o) {
     }
     return `<use href="#${id}" transform="translate(${_scR1(it.x)} ${_scR1(it.y)})${it.s !== 1 ? ` scale(${_scR2(it.s)})` : ''}"/>`;
   };
+  /**
+   * v2 shadows of one layer (V2 6, 13.4): every caster's symbol through the shadow shear, inside one <g filter> that floods
+   * the silhouettes with the shadow colour (feFlood + feComposite) and blurs them (feGaussianBlur), at the sky's opacity;
+   * then the contact shadows (soft ellipses). The same maths as the canvas pass (sceneShadowMatrix, sceneContactOf).
+   */
+  let shFilter = null, ctGrad = null;
+  const v2Shadows = (li) => {
+    if (!v2Shadow || !L || !detailOk) return v2 && !v2Shadow ? byLayer[li].map(shadowOf).join('') : '';
+    const cam = sceneRenderCam(C), sun = sceneShadowSun(L, C), col = _scMixHex('#14202e', L.shade || '#14202e', 0.3);
+    let cast = '', contact = '';
+    for (const it of byLayer[li]) {
+      if (it.strip >= 0 || it.direct) continue;
+      const cls = it.cls || sceneObjClassOf(it.o), isC = SCENE_SHADOW_CLASSES.includes(cls);
+      if ((!it.shadow && !isC) || ['boat', 'bird-water', 'bird-air', 'air', 'cover'].includes(cls)) continue;
+      const sh = sceneObjShapes(it.o, it.v, it.season);
+      const d = Number.isFinite(it.dz) ? it.dz : sceneCamDepthAt(cam, it.y);
+      if (!sh || !Number.isFinite(d) || d <= 0) continue;
+      const foot = { X: it.x, Y: it.y, x: it.g && Number.isFinite(it.g.x) ? it.g.x : (it.x - cam.x0) * d / cam.f, d };
+      if (sun.kind && cls !== 'shrub') {
+        // the symbols the placement itself is drawn with (an animated one: its rest and its moving parts), so no new defs
+        const M = sceneShadowMatrix(cam, foot, it.s, Math.max(1, -sh.box[1]), it.flip, sun, 1, 0, 0), moving = it.anim && it.anim.length ? it.anim : null;
+        const whole = moving && moving.find(a => _scAnimParts(a)[0] === '*'), moved = moving && !whole ? [...new Set(moving.flatMap(_scAnimParts))] : null;
+        const ids = moved ? [restSym(it, moved), ...moved.map(p => sym(it, p))] : [sym(it, '*')];
+        const inner = ids.filter(Boolean).map(id => `<use href="#${id}"/>`).join('');
+        if (inner) cast += `<g transform="matrix(${M.map(v => _scR2(v)).join(' ')})">${inner}</g>`;
+      }
+      if (isC) for (const [dx, rx, ry] of sceneContactOf(it.o, cls, sh, it.s, d, cam)) {
+        if (!ctGrad) { ctGrad = nid(); defs.push(`<radialGradient id="${ctGrad}"><stop offset="0" stop-color="#0c1218"/><stop offset=".45" stop-color="#0c1218" stop-opacity=".75"/><stop offset="1" stop-color="#0c1218" stop-opacity="0"/></radialGradient>`); }
+        contact += `<ellipse cx="${_scR1(it.x + (it.flip ? -dx : dx))}" cy="${_scR1(it.y)}" rx="${_scR1(rx)}" ry="${_scR1(ry)}" fill="url(#${ctGrad})"/>`;
+      }
+    }
+    let out = '';
+    if (cast) {
+      if (!shFilter) { shFilter = nid(); defs.push(`<filter id="${shFilter}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feFlood flood-color="${col}"/><feComposite in2="SourceAlpha" operator="in"/><feGaussianBlur stdDeviation="${_scR1(Math.max(0.5, sun.blur * 0.6))}"/></filter>`); }
+      out += `<g class="sc-shadow" filter="url(#${shFilter})" opacity="${_scR2(sun.op)}">${cast}</g>`;
+    }
+    if (contact) out += `<g opacity="${_scR2(sun.contact)}">${contact}</g>`;
+    return out;
+  };
   /** One placement at t = 0: a whole-object <use>, or the static rest plus each moving part at its pose. */
   // After real dusk an animated object keeps its night look: the glow shapes of its moving parts are lit inside their own
   // symbols (every one, when any of the placement's glows is on, as the canvas sprites), the rest light as a static
@@ -422,11 +679,17 @@ function sceneSvg(x, o) {
     out += `<text x="${_scR1(g.text[0])}" y="${_scR1(g.text[1])}" font-family="${_scEsc(SCENE_SIGN_FAMILY)}" font-weight="600" font-size="${_scR1(fs)}" text-anchor="middle" dominant-baseline="central" fill="${_scCol(s.ink || "#1d2226", L)}">${_scEsc(text)}</text>`;
     return out + '</g>';
   };
+  const edgeSvg = [];
   const waterSvg = (w, before) => {
     const cols = L && L.water ? L.water(w.base) : w.base, gid = nid(), cid = nid();
-    defs.push(`<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="0" y1="${w.y0}" x2="0" y2="${w.y1}"><stop offset="0" stop-color="${cols[0]}"/><stop offset=".5" stop-color="${cols[1]}"/><stop offset="1" stop-color="${cols[2]}"/></linearGradient><clipPath id="${cid}"><path d="${w.d}"/></clipPath>`);
+    // v2 water (V2 5.3, 13.4): the depth fade (lighter far, the bed and darker near); its reflection stays v1's in the still
+    const wv = v2 && w.v2 ? w.v2 : null, wk = wv ? (typeof SCENE_WATER_KINDS !== 'undefined' && SCENE_WATER_KINDS[wv.kind]) || {} : null;
+    const st = wv ? [_scMixHex(cols[0], (L && L.low) || '#dcebf2', 0.18), cols[1], _scMixHex(_scMixHex(cols[2], wv.bed || '#4a4030', (wv.clarity != null ? wv.clarity : wk.clarity || 0.08) * 2.5), '#000000', 0.12)] : cols;
+    defs.push(`<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="0" y1="${w.y0}" x2="0" y2="${w.y1}"><stop offset="0" stop-color="${st[0]}"/><stop offset=".5" stop-color="${st[1]}"/><stop offset="1" stop-color="${st[2]}"/></linearGradient><clipPath id="${cid}"><path d="${w.d}"/></clipPath>`);
     let out = `<path fill="url(#${gid})" d="${w.d}"/>`;
+    if (wv) for (const e of sceneWaterEdgeQuads(wv, w.d, sceneRenderCam(C))) edgeSvg.push(`<path fill="${_scCol(e.col, L)}" d="${e.quads.map(q => 'M' + q.map(p => _scR1(p[0]) + ' ' + _scR1(p[1])).join('L') + 'Z').join('')}"/>`);
     if (w.reflect && before) out += `<g clip-path="url(#${cid})"><g opacity=".35" transform="matrix(1 0 0 -1 0 ${2 * w.y0})">${before}</g></g>`;
+    if (edgeSvg.length) { out += edgeSvg.join(''); edgeSvg.length = 0; }
     if (w.shimmer) {
       const r = _scRndOf(_scHashS(C.id + '|w|' + w.y0));
       let d = '';
@@ -461,7 +724,8 @@ function sceneSvg(x, o) {
       out += waterSvg(w, w.reflect ? done.join('') + out + near : '');
     }
     let sh = '';
-    for (const it of byLayer[l.i]) sh += shadowOf(it);
+    if (v2) sh += v2Shadows(l.i);
+    else for (const it of byLayer[l.i]) sh += shadowOf(it);
     out += sh;
     const movers = [];
     for (const a of C.actors) if (a.layer === l.i) movers.push([sceneActorAt(a, 0).y, actorSvg(a)]);
