@@ -432,21 +432,54 @@ test('figure v2.1: the bike helmet (fine pieces are detail), deterministic by (p
   assert.ok(joint[1] > 0 && Math.abs(Math.hypot(...joint) - 6) < 1e-9 && Math.hypot(end[0] - 10, end[1]) < 1e-9, 'ik: an elbow bends down, both bones keep their length');
 });
 
-test('person.walker: the shapes are the pre-v2.1 builder output plus one hem band per (variant, season)', () => {
-  // The hem band's push sat inside the neckline's // comment, so it never ran. Fixing it adds ONE fine (detail) stroke to the
-  // body of every walker variant and season and changes nothing else. Before: no hem band. After, e.g. preset 0 spring:
+test('person.walker: the snapshot (hem band and garment details drawn); the far tier is unchanged since before v2.1', () => {
+  // SQ-40: the hem band's push sat inside the neckline's // comment, so it never ran. Fixing it added ONE fine (detail) stroke to
+  // the body of every walker variant and season, e.g. preset 0 spring:
   // { s: '@olive.2', w: 0.5, d: 'M-4.6-31Q0-30.3 4.3-31', op: 0.45, detail: true }; a ribbed top (jumper, hoodie) w 1.1, op 0.5.
-  // BEFORE is the snapshot hash of the pre-change builder's output (scene-engine-round-2 at 1a4b196), computed the same way.
-  const BEFORE = '8954355f961b661e6d171a057ac15535a275d92882c99cbabd7bb2b3e9a62f8b';
+  // SQ-43 (a deliberate re-record): the garment details now draw. The builder tests T.kind, which the garment table (TOPS) never
+  // set, so the jumper neckline, the shirt and blouse placket and buttons, the necklace, the chest and hip pockets, the hoodie's
+  // pocket and drawstring, the coat belt and the parka hood's fur trim never ran. They are all fine pieces (detail: true), so
+  // only the near tier changes: FAR, the hash of every non-detail shape, is the pre-change builder's (1a4b196 and a0fc8ef).
+  // SNAPSHOT is the hash of the output without the hem bands, computed the same way (it was 8954355f... before SQ-43).
+  const SNAPSHOT = '4ec74e3ae4e098ff4dd9b6a937cf6d5b52702955a450cebe9b796a1bc995fdb3';
+  const FAR = '3a2d850680892ed6929168755e5e08d27a06128c8f9bd526815ff30d0e01cb90';
   const isHemBand = sh => !!(sh && sh.detail && sh.s && (sh.w === 1.1 || sh.w === 0.5) && /^M[^A-Za-z]+Q0-[^A-Za-z]+$/.test(sh.d));
-  const out = {};
+  const out = {}, far = {}, H = s => createHash('sha256').update(s).digest('hex');
   for (let v = 0; v < 8; v++) for (const season of SEASONS4) {
     const sh = E.sceneObjShapes('person.walker', v, season), parts = sh.order.map(p => [p, sh.parts[p]]);
     assert.equal(sh.parts.body.filter(isHemBand).length, 1, `variant ${v} ${season}: one hem band in the body`);
     assert.equal([...sh.parts.legA, ...sh.parts.legB].filter(isHemBand).length, 0);
-    out[v + ':' + season] = createHash('sha256').update(JSON.stringify(parts.map(([p, l]) => [p, l.filter(s => !isHemBand(s))]))).digest('hex').slice(0, 16);
+    assert.ok(parts.reduce((n, [, l]) => n + l.length, 0) <= 180, `variant ${v} ${season}: within the silhouette care limit`);
+    out[v + ':' + season] = H(JSON.stringify(parts.map(([p, l]) => [p, l.filter(s => !isHemBand(s))]))).slice(0, 16);
+    far[v + ':' + season] = H(JSON.stringify(parts.map(([p, l]) => [p, l.filter(s => !s.detail)]))).slice(0, 16);
   }
-  assert.equal(createHash('sha256').update(JSON.stringify(out)).digest('hex'), BEFORE, 'every other walker shape is unchanged');
+  assert.equal(H(JSON.stringify(far)), FAR, 'the far tier (every non-detail shape) is unchanged');
+  assert.equal(H(JSON.stringify(out)), SNAPSHOT, 'the near tier is the recorded snapshot');
   const f = G('scenePeople').figure(G('scenePeople').outfit(G('scenePeople').PRESETS[1], 'autumn'));
   assert.deepEqual(f.body.filter(isHemBand), [{ s: '@burgundy.3', w: 1.1, d: 'M-3.8-30.8Q0-30.1 3.4-30.8', op: 0.5, detail: true }], 'the jumper\'s ribbed hem band');
+});
+
+test('person.walker: every garment with its own detail draws it, as a fine (detail) piece: near tier only', () => {
+  const P = G('scenePeople');
+  for (const k of Object.keys(P.TOPS)) assert.equal(P.TOPS[k].kind, k, `TOPS.${k} carries its kind (the builder tests T.kind)`);
+  const near = E.sceneScaleBucket(1.5), far = E.sceneScaleBucket(0.4);
+  // [top kind, walker variant, season wearing it, the detail only that garment draws (c: the top's colour slot), what it is]
+  const GARMENT = [
+    ['jumper', 1, 'autumn', (s, c) => s.s === `@${c}.3` && s.w === 0.55, 'the neckline'],
+    ['shirt', 2, 'summer', (s, c) => s.f === `@${c}.3` && s.op === 0.8, 'the placket buttons'],
+    ['blouse', 1, 'summer', s => s.f === '@cream.1' && s.op === 0.9, 'the bead necklace'],
+    ['jacket', 0, 'spring', (s, c) => s.s === `@${c}.3` && s.w === 0.4 && /^M[^A-Za-z]+L[^A-Za-z]+$/.test(s.d), 'the chest pocket'],
+    ['hoodie', 3, 'spring', s => s.s === '@white.1' && s.w === 0.35, 'the drawstring'],
+    ['coat', 1, 'spring', s => s.f === '@mustard.1', 'the belt buckle (a belted coat)'],
+    ['parka', 3, 'winter', s => s.f === '@stone.1', 'the hood\'s fur trim (hood up)'],
+  ];
+  for (const [kind, v, season, is, what] of GARMENT) {
+    const o = P.outfit(P.PRESETS[v], season), top = o.top, sh = E.sceneObjShapes('person.walker', v, season);
+    assert.equal(top.kind, kind, `variant ${v} ${season} wears a ${kind}`);
+    const hits = P.figure(o).body.filter(s => !Array.isArray(s) && is(s, top.col));   // the builder's own shapes (colour slots)
+    assert.equal(sh.parts.body.length, P.figure(o).body.length, 'person.walker draws the builder\'s body as is');
+    assert.ok(hits.length >= 1, `${kind}: ${what} is drawn`);
+    assert.ok(hits.every(s => s.detail === true), `${kind}: ${what} is a fine piece (detail: true)`);
+    assert.ok(E.sceneDetailAt('person.walker', sh, near) && !E.sceneDetailAt('person.walker', sh, far), `${kind}: drawn near, dropped far`);
+  }
 });
