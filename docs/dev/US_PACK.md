@@ -48,23 +48,37 @@ a position is in).
 | city | 1.2 | symbol | one per small city or town |
 
 A city beats the state's art in its slot while you are there; a festival or the birthday
-(priority 2+) still wins the day. Every item is a 64 x 64 drawing that moves
-(`x-*` classes) and has a still variant for reduced motion.
+(priority 2+) still wins the day. Symbols are animated 64 x 64 drawings. Openings
+use the full-screen scenes below. Both support reduced motion.
 
 ## Full-screen openings
 
-Every state signature and every big-city opening (49 states and 39 big places) is a **full-screen scene** (`full: true`, 1600 x 900,
-sliced to fill any screen, <= 32 KB rendered), drawn in `src/app/71-anim-us2-scenes-1..8.js` with the shared
-kit `animSceneKit()` / `animSceneCss()` in `71-anim-0region.js` (`usSceneKit()` / `usSceneCss()` in
-`71-anim-us.js` are aliases; the Texas scenes' toolkit: layered sky, parallax,
-ambient life, evening grade `.us-tint` / `.us-lit` / `.us-lamps` / `.us-star`). A scene file calls
-`usSceneAdd({key: 'state:NY' | 'place:buffalo', label, site, colour, mood, season, tags, svg})` (the same as
-`animRegionSceneAdd('us', {...})`) and `usBuilder` upgrades the matching item. The small 64 x 64 art in the pack files for those items is
-superseded (kept as the item's source only). Elements (symbols) and small-town items stay small.
+Every state signature and every big-city opening (49 states and 39 big places) is a
+**composed full-screen scene** (`full: true`, 1600 x 900, sliced to fill any screen).
+Texas has nine more composed openings in its separate pack. Each scene combines
+native library objects, place-specific geometry, layered scenery, moving wildlife
+or traffic, seasonal palettes and a sky that follows its location and the time of day.
+See `docs/dev/SCENE_ENGINE.md` for the canvas renderer and its quality budgets.
 
-All other openings (core, festivals, world cities, Texas, the UK South West) are small items: the opening
-sequence draws them on a full-screen landscape stage (`animOpeningStageHtml`, `.od-seq-stage` in
-`02-splash.css`): the seasonal landscape of the hour, the item large in the middle with a glow.
+The original paintings in `src/app/71-anim-us2-scenes-1..8.js` still supply the
+items' identity, captions and location rules. Files named `71-scene-upgrade-us-*.js`
+register the replacement with `animRegionSceneUpgrade('us', key, upgrade)`;
+their library objects are in `70-scene-lib-landmark-us-*.js`. A live upgrade retains
+the original as `legacySvg` for the gallery's **Old technique** version. The
+composed version is labeled **New technique**. Favorites and blocks use the same
+item reference for both versions, and location selection is unchanged.
+
+In Settings > Animations, search for a place to find its openings and symbols,
+compare the retained original with its rebuild, or preview different times and
+seasons. The small symbols and small-town items remain separate drawings.
+Other packs can contain composed scenes, original full-screen paintings or small
+openings displayed on the seasonal landscape stage (`animOpeningStageHtml`).
+
+Before making an upgrade live, run the composed scene and object checks, measure
+real browser performance, and review the original/new comparison, daylight,
+night, seasons and phone/square crops. `tests/us-scene-rebuilds.test.mjs` requires
+all American full-screen openings to use live composed scenes while retaining
+their originals; `tests/scene-upgrades-live.test.mjs` checks identity and quality.
 
 ## Adding a place or a state item
 
