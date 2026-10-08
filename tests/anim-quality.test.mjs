@@ -333,6 +333,24 @@ test('a live region upgrade: the app judges the composed scene (composed profile
   assert.ok(!RICH_LEGACY.some(r => UPGRADE_LEGACY.some(u => u.ref === r.ref)), 'scene-rich holds only the retired rich art');
 });
 
+test('a live region upgrade keeps its retired art in the shared-shape pool: every hand-drawn scene sharing shapes with it has the same sharedShare live as in draft', () => {
+  const live = REG.items().filter(e => e.full && e.composed && isLiveUpgrade(e));
+  if (!live.length) return;   // nothing is live: the registry is its own draft
+  // the same checkout without the upgrade files: each upgraded scene is its hand-drawn item again (a draft draws exactly that)
+  const DRAFT = loadRegistry(ROOT, { omit: REG.files.filter(f => /^71-scene-upgrade-/.test(f)) });
+  // the partners: hand-drawn scenes holding at least one shape of a live upgrade's retired art
+  const retiredKeys = new Set(live.flatMap(e => [...shapeKeys(REG.html(Object.assign({}, e.item, { composed: false, svg: e.item.legacySvg })))]));
+  const partners = RES.results.filter(r => r.full && r.profile !== 'composed' && [...(r.metrics._keys || [])].some(k => retiredKeys.has(k)));
+  assert.ok(partners.length > 0, 'the retired art shares shapes with some hand-drawn scene');
+  const refs = new Set(partners.map(r => r.ref));
+  const drafted = new Map(measureRegistry(DRAFT, DRAFT.items().filter(e => refs.has(e.ref)), TH).map(r => [r.entry.ref, r.metrics]));
+  for (const r of partners) {
+    const d = drafted.get(r.ref);
+    assert.ok(d, r.ref + ': measured in the draft registry');
+    assert.deepEqual([r.metrics.sharedShare, r.metrics.sharedShareAll], [d.sharedShare, d.sharedShareAll], r.ref + ': sharedShare (its pack, all packs) is the same live as in draft');
+  }
+});
+
 test('thresholds: the ratchet, no limit is looser than it was (raise floors, never lower them)', () => {
   for (const [profile, rules] of Object.entries(PINNED)) for (const [metric, pin] of Object.entries(rules)) {
     const t = TH[profile][metric];

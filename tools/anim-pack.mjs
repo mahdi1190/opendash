@@ -153,12 +153,16 @@ export function measureRegistry(reg, entries = reg.items(), thresholds = loadThr
     return { entry: e, metrics: measure(stableIds(reg.html(e.item), legacy), e.full ? 'scene' : 'item', { classes: classCache.get(e.pack), legacy }) };
   });
   const cache = reg._shapeKeys || (reg._shapeKeys = new Map());
+  // a LIVE region upgrade (docs/dev/SCENE_ENGINE.md 16.5) is composed but keeps its hand-drawn art as legacySvg: that art stays
+  // in the share pool, so a scene going live never moves another hand-drawn scene's sharedShare (other composed items stay out)
+  const retired = e => e.composed && !!e.item.upgrade && e.item.upgrade.state === 'live' && typeof e.item.legacySvg === 'function';
+  const poolHtml = e => reg.html(retired(e) ? Object.assign({}, e.item, { composed: false, svg: e.item.legacySvg }) : e.item);
   for (const full of [true, false]) {
     const mine = rows.filter(r => r.entry.full === full);
     if (!mine.length) continue;
     const inSet = new Set(mine.map(r => r.entry.ref));
     const list = mine.map(r => ({ ref: r.entry.ref, pack: r.entry.pack, keys: r.metrics._keys }));
-    for (const e of reg.items()) if (e.full === full && !e.composed && !inSet.has(e.ref)) list.push({ ref: e.ref, pack: e.pack, keys: cache.get(e.ref) || cache.set(e.ref, shapeKeys(reg.html(e.item))).get(e.ref) });
+    for (const e of reg.items()) if (e.full === full && (!e.composed || retired(e)) && !inSet.has(e.ref)) list.push({ ref: e.ref, pack: e.pack, keys: cache.get(e.ref) || cache.set(e.ref, shapeKeys(poolHtml(e))).get(e.ref) });
     const shares = sharedShares(list);
     mine.forEach((r, i) => { r.metrics.sharedShare = shares[i].pack; r.metrics.sharedShareAll = shares[i].all; });
   }
