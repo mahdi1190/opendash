@@ -632,6 +632,53 @@ enabled, own?, renamed?}], lastSync, lastError:{at, code, message}, createdAt}]}
 | Migration | `tools/migrations/060-sources.mjs` |
 | Tests | `tests/sources.test.mjs`, `tests/sources-ical.test.mjs`, `tests/sources-server.test.mjs`, `tests/fixtures/fake-claude-source.mjs` |
 
+### Finance connections, server side (owner: Finance connections) - lib/fin-connect/
+Direct, READ-ONLY bank and wallet connections read by the server itself (no
+Claude, no AI): Monzo, Plasma One, Enable Banking. Design and build notes:
+`docs/dev/FINANCE_CONNECTIONS.md`. A direct source is `kind: 'direct'` in
+`sources.json` with `provider`, a hash of the provider's user/address/session
+(never the id itself), `reauthDue?`, `setup?` (not signed in yet: updates skip
+it) and `extra{}`; accounts may carry `kind`, `mask`, `balanceOnly` (pots),
+`hiddenReason`, `duplicateOf`, `dupChoice`. Rows land in the store as
+`'<sourceId>.<accountId>'` exactly like generic MCP banks, so chips, balances
+and own-transfer matching work unchanged.
+- **Read-only by construction**: every provider declares an allowlist
+  (`allow`); `lib/fin-connect/http.mjs readOnlyClient` checks method + host +
+  path (+ query/body tests) BEFORE sending and throws `POLICY` otherwise
+  (https only, `redirect:'error'`, 20 s, 5 MB, JSON only). Never add a write
+  endpoint (pots, payments, feed, webhooks...) to an allowlist; the tests try them.
+- **Credentials** only in `<data>/secrets/fin/<name>.json` (0600, locked,
+  strict reads: an unreadable file is an error, never "empty"), through
+  `lib/fin-connect/secrets.mjs`. The page sees `configured`/`connected` and
+  masked ids; logs carry provider, op, counts, ms and codes only.
+- **Fake modes** (tests, screenshots): `DASHBOARD_MONZO_FAKE=1`,
+  `DASHBOARD_PLASMA_FAKE=1`, `DASHBOARD_ENABLEBANKING_FAKE=1` load
+  `tests/fixtures/fin-fake-<provider>.mjs` (same URLs, same allowlist, an
+  in-process fetch); `GET/POST /api/fin-connect/fake {provider, ...}` changes
+  them at run time. Monzo: `_APPROVE_MS` (or `never`), `_WINDOW_MS`, `_POLL_MS`,
+  `_DELAY_MS`, `_FAIL` (`auth|consent|rate|rate:0.3|network|bad`).
+- Monzo specifics: the user's own Confidential client; one-time refresh tokens
+  are refreshed under the secret file's lock and saved before use; after the
+  OAuth return the server polls `/accounts` until the app approval arrives,
+  then downloads the whole history inside Monzo's 5-minute window (kept in
+  memory, handed to a finance update for that source); a missed window means
+  the last 90 days (`historyMode: '90d'`, "Get full history" = sign in again).
+  Pending, declined and 0.00 rows are dropped; pot moves are transfers.
+
+| Area | Files |
+|---|---|
+| Provider contract, typed errors (`FinError` codes) | `lib/fin-connect/provider.mjs` |
+| Registry, one service per app ctx (`finConnectFor(ctx)`), `fetchDirect` (the finance update hook), health, accounts list, rename/hide/duplicate choice, sync one source, disconnect (+ remove rows with Undo), cursors `<finance>/_system/connectors/<id>.json` | `lib/fin-connect/index.mjs` |
+| Allowlist HTTP client | `lib/fin-connect/http.mjs` |
+| Local secrets | `lib/fin-connect/secrets.mjs` |
+| Provider tx -> finance row (sign from the provider, integers, memo cleaning, FX at the day's rate with the original kept as "(<amount> <CCY> @ <rate>)", which `cleanMerchant` ignores) | `lib/fin-connect/normalise.mjs`; `rateOn()` in `lib/travel-rates.mjs` |
+| "Is this new account one we already have?" (60 days, date + amount, over 60%: starts hidden) | `lib/fin-connect/overlap.mjs` |
+| Monzo | `lib/fin-connect/monzo.mjs`, fake `tests/fixtures/fin-fake-monzo.mjs` |
+| Plasma One / Enable Banking | `lib/fin-connect/plasma.mjs`, `lib/fin-connect/enable-banking.mjs` (+ their fakes and tests) |
+| API `/api/fin-connect/` (providers, accounts, PATCH accounts/:key, sources/:id/sync, sources/:id/disconnect, undo, fake; providers add theirs via `provider.routes`) | `server/routes/fin-connect.mjs` |
+| Hooks | `lib/sources.mjs` (`kind:'direct'`, `setDirectHealth`), `lib/finance.mjs` (`only:[ids]`, `manual`, direct sources read), `server/routes/finance.mjs` (`fetchSource` dispatch) |
+| Tests | `tests/fin-connect-core.test.mjs`, `tests/fin-connect-monzo.test.mjs`, `tests/fin-connect-security.test.mjs`, `tests/fin-connect-integration.test.mjs` |
+
 ### lib/fsutil.mjs - the only way to write user data
 - `atomicWrite(path, text)` / `writeJson(path, obj)`: temp file + rename,
   retrying `EPERM/EBUSY/EACCES` with backoff (OneDrive locks files briefly).

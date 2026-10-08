@@ -107,7 +107,13 @@ test('every /api/ route refuses another site, reads included; only the sign-in c
       assert.equal(s, 403, `${m} ${p} ${why}`);
     }
   }
-  assert.deepEqual([...new Set(exempt)].sort(), ['/api/google/callback', '/api/microsoft/callback'], 'only state-protected OAuth callbacks accept cross-site GETs');
+  // Finance connections (docs/dev/FINANCE_CONNECTIONS.md 3.6): Monzo's and Enable Banking's sign-in returns.
+  const ex = [...new Set(exempt)].sort();
+  assert.deepEqual(ex.filter(p => !p.startsWith('/api/fin-connect/')), ['/api/google/callback', '/api/microsoft/callback'], 'only state-protected OAuth callbacks accept cross-site GETs');
+  const fin = ex.filter(p => p.startsWith('/api/fin-connect/'));
+  assert.ok(fin.includes('/api/fin-connect/monzo/callback'));
+  assert.ok(fin.every(p => /^\/api\/fin-connect\/(monzo|eb)\/callback$/.test(p)), `only the bank sign-in returns: ${fin.join(', ')}`);
+  assert.equal((await raw(port, 'GET', '/api/fin-connect/monzo/callback?state=forged&code=forged', forged['Origin only'])).status, 400, 'Monzo rejects an unsolicited OAuth callback');
   assert.equal((await raw(port, 'GET', '/api/microsoft/callback?state=forged&code=forged', forged['Origin only'])).status, 400, 'Microsoft rejects an unsolicited OAuth callback');
 });
 

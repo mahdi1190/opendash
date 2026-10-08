@@ -3,6 +3,7 @@
 //   GET  /api/finance             -> {status:'ok', analysis, meta} | {status:'empty', meta}
 //   GET  /api/finance/status      -> {job, lastUpdate, available}
 //   POST /api/finance/update      {full?:true, bank?:false} -> 202 {job}; 409 if one is running
+//                                 (one source only: POST /api/fin-connect/sources/:id/sync)
 //                                 bank:false = no bank fetch, just import inbox/ and rebuild
 //   POST /api/finance/import      {name, data: base64 of a CSV export, force?} -> {ok, rows, imported, analysis}
 //                                 (5 MB file limit; works with no connection at all)
@@ -26,6 +27,7 @@ import {
 import { updateConnection } from '../../lib/datadir.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
 import { fetchFromSource, describeRejected } from '../../lib/source-adapter.mjs';
+import { finConnectFor } from '../../lib/fin-connect/index.mjs';
 import { HttpError } from '../http.mjs';
 import { clockTodayIn, canonZone } from '../../lib/clock.mjs';
 import { financeDir } from '../../lib/finance.mjs';
@@ -54,6 +56,8 @@ export default function register(app) {
     // through its tuned job, any other bank MCP server through the generic adapter).
     bankSources: async () => (await sources.all()).filter(s => s.capability === 'bank'),
     fetchSource: async (src, opts) => {
+      // Direct bank and wallet connections (lib/fin-connect/): read by the server, no Claude.
+      if (src.kind === 'direct') return finConnectFor(app.ctx).fetchDirect(src, opts);
       const disc = sources.cached();
       const accountOn = (id) => { const a = (src.accounts || []).find(x => x.id === id); return !a || a.enabled !== false; };
       const r = await fetchFromSource(src, { ...opts, accountOn, serverDef: sources.serverDef(src.server), denyServers: ((disc && disc.servers) || []).filter(x => x.kind === 'claude.ai').map(x => x.name) });

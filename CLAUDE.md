@@ -28,7 +28,9 @@ sections and migrations.
   `saveData()` and UI with `saveUI()`, respect reduced motion.
 - Keep the safeguards: stale-write guard (409), Host check (421), same-origin
   on mutating routes and every `/api/` read (403), JSON content type (415), body limits (413), bank
-  fetch lockdown (read-only Bank tools only), model/effort allowlists,
+  fetch lockdown (read-only Bank tools only), finance connectors read-only
+  through their allowlist client (lib/fin-connect/http.mjs; credentials only
+  in <data>/secrets/fin/), model/effort allowlists,
   127.0.0.1 binding, only `index.html` (and the fixed `/sw.js`) served statically.
 - Never switch the Windows start-up helpers (Settings > Server) on for real in a
   test: use `DASHBOARD_OS_EXEC=dry-run` or `setOsExec()` (MODULES.md section 9).

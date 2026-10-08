@@ -144,7 +144,7 @@ function _trsTravelRows(el, repaint) {
   const r2 = _trsRow('holidays', 'Public holidays', null, hb); r2.classList.add('set-row-stack');
   el.appendChild(r2);
   el.appendChild(_trsRow('rates', 'Exchange rates', 'Your own card payments give the rate the bank used.',
-    _settingsSeg([['own', 'From my card payments'], ['online', 'Online (frankfurter.app)']], t.rates === 'online' ? 'online' : 'own', async (k) => { if (await _trsSave({ rates: k })) render(); })));
+    _settingsSeg([['own', 'From my card payments'], ['online', 'Online (frankfurter.dev)']], t.rates === 'online' ? 'online' : 'own', async (k) => { if (await _trsSave({ rates: k })) render(); })));
   el.appendChild(_trsRow('jetlag', 'Jet-lag tips', 'Timing tips after long flights (no medical advice). Meetings with others are never moved.',
     _settingsSwitch(t.jetlag !== false, 'Jet-lag tips', (v) => _trsSave({ jetlag: v }))));
   el.appendChild(_trsRow('ai', 'Let Claude see trips', 'Adds the current city and trip dates to what Claude and MCP clients see. Off: only the time zone.',

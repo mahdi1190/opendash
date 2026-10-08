@@ -795,3 +795,59 @@ above:
   --pem <file>` writes names, beta and consent days only; `--fake` writes to
   the temp folder, never over the real file.
 - The FX note issue in section 5 applies to EUR accounts here too.
+
+---
+
+## 7. Build notes: core + Monzo (Builder 2, 8 Oct)
+
+Built in `lib/fin-connect/{provider,index,http,secrets,normalise,overlap,monzo}.mjs`,
+`server/routes/fin-connect.mjs`, `tests/fixtures/fin-fake-monzo.mjs`,
+`tests/fin-connect-{core,monzo,security,integration}.test.mjs`, with small edits
+to `lib/sources.mjs`, `lib/finance.mjs`, `server/routes/finance.mjs`,
+`lib/travel-rates.mjs`, `lib/finance/categorise.mjs` (one regex) and
+`tests/security-release.test.mjs`. Changes and additions to the contract:
+
+- **Providers load by file name** (`PROVIDER_FILES` in `index.mjs`): a provider
+  file that exists is loaded; nobody edits the routes file to add one.
+  Optional `info(ctx)` adds public facts to its `GET providers` entry (Monzo:
+  `redirectUri`, `windowSeconds`). Keys that look like secrets are dropped.
+- **`fetch` options** gain `manual` (Sync now, a provider-requested sync, and
+  the first fetch of a new source), as the Enable Banking budget needs. A
+  fetch may return `sourcePatch` (merged into the source after it succeeds;
+  `setup` is cleared then too).
+- **`setup: true`** sources are skipped by finance updates; `Sync now` answers
+  409 `NOT_CONFIGURED`; their health is `setup` (not `auth`) until signed in.
+- **Monzo approval states** (`GET monzo/approval`): `idle` (nothing started in
+  this server run), `waiting`, `importing` (`detail: 'Saving your
+  transactions'` while the finance update runs), `done`, `expired` (approved,
+  but the 5-minute window closed first: connected with 90 days, `code:
+  'LIMITED_HISTORY'`), `error` (`code: 'NOT_APPROVED'` when the app approval
+  never came: nothing can be read, so this is NOT "connected with 90 days";
+  also `AUTH`, `BUSY`). Fields: `sourceId`, `approved`, `secondsLeft`,
+  `windowSeconds`, `imported`, `earliest`, `historyMode`, `message`, `code`.
+  The server waits up to 15 minutes for the approval (the window opens AT
+  approval, so a late approval still gets the full history).
+- **One Monzo source per Monzo user**: a second wizard that signs in as the same
+  person joins the first source (secrets moved, the new source removed);
+  `GET monzo/approval?source=<old id>` answers with `sourceId: <kept id>`, so
+  the page should follow `st.sourceId` (the Done step filters by it).
+- **Full history**: downloaded by the server inside the window (paged from the
+  account's creation date, stopping 15 s before the window closes), kept in
+  memory and handed to a finance update for that source; when the window
+  closes first, the rest is the last 89 days. A normal update reads from each
+  account's last transaction minus 36 days, never older than 89 days.
+- **Disconnect with "Also remove them"** returns `{removed, undo}`;
+  `POST /api/fin-connect/undo {token}` puts the rows back (once). Removed rows
+  wait in `<finance>/_system/connectors/removed-<token>.csv`.
+- **PATCH accounts/:key `keep`**: `'this'` shows this account, hides the
+  other one when it belongs to a source, and starts its cursor again (its
+  history is fetched on the next update); `'other'` keeps it hidden. Both are
+  remembered (`dupChoice`).
+- **Core issues from section 5, fixed**: Frankfurter moved to
+  `https://api.frankfurter.dev/v1/` (the old host answers 301, which a
+  `redirect:'error'` fetch refuses); both `online()` and `rateOn()` use it. The
+  FX note `(<amount> <CCY> @ <rate>)` stays in the memo (the store's de-dup key
+  needs a stable memo; the rate per day is cached) and `cleanMerchant` drops
+  it, so converted rows keep one merchant. FX amounts round half away from zero.
+- **Fake settings**: `GET /api/fin-connect/fake` -> `{fakes: {monzo: {...settings,
+  calls, recent}}}` (the fake counts its calls); `POST {provider, ...}`.
