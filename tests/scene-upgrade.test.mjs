@@ -63,6 +63,7 @@ test('region.check() reports an upgrade with no scene entry, and a duplicate upg
 
 test('a pack that is not a region (16.2, last bullet) registers under its pack id and applies its upgrade with animSceneUpgradeFinish, as a region does', () => {
   const fin = G('animSceneUpgradeFinish');
+  assert.equal(typeof fin, 'function', 'the registry has animSceneUpgradeFinish');
   let retros = 0;
   const retro = (x) => { retros++; return Object.assign(x, { retro: {} }); };
   const item = (id) => ({ id, full: true, label: id + ' skyline', site: 'the river', tags: ['river'], svg: svgOld, liveSky: { lat: 32.8, lon: -96.8 } });
@@ -98,7 +99,7 @@ test('texas/dallas-skyline: its upgrade registers under the texas pack id and th
     assert.equal(it.composed, true); assert.equal(typeof it.legacySvg, 'function'); assert.equal(it.retro, undefined, 'a live upgrade is not retrofitted');
   } else {
     assert.ok(!it.composed, 'a draft: the app keeps the hand-drawn art'); assert.ok(it.retro && typeof it.retro === 'object', 'still retrofitted');
-    assert.equal(it.upgrade.state, 'draft'); assert.equal(typeof it.upgrade.scene, 'function');
+    assert.equal(it.upgrade && it.upgrade.state, 'draft', 'the Texas pack applied its draft upgrade'); assert.equal(typeof it.upgrade.scene, 'function');
     assert.equal(it.svg({ size: 'fill' }), old.item.svg({ size: 'fill' }), 'the same hand-drawn art without a live sky');
   }
   // the identity: id, label, site, tags, rotation and the Texas place fields are the item built without any upgrade file
