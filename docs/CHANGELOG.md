@@ -10,6 +10,21 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-10-08
+
+### Added
+
+- **Search all settings:** the search bar finds options across every submenu, including animation packs and Connections. Results show their location and open the matching option, including options inside collapsed sections. Keyboard navigation, clear and no-results feedback are included.
+- **Google Health in Connections:** add your Google OAuth credentials, sign in and sync read-only activity and sleep from the last seven days, including supported Fitbit devices. Connection status, sync, reconnect and disconnect are available. Credentials and synced records stay in the local data folder, separately from Gmail and Calendar. A Google Cloud project with API access is required; Google is currently pausing new project onboarding.
+
+### Changed
+
+- The top-left workspace icon uses the existing artwork for your saved or travel location across supported UK, Texas, US, Asian and world-city locations. Compact artwork animates, follows motion preferences and keeps explicit icon choices. The icon is larger and no longer restarts on unrelated page updates.
+
+### Fixed
+
+- Google Health connection status refreshes when you return from sign-in, including when consent finishes in under a minute. Interrupted or expired sign-ins cannot mark an account as connected.
+
 ## [2.9.0] - 2026-10-08
 
 ### Changed

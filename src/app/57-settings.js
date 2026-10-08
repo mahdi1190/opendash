@@ -18,6 +18,7 @@ function registerSettingsGroup(def) {
 }
 function _settingsRow(label, hint, control) {
   const row = document.createElement('div'); row.className = 'set-row';
+  row.dataset.settingLabel = label;
   const l = document.createElement('div'); l.className = 'set-l';
   l.innerHTML = `<div class="set-t">${esc(label)}</div>` + (hint ? `<div class="set-h">${esc(hint)}</div>` : '');
   const c = document.createElement('div'); c.className = 'set-c';
@@ -59,6 +60,7 @@ function _settingsSelect(options, current, onPick, cls) {
 }
 function _settingsCard(title, desc) {
   const card = document.createElement('section'); card.className = 'card set-card';
+  if (title) card.dataset.settingLabel = title;
   if (title) {
     const h = document.createElement('div'); h.className = 'set-head';
     h.innerHTML = `<h2>${esc(title)}</h2>` + (desc ? `<p>${esc(desc)}</p>` : '');
@@ -323,26 +325,34 @@ registerSection('settings', {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'set-nav-item' + (g === cur ? ' on' : '');
       if (g === cur) b.setAttribute('aria-current', 'page');
       b.innerHTML = icon(g.icon || 'settings') + `<span>${esc(g.title)}</span>`;
-      b.onclick = () => setView('settings:' + g.id);
+      b.onclick = () => {
+        const searching = !!settingsSearchQuery(); settingsSearchClear();
+        if (searching && state.view === 'settings:' + g.id) renderMain(); else setView('settings:' + g.id);
+      };
       nav.appendChild(b);
       if (g.id === 'notifications') {
         const c = document.createElement('button'); c.type = 'button'; c.className = 'set-nav-item';
         c.innerHTML = icon('plug') + '<span>Connections</span>' + icon('arrow-right', 'i-xs set-nav-out');
-        c.onclick = () => setView('connections');
+        c.onclick = () => { settingsSearchClear(); setView('connections'); };
         nav.appendChild(c);
       }
     }
     const main = document.createElement('div'); main.className = 'set-main';
-    if (cur) {
+    const paintGroup = () => {
+      main.replaceChildren();
+      if (!cur) return;
       const head = document.createElement('div'); head.className = 'set-page-h';
       head.innerHTML = `<h2>${esc(cur.title)}</h2>` + (cur.description ? `<p>${esc(cur.description)}</p>` : '');
       main.appendChild(head);
       const body = document.createElement('div'); body.className = 'set-group'; body.dataset.group = cur.id;
       try { cur.render(body); } catch (e) { console.error('[settings ' + cur.id + ']', e); body.textContent = 'This part of Settings failed to load.'; }
       main.appendChild(body);
-    }
-    wrap.append(nav, main);
+      settingsSearchReveal(body);
+    };
+    const search = settingsSearchBar(main, paintGroup);
+    wrap.append(search, nav, main);
     container.appendChild(wrap);
+    if (settingsSearchQuery()) settingsSearchResults(main); else paintGroup();
   },
 });
 

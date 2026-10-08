@@ -24,6 +24,7 @@ import { installInfo } from '../../mcp/install.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
 import { HttpError } from '../http.mjs';
 import { microsoftFor } from '../../lib/microsoft.mjs';
+import { googleHealthFor } from '../../lib/google-health.mjs';
 import { assistantFacts, connectCodex, connectGemini } from '../../lib/assistant-connections.mjs';
 import { localClaudeConnectFor } from '../../lib/local-claude-connect.mjs';
 
@@ -42,6 +43,7 @@ export default function register(app) {
       if (g) all.google = { ...all.google, status: g.connected ? 'connected' : g.configured ? 'configured' : 'not-set-up', state: g.connected ? 'ok' : g.configured ? 'auth' : 'setup', account: g.account || null };
       all.cli = cliFacts();
       all.microsoft = await microsoftFor(dataDir).status();
+      all.googleHealth = await googleHealthFor(dataDir).status();
       delete all.cli.path;              // the page does not need the executable's path
       all.assistants = assistantFacts({ dataDir });
       all.localClaude = localClaudeConnectFor(app.ctx).status();

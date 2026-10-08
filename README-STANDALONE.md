@@ -216,6 +216,24 @@ The dashboard cannot send, delete, or modify anything in your Gmail or Calendar.
 
 ---
 
+## Google Health
+
+Open **Connections > Set up Google Health**, or search for “Google Health” in
+Settings. This connects directly to the Google Health API for read-only
+activity and sleep, including compatible Fitbit devices. It uses its own
+credentials and does not change Gmail or Calendar permissions.
+
+Google currently pauses access for new API projects; an approved Google Cloud
+project is needed. Follow the linked Google setup guide, register the exact
+callback address shown in OpenDash, and choose the downloaded OAuth credentials
+JSON. Sign in to the Google Health mobile app first, then sign in with Google
+from OpenDash and allow activity, sleep, or both.
+
+The first connection reads the last seven days. **Sync now** refreshes them.
+Credentials, tokens and the health snapshot stay in `data/secrets/`; disconnect
+removes the local tokens and snapshot. The connection card reports real sign-in
+and sync failures. Health charts and Home widgets are not included yet.
+
 ## Finances
 
 **Finances** (the wallet tile in the sidebar) shows your spending: how fresh the
