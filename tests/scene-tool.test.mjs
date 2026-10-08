@@ -353,7 +353,7 @@ test('CLI: the briefs of the new standard (upgrade in batches by archetype, comp
   assert.match(h.out, /object {6}the object library/); assert.match(h.out, /scene {7}composed scenes/);
   assert.match((await run(['scene', '--help'])).out, /--archetype[\s\S]*--rows[\s\S]*--compare[\s\S]*--dry-run/);
   assert.match((await run(['object', '--help'])).out, /--kit[\s\S]*--kits[\s\S]*--role/);
-  const bad = await run(['scene', 'nope']); assert.equal(bad.code, 1); assert.match(bad.err, /new, upgrade, lint, sheet or perf/);
+  const bad = await run(['scene', 'nope']); assert.equal(bad.code, 1); assert.match(bad.err, /new, upgrade, lint, sheet, perf or capture/);
   const legacyRef = await run(['scene', 'upgrade', 'us-northeast/nope']); assert.equal(legacyRef.code, 1); assert.match(legacyRef.err, /unknown ref/);
 });
 
