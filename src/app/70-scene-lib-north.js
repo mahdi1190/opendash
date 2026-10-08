@@ -461,10 +461,9 @@
       // the brick arched viaduct behind
       if (v === 0) {
         const y = -170;
-        b.push(['@brick.1', rect(X0, y, X1 - X0, -y - 20)]);
-        let arches = '';
-        for (let x = X0 + 10; x < X1 - 30; x += 64) arches += `M${x} -20V${y + 60}Q${x + 26} ${y + 24} ${x + 52} ${y + 60}V-20z`;
-        b.push({ f: '@brick.3', d: arches, op: 0.85 }, ['@brick.2', rect(X0, y - 8, X1 - X0, 8)], { s: '@brick.3', w: 0.5, op: 0.35, detail: true, d: courses(X0, y, X1 - X0, 120, 5) });
+        let spans = '';
+        for (let x = X0; x < X1 - 1; x += 64) spans += `M${x} -20V${y}H${x + 64}V-20H${x + 56}V${y + 50}Q${x + 32} ${y + 16} ${x + 8} ${y + 50}V-20z`;
+        b.push({ f: '@brick.1', d: spans, op: 0.8 }, ['@brick.2', rect(X0, y - 8, X1 - X0, 8)], { s: '@brick.3', w: 0.5, op: 0.3, detail: true, d: courses(X0, y, X1 - X0, 30, 5) });
         b.push(snow(ctx.season, rect(X0, y - 11, X1 - X0, 3)));
       }
       // the towpath and the canal basin
