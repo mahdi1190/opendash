@@ -210,13 +210,19 @@ test('the winter grade is a pure rule of the scene\'s own latitude and the date:
   assert.deepEqual(S(25.2, NaN, 'winter'), S(25.2, dec));
 });
 
-test('winter in hot places: Miami, the Everglades, Dubai and Riyadh get no snow flecks and no frost; cold scenes still do', () => {
+test('winter in hot places: Miami, the Everglades and two subtropical West Asian scenes get no snow flecks and no frost; cold scenes still do', () => {
   const flakes = s => /x-srfall|h2\.4v2\.4h-2\.4z/.test(s), frost = s => /mix-blend-mode:screen/.test(overlayOf(s));
   const desat = s => (/opacity="([\d.]+)" style="mix-blend-mode:saturation"/.exec(overlayOf(s)) || [])[1];
   // the scene's own noon and midnight on 21 December, and the user's view from Miami at 17:00Z
   const skies = it => [12, 0].map(h => G('almSceneLight')(Date.parse('2026-12-21T12:00:00Z') + (h - 12 - it.liveSky.lon / 15) * 36e5, it.liveSky.lat, it.liveSky.lon, 'UTC'))
     .concat(G('almSceneLight')(Date.parse('2026-12-21T17:00:00Z'), 25.8, -80.2, 'UTC'));
-  for (const r of ['us-southeast/miami-deco-neon', 'us-southeast/fl-everglades-airboat', 'asia-west/dubai-skyline', 'asia-west/riyadh-skyline']) {
+  // The West Asian cases were Dubai and Riyadh; a live upgrade is a composed scene and is not retrofitted, so they are
+  // chosen by property instead: hand-drawn West Asian scenes of any season in the 23.5 to 35 degree band (where the
+  // retrofit draws the mild cool tint at half strength, no frost and no flecks), first two in ref order, through drawn().
+  // A scene that goes live later drops out of the list by itself; the assertions below are unchanged.
+  const hot = regionFull().filter(it => it.ref.startsWith('asia-west/') && it.season === 'any' && Math.abs(it.liveSky.lat) >= 23.5 && Math.abs(it.liveSky.lat) < 35).map(it => it.ref).sort();
+  const hotA = drawn(...hot), hotB = drawn(...hot.filter(x => x !== hotA));
+  for (const r of ['us-southeast/miami-deco-neon', 'us-southeast/fl-everglades-airboat', hotA, hotB]) {
     const it = ref(r);
     assert.ok(Math.abs(it.liveSky.lat) >= 23.5 && Math.abs(it.liveSky.lat) < 35, r + ': a subtropical place');
     for (const sky of skies(it)) {
