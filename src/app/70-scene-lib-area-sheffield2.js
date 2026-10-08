@@ -721,4 +721,63 @@
       return { body: b };
     },
   });
+
+  /* ---------- festoon lights across a street ---------- */
+  sceneObjDefine({
+    id: 'street.sheffield2-festoon', category: 'street', size: [420, 40], variants: 2, seasonal: false, flippable: true, weight: 0,
+    palette: { base: { wire: ['#2a2c30'], bulb: ['#f4e6c0', '#f0d080', '#e8b8a0'], glow: ['#ffe6a0'] } },
+    night: { glow: { window: '#ffe0a0', lamp: '#ffe6a8' }, on: 1 },
+    parts: ['body', 'lit'], anim: { sway: { part: 'body', pivot: [0, -40], deg: 0.6 } },
+    tags: ['uk', 'sheffield', 'lights', 'night', 'street', 'kit:urban', 'role:street'],
+    credit: 'drawn for the Sheffield area scenes (festoon lights over the streets of Kelham and Division Street)',
+    build(v) {
+      const b = [], lit = [], X = 210, sag = v ? 26 : 18;
+      const at = (t) => [-X + t * 2 * X, -40 + 4 * sag * t * (1 - t)];
+      b.push({ s: '@wire', w: 1.2, d: `M${-X} -40Q0 ${-40 + 2 * sag} ${X} -40` });
+      for (let i = 1; i < 18; i++) { const [x, y] = at(i / 18); b.push({ f: '@bulb.' + ((i + v) % 3), d: ell(x, y + 4, 3, 3.6), glow: 'lamp' }); lit.push({ f: { rad: [[0, '@glow', .5], [1, '@glow', 0]], cx: f1(x), cy: f1(y + 4), r: 14 }, d: ell(x, y + 4, 14, 14) }); }
+      return { body: b, lit };
+    },
+  });
+
+  /* ---------- the football ground on Bramall Lane (generic: no crests, no lettering) ---------- */
+  sceneObjDefine({
+    id: 'landmark.sheffield2-bramall-lane', category: 'landmark', size: [760, 290], variants: 1, seasonal: false, flippable: false,
+    palette: { base: {
+      brick: ['#8a4232', '#6e3426', '#a65a44'], clad: ['#e8e6e0', '#c8c6c0'], red: ['#c8302a', '#a02420'], roof: ['#d8dcdc', '#9aa0a4', '#6a7074'],
+      steel: ['#4a5056', '#c8ccd0'], glass: ['#2e3a44', '#5a6a78', '#b8c8d4'], gate: ['#2a2c30'], beam: ['#f4f8ff'], flood: ['#ffe8c0'],
+    } },
+    night: { glow: { window: '#f6d48a', lamp: '#fff4d8' }, on: 0.8 }, parts: ['body', 'lit'], shadow: { rx: 380, ry: 14, h: 220 }, reflect: false,
+    tags: ['landmark', 'signature', 'place:uk/sheffield', 'uk', 'sheffield', 'football', 'stadium', 'bramall-lane', 'kit:urban'],
+    credit: 'drawn for the Sheffield area scenes (the football ground on Bramall Lane; generic, no crests or lettering)',
+    build() {
+      const b = [], lit = [], X = 340, H = 150;
+      // the far stand roof showing behind
+      b.push(['@roof.2', P([[-X + 40, -H - 10], [-X + 80, -H - 40], [X - 80, -H - 40], [X - 40, -H - 10]])]);
+      // the stand: brick base, white cladding with red bands, the glazed lounge
+      b.push(['@brick.0', R(-X, -60, 2 * X, 60)], ['@clad.0', R(-X, -H, 2 * X, H - 60)], ['@clad.1', R(X - 60, -H, 60, H - 60), .6]);
+      b.push({ s: '@brick.1', w: .5, op: .4, detail: true, d: lines(6, i => `M${-X} ${-8 - i * 9}h${2 * X}`) });
+      for (const y of [-H + 8, -86]) b.push(['@red.0', R(-X, y, 2 * X, 10)]);
+      for (let k = 0; k < 20; k++) b.push({ f: '@glass.' + (k % 3 === 0 ? 1 : 0), d: R(-X + 12 + k * 33.6, -H + 26, 26, 22), glow: 'window' });
+      b.push({ s: '@clad.1', w: .8, op: .7, d: lines(24, i => `M${f1(-X + i * 28.3)} ${-H + 18}V-90`) });
+      // the turnstiles and gates along the base
+      for (let k = 0; k < 10; k++) { const x = -X + 24 + k * 66; b.push(['@gate', R(x, -40, 30, 40)], ['@brick.2', R(x - 3, -44, 36, 4)], { f: '@glass.2', d: R(x + 4, -36, 22, 8), glow: 'lamp' }); }
+      // the cantilever roof and its trusses
+      b.push(['@roof.0', P([[-X - 14, -H - 4], [X + 14, -H - 4], [X + 8, -H - 22], [-X - 8, -H - 22]])], ['@roof.1', R(-X - 14, -H - 6, 2 * X + 28, 3)]);
+      let tr = ''; for (let x = -X; x < X; x += 28) tr += `M${x} ${-H - 22}L${x + 14} ${-H - 40}L${x + 28} ${-H - 22}`;
+      b.push({ s: '@steel.0', w: 1.4, d: tr + `M${-X} ${-H - 40}H${X}` });
+      // the corner stand stepping down (right)
+      b.push(['@clad.1', P([[X, 0], [X, -H + 10], [X + 40, -H + 40], [X + 40, 0]])], ['@red.1', R(X, -80, 40, 8)]);
+      // the floodlight pylons: lattice masts, lamp banks, beams at night
+      for (const s of [-1, 1]) {
+        const px = s * (X + 4);
+        b.push({ s: '@steel.0', w: 3, d: `M${px - 9} ${-H}L${px - 2} -258M${px + 9} ${-H}L${px + 2} -258` }, { s: '@steel.0', w: .9, d: lines(10, i => `M${f1(px - 9 + i * .7)} ${f1(-H - i * 10.8)}L${f1(px + 9 - (i + 1) * .7)} ${f1(-H - (i + 1) * 10.8)}`) });
+        b.push(['@steel.0', R(px - 28, -290, 56, 34)]);
+        for (let r = 0; r < 3; r++) for (let k = 0; k < 4; k++) b.push({ f: '@steel.1', d: R(px - 25 + k * 13, -287 + r * 10.5, 11, 8), glow: 'lamp' });
+        lit.push({ f: { lin: [[0, '@beam', .4], [1, '@beam', 0]], x1: px, y1: -270, x2: px - s * 240, y2: -60 }, d: `M${px - 26} -288L${px + 26} -258L${px - s * 300} -40L${px - s * 420} -130z` });
+      }
+      b.push(['@glass.2', `M${-X} ${-H + 20}L${-X + 120} ${-H + 20}L${-X} -90z`, .2]);
+      lit.push(wash(0, -100, 420, `M${-X - 20} 0V-300H${X + 50}V0z`, .2));
+      return { body: b, lit };
+    },
+  });
 })();
