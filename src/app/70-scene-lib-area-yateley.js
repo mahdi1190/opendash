@@ -149,8 +149,8 @@
         layers: [{ id: 'horizon', depth: 0.08, haze: 0.55 }, { id: 'far', depth: 0.2, haze: 0.26 }, { id: 'mid', depth: 0.45, haze: 0.12 }, { id: 'near', depth: 0.75, haze: 0 }, { id: 'fore', depth: 1, haze: 0 }, { id: 'front', depth: 1.25, haze: 0 }],
         sky: { stars: 220, clouds: { n: 6, y: [40, Math.max(180, H - 170)], speed: 5 }, sunR: 26, moonR: 20 },
         ground: [
-          { layer: 'horizon', d: treeline(H - 4, seed0 + 1, 1, 0.45, H + 30), fill: '@wood.1' },
-          { layer: 'horizon', d: treeline(H + 2, seed0 + 2, 0.7, 0.3, H + 34), fill: '@wood.0' },
+          { layer: 'horizon', d: treeline(H - 4, seed0 + 1, 1, 0.12, H + 30), fill: '@wood.1' },
+          { layer: 'horizon', d: treeline(H + 2, seed0 + 2, 0.7, 0.1, H + 34), fill: '@wood.0' },
           { layer: 'far', d: band(yF, 4, 30, yM + 30), fill: { lin: [[0, '@heath.0'], [1, '@heath.1']], y1: yF, y2: yM + 30 } },
           { layer: 'far', d: cushions(-160, 1760, yF + 6, yM - 6, 20, seed0 + 3, 26, 50), fill: '@mound.0' },
           { layer: 'mid', d: band(yM, 6, -50, yN + 30), fill: { lin: [[0, '@heath.1'], [1, '@heath.2']], y1: yM, y2: yN + 30 } },
@@ -314,8 +314,8 @@
         layers: [{ id: 'horizon', depth: 0.08, haze: 0.5 }, { id: 'far', depth: 0.2, haze: 0.22 }, { id: 'mid', depth: 0.45, haze: 0.08 }, { id: 'near', depth: 0.75, haze: 0 }, { id: 'fore', depth: 1, haze: 0 }, { id: 'front', depth: 1.25, haze: 0 }],
         sky: { stars: 200, clouds: { n: 5, y: [40, Math.max(160, H - 220)], speed: 5 }, sunR: 24, moonR: 20 },
         ground: [
-          { layer: 'horizon', d: treeline(H - 60, seed0 + 1, 1.6, 0.6, H + 4), fill: '@wood.1' },
-          { layer: 'horizon', d: treeline(H - 24, seed0 + 2, 1.1, 0.35, H + 6), fill: '@wood.0' },
+          { layer: 'horizon', d: treeline(H - 40, seed0 + 1, 1.4, 0.15, H + 4), fill: '@wood.1' },
+          { layer: 'horizon', d: treeline(H - 18, seed0 + 2, 1.1, 0.1, H + 6), fill: '@wood.0' },
           { layer: 'far', d: `M-160 ${H + 8}V${H - 2}Q600 ${H - 8} 1000 ${H - 1}T1760 ${H - 3}V${H + 8}Z`, fill: '@bank.0' },
           { layer: 'near', d: bd, fill: { lin: [[0, '@bank.0'], [0.12, '@grass.0'], [1, '@grass.2']], y1: W1 - 30, y2: 905 } },
           { layer: 'near', d: `M-160 ${W1 + 70}Q300 ${W1 + 56} 700 ${W1 + 74}T1760 ${W1 + 66}V${W1 + 92}Q1100 ${W1 + 98} 700 ${W1 + 94}T-160 ${W1 + 96}Z`, fill: { lin: [[0, '@path.0'], [1, '@path.1']], y1: W1 + 56, y2: W1 + 98 } },
@@ -442,11 +442,11 @@
       }
       const F = d.place, S = d.scatter, A = d.actors;
       // the signature: St Peter's church (timber tower and spire) at Church End, cottages along the lane
-      F.push({ obj: 'landmark.st-peters-yateley', x: CX, y: CL === 'far' ? yL - 6 : yM + 6, s: CS, layer: CL, variant: dusk ? 1 : 0, seed: 1 });
+      F.push({ obj: 'landmark.st-peters-yateley', x: CX, y: CL === 'far' ? yL - 6 : yM + 6, s: CS, layer: CL, variant: dusk ? 1 : 0, seed: 1, shadow: false });
       const cot = has(p, 'village') ? [[-0.95, 0.36, 0], [-0.6, 0.42, 1], [-0.37, 0.28, 0], [0.58, 0.34, 1], [0.98, 0.25, 0], [-1.24, 0.31, 1]] : [[-1.6, 0.27, 1], [-1.33, 0.32, 0], [-1.1, 0.24, 1], [0.7, 0.24, 0]];
       cot.forEach(([dx, sc, v], i) => {
         const x = R(CX + dx * 410 * CS);
-        if (x > -120 && x < 1720) F.push({ obj: 'building.green-cottage', x, y: yL - 8 - (i % 2) * 3, s: K(sc * (CL === 'mid' ? 1.4 : 1)), layer: 'far', variant: v, flip: i % 2 === 1, seed: 2 + i });
+        if (x > -120 && x < 1720) F.push({ obj: 'building.green-cottage', x, y: yL - 8 - (i % 2) * 3, s: K(sc * (CL === 'mid' ? 1.4 : 1)), layer: 'far', variant: v, flip: i % 2 === 1, seed: 2 + i, shadow: false });
       });
       // trees beyond the lane and around the green
       S.push(scatterRule({ obj: 'tree.far-broad', layer: 'far', seed: 1, area: { rect: [-160, H + 22, 1760, H + 34] }, n: 22, minGap: 40, s: [0.2, 0.5], variant: [0, 1], tint: { col: '#3a5a2a', k: [0, 0.1] }, mask: { noise: { scale: 260, cut: 0.3 }, avoid: [{ rect: [CX - 220 * CS, H - 20, CX + 220 * CS, H + 40] }] } }));
