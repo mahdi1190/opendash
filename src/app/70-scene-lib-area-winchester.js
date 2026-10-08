@@ -202,7 +202,7 @@
     // the chalk paths climbing the flank (white scars)
     for (const [x0, x1] of o.paths) { const y0 = top(x0) * .1, y1 = top(x1) * .9; b.push({ s: '#e8e4d4', w: 3.2, op: .85, d: `M${x0} ${f1(y0)}Q${f1((x0 + x1) / 2 + 30)} ${f1((y0 + y1) / 2)} ${x1} ${f1(y1)}` }); }
     // scrub and thorn bushes scattered on the flanks, in lobed clumps
-    for (let i = 0; i < o.scrub; i++) { const x = rr(r, -w * .44, w * .44), t = top(x), y = rr(r, t * .7, t * .05), s = rr(r, 4, 11); b.push(['@scrub.' + (i % 2), sceneD.lobed(r, x, y - s * .5, s * 1.3, s * .8, 7, .3)]); }
+    for (let i = 0; i < o.scrub; i++) { const x = rr(r, -w * .44, w * .44), t = top(x), y = rr(r, t * .7, t * .05), s = rr(r, 4, 11); b.push(['@scrub.' + (i % 2), ell(x, y - s * .45, s * 1.2, s * .55) + ell(x + s * .4, y - s * .75, s * .6, s * .4)]); }
     let bl = ''; for (let i = 0; i < 30; i++) { const x = rr(r, -w * .4, w * .4), t = top(x), y = rr(r, t * .6, t * .1); bl += ell(x, y, 1.6, 1.6); }
     b.push(['@scrub.2', bl, .9]);
     // round barrows on the crest (bronze-age tumuli: smooth bumps)
@@ -218,7 +218,7 @@
       b.push(['@turf.0', downD(r, W, H, k)], ['@turf.3', `M${W * .08} 0L${f1(W * .2)} ${f1(-H * .55)}Q${W * .35} ${-H * .2} ${W / 2} 0z`, .35]);
       downDetail(b, r, W, H, k, { paths: [[-420, -150], [180, 40], [380, 240]], scrub: 70, barrows: [-90, -20, 60] });
       // a beech hanger on the far right flank
-      for (let i = 0; i < 26; i++) { const x = rr(r, 330, 560), y = rr(r, -70, -8), s = rr(r, 10, 22); b.push(['@beech.' + (i % 3), sceneD.lobed(r, x, y - s, s, s * .9, 8, .25)]); }
+      for (let i = 0; i < 26; i++) { const x = rr(r, 330, 560), y = rr(r, -70, -8), s = rr(r, 10, 22); b.push(['@beech.' + (i % 3), ell(x, y - s, s, s * .85) + ell(x - s * .4, y - s * 1.4, s * .5, s * .45)]); }
       return { body: b };
     },
   });
@@ -234,7 +234,7 @@
       // the Iron Age rampart: a terrace ring round the upper slopes (a darker band and a lit lip)
       b.push({ s: '@turf.3', w: 5, op: .55, d: 'M-250 -64Q-160 -128 0 -132Q160 -128 250 -64' }, { s: '@turf.2', w: 2, op: .7, d: 'M-250 -68Q-160 -132 0 -136Q160 -132 250 -68' });
       // the beech clump on the summit
-      for (let i = 0; i < 46; i++) { const x = rr(r, -70, 70), y = -150 - rr(r, 0, 40) * (1 - Math.abs(x) / 90), s = rr(r, 10, 20); b.push(['@beech.' + (i % 3), sceneD.lobed(r, x, y, s, s * .85, 8, .25)]); }
+      for (let i = 0; i < 46; i++) { const x = rr(r, -70, 70), y = -150 - rr(r, 0, 40) * (1 - Math.abs(x) / 90), s = rr(r, 10, 20); b.push(['@beech.' + (i % 3), ell(x, y, s, s * .8) + ell(x + s * .5, y - s * .4, s * .55, s * .5)]); }
       let tr = ''; for (let i = 0; i < 9; i++) { const x = -60 + i * 15; tr += `M${x} -146v-14`; }
       b.push({ s: '#4a3e34', w: 2.2, d: tr });
       return { body: b };
@@ -343,6 +343,114 @@
       const b = [['@cress.0', `M${-w / 2} 0Q0 -22 ${w / 2} 0z`], ['@cress.0', parts[0]], ['@cress.1', parts[1]], ['@cress.2', parts[2]]];
       if (v === 2) { let f = ''; for (let i = 0; i < 6; i++) f += ell(rr(r, -w / 3, w / 3), -rr(r, 12, 18), 1.2, 1.2); b.push(['@flower.0', f]); }
       return { body: b };
+    },
+  });
+
+  const THATCH = { spring: ['#a88a4c', '#7a6234', '#c8aa6c'], summer: ['#b0904e', '#806636', '#d0b070'], autumn: ['#9a7c44', '#6e5630', '#b89a60'], winter: ['#8a7a5a', '#64583e', '#e8eef2'] };
+
+  /* ---------- landmark.ropley-station (the Watercress Line: a small brick station, canopy, lamps and the clipped yews; anchor: the platform edge) ---------- */
+  def({
+    id: 'landmark.ropley-station', category: 'landmark', size: [420, 150], variants: 1, seasonal: true, flippable: false,
+    palette: Object.assign({ base: {
+      brick: ['#a85a40', '#8a4630', '#c27458', '#6e3424'], slate: ['#5a5e66', '#464a52', '#72767e'], canopy: ['#e8e2d0', '#2e5a3a', '#c8c0aa'], frame: ['#f2ede2'], glass: ['#33404e', '#9ab0c4'],
+      platform: ['#b0a898', '#8e8676', '#d0c8b4'], edge: ['#e8e0c8'], post: ['#2e5a3a'], lamp: ['#f8f0d8'], door: ['#2e5a3a'], flood: ['#ffe0a8'],
+    } }, bySeason({ yew: { spring: ['#2a4a2e', '#3a6040', '#5e8a50'], summer: ['#264628', '#365c3a', '#48724a'], autumn: ['#3a4428', '#4a5838', '#6c6c48'], winter: ['#2a3e2c', '#384e38', '#dfe8ea'] } })),
+    night: { glow: { window: '#ffd690', lamp: '#fff0c0' }, on: 0.9 },
+    parts: ['body', 'lit'],
+    shadow: { rx: 210, ry: 10, h: 120 },
+    tags: ['landmark', 'signature', 'place:uk/ropley', 'uk', 'watercress line', 'railway', 'station', 'heritage', 'kit:temperate'],
+    credit: 'drawn for the Winchester area scenes (a heritage country station on the Watercress Line, with its clipped topiary)',
+    build(v, r, ctx) {
+      const b = [], lit = [], push = (...x) => b.push(...x);
+      push(['@platform.1', rect(-210, -10, 420, 10)], ['@platform.0', rect(-210, -14, 420, 5)], ['@edge', rect(-210, -14, 420, 2)]);
+      // the building: brick, a hipped slate roof, two chimneys, sash windows and doors
+      push(['@brick.0', rect(-130, -86, 200, 72)], ['@brick.2', rect(-130, -86, 26, 72), .45], ['@brick.3', rect(50, -86, 20, 72), .4]);
+      let bc = ''; for (let i = 0; i < 11; i++) bc += `M-130 ${f1(-82 + i * 6.4)}h200`;
+      push({ s: '@brick.1', w: .5, d: bc, op: .4, detail: true });
+      push(['@slate.0', 'M-140 -84L-104 -118H44L80 -84z'], ['@slate.2', 'M-104 -118H44l3 4H-107z', .7]);
+      for (const x of [-96, 30]) push(['@brick.3', rect(x, -132, 14, 24)], ['@brick.1', rect(x - 2, -134, 18, 4)]);
+      for (const x of [-116, -76, -2, 38]) push(['@frame', rect(x - 2, -70, 20, 30)], { f: '@glass.0', d: rect(x, -68, 16, 26), glow: 'window' }, { s: '@frame', w: 1, d: `M${x} -55h16M${x + 8} -68v26` }, ['@brick.3', rect(x - 3, -74, 22, 3)]);
+      for (const x of [-46, 18]) push(['@door', rect(x, -64, 14, 50)], ['@frame', rect(x - 2, -66, 18, 3)]);
+      // the platform canopy on columns with a fretted valance
+      push(['@canopy.0', 'M-150 -96L-140 -106H96L106 -96z'], ['@canopy.2', rect(-150, -96, 256, 4)]);
+      let val = ''; for (let x = -150; x < 106; x += 6) val += `M${x} -92l3 6l3 -6z`;
+      push(['@canopy.0', val]);
+      for (let x = -140; x <= 96; x += 59) push(['@post', rect(x, -92, 3.5, 78)], ['@post', `M${x - 8} -92q10 0 11.5 10v-10zM${x + 11.5} -92q-10 0-11.5 10v-10z`]);
+      for (let i = 0; i < 14; i++) push(['@platform.' + (i % 2 ? 0 : 2), rect(-210 + i * 30, -9, 29, 2), .6]);
+      // lamps on posts along the platform, a bench, the clipped yews (topiary) at the ends
+      for (const x of [-190, 130, 190]) push(['@post', rect(x, -70, 3, 56)], ['@post', rect(x - 4, -78, 11, 8)], { f: '@lamp', d: rect(x - 2.5, -76, 8, 5), glow: 'lamp' });
+      push(['@door', rect(90, -24, 30, 3)], ['@door', rect(92, -21, 2, 7) + rect(116, -21, 2, 7)]);
+      for (const [x, h, w] of [[-176, 40, 14], [150, 34, 12], [172, 44, 15], [-198, 30, 11]]) {
+        push(['@yew.0', `M${x - w} -14Q${x - w} ${-14 - h} ${x} ${f1(-14 - h * 1.2)}Q${x + w} ${-14 - h} ${x + w} -14z`], ['@yew.1', `M${f1(x - w * .7)} -20Q${f1(x - w * .6)} ${-12 - h} ${x} ${f1(-14 - h * 1.15)}Q${f1(x - w * .2)} ${f1(-16 - h * .6)} ${f1(x - w * .2)} -20z`, .7]);
+        push(['@yew.2', ell(x, -14 - h * 1.3, w * .35, w * .35)]);
+      }
+      lit.push(['@flood', rect(-150, -100, 256, 90), .12]);
+      for (const x of [-190, 130, 190]) lit.push(['@flood', `M${x - 30} -14L${x + 1} -74L${x + 32} -14z`, .2]);
+      return { body: b, lit };
+    },
+  });
+
+  /* ---------- landmark.test-fishing-hut (a thatched fishermen's hut on the bank of the Test; anchor: the bank) ---------- */
+  def({
+    id: 'landmark.test-fishing-hut', category: 'landmark', size: [170, 130], variants: 1, seasonal: true, flippable: false,
+    palette: Object.assign({ base: { timber: ['#6a5034', '#4e3a26', '#8a6c48'], frame: ['#2e2a24'], glass: ['#33404e', '#9ab0c4'], step: ['#9a8c70'], bench: ['#7a6040'], lamp: ['#ffe8b0'], flood: ['#ffe0a8'] } }, bySeason({ thatch: THATCH })),
+    night: { glow: { window: '#ffd690', lamp: '#fff0c0' }, on: 0.7 },
+    parts: ['body', 'lit'],
+    shadow: { rx: 90, ry: 8, h: 120 },
+    reflect: true,
+    tags: ['landmark', 'signature', 'place:uk/river-test', 'uk', 'river test', 'fishing hut', 'thatch', 'chalk stream', 'kit:temperate'],
+    credit: 'drawn for the Winchester area scenes (a thatched fishing hut of the kind that stands on the Test)',
+    build(v, r, ctx) {
+      const b = [], lit = [], push = (...x) => b.push(...x);
+      push(['@step.0', rect(-80, -8, 160, 8)]);
+      push(['@timber.0', rect(-56, -66, 112, 58)], ['@timber.2', rect(-56, -66, 18, 58), .5]);
+      for (let i = 0; i < 9; i++) push({ s: '@timber.1', w: .9, d: `M-56 ${f1(-62 + i * 6.4)}h112`, op: .6 });
+      for (let i = 0; i < 16; i++) push(['@step.0', ell(-78 + i * 10.5, -1, 5, 2.4)], ['@timber.' + (i % 3), rect(-54 + i * 7, -10, 6, 2), .5]);
+      for (const x of [-40, 22]) push(['@frame', rect(x - 2, -56, 22, 22)], { f: '@glass.0', d: rect(x, -54, 18, 18), glow: 'window' }, { s: '@frame', w: 1, d: `M${x + 9} -54v18M${x} -45h18` });
+      push(['@frame', rect(-8, -52, 16, 44)], ['@timber.1', rect(-6, -50, 12, 42)]);
+      // the thatch: a deep hipped roof with an eyebrow ridge, lines of the reed
+      push(['@thatch.1', 'M-72 -60Q-60 -116 0 -122Q60 -116 72 -60Q0 -50 -72 -60z'], ['@thatch.0', 'M-66 -64Q-54 -110 0 -116Q54 -110 66 -64Q0 -56 -66 -64z']);
+      for (let i = 0; i < 22; i++) { const x = -60 + i * 5.6; push({ s: '@thatch.1', w: .8, op: .5, d: `M${f1(x)} ${f1(-62 + Math.abs(x) * .05)}L${f1(x * .8)} ${f1(-108 + Math.abs(x) * .3)}` }); }
+      push(['@thatch.2', 'M-30 -116Q0 -126 30 -116Q0 -120 -30 -116z']);
+      if (ctx.season === 'winter') push(['@thatch.2', 'M-60 -96Q-40 -118 0 -121Q40 -118 60 -96Q0 -112 -60 -96z', .9]);
+      // the bench on the bank, a landing stage of planks, the lamp by the door
+      push(['@bench', rect(66, -22, 30, 3)], ['@bench', rect(68, -19, 2.5, 11) + rect(92, -19, 2.5, 11)], ['@timber.1', rect(-80, -4, 30, 4)]);
+      for (let i = 0; i < 6; i++) push(['@timber.' + (i % 2 ? 1 : 2), rect(-80 + i * 5, -4, 4, 4), .8]);
+      push({ f: '@lamp', d: rect(-62, -60, 4, 6), glow: 'lamp' });
+      lit.push(['@flood', 'M-90 -4L-60 -56L-30 -4z', .2]);
+      return { body: b, lit };
+    },
+  });
+
+  /* ---------- landmark.alresford-fulling-mill (a thatched, timber-framed mill astride the Arle; anchor: the waterline) ---------- */
+  def({
+    id: 'landmark.alresford-fulling-mill', category: 'landmark', size: [270, 210], variants: 1, seasonal: true, flippable: false,
+    palette: Object.assign({ base: { infill: ['#f2ece0', '#d8d0c0'], timber: ['#2e2620', '#4a3e34'], brick: ['#a85a40', '#7e4230'], glass: ['#33404e', '#9ab0c4'], water: ['#e8f2f2', '#a8c8cc'], chimney: ['#9a4a34'], flood: ['#ffe0a8'] } }, bySeason({ thatch: THATCH })),
+    night: { glow: { window: '#ffd690', lamp: '#fff0c0' }, on: 0.8 },
+    parts: ['body', 'lit'],
+    shadow: { rx: 130, ry: 10, h: 170 },
+    reflect: true,
+    tags: ['landmark', 'signature', 'place:uk/alresford', 'uk', 'alresford', 'mill', 'thatch', 'kit:temperate'],
+    credit: 'drawn for the Winchester area scenes (the timber-framed, thatched fulling mill over the Arle at Alresford)',
+    build(v, r, ctx) {
+      const b = [], lit = [], push = (...x) => b.push(...x);
+      push(['@brick.0', rect(-120, -30, 240, 30)], ['@brick.1', rect(-120, -30, 240, 4), .6]);
+      for (let i = 0; i < 6; i++) push({ s: '@brick.1', w: .6, op: .5, d: `M-120 ${-26 + i * 4.4}h240` });
+      for (const x of [-70, 20]) push(['@timber.0', round(x, -26, 46, 26)], ['@water.1', `M${x} 0V-8Q${x + 23} 0 ${x + 46} -8V0z`, .9], { s: '@water.0', w: 1.4, d: `M${x + 4} -4q9 4 18 0t18 0`, op: .8 });
+      push(['@infill.0', rect(-112, -112, 224, 82)], ['@infill.1', rect(70, -112, 42, 82), .6]);
+      // the timber frame: posts, rails and braces
+      for (const d of ['M-112 -112v82M112 -112v82', 'M-112 -71h224', 'M-112 -32h224', 'M-112 -110h224', 'M-112 -71l32 -39M80 -110l32 39', 'M-48 -71l32 -39M16 -110l32 39']) push({ s: '@timber.0', w: 4, d });
+      for (let i = 1; i < 7; i++) push({ s: '@timber.' + (i % 2), w: 3.4, d: `M${-112 + i * 32} -112v82` });
+      for (const [x, y] of [[-94, -104], [-30, -104], [34, -104], [-94, -64], [34, -64], [94, -64]]) push(['@timber.0', rect(x - 2, y - 2, 18, 22)], { f: '@glass.0', d: rect(x, y, 14, 18), glow: 'window' }, { s: '@timber.0', w: .8, d: `M${x + 7} ${y}v18M${x} ${y + 9}h14` });
+      push(['@timber.1', rect(-24, -66, 18, 34)]);
+      push(['@thatch.1', 'M-132 -104Q-112 -176 -40 -184H40Q112 -176 132 -104Q0 -96 -132 -104z'], ['@thatch.0', 'M-124 -108Q-104 -170 -38 -178H38Q104 -170 124 -108Q0 -100 -124 -108z']);
+      for (let i = 0; i < 30; i++) { const x = -116 + i * 8; push({ s: '@thatch.1', w: .9, op: .45, d: `M${x} -106L${f1(x * .55)} -172` }); }
+      push(['@thatch.2', 'M-50 -180Q0 -192 50 -180Q0 -186 -50 -180z']);
+      push(['@thatch.1', 'M-60 -132Q-48 -152 -30 -152Q-12 -152 0 -132z'], ['@timber.0', rect(-44, -142, 22, 12)], { f: '@glass.0', d: rect(-42, -140, 18, 9), glow: 'window' });
+      if (ctx.season === 'winter') push(['@thatch.2', 'M-112 -140Q-80 -178 -38 -181H38Q80 -178 112 -140Q0 -170 -112 -140z', .9]);
+      push(['@chimney', rect(70, -204, 14, 36)]);
+      lit.push(['@flood', rect(-120, -120, 240, 120), .12]);
+      return { body: b, lit };
     },
   });
 })();
