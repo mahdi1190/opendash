@@ -440,7 +440,7 @@
     night: { glow: { lamp: '#fff0c0' }, on: 1 },
     shadow: { rx: 340, ry: 6, h: 40 },
     reflect: true,
-    tags: ['uk', 'salford', 'mediacity', 'bridge', 'footbridge', 'quays', 'kit:urban', 'role:building-mid'],
+    tags: ['signature', 'uk', 'salford', 'mediacity', 'bridge', 'footbridge', 'quays', 'kit:urban', 'role:building-mid'],
     credit: 'native: drawn for the Manchester area scenes (after the MediaCityUK footbridge over the Ship Canal)',
     build() {
       const body = [];
@@ -473,7 +473,7 @@
     } },
     night: { glow: { window: '#ffd488' }, on: 0.55 },
     shadow: { rx: 200, ry: 10, h: 300 },
-    tags: ['uk', 'manchester', 'mill', 'warehouse', 'brick', 'industrial', 'kit:urban', 'role:building-mid'],
+    tags: ['signature', 'row', 'uk', 'manchester', 'mill', 'warehouse', 'brick', 'industrial', 'kit:urban', 'role:building-mid'],
     credit: 'native: drawn for the Manchester area scenes (Ancoats mills and Northern Quarter warehouses, generic)',
     build(v, r) {
       const body = [], lit = [], mill = v === 0, H = mill ? 250 : 200, x0 = -200, x1 = 160;
@@ -585,30 +585,32 @@ function sceneArchMcrCity(p, u) {
     data.ground.push({ layer: 'mid', d: `M-160 ${yW0 - 6}H1760V${yW0 + 1}H-160Z`, fill: '@wall.0' }, { layer: 'near', d: `M-160 ${yW1 - 2}H1760V${yW1 + 6}H-160Z`, fill: '@kerb.1' });
   }
   // the distant city and the far row
-  data.scatter.push({ obj: 'building.skyline-band', layer: 'horizon', seed: 2, area: { rect: [-120, H, 1720, H + 2] }, n: 5, minGap: 300, s: [0.42, 0.7], flip: 0.5, variant: 'random', tint: { col: '#a8b4c4', k: [0.08, 0.16] }, shadow: false, anim: false });
-  const farMix = far === 'brick' ? { 'building.mcr-mill': 3, 'building.terrace-victorian': 2, 'building.tower-stone': 1 } : far === 'glass' ? { 'building.tower-glass': 3, 'building.tower': 2, 'building.skyscraper': 1, 'building.mcr-mill': 1 } : { 'building.mcr-mill': 2, 'building.tower-glass': 2, 'building.terrace-victorian': 1, 'building.tower': 1 };
+  data.scatter.push({ obj: 'building.skyline-band', layer: 'horizon', seed: 2, area: { rect: [-120, H, 1720, H + 2] }, n: 3, minGap: 420, s: [0.42, 0.7], flip: 0.5, variant: [0, 1], tint: { col: '#a8b4c4', k: [0.16, 0.16] }, shadow: false, anim: false });
+  const farMix = far === 'brick' ? { 'building.mcr-mill': 3, 'building.tower-stone': 1 } : far === 'glass' ? { 'building.tower-glass': 3, 'building.tower': 2, 'building.mcr-mill': 1 } : { 'building.mcr-mill': 2, 'building.tower-glass': 2, 'building.tower': 1 };
   const avoid = [];
+  let deck = null;
   const lms = (p.landmarks || []).map(s => String(s).split('@')).filter(a => sceneObj(a[0]));
   lms.forEach((a, i) => {
-    const id = a[0], x = a[1] ? +a[1] : 800, h = a[2] ? +a[2] : 360, layer = a[3] || 'mid', yy = a[4] ? +a[4] : yL, d = sceneObj(id), s = sOf(id, h), w = d.size[0] * s / 2;
-    data.place.push({ obj: id, x, y: yy, s, layer, seed: 11 + i, reflect: wet });
+    const id = a[0], x = a[1] ? +a[1] : 800, h = a[2] ? +a[2] : 360, layer = a[3] || 'mid', yy = a[4] ? yL + +a[4] : yL, d = sceneObj(id), s = sOf(id, h), w = d.size[0] * s / 2;
+    data.place.push({ obj: id, x, y: yy, s, layer, seed: 11 + i, reflect: wet, variant: a[5] ? +a[5] : 0, flip: a[6] === 'flip' });
+    if (id === 'landmark.castlefield-viaduct') deck = { y: yy - 262 * s, s };
     if (layer === 'mid' && h > 150) avoid.push({ rect: [x - w - 10, H - 40, x + w + 10, yL + 8] });
   });
-  data.scatter.push({ obj: farMix, layer: 'far', seed: 4, area: { rect: [-150, H + 24, 1750, H + 30] }, n: 22, minGap: 70, s: [0.3, 0.52], maxH: Math.round(H * 0.62), flip: 0.5, variant: 'random', tint: { col: '#9aa6b4', k: [0, 0.16] }, mask: { noise: { scale: 160, cut: 0.25 }, avoid }, shadow: false, anim: false });
+  data.scatter.push({ obj: farMix, layer: 'far', seed: 4, area: { rect: [-150, H + 24, 1750, H + 30] }, n: 13, minGap: 64, s: [0.24, 0.64], maxH: Math.round(H * 0.62), flip: 0.5, variant: [0, 1], tint: { col: '#9aa6b4', k: [0.08, 0.08] }, mask: { noise: { scale: 90, cut: 0.3 }, avoid }, shadow: false, anim: false });
   // street trees along the landmarks' ground line (static) and lamps
-  data.scatter.push({ obj: { 'tree.plane': 2, 'tree.far-broad': 1 }, layer: 'mid', seed: 15, area: { rect: [-140, yL - 2, 1740, yL + 3] }, n: 16, minGap: 70, s: [0.2, 0.32], flip: 0.5, variant: [0, 2], tint: { col: '#6a8a9a', k: [0, 0.08] }, mask: { avoid: avoid.map(a => ({ rect: [a.rect[0] + 40, a.rect[1], a.rect[2] - 40, a.rect[3]] })) }, anim: false, reflect: wet });
-  data.scatter.push({ obj: 'street.lamppost', layer: 'near', seed: 13, area: { rect: [-100, yR + 34, 1700, yR + 38] }, n: 6, minGap: 260, s: [0.46, 0.56], flip: 0.5, variant: [0, 3], anim: false });
+  data.scatter.push({ obj: { 'tree.plane': 1, 'tree.far-broad': 1, 'tree.far-birch': 1 }, layer: 'mid', seed: 15, area: { rect: [-140, yL - 2, 1740, yL + 3] }, n: 12, minGap: 70, s: [0.16, 0.36], flip: 0.5, variant: 'random', tint: { col: '#6a8a9a', k: [0, 0.08] }, mask: { noise: { scale: 110, cut: 0.2 }, avoid: avoid.map(a => ({ rect: [a.rect[0] + 40, a.rect[1], a.rect[2] - 40, a.rect[3]] })) }, anim: false, reflect: wet });
+  data.scatter.push({ obj: 'street.lamppost', layer: 'near', seed: 13, area: { rect: [-100, yR + 34, 1700, yR + 38] }, n: 5, minGap: 260, s: [0.4, 0.62], flip: 0.5, variant: [0, 3], anim: false });
   data.scatter.push({ obj: 'street.bench', layer: 'near', seed: 14, area: { rect: [-60, yR + 40, 1660, yR + 44] }, n: 4, minGap: 300, s: [0.5, 0.6], flip: 0.5, variant: 'random' });
-  data.scatter.push({ obj: { 'street.bollard': 2 }, layer: 'near', seed: 16, area: { rect: [-140, yR + 30, 1740, yR + 34] }, n: 22, minGap: 50, s: [0.55, 0.75], flip: 0.5, variant: 'random', anim: false });
+  data.scatter.push({ obj: { 'street.bollard': 2 }, layer: 'near', seed: 16, area: { rect: [-140, yR + 30, 1740, yR + 34] }, n: 22, minGap: 50, s: [0.5, 0.82], flip: 0.5, variant: 'random', tint: { col: '#3a4048', k: [0, 0.16] }, mask: { noise: { scale: 200, cut: 0.2 } }, anim: false });
   // traffic on the road (or boats on the canal), a tram
   const lane = (k) => yR - 22 + k * 22, carS = y => Math.round((0.32 + (y - H) / (900 - H) * 0.32) * 100) / 100;
   if (ground !== 'towpath' && ground !== 'park') {
     const cars = [['vehicle.car-city', 0], ['vehicle.taxi-black', 1], ['vehicle.car', 0], has('buses') ? ['vehicle.bus', 1] : ['vehicle.car-city', 1], ['vehicle.car', 1]];
     cars.forEach(([obj, k], i) => { const y = lane(k), back = k === 1; data.actors.push({ obj, layer: 'near', path: back ? [[1800, y], [-200, y]] : [[-200, y], [1800, y]], speed: 40 + i * 7, loop: 'loop', s: carS(y), seed: 30 + i, offset: (0.11 + i * 0.23) % 1, flip: back, variant: i % 2 }); });
-    if (has('cyclists')) data.actors.push({ obj: 'person.cyclist-commuter', layer: 'near', path: [[-120, lane(0) + 10], [1720, lane(0) + 10]], speed: 26, loop: 'loop', s: scenePersonScale(sceneObj('person.cyclist-commuter').size[1], lane(0), data.view), seed: 41, offset: 0.4 });
+    if (has('cyclists')) data.actors.push({ obj: 'person.cyclist', layer: 'near', path: [[-120, lane(0) + 10], [1720, lane(0) + 10]], speed: 26, loop: 'loop', s: scenePersonScale(sceneObj('person.cyclist').size[1], lane(0), data.view), seed: 41, offset: 0.4 });
   }
   if (tram === 'street') data.actors.push({ obj: 'vehicle.metrolink-tram', layer: 'near', path: [[-420, yR - 34], [2020, yR - 34]], speed: 34, loop: 'loop', s: carS(yR - 34) * 1.05, seed: 44, offset: 0.35 });
-  if (tram === 'viaduct') data.actors.push({ obj: 'vehicle.metrolink-tram', layer: 'mid', path: [[2000, yL - 214], [-400, yL - 214]], speed: 30, loop: 'loop', s: 0.42, seed: 45, offset: 0.6, flip: true });
+  if (tram === 'viaduct' && deck) data.actors.push({ obj: 'vehicle.metrolink-tram', layer: 'mid', path: [[2000, R(deck.y)], [-400, R(deck.y)]], speed: 30, loop: 'loop', s: Math.round(deck.s * 0.5 * 100) / 100, seed: 45, offset: 0.6, flip: true });
   if (wet) {
     const boats = water === 'canal' ? ['boat.narrowboat', 'boat.narrowboat-receding', 'boat.narrowboat'] : ['boat.water-taxi', 'boat.dinghy', 'boat.tug'];
     const lanesW = [yW0 + (yW1 - yW0) * 0.3, yW0 + (yW1 - yW0) * 0.75, yW0 + (yW1 - yW0) * 0.5];
@@ -617,22 +619,22 @@ function sceneArchMcrCity(p, u) {
     data.actors.push({ obj: water === 'canal' ? 'bird.moorhen' : 'bird.swan', layer: 'mid', path: [[1100, R(yW1 - 16)], [1380, R(yW1 - 14)]], speed: 2.5, loop: 'pingpong', s: 0.42, seed: 55, offset: 0.7 });
   }
   // people: tiny anonymous walkers on the pavement or towpath (at most 6)
-  const people = ['person.walker', 'person.commuter', 'person.dog-walker', 'person.walker', 'person.jogger', 'person.family'];
+  const people = ['person.walker', 'person.shopper', 'person.dog-walker', 'person.student', 'person.jogger', 'person.buggy-walker'];
   const nPeople = has('fans') ? 6 : 5;
   for (let i = 0; i < nPeople; i++) {
-    const id = has('fans') ? (i % 2 ? 'person.family' : 'person.walker') : people[i], y = yR + 40 + (i % 3) * 14, back = i % 2 === 1;
+    const id = has('fans') ? (i % 2 ? 'person.football-fan' : 'person.walker') : people[i], y = yR + 40 + (i % 3) * 14, back = i % 2 === 1;
     data.actors.push({ obj: id, layer: 'near', path: back ? [[1720, y], [-120, y]] : [[-120, y], [1720, y]], speed: 12 + (i % 4) * 3, loop: 'loop', s: scenePersonScale(sceneObj(id).size[1], y, data.view), seed: 60 + i, offset: (i * 0.19 + 0.07) % 1, flip: back });
   }
   // birds: pigeons and gulls over the city
   data.flocks.push({ obj: 'bird.small-flight', n: 6, area: [160, 100, 1440, Math.max(220, H - 140)], speed: 26, s: 0.5, seed: 9, layer: 'far' });
   data.flocks.push({ obj: has('gulls') ? 'bird.herring-gull-flight' : 'bird.small-flight', n: 4, area: [80, 160, 1500, Math.max(300, H - 80)], speed: 20, s: 0.7, seed: 10, layer: 'mid' });
-  data.scatter.push({ obj: 'bird.pigeon-feral', layer: 'near', seed: 17, area: { rect: [200, yR + 52, 1400, yR + 70] }, n: 6, minGap: 40, s: [0.7, 1], flip: 0.5, variant: 'random' });
+  data.scatter.push({ obj: 'bird.pigeon-feral', layer: 'near', seed: 17, area: { rect: [100, yR + 50, 1500, yR + 76] }, n: 5, minGap: 50, s: [0.6, 1.15], sByY: [[yR + 50, 0.85], [yR + 76, 1.15]], flip: 0.5, variant: 'random', mask: { noise: { scale: 120, cut: 0.3 } } });
   // the fore: cover by ground type (wind strips), shrubs and planters, leaves in autumn
-  const cover = ground === 'square' || ground === 'quay' ? { 'plant.planter': 1, 'plant.grass': 2, 'plant.wildflowers': 1 } : ground === 'towpath' ? { 'plant.grass': 3, 'plant.wildflowers': 1, 'plant.towpath-hedge': 1 } : { 'plant.grass': 3, 'plant.wildflowers': 1 };
-  data.scatter.push({ obj: { 'plant.grass': 3, 'plant.wildflowers': 1 }, layer: 'near', seed: 18, area: { rect: [-150, yR + 46, 1750, yF] }, n: 90, minGap: 16, s: [0.45, 0.75], flip: 0.5, variant: [0, 1], tint: { col: '#6a7a40', k: [0, 0.08] }, anim: false });
+  const cover = ground === 'square' || ground === 'quay' ? { 'plant.planter': 1, 'plant.grass': 2, 'plant.wildflowers': 1 } : ground === 'towpath' ? { 'plant.grass': 2, 'plant.wildflowers': 1, 'plant.towpath-hedge': 1 } : { 'plant.grass': 3, 'plant.wildflowers': 2 };
+  data.scatter.push({ obj: { 'plant.grass': 3, 'plant.wildflowers': 2 }, layer: 'near', seed: 18, area: { rect: [-150, yR + 46, 1750, yF] }, n: 90, minGap: 24, s: [0.45, 0.75], flip: 0.5, variant: [0, 1], tint: { col: '#6a7a40', k: [0, 0.08] }, anim: false });
   data.scatter.push({ obj: cover, layer: 'fore', seed: 7, area: { rect: [-150, yF + 2, 1750, yF + 50] }, n: 150, minGap: 15, s: [0.55, 0.9], flip: 0.5, variant: [0, 1], tint: { col: '#6a7a40', k: [0, 0.08] }, anim: 'strip' });
-  data.scatter.push({ obj: { 'plant.grass': 3, 'plant.wildflowers': 1 }, layer: 'fore', seed: 8, area: { rect: [-150, yF + 50, 1750, 905] }, n: 110, minGap: 22, s: [0.9, 1.3], flip: 0.5, variant: [1, 2], tint: { col: '#6a7a40', k: [0.08, 0.16] }, anim: 'strip' });
-  data.scatter.push({ obj: { 'plant.shrub': 2, 'plant.hedge': 1 }, layer: 'fore', seed: 19, area: { rect: [-150, yF + 6, 1750, yF + 40] }, n: 9, minGap: 150, s: [0.6, 0.95], flip: 0.5, variant: 'random', anim: false });
+  data.scatter.push({ obj: { 'plant.grass': 3, 'plant.wildflowers': 2 }, layer: 'fore', seed: 8, area: { rect: [-150, yF + 50, 1750, 905] }, n: 110, minGap: 22, s: [0.9, 1.3], flip: 0.5, variant: [1, 2], tint: { col: '#6a7a40', k: [0.08, 0.16] }, anim: 'strip' });
+  data.scatter.push({ obj: { 'plant.shrub': 2, 'plant.hedge': 1 }, layer: 'fore', seed: 19, area: { rect: [-150, yF + 6, 1750, yF + 40] }, n: 5, minGap: 150, s: [0.45, 1.15], flip: 0.5, variant: 'random', mask: { noise: { scale: 220, cut: 0.3 } }, anim: false });
   data.scatter.push({ obj: 'ground.leaves', layer: 'fore', seed: 20, area: { rect: [-150, yF + 10, 1750, 900] }, n: 14, minGap: 60, s: [0.7, 1.1], flip: 0.5, variant: 'random', anim: false });
   // the framing trees
   data.place.push({ obj: 'tree.plane', x: 20, y: 910, s: sOf('tree.plane', 500), layer: 'front', seed: 21, variant: 2 }, { obj: 'tree.plane', x: 1600, y: 912, s: sOf('tree.plane', 470), layer: 'front', seed: 22, flip: true, variant: 1 });
