@@ -602,7 +602,7 @@ function sceneRendererCreate(canvas, src, o) {
             if (pt.a) {
               const a = m.kind === 'bird' ? Object.assign({}, pt.a, { phase: p.phase }) : pt.a, pose = sceneAnimPose(a, t, Lx, p.x);
               A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m;
-              if (!pt.rest) al = _scPartAlpha(pose, pt.j || 0);
+              if (!pt.rest && pose.alphas) al = pose.alphas[pt.j || 0];   // a frames hook: one part at a time (an actor part never took the pose alpha)
             }
             if (al <= 0) continue;
             const MM = _scMul(M, A);

@@ -34,7 +34,9 @@ function bytesOf(E, key) {
 export function lintRasterObject(id, { E, thresholds = {}, rule }) {
   const O = thresholds.object || {}, d = E.obj(id), rules = [];
   const add = (name, ok, value, limit, message, warn = false) => rules.push(Object.assign(rule('object', name, ok, value, limit, message), warn ? { warn: true, ok: true, note: ok ? '' : message } : {}));
-  const B = E.rasterBudget || { imageKB: { warn: 96, max: 256 }, objectKB: { warn: 192, max: 512 }, maxSide: 1024 };
+  // a painted-scene backdrop (tag painted; docs/dev/PAINTED_SCENES.md) is a whole 1600 x 900 picture: its own budget (scene paint lint)
+  const B = (d.tags || []).includes('painted') ? { imageKB: { warn: 360, max: 720 }, objectKB: { warn: 1600, max: 3200 }, maxSide: 1600 }
+    : E.rasterBudget || { imageKB: { warn: 96, max: 256 }, objectKB: { warn: 192, max: 512 }, maxSide: 1024 };
   const cats = E.categories || [];
   add('identity', ID_RE.test(id) && (!cats.length || cats.includes(d.category)) && id.split('.')[0] === d.category, id, '<category>.<name>, a known category', `${id}: the id must be <category>.<name> and match its category (${d.category})`);
   const dupes = typeof E.dups === 'function' ? E.dups().filter(x => x === id).length : 0;

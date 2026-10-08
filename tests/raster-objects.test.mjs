@@ -343,7 +343,8 @@ test('the generated raster library is in step with assets/objects, and every obj
   const bytes = rasterAssetBytes(ROOT);
   assert.ok(bytes.bytes / 1024 <= S.SCENE_RASTER_BUDGET.libraryKB.max, `library ${Math.round(bytes.bytes / 1024)} KB`);
   for (const { meta } of metas) {
-    assert.ok(meta.bytes / 1024 <= S.SCENE_RASTER_BUDGET.objectKB.max, meta.id + ' bytes');
+    // a painted-scene backdrop (tag painted) is a whole 1600 x 900 picture: its own budget (tools/lib/scene-paint.mjs PAINT_BUDGET)
+    assert.ok(meta.bytes / 1024 <= ((meta.tags || []).includes('painted') ? 3200 : S.SCENE_RASTER_BUDGET.objectKB.max), meta.id + ' bytes');
     assert.ok(S.sceneObj(meta.id) && S.sceneObj(meta.id).kind === 'raster', meta.id + ' defined');
   }
 });

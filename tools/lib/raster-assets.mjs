@@ -95,6 +95,8 @@ function defineCall(meta) {
   if (meta.frames && (meta.frames.images || []).length) d.frames = { images: meta.frames.images.map(k), period: meta.frames.period || 0.9 };
   for (const f of ['seasonal', 'flippable', 'reflect', 'shadow', 'weight', 'means']) if (meta[f] != null) d[f] = meta[f];
   d.tags = meta.tags || [];
+  // a demo stand-in or a painted-scene backdrop is never picked by kit and role (sceneKitPick skips weight 0): scenes only get it by id
+  if (d.weight == null && d.tags.some(t => t === 'demo' || t === 'painted')) d.weight = 0;
   if (meta.credit) d.credit = meta.credit;
   return `  sceneObjDefine(${js(d)});\n`;
 }

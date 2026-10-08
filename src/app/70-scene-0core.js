@@ -575,6 +575,8 @@ function sceneCompile(data, opt) {
   if (G && typeof sceneCompileV2Finish === 'function') sceneCompileV2Finish(G, C);   // flows, atmosphere, weather, lights, draw order, stats.v2
   // v1 opt-in effects (V2 14.2): fx { shadows, water, atmos, weather: 2 } rides on the compiled scene for the render passes (only when set)
   if (data.fx && typeof data.fx === 'object') { const fx = {}; for (const k of ['shadows', 'water', 'atmos', 'weather']) if (data.fx[k] === 2) fx[k] = 2; if (Object.keys(fx).length) C.fx = fx; }
+  // a painted scene (docs/dev/PAINTED_SCENES.md): the backdrop objects ride on the compiled scene for the paint pass (78-scene-paint.js)
+  if (data.paint && typeof data.paint === 'object' && data.paint.back) { C.paint = Object.assign({}, data.paint); C.fx = Object.assign({}, C.fx || {}, { paint: 2 }); }
   if (!m) { m = new Map(); _scCompiled.set(data, m); }
   m.set(memoKey, C);
   return C;

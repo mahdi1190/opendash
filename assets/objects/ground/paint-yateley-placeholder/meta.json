@@ -1,0 +1,48 @@
+{
+ "id": "ground.paint-yateley-placeholder",
+ "category": "ground",
+ "size": [
+  1600,
+  900
+ ],
+ "anchor": [
+  0,
+  0
+ ],
+ "variants": [
+  {
+   "base": "base.webp",
+   "night": "night.webp"
+  }
+ ],
+ "flippable": false,
+ "reflect": false,
+ "shadow": false,
+ "weight": 0,
+ "bytes": 175578,
+ "tags": [
+  "painted",
+  "paint:paint-yateley-placeholder/yateley-placeholder",
+  "kit:temperate",
+  "role:ground"
+ ],
+ "credit": "placeholder: the Yateley Green proof scene rendered to PNG",
+ "paint": {
+  "source": "painted scene import (scene paint new)",
+  "at": "2026-10-08",
+  "drift": {
+   "night": {
+    "dx": 0,
+    "dy": 0,
+    "px": 0,
+    "score": 0.56
+   }
+  },
+  "masks": {
+   "water": "polygon",
+   "front": "polygon",
+   "sky": "derived"
+  },
+  "horizon": 307
+ }
+}
