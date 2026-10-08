@@ -87,19 +87,23 @@
     // the envelope (the frond's silhouette under its leaflets): every third point, whole units (it is soft-edged and half covered)
     const Pi = p => `${Math.round(p[0])} ${Math.round(p[1])}`, half = a => a.filter((q, i) => i % 3 === 0 || i === a.length - 1);
     const env = k => ends[k].length > 2 ? 'M' + half(rach).concat(half(ends[k]).reverse()).map(Pi).join('L') + 'z' : '';
-    return { rach: `M${P(A)}Q${P(B)} ${P(E)}`, up, lo, envUp: env('up'), envLo: env('lo') };
+    // the rim: a sliver along the upper side of the rachis, tapering to the tip (lit cool at real night, glow 'rim')
+    const ro = [], ri = [];
+    for (let k = 0; k <= 6; k++) { const t = .08 + k * .13, p = bz(A, B, E, t), T = bzT(A, B, E, t), u = T[0] < 0 ? -1 : 1, nx = T[1] * u, ny = -T[0] * u, w = 3.2 * (1 - t * .6); ro.push([p[0] + nx * w, p[1] + ny * w]); ri.push([p[0] + nx * .8, p[1] + ny * .8]); }
+    return { rach: `M${P(A)}Q${P(B)} ${P(E)}`, up, lo, envUp: env('up'), envLo: env('lo'), rim: 'M' + ro.concat(ri.reverse()).map(P).join('L') + 'z' };
   };
   defineObj({
     id: 'plant.palm-coconut-tall', category: 'plant', size: [330, 560], variants: 4, seasonal: true, flippable: true, weight: 0.3,
     palette: Object.assign({ base: {
       bark: ['#8c7c66', '#5e5244', '#b8aa90', '#4a4036'], boot: ['#6a5638', '#4a3a26'], dead: ['#9a7a44', '#7a5c30', '#b8995c'],
-      ground: ['#7a6a4a', '#5a4c34'], rim: '#e8eecc',   // rim: a pale edge on the lit front rachises (reads at night)
+      ground: ['#7a6a4a', '#5a4c34'],
     } }, bySeason({
       nut: { spring: ['#5f7c2c', '#8aa43c', '#a8743a', '#3c4e1c'], summer: ['#587a2a', '#86a23a', '#a8743a', '#3a4c1c'], autumn: ['#6a7e2c', '#98a840', '#b07a36', '#44501e'], winter: ['#7a6a30', '#a49044', '#8a5a2a', '#4a4020'] },
       // evergreen: the dry season only dusts the fronds a little
       frond: { spring: ['#24502a', '#3c7634', '#5e9a3e', '#90c25a'], summer: ['#1f4a28', '#356e30', '#56923a', '#86b650'], autumn: ['#22502a', '#3a7232', '#5a963c', '#8cbc56'], winter: ['#26522a', '#3e7234', '#62923e', '#94b85c'] },
       rachis: { spring: ['#a6b05a', '#6a7a3a'], summer: ['#9aa652', '#5e6e34'], autumn: ['#a4ac56', '#6a7838'], winter: ['#aaac5a', '#70783a'] },
     })),
+    night: { glow: { rim: '#9fc0f2' }, on: 1 },   // a cool rim light along the front fronds (a palm stays readable against the night sky)
     anim: { sway: { part: 'body', pivot: [0, 0], deg: 1.3 } },
     shadow: { rx: 90, ry: 9, h: 520 }, reflect: true,
     tags: ['tropical', 'palm', 'coconut', 'beach', 'coast', 'asia', 'kit:tropical', 'role:tree'],
@@ -137,7 +141,7 @@
         const up = back ? '@frond.1' : lit ? '@frond.3' : '@frond.2', lo = back ? '@frond.0' : '@frond.1';
         // the leaflets are the frond's texture (detail): a tile draws the frond's envelope and its rachis
         body.push({ f: lo, d: g.envLo, op: .5, detail: true }, { f: up, d: g.envUp, op: .45, detail: back || nf % 2 === 1 }, { s: lo, w: back ? 1.6 : 1.8, d: g.lo, detail: true }, { s: up, w: back ? 1.6 : 1.8, d: g.up, detail: true }, { s: back ? '@rachis.1' : '@rachis.0', w: 2.4, d: g.rach, detail: back || nf++ % 2 === 1 });
-        if (!back && lit) body.push({ s: '@rim', w: 2.6, op: .75, d: g.rach, detail: true });
+        if (!back) body.push({ f: '@frond.3', d: g.rim, glow: 'rim', detail: true });
       };
       for (const f of fr) if (f.depth < 0) drawFrond(f, true);
       let boots = '';
@@ -153,7 +157,8 @@
           (i % 3 === 2 ? (nut2 += circ(x, y, rad)) : (nut0 += circ(x, y, rad)));
           nut1 += ell(x - rad * .3, y - rad * .35, rad * .42, rad * .32);
         }
-        body.push({ f: '@nut.3', d: ell(C[0] + 2, C[1] + 22, 20, 5), op: .45, detail: true }, ['@nut.0', nut0], { f: '@nut.2', d: nut2, detail: true }, { f: '@nut.1', d: nut1, op: .75, detail: true });
+        // a tile draws the bunch as one dark mass under the crown; the single nuts are detail
+        body.push({ f: '@nut.3', d: ell(C[0] + 2, C[1] + 22, 20, 5), op: .45, detail: true }, ['@nut.3', whole(ell(C[0], C[1] + 14, young ? 11 : 15, 9))], { f: '@nut.0', d: whole(nut0), detail: true }, { f: '@nut.2', d: nut2, detail: true }, { f: '@nut.1', d: nut1, op: .75, detail: true });
       }
       return { body };
     },
@@ -166,11 +171,11 @@
     const hw = t => W / 2 * (t < .08 ? t / .08 : t > .8 ? Math.sqrt(Math.max(0, (1 - t) / .2)) : 1) * (1 - .12 * t);
     const out = { up: '', lo: '', rib: `M${P(B)}Q${P(M)} ${P(E)}`, rim: '' };
     for (const s of [1, -1]) {
-      // the rim: the untorn outer edge of the upper half (a cool sheen by day, the edge that reads at night)
-      const rim = [];
+      // the rim: a thin sliver along the outer edge of the upper half (lit cool at real night, glow 'rim')
+      const ro = [], ri = [];
       let rs = 0;
-      for (let k = 1; k <= 6; k++) { const t = .12 + k * .13, p = bz(B, M, E, t), T = bzT(B, M, E, t), nx = -T[1] * s, ny = T[0] * s, h = hw(t) * .92; rim.push([p[0] + nx * h, p[1] + ny * h]); rs += ny; }
-      if (rs < 0) out.rim = 'M' + rim.map(q => `${Math.round(q[0])} ${Math.round(q[1])}`).join('L');
+      for (let k = 0; k <= 6; k++) { const t = .14 + k * .12, p = bz(B, M, E, t), T = bzT(B, M, E, t), nx = -T[1] * s, ny = T[0] * s, h = hw(t); ro.push([p[0] + nx * h * .97, p[1] + ny * h * .97]); ri.push([p[0] + nx * h * .8, p[1] + ny * h * .8]); rs += ny; }
+      if (rs < 0) out.rim = 'M' + ro.concat(ri.reverse()).map(P).join('L') + 'z';
       const cuts = [];
       for (let i = 0; i < tears; i++) cuts.push(rr(r, .18, .88));
       cuts.sort((a, b) => a - b);
@@ -194,12 +199,12 @@
     id: 'plant.banana-grove', category: 'plant', size: [230, 190], variants: 3, seasonal: true, flippable: true, parts: ['stem', 'leaves'], weight: 0.3,
     palette: Object.assign({ base: {
       stem: ['#7a8a3a', '#56622a', '#9cac54', '#7a5a34'], dry: ['#9a7a44', '#7a5a30', '#b8975a'], fruit: ['#6a8a2a', '#9ab83c', '#4a6420'], bell: ['#6a2a4a', '#4a1a34', '#8a4a66'], stalk: '#6a6a34', ground: '#5a4c34',
-      rim: '#e6f0dc',   // the cool rim along the upper leaf edges: a sheen by day, what keeps the fan readable at night
     } }, bySeason({
       // evergreen: the dry season only dulls the green a little (the dead leaves on the stem carry the tatter)
       leaf: { spring: ['#2e6a2a', '#4a9236', '#74b84a', '#a8d870'], summer: ['#28622a', '#408a32', '#68ae44', '#9cce66'], autumn: ['#2c6428', '#468a34', '#6aaa46', '#9ec866'], winter: ['#2e602a', '#4a8236', '#6ea04a', '#a0c26c'] },
       rib: { spring: '#c8dc8a', summer: '#bed480', autumn: '#c4d684', winter: '#c8d48a' },
     })),
+    night: { glow: { rim: '#9fc0f2' }, on: 1 },   // a cool rim light along the front leaves' upper edges (a tropical plant stays readable at night)
     anim: { sway: { part: 'leaves', pivot: [0, -88], deg: 2.6 } },
     shadow: { rx: 70, ry: 7, h: 180 },
     tags: ['tropical', 'banana', 'garden', 'kampung', 'asia', 'kit:tropical', 'role:shrub'],
@@ -247,7 +252,7 @@
         const b = blade(r, B, (a + rr(r, -9, 9)) * D, L, W, dr * rr(r, .85, 1.15), i < 3 ? Math.max(0, tears - 2) : tears);
         // the back leaves are detail: a tile still draws the front of the fan and the stem
         const bk = i % 2 === 1;
-        (bk ? back : front).push(Object.assign(pet, { detail: bk }), { f: bk ? '@leaf.0' : '@leaf.1', d: b.lo, detail: bk }, { f: bk ? '@leaf.1' : (a < -90 && a > -150 ? '@leaf.3' : '@leaf.2'), d: b.up, detail: bk }, { s: '@rib', w: 1.1, op: .85, d: b.rib, detail: true }, { s: '@rim', w: bk ? 1.4 : 2.2, op: bk ? .5 : .85, d: b.rim, detail: true });
+        (bk ? back : front).push(Object.assign(pet, { detail: bk }), { f: bk ? '@leaf.0' : '@leaf.1', d: b.lo, detail: bk }, { f: bk ? '@leaf.1' : (a < -90 && a > -150 ? '@leaf.3' : '@leaf.2'), d: b.up, detail: bk }, { s: '@rib', w: 1.1, op: .85, d: b.rib, detail: true }, !bk && { f: '@leaf.3', d: b.rim, glow: 'rim', detail: true });
       });
       leaves.push(...back, ...fruit, ...front);
       return { stem: stemP, leaves };
@@ -277,10 +282,10 @@
     id: 'plant.frangipani', category: 'plant', size: [230, 210], variants: 3, seasonal: true, shapeBySeason: true, flippable: true, parts: ['trunk', 'crown'], weight: 0.3,
     palette: Object.assign({ base: {
       bark: ['#8a8478', '#625c52', '#b2ac9e'], bloom: ['#fbf8ee', '#f4a6c0', '#c8243a'], bloomS: ['#e4dcc4', '#d27898', '#901828'], eye: ['#f2c63a', '#f6d860', '#f4c040'], ground: '#5a4c34',
-      rim: '#f6f9ff',   // the pale rim on each flower: the flowers still read at night
     } }, bySeason({
       leaf: { spring: ['#2e6a2e', '#4c8e38', '#78b850', '#a8d878'], summer: ['#245a28', '#3a7c32', '#5ea444', '#90c866'], autumn: ['#4a6a2a', '#6e8c34', '#9cac44', '#c8c864'], winter: ['#6a7a30', '#94963c', '#bcae4c', '#d8c46a'] },
     })),
+    night: { glow: { rim: '#eef3ff' }, on: 1 },   // a pale rim on each flower (the petals' own colour by day): the flowers still read at night
     anim: { sway: { part: 'crown', pivot: [0, -56], deg: 1.4 } },
     shadow: { rx: 80, ry: 8, h: 200 },
     tags: ['tropical', 'frangipani', 'plumeria', 'garden', 'temple', 'asia', 'kit:tropical', 'role:tree'],
@@ -313,13 +318,13 @@
           const fx = x + rr(r, -9, 9), fy = y - rr(r, 3, 12), rot = r() * 72, sh = (fx > x + 3) ? 1 : 0;
           petals[sh] += flower(fx, fy, 4.8, rot);
           eyes += `M${Math.round(fx * 2) / 2} ${Math.round(fy * 2) / 2}h.1`;
-          rims += `M${Math.round(fx - 5)} ${Math.round(fy + 1)}a5 5 0 0 1 7 -5`;   // the pale rim on the lit (upper left) petals
+          rims += `M${Math.round(fx - 5)} ${Math.round(fy + 1)}a5 5 0 0 1 7 -5a6 6 0 0 0 -6 4z`;   // a crescent on the lit (upper left) petals
         }
       });
       for (let i = 0; i < 6; i++) fallen += flower(rr(r, -60, 60), rr(r, -3, 2), 3.6, r() * 72);
       // a tile draws one leaf and petal in sixteen (the full-size picture is unchanged)
       for (let t = 0; t < 4; t++) crown.push(...thinned('@leaf.' + t, L[t], 16));
-      crown.push(...thinned(`@bloom.${v}`, petals[0], 16), ...thinned(`@bloomS.${v}`, petals[1], 16), { s: '@rim', w: 1.5, op: .9, d: rims, detail: true }, { s: `@eye.${v}`, w: 2.4, d: eyes, detail: true });
+      crown.push(...thinned(`@bloom.${v}`, petals[0], 16), ...thinned(`@bloomS.${v}`, petals[1], 16), { f: `@bloom.${v}`, d: rims, glow: 'rim', detail: true }, { s: `@eye.${v}`, w: 2.4, d: eyes, detail: true });
       trunk.push({ f: `@bloom.${v}`, d: fallen, op: .85, detail: true });
       return { trunk, crown };
     },

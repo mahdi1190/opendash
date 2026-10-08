@@ -6,7 +6,9 @@
    ground.monsoon-puddle  standing water after a monsoon downpour: wide
                           flat puddles in perspective, a dark wet rim, the
                           sky reflected light at the far edge and dark at
-                          the near, raindrop rings and splashes (the
+                          the near, broken into dashes by the ripples
+                          (after real dusk they light: the night sky and
+                          a street lamp), raindrop rings and splashes (the
                           'rings' part flickers, so the rain keeps
                           falling). v0 two puddles, v1 one long sheet, v2
                           puddles with fallen frangipani flowers and leaves.
@@ -42,18 +44,27 @@
       wet: ['#3e342a', '#4e4436', '#5e5242'], sky: ['#3e5260', '#7a929e', '#b8c8d0'], sheen: '#e8f0f4', ring: '#e4eef2', drop: '#d8e6ee',
       bloom: ['#fbf8ee', '#f2c63a'], leaf: ['#7a8a3a', '#a8903a'],
     } },
+    night: { glow: { sky: '#6a7ea6', lamp: '#f0c878' }, on: .8 },   // the reflections after real dusk: the night sky's glow and a street lamp
     anim: { flicker: { part: 'rings', op: [.15, 1], period: 1.1 } },
     tags: ['tropical', 'monsoon', 'rain', 'puddle', 'street', 'path', 'wet', 'kit:tropical', 'kit:water', 'kit:urban', 'role:ground'],
     credit: 'drawn for the tropical kit',
     build(v, r) {
       const body = [], rings = [];
-      let wet = '', wet2 = '', ring = '', drop = '';
+      let wet = '', wet2 = '', ring = '', drop = '', sky = '', lamp = '';
+      /** A thin lens (one dash of a rippled reflection) about w wide at (x, y); whole-unit x and an even width (lighter markup). */
+      const dash = (x, y, w, h) => { const q = Math.max(1, Math.round(w / 2)); return `M${Math.round(x)} ${f1(y)}q${q} ${f1(-h)} ${2 * q} 0q${-q} ${f1(h)} ${-2 * q} 0z`; };
+      LAYOUT[v].forEach(([x, y, rx, ry], i) => {
+        // the reflection, broken into dashes by the ripples: the sky in rows (long at the far edge), and in the first puddle a
+        // street lamp's vertical streak; both are glow shapes, so after real dusk they light (cool sky, warm lamp) on the dark water
+        for (let k = 0; k < 3; k++) { const dy = (k * .45 - .55) * ry, half = rx * Math.sqrt(1 - (dy / ry) * (dy / ry)) * .8; for (let j = 0; j < 3 - k; j++) { const w = rx * rr(r, .14, .3) * (1 - k * .2), xx = x + rr(r, -half, half - w); sky += dash(xx, y + dy, w, 1.3 - k * .3); } }
+        if (!i) [[-.6, 12], [-.1, 8], [.4, 5]].forEach(([k, w]) => { lamp += dash(x + rx * .3 - w / 2, y + k * ry, w, 1.5); });
+      });
       for (const [x, y, rx, ry] of LAYOUT[v]) {
         wet += lobed(r, x, y, rx + 6, ry + 2.6, 11, .35);
         wet2 += lobed(r, x + 2, y + .6, rx + 3, ry + 1.6, 11, .3);
         const water = lobed(r, x, y, rx, ry, 12, .3);
         body.push({ f: { lin: [[0, '@sky.2'], [.45, '@sky.1'], [1, '@sky.0']], x1: 0, y1: y - ry, x2: 0, y2: y + ry }, d: water });
-        body.push({ s: '@sheen', w: .9, op: .55, d: `M${f1(x - rx * .55)} ${f1(y - ry * .45)}q${f1(rx * .3)} ${f1(-ry * .15)} ${f1(rx * .6)} 0` }, { s: '@sheen', w: .7, op: .3, d: `M${f1(x - rx * .2)} ${f1(y + ry * .2)}h${f1(rx * .4)}` });
+        body.push({ s: '@sheen', w: .9, op: .55, d: `M${f1(x - rx * .55)} ${f1(y - ry * .45)}q${f1(rx * .3)} ${f1(-ry * .15)} ${f1(rx * .6)} 0` });   // the near sheen is now the reflection's dashes
         const n = Math.round(rx / 9);
         for (let i = 0; i < n; i++) {
           const px = x + rr(r, -rx * .75, rx * .75), py = y + rr(r, -ry * .55, ry * .55), rr0 = rr(r, 2.4, 6.5);
@@ -63,6 +74,7 @@
         }
       }
       body.unshift(['@wet.0', wet, .45], ['@wet.1', wet2, .7]);
+      body.push({ f: '@sky.2', d: sky, op: .55, glow: 'sky' }, { f: '@sky.1', d: lamp, op: .6, glow: 'lamp' });
       if (v === 2) {
         let fl = '', ey = '', lf = '';
         for (let i = 0; i < 7; i++) {

@@ -54,7 +54,7 @@
     id: 'plant.hedgerow-blackberry', category: 'plant', size: [380, 170], variants: 3, seasonal: true, shapeBySeason: true, flippable: true, parts: ['mass', 'canes'],
     palette: Object.assign({ base: { wood: ['#4a3a2c', '#5e4a38', '#3a2e24'], cane: ['#6a3a3a', '#7a4a3a'], berry: ['#1a1420', '#4a1e2a', '#c0302a', '#7a8a3a'], shine: '#e8e0f0' } }, bySeason({
       // winter: the hawthorn's bare twigs read purple-brown, the bramble keeps a few dull leaves
-      leaf: { spring: ['#4f8a34', '#7aac48', '#2f5e26', '#a8cc6a'], summer: ['#2e5a26', '#4a7a34', '#1e3e1c', '#6a9440'], autumn: ['#5a6a2a', '#7a7a30', '#3a4a22', '#a07a34'], winter: ['#4e5a3a', '#6a5a52', '#4a3c38', '#7a6a58'] },
+      leaf: { spring: ['#4f8a34', '#7aac48', '#2f5e26', '#a8cc6a'], summer: ['#2e5a26', '#4a7a34', '#1e3e1c', '#6a9440'], autumn: ['#5a6a2a', '#7a7a30', '#3a4a22', '#a07a34'], winter: ['#4a4a36', '#5a4a44', '#3e302c', '#6e5c4c'] },
       bloom: { spring: ['#fbf8f2', '#f4e6ea'], summer: ['#f4dde6', '#fbf6f2'], autumn: ['#c0302a', '#8a1e1a'], winter: ['#a02a22', '#6a1e1a'] },
       grass: GRASS,
     })),
@@ -80,7 +80,7 @@
       for (let i = 0; i < nC; i++) { const x = L + 16 + rr(r, 0, W - 32), top = prof(x), y = -rr(r, top * .3, top * .78), rx = rr(r, 22, 40), ry = rr(r, 16, 28); const layer = y < -top * .62 ? 3 : y < -top * .45 ? 1 : i % 2 ? 0 : 2; cl[layer] += lobed(r, x, y, rx * (bare ? .8 : 1), ry * (bare ? .9 : 1), 9, bare ? .45 : .3); }
       // the base: scalloped along its top (no hard edge), a twig haze in winter
       const base = Array.from({ length: 13 }, (_, i) => { const x = L + 20 + (i + 1) * (W - 40) / 13, xm = x - (W - 40) / 26; return `Q${f1(xm)} ${f1(-prof(xm) * (bare ? .66 : .86))} ${f1(x)} ${f1(-prof(x) * (bare ? .5 : .7))}`; }).join('');
-      if (bare) mass.push(['@leaf.2', `M${L + 6} 2Q${L - 4} ${f1(-prof(L) * .4)} ${L + 20} ${f1(-prof(L + 20) * .5)}${base}Q${-L + 4} ${f1(-prof(-L) * .4)} ${-L - 6} 2z`, .7], ['@leaf.1', cl[0] + cl[2], .5], ['@leaf.3', cl[1] + cl[3], .4], { s: '@wood.0', w: 2.2, d: wd }, { s: '@wood.1', w: 1, d: tw }, { s: '@wood.2', w: .8, op: .8, d: tw.split('M').filter((_, i) => i % 3 === 1).map(q => 'M' + q).join(''), m: [1, 0, 0, 1, 3, -4], detail: true });
+      if (bare) mass.push(['@leaf.2', `M${L + 6} 2Q${L - 4} ${f1(-prof(L) * .4)} ${L + 20} ${f1(-prof(L + 20) * .5)}${base}Q${-L + 4} ${f1(-prof(-L) * .4)} ${-L - 6} 2z`, .85], ['@leaf.1', cl[0] + cl[2], .55], ['@leaf.3', cl[1] + cl[3], .4], { s: '@wood.0', w: 2.2, d: wd }, { s: '@wood.1', w: 1, d: tw }, { s: '@wood.2', w: .8, op: .8, d: tw.split('M').filter((_, i) => i % 3 === 1).map(q => 'M' + q).join(''), m: [1, 0, 0, 1, 3, -4], detail: true });
       else {
         mass.push({ s: '@wood.0', w: 2.6, d: wd }, { s: '@wood.1', w: 1.1, d: tw });
         mass.push(['@leaf.2', `M${L + 6} 2Q${L - 4} ${f1(-prof(L) * .5)} ${L + 20} ${f1(-prof(L + 20) * .7)}${base}Q${-L + 4} ${f1(-prof(-L) * .5)} ${-L - 6} 2z`]);
@@ -93,7 +93,7 @@
       for (let i = 0; i < nF; i++) { const x = L + 14 + r() * (W - 28), top = prof(x), y = -top * rr(r, .35, .95); fl[i % 2] += s === 'summer' ? lobed(r, x, y, 2.6, 2.6, 5, .1) : circ(x, y, s === 'spring' ? rr(r, 1.4, 2.4) : rr(r, 1.4, 2)); }
       mass.push(['@bloom.0', fl[0]], ['@bloom.1', fl[1]]);
       // grass tufts along the foot soften the base (the same tufts every season)
-      mass.push(...tufts(srnd('hedgerow|tufts|' + v), L - 4, -L + 4, Math.round(W / 8), bare ? 9 : 13, 2).map(([f, d]) => ({ f, d, detail: true })));
+      mass.push(...tufts(srnd('hedgerow|tufts|' + v), L - 4, -L + 4, Math.round(W / 14), bare ? 10 : 14, 2).map(([f, d]) => ({ f, d: d.replace(/-?\d+\.\d+/g, q => String(Math.round(+q))), detail: true })));   // whole units: blades are 3 wide
       // bramble canes arching out over the front, trifoliate leaves along them, and the blackberries (green, red, black as the summer goes)
       const canes = []; let cd = ''; const lv = ['', ''], bb = ['', '', '', ''];
       for (let i = 0; i < 7; i++) {
