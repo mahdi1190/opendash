@@ -233,7 +233,7 @@ test('missed window: connected with the last 90 days, and the page is told to of
 });
 
 test('app approval never arrives: an error with a plain message, nothing imported, other syncs unaffected', async () => {
-  await fake({ approveMs: 'never', windowMs: 300 });
+  await fake({ approveMs: 'never', approvalWaitMs: 400 });
   // A second Monzo wizard for the same person (e.g. a new client): the fake user is the same.
   const put = await call('PUT', '/api/fin-connect/monzo/client', { clientId: 'oauth2client_fake0000000000000002', clientSecret: SECRET });
   const id2 = put.json.sourceId;
@@ -255,7 +255,7 @@ test('app approval never arrives: an error with a plain message, nothing importe
   const x = await until(async () => { const v = (await call('GET', `/api/fin-connect/monzo/approval?source=${id}`)).json; return v.state === 'error' ? v : null; });
   assert.equal(x.code, 'NOT_APPROVED');
   assert.match(x.message, /not been approved/);
-  await fake({ approveMs: 250, windowMs: 60000 });
+  await fake({ approveMs: 250, approvalWaitMs: 30000 });
 });
 
 test('rate limits are retried (Retry-After); a network failure is a warning, not a crash', async () => {

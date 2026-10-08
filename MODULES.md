@@ -657,7 +657,7 @@ and own-transfer matching work unchanged.
   `tests/fixtures/fin-fake-<provider>.mjs` (same URLs, same allowlist, an
   in-process fetch); `GET/POST /api/fin-connect/fake {provider, ...}` changes
   them at run time. Monzo: `_APPROVE_MS` (or `never`), `_WINDOW_MS`, `_POLL_MS`,
-  `_DELAY_MS`, `_FAIL` (`auth|consent|rate|rate:0.3|network|bad`).
+  `_APPROVAL_WAIT_MS`, `_DELAY_MS`, `_FAIL` (`auth|consent|rate|rate:0.3|network|bad`).
 - Monzo specifics: the user's own Confidential client; one-time refresh tokens
   are refreshed under the secret file's lock and saved before use; after the
   OAuth return the server polls `/accounts` until the app approval arrives,

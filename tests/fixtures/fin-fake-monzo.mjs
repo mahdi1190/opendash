@@ -24,6 +24,7 @@
 // env: DASHBOARD_MONZO_FAKE_APPROVE_MS (default 4000 | 'never'),
 //      DASHBOARD_MONZO_FAKE_WINDOW_MS (default 300000),
 //      DASHBOARD_MONZO_FAKE_POLL_MS (how often the provider asks; default 1000),
+//      DASHBOARD_MONZO_FAKE_APPROVAL_WAIT_MS (how long the provider waits for the approval; default 30000),
 //      DASHBOARD_MONZO_FAKE_DELAY_MS (latency per call, default 300),
 //      DASHBOARD_MONZO_FAKE_FAIL ('auth' | 'consent' | 'rate' | 'rate:0.3' | 'network' | 'bad')
 
@@ -99,6 +100,7 @@ export function createFake({ env = process.env, now = () => Date.now(), log = ()
     approveMs: env.DASHBOARD_MONZO_FAKE_APPROVE_MS === 'never' ? 'never' : num(env.DASHBOARD_MONZO_FAKE_APPROVE_MS, 4000),
     windowMs: num(env.DASHBOARD_MONZO_FAKE_WINDOW_MS, 300000),
     pollMs: num(env.DASHBOARD_MONZO_FAKE_POLL_MS, 1000),
+    approvalWaitMs: num(env.DASHBOARD_MONZO_FAKE_APPROVAL_WAIT_MS, 30000),
   };
   const data = generate(now());
   const codes = new Map(), tokens = new Map(), refresh = new Map();
@@ -219,6 +221,7 @@ export function createFake({ env = process.env, now = () => Date.now(), log = ()
       if ('approveMs' in p) cfg.approveMs = p.approveMs === 'never' ? 'never' : Math.max(0, Number(p.approveMs) || 0);
       if ('windowMs' in p) cfg.windowMs = Math.max(0, Number(p.windowMs) || 0);
       if ('pollMs' in p) cfg.pollMs = Math.max(10, Number(p.pollMs) || 1000);
+      if ('approvalWaitMs' in p) cfg.approvalWaitMs = Math.max(10, Number(p.approvalWaitMs) || 30000);
       log('note', 'fin-connect: monzo fake settings changed');
       return { ...cfg };
     },
