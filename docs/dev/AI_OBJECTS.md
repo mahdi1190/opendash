@@ -98,7 +98,7 @@ Tips that matter:
 2. The tool makes item 1; reply "next" for each further item. Every 8 to 10 images, paste the style block again (long chats
    drift).
 3. Download each answer as `<id>.png` (sheets) or into `<id>/` (single-image folders) inside ONE folder, for example
-   `C:/tmp/ai-objects/london-stations/`, and write `manifest.csv` there.
+   `<folder>/london-stations/`, and write `manifest.csv` there.
 
 **`manifest.csv`** (read by `object import-batch`; header row required; columns in any order; unknown columns are ignored):
 
