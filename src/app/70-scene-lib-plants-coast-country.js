@@ -53,8 +53,10 @@
   defineObj({
     id: 'plant.hedgerow-blackberry', category: 'plant', size: [380, 170], variants: 3, seasonal: true, shapeBySeason: true, flippable: true, parts: ['mass', 'canes'],
     palette: Object.assign({ base: { wood: ['#4a3a2c', '#5e4a38', '#3a2e24'], cane: ['#6a3a3a', '#7a4a3a'], berry: ['#1a1420', '#4a1e2a', '#c0302a', '#7a8a3a'], shine: '#e8e0f0' } }, bySeason({
-      leaf: { spring: ['#4f8a34', '#7aac48', '#2f5e26', '#a8cc6a'], summer: ['#2e5a26', '#4a7a34', '#1e3e1c', '#6a9440'], autumn: ['#5a6a2a', '#7a7a30', '#3a4a22', '#a07a34'], winter: ['#4a4e3a', '#5e5e48', '#3a3e30', '#6a5a40'] },
+      // winter: the hawthorn's bare twigs read purple-brown, the bramble keeps a few dull leaves
+      leaf: { spring: ['#4f8a34', '#7aac48', '#2f5e26', '#a8cc6a'], summer: ['#2e5a26', '#4a7a34', '#1e3e1c', '#6a9440'], autumn: ['#5a6a2a', '#7a7a30', '#3a4a22', '#a07a34'], winter: ['#4e5a3a', '#6a5a52', '#4a3c38', '#7a6a58'] },
       bloom: { spring: ['#fbf8f2', '#f4e6ea'], summer: ['#f4dde6', '#fbf6f2'], autumn: ['#c0302a', '#8a1e1a'], winter: ['#a02a22', '#6a1e1a'] },
+      grass: GRASS,
     })),
     anim: { sway: { part: 'canes', pivot: [0, -20], deg: 2.2 } },
     shadow: { rx: 170, ry: 10, h: 120 },
@@ -66,21 +68,32 @@
       const bare = s === 'winter', mass = [];
       // the woody frame: stems from the ground, branching (all that shows in winter, behind the leaves the rest of the year)
       let wd = '', tw = '';
-      for (let i = 0; i < 16; i++) { const x = L + 12 + i * (W - 24) / 15 + rr(sr, -6, 6), h = prof(x) * rr(sr, .7, .95), lean = rr(sr, -14, 14); wd += `M${f1(x)} 2Q${f1(x + lean * .3)} ${f1(-h * .5)} ${f1(x + lean)} ${f1(-h)}`;
-        for (let k = 0; k < (bare ? 9 : 4); k++) { const t = rr(sr, .3, .9), bx = x + lean * t * t, by = -h * t, d = sr() < .5 ? -1 : 1; tw += `M${f1(bx)} ${f1(by)}q${f1(d * 8)} -6 ${f1(d * rr(sr, 12, 24))} ${f1(-rr(sr, 8, 18))}`; } }
-      mass.push({ s: '@wood.0', w: 2.6, d: wd }, { s: '@wood.1', w: 1.1, d: tw });
-      // the leafy mass: overlapping clumps, deep at the bottom and lit along the top (sparse, dull leaves in winter)
+      if (bare) {
+        // winter: an irregular thicket of zig-zag hawthorn stems leaning every way, and a tangle of twigs crossing between them
+        for (let i = 0; i < 22; i++) { const x = L + 10 + rr(sr, 0, W - 20), h = prof(x) * rr(sr, .55, 1), lean = rr(sr, -26, 26), j = rr(sr, -7, 7); wd += `M${f1(x)} 2L${f1(x + lean * .25 + j)} ${f1(-h * .35)}L${f1(x + lean * .6 - j)} ${f1(-h * .7)}L${f1(x + lean)} ${f1(-h)}`;
+          for (let k = 0; k < 7; k++) { const t = rr(sr, .25, .95), bx = x + lean * t, by = -h * t, a = rr(sr, -2.9, -.25), l = rr(sr, 10, 30); tw += `M${f1(bx)} ${f1(by)}q${f1(Math.cos(a + .5) * l * .5)} ${f1(Math.sin(a + .5) * l * .5)} ${f1(Math.cos(a) * l)} ${f1(Math.sin(a) * l)}`; } }
+      } else for (let i = 0; i < 16; i++) { const x = L + 12 + i * (W - 24) / 15 + rr(sr, -6, 6), h = prof(x) * rr(sr, .7, .95), lean = rr(sr, -14, 14); wd += `M${f1(x)} 2Q${f1(x + lean * .3)} ${f1(-h * .5)} ${f1(x + lean)} ${f1(-h)}`;
+        for (let k = 0; k < 4; k++) { const t = rr(sr, .3, .9), bx = x + lean * t * t, by = -h * t, d = sr() < .5 ? -1 : 1; tw += `M${f1(bx)} ${f1(by)}q${f1(d * 8)} -6 ${f1(d * rr(sr, 12, 24))} ${f1(-rr(sr, 8, 18))}`; } }
+      // the leafy mass: overlapping clumps, deep at the bottom and lit along the top (in winter a thin purple-brown haze of twig ends)
       const cl = ['', '', '', ''];
-      const nC = bare ? 10 : 34;
-      for (let i = 0; i < nC; i++) { const x = L + 16 + rr(r, 0, W - 32), top = prof(x), y = -rr(r, top * .3, top * .78), rx = rr(r, 22, 40), ry = rr(r, 16, 28); const layer = y < -top * .62 ? 3 : y < -top * .45 ? 1 : i % 2 ? 0 : 2; cl[layer] += lobed(r, x, y, rx * (bare ? .45 : 1), ry * (bare ? .4 : 1), 9, .3); }
-      mass.push(['@leaf.2', `M${L + 6} 2Q${L - 4} ${f1(-prof(L) * .5)} ${L + 20} ${f1(-prof(L + 20) * .7)}` + Array.from({ length: 13 }, (_, i) => { const x = L + 20 + (i + 1) * (W - 40) / 13; return `L${f1(x)} ${f1(-prof(x) * .74)}`; }).join('') + `Q${-L + 4} ${f1(-prof(-L) * .5)} ${-L - 6} 2z`, bare ? .55 : 1]);
-      mass.push(['@leaf.2', cl[2], bare ? .7 : 1], ['@leaf.0', cl[0], bare ? .7 : 1], ['@leaf.1', cl[1], bare ? .7 : 1], [bare ? '@leaf.1' : '@leaf.3', cl[3], bare ? .6 : .9]);
+      const nC = bare ? 16 : 34;
+      for (let i = 0; i < nC; i++) { const x = L + 16 + rr(r, 0, W - 32), top = prof(x), y = -rr(r, top * .3, top * .78), rx = rr(r, 22, 40), ry = rr(r, 16, 28); const layer = y < -top * .62 ? 3 : y < -top * .45 ? 1 : i % 2 ? 0 : 2; cl[layer] += lobed(r, x, y, rx * (bare ? .8 : 1), ry * (bare ? .9 : 1), 9, bare ? .45 : .3); }
+      // the base: scalloped along its top (no hard edge), a twig haze in winter
+      const base = Array.from({ length: 13 }, (_, i) => { const x = L + 20 + (i + 1) * (W - 40) / 13, xm = x - (W - 40) / 26; return `Q${f1(xm)} ${f1(-prof(xm) * (bare ? .66 : .86))} ${f1(x)} ${f1(-prof(x) * (bare ? .5 : .7))}`; }).join('');
+      if (bare) mass.push(['@leaf.2', `M${L + 6} 2Q${L - 4} ${f1(-prof(L) * .4)} ${L + 20} ${f1(-prof(L + 20) * .5)}${base}Q${-L + 4} ${f1(-prof(-L) * .4)} ${-L - 6} 2z`, .7], ['@leaf.1', cl[0] + cl[2], .5], ['@leaf.3', cl[1] + cl[3], .4], { s: '@wood.0', w: 2.2, d: wd }, { s: '@wood.1', w: 1, d: tw }, { s: '@wood.2', w: .8, op: .8, d: tw.split('M').filter((_, i) => i % 3 === 1).map(q => 'M' + q).join(''), m: [1, 0, 0, 1, 3, -4], detail: true });
+      else {
+        mass.push({ s: '@wood.0', w: 2.6, d: wd }, { s: '@wood.1', w: 1.1, d: tw });
+        mass.push(['@leaf.2', `M${L + 6} 2Q${L - 4} ${f1(-prof(L) * .5)} ${L + 20} ${f1(-prof(L + 20) * .7)}${base}Q${-L + 4} ${f1(-prof(-L) * .5)} ${-L - 6} 2z`]);
+        mass.push(['@leaf.2', cl[2]], ['@leaf.0', cl[0]], ['@leaf.1', cl[1]], ['@leaf.3', cl[3], .9]);
+      }
       if (!bare) { let lf = ''; for (let i = 0; i < 70; i++) { const x = L + 10 + r() * (W - 20), top = prof(x), y = -top * rr(r, .7, 1); const a = r() * 6.28; lf += `M${f1(x)} ${f1(y)}l${f1(Math.cos(a) * 4)} ${f1(Math.sin(a) * 4 - 1)}l${f1(Math.cos(a + .5) * 2)} ${f1(Math.sin(a + .5) * 2 + 2)}z`; } mass.push(['@leaf.3', lf, .9], ['@leaf.1', lf.split('M').slice(0, 30).join('M'), .5]); }
       // the season's colour in the mass: may blossom (spring), bramble flowers (summer), haws (autumn, winter)
       const fl = ['', ''];
       const nF = { spring: 160, summer: 60, autumn: 70, winter: 26 }[s];
       for (let i = 0; i < nF; i++) { const x = L + 14 + r() * (W - 28), top = prof(x), y = -top * rr(r, .35, .95); fl[i % 2] += s === 'summer' ? lobed(r, x, y, 2.6, 2.6, 5, .1) : circ(x, y, s === 'spring' ? rr(r, 1.4, 2.4) : rr(r, 1.4, 2)); }
       mass.push(['@bloom.0', fl[0]], ['@bloom.1', fl[1]]);
+      // grass tufts along the foot soften the base (the same tufts every season)
+      mass.push(...tufts(srnd('hedgerow|tufts|' + v), L - 4, -L + 4, Math.round(W / 8), bare ? 9 : 13, 2).map(([f, d]) => ({ f, d, detail: true })));
       // bramble canes arching out over the front, trifoliate leaves along them, and the blackberries (green, red, black as the summer goes)
       const canes = []; let cd = ''; const lv = ['', ''], bb = ['', '', '', ''];
       for (let i = 0; i < 7; i++) {
@@ -93,7 +106,7 @@
           if (s === 'autumn' || s === 'summer') for (let j = 0; j < 3; j++) { const bx = px + rr(r, -5, 5), by = py + rr(r, 2, 8); const ripe = s === 'autumn' ? (r() < .6 ? 0 : r() < .6 ? 1 : 2) : (r() < .2 ? 2 : 3); bb[ripe] += `M${f1(bx - 2.4)} ${f1(by)}a2.4 2.8 0 1 0 4.8 0a2.4 2.8 0 1 0 -4.8 0`; }
         }
       }
-      canes.push({ s: '@cane.0', w: 2, d: cd }, { s: '@cane.1', w: .8, op: .7, d: cd });
+      canes.push({ s: '@cane.0', w: bare ? 2.6 : 2, d: cd }, { s: '@cane.1', w: .8, op: .7, d: cd });   // winter: the arching bramble canes are what shows
       canes.push(['@leaf.2', lv[0], bare ? .6 : 1], ['@leaf.0', lv[1], bare ? .6 : 1]);
       canes.push(['@berry.3', bb[3]], ['@berry.2', bb[2]], ['@berry.1', bb[1]], ['@berry.0', bb[0]]);
       if (s === 'autumn') canes.push(['@shine', bb[0].split('M').slice(1, 40).map(p => { const [a, b] = p.split(/[ a]/); return `M${f1(+a + 1.6)} ${f1(+b - 1.2)}h1.2v1.2h-1.2z`; }).join(''), .7]);
