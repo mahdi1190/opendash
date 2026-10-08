@@ -29,6 +29,6 @@
       when: (day, ctx) => !!ctx && !!ctx.county && (!months || months.includes(+String(day).slice(5, 7))) && (!o.ukSeason || o.ukSeason === animSeasonOf(day)) && (ctx.county === county || (!!o.ukTown && typeof animUkScenePools === 'function' && animUkScenePools([{ county, ukTown: o.ukTown }], ctx).nearby.length > 0)),
     }));
   }
-  animRegisterPack({ id: 'uk-area-newforest', name: 'UK: the New Forest', version: '1.0.0',
+  animRegisterPack({ id: 'uk-area-newforest', movedFrom: ['uk-south-east'], name: 'UK: the New Forest', version: '1.0.0',
     description: 'Composed scenes of the New Forest, Hampshire: ponies on the heath, Lyndhurst, Brockenhurst, Beaulieu and Buckler\'s Hard, the ancient woods, Lymington and Hurst Castle, on the live sky through the four seasons.', items });
 })();

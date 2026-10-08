@@ -26,6 +26,6 @@
       when: (day, ctx) => !!ctx && !!ctx.county && ctx.county === county,
     });
   });
-  animRegisterPack({ id: 'uk-area-winchester', name: 'UK: Winchester and the chalk country', version: '1.0.0',
+  animRegisterPack({ id: 'uk-area-winchester', movedFrom: ['uk-south-east'], name: 'UK: Winchester and the chalk country', version: '1.0.0',
     description: 'Composed, living scenes around Winchester: the cathedral and the City Mill, the Test and the Itchen, Chawton, the Watercress Line and the South Downs, in four seasons under the live sky.', items });
 })();

@@ -31,7 +31,7 @@ const SHEFFIELD_VIEWS = Object.freeze([
   ['kelham-2', 'Kelham Island Museum', 'kelham', 'close-evening', 'The Bessemer converter in the foreground', 'heritage', ['industry', 'steel', 'museum'], 'slate', 'dreamy',
     { lat: 53.3895, lon: -1.4720, heading: 210, at: 'golden', horizon: 440, ground: 'plaza', landmarks: ['landmark.sheffield-kelham@1000@440'], lmy: 650, hills: 0.6, trees: 3, frame: 2, lampx: 300, walkers: 4, features: ['works'], worksx: 180 }],
   // new views
-  ['peace-gardens', 'Peace Gardens', 'peace-gardens', 'wide', 'The Town Hall over the Peace Gardens fountains', 'signature', ['civic', 'fountains', 'gardens'], 'slate', 'cheerful',
+  ['peace-gardens', 'Peace Gardens', 'peace-gardens', 'wide', 'The Town Hall over the Peace Gardens fountains', 'landmark', ['civic', 'fountains', 'gardens'], 'slate', 'cheerful',
     { lat: 53.3797, lon: -1.4703, heading: 320, at: 'afternoon', horizon: 470, ground: 'plaza', water: 'fountain', landmarks: ['landmark.sheffield-town-hall@820@340'], lmy: 610, hills: 0.6, trees: 6, lampx: 1300, poolx: 760 }],
   ['peace-gardens-2', 'Peace Gardens', 'peace-gardens', 'close-evening', 'Evening lamps across the fountain pool', 'landmark', ['civic', 'fountains', 'gardens'], 'slate', 'dreamy',
     { lat: 53.3797, lon: -1.4703, heading: 330, at: 'dusk', horizon: 440, ground: 'plaza', water: 'fountain', landmarks: ['landmark.sheffield-town-hall@720@470'], lmy: 630, hills: 0.4, trees: 4, frame: 2, lampx: 1280, poolx: 820, walkers: 4 }],
@@ -43,7 +43,7 @@ const SHEFFIELD_VIEWS = Object.freeze([
     { lat: 53.3822, lon: -1.4862, heading: 110, at: 'morning', horizon: 470, ground: 'street', tram: 'west', landmarks: ['landmark.sheffield-arts-tower@1260@300'], lmy: 600, hills: 1, trees: 9, frame: 1, lampx: 1100, walkers: 4, features: ['cars', 'bus'] }],
   ['supertram-2', 'Sheffield Supertram', 'supertram', 'close-evening', 'A tram at dusk below Park Hill', 'heritage', ['tram', 'transport', 'city'], 'blue', 'dreamy',
     { lat: 53.3790, lon: -1.4630, heading: 70, at: 'dusk', horizon: 450, ground: 'street', tram: 'east', landmarks: ['landmark.sheffield-park-hill@700@205'], lmy: 570, hills: 1.1, trees: 7, frame: 2, lampx: 1240, walkers: 4, features: ['cars'] }],
-  ['botanical-gardens', 'Sheffield Botanical Gardens', 'botanical-gardens', 'wide', 'The glass pavilions above the sloping lawns', 'signature', ['glasshouse', 'garden', 'victorian'], 'green', 'calm',
+  ['botanical-gardens', 'Sheffield Botanical Gardens', 'botanical-gardens', 'wide', 'The glass pavilions above the sloping lawns', 'landmark', ['glasshouse', 'garden', 'victorian'], 'green', 'calm',
     { lat: 53.3735, lon: -1.4985, heading: 0, at: 'morning', horizon: 480, ground: 'lawn', setting: 'mixed', landmarks: ['landmark.sheffield-botanical@800@210'], lmy: 590, hills: 0.7, trees: 11, lampx: 1320, walkers: 5 }],
   ['botanical-gardens-2', 'Sheffield Botanical Gardens', 'botanical-gardens', 'close-evening', 'The pavilions over the pond at golden hour', 'landmark', ['glasshouse', 'garden', 'pond'], 'amber', 'dreamy',
     { lat: 53.3735, lon: -1.4985, heading: 10, at: 'golden', horizon: 450, ground: 'lawn', setting: 'mixed', water: 'pond', landmarks: ['landmark.sheffield-botanical@800@290'], lmy: 610, hills: 0.5, trees: 8, lampx: 1360, poolx: 780, walkers: 4 }],

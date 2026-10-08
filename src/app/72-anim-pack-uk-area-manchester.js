@@ -26,6 +26,6 @@
     const params = row.params, patch = row.patch || {};
     return sceneItem(meta, () => sceneFromArchetype('mcr-city', params, patch));
   });
-  animRegisterPack({ id: 'uk-area-manchester', name: 'UK: Manchester', version: '1.0.0',
+  animRegisterPack({ id: 'uk-area-manchester', movedFrom: ['uk-north-west'], name: 'UK: Manchester', version: '1.0.0',
     description: 'Manchester and Salford on the scene engine: the Town Hall, Castlefield, the Northern Quarter, Deansgate, the Quays, the Metrolink and a match day, with the seasons and the live sky.', items });
 })();

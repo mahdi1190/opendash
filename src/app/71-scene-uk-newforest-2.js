@@ -24,7 +24,7 @@
     { obj: 'tree.ancient-oak', x: 260, y: 700, s: 0.6, layer: 'near', seed: 45 },
   ] });
 
-  nfSceneAdd({ id: 'lyndhurst-village', label: 'Lyndhurst', colour: 'red', mood: 'calm', ukKind: 'town', ukPlace: 'lyndhurst', ukTown: 'Lyndhurst', ukLocality: 'Lyndhurst', ukView: 'village',
+  nfSceneAdd({ id: 'lyndhurst-village', label: 'Lyndhurst', colour: 'red', mood: 'calm', ukKind: 'heritage', ukPlace: 'lyndhurst', ukTown: 'Lyndhurst', ukLocality: 'Lyndhurst', ukView: 'village',
     viewReason: 'ponies on the verge of the village road', site: 'Lyndhurst, New Forest', tags: ['new forest', 'lyndhurst', 'village', 'ponies'] },
   { id: 'lyndhurst-village', lat: 50.872, lon: -1.574, heading: 20, horizon: 480, at: 'morning', land: 'village', water: 'none', road: 640,
     trees: ['oak', 'birch'], ntrees: 6, shrubs: 6, frame: ['oak', 'none'], ponies: 3, walkers: 3, walkY: 668, features: ['cars'] },

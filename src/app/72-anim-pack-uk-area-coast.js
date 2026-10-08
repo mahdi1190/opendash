@@ -17,11 +17,11 @@
   const items = found.map(it => {
     const town = it.ukTown, ll = TOWN[town] || null;
     return Object.assign(it, {
-      label: it.label + ', Hampshire', intensity: 'subtle', region: [NATION], priority: 1, county: COUNTY, ukRegion: REGION, ukKind: 'landscape', ukTown: town, ukLocality: town,
+      label: it.label + ', Hampshire', tags: ['uk', 'south east', 'hampshire', 'landscape'].concat((it.tags || []).filter(t => t !== 'uk')), intensity: 'subtle', region: [NATION], priority: 1, county: COUNTY, ukRegion: REGION, ukKind: 'landscape', ukTown: town, ukLocality: town,
       ukLat: ll ? ll[0] : undefined, ukLon: ll ? ll[1] : undefined,
       when: (day, ctx) => !!ctx && !!ctx.county && (ctx.county === COUNTY || (typeof animUkScenePools === 'function' && animUkScenePools([{ county: COUNTY, ukTown: town }], ctx).nearby.length > 0)),
     });
   });
-  animRegisterPack({ id: 'uk-area-coast', name: 'UK: the Solent coast', version: '1.0.0',
+  animRegisterPack({ id: 'uk-area-coast', movedFrom: ['uk-south-east'], name: 'UK: the Solent coast', version: '1.0.0',
     description: 'Composed scenes of Portsmouth Harbour, the Historic Dockyard, Southsea, Gosport and Southampton\'s docks, with the live sky and the four seasons. Opt-in by county like every UK pack.', items });
 })();

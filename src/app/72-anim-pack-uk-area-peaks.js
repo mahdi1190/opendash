@@ -25,5 +25,5 @@
     item.when = (day, ctx) => !!ctx && !!ctx.county && (ctx.county === county || (typeof animUkScenePools === 'function' && animUkScenePools([{ county, ukTown: m.town }], ctx).nearby.length > 0));
     items.push(item);
   }
-  if (items.length) animRegisterPack({ id: 'uk-area-peaks', name: 'UK: the Peak District', version: '1.0.0', description: 'Stanage Edge, Mam Tor and the Great Ridge, Ladybower, Castleton, Bakewell, Dovedale and Hathersage: composed scenes with the four seasons and the live sky.', items });
+  if (items.length) animRegisterPack({ id: 'uk-area-peaks', movedFrom: ['uk-north-west'], name: 'UK: the Peak District', version: '1.0.0', description: 'Stanage Edge, Mam Tor and the Great Ridge, Ladybower, Castleton, Bakewell, Dovedale and Hathersage: composed scenes with the four seasons and the live sky.', items });
 })();

@@ -44,7 +44,7 @@
     trees: ['none'], frame: ['none', 'none'], yachts: 4, walkers: 2, walkY: 700, features: ['nowoods', 'egrets', 'gulls'] },
   { place: [castle(1120, 524, 0.42, 0, 'far'), light(1440, 522, 0.34, 'far'), { obj: 'bird.heron', x: 380, y: 640, s: 0.42, layer: 'mid', seed: 51, reflect: true }, { obj: 'bird.heron', x: 820, y: 650, s: 0.36, layer: 'mid', variant: 1, seed: 52, reflect: true, flip: true }] });
 
-  nfSceneAdd({ id: 'lymington-harbour', label: 'Lymington', colour: 'blue', mood: 'cheerful', ukKind: 'town', ukPlace: 'lymington', ukTown: 'Lymington', ukLocality: 'Lymington', ukView: 'harbour',
+  nfSceneAdd({ id: 'lymington-harbour', label: 'Lymington', colour: 'blue', mood: 'cheerful', ukKind: 'landscape', ukPlace: 'lymington', ukTown: 'Lymington', ukLocality: 'Lymington', ukView: 'harbour',
     viewReason: 'yachts on the river below the town', site: 'Lymington harbour', tags: ['new forest', 'lymington', 'yachts', 'harbour'] },
   { id: 'lymington-harbour', lat: 50.757, lon: -1.537, heading: 290, horizon: 460, at: 'afternoon', land: 'lawn', water: 'river', wy: 500, wh: 150,
     trees: ['oak', 'birch'], ntrees: 5, frame: ['none', 'none'], yachts: 6, walkers: 3, walkY: 690, features: ['gulls'] },

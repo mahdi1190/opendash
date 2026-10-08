@@ -41,7 +41,7 @@ const UK_MANCHESTER_SCENES = (function () {
       // the towpath's hedge and reeds stand in for the shrubs here (the tile stays light)
       patch: { drop: { scatter: [10] }, scatter: [{ obj: 'plant.reed', layer: 'near', seed: 38, area: { rect: [-140, 700, 1740, 712] }, n: 18, minGap: 40, s: [0.4, 0.75], flip: 0.5, variant: [0, 1], mask: { noise: { scale: 140, cut: 0.3 } }, anim: false, reflect: true }] } },
     // ---- new ----
-    { id: 'town-hall', label: 'Manchester Town Hall', kind: 'signature', colour: 'amber', tags: ['town hall', 'gothic', 'albert square'], ukPlace: 'town-hall', ukView: 'wide', reason: 'The clock tower over Albert Square',
+    { id: 'town-hall', label: 'Manchester Town Hall', kind: 'landmark', colour: 'amber', tags: ['town hall', 'gothic', 'albert square'], ukPlace: 'town-hall', ukView: 'wide', reason: 'The clock tower over Albert Square',
       params: P('town-hall', 53.4794, -2.2446, 95, ['landmark.manchester-town-hall@800@560'], { ground: 'square', far: 'mixed', horizon: 480 }), patch: planters(36, 712) },
     { id: 'town-hall-2', label: 'Manchester Town Hall', kind: 'landmark', colour: 'amber', tags: ['town hall', 'gothic', 'albert square'], ukPlace: 'town-hall', ukView: 'close-evening', reason: 'The floodlit tower at dusk',
       params: P('town-hall-2', 53.4794, -2.2446, 100, ['landmark.manchester-town-hall@760@680'], Object.assign({ ground: 'square', far: 'mixed', horizon: 420 }, dusk)), patch: planters(37, 652) },

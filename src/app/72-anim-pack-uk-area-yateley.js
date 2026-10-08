@@ -57,6 +57,6 @@ function ukAreaYateleyItems() {
   if (typeof animRegisterPack !== 'function') return;
   const items = ukAreaYateleyItems();
   if (!items.length) return;
-  animRegisterPack({ id: 'uk-area-yateley', name: 'UK: Yateley', version: '1.0.0',
+  animRegisterPack({ id: 'uk-area-yateley', movedFrom: ['uk-south-east'], name: 'UK: Yateley', version: '1.0.0',
     description: 'Yateley Common, Wyndham\'s Pool, Yateley Green and the village, composed on the scene engine: every view in four seasons with the live sky. Plays only in its county or near Yateley.', items });
 })();

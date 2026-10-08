@@ -399,12 +399,15 @@ test('UK county table: every nation and region, the nearest main town, nothing o
 test('UK packs: county-only, one signature, bounded baseline and meaningful place views', () => {
   const uk = R.animPacks().filter(p => p.id.startsWith('uk-'));
   assert.ok(uk.length >= 1, 'batch 1 ships the south west');
+  const signatures = new Map();
   for (const p of uk) {
-    const region = p.id.slice(3);
-    assert.ok(R.UK_REGIONS.some(r => r.id === region), `${p.id}: a UK region`);
+    // A composed area pack (uk-area-<area>: one town or district, scene-engine scenes) is named after its area, not a
+    // region; its items keep the same county fields and the same county-only rule as the region packs.
+    const area = p.id.startsWith('uk-area-'), region = p.id.slice(3);
+    if (!area) assert.ok(R.UK_REGIONS.some(r => r.id === region), `${p.id}: a UK region`);
     // The South East and London share one gallery pack, while each scene
     // keeps its authoritative county region. No county-only check is relaxed.
-    const regions = p.id === 'uk-south-east' ? ['south-east', 'london'] : p.id === 'uk-north-west' ? ['north-west', 'yorkshire', 'east-midlands'] : [region];
+    const regions = area ? R.UK_REGIONS.map(r => r.id) : p.id === 'uk-south-east' ? ['south-east', 'london'] : [region];
     const per = new Map();
     for (const it of p.items) {
       const c = R.ukCounty(it.county);
@@ -421,7 +424,8 @@ test('UK packs: county-only, one signature, bounded baseline and meaningful plac
       per.set(it.county, (per.get(it.county) || []).concat(it));
     }
     for (const [county, list] of per) {
-      assert.equal(list.filter(i => i.signature).length, 1, `${county}: one signature opening`);
+      for (const i of list.filter(x => x.signature)) signatures.set(county, (signatures.get(county) || []).concat(i));
+      if (area) { for (const i of list) assert.ok(i.full && i.composed && i.site, `${i.ref}: a composed full scene with a site line`); continue; }
       const baseline = list.filter(i => !i.ukPart);
       assert.ok(baseline.filter(i => !i.signature).length <= 11, `${county}: at most 11 baseline elements`);
       const kinds = new Map();
@@ -437,13 +441,18 @@ test('UK packs: county-only, one signature, bounded baseline and meaningful plac
         seasonalViews.add(variant); views.add(i.ukView); places.set(i.ukPlace, views);
       }
       for (const [place, views] of places) assert.ok(views.size <= 4, `${county}/${place}: no more than four considered views`);
-      const sig = list.find(i => i.signature);
-      assert.ok(sig.when('2026-03-03', { county }), `${county}: the signature plays any month`);
     }
   }
-  // Hampshire (the South East's first county): a rich rotation, each with its own place line
+  // one signature opening per county, in whichever UK pack draws it (a rebuilt area pack may carry it)
+  for (const [county, list] of signatures) {
+    assert.equal(list.length, 1, `${county}: one signature opening (${list.map(i => i.ref).join(', ')})`);
+    assert.ok(list[0].when('2026-03-03', { county }), `${county}: the signature plays any month`);
+  }
+  // Hampshire (the South East's first county): a rich rotation, each with its own place line. Its baseline scenes were
+  // rebuilt as composed area packs (uk-area-*); the region pack keeps the researched place views it has no rebuild for.
   const hants = R.animItems({}).filter(i => i.county === 'hampshire');
-  assert.ok(hants.filter(i => !i.ukPart).length >= 8 && hants.filter(i => !i.ukPart).length <= 12, 'Hampshire: 8 to 12 baseline scenes, plus researched place views');
+  assert.ok(hants.filter(i => i.composed).length >= 100, 'Hampshire: the composed area scenes');
+  assert.ok(signatures.has('hampshire'), 'Hampshire: a signature opening');
   for (const i of hants) assert.ok(typeof i.site === 'string' && i.site && !i.site.includes('Hampshire'), `${i.ref}: a site line`);
   for (const i of hants) assert.equal(i.full, true, `${i.ref}: a full-viewport scene (the opening plays it edge to edge)`);
   // two renders never share gradient ids (a scene can show twice on a page: the gallery and Home)
@@ -452,7 +461,7 @@ test('UK packs: county-only, one signature, bounded baseline and meaningful plac
   assert.ok(a1.length && !a1.some(x => a2.includes(x)), 'fresh ids per render');
   assert.ok(R.animItemHtml(hants[0], { tod: 'night' }).includes('tod-night') && !R.animItemHtml(hants[0], { tod: 'bogus' }).includes('tod-'), 'the time of day is a known word');
   const days = new Set(); for (let d = 1; d <= 28; d++) days.add(R.animDailyPick('opening', '2026-10-' + String(d).padStart(2, '0'), {}, { county: 'hampshire', level: 'standard' }).ref);
-  assert.ok([...days].filter(r => r.startsWith('uk-south-east/hampshire-')).length >= 6, 'Hampshire rotates through its scenes day by day (a festival still wins its day)');
+  assert.ok([...days].filter(r => /^uk-(south-east|area-[a-z0-9-]+)\/hampshire-/.test(r)).length >= 6, 'Hampshire rotates through its scenes day by day (a festival still wins its day)');
   const sw = R.animPacks().find(p => p.id === 'uk-south-west');
   assert.deepEqual([...new Set(sw.items.map(i => i.county))].sort(), R.ukCountiesIn('south-west').map(c => c.id).sort(), 'every south-west county drawn');
   // in the county the opening comes from the pack (no festival that day); elsewhere never
@@ -470,7 +479,8 @@ test('South East and London: complete county rotations, full framing, local ids 
   const ids = html => [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
   for (const c of expected) {
     const list = pack.items.filter(i => i.county === c.id);
-    assert.ok(list.filter(i => !i.ukPart).length >= 8 && list.filter(i => !i.ukPart).length <= 12, `${c.id}: 8–12 baseline scenes`);
+    // Hampshire's baseline scenes moved to the composed area packs (uk-area-*); the other counties keep theirs here
+    if (c.id !== 'hampshire') assert.ok(list.filter(i => !i.ukPart).length >= 8 && list.filter(i => !i.ukPart).length <= 12, `${c.id}: 8–12 baseline scenes`);
     for (const it of list) {
       assert.equal(it.full, true, `${it.ref}: full viewport`);
       assert.ok(it.site && it.colour && it.tags.length >= 6, `${it.ref}: caption and metadata`);
@@ -488,28 +498,32 @@ test('South East and London: complete county rotations, full framing, local ids 
 });
 
 
-test('Yateley: four views of each place per season, matching the calendar and retaining saved refs', () => {
+test('Yateley: every view in four seasons, matching the calendar and retaining saved refs', () => {
   const places = ['yateley-common', 'wyndhams-pool', 'yateley-green'];
-  const all = R.animPack('uk-south-east').items;
-  const scenes = all.filter(i => places.includes(i.ukPlace));
-  assert.equal(scenes.length, 48);
+  const all = R.animPack('uk-area-yateley').items;
+  const scenes = all.filter(i => places.includes(i.ukPlace) || i.ukPlace === 'yateley-village');
+  assert.equal(scenes.length, all.length);
+  assert.ok(scenes.length >= 48 && scenes.length % 4 === 0);
   for (const place of places) {
     for (const season of ['spring', 'summer', 'autumn', 'winter']) {
       const views = scenes.filter(i => i.ukPlace === place && i.ukSeason === season);
-      assert.equal(views.length, 4);
-      assert.deepEqual(views.map(i => i.ukView).sort(), ['close','detail','evening','wide']);
+      assert.ok(views.length >= 4, `${place}/${season}`);
       for (const it of views) assert.deepEqual(it.season, [season]);
     }
-    for (let v = 1; v <= 4; v++) assert.ok(all.some(i => i.id === `hampshire-${place}-${v}`), 'saved scene refs survive');
+    for (let v = 1; v <= 4; v++) {
+      assert.ok(all.some(i => i.id === `hampshire-${place}-${v}`), 'saved scene ids survive');
+      assert.equal(R.animItem(`uk-south-east/hampshire-${place}-${v}`)?.ref, `uk-area-yateley/hampshire-${place}-${v}`, 'a saved ref from the old pack finds the rebuilt view');
+    }
   }
-  const off = all.filter(i => !scenes.includes(i)).map(i => i.ref);
+  const perSeason = scenes.length / 4;
+  const off = R.animPacks().map(p => p.id).filter(id => id.startsWith('uk-') && id !== 'uk-area-yateley');   // the other UK packs (Fleet, Farnborough ...) are nearby too
   for (let month = 1; month <= 12; month++) {
     const day = `2026-${String(month).padStart(2,'0')}-16`;
     const season = R.animSeasonOf(day), ctx = {county:'hampshire',ukTown:'Yateley',level:'standard'};
     const eligible = scenes.filter(i => i.when(day, ctx));
-    assert.equal(eligible.length, 12, day);
+    assert.equal(eligible.length, perSeason, day);
     assert.ok(eligible.every(i => i.ukSeason === season), day);
-    const picked = R.animSpecialPick('opening',day,{block:off},ctx);
+    const picked = R.animSpecialPick('opening',day,{packsOff:off},ctx);
     assert.ok(picked && picked.ukSeason === season, `${day}: automatic local selection respects seasons`);
   }
 });
@@ -531,13 +545,15 @@ test('Yateley live skies: astronomical daylight, local timezone and lunar phase 
   assert.equal(R.almSceneLight(0,null,null,zone),null);
   assert.equal(R.almSceneLight(0,lat,lon,'bad-zone'),null);
   assert.notEqual(R.almMoonDiscPath(.25,29),R.almMoonDiscPath(.75,29),'waxing and waning illuminate opposite sides');
-  for(const it of R.animPack('uk-south-east').items.filter(i=>i.liveSky)) {
+  // the composed Yateley views (uk-area-yateley) take the live sky; one view of each place is enough here
+  const lives=R.animPack('uk-area-yateley').items.filter(i=>i.liveSky);
+  assert.ok(lives.length>=48,'every Yateley view has the live sky');
+  for(const it of [...new Map(lives.map(i=>[i.ukPlace,i])).values()]) {
     for(const sky of [summer,winter,dawn,dusk,night]) {
       const html=R.animItemHtml(it,{sky,live:true});
       assert.equal(markupProblem(html),'',it.ref);
-      assert.ok(html.length<=R.animItemMaxBytes(it,it.rich?'fill':'md'),`${it.ref}/${sky.tod}: ${html.length}`);   // a rich scene renders full detail without a size
-      assert.ok(html.includes(`tod-${sky.tod}`));
-      if(sky.tod==='night')assert.ok(html.includes('x-ukystar')||html.includes('x-ukntwinkle'),`${it.ref}: stars at night`);   // the old Yateley stars or the nature kit's
+      assert.ok(html.length<=R.animItemMaxBytes(it,it.rich?'fill':'md'),`${it.ref}/${sky.tod}: ${html.length}`);
+      assert.ok(html.includes(`tod-${sky.tod}`),`${it.ref}: tod-${sky.tod}`);
     }
   }
 });

@@ -22,6 +22,6 @@
       when: (day, ctx) => !!ctx && !!ctx.county && (ctx.county === COUNTY || (typeof animUkScenePools === 'function' && animUkScenePools([Object.assign({ county: COUNTY }, base)], ctx).nearby.length > 0)),
     });
   });
-  animRegisterPack({ id: 'uk-area-sheffield', name: 'UK: Sheffield', version: '1.0.0', css: '',
+  animRegisterPack({ id: 'uk-area-sheffield', movedFrom: ['uk-north-west'], name: 'UK: Sheffield', version: '1.0.0', css: '',
     description: 'Composed Sheffield scenes: the Arts Tower, the Diamond, the Winter Garden and Peace Gardens, Kelham Island, Park Hill, the Supertram, the Botanical Gardens and Endcliffe Park, with the live sky and four seasons.', items });
 })();

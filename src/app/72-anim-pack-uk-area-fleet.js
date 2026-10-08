@@ -73,6 +73,6 @@ function ukAreaFleetItems() {
   if (typeof animRegisterPack !== 'function') return;
   const items = ukAreaFleetItems();
   if (!items.length) return;
-  animRegisterPack({ id: 'uk-area-fleet', name: 'UK: Fleet and Farnborough', version: '1.0.0',
+  animRegisterPack({ id: 'uk-area-fleet', movedFrom: ['uk-south-east'], name: 'UK: Fleet and Farnborough', version: '1.0.0',
     description: 'Fleet Pond, the Basingstoke Canal, Fleet station and All Saints\' Church, Southwood Country Park and Woodland, and the Farnborough airship hangar, composed on the scene engine: every view in four seasons with the live sky. Plays only in its county or near Fleet and Farnborough.', items });
 })();
