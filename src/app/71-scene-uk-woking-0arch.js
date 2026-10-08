@@ -124,7 +124,7 @@ function sceneArchWoking(p, u) {
     // a platform edge on the far side
     G('near', `M-160 ${yR - 34}H1760V${yR - 22}H-160Z`, lin('@pave.2', '@pave.1', yR - 34, yR - 22));
     G('near', `M-160 ${yR - 35}H1760V${yR - 32}H-160Z`, '#e8d890');
-    const tS = Math.round(ps('person.walker', yR) * 64 * 3.9 / 46 * 100) / 100;
+    const tS = Math.round(ps('person.walker', yR) * 64 * 1.9 / 46 * 100) / 100;
     data.actors.push({ obj: 'rail.train-mainline', layer: 'near', path: rail === 'west' ? [[2300, yR - 2], [-700, yR - 2]] : [[-700, yR + 10], [2300, yR + 10]], speed: 70, loop: 'loop', s: tS, seed: 31, offset: 0.4, flip: rail === 'west' });
     for (const x of [140, 1460]) data.place.push({ obj: 'street.lamppost', x, y: yR - 30, s: Math.round(ps('person.walker', yR) * 64 * 2.4 / 250 * 100) / 100, layer: 'near', variant: 1, seed: 33 + x % 7 });
   }

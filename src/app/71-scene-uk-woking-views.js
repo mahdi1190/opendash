@@ -14,7 +14,7 @@ const WOKING_VIEWS = Object.freeze([
   ['martian-2', 'The Martian tripod, Woking', 'martian', 'close-evening', 'The tripod under the lamps at dusk', 'landmark', ['sculpture', 'war of the worlds', 'hg wells', 'evening'], 'slate', 'dreamy',
     { lat: 51.3190, lon: -0.5590, heading: 180, at: 'dusk', horizon: 440, ground: 'plaza', landmarks: ['landmark.woking-martian@700@440@680'], skyline: '1300@260', lmy: 650, trees: 3, frame: 2, lampx: 1240, walkers: 4, features: ['roofs'] }],
   ['station', 'Woking station', 'station', 'wide', 'The 1930s station frontage across the forecourt', 'heritage', ['station', 'railway', 'art deco'], 'slate', 'calm',
-    { lat: 51.3186, lon: -0.5570, heading: 180, at: 'morning', horizon: 480, ground: 'plaza', landmarks: ['landmark.woking-station@800@120'], skyline: '300@200', lmy: 620, trees: 6, lampx: 1320, walkers: 6, features: ['roofs'] }],
+    { lat: 51.3186, lon: -0.5570, heading: 180, at: 'morning', horizon: 480, ground: 'plaza', landmarks: ['landmark.woking-station@800@170'], skyline: '300@200', lmy: 620, trees: 6, lampx: 1320, walkers: 6, features: ['roofs'] }],
   ['station-2', 'Trains at Woking', 'station', 'platform', 'A main-line train running through past the platforms', 'heritage', ['station', 'railway', 'trains'], 'blue', 'cheerful',
     { lat: 51.3180, lon: -0.5570, heading: 0, at: 'afternoon', horizon: 470, ground: 'lawn', rail: 'east', landmarks: ['landmark.woking-station@820@110'], skyline: '1300@220', lmy: 600, trees: 6, frame: 1, lampx: 1300, walkers: 4 }],
   ['canal-lightbox', 'The Lightbox and the canal', 'lightbox', 'wide', 'The gallery beside the Basingstoke Canal', 'landmark', ['gallery', 'basingstoke canal', 'narrowboat'], 'teal', 'calm',
