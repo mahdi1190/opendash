@@ -168,3 +168,56 @@ test('seasons: tropical and fixed-season scenes never tint (wherever they are se
   assert.match(css, /\.anim-scene\.ap-still \.sr-retro \.x-srtw \{ opacity: \.75; \}/);
   assert.match(css, /\.anim-scene\.ap-still \.sr-retro \.x-srfall \{ display: none; \}/);
 });
+
+test('the winter grade is a pure rule of the scene\'s own latitude and the date: snow only where winter snow is plausible', () => {
+  // copied into this realm (the bundle runs in its own context, so its objects carry another Object prototype)
+  const S = (...a) => ({ ...G('sceneRetroSeason')(...a) }), dec = Date.parse('2026-12-21T12:00:00Z'), jul = Date.parse('2026-07-21T12:00:00Z');
+  const full = { tint: 1, desat: 1, fall: 1 }, mild = { tint: 0, desat: 0.5, fall: 0 }, none = { tint: 0, desat: 0, fall: 0 };
+  // cold: the full winter (frost, desaturation, flecks)
+  for (const lat of [45, 47.9, 55, 61.2]) assert.deepEqual(S(lat, dec), { season: 'winter', ...full }, lat + ': cold');
+  // temperate 35..45: the frost and the flecks ramp in with the latitude, the desaturation from half to full
+  const t = [36, 40, 44].map(lat => S(lat, dec));
+  for (const g of t) assert.ok(g.season === 'winter' && g.tint > 0 && g.tint < 1 && g.fall === g.tint && g.desat > 0.5 && g.desat < 1, JSON.stringify(g));
+  assert.ok(t[0].fall < t[1].fall && t[1].fall < t[2].fall, 'the ramp rises with the latitude');
+  assert.equal(S(35, dec).fall, 0); assert.equal(S(35, dec).tint, 0);
+  // subtropical 23.5..35 (Miami, Dubai, Riyadh, Delhi, Lahore): a mild cool tint only, never frost or flecks
+  for (const lat of [23.5, 24.71, 25.2, 25.76, 28.6, 31.5, 34.9]) assert.deepEqual(S(lat, dec), { season: 'winter', ...mild }, lat + ': subtropical');
+  // tropical: nothing, in any month
+  for (const lat of [1.3, 13.75, 21.3, -6.2, -23.4]) for (const ms of [dec, jul]) assert.deepEqual(S(lat, ms), { season: 'summer', ...none }, lat + ': tropical');
+  // southern hemisphere: winter in July, by the same latitude bands; their December is summer (motes, no frost)
+  assert.deepEqual(S(-54.8, jul), { season: 'winter', ...full });
+  assert.equal(S(-40, jul).season, 'winter'); assert.ok(S(-40, jul).fall > 0 && S(-40, jul).fall < 1);
+  assert.deepEqual(S(-33.9, jul), { season: 'winter', ...mild });
+  assert.deepEqual(S(-54.8, dec), { season: 'summer', ...full });
+  assert.deepEqual(S(-33.9, dec), { season: 'summer', ...full });
+  // the other seasons are as they were; a known season stands in for the date
+  assert.deepEqual(S(25.2, jul), { season: 'summer', ...full });
+  assert.deepEqual(S(25.2, NaN, 'winter'), S(25.2, dec));
+});
+
+test('winter in hot places: Miami, the Everglades, Dubai and Riyadh get no snow flecks and no frost; cold scenes still do', () => {
+  const flakes = s => /x-srfall|h2\.4v2\.4h-2\.4z/.test(s), frost = s => /mix-blend-mode:screen/.test(overlayOf(s));
+  const desat = s => (/opacity="([\d.]+)" style="mix-blend-mode:saturation"/.exec(overlayOf(s)) || [])[1];
+  // the scene's own noon and midnight on 21 December, and the user's view from Miami at 17:00Z
+  const skies = it => [12, 0].map(h => G('almSceneLight')(Date.parse('2026-12-21T12:00:00Z') + (h - 12 - it.liveSky.lon / 15) * 36e5, it.liveSky.lat, it.liveSky.lon, 'UTC'))
+    .concat(G('almSceneLight')(Date.parse('2026-12-21T17:00:00Z'), 25.8, -80.2, 'UTC'));
+  for (const r of ['us-southeast/miami-deco-neon', 'us-southeast/fl-everglades-airboat', 'asia-west/dubai-skyline', 'asia-west/riyadh-skyline']) {
+    const it = ref(r);
+    assert.ok(Math.abs(it.liveSky.lat) >= 23.5 && Math.abs(it.liveSky.lat) < 35, r + ': a subtropical place');
+    for (const sky of skies(it)) {
+      const s = it.svg({ size: 'fill', sky });
+      assert.match(s, /sr-retro/, r + ': retrofitted');
+      assert.ok(!flakes(s), r + ': no snow flecks in winter');
+      assert.ok(!frost(s), r + ': no white frost layer in winter');
+      assert.equal(+desat(s), 0.13, r + ': only the mild cool tint, at half strength');
+    }
+    const july = it.svg({ size: 'fill', sky: G('almSceneLight')(Date.parse('2026-07-21T12:00:00Z'), it.liveSky.lat, it.liveSky.lon, 'UTC') });
+    assert.match(july, /x-srfall/, r + ': the summer motes are unchanged');
+  }
+  for (const r of ['us-pacific/anchorage-aurora-moose', 'asia-east/mn-signature', 'us-midwest/mn-loon']) {
+    const it = ref(r), s = it.svg({ size: 'fill', sky: skies(it)[0] });
+    assert.ok(flakes(s), r + ': a cold scene still gets the snow flecks');
+    assert.ok(frost(s), r + ': and the frost');
+    assert.equal(+desat(s), 0.25, r + ': and the full desaturation');
+  }
+});
