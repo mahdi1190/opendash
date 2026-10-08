@@ -42,6 +42,7 @@
     palette: {
       base: { brick: ['#8e4a34', '#6c3626', '#a85c42'], cope: ['#a8a294', '#868074'], dark: ['#0e1210', '#1c2420', '#2a3430'], bank: ['#4e6a34', '#3c5428', '#5e7a3e'], ivy: ['#2e4a26', '#3e5e2e', '#4e6e36'], soil: ['#5a4a34'], moss: ['#6a7a3a'], bat: ['#1a1614'], dusk: ['#ffcf8a'] },
       spring: { bank: ['#5a7a38', '#46622c', '#6c8a40'], ivy: ['#34522a', '#46663a', '#5e7e3e'] },
+      summer: { bank: ['#4e6a34', '#3c5428', '#5e7a3e'] },
       autumn: { bank: ['#7a7038', '#5e562c', '#8e7e40'], ivy: ['#3a4e2a', '#7a4a26', '#9a6a2e'] },
       winter: { bank: ['#6a7060', '#56594c', '#7c8070'], ivy: ['#2e4226', '#3a5030', '#4a5c3c'], moss: ['#7a8060'] },
     },
@@ -111,7 +112,7 @@
     flippable: false,
     palette: {
       base: { flint: ['#8e8a80', '#6e6a62', '#a8a49a'], dress: ['#c8bea6', '#a89c84'], dark: ['#2a2826', '#3e3a36'], ivy: ['#34522a', '#46663a'], mound: ['#5e7e3c', '#4a6830'], dot: ['#4e4a44', '#bab6ac'], bat: ['#1a1614'], wash: ['#c8d0e0'] },
-      spring: { mound: ['#6a8a40', '#527234'] }, autumn: { mound: ['#8a8040', '#6e6632'], ivy: ['#6a4a26', '#8a6a2e'] }, winter: { mound: ['#7a8070', '#62685a'], ivy: ['#34462c', '#46583a'] },
+      spring: { mound: ['#6a8a40', '#527234'] }, summer: { mound: ['#5e7e3c', '#4a6830'] }, autumn: { mound: ['#8a8040', '#6e6632'], ivy: ['#6a4a26', '#8a6a2e'] }, winter: { mound: ['#7a8070', '#62685a'], ivy: ['#34462c', '#46583a'] },
     },
     night: { glow: { lamp: '#ffd890' }, on: 1 },
     parts: ['body', 'lit'],
@@ -310,8 +311,8 @@ const _hookArch = (function () {
     const [a1, b1] = wl(905);
     // the cutting: wooded banks rising high on both sides toward the portal
     d.ground.push({ layer: 'horizon', d: `M-160 ${H + 60}L-160 ${H - 160}Q${vx - 300} ${H - 120} ${vx - 160} ${H - 30}L${vx} ${H - 40}L${vx + 160} ${H - 30}Q${vx + 300} ${H - 120} 1760 ${H - 170}V${H + 60}Z`, fill: '@wood.0' });
-    d.scatter.push({ obj: { 'tree.bank-oak': 2, 'tree.bank-alder': 1, 'tree.bank-birch': 1, 'tree.far-broad': 2 }, layer: 'far', seed: 11, area: { rect: [-150, H - 40, vx - 200, H + 20] }, n: 9, minGap: 70, s: [0.4, 0.8], flip: 0.5, variant: [0, 1], anim: false });
-    d.scatter.push({ obj: { 'tree.bank-oak': 2, 'tree.bank-alder': 1, 'tree.bank-birch': 1, 'tree.far-broad': 2 }, layer: 'far', seed: 12, area: { rect: [vx + 200, H - 40, 1750, H + 20] }, n: 9, minGap: 70, s: [0.4, 0.8], flip: 0.5, variant: [0, 1], anim: false });
+    d.scatter.push({ obj: { 'tree.bank-oak': 2, 'tree.bank-alder': 1, 'tree.bank-birch': 1, 'tree.far-broad': 2 }, layer: 'far', seed: 11, area: { rect: [-150, H - 40, vx - 200, H + 20] }, n: 9, minGap: 50, s: [0.4, 0.8], sByY: [[H - 40, 0.8], [H + 20, 1.2]], flip: 0.5, variant: [0, 1], anim: false, mask: { noise: { scale: 160, cut: 0.3 } } });
+    d.scatter.push({ obj: { 'tree.bank-oak': 2, 'tree.bank-alder': 1, 'tree.bank-birch': 1, 'tree.far-broad': 2 }, layer: 'far', seed: 12, area: { rect: [vx + 200, H - 40, 1750, H + 20] }, n: 9, minGap: 50, s: [0.4, 0.8], sByY: [[H - 40, 0.8], [H + 20, 1.2]], flip: 0.5, variant: [0, 1], anim: false, mask: { noise: { scale: 160, cut: 0.3 } } });
     d.scatter.push({ obj: 'tree.pond-wood', layer: 'horizon', seed: 13, area: { rect: [vx - 260, H - 70, vx + 260, H - 40] }, n: 8, minGap: 40, s: [0.3, 0.55], flip: 0.5, variant: [0, 1], tint: { col: '#6a7a6a', k: [0, 0.1] }, anim: false });
     d.water.push({ layer: 'far', d: `M${vx - 40} ${y0}H${vx + 40}L${R(b1)} 905H${R(a1)}Z`, y0, y1: 905, base: ['#7aa49c', '#3e6e64', '#22463e'], reflect: true, shimmer: 18, lightPath: false });
     const L = `M-160 905V${y0 - 2}H${vx - 40}L${R(a1)} 905Z`, Rr = `M1760 905V${y0 - 2}H${vx + 40}L${R(b1)} 905Z`;
@@ -321,21 +322,21 @@ const _hookArch = (function () {
     // trees lining the cutting, growing toward the viewer
     for (const [sgn, seed] of [[-1, 70], [1, 71]]) {
       for (let i = 0; i < 8; i++) {
-        const t = Math.pow((i + 1) / 8, 1.5), y = R(y0 + 6 + t * 300), xs = wl(y), off = (sgn < 0 ? (tow === 'left' ? 300 : 60) : (tow === 'right' ? 300 : 60)) * (0.3 + t);
-        const id = ['tree.bank-oak', 'tree.bank-alder', 'tree.bank-birch', 'tree.bank-willow'][(i + seed) % 4];
-        d.place.push({ obj: id, x: R(sgn < 0 ? xs[0] - off : xs[1] + off), y, s: Math.round((0.22 + t * 1.0) * 100) / 100, flip: sgn > 0, variant: t < 0.45 ? 0 : 1, layer: t < 0.45 ? 'mid' : 'near', seed: seed * 10 + i, anim: false, reflect: true });
+        const t = Math.pow((i + 1 + ((i * 37 + seed) % 7) / 14) / 8.5, 1.5), y = R(y0 + 6 + t * 300 + ((i * 53 + seed) % 11)), xs = wl(y), off = (sgn < 0 ? (tow === 'left' ? 300 : 60) : (tow === 'right' ? 300 : 60)) * (0.3 + t);
+        const id = ['tree.bank-oak', 'tree.bank-alder', 'tree.bank-oak', 'tree.bank-birch', 'tree.bank-willow', 'tree.bank-alder'][(i * i + seed * 3) % 6];
+        d.place.push({ obj: id, x: R((sgn < 0 ? xs[0] - off : xs[1] + off) + (((i * 71 + seed * 13) % 90) - 45) * (0.4 + t)), y, s: Math.round((0.22 + t * 1.0) * (0.85 + ((i * 29 + seed) % 7) * 0.05) * 100) / 100, flip: sgn > 0, variant: t < 0.45 ? 0 : 1, layer: t < 0.45 ? 'mid' : 'near', seed: seed * 10 + i, anim: false, reflect: true });
       }
     }
     // reeds and weed along the clear shallow water, cover on the banks
     for (const [sgn, seed] of [[-1, 72], [1, 73]]) {
       const poly = sgn < 0 ? [[vx - 42, y0], [vx - 90, y0], [R(a1 - 180), 905], [R(a1), 905]] : [[vx + 42, y0], [vx + 90, y0], [R(b1 + 180), 905], [R(b1), 905]];
-      d.scatter.push({ obj: { 'plant.reed': 3, 'plant.bulrush': 1, 'plant.towpath-hedge': 0.6, 'plant.fern': 0.6 }, layer: 'mid', seed, area: { poly }, n: 150, minGap: 10, s: [0.2, 1.1], sByY: [[y0, 0.3], [900, 1.3]], flip: 0.5, variant: [0, 1], anim: false, reflect: true });
+      d.scatter.push({ obj: { 'plant.reed': 2, 'plant.grass': 3, 'plant.towpath-hedge': 0.3 }, layer: 'mid', seed, area: { poly }, n: 70, minGap: 14, s: [0.2, 1.1], sByY: [[y0, 0.3], [900, 1.3]], flip: 0.5, variant: [0, 1], anim: false, reflect: true });
     }
     d.scatter.push({ obj: 'plant.water-crowfoot', layer: 'mid', seed: 74, area: { poly: [[vx - 30, y0 + 30], [vx + 30, y0 + 30], [R(b1 - 120), 880], [R(a1 + 120), 880]] }, n: 26, minGap: 30, s: [0.3, 1.0], sByY: [[y0, 0.3], [900, 1.1]], variant: [0, 1], anim: false, tint: { col: '#a0a050', k: [0, 0.1] } });
     const chAvoid = [{ poly: [[vx - 50, y0], [vx + 50, y0], [R(b1 + 20), 905], [R(a1 - 20), 905]] }, { poly: tow === 'left' ? [[vx - 70, y0], [vx - 40, y0], [R(a1), 905], [R(a1 - 440), 905]] : [[vx + 40, y0], [vx + 70, y0], [R(b1 + 440), 905], [R(b1), 905]] }];
-    d.scatter.push({ obj: { 'plant.grass': 4, 'plant.wildflowers': 1, 'plant.bracken': 1, 'plant.fern': 1 }, layer: 'near', seed: 75, area: { rect: [-160, H + 150, 1760, H + 300] }, n: 170, minGap: 14, s: [0.5, 0.9], flip: 0.5, variant: [0, 1], anim: false, mask: { avoid: chAvoid } });
-    d.scatter.push({ obj: { 'plant.grass': 4, 'plant.wildflowers': 1, 'plant.bracken': 1 }, layer: 'fore', seed: 76, area: { rect: [-160, H + 300, 1760, 905] }, n: 200, minGap: 18, s: [0.9, 1.4], sByY: [[H + 300, 0.85], [900, 1.2]], flip: 0.5, variant: [0, 1], anim: 'strip', mask: { avoid: chAvoid } });
-    d.scatter.push({ obj: { 'plant.grass': 3, 'plant.fern': 1 }, layer: 'far', seed: 77, area: { rect: [-160, y0 - 2, 1760, H + 150] }, n: 150, minGap: 15, s: [0.2, 0.6], sByY: [[y0, 0.4], [H + 150, 1]], flip: 0.5, variant: [0, 1], anim: false, mask: { avoid: [{ poly: [[vx - 90, y0 - 4], [vx + 90, y0 - 4], [R(wl(H + 150)[1] + 60), H + 150], [R(wl(H + 150)[0] - 60), H + 150]] }] } });
+    d.scatter.push({ obj: { 'plant.grass': 5, 'plant.wildflowers': 1, 'plant.bracken': 0.5 }, layer: 'near', seed: 75, area: { rect: [-160, H + 150, 1760, H + 300] }, n: 110, minGap: 18, s: [0.5, 0.9], flip: 0.5, variant: [0, 1], anim: false, mask: { avoid: chAvoid } });
+    d.scatter.push({ obj: { 'plant.grass': 5, 'plant.wildflowers': 1, 'plant.bracken': 0.5 }, layer: 'fore', seed: 76, area: { rect: [-160, H + 300, 1760, 905] }, n: 240, minGap: 16, s: [0.9, 1.4], sByY: [[H + 300, 0.85], [900, 1.2]], flip: 0.5, variant: [0, 1], anim: 'strip', mask: { avoid: chAvoid } });
+    d.scatter.push({ obj: { 'plant.grass': 4, 'plant.fern': 0.3 }, layer: 'far', seed: 77, area: { rect: [-160, y0 - 2, 1760, H + 150] }, n: 90, minGap: 18, s: [0.2, 0.6], sByY: [[y0, 0.4], [H + 150, 1]], flip: 0.5, variant: [0, 1], anim: false, mask: { avoid: [{ poly: [[vx - 90, y0 - 4], [vx + 90, y0 - 4], [R(wl(H + 150)[1] + 60), H + 150], [R(wl(H + 150)[0] - 60), H + 150]] }] } });
     // life: a swan pair, mallards, a moorhen, a kingfisher down the cut; walkers on the towpath
     d.actors.push({ obj: 'bird.swan', layer: 'mid', path: [[vx - 6, y0 + 40], [vx + 30, H + 220]], speed: 3, loop: 'pingpong', s: 0.32, seed: 78, offset: 0.6 });
     d.actors.push({ obj: 'bird.mallard', layer: 'near', path: [[R(a1 + 300), 860], [R(b1 - 300), 830]], speed: 6, loop: 'pingpong', s: 0.45, seed: 79 });
@@ -359,14 +360,14 @@ const _hookArch = (function () {
     d.ground.push({ layer: 'far', d: band(H + 4, 6, 60), fill: { lin: [[0, river ? '@meadow.0' : '@ground.0'], [1, river ? '@meadow.1' : '@ground.1']], y1: H, y2: wy0 } });
     const lmAvoid = p.landmark ? [{ rect: [(p.lmx || 800) - 260, H - 40, (p.lmx || 800) + 260, wy0 + 4] }] : [];
     d.scatter.push({ obj: { 'tree.bank-oak': 2, 'tree.bank-alder': 2, 'tree.bank-birch': 1, 'tree.bank-distant': 2 }, layer: 'far', seed: 90, area: { rect: [-150, H + 10, 1750, H + 40] }, n: 16, minGap: 44, s: [0.24, 0.56], flip: 0.5, variant: [0, 1], anim: false, mask: { noise: { scale: 220, cut: 0.3 }, avoid: lmAvoid } });
-    if (has(p, 'cattle')) d.scatter.push({ obj: 'animal.cattle', layer: 'far', seed: 89, area: { rect: [-100, H + 50, 1700, wy0 - 40] }, n: 6, minGap: 110, s: [0.22, 0.32], sByY: [[H + 50, 0.8], [wy0 - 40, 1.15]], flip: 0.5, variant: [0, 1], mask: { noise: { scale: 220, cut: 0.35 }, avoid: lmAvoid } });
+    if (has(p, 'cattle')) d.scatter.push({ obj: 'animal.cattle', layer: 'far', seed: 89, area: { rect: [-100, H + 50, 1700, wy0 - 40] }, n: 6, minGap: 110, s: [0.18, 0.4], sByY: [[H + 50, 0.8], [wy0 - 40, 1.15]], flip: 0.5, variant: [0, 1], anim: false, mask: { noise: { scale: 220, cut: 0.35 }, avoid: lmAvoid } });
     d.ground.push({ layer: 'mid', d: band(wy0 - 30, 4, 30, wy0 + 6), fill: '@bank.0' });
-    d.scatter.push({ obj: river ? { 'tree.green-willow': 2, 'tree.green-alder': 3 } : { 'tree.bank-oak': 2, 'tree.bank-alder': 2, 'tree.bank-willow': 1, 'tree.bank-birch': 1 }, layer: 'mid', seed: 91, area: { rect: [-150, wy0 - 26, 1750, wy0 - 8] }, n: 9, minGap: 90, s: river ? [0.4, 0.62] : [0.34, 0.9], flip: 0.5, variant: [0, 1], anim: false, reflect: true, mask: { avoid: p.landmark ? [{ rect: [(p.lmx || 800) - 330, wy0 - 60, (p.lmx || 800) + 330, wy0] }] : [] } });
+    d.scatter.push({ obj: river ? { 'tree.green-willow': 2, 'tree.green-alder': 3 } : { 'tree.bank-oak': 2, 'tree.bank-alder': 2, 'tree.bank-willow': 1, 'tree.bank-birch': 1 }, layer: 'mid', seed: 91, area: { rect: [-150, wy0 - 26, 1750, wy0 - 8] }, n: 9, minGap: 90, s: river ? [0.3, 0.75] : [0.34, 0.9], sByY: [[wy0 - 26, 0.8], [wy0 - 8, 1.2]], flip: 0.5, variant: [0, 1], anim: false, reflect: true, mask: { avoid: p.landmark ? [{ rect: [(p.lmx || 800) - 330, wy0 - 60, (p.lmx || 800) + 330, wy0] }] : [] } });
     d.scatter.push({ obj: { 'plant.towpath-hedge': river ? 0.3 : 1, 'plant.reed': 2, 'plant.grass': 3, 'plant.bulrush': river ? 1 : 0.3 }, layer: 'mid', seed: 92, area: { rect: [-150, wy0 - 28, 1750, wy0 + 2] }, n: 160, minGap: 12, s: [0.3, 0.85], sByY: [[wy0 - 28, 0.75], [wy0 + 2, 1.25]], flip: 0.5, variant: [0, 1], anim: false, reflect: true, mask: { avoid: p.landmark ? [{ rect: [(p.lmx || 800) - 300, wy0 - 60, (p.lmx || 800) + 300, wy0 + 4] }] : [] } });
-    d.water.push({ layer: 'mid', d: `M-160 ${wy0}H1760V${wy1}H-160Z`, y0: wy0, y1: wy1, base: river ? ['#a8ccc4', '#5e9e98', '#2e6a6a'] : ['#7aa49c', '#4a7a70', '#2a5048'], reflect: true, shimmer: 26, lightPath: true });
+    d.water.push({ layer: 'mid', d: `M-160 ${wy0}H1760V${wy1}H-160Z`, y0: wy0, y1: wy1, base: river ? ['#a8ccc4', '#5e9e98', '#2e6a6a'] : ['#7aa49c', '#4a7a70', '#2a5048'], reflect: true, shimmer: river ? 14 : 20, lightPath: true });
     if (river) {
       d.scatter.push({ obj: 'plant.water-crowfoot', layer: 'mid', seed: 93, area: { rect: [-150, wy0 + 14, 1750, wy1 - 8] }, n: 18, minGap: 44, s: [0.7, 1.3], sByY: [[wy0, 0.7], [wy1, 1.3]], variant: [0, 1], anim: false, tint: { col: '#c0b060', k: [0, 0.1] } });
-      for (let i = 0; i < 3; i++) { const y = wy0 + 24 + i * 14, x0 = 240 + ((i * 397) % 1000); d.actors.push({ obj: 'animal.trout', layer: 'mid', path: [[x0, y], [x0 + 30 + i * 8, y + 2]], speed: 2.5, loop: 'pingpong', s: 0.9 + i * 0.15, seed: 31 + i, variant: i % 2, offset: i * 0.23 }); }
+      for (let i = 0; i < 2; i++) { const y = wy0 + 24 + i * 14, x0 = 240 + ((i * 397) % 1000); d.actors.push({ obj: 'animal.trout', layer: 'mid', path: [[x0, y], [x0 + 30 + i * 8, y + 2]], speed: 2.5, loop: 'pingpong', s: 0.9 + i * 0.15, seed: 31 + i, variant: i % 2, offset: i * 0.23 }); }
       d.place.push({ obj: 'water.fish-ring', x: 980, y: wy0 + 40, s: 0.5, layer: 'mid', seed: 30 });
     }
     // the near bank: a towpath (canal) or a water meadow edge (river), and its cover
@@ -389,7 +390,7 @@ const _hookArch = (function () {
     if (has(p, 'heron')) d.place.push({ obj: 'bird.heron', x: 1380, y: wy1 + 2, s: 0.55, layer: 'near', seed: 107, reflect: true });
     if (has(p, 'bench')) d.place.push({ obj: 'street.bench', x: 1240, y: ty + 40, s: 0.9, layer: 'near', seed: 108 });
     if (has(p, 'bridge')) d.place.push({ obj: 'structure.bridge-brick', x: Number.isFinite(p.brx) ? p.brx : 1250, y: mid(0.9), s: 0.62, layer: 'mid', seed: 109, reflect: true });
-    d.actors.push({ obj: 'animal.dragonfly', layer: 'near', path: [[500, wy1 - 20], [700, wy1 - 50], [620, wy1 + 10]], speed: 40, loop: 'pingpong', s: 0.6, seed: 110 });
+    if (!river) d.actors.push({ obj: 'animal.dragonfly', layer: 'near', path: [[500, wy1 - 20], [700, wy1 - 50], [620, wy1 + 10]], speed: 40, loop: 'pingpong', s: 0.6, seed: 110 });
     landmark(d, p, Number.isFinite(p.lmy) ? p.lmy : wy0 - 6, p.lmlayer || 'mid');
     flocks(d, H, 111, true);
   }
@@ -397,13 +398,13 @@ const _hookArch = (function () {
   /* ---- fields: arable fields and hedgerows to a wood edge; the main line on its embankment ---- */
   function fields(p, d) {
     const H = d.view.horizon;
-    farWood(d, H, 31, 26);
+    farWood(d, H, 31, 16);
     const fy0 = H + 2, fy1 = H + 80;
     d.ground.push({ layer: 'far', d: `M-160 ${fy0}H1760V${fy1 + 40}H-160Z`, fill: '@fieldA.0' });
     let x = -160, k = 0, fd = '', hd = '';
     while (x < 1760) { const w = 140 + ((k * 97) % 220), x1 = Math.min(1760, x + w), yA = fy0 + 8 + ((k * 31) % 20), yB = yA + 16 + ((k * 17) % 22); if (k % 2) fd += `M${R(x)} ${R(yA)}L${R(x1)} ${R(yA - 4)}L${R(x1 + 30)} ${R(yB)}L${R(x - 20)} ${R(yB + 3)}Z`; hd += `M${R(x1)} ${fy0}l${30 + (k * 13) % 30} ${fy1 - fy0}h3l${-(30 + (k * 7) % 20)} ${fy0 - fy1}Z`; x = x1; k++; }
     d.ground.push({ layer: 'far', d: fd, fill: '@fieldB.0' }, { layer: 'far', d: hd, fill: '@hedge.0' });
-    d.scatter.push({ obj: { 'tree.distant': 3, 'tree.far-broad': 2 }, layer: 'far', seed: 32, area: { rect: [-150, fy0 - 2, 1750, fy0 + 50] }, n: 16, minGap: 40, s: [0.2, 0.46], variant: [0, 1], anim: false, mask: { noise: { scale: 200, cut: 0.35 } } });
+    d.scatter.push({ obj: { 'tree.distant': 3, 'tree.far-broad': 2 }, layer: 'far', seed: 32, area: { rect: [-150, fy0 - 2, 1750, fy0 + 50] }, n: 10, minGap: 60, s: [0.2, 0.46], variant: [0, 1], anim: false, mask: { noise: { scale: 200, cut: 0.35 } } });
     const lx = Number.isFinite(p.lmx) ? p.lmx : 1150;
     // the main line across the middle distance on a low embankment, trains both ways
     if (has(p, 'train')) {
@@ -412,7 +413,7 @@ const _hookArch = (function () {
         { layer: 'mid', d: `M-160 ${rt + 8}L-160 ${rt - 1}H1760V${rt + 8}Z`, fill: '@gravel.1' }, { layer: 'mid', d: `M-160 ${rt - 3}H1760V${rt - 1}H-160Z`, fill: '#6a6460' }, { layer: 'mid', d: `M-160 ${rt + 2}H1760V${rt + 4}H-160Z`, fill: '#8a8480' });
       d.actors.push({ obj: 'rail.train-mainline', layer: 'mid', path: [[-700, rt - 1], [2300, rt - 1]], speed: 110, loop: 'loop', s: 0.56, seed: 34, offset: 0.25, variant: 1 });
       d.actors.push({ obj: 'rail.train-mainline', layer: 'mid', path: [[2300, rt - 5], [-700, rt - 5]], speed: 90, loop: 'loop', s: 0.54, seed: 35, offset: 0.75, variant: 4, flip: true });
-      d.scatter.push({ obj: { 'plant.shrub': 2, 'plant.hedge': 1, 'plant.bracken': 1 }, layer: 'mid', seed: 36, area: { rect: [-150, ry, 1750, ry + 10] }, n: 18, minGap: 60, s: [0.3, 0.55], variant: [0, 1], anim: false, tint: { col: '#6a5a30', k: [0, 0.1] }, mask: { noise: { scale: 240, cut: 0.35 } } });
+      d.scatter.push({ obj: { 'plant.grass': 3, 'plant.bracken': 1 }, layer: 'mid', seed: 36, area: { rect: [-150, ry, 1750, ry + 10] }, n: 40, minGap: 30, s: [0.3, 0.55], variant: [0, 1], anim: false, tint: { col: '#6a5a30', k: [0, 0.1] }, mask: { noise: { scale: 240, cut: 0.35 } } });
     }
     // the near meadow, a field margin path, the wood edge on one side
     const midTop = H + (has(p, 'train') ? 140 : 100);
@@ -422,10 +423,10 @@ const _hookArch = (function () {
     d.ground.push({ layer: 'mid', d: woodLeft ? `M-160 905V${midTop - 120}Q160 ${midTop - 150} 360 ${midTop - 40}Q420 ${midTop + 120} 300 905Z` : `M1760 905V${midTop - 120}Q1440 ${midTop - 150} 1240 ${midTop - 40}Q1180 ${midTop + 120} 1300 905Z`, fill: { lin: [[0, '@wood.0'], [1, '@wood.1']], y1: midTop - 150, y2: 905 } });
     d.scatter.push({ obj: { 'tree.green-oak': 2, 'tree.bank-oak': 2, 'tree.bank-birch': 1, 'tree.green-chestnut': 1 }, layer: 'mid', seed: 37, area: { rect: woodLeft ? [-150, midTop - 40, 330, midTop + 10] : [1270, midTop - 40, 1750, midTop + 10] }, n: 6, minGap: 70, s: [0.6, 0.9], flip: 0.5, variant: [0, 1], anim: false });
     if (has(p, 'bluebells')) d.scatter.push({ obj: 'plant.bluebells', layer: 'near', seed: 38, area: { rect: woodLeft ? [-150, midTop + 20, 340, midTop + 260] : [1260, midTop + 20, 1750, midTop + 260] }, n: 40, minGap: 20, s: [0.5, 1.0], sByY: [[midTop, 0.6], [midTop + 260, 1.1]], variant: [0, 1], anim: false });
-    d.scatter.push({ obj: { 'plant.grass': 4, 'plant.wildflowers': 1 }, layer: 'mid', seed: 39, area: { rect: [-150, midTop + 6, 1750, midTop + 140] }, n: 160, minGap: 13, s: [0.25, 0.5], sByY: [[midTop, 0.6], [midTop + 140, 1.1]], flip: 0.5, variant: [0, 1], anim: false, mask: { avoid: [{ poly: [[lx - 70, midTop], [lx - 30, midTop], [lx - 290, 905], [lx - 530, 905]] }] } });
-    d.scatter.push({ obj: { 'plant.grass': 3, 'plant.wildflowers': 2, 'plant.hedgerow-blackberry': 0.5 }, layer: 'fore', seed: 40, area: { rect: [-150, midTop + 150, 1750, 905] }, n: 240, minGap: 15, s: [0.8, 1.3], sByY: [[midTop + 150, 0.8], [900, 1.25]], flip: 0.5, variant: [0, 1], anim: 'strip', mask: { avoid: [{ poly: [[lx - 160, midTop + 150], [lx - 100, midTop + 150], [lx - 290, 905], [lx - 530, 905]] }] } });
-    d.scatter.push({ obj: { 'plant.hedge': 2, 'plant.hedgerow-blackberry': 1, 'plant.shrub': 1 }, layer: 'near', seed: 41, area: { rect: [-150, midTop + 60, 1750, midTop + 80] }, n: 12, minGap: 70, s: [0.5, 0.9], flip: 0.5, variant: [0, 1], anim: false, mask: { noise: { scale: 160, cut: 0.35 }, avoid: [{ rect: [lx - 560, midTop + 40, lx + 120, midTop + 100] }] } });
-    if (has(p, 'tractor')) d.actors.push({ obj: 'vehicle.tractor', layer: 'far', path: [[300, fy0 + 30], [1300, fy0 + 34]], speed: 8, loop: 'pingpong', s: 0.22, seed: 42, offset: 0.4 });
+    d.scatter.push({ obj: { 'plant.grass': 4, 'plant.wildflowers': 1 }, layer: 'mid', seed: 39, area: { rect: [-150, midTop + 6, 1750, midTop + 140] }, n: 110, minGap: 16, s: [0.25, 0.5], sByY: [[midTop, 0.6], [midTop + 140, 1.1]], flip: 0.5, variant: [0, 1], anim: false, mask: { avoid: [{ poly: [[lx - 70, midTop], [lx - 30, midTop], [lx - 290, 905], [lx - 530, 905]] }] } });
+    d.scatter.push({ obj: { 'plant.grass': 5, 'plant.wildflowers': 1 }, layer: 'fore', seed: 40, area: { rect: [-150, midTop + 150, 1750, 905] }, n: 320, minGap: 12, s: [0.8, 1.3], sByY: [[midTop + 150, 0.8], [900, 1.25]], flip: 0.5, variant: [0, 1], anim: 'strip', mask: { avoid: [{ poly: [[lx - 160, midTop + 150], [lx - 100, midTop + 150], [lx - 290, 905], [lx - 530, 905]] }] } });
+    d.scatter.push({ obj: { 'plant.hedge': 2, 'plant.hedgerow-blackberry': 1 }, layer: 'near', seed: 41, area: { rect: [-150, midTop + 60, 1750, midTop + 80] }, n: 6, minGap: 70, s: [0.5, 0.9], flip: 0.5, variant: [0, 1], anim: false, mask: { noise: { scale: 160, cut: 0.35 }, avoid: [{ rect: [lx - 560, midTop + 40, lx + 120, midTop + 100] }] } });
+    if (has(p, 'tractor')) d.actors.push({ obj: 'vehicle.tractor', layer: 'mid', path: [[300, midTop + 40], [1000, midTop + 44]], speed: 8, loop: 'pingpong', s: 0.3, seed: 42, offset: 0.4 });
     if (has(p, 'deer')) d.place.push({ obj: 'animal.deer', x: woodLeft ? 440 : 1160, y: midTop + 70, s: 0.42, flip: !woodLeft, layer: 'mid', seed: 43 }, { obj: 'animal.deer', x: woodLeft ? 500 : 1100, y: midTop + 84, s: 0.38, flip: !woodLeft, variant: 1, layer: 'mid', seed: 44 });
     if (has(p, 'sheep')) d.scatter.push({ obj: 'animal.sheep', layer: 'mid', seed: 45, area: { rect: [500, midTop + 20, 1500, midTop + 110] }, n: 9, minGap: 70, s: [0.3, 0.45], sByY: [[midTop, 0.8], [midTop + 110, 1.2]], variant: [0, 1], mask: { noise: { scale: 200, cut: 0.4 } } });
     d.place.push({ obj: 'structure.field-gate', x: lx - 120, y: midTop + 70, s: 0.6, layer: 'near', seed: 46 });
@@ -434,6 +435,10 @@ const _hookArch = (function () {
     d.actors.push({ obj: 'person.hiker', layer: 'near', path: wp, speed: 8, loop: 'pingpong', s: ppl(d, 'person.hiker', 700), sByY: true, seed: 48, offset: 0.3 });
     d.actors.push({ obj: 'person.dog-walker', layer: 'near', path: wp.slice().reverse(), speed: 9, loop: 'pingpong', s: ppl(d, 'person.dog-walker', 700), sByY: true, seed: 49, offset: 0.8 });
     d.place.push({ obj: 'tree.bank-oak', x: woodLeft ? -40 : 1690, y: 905, s: 1.6, variant: 1, flip: !woodLeft, layer: 'front', seed: 50, anim: false });
+    // a farmstead at the far field edge (its windows light at dusk); butterflies over the meadow
+    for (let i = 0; i < 2; i++) d.place.push({ obj: 'building.cottage', x: (lx > 800 ? 260 : 1240) + i * 90, y: fy0 + 14 + i * 3, s: 0.22 + i * 0.02, variant: i % 3, flip: i % 2 === 1, layer: 'far', seed: 52 + i });
+    d.actors.push({ obj: 'animal.butterfly', layer: 'near', path: [[lx - 300, midTop + 120], [lx - 200, midTop + 90], [lx - 120, midTop + 130]], speed: 20, loop: 'pingpong', s: 0.6, seed: 55 });
+    d.flocks.push({ obj: 'bird.goose-flight', n: 5, area: [300, 60, 1300, 200], speed: 20, s: 0.4, seed: 56, layer: 'horizon' });
     landmark(d, p, Number.isFinite(p.lmy) ? p.lmy : midTop + 40, p.lmlayer || 'mid');
     flocks(d, H, 51, false);
   }
@@ -461,10 +466,13 @@ const _hookArch = (function () {
       d.actors.push({ obj: 'rail.train-mainline', layer: 'near', path: [[2500, ty + 100], [-900, ty + 100]], speed: 70, loop: 'loop', s: 1.1, seed: 66, offset: 0.7, variant: 4, flip: true });
       const py = ty + 130;
       d.ground.push({ layer: 'fore', d: `M-160 905V${py}H1760V905Z`, fill: { lin: [[0, '@pave.0'], [1, '@pave.1']], y1: py, y2: 905 } }, { layer: 'fore', d: `M-160 ${py}H1760V${py + 10}H-160Z`, fill: '#e6d36a' });
-      d.scatter.push({ obj: { 'plant.planter': 2, 'plant.grass': 2, 'street.bollard': 1, 'street.bench': 1 }, layer: 'fore', seed: 67, area: { rect: [-150, py + 60, 1750, 905] }, n: 60, minGap: 40, s: [0.6, 1.0], sByY: [[py + 40, 0.8], [900, 1.2]], flip: 0.5, variant: [0, 1], anim: false, mask: { noise: { scale: 160, cut: 0.45 } } });
-      const waiting = ['person.commuter-station', 'person.commuter', 'person.student', 'person.phone-idler'].filter(id => sceneObj(id));
+      d.scatter.push({ obj: { 'plant.planter': 2, 'plant.grass': 2, 'street.bollard': 1, 'street.bench': 1 }, layer: 'fore', seed: 67, area: { rect: [-150, py + 60, 1750, 905] }, n: 160, minGap: 20, s: [0.6, 1.0], sByY: [[py + 40, 0.8], [900, 1.2]], flip: 0.5, variant: [0, 1], anim: false, mask: { noise: { scale: 160, cut: 0.3 } } });
+      const waiting = ['person.student', 'person.phone-idler', 'person.walker', 'person.wheelchair-user'].filter(id => sceneObj(id));
       for (let i = 0; i < 4 && waiting.length; i++) { const y = py + 50 + (i % 2) * 40, id = waiting[i % waiting.length]; d.place.push({ obj: id, x: 150 + i * 360, y, s: ppl(d, id, y), variant: i, layer: 'fore', seed: 68 + i, anim: false }); }
       d.actors.push({ obj: 'person.walker', layer: 'fore', path: [[-80, py + 120], [1680, py + 130]], speed: 16, loop: 'loop', s: ppl(d, 'person.walker', py + 120), seed: 72, offset: 0.3, variant: 5 });
+      d.actors.push({ obj: 'person.buggy-walker', layer: 'fore', path: [[1680, py + 150], [-80, py + 146]], speed: 11, loop: 'loop', s: ppl(d, 'person.buggy-walker', py + 150), seed: 77, offset: 0.6, flip: true });
+      d.actors.push({ obj: 'bird.pigeon', layer: 'fore', path: [[900, py + 100], [960, py + 104]], speed: 3, loop: 'pingpong', s: 0.9, seed: 78 });
+      d.actors.push({ obj: 'person.student', layer: 'fore', path: [[300, py + 70], [700, py + 74]], speed: 6, loop: 'pingpong', s: ppl(d, 'person.student', py + 70), seed: 79, offset: 0.4 });
       d.place.push({ obj: 'bird.pigeon', x: 980, y: py + 90, s: 0.9, layer: 'fore', seed: 73 }, { obj: 'street.lamppost', x: 420, y: py + 30, s: 0.9, layer: 'fore', seed: 74 }, { obj: 'street.lamppost', x: 1180, y: py + 30, s: 0.9, layer: 'fore', seed: 75 }, { obj: 'street.station-clock', x: 820, y: py + 24, s: 0.8, layer: 'fore', seed: 76 });
       if (p.sign) { d.signage = true; d.signs.push({ layer: 'fore', x: Number.isFinite(p.signx) ? p.signx : 600, y: py + 4, w: 220, h: 44, text: String(p.sign), bars: ['#d03a2f'], style: 'board' }); }
     } else {
@@ -484,7 +492,7 @@ const _hookArch = (function () {
       d.actors.push({ obj: 'person.dog-walker', layer: 'fore', path: [[1680, wy + 50], [-80, wy + 50]], speed: 9, loop: 'loop', s: ppl(d, 'person.dog-walker', wy + 50), seed: 89, offset: 0.65, flip: true });
       d.actors.push({ obj: 'person.buggy-walker', layer: 'mid', path: [[-80, fy + 30], [1680, fy + 34]], speed: 6, loop: 'loop', s: ppl(d, 'person.buggy-walker', fy + 30), seed: 90, offset: 0.4 });
       d.place.push({ obj: 'person.cafe-goer', x: lx + 260, y: fy + 20, s: ppl(d, 'person.cafe-goer', fy + 20), layer: 'mid', seed: 91, anim: false });
-      d.scatter.push({ obj: { 'plant.grass': 3, 'plant.planter': 1, 'street.bollard': 1, 'street.bench': 0.6 }, layer: 'fore', seed: 92, area: { rect: [-150, ry + 100, 1750, 905] }, n: 120, minGap: 24, s: [0.6, 1.05], sByY: [[ry + 100, 0.8], [900, 1.2]], flip: 0.5, variant: [0, 1], anim: false });
+      d.scatter.push({ obj: { 'plant.grass': 3, 'plant.planter': 1, 'street.bollard': 1, 'street.bench': 0.6 }, layer: 'fore', seed: 92, area: { rect: [-150, ry + 96, 1750, 905] }, n: 280, minGap: 15, s: [0.6, 1.05], sByY: [[ry + 100, 0.8], [900, 1.2]], flip: 0.5, variant: [0, 1], anim: false });
       d.place.push({ obj: 'bird.pigeon', x: 540, y: wy + 60, s: 0.9, layer: 'fore', seed: 93 }, { obj: 'bird.pigeon', x: 590, y: wy + 66, s: 0.85, flip: true, variant: 1, layer: 'fore', seed: 94 });
     }
     d.scatter.push({ obj: { 'plant.grass': 4, 'plant.hedge': 0.6, 'plant.shrub': 0.4 }, layer: 'far', seed: 95, area: { rect: [-150, H + 40, 1750, fy - 10] }, n: 180, minGap: 12, s: [0.22, 0.6], sByY: [[H + 40, 0.8], [fy, 1.2]], flip: 0.5, variant: [0, 1], anim: false, mask: { avoid: lmBox } });

@@ -35,12 +35,12 @@
       "Odiham Castle by the canal", "King John's Castle from the Basingstoke Canal towpath", 'heritage', 'odiham-castle', 'green', 'calm', 'odiham castle|north warnborough|basingstoke canal|castle|ruin'],
     ['odiham-castle-evening', 'canal', 51.2631, -0.9560, 230, 480, 'golden', LM.cas, 520, 0.8, null, null, null, null, null, null, 'moored|angler',
       'Evening at Odiham Castle', 'The ruined keep beside the canal in evening light', 'heritage', 'odiham-castle', 'amber', 'dreamy', 'odiham castle|basingstoke canal|evening|ruin'],
-    ['north-warnborough-canal', 'canal', 51.2655, -0.9530, 20, 470, 'morning', '', null, null, null, null, null, null, null, null, 'moored|boat|bench|bridge|canoe',
+    ['north-warnborough-canal', 'canal', 51.2655, -0.9530, 200, 470, 'morning', LM.cas, 1320, 0.62, null, null, null, null, null, null, 'moored|boat|bench|bridge',
       'The canal at North Warnborough', 'Narrowboats on the Basingstoke Canal at North Warnborough', 'landscape', 'north-warnborough-canal', 'teal', 'cheerful', 'north warnborough|basingstoke canal|narrowboat|towpath'],
     // ---- the River Whitewater: a chalk stream through Greywell and North Warnborough
-    ['river-whitewater', 'river', 51.2585, -0.9688, 200, 470, 'noon', '', null, null, null, null, null, null, null, null, 'cattle|heron|flowers',
+    ['river-whitewater', 'river', 51.2585, -0.9688, 200, 470, 'noon', LM.oak, 1220, 0.42, null, null, null, null, null, null, 'cattle|heron|flowers',
       'The River Whitewater', 'The River Whitewater at Greywell', 'landscape', 'river-whitewater', 'teal', 'calm', 'river whitewater|greywell|chalk stream|trout|water meadow'],
-    ['river-whitewater-meadows', 'river', 51.2652, -0.9600, 100, 480, 'golden', '', null, null, null, null, null, null, null, null, 'cattle|bridge|angler',
+    ['river-whitewater-meadows', 'river', 51.2652, -0.9600, 100, 480, 'golden', LM.oak, 420, 0.4, null, null, null, null, null, null, 'cattle|bridge|angler',
       'Whitewater meadows', 'Water meadows by the Whitewater, North Warnborough', 'landscape', 'river-whitewater', 'amber', 'dreamy', 'river whitewater|north warnborough|water meadow|chalk stream'],
     // ---- the fields and woods round Hook
     ['hook-fields-main-line', 'fields', 51.2835, -0.9440, 10, 460, 'afternoon', LM.oak, 1200, 0.42, null, null, 'right', null, null, null, 'train|tractor',
