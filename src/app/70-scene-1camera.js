@@ -7,6 +7,7 @@
    private helpers live in the _sccm IIFE.
 
    SCENE_CAMERA_PRESETS          the 8 presets: eye (m), fov (deg), horizon (row) and the composition targets each one wants
+                                 (sky, subject: share ranges; lines: wants a leading line; framing + frame; water: the water's share)
    sceneCameraPreset(id, { heading, lat, lon, alt, eye, fov, horizon })
                                  -> a camera (V2 2.1) filled from the preset; explicit numbers win; unknown id -> null
    sceneCompositionOf(C, { data, obj, shapes })
@@ -28,11 +29,11 @@
    o.obj / o.shapes default to the core's sceneObj / sceneObjShapes (object boxes for the coverage and the subject).
    ============================================================ */
 const SCENE_CAMERA_PRESETS = Object.freeze({
-  street:          Object.freeze({ id: 'street', eye: 1.65, fov: 64, horizon: 470, label: 'street level', sky: [0.22, 0.45], subject: [0.18, 0.45], vp: [0.38, 0.62], framing: 'one', frame: [0.08, 0.25], subjectD: [40, 400], words: ['street', 'square', 'high street', 'market', 'road'] }),
-  raised:          Object.freeze({ id: 'raised', eye: 7, fov: 68, horizon: 400, label: 'raised (a first-floor window, a bridge)', sky: [0.22, 0.45], subject: [0.18, 0.45], diagonal: true, subjectD: [60, 500], words: ['from above', 'from the bridge', 'from a window', 'raised', 'overlooking'] }),
+  street:          Object.freeze({ id: 'street', eye: 1.65, fov: 64, horizon: 470, label: 'street level', sky: [0.22, 0.45], subject: [0.18, 0.45], vp: [0.38, 0.62], lines: true, framing: 'one', frame: [0.08, 0.25], subjectD: [40, 400], words: ['street', 'square', 'high street', 'market', 'road'] }),
+  raised:          Object.freeze({ id: 'raised', eye: 7, fov: 68, horizon: 400, label: 'raised (a first-floor window, a bridge)', sky: [0.22, 0.45], subject: [0.18, 0.45], diagonal: true, lines: true, subjectD: [60, 500], words: ['from above', 'from the bridge', 'from a window', 'raised', 'overlooking'] }),
   'across-water':  Object.freeze({ id: 'across-water', eye: 1.7, fov: 66, horizon: 440, label: 'across water', sky: [0.22, 0.45], subject: [0.18, 0.45], water: [0.18, 0.32], farBank: [30, 250], mirror: true, subjectD: [60, 600], words: ['across the river', 'across the lake', 'across the water', 'across the canal', 'across the pond', 'across the harbour', 'across the basin', 'over the water'] }),
   'from-hill':     Object.freeze({ id: 'from-hill', eye: 1.7, fov: 72, horizon: 330, label: 'from a hill', sky: [0.30, 0.50], aim: { sky: [0.35, 0.45] }, subject: [0.10, 0.45], ridges: 3, aboveTerrain: true, subjectD: [300, 5000], words: ['from the hill', 'from a hill', 'from the edge', 'from the moor', 'from the down', 'from the tor', 'over the town', 'over the valley', 'view over'] }),
-  'down-street':   Object.freeze({ id: 'down-street', eye: 1.6, fov: 58, horizon: 480, label: 'down a street or canal', sky: [0.22, 0.45], subject: [0.18, 0.45], vp: [0.30, 0.70], offCentre: true, axis: true, subjectD: [50, 500], words: ['down the street', 'down the canal', 'along the canal', 'along the street', 'down the road', 'along the towpath', 'down the lane', 'along the river'] }),
+  'down-street':   Object.freeze({ id: 'down-street', eye: 1.6, fov: 58, horizon: 480, label: 'down a street or canal', sky: [0.22, 0.45], subject: [0.18, 0.45], vp: [0.30, 0.70], offCentre: true, axis: true, lines: true, subjectD: [50, 500], words: ['down the street', 'down the canal', 'along the canal', 'along the street', 'down the road', 'along the towpath', 'down the lane', 'along the river'] }),
   'through-arch':  Object.freeze({ id: 'through-arch', eye: 1.6, fov: 54, horizon: 470, label: 'through an arch or trees', sky: [0.22, 0.45], subject: [0.18, 0.45], framing: 'both', frame: [0.25, 0.40], subjectD: [40, 300], words: ['through the arch', 'through the gate', 'through the trees', 'framed by', 'under the arch'] }),
   'close-up':      Object.freeze({ id: 'close-up', eye: 1.5, fov: 42, horizon: 500, label: 'close-up', sky: [0.10, 0.35], subject: [0.35, 0.60], aim: { subject: [0.35, 0.55] }, subjectD: [8, 15], shallow: true, words: ['close up', 'close-up', 'detail', 'at the door', 'up close'] }),
   panorama:        Object.freeze({ id: 'panorama', eye: 2.2, fov: 96, horizon: 500, label: 'panorama', sky: [0.30, 0.50], aim: { sky: [0.30, 0.40] }, subject: [0.10, 0.45], wide: true, subjectD: [200, 5000], words: ['panorama', 'panoramic', 'wide view', 'skyline', 'the whole'] }),
@@ -64,6 +65,7 @@ const _sccm = (function () {
   const GROUPS = ['sky', 'water', 'hard', 'soft', 'building', 'tree', 'life'];
   const G_SKY = 0, G_WATER = 1, G_HARD = 2, G_SOFT = 3, G_BUILDING = 4, G_TREE = 5, G_LIFE = 6, G_NONE = -1;
   const HARD_KINDS = { road: 1, parking: 1, driveway: 1, pavement: 1, plaza: 1, platform: 1, cycleway: 1, steps: 1, bridge: 1, rail: 1, tramway: 1, rock: 1, edge: 1, rooftop: 1 };
+  const WATER_KINDS = { water: 1, river: 1, canal: 1, lake: 1, pond: 1, sea: 1, harbour: 1, basin: 1, stream: 1, reservoir: 1, dock: 1 };
   const LINE_KINDS = { road: 1, towpath: 1, rail: 1, tramway: 1, path: 1, cycleway: 1, pavement: 1, track: 1, canal: 1, river: 1, stream: 1, platform: 1 };
   const CAT_GROUP = { building: G_BUILDING, structure: G_BUILDING, landmark: G_BUILDING, rail: G_BUILDING, tree: G_TREE, plant: G_SOFT, ground: G_SOFT, rock: G_SOFT, water: G_WATER,
     person: G_LIFE, vehicle: G_LIFE, boat: G_LIFE, animal: G_LIFE, street: G_HARD, prop: G_HARD, bird: G_NONE, sky: G_NONE };
@@ -154,6 +156,11 @@ const _sccm = (function () {
   /** An item's screen box [x0, y0, x1, y1] from its object's box at its scale (flip mirrored). */
   function boxOf(it, o, season) {
     let b = null, def = null;
+    // a projected building (V2 19.1) is drawn as fills with its own screen box
+    if (it.direct && Array.isArray(it.direct.box)) {
+      try { def = o.obj ? o.obj(it.o) : null; } catch (e) { def = null; }
+      return { box: it.direct.box.slice(0, 4), def: def || { category: 'building', tags: ['class:building'] } };
+    }
     try { def = o.obj ? o.obj(it.o) : null; } catch (e) { def = null; }
     try { const R = o.shapes ? o.shapes(it.o, it.v || 0, it.season || season) : null; if (R && R.box) b = R.box; } catch (e) { b = null; }
     if (!b && def && def.box) b = def.box;
@@ -191,7 +198,8 @@ const _sccm = (function () {
   /** Leading lines from compiled v2 surfaces (polyM: the principal axis of the polygon). */
   function linesFromSurfaces(cam, C) {
     const out = [];
-    for (const s of C.surfaces || []) {
+    const regions = (C.surfaces || []).concat((C.water || []).filter(w => w && w.v2 && Array.isArray(w.v2.polyM)).map(w => ({ id: w.v2.id, kind: w.v2.kind, polyM: w.v2.polyM })));
+    for (const s of regions) {
       if (!s || !LINE_KINDS[s.kind] || !Array.isArray(s.polyM) || s.polyM.length < 3) continue;
       const pts = s.polyM.filter(p => p[1] > 0.5);
       if (pts.length < 3) continue;
@@ -241,7 +249,7 @@ const _sccm = (function () {
     const layers = C.layers || [];
     const layerId = (i) => (layers[i] && layers[i].id) || '';
     const season = C.season || 'summer';
-    const grid = new Int8Array(GC * GR);
+    const grid = new Int8Array(GC * GR), framed = new Uint8Array(GC * GR);
     for (let r = 0; r < GR; r++) for (let c = 0; c < GC; c++) grid[r * GC + c] = (r + 0.5) * CH < cam.horizon ? G_SKY : G_SOFT;
     // the kinds of the v2 surfaces, by C.ground index
     const kindOfGround = new Map(), kindCells = {};
@@ -252,7 +260,7 @@ const _sccm = (function () {
     const kindAt = new Array(GC * GR).fill(null);
     (C.ground || []).forEach((g, gi) => add(g.layer | 0, () => {
       const kind = kindOfGround.get(gi) || g.kind || null;
-      const grp = kind ? (kind === 'water' ? G_WATER : HARD_KINDS[kind] ? G_HARD : G_SOFT) : paintGroup(g.fill);
+      const grp = kind ? (WATER_KINDS[kind] ? G_WATER : HARD_KINDS[kind] ? G_HARD : G_SOFT) : paintGroup(g.fill);
       fillPolys(pathPolys(g.d), (k) => { grid[k] = grp; kindAt[k] = kind || (grp === G_HARD ? 'hard' : grp === G_WATER ? 'water' : 'soft'); });
     }));
     (C.water || []).forEach((w) => add(w.layer | 0, () => fillPolys(pathPolys(w.d), (k) => { grid[k] = G_WATER; kindAt[k] = (w.v2 && w.v2.kind) || 'water'; })));
@@ -267,11 +275,14 @@ const _sccm = (function () {
       const h = box[3] - box[1];
       if (h >= 40 && cat !== 'plant' && cat !== 'ground' && cat !== 'bird' && cat !== 'sky') salient++;
       boxes.push({ i, box, def, cat, tags, layer: layerId(it.layer), grp });
-      if (grp === G_NONE || it.pin && cat === 'sky') return;
+      // flat ground decals (leaf litter, sand patches, puddles: category ground) lie ON a surface: they do not cover it
+      if (grp === G_NONE || it.pin && cat === 'sky' || cat === 'ground') return;
       add(it.layer | 0, () => {
         // a tree's crown is narrower at the foot (trunk): keep the lower 30 % to the middle third of the box
         const fx = grp === G_TREE ? (c, r) => { const yc = (r + 0.5) * CH, xc = (c + 0.5) * CW, foot = box[1] + (box[3] - box[1]) * 0.7; if (yc < foot) return true; const mid = (box[0] + box[2]) / 2, half = (box[2] - box[0]) / 6; return Math.abs(xc - mid) <= half; } : null;
-        fillBox(box, (k) => { grid[k] = grp; if (grp === G_HARD || grp === G_SOFT) kindAt[k] = kindAt[k] || null; }, fx);
+        // a 'front' frame (an arch, a framing tree) does not take sky away: the sky share is measured behind the frame
+        const front = layerId(it.layer) === 'front';
+        fillBox(box, (k) => { if (front && grid[k] === G_SKY) framed[k] = 1; grid[k] = grp; if (grp === G_HARD || grp === G_SOFT) kindAt[k] = kindAt[k] || null; }, fx);
       });
     });
     // flows (v2): the lanes' agents count as life along the lanes (a light trace: one cell per 40 units of lane)
@@ -289,7 +300,7 @@ const _sccm = (function () {
 
     // shares
     let sky = 0, water = 0;
-    for (let k = 0; k < grid.length; k++) { if (grid[k] === G_SKY) sky++; else if (grid[k] === G_WATER) water++; }
+    for (let k = 0; k < grid.length; k++) { if (grid[k] === G_SKY || framed[k]) sky++; else if (grid[k] === G_WATER) water++; }
     const N = GC * GR;
     for (let k = 0; k < N; k++) if (kindAt[k] && grid[k] !== G_SKY) kindCells[kindAt[k]] = (kindCells[kindAt[k]] || 0) + 1;
     const kinds = {};
@@ -304,12 +315,26 @@ const _sccm = (function () {
     let subject = null;
     const clip = (b) => [Math.max(0, b[0]), Math.max(0, b[1]), Math.min(W, b[2]), Math.min(H, b[3])];
     const area = (b) => Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]);
+    // the author's subject (data): a building or a placement marked `subject: true`, found in the compiled items (a projected building by
+    // its seed and style; a placement by its object and ground point)
+    const subjIdx = new Set();
+    if (data) {
+      // (matched on the direct record itself: the seed and the style; robust to the draw-order sort)
+      for (const b of data.buildings || []) if (b && b.subject) items.forEach((it, i) => { if (it.direct && it.direct.seed === b.seed && (!b.style || it.direct.style === b.style)) subjIdx.add(i); });
+      for (const p of data.place || []) if (p && p.subject && Array.isArray(p.at)) items.forEach((it, i) => { if (it.o === p.obj && it.g && Math.abs(it.g.x - p.at[0]) < 1.5 && Math.abs(it.g.d - p.at[1]) < 1.5) subjIdx.add(i); });
+    }
+    // the subject: an explicit `subject` item wins; then a landmark or signature, the biggest on screen. A FRAMING one (cut by the left or
+    // right edge, over half the height: a veteran tree at the side) ranks below any other, since the eye does not rest on a frame.
     for (const B of boxes) {
-      const isLm = B.cat === 'landmark' || B.tags.indexOf('landmark') >= 0 || B.tags.indexOf('signature') >= 0;
+      const it = items[B.i];
+      const isSubj = it.subject === true || subjIdx.has(B.i);
+      const isLm = isSubj || B.cat === 'landmark' || B.tags.indexOf('landmark') >= 0 || B.tags.indexOf('signature') >= 0;
       if (!isLm) continue;
       const cb = clip(B.box), a = area(cb);
       if (a <= 0) continue;
-      if (!subject || a > subject.a) subject = { a, B, cb, src: B.cat === 'landmark' ? 'landmark' : B.tags.indexOf('signature') >= 0 ? 'signature' : 'landmark-tag' };
+      const framing = (B.box[0] < 4 || B.box[2] > W - 4) && (cb[3] - cb[1]) > H * 0.5;
+      const rank = (isSubj ? 2 : 0) + (framing ? 0 : 1);
+      if (!subject || rank > subject.rank || (rank === subject.rank && a > subject.a)) subject = { a, rank, B, cb, src: isSubj ? 'subject' : B.cat === 'landmark' ? 'landmark' : B.tags.indexOf('signature') >= 0 ? 'signature' : 'landmark-tag' };
     }
     let subj = null;
     if (subject) {
@@ -324,7 +349,8 @@ const _sccm = (function () {
     // leading lines
     let lines = [];
     if (data && (data.surfaces || data.water || data.flows) && C.cam) lines = linesFromData(cam, data);
-    if (!lines.length && C.surfaces) lines = linesFromSurfaces(cam, C);
+    // polygons (a river or a basin given as an area, a square) by their principal axis, unless a centreline already gave that id
+    if (C.surfaces || (C.water || []).some(w => w && w.v2)) { const have = new Set(lines.map(l => l.id)); lines = lines.concat(linesFromSurfaces(cam, C).filter(l => !have.has(l.id))); }
     if (!lines.length) lines = linesFromShapes(cam, C);
     lines = lines.filter(l => l.len >= 60);
     let best = null, bestDist = Infinity;

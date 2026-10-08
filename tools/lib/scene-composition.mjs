@@ -4,7 +4,8 @@
 //   compositionRules(C, data, { pack, siblings, thresholds, strict, E, reg, ref }) -> [Rule]   the group 'composition' (wired by
 //       tools/lib/scene-lint.mjs, builder D, through a dynamic import). Rule = { group, rule, ok, value, limit, message, warn?, sev }:
 //       a WARNING is ok with its text in `warn` (the v1 lint's convention); with strict (--strict-placement) it is a failure (ok false).
-//       Rules: thirds, leadingLine, framing (presets that want it), skyShare, subjectSize, horizonVariety (the pack), tooSimilar (the pack).
+//       Rules: thirds, leadingLine (presets that want one, and v1 scenes), waterShare (across-water), framing (presets that want it),
+//       skyShare, subjectSize, horizonVariety (the pack), tooSimilar (the pack).
 //       siblings: the pack's other scenes as [{ ref, fp }] or [{ ref, C, data }] or [{ ref, data }]; or give `reg` + `pack` and they are
 //       found and fingerprinted here (memoised per registry and pack).
 //   compositionMeasures(C, data, { E, compositionOf }) -> the measures of sceneCompositionOf (70-scene-1camera.js)
@@ -182,16 +183,23 @@ export function compositionRules(C, data, opts = {}) {
     out.push(rule('thirds', ok, `x ${S.xFrac}${S.symmetric ? ' (symmetric)' : ''}`, `within ${T.thirds.maxDist} of 1/3 or 2/3, not in ${T.thirds.central.join(' to ')}`,
       `thirds: the subject ${S.o} (place[${S.i}]) sits at ${pctS(S.xFrac)} of the width${centralBad ? ', in the central band' : ''}, ${S.thirdsDist} from the nearest third line: move it (or turn the camera ${S.xFrac < S.third ? 'left' : 'right'} by about ${Math.round(Math.abs(S.xFrac - S.third) * (m.fov || 66))} degrees) so it sits on the ${S.third < 0.5 ? 'left' : 'right'} third, or tag the object 'symmetric' if it is a head-on facade`));
   }
-  // leading lines
-  {
+  // leading lines: the presets that want them (street, raised, down-street) and scenes with no preset (v1); across-water leads with the
+  // water itself, from-hill with its ridges, through-arch with its frame, close-up and panorama with the subject and the horizon
+  const P0 = presetId ? cameraPreset(presetId, opts) : null;
+  if (!P0 || P0.lines) {
     const L = m.leading || { n: 0 };
     const ok = !!L.ok;
     out.push(rule('leadingLine', ok, L.n ? `${L.n} line(s), best ${L.best} at ${L.dist}` : 'none', `a strip converging within ${T.leadingLine.maxDist} of the subject or its third`,
       L.n ? `leadingLine: the nearest line (${L.best}) converges ${L.dist} of the width away from ${S ? 'the subject and its third line' : 'the frame'}: turn the camera or move the subject so the road, path, canal or rail leads to it`
         : 'leadingLine: no road, path, towpath, canal or rail runs into the picture: add one that leads toward the subject (a path strip, the water\'s centreline), or use a preset that has one (down-street)'));
   }
+  // the water's share (across-water: 18 % to 32 % of the frame)
+  if (P0 && P0.water) {
+    const v = m.waterShare || 0, rng = P0.water, ok = v >= rng[0] && v <= rng[1];
+    out.push(rule('waterShare', ok, v, rng.join(' to '), `waterShare: the water fills ${pctS(v)} of the frame, outside ${rng.map(pctS).join(' to ')}: ${v < rng[0] ? 'stand nearer the bank (the near edge within 5 to 10 m) or lower the eye' : 'step back from the bank or raise the horizon'}`));
+  }
   // framing (presets that want it)
-  const P = presetId ? cameraPreset(presetId, opts) : null;
+  const P = P0;
   if (P && P.framing) {
     const F = m.framing || { left: 0, right: 0, sides: 0 };
     const rng = P.framing === 'both' ? (P.frame || T.framing.both) : (P.frame || T.framing.one);
