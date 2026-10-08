@@ -92,8 +92,10 @@ function readGif(buf) {
 /* ---------- the PNG decoder ---------- */
 test('pngDecode: RGB and RGBA PNGs made with node:zlib, every one of the five filter types, decode to the exact pixels', () => {
   const w = 13, h = 9;
-  for (const bpp of [3, 4]) {
-    const px = pixels(w * h * bpp, 5 + bpp);
+  // noise, and values from {0, 5, 10, 20, 30}: there the Paeth distances often tie (e.g. left 20, up 5, up-left 10),
+  // so its tie order (left, then up, then up-left) is checked too
+  const r = rand(17), ties = (n) => Uint8Array.from({ length: n }, () => [0, 5, 10, 20, 30][Math.floor(r() * 5)]);
+  for (const [bpp, px] of [[3, pixels(w * h * 3, 8)], [4, pixels(w * h * 4, 9)], [3, ties(w * h * 3)], [4, ties(w * h * 4)]]) {
     for (let f = 0; f <= 4; f++) {
       const d = pngDecode(makePng(w, h, px, bpp, f));
       assert.equal(d.width, w); assert.equal(d.height, h);
