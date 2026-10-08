@@ -10,6 +10,35 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-10-08
+
+### Added
+
+- **28 openings rebuilt on the scene engine,** each in four seasons with the live sky: Tokyo, Shanghai, Hong Kong, Taipei, Guangzhou, Kuala Lumpur, Singapore (Marina Bay), Jakarta, Da Nang, Macau, Dubai, Baku, Riyadh, Vladivostok, Xi'an, Armenia, the Statue of Liberty in New York harbour, Boston, San Francisco, Seattle, Chicago, Cincinnati, Nashville, Philadelphia and Oklahoma City. Each keeps its place, caption and pin; the old hand-drawn art is still there for places not yet rebuilt.
+- **About 50 new hand-drawn landmarks,** each with a night look: Tokyo Tower, the Skytree, the Oriental Pearl, Canton Tower, the Petronas Towers, the Burj Khalifa, the Flame Towers, Kingdom Centre, the Golden Gate Bridge, the Space Needle, the Willis Tower, the Roebling Bridge, Philadelphia City Hall and more.
+- **73 more library objects** (222 in all): trees, plants, birds, boats, buildings, rail, street furniture and vehicles for East Asia, the tropics, cities and London stations.
+- **Natural layered clouds** on the canvas: cumulus heaps with a flat shaded base, low stratus strips and high wisps chosen by cover and weather, in two or three depth bands (small, pale and slow in the distance; larger, brighter and faster up close), with a sun-side rim and a glowing base at sunrise and sunset.
+- **Larger, more detailed people, sized by depth.** A new figure builder draws walking, running, seated and cycling people (no faces) with clothes, bags and umbrellas by season; the walker, jogger, dog-walker, family, cyclist, angler, commuters and busker all use it.
+- `scene capture` records a looping animated GIF of one scene, with no dependencies.
+- Packs outside a region (Texas) can now register a composed upgrade of a hand-drawn scene. Dallas is built and passes the quality bar, but is not shown yet.
+
+### Changed
+
+- The evening and live-sky overlay on hand-drawn scenes darkens the art in place and lights its lamps, and the Texas scenes use the same overlay. Subtropical scenes no longer get frost or snow flecks.
+- Animated objects can glow at night, with their lit part moving with them.
+- A scene's choice of trees and other objects no longer changes when new objects are added to the library.
+
+### Fixed
+
+- Release builds on CI: the scene test harness now follows reduced motion, a timing budget is wider on CI, and the release zip includes the animation tool's skill files.
+- The chalk cliff and the pony's neck were redrawn; many library objects got review fixes (stations, rail, street, buildings, boats, birds, plants).
+
+### Known issues
+
+- The finished Mackinac Bridge and Dallas openings are not shown yet; they stay on the old art until the tests that guard going live are updated.
+- Rebuilt openings in hot places (Riyadh, Dubai) can show falling leaves in autumn and snow in winter. This will be fixed in the engine.
+- A few rebuilt openings are close to the laptop frame-time budget (for example Armenia, Dubai, Boston and Baku).
+
 ## [2.6.0] - 2026-10-07
 
 ### Added
@@ -426,7 +455,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/mahdi1190/opendash/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/mahdi1190/opendash/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/mahdi1190/opendash/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/mahdi1190/opendash/compare/v2.4.7...v2.5.0
