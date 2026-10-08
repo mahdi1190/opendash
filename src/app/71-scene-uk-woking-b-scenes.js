@@ -92,8 +92,8 @@
     live(d, 'tree.bank-birch', 'mid', 1010, 612, 0.9, { flip: false });
     live(d, 'bird.pigeon', 'near', 880, 884, 1.5, { flip: false });
     // the paved street is covered from edge to edge: bollards, planters, shrubs and benches (static, the cover)
-    sc(d, 'plant.planter', 'near', 11, { rect: [-160, 600, 1760, 900] }, 120, { s: [0.8, 1.2], minGap: 12, mask: { avoid: [{ rect: [800, 600, 1000, 900] }] } });
-    sc(d, 'plant.shrub', 'near', 15, { rect: [-160, 600, 1760, 900] }, 70, { s: [0.8, 1.2], minGap: 20, mask: { avoid: [{ rect: [800, 600, 1000, 900] }] } });
+    sc(d, 'plant.planter', 'near', 11, { rect: [-160, 600, 1760, 900] }, 110, { s: [0.5, 0.8], minGap: 14, mask: { avoid: [{ rect: [800, 600, 1000, 900] }] } });
+    sc(d, 'plant.shrub', 'near', 15, { rect: [-160, 600, 1760, 900] }, 70, { s: [0.5, 0.8], minGap: 20, mask: { avoid: [{ rect: [800, 600, 1000, 900] }] } });
     sc(d, 'tree.bank-distant', 'far', 16, { rect: [-160, 470, 1760, 520] }, 6, { s: [0.5, 0.8], minGap: 80 });
     sc(d, 'plant.planter', 'mid', 12, { rect: [-160, 560, 1760, 640] }, 40, { s: [0.6, 1.0], minGap: 14, sByY: [[560, 0.45], [640, 0.75]] });
     sc(d, { 'street.bollard': 1, 'plant.shrub': 1 }, 'fore', 13, { rect: [-160, 840, 1760, 900] }, 18, { s: [1.1, 1.6], minGap: 60, sByY: [[840, 1.05], [900, 1.5]] });
@@ -135,10 +135,10 @@
     live(d, 'bird.pigeon', 'near', 610, 830, 1.4, { flip: false });
     live(d, 'bird.pigeon', 'near', 1180, 866, 1.5, { flip: true });
     // trees behind the far fence, a mix of species, and the grass of the touchline
-    sc(d, { 'tree.bank-oak': 2, 'tree.bank-birch': 1, 'tree.far-broad': 1 }, 'far', 31, { rect: [-160, 500, 1760, 560] }, 18, { s: [0.5, 0.9], minGap: 30 });
-    sc(d, { 'plant.grass': 3, 'plant.wildflowers': 1, 'plant.shrub': 1 }, 'mid', 32, { rect: [-160, 556, 1760, 636] }, 170, { s: [0.6, 1.2], minGap: 9, mask: { avoid: [{ rect: [700, 490, 920, 560] }] } });
+    sc(d, { 'tree.bank-oak': 2, 'tree.bank-birch': 1, 'tree.far-broad': 1 }, 'far', 31, { rect: [-160, 500, 1760, 560] }, 18, { s: [0.3, 0.55], minGap: 30 });
+    sc(d, { 'plant.grass': 3, 'plant.wildflowers': 1, 'plant.shrub': 1 }, 'mid', 32, { rect: [-160, 556, 1760, 636] }, 170, { s: [0.6, 1.2], minGap: 9, mask: { avoid: [{ rect: [380, 500, 1220, 600] }] } });
     // the cars in the bays: parked along the whole car park, a few leaving on the drive (moving)
-    sc(d, { 'vehicle.car': 2, 'vehicle.taxi': 2 }, 'near', 33, { rect: [-160, 660, 1760, 900] }, 110, { s: [0.8, 1.35], minGap: 36 });
+    sc(d, { 'vehicle.car': 4, 'vehicle.taxi': 1, 'vehicle.bus': 1 }, 'near', 33, { rect: [-160, 660, 1760, 900] }, 110, { s: [0.8, 1.35], minGap: 36 });
     sc(d, { 'vehicle.car': 1, 'street.bench': 1 }, 'near', 36, { rect: [-160, 690, 1760, 760] }, 18, { s: [0.6, 1.5], minGap: 30 });
     sc(d, { 'street.bollard': 1, 'street.lamp': 1, 'plant.grass': 1 }, 'fore', 34, { rect: [-160, 850, 1760, 900] }, 22, { s: [1.0, 1.7], minGap: 50, sByY: [[850, 1.0], [900, 1.6]] });
     sc(d, { 'street.bollard': 1, 'plant.shrub': 1 }, 'near', 35, { rect: [-160, 672, 1760, 720] }, 18, { s: [0.7, 1.1], minGap: 14 });
