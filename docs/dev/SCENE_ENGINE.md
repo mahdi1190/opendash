@@ -1127,7 +1127,9 @@ blend layer per frame.
   season       when retro.season === 'auto', the item's season label is 'any' and the scene's own |lat| >= 23.5:
                spring #cfe8a0 soft-light .10 + 12 petals; summer: 8 motes; autumn #d27a2c soft-light .20 + 16 leaves;
                winter #e8eef6 screen .18 (fading to a fifth at night, where it would grey the dark sky) + a grey
-               saturation rect .25 + 30 snowflakes (more when L.snow)
+               saturation rect .25 + 30 snowflakes (more when L.snow); winter is graded by the scene's own |lat|
+               (sceneRetroSeason): 23.5..35 (Florida, the Gulf, the deserts) only the saturation rect at half
+               strength, no frost and no flakes; 35..45 the frost and flakes ramp in; 45 and over the full winter
   weather      rain lines / snow / fog veil from L (shared with the canvas renderer's constants)
 </g>
 ```
@@ -1148,6 +1150,13 @@ blend layer per frame.
   particles are hidden (frozen they would sit in a band at the top).
 
 `sceneRetrofitSvg(markup, L, retro, { season, lat })` builds it.
+`sceneRetroSeason(lat, ms[, season])` is the pure season rule it uses:
+`{ season, tint, desat, fall }`, each the share (0..1) of the full colour
+layer (winter's white frost), winter's saturation layer and the falling
+particles, by the scene's own latitude and the date (hemisphere aware:
+a southern scene's winter is June to August). Within the tropics all
+are 0; the other seasons are 1; winter is graded as above, so snow only
+falls where winter snow is plausible.
 
 `SCENE_RETRO_DEFAULTS`:
 

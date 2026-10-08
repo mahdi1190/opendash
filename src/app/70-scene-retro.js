@@ -19,6 +19,7 @@
 
    sceneRetrofit(item, retro)                        -> item with svg wrapped (retro false: the item unchanged)
    sceneRetrofitSvg(markup, L, retro, {season, lat}) -> the wrapped markup for a light L
+   sceneRetroSeason(lat, ms)                         -> {season, tint, desat, fall}: the season overlay's strength (no snow in hot places)
    SCENE_RETRO_DEFAULTS, SCENE_RETRO_MAX_BYTES
    The classes it uses (sr-retro, sr-back, sr-lamps, sr-sky, x-srtw, x-srfall) live in src/styles/76-scene.css.
    ============================================================ */
@@ -157,12 +158,16 @@ const sceneRetrofitSvg = (function () {
       if (fade < 0.03) removed += s[0].length;
     }
     const art = relight(markup, ranges, f);
-    // the season (a picture of 'any' season, outside the tropics); winter's frost (a screen) fades at night, where it would grey the dark sky
-    const season = o.season, tint = { spring: ['#cfe8a0', 'soft-light', 0.1, 12], summer: [null, null, 0, 8], autumn: ['#d27a2c', 'soft-light', 0.2, 16], winter: ['#e8eef6', 'screen', 0.18, 30] }[season];
-    if (r.season === 'auto' && tint && !o.fixedSeason && Math.abs(o.lat || 0) >= 23.5) {
-      if (tint[0]) parts.season = `<rect x="-160" y="-80" width="1920" height="1060" fill="${tint[0]}" opacity="${F(tint[1] === 'screen' ? tint[2] * (1 - 0.8 * dark) : tint[2])}" style="mix-blend-mode:${tint[1]}"/>` + (season === 'winter' ? '<rect x="-160" y="-80" width="1920" height="1060" fill="#8a8f96" opacity=".25" style="mix-blend-mode:saturation"/>' : '');
-      if (r.particles) {
-        const col = { spring: '#f6d4e0', summer: '#fff6c8', autumn: '#c8682a', winter: '#ffffff' }[season], cnt = tint[3] + (season === 'winter' && L.snow ? 30 : 0);
+    // the season (a picture of 'any' season, outside the tropics; winter graded by latitude, sceneRetroSeason); winter's frost (a screen) fades at night, where it would grey the dark sky
+    const season = o.season, sg = sceneRetroSeason(o.lat, NaN, season), tint = { spring: ['#cfe8a0', 'soft-light', 0.1, 12], summer: [null, null, 0, 8], autumn: ['#d27a2c', 'soft-light', 0.2, 16], winter: ['#e8eef6', 'screen', 0.18, 30] }[season];
+    if (r.season === 'auto' && tint && !o.fixedSeason && (sg.tint || sg.desat || sg.fall)) {
+      // a part-strength frost keeps three decimals, so it still fades at night instead of rounding away
+      const op = tint[1] === 'screen' ? tint[2] * (1 - 0.8 * dark) : tint[2];
+      if (tint[0]) parts.season = (sg.tint ? `<rect x="-160" y="-80" width="1920" height="1060" fill="${tint[0]}" opacity="${sg.tint < 1 ? Math.round(op * sg.tint * 1000) / 1000 : F(op)}" style="mix-blend-mode:${tint[1]}"/>` : '')
+        + (season === 'winter' ? `<rect x="-160" y="-80" width="1920" height="1060" fill="#8a8f96" opacity="${sg.desat < 1 ? F(0.25 * sg.desat) : '.25'}" style="mix-blend-mode:saturation"/>` : '');
+      const cnt = R((tint[3] + (season === 'winter' && L.snow ? 30 : 0)) * sg.fall);
+      if (r.particles && cnt) {
+        const col = { spring: '#f6d4e0', summer: '#fff6c8', autumn: '#c8682a', winter: '#ffffff' }[season];
         let d = '';
         for (let i = 0; i < cnt; i++) { const x = R(rnd() * 1600), y = R(rnd() * 200 - 60), s = season === 'autumn' ? 4 : 2.4; d += `<circle class="x-srfall" style="--d:-${F(rnd() * 14)}s;--dx:${R(20 + rnd() * 60)}px" cx="${x}" cy="${y}" r="${s}"/>`; }
         parts.particles = `<g fill="${col}" opacity=".8">${d}</g>`;
@@ -193,6 +198,20 @@ const sceneRetrofitSvg = (function () {
   };
 })();
 /**
+ * The season overlay of a picture of 'any' season at latitude lat on the date ms (PURE; hemisphere aware through sceneSeason;
+ * a season already known may be passed instead of the date): { season, tint, desat, fall }, each the share (0..1) of the
+ * full overlay: tint the colour layer (winter's white frost), desat winter's grey saturation layer, fall the particles.
+ * Within the tropics (|lat| < 23.5) nothing. Winter by how plausible snow is: 23.5..35 (Florida, the Gulf, the deserts) only
+ * the mild desaturation at half strength, no frost and no flecks; 35..45 the frost and flecks ramp in; from 45 the full winter.
+ */
+function sceneRetroSeason(lat, ms, season) {
+  const a = Math.abs(lat || 0), s = season || (typeof sceneSeason === 'function' ? sceneSeason(ms, lat, { season: 'auto', tropic: 'summer' }) : 'summer');
+  if (a < 23.5) return { season: s, tint: 0, desat: 0, fall: 0 };
+  if (s !== 'winter') return { season: s, tint: 1, desat: 1, fall: 1 };
+  const snow = Math.max(0, Math.min(1, (a - 35) / 10));
+  return { season: s, tint: snow, desat: 0.5 + 0.5 * snow, fall: snow };
+}
+/**
  * Wrap an item so its svg(o) carries the retrofit overlay when o.sky is given (7.1). retro: SCENE_RETRO_DEFAULTS overrides,
  * or false (the item unchanged). The light is the item's live sky seen through retro.heading / fov / horizon.
  */
@@ -207,7 +226,7 @@ function sceneRetrofit(item, retro) {
     const lat = Number.isFinite(o.sky.lat) ? o.sky.lat : sky.lat, lon = Number.isFinite(o.sky.lon) ? o.sky.lon : sky.lon;
     // the light is the viewer's real sky; the season is the picture's own place (a tropical scene never frosts, wherever it is seen from)
     const place = Number.isFinite(sky.lat) ? sky.lat : lat;
-    const season = typeof sceneSeason === 'function' ? sceneSeason(o.sky.ms, place, { season: 'auto', tropic: 'summer' }) : 'summer';
+    const season = sceneRetroSeason(place, o.sky.ms).season;
     const L = sceneLight({ sky: o.sky }, { lat, lon, heading: r.heading, fov: r.fov, horizon: r.horizon, season });
     return sceneRetrofitSvg(markup, L, r, { season, lat: place, fixedSeason, key: item.id || '' });
   };
