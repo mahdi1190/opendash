@@ -679,3 +679,52 @@ chips.
 Not in scope for v1: writing anything to a bank, Monzo feed items or
 receipts, XPL/other tokens on Plasma, other chains, Plaid/Yapily/GoCardless,
 a hosted relay for EB.
+
+---
+
+## 5. Build notes: Plasma One (Builder 3, 8 Oct)
+
+Built in `lib/fin-connect/plasma.mjs` (+ `keccak.mjs`, `plasma-labels.json`),
+`tests/fixtures/fin-fake-plasma.mjs`, `tests/fin-connect-plasma.test.mjs`,
+`tests/fin-connect-plasma-server.test.mjs`. Changes against the design above:
+
+- **Token contracts are told apart with Routescan `tokeninfo`, not `eth_getCode`.**
+  Plasma One wallets are ERC-4337 smart accounts, so they HAVE code: refusing
+  any address with code would refuse every real Plasma One wallet. `eth_getCode`
+  is still called, only to report `smartAccount` in the preview.
+- **Memo wording**: `Plasma One payment · 0x12…ab34` (money out) and
+  `Plasma One received · 0x12…ab34` (money in), not "Plasma transfer to …":
+  the finance merchant cleaner (`cleanMerchant`) drops the address tokens and
+  keeps one merchant ("Plasma One Payment") instead of one per address. Named
+  addresses (`PUT /api/fin-connect/plasma/names`, kept in the source's cursor,
+  by full or short address) replace the memo for new rows.
+- **Tokens**: USDT0 (6 decimals, the "Plasma One" account) and USDe
+  (`0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34`, 18 decimals, verified with
+  Routescan `tokeninfo` for chain 9745 on 8 Oct), matched by contract address
+  only. A second token becomes a second account only once the wallet has used it.
+- **The USDT0 address in section 0 is not in EIP-55 form.** The checksummed
+  form is `0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb`; the casing in section 0
+  fails the checksum (the paste check rightly calls it a typo).
+- **Card labels**: no public explorer label for a Plasma One card settlement
+  address was found, so `plasma-labels.json` is empty and every card spend
+  reads "Plasma One payment · 0x…". The UI copy that says "Plasma One card"
+  should match that.
+- **No RPC fallback for transfers**: `eth_getLogs` over months of one-second
+  blocks is more than a public RPC serves, and it is not on the allowlist.
+  When Routescan is busy or down, balances come from the RPC (`balanceOf`),
+  the transfers part warns and keeps the cursor; a refused API key (`AUTH`)
+  or no network at all fails the update.
+- **Dust**: transfers under one cent (and zero-value ones) are dropped: they
+  are address-poisoning spam.
+- **Extra routes** (registered by `provider.routes`): `PUT plasma/key {key}`
+  (the optional Routescan key, `''` removes it) and `PUT plasma/names`.
+
+Open issues for the core (not Plasma-only, found in the browser check):
+
+- `api.frankfurter.app` now answers `301` to `api.frankfurter.dev/v1/`, and
+  `lib/travel-rates.mjs` fetches with `redirect: 'error'`, so `rateOn()` (and
+  `online()`) always fail: every non-GBP row would wait for a rate forever.
+- The FX note appended to the memo (`(<amount> USD @ <rate>)`) becomes part of
+  the merchant name in Finances ("Plasma One Payment 0X00 00Ca <amount> Usd
+  <rate>"), so every converted row is its own merchant. The note should be
+  stripped before `cleanMerchant`, or kept out of the memo.

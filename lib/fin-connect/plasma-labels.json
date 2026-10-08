@@ -1,0 +1,5 @@
+{
+ "about": "Public explorer labels for Plasma (chain 9745) addresses that Plasma One transfers go to, used to name rows (e.g. a card settlement address). Only labels published by a public explorer, each with its source URL. Empty on 8 Oct 2026: no public label for a Plasma One card settlement address was found, so rows use the generic 'Plasma One payment · 0x12…ab34' and the page explains why.",
+ "asOf": "2026-10-08",
+ "labels": []
+}
