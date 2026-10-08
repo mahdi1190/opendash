@@ -54,7 +54,7 @@ test('rules: the top level is an allowlist; anything new must be added on purpos
     assert.equal(classifyTop(n, false).keep, true, n);
   }
   for (const d of ['src', 'server', 'lib', 'mcp', 'tools', 'vendor', 'tests', 'docs', '.github']) assert.equal(classifyTop(d, true).keep, true, d);
-  assert.deepEqual(classifyTop('assets', true), { keep: 'partial', only: ['brand'] });
+  assert.deepEqual(classifyTop('assets', true), { keep: 'partial', only: ['brand', 'objects'] });
   assert.deepEqual(classifyTop('.claude', true), { keep: 'partial', only: ['skills/animation-pack'] });
   for (const [n, dir] of [['data', true], ['state', true], ['secrets', true], ['index.html', false], ['node_modules', true]]) {
     const c = classifyTop(n, dir);

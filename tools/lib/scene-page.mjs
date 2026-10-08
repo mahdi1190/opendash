@@ -21,6 +21,7 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { animRegistryFiles } from './anim-sources.mjs';
+import { rasterAssetBlocks, readRasterAsset } from './raster-assets.mjs';
 
 export const repoRoot = () => resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SCENE_SRC_RE = /^7[01]-scene-[a-z0-9-]+\.js$/, SCENE_BROWSER_RE = /^78-scene-[a-z0-9-]+\.js$/;
@@ -40,7 +41,7 @@ export function sceneSourceFiles(root = repoRoot(), { browser = false, fixtures 
   return paths;
 }
 
-const NAMES = ['sceneSvg', 'sceneRendererFor', 'sceneHostAttrs', 'sceneSvgCss', 'sceneLodFor', 'sceneLightKey', 'sceneSpriteKey', 'sceneAnimPose', 'sceneActorAt', 'sceneFlockAt',
+const NAMES = ['sceneRasterSource', 'sceneRasterMatrix', 'sceneRasterApply', 'sceneRasterFit', 'sceneRasterFilter', 'sceneRasterKeys', 'sceneRasterPick', 'sceneRasterIsId', 'sceneRasterUrl', 'SCENE_RASTER_FX', 'SCENE_RASTER_BUDGET', 'sceneSvg', 'sceneRendererFor', 'sceneHostAttrs', 'sceneSvgCss', 'sceneLodFor', 'sceneLightKey', 'sceneSpriteKey', 'sceneAnimPose', 'sceneActorAt', 'sceneFlockAt',
   'sceneParticleSet', 'sceneParticleAt', 'sceneBakePlan', 'sceneFrameDraws', 'scenePathBox', 'sceneSignLayout', 'sceneCompile', 'sceneLight', 'sceneObjShapes', 'sceneObjDefine', 'sceneObj',
   'sceneItem', 'sceneData', 'sceneSeason', 'sceneColour', 'sceneSignText', 'sceneScaleBucket', 'animItemHtml', 'animRegisterPack', 'animItem', 'almSceneLight',
   'SCENE_TEST_TINY', 'sceneTestDense', 'SCENE_SVG_FILL_MAX_BYTES', 'SCENE_SVG_TILE_MAX_BYTES', 'SCENE_DRAW_BUDGET', 'SCENE_MAX_BITMAPS'];
@@ -49,7 +50,9 @@ export function loadScenes(root = repoRoot(), { fixtures = true, extra = '' } = 
   const files = sceneSourceFiles(root, { fixtures });
   const body = files.map(f => readFileSync(f, 'utf8')).join('\n;\n') + '\n;\n' + extra;   // extra: test-only source (a stub sceneCanvasSupported ...)
   const tail = `\nreturn { ${NAMES.map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ')} };`;
-  return new vm.Script('(function () {\n' + body + tail + '\n})', { filename: 'scene-bundle.js' }).runInThisContext()();
+  const S = new vm.Script('(function () {\n' + body + tail + '\n})', { filename: 'scene-bundle.js' }).runInThisContext()();
+  if (typeof S.sceneRasterSource === 'function') S.sceneRasterSource((key) => readRasterAsset(root, key));   // raster objects' images
+  return S;
 }
 
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -85,7 +88,7 @@ html,body{margin:0;background:${dark ? '#16171a' : '#f4f4f6'};overflow:hidden}
 .sp-box{position:relative;width:${size.w}px;height:${size.h}px;overflow:hidden}
 .sp-box>.anim-scene{position:absolute;inset:0;width:100%;height:100%;border-radius:0;--as-size:100%}
 .sp-box>.anim-scene>svg{width:100%;height:100%;display:block}
-${boxCss}</style></head><body><div id="sp-root">${scenePageRows(opts)}</div>
+${boxCss}</style></head><body>${rasterAssetBlocks(root)}<div id="sp-root">${scenePageRows(opts)}</div>
 <script>window.__sceneErrors=[];addEventListener('error',e=>window.__sceneErrors.push(String(e.message)));window.__sceneOpts=${JSON.stringify(cfg)};</script>
 <script>${src}
 ;(function () {

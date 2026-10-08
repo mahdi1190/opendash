@@ -224,14 +224,15 @@ function sceneHostScan(root) {
   for (const el of list) if (el.isConnected) _schMount(el);
   return list.length;
 }
-/** Resolves (with the number of hosts) once every mounted, on-screen host has drawn its first frame or fallen back (at most 15 s). */
+/** Resolves (with the number of hosts) once every mounted, on-screen host has drawn its first frame (with its raster images) or fallen back (at most 15 s). */
 function sceneHostReady() {
   const t0 = _schNowMs();
   return new Promise((res) => {
     const check = () => {
       sceneHostScan(document);
       const list = [..._schHosts.values()];
-      const waiting = list.filter(r => !r.fallback && r.r && !r.r.baked && !r.el.classList.contains('is-offscreen'));
+      // a raster object still decoding counts as not ready (its renderer bakes again once the image is decoded)
+      const waiting = list.filter(r => !r.fallback && r.r && (!r.r.baked || r.r.waiting) && !r.el.classList.contains('is-offscreen'));
       if (!waiting.length || _schNowMs() - t0 > 15000) { res(list.filter(r => (r.r && r.r.baked) || r.fallback).length); return; }
       if (typeof requestAnimationFrame === 'function') requestAnimationFrame(check); else setTimeout(check, 16);
     };

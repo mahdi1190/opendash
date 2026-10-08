@@ -1,0 +1,36 @@
+{
+ "id": "tree.cherry-ai",
+ "category": "tree",
+ "size": [
+  274.4,
+  231
+ ],
+ "anchor": "bottom-centre",
+ "res": 1,
+ "variants": [
+  {
+   "base": "base.png",
+   "spring": "spring.png",
+   "autumn": "autumn.png",
+   "winter": "winter.png"
+  }
+ ],
+ "tags": [
+  "kit:temperate",
+  "role:tree",
+  "demo",
+  "raster"
+ ],
+ "source": "import-batch",
+ "derived": {},
+ "means": [
+  "#4d7236"
+ ],
+ "reflect": true,
+ "shadow": {
+  "rx": 99,
+  "ry": 12,
+  "h": 196
+ },
+ "bytes": 64000
+}

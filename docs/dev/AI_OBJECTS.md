@@ -114,7 +114,8 @@ Tips that matter:
 | `parts` | `;` list of `name=file|x,y|kind`; the pivot is in world units from the anchor (y up is negative) and optional (spin, bob and turn default to the part's centre, sway to its bottom-centre); kind is sway, spin, bob, turn or flicker |
 | `role` | one of SCENE_ROLES: tree shrub ground edge rock building-far building-mid building-near street walker vehicle boat bird animal (a landmark needs none) |
 | `res` | pixels per world unit, default 1 |
-| `rows`, `frames` | **sprite sheets** (this pack's convention): the number of variant rows and of frames. `import-batch` ignores these columns and imports single images and folders only, so rows with `rows` set are imported one by one with `object import-sheet` (section 5 does this) |
+| `rows`, `frames` | **sprite sheets**: the number of variant rows and of frames (0 = no frames row). A row with `rows` set (or `frames` above 0 on a PNG file) is sliced, aligned and linted as `object import-sheet` would; a row without them is a single image or folder (`object import`). Sheets and singles share ONE manifest |
+| `period` | optional: the frames animation's period in seconds (default 0.9) |
 | `subject` | the description for the AI prompt (ignored by the importer) |
 
 **An example: 40 suggested objects** (London stations, Hampshire, the North). Rows with `rows` are sprite sheets; the rest
@@ -174,23 +175,23 @@ folder part with no manifest entry sways).
 
 1. Drop the files into one folder outside the repository (sheets as `<id>.png`, single objects as `<id>/` folders), with
    `manifest.csv`.
-2. Import the sprite sheets, one per manifest row that has `rows` set:
+2. Check, then import everything in one go (sprite sheets and single images from the same manifest):
    ```
-   node tools/anim-pack.mjs object import-sheet <folder>/<id>.png --id <id> --rows <rows> [--frames <frames>] --kit <kit,kit> [--role <role>] [--size <size>] [--tags <tag,tag>]
+   node tools/anim-pack.mjs object import-batch <folder> --dry-run
+   node tools/anim-pack.mjs object import-batch <folder>
    ```
-   (the manifest's `;` lists become `,` lists on the command line). Run with `--dry-run` first if the grid looks unusual.
-3. Import the single images and folders: copy the rows without `rows` into a second manifest, then
-   ```
-   node tools/anim-pack.mjs object import-batch <folder> --manifest <folder>/manifest-singles.csv
-   ```
-4. Review: read the printed `cells xxxxxx` line, every FAIL and WARN (missing, size, position, shape, palette, text), then
+   `--dry-run` slices and lints every sheet and reads every single image, writing nothing. A row that fails (a sheet FAIL,
+   a missing file) is reported and the others still import (exit code 1); `--force` imports sheets in spite of their FAILs.
+   One object on its own: `object import-sheet <folder>/<id>.png --id <id> --rows <rows> [--frames <frames>] --kit <kit,kit>`
+   (the manifest's `;` lists become `,` lists on the command line).
+3. Review: read the printed `cells xxxxxx` line, every FAIL and WARN (missing, size, position, shape, palette, text), then
    look at each `object sheet` PNG in light and in night (`node tools/anim-pack.mjs object sheet <id> --mode night`). Fix a
    FAIL by asking the AI for that one cell again; a palette WARN with `--palette 0.3`; then re-import (it replaces the
    object's folder).
-5. Use them in scenes: they carry `kit:` and `role:` tags, so archetypes and `scatter` pick them up automatically; place
+4. Use them in scenes: they carry `kit:` and `role:` tags, so archetypes and `scatter` pick them up automatically; place
    landmarks and specific objects by id (`place`, `actors`; SCENE_ENGINE.md sections 3 and 8). Then
    `scene lint`, `scene sheet --times`, `scene perf` as for any composed scene (the animation-pack skill's gates).
-6. `node build.mjs`, `npm test` (a test checks that the generated `src/app/70-scene-lib-raster.js` matches the metas), and
+5. `node build.mjs`, `npm test` (a test checks that the generated `src/app/70-scene-lib-raster.js` matches the metas), and
    check the install-size budget (OBJECT_IMPORT.md section 6).
 
 **The short prompt for Claude Code:**
@@ -199,7 +200,7 @@ folder part with no manifest entry sways).
 Import the new AI objects in <folder> and use them in <area> scenes.
 ```
 
-Claude then: reads `<folder>/manifest.csv`; runs `object import-sheet` for every row with `rows` and `object import-batch` for
-the rest; reports each object's lint (and asks the AI-side fixes it needs as one list of "redraw cell X of <id>" lines); looks
-at every object sheet in light and night; and adds or upgrades the `<area>` scenes with the new objects through the
+Claude then: reads `<folder>/manifest.csv`; runs `object import-batch <folder>` (sheets and singles together); reports each
+object's lint (and asks the AI-side fixes it needs as one list of "redraw cell X of <id>" lines); looks at every object sheet
+in light and night; and adds or upgrades the `<area>` scenes with the new objects through the
 animation-pack skill (study, lint with no waiver, light and night renders, rubric, review).

@@ -1346,6 +1346,11 @@
    "ref": "texas/west-texas-sunset",
    "rule": "richness",
    "reason": "One of the five thinnest accepted scenes (still a good sunset): few moving groups."
+  },
+  {
+   "ref": "raster-demo/raster-demo-village",
+   "rule": "svgTileBytes",
+   "reason": "The raster-object demo (docs/dev/OBJECT_IMPORT.md section 8): its SVG still carries the imported images as data: URLs, so it is over the vector tile budget by design. The canvas host is the normal path; the SVG is only the fallback. Not in the daily rotation."
   }
  ]
 }

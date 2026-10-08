@@ -1,0 +1,8 @@
+id,file,category,size,anchor,kit,tags,parts,role,res,rows,frames
+building.cottage-ai,cottage.png,building,x184,bottom-centre,temperate,demo,,building-mid,1,,
+tree.cherry-ai,cherry,tree,x231,bottom-centre,temperate,demo,,tree,1,,
+building.windmill-ai,windmill,building,x384,bottom-centre,temperate,demo;signature,sails=windmill-sails.png|spin,building-mid,1,,
+vehicle.bus-ai,bus.png,vehicle,x73,bottom-centre,london,demo,,vehicle,1,,
+boat.narrowboat-ai,narrowboat,boat,x102,bottom-centre,water,demo,,boat,1,,
+building.terrace-ai,../../object-sheets/example-building-terrace.png,building,x120,bottom-centre,london,demo,,building-far,1,2,0
+person.walker-ai,../../object-sheets/example-person-walker.png,person,,bottom-centre,people,demo,,walker,1,1,4

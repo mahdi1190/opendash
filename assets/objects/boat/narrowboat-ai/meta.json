@@ -1,0 +1,37 @@
+{
+ "id": "boat.narrowboat-ai",
+ "category": "boat",
+ "size": [
+  497,
+  102
+ ],
+ "anchor": "bottom-centre",
+ "res": 1,
+ "variants": [
+  {
+   "base": "base.png",
+   "night": "night.png",
+   "lit": "lit.png"
+  }
+ ],
+ "tags": [
+  "kit:water",
+  "role:boat",
+  "demo",
+  "raster"
+ ],
+ "source": "import-batch",
+ "derived": {
+  "lit": "lit-vs-night",
+  "seasons": [
+   "spring",
+   "autumn",
+   "winter"
+  ]
+ },
+ "means": [
+  "#485140"
+ ],
+ "reflect": true,
+ "bytes": 23388
+}

@@ -7,9 +7,11 @@ Two routes, one style:
 
 - **A. Sprite sheet (preferred): ONE image per object** with every season, night, lit and the animation frames. Attach
   `docs/dev/object-sheets/template-2x6-f4.png` (or the template for your row count: `node tools/anim-pack.mjs object template
-  --rows N --frames K`) and the three `example-*.png` sheets. Import with `object import-sheet`.
+  --rows N --frames K`) and the three `example-*.png` sheets. Import with `object import-sheet` (one sheet) or list it in the
+  manifest with `rows` and `frames` set (`object import-batch`).
 - **B. Single images**: one summer image, then edits of it (night, lit, winter, moving parts) on the same canvas. Import a
-  folder or a manifest row with `object import` / `object import-batch`.
+  folder or a manifest row (no `rows`) with `object import` / `object import-batch`. Sheets and single images can share ONE
+  manifest.
 
 ---
 
@@ -179,8 +181,9 @@ I will send you a numbered list of objects. For each one, make ONE image followi
 2. ...
 ```
 
-Save each answer as `<id>.png` (for example `building.flint-cottage.png`) in one folder, next to a `manifest.csv`
-(docs/dev/AI_OBJECTS.md section 4).
+Save each answer as `<id>.png` (for example `building.flint-cottage.png`) in one folder, next to ONE `manifest.csv` for
+the whole list (docs/dev/AI_OBJECTS.md section 4): sprite sheets with `rows` and `frames` set, single-image folders
+without. Then `node tools/anim-pack.mjs object import-batch <folder>` imports all of it.
 
 ## 6. Then, in Claude Code
 
