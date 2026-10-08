@@ -3,10 +3,10 @@
 //  (b) negative fixtures: lazy, keyword-stuffed, copied and mis-built drawings fail with the specific rules they should;
 //  (c) the thresholds file is valid, documented, and its waivers are still needed;
 //  plus the CLI (lint, reference, sheet) and the gold-standard reference list.
-// The registry is loaded once and measured once (a few seconds); everything else reuses it. Synthetic data only.
-import { test } from 'node:test';
+// The current registry is measured once; legacy fixtures reuse its retained-original corpus and a registry without upgrades. Synthetic data only.
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +18,8 @@ import { mkdirSync } from 'node:fs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TH = loadThresholds(ROOT);
 const REG = loadRegistry(ROOT);
+// Negative fixtures and the earlier exemplar set describe the retained hand-drawn art, even after its live upgrade.
+const ORIGINAL = loadRegistry(ROOT, { omit: REG.files.filter(f => /^71-scene-upgrade-/.test(f)) });
 const RES = lintRegistry(REG, TH);                       // measures every item once
 const BY_REF = new Map(RES.results.map(r => [r.ref, r]));
 // The convert stage (docs/dev/SCENE_ENGINE.md 17) turned every rich hand-drawn scene into a composed one, so nothing in the live
@@ -38,6 +40,7 @@ const UPGRADE_LEGACY = measureRegistry(REG, RETIRED.filter(isLiveUpgrade).map(e 
 });
 // calibration and advisory checks: the live corpus plus the retired art (rich, and the live upgrades' hand-drawn scenes)
 const CORPUS = RES.results.concat(RICH_LEGACY, UPGRADE_LEGACY);
+const ORIGINAL_BY_REF = new Map(CORPUS.filter(r => r.profile !== 'composed').map(r => [r.ref, { ...r, full: BY_REF.get(r.ref).full }]));
 const PACK_CSS = (id) => (REG.packs().find(p => p.id === id) || {}).css || '';
 const SCENE_CLASSES = REG.classesFor({ css: PACK_CSS('us-pacific') });
 
@@ -90,8 +93,8 @@ test('negative fixture: a keyword-stuffed scene (many tiny identical shapes, a g
 
 test('negative fixture: a real scene with its evening-grade layer removed fails exactly that rule', () => {
   const ref = 'us-northeast/new-york-skyline';
-  const entry = REG.items().find(e => e.ref === ref);
-  const html = REG.html(entry.item);
+  const entry = ORIGINAL.items().find(e => e.ref === ref);
+  const html = ORIGINAL.html(entry.item);
   assert.deepEqual(measure(html, 'scene', { classes: REG.classesFor(entry.packObj) }).problems, []);
   assert.deepEqual(check(measure(html, 'scene', { classes: REG.classesFor(entry.packObj) }), 'scene', TH).map(f => f.rule), [], 'the real scene passes');
   const noTint = html.replace(/<rect class="[a-z]{2,4}-tint"[^>]*\/>/, '');
@@ -103,12 +106,12 @@ test('negative fixture: a real scene with its evening-grade layer removed fails 
 });
 
 test('negative fixture: a real scene copied and re-coloured shares its shapes (a templated pack)', () => {
-  const a = REG.items().find(e => e.ref === 'us-northeast/new-york-skyline');
-  const ka = shapeKeys(REG.html(a.item));
+  const a = ORIGINAL.items().find(e => e.ref === 'us-northeast/new-york-skyline');
+  const ka = shapeKeys(ORIGINAL.html(a.item));
   const copy = new Set([...ka].map(k => k.replace(/#5a4a5c/g, '#4a3a4c')));   // one colour changed
   const shares = sharedShares([{ pack: 'p', keys: ka }, { pack: 'p', keys: copy }]);
   assert.ok(shares[0].pack > 0.6, `a re-dressed copy shares most of its shapes (${shares[0].pack})`);
-  const own = BY_REF.get('us-northeast/new-york-skyline').metrics;
+  const own = ORIGINAL_BY_REF.get('us-northeast/new-york-skyline').metrics;
   assert.ok(own.sharedShare < TH.scene.sharedShare.max && own.sharedShareAll < TH.scene.sharedShareAll.max, 'a hand-drawn scene shares a few percent');
   const f = check({ ...own, sharedShare: 0.8, sharedShareAll: 0.8 }, 'scene', TH).map(x => x.rule);
   assert.ok(f.includes('sharedShare') && f.includes('sharedShareAll'));
@@ -138,8 +141,8 @@ test('closed loopholes: padding that adds no picture does not raise the numbers'
   const d = lintScene(thin('', dead));
   assert.equal(d.m.movingGroups, 0, 'empty and off-canvas movers do not move anything');
   // 5. a copy of a real scene with every colour changed is still the same picture
-  const e = REG.items().find(x => x.ref === 'us-pacific/ak-midnight-sun');
-  const html = REG.html(e.item);
+  const e = ORIGINAL.items().find(x => x.ref === 'us-pacific/ak-midnight-sun');
+  const html = ORIGINAL.html(e.item);
   const recoloured = html.replace(/#([0-9a-f]{6})/gi, (all, h) => '#' + (parseInt(h, 16) ^ 0x0f0f0f).toString(16).padStart(6, '0'));
   const shares = sharedShares([{ pack: 'p', keys: shapeKeys(html) }, { pack: 'p', keys: shapeKeys(recoloured) }]);
   assert.ok(shares[1].pack > 0.95, `a re-coloured copy shares ${shares[1].pack} of its shapes`);
@@ -217,7 +220,7 @@ test('checkCss: keyframes may only move transform and opacity', () => {
 });
 
 test('thinSpots: advisory, only for metrics that pass but sit beyond the 10th / 90th percentile; a size budget is not padding', () => {
-  const own = BY_REF.get('us-northeast/new-york-skyline');
+  const own = ORIGINAL_BY_REF.get('us-northeast/new-york-skyline');
   assert.deepEqual(thinSpots(own.metrics, 'scene', TH), [], 'a gold-standard scene has none');
   const thin = { ...own.metrics, shapes: TH.scene.shapes.min + 1, tinyShare: TH.scene.tinyShare.max - 0.01, bytes: 31000 };
   const spots = thinSpots(thin, 'scene', TH);
@@ -228,7 +231,7 @@ test('thinSpots: advisory, only for metrics that pass but sit beyond the 10th / 
 });
 
 test('ruleTable has one PASS / FAIL row per rule', () => {
-  const r = BY_REF.get('us-northeast/new-york-skyline');
+  const r = ORIGINAL_BY_REF.get('us-northeast/new-york-skyline');
   const rows = ruleTable(r.metrics, r.profile, TH);
   assert.ok(rows.length > 40 && rows.every(x => x.ok));
   const lazy = lintScene('<rect width="1600" height="900" fill="#335"/>');
@@ -337,7 +340,7 @@ test('a live region upgrade keeps its retired art in the shared-shape pool: ever
   const live = REG.items().filter(e => e.full && e.composed && isLiveUpgrade(e));
   if (!live.length) return;   // nothing is live: the registry is its own draft
   // the same checkout without the upgrade files: each upgraded scene is its hand-drawn item again (a draft draws exactly that)
-  const DRAFT = loadRegistry(ROOT, { omit: REG.files.filter(f => /^71-scene-upgrade-/.test(f)) });
+  const DRAFT = ORIGINAL;
   // the partners: hand-drawn scenes holding at least one shape of a live upgrade's retired art
   const retiredKeys = new Set(live.flatMap(e => [...shapeKeys(REG.html(Object.assign({}, e.item, { composed: false, svg: e.item.legacySvg })))]));
   const partners = RES.results.filter(r => r.full && r.profile !== 'composed' && [...(r.metrics._keys || [])].some(k => retiredKeys.has(k)));
@@ -444,7 +447,7 @@ test('reference: the exemplars exist, are the right kind, and pass the strict li
   const kinds = new Set(ref.scenes.flatMap(x => x.tags));
   for (const t of ['skyline-dusk', 'monument', 'desert', 'tropical', 'night-lit', 'wildlife', 'winter']) assert.ok(kinds.has(t), `a ${t} exemplar`);
   for (const x of ref.scenes) {
-    const r = BY_REF.get(x.ref);
+    const r = ORIGINAL_BY_REF.get(x.ref);
     assert.ok(r && r.full, `${x.ref} is a full scene`);
     assert.equal(r.profile, 'scene');
     assert.equal(r.failures.length + r.waived.length, 0, `${x.ref} is clean`);
@@ -473,6 +476,19 @@ test('reference: the exemplars exist, are the right kind, and pass the strict li
 /* ---------- the CLI ---------- */
 
 const run = async (argv, extra = {}) => { const out = [], err = []; const code = await main(argv, { out: (s) => out.push(s), err: (s) => err.push(s), ...extra }); return { code, out: out.join('\n'), err: err.join('\n') }; };
+// Exact legacy CLI metrics use the same originals as the negative fixtures. Keep the product CLI and live checkout unchanged.
+let originalCliRoot;
+after(() => { if (originalCliRoot) rmSync(originalCliRoot, { recursive: true, force: true }); });
+const runOriginal = async (argv) => {
+  if (!originalCliRoot) {
+    originalCliRoot = mkdtempSync(join(tmpdir(), 'anim-original-'));
+    const app = join(originalCliRoot, 'src', 'app'), styles = join(originalCliRoot, 'src', 'styles');
+    mkdirSync(app, { recursive: true }); mkdirSync(styles, { recursive: true });
+    for (const source of ORIGINAL.sources) writeFileSync(join(app, source.name), source.text);
+    for (const file of readdirSync(join(ROOT, 'src', 'styles')).filter(f => f.endsWith('.css'))) writeFileSync(join(styles, file), readFileSync(join(ROOT, 'src', 'styles', file)));
+  }
+  return run([...argv, '--root', originalCliRoot]);
+};
 
 test('cli: help lists every subcommand; unknown commands and options are errors', async () => {
   const h = await run(['--help']);
@@ -508,7 +524,7 @@ test('cli: a module dropped in tools/lib/anim-cmd/ becomes a subcommand (the tab
 });
 
 test('cli: lint of one real item prints PASS per rule and exits 0', async () => {
-  const r = await run(['lint', '--ref', 'us-northeast/new-york-skyline']);
+  const r = await runOriginal(['lint', '--ref', 'us-northeast/new-york-skyline']);
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /PASS {2}us-northeast\/new-york-skyline/);
   assert.match(r.out, /PASS {2}sky-gradient/);
@@ -664,11 +680,11 @@ test('lint bytes do not depend on what was rendered before: stable ids, the thin
   assert.equal(stableIds('<g data-id="x" id="a"/>'), '<g data-id="x" id="us01"/>', 'only id attributes are renamed');
   assert.equal(stableIds('<rect/>'), '<rect/>');
   assert.ok(isLegacyProfile('scene-legacy') && isLegacyProfile('item-classic') && !isLegacyProfile('scene') && !isLegacyProfile('item'));
-  const bytesOf = async (argv) => JSON.parse((await run(['lint', ...argv, '--json'])).out).items.find(i => i.ref === 'us-mountain/nm-white-sands').metrics.bytes;
+  const bytesOf = async (argv) => JSON.parse((await runOriginal(['lint', ...argv, '--json'])).out).items.find(i => i.ref === 'us-mountain/nm-white-sands').metrics.bytes;
   const alone = await bytesOf(['--ref', 'us-mountain/nm-white-sands']), inPack = await bytesOf(['--pack', 'us-mountain']), inTwo = await bytesOf(['--ref', 'us-mountain/az-grand-canyon,us-mountain/nm-white-sands']);
   assert.deepEqual([inPack, inTwo], [alone, alone], 'the same result alone, in a selection and in its pack');
   assert.equal(alone, TH.scene.bytes.min, 'it IS the thinnest accepted scene: the floor');
-  assert.equal(BY_REF.get('us-mountain/nm-white-sands').metrics.bytes, alone, 'and the corpus measurement agrees');
+  assert.equal(ORIGINAL_BY_REF.get('us-mountain/nm-white-sands').metrics.bytes, alone, 'and the corpus measurement agrees');
 });
 
 test('the strict vocabulary: use, pattern, mask, symbol and filter are rejected for new packs, text, images, scripts, styles, links and SMIL everywhere; the legacy profiles keep theirs', () => {
@@ -718,21 +734,21 @@ test('small items: a copy of an icon, only re-coloured or nudged, fails sharedSh
 
 test('lint prints the thin spots of EVERY selected item in the default mode, --quiet silences them, --json carries the targets', async () => {
   const refs = ['us-mountain/nm-white-sands', 'asia-west/sa-signature', 'asia-west/abu-dhabi-skyline', 'us-midwest/mn-loon', 'us-pacific/hi-sea-turtle'];
-  const r = await run(['lint', '--ref', refs.join(',')]);
+  const r = await runOriginal(['lint', '--ref', refs.join(',')]);
   assert.equal(r.code, 0, r.out);
   for (const ref of refs) assert.match(r.out, new RegExp(`PASS  ${ref}`), `${ref} is listed although it passes`);
   assert.equal((r.out.match(/thin spots \d+ \(target <= 4\)/g) || []).length, 5, 'one thin-spot line per item');
   assert.match(r.out, /nm-white-sands[\s\S]*tinyShare\s+0\.421\s+median 0\.136\s+too much/, 'the rule, the value and the corpus median');
   assert.match(r.out, /MISSES THE TARGET: richness 0\.555 < 0\.90/); assert.match(r.out, /redraw target missed by \d+ passing item/);
   assert.match(r.out, /PASS: 5 items clean \(2 documented waivers\)\.$/, 'the last line is still the pass line');
-  const q = await run(['lint', '--ref', refs.join(','), '--quiet']);
+  const q = await runOriginal(['lint', '--ref', refs.join(','), '--quiet']);
   assert.equal(q.code, 0); assert.doesNotMatch(q.out, /thin spots|PASS  us-|redraw target|too little/); assert.match(q.out, /PASS: 5 items clean/);
-  const j = JSON.parse((await run(['lint', '--ref', refs.join(','), '--json'])).out);
+  const j = JSON.parse((await runOriginal(['lint', '--ref', refs.join(','), '--json'])).out);
   assert.deepEqual(j.targets, { richness: TARGETS.richness, maxThinSpots: TARGETS.maxThinSpots, maxRedraws: TARGETS.maxRedraws });
   assert.ok(j.items.every(i => typeof i.richness === 'number' && Array.isArray(i.targetMiss) && Array.isArray(i.thin)));
   // the whole registry still lists only the failures (972 blocks would drown them)
   assert.ok(TARGETS.richness === 0.9 && TARGETS.maxThinSpots === 4 && TARGETS.maxRedraws === 3);
-  const short = await run(['lint', '--ref', 'asia-west/abu-dhabi-skyline']);   // three or fewer: the rules table, and the thin spots too
+  const short = await runOriginal(['lint', '--ref', 'asia-west/abu-dhabi-skyline']);   // three or fewer: the rules table, and the thin spots too
   assert.match(short.out, /PASS {2}richness/); assert.match(short.out, /thin spots 5/);
 });
 
@@ -773,7 +789,7 @@ test('sameDelay: how many moving elements share one --d; a mover with no --d is 
 });
 
 test('detailPerKB (shapes + path segments per KB) is the "too little drawn for its size" advisory: a path-heavy scene with few shapes per KB is not flagged, a padded one is; shapesPerKB keeps its hard floor', () => {
-  const rich = RES.results.filter(r => r.profile === 'scene').map(r => r.metrics);
+  const rich = CORPUS.filter(r => r.profile === 'scene').map(r => r.metrics);
   assert.ok(rich.every(m => Math.abs(m.detailPerKB - (m.shapes + m.pathSegments) / (m.bytes / 1024)) < 0.01), 'the definition');
   // few shapes per KB, many segments: path-heavy (the pilot's hand-drawn ferns, rocks and houses)
   const heavy = rich.filter(m => m.shapesPerKB < TH.scene.shapesPerKB.min * 2 && m.detailPerKB > TH.scene.detailPerKB.median);
@@ -791,7 +807,7 @@ test('detailPerKB (shapes + path segments per KB) is the "too little drawn for i
 test('hueSectors: the thin spot says which sectors carry area and how to fit a 5-stop dusk sky in five (the guide\'s palette costs four); the level stays at the corpus 90th percentile (5)', () => {
   assert.equal(TH.scene.hueSectors.warnMax, 5); assert.equal(TH.scene.hueSectors.max, 7, 'the hard ceiling is untouched');
   // the data behind keeping it: 93 % of the accepted scenes stay within five sectors, and the 5-stop dusk skies are within noise of that
-  const sc = RES.results.filter(r => r.profile === 'scene'), over = (list) => list.filter(r => r.metrics.hueSectors > 5).length / list.length;
+  const sc = CORPUS.filter(r => r.profile === 'scene'), over = (list) => list.filter(r => r.metrics.hueSectors > 5).length / list.length;
   assert.ok(over(sc) > 0.03 && over(sc) < 0.1, 'overall ' + over(sc)); const dusk = sc.filter(r => r.metrics.skyStops >= 5); assert.ok(dusk.length > 40 && over(dusk) < 0.2, `5-stop skies: ${dusk.length} scenes, ${over(dusk)} above five`);
   const sixSectors = sc.find(r => r.metrics.hueSectors >= 6); assert.ok(sixSectors);
   const t = thinSpots(sixSectors.metrics, 'scene', TH).find(x => x.rule === 'hueSectors');
@@ -807,9 +823,9 @@ test('every thin spot says what to do about it: identical seeds cause sharedShar
   for (const rule of ['sharedShare', 'sharedShareAll']) { const x = THIN_HINTS[rule][1](); assert.match(x, /seed/); assert.match(x, /[Gg]ive every .*call its own seed/); }
   assert.match(THIN_HINTS.sharedShare[1](), /stars\(\), birds\(\), shimmer\(\), puffs\(\), ridge\(\) and canopy\(\) draw the SAME shapes for the same seed/);
   for (const rule of ['distinctRatio', 'distinctForms']) assert.match(THIN_HINTS[rule][0], /<g transform=.*scale|scale\(\)/); assert.match(THIN_HINTS.distinctRatio[0], /puffs\(\) with n above 3/); assert.match(THIN_HINTS.distinctRatio[0], /bake the scale into the coordinates/);
-  const seed = RES.results.find(r => r.profile === 'scene' && thinSpots(r.metrics, 'scene', TH).some(t => t.rule === 'sharedShare' || t.rule === 'sharedShareAll'));
+  const seed = CORPUS.find(r => r.profile === 'scene' && thinSpots(r.metrics, 'scene', TH).some(t => t.rule === 'sharedShare' || t.rule === 'sharedShareAll'));
   if (seed) { const t = thinSpots(seed.metrics, 'scene', TH).find(x => /^sharedShare/.test(x.rule)); assert.match(t.hint, /own seed/); }
-  const r = await run(['lint', '--ref', 'us-pacific/ak-midnight-sun,us-pacific/hi-sea-turtle']);
+  const r = await runOriginal(['lint', '--ref', 'us-pacific/ak-midnight-sun,us-pacific/hi-sea-turtle']);
   assert.match(r.out, /delays: \d+ moving elements share --d 0s \(a bare x-\* counts as 0\)|thin spots/);
   const text = (await run(['lint', '--help'])).out;
   for (const w of ['Good to know:', 'us-lit', 'counts as ONE shape and ONE lit pane group', 'give every call its own seed', 'detailPerKB', 'a bare x-glow counts as delay 0', '5-stop dusk sky already spends four of the five hue sectors']) assert.ok(text.includes(w), w);
