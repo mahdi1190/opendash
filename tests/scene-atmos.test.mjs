@@ -134,7 +134,7 @@ test('sceneLiftAt: buckets 0 / 0.15 / 0.3 / 0.45 near a lamp at night, nothing b
 
 test('SCENE_WINDOW_SHARE: a town goes dark late at night', () => {
   const at = (h) => S.sceneWindowShare(h);
-  near(at(17), 0.55, 0.02, 'dusk'); near(at(21), 0.7, 0.01, '21 h'); near(at(23), 0.4, 0.01, '23 h'); near(at(1), 0.12, 0.01, '1 h'); near(at(5), 0.08, 0.01, '5 h');
+  near(at(17), 0.65, 0.02, 'dusk'); near(at(21), 0.78, 0.01, '21 h'); near(at(23), 0.55, 0.01, '23 h'); near(at(0), 0.4, 0.01, 'midnight'); near(at(1), 0.32, 0.01, '1 h'); near(at(5), 0.25, 0.01, '5 h');
   assert.ok(at(22.5) < at(21) && at(1) < at(23) && at(5) < at(1), 'falls through the night');
   assert.equal(S.sceneWindowShare({ windows: false, localHour: 21 }), 0, 'none by day');
   assert.ok(S.sceneWindowShare({ windows: true, localHour: 23, weekday: 6 }) > S.sceneWindowShare({ windows: true, localHour: 23, weekday: 2 }), 'Saturday nights later');

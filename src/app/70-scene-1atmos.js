@@ -266,8 +266,8 @@ function sceneLiftAt(item, lights, L, cam) {
 }
 
 /* ---------- lit windows by the hour (7.3; B applies it) ---------- */
-/** [local solar hour, the share of windows lit]: about 0.55 at dusk, 0.7 at 21 h, 0.4 at 23 h, 0.12 at 1 h, 0.08 at 5 h, 0.2 at dawn. */
-const SCENE_WINDOW_SHARE = Object.freeze([[0, 0.25], [1, 0.12], [3, 0.09], [5, 0.08], [6, 0.14], [7, 0.2], [9, 0.2], [15, 0.5], [17, 0.55], [19, 0.62], [21, 0.7], [22, 0.6], [23, 0.4], [24, 0.25]]);
+/** [local solar hour, the share of windows lit]: about 0.65 at dusk, 0.78 at 21 h, 0.55 at 23 h, 0.4 at midnight, 0.32 at 1 h, 0.25 at 5 h, 0.35 after dawn. */
+const SCENE_WINDOW_SHARE = Object.freeze([[0, 0.4], [1, 0.32], [3, 0.25], [5, 0.25], [6, 0.32], [7, 0.35], [9, 0.35], [15, 0.6], [17, 0.65], [19, 0.72], [21, 0.78], [22, 0.7], [23, 0.55], [24, 0.4]]);
 /** The share of windows lit (0 by day): at a local hour, or for a light L (its localHour, or computed; Friday and Saturday nights a little later). */
 function sceneWindowShare(x) {
   let h = x, wd = null;

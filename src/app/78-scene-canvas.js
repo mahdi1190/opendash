@@ -250,7 +250,7 @@ function sceneRendererCreate(canvas, src, o) {
     for (const sh of dr.shapes || []) {
       gx.setTransform(TG[0], TG[1], TG[2], TG[3], TG[4], TG[5]);
       if (sh.glow) {
-        const on = night && (Array.isArray(dr.glowOn) ? !!dr.glowOn[gi % dr.glowOn.length] : _scHashS((it.seed | 0) + '|g|' + gi) / 4294967296 < (share == null ? 0.6 : share));
+        const on = night && (Array.isArray(dr.glowOn) ? !!dr.glowOn[gi % dr.glowOn.length] : _sccWindowU((it.seed | 0) + '|g|' + gi) < (share == null ? 0.6 : share));
         gi++;
         if (on) { drawShape(gx, Object.assign({}, sh, { f: (dr.glowCol && dr.glowCol[sh.glow]) || (sh.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain); continue; }
       }
@@ -767,6 +767,16 @@ function _sccShadow(gx, TG, it, L) {
   gx.globalAlpha = 1;
 }
 /**
+ * A window's lit threshold in [0, 1) from its key (seed|w|k). The plain FNV hash barely moves when only the last character
+ * changes, so every window of a placement got almost the same threshold (a building all lit or all dark at a share of
+ * 0.4): the murmur3 finaliser spreads them.
+ */
+function _sccWindowU(key) {
+  let h = _scHashS(key);
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b); h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35); h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+/**
  * Lit windows and lamps of a placement (after real dusk), in the object's night colours, as its glowOn says. skip: parts
  * left out (an animated placement's moving parts, whose sprites carry their own lit glows).
  */
@@ -775,7 +785,7 @@ function _sccGlows(gx, M, it, skip, share) {
   gx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
   let gi = 0;
   // v2 (V2 7.3): each window has a seeded threshold and is lit while it is under the share of windows lit at this hour
-  const on = share == null ? (k) => it.glowOn[k % it.glowOn.length] : (k) => _scHashS((it.seed | 0) + '|w|' + k) / 4294967296 < share;
+  const on = share == null ? (k) => it.glowOn[k % it.glowOn.length] : (k) => _sccWindowU((it.seed | 0) + '|w|' + k) < share;
   for (const p of sh.order) for (const s of sh.parts[p] || []) if (s.glow) {
     if (on(gi) && !(skip && skip.includes(p))) {
       if (s.m) { gx.save(); gx.transform(...s.m); }
