@@ -557,6 +557,7 @@ export function lintScene(input, thresholds, { E, item = null, perf = null, ref 
   for (const f of variety.fails.slice(1)) rules.push(f);
   rules.push(...careCheck(C, data, it, { E, thresholds }));
   rules.push(...placementSanity(C, data, { E, thresholds, strict }));
+  rules.push(...railFlowRules(C, data, { strict }));
   rules.push(...compositionGroup(C, data, { E, thresholds, strict, reg, pack, siblings, ref }));
   rules.push(...perfRules(perf, thresholds, { gpu }));
   const failures = rules.filter(r => !r.ok), warnings = rules.filter(r => r.ok && r.warn).map(r => r.warn);
@@ -567,6 +568,23 @@ export function lintScene(input, thresholds, { E, item = null, perf = null, ref 
 }
 
 /** The sanity group (V2 15.1): a broken check never breaks the lint (it reports itself as one failing rule). */
+/**
+ * Trains and trams sit on a railway: a train flow must run on a surface of kind 'rail' (a tram flow on 'rail' or 'tramway'). A flow
+ * on anything else (a verge, a road, a bank) draws a train with no track under it. A warning (a failure under strict); no rule at
+ * all when every rail flow is on a railway, so clean scenes keep their rule list.
+ */
+function railFlowRules(C, data, { strict }) {
+  const kinds = new Map([].concat((data && data.surfaces) || [], (C && C.surfaces) || []).filter(s => s && s.id).map(s => [s.id, s.kind]));
+  const bad = [];
+  ((data && data.flows) || []).forEach((F, fi) => {
+    if (!F || (F.kind !== 'train' && F.kind !== 'tram')) return;
+    const ok = F.kind === 'train' ? ['rail'] : ['rail', 'tramway'];
+    for (const id of [].concat(F.on || [])) { const k = kinds.get(id); if (k && !ok.includes(k)) bad.push(`flow ${F.id || fi}: ${F.kind}s on "${id}" (${k}), not on a ${ok.join(' or ')} surface`); }
+  });
+  if (!bad.length) return [];
+  const msg = `railFlow: ${bad.join('; ')}: run trains and trams on a rail surface (on: '<rail surface id>')`;
+  return [rule('sanity', 'railFlow', !strict, bad.length, 'none', msg, strict ? {} : { warn: msg })];
+}
 function placementSanity(C, data, { E, thresholds, strict }) {
   try { return sanityRules(C, data, { E, thresholds, strict }); }
   catch (e) { return [rule('sanity', 'sanity', false, 'error', 'runs', `the sanity lint threw: ${e.message}`)]; }

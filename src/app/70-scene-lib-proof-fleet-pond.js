@@ -33,7 +33,7 @@ const SCENE_PROOF_FLEET_POND = Object.freeze({
   // (centres 2.25 m either side), the far cess and toe. The rail heads are the train's wheel line (sceneProofFleetPondPass lifts
   // the flow's trains onto them). From the boardwalk the formation is just above eye height: the bank face, the shoulder and the
   // rail heads read, the train stands on them.
-  emb: Object.freeze({ toeN: -10, cessN: -5.5, topN: -3.9, topF: 3.9, cessF: 5.5, toeF: 9.5, crest: 3.0, cess: 2.85, head: 3.15, fence: -10.6, track: 2.25 }),
+  emb: Object.freeze({ toeN: -10, cessN: -5.5, topN: -3.9, topF: 3.9, cessF: 5.5, toeF: 9.5, crest: 3.0, cess: 2.55, head: 3.15, fence: -10.6, track: 2.25 }),
   embH(x, d) {
     const E = SCENE_PROOF_FLEET_POND.emb, u = d - (98 + 0.12 * x);
     if (u <= E.toeN || u >= E.toeF) return 0;
@@ -182,6 +182,136 @@ const SCENE_PROOF_FLEET_WALK = (function () {
   });
 })();
 
+/* ---------- the main line's embankment, drawn in the camera's own perspective ----------
+   structure.proof-fleet-embankment: one variant per 22 m of the line (left to right, x -88 to 88, wider than the frame), each
+   anchored at the top of its near toe (pixels, pinned, layer mid), so the depth sort puts the reeds in front of it and the woods
+   behind the line under it. Of the cross-section in SCENE_PROOF_FLEET_POND.emb the eye on the boardwalk (2.5 m above the water,
+   100 m off) sees the near bank face (rough grass, bramble and hawthorn scrub on its lower half, a post-and-wire boundary fence
+   at the toe), the cable trough on the cess, the ballast shoulder, the sleeper ends, the conductor rail on its pots and the rail
+   heads of the two lines (third rail: no masts, no wires), and a colour-light signal on the far cess. The trains run on top. */
+const SCENE_PROOF_FLEET_EMB = (function () {
+  const P = SCENE_PROOF_FLEET_POND, E = P.emb, x0 = -88, len = 22, n = 8;
+  const proj = SCENE_PROOF_FLEET_WALK.proj;
+  const g = (x, u, h) => proj(x, P.railD(x) + u, h);
+  /** The pixel anchor of piece v: the middle of its near toe, at the toe's highest point on screen (its far end). */
+  const anchor = (v) => { const a = x0 + v * len, b = a + len, A = g(a, E.toeN, 0), B = g(b, E.toeN, 0); return [Math.round((A[0] + B[0]) / 2 * 10) / 10, Math.round((Math.min(A[1], B[1]) - 0.3) * 10) / 10]; };
+  return { x0, len, n, g, anchor, signal: -14 };
+})();
+(function () {
+  if (typeof sceneObjDefine !== 'function') return;
+  const P = SCENE_PROOF_FLEET_POND, E = P.emb, M = SCENE_PROOF_FLEET_EMB, g = M.g, f = SCENE_PROOF_FLEET_WALK.f;
+  const R = (v) => Math.round(v * 10) / 10;
+  const poly = (pts, o) => 'M' + pts.map(p => R(p[0] - o[0]) + ' ' + R(p[1] - o[1])).join('L') + 'Z';
+  /** A band along the piece between two lines of the cross-section: (u0, h0) and (u1, h1). */
+  const band = (a, b, u0, h0, u1, h1, o) => poly([g(a, u0, h0), g(b, u0, h0), g(b, u1, h1), g(a, u1, h1)], o);
+  const seg = (a, b, u, h, o) => { const p = g(a, u, h), q = g(b, u, h); return `M${R(p[0] - o[0])} ${R(p[1] - o[1])}L${R(q[0] - o[0])} ${R(q[1] - o[1])}`; };
+  const faceH = (u) => E.cess * (u - E.toeN) / (E.cessN - E.toeN);
+  sceneObjDefine({
+    id: 'structure.proof-fleet-embankment',
+    category: 'structure',
+    size: [420, 60],
+    variants: M.n,
+    seasonal: true,
+    shapeBySeason: true,
+    flippable: false,
+    palette: {
+      base:   { grass: ['#4a6a34', '#5e7e3c', '#7a9a4a', '#9ab45e'], scrub: ['#2c4a26', '#3e6232', '#e8e2d8'], ballast: ['#7e766c', '#5e5850', '#a29a8e'], sleeper: '#3e3a36',
+        rail: ['#c4c8cc', '#5a4a3e', '#3a3634'], trough: '#aca89e', post: ['#6a5a46', '#8e8a82'], wire: '#4a4a48', sig: ['#18181a', '#e4e0d6', '#8a8e90'], lamp: '#c8382a' },
+      spring: { grass: ['#4a7434', '#62903e', '#86b04e', '#a8c864'], scrub: ['#2e5a2a', '#4a7e3a', '#f2eee6'] },
+      summer: { grass: ['#41652e', '#567a36', '#74983e', '#94b252'], scrub: ['#24482a', '#38663a', '#38663a'] },
+      autumn: { grass: ['#5e6434', '#7a7a3e', '#9c9450', '#b8ac66'], scrub: ['#5a4a26', '#84682e', '#a8382a'] },
+      winter: { grass: ['#5e6450', '#747a62', '#8e9278', '#a8aa92'], scrub: ['#3e3630', '#54483e', '#6a2e26'], ballast: ['#86807a', '#625e58', '#aaa49a'] },
+    },
+    parts: ['body'],
+    reflect: false,
+    shadow: false,
+    tags: ['uk', 'railway', 'embankment', 'third-rail', 'nature-reserve', 'kit:temperate', 'role:street', 'class:structure'],
+    credit: 'drawn for the Fleet Pond scene: the South Western main line on its embankment along the north shore',
+    build(v, rnd, ctx) {
+      const season = (ctx && ctx.season) || 'summer', body = [];
+      // a..b: the piece with a small overlap (the opaque fills only, so no seam shows); a0..b0: exactly the piece (the rest)
+      const a0 = M.x0 + v * M.len, b0 = a0 + M.len, a = a0 - 0.3, b = b0 + 0.3, o = M.anchor(v), dm = P.railD((a + b) / 2), k = f / dm;
+      // the bank face: rough grass, lit toward the top (it faces the camera, south-south-east), tucked under the reeds at the toe
+      // (the gradient runs between fixed screen heights, the same in every piece: the horizon line plus the depth at x 0)
+      const yTop = g(0, E.cessN, E.cess)[1] - o[1], yToe = g(0, E.toeN, 0)[1] - o[1];
+      body.push({ f: { lin: [[0, '@grass.3'], [0.18, '@grass.2'], [0.6, '@grass.1'], [1, '@grass.0']], x1: 0, y1: yTop, x2: 0, y2: yToe }, d: band(a, b, E.toeN - 0.6, -0.25, E.cessN, E.cess, o) });
+      // the shade under the lip of the cess, and the damp foot of the bank
+      body.push({ f: '@grass.0', d: band(a0, b0, E.cessN - 0.25, faceH(E.cessN - 0.25), E.cessN, E.cess, o), op: 0.5 });
+      body.push({ f: '@grass.0', d: band(a0, b0, E.toeN - 0.6, -0.25, E.toeN + 1.2, faceH(E.toeN + 1.2), o), op: 0.35 });
+      // tussocks: short upright strokes, dark and light
+      for (const [col, op] of [['@grass.0', 0.55], ['@grass.3', 0.5]]) {
+        let d = '';
+        const nS = Math.round(M.len * k / 5);
+        for (let i = 0; i < nS; i++) {
+          const x = a0 + (b0 - a0) * rnd(), u = E.toeN + (E.cessN - 0.3 - E.toeN) * rnd(), p = g(x, u, faceH(u)), l = f * (0.18 + 0.3 * rnd()) / (P.railD(x) + u), lean = (rnd() - 0.5) * l * 0.6;
+          d += `M${R(p[0] - o[0])} ${R(p[1] - o[1])}l${R(lean)} ${R(-l)}`;
+        }
+        body.push({ s: col, w: 0.8, d, op, cap: 'round', detail: true });
+      }
+      // scrub on the lower half of the bank: bramble and hawthorn (never above the cess, so it never reaches the trains)
+      const sc = ['', ''], acc = [];
+      const nC = 3 + Math.floor(rnd() * 3);
+      for (let i = 0; i < nC; i++) {
+        const x = a0 + 1 + (b0 - a0 - 2) * rnd(), u = E.toeN + 0.3 + 2.2 * rnd(), h0 = faceH(u), hh = 0.6 + 0.6 * rnd(), w = 1.4 + 2.2 * rnd(), dd = P.railD(x) + u;
+        const c = proj3(x, dd, h0 + hh * 0.45), rx = f * w / dd / 2, ry = f * hh / dd / 2;
+        sc[i % 2] += sceneD.lobed(rnd, c[0] - o[0], c[1] - o[1], rx, ry, 7, 0.3);
+        if (season !== 'summer') for (let j = 0; j < 4; j++) acc.push(sceneD.ell(c[0] - o[0] + (rnd() - 0.5) * rx * 1.4, c[1] - o[1] + (rnd() - 0.6) * ry, Math.max(0.5, k * 0.05), Math.max(0.5, k * 0.05)));
+      }
+      body.push({ f: '@scrub.0', d: sc[0] }, { f: '@scrub.1', d: sc[1] });
+      if (acc.length) body.push({ f: '@scrub.2', d: acc.join(''), op: 0.85, detail: true });
+      if (season === 'winter') body.push({ f: '#e8ecee', d: band(a0, b0, E.cessN - 1.6, faceH(E.cessN - 1.6), E.cessN, E.cess, o), op: 0.18 });
+      // the boundary fence at the toe: concrete posts every 2.6 m, three strands of wire
+      let posts = '';
+      for (let x = Math.ceil(a0 / 2.6) * 2.6; x < b0; x += 2.6) {
+        const dd = P.railD(x) + E.fence, p = proj3(x, dd, -0.15), q = proj3(x, dd, 1.15), hw = Math.max(0.45, f * 0.05 / dd);
+        posts += `M${R(q[0] - hw - o[0])} ${R(q[1] - o[1])}h${R(2 * hw)}L${R(p[0] + hw - o[0])} ${R(p[1] - o[1])}h${R(-2 * hw)}Z`;
+      }
+      body.push({ f: '@post.1', d: posts });
+      body.push({ s: '@wire', w: 0.5, d: [0.45, 0.8, 1.1].map(h => seg(a0, b0, E.fence, h, o)).join(''), op: 0.7 });
+      // the cess: the concrete cable trough, then the ballast shoulder up to the formation
+      body.push({ f: '@trough', d: band(a, b, E.cessN, E.cess - 0.04, E.cessN + 0.45, E.cess + 0.1, o) });
+      body.push({ f: '@ballast.0', d: band(a, b, E.cessN + 0.4, E.cess + 0.02, E.topN, E.crest, o) });
+      body.push({ f: '@ballast.1', d: band(a, b, E.cessN + 0.4, E.cess + 0.02, E.cessN + 0.9, E.cess + 0.12, o), op: 0.6 });
+      body.push({ s: '@ballast.2', w: 0.6, d: seg(a0, b0, E.topN, E.crest, o), op: 0.8 });
+      // the sleeper ends along the shoulder (concrete, 0.65 m apart)
+      let sl = '';
+      for (let x = Math.ceil(a0 / 0.65) * 0.65; x < b0; x += 0.65) sl += poly([g(x, E.topN + 0.3, E.crest - 0.02), g(x + 0.26, E.topN + 0.3, E.crest - 0.02), g(x + 0.26, E.topN + 0.3, E.crest + 0.06), g(x, E.topN + 0.3, E.crest + 0.06)], o);
+      body.push({ f: '@sleeper', d: sl, op: 0.75, detail: true });
+      // the signal on the far cess (behind both lines): a galvanised post and a colour-light head with its hood, seen side on
+      if (M.signal >= a0 && M.signal < b0) {
+        const x = M.signal, dd = P.railD(x) + E.cessF - 0.3, hw = Math.max(0.6, f * 0.09 / dd), base = proj3(x, dd, E.cess - 0.1), top = proj3(x, dd, E.cess + 4.3);
+        body.push({ f: '@sig.2', d: `M${R(top[0] - hw - o[0])} ${R(top[1] - o[1])}h${R(2 * hw)}L${R(base[0] + hw - o[0])} ${R(base[1] - o[1])}h${R(-2 * hw)}Z` });
+        const hd = (h0, h1, w0, w1) => { const p = proj3(x, dd, h0), q = proj3(x, dd, h1), kk = f / dd; return `M${R(p[0] + w0 * kk - o[0])} ${R(p[1] - o[1])}L${R(p[0] + w1 * kk - o[0])} ${R(p[1] - o[1])}L${R(q[0] + w1 * kk - o[0])} ${R(q[1] - o[1])}L${R(q[0] + w0 * kk - o[0])} ${R(q[1] - o[1])}Z`; };
+        body.push({ f: '@sig.0', d: hd(E.cess + 3.1, E.cess + 4.25, -0.26, 0.22) });
+        body.push({ f: '@sig.1', d: hd(E.cess + 3.1, E.cess + 4.25, -0.32, -0.26), op: 0.9 });
+        body.push({ f: '@sig.0', d: hd(E.cess + 3.95, E.cess + 4.05, -0.5, -0.26) + hd(E.cess + 3.55, E.cess + 3.65, -0.5, -0.26) });
+        const lp = proj3(x, dd, E.cess + 3.78), lr = Math.max(0.7, f * 0.07 / dd);
+        // the lit aspect faces along the line: side on only the rim of its lens shows (no glow: a glow would make the signal a
+        // lamp that floodlights the whole bank at night)
+        body.push({ f: '@lamp', d: sceneD.ell(lp[0] - 0.42 * f / dd - o[0], lp[1] - o[1], lr, lr) });
+        body.push({ s: '@sig.2', w: 0.5, d: (() => { const p = proj3(x, dd, E.cess + 0.3), q = proj3(x, dd, E.cess + 3.0), kk = f / dd; return `M${R(p[0] + 0.2 * kk - o[0])} ${R(p[1] - o[1])}L${R(q[0] + 0.2 * kk - o[0])} ${R(q[1] - o[1])}`; })(), op: 0.8 });
+      }
+      // the two lines, far rail first: the running rails (rail heads bright), the conductor rail on its pots beside each line
+      for (const c of [E.track, -E.track]) {
+        const cr = c + (c > 0 ? 1 : -1) * 1.17, third = () => body.push({ f: '@rail.2', d: band(c > 0 ? a0 : a, c > 0 ? b0 : b, cr, E.crest, cr, E.crest + 0.2, o), op: c > 0 ? 0.7 : 1 });
+        if (c > 0) third();
+        for (const rr of [c + 0.7175, c - 0.7175]) {
+          body.push({ f: '@rail.1', d: band(a, b, rr, E.crest, rr, E.head, o) });
+          body.push({ s: '@rail.0', w: 0.55, d: seg(a0, b0, rr, E.head, o), op: c > 0 ? 0.6 : 0.95 });
+        }
+        if (c < 0) {
+          third();
+          let pots = '';
+          for (let x = Math.ceil(a0 / 3) * 3; x < b0; x += 3) { const p = g(x, cr, E.crest), hw = Math.max(0.4, f * 0.06 / (P.railD(x) + cr)); pots += `M${R(p[0] - hw - o[0])} ${R(p[1] - o[1])}h${R(2 * hw)}v${R(-Math.max(0.6, f * 0.08 / P.railD(x)))}h${R(-2 * hw)}Z`; }
+          body.push({ f: '@trough', d: pots, op: 0.85, detail: true });
+        }
+      }
+      return { body };
+    },
+  });
+  function proj3(x, d, h) { return SCENE_PROOF_FLEET_WALK.proj(x, d, h); }
+})();
+
 /* ---------- the scene's own life: the render pass 'proof-fleet-pond' (V2 13.1 movers stage) ----------
    What the library hooks cannot do, drawn on the canvas each frame as movers sorted into the right depth group, in the live
    grade (sceneColour), each with its reflection where it stands on the water. Every pose is a pure function of t (stills and
@@ -198,6 +328,7 @@ const SCENE_PROOF_FLEET_WALK = (function () {
      bats        dusk and night from spring to autumn: pipistrelles flickering over the reed edge.
      mist        dawn and early morning (and faintly at dusk): soft banks drifting over the open water.
      rises       fish rising in the open water now and then (rings).
+     trains      the flow's trains lifted onto the embankment's rail heads (frameGroup), and their reflections in the open water.
    The pass is defined lazily (the registry, 78-scene-0pass.js, loads after the 72 files): the pack's scene thunk calls
    sceneProofFleetPondPass() before it returns the data. It applies only to this scene (C.id 'proof-fleet-pond'). */
 function sceneProofFleetPondPass() {
@@ -604,10 +735,24 @@ function sceneProofFleetPondPass() {
     });
     return out;
   }
+  // ---- the trains onto the embankment: the flow puts a train's wheels on the flat ground (h 0) of its lane; here they stand on
+  // the rail heads of the embankment (P.emb.head, the same height all across the formation). Runs right after the flow pass
+  // computes the frame's agents (frameGroup 10) and before the water (20) and shadow (25) passes and every mover read them, so
+  // the train, its contact shadow and its reflection (trainReflMovers) all follow. Each agent is lifted once (they are new
+  // objects every frame). ----
+  const HEAD = P.emb.head;
+  function liftTrains(env) {
+    for (const a of env.flowNow || []) {
+      if (!a || a._pfpLift || !(a.kind === 'train' || a.cls === 'train' || /train/.test(a.o || ''))) continue;
+      a.Y -= (a.k3 || f / Math.max(0.5, a.d)) * HEAD; a.h = (a.h || 0) + HEAD;
+      a._pfpLift = true;
+    }
+  }
   try { sceneRenderPassDefine({
     id: 'proof-fleet-pond',
-    order: { movers: 60, stats: 60, default: 60 },
+    order: { frameGroup: 12, movers: 60, stats: 60, default: 60 },
     applies(C) { return !!(C && C.id === 'proof-fleet-pond'); },
+    frameGroup(env) { liftTrains(env); return 0; },
     movers(env, grp, t, push) {
       const C = env.C, gi = (env.groups || []).indexOf(grp);
       if (env._pfpT !== t || !env._pfpList) {
