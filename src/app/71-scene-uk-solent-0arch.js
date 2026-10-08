@@ -82,7 +82,8 @@ function sceneArchSolentShore(p, u) {
     const a = spec(s), id = a[0];
     if (!has(id)) continue;
     const x = +a[1], y = +a[2], h = +a[3], layer = a[4] || 'mid';
-    data.place.push({ obj: id, x, y, s: sOf(id, h), layer, seed: 1200 + data.place.length * 7, flip: a[5] === 'flip', reflect: true, shadow: true });
+    const sc = sOf(id, h), wide = sceneObj(id).size[0] * sc > 360;   // a big hull rides still (a whole-sprite bob that wide costs the frame)
+    data.place.push({ obj: id, x, y, s: sc, layer, seed: 1200 + data.place.length * 7, flip: a[5] === 'flip', reflect: true, shadow: true, anim: wide && /^boat\./.test(id) ? false : undefined });
   }
   /* ---- boats: 'obj@t@dir@speed@k' ---- */
   (p.boats || []).forEach((s, i) => {
