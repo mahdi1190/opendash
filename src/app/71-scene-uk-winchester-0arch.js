@@ -55,7 +55,7 @@
       };
       const G = data.ground, W = data.water, P = data.place, SC = data.scatter, A = data.actors;
       // ---- the horizon: the line of the downs, a second nearer ridge, and the patchwork of fields below it
-      const ridge1 = wave(r, H - 26, 22), ridge2 = wave(r, H - 6, 12), fl = wave(r, H + 4, 4);
+      const ridge1 = wave(r, H - 18, 9), ridge2 = wave(r, H - 6, 12), fl = wave(r, H + 4, 4);
       G.push({ layer: 'horizon', d: L(ridge1) + `L1760 ${H + 60}L-160 ${H + 60}Z`, fill: { lin: [[0, '@downs.0'], [1, '@downs.1']], x1: 0, y1: H - 50, x2: 0, y2: H + 40 } });
       G.push({ layer: 'horizon', d: L(ridge2) + `L1760 ${H + 60}L-160 ${H + 60}Z`, fill: { lin: [[0, '@fieldA.1'], [1, '@fieldA.0']], x1: 0, y1: H - 20, x2: 0, y2: H + 40 } });
       // fields: alternating strips in perspective, hedgerow lines between them
