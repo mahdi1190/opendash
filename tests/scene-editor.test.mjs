@@ -38,8 +38,9 @@ const fakeRegistry = {
   E: { obj: (id) => (KNOWN.has(id) ? { id } : null) },
   get: () => undefined,
 };
-async function start(env) {
-  setSceneEditorHooks({ root, env, registry: fakeRegistry, run: async () => { runs++; await new Promise(r => setTimeout(r, 30)); return { code: 0, tail: [] }; } });
+const slowRun = async () => { runs++; await new Promise(r => setTimeout(r, 30)); return { code: 0, tail: [] }; };
+async function start(env, extra = {}) {
+  setSceneEditorHooks(Object.assign({ root, env, registry: fakeRegistry, run: slowRun }, extra));
   const logs = [];
   const app = createApp({ port: 0, repoRoot: root, log: (lv, m) => logs.push(m), version: '9.9.9' });
   register(app);
@@ -103,7 +104,7 @@ test('disabled: every path and method answers 404', async () => {
   root = keep;
   const save = port; port = off.port;
   try { assert.equal((await req('GET', '/api/scene-editor/status')).status, 404); }
-  finally { port = save; await off.close(); rmSync(rel, { recursive: true, force: true }); setSceneEditorHooks({ root, env: { OPENDASH_SCENE_EDITOR: '1' }, registry: fakeRegistry, run: async () => { runs++; return { code: 0, tail: [] }; } }); }
+  finally { port = save; await off.close(); rmSync(rel, { recursive: true, force: true }); setSceneEditorHooks({ root, env: { OPENDASH_SCENE_EDITOR: '1' }, registry: fakeRegistry, run: slowRun }); }
 });
 
 test('status and a recipe read (the file from the marker scan)', async () => {
@@ -222,22 +223,21 @@ test('the lint route returns rules (the real registry and lint)', async () => {
   const reg = loadRegistry(REPO);
   const E = engineOf(reg);
   if (!E.ready) return;
-  setSceneEditorHooks({ root, env: { OPENDASH_SCENE_EDITOR: '1' }, registry: { reg, E, get: (n) => reg.R.get(n) } });
-  const one = await start({ OPENDASH_SCENE_EDITOR: '1' });
+  const one = await start({ OPENDASH_SCENE_EDITOR: '1' }, { registry: { reg, E, get: (n) => reg.R.get(n) } });
   const save = port; port = one.port;
   try {
     const ids = E.objs().map(d => d.id);
     const tree = ids.find(i => i.startsWith('tree.')), person = ids.find(i => i.startsWith('person.'));
     const rec = JSON.parse(JSON.stringify(REC));
-    rec.scene.place = [{ obj: tree, at: [-14, 38], x: 400, y: 640, s: 0.6 }, { obj: person, at: [2, 20], x: 820, y: 700, s: 0.5 }];
+    rec.scene.place = [{ obj: tree, at: [-14, 38] }, { obj: person, at: [2, 20] }];
     const r = await req('POST', '/api/scene-editor/lint', { body: { rec } });
     assert.equal(r.status, 200, r.text);
-    assert.ok(Array.isArray(r.json.rules) && r.json.rules.length > 3);
+    assert.ok(Array.isArray(r.json.rules) && r.json.rules.length > 3, JSON.stringify(r.json).slice(0, 600));
     assert.ok(r.json.rules.every(x => typeof x.rule === 'string' && typeof x.ok === 'boolean'));
     assert.equal(typeof r.json.pass, 'boolean');
     const bad = await req('POST', '/api/scene-editor/lint', { body: { rec: Object.assign({}, rec, { meta: Object.assign({}, rec.meta, { label: '</script>' }) }) } });
     assert.equal(bad.status, 200); assert.equal(bad.json.pass, false);
-  } finally { port = save; await one.close(); setSceneEditorHooks({ root, env: { OPENDASH_SCENE_EDITOR: '1' }, registry: fakeRegistry }); }
+  } finally { port = save; await one.close(); setSceneEditorHooks({ root, env: { OPENDASH_SCENE_EDITOR: '1' }, registry: fakeRegistry, run: slowRun }); }
 });
 
 test('recipeObjectIds and recipeProblems (pure)', () => {
@@ -253,7 +253,7 @@ function loadEditor() {
   const src = readFileSync(join(REPO, 'src', 'app', '78-scene-editor.js'), 'utf8');
   const ctx = { console, Math, JSON, Object, Array, Number, String, Set, Map, WeakMap, Promise, Date };
   vm.createContext(ctx);
-  vm.runInContext(src + '\n;this.__ed = { sceneEditorCamera, sceneEditorProject, sceneEditorUnproject, sceneEditorGrid, sceneEditorHistory, sceneEditorApply, sceneEditorPlaceGround, sceneEditorDiff, sceneEditorValidAt };', ctx, { filename: '78-scene-editor.js' });
+  vm.runInContext(src + '\n;this.__ed = { sceneEditorCamera, sceneEditorProject, sceneEditorUnproject, sceneEditorGrid, sceneEditorHistory, sceneEditorApply, sceneEditorPlaceGround, sceneEditorDiff, sceneEditorValidAt, sceneEditorPreviewData, sceneEditorSurfaceAt, sceneEditorClass };', ctx, { filename: '78-scene-editor.js' });
   return ctx.__ed;
 }
 
@@ -291,9 +291,9 @@ test('editor helpers: undo / redo stack and recipe edits', () => {
   const del = ed.sceneEditorApply(added, { op: 'delete', i: 0 });
   assert.equal(del.scene.place.length, 2); assert.equal(del.scene.place[0].obj, 'tree.oak');
   const sw = ed.sceneEditorApply(r0, { op: 'swap', i: 1, obj: 'tree.birch' });
-  assert.equal(sw.scene.place[1].obj, 'tree.birch'); assert.deepEqual(sw.scene.place[1].at, [-14, 38]);
+  assert.equal(sw.scene.place[1].obj, 'tree.birch'); assert.deepEqual([...sw.scene.place[1].at], [-14, 38]);
   const mv = ed.sceneEditorApply(r0, { op: 'move', i: 0, x: -3.04, d: 18.26 });
-  assert.deepEqual(mv.scene.place[0].at, [-3, 18.3]); assert.equal(mv.scene.place[0].on, undefined, 'a moved placement is pinned to its ground point');
+  assert.deepEqual([...mv.scene.place[0].at], [-3, 18.3]); assert.equal(mv.scene.place[0].on, undefined, 'a moved placement is pinned to its ground point');
   const cam = ed.sceneEditorApply(r0, { op: 'camera', patch: { eye: 2.4 } });
   assert.equal(cam.scene.camera.eye, 2.4); assert.equal(cam.scene.camera.fov, 64);
   const d = ed.sceneEditorDiff(r0, ed.sceneEditorApply(ed.sceneEditorApply(mv, { op: 'delete', i: 1 }), { op: 'camera', patch: { eye: 2 } }));
@@ -314,4 +314,53 @@ test('editor helpers: the ground point of a placement and the stand-in validity 
   assert.equal(ed.sceneEditorValidAt(REC.scene, cam, 'vehicle.car', -30, 24).ok, false);
   assert.equal(ed.sceneEditorValidAt(REC.scene, cam, 'tree.oak', road.x, 24).ok, false);
   assert.equal(ed.sceneEditorValidAt(REC.scene, cam, 'boat.narrowboat', -2.5, 40).ok, true);
+});
+
+test('editor helpers, every callee absent (no core, no v2 compile): the stage plays a v1 stand-in that matches the handles', () => {
+  const ed = loadEditor();
+  const cam = ed.sceneEditorCamera(REC.scene);
+  const scene = JSON.parse(JSON.stringify(REC.scene));
+  scene.place.push({ obj: 'vehicle.car', at: [-2.5, 40] }, { obj: 'boat.narrowboat', on: 'canal', d: 30, u: 0.5 }, { obj: 'bird.gull', x: 300, y: 140, s: 0.4, pin: true });
+  const data = ed.sceneEditorPreviewData(scene, { season: 'autumn' });
+  assert.equal(data.v, 1); assert.equal(data.camera, undefined, 'v1 data: the core compiles it as before');
+  assert.equal(data.view.horizon, 452); assert.equal(data.view.fov, 64);
+  assert.ok(data.ground.length >= 2 && data.ground.every(g => /^M[-\d.]+ [-\d.]+(L[-\d.]+ [-\d.]+)+Z$/.test(g.d)), 'surfaces become projected ground fills');
+  assert.equal(data.water.length, 1); assert.ok(data.water[0].y0 >= 452 && data.water[0].y1 <= 900);
+  const objs = data.place.map(p => p.obj);
+  assert.equal(objs.filter(o => o === 'vehicle.car').length, 1, 'the car in the canal is refused (not drawn); the one on the road is');
+  const boat = data.place.find(p => p.obj === 'boat.narrowboat'), carP = data.place.find(p => p.obj === 'vehicle.car');
+  const flat = ed.sceneEditorProject(cam, 0, 30).Y;
+  assert.ok(boat.y > flat, 'a boat floats on the water level, below the ground plane (camera.water)');
+  const g = ed.sceneEditorPlaceGround(REC.scene, cam, REC.scene.place[0]);
+  assert.ok(Math.abs(carP.x - ed.sceneEditorProject(cam, g.x, g.d).X) < 0.2 && Math.abs(carP.y - ed.sceneEditorProject(cam, g.x, g.d).Y) < 0.2, 'the drawn car stands where its handle is');
+  assert.equal(carP.layer, 'near'); assert.ok(carP.s > 0);
+  assert.ok(data.place.some(p => p.obj === 'bird.gull' && p.x === 300 && p.y === 140), 'pixel placements are kept as they are');
+  assert.equal(ed.sceneEditorSurfaceAt(REC.scene, cam, -2.5, 40).kind, 'water');
+  assert.equal(ed.sceneEditorSurfaceAt(REC.scene, cam, -40, 40).kind, 'grass');
+  assert.equal(ed.sceneEditorClass('boat.narrowboat'), 'boat'); assert.equal(ed.sceneEditorClass('vehicle.tram-x'), 'tram');
+  // a placement problem never comes from another list: the editor maps only place[...] problems to handles (checked in the page)
+  assert.equal(typeof ed.sceneEditorValidAt(REC.scene, cam, 'bird.gull', 0, 10).exempt, 'boolean');
+});
+
+test('with the recipe module (D, tools/lib/scene-recipe.mjs): read and save go through it, canonical and atomic', async (t) => {
+  let R;
+  try { R = await import('../tools/lib/scene-recipe.mjs'); } catch { t.skip('scene-recipe.mjs is not in this checkout yet'); return; }
+  if (typeof R.writeRecipe !== 'function') { t.skip('no writeRecipe'); return; }
+  const file = join(root, 'src', 'app', '71-scene-v2h-test-r-canal.js');
+  writeFileSync(file, fileText(REC));
+  const one = await start({ OPENDASH_SCENE_EDITOR: '1' }, { recipes: R });
+  const save = port; port = one.port;
+  try {
+    const s = await req('GET', '/api/scene-editor/status');
+    assert.equal(s.json.standIn, false);
+    const r = await req('GET', '/api/scene-editor/recipe?ref=v2h-test/canal');
+    assert.equal(r.status, 200, r.text);
+    const rec = JSON.parse(JSON.stringify(r.json.rec)); rec.scene.place[1].at = [-15, 39];
+    const w = await req('POST', '/api/scene-editor/recipe', { body: { ref: 'v2h-test/canal', version: r.json.version, rec } });
+    assert.equal(w.status, 200, w.text);
+    const text = readFileSync(file, 'utf8');
+    assert.match(text, /"at":\[-15,39\]/);
+    assert.equal(text.indexOf('/* Scene recipe v2: v2h-test/canal (test). */'), 0, 'the header is kept');
+    assert.equal((await req('POST', '/api/scene-editor/recipe', { body: { ref: 'v2h-test/canal', version: r.json.version, rec } })).status, 409, 'the old version is stale');
+  } finally { port = save; await one.close(); writeFileSync(file, fileText(REC)); setSceneEditorHooks({ root, env: { OPENDASH_SCENE_EDITOR: '1' }, registry: fakeRegistry, run: slowRun }); }
 });

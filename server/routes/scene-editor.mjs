@@ -140,11 +140,12 @@ async function registry(root) {
 }
 
 /* ---------- validation (V2 23.2) ---------- */
-const META_KEYS = new Set(['id', 'label', 'site', 'tags', 'mood', 'colour', 'region', 'slot', 'theme', 'intensity', 'ukRegion', 'county', 'sceneSeason', 'view', 'place', 'town', 'credit', 'unlock', 'weight', 'when']);
-const SCENE_KEYS = new Set(SCENE_ORDER);
+const META_KEYS = new Set(['id', 'label', 'site', 'tags', 'mood', 'colour', 'region', 'slot', 'theme', 'intensity', 'priority', 'ukRegion', 'ukPlace', 'county', 'sceneSeason', 'view', 'place', 'town', 'credit', 'unlock', 'weight']);
+// the scene keys a recipe may hold: the runtime's own list (A's SCENE_RECIPE_SCENE_KEYS) when the registry has it, plus these
+const SCENE_KEYS = new Set(SCENE_ORDER.concat(['v', 'layers', 'ground', 'terrain', 'tropic', 'drive', 'kits', 'meta', 'sky', 'particles']));
 const ID_RE = /^[a-z0-9-]{1,60}$/;
 /** Text that could end the marker block, open a comment, or close the page's <script> once built in. */
-const UNSAFE_TEXT = /\*\/|\/\*|<\/|<!--|[\u0000-\u0008\u000b\u000c\u000e-\u001f  ]/;
+const UNSAFE_TEXT = /\*\/|\/\*|<\/|<!--|[\u0000-\u0008\u000b\u000c\u000e-\u001f]|[\p{Zl}\p{Zp}]/u;
 function walkStrings(v, fn, path = '', depth = 0) {
   if (depth > 12) { fn(null, path, 'too deeply nested'); return; }
   if (typeof v === 'string') { fn(v, path); return; }
@@ -189,7 +190,9 @@ export function recipeProblems(ref, rec, { E = null, get = () => undefined, form
   const s = rec.scene;
   if (!s || typeof s !== 'object' || Array.isArray(s)) bad('SHAPE', 'scene must be an object');
   else {
-    for (const k of Object.keys(s)) if (!SCENE_KEYS.has(k)) bad('KEY', 'unknown scene key ' + k.slice(0, 40));
+    const engineKeys = get('SCENE_RECIPE_SCENE_KEYS');
+    const known = Array.isArray(engineKeys) ? new Set(engineKeys) : SCENE_KEYS;
+    for (const k of Object.keys(s)) if (!known.has(k)) bad('KEY', 'unknown scene key ' + k.slice(0, 40));
     if (rec.meta && s.id !== rec.meta.id) bad('VALUE', 'scene.id must equal meta.id');
     if (!s.camera || typeof s.camera !== 'object') bad('VALUE', 'a v2 recipe needs a camera');
     for (const k of ['place', 'scatter', 'surfaces', 'water', 'flows', 'actors', 'flocks', 'signs']) if (s[k] != null && !Array.isArray(s[k])) bad('VALUE', k + ' must be a list');
@@ -287,10 +290,14 @@ export default function register(app) {
       if (problems.some(x => x.code === 'REF')) throw listed(400, 'ref does not match the recipe', 'BAD_REF', problems);
       if (problems.length) { log('info', `scene-editor save refused (${problems.length} problems: ${[...new Set(problems.map(x => x.code))].join(',')})`); throw listed(422, problems[0].msg, 'INVALID', problems); }
       let w;
-      try { w = await at.R.writeRecipe(root, b.rec, { version: b.version, file: at.file, write: (f, text) => atomicWrite(f, text) }); }
+      // the recipe module may call write() without awaiting it (a synchronous API): keep the promise and wait for it here
+      let pending = null;
+      const write = (f, text) => { pending = atomicWrite(f, text); return pending; };
+      try { w = await at.R.writeRecipe(root, b.rec, { version: b.version, file: at.file, write }); if (pending) await pending; }
       catch (e) {
         const stale = e && (e.status === 409 || e.code === 'STALE' || /stale|changed|version/i.test(String(e.message)));
         if (stale) throw new HttpError(409, 'The recipe changed on disk since you opened it. Reload it, then make your change again.', { code: 'STALE' });
+        if (e && (e.status === 422 || e.status === 404)) throw new HttpError(e.status, String(e.message || 'the recipe was refused').slice(0, 300), { code: e.code || (e.status === 404 ? 'NOT_FOUND' : 'INVALID') });
         throw e;
       }
       const after = await at.R.readRecipe(root, ref);

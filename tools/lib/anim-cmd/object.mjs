@@ -7,8 +7,11 @@
 //       a night column (graded with the real night light) and a lit column (windows and the lit part at dusk), a 0.4x size strip and
 //       three animation phases. Drawn from the resolved shapes (sceneObjShapes) as SVG; --canvas draws them with the canvas renderer
 //   object list [--category c] [--kit k] [--role r] [--tag t] [--json]   what the library holds, and how many scenes use each object
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+//   object <sub> ...                         any other subcommand is a module tools/lib/object-cmd/<sub>.mjs exporting
+//       default { summary, usage, options, run(args, ctx, lib) } (docs/dev/SCENE_ENGINE_V2.md 16.2): object normalise (24.2) ...
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { loadRegistry, findBrowser } from '../anim-render.mjs';
 import { loadThresholds } from '../../anim-pack.mjs';
 import { engineOf, lintObject, dataOf } from '../scene-lint.mjs';
@@ -24,6 +27,19 @@ export const PLURAL = { tree: 'trees', plant: 'plants', ground: 'ground', rock: 
 export const DEFAULT_ROLE = { tree: 'tree', plant: 'ground', ground: 'ground', rock: 'rock', water: 'edge', bird: 'bird', animal: 'animal', person: 'walker', vehicle: 'vehicle', boat: 'boat', building: 'building-mid', street: 'street', rail: 'street', structure: 'building-mid', prop: 'street', sky: 'sky' };
 const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
 const ID_RE = /^([a-z]+)\.([a-z0-9-]{1,40})$/;
+const BUILTIN = ['new', 'lint', 'sheet', 'list'];
+/** The delegated subcommands: tools/lib/object-cmd/<sub>.mjs, loaded once (their options merge into this command's). */
+const SUB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'object-cmd');
+export const OBJECT_SUBS = {};
+if (existsSync(SUB_DIR)) {
+  for (const f of readdirSync(SUB_DIR).filter(n => /^[a-z][a-z0-9-]*\.mjs$/.test(n)).sort()) {
+    const name = f.slice(0, -4);
+    if (BUILTIN.includes(name)) throw new Error(`tools/lib/object-cmd/${f}: "${name}" is a built-in object subcommand`);
+    const c = (await import(pathToFileURL(join(SUB_DIR, f)).href)).default;
+    if (!c || typeof c.run !== 'function' || !c.summary || !c.usage) throw new Error(`tools/lib/object-cmd/${f}: export default { summary, usage, options, run(args, ctx, lib) }`);
+    OBJECT_SUBS[name] = c;
+  }
+}
 
 /* ---------------------------------------------------------------------------------------------
    object new
@@ -262,8 +278,9 @@ export function objectUse(reg, E) {
 
 export default {
   summary: 'the object library: new (scaffold a stub), lint (the object rules), sheet (variants x seasons x night PNG), list (what there is and who uses it)',
-  usage: 'object new <cat>.<name> [--kit "<K call>"] [--variants N] [--kits a,b] [--role r] | object lint [<id>,...] [--json] | object sheet <id>[,...] [--out dir] [--canvas] [--mode light|night] | object list [--category c] [--kit k] [--role r] [--tag t] [--json]',
-  positionals: '<new|lint|sheet|list> [<id>]',
+  usage: 'object new <cat>.<name> [--kit "<K call>"] [--variants N] [--kits a,b] [--role r] | object lint [<id>,...] [--json] | object sheet <id>[,...] [--out dir] [--canvas] [--mode light|night] | object list [--category c] [--kit k] [--role r] [--tag t] [--json]'
+    + Object.values(OBJECT_SUBS).map(c => ' | ' + c.usage).join(''),
+  positionals: `<${BUILTIN.concat(Object.keys(OBJECT_SUBS)).join('|')}> [<id>]`,
   options: {
     kit: { type: 'string', help: 'object new: draw it with the nature kit, e.g. "K.tree(\'alder\')" (sceneObjFromKit: called at the origin with the season and a seed per variant)' },
     variants: { type: 'string', help: 'object new: how many variants (default 3; a landmark has 1)' },
@@ -276,6 +293,8 @@ export default {
     mode: { type: 'string', help: 'object sheet: light (default) or night (a dark page)' },
     category: { type: 'string', help: 'object list: only this category' },
     tag: { type: 'string', help: 'object list: only objects with this tag (kit:tropical, role:tree, landmark, signature ...)' },
+    // the delegated subcommands' own options
+    ...Object.values(OBJECT_SUBS).reduce((acc, c) => Object.assign(acc, c.options || {}), {}),
   },
   notes: [
     'Every object except a landmark carries at least one kit:<kit> tag and exactly one role:<role> tag: archetypes pick objects by kit and role (sceneKitPick), so a new object reaches every scene of its kit without editing a scene.',
@@ -284,7 +303,8 @@ export default {
   ],
   async run(args, ctx) {
     const [sub, ...rest] = ctx.positionals;
-    if (!sub || !['new', 'lint', 'sheet', 'list'].includes(sub)) throw new Error('object needs a subcommand: new, lint, sheet or list (node tools/anim-pack.mjs object --help)');
+    if (sub && !BUILTIN.includes(sub) && OBJECT_SUBS[sub]) return OBJECT_SUBS[sub].run(args, ctx, { loadRegistry, engineOf, lintObject, loadThresholds });
+    if (!sub || !BUILTIN.includes(sub)) throw new Error(`object needs a subcommand: ${BUILTIN.concat(Object.keys(OBJECT_SUBS)).join(', ')} (node tools/anim-pack.mjs object --help)`);
     const root = ctx.root;
     if (sub === 'new') {
       const id = rest[0];
