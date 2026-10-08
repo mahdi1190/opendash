@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { loadRegistry } from '../tools/lib/anim-render.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -297,4 +298,155 @@ test('archetype picks: a scene\'s own picks lead a slot and its own mix replaces
   assert.deepEqual(quay(build({ mix: { tree: { 'tree.none': 1 } } })), quay(plain), 'a mix naming no eligible id leaves the kit\'s dict');
   assert.ok(!('picks' in m) && !('mix' in m), 'picks and mix steer the build, they are not scene data');
   assert.ok(JSON.stringify(params).length <= 400 && !('picks' in params), 'a pilot\'s own picks live in its patch, not its params row');
+});
+
+/* ---------- the figure builder v2.1: arm poses, hand anchors, bent legs, the helmet, the hem band ---------- */
+const SEASONS4 = ['spring', 'summer', 'autumn', 'winter'];
+const shapeList = f => [...f.legB, ...f.body, ...f.legA].map(sh => (Array.isArray(sh) ? { d: sh[1] } : sh));
+/** The faceless check of the test above: shapes wholly inside the face side of the head (it faces right), a nose's reach. */
+const faceMarksOf = (f, extra = []) => {
+  const h = f.head, zone = [h.x + 0.1 * h.rx, h.y - 0.4 * h.ry, h.x + 1.6 * h.rx, h.y + 0.85 * h.ry];
+  return [...shapeList(f), ...extra.map(sh => ({ d: sh[1] }))].filter(o => {
+    const b = E.scenePathBox(o.d, o.m), w = o.s ? (o.w || 1) / 2 : 0;
+    return b && b[0] - w >= zone[0] && b[1] - w >= zone[1] && b[2] + w <= zone[2] && b[3] + w <= zone[3];
+  });
+};
+const figBox = f => shapeList(f).reduce((a, o) => { const b = E.scenePathBox(o.d, o.m); return b ? [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])] : a; }, [Infinity, Infinity, -Infinity, -Infinity]);
+const ARM_PAIRS = ['walk', 'forward', 'back', 'run', 'hold', 'play', 'bars', 'phone', 'umbrella', 'none'];
+let posedCache = null;
+/** Every arm pair x every leg pose on every preset and season (a bike helmet on a third of them), built once. */
+const posed = () => posedCache || (posedCache = (() => {
+  const P = G('scenePeople'), out = [];
+  for (const [i, p] of P.PRESETS.entries()) for (const season of SEASONS4) ARM_PAIRS.forEach((arms, a) => P.LEG_POSES.forEach((legs, l) => {
+    const o = Object.assign(P.outfit(p, season), { arms, legs, pedal: (a * 47 + l * 90) % 360 }, (a + l) % 3 === 0 ? { hat: { kind: 'helmet', col: 'red', strip: 1 } } : {});
+    out.push({ label: `preset ${i} ${season} arms ${arms} legs ${legs}`, o, f: P.figure(o) });
+  }));
+  return out;
+})());
+
+test('figure v2.1: every arm pose and leg pose on every preset and season stays faceless (and the check still finds a face)', () => {
+  const P = G('scenePeople');
+  assert.deepEqual([...P.ARM_POSES], ['forward', 'back', 'run', 'hold', 'play', 'bars', 'phone', 'umbrella', 'none']);
+  assert.deepEqual([...P.LEG_POSES], ['walk', 'run', 'seated', 'cycle']);
+  const all = posed();
+  assert.equal(all.length, P.PRESETS.length * 4 * ARM_PAIRS.length * 4);
+  for (const { label, f } of all) {
+    assert.ok(f.head && f.head.rx > 3, label + ': a head');
+    assert.deepEqual(faceMarksOf(f).map(o => o.d), [], label + ': nothing on the face');
+    assert.ok(!shapeList(f).some(o => /NaN|Infinity/.test(o.d)), label + ': finite path data');
+  }
+  // a planted eye dot and nose are still caught on a seated cyclist-helmet head (the head moved with the seat)
+  for (const o of [{ legs: 'seated', arms: 'play' }, { legs: 'cycle', arms: 'bars', hat: { kind: 'helmet', col: 'sky' } }]) {
+    const f = P.figure(Object.assign(P.outfit(P.PRESETS[3], 'winter'), o)), h = f.head;
+    assert.equal(faceMarksOf(f, [['#141010', E.sceneD.circ(h.x + 2.2, h.y - 0.6, 0.5)], ['#e8bfa0', `M${h.x + 3.4} ${h.y - 0.8}l1.6 1.8l-1.6 .6z`]]).length, 2, JSON.stringify(o));
+  }
+});
+
+test('figure v2.1: hand anchors lie inside the figure box, move with the pose, follow a hand target; arms none is armless', () => {
+  const P = G('scenePeople');
+  for (const { label, o, f } of posed()) {
+    const b = figBox(f), sides = o.arms === 'none' ? [] : ['near', 'far'];
+    if (o.arms === 'none') assert.deepEqual([f.hands.near, f.hands.far, f.at.farArm[1] - f.at.farArm[0], f.at.nearArm[1] - f.at.nearArm[0]], [null, null, 0, 0], label);
+    for (const k of sides) {
+      const [x, y] = f.hands[k];
+      assert.ok(x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3], `${label}: the ${k} hand [${x}, ${y}] inside the box ${b}`);
+      const arm = f.body.slice(...f.at[k === 'near' ? 'nearArm' : 'farArm']).map(sh => (Array.isArray(sh) ? sh[1] : sh.d));
+      assert.ok(arm.some(d => { const hb = E.scenePathBox(d); return hb && Math.abs((hb[0] + hb[2]) / 2 - x) < 0.2 && Math.abs((hb[1] + hb[3]) / 2 - y) < 0.2; }), `${label}: the ${k} arm's run (at) holds the hand at its anchor`);
+    }
+  }
+  // the anchors move with the pose: each pose puts the hands somewhere else
+  const at = (o) => P.figure(Object.assign(P.outfit(P.PRESETS[0], 'summer'), o));
+  const poses = P.ARM_POSES.filter(a => a !== 'none'), key = h => h.map(v => v.toFixed(1)).join(',');
+  assert.equal(new Set(poses.map(a => key(at({ arms: { near: a } }).hands.near))).size, poses.length, 'every near pose has its own hand position');
+  assert.equal(new Set(poses.map(a => key(at({ arms: { far: a } }).hands.far))).size, poses.length, 'every far pose has its own hand position');
+  assert.ok(at({ arms: 'play' }).hands.far[1] < at({ arms: 'play' }).hands.near[1] && at({ arms: 'bars' }).hands.near[0] > 10 && at({ arms: 'hold' }).hands.near[0] > at({}).hands.near[0] + 10, 'play raises the far hand; bars and hold reach forward');
+  assert.deepEqual(at({ arms: 'walk' }).hands, at({}).hands, 'walk is the default pair');
+  // a hand target in object coordinates (dx and the seated drop applied), reached by IK
+  for (const [o, g] of [[{ arms: { near: { hand: [8, -36] } } }, [8, -36]], [{ dx: 5, arms: { far: { hand: [17, -40] } } }, [17, -40]], [{ legs: 'seated', arms: { near: { hand: [10, -20] } } }, [10, -20]]]) {
+    const f = at(o), h = o.arms.near ? f.hands.near : f.hands.far;
+    assert.ok(Math.hypot(h[0] - g[0], h[1] - g[1]) < 0.05, `the hand reaches ${g}: ${h}`);
+  }
+  const far = at({ arms: { near: { hand: [40, -36] } } }).hands.near;
+  assert.ok(far[0] < 20 && far[0] > 10, 'an unreachable target: the arm stretches towards it, no further than its length');
+  // seated: the hands drop with the body; armless: both arm runs gone, nothing else
+  const st = at({ arms: 'hold' }), se = at({ arms: 'hold', legs: 'seated' }), drop = se.pivot[1] - st.pivot[1];
+  assert.ok(Math.abs(se.hands.near[1] - st.hands.near[1] - drop) < 1e-9 && se.hands.near[0] === st.hands.near[0]);
+  const walk = at({}), none = at({ arms: 'none' });
+  assert.equal(none.body.length, walk.body.length - (walk.at.farArm[1] - walk.at.farArm[0]) - (walk.at.nearArm[1] - walk.at.nearArm[0]));
+  assert.deepEqual(none.shoulders, walk.shoulders, 'the shoulder joints are returned for an armless body');
+});
+
+test('figure v2.1: legs: run strides, seated drops onto the seat (feet on the ground), cycle reaches the pedals; parts and pivot kept', () => {
+  const P = G('scenePeople'), base = P.outfit(P.PRESETS[6], 'spring');
+  const legBox = (f, part) => f[part].map(sh => E.scenePathBox(Array.isArray(sh) ? sh[1] : sh.d)).filter(Boolean).reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
+  const walk = P.figure(base);
+  assert.deepEqual([walk.pivot, walk.hip, walk.seat], [[0, P.HIP], P.HIP, null], 'walk: the hip pivot of the walk hook');
+  const run = P.figure(Object.assign({}, base, { legs: 'run' }));
+  assert.deepEqual(run.pivot, walk.pivot);
+  assert.ok(legBox(run, 'legA')[2] > legBox(walk, 'legA')[2] + 1.5 && legBox(run, 'legB')[0] < legBox(walk, 'legB')[0] - 8, 'run: a longer stride than the walk at rest (near leg forward, far leg back)');
+  assert.ok(legBox(run, 'legB')[3] < -1, 'run: the far shin kicked up off the ground');
+  for (const seat of [10, 16]) {
+    const f = P.figure(Object.assign({}, base, { legs: 'seated', seat }));
+    assert.deepEqual(f.seat, [0, -seat]);
+    assert.ok(Math.abs(f.pivot[1] - (-seat - 3.3)) < 1e-9 && f.hip === f.pivot[1], 'seated: the hip pivot sits above the seat');
+    for (const part of ['legA', 'legB']) assert.ok(Math.abs(legBox(f, part)[3] - 0.2) < 0.6, `seated ${seat}: the ${part} foot on the ground`);
+    assert.ok(Math.abs((f.head.y - walk.head.y) - (f.pivot[1] - walk.pivot[1])) < 1e-9, 'seated: the whole figure drops');
+    assert.ok(legBox(f, 'legA')[2] < legBox(f, 'legB')[2] - 4, 'seated: the near foot drawn in (its knee up), the far leg out');
+  }
+  for (const pedal of [0, 90, 180, 270]) {
+    const f = P.figure(Object.assign({}, base, { legs: 'cycle', pedal, crank: [6, -10], crankLen: 6 }));
+    assert.deepEqual(f.pivot, walk.pivot, 'cycle: the hip on the saddle keeps the standing pivot');
+    const a = pedal * Math.PI / 180;
+    assert.ok(Math.hypot(f.pedals.near[0] - 6 - 6 * Math.cos(a), f.pedals.near[1] + 10 - 6 * Math.sin(a)) < 1e-9 && Math.hypot(f.pedals.far[0] - 6 + 6 * Math.cos(a), f.pedals.far[1] + 10 + 6 * Math.sin(a)) < 1e-9, 'cycle: the pedals on the cranks');
+    for (const [part, k] of [['legA', 'near'], ['legB', 'far']]) {
+      const b = legBox(f, part), [x, y] = f.pedals[k];
+      assert.ok(x >= b[0] - 0.5 && x <= b[2] + 0.5 && y >= b[1] - 0.5 && y <= b[3] + 0.5, `cycle ${pedal}: the ${k} foot reaches its pedal`);
+    }
+  }
+  const moved = P.figure(Object.assign({}, base, { legs: 'cycle', pedal: 45 })), still = P.figure(Object.assign({}, base, { legs: 'cycle', pedal: 45 }));
+  assert.notDeepEqual(moved.legA, P.figure(Object.assign({}, base, { legs: 'cycle', pedal: 135 })).legA, 'the pedal angle moves the legs');
+  assert.deepEqual(moved, still);
+  // a long top and a skirt cover the lap when seated (the thigh in their colour; the hem no lower than the seat)
+  const coat = P.figure(Object.assign(P.outfit(P.PRESETS[1], 'spring'), { legs: 'seated' }));
+  assert.equal(coat.legA[0][0], '@stone.0', 'seated in a coat: the near thigh in the coat colour');
+  assert.ok(figBox({ legB: [], legA: [], body: coat.body.filter(sh => (Array.isArray(sh) ? sh[0] : sh.f) === '@navy.0') })[3] <= coat.seat[1] + 1, 'the skirt ends at the seat');
+});
+
+test('figure v2.1: the bike helmet (fine pieces are detail), deterministic by (preset, season, options), tables exported read-only', () => {
+  const P = G('scenePeople'), base = P.outfit(P.PRESETS[2], 'summer');
+  const J = s => JSON.stringify(s), plain = P.figure(Object.assign({}, base, { hat: null })), helm = P.figure(Object.assign({}, base, { hat: { kind: 'helmet', col: 'red', strip: 1 } }));
+  const added = helm.body.filter(sh => !plain.body.map(J).includes(J(sh)));
+  assert.ok(added.length >= 6, 'a shell, its band, a peak, vents, a sheen, a strap and a reflector');
+  assert.equal(added.filter(sh => !(sh && sh.detail) && sh.glow !== 'rim').length, 3, 'only the shell, its band and the lit reflector draw at the far tier (the head\'s rim light follows the shell)');
+  assert.ok(added.some(sh => sh.glow === 'lamp'), 'the reflector lights at night');
+  assert.ok(figBox({ legA: [], legB: [], body: added })[1] < helm.head.y - helm.head.ry, 'the shell rises over the crown');
+  // determinism: the same (preset, season, options) twice, with other figures built between, gives the same shapes
+  for (const [i, p] of P.PRESETS.entries()) for (const season of SEASONS4) for (const extra of [{}, { arms: 'run', legs: 'run' }, { arms: 'play', legs: 'seated' }, { arms: 'bars', legs: 'cycle', pedal: 30, hat: { kind: 'helmet', col: 'sky' } }]) {
+    const a = J(P.figure(Object.assign(P.outfit(p, season), extra)));
+    P.figure(Object.assign(P.outfit(P.PRESETS[(i + 3) % P.PRESETS.length], 'winter'), { legs: 'cycle', arms: 'none' }));
+    assert.equal(J(P.figure(Object.assign(P.outfit(p, season), extra))), a, `preset ${i} ${season} ${J(extra)}`);
+  }
+  assert.ok(Object.isFrozen(P.BUILD) && Object.isFrozen(P.BUILD.slim) && Object.isFrozen(P.TOPS) && Object.isFrozen(P.TOPS.coat), 'the build and garment tables are exported read-only');
+  assert.equal(P.TOPS.coat.long, 1);
+  const [joint, end] = P.ik([0, 0], [10, 0], 6, 6, 1);
+  assert.ok(joint[1] > 0 && Math.abs(Math.hypot(...joint) - 6) < 1e-9 && Math.hypot(end[0] - 10, end[1]) < 1e-9, 'ik: an elbow bends down, both bones keep their length');
+});
+
+test('person.walker: the shapes are the pre-v2.1 builder output plus one hem band per (variant, season)', () => {
+  // The hem band's push sat inside the neckline's // comment, so it never ran. Fixing it adds ONE fine (detail) stroke to the
+  // body of every walker variant and season and changes nothing else. Before: no hem band. After, e.g. preset 0 spring:
+  // { s: '@olive.2', w: 0.5, d: 'M-4.6-31Q0-30.3 4.3-31', op: 0.45, detail: true }; a ribbed top (jumper, hoodie) w 1.1, op 0.5.
+  // BEFORE is the snapshot hash of the pre-change builder's output (scene-engine-round-2 at 1a4b196), computed the same way.
+  const BEFORE = '8954355f961b661e6d171a057ac15535a275d92882c99cbabd7bb2b3e9a62f8b';
+  const isHemBand = sh => !!(sh && sh.detail && sh.s && (sh.w === 1.1 || sh.w === 0.5) && /^M[^A-Za-z]+Q0-[^A-Za-z]+$/.test(sh.d));
+  const out = {};
+  for (let v = 0; v < 8; v++) for (const season of SEASONS4) {
+    const sh = E.sceneObjShapes('person.walker', v, season), parts = sh.order.map(p => [p, sh.parts[p]]);
+    assert.equal(sh.parts.body.filter(isHemBand).length, 1, `variant ${v} ${season}: one hem band in the body`);
+    assert.equal([...sh.parts.legA, ...sh.parts.legB].filter(isHemBand).length, 0);
+    out[v + ':' + season] = createHash('sha256').update(JSON.stringify(parts.map(([p, l]) => [p, l.filter(s => !isHemBand(s))]))).digest('hex').slice(0, 16);
+  }
+  assert.equal(createHash('sha256').update(JSON.stringify(out)).digest('hex'), BEFORE, 'every other walker shape is unchanged');
+  const f = G('scenePeople').figure(G('scenePeople').outfit(G('scenePeople').PRESETS[1], 'autumn'));
+  assert.deepEqual(f.body.filter(isHemBand), [{ s: '@burgundy.3', w: 1.1, d: 'M-3.8-30.8Q0-30.1 3.4-30.8', op: 0.5, detail: true }], 'the jumper\'s ribbed hem band');
 });
