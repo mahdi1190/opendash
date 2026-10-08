@@ -32,6 +32,21 @@
   /** Glow groups: N strings; add(i, d) appends a window to group i. shapes(paint) returns one glow shape per group.
       The windows are detail: a tile still (LOD < .5) draws the tower's massing without them (they light up at night all the same). */
   const groups = (n) => { const g = Array.from({ length: n }, () => ''); return { g, add: (i, d) => { g[((i % n) + n) % n] += d; }, shapes: (paint, op) => g.map((d, i) => ({ f: typeof paint === 'function' ? paint(i) : paint, d, op, glow: 'window', detail: true })) }; };
+  /**
+   * Night variety: a seeded share of the facade's glow shapes (62 to 76 %, set per variant) can light, the rest lose `glow`
+   * and stay dark all night; night.on (.9) then picks among them per placement, so about 56 to 68 % are lit. With curt, a
+   * share of the lightable rectangular panes get a half-drawn blind or a pair of curtains.
+   */
+  const nightMix = (body, id, v, curt = 0) => {
+    const z = sceneRnd(sceneHash(id + '|night|' + v)), keep = .62 + z() * .14, out = [];
+    for (const sh of body) {
+      if (Array.isArray(sh) || !sh.glow) { out.push(sh); continue; }
+      if (z() > keep) { const c = Object.assign({}, sh); delete c.glow; out.push(c); continue; }
+      const b = out.push(sh) && curt && z() < curt && /^M(-?[\d.]+) (-?[\d.]+)h([\d.]+)v([\d.]+)h-[\d.]+z$/.exec(sh.d);
+      if (b) { const [x, y, w, h] = b.slice(1).map(Number), k = z(); out.push(['#6a4438', k < .5 ? rect(x, y, w, h * (.3 + k * .6)) : rect(x, y, w * .2, h) + rect(x + w * .8, y, w * .2, h), .85]); }
+    }
+    return out;
+  };
 
   /* =====================================================================
      building.skyscraper: a GENERATOR. v % 4 picks the style, v the seed:
@@ -230,7 +245,7 @@
       conc: ['#d2d0ca', '#a4a29c', '#ebe9e4', '#7a7872'], brickT: ['#9a5a44', '#74402e', '#c08a6e', '#4e2a1e'], clad: ['#d4704e', '#e0b450', '#5e8eae', '#6ea47e'], rail: ['#9ab8c8', '#e8eef2'],
       metal: ['#a0a8b0', '#6a727a', '#c8d0d6'], led: '#cfe8ff', flood: '#ffe6b8', red: '#ff3a2a',
     } },
-    night: { glow: { window: '#f8e2ae', lamp: '#ff3a2a' }, on: .58 },
+    night: { glow: { window: '#f8e2ae', lamp: '#ff3a2a' }, on: .9 },
     anim: { flicker: { part: 'beacon', op: [.2, 1], period: 1.6 } },
     shadow: { rx: 170, ry: 14, h: 1400 }, reflect: true,
     tags: ['city', 'skyline', 'tower', 'skyscraper', 'office', 'generator', 'kit:towers', 'kit:urban', 'role:building-far'],
@@ -238,6 +253,7 @@
     build(v, r) {
       const out = { body: [], beacon: [], lit: [] };
       ({ glass: towerGlass, deco: towerDeco, twist: towerTwist, resi: towerResi })[STY[v % 4]](v, r, out);
+      out.body = nightMix(out.body, 'building.skyscraper', v);
       return out;
     },
   });
@@ -277,7 +293,7 @@
       bloom: { spring: ['#f4e050', '#f6f0f4'], summer: ['#d8506a', '#e8a0c0'], autumn: ['#c8602a', '#e0a040'], winter: ['#c02a2a', '#e8e4dc'] },
       snow: { spring: '#4a5058', summer: '#4a5058', autumn: '#4a5058', winter: '#f2f6fa' },
     })),
-    night: { glow: { window: '#ffd68a' }, on: .62 },
+    night: { glow: { window: '#ffd68a' }, on: .9 },
     shadow: { rx: 250, ry: 12, h: 300 },
     tags: ['uk', 'london', 'city', 'street', 'terrace', 'victorian', 'house', 'brick', 'kit:london', 'kit:urban', 'kit:brownstone', 'role:building-mid'],
     credit: 'city kit: Victorian terraced houses, generic',
@@ -322,7 +338,7 @@
         for (let k = 0; k < 7; k++) { const gx = hx + 56 + k * 14 + rr(r, -3, 3), gh = winter ? rr(r, 8, 12) : rr(r, 12, 20); lf[k % 2] += sceneD.ell(gx, -18 - gh * .4, rr(r, 6, 9), gh * .5); if (!winter || k % 3 === 0) bl[k % 2] += sceneD.circ(gx + rr(r, -4, 4), -18 - gh * rr(r, .5, .9), 1.8); }
         body.push(['@leaf.0', lf[0]], ['@leaf.1', lf[1]], ['@bloom.0', bl[0]], ['@bloom.1', bl[1]]);
         // night: a soft glow on the step under the fanlight
-        lit.push({ f: { rad: [[0, '@flood', .35], [1, '@flood', 0]], cx: dx + dw / 2, cy: -10, r: 34 }, d: ell(dx + dw / 2, -10, 34, 14) });
+        lit.push({ f: { rad: [[0, '@flood', .35], [1, '@flood', 0]], cx: dx + dw / 2, cy: -10, r: 34 }, d: ell(dx + dw / 2, -10, 34, 34), m: [1, 0, 0, .4, 0, -6] });
       }
       // the roof: slate pitch seen over the parapet, chimney stacks on the party walls, snow in winter
       const rt = top - 4;
@@ -334,7 +350,7 @@
       }
       // the pavement edge
       body.push(['@pave.0', rect(x0 - 6, -2, n * hw + 12, 4)], ['@pave.1', rect(x0 - 6, 1, n * hw + 12, 1.5)]);
-      return { body, lit };
+      return { body: nightMix(body, 'building.terrace-victorian', v, .4), lit };
     },
   });
 
@@ -359,7 +375,7 @@
       bloom: { spring: ['#f4e050', '#f6f0f4'], summer: ['#d8506a', '#f0a0c0'], autumn: ['#c8602a', '#e0a040'], winter: ['#b02a2a', '#e8e4dc'] },
       snow: { spring: '#4c525a', summer: '#4c525a', autumn: '#4c525a', winter: '#f2f6fa' },
     })),
-    night: { glow: { window: '#ffdc94' }, on: .6 },
+    night: { glow: { window: '#ffdc94' }, on: .9 },
     shadow: { rx: 220, ry: 12, h: 440 },
     tags: ['uk', 'london', 'city', 'street', 'square', 'townhouse', 'georgian', 'regency', 'stucco', 'house', 'kit:london', 'kit:urban', 'kit:brownstone', 'role:building-mid'],
     credit: 'city kit: Georgian / Regency / Victorian townhouse row, generic',
@@ -412,7 +428,7 @@
       // chimneys on the party walls, the roof behind the parapet
       for (let i = 1; i < n; i++) { const cx = x0 + i * hw; body.unshift(['@chimney.0', rect(cx - 16, top - 70, 32, 50)], ['@chimney.1', rect(cx + 6, top - 70, 10, 50), .6], ['@pot', Array.from({ length: 4 }, (_, k) => rect(cx - 13 + k * 7, top - 80, 4.4, 10)).join('')], ['@snow', rect(cx - 17, top - 72, 34, 3), winter ? .95 : 0]); }
       body.unshift(['@slate.0', `M${f1(x0 + 4)} ${f1(top - 18)}L${f1(x0 + 26)} ${f1(top - 46)}H${f1(-x0 - 26)}L${f1(-x0 - 4)} ${f1(top - 18)}z`], ['@snow', `M${f1(x0 + 18)} ${f1(top - 36)}L${f1(x0 + 26)} ${f1(top - 46)}H${f1(-x0 - 26)}L${f1(-x0 - 18)} ${f1(top - 36)}z`, winter ? .95 : 0]);
-      return { body, lit };
+      return { body: nightMix(body, 'building.townhouse', v, .4), lit };
     },
   });
 
@@ -448,23 +464,28 @@
     credit: 'city kit: high-street shopfronts, generic, no lettering',
     build(v, r, ctx) {
       const s = ctx.season, warm = s === 'spring' || s === 'summer', body = [], lit = [];
-      const W = 180, x0 = -W / 2, gH = 128, uH = 82, nU = v === 5 ? 3 : 2, top = -gH - nU * uH - 18;
+      // per variant: width, storey and fascia heights, door side, roofline
+      const W = [180, 164, 192, 172, 186, 180][v], x0 = -W / 2, gH = 128, uH = [82, 86, 80, 84, 88, 78][v], nU = v === 5 ? 3 : 2, top = -gH - nU * uH - 18;
       const wall = ['brick', 'stock', 'render', 'brick', 'stock', 'brick'][v], fas = `@fascia.${v}`, str = `@stripe.${v}`;
       // the upper floors: wall, sashes, a cornice and parapet; chimney
       body.push([`@${wall}.0`, rect(x0, top, W, -top - gH)], [`@${wall}.1`, rect(x0 + W - 6, top, 6, -top - gH), .7]);
       if (wall !== 'render') body.push({ s: `@${wall}.3`, w: .7, op: .3, d: Array.from({ length: R((-top - gH) / 6) }, (_, k) => `M${x0} ${f1(top + 3 + k * 6)}h${W}`).join('') });
-      for (let f = 0; f < nU; f++) { const yy = -gH - (f + 1) * uH; for (let k = 0; k < 3; k++) sash(body, x0 + 22 + k * 52, yy + 16, 32, uH - 30 - f * 4, { head: f === 0, dress: '@trim.0' }); }
+      for (let f = 0; f < nU; f++) { const yy = -gH - (f + 1) * uH; for (let k = 0; k < 3; k++) sash(body, x0 + 22 + k * (W - 76) / 2, yy + 16, 32, uH - 30 - f * 4, { head: f === 0, dress: '@trim.0' }); }
       body.push(['@trim.0', rect(x0 - 3, top - 2, W + 6, 8)], ['@trim.1', rect(x0 - 3, top + 6, W + 6, 2)], [`@${wall}.0`, rect(x0, top - 16, W, 14)], ['@trim.0', rect(x0 - 1, top - 18, W + 2, 3)]);
-      body.unshift([`@${wall}.1`, rect(x0 + W - 40, top - 46, 28, 32)], ['@brick.3', rect(x0 + W - 42, top - 48, 32, 4)]);
+      const rf = [0, 1, 2, 3, 1, 0][v], pw = W * .3, cx = v % 2 ? x0 + 12 : x0 + W - 40;   // roofline: flat, pediment, raised centre, curved gable
+      if (rf === 1) body.push(['@trim.0', `M${f1(-pw - 6)} ${top - 17}L0 ${top - 46}L${f1(pw + 6)} ${top - 17}z`], [`@${wall}.0`, `M${f1(-pw + 6)} ${top - 19}L0 ${top - 39}L${f1(pw - 6)} ${top - 19}z`]);
+      if (rf === 2) body.push([`@${wall}.0`, rect(-pw, top - 34, pw * 2, 18)], ['@trim.0', rect(-pw - 2, top - 36, pw * 2 + 4, 3)]);
+      if (rf === 3) { const g = `M${f1(-pw)} ${top - 17}q0 -12 ${f1(pw * .25)} -14q${f1(pw * .15)} -20 ${f1(pw * .75)} -22q${f1(pw * .6)} 2 ${f1(pw * .75)} 22q${f1(pw * .25)} 2 ${f1(pw * .25)} 14z`; body.push([`@${wall}.0`, g], { s: '@trim.0', w: 2.4, d: g }); }
+      body.unshift([`@${wall}.1`, rect(cx, top - 46, 28, 32)], ['@brick.3', rect(cx - 2, top - 48, 32, 4)]);
       // the shop: pilasters, consoles, the fascia band, the cornice over it
-      const fy = -gH, fh = 22;
+      const fy = -gH, fh = [22, 30, 18, 26, 20, 24][v];
       body.push(v === 5 ? ['@tile.0', rect(x0, fy, W, gH)] : ['@trim.0', rect(x0, fy, W, gH)]);
       body.push([fas, rect(x0 + 10, fy + 4, W - 20, fh)], ['#ffffff', rect(x0 + 10, fy + 4, W - 20, 3), .18], ['@trim.0', rect(x0 - 4, fy - 4, W + 8, 7)], ['@trim.1', rect(x0 - 4, fy + 2, W + 8, 2)]);
       for (const px of [x0, x0 + W - 12]) body.push([v === 5 ? '@tile.2' : '@trim.0', rect(px, fy, 12, gH)], [v === 5 ? '@tile.1' : '@trim.1', rect(px + 8, fy, 4, gH), .8], ['@trim.0', `M${f1(px - 2)} ${f1(fy + 4)}h16v${fh}q-8 6-16 0z`], ['@trim.1', rect(px - 2, -10, 16, 10)]);
       if (v === 5) body.push({ s: '@tile.1', w: .8, op: .6, d: Array.from({ length: 12 }, (_, k) => `M${x0} ${f1(fy + 10 * k)}h${W}`).join('') });
       // the display window and the door
-      const wx = x0 + 14, wy = fy + fh + 10, ww = W - 28, wh = gH - fh - 36, dw = 34, dx = v === 5 ? wx + ww - dw : wx + ww - dw - 4;
-      const winW = dx - wx - 6;
+      const sx = x0 + 14, wy = fy + fh + 10, ww = W - 28, wh = gH - fh - 36, dw = 34, dl = v === 2 || v === 4;   // dl: the door on the left
+      const dx = dl ? sx + 4 : v === 5 ? sx + ww - dw : sx + ww - dw - 4, wx = dl ? dx + dw + 6 : sx, winW = dl ? sx + ww - wx : dx - wx - 6;
       body.push(['@trim.1', rect(wx, -24, winW, 24)], [v === 5 ? '@tile.1' : `@${wall}.1`, rect(wx + 2, -22, winW - 4, 20)]);   // the stallriser
       body.push({ f: '@glass.0', d: rect(wx, wy, winW, wh - 2), glow: 'window' }, { f: '@glass.2', d: rect(wx, wy, winW, wh * .3), glow: 'window' }, ['@glass.1', `M${f1(wx)} ${f1(wy)}h${f1(winW * .3)}l${f1(-winW * .3)} ${f1(wh * .6)}z`, .2]);
       // goods in the window (drawn over the glass; they read against the lit window at night)
@@ -487,14 +508,17 @@
         const tw = aw + 2 * ex, sw = tw / 12;
         let val = `M${f1(ax0 - ex)} ${f1(ay + drop)}h${f1(tw)}v4`; for (let k = 0; k < 12; k++) val += `q${f1(-sw / 2)} 8 ${f1(-sw)} 0`;
         body.push([str, val + 'z'], ['@canvas', `M${f1(ax0 - ex)} ${f1(ay + drop)}h${f1(tw)}v1.4h${f1(-tw)}z`, .6]);
-        lit.push({ f: { lin: [[0, '@spill', .32], [1, '@spill', 0]], x1: 0, y1: ay + drop, x2: 0, y2: 10 }, d: `M${f1(ax0 - ex)} ${f1(ay + drop + 6)}h${f1(aw + 2 * ex)}l30 ${f1(-(ay + drop) + 6)}H${f1(ax0 - 30)}z` });
       } else body.push([str, rect(ax0, ay - 4, aw, 7)], ['@trim.1', rect(ax0, ay + 2, aw, 2)]);
       // outside: cafe tables in summer, crates of produce on a stand, flower buckets
-      if (v === 1 && warm) for (const tx of [x0 - 6, x0 + 62]) body.push(['@table.0', rect(tx + 10, -22, 2.4, 22)], ['@table.1', ell(tx + 11, -23, 12, 2.4)], { s: '@chair', w: 1.6, d: `M${f1(tx - 4)} 0v-12h8v12M${f1(tx - 4)} -12v-10M${f1(tx + 22)} 0v-12h8v12M${f1(tx + 30)} -12v-10` });
+      // bistro chairs: solid silhouettes, never strokes
+      const chair = (c, k) => `M${f1(c - 5 * k)} -13q0 -10 ${f1(5 * k)} -10q${f1(5 * k)} 0 ${f1(5 * k)} 10v1h${f1(2 * k)}l${f1(1.5 * k)} 2l${f1(-2 * k)} 1l${f1(1.5 * k)} 9h${f1(-2.6 * k)}l${f1(-1.6 * k)} -8h${f1(-6 * k)}l${f1(-1.6 * k)} 8h${f1(-2.6 * k)}l${f1(1.4 * k)} -9l${f1(-1.6 * k)} -1l${f1(1.6 * k)} -2z`;
+      if (v === 1 && warm) for (const tx of [x0 - 6, x0 + 62]) body.push(['@chair', chair(tx + 2, 1) + chair(tx + 20, -1)], ['@table.0', rect(tx + 10, -22, 2.4, 22) + ell(tx + 11, -1, 6, 1.6)], ['@table.1', ell(tx + 11, -23, 12, 2.4)]);
       if (v === 0) { body.push(['@crate.1', rect(x0 + 18, -26, 70, 4)], { s: '@crate.1', w: 2, d: `M${f1(x0 + 22)} -22v22M${f1(x0 + 84)} -22v22` }); for (let k = 0; k < 3; k++) { body.push(['@crate.0', rect(x0 + 20 + k * 22, -40, 20, 14)]); let fr = ''; for (let j = 0; j < 4; j++) fr += sceneD.circ(x0 + 24 + k * 22 + j * 4.4, -41 - (j % 2) * 2.4, 2.8); body.push([`@fruit.${(k + 1) % 4}`, fr]); } }
       if (v === 3) for (let k = 0; k < 4; k++) { const cx = x0 + 26 + k * 18; body.push(['@pot.0', `M${f1(cx - 6)} 0l-1-16h14l-1 16z`]); let fl = ''; for (let j = 0; j < 4; j++) fl += sceneD.circ(cx + rr(r, -7, 7), -18 - rr(r, 4, 14), 3); body.push(['@leaf.1', sceneD.ell(cx, -20, 8, 5)], [`@flower.${(k + 1) % 4}`, fl]); }
       body.push(['@pave.0', rect(x0 - 6, -2, W + 12, 4)]);
-      lit.push({ f: { rad: [[0, '@spill', .4], [1, '@spill', 0]], cx: wx + winW / 2, cy: 0, r: 110 }, d: ell(wx + winW / 2, 0, 110, 16) });
+      // soft light: a glow on the window, a pool on the pavement (a circle squashed by m)
+      const gx = wx + winW / 2, gy2 = wy + wh / 2, gr = winW * .8;
+      lit.push({ f: { rad: [[0, '@spill', .32], [.4, '@spill', .12], [1, '@spill', 0]], cx: f1(gx), cy: f1(gy2), r: f1(gr) }, d: ell(gx, gy2, gr, gr) }, { f: { rad: [[0, '@spill', .45], [1, '@spill', 0]], cx: f1(gx), cy: 0, r: 110 }, d: ell(gx, 0, 110, 110), m: [1, 0, 0, .15, 0, 0] });
       return { body, lit };
     },
   });

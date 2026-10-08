@@ -74,11 +74,27 @@
     if (o.bells) for (const s of [-1, 1]) out.push({ s: pl.fascia, w: .7, d: `M${f1(s * (ew - 2))} ${f1(fb(ew))}v5` }, [o.bells, `M${f1(s * (ew - 2) - 2.2)} ${f1(fb(ew) + 9)}q2.2 -6 4.4 0z`]);
     if (o.snow) {
       const a = ew * .9;
-      let bot = ''; for (let i = 0; i <= 18; i++) { const x = a - 2 * a * i / 18; bot += `L${f1(x)} ${f1(Math.min(fb(x) - ft - 1, sY(x) + 4 + (i % 2) * 2.4 + (Math.abs(x) < tw ? rh * .35 : 0)))}`; }
-      out.push(['@snow.0', `M${curve(sY, -1.5, -a, -tw, 8)}L${f1(tw)} ${f1(yt - 1.5)}L${curve(sY, -1.5, tw, a, 8)}${bot}z`], { s: '@snow.0', w: 2.4, d: `M${curve(fb, -ft - .6, -ew + 3, ew - 3, 16)}` }, ['@snow.1', `M0 ${f1(yt - 1.5)}L${f1(tw)} ${f1(yt - 1.5)}L${curve(sY, -1.5, tw, a, 8)}L${f1(a * .3)} ${f1(sY(a * .3) + rh * .3)}z`, .5]);
+      snowTiles(out, `M${curve(sY, -1.5, -a, -tw, 8)}L${f1(tw)} ${f1(yt - 1.5)}L${curve(sY, -1.5, tw, a, 8)}`, a, sY, x => fb(x) - ft - 1, (o.tile || 5.5) * 2, sceneRnd(sceneHash('snow' + f1(yb) + f1(ew))));
+      out.push({ s: '@snow.0', w: 1.8, op: .85, d: `M${curve(fb, -ft - .6, -ew + 3, ew - 3, 16)}` }, ['@snow.1', `M0 ${f1(yt - 1.5)}L${f1(tw)} ${f1(yt - 1.5)}L${curve(sY, -1.5, tw, a, 8)}L${f1(a * .3)} ${f1(sY(a * .3) + rh * .3)}z`, .4]);
     }
     return yt;
   };
+  /**
+   * Snow on a tiled slope: from the top edge (topD, ending at x = a) down to a soft, seeded hem whose tongues run down the
+   * tile channels (step apart), with a blue-grey under-edge and the tile ridges showing through. top(x) / bot(x): the slope.
+   */
+  const snowTiles = (out, topD, a, top, bot, step, z, k = .42) => {
+    const n = Math.max(4, Math.round(2 * a / step)), Y = (x, f) => top(x) + (bot(x) - top(x)) * f;
+    let d = topD + `L${f1(a)} ${f1(Y(a, k))}`, rd = '';
+    for (let j = n - 1; j >= 0; j--) {
+      const x = -a + j * 2 * a / n, xm = x + a / n, y = Y(x, k + rr(z, -.07, .07));
+      d += `Q${f1(xm)} ${f1(Y(xm, Math.min(1.1, k + rr(z, 0, .45))))} ${f1(x)} ${f1(y)}`;
+      if (j) rd += `M${f1(x)} ${f1(top(x) + 1)}V${f1(y - 1)}`;
+    }
+    out.push({ f: '@snow.1', d: d + 'z', op: .55, m: [1, 0, 0, 1, .8, 1.6] }, ['@snow.0', d + 'z'], { s: '@snow.1', w: .8, op: .55, d: rd, detail: true });
+  };
+  /** A soft glow on an opening or a lantern (the lit part): a radial gradient that fades to nothing at its own edge. */
+  const halo = (cx, cy, r, a = .55) => ({ f: { rad: [[0, '@flood', a], [.35, '@flood', a * .45], [1, '@flood', 0]], cx: f1(cx), cy: f1(cy), r: f1(r) }, d: ell(cx, cy, r, r) });
   /** Azaleas either side (seasonal), and snow on them in winter. */
   const shrubs = (r, out, xs, s) => {
     const a = ['', ''], b = ['', ''];
@@ -130,12 +146,14 @@
           body.push({ s: `@wallD.${v}`, w: .7, op: .6, d: Array.from({ length: Math.floor(bh / 6) }, (_, k) => `M${f1(x0)} ${f1(y - 3 - k * 6)}h${f1(bw)}`).join('') });
           for (const sx of [-.33, .33]) body.push([`@post.${v}`, `M${f1(sx * bw - 5)} ${f1(y - bh * .2)}v${f1(-bh * .4)}q5 -7 10 0v${f1(bh * .4)}z`, .7]);
           body.push(['@door.0', `M-7 ${f1(y - 2)}v${f1(-bh * .5)}q7 -9 14 0v${f1(bh * .5)}z`], { f: '@glass.0', d: `M-5 ${f1(y - 4)}v${f1(-bh * .46)}q5 -7 10 0v${f1(bh * .46)}z`, glow: 'window' });
+          lit.push(halo(0, y - bh * .3, bh * .5));
         } else {
           const dw = bw * .26, dh = bh * .64;
           let posts = ''; for (const px of [x0, x0 + bw * .32, x0 + bw * .68 - 4, x0 + bw - 4]) posts += rect(px, y - bh, 4, bh);
           body.push([`@post.${v}`, posts], [`@post.${v}`, rect(x0, y - bh * .55, bw, 3)]);
           body.push(['@door.' + (v === 0 ? 0 : 1), rect(-dw / 2 - 2, y - dh - 2, dw + 4, dh + 2)], { f: '@glass.0', d: rect(-dw / 2, y - dh, dw, dh), glow: 'window' }, { s: `@post.${v}`, w: 1.2, d: `M0 ${f1(y - dh)}v${f1(dh)}` + Array.from({ length: 4 }, (_, k) => `M${f1(-dw / 2)} ${f1(y - dh + (k + 1) * dh / 5)}h${f1(dw)}`).join('') });
-          for (const sx of [-1, 1]) body.push({ f: '@glass.0', d: rect(sx * bw * .34 - 5, y - bh * .78, 10, bh * .26), glow: 'window' }, { s: `@post.${v}`, w: .8, d: `M${f1(sx * bw * .34 - 1.6)} ${f1(y - bh * .78)}v${f1(bh * .26)}M${f1(sx * bw * .34 + 1.6)} ${f1(y - bh * .78)}v${f1(bh * .26)}` });
+          for (const sx of [-1, 1]) body.push({ f: '@glass.0', d: rect(sx * bw * .34 - 5, y - bh * .78, 10, bh * .26), glow: 'window' }, { s: `@post.${v}`, w: .8, d: `M${f1(sx * bw * .34 - 1.6)} ${f1(y - bh * .78)}v${f1(bh * .26)}M${f1(sx * bw * .34 + 1.6)} ${f1(y - bh * .78)}v${f1(bh * .26)}` }) && lit.push(halo(sx * bw * .34, y - bh * .65, bh * .32, .42));
+          lit.push(halo(0, y - dh / 2, dh * .85));
           if (i > 0) body.push([`@bracket.${v}`, rect(x0 - 7, y - 7, bw + 14, 3)], { s: `@bracket.${v}`, w: 1, d: Array.from({ length: Math.round((bw + 14) / 6) }, (_, k) => `M${f1(x0 - 6 + k * 6)} ${f1(y - 4)}v4`).join('') }, [`@bracket.${v}`, rect(x0 - 7, y - 1.2, bw + 14, 1.2)]);
         }
         // the bracket band, then the eave roof
@@ -157,8 +175,7 @@
         body.push({ s: '@bronze.1', w: 1.6, d: rings }, { s: '@bronze.0', w: 1.6, d: `M0 ${f1(top - 74)}c-9 -2 -9 -10 -3 -14M0 ${f1(top - 74)}c9 -2 9 -10 3 -14` }, ['@bronze.1', ell(0, top - 92, 3.2, 3.6)]);
       }
       shrubs(r, body, [-pw - 6, pw + 6], s);
-      const H = -top + 80;
-      lit.push({ f: { rad: [[0, '@flood', .28], [.6, '@flood', .1], [1, '@flood', 0]], cx: 0, cy: -H * .4, r: H * .62 }, d: rect(-pw - 20, -H - 10, pw * 2 + 40, H + 10) });
+      lit.unshift(halo(0, -14, pw + 24, .24));   // a soft pool of light on the plinth, under the openings' own glows
       return { body, lit };
     },
   });
@@ -191,10 +208,12 @@
         const bx = -hw + i * bay, mid = i > 0 && i < n - 1;
         if (mid) {
           body.push(['@glass.1', rect(bx + 5, yc + 8, bay - 10, Hc - 8)], { f: '@glass.0', d: rect(bx + 7, yc + 10, bay - 14, Hc - 26), glow: 'window' });
+          lit.push(halo(bx + bay / 2, yc + Hc * .45, bay * .7, .42));
           let lt = ''; for (let k = 1; k < 8; k++) lt += `M${f1(bx + 7 + k * (bay - 14) / 8)} ${f1(yc + 10)}v${f1(Hc - 26)}`; for (let k = 1; k < 7; k++) lt += `M${f1(bx + 7)} ${f1(yc + 10 + k * (Hc - 26) / 7)}h${f1(bay - 14)}`;
           body.push({ s: `@lattice.${v}`, w: 1.3, d: lt }, { s: `@lattice.${v}`, w: 2.4, d: `M${f1(bx + bay / 2)} ${f1(yc + 10)}v${f1(Hc - 10)}` }, [`@lattice.${v}`, rect(bx + 7, -pod - 16, bay - 14, 14)]);
         } else {
           body.push([`@wall.${v}`, rect(bx + 4, yc + 8, bay - 8, Hc - 8)], [`@col.${v}`, rect(bx + 4, yc + Hc * .5, bay - 8, 3)], [`@col.${v}`, rect(bx + 4, -pod - 18, bay - 8, 18)], { s: `@colD.${v}`, w: 1, op: .6, d: `M${f1(bx + bay / 2)} ${f1(-pod - 18)}v18` });
+          lit.push(halo(bx + bay / 2, yc + 22, 22, .42));
           body.push({ f: '@glass.0', d: rect(bx + bay / 2 - 10, yc + 14, 20, 16), glow: 'window' }, { s: `@lattice.${v}`, w: 1.1, d: Array.from({ length: 5 }, (_, k) => `M${f1(bx + bay / 2 - 10 + (k + .5) * 4)} ${f1(yc + 14)}v16`).join('') });
         }
       }
@@ -215,7 +234,7 @@
         const uw = W - 90, uh = 34;
         body.push([`@wall.${v}`, rect(-uw / 2, y1 - uh, uw, uh)], [`@beam.${v}`, rect(-uw / 2 - 4, y1 - uh - 10, uw + 8, 10)]);
         for (let k = 0; k <= 4; k++) body.push([`@col.${v}`, rect(-uw / 2 + k * uw / 4 - 3, y1 - uh, 6, uh)]);
-        for (let k = 0; k < 4; k++) { const x = -uw / 2 + (k + .5) * uw / 4; body.push({ f: '@glass.0', d: rect(x - 14, y1 - uh + 8, 28, 16), glow: 'window' }, { s: `@lattice.${v}`, w: 1, d: Array.from({ length: 6 }, (_, j) => `M${f1(x - 14 + (j + .5) * 28 / 6)} ${f1(y1 - uh + 8)}v16`).join('') }); }
+        for (let k = 0; k < 4; k++) { const x = -uw / 2 + (k + .5) * uw / 4; body.push({ f: '@glass.0', d: rect(x - 14, y1 - uh + 8, 28, 16), glow: 'window' }, { s: `@lattice.${v}`, w: 1, d: Array.from({ length: 6 }, (_, j) => `M${f1(x - 14 + (j + .5) * 28 / 6)} ${f1(y1 - uh + 8)}v16`).join('') }); lit.push(halo(x, y1 - uh + 16, 26, .42)); }
         yt = roof(body, { yb: y1 - uh - 10, ew: uw / 2 + 56, tw: uw / 2 * .55, rh: 40, up: 10, pal, snow, rafterW: uw / 2 + 40 });
       } else {
         yt = roof(body, { yb: yb0, ew: hw + (cn ? 46 : 56), tw: hw * .6, rh: cn ? 40 : 46, up: cn ? 16 : 10, pal, curl: cn ? 10 : 0, snow, tile: 5, rafterW: hw + 40 });
@@ -224,7 +243,7 @@
       body.push([`@roof.${v}`, `M${f1(-tw)} ${f1(yt + 1)}L${f1(-tw * .9)} ${f1(yt - gh)}H${f1(tw * .9)}L${f1(tw)} ${f1(yt + 1)}z`], ['@roofD', `M0 ${f1(yt + 1)}V${f1(yt - gh)}H${f1(tw * .9)}L${f1(tw)} ${f1(yt + 1)}z`, .26]);
       let tl = ''; for (let x = -tw * .9 + 3; x < tw * .9; x += 5) tl += `M${f1(x)} ${f1(yt)}V${f1(yt - gh + 2)}`;
       body.push({ s: `@roofL.${v}`, w: .9, op: .35, d: tl }, ['#000000', rect(-tw, yt - 1, tw * 2, 2.4), .3]);
-      if (snow) body.push(['@snow.0', `M${f1(-tw * .9)} ${f1(yt - gh - 1)}H${f1(tw * .9)}L${f1(tw * .94)} ${f1(yt - gh * .4)}q${f1(-tw * .94)} 6 ${f1(-tw * 1.88)} 0z`]);
+      if (snow) snowTiles(body, `M${f1(-tw * .9)} ${f1(yt - gh - 1.5)}H${f1(tw * .9)}`, tw * .9, () => yt - gh, () => yt - 1, 10, stable('gable', v), .45);
       const ry = yt - gh;
       body.push([`@ridge.${v}`, rect(-tw * .94, ry - 9, tw * 1.88, 10)], [`@roofL.${v}`, rect(-tw * .94, ry - 9, tw * 1.88, 2), .7]);
       for (const sd of [-1, 1]) {
@@ -234,9 +253,9 @@
       }
       if (snow) body.push({ s: '@snow.0', w: 3, d: `M${f1(-tw * .94)} ${f1(ry - 9.5)}h${f1(tw * 1.88)}` });
       shrubs(r, body, [-hw - 50, hw + 50], s);
-      // night: lanterns hang either side of the doors; a soft floodlight on the front
-      for (const sx of [-bay * 1.5, bay * 1.5]) body.push({ s: '#2a2420', w: .8, d: `M${f1(sx)} ${f1(yc)}v10` }, ['#c0402a', ell(sx, yc + 17, 5.5, 7)], { f: '#e06a3a', d: ell(sx - 1, yc + 16, 2.6, 4.4), glow: 'window' });
-      lit.push({ f: { rad: [[0, '@flood', .26], [.7, '@flood', .08], [1, '@flood', 0]], cx: 0, cy: yc, r: hw + 60 }, d: rect(-hw - 60, ry - 30, W + 120, -ry + 30) });
+      // night: lanterns hang either side of the doors, each with its own soft glow; a faint pool of light on the steps
+      for (const sx of [-bay * 1.5, bay * 1.5]) body.push({ s: '#2a2420', w: .8, d: `M${f1(sx)} ${f1(yc)}v10` }, ['#c0402a', ell(sx, yc + 17, 5.5, 7)], { f: '#e06a3a', d: ell(sx - 1, yc + 16, 2.6, 4.4), glow: 'window' }) && lit.push(halo(sx, yc + 17, 22, .75));
+      lit.unshift(halo(0, -pod, hw * .7, .2));
       return { body, lit };
     },
   });
