@@ -67,7 +67,7 @@ const NF_COVER = {
   marsh: { near: { 'plant.reed': 3, 'plant.grass': 4, 'plant.bulrush': 1 }, far: { 'plant.grass': 2, 'plant.reed': 1 }, shrub: 'plant.shrub' },
   shingle: { near: { 'plant.grass': 3, 'plant.wildflowers': 2 }, far: { 'plant.grass': 1, 'plant.wildflowers': 1 }, shrub: 'plant.gorse' },
   wood: { near: { 'plant.grass': 3, 'plant.bluebells': 1 }, fore: { 'plant.bracken': 2, 'plant.grass': 3 }, far: { 'plant.grass': 2, 'plant.bluebells': 1 }, shrub: 'plant.holly' },
-  village: { near: { 'plant.grass': 3, 'plant.wildflowers': 2, 'plant.shrub': 1 }, far: { 'plant.grass': 1 }, shrub: 'plant.shrub' },
+  village: { near: { 'plant.grass': 3, 'plant.wildflowers': 2 }, far: { 'plant.grass': 1 }, shrub: 'plant.shrub' },
 };
 const NF_TREES = { pine: 'tree.pool-pine', birch: 'tree.birch-heath', oak: 'tree.bank-oak', alder: 'tree.bank-alder', willow: 'tree.bank-willow', hawthorn: 'tree.pond-oak', holly: 'plant.holly', 'small-pine': 'tree.pond-pine', 'small-oak': 'tree.pond-oak' };
 /** The framing trees (front layer). */

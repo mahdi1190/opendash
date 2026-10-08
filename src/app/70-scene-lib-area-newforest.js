@@ -130,7 +130,7 @@
     },
     night: { glow: { window: '#f4c674', lamp: '#ffe6b0' }, on: 0.9 },
     parts: ['body', 'lit'],
-    shadow: { rx: 420, ry: 16, h: 160 },
+    shadow: { rx: 300, ry: 10, h: 30 },
     reflect: true,
     tags: ['landmark', 'signature', 'place:uk/hurst-castle', 'uk', 'new-forest', 'lymington', 'castle', 'fort', 'coast', 'kit:temperate', 'kit:water'],
     credit: 'area-newforest: Hurst Castle on Hurst Spit (drawn from public views; no flags)',
