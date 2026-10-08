@@ -19,6 +19,8 @@
      building.wokingham-street        a market-town house (4 variants: Georgian brick, painted with a shop, timber-framed, Victorian gabled)
      structure.level-crossing         a full-barrier level crossing: booms down, red lights, the yellow box
      street.market-stall              a striped market stall with its goods (3 variants)
+     landmark.dinton-island           a wooded island on the Dinton Pastures lakes: alders, poplars, a willow, reeds (natural)
+     landmark.wellingtonia-avenue     the Wellingtonia Avenue at Finchampstead: giant redwoods either side of the road (natural)
    Archetypes (the scenes are data rows in 71-scene-uk-wokingham-*.js):
      wokingham-town     form: market | street | station (urban)
      wokingham-country  form: lake | park | woods | fields (natural or mixed)
@@ -425,6 +427,98 @@
       P(['@crate.1', rect(-40, -12, 30, 12)], ['@crate.0', rect(14, -12, 30, 12)]);
       // a hanging lamp under the canopy
       P({ s: '@frame.1', w: 1, d: 'M0-96v8' }, { f: '@goods.1', d: ell(0, -84, 4), glow: 'lamp' });
+      return { body: b };
+    },
+  });
+  /* ---------- a wooded island on the Dinton Pastures lakes (natural landmark) ---------- */
+  sceneObjDefine({
+    id: 'landmark.dinton-island',
+    category: 'landmark',
+    size: [720, 270],
+    variants: 1,
+    seasonal: true,
+    shapeBySeason: true,
+    flippable: false,
+    palette: {
+      base: { bank: ['#6a6440', '#56522e'], willow: ['#7aa04a', '#5e8a3c', '#9ab85a'], alder: ['#3e5e30', '#4e7038', '#2e4a26'], poplar: ['#4a6a34', '#5e823e'], trunk: ['#5a4a3a', '#3e3228'], reed: ['#9a9a50', '#7a7a3e'] },
+      spring: { willow: ['#9ac05a', '#7aa84a', '#bcd870'], alder: ['#5a8a3a', '#6a9a44', '#4a7432'], poplar: ['#6a9a44', '#84b050'] },
+      summer: {},
+      autumn: { willow: ['#c0aa4a', '#a08a3a', '#d8c060'], alder: ['#7a6a2e', '#8a7a34', '#5e5428'], poplar: ['#d0a830', '#e0c040'], reed: ['#b09a5a', '#8a7840'] },
+      winter: { willow: ['#a8905a', '#8a7448', '#c0a870'], alder: ['#5a4e42', '#6a5e50', '#4a4038'], poplar: ['#6a5e50', '#7a6e5e'], reed: ['#b0a078', '#94845e'] },
+    },
+    parts: ['body'],
+    reflect: true,
+    tags: ['landmark', 'signature', 'natural', 'place:uk/dinton-pastures', 'uk', 'berkshire', 'wokingham', 'lake', 'island', 'kit:temperate', 'kit:water'],
+    credit: 'drawn for the Wokingham area pack: a wooded island on the Dinton Pastures lakes',
+    build(v, rnd, ctx) {
+      const b = [], P = (...s) => b.push(...s), r = sceneRnd(5807), W = ctx && ctx.season === 'winter';
+      // the low bank at the waterline
+      P(['@bank.0', 'M-350 0Q-300-18-200-22Q0-30 200-22Q310-16 352 0Q0 8-350 0z'], ['@bank.1', 'M-350 0Q0 6 352 0Q0 10-350 0z']);
+      // the alders: a dark, lobed mass along the island
+      for (let i = 0; i < 16; i++) {
+        const x = -300 + i * 40 + r() * 10, h = 70 + r() * 50;
+        P({ f: '@trunk.1', d: rect(x - 2, -h * 0.4 - 18, 4, h * 0.4) });
+        P({ f: '@alder.' + (i % 3), d: sceneD.lobed(r, x, -18 - h * 0.62, 26 + r() * 8, h * 0.42, 7, 0.25) });
+        if (W) for (let k = 0; k < 4; k++) P({ s: '@trunk.0', w: 1, d: `M${R(x)} ${R(-30 - h * 0.3)}l${R(-14 + k * 9)} ${R(-h * 0.4)}` });
+      }
+      // two Lombardy poplars rising above the mass, and a third smaller
+      for (const [x, h, w] of [[-120, 250, 30], [-80, 220, 26], [210, 190, 24]]) {
+        P({ f: '@trunk.0', d: rect(x - 3, -h * 0.3, 6, h * 0.3) });
+        P({ f: '@poplar.0', d: `M${x} ${-h}Q${x + w} ${R(-h * 0.6)} ${R(x + w * 0.7)} ${R(-h * 0.18)}Q${x} ${R(-h * 0.1)} ${R(x - w * 0.7)} ${R(-h * 0.18)}Q${x - w} ${R(-h * 0.6)} ${x} ${-h}z` });
+        P({ f: '@poplar.1', d: `M${x} ${-h}Q${x + w} ${R(-h * 0.6)} ${R(x + w * 0.7)} ${R(-h * 0.18)}Q${R(x + w * 0.2)} ${R(-h * 0.15)} ${x + 3} ${R(-h * 0.5)}z`, op: 0.6 });
+        for (let k = 0; k < 8; k++) P({ f: '@poplar.' + (k % 2), d: ell(x + (r() - 0.5) * w, -h * 0.25 - k * h * 0.09, w * 0.35, 8), op: 0.7, detail: true });
+      }
+      // a big weeping willow at the east end, its curtain to the water
+      const wx = 250;
+      P({ f: '@trunk.0', d: `M${wx - 6} -20Q${wx - 4} -70 ${wx - 16} -110L${wx - 8} -112Q${wx + 4} -70 ${wx + 8} -20z` });
+      P({ f: '@willow.1', d: sceneD.lobed(r, wx, -110, 80, 50, 9, 0.2) });
+      for (let k = 0; k < 26; k++) { const x = wx - 80 + k * 6.4, top = -110 - Math.sin(k / 25 * Math.PI) * 44; P({ s: '@willow.' + (k % 3), w: 4, cap: 'round', d: `M${R(x)} ${R(top)}Q${R(x + 4)} ${R(top + 50)} ${R(x + (k - 13) * 0.6)} ${R(-12 - (k % 3) * 4)}`, op: W ? 0.6 : 0.95 }); }
+      // reeds fringing the bank
+      for (let i = 0; i < 40; i++) { const x = -330 + i * 17 + r() * 6, h = 14 + r() * 14; P({ s: '@reed.' + (i % 2), w: 1.6, cap: 'round', d: `M${R(x)} -4q${R(r() * 4 - 2)} ${R(-h / 2)} ${R(r() * 6 - 3)} ${R(-h)}` }); }
+      return { body: b };
+    },
+  });
+
+  /* ---------- the Wellingtonia Avenue, Finchampstead (natural landmark) ---------- */
+  sceneObjDefine({
+    id: 'landmark.wellingtonia-avenue',
+    category: 'landmark',
+    size: [760, 560],
+    variants: 1,
+    seasonal: true,
+    flippable: false,
+    palette: {
+      base: { trunk: ['#9a5a3a', '#7a4430', '#b87050'], crown: ['#2e4a2a', '#3e5e34', '#24401f'], verge: ['#6a8a44', '#557236'], road: ['#5e6062', '#74767a'], line: ['#e8e4d8'] },
+      spring: { verge: ['#7aa04a', '#62883c'] }, summer: {},
+      autumn: { verge: ['#9a8a48', '#7e7038'], crown: ['#34482a', '#445a32', '#283c20'] },
+      winter: { verge: ['#8a907a', '#72786a'], crown: ['#2a3e2a', '#36502f', '#20361e'] },
+    },
+    parts: ['body'],
+    shadow: { rx: 300, ry: 12, h: 500 },
+    reflect: false,
+    tags: ['landmark', 'signature', 'natural', 'place:uk/finchampstead-wellingtonias', 'uk', 'berkshire', 'finchampstead', 'wellingtonia', 'avenue', 'kit:temperate'],
+    credit: 'drawn for the Wokingham area pack: the Wellingtonia Avenue, Finchampstead (planted 1863)',
+    build(v, rnd) {
+      const b = [], P = (...s) => b.push(...s), r = sceneRnd(6121);
+      // the road receding to a vanishing point between the rows, its verges
+      P(['@verge.1', 'M-380 0L-30-120H30L380 0z'], ['@road.0', 'M-150 0L-8-120H8L150 0z'], ['@road.1', 'M-150 0L-8-120H-2L-120 0z', 0.4]);
+      P({ s: '@line', w: 1.5, op: 0.6, d: 'M0 -4V-20M0-36V-48M0-62V-70M0-84V-90' });
+      // the trees, far to near on each side: tall narrow cones on flared, rust-red, fibrous trunks
+      const tree = (x, s) => {
+        const h = 520 * s, w = 70 * s, t = h * 0.22;
+        P({ f: '@trunk.1', d: `M${R(x - w * 0.22)} 0Q${R(x - w * 0.12)} ${R(-t * 0.5)} ${R(x - w * 0.08)} ${R(-t)}H${R(x + w * 0.08)}Q${R(x + w * 0.12)} ${R(-t * 0.5)} ${R(x + w * 0.22)} 0z` });
+        P({ f: '@trunk.2', d: `M${R(x - w * 0.05)} 0Q${R(x - w * 0.04)} ${R(-t * 0.5)} ${R(x - w * 0.02)} ${R(-t)}H${R(x + w * 0.06)}Q${R(x + w * 0.08)} ${R(-t * 0.5)} ${R(x + w * 0.16)} 0z`, op: 0.6 });
+        if (s > 0.5) for (let k = 0; k < 4; k++) P({ s: '@trunk.0', w: 1, op: 0.5, d: `M${R(x - w * 0.15 + k * w * 0.09)} 0Q${R(x - w * 0.08 + k * w * 0.05)} ${R(-t * 0.5)} ${R(x - w * 0.06 + k * w * 0.04)} ${R(-t)}` });
+        const tiers = s > 0.5 ? 9 : 5;
+        for (let k = 0; k < tiers; k++) {
+          const y0 = -t * 0.8 - k * (h - t) / tiers, tw = w * (1 - k / tiers) * (0.9 + r() * 0.2);
+          P({ f: '@crown.' + (k % 3), d: `M${R(x - tw)} ${R(y0)}Q${R(x)} ${R(y0 - (h - t) / tiers * 1.8)} ${R(x + tw)} ${R(y0)}Q${R(x)} ${R(y0 + 8 * s)} ${R(x - tw)} ${R(y0)}z` });
+        }
+        P({ f: '@crown.0', d: `M${R(x - 4 * s)} ${R(-h + 20 * s)}L${R(x)} ${R(-h)}L${R(x + 4 * s)} ${R(-h + 20 * s)}z` });
+      };
+      const rows = [];
+      for (let i = 0; i < 8; i++) { const s = 0.18 + i * 0.115, t = i / 7; rows.push([-30 - t * 330, s], [30 + t * 330, s]); }
+      rows.forEach(([x, s]) => tree(R(x), s * (0.92 + r() * 0.12)));
       return { body: b };
     },
   });
