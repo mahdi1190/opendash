@@ -498,6 +498,12 @@ function sceneCompile(data, opt) {
         o2.forEach((gi, k) => { const g = got[gi], s0 = rule.s[0] + (rule.s[1] - rule.s[0]) * (k + sr()) / got.length; g.s = Math.round(s0 * _scLerpY(rule.sByY, g.y) * 100) / 100; });
       }
     }
+    // a height cap (maxH, units): an object whose tallest placement would pass it is scaled down as a whole, so its sizes keep their spread
+    if (rule.maxH > 0) {
+      const top = new Map();
+      for (const g of got) top.set(g.obj, Math.max(top.get(g.obj) || 0, g.s));
+      for (const g of got) { const d = sceneObj(g.obj), k = d && d.size ? rule.maxH / (d.size[1] * top.get(g.obj)) : 1; if (k < 1) g.s = Math.floor(g.s * k * 100) / 100; }
+    }
     const pick = sceneRnd(sceneHash(data.id + '|lod|' + ri)), kept = keep >= got.length ? got : got.map(g => [pick(), g]).sort((a, b) => a[0] - b[0]).slice(0, keep).map(x => x[1]);
     const made = kept.map(p => push(p, order++)).filter(Boolean);
     if (rule.anim === 'strip' && made.length) {
@@ -610,35 +616,67 @@ function sceneArchetypeCheck(id, row) {
   return _scParams(a, row || {}).problems;
 }
 const _scKitPickMemo = new Map();
-/** { objectId: weight } of every object with one of the kit:<k> tags, the role:<role> tag and every tag in o.tags (not o.exclude). Empty-safe. */
+/**
+ * { objectId: weight } of every object with one of the kit:<k> tags, the role:<role> tag and every tag in o.tags (not o.exclude),
+ * keyed in id order (never registration order: library files load by file name). weight defaults to 1; weight 0 excludes. Empty-safe.
+ */
 function sceneKitPick(kits, role, o) {
   o = o || {};
   const ks = (Array.isArray(kits) ? kits : kits ? [kits] : []).slice().sort(), tags = (o.tags || []).slice().sort(), ex = o.exclude || [];
   const key = ks.join(',') + '|' + role + '|' + tags.join(',') + '|' + (Array.isArray(ex) ? ex.slice().sort().join(',') : ex);
   if (_scKitPickMemo.has(key)) return Object.assign({}, _scKitPickMemo.get(key));
   const out = {};
-  for (const d of _scObjs.values()) {
-    const t = d.tags || [];
-    if (!t.includes('role:' + role) || !ks.some(k => t.includes('kit:' + k)) || !tags.every(x => t.includes(x))) continue;
+  for (const d of [..._scObjs.values()].sort((a, b) => (a.id < b.id ? -1 : 1))) {
+    const t = d.tags || [], w = d.weight == null ? 1 : d.weight;
+    if (!(w > 0) || !t.includes('role:' + role) || !ks.some(k => t.includes('kit:' + k)) || !tags.every(x => t.includes(x))) continue;
     if ((Array.isArray(ex) ? ex : [ex]).some(x => x === d.id || t.includes(x))) continue;
-    out[d.id] = d.weight || 1;
+    out[d.id] = w;
   }
   _scKitPickMemo.set(key, out);
   return Object.assign({}, out);
 }
-/** The archetype helper u (8.1): seeded from the params' id. */
-function _scU(a, p) {
+/**
+ * The ids of w ({ id: weight }) best first for a slot key (8.6): a weighted rendezvous hash of (key, id), so the order is a
+ * function of the SET of ids, their weights and the key only, never of the order of w's keys. A new id moves a slot only
+ * when it ranks above the current holder; a light weight (0.3) makes a heavy object rare; weight 0 never ranks.
+ * prefer (a scene's own picks, params.picks[slot]): those of its ids that are in w come first, in its order; the rest follow
+ * by the hash, so a preferred id that leaves the library or the kit falls back to the hash order.
+ */
+function sceneSlotRank(w, key, prefer) {
+  const mix = h => { h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); return (h ^ (h >>> 16)) >>> 0; };
+  const first = (Array.isArray(prefer) ? prefer : prefer ? [prefer] : []).filter((id, i, a) => w && w[id] > 0 && a.indexOf(id) === i);
+  return first.concat(Object.keys(w || {}).filter(id => w[id] > 0 && !first.includes(id))
+    .map(id => [id, Math.log((mix(sceneHash(key + '|' + id)) + 0.5) / 4294967296) / w[id]])
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).map(x => x[0]));
+}
+/** The one id of w that holds the slot key (sceneSlotRank's first), or null. */
+function sceneSlotPick(w, key) { return sceneSlotRank(w, key)[0] || null; }
+/**
+ * The archetype helper u (8.1): seeded from the params' id. The scene's own picks come from its patch (own = { picks, mix },
+ * 8.6), never from the params row (a row stays small). u.slot(w, name): w's ids ranked for the slot name, own.picks[name]
+ * first; u.picks: own.picks; u.mix(role, w): own.mix[role] ({ id: weight } in the scene's order) cut to the ids w allows, or
+ * w itself when it names none of them.
+ */
+function _scU(a, p, own) {
   const r = sceneRnd(sceneHash(String(p.id || a.id)));
   const kits = (p.kits && p.kits.length ? p.kits : a.kits) || [];
+  const picks = (own && own.picks) || {}, mixes = (own && own.mix) || {};
+  const mix = (role, w) => {
+    const m = mixes[role], out = {};
+    if (m) for (const id of Object.keys(m)) if (w[id] > 0 && m[id] > 0) out[id] = m[id];
+    return Object.keys(out).length ? out : w;
+  };
   return { hash: sceneHash, rnd: r, pick: arr => arr[Math.floor(r() * arr.length) % arr.length], line: sceneLine,
-    has: f => (Array.isArray(p.features) ? p.features : []).includes(f), kit: (role, tags) => sceneKitPick(kits, role, { tags }), kits };
+    has: f => (Array.isArray(p.features) ? p.features : []).includes(f), kit: (role, tags) => sceneKitPick(kits, role, { tags }), kits,
+    slot: (w, name) => sceneSlotRank(w, String(p.id) + '|' + name, picks[name]), picks, mix };
 }
 const _scFromArchMemo = new Map();
 const _scWarned = new Set();
 /**
  * One scene from an archetype plus its own touches (8.1): build(params, u), arch = {id, params}; the patch APPENDS
  * place / scatter / actors / flocks / signs / ground / water, drop {place: [objId | index], scatter: [index], actors: [index]}
- * removes archetype entries first, view merges shallowly, any other key REPLACES. Validated (thrown in Node, logged once
+ * removes archetype entries first, view merges shallowly, picks / mix are the scene's own picks (8.6, read by the build), any
+ * other key REPLACES. Validated (thrown in Node, logged once
  * in the browser). Memoised per (archId, params object, patch object).
  */
 function sceneFromArchetype(archId, params, patch) {
@@ -650,7 +688,7 @@ function sceneFromArchetype(archId, params, patch) {
   let byPatch = byParams.get(params);
   if (byPatch && byPatch.has(patch)) return byPatch.get(patch);
   const P = _scParams(a, params).params;
-  const data = a.build(P, _scU(a, P)) || {};
+  const data = a.build(P, _scU(a, P, patch)) || {};
   data.arch = { id: archId, params, patch: Object.keys(patch).length ? patch : undefined };
   if (!data.arch.patch) delete data.arch.patch;
   const drop = patch.drop || {};
@@ -659,7 +697,7 @@ function sceneFromArchetype(archId, params, patch) {
   if (drop.actors && data.actors) data.actors = data.actors.filter((e, i) => !drop.actors.includes(i));
   for (const k of ['place', 'scatter', 'actors', 'flocks', 'signs', 'ground', 'water']) if (patch[k] && patch[k].length) data[k] = (data[k] || []).concat(patch[k]);
   if (patch.view) data.view = Object.assign({}, data.view, patch.view);
-  for (const [k, v] of Object.entries(patch)) if (!['place', 'scatter', 'actors', 'flocks', 'signs', 'ground', 'water', 'view', 'drop'].includes(k)) data[k] = v;
+  for (const [k, v] of Object.entries(patch)) if (!['place', 'scatter', 'actors', 'flocks', 'signs', 'ground', 'water', 'view', 'drop', 'picks', 'mix'].includes(k)) data[k] = v;
   if (!data.id) data.id = String(P.id || archId);
   const problems = sceneValidate(data);
   if (problems.length) {
