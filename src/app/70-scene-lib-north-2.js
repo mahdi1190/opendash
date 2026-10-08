@@ -264,11 +264,10 @@
     credit: 'native: a Peak District packhorse bridge',
     build(v, r, ctx) {
       const b = [], g = [], L = 116, deck = -54;
-      const arches = v === 0 ? [[0, 34, 40]] : [[-40, 26, 32], [40, 26, 32]];
+      const arches = v === 0 ? [[0, 30, 30]] : [[-38, 22, 22], [38, 22, 22]];
       b.push(['@water.0', rect(-L, -10, 2 * L, 10)], ['@water.1', rect(-L, -10, 2 * L, 2), 0.7]);
-      b.push(['@grass.1', `M${-L - 4} -6Q${-L + 20} -30 ${-L + 50} -34L${-L + 60} -8z`], ['@grass.1', `M${L + 4} -6Q${L - 20} -30 ${L - 50} -34L${L - 60} -8z`]);
       // the body of the bridge with the arch openings cut by drawing the beck behind
-      const hump = x => deck - 8 * Math.cos(Math.PI * x / (2 * L));
+      const hump = x => -10 - 48 * Math.pow(Math.cos(Math.PI * x / (2 * L)), 0.8);
       let top = ''; for (let x = -L; x <= L; x += 8) top += `L${f1(x)} ${f1(hump(x))}`;
       b.push(['@grit.0', `M${-L} -8` + top + `L${L} -8z`]);
       for (const [ax, rx, ry] of arches) {
@@ -278,13 +277,14 @@
         b.push({ s: '@grit.3', w: 0.9, op: 0.8, d: vs }, { s: '@grit.2', w: 2.4, d: `M${ax - rx - 3} -10Q${ax - rx - 3} ${-14 - ry * 1.32} ${ax} ${-14 - ry * 1.32}Q${ax + rx + 3} ${-14 - ry * 1.32} ${ax + rx + 3} -10`, op: 0.7 });
         g.push({ f: '@water.2', d: ell(ax - 6, -5, rx * 0.5, 1), op: 0.7 });
       }
-      b.push({ s: '@grit.3', w: 0.5, op: 0.4, detail: true, d: Array.from({ length: 6 }, (_, i) => `M${-L + 6} ${-14 - i * 7}H${L - 6}`).join('') });
+      b.push({ s: '@grit.3', w: 0.5, op: 0.4, detail: true, d: Array.from({ length: 6 }, (_, i) => { const y = -14 - i * 7; let xe = L; while (xe > 0 && hump(xe) > y - 2) xe -= 2; return xe > 4 ? `M${-xe} ${y}H${xe}` : ''; }).join('') });
       // parapets with coping, a little moss
       let par = ''; for (let x = -L; x <= L; x += 8) par += `L${f1(x)} ${f1(hump(x) - 10)}`;
       b.push(['@grit.1', `M${-L} ${f1(hump(-L))}` + par + top.split('L').filter(Boolean).reverse().map(p => 'L' + p).join('') + 'z']);
       b.push({ s: '@grit.4', w: 2, d: 'M' + par.slice(1) });
       b.push({ f: '@moss.0', d: SD.blob(r, -30, hump(-30) - 6, 14, 3, 6, 0.4) + SD.blob(r, 50, hump(50) - 5, 10, 3, 6, 0.4), op: 0.75 });
-      b.push(snow(ctx.season, `M${-L} ${f1(hump(-L) - 13)}` + Array.from({ length: 30 }, (_, i) => `L${f1(-L + i * 8)} ${f1(hump(-L + i * 8) - 13)}`).join('') + `L${L} ${f1(hump(L) - 10)}L${-L} ${f1(hump(-L) - 10)}z`));
+      b.push(snow(ctx.season, `M${-L} ${f1(hump(-L) - 13)}` + Array.from({ length: 30 }, (_, i) => `L${f1(-L + i * 8)} ${f1(hump(-L + i * 8) - 13)}`).join('') + Array.from({ length: 30 }, (_, i) => `L${f1(L - i * 8)} ${f1(hump(L - i * 8) - 10)}`).join('') + 'z'));
+      b.push(['@grass.1', `M${-L - 6} -6Q${-L + 10} -16 ${-L + 34} -18L${-L + 40} -8z`], ['@grass.1', `M${L + 6} -6Q${L - 10} -16 ${L - 34} -18L${L - 40} -8z`], ['@grass.0', SD.blob(r, -L + 6, -10, 12, 5, 7, 0.4)], ['@grass.2', SD.blob(r, L - 8, -11, 12, 5, 7, 0.4)]);
       for (let i = 0; i < 6; i++) b.push(['@grit.' + (i % 3), SD.blob(r, -L + 20 + r() * 2 * L - 40, -3, 5 + r() * 4, 2.4, 6, 0.3)]);
       g.push({ f: '@water.2', d: ell(-L + 30, -4, 12, 0.8), op: 0.6 });
       return { body: b, glint: g };
