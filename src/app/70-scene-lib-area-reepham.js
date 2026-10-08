@@ -12,6 +12,8 @@
                                     Hackford's church
      landmark.reepham-station       the old station on the Marriott's Way: the station house, the booking
                                     hall with its saw-tooth canopy, the platform and the goods shed
+     landmark.marriotts-way-bridge  a red-brick overbridge of the old railway, spanning the cutting where
+                                    the Marriott's Way runs under it (ivy, coping, wing walls)
    Architecture only: no text, no signs, no logos, no people.
    ============================================================ */
 (function () {
@@ -25,7 +27,7 @@
   const pointed = (x, y, w, h) => `M${f1(x)} ${f1(y + h)}V${f1(y + w * .55)}Q${f1(x + w * .05)} ${f1(y)} ${f1(x + w / 2)} ${f1(y - w * .15)}Q${f1(x + w * .95)} ${f1(y)} ${f1(x + w)} ${f1(y + w * .55)}V${f1(y + h)}z`;
   const round = (x, y, w, h) => `M${f1(x)} ${f1(y + h)}V${f1(y + w / 2)}A${f1(w / 2)} ${f1(w / 2)} 0 0 1 ${f1(x + w)} ${f1(y + w / 2)}V${f1(y + h)}z`;
   /** flint: many small knapped nodules over a wall face. */
-  const flints = (r, x, y, w, h, n) => { let d = ''; n = Math.round(n * .6); for (let i = 0; i < n; i++) { const a = rr(r, 2, 4.5), c = rr(r, 1.4, 3); d += `M${f1(rr(r, x + 2, x + w - 5))} ${f1(rr(r, y + 3, y + h - 2))}l${f1(a)} ${f1(-c * .5)}l${f1(-a * .3)} ${f1(c)}z`; } return d; };
+  const flints = (r, x, y, w, h, n) => { let d = ''; n = Math.round(n * .3); for (let i = 0; i < n; i++) { const a = rr(r, 2, 4.5), c = rr(r, 1.4, 3); d += `M${f1(rr(r, x + 2, x + w - 5))} ${f1(rr(r, y + 3, y + h - 2))}l${f1(a)} ${f1(-c * .5)}l${f1(-a * .3)} ${f1(c)}z`; } return d; };
   /** brick courses as a thin stroke set. */
   const courses = (x, y, w, h, step) => { let d = ''; for (let yy = y + step; yy < y + h; yy += step) d += `M${f1(x)} ${f1(yy)}h${f1(w)}`; return d; };
 
@@ -232,6 +234,52 @@
       { let fc = ''; for (let i = 0; i < 8; i++) fc += `M${-316 + i * 7} -28v-20`; push({ s: '@frame.1', w: 1.4, d: fc + 'M-318 -44h54M-318 -36h54' }); }
       // the night look: lamp pools on the platform (not graded)
       lit.push(['@canopy.0', 'M-120 -28L-100 -80H100L120 -28z', .14], ['@canopy.0', 'M-250 -28L-230 -60H-200L-180 -28z', .12]);
+      return { body: b, lit };
+    },
+  });
+
+  /* ---------- landmark.marriotts-way-bridge (looking along the old trackbed: the arch over the path; anchor: the path level at the middle) ---------- */
+  def({
+    id: 'landmark.marriotts-way-bridge', category: 'landmark', size: [620, 250], variants: 1, seasonal: true, flippable: false,
+    palette: { base: {
+      brick: ['#a4563c', '#88442e', '#bc6a4c', '#6c3424'], header: ['#7a3a28', '#5e2c1e'], coping: ['#b8ae9c', '#948a7a'], dark: ['#2a2420', '#3e342c'],
+      soffit: ['#6a3a2a', '#542e22'], stain: ['#5a4a3a'], moon: ['#e8dcc4'] },
+      spring: { ivy: ['#3e6a2e', '#5a8a3a', '#7aa84a'] }, summer: { ivy: ['#2e5a26', '#46743a', '#5e8c44'] }, autumn: { ivy: ['#a8402a', '#c4582e', '#dc843a'] }, winter: { ivy: ['#5e4c3c', '#6e5a48', '#7e6a56'] } },
+    night: { glow: { window: '#ffd690' }, on: 0.6 },
+    parts: ['body', 'lit'],
+    shadow: { rx: 300, ry: 12, h: 220 },
+    reflect: false,
+    tags: ['landmark', 'signature', 'place:uk/reepham', 'uk', 'reepham', 'norfolk', 'marriotts way', 'railway bridge', 'kit:temperate'],
+    credit: 'drawn for the Reepham area scenes (a typical brick overbridge of the old line, from public views of the Marriott\'s Way)',
+    build(v, r) {
+      const b = [], lit = [], push = (...s) => b.push(...s);
+      // the abutments and wing walls (stepping down to the banks), the spandrels, the parapet and its coping
+      const SY = -80;   // the springing line of the arch
+      push(['@brick.0', `M-310 -60L-200 -214H200L310 -60V0H110V${SY}A110 110 0 0 0 -110 ${SY}V0H-310z`]);
+      push(['@brick.2', 'M-310 -60L-200 -214H-150V0H-310z', .35], ['@brick.3', 'M200 -214L310 -60V0H160V-214z', .35]);
+      // the barrel seen in perspective: a dark band inside the arch, the light beyond shows through
+      push(['@soffit.0', `M-110 0V${SY}A110 110 0 0 1 110 ${SY}V0H98V${SY + 10}A98 98 0 0 0 -98 ${SY + 10}V0z`], ['@soffit.1', `M-98 0V${SY + 10}A98 98 0 0 1 98 ${SY + 10}L94 ${SY + 14}A94 94 0 0 0 -94 ${SY + 14}V0z`, .8]);
+      push(['@dark.1', `M-110 0V${SY}L-98 ${SY + 10}V0z`, .6], ['@dark.1', `M110 0V${SY}L98 ${SY + 10}V0z`, .6]);
+      { let bc = ''; for (let y = -206; y < 0; y += 6) { const xe = y < -60 ? 200 + (y + 214) * 110 / 154 : 310, xa = y < SY - 128 ? 0 : y < SY ? Math.sqrt(Math.max(0, 128 * 128 - (y - SY) * (y - SY))) : 110;
+          if (xa === 0) bc += `M${f1(-xe)} ${y}H${f1(xe)}`; else bc += `M${f1(-xe)} ${y}H${f1(-xa)}M${f1(xa)} ${y}H${f1(xe)}`; } push({ s: '@brick.1', w: .55, d: bc, op: .4, detail: true }); }
+      { let vs = ''; for (let i = 0; i <= 26; i++) { const a = Math.PI * i / 26, c = Math.cos(a), s = Math.sin(a); vs += `M${f1(-c * 110)} ${f1(SY - s * 110)}L${f1(-c * 128)} ${f1(SY - s * 128)}`; } push(['@header.0', `M-128 ${SY}A128 128 0 0 1 128 ${SY}H110A110 110 0 0 0 -110 ${SY}z`], { s: '@header.1', w: 1.1, d: vs, op: .8 }); }
+      push(['@coping.0', 'M-210 -224H210V-212H-210z'], ['@coping.1', 'M-210 -213H210V-210H-210z'], ['@brick.1', 'M-206 -214H206V-204H-206z', .5]);
+      push(['@coping.0', 'M-314 -58L-204 -216L-198 -212L-306 -54z'], ['@coping.0', 'M314 -58L204 -216L198 -212L306 -54z']);
+      for (const x of [-210, 196]) push(['@brick.3', rect(x, -232, 14, 22)], ['@coping.0', rect(x - 2, -236, 18, 5)]);
+      // water staining from the parapet, patched and darker bricks, weep holes, a string course and pilasters at the springing
+      for (let i = 0; i < 9; i++) { const x = -190 + i * 46 + r() * 10; push(['@stain', `M${f1(x)} -204h${f1(4 + r() * 6)}v${f1(30 + r() * 50)}l-3 6z`, .25]); }
+      for (let i = 0; i < 34; i++) { const x = rr(r, -290, 280), y = Math.round(rr(r, -196, -12) / 6) * 6; if (Math.abs(x) < 132 && y > SY - Math.sqrt(Math.max(0, 132 * 132 - x * x))) continue; push([i % 3 ? '@brick.2' : '@brick.3', rect(x, y, 9, 5), .6]); }
+      for (const x of [-250, -200, 200, 250]) push(['@dark.0', rect(x, -24, 5, 4)]);
+      push(['@coping.1', `M-300 ${SY - 2}H-110V${SY + 2}H-300zM110 ${SY - 2}H300V${SY + 2}H110z`, .8]);
+      for (const x of [-150, 136]) push(['@brick.2', rect(x, -204, 14, 204), .5], ['@coping.0', rect(x - 2, SY - 6, 18, 6)], ['@coping.1', rect(x - 2, -6, 18, 6)]);
+      // ivy: leafy clusters draped over the left wing wall and down the spandrel, a smaller patch on the right
+      for (let c = 0; c < 22; c++) { const cx = rr(r, -290, -150), cy = rr(r, -200, -20); if (cy < -214 + (cx + 310) * -1.4 + 154 && cx < -200) continue;
+        let d0 = '', d1 = ''; for (let k = 0; k < 5; k++) { const x = cx + rr(r, -12, 12), y = cy + rr(r, -10, 10), sz = rr(r, 3.5, 7); d0 += ell(x, y, sz, sz * .7); if (k % 2) d1 += ell(x + 2, y - 2, sz * .55, sz * .4); }
+        push([c % 2 ? '@ivy.0' : '@ivy.1', d0], ['@ivy.2', d1, .8]); }
+      for (let c = 0; c < 8; c++) { const cx = rr(r, 200, 290), cy = rr(r, -110, -16); let d0 = ''; for (let k = 0; k < 4; k++) d0 += ell(cx + rr(r, -8, 8), cy + rr(r, -8, 8), rr(r, 3, 6), rr(r, 2.4, 4.4)); push([c % 2 ? '@ivy.0' : '@ivy.1', d0]); }
+      { let tr = ''; for (let i = 0; i < 8; i++) { const x = -240 + i * 12; tr += `M${x} -200q${f1(rr(r, -6, 6))} 40 ${f1(rr(r, -4, 4))} ${f1(60 + r() * 50)}`; } push({ s: '@ivy.0', w: 1.4, d: tr, op: .8 }); }
+      // the night look: moonlight on the coping and the far light through the arch (not graded)
+      lit.push(['@moon.0', 'M-210 -224H210V-218H-210z', .25], ['@moon.0', 'M-60 0L-20 -60H20L60 0z', .12]);
       return { body: b, lit };
     },
   });
