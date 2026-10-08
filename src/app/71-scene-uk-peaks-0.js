@@ -79,7 +79,7 @@ const _scPeaks = (function () {
    */
   function vista(p) {
     const H = p.horizon || 470, land = p.land || 'moor', s0 = p.seed || 100, r = rnd(s0 * 7 + 13);
-    const cover = land === 'moor' ? { 'plant.heather': 6, 'plant.grass': 2 } : land === 'dale' ? { 'plant.grass': 5, 'plant.heather': 1 } : { 'plant.grass': 6, 'plant.heather': 0.6 };
+    const cover = p.cover || (land === 'moor' ? { 'plant.heather': 6, 'plant.grass': 2 } : land === 'dale' ? { 'plant.grass': 5, 'plant.heather': 1 } : { 'plant.grass': 6, 'plant.heather': 0.6 });
     const fill = land === 'moor' ? 'moor' : 'pasture';
     const d = {
       v: 1, id: 'peaks-' + p.id,
@@ -104,37 +104,40 @@ const _scPeaks = (function () {
     const W = p.water;
     if (W) {
       d.water.push({ layer: W.layer || 'mid', d: W.d || waterBand(s0 + 6, W.y0, W.y1, W.wob == null ? 5 : W.wob), y0: W.y0, y1: W.y1, base: W.kind === 'river' ? ['#8ab0b4', '#4e7e86', '#2c5058'] : ['#86a8bc', '#4a7890', '#284a5e'], reflect: true, shimmer: W.kind === 'river' ? 34 : 26, lightPath: true });
-      d.scatter.push({ obj: { 'plant.reed': 2, 'plant.grass': 3, 'rock.stones': 1 }, layer: W.layer || 'mid', seed: s0 + 7, area: { rect: [-150, W.y1 - 4, 1750, W.y1 + 16] }, n: 46, minGap: 26, s: [0.3, 0.6], flip: 0.5, variant: 'random', reflect: true, anim: false, mask: { noise: { scale: 200, cut: 0.35 } } });
+      d.scatter.push({ obj: { 'plant.reed': 2, 'plant.grass': 3, 'rock.stones': 1 }, layer: W.layer || 'mid', seed: s0 + 7, area: { rect: [-150, W.y1 - 4, 1750, W.y1 + 16] }, n: W.edgeN || 40, minGap: 26, s: [0.22, 0.75], flip: 0.5, variant: 'random', reflect: true, anim: false, mask: { noise: { scale: 200, cut: 0.35 } } });
     }
     // 4. the signature landmark(s)
     for (const [i, sg] of (p.sig || []).entries()) d.place.push(Object.assign({ layer: 'far', seed: 11 + i, anim: false }, sg, sg.reflect == null && W ? { reflect: true } : {}));
     // 5. woods, farms and the village
-    if (p.woods) for (const [i, w] of [].concat(p.woods).entries()) d.scatter.push({ obj: w.obj || { 'tree.far-broad': 2, 'tree.distant': 1 }, layer: w.layer || 'far', seed: s0 + 20 + i, area: { rect: w.rect }, n: w.n || 18, minGap: w.gap || 34, s: w.s || [0.16, 0.28], sByY: [[w.rect[1], 0.85], [w.rect[3], 1.15]], flip: 0.5, variant: 'random', tint: { col: '#6a7a5a', k: [0, 0.12] }, anim: false, reflect: !!(W && w.rect[3] >= W.y0 - 40) });
+    if (p.woods) for (const [i, w] of [].concat(p.woods).entries()) d.scatter.push({ obj: w.obj || { 'tree.far-broad': 2, 'tree.distant': 1 }, layer: w.layer || 'far', seed: s0 + 20 + i, area: { rect: w.rect }, n: w.n || 18, minGap: w.gap || 34, s: w.s || [0.16, 0.28], sByY: [[w.rect[1], 0.85], [w.rect[3], 1.15]], flip: 0.5, variant: 'random', tint: { col: '#6a7a5a', k: [0, 0.08] }, anim: false, reflect: !!(W && w.rect[3] >= W.y0 - 40) });
     for (const [i, f] of (p.farms || [[260 + r() * 200, yMid + 18, 1, 0], [1040 + r() * 260, yMid + 8, 1, 2], [700 + r() * 120, H + 26, 1, 1]]).entries()) {
       const fs = k2(PH(f[1]) * 3.4 / 130 * (f[2] || 1));
       d.place.push({ obj: 'building.peak-cottage', x: R(f[0]), y: R(f[1]), s: fs, layer: f[4] || (f[1] < H + 40 ? 'far' : 'mid'), variant: f[3] || 0, flip: i % 2 === 1, seed: 31 + i, reflect: !!W });
       d.place.push({ obj: 'tree.far-broad', x: R(f[0] + (i % 2 ? -1 : 1) * 120 * fs), y: R(f[1] + 2), s: k2(fs * 0.75), layer: f[4] || (f[1] < H + 40 ? 'far' : 'mid'), variant: i % 2, seed: 41 + i, anim: false });
     }
-    if (p.village) d.scatter.push({ obj: 'building.peak-cottage', layer: p.village.layer || 'mid', seed: s0 + 30, area: { rect: p.village.rect }, n: p.village.n || 12, minGap: p.village.gap || 70, s: p.village.s || [0.32, 0.46], sByY: [[p.village.rect[1], 0.85], [p.village.rect[3], 1.15]], flip: 0.5, variant: 'random', anim: false });
+    if (p.village) d.scatter.push({ obj: p.village.obj || { 'building.peak-cottage': 3, 'building.sheffield-terrace': 1 }, layer: p.village.layer || 'mid', seed: s0 + 30, area: { rect: p.village.rect }, n: p.village.n || 12, minGap: p.village.gap || 70, s: p.village.s || [0.32, 0.46], sByY: [[p.village.rect[1], 0.85], [p.village.rect[3], 1.15]], flip: 0.5, variant: 'random', anim: false });
     // 6. ground cover: far, mid, near and fore (wind strips at the foot), boulders and bracken
-    d.scatter.push({ obj: cover, layer: 'far', seed: s0 + 40, area: { rect: [-150, H + 14, 1750, H + 56] }, n: p.nFar || 70, minGap: 14, s: [0.2, 0.34], flip: 0.5, variant: [0, 1], anim: false, mask: p.avoidFar ? { avoid: p.avoidFar } : undefined });
-    d.scatter.push({ obj: cover, layer: 'mid', seed: s0 + 41, area: { rect: [-150, yMid + 8, 1750, yNear - 6] }, n: p.nMid || 110, minGap: 18, s: [0.36, 0.6], sByY: [[yMid, 0.8], [yNear, 1.2]], flip: 0.5, variant: [2, 3], tint: { col: '#8a7a40', k: [0.1, 0.1] }, anim: false, mask: { avoid: [].concat(W ? [{ rect: [-160, W.y0 - 10, 1760, W.y1 + 4] }] : [], p.avoidMid || []), noise: { scale: 240, cut: 0.2 } } });
-    d.scatter.push({ obj: Object.assign({}, cover, { 'rock.boulder': 0.25 }), layer: 'near', seed: s0 + 42, area: { rect: [-150, yNear + 8, 1750, yFore - 4] }, n: p.nNear || 150, minGap: 22, s: [0.55, 0.9], sByY: [[yNear, 0.85], [yFore, 1.2]], flip: 0.5, variant: [0, 1], anim: false, mask: p.avoidNear ? { avoid: p.avoidNear } : undefined });
-    d.scatter.push({ obj: cover, layer: 'fore', seed: s0 + 43, area: { rect: [-150, yFore + 10, 1750, 905] }, n: p.nFore || 100, minGap: 28, s: [0.95, 1.6], sByY: [[yFore, 0.9], [900, 1.2]], flip: 0.5, variant: [2, 3], anim: false, mask: p.avoidFore ? { avoid: p.avoidFore } : undefined });
-    d.scatter.push({ obj: 'plant.bracken', layer: 'fore', seed: s0 + 46, area: { rect: [-150, yFore + 20, 1750, 905] }, n: land === 'pasture' ? 6 : 14, minGap: 120, s: [0.6, 1.1], flip: 0.5, variant: 'random', anim: false, mask: p.avoidFore ? { avoid: p.avoidFore } : undefined });
-    if (land !== 'moor') d.scatter.push({ obj: 'plant.wildflowers', layer: 'near', seed: s0 + 45, area: { rect: [-150, yNear + 8, 1750, 905] }, n: 40, minGap: 40, s: [0.6, 1.1], sByY: [[yNear, 0.8], [900, 1.3]], flip: 0.5, variant: 0, anim: false });
-    d.scatter.push({ obj: 'plant.grass', layer: 'fore', seed: s0 + 44, area: { rect: [-150, 860, 1750, 905] }, n: 60, minGap: 24, s: [1.3, 1.9], flip: 0.5, variant: [2, 3], anim: 'strip' });
+    d.scatter.push({ obj: cover, layer: 'far', seed: s0 + 40, area: { rect: [-150, H + 14, 1750, H + 56] }, n: p.nFar || 70, minGap: 14, s: [0.2, 0.34], flip: 0.5, variant: [0, 1], anim: false, reflect: !!(W && W.y0 <= H + 100), mask: p.avoidFar ? { avoid: p.avoidFar } : undefined });
+    d.scatter.push({ obj: cover, layer: 'mid', seed: s0 + 41, area: { rect: [-150, yMid + 8, 1750, yNear - 6] }, n: p.nMid || 110, minGap: 18, s: [0.36, 0.6], sByY: [[yMid, 0.8], [yNear, 1.2]], flip: 0.5, variant: [2, 3], tint: { col: '#8a7a40', k: [0.1, 0.1] }, anim: false, reflect: !!W, mask: { avoid: [].concat(W ? [{ rect: [-160, W.y0 - 10, 1760, W.y1 + 4] }] : [], p.avoidMid || []), noise: { scale: 240, cut: 0.2 } } });
+    const wetNear = false, wetFore = false, wetAvoid = W ? [{ rect: [-160, W.y0 - 6, 1760, W.y1 + 24] }] : [];
+    const av = extra => { const a = wetAvoid.concat(extra || []); return a.length ? { avoid: a } : undefined; };
+    d.scatter.push({ obj: Object.assign({}, cover, { 'rock.boulder': 0.2 }), layer: 'near', seed: s0 + 42, area: { rect: [-150, yNear + 8, 1750, yFore - 4] }, n: p.nNear || 175, minGap: p.gapNear || 22, s: [0.55, 0.9], sByY: [[yNear, 0.85], [yFore, 1.2]], flip: 0.5, variant: [0, 1], anim: false, reflect: wetNear, mask: av(p.avoidNear) });
+    d.scatter.push({ obj: Object.assign({}, cover, { 'rock.boulder': 0.12 }), layer: 'fore', seed: s0 + 43, area: { rect: [-150, yFore + 10, 1750, 905] }, n: p.nFore || 130, minGap: p.gapFore || 28, s: [0.95, 1.6], sByY: [[yFore, 0.9], [900, 1.2]], flip: 0.5, variant: [2, 3], anim: false, reflect: wetFore, mask: av(p.avoidFore) });
+    d.scatter.push({ obj: 'plant.bracken', layer: 'fore', seed: s0 + 46, area: { rect: [-150, yFore + 20, 1750, 905] }, n: land === 'pasture' ? 4 : 6, minGap: 110, s: [0.5, 1.2], flip: 0.5, variant: 'random', anim: false, mask: Object.assign({ noise: { scale: 300, cut: 0.4 } }, av(p.avoidFore)) });
+    if (land !== 'moor') for (const v of [0, 2]) d.scatter.push({ obj: 'plant.wildflowers', layer: 'near', seed: s0 + 45 + v, area: { rect: [-150, yNear + 8, 1750, 905] }, n: 45, minGap: 36, s: [0.6, 1.1], sByY: [[yNear, 0.8], [900, 1.3]], flip: 0.5, variant: v, tint: v ? { col: '#c8a040', k: [0.1, 0.1] } : undefined, anim: false, mask: av(p.avoidNear) });
+    d.scatter.push({ obj: 'plant.grass', layer: 'fore', seed: s0 + 44, area: { rect: [-150, 860, 1750, 905] }, n: 60, minGap: 24, s: [1.3, 1.9], flip: 0.5, variant: [0, 1], tint: { col: '#a09040', k: [0, 0.08] }, anim: 'strip', mask: p.avoidFore ? { avoid: p.avoidFore } : undefined });
     // 7. dry stone walls across the fields
-    const nWalls = p.walls == null ? (land === 'pasture' ? 5 : 2) : p.walls;
+    const nWalls = p.walls == null ? (land === 'pasture' ? 6 : 3) : p.walls;
     for (let i = 0; i < nWalls; i++) {
-      const y = R(yMid + 20 + r() * (yNear - yMid - 24)), sc = PH(y) * 0.7 / 62;
-      d.place.push({ obj: 'structure.stone-wall', x: R(-100 + r() * 1800), y, s: Math.round(sc * 100) / 100, layer: 'mid', variant: p.wallV || 0, flip: r() < 0.5, seed: 51 + i, anim: false });
+      const y = R(yMid + 20 + r() * (yNear - yMid - 24)), sc = PH(y) * 0.7 / 62 * (0.55 + r() * 1.0);
+      d.place.push({ obj: 'structure.dry-wall', x: R(-100 + r() * 1800), y, s: Math.round(sc * 1.35 * 100) / 100, layer: 'mid', variant: land === 'dale' ? (i % 3 ? 1 : 0) : (i % 3 ? 0 : 1), flip: i % 3 === 1, seed: 51 + i, anim: false, reflect: !!W });
     }
     // 8. sheep (and cattle in the dales), heads turning as they graze
     const nSheep = p.sheep == null ? 8 : p.sheep;
+    const flocks = [0, 1, 2].map(() => [120 + r() * 1360, yMid + 30 + r() * (yFore - yMid - 30)]);
     for (let i = 0; i < nSheep; i++) {
-      const y = R(yMid + 30 + r() * (yFore - yMid)), sc = PH(y) * 0.6 / 74;
-      d.place.push({ obj: 'animal.sheep', x: R(60 + r() * 1480), y, s: Math.round(sc * 100) / 100, layer: y < yNear ? 'mid' : 'near', variant: i % 4, flip: r() < 0.5, seed: 61 + i });
+      const fc = flocks[i % 3], y = R(Math.min(yFore + 40, Math.max(yMid + 24, fc[1] + (r() * 2 - 1) * 40))), sc = PH(y) * 0.6 / 74 * (0.7 + r() * 0.7);
+      d.place.push({ obj: 'animal.sheep', x: R(fc[0] + (r() * 2 - 1) * (90 + i * 13)), y, s: Math.round(sc * 100) / 100, layer: y < yNear ? 'mid' : 'near', variant: i % 4, flip: i % 2 === 1, seed: 61 + i, reflect: !!W });
     }
     for (let i = 0; i < (p.cows || 0); i++) { const y = R(yMid + 40 + r() * 120); d.place.push({ obj: 'animal.cattle', x: R(200 + r() * 1200), y, s: k2(PH(y) * 0.85 / 99), layer: 'mid', variant: i % 4, flip: r() < 0.5, seed: 71 + i }); }
     // 9. walkers on the path (tiny anonymous silhouettes), birds, gliders
@@ -149,7 +152,7 @@ const _scPeaks = (function () {
     d.flocks.push({ obj: 'bird.curlew-flight', n: 3, area: [300, Math.max(160, H - 200), 1300, Math.max(240, H - 90)], speed: 22, s: 1, seed: 92, layer: 'horizon' });
     for (let i = 0; i < (p.gliders || 0); i++) {
       const y = 120 + i * 70 + r() * 40;
-      d.actors.push({ obj: 'vehicle.paraglider', layer: 'far', path: i % 2 ? [[1700, y], [200, y + 30], [900, y - 20]] : [[-100, y], [1400, y + 20], [600, y - 30]], speed: 14 + i * 3, loop: 'pingpong', s: 0.7 - i * 0.12, variant: i % 3, seed: 95 + i, offset: i * 0.37 });
+      d.actors.push({ obj: 'vehicle.paraglider', layer: 'horizon', path: i % 2 ? [[1700, y], [200, y + 30], [900, y - 20]] : [[-100, y], [1400, y + 20], [600, y - 30]], speed: 14 + i * 3, loop: 'pingpong', s: 0.7 - i * 0.12, variant: i % 3, seed: 95 + i, offset: i * 0.37 });
     }
     // 10. the framing: a gritstone boulder and a hawthorn (or the row's own)
     for (const [i, f] of (p.frame || [{ obj: 'rock.boulder', x: 90, y: 905, s: 1.5, layer: 'front' }, { obj: 'tree.pool-oak', x: 1610, y: 912, s: 1.25, layer: 'front', flip: true }]).entries()) d.place.push(Object.assign({ seed: 101 + i, variant: i % 2, anim: f.obj.startsWith('tree.') ? { sway: { k: 0.7 } } : false }, f));

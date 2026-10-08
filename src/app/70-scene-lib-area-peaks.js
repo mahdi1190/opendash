@@ -146,6 +146,27 @@
     },
   });
 
+  /* ---------- structure.dry-wall: a Peak dry stone wall with its upright coping stones (light: one path per tone) ---------- */
+  define({
+    id: 'structure.dry-wall', category: 'structure', size: [300, 40], variants: 2, seasonal: false, flippable: true, weight: 0, parts: ['body'],
+    palette: { base: { grit: ['#8a8070', '#625a4e', '#b0a68e', '#3e3a34'], lime: ['#bab4a4', '#8e887a', '#dcd6c6', '#5a564e'] } },
+    shadow: { rx: 150, ry: 6, h: 30 }, reflect: true,
+    tags: ['uk', 'peak-district', 'wall', 'unlit', 'kit:temperate', 'role:edge'],
+    credit: 'native (uk-rebuild, peaks area)',
+    build(v, r) {
+      const st = v ? 'lime' : 'grit', body = [], W = 150;
+      let top = `M${-W} 0L${-W} -30`;
+      for (let x = -W; x <= W; x += 10) top += `L${f1(x)} ${f1(-30 - rr(r, 0, 3))}`;
+      body.push([`@${st}.1`, top + `L${W} 0z`]);
+      let stones = '', lights = '', cams = '';
+      for (let row = 0; row < 3; row++) for (let x = -W + (row % 2) * 9; x < W - 6; x += rr(r, 14, 24)) { const w = rr(r, 10, 18), y = -8 - row * 9; stones += sceneDraw.rect(x, y - 3, w, 7); if (r() < 0.4) lights += sceneDraw.rect(x + 1, y - 3, w * 0.6, 2); }
+      for (let x = -W + 2; x < W - 3; x += rr(r, 5, 7)) cams += `M${f1(x)} -30l${f1(rr(r, -1, 1))} ${f1(-rr(r, 6, 10))}l4 0l0 ${f1(rr(r, 6, 10))}z`;
+      body.push([`@${st}.0`, stones], [`@${st}.2`, lights, 0.7], [`@${st}.0`, cams], { s: `@${st}.3`, w: 1, op: 0.5, d: `M${-W} -30H${W}` });
+      body.push([`@${st}.3`, `M${-W} 0L${-W} -4L${W} -4L${W} 0z`, 0.4]);
+      return { body };
+    },
+  });
+
   /* ---------- landmark.mam-tor: Mam Tor and the Great Ridge (natural) ---------- */
   define({
     id: 'landmark.mam-tor', category: 'landmark', size: [1700, 340], variants: 1, seasonal: true, flippable: false, parts: ['body'],
