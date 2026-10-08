@@ -14,7 +14,7 @@
   const items = sceneItems('uk-area-farnborough').map((it) => {
     const kind = it.ukKind || 'landmark', base = { county: COUNTY, ukTown: TOWN, ukLocality: TOWN, ukPlace: it.ukPlace, ukView: it.ukView, viewReason: it.viewReason };
     return Object.assign(it, base, {
-      id: COUNTY + '-' + it.id, intensity: 'subtle', priority: 1, region: [area.nation], ukRegion: area.region, ukKind: kind, signature: kind === 'landmark', ukPart: 'area-farnborough',
+      id: COUNTY + '-' + it.id, intensity: 'subtle', priority: 1, region: [area.nation], ukRegion: area.region, ukKind: kind, signature: kind === 'signature', ukPart: 'area-farnborough',
       tags: Array.from(new Set(['uk', area.region.replace(/-/g, ' '), area.name.toLowerCase(), kind].concat(it.tags || []))),
       when: (day, ctx) => !!ctx && !!ctx.county && (ctx.county === COUNTY || (typeof animUkScenePools === 'function' && animUkScenePools([Object.assign({ county: COUNTY }, base)], ctx).nearby.length > 0)),
     });

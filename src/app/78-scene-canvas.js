@@ -228,8 +228,9 @@ function sceneRendererCreate(canvas, src, o) {
         any = true;
       }
       if (!any) { c.width = 0; return { c: null, x0, y0, w: 0, h: 0, sc: k, bytes: 0 }; }
-      if (req && which !== 'lit') {
+      if (req) {
         // the sprite passes (V2 13.1): shading, rim light, snow caps, frost; they see the box in device px and the local frame
+        // (a 'lit' sprite too, req.part 'lit': the atmos pass softens floodlights and drops ground pools it draws itself)
         Object.assign(req, { k, x0: x0 - _SCC_PAD / k, y0: y0 - _SCC_PAD / k, w, h, box: tb, shapes: sh });
         cx.globalAlpha = 1;
         sceneRunPasses(x.env, 'sprite', [cx, req]);
@@ -428,7 +429,7 @@ function sceneRendererCreate(canvas, src, o) {
             grp.movers.push({ kind: 'item', y: it.y, x: it.x, M, parts, b: itemBox(it, sceneObjShapes(it.o, it.v, it.season)) });
           }
           if (gx && night) {
-            if (it.lit && !litMoves) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'lit', 0, null, sc, false)), toG(M));
+            if (it.lit && !litMoves) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'lit', 0, null, sc, false, false, x2 ? { env, flip: it.flip, lift: 0, cls: it.cls, i } : undefined)), toG(M));
             if (it.glowOn) _sccGlows(gx, toG(M), it, skip, env ? env.windowShare : null);
           }
           yield* slice(gx);

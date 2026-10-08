@@ -225,6 +225,8 @@ export function buildingStyle(t, { lat = 0, lon = 0, areaM2 = 100, shop = false 
   const arch = String(t['building:architecture'] || '').toLowerCase();
   if (type === 'train_station' || t.railway === 'station' || t.public_transport === 'station') return 'station';
   if (ARCH[arch]) return ARCH[arch];
+  // a named mill or warehouse ("Merchant's Warehouse", "Wellington Mills", building=yes) is a mill whatever its type says
+  if (/\b(mills?|warehouse|maltings|works)\b/i.test(String(t.name || '')) && !['house', 'detached', 'semidetached_house', 'terrace'].includes(type) && mat !== 'glass') return 'mill';
   if (mat === 'flint') return 'norfolk-flint';
   if (mat === 'glass' || mat === 'metal' || mat === 'steel') return 'modern-glass';
   const y = startYear(t.start_date || t['building:start_date']);

@@ -138,7 +138,9 @@ function _scscToPlaced(G, rule, ri, got, r, o) {
     const w = floats ? G.water.find(q => q.v2.id === g.surf.id) : null, h = floats ? (w ? w.v2.level : cam.water) : sceneGroundHeight(cam, g.x, g.d);
     const P = sceneProject(cam, g.x, g.d, h), s = g.k * P.k * real.h / Math.max(1, def.size[1]);
     const vv = rule.variant === 'random' || rule.variant == null ? Math.floor(r() * (def.variants || 1)) : Array.isArray(rule.variant) ? rule.variant[0] + Math.floor(r() * (rule.variant[1] - rule.variant[0] + 1)) : rule.variant;
-    const tk = rule.tint ? [rule.tint.col, rule.tint.k[0] + r() * (rule.tint.k[1] - rule.tint.k[0])] : null;
+    // the tint in steps of 0.03 (integration, 8 Oct): each distinct tint is its own baked sprite, so a continuous range made
+    // hundreds of sprites (Frensham's heath: a 650 ms first bake); a 3 % step is below what the eye separates in a scatter
+    const tk = rule.tint ? [rule.tint.col, Math.round((rule.tint.k[0] + r() * (rule.tint.k[1] - rule.tint.k[0])) / 0.03) * 0.03] : null;
     const layer = rule.layer && layerOf(rule.layer) ? rule.layer : G.layers[sceneDepthBand(cam, g.d)].id;
     const q = { obj: g.obj, x: _scscR1(P.X), y: _scscR1(P.Y), s: _scscR3(Math.max(0.001, s)), flip: def.flippable === false ? false : flip[i], variant: vv, layer, seed: Math.floor(r() * 1e6), tint: tk,
       strip: rule.anim === 'strip', anim: rule.anim === 'strip' ? false : rule.anim, shadow: o && o.cover ? false : rule.shadow, reflect: o && o.cover ? false : (rule.reflect != null ? rule.reflect : (floats ? true : undefined)) };
@@ -175,6 +177,10 @@ function sceneScatterV2(G, rule, ri) {
     if (kits.length && role) {
       const w = sceneKitPick(kits, role, { exclude: [ids[0]] });
       for (const id of Object.keys(w)) if (sceneObjClass(id) !== cls) delete w[id];
+      // ... and of a similar REAL size (within x 1.8): a 7 m hawthorn is not a second species for 0.4 m ground cover (integration,
+      // 8 Oct: migrated Yateley Green drowned its pond in hawthorns; the composer's river in hedges)
+      const h0 = typeof sceneObjReal === 'function' ? (sceneObjReal(ids[0]) || {}).h : null;
+      if (h0 > 0) for (const id of Object.keys(w)) { const h = (sceneObjReal(id) || {}).h; if (!(h > 0) || h > h0 * 1.8 || h < h0 / 1.8) delete w[id]; }
       const pick = typeof sceneSlotPick === 'function' ? sceneSlotPick(w, (data.id || 'scene') + '|species|' + ri) : Object.keys(w)[0];
       if (pick) {
         mix = { [ids[0]]: 1, [pick]: 0.25 };

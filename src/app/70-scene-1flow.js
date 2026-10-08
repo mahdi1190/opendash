@@ -168,6 +168,9 @@ const _SCFL_NOT_WALKERS = ['cyclist', 'bike', 'climbing', 'sitting', 'idle', 'um
  */
 function _scflMix(mix, kind, data) {
   let m = mix == null ? _SCFL_DEF[kind].mix : mix;
+  // 'kit' means the kit's walkers only for walk and cycle flows; any other kind takes its own default mix (integration, 8 Oct: the
+  // composer's traffic flow, mix 'kit', drove pedestrians along the road)
+  if (m === 'kit' && kind !== 'walk' && kind !== 'cycle') m = _SCFL_DEF[kind].mix === 'kit' ? { 'vehicle.car': 1 } : _SCFL_DEF[kind].mix;
   if (m === 'kit') {
     const kits = (data && (data.kits || (data.meta && data.meta.kits))) || ['people'];
     let pick = typeof sceneKitPick === 'function' ? sceneKitPick(kits, 'walker', {}) : {};
@@ -670,6 +673,10 @@ function sceneFlowAgents(C, t, L, opt) {
   const cam = (C.cam && C.cam.f) ? C.cam : _scflCam(opt.data || {}, C), P = SCENE_FLOW_PERIOD, tau = (t || 0) + P / 2;
   const mults = opt.mults || sceneFlowMults(C, L, opt.data || {}), wx = _scflWeather(L), ctx = { night: !!(L && (L.lamps || L.windows)), rain: wx.rain && !wx.snow };
   const out = [];
+  // agents behind a projected building (the ray from the camera to their feet crosses its footprint) are not drawn: they are
+  // painted each frame over the baked layers, so they would walk across the facade (integration, 8 Oct)
+  const feet = (C.buildings || []).filter(b => b && Array.isArray(b.foot) && b.foot.length >= 3);
+  const hidden = (ag) => feet.length > 0 && typeof _scgrRayHits === 'function' && Number.isFinite(ag.x) && Number.isFinite(ag.d) && feet.some(b => _scgrRayHits(b.foot, ag.x, ag.d));
   flows.forEach((flow, fi) => {
     const mult = mults[fi] || 0, cap = Math.max(0, Math.floor(flow.max * (opt.maxScale || 1)));
     if (!cap || !(mult > 0)) return;
@@ -685,7 +692,7 @@ function sceneFlowAgents(C, t, L, opt) {
         while (a < b) { const m = (a + b) >> 1; if (S.list[m].t0 < lo) a = m + 1; else b = m; }
         for (let i = a; i < S.list.length && S.list[i].t0 <= hi; i++) {
           const ag = _scflPlace(cam, flow, fi, li, S.list[i], base + S.list[i].t0, tau, ctx);
-          if (ag && ag.X > -400 && ag.X < 2000 && ag.Y < 1100) { ag.k = q * 100000 + li * 1000 + S.list[i].key; mine.push(ag); }
+          if (ag && ag.X > -400 && ag.X < 2000 && ag.Y < 1100 && !hidden(ag)) { ag.k = q * 100000 + li * 1000 + S.list[i].key; mine.push(ag); }
         }
       }
     });

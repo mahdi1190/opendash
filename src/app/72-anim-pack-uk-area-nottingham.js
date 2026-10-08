@@ -24,6 +24,11 @@
     };
     return sceneItem(meta, () => row.build());
   });
+  // Below the bar (the composed lint and the tile budget fail them; the batch-2 run was stopped before they were fixed):
+  // drafts, kept in the source and NOT registered until they are migrated to v2 and pass (docs/dev/SCENE_ENGINE_V2.md 29,
+  // "Later stages"; integration, 8 Oct). Remove an id here once its scene passes `scene lint --strict-placement`.
+  const DRAFTS = new Set(["nottinghamshire-castle-rock","nottinghamshire-ye-olde-trip","nottinghamshire-maid-marian-trams","nottinghamshire-hockley-shops","nottinghamshire-wollaton-deer-park","nottinghamshire-major-oak","nottinghamshire-sherwood-pines","nottinghamshire-goose-fair"]);
+  for (let k = items.length - 1; k >= 0; k--) if (DRAFTS.has(items[k].id)) items.splice(k, 1);
   animRegisterPack({ id: 'uk-area-nottingham', name: 'UK: Nottingham', version: '2.0.0',
     description: 'Nottingham and Sherwood on the scene engine: the Castle and its rock, the Trip to Jerusalem, the Old Market Square, the trams, the Lace Market, Hockley, Wollaton Park, Trent Bridge, the Wilford bridge, the Major Oak, Sherwood Pines and the Goose Fair, with the seasons and the live sky.', items });
 })();

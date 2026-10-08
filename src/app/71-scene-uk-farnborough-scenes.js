@@ -316,8 +316,8 @@ const FARN_META = [
   ['fast-museum', 'FAST museum', 'farnborough-fast-museum', 'wide', 'The museum across the road from the pavement, a bus passing', 'heritage', 'slate', 'calm', ['museum', 'aviation', 'heritage', 'street', 'bus'], 51.2826, -0.7660],
   ['main-station', 'Farnborough Main station', 'farnborough-main-station', 'wide', 'Along the platform, the tracks running away', 'heritage', 'slate', 'calm', ['station', 'railway', 'platform', 'tracks', 'commuters'], 51.2966, -0.7559],
   ['north-station', 'Farnborough North station', 'farnborough-north-station', 'wide', 'The level crossing from the road, a train on the line', 'heritage', 'slate', 'dreamy', ['station', 'level crossing', 'railway', 'road', 'heath'], 51.3020, -0.7430],
-  ['queensmead', 'Queensmead, Farnborough', 'farnborough-queensmead', 'wide', 'Down the pedestrian street to the block at its end', 'town', 'amber', 'cheerful', ['shopping', 'pedestrian street', 'town centre', 'shopfronts', 'market'], 51.2925, -0.7555],
-  ['business-park', 'Farnborough Business Park', 'farnborough-business-park', 'wide', 'The offices across the lake from the jetty, a jet climbing out', 'town', 'blue', 'calm', ['business park', 'offices', 'lake', 'airport', 'aviation'], 51.2800, -0.7730],
+  ['queensmead', 'Queensmead, Farnborough', 'farnborough-queensmead', 'wide', 'Down the pedestrian street to the block at its end', 'heritage', 'amber', 'cheerful', ['shopping', 'pedestrian street', 'town centre', 'shopfronts', 'market'], 51.2925, -0.7555],
+  ['business-park', 'Farnborough Business Park', 'farnborough-business-park', 'wide', 'The offices across the lake from the jetty, a jet climbing out', 'landscape', 'blue', 'calm', ['business park', 'offices', 'lake', 'airport', 'aviation'], 51.2800, -0.7730],
   ['canal', 'Basingstoke Canal, Farnborough', 'farnborough-canal', 'wide', 'Looking down the cut from the bridge to the next bridge', 'heritage', 'green', 'dreamy', ['canal', 'towpath', 'bridge', 'narrowboat', 'anglers'], 51.2690, -0.7790],
 ];
 (function () {

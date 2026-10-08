@@ -431,9 +431,29 @@ function sceneWaterEdgeQuads(wv, d, cam) {
         const farBank = !inW(mx, my - 3), wDir = farBank ? 1 : -1;
         if (part === 'face' && !farBank) continue;
         const mm = m === 'level' ? Math.max(0.15, -level) : m, dir = part === 'top' ? -wDir : wDir;
-        const h = part === 'top' ? cam.f * mm * cam.eye / (dd * dd) * 1.6 : cam.f * mm / dd;
-        if (h < 1) continue;
-        quads.push([[a[0], a[1]], [b[0], b[1]], [b[0], b[1] + dir * h], [a[0], a[1] + dir * h]]);
+        if (part === 'face') {
+          // a wall face is vertical: straight down the screen from the bank top
+          const h = cam.f * mm / dd;
+          if (h < 1) continue;
+          quads.push([[a[0], a[1]], [b[0], b[1]], [b[0], b[1] + dir * h], [a[0], a[1] + dir * h]]);
+          continue;
+        }
+        // a coping top or a muddy margin lies FLAT on the ground: offset the edge mm metres across it on the ground and project
+        // (integration, 8 Oct: offsetting straight down the screen made a near bank that runs away from the camera a wide wedge)
+        const da = sceneCamDepthAt(cam, a[1], level), db = sceneCamDepthAt(cam, b[1], level);
+        if (!Number.isFinite(da) || !Number.isFinite(db)) continue;
+        const ga = [(a[0] - cam.x0) * da / cam.f, da], gb = [(b[0] - cam.x0) * db / cam.f, db];
+        let tx = gb[0] - ga[0], td = gb[1] - ga[1];
+        const tl = Math.hypot(tx, td);
+        if (tl < 1e-6) continue;
+        tx /= tl; td /= tl;
+        let nx = -td, nd = tx;   // a ground normal; flip it so it points to the land (top) or the water (band)
+        const gm = [(ga[0] + gb[0]) / 2, (ga[1] + gb[1]) / 2], probe = sceneCamProject(cam, gm[0] + nx * 0.25, Math.max(0.5, gm[1] + nd * 0.25), level);
+        const probeWet = inW(probe.X, probe.Y), wantWet = part !== 'top';
+        if (probeWet !== wantWet) { nx = -nx; nd = -nd; }
+        const pa = sceneCamProject(cam, ga[0] + nx * mm, Math.max(0.5, ga[1] + nd * mm), level), pb = sceneCamProject(cam, gb[0] + nx * mm, Math.max(0.5, gb[1] + nd * mm), level);
+        if (Math.max(Math.abs(pa.X - a[0]), Math.abs(pa.Y - a[1]), Math.abs(pb.X - b[0]), Math.abs(pb.Y - b[1])) < 1) continue;
+        quads.push([[a[0], a[1]], [b[0], b[1]], [pb.X, pb.Y], [pa.X, pa.Y]]);
       }
       if (quads.length) out.push({ col, kind: e.kind, quads });
     }
@@ -718,8 +738,16 @@ function sceneSvg(x, o) {
   const done = [];   // markup above each water line, for reflections
   for (const l of C.layers) {
     let out = '';
-    for (const g of C.ground) if (g.layer === l.i) out += `<path fill="${_scPaintSvg(g.fill, toneFor(Math.round(l.haze * 10) / 10, null), defs, nid)}" d="${g.d}"/>`;
+    for (const g of C.ground) if (g.layer === l.i) {
+      // v2 at tile size (integration, 8 Oct): the surface markings (lines, kerbs, joints, wear) are under a pixel; the fills and the
+      // canal channels stay
+      if (C.v === 2 && lod < 1 && g.mark && g.mark !== 'channel') continue;
+      out += `<path fill="${_scPaintSvg(g.fill, toneFor(Math.round(l.haze * 10) / 10, null), defs, nid)}" d="${g.d}"/>`;
+    }
     for (const w of C.water) if (w.layer === l.i) {
+      // v2 (integration, 8 Oct): the farther layers by reference (<use> of each layer's group), not copied into every water region:
+      // a basin with five canal arms copied the whole land five times over (1.4 MB stills)
+      if (v2) { out += waterSvg(w, w.reflect ? done.join('') : ''); continue; }
       const near = byLayer[l.i].filter(it => it.reflect && it.y <= w.y0 + 8).map(placed).join('');
       out += waterSvg(w, w.reflect ? done.join('') + out + near : '');
     }
@@ -729,11 +757,22 @@ function sceneSvg(x, o) {
     out += sh;
     const movers = [];
     for (const a of C.actors) if (a.layer === l.i) movers.push([sceneActorAt(a, 0).y, actorSvg(a)]);
-    for (const it of byLayer[l.i]) movers.push([it.y, placed(it)]);
+    for (const it of byLayer[l.i]) {
+      // v2 at tile size (integration, 8 Oct): a tile is 64 to 88 px across 1600 units, so what is under ~1 px tall is left out
+      // (seasonal cover, far grass, ducks): the canvas draws the scene everywhere it can; this is the still's budget
+      if (C.v === 2 && lod < 0.5 && !it.direct) {
+        const sh = sceneObjShapes(it.o, it.v, it.season);
+        if (it.cover || (sh && (sh.box[3] - sh.box[1]) * it.s < 24)) continue;
+        // no tints: a tile cannot show a few per cent of colour shift, and every distinct tint is its own symbol
+        if (it.tint) { movers.push([it.y, placed(Object.assign({}, it, { tint: null }))]); continue; }
+      }
+      movers.push([it.y, placed(it)]);
+    }
     movers.sort((a, b) => a[0] - b[0]);
     out += movers.map(m => m[1]).join('');
     for (const f of C.flocks) if (f.layer === l.i) out += flockSvg(f);
     for (const s of C.signs) if (s.layer === l.i) out += signSvg(s);
+    if (v2 && out && C.water.some(w => w.reflect && w.layer > l.i)) { const lid = nid(); defs.push(`<g id="${lid}">${out}</g>`); out = `<use href="#${lid}"/>`; }
     done.push(out);
     land += out;
   }

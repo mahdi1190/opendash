@@ -317,7 +317,7 @@ const UK_NOTTINGHAM_SCENES = (function () {
       .done();
   });
 
-  row('major-oak', { lat: 53.2049, lon: -1.0722, town: 'Edwinstowe', label: 'The Major Oak', kind: 'signature', colour: 'green', ukPlace: 'major-oak', ukView: 'wide',
+  row('major-oak', { lat: 53.2049, lon: -1.0722, town: 'Edwinstowe', label: 'The Major Oak', kind: 'landmark', colour: 'green', ukPlace: 'major-oak', ukView: 'wide',
     reason: 'The great oak of Sherwood in its ring fence, from the forest floor',
     tags: ['sherwood', 'oak', 'forest', 'ring fence', 'bracken', 'deer'] }, () => {
     const k = N.make({ id: 'major-oak', coverN: 200, cover: { 'plant.bracken': 3, 'plant.fern': 1, 'plant.grass': 1 }, lat: 53.2049, lon: -1.0722, heading: 190, H: 260, at: 'afternoon', setting: 'natural' });

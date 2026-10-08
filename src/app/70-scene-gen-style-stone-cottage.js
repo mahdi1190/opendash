@@ -17,7 +17,7 @@
     night: { on: 0.55, curtain: 0.5, tv: 0.1 },
     front(sp, face, model, out) {
       _scbgLayouts.house(sp, face, model, out);
-      for (const e of out.elems) if (e.k === 'door') { e.boards = true; e.panels = 0; }
+      for (const e of out.elems) if (e.k === 'door') { e.planks = true; e.panels = 0; }
     },
   });
 })();

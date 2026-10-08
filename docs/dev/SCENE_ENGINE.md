@@ -15,6 +15,23 @@ Read first: `CLAUDE.md`, `MODULES.md` (Animation library rows),
 `docs/dev/UK_PACK.md` ("Rich local scenes") and the header of
 `src/app/71-anim-uk-nature-kit.js` (the kit and the `K.live` light model).
 
+> **Engine v2 is the default for new scenes (8 Oct 2026).** This document
+> stays the reference for the object format, the v1 scene format, the
+> compiled form, the light model, the renderers and the standard; everything
+> below still holds for v1 scenes, which compile byte for byte as before.
+> A NEW scene is a v2 recipe: `docs/dev/SCENE_ENGINE_V2.md`. Authors declare
+> the ground (a camera, surfaces, water, ground placements in metres, flows,
+> buildings) and the engine decides the screen position, scale, draw order,
+> shadows, reflections, light, weather and crowds, refusing what is
+> physically wrong. The workflow: `scene compose "<brief>"` (or `scene new`,
+> which writes a v2 recipe unless `--v1`), `scene osm` and `scene terrain`
+> for the real layout and skyline, refine in the scene editor or by hand,
+> `scene lint --perf --strict-placement` to GOLD, `scene sheet --times
+> --weather rain,snow,fog`, `scene critique`, `scene compare-to-golden`.
+> `scene migrate` turns a v1 scene into a recipe and lists its defects (the
+> worklist; review its sheet before keeping it). Section 31 of V2 has the
+> integration notes: what the build changed against that spec.
+
 ## 0. Why, and what this round delivers
 
 The rich Yateley and Fleet scenes look right, but they lag. Each one renders

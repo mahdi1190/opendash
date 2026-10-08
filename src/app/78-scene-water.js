@@ -297,21 +297,28 @@ function _scwaBake(env, R, gx) {
     const cls = it.cls || sceneObjClassOf(it.o), floating = cls === 'boat' || cls === 'bird-water' || (it.g && it.g.surf && /water|canal|river|pond|lake|sea/.test(it.g.surf));
     // the base hb metres above the water: a floating object sits on it; anything on land stands on the ground above it
     const hb = floating ? 0 : (it.g && Number.isFinite(it.g.h) ? it.g.h : 0) - R.level;
-    const Ym = floating ? it.y : sceneWaterMirrorY(cam, d, R.level, hb);
-    if (Ym < R.y0 - 2) continue;
+    // a projected building mirrors about its anchor (its lowest ground point on screen; direct.foot is the ground footprint)
+    const dA = it.direct && it.direct.anchor ? sceneCamDepthAt(cam, it.direct.anchor[1]) : d;
+    const Ym = floating ? it.y : sceneWaterMirrorY(cam, Number.isFinite(dA) ? dA : d, R.level, hb);
+    // (integration, 8 Oct) a thing standing BEYOND the far edge in this layer (a mill behind a strip of quay) still reflects when
+    // its mirror image reaches down into the water: the test is the image's reach, not where its foot is
     const sh = sceneObjShapes(it.o, it.v, it.season);
     if (!sh && !it.direct) continue;
     if (sh) { const top = Ym + (-sh.box[1]) * it.s; if (top < R.y0 - 1) continue; }   // the mirror image must reach the water
+    else if (it.direct.box) { const fy = it.direct.anchor ? it.direct.anchor[1] : it.y; if (Ym + (fy - it.direct.box[1]) < R.y0 - 1) continue; }
+    else if (Ym < R.y0 - 2) continue;
     cand.push({ it, i, d, Ym });
   }
   cand.sort((a, b) => a.d - b.d);
   if (cand.length > SCENE_WATER_MIRRORED_MAX) cand.length = SCENE_WATER_MIRRORED_MAX;
+  // the nearest are kept; they are PAINTED far to near (in compiled draw order), so a nearer building's image covers what stands behind it
+  cand.sort((a, b) => a.i - b.i);
   R.mirrored = cand.length;
   const bucket = (s) => (typeof sceneScaleBucket === 'function' ? sceneScaleBucket(s) : s), night = !!(L && L.windows);
   for (const { it, i, Ym } of cand) {
     if (it.direct) {
       // a projected building: its fills, flipped about its own waterline (its foot row to Ym)
-      const fy = it.direct.foot ? it.direct.foot[1] : it.y;
+      const fy = it.direct.anchor ? it.direct.anchor[1] : it.y;
       rc.setTransform(vs, 0, 0, -vs, ox - R.db[0], (Ym + fy) * vs + oy - R.db[1]);
       for (const s0 of it.direct.shapes || []) { if (typeof s0.f !== 'string') continue; rc.globalAlpha = s0.op == null ? 1 : s0.op; rc.fillStyle = _scCol(s0.f, L); rc.fill(_sccPath(s0.d)); }
       rc.globalAlpha = 1;

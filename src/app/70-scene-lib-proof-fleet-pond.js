@@ -28,6 +28,21 @@ const SCENE_PROOF_FLEET_POND = Object.freeze({
   // the railway on its embankment along the north shore
   rail: [[-320, 59.6], [-160, 78.8], [0, 98], [160, 117.2], [320, 136.4]],
   railD: (x) => 98 + 0.12 * x,
+  // the embankment's cross-section (u: metres from the centre of the two tracks, + away from the camera; h above the deck datum,
+  // the water 0.5 below it): the near toe, the cess (the cable trough), the ballast shoulders, a flat formation for the two lines
+  // (centres 2.25 m either side), the far cess and toe. The rail heads are the train's wheel line (sceneProofFleetPondPass lifts
+  // the flow's trains onto them). From the boardwalk the formation is just above eye height: the bank face, the shoulder and the
+  // rail heads read, the train stands on them.
+  emb: Object.freeze({ toeN: -10, cessN: -5.5, topN: -3.9, topF: 3.9, cessF: 5.5, toeF: 9.5, crest: 3.0, cess: 2.85, head: 3.15, fence: -10.6, track: 2.25 }),
+  embH(x, d) {
+    const E = SCENE_PROOF_FLEET_POND.emb, u = d - (98 + 0.12 * x);
+    if (u <= E.toeN || u >= E.toeF) return 0;
+    if (u < E.cessN) return E.cess * (u - E.toeN) / (E.cessN - E.toeN);
+    if (u < E.topN) return E.cess + (E.crest - E.cess) * (u - E.cessN) / (E.topN - E.cessN);
+    if (u <= E.topF) return E.crest;
+    if (u < E.cessF) return E.crest - (E.crest - E.cess) * (u - E.topF) / (E.cessF - E.topF);
+    return E.cess * (E.toeF - u) / (E.toeF - E.cessF);
+  },
 });
 
 /* ---------- the boardwalk and its viewing platform, drawn in the camera's own perspective ----------

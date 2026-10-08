@@ -521,6 +521,26 @@ node tools/anim-pack.mjs scene lint my-pack/my-scene --perf                  # u
 node tools/anim-pack.mjs scene sheet my-pack/my-scene --times --seasons --contact
 ```
 
+**v2 recipes: the default for new scenes (8 Oct 2026, `docs/dev/SCENE_ENGINE_V2.md`).** A new scene is a recipe
+(`src/app/71-scene-<pack>-r-<id>.js`, strict JSON) that declares the ground in metres: a camera, surfaces, water, ground placements,
+flows and generated buildings. The engine places, scales, orders, shadows, reflects, lights and populates it, and refuses what is
+physically wrong; `scene lint --strict-placement` adds the placement-sanity and composition groups. The workflow is compose (or
+new), then the real layout, then refine, then the gates:
+
+```bash
+node tools/anim-pack.mjs scene compose "Castlefield Basin, golden hour, down the canal, the Merchants Warehouse" --pack my-pack --at 53.4745,-2.2565
+node tools/anim-pack.mjs scene osm --at <lat,lon> --heading <deg> --into my-pack/<id>      # settle the camera; re-import the real layout
+node tools/anim-pack.mjs scene terrain --into my-pack/<id>                                  # the real skyline
+node tools/anim-pack.mjs scene lint my-pack/<id> --perf --strict-placement                   # until GOLD v2
+node tools/anim-pack.mjs scene sheet my-pack/<id> --times --weather rain,snow,fog --contact
+node tools/anim-pack.mjs scene critique my-pack/<id>                                        # the visual critic (local Claude CLI, else a review page)
+node tools/anim-pack.mjs scene compare-to-golden my-pack/<id>
+node tools/anim-pack.mjs scene migrate <ref> --dry-run --report                             # a v1 scene: its defects, then a recipe
+```
+
+OpenStreetMap layouts are ODbL data: the recipe header carries the credit, Settings > About shows it, and the user confirms before
+OSM-derived recipes are committed to the public repository.
+
 **Many scenes cheaply (a London pack).** An archetype (`station`) plus a data table (one row per station: id, name, lines, lat, lon,
 era, features) gives one scene per row, each built only when it is shown or linted. Batch commands run over the table and end with
 a summary table (rows, pass, fail, the worst animated draws and dynMs, the means, the rows nearest to failing):

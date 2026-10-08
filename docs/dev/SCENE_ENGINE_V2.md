@@ -118,7 +118,7 @@ Node >= 20, PURE `70-scene-*` files, the load order, IIFEs for local
 helpers, no personal data, never port 4173 or the live data. This round adds
 the rules below.
 
-- **One tree, no worktrees.** Everyone works in `C:/Users/bob/T3/opendash` on
+- **One tree, no worktrees.** Everyone works in the one checkout on
   branch `uk-rebuild`.
   - Commit ONLY your own files, by explicit path:
     `git -c user.name="Mahdi Ahmed" -c
@@ -2597,7 +2597,7 @@ scene compare-to-golden <ref> [--n 3] [--out dir]
     415, body limit 413), which the router applies to every route.
 - `GET /api/scene-editor/status` returns `{ enabled: true, version }`. The
   gallery shows "Edit scene" on composed items only after it answers 200.
-- `node serve.mjs --data-dir C:/tmp/v2-h/data --port 4408 --no-open` with
+- `node serve.mjs --data-dir <scratch>/v2-h/data --port 4408 --no-open` with
   the environment variable set is the way to run it. `serve.mjs` and
   `server/index.mjs` are NOT edited.
 
@@ -3161,7 +3161,7 @@ Chrome tests skip when `findBrowser()` is null, and use your own debug port.
 ## 28. The integration review (after the builders)
 
 1. **Build.** `node build.mjs --syntax`, then `node build.mjs --out
-   C:/tmp/v2-review/index.html`. Check there is no "before initialization"
+   <scratch>/v2-review/index.html`. Check there is no "before initialization"
    error in Node (`tests/anim-packs.test.mjs` loads every animation file) or
    in the browser.
 2. **Tests.** Run `npm test` four times; every run passes. Run the new suite
@@ -3292,7 +3292,7 @@ never in rotation, and tagged `demo`.
   gives no criterion under 4.
 - `scene compare-to-golden <ref>` reports no metric outside the golden range,
   once the golden set has approved entries.
-- These sheets are SHOWN to the user, in `C:/tmp/v2-showcase/`:
+- These sheets are SHOWN to the user, in `<scratch>/v2-showcase/`:
   - `scene sheet <ref> --times --seasons --contact`;
   - `--weather rain,snow,fog,clear`;
   - `--flows`;
@@ -3342,3 +3342,103 @@ never in rotation, and tagged `demo`.
 - **The sanity warnings on v1 packs** will be many. That is intended: it is
   the fix list, not a regression. GOLD for v1 is kept until the strict flag
   is turned on per pack after its migration.
+
+## 31. Integration notes (8 Oct 2026): what the build changed against this spec
+
+The integration review merged the eight builders' work, built the three
+showcases with the fast pipeline and fixed what that exposed. Where the
+build differs from the sections above, this section wins.
+
+**Builders' deviations (kept):**
+
+- A: an automatic animation level of detail (`SCENE_V2_ANIM`: motion the
+  author did not ask for stays still on small items and beyond a 220k
+  units^2 per-frame area); `C.fx` and `C.drive` are passed through; the four
+  cover objects have `weight: 0`; `sceneFromRecipe` freezes only on request.
+- B: a shadow's width runs across the ground, not along the screen; far
+  bitmaps mirror about the local far-bank row; no sea surf rows yet.
+- C: fog banks are drawn per group in true depth; lamp pools and spill go
+  under the objects; puddles only from 8 to 60 m once the ground is wet; no
+  rim light on sprites over 300,000 px; a `frost` weather kind.
+- D: a mover's view uses the angle to the line of sight; the flow draw
+  estimate is an upper bound; v1 sanity findings are warnings unless
+  `--strict-placement`; placements kept to 0.01 m in recipes.
+- E: the exact ridge projection; ridges merged within 30 % of depth; rivers
+  without an outline default to 10 m; channels under 1 m are left out;
+  buildings beside the camera are dropped; `garden` as the suburban rest.
+- G: the options `--osm-file`, `--moments`, `--with-candidates` (the spec's
+  names collided); `scene-critique` joins the JSON-answer profiles.
+
+**Integration fixes (this review):**
+
+- **Ground and water (A, B).** A terrain ridge's layer is the band of its
+  DEPTH (the terrain tool's own `near` ridge, 1.3 km away, went into the
+  near band and covered the far shore). A coping top or a muddy margin lies
+  flat on the ground (offset across the bank in metres, then projected); a
+  wall face hangs down the screen. Things standing beyond the far edge in the
+  water's own layer reflect when their image reaches the water; projected
+  buildings mirror about their anchor row; reflections are painted far to
+  near.
+- **Draw order with buildings (A, D).** A moving item behind a projected
+  building in the same bake group is baked still (moving parts are drawn
+  over the layer bitmap, so a swaying tree showed through the facade); flow
+  agents whose ground ray crosses a building footprint are not drawn.
+- **Scatter (A).** The automatic second species must be of a similar real
+  size (within x 1.8): a migrated village green was drowned in hawthorns.
+- **Trees in squares (A, E).** A mapped tree outside every green area gets
+  `pit: true`; a pit tree may stand on plaza, plot and parking as well as
+  pavement.
+- **Flows (D).** `mix: 'kit'` gives walkers only to walk and cycle flows; a
+  drive flow with `mix: 'kit'` takes cars (the composer's traffic drove
+  pedestrians down the road).
+- **The OpenStreetMap import (E).** A mapped canal outline always wins over
+  its centreline (the real shape of a basin with arms and wharves; the
+  towpath test still uses the line); a canal line inside a kept outline is
+  dropped. Viaducts and long bridges over land are elevated: not ground,
+  listed as missing. Footbridges are listed as missing instead of drawing a
+  brick road arch; other bridges are scaled to their real span. A named
+  "Warehouse", "Mill" or "Works" building is the `mill` style. A library
+  landmark named for another town (`mcr-central-library`) never stands in for
+  a local namesake (`addr:city` of the data). `scene osm --into` re-points
+  the flows' and scatter rules' surface lists to the new import (all the
+  imported pieces of the kinds they named).
+- **The generator (F).** A free-standing block much deeper than its front
+  turns its ridge along its length; a gable roof on a block much wider than
+  deep turns to a side-pitched one (OSM's `gabled` has its ridge along the
+  longest side). The subject flag rides on the generated item. The door
+  planking property is `planks` (not `boards`).
+- **The composer (G).** "the mill" named with an article wins over a subject
+  word inside the place name; a building named for the subject counts as
+  one; the brief's other words pick among namesakes; a library landmark's
+  real height frames the viewpoint search; the subject size is scored
+  steeply (the lint fails it outside 18 to 45 %); nobody stands on a tram
+  or rail line; the framing tree's trunk stands inside the view; trams get a
+  timetable flow; the draft's own `source.osm.own` hashes are taken from the
+  final entries, so a later `scene osm --into` replaces them; the title case
+  leaves "Merchant's" alone.
+- **The lint (D, G).** Projected buildings are never judged for scale,
+  opacity, variety or species (their real box still occludes); cover is
+  asked only of SOFT ground in v2 (water and finished hard surfaces: road,
+  pavement, plaza, platform, plot ... count as covered); the depth-band rules
+  ask only for the bands the camera sees (a raised eye has no fore band); a
+  generated building marked `subject` is a signature; projected buildings'
+  lit windows count as night lights; occlusion uses the object's BODY box
+  (a lamp's light halo hides nothing).
+- **The SVG still (B).** In v2, farther layers are referenced (`<use>`) by
+  the water's reflection instead of copied into every water region; at tile
+  size the surface markings, the items under about a pixel and the tints are
+  left out.
+- **Migration (D).** The recipe takes the v1 item's own id (the registry id
+  less the county prefix); `sceneRecipeSupersede` (A) lets a recipe replace
+  its item in every kind of pack, including the area packs built from data
+  tables.
+- **Defaults.** `scene new` writes a v2 recipe unless `--v1`; the composed
+  brief and the skill teach the v2 workflow and its gates.
+
+**Known gaps (the next round):** the warmth of the golden-hour grade is
+subtle (the v1 light model's); a pond at night reads lighter than the sky;
+the library lacks a side-view tram, footbridges, viaducts other than
+Castlefield's, a Frensham-type veteran Scots pine and heath signatures; long
+shadows are only visible when the sun is behind or to the side of the camera;
+migrated scenes need a person's review (Fleet canal 1: the far woods grow to
+their real size and the bridge landmark is refused on the water).

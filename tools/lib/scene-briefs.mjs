@@ -45,7 +45,10 @@ export function sceneBriefPlan(reg, root, kind, subject, { notes = [], batch = 0
       subject: `a new scene for ${subject}`, pack: subject, scene_id: 'my-scene', notes: noteText, bar: barLines(root), budget: budgetText(root),
       archetypes: index.length ? index.map(a => `\`${a.id}\` (${a.what}${built(a.id) ? '; BUILT' : '; not built yet'})`).join(', ') : 'the archetype index is not loaded in this checkout',
       kits: 'temperate, birds, people, water', care: careText(generalCare()),
-      verify: [`node tools/anim-pack.mjs scene lint ${subject}/my-scene --perf`, `node tools/anim-pack.mjs scene sheet ${subject}/my-scene --times --seasons --contact`, `node tools/anim-pack.mjs scene sheet ${subject}/my-scene --crop phone`, `node tools/anim-pack.mjs scene perf ${subject}/my-scene`].join('\n'),
+      // the v2 gates (V2 15.2, 21, 22): strict placement, the weather row, the critic and the golden set
+      verify: [`node tools/anim-pack.mjs scene lint ${subject}/my-scene --perf --strict-placement`, `node tools/anim-pack.mjs scene sheet ${subject}/my-scene --times --seasons --contact`,
+        `node tools/anim-pack.mjs scene sheet ${subject}/my-scene --weather rain,snow,fog --contact`, `node tools/anim-pack.mjs scene sheet ${subject}/my-scene --crop phone`,
+        `node tools/anim-pack.mjs scene perf ${subject}/my-scene`, `node tools/anim-pack.mjs scene critique ${subject}/my-scene`, `node tools/anim-pack.mjs scene compare-to-golden ${subject}/my-scene`].join('\n'),
     }, 'composed-scene-brief.md');
     return { kind, subject, batches: [{ n: 1, title: `compose a new scene for ${subject}`, items: [], markdown: md }] };
   }

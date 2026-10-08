@@ -50,6 +50,28 @@ function sceneAddRecipe(rec) {
   if (it) { it.recipe = true; it.recipeV = 2; if (meta.liveSky) it.liveSky = meta.liveSky; }
   return it || null;
 }
+/**
+ * V2 14.3 for EVERY pack (integration, 8 Oct): area packs build their items from data tables, not through sceneItems, so a recipe
+ * written by `scene migrate` for one of their items was never used. animRegisterPack calls this: each item of the pack that a
+ * recipe of the same pack supersedes (the same id, or the region's county prefix + the recipe's id) takes the recipe's scene and
+ * keeps its own id and fields (when, place, view, season, tags: pins, favourites and rotation are unchanged). Pure.
+ */
+function sceneRecipeSupersede(packId, items) {
+  const list = typeof _scPacks === 'object' && _scPacks ? (_scPacks[packId] || []).filter(it => it && it.recipe) : [];
+  if (!list.length || !Array.isArray(items)) return items;
+  const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const SCENE_KEYS = ['scene', 'svg', 'composed', 'rich', 'full', 'recipe', 'recipeV', 'liveSky', 'reduced', 'slot'];
+  return items.map(it => {
+    if (!it || it.recipe || typeof it.id !== 'string') return it;
+    const pre = slug(it.county) ? slug(it.county) + '-' : null;
+    const r = list.find(q => q.id === it.id || (pre && pre + q.id === it.id));
+    if (!r || r === it) return it;
+    const out = Object.assign({}, it);
+    for (const k of SCENE_KEYS) if (r[k] !== undefined) out[k] = r[k];
+    out.supersedes = true;
+    return out;
+  });
+}
 /** The v1-form parts of v2 data, for the v1 validation: pixel placements, area scatter, pixel ground and water, actors with pixel paths. */
 function _scrcV1View(d) {
   const v = Object.assign({}, d);

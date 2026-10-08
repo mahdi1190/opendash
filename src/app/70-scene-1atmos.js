@@ -347,8 +347,77 @@ function sceneLightV2(o, view, data) {
   L.windowShare = sceneWindowShare(L);
   if (L.wx && Number.isFinite(L.wx.wind)) L.wind = L.wx.wind;
   if (v2) {
+    sceneLightGradeV2(L);
     L.haze = L.atmos.col;
     L.rain = false; L.snow = false; L.fog = false;
+  }
+  return L;
+}
+
+/* ---------- the v2 grade (7.6): golden, dusk, noon and night read clearly apart ---------- */
+/**
+ * How golden, how dusky the light is now (pure). golden: 1 with the sun 1.5 to 6 degrees up, fading out by 16 degrees and just
+ * after sunset; dusk: the sun 1 to 12 degrees below the horizon (most at -2 to -6). Both weakened by cloud. -> { golden, dusk }.
+ */
+function sceneGradeAt(L) {
+  if (!L || !Number.isFinite(L.alt)) return { golden: 0, dusk: 0 };
+  const alt = L.alt, cover = _scatClamp(L.cover || 0, 0, 1);
+  const golden = _scatClamp((16 - alt) / 10, 0, 1) * _scatClamp((alt + 1.5) / 3, 0, 1) * (1 - 0.8 * cover);
+  const dusk = _scatClamp((1 - alt) / 3, 0, 1) * _scatClamp((alt + 12) / 6, 0, 1) * (1 - 0.5 * cover);
+  return { golden: Math.round(golden * 100) / 100, dusk: Math.round(dusk * 100) / 100 };
+}
+/**
+ * The v2 grade on top of the kit's (sceneLightV2, v2 scenes only; v1 light is never touched):
+ *  - golden hour: an amber key that warms the highlights and leaves the darks a little cool (a split tone), a warmer, hazier
+ *    low sky (strongest on the sun's side), a warmer haze;
+ *  - dusk: cooler and pinker (green pulled down, blue and a little red up), a pink low sky;
+ *  - noon: neutral (nothing added);
+ *  - night: the water reflects the night sky (never brighter than it); lamps and lit windows come from the light pass.
+ * Sets L.grade (the factors), L.grade2 (hex -> hex, applied by sceneTone after the kit's grade), and adjusts L.low, L.lowSun,
+ * L.mid, L.atmos.col, L.water in place.
+ */
+function sceneLightGradeV2(L) {
+  if (!L) return L;
+  const G = sceneGradeAt(L), g = G.golden, du = G.dusk, dark = _scatClamp(L.dark || 0, 0, 1);
+  L.grade = G;
+  const sunSide = 0.4 + 0.6 * _scatClamp((L.backlit || 0) * 1.6, 0, 1);
+  if (g > 0.01) {
+    L.low = _scatMix(L.low, '#f6c596', 0.38 * g * sunSide);
+    L.lowSun = _scatMix(L.lowSun, '#ffaa62', 0.35 * g);
+    L.mid = _scatMix(L.mid, '#d9c4b4', 0.14 * g);
+    if (L.atmos) L.atmos.col = _scatMix(L.atmos.col, '#efc497', 0.32 * g);
+    if (L.light) L.light = _scatMix(L.light, '#ffb066', 0.4 * g);
+  }
+  if (du > 0.01) {
+    L.low = _scatMix(L.low, '#d99aae', 0.22 * du);
+    L.mid = _scatMix(L.mid, '#8a86b8', 0.12 * du);
+    if (L.atmos) L.atmos.col = _scatMix(L.atmos.col, '#a98fb0', 0.25 * du);
+  }
+  if (g > 0.01 || du > 0.01) {
+    const memo = new Map();
+    L.grade2 = (hex) => {
+      let v = memo.get(hex);
+      if (v) return v;
+      let s = hex.slice(1); if (s.length === 3) s = s.replace(/./g, '$&$&');
+      const n = parseInt(s, 16);
+      let r = (n >> 16 & 255) / 255, gr = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+      const lum = 0.3 * r + 0.59 * gr + 0.11 * b;
+      if (g > 0.01) {
+        const wk = g * (0.4 + 0.6 * lum), ck = g * (1 - lum);
+        r *= 1 + 0.17 * wk - 0.04 * ck; gr *= 1 + 0.02 * wk; b *= 1 - 0.32 * wk + 0.08 * ck;
+      }
+      if (du > 0.01) { r *= 1 + 0.03 * du; gr *= 1 - 0.1 * du; b *= 1 + 0.1 * du; }
+      v = '#' + [r, gr, b].map(x => Math.round(_scatClamp(x, 0, 1) * 255).toString(16).padStart(2, '0')).join('');
+      memo.set(hex, v);
+      return v;
+    };
+  }
+  // night water: the sky's own colours (far: the sky low down, near: the sky high up), a touch darker than the sky it mirrors,
+  // so open water never glows brighter than the sky; the lights and the moon are added by the water pass (reflections, glint)
+  const water0 = L.water;
+  if (typeof water0 === 'function' && dark > 0.05) {
+    const n = _scatClamp((dark - 0.05) * 1.25, 0, 1) * 0.9, dk = (c, k) => _scatMix(c, '#05070c', k);
+    L.water = (base) => { const w = water0(base); return [_scatMix(w[0], dk(L.low, 0.18), n), _scatMix(w[1], dk(L.mid, 0.25), n), _scatMix(w[2], dk(L.top, 0.3), n)]; };
   }
   return L;
 }

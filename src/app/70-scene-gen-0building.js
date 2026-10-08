@@ -251,6 +251,14 @@ function _scbgModel(b, sp, foot) {
   const Q = (s, t, z) => { const [p0, p1, p2, p3] = foot; return [(1 - s) * (1 - t) * p0[0] + s * (1 - t) * p1[0] + s * t * p2[0] + (1 - s) * t * p3[0], z, (1 - s) * (1 - t) * p0[1] + s * (1 - t) * p1[1] + s * t * p2[1] + (1 - s) * t * p3[1]]; };
   let roof = sp.roof;
   if (!quad && roof !== 'flat') roof = 'ring';
+  // a free-standing block much deeper than its front (an OSM warehouse whose front is its short end): the ridge runs along the
+  // length, gables at the ends (integration, 8 Oct: Merchant's Warehouse drew a 10 m gable along its 50 m side). Terraces keep
+  // the ridge parallel to the street (their party walls carry the gables).
+  // The same for a gable roof on a block much wider than deep (OSM's roof:shape=gabled has its ridge along the longest side).
+  if (quad && !/left|right|both/.test(sp.party || '')) {
+    if (roof === 'pitched-side' && Dp > W * 1.25) roof = 'gable';
+    else if (roof === 'gable' && W > Dp * 1.25 && !sp.dutch) roof = 'pitched-side';
+  }
   const tp = Math.tan(sp.pitch * _scbgD2R);
   let H = E0, roofZ = () => E0, tops = null;   // tops: per wall edge, extra vertices above the eave (gables) as [[s, z], ...] in edge order
   const E = E0 + (roof === 'flat' ? par : 0), wallE = E + (roof === 'flat' ? 0 : par);
@@ -434,8 +442,8 @@ const _scbgLayouts = {
     const door = load >= 0 ? load : Math.floor(n / 2);
     for (let f = 0; f < nS; f++) for (let i = 0; i < n; i++) {
       if (i === load) {
-        if (f === 0) out.elems.push({ k: 'door', s: c[i] - 1.1, z: 0.02, w: 2.2, h: Math.min(3.2, zs[1] - 0.4), head: 'seg', col: g.doorCol || '#3a2a1e', panels: 0, boards: true, recess: 0.25 });
-        else out.elems.push({ k: 'door', s: c[i] - 0.8, z: zs[f] + 0.05, w: 1.6, h: Math.min(2.2, zs[f + 1] - zs[f] - 0.5), head: 'seg', col: g.doorCol || '#3a2a1e', panels: 0, boards: true, recess: 0.15, loading: true });
+        if (f === 0) out.elems.push({ k: 'door', s: c[i] - 1.1, z: 0.02, w: 2.2, h: Math.min(3.2, zs[1] - 0.4), head: 'seg', col: g.doorCol || '#3a2a1e', panels: 0, planks: true, recess: 0.25 });
+        else out.elems.push({ k: 'door', s: c[i] - 0.8, z: zs[f] + 0.05, w: 1.6, h: Math.min(2.2, zs[f + 1] - zs[f] - 0.5), head: 'seg', col: g.doorCol || '#3a2a1e', panels: 0, planks: true, recess: 0.15, loading: true });
         continue;
       }
       if (f === 0 && i === door && load < 0) { out.elems.push({ k: 'door', s: c[i] - 0.6, z: 0.02, w: 1.2, h: 2.4, head: 'seg', panels: 2, recess: 0.2 }); continue; }
@@ -829,7 +837,7 @@ function _scbgDrawDoor(e, face, ctx, T) {
   }
   if (T >= 3 && leaf && !e.glass) {
     const segs = [];
-    if (e.boards) { for (let k = 1; k < 6; k++) { const p = _scbgMap(pl, view, [[e.s + e.w * k / 6 - 0.012, e.z + 0.05], [e.s + e.w * k / 6 + 0.012, e.z + 0.05], [e.s + e.w * k / 6 + 0.012, e.z + leafH - 0.05], [e.s + e.w * k / 6 - 0.012, e.z + leafH - 0.05]], o); if (p) segs.push(_scbgPath(p)); } }
+    if (e.planks) { for (let k = 1; k < 6; k++) { const p = _scbgMap(pl, view, [[e.s + e.w * k / 6 - 0.012, e.z + 0.05], [e.s + e.w * k / 6 + 0.012, e.z + 0.05], [e.s + e.w * k / 6 + 0.012, e.z + leafH - 0.05], [e.s + e.w * k / 6 - 0.012, e.z + leafH - 0.05]], o); if (p) segs.push(_scbgPath(p)); } }
     else if (e.panels) {
       const cols = e.panels >= 4 ? 2 : 1, rows = e.panels >= 4 ? 2 : Math.max(1, e.panels);
       for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
@@ -839,7 +847,7 @@ function _scbgDrawDoor(e, face, ctx, T) {
     }
     if (segs.length) sink.add(7, { f: _scbgDark(col, 0.28), d: segs.join(''), op: 0.8, part: 'body', detail: true });
     const knob = _scbgMap(pl, view, [[e.s + e.w * 0.78, e.z + 1.0], [e.s + e.w * 0.78 + 0.05, e.z + 1.0], [e.s + e.w * 0.78 + 0.05, e.z + 1.05], [e.s + e.w * 0.78, e.z + 1.05]], o);
-    if (knob && !e.boards) sink.add(8, { f: '#c8a850', d: _scbgPath(knob), op: 1, part: 'body', detail: true });
+    if (knob && !e.planks) sink.add(8, { f: '#c8a850', d: _scbgPath(knob), op: 1, part: 'body', detail: true });
   }
   if (T >= 2 && st.door && st.door.step !== false && !e.loading) { const stp = _scbgRect(pl, view, e.s - 0.1, 0, e.w + 0.2, Math.max(0.05, e.z), 0.25); if (stp && e.z > 0.05) sink.add(7, { f: '#a8a49a', d: _scbgPath(stp), op: 1, part: 'body' }); }
   if (T >= 2 && (e.head || 'flat') === 'flat' && !e.case && !e.glass && !(st.door && st.door.lintel === false)) {
@@ -1407,6 +1415,7 @@ function sceneGenExpand(data, C, cam) {
     const it = { o: obj, v: 0, x: direct.anchor[0], y: direct.anchor[1], s: 1, flip: false, layer: typeof sceneDepthBand === 'function' && cam && cam.bands ? sceneDepthBand(cam, direct.dc) : null, haze: null, tint: null,
       season, seed, z: direct.anchor[1], strip: -1, anim: [], glowOn: null, shadow: false, reflect: true, lit: direct.lit.length > 0,
       g: { x: _scbgR1(direct.foot.reduce((s, p) => s + p[0], 0) / direct.foot.length), d: direct.dc, h: 0, surf: null, snapped: 0 }, dz: direct.dc, cls: 'building', view: 'side', direct, shade: false, gen: b._k };
+    if (b.subject) it.subject = true;   // the scene's subject (the composer, the editor): the lint and the critic find it
     items.push(it);
     buildings.push({ i: items.length - 1, foot: direct.foot, h: direct.h, eave: direct.eave, roof: direct.roof, style: direct.style, seed, src: b.src || 'gen' });
     if (data.signage) for (const sg of direct.signs) signs.push(Object.assign({ i: items.length - 1 }, sg));

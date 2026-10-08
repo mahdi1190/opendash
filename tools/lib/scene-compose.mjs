@@ -127,7 +127,11 @@ export function parseBrief(text, { places = [] } = {}) {
     if (take(state, n)) { out.place = { name: p.name, lat: p.lat, lon: p.lon, src: p.src || 'gazetteer' }; break; }
   }
   // the subject
+  // "the mill" (a subject named with an article) wins over a bare subject word inside the place name ("Castlefield Basin, ... the mill")
   const subjPhrases = Object.entries(SUBJECTS).flatMap(([id, s]) => s.words.map(w => [w, id])).sort((a, b) => b[0].length - a[0].length);
+  for (const [w, id] of subjPhrases) {
+    if (take(state, 'the ' + w)) { if (!out.subject) out.subject = { kind: id, word: w }; }
+  }
   for (const [w, id] of subjPhrases) {
     if (take(state, w)) { if (!out.subject) out.subject = { kind: id, word: w }; }
   }
@@ -242,7 +246,8 @@ export function layoutFromOsm(response, { lat, lon }) {
         const kind = t.building && t.building !== 'yes' ? t.building : (t.amenity || t.historic || 'yes');
         const b = { id, poly, h: heightOf(t, kind), levels: Number(t['building:levels']) || null, tags: t, name, kind, area: polyArea(poly) };
         L.buildings.push(b);
-        if (isLandmark || name && (t.historic || t.amenity || t.tourism)) L.features.push({ id, kind: featureKind(t), e: centroid(poly)[0], n: centroid(poly)[1], h: b.h, r: Math.sqrt(b.area / Math.PI), name, tags: t, poly });
+        const byName = name && !isLandmark ? subjectByName(name) : null;   // "Merchant's Warehouse" (building=yes) is a mill subject by its name
+        if (isLandmark || byName || name && (t.historic || t.amenity || t.tourism)) L.features.push({ id, kind: byName || featureKind(t), e: centroid(poly)[0], n: centroid(poly)[1], h: b.h, r: Math.sqrt(b.area / Math.PI), name, tags: t, poly });
       }
       continue;
     }
@@ -292,6 +297,12 @@ export function layoutFromOsm(response, { lat, lon }) {
   for (const k of ['buildings', 'water', 'ways', 'areas', 'features']) L[k].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return L;
 }
+/** The subject kind a building's NAME gives (a whole word: "Warehouse", "Mill", "Chapel"), or null. */
+function subjectByName(name) {
+  const w = ' ' + tokenise(name) + ' ';
+  for (const [id, s] of Object.entries(SUBJECTS)) if (id !== 'tree' && s.words.some(x => w.includes(' ' + x + ' '))) return id;
+  return null;
+}
 function featureKind(t) {
   for (const [id, s] of Object.entries(SUBJECTS)) if (s.tags.some(([k, v]) => tagIs(t, k, v))) return id;
   return t.historic ? 'monument' : t.tourism || t.amenity || 'landmark';
@@ -307,9 +318,20 @@ export function findSubject(layout, brief) {
   const want = brief && brief.subject ? SUBJECTS[brief.subject.kind] : null;
   const dist = (f) => Math.hypot(f.e, f.n);
   const notable = (f) => (f.name ? 2 : 0) + (f.tags && (f.tags.historic || f.tags.tourism) ? 1 : 0) + Math.min(2, (f.h || 0) / 20) + Math.min(1, (f.r || 0) / 20);
-  let pool = want ? fs.filter(f => want.tags.some(([k, v]) => tagIs(f.tags, k, v))) : fs.filter(f => f.kind !== 'tree');
+  let pool = want ? fs.filter(f => want.tags.some(([k, v]) => tagIs(f.tags, k, v)) || (f.name && f.kind === brief.subject.kind)) : fs.filter(f => f.kind !== 'tree');
   // a word that names it ("the mill"): prefer features whose name has the word
-  if (want && brief.subject.word) { const named = pool.filter(f => f.name && tokenise(f.name).includes(brief.subject.word)); if (named.length) pool = named; }
+  if (want && brief.subject.word) {
+    const has = (f, w) => f.name && (' ' + tokenise(f.name) + ' ').includes(' ' + w + ' ');
+    const exact = pool.filter(f => has(f, brief.subject.word)), named = exact.length ? exact : pool.filter(f => want.words.some(w => has(f, w)));
+    if (named.length) pool = named;
+    // the other words of the brief that name one of them ("the Merchants Warehouse") pick it
+    const extra = (brief.unknown || []).filter(w => w.length > 2);
+    if (extra.length) {
+      const score = (f) => { const n = ' ' + tokenise(String(f.name || '').replace(/[’']s\b/g, 's')) + ' '; return extra.filter(w => n.includes(' ' + w + ' ')).length; };
+      const top = Math.max(0, ...pool.map(score));
+      if (top > 0) pool = pool.filter(f => score(f) === top);
+    }
+  }
   if (!pool.length) return null;
   pool = pool.slice().sort((a, b) => (notable(b) - notable(a)) || (dist(a) - dist(b)) || (a.id < b.id ? -1 : 1));
   const f = pool[0];
@@ -497,8 +519,10 @@ export function standable(layout, e, n, presetId) {
     const nearB = (layout.buildings || []).some(b => b.h >= 7 && distToLine(b.poly.concat([b.poly[0]]), e, n).d <= 6);
     return nearB || onBridge ? { ok: true, on: onBridge ? 'bridge' : 'window', raised: true } : { ok: false, why: 'nothing to stand on above the ground (a bridge or an upper window)' };
   }
+  // nobody stands on a tram or rail line (integration, 8 Oct: the Old Market Square draft stood on the tramway)
+  for (const w of layout.ways || []) if ((w.kind === 'rail' || w.kind === 'tramway') && distToLine(w.line, e, n).d <= w.width / 2 + 0.5) return { ok: false, why: 'on a tram or rail line' };
   for (const w of layout.ways || []) {
-    if (w.kind === 'rail') continue;
+    if (w.kind === 'rail' || w.kind === 'tramway') continue;
     const d = distToLine(w.line, e, n).d;
     if (w.kind === 'road') { if (d <= w.width / 2 + 3) return { ok: true, on: d <= w.width / 2 ? 'road (the pavement)' : 'pavement' }; }
     else if (d <= w.width / 2 + 1.5) return { ok: true, on: w.kind };
@@ -589,7 +613,7 @@ function featureSpots(layout, subject, P, r0, r1x) {
   }
   return out.map(([e, n]) => [r1(e), r1(n)]);
 }
-function rangeScore(v, [lo, hi]) { if (v >= lo && v <= hi) return 1; const w = (hi - lo) || 0.1; return clamp(1 - (v < lo ? lo - v : v - hi) / w, 0, 1); }
+function rangeScore(v, [lo, hi], k = 1) { if (v >= lo && v <= hi) return 1; const w = ((hi - lo) || 0.1) / k; return clamp(1 - (v < lo ? lo - v : v - hi) / w, 0, 1); }
 function scoreCandidate(layout, subject, P, c, opts) {
   const cam = { e: c.e, n: c.n, heading: c.heading, eye: c.eye, fov: c.fov, horizon: c.horizon };
   const occ = occlusion(layout, subject, cam);
@@ -630,8 +654,8 @@ function scoreCandidate(layout, subject, P, c, opts) {
   const thirds = Math.abs(frame.xFrac - (c.side < 0 ? 1 / 3 : 2 / 3)) <= 0.08 ? 1 : 0.4;
   const lead = frame.lines.some(l => Math.min(Math.abs(l.vp - frame.X), Math.abs(l.vp - 1600 * (c.side < 0 ? 1 / 3 : 2 / 3))) <= 0.15 * 1600) ? 1 : frame.lines.length ? 0.5 : 0.2;
   // the leading line counts only for the presets that want one (street, raised, down-street)
-  parts.composition = P.lines ? r3(0.15 * thirds + 0.25 * rangeScore(frame.size, subjR) + 0.25 * rangeScore(frame.sky, P.sky || skyR) + 0.35 * lead)
-    : r3(0.3 * thirds + 0.35 * rangeScore(frame.size, subjR) + 0.35 * rangeScore(frame.sky, P.sky || skyR));
+  parts.composition = P.lines ? r3(0.15 * thirds + 0.25 * rangeScore(frame.size, subjR, 5) + 0.25 * rangeScore(frame.sky, P.sky || skyR) + 0.35 * lead)
+    : r3(0.3 * thirds + 0.35 * rangeScore(frame.size, subjR, 5) + 0.35 * rangeScore(frame.sky, P.sky || skyR));
   // uniqueness against the siblings' fingerprints: preset, horizon bucket, heading class, third
   const sibs = opts.siblings || [];
   let uniq = 1;
@@ -822,7 +846,9 @@ export function draftRecipe({ brief, place, subject, view, sections, pack, id, p
   const tree = pick ? pick('tree', ['deciduous']) || pick('tree', []) : 'tree.oak';
   if (tree && (P.preset === 'through-arch' || P.preset === 'street')) {
     const sides = P.preset === 'through-arch' ? [-1, 1] : [view.side > 0 ? -1 : 1];   // the side away from the subject
-    for (const s of sides) place_.push({ obj: tree, at: [r1(s * 7.5), 6.5], layer: 'front', k: 1.1, src: 'compose' });
+    // the trunk just inside the frame edge (a trunk beyond the view's ground is refused: integration, 8 Oct)
+    const dF = 6.5, xF = 0.9 * dF * Math.tan((P.fov || 66) / 2 * RAD);
+    for (const s of sides) place_.push({ obj: tree, at: [r1(s * xF), dF], layer: 'front', k: 1.1, src: 'compose' });
   }
   // scatter: trees on the green surfaces, shrubs on verges and banks (smart scatter keeps them off hard ground, V2 11)
   const green = surfaces.filter(s => ['park', 'grass', 'garden', 'heath', 'meadow', 'wood'].includes(s.kind)).map(s => s.id);
@@ -841,6 +867,9 @@ export function draftRecipe({ brief, place, subject, view, sections, pack, id, p
   if (walks.length) flows.push({ id: 'walkers', kind: 'walk', on: walks.map(s => s.id), density: 0.6, profile: 'town', mix: 'kit', both: true, max: 14 });
   const tows = surfaces.filter(s => s.kind === 'towpath' || s.kind === 'cycleway');
   if (tows.length) flows.push({ id: 'cycles', kind: 'cycle', on: tows.map(s => s.id), density: 0.3, profile: 'leisure', mix: 'kit', max: 3 });
+  // trams on every tram line in view (integration, 8 Oct: the composer made none), on a timetable (D's rail profile)
+  const tramLines = surfaces.filter(s => s.kind === 'tramway' || (s.kind === 'rail' && s.tram));
+  if (tramLines.length) flows.push({ id: 'trams', kind: 'tram', on: tramLines.map(s => s.id), timetable: { every: 6, dwell: 20 }, max: 2 });
   const ways = S.water.filter(w => ['canal', 'river'].includes(w.kind));
   if (ways.length) flows.push({ id: 'boats', kind: 'boat', on: ways.map(w => w.id), density: 0.4, profile: 'boats', mix: 'kit', max: 3 });
   const name = subject.name || place.name;
@@ -861,7 +890,7 @@ export function draftRecipe({ brief, place, subject, view, sections, pack, id, p
   return recipe;
 }
 const r6 = (v) => Math.round(v * 1e6) / 1e6;
-const titleCase = (s) => String(s || '').replace(/\b[a-z]/g, c => c.toUpperCase());
+const titleCase = (s) => String(s || '').replace(/(^|[\s(-])([a-z])/g, (m, a, c) => a + c.toUpperCase());   // not after an apostrophe ("Merchant's")
 
 /* =============================================================================================
    8. The pipeline
@@ -890,6 +919,11 @@ export async function compose(text, opts = {}) {
   const layout = layoutFromOsm(response, { lat: place.lat, lon: place.lon });
   const subject = findSubject(layout, brief);
   if (!subject) throw new Error(`no ${brief.subject ? brief.subject.kind : 'landmark'} found in the OpenStreetMap data within 750 m of ${place.name}: name the subject ("the church", "the mill") or move --at`);
+  // a library landmark that will stand for the subject is drawn at ITS real height (the Council House with its dome is 61 m, not
+  // the 25 m of a hall): the viewpoint search must frame that (integration, 8 Oct: the draft's subject filled 61 % of the frame)
+  if (typeof opts.objects === 'function' && typeof opts.realOf === 'function') {
+    try { const lm = opts.objects(subject); const h = lm ? opts.realOf(lm) : null; if (h > 0) subject.h = h; } catch { /* the OSM height stays */ }
+  }
   const cands = searchViewpoints(layout, subject, preset, { candidates: opts.candidates || 24, seed: opts.seed, siblings: opts.siblings || [], terrain: opts.terrain, cameraModule: opts.cameraModule });
   if (!cands.length) throw new Error(`no viewpoint for the ${preset} preset: no walkable ground in the ring round ${subject.name || subject.kind} (try another preset or --at)`);
   const best = cands[0];
@@ -923,6 +957,14 @@ export async function compose(text, opts = {}) {
   const view = Object.assign({}, best);
   const recipe = draftRecipe({ brief, place: Object.assign({}, place, { lat0: clat, lon0: clon }), subject, view, sections, pack: opts.pack, id, presetCam, kits: opts.kits, pick: opts.pick, region: opts.region, date: opts.date });
   recipe.scene.view = { lat: r6(place.lat), lon: r6(place.lon) };   // the place; the camera carries where it stands
+  // the imported entries the draft kept as E made them are E's own (17.1): a later `scene osm --into` replaces them instead of
+  // keeping them as hand edits. The draft adds keys to some (water colours, anim), so the hashes are taken from the final entries.
+  const osmMod = await tryImport('./osm-project.mjs');
+  if (osmMod && typeof osmMod.entryHash === 'function' && recipe.scene.source && recipe.scene.source.osm) {
+    const own = [];
+    for (const sec of ['surfaces', 'water', 'buildings', 'place', 'scatter']) for (const e of recipe.scene[sec] || []) if (e && e.src === 'osm') own.push(osmMod.entryHash(sec, e));
+    recipe.scene.source.osm = Object.assign({}, recipe.scene.source.osm, { own });
+  }
   const alt = cands.slice(1, 3).map(c => ({ e: c.e, n: c.n, heading: c.heading, horizon: c.horizon, score: c.score, parts: c.parts, occlusion: c.occ.share, standOn: c.standOn, latlon: enu(place.lat, place.lon).from(c.e, c.n).map(r6) }));
   const report = {
     v: 1, brief: { text: brief.text, place: brief.place && brief.place.name, at: brief.at, preset, weather: brief.weather, season: brief.season, subject: brief.subject, unknown: brief.unknown },

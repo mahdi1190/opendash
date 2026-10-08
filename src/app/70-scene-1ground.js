@@ -112,8 +112,9 @@ const SCENE_PLACE_RULES = Object.freeze({
   'bird-ground': _scgrRule(_SCGR_WALK.concat(['rooftop', 'edge', 'mud', 'verge', 'field', 'bridge']), 3),
   'bird-air': _scgrRule([], 0, { exempt: true }),
   air: _scgrRule([], 0, { exempt: true }),
-  tree: _scgrRule(_SCGR_PLANT, 4, { pit: ['pavement', 'plaza'] }),
-  shrub: _scgrRule(_SCGR_PLANT, 3, { pit: ['pavement', 'plaza'], edgeOn: ['reedbed', 'mud'] }),
+  // pit: a tree or shrub in a pit in hard ground, only with pit: true (a street tree; a mapped tree in a square, yard or car park)
+  tree: _scgrRule(_SCGR_PLANT, 4, { pit: ['pavement', 'plaza', 'plot', 'parking'] }),
+  shrub: _scgrRule(_SCGR_PLANT, 3, { pit: ['pavement', 'plaza', 'plot', 'parking'], edgeOn: ['reedbed', 'mud'] }),
   cover: _scgrRule(Object.keys(SCENE_SURFACE_KINDS).filter(k => k !== 'water'), 1.5, { cover: true }),
   street: _scgrRule(['pavement', 'plaza', 'platform', 'path', 'towpath', 'park', 'grass', 'lawn', 'garden', 'parking', 'bridge', 'edge'], 1.5, { kerbside: 0.6 }),
   rail: _scgrRule(['rail', 'platform', 'tramway'], 1.5),
@@ -809,7 +810,10 @@ function _scgrRidges(G) {
     if (pts[0][0] > -200) poly.splice(1, 0, [-200, pts[0][1]]);
     if (pts[pts.length - 1][0] < 1800) poly.splice(poly.length - 1, 0, [1800, pts[pts.length - 1][1]]);
     const t0 = ri / Math.max(1, ridges.length - 1), col = _scgrMix(_scgrMix(cols[0], cols[1], t0), _SCGR_HAZE, _scgrHaze(G, d));
-    const layer = r.band ? Math.max(0, (cam.bands.find(b => b.id === r.band) || { i: sceneDepthBand(cam, d) }).i) : sceneDepthBand(cam, d);
+    // the band of its DEPTH (integration, 8 Oct: the terrain tool names its ridges near / mid / far by ITS bands; a 'near' ridge
+    // 1.3 km away went into the scene's near band and covered the far shore). A named band counts only when the depth is in it.
+    const named = r.band ? cam.bands.find(b => b.id === r.band) : null;
+    const layer = named && named.d0 != null && d >= named.d0 && (named.d1 == null || d < named.d1) ? named.i : sceneDepthBand(cam, d);
     G.ground.push({ layer, d: _scgrPathD([poly]), fill: col, ridge: true });
   });
 }
@@ -1403,6 +1407,36 @@ function _scgrAnimLod(G, C) {
   C.stats.staticItems = C.items.filter(i => !i.anim.length && i.strip < 0).length;
   C.problems.push({ rule: 'animLod', sev: 'info', i: null, obj: null, at: null, msg: `animation kept still on ${small} small item(s) and ${over} over the animated-area budget (${Math.round(used / 1000)}k of ${SCENE_V2_ANIM.area / 1000}k units^2)`, fix: "give a placement anim: {...} to keep its motion" });
 }
+/**
+ * Movers behind a building stay still (integration, 8 Oct). A moving part is drawn each frame OVER its bake group's bitmap, so a
+ * swaying tree behind a projected building (drawn later in the same group) showed through the facade. Each animated item with a
+ * building, structure or landmark drawn after it in the same bake group whose screen box overlaps it is baked still instead.
+ */
+function _scgrOccludedStill(C) {
+  const big = (it) => !!it.direct || it.cls === 'building' || it.cls === 'structure' || it.cls === 'landmark';
+  if (!C.items.some(big)) return;
+  const plan = typeof sceneBakePlan === 'function' ? sceneBakePlan(C) : C.layers.map(l => ({ layers: [l.i] }));
+  const groupOf = [];
+  plan.forEach((gr, gi) => gr.layers.forEach(l => { groupOf[l] = gi; }));
+  const boxes = C.items.map(it => (big(it) ? _scgrItemBox(it) : null));
+  const ov = (a, b) => a && b && !(a[2] <= b[0] || a[0] >= b[2] || a[3] <= b[1] || a[1] >= b[3]);
+  let n = 0;
+  C.items.forEach((it, i) => {
+    if (!it.anim || !it.anim.length || it.strip >= 0 || big(it)) return;
+    const b = _scgrItemBox(it);
+    for (let j = i + 1; j < C.items.length; j++) {
+      const o = C.items[j];
+      if (!boxes[j] || (o.anim && o.anim.length) || groupOf[o.layer] !== groupOf[it.layer]) continue;
+      if (ov(b, boxes[j])) { it.anim = []; n++; break; }
+    }
+  });
+  if (!n) return;
+  const parts = C.items.reduce((m, it) => m + it.anim.reduce((k, a) => k + (a.parts ? a.parts.length : 1), 0), 0);
+  C.stats.animatedDraws += parts - C.stats.animatedParts;
+  C.stats.animatedParts = parts;
+  C.stats.staticItems = C.items.filter(x => !x.anim.length && x.strip < 0).length;
+  C.problems.push({ rule: 'animLod', sev: 'info', i: null, obj: null, at: null, msg: `animation kept still on ${n} item(s) behind a building (moving parts draw over the baked layer)`, fix: 'none needed' });
+}
 /** The screen box of a compiled item (scene units), from its object's box. */
 function _scgrItemBox(it) {
   if (it.direct && it.direct.box) return it.direct.box;
@@ -1468,6 +1502,7 @@ function sceneCompileV2Finish(G, C) {
     for (const oi of idx) C.items.push(old[oi]);
     for (const st of C.strips) st.items = st.items.map(k => map.get(k));
   }
+  _scgrOccludedStill(C);
   _scgrAnimLod(G, C);
   // D: flows; C: atmosphere, weather, lights (each guarded: a missing builder removes only its feature)
   const v1Draws = C.stats.animatedDraws;

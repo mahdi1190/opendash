@@ -188,7 +188,9 @@ function pageOpts(root, s, extra = {}, args = {}) {
 }
 async function measurePerf(chrome, root, s, args) {
   const page = await harness();
-  const res = await page.scenePerf(chrome, pageOpts(root, s, { seconds: Number(args.seconds) || 3, rebake: !!args.rebake }, args));
+  // with the GPU, no per-frame pixel read-back: reading one pixel stalls the GPU pipeline every frame (about 40 ms); the software
+  // raster is flushed so its time includes the rasterisation (integration, 8 Oct)
+  const res = await page.scenePerf(chrome, pageOpts(root, s, Object.assign({ seconds: Number(args.seconds) || 3, rebake: !!args.rebake }, args.gpu ? { flush: false } : {}), args));
   return res || { skipped: 'no stats from the page' };
 }
 
@@ -446,9 +448,8 @@ const sceneCommand = {
     const reg = loadRegistry(root, { fresh: true }), E = engineOf(reg);
 
     /* ----- new ----- */
-    // a v2 recipe with --preset (or --v2, --osm, --terrain); without them the v1 scaffold for now (tests/scene-tool.test.mjs expects it:
-    // the default turns to v2 once that test passes --v1, V2 16.3)
-    if (sub === 'new' && !args.v1 && !args.archetype && (args.v2 || args.preset || args.osm || args.terrain)) {
+    // a v2 recipe by default (V2 16.3; integration, 8 Oct): --v1 (or --archetype, a v1 archetype scene) keeps the old scaffold
+    if (sub === 'new' && !args.v1 && !args.archetype) {
       const [pack, id0] = rest;
       let card = {};
       if (args.brief) { if (!existsSync(args.brief)) throw new Error(`no brief ${args.brief}`); card = briefCard(readFileSync(args.brief, 'utf8')); }

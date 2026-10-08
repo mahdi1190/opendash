@@ -106,7 +106,7 @@ const command = {
     const res = await compose(brief, {
       pack, id: args.id || null, at, date: args.date || null, candidates: args.candidates ? Number(args.candidates) : 24, seed: args.seed != null ? Number(args.seed) : undefined,
       places: gazetteer(reg), geocode, osm, fetchOsm, project,
-      terrain: null, siblings, kits, pick: picker(E, kits), objects: landmarkMatcher(E), styles, region: pack.startsWith('uk-') ? ['GB-ENG'] : [], root,
+      terrain: null, siblings, kits, pick: picker(E, kits), objects: landmarkMatcher(E), realOf, styles, region: pack.startsWith('uk-') ? ['GB-ENG'] : [], root,
       cameraModule: { SCENE_CAMERA_PRESETS: reg.R.get('SCENE_CAMERA_PRESETS'), sceneCameraPreset: reg.R.get('sceneCameraPreset') },
     });
     if (terrainMod) notes.push('terrain: run scene terrain --into the draft for the ridges (builder E)');

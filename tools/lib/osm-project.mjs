@@ -175,14 +175,16 @@ export function osmProject(data, cam, opts = {}) {
       const inside = near.filter(p => pointInRing(p, ring)).length / near.length;
       if (inside < 0.6) continue;
       const A = Math.abs(ringArea(ring)), per = lineLength(ring.concat([ring[0]])), wEst = 2 * A / per;
-      if (wl.kind === 'canal' && wa.kind === 'canal' && wEst < 30) { if (!T.parseMetres(wl.tags.width)) wl.width = Math.max(4, Math.min(30, r1(wEst))); wa.drop = 'canal-line'; }
+      // a mapped canal outline wins over its centreline (integration, 8 Oct: Castlefield): it is the real shape, with its wharves,
+      // arms and basins; the line keeps the estimated width for the towpath test below
+      if (wl.kind === 'canal' && wa.kind === 'canal') { if (!T.parseMetres(wl.tags.width)) wl.width = Math.max(4, Math.min(30, r1(wEst))); wl.drop = 'in-basin'; }
       else if (wl.kind === 'river' && (wa.kind === 'river' || wa.kind === 'lake')) wl.drop = 'in-area';
     }
   }
   // a river centreline with no width tag and no outline around it is a small river
   for (const wl of waterLines) if (wl.kind === 'river' && !wl.drop && !T.parseMetres(wl.tags.width) && T.WATER_LINES[wl.waterway] && T.WATER_LINES[wl.waterway].alone) wl.width = T.WATER_LINES[wl.waterway].alone;
   // 3. towpaths (a path along a canal), embedded tram lines (a tram on a road)
-  const canals = waterLines.filter(w => w.kind === 'canal' && !w.drop).map(w => ({ g: geo(w), width: w.width }));
+  const canals = waterLines.filter(w => w.kind === 'canal' && (!w.drop || w.drop === 'in-basin')).map(w => ({ g: geo(w), width: w.width }));
   for (const p of paths) {
     if (!['path', 'track', 'cycleway', 'pavement'].includes(p.kind)) continue;
     if (p.tags.towpath === 'yes' || canals.length && fracNear(geo(p), canals, o => o.width / 2 + 6) >= 0.6) p.kind = 'towpath';
@@ -231,6 +233,11 @@ export function osmProject(data, cam, opts = {}) {
   // library landmarks matched by name (each used once, the best match)
   const landmarks = lib ? lib.filter(o => o.category === 'landmark') : [];
   const used = new Set();
+  // the towns of this data (addr:city): a landmark object named for another town ('mcr-central-library') never stands in for a
+  // local namesake (integration, 8 Oct: Nottingham's Central Library drew Manchester's)
+  const cities = new Set();
+  for (const e of nodes.concat(ways)) { const c = e.tags && (e.tags['addr:city'] || e.tags['is_in:city']); if (c) for (const w of T.nameTokens(c)) cities.add(w); }
+  const TOWN_PREFIX = { mcr: 'manchester', ldn: 'london', bham: 'birmingham', sheff: 'sheffield', notts: 'nottingham' };
   const matchLandmark = (tags) => {
     const nm = tags.name; if (!nm || !landmarks.length) return null;
     const toks = T.nameTokens(nm), slug = T.slugOf(nm);
@@ -241,6 +248,10 @@ export function osmProject(data, cam, opts = {}) {
       const place = (o.tags || []).find(t => /^place:/.test(t)), pslug = place ? place.split('/').pop() : '';
       const idToks = T.nameTokens(o.id.replace(/^landmark\./, '')), shared = toks.filter(w => idToks.includes(w)).length;
       let score = pslug && pslug === slug ? 2 : shared / toks.length >= 0.66 && shared >= Math.min(2, toks.length) ? shared / (toks.length + idToks.length - shared) : 0;
+      if (score > 0 && cities.size && idToks.length > shared && !toks.includes(idToks[0])) {
+        const town = TOWN_PREFIX[idToks[0]] || idToks[0];
+        if (!cities.has(town) && !(o.tags || []).some(t => cities.has(t))) score = 0;
+      }
       if (score > 0 && (!best || score > best.score)) best = { id: o.id, score };
     }
     return best ? best.id : null;
@@ -288,17 +299,28 @@ export function osmProject(data, cam, opts = {}) {
       }
     };
     const rank = { track: 1, path: 2, towpath: 2, cycleway: 3, steps: 3, plaza: 4, pavement: 4, platform: 5, rail: 6, road: 7, tramway: 8, bridge: 9 };
+    // an elevated way (a viaduct, or a long bridge over land) is NOT ground: painted as a surface it lies on the ground under the
+    // arches (integration, 8 Oct: the Castlefield viaducts drew as rails across the towpath). It is left out and listed as a missing
+    // viaduct unless a library landmark stands for it (matched by the bridge's own name elsewhere).
+    const elevated = (w) => {
+      if (!w.bridge) return false;
+      const t = w.tags || {};
+      if (t.bridge === 'viaduct' || (w.layer || 0) >= 2) return true;
+      return w.over !== 'water' && lineLength(w.g) > 60;
+    };
+    const viaduct = new Set();
+    const keepGround = (w) => { if (!elevated(w)) return true; if (clipLine(w.g, planes(4)).length) viaduct.add(w); return false; };
     // bridges (V2 3.1): a deck that carries a road or path over water, rail or road; rails and tram lines on bridges keep their kind + over
-    for (const p of chainedPaths) stripOf(p, p.bridge ? 'bridge' : p.kind, p.bridge ? { carries: 'path', over: p.over, walk: true, drive: p.kind === 'cycleway' || p.kind === 'path' ? ['bike'] : [] } : {});
+    for (const p of chainedPaths.filter(keepGround)) stripOf(p, p.bridge ? 'bridge' : p.kind, p.bridge ? { carries: 'path', over: p.over, walk: true, drive: p.kind === 'cycleway' || p.kind === 'path' ? ['bike'] : [] } : {});
     for (const p of platforms.filter(p => !p.area)) { p.g = geo(p); stripOf(p, 'platform'); }
-    for (const r of chainedRails) stripOf(r, 'rail', Object.assign({ tracks: Math.round(r.width / 3.5) }, r.bridge ? { over: r.over } : {}));
+    for (const r of chainedRails.filter(keepGround)) stripOf(r, 'rail', Object.assign({ tracks: Math.round(r.width / 3.5) }, r.bridge ? { over: r.over } : {}));
     const roadStrips = [];
-    for (const r of chainedRoads) {
+    for (const r of chainedRoads.filter(keepGround)) {
       const before = strips.length;
       stripOf(r, r.bridge ? 'bridge' : 'road', r.crossing ? { markings: r.markings, crossing: true } : r.bridge ? { carries: 'road', over: r.over, walk: true, drive: ['car', 'bus', 'bike', 'tractor'] } : { markings: r.markings });
       for (let i = before; i < strips.length; i++) roadStrips.push(strips[i]);
     }
-    for (const t of chainedTrams) stripOf(t, 'tramway', Object.assign(t.embedded ? { embedded: true } : {}, t.bridge ? { over: t.over } : {}));
+    for (const t of chainedTrams.filter(keepGround)) stripOf(t, 'tramway', Object.assign(t.embedded ? { embedded: true } : {}, t.bridge ? { over: t.over } : {}));
     strips.sort((x, y) => (rank[x.e.kind] || 5) - (rank[y.e.kind] || 5) + (x.e.crossing ? 20 : 0) - (y.e.crossing ? 20 : 0) || x.w.layer - y.w.layer || y.near - x.near);
     const pavements = [];
     for (const s of strips) {
@@ -319,7 +341,10 @@ export function osmProject(data, cam, opts = {}) {
       const kind = w.kind === 'canal' ? 'lake' : w.kind;
       water.push(Object.assign({ id: idOf(w.kind === 'canal' ? 'basin' : kind), kind, poly: ccw(s) }, w.kind === 'canal' ? { base: T.CANAL_LOOK.base.slice(), mirror: T.CANAL_LOOK.mirror, ripple: T.CANAL_LOOK.ripple } : {}, { src: 'osm' }));
     }
+    // a canal line that runs mostly inside a basin kept as its outline is drawn by that outline (a channel over it draws as a trench)
+    const basinRings = waterAreas.filter(w => !w.drop && w.kind === 'canal').map(geo);
     for (const w of chainedWater) {
+      if (w.kind === 'canal' && basinRings.length && w.g.filter(p => basinRings.some(r => pointInRing(p, r))).length >= 0.4 * w.g.length) continue;
       for (const run of clipLine(w.g, planes(w.width / 2 + 1))) {
         const s = roundPts(simplify(run, tol));
         if (s.length < 2 || tooSmall(screenBox(C, s, w.width / 2))) { local.dropped++; continue; }
@@ -399,11 +424,15 @@ export function osmProject(data, cam, opts = {}) {
     const roadLines = chainedRoads.filter(r => !r.crossing && !r.bridge);
     const onRoad = (p) => { let best = null; for (const r of roadLines) { const q = nearestOnLine(p, r.g); const off = q.m - r.width / 2; if (!best || off < best) best = off; } return best == null ? Infinity : best; };
     const trees = [];
+    const greenAreas = areas.filter(a => ['grass', 'lawn', 'park', 'garden', 'meadow', 'heath', 'wood', 'field', 'verge', 'bank'].includes(a.kind)).map(geo);
     for (const x of pl.filter(x => x.tree && x.obj).sort((a, b) => a.f.p[1] - b.f.p[1])) {
       if (treeHidden(x.f.p)) { local.treesHidden = (local.treesHidden || 0) + 1; continue; }
       const off = onRoad(x.f.p);
       if (off < -0.5) { bump('treesOnRoad'); continue; }                        // in the carriageway: a mapping slip, not drawn
       if (off < 2.2 && sidesOf(roadLines.find(r => nearestOnLine(x.f.p, r.g).m - r.width / 2 === off) || { tags: {} }).length) x.pit = true;   // a street tree in the pavement
+      // a mapped tree outside every green area stands in a square, a yard or a car park: in a pit (integration, 8 Oct: Old Market
+      // Square's trees were refused on the plaza and the plot)
+      else if (!greenAreas.some(r => pointInRing(x.f.p, r))) x.pit = true;
       trees.push(x);
       if (trees.length >= (opts.maxTrees || OSM_DEFAULTS.maxTrees)) break;
     }
@@ -425,8 +454,26 @@ export function osmProject(data, cam, opts = {}) {
     for (const s of strips.filter(s => s.e.kind === 'bridge' && s.e.over === 'water')) {
       const g = s.e.path, mid = g[Math.floor(g.length / 2)];
       if (!inWedge(mid, 0, dCut)) continue;
-      if (bridgeObj) { place.push({ obj: bridgeObj, at: [mid[0], mid[1]], over: 'water', src: 'osm' }); bump2('bridge'); }
+      // a footbridge (a deck that carries only a path) is not a brick road arch: listed for the object backlog instead
+      // (integration, 8 Oct: Merchant's Bridge, a curved steel footbridge, drew as a massive arch)
+      if (s.e.carries === 'path') { localMissing.push({ kind: 'footbridge', what: 'a footbridge over water', d: Math.round(mid[1]), h: 4, at: mid, name: (s.w.tags && s.w.tags.name) || null, msg: `a footbridge over water, ${Math.round(Math.hypot(mid[0], mid[1]))} m: no library footbridge (the deck is drawn as a bridge surface)` }); continue; }
+      if (bridgeObj) {
+        // sized to its real span (integration, 8 Oct): a 12 m footbridge over a canal is not a road arch at full size
+        const e = { obj: bridgeObj, at: [mid[0], mid[1]], over: 'water', src: 'osm' };
+        const o = lib.find(x => x.id === bridgeObj), rh = realOf(bridgeObj);
+        let span = 0; for (let i = 1; i < g.length; i++) span += Math.hypot(g[i][0] - g[i - 1][0], g[i][1] - g[i - 1][1]);
+        if (o && Array.isArray(o.size) && o.size[1] > 0 && rh > 0 && span > 0) {
+          const realL = rh * o.size[0] / o.size[1];
+          e.k = Math.round(Math.max(0.3, Math.min(1.6, span / realL)) * 100) / 100;
+        }
+        place.push(e); bump2('bridge');
+      }
       else localMissing.push({ kind: 'bridge', what: 'a bridge over water', d: Math.round(mid[1]), h: 6, at: mid, name: null, msg: `a bridge over water, ${Math.round(Math.hypot(mid[0], mid[1]))} m: no library object` });
+    }
+    for (const w of viaduct) {
+      const run = clipLine(w.g, planes(4))[0], mid = run[Math.floor(run.length / 2)];
+      const what = w.kind === 'rail' || w.kind === 'tramway' ? 'a railway viaduct' : 'an elevated road or path';
+      localMissing.push({ kind: 'viaduct', what, d: Math.round(mid[1]), h: 10, at: [r1(mid[0]), r1(mid[1])], name: (w.tags && w.tags.name) || null, msg: `${what}, ${Math.round(Math.hypot(mid[0], mid[1]))} m: elevated, not drawn as ground (place a library viaduct or bridge landmark there)` });
     }
     return { surfaces, water, buildings: bOut, place, scatter, missing: localMissing, dropped: local.dropped, hidden, near: local.near, treesHidden: local.treesHidden || 0 };
   };

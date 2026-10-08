@@ -176,6 +176,8 @@ const cmd = {
       const sc = target.rec.scene;
       const merged = osmMerge(sc, res);
       merged.scene.camera = Object.assign({}, sc.camera || {}, res.camera);
+      const rp = repointLists(sc, merged.scene);
+      if (rp) err(`flows and scatter: ${rp} surface reference(s) re-pointed to the new import (same kinds)`);
       merged.scene.view = Object.assign({}, sc.view || {}, { lat: sc.view && Number.isFinite(sc.view.lat) ? sc.view.lat : cam.lat, lon: sc.view && Number.isFinite(sc.view.lon) ? sc.view.lon : cam.lon });
       target.rec.scene = merged.scene;
       if (target.isNew && res.report.site.length) target.rec.meta.site = res.report.site[0];
@@ -193,6 +195,36 @@ const cmd = {
   },
 };
 export default cmd;
+
+/**
+ * After a re-import the imported surface and water ids change (a new viewpoint gives new pieces). Flows (`on`) and scatter rules
+ * (`on`, `avoid`) that named the old pieces would then point at nothing: each list keeps the ids that still exist and gains every
+ * new imported id of a kind that one of its vanished ids had. Returns how many lists changed. Hand-named ids that survive are kept.
+ */
+export function repointLists(oldScene, scene) {
+  // kind per id ('water' for every water region: a boat flow sails the basin and the channels alike); imported: src osm
+  const kindOf = (sc) => { const m = new Map(); for (const s of (sc.surfaces || [])) if (s && s.id) m.set(s.id, s.kind); for (const w of (sc.water || [])) if (w && w.id) m.set(w.id, 'water'); return m; };
+  const before = kindOf(oldScene || {}), now = kindOf(scene);
+  const imported = [...(scene.surfaces || []), ...(scene.water || [])].filter(e => e && e.id && e.src === 'osm').map(e => e.id);
+  const wasImported = new Set([...(oldScene.surfaces || []), ...(oldScene.water || [])].filter(e => e && e.id && /^osm/.test(e.src || '')).map(e => e.id));
+  let changed = 0;
+  // a list that named imported pieces now names EVERY imported piece of those kinds (stable over repeated re-imports);
+  // hand-made ids are kept as they are
+  const fix = (list) => {
+    if (!Array.isArray(list) && typeof list !== 'string') return list;
+    const ids = [].concat(list);
+    const fromImport = ids.filter(id => wasImported.has(id) && before.has(id));
+    if (!fromImport.length) return list;
+    const kinds = new Set(fromImport.map(id => before.get(id)));
+    const out = [...new Set(ids.filter(id => !wasImported.has(id) && (now.has(id) || !before.has(id))).concat(imported.filter(id => kinds.has(now.get(id)))))];
+    if (out.length === ids.length && out.every((id, k) => id === ids[k])) return list;
+    changed++;
+    return out;
+  };
+  for (const f of scene.flows || []) if (f && f.on != null) f.on = fix(f.on);
+  for (const r of scene.scatter || []) { if (r && r.on != null) r.on = fix(r.on); if (r && r.avoid != null) r.avoid = fix(r.avoid); }
+  return changed;
+}
 
 // on its own: node tools/lib/scene-cmd/osm.mjs --at ... --heading ...
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {

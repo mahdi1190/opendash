@@ -314,6 +314,12 @@
       "ref": "uk-south-east/west-sussex-ardingly-show",
       "wrong": "Five identical white tents stamped in a row, ant-like figures in grey dots, and a flat green field under the same template sky, sun and clouds as 160 other UK scenes.",
       "fix": "Draw each tent differently (size, colour, perspective), add a recognisable subject and real foreground, and give the scene its own sky and palette."
+    },
+    {
+      "ref": "uk-area-woking-b/surrey-woking-kingfield",
+      "wrong": "A car park drawn in screen pixels: some 85 cars, buses and taxis stamped edge to edge at mismatched sizes (a taxi 1.5 times the car beside it), people standing in the carriageway, shrubs and reeds growing out of the tarmac and lamp posts planted among the cars, with the ground stand half hidden behind a wall of identical trees.",
+      "fix": "Declare it on the v2 ground grid (docs/dev/SCENE_ENGINE_V2.md): a road and a parking surface with a few cars placed on them (the engine sizes them by depth and keeps them on the tarmac), people on the pavements, cover only on the verges, and the stand on a clear third. scene migrate and the placement-sanity lint list every one of these defects.",
+      "source": "src/app/71-scene-uk-woking-b-scenes.js (Kingfield)"
     }
   ],
   "weakerItems": [

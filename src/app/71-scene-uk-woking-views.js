@@ -9,7 +9,7 @@
    ============================================================ */
 const WOKING_VIEWS = Object.freeze([
   // [id, label, ukPlace, ukView, reason, kind, tags, colour, mood, params]
-  ['martian', 'The Martian tripod, Woking', 'martian', 'wide', 'The steel tripod in the town centre, honouring H. G. Wells', 'signature', ['sculpture', 'war of the worlds', 'hg wells', 'town centre'], 'slate', 'cheerful',
+  ['martian', 'The Martian tripod, Woking', 'martian', 'wide', 'The steel tripod in the town centre, honouring H. G. Wells', 'landmark', ['sculpture', 'war of the worlds', 'hg wells', 'town centre'], 'slate', 'cheerful',
     { lat: 51.3190, lon: -0.5590, heading: 200, at: 'afternoon', horizon: 470, ground: 'plaza', landmarks: ['landmark.woking-martian@780@300'], skyline: '1260@230', lmy: 640, trees: 5, lampx: 1300, walkers: 6, features: ['sitter'] }],
   ['martian-2', 'The Martian tripod, Woking', 'martian', 'close-evening', 'The tripod under the lamps at dusk', 'landmark', ['sculpture', 'war of the worlds', 'hg wells', 'evening'], 'slate', 'dreamy',
     { lat: 51.3190, lon: -0.5590, heading: 180, at: 'dusk', horizon: 440, ground: 'plaza', landmarks: ['landmark.woking-martian@700@440@680'], skyline: '1300@260', lmy: 650, trees: 3, frame: 2, lampx: 1240, walkers: 4, features: ['roofs'] }],

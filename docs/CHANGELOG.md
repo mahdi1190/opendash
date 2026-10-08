@@ -10,11 +10,18 @@ upgrades it.
 
 ## [Unreleased]
 
+### Added
+
+- **Scene engine 2:** animated scenes are now built from where things are on the ground, and the engine works out the rest: size and distance, what stands in front of what, shadows from the real sun, reflections in water, haze, night lights, weather (rain, snow, fog, frost) and the people, traffic, trams and boats moving through the day. Cars stay on roads, boats on water and people off the tracks, so new scenes come out right whoever builds them. Existing scenes look exactly as before.
+- **Real places, real layouts:** scene builders can start from a real street, canal or park using OpenStreetMap data and real hill outlines, generate period buildings to match, and draft a whole scene from one line ("Castlefield Basin, golden hour, down the canal"). The data is saved with the scene, so the app never goes online for it. Settings > About credits OpenStreetMap contributors (ODbL) and the terrain source.
+- **For scene builders:** a placement and composition check, a visual critic that scores contact sheets and lists fixes, a golden set of reference scenes, a drag-and-drop scene editor in the gallery (developer mode only), a tool that converts older scenes and lists what is wrong with them, and a style normaliser for imported pictures.
+
 ### Changed
 
 - **UK scenes rebuilt:** Hampshire and the North now play composed scenes with the live sky and all four seasons, in eight area packs: Yateley (80), Fleet and Farnborough (52), Winchester and the chalk country (20), the New Forest (19), the Solent coast (17), Sheffield (18), Manchester (18) and the Peak District (21). That is 245 scenes, about half of them new views, built with about 140 new library objects (people, Hampshire and Northern landmarks, trains, ships, moorland).
 - The 130 hand-drawn items these packs replace have been removed, along with the old North West pack. Pins, favourites and blocks saved on an old scene now point to its rebuilt version.
 - Scene library: the newer people join a random street crowd only when they are on foot, so a station never draws a sailor or someone on a bench.
+- Fourteen Nottingham, Sheffield and Wokingham scenes that were still drafts (below the quality bar) are held back until they are rebuilt on the new engine. Each county keeps one signature opening.
 
 ## [2.8.1] - 2026-10-08
 

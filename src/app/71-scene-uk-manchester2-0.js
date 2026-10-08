@@ -82,7 +82,7 @@ const UK_MANCHESTER2_SCENES = (function () {
   const M = 'Manchester', S2 = 'Salford', ST = 'Stockport';
   return [
     // 1 Piccadilly Gardens: the pavilion wall on the right, a tram across the lawn in front of it
-    row('piccadilly-gardens', M, 'Piccadilly Gardens', 'signature', 'amber', ['piccadilly', 'gardens', 'pavilion', 'metrolink'], 'piccadilly-gardens', 'wide', 'The pavilion wall across the gardens and a tram on the lawn edge',
+    row('piccadilly-gardens', M, 'Piccadilly Gardens', 'landmark', 'amber', ['piccadilly', 'gardens', 'pavilion', 'metrolink'], 'piccadilly-gardens', 'wide', 'The pavilion wall across the gardens and a tram on the lawn edge',
       { lat: 53.4809, lon: -2.2367, heading: 200, at: 'afternoon', horizon: 520, ground: 'square', water: 'none' },
       { place: [at('landmark.mcr-piccadilly-pavilion', 1080, 600, 190, 'mid'), at('building.tower-glass', 300, 470, 430, 'far'), at('tree.plane', 640, 610, 230, 'mid', { flip: true }), pp('person.walker', 1180, 842, 520)],
         actors: [go('vehicle.metrolink-m5000', 790, 1, 30, 520, 'near', { s: 0.82 }), go('person.shopper', 690, 1, 14, 520), go('person.couple', 760, -1, 11, 520), go('person.walker', 640, -1, 16, 520), go('person.student', 720, 1, 18, 520), go('person.phone-idler', 820, -1, 6, 520)],
@@ -107,7 +107,7 @@ const UK_MANCHESTER2_SCENES = (function () {
         scatter: [sc('street.bench', 'near', [-150, 835, 1750, 850], 6, 260, [0.6, 0.8]), sc('street.bollard', 'fore', [-150, 880, 1750, 900], 12, 120, [0.9, 1.1])] },
       [['plant.planter', 'street.bollard'], ['plant.planter', 'plant.shrub']]),
     // 4 Cathedral Gardens: looking up at the west tower from the lawn, a plane tree framing the left
-    row('manchester-cathedral', M, 'Manchester Cathedral', 'signature', 'red', ['cathedral', 'gothic', 'tower', 'gardens'], 'manchester-cathedral', 'wide', 'The battlemented tower, looked up at from the gardens',
+    row('manchester-cathedral', M, 'Manchester Cathedral', 'landmark', 'red', ['cathedral', 'gothic', 'tower', 'gardens'], 'manchester-cathedral', 'wide', 'The battlemented tower, looked up at from the gardens',
       { lat: 53.4847, lon: -2.2440, heading: 60, at: 'afternoon', horizon: 600, ground: 'square', water: 'none' },
       { place: [at('landmark.mcr-cathedral', 1120, 760, 560, 'mid'), at('street.bollard', 150, 860, 200, 'near'), at('structure.stone-wall', 520, 800, 90, 'near'), pp('person.bench-sitter', 900, 808, 600)],
         actors: [go('person.walker', 700, 1, 12, 600), go('person.walker', 770, -1, 9, 600), go('person.couple', 820, 1, 10, 600), go('person.student', 740, -1, 9, 600)],
@@ -123,7 +123,7 @@ const UK_MANCHESTER2_SCENES = (function () {
         scatter: [sc('street.bollard', 'fore', [-150, 850, 1750, 905], 12, 90, [0.9, 1.1])] },
       [['plant.shrub', 'plant.planter'], ['street.bollard', 'plant.planter']]),
     // 6 Faulkner Street: the Chinatown gate in perspective, shophouses and a taxi down the street
-    row('chinatown-arch', M, 'Chinatown arch', 'signature', 'red', ['chinatown', 'arch', 'lanterns', 'faulkner street'], 'manchester-chinatown', 'wide', 'The red and gold archway down the street, lanterns strung across',
+    row('chinatown-arch', M, 'Chinatown arch', 'landmark', 'red', ['chinatown', 'arch', 'lanterns', 'faulkner street'], 'manchester-chinatown', 'wide', 'The red and gold archway down the street, lanterns strung across',
       { lat: 53.4789, lon: -2.2393, heading: 20, at: 'afternoon', horizon: 460, ground: 'street', water: 'none', road: 800 },
       { place: [at('landmark.mcr-chinatown-arch', 640, 690, 420, 'mid'), at('building.shophouse', 180, 560, 330, 'far'), at('building.shophouse', 1300, 560, 330, 'far', { flip: true }), at('building.shophouse-row', 1560, 700, 360, 'mid', { flip: true }), at('street.lantern-string', 300, 600, 150, 'mid'), at('street.lantern-string', 1150, 600, 150, 'mid', { flip: true })],
         actors: [go('vehicle.taxi', 836, -1, 40, 460, 'near', { s: 0.9 }), go('person.walker', 760, 1, 14, 460), go('person.shopper', 800, -1, 12, 460), go('person.takeaway-walker', 740, -1, 12, 460), go('person.couple', 850, 1, 9, 460)],
@@ -131,7 +131,7 @@ const UK_MANCHESTER2_SCENES = (function () {
         scatter: [sc('plant.planter', 'fore', [-150, 880, 1750, 905], 10, 120, [0.9, 1.1])] },
       [['street.bollard', 'ground.puddle'], ['ground.puddle', 'street.bollard']]),
     // 7 Canal Street: the towpath at water level, warehouses on both banks, bunting across the canal front
-    row('canal-street', M, 'Canal Street', 'signature', 'violet', ['canal street', 'village', 'canal', 'bunting'], 'canal-street', 'evening', 'Bunting over the Rochdale Canal and a boat passing the warehouses',
+    row('canal-street', M, 'Canal Street', 'landmark', 'violet', ['canal street', 'village', 'canal', 'bunting'], 'canal-street', 'evening', 'Bunting over the Rochdale Canal and a boat passing the warehouses',
       { lat: 53.4766, lon: -2.2355, heading: 300, at: 'golden', horizon: 430, ground: 'towpath', water: 'canal' },
       { place: [at('building.warehouse-canal', 340, 470, 380, 'far'), at('building.warehouse-canal', 1230, 460, 330, 'far', { flip: true }), at('landmark.beetham-tower', 1100, 430, 380, 'far'), at('street.mcr-bunting', 760, 500, 200, 'mid', { reflect: true }), at('boat.narrowboat', 560, 560, 60, 'mid', { reflect: true })],
         actors: [go('boat.narrowboat', 548, 1, 5, 430, 'mid', { s: 0.55, reflect: true }), go('person.walker', 650, -1, 14, 430), go('person.dog-walker', 720, 1, 10, 430), go('person.phone-idler', 760, -1, 6, 430)],
@@ -139,7 +139,7 @@ const UK_MANCHESTER2_SCENES = (function () {
         scatter: [sc('plant.towpath-hedge', 'near', [-150, 600, 1750, 620], 24, 40, [0.5, 0.8], { reflect: true }), sc('structure.fence', 'near', [-150, 640, 1750, 660], 10, 120, [0.6, 0.8], { reflect: true }), sc('bird.mallard', 'mid', [260, 530, 1300, 572], 4, 140, [0.32, 0.4], { reflect: true })] },
       [['plant.grass', 'plant.towpath-hedge'], ['plant.grass', 'ground.puddle']]),
     // 8 New Islington marina: moored narrowboats across the basin, the stacked flats above them, a swan on the water
-    row('new-islington-marina', M, 'New Islington marina', 'signature', 'green', ['new islington', 'marina', 'ancoats', 'flats'], 'new-islington', 'wide', 'Moored narrowboats below the stacked flats',
+    row('new-islington-marina', M, 'New Islington marina', 'landmark', 'green', ['new islington', 'marina', 'ancoats', 'flats'], 'new-islington', 'wide', 'Moored narrowboats below the stacked flats',
       { lat: 53.4820, lon: -2.2235, heading: 20, at: 'morning', horizon: 470, ground: 'towpath', water: 'canal' },
       { place: [at('landmark.mcr-chips', 1060, 540, 300, 'mid'), at('boat.narrowboat', 230, 600, 60, 'mid', { reflect: true }), at('boat.narrowboat', 600, 612, 60, 'mid', { flip: true, reflect: true }), at('boat.narrowboat', 1220, 606, 60, 'mid', { reflect: true }), at('boat.narrowboat-receding', 1460, 598, 60, 'mid', { reflect: true })],
         actors: [go('bird.swan', 585, 1, 3, 470, 'mid', { s: 0.5 }), go('person.cyclist', 700, -1, 18, 470), go('person.dog-walker', 760, 1, 10, 470), go('person.walker', 800, -1, 12, 470)],
@@ -229,7 +229,7 @@ const UK_MANCHESTER2_SCENES = (function () {
         scatter: [sc('bird.herring-gull', 'mid', [200, 600, 1400, 630], 4, 160, [0.4, 0.5], { reflect: true })] },
       [['street.bollard', 'plant.planter'], ['plant.planter', 'plant.shrub']], true),
     // 19 Ordsall Chord: the harp pylon over the Irwell, a riverside path with bank trees, a dinghy and mallards
-    row('ordsall-chord', S2, 'Ordsall Chord, the Irwell', 'signature', 'slate', ['salford', 'bridge', 'harp', 'irwell'], 'ordsall-chord', 'golden', 'The harp bridge pylon above the river path',
+    row('ordsall-chord', S2, 'Ordsall Chord, the Irwell', 'landmark', 'slate', ['salford', 'bridge', 'harp', 'irwell'], 'ordsall-chord', 'golden', 'The harp bridge pylon above the river path',
       { lat: 53.4848, lon: -2.2565, heading: 170, at: 'golden', horizon: 430, ground: 'towpath', water: 'quays' },
       { place: [at('landmark.ordsall-chord', 820, 520, 330, 'mid', { reflect: true }), at('tree.bank-alder', 240, 640, 360, 'near'), at('tree.bank-willow', 1450, 600, 330, 'mid', { flip: true }), pp('person.walker', 1400, 860, 430)],
         actors: [go('boat.dinghy', 600, 1, 5, 430, 'mid', { s: 0.52, loop: 'pingpong', reflect: true }), go('person.cyclist', 700, 1, 20, 430), go('person.walker', 760, -1, 12, 430), go('person.dog-walker', 820, 1, 9, 430), go('person.jogger', 860, -1, 16, 430)],

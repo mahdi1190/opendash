@@ -27,6 +27,11 @@
       when: (day, ctx) => !!ctx && !!ctx.county && ctx.county === county,
     });
   });
+  // Below the bar (the composed lint and the tile budget fail them; the batch-2 run was stopped before they were fixed):
+  // drafts, kept in the source and NOT registered until they are migrated to v2 and pass (docs/dev/SCENE_ENGINE_V2.md 29,
+  // "Later stages"; integration, 8 Oct). Remove an id here once its scene passes `scene lint --strict-placement`.
+  const DRAFTS = new Set(["berkshire-wokingham-elms-field","berkshire-dinton-pastures-lake","berkshire-wellingtonia-avenue","berkshire-california-pine-heath"]);
+  for (let k = items.length - 1; k >= 0; k--) if (DRAFTS.has(items[k].id)) items.splice(k, 1);
   animRegisterPack({ id: 'uk-area-wokingham', name: 'UK: Wokingham', version: '1.0.0',
     description: 'Composed, living scenes of Wokingham: the Town Hall and the Market Place, the Georgian streets, All Saints\', the station and its level crossing, Elms Field, Dinton Pastures, the pine woods and the Berkshire farmland, in four seasons under the live sky.', items });
 })();

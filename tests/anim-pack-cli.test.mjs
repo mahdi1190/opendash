@@ -288,7 +288,7 @@ test('brief: the region\'s own care notes (the "Cultural care" section of its do
 
 test('templates: every placeholder of every template is supplied by the commands, and a missing value is an error', async () => {
   const names = readdirSync(TEMPLATES_DIR).filter(f => /\.(md|tpl)$/.test(f)).sort();
-  assert.deepEqual(names, ['archetype-brief.md', 'composed-scene-brief.md', 'element-brief.md', 'modules-row.md.tpl', 'object-brief.md', 'region-config.js.tpl', 'region-doc.md.tpl', 'region-pack.js.tpl', 'region-scenes.js.tpl', 'region-test.mjs.tpl', 'scene-brief.md', 'upgrade-brief.md']);
+  assert.deepEqual(names, ['archetype-brief.md', 'composed-scene-brief.md', 'element-brief.md', 'modules-row.md.tpl', 'object-brief.md', 'region-config.js.tpl', 'region-doc.md.tpl', 'region-pack.js.tpl', 'region-scenes.js.tpl', 'region-test.mjs.tpl', 'scene-brief.md', 'scene-critique-rubric.md', 'upgrade-brief.md']);
   // the briefs and the scaffold render every template (above); here the placeholder inventory is pinned so a new one cannot slip in unsupplied
   const known = { 'scene-brief.md': ['care', 'count', 'batch', 'batch_groups', 'batches', 'done_note', 'exemplars', 'existing', 'file', 'guard', 'keys', 'markup_rules', 'max_redraws', 'max_thin', 'min_richness', 'notes', 'pass_mark', 'refs', 'region_file', 'region_id', 'region_name', 'safe_zones', 'scene_cap', 'skill', 'targets', 'todo_count', 'todo_s', 'unit_word', 'verify', 'weaker', 'groups_summary'],
     'element-brief.md': ['care', 'count', 'batch', 'batch_groups', 'batches', 'done_note', 'exemplars', 'existing', 'files', 'guard', 'item_cap', 'keys', 'markup_rules', 'max_redraws', 'max_thin', 'min_richness', 'notes', 'pass_mark', 'refs', 'region_file', 'region_id', 'region_name', 'skill', 'targets', 'todo_count', 'todo_s', 'unit_word', 'verify', 'weaker', 'groups_summary'],
@@ -296,7 +296,9 @@ test('templates: every placeholder of every template is supplied by the commands
     'composed-scene-brief.md': ['archetypes', 'bar', 'budget', 'care', 'kits', 'notes', 'pack', 'scene_id', 'subject', 'verify'],
     'upgrade-brief.md': ['archetype', 'bar', 'batch', 'batches', 'care', 'count', 'count_s', 'notes', 'refs', 'region_id', 'region_name', 'verify'],
     'archetype-brief.md': ['archetype', 'bar', 'hints', 'kits', 'legal', 'notes', 'verify', 'what'],
-    'object-brief.md': ['kit', 'notes', 'objects', 'roles', 'verify'] };
+    'object-brief.md': ['kit', 'notes', 'objects', 'roles', 'verify'],
+    // the critic's rubric (V2 21): read whole by tools/lib/scene-critic.mjs, it has no placeholders
+    'scene-critique-rubric.md': [] };
   for (const [f, list] of Object.entries(known)) assert.deepEqual(templatePlaceholders(readTemplate(f)).sort(), [...list].sort(), f);
   assert.throws(() => renderTemplate('a {{b}} c', {}, 'demo'), /demo: no value for \{\{b\}\}/);
   assert.equal(renderTemplate('a {{b}} c {{b}}', { b: '$&' }), 'a $& c $&', 'a value is never read as a replacement pattern');

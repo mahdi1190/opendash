@@ -270,7 +270,7 @@
   };
 
   const ROWS = [
-    ['market-place', 'The Market Place, Reepham', 52.7616, 1.1124, 'town', 'red', 'cheerful', ['reepham', 'market place', 'georgian', 'market town'], market],
+    ['market-place', 'The Market Place, Reepham', 52.7616, 1.1124, 'heritage', 'red', 'cheerful', ['reepham', 'market place', 'georgian', 'market town'], market],
     ['churchyard', 'Two churches in one churchyard', 52.7619, 1.1112, 'heritage', 'slate', 'calm', ['reepham', 'churchyard', 'flint church', 'whitwell'], churchyard],
     ['fields-west', 'Reepham towers across the fields', 52.7660, 1.1050, 'landscape', 'green', 'calm', ['reepham', 'fields', 'church towers', 'arable'], fields],
     ['old-station', 'The old station on the Marriott way', 52.7568, 1.1205, 'heritage', 'green', 'cheerful', ['reepham', 'old station', 'marriotts way', 'railway heritage'], station],

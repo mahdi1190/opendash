@@ -181,13 +181,13 @@ function sceneLight(o, view) {
 const _scHx = c => { let s = String(c).replace('#', ''); if (s.length === 3) s = s.replace(/./g, '$&$&'); const n = parseInt(s, 16) || 0; return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
 const _scMix = (a, b, t) => { if (!t || !b) return a; const A = _scHx(a), B = _scHx(b), k = Math.max(0, Math.min(1, t)); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * k).toString(16).padStart(2, '0')).join(''); };
 const _scTones = new WeakMap();
-/** The grade for L, memoised: exactly the kit's K.toneStr (night desaturation, the shade multiply, golden warmth). */
+/** The grade for L, memoised: exactly the kit's K.toneStr (night desaturation, the shade multiply, golden warmth), then L.grade2 when the v2 light set one. */
 function sceneTone(L) {
   if (!L) return c => c;
   let f = _scTones.get(L);
   if (f) return f;
-  const K = sceneKit('obj'), memo = new Map();
-  f = c => { let v = memo.get(c); if (v) return v; v = K && /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(c) ? K.toneStr(L, `fill="${c}"`).slice(6, -1) : c; memo.set(c, v); return v; };
+  const K = sceneKit('obj'), memo = new Map(), g2 = typeof L.grade2 === 'function' ? L.grade2 : null;   // g2: the v2 grade (sceneLightV2 only; v1 L has none)
+  f = c => { let v = memo.get(c); if (v) return v; v = K && /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(c) ? K.toneStr(L, `fill="${c}"`).slice(6, -1) : c; if (g2 && v[0] === '#') v = g2(v); memo.set(c, v); return v; };
   _scTones.set(L, f);
   return f;
 }

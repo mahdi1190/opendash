@@ -21,6 +21,11 @@
       when: (day, ctx) => !!ctx && !!ctx.county && (ctx.county === COUNTY || (typeof animUkScenePools === 'function' && animUkScenePools([Object.assign({ county: COUNTY }, base)], ctx).nearby.length > 0)),
     });
   });
+  // Below the bar (the composed lint and the tile budget fail them; the batch-2 run was stopped before they were fixed):
+  // drafts, kept in the source and NOT registered until they are migrated to v2 and pass (docs/dev/SCENE_ENGINE_V2.md 29,
+  // "Later stages"; integration, 8 Oct). Remove an id here once its scene passes `scene lint --strict-placement`.
+  const DRAFTS = new Set(["south-yorkshire-general-cemetery-gate","south-yorkshire-abbeydale-water-wheel"]);
+  for (let k = items.length - 1; k >= 0; k--) if (DRAFTS.has(items[k].id)) items.splice(k, 1);
   animRegisterPack({ id: 'uk-area-sheffield2', name: 'UK: Sheffield (more)', version: '1.0.0', css: '',
     description: 'More composed Sheffield scenes: Division Street, West Street and Ecclesall Road by day and night, the Kelham and Neepsend pubs, the Moor Market, Bramall Lane on match day, Meadowhall, the Crucible and the Lyceum, Sheaf Square and the station, Weston Park, Hillsborough Park, the General Cemetery, the Rivelin valley, Forge Dam, Wardsend and Abbeydale Industrial Hamlet, with the live sky and four seasons.', items });
 })();

@@ -165,7 +165,9 @@ function animRegisterPack(p) {
   if (!v.ok) return v;
   const old = _animPacks.get(p.id);
   if (old) for (const it of old.items) _animRefs.delete(it.ref);
-  const items = p.items.map(it => Object.freeze(Object.assign({}, it, {
+  // scene engine v2 (V2 14.3): the pack's recipes take the place of the items they supersede, in every kind of pack
+  const src = typeof sceneRecipeSupersede === 'function' ? sceneRecipeSupersede(p.id, p.items) : p.items;
+  const items = src.map(it => Object.freeze(Object.assign({}, it, {
     pack: p.id, ref: p.id + '/' + it.id, tags: it.tags.slice(), theme: _animList(it.theme), season: _animList(it.season), region: _animList(it.region),
     colour: it.colour || 'blue',
   })));

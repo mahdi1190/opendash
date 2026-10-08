@@ -94,8 +94,11 @@ test('the bank edges: a far bank shows its face down to the water; a near bank o
   const top = e.filter(x => x.col === '#b8b2a2'), face = e.filter(x => x.col === '#5e5a50');
   assert.ok(top.length === 2, 'both banks have their coping');
   assert.ok(face.length >= 1, 'a far bank face is seen');
-  for (const g of e) for (const q of g.quads) assert.ok(Math.abs(q[2][1] - q[1][1]) >= 1, 'nothing under 1 unit is drawn');
+  // the coping lies flat on the ground (offset across it in metres, then projected); a wall face hangs straight down the screen
+  const ext = (q) => Math.max(Math.hypot(q[2][0] - q[1][0], q[2][1] - q[1][1]), Math.hypot(q[3][0] - q[0][0], q[3][1] - q[0][1]));
+  for (const g of e) for (const q of g.quads) assert.ok(ext(q) >= 1, 'nothing under 1 unit is drawn');
+  for (const g of face) for (const q of g.quads) assert.ok(Math.abs(q[2][0] - q[1][0]) < 1e-6 && q[2][1] > q[1][1], 'a face hangs straight down');
   // farther segments are thinner (projected widths)
-  const all = top.flatMap(g => g.quads).sort((a, b) => b[0][1] - a[0][1]);
-  assert.ok(Math.abs(all[0][3][1] - all[0][0][1]) > Math.abs(all[all.length - 1][3][1] - all[all.length - 1][0][1]), 'near coping wider than far coping');
+  const all = top.flatMap(g => g.quads).filter(q => q.every(p => p[0] > -160 && p[0] < 1760)).sort((a, b) => b[0][1] - a[0][1]);
+  assert.ok(ext(all[0]) > ext(all[all.length - 1]), 'near coping wider than far coping');
 });

@@ -233,8 +233,21 @@ function objFactsOf(E) {
   return E._sanityFacts;
 }
 /** The screen box of an item (its resolved box, scaled and flipped). */
+/** The box of an object's BODY (no lit part, no glow shapes): a lamp's light halo is not something that hides a landmark. Memoised. */
+const _bodyBoxes = new WeakMap();
+function bodyBox(R) {
+  if (!R || !R.parts) return null;
+  if (_bodyBoxes.has(R)) return _bodyBoxes.get(R);
+  let b = null;
+  for (const p of R.order || Object.keys(R.parts)) {
+    if (p === 'lit') continue;
+    for (const sh of R.parts[p] || []) { if (sh.glow) continue; const q = scenePathBox(sh.d, sh.m); if (q) b = b ? [Math.min(b[0], q[0]), Math.min(b[1], q[1]), Math.max(b[2], q[2]), Math.max(b[3], q[3])] : q; }
+  }
+  _bodyBoxes.set(R, b);
+  return b;
+}
 function itemBox(it, R) {
-  const b = (R && R.box) || [-20, -40, 20, 2], s = it.s || 1;
+  const b = bodyBox(R) || (R && R.box) || [-20, -40, 20, 2], s = it.s || 1;
   return it.flip ? [it.x - b[2] * s, it.y + b[1] * s, it.x - b[0] * s, it.y + b[3] * s] : [it.x + b[0] * s, it.y + b[1] * s, it.x + b[2] * s, it.y + b[3] * s];
 }
 /**
@@ -296,6 +309,9 @@ export function sanityFacts(C, data, { E, thresholds = {} } = {}) {
     if (real) { f.hReal = real.h; f.realSrc = real.src; if (f.d != null && def.size) f.hImplied = r2((it.s || 1) * def.size[1] * f.d / cam.f); }
     f.cover = !!it.cover;   // A's seasonal ground cover (10): generated on allowed surfaces, judged as a whole, not one by one
     f.exempt = pin || f.cover || cls === 'air' || cls === 'bird-air' || cls === 'float' || it.layer === frontLayer || it.layer === horizonLayer && !v2 || it.y > 905 || it.x < -170 || it.x > 1770;
+    // a projected building (F, 19): drawn by the generator from its real footprint and storeys, not a sprite with a size: never
+    // judged for scale, haze or opacity (its placeholder object has neither); its real screen box still occludes (integration, 8 Oct)
+    if (it.direct) { f.exempt = true; f.direct = true; f.cls = 'building'; if (Array.isArray(it.direct.box)) { f.box = it.direct.box.slice(); f.h = it.direct.box[3] - it.direct.box[1]; } f.hImplied = null; }
     out.push(f);
   });
   return { cam, items: out, v2 };
@@ -339,7 +355,7 @@ export function sanityRules(C, data, { E, thresholds = {}, strict = false, v1 = 
     if (['tree', 'shrub', 'cover'].includes(f.cls)) {
       const t = tagsOf(f.def), edge = t.includes('role:edge') || t.includes('reed'), urban = t.includes('planter') || t.includes('pot') || (f.cls !== 'tree' && t.includes('kit:urban'));
       const src = f.place >= 0 && data && data.place ? data.place[f.place] : null, pit = !!(src && src.pit);
-      const bad = f.kind === 'drive' || f.kind === 'rail' || (f.kind === 'walk-hard' && !pit && !urban) || (f.kind === 'water' && !edge);
+      const bad = (f.kind === 'drive' && !(pit && f.v2kind === 'parking')) || f.kind === 'rail' || (f.kind === 'walk-hard' && !pit && !urban) || (f.kind === 'water' && !edge);
       if (bad) found.plantSurface.push(off(f, `grows on ${f.kind === 'drive' ? 'the road' : f.kind}${slotNote(f)}`, f.kind === 'walk-hard' ? 'move it onto grass, or mark a street tree in a pit (pit: true)' : 'move it onto grass, a verge or a bank'));
     }
   }

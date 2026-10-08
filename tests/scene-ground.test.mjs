@@ -287,11 +287,14 @@ test('actors on the ground: a projected path with the scale by depth, and sceneA
 });
 
 test('terrain ridges become hazed hill fills in the horizon and far bands; fx rides on a v1 compile only when set', () => {
-  const C = compile(base({ id: 'v2a-ridges', terrain: { src: 'terrarium', ridges: [{ band: 'far', d: 3000, pts: [[-200, 440], [400, 420], [900, 452], [1800, 445]] }, { band: 'horizon', d: 9000, pts: [[-200, 455], [800, 430], [1800, 450]] }] } }));
+  const C = compile(base({ id: 'v2a-ridges', terrain: { src: 'terrarium', ridges: [{ band: 'far', d: 600, pts: [[-200, 440], [400, 420], [900, 452], [1800, 445]] }, { band: 'horizon', d: 9000, pts: [[-200, 455], [800, 430], [1800, 450]] }] } }));
   const hills = C.ground.filter(g => g.ridge);
   assert.equal(hills.length, 2);
   assert.ok(C.ground.indexOf(hills[0]) < C.ground.findIndex(g => g.surf), 'hills are drawn before the surfaces');
   assert.deepEqual(hills.map(h => h.layer).sort(), [0, 1]);
+  // a ridge's band follows its depth: the terrain tool's own 'near' ridge 1.3 km away is in the scene's horizon band, not its near band
+  const C2 = compile(base({ id: 'v2a-ridges2', terrain: { src: 'terrarium', ridges: [{ band: 'near', d: 1300, pts: [[-200, 440], [1800, 445]] }] } }));
+  assert.deepEqual(C2.ground.filter(g => g.ridge).map(h => h.layer), [0]);
   assert.match(hills[0].d, /^M-200 /);
   assert.deepEqual(C.source.terrain, { src: 'terrarium', fetched: null });
   const v1 = { v: 1, id: 'v2a-fx', view: { lat: 51, lon: -1, horizon: 520 }, place: [] };

@@ -244,7 +244,17 @@ export default {
       const data = s.data(), C = E.compile(data, { season: 'summer', lod: 1, L: null });
       const before = sanitySummary(sanityRules(C, data, { E, thresholds, strict: true }));
       const vehiclesOnGrass = (sanityRules(C, data, { E, thresholds }).find(r => r.rule === 'vehicleSurface') || { offenders: [] }).offenders.map(o => o.msg);
-      const { rec, report } = migrateScene(data, C, { E, keepPixels: !!args['keep-pixels'], pack: s.pack || s.ref.split('/')[0], meta: metaOf(s.item) });
+      const pk = s.pack || s.ref.split('/')[0];
+      const { rec, report } = migrateScene(data, C, { E, keepPixels: !!args['keep-pixels'], pack: pk, meta: metaOf(s.item) });
+      // the recipe takes the v1 item's OWN id in its pack (sceneItems), so it supersedes it (V2 14.3). A region pack registers the
+      // items under a prefixed id (hampshire-, south-yorkshire-) and a scene's data id may differ from its item id (integration,
+      // 8 Oct: Peace Gardens became a second item, 'sheffield-peace-gardens', beside the one it was meant to replace)
+      {
+        // the item's own id: the registry id less the region prefix (the county slug) the region pack adds
+        const rid = s.ref.split('/')[1], cslug = String(s.item.county || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        const own = cslug && rid.startsWith(cslug + '-') ? rid.slice(cslug.length + 1) : rid;
+        if (own && own !== rec.meta.id) { report.notes = (report.notes || []).concat([`the recipe takes the item's id ${own} (the scene data said ${rec.meta.id}), so it supersedes the v1 item`]); rec.meta.id = own; rec.scene.id = own; }
+      }
       report.ref = s.ref; report.sanityBefore = before; report.vehiclesOnGrass = vehiclesOnGrass;
       // the migrated scene through A's compile (when the v2 branch is loaded): its snapped and refused placements, its sanity
       try {

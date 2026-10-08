@@ -32,7 +32,7 @@
     place: [{ obj: 'tree.green-oak', x: 1650, y: 935, s: 1.15, layer: 'front', seed: 21, flip: true, variant: 0 }],
     scatter: [
       // the far edge of the plain: rows of orchard and shelter trees, low in the haze
-      { obj: { 'tree.far-broad': 2, 'tree.distant': 1 }, layer: 'far', seed: 41, area: { rect: [-150, 558, 1750, 600] }, n: 34, minGap: 34, s: [0.12, 0.2], flip: 0.5, variant: [0, 1], tint: { col: '#8a8a7a', k: [0.08, 0.16] }, anim: false, shadow: false },
+      { obj: { 'tree.far-broad': 2, 'tree.distant': 1 }, layer: 'far', seed: 41, area: { rect: [-150, 558, 1750, 600] }, n: 28, minGap: 38, s: [0.12, 0.2], flip: 0.5, variant: [0, 1], tint: { col: '#8a8a7a', k: [0.08, 0.16] }, anim: false, shadow: false },
       // a village on the plain to the right of the knoll
       { obj: 'building.house-jp', layer: 'far', seed: 42, area: { rect: [980, 610, 1750, 660] }, n: 12, minGap: 40, s: [0.18, 0.32], sByY: [[610, 0.85], [660, 1.15]], flip: 0.5, variant: [0, 3], tint: { col: '#b0a088', k: [0.16, 0.16] }, anim: false, shadow: false },
       // orchards on the plain beside the knoll, a few near trees and shrubs

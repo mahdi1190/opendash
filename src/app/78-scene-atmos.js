@@ -76,13 +76,28 @@ function _scatPSide(L, flip) { const s = L && L.side ? L.side : 1; return flip ?
 /** How much rim light now: backlit, or a golden-hour sun (alt 0..12) on a sky that is not overcast. 0 = none. */
 function sceneRimAt(L) {
   if (!L || !(L.alt > -1)) return 0;
-  const golden = L.alt < 12 ? _scatPClamp((12 - L.alt) / 8, 0, 1) * _scatPClamp(1 - (L.cover || 0) * 1.2, 0, 1) * 0.6 : 0;
+  const golden = L.alt < 14 ? _scatPClamp((14 - L.alt) / 9, 0, 1) * _scatPClamp(1 - (L.cover || 0) * 1.1, 0, 1) * 0.9 : 0;
   const b = (L.backlit || 0) > 0.15 ? L.backlit : 0;
   const k = Math.max(b, golden);
   return k < 0.05 ? 0 : Math.round(k * 10) / 10;
 }
-/** How strong the soft shading is now (0.10 + 0.12 * (1 - cover)), weaker at night. */
-function _scatPShadeK(L) { return (0.10 + 0.12 * (1 - _scatPClamp(L.cover || 0, 0, 1))) * (1 - 0.8 * _scatPClamp(L.dark || 0, 0, 1)); }
+/** How strong the soft shading is now (0.10 + 0.12 * (1 - cover)), weaker at night and with the sun straight ahead or behind. */
+function _scatPShadeK(L) {
+  const rel = L && L.sun && Number.isFinite(L.sun.rel) ? L.sun.rel : 90, across = 0.45 + 0.55 * Math.abs(Math.sin(rel * Math.PI / 180));
+  return (0.10 + 0.12 * (1 - _scatPClamp(L.cover || 0, 0, 1))) * (1 - 0.8 * _scatPClamp(L.dark || 0, 0, 1)) * across;
+}
+/** The classes whose facade faces the camera (a building's elevation): they are lit or shaded as a whole by the sun's azimuth. */
+const _SCATP_FACADE = new Set(['building', 'structure', 'landmark']);
+/**
+ * How the sun lights a facade that faces the camera (7.2): +1 the sun straight behind the camera (the facade in full sun),
+ * -1 the sun straight ahead (the facade in its own shade), weighted by how much direct sun there is (low sun, cloud, night).
+ * Bucketed to 0.1 (part of the sprite key).
+ */
+function sceneFacadeLight(L) {
+  if (!L || !L.sun || !Number.isFinite(L.sun.rel) || !(L.alt > 0)) return 0;
+  const sunK = _scatPClamp(L.alt / 5, 0, 1) * (1 - 0.75 * _scatPClamp(L.cover || 0, 0, 1)) * (1 - _scatPClamp(L.dark || 0, 0, 1));
+  return Math.round(-Math.cos(L.sun.rel * Math.PI / 180) * sunK * 10) / 10;
+}
 /** The sun's azimuth relative to the heading in 30-degree buckets (the light key: about every 2 hours). */
 function _scatPRel(L) { return L && L.sun && Number.isFinite(L.sun.rel) ? Math.round(L.sun.rel / 30) : 0; }
 
@@ -98,6 +113,10 @@ function sceneAtmosShadeSprite(cx, L, side, o) {
   const a = o.shade == null ? _scatPShadeK(L) : o.shade;
   cx.save();
   cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = 1;
+  // a facade (o.facade, -1 .. 1): in the sun it takes the key light (warm at golden hour), in its own shade a cool shade
+  const fa = o.facade || 0;
+  if (fa > 0.05) { cx.globalCompositeOperation = 'source-atop'; cx.fillStyle = _scatPRgba(_scatPMix(L.light || '#fff4e0', '#ffffff', 0.25), 0.1 * fa); cx.fillRect(0, 0, w, h); }
+  else if (fa < -0.05) { cx.globalCompositeOperation = 'source-atop'; cx.fillStyle = _scatPRgba(_scatPMix('#1a2436', L.shade || '#6a7480', 0.1), 0.3 * -fa); cx.fillRect(0, 0, w, h); }
   if (a > 0.01) {
     const shCol = _scatPMix('#05080d', L.shade || '#6a7480', 0.04);   // near black: source-atop at alpha a multiplies by (1 - a)
     const g = cx.createLinearGradient(side > 0 ? w : 0, 0, side > 0 ? 0 : w, 0);
@@ -120,16 +139,65 @@ function sceneAtmosShadeSprite(cx, L, side, o) {
   return true;
 }
 
+/**
+ * An object's 'lit' part after real dusk, reshaped so light reads as light (7.3), in place (cx: the rasterised lit sprite;
+ * req: the sprite request with k, x0, y0 and shapes). o.lamp: a lamp whose ground pool the pass draws itself (in perspective,
+ * with an inverse-square falloff): the object's own pool, everything in the bottom eighth of its height, is dropped and its
+ * head's glow kept. o.flood: a floodlit facade: the light is softened (blurred), kept to the facade (never a beam into the sky
+ * or across the ground), and turned into a wash from below that fades out two thirds of the way up, so the building stays a
+ * dark mass with a glow at its foot.
+ */
+function sceneAtmosLitSprite(cx, req, o) {
+  const c = cx.canvas, w = c.width, h = c.height, sh = req && req.shapes;
+  if (!sh || !sh.box || !(req.k > 0) || w < 2 || h < 2 || !(o.lamp || o.flood)) return false;
+  const k = req.k, Y = (y) => (y - req.y0) * k, top = Math.min(-1, sh.box[1]);
+  cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = 1;
+  if (o.lamp) {
+    const y1 = Y(top * 0.13), y0 = Y(top * 0.2), g = cx.createLinearGradient(0, y0, 0, y1);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,1)');
+    cx.globalCompositeOperation = 'destination-out'; cx.fillStyle = g; cx.fillRect(0, Math.max(0, y0), w, h);
+  } else {
+    // 1. soften: no hard edge survives
+    const b = _scatPClamp(0.03 * Math.max(w, h), 2, 18), s = _scatPScratch(1, w, h);
+    if (typeof s.x.filter === 'string') {
+      s.x.filter = `blur(${Math.round(b * 10) / 10}px)`; s.x.drawImage(c, 0, 0); s.x.filter = 'none';
+      cx.clearRect(0, 0, w, h); cx.drawImage(s.c, 0, 0, w, h, 0, 0, w, h);
+    }
+    // 2. only on the facade: the object's own silhouette (every part but 'lit')
+    if (typeof _sccPath === 'function') {
+      const m = _scatPScratch(2, w, h), mx = m.x;
+      mx.setTransform(k, 0, 0, k, -req.x0 * k, -req.y0 * k); mx.fillStyle = '#000'; mx.strokeStyle = '#000';
+      for (const p of sh.order) if (p !== 'lit') for (const s0 of sh.parts[p] || []) {
+        if (s0.m) { mx.save(); mx.transform(s0.m[0], s0.m[1], s0.m[2], s0.m[3], s0.m[4], s0.m[5]); }
+        const path = _sccPath(s0.d);
+        if (s0.f) mx.fill(path);
+        if (s0.s && (s0.w || 1) > 1.5) { mx.lineWidth = s0.w; mx.stroke(path); }
+        if (s0.m) mx.restore();
+      }
+      cx.globalCompositeOperation = 'destination-in'; cx.drawImage(m.c, 0, 0, w, h, 0, 0, w, h);
+    }
+    // 3. a wash from below: strongest at the foot, gone two thirds of the way up
+    const g = cx.createLinearGradient(0, Y(0), 0, Y(top * 0.7));
+    g.addColorStop(0, 'rgba(0,0,0,0.85)'); g.addColorStop(0.35, 'rgba(0,0,0,0.45)'); g.addColorStop(0.75, 'rgba(0,0,0,0.1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    cx.globalCompositeOperation = 'destination-in'; cx.fillStyle = g; cx.fillRect(0, 0, w, h);
+  }
+  cx.restore();
+  return true;
+}
+
 /* ---------- night lights (7.3) ---------- */
 /** A lamp pool: a circle r metres across round (x, d) on the ground, as a perspective ellipse with a radial falloff. */
 function _scatPPool(gx, cam, l, alpha) {
   const dn = Math.max(0.6, l.d - l.r), df = l.d + l.r, yN = _scatPRow(cam, dn), yF = _scatPRow(cam, df), c = sceneAtmosProject(cam, l.x, l.d, 0);
-  const rx = l.r * c.k, ry = Math.max(0.5, (yN - yF) / 2), cy = (yN + yF) / 2;
+  // a little rounder than the strict projection from eye height: a pool, never a thin bar
+  const rx = l.r * c.k, ry = Math.max(0.5, (yN - yF) / 2, rx * 0.11), cy = _scatPClamp(c.Y, yF, yN);   // centred under the head (the far half is shorter in perspective)
   if (rx < 1.5) return 0;
   gx.save();
   gx.translate(c.X, cy); gx.scale(1, ry / rx);
-  const g = gx.createRadialGradient(0, 0, 0, 0, 0, rx);
-  g.addColorStop(0, _scatPRgba(l.col, 1)); g.addColorStop(0.35, _scatPRgba(l.col, 0.6)); g.addColorStop(0.7, _scatPRgba(l.col, 0.18)); g.addColorStop(1, _scatPRgba(l.col, 0));
+  // a point light h metres up: the ground's light falls as (1 + (rho / h)^2)^-1.5 (bright under the lamp, soft long tail),
+  // eased to nothing at r
+  const g = gx.createRadialGradient(0, 0, 0, 0, 0, rx), hh = Math.max(1.5, Math.min(l.h || 5, 7));
+  for (const u of [0, 0.12, 0.25, 0.4, 0.55, 0.7, 0.85, 1]) { const rho = u * l.r, e = Math.pow(1 + (rho / hh) * (rho / hh) * 2.2, -1.5) * (1 - u * u * (3 - 2 * u)); g.addColorStop(u, _scatPRgba(l.col, e)); }
   gx.globalAlpha = alpha; gx.fillStyle = g; gx.fillRect(-rx, -rx, 2 * rx, 2 * rx);
   gx.restore();
   return 1;
@@ -256,10 +324,11 @@ const sceneAtmosPass = {
   },
   /** Shaded classes: the flip bit and the shading (the sprite is shaded for its on-screen orientation). */
   spriteKey(L, C, req) {
-    if (!L || !req || !(_scatPV2(C) || _scatPFx(C, 'atmos')) || req.part === 'lit') return '';
+    if (!L || !req || !(_scatPV2(C) || _scatPFx(C, 'atmos'))) return '';
+    if (req.part === 'lit') return 'lit2';
     const cls = _scatPCls(req), def = typeof sceneObj === 'function' ? sceneObj(req.o) : null;
     if (!_SCATP_SHADE.has(cls) || (def && def.shade === false)) return '';
-    return 'sh' + _scatPRel(L) + (req.flip ? 'f' : '') + 'r' + sceneRimAt(L) + 'k' + Math.round(_scatPShadeK(L) * 20);
+    return 'sh' + _scatPRel(L) + (req.flip ? 'f' : '') + 'r' + sceneRimAt(L) + 'k' + Math.round(_scatPShadeK(L) * 20) + (_SCATP_FACADE.has(cls) ? 'fa' + sceneFacadeLight(L) : '');
   },
   prebake(env) {
     const C = env.C, L = env.L, st = env._scat = { lights: [], banks: [], pools: 0, halos: 0, spill: 0, hazed: 0, lifted: 0 };
@@ -298,10 +367,16 @@ const sceneAtmosPass = {
   },
   sprite(env, cx, req) {
     const C = env.C, L = env.L;
-    if (!L || !req || req.part === 'lit' || !(_scatPV2(C) || _scatPFx(C, 'atmos'))) return;
+    if (!L || !req || !(_scatPV2(C) || _scatPFx(C, 'atmos'))) return;
     const cls = _scatPCls(req), def = typeof sceneObj === 'function' ? sceneObj(req.o) : null;
+    if (req.part === 'lit') {
+      // a lamp (a light source the pass pools itself): keep its head's glow, drop its own ground pool; a facade: a soft wash
+      const st = env._scat, lamp = !!(st && st.lights && st.lights.some(l => l.i === req.i && l.kind !== 'spill'));
+      sceneAtmosLitSprite(cx, req, { lamp, flood: !lamp && _SCATP_FACADE.has(cls) });
+      return;
+    }
     if (!_SCATP_SHADE.has(cls) || (def && def.shade === false)) return;
-    sceneAtmosShadeSprite(cx, L, _scatPSide(L, req.flip));
+    sceneAtmosShadeSprite(cx, L, _scatPSide(L, req.flip), _SCATP_FACADE.has(cls) ? { facade: sceneFacadeLight(L) } : undefined);
   },
   /** v2: the ground haze the weather adds beyond the compiled surfaces' own (fog and mist lower V; the compile used C.atmos). */
   ground(env, layer, gx) {
@@ -332,7 +407,7 @@ const sceneAtmosPass = {
     if (when === 'under') {
       for (const l of mine) {
         if (st.hid && st.hid.get(l) && st.hid.get(l).foot && l.kind === 'spill') continue;
-        if (l.kind === 'lamp' && L.lamps) st.pools += _scatPPool(gx, cam, l, 0.5 * Math.max(0.35, dark));
+        if (l.kind === 'lamp' && L.lamps) st.pools += _scatPPool(gx, cam, l, 0.45 * Math.max(0.35, dark));
         else if (l.kind === 'spill' && L.windows) st.spill += _scatPSpill(gx, cam, l, 0.25 * _scatPClamp(sceneWindowShare(L) / 0.55, 0.3, 1.2) * Math.max(0.4, dark));
       }
     } else if (when === 'over') {
