@@ -39,7 +39,7 @@ Hard rules for every builder (on top of CLAUDE.md):
 | Plasma One | Card issued by Rain; non-custodial embedded wallet (Privy). Card purchases are probably pulled on-chain at authorisation from the wallet (Privy's generic card docs), so they would show as USDT0 transfers to a settlement address **with no shop name**; some may net off-chain. Not confirmed by Plasma. Transfers we saw are often ERC-4337 `handleOps` (smart accounts), so the address the user pastes is the smart-account address. | Secondary sources; UI must say so honestly |
 | Enable Banking | Base `https://api.enablebanking.com`. Every call carries a JWT, RS256, header `kid` = application id, claims `iss: enablebanking.com`, `aud: api.enablebanking.com`, `iat`, `exp` (max TTL 24 h). `GET /aspsps` (filter `country`, `psu_type`) returns per bank `maximum_consent_validity` in seconds (example 15552000 = 180 days), `beta`, `logo`, `auth_methods`. `POST /auth` {access.valid_until, aspsp{name,country}, state, redirect_url, psu_type} -> {url}; `POST /sessions` {code} -> session id + accounts; `GET /accounts/{uid}/balances`, `GET /accounts/{uid}/transactions?date_from&date_to&continuation_key`. Transaction fields: `entry_reference`, `transaction_amount{amount,currency}`, `credit_debit_indicator` CRDT/DBIT, `status` BOOK/PDNG, `booking_date`, `value_date`, `creditor`/`debtor.name`, `remittance_information[]`. Errors include `EXPIRED_SESSION`, `ASPSP_RATE_LIMIT_EXCEEDED`, `EXPIRED_AUTHORIZATION_CODE`. | enablebanking.com/docs/api/reference |
 | Enable Banking restricted mode | A new production app is "Inactive"; "Activate by linking accounts" in the Control Panel makes it active in **restricted** mode: "you can only fetch data from accounts linked to the application", allowed for "individual non-commercial use", until a contract is signed. API authorisation is still needed after linking. Key: the Control Panel can generate it in the browser and downloads a **PEM** private key. Production redirect URLs must be **HTTPS** ("The URL does not have to be public"); sandbox allows HTTP. | Enable Banking docs + Firefly III guide |
-| Enable Banking UK coverage | **Not confirmed.** Public material talks about ~2,500 banks in 29 European countries; no public page listing GB banks was found. The answer comes from `GET /aspsps?country=GB` once the user has an app, so the wizard checks this live (section 2.3). | Open question |
+| Enable Banking UK coverage | **Not confirmed.** Public material talks about ~2,500 banks in 29 European countries; no public page listing GB banks was found. The answer comes from `GET /aspsps?country=GB` once the user has an app, so the wizard checks this live (section 2.3). Still open after the build (8 Oct): the builder had no Enable Banking app of its own (no account may be created for this work), so nothing was read from `/aspsps`; `tools/eb-bank-snapshot.mjs` fills the bundled list the first time someone runs it with their own app (section 6). | Open question |
 | Aureli (claude.ai Bank connector) | No public pricing or bank list found. The UI phrases it neutrally and links out; it states only what the user told us (an Aureli account is needed; more than one bank account is paid). | Neutral wording |
 | Others | GoCardless Bank Account Data (Nordigen) closed to new signups; Plaid and Yapily free tiers are sandbox only. Not offered. | Research brief |
 
@@ -728,3 +728,70 @@ Open issues for the core (not Plasma-only, found in the browser check):
   the merchant name in Finances ("Plasma One Payment 0X00 00Ca <amount> Usd
   <rate>"), so every converted row is its own merchant. The note should be
   stripped before `cleanMerchant`, or kept out of the memo.
+
+---
+
+## 6. Build notes: Enable Banking (Builder 4, 8 Oct)
+
+Built in `lib/fin-connect/enable-banking.mjs`, `docs/eb-callback.html`,
+`tools/eb-bank-snapshot.mjs`, `tests/fixtures/fin-fake-enablebanking.mjs`,
+`tests/fin-connect-eb.test.mjs` (34 tests, fake only: every JWT is verified
+by the fake against a key generated for the run). Changes against the design
+above:
+
+- **Account ids come from `identification_hash`, not the EB `uid`.** A `uid`
+  belongs to one session, so a re-authorisation would have given every account
+  a new id (new `<sourceId>.<accountId>`, duplicate rows, lost names).
+  Our id is `eb` + 20 hex of a hash of `identification_hash` (the uid when a
+  bank sends none); the session's `uids` map (our id -> uid) lives only in
+  `secrets/fin/eb-<sourceId>.json`. An account the bank stops sharing stays
+  listed (its rows stay) and is skipped by updates.
+- **Default return is the paste page** (`config.finance.ebRedirect` !==
+  `'bounce'`), as 2.3.1 says, until the owner enables GitHub Pages. In fake
+  mode a `bounce` start is sent to `GET eb/fake-bounce` (the same
+  `docs/eb-callback.html`, served locally), so the whole round trip stays on
+  the computer.
+- **Bounce page gate (2.3.1 A): passed in headless Chrome and Edge**, 8 Oct.
+  A local HTTPS server answered for `mahdi1190.github.io` (host-resolver
+  rules; the real Pages site was never contacted) and its address was marked
+  public (`--ip-address-space-overrides`), so the browser applied its
+  public -> local rules. Fake sign-in -> the https page -> `location.replace`
+  to `http://localhost:<port>/api/fin-connect/eb/callback` -> "connected",
+  with no block page and no history entry for the bounce page. **Not
+  checked:** Firefox (not installed on the build machine) and a headed browser
+  with a real certificate. Check those (with the fake) before making
+  `bounce` the default. The page pins its one inline script with a CSP hash
+  (a test recomputes it), sends no requests, and only passes on `code`,
+  `state` and `error`.
+- **Automatic-update budget**: 4 a day per source, kept in the cursor
+  (`auto: {day, count}`). `fetch` treats `opts.manual === true` or
+  `opts.full === true` as Sync now (always allowed). The core passes
+  `full` for a new connection; **Sync now should pass `manual: true`** (or
+  `full`), otherwise it counts against the 4.
+- **`setup`**: the source is created with `setup: true` and cleared as soon as
+  the session secret is written, because `lib/finance.mjs` skips sources in
+  setup and only a fetch would clear it.
+- **Source fields**: `sessionHash` (one source per EB session, as 3.1),
+  `reauthDue`, and `extra: {bankName, country}` (public; the page can use it
+  for "Sign in again" instead of `src.aspsp`, which does not exist).
+- **First import**: asks for 730 days; a bank that answers
+  `WRONG_TRANSACTIONS_PERIOD` is asked again once for 89 days. Then the
+  cursor date minus 35 days, as Aureli.
+- **Errors**: `EXPIRED_SESSION`/`CLOSED_SESSION`/`REVOKED_SESSION` ->
+  `CONSENT_EXPIRED`; `ASPSP_RATE_LIMIT_EXCEEDED`/429 -> `RATE_LIMITED`;
+  `EXPIRED_AUTHORIZATION_CODE` -> `AUTH`; a refused JWT (401) ->
+  `NOT_CONFIGURED` ("the application ID and the .pem file do not belong
+  together"); 5xx -> `NETWORK`. A consent past its end date is caught
+  locally without a request.
+- **Extra routes** (registered by `provider.routes`, all same-origin except
+  the callback): `GET eb/app` (re-check: active / restricted / which return
+  URLs are registered), `DELETE eb/app`, `GET eb/pending?state=` (the sheet's
+  "Waiting for <bank>"), and in fake mode only `GET eb/fake-bank` (the fake
+  bank's page) and `GET eb/fake-bounce`. `GET eb/banks` adds
+  `direct: 'monzo'|'plasma'` when the search names them; `start` refuses them.
+- **Snapshot file**: `src/app/56-fin-eb-banks.js` (format by the UI) stays
+  empty: no app to read it from. The server reads it by evaluating the file
+  alone in a `vm` context. `node tools/eb-bank-snapshot.mjs --app-id <id>
+  --pem <file>` writes names, beta and consent days only; `--fake` writes to
+  the temp folder, never over the real file.
+- The FX note issue in section 5 applies to EUR accounts here too.
