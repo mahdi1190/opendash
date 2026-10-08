@@ -56,7 +56,7 @@ const NF_LANDS = {
   heath: { base: ['#76743e', '#5c5c32', '#8a8648'], spring: ['#7a8040', '#5e6634', '#8e9450'], summer: ['#76664a', '#5c5036', '#8a7258'], autumn: ['#8e7640', '#6e5a30', '#a48c50'], winter: ['#827e66', '#66624e', '#9c9880'] },
   lawn: { base: ['#6a9040', '#4f7434', '#88aa50'], spring: ['#76a046', '#587e38', '#96ba5a'], summer: ['#6a9040', '#4f7434', '#88aa50'], autumn: ['#86883e', '#6a6c32', '#a0a050'], winter: ['#8a9478', '#6e7a62', '#a4ac92'] },
   marsh: { base: ['#7a8450', '#5e6a3e', '#9aa060'], spring: ['#7e9050', '#62743e', '#9ab062'], summer: ['#7a8450', '#5e6a3e', '#9aa060'], autumn: ['#94844a', '#76683a', '#ae9c5a'], winter: ['#9a9478', '#7c7862', '#b2ac92'] },
-  shingle: { base: ['#c4b89c', '#a89c80', '#ddd2b8'], spring: ['#c4b89c', '#a89c80', '#ddd2b8'], summer: ['#cabe9e', '#ae9f80', '#e2d6b8'], autumn: ['#bcae92', '#a09276', '#d4c8ac'], winter: ['#b8b2a2', '#9c968a', '#d0cabc'] },
+  shingle: { base: ['#c4b89c', '#a89c80', '#ddd2b8'], spring: ['#c2bc98', '#a4a07c', '#dcd6b2'], summer: ['#d6c8a0', '#bcaa80', '#ecdeb8'], autumn: ['#a8946e', '#8c7a58', '#c2ae88'], winter: ['#a8a8a4', '#8e8e8a', '#c2c2be'] },
   wood: { base: ['#5e6a36', '#465028', '#727c42'], spring: ['#667a38', '#4c5c2a', '#7c904a'], summer: ['#5e6a36', '#465028', '#727c42'], autumn: ['#86643a', '#684c2a', '#a07a46'], winter: ['#6e6650', '#56503e', '#857c64'] },
   village: { base: ['#6a8a42', '#506c34', '#86a452'], spring: ['#72963e', '#567834', '#90b056'], summer: ['#6a8a42', '#506c34', '#86a452'], autumn: ['#82843e', '#666832', '#9c9c50'], winter: ['#8a9078', '#6e7662', '#a4aa92'] },
 };
@@ -65,7 +65,7 @@ const NF_COVER = {
   heath: { near: { 'plant.heather': 5, 'plant.grass': 2 }, far: { 'plant.heather': 3, 'plant.grass': 1 }, shrub: 'plant.gorse' },
   lawn: { near: { 'plant.grass': 3, 'plant.wildflowers': 2 }, far: { 'plant.grass': 1 }, shrub: 'plant.holly' },
   marsh: { near: { 'plant.reed': 3, 'plant.grass': 4, 'plant.bulrush': 1 }, far: { 'plant.grass': 2, 'plant.reed': 1 }, shrub: 'plant.shrub' },
-  shingle: { near: { 'rock.stones': 3, 'plant.grass': 2 }, far: { 'rock.stones': 2, 'plant.grass': 1 }, shrub: 'plant.gorse' },
+  shingle: { near: { 'plant.grass': 3, 'plant.wildflowers': 2 }, far: { 'plant.grass': 1, 'plant.wildflowers': 1 }, shrub: 'plant.gorse' },
   wood: { near: { 'plant.grass': 3, 'plant.bluebells': 1 }, fore: { 'plant.bracken': 2, 'plant.grass': 3 }, far: { 'plant.grass': 2, 'plant.bluebells': 1 }, shrub: 'plant.holly' },
   village: { near: { 'plant.grass': 3, 'plant.wildflowers': 2, 'plant.shrub': 1 }, far: { 'plant.grass': 1 }, shrub: 'plant.shrub' },
 };
@@ -174,7 +174,7 @@ function sceneArchNewForest(p, u) {
   // olive-tinted drifts (one tint bucket, one variant): every cover object shows two colours, the SVG still stays small
   C(cover.near, 'near', 16, H + 152, H + 270, 60, [0.66, 1.0], false, { variant: 2, tint: { col: '#8a7a40', k: [0.09, 0.11] }, mask: { noise: { scale: 260, cut: 0.45 }, avoid } });
   C(cover.fore || cover.near, 'fore', 17, H + 270, 905, 40, [1.0, 1.5], false, { variant: 2, tint: { col: '#8a7a40', k: [0.09, 0.11] }, mask: { noise: { scale: 260, cut: 0.45 }, avoid } });
-  if (landKey === 'shingle') C('ground.beach', 'mid', 12, midTop + 4, H + 150, 14, [0.4, 0.7], false, { minGap: 90 });
+  if (landKey === 'shingle') { C('ground.beach', 'mid', 12, midTop + 4, H + 150, 9, [0.4, 0.7], false, { minGap: 60, mask: { noise: { scale: 300, cut: 0.35 }, avoid } }); C('rock.stones', 'near', 18, H + 152, 905, 12, [0.6, 1.2], false, { minGap: 90, variant: 'random' }); }
   // shrubs: gorse on the heath, holly on the lawns and in the woods
   if (landKey === 'heath') data.scatter.push({ obj: cover.shrub, layer: 'mid', seed: 13, area: { rect: [-160, midTop + 10, 1760, H + 140] }, n: n(p.shrubs == null ? 8 : p.shrubs), minGap: 90, s: [0.16, 0.3], flip: 0.5, variant: 0, anim: false, mask: mask(), reflect: reflectAt(midTop, H + 140) });
   data.scatter.push({ obj: cover.shrub, layer: 'near', seed: 14, area: { rect: [-160, H + 160, 1760, H + 260] }, n: n(p.shrubs == null ? 4 : Math.ceil(p.shrubs / 3)), minGap: 200, s: [0.34, 0.56], flip: 0.5, variant: 1, anim: false, mask: mask([{ rect: [500, H, 1100, 900] }]) });
