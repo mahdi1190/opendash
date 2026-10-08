@@ -8,7 +8,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { animRegistryFiles } from '../tools/lib/anim-sources.mjs';
 import { loadRegistry } from '../tools/lib/anim-render.mjs';
-import { retroCheck } from '../tools/lib/scene-lint.mjs';
+import { engineOf, lintScene, retroCheck } from '../tools/lib/scene-lint.mjs';
+import { stableIds } from '../tools/lib/anim-quality.mjs';
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app');
 const src = (f) => readFileSync(join(APP, f), 'utf8');
@@ -113,7 +114,11 @@ test('texas pack: nine full-screen scenes; a city\'s own scene wins its opening,
 });
 
 test('texas pack: the nine scenes take the shared live sky (docs/dev/SCENE_ENGINE.md section 7): re-lit at night, a small overlay, their own lamps, one moon', () => {
-  const REG = loadRegistry(join(APP, '..', '..')), G = REG.R.get, max = G('SCENE_RETRO_MAX_BYTES');
+  const root = join(APP, '..', '..'), current = loadRegistry(root);
+  // A live composed upgrade keeps its original painting as legacySvg. Exercise
+  // all nine original retrofit paintings by loading the pack without upgrades.
+  const REG = loadRegistry(root, { omit: current.files.filter(f => /^71-scene-upgrade-/.test(f)) });
+  const G = REG.R.get, max = G('SCENE_RETRO_MAX_BYTES');
   const entries = REG.items().filter(e => e.packObj.id === 'texas' && e.full);
   assert.equal(entries.length, 9);
   const classes = REG.classesFor(entries[0].packObj);
@@ -146,4 +151,66 @@ test('texas pack: the nine scenes take the shared live sky (docs/dev/SCENE_ENGIN
     else { assert.ok(moons(svg) <= 1, it.ref + ': one moon at most'); live += moons(svg); }
   }
   assert.ok(live >= 3, 'the scenes without a painted moon get the real one (' + live + ')');
+});
+
+test('texas pack: Fort Worth uses its composed cattle-drive opening and keeps the original identity and painting', () => {
+  const root = join(APP, '..', '..'), REG = loadRegistry(root), G = REG.R.get;
+  const LEGACY = loadRegistry(root, { omit: REG.files.filter(f => /^71-scene-upgrade-/.test(f)) });
+  const entry = REG.items().find(e => e.ref === 'texas/fort-worth-stockyards-scene');
+  const old = LEGACY.items().find(e => e.ref === 'texas/fort-worth-stockyards-scene');
+  const up = (G('_ANIM_REGION_UPGRADES').texas || {})['place:fort-worth'];
+  assert.ok(entry && old && up, 'the existing Fort Worth scene has a registered upgrade');
+  const it = entry.item;
+  assert.equal(up.state, 'live');
+  assert.equal(it.composed, true);
+  assert.equal(it.upgrade.state, 'live');
+  assert.equal(typeof it.legacySvg, 'function');
+  assert.equal(it.retro, undefined, 'the composed scene uses its own live sky');
+  assert.equal(it.reduced, 'static', 'motion preferences retain a still opening');
+  const identity = x => Object.fromEntries(['id', 'ref', 'label', 'site', 'tags', 'priority', 'slot', 'region', 'country', 'state', 'colour', 'mood', 'season', 'texasKind', 'txTown', 'worldKind', 'liveSky']
+    .map(k => [k, x[k]]).concat([['when', String(x.when)]]));
+  assert.deepEqual(identity(it), identity(old.item));
+  assert.equal(stableIds(it.legacySvg({ size: 'fill' }), true), stableIds(old.item.svg({ size: 'fill' }), true), 'the original drawing is retained exactly apart from generated ids');
+  const data = it.scene(), E = engineOf(REG);
+  assert.deepEqual(G('sceneValidate')(data), []);
+  const TH = JSON.parse(readFileSync(join(root, 'tools', 'anim-quality.json'), 'utf8'));
+  const lint = lintScene(data, TH, { E, item: it, ref: it.ref });
+  assert.deepEqual(lint.failures, [], 'the new scene passes data, bar, variety and care');
+  assert.equal(lint.pass, true);
+  assert.deepEqual(it.upgrade.landmarks, ['landmark.fort-worth-stockyards']);
+  const C = G('sceneCompile')(data, { lod: 1 });
+  assert.ok(C.items.some(x => x.o === 'landmark.fort-worth-stockyards'), 'the Stockyards gate is placed');
+  assert.equal(C.actors.filter(a => a.o === 'animal.texas-longhorn').length, 3, 'three individual longhorns cross the street');
+  const day = '2026-10-05', ctx = { lat: 32.7254, lon: -97.3208 };
+  assert.equal(R.animSpecialPick('opening', day, {}, ctx).ref, it.ref, 'the existing Fort Worth location selects the new opening');
+  assert.equal(R.animSpecialPick('opening', day, { packsOff: ['texas'] }, ctx), null, 'the Texas pack preference still applies');
+});
+
+test('texas pack: all nine opening scenes use distinct live compositions while retaining location selection and originals', () => {
+  const root = join(APP, '..', '..'), REG = loadRegistry(root), G = REG.R.get;
+  const LEGACY = loadRegistry(root, { omit: REG.files.filter(f => /^71-scene-upgrade-/.test(f)) });
+  const scenes = REG.items().filter(e => e.packObj.id === 'texas' && e.full);
+  const upgrades = G('_ANIM_REGION_UPGRADES').texas;
+  assert.equal(scenes.length, 9);
+  const compositions = new Set();
+  for (const e of scenes) {
+    const it = e.item, old = LEGACY.items().find(o => o.ref === e.ref).item;
+    const key = 'place:' + (it.txTown || it.id);
+    assert.equal(upgrades[key].state, 'live', e.ref + ': live upgrade for city or statewide key');
+    assert.equal(it.composed, true, e.ref + ': composed opening');
+    assert.equal(it.reduced, 'static', e.ref + ': reduced-motion fallback');
+    for (const field of ['id', 'ref', 'label', 'site', 'priority', 'slot', 'texasKind', 'txTown'])
+      assert.deepEqual(it[field], old[field], e.ref + ': preserved ' + field);
+    assert.equal(String(it.when), String(old.when), e.ref + ': preserved selection rule');
+    assert.equal(stableIds(it.legacySvg({ size: 'fill' }), true), stableIds(old.svg({ size: 'fill' }), true), e.ref + ': original painting retained');
+    const data = it.scene();
+    assert.deepEqual(G('sceneValidate')(data), [], e.ref + ': valid scene');
+    assert.equal(data.season, 'auto');
+    assert.equal(data.weather, 'live');
+    const C = G('sceneCompile')(data, { lod: 1 });
+    assert.ok(C.actors.length + C.flocks.reduce((n, f) => n + (f.n || 0), 0) >= 6, e.ref + ': travelling life');
+    compositions.add(JSON.stringify([data.ground, data.place, data.water]));
+    assert.ok(it.upgrade.landmarks.length, e.ref + ': has its own landmark or natural signature');
+  }
+  assert.equal(compositions.size, 9, 'every intro has a distinct composition');
 });

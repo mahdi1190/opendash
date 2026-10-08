@@ -205,7 +205,7 @@ function animTexasWhere(ctx) { const id = ANIM_TX.place(ctx); return id ? { id, 
      its upgrade registers under the pack id, animRegionSceneUpgrade('texas', 'place:<town>', up) (71-scene-upgrade-texas-*.js),
      and animSceneUpgradeFinish applies it here: a live one replaces the art (not retrofitted), a draft only adds item.upgrade. */
   const SCENE_PLACE = { 'hill-country-bluebonnets': [30.27, -98.87], 'west-texas-sunset': [30.31, -104.02], 'gulf-coast-sunrise': [29.3, -94.8] };
-  const PAINTED_MOON = { 'houston-liftoff-scene': 1, 'west-texas-sunset': 1, 'gulf-coast-sunrise': 1 };
+  const PAINTED_MOON = { 'fort-worth-stockyards-scene': 1, 'houston-liftoff-scene': 1, 'west-texas-sunset': 1, 'gulf-coast-sunrise': 1 };
   for (const o of scenes) {
     const town = SCENE_CITY[o.id] || '', months = SCENE_MONTHS[o.id] || null;
     const t = TX_TOWNS.find(x => x[0] === town), at = SCENE_PLACE[o.id] || (t ? [t[2], t[3]] : [31, -100]);
