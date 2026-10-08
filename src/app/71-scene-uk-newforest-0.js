@@ -62,14 +62,16 @@ const NF_LANDS = {
 };
 /** The cover objects (weights) per land kind: near and fore, and the far (static) cover. */
 const NF_COVER = {
-  heath: { near: { 'plant.heather': 5, 'plant.grass': 2, 'plant.bracken': 1 }, far: { 'plant.heather': 3, 'plant.grass': 1 }, shrub: 'plant.gorse' },
-  lawn: { near: { 'plant.grass': 6, 'plant.wildflowers': 1, 'plant.bracken': 1 }, far: { 'plant.grass': 1 }, shrub: 'plant.holly' },
+  heath: { near: { 'plant.heather': 5, 'plant.grass': 2 }, far: { 'plant.heather': 3, 'plant.grass': 1 }, shrub: 'plant.gorse' },
+  lawn: { near: { 'plant.grass': 3, 'plant.wildflowers': 1, 'plant.heather': 1 }, far: { 'plant.grass': 1 }, shrub: 'plant.holly' },
   marsh: { near: { 'plant.reed': 3, 'plant.grass': 4, 'plant.bulrush': 1 }, far: { 'plant.grass': 2, 'plant.reed': 1 }, shrub: 'plant.shrub' },
   shingle: { near: { 'rock.stones': 3, 'plant.grass': 2 }, far: { 'rock.stones': 2, 'plant.grass': 1 }, shrub: 'plant.gorse' },
-  wood: { near: { 'plant.bracken': 3, 'plant.fern': 2, 'ground.leaves': 2, 'plant.grass': 2 }, far: { 'plant.bracken': 2, 'plant.grass': 1 }, shrub: 'plant.holly' },
-  village: { near: { 'plant.grass': 6, 'plant.wildflowers': 2 }, far: { 'plant.grass': 1 }, shrub: 'plant.shrub' },
+  wood: { near: { 'plant.grass': 3, 'plant.heather': 1 }, fore: { 'plant.bracken': 2, 'plant.grass': 3 }, far: { 'plant.grass': 2, 'plant.heather': 1 }, shrub: 'plant.holly' },
+  village: { near: { 'plant.grass': 3, 'plant.wildflowers': 2, 'plant.shrub': 1 }, far: { 'plant.grass': 1 }, shrub: 'plant.shrub' },
 };
-const NF_TREES = { pine: 'tree.pine', birch: 'tree.birch-heath', oak: 'tree.oak', alder: 'tree.alder', willow: 'tree.willow', hawthorn: 'tree.hawthorn', holly: 'plant.holly' };
+const NF_TREES = { pine: 'tree.pool-pine', birch: 'tree.birch-heath', oak: 'tree.bank-oak', alder: 'tree.bank-alder', willow: 'tree.bank-willow', hawthorn: 'tree.pond-oak', holly: 'plant.holly', 'small-pine': 'tree.pond-pine', 'small-oak': 'tree.pond-oak' };
+/** The framing trees (front layer). */
+const NF_FRAME = { pine: 'tree.pine-veteran', oak: 'tree.ancient-oak', birch: 'tree.pool-birch', alder: 'tree.bank-alder', willow: 'tree.bank-willow' };
 
 function sceneArchNewForest(p, u) {
   const H = Number.isFinite(p.horizon) ? p.horizon : 500, id = String(p.id);
@@ -148,36 +150,39 @@ function sceneArchNewForest(p, u) {
   }
   const mask = (extra) => ({ noise: { scale: 220, cut: 0.25 }, avoid: avoid.concat(extra || []) });
   // ---- the far woods and copses (static), the mid and near trees (by mix), the frame
-  if (!has('nowoods') && !sea) data.scatter.push({ obj: { 'tree.far-pine': 2, 'tree.far-broad': 2, 'tree.distant': 1 }, layer: 'far', seed: 3, area: { rect: [-160, H + 2, 1760, H + 16] }, n: n(34), minGap: 34, s: [0.26, 0.46], anim: false, variant: 'random', tint: { col: '#3a5a3a', k: [0.08, 0.16] }, mask: { noise: { scale: 300, cut: 0.2 } } });
+  if (!has('nowoods') && !sea) data.scatter.push({ obj: { 'tree.far-pine': 2, 'tree.far-broad': 3 }, layer: 'far', seed: 3, area: { rect: [-160, H + 2, 1760, H + 16] }, n: n(34), minGap: 34, s: [0.2, 0.5], anim: false, variant: 'random', tint: { col: '#3a5a3a', k: [0, 0.1] }, mask: { noise: { scale: 300, cut: 0.2 } } });
   const mix = {};
   for (const t of (p.trees && p.trees.length ? p.trees : ['pine', 'birch'])) if (NF_TREES[t]) mix[NF_TREES[t]] = (mix[NF_TREES[t]] || 0) + 1;
   if (Object.keys(mix).length) {
-    data.scatter.push({ obj: mix, layer: 'mid', seed: 5, area: { rect: [-160, midTop + 8, 1760, midTop + 60] }, n: n(p.ntrees == null ? 9 : p.ntrees), minGap: 110, s: [0.16, 0.26], flip: 0.5, variant: 'random', tint: { col: '#8a7a40', k: [0, 0.08] }, mask: mask([{ rect: [560, H, 1040, H + 140] }]) });
+    data.scatter.push({ obj: mix, layer: 'mid', seed: 5, area: { rect: [-160, midTop + 8, 1760, midTop + 60] }, n: n(p.ntrees == null ? 9 : p.ntrees), minGap: 110, s: [0.18, 0.3], flip: 0.5, variant: [0, 1], anim: false, tint: { col: '#8a7a40', k: [0.08, 0.08] }, mask: mask([{ rect: [560, H, 1040, H + 140] }]) });
     data.scatter.push({ obj: mix, layer: 'near', seed: 6, area: { rect: [-160, H + 160, 1760, H + 200] }, n: n(p.ntrees == null ? 3 : Math.ceil(p.ntrees / 3)), minGap: 260, s: [0.36, 0.5], flip: 0.5, variant: 'random', mask: mask([{ rect: [440, H, 1160, 900] }]) });
   }
   if (p.frame && p.frame.length) {
-    const [a, b] = p.frame, A = NF_TREES[a] || a, B = NF_TREES[b || a] || b || A;
+    const [a, b] = p.frame, A = NF_FRAME[a] || a, B = NF_FRAME[b || a] || b || A;
     const sOf = (oid, h) => { const d = sceneObj(oid); return d ? Math.round(h / d.size[1] * 100) / 100 : 1; };
     if (a !== 'none') data.place.push({ obj: A, x: -40, y: 912, s: sOf(A, 700), layer: 'front', seed: 21, flip: false });
     if ((b || a) !== 'none') data.place.push({ obj: B, x: 1660, y: 916, s: sOf(B, 660), layer: 'front', seed: 22, flip: true });
   }
   // ---- the ground cover: far (static), mid (static), near and fore (wind strips)
   const reflectAt = (y0, y1) => reflectBand.some(([a, b]) => y1 >= a - 40 && y0 <= b + 40);
-  const C = (obj, layer, seed, y0, y1, k, s, anim, extra) => data.scatter.push(Object.assign({ obj, layer, seed, area: { rect: [-160, y0, 1760, y1] }, n: n(k), minGap: Math.max(6, Math.round(s[0] * 18)), s, flip: 0.5, variant: 'random', tint: { col: '#8a7a40', k: [0, 0.12] }, anim, mask: mask(), reflect: reflectAt(y0, y1) }, extra || {}));
+  const C = (obj, layer, seed, y0, y1, k, s, anim, extra) => data.scatter.push(Object.assign({ obj, layer, seed, area: { rect: [-160, y0, 1760, y1] }, n: n(k), minGap: Math.max(9, Math.round(s[0] * 24)), s, flip: 0.5, variant: [0, 1], anim, mask: mask(), reflect: reflectAt(y0, y1) }, extra || {}));
   if (!sea) C(cover.far, 'far', 7, H + 10, H + 50, 110, [0.22, 0.36], false);
   C(cover.far, 'mid', 8, midTop + 6, H + 150, 200, [0.4, 0.66], false);
-  C(cover.near, 'near', 9, H + 152, H + 270, 260, [0.66, 1.0], 'strip');
-  C(cover.near, 'fore', 10, H + 270, 905, 190, [1.0, 1.5], 'strip');
-  if (landKey !== 'shingle' && landKey !== 'marsh') C('plant.grass', 'fore', 11, H + 300, 905, 70, [0.9, 1.3], 'strip', { tint: { col: '#a09050', k: [0, 0.16] } });
+  C(cover.near, 'near', 9, H + 152, H + 270, 260, [0.66, 1.0], false);
+  C(cover.fore || cover.near, 'fore', 10, H + 270, 905, 190, [1.0, 1.5], 'strip');
+  // olive-tinted drifts (one tint bucket, one variant): every cover object shows two colours, the SVG still stays small
+  C(cover.far, 'mid', 15, midTop + 6, H + 150, 50, [0.4, 0.66], false, { variant: 2, tint: { col: '#8a7a40', k: [0.09, 0.11] }, mask: { noise: { scale: 260, cut: 0.45 }, avoid } });
+  C(cover.near, 'near', 16, H + 152, H + 270, 60, [0.66, 1.0], false, { variant: 2, tint: { col: '#8a7a40', k: [0.09, 0.11] }, mask: { noise: { scale: 260, cut: 0.45 }, avoid } });
+  C(cover.fore || cover.near, 'fore', 17, H + 270, 905, 40, [1.0, 1.5], false, { variant: 2, tint: { col: '#8a7a40', k: [0.09, 0.11] }, mask: { noise: { scale: 260, cut: 0.45 }, avoid } });
   if (landKey === 'shingle') C('ground.beach', 'mid', 12, midTop + 4, H + 150, 14, [0.4, 0.7], false, { minGap: 90 });
   // shrubs: gorse on the heath, holly on the lawns and in the woods
-  data.scatter.push({ obj: cover.shrub, layer: 'mid', seed: 13, area: { rect: [-160, midTop + 10, 1760, H + 140] }, n: n(p.shrubs == null ? 10 : p.shrubs), minGap: 90, s: [0.16, 0.3], flip: 0.5, variant: 'random', mask: mask(), reflect: reflectAt(midTop, H + 140) });
-  data.scatter.push({ obj: cover.shrub, layer: 'near', seed: 14, area: { rect: [-160, H + 160, 1760, H + 260] }, n: n(p.shrubs == null ? 5 : Math.ceil(p.shrubs / 2)), minGap: 200, s: [0.34, 0.56], flip: 0.5, variant: 'random', mask: mask([{ rect: [500, H, 1100, 900] }]) });
+  data.scatter.push({ obj: cover.shrub, layer: 'mid', seed: 13, area: { rect: [-160, midTop + 10, 1760, H + 140] }, n: n(p.shrubs == null ? 8 : p.shrubs), minGap: 90, s: [0.16, 0.3], flip: 0.5, variant: [0, 1], anim: false, mask: mask(), reflect: reflectAt(midTop, H + 140) });
+  data.scatter.push({ obj: cover.shrub, layer: 'near', seed: 14, area: { rect: [-160, H + 160, 1760, H + 260] }, n: n(p.shrubs == null ? 4 : Math.ceil(p.shrubs / 3)), minGap: 200, s: [0.34, 0.56], flip: 0.5, variant: 0, anim: false, mask: mask([{ rect: [500, H, 1100, 900] }]) });
   // ---- the life of the Forest
   const herd = (obj, count, h, m, y0, y1, seedBase) => {
     for (let i = 0; i < count; i++) {
       const x = 180 + ((i * 0.618 + r() * 0.3) % 1) * 1240, y = Math.round(y0 + r() * (y1 - y0));
-      data.place.push({ obj, x: Math.round(x), y, s: _nf.sz(view, y, h, m), layer: y < H + 150 ? 'mid' : 'near', variant: i % 3, flip: r() < 0.5, seed: seedBase + i });
+      data.place.push({ obj, x: Math.round(x), y, s: sceneScaleBucket(_nf.sz(view, y, h, m) * (0.75 + r() * 0.5)), layer: 'near', variant: i % 2, flip: i % 2 === 1, seed: seedBase + i });
     }
   };
   if (p.ponies) herd('animal.pony', p.ponies, 140, 1.55, H + 70, H + 250, 100);
