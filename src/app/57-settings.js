@@ -292,7 +292,8 @@ registerSettingsGroup({
       + `<dt>Font</dt><dd>Inter · SIL Open Font License 1.1</dd>`
       + `<dt>Icons</dt><dd>Lucide · ISC licence</dd>`
       + `<dt>Charts</dt><dd>Apache ECharts · Apache License 2.0</dd>`
-      + `<dt>Places</dt><dd>Cities from GeoNames (geonames.org) · CC BY 4.0; time zones (IANA) and airports (OurAirports) · public domain</dd>`;
+      + `<dt>Places</dt><dd>Cities from GeoNames (geonames.org) · CC BY 4.0; time zones (IANA) and airports (OurAirports) · public domain</dd>`
+      + (typeof sceneCreditAboutHtml === 'function' ? sceneCreditAboutHtml() : '');   // Maps: OpenStreetMap (ODbL) and terrain credits (70-scene-1credit.js)
     el.appendChild(dl);
     const p = document.createElement('p'); p.className = 'set-h set-foot';
     p.textContent = 'The OpenDash licence is in LICENSE; full third-party licence texts are in THIRD_PARTY_NOTICES.md and vendor/ in the app folder.';

@@ -13,6 +13,10 @@
 //   osgb36ToGrid(lat, lon)                  -> [easting, northing]   Transverse Mercator on Airy 1830 (the British National Grid)
 //   wgs84ToBng(lat, lon)                    -> [easting, northing]
 //   gridRef(e, n, digits)                   -> 'SK 1278 8361' (the letters of the 100 km square)
+//   tileXY(lat, lon, z), tileLatLon(x, y, z), metresPerPixel(lat, z)   Web Mercator tiles (the terrain tiles)
+//   ringArea, ringCentroid, pointInRing, nearestOnSegment, nearestOnLine, lineLength   planar helpers on [x, d] points
+//   simplify(pts, tol | tol(p), closed)     Douglas-Peucker with a tolerance per point (1.5 screen units at each point's depth, V2 17.3)
+//   clipRing(ring, planes), clipLine(line, planes), wedgePlanes({ dNear, dFar, t, m })   Sutherland-Hodgman / Liang-Barsky on the view wedge
 // Coordinates in arrays are [lat, lon] (degrees) or [x, d] / [east, north] (metres).
 
 export const R_EARTH = 6371000;
@@ -119,4 +123,125 @@ export function gridRef(e, n, digits = 10) {
   const letters = String.fromCharCode(l1 + 65, l2 + 65), k = digits / 2;
   const f = (v) => String(Math.floor((v % 100000) / 10 ** (5 - k))).padStart(k, '0');
   return `${letters} ${f(e)} ${f(n)}`;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Web Mercator tiles (the terrain tiles, V2 18.2)
+   --------------------------------------------------------------------------------------------- */
+/** The fractional tile coordinates of a point at zoom z: { x, y } (the integer parts name the tile, the fractions the pixel). */
+export function tileXY(lat, lon, z) {
+  const n = 2 ** z, p = Math.max(-85.0511, Math.min(85.0511, lat)) * RAD;
+  return { x: (lon + 180) / 360 * n, y: (1 - Math.log(Math.tan(p) + 1 / Math.cos(p)) / Math.PI) / 2 * n };
+}
+/** The north-west corner of tile (x, y) at zoom z: [lat, lon]. */
+export function tileLatLon(x, y, z) {
+  const n = 2 ** z, lon = x / n * 360 - 180, lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) / RAD;
+  return [lat, lon];
+}
+/** Ground metres per tile pixel at a latitude (256-pixel tiles). */
+export const metresPerPixel = (lat, z) => 40075016.686 * Math.cos(lat * RAD) / (256 * 2 ** z);
+
+/* ---------------------------------------------------------------------------------------------
+   Planar helpers on [x, d] (or [east, north]) points, shared by osm-project.mjs and terrain.mjs
+   --------------------------------------------------------------------------------------------- */
+/** The signed area of a ring (positive = counter-clockwise with x to the right and d up). */
+export function ringArea(r) { let a = 0; for (let i = 0, n = r.length; i < n; i++) { const p = r[i], q = r[(i + 1) % n]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; }
+export function ringCentroid(r) {
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0, n = r.length; i < n; i++) { const p = r[i], q = r[(i + 1) % n], c = p[0] * q[1] - q[0] * p[1]; a += c; cx += (p[0] + q[0]) * c; cy += (p[1] + q[1]) * c; }
+  if (Math.abs(a) < 1e-9) { const m = r.reduce((s, p) => [s[0] + p[0], s[1] + p[1]], [0, 0]); return [m[0] / r.length, m[1] / r.length]; }
+  return [cx / (3 * a), cy / (3 * a)];
+}
+export function pointInRing(pt, r) {
+  let inside = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const a = r[i], b = r[j];
+    if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+  }
+  return inside;
+}
+/** The nearest point on segment a-b to p: { q: [x, y], t, m (distance) }. */
+export function nearestOnSegment(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy;
+  const t = L ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L)) : 0;
+  const q = [a[0] + t * dx, a[1] + t * dy];
+  return { q, t, m: Math.hypot(p[0] - q[0], p[1] - q[1]) };
+}
+export function nearestOnLine(p, line) {
+  let best = null;
+  for (let i = 1; i < line.length; i++) { const r = nearestOnSegment(p, line[i - 1], line[i]); if (!best || r.m < best.m) best = Object.assign(r, { i: i - 1 }); }
+  return best || { q: line[0], t: 0, m: line[0] ? Math.hypot(p[0] - line[0][0], p[1] - line[0][1]) : Infinity, i: 0 };
+}
+export const lineLength = (l) => { let s = 0; for (let i = 1; i < l.length; i++) s += Math.hypot(l[i][0] - l[i - 1][0], l[i][1] - l[i - 1][1]); return s; };
+
+/**
+ * Douglas-Peucker with a tolerance per point: tol(p) in the same units (V2 17.3 uses 1.5 * d / f metres, so detail fades with depth).
+ * closed: a ring (the first point is kept and the ring split at its farthest point).
+ */
+export function simplify(pts, tol, closed = false) {
+  if (pts.length <= 2) return pts.slice();
+  const tolOf = typeof tol === 'function' ? tol : () => tol;
+  const dp = (a, b, keep) => {
+    let worst = -1, wi = -1;
+    for (let i = a + 1; i < b; i++) {
+      const r = nearestOnSegment(pts[i], pts[a], pts[b]), over = r.m - tolOf(pts[i]);
+      if (over > worst) { worst = over; wi = i; }
+    }
+    if (worst > 0) { keep[wi] = 1; dp(a, wi, keep); dp(wi, b, keep); }
+  };
+  const keep = new Uint8Array(pts.length);
+  if (!closed) { keep[0] = keep[pts.length - 1] = 1; dp(0, pts.length - 1, keep); return pts.filter((_, i) => keep[i]); }
+  let far = 1, fm = -1;
+  for (let i = 1; i < pts.length; i++) { const m = Math.hypot(pts[i][0] - pts[0][0], pts[i][1] - pts[0][1]); if (m > fm) { fm = m; far = i; } }
+  keep[0] = keep[far] = 1;
+  const ext = pts.concat([pts[0]]);
+  const dpE = (a, b) => {
+    let worst = -1, wi = -1;
+    for (let i = a + 1; i < b; i++) { const r = nearestOnSegment(ext[i], ext[a], ext[b]), over = r.m - tolOf(ext[i]); if (over > worst) { worst = over; wi = i; } }
+    if (worst > 0) { keep[wi % pts.length] = 1; dpE(a, wi); dpE(wi, b); }
+  };
+  dpE(0, far); dpE(far, pts.length);
+  return pts.filter((_, i) => keep[i]);
+}
+
+/** A half-plane a*x + b*y + c >= 0. */
+const side = (h, p) => h[0] * p[0] + h[1] * p[1] + h[2];
+const cut = (h, p, q) => { const s = side(h, p), t = side(h, q), k = s / (s - t); return [p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k]; };
+/** Sutherland-Hodgman: a ring clipped by convex half-planes (V2 17.3). */
+export function clipRing(ring, planes) {
+  let out = ring.slice();
+  for (const h of planes) {
+    if (!out.length) break;
+    const inp = out; out = [];
+    for (let i = 0; i < inp.length; i++) {
+      const p = inp[i], q = inp[(i + 1) % inp.length], ip = side(h, p) >= 0, iq = side(h, q) >= 0;
+      if (ip) out.push(p);
+      if (ip !== iq) out.push(cut(h, p, q));
+    }
+  }
+  return out;
+}
+/** A polyline clipped by convex half-planes: the runs inside, in order (Liang-Barsky per segment). */
+export function clipLine(line, planes) {
+  const runs = []; let cur = null;
+  for (let i = 1; i < line.length; i++) {
+    const p = line[i - 1], q = line[i];
+    let t0 = 0, t1 = 1;
+    for (const h of planes) {
+      const s = side(h, p), t = side(h, q);
+      if (s < 0 && t < 0) { t0 = 1; t1 = 0; break; }
+      if (s < 0) t0 = Math.max(t0, s / (s - t)); else if (t < 0) t1 = Math.min(t1, s / (s - t));
+    }
+    if (t0 >= t1) { if (cur) { runs.push(cur); cur = null; } continue; }
+    const a = t0 > 0 ? [p[0] + (q[0] - p[0]) * t0, p[1] + (q[1] - p[1]) * t0] : p, b = t1 < 1 ? [p[0] + (q[0] - p[0]) * t1, p[1] + (q[1] - p[1]) * t1] : q;
+    if (!cur) cur = [a]; else if (t0 > 0) { runs.push(cur); cur = [a]; }
+    cur.push(b);
+    if (t1 < 1) { runs.push(cur); cur = null; }
+  }
+  if (cur) runs.push(cur);
+  return runs.filter(r => r.length >= 2);
+}
+/** The half-planes of the view wedge in ground metres: d from dNear to dFar, |x| <= d * t + m. */
+export function wedgePlanes({ dNear = 0.5, dFar = 700, t = 0.78, m = 0 } = {}) {
+  return [[0, 1, -dNear], [0, -1, dFar], [-1, t, m], [1, t, m]];
 }
