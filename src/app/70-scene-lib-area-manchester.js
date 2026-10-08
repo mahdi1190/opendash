@@ -592,7 +592,7 @@ function sceneArchMcrCity(p, u) {
   const lms = (p.landmarks || []).map(s => String(s).split('@')).filter(a => sceneObj(a[0]));
   lms.forEach((a, i) => {
     const id = a[0], x = a[1] ? +a[1] : 800, h = a[2] ? +a[2] : 360, layer = a[3] || 'mid', yy = a[4] ? yL + +a[4] : yL, d = sceneObj(id), s = sOf(id, h), w = d.size[0] * s / 2;
-    data.place.push({ obj: id, x, y: yy, s, layer, seed: 11 + i, reflect: wet, variant: a[5] ? +a[5] : 0, flip: a[6] === 'flip' });
+    data.place.push({ obj: id, x, y: yy, s, layer, seed: 11 + i, reflect: wet, shadow: false, variant: a[5] ? +a[5] : 0, flip: a[6] === 'flip' });
     if (id === 'landmark.castlefield-viaduct') deck = { y: yy - 262 * s, s };
     if (layer === 'mid' && h > 150) avoid.push({ rect: [x - w - 10, H - 40, x + w + 10, yL + 8] });
   });
