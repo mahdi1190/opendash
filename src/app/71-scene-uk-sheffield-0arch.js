@@ -82,7 +82,7 @@ function sceneArchSheffield(p, u) {
     G('near', `M-160 900V${yF - 30}Q140 ${yF - 40} 360 ${yF - 20}L460 900Z`, lin('@ground.0', '@ground.2', yF - 40, 900));
     G('near', `M1760 900V${yF - 26}Q1460 ${yF - 40} 1240 ${yF - 18}L1140 900Z`, lin('@ground.0', '@ground.2', yF - 40, 900));
   }
-  if (ground === 'lawn' || ground === 'park') {
+  if ((ground === 'lawn' || ground === 'park') && water !== 'brook') {
     // a curving footpath
     G('near', `M${560} ${yG + 2}Q${700} ${yG + 60} ${560} ${yF}T${640} 905H${880}Q${780} ${yF + 30} ${820} ${yF - 20}T${640} ${yG + 2}Z`, lin('@pave.2', '@pave.0', yG, 900));
   }
@@ -136,8 +136,8 @@ function sceneArchSheffield(p, u) {
   if (water === 'brook') {
     const bx = Number.isFinite(p.poolx) ? p.poolx : 800;
     const d = `M${bx - 40} ${lmy + 4}Q${bx - 160} ${yN + 20} ${bx - 60} ${yF}T${bx - 280} 905H${bx + 60}Q${bx + 60} ${yF + 20} ${bx + 70} ${yF - 10}T${bx + 10} ${lmy + 4}Z`;
-    G('mid', `M${bx - 60} ${lmy}Q${bx - 190} ${yN + 20} ${bx - 90} ${yF}T${bx - 320} 905H${bx + 100}Q${bx + 90} ${yF + 20} ${bx + 100} ${yF - 10}T${bx + 30} ${lmy}Z`, '@bank');
-    data.water.push({ layer: 'mid', d, y0: lmy + 4, y1: 900, base: ['#8aaab0', '#4e7480', '#2a4a54'], reflect: true, shimmer: 16, lightPath: false });
+    G('near', `M${bx - 60} ${lmy}Q${bx - 190} ${yN + 20} ${bx - 90} ${yF}T${bx - 320} 905H${bx + 100}Q${bx + 90} ${yF + 20} ${bx + 100} ${yF - 10}T${bx + 30} ${lmy}Z`, '@bank');
+    data.water.push({ layer: 'near', d, y0: lmy + 4, y1: 900, base: ['#8aaab0', '#4e7480', '#2a4a54'], reflect: true, shimmer: 16, lightPath: false });
     data.scatter.push({ obj: { 'rock.stones': 2, 'rock.boulder': 1 }, layer: 'near', variant: 'random', seed: 50, area: { poly: [[bx - 100, yN], [bx + 60, yN], [bx + 70, 900], [bx - 300, 900]] }, n: 16, minGap: 50, s: [0.3, 0.7], sByY: [[yN, 0.7], [900, 1.3]], flip: 0.5, reflect: true });
     data.actors.push({ obj: 'bird.mallard', layer: 'near', path: [[bx - 80, yN + 30], [bx - 20, yN + 40]], speed: 3, loop: 'pingpong', s: 0.34, seed: 51, offset: 0.2 });
     data.actors.push({ obj: 'bird.mallard', layer: 'near', path: [[bx - 140, yF + 30], [bx - 60, yF + 10]], speed: 3, loop: 'pingpong', s: 0.44, seed: 52, variant: 1, offset: 0.6 });
