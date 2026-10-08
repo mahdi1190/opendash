@@ -203,7 +203,7 @@
 
   /* ---------- landmark.woking-towers (Victoria Square: three modern towers over a podium; anchor: the ground) ---------- */
   def({
-    id: 'landmark.woking-towers', category: 'landmark', size: [600, 440], variants: 1, seasonal: false, flippable: false,
+    id: 'landmark.woking-towers', category: 'landmark', size: [600, 440], variants: 1, seasonal: false, flippable: false, detailPx: 160,
     palette: { base: {
       clad: ['#d8d6d0', '#b8b6b0', '#eeeeea', '#9c9a94'], glass: ['#5c7488', '#86a2b8', '#3c5466', '#a8c0d0'], fin: ['#e8e6e0', '#8a8c8e'],
       podium: ['#b8a890', '#9a8c76', '#d0c4ae'], frame: ['#3a3e42'], flood: ['#fff2d8'],
@@ -223,11 +223,11 @@
         for (let f = 0; f < floors; f++) {
           const y = top + 14 + f * fh;
           push({ f: f % 3 === 1 ? '@glass.2' : '@glass.0', d: rect(x + w * .1, y, w * .8, fh * .62), glow: 'window' });
-          push(['@clad.2', rect(x + w * .06, y + fh * .62, w * .88, fh * .38)]);
+          push({ f: '@clad.2', d: rect(x + w * .06, y + fh * .62, w * .88, fh * .38), detail: true });
         }
         // vertical fins
         let fn = ''; for (let i = 1; i < 6; i++) fn += rect(x + w * .1 + i * w * .8 / 6 - .8, top + 14, 1.6, h - 74);
-        push(['@fin.' + (kind === 'hotel' ? 1 : 0), fn, .8]);
+        push({ f: '@fin.' + (kind === 'hotel' ? 1 : 0), d: fn, op: .8, detail: true });
         push(['@glass.3', rect(x + w * .12, top + 14, w * .14, h - 74), .25]);
         // the crown
         if (kind === 'crown') push(['@clad.0', rect(x - 4, top - 18, w + 8, 18)], ['@fin.1', rect(x + w * .2, top - 30, w * .6, 12)], { f: '@glass.1', d: rect(x + w * .25, top - 28, w * .5, 6), glow: 'lamp' });

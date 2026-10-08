@@ -51,7 +51,7 @@ function sceneArchWoking(p, u) {
   G('horizon', `M-160 ${H + 12}V${H - 6}Q${200 + r() * 200} ${H - 22} ${700 + r() * 100} ${H - 12}T1760 ${H - 8}V${H + 12}Z`, lin('@sky.0', '@far.0', H - 24, H + 12));
   G('far', `M-160 900V${H + 6}Q500 ${H} 900 ${H + 6}T1760 ${H + 4}V900Z`, lin('@far.0', '@far.1', H, H + 80));
   G('mid', `M-160 900V${lmy - 10}Q600 ${lmy - 18} 1000 ${lmy - 8}T1760 ${lmy - 12}V900Z`, heath ? lin('@heath.0', '@heath.1', lmy - 20, 900) : lin('@ground.0', '@ground.1', lmy - 20, 900));
-  data.scatter.push({ obj: heath ? { 'tree.distant-pine': 2, 'tree.far-pine': 1, 'tree.distant': 1 } : { 'tree.distant': 2, 'tree.far-broad': 1, 'tree.distant-pine': 1 }, layer: 'horizon', variant: [0, 1], seed: 4, area: { rect: [-140, H - 8, 1740, H + 8] }, n: n(24), minGap: 26, s: [0.12, 0.32], sByY: [[H - 8, 0.85], [H + 8, 1.15]], flip: 0.5, tint: { col: '#8a9aa0', k: [0.16, 0.28] }, anim: false, mask: { noise: { scale: 170, cut: 0.3 } } });
+  data.scatter.push({ obj: heath ? { 'tree.distant-pine': 2, 'tree.far-pine': 1, 'tree.distant': 1 } : { 'tree.distant': 2, 'tree.far-broad': 1, 'tree.distant-pine': 1 }, layer: 'horizon', variant: [0, 1], seed: 4, area: { rect: [-140, H - 8, 1740, H + 8] }, n: n(24), minGap: 26, s: [0.1, 0.38], sByY: [[H - 8, 0.85], [H + 8, 1.15]], flip: 0.5, tint: { col: '#8a9aa0', k: [0.16, 0.28] }, anim: false, mask: { noise: { scale: 170, cut: 0.3 } } });
   // the town's roofs and towers on the skyline
   if (has('roofs')) data.scatter.push({ obj: { 'building.terrace-victorian': 2, 'building.shopfront': 1 }, layer: 'far', variant: 'random', seed: 5, area: { rect: [-140, H + 10, 1740, H + 22] }, n: n(7), minGap: 150, s: [0.18, 0.3], flip: 0.5, tint: { col: '#a0aab0', k: [0.12, 0.22] }, anim: false, mask: { noise: { scale: 260, cut: 0.35 } } });
   if (p.skyline) { const [sx, sh] = String(p.skyline).split('@').map(Number); data.place.push({ obj: 'landmark.woking-towers', x: sx || 1200, y: H + 14, s: sOf('landmark.woking-towers', sh || 160), layer: 'far', seed: 9, tint: { col: '#aab4bc', k: 0.18 } }); }
@@ -65,7 +65,7 @@ function sceneArchWoking(p, u) {
     lmAvoid.push({ rect: [x - w * 0.55, y - h, x + w * 0.55, y + 30] });
   });
   // mid trees, kept off the landmarks
-  const treeMix = heath ? { 'tree.pine': 2, 'tree.birch-heath': 2 } : setting === 'urban' ? { 'tree.plane': 2, 'tree.green-birch': 1 } : { 'tree.green-oak': 1, 'tree.green-chestnut': 1, 'tree.green-birch': 1 };
+  const treeMix = heath ? { 'tree.pine-veteran': 2, 'tree.birch-heath': 3 } : setting === 'urban' ? { 'tree.plane': 2, 'tree.green-birch': 1 } : { 'tree.green-oak': 1, 'tree.green-chestnut': 1, 'tree.green-birch': 1 };
   data.scatter.push({ obj: treeMix, layer: 'mid', variant: [0, 1], seed: 7, area: { rect: [-140, lmy - 6, 1740, lmy + 14] }, n: n(Number.isFinite(p.trees) ? p.trees : 9), minGap: heath ? 80 : 120, s: heath ? [0.22, 0.56] : [0.2, 0.48], sByY: [[lmy - 6, 0.8], [lmy + 14, 1.2]], flip: 0.5, tint: { col: '#8a7a40', k: [0, 0.12] }, anim: false, mask: { avoid: lmAvoid, noise: { scale: heath ? 130 : 180, cut: heath ? 0.4 : 0.25 } } });
   // ---- the near ground
   const yG = yN - 6;
@@ -92,22 +92,21 @@ function sceneArchWoking(p, u) {
   if (water === 'canal') {
     c0 = lmy + 8; c1 = yN + 34;
     G('mid', `M-160 ${c0 - 6}H1760V${c1 + 6}H-160Z`, '@bank');
-    data.water.push({ layer: 'mid', d: `M-160 ${c0}H1760V${c1}H-160Z`, y0: c0, y1: c1, base: ['#8aa89c', '#557a6e', '#2e4e46'], reflect: true, shimmer: 22, lightPath: true });
+    data.water.push({ layer: 'mid', d: `M-160 ${c0}H1760V${c1}H-160Z`, y0: c0, y1: c1, base: ['#8aa89c', '#557a6e', '#2e4e46'], reflect: true, shimmer: 14, lightPath: true });
     G('near', `M-160 ${c1 + 4}H1760V${c1 + 26}H-160Z`, lin('@pave.0', '@pave.1', c1 + 4, c1 + 26));
     G('near', `M-160 ${c1 + 2}H1760V${c1 + 5}H-160Z`, '@ballast.1');
     data.scatter.push({ obj: { 'plant.reed': 2, 'plant.bulrush': 1 }, layer: 'mid', variant: 'random', seed: 41, area: { rect: [-150, c0 - 4, 1750, c0 + 4] }, n: n(30), minGap: 30, s: [0.26, 0.42], flip: 0.5, tint: { col: '#8a7a40', k: [0, 0.12] }, anim: false, reflect: true, mask: { noise: { scale: 200, cut: 0.35 } } });
     // a narrowboat under way and two moored at the far bank
     const nbS = Math.round(ps('person.walker', c0 + 20) * 64 * 1.8 / 103 * 100) / 100;
-    data.actors.push({ obj: 'boat.narrowboat', layer: 'mid', path: p.boat === 'west' ? [[1900, c0 + 22], [-400, c0 + 22]] : [[-400, c0 + 24], [1900, c0 + 24]], speed: 7, loop: 'loop', s: nbS, seed: 43, variant: 1, offset: 0.3, flip: p.boat === 'west', reflect: true });
+    data.actors.push({ obj: 'boat.narrowboat', layer: 'mid', path: p.boat === 'west' ? [[1900, c0 + 22], [-400, c0 + 22]] : [[-400, c0 + 24], [1900, c0 + 24]], speed: 7, loop: 'loop', s: nbS, seed: 43, variant: 1, offset: 0.3, flip: p.boat === 'west' });
     for (const [x, v] of [[Number.isFinite(p.moorx) ? p.moorx : 260, 0], [(Number.isFinite(p.moorx) ? p.moorx : 260) + 300, 2]]) data.place.push({ obj: 'boat.narrowboat', x, y: c0 + 10, s: Math.round(nbS * 0.86 * 100) / 100, layer: 'mid', seed: 44 + v, variant: v, reflect: true });
     data.actors.push({ obj: 'bird.mallard', layer: 'mid', path: [[900, c1 - 8], [1180, c1 - 10]], speed: 4, loop: 'pingpong', s: 0.32, seed: 45, offset: 0.5 });
     data.actors.push({ obj: 'bird.swan', layer: 'mid', path: [[1300, c0 + 30], [1050, c0 + 34]], speed: 3, loop: 'pingpong', s: 0.3, seed: 46, offset: 0.2, flip: true });
-    data.actors.push({ obj: 'bird.moorhen', layer: 'mid', path: [[200, c1 - 12], [380, c1 - 10]], speed: 3, loop: 'pingpong', s: 0.26, seed: 47, offset: 0.7 });
   }
   if (water === 'pond') {
     const cx = Number.isFinite(p.poolx) ? p.poolx : 800, cy = yN + 50, rx = 380, ry = 50;
     G('near', `M${cx - rx - 10} ${cy}A${rx + 10} ${ry + 8} 0 1 0 ${cx + rx + 10} ${cy}A${rx + 10} ${ry + 8} 0 1 0 ${cx - rx - 10} ${cy}Z`, '@bank');
-    data.water.push({ layer: 'near', d: `M${cx - rx} ${cy}A${rx} ${ry} 0 1 0 ${cx + rx} ${cy}A${rx} ${ry} 0 1 0 ${cx - rx} ${cy}Z`, y0: cy - ry, y1: cy + ry, base: ['#86aab4', '#4e7a88', '#26505e'], reflect: true, shimmer: 24, lightPath: true });
+    data.water.push({ layer: 'near', d: `M${cx - rx} ${cy}A${rx} ${ry} 0 1 0 ${cx + rx} ${cy}A${rx} ${ry} 0 1 0 ${cx - rx} ${cy}Z`, y0: cy - ry, y1: cy + ry, base: ['#86aab4', '#4e7a88', '#26505e'], reflect: true, shimmer: 16, lightPath: true });
     data.actors.push({ obj: 'bird.mallard', layer: 'near', path: [[cx - 200, cy - 10], [cx + 40, cy - 6]], speed: 5, loop: 'pingpong', s: 0.36, seed: 45, offset: 0.3 });
     data.actors.push({ obj: 'bird.coot', layer: 'near', path: [[cx + 220, cy + 14], [cx + 20, cy + 18]], speed: 4, loop: 'pingpong', s: 0.4, seed: 46, offset: 0.7, flip: true });
     data.actors.push({ obj: 'bird.goose', layer: 'near', path: [[cx - 80, cy + 20], [cx + 100, cy + 22]], speed: 3, loop: 'pingpong', s: 0.4, seed: 47, offset: 0.5 });
@@ -149,15 +148,16 @@ function sceneArchWoking(p, u) {
   if (water === 'pond') { const cx = Number.isFinite(p.poolx) ? p.poolx : 800; nearAvoid.push({ rect: [cx - 400, yN - 10, cx + 400, yN + 110] }); }
   if (heath) { const bx = Number.isFinite(p.poolx) ? p.poolx : 760; nearAvoid.push({ poly: [[bx - 40, yG], [bx + 40, yG], [bx + 340, 905], [bx + 20, 905]] }); }
   const nearCover = paved ? { 'plant.planter': 1, 'plant.grass': 3 } : heath ? { 'plant.heather': 3, 'plant.gorse': 1, 'plant.grass': 1 } : { 'plant.grass': 3, 'plant.wildflowers': 1 };
-  data.scatter.push({ obj: nearCover, layer: 'near', variant: [0, 1], seed: 71, area: { rect: [-150, yN, 1750, yF] }, n: n(paved ? 60 : heath ? 110 : 150), minGap: paved ? 22 : heath ? 16 : 12, s: [0.36, 0.62], sByY: [[yN, 0.8], [yF, 1.2]], flip: 0.5, tint: { col: '#8a7a40', k: [0, 0.12] }, anim: false, mask: { avoid: nearAvoid.concat(paved ? [{ rect: [380, yN, 1220, yF] }] : []) } });
+  data.scatter.push({ obj: nearCover, layer: 'near', variant: [0, 1], seed: 71, area: { rect: [-150, yN, 1750, yF] }, n: n(paved ? 60 : heath ? 220 : 190), minGap: paved ? 22 : heath ? 13 : 11, s: [0.36, 0.62], sByY: [[yN, 0.8], [yF, 1.2]], flip: 0.5, tint: { col: '#8a7a40', k: [0, 0.12] }, anim: false, mask: { avoid: nearAvoid.concat(paved ? [{ rect: [380, yN, 1220, yF] }] : []) } });
   if (heath) data.scatter.push({ obj: { 'plant.gorse': 1, 'plant.bracken': 1, 'tree.birch-heath': 1 }, layer: 'near', variant: [0, 1], seed: 74, area: { rect: [-150, yN - 6, 1750, yN + 40] }, n: n(9), minGap: 110, s: [0.22, 0.62], sByY: [[yN - 6, 0.75], [yN + 40, 1.3]], flip: 0.5, anim: false, mask: { avoid: nearAvoid } });
   const foreCover = heath ? { 'plant.heather': 3, 'plant.grass': 1, 'plant.bracken': 1 } : { 'plant.grass': 2, 'plant.wildflowers': 1 };
-  data.scatter.push({ obj: foreCover, layer: 'fore', variant: [0, 1], seed: 72, area: { rect: [-150, yF + (paved ? 40 : 0), 1750, 905] }, n: n(paved ? 190 : heath ? 130 : 200), minGap: heath ? 18 : 13, s: [0.7, 1.1], sByY: [[yF, 0.85], [900, 1.25]], flip: 0.5, tint: { col: '#a09050', k: [0, 0.12] }, anim: 'strip', mask: { avoid: heath ? nearAvoid.slice(-1) : [] } });
+  data.scatter.push({ obj: foreCover, layer: 'fore', variant: [0, 1], seed: 72, area: { rect: [-150, yF + (paved ? 40 : 0), 1750, 905] }, n: n(paved ? 190 : heath ? 120 : 200), minGap: heath ? 26 : 13, s: [0.7, 1.1], sByY: [[yF, 0.85], [900, 1.25]], flip: 0.5, tint: { col: '#a09050', k: [0, 0.12] }, anim: heath ? false : 'strip', mask: { avoid: heath ? nearAvoid.slice(-1) : [] } });
+  if (heath) data.scatter.push({ obj: 'plant.grass', layer: 'front', variant: [0, 1], seed: 75, area: { rect: [-160, 878, 1760, 906] }, n: 50, minGap: 16, s: [1.3, 1.8], flip: 0.5, anim: 'strip' });
   if (paved) data.scatter.push({ obj: { 'plant.planter': 2, 'street.bollard': 1 }, layer: 'fore', variant: 'random', seed: 73, area: { rect: [-150, yF, 1750, yF + 90] }, n: 22, minGap: 60, s: [0.6, 1.2], sByY: [[yF, 0.75], [yF + 90, 1.3]], flip: 0.5, anim: false });
   // ---- framing trees
-  const fr = Number.isFinite(p.frame) ? p.frame : 3, frId = heath ? 'tree.pine' : setting === 'urban' ? 'tree.plane' : 'tree.green-oak';
-  if (fr & 1) data.place.push({ obj: frId, x: -40, y: 905, s: sOf(frId, 620), layer: 'front', variant: 0, seed: 81, anim: { sway: { k: 0.6 } } });
-  if (fr & 2) data.place.push({ obj: frId, x: 1660, y: 910, s: sOf(frId, 580), layer: 'front', variant: 0, seed: 82, flip: true, anim: { sway: { k: 0.6 } } });
+  const fr = Number.isFinite(p.frame) ? p.frame : 3, frId = heath ? 'tree.birch-heath' : setting === 'urban' ? 'tree.plane' : 'tree.green-oak';
+  if (fr & 1) data.place.push({ obj: frId, x: -40, y: 905, s: sOf(frId, 620), layer: 'front', variant: 0, seed: 81, anim: water ? false : { sway: { k: 0.6 } } });
+  if (fr & 2) data.place.push({ obj: frId, x: 1660, y: 910, s: sOf(frId, 580), layer: 'front', variant: 0, seed: 82, flip: true, anim: water ? false : { sway: { k: 0.6 } } });
   // ---- birds overhead
   data.flocks.push({ obj: 'bird.small-flight', n: 7, area: [200, 80, 1400, Math.max(220, H - 170)], speed: 28, s: 0.55, seed: 91, layer: 'far' });
   data.flocks.push({ obj: heath ? 'bird.goose-flight' : 'bird.small-flight', n: 4, area: [100, 140, 1500, Math.max(260, H - 120)], speed: 22, s: 0.6, seed: 92, layer: 'mid' });
