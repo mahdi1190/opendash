@@ -28,8 +28,11 @@ export const TOP_FILES = [
   /^\.(gitignore|gitattributes|editorconfig|nvmrc|node-version)$/,
 ];
 export const TOP_DIRS = ['src', 'server', 'lib', 'mcp', 'cloudflare', 'tools', 'vendor', 'tests', 'docs', '.github'];
-// Folders of which only some subfolders are published.
-export const PARTIAL_DIRS = { assets: ['brand'] };
+// Folders of which only some subfolders are published. An entry is a folder ('brand') or a nested path
+// ('skills/animation-pack'); everything else inside the folder is left out and reported.
+// .claude/skills/animation-pack is committed source that ships: the animation tool's briefs (tools/lib/anim-templates/)
+// tell the reader to open it, and the tool's own tests read it. The rest of .claude is per-machine and never ships.
+export const PARTIAL_DIRS = { assets: ['brand'], '.claude': ['skills/animation-pack'] };
 
 // Why well-known top-level entries are left out (anything else: "not on the allowlist").
 const TOP_WHY = {
@@ -66,7 +69,9 @@ export const NEVER = [
   { re: /(^|\/)(dashboard|opendash)-(backup|data)-[^/]*\.(json|zip)$/i, kind: 'private', why: 'a backup or data export downloaded from the app (old and new names)' },
   { re: /\.pre-standalone$/i, kind: 'private', why: 'pre-2.0 personal copies' },
   { re: /\.(pkl|parquet|sqlite3?|db)$/i, kind: 'private', why: 'data dumps' },
-  { re: /(^|\/)\.claude(\/|$)/i, kind: 'local', why: 'local Claude Code config' },
+  // `unless` exempts the one shared project skill (see PARTIAL_DIRS); anchored at the top, so a lookalike such as
+  // .claude/skills/animation-packs/ or src/.claude/skills/animation-pack/ is still left out.
+  { re: /(^|\/)\.claude(\/|$)/i, kind: 'local', why: 'local Claude Code config', unless: /^\.claude\/skills\/animation-pack(\/|$)/i },
   { re: /(^|\/)(node_modules|\.git)(\/|$)/, kind: 'noise', why: 'dependencies / version control' },
   { re: /(^|\/)(__pycache__|\.pytest_cache|\.vscode|\.idea|\.cache|coverage|\.tmp)(\/|$)/i, kind: 'noise', why: 'editor or cache folder' },
   { re: /\.(pyc|tmp|temp|bak|orig|rej|swp|swo)$|~$|(^|\/)~\$|(^|\/)\.~lock\./i, kind: 'noise', why: 'scratch, backup or editor file' },
@@ -85,7 +90,7 @@ export const NEVER = [
 /** The NEVER rule a forward-slash relative path matches, or null. */
 export function neverRule(rel) {
   const p = String(rel).replace(/\\/g, '/');
-  return NEVER.find(r => r.re.test(p)) || null;
+  return NEVER.find(r => r.re.test(p) && !(r.unless && r.unless.test(p))) || null;
 }
 
 /** Is a top-level entry part of the release? */
@@ -121,6 +126,34 @@ function walk(root, relDir, out) {
 }
 
 /**
+ * Publish only `paths` (folders or nested paths such as 'skills/animation-pack', relative to `relDir`) and report
+ * everything else found along the way as left out, once, at the level where it leaves the published path.
+ */
+function walkOnly(root, relDir, paths, why, out) {
+  const heads = new Map();                                   // first segment -> the deeper paths under it
+  for (const p of paths) {
+    const [head, ...rest] = p.split('/');
+    if (!heads.has(head)) heads.set(head, []);
+    if (rest.length) heads.get(head).push(rest.join('/'));
+  }
+  let names = [];
+  try { names = readdirSync(join(root, relDir)).sort(); } catch { return; }
+  for (const n of names) {
+    const rel = posix(relDir, n);
+    let st;
+    try { st = lstatSync(join(root, rel)); } catch { continue; }
+    if (heads.has(n) && st.isDirectory()) {
+      const deeper = heads.get(n);
+      if (deeper.length) walkOnly(root, rel, deeper, why, out); else walk(root, rel, out);
+      continue;
+    }
+    // a per-machine folder keeps its own reason and kind (local); anything else is simply not on the published path
+    const rule = neverRule(rel + (st.isDirectory() ? '/' : ''));
+    out.excluded.push({ rel, dir: st.isDirectory(), why: rule ? rule.why : why, kind: rule ? rule.kind : 'unlisted' });
+  }
+}
+
+/**
  * Every file of the release in `root`, plus what was left out and why.
  * Excluded folders are listed once (their contents are never read).
  */
@@ -138,13 +171,7 @@ export function collectRelease(root) {
       if (isDir) walk(root, name, out);
       else out.files.push({ rel: name, full: join(root, name), size: st.size, mode: st.mode & 0o777 });
     } else if (c.keep === 'partial') {
-      let subs = [];
-      try { subs = readdirSync(join(root, name)).sort(); } catch { /* empty */ }
-      for (const s of subs) {
-        const rel = posix(name, s);
-        if (c.only.includes(s) && lstatSync(join(root, rel)).isDirectory()) walk(root, rel, out);
-        else out.excluded.push({ rel, dir: lstatSync(join(root, rel)).isDirectory(), why: `only ${c.only.map(o => `${name}/${o}/`).join(', ')} is published`, kind: 'unlisted' });
-      }
+      walkOnly(root, name, c.only, `only ${c.only.map(o => `${name}/${o}/`).join(', ')} is published`, out);
     } else out.excluded.push({ rel: name, dir: isDir, why: c.why, kind: c.kind });
   }
   out.files.sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));

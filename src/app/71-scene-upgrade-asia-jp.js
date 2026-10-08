@@ -20,10 +20,17 @@
   const params = { id: 'jp', lat: 35.5014, lon: 138.8017, heading: 205, at: 'dawn', climate: 'temperate',
     kits: ['east-asian', 'people', 'birds'],
     landmarks: ['landmark.mount-fuji@620@380', 'landmark.chureito-pagoda@1130@280'], water: 'none', horizon: 560 };
+  // the scene's own picks (8.6), so a new library object never moves them: bamboo and a Japanese maple in the near corners,
+  // stone lanterns first on the terrace; the town's houses before its flats, cherries and maples round the pagoda
+  const patch = {
+    picks: { corner: ['plant.bamboo', 'tree.maple-japanese'], lantern: ['structure.lantern-stone', 'street.lantern-string', 'structure.lantern-stone-garden'] },
+    mix: { 'building-far': { 'building.house-jp': 1, 'building.apartment-jp': 1 },
+      tree: { 'plant.bamboo': 1, 'tree.cherry-blossom': 1, 'tree.maple-japanese': 1, 'tree.maple-momiji': 1, 'tree.cherry': 1 } },
+  };
   animRegionSceneUpgrade('asia', 'country:JP', {
     state: 'draft',
     archetype: 'temple-mountain',
     landmarks: ['landmark.mount-fuji', 'landmark.chureito-pagoda'],
-    scene: () => sceneFromArchetype('temple-mountain', params, {}),
+    scene: () => sceneFromArchetype('temple-mountain', params, patch),
   });
 })();

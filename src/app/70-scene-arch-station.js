@@ -9,12 +9,15 @@
    - A street and a pavement; lamps, benches, planters and hedges as the dense urban cover.
    - Trees (plane-trees, trees, suburb), terraces (terrace, suburb) or towers (towers) far, a dock
      (water) with reflections.
-   - Movers: walkers, a bus (bus), a train on the embankment, a flock, pecking pigeons.
+   - Movers: walkers (8, on the forecourt rows; basic sizes them with the depth ladder, 2.8), a bus (bus),
+     a train on the embankment, a flock, pecking pigeons.
    ============================================================ */
 (function () {
   if (typeof sceneArchetypeDefine !== 'function') return;
   const ERAS = ['victorian', 'edwardian-tiled', 'holden', 'postwar', 'jubilee-modern', 'elizabeth-modern', 'dlr-elevated', 'overground-brick', 'terminus'];
   const BUILDING = { victorian: 'building.station-victorian', holden: 'building.station-holden', 'jubilee-modern': 'building.station-modern', 'elizabeth-modern': 'building.station-modern' };
+  // the station's own slot picks (8.6), after a scene's own: London's dock boats and town birds lead whatever the library adds
+  const _ST_PICKS = { boat: ['boat.narrowboat-receding', 'boat.dinghy'], bird: ['bird.herring-gull-flight', 'bird.nightjar'] };
   sceneArchetypeDefine('station', {
     signs: true,
     params: { id: 'id', name: 'sign', lines: 'list', lat: 'number', lon: 'number', era: ERAS, features: 'list' },
@@ -25,10 +28,11 @@
       const has = u.has, H = 500;
       const towers = has('towers'), water = has('water');
       const data = sceneArchBasic(Object.assign({}, p, { horizon: H, climate: 'temperate', water: water ? 'canal' : 'none', landmarks: [], density: 1, kits: ['london', 'urban', 'temperate', 'people', 'birds', 'vehicles'] }),
-        Object.assign({}, u, { kit: (role, tags) => {
+        Object.assign({}, u, { slot: (w, name) => sceneSlotRank(w, String(p.id) + '|' + name, [].concat(u.picks[name] || [], _ST_PICKS[name] || [])), kit: (role, tags) => {
           // the far band mixes the area's main type with the other (variety: no type above 80 %); street trees are the light urban ones
           if (role === 'building-far') { const a = sceneKitPick(towers ? ['towers'] : ['london'], role, { tags }), b = sceneKitPick(towers ? ['london'] : ['towers'], role, { tags }); for (const k in a) a[k] *= 3; return Object.assign(b, a); }
-          if (role === 'tree') return sceneKitPick(['urban'], role, { tags });
+          // the London street tree first: the station's own mix (8.6), cut to the kit's trees, so the library order never decides it
+          if (role === 'tree') { const w = sceneKitPick(['urban'], role, { tags }); return w['tree.plane-avenue'] ? Object.assign({ 'tree.plane-avenue': w['tree.plane-avenue'] }, w) : w; }
           if (role === 'ground' || role === 'shrub') { const w = sceneKitPick(['urban', 'london'], role, { tags }); delete w['plant.hedge']; delete w['plant.wildflowers']; return w; }
           if (role === 'edge') { const w = sceneKitPick(['water'], role, { tags }); for (const k of Object.keys(w)) if (!/^plant\./.test(k)) delete w[k]; return w; }   // a dock has hard edges: a few reeds only   // the hedge is heavy for the SVG tile budget
           return sceneKitPick(['london', 'urban', 'temperate', 'people', 'birds', 'vehicles', 'boats', 'water'], role, { tags });

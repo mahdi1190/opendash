@@ -18,6 +18,8 @@
 //   node tools/anim-pack.mjs scene upgrade <ref> [--box x0,y0,x1,y1 | --landmark <id>] [--archetype <id>] [--slug s] [--dry-run]
 //   node tools/anim-pack.mjs scene lint|sheet|perf [<ref>,... | --pack <id> | --region <id> | --archetype <id> --table <id> [--rows N | --sample N]]
 //                            [--upgrades] [--perf] [--gpu] [--times] [--seasons] [--compare] [--contact] [--json]
+//   node tools/anim-pack.mjs scene capture <ref> [--seconds 3] [--fps 12] [--width 640] [--at <ISO> | --mode light|night] [--dither] [--frames] [--out f.gif]
+//                            a few seconds of one scene as a looping animated GIF (tools/lib/scene-capture.mjs; headless Chrome + node:zlib, no dependencies)
 //   lint and sheet also take --at <ISO> [--location lat,lon] [--season s] (the live sky and the retrofit overlay); status takes --standard and --all.
 //
 // THE NEW STANDARD: the rich Yateley and Fleet scenes are the bar (reference prints it first). A composed scene (item.composed) is judged by the
@@ -151,12 +153,16 @@ export function measureRegistry(reg, entries = reg.items(), thresholds = loadThr
     return { entry: e, metrics: measure(stableIds(reg.html(e.item), legacy), e.full ? 'scene' : 'item', { classes: classCache.get(e.pack), legacy }) };
   });
   const cache = reg._shapeKeys || (reg._shapeKeys = new Map());
+  // a LIVE region upgrade (docs/dev/SCENE_ENGINE.md 16.5) is composed but keeps its hand-drawn art as legacySvg: that art stays
+  // in the share pool, so a scene going live never moves another hand-drawn scene's sharedShare (other composed items stay out)
+  const retired = e => e.composed && !!e.item.upgrade && e.item.upgrade.state === 'live' && typeof e.item.legacySvg === 'function';
+  const poolHtml = e => reg.html(retired(e) ? Object.assign({}, e.item, { composed: false, svg: e.item.legacySvg }) : e.item);
   for (const full of [true, false]) {
     const mine = rows.filter(r => r.entry.full === full);
     if (!mine.length) continue;
     const inSet = new Set(mine.map(r => r.entry.ref));
     const list = mine.map(r => ({ ref: r.entry.ref, pack: r.entry.pack, keys: r.metrics._keys }));
-    for (const e of reg.items()) if (e.full === full && !e.composed && !inSet.has(e.ref)) list.push({ ref: e.ref, pack: e.pack, keys: cache.get(e.ref) || cache.set(e.ref, shapeKeys(reg.html(e.item))).get(e.ref) });
+    for (const e of reg.items()) if (e.full === full && (!e.composed || retired(e)) && !inSet.has(e.ref)) list.push({ ref: e.ref, pack: e.pack, keys: cache.get(e.ref) || cache.set(e.ref, shapeKeys(poolHtml(e))).get(e.ref) });
     const shares = sharedShares(list);
     mine.forEach((r, i) => { r.metrics.sharedShare = shares[i].pack; r.metrics.sharedShareAll = shares[i].all; });
   }
