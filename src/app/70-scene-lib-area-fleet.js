@@ -229,8 +229,8 @@ const _fleetArch = (function () {
     d.scatter.push({ obj: 'tree.pond-wood', layer: 'horizon', seed: seed, area: { rect: [-150, H - 2, 1750, H + 16] }, n: o.n || 22, minGap: 24, s: [0.2, 0.58], flip: 0.5, variant: 'random', tint: { col: '#7a8a9a', k: [0, 0.1] }, mask: { noise: { scale: 200, cut: 0.25 } }, anim: false });
   };
   const flocks = (d, H, seed, kind) => {
-    d.flocks.push({ obj: kind === 'water' ? 'bird.goose-flight' : 'bird.small-flight', n: 6, area: [100, 120, 1500, Math.max(220, H - 140)], speed: 32, s: kind === 'water' ? 0.32 : 0.5, seed: seed, layer: 'horizon' });
-    d.flocks.push({ obj: 'bird.small-flight', n: 5, area: [500, 180, 1500, Math.max(260, H - 60)], speed: 44, s: 0.42, seed: seed + 1, layer: 'horizon' });
+    d.flocks.push({ obj: kind === 'water' ? 'bird.goose-flight' : 'bird.small-flight', n: 5, area: [100, 120, 1500, Math.max(220, H - 140)], speed: 32, s: kind === 'water' ? 0.32 : 0.5, seed: seed, layer: 'horizon' });
+    d.flocks.push({ obj: 'bird.small-flight', n: 3, area: [500, 180, 1500, Math.max(260, H - 60)], speed: 44, s: 0.42, seed: seed + 1, layer: 'horizon' });
   };
   const sOf = (id, h) => { const o = sceneObj(id); return o && o.size ? Math.round(h / o.size[1] * 100) / 100 : 1; };
   const landmark = (d, p, y, layer) => {
@@ -246,7 +246,7 @@ const _fleetArch = (function () {
       if (r.variant === 'random') r.variant = [0, 1];
       if (r.n >= 30 && !r.tint && Array.isArray(r.variant) && r.variant[0] === 0 && r.variant[1] === 1) {
         const h = Math.round(r.n / 2);
-        out.push(Object.assign({}, r, { n: h, variant: 0 }), Object.assign({}, r, { n: r.n - h, variant: 1, seed: r.seed + 500, tint: { col: i % 2 ? '#8a7a40' : '#6a7a3a', k: [0.08, 0.08] } }));
+        out.push(Object.assign({}, r, { n: h, variant: 0 }), Object.assign({}, r, { n: r.n - h, variant: 1, seed: r.seed + 500, anim: r.anim === 'strip' ? false : r.anim, tint: { col: i % 2 ? '#8a7a40' : '#6a7a3a', k: [0.08, 0.08] } }));
       } else { if (!r.tint && r.n >= 20) r.tint = { col: '#7a8a6a', k: [0, 0.1] }; out.push(r); }
     });
     d.scatter = out;
@@ -467,6 +467,7 @@ const _fleetArch = (function () {
       for (let i = 0; i < 4; i++) { const y = py + 50 + (i % 2) * 40, id = i % 2 ? 'person.dog-walker' : 'person.walker'; d.place.push({ obj: id, x: 150 + i * 360, y, s: ppl(d, id, y), variant: i, layer: 'fore', seed: 58 + i, anim: false }); }
       d.actors.push({ obj: 'person.walker', layer: 'fore', path: [[-80, py + 120], [1680, py + 130]], speed: 16, loop: 'loop', s: ppl(d, 'person.walker', py + 120), seed: 62, offset: 0.3, variant: 5 });
       d.actors.push({ obj: 'person.cyclist', layer: 'fore', path: [[1700, py + 160], [-100, py + 160]], speed: 26, loop: 'loop', s: ppl(d, 'person.cyclist', py + 160), seed: 66, offset: 0.6, flip: true });
+      d.actors.push({ obj: 'person.walker', layer: 'fore', path: [[1680, py + 80], [-80, py + 76]], speed: 12, loop: 'loop', s: ppl(d, 'person.walker', py + 80), seed: 61, offset: 0.8, variant: 2, flip: true });
       d.place.push({ obj: 'bird.pigeon', x: 980, y: py + 90, s: 0.9, layer: 'fore', seed: 67 }, { obj: 'bird.pigeon', x: 1040, y: py + 96, s: 0.85, flip: true, variant: 1, layer: 'fore', seed: 68 });
       d.place.push({ obj: 'street.lamppost', x: 420, y: py + 30, s: 0.9, layer: 'fore', seed: 63 }, { obj: 'street.lamppost', x: 1180, y: py + 30, s: 0.9, layer: 'fore', seed: 64 }, { obj: 'street.station-clock', x: 800, y: py + 24, s: 0.8, layer: 'fore', seed: 65 });
     } else {

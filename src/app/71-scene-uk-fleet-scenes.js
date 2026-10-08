@@ -33,6 +33,10 @@ const UK_FLEET_ROWS = [
     reason: 'Trains along the north shore beyond the reeds',
     form: 'lake', lat: 51.2885, lon: -0.8240, heading: 350, horizon: 490, side: 'right', nearbank: 760, trainx: 300,
     landmark: 'landmark.fleet-pond-boardwalk', lmv: 2, lmx: 260, lmy: 790, lms: 0.8, lmlayer: 'fore', features: 'train|heron|pines' },
+  { arch: 'fleet-water', place: 'fleet-pond', n: 6, view: 'sandy-bay', orig: '',
+    reason: 'Looking out over the pond from the sandy east shore',
+    form: 'lake', lat: 51.2893, lon: -0.8178, heading: 270, horizon: 480, side: 'left', nearbank: 780,
+    landmark: 'landmark.fleet-pond-boardwalk', lmv: 3, lmx: 1150, lmy: 640, lms: 0.6, lmlayer: 'mid', features: 'lilies|walkers|pines|houses' },
 
   // ---- the Basingstoke Canal at Fleet ----
   { arch: 'fleet-water', place: 'fleet-canal', n: 1, view: 'wide', orig: 'summer',
@@ -55,6 +59,10 @@ const UK_FLEET_ROWS = [
     reason: 'Moored narrowboats and a heron by the road bridge',
     form: 'band', lat: 51.2779, lon: -0.8450, heading: 200, horizon: 470, wy0: 650, wy1: 750, boatx: 420,
     landmark: 'landmark.fleet-canal-bridge', lmx: 1150, lms: 0.85, lmy: 730, features: 'moored|heron|angler' },
+  { arch: 'fleet-water', place: 'fleet-canal', n: 6, view: 'morning', orig: '', at: 'morning',
+    reason: 'Early light on the cut near Reading Road bridge',
+    form: 'channel', lat: 51.2745, lon: -0.8418, heading: 110, horizon: 480, side: 'right', vx: 900,
+    landmark: 'landmark.fleet-canal-bridge', lmx: 900, lms: 0.85, lmy: 576, lmlayer: 'mid', features: 'moored|angler' },
 
   // ---- Southwood Country Park and Southwood Woodland (Farnborough) ----
   { arch: 'fleet-green', place: 'southwood-country-park', n: 1, view: 'wide', orig: '', reason: 'Wildflowers across the open meadow',
