@@ -1565,6 +1565,8 @@ scene sheet [<ref>,... | --pack | --region | --archetype --table [--sample N]] [
                                                                     canvas render in headless Chrome; --compare: old vs new (16.4)
 scene perf [<ref>,... | --pack | --region | --archetype --table [--sample N]] [--seconds 3] [--gpu] [--rebake] [--upgrades] [--json]
                                                                     drawMs and dynMs in the real renderer (--rebake forces a light change mid-run and reports the worst frame)
+scene capture <ref> [--seconds 3] [--fps 12] [--width 640] [--at <ISO> | --mode light|night] [--date D] [--dither] [--frames] [--upgrades] [--out file.gif]
+                                                                    a looping animated GIF of one scene, deterministic (10.4)
 ```
 
 - **Batches.** `--archetype <id> --table <id>` runs over every row of a data
@@ -1719,6 +1721,39 @@ scenes, the object library and the new standard" section, plus
 - `docs/dev/ANIMATION_PACKS.md` gains a "Composed scenes and the new
   standard" section that points here.
 - `MODULES.md` gains rows for every new file.
+
+### 10.4 Scene capture (`scene capture`, `tools/lib/scene-capture.mjs`)
+
+```
+node tools/anim-pack.mjs scene capture uk-south-east/hampshire-yateley-green-2 --at 2026-10-07T17:25:00Z
+  -> .anim-ref/capture/uk-south-east__hampshire-yateley-green-2.gif   640 x 360, 36 frames at 12 fps, 255 colours, about 0.4 MB
+```
+
+A few seconds of ONE composed scene as a looping animated GIF, with no
+dependencies: headless Chrome draws the frames, Node (`node:zlib`) does the rest.
+
+- **Deterministic.** The scene loads once through the page harness (10.1) in a
+  box of `--width` x 9/16 of it; the host's clock is stopped and frame k is
+  drawn with the renderer's own `frame(k / fps)`, then captured. The time does
+  not depend on the machine's speed, so the same command writes the same bytes.
+  The loop jumps from the last frame back to t = 0 (the scene's motion is not
+  periodic).
+- **The sky.** `--at <ISO>` is the live sky of that moment at the scene's place
+  (or `--location lat,lon`); `--mode night` takes the real night moment on
+  `--date` (default today) and a dark page; without either, the authored moment.
+- **Encoders** (each exported and tested in `tests/scene-capture.test.mjs`):
+  `pngDecode` (8-bit RGB / RGBA, all five filters), `quantise` (variance-based
+  median cut over a sample of every frame, then 3 k-means steps: one global
+  palette of up to 256 colours), `indexFrame` (nearest colour with the same
+  channel weights, optional 4 x 4 ordered dither with `--dither`, off by
+  default), `lzwEncode` and `gifEncode` (GIF89a, NETSCAPE2.0 loop, delays from
+  fps in 1/100 s: 8, 9, 8 at 12 fps). After the first frame only the changed
+  rectangle is stored, unchanged pixels transparent (255 colours + 1).
+- **Looking at it.** `--frames` also writes every frame as the viewer sees it
+  (after quantising) to `<out>-frames/frame-NNN.png`. Banding in a smooth sky
+  is the usual defect of a 256-colour GIF; `--dither` trades it for a fine
+  pattern.
+- Output stays out of the repository: `.anim-ref/` is git-ignored.
 
 ## 11. The demo (builder C)
 
