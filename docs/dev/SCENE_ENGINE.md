@@ -271,6 +271,17 @@ leaves.
 There is no `url()`, no text and no images.
 
 **Detail.** `detail: true` shapes are dropped at LOD < 0.5, in tiles.
+**Size-tiered detail.** An object that sets `detailPx` (`true` for
+`SCENE_DETAIL_PX`, 48, or a number of pixels) also drops them wherever it is
+drawn shorter than that: its box height times the drawing's scale, in device
+pixels on the canvas (the sprite bake) and in scene units in the SVG still
+(`sceneDetailAt(id, sh, scale)` in the core, used by both). The test is a
+function of (object, variant, season, scale), and the sprite key carries all
+four, so cached sprites stay valid; the SVG keys its symbols by tier too. The
+people set it: a far walker is its 20 to 30 silhouette shapes, a near one its
+100 to 150. Why 48: the people's fine strokes are 0.3 to 0.6 units wide on a
+62-unit figure, so under about 48 px they are under half a pixel (noise, and
+bytes). Objects without `detailPx` keep the old rule only.
 
 **The night-lit variant.** A part named `lit` holds what only shows after
 real dusk (`L.windows` true): floodlight washes, light beams, LED outlines,
@@ -279,6 +290,15 @@ canvas renderer bakes it into its layer bitmap only while lit (the light key
 includes `windows`, 6.3), so it costs nothing per frame. The SVG renderer
 emits it only when `L.windows`. Window and lamp shapes with `glow` light up as
 before; `lit` is for everything else that changes at night.
+
+**Objects that move keep their night look** (both renderers). The glow
+shapes of a moving part are lit inside that part's sprite or symbol (all of
+them when any of the placement's `glowOn` is on; an actor has no `glowOn`, so
+all its glows light). The parts that stay light as a static placement's. The
+`lit` part rides with the motion: on the canvas it is baked into an actor's
+rest sprite, or into the whole-object sprite of a placement with a `'*'`
+hook (no extra draw); in the SVG it is one more `<use>` with the same pose.
+By day nothing changes (the night variants are separate cache keys).
 
 **Resolved form.** `sceneObjShapes(id, v, season)` returns:
 
@@ -475,7 +495,8 @@ SCENE_REGION_KITS = {                      // the default kits for a region scen
 `sceneKitPick(kits, role, { tags, exclude })` (builder A, core) returns
 `{ id: weight }`: every object with one of the `kit:<k>` tags and the
 `role:<role>` tag (and every extra tag in `tags`), weighted by `weight`
-(default 1). It is memoised per call signature and EMPTY-SAFE: with no match
+(default 1; `weight: 0` excludes the object, so only a scene that names it
+gets it), keyed in id order. It is memoised per call signature and EMPTY-SAFE: with no match
 it returns `{}`, and the archetype skips that rule (the lint's ground-cover
 and mover rules then say what is thin).
 
@@ -499,13 +520,66 @@ tropical dry season; snow lies on roofs and on a pagoda in winter).
 | `south-asian` / `islamic` | `building.ghat-steps`, `building.mosque-dome`, `building.minaret`, `building.haveli` |
 | `adobe` / `colonial` / `brownstone` | `building.adobe`, `building.mission`, `building.colonial-house`, `building.brownstone P` (row houses with stoops), `structure.water-tower P` |
 | `london` | `building.station-victorian*`, `building.station-holden*`, `building.station-modern*`, `building.terrace*`, `vehicle.bus*`, `rail.platform*`, `rail.track*`, `rail.train*`, `building.mansion-block`, `vehicle.taxi-black` |
-| `people` | `person.walker*` (4 variants, seasonal clothes), `person.cyclist`, `person.jogger`, `person.dog-walker`, `person.sitter` |
+| `people` | `person.walker*` (8 variants on the shared builder, 2.8), `person.cyclist`, `person.jogger`, `person.dog-walker`, `person.sitter` |
 | `vehicles` | `vehicle.car P` (6 variants), `vehicle.taxi P`, `vehicle.tram`, `vehicle.tuk-tuk`, `vehicle.bike` |
 | `boats` | `boat.ferry P`, `boat.bumboat P`, `boat.tug P`, `boat.yacht P`, `boat.longtail`, `boat.sampan`, `boat.narrowboat`, `boat.kayak` |
 | `birds` / `animals` | `bird.mallard*`, `bird.swan*`, `bird.pigeon*`, `bird.gull P`, `bird.egret P`, `bird.kite`, `bird.swift`, `animal.deer`, `animal.dog` |
 | `water` | `water.lily`, `water.lotus`, `water.buoy P`, `water.jetty P` |
 
 Landmarks are not in kits: each upgraded scene adds its own (16.3).
+
+### 2.8 People: the depth ladder, the size tier and the shared builder
+
+**The depth ladder** (`70-scene-0core.js`). A person is 1.72 m
+(`SCENE_PERSON.metres`), and one pure function says how tall that is on
+screen: `scenePersonHeight(view, y)` gives the height in units of a person
+whose feet are on row y: 16 at the view's horizon row (`view.horizon`), 132
+at the ground row (the frame's foot, y 900), linear in y between (a flat
+ground in perspective: the height grows with the distance below the vanishing
+line), never more than 150 (the care limit, 8.5) nor less than 6.
+`scenePersonScale(objHeight, y, view)` is the scale that draws a person
+object of that height (its `size[1]` stands for 1.72 m) at row y. The four
+archetypes (`basic`, `skyline-water`, `temple-mountain`, `station` through
+`basic`) place their walkers with it instead of hand-set scales (a walker
+on a slope gets the ladder's ratio as `sByY`); the care lint checks the same
+150 cap. With the default horizon 520 a walker is about 76 units at y 720 and
+85 to 93 on the station forecourt; Fleet's canal views keep their own metric
+(1.72 m over the distance) and the hand-placed named scenes keep their scales.
+
+**The size tier** (2.2): people set `detailPx: true`, so under 48 px their
+`detail: true` shapes (folds, seams, straps, cuffs, soles, laces, hair
+strands, buttons) are not drawn: far people are cheap (20 to 30 shapes), near
+people detailed (100 to 150).
+
+**The shared builder** (`70-scene-lib-people-0figure.js`, `scenePeople`,
+sorted before the other people files). One faceless figure for every
+`person.*` object: `scenePeople.figure(o)` returns the walk-cycle parts
+`legB`, `body`, `legA` (the walk hook `scenePeople.walkAnim()` swings the legs
+about the hip, `scenePeople.HIP`, and bobs the body), the head's ellipse and
+the hands' positions (for leads, rods, handlebars). The body plan: an adult
+62 units to the crown, side view facing right, the head a plain egg (hair, a
+hat or a hood; never eyes, a nose, ears or a mouth: a test checks the face
+side of every preset's head), neck, shoulders, torso, two-segment arms and
+legs, feet. Builds: slim, average, broad, stout; ages young, adult, older (a
+slight stoop). Tops: tee, blouse, shirt, jumper, cardigan, hoodie (hood up or
+down), jacket, rain, parka, coat (a belt); bottoms: trousers, jeans, joggers,
+shorts, skirt (knee or midi, with tights or bare legs); shoes: trainer, shoe,
+boot, sandal; accessories: beanie (a pompom), cap, flat cap, sun hat, scarf,
+gloves, crossbody or shoulder bag, backpack, an open umbrella, a closed one
+or a walking stick (held in the FAR hand), a phone. `scenePeople.PRESETS` are
+8 people (body and a wardrobe per season) and `scenePeople.outfit(preset,
+season)` dresses one for the season. Colours are tone4 palette slots
+(`scenePeople.palette()`: `@navy.0` base, `.1` dark, `.2` light, `.3` deep).
+The night look (`scenePeople.NIGHT` as the object's `night`): glow shapes, so
+after dusk a cool rim light runs along the back of the head and the back,
+reflective strips and an umbrella's edge catch the lamps and a phone screen
+shines; by day they take the colour under them. Layering that holds in every
+renderer (they draw the moving legs after the body): the legs start below the
+lowest body edge they meet, no hand or held thing hangs over a thigh, and
+things that reach the ground are held in the far hand. `scenePeople` also
+holds the one `tidy`, `define` and colour helpers for every people file.
+`person.walker` is the reference object (8 presets); the other `person.*`
+objects move onto the builder next.
 
 ## 3. Scene format
 
@@ -818,6 +892,10 @@ sceneSprites;                // the shared sprite cache { get(key, build), bytes
 - It is filled with `Path2D(d)`, with colours from `sceneColour` (so the
   live grade is already in the pixels), strokes and gradients. A shape's `m`
   is applied with `setTransform`.
+- `detail: true` shapes are left out at LOD < 0.5, and for an object with
+  `detailPx` (the people) when the sprite is under that many device pixels
+  tall (`sceneDetailAt`, 2.2): a function of the key's scale, so the cache
+  stays valid.
 - Glow shapes are rasterised in their lit or day colour, as a separate glow
   sprite.
 
@@ -867,7 +945,15 @@ sky covers the whole canvas.
 
 1. The sky bitmap.
 2. Stars, if `L.stars > 0`: up to 220 `fillRect`s with seeded twinkle alpha.
-3. Clouds: up to 10 cloud sprites drifting at `clouds.speed`.
+3. Clouds: up to 10 cloud sprites drifting at `clouds.speed`, one
+   `drawImage` each at whole device pixels. `sceneCloudPlan(C, L)` (the
+   core, pure and seeded by the scene id) picks the kinds by cover and
+   weather (cumulus heaps, low stratus strips, a few cirrus wisps in a clear
+   sky), 2 or 3 depth bands (far: small, pale, slow; near: larger, brighter,
+   faster) and the colours from `L.cloud` (a rim on the sun's or moon's
+   side, a glowing base round sunrise and sunset); the bake paints each
+   cloud once. `sceneCloudX(c, t)` wraps a cloud on its own width, so it
+   enters and leaves fully off-screen; at t = 0 every cloud is in the frame.
 4. For each land bitmap, far to near:
    1. the bitmap (offset by `camera.pan * depth * sin(2 pi t / period)`
       when the camera is on)
@@ -954,8 +1040,9 @@ A still keeps this renderer small, keeps the fallback cheap, and makes PNG
 sheets and tests deterministic. Animated SVG output is a later option
 (section 18), not this round.
 
-- **Defs.** One `<g id>` per `(obj, v, part, season, haze, tint)` actually
-  used, with toned colours. The ids are fresh per render (`U()` style), so
+- **Defs.** One `<g id>` per `(obj, v, part, season, haze, tint, detail
+  tier)` actually used, with toned colours (the tier: `sceneDetailAt` at the
+  placement's scale, 2.2). The ids are fresh per render (`U()` style), so
   the tests' "fresh ids" rule holds.
 - **Placements.** `<use href="#id" transform="translate(x y) scale(+-s s)">`.
   An animated part is drawn at its t = 0 pose (one extra `rotate` /
@@ -997,7 +1084,7 @@ Hand-drawn region scenes (US, Asia and every region since) stay as they are,
 as SVG. They are already light: at most 32 KB each.
 
 `sceneRetrofit(item, retro)` wraps the item. With a live sky (`o.sky`), its
-`svg(o)` returns the original art plus a small overlay. With no `o.sky`
+`svg(o)` returns the art re-lit by that sky plus a small overlay. With no `o.sky`
 (Node, the lint corpus, sheets without `--at`), it returns the original art
 BYTE-IDENTICAL. So the calibrated corpus, the tests and the existing lint
 results do not move.
@@ -1008,28 +1095,69 @@ LEGACY tier (15.3), "below the new standard", until it is upgraded (section
 16). A retrofitted scene that is later upgraded drops the overlay: the
 composed renderer does all of it natively.
 
-### 7.2 The overlay (`70-scene-retro.js`, builder A; at most 6,000 bytes, `SCENE_RETRO_MAX_BYTES`)
+### 7.2 The re-lit art and the overlay (`70-scene-retro.js`, builder A; at most 6,000 bytes added, `SCENE_RETRO_MAX_BYTES`)
+
+The art is re-lit in place, never veiled. A veil over the art (a flat sky
+rect above the horizon) buried every skyline, mountain and landmark above
+y = 520 at night with a hard band, and copies of the lit windows (`<use>`)
+rendered black and drifted (they lose the ancestors' parallax, motion and
+transforms). Two ways were prototyped on twelve scenes in round 2: grading
+the art's own colours (below) and one multiply blend over the whole drawing.
+The blend darkens the lit windows to brown and dims the real moon and stars
+(only copies above it could escape it), so grading won; it also costs no
+blend layer per frame.
 
 ```
 <g class="sr-retro">
-  <g class="sr-back">ORIGINAL ART</g>                   the drawing as the backdrop layer
-  sky veil     clip = retro.sky: the live sky gradient (L.top, L.mid, L.low) at opacity clamp(L.dark * 1.1, 0, .92);
-               at golden hour a glow of L.lowSun at .25 round the real sun position (the painted day sky becomes the real dusk / night sky)
-  stars        up to retro.stars dots in the sky path, opacity L.stars, in 3 groups with x-srtw twinkle
-  moon         at L.moon (real azimuth / altitude through retro.heading / fov / horizon), real phase and limb (almMoonDiscPath), glow
-  sun          only with retro.sun === 'live': the disc and glow at L.sun
-  land grade   below the sky: rect fill = 1 - shadeOp * (1 - shade) per channel, mix-blend-mode: multiply  (the K.tone multiply, exact);
-               night: rect #2a3a6a, mix-blend-mode: multiply, opacity L.dark * .35; warm: rect L.light at the K.tone warm factor
-  lamps        copies of the art's .us-lit / .us-lamps elements ABOVE the grade (they light at real dusk via the tod-* class
-               animItemHtml sets from the live sky), so windows and lamps glow instead of being darkened
-  season       when retro.season === 'auto', the item's season label is 'any' and |lat| >= 23.5:
+  <g class="sr-back">                                   the art, re-lit
+    <g class="sr-lamps">                                at real dusk (L.windows): lights the art's own .us-lit / .us-lamps (76-scene.css)
+      SKY          the art's first element, the kit's full(sky) (a 1600 x 900 rect with a gradient): its stops turn into
+                   the live sky (L.top, L.mid, L.low by height over retro.horizon) by k = clamp(L.dark * 1.15, 0, 1); never graded
+      <g class="sr-sky">                                straight after the sky, so the land, skyline and clouds drawn later stand in front
+        glow       at golden hour, L.lowSun at .25 round the real sun position
+        stars      up to retro.stars round dots (zero-length strokes), opacity L.stars, 3 groups with x-srtw twinkle
+        moon       at L.moon (real azimuth / altitude through retro.heading / fov / horizon), real phase and limb, soft glow
+        sun        only with retro.sun === 'live': the disc and glow at L.sun
+      </g>
+      LAND         every fill / stroke / stop-color after the sky graded in place: toward night blue and darker by the real
+                   darkness the painting does not already have (a sky painted at night is graded less), the K.tone shade
+                   multiply and golden warmth by day; the lit pieces (us-lit, us-lamps) are left exactly as drawn
+      PAINTED SUN  the kit's sun() and rays() fade out by k (gone at night)
+    </g>
+  </g>
+  season       when retro.season === 'auto', the item's season label is 'any' and the scene's own |lat| >= 23.5:
                spring #cfe8a0 soft-light .10 + 12 petals; summer: 8 motes; autumn #d27a2c soft-light .20 + 16 leaves;
-               winter #e8eef6 screen .18 + a grey saturation rect .25 + 30 snowflakes (more when L.snow)
+               winter #e8eef6 screen .18 (fading to a fifth at night, where it would grey the dark sky) + a grey
+               saturation rect .25 + 30 snowflakes (more when L.snow); winter is graded by the scene's own |lat|
+               (sceneRetroSeason): 23.5..35 (Florida, the Gulf, the deserts) only the saturation rect at half
+               strength, no frost and no flakes; 35..45 the frost and flakes ramp in; 45 and over the full winter
   weather      rain lines / snow / fog veil from L (shared with the canvas renderer's constants)
 </g>
 ```
 
+- A sky painted at night (its top luminance under 0.13) or with a painted
+  moon (a pale disc high in the first third of the drawing) keeps its own
+  moon: no second, live one. This covers the painted night, dusk and moon
+  scenes centrally (Sawtooth, Palmetto crescent, Memphis, Pyramid Lake, Las
+  Vegas, Hawaii volcano, Crater Lake, Anchorage aurora, Jeddah and others),
+  so no scene needs a `retro` exemption.
+- Art can only be darkened, never brightened: a painted sunset stays a
+  sunset at noon, and a painted night stays a night by day.
+- The budget counts every byte the retrofit adds (the graded art's growth
+  and the live sky inside `sr-back` included); over it, particles, stars,
+  weather and the season go first. `lint --at` measures what is outside
+  `sr-back` and checks every `sr-*` class has css.
+- Reduced motion (`.ap-still`): stars hold a steady .75, the falling
+  particles are hidden (frozen they would sit in a band at the top).
+
 `sceneRetrofitSvg(markup, L, retro, { season, lat })` builds it.
+`sceneRetroSeason(lat, ms[, season])` is the pure season rule it uses:
+`{ season, tint, desat, fall }`, each the share (0..1) of the full colour
+layer (winter's white frost), winter's saturation layer and the falling
+particles, by the scene's own latitude and the date (hemisphere aware:
+a southern scene's winter is June to August). Within the tropics all
+are 0; the other seasons are 1; winter is graded as above, so snow only
+falls where winter snow is plausible.
 
 `SCENE_RETRO_DEFAULTS`:
 
@@ -1039,8 +1167,11 @@ composed renderer does all of it natively.
   season: 'auto', particles: true, weather: true, lamps: true }
 ```
 
-- `sky` is a path (`'M-160 -80H1760V520H-160z'`) when the skyline is not
-  flat. For example, mountains need the sky to stop at the ridge.
+- `veil` restyles the art's own sky and fades its painted sun; `grade`
+  grades its land; `lamps` lights its own lit pieces at real dusk.
+- `horizon` places the live sun, moon and stars. `sky` (a path) is optional:
+  it clips the live sky pieces; without it the art itself hides them behind
+  its land, skyline and mountains.
 - `sun: 'painted'` keeps the painted sun by day, which is the safe default.
   `'live'` is for art without a sun.
 
@@ -1067,16 +1198,17 @@ later with `tools/anim-pack.mjs new`.
    `sheet` and `lint` gain `--at <ISO>` and `--location lat,lon`, which pass
    `o.sky` (builder C).
 2. Run the same at dawn, noon and golden hour, and in each season, and for
-   one pack of every region: `asia-east` (Japan's Fuji ridge needs a `sky`
-   path), `asia-southeast` (tropical: no season tint), `asia-west`,
-   `us-mountain` (mountain skylines) and `us-pacific` (the aurora scene: the
-   painted night must not be veiled twice). Every region scene the friend's
-   agent drew gets the rules from the one region hook; scenes whose skyline
-   needs it get a `retro: { sky, horizon }` entry in their scene file (the
-   only edit to hand-drawn scene files this round, made by the reviewer).
+   one pack of every region: `asia-east` (Japan's Fuji ridge),
+   `asia-southeast` (tropical: no season tint), `asia-west`, `us-mountain`
+   (mountain skylines, painted night and moon scenes) and `us-pacific` (the
+   aurora scene). Every region scene gets the rules from the one region hook;
+   no scene needs a `retro` entry since round 2 (the sky is restyled, not
+   veiled, so ridges and skylines need no `sky` path).
 3. Run `lint --pack us-northeast --at <ISO>`. With the overlay present it
    checks the retro rules: overlay at most 6,000 bytes, classes defined,
-   transform and opacity only.
+   transform and opacity only. `tests/scene-retrofit.test.mjs` holds every
+   scene to the 6,000 bytes added in 4 seasons x 12 hours and reports the
+   html with a sky over the 32,000-byte full budget (none over 40,000).
 
 The base art is still judged by its own profile, without the overlay.
 
@@ -1266,13 +1398,16 @@ archetypes have no `meta`: the region entry supplies the item fields (16.2).
 | `park` | Central Park, Gardens by the Bay, city parks | far skyline, mid trees, lawn, near paths, fore | 0 to 2 | `tree`, `ground`, `street` | dogs, birds, squirrels, a kite, a few tiny walkers and joggers |
 | `snow-town` | Anchorage, Hokkaido, alpine villages | far peaks, mid town, near street, fore, sky aurora | 0 to 1 | `building-mid` (lit), `tree` (snow spruce) | sleds, chimney smoke, snowfall, ravens, a few tiny walkers |
 | `plains` | prairie, farmland, rice terraces, savannah | horizon, far fields, mid farm, near crop rows, fore | 0 to 1 (a barn, a lone tree) | `ground` (crops), `tree`, `animal` | animals, a tractor, birds, wind waves over the crop |
-| `station` | London rail stations (section 11) | far terraces / towers, mid station, street, platform, fore | 1 (the station building) | `building-far`, `street`, `ground` (planters, hedges) | a bus, a train, cars, pigeons, up to 10 tiny walkers |
+| `station` | London rail stations (section 11) | far terraces / towers, mid station, street, platform, fore | 1 (the station building) | `building-far`, `street`, `ground` (planters, hedges) | a bus, a train, cars, pigeons, up to 10 walkers (sized by the depth ladder, 2.8) |
 
 **The care rules hold for composed scenes too** (`CARE_RULES` in
 `tools/lib/anim-region.mjs`). Life comes mostly from animals, birds, boats
-and ordinary vehicles. People are tiny anonymous silhouettes without
-features, used as a scale cue: `person.*` objects are tagged `silhouette`,
-have at most 60 shapes, and are placed at most 70 world units tall. The
+and ordinary vehicles. People are anonymous, FACELESS silhouettes (no eyes,
+nose, ears or mouth, no portraits, nobody identifiable), used as a scale cue
+and sized by the depth ladder (2.8): `person.*` objects are tagged
+`silhouette`, have at most 180 shapes in variant 0 (the size tier drops the
+fine ones far away), and are placed at most 150 world units tall (the
+ladder's cap, in the near foreground). The
 `composed` lint enforces `people` at most 8 per region scene (10 for
 `station`) and `crowd`: no 4 people within 120 units of each other. No
 flags, emblems, holy figures or brands in any object. Region upgrades have
@@ -1286,6 +1421,39 @@ This round only `basic` (the generic fallback) and `station` are BUILT
 all of them so `scene upgrade` can suggest one (16.3). The convert stage
 builds `skyline-water` and `temple-mountain` (section 17); the others follow
 as upgrades need them, each in `src/app/70-scene-arch-<id>.js`.
+
+### 8.6 How archetypes pick objects (order never matters)
+
+Library files load in file-name order, and a new file can sort anywhere
+(`-` sorts before `.`, so `...-more.js` loads before `....js`). An archetype's
+output must therefore be a function of the scene's own params (its id) and
+of the SET of objects eligible by kit and role, never of load order:
+`sceneKitPick` keys its result in id order, so a scatter's weighted mix is
+order-free, and every FIXED slot (the framing trees, the lamp, the bench,
+the lanterns, the boats, the flock birds, the vehicles, the walkers' order)
+comes from `sceneSlotRank(w, '<scene id>|<slot>')` (or `sceneSlotPick`, its
+first): a weighted rendezvous hash of (slot key, object id). A new object
+moves a slot only when it is eligible for that slot's kit and role AND wins
+the hash there; adding or removing any other object moves nothing. A light
+`weight` (0.3) makes a heavy object rare in slots and scatters alike;
+`weight: 0` keeps it out. Tests register the library reversed and shuffled
+and require identical compiled pilots and station demo
+(`tests/scene-core.test.mjs`). A scatter rule's `maxH` (units) caps the
+placed height of each of its objects by scaling that object's placements
+down together (their spread kept); `skyline-water` and `basic` cap their far
+row at 0.8 (`skyline-water` its horizon haze at 0.5) of the horizon-to-top
+space, so a 1,700-unit tower never overtops the sky or the landmarks.
+
+A scene that must not move at all (a GOLD scene near its tile budget) names
+its own picks in its PATCH, never its params row (a row stays under
+`rowBytes`): `picks: { <slot>: [ids] }` puts those ids first in that slot,
+in that order (`u.slot`), and `mix: { <role>: { id: weight } }` replaces the
+kit's dict for that role, in the scene's own order and weights (`u.mix`).
+Both are cut to the ids the archetype allows there (kit, role, its own
+filters); a named id that is gone or not allowed falls back to the hash or
+to the kit's dict. The pilots name their framing trees, lamps, lanterns and
+their heaviest mixes this way, and the `station` archetype names London's
+dock boats, town birds and the avenue plane first for every station.
 
 ## 9. Selection rules per region (London and dense cities)
 
@@ -1397,6 +1565,8 @@ scene sheet [<ref>,... | --pack | --region | --archetype --table [--sample N]] [
                                                                     canvas render in headless Chrome; --compare: old vs new (16.4)
 scene perf [<ref>,... | --pack | --region | --archetype --table [--sample N]] [--seconds 3] [--gpu] [--rebake] [--upgrades] [--json]
                                                                     drawMs and dynMs in the real renderer (--rebake forces a light change mid-run and reports the worst frame)
+scene capture <ref> [--seconds 3] [--fps 12] [--width 640] [--at <ISO> | --mode light|night] [--date D] [--dither] [--frames] [--upgrades] [--out file.gif]
+                                                                    a looping animated GIF of one scene, deterministic (10.4)
 ```
 
 - **Batches.** `--archetype <id> --table <id>` runs over every row of a data
@@ -1552,6 +1722,39 @@ scenes, the object library and the new standard" section, plus
   standard" section that points here.
 - `MODULES.md` gains rows for every new file.
 
+### 10.4 Scene capture (`scene capture`, `tools/lib/scene-capture.mjs`)
+
+```
+node tools/anim-pack.mjs scene capture uk-south-east/hampshire-yateley-green-2 --at 2026-10-07T17:25:00Z
+  -> .anim-ref/capture/uk-south-east__hampshire-yateley-green-2.gif   640 x 360, 36 frames at 12 fps, 255 colours, about 0.4 MB
+```
+
+A few seconds of ONE composed scene as a looping animated GIF, with no
+dependencies: headless Chrome draws the frames, Node (`node:zlib`) does the rest.
+
+- **Deterministic.** The scene loads once through the page harness (10.1) in a
+  box of `--width` x 9/16 of it; the host's clock is stopped and frame k is
+  drawn with the renderer's own `frame(k / fps)`, then captured. The time does
+  not depend on the machine's speed, so the same command writes the same bytes.
+  The loop jumps from the last frame back to t = 0 (the scene's motion is not
+  periodic).
+- **The sky.** `--at <ISO>` is the live sky of that moment at the scene's place
+  (or `--location lat,lon`); `--mode night` takes the real night moment on
+  `--date` (default today) and a dark page; without either, the authored moment.
+- **Encoders** (each exported and tested in `tests/scene-capture.test.mjs`):
+  `pngDecode` (8-bit RGB / RGBA, all five filters), `quantise` (variance-based
+  median cut over a sample of every frame, then 3 k-means steps: one global
+  palette of up to 256 colours), `indexFrame` (nearest colour with the same
+  channel weights, optional 4 x 4 ordered dither with `--dither`, off by
+  default), `lzwEncode` and `gifEncode` (GIF89a, NETSCAPE2.0 loop, delays from
+  fps in 1/100 s: 8, 9, 8 at 12 fps). After the first frame only the changed
+  rectangle is stored, unchanged pixels transparent (255 colours + 1).
+- **Looking at it.** `--frames` also writes every frame as the viewer sees it
+  (after quantising) to `<out>-frames/frame-NNN.png`. Banding in a smooth sky
+  is the usual defect of a 256-colour GIF; `--dither` trades it for a fine
+  pattern.
+- Output stays out of the repository: `.anim-ref/` is git-ignored.
+
 ## 11. The demo (builder C)
 
 - `src/app/70-scene-data-london-demo.js`:
@@ -1630,7 +1833,7 @@ scenes, the object library and the new standard" section, plus
 | object | at most 600 shapes, at most 60 KB path data, at most 25 ms build per (v, season) | `object lint` |
 | landmark | at least 80 shapes, at most 600; night-lit (`lit` or 10+ glow shapes) | `object lint` |
 | retrofit overlay | at most 6,000 B; none without a live sky | `tests/scene-retrofit.test.mjs` |
-| people | at most 8 per region scene (10 per station), silhouettes at most 70 units tall | `scene lint` (care) |
+| people | at most 8 per region scene (10 per station), no 4 within 120 units; faceless silhouettes of at most 180 shapes (variant 0), at most 150 units tall (the depth ladder, 2.8) | `scene lint` (care) |
 
 ## 13. Ownership map
 
@@ -1999,7 +2202,14 @@ at least 80 and a night look.
   entry.
 - The UK, Texas and world packs are not regions: their items upgrade in
   their own pack files with the same item fields (section 17 does the UK
-  ones).
+  ones). Such a pack can still use the registry: it registers under its
+  pack id (`animRegionSceneUpgrade('texas', 'place:dallas', up)`, in
+  `71-scene-upgrade-texas-dallas.js`) and calls
+  `animSceneUpgradeFinish(packId, key, item, sky, retro)` where it builds
+  its full items. That is the same merge a region's items get: live makes
+  the item composed and skips `retro`; otherwise `retro(item)` runs and a
+  draft adds `item.upgrade`. `region.upgrades()` and `region.check()` do
+  not list these upgrades.
 
 ### 16.3 `scene upgrade <ref>` (builder C, `tools/lib/scene-upgrade.mjs`)
 

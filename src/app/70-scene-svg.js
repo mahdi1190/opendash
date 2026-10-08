@@ -297,28 +297,37 @@ function sceneSvg(x, o) {
     return c => { let v = memo.get(c); if (v) return v; v = typeof sceneColour === 'function' ? sceneColour(c, { L, haze, tint }) : c; memo.set(c, v); return v; };
   };
   const plain = c => c;
-  /** The <g id> for (obj, v, season, haze, tint, part): '*' = every part except 'lit'; 'lit' is drawn ungraded. */
-  const sym = (it, part) => {
-    const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', part].join('|');
+  /** Keep the detail shapes of `it` drawn at its scale? LOD 0.5 and up, and the object's size tier (sceneDetailAt, scene units). */
+  const detailFor = (it, sh) => detailOk && (typeof sceneDetailAt !== 'function' || sceneDetailAt(it.o, sh, it.s == null ? 1 : it.s));
+  /** A glow shape in its night colour (ungraded, full opacity, no stroke): the object's night.glow, else the default lamp / window. */
+  const nightGlow = (o) => { const def = typeof sceneObj === 'function' ? sceneObj(o) : null; return (def && def.night && def.night.glow) || {}; };
+  const litShape = (s0, nc) => Object.assign({}, s0, { f: nc[s0.glow] || (s0.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 });
+  /** The markup of the shapes of `names`; glowLit: glow shapes in their night colours (a moving object's lamps move with it). */
+  const partsSvg = (it, sh, names, det, colour, glowLit) => {
+    const nc = glowLit ? nightGlow(it.o) : null;
+    let inner = '';
+    for (const p of names) for (const s of sh.parts[p] || []) if (det || !s.detail) inner += glowLit && s.glow ? _scShapeSvg(litShape(s, nc), plain, defs, nid) : _scShapeSvg(s, colour, defs, nid);
+    return inner;
+  };
+  /** The <g id> for (obj, v, season, haze, tint, part, detail tier, lit glows): '*' = every part except 'lit'; 'lit' is drawn ungraded. */
+  const sym = (it, part, glowLit) => {
+    const sh = sceneObjShapes(it.o, it.v, it.season), det = !!sh && detailFor(it, sh);
+    const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', part, det ? 1 : 0].join('|') + (glowLit ? '|g' : '');
     if (ids.has(key)) return ids.get(key);
-    const sh = sceneObjShapes(it.o, it.v, it.season);
     if (!sh) { ids.set(key, null); return null; }
     const names = part === '*' ? sh.order.filter(p => p !== 'lit') : [part];
-    const colour = part === 'lit' ? plain : toneFor(it.haze, it.tint);
-    let inner = '';
-    for (const p of names) for (const s of sh.parts[p] || []) if (detailOk || !s.detail) inner += _scShapeSvg(s, colour, defs, nid);
+    const inner = partsSvg(it, sh, names, det, part === 'lit' ? plain : toneFor(it.haze, it.tint), glowLit && part !== 'lit');
     const id = nid();
     defs.push(`<g id="${id}">${inner}</g>`);
     ids.set(key, id);
     return id;
   };
-  /** Shapes of `parts` not moved by any hook (the static rest of an animated object). */
-  const restSym = (it, moved) => {
-    const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', 'rest:' + moved.join(',')].join('|');
+  /** Shapes of `parts` not moved by any hook (the static rest of an animated object); glowLit as sym. */
+  const restSym = (it, moved, glowLit) => {
+    const sh = sceneObjShapes(it.o, it.v, it.season), det = detailFor(it, sh);
+    const key = [it.o, it.v, it.season, it.haze, it.tint ? it.tint.join(':') : '', 'rest:' + moved.join(','), det ? 1 : 0].join('|') + (glowLit ? '|g' : '');
     if (ids.has(key)) return ids.get(key);
-    const sh = sceneObjShapes(it.o, it.v, it.season), colour = toneFor(it.haze, it.tint);
-    let inner = '';
-    for (const p of sh.order) if (p !== 'lit' && !moved.includes(p)) for (const s of sh.parts[p] || []) if (detailOk || !s.detail) inner += _scShapeSvg(s, colour, defs, nid);
+    const inner = partsSvg(it, sh, sh.order.filter(p => p !== 'lit' && !moved.includes(p)), det, toneFor(it.haze, it.tint), glowLit);
     const id = inner ? nid() : null;
     if (id) defs.push(`<g id="${id}">${inner}</g>`);
     ids.set(key, id);
@@ -327,12 +336,15 @@ function sceneSvg(x, o) {
   const P = lod < 1 ? Math.round : _scR1;   // tiles: whole-unit positions (invisible at tile size, lighter markup)
   const tf = (x, y, s, flip, m) => `translate(${P(x)} ${P(y)})` + (s !== 1 || flip ? ` scale(${_scR2(flip ? -s : s)} ${_scR2(s)})` : '') + (m && m !== _SC_ID ? ` matrix(${m.map(v => _scR2(v)).join(' ')})` : '');
   const use = (id, x, y, s, flip, m, op) => id ? `<use href="#${id}" transform="${tf(x, y, s, flip, m)}"${op != null && op < 1 ? ` opacity="${_scR2(op)}"` : ''}/>` : '';
-  /** Lit windows and lamps of one placement (only with L.windows): the glow shapes in the object's night colours. */
-  const glows = (it, x, y, s, flip) => {
+  /**
+   * Lit windows and lamps of one placement (only with L.windows): the glow shapes in the object's night colours, as its glowOn
+   * says. skip: parts drawn elsewhere (the moving parts of an animated placement carry their own lit glows in their symbols).
+   */
+  const glows = (it, x, y, s, flip, skip) => {
     if (!lit || !it.glowOn) return '';
-    const sh = sceneObjShapes(it.o, it.v, it.season), def = typeof sceneObj === 'function' ? sceneObj(it.o) : null, nc = (def && def.night && def.night.glow) || {};
+    const sh = sceneObjShapes(it.o, it.v, it.season), nc = nightGlow(it.o);
     let gi = 0, out = '';
-    for (const p of sh.order) for (const s0 of sh.parts[p] || []) if (s0.glow) { if (it.glowOn[gi % it.glowOn.length]) out += _scShapeSvg(Object.assign({}, s0, { f: nc[s0.glow] || (s0.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain, defs, nid); gi++; }
+    for (const p of sh.order) for (const s0 of sh.parts[p] || []) if (s0.glow) { if (it.glowOn[gi % it.glowOn.length] && !(skip && skip.includes(p))) out += _scShapeSvg(litShape(s0, nc), plain, defs, nid); gi++; }
     return out ? `<g transform="${tf(x, y, s, flip)}">${out}</g>` : '';
   };
   let fade = null;
@@ -358,33 +370,38 @@ function sceneSvg(x, o) {
     return `<use href="#${id}" transform="translate(${_scR1(it.x)} ${_scR1(it.y)})${it.s !== 1 ? ` scale(${_scR2(it.s)})` : ''}"/>`;
   };
   /** One placement at t = 0: a whole-object <use>, or the static rest plus each moving part at its pose. */
+  // After real dusk an animated object keeps its night look: the glow shapes of its moving parts are lit inside their own
+  // symbols (every one, when any of the placement's glows is on, as the canvas sprites), the rest light as a static
+  // placement's, and the lit part follows a whole-object pose. An actor carries no glowOn: all its glow shapes light.
   const placed = (it) => {
-    const moving = it.strip < 0 && it.anim && it.anim.length ? it.anim : null;
-    let out = '';
+    const moving = it.strip < 0 && it.anim && it.anim.length ? it.anim : null, g = lit && !!it.glowOn && it.glowOn.some(Boolean);
+    let out = '', skip = null, pm = null, pa = null;
     if (!moving) out += use(sym(it, '*'), it.x, it.y, it.s, it.flip);
     else {
       const whole = moving.find(a => _scAnimParts(a)[0] === '*');
-      if (whole) { const p = sceneAnimPose(whole, 0, L, it.x); out += use(sym(it, '*'), it.x, it.y, it.s, it.flip, p.m, p.alpha); }
+      if (whole) { const p = sceneAnimPose(whole, 0, L, it.x); pm = p.m; pa = p.alpha; skip = sceneObjShapes(it.o, it.v, it.season).order; out += use(sym(it, '*', g), it.x, it.y, it.s, it.flip, pm, pa); }
       else {
-        const moved = [...new Set(moving.flatMap(_scAnimParts))];
+        const moved = skip = [...new Set(moving.flatMap(_scAnimParts))];
         out += use(restSym(it, moved), it.x, it.y, it.s, it.flip);
-        for (const a of moving) { const p = sceneAnimPose(a, 0, L, it.x), parts = _scAnimParts(a); parts.forEach((part, j) => { out += use(sym(it, part), it.x, it.y, it.s, it.flip, j === 1 && p.m2 ? p.m2 : p.m, p.alpha); }); }
+        for (const a of moving) { const p = sceneAnimPose(a, 0, L, it.x), parts = _scAnimParts(a); parts.forEach((part, j) => { out += use(sym(it, part, g), it.x, it.y, it.s, it.flip, j === 1 && p.m2 ? p.m2 : p.m, p.alpha); }); }
       }
     }
-    if (lit && it.lit) out += use(sym(it, 'lit'), it.x, it.y, it.s, it.flip);
-    return out + glows(it, it.x, it.y, it.s, it.flip);
+    if (lit && it.lit) out += use(sym(it, 'lit'), it.x, it.y, it.s, it.flip, pm, pa);
+    return out + glows(it, it.x, it.y, it.s, it.flip, skip);
   };
   const actorSvg = (a) => {
-    const at = sceneActorAt(a, 0), it = { o: a.o, v: a.v, season: C.season, haze: C.layers[a.layer] ? Math.round(C.layers[a.layer].haze * 10) / 10 : 0, tint: null };
-    const flip = at.dir < 0;
-    let out = '';
-    if (!a.anim || !a.anim.length) out = use(sym(it, '*'), at.x, at.y, at.s, flip, null, at.alpha);
+    const at = sceneActorAt(a, 0), it = { o: a.o, v: a.v, season: C.season, haze: C.layers[a.layer] ? Math.round(C.layers[a.layer].haze * 10) / 10 : 0, tint: null, s: at.s };
+    const flip = at.dir < 0, sh = sceneObjShapes(a.o, a.v, C.season);
+    let out = '', wp = null;
+    if (!a.anim || !a.anim.length) out = use(sym(it, '*', lit), at.x, at.y, at.s, flip, null, at.alpha);
     else {
       const moved = [...new Set(a.anim.flatMap(_scAnimParts))].filter(p => p !== '*');
-      const whole = a.anim.find(h => _scAnimParts(h)[0] === '*'), wp = whole ? sceneAnimPose(whole, 0, L, at.x) : null;
-      out += use(moved.length ? restSym(it, moved) : sym(it, '*'), at.x, at.y, at.s, flip, wp ? wp.m : null, at.alpha);
-      for (const h of a.anim) { const parts = _scAnimParts(h); if (parts[0] === '*') continue; const p = sceneAnimPose(h, 0, L, at.x); parts.forEach((part, j) => { out += use(sym(it, part), at.x, at.y, at.s, flip, j === 1 && p.m2 ? p.m2 : p.m, at.alpha); }); }
+      const whole = a.anim.find(h => _scAnimParts(h)[0] === '*');
+      wp = whole ? sceneAnimPose(whole, 0, L, at.x) : null;
+      out += use(moved.length ? restSym(it, moved, lit) : sym(it, '*', lit), at.x, at.y, at.s, flip, wp ? wp.m : null, at.alpha);
+      for (const h of a.anim) { const parts = _scAnimParts(h); if (parts[0] === '*') continue; const p = sceneAnimPose(h, 0, L, at.x); parts.forEach((part, j) => { out += use(sym(it, part, lit), at.x, at.y, at.s, flip, j === 1 && p.m2 ? p.m2 : p.m, at.alpha); }); }
     }
+    if (lit && sh && sh.parts.lit && sh.parts.lit.length) out += use(sym(it, 'lit'), at.x, at.y, at.s, flip, wp ? wp.m : null, at.alpha);
     return out;
   };
   const flockSvg = (f) => {

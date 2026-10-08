@@ -85,7 +85,9 @@ Inside those, these are **never** copied, wherever they are: `data/`,
 `state/`, `secrets/`, `backups/`, `logs/` and `*.log`, `migration-plans/`,
 `.env` files, the local token and runtime files, any `*backup*.json`, a
 `privacy-terms*` file, OAuth client and token files, key files, data dumps,
-`.claude/`, `node_modules/`, editor and OS files, archives and release output,
+`.claude/` (except `.claude/skills/animation-pack/`: the animation tool's briefs and
+tests read it, so it ships, and nothing else from `.claude/` does), `node_modules/`,
+editor and OS files, archives and release output,
 the built `index.html`, the personal scripts `tools/apply_sync.py` and
 `tools/write_snapshot_local*.py`, and maintainers' working notes
 (`docs/dev/BRANDING_PLAN.md`, `docs/dev/GITHUB_SETUP.md`, `docs/internal/`). When the source is a git

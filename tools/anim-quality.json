@@ -1254,7 +1254,7 @@
    "stackedGap": 6
   },
   "care": {
-   "_note": "The care rules for composed scenes (8.5, CARE_RULES in tools/lib/anim-region.mjs): life comes from animals, birds, boats and vehicles; people are a few tiny anonymous silhouettes; no crowds.",
+   "_note": "The care rules for composed scenes (8.5, CARE_RULES in tools/lib/anim-region.mjs): life comes from animals, birds, boats and vehicles; people are a few anonymous faceless silhouettes sized by the depth ladder (scenePersonScale: at most 150 units in the near foreground, at most 180 shapes in variant 0, the size-tiered detail drops the fine ones far away); no crowds.",
    "people": {
     "max": 8,
     "station": 10
@@ -1264,10 +1264,10 @@
     "within": 120
    },
    "personShapes": {
-    "max": 60
+    "max": 180
    },
    "personHeight": {
-    "max": 70
+    "max": 150
    }
   }
  },

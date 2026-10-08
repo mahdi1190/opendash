@@ -3,7 +3,8 @@
 
    Static is free, motion is budgeted. Every library object is rasterised ONCE per (object, variant,
    part, season, haze, tint, scale bucket, light) into a cached sprite, with the live grade already in
-   its pixels. Static placements (thousands of them) are drawn once into at most 5 layer bitmaps
+   its pixels (an object with detailPx drops its detail shapes below that on-screen height: sceneDetailAt,
+   a function of the key's scale, so the cache stays valid). Static placements (thousands of them) are drawn once into at most 5 layer bitmaps
    (plus the sky), each cropped to what it holds. A frame then draws: the sky bitmap, stars, clouds,
    and per bitmap: the bitmap, its wind strips (one skewed blit each), its water shimmer, its animated
    parts, actors and flocks (one setTransform + drawImage each, y-sorted), then particles and weather.
@@ -87,6 +88,50 @@ function _sccStat(a) {
   return { median: r(q(0.5)), p95: r(q(0.95)), max: r(s[s.length - 1]), n: s.length };
 }
 const _sccIdle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 120 }) : setTimeout(fn, 16));
+/**
+ * One planned cloud (sceneCloudPlan) painted into its own sprite at device scale k, once per bake (a frame only draws it).
+ * Heaps and strips: overlapping lobes whose radial gradients fade to nothing (the soft edge: no outline), cut flat and soft
+ * at the base; then, only where the cloud is, the shade toward the base (or the low sun's glow under it) and on the side away
+ * from the light, a lit top on every lobe and a bright rim on the sun's (or the moon's) side; a ragged soft underside.
+ * Cirrus: soft streaks and a few fine fibres. The opacity is baked in.
+ */
+function _sccCloudSprite(p, k) {
+  const c = _sccCanvas(p.w * k + 4, p.h * k + 4), cx = c.getContext('2d', _SCC_CPU), t = p.tone, sd = t.side;
+  const rgba = (hex, a) => { const v = _scHex(hex); return `rgba(${v[0]},${v[1]},${v[2]},${Math.round(a * 1000) / 1000})`; };
+  const grad = (g, col, stops) => { for (const [o, a] of stops) g.addColorStop(o, rgba(col, a)); return g; };
+  const blob = (x, y, rx, ry, col, stops, ang) => {      // a soft ellipse: a radial gradient in a scaled (and turned) frame
+    cx.setTransform(k, 0, 0, k, 2, 2); cx.translate(x, y); if (ang) cx.rotate(ang); cx.scale(1, ry / rx);
+    cx.fillStyle = grad(cx.createRadialGradient(0, 0, 0, 0, 0, rx), col, stops); cx.fillRect(-rx, -rx, 2 * rx, 2 * rx);
+  };
+  const cover = (fill) => { cx.setTransform(k, 0, 0, k, 2, 2); cx.fillStyle = fill; cx.fillRect(0, 0, p.w, p.h); };
+  if (p.kind === 'cirrus') {
+    for (const s of p.streaks) blob(s[0], s[1], s[2], s[3], t.wisp, [[0, 0.6], [0.5, 0.32], [1, 0]], s[4]);
+    cx.setTransform(k, 0, 0, k, 2, 2); cx.lineCap = 'round';
+    for (const f of p.fibres) {
+      cx.strokeStyle = grad(cx.createLinearGradient(f[0], 0, f[4], 0), t.wisp, [[0, 0], [0.35, 0.55], [1, 0]]); cx.lineWidth = f[6];
+      cx.beginPath(); cx.moveTo(f[0], f[1]); cx.quadraticCurveTo(f[2], f[3], f[4], f[5]); cx.stroke();
+    }
+  } else {
+    const strip = p.kind === 'strip', edge = strip ? 0.55 : 0.8, hk = t.hk * (strip ? 0.6 : 0.85), rk = t.rimK * (strip ? 0.6 : 1);
+    for (const l of [p.shelf, ...p.lobes]) blob(l[0], l[1], l[2], l[3], t.body, [[0, 1], [edge, 1], [1, 0]]);
+    cx.globalCompositeOperation = 'destination-out';
+    cover(grad(cx.createLinearGradient(0, p.base - 5, 0, p.base + 3), '#000000', [[0, 0], [1, 1]]));
+    cx.globalCompositeOperation = 'source-atop';
+    cover(grad(cx.createLinearGradient(0, 0, 0, p.base), t.baseCol, [[0, 0], [0.45, 0], [1, strip ? 0.6 : 0.82]]));
+    cover(grad(cx.createLinearGradient(sd > 0 ? 0 : p.w, 0, sd > 0 ? p.w : 0, 0), t.shade, [[0, 0.38], [0.55, 0], [1, 0]]));
+    for (const l of p.lobes) {
+      blob(l[0] - sd * 0.15 * l[2], l[1] + 0.35 * l[3], l[2] * 0.85, l[3] * 0.85, t.shade, [[0, 0.2], [1, 0]]);
+      blob(l[0] + sd * 0.28 * l[2], l[1] - 0.32 * l[3], l[2] * 0.78, l[3] * 0.78, t.lit, [[0, 0.9 * hk], [0.55, 0.5 * hk], [1, 0]]);
+      if (rk > 0.02 && l[1] - l[3] < p.base * 0.55) blob(l[0] + sd * 0.5 * l[2], l[1] - 0.5 * l[3], l[2] * 0.55, l[3] * 0.55, t.rim, [[0, rk], [1, 0]]);
+    }
+    cx.globalCompositeOperation = 'source-over';
+    for (const g of p.rag) blob(g[0], g[1], g[2], g[3], t.ragCol, [[0, 0.5], [1, 0]]);
+  }
+  cx.globalCompositeOperation = 'destination-out';
+  cover(`rgba(0,0,0,${Math.round((1 - t.op) * 1000) / 1000})`);
+  cx.globalCompositeOperation = 'source-over';
+  return c;
+}
 
 /**
  * Create a renderer for one canvas. src: scene data, a thunk, a composed item, or (tests) { compiled: C }.
@@ -144,15 +189,17 @@ function sceneRendererCreate(canvas, src, o) {
   };
   /**
    * A sprite: the shapes of `which` ('*' every part but 'lit'; 'rest:a,b' every part but those; a part name; 'lit')
-   * at device scale sc. lit: glow shapes in their night colours (moving parts and actors after real dusk).
+   * at device scale sc. litGlow: glow shapes in their night colours (moving parts and actors after real dusk). withLit: the
+   * object's 'lit' part too, on top and ungraded (after real dusk, so a moving object's halo moves with it at no extra draw).
    */
-  const sprite = (Lx, lk, oid, v, se, which, haze, tint, sc, litGlow) => {
-    const key = sceneSpriteKey(oid, v, which + (litGlow ? '+g' : ''), se, haze, tint, sc, lk);
+  const sprite = (Lx, lk, oid, v, se, which, haze, tint, sc, litGlow, withLit) => {
+    const key = sceneSpriteKey(oid, v, which + (litGlow ? '+g' : '') + (withLit ? '+l' : ''), se, haze, tint, sc, lk);
     return sceneSprites.get(key, () => {
       const sh = sceneObjShapes(oid, v, se);
       if (!sh) return null;
-      const names = which === '*' ? sh.order.filter(p => p !== 'lit') : which.startsWith('rest:') ? sh.order.filter(p => p !== 'lit' && !which.slice(5).split(',').includes(p)) : [which];
-      const detail = lod >= 0.5, def = litGlow && typeof sceneObj === 'function' ? sceneObj(oid) : null, nc = (def && def.night && def.night.glow) || {};
+      const names = (which === '*' ? sh.order.filter(p => p !== 'lit') : which.startsWith('rest:') ? sh.order.filter(p => p !== 'lit' && !which.slice(5).split(',').includes(p)) : [which])
+        .concat(withLit && which !== 'lit' && sh.parts.lit ? ['lit'] : []);
+      const detail = lod >= 0.5 && (typeof sceneDetailAt !== 'function' || sceneDetailAt(oid, sh, sc)), def = litGlow && typeof sceneObj === 'function' ? sceneObj(oid) : null, nc = (def && def.night && def.night.glow) || {};
       const tb = _sccPartsBox(sh, names, detail);
       if (!tb) return { c: null, x0: 0, y0: 0, w: 0, h: 0, sc, bytes: 0 };
       let [x0, y0, x1, y1] = tb;
@@ -167,7 +214,7 @@ function sceneRendererCreate(canvas, src, o) {
       for (const p of names) for (const s0 of sh.parts[p] || []) {
         if (!detail && s0.detail) continue;
         if (litGlow && s0.glow) drawShape(cx, Object.assign({}, s0, { f: nc[s0.glow] || (s0.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain);
-        else drawShape(cx, s0, col);
+        else drawShape(cx, s0, p === 'lit' ? plain : col);
         any = true;
       }
       if (!any) { c.width = 0; return { c: null, x0, y0, w: 0, h: 0, sc: k, bytes: 0 }; }
@@ -237,24 +284,17 @@ function sceneRendererCreate(canvas, src, o) {
       const ns = Math.min(220, Math.round((C.sky.stars || 0) * (Lx.stars || 0) * Math.max(0.3, lod)));
       const r = _scRndOf(41);
       for (let i = 0; i < ns; i++) { const x = -100 + r() * 1800, y = Math.pow(r(), 1.4) * (hor - 30), s = 0.7 + r() * 1.2; out.stars.push([x * vs + ox, y * vs + oy, Math.max(1, s * vs * 1.2), i % 3]); }
-      // clouds: sprites lit by the light, drifting at their own speeds
-      const cn = Math.min(10, Math.max(1, Math.round((C.sky.clouds.n || 4) * (0.45 + (Lx.cover || 0) * 1.6))));
-      const rc = _scRndOf(5), cols = Lx.cloud || ['#c4d3e3', '#f4f7fa', '#ffffff'];
-      for (let i = 0; i < cn; i++) {
-        const s = 0.5 + rc() * 1.1, cw = 360 * s, ch = 120 * s, k = vs, c = _sccCanvas(cw * k + 4, ch * k + 4), cx = c.getContext('2d', _SCC_CPU);
-        cx.setTransform(k, 0, 0, k, 2, 2);
-        const cg = cx.createLinearGradient(0, 0, 0, ch); cg.addColorStop(0, cols[2]); cg.addColorStop(0.55, cols[1]); cg.addColorStop(1, cols[0]);
-        cx.fillStyle = cg; cx.globalAlpha = (Lx.dark > 0.9 ? 0.7 : 0.92);
-        const n = 5 + Math.floor(rc() * 3);
-        cx.beginPath(); cx.ellipse(cw / 2, ch * 0.78, cw * 0.46, ch * 0.18, 0, 0, Math.PI * 2);
-        for (let j = 0; j < n; j++) { const px = cw * (0.15 + 0.7 * j / (n - 1)) + (rc() - 0.5) * 20 * s, pr = (22 + rc() * 38) * s; cx.moveTo(px + pr, ch * 0.72 - pr * 0.5); cx.ellipse(px, ch * 0.72 - pr * 0.5, pr, pr * 0.9, 0, 0, Math.PI * 2); }
-        cx.fill();
-        out.clouds.push({ c, w: cw, h: ch, x0: rc() * 1920 - 160, y: C.sky.clouds.y0 + rc() * Math.max(10, C.sky.clouds.y1 - C.sky.clouds.y0), sp: (C.sky.clouds.speed || 6) * (0.6 + rc() * 0.8) });
-        out.sprites.add({ c, bytes: c.width * c.height * 4 });
-      }
     }
     flushCx(sx);
-    for (const c of out.clouds) flushCx(c.c.getContext('2d'));
+    // clouds: the scene's own natural sky (sceneCloudPlan: kinds by cover, depth bands, lit by the light), each painted once
+    // into its own sprite here, a slice per cloud; a frame drifts them (one drawImage each)
+    for (const p of sceneCloudPlan(C, Lx)) {
+      const c = _sccCloudSprite(p, vs);
+      out.clouds.push({ c, w: p.w, h: p.h, x0: p.x0, y: p.y, sp: p.sp, kind: p.kind, band: p.band });
+      out.sprites.add({ c, bytes: c.width * c.height * 4 });
+      flushCx(c.getContext('2d'));
+      yield* slice();
+    }
     out.sky = sky;
     yield* slice();
 
@@ -316,18 +356,23 @@ function sceneRendererCreate(canvas, src, o) {
           if (it.strip >= 0) continue;
           const M = placeM(it.x, it.y, it.s, it.flip), sc = bucket(it.s) * vs;
           const moving = it.anim && it.anim.length ? it.anim : null;
+          const night = !!(Lx && Lx.windows);
+          let skip = null, litMoves = false;
           if (!moving) { if (gx) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, false)), toG(M)); }
           else {
+            // after real dusk: the moving sprites carry their lit glows (every one, when any of the placement's is on) and, for
+            // a whole-object hook, the lit part; the parts that stay get their glows in the bitmap below, as a static placement
             const whole = moving.find(a => _scAnimParts(a)[0] === '*'), moved = whole ? [] : [...new Set(moving.flatMap(_scAnimParts))];
             if (!whole && gx) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'rest:' + moved.join(','), haze, it.tint, sc, false)), toG(M));
-            const lit = !!(Lx && Lx.windows && it.glowOn && it.glowOn.some(Boolean));
-            const parts = whole ? [{ a: whole, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, lit)) }]
+            const lit = night && !!it.glowOn && it.glowOn.some(Boolean);
+            litMoves = !!whole && night && it.lit; skip = whole ? sceneObjShapes(it.o, it.v, it.season).order : moved;
+            const parts = whole ? [{ a: whole, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, lit, litMoves)) }]
               : moving.flatMap(a => _scAnimParts(a).map((p, j) => ({ a, j, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, p, haze, it.tint, sc, lit)) })));
             grp.movers.push({ kind: 'item', y: it.y, x: it.x, M, parts, b: itemBox(it, sceneObjShapes(it.o, it.v, it.season)) });
           }
-          if (gx && Lx && Lx.windows) {
-            if (it.lit) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'lit', 0, null, sc, false)), toG(M));
-            if (it.glowOn && !moving) _sccGlows(gx, toG(M), it);
+          if (gx && night) {
+            if (it.lit && !litMoves) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'lit', 0, null, sc, false)), toG(M));
+            if (it.glowOn) _sccGlows(gx, toG(M), it, skip);
           }
           yield* slice(gx);
         }
@@ -348,7 +393,8 @@ function sceneRendererCreate(canvas, src, o) {
           const sh = sceneObjShapes(a.o, a.v, C.season); if (!sh) continue;
           const sMax = (a.s || 1) * (a.sByY ? Math.max(...a.sByY.map(p => p[1])) : 1), sc = bucket(sMax) * vs, lit = !!(Lx && Lx.windows);
           const anim = a.anim || [], whole = anim.find(h => _scAnimParts(h)[0] === '*'), moved = [...new Set(anim.flatMap(_scAnimParts))].filter(p => p !== '*');
-          const parts = [{ a: whole || null, sp: keep(sprite(Lx, lk, a.o, a.v, C.season, moved.length ? 'rest:' + moved.join(',') : '*', hz(l), null, sc, lit)), rest: true }]
+          // the lit part rides in the rest sprite (it moves with the body, at no extra draw)
+          const parts = [{ a: whole || null, sp: keep(sprite(Lx, lk, a.o, a.v, C.season, moved.length ? 'rest:' + moved.join(',') : '*', hz(l), null, sc, lit, lit && !!(sh.parts.lit && sh.parts.lit.length))), rest: true }]
             .concat(anim.filter(h => _scAnimParts(h)[0] !== '*').flatMap(h => _scAnimParts(h).map((p, j) => ({ a: h, j, sp: keep(sprite(Lx, lk, a.o, a.v, C.season, p, hz(l), null, sc, lit)) }))));
           grp.movers.push({ kind: 'actor', actor: a, parts, box: sh.box, y: 0 });
         }
@@ -427,10 +473,11 @@ function sceneRendererCreate(canvas, src, o) {
     }
     mark('stars');
     for (const c of S.clouds) {
-      const x = ((c.x0 + c.sp * t) % 2120 + 2120) % 2120 - 260;
-      if ((c.y - c.h) * vs + oy > hb) continue;
+      // whole device pixels: an unscaled blit at an integer offset is a plain copy (no filtering) in a software raster
+      const x = Math.round(sceneCloudX(c, t) * vs + ox), y = Math.round((c.y - c.h) * vs + oy);
+      if (y > hb || x > W || x + c.c.width < 0) continue;   // hidden by the land, or wrapping off-screen
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(c.c, x * vs + ox, (c.y - c.h) * vs + oy, c.c.width, c.c.height); draws++;
+      ctx.drawImage(c.c, x, y); draws++;
     }
     S.groups.forEach((g, gi) => {
       const below = hideBelow[gi];
@@ -641,13 +688,16 @@ function _sccShadow(gx, TG, it, L) {
   gx.beginPath(); gx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); gx.fill();
   gx.globalAlpha = 1;
 }
-/** Lit windows and lamps of a static placement (after real dusk), in the object's night colours, as its glowOn says. */
-function _sccGlows(gx, M, it) {
+/**
+ * Lit windows and lamps of a placement (after real dusk), in the object's night colours, as its glowOn says. skip: parts
+ * left out (an animated placement's moving parts, whose sprites carry their own lit glows).
+ */
+function _sccGlows(gx, M, it, skip) {
   const sh = sceneObjShapes(it.o, it.v, it.season), def = sceneObj(it.o), nc = (def && def.night && def.night.glow) || {};
   gx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
   let gi = 0;
   for (const p of sh.order) for (const s of sh.parts[p] || []) if (s.glow) {
-    if (it.glowOn[gi % it.glowOn.length]) {
+    if (it.glowOn[gi % it.glowOn.length] && !(skip && skip.includes(p))) {
       if (s.m) { gx.save(); gx.transform(...s.m); }
       gx.globalAlpha = 1; gx.fillStyle = nc[s.glow] || (s.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'); gx.fill(_sccPath(s.d));
       if (s.m) gx.restore();

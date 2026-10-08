@@ -8,7 +8,7 @@
      mid      the far quay (a low embankment with trees and lamps) carrying the LANDMARK slots,
               then the water: reflection, shimmer and the glitter road; boats crossing at three
               depths (scaled by y), birds on the water where the kit has swimmers
-     near     the promenade: paving, a railing, lamps, benches and up to 6 tiny walkers
+     near     the promenade: paving, a railing, lamps, benches and up to 6 walkers (sized by the depth ladder)
      fore     the planting bed: dense ground cover by role (wind strips), shrubs
      front    two framing trees, one per side
    Landmarks (the `landmarks` list): an id, or 'id@x@h' (the x of its anchor and its drawn height),
@@ -40,12 +40,15 @@ function sceneArchSkylineWater(p, u) {
   const pick = (role, keep, tags) => {
     const w = ['tree', 'ground', 'shrub'].includes(role) && natKits.length ? sceneKitPick(natKits, role, { tags }) : u.kit(role, tags);
     if (keep) for (const id of Object.keys(w)) if (!keep(id)) delete w[id];
-    return w;
+    return u.mix(role, w);
   };
-  // ranked ids of a role: the climate kit first, then harbour things
+  // slot picks (8.6): seeded by the scene id and the slot name, never by library order
+  const slot = u.slot;
+  // ranked ids of a role: the climate kit first, then harbour things, then the slot's hash order
   // a thing of another climate (a tropical bumboat in a temperate harbour) is never picked
   const foreign = id => { const t = (sceneObj(id) || {}).tags || [], cl = NATURE.filter(k => t.includes('kit:' + k)); return cl.length > 0 && !cl.includes(climate) && !cl.some(k => (u.kits || []).includes(k)); };
-  const ranked = w => Object.keys(w).filter(id => !foreign(id)).map((id, i) => { const t = (sceneObj(id) || {}).tags || []; return [id, (t.includes('kit:' + climate) ? 2 : 0) + (t.includes('harbour') ? 1 : 0), i]; })
+  const own = name => [].concat(u.picks[name] || []);   // the scene's own picks lead whatever their kit
+  const ranked = (w, name) => slot(w, name).filter(id => !foreign(id)).map((id, i) => { const t = (sceneObj(id) || {}).tags || []; return [id, (own(name).includes(id) ? 4 : 0) + (t.includes('kit:' + climate) ? 2 : 0) + (t.includes('harbour') ? 1 : 0), i]; })
     .sort((a, b) => b[1] - a[1] || a[2] - b[2]).map(x => x[0]);
   const any = w => Object.keys(w).length > 0;
   const anim = (id, k) => { const d = sceneObj(id); return !!(d && d.anim && d.anim[k]); };
@@ -86,18 +89,20 @@ function sceneArchSkylineWater(p, u) {
   let far = pick('building-far', id => !((sceneObj(id).tags || []).includes('distant')), ['skyline']);
   if (!any(far)) far = pick('building-far', id => /tower/.test(id));
   if (any(bands)) data.scatter.push({ obj: bands, layer: 'horizon', seed: 2, area: { rect: [-120, H, 1720, H + 2] }, n: 5, minGap: 300, s: [0.5, 0.8], flip: 0.4, variant: 'random', tint: { col: '#9aaabb', k: [0.08, 0.08] }, shadow: false, anim: false });
+  // height caps (maxH): a very tall tower (a 1700-unit skyscraper) never overtops the sky or the landmarks: the far row stays under
+  // 0.8 of the horizon-to-top space, the horizon haze under half of it
   if (any(far)) {
-    if (!any(bands)) data.scatter.push({ obj: far, layer: 'horizon', seed: 3, area: { rect: [-150, H - 1, 1750, H + 3] }, n: n(52), minGap: 20, s: [0.24, 0.52], flip: 0.5, variant: 'random', tint: { col: '#9aaabb', k: [0.16, 0.16] }, shadow: false, anim: false });
-    data.scatter.push({ obj: far, layer: 'far', seed: 4, area: { rect: [-150, H + 4, 1750, H + 9] }, n: n(30), minGap: 40, s: [0.45, 0.85], flip: 0.5, variant: 'random', tint: { col: '#8a9aac', k: [0, 0.08] }, mask: { noise: { scale: 140, cut: 0.32 }, avoid }, shadow: false, anim: false });
+    if (!any(bands)) data.scatter.push({ obj: far, layer: 'horizon', seed: 3, area: { rect: [-150, H - 1, 1750, H + 3] }, n: n(52), minGap: 20, s: [0.24, 0.52], maxH: Math.round(H * 0.5), flip: 0.5, variant: 'random', tint: { col: '#9aaabb', k: [0.16, 0.16] }, shadow: false, anim: false });
+    data.scatter.push({ obj: far, layer: 'far', seed: 4, area: { rect: [-150, H + 4, 1750, H + 9] }, n: n(30), minGap: 40, s: [0.45, 0.85], maxH: Math.round(H * 0.8), flip: 0.5, variant: 'random', tint: { col: '#8a9aac', k: [0, 0.08] }, mask: { noise: { scale: 140, cut: 0.32 }, avoid }, shadow: false, anim: false });
   }
   // the far quay: small trees and lamps along it (static: distance makes their sway invisible)
   const trees = pick('tree');
   const treeIds = Object.keys(trees);
   if (treeIds.length) data.scatter.push({ obj: trees, layer: 'mid', seed: 15, area: { rect: [-140, yQ - 2, 1740, yQ + 4] }, n: n(26), minGap: 46, s: [0.16, 0.26], flip: 0.5, tint: { col: '#6a8a9a', k: [0.08, 0.08] }, variant: [0, 1], mask: { avoid: avoid.map(a => ({ rect: [a.rect[0] + 30, a.rect[1], a.rect[2] - 30, a.rect[3]] })) }, anim: false, reflect: true });
   const lamps = pick('street', id => /lamp/.test(id));
-  const lampId = Object.keys(lamps)[0];
+  const lampId = slot(lamps, 'lamp')[0];
   // boats on the water (harbour boats), at three depths, scaled by y
-  const boats = ranked(pick('boat', null, ['harbour']));
+  const boats = ranked(pick('boat', null, ['harbour']), 'boat');
   const lanes = [yW0 + 22, yW0 + 58, yW0 + 104, yW1 - 40, yW1 - 16];
   const sBy = [[yW0, 0.38], [yW1, 1.05]];
   boats.slice(0, 5).forEach((id, i) => {
@@ -105,17 +110,17 @@ function sceneArchSkylineWater(p, u) {
     data.actors.push({ obj: id, layer: 'mid', path: back ? [[1820, y], [-220, y]] : [[-220, y], [1820, y]], speed: 7 + (i % 3) * 4, loop: 'loop', s: 1, sByY: sBy, seed: 30 + i, offset: (0.13 + i * 0.29) % 1, flip: back });
   });
   // birds: a flock over the water, one higher
-  const fly = ranked(pick('bird', id => anim(id, 'flap')));
+  const fly = ranked(pick('bird', id => anim(id, 'flap')), 'bird');
   if (fly.length) data.flocks.push({ obj: fly[0], n: 6, area: [160, 110, 1440, Math.max(220, H - 120)], speed: 26, s: 0.55, seed: 9, layer: 'far' });
   if (fly.length > 1) data.flocks.push({ obj: fly[1], n: 3, area: [80, 200, 1500, Math.max(300, H - 60)], speed: 18, s: 0.8, seed: 10, layer: 'mid' });
   // the promenade: lamps, benches, walkers (tiny anonymous silhouettes, spread out)
   if (lampId) data.scatter.push({ obj: lampId, layer: 'near', seed: 13, area: { rect: [-100, yP + 6, 1700, yP + 8] }, n: 5, minGap: 300, s: [0.62, 0.72], flip: 0.4, variant: 1, anim: false });
-  const bench = Object.keys(pick('street', id => /bench/.test(id)))[0];
+  const bench = slot(pick('street', id => /bench/.test(id)), 'bench')[0];
   if (bench) data.scatter.push({ obj: bench, layer: 'near', seed: 14, area: { rect: [-60, yP + 10, 1660, yP + 12] }, n: 5, minGap: 260, s: [0.62, 0.74], flip: 0.5, variant: 'random' });
-  const walkers = Object.keys(pick('walker', id => { const d = sceneObj(id); return !!d && (d.tags || []).includes('silhouette') && anim(id, 'walk') && !/angler|cyclist/.test(id); }));
+  const walkers = slot(pick('walker', id => { const d = sceneObj(id); return !!d && (d.tags || []).includes('silhouette') && anim(id, 'walk') && !/angler|cyclist/.test(id); }), 'walker');
   for (let i = 0; i < 5 && walkers.length; i++) {
     const id = walkers[i % walkers.length], y = yP + 18 + (i % 3) * 8, back = i % 2 === 1;
-    data.actors.push({ obj: id, layer: 'near', path: back ? [[1720, y], [-120, y]] : [[-120, y], [1720, y]], speed: 14 + (i % 4) * 3, loop: 'loop', s: 0.72, seed: 50 + i, offset: (i * 0.173 + 0.05) % 1, flip: back });
+    data.actors.push({ obj: id, layer: 'near', path: back ? [[1720, y], [-120, y]] : [[-120, y], [1720, y]], speed: 14 + (i % 4) * 3, loop: 'loop', s: scenePersonScale(sceneObj(id).size[1], y, data.view), seed: 50 + i, offset: (i * 0.173 + 0.05) % 1, flip: back });
   }
   // the planting bed: dense ground cover (wind strips) and shrubs
   const cover = pick('ground', id => /^plant\./.test(id));
@@ -125,9 +130,9 @@ function sceneArchSkylineWater(p, u) {
   }
   const shrubs = pick('shrub');
   if (any(shrubs)) data.scatter.push({ obj: shrubs, layer: 'fore', seed: 9, area: { rect: [-150, yBed + 10, 1750, yBed + 40] }, n: n(9), minGap: 150, s: [0.6, 0.95], flip: 0.5, variant: 'random', anim: false });
-  // the framing trees, one per side (they sway)
+  // the framing trees, one per side (they sway): the slot's first two
   if (treeIds.length) {
-    const a = treeIds[0], b = treeIds[treeIds.length - 1];
+    const fr = slot(trees, 'frame'), a = fr[0], b = fr[1] || fr[0];
     data.place.push({ obj: a, x: 10, y: 908, s: sOf(a, 470), layer: 'front', seed: 21, flip: false, variant: 2 }, { obj: b, x: 1690, y: 912, s: sOf(b, 440), layer: 'front', seed: 22, flip: true });
   }
   return data;

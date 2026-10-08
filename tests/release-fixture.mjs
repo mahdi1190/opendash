@@ -51,7 +51,7 @@ export const CHANGELOG = [
 
 // What is published (and must arrive in the export).
 export const PUBLISHED = [
-  '.editorconfig', '.gitattributes', '.gitignore', '.github/workflows/ci.yml', 'CHANGELOG.md', 'CLAUDE.md', 'LICENSE', 'MODULES.md', 'README.md',
+  '.claude/skills/animation-pack/SKILL.md', '.editorconfig', '.gitattributes', '.gitignore', '.github/workflows/ci.yml', 'CHANGELOG.md', 'CLAUDE.md', 'LICENSE', 'MODULES.md', 'README.md',
   'assets/brand/logo.svg', 'build.mjs', 'check.bat', 'docs/USAGE.md', 'lib/util.mjs', 'mcp/server.mjs', 'package.json', 'serve.mjs',
   'server/index.mjs', 'src/app.js', 'start-dashboard.bat', 'start-dashboard.sh', 'tests/ok.test.mjs',
   'tools/migrate.mjs', 'tools/privacy-allow.json', 'tools/privacy-scan.mjs', 'tools/release-rules.mjs', 'vendor/lib.min.js',
@@ -67,8 +67,10 @@ export const LEFT_OUT = {
   'dashboard-backup-2026-10-01.json': 'dashboard-backup-2026-10-01.json',
   'tools/apply_sync.py': 'tools/apply_sync.py',
   'tools/old-backup.json': 'tools/old-backup.json',
-  '.claude/settings.json': '.claude',
-  '.claude/settings.local.json': '.claude',
+  '.claude/settings.json': '.claude/settings.json',
+  '.claude/settings.local.json': '.claude/settings.local.json',
+  '.claude/skills/other-skill/SKILL.md': '.claude/skills/other-skill',
+  '.claude/skills/animation-packs/SKILL.md': '.claude/skills/animation-packs',   // a lookalike name is not the shipped skill
   'node_modules/x/index.js': 'node_modules',
   'index.html': 'index.html',
   'notes.txt': 'notes.txt',
@@ -81,6 +83,7 @@ export const LEFT_OUT = {
 /** Make the fake repository in `root` and return root. */
 export function fakeRepo(root, { version = '1.2.3' } = {}) {
   const files = {
+    '.claude/skills/animation-pack/SKILL.md': '# A shared project skill (committed source, ships with the release)\n',
     '.editorconfig': 'root = true\n',
     '.gitattributes': '* text=auto eol=lf\n*.bat text eol=crlf\n',
     '.gitignore': 'data/\n',

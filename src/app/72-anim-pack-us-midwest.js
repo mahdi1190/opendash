@@ -151,7 +151,8 @@
       + '<g class="x-bob"><path class="w lk" d="M12 48Q14 32 30 32Q46 32 48 48z"/><rect class="c" x="9" y="46" width="42" height="6" rx="1"/><path class="lk" d="M48 48l6-4"/></g>' + wheel(18, 54, 6) + wheel(42, 54, 6) + smoke(8, 52, 0) + smoke(5, 50, 0.9) });
 
   /* ================= NORTH DAKOTA ================= */
-  B.state('ND', 'signature', { id: 'pumpjack', label: 'Pumpjack on the prairie at sunset', colour: 'orange', mood: 'focused', tags: ['oil', 'prairie', 'sunset'],
+  // retro: its big low sun is painted by hand (not the kit's sun(), which the retrofit fades), so at night it reads as the moon: no second, live one
+  B.state('ND', 'signature', { id: 'pumpjack', label: 'Pumpjack on the prairie at sunset', colour: 'orange', mood: 'focused', tags: ['oil', 'prairie', 'sunset'], retro: { moon: false },
     svg: () => '<circle class="s x-pulse" cx="48" cy="40" r="11"/><path class="s" d="M0 42H64V64H0z"/>' + gr(42, 0, 64) + bird(10, 14, 0) + bird(20, 20, 1) + '<path class="k" d="M18 58L26 38L34 58z"/><path class="lk" d="M26 38v-4"/>'
       + '<g class="x-swing"><path class="lk t" d="M10 32L46 28"/><path class="k" d="M8 28l8 0 0 8z"/><circle class="k" cx="45" cy="29" r="3"/></g><path class="lm x-bob" d="M12 36v18"/><rect class="m" x="40" y="46" width="12" height="12"/>'
       + '<path class="lk x-swing o-b" d="M4 62v-6M56 62v-6M60 62v-5"/>' });

@@ -37,6 +37,16 @@ test('rules: user data, secrets, logs, backups, local config and built files are
   for (const p of ['docs/dev/RELEASING.md', 'docs/dev/PRIVACY-SCAN.md', 'docs/INSTALL.md']) assert.equal(neverRule(p), null, p);
 });
 
+test('rules: of .claude only the animation skill ships (the tool\'s briefs and tests read it); a lookalike or a nested copy does not', () => {
+  for (const p of ['.claude/skills/animation-pack', '.claude/skills/animation-pack/', '.claude/skills/animation-pack/SKILL.md', '.claude/skills/animation-pack/references/rubric.md']) {
+    assert.equal(neverRule(p), null, p);
+  }
+  for (const p of ['.claude', '.claude/', '.claude/settings.json', '.claude/settings.local.json', '.claude/worktrees/x/a.js', '.claude/skills', '.claude/skills/',
+    '.claude/skills/other-skill/SKILL.md', '.claude/skills/animation-packs/SKILL.md', '.claude/skills/animation-pack-old/SKILL.md', 'src/.claude/skills/animation-pack/SKILL.md']) {
+    assert.equal(neverRule(p)?.kind, 'local', p);
+  }
+});
+
 test('rules: the top level is an allowlist; anything new must be added on purpose', () => {
   for (const n of ['README.md', 'README-STANDALONE.md', 'LICENSE', 'CHANGELOG.md', 'CONTRIBUTING.md', 'CODE_OF_CONDUCT.md', 'SECURITY.md', 'MODULES.md',
     'CLAUDE.md', 'package.json', 'build.mjs', 'serve.mjs', 'check.bat', 'start-dashboard.bat', 'start-dashboard.sh', 'start-opendash.bat', 'start-opendash.sh',
@@ -45,7 +55,8 @@ test('rules: the top level is an allowlist; anything new must be added on purpos
   }
   for (const d of ['src', 'server', 'lib', 'mcp', 'tools', 'vendor', 'tests', 'docs', '.github']) assert.equal(classifyTop(d, true).keep, true, d);
   assert.deepEqual(classifyTop('assets', true), { keep: 'partial', only: ['brand'] });
-  for (const [n, dir] of [['data', true], ['state', true], ['secrets', true], ['index.html', false], ['.claude', true], ['node_modules', true]]) {
+  assert.deepEqual(classifyTop('.claude', true), { keep: 'partial', only: ['skills/animation-pack'] });
+  for (const [n, dir] of [['data', true], ['state', true], ['secrets', true], ['index.html', false], ['node_modules', true]]) {
     const c = classifyTop(n, dir);
     assert.equal(c.keep, false, n);
     assert.ok(c.why, n);
@@ -150,7 +161,7 @@ test('the real repository: the release plan holds no private path and has what t
   for (const f of [...build.FONT_FILES.map(x => x.file), build.ICON_SPRITE, ...build.FAVICON_FILES.map(x => x.file)]) if (existsSync(join(ROOT, f))) assert.ok(rels.has(f), f);
   for (const f of plan.files) {
     assert.equal(neverRule(f.rel), null, f.rel);
-    assert.ok(!/^(data|state|secrets|\.claude|node_modules)\//.test(f.rel), f.rel);
+    assert.ok(!/^(data|state|secrets|node_modules)\//.test(f.rel) && !/^\.claude\/(?!skills\/animation-pack\/)/.test(f.rel), f.rel);
   }
   assert.ok(!rels.has('index.html') && !rels.has('tools/apply_sync.py'));
   for (const d of ['data', 'state', 'secrets']) if (existsSync(join(ROOT, d))) assert.ok(plan.excluded.some(e => e.rel === d), d);

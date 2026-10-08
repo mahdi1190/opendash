@@ -27,6 +27,7 @@
   // meadow grasses and wildflowers in the beds, a few clipped shrubs (Brooklyn Bridge Park's waterfront look)
   const bed = { 'plant.grass': 4, 'plant.wildflowers': 2 }, bed2 = { 'plant.grass': 3, 'plant.wildflowers': 1 }, plane = 'tree.plane', quayTrees = { 'tree.plane': 3, 'tree.cherry': 1 };
   const patch = {
+    picks: { lamp: ['street.lamppost'] },   // the scene's own pick (8.6): the park's lampposts, whatever the library adds
     drop: { scatter: [2, 5, 6, 7], place: [4, 5] },
     scatter: [
       { obj: quayTrees, layer: 'mid', seed: 15, area: { rect: [-140, 560, 1740, 566] }, n: 18, minGap: 60, s: [0.1, 0.16], flip: 0.5, variant: [0, 1], tint: { col: '#6a8a9a', k: [0, 0.08] }, mask: { avoid: [{ rect: [300, 500, 460, 570] }, { rect: [940, 500, 1200, 570] }] }, anim: false, reflect: true },

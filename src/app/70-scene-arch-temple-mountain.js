@@ -9,7 +9,7 @@
      mid      the temple hill rising on the temple's side: the TEMPLE (landmark slot 2), cedars
               behind it, cherries and maples round it, lanterns on its terrace
      near     the hillside: trees by role (static), shrubs, a stair path up to the terrace with
-              stone lanterns along it and up to 3 tiny walkers on it
+              stone lanterns along it and up to 3 walkers on it (sized by the depth ladder)
      fore     dense ground cover by role (wind strips)
      front    two framing trees whose crowns fill the top corners (they sway)
    Water: 'lake' or 'pond' lays a lake across the valley floor (reflections, shimmer) instead of
@@ -31,11 +31,13 @@ function sceneArchTempleMountain(p, u) {
   if (p.palette && typeof p.palette === 'object') for (const [season, slots] of Object.entries(p.palette)) palette[season] = Object.assign({}, palette[season] || {}, slots);
   const NATURE = ['tropical', 'temperate', 'arid', 'alpine', 'mediterranean', 'polar', 'east-asian'];
   const natKits = (u.kits || []).filter(k => NATURE.includes(k));
-  const pick = (role, keep, tags) => { const w = natKits.length ? sceneKitPick(natKits, role, { tags }) : u.kit(role, tags); if (keep) for (const id of Object.keys(w)) if (!keep(id)) delete w[id]; return w; };
+  const pick = (role, keep, tags) => { const w = natKits.length ? sceneKitPick(natKits, role, { tags }) : u.kit(role, tags); if (keep) for (const id of Object.keys(w)) if (!keep(id)) delete w[id]; return u.mix(role, w); };
   const any = w => Object.keys(w).length > 0;
   const sOf = (id, h) => { const d = sceneObj(id); return d && d.size ? Math.round(h / d.size[1] * 100) / 100 : 1; };
   const anim = (id, k) => { const d = sceneObj(id); return !!(d && d.anim && d.anim[k]); };
   const tagged = (id, t) => ((sceneObj(id) || {}).tags || []).includes(t);
+  // slot picks (8.6): seeded by the scene id and the slot name, never by library order
+  const slot = u.slot;
   // landmarks: [mountain, temple]
   const lm = (p.landmarks || []).map(s => String(s).split('@')).filter(a => sceneObj(a[0]));
   const mtn = lm[0] || null, tmp = lm[1] || null;
@@ -78,7 +80,7 @@ function sceneArchTempleMountain(p, u) {
   const tw = tmp ? sceneObj(tmp[0]).size[0] * sOf(tmp[0], tmp[2] ? +tmp[2] : 260) / 2 : 80;
   if (any(conifers)) data.scatter.push({ obj: conifers, layer: 'mid', seed: 5, area: { rect: [tx - tw - 140, yT - 30, tx + tw + 140, yT - 12] }, n: 9, minGap: 26, s: [0.55, 0.8], flip: 0.5, variant: 'random', anim: false });
   if (any(trees)) data.scatter.push({ obj: trees, layer: 'mid', seed: 6, area: { rect: right ? [hx0 + 40, yT - 8, 1740, yT + 60] : [-140, yT - 8, hx0 - 40, yT + 60] }, n: n(14), minGap: 46, s: [0.45, 0.7], flip: 0.5, variant: 'random', tint: { col: '#8a7a50', k: [0, 0.08] }, mask: { avoid: [{ rect: [tx - tw - 10, yT - 300, tx + tw + 10, yT + 14] }] }, anim: false });
-  const lanterns = Object.keys(pick('street', id => tagged(id, 'lantern')));
+  const lanterns = slot(pick('street', id => tagged(id, 'lantern')), 'lantern');
   if (lanterns.length) data.place.push({ obj: lanterns[0], x: tx - tw - 24, y: yT + 4, s: 0.5, layer: 'mid', seed: 13 }, { obj: lanterns[0], x: tx + tw + 26, y: yT + 6, s: 0.5, layer: 'mid', seed: 14, flip: true });
   // the stair path from the near ground up to the terrace, lanterns along it, a few walkers on it
   const sx0 = right ? tx - 120 : tx + 120, sx1 = right ? tx - 260 : tx + 260;
@@ -86,10 +88,12 @@ function sceneArchTempleMountain(p, u) {
   for (let k = 0; k <= 16; k++) { const t = k / 16, y = yT + 8 + t * (yN + 40 - yT - 8), x = sx0 + (sx1 - sx0) * t, w = 18 + t * 40; steps += `M${Math.round(x - w)} ${Math.round(y)}h${Math.round(w * 2)}v2h${-Math.round(w * 2)}z`; }
   data.ground.push({ layer: 'near', d: `M${sx0 - 18} ${yT + 8}H${sx0 + 18}L${sx1 + 58} ${yN + 40}H${sx1 - 58}Z`, fill: { lin: [[0, '@path.0'], [1, '@path.1']], x1: 0, y1: yT, x2: 0, y2: yN + 40 } }, { layer: 'near', d: steps, fill: '@step' });
   if (lanterns.length) for (let k = 0; k < 4; k++) { const t = 0.2 + k * 0.24, y = yT + 8 + t * (yN + 40 - yT - 8), x = sx0 + (sx1 - sx0) * t, w = 18 + t * 40 + 12; data.place.push({ obj: lanterns[k % lanterns.length], x: Math.round(x - w), y: Math.round(y), s: 0.42 + t * 0.3, layer: 'near', seed: 15 + k, variant: k % 2 }, { obj: lanterns[k % lanterns.length], x: Math.round(x + w), y: Math.round(y), s: 0.42 + t * 0.3, layer: 'near', seed: 25 + k, flip: true, variant: (k + 1) % 2 }); }
-  const walkers = Object.keys(u.kit('walker', ['silhouette'])).filter(id => anim(id, 'walk') && !/cyclist|angler|jogger/.test(id));
+  const walkers = slot(u.kit('walker', ['silhouette']), 'walker').filter(id => anim(id, 'walk') && !/cyclist|angler|jogger/.test(id));
+  // sized by the depth ladder (2.8): full size at the foot of the stair, the ladder's ratio at its head
+  const ladder = [[yT + 10, Math.round(scenePersonHeight(data.view, yT + 10) / scenePersonHeight(data.view, yN + 36) * 1000) / 1000], [yN + 36, 1]];
   for (let i = 0; i < 3 && walkers.length; i++) {
-    const down = i === 1, a = [sx0, yT + 10], b = [sx1, yN + 36];
-    data.actors.push({ obj: walkers[i % walkers.length], layer: 'near', path: down ? [a, b] : [b, a], speed: 7 + i * 2, loop: 'pingpong', s: 0.36, sByY: [[yT, 0.3], [yN + 40, 0.52]], seed: 50 + i, offset: (0.2 + i * 0.31) % 1 });
+    const down = i === 1, a = [sx0, yT + 10], b = [sx1, yN + 36], id = walkers[i % walkers.length];
+    data.actors.push({ obj: id, layer: 'near', path: down ? [a, b] : [b, a], speed: 7 + i * 2, loop: 'pingpong', s: scenePersonScale(sceneObj(id).size[1], yN + 36, data.view), sByY: ladder, seed: 50 + i, offset: (0.2 + i * 0.31) % 1 });
   }
   // the near hillside: trees (static), shrubs; the cover in near and fore
   if (any(trees)) data.scatter.push({ obj: trees, layer: 'near', seed: 7, area: { rect: [-140, yN + 20, 1740, yN + 70] }, n: n(9), minGap: 150, s: [0.75, 1.05], flip: 0.5, variant: 'random', mask: { avoid: [{ rect: [sx1 - 120, yN - 40, sx1 + 120, yN + 80] }] }, anim: false });
@@ -101,14 +105,14 @@ function sceneArchTempleMountain(p, u) {
     data.scatter.push({ obj: cover, layer: 'fore', seed: 10, area: { rect: [-150, yN + 110, 1750, 905] }, n: n(190), minGap: 18, s: [0.85, 1.3], flip: 0.5, variant: [1, 2], tint: { col: '#6a7a40', k: [0.08, 0.08] }, anim: 'strip' });
   }
   // birds over the valley (the kit's flight birds)
-  const fly = Object.keys(u.kit('bird')).filter(id => anim(id, 'flap'));
+  const fly = slot(u.kit('bird'), 'bird').filter(id => anim(id, 'flap'));
   if (fly.length) data.flocks.push({ obj: fly[0], n: 8, area: [200, 100, 1400, Math.max(240, H - 200)], speed: 22, s: 0.5, seed: 9, layer: 'far' });
-  if (fly.length > 1) data.flocks.push({ obj: fly[fly.length - 1], n: 6, area: [100, 260, 1500, H - 40], speed: 30, s: 0.6, seed: 10, layer: 'mid' });
+  if (fly.length > 1) data.flocks.push({ obj: fly[1], n: 6, area: [100, 260, 1500, H - 40], speed: 30, s: 0.6, seed: 10, layer: 'mid' });
   // the framing: tall conifers at both edges (the temple grove), partly out of frame; a flowering or autumn tree
   // low in each near corner
-  const frame = Object.keys(conifers).length ? Object.keys(conifers) : Object.keys(trees);
+  const frame = slot(any(conifers) ? conifers : trees, 'frame');
   if (frame.length) data.place.push({ obj: frame[0], x: -50, y: 940, s: sOf(frame[0], 820), layer: 'front', seed: 21, variant: 2 }, { obj: frame[0], x: 1660, y: 940, s: sOf(frame[0], 760), layer: 'front', seed: 22, flip: true, variant: 0 });
-  if (any(trees)) { const ids = Object.keys(trees); data.place.push({ obj: ids[0], x: 130, y: 905, s: 1.25, layer: 'fore', seed: 23, variant: 1 }, { obj: ids[ids.length - 1], x: 1480, y: 908, s: 1.3, layer: 'fore', seed: 24, flip: true, variant: 2 }); }
+  if (any(trees)) { const ids = slot(trees, 'corner'); data.place.push({ obj: ids[0], x: 130, y: 905, s: 1.25, layer: 'fore', seed: 23, variant: 1 }, { obj: ids[1] || ids[0], x: 1480, y: 908, s: 1.3, layer: 'fore', seed: 24, flip: true, variant: 2 }); }
   return data;
 }
 (function () {

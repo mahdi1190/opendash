@@ -135,7 +135,7 @@ function loadRegistryUncached(root, extraFiles, omit = []) {
     },
     /** The css a rendered page needs: tokens, the animation library, the registry's themes, the scene sizes. */
     pageCss() {
-      const want = ['00-tokens.css', '03-motion-tokens.css', '76-scenes.css'];
+      const want = ['00-tokens.css', '03-motion-tokens.css', '76-scenes.css', '76-scene.css'];   // 76-scene.css: the retrofit overlay (sr-*) of a sheet --at render
       const anim = cssFiles.filter(f => /anim/.test(f));
       const text = [...new Set([...want.filter(f => cssFiles.includes(f)), ...anim])].map(f => readFileSync(join(styles, f), 'utf8')).join('\n');
       // the swatch classes (.c-indigo { --c: ... }) tint a small item: they live with the shared components

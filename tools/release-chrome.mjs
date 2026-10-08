@@ -139,6 +139,11 @@ export async function launchChrome({ executable = findChrome(), timeoutMs = 3000
       const shot = await s('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false, clip: { x: 0, y: 0, width, height, scale: 1 } });
       return Buffer.from(shot.data, 'base64');
     },
+    /** Emulate CSS media features for this page, e.g. [{ name: 'prefers-reduced-motion', value: 'no-preference' }].
+     *  The override survives navigations, so call it once before the first screenshot(). */
+    async emulateMedia(features) {
+      await s('Emulation.setEmulatedMedia', { features });
+    },
     /** Evaluate an expression in the current page (returns its value). */
     async evaluate(expression) {
       const r = await s('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
