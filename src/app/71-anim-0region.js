@@ -136,6 +136,28 @@ function animRegionSceneUpgrade(regionId, key, up) {
   ups[key] = up;
 }
 /**
+ * The upgrade registered for (id, key) applied to a full item (16.2). LIVE: the item becomes composed (the same identity, its art
+ * kept as legacySvg, never retrofitted; view.lat / view.lon default to sky). Otherwise retro(it) runs (the region's or the pack's
+ * retrofit) and a DRAFT adds item.upgrade. Regions call it from finishFull; a pack that is not a region (Texas, 16.2 last bullet)
+ * registers with animRegionSceneUpgrade(<its pack id>, key, up) and calls it where it builds its full items.
+ */
+function animSceneUpgradeFinish(id, key, it, sky, retro) {
+  const up = (_ANIM_REGION_UPGRADES[id] || {})[key];
+  if (up && up.state === 'live') {
+    const legacySvg = it.svg, thunk = typeof up.scene === 'function' ? up.scene : () => up.scene;
+    // view.lat / view.lon default to the scene's own position
+    const scene = () => { const d = thunk(); if (d && sky) { d.view = d.view || {}; if (!Number.isFinite(d.view.lat)) d.view.lat = sky.lat; if (!Number.isFinite(d.view.lon)) d.view.lon = sky.lon; } return d; };
+    const out = Object.assign(it, { composed: true, rich: true, full: true, scene, legacySvg, reduced: 'static',
+      upgrade: { state: 'live', archetype: up.archetype || null, landmarks: (up.landmarks || []).slice() } });
+    delete out.retro;
+    out.svg = (o) => sceneSvg(out, o);
+    return out;
+  }
+  it = retro(it);
+  if (up) it.upgrade = { state: 'draft', archetype: up.archetype || null, landmarks: (up.landmarks || []).slice(), scene: up.scene };
+  return it;
+}
+/**
  * Where in every region the user is, for the opening sequence: one entry per region that matches, NEAREST first
  * (km = the distance to that region's nearest row, 0 for a travel match; ties in definition order), each
  * {region, over, km, id, name, kind, <keys.unit>, <keys.unitName>} (id '' = only the unit is known).
@@ -284,23 +306,14 @@ function animRegionDefine(cfg) {
    */
   function finishFull(it, key) {
     if (!it || !it.full || typeof it.svg !== 'function') return it;
-    const sky = liveSkyOf(key), up = upgradesOf()[key];
+    const sky = liveSkyOf(key);
     if (sky && !it.liveSky) it.liveSky = sky;
-    if (up && up.state === 'live') {
-      const legacySvg = it.svg, thunk = typeof up.scene === 'function' ? up.scene : () => up.scene;
-      // view.lat / view.lon default to the scene's own position
-      const scene = () => { const d = thunk(); if (d && sky) { d.view = d.view || {}; if (!Number.isFinite(d.view.lat)) d.view.lat = sky.lat; if (!Number.isFinite(d.view.lon)) d.view.lon = sky.lon; } return d; };
-      const out = Object.assign(it, { composed: true, rich: true, full: true, scene, legacySvg, reduced: 'static',
-        upgrade: { state: 'live', archetype: up.archetype || null, landmarks: (up.landmarks || []).slice() } });
-      delete out.retro;
-      out.svg = (o) => sceneSvg(out, o);
-      return out;
-    }
-    const entryRetro = it.retro;
-    if (typeof sceneRetrofit === 'function' && retrofit !== false && entryRetro !== false) it = sceneRetrofit(it, Object.assign({}, retrofit, entryRetro || {}));
-    else delete it.retro;
-    if (up) it.upgrade = { state: 'draft', archetype: up.archetype || null, landmarks: (up.landmarks || []).slice(), scene: up.scene };
-    return it;
+    return animSceneUpgradeFinish(id, key, it, sky, (x) => {
+      const entryRetro = x.retro;
+      if (typeof sceneRetrofit === 'function' && retrofit !== false && entryRetro !== false) return sceneRetrofit(x, Object.assign({}, retrofit, entryRetro || {}));
+      delete x.retro;
+      return x;
+    });
   }
   const _selCache = new WeakMap();
   /**

@@ -60,3 +60,55 @@ test('region.check() reports an upgrade with no scene entry, and a duplicate upg
   assert.throws(() => G('animRegionSceneUpgrade')('uptest', 'bad key', { state: 'live', scene: sceneOf }), /key/);
   assert.throws(() => G('animRegionSceneUpgrade')('uptest', 'place:x', { state: 'maybe', scene: sceneOf }), /draft or live/);
 });
+
+test('a pack that is not a region (16.2, last bullet) registers under its pack id and applies its upgrade with animSceneUpgradeFinish, as a region does', () => {
+  const fin = G('animSceneUpgradeFinish');
+  let retros = 0;
+  const retro = (x) => { retros++; return Object.assign(x, { retro: {} }); };
+  const item = (id) => ({ id, full: true, label: id + ' skyline', site: 'the river', tags: ['river'], svg: svgOld, liveSky: { lat: 32.8, lon: -96.8 } });
+  G('animRegionSceneUpgrade')('uppack', 'place:live-town', { state: 'live', archetype: 'basic', landmarks: ['landmark.uptest'], scene: sceneOf });
+  G('animRegionSceneUpgrade')('uppack', 'place:draft-town', { state: 'draft', archetype: 'basic', landmarks: [], scene: sceneOf });
+  // no upgrade for the key: only the pack's own retrofit
+  const plain = fin('uppack', 'place:other-town', item('a'), null, retro);
+  assert.equal(retros, 1); assert.equal(plain.upgrade, undefined); assert.deepEqual(plain.retro, {});
+  // a draft: the retrofitted hand-drawn item, plus item.upgrade for the tools (--upgrades)
+  const draft = fin('uppack', 'place:draft-town', item('b'), null, retro);
+  assert.equal(retros, 2); assert.ok(!draft.composed); assert.equal(draft.svg, svgOld);
+  assert.equal(draft.upgrade.state, 'draft'); assert.equal(draft.upgrade.scene, sceneOf); assert.deepEqual(draft.retro, {});
+  // live: composed, the same identity, the art kept as legacySvg, never retrofitted; nothing built until shown; view lat / lon from the sky
+  const n = built, live = fin('uppack', 'place:live-town', item('c'), { lat: 32.8, lon: -96.8 }, retro);
+  assert.equal(retros, 2, 'a live upgrade is not retrofitted'); assert.equal(built, n, 'nothing is built until shown');
+  assert.equal(live.composed, true); assert.equal(live.full, true); assert.equal(live.id, 'c'); assert.equal(live.label, 'c skyline'); assert.equal(live.site, 'the river');
+  assert.equal(live.legacySvg, svgOld); assert.equal(live.retro, undefined); assert.equal(live.reduced, 'static');
+  assert.deepEqual(live.upgrade, { state: 'live', archetype: 'basic', landmarks: ['landmark.uptest'] });
+  const data = G('sceneData')(live);
+  assert.deepEqual([data.view.lat, data.view.lon], [32.8, -96.8]);
+});
+
+test('texas/dallas-skyline: its upgrade registers under the texas pack id and the Texas pack applies it, keeping the item\'s identity', () => {
+  const REG = loadRegistry(ROOT), R = REG.R.get;
+  const LEGACY = loadRegistry(ROOT, { omit: REG.files.filter(f => /^71-scene-upgrade-/.test(f)) });
+  const up = (R('_ANIM_REGION_UPGRADES').texas || {})['place:dallas'];
+  assert.ok(up, 'registered as animRegionSceneUpgrade(\'texas\', \'place:dallas\', ...)');
+  assert.equal(up.archetype, 'skyline-water');
+  const entry = REG.items().find(e => e.ref === 'texas/dallas-skyline'), old = LEGACY.items().find(e => e.ref === 'texas/dallas-skyline');
+  assert.ok(entry && old && entry.full && old.full);
+  const it = entry.item;
+  if (up.state === 'live') {
+    assert.equal(it.composed, true); assert.equal(typeof it.legacySvg, 'function'); assert.equal(it.retro, undefined, 'a live upgrade is not retrofitted');
+  } else {
+    assert.ok(!it.composed, 'a draft: the app keeps the hand-drawn art'); assert.ok(it.retro && typeof it.retro === 'object', 'still retrofitted');
+    assert.equal(it.upgrade.state, 'draft'); assert.equal(typeof it.upgrade.scene, 'function');
+    assert.equal(it.svg({ size: 'fill' }), old.item.svg({ size: 'fill' }), 'the same hand-drawn art without a live sky');
+  }
+  // the identity: id, label, site, tags, rotation and the Texas place fields are the item built without any upgrade file
+  const id = (x) => Object.fromEntries(['id', 'label', 'site', 'tags', 'priority', 'slot', 'region', 'colour', 'mood', 'texasKind', 'txTown', 'worldKind', 'liveSky'].map(k => [k, x[k]]).concat([['when', String(x.when)]]));
+  assert.deepEqual(id(it), id(old.item));
+  // the composed scene: built on its archetype, valid, and it places the landmarks it names
+  const data = up.state === 'live' ? it.scene() : it.upgrade.scene();
+  assert.equal(data.arch && data.arch.id, 'skyline-water');
+  assert.deepEqual(R('sceneValidate')(data), []);
+  const C = R('sceneCompile')(data, { lod: 1 });
+  for (const lm of up.landmarks) assert.ok(C.items.some(x => x.o === lm), lm + ' is placed');
+  assert.deepEqual(up.landmarks, ['landmark.bank-of-america-plaza', 'landmark.reunion-tower', 'landmark.margaret-hunt-hill-bridge']);
+});

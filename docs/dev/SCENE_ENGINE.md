@@ -2202,7 +2202,14 @@ at least 80 and a night look.
   entry.
 - The UK, Texas and world packs are not regions: their items upgrade in
   their own pack files with the same item fields (section 17 does the UK
-  ones).
+  ones). Such a pack can still use the registry: it registers under its
+  pack id (`animRegionSceneUpgrade('texas', 'place:dallas', up)`, in
+  `71-scene-upgrade-texas-dallas.js`) and calls
+  `animSceneUpgradeFinish(packId, key, item, sky, retro)` where it builds
+  its full items. That is the same merge a region's items get: live makes
+  the item composed and skips `retro`; otherwise `retro(item)` runs and a
+  draft adds `item.upgrade`. `region.upgrades()` and `region.check()` do
+  not list these upgrades.
 
 ### 16.3 `scene upgrade <ref>` (builder C, `tools/lib/scene-upgrade.mjs`)
 

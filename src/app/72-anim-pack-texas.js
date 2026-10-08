@@ -200,7 +200,10 @@ function animTexasWhere(ctx) { const id = ANIM_TX.place(ctx); return id ? { id, 
      step aside under the retrofit, as us-tint and us-star do. No live moon where the art already has one in its sky at
      night: Houston's painted crescent (a path the retrofit cannot see), and the low painted suns of the West Texas sunset
      and the Gulf sunrise (the retrofit fades only the US kit's sun, so at night they read as a moon). Without a live sky
-     (Node, the lint corpus) the art is byte-identical. */
+     (Node, the lint corpus) the art is byte-identical.
+     A city's scene can be upgraded to a composed one (docs/dev/SCENE_ENGINE.md 16.2, last bullet): Texas is not a region, so
+     its upgrade registers under the pack id, animRegionSceneUpgrade('texas', 'place:<town>', up) (71-scene-upgrade-texas-*.js),
+     and animSceneUpgradeFinish applies it here: a live one replaces the art (not retrofitted), a draft only adds item.upgrade. */
   const SCENE_PLACE = { 'hill-country-bluebonnets': [30.27, -98.87], 'west-texas-sunset': [30.31, -104.02], 'gulf-coast-sunrise': [29.3, -94.8] };
   const PAINTED_MOON = { 'houston-liftoff-scene': 1, 'west-texas-sunset': 1, 'gulf-coast-sunrise': 1 };
   for (const o of scenes) {
@@ -208,7 +211,8 @@ function animTexasWhere(ctx) { const id = ANIM_TX.place(ctx); return id ? { id, 
     const t = TX_TOWNS.find(x => x[0] === town), at = SCENE_PLACE[o.id] || (t ? [t[2], t[3]] : [31, -100]);
     let it = Object.assign({}, base, { slot: 'opening', full: true, mood: 'calm', intensity: 'subtle', texasKind: 'scene', priority: town ? 1.3 : 1, txTown: town || undefined, worldKind: town ? 'scene' : undefined,
       when: (day, ctx) => (town ? txPlace(ctx) === town : !!txPlace(ctx)) && (!months || months.includes(+String(day).slice(5, 7))) }, o, { tags: ['texas', 'lone-star', 'scene'].concat(o.tags || []), liveSky: { lat: at[0], lon: at[1] } });
-    if (typeof sceneRetrofit === 'function') it = sceneRetrofit(it, PAINTED_MOON[o.id] ? { moon: false } : {});
+    const retro = (x) => (typeof sceneRetrofit === 'function' ? sceneRetrofit(x, PAINTED_MOON[o.id] ? { moon: false } : {}) : x);
+    it = typeof animSceneUpgradeFinish === 'function' ? animSceneUpgradeFinish('texas', 'place:' + (town || o.id), it, it.liveSky, retro) : retro(it);
     items.push(it);
   }
   animRegisterPack({
