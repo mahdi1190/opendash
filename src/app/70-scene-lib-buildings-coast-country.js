@@ -182,18 +182,15 @@
     credit: 'coast-country kit (a generic Kent / Sussex oast house)',
     build(v, r, ctx) {
       const s = ctx.season, body = [];
-      // the Kentish cowl: a white weatherboarded hood, broad at the collar, its rounded top bent over the mouth (which faces
-      // away from the wind), the fly-board standing out behind on two struts, a little arrow weather vane on top
-      const cowlShapes = cx => { const X = n => f1(cx + n); return [
-        ['@board.1', `M${X(-12)} -192L${X(-9)} -201H${X(9)}L${X(12)} -192z`], ['@cowl.1', `M${X(-12)} -192H${X(12)}L${X(11.4)} -194.5H${X(-11.4)}z`, .8],
-        { s: '@cowl.1', w: 1.6, d: `M${X(-10)} -230L${X(-23)} -238M${X(-11)} -213L${X(-23)} -229` },
-        ['@cowl.0', poly([[cx - 21, -246], [cx - 44, -250], [cx - 44, -229], [cx - 21, -228]])], ['@cowl.1', poly([[cx - 44, -233], [cx - 21, -232], [cx - 21, -228], [cx - 44, -229]]), .7], { s: '@cowl.1', w: .6, op: .6, d: `M${X(-44)} -243L${X(-21)} -240M${X(-44)} -237L${X(-21)} -235`, detail: true },
-        ['@cowl.0', `M${X(-13)} -199L${X(-12)} -224Q${X(-12)} -246 ${X(5)} -246Q${X(19)} -245 ${X(24)} -229L${X(25)} -219Q${X(19)} -217 ${X(14)} -213L${X(13)} -199z`],
-        ['@cowl.1', `M${X(3)} -246Q${X(19)} -245 ${X(24)} -229L${X(25)} -219Q${X(19)} -217 ${X(14)} -213L${X(13)} -199H${X(5)}L${X(6)} -224Q${X(7)} -240 ${X(3)} -246z`, .55],
-        ['@cowl.2', `M${X(14)} -213Q${X(19)} -217 ${X(25)} -219Q${X(24)} -212 ${X(18)} -208Q${X(15)} -207 ${X(14)} -208z`, .7],
-        ['@board.2', `M${X(-12)} -200L${X(-11)} -224Q${X(-11)} -240 ${X(-5)} -244Q${X(-8)} -236 ${X(-8)} -224L${X(-9)} -200z`, .8],
-        { s: '@cowl.1', w: .7, op: .6, d: `M${X(-12)} -207Q${X(0)} -205 ${X(13)} -207M${X(-12)} -215Q${X(0)} -213 ${X(13.5)} -215M${X(-12)} -223Q${X(2)} -221 ${X(18)} -224M${X(-10)} -232Q${X(4)} -231 ${X(21)} -235`, detail: true },
-        { s: '@cowl.2', w: 1.3, d: `M${X(4)} -246V-260M${X(-6)} -256H${X(12)}`, detail: true }, ['@cowl.2', poly([[cx + 16, -256], [cx + 10, -259.5], [cx + 10, -252.5]]) + poly([[cx - 8, -259], [cx - 3, -256], [cx - 8, -253], [cx - 10, -253], [cx - 6, -256], [cx - 10, -259]]), .9],
+      // the Kentish cowl: a hood bent over its mouth, a fly-board behind, a vane on top ($n = cx + n)
+      const cowlShapes = cx => { const P = d => d.replace(/\$(-?[\d.]+)/g, (_, n) => f1(cx + +n)); return [
+        ['@board.1', P('M$-12 -192L$-9 -201H$9L$12 -192z')], ['@cowl.1', P('M$-12 -192H$12L$11.4 -194.5H$-11.4z'), .8], 
+        ['@cowl.0', P('M$-8 -243L$-36 -247V-231L$-8 -225z')], ['@cowl.1', P('M$-36 -235L$-8 -230V-225L$-36 -231z'), .7], { s: '@cowl.1', w: .6, op: .6, d: P('M$-36 -243L$-9 -239M$-36 -239L$-9 -234'), detail: true },
+        ['@cowl.0', P('M$-13 -199L$-12 -224Q$-12 -246 $5 -246Q$19 -245 $24 -229L$25 -219Q$19 -217 $14 -213L$13 -199z')],
+        ['@cowl.1', P('M$3 -246Q$19 -245 $24 -229L$25 -219Q$19 -217 $14 -213L$13 -199H$5L$6 -224Q$7 -240 $3 -246z'), .55],
+        ['@cowl.2', P('M$14 -213Q$19 -217 $25 -219Q$24 -212 $18 -208Q$15 -207 $14 -208z'), .7], ['@board.2', P('M$-12 -200L$-11 -224Q$-11 -240 $-5 -244Q$-8 -236 $-8 -224L$-9 -200z'), .8],
+        { s: '@cowl.1', w: .7, op: .6, d: P('M$-12 -207Q$0 -205 $13 -207M$-12 -215Q$0 -213 $13.5 -215M$-12 -223Q$2 -221 $18 -224M$-10 -232Q$4 -231 $21 -235'), detail: true },
+        { s: '@cowl.2', w: 1.3, d: P('M$4 -246V-260M$-6 -256H$12'), detail: true }, ['@cowl.2', P('M$16 -256L$10 -259.5V-252.5zM$-8 -259L$-3 -256L$-8 -253H$-10L$-6 -256L$-10 -259z'), .9],
       ]; };
       const kiln = (cx, square, ownCowl) => {
         const x = cx - 36;
@@ -338,22 +335,14 @@
       let lg = `M${rx0} ${ry - 1}H${rx1}M${rx0} ${ry + 6}H${rx1}`; for (let i = 0; i < nS * 2; i++) { const x = rx0 + i * rw / (nS * 2); lg += `M${f1(x)} ${ry - 1}l${f1(rw / (nS * 4))} 7l${f1(rw / (nS * 4))} -7`; }
       body.push({ s: '@ligger', w: .9, op: .9, d: lg, detail: true });
       if (s === 'winter') {
-        // snow lies ON the thatch: a blanket over the ridge and down both hips (it follows the pitch), a ragged lower edge
-        // with tongues running down the straw, caps on the eyebrow dormers and a lip along the eaves with drips
-        const zr = srnd('snow|' + v), hip = (t, sg) => { const u = 1 - t; return [sg * (u * u * (x0 - 8) + 2 * u * t * (x0 + 14) + t * t * (x0 + 40)) - sg * 1.5, u * u * (ey - 30) + 2 * u * t * (ry + 26) + t * t * ry - 1.5]; };
-        const t0 = .5, pts = [.5, .64, .78, .9, 1];
-        let d = 'M' + pts.map(t => hip(t, 1).map(f1).join(' ')).join('L');
-        d += `Q${x0 + 42} ${ry - 7} ${x0 + 50} ${ry - 7}H${x1 - 50}Q${x1 - 42} ${ry - 7} ${x1 - 40} ${ry - 1.5}L` + pts.slice().reverse().map(t => hip(t, -1).map(f1).join(' ')).join('L');
-        const xr = hip(t0, -1)[0], xl = hip(t0, 1)[0], yb = hip(t0, 1)[1], nB = 16;
-        for (let i = 1; i <= nB; i++) {
-          const x = xr + (xl - xr) * i / nB, y = yb - 4 + Math.sin(i * 1.7) * 3 + rr(zr, -2, 3), fan = (x / x1) * .5;
-          if (i < nB && zr() < .55) { const L = rr(zr, 7, 20), tx = x + fan * L; d += `L${f1(x + 3)} ${f1(y)}Q${f1(tx + 2)} ${f1(y + L * .7)} ${f1(tx)} ${f1(y + L)}Q${f1(tx - 2.4)} ${f1(y + L * .6)} ${f1(x - 3)} ${f1(y + 1)}`; }
-          else d += `L${f1(x)} ${f1(y)}`;
-        }
-        body.push({ f: '#7e8c9c', d: d + 'z', op: .3, m: [1, 0, 0, 1, 1.5, 2.5] }, ['@snow', d + 'z', .96], { s: '#ffffff', w: 2, op: .7, d: `M${f1(x0 + 46)} ${ry - 5}H${f1(x1 * .1)}`, detail: true });
-        for (const dx of dorm) body.push(['@snow', `M${f1(dx - 25)} ${ey - 17}Q${f1(dx)} ${ey - 63} ${f1(dx + 25)} ${ey - 17}Q${f1(dx)} ${ey - 56} ${f1(dx - 25)} ${ey - 17}z`, .95]);
-        let lip = `M${x0 - 18} ${ey - 1}Q${x0 - 18} ${ey - 6} ${x0 - 12} ${ey - 6}Q0 ${ey} ${x1 + 12} ${ey - 6}Q${x1 + 18} ${ey - 6} ${x1 + 18} ${ey - 1}`;
-        for (let k = 15; k >= 0; k--) { const t = (k + .5) / 16, x = x0 - 18 + t * (w + 36), y = ey + 12 * t * (1 - t), L = k % 3 === 1 ? rr(zr, 4, 8) : rr(zr, 1, 3); lip += `L${f1(x + 3)} ${f1(y)}Q${f1(x + 1)} ${f1(y + L)} ${f1(x)} ${f1(y + L)}Q${f1(x - 1)} ${f1(y + L)} ${f1(x - 3)} ${f1(y)}`; }
+        // snow on the upper pitch with a ragged, tongued hem; dormer caps; an eaves lip with drips
+        const z = srnd('snow|' + v), F = (x, y) => f1(x) + ' ' + f1(y), xr = x1 - 13.5, yb = (ey + 3 * ry) / 4 + 4;
+        let d = `M${F(-xr, yb)}Q${x0 + 25.5} ${ry + 11.5} ${x0 + 36} ${ry - 4}Q${x0 + 42} ${ry - 7} ${x0 + 50} ${ry - 7}H${x1 - 50}Q${x1 - 42} ${ry - 7} ${x1 - 36} ${ry - 4}Q${x1 - 25.5} ${ry + 11.5} ${F(xr, yb)}`;
+        for (let i = 1; i < 17; i++) { const x = xr - xr * i / 8, y = yb - 4 + Math.sin(i * 1.7) * 3 + rr(z, -2, 3); if (i < 16 && z() < .55) { const L = rr(z, 9, 26); d += `L${F(x + 3, y)}Q${F(x + x / x1 * L / 2, y + L)} ${F(x - 3, y + 1)}`; } else d += 'L' + F(x, y); }
+        body.push({ f: '#7e8c9c', d: d += 'z', op: .3, m: [1, 0, 0, 1, 1.5, 2.5] }, ['@snow', d, .96]);
+        for (const dx of dorm) body.push(['@snow', `M${F(dx - 25, ey - 17)}q25 -46 50 0q-25 -39 -50 0z`, .95]);
+        let lip = `M${x0 - 18} ${ey - 1}q0 -5 6 -5Q0 ${ey} ${x1 + 12} ${ey - 6}q6 0 6 5`;
+        for (let k = 15; k >= 0; k--) { const t = (k + .5) / 16, x = x0 - 18 + t * (w + 36), y = ey + 12 * t * (1 - t), L = k % 3 == 1 ? rr(z, 6, 11) : rr(z, 2, 4); lip += `L${F(x + 3, y)}Q${F(x, y + L)} ${F(x - 3, y)}`; }
         body.push(['@snow', lip + 'z', .92]);
       }
       // the ground floor: leaded casements and the door under a little thatched hood
@@ -362,7 +351,7 @@
       const dx = v === 1 ? x0 + w * .44 : x0 + w * .55;
       body.push([`@door.${v}`, rect(dx, -38, 22, 38)], ['@frame', rect(dx - 2, -40, 26, 2.4)], ['#d8b84a', ell(dx + 17, -19, 1.3, 1.3)], ['@step', rect(dx - 5, -3, 32, 3)], { f: '@glass.0', d: `M${f1(dx + 5)} -35h12v7h-12z`, glow: 'window' });
       body.push(['@thatch.0', `M${f1(dx - 10)} -38Q${f1(dx + 11)} -60 ${f1(dx + 32)} -38q-21 -4 -42 0z`], ['@thatch.3', `M${f1(dx - 10)} -38q21 -4 42 0v2q-21 -4 -42 0z`, .6]);
-      if (s === 'winter') body.push(['@snow', `M${f1(dx - 9)} -39Q${f1(dx + 11)} -62 ${f1(dx + 31)} -39Q${f1(dx + 11)} -55 ${f1(dx - 9)} -39z`, .95]);
+      if (s === 'winter') body.push(['@snow', `M${f1(dx - 9)} -39q20 -23 40 0q-20 -16 -40 0z`, .95]);
       // the rose round the door, by season (bare stems and a few hips in winter)
       const lf = ['', ''], bl = ['', '', ''];
       for (let i = 0; i < 26; i++) { const t = i / 26, side = i % 2, x = side ? dx + 28 + Math.sin(t * 7) * 3 : dx - 6 + Math.sin(t * 6) * 3, y = -t * 46; if (s !== 'winter') lf[i % 2] += lobed(r, x + rr(r, -3, 3), y, 3.5, 2.6, 5, .3); if (s !== 'winter' || i % 4 === 0) bl[i % 3] += circ(x + rr(r, -3, 3), y + rr(r, -2, 2), s === 'summer' ? 2.2 : 1.4); }
