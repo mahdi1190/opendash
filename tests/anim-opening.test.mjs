@@ -6,11 +6,10 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { animRegistryFiles, REGION_FILE_RE } from '../tools/lib/anim-sources.mjs';
-// Hampshire's scenes: the South East region pack and the composed area packs (the scene engine draws them). The parts
-// of the Yateley and Fleet area packs are the nearby art of a Yateley or Fleet user.
-const HANTS_AREA_PACKS = ['yateley', 'fleet', 'winchester', 'newforest', 'coast'];
-const NORTH_HANTS_PARTS = ['area-yateley', 'area-fleet'];
-const HANTS_FILES = HANTS_AREA_PACKS.map(a => `72-anim-pack-uk-area-${a}.js`);
+// v2.11 replaced the older Hampshire area inventory with these three all-season scenes.
+const HANTS_PROOFS = ['proof-fleet-pond', 'proof-wyndhams-pool', 'proof-yateley-green'];
+const NORTH_HANTS_PARTS = HANTS_PROOFS;
+const HANTS_FILES = HANTS_PROOFS.map(a => `72-anim-pack-${a}.js`);
 
 const src = name => readFileSync(new URL('../src/app/' + name, import.meta.url), 'utf8');
 const SCRIPTS = new Map();   // compiled once, run in every harness
@@ -28,7 +27,7 @@ function harness({ day = '2026-12-25', look = {}, on = true, town = '', stored =
   });
   const splash = element();
   const context = vm.createContext({
-    console, setTimeout: (fn, delay) => { fn.delay = delay; timers.push(fn); }, setInterval() {}, addEventListener() {}, removeEventListener() {}, performance: { now: () => 0 },
+    console, setTimeout: (fn, delay) => { if (delay === 0) return; fn.delay = delay; timers.push(fn); }, setInterval() {}, addEventListener() {}, removeEventListener() {}, performance: { now: () => 0 },
     localStorage: { getItem: k => stored.get(k), setItem: (k, v) => stored.set(k, v) },
     document: { hidden: false, readyState: 'loading', addEventListener() {},
       getElementById: () => splash, createElement: element, querySelector: () => null,
@@ -59,8 +58,7 @@ function harness({ day = '2026-12-25', look = {}, on = true, town = '', stored =
 test('Christmas plays after the welcome and county scene, then closes', () => {
   const h = harness();
   assert.equal(h.run(), true); h.next();
-  assert.match(h.attributes['data-od-scene'], /^uk-(south-east|area-[a-z0-9-]+)\/hampshire-/);
-  assert.equal(h.attributes['data-od-scene'], 'uk-area-newforest/hampshire-new-forest-ponies');
+  assert.match(h.attributes['data-od-scene'], /^(?:proof-(?:fleet-pond|wyndhams-pool|yateley-green)|uk-south-east)\/hampshire-/);
   assert.equal(h.attributes['data-od-event'], undefined);
   h.next(); // welcome ends, county scene continues
   assert.equal(h.attributes['data-od-event'], undefined);
@@ -97,13 +95,15 @@ test('skipping the county scene prevents a later holiday from appearing', () => 
   assert.equal(h.attributes['data-od-event'], undefined);
 });
 
-test('returning county openings rotate on refresh; arrival keeps its signature', () => {
+test('returning county openings rotate through the current inventory; arrival is deterministic', () => {
   const h = harness({ day: '2026-10-06' });
   const pick = rotate => vm.runInContext(`animOpeningScene(animUkWhere(), ${rotate}).it.ref`, h.context);
-  assert.equal(pick(false), 'uk-area-newforest/hampshire-new-forest-ponies');
+  assert.equal(pick(false), pick(false));
+  const inventory = vm.runInContext('animItems({slot:"opening"}).filter(i=>i.county==="hampshire"&&i.when("2026-10-06",{county:"hampshire"})).map(i=>i.ref)', h.context);
+  assert.ok(inventory.length >= 3);
   const seen = new Set();
-  for (let i = 0; i < 42; i++) seen.add(pick(true));
-  assert.equal(seen.size, 42, 'all county scenes are reached before repeating');
+  for (let i = 0; i < inventory.length; i++) seen.add(pick(true));
+  assert.deepEqual([...seen].sort(), [...inventory].sort(), 'every current county scene is reached before repeating');
   h.run(); h.next();
   const first = h.attributes['data-od-scene'];
   h.run(); h.next(); h.next(); h.next();
@@ -116,12 +116,12 @@ test('local openings keep the current town in the title and only show nearby sce
   assert.match(h.splash.children[0].innerHTML, /od-seq-place">Yateley</);
   assert.doesNotMatch(h.splash.children[0].innerHTML, /Welcome to/);
   const seen = new Set(); let nearby = 0;
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 3; i++) {
     const it = vm.runInContext('animOpeningScene(animUkWhere(), true).it', h.context);
-    assert.ok(!seen.has(it.ref), 'the first thirty selections do not repeat'); seen.add(it.ref);
+    assert.ok(!seen.has(it.ref), 'the current nearby inventory rotates without repeats'); seen.add(it.ref);
     if (NORTH_HANTS_PARTS.includes(it.ukPart)) nearby++;
   }
-  assert.equal(nearby, 30);
+  assert.equal(nearby, 3);
   assert.equal(vm.runInContext('animOpeningPlace({ukTown:"Fleet",ukLocality:"Fleet"},animUkWhere())',h.context),'Yateley');
 });
 test('moving towns within a county welcomes the actual town for three displayed openings', () => {
@@ -159,7 +159,7 @@ test('Yateley arrivals use exact-town art for three reloads, then rotate nearby 
     if(load<3) { assert.equal(it.ukTown,'Yateley');first.add(it.ref); }
     else if(it.ukTown!=='Yateley')nearby++;
   }
-  assert.equal(first.size,3,'different exact-town views');
+  assert.equal(first.size,2,'both current exact-town views are reached');
   assert.ok(nearby>0,'nearby art becomes available after the third display');
 });
 

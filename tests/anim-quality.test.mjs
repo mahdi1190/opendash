@@ -54,7 +54,8 @@ const lintItem = (inner, profile = 'item') => { const m = measure(wrapItem(inner
 /* ---------- (a) the corpus passes ---------- */
 
 test('the registry has full scenes and small items to lint, in every profile', () => {
-  assert.ok(RES.summary.scenes >= 390 && RES.summary.small >= 570, `${RES.summary.scenes} scenes, ${RES.summary.small} small items`);
+  // v2.11 intentionally retired the templated UK/demo inventory; every remaining item is still linted below.
+  assert.ok(RES.summary.scenes >= 330 && RES.summary.small >= 570, `${RES.summary.scenes} scenes, ${RES.summary.small} small items`);
   // scene-rich: its corpus (the rich Yateley and Fleet views, kept as legacySvg after the convert stage) was deleted at the UK rebuild
   // (2026-10-08, the composed uk-area-* packs replace them); its floors stay as calibrated, and RETIRED_PROFILES skip the corpus checks
   for (const p of ['scene', 'scene-legacy', 'item', 'item-classic']) assert.ok(CORPUS.some(r => r.profile === p), `something is judged by ${p}`);

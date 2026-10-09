@@ -375,8 +375,13 @@ test('page safety: the app bundle and the scene page script end in a state where
 test('canvas: a scene of raster objects bakes (images decoded lazily), with no page errors, by day and by night', { skip: !findBrowser() && 'no Chrome' }, async () => {
   const chrome = await launchChrome({ executable: findBrowser() });
   try {
+    // The demo pack was intentionally retired in v2.11; test the retained raster library directly.
+    const objects = readRasterMetas(ROOT).slice(0, 8).map(({meta})=>meta.id);
+    assert.ok(objects.length >= 7, 'the retained raster corpus has at least seven objects');
+    const data = {v:1,id:'raster-render-test',view:{lat:51.5,lon:0,horizon:470},season:'auto',
+      place:objects.map((obj,i)=>({obj,x:180+i*170,y:720,s:0.4,layer:'near',anim:false}))};
     for (const at of ['2026-06-21T12:00:00Z', '2026-06-21T23:30:00Z']) {
-      const html = scenePageHtml({ root: ROOT, refs: ['raster-demo/raster-demo-village'], at, renderer: 'canvas', still: true, size: { w: 800, h: 450 } });
+      const html = scenePageHtml({ root: ROOT, data, at, renderer: 'canvas', still: true, size: { w: 800, h: 450 } });
       await chrome.screenshot({ html, width: 800, height: 450, transparent: false });
       const ok = await chrome.evaluate('Promise.race([window.__sceneReady, new Promise(r => setTimeout(() => r("timeout"), 20000))])');
       assert.equal(ok, true, 'ready at ' + at);

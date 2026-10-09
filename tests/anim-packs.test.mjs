@@ -397,13 +397,13 @@ test('UK county table: every nation and region, the nearest main town, nothing o
 });
 
 test('UK packs: county-only, one signature, bounded baseline and meaningful place views', () => {
-  const uk = R.animPacks().filter(p => p.id.startsWith('uk-'));
+  const uk = R.animPacks().filter(p => p.id.startsWith('uk-') || p.id.startsWith('proof-'));
   assert.ok(uk.length >= 1, 'batch 1 ships the south west');
   const signatures = new Map();
   for (const p of uk) {
     // A composed area pack (uk-area-<area>: one town or district, scene-engine scenes) is named after its area, not a
     // region; its items keep the same county fields and the same county-only rule as the region packs.
-    const area = p.id.startsWith('uk-area-'), region = p.id.slice(3);
+    const area = p.id.startsWith('uk-area-') || p.id.startsWith('proof-'), region = p.id.slice(3);
     if (!area) assert.ok(R.UK_REGIONS.some(r => r.id === region), `${p.id}: a UK region`);
     // The South East and London share one gallery pack, while each scene
     // keeps its authoritative county region. No county-only check is relaxed.
@@ -451,8 +451,8 @@ test('UK packs: county-only, one signature, bounded baseline and meaningful plac
   // Hampshire (the South East's first county): a rich rotation, each with its own place line. Its baseline scenes were
   // rebuilt as composed area packs (uk-area-*); the region pack keeps the researched place views it has no rebuild for.
   const hants = R.animItems({}).filter(i => i.county === 'hampshire');
-  assert.ok(hants.filter(i => i.composed).length >= 100, 'Hampshire: the composed area scenes');
-  assert.ok(signatures.has('hampshire'), 'Hampshire: a signature opening');
+  assert.deepEqual(hants.filter(i => i.composed).map(i => i.pack).sort(), ['proof-fleet-pond', 'proof-wyndhams-pool', 'proof-yateley-green'], 'v2.11 replaces the retired area inventory with three hand-composed views');
+  assert.equal(signatures.has('hampshire'), false, 'the three replacement views rotate without a special signature');
   for (const i of hants) assert.ok(typeof i.site === 'string' && i.site && !i.site.includes('Hampshire'), `${i.ref}: a site line`);
   for (const i of hants) assert.equal(i.full, true, `${i.ref}: a full-viewport scene (the opening plays it edge to edge)`);
   // two renders never share gradient ids (a scene can show twice on a page: the gallery and Home)
@@ -498,34 +498,25 @@ test('South East and London: complete county rotations, full framing, local ids 
 });
 
 
-test('Yateley: every view in four seasons, matching the calendar and retaining saved refs', () => {
-  const places = ['yateley-common', 'wyndhams-pool', 'yateley-green'];
-  const all = R.animPack('uk-area-yateley').items;
-  const scenes = all.filter(i => places.includes(i.ukPlace) || i.ukPlace === 'yateley-village');
-  assert.equal(scenes.length, all.length);
-  assert.ok(scenes.length >= 48 && scenes.length % 4 === 0);
-  for (const place of places) {
-    for (const season of ['spring', 'summer', 'autumn', 'winter']) {
-      const views = scenes.filter(i => i.ukPlace === place && i.ukSeason === season);
-      assert.ok(views.length >= 4, `${place}/${season}`);
-      for (const it of views) assert.deepEqual(it.season, [season]);
-    }
-    for (let v = 1; v <= 4; v++) {
-      assert.ok(all.some(i => i.id === `hampshire-${place}-${v}`), 'saved scene ids survive');
-      assert.equal(R.animItem(`uk-south-east/hampshire-${place}-${v}`)?.ref, `uk-area-yateley/hampshire-${place}-${v}`, 'a saved ref from the old pack finds the rebuilt view');
-    }
+test('Hampshire replacement views follow every calendar season and ignore retired saved refs', () => {
+  const scenes = R.animItems({}).filter(i => i.pack.startsWith('proof-'));
+  assert.equal(scenes.length, 3);
+  assert.deepEqual(new Set(scenes.map(i => i.ukPlace)), new Set(['fleet-pond', 'wyndhams-pool', 'yateley-green']));
+  for (const it of scenes) {
+    assert.ok(it.full && it.composed && it.liveSky, it.ref);
+    assert.equal(it.season, 'any', 'one all-season item follows the scene clock');
+    assert.equal(it.ukSeason, undefined, 'no stale per-season registry variants');
   }
-  const perSeason = scenes.length / 4;
-  const off = R.animPacks().map(p => p.id).filter(id => id.startsWith('uk-') && id !== 'uk-area-yateley');   // the other UK packs (Fleet, Farnborough ...) are nearby too
   for (let month = 1; month <= 12; month++) {
-    const day = `2026-${String(month).padStart(2,'0')}-16`;
-    const season = R.animSeasonOf(day), ctx = {county:'hampshire',ukTown:'Yateley',level:'standard'};
-    const eligible = scenes.filter(i => i.when(day, ctx));
-    assert.equal(eligible.length, perSeason, day);
-    assert.ok(eligible.every(i => i.ukSeason === season), day);
-    const picked = R.animSpecialPick('opening',day,{packsOff:off},ctx);
-    assert.ok(picked && picked.ukSeason === season, `${day}: automatic local selection respects seasons`);
+    const day = '2026-' + String(month).padStart(2,'0') + '-16';
+    const ctx = {county:'hampshire',ukTown:'Yateley',level:'standard'};
+    assert.ok(scenes.every(i => i.when(day, ctx)), day);
   }
+  const retired = 'uk-area-yateley/hampshire-yateley-common-1';
+  assert.equal(R.animItem(retired), null, 'v2.11 deliberately retires the old saved ref');
+  const day = '2026-10-06', ctx = {county:'hampshire',ukTown:'Yateley',level:'standard'};
+  assert.equal(R.animDailyPick('opening', day, {pin:{opening:retired}}, ctx).ref,
+    R.animDailyPick('opening', day, {}, ctx).ref, 'a retired pin is ignored');
 });
 
 
@@ -546,8 +537,8 @@ test('Yateley live skies: astronomical daylight, local timezone and lunar phase 
   assert.equal(R.almSceneLight(0,lat,lon,'bad-zone'),null);
   assert.notEqual(R.almMoonDiscPath(.25,29),R.almMoonDiscPath(.75,29),'waxing and waning illuminate opposite sides');
   // the composed Yateley views (uk-area-yateley) take the live sky; one view of each place is enough here
-  const lives=R.animPack('uk-area-yateley').items.filter(i=>i.liveSky);
-  assert.ok(lives.length>=48,'every Yateley view has the live sky');
+  const lives=R.animItems({}).filter(i=>i.pack.startsWith('proof-')&&i.liveSky);
+  assert.equal(lives.length,3,'every current Hampshire proof view has the live sky');
   for(const it of [...new Map(lives.map(i=>[i.ukPlace,i])).values()]) {
     for(const sky of [summer,winter,dawn,dusk,night]) {
       const html=R.animItemHtml(it,{sky,live:true});

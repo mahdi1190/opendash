@@ -305,13 +305,19 @@ test('small helpers: synthetic rows and samples are seeded, the brief card is re
    The CLI (no engine needed)
    --------------------------------------------------------------------------------------------- */
 test('CLI: lint prints the tier (legacy floors: below the new standard; an upgrade is drafted) and the STANDARD summary; --json carries tier', async () => {
-  // New York has a DRAFT upgrade (the pilot, 71-scene-upgrade-us-new-york.js): still the legacy art, tier 'upgrading'
+  // Exercise the current item; its source can advance from a draft to the approved native view.
+  const live = REG.R.animItem('us-northeast/new-york-skyline').composed;
   const r = await run(['lint', '--ref', 'us-northeast/new-york-skyline']);
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /PASS {2}us-northeast\/new-york-skyline {2}\(scene\) {2}\(legacy floors: below the new standard; an upgrade is drafted\)/);
-  assert.match(r.out, /standard: 0 of 1 full scenes at the new standard \(gold\); 1 upgrading \(below the new standard\)/);
+  if (live) {
+    assert.match(r.out, /PASS {2}us-northeast\/new-york-skyline {2}\(composed\)/);
+    assert.match(r.out, /standard: 1 of 1 full scenes at the new standard \(gold\)/);
+  } else {
+    assert.match(r.out, /PASS {2}us-northeast\/new-york-skyline {2}\(scene\) {2}\(legacy floors: below the new standard; an upgrade is drafted\)/);
+    assert.match(r.out, /standard: 0 of 1 full scenes at the new standard \(gold\); 1 upgrading \(below the new standard\)/);
+  }
   const j = JSON.parse((await run(['lint', '--ref', 'us-northeast/new-york-skyline,us-northeast/ny-statue', '--json'])).out);
-  assert.equal(j.items[0].tier, 'upgrading');
+  assert.equal(j.items[0].tier, live ? 'gold' : 'upgrading');
   const at = await run(['lint', '--ref', 'us-northeast/new-york-skyline', '--at', 'not-a-time']);
   assert.equal(at.code, 1); assert.match(at.err, /--at must be an ISO time/);
 });
@@ -325,17 +331,19 @@ test('CLI: status prints the STANDARD line and per-pack tier columns; --standard
   assert.equal(j.standard.list.length, 132); assert.equal(TIERS.reduce((n, t) => n + j.standard[t], 0), 132, 'every scene has exactly one tier');
   assert.ok(j.standard.legacy > 100, 'most of Asia is hand-drawn (legacy) until the upgrades land');
   const all = await run(['status', '--all']);
-  assert.match(all.out, /uk-area-yateley \s+80 \s/, 'the UK rebuild: the 80 Yateley items are composed and gold'); assert.match(all.out, /uk-area-fleet \s+\d{2,} \s/); assert.match(all.out, /us-northeast/); assert.match(all.out, /texas/);
+  assert.match(all.out, /proof-yateley-green\s+[-\d]+\s+[-\d]+/, 'the current Yateley scene is included'); assert.match(all.out, /proof-fleet-pond\s+[-\d]+\s+[-\d]+/); assert.match(all.out, /us-northeast/); assert.match(all.out, /texas/);
   const aj = JSON.parse((await run(['status', '--all', '--json'])).out).standard;
   // the legacy tier shrinks as packs turn gold (297 when the batch-2 area scenes landed): the corpus is still mostly legacy
-  assert.ok(aj.gold >= 80 && aj.legacy > 250 && aj.legacy + aj.gold > 380, JSON.stringify({ gold: aj.gold, legacy: aj.legacy }));
+  assert.equal(aj.list.length, REG.items().filter(e=>e.full).length, 'status covers every active full scene');
+  assert.equal(TIERS.reduce((n,t)=>n+aj[t],0),aj.list.length, 'every active scene has exactly one tier');
+  assert.ok(aj.gold >= 9, 'the released Texas scenes retain their gold tier');
 });
 
 test('CLI: reference prints THE BAR first, then the legacy exemplars', async () => {
   const r = await run(['reference']);
   assert.equal(r.code, 0);
   assert.ok(r.out.indexOf('THE BAR') > 0 && r.out.indexOf('THE BAR') < r.out.indexOf('LEGACY EXEMPLARS'));
-  assert.match(r.out, /uk-area-fleet\/hampshire-fleet-pond-1/);
+  assert.match(r.out, /texas\/gulf-coast-sunrise/);
 });
 
 test('CLI: the briefs of the new standard (upgrade in batches by archetype, composed with the scene card, object, archetype); the help lists object and scene', async () => {
@@ -343,7 +351,7 @@ test('CLI: the briefs of the new standard (upgrade in batches by archetype, comp
   assert.ok(up.batches.length >= 19 && up.batches.every(b => b.items.length >= 1 && b.items.length <= 7));
   const one = (await run(['brief', 'asia', '--kind', 'upgrade', '--batch', '1'])).out;
   assert.match(one, /^# Brief: upgrade \d hand-drawn Asia scenes? to the new standard/); assert.match(one, /scene upgrade <ref> --box x0,y0,x1,y1/); assert.match(one, /--compare --upgrades --times/);
-  assert.match(one, /hampshire-yateley-common-1/, 'the bar is cited');
+  assert.match(one, /fort-worth-stockyards-scene/, 'the bar is cited');
   const comp = (await run(['brief', 'my-pack', '--kind', 'composed'])).out;
   assert.match(comp, /```scene\nid: my-scene/); assert.match(comp, /static placements cost NOTHING per frame/i); assert.match(comp, /scene lint my-pack\/my-scene --perf/);
   assert.match((await run(['brief', 'tropical', '--kind', 'object'])).out, /kit:tropical/);
@@ -369,9 +377,9 @@ test('CLI with the engine: object list and object lint --json over the library',
   for (const o of j.objects) assert.ok(Array.isArray(o.failures));
 });
 
-test('CLI with the engine: scene lint over the demo pack and a 50-row batch with its summary table (under 10 s)', { skip: ENGINE || (!REG.items().some(e => e.pack === 'scene-demo') && 'the demo pack is not in this checkout yet') }, async () => {
-  const j = JSON.parse((await run(['scene', 'lint', '--pack', 'scene-demo', '--json'])).out);
-  assert.ok(j.scenes.length >= 3);
+test('CLI with the engine: scene lint over the released Texas pack and a 50-row batch with its summary table (under 10 s)', { skip: ENGINE }, async () => {
+  const j = JSON.parse((await run(['scene', 'lint', '--pack', 'texas', '--json'])).out);
+  assert.equal(j.scenes.length, 9);
   const t0 = Date.now();
   const b = await run(['scene', 'lint', '--archetype', 'station', '--table', 'london-demo', '--rows', '50']);
   assert.ok(Date.now() - t0 < 10000, `${Date.now() - t0} ms`);

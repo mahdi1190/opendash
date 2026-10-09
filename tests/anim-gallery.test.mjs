@@ -11,17 +11,22 @@ const items = reg.items().map(e => e.item);
 const info = get('animGalleryInfo'), filter = get('animGalleryFilter');
 const catalogue = get('animGalleryCatalogue'), places = get('animGalleryPlaces');
 const preview = get('animGalleryPreviewOptions');
-const common = items.filter(i => i.ukPlace === 'yateley-common');   // the composed Yateley Common views (uk-area-yateley)
+// Seasonal/view grouping is a gallery contract, independent of the current art inventory.
+const model = items.find(i => i.ukPlace === 'wyndhams-pool');
+const common = ['wide', 'close', 'detail', 'evening'].flatMap((view, v) => ['spring', 'summer', 'autumn', 'winter'].map(season => ({ ...model,
+  id: `gallery-common-${v}-${season}`, ref: `gallery-fixture/gallery-common-${v}-${season}`, pack: 'gallery-fixture',
+  label: 'Yateley Common, Hampshire', ukPlace: 'yateley-common', ukView: view, ukSeason: season, season: [season],
+})));
 const upgraded = items.filter(i => i.legacySvg);                    // composed scenes that keep their old hand-drawn art
 
 test('location search spans UK counties/towns, US states/places, Asia countries/places, pack names and tags', () => {
-  assert.equal(filter(items, { q: 'YATELEY, Hampshire common' }).length, common.length);
-  assert.ok(filter(items, { q: 'Yateley birch' }).some(i => i.ukPlace === 'yateley-common'));
+  assert.ok(filter(items, { q: 'YATELEY, Hampshire pond' }).some(i => i.ukPlace === 'wyndhams-pool'));
+  assert.ok(filter(items, { q: 'Yateley scots pine' }).some(i => i.ukPlace === 'wyndhams-pool'));
   assert.ok(filter(items, { q: 'Massachusetts boston' }).some(i => i.usPlace === 'boston'));
   assert.ok(filter(items, { q: 'Japan Fuji' }).some(i => i.asiaCc === 'JP'));
   assert.ok(filter(items, { q: 'texas dallas bridge' }).some(i => i.txTown === 'dallas'));
-  const result = filter(items, { q: 'uk-area-yateley/hampshire-yateley-common-1-spring' });
-  assert.ok(result.some(i => i.ref === 'uk-area-yateley/hampshire-yateley-common-1-spring'));
+  const result = filter(items, { q: model.ref });
+  assert.ok(result.some(i => i.ref === model.ref));
   assert.equal(filter(items, { q: 'yateley nonexistentword' }).length, 0);
   const synthetic = [{ ref: 'pack/one', label: "Xi’an Café", tags: ['São-Paulo'], pack: 'pack', slot: 'opening' }];
   assert.equal(filter(synthetic, { q: 'xian cafe sao paulo' }).length, 1);
@@ -40,8 +45,7 @@ test('catalogue exposes retained old art without mutating saved registry identit
   assert.equal(old.reduced, 'static');
   assert.equal(old.scene, undefined);
   assert.deepEqual(Object.keys(original), before);
-  const draft = items.find(i => i.upgrade && i.upgrade.state === 'draft');
-  assert.ok(draft);
+  const draft = { ...original, composed: false, legacySvg: undefined, upgrade: { state: 'draft', scene: original.scene } };
   assert.equal(info(draft).technique, 'old');
   assert.equal(catalogue([draft]).length, 1, 'a draft is not a live new renderer');
   assert.equal(filter(out, { technique: 'old' })[0], old);
@@ -62,8 +66,8 @@ test('a location family collects its views and four seasons, treating v1 as a vi
 });
 
 test('combining search, pack, slot, technique and season never consults daily eligibility', () => {
-  const all = catalogue(items);
-  const selected = filter(all, { q: 'yateley common', pack: 'uk-area-yateley', slot: 'opening', technique: 'new', season: 'winter' });
+  const all = catalogue([...items, ...common]);
+  const selected = filter(all, { q: 'yateley common', pack: 'gallery-fixture', slot: 'opening', technique: 'new', season: 'winter' });
   assert.equal(selected.length, common.length / 4);
   assert.ok(selected.every(i => i.ukSeason === 'winter' && i.composed));
   assert.equal(filter(all, { q: 'yateley', pack: 'texas' }).length, 0);

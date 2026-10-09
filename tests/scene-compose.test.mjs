@@ -179,7 +179,7 @@ test('the gazetteer: region places and the composed scenes\' sites (offline)', a
   const g = gazetteer(reg);
   assert.ok(g.length > 100);
   assert.ok(g.every(p => Number.isFinite(p.lat) && Number.isFinite(p.lon) && p.name));
-  assert.ok(g.some(p => /^scene:uk-area-/.test(p.src)), 'composed scenes give their places');
+  assert.ok(g.some(p => /^scene:proof-/.test(p.src)), 'the current composed UK scenes give their places');
 });
 
 test('the compose command: a dry run on the fixture prints the viewpoint and writes nothing', async () => {

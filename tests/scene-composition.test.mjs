@@ -168,7 +168,7 @@ test('horizon variety across a pack', () => {
 test('v1 packs: the measures run on real composed scenes (the camera inferred) and find the centred subjects', () => {
   const reg = loadRegistry(ROOT), E = engineOf(reg);
   if (!E.ready) return;
-  const items = reg.items().filter(e => e.pack === 'uk-area-sheffield' && e.item.composed).slice(0, 6);
+  const items = reg.items().filter(e => e.pack === 'texas' && e.item.composed).slice(0, 6);
   assert.ok(items.length >= 4);
   let centred = 0;
   for (const e of items) {
@@ -182,9 +182,9 @@ test('v1 packs: the measures run on real composed scenes (the camera inferred) a
     const rules = compositionRules(C, data, { E, measures: m, ref: e.ref, siblings: [] });
     for (const r of rules) assert.equal(r.group, 'composition');
   }
-  assert.ok(centred >= 2, 'the v1 Sheffield views centre their landmark (the diagnosis of V2 0)');
+  assert.ok(centred >= 2, 'released v1 Texas views centre their landmark (the diagnosis of V2 0)');
   // the pack fingerprints are memoised per registry
-  const a = packFingerprints(reg, 'uk-area-woking-b', E), b = packFingerprints(reg, 'uk-area-woking-b', E);
+  const a = packFingerprints(reg, 'texas', E), b = packFingerprints(reg, 'texas', E);
   assert.equal(a, b);
   assert.ok(a.length >= 5 && a.every(x => x.fp.grid.length === 7 * 144));
 });
