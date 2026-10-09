@@ -71,7 +71,7 @@ function sceneUkFleetPondV3() {
       { obj: 'ground.log', x: 300, y: 820, s: 0.8, variant: 0, layer: 'fore', seed: 11 },
       { obj: 'ground.log', x: 110, y: 868, s: 0.7, variant: 1, flip: true, layer: 'fore', seed: 28 },
       { obj: 'bird.robin', x: 330, y: 798, s: 0.8, variant: 0, layer: 'fore', seed: 12 },
-      { obj: 'animal.squirrel', x: 262, y: 700, s: 0.9, layer: 'near', seed: 13 },
+      { obj: 'animal.squirrel', x: 262, y: 700, s: 0.42, layer: 'near', seed: 13 },
       // the signature: the boardwalk across the east reedbed out to its viewing platform
       { obj: 'landmark.fleet-pond-boardwalk', x: 1400, y: 880, s: 1, variant: 2, layer: 'near', seed: 14 },
       // a heron at the reed edge; birds at rest that paddle and turn
