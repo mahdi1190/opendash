@@ -41,7 +41,7 @@ function sceneUkWyndhamsPoolClose() {
       { layer: 'near', d: 'M1760 900V600Q1560 604 1400 650Q1250 700 1140 780Q1060 846 980 900Z', fill: { lin: [[0, '@near.0'], [1, '@bank.1']], x1: 0, y1: 600, x2: 0, y2: 900 } },
       { layer: 'fore', d: 'M1780 632Q1640 640 1560 668Q1470 712 1420 780Q1380 850 1340 910H1560Q1540 840 1560 780Q1590 712 1660 676Q1720 652 1780 650Z', fill: { lin: [[0, '@path.0'], [1, '@path.1']], x1: 0, y1: 640, x2: 0, y2: 900 } },
       // the muddy foot of the reed bed in the left foreground
-      { layer: 'front', d: 'M-160 860Q120 846 380 870Q520 884 600 900H-160Z', fill: '@mud.1' },
+      { layer: 'front', d: 'M-160 838Q120 826 380 856Q520 878 600 900H-160Z', fill: '@mud.1' },
     ],
     water: [
       { layer: 'mid', d: `M-160 ${WL - 2}Q400 ${WL + 4} 800 ${WL}T1760 ${WL + 2}V900H-160Z`, y0: WL, y1: 900, base: ['#8ab4b0', '#3f7680', '#1a4450'], reflect: true, shimmer: 40, lightPath: true },
