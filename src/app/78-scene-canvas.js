@@ -358,7 +358,9 @@ function sceneRendererCreate(canvas, src, o) {
       env.passes.prebake = pre;
     }
     // the v2 haze (V2 7.1) and lift (7.4) of an item: from the passes' per-item arrays (bucketed), not the layer's haze
-    const v2Haze = (i, it, layerHaze) => (env && it.haze == null ? Math.round((env.itemHaze[i] || 0) * 10) / 10 : layerHaze);
+    // (a v1 scene that runs passes only for its winter weather keeps its layers' haze: no atmosphere pass fills itemHaze)
+    const v1Haze = C.v !== 2 && !(C.fx && Object.keys(C.fx).some(k => C.fx[k] === 2)) && typeof _scwxPLite === 'function' && _scwxPLite(C);
+    const v2Haze = (i, it, layerHaze) => (env && !v1Haze && it.haze == null ? Math.round((env.itemHaze[i] || 0) * 10) / 10 : layerHaze);
     const v2Lift = (i) => (env ? env.itemLift[i] || 0 : 0);
     const box = (b) => [Math.floor(b[0] * vs + ox), Math.floor(b[1] * vs + oy), Math.ceil(b[2] * vs + ox), Math.ceil(b[3] * vs + oy)];
     const clipBox = (b) => [Math.max(0, b[0]), Math.max(0, b[1]), Math.min(W, b[2]), Math.min(H, b[3])];
@@ -464,7 +466,14 @@ function sceneRendererCreate(canvas, src, o) {
             if (w.shimmer || w.lightPath) grp.water.push(_sccWaterFx(w, Lx, vs, ox, oy, C.id));
           }
           // shadows along the live sun (static: baked)
-          if (Lx && Lx.shadow && !(env && env.own.shadows)) for (const i of byLayer[l]) { const it = C.items[i]; if (it.shadow) _sccShadow(gx, TG, it, Lx); }
+          // (shared fix, 9 Oct) never on water: the long golden-hour strips of the far bank's trees lay across ponds as dark
+          // stripes and ovals; the water of this layer and the farther ones is clipped out (even-odd: the frame minus the water)
+          if (Lx && Lx.shadow && !(env && env.own.shadows) && byLayer[l].some(i => C.items[i].shadow)) {
+            const wet = C.water.filter(w => w.layer <= l && w.d);
+            if (wet.length) { const clip = new Path2D('M-4000 -4000H6000V6000H-4000Z'); for (const w of wet) clip.addPath(_sccPath(w.d)); gx.save(); gx.setTransform(...TG); gx.clip(clip, 'evenodd'); }
+            for (const i of byLayer[l]) { const it = C.items[i]; if (it.shadow) _sccShadow(gx, TG, it, Lx); }
+            if (wet.length) gx.restore();
+          }
           // v2: the passes under the layer's objects (water 20, shadows 30)
           if (env) { sceneRunPasses(env, 'layer:under', [l, gx, 'under']); _sccReset(gx); }
         } else if (rg) {

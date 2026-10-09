@@ -64,10 +64,10 @@
   };
 
   const LEAF = {
-    oak: { spring: ['#4a7430', '#73a044', '#a6cc66'], summer: ['#2c4c24', '#46703a', '#6e9a4c'], autumn: ['#7a4a1c', '#b4702a', '#dca04a'], winter: ['#5a5048', '#7a6e62', '#9a8e80'] },
-    alder: { spring: ['#3a662a', '#5a8a3a', '#88b258'], summer: ['#213e1e', '#355c2c', '#557e3e'], autumn: ['#4a5a26', '#6e7432', '#9a8e44'], winter: ['#4e463e', '#6a5a4e', '#866e5e'] },
+    oak: { spring: ['#4a7430', '#73a044', '#a6cc66'], summer: ['#2c4c24', '#46703a', '#6e9a4c'], autumn: ['#7a4a1c', '#b4702a', '#dca04a'], winter: ['#463a30', '#5a4c40', '#74645a'] },
+    alder: { spring: ['#3a662a', '#5a8a3a', '#88b258'], summer: ['#213e1e', '#355c2c', '#557e3e'], autumn: ['#4a5a26', '#6e7432', '#9a8e44'], winter: ['#42382f', '#54473c', '#6e5e52'] },
     willow: { spring: ['#6a9a3a', '#9cc458', '#cce488'], summer: ['#4a7a34', '#6e9e48', '#9cc46a'], autumn: ['#8a8a34', '#b4a844', '#dccc6a'], winter: ['#8a7a3a', '#b49a46', '#d8bc5a'] },
-    birch: { spring: ['#5e8a34', '#8ab44a', '#bcdc72'], summer: ['#3e6a2a', '#5e8e3a', '#8ab45a'], autumn: ['#a07a1c', '#d4a42a', '#f0cc4a'], winter: ['#6a5a52', '#8a7268', '#a88c80'] },
+    birch: { spring: ['#5e8a34', '#8ab44a', '#bcdc72'], summer: ['#3e6a2a', '#5e8e3a', '#8ab45a'], autumn: ['#a07a1c', '#d4a42a', '#f0cc4a'], winter: ['#4e403a', '#62524a', '#7a6a60'] },
     pine: { spring: ['#22442f', '#33604a', '#5a8a60'], summer: ['#1f3f2f', '#2e5540', '#4f7a58'], autumn: ['#213f30', '#325842', '#56805a'], winter: ['#26403a', '#3a5a4e', '#62806e'] },
   };
   const BARK = { oak: ['#4e4034', '#3a2e24', '#6a5a48'], alder: ['#3e3630', '#2e2824', '#5a4e44'], willow: ['#5a4e3a', '#423828', '#7a6a50'], birch: ['#e8e4dc', '#2e2a28', '#c8c0b4'], pine: ['#a65a3a', '#5e3a2c', '#c87850'] };
@@ -90,8 +90,9 @@
     const out = [];
     if (winter) {
       out.push({ s: '@bark.0', w: f1(S.trunk[0] * 0.45), cap: 'round', d: br[0] }, { s: '@bark.2', w: 1.6, cap: 'round', op: 0.85, d: br[1], detail: true });
-      const t = crown(r, cx, cy, cw, ch, Math.max(4, S.n - 2), S.lobe * 1.1);
-      out.push(['@leaf.0', t[0], 0.24], ['@leaf.1', t[1], 0.2]);
+      // bare: fine twig sprays through the crown's space (no leaf masses); the willow's golden stems follow
+      out.push({ s: '@leaf.1', w: 1.1, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(r, cx, cy, cw * 0.95, ch * 0.9, S.weep ? 8 : 16) });
+      out.push({ s: '@leaf.0', w: 0.7, cap: 'round', op: 0.45, d: sceneDraw.twigHaze(r, cx, cy, cw, ch, S.weep ? 6 : 12), detail: true });
     } else {
       out.push({ s: '@bark.0', w: f1(S.trunk[0] * 0.4), cap: 'round', d: br[0] + br[1], detail: true });
       const t = crown(r, cx, cy, cw, ch, S.n, S.lobe);
@@ -156,18 +157,18 @@
   sceneObjDefine({
     id: 'tree.pond-wood', category: 'tree', size: [440, 220], variants: 4, seasonal: true, shapeBySeason: true, flippable: true,
     palette: {
-      base: { bark: ['#4a4038', '#5e5248', '#e0dcd2'], pine: ['#24402f', '#34563e', '#4a6e50'] },
+      base: { bark: ['#4a4038', '#5e5248', '#e0dcd2'], pine: ['#24402f', '#34563e', '#4a6e50'], gold: ['#7a6a34', '#b49a46'] },
       spring: { leaf: ['#3f6a34', '#62953f', '#a2cc6a'], alt: ['#4e7a30', '#7aa444', '#b2d478'] },
       summer: { leaf: ['#2c5229', '#46773a', '#7aa756'], alt: ['#24442a', '#3a6234', '#5e8a4a'] },
       autumn: { leaf: ['#7a4a24', '#b07a34', '#d8aa52'], alt: ['#6a5a2a', '#9a8a3a', '#c8b45a'] },
-      winter: { leaf: ['#5a5052', '#7a6e70', '#9a8e8c'], alt: ['#544a48', '#6e6260', '#8c8080'] },
+      winter: { leaf: ['#4a4038', '#5a4e44', '#6e6256'], alt: ['#463c34', '#564a40', '#6a5e52'] },
     },
     parts: ['body'], shadow: null, reflect: true, weight: 1,
     tags: ['uk', 'tree', 'light', 'pond', 'fleet-pond', 'woodland', 'distant', 'tree-line', 'kit:temperate', 'role:tree'],
     credit: 'drawn for Fleet Pond (the far shores\' wood)',
     build(v, r, ctx) {
       const winter = ctx && ctx.season === 'winter', body = [], stems = [], t = ['', '', ''], ta = ['', '', ''], pn = ['', '', ''];
-      let tw = '';
+      let tw = '', tl = '', tg = '';
       for (const [dx, k, sz] of WOOD[v] || WOOD[0]) {
         const x = dx + rr(r, -8, 8), h = (k === 'p' ? 200 : k === 'b' ? 170 : 150) * sz * rr(r, 0.9, 1.1);
         stems.push(`M${f1(x - 3)} 0L${f1(x - 1.5)} ${f1(-h * (k === 'p' ? 0.95 : 0.5))}h3L${f1(x + 3)} 0Z`);
@@ -176,7 +177,12 @@
           continue;
         }
         const w = (k === 'a' ? 36 : k === 'b' ? 28 : k === 'w' ? 52 : 50) * sz, hh = (k === 'a' ? 64 : k === 'b' ? 56 : 48) * sz, cy = -h + hh * 0.95, dst = k === 'a' || k === 'w' ? ta : t;
-        if (winter && k !== 'w') { tw += ring(r, x, cy, w, hh, 8); continue; }
+        if (winter) {   // bare: a few limbs from the stem top and the fine twig haze of the crown (the willow's golden)
+          const sy = -h * 0.5, s2 = (k === 'b' ? 0.6 : 1);
+          tl += sceneDraw.twigs(r, [[x, sy, -0.5 * s2, hh * 0.7], [x, sy, 0.45 * s2, hh * 0.7], [x, sy, 0.05, hh * 0.9]], 1, 0.38);
+          if (k === 'w') tg += sceneDraw.twigHaze(r, x, cy, w * 0.9, hh * 0.9, 10); else tw += sceneDraw.twigHaze(r, x, cy, w * 0.9, hh * 0.9, 7);
+          continue;
+        }
         dst[0] += ring(r, x + w * 0.08, cy + hh * 0.1, w, hh, 8);
         dst[1] += ring(r, x - w * 0.06, cy - hh * 0.08, w * 0.84, hh * 0.78, 8);
         dst[2] += ring(r, x - w * 0.32, cy - hh * 0.34, w * 0.4, hh * 0.34, 7);
@@ -185,7 +191,9 @@
       let us = '';   // the understorey and the carr at the foot (ties the crowns into one wood)
       for (let x = -190; x <= 190; x += 46) us += ring(r, x + rr(r, -10, 10), -rr(r, 16, 26), rr(r, 34, 46), rr(r, 18, 28), 7);
       body.push([winter ? '@leaf.0' : '@alt.0', us, winter ? 0.6 : 1]);
-      if (tw) body.push(['@leaf.0', tw, 0.5]);
+      if (tl) body.push({ s: '@bark.0', w: 2, cap: 'round', op: 0.9, d: tl });
+      if (tw) body.push({ s: '@leaf.1', w: 1, cap: 'round', op: 0.55, d: tw });
+      if (tg) body.push({ s: '@gold.1', w: 1.2, cap: 'round', op: 0.7, d: tg });
       for (const [g, slot] of [[t, '@leaf.'], [ta, '@alt.']]) if (g[0]) body.push([slot + '0', g[0]], [slot + '1', g[1]], { f: slot + '2', d: g[2], op: 0.75, detail: true });
       if (pn[0]) body.push(['@pine.0', pn[0]], ['@pine.1', pn[1]], { f: '@pine.2', d: pn[2], op: 0.8, detail: true });
       return { body };

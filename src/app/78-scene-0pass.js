@@ -50,7 +50,7 @@ function sceneRenderIsV2(C) {
   if (!C) return false;
   if (C.v === 2) return true;
   const fx = C.fx;
-  return !!(fx && typeof fx === 'object' && Object.keys(fx).some(k => fx[k] === 2));
+  return !!(fx && typeof fx === 'object' && Object.keys(fx).some(k => fx[k] === 2)) || (typeof _scwxPLite === 'function' && _scwxPLite(C));   // v1 winter: the weather pass's frost and snow
 }
 /**
  * The passes for a stage ('layer:under' and 'layer:over' sort the layer stage by those order keys), that apply to C, in

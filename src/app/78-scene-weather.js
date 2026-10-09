@@ -48,6 +48,12 @@ function _scwxPWx(env) {
 }
 function _scwxPV2(C) { return !!(C && C.v === 2 && C.cam); }
 function _scwxPFx(C) { return !!(C && C.fx && C.fx.weather === 2); }
+/**
+ * A v1 outdoor scene in winter without the weather opt-in: the pass draws only the winter look there (snow lying, snow caps,
+ * frost and rime, when the day has them: sceneWinterMood or live), never rain, puddles or falling weather (v1 keeps its own).
+ * sceneRenderIsV2 counts it, so the renderer runs the passes; the compiled scene is unchanged.
+ */
+function _scwxPLite(C) { return !!(C && C.v !== 2 && C.season === 'winter' && C.weather !== 'none' && !_scwxPFx(C) && Array.isArray(C.ground)); }
 function _scwxPCls(req) {
   if (req.cls) return req.cls;
   if (typeof sceneObjClass === 'function') { try { const c = sceneObjClass(req.o); if (c) return c; } catch (e) { /* the category */ } }
@@ -183,7 +189,7 @@ const sceneWeatherPass = {
   // by stage (V2 13.1): prebake 10 (puddles before the water pass reads them), sprite 20 (after shading), ground 10, streaks
   // over the objects at 50 (after the halos), rings at 50, rain and snow at 50 (the fog banks follow at 60)
   order: { prebake: 10, sprite: 20, ground: 10, 'layer:over': 50, frameGroup: 50, framePost: 50, default: 50 },
-  applies(C) { return _scwxPV2(C) || _scwxPFx(C); },
+  applies(C) { return _scwxPV2(C) || _scwxPFx(C) || _scwxPLite(C); },
   /** The light key: what the weather bakes (wet, snow lying, frost, the kind). */
   key(L, C) {
     const wx = L && L.wx;
@@ -196,7 +202,7 @@ const sceneWeatherPass = {
     const cls = _scwxPCls(req), def = typeof sceneObj === 'function' ? sceneObj(req.o) : null;
     let k = '';
     if (wx.snowDepth > 0.05 && (_SCWXP_CAP.has(cls) || (def && def.snowCap))) k += 's' + _scwxPq(wx.snowDepth, 0.1);
-    if (_scwxPV2(C) && wx.frost > 0.05 && _SCWXP_RIME.has(cls)) k += 'r' + _scwxPq(wx.frost, 0.2);
+    if (wx.frost > 0.05 && _SCWXP_RIME.has(cls)) k += 'r' + _scwxPq(wx.frost, 0.2);
     return k;
   },
   prebake(env) {
@@ -239,15 +245,15 @@ const sceneWeatherPass = {
       const col = L && typeof sceneColour === 'function' ? sceneColour('#f2f5f8', { L }) : '#f2f5f8';
       sceneWeatherCapSprite(cx, col, _scwxPClamp(wx.snowDepth * 1.1, 0, 0.95), _scwxPClamp(h / 40, 2, 4) * (cls === 'tree' ? 1.2 : 1));
     }
-    if (_scwxPV2(env.C) && wx.frost > 0.05 && _SCWXP_RIME.has(cls)) {
+    if (wx.frost > 0.05 && _SCWXP_RIME.has(cls)) {
       const col = L && typeof sceneColour === 'function' ? sceneColour('#e6eef2', { L }) : '#e6eef2';
       sceneWeatherCapSprite(cx, col, 0.5 * wx.frost, _scwxPClamp(h / 70, 1, 2));
       cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalCompositeOperation = 'source-atop'; cx.globalAlpha = 0.2 * wx.frost; cx.fillStyle = '#dfe6ea'; cx.fillRect(0, 0, cx.canvas.width, h); cx.restore();
     }
   },
   ground(env, layer, gx) {
-    const C = env.C, L = env.L, st = env._scwx, wx = st && st.wx;
-    if (!wx || !(wx.wet > 0.05 || wx.snowDepth > 0.05 || wx.frost > 0.05) || typeof _sccPath !== 'function') return;
+    const C = env.C, L = env.L, st = env._scwx, wx = st && st.wx, lite = _scwxPLite(C);
+    if (!wx || !((wx.wet > 0.05 && !lite) || wx.snowDepth > 0.05 || wx.frost > 0.05) || typeof _sccPath !== 'function') return;
     const v2 = _scwxPV2(C), cam = v2 ? C.cam : null, surf = new Map((C.surfaces || []).map(s => [s.id, s]));
     const snowCol = L && typeof sceneColour === 'function' ? sceneColour('#eef2f6', { L }) : '#eef2f6', slushCol = L && typeof sceneColour === 'function' ? sceneColour('#c8ccd0', { L }) : '#c8ccd0';
     const frostCol = L && typeof sceneColour === 'function' ? sceneColour('#dfe6ea', { L }) : '#dfe6ea';
@@ -256,11 +262,11 @@ const sceneWeatherPass = {
       if (gd.layer !== layer) continue;
       let kind = null, s = null;
       if (v2) { s = gd.surf != null ? surf.get(gd.surf) : null; kind = s ? s.kind : null; if (!kind || gd.edge || gd.mark) continue; }
-      else kind = _scwxPGreyFill(gd.fill) ? 'road' : null;   // v1 (fx): grey fills read as tarmac or paving; others are left alone
+      else kind = _scwxPGreyFill(gd.fill) ? 'road' : lite ? 'grass' : null;   // v1: grey fills read as tarmac or paving; the rest (plain v1) as grass under snow and frost
       if (!kind) continue;
       const K = sceneWeatherSurface(kind), path = _sccPath(gd.d), box = scenePathBox(gd.d) || [0, 0, 1600, 900];
       // wet: darker hard ground, a faint sky tint, and more sky toward the far edge (a grazing view reflects more)
-      if (wx.wet > 0.05 && K.wet >= 0.15 && wx.snowDepth < 0.5) {
+      if (wx.wet > 0.05 && K.wet >= 0.15 && wx.snowDepth < 0.5 && !lite) {
         // darker (x 1 - 0.18 wet on hard ground), a faint sky tint (10 % of the low sky), and a grazing sheen that grows with
         // distance (the Fresnel of a wet film: none at the camera's feet, up to 0.3 of the low sky far away)
         const k = wx.wet * K.wet, sky = (L && L.low) || '#c8d4dc';
@@ -357,7 +363,7 @@ const sceneWeatherPass = {
   /** Falling rain and snow (v2), and the lightning. */
   framePost(env, ctx, t) {
     const st = env._scwx, L = env.L, wx = st && st.wx;
-    if (!wx) return 0;
+    if (!wx || _scwxPLite(env.C)) return 0;   // a plain v1 scene keeps its own falling weather
     let n = 0;
     const tt = env.still ? 0 : t, wind = wx.wind || 1, dark = L ? _scwxPClamp(L.dark || 0, 0, 1) : 0;
     ctx.setTransform(env.vs, 0, 0, env.vs, env.ox, env.oy);

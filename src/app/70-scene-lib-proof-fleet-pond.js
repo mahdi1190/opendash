@@ -684,7 +684,17 @@ function sceneProofFleetPondPass() {
     if (!w || typeof env.sprite !== 'function') return out;
     for (const a of env.flowNow || []) {
       if (a.kind !== 'train' && !/train/.test(a.o || '')) continue;
+      // (shared fix, 9 Oct) the mirror row: the one the water pass mirrors the embankment, the reeds and the woods about at the
+      // train's column (the lake's far edge), so the train's reflection stands on its mirrored embankment, just below the
+      // reeds' reflection, instead of floating in the water on a row of its own (the water level under the track)
       const yw = proj(a.x, a.d, HW)[1];
+      let ym = yw;
+      const R = env.water && env.water.regions && (env.water.regions.find(r => r.w === w) || env.water.regions[0]);
+      if (R && typeof _scwaFarRows === 'function' && env.cam) {
+        if (!R._pfpRows || R._pfpRowsK !== env.vs + ':' + env.ox + ':' + env.oy) { R._pfpRows = _scwaFarRows(R, env.cam, env.vs, env.ox, env.oy); R._pfpRowsK = env.vs + ':' + env.ox + ':' + env.oy; }
+        const Xd = a.X * env.vs + env.ox, row = R._pfpRows.find(r => Xd >= r[0] && Xd < r[1]);
+        if (row && Number.isFinite(row[2])) ym = Math.max(yw, (row[2] - env.oy) / env.vs);
+      }
       out.push({ y: yw, d: Math.max(55, a.d - 30), draw(c) {
         const vs = env.vs, ox = env.ox, oy = env.oy, b = 2 ** (Math.ceil(Math.log2(Math.max(1e-3, a.s)) * 2) / 2);
         const sp = a.sp && a.sp.c ? a.sp : env.sprite({ o: a.o, v: a.v || 0, part: '*', scale: b * vs, litGlow: !!(L && L.windows), haze: 0 });
@@ -694,12 +704,13 @@ function sceneProofFleetPondPass() {
         c.setTransform(vs, 0, 0, vs, ox, oy);
         if (waterClip) c.clip(waterClip);
         const night = L ? (L.dark || 0) : 0;
-        c.globalAlpha = (0.32 + 0.4 * night) * (a.alpha == null ? 1 : a.alpha);
-        // six horizontal slices, each shifted by its own ripple: the mirror breaks up as it nears the camera
-        c.setTransform(vs * a.s * (a.flip ? -1 : 1), 0, 0, -vs * a.s * 0.85, vs * a.X + ox, vs * (2 * yw - a.Y) + oy);
-        const n = 6, ch = sp.c.height / n, lh = sp.h / n;
+        // a softened mirror (a sharp, near-opaque copy read as a second train): fainter, broken up more by the ripple
+        c.globalAlpha = (0.24 + 0.3 * night) * (a.alpha == null ? 1 : a.alpha);
+        // eight horizontal slices, each shifted by its own ripple: the mirror breaks up as it nears the camera
+        c.setTransform(vs * a.s * (a.flip ? -1 : 1), 0, 0, -vs * a.s * 0.85, vs * a.X + ox, vs * (2 * ym - a.Y) + oy);
+        const n = 8, ch = sp.c.height / n, lh = sp.h / n;
         for (let j = 0; j < n; j++) {
-          const off = Math.sin(t * 2.1 + j * 1.3 + a.x * 0.1) * (0.8 + (n - 1 - j) * 0.9) / Math.max(0.05, a.s);
+          const off = Math.sin(t * 2.1 + j * 1.3 + a.x * 0.1) * (1 + (n - 1 - j) * 1.1) / Math.max(0.05, a.s);
           c.drawImage(sp.c, 0, j * ch, sp.c.width, ch, sp.x0 + off, sp.y0 + j * lh, sp.w, lh);
         }
         c.restore();

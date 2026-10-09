@@ -30,10 +30,10 @@
   const f1 = v => Math.round(v * 10) / 10;
   const rr = (r, a, b) => a + r() * (b - a);
   const LEAF = {
-    oak: { spring: ['#4f7a30', '#7aa444', '#a8cc66'], summer: ['#2c4c24', '#46703a', '#6e9a4c'], autumn: ['#7a4a1c', '#b4702a', '#dca04a'], winter: ['#5a5048', '#7a6e62', '#9a8e80'] },
-    alder: { spring: ['#3e6a2c', '#5e8e3c', '#8ab45a'], summer: ['#22401e', '#365e2c', '#557e3e'], autumn: ['#4a5a26', '#6e7432', '#9a8e44'], winter: ['#4e463e', '#6a5a4e', '#866e5e'] },
+    oak: { spring: ['#4f7a30', '#7aa444', '#a8cc66'], summer: ['#2c4c24', '#46703a', '#6e9a4c'], autumn: ['#7a4a1c', '#b4702a', '#dca04a'], winter: ['#463a30', '#5a4c40', '#74645a'] },
+    alder: { spring: ['#3e6a2c', '#5e8e3c', '#8ab45a'], summer: ['#22401e', '#365e2c', '#557e3e'], autumn: ['#4a5a26', '#6e7432', '#9a8e44'], winter: ['#42382f', '#54473c', '#6e5e52'] },
     willow: { spring: ['#6a9a3a', '#9cc458', '#cce488'], summer: ['#4a7a34', '#6e9e48', '#9cc46a'], autumn: ['#8a8a34', '#b4a844', '#dccc6a'], winter: ['#8a7a3a', '#b49a46', '#d8bc5a'] },
-    birch: { spring: ['#5e8a34', '#8ab44a', '#bcdc72'], summer: ['#3e6a2a', '#5e8e3a', '#8ab45a'], autumn: ['#a07a1c', '#d4a42a', '#f0cc4a'], winter: ['#6a5a52', '#8a7268', '#a88c80'] },
+    birch: { spring: ['#5e8a34', '#8ab44a', '#bcdc72'], summer: ['#3e6a2a', '#5e8e3a', '#8ab45a'], autumn: ['#a07a1c', '#d4a42a', '#f0cc4a'], winter: ['#4e403a', '#62524a', '#7a6a60'] },
   };
   const BARK = { oak: ['#4e4034', '#3a2e24', '#6a5a48'], alder: ['#3e3630', '#2e2824', '#5a4e44'], willow: ['#5a4e3a', '#423828', '#7a6a50'], birch: ['#e8e4dc', '#2e2a28', '#c8c0b4'] };
   const pal = (k) => ({ base: { bark: BARK[k] }, spring: { leaf: LEAF[k].spring }, summer: { leaf: LEAF[k].summer }, autumn: { leaf: LEAF[k].autumn }, winter: { leaf: LEAF[k].winter } });
@@ -88,8 +88,8 @@
         if (winter) {
           crown.push({ s: '@bark.0', w: f1(S.trunk[0] * 0.6), cap: 'round', d: br[0] }, { s: '@bark.0', w: f1(Math.max(2, S.trunk[0] * 0.3)), cap: 'round', d: br[1] }, { s: '@bark.2', w: 1.4, cap: 'round', op: 0.85, d: br[2], detail: true });
           // the twig haze (willow: golden hanging stems)
-          const t = crownMass(r, cx, cy, cw, ch, Math.round(S.n * 0.6), S.lobe * 1.1);
-          crown.push(['@leaf.0', t[0], 0.22], { f: '@leaf.1', d: t[1], op: 0.18, detail: true });
+          crown.push({ s: '@leaf.1', w: 1.1, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(r, cx, cy, cw * 0.95, ch * 0.9, S.weep ? 10 : 22) });
+          crown.push({ s: '@leaf.0', w: 0.7, cap: 'round', op: 0.45, d: sceneDraw.twigHaze(r, cx, cy, cw, ch, S.weep ? 8 : 16), detail: true });
         } else {
           crown.push({ s: '@bark.0', w: f1(S.trunk[0] * 0.55), cap: 'round', d: br[2], detail: true });
           const t = crownMass(r, cx, cy, cw, ch, S.n, S.lobe);
@@ -122,6 +122,11 @@
       const [k, cw, ch, ctop, n] = DIST[v % 3], winter = ctx.season === 'winter', slot = k === 'oak' ? 'leaf' : k === 'alder' ? 'alt' : 'weep';
       const cy = -(ctop - ch * 0.9) - ch * 0.45, body = [];
       body.push(['@bark.0', `M-9 2L-5 ${f1(cy + ch * 0.5)}L5 ${f1(cy + ch * 0.5)}L9 2Z`]);
+      if (winter) {   // bare: the limbs out of the trunk top and the fine twig haze (the willow's in its golden stems)
+        const y0 = cy + ch * 0.5, lim = sceneDraw.twigs(r, [[-2, y0, -0.7, ch * 0.55], [2, y0, 0.65, ch * 0.55], [0, y0, 0, ch * 0.7]], 2, 0.4);
+        body.push({ s: '@bark.0', w: 3, cap: 'round', d: lim }, { s: '@' + slot + (k === 'willow' ? '.2' : '.1'), w: 1.2, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(r, 0, cy, cw * 0.95, ch * 0.9, 20) });
+        return { body };
+      }
       let a = '', b = '';
       for (let i = 0; i < n; i++) {
         const t = r() * Math.PI * 2, d = Math.sqrt(r()) * 0.7, x = Math.cos(t) * cw * d, y = cy + Math.sin(t) * ch * d, rx = cw * rr(r, 0.38, 0.5);

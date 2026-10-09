@@ -11,6 +11,8 @@
    sceneDraw.seasons(o)                             { slot: { spring, summer, autumn, winter } } -> palette seasons
    sceneDraw.define(def)                            sceneObjDefine with tidy(): drops empty shapes, round caps on strokes
    sceneDraw.winGroups(r, cells, groups)            spread window cells [[x, y, w, h], ...] over N glow groups -> N path strings
+   sceneDraw.twigs(r, starts, depth, spread)        bare winter twigs forking from [x, y, ang, len] starts -> one path string
+   sceneDraw.twigHaze(r, cx, cy, rx, ry, n, depth)  a bare crown's fine twig sprays inside an ellipse (stroke thin, low opacity)
    ============================================================ */
 const sceneDraw = (function () {
   const f1 = v => Math.round(v * 10) / 10;
@@ -51,10 +53,36 @@ const sceneDraw = (function () {
   function seasons(o) { const p = {}; for (const s of SEAS) p[s] = {}; for (const [slot, v] of Object.entries(o)) for (const s of SEAS) p[s][slot] = v[s]; return p; }
   const tidy = parts => { for (const k of Object.keys(parts)) parts[k] = (parts[k] || []).filter(sh => sh && (Array.isArray(sh) ? sh[1] : sh.d)).map(sh => (!Array.isArray(sh) && sh.s && !sh.cap ? Object.assign({ cap: 'round' }, sh) : sh)); return parts; };
   function define(def) { return sceneObjDefine(Object.assign({}, def, { build: (v, r, ctx) => tidy(def.build(v, r, ctx)) })); }
+  /** Bare winter twigs: from each start [x, y, ang (radians from straight up), len] a stroke that forks in two, depth times (one path). */
+  function twigs(r, starts, depth, spread) {
+    spread = spread == null ? 0.5 : spread;
+    let d = '';
+    const grow = (x, y, a, len, k) => {
+      const x2 = x + Math.sin(a) * len, y2 = y - Math.cos(a) * len;
+      d += `M${f1(x)} ${f1(y)}L${f1(x2)} ${f1(y2)}`;
+      if (k <= 0 || len < 1.5) return;
+      grow(x2, y2, a - spread * (0.45 + r() * 0.7), len * (0.58 + r() * 0.2), k - 1);
+      grow(x2, y2, a + spread * (0.45 + r() * 0.7), len * (0.58 + r() * 0.2), k - 1);
+    };
+    for (const s of starts) grow(s[0], s[1], s[2], s[3], depth);
+    return d;
+  }
+  /**
+   * A bare crown's twig haze in the ellipse (cx, cy, rx, ry): n forked sprays rising up and out from the crown's foot, so a
+   * winter broadleaf reads as fine twigs, not a leaf mass. One path: stroke it thin (about 1) at a low opacity in a twig colour.
+   */
+  function twigHaze(r, cx, cy, rx, ry, n, depth) {
+    const starts = [], R0 = Math.min(rx, ry), fy = cy + ry * 0.9;
+    for (let i = 0; i < n; i++) {
+      const a = r() * Math.PI * 2, k = Math.sqrt(r()) * 0.78, x = cx + Math.cos(a) * rx * k, y = cy + Math.sin(a) * ry * k;
+      starts.push([x, y, Math.atan2(x - cx, Math.max(4, fy - y)) * 1.1 + (r() - 0.5) * 0.5, R0 * (0.2 + r() * 0.16)]);
+    }
+    return twigs(r, starts, depth == null ? 2 : depth, 0.42);
+  }
   function winGroups(r, cells, groups) {
     const out = new Array(groups).fill('');
     for (const c of cells) out[Math.floor(r() * groups) % groups] += rect(c[0], c[1], c[2], c[3]);
     return out;
   }
-  return Object.freeze({ f1, rect, ell, circ, poly, blob, leaf, frond, seasons, define, winGroups, SEASONS: SEAS });
+  return Object.freeze({ f1, rect, ell, circ, poly, blob, leaf, frond, seasons, define, winGroups, twigs, twigHaze, SEASONS: SEAS });
 })();

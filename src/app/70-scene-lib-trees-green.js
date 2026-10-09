@@ -49,11 +49,11 @@
     shapeBySeason: true,
     flippable: true,
     palette: {
-      base: { bark: ['#4a4038', '#5e5248'], pine: ['#24402f', '#34563e', '#4a6e50'], twig: ['#6e6268', '#8a7e80', '#a89c98'] },
+      base: { bark: ['#4a4038', '#5e5248'], pine: ['#24402f', '#34563e', '#4a6e50'], twig: ['#4e4239', '#62544a', '#7a6c60'] },
       spring: { leaf: ['#3f6a34', '#62953f', '#a2cc6a'] },
       summer: { leaf: ['#2c5229', '#46773a', '#7aa756'] },
       autumn: { leaf: ['#7a4a24', '#b07a34', '#d8aa52'], leafAlt: ['#6a5a2a', '#9a8a3a', '#c8b45a'] },
-      winter: { leaf: ['#5a5052', '#7a6e70', '#9a8e8c'] },
+      winter: { leaf: ['#4e4239', '#62544a', '#7a6c60'] },
     },
     parts: ['body'],
     shadow: null,
@@ -74,7 +74,7 @@
         }
         if (winter) {
           // bare crowns: a see-through haze of twigs over a few branch lines
-          body.push(['@twig.0', crown(rnd, cx, cy, rx, ry, 10), 0.5], ['@twig.1', crown(rnd, cx - rx * 0.2, cy - ry * 0.15, rx * 0.7, ry * 0.7, 9), 0.4]);
+          body.push({ s: '@twig.1', w: 1, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(rnd, cx, cy, rx, ry, 14) });
           body.push({ s: '@twig.0', w: 2, cap: 'round', d: `M${cx} ${f1(cy + ry * 0.6)}L${f1(cx - rx * 0.4)} ${f1(cy - ry * 0.3)}M${cx} ${f1(cy + ry * 0.4)}L${f1(cx + rx * 0.45)} ${f1(cy - ry * 0.2)}M${cx} ${f1(cy + ry * 0.5)}V${f1(cy - ry * 0.5)}`, op: 0.8 });
           return;
         }

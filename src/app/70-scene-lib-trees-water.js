@@ -59,21 +59,22 @@
     size: [130, 220],
     variants: 2,
     seasonal: true,
+    shapeBySeason: kindOf !== 'pine',   // the broadleaves go bare in winter
     flippable: true,
     palette: {
       base: { trunk: ['#6a5444', '#4a3a30'], pineTrunk: ['#b0623a', '#7a4430'], birchTrunk: ['#e6e2d8', '#9a968e'], pine: ['#1e4234', '#2e5a44', '#53805a'] },
       spring: { leaf: ['#3f7034', '#68a046', '#a6d070'], pine: ['#1f4536', '#32624a', '#5f9060'] },
       summer: { leaf: ['#2f5a2e', '#4a7e3a', '#80b058'] },
       autumn: { leaf: ['#8a5524', '#c08032', '#e8b450'], pine: ['#21432f', '#33603f', '#6a8a4e'] },
-      winter: { leaf: ['#6a5c66', '#857682', '#a8a0a6'], pine: ['#1d3a33', '#2a5044', '#4e7464'] },
+      winter: { leaf: ['#4a3e36', '#5e5046', '#76685c'], pine: ['#1d3a33', '#2a5044', '#4e7464'] },
     },
     parts: ['body'],
     shadow: { rx: 40, ry: 6, h: 200 },
     reflect: true,
     tags: ['uk', 'woodland', 'distant', 'far-shore'].concat(tags, ['kit:temperate', 'role:tree']),
     credit: 'drawn for the Wyndham\'s Pool scenes after the far woods of the old view art (K.woods)',
-    build(v, r) {
-      const kind = kindOf, alt = v % 2;
+    build(v, r, ctx) {
+      const kind = kindOf, alt = v % 2, bare = kind !== 'pine' && ctx && ctx.season === 'winter';
       const body = [];
       if (kind === 'pine') {
         const h = alt ? 200 : 218, lean = alt ? -8 : 10;
@@ -90,12 +91,23 @@
         for (let i = 0; i < 6; i++) { const t = 0.08 + r() * 0.5; marks += `M${f1(lean * t - 2.4)} ${f1(-h * t)}h${f1(2 + r() * 2)}`; }
         body.push({ s: '@birchTrunk.1', w: 1.4, d: marks });
         const cx = lean * 0.7, cy = -h * 0.66, rx = alt ? 30 : 26, ry = h * 0.3;
+        if (bare) {   // winter: up-swept limbs off the white stem and the fine twig haze of the crown
+          let lim = '';
+          for (let i = 0; i < 5; i++) { const t = 0.45 + i * 0.1, s = i % 2 ? 1 : -1; lim += `M${f1(lean * t)} ${f1(-h * t)}l${f1(s * rr(r, 12, 22))} ${f1(-rr(r, 16, 26))}`; }
+          body.push({ s: '@leaf.0', w: 1.6, cap: 'round', d: lim }, { s: '@leaf.1', w: 1, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(r, cx, cy, rx, ry, 9) });
+          return { body };
+        }
         body.push(['@leaf.0', massI(r, cx + 3, cy + 6, rx, ry, 8)], ['@leaf.1', massI(r, cx, cy, rx * 0.9, ry * 0.9, 8)], ['@leaf.2', massI(r, cx - rx * 0.3, cy - ry * 0.3, rx * 0.42, ry * 0.42, 6), 0.9]);
         body.push(['@leaf.1', massI(r, cx + rx * 0.5, cy + ry * 0.5, rx * 0.4, ry * 0.32, 6), 0.95]);
       } else {
         const h = alt ? 170 : 196, w = alt ? 70 : 84;
         body.push(['@trunk.0', `M-5 0L-3 ${f1(-h * 0.42)}L3 ${f1(-h * 0.42)}L5 0z`], { s: '@trunk.0', w: 2.6, cap: 'round', d: `M0 ${f1(-h * 0.36)}l-14 -22M0 ${f1(-h * 0.4)}l12 -26` });
         const cy = -h * 0.66;
+        if (bare) {   // winter: the branch fork and the fine twig haze of a bare oak or alder
+          const y0 = -h * 0.4, lim = sceneDraw.twigs(r, [[-1, y0, -0.75, w * 0.42], [1, y0, 0.7, w * 0.42], [0, y0, 0.05, h * 0.3]], 1, 0.42);
+          body.push({ s: '@trunk.0', w: 2.2, cap: 'round', d: lim }, { s: '@leaf.1', w: 1, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(r, 0, cy, w / 2, h * 0.3, 16) });
+          return { body };
+        }
         body.push(['@leaf.0', massI(r, 4, cy + 8, w / 2, h * 0.32, 9)], ['@leaf.1', massI(r, 0, cy, w / 2 * 0.92, h * 0.3, 9)]);
         body.push(['@leaf.2', massI(r, -w * 0.18, cy - h * 0.12, w * 0.24, h * 0.14, 6), 0.9], ['@leaf.2', massI(r, w * 0.1, cy - h * 0.2, w * 0.16, h * 0.1, 5), 0.8]);
         body.push(['@leaf.0', massI(r, w * 0.2, cy + h * 0.1, w * 0.14, h * 0.08, 5), 0.7]);
@@ -210,7 +222,7 @@
     shapeBySeason: true,
     flippable: true,
     palette: {
-      base: { bark: ['#ece9e2', '#b9b4aa', '#2e2a28'], twig: ['#5a4038', '#7a5a50'], haze: '#7c5e66' },
+      base: { bark: ['#ece9e2', '#b9b4aa', '#2e2a28'], twig: ['#5a4038', '#7a5a50'], haze: '#6a5a50' },
       spring: { leaf: ['#4f8a30', '#79b044', '#a8d260', '#d2ec8a'] },
       summer: { leaf: ['#33622a', '#4f8236', '#7caa4c', '#a8cc66'] },
       autumn: { leaf: ['#a8701c', '#d29a26', '#eec444', '#f8e07a'] },
@@ -255,7 +267,9 @@
       crown.push({ s: '@twig.0', w: bare ? 1.8 : 2.2, cap: 'round', d: limbs });
       if (bare) {
         // winter: the purple-brown haze of the twigs, then the fine twigs themselves
-        for (const [ex, ey, , len] of ends) crown.push(['@haze', mass(r, ex, ey + len * 0.1, len * 0.42, len * 0.5, 7), 0.32]);
+        let hz = '';   // the haze: fine twig sprays round each limb end (strokes, not masses)
+        for (const [ex, ey, , len] of ends) hz += sceneDraw.twigHaze(r, ex, ey + len * 0.1, len * 0.4, len * 0.46, 4);
+        crown.push({ s: '@haze', w: 0.7, cap: 'round', op: 0.5, d: hz });
         crown.push({ s: '@twig.1', w: 0.8, cap: 'round', op: 0.8, d: twigs(r, ends, n * 7, H * 0.09) });
         crown.push({ s: '@twig.0', w: 0.6, cap: 'round', op: 0.6, d: twigs(r, ends, n * 6, H * 0.06), detail: true });
         return { trunk, crown };
@@ -289,7 +303,7 @@
     shapeBySeason: true,
     flippable: true,
     palette: {
-      base: { bark: ['#5a4a3a', '#3e3228', '#7a6852'], twig: ['#4a3a32', '#6a5248'], haze: '#6e5a5e' },
+      base: { bark: ['#5a4a3a', '#3e3228', '#7a6852'], twig: ['#4a3a32', '#6a5248'], haze: '#62544a' },
       spring: { leaf: ['#4a7a2c', '#6a9e3a', '#98c456', '#c4e07a'] },
       summer: { leaf: ['#284e22', '#3e6a30', '#628e40', '#8cb45a'] },
       autumn: { leaf: ['#7a441a', '#a8642a', '#cc8c36', '#e6b45c'] },
@@ -323,7 +337,9 @@
       }
       crown.push({ s: '@twig.0', w: alder ? 3.5 : 5, cap: 'round', d: limbs });
       if (bare) {
-        for (const [ex, ey, , len] of ends) crown.push(['@haze', mass(r, ex, ey, len * 0.4, len * 0.34, 7), 0.34]);
+        let hz = '';
+        for (const [ex, ey, , len] of ends) hz += sceneDraw.twigHaze(r, ex, ey, len * 0.4, len * 0.34, 5);
+        crown.push({ s: '@haze', w: 0.8, cap: 'round', op: 0.5, d: hz });
         crown.push({ s: '@twig.1', w: 1, cap: 'round', op: 0.8, d: twigs(r, ends, n * 7, H * 0.1) });
         crown.push({ s: '@twig.0', w: 0.6, cap: 'round', op: 0.6, d: twigs(r, ends, n * 6, H * 0.07), detail: true });
         return { trunk, crown };

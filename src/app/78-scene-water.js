@@ -298,6 +298,17 @@ function _scwaBake(env, R, gx) {
       if (sx1 <= sx0 || sy1 <= sy0) continue;
       rc.setTransform(1, 0, 0, -1, -R.db[0], 2 * Yf - R.db[1]);
       rc.drawImage(pg.c, sx0 - pg.x, sy0 - pg.y, sx1 - sx0, sy1 - sy0, sx0, sy0, sx1 - sx0, sy1 - sy0);
+      // (shared fix, 9 Oct) the cast shadows baked into that bitmap are lifted back out of the mirror (colour-dodge by their
+      // coverage): the shade on the far grass must not reach the water as dark ovals and stripes
+      const lift = env.shadow && env.shadow.lift, gi = lift && lift.length ? env.groups.indexOf(pg) : -1;
+      if (gi >= 0) for (const q of lift) {
+        if (q.gi !== gi) continue;
+        const qx0 = Math.max(sx0, q.x), qx1 = Math.min(sx1, q.x + q.w), qy0 = Math.max(sy0, q.y), qy1 = Math.min(sy1, q.y + q.h);
+        if (qx1 <= qx0 || qy1 <= qy0) continue;
+        rc.globalCompositeOperation = 'color-dodge';
+        rc.drawImage(q.c, (qx0 - q.x) / 2, (qy0 - q.y) / 2, (qx1 - qx0) / 2, (qy1 - qy0) / 2, qx0, qy0, qx1 - qx0, qy1 - qy0);
+        rc.globalCompositeOperation = 'source-over';
+      }
     }
   }
   // the placements not yet in any bitmap (this layer and nearer), each about its own waterline

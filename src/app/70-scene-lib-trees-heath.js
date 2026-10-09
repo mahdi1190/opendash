@@ -141,7 +141,7 @@
       // bare: fine twig sprays drooping from every limb end, and the purple-brown haze of the crown
       let fine = '';
       for (const [cx, cy, rad] of tops) for (let k = 0; k < 6; k++) { const a = -Math.PI / 2 + rr(r, -1.3, 1.3), L = rad * rr(r, 0.7, 1.2); fine += `M${f1(cx)} ${f1(cy)}q${f1(Math.cos(a) * L * 0.6)} ${f1(Math.sin(a) * L * 0.6)} ${f1(Math.cos(a) * L)} ${f1(Math.sin(a) * L * 0.4 + L * 0.3)}`; }
-      crown.push(['@haze', tops.map(([cx, cy, rad]) => sceneD.ell(cx, cy, rad * 0.85, rad * 0.7)).join(''), 0.22]);
+      crown.push({ s: '@haze', w: 0.8, cap: 'round', op: 0.5, d: tops.map(([cx, cy, rad]) => sceneDraw.twigHaze(r, cx, cy, rad * 0.85, rad * 0.7, 5)).join('') });
       crown.push({ s: '@twig', w: 1.2, d: fine });
       return { trunk, crown };
     }
@@ -171,7 +171,7 @@
     shapeBySeason: true,
     flippable: true,
     palette: {
-      base: { bark: ['#f1eee6', '#b9b4aa'], foot: '#3a3430', mark: '#2a2624', twig: '#5a4a46', haze: '#7a5e66', catkin: '#7a5462' },
+      base: { bark: ['#f1eee6', '#b9b4aa'], foot: '#3a3430', mark: '#2a2624', twig: '#5a4a46', haze: '#66564c', catkin: '#7a5462' },
       spring: { leaf: ['#4e7a34', '#7aa848', '#b2d27a'] },
       summer: { leaf: ['#3a6230', '#58843e', '#8ab25a'] },
       autumn: { leaf: ['#a8801e', '#d6ac2e', '#f2d462'] },
@@ -209,17 +209,17 @@
         for (let j = 0; j < 3; j++) { const py = -h * (1 - j * 0.18) + 6, pw = rr(r, 14, 26) * (j ? 0.85 : 1); pine[j === 0 ? 1 : 0] += sceneD.lobed(r, f1(x + rr(r, -9, 9)), R(py), R(pw), R(rr(r, 6, 10)), 7, 0.2); }
       } else if (kind === 'birch') {
         white.push(`M${f1(x - 1.4)} 0L${f1(x - 0.6)} ${R(-h * (0.4 + (i * 7 % 5) * 0.05))}h1.2L${f1(x + 1.4)} 0z`);   // the white stems show below the crowns only
-        if (winter) bare.push(sceneD.ell(f1(x), R(-h * 0.62), R(h * 0.17), R(h * 0.34)));
+        if (winter) bare.push(sceneDraw.twigHaze(r, x, -h * 0.62, h * 0.17, h * 0.34, 4));
         else birch[lit] += sceneD.lobed(r, f1(x), R(-h * 0.62), R(h * 0.17), R(h * 0.34), 8, 0.22);
       } else {
         stems.push(`M${f1(x - 3)} 0L${f1(x - 2)} ${R(-h * 0.45)}h4L${f1(x + 3)} 0z`);
-        if (winter) bare.push(sceneD.ell(f1(x), R(-h * 0.66), R(h * 0.4), R(h * 0.32)));
+        if (winter) bare.push(sceneDraw.twigs(r, [[x - 1, -h * 0.45, -0.6, h * 0.22], [x + 1, -h * 0.45, 0.55, h * 0.22]], 0, 0) + sceneDraw.twigHaze(r, x, -h * 0.66, h * 0.4, h * 0.32, 6));
         else oak[lit] += sceneD.lobed(r, f1(x), R(-h * 0.66), R(h * 0.42), R(h * 0.34), 9, 0.3);
       }
     }
     // the lit halves and the white stems are detail: a small still (a tile) draws the belt as its dark masses only
     const body = [['@under', under.join('')], { f: '@stem', d: stems.join(''), detail: true }, { f: '@white', d: white.join(''), op: 0.7, detail: true }];
-    if (winter) body.push(['@twig', bare.join(''), 0.45]);
+    if (winter) body.push({ s: '@twig', w: 1, cap: 'round', op: 0.7, d: bare.join('') });
     body.push(['@oak.0', oak[0]], { f: '@oak.1', d: oak[1], detail: true }, ['@birch.0', birch[0]], { f: '@birch.1', d: birch[1], detail: true }, ['@pine.0', pine[0]], { f: '@pine.1', d: pine[1], detail: true });
     return { body: body.filter(sh => (Array.isArray(sh) ? sh[1] : sh.d)) };
   };
@@ -232,7 +232,7 @@
     shapeBySeason: true,
     flippable: true,
     palette: {
-      base: { under: '#2c3a2c', stem: '#4a3a30', white: '#e8e4da', twig: '#6a5a66', pine: ['#24443a', '#3a6050'] },
+      base: { under: '#2c3a2c', stem: '#4a3a30', white: '#e8e4da', twig: '#5a4c42', pine: ['#24443a', '#3a6050'] },
       spring: { oak: ['#5a8a3a', '#86b04a'], birch: ['#6a9a40', '#9cc860'] },
       summer: { oak: ['#3a6232', '#567e3e'], birch: ['#4e7e3a', '#76a44a'] },
       autumn: { oak: ['#8a5a26', '#b07a30'], birch: ['#b08a2a', '#d8b040'], under: '#3a3a2a' },
