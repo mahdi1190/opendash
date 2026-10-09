@@ -320,8 +320,10 @@ test('CLI: lint prints the tier (legacy floors: below the new standard; an upgra
   }
   const j = JSON.parse((await run(['lint', '--ref', 'us-northeast/new-york-skyline,us-northeast/ny-statue', '--json'])).out);
   assert.equal(j.items[0].tier, live ? 'gold' : 'upgrading');
-  const at = await run(['lint', '--ref', 'us-northeast/new-york-skyline', '--at', 'not-a-time']);
-  assert.equal(at.code, 1); assert.match(at.err, /--at must be an ISO time/);
+  for (const value of ['not-a-time', '']) {
+    const at = await run(['lint', '--ref', 'us-northeast/new-york-skyline', '--at', value]);
+    assert.equal(at.code, 1); assert.match(at.err, /--at must be an ISO time/);
+  }
 });
 
 test('CLI: status prints the STANDARD line and per-pack tier columns; --standard is the worklist; --all covers every pack; --json has the block', async () => {
