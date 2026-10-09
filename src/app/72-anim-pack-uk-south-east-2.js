@@ -1,6 +1,6 @@
 // UK_SCENE_PART: uk-south-east/hampshire-towns
 /* Hampshire town views. Pure builder, called by the base pack with its toolkit.
-   (Buckler's Hard and Hurst Castle moved to the composed New Forest pack, uk-area-newforest.)
+   (Buckler's Hard and Hurst Castle were retired with the older Hampshire views.)
    Netley Abbey — roofless Cistercian church walls, open lancets and a great west
      window survive in woodland; no glazing or invented intact nave is drawn.
      https://www.english-heritage.org.uk/visit/places/netley-abbey/

@@ -1,8 +1,8 @@
 /* ============================================================
    ANIMATION PACK "proof-yateley-green": the hand-composed v2 proof of
    Yateley Green (71-scene-proof-yateley-green.js; its parts in
-   70-scene-lib-proof-yateley-green.js). Registered as the UK area packs are
-   (72-anim-pack-uk-area-yateley.js): a county-prefixed id, the place fields,
+   70-scene-lib-proof-yateley-green.js). Registered with the UK place fields:
+   a county-prefixed id, the place fields,
    the live sky; it plays only in its county or near Yateley.
    ============================================================ */
 function proofYateleyGreenItems() {

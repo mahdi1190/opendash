@@ -1,9 +1,9 @@
 /* ============================================================
    ANIMATION PACK "proof-wyndhams-pool": Wyndham's Pool on Yateley Common at dusk, composed by hand on the scene engine v2
-   (71-scene-proof-wyndhams-pool.js; its own objects in 70-scene-lib-proof-wyndhams-pool.js). One item with the fields
-   of the Yateley area items (72-anim-pack-uk-area-yateley.js): county-prefixed id, label, site, ukPlace, ukView, the
+   (71-scene-proof-wyndhams-pool.js; its own objects in 70-scene-lib-proof-wyndhams-pool.js). One item with the UK place fields
+   (as 72-anim-pack-proof-yateley-green.js): county-prefixed id, label, site, ukPlace, ukView, the
    live sky. The scene keeps season 'auto', so it draws the date's season by itself. It plays only in its county or near
-   Yateley, like the area pack. The scene is a THUNK: built only when it is shown or linted.
+   Yateley, rotating with the other proof scenes. The scene is a THUNK: built only when it is shown or linted.
    ============================================================ */
 function ukProofWyndhamsPoolItems() {
   if (typeof sceneItem !== 'function' || typeof sceneProofWyndhamsPool !== 'function') return [];
