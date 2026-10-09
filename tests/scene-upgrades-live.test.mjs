@@ -1,9 +1,10 @@
 // Every LIVE upgrade (docs/dev/SCENE_ENGINE.md 16.5): a hand-drawn region scene replaced in the app by a composed scene.
 // For each upgrade registered with state: 'live', the composed scene the app shows passes the composed data, bar, variety
 // and care rules (perf needs Chrome: `node tools/anim-pack.mjs scene lint <ref> --upgrades --perf`), places the
-// landmarks it names, and the live item keeps the legacy item's identity: the same id, key, place fields, label, site,
+// landmarks it names, and the live item keeps the legacy item's identity: the same id, key, place fields, original label, site,
 // tags and `when` as the item built WITHOUT any upgrade file. Passes with no live upgrade at all (drafts are not checked
 // here: they may fail anything, 16.5).
+// An explicit new-subject label is checked separately; legacyLabel preserves the original artwork's caption.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -44,6 +45,7 @@ const itemsOf = (reg, regionId, key) => reg.items().filter(e => {
 const identity = (reg, e) => {
   const it = e.item, F = ownerOf(reg, e.pack).fields || {}, out = { ref: e.ref };
   for (const k of ['id', 'label', 'site', 'tags', 'priority', 'slot', 'region', 'country', 'colour', 'mood', 'season', ...Object.values(F)]) out[k] = it[k];
+  if (it.legacyLabel !== undefined) out.label = it.legacyLabel;
   out.when = typeof it.when === 'function' ? String(it.when) : it.when;
   return out;
 };
@@ -83,6 +85,17 @@ for (const { region, key, up } of LIVE) {
     const live = itemsOf(REG, region, key), legacy = itemsOf(LEGACY, region, key);
     assert.ok(legacy.length > 0, 'a legacy (hand-drawn) item exists for the key');
     assert.equal(live.length, legacy.length, 'as many items as before');
+    for (const e of live) {
+      const original = legacy.find(old => old.ref === e.ref);
+      assert.ok(original, e.ref + ' retains its original reference');
+      if (up.label !== undefined) {
+        assert.equal(e.item.label, up.label.trim(), 'the explicit new subject has its accurate label');
+        assert.equal(e.item.legacyLabel, original.item.label, 'the retained artwork keeps its original caption');
+      } else {
+        assert.equal(e.item.label, original.item.label, 'ordinary upgrades retain their caption');
+        assert.equal(e.item.legacyLabel, undefined, 'no unsolicited caption override');
+      }
+    }
     assert.deepEqual(live.map(e => identity(REG, e)), legacy.map(e => identity(LEGACY, e)));
     for (const e of legacy) assert.ok(!e.composed && !(e.item.upgrade && e.item.upgrade.state === 'live'), e.ref + ' is the hand-drawn item without the upgrade');
   });
