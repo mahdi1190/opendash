@@ -20,6 +20,8 @@
 (function () {
   if (typeof sceneAdd !== 'function') return;
   const PACK = 'uk-south-east-yateley-green', ID = 'yateley-green-4';
+  /** Irregular clumps (70-scene-lib-yateley-green-views.js); none when that library is not in the build. */
+  const YG = o => (typeof sceneYgClumps === 'function' ? sceneYgClumps(o) : []);
   /** The woods beyond the green as one lobed tree-line silhouette (a ground path: far cheaper than a hundred tiny trees). */
   const WOODS = (y, seed, k) => {
     const r = sceneRnd(seed);
@@ -63,10 +65,14 @@
       { obj: 'building.green-cottage', x: 840, y: 514, s: 0.3, layer: 'far', variant: 0, seed: 4, flip: true },
       { obj: 'building.green-cottage', x: 1420, y: 514, s: 0.3, layer: 'far', variant: 2, seed: 5 },
       // the big trees of the Green along the path, a birch, the lamp posts
-      { obj: 'tree.green-oak', x: 330, y: 570, s: 0.6, layer: 'mid', variant: 2, seed: 10, anim: false },
-      { obj: 'tree.green-oak', x: 660, y: 568, s: 0.5, layer: 'mid', variant: 2, seed: 11, flip: true, anim: false },
-      { obj: 'tree.green-oak', x: 1300, y: 572, s: 0.56, layer: 'mid', variant: 2, seed: 12, anim: false },
-      { obj: 'tree.green-birch', x: 1000, y: 566, s: 0.5, layer: 'mid', variant: 0, seed: 13, anim: false },
+      // the trees of the Green in groups at different depths, never a row along the path: an oak pair on the left (one
+      // beyond the path), a lone oak set back, the birch and a hawthorn by the church, the big oak on the right
+      { obj: 'tree.green-oak', x: 330, y: 574, s: 0.6, layer: 'mid', variant: 2, seed: 10, anim: false },
+      { obj: 'tree.green-oak', x: 440, y: 538, s: 0.34, layer: 'far', variant: 1, seed: 16, flip: true, anim: false },
+      { obj: 'tree.green-oak', x: 690, y: 544, s: 0.36, layer: 'far', variant: 2, seed: 11, flip: true, anim: false },
+      { obj: 'tree.green-oak', x: 1452, y: 578, s: 0.58, layer: 'mid', variant: 2, seed: 12, anim: false },
+      { obj: 'tree.green-birch', x: 968, y: 548, s: 0.36, layer: 'far', variant: 0, seed: 13, anim: false },
+      { obj: 'tree.hawthorn', x: 790, y: 550, s: 0.4, layer: 'far', variant: 1, seed: 17, anim: false },
       { obj: 'street.lamp', x: 860, y: 564, s: 0.62, layer: 'mid', variant: 0, seed: 14, reflect: true },
       { obj: 'street.lamp', x: 1560, y: 566, s: 0.62, layer: 'mid', variant: 0, seed: 15, reflect: true },
       // the water: a heron at the reeds, fish rings
@@ -81,25 +87,31 @@
       // the framing trees: a great oak on the left, a horse chestnut on the right
       { obj: 'tree.green-oak', x: -90, y: 930, s: 1.12, layer: 'front', variant: 0, seed: 40, anim: false },
       { obj: 'tree.green-chestnut', x: 1720, y: 920, s: 0.95, layer: 'front', variant: 0, seed: 41, flip: true, anim: false },
-    ],
+    ].concat(
+      // reed beds at both ends of the pond and along the near edge, in clumps with open water between (mirrored)
+      YG({ obj: { 'plant.yg-reedbed': 4, 'plant.bulrush': 1 }, centres: [[-40, 612, 70, 10, 4], [1560, 626, 60, 12, 4], [1700, 610, 30, 6, 2]], s: [0.32, 0.5], sByY: [[590, 0.85], [650, 1.15]], layer: 'near', seed: 601, reflect: true }),
+      YG({ obj: { 'plant.yg-reedbed': 3, 'plant.bulrush': 1 }, centres: [[430, 800, 60, 6, 3], [880, 806, 40, 5, 3], [1420, 790, 30, 6, 2]], s: [0.55, 0.75], layer: 'fore', seed: 602, reflect: true }),
+      // the far bank: uncut tussocks under the trees, daisy drifts on the green
+      YG({ obj: { 'plant.yg-meadow': 2, 'plant.grass-long': 1 }, centres: [[330, 576, 50, 2, 3], [1452, 580, 50, 2, 3], [560, 576, 40, 2, 2], [1660, 580, 40, 2, 2]], s: [0.26, 0.34], layer: 'mid', seed: 603 }),
+      YG({ obj: { 'plant.daisies': 3, 'plant.grass': 2 }, centres: [[200, 534, 50, 4, 5], [860, 536, 60, 4, 6], [1180, 532, 50, 3, 5]], s: [0.24, 0.34], layer: 'far', seed: 604 }),
+      // the near bank: the uncut margin in deep drifts, the path kept clear, the corners thick
+      YG({ obj: 'plant.yg-meadow', centres: [[80, 830, 120, 14, 5], [640, 836, 80, 10, 3], [1240, 828, 60, 10, 2], [1560, 820, 110, 14, 5]], s: [0.8, 1.15], sByY: [[790, 0.85], [866, 1.2]], layer: 'fore', seed: 605,
+        not: (x, y) => y > 862 || (x > 1100 && x < 1280 && y > 816) }),
+      YG({ obj: 'plant.yg-meadow', centres: [[120, 930, 140, 3, 4], [1500, 930, 140, 3, 4]], s: [1.6, 2.0], layer: 'front', seed: 606, anim: { sway: { k: 0.6 } } }),
+    ),
     scatter: [
       // the wooded edge of the common: the woods beyond, then the tree line with gaps for the cottages and the church
       { obj: { 'tree.distant': 3, 'tree.distant-pine': 2 }, layer: 'far', variant: [0, 1], seed: 42, area: { rect: [-160, 520, 1760, 530] }, n: 28, minGap: 28, s: [0.24, 0.5], anim: false, tint: { col: '#3a5a2a', k: [0.08, 0.08] },
         mask: { avoid: [{ rect: [200, 500, 300, 540] }, { rect: [430, 500, 510, 540] }, { rect: [800, 500, 880, 540] }, { rect: [1020, 500, 1180, 540] }, { rect: [1380, 500, 1460, 540] }] } },
       { obj: 'plant.grass', layer: 'far', variant: [0, 1], seed: 43, area: { rect: [-160, 534, 1760, 552] }, n: 60, minGap: 10, s: [0.18, 0.3], anim: false, reflect: true, tint: { col: '#c0b060', k: [0.08, 0.08] } },
       // reeds and bulrushes at both ends of the pond (wind strips), lilies on the water
-      { obj: { 'plant.reed': 3, 'plant.bulrush': 2 }, layer: 'near', variant: [0, 1], seed: 44, area: { rect: [-160, 590, 160, 640] }, n: 20, minGap: 13, s: [0.5, 0.8], anim: 'strip', reflect: true, tint: { col: '#a09050', k: [0.08, 0.08] } },
-      { obj: { 'plant.reed': 3, 'plant.bulrush': 2 }, layer: 'near', variant: [0, 1], seed: 45, area: { rect: [1420, 600, 1760, 660] }, n: 20, minGap: 13, s: [0.5, 0.85], anim: 'strip', reflect: true, tint: { col: '#a09050', k: [0.08, 0.08] } },
       { obj: 'water.lily', layer: 'near', variant: [0, 1], seed: 46, area: { poly: [[60, 630], [520, 626], [520, 700], [60, 704]] }, n: 6, minGap: 26, s: [0.35, 0.7], anim: false },
       { obj: 'water.lily', layer: 'near', variant: [0, 1], seed: 47, area: { poly: [[1180, 650], [1440, 646], [1420, 740], [1180, 740]] }, n: 5, minGap: 26, s: [0.35, 0.7], anim: false },
       // the near bank: plumes and bulrushes at the water's edge, the wildflower margins, bluebells under the oak, the long grass
-      { obj: { 'plant.bulrush': 2, 'plant.reed': 3 }, layer: 'fore', variant: [0, 1], seed: 48, area: { rect: [380, 792, 980, 812] }, n: 22, minGap: 14, s: [0.7, 0.95], anim: 'strip' },
-      { obj: { 'plant.wildflowers': 1, 'plant.grass': 3 }, layer: 'fore', variant: 0, seed: 49, area: { poly: [[-160, 790], [200, 812], [700, 806], [700, 866], [-160, 874]] }, n: 170, minGap: 10, s: [0.7, 1.1], sByY: [[790, 0.85], [870, 1.2]], anim: false, tint: { col: '#b8a050', k: [0.08, 0.08] } },
-      { obj: { 'plant.wildflowers': 1, 'plant.grass': 3 }, layer: 'fore', variant: 1, seed: 50, area: { poly: [[1000, 806], [1400, 800], [1760, 770], [1760, 866], [1000, 866]] }, n: 160, minGap: 10, s: [0.7, 1.1], sByY: [[780, 0.85], [866, 1.2]], anim: false,
+      { obj: { 'plant.wildflowers': 1, 'plant.grass': 3 }, layer: 'fore', variant: 0, seed: 49, area: { poly: [[-160, 790], [200, 812], [700, 806], [700, 866], [-160, 874]] }, n: 50, minGap: 10, s: [0.7, 1.1], sByY: [[790, 0.85], [870, 1.2]], anim: false, tint: { col: '#b8a050', k: [0.08, 0.08] } },
+      { obj: { 'plant.wildflowers': 1, 'plant.grass': 3 }, layer: 'fore', variant: 1, seed: 50, area: { poly: [[1000, 806], [1400, 800], [1760, 770], [1760, 866], [1000, 866]] }, n: 46, minGap: 10, s: [0.7, 1.1], sByY: [[780, 0.85], [866, 1.2]], anim: false,
         mask: { avoid: [{ rect: [1090, 800, 1270, 852] }] } },
       // (no bluebell clump here: its spring sprites put the tile still over the 150 KB budget, reviewer 7 Oct)
-      { obj: 'plant.grass', layer: 'front', variant: [0, 1], seed: 52, area: { rect: [-160, 884, 620, 906] }, n: 26, minGap: 18, s: [1.3, 1.7], anim: 'strip' },
-      { obj: 'plant.grass', layer: 'front', variant: [0, 1], seed: 53, area: { rect: [1060, 884, 1760, 906] }, n: 26, minGap: 18, s: [1.3, 1.7], anim: 'strip' },
     ],
     actors: [
       // the evening walk along the far path

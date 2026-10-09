@@ -237,9 +237,16 @@
     const ISLANDS = [[11.5, 21, 1.8], [14.5, 30, 2.2], [7.5, 40, 2.5], [-22, 45, 3], [16, 46, 2.6], [-3, 33, 1.8], [21, 42, 2]];
     for (const [cx, cd, r] of ISLANDS) clump({ 'plant.grass-long': 3, 'plant.wildflowers': 2, 'plant.daisies': 1 }, cx, cd, r, r * 0.5, Math.round(3 + r * 2.5), [0.7, 1.2], { not: clear });
 
+    // the uncut drifts that fill the near green (70-scene-lib-yateley-green-views.js): tussock masses of long grass and
+    // flowers between the pond and the path and beyond it, in clumps with mown gaps (never a band, never dotted tufts)
+    const DRIFTS = [[-1.2, 7.4, 1.6, 0.7, 5], [0.9, 10.6, 1.0, 0.6, 3], [-2.6, 5.4, 1.2, 0.4, 3], [7.4, 5.6, 1.4, 0.5, 4], [10.6, 8.2, 2.2, 0.9, 5], [13.5, 12.5, 2.0, 1.0, 4], [8.2, 13.2, 1.2, 0.8, 3], [3.2, 17.5, 1.2, 0.8, 2]];
+    for (const [cx, cd, rx, rd, n] of DRIFTS) clump({ 'plant.yg-meadow': 4, 'plant.grass-long': 1 }, cx, cd, rx, rd, n, [0.9, 1.4], { not: (x, d) => clear(x, d) || inBank(x, d) });
+    put('ground.log', -0.4, 9.3, { k: 0.9, variant: 1, flip: true, anim: false });
     // the foreground: reeds and long grass in the bottom-left corner (in front of everything)
     clump({ 'plant.reed': 3, 'plant.grass-long': 2, 'plant.bulrush': 1 }, -3.6, 5.3, 1.0, 0.5, 9, [0.5, 0.85], { extra: { layer: 'front', anim: { sway: { k: 0.7 } } } });
     clump({ 'plant.grass-long': 3, 'plant.wildflowers': 2 }, 4.2, 4.9, 0.9, 0.3, 6, [0.9, 1.3], { extra: { layer: 'front' }, not: onPath });
+    clump({ 'plant.yg-meadow': 4, 'plant.yg-reedbed': 1 }, -1.2, 5.0, 2.0, 0.25, 6, [1.1, 1.5], { extra: { layer: 'front', anim: { sway: { k: 0.6 } } }, not: onPath });
+    clump({ 'plant.yg-meadow': 1 }, 7.8, 5.0, 1.6, 0.25, 4, [1.1, 1.5], { extra: { layer: 'front', anim: { sway: { k: 0.6 } } }, not: onPath });
     // the framing: an old oak on the bank just off the left edge, its canopy overhanging the top-left of the frame
     place.push({ obj: 'tree.green-oak', at: [-15.6, 18.6], k: 0.9, variant: 1, flip: false, anim: false, seed: 9 });
 

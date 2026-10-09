@@ -18,7 +18,7 @@
   const R = Math.round, f1 = v => Math.round(v * 10) / 10;
   const rr = (r, a, b) => a + r() * (b - a);
   /** A flat-topped needle plate: a lobed mass wider than tall, centred at (cx, cy). */
-  const plate = (r, cx, cy, w, h) => sceneD.lobed(r, cx, cy, w, h, 13, 0.22);
+  const plate = (r, cx, cy, w, h) => sceneD.lobed(r, cx, cy, w, h, 15, 0.3);
   const tufts = (r, cx, cy, w, h, n) => {
     let d = '';
     for (let i = 0; i < n; i++) {
@@ -64,15 +64,35 @@
     // the crown: per plate a dark underside, the mass, a lit top, needle tufts (and frost in winter)
     const under = [], mass = [], lit = [], tuft = [], frost = [];
     for (const [cx, cy, w, h] of plates) {
-      under.push(sceneD.ell(cx + 4, cy + h * 0.5, w * 0.92, h * 0.42));
+      under.push(sceneD.lobed(r, cx + 4, cy + h * 0.42, w * 0.9, h * 0.42, 11, 0.32));   // ragged, not a flat disc
       mass.push(plate(r, cx, cy, w, h));
       lit.push(plate(r, cx - w * 0.16, cy - h * 0.42, w * 0.62, h * 0.38));
       tuft.push(tufts(r, cx, cy - h * 0.2, w * 0.92, h, Math.round(w / 7)));
       if (winter) frost.push(plate(r, cx - w * 0.08, cy - h * 0.62, w * 0.7, h * 0.16));
     }
+    // needle fans (the brush-like shoot tips of a Scots pine) round each plate's rim: dark ones hanging under it, lit ones
+    // standing up from its top, so a plate reads as a mass of needles rather than a smooth cloud (detail: full size only)
+    const fan = (x, y, k, a0, a1, n) => {
+      let d = '';
+      for (let i = 0; i < n; i++) { const a = a0 + (a1 - a0) * (i + r() * 0.8) / n, l = k * rr(r, 0.6, 1); d += `M${R(x)} ${R(y)}l${f1(Math.cos(a) * l)} ${f1(Math.sin(a) * l * 0.8)}`; }
+      return d;
+    };
+    let fDark = '', fMid = '', fLit = '';
+    for (const [cx, cy, w, h] of plates) {
+      const m = Math.max(3, Math.round(w / 22));
+      for (let i = 0; i < m; i++) {
+        const t = (i + rr(r, 0.2, 0.8)) / m * 2 - 1, x = cx + t * w * 0.92, k = rr(r, 18, 28);
+        fDark += fan(x, cy + h * 0.32 * Math.sqrt(1 - t * t * 0.8), k, Math.PI * 0.1, Math.PI * 0.9, 7);
+        fMid += fan(x + rr(r, -6, 6), cy - h * 0.1, k * 0.9, -Math.PI * 0.95, -Math.PI * 0.05, 6) + fan(x + rr(r, -10, 10), cy + h * 0.15, k * 0.7, Math.PI * 0.05, Math.PI * 0.95, 5);
+        if (t < 0.4) fLit += fan(x, cy - h * 0.7 * Math.sqrt(1 - t * t * 0.9), k * 0.85, -Math.PI * 0.9, -Math.PI * 0.2, 6);
+      }
+    }
     crown.push({ f: '@leaf.0', d: under.join(''), detail: true });   // the shadowed undersides: full size only
+    crown.push({ s: '@leaf.0', w: 2.2, d: fDark, detail: true });
     crown.push(['@leaf.1', mass.join('')]);
+    crown.push({ s: '@leaf.2', w: 2, d: fMid, detail: true });
     crown.push(['@leaf.3', lit.join(''), 0.9]);
+    crown.push({ s: '@leaf.4', w: 1.8, d: fLit, op: 0.85, detail: true });
     crown.push({ s: '@leaf.2', w: 1.8, d: tuft.join(''), detail: true });
     crown.push({ s: '@leaf.4', w: 1.3, d: tufts(r, plates[0][0] - 10, plates[0][1] - plates[0][3] * 0.5, plates[0][2] * 0.6, plates[0][3] * 0.6, 12), op: 0.8, detail: true });
     if (spring) { let c = ''; for (const [cx, cy, w, h] of plates) for (let i = 0; i < 5; i++) c += `M${R(cx + rr(r, -0.8, 0.8) * w)} ${R(cy - h * rr(r, 0.4, 0.8))}l${R(rr(r, -1, 1))} -7`; crown.push({ s: '@shoot', w: 2.4, d: c }); }   // pale new "candles"

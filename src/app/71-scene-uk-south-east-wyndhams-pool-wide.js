@@ -62,12 +62,61 @@ function sceneUkWyndhamsPoolKit() {
     { obj: 'tree.far-pine', layer: 'far', seed: seed + 3, area: { rect: [-100, y0 - 14, 1700, y0 - 6] }, n: 7, minGap: 140, s: [0.62, 0.86], flip: 0.5, variant: 'random', mask: { noise: { scale: 300, cut: 0.25 } }, anim: false },
     { obj: { 'tree.far-birch': 3, 'tree.far-broad': 4 }, layer: 'mid', seed: seed + 2, area: { rect: [-120, y0 + 1, 1720, y0 + 9] }, n: 50, minGap: 18, s: [0.42, 0.66], flip: 0.5, variant: 1, anim: false },
   ];
-  return { crowns, one, T, palette, layers, sky, farWoods };
+  /** A lobed woodland skyline (after the Wyndham's Pool proof): every lobe its own width and height, flat-topped Scots pines
+   *  standing out of it on bare trunks; filled down to foot. Never a straight band. */
+  const canopy = (base, seed, hMin, hMax, pine, foot) => {
+    const r = sceneRnd(seed), R1 = v => Math.round(v * 10) / 10;
+    let d = `M-170 ${foot}V${base}`, x = -170;
+    while (x < 1770) {
+      const w = 14 + r() * 40, h = hMin + Math.pow(r(), 1.6) * (hMax - hMin), y1 = base - h;
+      if (r() < pine) {
+        const cw = 14 + r() * 20, ch = 5 + r() * 6, tx = x + w / 2, ty = y1 - 12 - r() * 24;
+        d += `L${R1(tx - 1.2)} ${R1(y1 + 4)}L${R1(tx - 1.2)} ${R1(ty + ch * 0.6)}Q${R1(tx - cw)} ${R1(ty + ch)} ${R1(tx - cw * 0.7)} ${R1(ty)}Q${R1(tx - cw * 0.3)} ${R1(ty - ch)} ${R1(tx + cw * 0.1)} ${R1(ty - ch * 0.6)}Q${R1(tx + cw * 0.8)} ${R1(ty - ch * 0.9)} ${R1(tx + cw)} ${R1(ty + ch * 0.3)}Q${R1(tx + cw * 0.6)} ${R1(ty + ch)} ${R1(tx + 1.2)} ${R1(ty + ch * 0.6)}L${R1(tx + 1.2)} ${R1(y1 + 4)}`;
+      } else d += `Q${R1(x + w * 0.1)} ${R1(y1 - h * 0.25)} ${R1(x + w * 0.5)} ${R1(y1 - h * 0.3)}Q${R1(x + w * 0.95)} ${R1(y1 - h * 0.2)} ${R1(x + w)} ${R1(base - h * (0.3 + r() * 0.5))}`;
+      x += w * (0.6 + r() * 0.35);
+    }
+    return d + `L1770 ${base}V${foot}Z`;
+  };
+  /** The far shore at waterline WL: three lobed skylines (no stamps), then real trees in GROUPS with gaps between them:
+   *  stands of tall Scots pine, birch clumps, oak and mixed wood, an open heathy gap now and then. `hide` lists x ranges
+   *  a near tree already covers (no far trees drawn there). Returns { ground, scatter }. */
+  const farShore = (WL, seed, o = {}) => {
+    const k = o.k || 1, hide = o.hide || [], r = sceneRnd(seed + 900), sc = [];
+    const ground = [
+      { layer: 'horizon', d: canopy(WL - 40 * k, seed, 14 * k, 50 * k, 0.18, WL + 4), fill: { lin: [[0, '@hill.0'], [1, '@hill.1']], x1: 0, y1: WL - 90 * k, x2: 0, y2: WL } },
+      { layer: 'far', d: canopy(WL - 18 * k, seed + 1, 10 * k, 42 * k, 0.18, WL + 4), fill: { lin: [[0, '@shore.0'], [1, '@shore.1']], x1: 0, y1: WL - 60 * k, x2: 0, y2: WL } },
+      { layer: 'mid', d: canopy(WL - 2, seed + 2, 3 * k, 16 * k, 0, WL + 6), fill: { lin: [[0, '@shore.1'], [1, '@mud.0']], x1: 0, y1: WL - 20 * k, x2: 0, y2: WL + 6 } },
+    ];
+    let x = -120, n = 0;
+    while (x < 1740) {
+      const pick = r(), cx = x, hidden = hide.some(([a, b]) => cx > a && cx < b);
+      if (!hidden) {
+        if (pick < 0.34) {        // a stand of Scots pine: two to four, uneven heights, one usually taller
+          const m = 2 + Math.floor(r() * 3);
+          for (let i = 0; i < m; i++) sc.push(one('tree.pool-pine', cx + i * (18 + r() * 30) * k, WL + 2 + r() * 6, (0.22 + r() * 0.15 + (i === 1 ? 0.07 : 0)) * k, Math.floor(r() * 3), 'far', seed + 10 + n++, r() < 0.5, false));
+        } else if (pick < 0.6) {  // a birch clump
+          const m = 2 + Math.floor(r() * 3);
+          for (let i = 0; i < m; i++) sc.push(one(r() < 0.7 ? 'tree.birch-heath' : 'tree.pool-birch', cx + i * (12 + r() * 18) * k, WL + 3 + r() * 5, (0.2 + r() * 0.12) * k, Math.floor(r() * 3), 'far', seed + 10 + n++, r() < 0.5, false));
+        } else if (pick < 0.8) {  // a mass of mixed wood
+          sc.push(one('tree.pond-wood', cx + 20, WL + 4 + r() * 3, (0.36 + r() * 0.2) * k, Math.floor(r() * 4), 'far', seed + 10 + n++, r() < 0.5, false));
+        } else if (pick < 0.94) { // an oak
+          sc.push(one('tree.pond-oak', cx, WL + 4 + r() * 3, (0.26 + r() * 0.12) * k, Math.floor(r() * 3), 'far', seed + 10 + n++, r() < 0.5, false));
+        }                         // else: an open gap, the heath showing through
+      }
+      x += (44 + r() * 90) * k;
+    }
+    // gorse and heather at the far water's edge, in clumps (the mask breaks the run)
+    sc.push({ obj: { 'plant.gorse': 1, 'plant.heather': 2 }, layer: 'mid', seed: seed + 5, area: { rect: [-160, WL, 1760, WL + 6] }, n: 40, minGap: 20, s: [0.12 * k, 0.22 * k], flip: 0.5, variant: 'random', mask: { noise: { scale: 220, cut: 0.45 } }, anim: false });
+    return { ground, scatter: sc };
+  };
+  return { crowns, one, T, palette, layers, sky, farWoods, canopy, farShore };
 }
 
 function sceneUkWyndhamsPoolWide() {
-  const { crowns, one, T, palette, layers, sky, farWoods } = sceneUkWyndhamsPoolKit();
+  const { one, T, palette, layers, sky, farShore } = sceneUkWyndhamsPoolKit();
   const AREA = (pts) => ({ poly: pts });
+  const WL = 508;
+  const far = farShore(WL, 21, { hide: [[-200, 120], [1640, 1800]] });
   return {
     v: 1,
     id: 'wyndhams-pool-1',
@@ -80,84 +129,106 @@ function sceneUkWyndhamsPoolWide() {
     palette,
     layers,
     ground: [
-      // the distant wooded rise behind the pool, then the far shore's wood edge, then its grassy rim at the water
-      { layer: 'horizon', d: crowns(21, 420, 30, 530), fill: { lin: [[0, '@hill.0'], [1, '@hill.1']], x1: 0, y1: 420, x2: 0, y2: 530 } },
-      { layer: 'far', d: crowns(22, 452, 26, 530, -160, 1760, 34, 90), fill: { lin: [[0, '@shore.0'], [1, '@shore.1']], x1: 0, y1: 440, x2: 0, y2: 530 } },
-      { layer: 'mid', d: crowns(23, 480, 16, 530, -160, 1760, 40, 110), fill: { lin: [[0, '@shore.0'], [1, '@shore.1']], x1: 0, y1: 470, x2: 0, y2: 520 } },
+      // the far shore: lobed woods with Scots pines standing out of them (no stamps in a row)
+      ...far.ground,
       // the wooded spit on the left and the birch bank on the right
       { layer: 'near', d: 'M-160 528Q40 534 150 572Q250 610 292 664Q330 724 250 800H-160Z', fill: { lin: [[0, '@bank.0'], [1, '@bank.1']], x1: 0, y1: 530, x2: 0, y2: 800 } },
       { layer: 'near', d: 'M1760 522Q1600 530 1500 556Q1410 590 1394 640Q1384 704 1460 790H1760Z', fill: { lin: [[0, '@bank.0'], [1, '@bank.1']], x1: 0, y1: 522, x2: 0, y2: 790 } },
-      // the near bank, the bank path along it, the verge in front
+      // the spit's sandy scar where the anglers walk out
+      { layer: 'near', d: 'M120 600Q180 612 232 652Q252 690 226 720Q200 690 170 650Q140 620 120 600Z', fill: { lin: [[0, '@path.0'], [1, '@path.1']], x1: 0, y1: 600, x2: 0, y2: 720 } },
+      // the near bank, and the sandy path: it comes in at the bottom and sweeps right along the water (the leading line)
       { layer: 'fore', d: 'M-160 806Q240 782 640 800T1300 796T1760 790V900H-160Z', fill: { lin: [[0, '@near.0'], [1, '@near.1']], x1: 0, y1: 790, x2: 0, y2: 900 } },
-      { layer: 'fore', d: 'M-160 848Q300 832 760 844T1760 846V888Q1200 878 760 890T-160 892Z', fill: { lin: [[0, '@path.0'], [1, '@path.1']], x1: 0, y1: 832, x2: 0, y2: 892 } },
-      { layer: 'front', d: 'M-160 884Q400 874 900 886T1760 880V900H-160Z', fill: '@verge.1' },
+      { layer: 'fore', d: 'M330 912Q420 872 610 850Q900 826 1300 828Q1560 828 1760 822V848Q1520 852 1240 858Q900 866 760 884Q690 898 676 912Z', fill: { lin: [[0, '@path.0'], [1, '@path.1']], x1: 0, y1: 822, x2: 0, y2: 912 } },
+      { layer: 'fore', d: 'M560 870Q700 852 900 846Q760 860 700 872Z', fill: '@path.1' },
     ],
     water: [
-      { layer: 'mid', d: 'M-160 512Q260 506 700 514T1760 510V900H-160Z', y0: 510, y1: 860, base: ['#7c9a8c', '#3a5e56', '#1c3a36'], reflect: true, shimmer: 36, lightPath: true },
+      { layer: 'mid', d: `M-160 ${WL + 4}Q260 ${WL - 2} 700 ${WL + 6}T1760 ${WL + 2}V900H-160Z`, y0: WL + 2, y1: 860, base: ['#7c9a8c', '#3a5e56', '#1c3a36'], reflect: true, shimmer: 36, lightPath: true },
     ],
     place: [
       // the pool's signature: the tall veteran Scots pine leaning out from the spit
       { obj: 'tree.pool-pine', x: 46, y: 648, s: 1.06, layer: 'near', variant: 0, seed: 37 },
       { obj: 'ground.log', x: 1556, y: 782, s: 0.42, layer: 'near', variant: 0, seed: 45 },
-      // the heron at the spit's foot, the squirrel on the right bank, the robin on the log
-      { obj: 'bird.heron', x: 300, y: 736, s: 0.6, layer: 'near', variant: 0, seed: 48, flip: true },
+      // a dead branch in the shallows off the spit, and the kingfisher that uses it
+      { obj: 'tree.wyv-snag', x: 404, y: 664, s: 0.62, layer: 'mid', variant: 0, seed: 53 },
+      { obj: 'bird.wp-kingfisher-perch', x: 425, y: 571, s: 0.8, layer: 'mid', seed: 54 },
       { obj: 'animal.squirrel', x: 1600, y: 566, s: 0.8, layer: 'near', variant: 0, seed: 49, flip: true },
       { obj: 'bird.robin', x: 1572, y: 770, s: 0.8, layer: 'near', variant: 0, seed: 50 },
       // the angler's swim on the near bank
       { obj: 'ground.swim', x: 1086, y: 806, s: 0.95, layer: 'fore', variant: 0, seed: 51 },
       { obj: 'person.angler', x: 1074, y: 798, s: 0.8, layer: 'fore', variant: 0, seed: 52, flip: true },
+      // a Dartford warbler on the gorse top (Yateley Common is one of its strongholds), a stonechat on the bracken
+      { obj: 'bird.dartford-warbler', x: 262, y: 806, s: 0.9, layer: 'front', seed: 55 },
+      { obj: 'bird.stonechat', x: 1536, y: 838, s: 0.95, layer: 'front', variant: 1, seed: 56, flip: true },
+      // framing: a silver birch bough hanging into the top right
+      { obj: 'tree.wyv-birch-bough', x: 1640, y: -14, s: 0.9, layer: 'front', variant: 0, seed: 57, flip: true, pin: true },
+      // dusk: mist lying on the water (drawn only after real dusk)
+      { obj: 'sky.wp-mist', x: 520, y: WL - 4, s: 1.0, layer: 'mid', variant: 0, pin: true, anim: false },
+      { obj: 'sky.wp-mist', x: 1180, y: WL - 2, s: 1.1, layer: 'mid', variant: 1, flip: true, pin: true, anim: false },
     ],
     scatter: [
-      ...farWoods(500, 1),
-      { obj: { 'plant.reed': 3, 'plant.bulrush': 1 }, layer: 'mid', seed: 4, area: { rect: [-160, 508, 1760, 516] }, n: 70, minGap: 14, s: [0.2, 0.3], flip: 0.5, variant: 0, anim: false },
+      ...far.scatter,
+      { obj: { 'plant.reed': 3, 'plant.bulrush': 1 }, layer: 'mid', seed: 4, area: { rect: [-160, WL, 1760, WL + 8] }, n: 70, minGap: 14, s: [0.2, 0.3], flip: 0.5, variant: 0, mask: { noise: { scale: 240, cut: 0.4 } }, anim: false },
       // lily pads in the two sheltered bays (a few bob on the ripples), rising fish
-      { obj: 'water.lily', layer: 'mid', seed: 5, area: { poly: [[120, 600], [560, 590], [580, 690], [140, 700]] }, n: 30, minGap: 22, s: [0.32, 0.5], sByY: [[590, 0.8], [700, 1.15]], flip: 0.5, variant: [0, 1], tint: T('#a0a050'), anim: false },
+      { obj: 'water.lily', layer: 'mid', seed: 5, area: { poly: [[120, 600], [560, 590], [580, 690], [140, 700]] }, n: 30, minGap: 22, s: [0.32, 0.5], sByY: [[590, 0.8], [700, 1.15]], flip: 0.5, variant: [0, 1], tint: T('#a0a050'), mask: { noise: { scale: 120, cut: 0.35 } }, anim: false },
       { obj: 'water.lily', layer: 'mid', seed: 6, area: { poly: [[1020, 556], [1330, 552], [1340, 604], [1030, 608]] }, n: 14, minGap: 22, s: [0.28, 0.42], flip: 0.5, variant: [0, 1], anim: false },
-      one('water.fish-ring', 430, 600, 0.36, 0, 'mid', 8), one('water.fish-ring', 640, 690, 0.5, 1, 'mid', 9), one('water.fish-ring', 905, 572, 0.32, 0, 'mid', 10, 1),
+      one('water.fish-ring', 430, 700, 0.5, 0, 'mid', 8), one('water.fish-ring', 640, 690, 0.5, 1, 'mid', 9), one('water.fish-ring', 905, 572, 0.32, 0, 'mid', 10, 1),
       one('water.fish-ring', 1060, 724, 0.55, 1, 'mid', 11, 1), one('water.fish-ring', 1250, 640, 0.42, 0, 'mid', 12),
-      // the near trees: a second pine and birches on the banks, an alder at the water (single rules: a small tile drops them)
+      // the near trees: a second pine and birches on the banks, an oak at the water
       one('tree.pool-pine', 1716, 700, 0.92, 1, 'near', 44, 1, false),
       one('tree.pool-birch', 176, 632, 0.9, 0, 'near', 38, 0),
-      one('tree.pool-birch', 244, 678, 0.8, 2, 'near', 39, 1, false),
+      one('tree.birch-heath', 244, 690, 0.62, 2, 'near', 39, 1, false),
       one('tree.pool-birch', 1502, 612, 1.0, 1, 'near', 42, 1),
-      one('tree.pool-birch', 1588, 644, 1.05, 0, 'near', 43, 0),
+      one('tree.birch-heath', 1588, 652, 0.9, 0, 'near', 43, 0, false),
       one('tree.pool-oak', 1420, 652, 0.7, 1, 'near', 41, 0, false),
+      one('plant.holly', 100, 650, 0.6, 0, 'near', 58, 0, false),
+      // heath on the spit and the right bank: heather and gorse mounds, fern
+      one('plant.wyv-heath-bank', 60, 744, 0.8, 0, 'near', 59, 0, false), one('plant.wyv-heath-bank', 210, 790, 0.7, 1, 'near', 60, 1, false),
+      one('plant.wyv-heath-bank', 1500, 726, 0.7, 2, 'near', 61, 0, false), one('plant.wyv-heath-bank', 1660, 776, 0.85, 0, 'near', 62, 1, false),
       one('plant.fern', 84, 762, 0.7, 1, 'near', 46, 0, false),
-      one('plant.fern', 1640, 772, 0.8, 1, 'near', 47, 1, false),
       // the banks' water edge: grassy and stony margins
-      one('water.edge', 120, 798, 0.7, 0, 'fore', 22, 0, false), one('water.edge', 470, 800, 0.55, 1, 'fore', 23, 1, false), one('water.edge', 760, 797, 0.8, 2, 'fore', 24, 0, false),
-      one('water.edge', 1290, 799, 0.6, 0, 'fore', 25, 1, false), one('water.edge', 1530, 796, 0.75, 1, 'fore', 26, 0, false), one('water.edge', 1700, 798, 0.5, 2, 'fore', 27, 1, false),
-      // the spit and the right bank: reeds at the water, grass, fern and bracken on the rise
+      one('water.edge', 120, 798, 0.7, 0, 'fore', 22, 0, false),       one('water.edge', 1290, 799, 0.6, 0, 'fore', 25, 1, false), one('water.edge', 1530, 796, 0.75, 1, 'fore', 26, 0, false),
+      // reeds at the spit and the right bank
       { obj: { 'plant.reed': 3, 'plant.bulrush': 2 }, layer: 'near', seed: 9, area: AREA([[150, 600], [300, 640], [330, 730], [160, 736]]), n: 36, minGap: 9, s: [0.5, 0.86], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), anim: 'strip' },
       { obj: { 'plant.reed': 3, 'plant.bulrush': 2 }, layer: 'near', seed: 10, area: AREA([[1380, 600], [1480, 600], [1480, 770], [1390, 760]]), n: 30, minGap: 9, s: [0.5, 0.86], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), anim: 'strip' },
-      { obj: 'plant.grass', layer: 'near', seed: 11, area: AREA([[-160, 560], [120, 560], [250, 700], [220, 790], [-160, 790]]), n: 110, minGap: 10, s: [0.45, 0.9], sByY: [[560, 0.7], [790, 1.15]], flip: 0.5, variant: 0, tint: T('#8a7a40'), anim: false },
-      { obj: 'plant.grass', layer: 'near', seed: 12, area: AREA([[1450, 560], [1760, 540], [1760, 790], [1470, 786], [1410, 680]]), n: 100, minGap: 10, s: [0.45, 0.9], sByY: [[560, 0.7], [790, 1.15]], flip: 0.5, variant: 0, tint: T('#8a7a40'), anim: false },
-      // the near water's edge: reeds and stones along the bank, the path's stones, fallen leaves and puddles
-      { obj: { 'plant.reed': 3, 'plant.bulrush': 2, 'plant.grass': 1 }, layer: 'fore', seed: 13, area: { rect: [-160, 790, 1760, 822] }, n: 120, minGap: 9, s: [0.5, 0.82], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), mask: { noise: { scale: 160, cut: 0.32 }, avoid: [{ rect: [960, 780, 1200, 830] }] }, anim: false },
-      { obj: { 'rock.stones': 1, 'rock.boulder': 1 }, layer: 'fore', seed: 14, area: { rect: [300, 804, 1240, 830] }, n: 18, minGap: 26, s: [0.14, 0.42], mask: { noise: { scale: 90, cut: 0.3 } }, flip: 0.5, variant: [0, 1], anim: false },
-      { obj: { 'rock.stones': 2, 'rock.boulder': 1, 'ground.puddle': 1 }, layer: 'fore', seed: 15, area: { poly: [[-160, 852], [1760, 850], [1760, 884], [-160, 888]] }, n: 40, minGap: 30, s: [0.2, 0.6], sByY: [[850, 0.8], [888, 1.2]], flip: 0.5, variant: [0, 1], tint: T('#8a7a60'), anim: false },
-      { obj: { 'plant.grass': 5, 'plant.wildflowers': 2 }, layer: 'fore', seed: 16, area: { rect: [-160, 822, 1760, 842] }, n: 130, minGap: 11, s: [0.4, 0.75], flip: 0.5, variant: 0, tint: T('#8a7a40'), anim: false },
-      // the verge in front of the path, moving in the wind; bracken at the corners
-      { obj: { 'plant.grass': 6, 'plant.wildflowers': 2 }, layer: 'front', seed: 17, area: { rect: [-160, 893, 1760, 912] }, n: 170, minGap: 10, s: [0.6, 1.05], flip: 0.5, variant: 2, tint: T('#8a7a40'), anim: 'strip' },
-      one('plant.bracken', -130, 900, 1.5, 0, 'front', 18, 0, false), one('plant.bracken', -75, 894, 1.15, 1, 'front', 19, 1, false), one('plant.bracken', 0, 910, 1.3, 2, 'front', 20, 0, false), one('plant.bracken', 110, 898, 1.05, 0, 'front', 21, 1, false),
-      one('plant.bracken', 1480, 896, 1.2, 1, 'front', 28, 1, false), one('plant.bracken', 1548, 906, 1.45, 0, 'front', 29, 0, false), one('plant.bracken', 1650, 900, 1.1, 2, 'front', 30, 1, false), one('plant.bracken', 1742, 908, 1.35, 1, 'front', 31, 0, false),
+      { obj: { 'plant.grass': 3, 'plant.heather': 3 }, layer: 'near', seed: 11, area: AREA([[-160, 560], [120, 560], [250, 700], [220, 790], [-160, 790]]), n: 90, minGap: 11, s: [0.45, 0.9], sByY: [[560, 0.7], [790, 1.15]], flip: 0.5, variant: 'random', tint: T('#8a7a40'), anim: false },
+      { obj: { 'plant.grass': 3, 'plant.heather': 3 }, layer: 'near', seed: 12, area: AREA([[1450, 560], [1760, 540], [1760, 790], [1470, 786], [1410, 680]]), n: 80, minGap: 11, s: [0.45, 0.9], sByY: [[560, 0.7], [790, 1.15]], flip: 0.5, variant: 'random', tint: T('#8a7a40'), anim: false },
+      // the near water's edge: reeds in clumps (gaps where the bank is open), stones
+      { obj: { 'plant.reed': 3, 'plant.bulrush': 2, 'plant.grass-long': 1 }, layer: 'fore', seed: 13, area: { rect: [-160, 790, 1760, 822] }, n: 120, minGap: 9, s: [0.5, 0.9], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), mask: { noise: { scale: 200, cut: 0.42 }, avoid: [{ rect: [960, 780, 1200, 830] }] }, anim: false },
+      { obj: { 'rock.stones': 1, 'rock.boulder': 1 }, layer: 'fore', seed: 14, area: { rect: [300, 804, 1240, 830] }, n: 12, minGap: 40, s: [0.14, 0.42], mask: { noise: { scale: 90, cut: 0.4 } }, flip: 0.5, variant: [0, 1], anim: false },
+      // the near bank either side of the path: heather, long grass, flowers thinning off the path
+      { obj: { 'plant.heather': 5, 'plant.grass-long': 2, 'plant.grass': 2, 'plant.wildflowers': 1 }, layer: 'fore', seed: 16, area: AREA([[-160, 806], [640, 800], [1300, 800], [1760, 794], [1760, 824], [1300, 830], [900, 832], [620, 850], [420, 872], [330, 912], [-160, 912]]), n: 170, minGap: 10, s: [0.5, 0.95], sByY: [[800, 0.8], [910, 1.3]], flip: 0.5, variant: 'random', tint: T('#8a7a40'), mask: { avoid: [{ rect: [980, 780, 1200, 830] }] }, anim: false },
+      { obj: { 'plant.heather': 3, 'plant.grass': 3, 'plant.wildflowers': 1, 'rock.stones': 1 }, layer: 'fore', seed: 15, area: AREA([[676, 912], [760, 884], [1240, 858], [1760, 848], [1760, 912]]), n: 90, minGap: 12, s: [0.6, 1], sByY: [[850, 0.9], [912, 1.3]], flip: 0.5, variant: 'random', tint: T('#8a7a40'), anim: false },
+      one('plant.wyv-heath-bank', 40, 900, 1.25, 1, 'front', 63, 0, false), one('plant.wyv-heath-bank', 260, 916, 1.0, 2, 'front', 64, 1, false),
+      one('plant.gorse', 210, 820, 0.7, 0, 'fore', 65, 0, false), one('plant.gorse', 1380, 862, 0.6, 1, 'fore', 66, 1, false),
+      // the verge in front, moving in the wind; bracken at the corners
+      { obj: { 'plant.grass-long': 4, 'plant.grass': 3, 'plant.heather': 2 }, layer: 'front', seed: 17, area: { rect: [700, 893, 1760, 912] }, n: 80, minGap: 12, s: [0.7, 1.1], flip: 0.5, variant: 'random', tint: T('#8a7a40'), anim: 'strip' },
+      one('plant.bracken', -100, 918, 1.5, 0, 'front', 18, 0, false), one('plant.bracken', 150, 924, 1.2, 2, 'front', 20, 0, false),
+      one('plant.bracken', 1480, 900, 1.2, 1, 'front', 28, 1, false), one('plant.bracken', 1600, 912, 1.5, 0, 'front', 29, 0, false), one('plant.bracken', 1730, 902, 1.2, 2, 'front', 30, 1, false),
     ],
     actors: [
+      // the heron, stalking the shallows off the spit and stabbing at fish
+      { obj: 'bird.wp-heron-stalk', layer: 'mid', path: [[450, 750], [410, 754], [372, 760]], speed: 2.2, loop: 'pingpong', s: 0.78, seed: 48, offset: 0.2 },
       // on the water: the pair of mute swans, mallard, coot, moorhen and a grebe, slow and drifting
       { obj: 'bird.swan', layer: 'mid', path: [[620, 600], [900, 596]], speed: 4, loop: 'pingpong', s: 0.66, seed: 61, offset: 0.2 },
       { obj: 'bird.swan', layer: 'mid', path: [[700, 612], [960, 608]], speed: 3.6, loop: 'pingpong', s: 0.6, seed: 62, offset: 0.35 },
       { obj: 'bird.mallard', layer: 'mid', path: [[1100, 660], [880, 664]], speed: 5, loop: 'pingpong', s: 0.56, seed: 63, offset: 0.1 },
       { obj: 'bird.mallard', layer: 'mid', path: [[1150, 668], [930, 672]], speed: 4.8, loop: 'pingpong', s: 0.54, seed: 64, offset: 0.16, variant: 1 },
-      { obj: 'bird.coot', layer: 'mid', path: [[440, 712], [600, 708]], speed: 6, loop: 'pingpong', s: 0.52, seed: 65, offset: 0.5 },
       { obj: 'bird.coot', layer: 'mid', path: [[1240, 590], [1130, 594]], speed: 5, loop: 'pingpong', s: 0.38, seed: 66, offset: 0.7 },
       { obj: 'bird.moorhen', layer: 'mid', path: [[1350, 690], [1270, 694]], speed: 4, loop: 'pingpong', s: 0.46, seed: 67, offset: 0.4 },
       { obj: 'bird.grebe', layer: 'mid', path: [[760, 560], [520, 566]], speed: 5, loop: 'pingpong', s: 0.38, seed: 68, offset: 0.6 },
-      // the bank path: a dog walker and a jogger
-      { obj: 'person.dog-walker', layer: 'fore', path: [[-60, 872], [760, 866], [1660, 868]], speed: 20, loop: 'pingpong', s: 1.0, seed: 71, offset: 0.12 },
-      { obj: 'person.jogger', layer: 'fore', path: [[1700, 864], [800, 868], [-100, 866]], speed: 46, loop: 'loop', s: 0.98, seed: 72, offset: 0.55 },
+      // swallows skimming the water (none in winter), pipistrelles after dusk
+      { obj: 'bird.wp-swallow', layer: 'near', path: [[-140, 620], [300, 650], [640, 600], [1000, 660], [1400, 610], [1760, 640]], speed: 300, loop: 'fade', s: 0.8, variant: 0, seed: 73, offset: 0.1 },
+      { obj: 'bird.wp-swallow', layer: 'near', path: [[1760, 560], [1300, 580], [900, 545], [500, 575], [-160, 550]], speed: 260, loop: 'fade', s: 0.6, variant: 1, seed: 74, offset: 0.6 },
+      { obj: 'animal.wp-bat', layer: 'mid', path: [[500, 420], [700, 380], [900, 440], [700, 470], [500, 420]], speed: 160, loop: 'loop', s: 0.9, seed: 75, offset: 0.3 },
+      { obj: 'animal.wp-bat', layer: 'mid', path: [[1000, 360], [1240, 410], [1100, 460], [900, 400], [1000, 360]], speed: 150, loop: 'loop', s: 0.8, variant: 1, seed: 76, offset: 0.7 },
+      // the bank path: a dog walker and a jogger, up the path from the bottom and along the water
+      { obj: 'person.dog-walker', layer: 'fore', path: [[520, 910], [700, 866], [1100, 846], [1700, 838]], speed: 20, loop: 'pingpong', s: 1.0, seed: 71, offset: 0.12 },
+      { obj: 'person.jogger', layer: 'fore', path: [[1760, 836], [1100, 842], [700, 864], [480, 912]], speed: 46, loop: 'loop', s: 0.98, seed: 72, offset: 0.55 },
+      // a light aircraft climbing out of Blackbushe, just over the common
+      { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[-200, 260], [1800, 170]], speed: 24, loop: 'loop', s: 0.5, seed: 77, offset: 0.4 },
     ],
     flocks: [
-      { obj: 'bird.small-flight', n: 6, area: [200, 140, 1300, 320], speed: 34, s: 0.5, seed: 81, layer: 'far' },
+      { obj: 'bird.small-flight', n: 5, area: [200, 140, 1300, 320], speed: 34, s: 0.5, seed: 81, layer: 'far' },
       { obj: 'bird.goose-flight', n: 5, area: [500, 90, 1500, 220], speed: 26, s: 0.32, seed: 82, layer: 'far' },
     ],
     particles: 'season',

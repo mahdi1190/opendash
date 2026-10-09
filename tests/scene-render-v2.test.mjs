@@ -18,8 +18,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CANAL = readFileSync(join(ROOT, 'tests', 'fixtures', 'scene-v2-b-canal.js'), 'utf8');
 const S = loadScenes(ROOT, { fixtures: true, browser: true, extra: CANAL });
 const V1 = JSON.parse(readFileSync(join(ROOT, 'tests', 'fixtures', 'scene-compiled.json'), 'utf8'));
-// the commit before any v2 engine edit (the spec and A's v1 hashes only): the "before" of the pixel-identity check
-const BASE = process.env.SCENE_V2_BASE || '5fa23d9';
+// the "before" of the pixel-identity check: first the commit before any v2 engine edit (5fa23d9); moved to 18fed8c, whose
+// library work (seasonal plants and trees, the winter look) deliberately redrew v1 objects, so the check now guards the v1
+// path against unintended changes since that accepted look
+const BASE = process.env.SCENE_V2_BASE || '18fed8c';
 const AT = { noon: '2026-10-08T12:10:00Z', golden: '2026-10-08T16:55:00Z', night: '2026-10-08T21:30:00Z' };
 
 /* ---------- the pass registry (Node) ---------- */
@@ -195,8 +197,11 @@ test('canvas: the frame budget at 1600 x 900 with water and shadows on (drawMs m
 });
 
 // v1 pixel identity (V2 14.1): eight composed scenes, at noon and at night, before (the base commit, from git archive) and after
-const SAMPLES = ['uk-area-yateley/hampshire-yateley-common-1', 'uk-area-yateley/hampshire-wyndhams-pool-1', 'uk-area-fleet/hampshire-fleet-pond-1', 'uk-area-woking-b/surrey-woking-commercial-way',
-  'uk-area-sheffield/south-yorkshire-kelham', 'uk-area-norwich/norwich-cathedral-close', 'scene-demo/station-arnos-grove', 'uk-area-woking/surrey-woking-canal'];
+// (the first eight samples, uk-area-* and scene-demo, were removed with those packs in ea22185: an unknown ref renders a blank
+// page, so every pixel differed; these are v1 composed scenes outside the north Hampshire views other work keeps editing,
+// without butterflies or bees, whose hours and months the weather pass now keeps)
+const SAMPLES = ['asia-east/hong-kong-skyline', 'asia-west/dubai-skyline', 'asia-southeast/sg-signature', 'texas/alamo-morning',
+  'texas/gulf-coast-sunrise', 'us-northeast/boston-charles', 'us-pacific/seattle-needle-ferry', 'us-midwest/chicago-l-train'];
 test('canvas: v1 scenes are pixel-identical to the base commit (8 samples, noon and night)', { skip: !browser || process.env.SCENE_V2_SKIP_IDENTITY === '1' }, async (t) => {
   const base = archive();
   if (!base) { t.skip('no git archive of ' + BASE); return; }

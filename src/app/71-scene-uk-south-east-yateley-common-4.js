@@ -20,7 +20,7 @@ function sceneYateleyCommon4(season) {
   const TRACK = [[740, 498, 5], [760, 520, 12], [700, 556, 24], [760, 600, 40], [700, 660, 70], [640, 740, 120], [700, 820, 180], [690, 905, 240]];
   const POND = { x0: 1010, x1: 1350, y0: 594, y1: 638 };
   const trackMid = Y.around(TRACK, 494, 662, 10), trackNear = Y.around(TRACK, 650, 800, 22), trackFore = Y.around(TRACK, 790, 910, 18);
-  const pondAvoid = { rect: [POND.x0 - 44, POND.y0 - 40, POND.x1 + 44, POND.y1 + 42] };
+  const pondAvoid = { rect: [POND.x0 - 44, POND.y0 - 40, POND.x1 + 44, POND.y1 + 42] }, pondWater = { rect: [POND.x0 - 40, POND.y0 - 40, POND.x1 + 40, POND.y1 + 10] };   // the drifts may stand on the near bank, in front of the water
   const sand = { lin: [[0, '@sand.0'], [0.5, '@sand.1'], [1, '@sand.2']], y1: 498, y2: 905 };
   const d = {
     v: 1, id: 'yateley-common-evening-' + season,
@@ -37,10 +37,13 @@ function sceneYateleyCommon4(season) {
       { layer: 'mid', d: Y.mounds(-160, 1760, 566, 646, 30, 912, [36, 70]), fill: '@mound.1' },
       { layer: 'mid', d: Y.pond(POND.x0 - 8, POND.x1 + 8, POND.y0 - 4, POND.y1 + 6, 9271), fill: '@bank.0' },
       { layer: 'mid', d: Y.track(TRACK, 552, 662), fill: sand },
+      { layer: 'mid', d: Y.ruts(TRACK, 590, 662).ruts, fill: '@rut.0' },
       { layer: 'near', d: Y.band(650, 8, 60, 812), fill: '@heath.2' },
       { layer: 'near', d: Y.track(TRACK, 648, 802), fill: sand },
+      { layer: 'near', d: Y.ruts(TRACK, 648, 802).ruts, fill: { lin: [[0, '@rut.0'], [1, '@rut.1']], y1: 648, y2: 905 } },
       { layer: 'fore', d: Y.band(796, 6, -80), fill: '@heath.2' },
       { layer: 'fore', d: Y.track(TRACK, 792, 905), fill: sand },
+      { layer: 'fore', d: Y.ruts(TRACK, 792, 905).ruts, fill: '@rut.1' },
     ],
     water: [{ layer: 'mid', d: Y.pond(POND.x0, POND.x1, POND.y0, POND.y1, 9270), y0: POND.y0, y1: POND.y1, base: ['#8aa8b0', '#44707a', '#24424a'], reflect: true, shimmer: 18, lightPath: true }],
     place: [
@@ -55,6 +58,12 @@ function sceneYateleyCommon4(season) {
       { obj: 'animal.cattle', x: 330, y: 594, s: 0.38, layer: 'mid', variant: 0, flip: true, seed: 12 },
       { obj: 'animal.cattle', x: 540, y: 600, s: 0.4, layer: 'mid', variant: 1, seed: 13 },
       { obj: 'animal.deer', x: 1460, y: 570, s: 0.3, layer: 'mid', variant: 0, flip: true, seed: 14 },
+      // scrub on the far heath: gorse clumps, a birch thicket
+      { obj: 'plant.gorse', x: 160, y: 548, s: 0.22, layer: 'far', variant: 2, seed: 15, anim: false },
+      { obj: 'plant.gorse', x: 860, y: 540, s: 0.18, layer: 'far', variant: 0, flip: true, seed: 16, anim: false },
+      { obj: 'plant.gorse', x: 1560, y: 552, s: 0.22, layer: 'far', variant: 1, seed: 17, anim: false },
+      { obj: 'tree.birch-heath', x: 1610, y: 548, s: 0.2, layer: 'far', variant: 2, seed: 18, anim: false },
+      { obj: 'tree.birch-heath', x: 640, y: 540, s: 0.16, layer: 'far', variant: 1, flip: true, seed: 19, anim: false },
       // gorse with a stonechat and a Dartford warbler
       { obj: 'plant.gorse', x: 560, y: 680, s: 0.5, layer: 'near', variant: 0, seed: 31, anim: false },
       { obj: 'plant.gorse', x: 920, y: 670, s: 0.46, layer: 'near', variant: 1, flip: true, seed: 32, anim: false },
@@ -65,7 +74,13 @@ function sceneYateleyCommon4(season) {
       { obj: 'bird.dartford-warbler', x: 566, y: 628, s: 0.85, layer: 'near', flip: true, seed: 38 },
       { obj: 'animal.rabbit', x: 820, y: 780, s: 0.9, layer: 'near', variant: 1, seed: 41 },
       // the foreground: gorse, a fallen branch
-      { obj: 'plant.gorse', x: 1260, y: 890, s: 1.3, layer: 'fore', variant: 0, flip: true, seed: 51, anim: false },
+      { obj: 'plant.gorse', x: 1180, y: 890, s: 1.2, layer: 'fore', variant: 0, flip: true, seed: 51, anim: false },
+      { obj: 'bird.stonechat', x: 1196, y: 790, s: 1.6, layer: 'fore', variant: 1, flip: true, seed: 53 },
+      // the foreground frame: a big stand of bracken in the bottom-right corner (green, then copper in autumn), a birch
+      // bough hanging in from the top-right
+      { obj: 'plant.bracken', x: 1440, y: 930, s: 2.6, layer: 'front', variant: 1, flip: true, seed: 54, anim: { sway: { k: 0.6 } } },
+      { obj: 'plant.bracken', x: 1660, y: 920, s: 2.2, layer: 'front', variant: 2, seed: 55, anim: false },
+      { obj: 'tree.yc-birch-bough', x: 1636, y: -16, s: 1, layer: 'front', flip: true, seed: 56, anim: { sway: { k: 1 } } },
       { obj: 'plant.gorse', x: 300, y: 900, s: 1.2, layer: 'fore', variant: 1, seed: 52, anim: false },
       // framing: silver birches at both edges
       { obj: 'tree.birch-heath', x: 70, y: 860, s: 1.3, layer: 'front', variant: 1, seed: 61, anim: { sway: { k: 0.8 } } },
@@ -76,7 +91,9 @@ function sceneYateleyCommon4(season) {
       { obj: 'tree.woods-edge', layer: 'far', seed: 2, area: { rect: [-160, 498, 600, 504] }, n: 4, minGap: 140, s: [0.42, 0.66], flip: 0.5, variant: [1, 2], anim: false },
       { obj: 'tree.woods-edge', layer: 'far', seed: 3, area: { rect: [1100, 498, 1760, 504] }, n: 3, minGap: 140, s: [0.4, 0.6], flip: 0.5, variant: [1, 2], anim: false },
       { obj: 'tree.pine-veteran', layer: 'far', seed: 4, area: { rect: [-120, 514, 1720, 544] }, n: 7, minGap: 160, s: [0.06, 0.1], sByY: [[514, 0.85], [544, 1.15]], mask: { avoid: [{ rect: [900, 490, 1060, 560] }] }, flip: 0.5, variant: 1, anim: false },
-      ...Y.carpet({ season, seed: 40, far: [498, 556], mid: [560, 650], near: [656, 790], fore: [798, 905], n: { far: 150, mid: 170, near: 200, fore: 120, grass: 50 },
+      ...Y.drifts({ seed: 40, ride: TRACK, far: [502, 560], mid: [566, 656], near: [662, 800], fore: [804, 920], n: { far: 120, mid: 120, near: 80, fore: 36 },
+        avoid: { far: [pondWater], mid: [pondWater] } }),
+      ...Y.carpet({ season, seed: 40, far: [498, 556], mid: [560, 650], near: [656, 790], fore: [798, 905], n: { far: 80, mid: 90, near: 110, fore: 60, grass: 40 },
         avoid: { far: [{ poly: trackMid }, pondAvoid], mid: [{ poly: trackMid }, pondAvoid], near: [{ poly: trackNear }], fore: [{ poly: trackFore }] } }),
       { obj: { 'plant.reed': 2, 'plant.bulrush': 1 }, layer: 'mid', seed: 9, area: { rect: [980, 616, 1060, 646] }, n: 8, minGap: 9, s: [0.26, 0.5], flip: 0.5, variant: [0, 1], anim: false, reflect: true },
       { obj: 'plant.reed', layer: 'mid', seed: 10, area: { rect: [1300, 618, 1380, 646] }, n: 7, minGap: 9, s: [0.28, 0.46], flip: 0.5, variant: [0, 1], anim: false, reflect: true },
@@ -88,8 +105,7 @@ function sceneYateleyCommon4(season) {
       { obj: 'person.dog-walker', layer: 'near', path: Y.path(TRACK, 660, 790), speed: 7, loop: 'pingpong', s: 0.8, variant: 1, sByY: [[660, 0.85], [790, 1.15]], seed: 71, offset: 0.35 },
       { obj: 'person.walker', layer: 'mid', path: Y.path(TRACK, 560, 650, 14), speed: 4, loop: 'pingpong', s: 0.45, variant: 2, sByY: [[560, 0.7], [650, 1]], seed: 72, offset: 0.65 },
       // Blackbushe light aircraft: navigation lights and the beacon after dark
-      { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[1820, 210], [-220, 170]], speed: 24, loop: 'loop', s: 0.75, seed: 73, offset: 0.2 },
-      { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[-220, 330], [1820, 300]], speed: 20, loop: 'loop', s: 0.5, variant: 1, seed: 74, offset: 0.65 },
+      { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[1820, 330], [-220, 250]], speed: 24, loop: 'loop', s: 0.75, seed: 73, offset: 0.2 },
     ],
     flocks: [
       { obj: 'bird.small-flight', n: winter ? 10 : 7, area: [300, 140, 1300, 300], speed: 24, s: 0.55, seed: 81, layer: 'horizon' },

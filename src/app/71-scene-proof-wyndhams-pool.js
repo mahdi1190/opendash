@@ -114,14 +114,15 @@ function sceneProofWyndhamsPool() {
   const tree = (obj, x, d, k, o) => P.push(Object.assign({ obj, at: [x, d], k, anim: false }, o || {}));
 
   // ---- the far shore (d 120 to 175): pines in groups and singles, birch between; one group stands in the evening sun
-  tree('tree.pool-pine', 36, 140, 1.05, { variant: 0 }); tree('tree.pool-pine', 42.5, 151, 0.9, { variant: 1, flip: true }); tree('tree.pool-pine', 47, 136, 0.8, { variant: 2 });
-  tree('tree.birch-heath', 29, 134, 0.9, { variant: 1 }); tree('tree.pool-pine', 55, 162, 1.1, { variant: 0, flip: true });
-  tree('tree.pool-pine', -5, 144, 1.2, { variant: 1 }); tree('tree.pond-wood', -12, 140, 1.1, { variant: 2 }); tree('tree.birch-heath', 3, 139, 0.85, { variant: 2 });
+  // (the pines' heights vary a lot, so their crowns never make one level row along the skyline)
+  tree('tree.pool-pine', 36, 140, 1.3, { variant: 0 }); tree('tree.pool-pine', 42.5, 151, 0.72, { variant: 1, flip: true }); tree('tree.pool-pine', 47, 136, 0.95, { variant: 2 });
+  tree('tree.birch-heath', 29, 134, 0.9, { variant: 1 }); tree('tree.pool-pine', 55, 168, 1.35, { variant: 0, flip: true });
+  tree('tree.pool-pine', -5, 144, 1.45, { variant: 1 }); tree('tree.pond-wood', -12, 140, 1.1, { variant: 2 }); tree('tree.birch-heath', 3, 139, 0.85, { variant: 2 });
   tree('tree.pond-birch', 22, 132, 0.7, { variant: 1 }); tree('tree.pond-wood', -30, 146, 1.35, { variant: 1, flip: true }); tree('tree.birch-heath', 17, 146, 1.1, { variant: 0, flip: true });
-  tree('tree.pool-pine', -34, 128, 1, { variant: 2 }); tree('tree.birch-heath', -26, 125, 0.75, { variant: 0, flip: true });
-  tree('tree.pool-pine', 70, 120, 1, { variant: 0 }); tree('tree.birch-heath', 62, 112, 0.8, { variant: 1 });
-  tree('tree.pool-pine', 24, 215, 1.3, { variant: 1 }); tree('tree.pond-wood', -2, 190, 1.2, { variant: 3 }); tree('tree.pool-pine', -26, 236, 1.25, { variant: 2 });
-  tree('tree.pond-wood', -50, 172, 1.1, { variant: 0 }); tree('tree.birch-heath', -40, 140, 0.8, { variant: 2, flip: true }); tree('tree.pool-pine', -62, 150, 1.1, { variant: 1, flip: true });
+  tree('tree.pool-pine', -34, 128, 0.78, { variant: 2 }); tree('tree.birch-heath', -26, 125, 0.75, { variant: 0, flip: true });
+  tree('tree.pool-pine', 70, 116, 1.2, { variant: 0 }); tree('tree.birch-heath', 62, 112, 0.8, { variant: 1 });
+  tree('tree.pool-pine', 24, 215, 1.6, { variant: 1 }); tree('tree.pond-wood', -2, 190, 1.2, { variant: 3 }); tree('tree.pool-pine', -26, 236, 1.25, { variant: 2 });
+  tree('tree.pond-wood', -50, 172, 1.1, { variant: 0 }); tree('tree.birch-heath', -40, 140, 0.8, { variant: 2, flip: true }); tree('tree.pool-pine', -62, 150, 0.82, { variant: 1, flip: true });
   tree('tree.pond-oak', -20, 138, 0.8, { variant: 1 }); tree('tree.pond-oak', 58, 140, 0.9, { variant: 0, flip: true }); tree('tree.birch-heath', 12, 137, 0.6, { variant: 0 });
   tree('tree.pond-wood', 84, 186, 1.2, { variant: 1 }); tree('tree.birch-heath', 44, 160, 0.7, { variant: 1, flip: true });
   S.push({ obj: { 'tree.far-pine': 3, 'tree.far-birch': 2, 'tree.pond-wood': 2 }, on: 'far-wood', d: [175, 520], n: 70, dist: 'ground', cluster: { centres: 9, spread: 22 }, gap: 'foot', k: [0.75, 1.25], seed: 31, anim: false, species: 1 });
@@ -146,12 +147,15 @@ function sceneProofWyndhamsPool() {
 
   // ---- reeds and bulrushes hugging the water, in clumps with gaps
   S.push({ obj: { 'plant.reed': 3, 'plant.bulrush': 1 }, on: 'reeds-right', d: [8, 40], n: 70, dist: 'ground', cluster: { centres: 5, spread: 1.1 }, k: [0.75, 1.15], seed: 41, anim: 'strip', species: 1 });
-  S.push({ obj: { 'plant.reed': 3, 'plant.bulrush': 1 }, on: 'reeds-left', d: [14, 60], n: 42, dist: 'ground', cluster: { centres: 4, spread: 1.4 }, k: [0.75, 1.1], seed: 42, anim: 'strip', species: 1 });
+  S.push({ obj: { 'plant.yg-reedbed': 2, 'plant.reed': 3, 'plant.bulrush': 1 }, on: 'reeds-left', d: [14, 60], n: 36, dist: 'ground', cluster: { centres: 4, spread: 1.4 }, k: [0.75, 1.1], seed: 42, anim: 'strip', species: 1 });
   S.push({ obj: { 'plant.reed': 3, 'plant.grass-long': 1 }, on: 'reeds-near', d: [8.5, 11.5], n: 8, dist: 'ground', cluster: { centres: 2, spread: 0.3 }, k: [0.4, 0.7], seed: 44, anim: 'strip', species: 1 });
   S.push({ obj: { 'plant.reed': 2, 'plant.bulrush': 1 }, on: ['reeds-far-r', 'reeds-far-l'], d: [100, 140], n: 60, dist: 'ground', cluster: { centres: 6, spread: 3 }, k: [0.8, 1.2], seed: 43, anim: false, species: 1 });
 
   // ---- the near bank: heather and bracken in clumps, grass, a fallen birch, flowers thinning off the path, the platform
   S.push({ obj: { 'plant.heather': 6, 'plant.bracken': 1, 'plant.grass-long': 2, 'plant.grass': 3 }, on: ['bank-near', 'land'], avoid: ['path', 'bank-open'], d: [4.3, 16], n: 190, dist: 'screen', cluster: { centres: 7, spread: 0.7 }, gap: 'foot', k: [0.5, 1.35], seed: 51, anim: false, species: 1 });
+  // moor-grass tussocks among the heather (70-scene-lib-yateley-green-views.js): they overlap the heather's feet, so the near
+  // bank reads as one rough heath, never as separate cut-off clumps on bare ground
+  S.push({ obj: 'plant.yg-meadow', on: ['bank-near', 'land'], avoid: ['path', 'bank-open'], d: [4.6, 14], n: 40, dist: 'screen', cluster: { centres: 8, spread: 0.9 }, k: [0.5, 0.95], variant: 4, seed: 54, anim: false });
   S.push({ obj: { 'plant.grass': 3, 'plant.wildflowers': 1 }, on: 'bank-open', d: [5, 9], n: 26, dist: 'screen', cluster: { centres: 4, spread: 0.5 }, k: [0.45, 0.8], seed: 53, anim: false, species: 1 });
   S.push({ obj: { 'plant.heather': 4, 'plant.gorse': 1, 'plant.grass': 2 }, on: 'land', d: [9, 40], n: 80, dist: 'screen', cluster: { centres: 6, spread: 2 }, gap: 'foot', k: [0.8, 1.2], seed: 52, anim: false, species: 1 });
   { // wild flowers and short grass along the path, thinning as they leave it

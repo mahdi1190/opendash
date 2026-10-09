@@ -18,6 +18,8 @@
 (function () {
   if (typeof sceneAdd !== 'function') return;
   const PACK = 'uk-south-east-yateley-green', ID = 'yateley-green-3';
+  /** Irregular clumps (70-scene-lib-yateley-green-views.js); none when that library is not in the build. */
+  const YG = o => (typeof sceneYgClumps === 'function' ? sceneYgClumps(o) : []);
   /** The woods beyond the green as one lobed tree-line silhouette (a ground path: far cheaper than a hundred tiny trees). */
   const WOODS = (y, seed, k) => {
     const r = sceneRnd(seed);
@@ -79,25 +81,30 @@
       { obj: 'animal.squirrel', x: 1420, y: 880, s: 0.9, layer: 'fore', seed: 22, flip: true },
       { obj: 'bird.robin', x: 250, y: 872, s: 0.9, layer: 'fore', variant: 1, seed: 23 },
       { obj: 'bird.robin', x: 1180, y: 866, s: 0.8, layer: 'fore', variant: 0, seed: 24, flip: true },
-    ],
+      { obj: 'ground.log', x: 1300, y: 852, s: 1.0, layer: 'fore', variant: 0, seed: 25, flip: true },
+    ].concat(
+      // the far shore: reed beds in clumps with gaps (mirrored), the church's reflection left open
+      YG({ obj: { 'plant.yg-reedbed': 4, 'plant.bulrush': 1 }, centres: [[-80, 636, 60, 4, 4], [200, 618, 50, 3, 3], [520, 611, 26, 2, 2], [1290, 609, 40, 2, 3], [1560, 612, 60, 2, 4]], s: [0.22, 0.34], sByY: [[600, 0.95], [640, 1.15]], layer: 'near', seed: 501, reflect: true }),
+      // the green beyond: uncut rings under the trees, daisy drifts
+      YG({ obj: { 'plant.yg-meadow': 2, 'plant.grass-long': 1 }, centres: [[300, 562, 50, 3, 3], [1500, 558, 44, 3, 3], [880, 549, 26, 2, 2], [720, 592, 60, 3, 3], [1010, 590, 40, 2, 2], [60, 600, 50, 3, 2]], s: [0.22, 0.3], layer: 'mid', seed: 502 }),
+      YG({ obj: { 'plant.daisies': 3, 'plant.grass': 2 }, centres: [[600, 530, 50, 5, 6], [1000, 524, 50, 4, 5], [1340, 540, 50, 5, 6], [120, 540, 40, 5, 5]], s: [0.26, 0.4], layer: 'mid', seed: 503 }),
+      // the near banks: reed beds at the water's edge, the meadow deep, the front corners thick
+      YG({ obj: { 'plant.yg-reedbed': 3, 'plant.bulrush': 1 }, centres: [[470, 808, 60, 10, 4], [700, 846, 40, 10, 3], [1240, 790, 40, 8, 3]], s: [0.6, 0.9], sByY: [[780, 0.9], [880, 1.2]], layer: 'fore', seed: 504, reflect: true }),
+      YG({ obj: 'plant.yg-meadow', centres: [[120, 790, 120, 16, 5], [420, 870, 80, 10, 3], [1500, 770, 110, 16, 5], [1200, 878, 60, 8, 2]], s: [0.9, 1.3], sByY: [[740, 0.8], [900, 1.3]], layer: 'fore', seed: 505 }),
+      YG({ obj: 'plant.yg-meadow', centres: [[140, 924, 140, 4, 4], [1440, 922, 130, 4, 4]], s: [1.6, 2.0], layer: 'front', seed: 506, anim: { sway: { k: 0.6 } } }),
+    ),
     scatter: [
       // the woods beyond, two depths
       { obj: { 'tree.distant': 3, 'tree.distant-pine': 2 }, layer: 'far', variant: [0, 1], seed: 42, area: { rect: [-160, 494, 1760, 502] }, n: 24, minGap: 22, s: [0.14, 0.58], anim: false, tint: { col: '#3a5a2a', k: [0.08, 0.08] },
         mask: { avoid: [{ rect: [600, 486, 820, 506] }, { rect: [1040, 486, 1150, 506] }, { rect: [1210, 486, 1430, 506] }] } },
       // the green: tufts and daisies (static), the shore grasses
-      { obj: 'plant.grass', layer: 'far', variant: [0, 1], seed: 43, area: { rect: [-160, 514, 1760, 558] }, n: 120, minGap: 7, s: [0.14, 0.28], sByY: [[514, 0.8], [558, 1.3]], anim: false, tint: { col: '#c0b060', k: [0.08, 0.08] } },
+      { obj: 'plant.grass', layer: 'far', variant: [0, 1], seed: 43, area: { rect: [-160, 514, 1760, 558] }, n: 60, minGap: 7, s: [0.14, 0.28], sByY: [[514, 0.8], [558, 1.3]], anim: false, tint: { col: '#c0b060', k: [0.08, 0.08] } },
       // the far shore: bulrushes and plumes (mirrored), water edges
-      { obj: { 'plant.bulrush': 2, 'plant.reed': 3 }, layer: 'near', variant: [0, 1], seed: 45, area: { poly: [[-160, 616], [420, 600], [420, 614], [-160, 646]] }, n: 26, minGap: 12, s: [0.34, 0.5], anim: 'strip', tint: { col: '#a09050', k: [0.08, 0.08] } },
-      { obj: { 'plant.reed': 3, 'plant.bulrush': 2 }, layer: 'near', variant: [0, 1], seed: 46, area: { rect: [1180, 598, 1760, 612] }, n: 26, minGap: 12, s: [0.34, 0.5], anim: 'strip', tint: { col: '#a09050', k: [0.08, 0.08] } },
-      { obj: 'plant.reed', layer: 'near', variant: [0, 1], seed: 47, area: { rect: [430, 602, 1170, 612] }, n: 12, minGap: 40, s: [0.26, 0.4], anim: false, tint: { col: '#a09050', k: [0.08, 0.08] } },
       { obj: 'water.lily', layer: 'near', variant: [0, 1], seed: 48, area: { poly: [[880, 650], [1500, 650], [1420, 760], [900, 750]] }, n: 18, minGap: 22, s: [0.45, 0.7], sByY: [[650, 0.8], [760, 1.2]], anim: false, mask: { noise: { scale: 180, cut: 0.35 } } },
       // the banks: bulrushes, the meadow, bluebells under the chestnut, long grass in front
-      { obj: { 'plant.bulrush': 3, 'plant.reed': 1 }, layer: 'fore', variant: [0, 1], seed: 49, area: { poly: [[380, 786], [760, 826], [800, 866], [400, 846]] }, n: 26, minGap: 13, s: [0.6, 0.9], anim: 'strip' },
       { obj: { 'water.edge': 1 }, layer: 'fore', variant: [0, 1], seed: 50, area: { poly: [[-160, 768], [500, 786], [880, 890], [-160, 900]] }, n: 8, minGap: 60, s: [0.6, 1.1], anim: false },
-      { obj: { 'plant.wildflowers': 1, 'plant.grass': 3 }, layer: 'fore', variant: 0, seed: 51, area: { poly: [[-160, 772], [200, 744], [520, 792], [760, 832], [880, 868], [-160, 868]] }, n: 165, minGap: 9, s: [0.7, 1.15], sByY: [[750, 0.8], [868, 1.3]], anim: false, tint: { col: '#b8a050', k: [0.08, 0.08] } },
-      { obj: { 'plant.wildflowers': 1, 'plant.grass': 3, 'plant.bluebells': 0.12 }, layer: 'fore', variant: 1, seed: 52, area: { poly: [[1760, 742], [1500, 722], [1260, 782], [1120, 832], [1080, 868], [1760, 868]] }, n: 165, minGap: 9, s: [0.7, 1.15], sByY: [[730, 0.8], [868, 1.3]], anim: false },
-      { obj: 'plant.grass', layer: 'front', variant: [0, 1], seed: 53, area: { rect: [-160, 872, 560, 906] }, n: 28, minGap: 14, s: [1.3, 1.8], anim: 'strip' },
-      { obj: 'plant.grass', layer: 'front', variant: [0, 1], seed: 54, area: { rect: [1140, 870, 1760, 906] }, n: 26, minGap: 14, s: [1.3, 1.8], anim: 'strip' },
+      { obj: { 'plant.wildflowers': 1, 'plant.grass': 3 }, layer: 'fore', variant: 0, seed: 51, area: { poly: [[-160, 772], [200, 744], [520, 792], [760, 832], [880, 868], [-160, 868]] }, n: 50, minGap: 9, s: [0.7, 1.15], sByY: [[750, 0.8], [868, 1.3]], anim: false, tint: { col: '#b8a050', k: [0.08, 0.08] } },
+      { obj: { 'plant.wildflowers': 1, 'plant.grass': 3, 'plant.bluebells': 0.12 }, layer: 'fore', variant: 1, seed: 52, area: { poly: [[1760, 742], [1500, 722], [1260, 782], [1120, 832], [1080, 868], [1760, 868]] }, n: 50, minGap: 9, s: [0.7, 1.15], sByY: [[730, 0.8], [868, 1.3]], anim: false },
     ],
     actors: [
       // waterbirds

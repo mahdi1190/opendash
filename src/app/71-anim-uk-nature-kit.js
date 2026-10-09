@@ -998,6 +998,7 @@ function ukNatureKit(T) {
   K.robin = (x, y, s, o = {}) => at(x, y, s, M('peck', { ad: sec(o.dur || 5), to: '0px 0px' }, `<path fill="#8a6a4e" d="M-12-2q-6-16 8-20 14-2 16 12l-4 10z"/><path fill="#e2643a" d="M2-18q10 2 8 14-8 4-12-6z"/><path fill="#efe6d4" d="M-4-2q8 2 12-4"/><path fill="#6a4e38" d="M-12-6l-10 4 10 2z"/><circle cx="6" cy="-18" r="1.3" fill="#141010"/><path fill="#3a2e24" d="M12-17l5 1-5 2z"/>`) + `<path stroke="#5a4a3a" stroke-width="1.4" d="M-3 0v4M3 0v4"/>`, o.flip);
   /** A butterfly wandering, wings flapping. kind: brimstone | admiral | peacock | blue | orangetip | tortoiseshell. o: {dx, dy, dur}. */
   K.butterfly = (x, y, s, o = {}) => {
+    if (!insectsOut()) return '';
     const C = { brimstone: ['#f1e45a', '#d9c63a'], admiral: ['#24242a', '#d8402a'], peacock: ['#9a2a24', '#3a5aa8'], blue: ['#7a9fe6', '#c9d8f6'], orangetip: ['#f6f4ee', '#ef8a2a'], tortoiseshell: ['#e2742a', '#2a2a2e'] }[o.kind || 'brimstone'] || ['#f1e45a', '#d9c63a'];
     const r = rnd(R(x + y * 3));
     return at(x, y, s, M('flit', { ad: sec(o.dur || rr(r, 10, 16)), d: sec(-rr(r, 0, 10)), dx: R(o.dx || 160) + 'px', dy: R(o.dy || 50) + 'px' }, M('wing', { ad: sec(rr(r, .28, .4)) }, `<path fill="${C[0]}" d="M0 0q-16-20-20-6 0 8 20 6zM0 0q16-20 20-6 0 8-20 6zM0 1q-12 12-14 4 0-6 14-4zM0 1q12 12 14 4 0-6-14-4z"/><path fill="${C[1]}" d="M-14-9a3 3 0 1 0 1 0zM14-9a3 3 0 1 0 1 0z"/>`) + `<path stroke="#2a2422" stroke-width="1.6" stroke-linecap="round" d="M0-5v10M0-5l-3-5M0-5l3-5"/>`), o.flip);
@@ -1009,6 +1010,7 @@ function ukNatureKit(T) {
   };
   /** A bumblebee buzzing about flowers. */
   K.bee = (x, y, s, o = {}) => {
+    if (!insectsOut()) return '';
     const r = rnd(R(x + y * 5));
     return at(x, y, s, M('dart', { ad: sec(o.dur || rr(r, 6, 9)), d: sec(-rr(r, 0, 6)), dx: R(o.dx || 60) + 'px', dy: R(o.dy || -24) + 'px' }, M('buzz', { ad: '.1s' }, `<ellipse cx="-3" cy="-7" rx="6" ry="3.4" fill="#eef8fa" opacity=".8"/><ellipse cx="3" cy="-7" rx="6" ry="3.4" fill="#eef8fa" opacity=".8"/>`) + `<ellipse rx="7.5" ry="5.5" fill="#2a2420"/><path stroke="#f2c23a" stroke-width="2.6" d="M-2-5v10M3-5v10"/><path fill="#f6f2ea" d="M-7.5 0q-2-3 1-5l1 5z"/>`), o.flip);
   };
@@ -1145,6 +1147,7 @@ function ukNatureKit(T) {
    * screen per loop, swaying a little. o: {seed, n (per layer), layers, col, dur}.
    */
   K.snow = o => {
+    if (!snowDay()) return '';
     const r = rnd(o.seed || 22); let out = ''; const L = o.layers || 3;
     for (let l = 0; l < L; l++) {
       let d = ''; const sz = 1.4 + l * 1.3;
@@ -1174,6 +1177,11 @@ function ukNatureKit(T) {
   // Without a sky (gallery QA, tests, no location) it draws the view's authored moment (v.at) on
   // a fixed date in the scene's season at the place's own coordinates: deterministic.
   let LV = null;   // the light of the scene being drawn (set by K.live inside K.scene)
+  // (user request, 9 Oct) with a light (K.live): butterflies and bees only April to September, by day, dry and not cold
+  // (sceneInsectsOut), and falling snow only when it snows live or the date is one of the seeded snow days (sceneWinterMood:
+  // the same days the composed scenes lie white); without a light the art is drawn as authored
+  const insectsOut = () => !LV || typeof sceneInsectsOut !== 'function' || sceneInsectsOut(LV, { rain: LV.rain ? 1 : 0, snow: LV.snow ? 1 : 0, fog: LV.fog ? 1 : 0, temp: LV.temp });
+  const snowDay = () => !LV || LV.snow || (!LV.wxLive && typeof sceneWinterMood === 'function' && sceneWinterMood(LV.lat, LV.lon, LV.ms) === 'snow');
   const SEASON_DAY = { spring: '2027-04-22', summer: '2026-07-08', autumn: '2026-10-14', winter: '2027-01-20' };
   /** Sky and light by the sun's altitude (degrees): interpolated between these keys. */
   const SKY_KEYS = [
@@ -1223,7 +1231,8 @@ function ukNatureKit(T) {
     const cover = clamp(wx && Number.isFinite(wx.cloud) ? wx.cloud : w[0], 0, 1), alt = sp.alt, c = skyAt(alt);
     const px = (az, al) => { const rel = wrap(az - heading); return { rel, x: R(800 + rel / (fov / 2) * 800), y: R(hor - al * ppd) }; };
     const L = { live: !!sk, ms, lat: plat, lon: plon, heading, fov, horizon: hor, alt, az: sp.az, morning: wrap(sp.az - 180) < 0, cover, px,
-      rain: w[1] === 'rain', snow: w[1] === 'snow', fog: w[1] === 'fog', wind: clamp(wx && Number.isFinite(wx.wind) ? .4 + wx.wind / 28 : 1, .4, 1.8) };
+      rain: w[1] === 'rain', snow: w[1] === 'snow', fog: w[1] === 'fog', wind: clamp(wx && Number.isFinite(wx.wind) ? .4 + wx.wind / 28 : 1, .4, 1.8),
+      temp: wx && Number.isFinite(wx.temp) ? wx.temp : null, wxLive: !!wx };
     L.tod = sk && sk.tod ? sk.tod : alt < -6 ? 'night' : alt < 7 ? (L.morning ? 'dawn' : 'dusk') : 'day';
     L.phase = alt >= 8 ? 'day' : alt >= 0 ? 'golden' : alt >= -6 ? 'civil' : alt >= -12 ? 'nautical' : alt >= -18 ? 'astro' : 'night';
     L.dark = clamp((2 - alt) / 16, 0, 1);

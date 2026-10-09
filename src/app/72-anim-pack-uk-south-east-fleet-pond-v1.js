@@ -200,10 +200,10 @@ function ukSouthEastFleetPondV1(T) {
 
   const place = 'fleet-pond', label = 'Fleet Pond', town = 'Fleet', kind = 'landscape', tags = ['lake', 'reedbed', 'nature reserve'];
   const reasons = {
-    spring: 'Grebes courting off the viewing platform',
-    summer: 'Open water from a viewing platform',
-    autumn: 'Golden shore and geese over the open water',
-    winter: 'Winter wildfowl from the boardwalk platform',
+    spring: 'Geese and swans off the sand at Sandy Bay',
+    summer: 'Sandy Bay: pines, geese and dinghies on the water',
+    autumn: 'Sandy Bay under the pines, geese on the beach',
+    winter: 'A frosty Sandy Bay, swans close inshore',
   };
   // The scene engine (docs/dev/SCENE_ENGINE.md section 17): when it is in the build, the four seasonal items share ONE
   // composed, auto-season scene (71-scene-uk-south-east-fleet-pond-v1.js on the canvas renderer: the date picks the

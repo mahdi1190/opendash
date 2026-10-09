@@ -1,141 +1,116 @@
 /* ============================================================
-   COMPOSED SCENE uk-south-east / Fleet Pond, view 4 (evening)
-   docs/dev/SCENE_ENGINE.md sections 3 and 17 (the convert stage).
+   COMPOSED SCENE (v2, by hand) uk-south-east / Fleet Pond, view 4 (evening): the sailing club pontoon at sunset.
+   docs/dev/SCENE_ENGINE_V2.md. Redrawn on the v2 engine (the hand-drawn art stays in the 72 file as legacySvg).
 
-   The rich hand-drawn view (72-anim-pack-uk-south-east-fleet-pond-v4.js,
-   kept there as legacySvg) rebuilt from the object library, so the canvas
-   renderer bakes it. ONE auto-season scene serves the view's four seasonal
-   items (the date picks the season; the live sky picks the light; its
-   authored moment is sunset, for sheets and the reduced-motion still).
-
-   From the boardwalk platform on the south-east shore, looking
-   west-north-west across the open water into the evening sun (heading 285).
-   Left: the reedbed and the alder and willow carr on its bank. Far: the
-   South Western main line on its embankment along the north shore by
-   Fleet station, trains crossing, birches on the bank, Fleet's houses
-   beyond; the wood to the west. Right: the railed platform with its bench
-   and board, walkers and a dog on it, an alder over it. On the water: mute
-   swans, Canada geese, great crested grebes, coots and mallards.
-   Sources: hart.gov.uk/fleet-pond, en.wikipedia.org/wiki/Fleet_Pond.
-
-   PURE: defines one function, sceneUkFleetPondV4() -> the scene data.
+   The view: on the sailing club's floating pontoon on the east shore, looking west (heading 278) along it into the evening
+   sun, down the whole length of the pond. Finger pontoons off it with dinghies moored, sails down, burgees at the
+   mastheads; on the right the club's hard: the weatherboarded clubhouse with its veranda and flagpole, dinghies on their
+   trolleys and one upturned on the grass. Far off: the west reedbeds and the woods against the low sun.
+   Framing: weeping willow fronds hanging into the top left, reed and reedmace at the bottom corners.
+   The life: a sailor coming in on the last dinghy of the day across the sun's road, a mute swan pair by the pontoon,
+   great crested grebes, coots and black-headed gulls (one on the pontoon's end), a club member on the pontoon; the
+   clubhouse windows lit from dusk, pipistrelles and mist over the water after dark, swallows in summer.
+   Ground plan and objects of its own: SCENE_FPV.v4, structure.fpv-walk-v4, building.fpv-sailing-hut,
+   boat.fpv-dinghy-moored and plant.fpv-willow-fronds (70-scene-lib-fleet-pond-views.js).
+     https://www.hart.gov.uk/fleet-pond-local-nature-reserve
+   PURE: defines sceneUkFleetPondV4() -> the scene data, called once, lazily.
    ============================================================ */
 function sceneUkFleetPondV4() {
-  const HOR = 512, SHORE = 524;
-  const pal = {
-    base:   { wood: ['#4f6a44', '#3d5638'], bank: ['#5d6a3a', '#4a5530'], reedbed: ['#6a7a3c', '#55632f'], mud: ['#5a4c38', '#43392b'] },
-    spring: { wood: ['#5f7e48', '#486640'], bank: ['#62783c', '#4c5e32'], reedbed: ['#6f8240', '#59692f'] },
-    autumn: { wood: ['#8a6a3a', '#6a5232'], bank: ['#7a6c3a', '#5f5428'], reedbed: ['#9a8448', '#7a6634'] },
-    winter: { wood: ['#5a5a50', '#47483f'], bank: ['#7c7e70', '#62645a'], reedbed: ['#a39a78', '#857c5c'], mud: ['#6a6052', '#504a40'] },
+  const F = SCENE_FPV, P = F.v4, W = SCENE_FPV_WALK.v4, cam = P.camera;
+  const R2 = v => Math.round(v * 100) / 100, R1 = v => Math.round(v * 10) / 10;
+  const proj = W.proj, f = W.f, H = cam.horizon;
+  // the near shore: the club's hard on the right, running away to the north-west (right, far) round the pond
+  const shoreR = F.line([[3.4, 2.4], [4.2, 6], [5.6, 10], [7.6, 15], [10.5, 22], [15, 32], [22, 46], [32, 62], [48, 84], [70, 110], [110, 150], [200, 210]], 0.8);
+  // the far (west) shore: ragged, about 520 to 640 m off, the west reedbed pushing out on the left
+  const rs = F.rnd(5), far = [];
+  for (let x = -520; x <= 520; x += 18) far.push([x, R1(560 + 50 * Math.sin(x / 110) + rs() * 20 - (x < -60 ? (-60 - x) * 0.25 : 0))]);
+  const pond = [[-520, 2.4]].concat(shoreR.filter(p => p[0] < 500), [[520, 240]], far.slice().reverse().map(p => p)).reverse();
+  const reedsW = far.concat(far.slice().reverse().map(([x, d]) => [x, d + 26 + (x < -60 ? 30 : 0)]));
+  // the club's hard: grass and gravel from the shore back to the trees
+  const hard = shoreR.concat([[200, 260], [200, 2.4]]);
+  const gravel = [[8.2, 13], [10.6, 13], [13.4, 22.5], [10.8, 22.5]];   // the slipway
+
+  const data = {
+    v: 2, id: 'fleet-pond-4',
+    view: { lat: cam.lat, lon: cam.lon },
+    camera: Object.assign({}, cam),
+    at: 'sunset', season: 'auto', setting: 'natural', atmos: 'auto', weather: 'live', cover: 'auto', particles: 'season', signage: false,
+    kits: ['temperate', 'water', 'birds', 'people', 'boats'],
+    sky: { stars: 220, clouds: { n: 5, y: [40, 330], speed: 4 }, sunR: 26, moonR: 18 },
+    palette: {
+      base: { grass: ['#6e8448', '#56683a'], bank: ['#7a8650', '#56602e'], plaza: ['#a49a86', '#8a8070'], tl: ['#7d9088', '#5f7462', '#4a5e44', '#6a7a52'] },
+      spring: { tl: ['#82968a', '#64806a', '#4e6a46', '#7e9058'] },
+      autumn: { grass: ['#7a8248', '#5e6634'], tl: ['#8e9282', '#7a7656', '#6a5e3a', '#9a7e46'] },
+      winter: { grass: ['#7a7e66', '#5e6250'], tl: ['#8a8e92', '#6e7276', '#585c5c', '#74706a'] },
+    },
+    surfaces: [
+      { id: 'land', kind: 'wood', rest: true },
+      { id: 'hard', kind: 'grass', poly: hard },
+      { id: 'gravel', kind: 'plaza', poly: gravel },
+      { id: 'reeds-w', kind: 'bank', poly: reedsW },
+      { id: 'deck', kind: 'bridge', path: P.deck, width: P.deckW, over: 'water' },
+    ],
+    water: [{ id: 'pond', kind: 'lake', poly: pond, edge: 'none', ripple: 0.28, mirror: 0.75, rings: true }],
+    ground: [], place: [], scatter: [], actors: [], flocks: [],
   };
-  const edge = (x0, x1, y, amp, n, seed) => {
-    const r = sceneRnd(seed); let d = '';
-    for (let i = 0; i <= n; i++) d += (i ? 'L' : '') + Math.round(x0 + (x1 - x0) * i / n) + ' ' + Math.round(y + (r() - 0.5) * 2 * amp);
-    return d;
+  const Pl = data.place, S = data.scatter, A = data.actors;
+  // ---- the far west shore: layered lobed canopies, pines standing out against the sunset (far to near)
+  data.ground.push(
+    { layer: 'horizon', d: F.canopy(H - 4, 61, 12, 34, 0.1, H + 8, 0.05), fill: { lin: [[0, '@tl.0'], [1, '@tl.1']], y1: H - 50, y2: H + 8 } },
+    { layer: 'far', d: F.canopy(H + 1, 62, 8, 24, 0.06, H + 8, 0.12), fill: { lin: [[0, '@tl.3'], [1, '@tl.2']], y1: H - 32, y2: H + 8 } });
+  S.push({ obj: { 'plant.reed': 6, 'plant.bulrush': 1 }, on: 'reeds-w', d: [380, 700], n: 380, dist: 'screen', cluster: { centres: 16, spread: 14 }, seed: 31, anim: false, shadow: false, tint: { col: '#9a8a50', k: [0, 0.12] } });
+  S.push({ obj: { 'tree.far-birch': 3, 'tree.far-pine': 2, 'tree.bank-distant': 3, 'tree.bank-willow': 1 }, on: 'land', d: [560, 900], n: 90, dist: 'ground', cluster: { centres: 10, spread: 40 }, k: [1.0, 1.4], seed: 32, anim: false, shadow: false, tint: { col: '#7a8a8a', k: [0, 0.16] } });
+
+  // ---- the club's hard: the clubhouse, dinghies on trolleys and one upturned, willows and alders along the shore behind
+  Pl.push({ obj: 'building.fpv-sailing-hut', at: [13.5, 27], k: 1, flip: true, fix: true });
+  Pl.push({ obj: 'boat.fpv-dinghy-moored', at: [11.6, 22.5], k: 1, variant: 2, flip: true }, { obj: 'boat.fpv-dinghy-moored', at: [9.4, 30], k: 1, variant: 3 });
+  const tree = (obj, x, d, k, o) => Pl.push(Object.assign({ obj, at: [x, d], k, anim: false }, o || {}));
+  tree('tree.pond-willow', 24, 46, 1.1, { variant: 0 });
+  tree('tree.bank-alder', 30, 40, 1.0, { variant: 1, flip: true });
+  tree('tree.pond-oak', 40, 66, 1.2, { variant: 1 });
+  S.push({ obj: { 'tree.bank-alder': 2, 'tree.bank-willow': 2, 'tree.bank-oak': 2, 'tree.bank-birch': 1 }, on: 'hard', avoid: ['gravel'], d: [40, 220], n: 26, dist: 'ground', cluster: { centres: 6, spread: 8 }, gap: 'foot', k: [0.8, 1.2], seed: 33, anim: false });
+  S.push({ obj: { 'plant.grass-long': 4, 'plant.grass': 3, 'plant.reed': 2, 'plant.wildflowers': 1 }, on: 'hard', avoid: ['gravel'], d: [4.5, 60], n: 360, dist: 'screen', cluster: { centres: 12, spread: 1.5 }, k: [0.7, 1.15], seed: 34, anim: false, tint: { col: '#8a8a40', k: [0, 0.12] } });
+  // the near bank under the camera's right: tussock grass, reed and reedmace thick at the water's edge
+  S.push({ obj: { 'plant.grass-long': 3, 'plant.reed': 3, 'plant.bulrush': 1, 'plant.grass': 2 }, on: 'hard', avoid: ['gravel'], d: [3, 16], n: 160, dist: 'screen', cluster: { centres: 6, spread: 0.8 }, k: [0.8, 1.2], seed: 36, anim: false, species: 1 });
+  // the reed fringe along the hard's water edge
+  S.push({ obj: { 'plant.reed': 4, 'plant.bulrush': 2 }, on: 'hard', avoid: ['gravel'], d: [5, 60], n: 140, dist: 'screen', cluster: { centres: 8, spread: 0.8 }, k: [0.8, 1.15], seed: 35, anim: 'strip', species: 1 });
+
+  // ---- the pontoon and its fingers (this camera's perspective), the dinghies moored along them, sails down
+  Pl.push(...W.placements('structure.fpv-walk-v4'));
+  const moored = [[-6.4, 15.2, 1], [-6.9, 21.4, 0], [3.6, 17.6, 0]];
+  moored.forEach(([x, d, v], i) => Pl.push({ obj: 'boat.fpv-dinghy-moored', at: [x, d], k: 1, variant: v, flip: i % 2 === 1, fix: true }));
+  // a club member on the pontoon, a gull on its far end
+  Pl.push({ obj: 'person.walker', at: [-1.4, 17], k: 1, face: 'left' });
+  Pl.push({ obj: 'bird.gull', at: [-2.9, 27.6], k: 1.1 });
+
+  // ---- the life on the water: the last dinghy in across the sun's road, swans by the pontoon, grebes, coots, gulls
+  A.push({ obj: 'boat.dinghy', ground: [[-60, 160], [-20, 110], [-8, 70], [-6, 45]], speedM: 1.2, loop: 'pingpong', variant: 1, seed: 41, offset: 0.3 });
+  A.push({ obj: 'boat.dinghy', ground: [[40, 260], [-60, 300], [-140, 280]], speedM: 1.4, loop: 'pingpong', variant: 2, seed: 42, offset: 0.7 });
+  A.push({ obj: 'bird.swan', ground: [[-2.6, 32], [-6, 30], [-9, 33]], speedM: 0.12, loop: 'pingpong', k: 1.05, seed: 43 });
+  A.push({ obj: 'bird.swan', ground: [[-3.4, 33.4], [-6.8, 31.4], [-9.8, 34.4]], speedM: 0.12, loop: 'pingpong', k: 0.95, seed: 44, offset: 0.08 });
+  A.push({ obj: 'bird.grebe', ground: [[-30, 70], [-16, 76]], speedM: 0.2, loop: 'pingpong', seed: 45, offset: 0.5 });
+  A.push({ obj: 'bird.coot', ground: [[8, 50], [2, 56], [-4, 52]], speedM: 0.2, loop: 'pingpong', seed: 46, offset: 0.2 });
+  Pl.push({ obj: 'bird.gull', at: [-12, 48], k: 1, variant: 1, flip: true }, { obj: 'bird.coot', at: [-22, 96], k: 1.1 }, { obj: 'bird.grebe', at: [12, 120], k: 1.1, flip: true });
+  // swallows over the water in summer, bats and mist after dusk, geese going over to roost
+  const sw = (pts, sp, s, v, off, seed) => A.push({ obj: 'bird.wp-swallow', layer: 'mid', path: pts, speed: sp, loop: 'fade', s, variant: v, seed, offset: off });
+  sw([[-160, 540], [240, 566], [520, 528], [820, 572], [1100, 540], [1400, 580], [1760, 556]], 300, 0.7, 0, 0.1, 51);
+  const bat = (cx, cy, rx, ry, sp, s, v, seed) => {
+    const r = F.rnd(seed), pts = [];
+    for (let i = 0; i <= 20; i++) { const a = i / 20 * Math.PI * 2; pts.push([R1(cx + Math.cos(a) * rx * (0.7 + r() * 0.5)), R1(cy + Math.sin(a * 2) * ry * (0.6 + r() * 0.6))]); }
+    pts[20] = pts[0];
+    A.push({ obj: 'animal.wp-bat', layer: 'near', path: pts, speed: sp, loop: 'loop', s, variant: v, seed, offset: R2(r()) });
   };
-  const reeds = { 'plant.reed': 5, 'plant.bulrush': 2 };
-  return {
-    v: 1, id: 'fleet-pond-4',
-    view: { lat: 51.29, lon: -0.83, heading: 285, fov: 92, horizon: HOR, lift: 1 },
-    at: 'sunset', season: 'auto', tropic: 'summer', setting: 'natural', weather: 'live', particles: 'season',
-    palette: pal,
-    layers: [{ id: 'horizon', depth: 0.08, haze: 0.4 }, { id: 'far', depth: 0.2, haze: 0.22 }, { id: 'mid', depth: 0.45, haze: 0.1 }, { id: 'near', depth: 0.75, haze: 0.04 }, { id: 'fore', depth: 1, haze: 0 }, { id: 'front', depth: 1.25, haze: 0 }],
-    sky: { stars: 240, clouds: { n: 4, y: [40, 340], speed: 5 }, sunR: 26, moonR: 18 },
-    ground: [
-      // the wood to the west (left) and the low land beyond the railway (right)
-      { layer: 'horizon', d: 'M-160 ' + (SHORE + 2) + 'L' + edge(-160, 1760, 506, 5, 26, 41) + 'L1760 ' + (SHORE + 2) + 'Z', fill: '@wood.0' },
-      // the rising ground of the town beyond the railway (the houses and their trees stand on it)
-      { layer: 'horizon', d: 'M620 ' + (SHORE + 2) + 'L620 490Q700 478 800 476L' + edge(800, 1760, 474, 3, 16, 43) + 'L1760 ' + (SHORE + 2) + 'Z', fill: '@bank.0' },
-      { layer: 'far', d: 'M-160 ' + (SHORE + 4) + 'L' + edge(-160, 1760, SHORE - 3, 2, 30, 42) + 'L1760 ' + (SHORE + 4) + 'Z', fill: '@bank.1' },
-      // the carr bank and reedbed on the left
-      { layer: 'near', d: 'M-160 900V560Q120 570 360 620Q540 680 600 780Q620 850 560 900Z', fill: { lin: [[0, '@bank.0'], [1, '@mud.0']], y1: 560, y2: 900 } },
-      // the right-hand shore under the platform
-      { layer: 'fore', d: 'M1160 900Q1240 830 1420 812Q1600 800 1760 806V900Z', fill: { lin: [[0, '@bank.0'], [1, '@mud.1']], y1: 800, y2: 900 } },
-    ],
-    water: [
-      { layer: 'far', d: 'M-160 ' + SHORE + 'H1760V900H-160Z', y0: SHORE, y1: 900, base: ['#8ab6c4', '#4f8ca0', '#2c5f74'], reflect: true, shimmer: 30, lightPath: true },
-    ],
-    place: [
-      // the railway embankment along the north shore (right), birches on its slope
-      { obj: 'rail.embankment', x: 650, y: SHORE + 2, s: 0.56, variant: 0, layer: 'far', seed: 1 },
-      { obj: 'rail.embankment', x: 884, y: SHORE + 2, s: 0.56, variant: 1, flip: true, layer: 'far', seed: 2 },
-      { obj: 'rail.embankment', x: 1118, y: SHORE + 2, s: 0.56, variant: 0, layer: 'far', seed: 3 },
-      { obj: 'rail.embankment', x: 1352, y: SHORE + 2, s: 0.56, variant: 1, flip: true, layer: 'far', seed: 4 },
-      { obj: 'rail.embankment', x: 1586, y: SHORE + 2, s: 0.56, variant: 0, layer: 'far', seed: 5 },
-      // Fleet's houses beyond the line (windows lit from real dusk)
-      { obj: 'building.cottage', x: 1210, y: 470, s: 0.24, variant: 0, layer: 'horizon', seed: 7 },
-      { obj: 'building.cottage', x: 1290, y: 472, s: 0.22, variant: 0, flip: true, layer: 'horizon', seed: 8 },
-      { obj: 'building.cottage', x: 1420, y: 470, s: 0.24, variant: 0, layer: 'horizon', seed: 9 },
-      { obj: 'building.cottage', x: 1530, y: 474, s: 0.2, variant: 0, flip: true, layer: 'horizon', seed: 10 },
-      // the carr on the left bank: willows, alders and a birch (the near willow sways)
-      { obj: 'tree.pond-willow', x: 380, y: 640, s: 1.0, variant: 0, layer: 'near', seed: 11, anim: { sway: { k: 0.5 } } },
-      { obj: 'tree.pond-willow', x: 300, y: 610, s: 0.85, flip: true, variant: 1, layer: 'near', seed: 12, anim: false },
-      { obj: 'tree.pond-alder', x: 100, y: 640, s: 1.0, variant: 0, layer: 'near', seed: 13, anim: false },
-      { obj: 'tree.pond-alder', x: 220, y: 600, s: 0.8, flip: true, variant: 2, layer: 'near', seed: 14, anim: false },
-      { obj: 'tree.pond-oak', x: -60, y: 600, s: 1.1, variant: 1, layer: 'near', seed: 15, anim: false },
-      { obj: 'tree.pond-birch', x: 500, y: 650, s: 0.8, variant: 1, layer: 'near', seed: 16, anim: false },
-      // the signature: the platform along the right-hand shore, side-on, with its bench and board
-      { obj: 'landmark.fleet-pond-boardwalk', x: 1420, y: 832, s: 0.74, variant: 3, layer: 'fore', seed: 17 },
-      // the alder over the platform at the right edge
-      { obj: 'tree.pond-alder', x: 1600, y: 880, s: 1.45, variant: 1, flip: true, layer: 'front', seed: 18, anim: { sway: { k: 0.5 } } },
-      // a birder at the platform rail, glassing the water
-      { obj: 'person.walker', x: 1250, y: 790, s: 0.9, variant: 2, layer: 'fore', seed: 19, anim: false },
-      // birds at rest that paddle and turn
-      { obj: 'bird.swan', x: 650, y: 652, s: 0.56, variant: 0, layer: 'mid', seed: 20 },
-      { obj: 'bird.swan', x: 712, y: 664, s: 0.52, flip: true, variant: 1, layer: 'mid', seed: 21 },
-      { obj: 'bird.goose', x: 1070, y: 550, s: 0.26, variant: 0, layer: 'mid', seed: 22 },
-      { obj: 'bird.goose', x: 1160, y: 556, s: 0.25, flip: true, variant: 1, layer: 'mid', seed: 23 },
-      { obj: 'bird.goose', x: 1262, y: 548, s: 0.24, variant: 0, layer: 'mid', seed: 24 },
-      { obj: 'bird.grebe', x: 780, y: 580, s: 0.3, layer: 'mid', seed: 25 },
-      { obj: 'bird.grebe', x: 1076, y: 604, s: 0.32, flip: true, layer: 'mid', seed: 26 },
-      { obj: 'bird.coot', x: 880, y: 634, s: 0.34, layer: 'mid', seed: 27 },
-      { obj: 'bird.coot', x: 1380, y: 612, s: 0.32, flip: true, layer: 'mid', seed: 28 },
-      { obj: 'bird.mallard', x: 950, y: 748, s: 0.56, variant: 0, layer: 'mid', seed: 29 },
-      { obj: 'bird.mallard', x: 1090, y: 762, s: 0.54, variant: 1, flip: true, layer: 'mid', seed: 30 },
-      { obj: 'water.fish-ring', x: 1220, y: 650, s: 0.6, layer: 'mid', seed: 31 },
-      { obj: 'water.fish-ring', x: 860, y: 600, s: 0.45, variant: 1, layer: 'mid', seed: 32 },
-      // the wet margin at the foot of the carr
-      { obj: 'water.edge', x: 540, y: 720, s: 0.6, variant: 0, layer: 'near', seed: 33 },
-    ],
-    scatter: [
-      // the wood to the west (left), and the birches and scrub along the railway (right)
-      { obj: 'tree.pond-wood', layer: 'horizon', seed: 41, area: { rect: [-150, HOR - 4, 760, SHORE - 2] }, n: 12, minGap: 60,
-        s: [0.3, 0.5], sByY: [[HOR, 0.85], [SHORE, 1.15]], flip: 0.5, variant: [0, 1], anim: false },
-      { obj: 'tree.pond-birch', layer: 'far', seed: 42, area: { rect: [640, SHORE - 30, 1760, SHORE - 20] }, n: 7, minGap: 120, s: [0.18, 0.3], flip: 0.5, variant: 'random', anim: false },
-      { obj: 'tree.pond-oak', layer: 'horizon', seed: 43, area: { rect: [1000, 470, 1760, 478] }, n: 9, minGap: 70, s: [0.16, 0.26], flip: 0.5, variant: [0, 1], anim: false },
-      // the far reed fringe along the west shore (mirrored)
-      { obj: { 'plant.reed': 3, 'plant.bulrush': 1 }, layer: 'far', seed: 44, area: { rect: [-150, SHORE - 2, 1760, SHORE + 4] }, n: 100, minGap: 9, s: [0.14, 0.24], flip: 0.5, variant: 0, tint: { col: '#a09060', k: [0, 0.1] }, anim: false },
-      // the reedbed on the left bank, round the carr (static), and its grasses
-      { obj: reeds, layer: 'near', seed: 45, area: { poly: [[-160, 640], [300, 660], [560, 760], [600, 900], [-160, 900]] }, n: 360, minGap: 10,
-        s: [0.7, 1.05], sByY: [[640, 0.7], [900, 1.45]], flip: 0.5, variant: 'random', anim: false },
-      // water lilies off the reed edge
-      { obj: 'water.lily', layer: 'near', seed: 46, area: { poly: [[580, 700], [800, 690], [820, 800], [600, 810]] }, n: 9, minGap: 30, s: [0.32, 0.55], flip: 0.5, variant: [0, 1], tint: { col: '#3a6a3a', k: [0, 0.1] }, anim: false },
-      // grass and reeds along the right-hand shore under the platform
-      { obj: { 'plant.grass': 3, 'plant.reed': 1 }, layer: 'fore', seed: 47, area: { poly: [[1180, 880], [1260, 830], [1760, 812], [1760, 900], [1180, 900]] }, n: 40, minGap: 16,
-        s: [0.7, 1.0], flip: 0.5, variant: 'random', tint: { col: '#a0a060', k: [0, 0.1] }, anim: false },
-      // the foreground reeds at the bottom left, swaying in wind strips
-      { obj: { 'plant.reed': 4, 'plant.bulrush': 3, 'plant.grass': 1 }, layer: 'front', seed: 48, area: { poly: [[-160, 820], [520, 850], [560, 990], [-160, 990]] }, n: 120, minGap: 14,
-        s: [1.2, 1.7], flip: 0.5, variant: 'random', anim: 'strip' },
-    ],
-    actors: [
-      // a South Western train along the embankment (lit after dusk)
-      { obj: 'rail.train', layer: 'far', path: [[300, SHORE - 30], [2400, SHORE - 30]], speed: 70, loop: 'loop', s: 0.34, seed: 51, offset: 0.35, variant: 1 },
-      // a walker with a dog along the platform and back
-      { obj: 'person.dog-walker', layer: 'fore', path: [[1310, 786], [1520, 776]], speed: 8, loop: 'pingpong', s: 0.92, seed: 52, offset: 0.5, variant: 3 },
-      // swimmers crossing the open water
-      { obj: 'bird.swan', layer: 'mid', path: [[1300, 590], [600, 604]], speed: 5, loop: 'pingpong', s: 0.36, seed: 53, offset: 0.2 },
-      { obj: 'bird.grebe', layer: 'mid', path: [[700, 700], [1000, 680]], speed: 4, loop: 'pingpong', s: 0.4, seed: 54, offset: 0.6 },
-      { obj: 'bird.grebe', layer: 'mid', path: [[730, 712], [1030, 690]], speed: 4, loop: 'pingpong', s: 0.38, seed: 55, offset: 0.55 },
-      { obj: 'bird.coot', layer: 'mid', path: [[1100, 700], [1300, 690]], speed: 6, loop: 'pingpong', s: 0.4, seed: 56, offset: 0.3 },
-      { obj: 'bird.moorhen', layer: 'mid', path: [[640, 760], [780, 740]], speed: 4, loop: 'pingpong', s: 0.44, seed: 57, offset: 0.8 },
-      // a kingfisher's dash along the reed edge, dragonflies over the water
-      { obj: 'bird.kingfisher-flight', layer: 'near', path: [[-100, 700], [500, 720], [1100, 760], [1800, 740]], speed: 170, loop: 'loop', s: 0.9, seed: 58, offset: 0.4 },
-      { obj: 'animal.dragonfly', layer: 'near', path: [[700, 720], [800, 700], [760, 760]], speed: 40, loop: 'pingpong', s: 0.8, seed: 59 },
-      { obj: 'animal.dragonfly', layer: 'near', path: [[1040, 690], [1140, 670], [1100, 720]], speed: 44, loop: 'pingpong', s: 0.7, seed: 60, variant: 1 },
-    ],
-    flocks: [
-      { obj: 'bird.goose-flight', n: 7, area: [100, 160, 1400, 360], speed: 34, s: 0.34, seed: 61, layer: 'horizon' },
-      { obj: 'bird.small-flight', n: 5, area: [400, 220, 1300, 420], speed: 46, s: 0.45, seed: 62, layer: 'horizon' },
-    ],
-  };
+  bat(600, 340, 240, 70, 150, 1, 0, 61); bat(1000, 300, 200, 60, 170, 0.9, 1, 62); bat(1300, 420, 160, 50, 140, 0.8, 0, 63);
+  Pl.push({ obj: 'sky.wp-mist', x: 560, y: H + 6, s: 1.1, layer: 'far', variant: 0, pin: true, anim: false },
+    { obj: 'sky.wp-mist', x: 1080, y: H + 10, s: 1, layer: 'mid', variant: 1, flip: true, pin: true, anim: false });
+  A.push({ obj: 'sky.wp-mist', layer: 'mid', path: [[-60, H + 16], [1660, H + 16]], speed: 7, loop: 'pingpong', s: 1, variant: 3, seed: 64, offset: 0.3 });
+  data.flocks.push({ obj: 'bird.goose-flight', n: 7, area: [200, 120, 1400, 320], speed: 32, s: 0.32, seed: 65, layer: 'horizon' });
+
+  // ---- framing: willow fronds hanging into the top left, reed and reedmace in the bottom corners
+  Pl.push({ obj: 'plant.fpv-willow-fronds', x: -60, y: -20, s: 1.15, pin: true, layer: 'front', shadow: false, anim: { sway: { k: 0.8 } } });
+  Pl.push({ obj: 'plant.reed', x: 60, y: 960, s: 2.8, pin: true, layer: 'front', shadow: false, anim: false },
+    { obj: 'plant.bulrush', x: 180, y: 970, s: 2.4, pin: true, layer: 'front', shadow: false, anim: false, flip: true },
+    { obj: 'plant.reed', x: -40, y: 980, s: 3.2, pin: true, layer: 'front', shadow: false, anim: false, variant: 2 },
+    { obj: 'plant.grass-long', x: 1580, y: 950, s: 2.4, pin: true, layer: 'front', shadow: false, anim: false });
+  return data;
 }

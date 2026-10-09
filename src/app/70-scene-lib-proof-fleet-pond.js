@@ -676,24 +676,26 @@ function sceneProofFleetPondPass() {
     }
     return out;
   }
-  // ---- the trains' reflections in the open water (lit windows at night): the flow's own sprite, mirrored about the water
-  // level under the track, clipped to the lake, softened; the far reeds and the shore stay in front ----
+  // ---- the trains' reflections in the open water (lit windows at night): the flow's own sprite, mirrored about the lake's
+  // far waterline right under the train, clipped to the lake, faint and broken by the ripple; the far reeds stay in front ----
   let waterClip = null, waterClipD = null;
   function trainReflMovers(env, t) {
     const L = env.Lnow || env.L, out = [], C = env.C, w = C.water && C.water[0];
     if (!w || typeof env.sprite !== 'function') return out;
     for (const a of env.flowNow || []) {
       if (a.kind !== 'train' && !/train/.test(a.o || '')) continue;
-      // (shared fix, 9 Oct) the mirror row: the one the water pass mirrors the embankment, the reeds and the woods about at the
-      // train's column (the lake's far edge), so the train's reflection stands on its mirrored embankment, just below the
-      // reeds' reflection, instead of floating in the water on a row of its own (the water level under the track)
+      // (user request, 9 Oct) the mirror line is the far bank's waterline under the train (the highest water row across the
+      // train's width: the lake's far edge, from the water pass's own rows), and the mirrored train hangs straight from it:
+      // mirrored about the water level under the track it sat a whole embankment lower, read as too low
       const yw = proj(a.x, a.d, HW)[1];
       let ym = yw;
       const R = env.water && env.water.regions && (env.water.regions.find(r => r.w === w) || env.water.regions[0]);
       if (R && typeof _scwaFarRows === 'function' && env.cam) {
         if (!R._pfpRows || R._pfpRowsK !== env.vs + ':' + env.ox + ':' + env.oy) { R._pfpRows = _scwaFarRows(R, env.cam, env.vs, env.ox, env.oy); R._pfpRowsK = env.vs + ':' + env.ox + ':' + env.oy; }
-        const Xd = a.X * env.vs + env.ox, row = R._pfpRows.find(r => Xd >= r[0] && Xd < r[1]);
-        if (row && Number.isFinite(row[2])) ym = Math.max(yw, (row[2] - env.oy) / env.vs);
+        const half = (a.sp && a.sp.w ? a.sp.w * 0.5 : 60) * a.s * env.vs, Xd = a.X * env.vs + env.ox;
+        let top = Infinity;
+        for (const r of R._pfpRows) if (r[1] > Xd - half && r[0] < Xd + half && Number.isFinite(r[2])) top = Math.min(top, r[2]);
+        if (Number.isFinite(top)) ym = Math.max(yw, (top - env.oy) / env.vs);
       }
       out.push({ y: yw, d: Math.max(55, a.d - 30), draw(c) {
         const vs = env.vs, ox = env.ox, oy = env.oy, b = 2 ** (Math.ceil(Math.log2(Math.max(1e-3, a.s)) * 2) / 2);
@@ -703,19 +705,33 @@ function sceneProofFleetPondPass() {
         c.save();
         c.setTransform(vs, 0, 0, vs, ox, oy);
         if (waterClip) c.clip(waterClip);
-        const night = L ? (L.dark || 0) : 0;
-        // a softened mirror (a sharp, near-opaque copy read as a second train): fainter, broken up more by the ripple
-        c.globalAlpha = (0.24 + 0.3 * night) * (a.alpha == null ? 1 : a.alpha);
-        // eight horizontal slices, each shifted by its own ripple: the mirror breaks up as it nears the camera
-        c.setTransform(vs * a.s * (a.flip ? -1 : 1), 0, 0, -vs * a.s * 0.85, vs * a.X + ox, vs * (2 * ym - a.Y) + oy);
-        const n = 8, ch = sp.c.height / n, lh = sp.h / n;
-        for (let j = 0; j < n; j++) {
-          const off = Math.sin(t * 2.1 + j * 1.3 + a.x * 0.1) * (1 + (n - 1 - j) * 1.1) / Math.max(0.05, a.s);
-          c.drawImage(sp.c, 0, j * ch, sp.c.width, ch, sp.x0 + off, sp.y0 + j * lh, sp.w, lh);
+        const night = L ? (L.dark || 0) : 0, al = a.alpha == null ? 1 : a.alpha, fx = vs * a.s * (a.flip ? -1 : 1), base = vs * (ym + 1.5) + oy;
+        // the slices of the mirror (ten, top of the sprite first = the far end of the reflection), each shifted by its own
+        // ripple (0.4 to 2 units: small, so the lit windows smear down rather than sideways), a thin dark gap between them
+        // (the ripple's troughs), fading away from the waterline
+        const n = 10, ch = sp.c.height / n, lh = sp.h / n;
+        const slices = (ky, a0, dy, tk) => {
+          c.setTransform(fx, 0, 0, -vs * a.s * ky, vs * a.X + ox, base + dy * vs);
+          for (let j = 0; j < n; j++) {
+            const off = Math.sin(t * 2.1 * tk + j * 1.3 + a.x * 0.1) * (0.4 + (n - 1 - j) * 0.18) / Math.max(0.05, a.s);
+            // each slice flickers and thins with the ripple (no even grid of dashes)
+            const ph = Math.sin(t * 1.7 * tk + j * 2.3 + dy), g = 0.62 + 0.24 * Math.sin(t * 1.3 + j * 3.7 + dy * 2);
+            c.globalAlpha = a0 * (0.4 + 0.6 * j / (n - 1)) * (0.75 + 0.25 * ph);
+            c.drawImage(sp.c, 0, j * ch, sp.c.width, ch * g, sp.x0 + off, sp.y0 + j * lh, sp.w, lh * g);
+          }
+        };
+        // the body: faint (a sharp copy read as a second train)
+        slices(0.8, (0.2 + 0.08 * night) * al, 0, 1);
+        let k = n;
+        // after dark the lit windows smear down the water: three more, added, each stretched and lower, fainter
+        if (night > 0.3 && L && L.windows) {
+          c.globalCompositeOperation = 'lighter';
+          for (let i = 1; i <= 3; i++) { slices(0.8 + 0.42 * i, 0.16 * night * al * (1 - 0.24 * i), 0.7 * i, 1 + 0.15 * i); k += n; }
+          c.globalCompositeOperation = 'source-over';
         }
         c.restore();
         c.globalAlpha = 1;
-        return n;
+        return k;
       } });
     }
     return out;

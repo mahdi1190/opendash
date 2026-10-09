@@ -36,12 +36,54 @@ const _scYc = (function () {
     return out;
   };
   return {
-    /** The sandy ride between y0 and y1 (so each depth layer draws its own stretch): a ribbon polygon. */
+    /** The sandy ride between y0 and y1 (so each depth layer draws its own stretch): a ribbon polygon. Its edges are
+     *  ragged (worn, the heather creeping in and the sand spilling out), seeded by y so the layers' stretches meet. */
     track(pts, y0, y1) {
       const s = samples(pts).filter(p => p[1] >= y0 - 3 && p[1] <= y1 + 3);
       if (s.length < 2) return '';
-      const L = s.map(([x, y, w]) => `${R(x - w / 2)} ${R(y)}`), Rr = s.slice().reverse().map(([x, y, w]) => `${R(x + w / 2)} ${R(y)}`);
+      const wob = (y, w, k) => w * (0.05 * Math.sin(y * 0.07 + k) + 0.035 * Math.sin(y * 0.19 + 2 * k) + 0.015 * Math.sin(y * 0.41 + k));
+      const L = s.map(([x, y, w]) => `${R(x - w / 2 + wob(y, w, 1))} ${R(y)}`), Rr = s.slice().reverse().map(([x, y, w]) => `${R(x + w / 2 + wob(y, w, 4))} ${R(y)}`);
       return 'M' + L.join('L') + 'L' + Rr.join('L') + 'Z';
+    },
+    /** The ride's wear between y0 and y1: two wheel ruts (worn darker) either side of a raised, paler centre. */
+    ruts(pts, y0, y1) {
+      const s = samples(pts).filter(p => p[1] >= y0 - 3 && p[1] <= y1 + 3);
+      if (s.length < 2) return { ruts: '', crown: '' };
+      const rib = (off, k) => {
+        const L = s.map(([x, y, w]) => `${R(x + w * off - w * k / 2 + w * 0.025 * Math.sin(y * 0.05))} ${R(y)}`), Rr = s.slice().reverse().map(([x, y, w]) => `${R(x + w * off + w * k / 2 + w * 0.025 * Math.sin(y * 0.05))} ${R(y)}`);
+        return 'M' + L.join('L') + 'L' + Rr.join('L') + 'Z';
+      };
+      return { ruts: rib(-0.25, 0.08) + rib(0.23, 0.075), crown: rib(-0.01, 0.12) };
+    },
+    /**
+     * The heath drifts (ground.yc-heath-drift): dense, clustered mats of ling, bell heather, moor-grass and dwarf gorse that
+     * cover the ground of a band (noise-masked, so the kinds come in patches, never in rows). o: { far, mid, near, fore: [y0, y1];
+     * avoid: { band: [areas] }; n: { band: count }; seed; x0, x1 }.
+     */
+    drifts(o) {
+      const x0 = o.x0 == null ? -160 : o.x0, x1 = o.x1 == null ? 1760 : o.x1, s0 = o.seed || 0, out = [];
+      const n = Object.assign({ far: 90, mid: 110, near: 80, fore: 40 }, o.n || {}), k0 = o.k == null ? 0.7 : o.k;   // k0: the density (performance)
+      const sc = { far: [0.32, 0.5], mid: [0.5, 0.8], near: [0.75, 1.1], fore: [1.15, 1.6] }, gap = { far: 22, mid: 30, near: 50, fore: 80 };
+      // the ride (o.ride: its centreline points) stays clear: the big drifts keep a wide berth (their half width), small
+      // ones fill the strip beside it up to a narrow berth, so the heather comes right to the sand's edge
+      const padW = { far: 70, mid: 120, near: 180, fore: 260 }, padN = { far: 20, mid: 32, near: 46, fore: 60 }, scE = { far: [0.12, 0.18], mid: [0.18, 0.28], near: [0.26, 0.38], fore: [0.36, 0.48] };
+      ['far', 'mid', 'near', 'fore'].forEach((k, i) => {
+        if (!o[k] || !(o[k][1] > o[k][0])) return;
+        const y0 = o[k][0], y1 = o[k][1], rect = { rect: [x0, y0, x1, y1] }, sBy = [[y0, 0.8], [y1, 1.2]];
+        const av = ((o.avoid && o.avoid[k]) || []).slice(), avE = av.slice();
+        let edge = null;
+        if (o.ride) {
+          const w = this.around(o.ride, y0 - 12, y1 + 12, padW[k]);
+          if (w.length > 4) { av.push({ poly: w }); edge = { poly: w }; avE.push({ poly: this.around(o.ride, y0 - 12, y1 + 12, padN[k]) }); }
+        }
+        // ling and bell heather everywhere; moor-grass and dwarf gorse in patches (noise masks)
+        n[k] = Math.round(n[k] * k0);
+        out.push({ obj: 'ground.yc-heath-drift', layer: k, seed: s0 + 40 + i, area: rect, n: n[k], minGap: gap[k], s: sc[k], sByY: sBy, flip: 0.5, variant: [0, 1], anim: false, mask: { avoid: av } });
+        out.push({ obj: 'ground.yc-heath-drift', layer: k, seed: s0 + 50 + i, area: rect, n: Math.round(n[k] * 0.45), minGap: gap[k], s: sc[k], sByY: sBy, flip: 0.5, variant: 2, anim: false, mask: { avoid: av, noise: { scale: 300, cut: 0.55 } } });
+        out.push({ obj: 'ground.yc-heath-drift', layer: k, seed: s0 + 60 + i, area: rect, n: Math.round(n[k] * 0.35), minGap: gap[k], s: sc[k], sByY: sBy, flip: 0.5, variant: 3, anim: false, mask: { avoid: av, noise: { scale: 220, cut: 0.6 } } });
+        if (edge) out.push({ obj: 'ground.yc-heath-drift', layer: k, seed: s0 + 70 + i, area: edge, n: Math.round(n[k] * 0.9), minGap: Math.round(gap[k] * 0.35), s: scE[k], sByY: sBy, flip: 0.5, variant: [0, 1, 3], anim: false, mask: { avoid: avE } });
+      });
+      return out;
     },
     /** The track's centreline as an actor path (from far to near), every `step` units of y. */
     path(pts, y0, y1, step = 24) {
@@ -118,11 +160,11 @@ const _scYc = (function () {
     },
     /** The heath's colours by season: land (far, mid, near), sand (dark, mid, light), the woods' foot and the pond bank. */
     palette: {
-      base: { wood: ['#4a5e44', '#3a4c36'], bank: ['#4a4430', '#3a3424'], mound: ['#6a5660', '#4e4440'] },
+      base: { wood: ['#4a5e44', '#3a4c36'], bank: ['#4a4430', '#3a3424'], mound: ['#6a5660', '#4e4440'], rut: ['#a88c64', '#c0a67c'], crown: ['#e2d0a8', '#d4c098'] },
       spring: { heath: ['#7c8a5a', '#5f7340', '#46582f'], sand: ['#b89a6c', '#d6bf92', '#efe0bc'], mound: ['#5e6646', '#46503a'] },
       summer: { heath: ['#7a7262', '#5e5c44', '#44482e'], mound: ['#7e5a74', '#5e4658'], sand: ['#b89a6c', '#d6bf92', '#efe0bc'] },
       autumn: { heath: ['#8c765a', '#6e5640', '#50402e'], sand: ['#b0946a', '#cfb68c', '#e8d6b0'], wood: ['#5a5a3c', '#46462e'], mound: ['#6e4c3a', '#523a2c'] },
-      winter: { heath: ['#8c8478', '#6a5c4c', '#4c4236'], sand: ['#a4927a', '#c4b49a', '#e2d6c0'], wood: ['#4c5450', '#3c4440'], mound: ['#6e6058', '#54483e'] },
+      winter: { heath: ['#8c8478', '#6a5c4c', '#4c4236'], sand: ['#a4927a', '#c4b49a', '#e2d6c0'], wood: ['#4c5450', '#3c4440'], mound: ['#6e6058', '#54483e'], rut: ['#7e6c58', '#9a8870'], crown: ['#c8bca4', '#b4a890'] },
     },
     /**
      * Make a view's seasonal item composed (called by the view files at load): the scene is built lazily, once,

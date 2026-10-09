@@ -1,4 +1,6 @@
 /* ============================================================
+   SUPERSEDED (kept, no longer called): the four views were redrawn on the scene engine v2 by sceneCanalViewV2
+   (70-scene-lib-canal-views.js); what follows is the old one-point-perspective composer.
    COMPOSED SCENES: the Basingstoke Canal at Fleet, the shared canal composer
    (docs/dev/SCENE_ENGINE.md, sections 3 and 5). PURE: one function, run
    lazily by the four view files' scene thunks

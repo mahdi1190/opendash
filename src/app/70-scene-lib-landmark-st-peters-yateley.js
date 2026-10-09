@@ -7,8 +7,8 @@
 
    St Peter's Church, Church End, Yateley (seen across Yateley Green): a long
    stone-and-flint nave and a lower chancel under clay-tile roofs, a timber
-   south porch, and the 15th-century timber-framed west tower: a red-painted,
-   weatherboarded lower stage under a tiled pentice, a dark boarded belfry with
+   south porch, and the 15th-century timber-framed west tower: a brick-nogged
+   lower stage (oak frame, brick infill: the listing, NHLE 1272232) under a tiled pentice, a dark boarded belfry with
    louvres and a clock on a diamond board, and a shingled pyramid spire with a
    weathercock. The same form as the nature kit's K.stPeters (the rich Yateley
    Green views), refined: buttresses, lancet windows with tracery, tile courses,
@@ -82,9 +82,12 @@
       push(['@timber.1', 'M-114 0V-21H-88V0z'], ['@door', 'M-106 0V-13q5-6 10 0V0z'], { s: '@timber.0', w: 1.4, d: 'M-114 0V-21M-88 0V-21M-114-21H-88M-114-11L-108-21M-88-11L-94-21' });
       push(['@roof.0', 'M-119-19L-101-38L-83-19z'], ['@roof.1', 'M-101-38L-83-19H-92z', .7], { s: '@timber.0', w: 1.6, d: 'M-118-20L-101-36L-84-20' });
       push({ f: '#3a3530', d: rect(-102.6, -27, 3.2, 4) }, { f: '@glass.1', d: rect(-102, -26.4, 2, 2.8), glow: 'lamp' });
-      // the tower, lower stage: red-painted weatherboarding, its joints, the west door, shade on the right
+      // the tower, lower stage: the brick infill, the west door, shade on the right
       push(['@red.0', 'M-28 0V-32H28V0z'], ['@red.1', 'M10 0V-32H28V0z', .55], ['@red.2', 'M-28-32H-10V-29H-28z', .5]);
-      push({ s: '@red.1', w: .9, op: .6, d: Array.from({ length: 7 }, (_, i) => `M-28 ${-4 - i * 4}H28`).join('') });
+      // brick-nogged (the listing: the timber frame of the lower stage is filled with brick): brick courses, then the
+      // dark oak frame over them (corner posts, studs, a mid rail and the long braces)
+      push({ s: '@red.1', w: .6, op: .5, detail: true, d: Array.from({ length: 10 }, (_, i) => `M-28 ${-3 - i * 3}H28`).join('') });
+      push({ s: '@timber.0', w: 2.2, d: 'M-27 0V-32M27 0V-32M-14 0V-32M14 0V-32M-28-16H28M-27-2L-14-16M27-2L14-16M-14-17L-27-31M14-17L27-31' });
       push(['@door', 'M-7 0V-15q7-7 14 0V0z'], { s: '#c28a3a', w: .6, d: 'M0-20V0' }, ['@timber.0', rect(-9, -16, 18, 2)]);
       // the pentice: a tiled skirt roof round the tower
       push(['@roof.0', 'M-38-28L-21-48H21L38-28z'], ['@roof.1', 'M21-48L38-28H22z', .7], { s: '@roof.1', w: .8, op: .5, d: 'M-34-32H34M-29-38H29M-25-43H25' });

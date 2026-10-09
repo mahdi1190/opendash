@@ -19,8 +19,9 @@
    PURE: defines one function; it runs once (through the item's thunk).
    ============================================================ */
 function sceneUkWyndhamsPoolDetail() {
-  const { crowns, one, T, palette, layers, sky, farWoods } = sceneUkWyndhamsPoolKit();
+  const { one, T, palette, layers, sky, farShore } = sceneUkWyndhamsPoolKit();
   const WL = 504;   // the far waterline
+  const far = farShore(WL, 61, { hide: [[1560, 1800]] });
   const bank = 'M-160 766Q200 826 420 862Q700 892 980 834Q1180 784 1420 704Q1560 650 1760 640V900H-160Z';
   return {
     v: 1,
@@ -34,9 +35,8 @@ function sceneUkWyndhamsPoolDetail() {
     palette,
     layers,
     ground: [
-      { layer: 'horizon', d: crowns(61, 420, 28, WL + 2), fill: { lin: [[0, '@hill.0'], [1, '@hill.1']], x1: 0, y1: 420, x2: 0, y2: WL } },
-      { layer: 'far', d: crowns(62, 448, 24, WL + 2, -160, 1760, 34, 90), fill: { lin: [[0, '@shore.0'], [1, '@shore.1']], x1: 0, y1: 446, x2: 0, y2: WL } },
-      { layer: 'mid', d: `M-160 ${WL - 6}Q400 ${WL - 10} 800 ${WL - 4}T1760 ${WL - 7}V${WL + 8}H-160Z`, fill: { lin: [[0, '@shore.0'], [1, '@mud.0']], x1: 0, y1: WL - 10, x2: 0, y2: WL + 8 } },
+      // the far shore: lobed woods, Scots pines standing out of them
+      ...far.ground,
       // the reed island off the far right shore
       { layer: 'mid', d: 'M1440 552Q1470 536 1560 538Q1650 540 1660 552Q1600 560 1540 560Q1470 560 1440 552Z', fill: '@mud.0' },
       // the near bank and the path climbing it
@@ -55,11 +55,22 @@ function sceneUkWyndhamsPoolDetail() {
       { obj: 'ground.log', x: 560, y: 582, s: 0.36, layer: 'mid', variant: 0, seed: 223, flip: true },
       { obj: 'ground.log', x: 1420, y: 868, s: 0.8, layer: 'fore', variant: 1, seed: 224 },
       { obj: 'bird.robin', x: 1340, y: 836, s: 1.0, layer: 'fore', variant: 1, seed: 225 },
+      // a dead branch in the shallows by the swim, the kingfisher on it
+      { obj: 'tree.wyv-snag', x: 1110, y: 716, s: 0.66, layer: 'mid', variant: 0, seed: 227 },
+      { obj: 'bird.wp-kingfisher-perch', x: 1132, y: 618, s: 0.85, layer: 'mid', seed: 228 },
+      // heath birds: a Dartford warbler on the gorse, a stonechat on the heather
+      { obj: 'bird.dartford-warbler', x: 1690, y: 690, s: 0.8, layer: 'near', seed: 229, flip: true },
+      { obj: 'bird.stonechat', x: 600, y: 846, s: 1.1, layer: 'front', variant: 1, seed: 230 },
+      // framing: a silver birch bough into the top right
+      { obj: 'tree.wyv-birch-bough', x: 1650, y: -16, s: 0.8, layer: 'front', variant: 1, seed: 231, flip: true, pin: true },
+      // dusk: mist on the water
+      { obj: 'sky.wp-mist', x: 500, y: WL - 4, s: 1.0, layer: 'mid', variant: 1, pin: true, anim: false },
+      { obj: 'sky.wp-mist', x: 1150, y: WL - 2, s: 1.0, layer: 'mid', variant: 0, flip: true, pin: true, anim: false },
       { obj: 'animal.squirrel', x: 1652, y: 560, s: 0.9, layer: 'near', variant: 0, seed: 226 },
     ],
     scatter: [
-      ...farWoods(WL, 201),
-      { obj: { 'plant.reed': 3, 'plant.bulrush': 1 }, layer: 'mid', seed: 204, area: { rect: [-160, WL - 2, 1760, WL + 8] }, n: 64, minGap: 14, s: [0.22, 0.3], flip: 0.5, variant: 0, mask: { noise: { scale: 200, cut: 0.3 } }, anim: false },
+      ...far.scatter,
+      { obj: { 'plant.reed': 3, 'plant.bulrush': 1 }, layer: 'mid', seed: 204, area: { rect: [-160, WL, 1760, WL + 8] }, n: 64, minGap: 14, s: [0.22, 0.3], flip: 0.5, variant: 0, mask: { noise: { scale: 240, cut: 0.4 } }, anim: false },
       // the reed island and the reeds off the far left shore
       { obj: { 'plant.reed': 2, 'plant.bulrush': 1 }, layer: 'mid', seed: 205, area: { poly: [[1450, 548], [1650, 546], [1640, 556], [1460, 556]] }, n: 16, minGap: 10, s: [0.4, 0.5], flip: 0.5, variant: [0, 1], anim: false },
       { obj: { 'plant.reed': 2, 'plant.bulrush': 1 }, layer: 'mid', seed: 206, area: { poly: [[120, 530], [330, 530], [330, 556], [120, 556]] }, n: 18, minGap: 10, s: [0.4, 0.5], flip: 0.5, variant: [0, 1], anim: false },
@@ -76,6 +87,9 @@ function sceneUkWyndhamsPoolDetail() {
       { obj: { 'plant.grass': 5, 'plant.heather': 2, 'plant.wildflowers': 1 }, layer: 'near', seed: 232, area: { poly: [[1100, 800], [1420, 716], [1560, 668], [1760, 650], [1760, 700], [1500, 760], [1240, 830], [1000, 880]] }, n: 120, minGap: 10, s: [0.5, 0.85], sByY: [[650, 0.8], [880, 1.2]], flip: 0.5, variant: 0, tint: T('#8a7a40'), anim: false },
       { obj: { 'plant.grass': 6, 'plant.wildflowers': 2, 'plant.heather': 1 }, layer: 'near', seed: 233, area: { poly: [[-160, 790], [300, 830], [620, 890], [880, 870], [900, 905], [-160, 905]] }, n: 150, minGap: 10, s: [0.6, 1], sByY: [[790, 0.85], [905, 1.25]], flip: 0.5, variant: 2, tint: T('#8a7a40'), mask: { avoid: [{ rect: [800, 800, 1000, 880] }] }, anim: false },
       one('plant.bracken', 1520, 806, 1.0, 0, 'fore', 234, 0, false), one('plant.bracken', 1615, 784, 0.86, 1, 'fore', 235, 1, false), one('plant.bracken', 1712, 838, 1.2, 2, 'fore', 236, 0, false), one('plant.bracken', 1570, 880, 1.3, 1, 'fore', 237, 1, false),
+      one('plant.wyv-heath-bank', 1640, 718, 0.75, 0, 'near', 246, 1, false), one('plant.wyv-heath-bank', 1420, 900, 1.05, 2, 'fore', 247, 0, false),
+      one('plant.wyv-heath-bank', 20, 900, 1.2, 1, 'front', 248, 0, false), one('plant.wyv-heath-bank', 520, 912, 1.0, 0, 'front', 249, 1, false),
+      one('plant.wyv-heath-bank', 200, 830, 0.8, 2, 'near', 250, 1, false),
       one('plant.fern', 1300, 786, 0.7, 1, 'near', 238, 0, false), one('plant.fern', 1660, 760, 0.8, 2, 'near', 239, 1, false),
       { obj: { 'rock.stones': 2, 'rock.boulder': 1, 'ground.leaves': 3, 'ground.puddle': 1 }, layer: 'fore', seed: 240, area: { poly: [[1760, 694], [1540, 770], [1250, 830], [960, 890], [1000, 900], [1240, 860], [1540, 790], [1760, 720]] }, n: 40, minGap: 20, s: [0.24, 0.6], sByY: [[690, 0.7], [900, 1.4]], flip: 0.5, variant: [0, 1], anim: false },
       { obj: { 'rock.stones': 1, 'rock.boulder': 1 }, layer: 'near', seed: 241, area: { poly: [[700, 852], [1200, 830], [1200, 846], [700, 872]] }, n: 14, minGap: 30, s: [0.3, 0.6], flip: 0.5, variant: [0, 1], mask: { noise: { scale: 80, cut: 0.3 } }, anim: false },
@@ -87,6 +101,14 @@ function sceneUkWyndhamsPoolDetail() {
       { obj: 'plant.grass', layer: 'front', seed: 245, area: { poly: [[1100, 880], [1760, 860], [1760, 930], [1100, 930]] }, n: 40, minGap: 14, s: [1, 1.4], flip: 0.5, variant: [0, 1], anim: 'strip' },
     ],
     actors: [
+      // the heron stalking the shallows off the left bank
+      { obj: 'bird.wp-heron-stalk', layer: 'mid', path: [[720, 838], [670, 834], [620, 830]], speed: 2, loop: 'pingpong', s: 0.95, seed: 264, offset: 0.4 },
+      // swallows over the water (spring to early autumn), pipistrelles after dusk, a light aircraft out of Blackbushe
+      { obj: 'bird.wp-swallow', layer: 'near', path: [[-140, 620], [300, 660], [700, 600], [1100, 680], [1500, 620], [1760, 650]], speed: 300, loop: 'fade', s: 0.85, variant: 0, seed: 265, offset: 0.3 },
+      { obj: 'bird.wp-swallow', layer: 'near', path: [[1760, 570], [1200, 590], [700, 550], [200, 585], [-160, 560]], speed: 260, loop: 'fade', s: 0.6, variant: 1, seed: 266, offset: 0.75 },
+      { obj: 'animal.wp-bat', layer: 'mid', path: [[700, 400], [900, 360], [1080, 430], [860, 470], [700, 400]], speed: 160, loop: 'loop', s: 0.9, seed: 267, offset: 0.1 },
+      { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[-200, 230], [1800, 160]], speed: 24, loop: 'loop', s: 0.45, seed: 268, offset: 0.15 },
+      { obj: 'person.walker', layer: 'fore', path: [[1000, 900], [1260, 836], [1520, 770], [1740, 712]], speed: 11, loop: 'pingpong', s: 0.8, seed: 269, offset: 0.7 },
       { obj: 'bird.swan', layer: 'mid', path: [[1080, 640], [820, 644]], speed: 4, loop: 'pingpong', s: 0.92, seed: 251, offset: 0.3 },
       { obj: 'bird.mallard', layer: 'mid', path: [[560, 650], [760, 654]], speed: 5, loop: 'pingpong', s: 0.7, seed: 252, offset: 0.1 },
       { obj: 'bird.mallard', layer: 'mid', path: [[620, 668], [800, 672]], speed: 5, loop: 'pingpong', s: 0.68, seed: 253, offset: 0.16, variant: 1 },

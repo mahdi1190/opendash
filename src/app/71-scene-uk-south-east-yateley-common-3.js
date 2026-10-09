@@ -16,11 +16,11 @@
    ============================================================ */
 function sceneYateleyCommon3(season) {
   const Y = _scYc, winter = season === 'winter', summer = season === 'summer', spring = season === 'spring';
-  const TRACK = [[760, 488, 4], [740, 512, 10], [790, 540, 18], [760, 572, 30], [800, 610, 44], [770, 650, 60]];
+  const TRACK = [[760, 488, 4], [740, 512, 10], [790, 540, 18], [760, 572, 30], [800, 610, 44], [770, 660, 64], [690, 740, 110], [640, 820, 180], [660, 905, 250]];
   const POND = { x0: 930, x1: 1410, y0: 566, y1: 612 };
-  const trackMid = Y.around(TRACK, 484, 660, 10);
-  const pondAvoid = { rect: [POND.x0 - 44, POND.y0 - 40, POND.x1 + 44, POND.y1 + 42] };
-  const sand = { lin: [[0, '@sand.0'], [0.5, '@sand.1'], [1, '@sand.2']], y1: 488, y2: 680 };
+  const trackMid = Y.around(TRACK, 484, 660, 10), trackNear = Y.around(TRACK, 650, 800, 22), trackFore = Y.around(TRACK, 790, 910, 18);
+  const pondAvoid = { rect: [POND.x0 - 44, POND.y0 - 40, POND.x1 + 44, POND.y1 + 42] }, pondWater = { rect: [POND.x0 - 40, POND.y0 - 40, POND.x1 + 40, POND.y1 + 10] };   // the drifts may stand on the near bank, in front of the water
+  const sand = { lin: [[0, '@sand.0'], [0.5, '@sand.1'], [1, '@sand.2']], y1: 488, y2: 905 };
   const d = {
     v: 1, id: 'yateley-common-detail-' + season,
     view: { lat: 51.336, lon: -0.829, heading: 200, fov: 74, horizon: 480, lift: 0.8 },
@@ -36,8 +36,13 @@ function sceneYateleyCommon3(season) {
       { layer: 'mid', d: Y.mounds(-160, 1760, 560, 650, 30, 812, [36, 70]), fill: '@mound.1' },
       { layer: 'mid', d: Y.pond(POND.x0 - 8, POND.x1 + 8, POND.y0 - 4, POND.y1 + 6, 8271), fill: '@bank.0' },
       { layer: 'mid', d: Y.track(TRACK, 544, 662), fill: sand },
+      { layer: 'mid', d: Y.ruts(TRACK, 580, 662).ruts, fill: '@rut.0' },
       { layer: 'near', d: Y.band(660, 8, 60, 812), fill: '@heath.2' },
+      { layer: 'near', d: Y.track(TRACK, 656, 802), fill: sand },
+      { layer: 'near', d: Y.ruts(TRACK, 656, 802).ruts, fill: { lin: [[0, '@rut.0'], [1, '@rut.1']], y1: 656, y2: 905 } },
       { layer: 'fore', d: Y.band(770, 10, -60), fill: '@heath.2' },
+      { layer: 'fore', d: Y.track(TRACK, 764, 905), fill: sand },
+      { layer: 'fore', d: Y.ruts(TRACK, 764, 905).ruts, fill: '@rut.1' },
     ],
     water: [{ layer: 'mid', d: Y.pond(POND.x0, POND.x1, POND.y0, POND.y1, 8270), y0: POND.y0, y1: POND.y1, base: ['#82aab4', '#40707c', '#24444c'], reflect: true, shimmer: 22, lightPath: true }],
     place: [
@@ -55,6 +60,12 @@ function sceneYateleyCommon3(season) {
       { obj: 'animal.cattle', x: 190, y: 600, s: 0.42, layer: 'mid', variant: 1, seed: 11 },
       { obj: 'animal.cattle', x: 340, y: 590, s: 0.38, layer: 'mid', variant: 1, flip: true, seed: 12 },
       { obj: 'animal.cattle', x: 470, y: 598, s: 0.4, layer: 'mid', variant: 0, seed: 13 },
+      // scrub on the far heath: gorse clumps and a birch thicket
+      { obj: 'plant.gorse', x: 620, y: 530, s: 0.2, layer: 'far', variant: 2, seed: 14, anim: false },
+      { obj: 'plant.gorse', x: 1480, y: 536, s: 0.22, layer: 'far', variant: 0, flip: true, seed: 15, anim: false },
+      { obj: 'plant.gorse', x: 60, y: 540, s: 0.24, layer: 'far', variant: 1, seed: 16, anim: false },
+      { obj: 'tree.birch-heath', x: 1560, y: 534, s: 0.2, layer: 'far', variant: 2, seed: 17, anim: false },
+      { obj: 'tree.birch-heath', x: 680, y: 528, s: 0.14, layer: 'far', variant: 0, flip: true, seed: 18, anim: false },
       // gorse with a stonechat and a Dartford warbler
       { obj: 'plant.gorse', x: 1030, y: 690, s: 0.6, layer: 'near', variant: 0, seed: 31, anim: false },
       { obj: 'plant.gorse', x: 300, y: 744, s: 0.6, layer: 'near', variant: 1, flip: true, seed: 32, anim: false },
@@ -62,23 +73,26 @@ function sceneYateleyCommon3(season) {
       { obj: 'plant.gorse', x: 1440, y: 702, s: 0.46, layer: 'near', variant: 0, flip: true, seed: 34, anim: false },
       { obj: 'bird.stonechat', x: 1036, y: 628, s: 0.95, layer: 'near', variant: 0, seed: 37 },
       { obj: 'bird.dartford-warbler', x: 306, y: 690, s: 0.9, layer: 'near', flip: true, seed: 38 },
-      { obj: 'animal.rabbit', x: 760, y: 742, s: 0.9, layer: 'near', variant: 0, seed: 41 },
+      { obj: 'animal.rabbit', x: 806, y: 742, s: 0.9, layer: 'near', variant: 0, seed: 41 },
       // the foreground: the fallen pine branch in the heather, gorse, a stonechat close up
       { obj: 'ground.log', x: 1130, y: 866, s: 1.5, layer: 'fore', variant: 0, seed: 51 },
-      { obj: 'ground.log', x: 420, y: 884, s: 0.9, layer: 'fore', variant: 0, flip: true, seed: 52 },
       { obj: 'plant.gorse', x: 1560, y: 880, s: 1.3, layer: 'fore', variant: 0, flip: true, seed: 53, anim: false },
-      { obj: 'plant.gorse', x: 40, y: 884, s: 1.1, layer: 'fore', variant: 1, seed: 54, anim: false },
       { obj: 'bird.stonechat', x: 1546, y: 754, s: 1.8, layer: 'fore', variant: 1, flip: true, seed: 55 },
-      // framing: a big Scots pine on the right
-      { obj: 'tree.pine-veteran', x: 1560, y: 905, s: 1.15, layer: 'front', variant: 0, flip: true, seed: 61 },
+      // the foreground frame: a gorse spray in the bottom-left corner with a Dartford warbler on its dead stem, a Scots
+      // pine bough hanging in from the top-right
+      { obj: 'plant.yc-gorse-spray', x: 170, y: 924, s: 1.6, layer: 'front', variant: 0, seed: 54 },
+      { obj: 'bird.dartford-warbler', x: 244, y: 640, s: 1.6, layer: 'front', seed: 56 },
+      { obj: 'tree.wp-pine-bough', x: 1636, y: -22, s: 0.9, layer: 'front', flip: true, anim: { sway: { k: 1 } } },
     ],
     scatter: [
       { obj: 'tree.woods-edge', layer: 'horizon', seed: 1, area: { rect: [-160, 472, 1760, 480] }, n: 12, minGap: 130, s: [0.36, 0.6], flip: 0.5, variant: [0, 1], anim: false },
       { obj: 'tree.woods-edge', layer: 'far', seed: 2, area: { rect: [-160, 486, 700, 492] }, n: 4, minGap: 140, s: [0.42, 0.66], flip: 0.5, variant: [1, 2], anim: false },
       { obj: 'tree.woods-edge', layer: 'far', seed: 3, area: { rect: [1000, 486, 1760, 492] }, n: 4, minGap: 140, s: [0.4, 0.6], flip: 0.5, variant: [1, 2], anim: false },
       { obj: 'tree.pine-veteran', layer: 'far', seed: 4, area: { rect: [-120, 504, 1720, 536] }, n: 6, minGap: 160, s: [0.06, 0.1], sByY: [[504, 0.85], [536, 1.15]], mask: { avoid: [{ rect: [820, 480, 1240, 540] }] }, flip: 0.5, variant: 1, anim: false },
-      ...Y.carpet({ season, seed: 30, far: [486, 544], mid: [548, 656], near: [664, 780], fore: [782, 905], n: { far: 150, mid: 160, near: 170, fore: 110, grass: 50 },
-        avoid: { far: [{ poly: trackMid }, pondAvoid], mid: [{ poly: trackMid }, pondAvoid], near: [], fore: [{ rect: [960, 830, 1300, 880] }] } }),
+      ...Y.drifts({ seed: 30, ride: TRACK, far: [490, 548], mid: [554, 662], near: [668, 790], fore: [790, 920], n: { far: 120, mid: 130, near: 80, fore: 40 },
+        avoid: { far: [pondWater], mid: [pondWater], fore: [{ rect: [1000, 840, 1260, 880] }] } }),
+      ...Y.carpet({ season, seed: 30, far: [486, 544], mid: [548, 656], near: [664, 780], fore: [782, 905], n: { far: 80, mid: 90, near: 100, fore: 60, grass: 40 },
+        avoid: { far: [{ poly: trackMid }, pondAvoid], mid: [{ poly: trackMid }, pondAvoid], near: [{ poly: trackNear }], fore: [{ poly: trackFore }, { rect: [960, 830, 1300, 880] }] } }),
       { obj: { 'plant.reed': 2, 'plant.bulrush': 1 }, layer: 'mid', seed: 9, area: { rect: [900, 590, 1000, 620] }, n: 8, minGap: 9, s: [0.26, 0.5], flip: 0.5, variant: [0, 1], anim: false, reflect: true },
       { obj: 'plant.reed', layer: 'mid', seed: 10, area: { rect: [1340, 592, 1440, 622] }, n: 7, minGap: 9, s: [0.28, 0.46], flip: 0.5, variant: [0, 1], anim: false, reflect: true },
       { obj: 'plant.bracken', layer: 'near', seed: 12, area: { rect: [1180, 700, 1700, 790] }, n: 3, minGap: 80, s: [0.55, 1.05], flip: 0.5, variant: 0, anim: false },
@@ -87,14 +101,13 @@ function sceneYateleyCommon3(season) {
     actors: [
       // a dog walker far down the track
       { obj: 'person.dog-walker', layer: 'mid', path: Y.path(TRACK, 548, 650, 12), speed: 5, loop: 'pingpong', s: 0.42, sByY: [[548, 0.7], [650, 1.1]], seed: 71, offset: 0.4 },
+      { obj: 'person.walker', layer: 'near', path: Y.path(TRACK, 670, 790), speed: 8, loop: 'pingpong', s: 0.8, sByY: [[670, 0.85], [790, 1.15]], seed: 70, offset: 0.55 },
       { obj: 'person.walker', layer: 'far', path: Y.path(TRACK, 492, 544, 10), speed: 3, loop: 'pingpong', s: 0.3, variant: 1, sByY: [[492, 0.7], [544, 1]], seed: 72, offset: 0.7 },
       // Blackbushe light aircraft
-      { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[-200, 150], [1800, 110]], speed: 26, loop: 'loop', s: 0.8, seed: 73, offset: 0.25 },
-      { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[1820, 290], [-220, 250]], speed: 21, loop: 'loop', s: 0.55, variant: 1, seed: 74, offset: 0.7 },
+      { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[-200, 190], [1800, 260]], speed: 26, loop: 'loop', s: 0.8, seed: 73, offset: 0.25 },
     ],
     flocks: [
       { obj: 'bird.small-flight', n: winter ? 9 : 6, area: [200, 150, 1300, 300], speed: 26, s: 0.55, seed: 81, layer: 'horizon' },
-      { obj: 'bird.small-flight', n: 4, area: [500, 360, 1100, 430], speed: 34, s: 0.45, seed: 82, layer: 'far' },
     ],
   };
   // the season's own life: ducks on the pond (not in winter), insects in spring and summer, robins in winter
@@ -109,6 +122,6 @@ function sceneYateleyCommon3(season) {
   }
   Y.butterflies[season].forEach((v, i) => d.actors.push({ obj: 'animal.butterfly', layer: 'near', path: [[500 + i * 280, 720], [640 + i * 260, 690], [560 + i * 270, 760], [720 + i * 250, 730]], speed: 22, loop: 'pingpong', s: 1.1, variant: v, seed: 90 + i, offset: i * 0.3 }));
   if (winter) d.place.push({ obj: 'bird.robin', x: 1150, y: 826, s: 1.4, layer: 'fore', variant: 0, seed: 95 }, { obj: 'bird.robin', x: 640, y: 770, s: 1, layer: 'near', variant: 1, flip: true, seed: 96 });
-  if (season === 'autumn') d.flocks.push({ obj: 'bird.goose-flight', n: 6, area: [700, 100, 1500, 220], speed: 30, s: 0.5, seed: 97, layer: 'horizon' });
+  if (season === 'autumn') d.flocks.push({ obj: 'bird.goose-flight', n: 5, area: [500, 120, 1100, 230], speed: 30, s: 0.5, seed: 97, layer: 'horizon' });
   return d;
 }

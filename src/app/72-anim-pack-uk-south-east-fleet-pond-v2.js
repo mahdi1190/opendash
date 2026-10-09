@@ -157,7 +157,7 @@ function ukSouthEastFleetPondV2(T) {
 
   const place = 'fleet-pond', label = 'Fleet Pond', town = 'Fleet', kind = 'landscape', tags = ['lake', 'reedbed', 'nature reserve'];
   const view = 1, originalSeason = 'summer';
-  const reasons = { spring: 'Yellow flag iris along the reedbed boardwalk', summer: 'Reedbed and hovering dragonflies', autumn: 'Reed plumes and grebes from the boardwalk', winter: 'Frosted reeds and wildfowl on the pond' };
+  const reasons = { spring: 'The Gelvert stream boardwalk, a kingfisher on its stick', summer: 'Through the carr to the pond and the main line', autumn: 'Reed plumes at the stream mouth, a heron hunting', winter: 'Frosted reeds, a train across the winter pond' };
   // The scene engine (docs/dev/SCENE_ENGINE.md section 17): when it is in the build, the four seasonal items share ONE
   // composed, auto-season scene (71-scene-uk-south-east-fleet-pond-v2.js on the canvas renderer: the date picks the
   // season, the live sky the light). Every id, ukPlace, ukView, ukSeason, season and the rotation stay as they were;
