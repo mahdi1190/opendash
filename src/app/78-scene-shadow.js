@@ -128,6 +128,8 @@ sceneRenderPassDefine({
     let draws = 0;
     for (const a of env.actorsNow) {
       if (a.gi !== gi || _SCSH_NO_CAST.has(a.cls) || a.y * env.vs + env.oy > below) continue;
+      // only a mover drawn now casts (its timeline may hide it: scale 0 under its row, alpha 0; or it is off the canvas)
+      if (typeof sceneMoverDrawn === 'function' && !sceneMoverDrawn(a, a.box, env.vs, env.ox, env.oy, env.W, below)) continue;
       const m = { X: a.x, Y: a.y, s: a.s, flip: a.dir < 0, d: a.d, cls: a.cls, box: a.box, alpha: a.alpha, o: a.o, v: a.v, sp: a.sp, rec: a };
       draws += _scshMover(env, ctx, m);
     }
@@ -136,7 +138,7 @@ sceneRenderPassDefine({
       const fgi = Number.isFinite(f.gi) ? f.gi : Number.isFinite(f.layer) ? env.layerOfGroup[f.layer] : -1;
       if (fgi !== gi) continue;
       const cls = f.cls || (f.o ? sceneObjClassOf(f.o) : null);
-      if (_SCSH_NO_CAST.has(cls)) continue;
+      if (_SCSH_NO_CAST.has(cls) || !(f.s > 0) || (f.alpha != null && !(f.alpha > 0))) continue;
       draws += _scshMover(env, ctx, { X: f.X != null ? f.X : f.x, Y: f.Y != null ? f.Y : f.y, s: f.s, flip: !!f.flip, d: f.d, cls, box: f.box, alpha: f.alpha, o: f.o, v: f.v, sp: f.sp, rec: f });
     }
     return draws;
@@ -230,7 +232,7 @@ function _scshBake(env, layer, gx) {
 /** One mover's shadow now (6.4): projected when the sun is out and it is near, else a blob. Returns draws. */
 function _scshMover(env, ctx, m) {
   const st = env.shadow, sun = st.sun, gov = env.gov ? env.gov.level : 0;
-  if (!Number.isFinite(m.X) || !Number.isFinite(m.Y)) return 0;
+  if (!Number.isFinite(m.X) || !Number.isFinite(m.Y) || !(m.s > 0) || (m.alpha != null && !(m.alpha > 0))) return 0;   // nothing drawn, no shadow
   const d = Number.isFinite(m.d) ? m.d : sceneCamDepthAt(env.cam, m.Y);
   if (!Number.isFinite(d)) return 0;
   const veh = ['car', 'bus', 'tram', 'tractor', 'bike', 'cyclist', 'train'].includes(m.cls), person = m.cls === 'person' || m.cls === 'animal-dog' || m.cls === 'animal';

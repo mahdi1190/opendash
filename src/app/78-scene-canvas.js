@@ -613,9 +613,7 @@ function sceneRendererCreate(canvas, src, o) {
           }
         } else {
           const p = m.p, b = m.box, fl = p.dir < 0;
-          const x0 = fl ? p.x - b[2] * p.s : p.x + b[0] * p.s, x1 = fl ? p.x - b[0] * p.s : p.x + b[2] * p.s;
-          if (x1 * vs + ox < 0 || x0 * vs + ox > W || (p.y + b[1] * p.s) * vs + oy > below) return;
-          if (!(p.s > 0) || (p.alpha != null && !(p.alpha > 0))) return;
+          if (!sceneMoverDrawn(p, b, vs, ox, oy, W, below)) return;   // the shadow pass asks the same (78-scene-shadow.js)
           // the facing (from -1 to 1: an actor turning round narrows through side-on) and the walk's swing (0 to 1: legs at rest
           // while a scripted mover waits; sceneActorAt's go)
           const fc = Number.isFinite(p.face) ? p.face : (fl ? -1 : 1), go = Number.isFinite(p.go) ? p.go : 1;
@@ -1122,6 +1120,16 @@ function _sccMoversNow(env, S, t, L) {
       } else if (m.kind === 'bird') { const p = sceneFlockAt(m.flock, m.i, t); m.p = p; m.y = p.y; }
     }
   });
+}
+/**
+ * Is a mover drawn this frame? p: its place ({ x, y, s, dir, alpha }), b: its box. The one test of the sprite draw (drawMover)
+ * and of its shadow (78-scene-shadow.js): a mover hidden by its timeline (scale 0 under its row, alpha 0), off the canvas
+ * sideways, or wholly under the nearer bitmaps casts no shadow either, so no shadow is ever left without its mover.
+ */
+function sceneMoverDrawn(p, b, vs, ox, oy, W, below) {
+  if (!p || !b || !(p.s > 0) || (p.alpha != null && !(p.alpha > 0))) return false;
+  const fl = p.dir < 0, x0 = fl ? p.x - b[2] * p.s : p.x + b[0] * p.s, x1 = fl ? p.x - b[0] * p.s : p.x + b[2] * p.s;
+  return !(x1 * vs + ox < 0 || x0 * vs + ox > W || (p.y + b[1] * p.s) * vs + oy > below);
 }
 /**
  * An actor's facing now, from -1 to 1 (sceneActorFacing: a reversal in view turns over a.turn seconds instead of snapping

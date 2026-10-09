@@ -99,8 +99,7 @@ const SCENE_PROOF_FLEET_WALK = (function () {
     for (let i = 0; i <= n; i++) C.push(W.at(s0 + (s1 - s0) * i / n));
     const Lg = C.map(q => side(q, -1, W.w)), Rg = C.map(q => side(q, 1, W.w));
     const o = proj(C[0][0], C[0][1], 0);
-    // the shadow under the deck and its fascia (seen on the right of a walk that runs off to the left)
-    out.body.push({ f: '#1d2418', d: poly(Rg.map(p => proj(p[0] + 0.05, p[1], -0.12)).concat(Rg.slice().reverse().map(p => proj(p[0] + 0.12, p[1], -0.46))), o), op: 0.55 });
+    // the fascia (seen on the right of a walk that runs off to the left; no hand-drawn shadow: the engine's shadows only)
     out.body.push({ f: '@wood.0', d: band(Rg, -0.2, 0, o) });
     out.body.push({ f: '@wood.4', d: band(Rg, -0.2, -0.12, o), op: 0.6 });
     // the deck: a light weathered top shading darker toward the far end, then the planks
@@ -136,8 +135,7 @@ const SCENE_PROOF_FLEET_WALK = (function () {
   function platform(out, rnd, season) {
     const Q = P.platform, o = proj(Q[3][0], Q[3][1], 0);
     const pr = (p, h) => proj(p[0], p[1], h);
-    // shadow, fascia on the near and right sides, the deck, planks along its length
-    out.body.push({ f: '#1d2418', d: poly([pr(Q[0], -0.12), pr(Q[1], -0.12), pr(Q[2], -0.12), pr([Q[2][0] + 0.2, Q[2][1]], -0.46), pr([Q[1][0] + 0.2, Q[1][1]], -0.46), pr([Q[0][0] + 0.2, Q[0][1]], -0.46)], o), op: 0.5 });
+    // fascia on the near and right sides, the deck, planks along its length (no hand-drawn shadow: the engine's shadows only)
     out.body.push({ f: '@wood.0', d: poly([pr(Q[0], 0), pr(Q[1], 0), pr(Q[1], -0.22), pr(Q[0], -0.22)], o) });
     out.body.push({ f: '@wood.4', d: poly([pr(Q[1], 0), pr(Q[2], 0), pr(Q[2], -0.22), pr(Q[1], -0.22)], o) });
     const top = poly(Q.map(p => pr(p, 0)), o);

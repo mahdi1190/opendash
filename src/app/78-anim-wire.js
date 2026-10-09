@@ -277,6 +277,7 @@ function animOpeningSequence() {
     sp.style.setProperty('--od-hello-ms', helloMs + 'ms');
     sp.style.setProperty('--od-scene-ms', ms[2] + 'ms');
     sp.classList.add('od-st-hello');
+    try { if (typeof sceneHostRestartClock === 'function') sceneHostRestartClock(sp); } catch (e) { /* the scene keeps its clock */ }
     wait(helloMs, () => {
       sp.classList.add('od-st-scene');
       wait(ms[2], () => {

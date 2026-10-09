@@ -337,3 +337,19 @@ if (typeof window !== 'undefined') {
     _schEnsureInit();
   }
 }
+/** Restart the clock of every scene host under root (the opening shows a scene that was prepared hidden: its animations start now). */
+function sceneHostRestartClock(root) {
+  if (!root) return 0;
+  let n = 0;
+  for (const [el, rec] of _schHosts) {
+    if (!root.contains(el)) continue;
+    _schT0.set(rec.key, _schNowMs() - _schHiddenMs);
+    const ak = typeof _ascKeys !== 'undefined' && typeof animSceneKey === 'function' ? _ascKeys.get(animSceneKey(rec.el)) : null;
+    if (ak && typeof _ascNow === 'function') ak.t0 = _ascNow();
+    // the flows, actors and timetables are pure functions of the clock: draw t = 0 at once (no stale frame from before the
+    // restart stays on screen) and make sure the host is playing, so the scene moves on from 0 (a train enters, crosses, leaves)
+    if (rec.r) { try { if (rec.r.baked) rec.r.frame(0); } catch (e) { /* the next frame draws */ } _schUpdate(rec); }
+    n++;
+  }
+  return n;
+}
