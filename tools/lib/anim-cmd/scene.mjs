@@ -129,7 +129,7 @@ export function selectScenes(reg, E, args, positionals) {
   const fromEntry = (e, strict) => {
     const it = e.item;
     if (it.composed) return out.push({ ref: e.ref, label: it.label, item: it, data: () => dataOf(it, E), kind: 'item', pack: e.pack });
-    if (args.upgrades && it.upgrade && typeof it.upgrade.scene === 'function') return out.push({ ref: e.ref, label: it.label + ' (draft upgrade)', item: it, data: () => it.upgrade.scene(), kind: 'draft', pack: e.pack });
+    if (args.upgrades && it.upgrade && typeof it.upgrade.scene === 'function') return out.push({ ref: e.ref, label: (it.upgrade.label || it.label) + ' (draft upgrade)', item: it, data: () => it.upgrade.scene(), kind: 'draft', pack: e.pack });
     if (strict) throw new Error(`${e.ref} is a hand-drawn (legacy) scene${it.upgrade ? ' with a draft upgrade: add --upgrades' : ''}: lint it with \`lint --ref ${e.ref}\`, or upgrade it (\`scene upgrade ${e.ref}\`)`);
     return null;
   };

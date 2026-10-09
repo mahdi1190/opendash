@@ -51,6 +51,14 @@ test('catalogue exposes retained old art without mutating saved registry identit
   assert.equal(filter(out, { technique: 'old' })[0], old);
 });
 
+test('a renamed rebuild keeps the original subject searchable under Old technique', () => {
+  const current = { ...upgraded[0], label: 'Black Hills Needle Eye', legacyLabel: 'Mount Rushmore South Dakota' };
+  const [neu, old] = catalogue([current]);
+  assert.equal(neu.label, 'Black Hills Needle Eye'); assert.equal(old.label, 'Mount Rushmore South Dakota');
+  assert.equal(filter([neu, old], { q: 'Rushmore', technique: 'old' })[0], old);
+  assert.equal(filter([neu, old], { q: 'Needle Eye', technique: 'new' })[0], neu);
+});
+
 test('a location family collects its views and four seasons, treating v1 as a view', () => {
   assert.ok(common.length >= 16 && common.length % 4 === 0);
   const group = places(catalogue(common))[0];

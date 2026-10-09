@@ -124,12 +124,14 @@ const _ANIM_REGION_UPGRADE_DUPES = Object.create(null);
  * animRegionSceneUpgrade('asia', 'place:singapore', { state: 'draft' | 'live', archetype, landmarks: [...], scene: () => sceneFromArchetype(...) }).
  * Works before or after the region is defined. The scene thunk runs only when the item is shown, linted or sheeted.
  * draft: the app keeps the (retrofitted) legacy art and the item gains upgrade: {state, archetype, landmarks, scene} (the tools show it with --upgrades).
- * live: the item becomes composed (same id, fields, label, site, tags, when), with legacySvg = the old art; it is not retrofitted.
+ * live: the item becomes composed (same id, fields, site, tags, when), with legacySvg = the old art; it is not retrofitted.
+ * Optional label names a changed subject accurately; the retained original keeps its legacyLabel.
  */
 function animRegionSceneUpgrade(regionId, key, up) {
   regionId = String(regionId);
   if (typeof key !== 'string' || !_arSceneKey.test(key)) throw new Error('region ' + regionId + ' upgrade: key "<unit word>:<CODE>" or "place:<id>"');
   if (!up || typeof up !== 'object' || (up.state !== 'draft' && up.state !== 'live')) throw new Error('region ' + regionId + ' upgrade ' + key + ': state is draft or live');
+  if (up.label !== undefined && (typeof up.label !== 'string' || !up.label.trim())) throw new Error('region ' + regionId + ' upgrade ' + key + ': label is a nonempty string');
   if (typeof up.scene !== 'function' && !(up.scene && typeof up.scene === 'object')) throw new Error('region ' + regionId + ' upgrade ' + key + ': scene is a thunk () => data (or the data)');
   const ups = _ANIM_REGION_UPGRADES[regionId] || (_ANIM_REGION_UPGRADES[regionId] = {});
   if (_arHas(ups, key)) { const d = _ANIM_REGION_UPGRADE_DUPES[regionId] || (_ANIM_REGION_UPGRADE_DUPES[regionId] = {}); d[key] = (d[key] || 1) + 1; }
@@ -149,12 +151,14 @@ function animSceneUpgradeFinish(id, key, it, sky, retro) {
     const scene = () => { const d = thunk(); if (d && sky) { d.view = d.view || {}; if (!Number.isFinite(d.view.lat)) d.view.lat = sky.lat; if (!Number.isFinite(d.view.lon)) d.view.lon = sky.lon; } return d; };
     const out = Object.assign(it, { composed: true, rich: true, full: true, scene, legacySvg, reduced: 'static',
       upgrade: { state: 'live', archetype: up.archetype || null, landmarks: (up.landmarks || []).slice() } });
+    if (up.label !== undefined) { out.legacyLabel = out.label; out.label = up.label.trim(); out.upgrade.label = out.label; }
     delete out.retro;
     out.svg = (o) => sceneSvg(out, o);
     return out;
   }
   it = retro(it);
   if (up) it.upgrade = { state: 'draft', archetype: up.archetype || null, landmarks: (up.landmarks || []).slice(), scene: up.scene };
+  if (up && up.label !== undefined) it.upgrade.label = up.label.trim();
   return it;
 }
 /**

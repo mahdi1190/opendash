@@ -14,6 +14,15 @@ them is in the ordinary daily rotation and none plays outside the US.
 
 Texas keeps its own pack (`docs/dev/TEXAS_PACK.md`), so every one of the 50 states has art.
 
+## Scene suggestions
+
+South Dakota's native rebuild uses the Black Hills' Needle's Eye granite formation,
+with its weathered opening and ponderosa pines, because the animation guide's care
+rules exclude the portraits in the original Rushmore suggestion. The original
+Rushmore scene remains under Old technique with its original label; the new scene
+is labelled Black Hills • Needle's Eye, South Dakota. The setting follows
+[South Dakota Game, Fish and Parks' Needles Highway description](https://gfp.sd.gov/pages/csp-scenic-drives/).
+
 ## Where the user is (offline, no setting)
 
 `src/app/71-anim-us.js` (pure, loads before the packs) holds `US_STATES` and `US_PLACES` and the US's

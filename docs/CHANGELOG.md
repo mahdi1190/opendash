@@ -16,6 +16,7 @@ upgrades it.
 
 - **All remaining 79 American openings rebuilt:** each now uses the scene engine with its own landmark geometry, layered scenery, moving wildlife or traffic, water reflections and lighting that follows the time of day. The existing artwork inspired each rebuild and remains available as its Old technique version.
 - American openings adapt to the seasons and phone or square screens. Hawaii retains tropical foliage through winter; reduced motion keeps a complete still scene.
+- South Dakota's New technique scene depicts Black Hills Needle's Eye. Its retained Old technique scene keeps the Mount Rushmore artwork and label.
 - Search for a location in Settings > Animations to see its New technique opening, retained original, symbols and time-of-day previews together. The 154 compact American symbols retain their existing artwork.
 
 ### Fixed

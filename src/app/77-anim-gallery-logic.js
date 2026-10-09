@@ -78,7 +78,7 @@ function animGalleryInfo(it) {
 function animGalleryLegacyItem(it) {
   if (!it || !it.composed || typeof it.legacySvg !== 'function') return null;
   const old = Object.assign({}, it, { ref: it.ref + '~legacy', baseRef: it.baseRef || it.ref,
-    composed: false, svg: it.legacySvg, reduced: 'static', galleryLegacy: true });
+    label: it.legacyLabel || it.label, composed: false, svg: it.legacySvg, reduced: 'static', galleryLegacy: true });
   delete old.scene; delete old.sceneSeason; delete old.upgrade; delete old.legacySvg;
   return old;
 }
