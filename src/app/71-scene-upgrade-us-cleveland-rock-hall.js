@@ -25,4 +25,4 @@
  P(d,'street.lamp',355,759,.58,'near',5623);P(d,'street.lamp',1371,766,.6,'near',5669);
  A(d,'boat.dinghy',[[-180,676],[333,676]],.29,6,5711,'far',.34);G(d,'fore','M386 900Q485 842 645 854Q791 883 966 860Q1103 854 1208 900Z','@ground.1');C(d,[{poly:[[410,900],[525,866],[693,880],[948,876],[1151,900]]}],{'plant.grass':2,'plant.wildflowers':1.3},118,5879);Life(d,5801,{coast:true,city:true});return d;
 })();}
- animRegionSceneUpgrade('us',"place:cleveland",{state:'draft',landmarks:["landmark.us-cleveland-rock-hall"],scene:compose});})();
+ animRegionSceneUpgrade('us',"place:cleveland",{state:'live',landmarks:["landmark.us-cleveland-rock-hall"],scene:compose});})();

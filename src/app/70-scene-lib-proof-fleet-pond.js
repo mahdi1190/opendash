@@ -1,3 +1,5 @@
+/* Compact SVG numeric separators without changing the drawing: minus signs delimit coordinates. */
+function sceneProofFleetCompactParts(parts){for(const p of Object.keys(parts))if(Array.isArray(parts[p]))for(const sh of parts[p]){if(Array.isArray(sh)&&typeof sh[1]==='string')sh[1]=sh[1].replace(/\s+(?=-)/g,'');else if(sh&&typeof sh.d==='string')sh.d=sh.d.replace(/\s+(?=-)/g,'');}return parts;}
 /* ============================================================
    SCENE LIBRARY: proof-fleet-pond (docs/dev/SCENE_ENGINE_V2.md), the shared ground plan of the hand-composed
    Fleet Pond scene (71-scene-proof-fleet-pond.js). PURE: data only at load.
@@ -95,7 +97,7 @@ const SCENE_PROOF_FLEET_WALK = (function () {
   /** A post at ground (x, d): wm metres wide, from below the deck edge to h. */
   const post = (x, d, h, wm, o) => { const a = proj(x, d, -0.12), b = proj(x, d, h), hw = Math.max(0.6, f * wm / d) / 2; return poly([[b[0] - hw, b[1]], [b[0] + hw, b[1]], [a[0] + hw, a[1]], [a[0] - hw, a[1]]], o); };
   function piece(out, s0, s1, rnd, season) {
-    const n = Math.max(3, Math.round((s1 - s0) / 0.25)), C = [];
+    const n = 3, C = []; // Two-metre deck pieces need only their ends and two intermediate stations.
     for (let i = 0; i <= n; i++) C.push(W.at(s0 + (s1 - s0) * i / n));
     const Lg = C.map(q => side(q, -1, W.w)), Rg = C.map(q => side(q, 1, W.w));
     const o = proj(C[0][0], C[0][1], 0);
@@ -119,11 +121,11 @@ const SCENE_PROOF_FLEET_WALK = (function () {
       }
       if (f * 0.15 / dd > 1.1) gaps.push([a, b]);
     }
-    if (gaps.length) out.body.push({ s: '@wood.4', w: Math.max(0.4, f * 0.012 / C[0][1]), d: gaps.map(g => line(g, o)).join(''), op: 0.5 });
+    if (gaps.length) out.body.push({ s: '@wood.4', w: R(Math.max(0.4, f * 0.012 / C[0][1])), d: gaps.map(g => line(g, o)).join(''), op: 0.5 });
     if (season === 'winter') out.body.push({ f: '#eef2f4', d: top, op: 0.22 });
     // the edge boards along both sides of the top
-    out.body.push({ s: '@wood.4', w: Math.max(0.5, f * 0.03 / C[0][1]), d: line(Lg.map(p => proj(p[0], p[1], 0)), o), op: 0.7 });
-    out.body.push({ s: '@wood.3', w: Math.max(0.5, f * 0.03 / C[0][1]), d: line(Rg.map(p => proj(p[0], p[1], 0)), o), op: 0.9 });
+    out.body.push({ s: '@wood.4', w: R(Math.max(0.5, f * 0.03 / C[0][1])), d: line(Lg.map(p => proj(p[0], p[1], 0)), o), op: 0.7 });
+    out.body.push({ s: '@wood.3', w: R(Math.max(0.5, f * 0.03 / C[0][1])), d: line(Rg.map(p => proj(p[0], p[1], 0)), o), op: 0.9 });
     // posts (one at the piece's start, both sides) and the two rails
     for (const [g, lit] of [[Lg, 0], [Rg, 1]]) {
       out.body.push({ f: lit ? '@post.1' : '@post.0', d: post(g[0][0], g[0][1], 1.06, 0.1, o) });
@@ -171,26 +173,30 @@ const SCENE_PROOF_FLEET_WALK = (function () {
     parts: ['body'],
     reflect: true,
     shadow: false,
-    tags: ['uk', 'boardwalk', 'nature-reserve', 'reedbed', 'kit:temperate', 'kit:water', 'role:street', 'class:structure'],
+    tags: ['uk', 'boardwalk', 'nature-reserve', 'reedbed', 'signature', 'kit:temperate', 'kit:water', 'role:street', 'class:structure'],
     credit: 'drawn for the Fleet Pond scene: the reserve boardwalk and viewing platform',
     build(v, rnd, ctx) {
       const season = (ctx && ctx.season) || 'summer', out = { body: [] };
       if (v < W.pieces.length) piece(out, W.pieces[v][0], W.pieces[v][1], rnd, season);
       else platform(out, rnd, season);
-      return out;
+      // Canonical deck pieces are normalised at 14 m; placement applies the actual perspective scale.
+      // Scale coordinates, paints and strokes together so the joined deck and rails retain their perspective.
+      const depth = v < W.pieces.length ? W.at(W.pieces[v][0])[1] : P.platform[3][1], k = Math.round(depth / 14 * 10000) / 10000;
+      out.body = out.body.map(sh => {let cmd='M',i=0;const d=sh.d.replace(/[-+]?(?:\d*\.?\d+)(?:e[-+]?\d+)?|[a-z]/gi,t=>{if(/^[a-z]$/i.test(t)){cmd=t.toUpperCase();i=0;return t;}const j=i++;return cmd==='A'&&[2,3,4].includes(j%7)?t:String(R(Number(t)*k));});const f=typeof sh.f==='object'&&sh.f?Object.assign({},sh.f):sh.f;if(f&&typeof f==='object')for(const key of ['x1','y1','x2','y2','cx','cy','r'])if(f[key]!=null)f[key]=R(f[key]*k);return Object.assign({},sh,{d,f,w:sh.w==null?sh.w:R(sh.w*k)});});
+      return sceneProofFleetCompactParts(out);
     },
   });
 })();
 
 /* ---------- the main line's embankment, drawn in the camera's own perspective ----------
-   structure.proof-fleet-embankment: one variant per 22 m of the line (left to right, x -88 to 88, wider than the frame), each
+   structure.proof-fleet-embankment: one variant per 88 m of the line (left to right, x -88 to 88, wider than the frame), each
    anchored at the top of its near toe (pixels, pinned, layer mid), so the depth sort puts the reeds in front of it and the woods
    behind the line under it. Of the cross-section in SCENE_PROOF_FLEET_POND.emb the eye on the boardwalk (2.5 m above the water,
    100 m off) sees the near bank face (rough grass, bramble and hawthorn scrub on its lower half, a post-and-wire boundary fence
    at the toe), the cable trough on the cess, the ballast shoulder, the sleeper ends, the conductor rail on its pots and the rail
    heads of the two lines (third rail: no masts, no wires), and a colour-light signal on the far cess. The trains run on top. */
 const SCENE_PROOF_FLEET_EMB = (function () {
-  const P = SCENE_PROOF_FLEET_POND, E = P.emb, x0 = -88, len = 22, n = 8;
+  const P = SCENE_PROOF_FLEET_POND, E = P.emb, x0 = -88, len = 88, n = 2;
   const proj = SCENE_PROOF_FLEET_WALK.proj;
   const g = (x, u, h) => proj(x, P.railD(x) + u, h);
   /** The pixel anchor of piece v: the middle of its near toe, at the toe's highest point on screen (its far end). */
@@ -250,7 +256,7 @@ const SCENE_PROOF_FLEET_EMB = (function () {
       }
       // scrub on the lower half of the bank: bramble and hawthorn (never above the cess, so it never reaches the trains)
       const sc = ['', ''], acc = [];
-      const nC = 3 + Math.floor(rnd() * 3);
+      const nC = Math.round(M.len / 22) * (3 + Math.floor(rnd() * 3));
       for (let i = 0; i < nC; i++) {
         const x = a0 + 1 + (b0 - a0 - 2) * rnd(), u = E.toeN + 0.3 + 2.2 * rnd(), h0 = faceH(u), hh = 0.6 + 0.6 * rnd(), w = 1.4 + 2.2 * rnd(), dd = P.railD(x) + u;
         const c = proj3(x, dd, h0 + hh * 0.45), rx = f * w / dd / 2, ry = f * hh / dd / 2;
@@ -310,6 +316,32 @@ const SCENE_PROOF_FLEET_EMB = (function () {
     },
   });
   function proj3(x, d, h) { return SCENE_PROOF_FLEET_WALK.proj(x, d, h); }
+})();
+
+/* Native reserve reed stands: each silhouette contains real stems, blades and seed heads, with tight cubic bounds. */
+(function () {
+  if (typeof sceneObjDefine !== 'function') return;
+  const R = n => Math.round(n * 10) / 10;
+  for (const rush of [false, true]) sceneObjDefine({
+    id: rush ? 'plant.proof-fleet-rush' : 'plant.proof-fleet-reed', category: 'plant', weight: 0,
+    size: [80, 165], real: { h: rush ? 1.6 : 1.8, l: 1.25, w: .7 }, foot: [.3,.2],
+    variants: 2, seasonal: true, flippable: true, parts: ['body'], reflect: true,
+    palette: { base: { leaf: ['#536d39','#75934d','#a2ad62'], stem:'#b3a467', head: rush ? '#5b3826' : '#8d765e' },
+      spring: { leaf:['#557c3d','#81a350','#afbd6b'],stem:'#a7ae68',head:rush?'#68452f':'#947e62' },
+      summer: { leaf:['#496c34','#73974a','#a0af5c'],stem:'#b3a467',head:rush?'#5b3826':'#9b836b' },
+      autumn: { leaf:['#746843','#9d8c54','#c2b271'],stem:'#beaa70',head:rush?'#5f3c28':'#92715e' },
+      winter: { leaf:['#79735c','#a29a79','#c7bf97'],stem:'#baae8b',head:rush?'#594335':'#a19480' } },
+    tags: ['uk','reedbed',rush?'reedmace':'phragmites','class:shrub','kit:water','kit:temperate','role:edge'],
+    credit: 'Fleet Pond reserve reedbeds: native stems and seed heads, drawn for this camera',
+    build(v,r){ let stems='',dark='',light='',heads=''; const count=rush?10:17;
+      for(let i=0;i<count;i++){const x=-68+i*136/(count-1)+(r()-.5)*9,h=92+r()*48,lean=(r()-.5)*22,tip=x+lean;
+        stems+=`M${R(x)} 0Q${R(x+lean*.3)} ${R(-h*.55)} ${R(tip)} ${R(-h)}`;
+        for(let j=0;j<3;j++){const y=-h*(.2+j*.19),sg=(i+j+v)%2?1:-1,w=12+r()*22;
+          const d=`M${R(x+lean*.25)} ${R(y)}Q${R(x+sg*w*.7)} ${R(y-24)} ${R(x+sg*w)} ${R(y-13)}Q${R(x+sg*w*.4)} ${R(y-4)} ${R(x+lean*.25)} ${R(y)}Z`; if(j%2)light+=d;else dark+=d;}
+        if(rush)heads+=`M${R(tip-2.4)} ${R(-h+17)}Q${R(tip-5)} ${R(-h+4)} ${R(tip-2)} ${R(-h-4)}Q${R(tip+2)} ${R(-h-7)} ${R(tip+3)} ${R(-h+1)}L${R(tip+3)} ${R(-h+15)}Q${R(tip)} ${R(-h+20)} ${R(tip-2.4)} ${R(-h+17)}Z`;
+        else heads+=`M${R(tip)} ${R(-h+18)}Q${R(tip-11)} ${R(-h+12)} ${R(tip-7)} ${R(-h+2)}L${R(tip-10)} ${R(-h-5)}L${R(tip-4)} ${R(-h-3)}L${R(tip-2)} ${R(-h-14)}Q${R(tip+5)} ${R(-h-8)} ${R(tip+6)} ${R(-h)}L${R(tip+9)} ${R(-h+8)}Q${R(tip+4)} ${R(-h+16)} ${R(tip)} ${R(-h+18)}Z`;
+      } return{body:[{s:'@stem',w:1.15,cap:'round',d:stems},{f:'@leaf.0',d:dark.split(/(?=M)/).filter((_,j)=>j%2===0).join('')},{f:'@leaf.0',d:dark.split(/(?=M)/).filter((_,j)=>j%2!==0).join(''),detail:true},{f:'@leaf.1',d:light,detail:true},{f:'@head',d:heads.split(/(?=M)/).filter((_,j)=>j%2===0).join('')},{f:'@head',d:heads.split(/(?=M)/).filter((_,j)=>j%2!==0).join(''),detail:true}].map(q=>Object.assign(q,{m:[.38,0,0,1,0,0]}))}; }
+  });
 })();
 
 /* ---------- the scene's own life: the render pass 'proof-fleet-pond' (V2 13.1 movers stage) ----------
@@ -557,7 +589,7 @@ function sceneProofFleetPondPass() {
       c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1;
       return n;
     } });
-    return out;
+    return sceneProofFleetCompactParts(out);
   }
   // ---- the great crested grebes ----
   const GR = { a: [3.0, 23.6], b: [3.9, 23.9], T: 16, off: 3.5 };
@@ -606,12 +638,12 @@ function sceneProofFleetPondPass() {
         return n;
       } });
     }
-    return out;
+    return sceneProofFleetCompactParts(out);
   }
   // ---- swallows over the water (spring and summer days) ----
   function swallowMovers(env, t, C) {
     const L = env.Lnow || env.L, out = [];
-    if ((L && (L.dark || 0) > 0.45) || (C.season !== 'summer' && C.season !== 'spring')) return out;
+    if ((L && (L.dark || 0) > 0.45) || (C.season !== 'summer' && C.season !== 'spring')) return sceneProofFleetCompactParts(out);
     for (let i = 0; i < 5; i++) {
       const at = (tt) => [-3 + 12 * Math.sin(0.27 * tt + i * 1.7) + 4 * Math.sin(0.71 * tt + i), 28 + 13 * Math.sin(0.19 * tt + i * 2.3), HW + 0.18 + 2.4 * Math.pow(0.5 + 0.5 * Math.sin(0.45 * tt + i * 1.1), 1.8)];
       const q = at(t), q2 = at(t + 0.05), p = proj(q[0], q[1], q[2]), p2 = proj(q2[0], q2[1], q2[2]), k = f / q[1];
@@ -632,12 +664,12 @@ function sceneProofFleetPondPass() {
         return n + 5;
       } });
     }
-    return out;
+    return sceneProofFleetCompactParts(out);
   }
   // ---- bats at dusk and by night (spring to autumn) ----
   function batMovers(env, t, C) {
     const L = env.Lnow || env.L, out = [];
-    if (!L || (L.dark || 0) < 0.3 || C.season === 'winter') return out;
+    if (!L || (L.dark || 0) < 0.3 || C.season === 'winter') return sceneProofFleetCompactParts(out);
     for (let i = 0; i < 4; i++) {
       const x = -4 + i * 3.5 + 4 * Math.sin(0.9 * t + i * 2.1) + 1.4 * Math.sin(3.3 * t + i), d = 13 + i * 2.5 + 4 * Math.sin(0.63 * t + i * 1.3);
       const h = 4.6 + 1.3 * Math.sin(1.27 * t + i) + 0.4 * Math.sin(5.3 * t + i * 2), p = proj(x, d, h), k = f / d, flap = Math.sin(t * 24 + i * 3);
@@ -651,14 +683,14 @@ function sceneProofFleetPondPass() {
         return 3;
       } });
     }
-    return out;
+    return sceneProofFleetCompactParts(out);
   }
   // ---- the trains' reflections in the open water (lit windows at night): the flow's own sprite, mirrored about the water
   // level under the track, clipped to the lake, softened; the far reeds and the shore stay in front ----
   let waterClip = null, waterClipD = null;
   function trainReflMovers(env, t) {
     const L = env.Lnow || env.L, out = [], C = env.C, w = C.water && C.water[0];
-    if (!w || typeof env.sprite !== 'function') return out;
+    if (!w || typeof env.sprite !== 'function') return sceneProofFleetCompactParts(out);
     for (const a of env.flowNow || []) {
       if (a.kind !== 'train' && !/train/.test(a.o || '')) continue;
       const yw = proj(a.x, a.d, HW)[1];
@@ -684,7 +716,7 @@ function sceneProofFleetPondPass() {
         return n;
       } });
     }
-    return out;
+    return sceneProofFleetCompactParts(out);
   }
   // ---- fish rising in the open water ----
   const RISES = [[6.5, 30, 0], [-6, 40, 3.1], [12, 44, 6.3], [1.5, 55, 4.4], [-10, 33, 7.7]];
@@ -695,7 +727,7 @@ function sceneProofFleetPondPass() {
       if (age > 1.8) continue;
       out.push({ y: proj(x, d, HW)[1], d, draw(c) { c.setTransform(env.vs, 0, 0, env.vs, env.ox, env.oy); const n = ring(c, L, x, d, age, 0.6, 0.65) + (age < 0.3 ? splash(c, L, x, d, age, 0.4) : 0); c.setTransform(1, 0, 0, 1, 0, 0); return n; } });
     }
-    return out;
+    return sceneProofFleetCompactParts(out);
   }
   // ---- mist banks over the water (dawn and morning, faintly at dusk) ----
   let mistSprite = null;
@@ -714,13 +746,13 @@ function sceneProofFleetPondPass() {
   };
   function mistMovers(env, t, C) {
     const L = env.Lnow || env.L, out = [];
-    if (!L) return out;
+    if (!L) return sceneProofFleetCompactParts(out);
     const tod = L.tod || 'day', se = C.season;
     const k0 = tod === 'dawn' ? 1 : tod === 'morning' ? 0.7 : tod === 'dusk' || tod === 'evening' ? 0.45 : tod === 'night' ? 0.25 : 0;
     const amt = k0 * (se === 'autumn' || se === 'winter' ? 1 : se === 'spring' ? 0.8 : 0.6) * (L.rain ? 0.4 : 1);
-    if (amt < 0.05) return out;
+    if (amt < 0.05) return sceneProofFleetCompactParts(out);
     const img = mistImg();
-    if (!img) return out;
+    if (!img) return sceneProofFleetCompactParts(out);
     const banks = [[-30, 60, 46, 0.9], [10, 52, 40, 1], [40, 70, 50, 0.8], [-10, 38, 28, 0.85], [22, 30, 22, 0.7], [-22, 26, 18, 0.6], [5, 80, 60, 0.9]];
     banks.forEach(([x0, d, wm, a], i) => {
       const x = x0 + ((t * (0.35 + 0.1 * i) + i * 13) % 90) - 45, p = proj(x, d, HW + 0.4), k = f / d;
@@ -733,7 +765,7 @@ function sceneProofFleetPondPass() {
         return 1;
       } });
     });
-    return out;
+    return sceneProofFleetCompactParts(out);
   }
   // ---- the trains onto the embankment: the flow puts a train's wheels on the flat ground (h 0) of its lane; here they stand on
   // the rail heads of the embankment (P.emb.head, the same height all across the formation). Runs right after the flow pass
@@ -780,6 +812,7 @@ function sceneProofFleetPondPass() {
   sceneObjDefine({
     id: 'plant.proof-fleet-bough',
     category: 'plant',
+    weight: 0,
     size: [560, 330],
     variants: 1,
     seasonal: true,
@@ -795,7 +828,7 @@ function sceneProofFleetPondPass() {
     anim: { sway: { part: 'leaves', pivot: [0, 40], deg: 1.2 } },
     reflect: false,
     shadow: false,
-    tags: ['uk', 'alder', 'frame', 'kit:temperate', 'role:frame', 'class:shrub'],
+    tags: ['uk', 'alder', 'frame', 'kit:temperate', 'role:edge', 'class:shrub'],
     credit: 'drawn for the Fleet Pond scene: a common alder (Alnus glutinosa) bough',
     build(v, rnd, ctx) {
       const season = (ctx && ctx.season) || 'summer', out = { branch: [], leaves: [] };
@@ -832,11 +865,15 @@ function sceneProofFleetPondPass() {
         for (let j = 0; j < n; j++) {
           const u = j / n, lx = ax + (tx - ax) * u + (rnd() - 0.5) * 18, ly = ay + (ty - ay) * u + (rnd() - 0.5) * 10 + 6;
           const a = Math.PI + (rnd() - 0.5) * 1.6, len = 13 + rnd() * 9, tone = j < n / 2 ? Math.floor(rnd() * 2) : 1 + Math.floor(rnd() * 3);
-          out.leaves.push({ f: '@leaf.' + tone, d: sceneD.leaf(lx, ly, a, len, len * 0.42) });
+          out.leaves.push({ f: '@leaf.' + tone, d: sceneD.leaf(lx, ly, a, len, len * 0.42), detail: j%5!==0 });
           if (rnd() < 0.3) out.leaves.push({ f: '@leaf.3', d: sceneD.leaf(lx + 1, ly - 1, a, len * 0.6, len * 0.2), op: 0.6, detail: true });
         }
       }
-      return out;
+      return sceneProofFleetCompactParts(out);
     },
   });
 })();
+
+function sceneProofFleetLocalObjects(){const compact=d=>d.replace(/[-+]?(?:\d*\.?\d+)(?:e[-+]?\d+)?/gi,n=>String(Math.round(Number(n)*10)/10)).replace(/\s+(?=-)/g,'');if(sceneProofFleetLocalObjects.done)return;sceneProofFleetLocalObjects.done=true;
+ for(const src of ['tree.bank-alder','tree.bank-birch','tree.bank-oak','tree.bank-willow','tree.pond-oak','tree.pond-alder','tree.distant-pine','rail.train']){const base=sceneObj(src),id=src.replace('.','.pfp-');sceneObjDefine(Object.assign({},base,{id,weight:0,variants:2,real:sceneObjReal(src),credit:base.credit+'; reserve tile detail',build(v,r,ctx){const sh=sceneObjShapes(src,v,ctx&&ctx.season||'summer'),out={};let leaf=0;for(const p of sh.order){out[p]=[];for(const source of sh.parts[p]){const q=Object.assign({},source,{d:compact(source.d)});const subs=q.d.split(/(?=M)/);if(q.s&&q.w<4.5)out[p].push(Object.assign({},q,{detail:true}));else if(q.m&&q.f)out[p].push(Object.assign({},q,{detail:q.detail||(leaf++%12)!==0}));else if(subs.length>1&&q.d.length>400){out[p].push(Object.assign({},q,{d:subs.filter((_,j)=>j%8===0).join(''),detail:q.detail}));out[p].push(Object.assign({},q,{d:subs.filter((_,j)=>j%8!==0).join(''),detail:true}));}else if(q.s&&q.w<1.8)out[p].push(Object.assign({},q,{detail:true}));else out[p].push(q);}}Object.defineProperty(out,'$anim',{value:sh.anim});return sceneProofFleetCompactParts(out);}}));}
+}

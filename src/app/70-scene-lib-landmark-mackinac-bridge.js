@@ -34,10 +34,10 @@
   };
   const cableAt = (x, o) => (Math.abs(x - o) <= TX ? mainY(x, o) : sideY(x, o));
   define({
-    id: 'landmark.mackinac-bridge', category: 'landmark', size: [1144, 270], box: [-575, -270, 575, 40], variants: 1, seasonal: false, flippable: false,
+    id: 'landmark.mackinac-bridge', category: 'landmark', weight: 0, size: [900, 270], box: [-450, -270, 450, 40], variants: 1, seasonal: false, flippable: false,
     parts: ['body', 'lit'],
     palette: { base: {
-      tower: ['#e3e5cf', '#8b9c91', '#526f73', '#314f59'], cable: ['#4c6970', '#779298'], truss: ['#8db4a1', '#4e8174', '#315f64', '#234851'],
+      tower: ['#e3e5cf', '#5f7c75', '#375c64', '#244452'], cable: ['#2d5261', '#688b91'], truss: ['#93bfa8', '#3f706d', '#25535d', '#173f4c'],
       pier: ['#c4c2ba', '#9a988e', '#6e6c64'], lamp: '#ffe2a8', neck: '#fff4d8', flood: '#fff0d0', beacon: '#ff4a3a',
     } },
     night: { glow: { lamp: '#ffe6b4' }, on: 0.9 },
@@ -105,17 +105,21 @@
       neck.forEach(d => body.push({ f: '@cable.1', d, op: 0.8, glow: 'lamp' }));
       lit.push({ s: '@neck', w: 1, op: 0.35, d: cableD(-15) });
       // A foreshortened view keeps both towers in a square and their height legible.
-      const perspective = sh => Array.isArray(sh) ? { f: sh[0], d: sh[1], op: sh[2], m: [.65,0,0,1,0,0] } : Object.assign({},sh,{m:[.65,0,0,1,0,0]});
+      const perspective = sh => Array.isArray(sh) ? { f: sh[0], d: sh[1], op: sh[2], m: [.5,0,0,1,0,0] } : Object.assign({},sh,{m:[.5,0,0,1,0,0]});
       return { body: body.map(perspective), lit: lit.map(perspective) };
     },
   });
   sceneObjDefine({id:'tree.us-mackinac-shore',category:'tree',weight:0,size:[260,120],variants:4,seasonal:true,shapeBySeason:true,flippable:true,shadow:{rx:90,ry:4,h:70},reflect:true,
     palette:{base:{leaf:['#385e4c','#5d7b60','#83a080'],trunk:'#536153'},spring:{leaf:['#4b7756','#6f965f','#9ab77e']},summer:{leaf:['#385f48','#5b7e54','#83a16d']},autumn:{leaf:['#756d46','#9a9259','#b4aa73']},winter:{leaf:['#829a92','#a5b8ad','#c1cec3']}},tags:['us','straits','mixed-wood','kit:temperate','role:tree'],
-    build(v,r,ctx){const D=sceneD,F=n=>Math.round(n*10)/10,body=[],outline=[];for(let i=0;i<25;i++){const x=-129+i*10.7,y=-34-(18+29*r())*(.6+Math.sin(i*.72+v)*.32);outline.push([F(x),F(y)]);}
-      const d=D.poly([[-132,0],...outline,[132,0]]);body.push({f:'@leaf.0',d},
-        {f:'@leaf.1',d:D.poly([[-130,-3],...outline.map(([x,y])=>[x,y*.83+5]),[130,-3]])},
-        {f:'@leaf.2',op:.5,d:D.poly([[-129,-15],...outline.map(([x,y])=>[x,y*.74-5]),[127,-15]])});
-      for(let i=0;i<5;i++){const x=-104+i*51+(r()-.5)*15,y=-24-r()*19;body.push({s:'@trunk',w:1.3,d:'M'+F(x)+' 0v'+F(y)});}
+    build(v,r,ctx){const F=n=>Math.round(n*10)/10,body=[],winter=ctx.season==='winter';
+      // Unequal connected crowns form wooded islands rather than a row of miniature trees.
+      // The canopy edge uses long, irregular curves; smaller overlapping masses leave deep pockets.
+      const h=[1,.82,1.08,.93][v%4],m=[1,0,0,h,0,0];
+      body.push({f:'@leaf.0',m,d:'M-132 0L-132-18Q-142-37-124-47C-125-67-107-76-86-66C-84-94-55-103-38-83C-18-104 7-99 15-76C31-91 59-85 66-64C85-78 107-69 111-48Q142-44 132-20V0Z'});
+      body.push({f:'@leaf.1',m,op:winter?.56:.87,d:'M-127-5Q-130-23-109-31C-117-55-93-66-73-55C-69-77-45-85-24-65C-6-87 18-76 25-56C50-71 79-58 81-39C101-55 127-40 125-19L132-4Q88-13 61-5T-4-7T-65-5Z'});
+      body.push({f:'@leaf.2',m,op:winter?.55:.36,d:'M-115-43C-118-55-102-68-89-59Q-101-54-101-42ZM-78-71C-72-88-56-94-43-81Q-61-84-66-68ZM-23-78C-5-94 8-85 14-72Q-4-81-16-69ZM39-67C53-75 66-63 68-53Q54-63 43-57ZM88-52Q105-65 116-48L108-40Q100-51 88-44Z'});
+      for(let i=0;i<5;i++){const x=-104+i*51+(r()-.5)*15,y=-24-r()*19;body.push({s:'@trunk',w:1.1,op:.55,d:'M'+F(x)+' 0q-3 '+F(y*.46)+' 2 '+F(y)+'m-2 12l-8-9m9 5l7-8',detail:true});}
+      if(winter)body.push({s:'@leaf.2',w:1.8,m,op:.65,d:'M-84-68q9-22 28-20M-24-80q17-15 30-2M32-68q16-9 29 2M88-53q16-8 25 4',cap:'round',detail:true});
       return{body};}});
   // A shaded version of the same paper-birch silhouette frames this east-facing shore.
   // The accepted lake object is unchanged; this local colour treatment is explicit only.

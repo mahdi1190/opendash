@@ -23,6 +23,12 @@
  G(d,'front','M-160 886Q76 868 269 900H-160ZM1462 900Q1607 870 1760 868V900Z','@ground.2');
  P(d,"tree.us-lake-paper-birch",-84,939,1.65,'front',7457,{tint:['#284b3c',.24]});P(d,"tree.us-mackinac-paper-birch",1643,941,1.45,'front',7499,{tint:['#284b3c',.24]});
  C(d,[{poly:[[-140,867],[177,856],[375,900],[-140,900]]},{poly:[[1158,895],[1600,847],[1740,837],[1740,900]]}],{'plant.grass':3,'plant.wildflowers':1,'plant.reed':.3},166,7537);
- P(d,'street.lamp',271,791,.53,'near',7643);P(d,'street.lamp',1414,822,.6,'near',7699);Life(d,7733,{city:true});return d;
+ d.scatter.push({obj:'plant.us-minneapolis-garden-perennial',layer:'fore',seed:7817,area:{poly:[[1112,880],[1390,838],[1730,833],[1730,896],[1196,896]]},n:31,minGap:27,s:[.7,1.05],variant:[0,1,2],flip:.5,anim:'strip',tint:{col:'#a4a17c',k:[0,.16]}});
+ d.scatter.push({obj:'plant.us-minneapolis-garden-perennial',layer:'near',seed:7907,area:{poly:[[-100,854],[99,841],[264,881],[182,896],[-100,882]]},n:19,minGap:24,s:[.55,.84],variant:[0,1,2],flip:.5,anim:false,tint:{col:'#939d7f',k:[0,.16]}});
+ P(d,'street.lamp',271,791,.42,'near',7643);P(d,'street.lamp',1414,822,.47,'near',7699);Life(d,7733);
+ A(d,'person.walker',[[-150,793],[1750,793]],.52,14,8011,'near',.27);
+ A(d,'person.jogger',[[1750,814],[-150,814]],.62,23,8089,'near',.64);
+ for(const p of d.place)if(p.obj==='animal.rabbit'||p.obj==='animal.squirrel')p.s=.38;
+ return d;
 })();}
- animRegionSceneUpgrade('us',"place:minneapolis",{state:'draft',landmarks:["landmark.us-minneapolis-spoonbridge"],scene:compose});})();
+ animRegionSceneUpgrade('us',"place:minneapolis",{state:'live',landmarks:["landmark.us-minneapolis-spoonbridge"],scene:compose});})();

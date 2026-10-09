@@ -27,4 +27,4 @@
  A(d,'boat.fishing-boat',[[-180,705],[1790,705]],.55,8,4783,'mid',.43);A(d,'boat.ferry',[[1790,762],[-180,762]],.4,12,4813,'mid',.74);
  Life(d,4931,{coast:true});return d;
 })();}
- animRegionSceneUpgrade('us',"place:detroit",{state:'draft',landmarks:["landmark.us-detroit-ren-cen"],scene:compose});})();
+ animRegionSceneUpgrade('us',"place:detroit",{state:'live',landmarks:["landmark.us-detroit-ren-cen"],scene:compose});})();

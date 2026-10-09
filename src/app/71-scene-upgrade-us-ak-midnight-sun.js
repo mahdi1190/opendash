@@ -10,11 +10,18 @@
  const Life=(d,seed=3301,{coast=false,cold=false,city=false}={})=>{d.flocks.push({obj:coast?'bird.herring-gull-flight':'bird.goose-flight',n:9,area:[100,90,1520,(d.view.horizon||530)-115],speed:25,s:coast?.5:.4,seed,layer:'far'},{obj:cold?'bird.goose-flight':'animal.butterfly',n:6,area:cold?[200,125,1440,350]:[250,680,1390,820],speed:cold?20:9,s:cold?.3:.5,seed:seed+137,layer:cold?'far':'near'});P(d,'animal.rabbit',307,842,.7,'fore',seed+283);P(d,'animal.squirrel',1393,829,.7,'fore',seed+419);if(city)for(let i=0;i<3;i++)A(d,'person.walker',i%2?[[1750,789],[-150,789]]:[[-150,801],[1750,801]],scenePersonScale(sceneObj('person.walker').size[1],795,d.view),14+i*4,seed+557+i*103,'near',.12+i*.29);};
 
  function compose(){return (function(){const d=B({id:'us-ak-midnight-sun',H:538,heading:235,at:'golden'});
+ for(const [season,c]of Object.entries({base:['#223639','#3e5149'],spring:['#263a32','#465a43'],summer:['#23372e','#3d5440'],autumn:['#3a302a','#594c38'],winter:['#283c47','#465c65']}))d.palette[season].frame=c;
  G(d,'horizon','M-160 568Q79 487 319 528Q554 457 811 518T1334 486T1760 527V677H-160Z','@hill.0');P(d,'rock.us-denali',802,619,.78,'far',21113,{shadow:false});
- G(d,'mid','M-160 695Q196 625 495 658Q709 676 967 645T1760 658V900H-160Z','@ground.1');W(d,'mid','M-160 701Q267 681 648 707Q996 730 1760 692V900H-160Z',701,900,['#bdcfcb','#8eafb3','#4b778d']);
- G(d,'near','M-160 900V756Q37 721 298 780Q464 829 637 900ZM990 900Q1298 748 1760 765V900Z','@ground.0');
+ G(d,'mid','M233 615Q492 598 770 612T1374 607V654H233Z',{lin:[[0,'@hill.0',0],[.4,'@hill.0',.46],[1,'@hill.0',.74]],y1:597,y2:654});
+ G(d,'mid','M-160 660Q72 629 281 638Q421 604 590 617Q738 634 918 613T1267 628Q1501 615 1760 633V900H-160Z',{lin:[[0,'@hill.1'],[.62,'@ground.0'],[1,'@ground.1']],y1:611,y2:683});W(d,'mid','M-160 650Q104 625 306 636T673 619Q838 633 998 618Q1191 624 1371 634T1760 630V900H-160Z',619,900,['#bdcfcb','#8eafb3','#4b778d']);
+ G(d,'near','M-160 645Q104 621 306 630T673 614Q838 627 998 612Q1191 618 1371 628T1760 624V653Q1439 653 1371 654T998 638Q838 653 673 640T306 653Q104 644-160 671Z',{lin:[[0,'@water.0',0],[.46,'@water.0',.35],[1,'@water.0',0]],y1:609,y2:675});
+ G(d,'near','M-160 900V756Q37 721 298 780Q464 829 637 900ZM990 900Q1298 748 1760 765V900Z',{lin:[[0,'@ground.0'],[.58,'@ground.1'],[1,'@frame.1']],y1:754,y2:915});
+ G(d,'near','M931 900Q968 843 1043 835Q1113 836 1204 809L1290 820Q1163 878 1068 891L1031 900Z','@ground.1');
  C(d,[{poly:[[-140,767],[318,797],[644,900],[-140,900]]},{poly:[[962,900],[1338,781],[1740,785],[1740,900]]}],{'plant.us-tundra-sedge':3,'plant.us-tundra-willow':2},230,21241);
  d.scatter.forEach(s=>{if(s.layer==='near')s.obj='plant.us-lake-clover';});
- P(d,'animal.us-anchorage-moose',1251,823,.25,'near',21403);P(d,'tree.us-loon-spruce',-55,924,1.49,'front',21313);P(d,'tree.us-loon-spruce',1684,925,1.26,'front',21371,{flip:true});
+ P(d,'animal.us-anchorage-moose',1002,865,.31,'near',21403);
+ G(d,'front','M-160 900V796Q-25 752 47 801L101 790Q154 765 213 818L257 808Q316 838 358 900ZM1188 900Q1231 865 1282 867Q1315 829 1378 834L1420 809Q1497 787 1573 819L1760 797V900Z','@frame.0');
+ G(d,'front','M-160 855Q-8 827 73 852Q146 826 220 876L267 864 321 900ZM1296 900Q1367 864 1425 878Q1522 842 1760 850V900Z','@frame.1');
+ P(d,'tree.us-loon-spruce',98,910,1.02,'front',21313);P(d,'tree.us-loon-spruce',1490,913,.91,'front',21371,{flip:true,variant:2});
  d.flocks.push({obj:'bird.goose-flight',n:9,area:[150,100,1460,350],speed:21,s:.39,seed:21419,layer:'far'},{obj:'bird.goose-flight',n:8,area:[95,210,1515,448],speed:17,s:.26,seed:21491,layer:'mid'});return d;})();}
- animRegionSceneUpgrade('us',"state:AK",{state:'draft',landmarks:["rock.us-denali"],scene:compose});})();
+ animRegionSceneUpgrade('us',"state:AK",{state:'live',landmarks:["rock.us-denali"],scene:compose});})();

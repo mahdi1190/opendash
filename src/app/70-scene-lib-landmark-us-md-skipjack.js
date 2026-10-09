@@ -1,6 +1,6 @@
 /* Chesapeake skipjack: two unequal sails, shallow hull, cabin and rigging. */
 (function(){const D=sceneD,R=n=>Math.round(n*10)/10;
- sceneObjDefine({id:'boat.us-chesapeake-skipjack',category:'boat',weight:0,size:[655,505],variants:1,seasonal:false,flippable:false,parts:['sails','hull','lit'],night:{glow:{window:'#ffdb9d',lamp:'#f7db9f'},on:.75},anim:{paddle:{dy:2.1,deg:.55,period:5.1},sway:{part:'sails',pivot:[0,-73],deg:.6,period:9.3}},reflect:true,tags:['us','maryland','skipjack','signature','landmark','kit:boats','role:boat'],
+ sceneObjDefine({id:'boat.us-chesapeake-skipjack',category:'boat',weight:0,size:[655,620],variants:1,seasonal:false,flippable:false,parts:['reflection','wake','sails','hull','lit'],night:{glow:{window:'#ffdb9d',lamp:'#f7db9f'},on:.75},anim:{paddle:{dy:2.1,deg:.55,period:5.1},sway:{part:'sails',pivot:[0,-73],deg:.6,period:9.3}},reflect:true,tags:['us','maryland','skipjack','signature','landmark','kit:boats','role:boat'],
  build(){const sails=[],hull=[],lit=[];
  sails.push({f:'#f6edd8',d:'M-8-484Q-32-372-114-271L-229-91-8-84z'},{f:'#d5c4a3',d:'M-8-484Q-44-348-114-271L-229-91-203-92Q-99-267-8-484z'},{f:'#fff7e6',d:'M9-378L304-110 15-96Q33-225 9-378z'},{f:'#d5c4aa',d:'M9-378L304-110 264-111 25-335z'},
  {s:'#e3d5b9',w:1.8,d:'M-12-450Q-56-315-194-104M12-344L269-112'});
@@ -19,5 +19,7 @@
  hull.push({f:'#557e6c',d:D.rect(202,-111,4,5),glow:'lamp'},{f:'#a54e49',d:D.rect(-244,-82,4,5),glow:'lamp'});
  for(let i=0;i<13;i++){const x=-211+i*32,y=-79-(x+211)*.07;hull.push({s:'#b3a889',w:1.1,d:`M${x} ${R(y)}v-13`,detail:i>5});}
  for(let i=0;i<10;i++)hull.push({f:'#877a5e',d:D.ell(-71+i*15,-60,2.2,1.4),detail:true});
- lit.push({f:'#a6bcc1',op:.13,d:'M-8-484Q-32-372-114-271L-229-91-8-84z'},{f:'#adc0c3',op:.1,d:'M9-378L304-110 15-96z'});return{sails,hull,lit};}});
+ const reflection=[];for(const sh of [...sails,...hull])if(sh.f)reflection.push({...sh,glow:undefined,op:(sh.op??1)*.18,m:[1,0,0,-.21,0,5]});
+ const wake=[{s:'#c2d8ce',w:2.1,op:.55,d:'M-297 8q33-7 63-3m42 5q31 4 58 1M81 11q72 5 135-9M-275 26q32-6 61-2m82 18q33 4 59-1m62 10 45-3'}];
+ lit.push({f:'#a6bcc1',op:.13,d:'M-8-484Q-32-372-114-271L-229-91-8-84z'},{f:'#adc0c3',op:.1,d:'M9-378L304-110 15-96z'});return{reflection,wake,sails,hull,lit};}});
 })();

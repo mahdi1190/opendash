@@ -11,11 +11,13 @@
 
  function compose(){return (function(){const d=B({id:'us-indianapolis-monument',H:543,heading:42,at:'golden',setting:'urban'});
  G(d,'horizon','M-160 571Q527 541 1760 556V657H-160Z','@hill.0');G(d,'far','M-160 624Q434 602 810 615T1760 605V730H-160Z','@rock.1');
+ P(d,'building.us-indianapolis-monument-context',800,633,1,'far',9017,{shadow:false});
  T(d,'far',{poly:[[-140,614],[417,608],[419,653],[-140,658]]},12,13103,[.22,.42]);T(d,'far',{poly:[[1144,609],[1740,611],[1740,655],[1141,653]]},13,13171,[.23,.45]);
  G(d,'mid','M-160 696Q157 628 501 661Q793 693 1143 655Q1482 624 1760 689V900H-160Z','@ground.0');
  G(d,'mid','M350 900Q221 754 492 688Q773 617 1083 678Q1361 734 1271 900H1097Q1155 769 1015 730Q791 666 559 731Q410 778 527 900Z','@path.1');
  G(d,'near','M554 900Q440 797 593 743Q799 673 1018 743Q1182 797 1065 900Z','@path.0');P(d,'landmark.us-indianapolis-monument',801,705,.9,'mid',13231,{shadow:false});
  G(d,'fore','M614 900Q581 856 657 832Q792 797 939 833Q1013 857 983 900Z','@ground.1');C(d,[{poly:[[608,905],[647,839],[940,840],[996,905]]},{poly:[[-140,785],[300,780],[559,900],[-140,900]]},{poly:[[1058,900],[1375,775],[1740,792],[1740,900]]}],{'plant.us-lake-meadow':2,'plant.us-lake-clover':2},210,13309);
  [[318,752,.49],[1264,743,.46],[486,816,.6],[1123,824,.58]].forEach((q,i)=>P(d,'street.lamp',q[0],q[1],q[2],'near',13403+i*67,{variant:i%2,flip:!!(i%2)}));
- P(d,'tree.us-mackinac-paper-birch',-39,931,1.6,'front',13501);P(d,'tree.us-lake-paper-birch',1671,929,1.32,'front',13559,{tint:['#2c4c43',.24]});Life(d,13613,{city:true});return d;})();}
- animRegionSceneUpgrade('us',"place:indianapolis",{state:'draft',landmarks:["landmark.us-indianapolis-monument"],scene:compose});})();
+ P(d,'prop.us-indianapolis-circle-paving',800,900,1,'near',13517,{shadow:false});
+ P(d,'tree.us-indianapolis-circle-oak',159,910,1.03,'front',13501,{variant:0,anim:{sway:{period:9.3}}});P(d,'tree.us-indianapolis-circle-oak',1445,912,1.08,'front',13559,{variant:1,flip:true,anim:{sway:{period:10.4}}});Life(d,13613,{city:true});return d;})();}
+ animRegionSceneUpgrade('us',"place:indianapolis",{state:'live',landmarks:["landmark.us-indianapolis-monument"],scene:compose});})();

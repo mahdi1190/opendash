@@ -9,7 +9,7 @@
  {layer:'front',d:'M-160 900V867Q800 847 1760 873V900z',fill:'@ground.1'},
  {layer:'fore',d:'M-160 900V759L370 742 474 803-160 800zM1760 900V751L1260 740 1174 806 1760 810z',fill:'@ground.0'},
  {layer:'front',d:'M462 900Q572 845 701 852h197Q1033 852 1179 900z',fill:'@plaza.0'}],place:[
- {obj:'landmark.us-buffalo-city-hall',x:800,y:684,s:.91,layer:'near',seed:21011},
+ {obj:'landmark.us-buffalo-city-hall',x:800,y:684,s:.91,layer:'near',seed:21011,shadow:false},
  {obj:'building.green-cottage',x:150,y:648,s:.38,variant:1,layer:'far',seed:21023},{obj:'building.green-cottage',x:1481,y:651,s:.33,variant:0,layer:'far',seed:21037},
  {obj:'tree.us-northern-maple',x:108,y:902,s:.77,variant:2,layer:'front',seed:21053},{obj:'tree.us-northern-maple',x:1550,y:916,s:.86,variant:0,flip:true,layer:'front',seed:21067},
  {obj:'tree.far-birch',x:302,y:782,s:.4,variant:1,layer:'fore',seed:21083},{obj:'tree.far-birch',x:1349,y:781,s:.38,variant:2,layer:'fore',seed:21101},
@@ -20,5 +20,5 @@
  for(const[i,poly]of [[[-160,754],[354,750],[463,800],[-160,800]],[[1292,747],[1760,751],[1760,810],[1194,804]]].entries())d.scatter.push({obj:{'plant.grass':2,'plant.reed':1,'ground.leaves':2,'ground.puddle':1,'rock.stones':1,'rock.boulder':.4},layer:'fore',seed:21227+i*41,area:{poly},n:90,minGap:13,s:[.35,.65],variant:[0,1],flip:.5,anim:false,tint:{col:'#9b967d',k:[0,.16]}});
  d.scatter.push({obj:{'ground.capitol-aggregate':2,'ground.capitol-paver-joint':1},layer:'near',seed:21313,area:{rect:[-140,688,1730,778]},n:140,minGap:17,s:[.4,.9],variant:[0,1],flip:.5,anim:false,tint:{col:'#9ba5a5',k:[0,.16]}});
  d.scatter.push({obj:'plant.grass',layer:'front',seed:21331,area:{rect:[-140,867,1760,918]},n:45,minGap:23,s:[.6,.9],variant:'random',flip:.5,anim:'strip'});return d;}
- animRegionSceneUpgrade('us','place:buffalo',{state:'draft',landmarks:['landmark.us-buffalo-city-hall'],scene:compose});
+ animRegionSceneUpgrade('us','place:buffalo',{state:'live',landmarks:['landmark.us-buffalo-city-hall'],scene:compose});
 })();

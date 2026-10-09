@@ -10,10 +10,16 @@
  const Life=(d,seed=3301,{coast=false,cold=false,city=false}={})=>{d.flocks.push({obj:coast?'bird.herring-gull-flight':'bird.goose-flight',n:9,area:[100,90,1520,(d.view.horizon||530)-115],speed:25,s:coast?.5:.4,seed,layer:'far'},{obj:cold?'bird.goose-flight':'animal.butterfly',n:6,area:cold?[200,125,1440,350]:[250,680,1390,820],speed:cold?20:9,s:cold?.3:.5,seed:seed+137,layer:cold?'far':'near'});P(d,'animal.rabbit',307,842,.7,'fore',seed+283);P(d,'animal.squirrel',1393,829,.7,'fore',seed+419);if(city)for(let i=0;i<3;i++)A(d,'person.walker',i%2?[[1750,789],[-150,789]]:[[-150,801],[1750,801]],scenePersonScale(sceneObj('person.walker').size[1],795,d.view),14+i*4,seed+557+i*103,'near',.12+i*.29);};
 
  function compose(){return (function(){const d=B({id:'us-honolulu-diamond-head-surf',H:543,heading:115,at:'afternoon'});
- G(d,'horizon','M-160 577Q522 548 1760 563V650H-160Z','@hill.0');P(d,'rock.us-diamond-head',804,636,.77,'mid',28113,{shadow:false,reflect:true});W(d,'mid','M-160 636Q501 626 1760 645V900H-160Z',636,900,['#bce0d3','#80b9b4','#438f9e']);
+ d.particleSeasons={autumn:'motes',winter:'motes'};
+ for(const [season,c]of Object.entries({base:['#203b32','#3d563e'],spring:['#23432f','#456440'],summer:['#1b392d','#385339'],autumn:['#2c402d','#505c3b'],winter:['#204233','#42634b']}))d.palette[season].frame=c;
+ Object.assign(d.palette.winter,{ground:['#749071','#506f57','#2f5345'],path:['#b6b59a','#86917a'],sand:['#cfbd91','#af9d75','#817c58']});
+ G(d,'horizon','M-160 577Q522 548 1760 563V650H-160Z','@hill.0'); P(d,'building.us-waikiki-context',800,637,.82,'far',28101,{shadow:false});P(d,'prop.us-waikiki-breaker',819,802,1,'near',28107,{reflect:false,shadow:false});
+ P(d,'rock.us-diamond-head',804,636,.77,'mid',28113,{shadow:false,reflect:true});W(d,'mid','M-160 636Q501 626 1760 645V900H-160Z',636,900,['#bce0d3','#80b9b4','#438f9e']);
  for(let i=0;i<4;i++)G(d,'near','M'+(-160+i*52)+' '+(722+i*24)+'Q'+(421+i*30)+' '+(684+i*27)+' '+(1234+i*64)+' '+(718+i*25)+'l38 6Q'+(481+i*35)+' '+(699+i*27)+' -160 '+(732+i*24)+'Z',i%2?'#b4d9cf':'#d1e7d9');
  G(d,'near','M-160 900V747Q47 751 228 810Q411 874 573 900ZM1243 900Q1496 838 1760 846V900Z','@sand.0');
- C(d,[{poly:[[-140,817],[212,836],[484,900],[-140,900]]},{poly:[[1171,900],[1491,849],[1740,861],[1740,900]]}],{'plant.us-pacific-bunchgrass':3,'plant.us-hawaii-uluhe':1},340,28243);d.scatter.forEach(s=>{if(s.layer==='near')s.obj='plant.us-lake-clover';});
- P(d,'tree.us-waikiki-coconut',-16,930,1.12,'front',28319,{variant:0});P(d,'tree.us-waikiki-coconut',1681,932,.97,'front',28397,{variant:2,flip:true});
+ G(d,'fore','M-160 900V807Q-18 771 70 805Q137 790 194 827L245 818Q301 849 336 900ZM1306 900L1352 871 1401 878Q1456 838 1505 831Q1603 803 1760 848V900Z','@frame.0');
+ G(d,'fore','M-160 916V807Q-18 771 70 805Q137 790 194 827L245 818Q301 849 336 916ZM1306 916L1352 871 1401 878Q1456 838 1505 831Q1603 803 1760 848V916Z',{lin:[[0,'@frame.1',.52],[1,'@frame.0',0]],y1:790,y2:899});
+ C(d,[{poly:[[-140,817],[212,836],[484,900],[-140,900]]},{poly:[[1171,900],[1491,849],[1740,861],[1740,900]]}],{'plant.us-hawaii-coast-grass':3,'plant.us-hawaii-uluhe':1},340,28243);d.scatter.forEach(s=>{if(s.layer==='near')s.obj='plant.us-hawaii-wind-uluhe';});
+ P(d,'tree.us-waikiki-coconut',147,930,1.12,'front',28319,{variant:0});P(d,'tree.us-waikiki-coconut',1454,932,.97,'front',28397,{variant:2,flip:true});
  A(d,'person.us-waikiki-surfer',[[-180,792],[1780,792]],.65,5,28471,'near',.51);Life(d,28549,{coast:true});d.place=d.place.filter(p=>p.obj!=='animal.rabbit'&&p.obj!=='animal.squirrel');d.flocks[0].obj='bird.us-hawaii-tern-flight';return d;})();}
- animRegionSceneUpgrade('us',"place:honolulu",{state:'draft',landmarks:["rock.us-diamond-head"],scene:compose});})();
+ animRegionSceneUpgrade('us',"place:honolulu",{state:'live',landmarks:["rock.us-diamond-head"],scene:compose});})();

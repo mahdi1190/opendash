@@ -10,10 +10,16 @@
  const Life=(d,seed=3301,{coast=false,cold=false,city=false}={})=>{d.flocks.push({obj:coast?'bird.herring-gull-flight':'bird.goose-flight',n:9,area:[100,90,1520,(d.view.horizon||530)-115],speed:25,s:coast?.5:.4,seed,layer:'far'},{obj:cold?'bird.goose-flight':'animal.butterfly',n:6,area:cold?[200,125,1440,350]:[250,680,1390,820],speed:cold?20:9,s:cold?.3:.5,seed:seed+137,layer:cold?'far':'near'});P(d,'animal.rabbit',307,842,.7,'fore',seed+283);P(d,'animal.squirrel',1393,829,.7,'fore',seed+419);if(city)for(let i=0;i<3;i++)A(d,'person.walker',i%2?[[1750,789],[-150,789]]:[[-150,801],[1750,801]],scenePersonScale(sceneObj('person.walker').size[1],795,d.view),14+i*4,seed+557+i*103,'near',.12+i*.29);};
 
  function compose(){return (function(){const d=B({id:'us-los-angeles-palms-searchlights',H:551,heading:60,at:'golden',setting:'urban'});
+ d.particleSeasons={autumn:'motes',winter:'motes'};
+ for(const [season,c]of Object.entries({base:['#20382e','#3c4f39'],spring:['#233e2e','#405a3b'],summer:['#20362b','#374c33'],autumn:['#343b2b','#55553b'],winter:['#253d38','#405953']}))d.palette[season].frame=c;
+ Object.assign(d.palette.winter,{ground:['#749071','#506f57','#2f5345'],path:['#b6b59a','#86917a'],sand:['#cfbd91','#af9d75','#817c58']});
  d.palette.base.ground=['#8d9665','#68794e','#435b42'];G(d,'horizon','M-160 584Q201 505 494 554Q772 491 1117 539T1760 518V677H-160Z','@hill.0');G(d,'far','M-160 648Q273 605 754 636T1760 611V900H-160Z','@ground.1');
  P(d,'sky.us-la-searchlights',800,680,.9,'far',25113,{shadow:false});P(d,'landmark.us-los-angeles-palms-searchlights',801,686,.81,'mid',25201,{shadow:false});
- G(d,'near','M-160 777Q324 704 799 763T1760 727V900H-160Z','@ground.0');G(d,'near','M-160 882Q389 801 827 816L1760 840V864Q1067 837 822 847Q390 830-160 914Z','@path.1');
+ G(d,'near','M-160 777Q324 704 799 763T1760 727V900H-160Z','@ground.0');G(d,'near','M470 900Q605 824 739 747L850 702 899 705Q886 776 1041 900Z',{lin:[[0,'@path.0'],[1,'@path.1']],y1:702,y2:905});G(d,'near','M473 900Q607 824 740 747L850 702 858 703Q758 774 499 900ZM1018 900Q875 786 892 705l7 0Q886 776 1041 900Z','@frame.1');
+ for(const [y,x0,x1]of [[762,715,907],[803,649,940],[849,574,989],[895,493,1038]])G(d,'near','M'+x0+' '+y+'Q'+Math.round((x0+x1)/2)+' '+(y+4)+' '+x1+' '+y+'v2Q'+Math.round((x0+x1)/2)+' '+(y+6)+' '+(x0-3)+' '+(y+2)+'Z',{lin:[[0,'@frame.1',.18],[1,'@path.1',.4]],x1:x0,x2:x1});
+ G(d,'fore','M-160 900V817Q-37 777 68 811L143 798Q214 823 249 849L302 842 364 900ZM1259 900L1303 857 1357 863Q1421 814 1503 806Q1572 773 1760 826V900Z','@frame.0');
+ G(d,'fore','M-160 916V817Q-37 777 68 811L143 798Q214 823 249 849L302 842 364 916ZM1259 916L1303 857 1357 863Q1421 814 1503 806Q1572 773 1760 826V916Z',{lin:[[0,'@frame.1',.52],[1,'@frame.0',0]],y1:790,y2:899});
  C(d,[{poly:[[-140,779],[581,803],[745,900],[-140,900]]},{poly:[[764,900],[1050,794],[1740,781],[1740,900]]}],{'plant.us-coastal-sage':3,'plant.us-lake-clover':1},235,25279);d.scatter.forEach(s=>{if(s.layer==='near')s.obj='plant.us-pacific-bunchgrass';});
- P(d,'tree.us-la-fan-palm',-23,931,1.16,'front',25357,{variant:0});P(d,'tree.us-la-fan-palm',1673,934,.99,'front',25429,{variant:2,flip:true});
+ P(d,'tree.us-la-fan-palm',151,931,1.16,'front',25357,{variant:0});P(d,'tree.us-la-fan-palm',1457,934,.99,'front',25429,{variant:2,flip:true});
  [[346,792,.52],[1263,783,.48],[567,843,.59],[1113,857,.6]].forEach((q,i)=>P(d,'street.lamp',q[0],q[1],q[2],'near',25511+i*71,{variant:i%2,flip:!!(i%2)}));Life(d,25603,{city:true});return d;})();}
- animRegionSceneUpgrade('us',"place:los-angeles",{state:'draft',landmarks:["landmark.us-los-angeles-palms-searchlights"],scene:compose});})();
+ animRegionSceneUpgrade('us',"place:los-angeles",{state:'live',landmarks:["landmark.us-los-angeles-palms-searchlights"],scene:compose});})();

@@ -7,14 +7,14 @@
  {layer:'near',d:'M-160 900V761Q142 702 369 743L572 788 659 900zM1760 900V727Q1583 708 1447 768L1358 831 1398 900z',fill:'@ground.1'},
  {layer:'near',d:'M250 818L313 759 349 732 434 737 492 730 591 738 664 729 744 740 826 734 910 742 967 737 1031 773 991 799 899 787 815 805 735 789 671 814 580 805 474 829z',fill:'@ground.1'},
  {layer:'fore',d:'M-160 900V848Q202 781 485 852L644 900zM1760 900V843Q1573 809 1398 865L1342 900z',fill:'@ground.2'},
- {layer:'front',d:'M-160 900V897Q87 852 313 900zM1395 900Q1557 858 1760 875V900z',fill:'@ground.2'}],water:[{layer:'mid',d:'M649 672Q1118 639 1760 651V900H581L567 789z',y0:668,y1:900,base:['#c7d8ce','#7caaa8','#305c73'],reflect:true,shimmer:43,lightPath:true}],place:[
- {obj:'rock.us-franconia-ledges',x:660,y:736,s:.94,layer:'near',seed:18001,reflect:true},
+ {layer:'front',d:'M-160 900V897Q87 852 313 900zM1395 900Q1557 858 1760 875V900z',fill:'@ground.2'}],water:[{layer:'mid',d:'M649 706Q1118 701 1760 700V900H581L567 789z',y0:700,y1:900,base:['#c7d8ce','#7caaa8','#305c73'],reflect:true,shimmer:43,lightPath:true}],place:[
+ {obj:'rock.us-franconia-ledges',x:672,y:736,s:.94,layer:'near',seed:18001,reflect:true},
  {obj:'tree.us-red-spruce',x:61,y:923,s:1.03,variant:1,layer:'front',seed:18023},{obj:'tree.us-red-spruce',x:1538,y:913,s:1.09,variant:3,layer:'front',seed:18047},
  {obj:'tree.far-birch',x:273,y:798,s:.52,variant:2,layer:'fore',seed:18061},{obj:'tree.us-red-spruce',x:1446,y:791,s:.51,variant:0,layer:'near',seed:18079},
  {obj:'animal.rabbit',x:424,y:849,s:.55,variant:1,layer:'fore',seed:18097}],scatter:[],actors:[{obj:'boat.dinghy',path:[[973,761],[1152,750],[1303,772]],speed:5,s:.32,variant:0,layer:'near',seed:18119,loop:'pingpong'},{obj:'bird.mallard',path:[[806,832],[1041,819]],speed:4,s:.35,variant:1,layer:'fore',seed:18133,loop:'pingpong'}],flocks:[{obj:'bird.small-flight',n:13,area:[940,166,1480,365],layer:'horizon',speed:31,s:.39,seed:18151}]};
- d.scatter.push({obj:{'tree.us-red-spruce':2,'tree.far-birch':1},layer:'mid',seed:18173,area:{rect:[784,646,1750,690]},n:24,minGap:35,s:[.12,.25],variant:[0,1],flip:.5,anim:false,tint:{col:'#9ab0a3',k:[0,.16]},reflect:true});
+ d.scatter.push({obj:{'tree.us-franconia-far-spruce':2,'tree.far-birch':1},layer:'mid',seed:18173,area:{rect:[784,646,1750,690]},n:24,minGap:35,s:[.21,.45],variant:[0,1],flip:.5,anim:false,tint:{col:'#9ab0a3',k:[0,.16]},reflect:true});
  d.scatter.push({obj:{'rock.stones':2,'rock.boulder':1,'plant.fern':1,'ground.leaves':1},layer:'near',seed:18191,area:{poly:[[385,759],[957,754],[1017,776],[816,795],[598,797],[435,816]]},n:80,minGap:10,s:[.25,.55],variant:[0,1],flip:.5,anim:false,tint:{col:'#71817a',k:[0,.16]}});
- for(const[i,poly]of [[[-160,767],[388,762],[584,834],[644,905],[-160,905]],[[1439,784],[1760,739],[1760,905],[1343,905]]].entries())d.scatter.push({obj:{'plant.grass':2,'plant.reed':1,'plant.fern':1,'rock.stones':2,'rock.boulder':1,'ground.leaves':1,'ground.puddle':1},layer:'fore',seed:18209+i*43,area:{poly},n:200,minGap:10,s:[.4,.76],variant:[0,1],flip:.5,anim:false,tint:{col:'#8f9879',k:[0,.16]}});
+ for(const[i,poly]of [[[-160,767],[388,762],[584,834],[644,905],[-160,905]],[[1439,784],[1760,739],[1760,905],[1343,905]]].entries())d.scatter.push({obj:{'plant.grass':2,'plant.reed':1,'plant.fern':1,'rock.stones':2,'rock.boulder':1,'ground.leaves':1,'ground.puddle':1},layer:'fore',seed:18209+i*43,area:{poly},n:145,minGap:10,s:[.4,.76],variant:[0,1],flip:.5,anim:false,tint:{col:'#8f9879',k:[0,.16]}});
  d.scatter.push({obj:{'plant.reed':2,'plant.grass':1},layer:'fore',seed:18307,area:{rect:[540,864,1410,912]},n:58,minGap:22,s:[.5,.85],variant:[0,1],flip:.5,anim:'strip',tint:{col:'#718c70',k:[0,.16]}});return d;}
- animRegionSceneUpgrade('us','state:NH',{state:'draft',landmarks:['rock.us-franconia-ledges'],scene:compose});
+ animRegionSceneUpgrade('us','state:NH',{state:'live',landmarks:['rock.us-franconia-ledges'],scene:compose});
 })();

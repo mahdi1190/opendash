@@ -13,8 +13,9 @@
  G(d,'horizon','M-160 579Q451 543 1760 559V669H-160Z','@hill.0');G(d,'far','M-160 642Q264 596 669 625T1310 609T1760 631V900H-160Z','@ground.0');
  T(d,'far',{poly:[[-140,626],[1740,617],[1740,654],[-140,671]]},30,16109,[.16,.34]);
  G(d,'mid','M-160 731Q356 670 737 714T1363 685T1760 708V900H-160Z','@ground.1');
- G(d,'near','M-160 900Q421 813 932 774L1477 748 1760 769V784Q1269 763 938 795Q467 838 9 900Z','@path.0');
+ for(let i=0;i<11;i++){const a=-270+i*190,b=790+(a-800)*.09,c=790+(a+190-800)*.09;G(d,'mid','M'+a+' 900L'+b+' 631L'+c+' 631L'+(a+190)+' 900Z',i===5?'@path.1':i%2?'@ground.1':'@ground.0');}
+ P(d,'prop.us-oh-airfield',800,659,1,'far',16179,{shadow:false});
  P(d,'prop.us-oh-wright-flyer',800,465,.95,'mid',16231,{shadow:false});
  C(d,[{poly:[[-140,781],[656,824],[779,900],[-140,900]]},{poly:[[784,900],[1067,812],[1740,801],[1740,900]]}],{'plant.us-lake-meadow':3,'plant.us-lake-clover':1},240,16301);
- P(d,'tree.us-mackinac-paper-birch',-61,925,1.28,'front',16411);P(d,'tree.us-lake-paper-birch',1694,929,1.42,'front',16481,{tint:['#2f5044',.24]});Life(d,16537,{cold:true});return d;})();}
- animRegionSceneUpgrade('us',"state:OH",{state:'draft',landmarks:["prop.us-oh-wright-flyer"],scene:compose});})();
+ P(d,'tree.us-oh-airfield-hawthorn',158,908,1.1,'front',16411,{variant:0,anim:{sway:{period:7.8}}});P(d,'tree.us-oh-airfield-hawthorn',1446,910,1.04,'front',16481,{variant:1,flip:true,anim:{sway:{period:8.9}}});Life(d,16537,{cold:true});return d;})();}
+ animRegionSceneUpgrade('us',"state:OH",{state:'live',landmarks:["prop.us-oh-wright-flyer"],scene:compose});})();

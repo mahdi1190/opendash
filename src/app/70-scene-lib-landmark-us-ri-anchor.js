@@ -13,4 +13,13 @@
       lit.push({f:'#ffd895',op:.14,d:'M1252 566h254v50h-254z',m});
       for(let x=1107;x<1690;x+=44)body.push({f:'#c0ab86',d:'M'+x+' 490h8v8h-8z',m,detail:true});return{body,lit};
     }});
+  // Sailing reflections move with their own hull, below the actual waterline.
+  const dinghy=sceneObj('boat.dinghy');
+  sceneObjDefine({id:'boat.us-newport-sloop',category:'boat',weight:0,size:[150,244],variants:3,seasonal:false,flippable:true,
+    palette:dinghy.palette,parts:['reflection','wake','sails','hull'],anim:dinghy.anim,reflect:true,
+    tags:['us','newport','unlit','kit:boats','role:boat'],
+    build(v,r,ctx){const p=dinghy.build(v,r,ctx),reflection=[];
+      for(const group of [p.sails,p.hull])for(const raw of group){const sh=Array.isArray(raw)?{f:raw[0],d:raw[1],op:raw[2]}:{...raw},m=sh.m||[1,0,0,1,0,0];
+        if(!sh.f)continue;reflection.push({...sh,glow:undefined,op:(sh.op??1)*.16,m:[m[0],m[1]*-.24,m[2],m[3]*-.24,m[4],14-m[5]*.24]});}
+      return{reflection,wake:[{s:'#b7d4cf',w:1.7,op:.48,d:'M-101 12q22-5 41-2m49 4q31 4 65-3M-85 26q27-4 43-1m31 10q21 2 45-2'}],sails:p.sails,hull:p.hull};}});
 })();

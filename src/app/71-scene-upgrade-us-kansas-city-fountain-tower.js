@@ -11,11 +11,14 @@
 
  function compose(){return (function(){const d=B({id:'us-kansas-city-fountain-tower',H:546,heading:18,at:'golden',setting:'urban'});
  G(d,'horizon','M-160 576Q466 539 1760 560V659H-160Z','@hill.0');G(d,'far','M-160 638Q226 602 602 630T1262 607T1760 627V900H-160Z','@ground.0');
+ P(d,'building.us-kansas-city-fountain-tower-context',800,633,1,'far',9017,{shadow:false});
  T(d,'far',{poly:[[-140,623],[481,615],[481,662],[-140,679]]},14,15107,[.24,.47]);T(d,'far',{poly:[[1127,616],[1740,620],[1740,676],[1127,662]]},16,15187,[.22,.46]);
  G(d,'mid','M245 720L463 670H1121L1367 720V744H245Z','@rock.1');G(d,'near','M273 741H1334L1441 900H159Z','@path.0');
  for(let i=0;i<6;i++)G(d,'near','M'+(273-i*15)+' '+(745+i*9)+'H'+(1334+i*15)+'v3H'+(273-i*15)+'Z',i%2?'@rock.0':'@rock.1');
  P(d,'landmark.us-kansas-city-fountain-tower',798,699,.85,'mid',15259,{shadow:false});
- W(d,'near','M496 831Q780 801 1084 831L1167 900H415Z',833,900,['#b4d4d4','#79a3ad','#406879']);
+ W(d,'near','M418 818Q780 793 1179 818L1222 879Q796 859 373 882Z',818,882,['#b4d4d4','#79a3ad','#406879']);
+ for(const [x,y,s] of [[537,852,.48],[799,846,.57],[1069,851,.45]])P(d,'prop.us-kansas-city-pool-jet',x,y,s,'near',15341+x,{shadow:false});
  C(d,[{poly:[[-140,783],[307,757],[465,900],[-140,900]]},{poly:[[1139,900],[1329,764],[1740,782],[1740,900]]}],{'plant.us-lake-meadow':2,'plant.us-lake-clover':2},210,15317);
- P(d,'tree.us-mackinac-paper-birch',-26,927,1.62,'front',15403);P(d,'tree.us-lake-paper-birch',1668,929,1.38,'front',15461,{tint:['#304e45',.24]});Life(d,15521,{city:true});return d;})();}
- animRegionSceneUpgrade('us',"place:kansas-city",{state:'draft',landmarks:["landmark.us-kansas-city-fountain-tower"],scene:compose});})();
+ P(d,'prop.us-kansas-city-terrace-joints',800,900,1,'near',15419,{shadow:false});
+ P(d,'tree.us-kansas-city-park-oak',161,910,1.06,'front',15403,{variant:0,anim:{sway:{period:8.6}}});P(d,'tree.us-kansas-city-park-oak',1442,912,1.1,'front',15461,{variant:1,flip:true,anim:{sway:{period:9.8}}});Life(d,15521,{city:true});return d;})();}
+ animRegionSceneUpgrade('us',"place:kansas-city",{state:'live',landmarks:["landmark.us-kansas-city-fountain-tower"],scene:compose});})();

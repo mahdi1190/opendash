@@ -7,9 +7,12 @@
  P('@snow.0','M198-372L252-343 286-235 376-192 284-199 239-251 198-304 165-270 145-319Z');
  P('@stone.1','M-20-491L11-394 52-345 98-327 120-244 45-272-4-353-27-393-71-299-119-231-76-350Z');P('@stone.0','M198-372L198-304 239-251 284-199 251-164 192-230 164-285Z');
  const fans=[[-111,-373,-282,-46,14],[-20,-491,65,-31,20],[198,-372,365,-15,14],[52,-345,-87,-19,15]];
- for(const [x,y,ex,ey,n] of fans)for(let i=0;i<n;i++){const t=i/n;S(i%3?'@snow.2':'@snow.0',1.1,'M'+F(x+(r()-.5)*17)+' '+F(y+r()*26)+'Q'+F((x+ex)/2+(t-.5)*64)+' '+F((y+ey)/2)+' '+F(ex+(t-.5)*130)+' '+F(ey+(r()-.5)*24),.6,i%2===0);}
+ for(const [x,y,ex,ey,n] of fans)for(let i=0;i<Math.ceil(n*.6);i++){const t=.16+r()*.68,xx=x+(ex-x)*t+(r()-.5)*42,yy=y+(ey-y)*t,dy=13+r()*32,dx=(ex-x)/(ey-y)*dy+(r()-.5)*9;S(i%3?'@snow.2':'@snow.0',.9+r()*.6,'M'+F(xx)+' '+F(yy)+'q'+F(dx*.3)+' '+F(dy*.5)+' '+F(dx)+' '+F(dy),.4+r()*.18,true);}
  for(let i=0;i<23;i++){const x=-315+i*28.5,y=-13-r()*27;S('@snow.2',1.5,'M'+F(x)+' '+F(y)+'q19-6 39-3',.47,true);}
  L('#b5d5e2','M-65-471L-20-491 37-453 33-442-21-476-61-459-99-366-111-373Z',.33);L('#b3cfdb','M198-372L252-343 286-235 275-238 244-331 196-359 165-308 145-319Z',.27);
+ L('#8eb4cd','M-21-476L-25-396-69-300-114-236-162-214-127-276-98-367-59-458Z',.12);
+ L('#88a9c0','M198-359L198-304 239-251 280-207 251-178 203-235 169-280Z',.085);
+ lit.push({s:'#adcbd6',w:1.1,op:.14,d:'M-20-397L-50-323-89-272M207-315L223-277 251-235',cap:'round'});
 })(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();
 /* Native Denali; original location subject, modeled facets and real detail.
    Explicit placement only; draft scene stays under independent review. */

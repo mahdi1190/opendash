@@ -20,5 +20,5 @@
  d.scatter.push({obj:'ground.capitol-paver-joint',layer:'fore',seed:12107,tint:{col:'#b99c7a',k:[0,.16]},area:{poly:[[480,895],[751,671],[852,671],[1118,895]]},n:80,minGap:14,s:[.35,.75],variant:[0,1],flip:.5,anim:false});
  d.scatter.push({obj:'plant.grass',layer:'fore',seed:12131,area:{poly:[[-60,815],[310,827],[424,905],[-60,905]]},n:32,minGap:24,s:[.5,.85],variant:'random',flip:.5,anim:'strip'});
  d.scatter.push({obj:{'tree.far-birch':2,'tree.us-northern-maple':1},layer:'far',seed:12143,area:{rect:[-150,574,1750,617]},n:25,minGap:38,s:[.14,.28],variant:[0,1],flip:.5,anim:false,tint:{col:'#9da78b',k:[.08,.14]}});return d;}
- animRegionSceneUpgrade('us','state:PA',{state:'draft',landmarks:['landmark.us-pa-liberty-bell'],scene:compose});
+ animRegionSceneUpgrade('us','state:PA',{state:'live',landmarks:['landmark.us-pa-liberty-bell'],scene:compose});
 })();

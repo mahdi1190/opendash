@@ -10,10 +10,16 @@
  const Life=(d,seed=3301,{coast=false,cold=false,city=false}={})=>{d.flocks.push({obj:coast?'bird.herring-gull-flight':'bird.goose-flight',n:9,area:[100,90,1520,(d.view.horizon||530)-115],speed:25,s:coast?.5:.4,seed,layer:'far'},{obj:cold?'bird.goose-flight':'animal.butterfly',n:6,area:cold?[200,125,1440,350]:[250,680,1390,820],speed:cold?20:9,s:cold?.3:.5,seed:seed+137,layer:cold?'far':'near'});P(d,'animal.rabbit',307,842,.7,'fore',seed+283);P(d,'animal.squirrel',1393,829,.7,'fore',seed+419);if(city)for(let i=0;i<3;i++)A(d,'person.walker',i%2?[[1750,789],[-150,789]]:[[-150,801],[1750,801]],scenePersonScale(sceneObj('person.walker').size[1],795,d.view),14+i*4,seed+557+i*103,'near',.12+i*.29);};
 
  function compose(){return (function(){const d=B({id:'us-san-diego-sailboats-sea-lion',H:541,heading:145,at:'afternoon'});
+ d.particleSeasons={autumn:'motes',winter:'motes'};
+ for(const [season,c]of Object.entries({base:['#1d3935','#38524a'],spring:['#234338','#41634b'],summer:['#203b33','#385447'],autumn:['#343d30','#555640'],winter:['#23413e','#42625b']}))d.palette[season].frame=c;
+ Object.assign(d.palette.winter,{ground:['#89a095','#63877d','#3a625b'],rock:['#829e9b','#496d70','#2c505c'],path:['#b6b59a','#86917a'],sand:['#cfbd91','#af9d75','#817c58']});
  G(d,'horizon','M-160 573Q506 545 1760 557V653H-160Z','@hill.0');G(d,'far','M-160 624Q364 605 1760 620V651H-160Z','@rock.1');W(d,'mid','M-160 643Q586 627 1760 645V900H-160Z',643,900,['#b8d4cf','#77aab2','#3d7d92']);
- P(d,'landmark.us-san-diego-sailboats-sea-lion',803,643,.8,'mid',26113,{reflect:true,shadow:false});P(d,'animal.us-san-diego-sea-lion',809,789,.78,'near',26191,{reflect:true});
- G(d,'near','M-160 900V733Q-20 734 171 794Q316 854 426 900ZM1224 900Q1453 809 1760 816V900Z','@rock.1');
+ P(d,'building.us-san-diego-context',800,624,.85,'far',26107,{shadow:false});
+ P(d,'landmark.us-san-diego-sailboats-sea-lion',803,643,.8,'mid',26113,{reflect:true,shadow:false});P(d,'animal.us-san-diego-sea-lion',809,789,1.08,'near',26191,{reflect:true});
+ G(d,'near','M-160 900V733Q-20 734 171 794Q316 854 426 900ZM1224 900Q1453 809 1760 816V900Z',{lin:[[0,'@rock.1'],[.5,'@ground.2'],[1,'@frame.1']],y1:733,y2:905});G(d,'near','M-160 733Q-20 734 171 794Q316 854 426 900H402Q309 867 162 806Q-30 745-160 747ZM1224 900Q1453 809 1760 816v11Q1452 824 1245 900Z',{lin:[[0,'@water.0',.33],[1,'@water.0',0]],y1:733,y2:892});
+ G(d,'fore','M-160 900V812Q-30 772 69 806L137 794Q210 824 226 851L273 853 321 900ZM1312 900L1364 858 1412 865Q1470 809 1548 822Q1614 800 1760 845V900Z','@frame.0');
+ G(d,'fore','M-160 916V812Q-30 772 69 806L137 794Q210 824 226 851L273 853 321 916ZM1312 916L1364 858 1412 865Q1470 809 1548 822Q1614 800 1760 845V916Z',{lin:[[0,'@frame.1',.52],[1,'@frame.0',0]],y1:790,y2:899});
  C(d,[{poly:[[-140,793],[179,821],[437,900],[-140,900]]},{poly:[[1139,900],[1463,836],[1740,840],[1740,900]]}],{'plant.us-coastal-sage':3,'plant.us-lake-clover':1},330,26267);d.scatter.forEach(s=>{if(s.layer==='near')s.obj='plant.us-pacific-bunchgrass';});
- P(d,'tree.us-la-fan-palm',-29,933,1.19,'front',26341,{variant:0});P(d,'tree.us-la-fan-palm',1681,934,.97,'front',26411,{variant:2,flip:true});
+ P(d,'tree.us-san-diego-fan-palm',145,933,1.19,'front',26341,{variant:0});P(d,'tree.us-san-diego-fan-palm',1461,934,.97,'front',26411,{variant:2,flip:true});
  A(d,'boat.dinghy',[[-180,716],[1780,716]],.46,8,26479,'mid',.58);A(d,'boat.dinghy',[[1780,748],[-180,748]],.32,6,26549,'mid',.32);Life(d,26621,{coast:true});return d;})();}
- animRegionSceneUpgrade('us',"place:san-diego",{state:'draft',landmarks:["landmark.us-san-diego-sailboats-sea-lion"],scene:compose});})();
+ animRegionSceneUpgrade('us',"place:san-diego",{state:'live',landmarks:["landmark.us-san-diego-sailboats-sea-lion"],scene:compose});})();

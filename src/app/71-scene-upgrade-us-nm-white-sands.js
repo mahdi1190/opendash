@@ -51,5 +51,5 @@
     d.scatter.push({obj:{'ground.us-gypsum-ripple':1,'ground.us-gypsum-crust':2},layer:'far',seed:7789,area:{rect:[-150,632,1750,665]},n:50,minGap:17,s:[.12,.28],variant:[0,1],flip:.5,anim:false,tint:{col:'#dad1db',k:[.16,.16]}});
     return d;
   }
-  animRegionSceneUpgrade('us','state:NM',{state:'draft',landmarks:['ground.us-white-sands-dune'],scene:compose});
+  animRegionSceneUpgrade('us','state:NM',{state:'live',landmarks:['ground.us-white-sands-dune'],scene:compose});
 })();

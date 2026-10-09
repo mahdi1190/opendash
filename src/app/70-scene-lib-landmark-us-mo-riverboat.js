@@ -9,5 +9,6 @@
  P('@white','M-28-188V-218L2-231 34-217V-188Z');for(let i=0;i<4;i++)W(-22+i*13,-215,8,16);
  wheel.push({f:'@red.2',d:D.circ(170,-33,41)},{f:'@red.0',d:D.circ(170,-33,32)},{f:'@metal.2',d:D.circ(170,-33,7)});
  for(let i=0;i<14;i++){const a=i*Math.PI/7;wheel.push({s:'@wood.2',w:3,d:'M170-33l'+F(Math.cos(a)*36)+' '+F(Math.sin(a)*36)},{f:'@red.2',d:D.poly([[170+Math.cos(a)*32,-33+Math.sin(a)*32],[170+Math.cos(a+.15)*43,-33+Math.sin(a+.15)*43],[170+Math.cos(a-.1)*43,-33+Math.sin(a-.1)*43]])});}
- L('#a3c1c9','M-224-29H228L221-26H-220Z',.3);return{wheel};
+ L('#a3c1c9','M-224-29H228L221-26H-220Z',.3);
+ lit.push({s:'#9aafbd',w:1.5,op:.2,d:'M-184-95H176M-171-146H159M-157-190H135',cap:'round'},{s:'#829cad',w:1.8,op:.15,d:'M170-74A41 41 0 0 1 211-33',cap:'round'});return{wheel};
 })(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();

@@ -5,7 +5,7 @@
  {layer:'horizon',d:'M-160 900V559Q159 440 420 523T949 498Q1378 456 1760 531V900z',fill:'@hill.0'},
  {layer:'far',d:'M-160 900V603Q188 532 480 581T1030 565Q1386 506 1760 588V900z',fill:'@hill.1'},
  {layer:'mid',d:'M-160 900V653Q149 580 434 627T956 633Q1398 569 1760 626V900z',fill:'@ground.0'},
- {layer:'near',d:'M-160 900V745Q168 686 458 739T1001 716Q1370 671 1760 730V900z',fill:'@ground.1'},
+ {layer:'near',d:'M-160 900V745Q14 718 110 717L137 710 174 718 210 711 248 724Q346 723 458 739L526 733 548 740 576 732 609 738Q830 736 1001 716L1058 702 1093 708 1132 696 1184 703Q1459 680 1760 730V900z',fill:'@ground.1'},
  {layer:'fore',d:'M386 900Q561 764 687 757Q777 745 856 711L885 714Q816 779 711 790Q615 802 541 900z',fill:'@path.0'},
  {layer:'front',d:'M-160 900V881Q184 828 410 872L472 900zM1118 900Q1404 839 1760 852V900z',fill:'@ground.2'}],place:[
  {obj:'tree.us-charter-oak',x:806,y:760,s:.86,layer:'near',seed:16001},
@@ -14,10 +14,12 @@
  {obj:'animal.squirrel',x:824,y:784,s:.76,variant:1,layer:'fore',seed:16111},{obj:'animal.rabbit',x:1160,y:805,s:.61,variant:0,layer:'fore',seed:16127},{obj:'bird.robin',x:415,y:836,s:.66,variant:2,layer:'fore',seed:16139}],scatter:[],actors:[
  {obj:'bird.pigeon-feral',path:[[664,844],[893,792],[1082,827]],speed:6,s:.5,variant:2,layer:'fore',seed:16159,loop:'pingpong'},{obj:'bird.pigeon-feral',path:[[1221,737],[1037,745]],speed:4,s:.36,variant:0,layer:'near',seed:16177,loop:'pingpong'}],flocks:[{obj:'bird.small-flight',n:13,area:[190,155,1410,359],layer:'horizon',speed:30,s:.38,seed:16189}]};
  d.scatter.push({obj:{'tree.far-birch':2,'tree.us-northern-maple':1},layer:'far',seed:16207,area:{rect:[-160,575,1760,622]},n:21,minGap:48,s:[.15,.28],variant:[0,1],flip:.5,anim:false,tint:{col:'#a0aa88',k:[0,.16]}});
- for(const[i,poly]of [[[-160,760],[405,746],[610,804],[386,905],[-160,905]],[[963,750],[1760,730],[1760,905],[1100,905]]].entries())d.scatter.push({obj:{'plant.grass':2,'plant.reed':1,'ground.leaves':3,'ground.puddle':1,'plant.fern':1,'rock.stones':1,'rock.boulder':.5},layer:'fore',seed:16241+i*53,area:{poly},n:120,minGap:12,s:[.4,.7],variant:[0,1],flip:.5,anim:false,tint:{col:'#aa945b',k:[0,.16]}});
+ for(const[i,poly]of [[[-160,760],[405,746],[610,804],[386,905],[-160,905]],[[963,750],[1760,730],[1760,905],[1100,905]]].entries())d.scatter.push({obj:{'plant.grass':2,'plant.reed':1,'ground.leaves':3,'ground.puddle':1,'plant.fern':1,'rock.stones':1,'rock.boulder':.5},layer:'fore',seed:16241+i*53,area:{poly},n:55,minGap:12,s:[.4,.7],variant:[0,1],flip:.5,anim:false,tint:{col:'#aa945b',k:[0,.16]}});
+ // Sparse rear seed heads become a broken, denser shoulder toward the old wall.
+ for(const[i,poly]of [[[-160,642],[270,625],[508,659],[649,708],[570,758],[274,718],[-160,739]],[[948,675],[1206,634],[1551,628],[1760,650],[1760,745],[1301,718],[1034,753]]].entries())d.scatter.push({obj:{'ground.us-oak-meadow':5,'ground.leaves':1,'rock.stones':.2},layer:'mid',seed:16263+i*41,area:{poly},n:85,minGap:20,s:[.65,1.2],variant:[0,1,2],flip:.5,anim:false,tint:{col:'#9b9c62',k:[0,.16]}});
  d.scatter.push({obj:{'ground.leaves':3,'ground.desert-gravel':1},layer:'fore',seed:16331,area:{poly:[[565,780],[747,774],[931,784],[1111,838],[1100,905],[543,905],[605,823]]},n:105,minGap:10,s:[.32,.55],variant:[0,1],flip:.5,anim:false,tint:{col:'#b19b74',k:[0,.16]}});
  d.scatter.push({obj:'plant.grass',layer:'fore',seed:16357,area:{poly:[[-70,830],[314,820],[407,905],[-70,905]]},n:35,minGap:20,s:[.55,.9],variant:'random',flip:.5,anim:'strip'});
  // The wall follows the meadow's curve with unequal native stones, not a grid.
  d.scatter.push({obj:{'rock.stones':2,'rock.boulder':1},layer:'fore',seed:16379,area:{poly:[[-160,786],[93,799],[312,776],[488,800],[479,827],[296,803],[85,827],[-160,814]]},n:43,minGap:13,s:[.7,1],variant:[0,1],flip:.5,anim:false,tint:{col:'#929d8e',k:[0,.16]}});return d;}
- animRegionSceneUpgrade('us','state:CT',{state:'draft',landmarks:['tree.us-charter-oak'],scene:compose});
+ animRegionSceneUpgrade('us','state:CT',{state:'live',landmarks:['tree.us-charter-oak'],scene:compose});
 })();

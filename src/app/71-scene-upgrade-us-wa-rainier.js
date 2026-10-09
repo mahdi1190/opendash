@@ -10,11 +10,18 @@
  const Life=(d,seed=3301,{coast=false,cold=false,city=false}={})=>{d.flocks.push({obj:coast?'bird.herring-gull-flight':'bird.goose-flight',n:9,area:[100,90,1520,(d.view.horizon||530)-115],speed:25,s:coast?.5:.4,seed,layer:'far'},{obj:cold?'bird.goose-flight':'animal.butterfly',n:6,area:cold?[200,125,1440,350]:[250,680,1390,820],speed:cold?20:9,s:cold?.3:.5,seed:seed+137,layer:cold?'far':'near'});P(d,'animal.rabbit',307,842,.7,'fore',seed+283);P(d,'animal.squirrel',1393,829,.7,'fore',seed+419);if(city)for(let i=0;i<3;i++)A(d,'person.walker',i%2?[[1750,789],[-150,789]]:[[-150,801],[1750,801]],scenePersonScale(sceneObj('person.walker').size[1],795,d.view),14+i*4,seed+557+i*103,'near',.12+i*.29);};
 
  function compose(){return (function(){const d=B({id:'us-wa-rainier',H:537,heading:150,at:'dawn'});
+ for(const [season,c]of Object.entries({base:['#243b3a','#40544c'],spring:['#253e31','#405b40'],summer:['#22392e','#3a5440'],autumn:['#35362b','#55503d'],winter:['#283e48','#465d65']}))d.palette[season].frame=c;
  G(d,'horizon','M-160 566Q133 480 423 526Q731 470 1015 521T1510 496T1760 518V675H-160Z','@hill.0');P(d,'rock.us-mount-rainier',810,633,.79,'mid',24113,{shadow:false,reflect:true});
  W(d,'mid','M-160 633Q391 620 798 637T1760 619V900H-160Z',633,900,['#b6d2d0','#81abae','#446f86']);
- G(d,'near','M-160 900V728Q101 696 330 759Q492 815 584 900ZM1012 900Q1245 714 1760 741V900Z','@ground.0');
+ G(d,'near','M-160 900V728Q101 696 330 759Q492 815 584 900ZM1012 900Q1245 714 1760 741V900Z',{lin:[[0,'@ground.0'],[.5,'@ground.1'],[1,'@frame.1']],y1:703,y2:905});
+ G(d,'near','M-160 728Q101 696 330 759Q492 815 584 900H563Q479 831 321 773Q89 716-160 746ZM1012 900Q1245 714 1760 741V757Q1247 732 1037 900Z',{lin:[[0,'@water.0',.33],[1,'@water.0',0]],y1:703,y2:846});
  G(d,'fore','M-160 900V820Q106 779 346 900ZM1191 900Q1457 796 1760 814V900Z','@ground.2');
  C(d,[{poly:[[-140,789],[263,805],[491,900],[-140,900]]},{poly:[[1041,900],[1389,779],[1740,819],[1740,900]]}],{'plant.us-tundra-sedge':3,'plant.us-sword-fern':1},240,24239);
  T(d,'mid',{poly:[[-140,622],[349,614],[397,665],[-140,695]]},17,24311,[.29,.7],{'tree.us-loon-spruce':3,'tree.us-lake-paper-birch':1});T(d,'mid',{poly:[[1251,610],[1740,619],[1740,702],[1190,666]]},18,24389,[.27,.66],{'tree.us-loon-spruce':3,'tree.us-lake-paper-birch':1});
- P(d,'tree.us-loon-spruce',-27,928,1.65,'front',24457);P(d,'tree.us-loon-spruce',1683,929,1.43,'front',24539,{flip:true});Life(d,24607,{cold:true});return d;})();}
- animRegionSceneUpgrade('us',"state:WA",{state:'draft',landmarks:["rock.us-mount-rainier"],scene:compose});})();
+ G(d,'front','M-160 900V798Q-23 766 61 803Q118 778 178 814L221 806Q275 836 318 878L353 900ZM1214 900Q1256 862 1303 857L1354 823Q1415 835 1488 798Q1561 779 1760 810V900Z','@frame.0');
+ G(d,'front','M-160 852Q8 830 86 856L141 840 205 867 252 856 306 900ZM1307 900Q1397 860 1472 875Q1551 842 1760 859V900Z','@frame.1');
+ G(d,'front','M485 900Q629 865 738 862Q846 850 954 875L1117 900Z',{lin:[[0,'@ground.1'],[1,'@frame.1']],y1:848,y2:905});
+ d.scatter.push({obj:'plant.us-rainier-lupine',layer:'front',seed:24701,area:{poly:[[511,900],[641,873],[749,868],[922,879],[1056,900]]},n:42,minGap:12,s:[.43,.72],variant:[0,1,2],flip:.5,anim:false,tint:{col:'#9a9e90',k:[0,.12]}});
+ d.scatter.push({obj:'plant.us-rainier-lupine',layer:'fore',seed:24779,area:{poly:[[229,854],[322,838],[453,898],[265,899]]},n:17,minGap:14,s:[.5,.84],variant:[0,1,2],flip:.5,anim:false,tint:{col:'#95a48a',k:[0,.13]}},{obj:'plant.us-rainier-lupine',layer:'fore',seed:24853,area:{poly:[[1134,891],[1298,823],[1459,835],[1374,899]]},n:23,minGap:16,s:[.45,.79],variant:[0,1,2],flip:.5,anim:'strip',tint:{col:'#a2a49b',k:[0,.11]}});
+ P(d,'tree.us-loon-spruce',101,910,1.08,'front',24457);P(d,'tree.us-loon-spruce',1484,916,.95,'front',24539,{flip:true,variant:2});Life(d,24607,{cold:true});return d;})();}
+ animRegionSceneUpgrade('us',"state:WA",{state:'live',landmarks:["rock.us-mount-rainier"],scene:compose});})();

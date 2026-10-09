@@ -1,4 +1,4 @@
-/* us-midwest/sd-rushmore: Mount Rushmore. Unique hand-placed composition, pending panel. */
+/* us-midwest/sd-rushmore: Black Hills Needle's Eye. Original Rushmore art retained. */
 (function(){const SITE={"lat":44.234,"lon":-99.366};
  const B=(o)=>({v:1,id:o.id,view:{lat:o.lat??SITE.lat,lon:o.lon??SITE.lon,heading:o.heading||110,fov:78,horizon:o.H||530},at:o.at||'golden',season:'auto',setting:o.setting||'natural',weather:'live',particles:'season',layers:SCENE_LAYERS_DEFAULT.map(l=>Object.assign({},l)),sky:{stars:180,clouds:{n:4,y:[65,(o.H||530)-230],speed:4},sunR:26,moonR:22},palette:{base:{hill:['#a2b6b5','#749496','#4e7477'],ground:['#789359','#526f45','#304c38'],path:['#c4b79b','#918d77'],sand:['#d2bd91','#b39d73','#8c7c5d'],rock:['#a0aaa6','#718687','#475e68'],water:['#aed0d5','#73a1b2','#365f7b']},spring:{ground:['#92ad65','#6e8f4d','#446a40']},summer:{ground:['#7e9a55','#55793f','#355b39']},autumn:{ground:['#a18d59','#78643d','#4d4c32'],hill:['#aeb6a6','#929b87','#687e76']},winter:{ground:['#d2dcd8','#afc3bf','#769996'],path:['#cdd9d5','#a3bbb8'],sand:['#d5d3c1','#bdbca6','#969f92'],hill:['#c0d2d4','#9bb8c0','#7298a8']}},ground:[],water:[],place:[],scatter:[],actors:[],flocks:[],camera:{pan:0,period:90}});
  const G=(d,l,p,f)=>d.ground.push({layer:l,d:p,fill:f});
@@ -11,9 +11,9 @@
 
  function compose(){return (function(){const d=B({id:'us-sd-rushmore',H:541,heading:36,at:'golden'});
  G(d,'horizon','M-160 575Q90 456 348 522Q602 438 836 514T1375 465T1760 537V721H-160Z','@hill.0');G(d,'far','M-160 663Q211 550 533 614T1191 577T1760 626V900H-160Z','@ground.2');
- P(d,'rock.us-sd-black-hills-granite',789,671,.73,'mid',17113,{shadow:false});
+ P(d,'rock.us-sd-black-hills-granite',802,671,.73,'mid',17113,{shadow:false});
  T(d,'far',{poly:[[-140,622],[334,597],[416,676],[-140,697]]},20,17201,[.25,.6],{'tree.us-loon-spruce':3,'tree.us-lake-paper-birch':2});T(d,'mid',{poly:[[1181,599],[1740,617],[1740,711],[1209,692]]},18,17281,[.3,.67],{'tree.us-loon-spruce':3,'tree.us-lake-paper-birch':2});
  G(d,'near','M-160 900V778Q142 732 417 765L648 900ZM861 900Q1272 740 1760 768V900Z','@ground.1');G(d,'near','M609 900Q666 803 844 771Q1087 732 1203 738L1249 751Q1046 766 894 811Q755 852 711 900Z','@path.0');
  C(d,[{poly:[[-140,785],[496,823],[655,900],[-140,900]]},{poly:[[779,900],[1229,797],[1740,792],[1740,900]]}],{'plant.us-lake-meadow':3,'plant.us-lake-clover':1},235,17357);
- P(d,'tree.us-loon-spruce',-43,928,1.83,'front',17441);P(d,'tree.us-loon-spruce',1679,929,1.53,'front',17497,{flip:true});Life(d,17561,{cold:true});return d;})();}
- animRegionSceneUpgrade('us',"state:SD",{state:'draft',landmarks:["rock.us-sd-black-hills-granite"],scene:compose});})();
+ P(d,'tree.us-sd-ponderosa-frame',161,912,1.04,'front',17441,{variant:0,anim:{sway:{period:11.1}}});P(d,'tree.us-sd-ponderosa-frame',1444,910,.98,'front',17497,{variant:1,flip:true,anim:{sway:{period:12.6}}});Life(d,17561,{cold:true});return d;})();}
+ animRegionSceneUpgrade('us',"state:SD",{state:'live',label:"Black Hills • Needle's Eye, South Dakota",landmarks:["rock.us-sd-black-hills-granite"],scene:compose});})();

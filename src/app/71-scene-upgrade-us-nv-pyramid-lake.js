@@ -35,5 +35,5 @@
     }
     return d;
   }
-  animRegionSceneUpgrade('us','state:NV',{state:'draft',landmarks:['rock.us-pyramid-tufa'],scene:compose});
+  animRegionSceneUpgrade('us','state:NV',{state:'live',landmarks:['rock.us-pyramid-tufa'],scene:compose});
 })();

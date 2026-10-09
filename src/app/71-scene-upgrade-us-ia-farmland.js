@@ -16,5 +16,5 @@
  G(d,'near','M568 900Q683 784 733 720L789 691 834 693Q803 758 721 900Z','@path.0');
  for(let i=0;i<9;i++)G(d,'near','M'+(-160+i*188)+' 900Q'+(161+i*128)+' 790 '+(600+i*62)+' 720L'+(619+i*62)+' 722Q'+(179+i*128)+' 802 '+(-124+i*188)+' 900Z',i%2?'@ground.0':'@ground.2');
  C(d,[{poly:[[-140,798],[577,842],[650,900],[-140,900]]},{poly:[[749,900],[1148,808],[1740,790],[1740,900]]}],{'plant.us-lake-meadow':2,'plant.us-lake-clover':1},220,9371);
- P(d,'tree.us-mackinac-paper-birch',-24,936,1.38,'front',9431);P(d,'tree.us-lake-paper-birch',1678,930,1.55,'front',9479,{tint:['#294b3f',.24]});Life(d,9551,{cold:true});return d;})();}
- animRegionSceneUpgrade('us',"state:IA",{state:'draft',landmarks:["landmark.us-ia-farmland"],scene:compose});})();
+ P(d,'tree.us-mackinac-paper-birch',94,936,1.46,'front',9431);P(d,'tree.us-ia-bur-oak',1503,939,1.48,'front',9479,{tint:['#294b3f',.24]});Life(d,9551,{cold:true});return d;})();}
+ animRegionSceneUpgrade('us',"state:IA",{state:'live',landmarks:["landmark.us-ia-farmland"],scene:compose});})();

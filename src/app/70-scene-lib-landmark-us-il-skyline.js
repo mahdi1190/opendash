@@ -32,3 +32,64 @@
  wheel.push({s:'@metal.1',w:3,d:D.circ(0,-83,68)},{s:'@metal.0',w:1.2,d:D.circ(0,-83,61)});
  for(let i=0;i<24;i++){const a=i*Math.PI/12,x=Math.cos(a)*68,y=-83+Math.sin(a)*68;wheel.push({s:'@metal.1',w:.8,d:'M0-83L'+F(x)+' '+F(y)},{f:'@red.'+(i%3),d:D.rect(x-3,y-2,6,5,1)},{f:'@metal.0',d:D.circ(x,y,1.3),glow:'lamp',detail:true});}return{wheel};
 })(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();
+
+/* The elevated railway is part of this skyline's original story.
+   Native steelwork and an unbranded silver train, explicit placement only. */
+(function(){
+ const D=sceneD,F=n=>Math.round(n*10)/10;
+ sceneObjDefine({id:'structure.us-chicago-l-trestle',category:'structure',weight:0,
+  size:[1920,56],box:[-962,-107,962,-49],variants:1,seasonal:false,flippable:false,parts:['body','lit'],
+  palette:{base:{steel:['#597888','#35596e','#244655'],foot:['#8eabae','#5d7b82'],light:'#e5dfbb'},spring:{},summer:{},autumn:{},winter:{}},
+  tags:['kit:urban','role:street','us','place:us/state:IL'],night:{glow:{lamp:'#cad6bb'},on:.8},reflect:false,
+  build(){const body=[],lit=[];
+   body.push({f:'@steel.1',d:D.rect(-960,-79,1920,27)},{f:'@steel.0',d:D.rect(-960,-82,1920,4)},{f:'@steel.2',d:D.rect(-960,-55,1920,5)});
+   let braces='',posts='';
+   for(let x=-960;x<960;x+=64){braces+='M'+x+' -77l32 23 32-23';posts+='M'+x+' -82v-18';}
+   body.push({s:'@steel.0',w:2.8,d:braces},{s:'@steel.1',w:1.3,d:posts},{s:'@steel.0',w:1.4,d:'M-960-100H960'});
+   for(let i=0;i<11;i++){
+    const x=-907+i*181.4;
+    body.push({f:'@steel.0',d:D.rect(F(x-1),-105,3,5),glow:'lamp',detail:true});
+   }
+   return{body,lit};
+  }
+ });
+ // Individual columns have real contacts and narrow cast shadows. The suspended
+ // deck must not project one enormous oval over the lake behind the railway.
+ sceneObjDefine({id:'structure.us-chicago-l-pier',category:'structure',weight:0,
+  size:[120,94],box:[-23,-94,97,2],variants:1,seasonal:false,flippable:false,parts:['body'],
+  palette:{base:{steel:['#597888','#35596e','#244655'],foot:['#8eabae','#5d7b82']},spring:{},summer:{},autumn:{},winter:{}},
+  tags:['kit:urban','role:street','us','place:us/state:IL','row','unlit'],shadow:{rx:11,ry:2,h:91},reflect:false,
+  build(){return{body:[{f:'@steel.2',d:D.poly([[-10,-91],[10,-91],[13,0],[-13,0]])},
+   {f:'@steel.0',d:D.poly([[-10,-91],[-3,-91],[-3,0],[-13,0]])},
+   {f:'@foot.1',d:D.rect(-22,-8,44,9)},
+   {s:'@steel.1',w:2.5,d:'M10-77L95-15',detail:true}]};}
+ });
+ sceneObjDefine({id:'vehicle.us-chicago-elevated-train',category:'vehicle',weight:0,
+  size:[470,53],box:[-237,-54,237,2],variants:1,seasonal:false,flippable:true,parts:['body','lit'],
+  palette:{base:{metal:['#b8c9cb','#7f9ea8','#3b5c70'],glass:['#385a76','#91b2bb'],stripe:'#a97769',wheel:'#294553'},spring:{},summer:{},autumn:{},winter:{}},
+  night:{glow:{window:'#f0d7a4',lamp:'#eadab4',tail:'#b75b60'},on:1},shadow:{rx:157,ry:5,h:53},reflect:false,
+  tags:['kit:urban','role:vehicle','us','place:us/state:IL'],
+  build(){const body=[],lit=[];let windows='';
+   for(let j=0;j<3;j++){
+    const x=-234+j*158;
+    body.push({f:'@metal.2',d:D.rect(x,-47,152,43,6)},
+      {f:'@metal.0',d:D.rect(x+1,-46,150,35,5)},
+      {f:'@metal.1',d:D.rect(x+4,-52,140,8,4)},
+      {f:'@stripe',d:D.rect(x+1,-17,150,3)},
+      {f:'@metal.2',d:D.rect(x+10,-8,132,5)});
+    for(let k=0;k<5;k++){
+     const xx=x+10+k*28;
+     windows+=D.rect(xx,-39,20,14,2);
+     body.push({s:'@metal.1',w:.8,d:'M'+F(xx-2)+' -40v27h24v-27',detail:true});
+    }
+    for(const a of[24,116])body.push({f:'@wheel',d:D.circ(x+a,-3,5)},{f:'@metal.1',d:D.circ(x+a,-3,2),detail:true});
+    if(j<2)body.push({f:'@wheel',d:D.rect(x+151,-15,8,6)});
+   }
+   body.push({f:'@glass.0',d:windows,glow:'window'});
+   body.push({f:'@metal.1',d:D.rect(217,-41,12,19,2)},{f:'@glass.1',d:D.rect(219,-39,8,12),glow:'window'});
+   body.push({f:'@metal.0',d:D.circ(230,-20,1.7),glow:'lamp'});
+   body.push({f:'@metal.2',d:D.circ(-232,-20,1.4),glow:'tail'});
+   return{body,lit};
+  }
+ });
+})();

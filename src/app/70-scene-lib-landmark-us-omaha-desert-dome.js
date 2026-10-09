@@ -6,6 +6,8 @@
  for(let j=0;j<7;j++){const lo=rings[j],hi=rings[j+1];for(let i=0;i<lo.length-1;i++){const k=Math.min(hi.length-2,Math.floor(i/(lo.length-1)*(hi.length-1))),q=[lo[i],lo[i+1],hi[k+(i%2?1:0)]];P('@glass.'+((i+j)%5===0?1:((i+j)%2?0:2)),D.poly(q),.57);S('@metal.1',1.5,D.poly(q),.85,true);}}
  P('@stone.2',D.rect(-334,-5,668,11));P('@stone.0',D.rect(-327,-8,654,4));for(let i=0;i<9;i++)W(-106+i*24,-37,17,29);
  L('#9dc3ce','M-330 0C-326-164-177-325 0-334C-173-310-310-156-317 0Z',.28);
+ L('#94b5c5','M-224-155L-189-202-153-175-171-120ZM-151-229L-106-270-67-248-101-208ZM-62-291L0-327 35-299-5-274Z',.105);
+ lit.push({s:'#93aebb',w:1.4,op:.22,d:'M-327-10Q-230-35-134-19T56-26T327-10M-244-134Q-145-153-46-137T145-145T247-132',cap:'round'});
 })(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();
 /* Native The Desert Dome at the zoo; original location subject, modeled facets and real detail.
    Explicit placement only; draft scene stays under independent review. */
@@ -19,3 +21,6 @@
  S('@wood.2',2,'M-85-129Q-113-122-112-88');P('@wood.2','M-113-93q-8 10 1 17q8-7-1-17Z');P('@black',D.circ(83,-251,2));
  if(v){for(const q of body)q.m=[.94,0,0,1.08,0,0];}return{head,legA,legB};
 })(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();
+
+/* The original Omaha hot-air balloon, small and unmarked behind the dome. */
+(function(){const D=sceneD;sceneObjDefine({id:'prop.us-omaha-balloon',category:'prop',real:{h:19,l:11,w:11},weight:0,size:[76,112],variants:1,seasonal:false,flippable:false,parts:['body','lit'],shadow:false,reflect:false,tags:['us','us-midwest','natural','unlit','kit:vehicles','role:vehicle'],anim:{bob:{dy:3,period:13.7},sway:{part:'body',pivot:[0,-27],deg:1.4,period:17.9}},palette:{base:{red:'#b67655',gold:'#d4b77d',dark:'#7f715d'}},build(){return{body:[{f:'@red',d:'M-8-23Q-43-53-36-79Q-28-111 0-111Q31-111 37-80Q43-51 9-23Z'},{f:'@gold',d:'M-4-24Q-22-63-16-87Q-12-111 0-111Q15-111 20-86Q26-60 6-24Z'},{s:'@dark',w:1.4,d:'M-8-23L-6-11M9-23L6-11'},{f:'@dark',d:D.rect(-8,-12,16,12,2)}],lit:[]};}});})();

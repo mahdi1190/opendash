@@ -19,7 +19,7 @@
     kits: ['temperate', 'alpine', 'people', 'boats', 'birds', 'water'],
     // An offset view keeps both towers on wide screens and the nearer tower
     // inside a central phone crop, where the old centered span lost them both.
-    landmarks: ['landmark.mackinac-bridge@800@190@front@0'], water: 'bay', horizon: 540,
+    landmarks: ['landmark.mackinac-bridge@800@250@front@0'], water: 'bay', horizon: 540,
     palette: { base: { water: ['#9ab8cc', '#4a7a98', '#1e4662'], quay: ['#40564a', '#2e4036'] } } };
   // the straits' boats, all in front of the bridge's waterline (566), scaled by depth
   const boat = (obj, y, back, speed, seed, offset, v) => ({ obj, layer: 'mid', path: back ? [[1820, y], [-220, y]] : [[-220, y], [1820, y]], speed, loop: 'loop', s: 1, sByY: [[566, 0.24], [732, 0.5]], seed, offset, flip: back, variant: v });
@@ -33,7 +33,8 @@
     // the far quay's tree row becomes a loose wooded shore (pines and birches in clumps)
     drop: { place: [1, 2], actors: [0], scatter: [0] },
     scatter: [
-      { obj: { 'tree.us-mackinac-shore': 2, 'tree.us-loon-spruce': 1 }, layer: 'mid', seed: 15, area: { rect: [-140, 551, 1740, 563] }, maxH: 85, n: 18, minGap: 70, s: [0.24, 0.62], flip: 0.5, variant: [0, 1, 2, 3], tint: { col: '#6a8a9a', k: [0, 0.16] }, mask: { noise: { scale: 170, cut: 0.35 } }, anim: false, reflect: true },
+      { obj: 'tree.us-mackinac-shore', layer: 'mid', seed: 4127, area: { poly: [[-140,558],[240,552],[538,562],[883,550],[1219,559],[1740,551],[1740,565],[-140,565]] }, maxH: 62, n: 15, minGap: 88, s: [.3,.64], flip: .5, variant: [0,1,2,3], tint: { col: '#8da6a0', k: [.06,.14] }, anim: false, reflect: true },
+      { obj: { 'tree.us-lake-paper-birch': 2, 'tree.us-loon-spruce': 1 }, layer: 'mid', seed: 4291, area: { poly: [[-140,558],[240,552],[538,562],[883,550],[1219,559],[1740,551],[1740,565],[-140,565]] }, maxH: 55, n: 13, minGap: 65, s: [.045,.115], flip: .5, variant: [0,1], tint: { col: '#91aaa3', k: [.12,.2] }, mask: { noise: { scale: 173, cut: .36 } }, anim: false, reflect: true },
     ],
     // the far shores: low wooded hills on the horizon (the north shore and the islands)
     ground: [
@@ -48,18 +49,27 @@
     actors: [boat('boat.ferry', 604, true, 9, 41, 0.2, 0), boat('boat.fishing-boat', 640, false, 7, 42, 0.62, 1), boat('boat.dinghy', 680, true, 6, 43, 0.4, 0), boat('boat.ferry', 714, false, 10, 44, 0.86, 1)],
   };
   animRegionSceneUpgrade('us', 'state:MI', {
-    state: 'draft',
+    state:'live',
     archetype: 'skyline-water',
     landmarks: ['landmark.mackinac-bridge'],
     scene: () => {
       const d=sceneFromArchetype('skyline-water',params,patch),w=d.water[0];
-      const reflection=Object.assign({},w,{shimmer:18,lightPath:false});
-      let strips='';for(let j=0;j<19;j++){const y=w.y0+3+j*8.7,h=1.8+(j%4)*.75,x=350+(j%3)*19,len=900-(j%5)*31;strips+='M'+x+' '+y+'q'+len*.45+' -1.8 '+len+' .8v'+h+'q'+(-len*.53)+' 1.6 '+(-len)+' -.8Z';}
-      reflection.d=strips;w.reflect=false;d.water.push(reflection);
+      // Keep the actual towers, cables and truss coherent in their matching
+      // water plane. Short, uneven surface ripples interrupt the mirror;
+      // the reflected bridge is no longer clipped into a ruled comb.
+      w.reflect=true;w.shimmer=14;
+      const F=n=>Math.round(n*10)/10;let ripples='';
+      for(let j=0;j<31;j++){
+        const x=395+(j*137%728),y=575+j*5.3+Math.sin(j*1.7)*3.2,len=27+(j*53%87),h=.7+(j%4)*.35;
+        ripples+='M'+F(x)+' '+F(y)+'q'+F(len*.48)+' -1.1 '+len+' .3l-5 '+F(h)+'q'+F(-len*.47)+' .8 '+F(5-len)+' -.3Z';
+      }
+      d.ground.push({layer:'near',d:ripples,fill:{lin:[[0,'@water.0',.26],[.55,'@water.1',.5],[1,'@water.2',.64]],x1:0,y1:566,x2:0,y2:756}});
       for(const q of d.scatter)if(q.obj&&q.obj['plant.shrub']){q.obj={'plant.hedge':1};q.n=4;q.s=[.27,.42];q.tint={col:'#485b52',k:[.16,.24]};}
       for(const q of d.scatter)if(q.obj&&q.obj['plant.grass']){q.obj={'plant.grass':3,'plant.reed':1.5,'plant.wildflowers':.8};q.tint={col:'#657566',k:[0,.24]};q.n=Math.round(q.n*.55);}
       const bridge=d.place.find(q=>q.obj==='landmark.mackinac-bridge');bridge.tint=['#3c5965',.08];
-      for(const a of d.actors)a.tint=['#4c6269',.24];
+      d.layers.find(l=>l.id==='mid').haze=.08;
+      for(const g of d.ground)if(g.layer==='near'&&g.d.includes('v26h-2.4'))g.fill={lin:[[0,'#677b76',.62],[1,'#516d69',.62]],x1:0,y1:728,x2:0,y2:756};
+      for(const a of d.actors){a.tint=['#4c6269',.24];if(a.obj.startsWith('person.'))a.s*=.66;}
       return d;
     },
   });

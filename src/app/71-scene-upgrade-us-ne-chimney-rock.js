@@ -12,8 +12,8 @@
  function compose(){return (function(){const d=B({id:'us-ne-chimney-rock',H:555,heading:265,at:'golden'});
  d.palette.base.ground=['#a09a5a','#77783f','#4b5937'];G(d,'horizon','M-160 584Q250 536 642 566T1760 552V675H-160Z','@hill.0');G(d,'far','M-160 658Q247 593 586 642T1257 609T1760 632V900H-160Z','@sand.1');
  P(d,'rock.us-ne-chimney-rock',791,679,.91,'mid',11113,{shadow:false});G(d,'mid','M-160 752Q238 677 590 730T1276 702T1760 714V900H-160Z','@ground.0');
- G(d,'near','M276 900Q474 799 766 778Q980 761 1177 713L1231 714Q1024 794 781 811Q566 825 419 900Z','@path.0');G(d,'fore','M-160 900V826Q108 794 336 900ZM751 900Q1192 799 1760 822V900Z','@ground.2');
+ G(d,'near','M276 900Q480 810 653 742L756 687H807Q714 756 568 811L419 900Z','@path.0');G(d,'fore','M-160 900V826Q108 794 336 900ZM751 900Q1192 799 1760 822V900Z','@ground.2');
  C(d,[{poly:[[-140,820],[423,828],[655,900],[-140,900]]},{poly:[[695,900],[1207,818],[1740,839],[1740,900]]}],{'plant.us-lake-meadow':3,'plant.us-lake-clover':1},215,11239);
  A(d,'vehicle.us-ne-covered-wagon',[[1790,784],[-190,784]],.58,3,11329,'near',.45);A(d,'vehicle.us-ne-covered-wagon',[[1790,746],[-190,746]],.4,2.7,11369,'mid',.66);
- Life(d,11411,{cold:true});return d;})();}
- animRegionSceneUpgrade('us',"state:NE",{state:'draft',landmarks:["rock.us-ne-chimney-rock"],scene:compose});})();
+ P(d,'ground.us-ne-chimney-rock-edge-bank',92,962,1.42,'front',31871,{variant:1});P(d,'ground.us-ne-chimney-rock-edge-bank',1511,966,1.35,'front',31909,{variant:2,flip:true});d.scatter.push({obj:{'rock.stones':1,'rock.boulder':1,'plant.us-lake-meadow':1},layer:'near',area:{poly:[[492,690],[657,678],[940,682],[1080,706],[866,719],[603,716]]},n:42,minGap:22,s:[.25,.5],anim:false,seed:31981,tint:{col:'#837c55',k:[0,.16]}});Life(d,11411,{cold:true});return d;})();}
+ animRegionSceneUpgrade('us',"state:NE",{state:'live',landmarks:["rock.us-ne-chimney-rock"],scene:compose});})();

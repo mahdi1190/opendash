@@ -15,8 +15,8 @@
  G(d,'far','M-160 603Q305 574 690 590T1760 582V653H-160Z','@hill.1');
  P(d,'building.us-chicago-lakefront-depth',800,614,1,'far',2801,{shadow:false,tint:['#a0b8ba',.16]});P(d,'prop.us-navy-pier-wheel',341,622,.69,'mid',2807,{shadow:false});
  P(d,'landmark.us-il-skyline',800,620,.8,'mid',2711,{shadow:false});
- G(d,'mid','M-160 610Q360 602 800 611T1760 606V647H-160Z','@rock.1');
- W(d,'mid','M-160 644Q650 637 1760 649V900H-160Z',644,900,['#bed5dc','#80a8ba','#365e76']);
+ G(d,'mid','M-160 616Q39 603 201 615L280 621L432 615Q639 606 801 616T1177 613L1339 620Q1559 607 1760 615V649H-160Z','@rock.1');
+ W(d,'mid','M-160 631Q121 625 297 629L353 634Q570 623 831 628T1331 627L1390 635Q1557 624 1760 630V900H-160Z',627,900,['#bed5dc','#80a8ba','#365e76']);
  G(d,'near','M1039 900Q1096 823 1209 768L1760 703V900Z','@path.1');
  G(d,'fore','M-160 808Q82 773 213 817Q312 850 500 900H-160ZM1156 900Q1268 848 1437 816T1760 792V900Z','@ground.1');
  G(d,'front','M-160 865Q101 835 315 900H-160ZM1350 900Q1480 860 1760 843V900Z','@ground.2');
@@ -25,6 +25,12 @@
  C(d,[{poly:[[-140,816],[147,814],[425,900],[-140,900]]},{poly:[[1244,865],[1600,819],[1740,839],[1740,900],[1178,900]]}],{'plant.grass':3,'plant.reed':1.6,'plant.wildflowers':.5},145,3041);
  [[1241,820,.66],[1306,804,.81],[1397,797,.58],[1438,776,.88],[1530,762,.72],[1614,755,.93]].forEach((q,i)=>P(d,'rock.stones',q[0],q[1],q[2],'near',3163+i*31,{variant:i%4,flip:!!(i%2)}));
  A(d,'boat.dinghy',[[-180,704],[1780,704]],.43,6,3257,'mid',.2);A(d,'boat.ferry',[[1790,752],[-190,752]],.4,10,3329,'mid',.62);
- Life(d,3407,{coast:true});return d;
+ for(let i=0;i<11;i++)P(d,'structure.us-chicago-l-pier',800-907+i*181.4,908,1,'near',3581+i*17,{reflect:false});
+ P(d,'structure.us-chicago-l-trestle',800,867,1,'near',3613,{reflect:false,shadow:false});
+ A(d,'vehicle.us-chicago-elevated-train',[[-480,784],[2080,784]],.75,34,3691,'near',.43);
+ d.layers.find(l=>l.id==='far').haze=.32;
+ Life(d,3407,{coast:true});
+ for(const p of d.place)if(p.obj==='animal.rabbit'||p.obj==='animal.squirrel')p.s=.38;
+ return d;
 })();}
- animRegionSceneUpgrade('us',"state:IL",{state:'draft',landmarks:["landmark.us-il-skyline"],scene:compose});})();
+ animRegionSceneUpgrade('us',"state:IL",{state:'live',landmarks:["landmark.us-il-skyline"],scene:compose});})();
