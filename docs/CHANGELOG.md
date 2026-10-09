@@ -10,6 +10,20 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.12.0] - 2026-10-09
+
+### Changed
+
+- **All remaining 79 American openings rebuilt:** each now uses the scene engine with its own landmark geometry, layered scenery, moving wildlife or traffic, water reflections and lighting that follows the time of day. The existing artwork inspired each rebuild and remains available as its Old technique version.
+- American openings adapt to the seasons and phone or square screens. Hawaii retains tropical foliage through winter; reduced motion keeps a complete still scene.
+- South Dakota's New technique scene depicts Black Hills Needle's Eye. Its retained Old technique scene keeps the Mount Rushmore artwork and label.
+- Search for a location in Settings > Animations to see its New technique opening, retained original, symbols and time-of-day previews together. The 154 compact American symbols retain their existing artwork.
+
+### Fixed
+
+- Refined the Fleet Pond, Wyndham's Pool and Yateley Green scenes' plant motion, mist bounds and animated animal parts. St Peter's tower remains visible in Yateley's phone and square views.
+- Animation checks and compatibility records cover the rebuilt American scenes and retained originals.
+
 ## [2.11.0] - 2026-10-09
 
 ### Added
@@ -527,7 +541,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.11.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.12.0...HEAD
+[2.12.0]: https://github.com/mahdi1190/opendash/compare/v2.11.0...v2.12.0
 [2.11.0]: https://github.com/mahdi1190/opendash/compare/v2.10.0...v2.11.0
 [2.10.0]: https://github.com/mahdi1190/opendash/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/mahdi1190/opendash/compare/v2.8.1...v2.9.0

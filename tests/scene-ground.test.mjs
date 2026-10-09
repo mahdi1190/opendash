@@ -261,8 +261,9 @@ test('real sizes: every library object resolves; a def beats the table, the tabl
 });
 
 test('classes: from category, role and tags; an explicit class tag wins', () => {
+  E.sceneObjDefine({ id: 'vehicle.tram-test', category: 'vehicle', size: [200, 40], real: {h:3.5,l:30,w:2.5}, tags: ['tram'], build: () => ({body:[['#334455',rect(-100,-40,200,40)]]}) });
   assert.equal(E.sceneObjClass('vehicle.car'), 'car'); assert.equal(E.sceneObjClass('vehicle.bus-double-decker'), 'bus');
-  assert.equal(E.sceneObjClass('vehicle.nottingham-tram'), 'tram'); assert.equal(E.sceneObjClass('rail.train'), 'train');
+  assert.equal(E.sceneObjClass('vehicle.tram-test'), 'tram'); assert.equal(E.sceneObjClass('rail.train'), 'train');
   assert.equal(E.sceneObjClass('bird.mallard'), 'bird-water'); assert.equal(E.sceneObjClass('bird.gull'), 'bird-air');
   assert.equal(E.sceneObjClass('bird.robin'), 'bird-ground'); assert.equal(E.sceneObjClass('person.cyclist'), 'cyclist');
   assert.equal(E.sceneObjClass('plant.reed'), 'shrub'); assert.equal(E.sceneObjClass('plant.planter'), 'street');

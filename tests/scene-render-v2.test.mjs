@@ -195,8 +195,9 @@ test('canvas: the frame budget at 1600 x 900 with water and shadows on (drawMs m
 });
 
 // v1 pixel identity (V2 14.1): eight composed scenes, at noon and at night, before (the base commit, from git archive) and after
-const SAMPLES = ['uk-area-yateley/hampshire-yateley-common-1', 'uk-area-yateley/hampshire-wyndhams-pool-1', 'uk-area-fleet/hampshire-fleet-pond-1', 'uk-area-woking-b/surrey-woking-commercial-way',
-  'uk-area-sheffield/south-yorkshire-kelham', 'uk-area-norwich/norwich-cathedral-close', 'scene-demo/station-arnos-grove', 'uk-area-woking/surrey-woking-canal'];
+// These eight v1 scenes exist at BASE and survived v2.11's deliberate UK/demo retirements unchanged.
+const SAMPLES = ['asia-central/vladivostok-skyline', 'asia-east/guangzhou-skyline', 'asia-east/hong-kong-skyline', 'asia-east/macau-skyline',
+  'asia-east/shanghai-skyline', 'asia-east/taipei-skyline', 'asia-east/tokyo-skyline', 'asia-east/xian-skyline'];
 test('canvas: v1 scenes are pixel-identical to the base commit (8 samples, noon and night)', { skip: !browser || process.env.SCENE_V2_SKIP_IDENTITY === '1' }, async (t) => {
   const base = archive();
   if (!base) { t.skip('no git archive of ' + BASE); return; }

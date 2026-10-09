@@ -26,18 +26,18 @@
   const mainY = (x, o) => LOW + (SAD - LOW) * Math.pow((x - o) / TX, 2);
   const sideY = (x, o) => { const sg = Math.sign(x), x0 = sg * TX + o, t = (x - x0) / (sg * AX - x0), y0 = SAD, y1 = dk(AX) - 3; return y0 + (y1 - y0) * t + 14 * Math.sin(Math.PI * t); };
   const cableD = o => {
-    let d = `M${-TX + o} ${SAD}`;
-    for (let x = -TX + o + 10; x < TX + o; x += 10) d += `L${x} ${f1(mainY(x, o))}`;
-    d += `L${TX + o} ${SAD}`;
-    for (const sg of [-1, 1]) { const x0 = sg * TX + o; d += `M${x0} ${SAD}`; for (let k = 1; k <= 12; k++) { const x = x0 + (sg * AX - x0) * k / 12; d += `L${f1(x)} ${f1(sideY(x, o))}`; } }
+    // The native suspension parabola is exact as a quadratic, rather than
+    // hundreds of tiny line segments repeated in its real water reflection.
+    let d='M'+(-TX+o)+' '+SAD+'Q'+o+' '+f1(2*LOW-SAD)+' '+(TX+o)+' '+SAD;
+    for(const sg of[-1,1]){const x0=sg*TX+o,x1=sg*AX,y1=dk(AX)-3;d+='M'+x0+' '+SAD+'Q'+f1((x0+x1)/2)+' '+f1((SAD+y1)/2+28)+' '+x1+' '+y1;}
     return d;
   };
   const cableAt = (x, o) => (Math.abs(x - o) <= TX ? mainY(x, o) : sideY(x, o));
   define({
-    id: 'landmark.mackinac-bridge', category: 'landmark', size: [1760, 270], box: [-880, -268, 880, 2], variants: 1, seasonal: false, flippable: false,
+    id: 'landmark.mackinac-bridge', category: 'landmark', weight: 0, size: [900, 270], box: [-450, -270, 450, 40], variants: 1, seasonal: false, flippable: false,
     parts: ['body', 'lit'],
     palette: { base: {
-      tower: ['#f4eedc', '#d8ceb4', '#b2a88e', '#8c846e'], cable: ['#f2ecda', '#c2baa2'], truss: ['#c0dac6', '#9cbca6', '#6e8e7a', '#4e6a5a'],
+      tower: ['#e3e5cf', '#5f7c75', '#375c64', '#244452'], cable: ['#2d5261', '#688b91'], truss: ['#93bfa8', '#3f706d', '#25535d', '#173f4c'],
       pier: ['#c4c2ba', '#9a988e', '#6e6c64'], lamp: '#ffe2a8', neck: '#fff4d8', flood: '#fff0d0', beacon: '#ff4a3a',
     } },
     night: { glow: { lamp: '#ffe6b4' }, on: 0.9 },
@@ -104,7 +104,29 @@
       for (const o of [-15, 15]) for (let x = -AX + 8; x < AX; x += 24, k++) neck[k % 4] += ell(x, cableAt(x, o) - 1, 1.1, 1.1);
       neck.forEach(d => body.push({ f: '@cable.1', d, op: 0.8, glow: 'lamp' }));
       lit.push({ s: '@neck', w: 1, op: 0.35, d: cableD(-15) });
-      return { body, lit };
+      // A foreshortened view keeps both towers in a square and their height legible.
+      const perspective = sh => Array.isArray(sh) ? { f: sh[0], d: sh[1], op: sh[2], m: [.5,0,0,1,0,0] } : Object.assign({},sh,{m:[.5,0,0,1,0,0]});
+      return { body: body.map(perspective), lit: lit.map(perspective) };
     },
   });
+  sceneObjDefine({id:'tree.us-mackinac-shore',category:'tree',weight:0,size:[260,120],variants:4,seasonal:true,shapeBySeason:true,flippable:true,shadow:{rx:90,ry:4,h:70},reflect:true,
+    palette:{base:{leaf:['#385e4c','#5d7b60','#83a080'],trunk:'#536153'},spring:{leaf:['#4b7756','#6f965f','#9ab77e']},summer:{leaf:['#385f48','#5b7e54','#83a16d']},autumn:{leaf:['#756d46','#9a9259','#b4aa73']},winter:{leaf:['#829a92','#a5b8ad','#c1cec3']}},tags:['us','straits','mixed-wood','kit:temperate','role:tree'],
+    build(v,r,ctx){const F=n=>Math.round(n*10)/10,body=[],winter=ctx.season==='winter';
+      // Unequal connected crowns form wooded islands rather than a row of miniature trees.
+      // The canopy edge uses long, irregular curves; smaller overlapping masses leave deep pockets.
+      const h=[1,.82,1.08,.93][v%4],m=[1,0,0,h,0,0];
+      body.push({f:'@leaf.0',m,d:'M-132 0L-132-18Q-142-37-124-47C-125-67-107-76-86-66C-84-94-55-103-38-83C-18-104 7-99 15-76C31-91 59-85 66-64C85-78 107-69 111-48Q142-44 132-20V0Z'});
+      body.push({f:'@leaf.1',m,op:winter?.56:.87,d:'M-127-5Q-130-23-109-31C-117-55-93-66-73-55C-69-77-45-85-24-65C-6-87 18-76 25-56C50-71 79-58 81-39C101-55 127-40 125-19L132-4Q88-13 61-5T-4-7T-65-5Z'});
+      body.push({f:'@leaf.2',m,op:winter?.55:.36,d:'M-115-43C-118-55-102-68-89-59Q-101-54-101-42ZM-78-71C-72-88-56-94-43-81Q-61-84-66-68ZM-23-78C-5-94 8-85 14-72Q-4-81-16-69ZM39-67C53-75 66-63 68-53Q54-63 43-57ZM88-52Q105-65 116-48L108-40Q100-51 88-44Z'});
+      for(let i=0;i<5;i++){const x=-104+i*51+(r()-.5)*15,y=-24-r()*19;body.push({s:'@trunk',w:1.1,op:.55,d:'M'+F(x)+' 0q-3 '+F(y*.46)+' 2 '+F(y)+'m-2 12l-8-9m9 5l7-8',detail:true});}
+      if(winter)body.push({s:'@leaf.2',w:1.8,m,op:.65,d:'M-84-68q9-22 28-20M-24-80q17-15 30-2M32-68q16-9 29 2M88-53q16-8 25 4',cap:'round',detail:true});
+      return{body};}});
+  // A shaded version of the same paper-birch silhouette frames this east-facing shore.
+  // The accepted lake object is unchanged; this local colour treatment is explicit only.
+  sceneObjDefine({id:'tree.us-mackinac-paper-birch',category:'tree',weight:0,size:[180,340],variants:3,seasonal:true,shapeBySeason:true,flippable:true,parts:['body','crown'],shadow:{rx:40,ry:5,h:270},reflect:true,
+    palette:{base:{bark:['#758d7b','#364f49','#203d3d'],leaf:['#183b32','#2a4b3b','#46654a']},spring:{leaf:['#244b35','#3d6141','#658454']},summer:{leaf:['#183b32','#2b4c39','#48694a']},autumn:{leaf:['#3a4631','#586139','#7d7d47']},winter:{bark:['#698278','#314f4e','#203c42']}},anim:{sway:{part:'crown',pivot:[0,-110],deg:1.2,period:7.7}},tags:['us','paper-birch','shore-shade','kit:temperate','role:tree'],build(v,r,ctx){return sceneObj('tree.us-lake-paper-birch').build(v,r,ctx);}});
+  sceneObjDefine({id:'plant.us-lake-meadow',category:'plant',weight:0,size:[100,86],variants:3,seasonal:true,shapeBySeason:true,flippable:true,parts:['body','tips'],shadow:{rx:29,ry:3,h:24},
+    palette:{base:{leaf:['#35593b','#708451','#a3a16a'],seed:'#bbad78'},spring:{leaf:['#457844','#80a45c','#b1bd73'],seed:'#bdc88a'},summer:{leaf:['#3a6a3e','#7c9851','#b0b76e']},autumn:{leaf:['#62613b','#958854','#b9aa73'],seed:'#ae935b'},winter:{leaf:['#7a8c79','#a3ad92','#c8ccb4'],seed:'#b8bba3'}},anim:{sway:{part:'tips',pivot:[0,-11],deg:1.4,period:7.4}},tags:['us','great-lakes','kit:temperate','role:ground'],build(v,r){const D=sceneD,body=[],tips=[];let a='',b='',c='';for(let i=0;i<17;i++){const x=-28+r()*56,h=15+r()*42,ex=x+(r()-.5)*57,d='M'+x+' 2Q'+(x+ex)*.45+' '+(-h*.73)+' '+ex+' '+(-h)+'Q'+(x+ex)*.52+' '+(-h*.36)+' '+(x+2.8)+' 2Z';if(i%3===0)c+=d;else if(i%2)a+=d;else b+=d;}body.push({f:'@leaf.0',d:a},{f:'@leaf.1',d:b},{f:'@leaf.2',d:c});for(let i=0;i<3;i++){const x=-22+i*21,h=54+r()*22,ex=x+(v-1)*7;tips.push({s:'@leaf.2',w:1.1,d:'M'+x+' -5Q'+(ex-6)+' -43 '+ex+' '+(-h)},{f:'@seed',d:D.poly([[ex,-h+6],[ex-4,-h-1],[ex-1,-h-9],[ex+3,-h+1]])});}for(const q of [...body,...tips])q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return{body,tips};}});
+  sceneObjDefine({id:'plant.us-lake-clover',category:'plant',weight:0,size:[96,48],variants:3,seasonal:true,shapeBySeason:true,flippable:true,parts:['body','tips'],shadow:{rx:28,ry:2,h:12},
+    palette:{base:{leaf:['#355b3d','#6e8e57'],stem:'#7d8a58',bloom:['#ddd5b5','#b9ac8a']},spring:{leaf:['#467a45','#89aa66']},summer:{leaf:['#3a6b3e','#7e9e57']},autumn:{leaf:['#68703e','#9b9858'],bloom:['#baaa7e','#8d805a']},winter:{leaf:['#89967b','#b4bca1'],bloom:['#c5c9b4','#9ba78c']}},anim:{sway:{part:'tips',pivot:[0,-3],deg:1.8,period:6.3}},tags:['us','great-lakes','kit:temperate','role:ground'],build(v,r,ctx){const D=sceneD,body=[],tips=[];let a='',b='',stems='';for(let i=0;i<10;i++){const x=-38+r()*76,y=-7-r()*24;stems+='M0 1Q'+x*.2+' '+y*.6+' '+x+' '+y;for(let j=0;j<3;j++){const t=j*2.094,z=D.ell(x+Math.cos(t)*4,y+Math.sin(t)*3.4,4.8,3.1);if(i%2)a+=z;else b+=z;}}body.push({s:'@stem',w:.8,d:stems},{f:'@leaf.0',d:a},{f:'@leaf.1',d:b});if(ctx.season!=='winter')for(let i=0;i<3;i++){const x=-22+i*22,y=-23-r()*12;tips.push({s:'@stem',w:1,d:'M'+x+' -3V'+y},{f:'@bloom.0',d:D.lobed(r,x,y,4.8,4,6,.14)},{s:'@bloom.1',w:.8,d:'M'+(x-3)+' '+y+'l5-1',detail:true});}for(const q of [...body,...tips])q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return{body,tips};}});
 })();

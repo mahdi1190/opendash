@@ -10,13 +10,15 @@ import { loadRegistry } from '../tools/lib/anim-render.mjs';
 import { retroCheck } from '../tools/lib/scene-lint.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const REG = loadRegistry(ROOT);
+const LIVE_REG = loadRegistry(ROOT);
+// The retrofit still serves retained original art. Exercise that complete corpus after its live scenes become composed.
+const REG = loadRegistry(ROOT, { omit: LIVE_REG.files.filter(f => /^71-scene-upgrade-/.test(f)) });
 const G = REG.R.get;
 const regionFull = () => G('animPacks')().filter(p => /^(us|asia)-/.test(p.id)).flatMap(p => p.items.filter(i => i.full && !i.composed));
 const hx = c => { let s = c.replace('#', ''); if (s.length === 3) s = s.replace(/./g, '$&$&'); const n = parseInt(s, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
 const lum = c => { const [r, g, b] = hx(c); return (0.3 * r + 0.59 * g + 0.11 * b) / 255; };
 const ref = (r) => REG.items().find(e => e.ref === r).item;
-/** The first of these scenes that is still hand-drawn: a LIVE upgrade (docs/dev/SCENE_ENGINE.md 16.5) is composed and never retrofitted. */
+/** The first retained hand-drawn fixture with the requested property. */
 const drawn = (...refs) => { const r = refs.find(x => { const e = REG.items().find(i => i.ref === x); return !!e && !e.composed; }); assert.ok(r, 'a hand-drawn scene among ' + refs.join(', ')); return r; };
 /** The sky at the scene's own local midnight (8 October): real night at every US and Asia place. */
 const midnight = (it) => G('almSceneLight')(Date.parse('2026-10-08T00:00:00Z') - it.liveSky.lon / 15 * 36e5, it.liveSky.lat, it.liveSky.lon, 'UTC');
@@ -77,12 +79,12 @@ test('retro false and composed items are never wrapped; at noon in summer the ov
 
 test('every scene x 4 dates x 12 hours: the retrofit adds at most 6,000 bytes, every sr-* class has css; html with a sky stays under 40,000', (t) => {
   const max = G('SCENE_RETRO_MAX_BYTES'), entries = REG.items().filter(e => e.full && !e.composed && e.item.retro && e.item.liveSky);
-  // a LIVE upgrade (16.5) replaces its hand-drawn scene with a composed one, which the region never retrofits: the retrofitted
-  // scenes are the hand-drawn region scenes that are not live upgrades, so the 229 US, Asia and Texas scenes are all still
-  // accounted for (retrofitted here, or live and judged by tests/scene-upgrades-live.test.mjs)
-  const live = REG.items().filter(e => e.full && e.composed && e.item.upgrade && e.item.upgrade.state === 'live');
+  // The retained originals are rendered below; account for current art independently so originals cannot hide a missing live item.
+  const currentRetro = LIVE_REG.items().filter(e => e.full && !e.composed && e.item.retro && e.item.liveSky);
+  const live = LIVE_REG.items().filter(e => e.full && e.composed && e.item.upgrade && e.item.upgrade.state === 'live');
   for (const e of live) assert.ok(!e.item.retro && typeof e.item.legacySvg === 'function', e.ref + ': a live upgrade is not retrofitted');
-  assert.ok(entries.length + live.length >= 229, 'the US, Asia and Texas scenes are retrofitted (' + entries.length + ', plus ' + live.length + ' live upgrades)');
+  assert.ok(currentRetro.length + live.length >= 229, 'the US, Asia and Texas scenes are retrofitted (' + currentRetro.length + ', plus ' + live.length + ' live upgrades)');
+  assert.ok(entries.length >= 229, 'the retained original scenes still receive the complete retrofit checks');
   let n = 0, worst = 0, over32 = new Map(), over40 = new Map();
   const used = new Set();
   for (const e of entries) {
@@ -149,10 +151,8 @@ test('painted night skies and painted moons keep their own moon: no second one; 
   // New York, 28 July 2026 05:05 UTC: deep night with the moon high in the south (in every scene's view)
   const sky = G('almSceneLight')(Date.parse('2026-07-28T05:05:00Z'), 40.7, -74, 'UTC');
   const moon = s => /rotate\([-0-9.]+\)" d="M0 -16A/.test(s);
-  // each case is a hand-drawn scene whose own sky is open (no painted night, no painted moon) with this moon in its view; a scene
-  // that has gone LIVE (16.5) is composed and no longer retrofitted, so its case moves to a stand-in with the same property, chosen
-  // outside the upgrade tranche (the same part of the world, a dusk or day sky, the real moon here). While a scene is still
-  // hand-drawn its case is checked on it exactly as before.
+  // Each retained original has an open sky (no painted night or moon) with this moon in its view. Live upgrades do not change
+  // these fixtures: the retrofit's real-moon behavior remains covered on the original drawings.
   for (const r of [drawn('asia-east/tokyo-skyline', 'asia-east/tianjin-skyline'), drawn('us-northeast/ny-statue', 'us-northeast/baltimore-fort-mchenry'), drawn('asia-east/jp-signature', 'asia-east/osaka-skyline')])
     assert.ok(moon(ref(r).svg({ size: 'fill', sky })), r + ': the real moon');
   for (const r of ['us-mountain/id-sawtooth-lake', 'us-southeast/sc-palmetto-crescent', 'us-southeast/memphis-beale-bridge', 'us-mountain/nv-pyramid-lake', 'us-mountain/las-vegas-neon-strip',
@@ -172,8 +172,7 @@ test('seasons: tropical and fixed-season scenes never tint (wherever they are se
   const noon = at('2026-12-21T16:55:00Z'), night = at('2026-12-21T04:55:00Z');
   for (const r of ['asia-southeast/singapore-skyline', 'asia-southeast/th-signature', 'us-pacific/honolulu-diamond-head-surf', 'us-midwest/ks-wheat', 'us-mountain/co-maroon-bells'])
     assert.ok(!tinted(ref(r).svg({ size: 'fill', sky: noon })), r + ': no season tint');
-  // an any-season hand-drawn scene where the winter frost ramps in (35 N and up): Tokyo while it was hand-drawn; once it is a live
-  // upgrade (composed, not retrofitted) the first such East Asian scene of the registry at 36 N or more, the same property
+  // An any-season retained original where winter frost ramps in (35 N and up); Tokyo's original remains available after upgrading.
   const frostScene = drawn('asia-east/tokyo-skyline', regionFull().filter(it => it.ref.startsWith('asia-east/') && it.season === 'any' && it.liveSky.lat >= 36).map(it => it.ref).sort()[0]);
   const tk = ref(frostScene), frost = s => +/opacity="([\d.]+)" style="mix-blend-mode:screen"/.exec(s)[1];
   assert.ok(tinted(tk.svg({ size: 'fill', sky: noon })), 'an any-season scene outside the tropics gets the winter');
@@ -216,10 +215,8 @@ test('winter in hot places: Miami, the Everglades and two subtropical West Asian
   // the scene's own noon and midnight on 21 December, and the user's view from Miami at 17:00Z
   const skies = it => [12, 0].map(h => G('almSceneLight')(Date.parse('2026-12-21T12:00:00Z') + (h - 12 - it.liveSky.lon / 15) * 36e5, it.liveSky.lat, it.liveSky.lon, 'UTC'))
     .concat(G('almSceneLight')(Date.parse('2026-12-21T17:00:00Z'), 25.8, -80.2, 'UTC'));
-  // The West Asian cases were Dubai and Riyadh; a live upgrade is a composed scene and is not retrofitted, so they are
-  // chosen by property instead: hand-drawn West Asian scenes of any season in the 23.5 to 35 degree band (where the
-  // retrofit draws the mild cool tint at half strength, no frost and no flecks), first two in ref order, through drawn().
-  // A scene that goes live later drops out of the list by itself; the assertions below are unchanged.
+  // Choose retained West Asian originals of any season in the 23.5 to 35 degree band, where the retrofit draws the mild
+  // cool tint at half strength with no frost or flecks. Upgrading a live scene keeps these original-art cases available.
   const hot = regionFull().filter(it => it.ref.startsWith('asia-west/') && it.season === 'any' && Math.abs(it.liveSky.lat) >= 23.5 && Math.abs(it.liveSky.lat) < 35).map(it => it.ref).sort();
   const hotA = drawn(...hot), hotB = drawn(...hot.filter(x => x !== hotA));
   for (const r of ['us-southeast/miami-deco-neon', 'us-southeast/fl-everglades-airboat', hotA, hotB]) {

@@ -3,54 +3,6 @@
  "about": "The golden set (docs/dev/SCENE_ENGINE_V2.md 22): reference scenes and objects that calibrate the sanity and composition thresholds and the critic. Builder G proposes the candidates; ONLY the user sets approved to true. Tools: scene golden list | sheet | measure | calibrate; scene compare-to-golden <ref>.",
  "entries": [
   {
-   "ref": "uk-area-yateley/hampshire-yateley-common-1",
-   "kind": "scene",
-   "why": "depth, dense natural cover, light",
-   "approved": false,
-   "scores": null,
-   "metrics": null
-  },
-  {
-   "ref": "uk-area-yateley/hampshire-yateley-common-4",
-   "kind": "scene",
-   "why": "the evening: low sun, long light through the birches",
-   "approved": false,
-   "scores": null,
-   "metrics": null
-  },
-  {
-   "ref": "uk-area-yateley/hampshire-wyndhams-pool-1-winter",
-   "kind": "scene",
-   "why": "winter water: the bare trees mirrored, a cold clear sky",
-   "approved": false,
-   "scores": null,
-   "metrics": null
-  },
-  {
-   "ref": "uk-area-yateley/hampshire-yateley-green-1-spring",
-   "kind": "scene",
-   "why": "a village green in spring: blossom, scale of people against the church",
-   "approved": false,
-   "scores": null,
-   "metrics": null
-  },
-  {
-   "ref": "uk-area-fleet/hampshire-fleet-pond-1",
-   "kind": "scene",
-   "why": "open water with a believable far bank and reflections",
-   "approved": false,
-   "scores": null,
-   "metrics": null
-  },
-  {
-   "ref": "uk-area-fleet/hampshire-fleet-pond-2-autumn",
-   "kind": "scene",
-   "why": "autumn colour that stays readable, calm water",
-   "approved": false,
-   "scores": null,
-   "metrics": null
-  },
-  {
    "object": "person.walker",
    "kind": "object",
    "why": "the faceless figure at every size",
@@ -85,6 +37,54 @@
    "kind": "object",
    "why": "a landmark: real height, clean silhouette, night glow",
    "approved": false
+  },
+  {
+   "ref": "texas/fort-worth-stockyards-scene",
+   "kind": "scene",
+   "why": "A clear architectural gate, moving longhorns and layered native planting establish a single readable subject. The released composed view demonstrates grounded life, seasonal cover, lit windows and restrained night lighting.",
+   "approved": false,
+   "scores": null,
+   "metrics": null
+  },
+  {
+   "ref": "texas/dallas-skyline",
+   "kind": "scene",
+   "why": "A skyline with distinct towers and a bridge shares the frame with a river and moving boats. Study the hierarchy between the skyline, reflective water and near planting, and the separate window and beacon lighting after dusk.",
+   "approved": false,
+   "scores": null,
+   "metrics": null
+  },
+  {
+   "ref": "texas/austin-capitol-walk",
+   "kind": "scene",
+   "why": "The Capitol dome and its path remain central within an expansive park. Native planting, walkers and birds give separate depth bands life, while evening architectural lighting keeps the landmark readable.",
+   "approved": false,
+   "scores": null,
+   "metrics": null
+  },
+  {
+   "ref": "texas/alamo-morning",
+   "kind": "scene",
+   "why": "The mission facade is treated as respectful architecture, with a shaded plaza and detailed near planting. Study the quiet masonry palette, layered vegetation and the measured lighting that distinguishes dusk from noon.",
+   "approved": false,
+   "scores": null,
+   "metrics": null
+  },
+  {
+   "ref": "texas/hill-country-bluebonnets",
+   "kind": "scene",
+   "why": "Bluebonnets and native grasses create a varied foreground beneath layered Hill Country terrain. The composed scene provides the released benchmark for a natural setting, with distinct seasonal colours and moving wildlife at several depths.",
+   "approved": false,
+   "scores": null,
+   "metrics": null
+  },
+  {
+   "ref": "texas/gulf-coast-sunrise",
+   "kind": "scene",
+   "why": "A coastal pier and native dune planting separate land, water and distant atmosphere. Pelicans, moving surf and water reflections give the view life, with a coherent change of light through dawn, day, dusk and night.",
+   "approved": false,
+   "scores": null,
+   "metrics": null
   }
  ],
  "pending": [
@@ -92,42 +92,96 @@
   "one OSM-composed street from scene compose"
  ],
  "calibration": null,
- "notReady": [
-  {
-   "ref": "uk-area-fleet/hampshire-fleet-canal-1",
-   "why": "the canal is drawn as a flat band across the frame (a lake), not a channel in perspective"
-  },
-  {
-   "ref": "uk-area-winchester/hampshire-watercress-line",
-   "why": "the station and its platform float above the field; lollipop trees float on the hillside"
-  },
-  {
-   "ref": "uk-area-winchester/hampshire-river-test-stockbridge",
-   "why": "translucent ghost hill shapes behind the hut; the subject sits on a flat band"
-  },
-  {
-   "ref": "uk-area-norwich/norwich-elm-hill",
-   "why": "cluttered: a forest of lamps, benches and puddles fills the street"
-  },
-  {
-   "ref": "uk-area-norwich/norwich-castle-mound",
-   "why": "ghost haze domes across the keep at golden hour; a lit box behind the keep at night"
-  },
-  {
-   "ref": "uk-area-sheffield/south-yorkshire-kelham-2",
-   "why": "translucent ghost domes and trees behind the mill"
-  },
-  {
-   "ref": "uk-area-sheffield/south-yorkshire-peace-gardens-2",
-   "why": "the town hall dead centre; a ghost dome over it"
-  },
-  {
-   "ref": "uk-area-peaks/derbyshire-castleton",
-   "why": "ghost hill blobs and heavy haze over the middle distance"
-  },
-  {
-   "ref": "uk-area-peaks/derbyshire-winnats-pass",
-   "why": "the gorge walls read as hazy translucent shapes; the road is a short stub"
-  }
- ]
+ "notReady": [],
+ "archived": {
+  "retiredIn": "2.11.0",
+  "entries": [
+   {
+    "ref": "uk-area-yateley/hampshire-yateley-common-1",
+    "kind": "scene",
+    "why": "depth, dense natural cover, light",
+    "approved": false,
+    "scores": null,
+    "metrics": null
+   },
+   {
+    "ref": "uk-area-yateley/hampshire-yateley-common-4",
+    "kind": "scene",
+    "why": "the evening: low sun, long light through the birches",
+    "approved": false,
+    "scores": null,
+    "metrics": null
+   },
+   {
+    "ref": "uk-area-yateley/hampshire-wyndhams-pool-1-winter",
+    "kind": "scene",
+    "why": "winter water: the bare trees mirrored, a cold clear sky",
+    "approved": false,
+    "scores": null,
+    "metrics": null
+   },
+   {
+    "ref": "uk-area-yateley/hampshire-yateley-green-1-spring",
+    "kind": "scene",
+    "why": "a village green in spring: blossom, scale of people against the church",
+    "approved": false,
+    "scores": null,
+    "metrics": null
+   },
+   {
+    "ref": "uk-area-fleet/hampshire-fleet-pond-1",
+    "kind": "scene",
+    "why": "open water with a believable far bank and reflections",
+    "approved": false,
+    "scores": null,
+    "metrics": null
+   },
+   {
+    "ref": "uk-area-fleet/hampshire-fleet-pond-2-autumn",
+    "kind": "scene",
+    "why": "autumn colour that stays readable, calm water",
+    "approved": false,
+    "scores": null,
+    "metrics": null
+   }
+  ],
+  "notReady": [
+   {
+    "ref": "uk-area-fleet/hampshire-fleet-canal-1",
+    "why": "the canal is drawn as a flat band across the frame (a lake), not a channel in perspective"
+   },
+   {
+    "ref": "uk-area-winchester/hampshire-watercress-line",
+    "why": "the station and its platform float above the field; lollipop trees float on the hillside"
+   },
+   {
+    "ref": "uk-area-winchester/hampshire-river-test-stockbridge",
+    "why": "translucent ghost hill shapes behind the hut; the subject sits on a flat band"
+   },
+   {
+    "ref": "uk-area-norwich/norwich-elm-hill",
+    "why": "cluttered: a forest of lamps, benches and puddles fills the street"
+   },
+   {
+    "ref": "uk-area-norwich/norwich-castle-mound",
+    "why": "ghost haze domes across the keep at golden hour; a lit box behind the keep at night"
+   },
+   {
+    "ref": "uk-area-sheffield/south-yorkshire-kelham-2",
+    "why": "translucent ghost domes and trees behind the mill"
+   },
+   {
+    "ref": "uk-area-sheffield/south-yorkshire-peace-gardens-2",
+    "why": "the town hall dead centre; a ghost dome over it"
+   },
+   {
+    "ref": "uk-area-peaks/derbyshire-castleton",
+    "why": "ghost hill blobs and heavy haze over the middle distance"
+   },
+   {
+    "ref": "uk-area-peaks/derbyshire-winnats-pass",
+    "why": "the gorge walls read as hazy translucent shapes; the road is a short stub"
+   }
+  ]
+ }
 }

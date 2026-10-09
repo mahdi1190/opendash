@@ -1,3 +1,5 @@
+/* Compact SVG numeric separators without changing the drawing: minus signs delimit coordinates. */
+function sceneProofYateleyCompactParts(parts){for(const p of Object.keys(parts))if(Array.isArray(parts[p]))for(const sh of parts[p]){if(Array.isArray(sh)&&typeof sh[1]==='string')sh[1]=sh[1].replace(/\s+(?=-)/g,'');else if(sh&&typeof sh.d==='string')sh.d=sh.d.replace(/\s+(?=-)/g,'');}return parts;}
 /* ============================================================
    SCENE LIBRARY: proof-yateley-green (docs/dev/SCENE_ENGINE.md section 2;
    docs/dev/SCENE_ENGINE_V2.md). The parts the hand-composed Yateley Green
@@ -73,7 +75,7 @@
     credit,
     build() {
       const legs = heronLegs(3, -3);
-      if (parts[0] === 'legA') return { legA: [legs[0], legs[1]], legB: [legs[2]], body: heronBody(), neck: heronNeck() };
+      if (parts.includes('legA')) return { legA: [legs[0], legs[1]], legB: [legs[2]], body: heronBody(), neck: heronNeck() };
       return { legs, body: heronBody(), neck: heronNeck() };
     },
   });
@@ -150,7 +152,7 @@
       const out = {};
       for (const p of ['legsFar', 'tail', 'body', 'legsNear', 'head']) out[p] = base && base.parts[p] ? base.parts[p].map(sh => Object.assign({}, sh)) : [];
       out.head = out.head.filter((sh, i) => i < out.head.length).concat([['@felt.1', circ(34, -24.5, 4.2)], ['@felt.0', circ(33.4, -25.1, 3.4)], { s: '@seam', w: .7, d: 'M31-27.6q2.6 2.4 0 5.6' }]);
-      return out;
+      return sceneProofYateleyCompactParts(out);
     },
   });
 
@@ -167,7 +169,7 @@
       const crown = [];
       [['@yew.3', 0, -110, 108, 112], ['@yew.0', -6, -118, 100, 104], ['@yew.1', -16, -132, 78, 86], ['@yew.2', -30, -150, 46, 52]].forEach(([f, cx, cy, rx, ry], j) => {
         let d = '';
-        for (let i = 0; i < 5 + j; i++) d += blob(rnd, cx + (rnd() - .5) * rx * .9, cy + (rnd() - .5) * ry * .9, rx * (.45 + rnd() * .2), ry * (.4 + rnd() * .2), 8);
+        for (let i = 0; i < 5 + j; i++) d += blob(rnd, cx + (rnd() - .5) * rx * .9, cy + (rnd() - .5) * ry * .9, rx * (.45 + rnd() * .2), ry * (.4 + rnd() * .2), 5);
         crown.push({ f, d, op: j === 3 ? .7 : 1 });
       });
       return {
@@ -177,3 +179,38 @@
     },
   });
 })();
+
+/* Proof-local LOD for the two flowering hawthorns and Church End cottages. Their structural drawing is retained;
+   tiny leaves, thatch strokes and mortar speckles are detail at full size instead of being baked into every tile. */
+function sceneProofYateleyLocalObjects(){const compact=d=>d.replace(/[-+]?(?:\d*\.?\d+)(?:e[-+]?\d+)?/gi,n=>String(Math.round(Number(n)*10)/10)).replace(/\s+(?=-)/g,'');if(typeof sceneObjDefine!=='function'||sceneProofYateleyLocalObjects.done)return;
+ sceneProofYateleyLocalObjects.done=true;
+ for(const [id,src] of [['tree.proof-yg-hawthorn','tree.hawthorn'],['building.proof-yg-thatched-cottage','building.thatched-cottage'],['building.proof-yg-green-cottage','building.green-cottage'],['tree.proof-yg-oak','tree.green-oak'],['tree.proof-yg-chestnut','tree.green-chestnut'],['tree.proof-yg-birch','tree.green-birch'],['tree.proof-yg-willow','tree.green-willow'],['tree.proof-yg-distant','tree.distant'],['tree.proof-yg-edge','tree.woods-edge']]){
+  const base=sceneObj(src);sceneObjDefine(Object.assign({},base,{id,weight:0,variants:src==='tree.distant'||src==='tree.woods-edge'?2:base.variants,real:sceneObjReal(src),credit:base.credit+'; native proof-scene LOD',build(v,r,ctx){
+    const sh=sceneObjShapes(src,v,ctx&&ctx.season||'summer'),out={};let leaf=0;
+    for(const p of sh.order){out[p]=[];for(const source of sh.parts[p]){const q=Object.assign({},source,{d:compact(source.d)});
+      if(q.s&&q.w<4.5)out[p].push(Object.assign({},q,{detail:true}));
+      else if(src.startsWith('tree.green-')&&q.m&&q.f){const n=leaf++;if(n%3===0)out[p].push(Object.assign({},q,{detail:q.detail||n%12!==0}));}
+      else if(src.startsWith('tree.green-')&&q.detail&&q.d.length>1500){const parts=q.d.split(/(?=M)/);out[p].push(Object.assign({},q,{d:parts.filter((_,j)=>j%3===0).join('')}));}
+      else if(src==='tree.hawthorn'&&p==='crown'&&!q.m&&q.d.length>1000){const subs=q.d.split(/(?=M)/);out[p].push(Object.assign({},q,{d:subs.filter((_,j)=>j%24===0).join(''),detail:q.detail}));out[p].push(Object.assign({},q,{d:subs.filter((_,j)=>j%24!==0&&(!/^#(?:fff4f6|f6c9d7)$/.test(q.f)||j%3===0)).join(''),detail:true}));}
+      else if(src==='tree.hawthorn'&&p==='crown'&&q.m&&q.f){const n=leaf++;if(n%4)continue;if(n%42===0){const subs=q.d.split(/(?=M)/);out[p].push(Object.assign({},q,{d:subs[0],detail:q.detail}));if(subs.length>1)out[p].push(Object.assign({},q,{d:subs.slice(1).join(''),detail:true}));}else out[p].push(Object.assign({},q,{detail:true}));}
+      else if(src!=='tree.hawthorn'&&q.d.length>250&&(q.d.match(/M/g)||[]).length>1){const subs=q.d.split(/(?=M)/);out[p].push(Object.assign({},q,{d:subs.filter((_,j)=>j%6===0).join(''),detail:q.detail}));out[p].push(Object.assign({},q,{d:subs.filter((_,j)=>j%6!==0).join(''),detail:true}));}
+      else out[p].push(q);
+    }}Object.defineProperty(out,'$anim',{value:sh.anim});return sceneProofYateleyCompactParts(out);
+  }}));
+ }
+ const R=n=>Math.round(n*10)/10, blob=(r,x,y,rx,ry,n)=>sceneD.lobed(r,x,y,rx,ry,n,.3);
+ for(const kind of ['herbs','rushes','shrubs','tuft']){const tall=kind==='rushes',shrub=kind==='shrubs',tiny=kind==='tuft',height=tall?150:shrub?95:tiny?24:50;
+  sceneObjDefine({id:'plant.proof-yg-'+kind,category:'plant',weight:0,size:[620,height+10],variants:4,seasonal:true,flippable:true,parts:['body'],real:{h:tall?1.6:shrub?1.15:tiny?.18:.55,l:tiny?.4:3.5,w:1},foot:[.12,.1],
+   palette:{base:{leaf:['#526c35','#78934b','#a4b566'],flower:['#e6ce74','#f0eee1'],head:'#80624b'},spring:{leaf:['#53793a','#7da44e','#afc96c'],flower:['#f0d481','#fff6eb']},summer:{leaf:['#4e6b32','#7b9145','#b4b969'],flower:['#e2c45e','#f3eee4']},autumn:{leaf:['#71623c','#9e8b50','#bdab6c'],flower:['#ab7951','#d5c8a8']},winter:{leaf:['#777261','#9c9780','#b9b49b'],flower:['#a79b7d','#d3c9b2']}},
+   tags:['uk','green','meadow','class:cover','kit:temperate',shrub?'role:shrub':tall?'role:edge':'role:ground'],credit:"Yateley Green native planting: layered grass, meadow flowers, rushes and cottage shrubs",
+   build(v,r){let stems='',leaves='',flowers='',shade='';const width=tiny?18:55+75*v,n=tiny?9:shrub?15:22;
+    for(let i=0;i<n;i++){const x=(r()-.5)*2*width,h=height*(.38+r()*.57),lean=(r()-.5)*(tiny?9:25);
+     stems+='M'+R(x)+' 0Q'+R(x+lean*.3)+' '+R(-h*.55)+' '+R(x+lean)+' '+R(-h);
+     if(shrub){const y=-h*.5,rx=12+r()*15;leaves+=blob(r,x,y,rx,h*.55,7);shade+=blob(r,x+rx*.15,y+h*.12,rx*.72,h*.36,6);}
+     else{for(const sg of [-1,1])leaves+='M'+R(x)+' '+R(-h*.25)+'Q'+R(x+sg*12)+' '+R(-h*.75)+' '+R(x+sg*21)+' '+R(-h*.55)+'Q'+R(x+sg*7)+' '+R(-h*.3)+' '+R(x)+' '+R(-h*.25)+'Z';}
+     if(tall)flowers+='M'+R(x+lean-2)+' '+R(-h+14)+'q-2-10 0-18q4-3 5 2v14q-2 4-5 2Z';
+     else if(!tiny&&!shrub&&i%3===0){const y=-h,xx=x+lean;flowers+='M'+R(xx-3)+' '+R(y)+'q-2-4 1-5q4-1 4 2q5-1 5 3q-1 4-5 3q-3 4-5 0Z';}
+    }return{body:[{s:'@leaf.1',w:tiny?.8:1.1,cap:'round',d:stems},{f:'@leaf.0',d:leaves.split(/(?=M)/).filter((_,j)=>j%4===0).join('')},{f:'@leaf.0',d:leaves.split(/(?=M)/).filter((_,j)=>j%4!==0).join(''),detail:true},{f:'@leaf.1',d:shade}, {f:tall?'@head':'@flower.'+(v%2),d:flowers.split(/(?=M)/).filter((_,j)=>j%3===0).join('')},{f:tall?'@head':'@flower.'+(v%2),d:flowers.split(/(?=M)/).filter((_,j)=>j%3!==0).join(''),detail:true}]};}
+  });
+ }
+}

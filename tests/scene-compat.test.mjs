@@ -4,15 +4,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { sceneV1Hashes, HASH_FIXTURE } from '../tools/scene-v1-hashes.mjs';
+import { sceneV1Hashes, HASH_FIXTURE, HASH_CASES } from '../tools/scene-v1-hashes.mjs';
 
 test('v1 compiles are byte-identical to the base commit (every composed item, every hashed case)', { timeout: 300000 }, async () => {
   const want = JSON.parse(readFileSync(HASH_FIXTURE, 'utf8')).hashes;
   const keys = Object.keys(want);
-  assert.ok(keys.length > 1000, 'the fixture covers the corpus: ' + keys.length);
+  // v2.11 retired 346 previously hashed UK/demo refs. Coverage remains exhaustive for the active registry.
+  assert.ok(keys.length >= 100 * HASH_CASES.length, 'the active fixture covers at least 100 composed/draft scenes: ' + keys.length);
   const now = await sceneV1Hashes();
-  const missing = keys.filter(k => !(k in now)), differ = keys.filter(k => k in now && now[k] !== want[k]);
+  assert.deepEqual(Object.keys(now).sort(), [...keys].sort(), 'every active composed/draft scene and every case must have a baseline; an intentional addition or retirement needs an explicit fixture refresh');
+  const differ = keys.filter(k => now[k] !== want[k]);
   assert.deepEqual(differ.slice(0, 20), [], `${differ.length} v1 compiles changed`);
-  // an item removed from the corpus is not a compile change, but say so
-  assert.ok(missing.length <= keys.length * 0.02, `${missing.length} hashed items are gone: ${missing.slice(0, 10).join(', ')}`);
 });

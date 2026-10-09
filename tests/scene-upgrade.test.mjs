@@ -86,6 +86,19 @@ test('a pack that is not a region (16.2, last bullet) registers under its pack i
   assert.deepEqual([data.view.lat, data.view.lon], [32.8, -96.8]);
 });
 
+test('an explicitly renamed subject retains the original label and laziness for old/new views', () => {
+  const finish = G('animSceneUpgradeFinish'), old = () => ({ id: 'retained', label: 'Original subject', svg: svgOld, tags: ['hills'] });
+  G('animRegionSceneUpgrade')('label-test', 'place:live', { state: 'live', label: ' New subject ', scene: sceneOf });
+  G('animRegionSceneUpgrade')('label-test', 'place:draft', { state: 'draft', label: 'New subject', scene: sceneOf });
+  const before = built, live = finish('label-test', 'place:live', old(), null, x => x);
+  assert.equal(live.label, 'New subject'); assert.equal(live.legacyLabel, 'Original subject');
+  assert.equal(live.legacySvg, svgOld); assert.equal(live.id, 'retained'); assert.equal(built, before);
+  const draft = finish('label-test', 'place:draft', old(), null, x => x);
+  assert.equal(draft.label, 'Original subject'); assert.equal(draft.upgrade.label, 'New subject');
+  assert.equal(draft.svg, svgOld); assert.equal(draft.legacyLabel, undefined); assert.equal(built, before);
+  assert.throws(() => G('animRegionSceneUpgrade')('label-test', 'place:bad', { state: 'live', label: ' ', scene: sceneOf }), /nonempty/);
+});
+
 test('texas/dallas-skyline: its upgrade registers under the texas pack id and the Texas pack applies it, keeping the item\'s identity', () => {
   const REG = loadRegistry(ROOT), R = REG.R.get;
   const LEGACY = loadRegistry(ROOT, { omit: REG.files.filter(f => /^71-scene-upgrade-/.test(f)) });

@@ -71,7 +71,7 @@ test('contact shadows exist for every caster class, day and night: one per axle 
   assert.equal(person.length, 1); assert.ok(person[0][1] > person[0][2], 'flat on the ground');
   const car = S.sceneContactOf('boat.narrowboat', 'car', sh('boat.narrowboat'), 0.3, 30, cam);
   assert.equal(car.length, 2, 'one per axle');
-  const bld = S.sceneContactOf('building.mcr-mill', 'building', sh('building.mcr-mill'), 0.9, 70, cam);
+  const bld = S.sceneContactOf('building.townhouse', 'building', sh('building.townhouse'), 0.9, 70, cam);
   assert.equal(bld.length, 1); assert.ok(bld[0][1] > 100, 'a band along the base');
   assert.ok(S.SCENE_SHADOW_CLASSES.includes('tree') && S.SCENE_SHADOW_CLASSES.includes('car') && !S.SCENE_SHADOW_CLASSES.includes('boat'));
   // the fixture's casters all have contact shadows, also at night (the night has no cast shadows: sceneShadowSun kind null)

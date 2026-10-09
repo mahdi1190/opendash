@@ -181,8 +181,8 @@ const PAGE_SCRIPT = `
   const P = (x, d) => ({ X: 800 + f * x / d, Y: 470 + f * 1.65 / d, k: f / d });
   const BANDS = [[800, 1e9], [200, 800], [50, 200], [15, 50], [0, 15]], IDS = ['horizon', 'far', 'mid', 'near', 'fore', 'front'];
   const band = (d) => BANDS.findIndex(b => d >= b[0] && d < b[1]);
-  const REAL = { 'building.shopfront': 7.5, 'building.sheffield-terrace': 9.5, 'street.lamp': 5.5, 'person.walker': 1.72, 'tree.oak': 15 };
-  const PLACE = [['tree.oak', 30, 160], ['building.sheffield-terrace', -22, 26], ['building.shopfront', 12, 26], ['street.lamp', -6, 20.5], ['street.lamp', 6, 20.5], ['person.walker', -8, 22]];
+  const REAL = { 'building.shopfront': 7.5, 'building.terrace-victorian': 9.5, 'street.lamp': 5.5, 'person.walker': 1.72, 'tree.oak': 15 };
+  const PLACE = [['tree.oak', 30, 160], ['building.terrace-victorian', -22, 26], ['building.shopfront', 12, 26], ['street.lamp', -6, 20.5], ['street.lamp', 6, 20.5], ['person.walker', -8, 22]];
   const SURF = [['land', 'grass', [-3000, 3000, 4, 5000], ['#7a8a5a', '#5f7a3e']], ['pave-far', 'pavement', [-200, 200, 19, 24], ['#a8a49c', '#96928a']],
     ['road', 'road', [-200, 200, 9.5, 19], ['#5e6064', '#47494d']], ['pave-near', 'pavement', [-200, 200, 4, 9.5], ['#9a968e', '#86827a']]];
   const quad = (x0, x1, d0, d1) => { const a = P(x0, d1), b = P(x1, d1), c = P(x1, d0), e = P(x0, d0); return { d: 'M' + a.X + ' ' + a.Y + 'L' + b.X + ' ' + b.Y + 'L' + c.X + ' ' + c.Y + 'L' + e.X + ' ' + e.Y + 'Z', y0: a.Y, y1: e.Y }; };
