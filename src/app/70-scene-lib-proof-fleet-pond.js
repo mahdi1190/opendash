@@ -444,7 +444,8 @@ function sceneProofFleetPondPass() {
       c.strokeStyle = g('#2c3034'); c.lineWidth = 0.011; c.setLineDash([0.03, 0.025]);
       c.beginPath(); c.moveTo(S[0] + 0.03, S[1] + 0.01); c.bezierCurveTo(C1[0] + 0.03, C1[1], C2[0] + 0.025, C2[1] - 0.02, lerp(C2[0], Hd[0], 0.5) + 0.02, lerp(C2[1], Hd[1], 0.5) - 0.02); c.stroke(); c.setLineDash([]);
       if (H.gulp >= 0) {
-        const tt = 1 - H.gulp, bulge = Math.min(1, H.gulp * 6, (1 - H.gulp) * 4);   // swells in, slides down the neck, fades out bx = Math.pow(1 - tt, 3) * S[0] + 3 * Math.pow(1 - tt, 2) * tt * C1[0] + 3 * (1 - tt) * tt * tt * C2[0] + tt * tt * tt * Hd[0];
+        const tt = 1 - H.gulp, bulge = Math.min(1, H.gulp * 6, (1 - H.gulp) * 4);   // swells in, slides down the neck, fades out
+        const bx = Math.pow(1 - tt, 3) * S[0] + 3 * Math.pow(1 - tt, 2) * tt * C1[0] + 3 * (1 - tt) * tt * tt * C2[0] + tt * tt * tt * Hd[0];
         const by = Math.pow(1 - tt, 3) * S[1] + 3 * Math.pow(1 - tt, 2) * tt * C1[1] + 3 * (1 - tt) * tt * tt * C2[1] + tt * tt * tt * Hd[1];
         c.fillStyle = g('#dfe2e3'); ell(c, bx + 0.012 * bulge, by, 0.022 + 0.02 * bulge, 0.018 + 0.012 * bulge, 0); c.fill();
       }

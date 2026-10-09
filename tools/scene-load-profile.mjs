@@ -11,8 +11,10 @@
 //        [--throttle=4] (CDP CPU throttling: an average machine) [--repeat=N] [--check] [--gaps]
 //        [--cpuprofile=<dir>] (a .cpuprofile of each cold load, plus the top self-time functions) [--json=<file>]
 // Headless Chrome here runs without a GPU (software raster): the numbers are a pessimistic bound; --gpu lets Chrome use one.
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { join, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { launchChrome } from './release-chrome.mjs';
 import { scenePageHtml } from './lib/scene-page.mjs';
 
@@ -44,12 +46,12 @@ const OPEN = (ref, at, keepMs) => `(async () => {
   box.innerHTML = animItemHtml(it, { size: 'fill', live: true, sky, tod: sky.tod });
   if (typeof sceneHostScan === 'function') sceneHostScan(document);
   const host = box.firstElementChild;
-  let ready = 0;
+  let ready = 0, animAt = 0;
   await new Promise(res => {
     const chk = () => {
       const n = performance.now();
       if (!firstPaint && host && (host.classList.contains('sc-ready') || host.classList.contains('sc-shown'))) firstPaint = n;
-      if (host && host.classList.contains('sc-ready')) { ready = n; res(); return; }
+      if (host && host.classList.contains('sc-ready')) { ready = n; requestAnimationFrame((t2) => { animAt = t2; res(); }); return; }
       if (n - t0 > 30000) { res(); return; }
       requestAnimationFrame(chk);
     };
@@ -61,7 +63,9 @@ const OPEN = (ref, at, keepMs) => `(async () => {
   const st = (window.__sceneStats() || [])[0] || {};
   const worst = (a, b) => gaps.filter(g => g[0] > a && g[0] <= b).reduce((m, g) => Math.max(m, g[1]), 0);
   const frames = (a, b) => gaps.filter(g => g[0] > a && g[0] <= b).length;
-  const out = { readyMs: ready ? Math.round(ready - t0) : null, hostReadyMs: st.readyMs, firstPaintMs: firstPaint ? Math.round(firstPaint - t0) : null,
+  const live = host && host.classList.contains('sc-live') ? (window.__sceneStats()[0] || {}) : null;
+  const out = { animMs: animAt ? Math.round(animAt - t0) : null, over33: gaps.filter(g => g[0] > t0 && g[0] <= t0 + 3000 && g[1] > 34).length,
+    liveMs: (st.prebaked && st.prebaked.tl ? (st.prebaked.tl.find(x => x.startsWith('live@')) || null) : null), pbtl: st.prebaked ? st.prebaked.tl : null, pbBytes: st.prebaked ? st.prebaked.bytes : null, pbFrame: st.prebaked ? st.prebaked.frameMs : null, passFrame: st.passes ? Object.fromEntries(Object.entries(st.passes).map(([k, v]) => [k, [Math.round(v.frameMs), v.frames, v.maxMs]])) : null, dyn: st.dynMs, readyMs: ready ? Math.round(ready - t0) : null, hostReadyMs: st.readyMs, firstPaintMs: firstPaint ? Math.round(firstPaint - t0) : null,
     worstGapLoad: Math.round(worst(t0, t0 + 3000)), worstGapAfterReady: ready ? Math.round(worst(ready, ready + 3000)) : null,
     framesAfterReady: ready ? frames(ready, ready + 3000) : 0,
     longAfterReady: ready ? gaps.filter(g => g[0] > ready && g[0] <= ready + 3000 && g[1] > 25).map(g => [Math.round(g[0] - ready), Math.round(g[1])]).slice(0, 8) : [],
@@ -74,9 +78,23 @@ const OPEN = (ref, at, keepMs) => `(async () => {
   return out;
 })()`;
 
+// the page is served over http on 127.0.0.1 (as the app is), with the prebaked scenes' assets at /api/scene-assets/ (the route of
+// server/routes/scene-assets.mjs), never cached (cold means cold)
+const ASSETS = resolve(fileURLToPath(new URL('../assets/scenes', import.meta.url)));
+const server = createServer((req, res) => {
+  const u = new URL(req.url, 'http://x');
+  if (u.pathname === '/' || u.pathname === '/page.html') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(page); return; }
+  const m = /^\/api\/scene-assets\/([a-z0-9-]+)\/([a-z0-9-]+)\/([a-z0-9][a-z0-9.-]*\.(webp|json))$/.exec(u.pathname);
+  const file = m ? resolve(join(ASSETS, m[1], m[2], m[3])) : '';
+  if (!m || !file.startsWith(ASSETS + sep)) { res.writeHead(404); res.end(); return; }
+  try { const b = readFileSync(file); res.writeHead(200, { 'Content-Type': m[4] === 'webp' ? 'image/webp' : 'application/json', 'Cache-Control': 'no-store' }); res.end(b); }
+  catch { res.writeHead(404); res.end(); }
+});
+await new Promise(r => server.listen(0, '127.0.0.1', r));
+const PAGE_URL = 'http://127.0.0.1:' + server.address().port + '/page.html';
 async function loadPage(chrome) {
   if (chrome.emulateMedia) await chrome.emulateMedia([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
-  await chrome.screenshot({ html: page, width: W, height: H, scale: DPR, transparent: false });
+  await chrome.screenshot({ url: PAGE_URL, width: W, height: H, scale: DPR, transparent: false });
   // --throttle=4: an average machine's CPU (CDP CPU throttling; the GPU is as it is)
   if (flags.throttle && chrome.cdp) await chrome.cdp('Emulation.setCPUThrottlingRate', { rate: Number(flags.throttle) || 1 });
   // let the page settle (the script's own start-up, idle work: an idle-time pre-bake may run here, as in the app)
@@ -220,11 +238,13 @@ const med = (a) => { const s = a.filter(v => v != null).sort((x, y) => x - y); r
 const mx = (a) => { const s = a.filter(v => v != null); return s.length ? Math.max(...s) : null; };
 console.log(`
 summary over ${REPEAT} run(s): median (worst) ms`);
-console.log('scene                    run      ready           first paint     worst frame, load   worst frame, 3 s after ready');
+console.log('scene                    run      ready           first paint     animating       worst frame, load   frames>33ms(3s)  worst frame, 3 s after ready');
 for (const ref of refs) for (const k of RUNS) {
   const xs = results.filter(r => r.ref === ref && r[k] && !r[k].error).map(r => r[k]);
   if (!xs.length) continue;
   const cell = (key) => (f(med(xs.map(x => x[key]))) + ' (' + f(mx(xs.map(x => x[key]))) + ')').padEnd(16);
-  console.log(`${ref.split('/')[0].replace('proof-', '').padEnd(25)}${k.padEnd(9)}${cell('readyMs')}${cell('firstPaintMs')}${cell('worstGapLoad').padEnd(20)}${cell('worstGapAfterReady')}`);
+  console.log(`${ref.split('/')[1].padEnd(25)}${k.padEnd(9)}${cell('readyMs')}${cell('firstPaintMs')}${cell('animMs')}${cell('worstGapLoad').padEnd(20)}${cell('over33').padEnd(17)}${cell('worstGapAfterReady')}`);
+  for (const x of xs) if (x.pbtl) console.log('    prebaked timeline (ms after the player started):', x.pbtl.join(' '), ' player frame ms', JSON.stringify(x.pbFrame), ' renderer dyn ms', JSON.stringify(x.dyn), ' passes frame ms/frames', JSON.stringify(x.passFrame));
 }
 if (flags.json) writeFileSync(flags.json, JSON.stringify(results, null, 2));
+server.close();

@@ -241,6 +241,9 @@ function _schMount(el) {
       // the persistent bake cache (78-scene-cache.js) for a live scene of the library as it is (no preview data, no weather
       // override): the next load restores its bake instead of baking again, and paints its kept first frame meanwhile
       const cache = _schCacheId(rec);
+      // a scene with a prebaked manifest (78-scene-player.js): its static picture from the build-time images, the renderer only
+      // for what moves; when the images cannot be had, the live canvas path below (the fallback)
+      if (_schPrebaked(rec, canvas, { lod, season, L })) { /* the player */ } else
       rec.r = sceneRendererCreate(canvas, rec.data, { lod, still: rec.still, season, L, time: () => _schTime(rec), flush, profile, cache, hideUntilReady: true,
         onStill: (blob) => _schStill(rec, blob),
         onLive: () => _schRestart(rec),
@@ -265,6 +268,33 @@ function _schMount(el) {
     el.addEventListener('pointerleave', () => { rec.hovering = false; _schUpdate(rec); });
   }
   _schUpdate(rec);
+}
+/**
+ * A prebaked scene (item.prebaked and the player loaded): rec.r is the player (renderer-shaped). Its first picture marks the
+ * host ready (sc-ready); sc-live once the full renderer has taken over. A failure (no manifest, an image missing) falls back to
+ * the live canvas path, then to the SVG still. window.__scenePrebakedOff = true (tools) skips it.
+ */
+function _schPrebaked(rec, canvas, a) {
+  const it = rec.item, el = rec.el;
+  if (!it || !it.prebaked || typeof scenePrebakedPlayer !== 'function' || (typeof window !== 'undefined' && window.__scenePrebakedOff)) return false;
+  if (typeof fetch !== 'function' || typeof createImageBitmap !== 'function') return false;
+  let fell = false;
+  rec.r = scenePrebakedPlayer(el, it, rec.data, { lod: a.lod, still: rec.still, season: a.season, L: a.L, time: () => _schTime(rec),
+    onReady: () => { if (!rec.tReady) rec.tReady = _schNowMs(); if (!rec.tShown) rec.tShown = rec.tReady; el.classList.add('sc-ready'); _schWant(rec); _schUpdate(rec); },
+    onLive: () => { rec.tLive = _schNowMs(); el.classList.add('sc-live'); },
+    onError: (e) => {
+      if (fell) return; fell = true;
+      if (typeof console !== 'undefined') console.warn('prebaked scene: the live canvas instead:', rec.ref, e && e.message);
+      try { if (rec.r) rec.r.destroy(); } catch (e2) { /* gone */ }
+      try {
+        rec.r = sceneRendererCreate(canvas, rec.data, { lod: a.lod, still: rec.still, season: a.season, L: a.L, time: () => _schTime(rec), hideUntilReady: true,
+          onReady: () => { if (!rec.tReady) rec.tReady = _schNowMs(); el.classList.add('sc-ready'); _schWant(rec); }, onError: (e2) => _schFallback(rec, e2) });
+        const [w, h] = _schSize(el);
+        if (w && h) rec.r.bakeIdle(w, h, { eager: true });
+        _schUpdate(rec);
+      } catch (e2) { _schFallback(rec, e2); }
+    } });
+  return true;
 }
 /** The host's id in the persistent bake cache, or null: a live library scene drawn as the library has it. */
 function _schCacheId(rec) {

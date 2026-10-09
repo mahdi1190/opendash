@@ -87,6 +87,7 @@ const _sccNullGrad = { addColorStop() {} };
 const _sccNullCx = typeof Proxy === 'function' ? new Proxy({}, { get: (t, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' || k === 'createConicGradient' ? () => _sccNullGrad : () => {}), set: () => true }) : null;
 /** Free a baked state's bitmaps (its groups, their wind strips, the sky); restored ones are closed. */
 function _sccFreeState(st) {
+  if (st.borrowed) return;   // a prebaked restore: the player owns those bitmaps (78-scene-player.js)
   for (const g of st.groups) { _sccFree(g.c); for (const s of g.strips || []) _sccFree(s.c); }
   _sccFree(st.sky);
   if (st.kept) for (const b of st.kept) _sccFree(b);
@@ -194,6 +195,10 @@ function sceneRendererCreate(canvas, src, o) {
   let tl0 = 0;
   const tl = (label) => { (ph.tl || (ph.tl = [])).push(label + '@' + Math.round(_sccNow() - tl0)); };
   const timeFn = o.time || (() => (_sccNow() - t0) / 1000), rid = ++_sccRid;
+  // prebaked scenes (78-scene-player.js): o.restore(W, H, job) -> Promise<R | null> gives the bake's bitmaps (no compile cache, no
+  // static drawing); o.spriteVs: the device scale the build rasterised the frame sprites at (sprite keys and scales use it, so the
+  // pre-rasterised sprites are found at any screen size); MX: the second light key's bitmaps blended over (setMix)
+  let scK = 1, MX = null;
 
   const compile = () => fixed || sceneCompile(data, { season, lod, L });
   /** Device size of the backing store for a css size (dpr-aware, capped at 2560 x 1440). */
@@ -243,6 +248,7 @@ function sceneRendererCreate(canvas, src, o) {
   // x (v2 only, V2 13.2): { env, flip, lift, cls, i } - the passes' sprite keys, the flip bit (shaded classes) and the lift
   // join the key; the colours take the lift; the sprite passes (shading, rim, snow caps) run after the rasterising
   const sprite = (Lx, lk, oid, v, se, which, haze, tint, sc, litGlow, withLit, x) => {
+    if (scK !== 1) sc *= scK;
     let key = sceneSpriteKey(oid, v, which + (litGlow ? '+g' : '') + (withLit ? '+l' : ''), se, haze, tint, sc, lk), req = null;
     if (x && x.env) {
       const env = x.env, sp = env.passes.sprite || (env.passes.sprite = sceneRenderPasses('sprite', env.C));
@@ -333,6 +339,7 @@ function sceneRendererCreate(canvas, src, o) {
     // v2 (V2 13): a v2 compiled scene, or a v1 one with fx, runs the render passes at the hook points below; v1: none of it
     const v2 = typeof sceneRenderIsV2 === 'function' && typeof sceneRunPasses === 'function' && sceneRenderIsV2(C);
     const lk = sceneLightKey(Lx, C.season, v2 ? C : undefined), vs = Math.max(W / SCENE_W_SAFE, H / SCENE_H_SAFE), ox = (W - SCENE_W_SAFE * vs) / 2, oy = (H - SCENE_H_SAFE * vs) / 2;
+    scK = o.spriteVs ? o.spriteVs / vs : 1;
     const T = [vs, 0, 0, vs, ox, oy];                     // scene units -> device px
     const placeM = (x, y, s, flip) => [vs * s * (flip ? -1 : 1), 0, 0, vs * s, vs * x + ox, vs * y + oy];
     const out = { W, H, vs, ox, oy, lk, L: Lx, C, groups: [], sky: null, stars: [], clouds: [], strips: [], particles: null, rain: null, snow: null, opaque: [], sprites: new Set(), frameSprites: new Set() };
@@ -343,7 +350,13 @@ function sceneRendererCreate(canvas, src, o) {
       sprite: (req) => sprite(Lx, lk, req.o, req.v || 0, req.season || C.season, req.part || '*', req.haze || 0, req.tint || null, req.scale, !!req.litGlow, !!req.withLit, req.plain ? null : { env, flip: req.flip, lift: req.lift || 0, cls: req.cls, i: req.i }),
       // the very sprite item i is drawn with (the shadow and water passes reuse it: no extra rasterising)
       itemSprite: (i) => { const it = C.items[i]; return keepStatic(sprite(Lx, lk, it.o, it.v, it.season, '*', v2Haze(i, it, hz(it.layer)), it.tint, bucket(it.s) * vs, false, false, { env, flip: it.flip, lift: v2Lift(i), cls: it.cls, i })); } }) : null;
-    if (env) { out.env = env; sceneRunPasses(env, 'prebake', []); }
+    if (env) {
+      out.env = env;
+      // one pass at a time, a yield between (a slice may end there: the flows' and the water's prebake are each a few ms)
+      const pre = sceneRenderPasses('prebake', C);
+      for (const p of pre) { env.passes.prebake = [p]; sceneRunPasses(env, 'prebake', []); yield; }
+      env.passes.prebake = pre;
+    }
     // the v2 haze (V2 7.1) and lift (7.4) of an item: from the passes' per-item arrays (bucketed), not the layer's haze
     const v2Haze = (i, it, layerHaze) => (env && it.haze == null ? Math.round((env.itemHaze[i] || 0) * 10) / 10 : layerHaze);
     const v2Lift = (i) => (env ? env.itemLift[i] || 0 : 0);
@@ -367,32 +380,8 @@ function sceneRendererCreate(canvas, src, o) {
     // 1. the sky bitmap: gradient, the sun's glow and disc, the moon in its real phase (stars and clouds move: per frame)
     const skyKept = R ? R.get('sky') : null;
     const sky = skyKept || _sccCanvas(W, H), sx = skyKept ? _sccNullCx : sky.getContext('2d', { alpha: false, willReadFrequently: true });
-    const hor = (Lx && Lx.horizon) || C.view.horizon || 560, y1 = hor + 120;
-    sx.setTransform(T[0], 0, 0, T[3], T[4], T[5]);
-    const g = sx.createLinearGradient(0, 0, 0, y1);
-    const top = (Lx && Lx.top) || '#3a80c4', mid = (Lx && Lx.mid) || '#98c4e4', low = (Lx && Lx.low) || '#dcebf2';
-    g.addColorStop(0, top); g.addColorStop(0.58 * Math.min(1, hor / y1), mid); g.addColorStop(_scClamp(hor / y1, 0, 1), low); g.addColorStop(1, low);
-    sx.fillStyle = g; sx.fillRect(-200, -100, 2000, 1100);
+    const hor = sceneSkyPaint(sx, Lx, C, T, !!skyKept);
     if (Lx && C.sky) {
-      const glow = (x, y, r, col, op) => { const rg = sx.createRadialGradient(x, y, 0, x, y, r), c = _scHex(col); rg.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${op})`); rg.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`); sx.fillStyle = rg; sx.fillRect(x - r, y - r, 2 * r, 2 * r); };
-      const sun = Lx.sun || {}, fov = Lx.fov || 80;
-      const gk = _scClamp(1 - Math.abs(sun.rel || 0) / (fov / 2 + 70), 0, 1) * (1 - (Lx.cover || 0) * 0.7), lowSun = _scClamp(1 - Math.abs(Lx.alt - 2) / 16, 0, 1);
-      if (gk > 0 && Lx.alt > -9) glow(_scClamp(sun.x, -500, 2100), Math.min(sun.y, hor + 40), 380 + 520 * lowSun, _scMixHex(Lx.lowSun || low, '#fff6dc', _scClamp(Lx.alt / 30, 0, 0.8)), (0.25 + 0.5 * lowSun) * gk);
-      const m = Lx.moon;
-      if (m && m.show) {
-        const mr = C.sky.moonR || 20, f = Math.acos(_scClamp(1 - 2 * m.illum, -1, 1)) / (2 * Math.PI);
-        glow(m.x, m.y, mr * (3 + 4 * m.illum), '#cfdcf0', 0.18 + 0.32 * m.illum);
-        sx.save(); sx.translate(m.x, m.y);
-        sx.globalAlpha = 0.25 * (Lx.dark || 0); sx.fillStyle = '#3a4660'; sx.beginPath(); sx.arc(0, 0, mr, 0, Math.PI * 2); sx.fill();
-        sx.globalAlpha = 1; sx.rotate(((m.limb || 90) - 90) * Math.PI / 180); sx.fillStyle = '#f3eedc';
-        if (!skyKept) sx.fill(new Path2D(typeof almMoonDiscPath === 'function' ? almMoonDiscPath(_scClamp(f, 0.001, 0.4995), mr) : sceneD.circ(0, 0, mr)));
-        sx.restore();
-      }
-      if (sun.show && C.sky.sunR) {
-        const sr = C.sky.sunR, core = _scMixHex('#fff9e8', Lx.lowSun || low, _scClamp(1 - Lx.alt / 12, 0, 0.85));
-        sx.globalAlpha = 0.35; sx.fillStyle = core; sx.beginPath(); sx.arc(sun.x, sun.y, sr * 1.8, 0, Math.PI * 2); sx.fill();
-        sx.globalAlpha = 1; sx.beginPath(); sx.arc(sun.x, sun.y, sr, 0, Math.PI * 2); sx.fill();
-      }
       // stars (positions now, twinkle per frame), by darkness, fewer under a bright moon or cloud
       const ns = Math.min(220, Math.round((C.sky.stars || 0) * (Lx.stars || 0) * Math.max(0.3, lod)));
       const r = _scRndOf(41);
@@ -546,7 +535,7 @@ function sceneRendererCreate(canvas, src, o) {
       phMark('strips');
       if (rg) for (const [k, s] of (rg.strips || []).entries()) {
         const c = R.get('s' + gi + '.' + k);
-        if (c) { grp.strips.push({ c, x: s.x, y: s.y, base: s.base, xMid: s.xMid, amp: s.amp }); out.sprites.add({ c, bytes: c.width * c.height * 4 }); }
+        if (c) { grp.strips.push(s.dw ? { c, x: s.x, y: s.y, base: s.base, xMid: s.xMid, amp: s.amp, dw: s.dw, dh: s.dh } : { c, x: s.x, y: s.y, base: s.base, xMid: s.xMid, amp: s.amp }); out.sprites.add({ c, bytes: c.width * c.height * 4 }); }
       }
       else for (const s of C.strips) if (gr.layers.includes(s.layer)) {
         let sb = null;
@@ -588,13 +577,24 @@ function sceneRendererCreate(canvas, src, o) {
     out.rasterWait = rasterWait;
     out.restored = !!R;
     out.kept = R ? R.all : null;
+    out.borrowed = !!(R && R.borrowed);
     phMark('end');
     return out;
   }
 
   /* ---------- frames ---------- */
   const flush = () => { try { ctx.getImageData(0, 0, 1, 1); } catch (e) { /* nothing to force */ } };
+  // o.layers() (the prebaked player's DOM stack): { sky: ctx, groups: [ctx, ...] } transparent canvases between the land images
+  // (the browser composites those on the GPU): the frame draws the stars and clouds into sky, each group's strips, water and
+  // movers into its own canvas, and skips every bitmap blit; null: one canvas as always
   function frame(t) {
+    const LY = !warming && S && typeof o.layers === 'function' ? o.layers() : null, c0 = ctx;
+    if (!LY) { frameBody(t, null); return; }
+    for (const c of [LY.sky].concat(LY.groups)) if (c) { c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, c.canvas.width, c.canvas.height); }
+    ctx = LY.sky;
+    try { frameBody(t, LY); } finally { ctx = c0; }
+  }
+  function frameBody(t, LY) {
     if (!S || destroyed) return;
     const F = o.flush || false, tStart = _sccNow(), P = o.profile ? prof : null;
     let pm = tStart;
@@ -618,7 +618,7 @@ function sceneRendererCreate(canvas, src, o) {
     // v2: every mover's place now, before the frame passes (water wakes and reflections, actor shadows read them)
     const env = S.env;
     if (env) _sccMoversNow(env, S, t, Lx);
-    mark('pre'); blitAt(S.sky, 0, 0, 0, hb); mark('blit');
+    mark('pre'); if (!LY) blitAt(S.sky, 0, 0, 0, hb); mark('blit');
     // stars: three twinkle groups
     if (S.stars.length) {
       ctx.fillStyle = '#fffaf0';
@@ -636,14 +636,27 @@ function sceneRendererCreate(canvas, src, o) {
     }
     S.groups.forEach((g, gi) => {
       const below = hideBelow[gi];
+      if (LY) ctx = LY.groups[gi] || LY.groups[LY.groups.length - 1] || ctx;
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
-      mark(gi ? 'movers' : 'clouds'); if (g.c) blitAt(g.c, g.x, g.y, 0, below); mark('blit');
-      for (const s of g.strips) {
-        if (s.y >= below) continue;
+      mark(gi ? 'movers' : 'clouds'); if (g.c && !LY) blitAt(g.c, g.x, g.y, 0, below);
+      // prebaked (setMix): the other light key's bitmap over it at the blend weight, then the night lights (additive)
+      const mg = MX && MX.groups[gi];
+      if (mg && !LY) {
+        if (mg.c && MX.w > 0.004) { ctx.globalAlpha = MX.w; blitAt(mg.c, mg.x, mg.y, 0, below); }
+        if (mg.lit && MX.la > 0.004) { ctx.globalAlpha = MX.la; ctx.globalCompositeOperation = 'lighter'; blitAt(mg.lit, mg.lx, mg.ly, 0, below); ctx.globalCompositeOperation = 'source-over'; }
+        ctx.globalAlpha = 1;
+      }
+      mark('blit');
+      const ms = mg && MX.w > 0.004 ? mg.strips : null;
+      g.strips.forEach((s, si) => {
+        if (s.y >= below) return;
         const k = (s.amp || 1) * sceneWindSafe(t, s.xMid, Lx) * 0.02;
         ctx.setTransform(1, 0, k, 1, -k * s.base, 0);
-        ctx.drawImage(s.c, s.x, s.y); draws++;
-      }
+        if (s.dw) ctx.drawImage(s.c, s.x, s.y, s.dw, s.dh); else ctx.drawImage(s.c, s.x, s.y);
+        draws++;
+        const s2 = ms && ms[si];
+        if (s2) { ctx.globalAlpha = MX.w; if (s2.dw) ctx.drawImage(s2.c, s2.x, s2.y, s2.dw, s2.dh); else ctx.drawImage(s2.c, s2.x, s2.y); ctx.globalAlpha = 1; draws++; }
+      });
       mark('strips'); for (const w of g.water) _sccWaterFrame(ctx, w, t); mark('water');
       // v2: the frame passes of this group (flows 10, water 20, actor shadows 25, puddle rings 50), before its movers
       if (env) { draws += sceneRunPasses(env, 'frameGroup', [g, ctx, t, below], true); _sccReset(ctx); mark('passes'); }
@@ -692,6 +705,12 @@ function sceneRendererCreate(canvas, src, o) {
       else for (const m of list) { mark('movers'); drawMover(m); mark('m:' + m.kind + (m.parts && m.parts[0] && m.parts[0].a ? ':' + m.parts[0].a.kind : '')); }
       ctx.globalAlpha = 1;
     });
+    // prebaked: the cheap global grade toward the live light (one fill over the land: the sky is painted live)
+    if (MX && MX.grade && MX.grade.a > 0.004) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = MX.grade.a; ctx.globalCompositeOperation = MX.grade.op || 'source-over';
+      ctx.fillStyle = MX.grade.col; const gy = Math.max(0, Math.min(H, MX.grade.y || 0)); ctx.fillRect(0, gy, W, H - gy);
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    }
     // particles (the season) and weather
     ctx.setTransform(vs, 0, 0, vs, ox, oy);
     mark('movers'); if (S.particles) _sccParticles(ctx, S.particles, t, S.pcol, S.C.particles.kind); mark('particles');
@@ -767,6 +786,8 @@ function sceneRendererCreate(canvas, src, o) {
           later(step);
           return;
         }
+        // o.warmFrames === false (a prebaked scene: its frame sprites were rasterised at build time): no unseen frames
+        if (o.warmFrames === false) k = _SCC_WARM_T.length;
         if (k < _SCC_WARM_T.length) {
           // 2. unseen frames at the sample times build what a frame builds on first sight (flow sprites, shadow silhouettes,
           // wakes), drawn into a 1 x 1 scratch: the sprites are made, no full-screen raster is paid (24 full frames queued on
@@ -781,6 +802,8 @@ function sceneRendererCreate(canvas, src, o) {
           later(step);
           return;
         }
+        // o.layers (a prebaked scene): the frames draw into the player's layer canvases, which took the bitmaps already
+        if (!list && typeof o.layers === 'function') list = [];
         if (!list) {
           // 3. what a frame draws goes to the raster once: the sky, the bitmaps, and the sprites and canvases of the movers,
           // strips, clouds, signs and passes, with those the unseen frames made (a static placement's sprite is in a bitmap
@@ -855,13 +878,21 @@ function sceneRendererCreate(canvas, src, o) {
       st.bakeMs = Math.round(job.ms * 10) / 10; st.maxSliceMs = Math.round(job.maxSlice * 10) / 10; st.bakeWallMs = Math.round((_sccNow() - job.t0) * 10) / 10;
       if (!st.bakes) st.firstBakeMs = st.bakeMs;
       st.bakes++;
-      if (!running) frame(o.still ? 0 : timeFn());
+      // (a prebaked scene's layers: the player's own loop draws the next frame, not this task)
+      if (!running && typeof o.layers !== 'function') frame(o.still ? 0 : timeFn());
       if (o.onBaked) try { o.onBaked(); } catch (e) { /* the host's business */ }
       warmUp(S, job.eager);
     };
     ph = {}; phNew = { sprites: 0, bytes: 0 }; job.t0 = tl0 = _sccNow();
     const begin = () => { if (!job.cancel && !destroyed) next()(step); };
-    if (cacheOn()) {
+    if (typeof o.restore === 'function') {
+      // prebaked (78-scene-player.js): the bitmaps come from the scene's prebaked images, already decoded and fitted to W x H
+      Promise.resolve().then(() => o.restore(W, H, job)).then((R) => {
+        job.lookupMs = Math.round((_sccNow() - job.t0) * 10) / 10;
+        if (job.cancel || destroyed) return;
+        job.R = R || null; begin();
+      }, () => begin());
+    } else if (cacheOn()) {
       cacheLookup(W, H, job).then((R) => {
         job.lookupMs = Math.round((_sccNow() - job.t0) * 10) / 10;
         if (job.cancel || destroyed) { if (R) R.all.forEach(_sccFree); return; }
@@ -946,6 +977,26 @@ function sceneRendererCreate(canvas, src, o) {
     ctx = c.getContext('2d', { alpha: false }); warming = true; S = state;
     try { frame(t || 0); } finally { ctx = keepCx; warming = keepWarm; S = keepS; }
   }
+  /**
+   * What a restore needs of a baked state: { names, list (canvases), meta: { W, H, lk, groups: [{ x, y, w, h, opaqueY, strips }] } }
+   * (the sky, the clouds 'cl<i>', the groups 'g<i>', their wind strips 's<g>.<k>', and what the passes keep: 'save'), or null.
+   * The persistent cache keeps it; the prebake tool (tools/lib/scene-cmd/prebake.mjs) writes it out as images.
+   */
+  function exportState(state) {
+    const names = [], list = [];
+    const put = (n, c) => { if (c && c.width && c.height && typeof c.getContext === 'function') { names.push(n); list.push(c); return true; } return false; };
+    put('sky', state.sky);
+    state.clouds.forEach((cl, i) => put('cl' + i, cl.c));
+    const meta = { W: state.W, H: state.H, lk: state.lk, groups: state.groups.map((g, gi) => {
+      if (g.c && !put('g' + gi, g.c)) return null;
+      const strips = [];
+      g.strips.forEach((sp) => { if (put('s' + gi + '.' + strips.length, sp.c)) strips.push({ x: sp.x, y: sp.y, base: sp.base, xMid: sp.xMid, amp: sp.amp }); });
+      return { x: g.x, y: g.y, w: g.c ? g.w : 0, h: g.c ? g.h : 0, opaqueY: g.opaqueY, strips };
+    }) };
+    if (meta.groups.some(g => !g)) return null;
+    if (state.env) for (const p of sceneRenderPasses('save', state.C)) { try { p.save(state.env, put); } catch (e) { return null; } }
+    return { names, list, meta };
+  }
   /** Keep a finished bake (once it is ready, in idle time; the encoding runs in a worker where it can). */
   // o.onSaved(kept): called once per bake when the cache is on (kept: false when there was nothing to keep or it failed)
   function cacheSave(state) {
@@ -956,18 +1007,9 @@ function sceneRendererCreate(canvas, src, o) {
     // a few seconds after the scene shows (its first seconds play undisturbed), then in idle time
     setTimeout(() => _sccIdle(() => {
       if (destroyed || S !== state) { saved(false); return; }
-      const names = [], list = [];
-      const put = (n, c) => { if (c && c.width && c.height && typeof c.getContext === 'function') { names.push(n); list.push(c); return true; } return false; };
-      put('sky', state.sky);
-      state.clouds.forEach((cl, i) => put('cl' + i, cl.c));
-      const meta = { W: state.W, H: state.H, lk: state.lk, groups: state.groups.map((g, gi) => {
-        if (g.c && !put('g' + gi, g.c)) return null;
-        const strips = [];
-        g.strips.forEach((sp) => { if (put('s' + gi + '.' + strips.length, sp.c)) strips.push({ x: sp.x, y: sp.y, base: sp.base, xMid: sp.xMid, amp: sp.amp }); });
-        return { x: g.x, y: g.y, w: g.c ? g.w : 0, h: g.c ? g.h : 0, opaqueY: g.opaqueY, strips };
-      }) };
-      if (meta.groups.some(g => !g)) { saved(false); return; }
-      if (state.env) for (const p of sceneRenderPasses('save', state.C)) { try { p.save(state.env, put); } catch (e) { saved(false); return; } }
+      const ex = exportState(state);
+      if (!ex) { saved(false); return; }
+      const { names, list, meta } = ex;
       let still = null;
       try { still = _sccCanvas(state.W, state.H); frameInto(state, still); } catch (e) { still = null; }
       sceneStoreEncode(still ? list.concat([still]) : list).then((blobs) => {
@@ -1021,6 +1063,22 @@ function sceneRendererCreate(canvas, src, o) {
     get running() { return running; },
     /** Draw one frame at time t (seconds). The still (reduced motion, tiles) is frame(0). */
     frame(t) { if (!S && !pending) api.resize(cssW, cssH); if (S) frame(t || 0); },
+    /** The current bake for a restore ({ names, list, meta }; the prebake tool), or null. */
+    exportBake() { return S ? exportState(S) : null; },
+    /** The compiled scene of the current bake (the prebake tool), or null. */
+    get compiled() { return S ? S.C : null; },
+    /** The current bake's geometry and clouds ({ W, H, vs, ox, oy, lk, clouds: [{ w, h, x0, y, sp }] }), or null. */
+    get geometry() { return S ? { W: S.W, H: S.H, vs: S.vs, ox: S.ox, oy: S.oy, lk: S.lk, clouds: S.clouds.map(c => ({ w: c.w, h: c.h, x0: c.x0, y: c.y, sp: c.sp })) } : null; },
+    /** Prebaked scenes: the second light key's bitmaps blended over the first ({ w, la, groups: [{ c, x, y, strips: [{ c, x, y }], lit, lx, ly }], grade: { col, a, op, y } }), or null. */
+    setMix(m) { MX = m || null; },
+    /** Prebaked scenes: the live light for the frame passes (their grade, the hour's life, flow density) with no re-bake. */
+    setLiveLight(nl) { if (nl && S && S.env) { S.env.Lnow = nl; sceneRunPasses(S.env, 'relight', [nl]); } },
+    /** Prebaked scenes: re-bake (in idle slices) from another restore (a new size or light key) with that key's light. */
+    restoreWith(fn, nl, w, h) {
+      o.restore = fn; if (nl) L = nl; cssW = w || cssW; cssH = h || cssH;
+      const [W, H] = deviceSize(cssW, cssH);
+      if (S || pending) bakeLater(W, H);
+    },
     /** The frame at t (seconds) drawn into a new canvas of the backing size (tools and tests), or null before the first bake. */
     snapshot(t) { if (!S) return null; const c = _sccCanvas(S.W, S.H); frameInto(S, c, t || 0); return c; },
     /** Move this renderer to another canvas (a re-mounted host with the same key keeps its bitmaps). */
@@ -1049,6 +1107,41 @@ function sceneRendererCreate(canvas, src, o) {
     },
   };
   return api;
+}
+/**
+ * The sky of a light: gradient, the sun's glow and disc, the moon in its real phase, drawn into sx with T (scene units -> device
+ * px). Returns the horizon row (scene units). The bake paints its sky bitmap with it; the prebaked player (78-scene-player.js)
+ * paints the LIVE sky with it behind the baked land. kept: a context that draws nothing (a restored sky; Path2D skipped).
+ */
+function sceneSkyPaint(sx, Lx, C, T, kept) {
+  const hor = (Lx && Lx.horizon) || C.view.horizon || 560, y1 = hor + 120;
+  sx.setTransform(T[0], 0, 0, T[3], T[4], T[5]);
+  const g = sx.createLinearGradient(0, 0, 0, y1);
+  const top = (Lx && Lx.top) || '#3a80c4', mid = (Lx && Lx.mid) || '#98c4e4', low = (Lx && Lx.low) || '#dcebf2';
+  g.addColorStop(0, top); g.addColorStop(0.58 * Math.min(1, hor / y1), mid); g.addColorStop(_scClamp(hor / y1, 0, 1), low); g.addColorStop(1, low);
+  sx.fillStyle = g; sx.fillRect(-200, -100, 2000, 1100);
+  if (Lx && C.sky) {
+    const glow = (x, y, r, col, op) => { const rg = sx.createRadialGradient(x, y, 0, x, y, r), c = _scHex(col); rg.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${op})`); rg.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`); sx.fillStyle = rg; sx.fillRect(x - r, y - r, 2 * r, 2 * r); };
+    const sun = Lx.sun || {}, fov = Lx.fov || 80;
+    const gk = _scClamp(1 - Math.abs(sun.rel || 0) / (fov / 2 + 70), 0, 1) * (1 - (Lx.cover || 0) * 0.7), lowSun = _scClamp(1 - Math.abs(Lx.alt - 2) / 16, 0, 1);
+    if (gk > 0 && Lx.alt > -9) glow(_scClamp(sun.x, -500, 2100), Math.min(sun.y, hor + 40), 380 + 520 * lowSun, _scMixHex(Lx.lowSun || low, '#fff6dc', _scClamp(Lx.alt / 30, 0, 0.8)), (0.25 + 0.5 * lowSun) * gk);
+    const m = Lx.moon;
+    if (m && m.show) {
+      const mr = C.sky.moonR || 20, f = Math.acos(_scClamp(1 - 2 * m.illum, -1, 1)) / (2 * Math.PI);
+      glow(m.x, m.y, mr * (3 + 4 * m.illum), '#cfdcf0', 0.18 + 0.32 * m.illum);
+      sx.save(); sx.translate(m.x, m.y);
+      sx.globalAlpha = 0.25 * (Lx.dark || 0); sx.fillStyle = '#3a4660'; sx.beginPath(); sx.arc(0, 0, mr, 0, Math.PI * 2); sx.fill();
+      sx.globalAlpha = 1; sx.rotate(((m.limb || 90) - 90) * Math.PI / 180); sx.fillStyle = '#f3eedc';
+      if (!kept) sx.fill(new Path2D(typeof almMoonDiscPath === 'function' ? almMoonDiscPath(_scClamp(f, 0.001, 0.4995), mr) : sceneD.circ(0, 0, mr)));
+      sx.restore();
+    }
+    if (sun.show && C.sky.sunR) {
+      const sr = C.sky.sunR, core = _scMixHex('#fff9e8', Lx.lowSun || low, _scClamp(1 - Lx.alt / 12, 0, 0.85));
+      sx.globalAlpha = 0.35; sx.fillStyle = core; sx.beginPath(); sx.arc(sun.x, sun.y, sr * 1.8, 0, Math.PI * 2); sx.fill();
+      sx.globalAlpha = 1; sx.beginPath(); sx.arc(sun.x, sun.y, sr, 0, Math.PI * 2); sx.fill();
+    }
+  }
+  return hor;
 }
 /** sceneWind when the core has it, else a gentle sine (the renderer never fails on a missing core function). */
 function sceneWindSafe(t, x, L) { return typeof sceneWind === 'function' ? sceneWind(t, x, L) : Math.sin(t + x * 0.003); }
