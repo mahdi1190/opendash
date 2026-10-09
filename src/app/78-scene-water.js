@@ -180,6 +180,20 @@ sceneRenderPassDefine({
   group(env, grp) {
     for (const R of env.water.regions) if (env.groups[R.gi] === grp) _scwaMask(env, R, grp);
   },
+  /** The persistent bake cache (78-scene-cache.js): what the frames need beyond the group bitmap, the reflection and the mask. */
+  save(env, put) {
+    for (const R of env.water.regions) { if (R.refl) put('wr' + R.wi, R.refl); if (R.mask) put('wm' + R.wi, R.mask); }
+  },
+  /** A restored group (no bake ran): take the kept reflection and mask back; the scratch is new. */
+  restore(env, grp, K) {
+    for (const R of env.water.regions) {
+      if (env.groups[R.gi] !== grp) continue;
+      R.refl = K.get('wr' + R.wi); R.mask = K.get('wm' + R.wi);
+      if (!R.mask) continue;
+      R.scratch = _sccCanvas(R.bw, R.bh);
+      for (const c of [R.refl, R.mask, R.scratch]) if (c) env.out.sprites.add({ c, bytes: c.width * c.height * 4 });
+    }
+  },
   frameGroup(env, grp, ctx, t, below) {
     let draws = 0;
     for (const R of env.water.regions) if (env.groups[R.gi] === grp) draws += _scwaFrame(env, R, ctx, t, below);

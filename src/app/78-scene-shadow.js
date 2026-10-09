@@ -78,7 +78,9 @@ sceneRenderPassDefine({
     const st = { sun, col: _scshCol(L), byLayer: C.layers.map(() => []), lamps: C.layers.map(() => []), draws: 0, casters: 0, contacts: 0, lampPairs: 0, silhouettes: 0 };
     env.own.shadows = true;
     env.shadow = st;
-    if (!cam) return;
+    // a restored bake (78-scene-cache.js): the casters, contacts and lamp pairs are in the kept bitmaps already; the frames
+    // need only the sun and the colour
+    if (!cam || env.restoring) return;
     C.items.forEach((it, i) => {
       if (it.strip >= 0) return;
       const cls = it.cls || sceneObjClassOf(it.o);

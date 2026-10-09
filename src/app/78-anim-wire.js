@@ -162,6 +162,31 @@ function animOpeningScene(w, rotate) {
   const area = county ? county.name : it.ukLocality || '';
   return { it, origin: !area || site.includes(area) ? site : site + ' · ' + area };
 }
+/**
+ * The refs the next opening will most likely show (no side effects: the rotation is only read), for the scene host to
+ * prepare in idle time (78-scene-host.js sceneHostPrepareSoon): the pin, else the next in the county's rotation and the
+ * first-of-the-day local intro; anywhere else today's opening. Composed scenes only (the others need no bake).
+ */
+function animOpeningPeek() {
+  try {
+    if (!_awOn() || animOpeningMode() === 'off') return [];
+    const composed = (r) => { const it = r && animItem(r); return !!(it && it.composed); };
+    const w = typeof animUkWhere === 'function' ? animUkWhere() : null;
+    if (!w) { const it = animToday('opening'); return it && composed(it.ref) ? [it.ref] : []; }
+    const day = todayStr(), look = animLook();
+    const eligible = animItems({ slot: 'opening', look }).filter(x => x.full && x.county && !look.block.includes(x.ref) && _animFitsLevel(x, _agLevel()) && _awWhen(x, day, w.id));
+    const mine = animUkRotationPool(eligible, { county: w.id, ukTown: w.town, ukLat: w.lat, ukLon: w.lon }, 0);
+    if (!mine.length) return [];
+    const pin = mine.find(x => look.pin && x.ref === look.pin.opening);
+    if (pin) return composed(pin.ref) ? [pin.ref] : [];
+    let last = '';
+    try { last = localStorage.getItem('dashboard-opening-last-' + w.id) || ''; } catch (e) { /* private mode */ }
+    const signature = mine.find(x => x.signature), pool = _awByPlace(mine), prev = pool.findIndex(x => x.ref === last);
+    const next = pool[(prev >= 0 ? prev + 1 : Math.max(0, pool.indexOf(signature) + 1)) % pool.length];
+    const first = mine.find(x => x.ukTown === w.town) || signature || mine[0];
+    return [...new Set([next.ref, first.ref])].filter(composed);
+  } catch (e) { return []; }
+}
 /** Round-robin over places (ukPlace, else the item itself): A1 B1 C1 A2 B2 C2 ... */
 function _awByPlace(items) {
   const groups = new Map();

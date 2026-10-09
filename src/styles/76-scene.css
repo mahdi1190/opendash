@@ -9,6 +9,8 @@
 .anim-scene.ap-composed { position: relative; overflow: hidden; background: linear-gradient(var(--sc-top, #3a80c4), var(--sc-low, #dcebf2)); }
 .anim-scene.ap-composed .sc-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity .2s; }
 .anim-scene.ap-composed.sc-ready .sc-canvas { opacity: 1; }
+/* the kept first frame (the persistent bake cache) under the canvas while it restores; the canvas fades in over it */
+.anim-scene.ap-composed .sc-still { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 .anim-scene.ap-composed > svg.sc-fallback { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .anim-scene.ap-composed::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;

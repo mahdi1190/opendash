@@ -59,10 +59,11 @@ function _schTime(rec) {
   return Math.max(0, (_schNowMs() - _schHiddenMs - t0) / 1000);
 }
 /** The sky a host draws: data-sc-sky "off" (the authored moment), "ms,lat,lon" (a fixed moment for QA) or live (the clock). */
-function _schSky(rec, data) {
+function _schSky(rec, data, atMs) {
   const attr = rec.el.getAttribute('data-sc-sky') || '';
   if (attr === 'off' || typeof almSceneLight !== 'function') return null;
-  const now = typeof Clock !== 'undefined' && Clock.now ? Clock.now() : Date.now();   // clock-ok: the scene's sky follows the app clock
+  // atMs: another moment's live sky (a scene prepared ahead in idle time); else now
+  const now = Number.isFinite(atMs) ? atMs : typeof Clock !== 'undefined' && Clock.now ? Clock.now() : Date.now();   // clock-ok: the scene's sky follows the app clock
   const fx = /^(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)$/.exec(attr);
   // a moment far from now (a sheet at --at, a test) stays fixed; a moment near now is the live sky and moves on
   if (fx && Math.abs(+fx[1] - now) > 600000) return almSceneLight(+fx[1], +fx[2], +fx[3], 'UTC');
@@ -81,8 +82,8 @@ function _schSky(rec, data) {
   return sky;
 }
 /** The light and season for a host now. */
-function _schLight(rec) {
-  const data = rec.data, sky = _schSky(rec, data), o = sky ? { sky } : {};
+function _schLight(rec, atMs) {
+  const data = rec.data, sky = _schSky(rec, data, atMs), o = sky ? { sky } : {};
   const fixedSeason = rec.el.getAttribute('data-sc-season');
   if (fixedSeason) o.season = fixedSeason;
   const season = _scSeasonOf(data, o);
@@ -187,6 +188,8 @@ function _schEnsureInit() {
   });
   try { matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', () => { for (const rec of _schHosts.values()) { rec.still = rec.stillAttr || _schReduced(); _schUpdate(rec); if (rec.still && rec.r) rec.r.frame(0); } }); } catch (e) { /* old browsers */ }
   _schTimer = setInterval(sceneHostRelight, _SCH_RELIGHT_MS);
+  // the persistent bake cache's version (a hash of the app script): worked out in idle time, before a scene asks for it
+  if (typeof sceneStoreOn === 'function' && sceneStoreOn()) { const v = () => { try { sceneStoreVersion(); } catch (e) { /* later */ } }; if (typeof requestIdleCallback === 'function') requestIdleCallback(v, { timeout: 2000 }); else setTimeout(v, 200); }
 }
 /** Re-light every visible host (the light key decides whether anything is re-baked). */
 function sceneHostRelight() {
@@ -215,7 +218,7 @@ function _schMount(el) {
   const ref = el.getAttribute('data-anim'), item = _schItem(ref);
   if (!item) return;
   const key = _schKey(el), stillAttr = el.getAttribute('data-sc-still') === '1';
-  const rec = { el, ref, item, key, data: null, r: null, canvas, still: stillAttr || _schReduced(), stillAttr, hoverOnly: el.getAttribute('data-sc-hover') === '1', hovering: false, fallback: false, rt: 0 };
+  const rec = { el, ref, item, key, data: null, r: null, canvas, still: stillAttr || _schReduced(), stillAttr, hoverOnly: el.getAttribute('data-sc-hover') === '1', hovering: false, fallback: false, rt: 0, tReq: _schNowMs(), tReady: 0 };
   _schHosts.set(el, rec);
   _schEnsureInit();
   const gone = _schGone.get(key);
@@ -235,8 +238,13 @@ function _schMount(el) {
       const so = typeof window !== 'undefined' && window.__sceneOpts ? window.__sceneOpts : {}, flush = so.flush || false, profile = !!so.profile;
       // the canvas shows (sc-ready) once the renderer is baked AND warmed up: every sprite sent to the raster, the first-sight
       // work done (78-scene-canvas.js warmUp), so the first seconds on screen play as smoothly as the rest
-      rec.r = sceneRendererCreate(canvas, rec.data, { lod, still: rec.still, season, L, time: () => _schTime(rec), flush, profile,
-        onReady: () => { el.classList.add('sc-ready'); _schWant(rec); }, onError: (e) => _schFallback(rec, e) });
+      // the persistent bake cache (78-scene-cache.js) for a live scene of the library as it is (no preview data, no weather
+      // override): the next load restores its bake instead of baking again, and paints its kept first frame meanwhile
+      const cache = _schCacheId(rec);
+      rec.r = sceneRendererCreate(canvas, rec.data, { lod, still: rec.still, season, L, time: () => _schTime(rec), flush, profile, cache, hideUntilReady: true,
+        onStill: (blob) => _schStill(rec, blob),
+        onLive: () => _schRestart(rec),
+        onReady: () => { if (!rec.tReady) rec.tReady = _schNowMs(); if (!rec.tShown) rec.tShown = rec.tReady; el.classList.add('sc-ready'); _schStillDone(rec); _schWant(rec); }, onError: (e) => _schFallback(rec, e) });
       // a live scene (the opening, the gallery stage, the Home card) bakes at once, in slices back to back (frames and the page's
       // own work run in between: no long task); tiles and stills bake in idle slices once they are on screen, so a page of
       // gallery tiles never blocks the main thread
@@ -257,6 +265,45 @@ function _schMount(el) {
     el.addEventListener('pointerleave', () => { rec.hovering = false; _schUpdate(rec); });
   }
   _schUpdate(rec);
+}
+/** The host's id in the persistent bake cache, or null: a live library scene drawn as the library has it. */
+function _schCacheId(rec) {
+  const el = rec.el;
+  if (rec.still || rec.hoverOnly || !el.classList.contains('is-live') || el.getAttribute('data-sc-wx')) return null;
+  if (typeof window !== 'undefined' && window.__sceneItems && window.__sceneItems[rec.ref]) return null;
+  if (typeof animItem !== 'function' || animItem(rec.ref) !== rec.item || !rec.item.composed) return null;
+  const base = typeof sceneData === 'function' ? sceneData(rec.item) : null;
+  return base && base === rec.data ? rec.ref : null;
+}
+/**
+ * The kept still of a scene's first frame (the persistent bake cache) while its live canvas restores: an image under the
+ * canvas, shown once decoded; the canvas fades in over it when ready (the same frame: the live scene starts from it).
+ */
+function _schStill(rec, blob) {
+  if (rec.stillImg || rec.el.classList.contains('sc-ready') || typeof URL === 'undefined' || typeof Image !== 'function') return;
+  const url = URL.createObjectURL(blob), img = new Image();
+  img.className = 'sc-still'; img.alt = ''; img.setAttribute('aria-hidden', 'true'); img.decoding = 'async';
+  rec.stillImg = img; rec.stillUrl = url;
+  img.src = url;
+  (typeof img.decode === 'function' ? img.decode() : Promise.resolve()).then(() => {
+    if (rec.stillImg !== img || rec.el.classList.contains('sc-ready') || !rec.canvas.isConnected) { if (rec.stillImg === img) _schStillDone(rec, true); return; }
+    rec.el.insertBefore(img, rec.canvas);
+    if (!rec.tShown) rec.tShown = _schNowMs();
+    rec.el.classList.add('sc-shown');
+  }, () => _schStillDone(rec, true));
+}
+/** The live canvas is ready: drop the still once the canvas has faded in over it (at once: now). */
+function _schStillDone(rec, now) {
+  const img = rec.stillImg, url = rec.stillUrl;
+  if (!img) return;
+  rec.stillImg = null; rec.stillUrl = null;
+  setTimeout(() => { try { img.remove(); } catch (e) { /* gone */ } try { URL.revokeObjectURL(url); } catch (e) { /* gone */ } }, now ? 0 : 400);
+}
+/** Restart one host's clock now (its scene starts from t = 0: the kept still it showed was that frame). */
+function _schRestart(rec) {
+  _schT0.set(rec.key, _schNowMs() - _schHiddenMs);
+  const ak = typeof _ascKeys !== 'undefined' && typeof animSceneKey === 'function' ? _ascKeys.get(animSceneKey(rec.el)) : null;
+  if (ak && typeof _ascNow === 'function') ak.t0 = _ascNow();
 }
 /** A lazy host comes on screen: its first bake, in idle slices. */
 function _schWake(rec) {
@@ -327,7 +374,10 @@ function sceneHostReady() {
   });
 }
 if (typeof window !== 'undefined') {
-  window.__sceneStats = () => [..._schHosts.values()].filter(r => r.r).map(r => Object.assign({ ref: r.ref, playing: r.r.running }, r.r.stats()));
+  window.__sceneStats = () => [..._schHosts.values()].filter(r => r.r).map(r => Object.assign({ ref: r.ref, playing: r.r.running, readyMs: r.tReady ? Math.round((r.tReady - r.tReq) * 10) / 10 : null,
+    shownMs: r.tShown ? Math.round((r.tShown - r.tReq) * 10) / 10 : null }, r.r.stats()));
+  /** Tools: the first mounted host's frame at t drawn into a new canvas (null before its first bake). */
+  window.__sceneSnapshot = (t) => { for (const r of _schHosts.values()) if (r.r && r.r.baked) return r.r.snapshot(t || 0); return null; };
   window.__sceneStatsReset = () => { for (const r of _schHosts.values()) if (r.r) r.r.resetStats(); };
   /** Tools (scene perf --rebake): put every host at a fixed moment (ms) and re-light it now (a re-bake in idle slices when the light key changes). */
   window.__sceneForceSky = (ms) => { for (const r of _schHosts.values()) { const v = (r.data && r.data.view) || {}; r.el.setAttribute('data-sc-sky', Math.round(ms) + ',' + (v.lat || 0) + ',' + (v.lon || 0)); } sceneHostRelight(); };
@@ -352,4 +402,85 @@ function sceneHostRestartClock(root) {
     n++;
   }
   return n;
+}
+
+/* ---------- prepared in advance (idle time) ----------
+   The next likely openings (animOpeningPeek: the next in the county's rotation, the first-of-the-day intro) at full-screen size
+   and the live scenes on the page (the Home card) at their size, each at now and the next light buckets (+20, +45 min), are
+   baked off-screen in idle slices and kept in the persistent bake cache (78-scene-cache.js), so the next open restores instead
+   of baking. Only while no scene is playing (a prepare bake never competes with a live one), one at a time; a bake already
+   kept is a restore of a few ms. Once soon after load, then every 10 minutes while the page is visible. */
+const _SCH_PREP_EVERY_MS = 10 * 60000, _SCH_PREP_AHEAD_MIN = [0, 20, 45];
+let _schPrepBusy = false, _schPrepTimer = 0;
+/** What to prepare now: [{ ref, w, h (css px), at (ms) }]. */
+function _schPrepList() {
+  if (typeof sceneStoreOn !== 'function' || !sceneStoreOn() || _schReduced()) return [];
+  const now = typeof Clock !== 'undefined' && Clock.now ? Clock.now() : Date.now();   // clock-ok: the prepared light follows the app clock
+  const want = [];
+  const vw = Math.round(window.innerWidth || 0), vh = Math.round(window.innerHeight || 0);
+  if (vw && vh && typeof animOpeningPeek === 'function') for (const ref of animOpeningPeek()) want.push({ ref, w: vw, h: vh });
+  for (const rec of _schHosts.values()) {
+    if (!rec.r || rec.fallback || !_schCacheId(rec)) continue;
+    const [w, h] = _schSize(rec.el), W = Math.round(w), H = Math.round(h), lod = Number(rec.el.getAttribute('data-sc-lod')) || 1;
+    if (W > 0 && H > 0 && !want.some(x => x.ref === rec.ref && x.w === W && x.h === H)) want.push({ ref: rec.ref, w: W, h: H, lod });
+  }
+  const out = [];
+  for (const x of want) for (const m of _SCH_PREP_AHEAD_MIN) out.push(Object.assign({ at: now + m * 60000 }, x));
+  return out;
+}
+/**
+ * Prepare a list now, one at a time in idle slices: [{ ref, w, h (css px), at (ms), lod (1), sky (a host's data-sc-sky) }]. Resolves to
+ * [{ ref, at, kept, restored, ms }] (restored: it was kept already). Tools call it directly.
+ */
+async function sceneHostPrepare(list) {
+  const done = [];
+  for (const job of list || []) {
+    if (document.hidden) break;
+    const it = _schItem(job.ref);
+    if (!it || !it.composed) continue;
+    const t0 = _schNowMs();
+    const r = await new Promise((resolve) => {
+      let rr = null, fin = false;
+      const end = (v) => { if (fin) return; fin = true; setTimeout(() => { try { if (rr) rr.destroy(); } catch (e) { /* gone */ } }, 0); resolve(v); };
+      try {
+        // a stand-in host: no attributes, so the live sky at job.at
+        const el = document.createElement('span');
+        el.className = 'anim-scene ap-composed is-live';
+        if (job.sky) el.setAttribute('data-sc-sky', String(job.sky));
+        const rec = { el, ref: job.ref, item: it, data: typeof sceneData === 'function' ? sceneData(it) : _scDataOf(it), still: false, hoverOnly: false };
+        const cache = _schCacheId(rec);
+        if (!cache) { end(null); return; }
+        const { L, season } = _schLight(rec, job.at);
+        const cv = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(1, 1) : document.createElement('canvas');
+        rr = sceneRendererCreate(cv, rec.data, { lod: job.lod || 1, season, L, cache, warm: false, time: () => 0,
+          onSaved: (kept) => end({ kept, restored: false }), onError: () => end(null),
+          onReady: () => { const st = rr.stats(); if (st.restored) end({ kept: true, restored: true }); } });
+        rr.bakeIdle(job.w, job.h);
+        setTimeout(() => end(null), 120000);
+      } catch (e) { end(null); }
+    });
+    if (r) done.push(Object.assign({ ref: job.ref, at: job.at, ms: Math.round(_schNowMs() - t0) }, r));
+  }
+  return done;
+}
+/** Is a scene playing on the page now? (a prepare bake waits until none is) */
+function _schAnyPlaying() { for (const rec of _schHosts.values()) if (rec.r && rec.r.running) return true; return false; }
+/** Run the prepare list in idle time when no scene plays, then again in 10 minutes. */
+function sceneHostPrepareSoon(delayMs) {
+  if (typeof window === 'undefined' || typeof sceneStoreOn !== 'function' || !sceneStoreOn()) return;
+  clearTimeout(_schPrepTimer);
+  _schPrepTimer = setTimeout(function run() {
+    if (_schPrepBusy) return;
+    if (document.hidden || _schAnyPlaying()) { _schPrepTimer = setTimeout(run, 30000); return; }
+    const go = () => {
+      _schPrepBusy = true;
+      sceneHostPrepare(_schPrepList()).catch(() => []).then(() => { _schPrepBusy = false; sceneHostPrepareSoon(_SCH_PREP_EVERY_MS); });
+    };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 5000 }); else go();
+  }, delayMs == null ? 20000 : delayMs);
+}
+if (typeof window !== 'undefined' && typeof document !== 'undefined' && !window.__sceneOpts) {
+  // the app (the scene page harness prepares on demand): soon after load, then every 10 minutes
+  const startPrep = () => sceneHostPrepareSoon(20000);
+  if (document.readyState === 'complete') startPrep(); else window.addEventListener('load', startPrep, { once: true });
 }

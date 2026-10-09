@@ -68,6 +68,17 @@ function sceneRenderPasses(stage, C) {
   }
   return out.sort((a, b) => _scpsOrder(a, stage) - _scpsOrder(b, stage) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
+/** May a bake of C be kept in the persistent cache (78-scene-cache.js)? No when a pass that applies says cache: false. */
+function sceneRenderPassesCacheable(C) {
+  if (!sceneRenderIsV2(C)) return true;
+  for (const p of _scpsPasses) {
+    if (p.cache !== false) continue;
+    let ok = false;
+    try { ok = !!p.applies(C); } catch (e) { ok = false; }
+    if (ok) return false;
+  }
+  return true;
+}
 function sceneRenderPassList() { return _scpsPasses.map(p => ({ id: p.id, order: p.order, stages: SCENE_PASS_STAGES.filter(s => typeof p[s] === 'function') })); }
 /** The light-key part of the passes that apply (each pass's key(L, C), joined); '' for v1 scenes. */
 function sceneRenderPassKey(L, C) {
