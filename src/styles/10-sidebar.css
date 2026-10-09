@@ -28,7 +28,9 @@
 .set-appicon .brand-mark.has-sym .i { width: 13px; height: 13px; }
 .brand-mark .brand-emoji { font-size: 0.95em; line-height: 1; font-weight: normal; }
 .brand-mark:has(.brand-emoji) { background: var(--bg-muted); box-shadow: none; font-size: 15px; }
-#brand-mark { cursor: pointer; }
+#brand-mark { width: var(--scene-xs, 28px); height: var(--scene-xs, 28px); border-radius: 7px; font-size: var(--text-sm); cursor: pointer; }
+#brand-mark.has-sym .i { width: 18px; height: 18px; }
+#brand-mark:has(.brand-emoji) { font-size: 20px; }
 .app:not(.sb-rail) #brand-mark:hover { box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent); }
 .appicon-top { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-1); }
 .appicon-opt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--space-2) var(--space-1); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: none; color: var(--fg-muted); font-size: var(--text-xs); cursor: pointer; }

@@ -329,8 +329,8 @@ function _connPageMatchesSource(s, filter, query) {
 function _connPageCounts(sources, all) {
   const assistants = all.assistants ? ASSISTANT_OPTIONS.filter(p => p.id !== 'grok').map(p => _connPageAssistantDetails(p.id, all)) : null;
   return {
-    connected: sources.filter(s => _connPageLiveSource(s) && _connPageSourceState(s) === 'ok').length + (assistants ? assistants.filter(a => a.working).length : all.claude && all.claude.state === 'ok' ? 1 : 0),
-    attention: sources.filter(_connPageNeedsAttention).length + (assistants ? assistants.filter(a => a.attention).length : all.claude && ['auth', 'error', 'setup', 'limited'].includes(all.claude.state) ? 1 : 0),
+    connected: sources.filter(s => _connPageLiveSource(s) && _connPageSourceState(s) === 'ok').length + (assistants ? assistants.filter(a => a.working).length : all.claude && all.claude.state === 'ok' ? 1 : 0) + (all.googleHealth && all.googleHealth.connected ? 1 : 0),
+    attention: sources.filter(_connPageNeedsAttention).length + (assistants ? assistants.filter(a => a.attention).length : all.claude && ['auth', 'error', 'setup', 'limited'].includes(all.claude.state) ? 1 : 0) + (all.googleHealth && (all.googleHealth.error || all.googleHealth.needsAuth) ? 1 : 0),
   };
 }
 async function _connPageCheck() {
@@ -492,6 +492,7 @@ registerSection('connections', {
     if (typeof finMoneyBlock === 'function') page.appendChild(finMoneyBlock());
     page.appendChild(_connPageAssistantSection(all));
     if (typeof microsoftConnectionCard === 'function') page.appendChild(microsoftConnectionCard(all));
+    if (typeof googleHealthConnectionCard === 'function') page.appendChild(googleHealthConnectionCard(all));
     const privacy = _connEl('section', 'cp-privacy-panel cp-privacy-wide');
     privacy.innerHTML = icon('shield-check');
     privacy.append(_connEl('h3', null, 'Connected doesn’t mean giving up control.'), _connEl('p', null, 'Account sources stay read-only. Choose what to include, and pause or disconnect whenever you like.'), _connBtn('How your data is handled', 'arrow-right', 'btn-ghost', _connPagePrivacy));

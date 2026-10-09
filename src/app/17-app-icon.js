@@ -1,8 +1,8 @@
 /* ============================================================
    THE WORKSPACE ICON. Owner: Shell.
    The mark next to the workspace name (sidebar), on the set-up card and in
-   the browser tab. Automatic by default (14-shell.js setBrandMark: the
-   user's initial when a name is set, else the OpenDash logo); the user can
+   the browser tab. Automatic by default (14-shell.js setBrandMark: nearby
+   animated artwork, then the user's initial or the OpenDash logo); the user can
    click the mark (or "Change icon…" in the workspace menu, or Settings >
    Profile) and pick an icon, an emoji, the logo, the initial, or go back to
    automatic. Saved as config.appIcon (lib/datadir.mjs normAppIcon).

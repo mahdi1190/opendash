@@ -10,18 +10,48 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.11.0] - 2026-10-09
+
 ### Added
 
-- **Scene engine 2:** animated scenes are now built from where things are on the ground, and the engine works out the rest: size and distance, what stands in front of what, shadows from the real sun, reflections in water, haze, night lights, weather (rain, snow, fog, frost) and the people, traffic, trams and boats moving through the day. Cars stay on roads, boats on water and people off the tracks, so new scenes come out right whoever builds them. Existing scenes look exactly as before.
-- **Real places, real layouts:** scene builders can start from a real street, canal or park using OpenStreetMap data and real hill outlines, generate period buildings to match, and draft a whole scene from one line ("Castlefield Basin, golden hour, down the canal"). The data is saved with the scene, so the app never goes online for it. Settings > About credits OpenStreetMap contributors (ODbL) and the terrain source.
-- **For scene builders:** a placement and composition check, a visual critic that scores contact sheets and lists fixes, a golden set of reference scenes, a drag-and-drop scene editor in the gallery (developer mode only), a tool that converts older scenes and lists what is wrong with them, and a style normaliser for imported pictures.
+- **Scene engine 2:** animated scenes are now built from where things are on the ground, and the engine works out the rest: size and distance, what stands in front of what, water that reflects and ripples by itself, shadows from the real sun, lighting that follows the time of day (night lights, lit windows, haze), live weather (rain, snow, fog, frost) and the four seasons, plus the people, traffic, trains and boats moving through the day. Cars stay on roads, boats on water and people off the tracks, so new scenes come out right whoever builds them. Existing scenes look exactly as before.
+- **Canvas renderer:** scenes can now be drawn on a canvas instead of as SVG, which is much smoother, especially full screen and on slower machines.
+- **New hand-composed scenes for north Hampshire:** Wyndham's Pool on Yateley Common at dusk, Yateley Green (the pond, the oaks and St Peter's, with a hunting heron, a mallard brood and a dog at fetch) and Fleet Pond (with the train on its embankment). Near Yateley and Fleet, the opening rotates among these three.
+- **Object library and tools for scene builders:** a large shared library of people, animals, trees, buildings, vehicles, boats and landmarks; importing AI-generated objects and painted scenes, which the engine then lights and animates; a placement and composition check, a visual critic, a golden set of reference scenes, a drag-and-drop scene editor in the gallery (developer mode only) and a tool that converts older scenes. Scene builders can also start from a real street, canal or park using OpenStreetMap data and real hill outlines; the data is saved with the scene, so the app never goes online for it. Settings > About credits OpenStreetMap contributors (ODbL) and the terrain source.
+- **Agent handbook:** a guide and two copy-paste prompts for building scenes and objects with an outside AI agent, with a shared inbox for its results.
+
+### Removed
+
+- The older hand-drawn Yateley, Fleet and north Hampshire views and the North West pack, which the new scenes replace. A pin or favourite saved on one of them is simply ignored.
+- The earlier templated UK area scenes (Yateley, Fleet, Farnborough, Hook, Winchester, the New Forest, the Solent coast, Sheffield, Manchester, the Peak District, Norwich, Reepham, Nottingham, Wokingham and Woking) and the engine demo packs. Places without a scene of their own fall back to the regional and seasonal openings, as before.
+
+## [2.10.0] - 2026-10-08
+
+### Added
+
+- **Search all settings:** the search bar finds options across every submenu, including animation packs and Connections. Results show their location and open the matching option, including options inside collapsed sections. Keyboard navigation, clear and no-results feedback are included.
+- **Google Health in Connections:** add your Google OAuth credentials, sign in and sync read-only activity and sleep from the last seven days, including supported Fitbit devices. Connection status, sync, reconnect and disconnect are available. Credentials and synced records stay in the local data folder, separately from Gmail and Calendar. A Google Cloud project with API access is required; Google is currently pausing new project onboarding.
 
 ### Changed
 
-- **UK scenes rebuilt:** Hampshire and the North now play composed scenes with the live sky and all four seasons, in eight area packs: Yateley (80), Fleet and Farnborough (52), Winchester and the chalk country (20), the New Forest (19), the Solent coast (17), Sheffield (18), Manchester (18) and the Peak District (21). That is 245 scenes, about half of them new views, built with about 140 new library objects (people, Hampshire and Northern landmarks, trains, ships, moorland).
-- The 130 hand-drawn items these packs replace have been removed, along with the old North West pack. Pins, favourites and blocks saved on an old scene now point to its rebuilt version.
-- Scene library: the newer people join a random street crowd only when they are on foot, so a station never draws a sailor or someone on a bench.
-- Fourteen Nottingham, Sheffield and Wokingham scenes that were still drafts (below the quality bar) are held back until they are rebuilt on the new engine. Each county keeps one signature opening.
+- The top-left workspace icon uses the existing artwork for your saved or travel location across supported UK, Texas, US, Asian and world-city locations. Compact artwork animates, follows motion preferences and keeps explicit icon choices. The icon is larger and no longer restarts on unrelated page updates.
+
+### Fixed
+
+- Google Health connection status refreshes when you return from sign-in, including when consent finishes in under a minute. Interrupted or expired sign-ins cannot mark an account as connected.
+
+## [2.9.0] - 2026-10-08
+
+### Changed
+
+- **All nine Texas openings rebuilt:** Fort Worth, Dallas, Houston, Austin, San Antonio, El Paso, the Hill Country, West Texas and the Gulf Coast each have their own layered scenery, moving wildlife and people, and lighting that follows the time of day. The original artwork remains available in the animation gallery.
+- **Dallas is now live:** the finished skyline opening brings together Reunion Tower, Bank of America Plaza, the Margaret Hunt Hill Bridge and the Trinity River.
+- Fort Worth features the Stockyards gate and three crossing longhorns; Houston has a space-park view; Austin and San Antonio frame the Capitol and Alamo. The natural openings add bluebonnets, desert ranges and a coastal pier with pelicans and surf.
+
+### Fixed
+
+- Texas openings use climate-appropriate seasonal decoration instead of automatic winter snow. Actual weather effects still follow live conditions, and reduced-motion preferences retain a still opening.
+- Animation quality checks keep exceptions for retained original artwork separate from the rebuilt scenes. Every rebuilt Texas opening passes without an exception.
 
 ## [2.8.1] - 2026-10-08
 
@@ -497,7 +527,10 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.8.1...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.11.0...HEAD
+[2.11.0]: https://github.com/mahdi1190/opendash/compare/v2.10.0...v2.11.0
+[2.10.0]: https://github.com/mahdi1190/opendash/compare/v2.9.0...v2.10.0
+[2.9.0]: https://github.com/mahdi1190/opendash/compare/v2.8.1...v2.9.0
 [2.8.1]: https://github.com/mahdi1190/opendash/compare/v2.8.0...v2.8.1
 [2.8.0]: https://github.com/mahdi1190/opendash/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/mahdi1190/opendash/compare/v2.6.0...v2.7.0

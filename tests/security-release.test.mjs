@@ -1,6 +1,6 @@
 // Security review for the public release (3 Oct 2026): regression tests for what it fixed.
-//   - every /api/ route refuses another site, reads included (the Google sign-in callback
-//     is the one GET that takes a cross-site navigation); every route refuses a foreign Host.
+//   - every /api/ route refuses another site, reads included (state-protected OAuth
+//     callbacks take cross-site navigation); every route refuses a foreign Host.
 //     The routes are enumerated from the router, so a new route is covered automatically.
 //   - gmail-read denies every Gmail tool but its two reads, by name (send, reply, forward,
 //     delete included); connector and source jobs deny every discovered claude.ai connector
@@ -89,7 +89,7 @@ test('every route: a foreign Host is refused (421) before anything runs', async 
   }
 });
 
-test('every /api/ route refuses another site, reads included; only the sign-in callback takes a navigation', async () => {
+test('every /api/ route refuses another site, reads included; only protected sign-in callbacks take a navigation', async () => {
   const forged = {
     'cross-site': { Origin: 'https://evil.example', 'Sec-Fetch-Site': 'cross-site' },
     'same-site (another localhost port)': { Origin: `http://localhost:${port + 1}`, 'Sec-Fetch-Site': 'same-site' },
@@ -109,12 +109,20 @@ test('every /api/ route refuses another site, reads included; only the sign-in c
   }
   // Finance connections (docs/dev/FINANCE_CONNECTIONS.md 3.6): Monzo's and Enable Banking's sign-in returns.
   const ex = [...new Set(exempt)].sort();
-  assert.deepEqual(ex.filter(p => !p.startsWith('/api/fin-connect/')), ['/api/google/callback', '/api/microsoft/callback'], 'only state-protected OAuth callbacks accept cross-site GETs');
+  assert.deepEqual(ex.filter(p => !p.startsWith('/api/fin-connect/')), ['/api/google-health/callback', '/api/google/callback', '/api/microsoft/callback'], 'only state-protected OAuth callbacks accept cross-site GETs');
   const fin = ex.filter(p => p.startsWith('/api/fin-connect/'));
   assert.ok(fin.includes('/api/fin-connect/monzo/callback'));
   assert.ok(fin.every(p => /^\/api\/fin-connect\/(monzo|eb)\/callback$/.test(p)), `only the bank sign-in returns: ${fin.join(', ')}`);
   assert.equal((await raw(port, 'GET', '/api/fin-connect/monzo/callback?state=forged&code=forged', forged['Origin only'])).status, 400, 'Monzo rejects an unsolicited OAuth callback');
   assert.equal((await raw(port, 'GET', '/api/microsoft/callback?state=forged&code=forged', forged['Origin only'])).status, 400, 'Microsoft rejects an unsolicited OAuth callback');
+  const healthBefore = JSON.parse((await raw(port, 'GET', '/api/google-health/status')).text);
+  for (const query of ['state=forged&code=forged', 'code=forged', 'state=&code=forged']) {
+    const cb = await raw(port, 'GET', '/api/google-health/callback?' + query, forged['Origin only']);
+    assert.equal(cb.status, 400, 'Google Health rejects forged or missing OAuth state');
+    assert.match(cb.text, /not started from OpenDash/);
+  }
+  const healthAfter = JSON.parse((await raw(port, 'GET', '/api/google-health/status')).text);
+  assert.deepEqual(healthAfter, healthBefore, 'unsolicited callbacks cannot change the Google Health connection');
 });
 
 test('reads that start work are refused cross-site, and still answer the page, the address bar and local programs', async () => {

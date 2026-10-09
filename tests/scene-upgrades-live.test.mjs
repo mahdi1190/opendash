@@ -24,15 +24,25 @@ for (const [region, byKey] of Object.entries(UPGRADES)) for (const [key, up] of 
 // the same corpus without any upgrade file: the legacy items the live ones must match (loaded only when there is a live upgrade)
 const LEGACY = LIVE.length ? loadRegistry(ROOT, { omit: REG.files.filter(f => /^71-scene-upgrade-/.test(f)) }) : null;
 
+// Texas is the documented non-region pack (16.2, last bullet): its full city
+// scenes use the same upgrade registry, with the pack id and place:<txTown>.
+// Keep this ownership mapping local: the region tools still describe regions.
+const ownerOf = (reg, pack) => regionOf(reg, pack) || (pack === 'texas'
+  ? { id: 'texas', fields: { place: 'txTown', kind: 'texasKind' } }
+  : null);
+const keyOf = (owner, item) => owner.id === 'texas'
+  ? (item.full && item.texasKind === 'scene' ? 'place:' + (item.txTown || item.id) : null)
+  : regionKeyOf(owner, item);
+
 /** The full items of a registry that region `regionId` builds for scene key `key`. */
 const itemsOf = (reg, regionId, key) => reg.items().filter(e => {
   if (!e.full) return false;
-  const r = regionOf(reg, e.pack);
-  return !!r && r.id === regionId && regionKeyOf(r, e.item) === key;
+  const r = ownerOf(reg, e.pack);
+  return !!r && r.id === regionId && keyOf(r, e.item) === key;
 });
 /** The identity an item keeps through an upgrade (16.2): its id and ref, the region's place fields, caption, tags, rotation. */
 const identity = (reg, e) => {
-  const it = e.item, F = regionOf(reg, e.pack).fields || {}, out = { ref: e.ref };
+  const it = e.item, F = ownerOf(reg, e.pack).fields || {}, out = { ref: e.ref };
   for (const k of ['id', 'label', 'site', 'tags', 'priority', 'slot', 'region', 'country', 'colour', 'mood', 'season', ...Object.values(F)]) out[k] = it[k];
   out.when = typeof it.when === 'function' ? String(it.when) : it.when;
   return out;
@@ -41,9 +51,9 @@ const identity = (reg, e) => {
 test('live upgrades: every live item in the registry belongs to a registered live upgrade (passes with none)', { skip }, () => {
   const liveItems = REG.items().filter(e => e.item.upgrade && e.item.upgrade.state === 'live');
   for (const e of liveItems) {
-    const r = regionOf(REG, e.pack);
-    assert.ok(r, e.ref + ' is a region item');
-    assert.ok(LIVE.some(l => l.region === r.id && l.key === regionKeyOf(r, e.item)), e.ref + ' has a live upgrade registered for its key');
+    const r = ownerOf(REG, e.pack);
+    assert.ok(r, e.ref + ' is a region item or the documented Texas pack');
+    assert.ok(LIVE.some(l => l.region === r.id && l.key === keyOf(r, e.item)), e.ref + ' has a live upgrade registered for its key');
     assert.equal(e.composed, true, e.ref + ' is composed');
   }
   assert.ok(liveItems.length >= LIVE.length, 'each live upgrade replaces at least one item');

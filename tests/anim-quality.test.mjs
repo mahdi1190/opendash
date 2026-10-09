@@ -410,9 +410,30 @@ test('thresholds: waivers are few, explained, and still needed (the list only sh
     assert.ok(BY_REF.has(w.ref), `${w.ref} exists`);
     assert.ok(!seen.has(w.ref + w.rule), 'no duplicates');
     seen.add(w.ref + w.rule);
-    assert.ok(BY_REF.get(w.ref).waived.some(f => f.rule === w.rule), `${w.ref} still fails ${w.rule}: remove the waiver`);
+    const owner = UPGRADE_LEGACY.find(r => r.ref === w.ref) || BY_REF.get(w.ref);
+    assert.ok(owner.waived.some(f => f.rule === w.rule), `${w.ref} still fails ${w.rule}: remove the waiver`);
   }
   assert.deepEqual(RES.staleWaivers, []);
+});
+
+test('a live upgrade keeps legacy exceptions with its retained original, and still detects obsolete exceptions', () => {
+  const e = REG.items().find(e => e.ref === 'texas/el-paso-star-scene');
+  assert.ok(isLiveUpgrade(e) && typeof e.item.legacySvg === 'function');
+  const result = lintRegistry(REG, TH, [e]);
+  assert.equal(result.results[0].profile, 'composed');
+  assert.deepEqual(result.results[0].waived, [], 'the replacement passes without any exception');
+  assert.deepEqual(result.staleWaivers, [], 'the original still needs its original richness exception');
+  const unneeded = { ref: e.ref, rule: 'shapes', reason: 'Synthetic regression fixture: the preserved original has enough shapes.' };
+  const stale = lintRegistry(REG, { ...TH, waivers: [...TH.waivers, unneeded] }, [e]);
+  assert.deepEqual(stale.staleWaivers, [unneeded], 'a clean legacy rule remains obsolete and is never kept blindly');
+  const missing = { ...e, item: { ...e.item, legacySvg: undefined } };
+  assert.deepEqual(lintRegistry(REG, TH, [missing]).staleWaivers.map(w => w.rule), ['richness'], 'without a retained original its exception really is stale');
+  const collision = { ref: e.ref, rule: 'groundCover', reason: 'Synthetic regression fixture: a legacy exception must never excuse a new composed failure.' };
+  const broken = { ...e, item: { ...e.item, scene: () => ({ ...e.item.scene(), ground: [], scatter: [] }) } };
+  const rejected = lintRegistry(REG, { ...TH, waivers: [...TH.waivers, collision] }, [broken]);
+  assert.ok(rejected.results[0].failures.some(f => f.rule === 'groundCover'), 'a failing replacement still fails even with a matching exception name');
+  assert.deepEqual(rejected.results[0].waived, [], 'legacy exceptions cannot waive composed rules');
+  assert.ok(rejected.staleWaivers.includes(collision), 'the colliding exception is also obsolete for the preserved original');
 });
 
 test('waivers apply to a ref and a rule only', () => {

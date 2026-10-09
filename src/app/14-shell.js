@@ -410,8 +410,8 @@ function brandLogoSrc() {
 }
 /**
  * A brand mark (sidebar, welcome). The icon the user picked (config.appIcon,
- * 17-app-icon.js) wins; automatic: the user's initial when a name is set,
- * else the OpenDash logo. `pref` overrides the saved choice (the picker's preview).
+ * 17-app-icon.js) wins; automatic: nearby location artwork, then the user's
+ * initial or the OpenDash logo. `pref` overrides the saved choice (the picker's preview).
  */
 function setBrandMark(el, name, pref) {
   if (!el) return;
@@ -421,14 +421,14 @@ function setBrandMark(el, name, pref) {
   const local = !kind && typeof animProfileScene === 'function' ? animProfileScene() : null;
   el.classList.toggle('has-local-scene', !!local);
   if (local) {
-    const key = 'nearby:' + local.ref + ':' + _agLevel() + ':' + animTimeOfDay() + ':still';
+    const live = !local.full && animEnabled();
+    const key = 'nearby:' + local.ref + ':' + _agLevel() + ':' + animTimeOfDay() + ':' + live;
     if (el.dataset.mark === key) return;
     el.dataset.mark = key;
     el.classList.toggle('has-logo', false); el.classList.toggle('has-sym', false);
     el.title = local.site || local.label;
-    // A still, tile-detail drawing: a full scene with hundreds of loops in a 22-px badge repainted
-    // every frame on every page (the app-wide lag); at this size the motion was not visible anyway.
-    el.innerHTML = animItemHtml(local, { size: local.full ? 'sm' : 'fill', live: !local.full && animEnabled(), reduced: !!local.full || !animEnabled(), tod: animTimeOfDay() });
+    // Compact motifs move; rich full scenes stay still to keep the shell inexpensive.
+    el.innerHTML = animItemHtml(local, { size: local.full ? 'sm' : 'fill', live, reduced: !live, tod: animTimeOfDay() });
     return;
   }
   el.removeAttribute('title');

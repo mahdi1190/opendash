@@ -9,6 +9,8 @@ import { tmpdir } from 'node:os';
 import { request, createServer } from 'node:http';
 import { createFake } from './fixtures/fin-fake-monzo.mjs';
 import { storeCsv } from '../lib/finance/store.mjs';
+import { dateIn } from '../lib/fin-connect/normalise.mjs';
+import { systemTimeZone } from '../lib/datadir.mjs';
 
 let dir, port, srv;
 const freePort = () => new Promise((res) => { const s = createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)); }); });
@@ -38,9 +40,11 @@ before(async () => {
   // Aureli-style account id): the last 90 days of the fake's main account.
   const data = createFake({ env: {} }).data;
   const since = new Date(Date.now() - 90 * 86400000).toISOString();
+  // Match the fresh server's default timezone when seeding imported payments.
+  const zone = systemTimeZone();
   const rows = data.transactions.acc_fake0000000000000000a1
     .filter(t => t.created >= since && t.settled && !t.decline_reason && t.amount !== 0)
-    .map(t => ({ date: t.created.slice(0, 10), amount: t.amount / 100, account: 'AureliToken0001', subcategory: '', memo: (t.merchant && t.merchant.name) || t.description, source: 'bank-sync' }));
+    .map(t => ({ date: dateIn(t.created, zone), amount: t.amount / 100, account: 'AureliToken0001', subcategory: '', memo: (t.merchant && t.merchant.name) || t.description, source: 'bank-sync' }));
   writeFileSync(STORE(), storeCsv(rows));
   Object.assign(process.env, { DASHBOARD_MONZO_FAKE: '1', DASHBOARD_MONZO_FAKE_DELAY_MS: '0', DASHBOARD_MONZO_FAKE_APPROVE_MS: '100', DASHBOARD_MONZO_FAKE_POLL_MS: '40', DASHBOARD_MONZO_FAKE_WINDOW_MS: '60000' });
   process.env.USERPROFILE = dir; process.env.HOME = dir;
