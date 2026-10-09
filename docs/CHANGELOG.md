@@ -10,6 +10,21 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.11.0] - 2026-10-09
+
+### Added
+
+- **Scene engine 2:** animated scenes are now built from where things are on the ground, and the engine works out the rest: size and distance, what stands in front of what, water that reflects and ripples by itself, shadows from the real sun, lighting that follows the time of day (night lights, lit windows, haze), live weather (rain, snow, fog, frost) and the four seasons, plus the people, traffic, trains and boats moving through the day. Cars stay on roads, boats on water and people off the tracks, so new scenes come out right whoever builds them. Existing scenes look exactly as before.
+- **Canvas renderer:** scenes can now be drawn on a canvas instead of as SVG, which is much smoother, especially full screen and on slower machines.
+- **New hand-composed scenes for north Hampshire:** Wyndham's Pool on Yateley Common at dusk, Yateley Green (the pond, the oaks and St Peter's, with a hunting heron, a mallard brood and a dog at fetch) and Fleet Pond (with the train on its embankment). Near Yateley and Fleet, the opening rotates among these three.
+- **Object library and tools for scene builders:** a large shared library of people, animals, trees, buildings, vehicles, boats and landmarks; importing AI-generated objects and painted scenes, which the engine then lights and animates; a placement and composition check, a visual critic, a golden set of reference scenes, a drag-and-drop scene editor in the gallery (developer mode only) and a tool that converts older scenes. Scene builders can also start from a real street, canal or park using OpenStreetMap data and real hill outlines; the data is saved with the scene, so the app never goes online for it. Settings > About credits OpenStreetMap contributors (ODbL) and the terrain source.
+- **Agent handbook:** a guide and two copy-paste prompts for building scenes and objects with an outside AI agent, with a shared inbox for its results.
+
+### Removed
+
+- The older hand-drawn Yateley, Fleet and north Hampshire views and the North West pack, which the new scenes replace. A pin or favourite saved on one of them is simply ignored.
+- The earlier templated UK area scenes (Yateley, Fleet, Farnborough, Hook, Winchester, the New Forest, the Solent coast, Sheffield, Manchester, the Peak District, Norwich, Reepham, Nottingham, Wokingham and Woking) and the engine demo packs. Places without a scene of their own fall back to the regional and seasonal openings, as before.
+
 ## [2.10.0] - 2026-10-08
 
 ### Added
@@ -512,7 +527,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.10.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.11.0...HEAD
+[2.11.0]: https://github.com/mahdi1190/opendash/compare/v2.10.0...v2.11.0
 [2.10.0]: https://github.com/mahdi1190/opendash/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/mahdi1190/opendash/compare/v2.8.1...v2.9.0
 [2.8.1]: https://github.com/mahdi1190/opendash/compare/v2.8.0...v2.8.1

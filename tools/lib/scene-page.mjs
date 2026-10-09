@@ -5,7 +5,7 @@
 //                                                   Without the core (70-scene-0core.js not merged yet) tests/fixtures/scene-core-shim.js
 //                                                   stands in for it; fixtures: true adds the test objects and test scenes.
 //   loadScenes(root, { fixtures, extra })           evaluate those files in Node the way the build does (one scope) -> the scene names (sceneSvg ...)
-//   scenePageHtml({ root, refs | data, size: { w, h }, dpr, mode, at, location, season, still, renderer, upgrades, compare, fixtures })
+//   scenePageHtml({ root, refs | data, size: { w, h }, dpr, mode, at, location, season, still, renderer, upgrades, compare, fixtures, wx, fx, governor })
 //                                                   a self-contained page: the sources above + the app css the scenes need + 76-scene.css;
 //                                                   mounts each scene in a box of `size`; window.__sceneReady resolves after the first bake.
 //                                                   data: scene data (or a source string evaluated in the page, e.g. 'sceneTestDense()')
@@ -21,6 +21,7 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { animRegistryFiles } from './anim-sources.mjs';
+import { rasterAssetBlocks, readRasterAsset } from './raster-assets.mjs';
 
 export const repoRoot = () => resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SCENE_SRC_RE = /^7[01]-scene-[a-z0-9-]+\.js$/, SCENE_BROWSER_RE = /^78-scene-[a-z0-9-]+\.js$/;
@@ -40,16 +41,26 @@ export function sceneSourceFiles(root = repoRoot(), { browser = false, fixtures 
   return paths;
 }
 
-const NAMES = ['sceneSvg', 'sceneRendererFor', 'sceneHostAttrs', 'sceneSvgCss', 'sceneLodFor', 'sceneLightKey', 'sceneSpriteKey', 'sceneAnimPose', 'sceneActorAt', 'sceneFlockAt',
+const NAMES = ['sceneRasterSource', 'sceneRasterMatrix', 'sceneRasterApply', 'sceneRasterFit', 'sceneRasterFilter', 'sceneRasterKeys', 'sceneRasterPick', 'sceneRasterIsId', 'sceneRasterUrl', 'SCENE_RASTER_FX', 'SCENE_RASTER_BUDGET', 'sceneSvg', 'sceneRendererFor', 'sceneHostAttrs', 'sceneSvgCss', 'sceneLodFor', 'sceneLightKey', 'sceneSpriteKey', 'sceneAnimPose', 'sceneActorAt', 'sceneFlockAt',
   'sceneParticleSet', 'sceneParticleAt', 'sceneBakePlan', 'sceneFrameDraws', 'scenePathBox', 'sceneSignLayout', 'sceneCompile', 'sceneLight', 'sceneObjShapes', 'sceneObjDefine', 'sceneObj',
   'sceneItem', 'sceneData', 'sceneSeason', 'sceneColour', 'sceneSignText', 'sceneScaleBucket', 'animItemHtml', 'animRegisterPack', 'animItem', 'almSceneLight',
-  'SCENE_TEST_TINY', 'sceneTestDense', 'SCENE_SVG_FILL_MAX_BYTES', 'SCENE_SVG_TILE_MAX_BYTES', 'SCENE_DRAW_BUDGET', 'SCENE_MAX_BITMAPS'];
-/** Evaluate the scene sources in Node (one function scope, as the build concatenates them). */
-export function loadScenes(root = repoRoot(), { fixtures = true, extra = '' } = {}) {
-  const files = sceneSourceFiles(root, { fixtures });
+  'SCENE_TEST_TINY', 'sceneTestDense', 'SCENE_SVG_FILL_MAX_BYTES', 'SCENE_SVG_TILE_MAX_BYTES', 'SCENE_DRAW_BUDGET', 'SCENE_MAX_BITMAPS',
+  // v2 (docs/dev/SCENE_ENGINE_V2.md 5, 6, 13; builder B): the pass registry and the shared water and shadow maths
+  'sceneRenderPassDefine', 'sceneRenderPasses', 'sceneRenderPassList', 'sceneRenderIsV2', 'sceneRenderPassKey', 'sceneRenderSpriteKey', 'sceneRunPasses', 'SCENE_PASS_STAGES',
+  'sceneRenderCam', 'sceneCamProject', 'sceneCamDepthAt', 'sceneWaterRow', 'sceneWaterMirrorY', 'sceneWaterFresnel', 'sceneWaterBands', 'sceneWaterRippleA', 'sceneWaterGlintSource',
+  'sceneObjClassOf', 'sceneShadowSun', 'sceneShadowTip', 'sceneShadowMatrix', 'sceneContactOf', 'sceneWaterEdgeQuads', 'scenePolyPoints', 'SCENE_SHADOW_CLASSES', 'sceneWaterDefaults', 'sceneWaterPlanOf', 'sceneWaterGlintPlan', 'SCENE_WATER_KINDS',
+  'sceneLightV2', 'sceneV2BCanal', 'SCENE_V2B_CAM', 'sceneV2BProj'];
+/**
+ * Evaluate the scene sources in Node (one function scope, as the build concatenates them). browser: also the 78-scene-* files
+ * (pure at load: they only define functions and register their passes), so Node tests can reach the pass registry.
+ */
+export function loadScenes(root = repoRoot(), { fixtures = true, extra = '', browser = false } = {}) {
+  const files = sceneSourceFiles(root, { fixtures, browser });
   const body = files.map(f => readFileSync(f, 'utf8')).join('\n;\n') + '\n;\n' + extra;   // extra: test-only source (a stub sceneCanvasSupported ...)
   const tail = `\nreturn { ${NAMES.map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ')} };`;
-  return new vm.Script('(function () {\n' + body + tail + '\n})', { filename: 'scene-bundle.js' }).runInThisContext()();
+  const S = new vm.Script('(function () {\n' + body + tail + '\n})', { filename: 'scene-bundle.js' }).runInThisContext()();
+  if (typeof S.sceneRasterSource === 'function') S.sceneRasterSource((key) => readRasterAsset(root, key));   // raster objects' images
+  return S;
 }
 
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -73,7 +84,10 @@ export function scenePageHtml(opts = {}) {
   const fixtures = opts.fixtures != null ? opts.fixtures : (opts.data != null);
   const src = sceneSourceFiles(root, { browser: true, fixtures }).map(f => readFileSync(f, 'utf8')).join('\n;\n');
   const cfg = { refs: opts.refs || [], size, at: opts.at || null, location: opts.location || null, season: opts.season || null, still: !!opts.still, renderer: opts.renderer || 'canvas',
-    upgrades: !!opts.upgrades, compare: !!opts.compare, mode: opts.mode || 'light', flush: opts.flush || false, profile: !!opts.profile };
+    upgrades: !!opts.upgrades, compare: !!opts.compare, mode: opts.mode || 'light', flush: opts.flush || false, profile: !!opts.profile,
+    // v2 (V2 26.3): wx: a weather override for every host (data-sc-wx, read by the host); fx: v2 effects for v1 scenes ({ water: 2, shadows: 2, ... });
+    // governor: false keeps the quality governor off (perf runs measure the full quality)
+    wx: opts.wx == null ? null : opts.wx, fx: opts.fx && typeof opts.fx === 'object' ? opts.fx : null, governor: opts.governor === false ? false : undefined };
   const dataExpr = opts.data == null ? 'null' : typeof opts.data === 'string' ? opts.data : JSON.stringify(opts.data);
   const dark = cfg.mode === 'dark' || cfg.mode === 'night';
   const boxCss = cfg.compare
@@ -85,7 +99,7 @@ html,body{margin:0;background:${dark ? '#16171a' : '#f4f4f6'};overflow:hidden}
 .sp-box{position:relative;width:${size.w}px;height:${size.h}px;overflow:hidden}
 .sp-box>.anim-scene{position:absolute;inset:0;width:100%;height:100%;border-radius:0;--as-size:100%}
 .sp-box>.anim-scene>svg{width:100%;height:100%;display:block}
-${boxCss}</style></head><body><div id="sp-root">${scenePageRows(opts)}</div>
+${boxCss}</style></head><body>${rasterAssetBlocks(root)}<div id="sp-root">${scenePageRows(opts)}</div>
 <script>window.__sceneErrors=[];addEventListener('error',e=>window.__sceneErrors.push(String(e.message)));window.__sceneOpts=${JSON.stringify(cfg)};</script>
 <script>${src}
 ;(function () {
@@ -101,7 +115,17 @@ ${boxCss}</style></head><body><div id="sp-root">${scenePageRows(opts)}</div>
     items.push('scene-page/scene-page');
   }
   for (const r of cfg.refs) items.push(r);
-  const hostHtml = (it, o) => {
+  // fx (V2 14.2): the page's items with the v2 effects merged into their scene data (the host reads window.__sceneItems first)
+  const withFx = (it) => {
+    if (!cfg.fx || !it || !it.composed) return it;
+    const data = typeof sceneData === 'function' ? sceneData(it) : it.scene, d2 = Object.assign({}, data, { fx: Object.assign({}, data.fx || {}, cfg.fx) });
+    const neu = Object.assign({}, it, { scene: d2, svg: (o) => sceneSvg(d2, o) });
+    window.__sceneItems = Object.assign(window.__sceneItems || {}, { [it.ref]: neu });
+    return neu;
+  };
+  const wxAttr = (html) => (cfg.wx == null ? html : html.replace(/(<span class="[^"]*ap-composed[^"]*")/, '$1 data-sc-wx="' + String(typeof cfg.wx === 'string' ? cfg.wx : JSON.stringify(cfg.wx)).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';') + '"'));
+  const hostHtml = (it, o) => wxAttr(hostHtml0(withFx(it), o));
+  const hostHtml0 = (it, o) => {
     const html = typeof animItemHtml === 'function' ? animItemHtml(it, o) : '';
     if (/ap-composed/.test(html) || cfg.renderer === 'svg' || !it.composed) return html;
     // the core's composed branch in animItemHtml (builder A) is not merged yet: the same markup by hand

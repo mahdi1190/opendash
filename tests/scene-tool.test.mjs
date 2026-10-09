@@ -325,16 +325,17 @@ test('CLI: status prints the STANDARD line and per-pack tier columns; --standard
   assert.equal(j.standard.list.length, 132); assert.equal(TIERS.reduce((n, t) => n + j.standard[t], 0), 132, 'every scene has exactly one tier');
   assert.ok(j.standard.legacy > 100, 'most of Asia is hand-drawn (legacy) until the upgrades land');
   const all = await run(['status', '--all']);
-  assert.match(all.out, /uk-south-east \s+80 \s/, 'the convert stage: the 80 Yateley and Fleet items are composed and gold'); assert.match(all.out, /us-northeast/); assert.match(all.out, /texas/);
+  assert.match(all.out, /uk-area-yateley \s+80 \s/, 'the UK rebuild: the 80 Yateley items are composed and gold'); assert.match(all.out, /uk-area-fleet \s+\d{2,} \s/); assert.match(all.out, /us-northeast/); assert.match(all.out, /texas/);
   const aj = JSON.parse((await run(['status', '--all', '--json'])).out).standard;
-  assert.ok(aj.gold >= 80 && aj.legacy > 300);
+  // the legacy tier shrinks as packs turn gold (297 when the batch-2 area scenes landed): the corpus is still mostly legacy
+  assert.ok(aj.gold >= 80 && aj.legacy > 250 && aj.legacy + aj.gold > 380, JSON.stringify({ gold: aj.gold, legacy: aj.legacy }));
 });
 
 test('CLI: reference prints THE BAR first, then the legacy exemplars', async () => {
   const r = await run(['reference']);
   assert.equal(r.code, 0);
   assert.ok(r.out.indexOf('THE BAR') > 0 && r.out.indexOf('THE BAR') < r.out.indexOf('LEGACY EXEMPLARS'));
-  assert.match(r.out, /uk-south-east\/hampshire-fleet-pond-1/);
+  assert.match(r.out, /uk-area-fleet\/hampshire-fleet-pond-1/);
 });
 
 test('CLI: the briefs of the new standard (upgrade in batches by archetype, composed with the scene card, object, archetype); the help lists object and scene', async () => {
@@ -393,10 +394,11 @@ test('CLI with the engine: scene new writes a scene that compiles and lints (in 
   mkdirSync(join(dir, 'src'), { recursive: true });
   cpSync(join(ROOT, 'src', 'app'), join(dir, 'src', 'app'), { recursive: true });
   cpSync(join(ROOT, 'src', 'styles'), join(dir, 'src', 'styles'), { recursive: true });
-  const w = await run(['scene', 'new', 'zz-test', 'meadow', '--lat', '51.33', '--lon=-0.85', '--root', dir]);
+  // --v1: the v1 scaffold (pixel placements); a plain `scene new` writes a v2 recipe since the v2 engine (V2 16.3)
+  const w = await run(['scene', 'new', 'zz-test', 'meadow', '--v1', '--lat', '51.33', '--lon=-0.85', '--root', dir]);
   assert.equal(w.code, 0, w.err); assert.match(w.out, /src\/app\/71-scene-zz-test-1\.js[\s\S]*src\/app\/72-anim-pack-zz-test\.js/);
   const l = JSON.parse((await run(['scene', 'lint', 'zz-test/meadow', '--json', '--root', dir])).out);
   assert.equal(l.scenes.length, 1); assert.ok(l.scenes[0].stats.placements > 300, 'dense cover from the kits');
-  const again = await run(['scene', 'new', 'zz-test', 'meadow', '--lat', '51.33', '--lon=-0.85', '--root', dir]);
+  const again = await run(['scene', 'new', 'zz-test', 'meadow', '--v1', '--lat', '51.33', '--lon=-0.85', '--root', dir]);
   assert.equal(again.code, 1); assert.match(again.err, /already exists/);
 });

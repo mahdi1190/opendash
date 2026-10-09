@@ -1,0 +1,62 @@
+{
+ "id": "building.windmill-ai",
+ "category": "building",
+ "size": [
+  289,
+  384
+ ],
+ "anchor": "bottom-centre",
+ "res": 1,
+ "variants": [
+  {
+   "base": "base.png",
+   "lit": "lit.png",
+   "snow": "snow.png"
+  }
+ ],
+ "tags": [
+  "kit:temperate",
+  "role:building-mid",
+  "demo",
+  "signature",
+  "raster"
+ ],
+ "source": "import-batch",
+ "derived": {
+  "lit": "auto (28 windows)",
+  "snow": "auto",
+  "seasons": [
+   "spring",
+   "autumn",
+   "winter"
+  ]
+ },
+ "means": [
+  "#b8a493"
+ ],
+ "parts": [
+  {
+   "name": "sails",
+   "image": "parts/sails.png",
+   "box": [
+    -144.5,
+    -384,
+    289,
+    289
+   ],
+   "pivot": [
+    0,
+    -239.5
+   ],
+   "anim": {
+    "kind": "spin"
+   }
+  }
+ ],
+ "shadow": {
+  "rx": 104,
+  "ry": 12,
+  "h": 326
+ },
+ "bytes": 69266
+}

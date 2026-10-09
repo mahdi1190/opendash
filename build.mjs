@@ -7,6 +7,8 @@
 //                (serve.mjs swaps the {} for the public part of data/config.json)
 //   <body>  vendor/icons/lucide-sprite.svg (hidden <symbol>s for icon())
 //           src/body.html
+//           <script type="application/octet-stream" data-scene-raster="<key>"> raster object images (assets/objects,
+//                base64; never run, decoded lazily when a scene draws them: tools/lib/raster-assets.mjs)
 //           <script> vendor libraries </script>           one block each
 //           <script> src/app/*.js (sorted by name) </script>  ONE block, the app
 //           <script> src/motion.js </script>
@@ -37,6 +39,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import { rasterAssetBlocks } from './tools/lib/raster-assets.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -127,6 +130,7 @@ export function collectSources(root = HERE) {
     css: [fontFaceCss(root) + styles.text, ...readExtras(root, EXTRA_CSS, '.css')].join('\n'),
     sprite: iconSprite(root),
     body: readFileSync(join(root, 'src', 'body.html'), 'utf8'),
+    raster: rasterAssetBlocks(root),
     beforeJs: readExtras(root, EXTRA_JS_BEFORE, '.js'),
     afterJs: readExtras(root, EXTRA_JS_AFTER, '.js'),
   };
@@ -147,7 +151,7 @@ ${s.css}
 </style>
 </head>
 <body>
-${s.sprite}${s.body}${s.beforeJs.map(scriptBlock).join('')}<script>
+${s.sprite}${s.body}${s.raster}${s.beforeJs.map(scriptBlock).join('')}<script>
 ${s.appJs.replace(/<\/script/gi, '<\\/script')}
 </script>
 ${s.afterJs.map(scriptBlock).join('')}</body>

@@ -164,7 +164,7 @@ shared gradients through `U()` ids; no duplicate near-identical paths (draw the 
 
 1. Brief: `node tools/anim-pack.mjs brief <pack> --kind composed` (a new scene), `brief <region> --kind upgrade` (hand-drawn region scenes, batches of 7 by suggested archetype), `brief <archetype> --kind archetype`, `brief <kit> --kind object`.
 2. Compose: `node tools/anim-pack.mjs object list --kit <kit>` shows what there is; `node tools/anim-pack.mjs scene new <pack> <id> --brief <file>` (or `--archetype <id> --row '<json>'`) writes a scene that compiles at once. Archetypes name ROLES, never object ids, so a new object reaches every scene of its kit.
-3. Objects (only when needed): `node tools/anim-pack.mjs object new <cat>.<name> --kits <kit> --role <role>`, then `object lint` and `object sheet <id> --mode night` (variants x seasons x night). Draw it once, well: variants, four seasons, hooks, glow on windows; a landmark has at least 80 shapes, the real structure and a night look.
+3. Objects (only when needed): `node tools/anim-pack.mjs object new <cat>.<name> --kits <kit> --role <role>`, then `object lint` and `object sheet <id> --mode night` (variants x seasons x night). Draw it once, well: variants, four seasons, hooks, glow on windows; a landmark has at least 80 shapes, the real structure and a night look. **Or import it as images** (docs/dev/OBJECT_IMPORT.md): have Gemini or ChatGPT fill the sprite-sheet template (`docs/dev/object-sheets/`: the template, the example sheets and `PROMPT.md`), then run `object import-sheet <png> --id <id> --rows N [--frames K] --kit k --role r`. Read every WARN and FAIL of the sheet lint, and look at the object sheet in light and night. Single images: `object import` / `object import-batch --manifest`. The user accepts AI likeness for landmarks; the structure, budget, palette and no-text checks still apply.
 4. Lint: `node tools/anim-pack.mjs scene lint <ref> --perf` until it prints GOLD. Each failing rule says how far off it is and the fix.
 5. Look: `node tools/anim-pack.mjs scene sheet <ref> --times --seasons --contact` (dawn, noon, golden hour, dusk and night from the real sun; the four seasons), `--crop phone`, and for an upgrade `--compare --upgrades` (old vs new at noon and night). The LOOK gate stays: hold every sheet next to the bar.
 6. Batches (a London pack of hundreds of stations): `node tools/anim-pack.mjs scene lint --archetype station --table <table> --rows 200` prints one summary table; `scene perf --archetype ... --sample 3`, `scene sheet --archetype ... --sample 6 --contact`.
@@ -176,6 +176,34 @@ shared gradients through `U()` ids; no duplicate near-identical paths (draw the 
 **Care for composed scenes** (the same rules, the care text and the place win): people are tiny anonymous silhouettes (at most 8 per scene, 10 at a station, no crowds); life comes from animals, birds, boats and vehicles; no flags, emblems, holy figures or brands. The ONE exception to "no text" is the engine's place-name sign, only where the archetype declares signs (a station): a plain sans-serif board with line-colour bars, drawn from data. Never the TfL roundel, the Underground logotype, the line-diagram style or New Johnston, not even as decoration (the object lint rejects a ring with a bar across it).
 
 Cheat sheet: `references/scene-engine.md`. The spec: `docs/dev/SCENE_ENGINE.md`.
+
+### Scene engine v2: the default for every new scene
+
+Since 8 Oct 2026 a new scene is a v2 RECIPE (`docs/dev/SCENE_ENGINE_V2.md`; `src/app/71-scene-<pack>-r-<id>.js`, strict JSON
+between markers). **Authors declare, the engine decides**: you state WHAT is WHERE ON THE GROUND in metres; the engine computes
+the screen position, the scale from the object's real size and the depth, the draw order, the shadows along the real sun, the
+reflections, the haze, the night lights, the weather and the crowds, and it refuses or snaps anything physically wrong. Never
+place in pixels, never choose a layer or a haze, never scale by hand.
+
+1. **Start from reality.** `scene compose "<place>, <moment>, <viewpoint words>, the <subject>" --pack <p> --id <id> --at <lat,lon>`
+   (the auto-composer: OpenStreetMap layout, the building generator, the library, flows, a viewpoint search with the composition
+   rules), or `scene new <pack> <id> --lat .. --lon .. --heading .. --preset <p> --osm` (`scene new` writes a v2 recipe unless `--v1`).
+2. **Choose the camera, then import.** `scene osm --at <lat,lon> --heading <deg> [--eye m --fov deg --horizon row] --into <pack>/<id>`
+   re-imports the real roads, pavements, water outlines, buildings (as generator footprints), trees and landmarks for that
+   viewpoint; `scene terrain --into <pack>/<id>` adds the real skyline. Every ground position is relative to the camera: settle it
+   first, refine after. The import lists what the library lacks (the object backlog) and never copies brand names.
+3. **Refine.** In the gallery's scene editor (`OPENDASH_SCENE_EDITOR=1`) or by hand through `tools/lib/scene-recipe.mjs`:
+   ground placements (`{ obj, on, d, u }`, `{ obj, on: '<strip>', along }`, `{ obj, at: [x, d] }`), scatter rules on the surfaces
+   that take plants, flows on roads, pavements, towpaths and water (trams on a timetable), `subject: true` on the subject.
+4. **Lint strictly.** `scene lint <ref> --perf --strict-placement` until it prints GOLD with no sanity or composition warning
+   (cars on grass, floating or ghost objects, wrong scale, clutter, a hidden landmark, the subject off the thirds or too big).
+5. **Look.** `scene sheet <ref> --times --seasons --contact`, `--weather rain,snow,fog`, `--flows`; and the critic:
+   `scene critique <ref>` (the local Claude CLI when it is there, else a review page) and `scene compare-to-golden <ref>`.
+6. **Old scenes:** `scene migrate <ref>|--pack <id> --dry-run --report` lists every defect of a v1 scene; a written migration
+   supersedes the item under the same id. Review its sheet before keeping it: the report is the worklist, not a fix.
+
+Credits: a recipe built from OpenStreetMap carries "(c) OpenStreetMap contributors, ODbL 1.0" (the tools write it; Settings >
+About shows it); terrain carries the tile credit. Confirm with the user before committing OSM-derived recipes (V2 17.6).
 
 ## Commands (all run from the repository root; `--root <dir>` works on another checkout)
 
@@ -190,7 +218,10 @@ Cheat sheet: `references/scene-engine.md`. The spec: `docs/dev/SCENE_ENGINE.md`.
 | `node tools/anim-pack.mjs brief <id> --kind scene\|element [--batch N] [--of M] [--group g] [--out dir [--clean]] [--note t] [--clear-notes]` | the agent briefs (about 7 scenes each; `--of M` is the number of batches, cut at group boundaries where that costs little, so sizes can differ; they cite this skill) and a `plan.json` to dispatch from; `--out` creates the scene stubs and stores the notes |
 | `node tools/anim-pack.mjs guard --owned <file>[,<file>...] [--base <ref>]` | the orchestrator's proof that only the batch's own files changed (exit 2 on any other file, a threshold, waiver, gold-standard or test change); an agent runs it on its own file for the GIT line |
 | `node tools/anim-pack.mjs object new\|lint\|sheet\|list ...` | the object library (`object new <cat>.<name> --kits k --role r`, `object lint [<id>]`, `object sheet <id> [--mode night] [--canvas]`, `object list [--kit k] [--role r]`) |
-| `node tools/anim-pack.mjs scene new\|upgrade\|lint\|sheet\|perf ...` | composed scenes: `scene new <pack> <id> --brief f`, `scene upgrade <ref> --box ...`, `scene lint <ref> --perf` (GOLD), `scene sheet <ref> --times --seasons --compare`, `scene perf`; batches with `--archetype a --table t [--rows N] [--sample N]` |
+| `node tools/anim-pack.mjs object import\|import-batch\|import-sheet\|template ...` | RASTER objects from images and AI sprite sheets (docs/dev/OBJECT_IMPORT.md): `object import <file-or-folder> --id <id> [--size WxH] [--kit k] [--role r]`, `object import-batch <folder> [--manifest manifest.csv] [--dry-run]` (one manifest: rows with `rows`/`frames` set are sprite sheets, the rest single images), `object import-sheet <sheet.png> --id <id> --rows N [--frames K] [--dry-run]` (slice, align, lint the sheet; real seasons, night, lit and frames), `object template [--examples]` (the template and the example sheets to attach) |
+| `node tools/anim-pack.mjs scene new\|upgrade\|lint\|sheet\|perf ...` | composed scenes: `scene new <pack> <id> --brief f` (a v2 recipe; `--v1` the old scaffold), `scene upgrade <ref> --box ...`, `scene lint <ref> --perf --strict-placement` (GOLD), `scene sheet <ref> --times --seasons --weather rain,snow --compare`, `scene perf`; batches with `--archetype a --table t [--rows N] [--sample N]` |
+| `node tools/anim-pack.mjs scene compose\|osm\|terrain\|street\|building\|migrate\|critique\|golden\|compare-to-golden ...` | scene engine v2: the auto-composer from a one-line brief, the OpenStreetMap and terrain imports, the building and street generator, the v1-to-v2 migration (and its defect report), the visual critic, the golden set |
+| `node tools/anim-pack.mjs object normalise <id>\|--dir d\|--all-raster [--write]` | the style normaliser for imported raster objects (palette, shading, outline, size and anchor checks) |
 | `node build.mjs --syntax` / `node build.mjs` / `npm test` / `node tools/privacy-scan.mjs` | the repo gates |
 
 Files: `src/app/71-anim-0region.js` (framework and the kit), `71-anim-region-<id>.js` (config), `71-anim-region-<id>-scenes-N.js` (scenes), `72-anim-pack-<id>-<group>.js` (packs); US scenes `71-anim-us2-scenes-*.js`, Asia `71-anim-asia2-scenes-*.js`;

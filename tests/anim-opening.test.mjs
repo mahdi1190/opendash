@@ -4,14 +4,19 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-// North Hampshire scenes: part 4 (Southwood, Farnborough) and one part file per Yateley/Fleet place.
-// (one file per view: <place>-v1..v4)
-const NORTH_HANTS_PLACES = ['yateley-common', 'wyndhams-pool', 'yateley-green', 'fleet-pond', 'basingstoke-canal-fleet'];
-const NORTH_HANTS_VIEWS = NORTH_HANTS_PLACES.flatMap(p => [1, 2, 3, 4].map(v => `${p}-v${v}`));
-const NORTH_HANTS_PARTS = ['north-hampshire', ...NORTH_HANTS_VIEWS];
-const NORTH_HANTS_FILES = ['72-anim-pack-uk-south-east-4.js', ...NORTH_HANTS_VIEWS.map(pv => `72-anim-pack-uk-south-east-${pv}.js`)];
+import { fileURLToPath } from 'node:url';
+import { animRegistryFiles, REGION_FILE_RE } from '../tools/lib/anim-sources.mjs';
+// Hampshire's scenes: the South East region pack and the composed area packs (the scene engine draws them). The parts
+// of the Yateley and Fleet area packs are the nearby art of a Yateley or Fleet user.
+const HANTS_AREA_PACKS = ['yateley', 'fleet', 'winchester', 'newforest', 'coast'];
+const NORTH_HANTS_PARTS = ['area-yateley', 'area-fleet'];
+const HANTS_FILES = HANTS_AREA_PACKS.map(a => `72-anim-pack-uk-area-${a}.js`);
 
 const src = name => readFileSync(new URL('../src/app/' + name, import.meta.url), 'utf8');
+const SCRIPTS = new Map();   // compiled once, run in every harness
+const script = name => { if (!SCRIPTS.has(name)) SCRIPTS.set(name, new vm.Script(src(name), { filename: name })); return SCRIPTS.get(name); };
+const PACKS = ['72-anim-pack-seasons.js', '72-anim-pack-uk-south-east.js', ...HANTS_FILES];
+const LOAD = animRegistryFiles(fileURLToPath(new URL('../src/app/', import.meta.url)), ['69-travel-moments-logic.js']).filter(f => (!REGION_FILE_RE.test(f) || f === '71-anim-0region.js') && (!f.startsWith('72-anim-pack-') || PACKS.includes(f)));
 function harness({ day = '2026-12-25', look = {}, on = true, town = '', stored = new Map() } = {}) {
   const timers = [], attributes = {}; let gone = false;
   const element = () => ({
@@ -36,7 +41,7 @@ function harness({ day = '2026-12-25', look = {}, on = true, town = '', stored =
     animUkWhere: () => ({ id: 'hampshire', name: 'Hampshire', welcome: 'Hampshire', town }),
     animUkCountyId: () => 'hampshire', _AUK_KEY: 'synthetic-county',
   });
-  for (const file of ['69-travel-moments-logic.js', '71-anim-almanac.js', '71-anim-library.js', '71-anim-registry.js', '71-uk-counties.js', '71-anim-uk-nature-kit.js', '72-anim-pack-seasons.js', ...NORTH_HANTS_FILES, '72-anim-pack-uk-south-east.js']) vm.runInContext(src(file), context);
+  for (const file of LOAD) script(file).runInContext(context);
   vm.runInContext("function animToday(slot) { return animDailyPick(slot, todayStr(), animLook(), { county: 'hampshire', level: 'standard' }); }", context);
   vm.runInContext(src('78-anim-wire.js'), context);
   const arrival = () => {
@@ -54,8 +59,8 @@ function harness({ day = '2026-12-25', look = {}, on = true, town = '', stored =
 test('Christmas plays after the welcome and county scene, then closes', () => {
   const h = harness();
   assert.equal(h.run(), true); h.next();
-  assert.match(h.attributes['data-od-scene'], /^uk-south-east\/hampshire-/);
-  assert.equal(h.attributes['data-od-scene'], 'uk-south-east/hampshire-new-forest-ponies');
+  assert.match(h.attributes['data-od-scene'], /^uk-(south-east|area-[a-z0-9-]+)\/hampshire-/);
+  assert.equal(h.attributes['data-od-scene'], 'uk-area-newforest/hampshire-new-forest-ponies');
   assert.equal(h.attributes['data-od-event'], undefined);
   h.next(); // welcome ends, county scene continues
   assert.equal(h.attributes['data-od-event'], undefined);
@@ -95,7 +100,7 @@ test('skipping the county scene prevents a later holiday from appearing', () => 
 test('returning county openings rotate on refresh; arrival keeps its signature', () => {
   const h = harness({ day: '2026-10-06' });
   const pick = rotate => vm.runInContext(`animOpeningScene(animUkWhere(), ${rotate}).it.ref`, h.context);
-  assert.equal(pick(false), 'uk-south-east/hampshire-new-forest-ponies');
+  assert.equal(pick(false), 'uk-area-newforest/hampshire-new-forest-ponies');
   const seen = new Set();
   for (let i = 0; i < 42; i++) seen.add(pick(true));
   assert.equal(seen.size, 42, 'all county scenes are reached before repeating');
@@ -244,7 +249,7 @@ test('Fleet to Boston USA stops welcoming after three actual page loads with sha
   vm.runInContext("animUkArrivalState({id:'hampshire',town:'Fleet',lat:51.28,lon:-0.84})",fleet.context);
   for (let load=0;load<7;load++) {
     const h = harness({stored,day:'2026-10-06'});
-    vm.runInContext(src('71-anim-0region.js')+'\n'+src('71-anim-us.js')+'\n'+src('78-anim-uk.js'),h.context);   // the US is a region (71-anim-0region.js)
+    vm.runInContext(src('71-anim-us.js')+'\n'+src('78-anim-uk.js'),h.context);   // the US is a region (71-anim-0region.js: already in the harness load, for the scene engine)
     h.context.APP_CONFIG.locationMode='manual';
     h.context.APP_CONFIG.location={name:'Boston',countryCode:'US',lat:42.36,lon:-71.06};
     h.context.animUkWhere=()=>null;

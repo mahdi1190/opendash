@@ -32,7 +32,8 @@ export const TOP_DIRS = ['src', 'server', 'lib', 'mcp', 'cloudflare', 'tools', '
 // ('skills/animation-pack'); everything else inside the folder is left out and reported.
 // .claude/skills/animation-pack is committed source that ships: the animation tool's briefs (tools/lib/anim-templates/)
 // tell the reader to open it, and the tool's own tests read it. The rest of .claude is per-machine and never ships.
-export const PARTIAL_DIRS = { assets: ['brand'], '.claude': ['skills/animation-pack'] };
+// assets/objects holds the raster library objects (docs/dev/OBJECT_IMPORT.md): build.mjs embeds them in the page.
+export const PARTIAL_DIRS = { assets: ['brand', 'objects'], '.claude': ['skills/animation-pack'] };
 
 // Why well-known top-level entries are left out (anything else: "not on the allowlist").
 const TOP_WHY = {
@@ -43,6 +44,7 @@ const TOP_WHY = {
   '.git': 'history stays private: the public repo starts from one clean commit',
   '.claude': 'local Claude Code config: settings.json was reviewed and holds machine-specific paths and permissions; settings.local.json is per-machine',
   'node_modules': 'the app has zero npm dependencies',
+  'ai-objects': 'the inbox of AI sprite sheets from external agents: working files (the imported objects ship in assets/objects)',
 };
 
 // ─── Never published, wherever they are ───────────────────────────────────

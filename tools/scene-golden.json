@@ -1,0 +1,133 @@
+{
+ "v": 1,
+ "about": "The golden set (docs/dev/SCENE_ENGINE_V2.md 22): reference scenes and objects that calibrate the sanity and composition thresholds and the critic. Builder G proposes the candidates; ONLY the user sets approved to true. Tools: scene golden list | sheet | measure | calibrate; scene compare-to-golden <ref>.",
+ "entries": [
+  {
+   "ref": "uk-area-yateley/hampshire-yateley-common-1",
+   "kind": "scene",
+   "why": "depth, dense natural cover, light",
+   "approved": false,
+   "scores": null,
+   "metrics": null
+  },
+  {
+   "ref": "uk-area-yateley/hampshire-yateley-common-4",
+   "kind": "scene",
+   "why": "the evening: low sun, long light through the birches",
+   "approved": false,
+   "scores": null,
+   "metrics": null
+  },
+  {
+   "ref": "uk-area-yateley/hampshire-wyndhams-pool-1-winter",
+   "kind": "scene",
+   "why": "winter water: the bare trees mirrored, a cold clear sky",
+   "approved": false,
+   "scores": null,
+   "metrics": null
+  },
+  {
+   "ref": "uk-area-yateley/hampshire-yateley-green-1-spring",
+   "kind": "scene",
+   "why": "a village green in spring: blossom, scale of people against the church",
+   "approved": false,
+   "scores": null,
+   "metrics": null
+  },
+  {
+   "ref": "uk-area-fleet/hampshire-fleet-pond-1",
+   "kind": "scene",
+   "why": "open water with a believable far bank and reflections",
+   "approved": false,
+   "scores": null,
+   "metrics": null
+  },
+  {
+   "ref": "uk-area-fleet/hampshire-fleet-pond-2-autumn",
+   "kind": "scene",
+   "why": "autumn colour that stays readable, calm water",
+   "approved": false,
+   "scores": null,
+   "metrics": null
+  },
+  {
+   "object": "person.walker",
+   "kind": "object",
+   "why": "the faceless figure at every size",
+   "approved": false
+  },
+  {
+   "object": "tree.oak",
+   "kind": "object",
+   "why": "the reference tree: crown, trunk and seasons",
+   "approved": false
+  },
+  {
+   "object": "vehicle.car",
+   "kind": "object",
+   "why": "a vehicle with front and rear views (vehicle.car-front, vehicle.car-rear)",
+   "approved": false
+  },
+  {
+   "object": "boat.narrowboat",
+   "kind": "object",
+   "why": "the canal boat, with bow and stern views",
+   "approved": false
+  },
+  {
+   "object": "gen:victorian-terrace",
+   "kind": "object",
+   "why": "a generated Victorian terrace (builder F's generator; measured once it lands)",
+   "approved": false
+  },
+  {
+   "object": "landmark.winchester-cathedral",
+   "kind": "object",
+   "why": "a landmark: real height, clean silhouette, night glow",
+   "approved": false
+  }
+ ],
+ "pending": [
+  "the 3 showcase scenes of V2 29 (v2-demo/*), once built: they fill the urban slots (none of today’s urban scenes is clean: see notReady)",
+  "one OSM-composed street from scene compose"
+ ],
+ "calibration": null,
+ "notReady": [
+  {
+   "ref": "uk-area-fleet/hampshire-fleet-canal-1",
+   "why": "the canal is drawn as a flat band across the frame (a lake), not a channel in perspective"
+  },
+  {
+   "ref": "uk-area-winchester/hampshire-watercress-line",
+   "why": "the station and its platform float above the field; lollipop trees float on the hillside"
+  },
+  {
+   "ref": "uk-area-winchester/hampshire-river-test-stockbridge",
+   "why": "translucent ghost hill shapes behind the hut; the subject sits on a flat band"
+  },
+  {
+   "ref": "uk-area-norwich/norwich-elm-hill",
+   "why": "cluttered: a forest of lamps, benches and puddles fills the street"
+  },
+  {
+   "ref": "uk-area-norwich/norwich-castle-mound",
+   "why": "ghost haze domes across the keep at golden hour; a lit box behind the keep at night"
+  },
+  {
+   "ref": "uk-area-sheffield/south-yorkshire-kelham-2",
+   "why": "translucent ghost domes and trees behind the mill"
+  },
+  {
+   "ref": "uk-area-sheffield/south-yorkshire-peace-gardens-2",
+   "why": "the town hall dead centre; a ghost dome over it"
+  },
+  {
+   "ref": "uk-area-peaks/derbyshire-castleton",
+   "why": "ghost hill blobs and heavy haze over the middle distance"
+  },
+  {
+   "ref": "uk-area-peaks/derbyshire-winnats-pass",
+   "why": "the gorge walls read as hazy translucent shapes; the road is a short stub"
+  }
+ ]
+}
