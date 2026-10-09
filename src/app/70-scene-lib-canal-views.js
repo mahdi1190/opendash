@@ -822,7 +822,7 @@ const SCENE_CANAL_VIEW_LIFE = {
     for (const [x, d, v] of [[21, 52, 1], [24, 72, 0], [23, 96, 2], [20, 118, 1], [14, 138, 0]]) place.push({ obj: 'building.cottage', at: [x, d], variant: v, face: 'left' });
     scatter.push({ obj: { 'plant.hedge': 2, 'plant.shrub': 1, 'plant.towpath-hedge': 1, 'plant.wildflowers': 3, 'plant.daisies': 2 }, on: ['gardens'], d: [8, 140], n: 40, dist: 'screen', cluster: { centres: 12, spread: 6 }, seed: 81, anim: false, k: [0.7, 1.2] });
     scatter.push({ obj: { 'tree.bank-willow': 2, 'tree.bank-alder': 1, 'tree.bank-birch': 2 }, on: ['gardens'], d: [14, 150], n: 10, dist: 'ground', cluster: { centres: 4, spread: 10 }, gap: 'foot', seed: 82, anim: false, k: [0.8, 1.15] });
-    place.push({ obj: 'tree.canal-oak', at: [-10, 21], k: 1.0, variant: 1, flip: true }, { obj: 'tree.bank-birch', at: [-6.5, 30], k: 1.1 });
+    place.push({ obj: 'tree.canal-oak', at: [-10, 21], k: 1.0, variant: 1, flip: true }, { obj: 'tree.bank-birch', at: [-10.5, 36], k: 0.8 });   // (round 3) out from behind the oak's crown (there only its bare white limbs showed, as sticks in the sky)
     actors.push({ obj: 'bird.swan', ground: [[9, 34], [7, 22], [8.5, 14]], speedM: 0.22, loop: 'pingpong', k: 1 }, { obj: 'bird.swan', ground: [[9.8, 36], [7.8, 24], [9.3, 16]], speedM: 0.22, loop: 'pingpong', k: 0.95, offset: 0.06 });
     place.push({ obj: 'bird.mallard', on: 'canal', d: 9, u: 0.45 }, { obj: 'bird.mallard', on: 'canal', d: 9.5, u: 0.5, variant: 1 });
     place.push({ obj: 'plant.canal-view-fronds', x: 1660, y: -30, s: 1.05, pin: true, layer: 'front', shadow: false, flip: true, variant: 1 });

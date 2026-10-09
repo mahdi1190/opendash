@@ -126,7 +126,8 @@
       id: 'tree.canal-oak', category: 'tree', size: [520, 520], variants: 3, seasonal: true, shapeBySeason: true, flippable: true,
       real: { h: 15, w: 16 },
       palette: { base: { bark: ['#4a3c30', '#33281f', '#6e5c48', '#8a7a64'], fleck: ['#e8c460', '#2a2418'] },
-        spring: tone('spring'), summer: tone('summer'), autumn: Object.assign(tone('autumn'), { fleck: ['#f0c860', '#3a2a14'] }), winter: tone('winter') },
+        spring: Object.assign(tone('spring'), { fleck: ['#c4e07a', '#2c4a1e'] }), summer: Object.assign(tone('summer'), { fleck: ['#8cb85c', '#18301a'] }),
+        autumn: Object.assign(tone('autumn'), { fleck: ['#f0c860', '#4a3016'] }), winter: tone('winter') },
       parts: ['trunk', 'crown'],
       anim: { sway: { part: 'crown', pivot: [0, -150], deg: 1.2 } },
       shadow: { rx: 190, ry: 14, h: 520 }, reflect: true, weight: 1,
@@ -153,15 +154,18 @@
         };
         let limbD = '', fine = '';
         for (let i = 0; i < nL; i++) {
-          const t = i / (nL - 1), ang = (-1.15 + 2.3 * t) + rr(r, -0.15, 0.15) + lean * 0.004, len = rr(r, 150, 215) * (1 - Math.abs(t - 0.5) * 0.35);
+          const t = i / (nL - 1), ang = (-1.25 + 2.5 * t) + rr(r, -0.15, 0.15) + lean * 0.004, len = rr(r, 175, 235) * (1 - Math.abs(t - 0.5) * 0.3);
           const pts = [[fx + (t - 0.5) * 14, fy + 6]];
           let x = pts[0][0], y = pts[0][1], a = ang;
-          for (let k = 0; k < 3; k++) { a += (k % 2 ? 1 : -1) * rr(r, 0.12, 0.3); const l = len / 3 * rr(r, 0.85, 1.15); x += Math.sin(a) * l; y -= Math.cos(a) * l; pts.push([x, y]); }
+          // elbowed: each segment kinks the other way, the outer limbs droop a little at the tip (an open-grown oak spreads wide)
+          for (let k = 0; k < 4; k++) { a += (k % 2 ? 1 : -1) * rr(r, 0.2, 0.42) + (k === 3 ? Math.sign(ang) * Math.abs(ang) * 0.25 : 0); const l = len / 4 * rr(r, 0.8, 1.2); x += Math.sin(a) * l; y -= Math.cos(a) * l; pts.push([x, y]); }
           limbD += taper(pts, w0 * 0.75 * rr(r, 0.8, 1), 5);
           limbs.push({ x, y, a, len });
           // side branches from the first and second elbows, each with a smaller clump
-          for (let k = 0; k < 2; k++) {
-            const p = pts[1 + k], b = a + (k ? 1 : -1) * rr(r, 0.5, 0.9), l = len * rr(r, 0.25, 0.4), ex = p[0] + Math.sin(b) * l, ey = p[1] - Math.cos(b) * l;
+          // (outward, away from the crown's middle, so the side clumps fill the spread rather than stack in the centre)
+          const out = ang < 0 ? -1 : 1;
+          for (let k = 0; k < (Math.abs(t - 0.5) < 0.2 ? 1 : 2); k++) {
+            const p = pts[2 + k], b = a + (k ? out * rr(r, 0.6, 1.0) : -out * rr(r, 0.3, 0.6)), l = len * rr(r, 0.25, 0.4), ex = p[0] + Math.sin(b) * l, ey = p[1] - Math.cos(b) * l;
             fine += `M${f1(p[0])} ${f1(p[1])}Q${f1(p[0] + Math.sin(b) * l * 0.5)} ${f1(p[1] - Math.cos(b) * l * 0.6)} ${f1(ex)} ${f1(ey)}`;
             limbs.push({ x: ex, y: ey, a: b, len: l * 1.6, small: true });
           }
@@ -175,32 +179,30 @@
           crown.push({ f: '@bark.3', op: 0.8, d: mar, detail: true });
           return { trunk, crown };
         }
-        // the clumps: one per limb end (the side shoots' clumps smaller), sky left between them
+        // the clumps: one per limb end (the side shoots' clumps smaller), sky left between them. Each clump is a loose cluster of
+        // small lobes spread out from its centre (not one cloud), so its rim is broken and light shows through it.
         const keys = season === 'autumn' ? ['a', 'b', 'c'] : ['a', 'b'], T = {};
         for (const k of keys) T[k] = ['', '', ''];
-        let flL = '', flD = '', tw = '';
+        let flL = '', flD = '';
         limbs.sort((p, q) => (q.small ? 1 : 0) - (p.small ? 1 : 0));
         for (const L of limbs) {
-          const R0 = L.small ? rr(r, 40, 54) : rr(r, 62, 82), cx = L.x + Math.sin(L.a) * R0 * 0.25, cy = L.y - R0 * 0.25;
+          const R0 = L.small ? rr(r, 30, 40) : rr(r, 46, 60), cx = L.x + Math.sin(L.a) * R0 * 0.35, cy = L.y - R0 * 0.3;
           const t = T[keys[Math.floor(r() * keys.length)]], n = L.small ? 4 : 6;
           for (let i = 0; i < n; i++) {
-            const a = (i / n) * Math.PI * 2 + rr(r, -0.4, 0.4), dd = i === 0 ? 0 : rr(r, 0.35, 0.7), x = cx + Math.cos(a) * R0 * dd, y = cy + Math.sin(a) * R0 * dd * 0.75, rx = R0 * rr(r, 0.42, 0.6);
-            t[0] += sceneD.lobed(r, f1(x + rx * 0.12), f1(y + rx * 0.16), f1(rx), f1(rx * 0.82), 8, 0.36);
-            t[1] += sceneD.lobed(r, f1(x - rx * 0.1), f1(y - rx * 0.12), f1(rx * 0.8), f1(rx * 0.66), 7, 0.34);
-            if (y < cy + R0 * 0.1 && x < cx + R0 * 0.3) t[2] += sceneD.lobed(r, f1(x - rx * 0.3), f1(y - rx * 0.32), f1(rx * 0.46), f1(rx * 0.36), 6, 0.32);
+            const a = (i / n) * Math.PI * 2 + rr(r, -0.35, 0.35), dd = i === 0 ? 0 : rr(r, 0.6, 0.95), x = cx + Math.cos(a) * R0 * dd, y = cy + Math.sin(a) * R0 * dd * 0.7, rx = R0 * (i === 0 ? 0.55 : rr(r, 0.34, 0.48));
+            t[0] += sceneD.lobed(r, f1(x + rx * 0.12), f1(y + rx * 0.16), f1(rx), f1(rx * 0.8), 8, 0.4);
+            t[1] += sceneD.lobed(r, f1(x - rx * 0.1), f1(y - rx * 0.14), f1(rx * 0.78), f1(rx * 0.62), 7, 0.38);
+            if (y < cy + R0 * 0.15 && x < cx + R0 * 0.45) t[2] += sceneD.lobed(r, f1(x - rx * 0.28), f1(y - rx * 0.3), f1(rx * 0.44), f1(rx * 0.34), 6, 0.34);
           }
-          // the leaf texture: lit flecks along the upper-left rim, dark flecks in the underside
-          for (let i = 0; i < (L.small ? 8 : 14); i++) { const a = rr(r, -2.6, -0.4), d = R0 * rr(r, 0.6, 1.0); flL += sceneD.leaf(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.8, rr(r, -1.2, 1.2), rr(r, 7, 11), 3); }
-          for (let i = 0; i < (L.small ? 6 : 11); i++) { const a = rr(r, 0.3, 2.8), d = R0 * rr(r, 0.3, 0.85); flD += sceneD.leaf(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.75, rr(r, 2.2, 4), rr(r, 7, 10), 3); }
-          // twigs poking out of the clump's rim (the crown's edge is not a smooth cloud)
-          for (let i = 0; i < 3; i++) { const a = rr(r, -3, 0), x = cx + Math.cos(a) * R0 * 0.85, y = cy + Math.sin(a) * R0 * 0.7, l = rr(r, 10, 20); tw += `M${f1(x)} ${f1(y)}l${f1(Math.cos(a) * l)} ${f1(Math.sin(a) * l)}`; }
+          // the leaf texture: lit leaves over the upper-left of the clump and out past its rim, darker leaves in its underside
+          for (let i = 0; i < (L.small ? 10 : 18); i++) { const a = rr(r, -2.8, -0.2), d = R0 * rr(r, 0.35, 1.15); flL += sceneD.leaf(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.75, rr(r, -1.4, 1.4), rr(r, 6, 10), 3); }
+          for (let i = 0; i < (L.small ? 6 : 10); i++) { const a = rr(r, 0.3, 2.8), d = R0 * rr(r, 0.3, 0.9); flD += sceneD.leaf(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.7, rr(r, 2.2, 4), rr(r, 6, 9), 3); }
         }
-        crown.push({ s: '@bark.1', w: 1.4, cap: 'round', op: 0.8, d: tw, detail: true });
         for (const k of keys) crown.push(['@' + k + '.0', T[k][0]]);
         for (const k of keys) crown.push(['@' + k + '.1', T[k][1]]);
-        crown.push({ f: '@fleck.1', op: 0.45, d: flD, detail: true });
+        crown.push({ f: '@fleck.1', op: 0.5, d: flD, detail: true });
         for (const k of keys) crown.push({ f: '@' + k + '.2', d: T[k][2], op: 0.92, detail: true });
-        crown.push({ f: '@fleck.0', op: 0.55, d: flL, detail: true });
+        crown.push({ f: '@fleck.0', op: 0.7, d: flL, detail: true });
         return { trunk, crown };
       },
     });

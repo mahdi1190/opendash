@@ -5,6 +5,8 @@
      tree.wyv-birch-bough   a silver birch bough hanging into the frame from the top-left (flip it for the top-right):
                             pendulous twigs, small toothed leaves (gold in autumn, catkins in spring, bare purple twigs in winter)
      tree.wyv-snag          a dead branch standing out of the shallows, anchor at the waterline (a perch: kingfisher, heron)
+     tree.wyv-far-oak       a far-bank oak drawn to be seen small: limbs and leaf clumps with sky between (4 variants)
+     tree.wyv-far-sallow    grey / goat willow scrub at the far waterline: a fan of stems, narrow grey-green clumps
      plant.wyv-heath-bank   a mound of heathland: heather, a gorse cushion, purple moor grass and a sandy scar,
                             one sprite in place of a dozen (fills a bank densely at little cost)
    ============================================================ */
@@ -134,6 +136,150 @@
       return { body };
     },
   });
+
+  /* ---------- tree.wyv-far-oak: a pedunculate oak on the far bank, drawn to be seen small (scale 0.25 to 0.5) ----------
+     A bole that forks low into three to six crooked limbs, each limb ending in its own leaf clump (shade base, mid mass up
+     and left, a lit cap), sky left between the clumps so the crown reads as limbs and clumps rather than one dome; leaf
+     flecks break the rims. Autumn turns the clumps unevenly (olive, ochre, a little russet: mid-October oaks are mostly
+     still olive), winter leaves the limbs, the twig haze and (on the young tree) marcescent brown leaves.
+     v0 broad open-grown, v1 tall woodland oak, v2 leaning out over the water, v3 a young oak. Anchor: the foot. */
+  {
+    const OK = {
+      spring: [['#3e6a2a', '#5e8e36', '#94bc56'], ['#4e7a2c', '#76a23e', '#b0d06a']],
+      summer: [['#1f3a1c', '#33582a', '#5a843e'], ['#26421e', '#3e6630', '#6a9448']],
+      autumn: [['#2c3a1a', '#4e5e28', '#7e8a40'], ['#4e4218', '#82702a', '#c0a444'], ['#4a3218', '#7a5626', '#a8803e']],
+      winter: [['#4a3e34', '#5e5044', '#7a6a5c']],
+    };
+    const tone = s => Object.fromEntries(['a', 'b', 'c'].map((k, i) => [k, OK[s][i] || OK[s][0]]));
+    const SHAPE = [
+      { th: 58, w0: 22, nL: 5, spread: 1.05, len: [112, 150], R: [44, 58], lean: 0 },
+      { th: 80, w0: 18, nL: 4, spread: 0.7, len: [124, 165], R: [38, 50], lean: 4 },
+      { th: 64, w0: 20, nL: 4, spread: 0.88, len: [110, 145], R: [40, 52], lean: 26 },
+      { th: 46, w0: 12, nL: 3, spread: 0.8, len: [72, 98], R: [28, 36], lean: -6 },
+    ];
+    sceneObjDefine({
+      id: 'tree.wyv-far-oak', category: 'tree', size: [340, 320], variants: 4, seasonal: true, shapeBySeason: true, flippable: true,
+      real: { h: 16, w: 17 },
+      palette: { base: { bark: ['#4a4038', '#2e2722', '#6e6458', '#7a5a3a'], fleck: ['#e2cc6a', '#1e2416'], twig: '#5a4a50' },
+        spring: tone('spring'), summer: tone('summer'), autumn: Object.assign(tone('autumn'), { fleck: ['#e8c460', '#2a2414'] }), winter: tone('winter') },
+      parts: ['trunk', 'crown'], reflect: true, shadow: false, weight: 1,
+      tags: ['uk', 'tree', 'oak', 'broadleaf', 'deciduous', 'far-bank', 'pond', 'kit:temperate', 'role:tree'],
+      credit: "drawn for the Wyndham's Pool views: a far-bank pedunculate oak (Quercus robur), limbs and clumps",
+      build(v, rnd, ctx) {
+        const season = (ctx && ctx.season) || 'summer', winter = season === 'winter', S = SHAPE[v % 4], r = rndOf(71 + v * 29), trunk = [], crown = [];
+        const rr = (a, b) => a + r() * (b - a);
+        const th = S.th * rr(0.9, 1.1), w0 = S.w0, fx = S.lean * 0.6, fy = -th;
+        trunk.push({ f: '@bark.0', d: `M${R(-w0 * 1.3)} 2Q${R(-w0 * 0.6)} -8 ${R(-w0 * 0.55)} -20Q${R(-w0 * 0.5 + fx * 0.4)} ${R(fy * 0.6)} ${R(fx - w0 * 0.45)} ${R(fy)}L${R(fx + w0 * 0.45)} ${R(fy)}Q${R(w0 * 0.5 + fx * 0.5)} ${R(fy * 0.5)} ${R(w0 * 0.6)} -18Q${R(w0 * 0.65)} -6 ${R(w0 * 1.3)} 2Z` });
+        trunk.push({ f: '@bark.2', op: 0.7, d: taper([[-w0 * 0.42, -6], [-w0 * 0.36 + fx * 0.4, fy * 0.5], [fx - w0 * 0.32, fy + 2]], 4, 2) });
+        let fis = '';
+        for (let i = 0; i < 5; i++) { const y0 = rr(-8, fy * 0.6), x = rr(-w0 * 0.3, w0 * 0.3) + fx * (-y0 / th); fis += `M${R(x)} ${R(y0)}l${R(rr(-1.5, 1.5))} ${R(-rr(10, 22))}`; }
+        trunk.push({ s: '@bark.1', w: 1.4, op: 0.7, d: fis, detail: true });
+        // the limbs: crooked tapers from the fork, two elbows each; a side shoot off the first elbow carries a smaller clump
+        const limbs = [];
+        let limbD = '', fine = '';
+        for (let i = 0; i < S.nL; i++) {
+          const t = S.nL === 1 ? 0.5 : i / (S.nL - 1), ang = (t - 0.5) * 2 * S.spread + rr(-0.14, 0.14) + S.lean * 0.008, len = rr(S.len[0], S.len[1]) * (1 - Math.abs(t - 0.5) * 0.4);
+          const pts = [[fx + (t - 0.5) * w0 * 0.6, fy + 4]];
+          let x = pts[0][0], y = pts[0][1], a = ang;
+          for (let k = 0; k < 3; k++) { a += (k % 2 ? 1 : -1) * rr(0.12, 0.32); const l = len / 3 * rr(0.85, 1.15); x += Math.sin(a) * l; y -= Math.cos(a) * l; pts.push([x, y]); }
+          limbD += taper(pts, w0 * 0.62 * rr(0.75, 1), 2.5);
+          limbs.push({ x, y, a, R0: rr(S.R[0], S.R[1]) });
+          if (r() < 0.75) {
+            const p = pts[1 + Math.floor(r() * 2)], b = a + (r() < 0.5 ? -1 : 1) * rr(0.6, 1.0), l = len * rr(0.28, 0.42), ex = p[0] + Math.sin(b) * l, ey = p[1] - Math.cos(b) * l;
+            fine += `M${R(p[0])} ${R(p[1])}Q${R(p[0] + Math.sin(b) * l * 0.5)} ${R(p[1] - Math.cos(b) * l * 0.65)} ${R(ex)} ${R(ey)}`;
+            limbs.push({ x: ex, y: ey, a: b, R0: rr(S.R[0], S.R[1]) * 0.62, small: true });
+          }
+        }
+        crown.push({ f: '@bark.0', d: limbD }, { s: '@bark.0', w: 2.6, cap: 'round', d: fine });
+        // an inner clump or two over the fork, so the crown's heart is not bare (sky still shows round them)
+        if (!winter) { const ty = Math.min(...limbs.map(L => L.y)), mid = (fy + ty) / 2; for (let i = 0; i < (S.nL > 3 ? 2 : 1); i++) limbs.push({ x: fx + (i ? 1 : -1) * rr(10, 30), y: mid + rr(-14, 6), a: (i ? 0.3 : -0.3), R0: S.R[0] * 0.7, small: true }); }
+        if (winter) {
+          const starts = limbs.map(L => [L.x, L.y, L.a + rr(-0.2, 0.2), L.R0 * 0.7]);
+          crown.push({ s: '@bark.0', w: 1.4, cap: 'round', op: 0.9, d: sceneDraw.twigs(r, starts, 3, 0.5) });
+          crown.push({ s: '@twig', w: 0.9, cap: 'round', op: 0.55, d: sceneDraw.twigs(r, starts.map(s => [s[0], s[1], s[2] + 0.45, s[3] * 0.85]), 3, 0.55), detail: true });
+          const top = Math.min(...limbs.map(L => L.y)), cx = limbs.reduce((s, L) => s + L.x, 0) / limbs.length;
+          crown.push({ s: '@twig', w: 0.8, op: 0.35, d: sceneDraw.twigHaze(r, cx, top + 30, (S.spread * 110 + 40), 60, 16, 2), detail: true });
+          if (v === 3) { let mar = ''; for (let i = 0; i < 40; i++) { const L = limbs[Math.floor(r() * limbs.length)]; mar += sceneD.leaf(L.x + rr(-24, 24), L.y + rr(-20, 18), rr(0, 6.28), rr(5, 8), 2.6); } crown.push({ f: '@bark.3', op: 0.9, d: mar }); }
+          return { trunk, crown };
+        }
+        // the clumps: one per limb end, sky between them; each clump 4 to 6 lobed masses in three tones
+        const keys = season === 'autumn' ? ['a', 'a', 'b', 'b', 'c'] : ['a', 'b'], T = {};
+        for (const k of ['a', 'b', 'c']) T[k] = ['', '', ''];
+        let flL = '', flD = '', tw = '';
+        limbs.sort((p, q) => (q.small ? 1 : 0) - (p.small ? 1 : 0));
+        for (const L of limbs) {
+          const R0 = L.R0, cx = L.x + Math.sin(L.a) * R0 * 0.3, cy = L.y - R0 * 0.2, t = T[keys[Math.floor(r() * keys.length)]], n = L.small ? 4 : 6;
+          for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2 + rr(-0.4, 0.4), dd = i === 0 ? 0 : rr(0.4, 0.75), x = cx + Math.cos(a) * R0 * dd, y = cy + Math.sin(a) * R0 * dd * 0.7, rx = R0 * rr(0.38, 0.55);
+            t[0] += sceneD.lobed(r, R(x + rx * 0.12), R(y + rx * 0.16), R(rx), R(rx * 0.8), 8, 0.4);
+            t[1] += sceneD.lobed(r, R(x - rx * 0.1), R(y - rx * 0.14), R(rx * 0.78), R(rx * 0.62), 7, 0.38);
+            if (y < cy + R0 * 0.1 && x < cx + R0 * 0.3) t[2] += sceneD.lobed(r, R(x - rx * 0.3), R(y - rx * 0.34), R(rx * 0.44), R(rx * 0.34), 6, 0.34);
+          }
+          for (let i = 0; i < (L.small ? 6 : 11); i++) { const a = rr(-2.7, -0.4), d = R0 * rr(0.65, 1.02); flL += sceneD.leaf(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.75, rr(-1.2, 1.2), rr(6, 9), 2.6); }
+          for (let i = 0; i < (L.small ? 4 : 8); i++) { const a = rr(0.3, 2.8), d = R0 * rr(0.3, 0.8); flD += sceneD.leaf(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.7, rr(2.2, 4), rr(6, 9), 2.6); }
+          for (let i = 0; i < 3; i++) { const a = rr(-3, 0), x = cx + Math.cos(a) * R0 * 0.88, y = cy + Math.sin(a) * R0 * 0.66, l = rr(7, 14); tw += `M${R(x)} ${R(y)}l${R(Math.cos(a) * l)} ${R(Math.sin(a) * l)}`; }
+        }
+        crown.push({ s: '@bark.1', w: 1.2, cap: 'round', op: 0.8, d: tw, detail: true });
+        for (const k of ['a', 'b', 'c']) if (T[k][0]) crown.push({ f: '@' + k + '.0', d: T[k][0] });
+        for (const k of ['a', 'b', 'c']) if (T[k][1]) crown.push({ f: '@' + k + '.1', d: T[k][1] });
+        crown.push({ f: '@fleck.1', op: 0.4, d: flD, detail: true });
+        for (const k of ['a', 'b', 'c']) if (T[k][2]) crown.push({ f: '@' + k + '.2', d: T[k][2], op: 0.92 });
+        crown.push({ f: '@fleck.0', op: 0.5, d: flL, detail: true });
+        return { trunk, crown };
+      },
+    });
+  }
+
+  /* ---------- tree.wyv-far-sallow: grey / goat willow scrub at the far water's edge (Salix cinerea, S. caprea) ----------
+     Several stems fanning up from one stool, each carrying narrow, upright leaf clumps (grey-green, silvery underneath),
+     sky between the stems; spring pussy-willow catkins, autumn yellow-green thinning, winter a bare fan of orange-brown
+     wands. Smaller and lower than the oaks: it sits at the waterline in front of them. Anchor: the foot. v0 broad, v1 tall. */
+  {
+    const SL = {
+      spring: ['#4a6a2c', '#6e9040', '#a4bc68'], summer: ['#344a2c', '#506a40', '#7e9468'],
+      autumn: ['#4e5626', '#7a7e34', '#aea456'], winter: ['#6a4630', '#8a5e3a', '#a87a4e'],
+    };
+    sceneObjDefine({
+      id: 'tree.wyv-far-sallow', category: 'tree', size: [260, 220], variants: 2, seasonal: true, shapeBySeason: true, flippable: true,
+      real: { h: 6, w: 7 },
+      palette: { base: { stem: ['#4a4036', '#6a5a48'], silver: '#b4bea6', catkin: '#e6d46a' },
+        spring: { leaf: SL.spring }, summer: { leaf: SL.summer }, autumn: { leaf: SL.autumn, silver: '#c8c088' }, winter: { leaf: SL.winter } },
+      parts: ['trunk', 'crown'], reflect: true, shadow: false, weight: 1,
+      tags: ['uk', 'tree', 'willow', 'sallow', 'scrub', 'waterside', 'far-bank', 'pond', 'kit:temperate', 'role:tree'],
+      credit: "drawn for the Wyndham's Pool views: grey and goat willow scrub (sallow) at the water's edge",
+      build(v, rnd, ctx) {
+        const season = (ctx && ctx.season) || 'summer', winter = season === 'winter', r = rndOf(113 + v * 41), trunk = [], crown = [];
+        const rr = (a, b) => a + r() * (b - a), nS = v ? 5 : 7, H = v ? 190 : 150, W = v ? 0.55 : 0.85, tips = [];
+        let st = '', wands = '';
+        for (let i = 0; i < nS; i++) {
+          const t = i / (nS - 1), a = (t - 0.5) * 2 * W + rr(-0.1, 0.1), h = H * rr(0.7, 1) * (1 - Math.abs(t - 0.5) * 0.45), bx = (t - 0.5) * 18;
+          const mx = bx + Math.sin(a) * h * 0.45 + rr(-6, 6), my = -h * 0.5, ex = bx + Math.sin(a) * h, ey = -Math.cos(a) * h;
+          st += taper([[bx, 2], [mx, my], [ex, ey]], 7, 1.5);
+          tips.push([mx, my, ex, ey, a]);
+        }
+        trunk.push({ f: '@stem.0', d: st });
+        if (winter) {
+          for (const [mx, my, ex, ey, a] of tips) for (let k = 0; k < 7; k++) { const u = rr(0.3, 1), x = mx + (ex - mx) * u, y = my + (ey - my) * u, b = a + rr(-0.35, 0.35), l = rr(26, 54); wands += `M${R(x)} ${R(y)}q${R(Math.sin(b) * l * 0.4)} ${R(-l * 0.55)} ${R(Math.sin(b) * l)} ${R(-Math.cos(b) * l)}`; }
+          crown.push({ s: '@leaf.1', w: 1.4, op: 0.95, d: wands }, { s: '@leaf.2', w: 0.8, op: 0.6, d: sceneDraw.twigs(r, tips.map(p => [p[2], p[3], p[4], 20]), 2, 0.4), detail: true });
+          return { trunk, crown };
+        }
+        // narrow upright clumps along the upper stems, gaps between the stems
+        const C = ['', '', ''];
+        let sil = '', cat = '';
+        for (const [mx, my, ex, ey] of tips) for (let k = 0; k < 4; k++) {
+          const u = 0.2 + k * 0.27 + rr(-0.06, 0.06), sd = (k % 2 ? 1 : -1) * rr(3, 9), x = mx + (ex - mx) * u + sd, y = my + (ey - my) * u, rx = rr(9, 14) * (k === 3 ? 0.8 : 1), ry = rx * rr(1.2, 1.6);
+          C[0] += sceneD.lobed(r, R(x + 3), R(y + 4), R(rx), R(ry), 9, 0.45);
+          C[1] += sceneD.lobed(r, R(x - 2), R(y - 3), R(rx * 0.74), R(ry * 0.74), 8, 0.42);
+          if (r() < 0.6) C[2] += sceneD.lobed(r, R(x - rx * 0.35), R(y - ry * 0.4), R(rx * 0.4), R(ry * 0.36), 6, 0.35);
+          for (let j = 0; j < 5; j++) sil += sceneD.leaf(x + rr(-rx * 1.1, rx * 1.1), y + rr(-ry * 1.1, ry * 0.4), rr(-2.4, -0.7), rr(7, 11), 1.6);
+          if (season === 'spring' && r() < 0.6) cat += sceneD.ell(x + rr(-rx, rx), y - ry * rr(0.3, 0.9), 2.4, 3.2);
+        }
+        crown.push({ f: '@leaf.0', d: C[0] }, { f: '@leaf.1', d: C[1] }, { f: '@leaf.2', d: C[2], op: 0.9 }, { f: '@silver', op: 0.5, d: sil, detail: true });
+        if (cat) crown.push({ f: '@catkin', d: cat });
+        return { trunk, crown };
+      },
+    });
+  }
 
   /* ---------- animal.wyv-dragonfly: a blue hawker / common darter over the pool, on the wing in summer only (June to August;
      user request, 9 Oct: no dragonflies in the cold months); the other seasons draw nothing ---------- */

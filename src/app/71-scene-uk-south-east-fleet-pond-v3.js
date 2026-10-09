@@ -34,6 +34,12 @@ function sceneUkFleetPondV3() {
   const pond = edge.concat(far.slice().reverse());
   const reeds = [[-420, 21], [420, 21]].concat(edge.slice().reverse());
   // the boardwalk across the reedbed toward the water, and the sandy path off the brow
+  // (round 3) open water inside the reedbed: a channel winding back from the bay at x 46, a second from the reed edge to a
+  // small mere behind the scrape, glimpsed from the brow between the stands of reed in front of it
+  const ribbon = (C, w0, w1, seed) => { const L = F.line(C, 4), r = F.rnd(seed), A = [], B = []; L.forEach(([x, d], i) => { const t = i / (L.length - 1), w = (w0 + (w1 - w0) * t) * (0.75 + r() * 0.5) / 2; A.push([R1(x - w), d]); B.push([R1(x + w), d]); }); return A.concat(B.reverse()); };
+  const chanA = ribbon([[47, 104], [41, 95], [45, 87], [37, 78], [31, 70], [33, 61]], 7, 2.6, 71);
+  const chanB = ribbon([[-46, 140], [-38, 126], [-42, 114], [-33, 104], [-28, 94], [-24, 88]], 6, 3, 72);
+  const mere = F.loop([[-30, 80], [-21, 76], [-12, 79], [-9, 86], [-14, 93], [-24, 95], [-31, 89]], 3, 1.6, 73);
   const walk = F.line([[2.6, 25], [4.6, 40], [3.4, 56], [6.2, 74], [11, 92], [13, 112], [16, 126]], 1.5);
   const path = F.line([[0.4, 9], [-0.6, 11.5], [0.4, 14], [1.8, 17], [2.4, 20.5], [2.6, 25]], 0.5);
 
@@ -67,7 +73,10 @@ function sceneUkFleetPondV3() {
     ],
     water: [{ id: 'pond', kind: 'lake', poly: pond, edge: 'natural', ripple: 0.25, mirror: 0.75 },
       // (round 2) a scrape in the near reedbed below the brow, open water among the reeds (the reserve keeps such pools open)
-      { id: 'scrape', kind: 'pond', poly: F.loop([[-23, 36], [-15, 34.5], [-8.5, 36.5], [-7.5, 40.5], [-11, 44.5], [-19, 46], [-25, 42]], 1.5, 1.4, 45), edge: 'natural', ripple: 0.12, mirror: 0.8, rings: true }],
+      { id: 'scrape', kind: 'pond', poly: F.loop([[-23, 36], [-15, 34.5], [-8.5, 36.5], [-7.5, 40.5], [-11, 44.5], [-19, 46], [-25, 42]], 1.5, 1.4, 45), edge: 'natural', ripple: 0.12, mirror: 0.8, rings: true },
+      { id: 'chan-a', kind: 'pond', poly: chanA, edge: 'natural', ripple: 0.15, mirror: 0.8 },
+      { id: 'chan-b', kind: 'pond', poly: chanB, edge: 'natural', ripple: 0.15, mirror: 0.8 },
+      { id: 'mere', kind: 'pond', poly: mere, edge: 'natural', ripple: 0.15, mirror: 0.8, rings: true }],
     place: [], scatter: [], actors: [], flocks: [],
   };
   const Pl = data.place, S = data.scatter, A = data.actors;
@@ -81,15 +90,22 @@ function sceneUkFleetPondV3() {
 
   // ---- the reedbed: Phragmites from the foot of the slope to the water, in stands of different heights with gaps (round 2:
   // tighter clusters, a wider spread of sizes; wet clearings and the channels break it), reedmace at the water's edge
-  S.push({ obj: { 'plant.reed': 8, 'plant.bulrush': 1 }, on: 'reeds', avoid: ['walk'], d: [22, 70], n: 640, dist: 'screen', cluster: { centres: 18, spread: 3.4 }, k: [0.6, 1.6], seed: 32, anim: 'strip', shadow: false, tint: { col: '#8a7a40', k: [0, 0.14] } });
+  S.push({ obj: { 'plant.reed': 8, 'plant.bulrush': 1 }, on: 'reeds', avoid: ['walk'], d: [22, 70], n: 580, dist: 'screen', cluster: { centres: 18, spread: 3.4 }, k: [0.6, 1.6], seed: 32, anim: 'strip', shadow: false, tint: { col: '#8a7a40', k: [0, 0.14] } });
   S.push({ obj: { 'plant.grass-long': 4, 'plant.bulrush': 1, 'plant.grass': 2 }, on: ['clear-a', 'clear-b', 'clear-d', 'clear-e'], d: [26, 66], n: 110, dist: 'screen', cluster: { centres: 10, spread: 1.0 }, k: [0.5, 0.9], seed: 40, anim: false, shadow: false });
-  // beyond 70 m: two drifts of different tone (straw-gold heads, darker green-brown stands) so the bed reads in patches and
-  // depth, reedmace along the channels, willow and birch scrub islands standing out of it
-  S.push({ obj: { 'plant.reed': 8, 'plant.bulrush': 1 }, on: 'reeds', avoid: ['walk'], d: [70, 165], n: 330, dist: 'screen', cluster: { centres: 16, spread: 9 }, k: [1.0, 1.5], seed: 38, anim: false, shadow: false, tint: { col: '#c0a454', k: [0.08, 0.22] } });
-  S.push({ obj: { 'plant.reed': 6, 'plant.bulrush': 2 }, on: 'reeds', avoid: ['walk'], d: [70, 165], n: 300, dist: 'screen', cluster: { centres: 14, spread: 7 }, k: [0.8, 1.25], seed: 44, anim: false, shadow: false, tint: { col: '#5e6a36', k: [0.08, 0.22] } });
+  // (round 3) beyond 60 m the bed in receding rows, not one wall: each band its own height, density and tone (the near rows
+  // the reed's own colour, dark stands of older reed between, then hazing toward the sky's grey as the bed goes away), dense
+  // reed masses (plant.yg-reedbed) filling the rows so no bare ground shows between the stems; reedmace along the channels
+  S.push({ obj: { 'plant.reed': 6, 'plant.yg-reedbed': 3, 'plant.bulrush': 1 }, on: 'reeds', avoid: ['walk'], d: [62, 86], n: 240, dist: 'screen', cluster: { centres: 20, spread: 7 }, k: [1.0, 1.45], seed: 38, anim: false, shadow: false, tint: { col: '#c8a850', k: [0.17, 0.19] } });
+  S.push({ obj: { 'plant.reed': 5, 'plant.yg-reedbed': 3 }, on: 'reeds', avoid: ['walk'], d: [80, 104], n: 190, dist: 'screen', cluster: { centres: 9, spread: 6 }, k: [0.85, 1.2], seed: 44, anim: false, shadow: false, tint: { col: '#4a5230', k: [0.36, 0.38] } });
   S.push({ obj: { 'tree.bank-willow': 3, 'tree.pond-birch': 2, 'tree.bank-alder': 2 }, on: 'reeds', d: [45, 150], n: 16, dist: 'ground', cluster: { centres: 6, spread: 6 }, gap: 'foot', k: [0.4, 0.8], seed: 33, anim: false });
   // the alder carr along the reedbed's north side (left), a dark wall the reeds stand against
   S.push({ obj: { 'tree.bank-alder': 3, 'tree.bank-willow': 1, 'tree.pond-birch': 1 }, on: 'carr', d: [40, 160], n: 14, dist: 'ground', cluster: { centres: 3, spread: 5 }, gap: 'foot', k: [0.8, 1.1], seed: 39, anim: false });
+
+  // (round 3) scrub islands standing out of the bed: sallow, birch and willow on the drier hummocks, breaking the reeds' top
+  // line and the water's edge behind them (sallow scrub is what the reserve keeps cutting back from the reedbed)
+  for (const [x, d, set] of [[-14, 104, [['tree.wyv-far-sallow', 0, 0, 1.0], ['tree.bank-alder', 3, 2, 0.8]]], [58, 92, [['tree.wyv-far-sallow', 0, 0, 1.1], ['tree.bank-willow', -4, 3, 0.8]]],
+    [20, 128, [['tree.bank-alder', 0, 0, 0.95], ['tree.wyv-far-sallow', 4, 1, 0.9], ['tree.wyv-far-sallow', -4, 2, 0.8]]], [-4, 132, [['tree.wyv-far-sallow', 0, 0, 1.0], ['tree.bank-willow', 5, 2, 0.9]]], [82, 140, [['tree.wyv-far-sallow', 0, 0, 0.9]]]])
+    for (const [obj, dx, dd, k] of set) Pl.push({ obj, at: [x + dx, d + dd], k, anim: false, variant: Math.abs(x + dx) % 2, flip: (x + dd) % 2 === 0 });
 
   // ---- the heath rise: heather and gorse in clumps, bracken, grass, birch scrub; pines and a birch framing the view
   const tree = (obj, x, d, k, o) => Pl.push(Object.assign({ obj, at: [x, d], k, anim: false }, o || {}));
@@ -100,6 +116,11 @@ function sceneUkFleetPondV3() {
   tree('tree.birch-heath', -16, 22, 0.8, { variant: 2 });
   S.push({ obj: { 'plant.heather': 8, 'plant.grass-long': 3, 'plant.bracken': 1, 'plant.grass': 3 }, on: 'heath', avoid: ['path'], d: [9, 28], n: 820, dist: 'screen', cluster: { centres: 18, spread: 1.2 }, k: [0.8, 1.15], seed: 34, anim: false, tint: { col: '#8a7a40', k: [0, 0.12] } });
   S.push({ obj: { 'plant.grass': 3, 'plant.wildflowers': 1, 'plant.heather': 1 }, on: 'path', d: [9, 20], n: 26, dist: 'screen', cluster: { centres: 5, spread: 0.3 }, k: [0.4, 0.7], seed: 35, anim: false, species: 1 });
+  // (round 3) the far rows of the bed (after the heath's rules, so the heath keeps its own layout): hazing as they go
+  S.push({ obj: { 'plant.reed': 6, 'plant.bulrush': 1 }, on: 'reeds', avoid: ['walk'], d: [100, 128], n: 200, dist: 'screen', cluster: { centres: 18, spread: 10 }, k: [0.9, 1.25], seed: 48, anim: false, shadow: false, tint: { col: '#a6a898', k: [0.3, 0.32] } });
+  S.push({ obj: { 'plant.reed': 5, 'plant.bulrush': 1 }, on: 'reeds', avoid: ['walk'], d: [124, 165], n: 200, dist: 'screen', cluster: { centres: 20, spread: 12 }, k: [0.8, 1.4], seed: 49, anim: false, shadow: false, tint: { col: '#9aa4aa', k: [0.48, 0.5] } });
+  // (round 3) the middle of the bed, 40 to 70 m, filled evenly between the near stands (no bare peat between them)
+  S.push({ obj: { 'plant.yg-reedbed': 3, 'plant.reed': 4 }, on: 'reeds', avoid: ['walk'], d: [40, 72], n: 150, dist: 'screen', cluster: { centres: 30, spread: 6 }, k: [0.85, 1.2], seed: 50, anim: false, shadow: false, tint: { col: '#8a7a40', k: [0.08, 0.1] } });
   Pl.push({ obj: 'street.bench', at: [-1.5, 12.4], k: 1, variant: 2, face: 'right' });
   Pl.push({ obj: 'ground.log', at: [4.8, 12.6], k: 1, variant: 1, flip: true });
   Pl.push({ obj: 'plant.gorse', at: [-6.2, 13.6], k: 0.9 }, { obj: 'plant.gorse', at: [6.4, 16.4], k: 0.8, flip: true }, { obj: 'plant.gorse', at: [-9.5, 19], k: 1 }, { obj: 'plant.gorse', at: [11, 21.5], k: 0.9 });

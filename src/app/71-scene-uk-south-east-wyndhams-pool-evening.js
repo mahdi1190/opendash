@@ -75,7 +75,7 @@ function sceneUkWyndhamsPoolEvening() {
       one('tree.pool-birch', 300, 844, 1.0, 0, 'fore', 315, 0),
       one('tree.pool-birch', 420, 814, 0.74, 2, 'near', 316, 1, false),
       one('tree.pool-birch', 1500, 804, 1.02, 1, 'fore', 317, 1),
-      one('tree.pool-oak', 1700, 824, 1.12, 0, 'front', 318, 0),
+      one('tree.canal-oak', 1680, 824, 0.84, 1, 'front', 318, 0),
       one('tree.pool-birch', 1046, 792, 0.5, 2, 'near', 319, 1, false),
       one('plant.wyv-heath-bank', 1010, 800, 0.6, 0, 'near', 337, 0, false), one('plant.wyv-heath-bank', 640, 812, 0.7, 2, 'near', 338, 1, false),
       one('plant.wyv-heath-bank', 860, 912, 1.15, 1, 'front', 339, 0, false), one('plant.wyv-heath-bank', 330, 900, 0.95, 0, 'front', 340, 1, false),

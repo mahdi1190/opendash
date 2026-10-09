@@ -81,7 +81,7 @@ function sceneUkFleetPondV1() {
   S.push({ obj: { 'plant.grass-long': 3, 'plant.grass': 3, 'plant.wildflowers': 1 }, on: 'beach', d: [4.5, 40], n: 170, dist: 'screen', cluster: { centres: 7, spread: 0.8 }, k: [0.6, 1.0], seed: 35, anim: false, species: 1 });
   // pebbles and reed litter in drifts along the sand (the strand line), small
   S.push({ obj: { 'ground.leaves': 2, 'plant.grass': 1 }, on: 'beach', d: [4.6, 30], n: 60, dist: 'screen', cluster: { centres: 9, spread: 0.6 }, k: [0.5, 0.8], seed: 36, anim: false, shadow: false, species: 1 });
-  Pl.push({ obj: 'ground.log', at: [-6.2, 11.4], k: 1.0, variant: 0 }, { obj: 'ground.log', at: [-13, 22.6], k: 0.9, variant: 1, flip: true });
+  Pl.push({ obj: 'ground.log', at: [-8.4, 15.4], k: 0.9, variant: 0 }, { obj: 'ground.log', at: [-13, 22.6], k: 0.9, variant: 1, flip: true });
 
   // ---- reed islands out in the bay (pinned at the water level: they break the open water into layers)
   { const r = F.rnd(7), reedDef = typeof sceneObj === 'function' ? sceneObj('plant.reed') : null, rushDef = typeof sceneObj === 'function' ? sceneObj('plant.bulrush') : null;
@@ -99,7 +99,7 @@ function sceneUkFleetPondV1() {
     Pl.push({ obj: 'tree.fpv-fallen-pine', x: R1(a[0]), y: R1(a[1]), s: R2(f / (dF * 100)), pin: true, layer: 'fore', shadow: false, anim: false }); }
 
   // ---- the life: geese grazing the sand and swimming off it, a swan pair inshore, gulls, coots, grebes, dinghies
-  Pl.push({ obj: 'bird.goose', at: [-4.4, 9.4], k: 1, variant: 1 }, { obj: 'bird.goose', at: [-6.6, 13], k: 0.95, flip: true },
+  Pl.push({ obj: 'bird.goose', at: [-3.8, 7.6], k: 0.95, variant: 1 }, { obj: 'bird.goose', at: [-6.6, 13], k: 0.95, flip: true },
     { obj: 'bird.goose', at: [-10.6, 19.4], k: 1 }, { obj: 'bird.goose', at: [-15.6, 25.4], k: 1, variant: 1, flip: true });
   A.push({ obj: 'bird.goose', ground: [[1, 20], [6, 23], [11, 22]], speedM: 0.25, loop: 'pingpong', seed: 41, offset: 0.2 });
   A.push({ obj: 'bird.goose', ground: [[0, 21.4], [5, 24.4], [10, 23.4]], speedM: 0.25, loop: 'pingpong', variant: 1, seed: 42, offset: 0.24 });

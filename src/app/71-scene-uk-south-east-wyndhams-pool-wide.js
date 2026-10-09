@@ -115,16 +115,20 @@ function sceneUkWyndhamsPoolKit() {
     while (x < 1740) {
       const pick = r(), cx = x, hidden = hide.some(([a, b]) => cx > a && cx < b);
       if (!hidden) {
-        if (pick < 0.34) {        // a stand of Scots pine: two to four, uneven heights, one usually taller
+        if (pick < 0.3) {         // a stand of Scots pine: two to four, uneven heights, one usually taller
           const m = 2 + Math.floor(r() * 3);
           for (let i = 0; i < m; i++) sc.push(one('tree.pool-pine', cx + i * (18 + r() * 30) * k, WL + 2 + r() * 6, (0.22 + r() * 0.15 + (i === 1 ? 0.07 : 0)) * k, Math.floor(r() * 3), 'far', seed + 10 + n++, r() < 0.5, false));
-        } else if (pick < 0.6) {  // a birch clump
+        } else if (pick < 0.57) { // a birch clump
           const m = 2 + Math.floor(r() * 3);
           for (let i = 0; i < m; i++) sc.push(one(r() < 0.7 ? 'tree.birch-heath' : 'tree.pool-birch', cx + i * (12 + r() * 18) * k, WL + 3 + r() * 5, (0.2 + r() * 0.12) * k, Math.floor(r() * 3), 'far', seed + 10 + n++, r() < 0.5, false));
-        } else if (pick < 0.8) {  // a mass of mixed wood
-          sc.push(one('tree.pond-wood', cx + 20, WL + 4 + r() * 3, (0.36 + r() * 0.2) * k, Math.floor(r() * 4), 'far', seed + 10 + n++, r() < 0.5, false));
-        } else if (pick < 0.94) { // an oak
-          sc.push(one('tree.pond-oak', cx, WL + 4 + r() * 3, (0.26 + r() * 0.12) * k, Math.floor(r() * 3), 'far', seed + 10 + n++, r() < 0.5, false));
+        } else if (pick < 0.8) {  // a broadleaf group: a big oak, a smaller oak or a birch beside it, sallow scrub at the water in front
+          const big = 0.34 + r() * 0.26, fl = r() < 0.5;
+          sc.push(one('tree.wyv-far-oak', cx + (14 + r() * 36) * k, WL + 3 + r() * 2, big * k, r() < 0.6 ? 0 : 2, 'far', seed + 10 + n++, fl, false));
+          if (r() < 0.75) sc.push(one(r() < 0.6 ? 'tree.wyv-far-oak' : 'tree.birch-heath', cx + (fl ? -(26 + r() * 34) : 76 + r() * 50) * k, WL + 2 + r() * 3, (r() < 0.5 ? 0.3 : 0.24) * k, r() < 0.5 ? 1 : 3, 'far', seed + 10 + n++, r() < 0.5, false));
+          if (r() < 0.7) sc.push(one('tree.wyv-far-sallow', cx + (10 + r() * 60) * k, WL + 6 + r() * 2, (0.24 + r() * 0.12) * k, Math.floor(r() * 2), 'far', seed + 10 + n++, r() < 0.5, false));
+        } else if (pick < 0.92) { // a lone oak, now and then just sallow scrub
+          if (r() < 0.75) sc.push(one('tree.wyv-far-oak', cx, WL + 4 + r() * 3, (0.26 + r() * 0.2) * k, Math.floor(r() * 4), 'far', seed + 10 + n++, r() < 0.5, false));
+          else sc.push(one('tree.wyv-far-sallow', cx, WL + 6, (0.22 + r() * 0.1) * k, Math.floor(r() * 2), 'far', seed + 10 + n++, r() < 0.5, false));
         }                         // else: an open gap, the heath showing through
       }
       x += (44 + r() * 90) * k;
@@ -206,7 +210,7 @@ function sceneUkWyndhamsPoolWide() {
       one('tree.pool-birch', 244, 690, 0.6, 2, 'near', 39, 1, false),
       one('tree.pool-birch', 1502, 612, 1.0, 1, 'near', 42, 1),
       one('tree.pool-birch', 1588, 652, 0.84, 2, 'near', 43, 0, false),
-      one('tree.pool-oak', 1420, 652, 0.7, 1, 'near', 41, 0, false),
+      one('tree.canal-oak', 1420, 652, 0.5, 1, 'near', 41, 0, false),
       one('plant.holly', 100, 650, 0.6, 0, 'near', 58, 0, false),
       // heath on the spit and the right bank: heather and gorse mounds, fern
       one('plant.wyv-heath-bank', 60, 744, 0.8, 0, 'near', 59, 0, false), one('plant.wyv-heath-bank', 210, 790, 0.7, 1, 'near', 60, 1, false),

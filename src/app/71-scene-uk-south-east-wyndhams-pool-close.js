@@ -69,7 +69,7 @@ function sceneUkWyndhamsPoolClose() {
       ...far.scatter,
       { obj: { 'plant.reed': 3, 'plant.bulrush': 1 }, layer: 'mid', seed: 104, area: { rect: [-160, WL - 2, 1760, WL + 6] }, n: 50, minGap: 16, s: [0.22, 0.32], flip: 0.5, variant: 0, mask: { noise: { scale: 240, cut: 0.4 } }, anim: false },
       // the spit: young birch and alder, reeds round it
-      one('tree.pool-oak', -40, WL + 54, 0.42, 1, 'mid', 105, 0, false),
+      one('tree.canal-oak', -30, WL + 54, 0.32, 2, 'mid', 105, 0, false),
       one('tree.pool-birch', 70, WL + 52, 0.5, 2, 'mid', 106, 1, false),
       one('tree.pool-birch', 170, WL + 56, 0.36, 1, 'mid', 107, 0, false),
       { obj: { 'plant.reed': 2, 'plant.bulrush': 1 }, layer: 'mid', seed: 108, area: { poly: [[-160, WL + 50], [240, WL + 48], [280, WL + 62], [-160, WL + 72]] }, n: 34, minGap: 10, s: [0.36, 0.5], flip: 0.5, variant: [0, 1], tint: T('#7a8a50'), anim: false },

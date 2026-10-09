@@ -80,7 +80,7 @@ function sceneUkWyndhamsPoolDetail() {
       one('water.fish-ring', 860, 560, 0.42, 0, 'mid', 209), one('water.fish-ring', 520, 722, 0.6, 1, 'mid', 210, 1), one('water.fish-ring', 1300, 602, 0.38, 0, 'mid', 211, 1), one('water.fish-ring', 300, 690, 0.5, 1, 'mid', 212),
       one('water.edge', 260, 820, 0.6, 0, 'near', 213, 0, false), one('water.edge', 640, 872, 0.7, 1, 'near', 214, 1, false), one('water.edge', 1120, 800, 0.62, 2, 'near', 215, 0, false), one('water.edge', 1500, 676, 0.46, 0, 'near', 216, 1, false),
       // the near bank: an alder at the water, reeds along the shore, heather and bracken up the slope, stones and leaves
-      one('tree.pool-oak', 1440, 700, 0.72, 1, 'near', 217, 0, false),
+      one('tree.canal-oak', 1440, 700, 0.52, 0, 'near', 217, 0, false),
       one('tree.pool-birch', 1560, 668, 0.66, 2, 'near', 218, 1, false),
       { obj: { 'plant.reed': 3, 'plant.bulrush': 2 }, layer: 'near', seed: 230, area: { poly: [[1220, 650], [1760, 630], [1760, 660], [1420, 712], [1260, 740]] }, n: 34, minGap: 11, s: [0.66, 0.96], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), anim: 'strip' },
       { obj: { 'plant.reed': 3, 'plant.bulrush': 2 }, layer: 'near', seed: 231, area: { poly: [[-160, 720], [280, 770], [280, 820], [-160, 790]] }, n: 30, minGap: 11, s: [0.76, 1.1], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), anim: 'strip' },

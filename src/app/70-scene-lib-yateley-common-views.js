@@ -17,6 +17,9 @@
      plant.yc-gorse-spray   a close-up gorse spray for the foreground corner: spiny green shoots,
                             pea flowers (thick in spring, scattered in autumn and winter), a dead
                             silvered stem (a perch). Anchor: the foot, centre.
+     building.yc-hangar     Blackbushe's hangars: v0 curved-roof, v1 clad shed, v2 a row of T-hangars.
+     building.yc-terminal   the Blackbushe terminal: a low two-storey block, the tower cab on its roof, the cafe.
+     vehicle.yc-helicopter  a small helicopter parked on the apron (blades at rest). Anchor: the skids.
    The sun is on the LEFT (lit rims upper left), as in the rest of the library.
    ============================================================ */
 (function () {
@@ -510,12 +513,12 @@
   /* ---------- building.yc-hangar ----------
      A hangar on Blackbushe airfield, seen across the Common: v0 a curved-roof hangar (wartime Belfast truss) with wide
      sliding doors part open, v1 a newer pale clad shed with a shallow pitched roof, a row of high windows and the office
-     on its end. Lit windows and an apron light after dusk. Anchor: the foot, centre. */
+     on its end, v2 a low row of T-hangars for the light aircraft (six doors, two open). Lit windows and an apron light after dusk. Anchor: the foot, centre. */
   sceneObjDefine({
     id: 'building.yc-hangar',
     category: 'building',
     size: [320, 110],
-    variants: 2,
+    variants: 3,
     seasonal: false,
     flippable: true,
     real: { h: 12, l: 50, w: 30 },
@@ -537,6 +540,16 @@
         body.push({ s: '@door.0', w: 1.4, d: dl, op: 0.6 });
         body.push({ f: '@dark', d: 'M-20 0V-56H40V0Z' });
         for (const x of [-110, -76, 46, 80]) body.push({ f: '@window', d: `M${x} -66h30v6h-30z`, glow: 'window' });
+      } else if (v === 2) {
+        // a row of T-hangars for the light aircraft: low, a shallow monopitch roof, six doors (two open, a nose inside)
+        body.push({ f: '@clad.1', d: 'M-140 0V-40L140 -48V0Z' });
+        body.push({ f: '@roof.1', d: 'M-142 -38L-142 -42L142 -51L142 -47Z' });
+        for (let i = 0; i < 6; i++) {
+          const x0 = -134 + i * 46;
+          body.push({ f: i === 1 || i === 4 ? '@dark' : '@door.' + (i % 2), d: `M${x0} 0V-34H${x0 + 40}V0Z` });
+          if (i === 1 || i === 4) body.push({ f: '@clad.2', d: `M${x0 + 14} -8h16l4 -4h-24z` });
+          else body.push({ s: '@door.1', w: 1, d: `M${x0 + 10} -34V0M${x0 + 20} -34V0M${x0 + 30} -34V0`, op: 0.5 });
+        }
       } else {
         body.push({ f: '@clad.0', d: 'M-130 0V-64L-120 -76H120L130 -64V0Z' });
         body.push({ f: '@roof.0', d: 'M-132 -64L-120 -78H120L132 -64Z' });
@@ -548,9 +561,11 @@
         body.push({ f: '@clad.2', d: 'M-150 0V-38H-130V0Z' });
         body.push({ f: '@window', d: 'M-148 -32h16v8h-16z', glow: 'window' });
       }
-      // an apron light on its mast
-      body.push({ s: '@apron', w: 2, d: 'M150 0V-90' });
-      body.push({ f: '@window', d: 'M144 -94h12v5h-12z', glow: 'window' });
+      // an apron light on its mast (not on the T-hangars)
+      if (v !== 2) {
+        body.push({ s: '@apron', w: 2, d: 'M150 0V-90' });
+        body.push({ f: '@window', d: 'M144 -94h12v5h-12z', glow: 'window' });
+      }
       return { body };
     },
   });
@@ -576,6 +591,100 @@
       const mast = [{ s: '@mast', w: 2.4, d: 'M0 0V-96' }];
       const sock = [{ f: '@sock.0', d: 'M0 -98L14 -99L14 -85L0 -86Z' }, { f: '@sock.1', d: 'M14 -99L28 -98L28 -87L14 -85Z' }, { f: '@sock.0', d: 'M28 -98L42 -97L42 -89L28 -87Z' }, { f: '@sock.1', d: 'M42 -97L54 -95L54 -91L42 -89Z' }];
       return { mast, sock };
+    },
+  });
+
+  /* ---------- building.yc-terminal ----------
+     Blackbushe's terminal seen across the airfield: a long, low, pale two-storey block with a flat roof, the glazed
+     control tower cab on its roof, the cafe at the airside end (a glazed front, parasols on the terrace), the flagpole.
+     Lit windows after dusk. Anchor: the foot, centre. */
+  sceneObjDefine({
+    id: 'building.yc-terminal',
+    category: 'building',
+    size: [340, 120],
+    variants: 1,
+    seasonal: false,
+    flippable: true,
+    real: { h: 14, l: 50, w: 14 },
+    palette: { base: { wall: ['#e6e2d6', '#c4c0b4', '#f4f2ea'], roof: '#6a6e70', glass: ['#3a4a56', '#6a8a9a'], frame: '#f0f0ea', shade: ['#c84a3a', '#2e6a8a', '#e8d070'], pole: '#c8ccd0', flag: '#e8642a' } },
+    night: { glow: { window: '#ffe2a8' }, on: 0.9 },
+    parts: ['body'],
+    shadow: { rx: 130, ry: 5, h: 40 },
+    reflect: false,
+    tags: ['uk', 'airfield', 'blackbushe', 'terminal', 'cafe', 'aviation', 'kit:temperate', 'role:building-far', 'class:building'],
+    credit: 'drawn for the composed Yateley Common views (the Blackbushe terminal, tower and cafe)',
+    build() {
+      const body = [];
+      // the main block: two storeys, a canopy line between
+      body.push({ f: '@wall.0', d: 'M-120 0V-50H80V0Z' });
+      body.push({ f: '@wall.1', d: 'M-120 -50H80V-46H-120Z' });
+      body.push({ f: '@roof', d: 'M-122 -52H82V-49H-122Z' });
+      body.push({ f: '@wall.1', d: 'M-124 -24H84V-21H-124Z' });
+      for (let x = -112; x < 76; x += 14) body.push({ f: '@glass.0', d: `M${x} -44h9v14h-9z`, glow: 'window' });
+      for (let x = -112; x < 30; x += 20) body.push({ f: '@glass.0', d: `M${x} -17h12v12h-12z`, glow: 'window' });
+      body.push({ f: '@glass.1', d: 'M36 0V-18H54V0Z' });
+      // the cafe at the airside end: a glazed single-storey wing, a terrace with parasols
+      body.push({ f: '@wall.2', d: 'M80 0V-28H140V0Z' });
+      body.push({ f: '@roof', d: 'M78 -30H142V-27H78Z' });
+      body.push({ f: '@glass.0', d: 'M86 -4V-22H134V-4Z', glow: 'window' });
+      body.push({ s: '@frame', w: 1.2, d: 'M98 -22V-4M110 -22V-4M122 -22V-4', op: 0.8 });
+      for (const [x, k] of [[150, 0], [170, 1], [190, 2]]) {
+        body.push({ s: '@pole', w: 1.2, d: `M${x} 0V-16` });
+        body.push({ f: '@shade.' + k, d: `M${x - 9} -15Q${x} -22 ${x + 9} -15Z` });
+      }
+      body.push({ f: '@wall.1', d: 'M144 0V-5H200V0Z', op: 0.7 });
+      // the control tower: a short stalk and the glazed cab, its roof and aerials
+      body.push({ f: '@wall.0', d: 'M-40 -50V-70H-6V-50Z' });
+      body.push({ f: '@roof', d: 'M-50 -70H4V-73H-50Z' });
+      body.push({ f: '@glass.1', d: 'M-48 -73L-44 -90H-2L2 -73Z', glow: 'window' });
+      body.push({ s: '@frame', w: 1.1, d: 'M-36 -90L-37 -73M-23 -90V-73M-10 -90L-9 -73', op: 0.9 });
+      body.push({ f: '@roof', d: 'M-48 -90H2V-95H-48Z' });
+      body.push({ s: '@pole', w: 1, d: 'M-30 -95V-108M-14 -95V-104M-14 -102H-8' });
+      // the flagpole on the forecourt
+      body.push({ s: '@pole', w: 1.4, d: 'M-136 0V-70' });
+      body.push({ f: '@flag', d: 'M-135 -70H-120L-122 -64H-135Z' });
+      return { body };
+    },
+  });
+
+  /* ---------- vehicle.yc-helicopter ----------
+     A small piston helicopter parked on the apron (a two-blade, four-seat type), side view, facing right: the bubble
+     cabin, the thin tail boom and its rotor, the skids, the main blades at rest. Plain colours, no marks.
+     v0 red and white, v1 dark blue. Anchor: the foot of the skids, centre. */
+  sceneObjDefine({
+    id: 'vehicle.yc-helicopter',
+    category: 'vehicle',
+    size: [120, 44],
+    variants: 2,
+    seasonal: false,
+    flippable: true,
+    real: { h: 3.3, l: 11.7, w: 2.2 },
+    palette: { base: { skin: ['#c8302a', '#2a3e66'], belly: ['#f0eee8', '#c8ccd0'], glass: '#4a5e6e', skid: '#8a9096', blade: '#3a3e44', beacon: '#d03a2a' } },
+    night: { glow: { lamp: '#ff6a4a' }, on: 0.8 },
+    parts: ['body'],
+    shadow: { rx: 30, ry: 3, h: 30 },
+    reflect: false,
+    tags: ['aircraft', 'helicopter', 'airfield', 'blackbushe', 'kit:vehicles', 'role:vehicle'],
+    credit: 'drawn for the composed Yateley Common views (a helicopter on the Blackbushe apron)',
+    build(v) {
+      const c = v ? 1 : 0, body = [];
+      // the tail boom, fin and tail rotor (behind)
+      body.push({ f: '@skin.' + c, d: 'M-4 -18L-50 -22L-50 -19L-4 -12Z' });
+      body.push({ f: '@skin.' + c, d: 'M-52 -32L-46 -21H-52Z' });
+      body.push({ f: '@blade', d: sceneD.ell(-50, -24, 1.2, 7), op: 0.6 });
+      // the cabin: a rounded body with a big bubble
+      body.push({ f: '@skin.' + c, d: 'M-14 -8Q-16 -26 4 -28H14Q30 -26 32 -14Q32 -6 22 -6H-6Q-14 -6 -14 -8Z' });
+      body.push({ f: '@belly.' + c, d: 'M-14 -9Q-6 -6 22 -7Q30 -8 32 -12L31 -10Q28 -6 20 -6H-6Q-13 -6 -14 -9Z' });
+      body.push({ f: '@glass', d: 'M10 -26Q26 -25 30 -14H12Z' });
+      body.push({ f: '@glass', d: 'M-4 -24H8V-14H-4Z', op: 0.85 });
+      // the mast and the blades at rest
+      body.push({ f: '@blade', d: 'M4 -28H8V-34H4Z' });
+      body.push({ f: '@blade', d: 'M-50 -32Q6 -36 60 -32L60 -31Q6 -34 -50 -31Z' });
+      body.push({ f: '@beacon', d: sceneD.circ(14, -29, 1.4), glow: 'lamp' });
+      // the skids
+      body.push({ s: '@skid', w: 1.6, d: 'M-2 -6L-4 -1M22 -6L24 -1' });
+      body.push({ s: '@skid', w: 1.8, d: 'M-14 -1H32Q35 -1 36 -3', cap: 'round' });
+      return { body };
     },
   });
 })();
