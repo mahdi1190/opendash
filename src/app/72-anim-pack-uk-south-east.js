@@ -673,6 +673,7 @@
   };
   appendPart('hampshire-towns', typeof ukSouthEastPart2 === 'function' ? ukSouthEastPart2 : null);
   appendPart('kent-towns', typeof ukSouthEastPart3 === 'function' ? ukSouthEastPart3 : null);
+  appendPart('north-hampshire', typeof ukSouthEastPart4 === 'function' ? ukSouthEastPart4 : null);
   // the 20 Yateley and Fleet views (4 views each, restored 9 Oct)
   appendPart('yateley-common-v1', typeof ukSouthEastYateleyCommonV1 === 'function' ? ukSouthEastYateleyCommonV1 : null);
   appendPart('yateley-common-v2', typeof ukSouthEastYateleyCommonV2 === 'function' ? ukSouthEastYateleyCommonV2 : null);
