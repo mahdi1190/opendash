@@ -20,8 +20,15 @@ function sceneUkFleetPondV3() {
   const cam = { eye: 4.2, fov: 66, horizon: 380, heading: 96, lat: 51.2884, lon: -0.8296, water: -0.4 };
   const J = F.proj(cam), f = J.f, H = cam.horizon;
   // the reedbed below, from the foot of the slope out to the open water; the water from about 130 m to the far east shore
+  // (round 2) bays cut back into the reedbed from the open water: the reed edge is not one even line; [centre x, half width,
+  // how near they reach]
+  const chans = [[46, 16, 98], [-122, 18, 100], [-240, 20, 118], [268, 16, 112]];
   const rw = F.rnd(5), edge = [];
-  for (let x = -420; x <= 420; x += 14) edge.push([x, R1(128 + 22 * Math.sin(x / 70 + 1) + rw() * 10 + Math.max(0, -x - 60) * 0.4)]);
+  for (let x = -420; x <= 420; x += 6) {
+    let d = 128 + 22 * Math.sin(x / 70 + 1) + rw() * 10 + Math.max(0, -x - 60) * 0.4;
+    for (const [cx, w, dt] of chans) { const c = cx + 4 * Math.sin(d / 11), t = Math.abs(x - c) / w; if (t < 1) d = Math.min(d, dt + (d - dt) * Math.pow(t, 1.4)); }
+    edge.push([x, R1(d)]);
+  }
   const far = [];
   for (let x = -700; x <= 700; x += 20) far.push([x, R1(640 + 50 * Math.sin(x / 140) + rw() * 20)]);
   const pond = edge.concat(far.slice().reverse());
@@ -39,20 +46,28 @@ function sceneUkFleetPondV3() {
     kits: ['temperate', 'water', 'birds', 'people', 'animals'],
     sky: { stars: 220, clouds: { n: 5, y: [40, 300], speed: 4 }, sunR: 24, moonR: 18 },
     palette: {
-      base: { bank: ['#a89a5e', '#86783e'], heath: ['#6a6a40', '#545632'], path: ['#d2bc8e', '#b49a6c'], bridge: ['#8a7a62', '#6a5a46'], tl: ['#7d9088', '#5f7462', '#4a5e44', '#6a7a52'] },
-      spring: { bank: ['#9aa262', '#76803e'], tl: ['#82968a', '#64806a', '#4e6a46', '#7e9058'] },
-      autumn: { bank: ['#b8a466', '#8e7c44'], heath: ['#86704c', '#5e4a30'], tl: ['#8e9282', '#7a7656', '#6a5e3a', '#9a7e46'] },
-      winter: { bank: ['#b0a684', '#8a8062'], heath: ['#7c7466', '#5a5244'], tl: ['#8a8e92', '#6e7276', '#585c5c', '#74706a'] },
+      base: { mud: ['#6a5e3e', '#4e4430'], bank: ['#7e7c4a', '#5e5e34'], heath: ['#6a6a40', '#545632'], path: ['#d2bc8e', '#b49a6c'], bridge: ['#8a7a62', '#6a5a46'], tl: ['#7d9088', '#5f7462', '#4a5e44', '#6a7a52'] },
+      spring: { bank: ['#7e8a4a', '#5e6a34'], tl: ['#82968a', '#64806a', '#4e6a46', '#7e9058'] },
+      autumn: { bank: ['#9a8650', '#76663a'], heath: ['#86704c', '#5e4a30'], tl: ['#8e9282', '#7a7656', '#6a5e3a', '#9a7e46'] },
+      winter: { bank: ['#9a9276', '#7a745c'], heath: ['#7c7466', '#5a5244'], tl: ['#8a8e92', '#6e7276', '#585c5c', '#74706a'] },
     },
     surfaces: [
       { id: 'land', kind: 'wood', rest: true },
-      { id: 'heath', kind: 'heath', poly: F.loop([[-60, 6], [60, 6], [60, 22], [20, 24], [8, 27], [-2, 25.5], [-14, 27], [-30, 23], [-60, 24]], 2, 1.5, 19) },
+      { id: 'heath', kind: 'heath', poly: F.loop([[-60, 6], [60, 6], [60, 23], [36, 27.5], [24, 23.2], [14, 29], [7, 25.6], [-2, 25.5], [-14, 27], [-30, 23], [-60, 24]], 2, 1.5, 19) },
       { id: 'reeds', kind: 'bank', poly: reeds },
+      // (round 2) wet clearings in the near reedbed (sedge and bare peat): gaps in the wall of reed; the first opens the view
+      // from the brow down onto the scrape
+      { id: 'clear-a', kind: 'mud', poly: F.loop([[-27, 24], [-14, 22.5], [-6.5, 25], [-6, 31], [-7, 36.4], [-15, 35], [-24, 36.4], [-28, 31]], 1.5, 1.2, 41) },
+      { id: 'clear-e', kind: 'mud', poly: F.loop([[7, 30.5], [12, 28.6], [17, 30], [15.5, 33.6], [9, 33.2]], 1.2, 1.0, 46) },
+      { id: 'clear-b', kind: 'mud', poly: F.loop([[12, 37], [20, 36], [25, 40], [19, 43.5], [12, 41.5]], 1.5, 1.2, 42) },
+      { id: 'clear-d', kind: 'mud', poly: F.loop([[26, 56], [36, 55], [40, 60], [31, 63], [24, 60]], 1.5, 1.2, 44) },
       { id: 'carr', kind: 'wood', poly: [[-420, 30], [-60, 30], [-48, 70], [-40, 120], [-60, 150], [-420, 150]] },
       { id: 'path', kind: 'path', path, width: 1.1 },
       { id: 'walk', kind: 'bridge', path: walk, width: 1.4 },
     ],
-    water: [{ id: 'pond', kind: 'lake', poly: pond, edge: 'natural', ripple: 0.25, mirror: 0.75 }],
+    water: [{ id: 'pond', kind: 'lake', poly: pond, edge: 'natural', ripple: 0.25, mirror: 0.75 },
+      // (round 2) a scrape in the near reedbed below the brow, open water among the reeds (the reserve keeps such pools open)
+      { id: 'scrape', kind: 'pond', poly: F.loop([[-23, 36], [-15, 34.5], [-8.5, 36.5], [-7.5, 40.5], [-11, 44.5], [-19, 46], [-25, 42]], 1.5, 1.4, 45), edge: 'natural', ripple: 0.12, mirror: 0.8, rings: true }],
     place: [], scatter: [], actors: [], flocks: [],
   };
   const Pl = data.place, S = data.scatter, A = data.actors;
@@ -64,11 +79,15 @@ function sceneUkFleetPondV3() {
   data.ground.fills = g;
   S.push({ obj: { 'tree.far-birch': 3, 'tree.far-pine': 2, 'tree.bank-distant': 3, 'tree.bank-oak': 1 }, on: 'land', d: [620, 1000], n: 90, dist: 'ground', cluster: { centres: 10, spread: 50 }, k: [1.0, 1.4], seed: 31, anim: false, shadow: false, tint: { col: '#7a8a8a', k: [0, 0.16] } });
 
-  // ---- the reedbed: Phragmites from the foot of the slope to the water, thick and tall, reedmace at the water's edge
-  S.push({ obj: { 'plant.reed': 8, 'plant.bulrush': 1 }, on: 'reeds', avoid: ['walk'], d: [22, 70], n: 900, dist: 'screen', cluster: { centres: 30, spread: 7 }, k: [0.9, 1.4], seed: 32, anim: 'strip', shadow: false, tint: { col: '#8a7a40', k: [0, 0.14] } });
-  S.push({ obj: { 'plant.reed': 8, 'plant.bulrush': 1 }, on: 'reeds', avoid: ['walk'], d: [70, 160], n: 620, dist: 'screen', cluster: { centres: 30, spread: 12 }, k: [1.1, 1.4], seed: 38, anim: false, shadow: false, tint: { col: '#8a7a40', k: [0, 0.14] } });
-  // willow and birch scrub islands in the reedbed, and the alder carr along its north side (left)
-  S.push({ obj: { 'tree.bank-willow': 3, 'tree.pond-birch': 2, 'tree.bank-alder': 2 }, on: 'reeds', d: [45, 130], n: 7, dist: 'ground', cluster: { centres: 3, spread: 5 }, gap: 'foot', k: [0.45, 0.75], seed: 33, anim: false });
+  // ---- the reedbed: Phragmites from the foot of the slope to the water, in stands of different heights with gaps (round 2:
+  // tighter clusters, a wider spread of sizes; wet clearings and the channels break it), reedmace at the water's edge
+  S.push({ obj: { 'plant.reed': 8, 'plant.bulrush': 1 }, on: 'reeds', avoid: ['walk'], d: [22, 70], n: 640, dist: 'screen', cluster: { centres: 18, spread: 3.4 }, k: [0.6, 1.6], seed: 32, anim: 'strip', shadow: false, tint: { col: '#8a7a40', k: [0, 0.14] } });
+  S.push({ obj: { 'plant.grass-long': 4, 'plant.bulrush': 1, 'plant.grass': 2 }, on: ['clear-a', 'clear-b', 'clear-d', 'clear-e'], d: [26, 66], n: 110, dist: 'screen', cluster: { centres: 10, spread: 1.0 }, k: [0.5, 0.9], seed: 40, anim: false, shadow: false });
+  // beyond 70 m: two drifts of different tone (straw-gold heads, darker green-brown stands) so the bed reads in patches and
+  // depth, reedmace along the channels, willow and birch scrub islands standing out of it
+  S.push({ obj: { 'plant.reed': 8, 'plant.bulrush': 1 }, on: 'reeds', avoid: ['walk'], d: [70, 165], n: 330, dist: 'screen', cluster: { centres: 16, spread: 9 }, k: [1.0, 1.5], seed: 38, anim: false, shadow: false, tint: { col: '#c0a454', k: [0.08, 0.22] } });
+  S.push({ obj: { 'plant.reed': 6, 'plant.bulrush': 2 }, on: 'reeds', avoid: ['walk'], d: [70, 165], n: 300, dist: 'screen', cluster: { centres: 14, spread: 7 }, k: [0.8, 1.25], seed: 44, anim: false, shadow: false, tint: { col: '#5e6a36', k: [0.08, 0.22] } });
+  S.push({ obj: { 'tree.bank-willow': 3, 'tree.pond-birch': 2, 'tree.bank-alder': 2 }, on: 'reeds', d: [45, 150], n: 16, dist: 'ground', cluster: { centres: 6, spread: 6 }, gap: 'foot', k: [0.4, 0.8], seed: 33, anim: false });
   // the alder carr along the reedbed's north side (left), a dark wall the reeds stand against
   S.push({ obj: { 'tree.bank-alder': 3, 'tree.bank-willow': 1, 'tree.pond-birch': 1 }, on: 'carr', d: [40, 160], n: 14, dist: 'ground', cluster: { centres: 3, spread: 5 }, gap: 'foot', k: [0.8, 1.1], seed: 39, anim: false });
 
@@ -106,10 +125,10 @@ function sceneUkFleetPondV3() {
     A.push({ obj: 'animal.wp-bat', layer: 'near', path: pts, speed: sp, loop: 'loop', s, variant: v, seed, offset: R2(r()) });
   };
   bat(600, 300, 220, 60, 150, 1, 0, 62); bat(1000, 360, 200, 70, 170, 0.9, 1, 63);
-  Pl.push({ obj: 'sky.wp-mist', x: 520, y: 470, s: 1.3, layer: 'mid', variant: 0, pin: true, anim: false },
-    { obj: 'sky.wp-mist', x: 1180, y: 452, s: 1.2, layer: 'mid', variant: 1, flip: true, pin: true, anim: false },
-    { obj: 'sky.wp-mist', x: 820, y: 418, s: 1.1, layer: 'far', variant: 2, pin: true, anim: false });
-  A.push({ obj: 'sky.wp-mist', layer: 'mid', path: [[-60, 500], [1660, 500]], speed: 6, loop: 'pingpong', s: 1.2, variant: 3, seed: 64, offset: 0.3 });
+  // (round 2) every mist bank one sprite (one variant, one size, flipped or not): it was the largest sprite memory here
+  Pl.push({ obj: 'sky.wp-mist', x: 520, y: 470, s: 1.2, layer: 'mid', variant: 0, pin: true, anim: false },
+    { obj: 'sky.wp-mist', x: 1180, y: 452, s: 1.2, layer: 'mid', variant: 0, flip: true, pin: true, anim: false });
+  A.push({ obj: 'sky.wp-mist', layer: 'mid', path: [[-60, 500], [1660, 500]], speed: 6, loop: 'pingpong', s: 1.2, variant: 0, seed: 64, offset: 0.3 });
 
   // ---- framing: the pine bough over the top left; heather and gorse across the foot of the frame
   Pl.push({ obj: 'tree.wp-pine-bough', x: -40, y: -24, s: 0.95, layer: 'front', pin: true, anim: { sway: { k: 1 } } });

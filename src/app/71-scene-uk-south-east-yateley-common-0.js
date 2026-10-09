@@ -62,7 +62,7 @@ const _scYc = (function () {
      */
     drifts(o) {
       const x0 = o.x0 == null ? -160 : o.x0, x1 = o.x1 == null ? 1760 : o.x1, s0 = o.seed || 0, out = [];
-      const n = Object.assign({ far: 90, mid: 110, near: 80, fore: 40 }, o.n || {}), k0 = o.k == null ? 0.7 : o.k;   // k0: the density (performance)
+      const n = Object.assign({ far: 90, mid: 110, near: 80, fore: 40 }, o.n || {}), k0 = o.k == null ? 0.5 : o.k;   // k0: the density (performance: 0.5 since round 2, the drifts were most of the cold bake)
       const sc = { far: [0.32, 0.5], mid: [0.5, 0.8], near: [0.75, 1.1], fore: [1.15, 1.6] }, gap = { far: 22, mid: 30, near: 50, fore: 80 };
       // the ride (o.ride: its centreline points) stays clear: the big drifts keep a wide berth (their half width), small
       // ones fill the strip beside it up to a narrow berth, so the heather comes right to the sand's edge
@@ -134,6 +134,20 @@ const _scYc = (function () {
       if (band('fore')) out.push(Object.assign({ obj: Object.assign({ 'plant.heather': 6 }, bloom ? { 'plant.wildflowers': 0.8 } : {}), layer: 'fore', seed: s0 + 4, area: { rect: [x0, o.fore[0], x1, o.fore[1]] }, n: n.fore, minGap: 28, s: [1.15, 2.1], sByY: [[o.fore[0], 0.85], [o.fore[1], 1.2]], flip: 0.5, variant: [0, 1], anim: false }, av('fore')));
       if (band('fore') && n.grass) out.push(Object.assign({ obj: 'plant.grass', layer: 'fore', seed: s0 + 5, area: { rect: [x0, Math.max(o.fore[0], o.fore[1] - 50), x1, o.fore[1]] }, n: n.grass, minGap: 22, s: [1.4, 2], flip: 0.5, variant: [2, 3], anim: 'strip' }, av('fore')));
       return out;
+    },
+    /** The heath palette with a view's own slots merged in (extra: { base, spring, summer, autumn, winter }). */
+    pal(extra) {
+      const out = {};
+      for (const k of ['base', 'spring', 'summer', 'autumn', 'winter']) out[k] = Object.assign({}, this.palette[k] || {}, (extra && extra[k]) || {});
+      return out;
+    },
+    /** A closed polygon path through [x, y] points, smoothed (quadratic through the midpoints) when smooth is true. */
+    poly(pts, smooth) {
+      if (!smooth) return 'M' + pts.map(([x, y]) => `${R(x)} ${R(y)}`).join('L') + 'Z';
+      const n = pts.length, mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      let d = `M${R(mid(pts[n - 1], pts[0])[0])} ${R(mid(pts[n - 1], pts[0])[1])}`;
+      for (let i = 0; i < n; i++) { const m = mid(pts[i], pts[(i + 1) % n]); d += `Q${R(pts[i][0])} ${R(pts[i][1])} ${R(m[0])} ${R(m[1])}`; }
+      return d + 'Z';
     },
     /** A pond: an irregular ellipse in the box (seeded wobble). */
     pond(x0, x1, y0, y1, seed) {

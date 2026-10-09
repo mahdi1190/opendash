@@ -13,7 +13,8 @@
      sceneWinterMood(lat, lon, ms)      -> 'snow' | 'frost' | 'plain': the date's seeded winter look without live weather (8.3b)
      sceneFrostAt(L, temp, kind)        -> 0..1 hoar frost now (a cold clear morning, until the sun is 12 degrees up)
      sceneSnowFalling(wx)               -> true when flakes may fall: live or fixed snow / sleet, or the date's snow mood (wx.mood)
-     sceneInsectsOut(L, wx)             -> true when butterflies and bees fly: April to September, the sun up, dry and not cold
+     sceneInsectsOut(L, wx, kind)       -> true when butterflies and bees fly: April to September, the sun up, dry and not cold;
+                                           kind 'dragonfly' (dragonflies, damselflies, their swarms): May to September
      scenePuddles(C, wx, o)             -> extra water regions (kind 'puddle') on the hard and path surfaces within 60 m
      SCENE_WEATHER_KINDS                the kinds: clear partly cloudy rain drizzle showers thunder snow sleet fog mist frost
    ============================================================ */
@@ -166,15 +167,18 @@ function sceneSnowFalling(wx) {
 /**
  * Whether butterflies and bees are on the wing (user request, 9 Oct: none in autumn or winter): April to September (October
  * to March south of the equator; March to October under 40 degrees of latitude, all year in the tropics), the sun at least 8 degrees up, no rain, snow or fog, and not under 12 C when the
- * temperature is known. L: { ms, lat, alt } (a scene light, or the kit's K.live); wx: the weather (optional).
+ * temperature is known. L: { ms, lat, alt } (a scene light, or the kit's K.live); wx: the weather (optional). kind 'dragonfly'
+ * (dragonflies, damselflies and their gnat swarms, engine follow-up 9 Oct): May to September (April to October under 40 degrees).
  */
-function sceneInsectsOut(L, wx) {
+function sceneInsectsOut(L, wx, kind) {
   if (!L || !Number.isFinite(L.ms)) return true;
   let m = _scwxMonth(L.ms);
   const al = Number.isFinite(L.lat) ? Math.abs(L.lat) : 51;
   if (Number.isFinite(L.lat) && L.lat < 0) m = (m + 6) % 12;
-  // the tropics all year; warm temperate latitudes (under 40 degrees) March to October
-  if (al >= 23.5 && (al < 40 ? m < 2 || m > 9 : m < 3 || m > 8)) return false;
+  // the tropics all year; warm temperate latitudes (under 40 degrees) March to October (dragonflies April to October); the
+  // rest April to September (dragonflies May to September)
+  const late = kind === 'dragonfly' ? 1 : 0;
+  if (al >= 23.5 && (al < 40 ? m < 2 + late || m > 9 : m < 3 + late || m > 8)) return false;
   if (Number.isFinite(L.alt) && L.alt < 8) return false;
   if (wx && ((wx.rain || 0) > 0.05 || (wx.snow || 0) > 0.05 || (wx.fog || 0) > 0.4)) return false;
   const temp = wx && Number.isFinite(wx.temp) ? wx.temp : Number.isFinite(L.temp) ? L.temp : null;

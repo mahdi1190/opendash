@@ -1,127 +1,120 @@
 /* ============================================================
    COMPOSED SCENE uk-south-east / Yateley Common, view 3 of 4 (detail):
-   a low, close look south-south-west across the Common from beside a
-   fallen pine branch in the heather (docs/dev/SCENE_ENGINE.md section 3;
-   helpers and sources in 71-scene-uk-south-east-yateley-common-0.js).
-   Fore: big heather cushions, bracken and gorse at eye level, the fallen
-   branch with a stonechat on the gorse beside it. Mid: an acid pond with
-   reeds and cotton-grass margins holding the sky, silver birches on the
-   left, Belted Galloway and red cattle grazing, a sandy track winding
-   away, the veteran Scots pine (the signature) and younger pines on the
-   right. Far: the pine and birch belts. Sky: Blackbushe light aircraft,
-   small birds (geese in autumn), the live sun, moon and stars.
+   down at the edge of a boggy heathland pool in the mire on the Common, at
+   eye level with the sundews (docs/dev/SCENE_ENGINE.md section 3; helpers
+   and sources in 71-scene-uk-south-east-yateley-common-0.js).
+   A tongue of bog moss runs out from our feet into the dark peaty water,
+   red and green sphagnum hummocks studded with round-leaved sundews (their
+   dew glistening, white flowers in summer) and tufts of cotton-grass, to a
+   dead Scots pine standing silver at its tip (the landmark, a dragonfly
+   perch), mirrored in the pool. Cotton-grass stands in the shallows on the
+   right; a fallen pine branch lies on the moss; a birch bough hangs in from
+   the top right and a young birch frames the left. Beyond the water: the
+   far bank of heather under silver birches and Scots pines. Life: hawker
+   and darter dragonflies over the water in summer, small birds, the live
+   sun, moon and stars.
    Lint, look and time it with:
      node tools/anim-pack.mjs scene lint uk-south-east/hampshire-yateley-common-3 --perf
-     node tools/anim-pack.mjs scene sheet uk-south-east/hampshire-yateley-common-3 --seasons
+     node tools/anim-pack.mjs scene sheet uk-south-east/hampshire-yateley-common-3 --times --seasons
    ============================================================ */
 function sceneYateleyCommon3(season) {
-  const Y = _scYc, winter = season === 'winter', summer = season === 'summer', spring = season === 'spring';
-  const TRACK = [[760, 488, 4], [740, 512, 10], [790, 540, 18], [760, 572, 30], [800, 610, 44], [770, 660, 64], [690, 740, 110], [640, 820, 180], [660, 905, 250]];
-  const POND = { x0: 930, x1: 1410, y0: 566, y1: 612 };
-  const trackMid = Y.around(TRACK, 484, 660, 10), trackNear = Y.around(TRACK, 650, 800, 22), trackFore = Y.around(TRACK, 790, 910, 18);
-  const pondAvoid = { rect: [POND.x0 - 44, POND.y0 - 40, POND.x1 + 44, POND.y1 + 42] }, pondWater = { rect: [POND.x0 - 40, POND.y0 - 40, POND.x1 + 40, POND.y1 + 10] };   // the drifts may stand on the near bank, in front of the water
-  const sand = { lin: [[0, '@sand.0'], [0.5, '@sand.1'], [1, '@sand.2']], y1: 488, y2: 905 };
+  const Y = _scYc, winter = season === 'winter', summer = season === 'summer', spring = season === 'spring', autumn = season === 'autumn';
+  // the pool fills the picture below the far bank; the bog-moss spit comes in from the bottom left to the dead pine
+  const WATER = [[-180, 566], [300, 560], [800, 556], [1300, 558], [1780, 564], [1780, 920], [-180, 920]];
+  const SPIT = [[-180, 752], [60, 742], [250, 738], [420, 722], [560, 714], [680, 694], [790, 684], [884, 676], [912, 690], [858, 706], [804, 738], [744, 778], [706, 830], [694, 905], [-180, 905]];
+  const spitInner = { poly: [[-180, 772], [260, 758], [560, 734], [760, 712], [830, 708], [756, 760], [686, 830], [664, 905], [-180, 905]] };
+  // hummock islets stepping out from the spit's tip to the dead pine
+  const ISLETS = [[928, 1004, 664, 680, 3651], [1022, 1140, 628, 648, 3652]];
+  const SNAG = [1080, 640];
   const d = {
     v: 1, id: 'yateley-common-detail-' + season,
-    view: { lat: 51.336, lon: -0.829, heading: 200, fov: 74, horizon: 480, lift: 0.8 },
+    view: { lat: 51.337, lon: -0.825, heading: 300, fov: 66, horizon: 500, lift: 0.7 },
     at: 'afternoon', season: 'auto', tropic: 'summer', setting: 'natural', weather: 'live', particles: 'season',
-    palette: Y.palette, layers: Y.layers,
+    palette: Y.pal({
+      spring: { moss: ['#6e8a34', '#56702a', '#3a4c20'] },
+      summer: { moss: ['#6a8a30', '#52702a', '#38501e'] },
+      autumn: { moss: ['#7a7a30', '#6a5a2a', '#48401e'] },
+      winter: { moss: ['#5e6a3a', '#4a5432', '#343c24'] },
+    }),
+    layers: Y.layers,
     sky: { stars: 200, clouds: { n: 6, y: [40, 300], speed: 5 }, sunR: 26, moonR: 20 },
     ground: [
-      { layer: 'horizon', d: Y.band(474, 4, 0, 500), fill: '@wood.0' },
-      { layer: 'far', d: Y.band(482, 5, 40, 570), fill: { lin: [[0, '@heath.0'], [1, '@heath.1']], y1: 482, y2: 590 } },
-      { layer: 'far', d: Y.mounds(-160, 1760, 494, 540, 44, 811, [22, 44]), fill: '@mound.0' },
-      { layer: 'far', d: Y.track(TRACK, 484, 548), fill: sand },
-      { layer: 'mid', d: Y.band(544, 6, -40, 680), fill: { lin: [[0, '@heath.1'], [1, '@heath.2']], y1: 544, y2: 700 } },
-      { layer: 'mid', d: Y.mounds(-160, 1760, 560, 650, 30, 812, [36, 70]), fill: '@mound.1' },
-      { layer: 'mid', d: Y.pond(POND.x0 - 8, POND.x1 + 8, POND.y0 - 4, POND.y1 + 6, 8271), fill: '@bank.0' },
-      { layer: 'mid', d: Y.track(TRACK, 544, 662), fill: sand },
-      { layer: 'mid', d: Y.ruts(TRACK, 580, 662).ruts, fill: '@rut.0' },
-      { layer: 'near', d: Y.band(660, 8, 60, 812), fill: '@heath.2' },
-      { layer: 'near', d: Y.track(TRACK, 656, 802), fill: sand },
-      { layer: 'near', d: Y.ruts(TRACK, 656, 802).ruts, fill: { lin: [[0, '@rut.0'], [1, '@rut.1']], y1: 656, y2: 905 } },
-      { layer: 'fore', d: Y.band(770, 10, -60), fill: '@heath.2' },
-      { layer: 'fore', d: Y.track(TRACK, 764, 905), fill: sand },
-      { layer: 'fore', d: Y.ruts(TRACK, 764, 905).ruts, fill: '@rut.1' },
+      { layer: 'horizon', d: Y.band(494, 3, 0, 520), fill: '@wood.0' },
+      { layer: 'far', d: Y.band(508, 4, 30, 600), fill: { lin: [[0, '@heath.0'], [1, '@heath.1']], y1: 508, y2: 580 } },
+      { layer: 'far', d: Y.mounds(-160, 1760, 520, 560, 34, 3611, [22, 44]), fill: '@mound.0' },
+      // the far shore: a strip of moss at the water's edge
+      { layer: 'mid', d: Y.band(552, 3, 60, 572), fill: '@moss.1' },
+      // the spit of bog moss from our feet out to the dead pine
+      { layer: 'near', d: Y.poly(SPIT.map(([x, y]) => [x, y + 7]), true) + ISLETS.map(([a, b, c, e, k]) => Y.pond(a, b, c + 5, e + 6, k)).join(''), fill: '@bank.1' },
+      { layer: 'near', d: Y.poly(SPIT, true) + ISLETS.map(([a, b, c, e, k]) => Y.pond(a, b, c, e, k)).join(''), fill: { lin: [[0, '@moss.0'], [0.4, '@moss.1'], [1, '@moss.2']], y1: 620, y2: 905 } },
     ],
-    water: [{ layer: 'mid', d: Y.pond(POND.x0, POND.x1, POND.y0, POND.y1, 8270), y0: POND.y0, y1: POND.y1, base: ['#82aab4', '#40707c', '#24444c'], reflect: true, shimmer: 22, lightPath: true }],
+    water: [{ layer: 'mid', d: Y.poly(WATER), y0: 558, y1: 905, base: ['#7a989c', '#30484c', '#12201e'], reflect: true, shimmer: 26, lightPath: true }],
     place: [
-      // the signature: the veteran Scots pine beyond the pond, younger pines along the far heath
-      { obj: 'tree.pine-veteran', x: 1290, y: 562, s: 0.5, layer: 'mid', variant: 1, seed: 1, anim: false, reflect: true },
-      { obj: 'tree.pine-veteran', x: 880, y: 532, s: 0.2, layer: 'far', variant: 1, flip: true, seed: 2, anim: false },
-      { obj: 'tree.pine-veteran', x: 1180, y: 528, s: 0.16, layer: 'far', variant: 1, seed: 3, anim: false, reflect: true },
-      // birches on the left, a young one on the pond's far bank (mirrored)
-      { obj: 'tree.birch-heath', x: 140, y: 690, s: 0.9, layer: 'near', variant: 1, seed: 4, anim: { sway: { k: 0.8 } } },
-      { obj: 'tree.birch-heath', x: 300, y: 660, s: 0.62, layer: 'near', variant: 0, flip: true, seed: 5, anim: { sway: { k: 0.7 } } },
-      { obj: 'tree.birch-heath', x: 520, y: 560, s: 0.3, layer: 'mid', variant: 0, seed: 6, anim: false },
-      { obj: 'tree.birch-heath', x: 1050, y: 556, s: 0.26, layer: 'mid', variant: 0, flip: true, seed: 7, anim: false, reflect: true },
-      ...Y.bank(POND, 'mid', 8300, 14, [0.3, 0.46]),
-      // cattle grazing on the left (Belted Galloways and a red)
-      { obj: 'animal.cattle', x: 190, y: 600, s: 0.42, layer: 'mid', variant: 1, seed: 11 },
-      { obj: 'animal.cattle', x: 340, y: 590, s: 0.38, layer: 'mid', variant: 1, flip: true, seed: 12 },
-      { obj: 'animal.cattle', x: 470, y: 598, s: 0.4, layer: 'mid', variant: 0, seed: 13 },
-      // scrub on the far heath: gorse clumps and a birch thicket
-      { obj: 'plant.gorse', x: 620, y: 530, s: 0.2, layer: 'far', variant: 2, seed: 14, anim: false },
-      { obj: 'plant.gorse', x: 1480, y: 536, s: 0.22, layer: 'far', variant: 0, flip: true, seed: 15, anim: false },
-      { obj: 'plant.gorse', x: 60, y: 540, s: 0.24, layer: 'far', variant: 1, seed: 16, anim: false },
-      { obj: 'tree.birch-heath', x: 1560, y: 534, s: 0.2, layer: 'far', variant: 2, seed: 17, anim: false },
-      { obj: 'tree.birch-heath', x: 680, y: 528, s: 0.14, layer: 'far', variant: 0, flip: true, seed: 18, anim: false },
-      // gorse with a stonechat and a Dartford warbler
-      { obj: 'plant.gorse', x: 1030, y: 690, s: 0.6, layer: 'near', variant: 0, seed: 31, anim: false },
-      { obj: 'plant.gorse', x: 300, y: 744, s: 0.6, layer: 'near', variant: 1, flip: true, seed: 32, anim: false },
-      { obj: 'plant.gorse', x: 680, y: 672, s: 0.36, layer: 'near', variant: 1, seed: 33, anim: false },
-      { obj: 'plant.gorse', x: 1440, y: 702, s: 0.46, layer: 'near', variant: 0, flip: true, seed: 34, anim: false },
-      { obj: 'bird.stonechat', x: 1036, y: 628, s: 0.95, layer: 'near', variant: 0, seed: 37 },
-      { obj: 'bird.dartford-warbler', x: 306, y: 690, s: 0.9, layer: 'near', flip: true, seed: 38 },
-      { obj: 'animal.rabbit', x: 806, y: 742, s: 0.9, layer: 'near', variant: 0, seed: 41 },
-      // the foreground: the fallen pine branch in the heather, gorse, a stonechat close up
-      { obj: 'ground.log', x: 1130, y: 866, s: 1.5, layer: 'fore', variant: 0, seed: 51 },
-      { obj: 'plant.gorse', x: 1560, y: 880, s: 1.3, layer: 'fore', variant: 0, flip: true, seed: 53, anim: false },
-      { obj: 'bird.stonechat', x: 1546, y: 754, s: 1.8, layer: 'fore', variant: 1, flip: true, seed: 55 },
-      // the foreground frame: a gorse spray in the bottom-left corner with a Dartford warbler on its dead stem, a Scots
-      // pine bough hanging in from the top-right
-      { obj: 'plant.yc-gorse-spray', x: 170, y: 924, s: 1.6, layer: 'front', variant: 0, seed: 54 },
-      { obj: 'bird.dartford-warbler', x: 244, y: 640, s: 1.6, layer: 'front', seed: 56 },
-      { obj: 'tree.wp-pine-bough', x: 1636, y: -22, s: 0.9, layer: 'front', flip: true, anim: { sway: { k: 1 } } },
+      // the landmark: the dead Scots pine at the spit's tip, silver, mirrored
+      { obj: 'tree.wyv-snag', x: SNAG[0], y: SNAG[1], s: 2.1, layer: 'near', variant: 0, seed: 1, anim: false, reflect: true },
+      // the far bank: silver birches and Scots pines over the heather (in groups, at several depths)
+      { obj: 'tree.pool-birch', x: 220, y: 548, s: 0.42, layer: 'mid', variant: 0, seed: 2, anim: false, reflect: true },
+      { obj: 'tree.pool-birch', x: 300, y: 552, s: 0.5, layer: 'mid', variant: 2, flip: true, seed: 3, anim: false, reflect: true },
+      { obj: 'tree.pool-pine', x: 520, y: 546, s: 0.4, layer: 'mid', variant: 1, seed: 4, anim: false, reflect: true },
+      { obj: 'tree.pool-birch', x: 760, y: 550, s: 0.36, layer: 'mid', variant: 1, seed: 5, anim: false, reflect: true },
+      { obj: 'tree.pool-pine', x: 1320, y: 548, s: 0.46, layer: 'mid', variant: 0, flip: true, seed: 6, anim: false, reflect: true },
+      { obj: 'tree.pool-birch', x: 1420, y: 552, s: 0.44, layer: 'mid', variant: 1, seed: 7, anim: false, reflect: true },
+      { obj: 'tree.pine-veteran', x: 960, y: 536, s: 0.22, layer: 'far', variant: 1, seed: 8, anim: false },
+      // the frame: a young birch on the spit at the left, a birch bough hanging in from the top right
+      { obj: 'tree.pool-birch', x: 70, y: 800, s: 1.35, layer: 'fore', variant: 1, seed: 9, anim: { sway: { k: 0.6 } } },
+      { obj: 'tree.wyv-birch-bough', x: 1660, y: -20, s: 1.1, layer: 'front', variant: 0, flip: true, seed: 10, anim: { sway: { k: 1 } } },
+      // a fallen pine branch on the moss
+      { obj: 'ground.log', x: 520, y: 800, s: 1.1, layer: 'near', variant: 0, seed: 11, anim: false },
+      // sundews on the moss in the foreground (in little colonies)
+      { obj: 'plant.yc-sundew', x: 180, y: 862, s: 3.48, layer: 'fore', variant: 1, seed: 12 },
+      { obj: 'plant.yc-sundew', x: 262, y: 884, s: 2.9, layer: 'fore', variant: 0, flip: true, seed: 13 },
+      { obj: 'plant.yc-sundew', x: 336, y: 856, s: 2.46, layer: 'fore', variant: 1, seed: 14 },
+      { obj: 'plant.yc-sundew', x: 520, y: 892, s: 3.19, layer: 'fore', variant: 0, seed: 15 },
+      { obj: 'plant.yc-sundew', x: 600, y: 870, s: 2.32, layer: 'fore', variant: 1, flip: true, seed: 16 },
+      { obj: 'plant.yc-sundew', x: 760, y: 760, s: 1.59, layer: 'near', variant: 0, seed: 17 },
+      { obj: 'plant.yc-sundew', x: 820, y: 742, s: 1.3, layer: 'near', variant: 1, flip: true, seed: 18 },
+      // cotton-grass: big tufts in the foreground, stands in the shallows on the right
+      { obj: 'plant.yc-cotton-grass', x: 40, y: 905, s: 2.4, layer: 'front', variant: 1, seed: 19 },
+      { obj: 'plant.yc-cotton-grass', x: 420, y: 905, s: 2.0, layer: 'front', variant: 0, flip: true, seed: 20 },
+      { obj: 'plant.yc-cotton-grass', x: 1380, y: 905, s: 2.2, layer: 'front', variant: 1, flip: true, seed: 21, reflect: true },
+      { obj: 'plant.yc-cotton-grass', x: 1530, y: 880, s: 1.9, layer: 'fore', variant: 0, seed: 22, reflect: true },
+      { obj: 'plant.yc-cotton-grass', x: 1650, y: 900, s: 2.3, layer: 'front', variant: 2, seed: 23, reflect: true },
+      { obj: 'plant.yc-cotton-grass', x: 1250, y: 820, s: 1.3, layer: 'fore', variant: 2, flip: true, seed: 24, reflect: true },
+      { obj: 'plant.grass-long', x: 1460, y: 890, s: 2.2, layer: 'front', variant: 1, seed: 25, reflect: true, anim: { sway: { k: 0.6 } } },
     ],
     scatter: [
-      { obj: 'tree.woods-edge', layer: 'horizon', seed: 1, area: { rect: [-160, 472, 1760, 480] }, n: 12, minGap: 130, s: [0.36, 0.6], flip: 0.5, variant: [0, 1], anim: false },
-      { obj: 'tree.woods-edge', layer: 'far', seed: 2, area: { rect: [-160, 486, 700, 492] }, n: 4, minGap: 140, s: [0.42, 0.66], flip: 0.5, variant: [1, 2], anim: false },
-      { obj: 'tree.woods-edge', layer: 'far', seed: 3, area: { rect: [1000, 486, 1760, 492] }, n: 4, minGap: 140, s: [0.4, 0.6], flip: 0.5, variant: [1, 2], anim: false },
-      { obj: 'tree.pine-veteran', layer: 'far', seed: 4, area: { rect: [-120, 504, 1720, 536] }, n: 6, minGap: 160, s: [0.06, 0.1], sByY: [[504, 0.85], [536, 1.15]], mask: { avoid: [{ rect: [820, 480, 1240, 540] }] }, flip: 0.5, variant: 1, anim: false },
-      ...Y.drifts({ seed: 30, ride: TRACK, far: [490, 548], mid: [554, 662], near: [668, 790], fore: [790, 920], n: { far: 120, mid: 130, near: 80, fore: 40 },
-        avoid: { far: [pondWater], mid: [pondWater], fore: [{ rect: [1000, 840, 1260, 880] }] } }),
-      ...Y.carpet({ season, seed: 30, far: [486, 544], mid: [548, 656], near: [664, 780], fore: [782, 905], n: { far: 80, mid: 90, near: 100, fore: 60, grass: 40 },
-        avoid: { far: [{ poly: trackMid }, pondAvoid], mid: [{ poly: trackMid }, pondAvoid], near: [{ poly: trackNear }], fore: [{ poly: trackFore }, { rect: [960, 830, 1300, 880] }] } }),
-      { obj: { 'plant.reed': 2, 'plant.bulrush': 1 }, layer: 'mid', seed: 9, area: { rect: [900, 590, 1000, 620] }, n: 8, minGap: 9, s: [0.26, 0.5], flip: 0.5, variant: [0, 1], anim: false, reflect: true },
-      { obj: 'plant.reed', layer: 'mid', seed: 10, area: { rect: [1340, 592, 1440, 622] }, n: 7, minGap: 9, s: [0.28, 0.46], flip: 0.5, variant: [0, 1], anim: false, reflect: true },
-      { obj: 'plant.bracken', layer: 'near', seed: 12, area: { rect: [1180, 700, 1700, 790] }, n: 3, minGap: 80, s: [0.55, 1.05], flip: 0.5, variant: 0, anim: false },
-      { obj: 'plant.bracken', layer: 'near', seed: 13, area: { rect: [-160, 720, 500, 790] }, n: 2, minGap: 80, s: [0.55, 1.05], flip: 0.5, variant: 0, anim: false },
+      { obj: 'tree.woods-edge', layer: 'horizon', seed: 1, area: { rect: [-160, 490, 1760, 498] }, n: 16, minGap: 90, s: [0.34, 0.52], flip: 0.5, variant: [0, 1, 2], anim: false },
+      { obj: 'tree.woods-edge', layer: 'far', seed: 2, area: { rect: [-160, 512, 1760, 520] }, n: 7, minGap: 160, s: [0.5, 0.7], flip: 0.5, variant: [0, 1, 2], anim: false },
+      // the far bank's heather
+      ...Y.drifts({ seed: 30, far: [520, 556], n: { far: 90 } }),
+      { obj: { 'plant.heather': 4, 'plant.yc-cotton-grass': 2 }, layer: 'mid', seed: 31, area: { rect: [-160, 552, 1760, 568] }, n: 46, minGap: 22, s: [0.3, 0.46], flip: 0.5, variant: [0, 2], anim: false, reflect: true },
+      // the spit: sphagnum hummocks all over, cotton-grass and heather tufts on them
+      { obj: 'ground.yc-sphagnum', layer: 'near', seed: 32, area: spitInner, n: 110, minGap: 14, s: [0.3, 0.6], sByY: [[620, 0.45], [790, 1.3]], flip: 0.5, variant: [0, 1, 2], anim: false },
+      ...ISLETS.map(([a, b, c, e], i) => ({ obj: { 'ground.yc-sphagnum': 2, 'plant.yc-cotton-grass': 1 }, layer: 'near', seed: 37 + i, area: { rect: [a + 16, c + 4, b - 16, e - 2] }, n: 5, minGap: 14, s: [0.16, 0.26], flip: 0.5, variant: [0, 1], anim: false, reflect: true })),
+      { obj: { 'plant.heather': 2, 'plant.grass': 1 }, layer: 'near', seed: 36, area: spitInner, n: 30, minGap: 30, s: [0.5, 0.9], sByY: [[620, 0.6], [790, 1.3]], mask: { noise: { scale: 220, cut: 0.4 } }, flip: 0.5, variant: [0, 1], anim: false },
+      { obj: 'ground.yc-sphagnum', layer: 'fore', seed: 33, area: { poly: [[-180, 800], [700, 800], [660, 905], [-180, 905]] }, n: 22, minGap: 50, s: [0.9, 1.4], flip: 0.5, variant: [0, 0, 2], anim: false },
+      { obj: { 'plant.yc-cotton-grass': 3, 'plant.heather': 2 }, layer: 'near', seed: 34, area: spitInner, n: 34, minGap: 30, s: [0.45, 0.8], sByY: [[620, 0.6], [780, 1.3]], mask: { noise: { scale: 180, cut: 0.35 } }, flip: 0.5, variant: [0, 1, 2], anim: false, reflect: true },
+      // cotton-grass in the shallows right of the spit
+      { obj: 'plant.yc-cotton-grass', layer: 'near', seed: 35, area: { poly: [[1140, 660], [1500, 640], [1700, 700], [1300, 760]] }, n: 12, minGap: 30, s: [0.6, 0.9], flip: 0.5, variant: [0, 2], anim: false, reflect: true },
     ],
     actors: [
-      // a dog walker far down the track
-      { obj: 'person.dog-walker', layer: 'mid', path: Y.path(TRACK, 548, 650, 12), speed: 5, loop: 'pingpong', s: 0.42, sByY: [[548, 0.7], [650, 1.1]], seed: 71, offset: 0.4 },
-      { obj: 'person.walker', layer: 'near', path: Y.path(TRACK, 670, 790), speed: 8, loop: 'pingpong', s: 0.8, sByY: [[670, 0.85], [790, 1.15]], seed: 70, offset: 0.55 },
-      { obj: 'person.walker', layer: 'far', path: Y.path(TRACK, 492, 544, 10), speed: 3, loop: 'pingpong', s: 0.3, variant: 1, sByY: [[492, 0.7], [544, 1]], seed: 72, offset: 0.7 },
-      // Blackbushe light aircraft
-      { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[-200, 190], [1800, 260]], speed: 26, loop: 'loop', s: 0.8, seed: 73, offset: 0.25 },
+      { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[1820, 210], [-220, 170]], speed: 24, loop: 'loop', s: 0.55, seed: 75, offset: 0.4 },
     ],
     flocks: [
-      { obj: 'bird.small-flight', n: winter ? 9 : 6, area: [200, 150, 1300, 300], speed: 26, s: 0.55, seed: 81, layer: 'horizon' },
+      { obj: 'bird.small-flight', n: winter ? 8 : 4, area: [300, 140, 1300, 300], speed: 26, s: 0.5, seed: 81, layer: 'horizon' },
     ],
   };
-  // the season's own life: ducks on the pond (not in winter), insects in spring and summer, robins in winter
+  // the season's own life: dragonflies and damselflies over the pool (May to October), a heron in winter
   if (!winter) {
-    d.actors.push({ obj: 'bird.mallard', layer: 'mid', path: [[1000, 590], [1160, 596]], speed: 3, loop: 'pingpong', s: 0.4, variant: 0, seed: 75, offset: 0.2 });
-    d.actors.push({ obj: 'bird.mallard', layer: 'mid', path: [[1200, 600], [1330, 596]], speed: 2.5, loop: 'pingpong', s: 0.38, variant: 1, seed: 76, offset: 0.6 });
+    d.actors.push({ obj: 'animal.pond-dragonfly', layer: 'near', path: [[700, 620], [900, 600], [1040, 560], [860, 640], [620, 650]], speed: 44, loop: 'pingpong', s: 1.3, variant: 0, seed: 76 });
+    d.actors.push({ obj: 'animal.dragonfly', layer: 'mid', path: [[200, 600], [420, 590], [560, 620], [300, 630]], speed: 38, loop: 'pingpong', s: 0.7, variant: 1, seed: 77 });
   }
   if (summer || spring) {
-    d.actors.push({ obj: 'animal.dragonfly', layer: 'mid', path: [[960, 576], [1100, 584], [1040, 566], [1200, 578]], speed: 40, loop: 'pingpong', s: 0.6, variant: 0, seed: 79 });
-    d.actors.push({ obj: 'animal.bee', layer: 'fore', path: [[200, 820], [290, 800], [250, 846]], speed: 30, loop: 'pingpong', s: 1.1, seed: 83 });
-    d.actors.push({ obj: 'animal.bee', layer: 'fore', path: [[700, 830], [780, 812], [740, 856]], speed: 26, loop: 'pingpong', s: 1, seed: 84 });
+    d.actors.push({ obj: 'animal.pond-dragonfly', layer: 'fore', path: [[1180, 740], [1300, 700], [1420, 760], [1260, 790]], speed: 34, loop: 'pingpong', s: 1.8, variant: 1, seed: 78 });
+    d.actors.push({ obj: 'animal.dragonfly', layer: 'near', path: [[1100, 520], [1084, 500], [1120, 530]], speed: 10, loop: 'pingpong', s: 1, variant: 0, seed: 79 });
+    d.actors.push({ obj: 'animal.bee', layer: 'fore', path: [[200, 780], [300, 760], [260, 800]], speed: 24, loop: 'pingpong', s: 1, seed: 84 });
   }
-  Y.butterflies[season].forEach((v, i) => d.actors.push({ obj: 'animal.butterfly', layer: 'near', path: [[500 + i * 280, 720], [640 + i * 260, 690], [560 + i * 270, 760], [720 + i * 250, 730]], speed: 22, loop: 'pingpong', s: 1.1, variant: v, seed: 90 + i, offset: i * 0.3 }));
-  if (winter) d.place.push({ obj: 'bird.robin', x: 1150, y: 826, s: 1.4, layer: 'fore', variant: 0, seed: 95 }, { obj: 'bird.robin', x: 640, y: 770, s: 1, layer: 'near', variant: 1, flip: true, seed: 96 });
-  if (season === 'autumn') d.flocks.push({ obj: 'bird.goose-flight', n: 5, area: [500, 120, 1100, 230], speed: 30, s: 0.5, seed: 97, layer: 'horizon' });
+  if (winter) d.place.push({ obj: 'bird.heron', x: 1300, y: 620, s: 0.6, layer: 'mid', seed: 95, reflect: true });
+  if (autumn) d.flocks.push({ obj: 'bird.goose-flight', n: 6, area: [400, 110, 1200, 220], speed: 30, s: 0.5, seed: 97, layer: 'horizon' });
   return d;
 }

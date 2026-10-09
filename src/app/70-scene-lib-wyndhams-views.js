@@ -134,4 +134,21 @@
       return { body };
     },
   });
+
+  /* ---------- animal.wyv-dragonfly: a blue hawker / common darter over the pool, on the wing in summer only (June to August;
+     user request, 9 Oct: no dragonflies in the cold months); the other seasons draw nothing ---------- */
+  sceneObjDefine({
+    id: 'animal.wyv-dragonfly', category: 'animal', size: [40, 48], box: [-30, -24, 14, 24], variants: 2, seasonal: true, shapeBySeason: true, flippable: true, parts: ['body', 'wings'],
+    palette: { base: { body: ['#2f8ac6', '#c43a2a'], dark: ['#1f5a82', '#8a2a1e'], wing: '#e6f6fa' }, autumn: { body: ['#3a6a8a', '#a8442a'], dark: ['#2a4a62', '#7a3020'] }, winter: { body: ['#5a6a74', '#7a5a52'], dark: ['#3a444a', '#5a4440'] } },
+    anim: { flap: { part: 'wings', pivot: [0, -2], sy: [0.2, 1], period: 0.12 } },
+    tags: ['uk', 'pond', 'waterside', 'dragonfly', 'insect', 'summer', 'kit:water', 'role:animal', 'class:air'],
+    credit: "drawn for the Wyndham's Pool views after the nature kit's K.dragonfly",
+    build(v, rnd, ctx) {
+      if (!ctx || ctx.season !== 'summer') return { body: [{ f: `@dark.${v}`, d: sceneD.ell(0, 0, 0.4, 0.4), op: 0.02 }], wings: [] };   // not on the wing
+      return {
+        body: [{ s: `@body.${v}`, w: 3, cap: 'round', d: 'M2 0h-30' }, { s: `@dark.${v}`, w: 3, op: 0.7, d: 'M-6 0h2M-12 0h2M-18 0h2M-24 0h2' }, { f: `@dark.${v}`, d: sceneD.ell(5, 0, 4, 3.2) }, { f: `@body.${v}`, d: sceneD.ell(9, 0, 2.6, 2.6) }],
+        wings: [{ f: '@wing', d: 'M2-2q-2-14 6-22 4 8-6 22zM-2-2q-6-14-2-22 8 8 2 22zM2 2q-2 14 6 22 4-8-6-22zM-2 2q-6 14-2 22 8-8 2-22z', op: 0.7 }],
+      };
+    },
+  });
 })();

@@ -38,17 +38,17 @@ function sceneUkWyndhamsPoolKit() {
   /** The tint rule that breaks up a stamp (two buckets: plain and 8 % toward col). */
   const T = (col) => ({ col, k: [0, 0.1] });
   const palette = {
-    base: { hill: ['#6f8f6a', '#56785a'], shore: ['#4a6a3e', '#3a5232'], bank: ['#4f7a34', '#7a6648'], near: ['#6a8a42', '#8a7550'], path: ['#b39a70', '#d2ba8e'], verge: ['#5f8f3a', '#4a6e30'], mud: ['#6a5a44', '#4e4232'] },
+    base: { pine: ['#4a6a5a', '#2e4a3a'], hill: ['#6f8f6a', '#56785a'], shore: ['#4a6a3e', '#3a5232'], bank: ['#4f7a34', '#7a6648'], near: ['#6a8a42', '#8a7550'], path: ['#b39a70', '#d2ba8e'], verge: ['#5f8f3a', '#4a6e30'], mud: ['#6a5a44', '#4e4232'] },
     spring: { hill: ['#7a9c6c', '#5f8a5a'], shore: ['#567a3a', '#40602e'], bank: ['#5f8f3a', '#8a7553'], near: ['#6f9f40', '#8a7553'], path: ['#a99069', '#cbb48a'], verge: ['#6f9f40', '#4c7a37'] },
     summer: { hill: ['#628a62', '#4f7553'], shore: ['#46703a', '#36562c'], bank: ['#4f7f34', '#8c7651'], near: ['#5f8f3a', '#8c7651'], path: ['#ad936a', '#d2ba8e'], verge: ['#5f8f3a', '#3f6b31'] },
     autumn: { hill: ['#a0844a', '#8a6a3c'], shore: ['#7a6e36', '#5e5428'], bank: ['#8a8a45', '#7d6247'], near: ['#8a8a45', '#7d6247'], path: ['#9e7f5a', '#c4a57c'], verge: ['#8a8a45', '#5f6a35'] },
-    winter: { hill: ['#8a8a96', '#74747e'], shore: ['#6e6e60', '#58584c'], bank: ['#8d9277', '#7a6a58'], near: ['#8d9277', '#7a6a58'], path: ['#9a8a76', '#c4b8a6'], verge: ['#8d9277', '#6b735a'], mud: ['#7a7064', '#5e564c'] },
+    winter: { pine: ['#4a625c', '#2c443c'], hill: ['#7e7682', '#686270'], shore: ['#5e5c4e', '#4a4a3e'], bank: ['#8d9277', '#7a6a58'], near: ['#8d9277', '#7a6a58'], path: ['#9a8a76', '#c4b8a6'], verge: ['#8d9277', '#6b735a'], mud: ['#7a7064', '#5e564c'] },
   };
   // near, fore and front share haze 0, so a sprite drawn in all three is one sprite (the SVG still's size)
   const layers = [
-    { id: 'horizon', depth: 0.08, haze: 0.6 },
-    { id: 'far', depth: 0.2, haze: 0.4 },
-    { id: 'mid', depth: 0.45, haze: 0.2 },
+    { id: 'horizon', depth: 0.08, haze: 0.3 },
+    { id: 'far', depth: 0.2, haze: 0.14 },
+    { id: 'mid', depth: 0.45, haze: 0.05 },
     { id: 'near', depth: 0.75, haze: 0 },
     { id: 'fore', depth: 1, haze: 0 },
     { id: 'front', depth: 1.25, haze: 0 },
@@ -62,29 +62,53 @@ function sceneUkWyndhamsPoolKit() {
     { obj: 'tree.far-pine', layer: 'far', seed: seed + 3, area: { rect: [-100, y0 - 14, 1700, y0 - 6] }, n: 7, minGap: 140, s: [0.62, 0.86], flip: 0.5, variant: 'random', mask: { noise: { scale: 300, cut: 0.25 } }, anim: false },
     { obj: { 'tree.far-birch': 3, 'tree.far-broad': 4 }, layer: 'mid', seed: seed + 2, area: { rect: [-120, y0 + 1, 1720, y0 + 9] }, n: 50, minGap: 18, s: [0.42, 0.66], flip: 0.5, variant: 1, anim: false },
   ];
-  /** A lobed woodland skyline (after the Wyndham's Pool proof): every lobe its own width and height, flat-topped Scots pines
-   *  standing out of it on bare trunks; filled down to foot. Never a straight band. */
-  const canopy = (base, seed, hMin, hMax, pine, foot) => {
+  /** A lobed woodland skyline (after the Wyndham's Pool proof): every lobe its own width and height, Scots pines standing
+   *  out of it on bare trunks (sink: an object that takes the crowns' path as .tiers, to fill in pine green), each crown two to four flat, ragged tiers set off to either side (never one round cap on a
+   *  stick); filled down to foot. Never a straight band. */
+  const canopy = (base, seed, hMin, hMax, pine, foot, sink) => {
     const r = sceneRnd(seed), R1 = v => Math.round(v * 10) / 10;
-    let d = `M-170 ${foot}V${base}`, x = -170;
+    /** one flat, ragged needle tier centred (cx, cy), rx by ry, drawn clockwise like the skyline (so the fill unites them) */
+    const tier = (cx, cy, rx, ry) => {
+      const nn = 7, pts = [];
+      for (let i = 0; i < nn; i++) { const a = Math.PI * 2 * i / nn + r() * 0.3, kk = 0.8 + r() * 0.35; pts.push([cx + Math.cos(a) * rx * kk, cy + Math.sin(a) * ry * kk * (Math.sin(a) > 0 ? 0.7 : 1.15)]); }
+      let s = `M${R1(pts[0][0])} ${R1(pts[0][1])}`;
+      for (let i = 1; i <= nn; i++) { const p = pts[(i - 1) % nn], q = pts[i % nn], mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, ox = mx - cx, oy = my - cy, l = Math.hypot(ox, oy) || 1, b = 0.25 + r() * 0.35; s += `Q${R1(mx + ox / l * rx * b * 0.5)} ${R1(my + oy / l * ry * b * 0.5)} ${R1(q[0])} ${R1(q[1])}`; }
+      return s + 'Z';
+    };
+    let d = `M-170 ${foot}V${base}`, x = -170, tiers = '';
     while (x < 1770) {
       const w = 14 + r() * 40, h = hMin + Math.pow(r(), 1.6) * (hMax - hMin), y1 = base - h;
       if (r() < pine) {
-        const cw = 14 + r() * 20, ch = 5 + r() * 6, tx = x + w / 2, ty = y1 - 12 - r() * 24;
-        d += `L${R1(tx - 1.2)} ${R1(y1 + 4)}L${R1(tx - 1.2)} ${R1(ty + ch * 0.6)}Q${R1(tx - cw)} ${R1(ty + ch)} ${R1(tx - cw * 0.7)} ${R1(ty)}Q${R1(tx - cw * 0.3)} ${R1(ty - ch)} ${R1(tx + cw * 0.1)} ${R1(ty - ch * 0.6)}Q${R1(tx + cw * 0.8)} ${R1(ty - ch * 0.9)} ${R1(tx + cw)} ${R1(ty + ch * 0.3)}Q${R1(tx + cw * 0.6)} ${R1(ty + ch)} ${R1(tx + 1.2)} ${R1(ty + ch * 0.6)}L${R1(tx + 1.2)} ${R1(y1 + 4)}`;
+        // the bare trunk up out of the wood, then the crown: a top tier and one to three lower tiers out to the sides
+        const tx = x + w / 2, top = y1 - 16 - r() * 28, cw = 9 + r() * 12, lean = (r() - 0.5) * 6, tw = 0.9 + r() * 0.6;
+        d += `L${R1(tx - tw)} ${R1(y1 + 4)}L${R1(tx - tw * 0.6 + lean)} ${R1(top + 3)}L${R1(tx + tw * 0.6 + lean)} ${R1(top + 3)}L${R1(tx + tw)} ${R1(y1 + 4)}`;
+        tiers += tier(tx + lean + (r() - 0.5) * cw * 0.5, top, cw, 3 + r() * 3);
+        const nt = 1 + Math.floor(r() * 3);
+        let sd = r() < 0.5 ? -1 : 1;
+        for (let i = 0; i < nt; i++) {
+          const ty = top + (i + 1) * (5 + r() * 5);
+          if (ty > y1 - 2) break;
+          const f = (ty - top) / Math.max(1, y1 - top), tcx = tx + lean * (1 - f) + sd * cw * (0.35 + r() * 0.45);
+          tiers += tier(tcx, ty, cw * (0.45 + r() * 0.35), 2.4 + r() * 2.4);
+          sd = -sd;
+        }
       } else d += `Q${R1(x + w * 0.1)} ${R1(y1 - h * 0.25)} ${R1(x + w * 0.5)} ${R1(y1 - h * 0.3)}Q${R1(x + w * 0.95)} ${R1(y1 - h * 0.2)} ${R1(x + w)} ${R1(base - h * (0.3 + r() * 0.5))}`;
       x += w * (0.6 + r() * 0.35);
     }
-    return d + `L1770 ${base}V${foot}Z`;
+    if (sink) { sink.tiers = tiers; return d + `L1770 ${base}V${foot}Z`; }   // the pine crowns drawn apart, in their own green
+    return d + `L1770 ${base}V${foot}Z` + tiers;
   };
   /** The far shore at waterline WL: three lobed skylines (no stamps), then real trees in GROUPS with gaps between them:
    *  stands of tall Scots pine, birch clumps, oak and mixed wood, an open heathy gap now and then. `hide` lists x ranges
    *  a near tree already covers (no far trees drawn there). Returns { ground, scatter }. */
   const farShore = (WL, seed, o = {}) => {
     const k = o.k || 1, hide = o.hide || [], r = sceneRnd(seed + 900), sc = [];
+    const hz = {}, fz = {};
     const ground = [
-      { layer: 'horizon', d: canopy(WL - 40 * k, seed, 14 * k, 50 * k, 0.18, WL + 4), fill: { lin: [[0, '@hill.0'], [1, '@hill.1']], x1: 0, y1: WL - 90 * k, x2: 0, y2: WL } },
-      { layer: 'far', d: canopy(WL - 18 * k, seed + 1, 10 * k, 42 * k, 0.18, WL + 4), fill: { lin: [[0, '@shore.0'], [1, '@shore.1']], x1: 0, y1: WL - 60 * k, x2: 0, y2: WL } },
+      { layer: 'horizon', d: canopy(WL - 40 * k, seed, 14 * k, 50 * k, 0.18, WL + 4, hz), fill: { lin: [[0, '@hill.0'], [1, '@hill.1']], x1: 0, y1: WL - 90 * k, x2: 0, y2: WL } },
+      { layer: 'horizon', d: hz.tiers, fill: '@pine.0' },
+      { layer: 'far', d: canopy(WL - 18 * k, seed + 1, 10 * k, 42 * k, 0.18, WL + 4, fz), fill: { lin: [[0, '@shore.0'], [1, '@shore.1']], x1: 0, y1: WL - 60 * k, x2: 0, y2: WL } },
+      { layer: 'far', d: fz.tiers, fill: '@pine.1' },
       { layer: 'mid', d: canopy(WL - 2, seed + 2, 3 * k, 16 * k, 0, WL + 6), fill: { lin: [[0, '@shore.1'], [1, '@mud.0']], x1: 0, y1: WL - 20 * k, x2: 0, y2: WL + 6 } },
     ];
     let x = -120, n = 0;
@@ -140,6 +164,9 @@ function sceneUkWyndhamsPoolWide() {
       { layer: 'fore', d: 'M-160 806Q240 782 640 800T1300 796T1760 790V900H-160Z', fill: { lin: [[0, '@near.0'], [1, '@near.1']], x1: 0, y1: 790, x2: 0, y2: 900 } },
       { layer: 'fore', d: 'M330 912Q420 872 610 850Q900 826 1300 828Q1560 828 1760 822V848Q1520 852 1240 858Q900 866 760 884Q690 898 676 912Z', fill: { lin: [[0, '@path.0'], [1, '@path.1']], x1: 0, y1: 822, x2: 0, y2: 912 } },
       { layer: 'fore', d: 'M560 870Q700 852 900 846Q760 860 700 872Z', fill: '@path.1' },
+      // the framing foreground: the heath rises into banks either side of the path (the path drops between them)
+      { layer: 'front', d: 'M-160 706Q-40 704 70 738Q190 782 268 846Q318 884 336 912H-160Z', fill: { lin: [[0, '@near.0'], [1, '@mud.1']], x1: 0, y1: 706, x2: 0, y2: 912 } },
+      { layer: 'front', d: 'M1760 726Q1630 736 1530 790Q1446 836 1398 878Q1370 898 1360 912H1760Z', fill: { lin: [[0, '@near.0'], [1, '@mud.1']], x1: 0, y1: 726, x2: 0, y2: 912 } },
     ],
     water: [
       { layer: 'mid', d: `M-160 ${WL + 4}Q260 ${WL - 2} 700 ${WL + 6}T1760 ${WL + 2}V900H-160Z`, y0: WL + 2, y1: 860, base: ['#7c9a8c', '#3a5e56', '#1c3a36'], reflect: true, shimmer: 36, lightPath: true },
@@ -176,9 +203,9 @@ function sceneUkWyndhamsPoolWide() {
       // the near trees: a second pine and birches on the banks, an oak at the water
       one('tree.pool-pine', 1716, 700, 0.92, 1, 'near', 44, 1, false),
       one('tree.pool-birch', 176, 632, 0.9, 0, 'near', 38, 0),
-      one('tree.birch-heath', 244, 690, 0.62, 2, 'near', 39, 1, false),
+      one('tree.pool-birch', 244, 690, 0.6, 2, 'near', 39, 1, false),
       one('tree.pool-birch', 1502, 612, 1.0, 1, 'near', 42, 1),
-      one('tree.birch-heath', 1588, 652, 0.9, 0, 'near', 43, 0, false),
+      one('tree.pool-birch', 1588, 652, 0.84, 2, 'near', 43, 0, false),
       one('tree.pool-oak', 1420, 652, 0.7, 1, 'near', 41, 0, false),
       one('plant.holly', 100, 650, 0.6, 0, 'near', 58, 0, false),
       // heath on the spit and the right bank: heather and gorse mounds, fern
@@ -202,8 +229,17 @@ function sceneUkWyndhamsPoolWide() {
       one('plant.gorse', 210, 820, 0.7, 0, 'fore', 65, 0, false), one('plant.gorse', 1380, 862, 0.6, 1, 'fore', 66, 1, false),
       // the verge in front, moving in the wind; bracken at the corners
       { obj: { 'plant.grass-long': 4, 'plant.grass': 3, 'plant.heather': 2 }, layer: 'front', seed: 17, area: { rect: [700, 893, 1760, 912] }, n: 80, minGap: 12, s: [0.7, 1.1], flip: 0.5, variant: 'random', tint: T('#8a7a40'), anim: 'strip' },
-      one('plant.bracken', -100, 918, 1.5, 0, 'front', 18, 0, false), one('plant.bracken', 150, 924, 1.2, 2, 'front', 20, 0, false),
-      one('plant.bracken', 1480, 900, 1.2, 1, 'front', 28, 1, false), one('plant.bracken', 1600, 912, 1.5, 0, 'front', 29, 0, false), one('plant.bracken', 1730, 902, 1.2, 2, 'front', 30, 1, false),
+      // the banks in the foreground: big bracken arching over, gorse in flower, heather and bilberry, long grass moving
+      one('plant.wyv-heath-bank', -40, 790, 1.25, 1, 'front', 31, 1, false), one('plant.wyv-heath-bank', 150, 860, 1.0, 2, 'front', 32, 0, false),
+      one('plant.wyv-heath-bank', 1640, 820, 1.25, 1, 'front', 38, 0, false), one('plant.wyv-heath-bank', 1480, 890, 1.0, 2, 'front', 39, 1, false),
+      { obj: 'plant.moor-heather', layer: 'front', seed: 40, area: AREA([[-160, 716], [70, 748], [250, 852], [320, 912], [-160, 912]]), n: 22, minGap: 30, s: [1.1, 1.4], flip: 0.5, variant: 0, anim: false },
+      { obj: 'plant.moor-heather', layer: 'front', seed: 41, area: AREA([[1760, 736], [1540, 800], [1420, 880], [1380, 912], [1760, 912]]), n: 18, minGap: 30, s: [1.1, 1.4], flip: 0.5, variant: 0, anim: false },
+      one('plant.yc-gorse-spray', 10, 770, 0.7, 0, 'front', 33, 0, false), one('plant.yc-gorse-spray', 1700, 790, 0.64, 1, 'front', 34, 1, false),
+      one('ground.log', 1540, 884, 0.62, 1, 'front', 35, 1, false),
+      one('plant.fern', 214, 884, 0.9, 0, 'front', 36, 1, false),
+      { obj: 'plant.grass-long', layer: 'front', seed: 37, area: AREA([[-160, 712], [90, 760], [300, 900], [-160, 912]]), n: 10, minGap: 34, s: [1.4, 1.4], flip: 0.5, variant: 'random', tint: T('#8a7a40'), mask: { noise: { scale: 120, cut: 0.35 } }, anim: 'strip' },
+      one('plant.bracken', -60, 918, 2.1, 0, 'front', 18, 0, false), one('plant.bracken', 170, 930, 1.6, 2, 'front', 20, 0, false), one('plant.bracken', 60, 830, 1.2, 1, 'front', 19, 1, false),
+      one('plant.bracken', 1450, 916, 1.4, 1, 'front', 28, 1, false), one('plant.bracken', 1630, 922, 2.0, 0, 'front', 29, 0, false), one('plant.bracken', 1700, 836, 1.2, 2, 'front', 30, 1, false),
     ],
     actors: [
       // the heron, stalking the shallows off the spit and stabbing at fish

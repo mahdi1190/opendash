@@ -63,8 +63,22 @@ const SCENE_FPV = Object.freeze({
     while (x < 1770) {
       const w = 14 + r() * 40, h = hMin + Math.pow(r(), 1.6) * (hMax - hMin), y1 = base - h, k = r();
       if (k < pine) {
-        const cw = 16 + r() * 22, ch = 6 + r() * 7, tx = x + w / 2, ty = y1 - 14 - r() * 26;
-        d += `L${R1(tx - 1.2)} ${R1(y1 + 4)}L${R1(tx - 1.2)} ${R1(ty + ch * 0.6)}Q${R1(tx - cw)} ${R1(ty + ch)} ${R1(tx - cw * 0.7)} ${R1(ty)}Q${R1(tx - cw * 0.3)} ${R1(ty - ch)} ${R1(tx + cw * 0.1)} ${R1(ty - ch * 0.6)}Q${R1(tx + cw * 0.8)} ${R1(ty - ch * 0.9)} ${R1(tx + cw)} ${R1(ty + ch * 0.3)}Q${R1(tx + cw * 0.6)} ${R1(ty + ch)} ${R1(tx + 1.2)} ${R1(ty + ch * 0.6)}L${R1(tx + 1.2)} ${R1(y1 + 4)}`;
+        // (round 2) a Scots pine as it stands out of a far wood: a short bare stem above the broadleaves, an irregular crown
+        // about as deep as it is wide (two or three lumps on its flat top, a ragged underside with a hanging clump), often a
+        // lower tier off one side, leaning a little: not a disc on a stick
+        const s = 0.75 + r() * 0.6, cw = (6 + r() * 6) * s, ch = (7 + r() * 6) * s, sh = (2 + r() * 6) * s, tx = x + w / 2, ln = (r() - 0.5) * 3;
+        const cb = y1 - sh, ct = cb - ch, tw = 0.8 + 0.4 * s, side = r() < 0.5 ? -1 : 1, tier = sh > 3.5 && r() < 0.75, P = (X, Y) => `${R1(X)} ${R1(Y)}`;
+        // the lower tier: up the left of the stem (sg -1) or down its right (sg 1)
+        const tierAt = (sg) => {
+          const yb = cb + sh * 0.5, e = cw * (0.7 + r() * 0.2), lo = [tx + sg * tw, yb + 1.6], hi = [tx + sg * tw, yb - 2.4];
+          return sg < 0 ? `L${P(...lo)}Q${P(tx - e, yb + 2.2)} ${P(tx - e * 1.05, yb - 1.2)}Q${P(tx - e * 0.6, yb - 4.2)} ${P(...hi)}`
+            : `L${P(...hi)}Q${P(tx + e * 0.6, yb - 4.2)} ${P(tx + e * 1.05, yb - 1.2)}Q${P(tx + e, yb + 2.2)} ${P(...lo)}`;
+        };
+        d += `L${P(tx - tw, y1 + 4)}` + (tier && side < 0 ? tierAt(-1) : '') + `L${P(tx - tw * 0.6 + ln, cb + 1)}`
+          + `Q${P(tx - cw * 0.3 + ln, cb + ch * 0.3)} ${P(tx - cw * 0.6 + ln, cb + ch * 0.06)}Q${P(tx - cw * 1.05 + ln, cb + ch * 0.12)} ${P(tx - cw + ln, cb - ch * 0.3)}`
+          + `Q${P(tx - cw * 1.12 + ln, cb - ch * 0.75)} ${P(tx - cw * 0.55 + ln, ct + ch * 0.12)}Q${P(tx - cw * 0.28 + ln, ct - ch * 0.14)} ${P(tx + ln * 1.2, ct + ch * 0.06)}`
+          + `Q${P(tx + cw * 0.35 + ln, ct - ch * 0.2)} ${P(tx + cw * 0.72 + ln, ct + ch * 0.18)}Q${P(tx + cw * 1.12 + ln, cb - ch * 0.5)} ${P(tx + cw * 0.86 + ln, cb - ch * 0.1)}`
+          + `Q${P(tx + cw * 0.5 + ln, cb + ch * 0.14)} ${P(tx + tw * 0.6 + ln, cb + 1)}` + (tier && side > 0 ? tierAt(1) : '') + `L${P(tx + tw, y1 + 4)}`;
       } else if (k < pine + (birch || 0)) {
         const tx = x + w / 2, ty = y1 - h * 0.5;
         d += `L${R1(tx - 5)} ${R1(y1 + 2)}Q${R1(tx - 6)} ${R1(ty + 4)} ${R1(tx)} ${R1(ty)}Q${R1(tx + 6)} ${R1(ty + 4)} ${R1(tx + 5)} ${R1(y1 + 2)}`;
@@ -73,12 +87,28 @@ const SCENE_FPV = Object.freeze({
     }
     return d + `L1770 ${base}V${foot}Z`;
   },
+  /** A ring with holes cut in it (round 2): each hole joined to the ring's nearest vertex by a zero-width slit and wound the
+   *  other way, so an even-odd or non-zero fill and the engine's point-in-polygon both leave it out (reed islands in a water
+   *  region). Only for far holes: a slit is an edge, and an edge look would draw along it. */
+  keyhole(ring, holes) {
+    const area = (P) => P.reduce((s, p, i) => { const q = P[(i + 1) % P.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0), sg = Math.sign(area(ring));
+    let out = ring.map(p => p.slice());
+    for (const h0 of holes) {
+      const h = Math.sign(area(h0)) === sg ? h0.slice().reverse() : h0.slice();
+      let bi = 0, bd = Infinity;
+      out.forEach((p, i) => { const dd = Math.hypot(p[0] - h[0][0], p[1] - h[0][1]); if (dd < bd) { bd = dd; bi = i; } });
+      out = out.slice(0, bi + 1).concat(h.map(p => p.slice()), [h[0].slice(), out[bi].slice()], out.slice(bi + 1));
+    }
+    return out;
+  },
   /** The camera's projection: [X, Y] of ground (x, d) at height h. */
   proj(cam) { const f = 800 / Math.tan(cam.fov * Math.PI / 360), x0 = cam.x0 || 800; return { f, p: (x, d, h) => [x0 + f * x / d, cam.horizon + f * (cam.eye - (h || 0)) / d] }; },
 
   // ---- v2: the Gelvert stream boardwalk (south-west carr), looking north down the stream to the pond and the main line
   v2: Object.freeze({
-    camera: { eye: 2.4, fov: 66, horizon: 400, heading: 8, lat: 51.2853, lon: -0.8266, water: -0.45 },
+    // (round 2) the water 0.2 m under the carr floor (was 0.45): the main line's foot then stands on the water's far row, so the
+    // water pass mirrors the trains (a mover more than 2 units above a region's top is not considered)
+    camera: { eye: 2.4, fov: 66, horizon: 400, heading: 8, lat: 51.2853, lon: -0.8266, water: -0.2 },
     // the boardwalk: on from the camera, a bridge over the stream, on through the sedge to the platform over the stream mouth
     deck: [[0.1, 2.4], [0.2, 5], [0.5, 7.5], [1.0, 10], [1.5, 12.6], [1.9, 15.2], [2.0, 17.6], [1.4, 19.4]],
     deckW: 1.3,
@@ -507,14 +537,149 @@ const SCENE_FPV_WALK = (function () {
       body.push({ f: `@hull.${H}`, d: `M-74 ${lift - 14}Q-70 ${lift + 2} -40 ${lift + 2}H54Q76 ${lift - 2} 80 ${lift - 16}Z` });
       body.push({ f: `@hullD.${H}`, d: `M-72 ${lift - 6}Q-66 ${lift + 2} -40 ${lift + 2}H54Q72 ${lift - 1} 78 ${lift - 8}Z`, op: 0.8 });
       body.push({ f: '@boot', d: `M-74 ${lift - 14}H80L79 ${lift - 11}H-73Z`, op: 0.85 });
-      body.push({ f: `@cover.${H}`, d: `M-56 ${lift - 14}Q-40 ${lift - 24} 10 ${lift - 24}Q50 ${lift - 22} 62 ${lift - 14}Z` });
-      body.push({ s: '@spar', w: 3, d: `M8 ${lift - 22}V${lift - 228}` }, { s: '@spar', w: 3.4, d: `M8 ${lift - 52}H-66` });
-      body.push({ f: `@cover.${H}`, d: `M8 ${lift - 59}Q-20 ${lift - 60} -60 ${lift - 54}Q-63 ${lift - 52} -60 ${lift - 50}Q-20 ${lift - 47} 8 ${lift - 49}Z` });
-      body.push({ s: `@cover.${H}`, w: 1.4, op: 0.8, d: `M-6 ${lift - 60}v12M-24 ${lift - 60}v11M-42 ${lift - 58}v8`, detail: true });
+      // (round 2) the boom is stowed down on the cover, the sail bagged in the cockpit: no furled sail held up on the boom (it
+      // read, with its reflection, as a lozenge floating apart from the hull); the cover is a low tent over the boom
+      body.push({ f: `@cover.${H}`, d: `M-60 ${lift - 14}Q-52 ${lift - 26} -20 ${lift - 29}L10 ${lift - 31}Q48 ${lift - 26} 64 ${lift - 14}Z` });
+      body.push({ s: '@hullD.' + H, w: 1.2, op: 0.5, d: `M-40 ${lift - 15}Q-30 ${lift - 22} -22 ${lift - 27}M30 ${lift - 15}Q34 ${lift - 22} 40 ${lift - 26}`, detail: true });
+      body.push({ s: '@spar', w: 3, d: `M8 ${lift - 26}V${lift - 228}` }, { s: '@spar', w: 2.6, d: `M8 ${lift - 32}L-58 ${lift - 26}` });
       body.push({ s: '@rope', w: 0.8, op: 0.8, d: `M8 ${lift - 220}L76 ${lift - 16}M8 ${lift - 220}L-70 ${lift - 14}`, detail: true });
       body.push({ f: '@burgee', d: `M9 ${lift - 228}l12 3l-12 3z` });
-      if (!ashore) body.push({ s: '@wake', w: 1.4, op: 0.45, d: 'M-84 3h40M40 3h44', detail: true });
+      if (!ashore) {
+        // the hull sits IN the water: a dark contact line along the waterline, a little ripple off the bow and stern
+        body.push({ f: '#1c2a32', op: 0.35, d: sceneD.ell(3, 1.5, 80, 2.6) });
+        body.push({ s: '@wake', w: 1.2, op: 0.35, d: 'M-92 4h18M80 4h16', detail: true });
+      }
       return { body };
+    },
+  });
+})();
+
+/* ---------- (round 2) v1's landmark: the fallen pine in the shallows off Sandy Bay, and the cormorants that use it ----------
+   tree.fpv-fallen-pine: a Scots pine blown down off the top of the beach, lying out across the shallows at one depth (it fell
+   straight out from the shore, so it lies across the view): the root plate standing on the sand at the left, the trunk running
+   right down into the water, its bark half gone to silver, dead branch stubs sticking up and the last of the crown's twigs
+   poking out of the water at the far end; three cormorants on it, one holding its wings out to dry, one upright on a stub, one
+   hunched near the end (cormorants roost and dry on Fleet Pond's dead wood all year).
+   Units: 100 to the metre; anchor (0, 0): the ground under the trunk's middle at the beach's level; the water surface 12 below
+   (the pond 0.12 m under the sand), so the water pass mirrors it about its own waterline. The birds are part of the drawing
+   (their reflections come with it). */
+(function () {
+  if (typeof sceneObjDefine !== 'function') return;
+  const R = (v) => Math.round(v * 10) / 10, WL = 12;
+  const pts = (P) => 'M' + P.map(p => R(p[0]) + ' ' + R(p[1])).join('L') + 'Z';
+  /** The trunk: u 0 at the root (x -280), 1 at the top (x 280); its axis height and radius in units. */
+  const X = (u) => -280 + 560 * u, axis = (u) => -(24 - 32 * u), rad = (u) => 25 - 16 * u;
+  /** A dead branch as a tapering quad: from (x, y) at angle a (radians, 0 = right, -pi/2 = up), length L, width w. */
+  const stub = (x, y, a, L, w) => {
+    const ex = x + Math.cos(a) * L, ey = y + Math.sin(a) * L, nx = -Math.sin(a), ny = Math.cos(a);
+    return pts([[x + nx * w / 2, y + ny * w / 2], [ex + nx * w * 0.15, ey + ny * w * 0.15], [ex - nx * w * 0.15, ey - ny * w * 0.15], [x - nx * w / 2, y - ny * w / 2]]);
+  };
+  /** A cormorant (feet at x, y; facing right unless fl -1): pose 0 wings held out, 1 upright, 2 hunched. */
+  const cormorant = (out, x, y, pose, fl) => {
+    const P = (a) => a.map(([px, py]) => [x + fl * px, y + py]);
+    if (pose === 0) {
+      // the wings out to dry: two broad ragged wings either side of the upright body
+      out.push({ f: '@bird.1', d: pts(P([[-2, -44], [-16, -56], [-34, -58], [-46, -50], [-50, -36], [-44, -38], [-46, -28], [-38, -31], [-38, -22], [-30, -27], [-8, -30]])) });
+      out.push({ f: '@bird.1', d: pts(P([[4, -44], [18, -57], [36, -60], [48, -52], [52, -38], [46, -40], [48, -29], [40, -32], [40, -23], [32, -28], [8, -30]])) });
+      out.push({ s: '@bird.2', w: 1.2, op: 0.6, d: `M${R(x - fl * 30)} ${R(y - 52)}l${R(-fl * 10)} 16M${R(x - fl * 20)} ${R(y - 54)}l${R(-fl * 6)} 22M${R(x + fl * 32)} ${R(y - 54)}l${R(fl * 10)} 16M${R(x + fl * 22)} ${R(y - 55)}l${R(fl * 6)} 22`, detail: true });
+    }
+    const hunch = pose === 2 ? 8 : 0;
+    // the tail braced down on the perch, the body, the neck in its S and the head, the hooked bill, the white cheek and throat
+    out.push({ f: '@bird.0', d: pts(P([[-4, -10], [-14, 2], [-10, 3], [2, -8]])) });
+    out.push({ f: '@bird.0', d: pts(P([[-7, -6], [-9, -24], [-6, -40 + hunch], [2, -46 + hunch], [9, -40 + hunch], [9, -22], [5, -6], [0, -2]])) });
+    out.push({ f: '@bird.2', d: pts(P([[2, -44 + hunch], [8, -38 + hunch], [8, -24], [5, -30], [3, -40 + hunch]])), op: 0.5 });
+    const nb = pose === 2 ? [[2, -44], [6, -46], [8, -42], [3, -38]] : [[2, -44], [5, -54], [3, -60], [6, -66], [12, -66], [11, -60], [9, -54], [8, -44]];
+    out.push({ f: '@bird.0', d: pts(P(nb.map(([a, b]) => [a, b + hunch]))) });
+    const hx = pose === 2 ? 8 : 9, hy = (pose === 2 ? -46 : -66) + hunch;
+    out.push({ f: '@bird.0', d: sceneD.ell(x + fl * hx, y + hy, 5.4, 4.6) });
+    out.push({ f: '@bill', d: pts(P([[hx + 3, hy - 1.5], [hx + 15, hy - 0.5], [hx + 16, hy + 1.8], [hx + 14, hy + 0.6], [hx + 3, hy + 1.6]])) });
+    out.push({ f: '@face', d: sceneD.ell(x + fl * (hx + 1.5), y + hy + 2.6, 3.4, 2.2), op: 0.95 });
+    out.push({ f: '@gular', d: sceneD.ell(x + fl * (hx + 4.5), y + hy + 0.6, 1.8, 1.4) });
+    out.push({ f: '#e8f0e0', d: sceneD.circ(x + fl * (hx + 2.2), y + hy - 1.2, 0.9) });
+    // the feet gripping the wood
+    out.push({ s: '@bird.0', w: 2.2, d: `M${R(x - fl * 2)} ${R(y - 6)}l${R(-fl * 2)} 6M${R(x + fl * 3)} ${R(y - 6)}l${R(fl * 2)} 6`, cap: 'round' });
+  };
+  sceneObjDefine({
+    id: 'tree.fpv-fallen-pine', category: 'tree', size: [720, 200], box: [-340, -170, 380, 22], variants: 1, seasonal: true, flippable: false,
+    real: { h: 1.7, l: 6.2, w: 1.6 },
+    palette: {
+      base: { bark: ['#4e4036', '#6e5a48', '#8e7a66'], silver: ['#a8a296', '#8a857a', '#c4beb2'], orange: ['#a8603a', '#c47a4a'], root: ['#5a4632', '#3a2e22', '#7a6448'], sand: ['#c8b48a', '#a8946c'], algae: ['#3e4a2a', '#56623a'], twig: ['#6e665a', '#4e483e'], ripple: '#e8f2f4',
+        bird: ['#1a1b1c', '#26282a', '#5a5238'], bill: '#8a7a5a', face: '#ece6d6', gular: '#d8a440' },
+      winter: { silver: ['#b4aea4', '#948e84', '#d4d0c8'], sand: ['#c4b89c', '#a49a80'] },
+    },
+    parts: ['wood', 'birds'],
+    reflect: true, shadow: false,
+    tags: ['uk', 'pond', 'dead-wood', 'fallen-tree', 'perch', 'cormorant', 'landmark', 'kit:water', 'kit:birds', 'class:water', 'role:landmark'],
+    credit: 'drawn for the Fleet Pond views: a fallen pine in the shallows of Sandy Bay, with cormorants (Phalacrocorax carbo)',
+    build(v, rnd, ctx) {
+      const season = (ctx && ctx.season) || 'summer', wood = [], birds = [];
+      // the root plate on the sand: the torn-up disc of roots and peaty sand, seen nearly edge-on (the trunk runs across the
+      // view), so a lumpy mound taller than wide, sand and peat clinging to it, broken roots hanging off its top and sides
+      const plate = [];
+      for (let i = 0; i <= 18; i++) {
+        const t = i / 18, a = Math.PI * (1 + t), w = 34 + 10 * Math.sin(t * Math.PI), rr = 0.82 + rnd() * 0.3;
+        plate.push([-296 + Math.cos(a) * w * rr * (t > 0.5 ? 1.1 : 1), 6 + Math.sin(a) * 92 * rr * (0.7 + 0.3 * Math.sin(t * Math.PI))]);
+      }
+      wood.push({ f: '@root.1', d: pts(plate) });
+      wood.push({ f: '@root.0', d: pts(plate.map(([x, y]) => [-296 + (x + 296) * 0.78 + 5, 6 + (y - 6) * 0.86])), op: 0.9 });
+      wood.push({ f: '@sand.1', d: pts([[-318, 4], [-314, -22], [-300, -40], [-286, -30], [-276, -44], [-266, -16], [-262, 4]]), op: 0.85 });
+      wood.push({ f: '@sand.0', d: pts([[-310, 4], [-304, -14], [-292, -22], [-280, -12], [-270, 4]]), op: 0.7 });
+      wood.push({ f: '@sand.0', d: 'M-346 9Q-326 -6 -300 -4Q-268 -8 -240 9Z' });
+      let rt = '';
+      for (let i = 0; i < 11; i++) {
+        const t = i / 10, x0 = -322 + t * 52 + (rnd() - 0.5) * 6, y0 = -62 - Math.sin(t * Math.PI) * 18 + rnd() * 8, sx = (t - 0.5) * 34 + (rnd() - 0.5) * 10, L = 18 + rnd() * 22;
+        rt += `M${R(x0)} ${R(y0)}q${R(sx * 0.6)} ${R(-L * 0.4)} ${R(sx)} ${R(-L * 0.2 + 10)}`;
+      }
+      for (let i = 0; i < 5; i++) { const side = i % 2 ? 1 : -1, y0 = -50 + i * 9; rt += `M${R(-296 + side * 34)} ${R(y0)}q${R(side * 12)} ${R(2)} ${R(side * 16)} ${R(16 + rnd() * 10)}`; }
+      wood.push({ s: '@root.2', w: 3.6, d: rt, cap: 'round' });
+      wood.push({ s: '@root.1', w: 1.6, d: rt, cap: 'round', op: 0.5, detail: true });
+      wood.push({ f: '@silver.1', d: sceneD.ell(-288, -18, 4.4, 3.2) + sceneD.ell(-304, -50, 3.4, 2.6) + sceneD.ell(-282, -66, 2.8, 2.2), op: 0.9, detail: true });
+      // the trunk: its top line and its underside (cut at the water: the rest is under it)
+      const n = 28, top = [], bot = [];
+      for (let i = 0; i <= n; i++) { const u = i / n, x = X(u) + (rnd() - 0.5) * 2, bump = (rnd() - 0.5) * 2.4 + (u < 0.1 ? (0.1 - u) * 60 : 0); top.push([x, axis(u) - rad(u) - bump]); bot.push([x, Math.min(WL, axis(u) + rad(u))]); }
+      wood.push({ f: '@bark.0', d: pts(top.concat(bot.slice().reverse())) });
+      // the round of the trunk: dark below, the bark's brown, then silver where the bark has gone, the light along the top
+      const band = (k0, k1) => { const a = [], b = []; for (let i = 0; i <= n; i++) { const u = i / n; a.push([top[i][0], axis(u) - rad(u) * k0 - (top[i][1] - (axis(u) - rad(u))) * (k0 > 0.9 ? 1 : 0)]); b.push([top[i][0], Math.min(WL, axis(u) - rad(u) * k1)]); } return pts(a.concat(b.reverse())); };
+      wood.push({ f: '@bark.1', d: band(0.98, -0.45), op: 0.9 });
+      wood.push({ f: '@silver.1', d: band(0.95, 0.05), op: 0.85 });
+      wood.push({ f: '@silver.0', d: band(0.9, 0.5), op: 0.9 });
+      // knots where branches broke off, dark
+      let kn = '';
+      for (let i = 0; i < 7; i++) { const u = 0.15 + rnd() * 0.75; kn += sceneD.ell(X(u), axis(u) - rad(u) * (rnd() * 0.5), 3 + rnd() * 3, 2 + rnd() * 2); }
+      wood.push({ f: '@bark.0', d: kn, op: 0.8 });
+      let pl = '';
+      for (let i = 0; i < 18; i++) { const u = 0.35 + rnd() * 0.6, x = X(u), y = axis(u) - rad(u) * (0.2 + rnd() * 0.6), w = 8 + rnd() * 14; pl += `M${R(x)} ${R(y)}l${R(w)} ${R(-1 - rnd())}l-2 ${R(4 + rnd() * 3)}l${R(-w + 2)} 1z`; }
+      wood.push({ f: '@orange.0', d: pl, op: 0.75 });
+      // the bark's long cracks, the dark wet band at the water and the algae on it
+      let cr = '';
+      for (let i = 0; i < 16; i++) { const u = rnd() * 0.95, x = X(u), y = axis(u) - rad(u) * (rnd() * 0.8); cr += `M${R(x)} ${R(y)}l${R(18 + rnd() * 30)} ${R((rnd() - 0.5) * 2)}`; }
+      wood.push({ s: '@bark.0', w: 1.6, d: cr, op: 0.7, detail: true });
+      wood.push({ f: '@silver.1', d: pts(top.concat(top.slice().reverse().map(([x, y]) => [x, y + 3]))), op: 0.5 });
+      const wet = [];
+      for (let i = 0; i <= n; i++) { const u = i / n, b = Math.min(WL, axis(u) + rad(u)); wet.push([X(u), Math.max(axis(u) - rad(u), b - 7)]); }
+      wood.push({ f: '@algae.0', d: pts(wet.concat(bot.slice().reverse())), op: 0.85 });
+      // the dead branches: stubs angling up (some broken short); the crown's last twigs out of the water at the end
+      const stubs = [[0.18, -1.9, 46, 7], [0.3, -1.25, 70, 7], [0.42, -1.75, 92, 6.4], [0.47, -2.5, 38, 5], [0.58, -1.1, 54, 5.4], [0.7, -2.0, 62, 5], [0.8, -1.5, 40, 4], [0.86, -2.4, 52, 3.6]];
+      for (const [u, a, L, w] of stubs) {
+        const x = X(u), y = axis(u) - rad(u) * 0.7;
+        wood.push({ f: '@silver.' + (rnd() < 0.5 ? 1 : 0), d: stub(x, y, a, L, w) });
+        wood.push({ f: '@silver.2', d: stub(x - 1, y, a, L * 0.9, w * 0.35), op: 0.6, detail: true });
+        if (L > 50) { const fx = x + Math.cos(a) * L * 0.6, fy = y + Math.sin(a) * L * 0.6; wood.push({ f: '@silver.1', d: stub(fx, fy, a + 0.7, L * 0.35, w * 0.45) }); }
+      }
+      let tw = '';
+      for (let i = 0; i < 16; i++) { const x = 230 + rnd() * 120, h = 10 + rnd() * 40, lean = (rnd() - 0.3) * 20; tw += `M${R(x)} ${WL}q${R(lean * 0.4)} ${R(-h * 0.6)} ${R(lean)} ${R(-h)}`; if (rnd() < 0.6) tw += `M${R(x + lean * 0.5)} ${R(WL - h * 0.5)}l${R(6 + rnd() * 6)} ${R(-6 - rnd() * 8)}`; }
+      wood.push({ s: '@twig.0', w: 2, d: tw, cap: 'round' });
+      if (season === 'winter') wood.push({ f: '#f2f4f4', d: pts(top.concat(top.slice().reverse().map(([x, y]) => [x, y + 2.4]))), op: 0.7 });
+      // where it meets the water: light ripple lines along it and round the twigs
+      let rp = '';
+      for (let i = 0; i < 12; i++) { const x = -240 + i * 52 + rnd() * 20; rp += `M${R(x)} ${WL + 1.5}h${R(18 + rnd() * 18)}M${R(x + 10)} ${WL + 5}h${R(10 + rnd() * 14)}`; }
+      wood.push({ s: '@ripple', w: 1.2, d: rp, op: 0.4, detail: true });
+      // the cormorants: drying its wings on the trunk, upright on the tall stub, hunched near the end
+      cormorant(birds, X(0.6), axis(0.6) - rad(0.6) + 2, 0, 1);
+      const sa = stubs[2], sx = X(sa[0]) + Math.cos(sa[1]) * sa[2] * 0.96, sy = axis(sa[0]) - rad(sa[0]) * 0.7 + Math.sin(sa[1]) * sa[2] * 0.96;
+      cormorant(birds, sx, sy + 1, 1, -1);
+      cormorant(birds, X(0.83), axis(0.83) - rad(0.83) + 2, 2, 1);
+      return { wood, birds };
     },
   });
 })();

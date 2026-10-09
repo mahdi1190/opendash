@@ -125,7 +125,7 @@ function sceneUkWyndhamsPoolClose() {
     flocks: [
       { obj: 'bird.small-flight', n: 5, area: [300, 160, 1300, 300], speed: 34, s: 0.5, seed: 141, layer: 'far' },
       { obj: 'bird.goose-flight', n: 6, area: [200, 100, 1400, 220], speed: 26, s: 0.34, seed: 142, layer: 'far' },
-      { obj: 'animal.dragonfly', n: 3, area: [260, 560, 1100, 760], speed: 30, s: 0.9, seed: 143, layer: 'fore' },
+      { obj: 'animal.wyv-dragonfly', n: 3, area: [260, 560, 1100, 760], speed: 30, s: 0.9, seed: 143, layer: 'fore' },
     ],
     particles: 'season',
     weather: 'live',

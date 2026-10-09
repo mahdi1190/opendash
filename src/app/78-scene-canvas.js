@@ -343,6 +343,9 @@ function sceneRendererCreate(canvas, src, o) {
     const T = [vs, 0, 0, vs, ox, oy];                     // scene units -> device px
     const placeM = (x, y, s, flip) => [vs * s * (flip ? -1 : 1), 0, 0, vs * s, vs * x + ox, vs * y + oy];
     const out = { W, H, vs, ox, oy, lk, L: Lx, C, groups: [], sky: null, stars: [], clouds: [], strips: [], particles: null, rain: null, snow: null, opaque: [], sprites: new Set(), frameSprites: new Set() };
+    // the season's life (user request, 9 Oct): the snow particles and the insects this day keeps; its key re-bakes (setLight)
+    const life = _sccLife(Lx, C);
+    out.life = life.key;
     // keep: a sprite a frame draws (the warm-up sends it to the raster); keepStatic: one only the bake draws (into a bitmap)
     const keep = (sp) => { if (sp && sp.c) { out.sprites.add(sp); out.frameSprites.add(sp); } return sp; };
     const keepStatic = (sp) => { if (sp && sp.c) out.sprites.add(sp); return sp; };
@@ -524,6 +527,7 @@ function sceneRendererCreate(canvas, src, o) {
         }
         // actors and flocks of this layer: moving every frame
         for (const a of C.actors) if (a.layer === l) {
+          if (_sccBugOff(life, a.o)) continue;   // out of its months, by night, in the wet or the cold
           const sh = sceneObjShapes(a.o, a.v, C.season); if (!sh) continue;
           const sMax = (a.s || 1) * (a.sByY ? Math.max(...a.sByY.map(p => p[1])) : 1), sc = bucket(sMax) * vs, lit = !!(Lx && Lx.windows);
           const anim = a.anim || [], whole = anim.find(h => _scAnimParts(h)[0] === '*'), moved = [...new Set(anim.flatMap(_scAnimParts))].filter(p => p !== '*');
@@ -533,6 +537,7 @@ function sceneRendererCreate(canvas, src, o) {
           grp.movers.push({ kind: 'actor', actor: a, parts, box: sh.box, y: 0 });
         }
         for (const f of C.flocks) if (f.layer === l) {
+          if (_sccBugOff(life, f.o)) continue;
           const sh = sceneObjShapes(f.o, 0, C.season); if (!sh) continue;
           const sc = bucket((f.s || 0.5) * 1.15) * vs, flap = (sh.anim || []).find(h => h.kind === 'flap');
           const parts = flap ? [{ sp: keep(sprite(Lx, lk, f.o, 0, C.season, 'rest:' + flap.part, hz(l), null, sc, false)), rest: true }, { a: Object.assign({ period: 0.5, phase: 0, pivot: [0, 0] }, flap), sp: keep(sprite(Lx, lk, f.o, 0, C.season, flap.part, hz(l), null, sc, false)) }]
@@ -578,7 +583,7 @@ function sceneRendererCreate(canvas, src, o) {
     yield* slice();
     phMark('particles');
     // 4. particles (the season's) and weather (live)
-    if (C.particles && C.particles.kind !== 'none' && C.particles.n) out.particles = sceneParticleSet(C.particles.kind, Math.min(250, Math.round(C.particles.n * Math.max(0.3, lod))), _scHashS(C.id + '|p'));
+    if (C.particles && C.particles.kind !== 'none' && C.particles.n && (life.flakes || C.particles.kind !== 'snow')) out.particles = sceneParticleSet(C.particles.kind, Math.min(250, Math.round(C.particles.n * Math.max(0.3, lod))), _scHashS(C.id + '|p'));
     if (Lx && Lx.rain) out.rain = sceneParticleSet('rain', Math.round(250 * Math.max(0.4, lod)), 91);
     if (Lx && Lx.snow) out.snow = sceneParticleSet('wsnow', Math.round(200 * Math.max(0.4, lod)), 93);
     out.fogVeil = Lx && Lx.fog ? `rgba(${_scHex(_scMixHex('#dfe4e6', '#2a3040', Lx.dark || 0)).join(',')},0.32)` : null;
@@ -939,7 +944,8 @@ function sceneRendererCreate(canvas, src, o) {
     }
     if (typeof sceneRenderPassesCacheable === 'function' && !sceneRenderPassesCacheable(C)) return null;
     const lk = sceneLightKey(L, C.season, isV2(C) ? C : undefined);
-    job.bk = 'B|' + o.cache + '|' + W + 'x' + H + '|' + lod + '|' + lk + '|' + ver;
+    const lifeK = _sccLife(L, C).key;
+    job.bk = 'B|' + o.cache + '|' + W + 'x' + H + '|' + lod + '|' + lk + (lifeK ? '|' + lifeK : '') + '|' + ver;
     tl('C');
     const t = _sccNow(), rec = await sceneStoreGet(job.bk);
     tl('rec');
@@ -1062,7 +1068,8 @@ function sceneRendererCreate(canvas, src, o) {
       L = nl;
       if (!S) return;
       const v2 = S.env ? S.C : undefined;
-      if (sceneLightKey(nl, season, v2) !== before) bakeLater(S.W, S.H);
+      // (or the day's life: snow falling, insects on the wing, which the light key does not hold)
+      if (sceneLightKey(nl, season, v2) !== before || _sccLife(nl, S.C).key !== (S.life || '')) bakeLater(S.W, S.H);
       else if (S.env) { S.env.Lnow = nl; sceneRunPasses(S.env, 'relight', [nl]); }   // v2: a refresh that needs no re-bake (flow density)
     },
     setSeason(s) { if (!s || s === season) return; season = s; if (S) bakeLater(S.W, S.H); },
@@ -1371,8 +1378,89 @@ function _sccOpaqueFromGround(C, layers, vs, ox, oy, W) {
     if (!isFinite(best)) return Infinity;
     worst = Math.max(worst, best);
   }
+  // (engine fix, 9 Oct) a HOLE in this group's ground: a narrow stream or water region kept in a farther layer that runs
+  // down past this row (near the camera, off a frame edge) is cut out of the nearer layers' ground, and the column test above
+  // only sees each column's top edge, so it called the hole covered: the farther bitmap stopped above it and the hole baked
+  // black. Each farther ground or water shape that reaches below the row is sampled (a coarse grid over its box, below the
+  // row): a point of it that no ground of this group covers pushes the row below that point.
+  const lo0 = Math.min(...layers), far = [];
+  for (const g of C.ground) if (g.layer < lo0) far.push(g.d);
+  for (const w of C.water || []) if (w.layer < lo0) far.push(w.d);
+  for (const d of far) {
+    const b = scenePathBox(d);
+    if (!b || b[3] <= worst + 2 || b[2] < xa || b[0] > xb) continue;
+    const fp = _sccPath(d), x0 = Math.max(xa, b[0]), x1 = Math.min(xb, b[2]), y0 = Math.max(worst + 2, b[1]), y1 = Math.min(yBottom, b[3]);
+    const nx = 32, ny = Math.max(2, Math.min(24, Math.ceil((y1 - y0) / 6)));
+    for (let j = ny; j >= 0; j--) {
+      const y = y0 + (y1 - y0) * j / ny;
+      if (y <= worst + 2) break;
+      let open = false;
+      for (let i = 0; i <= nx && !open; i++) {
+        const x = x0 + (x1 - x0) * i / nx;
+        if (_sccHit.isPointInPath(fp, x, y) && !paths.some(p => _sccHit.isPointInPath(p, x, y))) open = true;
+      }
+      if (open) { worst = Math.max(worst, y + (y1 - y0) / ny); break; }
+    }
+  }
   return Math.ceil((worst + 2) * vs + oy);
 }
+
+/* ---------- the season's life at bake: falling snow, butterflies, bees, dragonflies (every scene, v1 and v2) ---------- */
+const _sccBugMemo = new Map();
+/**
+ * The insect kind of an object (by id or tags): 'b' butterflies and bees (sceneInsectsOut: April to September), 'd' dragonflies,
+ * damselflies and their gnat swarms (sceneInsectsOut(.., 'dragonfly'): May to September), or '' (anything else).
+ */
+function _sccBugKind(o) {
+  if (!o) return '';
+  if (_sccBugMemo.has(o)) return _sccBugMemo.get(o);
+  let k = /^animal\.(butterfly|bee|bumblebee)/.test(o) ? 'b' : /dragonfly|damselfly|swarm|midge|gnat/.test(o) ? 'd' : '';
+  if (!k && typeof sceneObj === 'function') {
+    try {
+      const def = sceneObj(o), tg = (def && def.tags) || [];
+      k = tg.some(t => t === 'dragonfly' || t === 'damselfly' || t === 'swarm' || t === 'midge' || t === 'gnat') ? 'd' : tg.some(t => t === 'butterfly' || t === 'bee' || t === 'bumblebee') ? 'b' : '';
+    } catch (e) { /* unknown: not an insect */ }
+  }
+  _sccBugMemo.set(o, k);
+  return k;
+}
+const _sccBugsOf = new WeakMap();
+/** The insect kinds among a compiled scene's actors and flocks: '', 'b', 'd' or 'bd'. */
+function _sccBugs(C) {
+  if (!C) return '';
+  if (_sccBugsOf.has(C)) return _sccBugsOf.get(C);
+  const ks = new Set();
+  for (const a of C.actors || []) { const k = a && _sccBugKind(a.o); if (k) ks.add(k); }
+  for (const f of C.flocks || []) { const k = f && _sccBugKind(f.o); if (k) ks.add(k); }
+  const s = (ks.has('b') ? 'b' : '') + (ks.has('d') ? 'd' : '');
+  _sccBugsOf.set(C, s);
+  return s;
+}
+/**
+ * What of the season's life a bake keeps (user request, 9 Oct: no butterflies in autumn or winter, flakes only on snow
+ * days): { flakes, b, d, key }. flakes: the season's 'snow' particles fall only when sceneSnowFalling says so (a v1 scene
+ * with weather 'none' keeps its authored particles); b / d: butterflies and bees, dragonflies and their swarms, on the wing
+ * only when sceneInsectsOut says so. key: what changes when any of them changes ('' when the scene has none of them), so a
+ * new light that turns them on or off re-bakes. The weather: the light's (L.wx), else resolved here from the scene's input.
+ */
+function _sccLife(L, C) {
+  const out = { flakes: true, b: true, d: true, key: '' };
+  if (!L || !C) return out;
+  const bugs = _sccBugs(C), snowP = !!(C.particles && C.particles.kind === 'snow');
+  if (!bugs && !snowP) return out;
+  const input = typeof _scwxInputOf === 'function' ? _scwxInputOf(C) : 'live';
+  let wx = L.wx || null;
+  if (!wx && typeof sceneWeather === 'function') { try { wx = sceneWeather(input, L, {}); } catch (e) { wx = null; } }
+  if (snowP && typeof sceneSnowFalling === 'function' && (C.v === 2 || input !== 'none')) out.flakes = sceneSnowFalling(wx);
+  if (typeof sceneInsectsOut === 'function') {
+    if (bugs.includes('b')) out.b = sceneInsectsOut(L, wx);
+    if (bugs.includes('d')) out.d = sceneInsectsOut(L, wx, 'dragonfly');
+  }
+  out.key = (snowP ? (out.flakes ? 'f1' : 'f0') : '') + (bugs.includes('b') ? (out.b ? 'b1' : 'b0') : '') + (bugs.includes('d') ? (out.d ? 'd1' : 'd0') : '');
+  return out;
+}
+/** Is this actor or flock (object id) grounded by the bake's life gate? */
+function _sccBugOff(life, o) { const k = _sccBugKind(o); return (k === 'b' && !life.b) || (k === 'd' && !life.d); }
 
 /* ---------- v2 hooks (V2 13; builder B): the env, the movers' places, the governor, the stats ---------- */
 /** Reset the state a pass may leave on a context (transform, alpha, composite, filter). */

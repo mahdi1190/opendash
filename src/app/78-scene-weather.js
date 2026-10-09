@@ -50,56 +50,14 @@ function _scwxPV2(C) { return !!(C && C.v === 2 && C.cam); }
 function _scwxPFx(C) { return !!(C && C.fx && C.fx.weather === 2); }
 /** The strength of the drawn hoar frost (rime on plants, the pale cast on grass): 0.6 of the first look (user request, 9 Oct). */
 const _SCWXP_FROST = 0.6;
-/** A butterfly or a bee (by id or tags): on the wing only when sceneInsectsOut says so. */
-const _scwxPInsectMemo = new Map();
-function _scwxPInsect(o) {
-  if (!o) return false;
-  if (_scwxPInsectMemo.has(o)) return _scwxPInsectMemo.get(o);
-  let y = /^animal\.(butterfly|bee|bumblebee)/.test(o);
-  if (!y && typeof sceneObj === 'function') { try { const d = sceneObj(o), tg = (d && d.tags) || []; y = tg.includes('butterfly') || tg.includes('bee') || tg.includes('bumblebee'); } catch (e) { /* unknown */ } }
-  _scwxPInsectMemo.set(o, y);
-  return y;
-}
-/**
- * The season's falling 'snow' particles go unless snow is falling or the date is a snow day (sceneSnowFalling): once per bake,
- * at the first frameGroup call (the bake sets out.particles after the group stage), before the frame draws the particles.
- */
-function _scwxPGate(env) {
-  const st = env._scwx;
-  if (!st || st.gated) return;
-  st.gated = true;
-  const C = env.C, out = env.out;
-  if (out && out.particles && C && C.particles && C.particles.kind === 'snow' && typeof sceneSnowFalling === 'function' && !sceneSnowFalling(st.wx)) out.particles = null;
-}
-/** Butterflies and bees leave a group's movers out of their months, by night, in the wet or the cold (sceneInsectsOut). */
-function _scwxPInsectGate(env, grp) {
-  const st = env._scwx, C = env.C;
-  if (!st || !grp || !Array.isArray(grp.movers) || !grp.movers.length || typeof sceneInsectsOut !== 'function') return;
-  if (st.insects == null) st.insects = !_scwxPHasInsects(C) || sceneInsectsOut(env.Lnow || env.L, st.wx);
-  if (st.insects) return;
-  const keep = grp.movers.filter(m => !(m && m.kind === 'actor' && m.actor && _scwxPInsect(m.actor.o)));
-  if (keep.length !== grp.movers.length) { grp.movers.length = 0; for (const m of keep) grp.movers.push(m); }
-}
 /**
  * A v1 outdoor scene in winter without the weather opt-in: the pass draws only the winter look there (snow lying, snow caps,
  * frost and rime, when the day has them: sceneWinterMood or live), never rain, puddles or falling weather (v1 keeps its own).
- * In the other seasons, a v1 scene with butterflies or bees (9 Oct): the pass only keeps them to their months and hours
- * (_scwxPInsectGate) and draws nothing (_scwxPBugsOnly). sceneRenderIsV2 counts it, so the renderer runs the passes; the
- * compiled scene is unchanged.
+ * sceneRenderIsV2 counts it, so the renderer runs the passes; the compiled scene is unchanged. (The season's snow particles
+ * and the insects out of their months are left out by the renderer itself at bake: 78-scene-canvas.js, _sccLife.)
  */
 function _scwxPLite(C) {
-  if (!(C && C.v !== 2 && C.weather !== 'none' && !_scwxPFx(C) && Array.isArray(C.ground))) return false;
-  return C.season === 'winter' || _scwxPHasInsects(C);
-}
-/** A lite scene outside winter (there only for its insects): no snow, frost or rime from the pass. */
-function _scwxPBugsOnly(C) { return !!(C && C.v !== 2 && C.season !== 'winter' && !_scwxPV2(C) && !_scwxPFx(C) && _scwxPLite(C)); }
-const _scwxPHasMemo = new WeakMap();
-function _scwxPHasInsects(C) {
-  if (!C || !Array.isArray(C.actors) || !C.actors.length) return false;
-  if (_scwxPHasMemo.has(C)) return _scwxPHasMemo.get(C);
-  const y = C.actors.some(a => a && _scwxPInsect(a.o));
-  _scwxPHasMemo.set(C, y);
-  return y;
+  return !!(C && C.v !== 2 && C.weather !== 'none' && !_scwxPFx(C) && Array.isArray(C.ground) && C.season === 'winter');
 }
 function _scwxPCls(req) {
   if (req.cls) return req.cls;
@@ -241,15 +199,11 @@ const sceneWeatherPass = {
   key(L, C) {
     const wx = L && L.wx;
     if (!wx) return '';
-    // + whether flakes may fall (the season's snow particles) and, in a scene with butterflies or bees, whether they fly: a
-    // change re-bakes, so the gates below follow the day
-    const flakes = C && C.particles && C.particles.kind === 'snow' && typeof sceneSnowFalling === 'function' && sceneSnowFalling(wx) ? 'f' : '';
-    const bugs = _scwxPHasInsects(C) && typeof sceneInsectsOut === 'function' ? (sceneInsectsOut(L, wx) ? 'b1' : 'b0') : '';
-    return ['w' + wx.kind, _scwxPq(wx.wet, 0.2), _scwxPq(wx.snowDepth, 0.1), _scwxPq(wx.frost, 0.2), _scwxPq(wx.rain, 0.25), _scwxPq(wx.snow, 0.25)].join(':') + flakes + bugs;
+    return ['w' + wx.kind, _scwxPq(wx.wet, 0.2), _scwxPq(wx.snowDepth, 0.1), _scwxPq(wx.frost, 0.2), _scwxPq(wx.rain, 0.25), _scwxPq(wx.snow, 0.25)].join(':');
   },
   spriteKey(L, C, req) {
     const wx = L && L.wx;
-    if (!wx || !req || req.part === 'lit' || _scwxPBugsOnly(C)) return '';
+    if (!wx || !req || req.part === 'lit') return '';
     const cls = _scwxPCls(req), def = typeof sceneObj === 'function' ? sceneObj(req.o) : null;
     let k = '';
     if (wx.snowDepth > 0.05 && (_SCWXP_CAP.has(cls) || (def && def.snowCap))) k += 's' + _scwxPq(wx.snowDepth, 0.1);
@@ -290,7 +244,7 @@ const sceneWeatherPass = {
   },
   sprite(env, cx, req) {
     const st = env._scwx, wx = st && st.wx, L = env.L;
-    if (!wx || !req || req.part === 'lit' || _scwxPBugsOnly(env.C)) return;
+    if (!wx || !req || req.part === 'lit') return;
     const cls = _scwxPCls(req), def = typeof sceneObj === 'function' ? sceneObj(req.o) : null, h = cx.canvas.height;
     if (wx.snowDepth > 0.05 && (_SCWXP_CAP.has(cls) || (def && def.snowCap))) {
       const col = L && typeof sceneColour === 'function' ? sceneColour('#f2f5f8', { L }) : '#f2f5f8';
@@ -305,7 +259,7 @@ const sceneWeatherPass = {
   },
   ground(env, layer, gx) {
     const C = env.C, L = env.L, st = env._scwx, wx = st && st.wx, lite = _scwxPLite(C);
-    if (!wx || _scwxPBugsOnly(C) || !((wx.wet > 0.05 && !lite) || wx.snowDepth > 0.05 || wx.frost > 0.05) || typeof _sccPath !== 'function') return;
+    if (!wx || !((wx.wet > 0.05 && !lite) || wx.snowDepth > 0.05 || wx.frost > 0.05) || typeof _sccPath !== 'function') return;
     const v2 = _scwxPV2(C), cam = v2 ? C.cam : null, surf = new Map((C.surfaces || []).map(s => [s.id, s]));
     const snowCol = L && typeof sceneColour === 'function' ? sceneColour('#eef2f6', { L }) : '#eef2f6', slushCol = L && typeof sceneColour === 'function' ? sceneColour('#c8ccd0', { L }) : '#c8ccd0';
     const frostCol = L && typeof sceneColour === 'function' ? sceneColour('#dfe6ea', { L }) : '#dfe6ea';
@@ -390,13 +344,9 @@ const sceneWeatherPass = {
     if (L.sun && L.sun.show && (L.backlit || 0) > 0.3 && L.alt > 0 && L.alt < 25) streak(L.sun.x, cam.horizon, 900 - cam.horizon, 160 + 120 * L.backlit, L.lowSun || '#fff0c8', 0.35 * wx.wet * L.backlit);
     gx.restore();
   },
-  /** The group is built (or restored): its out-of-season insects leave the movers before any frame. */
-  group(env, grp) { _scwxPInsectGate(env, grp); },
-  restore(env, grp) { _scwxPInsectGate(env, grp); },
   /** Rain rings on puddles and rippling water: each ring grows and fades; one stroke per phase group (3). */
   frameGroup(env, grp, ctx, t, below) {
     const st = env._scwx;
-    _scwxPGate(env);
     if (!st || !st.rings.length || !grp || !grp.layers) return 0;
     const mine = st.rings.filter(r => grp.layers.includes(r.layer));
     if (!mine.length) return 0;

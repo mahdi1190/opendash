@@ -69,7 +69,7 @@ const SCENE_CANAL_VIEWS = (function () {
     'fleet-canal-1': mk('fleet-canal-1', {
       camera: { eye: 5.6, fov: 66, horizon: 380, heading: 240, lat: 51.2806, lon: -0.8395, water: -0.5 },
       path: [[-3.2, 0.5], [-3.6, 15], [-4.6, 35], [-4.2, 60], [-1, 90], [5, 125], [9.5, 165], [8, 215], [-1, 270], [-18, 350], [-48, 450], [-90, 560]],
-      width: 12, tow: 'left', towW: 2.8,
+      width: 12, tow: 'left', towW: 2.8, mirror: 0.75,
       boats: [
         { s: 15, o: -4.5, len: 19, liv: 0, smoke: true, roof: 'logs' },
         { s: 35, o: -4.5, len: 17, liv: 1, roof: 'solar' },
@@ -472,12 +472,12 @@ const SCENE_CANAL_VIEWS = (function () {
     palette: { base: { brick: ['#8a4a36', '#6e3a2c', '#a05a42'], stone: ['#cfc6b4', '#a89e8c', '#e4ddcf'], moss: ['#5a6a34', '#7a8a44'] },
       winter: { moss: ['#6a7458', '#8a9478'] } },
     parts: ['body'], reflect: false, shadow: false,
-    tags: ['uk', 'bridge', 'parapet', 'frame', 'kit:temperate', 'role:frame', 'class:structure'],
+    tags: ['uk', 'bridge', 'parapet', 'frame', 'kit:temperate', 'role:frame', 'class:shrub'],   // (round 2) class shrub, like the other frames: the frame we lean on casts no shadow (a structure's sheared silhouette fell across the sky)
     credit: 'drawn for the Basingstoke Canal views: the parapet of Reading Road bridge',
     build(v, rnd) {
       const V = CV.views[CV.parapets[v]], Pp = V.parapet, H = V.camera.eye - 0.55, o = [0, 900];
       const A = Pp.a, B = Pp.b, n = 24, body = [];
-      const at = (u, dn, h) => { const x = A[0] + (B[0] - A[0]) * u, d = A[1] + (B[1] - A[1]) * u; const L = Math.hypot(B[0] - A[0], B[1] - A[1]); const nx = -(B[1] - A[1]) / L, nd = (B[0] - A[0]) / L; return V.proj(x + nx * dn, d + nd * dn, h); };
+      const at = (u, dn, h) => { const x = A[0] + (B[0] - A[0]) * u, d = A[1] + (B[1] - A[1]) * u; const L = Math.hypot(B[0] - A[0], B[1] - A[1]); const nx = -(B[1] - A[1]) / L, nd = (B[0] - A[0]) / L; const q = V.proj(x + nx * dn, d + nd * dn, h); return [Math.max(-120, Math.min(1720, q[0])), Math.min(990, q[1])]; };   // (round 2) kept inside the frame's margin: a face reaching 1400 units below the frame broke the sprite (a grey wedge over the sky and a dull film over the water)
       const P = (p) => R(p[0] - o[0]) + ' ' + R(p[1] - o[1]);
       const strip = (dn0, dn1, h0, h1) => { const a = [], b = []; for (let i = 0; i <= n; i++) { a.push(at(i / n, dn0, h0)); b.push(at(i / n, dn1, h1)); } return 'M' + a.map(P).join('L') + 'L' + b.reverse().map(P).join('L') + 'Z'; };
       // the inner face (brick) below the coping, down out of the frame
@@ -511,7 +511,7 @@ const SCENE_CANAL_VIEWS = (function () {
       base: { twig: ['#6a5a3a', '#8a7444', '#a08a50'], leaf: ['#4a6a2a', '#5e8436', '#7aa048', '#9ab85a'], catkin: '#d8c860' },
       spring: { leaf: ['#7a9a34', '#94b440', '#b0cc58', '#c8dc78'] },
       summer: { leaf: ['#3e5e26', '#557a32', '#6e9640', '#8aae50'] },
-      autumn: { leaf: ['#8a8a30', '#a8a03a', '#c8b448', '#dcc860'] },
+      autumn: { leaf: ['#5e6a2a', '#8c8e34', '#c0ae44', '#dcc860'] },
       winter: { twig: ['#8a6a30', '#a8843a', '#c09a48'] },
     },
     parts: ['twigs', 'leaves'],
@@ -520,26 +520,55 @@ const SCENE_CANAL_VIEWS = (function () {
     tags: ['uk', 'willow', 'frame', 'canal', 'kit:temperate', 'role:frame', 'class:shrub'],
     credit: 'drawn for the Basingstoke Canal views: a weeping willow curtain',
     build(v, rnd, ctx) {
-      const season = (ctx && ctx.season) || 'summer', out = { twigs: [], leaves: [] };
-      const W = v ? 520 : 680, n = v ? 26 : 36;
-      // a limb along the top, then the whips hanging from it
-      out.twigs.push({ f: '@twig.0', d: `M-40 -30L${W} -20L${W} 4Q${W * 0.6} 22 ${W * 0.3} 30Q${W * 0.1} 34 -40 26Z` });
-      for (let i = 0; i < n; i++) {
-        const x = 10 + (W - 30) * (i + rnd() * 0.6) / n, len = 160 + rnd() * (v ? 300 : 420) * (1 - Math.abs(i / n - 0.45)), sw = (rnd() - 0.4) * 50;
-        const y0 = 18 + rnd() * 12, cx = x + sw * 0.5, ex = x + sw, ey = y0 + len;
-        out.twigs.push({ s: '@twig.' + (1 + (i % 2)), w: 1.6, cap: 'round', d: `M${R(x)} ${R(y0)}Q${R(cx)} ${R(y0 + len * 0.5)} ${R(ex)} ${R(ey)}` });
-        if (season === 'winter') continue;
-        const m = Math.round(len / (season === 'autumn' ? 14 : 10));
-        let d0 = '', d1 = '';
-        for (let j = 1; j <= m; j++) {
-          const t = j / m, px = (1 - t) * (1 - t) * x + 2 * (1 - t) * t * cx + t * t * ex, py = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * (y0 + len * 0.5) + t * t * ey;
-          const a = Math.PI / 2 + (j % 2 ? 0.55 : -0.55) + (rnd() - 0.5) * 0.3, l = 11 + rnd() * 6;
-          const dd = sceneD.leaf(px, py, a, l, l * 0.22);
-          if (rnd() < 0.5) d0 += dd; else d1 += dd;
+      // (round 2) the whips hang DOWN: soft tapering ribbons of leaf (a darker body under the leaves), the narrow willow leaves
+      // lying close along each whip, alternate, shortening to the tip; whips in bunches from the side shoots of a drooping limb,
+      // longest under the middle of the limb, all drifting a little on the same breeze (no bead curtain, no chevrons)
+      const season = (ctx && ctx.season) || 'summer', out = { twigs: [], leaves: [] }, winter = season === 'winter';
+      const W = v ? 520 : 680, nB = v ? 7 : 9;
+      const I = Math.round, lf = (x, y, ux, uy, len, w) => { const tx = x + ux * len, ty = y + uy * len, mx = x + ux * len * 0.45, my = y + uy * len * 0.45, nx = -uy * w, ny = ux * w; return `M${I(x)} ${I(y)}Q${I(mx + nx)} ${I(my + ny)} ${I(tx)} ${I(ty)}Q${I(mx - nx)} ${I(my - ny)} ${I(x)} ${I(y)}Z`; };   // whole units: a leaf is 20 to 30 long
+      const limbY = (x) => 14 + Math.sin(Math.min(1, Math.max(0, x / W)) * Math.PI) * 16 - Math.max(0, x / W) * 70;   // in from the left edge, up and out of the top of the frame
+      // the limb across the top (tapering out of the frame edge) and the side shoots the bunches hang from
+      const top = [], bot = [];
+      for (let i = 0; i <= 12; i++) { const x = -50 + (W + 40) * i / 12, y = limbY(x), w = 30 * (1 - i / 15); top.push([x, y - w / 2]); bot.push([x, y + w / 2]); }
+      out.twigs.push({ f: '@twig.0', d: 'M' + top.concat(bot.reverse()).map(p => R(p[0]) + ' ' + R(p[1])).join('L') + 'Z' });
+      out.twigs.push({ s: '@twig.2', w: 2.2, op: 0.6, cap: 'round', d: 'M' + top.slice(0, 10).map(p => R(p[0]) + ' ' + R(p[1] + 3)).join('L'), detail: true });
+      let shoots = '', whips = '', body = '', cat = '';
+      const leaves = ['', '', '', ''], wind = 0.1 + (v ? 0.04 : 0);
+      for (let b = 0; b < nB; b++) {
+        const bt = (b + 0.25 + rnd() * 0.5) / nB, bx = -20 + bt * (W + 10), by = limbY(bx) + 6;
+        const sx = bx + (rnd() - 0.3) * 50, sy = by + 14 + rnd() * 22;
+        shoots += `M${R(bx)} ${R(by)}Q${R((bx + sx) / 2)} ${R(by - 4)} ${R(sx)} ${R(sy)}`;
+        const env = Math.pow(Math.sin(Math.PI * Math.min(0.97, Math.max(0.05, bt))), 0.6), nW = 3 + Math.floor(rnd() * 2) + (env > 0.7 ? 1 : 0);
+        for (let k = 0; k < nW; k++) {
+          const ax = sx + (rnd() - 0.5) * 34, ay = sy + (rnd() - 0.5) * 10, L = (130 + (v ? 250 : 360) * env) * (0.55 + rnd() * 0.5);
+          const ex = ax + wind * L + (rnd() - 0.5) * 22, ey = ay + L, cx = ax + (rnd() - 0.5) * 10, cy = ay + L * 0.55;
+          const P = (t) => { const u = 1 - t; return [u * u * ax + 2 * u * t * cx + t * t * ex, u * u * ay + 2 * u * t * cy + t * t * ey]; };
+          const Tg = (t) => { const dx = 2 * (1 - t) * (cx - ax) + 2 * t * (ex - cx), dy = 2 * (1 - t) * (cy - ay) + 2 * t * (ey - cy), m = Math.hypot(dx, dy) || 1; return [dx / m, dy / m]; };
+          whips += `M${R(ax)} ${R(ay)}Q${R(cx)} ${R(cy)} ${R(ex)} ${R(ey)}`;
+          const back = rnd() < 0.35;   // a whip in the shade behind the others: the darker tones only
+          if (winter) continue;
+          // the soft body: a ribbon swelling out of the stem to about 12 units, tapering to a point
+          const ns = 7, Lp = [], Rp = [];
+          for (let i = 0; i <= ns; i++) { const t = i / ns, p = P(t), g = Tg(t), w = 6 * Math.min(1, 0.25 + t * 6) * (1 - t) * (1 - t * 0.3) + 0.5; Lp.push([p[0] - g[1] * w, p[1] + g[0] * w]); Rp.push([p[0] + g[1] * w, p[1] - g[0] * w]); }
+          body += 'M' + Lp.concat(Rp.reverse()).map(p => Math.round(p[0]) + ' ' + Math.round(p[1])).join('L') + 'Z';
+          // the leaves: alternate, lying close along the whip (15 to 30 degrees out), shortening and thinning to the tip
+          const step = season === 'autumn' ? 10.5 : 8.5, nL = Math.floor(L * 0.92 / step);
+          for (let j = 0; j < nL; j++) {
+            if (season === 'autumn' && rnd() < 0.22) continue;
+            const t = 0.03 + 0.95 * j / nL, p = P(t), g = Tg(t), sd = j % 2 ? 1 : -1, sp = (0.3 + rnd() * 0.32) * sd * (1 - t * 0.4);
+            const ux = g[0] * Math.cos(sp) - g[1] * Math.sin(sp), uy = g[0] * Math.sin(sp) + g[1] * Math.cos(sp), len = (31 - 17 * t) * Math.min(1, 0.45 + t * 8) * (0.8 + rnd() * 0.35);
+            const tone = back ? (rnd() < 0.55 ? 0 : 1) : sd < 0 ? (rnd() < 0.6 ? 3 : 2) : (rnd() < 0.55 ? 1 : rnd() < 0.5 ? 2 : 0);
+            leaves[tone] += lf(p[0] + sd * 1.5 * (1 - t), p[1], ux, uy, len, len * 0.15);
+          }
+          if (season === 'spring' && rnd() < 0.6) { const p = P(0.3 + rnd() * 0.4); cat += sceneD.ell(p[0] + 3, p[1], 2, 6); }
         }
-        out.leaves.push({ f: '@leaf.' + (i % 3 === 0 ? 0 : 1), d: d0 }, { f: '@leaf.' + (i % 3 === 0 ? 2 : 3), d: d1 });
-        if (season === 'spring' && rnd() < 0.5) out.leaves.push({ f: '@catkin', d: sceneD.ell(ex, ey - 6, 2.5, 7), detail: true });
       }
+      out.leaves.push({ s: '@twig.1', w: 3, cap: 'round', d: shoots });
+      // the whips sway with their leaves (one part, so the leaves never part from their stems)
+      out.leaves.push({ s: winter ? '@twig.2' : '@twig.1', w: winter ? 1.8 : 1.1, cap: 'round', op: winter ? 0.95 : 0.8, d: whips });
+      if (body) out.leaves.push({ f: '@leaf.0', op: 0.7, d: body });
+      leaves.forEach((d, i) => { if (d) out.leaves.push({ f: '@leaf.' + i, d, op: i === 3 ? 0.95 : 1 }); });
+      if (cat) out.leaves.push({ f: '@catkin', d: cat, detail: true });
       return out;
     },
   });
@@ -667,7 +696,7 @@ function sceneCanalViewV2(id) {
   // would spend them all on the near bank's flowers and lose the boats and the bridge down the reach)
   // ONE region (a split shows its cut as a bank across the water); the counts below are kept lean so the boats and the bridge
   // stay inside the 600 placements a region mirrors (nearest first)
-  const water = [{ id: 'canal', kind: 'canal', path: V.line(0, 0, L, 2), width: V.width, edge: 'natural', ripple: 0.12, rings: true, base: ['#6e8a62', '#4c6a48', '#34503a'], mirror: 0.95, clarity: 0 }];
+  const water = [{ id: 'canal', kind: 'canal', path: V.line(0, 0, L, 2), width: V.width, edge: 'natural', ripple: 0.12, rings: true, base: ['#a4c09a', '#4a8442', '#2a6a1c'], mirror: V.mirror || 0.9, clarity: 0 }]   // (round 2) clear green near, lighter far (toward the sky it mirrors at a grazing angle);
   const S = { land: 'wood' };
   const surfaces = [
     { id: 'land', kind: 'grass', rest: true },
@@ -695,7 +724,7 @@ function sceneCanalViewV2(id) {
     const B = V.bridge, q = V.at(B.s), nx = q[3], nd = -q[2], nearX = q[0] - q[2] * B.T / 2 + nx * B.uc, nearD = q[1] - q[3] * B.T / 2 + nd * B.uc, p = V.proj(nearX, nearD, 0);
     place.push({ obj: 'structure.canal-view-bridge', variant: V.bridgeIdx, x: r1(p[0]), y: r1(p[1]), s: 1, pin: true, layer: layerOf(nearD), shadow: false, anim: false });
   }
-  if (V.parapet) place.push({ obj: 'structure.canal-view-parapet', variant: V.parapetIdx, x: 0, y: 900, s: 1, pin: true, layer: 'fore', shadow: false, anim: false });
+  if (V.parapet) place.push({ obj: 'structure.canal-view-parapet', variant: V.parapetIdx, x: 0, y: 900, s: 1, pin: true, layer: 'front', shadow: false, anim: false });
   // ---- per view: the hand-placed life and the framing
   const VIEW = SCENE_CANAL_VIEW_LIFE[id];
   if (VIEW) VIEW({ V, T, hw, tw, place, scatter, actors, surfaces, side, offs, band, L });
@@ -710,8 +739,8 @@ function sceneCanalViewV2(id) {
     { obj: { 'plant.grass-long': 4, 'plant.canal-view-loosestrife': 2, 'plant.bulrush': 1, 'plant.grass': 2 }, on: ['lip-t'], d: [5, 140], n: 90, dist: 'ground', cluster: { centres: 12, spread: 6 }, seed: 33, anim: false, k: [0.7, 1.15] },
     // the offside: a reedy fringe in stands, loosestrife and meadowsweet, sedge on the bank
     { obj: { 'plant.reed': 6, 'plant.bulrush': 2, 'plant.canal-view-loosestrife': 2 }, on: ['reeds-o'], d: [9, 260], n: 240, dist: 'ground', cluster: { centres: 18, spread: 7 }, seed: 34, anim: 'strip', shadow: false, k: [0.75, 1.2], tint: { col: '#8a7a40', k: [0, 0.1] } },
-    { obj: { 'plant.grass-long': 3, 'plant.canal-view-meadowsweet': 2, 'plant.wildflowers': 1 }, on: ['bank-o'], avoid: ['reeds-o'], d: [3, 200], n: 90, dist: 'ground', cluster: { centres: 12, spread: 7 }, seed: 35, anim: false, k: [0.7, 1.2] },
-    { obj: { 'plant.towpath-hedge': 3, 'plant.hedgerow-blackberry': 1 }, on: ['bank-o'], avoid: ['reeds-o'], d: [V.offHedge === false ? 60 : 16, 200], n: V.offHedge === false ? 20 : 50, dist: 'screen', cluster: { centres: 8, spread: 6 }, seed: 39, anim: false, k: [0.75, 1.2] },
+    { obj: { 'plant.grass-long': 3, 'plant.canal-view-meadowsweet': 2, 'plant.wildflowers': 1, 'plant.canal-view-loosestrife': gardens ? 1 : 0, 'plant.bulrush': gardens ? 1 : 0 }, on: ['bank-o'], avoid: ['reeds-o'], d: [3, 200], n: gardens ? 130 : 90, dist: 'ground', cluster: { centres: 12, spread: 7 }, seed: 35, anim: false, k: [0.7, 1.2] },
+    { obj: { 'plant.towpath-hedge': 3, 'plant.hedgerow-blackberry': 1, 'plant.holly': 1 }, on: ['bank-o'], avoid: ['reeds-o'], d: [V.offHedge === false ? 60 : gardens ? 34 : 16, 200], n: V.offHedge === false ? 20 : gardens ? 26 : 50, dist: 'screen', cluster: { centres: 8, spread: 6 }, seed: 39, anim: false, k: [0.75, 1.2] },
     // the tree lines: groups and singles along both banks, the woods behind
     { obj: towTrees, on: ['beyond-t', 'hedge'], d: [17, 320], n: id === 'fleet-canal-1' ? 26 : 46, dist: 'ground', cluster: { centres: 9, spread: 7 }, gap: 'foot', seed: 36, anim: false, k: [0.75, 1.25] },
     { obj: offTrees, on: V.offHedge === false ? ['wood-o'] : ['bank-o', 'wood-o'], avoid: ['reeds-o'], d: [16, 320], n: 50, dist: 'ground', cluster: { centres: 10, spread: 7 }, gap: 'foot', seed: 37, anim: false, k: [0.75, 1.25] },
@@ -720,7 +749,14 @@ function sceneCanalViewV2(id) {
     { obj: { 'tree.bank-oak': 2, 'tree.pond-oak': 2, 'tree.bank-alder': 2, 'tree.bank-willow': 1, 'tree.bank-birch': 1 }, on: ['wood-o', 'beyond-t', 'bank-o', 'hedge'], d: [140, 420], n: 50, dist: 'ground', seed: 44, anim: false, k: [0.85, 1.3] },
     // the towpath itself: grass tufts down its middle and edges, a few stones (a worn gravel track, not a flat band)
     { obj: { 'plant.grass': 5, 'plant.daisies': 2 }, on: ['tow-mid'], d: [2, 50], n: 34, dist: 'ground', cluster: { centres: 9, spread: 10 }, seed: 43, anim: false, k: [0.8, 1.3] },
+    // (round 2) the towpath's litter: drifts of fallen leaves under the trees, a few stones, never an even sprinkle
+    { obj: { 'ground.leaves': 3, 'ground.leaf-litter': 2, 'rock.stones': 1 }, on: ['tow'], d: [2.5, 70], n: 26, dist: 'ground', cluster: { centres: 7, spread: 5 }, seed: 45, anim: false, k: [0.7, 1.25] },
   );
+  // (round 2) water lilies in rafts along the offside margin (the Basingstoke Canal's still summit pound is full of them)
+  const uOff = T > 0 ? 0.06 : 0.94, lr = (n) => { const x = Math.sin(n * 12.9898 + id.charCodeAt(id.length - 1) * 78.233) * 43758.5453; return x - Math.floor(x); };   // a seeded hash per view
+  for (let i = 0, d = 10 + lr(1) * 6; i < 5 && d < 75; i++, d += 7 + lr(i + 2) * 12) {
+    for (let j = 0; j < 1 + Math.floor(lr(i * 7 + 3) * 2.5); j++) place.push({ obj: 'water.lily', on: 'canal', k: 2.2, d: r1(d + j * 0.9 + lr(i * 11 + j) * 0.8), u: Math.round((uOff + (T > 0 ? 1 : -1) * (0.02 + lr(i * 5 + j) * 0.09)) * 100) / 100, variant: (i + j) % 3 });
+  }
   const cam = Object.assign({}, V.camera);
   const data = {
     v: 2, id,
@@ -744,13 +780,18 @@ const SCENE_CANAL_VIEW_LIFE = {
     // houses at the bottom of the gardens' far end and the gardens' life: fences, a willow, a summerhouse-lawn
     for (const [x, d, v] of [[24, 32, 0], [27, 52, 1], [30, 78, 2], [33, 104, 0], [36, 128, 1]]) place.push({ obj: 'building.cottage', at: [x, d], variant: v, face: 'left' });
     for (const [x, d] of [[11.5, 24], [12.5, 44], [13, 66], [15, 92]]) place.push({ obj: 'structure.fence', at: [x, d], variant: 1 });
-    scatter.push({ obj: { 'plant.shrub': 2, 'plant.azalea': 1, 'plant.towpath-hedge': 2, 'plant.wildflowers': 2 }, on: ['gardens'], d: [8, 140], n: 50, dist: 'screen', cluster: { centres: 12, spread: 6 }, seed: 51, anim: false, k: [0.7, 1.2] });
-    scatter.push({ obj: { 'tree.bank-willow': 2, 'tree.cherry': 1, 'tree.bank-birch': 2, 'tree.pond-oak': 1 }, on: ['gardens'], d: [14, 150], n: 12, dist: 'ground', cluster: { centres: 5, spread: 10 }, gap: 'foot', seed: 52, anim: false, k: [0.8, 1.15] });
+    scatter.push({ obj: { 'plant.hedge': 2, 'plant.shrub': 1, 'plant.towpath-hedge': 1, 'plant.wildflowers': 3, 'plant.daisies': 2 }, on: ['gardens'], d: [8, 140], n: 40, dist: 'screen', cluster: { centres: 12, spread: 6 }, seed: 51, anim: false, k: [0.7, 1.2] });   // (round 2) no azalea domes or berry hedges on the lawns
+    scatter.push({ obj: { 'tree.bank-willow': 2, 'tree.bank-alder': 1, 'tree.bank-birch': 2, 'tree.pond-oak': 1 }, on: ['gardens'], d: [14, 150], n: 12, dist: 'ground', cluster: { centres: 5, spread: 10 }, gap: 'foot', seed: 52, anim: false, k: [0.8, 1.15] });
     // hero trees: a great willow on the offside by the bridge, an oak over the wharf
-    place.push({ obj: 'tree.bank-willow', at: [12, 36], k: 1.1 }, { obj: 'tree.bank-oak', at: [-14.5, 26], k: 1.1 }, { obj: 'tree.pond-oak', at: [-16, 48], k: 1.05 });
+    place.push({ obj: 'tree.canal-willow', at: [12, 36], k: 1.1, variant: 1 }, { obj: 'tree.canal-oak', at: [-14.5, 26], k: 1.1, variant: 0 }, { obj: 'tree.canal-oak', at: [-16, 50], k: 1.05, variant: 2, flip: true });
     place.push({ obj: 'plant.canal-view-fronds', x: 1680, y: -40, s: 1.05, pin: true, layer: 'front', shadow: false, flip: true, variant: 0 });
     // waterfowl: a swan pair gliding up the reach, mallards, a moorhen in the offside reeds, a coot
     actors.push({ obj: 'bird.swan', ground: [[2.5, 70], [1, 52], [3, 36]], speedM: 0.25, loop: 'pingpong', k: 1 }, { obj: 'bird.swan', ground: [[3.4, 72], [1.9, 54], [3.9, 38]], speedM: 0.25, loop: 'pingpong', k: 0.95, offset: 0.06 });
+    // (round 2) the near offside: the garden bottoms meet the water in reed, loosestrife and meadowsweet, a birch and an alder
+    // at the lawn's edge; a canoeist paddling up the cut (the canal is a canoe trail)
+    scatter.push({ obj: { 'plant.reed': 4, 'plant.canal-view-loosestrife': 3, 'plant.bulrush': 1, 'plant.canal-view-meadowsweet': 2 }, on: ['reeds-o', 'bank-o'], d: [9, 40], n: 70, dist: 'ground', cluster: { centres: 6, spread: 4 }, seed: 53, anim: false, k: [1.0, 1.5] });
+    place.push({ obj: 'tree.bank-birch', at: [15, 19], k: 0.95 }, { obj: 'tree.bank-alder', at: [17.5, 29], k: 0.85 });
+    actors.push({ obj: 'person.kayaker', ground: [[-1.5, 24], [-2.6, 60], [0.5, 110]], speedM: 0.9, loop: 'pingpong', k: 1 });
     place.push({ obj: 'bird.mallard', on: 'canal', d: 22, u: 0.55 }, { obj: 'bird.mallard', on: 'canal', d: 22.8, u: 0.6, variant: 1 }, { obj: 'bird.moorhen', on: 'canal', d: 30, u: 0.92 }, { obj: 'bird.coot', on: 'canal', d: 84, u: 0.7 });
     void surfaces; void V;
   },
@@ -759,10 +800,10 @@ const SCENE_CANAL_VIEW_LIFE = {
     place.push({ obj: 'bird.mallard', on: 'canal', d: 16, u: 0.22 }, { obj: 'bird.mallard', on: 'canal', d: 16.8, u: 0.28, variant: 1 }, { obj: 'bird.proof-duckling', on: 'canal', d: 17.4, u: 0.31 }, { obj: 'bird.proof-duckling', on: 'canal', d: 17.9, u: 0.35, variant: 1 }, { obj: 'bird.moorhen', on: 'canal', d: 40, u: 0.15 });
     actors.push({ obj: 'bird.swan', ground: [[-9.5, 34], [-8, 24], [-9.8, 16]], speedM: 0.2, loop: 'pingpong', k: 1 }, { obj: 'bird.swan', ground: [[-8.8, 36], [-7.3, 26], [-9.1, 18]], speedM: 0.2, loop: 'pingpong', k: 0.95, offset: 0.06 });
     // hero trees: an old alder leaning over the offside, an oak behind the towpath hedge on the right
-    place.push({ obj: 'tree.pond-alder', at: [-19, 22], k: 1.15 }, { obj: 'tree.bank-willow', at: [-17, 40], k: 1.1 }, { obj: 'tree.bank-oak', at: [12, 27], k: 1.1 }, { obj: 'tree.pond-oak', at: [11, 40], k: 1.05 });
+    place.push({ obj: 'tree.pond-alder', at: [-19, 22], k: 1.15 }, { obj: 'tree.canal-willow', at: [-17, 40], k: 1.1, variant: 0 }, { obj: 'tree.canal-oak', at: [12, 27], k: 1.1, variant: 1 }, { obj: 'tree.canal-oak', at: [11.5, 42], k: 1.0, variant: 0, flip: true });
     // the foreground: tall loosestrife, meadowsweet and reed by the towpath at the bottom right (a frame), the willow curtain top left
     scatter.push({ obj: { 'plant.canal-view-loosestrife': 3, 'plant.canal-view-meadowsweet': 2, 'plant.grass-long': 3, 'plant.reed': 1 }, on: ['hedge', 'lip-t'], d: [2.2, 6], n: 46, dist: 'screen', cluster: { centres: 3, spread: 22 }, seed: 61, anim: false, k: [0.9, 1.2] });
-    place.push({ obj: 'plant.canal-view-fronds', x: -40, y: -30, s: 1.1, pin: true, layer: 'front', shadow: false, anim: undefined });
+    place.push({ obj: 'plant.canal-view-fronds', x: -40, y: -14, s: 1.1, pin: true, layer: 'front', shadow: false, anim: undefined });
   },
   'fleet-canal-3'({ place, scatter, actors }) {
     place.push({ obj: 'bird.wp-heron-stalk', on: 'canal', d: 58, u: 0.95 });
@@ -772,16 +813,16 @@ const SCENE_CANAL_VIEW_LIFE = {
     scatter.push({ obj: { 'plant.grass': 3, 'plant.grass-long': 2, 'plant.wildflowers': 1, 'plant.daisies': 1 }, on: ['bank-o'], avoid: ['reeds-o'], d: [4, 40], n: 50, dist: 'screen', seed: 73, anim: false, k: [0.8, 1.2] });
     place.push({ obj: 'bird.kingfisher', x: 1125, y: 612, s: 1.6, pin: true, layer: 'fore', variant: 0, flip: true });
     // hero trees: big oaks on the towpath side making the tunnel, an alder and a birch on the offside
-    place.push({ obj: 'tree.bank-oak', at: [-14, 22], k: 1.3 }, { obj: 'tree.pond-oak', at: [-12, 36], k: 1.2 }, { obj: 'tree.bank-birch', at: [-16, 48], k: 1.1 }, { obj: 'tree.pond-alder', at: [17.5, 24], k: 1.25 }, { obj: 'tree.bank-oak', at: [19, 40], k: 1.2 }, { obj: 'tree.bank-alder', at: [13, 64], k: 1.1 });
+    place.push({ obj: 'tree.canal-oak', at: [-14, 22], k: 1.25, variant: 2 }, { obj: 'tree.canal-oak', at: [-12, 36], k: 1.15, variant: 1, flip: true }, { obj: 'tree.bank-birch', at: [-16, 48], k: 1.1 }, { obj: 'tree.pond-alder', at: [17.5, 24], k: 1.25 }, { obj: 'tree.canal-oak', at: [19, 40], k: 1.15, variant: 0 }, { obj: 'tree.bank-alder', at: [13, 64], k: 1.1 });
     scatter.push({ obj: { 'plant.reed': 5, 'plant.bulrush': 2, 'plant.canal-view-loosestrife': 1, 'plant.grass-long': 2 }, on: ['reeds-o', 'bank-o'], d: [2.5, 30], n: 70, dist: 'screen', cluster: { centres: 4, spread: 26 }, seed: 72, anim: false, k: [0.8, 1.2] });
     scatter.push({ obj: { 'plant.bracken': 3, 'plant.fern': 2, 'plant.grass-long': 2 }, on: ['beyond-t', 'wood-o'], d: [6, 90], n: 70, dist: 'screen', cluster: { centres: 14, spread: 8 }, seed: 71, anim: false, k: [0.75, 1.2] });
     place.push({ obj: 'plant.canal-view-bough', x: -30, y: -10, s: 1.2, pin: true, layer: 'front', shadow: false });
   },
   'fleet-canal-4'({ place, scatter, actors }) {
     for (const [x, d, v] of [[21, 52, 1], [24, 72, 0], [23, 96, 2], [20, 118, 1], [14, 138, 0]]) place.push({ obj: 'building.cottage', at: [x, d], variant: v, face: 'left' });
-    scatter.push({ obj: { 'plant.shrub': 2, 'plant.azalea': 1, 'plant.towpath-hedge': 2, 'plant.wildflowers': 2 }, on: ['gardens'], d: [8, 140], n: 50, dist: 'screen', cluster: { centres: 12, spread: 6 }, seed: 81, anim: false, k: [0.7, 1.2] });
-    scatter.push({ obj: { 'tree.bank-willow': 2, 'tree.cherry': 1, 'tree.bank-birch': 2 }, on: ['gardens'], d: [14, 150], n: 10, dist: 'ground', cluster: { centres: 4, spread: 10 }, gap: 'foot', seed: 82, anim: false, k: [0.8, 1.15] });
-    place.push({ obj: 'tree.bank-oak', at: [-6, 18], k: 1.2 }, { obj: 'tree.bank-birch', at: [-6.5, 30], k: 1.1 });
+    scatter.push({ obj: { 'plant.hedge': 2, 'plant.shrub': 1, 'plant.towpath-hedge': 1, 'plant.wildflowers': 3, 'plant.daisies': 2 }, on: ['gardens'], d: [8, 140], n: 40, dist: 'screen', cluster: { centres: 12, spread: 6 }, seed: 81, anim: false, k: [0.7, 1.2] });
+    scatter.push({ obj: { 'tree.bank-willow': 2, 'tree.bank-alder': 1, 'tree.bank-birch': 2 }, on: ['gardens'], d: [14, 150], n: 10, dist: 'ground', cluster: { centres: 4, spread: 10 }, gap: 'foot', seed: 82, anim: false, k: [0.8, 1.15] });
+    place.push({ obj: 'tree.canal-oak', at: [-10, 21], k: 1.0, variant: 1, flip: true }, { obj: 'tree.bank-birch', at: [-6.5, 30], k: 1.1 });
     actors.push({ obj: 'bird.swan', ground: [[9, 34], [7, 22], [8.5, 14]], speedM: 0.22, loop: 'pingpong', k: 1 }, { obj: 'bird.swan', ground: [[9.8, 36], [7.8, 24], [9.3, 16]], speedM: 0.22, loop: 'pingpong', k: 0.95, offset: 0.06 });
     place.push({ obj: 'bird.mallard', on: 'canal', d: 9, u: 0.45 }, { obj: 'bird.mallard', on: 'canal', d: 9.5, u: 0.5, variant: 1 });
     place.push({ obj: 'plant.canal-view-fronds', x: 1660, y: -30, s: 1.05, pin: true, layer: 'front', shadow: false, flip: true, variant: 1 });

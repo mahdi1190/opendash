@@ -85,7 +85,7 @@ function sceneUkFleetPondV1() {
 
   // ---- reed islands out in the bay (pinned at the water level: they break the open water into layers)
   { const r = F.rnd(7), reedDef = typeof sceneObj === 'function' ? sceneObj('plant.reed') : null, rushDef = typeof sceneObj === 'function' ? sceneObj('plant.bulrush') : null;
-    for (const [cx, cd, rx, rd, n] of [[0.1, 7.4, 0.6, 0.3, 12], [1.6, 18, 1.4, 0.6, 14], [9, 34, 2.6, 1.0, 12], [-12, 80, 5, 1.6, 12], [44, 120, 6, 2, 12]]) for (let i = 0; i < n; i++) {
+    for (const [cx, cd, rx, rd, n] of [[1.6, 18, 1.4, 0.6, 14], [9, 34, 2.6, 1.0, 12], [-12, 80, 5, 1.6, 12], [44, 120, 6, 2, 12]]) for (let i = 0; i < n; i++) {
       const a = r() * Math.PI * 2, rr = Math.sqrt(r()), x = cx + Math.cos(a) * rx * rr, d = cd + Math.sin(a) * rd * rr, rush = r() < 0.25, def = rush ? rushDef : reedDef;
       if (!def) continue;
       const p = proj(x, d, cam.water), k = (0.75 + 0.45 * r()) * (1 - 0.35 * rr);
@@ -93,15 +93,20 @@ function sceneUkFleetPondV1() {
         pin: true, variant: Math.floor(r() * 3), flip: r() < 0.5, reflect: true, shadow: false, anim: false, tint: ['#8a7a40', R2(r() * 0.1)] });
     } }
 
+  // ---- (round 2) the landmark in the foreground water: a Scots pine blown down off the top of the beach, lying out across the
+  // shallows 8 m off, its root plate on the sand; cormorants drying their wings on it (tree.fpv-fallen-pine, drawn at one depth)
+  { const dF = 8, xm = -0.2, a = proj(xm, dF, 0);
+    Pl.push({ obj: 'tree.fpv-fallen-pine', x: R1(a[0]), y: R1(a[1]), s: R2(f / (dF * 100)), pin: true, layer: 'fore', shadow: false, anim: false }); }
+
   // ---- the life: geese grazing the sand and swimming off it, a swan pair inshore, gulls, coots, grebes, dinghies
   Pl.push({ obj: 'bird.goose', at: [-4.4, 9.4], k: 1, variant: 1 }, { obj: 'bird.goose', at: [-6.6, 13], k: 0.95, flip: true },
     { obj: 'bird.goose', at: [-10.6, 19.4], k: 1 }, { obj: 'bird.goose', at: [-15.6, 25.4], k: 1, variant: 1, flip: true });
   A.push({ obj: 'bird.goose', ground: [[1, 20], [6, 23], [11, 22]], speedM: 0.25, loop: 'pingpong', seed: 41, offset: 0.2 });
   A.push({ obj: 'bird.goose', ground: [[0, 21.4], [5, 24.4], [10, 23.4]], speedM: 0.25, loop: 'pingpong', variant: 1, seed: 42, offset: 0.24 });
-  A.push({ obj: 'bird.swan', ground: [[1.2, 9.6], [2.6, 10.4], [4.0, 11.4]], speedM: 0.08, loop: 'pingpong', k: 1.05, seed: 43 });
-  A.push({ obj: 'bird.swan', ground: [[2.1, 9.0], [3.5, 9.8], [4.9, 10.8]], speedM: 0.08, loop: 'pingpong', k: 0.95, seed: 44, offset: 0.08 });
-  A.push({ obj: 'bird.mallard', ground: [[-0.6, 12.6], [0.8, 13.8], [2.2, 13]], speedM: 0.1, loop: 'pingpong', seed: 53, offset: 0.3 });
-  A.push({ obj: 'bird.mallard', ground: [[-0.1, 13.2], [1.3, 14.4], [2.7, 13.6]], speedM: 0.1, loop: 'pingpong', variant: 1, seed: 54, offset: 0.3 });
+  A.push({ obj: 'bird.swan', ground: [[3.0, 12.4], [4.6, 13.2], [6.2, 14.2]], speedM: 0.08, loop: 'pingpong', k: 1.05, seed: 43 });
+  A.push({ obj: 'bird.swan', ground: [[3.9, 11.8], [5.5, 12.6], [7.1, 13.6]], speedM: 0.08, loop: 'pingpong', k: 0.95, seed: 44, offset: 0.08 });
+  A.push({ obj: 'bird.mallard', ground: [[-1.4, 15.6], [0.2, 16.8], [1.8, 16]], speedM: 0.1, loop: 'pingpong', seed: 53, offset: 0.3 });
+  A.push({ obj: 'bird.mallard', ground: [[-0.9, 16.2], [0.7, 17.4], [2.3, 16.6]], speedM: 0.1, loop: 'pingpong', variant: 1, seed: 54, offset: 0.3 });
   A.push({ obj: 'bird.coot', ground: [[-8, 46], [4, 50], [16, 47]], speedM: 0.2, loop: 'pingpong', seed: 45, offset: 0.4 });
   A.push({ obj: 'bird.grebe', ground: [[30, 60], [12, 64]], speedM: 0.2, loop: 'pingpong', seed: 46, offset: 0.6 });
   Pl.push({ obj: 'bird.gull', at: [5, 26], k: 1, flip: true }, { obj: 'bird.gull', at: [8, 33], k: 1, variant: 1 }, { obj: 'bird.coot', at: [-6, 64], k: 1 }, { obj: 'bird.grebe', at: [40, 110], k: 1.1 });
@@ -122,9 +127,10 @@ function sceneUkFleetPondV1() {
     A.push({ obj: 'animal.wp-bat', layer: 'mid', path: pts, speed: sp, loop: 'loop', s, variant: v, seed, offset: R2(r()) });
   };
   bat(380, 360, 200, 60, 150, 0.9, 0, 61); bat(800, 400, 260, 70, 170, 1, 1, 62); bat(1200, 330, 180, 60, 140, 0.8, 0, 63);
-  Pl.push({ obj: 'sky.wp-mist', x: 700, y: H + 2, s: 1.1, layer: 'far', variant: 0, pin: true, anim: false },
-    { obj: 'sky.wp-mist', x: 1260, y: H + 4, s: 1, layer: 'far', variant: 2, flip: true, pin: true, anim: false });
-  A.push({ obj: 'sky.wp-mist', layer: 'mid', path: [[1660, H + 10], [-60, H + 10]], speed: 7, loop: 'pingpong', s: 1, variant: 4, seed: 64, offset: 0.4 });
+  // (round 2) every mist bank one sprite (one variant, one size, flipped or not): it was the largest sprite memory here
+  Pl.push({ obj: 'sky.wp-mist', x: 700, y: H + 2, s: 1.1, layer: 'mid', variant: 0, pin: true, anim: false },
+    { obj: 'sky.wp-mist', x: 1260, y: H + 4, s: 1.1, layer: 'mid', variant: 0, flip: true, pin: true, anim: false });
+  A.push({ obj: 'sky.wp-mist', layer: 'mid', path: [[1660, H + 10], [-60, H + 10]], speed: 7, loop: 'pingpong', s: 1.1, variant: 0, seed: 64, offset: 0.4 });
   data.flocks.push({ obj: 'bird.goose-flight', n: 7, area: [200, 120, 1500, 330], speed: 34, s: 0.32, seed: 65, layer: 'horizon' });
 
   // ---- framing: the pine's trunk up the right edge and its bough over the top right; gorse and grass in the near corners

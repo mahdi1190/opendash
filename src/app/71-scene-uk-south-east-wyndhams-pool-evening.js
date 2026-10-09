@@ -76,7 +76,7 @@ function sceneUkWyndhamsPoolEvening() {
       one('tree.pool-birch', 420, 814, 0.74, 2, 'near', 316, 1, false),
       one('tree.pool-birch', 1500, 804, 1.02, 1, 'fore', 317, 1),
       one('tree.pool-oak', 1700, 824, 1.12, 0, 'front', 318, 0),
-      one('tree.birch-heath', 1046, 792, 0.5, 1, 'near', 319, 1, false),
+      one('tree.pool-birch', 1046, 792, 0.5, 2, 'near', 319, 1, false),
       one('plant.wyv-heath-bank', 1010, 800, 0.6, 0, 'near', 337, 0, false), one('plant.wyv-heath-bank', 640, 812, 0.7, 2, 'near', 338, 1, false),
       one('plant.wyv-heath-bank', 860, 912, 1.15, 1, 'front', 339, 0, false), one('plant.wyv-heath-bank', 330, 900, 0.95, 0, 'front', 340, 1, false),
       // the margins: reed beds of bulrush and reed, rush and bracken, ferns and gorse
@@ -117,7 +117,7 @@ function sceneUkWyndhamsPoolEvening() {
     flocks: [
       { obj: 'bird.small-flight', n: 4, area: [200, 420, 1100, 480], speed: 30, s: 0.45, seed: 351, layer: 'far' },
       { obj: 'bird.goose-flight', n: 9, area: [200, 150, 1600, 260], speed: 24, s: 0.4, seed: 352, layer: 'far' },
-      { obj: 'animal.dragonfly', n: 3, area: [200, 680, 1200, 760], speed: 30, s: 0.8, seed: 353, layer: 'fore' },
+      { obj: 'animal.wyv-dragonfly', n: 3, area: [200, 680, 1200, 760], speed: 30, s: 0.8, seed: 353, layer: 'fore' },
     ],
     particles: 'season',
     weather: 'live',

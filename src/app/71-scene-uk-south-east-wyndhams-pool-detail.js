@@ -122,7 +122,7 @@ function sceneUkWyndhamsPoolDetail() {
     flocks: [
       { obj: 'bird.small-flight', n: 5, area: [100, 160, 1500, 280], speed: 34, s: 0.55, seed: 261, layer: 'far' },
       { obj: 'bird.goose-flight', n: 7, area: [300, 90, 1500, 200], speed: 26, s: 0.4, seed: 262, layer: 'far' },
-      { obj: 'animal.dragonfly', n: 3, area: [400, 600, 1200, 760], speed: 30, s: 0.9, seed: 263, layer: 'fore' },
+      { obj: 'animal.wyv-dragonfly', n: 3, area: [400, 600, 1200, 760], speed: 30, s: 0.9, seed: 263, layer: 'fore' },
     ],
     particles: 'season',
     weather: 'live',

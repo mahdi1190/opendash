@@ -106,6 +106,188 @@
     });
   }
 
+  /* ---------- tree.canal-oak: the hero oak of the canal views (round 2) ----------
+     A near, open-grown pedunculate oak as it leans over the Basingstoke Canal: a short, flared bole forking into four to six
+     crooked limbs (tapering, elbowed: oak limbs never run straight), each limb carrying its own leaf CLUMP with sky between
+     the clumps, so the crown reads as limbs and clumps rather than one cloud. Every clump is three tones (a shade base, the mid
+     mass up and left of it, a lit cap on its upper left) broken by small leaf flecks (lit on top, dark underneath) for a leaf
+     texture; in autumn the clumps turn unevenly (some still olive-green, some russet, some gold), in winter the limbs, the
+     twig sprays and a few marcescent brown leaves stay. Anchor: the foot of the trunk. A hero: a scene holds two to six of
+     them; the light tree.bank-* stand behind. */
+  {
+    const CO = {
+      spring: [['#3e6a2a', '#5e8e36', '#94bc56'], ['#4e7a2c', '#76a23e', '#b0d06a']],
+      summer: [['#223e1c', '#36602a', '#5e8a40'], ['#2a4a20', '#426e30', '#6e9a4c']],
+      autumn: [['#6a3e18', '#a0602a', '#d4943e'], ['#4e5222', '#76722e', '#a89a44'], ['#7a5418', '#b8862a', '#e4b44a']],
+      winter: [['#4a3e34', '#5e5044', '#7a6a5c']],
+    };
+    const tone = (s) => Object.fromEntries(['a', 'b', 'c'].map((k, i) => [k, (CO[s][i] || CO[s][0])]));
+    sceneObjDefine({
+      id: 'tree.canal-oak', category: 'tree', size: [520, 520], variants: 3, seasonal: true, shapeBySeason: true, flippable: true,
+      real: { h: 15, w: 16 },
+      palette: { base: { bark: ['#4a3c30', '#33281f', '#6e5c48', '#8a7a64'], fleck: ['#e8c460', '#2a2418'] },
+        spring: tone('spring'), summer: tone('summer'), autumn: Object.assign(tone('autumn'), { fleck: ['#f0c860', '#3a2a14'] }), winter: tone('winter') },
+      parts: ['trunk', 'crown'],
+      anim: { sway: { part: 'crown', pivot: [0, -150], deg: 1.2 } },
+      shadow: { rx: 190, ry: 14, h: 520 }, reflect: true, weight: 1,
+      tags: ['uk', 'tree', 'oak', 'broadleaf', 'canal', 'bank', 'deciduous', 'hero', 'kit:temperate', 'role:tree'],
+      credit: 'drawn for the Basingstoke Canal views: a hero pedunculate oak (Quercus robur), limbs and clumps',
+      build(v, r, ctx) {
+        const season = ctx.season, winter = season === 'winter', trunk = [], crown = [];
+        const lean = (v - 1) * 14 + rr(r, -6, 6), th = rr(r, 105, 135), w0 = 30;
+        const fx = lean * 0.5, fy = -th;
+        // the bole: a flared foot, a slight twist, the bark's dark fissures and a lit edge on the left
+        trunk.push(['@bark.0', `M${f1(-w0 * 1.5)} 2Q${f1(-w0 * 0.7)} -12 ${f1(-w0 * 0.75)} -34Q${f1(-w0 * 0.6 + fx * 0.4)} ${f1(fy * 0.55)} ${f1(fx - w0 * 0.6)} ${f1(fy)}L${f1(fx + w0 * 0.6)} ${f1(fy)}Q${f1(w0 * 0.7 + fx * 0.45)} ${f1(fy * 0.5)} ${f1(w0 * 0.8)} -30Q${f1(w0 * 0.8)} -10 ${f1(w0 * 1.6)} 2Z`]);
+        let fis = '';
+        for (let i = 0; i < 7; i++) { const x = rr(r, -w0 * 0.55, w0 * 0.55), y0 = rr(r, -16, fy * 0.3); fis += `M${f1(x + fx * (-y0 / th))} ${f1(y0)}l${f1(rr(r, -3, 3))} ${f1(-rr(r, 18, 40))}`; }
+        trunk.push({ s: '@bark.1', w: 1.8, op: 0.75, d: fis, detail: true }, { s: '@bark.2', w: 3, op: 0.55, d: `M${f1(-w0 * 0.62)} -28Q${f1(-w0 * 0.5 + fx * 0.4)} ${f1(fy * 0.5)} ${f1(fx - w0 * 0.45)} ${f1(fy + 4)}` });
+        // the limbs: crooked, tapering polygons from the fork to each clump (three elbows), side branches stroked
+        const nL = 4 + (v % 3 === 1 ? 2 : 1), limbs = [];
+        const taper = (pts, wa, wb) => {
+          const Lp = [], Rp = [];
+          for (let i = 0; i < pts.length; i++) {
+            const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], m = Math.hypot(dx, dy) || 1, w = (wa + (wb - wa) * i / (pts.length - 1)) / 2;
+            Lp.push([pts[i][0] - dy / m * w, pts[i][1] + dx / m * w]); Rp.push([pts[i][0] + dy / m * w, pts[i][1] - dx / m * w]);
+          }
+          return 'M' + Lp.concat(Rp.reverse()).map(p => f1(p[0]) + ' ' + f1(p[1])).join('L') + 'Z';
+        };
+        let limbD = '', fine = '';
+        for (let i = 0; i < nL; i++) {
+          const t = i / (nL - 1), ang = (-1.15 + 2.3 * t) + rr(r, -0.15, 0.15) + lean * 0.004, len = rr(r, 150, 215) * (1 - Math.abs(t - 0.5) * 0.35);
+          const pts = [[fx + (t - 0.5) * 14, fy + 6]];
+          let x = pts[0][0], y = pts[0][1], a = ang;
+          for (let k = 0; k < 3; k++) { a += (k % 2 ? 1 : -1) * rr(r, 0.12, 0.3); const l = len / 3 * rr(r, 0.85, 1.15); x += Math.sin(a) * l; y -= Math.cos(a) * l; pts.push([x, y]); }
+          limbD += taper(pts, w0 * 0.75 * rr(r, 0.8, 1), 5);
+          limbs.push({ x, y, a, len });
+          // side branches from the first and second elbows, each with a smaller clump
+          for (let k = 0; k < 2; k++) {
+            const p = pts[1 + k], b = a + (k ? 1 : -1) * rr(r, 0.5, 0.9), l = len * rr(r, 0.25, 0.4), ex = p[0] + Math.sin(b) * l, ey = p[1] - Math.cos(b) * l;
+            fine += `M${f1(p[0])} ${f1(p[1])}Q${f1(p[0] + Math.sin(b) * l * 0.5)} ${f1(p[1] - Math.cos(b) * l * 0.6)} ${f1(ex)} ${f1(ey)}`;
+            limbs.push({ x: ex, y: ey, a: b, len: l * 1.6, small: true });
+          }
+        }
+        crown.push(['@bark.0', limbD], { s: '@bark.0', w: 4, cap: 'round', d: fine });
+        if (winter) {
+          const starts = limbs.map(L => [L.x, L.y, L.a + rr(r, -0.2, 0.2), L.len * (L.small ? 0.3 : 0.32)]);
+          crown.push({ s: '@bark.0', w: 1.6, cap: 'round', op: 0.85, d: sceneDraw.twigs(r, starts, 3, 0.5) }, { s: '@a.1', w: 0.9, cap: 'round', op: 0.5, d: sceneDraw.twigs(r, starts.map(s => [s[0], s[1], s[2] + 0.4, s[3] * 0.8]), 3, 0.55), detail: true });
+          let mar = '';
+          for (let i = 0; i < 26; i++) { const L = limbs[Math.floor(r() * limbs.length)]; mar += sceneD.ell(L.x + rr(r, -40, 40), L.y + rr(r, -30, 20), 3, 2.2); }
+          crown.push({ f: '@bark.3', op: 0.8, d: mar, detail: true });
+          return { trunk, crown };
+        }
+        // the clumps: one per limb end (the side shoots' clumps smaller), sky left between them
+        const keys = season === 'autumn' ? ['a', 'b', 'c'] : ['a', 'b'], T = {};
+        for (const k of keys) T[k] = ['', '', ''];
+        let flL = '', flD = '', tw = '';
+        limbs.sort((p, q) => (q.small ? 1 : 0) - (p.small ? 1 : 0));
+        for (const L of limbs) {
+          const R0 = L.small ? rr(r, 40, 54) : rr(r, 62, 82), cx = L.x + Math.sin(L.a) * R0 * 0.25, cy = L.y - R0 * 0.25;
+          const t = T[keys[Math.floor(r() * keys.length)]], n = L.small ? 4 : 6;
+          for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2 + rr(r, -0.4, 0.4), dd = i === 0 ? 0 : rr(r, 0.35, 0.7), x = cx + Math.cos(a) * R0 * dd, y = cy + Math.sin(a) * R0 * dd * 0.75, rx = R0 * rr(r, 0.42, 0.6);
+            t[0] += sceneD.lobed(r, f1(x + rx * 0.12), f1(y + rx * 0.16), f1(rx), f1(rx * 0.82), 8, 0.36);
+            t[1] += sceneD.lobed(r, f1(x - rx * 0.1), f1(y - rx * 0.12), f1(rx * 0.8), f1(rx * 0.66), 7, 0.34);
+            if (y < cy + R0 * 0.1 && x < cx + R0 * 0.3) t[2] += sceneD.lobed(r, f1(x - rx * 0.3), f1(y - rx * 0.32), f1(rx * 0.46), f1(rx * 0.36), 6, 0.32);
+          }
+          // the leaf texture: lit flecks along the upper-left rim, dark flecks in the underside
+          for (let i = 0; i < (L.small ? 8 : 14); i++) { const a = rr(r, -2.6, -0.4), d = R0 * rr(r, 0.6, 1.0); flL += sceneD.leaf(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.8, rr(r, -1.2, 1.2), rr(r, 7, 11), 3); }
+          for (let i = 0; i < (L.small ? 6 : 11); i++) { const a = rr(r, 0.3, 2.8), d = R0 * rr(r, 0.3, 0.85); flD += sceneD.leaf(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.75, rr(r, 2.2, 4), rr(r, 7, 10), 3); }
+          // twigs poking out of the clump's rim (the crown's edge is not a smooth cloud)
+          for (let i = 0; i < 3; i++) { const a = rr(r, -3, 0), x = cx + Math.cos(a) * R0 * 0.85, y = cy + Math.sin(a) * R0 * 0.7, l = rr(r, 10, 20); tw += `M${f1(x)} ${f1(y)}l${f1(Math.cos(a) * l)} ${f1(Math.sin(a) * l)}`; }
+        }
+        crown.push({ s: '@bark.1', w: 1.4, cap: 'round', op: 0.8, d: tw, detail: true });
+        for (const k of keys) crown.push(['@' + k + '.0', T[k][0]]);
+        for (const k of keys) crown.push(['@' + k + '.1', T[k][1]]);
+        crown.push({ f: '@fleck.1', op: 0.45, d: flD, detail: true });
+        for (const k of keys) crown.push({ f: '@' + k + '.2', d: T[k][2], op: 0.92, detail: true });
+        crown.push({ f: '@fleck.0', op: 0.55, d: flL, detail: true });
+        return { trunk, crown };
+      },
+    });
+  }
+
+  /* ---------- tree.canal-willow: the hero weeping willow of the canal views (round 2) ----------
+     A big weeping willow at the water's edge: a short, leaning, often split bole, three or four limbs arching up and out, and
+     from them a dome of hanging whips that falls almost to the ground and sways. The whips are soft tapering ribbons (a darker
+     body, a lit one up the sunny side) with narrow leaves lying close along them, alternate and shortening to the tip; behind
+     them the dome's shaded inside (a few dark masses) so the curtain has depth, with gaps where the trunk shows through.
+     Spring lime with catkins, summer green, autumn yellow-green thinning, winter bare golden whips. Anchor: the foot. */
+  {
+    const WL = {
+      spring: ['#5a8a2e', '#86b440', '#b4d466', '#d4e888'], summer: ['#3a6428', '#56863a', '#80aa52', '#a8c870'],
+      autumn: ['#6a7428', '#9a9a36', '#c4b448', '#e0cc66'], winter: ['#8a6a30', '#a8843a', '#c8a048', '#e0bc5a'],
+    };
+    sceneObjDefine({
+      id: 'tree.canal-willow', category: 'tree', size: [520, 470], variants: 2, seasonal: true, shapeBySeason: true, flippable: true,
+      real: { h: 14, w: 16 },
+      palette: { base: { bark: ['#5a4c38', '#3e3426', '#7a6a50'], catkin: '#e0d070' },
+        spring: { leaf: WL.spring }, summer: { leaf: WL.summer }, autumn: { leaf: WL.autumn }, winter: { leaf: WL.winter } },
+      parts: ['trunk', 'crown'],
+      anim: { sway: { part: 'crown', pivot: [0, -150], deg: 1.8 } },
+      shadow: { rx: 200, ry: 14, h: 470 }, reflect: true, weight: 1,
+      tags: ['uk', 'tree', 'willow', 'weeping', 'waterside', 'canal', 'bank', 'deciduous', 'hero', 'kit:temperate', 'role:tree'],
+      credit: 'drawn for the Basingstoke Canal views: a hero weeping willow, whips and leaves',
+      build(v, r, ctx) {
+        const season = ctx.season, winter = season === 'winter', trunk = [], crown = [];
+        const lean = v ? -18 : 14, th = rr(r, 90, 115), w0 = 26, fx = lean, fy = -th;
+        trunk.push(['@bark.0', `M${f1(-w0 * 1.4)} 2Q${f1(-w0 * 0.7)} -14 ${f1(-w0 * 0.7 + fx * 0.3)} ${f1(fy * 0.45)}Q${f1(-w0 * 0.55 + fx * 0.8)} ${f1(fy * 0.85)} ${f1(fx - w0 * 0.55)} ${f1(fy)}L${f1(fx + w0 * 0.55)} ${f1(fy)}Q${f1(w0 * 0.6 + fx * 0.7)} ${f1(fy * 0.6)} ${f1(w0 * 0.75)} -24Q${f1(w0 * 0.8)} -8 ${f1(w0 * 1.5)} 2Z`]);
+        let fis = '';
+        for (let i = 0; i < 6; i++) { const x = rr(r, -w0 * 0.5, w0 * 0.5), y0 = rr(r, -10, fy * 0.5); fis += `M${f1(x + fx * (-y0 / th))} ${f1(y0)}l${f1(rr(r, -2, 4))} ${f1(-rr(r, 20, 40))}`; }
+        trunk.push({ s: '@bark.1', w: 2, op: 0.7, d: fis, detail: true });
+        // the limbs: arching up and out, their tips the dome's crown line
+        const limbs = [], nL = 4;
+        let limbD = '';
+        for (let i = 0; i < nL; i++) {
+          const t = i / (nL - 1), a = -1.0 + 2.0 * t + rr(r, -0.12, 0.12), L = rr(r, 150, 200) * (1 - Math.abs(t - 0.5) * 0.3);
+          const x0 = fx + (t - 0.5) * 16, y0 = fy + 4, x1 = x0 + Math.sin(a) * L * 0.45, y1 = y0 - L * (0.75 + 0.35 * Math.cos(a)), x2 = x0 + Math.sin(a) * L * 1.05, y2 = y1 + Math.abs(Math.sin(a)) * L * 0.22 - L * 0.12;
+          const ww = w0 * 0.7, wb = 4, n = Math.hypot(x2 - x0, y2 - y0) || 1, nx = -(y2 - y0) / n, ny = (x2 - x0) / n;
+          limbD += `M${f1(x0 - nx * ww / 2)} ${f1(y0 - ny * ww / 2)}Q${f1(x1)} ${f1(y1)} ${f1(x2 - nx * wb / 2)} ${f1(y2 - ny * wb / 2)}L${f1(x2 + nx * wb / 2)} ${f1(y2 + ny * wb / 2)}Q${f1(x1 + nx * ww * 0.4)} ${f1(y1 + ny * ww * 0.4)} ${f1(x0 + nx * ww / 2)} ${f1(y0 + ny * ww / 2)}Z`;
+          limbs.push([x0, y0, x1, y1, x2, y2]);
+        }
+        crown.push(['@bark.0', limbD]);
+        // the dome's shaded inside: a few dark masses under the crown line (not in winter)
+        const top = Math.min(...limbs.map(l => Math.min(l[3], l[5]))), cx = fx, span = 230;
+        if (!winter) {
+          let dk = '';
+          for (let i = 0; i < 6; i++) { const x = cx + rr(r, -span * 0.55, span * 0.55), y = top + rr(r, 20, 70) + Math.abs(x - cx) * 0.3, rx = rr(r, 40, 64); dk += sceneD.lobed(r, f1(x), f1(y), f1(rx), f1(rx * 0.9), 8, 0.3); }
+          crown.push({ f: '@leaf.0', op: 0.85, d: dk });
+        }
+        // the whips: from points along each limb's arc, hanging to the dome's skirt (longest at the sides of the dome)
+        let whips = '', bodyD = '', bodyL = '', cat = '';
+        const leaves = ['', '', '', ''], nW = winter ? 56 : 48;
+        for (let i = 0; i < nW; i++) {
+          const lb = limbs[i % nL], u = 0.2 + r() * 0.8, iu = 1 - u;
+          const ax = iu * iu * lb[0] + 2 * iu * u * lb[2] + u * u * lb[4] + rr(r, -14, 14), ay = iu * iu * lb[1] + 2 * iu * u * lb[3] + u * u * lb[5] + rr(r, -6, 10);
+          const skirt = -rr(r, 6, 40) - Math.max(0, 1 - Math.abs(ax - cx) / span) * rr(r, 10, 60), Lh = Math.max(60, skirt - ay);
+          const ex = ax + (ax - cx) * 0.08 + rr(r, -8, 8) + 10, ey = ay + Lh, qx = ax + (ax - cx) * 0.06, qy = ay + Lh * 0.5;
+          const P = (t) => { const s = 1 - t; return [s * s * ax + 2 * s * t * qx + t * t * ex, s * s * ay + 2 * s * t * qy + t * t * ey]; };
+          const Tg = (t) => { const dx = 2 * (1 - t) * (qx - ax) + 2 * t * (ex - qx), dy = 2 * (1 - t) * (qy - ay) + 2 * t * (ey - qy), m = Math.hypot(dx, dy) || 1; return [dx / m, dy / m]; };
+          whips += `M${f1(ax)} ${f1(ay)}Q${f1(qx)} ${f1(qy)} ${f1(ex)} ${f1(ey)}`;
+          if (winter) continue;
+          const lit = ax < cx - span * 0.1 ? r() < 0.7 : r() < 0.3, Lp = [], Rp = [];
+          for (let k = 0; k <= 6; k++) { const t = k / 6, p = P(t), g = Tg(t), w = 4.5 * Math.min(1, 0.3 + t * 5) * (1 - t * 0.85) + 0.4; Lp.push([p[0] - g[1] * w, p[1] + g[0] * w]); Rp.push([p[0] + g[1] * w, p[1] - g[0] * w]); }
+          const rib = 'M' + Lp.concat(Rp.reverse()).map(p => f1(p[0]) + ' ' + f1(p[1])).join('L') + 'Z';
+          if (lit) bodyL += rib; else bodyD += rib;
+          const step = season === 'autumn' ? 15 : 12, nLf = Math.floor(Lh / step);
+          for (let j = 0; j < nLf; j++) {
+            if (season === 'autumn' && r() < 0.25) continue;
+            const t = 0.04 + 0.94 * j / nLf, p = P(t), g = Tg(t), sd = j % 2 ? 1 : -1, sp = (0.3 + r() * 0.3) * sd;
+            const ux = g[0] * Math.cos(sp) - g[1] * Math.sin(sp), uy = g[0] * Math.sin(sp) + g[1] * Math.cos(sp), len = (18 - 8 * t) * (0.8 + r() * 0.3), w = len * 0.16;
+            const mx = p[0] + ux * len * 0.45, my = p[1] + uy * len * 0.45;
+            leaves[lit ? (sd < 0 ? 3 : 2) : (sd < 0 ? 2 : 1)] += `M${f1(p[0])} ${f1(p[1])}Q${f1(mx - uy * w)} ${f1(my + ux * w)} ${f1(p[0] + ux * len)} ${f1(p[1] + uy * len)}Q${f1(mx + uy * w)} ${f1(my - ux * w)} ${f1(p[0])} ${f1(p[1])}Z`;
+          }
+          if (season === 'spring' && r() < 0.4) { const p = P(0.2 + r() * 0.5); cat += sceneD.ell(p[0] + 2, p[1], 1.6, 4.5); }
+        }
+        crown.push({ s: winter ? '@leaf.2' : '@bark.2', w: winter ? 1.6 : 1, cap: 'round', op: winter ? 0.9 : 0.7, d: whips });
+        if (winter) { crown.push({ s: '@leaf.3', w: 0.9, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(r, cx, top + 40, span * 0.6, 70, 10), detail: true }); return { trunk, crown }; }
+        crown.push({ f: '@leaf.1', op: 0.75, d: bodyD }, { f: '@leaf.2', op: 0.75, d: bodyL });
+        leaves.forEach((d, i) => { if (d) crown.push({ f: '@leaf.' + i, d, detail: i === 1 }); });
+        if (cat) crown.push({ f: '@catkin', d: cat, detail: true });
+        return { trunk, crown };
+      },
+    });
+  }
+
   /* ---------- tree.bank-distant: the far tree line (one crown tone + a darker base, a stub of trunk) ---------- */
   const DIST = [['oak', 150, 110, 270, 6], ['alder', 88, 150, 300, 5], ['willow', 140, 120, 250, 5]];
   sceneObjDefine({

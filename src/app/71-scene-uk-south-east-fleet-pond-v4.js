@@ -63,7 +63,8 @@ function sceneUkFleetPondV4() {
 
   // ---- the club's hard: the clubhouse, dinghies on trolleys and one upturned, willows and alders along the shore behind
   Pl.push({ obj: 'building.fpv-sailing-hut', at: [13.5, 27], k: 1, flip: true, fix: true });
-  Pl.push({ obj: 'boat.fpv-dinghy-moored', at: [11.6, 22.5], k: 1, variant: 2, flip: true }, { obj: 'boat.fpv-dinghy-moored', at: [9.4, 30], k: 1, variant: 3 });
+  // (round 2) one dinghy on its trolley at the foot of the slipway (the upturned one stood in the water: gone)
+  Pl.push({ obj: 'boat.fpv-dinghy-moored', at: [11.6, 22.5], k: 1, variant: 2, flip: true });
   const tree = (obj, x, d, k, o) => Pl.push(Object.assign({ obj, at: [x, d], k, anim: false }, o || {}));
   tree('tree.pond-willow', 24, 46, 1.1, { variant: 0 });
   tree('tree.bank-alder', 30, 40, 1.0, { variant: 1, flip: true });
@@ -77,8 +78,11 @@ function sceneUkFleetPondV4() {
 
   // ---- the pontoon and its fingers (this camera's perspective), the dinghies moored along them, sails down
   Pl.push(...W.placements('structure.fpv-walk-v4'));
-  const moored = [[-6.4, 15.2, 1], [-6.9, 21.4, 0], [3.6, 17.6, 0]];
-  moored.forEach(([x, d, v], i) => Pl.push({ obj: 'boat.fpv-dinghy-moored', at: [x, d], k: 1, variant: v, flip: i % 2 === 1, fix: true }));
+  // (round 2) each dinghy lies alongside a finger, parallel to it, on its near side (the hull and its reflection in open water,
+  // not standing on the finger's deck)
+  const moorAt = (s, len, side, off) => { const q = W.at(s), e = P.deckW / 2 + Math.max(len * 0.5, 2.4); return [R2(q[0] + q[2] * side * e + q[3] * off), R2(q[1] + q[3] * side * e - q[2] * off)]; };
+  const moored = [[15, 4.2, -1, 1.25, 1, false], [21, 4.2, -1, 1.25, 0, true], [14, 3.2, 1, 1.25, 0, false]];
+  moored.forEach(([s, len, side, off, v, fl]) => Pl.push({ obj: 'boat.fpv-dinghy-moored', at: moorAt(s, len, side, off), k: 1, variant: v, flip: fl, fix: true }));
   // a club member on the pontoon, a gull on its far end
   Pl.push({ obj: 'person.walker', at: [-1.4, 17], k: 1, face: 'left' });
   Pl.push({ obj: 'bird.gull', at: [-2.9, 27.6], k: 1.1 });
@@ -101,9 +105,10 @@ function sceneUkFleetPondV4() {
     A.push({ obj: 'animal.wp-bat', layer: 'near', path: pts, speed: sp, loop: 'loop', s, variant: v, seed, offset: R2(r()) });
   };
   bat(600, 340, 240, 70, 150, 1, 0, 61); bat(1000, 300, 200, 60, 170, 0.9, 1, 62); bat(1300, 420, 160, 50, 140, 0.8, 0, 63);
-  Pl.push({ obj: 'sky.wp-mist', x: 560, y: H + 6, s: 1.1, layer: 'far', variant: 0, pin: true, anim: false },
-    { obj: 'sky.wp-mist', x: 1080, y: H + 10, s: 1, layer: 'mid', variant: 1, flip: true, pin: true, anim: false });
-  A.push({ obj: 'sky.wp-mist', layer: 'mid', path: [[-60, H + 16], [1660, H + 16]], speed: 7, loop: 'pingpong', s: 1, variant: 3, seed: 64, offset: 0.3 });
+  // (round 2) every mist bank one sprite (one variant, one size, flipped or not): it was the largest sprite memory here
+  Pl.push({ obj: 'sky.wp-mist', x: 560, y: H + 6, s: 1.1, layer: 'mid', variant: 0, pin: true, anim: false },
+    { obj: 'sky.wp-mist', x: 1080, y: H + 10, s: 1.1, layer: 'mid', variant: 0, flip: true, pin: true, anim: false });
+  A.push({ obj: 'sky.wp-mist', layer: 'mid', path: [[-60, H + 16], [1660, H + 16]], speed: 7, loop: 'pingpong', s: 1.1, variant: 0, seed: 64, offset: 0.3 });
   data.flocks.push({ obj: 'bird.goose-flight', n: 7, area: [200, 120, 1400, 320], speed: 32, s: 0.32, seed: 65, layer: 'horizon' });
 
   // ---- framing: willow fronds hanging into the top left, reed and reedmace in the bottom corners

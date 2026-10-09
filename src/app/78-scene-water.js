@@ -382,12 +382,64 @@ function _scwaEdges(env, R, gx) {
   const TG = env.TG, all = new Path2D();
   gx.setTransform(TG[0], TG[1], TG[2], TG[3], TG[4], TG[5]); gx.globalAlpha = 1;
   for (const e of sceneWaterEdgeQuads(R.w.v2, R.w.d, env.cam)) {
+    const cap = SCENE_WATER_SOFT_EDGE[e.kind];
+    if (cap) {
+      // a muddy margin or wet sand: one smooth ribbon per run of the bank, its width capped near the camera, over a soft fringe
+      const rb = _scwaRibbon(e.quads, cap), col = _scCol(e.col, env.L);
+      gx.globalAlpha = 0.32; gx.fillStyle = col; gx.fill(rb.soft);
+      gx.globalAlpha = 1; gx.fill(rb.main);
+      all.addPath(rb.main);
+      continue;
+    }
     const p = new Path2D();
     for (const q of e.quads) { p.moveTo(q[0][0], q[0][1]); for (let i = 1; i < q.length; i++) p.lineTo(q[i][0], q[i][1]); p.closePath(); }
     gx.fillStyle = _scCol(e.col, env.L); gx.fill(p);
     all.addPath(p);
   }
   return all;
+}
+/**
+ * The flat bank bands (natural: a muddy margin, beach: wet sand): full width up to this many scene units across on the screen, a
+ * fifth of the rest beyond it, never over 2.2 times it (engine
+ * follow-up, 9 Oct: 0.5 m of mud projected a few metres from the camera came out a band hundreds of units wide, in facets).
+ */
+const SCENE_WATER_SOFT_EDGE = Object.freeze({ natural: 9, beach: 14 });
+/**
+ * One edge's band quads ([a, b, pb, pa]: the bank from a to b, offset across the ground to pa, pb) as smooth ribbons: the
+ * quads joined into runs (a shared bank vertex), the offset at each vertex the mean of its two quads', capped to `cap` units
+ * (a soft knee) and eased along the run (two [1 2 1] passes), the outer side drawn as a curve through the offset points. The bank side
+ * follows the water's outline exactly (so the band never lifts off it). -> { main, soft } (soft: the fringe, 1.7 x as wide).
+ */
+function _scwaRibbon(quads, cap) {
+  const runs = [];
+  let run = null;
+  for (const q of quads) {
+    const last = run && run.P[run.P.length - 1];
+    if (!last || Math.abs(last[0] - q[0][0]) > 0.01 || Math.abs(last[1] - q[0][1]) > 0.01) { run = { P: [q[0]], O: [[q[3][0] - q[0][0], q[3][1] - q[0][1]]] }; runs.push(run); }
+    else { const o = run.O[run.O.length - 1]; run.O[run.O.length - 1] = [(o[0] + q[3][0] - q[0][0]) / 2, (o[1] + q[3][1] - q[0][1]) / 2]; }
+    run.P.push(q[1]); run.O.push([q[2][0] - q[1][0], q[2][1] - q[1][1]]);
+  }
+  const main = new Path2D(), soft = new Path2D();
+  for (const { P, O } of runs) {
+    // a soft knee: full width up to cap, a fifth of the rest beyond it, never over 2.2 x cap (still wider near than far)
+    for (const o of O) { const l = Math.hypot(o[0], o[1]); if (l > cap) { const k = Math.min(2.2 * cap, cap + (l - cap) * 0.2) / l; o[0] *= k; o[1] *= k; } }
+    for (let pass = 0; pass < 2 && O.length > 2; pass++) {
+      const C = O.map(o => o.slice());
+      for (let i = 1; i < O.length - 1; i++) { O[i][0] = (C[i - 1][0] + 2 * C[i][0] + C[i + 1][0]) / 4; O[i][1] = (C[i - 1][1] + 2 * C[i][1] + C[i + 1][1]) / 4; }
+    }
+    const trace = (path, k) => {
+      const Q = P.map((p, i) => [p[0] + O[i][0] * k, p[1] + O[i][1] * k]), n = P.length;
+      path.moveTo(P[0][0], P[0][1]);
+      for (let i = 1; i < n; i++) path.lineTo(P[i][0], P[i][1]);
+      path.lineTo(Q[n - 1][0], Q[n - 1][1]);
+      // back along the outer side: a quadratic through the midpoints (each offset point a control point): no facets
+      for (let i = n - 2; i >= 1; i--) path.quadraticCurveTo(Q[i][0], Q[i][1], (Q[i][0] + Q[i - 1][0]) / 2, (Q[i][1] + Q[i - 1][1]) / 2);
+      path.lineTo(Q[0][0], Q[0][1]);
+      path.closePath();
+    };
+    trace(main, 1); trace(soft, 1.7);
+  }
+  return { main, soft };
 }
 /** The mask (group stage): the region minus its edges and everything of this group drawn after the water. */
 function _scwaMask(env, R, grp) {
