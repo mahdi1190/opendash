@@ -100,7 +100,7 @@ function sceneCanalView(V) {
     const far = lay === 'far' || lay === 'horizon';
     if (far) w = { 'tree.bank-distant': 1 };   // the far bands: the 1 KB distant tree (three shapes), not the bank trees
     scatter.push({ obj: w, layer: lay, seed: seed++, area: { poly: poly(Xa, 0, Xb, 0, za, zb) }, n, minGap: far ? 10 : 3, s: [0.8, 1.15], sByY: sBy('tree', tall * (k || 1), 0, V.treeCap || 1.25),
-      variant: far ? (lay === 'horizon' ? [0, 1] : 'random') : deep ? [0, 0] : [0, 1], flip: 0.5, tint: lay === 'horizon' ? null : deep && !far ? { col: '#c8a050', k: [0.04, 0.11] } : V.treeTint === false && !far ? null : { col: '#c8a050', k: [0, 0.08] }, anim: false, mask: far ? null : { avoid: edgeAvoid } });
+      variant: far ? (lay === 'horizon' ? [0, 1] : 'random') : deep ? [0, 0] : [0, 1], flip: 0.5, tint: lay === 'horizon' ? null : deep && !far ? { col: '#c8a050', k: [0.04, 0.11] } : V.treeTint === false && !far ? null : { col: '#c8a050', k: [0, 0.08] }, anim: false, shadow: far || deep ? false : undefined, mask: far ? null : { avoid: edgeAvoid } });
   };
   for (let i = 1; i < 5; i++) {
     const za = Math.max(B[i], firstZ), zb = B[i + 1], far = i >= 3;
@@ -136,7 +136,7 @@ function sceneCanalView(V) {
   rule({ obj: 'ground.leaves', layer: 'fore', seed: 16, area: { poly: poly(W.TP0 + 0.2, 0, W.TP1 - 0.2, 0, zA, zN) }, n: 28, minGap: 16, s: [0.6, 1.1], sByY: sW(0.7, 133, 0, 1.1) });
   rule({ obj: 'water.fish-ring', layer: 'near', seed: 22, area: { poly: poly(W.WE + 2, W.WY, W.WF - 3, W.WY, Math.max(zA, 9), zN) }, n: 8, minGap: 30, s: [0.8, 1.2], tint: null, sByY: sW(0.9, 92, W.WY, 1.2), mask: null });
   if (V.rocks !== false) rule({ obj: { 'rock.boulder': 1, 'rock.stones': 1 }, layer: 'near', seed: 23, area: { poly: poly(W.TP1, 0, W.WE - 0.1, W.WY, Math.max(zA, 6), zN) }, n: 24, minGap: 24, s: [0.55, 1.3], sByY: sBy('rock.boulder', 0.45, 0, 1), mask: { noise: { scale: 90, cut: 0.35 } } });
-  rule({ obj: 'ground.puddle', layer: 'fore', seed: 24, tint: null, area: { poly: poly(W.TP0 + 0.3, 0, W.TP1 - 0.3, 0, Math.max(zA, 5), zN) }, n: 8, minGap: 44, s: [0.6, 1.2], sByY: sW(1.1, 160, 0, 1.1) });
+  rule({ obj: 'ground.puddle', layer: 'fore', seed: 24, tint: null, area: { poly: poly(W.TP0 + 0.3, 0, W.TP1 - 0.3, 0, Math.max(zA, 5), zN) }, n: 6, minGap: 30, s: [0.6, 1.2], sByY: sW(1.1, 160, 0, 1.1) });
   rule({ obj: 'water.lily', layer: 'near', seed: 17, tint: null, area: { poly: poly(W.WF - 2.6, W.WY, W.WF - 0.2, W.WY, Math.max(zA, 9), zN) }, n: 18, minGap: 10, s: [0.7, 1.2], sByY: [[HOR + 4, 0.01], [900, r2(1.2 * (900 - HOR) / (H - W.WY) / 140)]], mask: null });
   rule({ obj: { 'plant.grass': 3, 'plant.wildflowers': 2 }, layer: 'near', seed: 18, area: { poly: poly(W.OFF + 1, 0.3, W.OFF + 14, 0.3, zA, zN) }, n: 150, minGap: 7, s: [0.7, 1.3], sByY: sBy('plant.grass', 0.6, 0.3) });
   rule({ obj: { 'plant.grass': 3, 'plant.wildflowers': 1 }, layer: 'near', seed: 19, area: { poly: poly(W.HEDGE - 16, 0, W.HEDGE - 0.6, 0, zA, zN) }, n: 110, minGap: 9, s: [0.7, 1.3], sByY: sBy('plant.grass', 0.7) });
