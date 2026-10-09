@@ -43,7 +43,7 @@ Do not run the full test suite.
 
 **6. Commit.** Only your files, staged by name; `node tools/anim-pack.mjs guard --owned <your files>`;
 `node tools/privacy-scan.mjs --staged` clean; then
-`git -c user.name="Mahdi Ahmed" -c user.email="97956683+mahdi1190@users.noreply.github.com" commit -m "Scene: <place>" -m "Co-Authored-By: <your name> <noreply address>"`.
+`git -c user.name="<your name>" -c user.email="<your noreply email>" commit -m "Scene: <place>" -m "Co-Authored-By: <your name> <noreply address>"`.
 Never push. Never edit shared engine or library files, other scenes, tests or tools; if the engine is missing something,
 say so in the report.
 

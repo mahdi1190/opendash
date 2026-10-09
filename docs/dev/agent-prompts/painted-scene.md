@@ -49,7 +49,7 @@ regenerated variant), re-render once.
 
 **7. Commit** only your files by name: `assets/objects/ground/paint-<slug>*`, `src/app/70-scene-lib-raster.js`,
 `src/app/71-scene-paint-<slug>.js`, `src/app/72-anim-pack-paint-<slug>.js`. `node tools/privacy-scan.mjs --staged` clean, then
-`git -c user.name="Mahdi Ahmed" -c user.email="97956683+mahdi1190@users.noreply.github.com" commit -m "Painted scene: <place>" -m "Co-Authored-By: <your name> <noreply address>"`.
+`git -c user.name="<your name>" -c user.email="<your noreply email>" commit -m "Painted scene: <place>" -m "Co-Authored-By: <your name> <noreply address>"`.
 Never push. Never edit shared engine files, other scenes, tests or tools.
 
 **Report:** the files, the ref, the lint result, the perf numbers, the render PNG paths and the commit hash.

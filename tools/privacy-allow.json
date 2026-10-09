@@ -481,6 +481,96 @@
       "path": "src/app/71-scene-uk-sheffield2-b.js",
       "line_sha256": "4ca7af71091ce1f4cbbe66df56093a8bb0290dae8b7c6140911eb66dc25f9d69",
       "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/AI_OBJECTS.md",
+      "line_sha256": "0ce077cbe5061ae23a2bffc219adb11d42ef417fe2a718b341217f6ffe8ad6d4",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/AI_OBJECTS.md",
+      "line_sha256": "1c9dae5518834b95182bdf8b4ddbdf52d340a01426cf9e2fb73e79700dc77651",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/AI_OBJECTS.md",
+      "line_sha256": "4ff2b6de48c2de89539eb5467bc14765024a6d1ec6f2e9aabd87e856fe2a458a",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/AI_OBJECTS.md",
+      "line_sha256": "099493abc2ee9454b5e893ad748d6c78e4e34be3afb9bdc3324c30ab2ee56342",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/AI_OBJECTS.md",
+      "line_sha256": "19db74587dcabc34fd21bd3e974aa3abc6e270d399ae4899752ff6dbd6264b9e",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_ENGINE_V2.md",
+      "line_sha256": "69efcc28a2395278666be3e9db20bcd527980446dc936b715d70f9f86bdd7ae9",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-1atmos.js",
+      "line_sha256": "96c7b1c23953ccc7759bdce708d8f1cc7e5475c7f76ffdeed82ef850bda1bee2",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-birds-texas-pelican.js",
+      "line_sha256": "9a4a5fce64f949fab9cbce4f1a078f7a34d3b4ab1065f1185abce6aa300636df",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-birds-texas-pelican.js",
+      "line_sha256": "c0912ba49e2e0945ebeb903de43c7a7396e2cc3e4ad9b4c61b8b1af1fab251dd",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-upgrade-texas-gulf-coast.js",
+      "line_sha256": "d223f7079fe304ea38f71d7c9a8041fb61ca556532e85c93dbb57c5590e7d8f2",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-upgrade-texas-gulf-coast.js",
+      "line_sha256": "d95547541c20987b087afd0170348f1d2ae7ac6c02de0309c072358b8ed8c3b8",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/fixtures/scene-compiled-v1-hashes.json",
+      "line_sha256": "05f04c56b7f574f37e5ff5146ef44f11d279b52b7430d054f3638b836cd49390",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/style-normalise.test.mjs",
+      "line_sha256": "b668f649dbbad164634d980314bdb29a18691a2b49c8a94b7a69b0188f936884",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "tools/lib/anim-templates/ai-object-prompt.md",
+      "line_sha256": "0aa519949c39973006e295cbaa4d8a07b16032a5a7f22921e045d4308016a295",
+      "why": "reviewed ordinary word"
+    },
+    {
+      "rule": "private-term",
+      "path": "tools/lib/anim-templates/ai-object-prompt.md",
+      "line_sha256": "3fe85d138521f8104aea4650e160c32106d981b18c07a936cec26cbc9ead9079",
+      "why": "reviewed ordinary word"
     }
   ]
 }

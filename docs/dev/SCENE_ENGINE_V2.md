@@ -121,8 +121,8 @@ the rules below.
 - **One tree, no worktrees.** Everyone works in the one checkout on
   branch `uk-rebuild`.
   - Commit ONLY your own files, by explicit path:
-    `git -c user.name="Mahdi Ahmed" -c
-    user.email="97956683+mahdi1190@users.noreply.github.com" commit -m "..."
+    `git -c user.name="<your name>" -c
+    user.email="<your noreply email>" commit -m "..."
     -- <your files>`. End the message with `Co-Authored-By: Claude Opus 5.5
     <noreply@anthropic.com>`.
   - If `.git/index.lock` exists, another builder is committing: wait and

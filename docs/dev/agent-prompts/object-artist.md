@@ -55,7 +55,7 @@ landmark, a detailed vehicle), and only if you have image generation:
 4. Commit only your files (handbook section 6): `git add` them by name (your `70-scene-lib-<slug>.js`, your
    `assets/objects/...` folders, `src/app/70-scene-lib-raster.js` if you imported), `node tools/privacy-scan.mjs --staged`
    clean, then
-   `git -c user.name="Mahdi Ahmed" -c user.email="97956683+mahdi1190@users.noreply.github.com" commit -m "Objects: <ids>" -m "Co-Authored-By: <your name> <noreply address>"`.
+   `git -c user.name="<your name>" -c user.email="<your noreply email>" commit -m "Objects: <ids>" -m "Co-Authored-By: <your name> <noreply address>"`.
    Never push. Never edit shared engine or library files, tests or tools.
 
 **Report:** the ids, the mode used for each, the sheet PNG paths, the lint result and the commit hash.

@@ -124,7 +124,7 @@ Objects: `object lint <ids>` and `object sheet <ids>` (and `--mode night`), and 
 - Commit with the no-reply author, ending the message with a line naming you (for example
   `Co-Authored-By: Gemini <noreply@google.com>` or `Co-Authored-By: ChatGPT <noreply@openai.com>`):
   ```
-  git -c user.name="Mahdi Ahmed" -c user.email="97956683+mahdi1190@users.noreply.github.com" commit -m "<what and where>" -m "Co-Authored-By: <you>"
+  git -c user.name="<your name>" -c user.email="<your noreply email>" commit -m "<what and where>" -m "Co-Authored-By: <you>"
   ```
 - **The repository is public.** No personal data anywhere: no real names of private people, e-mail addresses, home
   addresses, absolute paths (`C:/Users/...`), tokens or task text, in code, comments, file names or commit messages.
