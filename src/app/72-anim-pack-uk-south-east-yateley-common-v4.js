@@ -29,7 +29,7 @@ function ukSouthEastYateleyCommonV4(T) {
     const body = `<path fill="${c}" d="M-60-56q-2-16 14-18l72-2q22 0 26 14l2 26q0 8-8 8H-52q-8 0-8-8z"/>${belt}<path fill="#000" opacity=".18" d="M-58-40q50 10 108 0v8q0 6-8 6H-52q-6 0-6-6z"/><path fill="#fff" opacity=".1" d="M-48-72q40-6 74-2-30 6-74 2z"/>`;
     const head = mv('ukngraze', { ad: (o.dur || 11) + 's', d: -(o.d || 0) + 's', to: '44px -64px' }, `<path fill="${c}" d="M36-72q22-8 34 0l16 16q4 10-6 12l-16-2-30-10z"/><path fill="${d}" d="M78-50q8 0 8 6-2 4-8 2z"/><path fill="${c}" d="M62-72l-10-8 4 12zM68-70l6-10 2 12z"/><circle cx="70" cy="-60" r="1.8" fill="#0e0c0c"/>`);
     const tail = mv('ukntail', { ad: (2.6 + (o.d || 0) % 2) + 's', to: '-58px -68px' }, S(d, 3, 'M-58-68q-8 14-6 40') + `<path fill="${d}" d="M-68-30q4-6 8 0l-3 8z"/>`);
-    return at(x, y, s, `<ellipse cy="2" rx="62" ry="7" fill="#14201a" opacity=".25"/>` + legs + tail + body + head, o.flip);
+    return at(x, y, s, legs + tail + body + head, o.flip);
   };
   // A male stonechat on a gorse top: black head, white collar, orange breast; bobs and flicks.
   const stonechat = (x, y, s, o = {}) => at(x, y, s, mv('uknbob', { ad: '2.3s', d: -(x % 2) + 's', dy: '-2px' },
@@ -99,7 +99,8 @@ function ukSouthEastYateleyCommonV4(T) {
     if (!lo) g += K.tree('birch', 520, 548, .26, { season, seed: 71, haze: .22, hazeCol: hz });
     // grazing cattle on the open heath (left) and a roe deer at the woods' edge (right)
     const coat = ['#231c1a', '#6a3a24', '#2a2422'];
-    g += cow(230, 584, .3, { col: coat[0], d: 0, dur: 10 }) + cow(320, 594, .34, { col: coat[1], d: 4, dur: 12, flip: true }) + cow(530, 600, .38, { col: coat[2], belt: true, d: 7, dur: 9 });
+    const cowS = (x, y, s, o) => K.shadow(L, x, y + 2 * s, 110 * s, 70 * s) + cow(x, y, s, o);
+    g += cowS(230, 584, .3, { col: coat[0], d: 0, dur: 10 }) + cowS(320, 594, .34, { col: coat[1], d: 4, dur: 12, flip: true }) + cowS(530, 600, { col: coat[2], belt: true, d: 7, dur: 9 });
     g += K.deer(1450, 556, .3, { season, d: 3 }) + K.deer(1500, 560, .26, { season, flip: true, d: 6 });
     // 7. mid heath: big lone pine with a nightjar, more birch, gorse, bracken
     const pineX = 420, pineY = 640;

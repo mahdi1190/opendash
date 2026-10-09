@@ -23,8 +23,7 @@ function ukSouthEastYateleyCommonV3(T) {
   // Conservation grazing cattle (faces right): grazes (head dips), tail swishes. coat: [body, dark].
   const cow = (x, y, s, o = {}) => {
     const [c, d] = o.coat || ['#2a2422', '#141110'], belt = o.belt ? `<path fill="#ece6da" d="M-14-58h22l2 40h-26z"/>` : '';
-    const art = `<ellipse cy="3" rx="62" ry="7" fill="#1a2418" opacity=".25"/>` +
-      `<path stroke="${d}" stroke-width="7" stroke-linecap="round" d="M-38-24l-2 24M-26-24l2 24M24-24l-2 24M36-24l3 24"/>` +
+    const art = `<path stroke="${d}" stroke-width="7" stroke-linecap="round" d="M-38-24l-2 24M-26-24l2 24M24-24l-2 24M36-24l3 24"/>` +
       mv('ukntail', { ad: `${(2.6 + (x % 7) * .2).toFixed(1)}s`, to: '-48px -52px' }, `<path fill="none" stroke="${d}" stroke-width="3" d="M-48-52q-6 18-4 38"/><path fill="${d}" d="M-56-16q4-6 8 0l-2 8h-4z"/>`) +
       `<path fill="${c}" d="M-50-34q-4-26 20-28h50q20 0 24 14l2 24q-2 8-12 8h-70q-14-2-14-18z"/>` + belt +
       `<path fill="${d}" opacity=".35" d="M-46-26q40 10 90 0v8q-46 10-90 0z"/>` +
@@ -90,7 +89,8 @@ function ukSouthEastYateleyCommonV3(T) {
     if (!win && !night) g += K.dragonfly(1150, 586, .55, { dx: 140, dy: 20 }) + K.dragonfly(1300, 594, .5, { col: '#c84a2a', dx: -110, dy: 16 });
     // 5. mid heath: grazing cattle, the sandy track and walkers
     g += K.heath({ seed: 150, x0: -160, x1: 1760, y0: 540, y1: 640, n: 55, season, k0: .26, k1: .45, grass: 40, amp: 'none' });
-    g += cow(340, 584, .42, { coat: ['#2a2422', '#141110'], belt: true, dur: 11 }) + cow(470, 596, .46, { coat: ['#7a3e24', '#4a2414'], flip: true, dur: 9, d: 4 }) + cow(180, 600, .5, { coat: ['#2a2422', '#141110'], dur: 13, d: 7 });
+    const cowS = (x, y, s, o) => K.shadow(L, x, y + 2 * s, 110 * s, 70 * s) + cow(x, y, s, o);
+    g += cowS(340, 584, .42, { coat: ['#2a2422', '#141110'], belt: true, dur: 11 }) + cowS(470, 596, .46, { coat: ['#7a3e24', '#4a2414'], flip: true, dur: 9, d: 4 }) + cowS(180, 600, .5, { coat: ['#2a2422', '#141110'], dur: 13, d: 7 });
     g += K.track({ pts: [[770, 490, 6], [740, 530, 18], [800, 580, 40], [700, 660, 90], [560, 760, 170], [420, 900, 300]], seed: 151, season, stones: 70, roots: 4, puddles: win || spr ? 2 : aut ? 1 : 0, sky: L.low });
     g += litter(152, 480, 860, 640, 900, lo ? 30 : 120, [K.mix(p.ground[0], '#3a2a1a', .3), p.dry[0]]);
     if (!night) {

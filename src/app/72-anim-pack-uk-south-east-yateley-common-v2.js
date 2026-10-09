@@ -23,7 +23,7 @@ function ukSouthEastYateleyCommonV2(T) {
     const body = `<path fill="${col}" d="M-46-40q0-22 22-24h50q20 2 20 22l-2 18q-4 6-12 6h-62q-14 0-16-8z"/>${belt}<path fill="${dark}" opacity=".35" d="M-44-30q30 10 86 0v8q-40 8-84 0z"/>`;
     const head = mv('ukngraze', { ad: f(o.dur || 10) + 's', d: '-' + f(o.d || 0) + 's', to: '44px -50px' }, `<path fill="${col}" d="M40-56q12-6 20 2l14 24q2 8-6 10l-10-2-20-20z"/><path fill="${dark}" d="M62-22q8 2 10-6l-6-4z"/><path fill="${dark}" d="M46-58l-8-8 12 3zM56-58l6-8-2 10z"/><circle cx="60" cy="-42" r="2" fill="#141010"/>`);
     const tail = mv('ukntail', { ad: f(2.4 + (o.d || 0) % 1.5) + 's', to: '-46px -50px' }, K.S(dark, 3, 'M-46-50q-8 14-4 34') + `<ellipse cx="-50" cy="-14" rx="3" ry="5" fill="${dark}"/>`);
-    return K.at(x, y, s, `<ellipse cy="2" rx="60" ry="7" fill="#1c2618" opacity=".25"/>` + legs + tail + body + head, o.flip);
+    return K.at(x, y, s, legs + tail + body + head, o.flip);
   };
   // A stonechat on a gorse top: black head, white collar, orange breast; it bobs and flicks.
   const stonechat = (x, y, s, o = {}) => K.at(x, y, s, mv('uknpeck', { ad: f(o.dur || 6) + 's', d: '-' + f(o.d || 0) + 's', to: '0px 0px' },

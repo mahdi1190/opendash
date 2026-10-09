@@ -101,7 +101,7 @@ function ukSouthEastYateleyCommonV1(T) {
     if (summer || spring) g += K.dragonfly(440, 590, .6, { col: '#2f8ac6', dx: 140, dy: 30 }) + K.dragonfly(300, 600, .5, { col: '#c8402a', dx: -90, dy: 24 });
 
     // 5. cattle grazing the heath (right of centre), the sandy track winding toward the trees
-    const herd = [[1010, 604, .5, '#6a3f26', 0], [1120, 596, .44, '#2a2422', 3], [1330, 612, .56, '#8a5a34', 6], [940, 594, .4, '#2a2422', 8]];
+    const herd = [[1010, 604, .43, '#6a3f26', 0], [1120, 596, .38, '#2a2422', 3], [1330, 612, .48, '#8a5a34', 6], [940, 594, .35, '#2a2422', 8]];
     herd.forEach(([x, y, s, c, d], i) => { g += cow(L, x, y, s, { col: c, d, dur: 9 + i * 1.7, flip: i % 2 === 1, belt: i === 1 ? '#efe9dc' : null, horns: i === 2 }); });
     g += K.track({ pts: [[905, 510, 6], [880, 530, 14], [930, 562, 26], [880, 610, 46], [790, 670, 80], [720, 760, 140], [700, 905, 270]], seed: seed + 70, season, stones: 70, roots: 4, puddles: winter || autumn ? 3 : spring ? 1 : 0, sky: L.low, cols: winter ? ['#a4927a', '#c4b49a', '#e2d6c0'] : ['#b89a6c', '#d6bf92', '#efe0bc'] });
     g += K.heath({ seed: seed + 77, x0: -160, x1: 1760, y0: 648, y1: 690, n: 44, season, k0: .45, k1: .55, grass: 18, amp: 'none' });
