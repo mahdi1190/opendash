@@ -24,6 +24,7 @@ or the folder you chose with `--data-dir`):
 | Calendar and email | `calendar/`, `inbox/`, `email/` | read-only snapshots: event details; email subjects, senders, dates and short snippets |
 | Data sources | `sources.json`, `connections.json` | which sources and accounts you added, connection status, iCal addresses |
 | Briefs and stories | `briefs/` | cached weather, AI summaries and story scripts, daily brief snapshots |
+| ElevenLabs narration | `secrets/narration.json`, `secrets/narration-usage.json`, `cache/narration/` | optional API key and account status, saved voice audio and local usage counts; excluded from exports |
 | Auto-linking | `index/` | names, sizes and dates of files in the workspace folders you chose, short excerpts (never from "names only" folders) |
 | Logs | `logs/` | what the server did: requests, timings, counts, errors. No task text, email content, names or money |
 | Local token | `local-token` | a random secret for local programs |
@@ -45,6 +46,7 @@ Only in these cases, and only when you switch the feature on:
 | Feature | What is sent | To whom |
 |---|---|---|
 | **Claude features** (assistant, task chat, summaries, suggestions, auto-link judge, stories) | only what that feature needs: for example the task you are chatting about, or the facts for today's summary | Anthropic, through the Claude Code CLI signed in to **your** Claude account |
+| **ElevenLabs voice**, when connected and selected | the words of selected story moments, voice ID and delivery cues, authenticated using your API key | ElevenLabs (`api.elevenlabs.io`); saved audio is reused locally |
 | **Connectors** (Gmail, Google Calendar, a bank, GitHub, Google Drive, other MCP servers) | a request to read: "list events this month", "list transactions since...", "open pull requests of this repository" | the connector, called by Claude through your Claude Code. The results (your events, email subjects and snippets, transactions...) pass through Claude (Anthropic) on their way to your computer |
 | **iCal links** | a normal download request for that address | the calendar host in the link |
 | **Weather** (if you set a town) | the town name (to find it once), then its coordinates | Open-Meteo (open-meteo.com), no account, no key |
