@@ -114,12 +114,12 @@
       { obj: 'person.walker', layer: 'mid', path: [[160, 560], [300, 558]], speed: 4, loop: 'pingpong', s: 0.6, seed: 74, variant: 1, offset: 0.2 },
     ],
     flocks: [{ obj: 'bird.small-flight', n: 6, area: [260, 160, 1300, 300], speed: 26, s: 0.55, seed: 81, layer: 'far' }],
-    particles: 'season', weather: 'live',
+    particles: 'season', weather: 'live', fx: { shadows: 2 },
   });
   /** All-year life (waterbirds, a squirrel): the season comes from the date (season 'auto'), so nothing that belongs to
       one season only (butterflies, bees, dragonflies) is drawn; the four seasonal items of the view share this one scene. */
   const YEAR_ROUND = [
-      { obj: 'animal.squirrel', layer: 'fore', path: [[1300, 884], [1460, 880]], speed: 9, loop: 'pingpong', s: 0.8, seed: 99, offset: 0.4 },
+      { obj: 'animal.squirrel', layer: 'fore', path: [[520, 868], [640, 872]], speed: 9, loop: 'pingpong', s: 0.8, seed: 99, offset: 0.4 },
       { obj: 'bird.goose-flight', layer: 'far', path: [[-120, 220], [1720, 160]], speed: 40, loop: 'loop', s: 0.6, seed: 100, offset: 0.3 },
   ];
   sceneAdd(PACK, { id: ID, label: 'Yateley Green', site: 'Yateley Green — Autumn shade beside the open green', tags: ['uk', 'yateley', 'village green', 'pond', 'church', 'st peters'], mood: 'calm', colour: 'green' },

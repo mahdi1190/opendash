@@ -121,7 +121,7 @@
       { obj: 'bird.goose-flight', layer: 'far', path: [[1720, 200], [-120, 250]], speed: 38, loop: 'loop', s: 0.55, seed: 73, offset: 0.2 },
     ],
     flocks: [{ obj: 'bird.small-flight', n: 5, area: [300, 180, 1300, 320], speed: 24, s: 0.5, seed: 81, layer: 'far' }],
-    particles: 'season', weather: 'live',
+    particles: 'season', weather: 'live', fx: { shadows: 2 },
   });
   sceneAdd(PACK, { id: ID, label: 'Yateley Green', site: 'Yateley Green — A summer evening beneath the birches', tags: ['uk', 'yateley', 'village green', 'pond', 'church', 'st peters', 'evening'], mood: 'dreamy', colour: 'amber' },
     base);

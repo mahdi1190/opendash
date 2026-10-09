@@ -71,7 +71,7 @@
       // the near margin: bench, robin, lamp, the big horse chestnut and a squirrel under it
       { obj: 'street.bench', x: 1296, y: 714, s: 0.9, layer: 'near', variant: 0, seed: 18 },
       { obj: 'bird.robin', x: 1262, y: 684, s: 0.6, layer: 'near', variant: 1, seed: 19 },
-      { obj: 'street.lamp', x: 1410, y: 694, s: 0.68, layer: 'near', variant: 0, seed: 20 },
+      { obj: 'street.lamp', x: 1236, y: 708, s: 0.68, layer: 'near', variant: 0, seed: 20 },
       { obj: 'tree.green-oak', x: 1530, y: 714, s: 0.9, layer: 'near', variant: 0, seed: 21, flip: true, anim: false },
       { obj: 'animal.squirrel', x: 1446, y: 722, s: 0.62, layer: 'near', seed: 22, flip: true },
       // the big oak on the left, over the wildflower margin
@@ -116,7 +116,7 @@
       { obj: 'person.dog-walker', layer: 'fore', path: [[1290, 830], [1180, 890]], speed: 6, loop: 'pingpong', s: 1.0, seed: 76, variant: 2, offset: 0.6 },
     ],
     flocks: [{ obj: 'bird.small-flight', n: 6, area: [380, 160, 1180, 280], speed: 26, s: 0.5, seed: 81, layer: 'far' }],
-    particles: 'season', weather: 'live',
+    particles: 'season', weather: 'live', fx: { shadows: 2 },
   });
   /** All-year life (waterbirds, a squirrel): the season comes from the date (season 'auto'), so nothing that belongs to
       one season only (butterflies, bees, dragonflies) is drawn; the four seasonal items of the view share this one scene. */

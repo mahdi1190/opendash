@@ -113,7 +113,7 @@
       { obj: 'person.walker', layer: 'mid', path: [[80, 606], [300, 602]], speed: 5, loop: 'pingpong', s: 0.7, seed: 75, variant: 2, offset: 0.6 },
     ],
     flocks: [{ obj: 'bird.small-flight', n: 6, area: [200, 150, 1300, 300], speed: 28, s: 0.6, seed: 81, layer: 'far' }],
-    particles: 'season', weather: 'live',
+    particles: 'season', weather: 'live', fx: { shadows: 2 },
   });
   /** All-year life (waterbirds, a squirrel): the season comes from the date (season 'auto'), so nothing that belongs to
       one season only (butterflies, bees, dragonflies) is drawn; the four seasonal items of the view share this one scene. */
