@@ -49,7 +49,7 @@ function sceneProofFleetPondData() {
       if (!def) continue;
       const p = W.proj(x, d, P.camera.water), k = (0.7 + 0.45 * rnd()) * (1 - 0.35 * r);
       islands.push({ obj: rush ? 'plant.bulrush' : 'plant.reed', x: Math.round(p[0] * 10) / 10, y: Math.round(p[1] * 10) / 10, s: Math.round(1000 * k * W.f / d * (rush ? 1.6 : 1.8) / def.size[1]) / 1000,
-        pin: true, variant: Math.floor(rnd() * 3), flip: rnd() < 0.5, reflect: true, shadow: false, anim: false, tint: ['#8a7a40', Math.round(rnd() * 20) / 100] });
+        pin: true, variant: Math.floor(rnd() * 3), flip: rnd() < 0.5, reflect: true, shadow: false, anim: false, tint: ['#8a7a40', Math.round(rnd() * 10) / 100] });
     }
   }
   const pq = P.platform[3], pa = W.proj(pq[0], pq[1], 0);
@@ -87,17 +87,17 @@ function sceneProofFleetPondData() {
     scatter: [
       // the reedbeds: tall Phragmites in big irregular stands, reedmace (bulrush) in clumps at the water's edge, sedge and
       // grass on the cut strip by the walk; the near-left stand stands as tall as the eye, a frame
-      { obj: { 'plant.reed': 8, 'plant.bulrush': 1 }, on: ['reeds-w'], avoid: ['deck', 'platform', 'cut'], d: [5.5, 64], n: 900, dist: 'screen', cluster: { centres: 22, spread: 11 }, seed: 11, anim: false, k: [0.7, 1.2], tint: { col: '#8a7a40', k: [0, 0.2] } },
+      { obj: { 'plant.reed': 8, 'plant.bulrush': 1 }, on: ['reeds-w'], avoid: ['deck', 'platform', 'cut'], d: [5.5, 64], n: 900, dist: 'screen', cluster: { centres: 22, spread: 11 }, seed: 11, anim: false, k: [0.7, 1.2], tint: { col: '#8a7a40', k: [0, 0.12] } },
       { obj: { 'plant.reed': 5, 'plant.bulrush': 2 }, on: ['reeds-w'], avoid: ['deck', 'platform', 'cut'], d: [2.6, 5.5], n: 60, dist: 'screen', cluster: { centres: 3, spread: 30 }, seed: 21, anim: false, k: [0.85, 1.15] },
       { obj: { 'plant.reed': 4, 'plant.bulrush': 2, 'plant.grass-long': 1 }, on: ['reeds-e'], d: [2.6, 9], n: 160, dist: 'screen', cluster: { centres: 4, spread: 18 }, seed: 22, anim: false, k: [0.75, 1.15] },
       { obj: { 'plant.grass-long': 3, 'plant.grass': 2, 'plant.wildflowers': 1 }, on: ['cut'], d: [2.6, 15], n: 140, dist: 'screen', cluster: { centres: 6, spread: 14 }, seed: 23, anim: false, k: [0.6, 1.0] },
-      { obj: { 'plant.reed': 6, 'plant.bulrush': 1 }, on: ['reeds-n'], d: [55, 112], n: 1400, dist: 'screen', cluster: { centres: 26, spread: 9 }, seed: 12, anim: 'strip', k: [0.8, 1.25], tint: { col: '#9a8a50', k: [0, 0.22] } },
-      { obj: { 'plant.bulrush': 2, 'plant.reed': 3 }, on: ['reeds-c'], d: [30, 95], n: 420, dist: 'screen', cluster: { centres: 4, spread: 10 }, seed: 24, anim: 'strip', k: [0.8, 1.1] },
+      { obj: { 'plant.reed': 6, 'plant.bulrush': 1 }, on: ['reeds-n'], d: [55, 112], n: 1400, dist: 'screen', cluster: { centres: 26, spread: 9 }, seed: 12, anim: 'strip', shadow: false, k: [0.8, 1.25], tint: { col: '#9a8a50', k: [0, 0.12] } },
+      { obj: { 'plant.bulrush': 2, 'plant.reed': 3 }, on: ['reeds-c'], d: [30, 95], n: 420, dist: 'screen', cluster: { centres: 4, spread: 10 }, seed: 24, anim: 'strip', shadow: false, k: [0.8, 1.1] },
       // trees: lineside groups and singles just behind the line (never on the embankment: the trains pass in front of them), the
       // woods of Fleet behind, a long blue treeline beyond
       { obj: { 'tree.bank-alder': 2, 'tree.bank-birch': 3, 'tree.bank-oak': 1, 'tree.bank-willow': 1 }, on: ['lineside'], d: [80, 150], n: 34, dist: 'ground', cluster: { centres: 7, spread: 8 }, gap: 'foot', seed: 13, anim: false, k: [0.65, 1.25] },
       { obj: { 'tree.bank-oak': 3, 'tree.bank-birch': 2, 'tree.pond-pine': 1, 'tree.bank-alder': 1, 'tree.pond-oak': 2 }, on: ['land'], d: [110, 330], n: 170, dist: 'ground', cluster: { centres: 11, spread: 20 }, gap: 'foot', seed: 17, anim: false, k: [0.75, 1.35] },
-      { obj: { 'tree.far-pine': 2, 'tree.far-birch': 3, 'tree.distant-pine': 2 }, on: ['land'], d: [300, 1600], n: 420, dist: 'ground', cluster: { centres: 12, spread: 80 }, seed: 14, anim: false },
+      { obj: { 'tree.far-pine': 2, 'tree.far-birch': 3, 'tree.distant-pine': 2 }, on: ['land'], d: [300, 1600], n: 240, dist: 'ground', cluster: { centres: 12, spread: 80 }, seed: 14, anim: false, shadow: false },
       // the carr stands wholly in front of the line: its trees draw in the near layer, over a train passing behind them
       { obj: { 'tree.pond-alder': 3, 'tree.bank-willow': 1, 'tree.bank-birch': 1, 'tree.pond-oak': 1 }, on: ['carr-e'], d: [36, 96], n: 60, dist: 'ground', cluster: { centres: 5, spread: 6 }, seed: 15, anim: false, k: [0.7, 1.2], layer: 'near' },
       { obj: { 'water.lily': 1 }, on: ['pond'], d: [8, 40], n: 30, dist: 'screen', cluster: { centres: 4, spread: 5 }, seed: 16, anim: false, species: 1 },
