@@ -673,6 +673,27 @@
   };
   appendPart('hampshire-towns', typeof ukSouthEastPart2 === 'function' ? ukSouthEastPart2 : null);
   appendPart('kent-towns', typeof ukSouthEastPart3 === 'function' ? ukSouthEastPart3 : null);
+  // the 20 Yateley and Fleet views (4 views each, restored 9 Oct)
+  appendPart('yateley-common-v1', typeof ukSouthEastYateleyCommonV1 === 'function' ? ukSouthEastYateleyCommonV1 : null);
+  appendPart('yateley-common-v2', typeof ukSouthEastYateleyCommonV2 === 'function' ? ukSouthEastYateleyCommonV2 : null);
+  appendPart('yateley-common-v3', typeof ukSouthEastYateleyCommonV3 === 'function' ? ukSouthEastYateleyCommonV3 : null);
+  appendPart('yateley-common-v4', typeof ukSouthEastYateleyCommonV4 === 'function' ? ukSouthEastYateleyCommonV4 : null);
+  appendPart('wyndhams-pool-v1', typeof ukSouthEastWyndhamsPoolV1 === 'function' ? ukSouthEastWyndhamsPoolV1 : null);
+  appendPart('wyndhams-pool-v2', typeof ukSouthEastWyndhamsPoolV2 === 'function' ? ukSouthEastWyndhamsPoolV2 : null);
+  appendPart('wyndhams-pool-v3', typeof ukSouthEastWyndhamsPoolV3 === 'function' ? ukSouthEastWyndhamsPoolV3 : null);
+  appendPart('wyndhams-pool-v4', typeof ukSouthEastWyndhamsPoolV4 === 'function' ? ukSouthEastWyndhamsPoolV4 : null);
+  appendPart('yateley-green-v1', typeof ukSouthEastYateleyGreenV1 === 'function' ? ukSouthEastYateleyGreenV1 : null);
+  appendPart('yateley-green-v2', typeof ukSouthEastYateleyGreenV2 === 'function' ? ukSouthEastYateleyGreenV2 : null);
+  appendPart('yateley-green-v3', typeof ukSouthEastYateleyGreenV3 === 'function' ? ukSouthEastYateleyGreenV3 : null);
+  appendPart('yateley-green-v4', typeof ukSouthEastYateleyGreenV4 === 'function' ? ukSouthEastYateleyGreenV4 : null);
+  appendPart('fleet-pond-v1', typeof ukSouthEastFleetPondV1 === 'function' ? ukSouthEastFleetPondV1 : null);
+  appendPart('fleet-pond-v2', typeof ukSouthEastFleetPondV2 === 'function' ? ukSouthEastFleetPondV2 : null);
+  appendPart('fleet-pond-v3', typeof ukSouthEastFleetPondV3 === 'function' ? ukSouthEastFleetPondV3 : null);
+  appendPart('fleet-pond-v4', typeof ukSouthEastFleetPondV4 === 'function' ? ukSouthEastFleetPondV4 : null);
+  appendPart('basingstoke-canal-fleet-v1', typeof ukSouthEastFleetCanalV1 === 'function' ? ukSouthEastFleetCanalV1 : null);
+  appendPart('basingstoke-canal-fleet-v2', typeof ukSouthEastFleetCanalV2 === 'function' ? ukSouthEastFleetCanalV2 : null);
+  appendPart('basingstoke-canal-fleet-v3', typeof ukSouthEastFleetCanalV3 === 'function' ? ukSouthEastFleetCanalV3 : null);
+  appendPart('basingstoke-canal-fleet-v4', typeof ukSouthEastFleetCanalV4 === 'function' ? ukSouthEastFleetCanalV4 : null);
 
   const css = [
     /* the evening grade: dark theme, or the time of day the opening asks for (71-anim-wire.css lays the same on the splash) */
