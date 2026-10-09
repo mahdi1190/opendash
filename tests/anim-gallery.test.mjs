@@ -11,7 +11,8 @@ const items = reg.items().map(e => e.item);
 const info = get('animGalleryInfo'), filter = get('animGalleryFilter');
 const catalogue = get('animGalleryCatalogue'), places = get('animGalleryPlaces');
 const preview = get('animGalleryPreviewOptions');
-const common = items.filter(i => i.ukPlace === 'yateley-common');
+const common = items.filter(i => i.ukPlace === 'yateley-common');   // the composed Yateley Common views (uk-area-yateley)
+const upgraded = items.filter(i => i.legacySvg);                    // composed scenes that keep their old hand-drawn art
 
 test('location search spans UK counties/towns, US states/places, Asia countries/places, pack names and tags', () => {
   assert.equal(filter(items, { q: 'YATELEY, Hampshire common' }).length, common.length);
@@ -19,15 +20,15 @@ test('location search spans UK counties/towns, US states/places, Asia countries/
   assert.ok(filter(items, { q: 'Massachusetts boston' }).some(i => i.usPlace === 'boston'));
   assert.ok(filter(items, { q: 'Japan Fuji' }).some(i => i.asiaCc === 'JP'));
   assert.ok(filter(items, { q: 'texas dallas bridge' }).some(i => i.txTown === 'dallas'));
-  const result = filter(items, { q: 'uk-south-east/hampshire-yateley-common-1-spring' });
-  assert.ok(result.some(i => i.ref === 'uk-south-east/hampshire-yateley-common-1-spring'));
+  const result = filter(items, { q: 'uk-area-yateley/hampshire-yateley-common-1-spring' });
+  assert.ok(result.some(i => i.ref === 'uk-area-yateley/hampshire-yateley-common-1-spring'));
   assert.equal(filter(items, { q: 'yateley nonexistentword' }).length, 0);
   const synthetic = [{ ref: 'pack/one', label: "Xi’an Café", tags: ['São-Paulo'], pack: 'pack', slot: 'opening' }];
   assert.equal(filter(synthetic, { q: 'xian cafe sao paulo' }).length, 1);
 });
 
 test('catalogue exposes retained old art without mutating saved registry identities or mislabelling drafts', () => {
-  const original = common[0], before = Object.keys(original);
+  const original = upgraded[0], before = Object.keys(original);
   const out = catalogue([original]), old = out[1];
   assert.equal(out[0], original);
   assert.equal(out.length, 2);
@@ -46,24 +47,24 @@ test('catalogue exposes retained old art without mutating saved registry identit
   assert.equal(filter(out, { technique: 'old' })[0], old);
 });
 
-test('a location family collects four views, four seasons and both techniques, treating v1 as a view', () => {
-  assert.equal(common.length, 16);
+test('a location family collects its views and four seasons, treating v1 as a view', () => {
+  assert.ok(common.length >= 16 && common.length % 4 === 0);
   const group = places(catalogue(common))[0];
   assert.equal(group.label, 'Yateley Common, Hampshire');
-  assert.equal(group.count, 32);
-  assert.deepEqual(new Set(group.views), new Set(['wide', 'close', 'detail', 'evening']));
+  assert.equal(group.count, common.length, 'composed from the start: no retained old art');
+  for (const v of ['wide', 'close', 'detail', 'evening']) assert.ok(group.views.includes(v), v);
   assert.deepEqual(new Set(group.seasons), new Set(['spring', 'summer', 'autumn', 'winter']));
-  assert.deepEqual(new Set(group.techniques), new Set(['new', 'old']));
+  assert.deepEqual(new Set(group.techniques), new Set(['new']));
   const summer = common.find(i => i.ukSeason === 'summer' && i.ukView === 'wide');
   assert.equal(info(summer).variantLabel, 'Wide view · Summer');
   assert.doesNotMatch(info(summer).variantLabel, /version|revision|v1/i);
-  assert.equal(filter(catalogue(common), { place: group.key, season: 'winter', technique: 'old' }).length, 4);
+  assert.equal(filter(catalogue(common), { place: group.key, season: 'winter' }).length, common.length / 4);
 });
 
 test('combining search, pack, slot, technique and season never consults daily eligibility', () => {
   const all = catalogue(items);
-  const selected = filter(all, { q: 'yateley common', pack: 'uk-south-east', slot: 'opening', technique: 'new', season: 'winter' });
-  assert.equal(selected.length, 4);
+  const selected = filter(all, { q: 'yateley common', pack: 'uk-area-yateley', slot: 'opening', technique: 'new', season: 'winter' });
+  assert.equal(selected.length, common.length / 4);
   assert.ok(selected.every(i => i.ukSeason === 'winter' && i.composed));
   assert.equal(filter(all, { q: 'yateley', pack: 'texas' }).length, 0);
   assert.ok(filter(all, { q: 'boston', season: 'winter' }).length, 'all-season art remains visible with a season filter');
@@ -71,7 +72,7 @@ test('combining search, pack, slot, technique and season never consults daily el
 
 test('each preview uses deterministic solar light at the art location and retains the item season', () => {
   const source = common.find(i => i.ukSeason === 'winter');
-  const old = get('animGalleryLegacyItem')(source);
+  const legacy = get('animGalleryLegacyItem'), up = upgraded[0], upOld = legacy(up);   // the Yateley views are composed from the start: an upgraded scene shows both techniques
   assert.deepEqual(preview(source, 'live'), { season: 'winter' });
   for (const time of ['dawn', 'day', 'dusk', 'night']) {
     const options = preview(source, time);
@@ -83,7 +84,7 @@ test('each preview uses deterministic solar light at the art location and retain
     assert.equal(options.season, 'winter');
     assert.equal(options.sky.wx, undefined, 'the preview does not inherit weather at the user location');
     assert.ok(options.sky.ms < Date.UTC(2001, 0, 1));
-    assert.deepEqual(preview(old, time), options, 'both techniques receive identical preview light');
+    assert.deepEqual(preview(upOld, time), preview(up, time), 'both techniques receive identical preview light');
     assert.match(reg.R.animItemHtml(source, { ...options, size: 'lg', renderer: 'svg' }), new RegExp('tod-' + time));
     const attrs = get('sceneHostAttrs')(source, { ...options, size: 'lg' });
     assert.match(attrs, new RegExp('data-sc-sky="' + options.sky.ms + ','));

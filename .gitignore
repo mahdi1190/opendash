@@ -52,3 +52,8 @@ tasks-*.md
 secrets/
 .env
 .anim-ref/
+
+# The external agents' inbox of AI sprite sheets (docs/dev/AGENT_HANDBOOK.md): working files,
+# imported into assets/objects by `object import-batch`. Only the README is committed.
+/ai-objects/inbox/*
+!/ai-objects/inbox/README.md

@@ -111,6 +111,7 @@ const ANIM_PACK_CSS_MAX_BYTES = 24000;
 const _ANIM_ID_RE = /^[a-z0-9][a-z0-9-]{0,47}$/;
 const _animPacks = new Map();     // id -> frozen pack {id, name, ..., items:[item]}
 const _animRefs = new Map();      // 'pack/item' -> item
+const _animMoved = new Map();     // an old 'pack/item' ref -> the current ref (a pack's movedFrom: its items once lived in those packs)
 
 function _animList(v) { return v === 'any' || v == null ? 'any' : (Array.isArray(v) ? v : [v]); }
 /** Check a pack manifest and its items. Nothing is registered. */
@@ -120,6 +121,7 @@ function animValidatePack(p) {
   if (!_ANIM_ID_RE.test(String(p.id || ''))) errors.push('pack id: lower-case letters, digits and dashes');
   if (!p.name || typeof p.name !== 'string') errors.push('pack name missing');
   if (p.css != null && typeof p.css !== 'string') errors.push('pack css must be a string');
+  if (p.movedFrom != null && !(Array.isArray(p.movedFrom) && p.movedFrom.every(x => _ANIM_ID_RE.test(String(x))))) errors.push('movedFrom must be a list of pack ids');
   if (typeof p.css === 'string' && p.css.length > ANIM_PACK_CSS_MAX_BYTES) errors.push(`pack css over ${ANIM_PACK_CSS_MAX_BYTES} bytes`);
   if (typeof p.css === 'string' && /@import|url\(\s*['"]?(https?:|\/\/)/i.test(p.css)) errors.push('pack css may not fetch anything');
   if (!Array.isArray(p.items) || !p.items.length) { errors.push('pack has no items'); return { ok: false, errors }; }
@@ -163,13 +165,16 @@ function animRegisterPack(p) {
   if (!v.ok) return v;
   const old = _animPacks.get(p.id);
   if (old) for (const it of old.items) _animRefs.delete(it.ref);
-  const items = p.items.map(it => Object.freeze(Object.assign({}, it, {
+  // scene engine v2 (V2 14.3): the pack's recipes take the place of the items they supersede, in every kind of pack
+  const src = typeof sceneRecipeSupersede === 'function' ? sceneRecipeSupersede(p.id, p.items) : p.items;
+  const items = src.map(it => Object.freeze(Object.assign({}, it, {
     pack: p.id, ref: p.id + '/' + it.id, tags: it.tags.slice(), theme: _animList(it.theme), season: _animList(it.season), region: _animList(it.region),
     colour: it.colour || 'blue',
   })));
   const pack = Object.freeze({ id: p.id, name: p.name, description: p.description || '', version: p.version || '1', core: !!p.core, css: p.css || '', items: Object.freeze(items) });
   _animPacks.set(p.id, pack);
   for (const it of items) _animRefs.set(it.ref, it);
+  for (const from of p.movedFrom || []) for (const it of items) _animMoved.set(from + '/' + it.id, it.ref);
   return v;
 }
 /** Remove a pack (the user's own "mine" pack when its last item is deleted). The core pack stays. */
@@ -182,14 +187,16 @@ function animUnregisterPack(id) {
 }
 function animPacks() { return [..._animPacks.values()]; }
 function animPack(id) { return _animPacks.get(id) || null; }
-function animItem(ref) { return _animRefs.get(ref) || null; }
+/** The current ref of a saved ref: an item that moved to another pack (a rebuilt UK area) keeps the user's pins, favourites and blocks. */
+function animRefNow(ref) { return typeof ref === 'string' && !_animRefs.has(ref) && _animMoved.has(ref) ? _animMoved.get(ref) : ref; }
+function animItem(ref) { return _animRefs.get(animRefNow(ref)) || null; }
 
 /* ---------- the user's look ---------- */
 function animLookNormalize(raw) {
   const r = raw && typeof raw === 'object' ? raw : {};
-  const refs = (a) => (Array.isArray(a) ? [...new Set(a.filter(x => typeof x === 'string' && x.includes('/')))].slice(0, 500) : []);
+  const refs = (a) => (Array.isArray(a) ? [...new Set(a.filter(x => typeof x === 'string' && x.includes('/')).map(animRefNow))].slice(0, 500) : []);
   const pin = {};
-  if (r.pin && typeof r.pin === 'object') for (const s of ANIM_SLOT_IDS) if (typeof r.pin[s] === 'string' && r.pin[s].includes('/')) pin[s] = r.pin[s];
+  if (r.pin && typeof r.pin === 'object') for (const s of ANIM_SLOT_IDS) if (typeof r.pin[s] === 'string' && r.pin[s].includes('/')) pin[s] = animRefNow(r.pin[s]);
   // The achievements earned (the page fills this from state.achievements; never saved in the look).
   const unlocked = Array.isArray(r.unlocked) ? [...new Set(r.unlocked.filter(x => typeof x === 'string' && _ANIM_ID_RE.test(x)))].slice(0, 100) : [];
   return {

@@ -1,0 +1,42 @@
+{
+ "id": "building.cottage-ai",
+ "category": "building",
+ "size": [
+  174,
+  184
+ ],
+ "anchor": "bottom-centre",
+ "res": 1,
+ "variants": [
+  {
+   "base": "base.png",
+   "lit": "lit.png",
+   "snow": "snow.png"
+  }
+ ],
+ "tags": [
+  "kit:temperate",
+  "role:building-mid",
+  "demo",
+  "raster"
+ ],
+ "source": "import-batch",
+ "derived": {
+  "lit": "auto (19 windows)",
+  "snow": "auto",
+  "seasons": [
+   "spring",
+   "autumn",
+   "winter"
+  ]
+ },
+ "means": [
+  "#825341"
+ ],
+ "shadow": {
+  "rx": 63,
+  "ry": 9,
+  "h": 156
+ },
+ "bytes": 12412
+}

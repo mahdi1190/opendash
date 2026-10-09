@@ -1,0 +1,106 @@
+{
+ "v": 1,
+ "about": "The house palette for imported raster objects (docs/dev/SCENE_ENGINE_V2.md 24.2): built from the object library palettes by object normalise --build-palette; grouped by material, foliage by season.",
+ "colours": 67,
+ "groups": {
+  "foliage": {
+   "spring": [
+    "#3d4832",
+    "#5b7c42",
+    "#d66d80",
+    "#a5c053",
+    "#d3c6bf"
+   ],
+   "summer": [
+    "#33442c",
+    "#517937",
+    "#d06481",
+    "#a19e8d",
+    "#a9bf4e"
+   ],
+   "autumn": [
+    "#36432e",
+    "#ae5234",
+    "#727849",
+    "#cea669",
+    "#bfc549"
+   ],
+   "winter": [
+    "#374631",
+    "#7b5b4e",
+    "#587438",
+    "#9b9c89",
+    "#b9c44d"
+   ]
+  },
+  "bark": [
+   "#524439",
+   "#8d6c52",
+   "#858e47",
+   "#cbc1af"
+  ],
+  "brick": [
+   "#613425",
+   "#8a4833",
+   "#b2694b",
+   "#b3a189"
+  ],
+  "stone": [
+   "#5e564b",
+   "#90897a",
+   "#b79b77",
+   "#d0c6b0",
+   "#e7c644"
+  ],
+  "slate": [
+   "#743f2d",
+   "#4e5356",
+   "#bd7346",
+   "#b0b6b4"
+  ],
+  "render": [
+   "#9f5437",
+   "#73706b",
+   "#b2aea4",
+   "#eeeade"
+  ],
+  "timber": [
+   "#3f4646",
+   "#6c5238",
+   "#b15231",
+   "#cbb88c"
+  ],
+  "metal": [
+   "#323537",
+   "#793c22",
+   "#be895b",
+   "#a2a7ad"
+  ],
+  "glass": [
+   "#343d48",
+   "#5d7486",
+   "#b5c8d2"
+  ],
+  "water": [
+   "#435e69",
+   "#a2bdc6",
+   "#eec590"
+  ],
+  "fabric": [
+   "#302525",
+   "#684c35",
+   "#5d6973",
+   "#a35b49",
+   "#bb976d",
+   "#ddd2c3"
+  ],
+  "paint": [
+   "#292b31",
+   "#6e4f50",
+   "#45577f",
+   "#ad4537",
+   "#bda23d",
+   "#cabdbb"
+  ]
+ }
+}

@@ -16,8 +16,8 @@
   "scenes": 457,
   "items": 575,
   "scene": "us-*, asia-*, texas full scenes (229)",
-  "scene-legacy": "uk-north-west, uk-south-east full scenes that are not rich (148)",
-  "scene-rich": "the rich local scenes (item.rich: the Yateley and Fleet views of uk-south-east) (80)",
+  "scene-legacy": "uk-south-east full scenes that are not rich (98; recalibrated 2026-10-08 at the UK rebuild, when the Hampshire baseline and the uk-north-west pack moved to the composed uk-area-* packs)",
+  "scene-rich": "the retired rich Yateley and Fleet views (80): deleted at the UK rebuild (2026-10-08); the floors stay as calibrated on them",
   "item": "us-*, asia-* small items (245)",
   "item-classic": "core, moments, rewards, seasons, sky, texas, world, uk-south-west small items (330)",
   "recalibrated": "2026-10-07, at the merge of the scene-engine branch: scene and scene-legacy on the merged corpus, scene-rich added"
@@ -29,7 +29,6 @@
   "scene-legacy": {
    "for": "the UK scenes (frozen list: do not add a pack here): drawn from one template, so calibrated on their own corpus (168); they share most shapes with each other, which the strict profile forbids",
    "packs": [
-    "uk-north-west",
     "uk-south-east"
    ]
   },
@@ -356,116 +355,116 @@
    "warnMin": 15045,
    "max": 32000,
    "warnMax": 28751,
-   "median": 20631,
-   "note": "corpus n=148: min 11349, p3 14201, p10 15045, median 20631, p90 28751, max 31838"
+   "median": 20828,
+   "note": "corpus n=98: min 11349, p3 14373, p10 15045, median 20828, p90 28751, max 31838"
   },
   "shapes": {
    "min": 81,
-   "warnMin": 103,
-   "median": 166,
-   "note": "corpus n=148: min 81, p3 83, p10 103, median 166, p90 252, max 374"
+   "warnMin": 102,
+   "median": 157,
+   "note": "corpus n=98: min 81, p3 82, p10 102, median 157, p90 255, max 374"
   },
   "paths": {
    "min": 15,
-   "warnMin": 18,
-   "median": 52,
-   "note": "corpus n=148: min 15, p3 16, p10 18, median 52, p90 139, max 236"
+   "warnMin": 17,
+   "median": 50,
+   "note": "corpus n=98: min 15, p3 16, p10 17, median 50, p90 141, max 236"
   },
   "pathSegments": {
-   "min": 190,
+   "min": 204,
    "warnMin": 372,
-   "median": 664,
-   "note": "corpus n=148: min 190, p3 283, p10 372, median 664, p90 1262, max 1647"
+   "median": 593,
+   "note": "corpus n=98: min 204, p3 289, p10 372, median 593, p90 1333, max 1613"
   },
   "segmentsPerShape": {
-   "min": 0.76,
+   "min": 1.11,
    "warnMin": 2.54,
-   "median": 3.96,
-   "note": "corpus n=148: min 0.76, p3 2.1, p10 2.54, median 3.96, p90 7.03, max 11.92"
+   "median": 4.03,
+   "note": "corpus n=98: min 1.11, p3 2.1, p10 2.54, median 4.03, p90 6.22, max 11.92"
   },
   "bytesPerShape": {
    "min": 77,
    "warnMin": 97,
    "median": 128,
-   "note": "corpus n=148: min 77, p3 90, p10 97, median 128, p90 163, max 235"
+   "note": "corpus n=98: min 77, p3 80, p10 97, median 128, p90 164, max 235"
   },
   "shapesPerKB": {
    "min": 4.36,
    "advisoryIn": "detailPerKB",
-   "median": 8.04,
-   "note": "corpus n=148: min 4.36, p3 5.38, p10 6.29, median 8.04, p90 10.57, max 13.32"
+   "median": 8.02,
+   "note": "corpus n=98: min 4.36, p3 5.01, p10 6.23, median 8.02, p90 10.57, max 13.32"
   },
   "distinctShapes": {
-   "min": 73,
-   "warnMin": 95,
-   "median": 151,
-   "note": "corpus n=148: min 73, p3 81, p10 95, median 151, p90 244, max 374"
+   "min": 81,
+   "warnMin": 101,
+   "median": 149,
+   "note": "corpus n=98: min 81, p3 82, p10 101, median 149, p90 249, max 374"
   },
   "distinctForms": {
-   "min": 36,
-   "warnMin": 52,
-   "median": 84,
-   "note": "corpus n=148: min 36, p3 44, p10 52, median 84, p90 135, max 201"
+   "min": 39,
+   "warnMin": 56,
+   "median": 82,
+   "note": "corpus n=98: min 39, p3 48, p10 56, median 82, p90 130, max 177"
   },
   "distinctRatio": {
-   "min": 0.421,
-   "warnMin": 0.88,
+   "min": 0.604,
+   "warnMin": 0.898,
    "median": 1,
-   "note": "corpus n=148: min 0.421, p3 0.604, p10 0.88, median 1, p90 1, max 1"
+   "note": "corpus n=98: min 0.604, p3 0.622, p10 0.898, median 1, p90 1, max 1"
   },
   "colours": {
    "min": 30,
    "warnMin": 36,
-   "median": 43,
-   "note": "corpus n=148: min 30, p3 34, p10 36, median 43, p90 55, max 73"
+   "median": 41,
+   "note": "corpus n=98: min 30, p3 31, p10 36, median 41, p90 54, max 73"
   },
   "colourClusters": {
-   "min": 19,
+   "min": 21,
    "warnMin": 23,
-   "median": 29,
-   "note": "corpus n=148: min 19, p3 21, p10 23, median 29, p90 35, max 42"
+   "median": 28,
+   "note": "corpus n=98: min 21, p3 21, p10 23, median 28, p90 33, max 42"
   },
   "coloursWithArea": {
    "min": 13,
    "warnMin": 16,
    "median": 20,
-   "note": "corpus n=148: min 13, p3 15, p10 16, median 20, p90 28, max 37"
+   "note": "corpus n=98: min 13, p3 13, p10 16, median 20, p90 28, max 37"
   },
   "tonalRange": {
    "min": 0.892,
    "warnMin": 0.918,
-   "median": 0.957,
-   "note": "corpus n=148: min 0.892, p3 0.918, p10 0.918, median 0.957, p90 0.969, max 1"
+   "median": 0.95,
+   "note": "corpus n=98: min 0.892, p3 0.918, p10 0.918, median 0.95, p90 0.969, max 1"
   },
   "hueSectors": {
-   "max": 8,
+   "max": 6,
    "warnMax": 5,
    "median": 4,
-   "note": "corpus n=148: min 1, p3 2, p10 3, median 4, p90 5, max 8"
+   "note": "corpus n=98: min 1, p3 2, p10 3, median 4, p90 5, max 6"
   },
   "gradients": {
-   "min": 5,
-   "warnMin": 8,
+   "min": 9,
+   "warnMin": 10,
    "median": 11,
-   "note": "corpus n=148: min 5, p3 6, p10 8, median 11, p90 14, max 28"
+   "note": "corpus n=98: min 9, p3 9, p10 10, median 11, p90 14, max 25"
   },
   "gradientsUsed": {
-   "min": 5,
-   "warnMin": 8,
+   "min": 8,
+   "warnMin": 9,
    "median": 10,
-   "note": "corpus n=148: min 5, p3 6, p10 8, median 10, p90 13, max 27"
+   "note": "corpus n=98: min 8, p3 9, p10 9, median 10, p90 13, max 25"
   },
   "gradientFilledShapes": {
-   "min": 5,
+   "min": 7,
    "warnMin": 8,
-   "median": 18,
-   "note": "corpus n=148: min 5, p3 7, p10 8, median 18, p90 27, max 35"
+   "median": 19,
+   "note": "corpus n=98: min 7, p3 8, p10 8, median 19, p90 27, max 35"
   },
   "translucentLayers": {
    "min": 14,
    "warnMin": 15,
-   "median": 25,
-   "note": "corpus n=148: min 14, p3 15, p10 15, median 25, p90 39, max 52"
+   "median": 21,
+   "note": "corpus n=98: min 14, p3 15, p10 15, median 21, p90 31, max 51"
   },
   "skyStops": {
    "min": 2,
@@ -474,177 +473,177 @@
    "note": "corpus n=148: min 2, p3 3, p10 3, median 3, p90 4, max 5"
   },
   "bands": {
-   "min": 3,
-   "warnMin": 6,
+   "min": 5,
+   "warnMin": 8,
    "median": 10,
-   "note": "corpus n=148: min 3, p3 4, p10 6, median 10, p90 14, max 41"
+   "note": "corpus n=98: min 5, p3 6, p10 8, median 10, p90 14, max 17"
   },
   "bandFills": {
-   "min": 3,
-   "warnMin": 6,
+   "min": 5,
+   "warnMin": 7,
    "median": 9,
-   "note": "corpus n=148: min 3, p3 4, p10 6, median 9, p90 12, max 15"
+   "note": "corpus n=98: min 5, p3 6, p10 7, median 9, p90 12, max 14"
   },
   "detailShapes": {
-   "min": 47,
+   "min": 61,
    "warnMin": 84,
-   "median": 150,
-   "note": "corpus n=148: min 47, p3 61, p10 84, median 150, p90 237, max 359"
+   "median": 143,
+   "note": "corpus n=98: min 61, p3 67, p10 84, median 143, p90 243, max 359"
   },
   "detailCells": {
-   "min": 37,
+   "min": 39,
    "warnMin": 46,
-   "median": 63,
-   "note": "corpus n=148: min 37, p3 41, p10 46, median 63, p90 80, max 109"
+   "median": 62,
+   "note": "corpus n=98: min 39, p3 41, p10 46, median 62, p90 80, max 92"
   },
   "detailColumns": {
    "min": 14,
    "warnMin": 15,
    "median": 16,
-   "note": "corpus n=148: min 14, p3 15, p10 15, median 16, p90 16, max 16"
+   "note": "corpus n=98: min 14, p3 14, p10 15, median 16, p90 16, max 16"
   },
   "detailRows": {
-   "min": 5,
+   "min": 6,
    "warnMin": 7,
    "median": 8,
-   "note": "corpus n=148: min 5, p3 6, p10 7, median 8, p90 9, max 9"
+   "note": "corpus n=98: min 6, p3 6, p10 7, median 8, p90 9, max 9"
   },
   "focusShare": {
-   "min": 0.144,
-   "warnMin": 0.159,
-   "median": 0.256,
-   "note": "corpus n=148: min 0.144, p3 0.148, p10 0.159, median 0.256, p90 0.474, max 0.664"
+   "min": 0.145,
+   "warnMin": 0.178,
+   "median": 0.259,
+   "note": "corpus n=98: min 0.145, p3 0.148, p10 0.178, median 0.259, p90 0.487, max 0.664"
   },
   "sizeClasses": {
-   "min": 8,
+   "min": 9,
    "warnMin": 12,
    "median": 14,
-   "note": "corpus n=148: min 8, p3 10, p10 12, median 14, p90 16, max 17"
+   "note": "corpus n=98: min 9, p3 10, p10 12, median 14, p90 16, max 17"
   },
   "tinyShare": {
-   "max": 0.53,
-   "warnMax": 0.337,
-   "median": 0.219,
-   "note": "corpus n=148: min 0, p3 0.018, p10 0.116, median 0.219, p90 0.337, max 0.53"
+   "max": 0.476,
+   "warnMax": 0.317,
+   "median": 0.226,
+   "note": "corpus n=98: min 0.09, p3 0.099, p10 0.127, median 0.226, p90 0.317, max 0.476"
   },
   "hiddenShare": {
-   "max": 0.157,
-   "warnMax": 0.108,
-   "median": 0.041,
-   "note": "corpus n=148: min 0, p3 0, p10 0.005, median 0.041, p90 0.108, max 0.157"
+   "max": 0.149,
+   "warnMax": 0.095,
+   "median": 0.045,
+   "note": "corpus n=98: min 0, p3 0.003, p10 0.011, median 0.045, p90 0.095, max 0.149"
   },
   "bottomCover": {
    "min": 1,
    "warnMin": 1,
    "median": 1,
-   "note": "corpus n=148: min 1, p3 1, p10 1, median 1, p90 1, max 1"
+   "note": "corpus n=98: min 1, p3 1, p10 1, median 1, p90 1, max 1"
   },
   "movingGroups": {
-   "min": 10,
-   "warnMin": 14,
+   "min": 11,
+   "warnMin": 15,
    "median": 20,
-   "note": "corpus n=148: min 10, p3 12, p10 14, median 20, p90 67, max 117"
+   "note": "corpus n=98: min 11, p3 11, p10 15, median 20, p90 64, max 94"
   },
   "motionKinds": {
    "min": 4,
-   "warnMin": 5,
+   "warnMin": 6,
    "median": 8,
-   "note": "corpus n=148: min 4, p3 4, p10 5, median 8, p90 10, max 12"
+   "note": "corpus n=98: min 4, p3 4, p10 6, median 8, p90 10, max 11"
   },
   "driftGroups": {
-   "min": 3,
+   "min": 6,
    "warnMin": 6,
    "median": 7,
-   "note": "corpus n=148: min 3, p3 4, p10 6, median 7, p90 8, max 18"
+   "note": "corpus n=98: min 6, p3 6, p10 6, median 7, p90 8, max 10"
   },
   "ambientGroups": {
    "min": 0,
    "warnMin": 7,
-   "median": 13,
-   "note": "corpus n=148: min 0, p3 2, p10 7, median 13, p90 60, max 97"
+   "median": 12,
+   "note": "corpus n=98: min 0, p3 2, p10 7, median 12, p90 56, max 87"
   },
   "ambientKinds": {
    "min": 0,
    "warnMin": 2,
    "median": 4,
-   "note": "corpus n=148: min 0, p3 1, p10 2, median 4, p90 6, max 8"
+   "note": "corpus n=98: min 0, p3 1, p10 2, median 4, p90 6, max 8"
   },
   "motionZones": {
    "min": 2,
    "warnMin": 2,
    "median": 3,
-   "note": "corpus n=148: min 2, p3 2, p10 2, median 3, p90 3, max 3"
+   "note": "corpus n=98: min 2, p3 2, p10 2, median 3, p90 3, max 3"
   },
   "distinctDurations": {
    "min": 9,
-   "warnMin": 10,
-   "median": 17,
-   "note": "corpus n=148: min 9, p3 9, p10 10, median 17, p90 36, max 51"
+   "warnMin": 11,
+   "median": 18,
+   "note": "corpus n=98: min 9, p3 9, p10 11, median 18, p90 36, max 42"
   },
   "staggerDelays": {
    "min": 0,
-   "warnMin": 2,
+   "warnMin": 3,
    "median": 9,
-   "note": "corpus n=148: min 0, p3 1, p10 2, median 9, p90 31, max 46"
+   "note": "corpus n=98: min 0, p3 2, p10 3, median 9, p90 31, max 35"
   },
   "movingPerShape": {
    "min": 0.034,
-   "warnMin": 0.069,
+   "warnMin": 0.066,
    "max": 0.631,
-   "warnMax": 0.466,
-   "median": 0.169,
-   "note": "corpus n=148: min 0.034, p3 0.051, p10 0.069, median 0.169, p90 0.466, max 0.631"
+   "warnMax": 0.488,
+   "median": 0.179,
+   "note": "corpus n=98: min 0.034, p3 0.047, p10 0.066, median 0.179, p90 0.488, max 0.631"
   },
   "sharedShare": {
    "max": 0.992,
-   "warnMax": 0.986,
-   "median": 0.354,
-   "note": "corpus n=148: min 0.007, p3 0.011, p10 0.028, median 0.354, p90 0.986, max 0.992"
+   "warnMax": 0.989,
+   "median": 0.283,
+   "note": "corpus n=98: min 0.011, p3 0.024, p10 0.035, median 0.283, p90 0.989, max 0.992"
   },
   "sharedShareAll": {
    "max": 0.992,
-   "warnMax": 0.986,
-   "median": 0.354,
-   "note": "corpus n=148: min 0.007, p3 0.02, p10 0.032, median 0.354, p90 0.986, max 0.992"
+   "warnMax": 0.989,
+   "median": 0.283,
+   "note": "corpus n=98: min 0.011, p3 0.027, p10 0.037, median 0.283, p90 0.989, max 0.992"
   },
   "unknownClasses": {
    "max": 0,
    "warnMax": 0,
    "median": 0,
-   "note": "corpus n=148: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+   "note": "corpus n=98: min 0, p3 0, p10 0, median 0, p90 0, max 0"
   },
   "coverUps": {
    "max": 0,
    "warnMax": 0,
    "median": 0,
-   "note": "corpus n=148: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+   "note": "corpus n=98: min 0, p3 0, p10 0, median 0, p90 0, max 0"
   },
   "richness": {
-   "min": 0.684,
-   "warnMin": 0.819,
-   "median": 0.962,
+   "min": 0.77,
+   "warnMin": 0.857,
+   "median": 0.985,
    "cap": 1.25,
    "components": {
-    "shapes": 166,
-    "pathSegments": 664,
-    "colourClusters": 29,
+    "shapes": 157,
+    "pathSegments": 593,
+    "colourClusters": 28,
     "gradients": 11,
-    "translucentLayers": 25,
+    "translucentLayers": 21,
     "movingGroups": 20,
     "motionKinds": 8,
-    "ambientGroups": 13,
+    "ambientGroups": 12,
     "bands": 10,
-    "detailCells": 63,
+    "detailCells": 62,
     "sizeClasses": 14,
-    "distinctForms": 84,
-    "bytes": 20631
+    "distinctForms": 82,
+    "bytes": 20828
    },
-   "note": "composite of shapes, pathSegments, colourClusters, gradients, translucentLayers, movingGroups, motionKinds, ambientGroups, bands, detailCells, sizeClasses, distinctForms, bytes, each capped at 125% of its corpus median; corpus index n=148: min 0.684, p3 0.766, p10 0.819, median 0.962, max 1.227"
+   "note": "composite of shapes, pathSegments, colourClusters, gradients, translucentLayers, movingGroups, motionKinds, ambientGroups, bands, detailCells, sizeClasses, distinctForms, bytes, each capped at 125% of its corpus median; corpus index n=98: min 0.77, p3 0.81, p10 0.857, median 0.985, max 1.227"
   },
   "detailPerKB": {
    "warnMin": 28,
-   "median": 42.77,
-   "note": "corpus n=148: min 19.45, p3 26.22, p10 28.95, median 42.77, p90 60.7, max 76.69"
+   "median": 41.46,
+   "note": "corpus n=98: min 21.53, p3 26.48, p10 28.95, median 41.46, p90 62.98, max 76.69"
   }
  },
  "scene-rich": {
@@ -1171,6 +1170,9 @@
    },
    "signs": {
     "max": 6
+   },
+   "flowMax": {
+    "max": 60
    }
   },
   "perf": {
@@ -1269,6 +1271,104 @@
    "personHeight": {
     "max": 150
    }
+  },
+  "sanity": {
+   "designed": true,
+   "_note": "The placement-sanity rules (docs/dev/SCENE_ENGINE_V2.md 15.1; tools/lib/scene-sanity.mjs): DESIGNED, not calibrated. G's golden calibration (V2 22.3) proposes calibrated values and the reviewer applies raises only. v1 scenes: every finding is a warning until the pack migrates (14.1); --strict-placement makes every warning a failure.",
+   "scale": {
+    "range": [
+     0.7,
+     1.45
+    ],
+    "people": [
+     0.85,
+     1.2
+    ]
+   },
+   "scalePairs": {
+    "ratio": 1.3,
+    "within": 40
+   },
+   "landmarkOccluded": {
+    "max": 0.3,
+    "weights": {
+     "building": 1,
+     "structure": 0.9,
+     "landmark": 1,
+     "tree": 0.75,
+     "shrub": 0.6,
+     "cover": 0.6,
+     "person": 0.5,
+     "cyclist": 0.5,
+     "car": 0.9,
+     "bus": 0.9,
+     "tram": 0.9,
+     "train": 0.9,
+     "boat": 0.8,
+     "street": 0.4,
+     "rail": 0.6,
+     "rock": 0.9
+    }
+   },
+   "ghost": {
+    "haze": 0.4,
+    "tall": 0.25,
+    "opacity": 0.7,
+    "area": 0.3
+   },
+   "stamp": {
+    "n": 4,
+    "tol": 0.05
+   },
+   "haze": {
+    "v2Mean": 0.12,
+    "v1Layer": 0.45,
+    "v1Mean": 0.25
+   },
+   "clutter": {
+    "n": 9,
+    "window": [
+     400,
+     300
+    ],
+    "overlap": 0.5,
+    "salient": 40
+   },
+   "floating": {
+    "tol": 3
+   },
+   "view": {
+    "near": 30
+   }
+  },
+  "flows": {
+   "designed": true,
+   "_note": "Crowds and traffic (V2 9; 70-scene-1flow.js, 78-scene-flow.js): at most 60 visible agents across the flows and 120 flow sprites; flowDraws (max x draws per agent, an upper bound) counts toward the 300 animated draws; when they would pass it the compile scales every max down (flowBudget, an info).",
+   "maxAgents": 60,
+   "maxSprites": 120,
+   "drawsPerAgent": {
+    "walk": 4,
+    "cycle": 4,
+    "drive": 4,
+    "tram": 4,
+    "train": 3,
+    "boat": 4,
+    "graze": 2
+   },
+   "period": 600
+  },
+  "fx": {
+   "designed": true,
+   "_note": "The v2 per-frame effects (V2 13.3, 25), counted as fxDraws in animatedDraws (at most 300 with everything else): ripple bands (at most 90 a region, 160 a scene, re-made at 15 Hz), glints (30), rings (16), puddle rings (20), fog banks (4), wakes, mover reflections, actor shadows and headlights (one each).",
+   "rippleBands": {
+    "region": 90,
+    "scene": 160
+   },
+   "glints": 30,
+   "rings": 16,
+   "puddleRings": 20,
+   "fogBanks": 4,
+   "shadowPairs": 40
   }
  },
  "object": {
@@ -1346,6 +1446,11 @@
    "ref": "texas/west-texas-sunset",
    "rule": "richness",
    "reason": "One of the five thinnest accepted scenes (still a good sunset): few moving groups."
+  },
+  {
+   "ref": "raster-demo/raster-demo-village",
+   "rule": "svgTileBytes",
+   "reason": "The raster-object demo (docs/dev/OBJECT_IMPORT.md section 8): its SVG still carries the imported images as data: URLs, so it is over the vector tile budget by design. The canvas host is the normal path; the SVG is only the fallback. Not in the daily rotation."
   }
  ]
 }

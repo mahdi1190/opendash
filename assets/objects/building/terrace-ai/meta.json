@@ -1,0 +1,52 @@
+{
+ "id": "building.terrace-ai",
+ "category": "building",
+ "size": [
+  251,
+  120
+ ],
+ "anchor": "bottom-centre",
+ "res": 1,
+ "variants": [
+  {
+   "base": "base.png",
+   "spring": "spring.png",
+   "autumn": "autumn.png",
+   "winter": "winter.png",
+   "night": "night.png",
+   "lit": "lit.png"
+  },
+  {
+   "base": "v1/base.png",
+   "spring": "v1/spring.png",
+   "autumn": "v1/autumn.png",
+   "winter": "v1/winter.png",
+   "night": "v1/night.png",
+   "lit": "v1/lit.png"
+  }
+ ],
+ "tags": [
+  "kit:london",
+  "role:building-far",
+  "demo",
+  "raster"
+ ],
+ "source": "sheet",
+ "derived": {
+  "lit": "lit-vs-night"
+ },
+ "means": [
+  "#705951",
+  "#876b5e"
+ ],
+ "shadow": {
+  "rx": 90,
+  "ry": 12,
+  "h": 102
+ },
+ "sheet": {
+  "file": "example-building-terrace.png",
+  "warnings": 0
+ },
+ "bytes": 34685
+}

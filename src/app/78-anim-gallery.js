@@ -303,6 +303,20 @@ function animGalleryRender(el) {
     const replay = document.createElement('button'); replay.type = 'button'; replay.className = 'btn btn-secondary btn-sm'; replay.innerHTML = icon('sparkles', 'i-sm') + '<span>Play again</span>';
     replay.onclick = () => showStage(it, true);
     acts.appendChild(replay);
+    // The scene editor (78-scene-editor.js, V2 23.4): a developer tool, shown only when its dev route answers.
+    if (it.composed && typeof sceneEditorAvailable === 'function') {
+      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'btn btn-secondary btn-sm'; edit.hidden = true;
+      edit.innerHTML = icon('pencil', 'i-sm') + '<span>Edit scene</span>';
+      edit.onclick = () => sceneEditorOpen(it.ref, { label: it.label, returnFocus: edit });
+      acts.appendChild(edit);
+      sceneEditorAvailable().then(ok => { if (ok && edit.isConnected) edit.hidden = false; });
+    }
+    // Map and terrain credits (V2 17.6) under scenes that have any.
+    if (typeof sceneCredits === 'function') {
+      let cr = [];
+      try { cr = sceneCredits(it) || []; } catch (e) { cr = []; }
+      if (cr.length) { const c = document.createElement('span'); c.className = 'muted apg-credits'; c.textContent = cr.join(' · '); stageMeta.appendChild(c); }
+    }
     if (it.slot === 'theme-switch') {
       const tryIt = document.createElement('button'); tryIt.type = 'button'; tryIt.className = 'btn btn-secondary btn-sm'; tryIt.innerHTML = icon(state.theme === 'dark' ? 'sun' : 'moon', 'i-sm') + '<span>Try it</span>';
       tryIt.onclick = () => { _shellThemeSwapVariant = it.ref; state.theme = state.theme === 'dark' ? 'light' : 'dark'; saveUI(); render(); };

@@ -160,7 +160,7 @@ test('settings: brief.story is validated and partial patches keep the rest', asy
 
 test('day adviser respects opt-in, deduplicates automatic periods and caps them at three', async () => {
   aiAvailable=true;aiCalls=[];
-  await put('/api/config',{timezone:'UTC',brief:{ai:true,advisorAuto:false}});
+  await put('/api/config',{timezone:'UTC',time:{follow:'home'},brief:{ai:true,advisorAuto:false}});
   assert.equal((await post('/api/story/advice',{automatic:true})).status,409);
   await put('/api/config',{brief:{advisorAuto:true}});
   aiAnswer={summary:'Review the priorities for the rest of today.',ideas:[]};

@@ -15,6 +15,7 @@
      r.resize(cssW, cssH)  r.bakeIdle(cssW, cssH)  r.setLight(L)  r.setSeason(s)  r.setLod(k)  r.start()  r.stop()
      r.frame(tSec)  r.attach(canvas)  r.stats()  r.resetStats()  r.destroy()
      sceneCanvasSupported()   sceneSprites (the shared LRU sprite cache, 96 MB)
+     sceneRasterImage(key)   sceneRasterWhenReady()   (raster objects: lazy decoding of the embedded images; r.waiting while one decodes)
 
    Bake canvases (sprites, bitmaps) are CPU-backed (willReadFrequently): 2D canvases record their drawing and
    rasterise it on first use, so the bake forces that work inside its own slices with a 1-pixel read (cheap on the
@@ -164,12 +165,16 @@ function sceneRendererCreate(canvas, src, o) {
 
   /* ---------- sprites ---------- */
   const colourFns = new Map();
-  const colourFn = (Lx, haze, tint, plain) => {
+  const colourFn = (Lx, haze, tint, plain, lift, liftCol) => {
     if (plain || !Lx) return c => c;
     if (colourFns.size > 400) colourFns.clear();
-    const key = sceneLightKey(Lx, season) + '|' + (Lx.alt != null ? Math.round(Lx.alt * 4) : '') + '|' + (haze || 0) + '|' + (tint ? tint[0] + ':' + tint[1] : '');
+    const key = sceneLightKey(Lx, season) + '|' + (Lx.alt != null ? Math.round(Lx.alt * 4) : '') + '|' + (haze || 0) + '|' + (tint ? tint[0] + ':' + tint[1] : '') + (lift ? '|l' + lift + (liftCol || '') : '');
     let f = colourFns.get(key);
-    if (!f) { const memo = new Map(); f = c => { let v = memo.get(c); if (!v) { v = typeof sceneColour === 'function' ? sceneColour(c, { L: Lx, haze, tint }) : c; memo.set(c, v); } return v; }; colourFns.set(key, f); }
+    // v2 (V2 7.4): a placement near a night light is lifted: its graded colours mixed toward the (ungraded) light colour
+    if (!f) { const memo = new Map(); f = c => { let v = memo.get(c); if (!v) { v = typeof sceneColour === 'function' ? sceneColour(c, { L: Lx, haze, tint }) : c; if (lift) v = _scMixHex(v, liftCol || '#ffd9a0', lift); memo.set(c, v); } return v; }; 
+      // ng: tint and haze without the light's grade (a raster object's own night image is already a night picture)
+      f.ng = c => (typeof sceneColour === 'function' ? sceneColour(c, { haze, tint, hazeCol: Lx.haze }) : c);
+      colourFns.set(key, f); }
     return f;
   };
   const paint = (cx, p, col) => {
@@ -178,7 +183,9 @@ function sceneRendererCreate(canvas, src, o) {
     for (const [off, c, op] of stops) { const rgb = _scHex(col(c)); g.addColorStop(_scClamp(off, 0, 1), op == null || op === 1 ? col(c) : `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${op})`); }
     return g;
   };
-  const drawShape = (cx, sh, col) => {
+  let rasterWait = false;   // a raster image was not decoded yet during this bake: bake again once it is (sceneRasterWhenReady)
+  const drawShape = (cx, sh, col, Lx) => {
+    if (sh.img) { if (!_sccRasterDraw(cx, sh, col, Lx)) rasterWait = true; return; }
     const m = sh.m;
     if (m) { cx.save(); cx.transform(m[0], m[1], m[2], m[3], m[4], m[5]); }
     cx.globalAlpha = sh.op == null ? 1 : sh.op;
@@ -192,12 +199,21 @@ function sceneRendererCreate(canvas, src, o) {
    * at device scale sc. litGlow: glow shapes in their night colours (moving parts and actors after real dusk). withLit: the
    * object's 'lit' part too, on top and ungraded (after real dusk, so a moving object's halo moves with it at no extra draw).
    */
-  const sprite = (Lx, lk, oid, v, se, which, haze, tint, sc, litGlow, withLit) => {
-    const key = sceneSpriteKey(oid, v, which + (litGlow ? '+g' : '') + (withLit ? '+l' : ''), se, haze, tint, sc, lk);
-    return sceneSprites.get(key, () => {
+  // x (v2 only, V2 13.2): { env, flip, lift, cls, i } - the passes' sprite keys, the flip bit (shaded classes) and the lift
+  // join the key; the colours take the lift; the sprite passes (shading, rim, snow caps) run after the rasterising
+  const sprite = (Lx, lk, oid, v, se, which, haze, tint, sc, litGlow, withLit, x) => {
+    let key = sceneSpriteKey(oid, v, which + (litGlow ? '+g' : '') + (withLit ? '+l' : ''), se, haze, tint, sc, lk), req = null;
+    if (x && x.env) {
+      const env = x.env, sp = env.passes.sprite || (env.passes.sprite = sceneRenderPasses('sprite', env.C));
+      req = { o: oid, v, part: which, season: se, haze, tint, scale: sc, flip: !!x.flip, cls: x.cls || null, lift: x.lift || 0, i: x.i };
+      if (sp.length) key += '|f' + (x.flip ? 1 : 0) + sceneRenderSpriteKey(Lx, env.C, req);
+      if (x.lift) key += '|l' + x.lift;
+      if (!sp.length && !x.lift) req = null;
+    }
+    const sp = sceneSprites.get(key, () => {
       const sh = sceneObjShapes(oid, v, se);
       if (!sh) return null;
-      const names = (which === '*' ? sh.order.filter(p => p !== 'lit') : which.startsWith('rest:') ? sh.order.filter(p => p !== 'lit' && !which.slice(5).split(',').includes(p)) : [which])
+      const names = (which === '*' ? _scStillParts(sh) : which.startsWith('rest:') ? _scStillParts(sh).filter(p => !which.slice(5).split(',').includes(p)) : [which])
         .concat(withLit && which !== 'lit' && sh.parts.lit ? ['lit'] : []);
       const detail = lod >= 0.5 && (typeof sceneDetailAt !== 'function' || sceneDetailAt(oid, sh, sc)), def = litGlow && typeof sceneObj === 'function' ? sceneObj(oid) : null, nc = (def && def.night && def.night.glow) || {};
       const tb = _sccPartsBox(sh, names, detail);
@@ -209,17 +225,51 @@ function sceneRendererCreate(canvas, src, o) {
       const w = Math.ceil((x1 - x0) * k + 2 * _SCC_PAD), h = Math.ceil((y1 - y0) * k + 2 * _SCC_PAD);
       const c = _sccCanvas(w, h), cx = c.getContext('2d', _SCC_CPU);
       cx.setTransform(k, 0, 0, k, _SCC_PAD - x0 * k, _SCC_PAD - y0 * k);
-      const col = colourFn(Lx, haze, tint, which === 'lit'), plain = x => x;
+      const col = req && req.lift ? colourFn(Lx, haze, tint, which === 'lit', req.lift, x.liftCol) : colourFn(Lx, haze, tint, which === 'lit'), plain = x => x;
+      const litCol = (typeof sceneLitColourFn === 'function' && sceneLitColourFn(Lx, oid)) || plain;   // v2 light only (V2 7.3): mist kept in 'lit' is not a light
       let any = false;
+      const waitBefore = rasterWait;
+      rasterWait = false;
       for (const p of names) for (const s0 of sh.parts[p] || []) {
         if (!detail && s0.detail) continue;
-        if (litGlow && s0.glow) drawShape(cx, Object.assign({}, s0, { f: nc[s0.glow] || (s0.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain);
-        else drawShape(cx, s0, p === 'lit' ? plain : col);
+        if (litGlow && s0.glow) drawShape(cx, Object.assign({}, s0, { f: nc[s0.glow] || (s0.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain, Lx);
+        else drawShape(cx, s0, p === 'lit' ? litCol : col, Lx);
         any = true;
       }
+      // an image still decoding: no sprite this time (not cached); the bake runs again when the image is ready
+      if (rasterWait) { c.width = 0; return null; }
+      rasterWait = waitBefore;
       if (!any) { c.width = 0; return { c: null, x0, y0, w: 0, h: 0, sc: k, bytes: 0 }; }
+      if (req) {
+        // the sprite passes (V2 13.1): shading, rim light, snow caps, frost; they see the box in device px and the local frame
+        // (a 'lit' sprite too, req.part 'lit': the atmos pass softens floodlights and drops ground pools it draws itself)
+        Object.assign(req, { k, x0: x0 - _SCC_PAD / k, y0: y0 - _SCC_PAD / k, w, h, box: tb, shapes: sh });
+        cx.globalAlpha = 1;
+        sceneRunPasses(x.env, 'sprite', [cx, req]);
+        cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.filter = 'none';
+      }
       return { c, x0: x0 - _SCC_PAD / k, y0: y0 - _SCC_PAD / k, w: w / k, h: h / k, sc: k, bytes: w * h * 4 };
     });
+    if (!sp && sceneObjShapes(oid, v, se)) rasterWait = true;
+    return sp;
+  };
+  /**
+   * A projected building (V2 13.2, 19): its shapes (scene units) filled straight into the layer bitmap with the item's colour
+   * function (haze, lift); after real dusk its glow shapes light by the item's glowOn, else by the window share (7.3).
+   */
+  const drawDirect = (gx, TG, it, col, Lx, share) => {
+    const dr = it.direct, night = !!(Lx && Lx.windows), plain = x => x;
+    let gi = 0;
+    for (const sh of dr.shapes || []) {
+      gx.setTransform(TG[0], TG[1], TG[2], TG[3], TG[4], TG[5]);
+      if (sh.glow) {
+        const on = night && (Array.isArray(dr.glowOn) ? !!dr.glowOn[gi % dr.glowOn.length] : _sccWindowU((it.seed | 0) + '|g|' + gi) < (share == null ? 0.6 : share));
+        gi++;
+        if (on) { drawShape(gx, Object.assign({}, sh, { f: (dr.glowCol && dr.glowCol[sh.glow]) || (sh.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain); continue; }
+      }
+      drawShape(gx, sh, col);
+    }
+    gx.globalAlpha = 1;
   };
   const drawSprite = (cx, sp, M, alpha) => {
     if (!sp || !sp.c) return false;
@@ -231,11 +281,22 @@ function sceneRendererCreate(canvas, src, o) {
 
   /* ---------- the bake (a generator: run to the end at once, or in idle slices) ---------- */
   function* bake(W, H, Lx, C) {
-    const lk = sceneLightKey(Lx, C.season), vs = Math.max(W / SCENE_W_SAFE, H / SCENE_H_SAFE), ox = (W - SCENE_W_SAFE * vs) / 2, oy = (H - SCENE_H_SAFE * vs) / 2;
+    rasterWait = false;
+    // v2 (V2 13): a v2 compiled scene, or a v1 one with fx, runs the render passes at the hook points below; v1: none of it
+    const v2 = typeof sceneRenderIsV2 === 'function' && typeof sceneRunPasses === 'function' && sceneRenderIsV2(C);
+    const lk = sceneLightKey(Lx, C.season, v2 ? C : undefined), vs = Math.max(W / SCENE_W_SAFE, H / SCENE_H_SAFE), ox = (W - SCENE_W_SAFE * vs) / 2, oy = (H - SCENE_H_SAFE * vs) / 2;
     const T = [vs, 0, 0, vs, ox, oy];                     // scene units -> device px
     const placeM = (x, y, s, flip) => [vs * s * (flip ? -1 : 1), 0, 0, vs * s, vs * x + ox, vs * y + oy];
     const out = { W, H, vs, ox, oy, lk, L: Lx, C, groups: [], sky: null, stars: [], clouds: [], strips: [], particles: null, rain: null, snow: null, opaque: [], sprites: new Set() };
     const keep = (sp) => { if (sp && sp.c) out.sprites.add(sp); return sp; };
+    const env = v2 ? _sccEnv({ C, L: Lx, W, H, vs, ox, oy, T, out, keep, placeM, lod, still: !!o.still, profile: !!o.profile, governor: o.governor,
+      sprite: (req) => sprite(Lx, lk, req.o, req.v || 0, req.season || C.season, req.part || '*', req.haze || 0, req.tint || null, req.scale, !!req.litGlow, !!req.withLit, req.plain ? null : { env, flip: req.flip, lift: req.lift || 0, cls: req.cls, i: req.i }),
+      // the very sprite item i is drawn with (the shadow and water passes reuse it: no extra rasterising)
+      itemSprite: (i) => { const it = C.items[i]; return keep(sprite(Lx, lk, it.o, it.v, it.season, '*', v2Haze(i, it, hz(it.layer)), it.tint, bucket(it.s) * vs, false, false, { env, flip: it.flip, lift: v2Lift(i), cls: it.cls, i })); } }) : null;
+    if (env) { out.env = env; sceneRunPasses(env, 'prebake', []); }
+    // the v2 haze (V2 7.1) and lift (7.4) of an item: from the passes' per-item arrays (bucketed), not the layer's haze
+    const v2Haze = (i, it, layerHaze) => (env && it.haze == null ? Math.round((env.itemHaze[i] || 0) * 10) / 10 : layerHaze);
+    const v2Lift = (i) => (env ? env.itemLift[i] || 0 : 0);
     const box = (b) => [Math.floor(b[0] * vs + ox), Math.floor(b[1] * vs + oy), Math.ceil(b[2] * vs + ox), Math.ceil(b[3] * vs + oy)];
     const clipBox = (b) => [Math.max(0, b[0]), Math.max(0, b[1]), Math.min(W, b[2]), Math.min(H, b[3])];
     const union = (a, b) => (!a ? b : !b ? a : [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
@@ -313,6 +374,11 @@ function sceneRendererCreate(canvas, src, o) {
         for (const s of C.signs) if (s.layer === l) bb = union(bb, [s.x - s.w, s.y - s.h * 3, s.x + s.w, s.y + s.h]);
         let n = 0;
         for (const i of byLayer[l]) { const it = C.items[i]; if (it.strip >= 0) continue; const sh = sceneObjShapes(it.o, it.v, it.season); if (sh) bb = union(bb, itemBox(it, sh)); if (++n % 256 === 0) yield* slice(); }
+        if (env) {
+          // v2: projected buildings (direct fills) and what the passes draw beyond the items (long shadows, water edges)
+          for (const i of byLayer[l]) { const it = C.items[i]; if (it.direct && it.direct.box) bb = union(bb, it.direct.box); }
+          if (env.extraBox[l]) bb = union(bb, env.extraBox[l]);
+        }
       }
       const db = bb ? clipBox(box(bb)) : null;
       const grp = { layers: gr.layers, c: null, x: 0, y: 0, w: 0, h: 0, movers: [], strips: [], water: [], opaqueY: H + 1 };
@@ -324,13 +390,16 @@ function sceneRendererCreate(canvas, src, o) {
       const gx = grp.c ? grp.c.getContext('2d', _SCC_CPU) : null;
       const toG = (M) => [M[0], M[1], M[2], M[3], M[4] - grp.x, M[5] - grp.y];
       const TG = toG(T);
+      if (env) { env.grp = grp; env.gi = gi; env.gx = gx; env.TG = TG; }
       for (const l of gr.layers) {
         const haze = hz(l), col = colourFn(Lx, haze, null);
         if (gx) {
           // ground
           for (const gd of C.ground) if (gd.layer === l) { gx.setTransform(...TG); gx.globalAlpha = 1; gx.fillStyle = paint(gx, gd.fill, col); gx.fill(_sccPath(gd.d)); }
+          if (env) { sceneRunPasses(env, 'ground', [l, gx]); _sccReset(gx); }
           // water: the live sky's colours, then the reflection of what stands above its line (sky, farther bitmaps, its own bank)
           for (const w of C.water) if (w.layer === l) {
+            if (env && env.own.water.has(w)) continue;   // v2: the water pass draws it (V2 5.3)
             const cols = Lx && Lx.water ? Lx.water(w.base) : w.base, wg = gx.createLinearGradient(0, w.y0, 0, w.y1), wp = _sccPath(w.d);
             wg.addColorStop(0, cols[0]); wg.addColorStop(0.5, cols[1]); wg.addColorStop(1, cols[2]);
             gx.setTransform(...TG); gx.globalAlpha = 1; gx.fillStyle = wg; gx.fill(wp);
@@ -348,34 +417,40 @@ function sceneRendererCreate(canvas, src, o) {
             if (w.shimmer || w.lightPath) grp.water.push(_sccWaterFx(w, Lx, vs, ox, oy, C.id));
           }
           // shadows along the live sun (static: baked)
-          if (Lx && Lx.shadow) for (const i of byLayer[l]) { const it = C.items[i]; if (it.shadow) _sccShadow(gx, TG, it, Lx); }
+          if (Lx && Lx.shadow && !(env && env.own.shadows)) for (const i of byLayer[l]) { const it = C.items[i]; if (it.shadow) _sccShadow(gx, TG, it, Lx); }
+          // v2: the passes under the layer's objects (water 20, shadows 30)
+          if (env) { sceneRunPasses(env, 'layer:under', [l, gx, 'under']); _sccReset(gx); }
         }
         // the items: static ones into the bitmap; moving parts into the group's draw list
         for (const i of byLayer[l]) {
           const it = C.items[i];
           if (it.strip >= 0) continue;
+          if (env && it.direct) { if (gx) drawDirect(gx, TG, it, colourFn(Lx, v2Haze(i, it, hz(l)), it.tint, false, v2Lift(i), env.liftCol), Lx, env.windowShare); yield* slice(gx); continue; }
+          const x2 = env ? { env, flip: it.flip, lift: v2Lift(i), cls: it.cls, i } : undefined, haze = env ? v2Haze(i, it, hz(l)) : hz(l);
           const M = placeM(it.x, it.y, it.s, it.flip), sc = bucket(it.s) * vs;
           const moving = it.anim && it.anim.length ? it.anim : null;
           const night = !!(Lx && Lx.windows);
           let skip = null, litMoves = false;
-          if (!moving) { if (gx) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, false)), toG(M)); }
+          if (!moving) { if (gx) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, false, false, x2)), toG(M)); }
           else {
             // after real dusk: the moving sprites carry their lit glows (every one, when any of the placement's is on) and, for
             // a whole-object hook, the lit part; the parts that stay get their glows in the bitmap below, as a static placement
             const whole = moving.find(a => _scAnimParts(a)[0] === '*'), moved = whole ? [] : [...new Set(moving.flatMap(_scAnimParts))];
-            if (!whole && gx) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'rest:' + moved.join(','), haze, it.tint, sc, false)), toG(M));
+            if (!whole && gx) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'rest:' + moved.join(','), haze, it.tint, sc, false, false, x2)), toG(M));
             const lit = night && !!it.glowOn && it.glowOn.some(Boolean);
             litMoves = !!whole && night && it.lit; skip = whole ? sceneObjShapes(it.o, it.v, it.season).order : moved;
-            const parts = whole ? [{ a: whole, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, lit, litMoves)) }]
-              : moving.flatMap(a => _scAnimParts(a).map((p, j) => ({ a, j, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, p, haze, it.tint, sc, lit)) })));
+            const parts = whole ? [{ a: whole, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, lit, litMoves, x2)) }]
+              : moving.flatMap(a => _scAnimParts(a).map((p, j) => ({ a, j, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, p, haze, it.tint, sc, lit, false, x2)) })));
             grp.movers.push({ kind: 'item', y: it.y, x: it.x, M, parts, b: itemBox(it, sceneObjShapes(it.o, it.v, it.season)) });
           }
           if (gx && night) {
-            if (it.lit && !litMoves) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'lit', 0, null, sc, false)), toG(M));
-            if (it.glowOn) _sccGlows(gx, toG(M), it, skip);
+            if (it.lit && !litMoves) drawSprite(gx, keep(sprite(Lx, lk, it.o, it.v, it.season, 'lit', 0, null, sc, false, false, x2 ? { env, flip: it.flip, lift: 0, cls: it.cls, i } : undefined)), toG(M));
+            if (it.glowOn) _sccGlows(gx, toG(M), it, skip, env ? env.windowShare : null);
           }
           yield* slice(gx);
         }
+        // v2: the passes over the layer's objects (pools, spill, halos, streaks)
+        if (env && gx) { sceneRunPasses(env, 'layer:over', [l, gx, 'over']); _sccReset(gx); }
         // signs (8.3): plain board, line-colour stripes, the name in the system font (fillText never parses markup)
         // (in its own small bitmap, drawn in depth order with the movers, so the layer's wind strips never cover it)
         for (const s of C.signs) if (s.layer === l) {
@@ -426,6 +501,8 @@ function sceneRendererCreate(canvas, src, o) {
         gx.setTransform(...TG);
         for (let i = 0; i < 4; i++) { const y = hor + 40 + i * 70, mg = gx.createLinearGradient(0, y - 40, 0, y + 40), c = _scHex(_scMixHex('#f0f2f2', '#3a4256', Lx.dark || 0)); mg.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},0)`); mg.addColorStop(0.5, `rgba(${c[0]},${c[1]},${c[2]},0.45)`); mg.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`); gx.globalAlpha = 1; gx.fillStyle = mg; gx.fillRect(-200, y - 40, 2000, 80); }
       }
+      // v2: the group bitmap is complete (water: reflection bitmaps and masks; atmosphere: the depth veil)
+      if (env) { sceneRunPasses(env, 'group', [grp]); if (gx) _sccReset(gx); }
       if (gx) flushCx(gx);
       yield* slice();
     }
@@ -437,6 +514,7 @@ function sceneRendererCreate(canvas, src, o) {
     if (Lx && Lx.snow) out.snow = sceneParticleSet('wsnow', Math.round(200 * Math.max(0.4, lod)), 93);
     out.fogVeil = Lx && Lx.fog ? `rgba(${_scHex(_scMixHex('#dfe4e6', '#2a3040', Lx.dark || 0)).join(',')},0.32)` : null;
     out.pcol = (c) => (C.particles.kind === 'motes' || !Lx ? c : colourFn(Lx, 0, null)(c));
+    out.rasterWait = rasterWait;
     return out;
   }
 
@@ -463,6 +541,9 @@ function sceneRendererCreate(canvas, src, o) {
     // what the nearer bitmaps hide: nothing farther needs drawing below their opaque rows
     const hideBelow = []; let hb = H;
     for (let i = S.groups.length - 1; i >= 0; i--) { hideBelow[i] = hb; hb = Math.min(hb, S.groups[i].opaqueY); }
+    // v2: every mover's place now, before the frame passes (water wakes and reflections, actor shadows read them)
+    const env = S.env;
+    if (env) _sccMoversNow(env, S, t, Lx);
     mark('pre'); blitAt(S.sky, 0, 0, 0, hb); mark('blit');
     // stars: three twinkle groups
     if (S.stars.length) {
@@ -490,20 +571,24 @@ function sceneRendererCreate(canvas, src, o) {
         ctx.drawImage(s.c, s.x, s.y); draws++;
       }
       mark('strips'); for (const w of g.water) _sccWaterFrame(ctx, w, t); mark('water');
+      // v2: the frame passes of this group (flows 10, water 20, actor shadows 25, puddle rings 50), before its movers
+      if (env) { draws += sceneRunPasses(env, 'frameGroup', [g, ctx, t, below], true); _sccReset(ctx); mark('passes'); }
       // the movers, y-sorted (actors and birds are placed now)
-      const list = g.movers;
-      for (const m of list) {
+      let list = g.movers;
+      if (!env) for (const m of list) {
         if (m.kind === 'actor') { const p = sceneActorAt(m.actor, t); m.p = p; m.y = p.y; }
         else if (m.kind === 'bird') { const p = sceneFlockAt(m.flock, m.i, t); m.p = p; m.y = p.y; }
       }
+      if (env) { const extra = []; sceneRunPasses(env, 'movers', [g, t, (m) => { if (m && typeof m.draw === 'function') extra.push(Object.assign({ kind: 'custom' }, m)); }], true); if (extra.length) list = list.concat(extra); }
       list.sort((a, b) => a.y - b.y);
       const drawMover = (m) => {
         if (m.kind === 'sign') { if (m.top < below) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(m.c, m.x, m.top); } return; }
+        if (m.kind === 'custom') { const n = m.draw(ctx); if (n > 0) draws += n; _sccReset(ctx); return; }
         if (m.kind === 'item') {
           if (m.b[1] * vs + oy > below) return;
           for (const pt of m.parts) {
-            const pose = sceneAnimPose(pt.a, t, Lx, m.x), A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m;
-            if (drawSprite(ctx, pt.sp, _scMul(m.M, A), pose.alpha)) draws++;
+            const pose = sceneAnimPose(pt.a, t, Lx, m.x), A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m, al = _scPartAlpha(pose, pt.j || 0);
+            if (al > 0 && drawSprite(ctx, pt.sp, _scMul(m.M, A), al)) draws++;
           }
         } else {
           const p = m.p, b = m.box, fl = p.dir < 0;
@@ -513,14 +598,16 @@ function sceneRendererCreate(canvas, src, o) {
           let bob = 0;
           if (m.kind === 'actor') for (const pt of m.parts) if (pt.a && pt.a.kind === 'walk') { bob = sceneAnimPose(pt.a, t, Lx, p.x).bob || 0; break; }
           for (const pt of m.parts) {
-            let A = _SC_ID;
+            let A = _SC_ID, al = 1;
             if (pt.a) {
               const a = m.kind === 'bird' ? Object.assign({}, pt.a, { phase: p.phase }) : pt.a, pose = sceneAnimPose(a, t, Lx, p.x);
               A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m;
+              if (!pt.rest && pose.alphas) al = pose.alphas[pt.j || 0];   // a frames hook: one part at a time (an actor part never took the pose alpha)
             }
+            if (al <= 0) continue;
             const MM = _scMul(M, A);
             if (pt.rest && bob) MM[5] += bob * vs * p.s;
-            if (drawSprite(ctx, pt.sp, MM, p.alpha)) draws++;
+            if (drawSprite(ctx, pt.sp, MM, p.alpha * al)) draws++;
           }
         }
       };
@@ -539,6 +626,8 @@ function sceneRendererCreate(canvas, src, o) {
     }
     if (S.fogVeil) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = S.fogVeil; ctx.fillRect(0, 0, W, H); }
     ctx.globalAlpha = 1;
+    // v2: after every group (weather 50, fog banks 60, lightning 90)
+    if (env) { draws += sceneRunPasses(env, 'framePost', [ctx, t], true); _sccReset(ctx); }
     if (F) flush();
     mark('weather');
     if (P) P.frames = (P.frames || 0) + 1;
@@ -546,6 +635,7 @@ function sceneRendererCreate(canvas, src, o) {
     drawTimes.push(total); dynTimes.push(Math.max(0, total - blit));
     if (drawTimes.length > 900) { drawTimes.splice(0, 300); dynTimes.splice(0, 300); }
     st.blitPx = blitPx; st.animatedDraws = draws;
+    if (env && !o.still && t > 0) _sccGovern(env, Math.max(0, total - blit), o);
   }
 
   /* ---------- bake runners ---------- */
@@ -559,10 +649,16 @@ function sceneRendererCreate(canvas, src, o) {
     if (!st.bakes) st.firstBakeMs = st.bakeMs;
     st.bakes++;
   }
+  let rasterRetry = 0, rasterBake = false;
   function adopt(next, W, H) {
     if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
     const old = S;
     S = next;
+    // raster objects decode lazily: when an image was not ready, bake again once every pending image has decoded (a few tries)
+    if (next.rasterWait && rasterRetry < 4 && typeof sceneRasterWhenReady === 'function') {
+      rasterRetry++; rasterBake = true;
+      sceneRasterWhenReady().then(() => { rasterBake = false; if (!destroyed && S === next) bakeLater(next.W, next.H); });
+    }
     if (old) for (const g of old.groups) if (g.c && g.c !== null) { g.c.width = 0; }
     if (old && old.sky) old.sky.width = 0;
   }
@@ -596,6 +692,10 @@ function sceneRendererCreate(canvas, src, o) {
   }
   const api = {
     get baked() { return !!S; },
+    /** The v2 env of the current bake (V2 13.1; tests and tools read the passes' state), or null (v1). */
+    get env() { return S ? S.env || null : null; },
+    /** The last bake left out a raster image that is still decoding (a re-bake follows when it is ready). */
+    get waiting() { return rasterBake || (!!pending && !!S && !!S.rasterWait); },
     /** A bake is running in idle slices. */
     get baking() { return !!pending; },
     /** The first bake in idle slices (gallery tiles: no long task while a page of tiles mounts). */
@@ -614,7 +714,9 @@ function sceneRendererCreate(canvas, src, o) {
       const before = S ? S.lk : null;
       L = nl;
       if (!S) return;
-      if (sceneLightKey(nl, season) !== before) bakeLater(S.W, S.H);
+      const v2 = S.env ? S.C : undefined;
+      if (sceneLightKey(nl, season, v2) !== before) bakeLater(S.W, S.H);
+      else if (S.env) { S.env.Lnow = nl; sceneRunPasses(S.env, 'relight', [nl]); }   // v2: a refresh that needs no re-bake (flow density)
     },
     setSeason(s) { if (!s || s === season) return; season = s; if (S) bakeLater(S.W, S.H); },
     setLod(k) { if (k == null || k === lod) return; lod = k; if (S) bakeLater(S.W, S.H); },
@@ -636,9 +738,10 @@ function sceneRendererCreate(canvas, src, o) {
       if (S) for (const sp of S.sprites) bytes += sp.bytes || 0;
       return { rid, drawMs: _sccStat(drawTimes), dynMs: _sccStat(dynTimes), bakeMs: st.bakeMs, maxSliceMs: st.maxSliceMs || 0, firstBakeMs: st.firstBakeMs, bakes: st.bakes, sprites: S ? S.sprites.size : 0, spriteBytes: bytes,
         bitmaps: S ? 1 + S.groups.filter(g => g.c).length : 0, blitPx: st.blitPx, animatedDraws: st.animatedDraws, actors: S ? S.C.actors.length : 0, placements: S ? S.C.items.length : 0,
-        lightKey: S ? S.lk : null, size: S ? [S.W, S.H] : null, profile: o.profile ? Object.fromEntries(Object.entries(prof).map(([k, v]) => [k, k === 'frames' ? v : Math.round(v / Math.max(1, prof.frames) * 100) / 100])) : undefined };
+        lightKey: S ? S.lk : null, size: S ? [S.W, S.H] : null, profile: o.profile ? Object.fromEntries(Object.entries(prof).map(([k, v]) => [k, k === 'frames' ? v : Math.round(v / Math.max(1, prof.frames) * 100) / 100])) : undefined,
+        passes: S && S.env ? _sccPassStats(S.env) : undefined, governor: S && S.env ? { level: S.env.gov.level, log: S.env.gov.log.slice() } : undefined };
     },
-    resetStats() { drawTimes.length = 0; dynTimes.length = 0; for (const k in prof) delete prof[k]; },
+    resetStats() { drawTimes.length = 0; dynTimes.length = 0; for (const k in prof) delete prof[k]; if (S && S.env) for (const k in S.env.passStats) { const p = S.env.passStats[k]; p.frameMs = 0; p.frames = 0; } },
     destroy() {
       api.stop(); destroyed = true;
       if (pending) pending.cancel = true;
@@ -650,6 +753,71 @@ function sceneRendererCreate(canvas, src, o) {
 /** sceneWind when the core has it, else a gentle sine (the renderer never fails on a missing core function). */
 function sceneWindSafe(t, x, L) { return typeof sceneWind === 'function' ? sceneWind(t, x, L) : Math.sin(t + x * 0.003); }
 const SCENE_W_SAFE = 1600, SCENE_H_SAFE = 900;
+
+/* ---------- raster objects (70-scene-0raster.js): lazy decoding and drawing ---------- */
+const _sccRasterImgs = new Map();   // asset key -> { img, ready, failed, p }
+/**
+ * The decoded image of an asset key, or null while it decodes (the first call starts it: the embedded base64 block becomes a
+ * data: URL, decoded off the main thread by img.decode()). A key without bytes is marked failed and draws nothing.
+ */
+function sceneRasterImage(key) {
+  let r = _sccRasterImgs.get(key);
+  if (!r) {
+    const url = typeof sceneRasterUrl === 'function' ? sceneRasterUrl(key) : null;
+    r = { img: null, ready: false, failed: !url, p: null };
+    _sccRasterImgs.set(key, r);
+    if (url && typeof Image === 'function') {
+      const img = new Image();
+      r.img = img;
+      img.src = url;
+      r.p = (typeof img.decode === 'function' ? img.decode() : new Promise((res, rej) => { img.onload = res; img.onerror = rej; }))
+        .then(() => { r.ready = true; }, () => { r.failed = true; });
+    } else r.failed = true;
+  }
+  return r.ready ? r.img : null;
+}
+/** Resolves when every image asked for so far has decoded (or failed). */
+function sceneRasterWhenReady() { return Promise.all([..._sccRasterImgs.values()].map(r => r.p).filter(Boolean)).then(() => true); }
+/**
+ * Draw one image shape into a sprite (cx carries the sprite's transform): the image at device size into a scratch canvas,
+ * its pixels through the colour matrix (the season derivation, then the fitted grade: sceneRasterMatrix), mask_lit as alpha,
+ * then onto the sprite. Once per sprite (object, variant, part, season, haze, tint, scale bucket, light key): the cache keeps it.
+ * Returns false while an image is still decoding.
+ */
+function _sccRasterDraw(cx, sh, col, Lx) {
+  const im = sh.img, pick = sceneRasterPick(im, Lx);
+  if (pick.skip) return true;
+  sceneRasterImage(pick.key);
+  const rec = _sccRasterImgs.get(pick.key);
+  if (rec.failed) return true;
+  if (!rec.ready) return false;
+  let mrec = null;
+  if (im.mask) { sceneRasterImage(im.mask); mrec = _sccRasterImgs.get(im.mask); if (mrec.failed) return true; if (!mrec.ready) return false; }
+  cx.save();
+  if (sh.m) cx.transform(sh.m[0], sh.m[1], sh.m[2], sh.m[3], sh.m[4], sh.m[5]);
+  const T = cx.getTransform(), kx = Math.hypot(T.a, T.b), ky = Math.hypot(T.c, T.d);
+  const dw = Math.max(1, Math.min(2048, Math.ceil(im.w * kx))), dh = Math.max(1, Math.min(2048, Math.ceil(im.h * ky)));
+  const tmp = _sccCanvas(dw, dh), tx = tmp.getContext('2d', _SCC_CPU);
+  tx.imageSmoothingEnabled = true; tx.imageSmoothingQuality = 'high';
+  tx.drawImage(rec.img, 0, 0, dw, dh);
+  const M = sceneRasterMatrix(pick.night && col.ng ? col.ng : col, pick.night ? null : im.fx);
+  if (!sceneRasterIsId(M) || mrec) {
+    const data = tx.getImageData(0, 0, dw, dh), px = data.data;
+    if (!sceneRasterIsId(M)) sceneRasterApply(M, px);
+    if (mrec) {
+      const mc = _sccCanvas(dw, dh), mx = mc.getContext('2d', _SCC_CPU);
+      mx.drawImage(mrec.img, 0, 0, dw, dh);
+      const mp = mx.getImageData(0, 0, dw, dh).data;
+      for (let i = 0; i < px.length; i += 4) px[i + 3] = (px[i + 3] * ((mp[i] * 0.3 + mp[i + 1] * 0.59 + mp[i + 2] * 0.11) / 255) * (mp[i + 3] / 255)) | 0;
+      mc.width = 0;
+    }
+    tx.putImageData(data, 0, 0);
+  }
+  cx.globalAlpha = sh.op == null ? 1 : sh.op;
+  cx.drawImage(tmp, im.x, im.y, im.w, im.h);
+  cx.restore();
+  return true;
+}
 
 const _sccBoxes = new WeakMap();
 /** The tight bounds of some parts of a resolved object (memoised per resolved form): a swaying crown's sprite is the crown, not the whole tree. */
@@ -689,15 +857,27 @@ function _sccShadow(gx, TG, it, L) {
   gx.globalAlpha = 1;
 }
 /**
+ * A window's lit threshold in [0, 1) from its key (seed|w|k). The plain FNV hash barely moves when only the last character
+ * changes, so every window of a placement got almost the same threshold (a building all lit or all dark at a share of
+ * 0.4): the murmur3 finaliser spreads them.
+ */
+function _sccWindowU(key) {
+  let h = _scHashS(key);
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b); h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35); h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+/**
  * Lit windows and lamps of a placement (after real dusk), in the object's night colours, as its glowOn says. skip: parts
  * left out (an animated placement's moving parts, whose sprites carry their own lit glows).
  */
-function _sccGlows(gx, M, it, skip) {
+function _sccGlows(gx, M, it, skip, share) {
   const sh = sceneObjShapes(it.o, it.v, it.season), def = sceneObj(it.o), nc = (def && def.night && def.night.glow) || {};
   gx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
   let gi = 0;
+  // v2 (V2 7.3): each window has a seeded threshold and is lit while it is under the share of windows lit at this hour
+  const on = share == null ? (k) => it.glowOn[k % it.glowOn.length] : (k) => _sccWindowU((it.seed | 0) + '|w|' + k) < share;
   for (const p of sh.order) for (const s of sh.parts[p] || []) if (s.glow) {
-    if (it.glowOn[gi % it.glowOn.length] && !(skip && skip.includes(p))) {
+    if (on(gi) && !(skip && skip.includes(p))) {
       if (s.m) { gx.save(); gx.transform(...s.m); }
       gx.globalAlpha = 1; gx.fillStyle = nc[s.glow] || (s.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'); gx.fill(_sccPath(s.d));
       if (s.m) gx.restore();
@@ -790,4 +970,84 @@ function _sccOpaqueFromGround(C, layers, vs, ox, oy, W) {
     worst = Math.max(worst, best);
   }
   return Math.ceil((worst + 2) * vs + oy);
+}
+
+/* ---------- v2 hooks (V2 13; builder B): the env, the movers' places, the governor, the stats ---------- */
+/** Reset the state a pass may leave on a context (transform, alpha, composite, filter). */
+function _sccReset(cx) {
+  if (!cx) return;
+  cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over';
+  if (cx.filter !== undefined && cx.filter !== 'none') cx.filter = 'none';
+}
+/**
+ * The env of one v2 bake (V2 13.1), kept for its frames: { C, L, W, H, vs, ox, oy, T, lod, still, cam, groups, plan,
+ * layerOfGroup, bitmapOf(layer), sprite(req) -> spr, keep(spr), slice(), placeM(x, y, s, flip), lights, waterExtra,
+ * itemHaze, itemLift, flowNow, actorsNow, profile, own: { water: Set, shadows }, extraBox: [per layer], windowShare,
+ * gov: { level, log }, passes (stage -> list), passStats, frameNo }.
+ * req (env.sprite): { o, v, part ('*'), season, haze, tint, scale (device), flip, cls, lift, litGlow, withLit, plain }.
+ */
+function _sccEnv(a) {
+  const C = a.C, L = a.L, n = C.items.length, plan = sceneBakePlan(C), layerOfGroup = [];
+  plan.forEach((g, gi) => g.layers.forEach(l => { layerOfGroup[l] = gi; }));
+  const so = typeof window !== 'undefined' && window.__sceneOpts ? window.__sceneOpts : {};
+  const byLayer = C.layers.map(() => []);
+  C.items.forEach((it, i) => byLayer[it.layer] && byLayer[it.layer].push(i));
+  return { C, L, Lnow: L, W: a.W, H: a.H, vs: a.vs, ox: a.ox, oy: a.oy, T: a.T, lod: a.lod, still: a.still, cam: sceneRenderCam(C),
+    groups: a.out.groups, plan, layerOfGroup, byLayer, out: a.out,
+    bitmapOf: (layer) => a.out.groups[layerOfGroup[layer]] || null,
+    sprite: a.sprite, itemSprite: a.itemSprite, keep: a.keep, slice: () => {}, placeM: a.placeM,
+    lights: [], waterExtra: [], itemHaze: new Float32Array(n), itemLift: new Float32Array(n), flowNow: [], actorsNow: [], profile: a.profile,
+    passes: {}, passStats: {}, broken: new Set(), frameNo: 0, t: 0, own: { water: new Set(), shadows: false }, extraBox: [],
+    windowShare: L && Number.isFinite(L.windowShare) ? L.windowShare : null, liftCol: '#ffd9a0', flowK: 1, governor: { level: 0, flowMax: 1 },
+    gov: { level: 0, log: [], hist: [], since: 0, calm: 0, enabled: a.governor !== false && !a.still && so.governor !== false, sw: !!so.flush } };
+}
+/**
+ * The movers' places at t, before the frame passes (V2 13.2 item 6): actors (A's sceneActorAtV2 for ground paths, else the
+ * v1 path) and flock birds; env.actorsNow gets one record per actor: { m, a, gi, x, y, s, dir, alpha, d, o, v, cls, sp, box, speed }.
+ */
+function _sccMoversNow(env, S, t, L) {
+  env.frameNo++; env.t = t; env.actorsNow.length = 0;
+  const cam = env.cam;
+  S.groups.forEach((g, gi) => {
+    for (const m of g.movers) {
+      if (m.kind === 'actor') {
+        const a = m.actor;
+        let p = null;
+        if (a.ground && typeof sceneActorAtV2 === 'function') {
+          try { const q = sceneActorAtV2(a, t, cam); if (q) p = { x: q.X != null ? q.X : q.x, y: q.Y != null ? q.Y : q.y, s: q.s, dir: q.dir != null ? q.dir : q.flip ? -1 : 1, alpha: q.alpha == null ? 1 : q.alpha, d: q.d }; } catch (e) { p = null; }
+        }
+        if (!p) p = sceneActorAt(a, t);
+        m.p = p; m.y = p.y;
+        const d = Number.isFinite(p.d) ? p.d : sceneCamDepthAt(cam, p.y);
+        env.actorsNow.push({ m, a, gi, x: p.x, y: p.y, s: p.s, dir: p.dir, alpha: p.alpha == null ? 1 : p.alpha, d, o: a.o, v: a.v, cls: a.cls || sceneObjClassOf(a.o),
+          sp: m.parts && m.parts[0] ? m.parts[0].sp : null, box: m.box, speed: a.speed || 0 });
+      } else if (m.kind === 'bird') { const p = sceneFlockAt(m.flock, m.i, t); m.p = p; m.y = p.y; }
+    }
+  });
+}
+/**
+ * The quality governor (V2 13.2 item 9; never in stills, captures or o.governor === false): when the median dynMs over the
+ * last 2 s passes 6 ms (x 1.75 under software raster) it steps down one level (1 ripple at 7.5 Hz, 2 rings off, 3 projected
+ * actor shadows become blobs, 4 flows x 0.7: env.flowK); after 10 s under 4 ms it steps back up. Each step is logged once.
+ */
+function _sccGovern(env, dyn, o) {
+  const g = env.gov;
+  if (!g.enabled) return;
+  const now = _sccNow();
+  g.hist.push([now, dyn]);
+  while (g.hist.length && now - g.hist[0][0] > 2000) g.hist.shift();
+  if (now - g.since < 1000 || g.hist.length < 20) return;
+  const v = g.hist.map(h => h[1]).sort((a, b) => a - b), med = v[Math.floor(v.length / 2)], lim = 6 * (o.flush || g.sw ? 1.75 : 1);
+  if (med > lim && g.level < 4) { g.level++; g.since = now; g.calm = 0; g.hist.length = 0; g.log.push({ level: g.level, dir: 'down', medianMs: Math.round(med * 100) / 100 }); }
+  else if (g.level > 0 && med < 4) { if (!g.calm) g.calm = now; else if (now - g.calm > 10000) { g.level--; g.calm = 0; g.since = now; g.log.push({ level: g.level, dir: 'up', medianMs: Math.round(med * 100) / 100 }); } }
+  else g.calm = 0;
+  env.flowK = g.level >= 4 ? 0.7 : 1;
+  env.governor = { level: g.level, flowMax: env.flowK };
+}
+/** r.stats().passes: per pass { bakeMs, frameMs (mean per frame), draws (the last frame), frames } plus what its stats(env) adds. */
+function _sccPassStats(env) {
+  const r = v => Math.round(v * 100) / 100, out = {};
+  for (const [id, p] of Object.entries(env.passStats)) out[id] = { bakeMs: r(p.bakeMs), frameMs: r(p.frameMs / Math.max(1, p.frames)), draws: p.draws, frames: p.frames };
+  for (const p of sceneRenderPasses('stats', env.C)) { try { out[p.id] = Object.assign(out[p.id] || {}, p.stats(env)); } catch (e) { /* no stats */ } }
+  return out;
 }

@@ -3,9 +3,9 @@
   "standard": 2,
   "bar": [
     {
-      "ref": "uk-south-east/hampshire-yateley-common-1",
+      "ref": "uk-area-yateley/hampshire-yateley-common-1",
       "kind": "rich",
-      "source": "src/app/72-anim-pack-uk-south-east-yateley-common-v1.js",
+      "source": "src/app/71-scene-uk-yateley-common.js",
       "why": "THE BAR for open country. Depth: a hazy far tree line, a mid band of birch and pine, near heath and a framing foreground, each in its own layer with haze between them. Cover: heather, gorse and grass carpet the whole lower ground, no bare columns. Life: walkers with a dog, rabbits, butterflies, bees, birds crossing and swaying plants at three depths. Light: the live sky of the real sun, shadows along it, the season by date.",
       "tags": [
         "heath",
@@ -16,9 +16,9 @@
       ]
     },
     {
-      "ref": "uk-south-east/hampshire-yateley-common-4",
+      "ref": "uk-area-yateley/hampshire-yateley-common-4",
       "kind": "rich",
-      "source": "src/app/72-anim-pack-uk-south-east-yateley-common-v4.js",
+      "source": "src/app/71-scene-uk-yateley-common.js",
       "why": "The same heath at evening: match the low warm light, the long shadows and the way the far layers fade into the glow while the near cover stays crisp.",
       "tags": [
         "evening",
@@ -28,9 +28,9 @@
       ]
     },
     {
-      "ref": "uk-south-east/hampshire-wyndhams-pool-1-winter",
+      "ref": "uk-area-yateley/hampshire-wyndhams-pool-1-winter",
       "kind": "rich",
-      "source": "src/app/72-anim-pack-uk-south-east-wyndhams-pool-v1.js",
+      "source": "src/app/71-scene-uk-yateley-wyndhams-pool.js",
       "why": "Winter done right: bare twig lattices, frost and russet cover instead of summer green, a still pool reflecting the trees, and life that still moves (water birds, a walker) under a low winter sun.",
       "tags": [
         "winter",
@@ -40,9 +40,9 @@
       ]
     },
     {
-      "ref": "uk-south-east/hampshire-yateley-green-2-spring",
+      "ref": "uk-area-yateley/hampshire-yateley-green-2-spring",
       "kind": "rich",
-      "source": "src/app/72-anim-pack-uk-south-east-yateley-green-v2.js",
+      "source": "src/app/71-scene-uk-yateley-green.js",
       "why": "Spring and a mixed setting: a village green with houses, a pond and wild flowers. Match the density of the meadow cover, the blossom, and the windows that light at real dusk.",
       "tags": [
         "spring",
@@ -53,9 +53,9 @@
       ]
     },
     {
-      "ref": "uk-south-east/hampshire-fleet-pond-1",
+      "ref": "uk-area-fleet/hampshire-fleet-pond-1",
       "kind": "rich",
-      "source": "src/app/72-anim-pack-uk-south-east-fleet-pond-v1.js",
+      "source": "src/app/71-scene-uk-fleet-scenes.js",
       "why": "THE BAR for water: a wide lake with reflections of everything at its edge, reed beds along the margins, swans, ducks and dragonflies on and over the water, walkers on the shore, shimmer and the glitter road of the real sun.",
       "tags": [
         "lake",
@@ -66,9 +66,9 @@
       ]
     },
     {
-      "ref": "uk-south-east/hampshire-fleet-pond-2-autumn",
+      "ref": "uk-area-fleet/hampshire-fleet-pond-2-autumn",
       "kind": "rich",
-      "source": "src/app/72-anim-pack-uk-south-east-fleet-pond-v2.js",
+      "source": "src/app/71-scene-uk-fleet-scenes.js",
       "why": "Autumn: copper and gold crowns, falling leaves, reeds gone tawny; the same depth, cover and life as summer in the colours of the season.",
       "tags": [
         "autumn",
@@ -305,11 +305,6 @@
       "source": "src/app/71-anim-us2-scenes-7.js (key 'place:white-sands')"
     },
     {
-      "ref": "uk-north-west/derbyshire-stanage-edge",
-      "wrong": "The crags are a single beige slab with parallel stripes in muddy olive and grey, a lone grey disc, and the UK template sky and hills: no readable rock forms.",
-      "fix": "Draw the gritstone as stepped blocks with cracks and a lit face, add heather and a path to lead in, and make the sky and light belong to the scene."
-    },
-    {
       "ref": "asia-west/abu-dhabi-skyline",
       "wrong": "White arcade and domes on white: a tonal range of only 0.82, no shadow side or depth layers, so the mosque reads as a flat cut-out against pale water.",
       "fix": "Shade the domes and arches, add a darker foreground and a lit horizon, and break the white mass with colour, reflections and layers.",
@@ -319,6 +314,12 @@
       "ref": "uk-south-east/west-sussex-ardingly-show",
       "wrong": "Five identical white tents stamped in a row, ant-like figures in grey dots, and a flat green field under the same template sky, sun and clouds as 160 other UK scenes.",
       "fix": "Draw each tent differently (size, colour, perspective), add a recognisable subject and real foreground, and give the scene its own sky and palette."
+    },
+    {
+      "ref": "uk-area-woking-b/surrey-woking-kingfield",
+      "wrong": "A car park drawn in screen pixels: some 85 cars, buses and taxis stamped edge to edge at mismatched sizes (a taxi 1.5 times the car beside it), people standing in the carriageway, shrubs and reeds growing out of the tarmac and lamp posts planted among the cars, with the ground stand half hidden behind a wall of identical trees.",
+      "fix": "Declare it on the v2 ground grid (docs/dev/SCENE_ENGINE_V2.md): a road and a parking surface with a few cars placed on them (the engine sizes them by depth and keeps them on the tarmac), people on the pavements, cover only on the verges, and the stand on a clear third. scene migrate and the placement-sanity lint list every one of these defects.",
+      "source": "src/app/71-scene-uk-woking-b-scenes.js (Kingfield)"
     }
   ],
   "weakerItems": [

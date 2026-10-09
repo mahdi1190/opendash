@@ -1,0 +1,9 @@
+.google-health-card .conn-ic { color: var(--cp-green, var(--accent)); }
+.google-health-stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.google-health-setup { margin-top: 20px; }
+.google-health-setup > summary { cursor: pointer; font-weight: 600; margin-bottom: 16px; }
+.google-health-file { display: grid; gap: 8px; margin: 16px 0; }
+.google-health-file input { width: 100%; max-width: 100%; min-width: 0; height: auto; padding: 10px; }
+.google-health-file input::file-selector-button { font: inherit; padding: 6px 10px; margin-right: 10px; cursor: pointer; }
+.google-health-setup .conn-code pre { overflow-wrap: anywhere; white-space: pre-wrap; }
+.google-health-setup :is(input, summary):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }

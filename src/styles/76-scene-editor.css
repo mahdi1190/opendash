@@ -1,0 +1,57 @@
+/* ============================================================
+   SCENE EDITOR (docs/dev/SCENE_ENGINE_V2.md 23.3; builder H): the developer editor over the animation gallery
+   (78-scene-editor.js). A full-window dialog: the 16:9 stage (the scene through the normal host, plus the
+   overlay canvas of the ground grid, surfaces, lanes and placement handles) and the side panels.
+   ============================================================ */
+.sced {
+  position: fixed; inset: 0; z-index: var(--z-modal, 60); display: flex; flex-direction: column;
+  background: var(--bg); color: var(--fg); font-size: var(--text-sm);
+}
+.sced-head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--border-subtle); background: var(--surface); flex-wrap: wrap; }
+.sced-head > b { font-size: var(--text-md); }
+.sced-ref { font-family: var(--font-mono); font-size: var(--text-xs); overflow-wrap: anywhere; }
+.sced-sum { flex: 1; min-width: 12ch; }
+.sced-head-acts { display: flex; gap: var(--space-2); margin-left: auto; }
+.sced-body { flex: 1; min-height: 0; display: flex; gap: var(--space-3); padding: var(--space-3); }
+.sced-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.sced-stage { position: relative; width: 100%; max-height: calc(100vh - 180px); aspect-ratio: 16 / 9; margin: 0 auto; border-radius: var(--radius-md, 8px); overflow: hidden; background: #1c2430; }
+@supports (aspect-ratio: 16 / 9) { .sced-stage { max-width: calc((100vh - 180px) * 16 / 9); } }
+.sced-hosts, .sced-host { position: absolute; inset: 0; }
+.sced-host > .anim-scene { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; --as-size: 100%; }
+.sced-ov { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+.sced-ov:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sced-msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 70%; padding: var(--space-3) var(--space-4); border-radius: var(--radius-md, 8px); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-md); }
+.sced-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.sced-toggles { display: flex; flex-wrap: wrap; gap: var(--space-1, 4px); }
+.sced-hint { font-size: var(--text-xs); flex-basis: 100%; }
+.sced-credits { font-size: var(--text-xs); min-height: 1em; }
+.sced-side { width: min(360px, 34vw); flex: none; overflow: auto; display: flex; flex-direction: column; gap: var(--space-2); padding-right: var(--space-1, 4px); }
+.sced-sec { border: 1px solid var(--border-subtle); border-radius: var(--radius-md, 8px); background: var(--surface); }
+.sced-sec > summary { cursor: pointer; padding: var(--space-2) var(--space-3); font-weight: 600; }
+.sced-sec-b { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-3) var(--space-3); }
+.sced-sec-b p { margin: 0; font-size: var(--text-xs); }
+.sced-f { display: flex; flex-direction: column; gap: 2px; font-size: var(--text-xs); color: var(--fg-muted); min-width: 0; }
+.sced-f > select, .sced-f > input { width: 100%; }
+.sced-row { display: flex; align-items: flex-end; gap: var(--space-2); flex-wrap: wrap; }
+.sced-row > .sced-f { flex: 1; }
+.sced-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.sced-presets { gap: var(--space-1, 4px); }
+.sced-time { width: 100%; }
+.sced :is(.apg-filter-btn)[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 9%, var(--surface)); color: var(--fg); box-shadow: 0 0 0 1px var(--accent) inset; }
+.sced-palette { display: flex; flex-wrap: wrap; gap: 4px; max-height: 220px; overflow: auto; }
+.sced-chip { border: 1px solid var(--border-subtle); background: var(--bg-subtle, var(--surface)); color: var(--fg); border-radius: 999px; padding: 2px 8px; font: inherit; font-size: var(--text-xs); cursor: pointer; }
+.sced-chip:hover { border-color: var(--accent); }
+.sced-list { display: flex; flex-direction: column; max-height: 260px; overflow: auto; }
+.sced-li { display: flex; align-items: center; gap: var(--space-2); text-align: left; border: 0; background: none; color: var(--fg); font: inherit; font-size: var(--text-xs); padding: 3px 4px; border-radius: 4px; cursor: pointer; }
+.sced-li > span:nth-child(2) { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sced-li:hover { background: var(--bg-subtle, var(--surface)); }
+.sced-li[aria-selected="true"] { background: color-mix(in oklab, var(--accent) 14%, var(--surface)); cursor: default; }
+.sced-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: #a8b3c2; }
+.sced-dot.is-ok { background: #3fcf7f; } .sced-dot.is-snapped { background: #f5b13d; } .sced-dot.is-refused { background: #ff5a5f; } .sced-dot.is-warn { background: #f1d04b; }
+.sced-probs { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 3px; font-size: var(--text-xs); max-height: 280px; overflow: auto; }
+.sced-probs .is-error { color: var(--danger); } .sced-probs .is-warn { color: var(--warning); } .sced-probs .is-info { color: var(--fg-muted); }
+.sced-link { border: 0; background: none; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; }
+.sced :is(button, select, input, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.apg-credits { font-size: var(--text-xs); }
+@media (max-width: 900px) { .sced-body { flex-direction: column; overflow: auto; } .sced-side { width: auto; } }
+@media (prefers-reduced-motion: reduce) { .sced * { transition: none !important; } }

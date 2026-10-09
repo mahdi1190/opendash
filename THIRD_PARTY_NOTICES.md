@@ -4,7 +4,9 @@ OpenDash is MIT licensed (see `LICENSE`) and has no npm dependencies. It ships
 three third-party components, vendored in `vendor/` and built into the single
 `index.html`. Each keeps its own licence; the full texts are next to the files.
 The travel features also carry three public data sets, reduced into one
-generated file (see the last section).
+generated file (see "Travel place tables"). Scene recipes may hold layouts
+derived from OpenStreetMap and hill outlines derived from open elevation data
+(see the last two sections).
 
 | Component | Version | Used for | Licence (SPDX) | Full text |
 |---|---|---|---|---|
@@ -14,6 +16,8 @@ generated file (see the last section).
 | GeoNames cities15000 and countryInfo, a subset | 2026-10 | The travel features' city and country tables (`src/app/69-travel-data.js`) | Creative Commons Attribution 4.0 (`CC-BY-4.0`) | below |
 | IANA time zone database (zone.tab, backward links) | 2025 | Time zone to country and city | Public domain | below |
 | OurAirports airports, a subset | 2026-10 | Airport codes to cities | Public domain | below |
+| OpenStreetMap data, projected into scene layouts | per scene (`scene.source.osm.fetched`) | The layouts of scenes marked as containing OpenStreetMap data | Open Database License 1.0 (`ODbL-1.0`) | below |
+| Terrain Tiles (AWS Open Data) and OS Terrain 50 heights, sampled into hill outlines | per scene (`scene.source.terrain`) | Ridges, skylines and relief of scenes with `scene.source.terrain` | per source, below | below |
 
 ## Apache ECharts
 
@@ -76,3 +80,72 @@ Contains public sector information licensed under the Open Government Licence
 v3.0; contains OS data © Crown copyright and database right. The data was reduced
 to about 900 main towns, positions rounded to two decimals. No third-party
 website was scraped.
+
+## OpenStreetMap (scene layouts)
+
+Scene layouts marked as containing OpenStreetMap data: (c) OpenStreetMap
+contributors, available under the Open Database License 1.0 (ODbL);
+https://www.openstreetmap.org/copyright
+
+The authoring tool `node tools/anim-pack.mjs scene osm` (docs/dev/SCENE_ENGINE_V2.md
+section 17) asks the Overpass API for the data of one view, keeps it in a
+developer cache that is never committed (`.anim-ref/cache/osm/`), and projects
+roads, paths, water, parks, railways, building footprints and landmark positions
+into a scene recipe as plain numbers. Such a recipe is a derivative of the
+OpenStreetMap database: its file header carries the line "Contains OpenStreetMap
+data, (c) OpenStreetMap contributors, ODbL 1.0", its `scene.source.osm` records
+when the data was fetched, and the derived data in it is offered under the ODbL.
+The rest of the repository stays MIT. Names, brands and operators from
+OpenStreetMap are never copied into drawn text (shop fronts show generic words
+such as "Bakery"). The app never contacts OpenStreetMap: the gallery shows
+"© OpenStreetMap contributors" under such scenes, and Settings > About links to
+the copyright page.
+
+## Terrain (hill outlines and relief)
+
+`node tools/anim-pack.mjs scene terrain` (docs/dev/SCENE_ENGINE_V2.md section 18)
+samples heights along a view and writes only the resulting outlines (screen rows),
+the camera's ground altitude and an optional coarse relief grid into a recipe;
+the tiles stay in the developer cache (`.anim-ref/cache/terrain/`), never
+committed. A recipe records its source in `scene.source.terrain`, and the
+gallery shows the matching credit line.
+
+**Terrain Tiles** (the default source; the "terrarium" tiles of the Mapzen /
+Tilezen joerd project, hosted as AWS Open Data at
+https://registry.opendata.aws/terrain-tiles/). Its attribution document
+(https://github.com/tilezen/joerd/blob/master/docs/attribution.md, as of commit
+d8f587b) requires the following attribution, reproduced verbatim:
+
+```
+* ArcticDEM terrain data DEM(s) were created from DigitalGlobe, Inc., imagery and
+  funded under National Science Foundation awards 1043681, 1559691, and 1542736;
+* Australia terrain data © Commonwealth of Australia (Geoscience Australia) 2017;
+* Austria terrain data © offene Daten Österreichs – Digitales Geländemodell (DGM)
+  Österreich;
+* Canada terrain data contains information licensed under the Open Government
+  Licence – Canada;
+* Europe terrain data produced using Copernicus data and information funded by the
+  European Union - EU-DEM layers;
+* Global ETOPO1 terrain data U.S. National Oceanic and Atmospheric Administration
+* Mexico terrain data source: INEGI, Continental relief, 2016;
+* New Zealand terrain data Copyright 2011 Crown copyright (c) Land Information New
+  Zealand and the New Zealand Government (All rights reserved);
+* Norway terrain data © Kartverket;
+* United Kingdom terrain data © Environment Agency copyright and/or database right
+  2015. All rights reserved;
+* United States 3DEP (formerly NED) and global GMTED2010 and SRTM terrain data
+  courtesy of the U.S. Geological Survey.
+```
+
+The United Kingdom data is the data.gov.uk LIDAR Composite Digital Terrain
+Model, licensed under the Open Government Licence v3.0
+(https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+SRTM, GMTED2010 and 3DEP are public domain (U.S. Geological Survey). EU-DEM is
+produced using Copernicus data and information funded by the European Union.
+In the app, a scene's credit line names the attributions that apply to its area
+(70-scene-1credit.js).
+
+**OS Terrain 50** (an optional, local source for Great Britain:
+`--dem os50 --dem-dir <folder>`; the tiles are downloaded by the developer and
+never committed). Licensed under the Open Government Licence v3.0. Contains OS
+data © Crown copyright and database right 2026.

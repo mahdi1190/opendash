@@ -1,0 +1,53 @@
+{
+ "id": "person.walker-ai",
+ "category": "person",
+ "size": [
+  30.6,
+  62
+ ],
+ "anchor": "bottom-centre",
+ "res": 1,
+ "variants": [
+  {
+   "base": "base.png",
+   "spring": "spring.png",
+   "autumn": "autumn.png",
+   "winter": "winter.png",
+   "night": "night.png",
+   "lit": "lit.png"
+  }
+ ],
+ "tags": [
+  "kit:people",
+  "role:walker",
+  "demo",
+  "silhouette",
+  "raster"
+ ],
+ "source": "sheet",
+ "derived": {
+  "lit": "lit-vs-night"
+ },
+ "means": [
+  "#a4a199"
+ ],
+ "frames": {
+  "images": [
+   "parts/f0.png",
+   "parts/f1.png",
+   "parts/f2.png",
+   "parts/f3.png"
+  ],
+  "period": 0.9
+ },
+ "shadow": {
+  "rx": 11,
+  "ry": 2,
+  "h": 53
+ },
+ "sheet": {
+  "file": "example-person-walker.png",
+  "warnings": 0
+ },
+ "bytes": 17857
+}

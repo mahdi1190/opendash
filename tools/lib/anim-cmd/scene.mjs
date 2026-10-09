@@ -1,8 +1,20 @@
-// node tools/anim-pack.mjs scene new|upgrade|lint|sheet|perf|capture ...   composed scenes (docs/dev/SCENE_ENGINE.md sections 3, 8, 10, 15, 16)
+// node tools/anim-pack.mjs scene new|upgrade|lint|sheet|perf|capture|<sub> ...   composed scenes (docs/dev/SCENE_ENGINE.md sections 3, 8, 10, 15,
+// 16; scene engine v2: docs/dev/SCENE_ENGINE_V2.md 15.2, 16.2, 16.3)
 //
-//   scene new <pack> <id> [--brief file.md | --archetype <id> --row '<json>'] [--lat .. --lon .. --heading ..] [--setting s] [--kits a,b]
-//       writes src/app/71-scene-<pack>-<n>.js (and src/app/72-anim-pack-<pack>.js when missing): a composed scene that compiles at once,
-//       composed from the library by kit and role (or from an archetype), ready to lint and look at
+//   scene new <pack> <id> --preset street|raised|across-water|from-hill|down-street|through-arch|close-up|panorama [--lat .. --lon .. --heading ..]
+//       [--setting s] [--osm] [--terrain] [--label l]   (or --v2 for the street camera)
+//       writes a v2 RECIPE, src/app/71-scene-<pack>-r-<id>.js (tools/lib/scene-recipe.mjs; and src/app/72-anim-pack-<pack>.js when the
+//       pack is new): the camera from the preset (sceneCameraPreset when loaded, else the street camera), a rest surface, atmos auto,
+//       weather live, cover auto and empty lists; --osm and --terrain run `scene osm` / `scene terrain` into it
+//   scene new <pack> <id> [--v1] [--brief file.md | --archetype <id> --row '<json>'] [--lat .. --lon .. --heading ..] [--setting s] [--kits a,b]
+//       (without --preset / --v2 / --osm / --terrain, for now) the v1 scaffold: src/app/71-scene-<pack>-<n>.js, a composed scene that compiles at once, composed from the library by kit and
+//       role (or from an archetype; --archetype implies --v1), ready to lint and look at
+//   scene <sub> ...   any other subcommand is a module tools/lib/scene-cmd/<sub>.mjs (export default { summary, usage, options,
+//       run(args, ctx, lib) }; lib = { loadRegistry, engineOf, lintScene, recipes, harness, times }): migrate (D), osm and terrain (E),
+//       street and building (F), compose, critique, golden and compare-to-golden (G). Their options are merged into this command's.
+//   Shared flags of lint, sheet, perf and capture: --weather <kind> (the page passes wx to the host), --fx 2 (v1 scenes with every
+//       opt-in v2 effect), --strict-placement (every sanity and composition warning is a failure); sheet --weather a,b,c (a row per
+//       weather), sheet --flows (8 h, 13 h and 23 h local: the traffic by the hour)
 //   scene upgrade <ref> [--archetype <id>] [--box x0,y0,x1,y1 | --landmark <obj id>] [--slug s] [--dry-run] [--force]
 //       the composed draft of a hand-drawn region scene: the landmark extracted into a library object, the archetype suggested (16.3)
 //   scene lint [<ref>,... | --pack <id> | --region <id> | --archetype <id> --table <id> [--rows N]] [--upgrades] [--perf] [--gpu] [--json]
@@ -17,7 +29,7 @@
 //       so the same command gives the same file on any machine; default .anim-ref/capture/<ref with / as __>.gif
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { loadRegistry, findBrowser, parseLocation } from '../anim-render.mjs';
 import { loadThresholds } from '../../anim-pack.mjs';
 import { engineOf, lintScene, perfRules, dataOf } from '../scene-lint.mjs';
@@ -25,6 +37,45 @@ import { upgradeScaffold, regionOf, suggestArchetype } from '../scene-upgrade.mj
 import { sceneTimesFor, seasonDates, MOMENTS } from '../scene-times.mjs';
 import { regions } from '../anim-region.mjs';
 import { launchChrome } from '../../release-chrome.mjs';
+import * as recipes from '../scene-recipe.mjs';
+import * as sceneTimes from '../scene-times.mjs';
+
+/* ---------------------------------------------------------------------------------------------
+   Subcommands in their own files (V2 16.2): tools/lib/scene-cmd/<sub>.mjs, so builders never collide in this one
+   --------------------------------------------------------------------------------------------- */
+export const SCENE_BUILT_IN = Object.freeze(['new', 'upgrade', 'lint', 'sheet', 'perf', 'capture']);
+const SCENE_CMD_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'scene-cmd');
+/**
+ * The scene subcommands of a folder: { name: { summary, usage, options, run } } (a module that fails to load is listed with its
+ * error, so one broken subcommand never breaks the others).
+ */
+export async function loadSceneCommands(dir = SCENE_CMD_DIR) {
+  const out = {};
+  if (!existsSync(dir)) return out;
+  for (const f of readdirSync(dir).filter(n => /^[a-z][a-z0-9-]*\.mjs$/.test(n)).sort()) {
+    const name = f.replace(/\.mjs$/, '');
+    if (SCENE_BUILT_IN.includes(name)) { out[name] = { error: `"${name}" is a built-in scene subcommand` }; continue; }
+    try {
+      const mod = await import(pathToFileURL(join(dir, f)).href), c = mod.default || mod.command;
+      out[name] = c && typeof c.run === 'function' && c.summary ? c : { error: `tools/lib/scene-cmd/${f}: export default { summary, usage, options, run(args, ctx, lib) }` };
+    } catch (e) { out[name] = { error: `tools/lib/scene-cmd/${f}: ${e.message}` }; }
+  }
+  return out;
+}
+const SCENE_SUBS = await loadSceneCommands();
+/** The lib handed to a subcommand (V2 16.2). */
+async function sceneLib() {
+  let harness = null;
+  try { harness = await import('../scene-page.mjs'); } catch { harness = null; }
+  return { loadRegistry, engineOf, lintScene, perfRules, dataOf, recipes, harness, times: sceneTimes, selectScenes, loadThresholds };
+}
+/** Run a delegated subcommand (the built-in folder, or ctx.sceneCmdDir for tests). */
+async function runSub(sub, args, ctx) {
+  const table = ctx.sceneCmdDir ? await loadSceneCommands(ctx.sceneCmdDir) : SCENE_SUBS, c = table[sub];
+  if (!c) return null;
+  if (c.error) throw new Error(c.error);
+  return c.run(args, Object.assign({}, ctx, { positionals: ctx.positionals.slice(1) }), await sceneLib());
+}
 
 const pad = (s, n) => String(s).padEnd(n), lpad = (s, n) => String(s).padStart(n);
 const splitList = (v) => [].concat(v || []).flatMap(x => String(x).split(',')).map(s => s.trim()).filter(Boolean);
@@ -128,14 +179,18 @@ async function withChrome(args, fn) {
   try { return await fn(chrome); } finally { await chrome.close(); }
 }
 /** The page options for one selected scene (a registered item by ref, else its data). */
-function pageOpts(root, s, extra = {}) {
+function pageOpts(root, s, extra = {}, args = {}) {
   const base = { root, size: { w: 1600, h: 900 }, dpr: 1, still: false, renderer: 'canvas' };
+  if (args.weather && !String(args.weather).includes(',')) base.wx = String(args.weather);
+  if (args.fx != null) base.fx = Number(args.fx) === 2 ? { shadows: 2, water: 2, atmos: 2, weather: 2 } : null;
   if (s.kind === 'row') return Object.assign(base, { data: s.data() }, extra);
   return Object.assign(base, { refs: [s.ref], upgrades: s.kind === 'draft' }, extra);
 }
 async function measurePerf(chrome, root, s, args) {
   const page = await harness();
-  const res = await page.scenePerf(chrome, pageOpts(root, s, { seconds: Number(args.seconds) || 3, rebake: !!args.rebake }));
+  // with the GPU, no per-frame pixel read-back: reading one pixel stalls the GPU pipeline every frame (about 40 ms); the software
+  // raster is flushed so its time includes the rasterisation (integration, 8 Oct)
+  const res = await page.scenePerf(chrome, pageOpts(root, s, Object.assign({ seconds: Number(args.seconds) || 3, rebake: !!args.rebake }, args.gpu ? { flush: false } : {}), args));
   return res || { skipped: 'no stats from the page' };
 }
 
@@ -202,6 +257,27 @@ function sceneFileText({ pack, id, meta, dataText, from }) {
 })();
 `;
 }
+/** The weather kinds the tools accept (--weather; V2 8.1). */
+export const WEATHER_KINDS = Object.freeze(['clear', 'partly', 'cloudy', 'rain', 'drizzle', 'showers', 'thunder', 'snow', 'sleet', 'fog', 'mist', 'frost']);
+/** The camera presets (V2 20.1) when G's 70-scene-1camera.js is not loaded: only the street camera, the others fall back to it. */
+const STREET_CAMERA = Object.freeze({ eye: 1.65, fov: 64, horizon: 470 });
+/**
+ * A new v2 recipe (V2 16.3): the camera from the preset (sceneCameraPreset when the engine has it), a rest surface, atmos auto, weather
+ * live, cover auto, season auto, and empty lists. Returns { rec, preset, note }.
+ */
+export function recipeStub(E, getName, { pack, id, label, lat, lon, heading = 180, preset = 'street', setting = 'mixed', tags = [] }) {
+  const presetFn = typeof getName === 'function' ? getName('sceneCameraPreset') : null;
+  let camera = null, note = '';
+  if (typeof presetFn === 'function') { try { camera = presetFn(preset, { heading, lat, lon }); } catch (e) { note = `sceneCameraPreset(${preset}): ${e.message}; the street camera instead`; } }
+  else if (preset !== 'street') note = `the camera presets (70-scene-1camera.js) are not loaded: the street camera instead of ${preset}`;
+  if (!camera || typeof camera !== 'object') camera = Object.assign({}, STREET_CAMERA, { preset: 'street' });
+  camera = Object.assign({}, camera, { heading });
+  for (const k of Object.keys(camera)) if (camera[k] == null || (typeof camera[k] === 'number' && !Number.isFinite(camera[k]))) delete camera[k];
+  const meta = { id, label, site: label, tags: tags.length >= 6 ? tags : [...new Set([...tags, 'composed', 'v2', 'live-sky', 'seasons', setting, 'recipe'])].slice(0, 12), mood: 'calm', colour: 'teal' };
+  const scene = { id, view: { lat, lon }, camera, surfaces: [{ id: 'land', kind: 'grass', rest: true }], water: [], place: [], scatter: [], flows: [],
+    atmos: 'auto', weather: 'live', cover: 'auto', season: 'auto', at: 'golden', setting };
+  return { rec: { v: 2, pack, meta, scene }, preset: camera.preset || preset, note };
+}
 function packFileText(pack, name) {
   return `/* ============================================================
    PACK ${pack}: composed scenes (docs/dev/SCENE_ENGINE.md section 3).
@@ -224,7 +300,9 @@ function nextSceneFile(root, pack) {
    --------------------------------------------------------------------------------------------- */
 function printScene(out, s, r, { rules }) {
   out('');
-  out(`${r.pass ? 'PASS' : 'FAIL'}  ${s.ref}${s.synthetic ? '  (synthetic row)' : ''}${r.gold ? '  GOLD' : r.pass ? '  (passes the bar; GOLD needs --perf)' : ''}`);
+  out(`${r.pass ? 'PASS' : 'FAIL'}  ${s.ref}${s.synthetic ? '  (synthetic row)' : ''}${r.gold ? (r.v === 2 ? '  GOLD v2' : '  GOLD') : r.pass ? '  (passes the bar; GOLD needs --perf)' : ''}`);
+  const sn = r.metrics && r.metrics.sanity;
+  if (sn && (sn.errors || sn.warnings)) out(`    sanity: ${sn.errors} error rule(s), ${sn.warnings} warning rule(s)${r.v === 2 || r.strict ? '' : ' (a v1 scene: warnings until its pack migrates; --strict-placement makes them failures)'}`);
   if (rules) for (const x of r.rules) out(`    ${x.ok ? (x.warn ? 'WARN' : 'PASS') : 'FAIL'}  ${pad(x.group, 8)} ${pad(x.rule, 16)} ${lpad(x.value == null ? '-' : x.value, 12)}   ${x.limit || ''}`);
   for (const f of r.failures) out(`    - [${f.group} ${f.rule}] ${f.message}`);
   for (const w of r.warnings || []) out(`    warn: ${w}`);
@@ -287,11 +365,22 @@ function momentsOf(data, date) {
   return sceneTimesFor(v.lat, v.lon, date);
 }
 
-export default {
-  summary: 'composed scenes: new (scaffold), upgrade (a hand-drawn region scene to its composed draft), lint (the bar, perf, variety, care), sheet (PNG: times, seasons, old vs new), perf (frame times), capture (an animated GIF)',
-  usage: 'scene new <pack> <id> [--brief f.md | --archetype a --row \'<json>\'] | scene upgrade <ref> [--box x0,y0,x1,y1 | --landmark id] [--archetype a] [--slug s] [--dry-run] [--force] | scene lint|sheet|perf [<ref>,... | --pack p | --region r | --archetype a --table t [--rows N | --sample N]] [--upgrades] [--perf] [--times] [--seasons] [--compare] [--json] | scene capture <ref> [--seconds 3] [--fps 12] [--width 640] [--at ISO | --mode light|night] [--dither] [--frames] [--out file.gif]',
-  positionals: '<new|upgrade|lint|sheet|perf|capture> [<ref,...>]',
+const SUB_USAGE = Object.entries(SCENE_SUBS).filter(([, c]) => !c.error).map(([n, c]) => ` | ${c.usage || 'scene ' + n}`).join('');
+const SUB_SUMMARY = Object.entries(SCENE_SUBS).filter(([, c]) => !c.error).map(([n, c]) => `; ${n} (${String(c.summary).replace(/\s+/g, ' ').slice(0, 80)})`).join('');
+const sceneCommand = {
+  summary: 'composed scenes: new (a v2 recipe, or --v1), upgrade (a hand-drawn region scene to its composed draft), lint (the bar, perf, variety, care, sanity), sheet (PNG: times, seasons, weather, flows, old vs new), perf (frame times), capture (an animated GIF)' + SUB_SUMMARY,
+  usage: 'scene new <pack> <id> [--preset p] [--lat .. --lon .. --heading ..] [--osm] [--terrain] | scene new <pack> <id> --v1 [--brief f.md | --archetype a --row \'<json>\'] | scene upgrade <ref> [--box x0,y0,x1,y1 | --landmark id] [--archetype a] [--slug s] [--dry-run] [--force] | scene lint|sheet|perf [<ref>,... | --pack p | --region r | --archetype a --table t [--rows N | --sample N]] [--upgrades] [--perf] [--strict-placement] [--weather k] [--fx 2] [--times] [--seasons] [--flows] [--compare] [--json] | scene capture <ref> [--seconds 3] [--fps 12] [--width 640] [--at ISO | --mode light|night] [--dither] [--frames] [--out file.gif]' + SUB_USAGE,
+  positionals: '<new|upgrade|lint|sheet|perf|capture|' + Object.keys(SCENE_SUBS).filter(k => !SCENE_SUBS[k].error).join('|') + '> [<ref,...>]',
   options: {
+    preset: { type: 'string', help: 'new: the camera preset of the v2 recipe (street, raised, across-water, from-hill, down-street, through-arch, close-up, panorama; default street)' },
+    osm: { type: 'boolean', help: 'new: fill the new recipe from OpenStreetMap (runs scene osm --into, builder E)' },
+    terrain: { type: 'boolean', help: 'new: add the skyline and relief from open elevation data (runs scene terrain --into, builder E)' },
+    v1: { type: 'boolean', help: 'new: the v1 scaffold (71-scene-<pack>-<n>.js, pixel placements) instead of a v2 recipe' },
+    v2: { type: 'boolean', help: 'new: a v2 recipe with the street camera (the same as --preset street)' },
+    weather: { type: 'string', help: 'lint / sheet / perf / capture: the weather the page passes to the host (clear, rain, snow, fog ...); sheet: a comma list renders a row per weather' },
+    fx: { type: 'string', help: 'lint / sheet / perf / capture: 2 = a v1 scene with every opt-in v2 effect (shadows, water, atmos, weather; V2 14.2)' },
+    'strict-placement': { type: 'boolean', help: 'lint (sheet, critique): every placement-sanity and composition WARNING is a failure (V2 15.2)' },
+    flows: { type: 'boolean', help: 'sheet: three moments, 8 h, 13 h and 23 h local, to show the crowds and the traffic changing' },
     pack: { type: 'string', multiple: true, help: 'lint / sheet / perf: every composed scene of this pack (repeatable)' },
     region: { type: 'string', help: 'lint / sheet / perf: every pack of this region (asia, us ...)' },
     archetype: { type: 'string', help: 'new: build the scene from this archetype; lint / sheet / perf: with --table, a batch of one scene per table row; upgrade: override the suggestion' },
@@ -340,15 +429,56 @@ export default {
     'Batches: --archetype <id> --table <id> runs over every row of a data table (one scene per row, built only when needed); --rows N adds synthetic rows; --sample N picks N rows for sheet and perf. A batch ends with one summary table.',
     'capture records ONE scene as a looping animated GIF with no dependencies (headless Chrome + node:zlib): the clock is stopped and frame k is drawn at t = k / fps, so the same command writes the same bytes on any machine. 640 x 360, 3 s at 12 fps is well under 1 MB (only the changed rectangle of each frame is stored).',
     'Signs (place names) only where the archetype declares signs (signage: true): plain sans-serif boards with line-colour bars, never the TfL roundel, the Underground logotype, the line-diagram style or New Johnston (section 8.4).',
+    'Scene engine v2 (docs/dev/SCENE_ENGINE_V2.md): scene new writes a RECIPE (strict JSON in src/app/71-scene-<pack>-r-<id>.js): declare the camera, the surfaces, ground placements ({ obj, on, d } or at: [x, d]) and flows; the engine places, scales, shadows and lights them. scene lint adds the placement-sanity group (cars on grass, floating objects, wrong scale, ghosts, clutter ...); --strict-placement makes its warnings failures. scene migrate converts v1 scenes and lists what is wrong.',
   ],
   async run(args, ctx) {
     const [sub, ...rest] = ctx.positionals;
-    if (!sub || !['new', 'upgrade', 'lint', 'sheet', 'perf', 'capture'].includes(sub)) throw new Error('scene needs a subcommand: new, upgrade, lint, sheet, perf or capture (node tools/anim-pack.mjs scene --help)');
+    if (sub && !SCENE_BUILT_IN.includes(sub)) {
+      const code = await runSub(sub, args, ctx);
+      if (code != null) return code;
+    }
+    if (!sub || !SCENE_BUILT_IN.includes(sub)) {
+      const more = Object.keys(SCENE_SUBS).filter(k => !SCENE_SUBS[k].error);
+      throw new Error(`scene needs a subcommand: new, upgrade, lint, sheet, perf or capture${more.length ? ' (or ' + more.join(', ') + ')' : ''} (node tools/anim-pack.mjs scene --help)`);
+    }
+    if (args.weather != null) for (const w of splitList(args.weather)) if (!WEATHER_KINDS.includes(w)) throw new Error(`--weather must be ${WEATHER_KINDS.join(', ')} (got "${w}")`);
+    if (args.fx != null && String(args.fx) !== '2') throw new Error('--fx takes 2 (every opt-in v2 effect on a v1 scene)');
     const root = ctx.root;
     const co = sub === 'capture' ? captureOptions(args) : null;   // bad options fail before the registry loads
     const reg = loadRegistry(root, { fresh: true }), E = engineOf(reg);
 
     /* ----- new ----- */
+    // a v2 recipe by default (V2 16.3; integration, 8 Oct): --v1 (or --archetype, a v1 archetype scene) keeps the old scaffold
+    if (sub === 'new' && !args.v1 && !args.archetype) {
+      const [pack, id0] = rest;
+      let card = {};
+      if (args.brief) { if (!existsSync(args.brief)) throw new Error(`no brief ${args.brief}`); card = briefCard(readFileSync(args.brief, 'utf8')); }
+      const id = id0 || card.id;
+      if (!/^[a-z0-9-]{1,40}$/.test(pack || '')) throw new Error('scene new needs a pack id (lower case, digits, dashes): scene new <pack> <id>');
+      if (!/^[a-z0-9-]{1,60}$/.test(id || '')) throw new Error('scene new needs a scene id (lower case, digits, dashes)');
+      if (reg.items().some(e => e.pack === pack && e.id === id)) throw new Error(`${pack}/${id} already exists`);
+      const num = (v, what) => { if (v == null || v === '') return null; const n = Number(v); if (!Number.isFinite(n)) throw new Error(`--${what} must be a number`); return n; };
+      const lat = num(args.lat || card.lat, 'lat'), lon = num(args.lon || card.lon, 'lon');
+      if (lat == null || lon == null) throw new Error('scene new needs --lat and --lon (or a brief card with lat and lon): every scene has the real sun and moon of its place');
+      const presets = ['street', 'raised', 'across-water', 'from-hill', 'down-street', 'through-arch', 'close-up', 'panorama'];
+      const preset = args.preset || card.preset || 'street';
+      if (!presets.includes(preset)) throw new Error(`--preset must be one of ${presets.join(', ')}`);
+      const label = args.label || card.label || id.replace(/-/g, ' ').replace(/^./, c => c.toUpperCase());
+      const { rec, note } = recipeStub(E, reg.R && reg.R.get, { pack, id, label, lat, lon, heading: num(args.heading || card.heading, 'heading') || 180, preset, setting: args.setting || card.setting || 'mixed', tags: splitList(card.tags) });
+      if (note) ctx.err(`note: ${note}`);
+      const made = recipes.newRecipeFile(root, rec);
+      ctx.out(`wrote ${made.rel}`);
+      const packFile = `src/app/72-anim-pack-${pack}.js`;
+      if (!existsSync(join(root, packFile))) { writeFileSync(join(root, packFile), packFileText(pack, args.label || pack.replace(/-/g, ' '))); ctx.out(`wrote ${packFile}`); }
+      for (const step of [args.osm ? 'osm' : null, args.terrain ? 'terrain' : null].filter(Boolean)) {
+        const sub2 = SCENE_SUBS[step];
+        if (!sub2 || sub2.error) { ctx.err(`note: --${step} skipped: scene ${step} (tools/lib/scene-cmd/${step}.mjs) is ${sub2 ? 'broken: ' + sub2.error : 'not in this checkout'}`); continue; }
+        const code = await sub2.run(Object.assign({}, args, { into: `${pack}/${id}`, at: `${lat},${lon}`, heading: String(rec.scene.camera.heading) }), Object.assign({}, ctx, { positionals: [] }), await sceneLib());
+        if (code) ctx.err(`note: scene ${step} exited ${code}`);
+      }
+      ctx.out(`next: node tools/anim-pack.mjs scene lint ${pack}/${id} --strict-placement   then   scene sheet ${pack}/${id} --times --seasons --contact`);
+      return 0;
+    }
     if (sub === 'new') {
       const [pack, id0] = rest;
       let card = {};
@@ -446,7 +576,7 @@ export default {
       const at = args.at || (co.mode === 'night' ? momentsOf(s.data(), args.date).night : null);
       const out = resolve(args.out || join(root, '.anim-ref', 'capture', `${fileSafe(s.ref)}.gif`));
       const framesDir = args.frames ? out.replace(/\.gif$/i, '') + '-frames' : null;
-      const res = await withChrome(args, (chrome) => cap.sceneCapture(chrome, pageOpts(root, s, { size: { w: co.width, h: co.height }, at, mode: co.mode, location: parseLocation(args.location) }),
+      const res = await withChrome(args, (chrome) => cap.sceneCapture(chrome, pageOpts(root, s, { size: { w: co.width, h: co.height }, at, mode: co.mode, location: parseLocation(args.location) }, args),
         { seconds: co.seconds, fps: co.fps, dither: !!args.dither, framesDir }));
       mkdirSync(dirname(out), { recursive: true });
       writeFileSync(out, res.gif);
@@ -463,7 +593,7 @@ export default {
           let perf = null;
           if (chrome) { try { perf = await measurePerf(chrome, root, s, args); } catch (e) { perf = { skipped: e.message }; } }
           let r;
-          try { r = lintScene(s.data, thresholds, { E, item: s.kind === 'item' ? s.item : s.kind === 'draft' ? Object.assign({}, s.item, { upgrade: s.item.upgrade }) : null, perf, ref: s.ref, gpu: !!args.gpu, svg: s.kind !== 'row' || idx < 3 }); }   // a batch renders the SVG fallback for the first 3 rows: the archetype's output size is alike row to row
+          try { r = lintScene(s.data, thresholds, { E, item: s.kind === 'item' ? s.item : s.kind === 'draft' ? Object.assign({}, s.item, { upgrade: s.item.upgrade }) : null, perf, ref: s.ref, gpu: !!args.gpu, svg: s.kind !== 'row' || idx < 3, strict: !!args['strict-placement'], reg, pack: s.pack || null }); }   // a batch renders the SVG fallback for the first 3 rows: the archetype's output size is alike row to row
           catch (e) { r = { pass: false, gold: false, rules: [{ group: 'data', rule: 'build', ok: false, value: 'error', limit: 'builds', message: e.message }], failures: [{ group: 'data', rule: 'build', message: e.message }], warnings: [], metrics: {} }; }
           results.push({ s, r, perf });
         }
@@ -475,10 +605,10 @@ export default {
       } else await lintAll(null);
       const failing = results.filter(x => !x.r.pass);
       if (args.json) {
-        ctx.out(JSON.stringify({ ok: !failing.length, ms: Date.now() - t0, scenes: results.map(({ s, r, perf }) => ({ ref: s.ref, kind: s.kind, synthetic: !!s.synthetic, pass: r.pass, gold: r.gold, failures: r.failures.map(f => ({ group: f.group, rule: f.rule, value: f.value, message: f.message })), warnings: r.warnings, rules: r.rules, stats: r.metrics && r.metrics.stats, bar: r.metrics && r.metrics.bar, perf })) }, null, 1));
+        ctx.out(JSON.stringify({ ok: !failing.length, ms: Date.now() - t0, strict: !!args['strict-placement'], scenes: results.map(({ s, r, perf }) => ({ ref: s.ref, kind: s.kind, v: r.v || 1, synthetic: !!s.synthetic, pass: r.pass, gold: r.gold, failures: r.failures.map(f => ({ group: f.group, rule: f.rule, value: f.value, message: f.message })), warnings: r.warnings, sanity: r.metrics && r.metrics.sanity, rules: r.rules, stats: r.metrics && r.metrics.stats, bar: r.metrics && r.metrics.bar, perf })) }, null, 1));
         return failing.length ? 2 : 0;
       }
-      ctx.out(`anim-pack scene lint: ${results.length} scene(s) in ${((Date.now() - t0) / 1000).toFixed(1)} s (the composed profile: data${args.perf ? ', perf' : ''}, the bar, variety, care)`);
+      ctx.out(`anim-pack scene lint: ${results.length} scene(s) in ${((Date.now() - t0) / 1000).toFixed(1)} s (the composed profile: data${args.perf ? ', perf' : ''}, the bar, variety, care, sanity${args['strict-placement'] ? ' (strict placement)' : ''})`);
       const showRules = results.length <= 3 && !isBatch;
       const shownFails = showRules ? results : results.filter(x => !x.r.pass).slice(0, 10);
       for (const x of shownFails) printScene(ctx.out, x.s, x.r, { rules: showRules });
@@ -531,7 +661,7 @@ export default {
     await withChrome(args, async (chrome) => {
       const shot = async (s, extra, tag) => {
         const file = join(outDir, `${fileSafe(s.ref)}${tag}.png`);
-        await page.sceneRenderPng(chrome, pageOpts(root, s, Object.assign({ size, renderer, location: loc, still: true }, extra)), file);
+        await page.sceneRenderPng(chrome, pageOpts(root, s, Object.assign({ size, renderer, location: loc, still: true }, extra), args), file);
         return file;
       };
       for (const s of list) {
@@ -565,7 +695,14 @@ export default {
             cells.push({ file: await shot(s, { at: t.noon, season }, `-${season}${crop ? '-' + crop : ''}`), caption: `${s.ref} ${season} (noon ${date})` });
           }
         }
-        if (!args.times && !args.seasons) cells.push({ file: await shot(s, { at: args.at || null, season: args.season || null }, `${args.at ? '-' + args.at.replace(/[:]/g, '') : ''}${crop ? '-' + crop : ''}${renderer === 'svg' ? '-svg' : ''}`), caption: s.ref });
+        if (args.flows) {
+          // three moments by the local (solar) clock: the morning rush, midday, late night (V2 16.3): the traffic changing
+          const lon = data.view && Number.isFinite(data.view.lon) ? data.view.lon : 0, day = /^\d{4}-\d{2}-\d{2}$/.test(args.date || '') ? args.date : new Date().toISOString().slice(0, 10);
+          for (const h of [8, 13, 23]) { const at = new Date(Date.parse(day + 'T00:00:00Z') + (h - lon / 15) * 3600000).toISOString(); cells.push({ file: await shot(s, { at, season: args.season || null }, `-flows-${h}h${crop ? '-' + crop : ''}`), caption: `${s.ref} ${h} h (local solar)` }); }
+        }
+        const wxList = args.weather && String(args.weather).includes(',') ? splitList(args.weather) : null;
+        if (wxList) for (const w of wxList) cells.push({ file: await shot(s, { at: args.at || null, season: args.season || null, wx: w }, `-wx-${w}${crop ? '-' + crop : ''}`), caption: `${s.ref} ${w}` });
+        if (!args.times && !args.seasons && !args.flows && !wxList) cells.push({ file: await shot(s, { at: args.at || null, season: args.season || null }, `${args.at ? '-' + args.at.replace(/[:]/g, '') : ''}${crop ? '-' + crop : ''}${renderer === 'svg' ? '-svg' : ''}`), caption: s.ref });
         for (const c of cells) { written.push(c.file); ctx.out(c.file); }
         contactRows.push(cells);
       }
@@ -581,3 +718,6 @@ export default {
     return 0;
   },
 };
+// the subcommands' options join this command's (a name a built-in already has keeps the built-in's definition)
+for (const c of Object.values(SCENE_SUBS)) for (const [k, o] of Object.entries((c && !c.error && c.options) || {})) if (!sceneCommand.options[k] && o && (o.type === 'string' || o.type === 'boolean')) sceneCommand.options[k] = o;
+export default sceneCommand;
