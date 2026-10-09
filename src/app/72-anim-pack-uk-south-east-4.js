@@ -52,8 +52,8 @@ function ukSouthEastPart4(T) {
   const butterfly = (x,y,col,k=1) => `<g transform="translate(${x} ${y}) scale(${k})">${mv('ukflutter',{ad:'9s',d:'-3s'},mv('ukflap',{ad:'.65s'},`<path fill="${col}" d="M0 0q-38-45-38-10 0 22 38 18 34-43 38-16 2 29-38 16z"/><path fill="#503943" d="M-2-9h4v26h-4z"/>`))}</g>`;
   const meadowPark = v => {
     let h = `<path fill="#9bad71" d="M-160 900V631Q850 588 1760 635V900z"/><path fill="#c5bb9d" d="M570 900Q1160 760 821 627h24Q1400 771 838 900z"/>`;
-    h += tree(v === 1 ? 1160 : 373, 721, .63, v === 2) + birch(1380, 767, .55, v === 2);
-    if (v === 1 || v === 3) h += water('M-160 862Q532 678 831 707Q1076 754 1760 689v43Q1130 802 838 739Q574 707-160 900z', 709, 4551 + v, v === 3) + reeds(372, 836, .78, 4558);
+    h += tree(v === 1 ? 1160 : 373, 721, .63, v === 2) + birch(1380, v === 1 || v === 3 ? 806 : 767, .55, v === 2);
+    if (v === 1 || v === 3) h += water('M-160 862Q532 678 831 707Q1076 754 1760 689v43Q1130 802 838 739Q574 707-160 900z', 709, 4551 + v, v === 3) + reeds(372, 836, .78, 4558) + `<g><path fill="#a28a64" d="M925 724L1108 726 1122 771 908 769z"/><path fill="none" stroke="#6f5c40" stroke-width="2" d="M921 736l196 2M918 748l200 2M914 760l204 2"/><path fill="none" stroke="#5a4a36" stroke-width="6" stroke-linecap="round" d="M927 724v-26M1106 726v-26M911 770v-24M1120 771v-24M927 702h179M913 750h207"/></g>`;
     if (v === 2) h += `<path fill="#9b9671" d="M-160 900V828Q377 713 810 793L1031 900z"/>${bench(573, 802, .7)}`;
     h += meadow(4560 + v, 28, -120, v === 1 ? 330 : 590, 750, 893, v === 2 ? ['#ccb679', '#ddd0aa'] : ['#dccbb0', '#b99abb', '#f0dfae']);
     h += meadow(4570 + v, 15, 1200, 1720, 794, 890, ['#ded6aa', '#b6bd80']);
@@ -62,7 +62,7 @@ function ukSouthEastPart4(T) {
   };
   const woodland = v => {
     let h = `<path fill="${v === 2 ? '#8a7955' : '#728858'}" d="M-160 610H1760V900H-160z"/><path fill="#c0ac85" d="${v === 1 ? 'M-100 900Q943 711 826 622h22Q1123 773 620 900z' : 'M710 900Q476 763 783 614h41Q679 766 1090 900z'}"/>`;
-    for (let i = 0; i < 4; i++) h += birch(130 + i * 137, 690 + i * 49, .54 + i * .17, v === 2) + birch(1020 + i * 193, 690 + i * 52, .45 + i * .2, v === 2);
+    for (let i = 0; i < 4; i++) { const j = ((i * 53 + v * 17) % 41) - 20, j2 = ((i * 29 + v * 11) % 47) - 23; h += birch(130 + i * 137 + j, 690 + i * 49 + (j2 >> 2), .54 + i * .17 + j2 / 700, v === 2) + birch(1020 + i * 193 + j2, 690 + i * 52 + (j >> 2), .45 + i * .2 + j / 700, v === 2); }
     h += tree(v === 1 ? 1080 : 235, 900, 1.25, v === 2, 4600);
     h += fern(v===1?460:1210,898,v===1?1.25:1)+fern(v===1?330:1360,879,.7);
     if (v === 0) h += meadow(4611, 25, 50, 650, 797, 900, ['#777eaf', '#9198c3', '#6c7aa3']);
@@ -79,14 +79,14 @@ function ukSouthEastPart4(T) {
       frames += `<path d="M${ox - half} ${oy}V${oy - high + 93}L${ox - half + 68} ${oy - high + 26}Q${ox} ${oy - high - 64} ${ox + half - 68} ${oy - high + 26}L${ox + half} ${oy - high + 93}V${oy}"/><path stroke-width="3" d="M${ox - half} ${oy - high + 93}h${half * 2}M${ox - half} ${oy - 10}l68-${high - 20}M${ox + half} ${oy - 10}l-68-${high - 20}M${ox - half + 68} ${oy - high + 26}L${ox + half - 68} ${oy - high + 93}M${ox + half - 68} ${oy - high + 26}L${ox - half + 68} ${oy - high + 93}"/>`;
       if (!endOn && i < n - 1) rails += `<path stroke-width="3" d="M${ox - half} ${oy}l63-190M${ox - half} ${oy - 175}l63 160M${ox + half} ${oy}l63-190M${ox + half} ${oy - 175}l63 160"/>`;
     }
-    return `<g transform="translate(${x} ${y}) scale(${k})"><ellipse cx="${endOn ? 0 : 190}" cy="13" rx="${endOn ? 310 : 520}" ry="26" fill="#4b6153" opacity=".2"/><g fill="none" stroke="#73877f" stroke-width="8" stroke-linejoin="round">${frames}${rails}</g><g fill="none" stroke="#dae0ca" stroke-width="2" opacity=".72">${frames}</g></g>`;
+    return `<g transform="translate(${x} ${y}) scale(${k})"><g fill="none" stroke="#73877f" stroke-width="8" stroke-linejoin="round">${frames}${rails}</g><g fill="none" stroke="#dae0ca" stroke-width="2" opacity=".72">${frames}</g></g>`;
   };
   const hangar = v => {
     let h = `<path fill="#96a77b" d="M-160 620H1760V900H-160z"/><path fill="#c5c0a9" d="M-160 900l420-160h780l720 160z"/><path fill="none" stroke="#e3dac0" stroke-width="4" d="M0 900l504-140M1470 900l-491-140"/>`;
     if (v === 0) h += hangarFrame(590, 746, .94) + tree(1370, 839, .72);
     if (v === 1) h += hangarFrame(790, 842, 1.35, true) + grass(4661, 26, -160, 420, 900, 65, '#617d54');
     if (v === 2) h += hangarFrame(903, 719, .59) + tree(338, 851, .96, true) + bench(699, 866, 1.15) + meadow(4664, 12, 1100, 1710, 841, 900, ['#e4cf9e', '#b78f6a']);
-    if (v === 3) h += hangarFrame(605, 783, 1.09) + `<path stroke="#657969" stroke-width="5" d="M390 844v-83M1280 844v-83"/>${lit(384, 752, 12, 17)}${lit(1274, 752, 12, 17)}${bench(1130, 897, .9)}`;
+    if (v === 3) h += hangarFrame(605, 783, 1.09) + `<path stroke="#657969" stroke-width="5" d="M390 844v-83M1280 844v-83"/>${lit(384, 752, 12, 17)}${lit(1274, 752, 12, 17)}${bench(1130, 880, .9)}`;
     return h;
   };
   const localAtmosphere = (place,view,index) => {
