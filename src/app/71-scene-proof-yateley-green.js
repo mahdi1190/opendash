@@ -73,52 +73,36 @@
 
   /* ---------- the timeline movers (screen units) ---------- */
   /**
-   * A mover's path from a timeline. segs: [{ t: seconds, to: [[X, Y], ...] (walked in order), hold: 'vis' | 'hid',
-   * face: 1 | -1, then: [[X, Y], ...] (walked at the end), grow: [Y1, dx] }]. Each segment takes exactly speed * t of
-   * path: the waypoints, then a pause that uses up the rest (vis: a zigzag of at most amp px up and back, its x
-   * stepping a hair toward face so the mover keeps facing that way; hid: a long zigzag down into the hidden zone;
-   * grow: side to side by dx while drifting to row Y1), then the `then` waypoints. A segment too short for its
-   * waypoints lends the excess from the next one, so the whole cycle is exactly speed * sum(t).
+   * A mover's TIMED path (sceneActorAt's points [x, y, wait, face, dur]) from a timeline. segs: [{ t: seconds,
+   * to: [[X, Y], ...] (walked in order at the speed), glide: [X, Y] (reached exactly at the end of the segment), hold:
+   * 'vis' | 'hid' (where it waits: in its visible row or in the hidden zone under it; the y says which), face: 1 | -1 (the way
+   * it faces while it waits: a change in view turns it round), then: [[X, Y], ...] (jumps at the end: no time, so a swap
+   * between two movers, one hiding as the other shows, happens in the same instant) }]. What the walk leaves of t is spent
+   * waiting on the spot; a segment too short for its walk takes the excess from the next one. One cycle is exactly sum(t).
    */
-  const timeline = (start, speed, segs, amp) => {
-    const path = [start.slice()];
-    let cur = start.slice(), carry = 0;
-    const go = (w) => { const L = Math.hypot(w[0] - cur[0], w[1] - cur[1]); if (L > 1e-7) { path.push([w[0], w[1]]); cur = [w[0], w[1]]; } return L; };
+  const timeline = (start, speed, segs) => {
+    const path = [[start[0], start[1], 0, 0, null]];
+    const last = () => path[path.length - 1];
+    let carry = 0;
     for (const sg of segs) {
-      let budget = speed * sg.t - carry;
-      for (const w of sg.to || []) budget -= go(w);
-      let tail = 0, c = cur.slice();
-      for (const w of sg.then || []) { tail += Math.hypot(w[0] - c[0], w[1] - c[1]); c = w; }
-      let pad = budget - tail;
-      if (pad > 1e-6) {
-        const face = sg.face || 1, eps = 0.0004 * face;
-        if (sg.grow) {
-          const [y1, dx0] = sg.grow, n = Math.max(1, Math.floor(pad / dx0)), dy = (y1 - cur[1]) / n, dx = Math.sqrt(Math.max(0, (pad / n) ** 2 - dy * dy));
-          const x0 = cur[0], y0 = cur[1];
-          for (let i = 1; i <= n; i++) path.push([R3(x0 + (i === n ? 0 : i % 2 ? dx / 2 : -dx / 2)), R3(y0 + dy * i)]);
-          // the last point sits back on the centre line: its step is a little shorter, made up below
-          let L = 0;
-          for (let i = path.length - n; i < path.length; i++) L += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
-          cur = path[path.length - 1].slice();
-          pad -= L;
-        }
-        if (pad > 1e-6) {
-          const vis = sg.hold !== 'hid', amax = vis ? (amp || 0.25) : 9, n = Math.max(1, Math.ceil(pad / (2 * amax)));
-          const a = Math.sqrt(Math.max(0, (pad / (2 * n)) ** 2 - eps * eps)), dir = vis ? -1 : 1;
-          let x = cur[0];
-          const y0 = cur[1];
-          for (let i = 0; i < n; i++) { x += eps; path.push([x, y0 + dir * a]); x += eps; path.push([x, y0]); }
-          cur = [x, y0];
-          pad = 0;
-        }
+      let left = sg.t - carry;
+      for (const w of sg.to || []) {
+        const p = last(), d = Math.hypot(w[0] - p[0], w[1] - p[1]);
+        if (d > 1e-7) { path.push([w[0], w[1], 0, 0, null]); left -= d / speed; }
       }
-      for (const w of sg.then || []) go(w);
-      carry = pad < 0 ? -pad : 0;
+      if (sg.glide) { path.push([sg.glide[0], sg.glide[1], 0, sg.face || 0, Math.max(0, R3(left))]); left = Math.min(0, left); }
+      if (left > 1e-6 || sg.face) {
+        // a wait: on a point of its own when the last one already waits (two waits in a row may face two ways)
+        let p = last();
+        if (p[2] > 0) { path.push([p[0], p[1], 0, 0, 0]); p = last(); }
+        if (left > 1e-6) { p[2] = R3(p[2] + left); left = 0; }
+        if (sg.face) p[3] = sg.face;
+      }
+      carry = left < 0 ? -left : 0;
+      for (const w of sg.then || []) path.push([w[0], w[1], 0, 0, 0]);
     }
     for (const p of path) { p[0] = R3(p[0]); p[1] = R3(p[1]); }
-    let len = 0;
-    for (let i = 1; i < path.length; i++) len += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
-    return { path, len, carry };
+    return { path, speed };
   };
   /** sByY that shows a mover (at scale s) only within half a pixel of row y. */
   const band = (y, s, w) => [[R3(y - (w || 0.4) - 0.05), 0], [R3(y - (w || 0.4)), s], [R3(y + (w || 0.4)), s], [R3(y + (w || 0.4) + 0.05), 0]];
@@ -271,8 +255,8 @@
 
     /* ===== the life ===== */
     const actors = [];
-    /** A timeline mover: its speed is set from the built path so the cycle is exactly T seconds (movers in one act stay in step). */
-    const mover = (obj, tl, T, o) => actors.push(Object.assign({ obj, path: tl.path, speed: R3(tl.len / T), loop: 'loop', s: 1 }, o));
+    /** A timeline mover: its cycle is exactly the sum of its segments (T, the act's length: movers in one act stay in step). */
+    const mover = (obj, tl, T, o) => actors.push(Object.assign({ obj, path: tl.path, speed: tl.speed, loop: 'loop', s: 1 }, o));
 
     // ---- HERON: two slow steps, freeze, stab; again; turn; back. A 24 s cycle; the strike peaks every 6 s inside a pause ----
     const dH = 12.15, YH = R2(P(0, dH).Y), kH = K(dH), sH = R3(kH * 0.78 / 72), vH = 29.6, TH = 24;
@@ -281,26 +265,33 @@
     const offH = R3((((ph - 0.25) % 1) + 1) % 1 / 4);                       // strike peaks at local 4.2 + 6k s (hold .9: the peak at u .95)
     const YS = R2(YH + 0.7);                                                // the striker's row (under the stalker's: their bands never meet)
     const HOPS = [[0, 1, 1], [1, 2, 1], [2, 1, -1], [1, 0, -1]];
-    // the stalker: visible while it steps, hidden under its row while the striker holds the pose
+    // the stalker: visible while it steps, hidden under its row while the striker holds the pose (the swaps are jumps: the two
+    // birds change places in the same instant)
     const stalkSegs = [];
-    for (const [, b, face] of HOPS) stalkSegs.push({ t: 2.4, to: [[HX[b], YH]], hold: 'vis', face }, { t: 3.6, to: [[HX[b], YH + 2]], hold: 'hid', then: [[HX[b], YH]] });
-    mover('bird.proof-heron-stalk', timeline([HX[0], YH], vH, stalkSegs, 0.2), TH, { layer: 'fore', sByY: band(YH, sH, 0.3), seed: 40, offset: offH });
-    // the striker: hidden while the stalker steps, visible and still through each pause (the neck's turn hook is the stab)
+    for (const [, b, face] of HOPS) stalkSegs.push({ t: 2.4, to: [[HX[b], YH]], hold: 'vis', face, then: [[HX[b], YH + 2]] }, { t: 3.6, hold: 'hid', then: [[HX[b], YH]] });
+    mover('bird.proof-heron-stalk', timeline([HX[0], YH], vH, stalkSegs), TH, { layer: 'fore', sByY: band(YH, sH, 0.3), seed: 40, offset: offH });
+    // the striker: hidden while the stalker steps, visible and still through each pause (the neck's turn hook is the stab);
+    // before a hop the other way it turns round in its last 0.3 s, so the stalker sets off already facing its way
     const strikeSegs = [];
-    for (const [, b, face] of HOPS) strikeSegs.push({ t: 2.4, to: [[HX[b], YS + 1.5]], hold: 'hid', then: [[HX[b], YS]] }, { t: 3.6, hold: 'vis', face, then: [[HX[b], YS + 1.5]] });
-    mover('bird.proof-heron-strike', timeline([HX[0], YS + 1.5], 40, strikeSegs, 0.2), TH, { layer: 'fore', sByY: band(YS, sH, 0.3), seed: HSEED, offset: offH });
-    // the splash: where the bill went in, from the peak for 0.8 s, growing; it leaves upward (above its band) and crosses back
-    // down to wait under its row in a hundredth of a second
+    HOPS.forEach(([, b, face], j) => {
+      const next = HOPS[(j + 1) % HOPS.length][2];
+      strikeSegs.push({ t: 2.4, to: [[HX[b], YS + 1.5]], hold: 'hid', then: [[HX[b], YS]] });
+      if (next === face) strikeSegs.push({ t: 3.6, hold: 'vis', face, then: [[HX[b], YS + 1.5]] });
+      else strikeSegs.push({ t: 3.3, hold: 'vis', face }, { t: 0.3, hold: 'vis', face: next, then: [[HX[b], YS + 1.5]] });
+    });
+    mover('bird.proof-heron-strike', timeline([HX[0], YS + 1.5], 40, strikeSegs), TH, { layer: 'fore', sByY: band(YS, sH, 0.3), seed: HSEED, offset: offH });
+    // the splash: where the bill went in, from the peak for 0.8 s, growing as it rises; then a jump back under its row (never
+    // crossing its visible band on the way)
     const tipX = 33 * sH, YSP = R2(YH + 0.9), sSP = R3(kH * 0.26 / 26), splashSegs = [];
     const spot = j => R1(HX[HOPS[j][1]] + HOPS[j][2] * tipX);
     let tNow = 0;
     for (let j = 0; j < 4; j++) {
       const tPeak = 4.2 + 6 * j, X = spot(j);
-      splashSegs.push({ t: tPeak - 0.04 - tNow, to: [[X, YSP - 1.1], [X, YSP + 0.6]], hold: 'hid', then: [[X, YSP + 0.5]] }, { t: 0.8, to: [[X, YSP]], grow: [R2(YSP - 0.85), 1] });
+      splashSegs.push({ t: tPeak - 0.04 - tNow, hold: 'hid', then: [[X, YSP]] }, { t: 0.8, glide: [X, R2(YSP - 0.85)], then: [[X, YSP + 0.5]] });
       tNow = tPeak + 0.76;
     }
-    splashSegs.push({ t: TH - tNow, to: [[spot(3), YSP - 1.1], [spot(3), YSP + 0.6], [spot(0), YSP + 0.6]], hold: 'hid', then: [[spot(0), YSP + 0.5]] });
-    mover('water.proof-splash', timeline([spot(0), YSP + 0.5], 120, splashSegs, 0.2), TH,
+    splashSegs.push({ t: TH - tNow, hold: 'hid', then: [[spot(0), YSP + 0.5]] });
+    mover('water.proof-splash', timeline([spot(0), YSP + 0.5], 120, splashSegs), TH,
       { layer: 'fore', sByY: [[R3(YSP - 0.95), 0], [R3(YSP - 0.9), R3(sSP * 1.3)], [YSP, R3(sSP * 0.55)], [R3(YSP + 0.4), R3(sSP * 0.5)], [R3(YSP + 0.45), 0]], seed: 42, offset: offH, anim: false });
 
     // ---- the BROOD: a mallard hen and five ducklings in a line on a wandering loop (ground movers: the engine floats, scales,
@@ -313,10 +304,14 @@
     actors.push({ obj: 'bird.mallard', ground: BROOD, loop: 'loop', speed: 0.28, variant: 1, k: 1, seed: 51, offset: off0 });
     for (let i = 0; i < 5; i++) actors.push({ obj: 'bird.proof-duckling', ground: BROOD, loop: 'loop', speed: 0.28, variant: i % 2, k: R2(0.9 + (i % 3) * 0.07), seed: 52 + i, offset: R3(((off0 - (0.55 + 0.34 * i + (i === 3 ? 0.12 : 0)) / broodL) % 1 + 1) % 1) });
 
-    // ---- the FETCH, a 6.8 s act: the throw at 0.2 s, the dog away at 0.57, nosing the ball up at 1.98, home by 3.84 ----
+    // ---- the FETCH, a 6.8 s act: the throw at 0.2 s, the dog away at 0.57, nosing the ball at 1.98, picking it up at 2.28,
+    // turning round, trotting home, turning to face the field again, and waiting for the next throw. Three dogs share the act
+    // (waiting, running out, carrying the ball home); each swap is a jump in the same instant, and each swaps facing the same
+    // way (the turns are made in view: sceneActorFacing) ----
     const dF = 16.5, YG = R2(P(0, dF).Y), kF = K(dF), sDog = R3(kF * 0.6 / 46), sBall = R3(kF * 0.1 / 9), sMan = R3(kF * 1.72 / 64);
     const XO = 1505, XD0 = XO - 40, XL = 1040, XB = 1015, XSTOP = R1(XB + 34 * sDog), TF = 6.8, vDog = 300;
     const runT = Math.abs(XD0 - XSTOP) / vDog;                              // about 1.4 s each way
+    const tPick = 2.28, tGo = tPick + 0.1 + 0.3, tHome = tGo + runT, tSwap = tHome + 0.1 + 0.3;
     const YR = R2(YG - 32 * sMan), XR = XO - 6;                             // the hand (an underarm throw), behind the walker's body
     actors.push({ obj: 'person.walker', layer: 'near', path: [[XO, YG], [XO - 0.3, YG]], speed: R3(0.3 / TF), loop: 'loop', s: sMan, variant: 3, offset: 0, seed: 61, anim: false });
     // the ball: up behind the walker (faded in: loop 'fade'), the lob, a bounce, at rest; then hidden under its row back to the hand
@@ -329,23 +324,23 @@
     lob.forEach((p, i) => { const q = i ? lob[i - 1] : [XR, YR]; lobLen += Math.hypot(p[0] - q[0], p[1] - q[1]); });
     const ballTl = timeline([XR, YG + 1.5], vBall, [
       { t: 0.2, to: [[XR, YR]], hold: 'vis' }, { t: lobLen / vBall, to: lob, hold: 'vis' }, { t: 0.3, to: bounce, hold: 'vis', face: -1 },
-      { t: 2.28 - 0.5 - lobLen / vBall, hold: 'vis', face: -1, then: [[XB, YG + 1.5]] }, { t: TF - 2.28, to: [[XR, YG + 1.5]], hold: 'hid' },
-    ], 0.2);
+      { t: tPick - 0.5 - lobLen / vBall, hold: 'vis', face: -1, then: [[XB, YG + 1.5]] }, { t: TF - tPick, to: [[XR, YG + 1.5]], hold: 'hid' },
+    ]);
     mover('prop.proof-ball', ballTl, TF, { layer: 'near', loop: 'fade', sByY: [[R1(YR - 300), sBall], [R2(YG + 0.4), sBall], [R2(YG + 0.45), 0]], offset: 0, seed: 62, anim: false });
     // the dog waiting at the walker's side, legs still, eyes on the throw
     mover('animal.dog', timeline([XD0, YG], 20, [
-      { t: 0.57, hold: 'vis', face: -1, then: [[XD0, YG + 2]] }, { t: 3.84 - 0.57, hold: 'hid', then: [[XD0, YG]] }, { t: TF - 3.84, hold: 'vis', face: -1 },
-    ], 0.2), TF, { layer: 'near', sByY: band(YG, sDog, 0.3), variant: 1, offset: 0, seed: 63, anim: { walk: false } });
-    // the dog racing out and nosing the ball
+      { t: 0.57, hold: 'vis', face: -1, then: [[XD0, YG + 2]] }, { t: tSwap - 0.57, hold: 'hid', then: [[XD0, YG]] }, { t: TF - tSwap, hold: 'vis', face: -1 },
+    ]), TF, { layer: 'near', sByY: band(YG, sDog, 0.3), variant: 1, offset: 0, seed: 63, anim: { walk: false } });
+    // the dog racing out and nosing the ball (its legs come to rest as it stops)
     mover('animal.dog', timeline([XD0, YG + 2], vDog, [
-      { t: 0.57, hold: 'hid', then: [[XD0, YG]] }, { t: runT, to: [[XSTOP, YG]], hold: 'vis', face: -1 }, { t: 2.28 - 0.57 - runT, hold: 'vis', face: -1, then: [[XSTOP, YG + 2]] },
-      { t: TF - 2.28, to: [[XD0, YG + 2]], hold: 'hid' },
-    ], 0.2), TF, { layer: 'near', sByY: band(YG, sDog, 0.3), variant: 1, offset: 0, seed: 64, anim: { walk: { period: 0.3, k: 1.5 } } });
-    // the dog trotting home with the ball in its mouth
+      { t: 0.57, hold: 'hid', then: [[XD0, YG]] }, { t: runT, to: [[XSTOP, YG]], hold: 'vis', face: -1 }, { t: tPick - 0.57 - runT, hold: 'vis', face: -1, then: [[XSTOP, YG + 2]] },
+      { t: TF - tPick, to: [[XD0, YG + 2]], hold: 'hid' },
+    ]), TF, { layer: 'near', sByY: band(YG, sDog, 0.3), variant: 1, offset: 0, seed: 64, anim: { walk: { period: 0.3, k: 1.5 } } });
+    // the dog with the ball in its mouth: picks it up (still facing out), turns round, trots home, turns to face the field
     mover('animal.proof-dog-ball', timeline([XSTOP, YG + 2], vDog, [
-      { t: 2.28, hold: 'hid', then: [[XSTOP, YG]] }, { t: 0.15, hold: 'vis', face: 1 }, { t: runT, to: [[XD0, YG]], hold: 'vis', face: 1 },
-      { t: TF - 2.43 - runT, to: [[XD0, YG + 2], [XSTOP, YG + 2]], hold: 'hid' },
-    ], 0.2), TF, { layer: 'near', sByY: band(YG, sDog, 0.3), variant: 1, offset: 0, seed: 65, anim: { walk: { period: 0.36, k: 1.3 } } });
+      { t: tPick, hold: 'hid', then: [[XSTOP, YG]] }, { t: 0.1, hold: 'vis', face: -1 }, { t: 0.3, hold: 'vis', face: 1 }, { t: runT, to: [[XD0, YG]], hold: 'vis', face: 1 },
+      { t: 0.1, hold: 'vis', face: 1 }, { t: 0.3, hold: 'vis', face: -1, then: [[XD0, YG + 2]] }, { t: TF - tSwap, to: [[XSTOP, YG + 2]], hold: 'hid' },
+    ]), TF, { layer: 'near', sByY: band(YG, sDog, 0.3), variant: 1, offset: 0, seed: 65, anim: { walk: { period: 0.36, k: 1.3 } } });
 
     // ---- the kingfisher: a blue streak low along the pond, then gone for a while (a long way round, off the frame) ----
     actors.push({ obj: 'bird.kingfisher-flight', layer: 'near', path: [[-80, 600], [300, 588], [700, 566], [1000, 548], [1760, 520], [1760, -400], [-3400, -400], [-3400, 600], [-80, 600]], speed: 640, loop: 'loop', s: 0.75, seed: 70, offset: 0.62 });

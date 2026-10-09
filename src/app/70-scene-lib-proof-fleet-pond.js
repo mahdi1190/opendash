@@ -338,6 +338,7 @@ function sceneProofFleetPondPass() {
   const proj = (x, d, h) => [800 + f * x / d, CAM.horizon + f * (CAM.eye - h) / d];
   const TAU = Math.PI * 2, cl = (v, a, b) => Math.max(a, Math.min(b, v)), ss = (a, b, v) => { const u = cl((v - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
   const lerp = (a, b, u) => a + (b - a) * u, frac = (v) => v - Math.floor(v);
+  const _scClampFP = (v) => (v > 0 ? Math.max(0.12, Math.min(1, v)) : -Math.max(0.12, Math.min(1, -v)));
   // the live grade, memoised per light
   let LC = null, cmap = new Map();
   const col = (L, hex) => { if (L !== LC) { LC = L; cmap = new Map(); } let v = cmap.get(hex); if (!v) { v = typeof sceneColour === 'function' && L ? sceneColour(hex, { L }) : hex; cmap.set(hex, v); } return v; };
@@ -380,30 +381,44 @@ function sceneProofFleetPondPass() {
     return 10;
   }
   // ---- the heron (local metres: u forward, v up; the feet on the water at v 0) ----
-  const HER = { a: [3.6, 12.2], b: [1.9, 12.8], T: 18, off: 4.5, step: 0.16 };
+  // three hunts along the shallows each way: the steps are sized so a leg ends with a whole cycle, and the bird turns round
+  // (through side-on) while it scans at the end of that cycle, never in mid-stride
+  const HER = { a: [3.6, 12.2], b: [1.9, 12.8], T: 18, off: 4.5, legs: 3 };
+  HER.step = Math.hypot(HER.b[0] - HER.a[0], HER.b[1] - HER.a[1]) / (4 * HER.legs);
   function heronAt(t) {
     const T = HER.T, w = t + HER.off, cyc = Math.floor(w / T), u = w - cyc * T;
     const steps = cl(Math.floor(u / 1.75), 0, 4), sp = u < 7 ? frac(u / 1.75) : 0, moving = u < 7 ? ss(0, 0.55, sp) : 1;
-    const along = cyc * 4 * HER.step + (Math.min(steps, 4) + (u < 7 ? moving : 0)) * HER.step;
-    const Lp = Math.hypot(HER.b[0] - HER.a[0], HER.b[1] - HER.a[1]), q = ((along % (2 * Lp)) + 2 * Lp) % (2 * Lp), back = q > Lp, s = back ? 2 * Lp - q : q;
+    const Lp = 4 * HER.legs * HER.step, along = cyc * 4 * HER.step + (Math.min(steps, 4) + (u < 7 ? moving : 0)) * HER.step;
+    const q = ((along % (2 * Lp)) + 2 * Lp) % (2 * Lp), back = q > Lp, s = back ? 2 * Lp - q : q;
     const x = lerp(HER.a[0], HER.b[0], s / Lp), d = lerp(HER.a[1], HER.b[1], s / Lp);
-    const fwd = back ? 1 : -1;                                    // screen facing: a to b runs right to left
-    const ext = u < 7 ? 0.1 : u < 9.7 ? ss(7, 8.6, u) : u < 12.6 ? 0.6 : 0.6 * (1 - ss(12.6, 14, u));
+    // screen facing (a to b runs right to left): the leg this cycle walks, turning in the scan (15.6 to 16.4 s) before a cycle
+    // that walks the other way
+    const legOf = (c) => (Math.floor(((c % (2 * HER.legs)) + 2 * HER.legs) % (2 * HER.legs) / HER.legs) ? 1 : -1);
+    const f0 = legOf(cyc), f1 = legOf(cyc + 1);
+    const fwd = f0 === f1 ? f0 : lerp(f0, f1, ss(15.6, 16.4, u));
+    // the neck: at rest (0.1) while wading, drawn forward for the freeze, held part-way through the stab and the swallow, back
+    // to rest by the end of the cycle (continuous at every stage and at the wrap)
+    const ext = u < 7 ? 0.1 : u < 9.7 ? lerp(0.1, 1, ss(7, 8.6, u)) - 0.4 * ss(8.9, 9.7, u) : u < 12.6 ? 0.6 : lerp(0.6, 0.1, ss(12.6, 14, u));
     const strike = u < 9.7 ? 0 : u < 10.05 ? ss(9.7, 10.05, u) : u < 10.4 ? 1 : u < 11.2 ? 1 - ss(10.4, 11.2, u) : 0;
     const success = (cyc % 3) !== 1;
     const fish = success && u >= 10.4 && u < 11.95;
     const up = u < 11.2 ? 0 : u < 12.6 ? Math.sin(Math.PI * cl((u - 11.2) / 1.4, 0, 1)) : 0;
     const gulp = success && u >= 11.95 && u < 12.7 ? (u - 11.95) / 0.75 : -1;
-    const look = u >= 14 ? Math.sin((u - 14) * 1.6) * 0.18 : u >= 12.6 && u < 13.4 ? Math.sin((u - 12.6) * 30) * 0.12 * (1 - (u - 12.6) / 0.8) : 0;
+    const look = u >= 14 ? Math.sin((u - 14) * 1.6) * 0.18 * (1 - ss(17.2, 18, u)) : u >= 12.6 && u < 13.4 ? Math.sin((u - 12.6) * 30) * 0.12 * (1 - (u - 12.6) / 0.8) : 0;
     const legPhase = u < 7 ? sp : 0, legSwap = steps % 2;
     return { x, d, fwd, u, ext, strike, fish, up, gulp, look, legPhase, legSwap, moving: u < 7, stepIdx: steps, cyc, success };
   }
   function heronDraw(c, L, H, refl) {
     const g = (h) => col(L, h);
     // legs
+    // each leg keeps its own colour and place from step to step: on even steps the near leg swings forward while the far one
+    // stays planted (it slides back under the body), on odd steps the far one swings; standing, the feet are where the last
+    // step left them (near back, far forward), which is where the next cycle's first step starts
     const lift = H.moving ? Math.sin(Math.PI * cl(H.legPhase / 0.55, 0, 1)) : 0;
-    const fA = H.moving ? lerp(-0.09, 0.09, ss(0, 0.55, H.legPhase)) : 0.06, fB = H.moving ? lerp(0.09, -0.09, ss(0, 0.55, H.legPhase)) : -0.05;
-    const legs = H.legSwap ? [[fB, 0, 0], [fA, lift, 1]] : [[fA, lift, 1], [fB, 0, 0]];
+    const swing = H.moving ? lerp(-0.09, 0.09, ss(0, 0.55, H.legPhase)) : 0.09, plant = H.moving ? lerp(0.09, -0.09, ss(0, 0.55, H.legPhase)) : -0.09;
+    const odd = H.moving && H.legSwap;
+    const near = odd ? [plant, 0] : H.moving ? [swing, lift] : [-0.09, 0], far = odd ? [swing, lift] : H.moving ? [plant, 0] : [0.09, 0];
+    const legs = [[far[0], far[1], 0], [near[0], near[1], 1]];
     c.lineCap = 'round'; c.lineJoin = 'round';
     for (const [fu, lv, near] of legs) {
       c.strokeStyle = g(near ? '#a8924a' : '#86763e'); c.lineWidth = 0.022;
@@ -431,9 +446,9 @@ function sceneProofFleetPondPass() {
       c.strokeStyle = g('#2c3034'); c.lineWidth = 0.011; c.setLineDash([0.03, 0.025]);
       c.beginPath(); c.moveTo(S[0] + 0.03, S[1] + 0.01); c.bezierCurveTo(C1[0] + 0.03, C1[1], C2[0] + 0.025, C2[1] - 0.02, lerp(C2[0], Hd[0], 0.5) + 0.02, lerp(C2[1], Hd[1], 0.5) - 0.02); c.stroke(); c.setLineDash([]);
       if (H.gulp >= 0) {
-        const tt = 1 - H.gulp, bx = Math.pow(1 - tt, 3) * S[0] + 3 * Math.pow(1 - tt, 2) * tt * C1[0] + 3 * (1 - tt) * tt * tt * C2[0] + tt * tt * tt * Hd[0];
+        const tt = 1 - H.gulp, bulge = Math.min(1, H.gulp * 6, (1 - H.gulp) * 4);   // swells in, slides down the neck, fades out bx = Math.pow(1 - tt, 3) * S[0] + 3 * Math.pow(1 - tt, 2) * tt * C1[0] + 3 * (1 - tt) * tt * tt * C2[0] + tt * tt * tt * Hd[0];
         const by = Math.pow(1 - tt, 3) * S[1] + 3 * Math.pow(1 - tt, 2) * tt * C1[1] + 3 * (1 - tt) * tt * tt * C2[1] + tt * tt * tt * Hd[1];
-        c.fillStyle = g('#dfe2e3'); ell(c, bx + 0.012, by, 0.042, 0.03, 0); c.fill();
+        c.fillStyle = g('#dfe2e3'); ell(c, bx + 0.012 * bulge, by, 0.022 + 0.02 * bulge, 0.018 + 0.012 * bulge, 0); c.fill();
       }
     }
     // the head: white, the black crown and crest plumes, the dagger bill, the eye; a fish crosswise in the bill
@@ -496,9 +511,14 @@ function sceneProofFleetPondPass() {
       const pa = proj(a[0], a[1], a[2]), pb = proj(pos[0], pos[1], pos[2]);
       ang = Math.atan2(-(pb[1] - pa[1]), Math.abs(pb[0] - pa[0]) + 1e-6);
     }
+    if (mode === 'fly') ang *= 1 - ss(0.7, 1, ss(11.15, 11.95, u));   // levels out as it lands
     const bob = mode === 'perch' && u > 13.8 ? Math.max(0, Math.sin(u * 3.1)) * 0.25 : 0;
-    const beat = u >= 11.95 && u < 13.8 ? Math.max(0, Math.sin((u - 11.95) * 7)) * 0.9 : 0;
-    return { u, pos, ang, mode, fish, wing, hide, bob, beat, fwd: mode === 'fly' ? 1 : -1 };
+    const beat = u >= 11.95 && u < 13.8 ? Math.max(0, Math.sin((u - 11.95) * 7)) * 0.9 * (1 - ss(13.4, 13.8, u)) : 0;
+    // facing: toward the dive (screen right) on the stake and in the dive; home (left) in the flight and while it beats the
+    // fish; a quick hop round (0.16 s, through side-on) once the fish is down
+    const fwd = mode === 'dive' || mode === 'under' ? 1 : mode === 'fly' ? -1 : u >= 11.95 && u < 14.2 ? (u < 14.04 ? -1 : lerp(-1, 1, ss(14.04, 14.2, u))) : 1;
+    const fishK = fish ? 1 - ss(13.55, 13.8, u) : 0;   // swallowed: the fish slides in rather than vanishing
+    return { u, pos, ang, mode, fish: fish && fishK > 0.02, fishK, wing, hide, bob, beat, fwd };
   }
   function kfDraw(c, L, K, refl) {
     const g = (h) => col(L, h);
@@ -513,7 +533,7 @@ function sceneProofFleetPondPass() {
     c.fillStyle = g('#e57a32'); ell(c, 0.006, -0.008, 0.012, 0.007, 0); c.fill();
     if (!refl) { c.fillStyle = g('#f4f1e6'); ell(c, 0.012, -0.016, 0.008, 0.005, 0); c.fill(); c.fillStyle = '#101010'; ell(c, 0.011, 0.004, 0.0035, 0.0035, 0); c.fill(); }
     c.fillStyle = g('#1a1a1c'); c.beginPath(); c.moveTo(0.02, 0.006); c.lineTo(0.072, -0.002); c.lineTo(0.02, -0.006); c.closePath(); c.fill();
-    if (K.fish) { c.fillStyle = g('#c4ced4'); ell(c, 0.07, -0.004, 0.022, 0.006, 0.25 + Math.sin(K.u * 30) * 0.2); c.fill(); }
+    if (K.fish) { const fk = K.fishK == null ? 1 : K.fishK; c.fillStyle = g('#c4ced4'); ell(c, 0.07 - 0.03 * (1 - fk), -0.004, 0.022 * fk, 0.006, 0.25 + Math.sin(K.u * 30) * 0.2 * fk); c.fill(); }
     c.restore();
     if (K.mode === 'perch' && !refl) { c.strokeStyle = g('#c4402a'); c.lineWidth = 0.006; c.beginPath(); c.moveTo(0.0, -0.022); c.lineTo(0.004, -0.035); c.stroke(); }
     c.restore();
@@ -550,7 +570,7 @@ function sceneProofFleetPondPass() {
           const gr = c.createLinearGradient(a[0], a[1], bp[0], bp[1]); gr.addColorStop(0, 'rgba(60,170,230,0)'); gr.addColorStop(1, 'rgba(70,190,240,0.55)');
           c.strokeStyle = gr; c.lineWidth = 0.03 * kk; c.lineCap = 'round'; c.beginPath(); c.moveTo(lerp(a[0], bp[0], 0.45), lerp(a[1], bp[1], 0.45)); c.lineTo(bp[0], bp[1]); c.stroke(); n++;
         }
-        const dir = K.mode === 'fly' ? 1 : -1;
+        const dir = K.fwd;
         c.setTransform(vs * kk * dir, 0, 0, -vs * kk, ox + vs * bp[0], oy + vs * bp[1]);
         n += kfDraw(c, L, K, false);
       }
@@ -584,13 +604,17 @@ function sceneProofFleetPondPass() {
     const disp = u < 5 ? 0 : u < 5.6 ? ss(5, 5.6, u) : u < 11 ? 1 : u < 11.8 ? 1 - ss(11, 11.8, u) : 0;
     const gap = lerp(1.1, 0.55, disp);
     for (let i = 0; i < 2; i++) {
-      const facing = disp > 0.4 ? (i ? -1 : 1) : (Math.sin(cyc * 1.7 + i) > 0 ? 1 : -1);
+      // facing: the cycle's own way while they drift, turning (through side-on) to face each other before the display and to
+      // the next cycle's way after it, so the wrap needs no flip
+      const own = (c) => (Math.sin(c * 1.7 + i) > 0 ? 1 : -1), duet = i ? -1 : 1;
+      const facing = u < 4.4 ? own(cyc) : u < 5 ? lerp(own(cyc), duet, ss(4.4, 5, u)) : u < 11.8 ? duet : lerp(duet, own(cyc + 1), ss(11.8, 12.2, u));
       const cx = lerp(GR.a[0], GR.b[0], 0.5) + Math.sin(t * 0.07 + 1) * 0.4, cd = lerp(GR.a[1], GR.b[1], 0.5) + Math.sin(t * 0.05) * 0.3;
       const x = cx + (i ? 0.5 : -0.5) * gap, d = cd + (i ? 0.12 : -0.08);
       // one of the pair dives in the quiet part of every other cycle: down (a ring), gone, up again further on
       let alpha = 1, dx = 0;
       if (i === 1 && cyc % 2 === 0 && u > 12.2) { const v = u - 12.2; alpha = v < 0.25 ? 1 - v / 0.25 : v < 3.2 ? 0 : Math.min(1, (v - 3.2) / 0.3); dx = v >= 3.2 ? 0.9 * (1 - ss(3.2, 3.8, v)) : 0; }
-      const shake = disp > 0.6 ? (Math.sin(u * 9 + i * 1.3) > 0 ? 1 : -1) * (0.55 + 0.45 * Math.abs(Math.sin(u * 9 + i * 1.3))) : 1;
+      // the head shake: quick turns side to side (a steep but continuous curve), easing in and out with the display
+      const sw = Math.sin(u * 9 + i * 1.3), shake = lerp(1, Math.tanh(4 * sw) / Math.tanh(4), ss(0.6, 1, disp));
       const G = { disp, shake, x: x + dx, d, facing };
       const p = proj(G.x, d, HW), k = f / d, bob = Math.sin(t * 2.2 + i) * 0.006;
       out.push({ y: p[1], d, draw(c) {
@@ -615,7 +639,7 @@ function sceneProofFleetPondPass() {
     for (let i = 0; i < 5; i++) {
       const at = (tt) => [-3 + 12 * Math.sin(0.27 * tt + i * 1.7) + 4 * Math.sin(0.71 * tt + i), 28 + 13 * Math.sin(0.19 * tt + i * 2.3), HW + 0.18 + 2.4 * Math.pow(0.5 + 0.5 * Math.sin(0.45 * tt + i * 1.1), 1.8)];
       const q = at(t), q2 = at(t + 0.05), p = proj(q[0], q[1], q[2]), p2 = proj(q2[0], q2[1], q2[2]), k = f / q[1];
-      const dir = p2[0] >= p[0] ? 1 : -1, flap = Math.sin(t * 19 + i * 2);
+      const dir = _scClampFP((p2[0] - p[0]) / 2.5), flap = Math.sin(t * 19 + i * 2);   // banks round through side-on (2.5 px per 0.05 s: full width)
       // the last touch on the water: when the sine was at its lowest
       const tk = (-Math.PI / 2 - i * 1.1) / 0.45, per = TAU / 0.45, last = tk + Math.floor((t - tk) / per) * per, wq = at(last);
       out.push({ y: p[1] + 0.001 * i, d: q[1], draw(c) {
@@ -664,7 +688,7 @@ function sceneProofFleetPondPass() {
       const yw = proj(a.x, a.d, HW)[1];
       out.push({ y: yw, d: Math.max(55, a.d - 30), draw(c) {
         const vs = env.vs, ox = env.ox, oy = env.oy, b = 2 ** (Math.ceil(Math.log2(Math.max(1e-3, a.s)) * 2) / 2);
-        const sp = env.sprite({ o: a.o, v: a.v || 0, part: '*', scale: b * vs, litGlow: !!(L && L.windows), haze: 0 });
+        const sp = a.sp && a.sp.c ? a.sp : env.sprite({ o: a.o, v: a.v || 0, part: '*', scale: b * vs, litGlow: !!(L && L.windows), haze: 0 });
         if (!sp || !sp.c) return 0;
         if (waterClipD !== w.d) { waterClipD = w.d; try { waterClip = new Path2D(w.d); } catch (e) { waterClip = null; } }
         c.save();

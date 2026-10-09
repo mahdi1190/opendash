@@ -257,54 +257,25 @@ function animOpeningSequence() {
   // Start during the brand splash; select artwork only after a fresh fix or
   // the bounded fallback. The load handler shares this same location request.
   const locationReady = typeof dashboardLocationBeforeOpening === 'function' ? dashboardLocationBeforeOpening() : null;
-  // The brand first; the rest is decided then (the state file has had time to load).
-  wait(ms[0] - (performance.now() - ctl.t0()), async () => {
-    if (locationReady) await locationReady;
+  // The scene is chosen and mounted as soon as the location is known, DURING the brand: the stage is invisible until
+  // od-st-hello, and its canvas bakes and warms up there (78-scene-host.js, 78-scene-canvas.js warmUp). The welcome starts at
+  // the end of the brand once the scene is ready (at most _AW_SEQ_READY_MS later), so it fades in already playing smoothly.
+  const firstRun = () => !APP_CONFIG.onboardedAt && typeof _serverAvailable !== 'undefined' && _serverAvailable && typeof getAllItems === 'function' && !getAllItems().length;
+  // (on the next frame when there is no location request to wait for; at the end of the brand at the latest)
+  let st, stWait = [];
+  const prepare = () => { if (st !== undefined) return; try { st = alive() && !firstRun() ? _awOpeningStage(sp) : null; } catch (e) { st = null; } stWait.splice(0).forEach(f => f()); };
+  const waiting = !!(locationReady && typeof locationReady.then === 'function');
+  if (waiting) locationReady.then(prepare, prepare); else if (typeof requestAnimationFrame === 'function') requestAnimationFrame(prepare);
+  const whenStaged = (fn) => { if (st === undefined && !waiting) prepare(); if (st !== undefined) fn(); else stWait.push(fn); };
+  wait(ms[0] - (performance.now() - ctl.t0()), () => whenStaged(() => {
     if (!alive()) return;
     // the first-run set-up (a new data folder): nothing in front of it
-    if (!APP_CONFIG.onboardedAt && typeof _serverAvailable !== 'undefined' && _serverAvailable && typeof getAllItems === 'function' && !getAllItems().length) { done(); return; }
-    let w = null;
-    try { w = typeof animUkWhere === 'function' ? animUkWhere() : null; } catch (e) { w = null; }
-    let returning = false;
-    if (w) try { returning = localStorage.getItem(_AUK_KEY) === w.id; localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ }   // no second welcome (78-anim-uk.js)
-    try { if (typeof animThemeApply === 'function') animThemeApply(); } catch (e) { /* the packs' css is injected there */ }
-    // No UK county: in Texas (72-anim-pack-texas.js) the welcome names the town and today's Texas opening is the emblem.
-    let tx = null;
-    if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, id: t.id, cc: 'US', it: pick, over: 'Texas' }; } catch (e) { tx = null; }
-    // A region (71-anim-0region.js: the US in 71-anim-us.js, Asia in 71-anim-asia.js, and every region added since): the town or the
-    // region's own unit (state, country...), with today's opening from that region's packs (<id>-*) as the emblem. Two regions can reach
-    // the same spot (animRegionsWhere lists them nearest first): the welcome names the match of the region that owns the picked opening.
-    // id / cc / placeField let animOpeningExactScene keep a first arrival on that exact city's artwork.
-    if (!w && !tx) try {
-      const gs = typeof animRegionsWhere === 'function' ? animRegionsWhere(animCtx()) : []; const pick = gs.length ? animToday('opening') : null; const g = pick ? gs.find(m => animRegionOwns(m.region, pick.pack)) : null;
-      if (g) { const reg = animRegion(g.region), unit = reg ? g[reg.keys.unit] : ''; tx = { name: g.name, id: g.id || unit, cc: reg ? reg.countryOf(unit) : '', placeField: reg && reg.fields ? reg.fields.place : '', it: pick, over: g.over }; }
-    } catch (e) { tx = null; }
-    const openingPoint = animOpeningLocation(w, tx);
-    const arrival = openingPoint && typeof animLocationArrivalState === 'function' ? animLocationArrivalState(openingPoint) : null;
-    try { animOpeningExactScene(tx, arrival); } catch (e) { /* location artwork unavailable */ }
-    const helloMs = ms[1] + (arrival && arrival.egg ? arrival.egg.extraMs : 0);
-    if (arrival && arrival.pending) returning = false;
-    // Anywhere else: today's opening from any pack (core, seasons, world ...), on the same full-screen stage.
-    let gen = null;
-    if (!w && !tx) try { gen = animToday('opening'); } catch (e) { gen = null; }
-    const tod = animTimeOfDay(), season = animSeasonOf(todayStr());
-    const { it, origin } = animOpeningScene(w, returning);
-    const part = { dawn: 'dawn', day: 'day', dusk: 'evening', night: 'night' }[tod];
-    const stageIt = tx ? tx.it : gen;
-    const cap = it ? origin : tx ? (tx.it.full ? tx.it.site || tx.it.label : tx.over + ' · ' + tx.it.label) : gen ? (gen.full ? gen.site || gen.label : gen.label) : (w ? `${season[0].toUpperCase() + season.slice(1)} · ${w.name}` : `${/^[aeiou]/.test(season) ? 'An' : 'A'} ${season} ${part}`);
-    const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : stageIt ? animOpeningStageHtml(stageIt, season, tod) : animOpeningFallbackHtml(season, tod);
-    const emblem = '';
-    const box = document.createElement('div'); box.className = 'od-seq';
-    // The arrival budget (78-anim-uk.js) decides the regional "Welcome to"; without it (a stripped-down load) a region's match still gets it.
-    box.innerHTML = `<div class="od-seq-bg">${art}</div><div class="od-seq-shade"></div>${emblem}`
-      + `<div class="od-seq-title${arrival && arrival.egg ? ' has-egg' : ''}">${openingPoint ? ((arrival ? arrival.remaining > 0 : !w && !!tx) ? '<span class="od-seq-over">Welcome to</span>' : '') : '<span class="od-seq-over">Welcome back</span>'}${openingPoint ? `<span class="od-seq-place">${esc(openingPoint.town || openingPoint.name)}</span>` : ''}${arrival && arrival.egg ? `<span class="od-seq-egg"><b>${esc(arrival.egg.title)}</b><span>${esc(arrival.egg.detail)}</span></span>` : ''}</div>`
-      + `<div class="od-seq-cap"><span class="od-seq-origin">${esc(cap)}</span><span class="od-seq-skip">Click or press any key to skip</span></div>`;
+    if (!st || firstRun()) { done(); return; }
+    _awSceneReady(st.box, _AW_SEQ_READY_MS, () => {
+    if (!alive()) return;
+    const { box, helloMs } = st;
     sp.style.setProperty('--od-hello-ms', helloMs + 'ms');
     sp.style.setProperty('--od-scene-ms', ms[2] + 'ms');
-    sp.appendChild(box);
-    if (openingPoint && arrival) animLocationArrivalState(openingPoint, true);
-    sp.setAttribute('data-od-county', w ? w.id : '');
-    sp.setAttribute('data-od-scene', it ? it.ref : stageIt ? stageIt.ref : 'fallback');
     sp.classList.add('od-st-hello');
     wait(helloMs, () => {
       sp.classList.add('od-st-scene');
@@ -313,6 +284,7 @@ function animOpeningSequence() {
         // cannot start the event because wait() checks alive() before running.
         const event = animOpeningEvent();
         if (!event || !_awOn()) { done(); return; }
+        const tod = animTimeOfDay();
         const eventBox = document.createElement('div'); eventBox.className = 'od-seq od-seq-event';
         eventBox.innerHTML = `<div class="od-seq-bg">${animOpeningEventHtml(event, tod)}</div><div class="od-seq-cap"><span class="od-seq-origin">${esc(event.site || event.label)}</span><span class="od-seq-skip">Click or press any key to skip</span></div>`;
         box.remove(); sp.appendChild(eventBox);
@@ -320,8 +292,71 @@ function animOpeningSequence() {
         wait(_AW_OPEN_MS[_agLevel()] || _AW_OPEN_MS.standard, done);
       });
     });
-  });
+    });
+  }));
   return true;
+}
+/** How long the welcome may wait past the brand for the scene to be baked and warmed up (a slow machine still gets its opening). */
+const _AW_SEQ_READY_MS = 2500;
+/** Calls fn once every composed scene in el is ready to show (sc-ready, or the SVG still), or after maxMs (at once when there is none). */
+function _awSceneReady(el, maxMs, fn) {
+  const t0 = performance.now();
+  const ready = () => {
+    let hosts = [];
+    try { hosts = el && typeof el.querySelectorAll === 'function' ? [...el.querySelectorAll('.ap-composed[data-anim]')] : []; } catch (e) { hosts = []; }
+    return hosts.every(h => h.classList.contains('sc-ready') || h.classList.contains('sc-svg-fallback'));
+  };
+  if (ready() || typeof requestAnimationFrame !== 'function') { fn(); return; }
+  const check = () => { if (ready() || performance.now() - t0 > maxMs) fn(); else requestAnimationFrame(check); };
+  requestAnimationFrame(check);
+}
+/**
+ * Choose the opening's scene and words and put the (still invisible) stage into the splash, so its scene bakes behind the brand.
+ * Returns { box, helloMs } (the welcome's length; longer with an arrival egg).
+ */
+function _awOpeningStage(sp) {
+  const ms = _AW_SEQ_MS[_agLevel()];
+  let w = null;
+  try { w = typeof animUkWhere === 'function' ? animUkWhere() : null; } catch (e) { w = null; }
+  let returning = false;
+  if (w) try { returning = localStorage.getItem(_AUK_KEY) === w.id; localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ }   // no second welcome (78-anim-uk.js)
+  try { if (typeof animThemeApply === 'function') animThemeApply(); } catch (e) { /* the packs' css is injected there */ }
+  // No UK county: in Texas (72-anim-pack-texas.js) the welcome names the town and today's Texas opening is the emblem.
+  let tx = null;
+  if (!w) try { const t = typeof animTexasWhere === 'function' ? animTexasWhere(animCtx()) : null; const pick = t ? animToday('opening') : null; if (pick && pick.pack === 'texas') tx = { name: t.name, id: t.id, cc: 'US', it: pick, over: 'Texas' }; } catch (e) { tx = null; }
+  // A region (71-anim-0region.js: the US in 71-anim-us.js, Asia in 71-anim-asia.js, and every region added since): the town or the
+  // region's own unit (state, country...), with today's opening from that region's packs (<id>-*) as the emblem. Two regions can reach
+  // the same spot (animRegionsWhere lists them nearest first): the welcome names the match of the region that owns the picked opening.
+  // id / cc / placeField let animOpeningExactScene keep a first arrival on that exact city's artwork.
+  if (!w && !tx) try {
+    const gs = typeof animRegionsWhere === 'function' ? animRegionsWhere(animCtx()) : []; const pick = gs.length ? animToday('opening') : null; const g = pick ? gs.find(m => animRegionOwns(m.region, pick.pack)) : null;
+    if (g) { const reg = animRegion(g.region), unit = reg ? g[reg.keys.unit] : ''; tx = { name: g.name, id: g.id || unit, cc: reg ? reg.countryOf(unit) : '', placeField: reg && reg.fields ? reg.fields.place : '', it: pick, over: g.over }; }
+  } catch (e) { tx = null; }
+  const openingPoint = animOpeningLocation(w, tx);
+  const arrival = openingPoint && typeof animLocationArrivalState === 'function' ? animLocationArrivalState(openingPoint) : null;
+  try { animOpeningExactScene(tx, arrival); } catch (e) { /* location artwork unavailable */ }
+  const helloMs = ms[1] + (arrival && arrival.egg ? arrival.egg.extraMs : 0);
+  if (arrival && arrival.pending) returning = false;
+  // Anywhere else: today's opening from any pack (core, seasons, world ...), on the same full-screen stage.
+  let gen = null;
+  if (!w && !tx) try { gen = animToday('opening'); } catch (e) { gen = null; }
+  const tod = animTimeOfDay(), season = animSeasonOf(todayStr());
+  const { it, origin } = animOpeningScene(w, returning);
+  const part = { dawn: 'dawn', day: 'day', dusk: 'evening', night: 'night' }[tod];
+  const stageIt = tx ? tx.it : gen;
+  const cap = it ? origin : tx ? (tx.it.full ? tx.it.site || tx.it.label : tx.over + ' · ' + tx.it.label) : gen ? (gen.full ? gen.site || gen.label : gen.label) : (w ? `${season[0].toUpperCase() + season.slice(1)} · ${w.name}` : `${/^[aeiou]/.test(season) ? 'An' : 'A'} ${season} ${part}`);
+  const art = it ? animItemHtml(it, { size: 'fill', live: true, tod }) : stageIt ? animOpeningStageHtml(stageIt, season, tod) : animOpeningFallbackHtml(season, tod);
+  const emblem = '';
+  const box = document.createElement('div'); box.className = 'od-seq';
+  // The arrival budget (78-anim-uk.js) decides the regional "Welcome to"; without it (a stripped-down load) a region's match still gets it.
+  box.innerHTML = `<div class="od-seq-bg">${art}</div><div class="od-seq-shade"></div>${emblem}`
+    + `<div class="od-seq-title${arrival && arrival.egg ? ' has-egg' : ''}">${openingPoint ? ((arrival ? arrival.remaining > 0 : !w && !!tx) ? '<span class="od-seq-over">Welcome to</span>' : '') : '<span class="od-seq-over">Welcome back</span>'}${openingPoint ? `<span class="od-seq-place">${esc(openingPoint.town || openingPoint.name)}</span>` : ''}${arrival && arrival.egg ? `<span class="od-seq-egg"><b>${esc(arrival.egg.title)}</b><span>${esc(arrival.egg.detail)}</span></span>` : ''}</div>`
+    + `<div class="od-seq-cap"><span class="od-seq-origin">${esc(cap)}</span><span class="od-seq-skip">Click or press any key to skip</span></div>`;
+  sp.appendChild(box);
+  if (openingPoint && arrival) animLocationArrivalState(openingPoint, true);
+  sp.setAttribute('data-od-county', w ? w.id : '');
+  sp.setAttribute('data-od-scene', it ? it.ref : stageIt ? stageIt.ref : 'fallback');
+  return { box, helloMs };
 }
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   const run = () => { try { animOpeningSequence(); } catch (e) { const c = window.__odOpening; if (c) c.out(false); } };

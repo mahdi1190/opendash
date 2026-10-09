@@ -31,6 +31,17 @@ let _schHiddenMs = 0, _schHiddenAt = 0, _schInit = false, _schRO = null, _schIO 
 const _schT0 = new Map();          // key -> own start time (hosts the continuity file does not stamp: tiles, stills)
 
 function _schNowMs() { return typeof performance !== 'undefined' ? performance.now() : Date.now(); }
+/**
+ * The layout size of a host (css px): its box before transforms. getBoundingClientRect is the transformed box: under the
+ * opening's slow pull-back (scale 1.05) the scene was baked 5 % too large, then baked again when the ResizeObserver reported
+ * the real size, in the middle of the opening (the long frames after the scene showed).
+ */
+function _schSize(el) {
+  const w = el.clientWidth || el.offsetWidth, h = el.clientHeight || el.offsetHeight;
+  if (w && h) return [w, h];
+  const b = el.getBoundingClientRect();
+  return [b.width, b.height];
+}
 function _schReduced() { try { return !!(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } }
 /** The item for a host: the page harness' own items first (window.__sceneItems), then the registry. */
 function _schItem(ref) {
@@ -143,7 +154,8 @@ function _schEnsureInit() {
       if (!w || !h) continue;
       clearTimeout(rec.rt);
       if (rec.lazy) continue;
-      if (!rec.r.baked) { if (!rec.r.baking) rec.r.resize(w, h); continue; }
+      // still baking: the size it ends up with is checked when it is ready (rec.want)
+      if (!rec.r.baked) { if (!rec.r.baking) rec.r.resize(w, h); else rec.want = [w, h]; continue; }
       rec.rt = setTimeout(() => { if (rec.r) rec.r.resize(w, h); }, _SCH_RESIZE_MS);
     }
   });
@@ -221,18 +233,23 @@ function _schMount(el) {
       const { L, season } = _schLight(rec);
       const lod = Number(el.getAttribute('data-sc-lod')) || 1;
       const so = typeof window !== 'undefined' && window.__sceneOpts ? window.__sceneOpts : {}, flush = so.flush || false, profile = !!so.profile;
-      rec.r = sceneRendererCreate(canvas, rec.data, { lod, still: rec.still, season, L, time: () => _schTime(rec), flush, profile, onBaked: () => el.classList.add('sc-ready') });
-      // a live scene (the opening, the gallery stage, the Home card) bakes at once; tiles and stills bake in idle slices
-      // once they are on screen, so a page of gallery tiles never blocks the main thread
+      // the canvas shows (sc-ready) once the renderer is baked AND warmed up: every sprite sent to the raster, the first-sight
+      // work done (78-scene-canvas.js warmUp), so the first seconds on screen play as smoothly as the rest
+      rec.r = sceneRendererCreate(canvas, rec.data, { lod, still: rec.still, season, L, time: () => _schTime(rec), flush, profile,
+        onReady: () => { el.classList.add('sc-ready'); _schWant(rec); }, onError: (e) => _schFallback(rec, e) });
+      // a live scene (the opening, the gallery stage, the Home card) bakes at once, in slices back to back (frames and the page's
+      // own work run in between: no long task); tiles and stills bake in idle slices once they are on screen, so a page of
+      // gallery tiles never blocks the main thread
       rec.lazy = !(el.classList.contains('is-live') && !rec.still);
       if (!rec.lazy) {
-        const b = el.getBoundingClientRect();
-        if (b.width && b.height) rec.r.resize(b.width, b.height);
-        rec.r.frame(_schTime(rec));
+        const [w, h] = _schSize(el);
+        // while the opening holds the screen, only its own scene bakes eagerly (the Home card under it waits for idle time)
+        const sp = document.getElementById('od-splash'), eager = !(sp && sp.classList.contains('is-hold') && !sp.contains(el));
+        if (w && h) { rec.sz = [w, h]; rec.r.bakeIdle(w, h, { eager }); }
       } else if (!_schIO) _schWake(rec);
     } catch (e) { _schFallback(rec, e); return; }
   }
-  if (rec.r && rec.r.baked) el.classList.add('sc-ready');
+  if (rec.r && rec.r.ready) el.classList.add('sc-ready');
   if (_schRO) _schRO.observe(el);
   if (_schIO) _schIO.observe(el);
   if (rec.hoverOnly) {
@@ -245,8 +262,18 @@ function _schMount(el) {
 function _schWake(rec) {
   if (!rec.lazy || !rec.r) return;
   rec.lazy = false;
-  const b = rec.el.getBoundingClientRect();
-  rec.r.bakeIdle(b.width || 320, b.height || 180);
+  const [w, h] = _schSize(rec.el);
+  rec.sz = [w || 320, h || 180];
+  rec.r.bakeIdle(rec.sz[0], rec.sz[1]);
+}
+/** A size reported while the first bake ran: bake again (in slices; the first picture keeps drawing) when it differs. */
+function _schWant(rec) {
+  const want = rec.want;
+  rec.want = null;
+  if (!want || !rec.r) return;
+  if (rec.sz && Math.abs(rec.sz[0] - want[0]) < 1 && Math.abs(rec.sz[1] - want[1]) < 1) return;
+  rec.sz = want;
+  rec.r.resize(want[0], want[1]);
 }
 /** Mount every composed host under root now (the observer does this by itself; tools and tests call it directly). */
 function sceneHostScan(root) {
@@ -292,7 +319,7 @@ function sceneHostReady() {
       sceneHostScan(document);
       const list = [..._schHosts.values()];
       // a raster object still decoding counts as not ready (its renderer bakes again once the image is decoded)
-      const waiting = list.filter(r => !r.fallback && r.r && (!r.r.baked || r.r.waiting) && !r.el.classList.contains('is-offscreen'));
+      const waiting = list.filter(r => !r.fallback && r.r && (!r.r.ready || r.r.waiting) && !r.el.classList.contains('is-offscreen'));
       if (!waiting.length || _schNowMs() - t0 > 15000) { res(list.filter(r => (r.r && r.r.baked) || r.fallback).length); return; }
       if (typeof requestAnimationFrame === 'function') requestAnimationFrame(check); else setTimeout(check, 16);
     };

@@ -455,7 +455,7 @@ function _scwaMovers(env, R, ctx, t, tq, below) {
     else if (!on && R.legacy) near = m.Y >= R.y0 - 6 && m.Y <= R.y0 + 2;
     if (near) list.push(Object.assign({ on }, m));
   };
-  for (const a of env.actorsNow) consider({ X: a.x, Y: a.y, s: a.s, flip: a.dir < 0, d: a.d, sp: a.sp, alpha: a.alpha, cls: a.cls, speed: a.speed, box: a.box });
+  for (const a of env.actorsNow) consider({ X: a.x, Y: a.y, s: a.s, flip: a.dir < 0, face: a.face, d: a.d, sp: a.sp, alpha: a.alpha, cls: a.cls, speed: a.speed, box: a.box });
   for (const f of env.flowNow || []) {
     if (!f || f.reflectDone) continue;
     consider({ X: f.X != null ? f.X : f.x, Y: f.Y != null ? f.Y : f.y, s: f.s, flip: !!f.flip, d: f.d, sp: f.sp || null, o: f.o, v: f.v, alpha: f.alpha == null ? 1 : f.alpha, cls: f.cls || (f.o ? sceneObjClassOf(f.o) : null), speed: f.speedU || 0, box: f.box, speedM: f.speed });
@@ -489,7 +489,7 @@ function _scwaMovers(env, R, ctx, t, tq, below) {
       const floating = m.on || m.cls === 'boat' || m.cls === 'bird-water';
       const Ym = R.legacy ? 2 * R.y0 - m.Y : floating ? m.Y : sceneWaterMirrorY(cam, d, R.level, -R.level);
       const dx = _scwaShift(R, Ym * vs + oy - R.db[1], tq, wind);
-      const s = m.s || 1, fl = m.flip ? -1 : 1;
+      const s = m.s || 1, fl = Number.isFinite(m.face) ? m.face : m.flip ? -1 : 1;   // a turning actor's reflection turns with it
       mx.setTransform(vs * s * fl, 0, 0, -vs * s, m.X * vs + ox - R.db[0] + dx, Ym * vs + oy - R.db[1]);
       mx.globalAlpha = _scClamp(R.mirror * 0.5 * (m.alpha == null ? 1 : m.alpha), 0, 1);
       mx.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h); draws++;

@@ -56,14 +56,14 @@ function _hwaRender(el, ctx) {
   const art = keep ? keep.node : document.createElement('button');
   if (!keep) {
     art.type = 'button'; art.className = 'hwa-art'; art.setAttribute('data-scene-key', 'home-animday');
-    art.innerHTML = animItemHtml(it, { size: 'fill', detail: 'tile', live, reduced: !live });
+    art.innerHTML = animItemHtml(it, { size: 'fill', live, reduced: !live });
     if (!ctx.preview) _hwaArt = { key, node: art, live };
     if (live && !ctx.preview) _hwaPlay(art);
   }
   art.setAttribute('aria-label', on ? `Play ${it.label} again` : it.label);
   art.onclick = () => {
     if (!_hwaOn()) return;
-    art.innerHTML = animItemHtml(it, { size: 'fill', detail: 'tile', live: true });
+    art.innerHTML = animItemHtml(it, { size: 'fill', live: true });
     if (_hwaArt && _hwaArt.node === art) _hwaArt.live = true;
     _hwaPlay(art);
   };

@@ -218,6 +218,20 @@ function sceneFlowLayer(C, L, o) {
       for (const a of api.agents(0)) api.drawAgent(null, a, 0);   // the still is exact; later agents build lazily, 2 a frame
       lastT = NaN; budget = save;
     },
+    /**
+     * The warm-up (the renderer's, before the canvas shows): the sprites of every agent of the next `horizon` seconds (a half
+     * second apart), so no agent is built, or drawn from a neighbouring scale bucket, on first sight. Bounded by maxMs.
+     */
+    warm(t0, horizon, maxMs) {
+      const save = budget, a0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      budget = Infinity;
+      try {
+        for (let t = t0; t <= t0 + (horizon || 90); t += 0.5) {
+          for (const a of api.agents(t)) api.drawAgent(null, a, t);
+          if ((typeof performance !== 'undefined' ? performance.now() : Date.now()) - a0 > (maxMs || 250)) break;
+        }
+      } finally { lastT = NaN; budget = save; }
+    },
     /** Draw one agent (null ctx: only make its sprites). Returns the draws. */
     drawAgent(ctx, a, t) {
       const pl = planOf(a);
@@ -239,6 +253,7 @@ function sceneFlowLayer(C, L, o) {
         return n;
       }
       const sp = spriteFor(a.o, a.v, '*', haze, b);
+      if (sp && sp.c) a.sp = sp;   // the passes that mirror or shade an agent draw this very sprite (no second rasterising)
       if (!ctx) return 0;
       let MM = M;
       if (pl.whole && a.kind === 'boat' && typeof sceneAnimPose === 'function') MM = mul(M, sceneAnimPose(Object.assign({}, pl.whole, { phase: a.phase || 0 }), t, L, a.X).m);
@@ -284,7 +299,7 @@ function sceneFlowLayer(C, L, o) {
       return n;
     },
     /** Start a frame for the pass (the build budget per frame). */
-    beginFrame() { budget = o.still ? Infinity : _SCFLF_BUILD_PER_FRAME; st.draws = 0; st.frames++; },
+    beginFrame(all) { budget = o.still || all ? Infinity : _SCFLF_BUILD_PER_FRAME; st.draws = 0; st.frames++; },
     count(n) { st.draws += n; },
     stats() { return Object.assign({ sprites: pool.size }, st); },
   };
@@ -300,7 +315,9 @@ function _scflfLayerOf(env) {
   const C = env.C, groupOf = new Map(), lg = env.layerOfGroup || [];
   lg.forEach((gi, l) => { if (gi != null) groupOf.set(l, gi); });
   if (!groupOf.size) (env.groups || []).forEach((g, gi) => (g.layers || []).forEach(l => groupOf.set(l, gi)));
-  const layer = sceneFlowLayer(C, env.L, { vs: env.vs, ox: env.ox, oy: env.oy, lod: env.lod, still: !!env.still, sprite: typeof env.sprite === 'function' ? env.sprite : null,
+  // the sprites go through the bake's keep (env.keep): the renderer's warm-up sends them to the raster with the rest
+  const layer = sceneFlowLayer(C, env.L, { vs: env.vs, ox: env.ox, oy: env.oy, lod: env.lod, still: !!env.still,
+    sprite: typeof env.sprite === 'function' ? (req) => (typeof env.keep === 'function' ? env.keep(env.sprite(req)) : env.sprite(req)) : null,
     governor: () => (env.governor && env.governor.flowMax) || 1 });
   s = { layer, groupOf, shadowPass: false, t: NaN, last: Math.max(0, (env.groups || []).length - 1, ...[...groupOf.values()]) };
   try { s.shadowPass = typeof sceneRenderPasses === 'function' && sceneRenderPasses('frameGroup', C).some(p => p.id === 'shadow'); } catch (e) { s.shadowPass = false; }
@@ -310,12 +327,12 @@ function _scflfLayerOf(env) {
 if (typeof sceneRenderPassDefine === 'function') {
   sceneRenderPassDefine({
     id: 'flow',
-    order: { prebake: 30, frameGroup: 10, movers: 50, relight: 50, stats: 50, default: 50 },
+    order: { prebake: 30, frameGroup: 10, movers: 50, relight: 50, warm: 30, stats: 50, default: 50 },
     applies(C) { return !!(C && Array.isArray(C.flows) && C.flows.length); },
     prebake(env) { _scflfLayerOf(env).layer.prebake(); },
     frameGroup(env, grp, ctx, t) {
       const s = _scflfLayerOf(env);
-      if (s.t !== t) { s.t = t; s.layer.beginFrame(); env.flowNow = s.layer.agents(t); }
+      if (s.t !== t) { s.t = t; s.layer.beginFrame(!!env.warming); env.flowNow = s.layer.agents(t); }
       if (s.shadowPass) return 0;
       // no shadow pass: a soft contact blob under each agent of this group, before its movers (every agent stands on its shadow)
       const gi = (env.groups || []).indexOf(grp);
@@ -326,7 +343,7 @@ if (typeof sceneRenderPassDefine === 'function') {
     },
     movers(env, grp, t, push) {
       const s = _scflfLayerOf(env), gi = (env.groups || []).indexOf(grp);
-      if (s.t !== t) { s.t = t; s.layer.beginFrame(); env.flowNow = s.layer.agents(t); }
+      if (s.t !== t) { s.t = t; s.layer.beginFrame(!!env.warming); env.flowNow = s.layer.agents(t); }
       for (const a of env.flowNow || []) {
         if ((s.groupOf.has(a.layer) ? s.groupOf.get(a.layer) : s.last) !== gi) continue;
         push({ kind: 'custom', y: a.Y, agent: a, draw(ctx) { const n = s.layer.drawAgent(ctx, a, t); s.layer.count(n); return n; } });
@@ -334,6 +351,7 @@ if (typeof sceneRenderPassDefine === 'function') {
       return 0;
     },
     relight(env, L) { _scflfLayerOf(env).layer.relight(L); },
+    warm(env, t) { _scflfLayerOf(env).layer.warm(t, 90, 250); },
     stats(env) { return _scflfLayerOf(env).layer.stats(); },
   });
 }

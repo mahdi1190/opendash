@@ -183,37 +183,34 @@ function sceneProofWyndhamsPool() {
   A.push({ obj: 'bird.mallard', ground: [[22, 62], [10, 66], [2, 64]], speedM: 0.25, loop: 'pingpong', seed: 13, offset: 0.1 });
   A.push({ obj: 'bird.mallard', ground: [[23.2, 63], [11.2, 67.2], [3.2, 65.2]], speedM: 0.25, loop: 'pingpong', variant: 1, seed: 14, offset: 0.1 });
 
-  // ---- the kingfisher: three actors on one clock (perched, flight, splash), timed so each shows only in its moment
+  // ---- the kingfisher: three actors on one clock (perched, flight, splash), each a TIMED path (sceneActorAt: waits and jumps
+  // in seconds), so each shows only in its moment and they hand over in the same instant, for ever (a clock made of rounded
+  // speeds and distances drifted apart: after some minutes two birds, or none, showed at a hand-over)
   {
     const sP = f * 0.8 / PLAT.d / 80, ax = PX(PLAT.x, PLAT.d), ay = PY(PLAT.d);
     const post = [R1(ax + 291.5 * sP), R1(ay - 92 * sP)];      // the post top (the bird's feet)
     const pc = [post[0] + 1, post[1] - 7];                        // the flying bird's centre when it leaves the post
     const wd = 13.2, W = [R1(post[0] + 46), R1(WY(wd))];          // where it hits the water
-    const vF = 420, vP = 2, vR = 60;                              // units per second: the flight, the perched bird, the ring
+    const vF = 420;                                               // units per second: the flight
     const len = pts => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
-    // the flight: hidden above the post (out of sight: any row above it draws at scale 0), down, a curving dive, under water, back up
-    const hide = [pc[0], pc[1] - 6], dwellUp = 2 * (hide[1] + 1600);
+    // the flight: waits hidden above the post (any row above it draws at scale 0), down, a curving dive, under water, back up
+    const hide = [pc[0], pc[1] - 6], dwell = 2 * (hide[1] + 1600) / vF;
     const dive = [[pc[0], pc[1]], [pc[0] + 10, pc[1] + 14], [pc[0] + 24, pc[1] + 40], [W[0] - 6, W[1] - 22], [W[0], W[1]]];
     const under = [[W[0] + 1, W[1] + 3], [W[0] + 1, W[1] + 80], [W[0] + 1, W[1] + 3]];
     const back = [[W[0], W[1]], [W[0] - 4, W[1] - 26], [pc[0] + 34, pc[1] + 18], [pc[0] + 12, pc[1] + 2], [pc[0], pc[1]]];
-    const flight = [hide, [hide[0], -1600], hide, ...dive, ...under, ...back, hide];
-    const T = len(flight) / vF;
-    const tLeave = (dwellUp + 6) / vF, tHit = (dwellUp + 6 + len(dive)) / vF, tBack = (len(flight) - 6) / vF;
+    const route = [hide, ...dive, ...under, ...back, hide];
+    const T = dwell + len(route) / vF;
+    const tLeave = dwell + 6 / vF, tHit = tLeave + len(dive) / vF, tBack = T - 6 / vF;
     const sF = 0.82;
-    A.push({ obj: 'bird.kingfisher-flight', layer: 'fore', path: flight, speed: vF, loop: 'loop', s: 1, sByY: [[pc[1] - 0.6, 0.001], [pc[1] - 0.1, sF], [W[1] + 1.5, sF], [W[1] + 2.5, 0.001]], seed: 21, offset: 0 });
-    // the perched bird: sits from the moment it is back until it leaves again (a 0.1-unit tremor keeps it on its path)
-    const visT = T - (tBack - tLeave), sit = [];
-    for (let i = 0, n = Math.max(2, Math.round(visT * vP / 0.1)); i <= n; i++) sit.push([post[0], R2(post[1] - (i % 2) * 0.1)]);
-    const away = (tBack - tLeave) * vP;
-    const perch = sit.concat([[post[0], post[1] + away / 2], [post[0], post[1] + 0.06]]);
+    A.push({ obj: 'bird.kingfisher-flight', layer: 'fore', path: [[hide[0], hide[1], dwell, 0, null], ...route.slice(1)], speed: vF, loop: 'loop', s: 1, sByY: [[pc[1] - 0.6, 0.001], [pc[1] - 0.1, sF], [W[1] + 1.5, sF], [W[1] + 2.5, 0.001]], seed: 21, offset: 0 });
+    // the perched bird: sits still from the moment the flier is back until it leaves again, hidden under its row meanwhile
+    const visT = T - (tBack - tLeave);
     const sK = R2(f * 0.17 / PLAT.d / 26 * 1.5);
-    A.push({ obj: 'bird.wp-kingfisher-perch', layer: 'fore', path: perch, speed: R2(len(perch) / T), loop: 'loop', s: 1, sByY: [[post[1], sK], [post[1] + 0.05, 0.001]], seed: 22, offset: R2(((-tBack / T) % 1 + 1) % 1) });
-    // the splash: rings grow from the moment it hits, then fade (the 'fade' loop fades the end of its path)
-    const grow = [], gN = Math.round(1.4 * vR / 0.6);
-    for (let i = 0; i <= gN; i++) grow.push([R2(W[0] + (i % 2) * 0.6), R2(W[1] + 0.6 * i / gN)]);
-    const ringPath = [[W[0], W[1] + 0.7]].concat([[W[0], W[1] + 0.7 + (T - 1.4) * vR / 2]], [[W[0], W[1] + 0.7]], grow);
-    const tGrow = (len(ringPath) - len(grow)) / (len(ringPath) / T);
-    A.push({ obj: 'water.wp-dive-ring', layer: 'fore', path: ringPath, speed: R2(len(ringPath) / T), loop: 'fade', s: 1, sByY: [[W[1], 0.3], [W[1] + 0.6, 1.25], [W[1] + 0.68, 0.001]], seed: 23, offset: R2((((tGrow - tHit) / T) % 1 + 1) % 1) });
+    A.push({ obj: 'bird.wp-kingfisher-perch', layer: 'fore', path: [[post[0], post[1], visT, 1, null], [post[0], post[1] + 1, T - visT, 0, 0], [post[0], post[1], 0, 0, 0]], speed: 1, loop: 'loop', s: 1,
+      sByY: [[post[1], sK], [post[1] + 0.05, 0.001]], seed: 22, offset: ((-tBack / T) % 1 + 1) % 1 });
+    // the splash: from the moment it hits, the rings grow for 1.4 s and fade (the 'fade' loop fades the end of the cycle)
+    const ring = [[W[0], W[1] + 0.7, T - 1.4, 0, null], [W[0], W[1], 0, 0, 0], [W[0], W[1] + 0.6, 0, 0, 1.4], [W[0], W[1] + 0.7, 0, 0, 0]];
+    A.push({ obj: 'water.wp-dive-ring', layer: 'fore', path: ring, speed: 60, loop: 'fade', s: 1, sByY: [[W[1], 0.3], [W[1] + 0.6, 1.25], [W[1] + 0.68, 0.001]], seed: 23, offset: (((T - 1.4 - tHit) / T) % 1 + 1) % 1 });
   }
 
   // ---- swallows skimming low over the water (spring to early autumn: the object draws nothing in winter)

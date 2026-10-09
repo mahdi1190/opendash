@@ -41,7 +41,7 @@ function sceneCanvasSupported() {
   catch (e) { _sccSupported = false; }
   return _sccSupported;
 }
-const SCENE_SPRITE_CAP_BYTES = 96 * 1024 * 1024, SCENE_BACKING_MAX = [2560, 1440], SCENE_SLICE_MS = 8;
+const SCENE_SPRITE_CAP_BYTES = 384 * 1024 * 1024, SCENE_BACKING_MAX = [3840, 2160], SCENE_SLICE_MS = 8;
 const _SCC_PAD = 2;
 // Bake canvases (sprites, layer bitmaps) rasterise on the CPU: the bake forces their pending work in its own idle slices
 // with a 1-pixel read, which on a GPU canvas would stall on a read-back. The main canvas stays GPU-backed where it can be.
@@ -89,6 +89,26 @@ function _sccStat(a) {
   return { median: r(q(0.5)), p95: r(q(0.95)), max: r(s[s.length - 1]), n: s.length };
 }
 const _sccIdle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 120 }) : setTimeout(fn, 16));
+/** The next task as soon as the browser can (a full-screen scene about to show: its slices back to back, frames in between). */
+const _sccSoon = (() => {
+  if (typeof MessageChannel !== 'function') return (fn) => setTimeout(fn, 0);
+  let ch = null;
+  const q = [];
+  return (fn) => {
+    if (!ch) { ch = new MessageChannel(); ch.port1.onmessage = () => { const f = q.shift(); if (f) f(); }; }
+    q.push(fn); ch.port2.postMessage(0);
+  };
+})();
+/** Resolves once a canvas's recorded drawing has gone to the raster (a snapshot: no pixel read-back, so a GPU canvas never stalls). */
+function _sccFlushAsync(c) {
+  try { if (typeof createImageBitmap === 'function' && c && c.width && c.height) return createImageBitmap(c, 0, 0, 1, 1).then(b => { try { b.close(); } catch (e) { /* gone */ } }, () => {}); }
+  catch (e) { /* no snapshot: the next frame does it */ }
+  return new Promise(r => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => r()) : setTimeout(r, 16)));
+}
+// The warm-up's sample times (seconds after now): every scripted act of a scene shows at least once (cycles of 6.8 to 26 s), so
+// what a frame builds on first sight (flow sprites, shadow silhouettes, wakes, reflections) is built before the canvas shows.
+const _SCC_WARM_T = [0, 0.5, 1.1, 1.7, 2.3, 2.9, 3.6, 4.3, 5.1, 6, 7.2, 8.5, 9.9, 10.6, 11.4, 12.3, 13.5, 15, 17, 19.5, 22, 24.5, 27, 31];
+const _SCC_WARM_BYTES = 48 * 1024 * 1024;   // sprite pixels sent to the raster per warm-up step (a few frames for a whole scene)
 /**
  * One planned cloud (sceneCloudPlan) painted into its own sprite at device scale k, once per bake (a frame only draws it).
  * Heaps and strips: overlapping lobes whose radial gradients fade to nothing (the soft edge: no outline), cut flat and soft
@@ -151,7 +171,7 @@ function sceneRendererCreate(canvas, src, o) {
   let cssW = canvas.clientWidth || 1600, cssH = canvas.clientHeight || 900, dpr = o.dpr || (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1);
   let S = null;            // the live baked state (bitmaps, draw lists); replaced whole by a re-bake
   let pending = null;      // a re-bake in progress { gen, target }
-  let raf = 0, running = false, destroyed = false, t0 = _sccNow();
+  let raf = 0, running = false, destroyed = false, t0 = _sccNow(), warming = false, warmed = null;
   const prof = {}, drawTimes = [], dynTimes = [], st = { bakeMs: 0, firstBakeMs: 0, bakes: 0, blitPx: 0, animatedDraws: 0 };
   const timeFn = o.time || (() => (_sccNow() - t0) / 1000), rid = ++_sccRid;
 
@@ -159,7 +179,8 @@ function sceneRendererCreate(canvas, src, o) {
   /** Device size of the backing store for a css size (dpr-aware, capped at 2560 x 1440). */
   const deviceSize = (w, h) => {
     let W = Math.max(1, Math.round(w * dpr)), H = Math.max(1, Math.round(h * dpr));
-    const k = Math.min(1, SCENE_BACKING_MAX[0] / W, SCENE_BACKING_MAX[1] / H);
+    // capped by pixel count, not by width, so ultrawide (21:9, 32:9) screens draw at their real resolution
+    const k = Math.min(1, Math.sqrt((SCENE_BACKING_MAX[0] * SCENE_BACKING_MAX[1]) / (W * H)));
     return [Math.max(1, Math.round(W * k)), Math.max(1, Math.round(H * k))];
   };
 
@@ -576,7 +597,7 @@ function sceneRendererCreate(canvas, src, o) {
       // the movers, y-sorted (actors and birds are placed now)
       let list = g.movers;
       if (!env) for (const m of list) {
-        if (m.kind === 'actor') { const p = sceneActorAt(m.actor, t); m.p = p; m.y = p.y; }
+        if (m.kind === 'actor') { const p = sceneActorAt(m.actor, t); p.face = _sccFace(m.actor, t, p, null); m.p = p; m.y = p.y; }
         else if (m.kind === 'bird') { const p = sceneFlockAt(m.flock, m.i, t); m.p = p; m.y = p.y; }
       }
       if (env) { const extra = []; sceneRunPasses(env, 'movers', [g, t, (m) => { if (m && typeof m.draw === 'function') extra.push(Object.assign({ kind: 'custom' }, m)); }], true); if (extra.length) list = list.concat(extra); }
@@ -594,20 +615,25 @@ function sceneRendererCreate(canvas, src, o) {
           const p = m.p, b = m.box, fl = p.dir < 0;
           const x0 = fl ? p.x - b[2] * p.s : p.x + b[0] * p.s, x1 = fl ? p.x - b[0] * p.s : p.x + b[2] * p.s;
           if (x1 * vs + ox < 0 || x0 * vs + ox > W || (p.y + b[1] * p.s) * vs + oy > below) return;
-          const M = [vs * p.s * (fl ? -1 : 1), 0, 0, vs * p.s, vs * p.x + ox, vs * p.y + oy];
+          if (!(p.s > 0) || (p.alpha != null && !(p.alpha > 0))) return;
+          // the facing (from -1 to 1: an actor turning round narrows through side-on) and the walk's swing (0 to 1: legs at rest
+          // while a scripted mover waits; sceneActorAt's go)
+          const fc = Number.isFinite(p.face) ? p.face : (fl ? -1 : 1), go = Number.isFinite(p.go) ? p.go : 1;
+          const M = [vs * p.s * fc, 0, 0, vs * p.s, vs * p.x + ox, vs * p.y + oy];
+          const hook = (h) => (m.kind === 'bird' ? Object.assign({}, h, { phase: p.phase }) : h.kind === 'walk' && go < 1 ? Object.assign({}, h, { deg: (h.deg || 22) * go, bob: (h.bob == null ? 1.5 : h.bob) * go }) : h);
           let bob = 0;
-          if (m.kind === 'actor') for (const pt of m.parts) if (pt.a && pt.a.kind === 'walk') { bob = sceneAnimPose(pt.a, t, Lx, p.x).bob || 0; break; }
+          if (m.kind === 'actor') for (const pt of m.parts) if (pt.a && pt.a.kind === 'walk') { bob = sceneAnimPose(hook(pt.a), t, Lx, p.x).bob || 0; break; }
           for (const pt of m.parts) {
             let A = _SC_ID, al = 1;
             if (pt.a) {
-              const a = m.kind === 'bird' ? Object.assign({}, pt.a, { phase: p.phase }) : pt.a, pose = sceneAnimPose(a, t, Lx, p.x);
+              const a = hook(pt.a), pose = sceneAnimPose(a, t, Lx, p.x);
               A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m;
               if (!pt.rest && pose.alphas) al = pose.alphas[pt.j || 0];   // a frames hook: one part at a time (an actor part never took the pose alpha)
             }
             if (al <= 0) continue;
             const MM = _scMul(M, A);
             if (pt.rest && bob) MM[5] += bob * vs * p.s;
-            if (drawSprite(ctx, pt.sp, MM, p.alpha * al)) draws++;
+            if (drawSprite(ctx, pt.sp, MM, (p.alpha == null ? 1 : p.alpha) * al)) draws++;
           }
         }
       };
@@ -631,6 +657,7 @@ function sceneRendererCreate(canvas, src, o) {
     if (F) flush();
     mark('weather');
     if (P) P.frames = (P.frames || 0) + 1;
+    if (warming) return;   // a warm-up frame (unseen, overdrawn at once): no stats, no governor
     const total = _sccNow() - tStart;
     drawTimes.push(total); dynTimes.push(Math.max(0, total - blit));
     if (drawTimes.length > 900) { drawTimes.splice(0, 300); dynTimes.splice(0, 300); }
@@ -648,6 +675,61 @@ function sceneRendererCreate(canvas, src, o) {
     st.bakeMs = Math.round((_sccNow() - a) * 10) / 10;
     if (!st.bakes) st.firstBakeMs = st.bakeMs;
     st.bakes++;
+    warmUp(S, true);
+  }
+  /**
+   * The warm-up after a bake, before the canvas shows (the host's onReady): every sprite and bitmap the scene can draw goes to
+   * the raster once (a GPU canvas uploads a sprite on its first draw: hundreds of uploads over the first frames were the lag at
+   * the start), at most _SCC_WARM_BYTES a step with a snapshot in between; then unseen frames at the sample times build what a
+   * frame builds on first sight (flow sprites for the next half minute's agents, shadow silhouettes, wakes); then the real
+   * frame. Each step ends with the real frame drawn over, so a re-bake's warm-up never shows. Stills skip it (o.warm false too).
+   * Always ends in o.onReady (once per bake).
+   */
+  function warmUp(state, eager) {
+    const done = () => {
+      if (warmed !== state) return;
+      warmed = true;
+      if (!destroyed && S === state && !running) frame(o.still ? 0 : timeFn());
+      if (o.onReady) try { o.onReady(); } catch (e) { /* the host's business */ }
+    };
+    warmed = state;
+    if (o.warm === false || o.still || typeof document === 'undefined') { done(); return; }
+    let list = null, i = 0, k = 0;
+    const later = eager ? _sccSoon : _sccIdle, now = () => (o.still ? 0 : timeFn());
+    const step = () => {
+      if (destroyed || S !== state || warmed !== state) return;
+      const a = _sccNow();
+      try {
+        if (!list) {
+          // first the passes' own first-sight work (the flows: the sprites of the agents of the next minute and a half)
+          if (state.env) { state.env.warming = true; try { sceneRunPasses(state.env, 'warm', [now()]); } finally { state.env.warming = false; } }
+          list = [state.sky, ...state.groups.map(g => g.c), ...state.sprites].filter(Boolean).map(x => (x.c !== undefined ? x.c : x)).filter(c => c && c.width && c.height);
+          later(step);
+          return;
+        }
+        if (i < list.length) {
+          ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+          let bytes = 0;
+          while (i < list.length && bytes < _SCC_WARM_BYTES) { const c = list[i++]; ctx.drawImage(c, 0, 0); bytes += c.width * c.height * 4; }
+          frame(now());
+          _sccFlushAsync(canvas).then(() => later(step));
+          return;
+        }
+        if (k < _SCC_WARM_T.length) {
+          const t = now();
+          warming = true;
+          if (state.env) state.env.warming = true;
+          try { while (k < _SCC_WARM_T.length && _sccNow() - a < SCENE_SLICE_MS) frame(t + _SCC_WARM_T[k++]); }
+          finally { warming = false; if (state.env) state.env.warming = false; }
+          frame(now());
+          if (k < _SCC_WARM_T.length) { later(step); return; }
+          _sccFlushAsync(canvas).then(done);
+          return;
+        }
+      } catch (e) { warming = false; if (state.env) state.env.warming = false; }
+      done();
+    };
+    later(step);
   }
   let rasterRetry = 0, rasterBake = false;
   function adopt(next, W, H) {
@@ -662,19 +744,31 @@ function sceneRendererCreate(canvas, src, o) {
     if (old) for (const g of old.groups) if (g.c && g.c !== null) { g.c.width = 0; }
     if (old && old.sky) old.sky.width = 0;
   }
-  /** Re-bake in idle slices (8 ms or less each) into new bitmaps; the old ones draw until the swap. */
-  function bakeLater(W, H) {
+  /**
+   * Re-bake in idle slices (8 ms or less each) into new bitmaps; the old ones draw until the swap. eager: the slices back to
+   * back (a scene about to show: frames still run in between), not in idle time. The compile is a slice of its own.
+   */
+  function bakeLater(W, H, eager) {
     if (pending) pending.cancel = true;
-    const job = { cancel: false, ms: 0 }, C = compile(), it = bake(W, H, L, C);
+    const job = { cancel: false, ms: 0, eager: !!eager }, next = () => (job.eager ? _sccSoon : _sccIdle);
     pending = job;
+    let it = null;
+    const fail = (e) => {
+      pending = null;
+      if (o.onError) { try { o.onError(e); } catch (e2) { /* the host's business */ } }
+      else if (typeof console !== 'undefined') console.warn('scene bake failed:', e && e.message);
+    };
     const step = () => {
       if (job.cancel || destroyed) return;
       const a = _sccNow();
-      let r = it.next();
-      while (!r.done && _sccNow() - a < SCENE_SLICE_MS) r = it.next();
+      let r;
+      try {
+        if (!it) { it = bake(W, H, L, compile()); r = { done: false }; }
+        else { r = it.next(); while (!r.done && _sccNow() - a < SCENE_SLICE_MS) r = it.next(); }
+      } catch (e) { fail(e); return; }
       const took = _sccNow() - a;
       job.ms += took; job.maxSlice = Math.max(job.maxSlice || 0, took);
-      if (!r.done) { _sccIdle(step); return; }
+      if (!r.done) { next()(step); return; }
       pending = null;
       adopt(r.value, W, H);
       st.bakeMs = Math.round(job.ms * 10) / 10; st.maxSliceMs = Math.round(job.maxSlice * 10) / 10;
@@ -682,12 +776,13 @@ function sceneRendererCreate(canvas, src, o) {
       st.bakes++;
       if (!running) frame(o.still ? 0 : timeFn());
       if (o.onBaked) try { o.onBaked(); } catch (e) { /* the host's business */ }
+      warmUp(S, job.eager);
     };
-    _sccIdle(step);
+    next()(step);
   }
   function loop() {
     if (!running) return;
-    frame(timeFn());
+    if (S) frame(timeFn());
     raf = requestAnimationFrame(loop);
   }
   const api = {
@@ -698,14 +793,16 @@ function sceneRendererCreate(canvas, src, o) {
     get waiting() { return rasterBake || (!!pending && !!S && !!S.rasterWait); },
     /** A bake is running in idle slices. */
     get baking() { return !!pending; },
-    /** The first bake in idle slices (gallery tiles: no long task while a page of tiles mounts). */
-    bakeIdle(w, h) { cssW = w || cssW; cssH = h || cssH; if (S || pending) return; const [W, H] = deviceSize(cssW, cssH); bakeLater(W, H); },
+    /** Baked and warmed up (every sprite sent to the raster, the first-sight work done): the canvas may show. */
+    get ready() { return !!S && warmed === true; },
+    /** The first bake in slices: in idle time (gallery tiles: no long task while a page of tiles mounts), or eager (a live scene about to show). */
+    bakeIdle(w, h, opt) { cssW = w || cssW; cssH = h || cssH; if (S || pending) return; const [W, H] = deviceSize(cssW, cssH); bakeLater(W, H, !!(opt && opt.eager)); },
     /** The css size of the box (the backing store follows: dpr-aware, capped). A resize re-bakes (in slices once there is a frame). */
     resize(w, h) {
       cssW = w || cssW; cssH = h || cssH;
       const [W, H] = deviceSize(cssW, cssH);
       if (S && S.W === W && S.H === H) return;
-      if (!S) { bakeSync(W, H); frame(o.still ? 0 : timeFn()); }
+      if (!S) { if (pending) bakeLater(W, H, pending.eager); else { bakeSync(W, H); frame(o.still ? 0 : timeFn()); } }
       else bakeLater(W, H);
     },
     /** A new light (sceneLight). Re-bakes only when the quantised light key changes. */
@@ -720,11 +817,11 @@ function sceneRendererCreate(canvas, src, o) {
     },
     setSeason(s) { if (!s || s === season) return; season = s; if (S) bakeLater(S.W, S.H); },
     setLod(k) { if (k == null || k === lod) return; lod = k; if (S) bakeLater(S.W, S.H); },
-    start() { if (running || destroyed) return; if (!S) api.resize(cssW, cssH); running = true; raf = requestAnimationFrame(loop); },
+    start() { if (running || destroyed) return; if (!S && !pending) api.resize(cssW, cssH); running = true; raf = requestAnimationFrame(loop); },
     stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; },
     get running() { return running; },
     /** Draw one frame at time t (seconds). The still (reduced motion, tiles) is frame(0). */
-    frame(t) { if (!S) api.resize(cssW, cssH); frame(t || 0); },
+    frame(t) { if (!S && !pending) api.resize(cssW, cssH); if (S) frame(t || 0); },
     /** Move this renderer to another canvas (a re-mounted host with the same key keeps its bitmaps). */
     attach(c2) {
       if (!c2 || c2 === canvas) return;
@@ -1017,13 +1114,24 @@ function _sccMoversNow(env, S, t, L) {
           try { const q = sceneActorAtV2(a, t, cam); if (q) p = { x: q.X != null ? q.X : q.x, y: q.Y != null ? q.Y : q.y, s: q.s, dir: q.dir != null ? q.dir : q.flip ? -1 : 1, alpha: q.alpha == null ? 1 : q.alpha, d: q.d }; } catch (e) { p = null; }
         }
         if (!p) p = sceneActorAt(a, t);
+        p.face = _sccFace(a, t, p, cam);
         m.p = p; m.y = p.y;
         const d = Number.isFinite(p.d) ? p.d : sceneCamDepthAt(cam, p.y);
-        env.actorsNow.push({ m, a, gi, x: p.x, y: p.y, s: p.s, dir: p.dir, alpha: p.alpha == null ? 1 : p.alpha, d, o: a.o, v: a.v, cls: a.cls || sceneObjClassOf(a.o),
+        env.actorsNow.push({ m, a, gi, x: p.x, y: p.y, s: p.s, dir: p.dir, face: p.face, alpha: p.alpha == null ? 1 : p.alpha, d, o: a.o, v: a.v, cls: a.cls || sceneObjClassOf(a.o),
           sp: m.parts && m.parts[0] ? m.parts[0].sp : null, box: m.box, speed: a.speed || 0 });
       } else if (m.kind === 'bird') { const p = sceneFlockAt(m.flock, m.i, t); m.p = p; m.y = p.y; }
     }
   });
+}
+/**
+ * An actor's facing now, from -1 to 1 (sceneActorFacing: a reversal in view turns over a.turn seconds instead of snapping
+ * round in one frame). p: its place now; cam: the v2 camera for an actor on the ground (else its path).
+ */
+function _sccFace(a, t, p, cam) {
+  if (typeof sceneActorFacing !== 'function') return p.dir;
+  const v2 = !!(cam && a.ground && typeof sceneActorAtV2 === 'function');
+  const pos = v2 ? (tt) => { try { const q = sceneActorAtV2(a, tt, cam); return { dir: q.dir != null ? q.dir : q.flip ? -1 : 1, s: q.s }; } catch (e) { return { dir: p.dir, s: 0 }; } } : (tt) => sceneActorAt(a, tt);
+  return sceneActorFacing(a, t, pos, { dir: p.dir, s: p.s });
 }
 /**
  * The quality governor (V2 13.2 item 9; never in stills, captures or o.governor === false): when the median dynMs over the
