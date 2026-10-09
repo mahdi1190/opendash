@@ -1,3 +1,15 @@
-/* Native scene objects for City of Fountains and the Liberty Memorial, Kansas City. */
-(function () {
-})();
+/* Native The Liberty Memorial and the fountains; original location subject, modeled facets and real detail.
+   Explicit placement only; draft scene stays under independent review. */
+(function(){const D=sceneD,F=n=>Math.round(n*10)/10;sceneObjDefine(Object.assign({"id":"landmark.us-kansas-city-fountain-tower","category":"landmark","weight":0,"size":[525,498],"variants":1,"seasonal":false,"shapeBySeason":false,"flippable":false,"parts":["body","jets","lit"],"palette":{"base":{"stone":["#d9c69c","#afa886","#6a7d76"],"snow":["#f4f0dd","#b9d8df","#7ea7c1"],"soil":["#88734e","#b7a171","#51483a"],"wood":["#8b523c","#be845c","#4c3a31"],"leaf":["#3b6849","#648851","#294b3b"],"metal":["#edf0e8","#a9bfc4","#587681"],"glass":["#2d657b","#88b7c9","#193c53"],"red":["#b35342","#d8835c","#783c37"],"white":"#f2f0df","black":"#1e333d","water":["#afd5d7","#729fae","#3f687c"],"light":"#ffe1a7"},"spring":{},"summer":{},"autumn":{"leaf":["#8d824a","#aea264","#59613f"]},"winter":{"stone":["#d4dedd","#b2c2c5","#788f9c"],"snow":["#f3f4eb","#d1e5e6","#9ebdcd"],"leaf":["#607a6e","#8ca094","#3d5a51"],"soil":["#c7d3d0","#dbe3df","#8ba09a"]}},"shadow":{"rx":178.5,"ry":8,"h":498},"reflect":true,"tags":["landmark","signature","place:us/place:kansas-city","us","us-midwest"],"anim":{"flicker":{"part":"jets","op":[0.64,0.94],"period":3.7}},"night":{"glow":{"window":"#ffe0a4","lamp":"#ffe6b5","lava":"#f36a26"},"on":0.8}}, {build(v,r,ctx){const body=[],lit=[],P=(f,d,op,detail)=>body.push({f,d,op,detail}),S=(s,w,d,op,detail)=>body.push({s,w,d,op,detail,cap:'round'}),W=(x,y,w,h)=>body.push({f:'@glass.1',d:D.rect(x,y,w,h),glow:'window',detail:true}),L=(f,d,op)=>lit.push({f,d,op});const extra=(function(D,F,P,S,W,L){const jets=[];
+ P('@stone.2','M-174 0V-19H-147V-42H-104V-69H104V-42H147V-19H174V0Z');P('@stone.0',D.rect(-146,-40,250,17));P('@stone.1',D.rect(-101,-69,202,28));
+ P('@stone.1','M-63-69L-48-444H48L63-69Z');P('@stone.0','M-63-69L-48-444H-12L-15-69Z');P('@stone.2','M20-69L14-444H48L63-69Z');
+ P('@stone.2',D.rect(-59,-456,118,15));P('@stone.0',D.rect(-62,-468,124,13));P('@stone.1','M-48-468L-39-490H39L48-468Z');
+ for(let i=0;i<38;i++){const y=-78-i*9.5,w=62-i*.37;S('@stone.2',.9,'M'+F(-w)+' '+F(y)+'h'+F(w*2),.53,i%3===0);}
+ for(let i=0;i<14;i++)S('@stone.0',1.3,'M'+F(-43+i*6.5)+' -435v354',.32,true);
+ for(let i=0;i<9;i++){const x=-49+i*11;P('@metal.2',D.rect(x,-452,5,10));W(x+1,-450,3,7);}
+ for(let i=0;i<5;i++)W(-27+i*12,-168,7,19);
+ for(const sg of[-1,1]){const x=sg*186;P('@stone.2',D.ell(x,-7,75,19));P('@stone.1',D.ell(x,-13,71,16));P('@water.1',D.ell(x,-15,61,11));P('@stone.0',D.ell(x,-34,33,7));P('@stone.1',D.rect(x-7,-34,14,25));
+  for(let i=0;i<7;i++){const ex=x-55+i*18; jets.push({s:i%2?'@water.0':'@white',w:i===3?2.8:1.2,op:.82,d:'M'+x+' -35Q'+F((x+ex)/2)+' '+F(-104+Math.abs(i-3)*9)+' '+ex+' -16'});}
+  L('#b7d5dc',D.ell(x,-16,60,10),.25);}
+ L('#b8c9c5','M-63-69L-48-444H-41L-50-69Z',.22);return{jets};
+})(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();

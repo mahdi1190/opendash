@@ -1,3 +1,19 @@
-/* Composed rebuild of us-midwest/ne-chimney-rock. Original artwork remains active until reviewed. */
-(function () {
-})();
+/* us-midwest/ne-chimney-rock: Chimney Rock on the Oregon Trail. Unique hand-placed composition, pending panel. */
+(function(){const SITE={"lat":41.26,"lon":-95.93};
+ const B=(o)=>({v:1,id:o.id,view:{lat:o.lat??SITE.lat,lon:o.lon??SITE.lon,heading:o.heading||110,fov:78,horizon:o.H||530},at:o.at||'golden',season:'auto',setting:o.setting||'natural',weather:'live',particles:'season',layers:SCENE_LAYERS_DEFAULT.map(l=>Object.assign({},l)),sky:{stars:180,clouds:{n:4,y:[65,(o.H||530)-230],speed:4},sunR:26,moonR:22},palette:{base:{hill:['#a2b6b5','#749496','#4e7477'],ground:['#789359','#526f45','#304c38'],path:['#c4b79b','#918d77'],sand:['#d2bd91','#b39d73','#8c7c5d'],rock:['#a0aaa6','#718687','#475e68'],water:['#aed0d5','#73a1b2','#365f7b']},spring:{ground:['#92ad65','#6e8f4d','#446a40']},summer:{ground:['#7e9a55','#55793f','#355b39']},autumn:{ground:['#a18d59','#78643d','#4d4c32'],hill:['#aeb6a6','#929b87','#687e76']},winter:{ground:['#d2dcd8','#afc3bf','#769996'],path:['#cdd9d5','#a3bbb8'],sand:['#d5d3c1','#bdbca6','#969f92'],hill:['#c0d2d4','#9bb8c0','#7298a8']}},ground:[],water:[],place:[],scatter:[],actors:[],flocks:[],camera:{pan:0,period:90}});
+ const G=(d,l,p,f)=>d.ground.push({layer:l,d:p,fill:f});
+ const P=(d,obj,x,y,s,layer,seed,extra={})=>d.place.push(Object.assign({obj,x,y,s,layer,seed},extra));
+ const W=(d,l,p,y0,y1,base=['#b3d1d4','#77a3b2','#365f7a'])=>d.water.push({layer:l,d:p,y0,y1,base,reflect:true,shimmer:32,lightPath:true});
+ const C=(d,areas,mix,n=190,seed=1103)=>areas.forEach((area,i)=>{d.scatter.push({obj:mix,layer:'fore',seed:seed+i*211,area,n:Math.round(n*.85),minGap:13,s:[.4,.8],variant:[0,1,2],flip:.5,anim:false,tint:{col:'#988c66',k:[0,.16]}});d.scatter.push({obj:'plant.us-lake-clover',layer:'near',seed:seed+701+i*149,area,n:18,minGap:31,s:[.44,.75],variant:[0,1],flip:.5,anim:'strip',tint:{col:'#77836a',k:[0,.16]}});});
+ const T=(d,l,area,n,seed,range=[.25,.7],mix={'tree.us-lake-paper-birch':2,'tree.us-loon-spruce':1})=>d.scatter.push({obj:mix,layer:l,area,n,seed,minGap:39,s:range,variant:[0,1],flip:.5,anim:false,reflect:true,tint:{col:'#9aaba6',k:[0,.16]}});
+ const A=(d,obj,path,s,speed,seed,layer='mid',offset=.2)=>d.actors.push({obj,path,s,speed,seed,layer,offset,loop:'loop',reflect:true});
+ const Life=(d,seed=3301,{coast=false,cold=false,city=false}={})=>{d.flocks.push({obj:coast?'bird.herring-gull-flight':'bird.goose-flight',n:9,area:[100,90,1520,(d.view.horizon||530)-115],speed:25,s:coast?.5:.4,seed,layer:'far'},{obj:cold?'bird.goose-flight':'animal.butterfly',n:6,area:cold?[200,125,1440,350]:[250,680,1390,820],speed:cold?20:9,s:cold?.3:.5,seed:seed+137,layer:cold?'far':'near'});P(d,'animal.rabbit',307,842,.7,'fore',seed+283);P(d,'animal.squirrel',1393,829,.7,'fore',seed+419);if(city)for(let i=0;i<3;i++)A(d,'person.walker',i%2?[[1750,789],[-150,789]]:[[-150,801],[1750,801]],scenePersonScale(sceneObj('person.walker').size[1],795,d.view),14+i*4,seed+557+i*103,'near',.12+i*.29);};
+
+ function compose(){return (function(){const d=B({id:'us-ne-chimney-rock',H:555,heading:265,at:'golden'});
+ d.palette.base.ground=['#a09a5a','#77783f','#4b5937'];G(d,'horizon','M-160 584Q250 536 642 566T1760 552V675H-160Z','@hill.0');G(d,'far','M-160 658Q247 593 586 642T1257 609T1760 632V900H-160Z','@sand.1');
+ P(d,'rock.us-ne-chimney-rock',791,679,.91,'mid',11113,{shadow:false});G(d,'mid','M-160 752Q238 677 590 730T1276 702T1760 714V900H-160Z','@ground.0');
+ G(d,'near','M276 900Q474 799 766 778Q980 761 1177 713L1231 714Q1024 794 781 811Q566 825 419 900Z','@path.0');G(d,'fore','M-160 900V826Q108 794 336 900ZM751 900Q1192 799 1760 822V900Z','@ground.2');
+ C(d,[{poly:[[-140,820],[423,828],[655,900],[-140,900]]},{poly:[[695,900],[1207,818],[1740,839],[1740,900]]}],{'plant.us-lake-meadow':3,'plant.us-lake-clover':1},215,11239);
+ A(d,'vehicle.us-ne-covered-wagon',[[1790,784],[-190,784]],.58,3,11329,'near',.45);A(d,'vehicle.us-ne-covered-wagon',[[1790,746],[-190,746]],.4,2.7,11369,'mid',.66);
+ Life(d,11411,{cold:true});return d;})();}
+ animRegionSceneUpgrade('us',"state:NE",{state:'draft',landmarks:["rock.us-ne-chimney-rock"],scene:compose});})();

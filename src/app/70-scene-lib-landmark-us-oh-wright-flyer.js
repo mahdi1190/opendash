@@ -1,3 +1,13 @@
-/* Native scene objects for The Wright Flyer over the fields, Ohio. */
-(function () {
-})();
+/* Native The Wright Flyer; original location subject, modeled facets and real detail.
+   Explicit placement only; draft scene stays under independent review. */
+(function(){const D=sceneD,F=n=>Math.round(n*10)/10;sceneObjDefine(Object.assign({"id":"prop.us-oh-wright-flyer","category":"prop","weight":0,"size":[406,258],"variants":1,"seasonal":false,"shapeBySeason":false,"flippable":false,"parts":["body","prop","lit"],"palette":{"base":{"stone":["#d5d4c7","#9aa8a4","#586d75"],"snow":["#f4f0dd","#b9d8df","#7ea7c1"],"soil":["#d6c8a5","#b9a67f","#8b7958"],"wood":["#b59c6b","#d1ba89","#6b604d"],"leaf":["#3b6849","#648851","#294b3b"],"metal":["#edf0e8","#a9bfc4","#587681"],"glass":["#2d657b","#88b7c9","#193c53"],"red":["#b35342","#d8835c","#783c37"],"white":"#f2f0df","black":"#1e333d","water":["#afd5d7","#729fae","#3f687c"],"light":"#ffe1a7"},"spring":{},"summer":{},"autumn":{"leaf":["#8d824a","#aea264","#59613f"]},"winter":{"stone":["#d4dedd","#b2c2c5","#788f9c"],"snow":["#f3f4eb","#d1e5e6","#9ebdcd"],"leaf":["#607a6e","#8ca094","#3d5a51"],"soil":["#c7d3d0","#dbe3df","#8ba09a"]}},"shadow":false,"reflect":true,"tags":["landmark","signature","place:us/state:OH","us","us-midwest","kit:vehicles","role:vehicle","natural","unlit"],"anim":{"bob":{"dy":1.4,"period":5.9},"spin":{"part":"prop","pivot":[39,-100.5],"period":0.4}}}, {build(v,r,ctx){const body=[],lit=[],P=(f,d,op,detail)=>body.push({f,d,op,detail}),S=(s,w,d,op,detail)=>body.push({s,w,d,op,detail,cap:'round'}),W=(x,y,w,h)=>body.push({f:'@glass.1',d:D.rect(x,y,w,h),glow:'window',detail:true}),L=(f,d,op)=>lit.push({f,d,op});const extra=(function(D,F,P,S,W,L){const prop=[];
+ P('@wood.2','M-374-124Q-171-164 221-143L380-111 342-77Q66-112-321-79Z');P('@white','M-369-128Q-105-160 222-143L372-114 342-93Q49-122-322-93Z');
+ P('@wood.2','M-371-23Q-122-65 234-43L379-12 340 14Q61-13-319 17Z');P('@soil.0','M-366-26Q-111-60 230-42L370-13 340 3Q53-22-320 5Z');
+ for(let i=0;i<31;i++){const x=-325+i*22.1;S('@wood.0',.85,'M'+F(x)+' '+F(-130-Math.sin(i/30*Math.PI)*12)+'l-10 32',.55,true);S('@wood.1',.85,'M'+F(x)+' '+F(-29-Math.sin(i/30*Math.PI)*13)+'l-10 31',.57,true);}
+ for(let i=0;i<8;i++){const x=-290+i*80;S('@wood.2',2.7,'M'+x+' -101L'+(x+5)+' -10');S('@wood.0',1,'M'+x+' -101L'+(x+85)+' -10M'+(x+80)+' -101L'+(x+5)+' -10',.78,true);}
+ S('@wood.2',3,'M-275 8L-215 29 247 18 291-1M-213 26L-149-57 141-53 246 18');
+ P('@wood.2','M-24-17L-31-61H34L43-17Z');P('@metal.1',D.rect(-22,-59,48,30,4));for(let i=0;i<8;i++)S('@metal.2',1,'M'+(-18+i*5)+' -56v24',.7,true);
+ P('@white','M-250-50L-369-53-382-30-258-27Z');P('@wood.2','M252-59L344-57 355-29 250-31Z');S('@wood.1',2,'M-258-41H-372M251-43H349');
+ prop.push({f:'@wood.1',d:'M70-67Q53-123 65-139Q85-101 80-67Q97-26 86-5Q65-33 70-67Z'},{f:'@metal.2',d:D.circ(75,-67,6)});
+ const view=q=>Object.assign({},q,{m:[.52,0,0,1.5,0,0]});return{body:body.map(view),prop:prop.map(view)};
+})(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();

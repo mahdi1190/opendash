@@ -1,3 +1,15 @@
-/* Native scene objects for Pumpjacks on the prairie at sunset, North Dakota. */
-(function () {
-})();
+/* Native The Bakken at sunset; original location subject, modeled facets and real detail.
+   Explicit placement only; draft scene stays under independent review. */
+(function(){const D=sceneD,F=n=>Math.round(n*10)/10;sceneObjDefine(Object.assign({"id":"landmark.us-nd-pumpjack","category":"landmark","weight":0,"size":[650,390],"variants":1,"seasonal":false,"shapeBySeason":false,"flippable":false,"parts":["body","beam","wheel","lit"],"palette":{"base":{"stone":["#d5d4c7","#9aa8a4","#586d75"],"snow":["#f4f0dd","#b9d8df","#7ea7c1"],"soil":["#88734e","#b7a171","#51483a"],"wood":["#8b523c","#be845c","#4c3a31"],"leaf":["#3b6849","#648851","#294b3b"],"metal":["#9ba9a0","#536b68","#263e43"],"glass":["#2d657b","#88b7c9","#193c53"],"red":["#94725a","#b29169","#5d4f44"],"white":"#f2f0df","black":"#1e333d","water":["#afd5d7","#729fae","#3f687c"],"light":"#ffe1a7"},"spring":{},"summer":{},"autumn":{"leaf":["#8d824a","#aea264","#59613f"]},"winter":{"stone":["#d4dedd","#b2c2c5","#788f9c"],"snow":["#f3f4eb","#d1e5e6","#9ebdcd"],"leaf":["#607a6e","#8ca094","#3d5a51"],"soil":["#c7d3d0","#dbe3df","#8ba09a"]}},"shadow":{"rx":221.00000000000003,"ry":8,"h":390},"reflect":true,"tags":["landmark","signature","place:us/state:ND","us","us-midwest"],"anim":{"sway":{"part":"beam","pivot":[-35,-283],"deg":7,"period":8},"spin":{"part":"wheel","pivot":[-79,-81],"period":8}},"night":{"glow":{"window":"#ffe0a4","lamp":"#ffe6b5","lava":"#f36a26"},"on":0.8}}, {build(v,r,ctx){const body=[],lit=[],P=(f,d,op,detail)=>body.push({f,d,op,detail}),S=(s,w,d,op,detail)=>body.push({s,w,d,op,detail,cap:'round'}),W=(x,y,w,h)=>body.push({f:'@glass.0',d:D.rect(x,y,w,h),glow:'window',detail:true}),L=(f,d,op)=>lit.push({f,d,op});const extra=(function(D,F,P,S,W,L,body,lit){const beam=[],wheel=[];
+ P('@metal.2',D.rect(-225,-13,452,16));P('@metal.1','M-151-13L-54-274-21-274 72-13H38L-37-235-118-13Z');
+ S('@metal.0',5,'M-137-39L-27-234M-115-91L1-172M-93-151L25-111M-68-213L47-49');
+ for(let i=0;i<13;i++){const y=-27-i*17;S('@metal.2',3,'M'+F(-147+(y+27)*-.36)+' '+y+'h'+F(196-(i*12)),.88);}
+ P('@metal.2',D.rect(-203,-88,94,75));P('@metal.0',D.rect(-209,-23,7,12));S('@metal.2',2,'M-213-10h19');P('@metal.1',D.rect(-197,-83,81,48));for(let i=0;i<12;i++)S('@metal.2',1.5,'M'+(-191+i*6)+' -80v36',.7,true);
+ for(let i=0;i<28;i++){const x=-205+i*15,y=i%2?-17:-9;P('@metal.0',D.circ(x,y,1.9),.76,true);}
+ beam.push({f:'@metal.2',d:'M-262-286L171-341 201-317-247-265Z'},{f:'@metal.1',d:'M-260-286L171-341 182-333-253-277Z'},
+  {f:'@red.2',d:'M171-341Q228-356 252-306Q270-265 238-225L203-237Q226-275 201-317Z'},{f:'@red.0',d:'M179-337Q220-340 242-301L231-299Q215-326 187-329Z'},
+  {s:'@metal.2',w:2,d:'M238-230V-35'},{f:'@metal.0',d:D.circ(-35,-283,14)});
+ for(let i=0;i<10;i++)beam.push({f:'@metal.0',d:D.circ(-235+i*43,-279-i*5.4,2),detail:true});
+ wheel.push({f:'@metal.2',d:D.circ(-79,-81,43)},{s:'@metal.1',w:6,d:D.circ(-79,-81,34)},{f:'@red.2',d:'M-79-81L-109-100Q-123-57-79-38Z'},{s:'@metal.0',w:6,d:'M-79-81L-55-112'});
+ L('#97b4c2','M-151-13L-54-274-45-274-139-13Z',.2);return{beam,wheel};
+})(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();

@@ -1,3 +1,10 @@
-/* Native scene objects for The Gateway Arch, St. Louis. */
-(function () {
-})();
+/* Native The Gateway Arch; original location subject, modeled facets and real detail.
+   Explicit placement only; draft scene stays under independent review. */
+(function(){const D=sceneD,F=n=>Math.round(n*10)/10;sceneObjDefine(Object.assign({"id":"landmark.us-st-louis-gateway-arch","category":"landmark","weight":0,"size":[520,556],"variants":1,"seasonal":false,"shapeBySeason":false,"flippable":false,"parts":["body","lit"],"palette":{"base":{"stone":["#d5d4c7","#9aa8a4","#586d75"],"snow":["#f4f0dd","#b9d8df","#7ea7c1"],"soil":["#88734e","#b7a171","#51483a"],"wood":["#8b523c","#be845c","#4c3a31"],"leaf":["#3b6849","#648851","#294b3b"],"metal":["#dce4dc","#96b3ba","#4f7684"],"glass":["#2d657b","#88b7c9","#193c53"],"red":["#b35342","#d8835c","#783c37"],"white":"#f2f0df","black":"#1e333d","water":["#afd5d7","#729fae","#3f687c"],"light":"#ffe1a7"},"spring":{},"summer":{},"autumn":{"leaf":["#8d824a","#aea264","#59613f"]},"winter":{"stone":["#d4dedd","#b2c2c5","#788f9c"],"snow":["#f3f4eb","#d1e5e6","#9ebdcd"],"leaf":["#607a6e","#8ca094","#3d5a51"],"soil":["#c7d3d0","#dbe3df","#8ba09a"]}},"shadow":{"rx":176.8,"ry":8,"h":556},"reflect":true,"tags":["landmark","signature","place:us/place:st-louis","us","us-midwest","natural"]}, {build(v,r,ctx){const body=[],lit=[],P=(f,d,op,detail)=>body.push({f,d,op,detail}),S=(s,w,d,op,detail)=>body.push({s,w,d,op,detail,cap:'round'}),W=(x,y,w,h)=>body.push({f:'@glass.1',d:D.rect(x,y,w,h),glow:'window',detail:true}),L=(f,d,op)=>lit.push({f,d,op});const extra=(function(D,F,P,S,W,L){
+ P('@metal.2','M-260 0C-246-222-152-552 0-556C151-552 245-222 260 0H219C202-209 130-511 0-520C-130-511-203-209-219 0Z');
+ P('@metal.0','M-260 0C-246-222-152-552 0-556C-140-541-224-211-238 0Z');
+ P('@metal.1','M0-556C151-552 245-222 260 0H242C228-213 143-539 0-556Z');
+ P('@metal.0','M0-520C130-511 202-209 219 0H226C210-217 132-524 0-532Z',.78);
+ for(let i=1;i<39;i++){const t=i/39,y=-556*(1-Math.pow(t,1.65)),x=260*t,th=10+31*t;for(const sg of[-1,1])S('@metal.2',.8,'M'+F(sg*x)+' '+F(y)+'l'+F(-sg*th)+' '+F(4+7*t),.62,i%2===0);}
+ for(const sg of[-1,1]){P('@metal.2',D.rect(sg*239-24,-7,48,9));L('#c4d6d8','M'+(sg*260)+' 0C'+F(sg*246)+' -222 '+F(sg*152)+' -552 0-556C'+F(sg*148)+' -543 '+F(sg*240)+' -215 '+F(sg*252)+' 0Z',.22);}
+})(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();

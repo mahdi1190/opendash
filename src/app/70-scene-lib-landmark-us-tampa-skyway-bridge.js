@@ -1,3 +1,14 @@
-/* Native scene objects for The Skyway bridge, Tampa. */
-(function () {
+/* A high white pylon and golden fan of stays over the broad Gulf bay. */
+(function(){const D=sceneD,R=n=>Math.round(n*10)/10;
+ sceneObjDefine({id:'landmark.us-tampa-skyway-bridge',category:'landmark',weight:0,size:[940,465],box:[-480,-465,480,12],variants:1,seasonal:false,flippable:false,parts:['body','lit'],palette:{base:{concrete:['#c7cdbb','#ede5c8','#8fa9a5'],cable:['#ceb377','#f3d28b','#998e62'],road:['#718d88','#b5baa0','#496b73']}},night:{glow:{lamp:'#ffe3a0',beacon:'#edb1a3'},on:1},reflect:true,tags:['landmark','place:us/place:tampa','us','cable-stay'],build(){const body=[],lit=[],P=(f,d,op)=>body.push({f,d,op}),S=(s,w,d,op)=>body.push({s,w,d,op,cap:'round'});
+  P('@concrete.2','M-67 8l39-270h56L69 8H40L14-245h-27L-40 8z');P('@concrete.0','M-65 8l39-270h23L-40 8z');P('@concrete.1','M-65 8l37-265h7L-51 8z');P('@concrete.0','M4-262h23L64 8H40z');P('@concrete.1','M4-262h9L50 8H40z');
+  P('@concrete.0','M-28-260v-180l12-22h32l12 22v180z');P('@concrete.1','M-28-260v-180l12-22h10v202z');P('@concrete.2','M14-450l14 10v180H14z');P('@road.2','M-12-430h17v165h-17z');P('@concrete.0',D.rect(-27,-322,54,13));P('@concrete.1',D.rect(-29,-324,56,4));
+  // Stay anchor height and the road parabola are computed together, in perspective.
+  for(const side of [-1,1])for(let i=0;i<22;i++){const ex=side*(56+i*19),ey=-138+Math.pow(Math.abs(ex)/460,1.45)*85,tx=side*22,ty=-429+i*.9;S('@cable.2',2.8,`M${tx} ${R(ty)}L${R(ex)} ${R(ey)}`,.75);S(i%3?'@cable.0':'@cable.1',1.55,`M${tx-1} ${R(ty)}L${R(ex-1)} ${R(ey-1)}`,.94);}
+  P('@road.2','M-470-50Q-230-124 0-138Q230-124 470-50v16Q230-108 0-122Q-230-108-470-34z');P('@road.0','M-470-56Q-230-130 0-144Q230-130 470-56v8Q230-122 0-136Q-230-122-470-48z');S('@concrete.1',3,'M-470-56Q-230-130 0-144Q230-130 470-56');S('@concrete.0',2,'M-470-35Q-230-109 0-123Q230-109 470-35');
+  for(let i=0;i<36;i++){const x=-461+i*26.3,y=-144+Math.pow(Math.abs(x)/470,1.45)*88;S('@concrete.0',1.5,`M${R(x)} ${R(y)}v-8`,.85);}
+  for(let i=0;i<16;i++){const x=-430+i*57.33,y=-144+Math.pow(Math.abs(x)/470,1.45)*88;S('@road.2',2.1,`M${R(x)} ${R(y)}v-18h8`);body.push({f:'#e9ddbb',d:D.rect(x+6,y-19,6,3),glow:'lamp'});}
+  for(const x of [-9,9])body.push({f:'#d7b7a0',d:D.ell(x,-459,2,2),glow:'beacon'});
+  lit.push({s:'#bfcece',w:1.6,op:.7,d:'M-65 8l39-270v-178l10-22h10M4-262h9L50 8'},{s:'#c5b17b',w:.8,op:.7,d:'M-22-428L-455-53M22-428L455-53'},{s:'#d6c397',w:1.5,op:.5,d:'M-470-56Q-230-130 0-144Q230-130 470-56'});return{body,lit};}});
+ sceneObjDefine({id:'structure.us-skyway-approach',category:'structure',weight:0,size:[740,130],box:[-10,-20,750,130],variants:2,seasonal:false,flippable:true,parts:['body'],palette:{base:{concrete:['#9eb5aa','#c8ccaf','#648b8c']}},reflect:true,tags:['kit:tropical','role:street','us','viaduct'],build(v){const body=[{f:'@concrete.2',d:'M0-9Q379 17 740 70v15Q379 32 0 6z'},{f:'@concrete.0',d:'M0-15Q379 11 740 64v8Q379 19 0-7z'},{s:'@concrete.1',w:2.1,d:'M0-16Q379 10 740 63'}];for(let i=0;i<9;i++){const x=37+i*83,y=11+x*x*.0001;body.push({f:'@concrete.2',d:D.rect(x,y,11,115-y)},{f:'@concrete.0',d:D.rect(x,y,4,115-y)},{s:'@concrete.1',w:1.2,d:`M${x-21} ${R(y-17)}v8m12-6v8m13-6v8`});}return{body};}});
 })();

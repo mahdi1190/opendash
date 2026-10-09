@@ -1,3 +1,13 @@
-/* Native scene objects for Mount Rushmore in the morning light, South Dakota. */
-(function () {
-})();
+/* Native Mount Rushmore; original location subject, modeled facets and real detail.
+   Explicit placement only; draft scene stays under independent review. */
+(function(){const D=sceneD,F=n=>Math.round(n*10)/10;sceneObjDefine(Object.assign({"id":"rock.us-sd-black-hills-granite","category":"rock","weight":0,"size":[1010,492],"variants":1,"seasonal":false,"shapeBySeason":false,"flippable":false,"parts":["body","lit"],"palette":{"base":{"stone":["#b8b7a6","#8c9b98","#5f7478"],"snow":["#f4f0dd","#b9d8df","#7ea7c1"],"soil":["#88734e","#b7a171","#51483a"],"wood":["#8b523c","#be845c","#4c3a31"],"leaf":["#3b6849","#648851","#294b3b"],"metal":["#edf0e8","#a9bfc4","#587681"],"glass":["#2d657b","#88b7c9","#193c53"],"red":["#b35342","#d8835c","#783c37"],"white":"#f2f0df","black":"#1e333d","water":["#afd5d7","#729fae","#3f687c"],"light":"#ffe1a7"},"spring":{},"summer":{},"autumn":{"leaf":["#8d824a","#aea264","#59613f"]},"winter":{"stone":["#d4dedd","#b2c2c5","#788f9c"],"snow":["#f3f4eb","#d1e5e6","#9ebdcd"],"leaf":["#607a6e","#8ca094","#3d5a51"],"soil":["#c7d3d0","#dbe3df","#8ba09a"]}},"shadow":{"rx":343.40000000000003,"ry":8,"h":492},"reflect":true,"tags":["landmark","signature","place:us/state:SD","us","us-midwest","kit:alpine","role:rock","natural"]}, {build(v,r,ctx){const body=[],lit=[],P=(f,d,op,detail)=>body.push({f,d,op,detail}),S=(s,w,d,op,detail)=>body.push({s,w,d,op,detail,cap:'round'}),W=(x,y,w,h)=>body.push({f:'@glass.1',d:D.rect(x,y,w,h),glow:'window',detail:true}),L=(f,d,op)=>lit.push({f,d,op});const extra=(function(D,F,P,S,W,L,body,lit,r){
+ P('@stone.2','M-505 0L-442-87-381-112-344-205-286-227-250-362-176-397-124-481-46-467-1-400 57-425 92-365 150-348 176-261 242-287 286-214 352-202 400-113 505 0Z');
+ P('@stone.1','M-505 0L-442-87-381-112-344-205-286-227-250-362-176-397-124-481-143-317-226-235-278-138-388-70Z');
+ P('@stone.0','M-124-481L-46-467-1-400-31-292-104-226-151-73-256 0-206-167-143-317Z');
+ P('@stone.1','M57-425L92-365 150-348 176-261 242-287 286-214 352-202 400-113 505 0 290-66 225-158 141-149 89-246Z');
+ P('@stone.0','M57-425L89-246 141-149 176-261 150-348 92-365Z');P('@stone.2','M-46-467L-1-400-31-292-104-226-151-73-107-198-58-289Z');
+ const planes=[[-386,-83,107,-91],[-278,-166,79,-93],[-204,-288,67,-94],[-127,-353,56,-114],[5,-204,94,-136],[124,-180,90,-89],[260,-96,101,-88]];
+ for(const [x,y,w,h] of planes){P('@stone.2','M'+x+' '+y+'l'+F(w*.43)+' '+h+' '+F(w*.51)+' '+F(h*.42)+' '+F(-w*.27)+' '+F(-h*.65)+'Z',.44);for(let i=0;i<9;i++){const xx=x+i*w/10,yy=y-(i%3)*13;S(i%3?'@stone.2':'@stone.0',.8,'M'+F(xx)+' '+F(yy)+'q'+F(7+r()*9)+' '+F(-21-r()*18)+' '+F(11+r()*14)+' '+F(-40-r()*29),.65,true);}}
+ for(let i=0;i<28;i++){const x=-411+r()*810,y=-12-r()*62;S('@stone.2',1.2,'M'+F(x)+' '+F(y)+'q'+F(13+r()*24)+' -9 '+F(27+r()*25)+' -7',.48,true);}
+ L('#b9cbd1','M-124-481L-46-467-1-400-8-391-52-453-125-468-164-386-173-391Z',.22);L('#a6c0c8','M57-425L92-365 150-348 154-332 84-354 49-413Z',.2);
+})(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();

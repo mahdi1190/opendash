@@ -1,3 +1,11 @@
-/* Native scene objects for Temple and Wasatch at dusk, Salt Lake City. */
-(function () {
+/* Native location-specific architecture. */
+(function(){if(typeof sceneObjDefine!=='function')return;const D=sceneDraw;
+
+sceneObjDefine({id:'landmark.us-salt-lake-temple',category:'landmark',weight:0,size:[858,486],variants:1,seasonal:false,shapeBySeason:true,flippable:false,parts:['body','lit'],palette:{base:{stone:['#c3c6b8','#a5b2a7','#7e9791','#e0ddc9'],glass:'#71958f'}},night:{glow:{window:'#e8d0a0',lamp:'#f3dcaa'},on:.8},shadow:{rx:298,ry:9,h:280},tags:['landmark','us','place:us/place:salt-lake-city'],build(v,r,ctx){const body=[],lit=[];
+body.push({f:'@stone.1',d:'M-399 0V-204L-320-225-234-198-143-226 0-203 143-226 234-198 320-225 399-204V0z'},{f:'@stone.2',d:'M336 0V-212L399-204V0z'},{f:'@stone.3',d:'M-417-205L-320-235-234-208-143-236 0-213 143-236 234-208 320-235 417-205 401-192 320-220 234-193 143-221 0-198-143-221-234-193-320-220-401-192z'});
+for(const[x,h,w]of [[-324,343,48],[-257,423,62],[-187,365,44],[187,391,44],[257,478,62],[324,403,48]]){const y=-h*.62;body.push({f:'@stone.0',d:D.poly([[x-w/2,0],[x-w/2,y],[x-w*.36,y-14],[x-w*.36,y-45],[x,y-(h+y)],[x+w*.36,y-45],[x+w*.36,y-14],[x+w/2,y],[x+w/2,0]])},{f:'@stone.2',d:D.poly([[x,0],[x,y-2],[x,-h],[x+w*.36,y-45],[x+w*.36,y-14],[x+w/2,y],[x+w/2,0]])},{s:'@stone.3',w:3,d:`M${x-w*.6} ${y+4}H${x+w*.6}M${x-w*.42} ${y-43}H${x+w*.42}`});
+for(let yy=y+24;yy<-24;yy+=33){body.push({f:'@stone.2',d:`M${x-9} ${yy+24}V${yy+5}q9-16 18 0v19z`},{f:'@glass',d:`M${x-5} ${yy+21}V${yy+6}q5-9 10 0v15z`,glow:'window'});}for(let yy=y+15;yy<-4;yy+=14)body.push({s:'@stone.2',w:.8,op:.5,d:`M${x-w/2+2} ${yy}H${x+w/2-2}`,detail:true});if(ctx.season==='winter')body.push({s:'#e8ebdf',w:3,d:`M${x-w*.6} ${y+2}H${x+w*.6}`});}
+for(const x of [-362,-122,-82,82,122,362]){body.push({f:'@stone.2',d:`M${x-12}-16v-107q12-30 24 0v107z`},{f:'@glass',d:`M${x-7}-18v-103q7-19 14 0v103z`,glow:'window'},{s:'@stone.0',w:2,d:`M${x}-134v116M${x-7}-80h14`});}
+body.push({f:'@stone.2',d:'M-38 0v-99q38-66 76 0V0z'},{f:'@glass',d:'M-27-2v-94q27-47 54 0v94z',glow:'window'},{s:'@stone.3',w:4,d:'M-43 0v-100q43-78 86 0V0M0-140V0'});
+for(let y=-177;y<-8;y+=14)body.push({s:'@stone.2',w:.8,op:.5,d:`M-393 ${y}H-352M-165 ${y}H-44M44 ${y}H165M352 ${y}H393`,detail:true});for(const x of [-145,145])body.push({f:'@stone.0',d:D.rect(x-4,-219,8,217)},{f:'@stone.3',d:D.rect(x-7,-218,14,6)});body.push({f:'@stone.2',d:'M-425 0v-10h850V0z'},{s:'@stone.3',w:4,d:'M-420-10H420'});return{body,lit};}});
 })();

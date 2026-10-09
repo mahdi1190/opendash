@@ -1,3 +1,11 @@
-/* Native scene objects for Dunes on Lake Michigan, Indiana. */
-(function () {
-})();
+/* Native The Indiana Dunes at sunrise; original location subject, modeled facets and real detail.
+   Explicit placement only; draft scene stays under independent review. */
+(function(){const D=sceneD,F=n=>Math.round(n*10)/10;sceneObjDefine(Object.assign({"id":"rock.us-in-dunes","category":"rock","weight":0,"size":[940,270],"variants":1,"seasonal":true,"shapeBySeason":true,"flippable":false,"parts":["body","lit"],"palette":{"base":{"stone":["#d5d4c7","#9aa8a4","#586d75"],"snow":["#f4f0dd","#b9d8df","#7ea7c1"],"soil":["#d9c695","#b7a377","#8a7959"],"wood":["#8b523c","#be845c","#4c3a31"],"leaf":["#3b6849","#648851","#294b3b"],"metal":["#edf0e8","#a9bfc4","#587681"],"glass":["#2d657b","#88b7c9","#193c53"],"red":["#b35342","#d8835c","#783c37"],"white":"#f2f0df","black":"#1e333d","water":["#afd5d7","#729fae","#3f687c"],"light":"#ffe1a7"},"spring":{},"summer":{},"autumn":{"soil":["#b9ac88","#9f926f","#776d54"],"leaf":["#8d824a","#aea264","#59613f"]},"winter":{"stone":["#d4dedd","#b2c2c5","#788f9c"],"snow":["#f3f4eb","#d1e5e6","#9ebdcd"],"leaf":["#607a6e","#8ca094","#3d5a51"],"soil":["#e1e5db","#bbc9c2","#8ca69e"]}},"shadow":{"rx":319.6,"ry":8,"h":270},"reflect":true,"tags":["landmark","signature","place:us/state:IN","us","us-midwest","natural","kit:temperate","role:rock"]}, {build(v,r,ctx){const body=[],lit=[],P=(f,d,op,detail)=>body.push({f,d,op,detail}),S=(s,w,d,op,detail)=>body.push({s,w,d,op,detail,cap:'round'}),W=(x,y,w,h)=>body.push({f:'@glass.0',d:D.rect(x,y,w,h),glow:'window',detail:true}),L=(f,d,op)=>lit.push({f,d,op});const extra=(function(D,F,P,S,W,L,body,lit,r,ctx){
+ P('@soil.1','M-470 0Q-386-47-311-88Q-250-117-198-105Q-116-207-22-227Q59-260 124-236Q177-205 223-163Q330-113 470 0Z');
+ P('@soil.0','M-470 0Q-310-86-198-105Q-103-171-22-227Q-41-151 38-125Q117-75 243-55L470 0Z');
+ P('@soil.2','M124-236Q167-202 223-163Q330-113 470 0Q297-28 228-72Q152-139 124-236Z',.76);
+ P('@soil.1','M-470 0Q-282-35-161-49Q-27-23 90-18Q285-34 470 0Z');
+ for(let i=0;i<40;i++){const t=i/40,y=-13-t*180,x=-360+t*384,w=525-t*338;S(i%3?'@soil.0':'@soil.2',.8+(i%3)*.35,'M'+F(x)+' '+F(y)+'Q'+F(x+w*.42)+' '+F(y-9-t*7)+' '+F(x+w)+' '+F(y+10),.3,i%2===0);}
+ for(let i=0;i<22;i++){const x=-415+i*39+(r()-.5)*13,y=-4-r()*19;S('@leaf.0',1.1,'M'+F(x)+' '+F(y)+'q-5-20-14-26M'+F(x)+' '+F(y)+'q2-26 11-34',.85,i>8);P('@leaf.1',D.leaf(x,y,-67,16+r()*12,2.3),.7,true);}
+ L('#b9d3d6','M-198-105Q-103-171-22-227Q59-260 124-236L112-230Q53-245-16-215Q-94-164-190-99Z',.2);
+})(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();
