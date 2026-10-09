@@ -533,8 +533,10 @@ function _stBuild() {
   _stPaintProgress();
 }
 function _stCanPrepareVoice() {
-  const p = storyPrefs(), nar = storyNarrator();
-  return !p.muted && typeof nar.prepare === 'function' && typeof nar.canPrepare === 'function' && nar.canPrepare();
+  const p = storyPrefs();
+  if (p.muted || p.narration.provider !== 'elevenlabs') return false;
+  const nar = storyNarrator();
+  return typeof nar.prepare === 'function' && typeof nar.canPrepare === 'function' && nar.canPrepare();
 }
 function _stCancelVoicePreparation() {
   const previous = _story.voicePreparation;
