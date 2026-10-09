@@ -83,8 +83,8 @@ function sceneUkWyndhamsPoolClose() {
       // the reed bed in the left foreground: three bands, bigger and nearer down the picture, moving in the wind
       { obj: { 'plant.reed': 3, 'plant.bulrush': 2 }, layer: 'near', seed: 124, area: { poly: [[-160, 600], [240, 610], [240, 690], [-160, 690]] }, n: 34, minGap: 11, s: [0.6, 0.9], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), anim: false },
       { obj: { 'plant.reed': 3, 'plant.bulrush': 2 }, layer: 'fore', seed: 125, area: { poly: [[-160, 720], [380, 720], [380, 820], [-160, 820]] }, n: 34, minGap: 14, s: [0.9, 1.4], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), anim: 'strip' },
-      { obj: { 'plant.reed': 3, 'plant.bulrush': 2 }, layer: 'front', seed: 126, area: { poly: [[-160, 840], [300, 840], [300, 920], [-160, 920]] }, n: 26, minGap: 18, s: [1.5, 2.1], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), anim: 'strip' },
-      { obj: 'plant.reed', layer: 'front', seed: 127, area: { poly: [[300, 866], [560, 866], [560, 930], [300, 930]] }, n: 10, minGap: 22, s: [1.3, 1.7], flip: 0.5, variant: [0, 1], anim: 'strip' },
+      { obj: { 'plant.reed': 3, 'plant.bulrush': 2 }, layer: 'front', seed: 126, area: { poly: [[-160, 880], [300, 880], [300, 960], [-160, 960]] }, n: 26, minGap: 18, s: [1.5, 2.1], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), anim: 'strip' },
+      { obj: 'plant.reed', layer: 'front', seed: 127, area: { poly: [[300, 890], [560, 890], [560, 960], [300, 960]] }, n: 10, minGap: 22, s: [1.3, 1.7], flip: 0.5, variant: [0, 1], anim: 'strip' },
       { obj: 'plant.bulrush', layer: 'front', seed: 128, area: { poly: [[900, 856], [1080, 856], [1080, 930], [900, 930]] }, n: 9, minGap: 20, s: [1.3, 1.7], flip: 0.5, variant: [0, 1], anim: 'strip' },
       // the bank's front edge: tall grass and flowers swaying
       { obj: { 'plant.grass': 6, 'plant.wildflowers': 2 }, layer: 'front', seed: 129, area: { poly: [[1080, 880], [1760, 860], [1760, 912], [1060, 912]] }, n: 80, minGap: 12, s: [0.9, 1.4], flip: 0.5, variant: 2, tint: T('#8a7a40'), anim: 'strip' },
