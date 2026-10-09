@@ -201,6 +201,7 @@ classic `<script>`. That means:
 | Brief rules: `briefDayType` (deadline / meetings / light / travel / weekend / off / normal -> layout, tone, accent), `briefHeadline`, `briefGaps`, `briefOrchestrate` (the auto-refresh), `briefRollover`, `briefStreak`, `reviewWeekStats`, `reviewCapacity`. PURE | `73-brief-logic.js` | Brief + Review |
 | Morning brief (`#view=review:today`): auto-open on the first visit of the day, background refresh through the existing jobs, weather sky, kinetic text, scenes, AI "day in 3 sentences"; shared page helpers `animSceneHtml`, `animForEvent`, `animForTask`, `animActivate` (at most 6 live scenes, paused while hidden), `briefSkyHtml`, `briefPrefs` | `74-brief-ui.js`, `styles/74-brief.css` | Brief + Review |
 | Story engine: the full-screen read-aloud stories (`window.Story.open('morning'\|'evening'\|'week')`), beat timeline, Web Speech narrator, kinetic type kit, people of the day | `79-story-core.js` (pure), `79-story-engine.js`, `styles/79-story.css` | Story engine |
+| Optional ElevenLabs narration: private connection, allowance accounting, cached audio, delivery cues and preparation before playback | `79-story-narrator.js`, `79-story-voice.js`, `styles/79-story-narrator.css`, `styles/79-story-voice.css`, `lib/narration.mjs`, `server/routes/narration.mjs` | Story engine |
 | Morning story ("Start my day"): greeting + weather, the day in sentences with entity chips and a hero scene that follows the voice, timeline, people today, focus three, deadlines + countdowns + money, ideas + Let's go; order, palette and pace by kind of day; `storyStartMyDay()` | `79-story-morning-logic.js` (pure), `79-story-morning.js`, `styles/79-story-morning.css` | Morning story |
 | Evening story ("Finish the day"): done today with per-kind celebrations, people you met (notes, follow-ups, a nudge), what slipped with inline roll-over and why, tomorrow + top 3, today in one line + mood + journal, dusk-to-night outro that saves the recap; `storyFinishTheDay()`, `storyEveningDue()` | `79-story-evening.js`, `styles/79-story-evening.css` | Evening story |
 | Weekly story ("Week in review"): week in numbers, the week in sentences, wins montage, stream progress, people of the week, slipped and why with fixes, next week against capacity with a rebalance, three outcomes into the guided review, hand-off + Save to History; `storyWeekOnEnter()`, `storyWeekFromPrompt()` | `79-story-weekly-model.js` (pure), `79-story-weekly.js`, `styles/79-story-weekly.css` | Weekly story |
@@ -852,10 +853,20 @@ Morning brief, `lib/brief-config.mjs` `brief.story`.
   day's script quietly once per kind and day (`storyPrefetchDue`), never while the
   welcome set-up is open or before it on a new, empty data folder
   (`tests/fresh-install.test.mjs`).
-- **Narration**: `speechSynthesis` only (offline system voices), en-GB natural > en-GB
+- **Narration**: defaults to `speechSynthesis` (offline system voices), en-GB natural > en-GB
   > English; word `boundary` events highlight the caption, timed fallback without
   them; no voices / muted / speech that never starts -> silent timed captions.
   Pauses when the tab is hidden, cancels on close.
+- **ElevenLabs**: opt in through Settings > Home and stories. `79-story-narrator.js`
+  prepares every eligible clip before starting the timeline and shares requests with
+  playback; `79-story-engine.js` keeps the playing script stable and offers later
+  Claude rewrites for replay. Delivery is bounded `{tone, pace, pauseMs}` data,
+  separate from captions. `/api/narration/status`, `/settings`, `/voices`, `/speech`
+  and `/audio?id=` use the normal same-origin router. `lib/narration.mjs` owns the
+  fixed provider origin, account and monthly limits, request reservations and
+  content-addressed audio cache. Credentials and usage live in `<data>/secrets/`,
+  audio in `<data>/cache/narration/`; exports omit both. Browser speech handles
+  unavailable clips without delaying each beat with another generation attempt.
 
 ### Morning story (owner: Morning story)
 

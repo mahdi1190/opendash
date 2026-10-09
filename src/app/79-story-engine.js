@@ -28,8 +28,8 @@
    Stage layers (z order): .st-bg (sky + palette tint) .st-scene .st-type .st-cards,
    then caption, controls and progress. Phase classes on each frame:
    .is-enter -> .is-hold -> .is-exit. Reduced motion / animations off: .st-still
-   (static, instant text). The tab hidden: playback pauses. Narration: Web Speech
-   API with the Settings > Home and stories voice; silent timed captions without voices.
+   (static, instant text). The tab hidden: playback pauses. ElevenLabs clips are
+   prepared before the timeline starts; browser speech and silent captions are fallbacks.
    ============================================================ */
 const STORY_BUILDERS = {};
 const STORY_BEAT_TYPES = {};
@@ -48,7 +48,10 @@ function storyRegisterKind(kind, src) {
 const _story = {
   open: false, kind: null, root: null, tl: null, narrator: null, payload: null, beats: [], frames: [], cleanups: [],
   words: [], capWords: [], hot: new Set(), autoPaused: false, seq: 0, aiBusy: false, lastFocus: null, keyFn: null, ui: null,
+  voicePreparation: null, playRequest: null, nextVoiceBeats: null, scriptJob: null,
 };
+let _storyVoiceWarm = null;
+const _storyVoiceWarmKeys = new Map();
 function storyRegisterBuilder(kind, build) { if (kind && typeof build === 'function') STORY_BUILDERS[kind] = build; }
 function storyRegisterBeatType(type, render) { if (type && typeof render === 'function') STORY_BEAT_TYPES[type] = render; }
 function storyIsOpen() { return _story.open; }
@@ -79,6 +82,7 @@ function storyPrefs() {
     // This session's mute (the M key) wins over the default until the next day.
     muted: ui.mutedFor === todayStrSafe() ? !!ui.muted : s.voice === false,
     model: s.model || 'claude-haiku-4-5',
+    narration: s.narration || { provider: 'browser', scope: 'all' },
   };
 }
 function _stSaveUi(patch) {
@@ -92,13 +96,36 @@ function _stSynth() { return typeof window !== 'undefined' && window.speechSynth
 function storyNarrator() {
   if (!_story.narrator) {
     const p = storyPrefs();
-    _story.narrator = storyCreateNarrator({ synth: _stSynth(), Utterance: window.SpeechSynthesisUtterance || null, prefs: { voiceName: p.voiceName, rate: p.rate, pitch: p.pitch, volume: p.volume } });
+    const prefs = { voiceName: p.voiceName, rate: p.rate, pitch: p.pitch, volume: p.volume };
+    const browser = storyCreateNarrator({ synth: _stSynth(), Utterance: window.SpeechSynthesisUtterance || null, prefs });
+    _story.narrator = typeof storyCreateCloudNarrator === 'function' ? storyCreateCloudNarrator({
+      fallback: browser, prefs, getConfig: () => storyPrefs().narration,
+      onFallback: (e) => {
+        if (!_story.open || _story.voiceFallback) return;
+        _story.voiceFallback = true;
+        toast(((e && e.message) || 'ElevenLabs is unavailable.') + ' Using the browser voice.', { kind: 'note' });
+      },
+    }) : browser;
   } else {
     const p = storyPrefs();
     _story.narrator.setPrefs({ voiceName: p.voiceName, rate: p.rate, pitch: p.pitch, volume: p.volume });
   }
   return _story.narrator;
 }
+if (typeof window !== 'undefined') window.addEventListener('story-voice-settings-changed', (e) => {
+  const s = e.detail;
+  if (!s || !APP_CONFIG) return;
+  if (!APP_CONFIG.brief) APP_CONFIG.brief = {};
+  if (!APP_CONFIG.brief.story) APP_CONFIG.brief.story = {};
+  APP_CONFIG.brief.story.narration = { provider: s.provider, voiceId: s.voiceId, modelId: s.modelId, scope: s.scope, monthlyLimit: s.monthlyLimit };
+  _story.voiceFallback = false;
+  _stCancelVoicePreparation();
+  if (_storyVoiceWarm) _storyVoiceWarm.controller.abort();
+  _storyVoiceWarmKeys.clear();
+  if (_story.narrator) storyNarrator();
+  if (_story.tl) _story.tl.refresh();
+  else if (_story.open && _story.payload) _stPrepareVoice();
+});
 /* Voices load late in Chromium: refresh the Settings picker when they arrive. */
 if (typeof window !== 'undefined' && window.speechSynthesis && typeof window.speechSynthesis.addEventListener === 'function') {
   window.speechSynthesis.addEventListener('voiceschanged', () => { const sel = document.querySelector('[data-story-voices]'); if (sel && typeof _stFillVoices === 'function') _stFillVoices(sel); });
@@ -359,7 +386,7 @@ storyRegisterBeatType('closing', (f, b, ctx) => {
   const acts = document.createElement('div'); acts.className = 'st-close-acts';
   const btn = (label, ic, run, primary) => { const x = document.createElement('button'); x.type = 'button'; x.className = 'btn ' + (primary ? 'btn-primary' : 'btn-secondary') + ' btn-lg'; x.innerHTML = (ic ? (ic === 'play' ? _stIcon('play') : icon(ic)) : '') + `<span>${esc(label)}</span>`; x.addEventListener('click', run); acts.appendChild(x); return x; };
   btn('Open details', 'external-link', () => storyOpenDetails(), true);
-  btn('Replay', 'rotate-ccw', () => _story.tl && _story.tl.replay());
+  btn('Replay', 'rotate-ccw', () => STORY_PLAYER.replay());
   btn('Close', 'x', () => storyClose());
   f.cards.appendChild(acts);
 });
@@ -396,6 +423,8 @@ function _stStageHtml(kind) {
         <div class="st-over st-poster-over">${esc(STORY_LABELS[kind] || 'Story')}</div>
         <h2 class="st-poster-h"><span class="skeleton skeleton-text" style="width:12ch"></span></h2>
         <p class="st-poster-sub"></p>
+        <p class="st-voice-preparation" role="status" aria-live="polite" hidden></p>
+        <progress class="st-voice-progress" aria-label="Voice clips prepared" hidden></progress>
         <button type="button" class="st-bigplay" aria-label="Play the story">${_stIcon('play')}<span>Play</span></button>
         <div class="st-poster-opts">
           <label class="st-readaloud"><input type="checkbox" class="st-ra"> Read it out</label>
@@ -403,6 +432,7 @@ function _stStageHtml(kind) {
         </div>
       </div>
     </div>
+    <p class="st-narration-state" role="status" aria-live="polite" hidden></p>
     <p class="st-attrib" hidden></p>`;
 }
 function _stBg(p, beat) {
@@ -436,9 +466,11 @@ async function storyOpen(kind, opts) {
     return;
   }
   if (_story.open) storyClose({ quiet: true });
+  if (_storyVoiceWarm) _storyVoiceWarm.controller.abort();
   const seq = ++_story.seq;
   const src = STORY_SOURCES[kind] || null;
-  _story.open = true; _story.kind = kind; _story.variant = variant; _story.payload = null; _story.autoPaused = false; _story.fresh = false; _story.aiBusy = false;
+  _story.open = true; _story.kind = kind; _story.variant = variant; _story.payload = null; _story.autoPaused = false; _story.fresh = false; _story.aiBusy = false; _story.voiceFallback = false;
+  _story.voicePreparation = null; _story.playRequest = null; _story.nextVoiceBeats = null; _story.scriptJob = null;
   _story.lastFocus = document.activeElement;
   const root = document.createElement('div');
   root.className = 'story is-loading' + (storyReduced() ? ' st-still' : '');
@@ -451,6 +483,7 @@ async function storyOpen(kind, opts) {
   _story.root = root;
   _stWire(root);
   const prefs = storyPrefs();
+  if (opts.autoplay === true && !prefs.muted) storyNarrator().prime();
   _stSyncControls();
   root.querySelector('.st-ra').checked = !prefs.muted;
   requestAnimationFrame(() => root.classList.add('is-in'));
@@ -479,7 +512,8 @@ async function storyOpen(kind, opts) {
   if (payload.data && payload.data.weather && payload.data.weather.attribution) {
     const a = root.querySelector('.st-attrib'); a.hidden = false; a.textContent = payload.data.weather.attribution.text || '';
   }
-  _stMaybeAi(false);
+  _story.scriptJob = _stMaybeAi(false);
+  _stPrepareVoice();
   // Opened by a click (palette, a button): play straight away; the auto-open waits for Play.
   const gesture = opts.autoplay !== false && (opts.autoplay === true || (navigator.userActivation && navigator.userActivation.isActive));
   if (gesture) storyPlay();
@@ -492,10 +526,92 @@ function _stBuild() {
   catch (e) { console.error('[story] builder', e); beats = []; }
   beats = beats.filter(b => b && b.id);
   if (!beats.length) beats = [{ id: 'close', type: 'closing', text: p.script && p.script.closing || 'Nothing to show yet.', say: '' }];
+  if (typeof storyVoiceBeats === 'function') beats = storyVoiceBeats(beats, p);
   _story.beats = beats;
   _story.ctx = ctx;
   _stBg(p, beats[0]);
   _stPaintProgress();
+}
+function _stCanPrepareVoice() {
+  const p = storyPrefs(), nar = storyNarrator();
+  return !p.muted && typeof nar.prepare === 'function' && typeof nar.canPrepare === 'function' && nar.canPrepare();
+}
+function _stCancelVoicePreparation() {
+  const previous = _story.voicePreparation;
+  _story.voicePreparation = null;
+  if (previous) previous.controller.abort();
+  _stVoicePreparationUi();
+}
+function _stVoicePreparationUi() {
+  const root = _story.root; if (!root) return;
+  const preparation = _story.voicePreparation, busy = !!(preparation && !preparation.done);
+  const progress = preparation && preparation.progress;
+  const label = root.querySelector('.st-voice-preparation'), meter = root.querySelector('.st-voice-progress');
+  const button = root.querySelector('.st-bigplay'), span = button && button.querySelector('span');
+  root.classList.toggle('is-preparing-voice', busy);
+  if (!_story.tl) root.dataset.state = busy ? 'preparing' : 'idle';
+  if (label) {
+    label.hidden = !preparation;
+    label.textContent = busy ? preparation.waitingForScript ? 'Claude is writing your narration…'
+      : progress && progress.total ? `Preparing ElevenLabs voice · ${progress.completed} of ${progress.total} clips`
+      : 'Preparing ElevenLabs voice…'
+      : progress && progress.failed ? progress.total ? `${progress.total - progress.failed} voice clips ready · ${progress.failed} ${progress.failed === 1 ? 'moment uses' : 'moments use'} the browser voice`
+      : 'ElevenLabs unavailable · using the browser voice'
+      : 'ElevenLabs voice ready';
+  }
+  if (meter) {
+    meter.hidden = !busy || !progress || !progress.total;
+    meter.max = progress && progress.total || 1;
+    meter.value = progress && progress.completed || 0;
+  }
+  if (button) {
+    button.setAttribute('aria-busy', busy ? 'true' : 'false');
+    const requested = !!_story.playRequest;
+    if (span) span.textContent = busy ? requested ? 'Cancel start' : 'Play when ready' : 'Play';
+    button.setAttribute('aria-label', busy ? requested ? 'Cancel automatic start' : 'Play when the voice is ready' : 'Play the story');
+  }
+}
+/** Freeze the words before generation, and keep every provider wait off the timeline. */
+function _stPrepareVoice() {
+  if (!_story.open || !_story.payload || !_stCanPrepareVoice()) return Promise.resolve(null);
+  if (_story.voicePreparation) return _story.voicePreparation.promise;
+  const seq = _story.seq, root = _story.root, controller = new AbortController();
+  const preparation = { controller, promise: null, done: false, progress: null, waitingForScript: !!_story.aiBusy };
+  const live = () => seq === _story.seq && root === _story.root && _story.voicePreparation === preparation && !controller.signal.aborted;
+  _story.voicePreparation = preparation;
+  _stVoicePreparationUi();
+  preparation.promise = (async () => {
+    if (preparation.waitingForScript && _story.scriptJob) {
+      let stopWaiting;
+      const stopped = new Promise(resolve => { stopWaiting = resolve; controller.signal.addEventListener('abort', stopWaiting, { once: true }); });
+      try { await Promise.race([_story.scriptJob, stopped]); }
+      finally { controller.signal.removeEventListener('abort', stopWaiting); }
+    }
+    if (!live() || !_stCanPrepareVoice()) return null;
+    preparation.waitingForScript = false;
+    _stVoicePreparationUi();
+    const result = await storyNarrator().prepare(_story.beats, {
+      signal: controller.signal,
+      onProgress(progress) { if (live()) { preparation.progress = progress; _stVoicePreparationUi(); } },
+    });
+    if (!live()) return null;
+    preparation.progress = result; preparation.done = true;
+    if (result && (result.cancelled || result.stale)) { _story.voicePreparation = null; _stVoicePreparationUi(); return result; }
+    _stVoicePreparationUi();
+    if (result && result.failed && !_story.voiceFallback) {
+      _story.voiceFallback = true;
+      const error = result.errors && result.errors[0];
+      toast(((error && error.message) || 'Some voice clips could not be prepared.') + ' Those moments will use the browser voice.', { kind: 'note' });
+    }
+    return result;
+  })().catch(e => {
+    if (!live()) return null;
+    preparation.done = true; preparation.progress = { total: 0, completed: 0, failed: 1 };
+    _stVoicePreparationUi();
+    toast((e && e.message) || 'Voice preparation could not finish.', { kind: 'note' });
+    return null;
+  });
+  return preparation.promise;
 }
 function _stPaintPoster() {
   const root = _story.root, p = _story.payload; if (!root || !p) return;
@@ -523,9 +639,38 @@ function _stSrcBadge() {
 }
 function storyPlay() {
   const root = _story.root; if (!root || !_story.payload) return;
+  if (_story.playRequest) return _story.playRequest.promise;
+  if (_story.nextVoiceBeats) {
+    if (_story.tl) { _story.tl.destroy(); _story.tl = null; }
+    _story.beats = _story.nextVoiceBeats; _story.nextVoiceBeats = null;
+    root.classList.remove('is-playing');
+    _stCancelVoicePreparation(); _stPaintPoster(); _stPaintProgress();
+  }
   const nar = storyNarrator();
   const prefs = storyPrefs();
   if (!prefs.muted) nar.prime();
+  if (_stCanPrepareVoice() && (!_story.voicePreparation || !_story.voicePreparation.done)) {
+    const seq = _story.seq, request = { promise: null };
+    _story.playRequest = request;
+    request.promise = (async () => {
+      while (_story.open && _story.seq === seq && _story.root === root && _story.playRequest === request && _stCanPrepareVoice()) {
+        await _stPrepareVoice();
+        if (_story.voicePreparation && _story.voicePreparation.done) break;
+      }
+      if (!_story.open || _story.seq !== seq || _story.root !== root || _story.playRequest !== request) return false;
+      _story.playRequest = null; _stVoicePreparationUi();
+      if (document.hidden) return false;
+      _stStartPlayback();
+      return true;
+    })();
+    _stVoicePreparationUi();
+    return request.promise;
+  }
+  _stStartPlayback();
+}
+function _stStartPlayback() {
+  const root = _story.root; if (!root || !_story.payload) return;
+  const nar = storyNarrator(), prefs = storyPrefs();
   root.classList.add('is-playing');
   if (_story.fresh) { _story.fresh = false; _stSrcBadge(); }
   // Playing the morning story counts as having seen the brief (the top-bar pill and auto-open stop).
@@ -533,7 +678,7 @@ function storyPlay() {
   if (!_story.tl) {
     _story.tl = storyCreateTimeline({
       beats: _story.beats, narrator: nar, speed: prefs.speed, muted: prefs.muted || !nar.canSpeak(),
-      hooks: { onBeat: _stOnBeat, onPhase: _stOnPhase, onWord: _stOnWord, onState: _stOnState, onEnd: _stOnEnd, onBeats: (b) => { _story.beats = b; _stPaintProgress(); } },
+      hooks: { onBeat: _stOnBeat, onPhase: _stOnPhase, onWord: _stOnWord, onMode: _stOnVoiceMode, onState: _stOnState, onEnd: _stOnEnd, onBeats: (b) => { _story.beats = b; _stPaintProgress(); } },
     });
   }
   _story.tl.play();
@@ -542,6 +687,8 @@ function storyPlay() {
 function storyClose(o) {
   if (!_story.open) return;
   _story.seq++;
+  _story.playRequest = null; _stCancelVoicePreparation();
+  _story.scriptJob = null; _story.nextVoiceBeats = null;
   if (_story.tl) { _story.tl.destroy(); _story.tl = null; }
   if (_story.narrator) _story.narrator.cancel();
   for (const c of _story.cleanups) { try { c(); } catch (e) { /* ignore */ } }
@@ -572,6 +719,10 @@ function storyState() {
     state: _story.root ? (_story.root.dataset.state || 'idle') : 'idle', muted: storyPrefs().muted, volume: storyPrefs().volume,
     index: _story.tl ? _story.tl.index : -1, count: (_story.beats || []).length, loading: !!(_story.root && _story.root.classList.contains('is-loading')),
     error: !!(_story.root && _story.root.classList.contains('is-error')),
+    preparing: !!(_story.voicePreparation && !_story.voicePreparation.done),
+    voiceProgress: _story.voicePreparation && _story.voicePreparation.progress ? {
+      total: _story.voicePreparation.progress.total, completed: _story.voicePreparation.progress.completed, failed: _story.voicePreparation.progress.failed,
+    } : null,
   };
 }
 function storyOpenDetails() {
@@ -594,7 +745,7 @@ async function _stSourceAi(src, regenerate) {
   if (!regenerate && p.ai && p.ai.state !== 'missing') return;
   if (typeof src.ai !== 'function') { if (regenerate) toast('This story keeps its own words.', { kind: 'err' }); return; }
   const seq = _story.seq;
-  if (regenerate) { _story.aiBusy = true; _stSrcBadge(); }
+  _story.aiBusy = true; _stSrcBadge();
   try {
     const sc = await src.ai(p, { regenerate: !!regenerate });
     if (seq !== _story.seq || !_story.payload || !sc) return;
@@ -603,7 +754,7 @@ async function _stSourceAi(src, regenerate) {
   } catch (e) {
     if (regenerate && seq === _story.seq) toast((e && e.message) || 'Claude could not rewrite the story just now.', { kind: 'err' });
   } finally {
-    if (regenerate && seq === _story.seq) { _story.aiBusy = false; _stSrcBadge(); }
+    if (seq === _story.seq) { _story.aiBusy = false; _stSrcBadge(); }
   }
 }
 async function _stMaybeAi(regenerate) {
@@ -632,22 +783,33 @@ function _stSwapScript() {
   const ctx = _stCtx(p);
   let beats;
   try { beats = (STORY_BUILDERS[p.kind] || STORY_BUILDERS.morning)(ctx).filter(b => b && b.id); } catch (e) { console.error('[story] builder', e); return; }
+  if (typeof storyVoiceBeats === 'function') beats = storyVoiceBeats(beats, p);
   _story.ctx = ctx;
   const tl = _story.tl;
-  if (!tl || tl.state === 'idle') { _story.beats = beats; if (tl) tl.replaceUpcoming(beats); _stBg(p, beats[0]); _stPaintPoster(); _stPaintProgress(); return; }
+  if (!tl || tl.state === 'idle') {
+    _story.beats = beats; if (tl) tl.replaceUpcoming(beats); _stBg(p, beats[0]); _stPaintPoster(); _stPaintProgress();
+    if (!_story.voicePreparation || !_story.voicePreparation.waitingForScript) { _stCancelVoicePreparation(); _stPrepareVoice(); }
+    return;
+  }
+  if (_stCanPrepareVoice() && tl.state !== 'ended') {
+    // The playing version already has its clips. Offer a later rewrite for replay,
+    // rather than inserting unprepared speech into the running timeline.
+    _story.nextVoiceBeats = beats; _story.fresh = true; _stSrcBadge();
+    return;
+  }
   if (tl.state === 'ended') {
     // Finished already: never restart on its own. The badge offers Claude's version.
     tl.destroy(); _story.tl = null; _story.beats = beats; _story.fresh = true;
     if (_story.root) _story.root.dataset.state = 'ended';
-    _stPaintProgress(); _stSrcBadge();
+    _stCancelVoicePreparation(); _stPrepareVoice(); _stPaintProgress(); _stSrcBadge();
     return;
   }
   tl.replaceUpcoming(beats);
 }
 
 /**
- * Write the day's AI script in the background (silently, at most once per kind and day
- * per browser) so it is usually ready before Play: the CLI takes about a minute.
+ * Write the day's AI script and prepare its narration in the background. Claude runs
+ * at most once per kind/day; repeated narration uses the existing clip cache.
  * Morning before the evening hour, the evening recap after it, the week on its last
  * and first day. The server caches; a cached script costs nothing.
  */
@@ -657,8 +819,10 @@ async function storyPrefetchDue() {
   // person has not even reached the step that says Claude is connected yet.
   if (typeof _obOpen !== 'undefined' && _obOpen) return;
   if (typeof APP_CONFIG !== 'undefined' && !APP_CONFIG.onboardedAt && typeof getAllItems === 'function' && !getAllItems().length) return;
-  if (typeof briefPrefs === 'function' && !briefPrefs().ai) return;
-  if (!(typeof connHas === 'function' ? connHas('claude') : (typeof AI_AVAILABLE !== 'undefined' && AI_AVAILABLE))) return;
+  const ai = !(typeof briefPrefs === 'function' && !briefPrefs().ai)
+    && (typeof connHas === 'function' ? connHas('claude') : (typeof AI_AVAILABLE !== 'undefined' && AI_AVAILABLE));
+  const voice = !_story.open && _stCanPrepareVoice();
+  if (!ai && !voice) return;
   const today = todayStrSafe(), now = Clock.parts(Clock.now());   // the hour and weekday where the user is (travel spec P11)
   const evening = typeof briefPrefs === 'function' ? now.h >= briefPrefs().eveningHour : now.h >= 17;
   const kinds = [evening ? 'evening' : 'morning'];
@@ -666,9 +830,33 @@ async function storyPrefetchDue() {
   if (now.dow === ws || now.dow === (ws + 6) % 7) kinds.push('week');
   for (const kind of kinds) {
     const k = 'dashboard-story-prefetch-' + kind;
-    try { if (localStorage.getItem(k) === today) continue; localStorage.setItem(k, today); } catch (e) { continue; }
-    try { await _bfPost('/api/story/script', { kind }); } catch (e) { /* quiet: the built-in script still plays */ }
+    let asked = false;
+    try { asked = localStorage.getItem(k) === today; } catch (e) { asked = true; }
+    if (ai && !asked) {
+      try { localStorage.setItem(k, today); } catch (e) { /* cache on the server still deduplicates */ }
+      try { await _bfPost('/api/story/script', { kind }); } catch (e) { /* quiet: the built-in script still plays */ }
+    }
+    if (!_story.open && !document.hidden && _stCanPrepareVoice()) await _stWarmVoice(kind);
   }
+}
+async function _stWarmVoice(kind) {
+  if (_storyVoiceWarm) return _storyVoiceWarm.promise;
+  if (_story.open || document.hidden || !_stCanPrepareVoice()) return;
+  const controller = new AbortController(), warm = { controller, promise: null };
+  _storyVoiceWarm = warm;
+  warm.promise = (async () => {
+    const payload = await _bfJson('/api/story?kind=' + encodeURIComponent(kind));
+    if (controller.signal.aborted || _story.open || document.hidden || !_stCanPrepareVoice()) return;
+    const ctx = _stCtx(payload);
+    let beats = (STORY_BUILDERS[kind] || STORY_BUILDERS.morning)(ctx).filter(b => b && b.id);
+    if (typeof storyVoiceBeats === 'function') beats = storyVoiceBeats(beats, payload);
+    const c = storyPrefs().narration;
+    const key = JSON.stringify([c.voiceId, c.modelId, c.scope, beats.map(b => [b.say, b.delivery, b.cloudVoice])]);
+    if (_storyVoiceWarmKeys.get(kind) === key) return;
+    const result = await storyNarrator().prepare(beats, { signal: controller.signal });
+    if (!controller.signal.aborted && result && !result.cancelled && !result.stale) _storyVoiceWarmKeys.set(kind, key);
+  })().catch(() => {}).finally(() => { if (_storyVoiceWarm === warm) _storyVoiceWarm = null; });
+  return warm.promise;
 }
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => setTimeout(() => storyPrefetchDue().catch(() => {}), 30000), { once: true });
@@ -748,6 +936,13 @@ function _stOnState(state) {
   if (pl) pl.setAttribute('aria-label', state === 'playing' ? 'Pause (Space)' : state === 'ended' ? 'Replay' : 'Play (Space)');
   root.classList.toggle('is-paused', state === 'paused');
 }
+function _stOnVoiceMode(mode) {
+  const root = _story.root;
+  const label = root && root.querySelector('.st-narration-state');
+  if (!label) return;
+  label.hidden = storyPrefs().narration.provider !== 'elevenlabs';
+  label.textContent = mode === 'loading' ? 'Preparing voice…' : mode === 'elevenlabs' ? 'ElevenLabs voice' : mode === 'voice' ? 'Browser voice' : 'Captions';
+}
 function _stOnEnd() {
   const root = _story.root; if (!root) return;
   root.querySelectorAll('.st-seg').forEach(s => s.style.setProperty('--p', '1'));
@@ -772,7 +967,7 @@ function _stPaintProgress() {
 function _stSyncControls() {
   const root = _story.root; if (!root) return;
   const p = storyPrefs();
-  const nar = _stSynth();
+  const nar = storyNarrator().canSpeak();
   root.style.setProperty('--st-speed', String(p.speed));
   root.classList.toggle('is-muted', p.muted);
   root.classList.toggle('no-voice', !nar);
@@ -789,13 +984,28 @@ function _stSyncControls() {
 
 /* ---------- player actions + wiring ---------- */
 const STORY_PLAYER = {
-  toggle() { if (!_story.tl) return storyPlay(); if (_story.tl.state === 'ended') return _story.tl.replay(); _story.tl.toggle(); },
+  toggle() {
+    if (!_story.tl) {
+      if (_story.playRequest) { _story.playRequest = null; _stVoicePreparationUi(); return; }
+      return storyPlay();
+    }
+    if (_story.nextVoiceBeats || _story.tl.state === 'ended') return storyPlay();
+    _story.tl.toggle();
+  },
   next() { if (_story.tl) _story.tl.next(); else storyPlay(); },
   prev() { if (_story.tl) _story.tl.prev(); },
-  replay() { if (_story.tl) _story.tl.replay(); else storyPlay(); },
+  replay() { if (_story.nextVoiceBeats) return storyPlay(); if (_story.tl) _story.tl.replay(); else storyPlay(); },
   toggleMute() {
     const muted = !storyPrefs().muted;
     _stSaveUi({ muted });
+    if (!_story.tl) {
+      if (muted) {
+        const requested = !!_story.playRequest;
+        _story.playRequest = null; _stCancelVoicePreparation();
+        if (requested && !document.hidden) _stStartPlayback();
+      }
+      else _stPrepareVoice();
+    }
     if (!muted) storyNarrator().prime();
     if (_story.tl) _story.tl.setMuted(muted || !storyNarrator().canSpeak());
     if (_story.root) _story.root.querySelector('.st-ra').checked = !muted;
@@ -846,7 +1056,7 @@ async function storyTaskUndo(token, after) {
 }
 function _stWire(root) {
   const on = (sel, fn) => { const el = root.querySelector(sel); if (el) el.addEventListener('click', fn); };
-  on('.st-bigplay', () => storyPlay());
+  on('.st-bigplay', () => STORY_PLAYER.toggle());
   on('.st-play', () => STORY_PLAYER.toggle());
   on('.st-prev', () => STORY_PLAYER.prev());
   on('.st-next', () => STORY_PLAYER.next());
@@ -855,7 +1065,11 @@ function _stWire(root) {
   on('.st-x', () => STORY_PLAYER.close());
   on('.st-details', () => storyOpenDetails());
   on('.st-poster-details', () => storyOpenDetails());
-  on('.st-regen', () => _stMaybeAi(true));
+  on('.st-regen', () => {
+    if (_story.aiBusy) return;
+    _story.scriptJob = _stMaybeAi(true);
+    if (!_story.tl) { _stCancelVoicePreparation(); _stPrepareVoice(); }
+  });
   on('.st-src', () => { if (!_story.fresh) return; _story.fresh = false; _stSrcBadge(); storyPlay(); });
   root.querySelector('.st-ra').addEventListener('change', (e) => { if (storyPrefs().muted === e.target.checked) STORY_PLAYER.toggleMute(); });
   const vr = root.querySelector('.st-vol-r');
@@ -888,6 +1102,10 @@ function _stTrapTab(e) {
   else if (!e.shiftKey && (i === -1 || i === f.length - 1)) { e.preventDefault(); f[0].focus(); }
 }
 document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (_storyVoiceWarm) _storyVoiceWarm.controller.abort();
+    if (_story.playRequest) { _story.playRequest = null; _stVoicePreparationUi(); }
+  }
   if (!_story.open || !_story.tl) return;
   if (document.hidden && _story.tl.state === 'playing') { _story.tl.pause(); _story.autoPaused = true; }
 });
@@ -923,7 +1141,7 @@ registerCommand({ id: 'story-week', label: 'Play my week (weekly review story)',
  *   close()  isOpen()  kind()  play()  toggle()  next()  prev()  replay()  toggleMute()
  *   setSpeed(0.8|1|1.25)   openDetails()   autoOpen(kind)
  *   playedToday(kind)       true once that story has played to the end today
- *   prefetch()              ask the server to write today's AI script now (quiet, once a day)
+ *   prefetch()              prepare today's script and voice clips quietly before playback
  *   entryButton(kind, {label, cls}) -> <button> that opens the story (for Home cards)
  *   registerBuilder(kind, build)  registerBeatType(type, render)  kit (STORY_KIT)
  *   registerKind(kind, {label, view, dark, load, ai, details})  a kind whose data the page builds
@@ -963,11 +1181,11 @@ function storySettingsRows(el) {
   const h = document.createElement('h3'); h.className = 'set-subhead'; h.textContent = 'Story and narration';
   el.appendChild(h);
   el.appendChild(_settingsRow('The first visit of the day opens as', 'Story: full screen with a Play button (your day in three sentences, read out, with scenes and the people you will see). Page: Home, with Play my morning at the top.', _settingsSeg([['story', 'Story'], ['page', 'Page']], p.autoOpen ? 'story' : 'page', (k) => save({ autoOpen: k === 'story' }))));
-  el.appendChild(_settingsRow('Read it out', 'Uses your browser’s speech voices. Voices built into this computer keep the text on it; a voice marked (online) sends it to the browser maker’s speech service. Captions are always on screen; M mutes while it plays.', _settingsSwitch(p.voice, 'Read it out', (on) => { _stSaveUi({ muted: !on }); save({ voice: on }); })));
+  el.appendChild(_settingsRow('Read it out', 'Read stories using the narration voice below. Captions are always on screen; M mutes while it plays. The browser voice keeps stories moving when ElevenLabs is unavailable or its limit is reached.', _settingsSwitch(p.voice, 'Read it out', (on) => { _stSaveUi({ muted: !on }); save({ voice: on }); })));
   const sel = document.createElement('select'); sel.className = 'control control-sm'; sel.setAttribute('data-story-voices', ''); sel.setAttribute('aria-label', 'Voice');
   _stFillVoices(sel);
   sel.addEventListener('change', () => save({ voiceName: sel.value }));
-  el.appendChild(_settingsRow('Voice', 'Automatic picks a natural British voice when there is one (some are online voices), then any British, then any English voice.', sel));
+  el.appendChild(_settingsRow('Browser voice', 'Also used as the fallback. Local voices keep text on this computer; a voice marked (online) sends text to the browser maker’s speech service. Automatic prefers a natural British voice.', sel));
   const slider = (label, key, min, max, step, fmt) => {
     const wrap = document.createElement('div'); wrap.className = 'st-set-slider';
     const r = document.createElement('input'); r.type = 'range'; r.min = String(min); r.max = String(max); r.step = String(step); r.value = String(p[key]); r.setAttribute('aria-label', label);
@@ -981,15 +1199,16 @@ function storySettingsRows(el) {
   el.appendChild(_settingsRow('Pitch', null, slider('Pitch', 'pitch', 0.6, 1.4, 0.05, (v) => v.toFixed(2))));
   el.appendChild(_settingsRow('Volume', null, slider('Volume', 'volume', 0, 1, 0.05, (v) => Math.round(v * 100) + '%')));
   el.appendChild(_settingsRow('Story speed', 'How quickly the moments move on (also in the player).', _settingsSeg(STORY_SPEEDS.map(s => [String(s), s + '×']), String(p.speed), (k) => { _stSaveUi({ speed: Number(k) }); save({ speed: Number(k) }); })));
-  if (typeof SETTINGS_MODELS !== 'undefined') el.appendChild(_settingsRow('Model for the story script', 'Writes the three sentences and picks the people, tasks and events they mention. A built-in script plays until it is ready.', _settingsSelect(SETTINGS_MODELS, p.model, (v) => save({ model: v }))));
+  if (typeof SETTINGS_MODELS !== 'undefined') el.appendChild(_settingsRow('Model for the story script', 'Claude writes natural narration from your day, with tone, pacing and pauses. A built-in script plays until it is ready.', _settingsSelect(SETTINGS_MODELS, p.model, (v) => save({ model: v }))));
   const test = document.createElement('button'); test.type = 'button'; test.className = 'btn btn-secondary btn-sm';
   test.innerHTML = _stIcon('play') + '<span>Test the voice</span>';
   test.addEventListener('click', () => {
-    const nar = storyNarrator();
+    const nar = storyCreateNarrator({ synth: _stSynth(), Utterance: window.SpeechSynthesisUtterance || null, prefs: { voiceName: p.voiceName, rate: p.rate, pitch: p.pitch, volume: p.volume } });
     if (!nar.canSpeak()) { toast('No English voice is installed on this computer, so stories show captions only.', { kind: 'err' }); return; }
     nar.prime();
     nar.speak(`Good morning${userName() ? ', ' + userName() : ''}. Here is your day in three sentences.`, { speed: 1 });
   });
   if (typeof storyWeekSettingsRows === 'function') storyWeekSettingsRows(el);   // 79-story-weekly.js
-  el.appendChild(_settingsRow('Try it', null, test));
+  el.appendChild(_settingsRow('Try the browser voice', null, test));
+  if (typeof renderStoryVoiceSettings === 'function') renderStoryVoiceSettings(el);
 }

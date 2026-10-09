@@ -48,6 +48,20 @@ and its free stretches, the weather, countdowns and ideas for the day.
 **Play my morning** opens the day as a full-screen story, read aloud;
 **Finish the day** and the **Weekly review** close the loop.
 
+Stories use free browser speech by default. In **Settings > Home and stories**,
+you can connect your own **ElevenLabs** API key, choose an eligible voice, and
+use economical Flash narration or expressive Eleven v3. The selected voice
+narrates every spoken moment by default; the optional highlights setting uses
+the browser voice for supporting moments to save allowance. Claude writes the
+script with tone, pacing and pause cues when connected. Saved audio replays
+without generating it again; a monthly character cap and browser fallback
+keep stories working when the allowance runs out. Clips prepare before the
+intro starts, with progress on the opening screen; the playing story keeps
+its prepared words, and a later Claude rewrite is offered for replay.
+ElevenLabs receives the
+words you choose to narrate. Its free plan has voice and noncommercial-use
+restrictions; your own account's allowance applies.
+
 ### Tasks
 
 Streams, priorities, tags, subtasks, people, repeats, estimates and a planned

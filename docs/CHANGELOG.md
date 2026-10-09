@@ -10,6 +10,20 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.13.0] - 2026-10-09
+
+### Added
+
+- **ElevenLabs story voices:** connect your own account in Settings > Home and stories, choose a voice and use economical Flash or expressive Eleven v3 for morning intros, end-of-day recaps and weekly reviews. Every spoken moment uses your chosen voice by default; an optional highlights setting saves allowance.
+- Claude can write narration with tone, pacing and pause cues. Captions keep the spoken words clear, without reading out stage directions.
+- Voice previews, account allowance, a monthly character cap and saved audio make usage easy to manage. Replays reuse saved clips; browser speech keeps stories working when ElevenLabs is unavailable or its allowance runs out. API keys and audio stay in the local data folder and are excluded from releases and exports.
+
+### Fixed
+
+- Stories prepare their voice clips before the intro begins, with progress on the opening screen and background preparation for upcoming stories. Playback no longer pauses between moments to generate each clip.
+- Supporting moments follow the selected ElevenLabs voice instead of unexpectedly switching to browser speech. A later Claude rewrite is prepared for replay while the playing story keeps its existing words.
+- Closing a story or cancelling its queued start cannot trigger late playback; muted stories can start immediately with captions.
+
 ## [2.12.0] - 2026-10-09
 
 ### Changed
@@ -541,7 +555,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.12.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.13.0...HEAD
+[2.13.0]: https://github.com/mahdi1190/opendash/compare/v2.12.0...v2.13.0
 [2.12.0]: https://github.com/mahdi1190/opendash/compare/v2.11.0...v2.12.0
 [2.11.0]: https://github.com/mahdi1190/opendash/compare/v2.10.0...v2.11.0
 [2.10.0]: https://github.com/mahdi1190/opendash/compare/v2.9.0...v2.10.0
