@@ -76,9 +76,9 @@ for (const { region, key, up } of LIVE) {
       const res = lintScene(data, TH, { E, ref: e.ref });
       assert.deepEqual(res.failures.map(f => f.name || f), [], 'no failing rule');
       assert.equal(res.pass, true);
-      // the scene places every landmark the upgrade names
+      // A landmark can be a fixed placement or an actor, such as a moving incline car.
       const C = REG.R.get('sceneCompile')(data, { lod: 1 });
-      for (const id of up.landmarks || []) assert.ok(C.items.some(x => x.o === id), id + ' is placed');
+      for (const id of up.landmarks || []) assert.ok(C.items.concat(C.actors).some(x => x.o === id), id + ' is placed or moving in the scene');
     }
   });
   test(`live upgrade ${region} ${key}: the live item keeps the legacy item's id, key, place fields, label, site, tags and when`, { skip }, () => {

@@ -291,6 +291,7 @@ const lint = {
     const entries = keyFilter(reg, onlyKind(args, selectEntries(reg, { refs: splitList(args.ref), packs: splitList(args.pack), baseline })), splitList(args.key));
     if (files.length && !entries.length) { ctx.err(`lint: the file(s) loaded but registered no new or changed ${args.only === 'small' ? 'small item' : args.only === 'scenes' ? 'scene' : 'item'}, so there is nothing to lint. A scene file only shows once a pack item uses its key (the pack file of its group calls B.scenes()); a pack file must call animRegisterPack; the file must be saved with a scene in it.`); return 1; }
     const loc = parseLocation(args.location);
+    if (args.at) skyFor(reg, null, { at: args.at, location: loc }); // validate even when composed entries need no retrofit overlay
     if (args.season && !['spring', 'summer', 'autumn', 'winter'].includes(args.season)) throw new Error('--season must be spring, summer, autumn or winter');
     const res = lintRegistry(reg, thresholds, entries, { sky: args.at ? (e) => skyFor(reg, e.item, { at: args.at, location: loc }) : null });
     const ms = Date.now() - t0;

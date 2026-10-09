@@ -21,7 +21,7 @@ upgrades it.
 
 ### Fixed
 
-- Refined the Fleet Pond, Wyndham's Pool and Yateley Green scenes' plant motion, mist bounds and animated animal parts.
+- Refined the Fleet Pond, Wyndham's Pool and Yateley Green scenes' plant motion, mist bounds and animated animal parts. St Peter's tower remains visible in Yateley's phone and square views.
 - Animation checks and compatibility records cover the rebuilt American scenes and retained originals.
 
 ## [2.11.0] - 2026-10-09

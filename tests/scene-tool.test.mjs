@@ -223,7 +223,9 @@ test('parser, flatten: a US and an Asia scene read whole, lit windows become glo
   assert.equal(tiny.length, 1, 'the star and the tint are dropped, the drifting lamp kept at rest'); assert.equal(tiny[0].glow, 'lamp'); assert.deepEqual(tiny[0].bb, [7, 7, 11, 11]);
   for (const ref of ['us-northeast/new-york-skyline', 'asia-southeast/singapore-skyline']) {
     const e = REG.items().find(x => x.ref === ref);
-    const markup = REG.html(e.item, { live: true, size: 'fill' });
+    // Exercise the retained hand-drawn input after its live scene is upgraded.
+    const original = e.item.legacySvg ? Object.assign({}, e.item, { svg: e.item.legacySvg, composed: false }) : e.item;
+    const markup = REG.html(original, { live: true, size: 'fill' });
     const all = sceneShapesFromSvg(markup, { flatten: true }).parts.body;
     assert.ok(all.length > 150, `${ref}: ${all.length} shapes`);
     assert.ok(all.some(s => s.glow === 'window'), `${ref}: us-lit -> glow`);
