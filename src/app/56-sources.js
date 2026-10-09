@@ -488,6 +488,7 @@ function srcAddFlow(o) {
         if (c.id === 'bank' && !f.server && typeof finMoneyBlock === 'function') { closeFn && closeFn(); connOpen('money'); return; }
         f.capability = c.id; go(f.server ? 'tools' : 'from');
       }));
+      if (typeof googleHealthConnectionSetup === 'function') g.appendChild(choice('heart', 'Google Health', 'Activity and sleep from Google Health and Fitbit. Browser sign-in, read-only.', false, () => { closeFn && closeFn(); googleHealthConnectionSetup(); }));
       bodyEl.appendChild(g);
       spacer();
       return;
