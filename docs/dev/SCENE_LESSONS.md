@@ -130,3 +130,10 @@ These must be fixed IN THE ENGINE before any test scene is shown again:
 - The near boat is a flat side-on slab cropped by the frame edge. Large near entities must be drawn in perspective and framed, never left as flat, cropped slabs.
 - The horizon is a thin flat tree line: the backdrop must be on.
 - A mover was cut off at the bottom edge (a dark head). Movers must not spawn or idle inside the near clip band.
+
+**The principle (the user): the world engine itself must KNOW what is weird, whatever the scene says.** Build a world-sense layer into the engine, not into scenes or lint:
+- Every object class carries its own rules: where it can exist (boats on water, cars on roads, trains on rails, people on walkable ground, trees on soil), clearance, typical neighbours and scale.
+- The engine enforces these at load: it snaps, re-routes or drops anything impossible and logs it, so a bad scene still renders sensibly.
+- It fills what the author leaves empty: bank and hedge planting, scatter, people and the backdrop are generated from the surfaces and the place style unless the author says otherwise.
+- It frames sensibly: no cropped flat slabs and no half movers at the edges.
+- An author error can make a scene plainer, never wrong.
