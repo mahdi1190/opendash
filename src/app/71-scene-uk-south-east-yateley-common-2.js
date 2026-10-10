@@ -110,9 +110,7 @@ function sceneYateleyCommon2(season) {
         avoid: { far: [{ poly: trackMid }], mid: [{ poly: trackMid }, woodArea], near: [{ poly: trackNear }, woodArea], fore: [{ poly: trackFore }, woodArea, { rect: [1120, 800, 1440, 870] }] } }),
     ],
     actors: [
-      // a dog walker through the gate and down the track toward us, a cyclist far off
-      { obj: 'person.dog-walker', layer: 'near', path: Y.path(TRACK, 660, 790), speed: 8, loop: 'pingpong', s: 0.8, sByY: [[660, 0.8], [790, 1.15]], seed: 71, offset: 0.3 },
-      { obj: 'person.walker', layer: 'mid', path: Y.path(TRACK, 556, 640, 12), speed: 5, loop: 'pingpong', s: 0.5, variant: 2, sByY: [[556, 0.6], [640, 1]], seed: 72, offset: 0.7 },
+      // a cyclist far off (the walkers: sceneYgMovers, below)
       { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[1820, 200], [-220, 150]], speed: 24, loop: 'loop', s: 0.6, seed: 75, offset: 0.4 },
     ],
     flocks: [
@@ -126,5 +124,12 @@ function sceneYateleyCommon2(season) {
   Y.butterflies[season].forEach((v, i) => d.actors.push({ obj: 'animal.butterfly', layer: 'near', path: [[900 + i * 180, 730], [1000 + i * 170, 700], [960 + i * 160, 770], [1080 + i * 150, 740]], speed: 22, loop: 'pingpong', s: 1.1, variant: v, seed: 90 + i, offset: i * 0.3 }));
   if (winter) d.place.push({ obj: 'bird.robin', x: gateX - 30, y: gateY - 52, s: 0.8, layer: 'mid', variant: 0, seed: 95 });
   if (autumn) d.flocks.push({ obj: 'bird.goose-flight', n: 5, area: [800, 110, 1500, 220], speed: 30, s: 0.5, seed: 97, layer: 'horizon' });
+  // the walkers by the motion behaviours (sceneYgMovers, 70-scene-lib-yateley-green-views.js) at their real size for the
+  // view's fitted eye (4.8 m): the dog walker comes down the track on our side of the gate (it is shut: nobody walks through
+  // it), a walker beyond it on the far track
+  if (typeof sceneYgMovers === 'function') d.actors = sceneYgMovers(d, 4.8, [
+    { obj: 'person.dog-walker', preset: 'dog-walker', px: Y.path(TRACK, 652, 790), layer: 'near', seed: 71, offset: 0.3 },
+    { obj: 'person.walker', preset: 'stroll', px: Y.path(TRACK, 556, 618, 12), layer: 'mid', variant: 2, seed: 72, offset: 0.7 },
+  ]).concat(d.actors);
   return d;
 }

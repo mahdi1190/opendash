@@ -9,7 +9,17 @@
   if (typeof sceneObjDefine !== 'function') return;   // the engine core (70-scene-0core.js) is not in this build
   /** Drop shapes with no path data (a season or variant that draws nothing in a slot); strokes are round-capped. */
   const tidy = parts => { for (const k of Object.keys(parts)) parts[k] = parts[k].filter(sh => sh && (Array.isArray(sh) ? sh[1] : sh.d)).map(sh => (!Array.isArray(sh) && sh.s && !sh.cap ? Object.assign({ cap: 'round' }, sh) : sh)); return parts; };
-  const defineObj = def => sceneObjDefine(Object.assign({}, def, { build: (v, r, ctx) => tidy(def.build(v, r, ctx)) }));
+  // def.behave: [preset, params] (or v => [preset, params]): the hooks of a behaviour preset (70-scene-lib-behaviours.js), per variant
+  // (looked up when built: the behaviours file loads after this one; without it, the def's own anim)
+  const defineObj = def => sceneObjDefine(Object.assign({}, def, def.behave ? { anim: undefined } : {}, { build: (v, r, ctx) => {
+    const p = tidy(def.build(v, r, ctx));
+    if (def.behave) {
+      const b = typeof def.behave === 'function' ? def.behave(v) : def.behave;
+      const hooks = typeof sceneBehave !== 'undefined' ? sceneBehave.hooks(b[0], b[1]) : Object.entries(def.anim || {}).map(([kind, a]) => Object.assign({ kind }, a));
+      Object.defineProperty(p, '$anim', { value: hooks, enumerable: false });
+    }
+    return p;
+  } }));
   const f1 = v => Math.round(v * 10) / 10;
   const rr = (r, a, b) => a + r() * (b - a);
   const ell = (x, y, rx, ry) => `M${f1(x - rx)} ${f1(y)}a${f1(rx)} ${f1(ry)} 0 1 0 ${f1(2 * rx)} 0a${f1(rx)} ${f1(ry)} 0 1 0 ${f1(-2 * rx)} 0`;
@@ -58,6 +68,7 @@
       grey: { spring: ['#8a8680', '#6a6660', '#a8a49c', '#55524c'], summer: ['#9a968e', '#76726a', '#b4b0a8', '#5e5a54'], autumn: ['#8e8a82', '#6c6862', '#aaa69e', '#58544e'], winter: ['#7e7a72', '#5e5a54', '#9a968e', '#4a4640'] },
     })),
     anim: { turn: { part: 'head', pivot: [26, -50], deg: 10, period: 8, hold: .7 } },
+    behave: v => ['graze', { neck: [26, -50], deg: v === 3 ? -10 : 11, period: 5.5 }],   // cropping (the grazing variant lifts its head to look)
     shadow: { rx: 40, ry: 6, h: 60 },
     tags: ['uk', 'countryside', 'farm', 'field', 'downs', 'dales', 'sheep', 'grazing', 'kit:animals', 'kit:temperate', 'role:animal'],
     credit: 'coast-country kit (sheep: generic lowland and fell breeds)',
@@ -93,6 +104,7 @@
       c2: { spring: tone4('#c8c4bc'), summer: tone4('#d4d0c8'), autumn: tone4('#c0bcb2'), winter: tone4('#aeaaa0') },
     })),
     anim: { turn: { part: 'head', pivot: [18, -96], deg: 8, period: 9, hold: .7 }, sway: { part: 'tail', pivot: [-48, -90], deg: 6 } },
+    behave: ['graze', { neck: [18, -96], deg: 10, period: 7, tail: [-48, -90], swish: 18, swishPeriod: 3.4 }],   // cropping grass, swishing at flies
     shadow: { rx: 56, ry: 7, h: 120 },
     tags: ['uk', 'new-forest', 'heath', 'common', 'countryside', 'pony', 'horse', 'grazing', 'kit:animals', 'kit:temperate', 'role:animal'],
     credit: 'coast-country kit (New Forest pony)',

@@ -277,7 +277,7 @@ test('classes: from category, role and tags; an explicit class tag wins', () => 
 });
 
 test('actors on the ground: a projected path with the scale by depth, and sceneActorAtV2 any moment', () => {
-  const C = compile(base({ id: 'v2a-actor', actors: [{ obj: 'person.v2atest', on: 'canal-right', speedM: 1.3, k: 1 }, { obj: 'person.v2atest', ground: [[2, 6], [2, 60]], k: 1, loop: 'loop' }] }));
+  const C = compile(base({ id: 'v2a-actor', actors: [{ obj: 'person.v2atest', on: 'canal-right', speedM: 1.3, k: 1 }, { obj: 'person.v2atest', ground: [[2, 6], [2, 60]], k: 1, loop: 'loop', motion: false }] }));
   assert.equal(C.actors.length, 2);
   const a = C.actors[1];
   assert.ok(a.path.length > 10 && a.ground.length === a.path.length && a.sByY.length >= 2);

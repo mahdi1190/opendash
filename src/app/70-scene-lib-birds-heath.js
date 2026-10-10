@@ -28,16 +28,18 @@
     flippable: true,
     palette: { base: { slate: ['#55566a', '#6c6e84', '#3e3f4e'], wine: ['#8a3a3a', '#a85448'], ring: '#d8452e', bill: '#2a2a30', twig: '#5a4a3a', gorse: ['#3f6338', '#f3c21c'] } },
     parts: ['perch', 'tail', 'body', 'head'],
-    anim: { turn: { part: 'tail', pivot: [-8, -8], deg: 16, period: 1.4, hold: 0.25 } },
     tags: ['uk', 'heath', 'gorse', 'dartford-warbler', 'warbler', 'kit:birds', 'kit:temperate', 'role:bird'],
     credit: 'the Yateley Common view art (Dartford warbler), redrawn',
     build() {
-      return {
+      // the hooks: a perched songbird's hop and tail flick (sceneBehave.hooks 'songbird', 70-scene-lib-behaviours.js)
+      const out = {
         perch: [{ s: '@twig', w: 2, d: 'M-16 5q10-4 24-2M2 4l6-9' }, ['@gorse.0', 'M6-4q2-5 7-2 0 4-7 2z'], ['@gorse.1', circ(10, -6, 1.8)], ['@gorse.1', circ(-10, 3, 1.6)]],
         tail: [['@slate.2', 'M-8-8l-15-18 4-2 14 15z'], ['@slate.0', 'M-9-9l-11-13 2-1 11 12z', 0.8]],
         body: [{ s: '#2a2420', w: 1.2, d: 'M-2 0v5M3 0v5' }, ['@slate.0', 'M-10-5q-1-12 10-13 10 0 12 8l-4 10H-6z'], ['@slate.1', 'M-6-15q6-4 12-2-4 3-12 2z', 0.8], ['@wine.0', 'M0-8q9-1 9 6-4 4-11 2z'], ['@wine.1', 'M2-6q4 0 5 3z', 0.7]],
         head: [['@slate.0', 'M2-16q2-8 9-6 4 3 1 8z'], ['@ring', circ(8, -14, 1.9)], ['#101414', circ(8, -14, 1.1)], ['@bill', 'M12-13l5 1-5 2z']],
       };
+      Object.defineProperty(out, '$anim', { value: typeof sceneBehave !== 'undefined' ? sceneBehave.hooks('songbird', { tail: [-8, -8], hop: 2.6 }) : [], enumerable: false });
+      return out;
     },
   });
   sceneObjDefine({

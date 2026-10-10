@@ -101,23 +101,13 @@ function sceneUkFleetPondV1() {
   // ---- the life: geese grazing the sand and swimming off it, a swan pair inshore, gulls, coots, grebes, dinghies
   Pl.push({ obj: 'bird.goose', at: [-3.8, 7.6], k: 0.95, variant: 1 }, { obj: 'bird.goose', at: [-6.6, 13], k: 0.95, flip: true },
     { obj: 'bird.goose', at: [-10.6, 19.4], k: 1 }, { obj: 'bird.goose', at: [-15.6, 25.4], k: 1, variant: 1, flip: true });
-  A.push({ obj: 'bird.goose', ground: [[1, 20], [6, 23], [11, 22]], speedM: 0.25, loop: 'pingpong', seed: 41, offset: 0.2 });
-  A.push({ obj: 'bird.goose', ground: [[0, 21.4], [5, 24.4], [10, 23.4]], speedM: 0.25, loop: 'pingpong', variant: 1, seed: 42, offset: 0.24 });
-  A.push({ obj: 'bird.swan', ground: [[3.0, 12.4], [4.6, 13.2], [6.2, 14.2]], speedM: 0.08, loop: 'pingpong', k: 1.05, seed: 43 });
-  A.push({ obj: 'bird.swan', ground: [[3.9, 11.8], [5.5, 12.6], [7.1, 13.6]], speedM: 0.08, loop: 'pingpong', k: 0.95, seed: 44, offset: 0.08 });
-  A.push({ obj: 'bird.mallard', ground: [[-1.4, 15.6], [0.2, 16.8], [1.8, 16]], speedM: 0.1, loop: 'pingpong', seed: 53, offset: 0.3 });
-  A.push({ obj: 'bird.mallard', ground: [[-0.9, 16.2], [0.7, 17.4], [2.3, 16.6]], speedM: 0.1, loop: 'pingpong', variant: 1, seed: 54, offset: 0.3 });
-  A.push({ obj: 'bird.coot', ground: [[-8, 46], [4, 50], [16, 47]], speedM: 0.2, loop: 'pingpong', seed: 45, offset: 0.4 });
-  A.push({ obj: 'bird.grebe', ground: [[30, 60], [12, 64]], speedM: 0.2, loop: 'pingpong', seed: 46, offset: 0.6 });
   Pl.push({ obj: 'bird.gull', at: [5, 26], k: 1, flip: true }, { obj: 'bird.gull', at: [8, 33], k: 1, variant: 1 }, { obj: 'bird.coot', at: [-6, 64], k: 1 }, { obj: 'bird.grebe', at: [40, 110], k: 1.1 });
   A.push({ obj: 'boat.dinghy', ground: [[-60, 170], [20, 150], [90, 175]], speedM: 1.2, loop: 'pingpong', variant: 0, seed: 47, offset: 0.2 });
   A.push({ obj: 'boat.dinghy', ground: [[70, 230], [-20, 210], [-100, 240]], speedM: 1.0, loop: 'pingpong', variant: 2, seed: 48, offset: 0.55 });
   Pl.push({ obj: 'boat.dinghy', at: [-40, 260], k: 1, variant: 1, flip: true });
   // a dog walker along the sand, out and back
-  A.push({ obj: 'person.dog-walker', ground: [[-3.2, 5.2], [-5.2, 10.2], [-8.6, 15.4], [-13.4, 22.4], [-20, 30]], speedM: 0.7, loop: 'pingpong', seed: 49, offset: 0.35 });
-  A.push({ obj: 'person.family', ground: [[-22, 33], [-32, 42]], speedM: 0.5, loop: 'pingpong', seed: 50, offset: 0.7 });
   // swallows over the water, bats and mist after dusk, geese passing high
-  const sw = (pts, sp, s, v, off, seed) => A.push({ obj: 'bird.wp-swallow', layer: 'near', path: pts, speed: sp, loop: 'fade', s, variant: v, seed, offset: off });
+  const sw = (pts, sp, s, v, off, seed) => A.push({ obj: 'bird.wp-swallow', layer: 'fore', path: pts, speed: sp, loop: 'fade', s, variant: v, seed, offset: off });
   sw([[-160, 560], [240, 590], [520, 548], [820, 600], [1100, 566], [1400, 610], [1760, 580]], 300, 0.8, 0, 0.1, 51);
   sw([[1760, 520], [1400, 540], [1100, 506], [820, 532], [500, 500], [200, 524], [-160, 506]], 270, 0.6, 1, 0.55, 52);
   const bat = (cx, cy, rx, ry, sp, s, v, seed) => {
@@ -140,5 +130,18 @@ function sceneUkFleetPondV1() {
     { obj: 'plant.bulrush', x: 1560, y: 960, s: 2.6, pin: true, layer: 'front', shadow: false, anim: false, flip: true },
     { obj: 'plant.reed', x: 1660, y: 970, s: 2.9, pin: true, layer: 'front', shadow: false, anim: false },
     { obj: 'plant.reed', x: 1470, y: 980, s: 2.2, pin: true, layer: 'front', shadow: false, anim: false, variant: 2 });
+  // ---- the movers (10 Oct, the animation overhaul): behaviour presets at their real size (SCENE_FPV.life), after every placement
+  A.push(...F.life(data, [
+    { obj: 'bird.goose', preset: 'goose-swim', route: [[1, 20], [6, 23], [11, 22]], seed: 41, offset: 0.2 },
+    { obj: 'bird.goose', preset: 'goose-swim', route: [[0, 21.4], [5, 24.4], [10, 23.4]], variant: 1, seed: 42, offset: 0.24 },
+    { obj: 'bird.swan', preset: 'swan', route: [[3.0, 12.4], [4.6, 13.2], [6.2, 14.2]], seed: 43 },
+    { obj: 'bird.swan', preset: 'swan', route: [[3.9, 11.8], [5.5, 12.6], [7.1, 13.6]], seed: 44, offset: 0.08 },
+    { obj: 'bird.mallard', preset: 'duck', route: [[-1.4, 15.6], [0.2, 16.8], [1.8, 16]], seed: 53, offset: 0.3 },
+    { obj: 'bird.mallard', preset: 'duck', route: [[-0.9, 16.2], [0.7, 17.4], [2.3, 16.6]], variant: 1, seed: 54, offset: 0.32 },
+    { obj: 'bird.coot', preset: 'coot', route: [[-8, 46], [4, 49], [16, 47]], seed: 45, offset: 0.4 },
+    { obj: 'bird.grebe', preset: 'grebe', route: [[30, 60], [12, 64]], seed: 46, offset: 0.6 },
+    { obj: 'person.dog-walker', preset: 'dog-walker', route: [[-3.2, 5.2], [-5.2, 10.2], [-8.6, 15.4], [-13.4, 22.4], [-20, 30]], seed: 49, offset: 0.35 },
+    { obj: 'person.family', preset: 'stroll', speedM: 0.8, route: [[-22, 33], [-32, 42]], seed: 50, offset: 0.7 },
+  ]));
   return data;
 }

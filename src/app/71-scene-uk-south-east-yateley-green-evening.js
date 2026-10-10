@@ -81,7 +81,7 @@
       { obj: 'water.fish-ring', x: 1060, y: 700, s: 0.7, layer: 'near', variant: 1, seed: 22 },
       { obj: 'water.fish-ring', x: 380, y: 740, s: 0.6, layer: 'near', seed: 23 },
       // the near bank: the bench with a robin, a squirrel
-      { obj: 'street.bench', x: 1180, y: 846, s: 0.8, layer: 'fore', variant: 0, seed: 30 },
+      { obj: 'street.bench', x: 1180, y: 850, s: 1.45, layer: 'fore', variant: 0, seed: 30 },
       { obj: 'bird.robin', x: 1150, y: 818, s: 0.7, layer: 'fore', variant: 1, seed: 31 },
       { obj: 'animal.squirrel', x: 140, y: 850, s: 0.8, layer: 'fore', seed: 32 },
       // the framing trees: a great oak on the left, a horse chestnut on the right
@@ -114,27 +114,34 @@
       // (no bluebell clump here: its spring sprites put the tile still over the 150 KB budget, reviewer 7 Oct)
     ],
     actors: [
-      // the evening walk along the far path
-      { obj: 'person.dog-walker', layer: 'mid', path: [[120, 562], [640, 560]], speed: 7, loop: 'pingpong', s: 0.5, seed: 61, offset: 0.2 },
-      { obj: 'person.walker', layer: 'mid', path: [[1180, 560], [760, 562]], speed: 4.5, loop: 'pingpong', s: 0.48, seed: 62, variant: 1, offset: 0.6 },
-      { obj: 'person.walker', layer: 'mid', path: [[1500, 562], [1200, 560]], speed: 5, loop: 'pingpong', s: 0.48, seed: 63, variant: 1, offset: 0.3 },
-      // waterbirds
-      { obj: 'bird.mallard', layer: 'near', path: [[560, 650], [720, 646]], speed: 4.5, loop: 'pingpong', s: 0.6, seed: 64, variant: 0, offset: 0.2 },
-      { obj: 'bird.mallard', layer: 'near', path: [[610, 666], [760, 662]], speed: 4.5, loop: 'pingpong', s: 0.58, seed: 65, variant: 1, offset: 0.24 },
-      { obj: 'bird.swan', layer: 'near', path: [[1020, 628], [800, 624]], speed: 3.6, loop: 'pingpong', s: 0.62, seed: 66, variant: 0, offset: 0.5 },
-      { obj: 'bird.coot', layer: 'near', path: [[300, 700], [420, 698]], speed: 4, loop: 'pingpong', s: 0.5, seed: 67, offset: 0.4 },
-      { obj: 'bird.moorhen', layer: 'near', path: [[1300, 690], [1190, 686]], speed: 4, loop: 'pingpong', s: 0.48, seed: 68, offset: 0.7 },
-      { obj: 'bird.mallard', layer: 'near', path: [[860, 744], [680, 750]], speed: 5, loop: 'pingpong', s: 0.74, seed: 69, variant: 0, offset: 0.6 },
-      { obj: 'bird.goose', layer: 'near', path: [[140, 640], [280, 636]], speed: 3.5, loop: 'pingpong', s: 0.5, seed: 70, variant: 0, offset: 0.1 },
-      // strollers on the near path
-      { obj: 'person.dog-walker', layer: 'fore', path: [[300, 886], [900, 882]], speed: 8, loop: 'pingpong', s: 0.98, seed: 71, variant: 0, offset: 0.4 },
-      { obj: 'person.walker', layer: 'fore', path: [[1500, 884], [800, 880]], speed: 7, loop: 'pingpong', s: 0.96, seed: 72, variant: 1, offset: 0.7 },
       // geese going over to roost
       { obj: 'bird.goose-flight', layer: 'far', path: [[1720, 200], [-120, 250]], speed: 38, loop: 'loop', s: 0.55, seed: 73, offset: 0.2 },
     ],
     flocks: [{ obj: 'bird.small-flight', n: 5, area: [300, 180, 1300, 320], speed: 24, s: 0.5, seed: 81, layer: 'far' }],
     particles: 'season', weather: 'live', fx: { shadows: 2 },
   });
+  /** The ground and water movers (sceneYgMovers: the behaviour presets at their real size; eye: the view's fitted eye). */
+  const movers = (d) => {
+    const M = typeof sceneYgMovers === 'function' ? sceneYgMovers(d, 4.26, [
+      // the evening walk along the far path: a dog walker with an off-lead dog, two strollers
+      { obj: 'person.dog-walker', preset: 'dog-walker', px: [[120, 562], [640, 560]], layer: 'mid', seed: 61, offset: 0.2 },
+      { obj: 'person.walker', preset: 'stroll', px: [[1180, 560], [790, 562]], layer: 'mid', seed: 62, variant: 1, offset: 0.6 },
+      { obj: 'person.walker', preset: 'elderly', px: [[1500, 562], [1230, 560]], layer: 'mid', seed: 63, variant: 0, offset: 0.3 },
+      // waterbirds: a mallard pair, the swan gliding, a coot, a moorhen by the lilies, a drake near, a Canada goose
+      { obj: 'bird.mallard', preset: 'duck', px: [[560, 652], [700, 648], [760, 660]], layer: 'near', seed: 64, variant: 0, offset: 0.2 },
+      { obj: 'bird.mallard', preset: 'duck', px: [[600, 672], [730, 668], [790, 676]], layer: 'near', seed: 65, variant: 1, offset: 0.22 },
+      { obj: 'bird.swan', preset: 'swan', px: [[1040, 628], [880, 634], [760, 630]], layer: 'near', seed: 66, variant: 0, offset: 0.5 },
+      { obj: 'bird.coot', preset: 'coot', px: [[300, 704], [420, 700], [470, 716]], layer: 'near', seed: 67, offset: 0.4 },
+      { obj: 'bird.moorhen', preset: 'moorhen', px: [[1300, 694], [1200, 690]], layer: 'near', seed: 68, offset: 0.7 },
+      { obj: 'bird.mallard', preset: 'duck', px: [[880, 744], [700, 752]], layer: 'near', seed: 69, variant: 0, offset: 0.6 },
+      { obj: 'bird.goose', preset: 'goose-swim', px: [[150, 642], [300, 640]], layer: 'near', seed: 70, variant: 0, offset: 0.1 },
+      // strollers on the near path, kept apart: a dog walker on the left half, a walker on the right
+      { obj: 'person.dog-walker', preset: 'dog-walker', px: [[260, 886], [760, 882]], layer: 'fore', seed: 71, variant: 0, offset: 0.4 },
+      { obj: 'person.walker', preset: 'stroll', px: [[1480, 884], [960, 880]], layer: 'fore', seed: 72, variant: 1, offset: 0.7 },
+    ]) : [];
+    d.actors = M.concat(d.actors);
+    return d;
+  };
   sceneAdd(PACK, { id: ID, label: 'Yateley Green', site: 'Yateley Green — A summer evening beneath the birches', tags: ['uk', 'yateley', 'village green', 'pond', 'church', 'st peters', 'evening'], mood: 'dreamy', colour: 'amber' },
-    base);
+    (...a) => movers(base(...a)));
 })();

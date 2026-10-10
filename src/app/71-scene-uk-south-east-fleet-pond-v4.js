@@ -84,16 +84,12 @@ function sceneUkFleetPondV4() {
   const moored = [[15, 4.2, -1, 1.25, 1, false], [21, 4.2, -1, 1.25, 0, true], [14, 3.2, 1, 1.25, 0, false]];
   moored.forEach(([s, len, side, off, v, fl]) => Pl.push({ obj: 'boat.fpv-dinghy-moored', at: moorAt(s, len, side, off), k: 1, variant: v, flip: fl, fix: true }));
   // a club member on the pontoon, a gull on its far end
-  Pl.push({ obj: 'person.walker', at: [-1.4, 17], k: 1, face: 'left' });
+  Pl.push({ obj: 'person.walker', at: [-1.4, 17], k: 1, face: 'left', anim: { walk: false } });
   Pl.push({ obj: 'bird.gull', at: [-2.9, 27.6], k: 1.1 });
 
   // ---- the life on the water: the last dinghy in across the sun's road, swans by the pontoon, grebes, coots, gulls
   A.push({ obj: 'boat.dinghy', ground: [[-60, 160], [-20, 110], [-8, 70], [-6, 45]], speedM: 1.2, loop: 'pingpong', variant: 1, seed: 41, offset: 0.3 });
   A.push({ obj: 'boat.dinghy', ground: [[40, 260], [-60, 300], [-140, 280]], speedM: 1.4, loop: 'pingpong', variant: 2, seed: 42, offset: 0.7 });
-  A.push({ obj: 'bird.swan', ground: [[-2.6, 32], [-6, 30], [-9, 33]], speedM: 0.12, loop: 'pingpong', k: 1.05, seed: 43 });
-  A.push({ obj: 'bird.swan', ground: [[-3.4, 33.4], [-6.8, 31.4], [-9.8, 34.4]], speedM: 0.12, loop: 'pingpong', k: 0.95, seed: 44, offset: 0.08 });
-  A.push({ obj: 'bird.grebe', ground: [[-30, 70], [-16, 76]], speedM: 0.2, loop: 'pingpong', seed: 45, offset: 0.5 });
-  A.push({ obj: 'bird.coot', ground: [[8, 50], [2, 56], [-4, 52]], speedM: 0.2, loop: 'pingpong', seed: 46, offset: 0.2 });
   Pl.push({ obj: 'bird.gull', at: [-12, 48], k: 1, variant: 1, flip: true }, { obj: 'bird.coot', at: [-22, 96], k: 1.1 }, { obj: 'bird.grebe', at: [12, 120], k: 1.1, flip: true });
   // swallows over the water in summer, bats and mist after dusk, geese going over to roost
   const sw = (pts, sp, s, v, off, seed) => A.push({ obj: 'bird.wp-swallow', layer: 'mid', path: pts, speed: sp, loop: 'fade', s, variant: v, seed, offset: off });
@@ -117,5 +113,12 @@ function sceneUkFleetPondV4() {
     { obj: 'plant.bulrush', x: 180, y: 970, s: 2.4, pin: true, layer: 'front', shadow: false, anim: false, flip: true },
     { obj: 'plant.reed', x: -40, y: 980, s: 3.2, pin: true, layer: 'front', shadow: false, anim: false, variant: 2 },
     { obj: 'plant.grass-long', x: 1580, y: 950, s: 2.4, pin: true, layer: 'front', shadow: false, anim: false });
+  // ---- the movers (10 Oct, the animation overhaul): behaviour presets at their real size (SCENE_FPV.life), after every placement
+  A.push(...F.life(data, [
+    { obj: 'bird.swan', preset: 'swan', route: [[-2.6, 32], [-6, 30], [-9, 33]], seed: 43 },
+    { obj: 'bird.swan', preset: 'swan', route: [[-4.4, 35.4], [-7.8, 33.6], [-10.8, 36.6]], seed: 44, offset: 0.55 },
+    { obj: 'bird.grebe', preset: 'grebe', route: [[-30, 70], [-16, 76]], seed: 45, offset: 0.5, acts: ['look', 'preen', 'look'] },
+    { obj: 'bird.coot', preset: 'coot', route: [[8, 50], [2, 56], [-4, 52]], seed: 46, offset: 0.2, acts: ['look', 'preen', 'look'] },
+  ]));
   return data;
 }

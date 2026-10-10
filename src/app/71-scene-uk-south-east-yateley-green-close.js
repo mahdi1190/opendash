@@ -109,17 +109,7 @@
     ],
     actors: [
       // waterbirds
-      { obj: 'bird.mallard', layer: 'near', path: [[640, 742], [900, 748]], speed: 6, loop: 'pingpong', s: 0.62, seed: 61, variant: 0, offset: 0.2 },
-      { obj: 'bird.mallard', layer: 'near', path: [[720, 754], [980, 760]], speed: 6, loop: 'pingpong', s: 0.58, seed: 62, variant: 1, offset: 0.25 },
-      { obj: 'bird.moorhen', layer: 'near', path: [[1080, 680], [960, 676]], speed: 4, loop: 'pingpong', s: 0.44, seed: 63, offset: 0.4 },
-      { obj: 'bird.coot', layer: 'near', path: [[400, 690], [560, 686]], speed: 4.5, loop: 'pingpong', s: 0.46, seed: 64, offset: 0.6 },
-      { obj: 'bird.mallard', layer: 'near', path: [[1150, 820], [980, 830]], speed: 5, loop: 'pingpong', s: 0.72, seed: 65, variant: 0, offset: 0.7 },
-      { obj: 'bird.coot', layer: 'near', path: [[880, 700], [1000, 704]], speed: 3.5, loop: 'pingpong', s: 0.44, seed: 66, offset: 0.1 },
       // people on the green
-      { obj: 'person.dog-walker', layer: 'mid', path: [[560, 598], [860, 586]], speed: 6, loop: 'pingpong', s: 0.66, seed: 71, offset: 0.3 },
-      { obj: 'person.walker', layer: 'mid', path: [[1140, 566], [880, 578]], speed: 5, loop: 'pingpong', s: 0.56, seed: 72, variant: 2, offset: 0.5 },
-      { obj: 'person.walker', layer: 'mid', path: [[760, 586], [520, 594]], speed: 4, loop: 'pingpong', s: 0.62, seed: 73, variant: 2, offset: 0.4 },
-      { obj: 'person.walker', layer: 'mid', path: [[80, 606], [300, 602]], speed: 5, loop: 'pingpong', s: 0.7, seed: 75, variant: 2, offset: 0.6 },
     ],
     flocks: [{ obj: 'bird.small-flight', n: 6, area: [200, 150, 1300, 300], speed: 28, s: 0.6, seed: 81, layer: 'far' }],
     particles: 'season', weather: 'live', fx: { shadows: 2 },
@@ -127,10 +117,27 @@
   /** All-year life (waterbirds, a squirrel): the season comes from the date (season 'auto'), so nothing that belongs to
       one season only (butterflies, bees, dragonflies) is drawn; the four seasonal items of the view share this one scene. */
   const YEAR_ROUND = [
-      { obj: 'bird.goose', layer: 'near', path: [[200, 700], [420, 706]], speed: 4, loop: 'pingpong', s: 0.5, seed: 99, variant: 0, offset: 0.5 },
-      { obj: 'bird.swan', layer: 'near', path: [[1200, 720], [900, 714]], speed: 5, loop: 'pingpong', s: 0.6, seed: 100, variant: 0, offset: 0.4 },
-      { obj: 'bird.coot', layer: 'near', path: [[980, 760], [820, 766]], speed: 4, loop: 'pingpong', s: 0.5, seed: 101, offset: 0.2 },
   ];
+  /** The ground and water movers (sceneYgMovers: the behaviour presets at their real size; 4.75: the view's fitted eye, metres). */
+  const movers = (d) => {
+    const M = typeof sceneYgMovers === 'function' ? sceneYgMovers(d, 4.75, [
+      { obj: 'bird.mallard', px: [[640, 742], [900, 748]], layer: 'near', seed: 61, variant: 0, offset: 0.2 },
+      { obj: 'bird.mallard', px: [[720, 754], [980, 760]], layer: 'near', seed: 62, variant: 1, offset: 0.25 },
+      { obj: 'bird.moorhen', px: [[1080, 680], [960, 676]], layer: 'near', seed: 63, offset: 0.4 },
+      { obj: 'bird.coot', px: [[400, 690], [560, 686]], layer: 'near', seed: 64, offset: 0.6 },
+      { obj: 'bird.mallard', px: [[1150, 820], [980, 830]], layer: 'near', seed: 65, variant: 0, offset: 0.7 },
+      { obj: 'bird.coot', px: [[880, 700], [1000, 704]], layer: 'near', seed: 66, offset: 0.1 },
+      { obj: 'person.dog-walker', px: [[560, 598], [860, 586]], layer: 'mid', seed: 71, offset: 0.3 },
+      { obj: 'person.walker', px: [[1140, 566], [880, 578]], layer: 'mid', seed: 72, variant: 2, offset: 0.5 },
+      { obj: 'person.walker', px: [[760, 586], [520, 594]], layer: 'mid', seed: 73, variant: 2, offset: 0.4 },
+      { obj: 'person.walker', px: [[80, 606], [300, 602]], layer: 'mid', seed: 75, variant: 2, offset: 0.6 },
+      { obj: 'bird.goose', preset: 'goose-swim', px: [[200, 700], [420, 706]], layer: 'near', seed: 99, variant: 0, offset: 0.5 },
+      { obj: 'bird.swan', px: [[1200, 720], [900, 714]], layer: 'near', seed: 100, variant: 0, offset: 0.4 },
+      { obj: 'bird.coot', px: [[1010, 792], [870, 798]], layer: 'near', seed: 101, offset: 0.2 },
+    ]) : [];
+    d.actors = M.concat(d.actors);
+    return d;
+  };
   sceneAdd(PACK, { id: ID, label: 'Yateley Green', site: 'Yateley Green — Summer insects across the pond margin', tags: ['uk', 'yateley', 'village green', 'pond', 'church', 'st peters'], mood: 'calm', colour: 'green' },
-    () => { const d = base(); d.actors = d.actors.concat(YEAR_ROUND); return d; });
+    (...a) => { const d = movers(base(...a)); d.actors = d.actors.concat(YEAR_ROUND); return d; });
 })();

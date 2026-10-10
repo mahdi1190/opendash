@@ -236,8 +236,6 @@ function sceneYateleyCommon1(season) {
       { obj: 'vehicle.car', layer: 'far', path: [[1780, 491], [-180, 490]], speed: 48, loop: 'loop', s: 0.14, variant: 1, seed: 80, offset: 0.08 },
       { obj: 'vehicle.bus', layer: 'far', path: [[1780, 491], [-180, 490]], speed: 36, loop: 'loop', s: 0.13, variant: 0, seed: 81, offset: 0.82 },
       // on the firebreak: a dog walker climbing toward us, a walker going down
-      { obj: 'person.dog-walker', layer: 'near', path: Y.path(TRACK, 660, 800).reverse(), speed: 6, loop: 'pingpong', s: 0.6, sByY: [[660, 0.6], [800, 0.82]], seed: 76, offset: 0.3 },
-      { obj: 'person.walker', layer: 'mid', path: Y.path(TRACK, 540, 640), speed: 5, loop: 'pingpong', s: 0.45, variant: 1, sByY: [[540, 0.44], [640, 0.62]], seed: 77, offset: 0.6 },
     ],
     flocks: [
       { obj: 'bird.small-flight', n: winter ? 9 : 5, area: [200, 120, 1100, 300], speed: 26, s: 0.5, seed: 81, layer: 'horizon' },
@@ -252,5 +250,11 @@ function sceneYateleyCommon1(season) {
   Y.butterflies[season].forEach((v, i) => d.actors.push({ obj: 'animal.butterfly', layer: 'fore', path: [[160 + i * 220, 840], [280 + i * 200, 812], [220 + i * 210, 870], [340 + i * 190, 846]], speed: 22, loop: 'pingpong', s: 1, variant: v, seed: 90 + i, offset: i * 0.3 }));
   if (winter) d.place.push({ obj: 'bird.robin', x: 1250, y: ridgeTop(1250) + 4, s: 1.3, layer: 'fore', variant: 0, seed: 95 });
   if (autumn) d.flocks.push({ obj: 'bird.goose-flight', n: 6, area: [300, 100, 1000, 220], speed: 30, s: 0.5, seed: 97, layer: 'horizon' });
+  // the walkers by the motion behaviours (sceneYgMovers, 70-scene-lib-yateley-green-views.js): on the ground, round the
+  // trunks and the gate posts, at their real size for the view's fitted eye (13.1 m)
+  if (typeof sceneYgMovers === 'function') d.actors = sceneYgMovers(d, 13.1, [
+    { obj: 'person.dog-walker', preset: 'dog-walker', px: Y.path(TRACK, 660, 800).reverse(), layer: 'near', seed: 76, offset: 0.3 },
+    { obj: 'person.walker', preset: 'stroll', px: Y.path(TRACK, 540, 640), layer: 'mid', variant: 1, seed: 77, offset: 0.6 },
+  ]).concat(d.actors);
   return d;
 }

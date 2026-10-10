@@ -296,7 +296,7 @@
     for (let i = 1; i < BROOD.length; i++) broodL += Math.hypot(BROOD[i][0] - BROOD[i - 1][0], BROOD[i][1] - BROOD[i - 1][1]);
     const off0 = 0.12;
     actors.push({ obj: 'bird.mallard', ground: BROOD, loop: 'loop', speed: 0.28, variant: 1, k: 1, seed: 51, offset: off0 });
-    for (let i = 0; i < 5; i++) actors.push({ obj: 'bird.proof-duckling', ground: BROOD, loop: 'loop', speed: 0.28, variant: i % 2, k: R2(0.9 + (i % 3) * 0.07), seed: 52 + i, offset: R3(((off0 - (0.55 + 0.34 * i + (i === 3 ? 0.12 : 0)) / broodL) % 1 + 1) % 1) });
+    for (let i = 0; i < 5; i++) actors.push({ obj: 'bird.proof-duckling', ground: BROOD, loop: 'loop', speed: 0.28, variant: i % 2, k: R2(0.9 + (i % 3) * 0.07), seed: 52 + i, offset: R3(((off0 - (0.55 + 0.34 * i + (i >= 3 ? 0.12 : 0)) / broodL) % 1 + 1) % 1) });
 
     // ---- the FETCH, a 6.8 s act: the throw at 0.2 s, the dog away at 0.57, nosing the ball up at 1.98, home by 3.84 ----
     const dF = 16.5, YG = R2(P(0, dF).Y), kF = K(dF), sDog = R3(kF * 0.6 / 46), sBall = R3(kF * 0.1 / 9), sMan = R3(kF * 1.72 / 64);

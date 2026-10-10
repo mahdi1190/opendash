@@ -25,6 +25,44 @@
    PURE: defines functions only; each runs once (through the item's thunk)
    when the scene is shown, linted or sheeted.
    ============================================================ */
+/**
+ * The views' ground movers (user request, 10 Oct: the animation overhaul): built by the behaviour presets (sceneBehave,
+ * 70-scene-lib-behaviours.js) in ground metres, so the water birds sit on open water clear of the banks, the walkers keep to
+ * the bank path round the stones, everything is its real size at its depth, and every route goes out and back (no jumps).
+ * These views are v1 (pixel) scenes: the routes are authored as screen points and laid on the ground through the view's own
+ * camera { eye, fov, horizon } (the eye the scene's people are drawn from), the open water as a screen polygon.
+ *   view: data.view; eye: metres; water: [[[X, Y], ...]] the open water; specs: [{ obj, preset, px: [[X, Y], ...] | route,
+ *   kind: 'dog' (a walker and an off-lead dog) | 'pair', layer, seed, offset, variant }]
+ */
+function sceneUkWyndhamsPoolMovers(view, eye, water, specs) {
+  if (typeof sceneBehave === 'undefined') return [];
+  const f = 800 / Math.tan(view.fov * Math.PI / 360), hor = view.horizon;
+  const toM = ([X, Y]) => { const d = f * eye / Math.max(1.5, Y - hor); return [Math.round((X - 800) * d / f * 100) / 100, Math.round(d * 100) / 100]; };
+  const proxy = { id: 'wyndhams-pool', camera: { eye, fov: view.fov, horizon: hor, x0: 800 }, water: water.map(P => ({ poly: P.map(toM) })), place: [] };
+  const out = [];
+  for (const s of specs) {
+    // no dive or dabble stops: their hidden legs (drawn off-screen) read as a dash across the bank to the motion lint
+    const acts = s.acts != null ? s.acts : { duck: ['look', 'preen', 'look'], coot: ['look', 'preen'], grebe: ['look', 'preen'], moorhen: ['look'] }[s.preset];
+    // the small water birds' drawn figures fill less of their boxes than the swan's: k brings them to their real size
+    const k = s.k || { duck: 1.42, coot: 1.42, moorhen: 1.5, grebe: 1.4, swan: 0.86, 'heron-stalk': 1.28 }[s.preset];
+    const spec = Object.assign({}, s, { route: s.route || s.px.map(toM) }, acts ? { acts } : {}, k ? { k } : {});
+    delete spec.px; delete spec.kind;
+    if (s.kind === 'dog') {
+      // the dog's cycle ends where it began (a closed loop on the walker's clock, not a pingpong of double length)
+      const [w, dog] = sceneBehave.walkWithDog(proxy, spec), P = dog.path, a = P[0], b = P[P.length - 1];
+      if (Math.hypot(a[0] - b[0], a[1] - b[1]) > 0.05) { b[2] = 0; P.push([a[0], a[1], 0, 0, 0.25]); }
+      // and lasts exactly the walker's cycle, so the pair never drift apart
+      const cyc = (Q) => Q.reduce((t, q) => t + (q[2] || 0) + (q[4] || 0), 0), gap = cyc(w.path) - cyc(P);
+      if (gap > 0) P[P.length - 1][2] = Math.round(((P[P.length - 1][2] || 0) + gap) * 100) / 100;
+      out.push(w, dog);
+    }
+    else if (s.kind === 'pair') out.push(...sceneBehave.pair(proxy, spec));
+    else out.push(...sceneBehave.actors(proxy, spec));
+  }
+  for (const a of out) delete a.$behave;
+  return out;
+}
+
 function sceneUkWyndhamsPoolKit() {
   /** A woodland skyline: crowns of uneven size along y, filled down to foot (seeded, deterministic). */
   const crowns = (seed, y, amp, foot, x0 = -160, x1 = 1760, w0 = 26, w1 = 70) => {
@@ -145,10 +183,16 @@ function sceneUkWyndhamsPoolWide() {
   const AREA = (pts) => ({ poly: pts });
   const WL = 508;
   const far = farShore(WL, 21, { hide: [[-200, 120], [1640, 1800]] });
+  // the movers' ground: the view, the eye the scene is drawn from (a low bank; the angler, the swim and the heath birds are
+  // drawn to it), the open water between the
+  // spit, the right bank and the near reeds, and the bank path's centre line
+  const VIEW = { lat: 51.332, lon: -0.822, heading: 222, fov: 82, horizon: 470, lift: 1 }, EYE = 5;
+  const OPEN = [[[300, 516], [1390, 516], [1404, 600], [1392, 660], [1420, 740], [1440, 784], [640, 794], [262, 794], [300, 720], [282, 650], [220, 590], [140, 560]]];
+  const PATH = [[450, 900], [560, 874], [700, 860], [900, 846], [1100, 840], [1350, 836], [1700, 832]];
   return {
     v: 1,
     id: 'wyndhams-pool-1',
-    view: { lat: 51.332, lon: -0.822, heading: 222, fov: 82, horizon: 470, lift: 1 },
+    view: VIEW,
     at: 'afternoon',
     season: 'auto',
     setting: 'natural',
@@ -173,7 +217,7 @@ function sceneUkWyndhamsPoolWide() {
       { layer: 'front', d: 'M1760 726Q1630 736 1530 790Q1446 836 1398 878Q1370 898 1360 912H1760Z', fill: { lin: [[0, '@near.0'], [1, '@mud.1']], x1: 0, y1: 726, x2: 0, y2: 912 } },
     ],
     water: [
-      { layer: 'mid', d: `M-160 ${WL + 4}Q260 ${WL - 2} 700 ${WL + 6}T1760 ${WL + 2}V900H-160Z`, y0: WL + 2, y1: 860, base: ['#7c9a8c', '#3a5e56', '#1c3a36'], reflect: true, shimmer: 36, lightPath: true },
+      { layer: 'mid', d: `M-160 ${WL + 4}Q260 ${WL - 2} 700 ${WL + 6}T1760 ${WL + 2}V804Q1300 810 640 814Q240 798 -160 820Z`, y0: WL + 2, y1: 860, base: ['#7c9a8c', '#3a5e56', '#1c3a36'], reflect: true, shimmer: 36, lightPath: true },
     ],
     place: [
       // the pool's signature: the tall veteran Scots pine leaning out from the spit
@@ -183,13 +227,13 @@ function sceneUkWyndhamsPoolWide() {
       { obj: 'tree.wyv-snag', x: 404, y: 664, s: 0.62, layer: 'mid', variant: 0, seed: 53 },
       { obj: 'bird.wp-kingfisher-perch', x: 425, y: 571, s: 0.8, layer: 'mid', seed: 54 },
       { obj: 'animal.squirrel', x: 1600, y: 566, s: 0.8, layer: 'near', variant: 0, seed: 49, flip: true },
-      { obj: 'bird.robin', x: 1572, y: 770, s: 0.8, layer: 'near', variant: 0, seed: 50 },
+      { obj: 'bird.robin', x: 1572, y: 770, s: 0.35, layer: 'near', variant: 0, seed: 50 },
       // the angler's swim on the near bank
-      { obj: 'ground.swim', x: 1086, y: 806, s: 0.95, layer: 'fore', variant: 0, seed: 51 },
-      { obj: 'person.angler', x: 1074, y: 798, s: 0.8, layer: 'fore', variant: 0, seed: 52, flip: true },
+      { obj: 'ground.swim', x: 1086, y: 806, s: 1.79, layer: 'fore', variant: 0, seed: 51 },
+      { obj: 'person.angler', x: 1074, y: 798, s: 1.5, layer: 'fore', variant: 0, seed: 52, flip: true },
       // a Dartford warbler on the gorse top (Yateley Common is one of its strongholds), a stonechat on the bracken
-      { obj: 'bird.dartford-warbler', x: 262, y: 806, s: 0.9, layer: 'front', seed: 55 },
-      { obj: 'bird.stonechat', x: 1536, y: 838, s: 0.95, layer: 'front', variant: 1, seed: 56, flip: true },
+      { obj: 'bird.dartford-warbler', x: 262, y: 806, s: 0.31, layer: 'front', seed: 55 },
+      { obj: 'bird.stonechat', x: 1536, y: 838, s: 0.37, layer: 'front', variant: 1, seed: 56, flip: true },
       // framing: a silver birch bough hanging into the top right
       { obj: 'tree.wyv-birch-bough', x: 1640, y: -14, s: 0.9, layer: 'front', variant: 0, seed: 57, flip: true, pin: true },
       // dusk: mist lying on the water (drawn only after real dusk)
@@ -224,11 +268,11 @@ function sceneUkWyndhamsPoolWide() {
       { obj: { 'plant.grass': 3, 'plant.heather': 3 }, layer: 'near', seed: 11, area: AREA([[-160, 560], [120, 560], [250, 700], [220, 790], [-160, 790]]), n: 90, minGap: 11, s: [0.45, 0.9], sByY: [[560, 0.7], [790, 1.15]], flip: 0.5, variant: 'random', tint: T('#8a7a40'), anim: false },
       { obj: { 'plant.grass': 3, 'plant.heather': 3 }, layer: 'near', seed: 12, area: AREA([[1450, 560], [1760, 540], [1760, 790], [1470, 786], [1410, 680]]), n: 80, minGap: 11, s: [0.45, 0.9], sByY: [[560, 0.7], [790, 1.15]], flip: 0.5, variant: 'random', tint: T('#8a7a40'), anim: false },
       // the near water's edge: reeds in clumps (gaps where the bank is open), stones
-      { obj: { 'plant.reed': 3, 'plant.bulrush': 2, 'plant.grass-long': 1 }, layer: 'fore', seed: 13, area: { rect: [-160, 790, 1760, 822] }, n: 120, minGap: 9, s: [0.5, 0.9], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), mask: { noise: { scale: 200, cut: 0.42 }, avoid: [{ rect: [960, 780, 1200, 830] }] }, anim: false },
-      { obj: { 'rock.stones': 1, 'rock.boulder': 1 }, layer: 'fore', seed: 14, area: { rect: [300, 804, 1240, 830] }, n: 12, minGap: 40, s: [0.14, 0.42], mask: { noise: { scale: 90, cut: 0.4 } }, flip: 0.5, variant: [0, 1], anim: false },
+      { obj: { 'plant.reed': 3, 'plant.bulrush': 2, 'plant.grass-long': 1 }, layer: 'fore', seed: 13, area: { rect: [-160, 790, 1760, 822] }, n: 120, minGap: 9, s: [0.5, 0.9], flip: 0.5, variant: [0, 1], tint: T('#8a7a40'), mask: { noise: { scale: 200, cut: 0.42 }, avoid: [{ rect: [940, 770, 1240, 830] }] }, anim: false },
+      { obj: { 'rock.stones': 1, 'rock.boulder': 1 }, layer: 'fore', seed: 14, area: { rect: [300, 804, 1240, 818] }, n: 12, minGap: 40, s: [0.14, 0.42], mask: { noise: { scale: 90, cut: 0.4 } }, flip: 0.5, variant: [0, 1], anim: false },
       // the near bank either side of the path: heather, long grass, flowers thinning off the path
-      { obj: { 'plant.heather': 5, 'plant.grass-long': 2, 'plant.grass': 2, 'plant.wildflowers': 1 }, layer: 'fore', seed: 16, area: AREA([[-160, 806], [640, 800], [1300, 800], [1760, 794], [1760, 824], [1300, 830], [900, 832], [620, 850], [420, 872], [330, 912], [-160, 912]]), n: 170, minGap: 10, s: [0.5, 0.95], sByY: [[800, 0.8], [910, 1.3]], flip: 0.5, variant: 'random', tint: T('#8a7a40'), mask: { avoid: [{ rect: [980, 780, 1200, 830] }] }, anim: false },
-      { obj: { 'plant.heather': 3, 'plant.grass': 3, 'plant.wildflowers': 1, 'rock.stones': 1 }, layer: 'fore', seed: 15, area: AREA([[676, 912], [760, 884], [1240, 858], [1760, 848], [1760, 912]]), n: 90, minGap: 12, s: [0.6, 1], sByY: [[850, 0.9], [912, 1.3]], flip: 0.5, variant: 'random', tint: T('#8a7a40'), anim: false },
+      { obj: { 'plant.heather': 5, 'plant.grass-long': 2, 'plant.grass': 2, 'plant.wildflowers': 1 }, layer: 'fore', seed: 16, area: AREA([[-160, 806], [640, 800], [1300, 800], [1760, 794], [1760, 824], [1300, 830], [900, 832], [620, 850], [420, 872], [330, 912], [-160, 912]]), n: 170, minGap: 10, s: [0.5, 0.95], sByY: [[800, 0.8], [910, 1.3]], flip: 0.5, variant: 'random', tint: T('#8a7a40'), mask: { avoid: [{ rect: [940, 770, 1240, 830] }] }, anim: false },
+      { obj: { 'plant.heather': 3, 'plant.grass': 3, 'plant.wildflowers': 1 }, layer: 'fore', seed: 15, area: AREA([[676, 912], [760, 884], [1240, 858], [1760, 848], [1760, 912]]), n: 90, minGap: 12, s: [0.6, 1], sByY: [[850, 0.9], [912, 1.3]], flip: 0.5, variant: 'random', tint: T('#8a7a40'), anim: false },
       one('plant.wyv-heath-bank', 40, 900, 1.25, 1, 'front', 63, 0, false), one('plant.wyv-heath-bank', 260, 916, 1.0, 2, 'front', 64, 1, false),
       one('plant.gorse', 210, 820, 0.7, 0, 'fore', 65, 0, false), one('plant.gorse', 1380, 862, 0.6, 1, 'fore', 66, 1, false),
       // the verge in front, moving in the wind; bracken at the corners
@@ -246,24 +290,26 @@ function sceneUkWyndhamsPoolWide() {
       one('plant.bracken', 1450, 916, 1.4, 1, 'front', 28, 1, false), one('plant.bracken', 1630, 922, 2.0, 0, 'front', 29, 0, false), one('plant.bracken', 1700, 836, 1.2, 2, 'front', 30, 1, false),
     ],
     actors: [
-      // the heron, stalking the shallows off the spit and stabbing at fish
-      { obj: 'bird.wp-heron-stalk', layer: 'mid', path: [[450, 750], [410, 754], [372, 760]], speed: 2.2, loop: 'pingpong', s: 0.78, seed: 48, offset: 0.2 },
-      // on the water: the pair of mute swans, mallard, coot, moorhen and a grebe, slow and drifting
-      { obj: 'bird.swan', layer: 'mid', path: [[620, 600], [900, 596]], speed: 4, loop: 'pingpong', s: 0.66, seed: 61, offset: 0.2 },
-      { obj: 'bird.swan', layer: 'mid', path: [[700, 612], [960, 608]], speed: 3.6, loop: 'pingpong', s: 0.6, seed: 62, offset: 0.35 },
-      { obj: 'bird.mallard', layer: 'mid', path: [[1100, 660], [880, 664]], speed: 5, loop: 'pingpong', s: 0.56, seed: 63, offset: 0.1 },
-      { obj: 'bird.mallard', layer: 'mid', path: [[1150, 668], [930, 672]], speed: 4.8, loop: 'pingpong', s: 0.54, seed: 64, offset: 0.16, variant: 1 },
-      { obj: 'bird.coot', layer: 'mid', path: [[1240, 590], [1130, 594]], speed: 5, loop: 'pingpong', s: 0.38, seed: 66, offset: 0.7 },
-      { obj: 'bird.moorhen', layer: 'mid', path: [[1350, 690], [1270, 694]], speed: 4, loop: 'pingpong', s: 0.46, seed: 67, offset: 0.4 },
-      { obj: 'bird.grebe', layer: 'mid', path: [[760, 560], [520, 566]], speed: 5, loop: 'pingpong', s: 0.38, seed: 68, offset: 0.6 },
+      // the ground movers, by the behaviour presets at their real sizes (sceneUkWyndhamsPoolMovers above): the heron stalking the
+      // shallows off the spit, the swans, mallard, coot, moorhen and grebe on open water, a walker with an off-lead dog and a
+      // jogger on the bank path
+      ...sceneUkWyndhamsPoolMovers(VIEW, EYE, OPEN, [
+        { obj: 'bird.wp-heron-stalk', preset: 'heron-stalk', px: [[452, 762], [410, 766], [372, 772]], layer: 'mid', seed: 48, offset: 0.2 },
+        { obj: 'bird.swan', preset: 'swan', px: [[620, 734], [820, 728], [1000, 738]], layer: 'mid', seed: 61, offset: 0.2 },
+        { obj: 'bird.swan', preset: 'swan', px: [[700, 752], [900, 748], [1040, 756]], layer: 'mid', seed: 62, offset: 0.35 },
+        { obj: 'bird.mallard', preset: 'duck', px: [[1120, 700], [1000, 708], [900, 704]], layer: 'mid', seed: 63, offset: 0.1 },
+        { obj: 'bird.mallard', preset: 'duck', px: [[1160, 716], [1040, 722], [940, 718]], layer: 'mid', seed: 64, offset: 0.16, variant: 1 },
+        { obj: 'bird.coot', preset: 'coot', px: [[1250, 650], [1130, 660]], layer: 'mid', seed: 66, offset: 0.7 },
+        { obj: 'bird.moorhen', preset: 'moorhen', px: [[1340, 730], [1250, 738]], layer: 'mid', seed: 67, offset: 0.4 },
+        { obj: 'bird.grebe', preset: 'grebe', px: [[760, 640], [520, 650]], layer: 'mid', seed: 68, offset: 0.6 },
+        { kind: 'dog', walker: 'person.walker', px: PATH.map(([x, y]) => [x, y - 6]), layer: 'fore', seed: 71, offset: 0.12 },
+        { obj: 'person.jogger', preset: 'jogger', px: PATH.map(([x, y]) => [x, y + 14]).reverse(), layer: 'fore', seed: 72, offset: 0.62 },
+      ]),
       // swallows skimming the water (none in winter), pipistrelles after dusk
       { obj: 'bird.wp-swallow', layer: 'near', path: [[-140, 620], [300, 650], [640, 600], [1000, 660], [1400, 610], [1760, 640]], speed: 300, loop: 'fade', s: 0.8, variant: 0, seed: 73, offset: 0.1 },
       { obj: 'bird.wp-swallow', layer: 'near', path: [[1760, 560], [1300, 580], [900, 545], [500, 575], [-160, 550]], speed: 260, loop: 'fade', s: 0.6, variant: 1, seed: 74, offset: 0.6 },
       { obj: 'animal.wp-bat', layer: 'mid', path: [[500, 420], [700, 380], [900, 440], [700, 470], [500, 420]], speed: 160, loop: 'loop', s: 0.9, seed: 75, offset: 0.3 },
       { obj: 'animal.wp-bat', layer: 'mid', path: [[1000, 360], [1240, 410], [1100, 460], [900, 400], [1000, 360]], speed: 150, loop: 'loop', s: 0.8, variant: 1, seed: 76, offset: 0.7 },
-      // the bank path: a dog walker and a jogger, up the path from the bottom and along the water
-      { obj: 'person.dog-walker', layer: 'fore', path: [[520, 910], [700, 866], [1100, 846], [1700, 838]], speed: 20, loop: 'pingpong', s: 1.0, seed: 71, offset: 0.12 },
-      { obj: 'person.jogger', layer: 'fore', path: [[1760, 836], [1100, 842], [700, 864], [480, 912]], speed: 46, loop: 'loop', s: 0.98, seed: 72, offset: 0.55 },
       // a light aircraft climbing out of Blackbushe, just over the common
       { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[-200, 260], [1800, 170]], speed: 24, loop: 'loop', s: 0.5, seed: 77, offset: 0.4 },
     ],

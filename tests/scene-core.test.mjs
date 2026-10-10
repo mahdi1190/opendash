@@ -455,8 +455,8 @@ test('person.walker: the snapshot (hem band and garment details drawn); the far 
   // pocket and drawstring, the coat belt and the parka hood's fur trim never ran. They are all fine pieces (detail: true), so
   // only the near tier changes: FAR, the hash of every non-detail shape, is the pre-change builder's (1a4b196 and a0fc8ef).
   // SNAPSHOT is the hash of the output without the hem bands, computed the same way (it was 8954355f... before SQ-43).
-  const SNAPSHOT = '4ec74e3ae4e098ff4dd9b6a937cf6d5b52702955a450cebe9b796a1bc995fdb3';
-  const FAR = '3a2d850680892ed6929168755e5e08d27a06128c8f9bd526815ff30d0e01cb90';
+  const SNAPSHOT = '44f74df65c728d2bf78f0dc049bd6604d90ef62bdaff13d13b374cba36c3c8dc';   // re-recorded 10 Oct (armA)
+  const FAR = '65751a413b409e0ba411ef87d705d7ba63a6fd584a9772707d1f53d8c1d63e92';   // re-recorded 10 Oct: the near arm hangs and is its own part (armA) so it swings
   const isHemBand = sh => !!(sh && sh.detail && sh.s && (sh.w === 1.1 || sh.w === 0.5) && /^M[^A-Za-z]+Q0-[^A-Za-z]+$/.test(sh.d));
   const out = {}, far = {}, H = s => createHash('sha256').update(s).digest('hex');
   for (let v = 0; v < 8; v++) for (const season of SEASONS4) {
@@ -491,7 +491,7 @@ test('person.walker: every garment with its own detail draws it, as a fine (deta
     const o = P.outfit(P.PRESETS[v], season), top = o.top, sh = E.sceneObjShapes('person.walker', v, season);
     assert.equal(top.kind, kind, `variant ${v} ${season} wears a ${kind}`);
     const hits = P.figure(o).body.filter(s => !Array.isArray(s) && is(s, top.col));   // the builder's own shapes (colour slots)
-    assert.equal(sh.parts.body.length, P.figure(o).body.length, 'person.walker draws the builder\'s body as is');
+    assert.equal(sh.parts.body.length + (sh.parts.armA || []).length, P.figure(o).body.length, 'person.walker draws the builder\'s body as is (the near arm split out as armA, to swing)');
     assert.ok(hits.length >= 1, `${kind}: ${what} is drawn`);
     assert.ok(hits.every(s => s.detail === true), `${kind}: ${what} is a fine piece (detail: true)`);
     assert.ok(E.sceneDetailAt('person.walker', sh, near) && !E.sceneDetailAt('person.walker', sh, far), `${kind}: drawn near, dropped far`);

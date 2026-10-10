@@ -25,7 +25,7 @@
    clouds and movers are not drawn.
 
    stats(): { drawMs, dynMs: { median, p95, max, n }, bakeMs, firstBakeMs, bakes, sprites, spriteBytes, bitmaps,
-              blitPx, animatedDraws, actors, placements }
+              blitPx, animatedDraws, occDraws (the depth-order redraws over movers), actors, placements }
      drawMs is the whole frame, dynMs the frame minus the bitmap blits (the sky and land bitmaps): what the
      animated sprites, strips, actors, flocks, shimmer, particles and weather cost. CPU time round the 2D calls
      (performance.now()); with opts.flush (the perf harness, software raster) the pending raster work is forced
@@ -412,6 +412,8 @@ function sceneRendererCreate(canvas, src, o) {
     // 2. the land: bake groups (sceneBakePlan), each bitmap cropped to what it draws
     phMark('layers');
     const plan = sceneBakePlan(C), byLayer = C.layers.map(() => []);
+    const actorsB = typeof sceneMotionFixed === 'function' ? sceneMotionFixed(C) : C.actors, actorLays = actorsB.map(a => _sccActorLayers(C, a)), actorCopies = actorsB.map(() => []);
+    let occOrd = 0;
     C.items.forEach((it, i) => byLayer[it.layer] && byLayer[it.layer].push(i));
     const layerOfGroup = [];
     plan.forEach((gr, gi) => gr.layers.forEach(l => { layerOfGroup[l] = gi; }));
@@ -489,21 +491,28 @@ function sceneRendererCreate(canvas, src, o) {
           if (it.strip >= 0) continue;
           if (env && it.direct) { if (gx) drawDirect(gx, TG, it, colourFn(Lx, v2Haze(i, it, hz(l)), it.tint, false, v2Lift(i), env.liftCol), Lx, env.windowShare); yield* slice(gx); continue; }
           const x2 = env ? { env, flip: it.flip, lift: v2Lift(i), cls: it.cls, i } : undefined, haze = env ? v2Haze(i, it, hz(l)) : hz(l);
-          const M = placeM(it.x, it.y, it.s, it.flip), sc = bucket(it.s) * vs;
+          // a floater on the water sits in it (10 Oct): drawn its sink lower, clipped at its waterline
+          const fcls = it.cls || (typeof sceneObjClassOf === 'function' ? sceneObjClassOf(it.o) : null);
+          const sinkU = fcls === 'bird-water' || fcls === 'boat' ? _sccSinkOf(C, it.o, it.x, it.y, it.g && it.g.d) : 0, wl = sinkU ? it.y * vs + oy : null;
+          const M = _sccSunk(placeM(it.x, it.y, it.s, it.flip), sinkU), sc = bucket(it.s) * vs;
           const moving = it.anim && it.anim.length ? it.anim : null;
           const night = !!(Lx && Lx.windows);
           let skip = null, litMoves = false;
-          if (!moving) { if (gx) drawSprite(gx, keepStatic(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, false, false, x2)), toG(M)); }
+          // (flat ground marks, leaf litter and seasonal cover lie in front of a mover's feet, never over it: not occluders)
+          const flat = it.cls === 'cover' || (/^ground\./.test(it.o) && !/log|fallen|stone|rock|boulder/.test(it.o));
+          const shI = flat ? null : sceneObjShapes(it.o, it.v, it.season), occ = (which) => { if (shI) _sccOccAdd(grp, { ord: occOrd++, layer: l, z: it.z != null ? it.z : it.y, box: box(itemBox(it, shI)), M, wl, Lx, lk, o: it.o, v: it.v, season: it.season, which, haze, tint: it.tint, sc, x2, sp: null }); };
+          if (!moving) { if (gx) _sccAbove(gx, wl == null ? null : wl - grp.y, () => drawSprite(gx, keepStatic(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, false, false, x2)), toG(M))); occ('*'); }
           else {
             // after real dusk: the moving sprites carry their lit glows (every one, when any of the placement's is on) and, for
             // a whole-object hook, the lit part; the parts that stay get their glows in the bitmap below, as a static placement
             const whole = moving.find(a => _scAnimParts(a)[0] === '*'), moved = whole ? [] : [...new Set(moving.flatMap(_scAnimParts))];
-            if (!whole && gx) drawSprite(gx, keepStatic(sprite(Lx, lk, it.o, it.v, it.season, 'rest:' + moved.join(','), haze, it.tint, sc, false, false, x2)), toG(M));
+            if (!whole && gx) _sccAbove(gx, wl == null ? null : wl - grp.y, () => drawSprite(gx, keepStatic(sprite(Lx, lk, it.o, it.v, it.season, 'rest:' + moved.join(','), haze, it.tint, sc, false, false, x2)), toG(M)));
+            if (!whole) occ('rest:' + moved.join(','));
             const lit = night && !!it.glowOn && it.glowOn.some(Boolean);
             litMoves = !!whole && night && it.lit; skip = whole ? sceneObjShapes(it.o, it.v, it.season).order : moved;
             const parts = whole ? [{ a: whole, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, '*', haze, it.tint, sc, lit, litMoves, x2)) }]
               : moving.flatMap(a => _scAnimParts(a).map((p, j) => ({ a, j, sp: keep(sprite(Lx, lk, it.o, it.v, it.season, p, haze, it.tint, sc, lit, false, x2)) })));
-            grp.movers.push({ kind: 'item', y: it.y, x: it.x, M, parts, b: itemBox(it, sceneObjShapes(it.o, it.v, it.season)) });
+            grp.movers.push({ kind: 'item', y: it.y, x: it.x, M, parts, b: itemBox(it, sceneObjShapes(it.o, it.v, it.season)), z: it.z != null ? it.z : it.y, layer: l, wl });
           }
           if (gx && night) {
             if (it.lit && !litMoves) drawSprite(gx, keepStatic(sprite(Lx, lk, it.o, it.v, it.season, 'lit', 0, null, sc, false, false, x2 ? { env, flip: it.flip, lift: 0, cls: it.cls, i } : undefined)), toG(M));
@@ -525,8 +534,10 @@ function sceneRendererCreate(canvas, src, o) {
           grp.movers.push({ kind: 'sign', y: s.y, c, x: sb[0], top: sb[1] });
           out.sprites.add({ c, bytes: c.width * c.height * 4 });
         }
-        // actors and flocks of this layer: moving every frame
-        for (const a of C.actors) if (a.layer === l) {
+        // actors and flocks of this layer: moving every frame (a v2 ground actor in each group its depth bands reach, 10 Oct)
+        for (let ai = 0; ai < actorsB.length; ai++) {
+          const a = actorsB[ai];
+          if (!actorLays[ai].includes(l) || actorCopies[ai].includes(gi)) continue;
           if (_sccBugOff(life, a.o)) continue;   // out of its months, by night, in the wet or the cold
           const sh = sceneObjShapes(a.o, a.v, C.season); if (!sh) continue;
           const sMax = (a.s || 1) * (a.sByY ? Math.max(...a.sByY.map(p => p[1])) : 1), sc = bucket(sMax) * vs, lit = !!(Lx && Lx.windows);
@@ -534,7 +545,8 @@ function sceneRendererCreate(canvas, src, o) {
           // the lit part rides in the rest sprite (it moves with the body, at no extra draw)
           const parts = [{ a: whole || null, sp: keep(sprite(Lx, lk, a.o, a.v, C.season, moved.length ? 'rest:' + moved.join(',') : '*', hz(l), null, sc, lit, lit && !!(sh.parts.lit && sh.parts.lit.length))), rest: true }]
             .concat(anim.filter(h => _scAnimParts(h)[0] !== '*').flatMap(h => _scAnimParts(h).map((p, j) => ({ a: h, j, sp: keep(sprite(Lx, lk, a.o, a.v, C.season, p, hz(l), null, sc, lit)) }))));
-          grp.movers.push({ kind: 'actor', actor: a, parts, box: sh.box, y: 0 });
+          actorCopies[ai].push(gi);
+          grp.movers.push({ kind: 'actor', actor: a, parts, box: sh.box, y: 0, gi, copies: actorCopies[ai], layer: l, sinkU: typeof sceneMoverSize === 'function' ? sceneMoverSize(a.o).sink : 0 });
         }
         for (const f of C.flocks) if (f.layer === l) {
           if (_sccBugOff(life, f.o)) continue;
@@ -561,7 +573,9 @@ function sceneRendererCreate(canvas, src, o) {
         const c = _sccCanvas(d[2] - d[0], d[3] - d[1]), cx = c.getContext('2d', _SCC_CPU);
         for (const it of its) { const M = placeM(it.x, it.y, it.s, it.flip); drawSprite(cx, keepStatic(sprite(Lx, lk, it.o, it.v, it.season, '*', hz(s.layer), it.tint, bucket(it.s) * vs, false)), [M[0], M[1], M[2], M[3], M[4] - d[0], M[5] - d[1]]); }
         flushCx(cx);
-        grp.strips.push({ c, x: d[0], y: d[1], base: s.y1 * vs + oy, xMid: (s.x0 + s.x1) / 2, amp: s.amp || 1 });
+        const srec = { c, x: d[0], y: d[1], base: s.y1 * vs + oy, xMid: (s.x0 + s.x1) / 2, amp: s.amp || 1 };
+        grp.strips.push(srec);
+        for (const it of its) { const sh = sceneObjShapes(it.o, it.v, it.season); if (sh) _sccOccAdd(grp, { ord: occOrd++, layer: s.layer, z: it.z != null ? it.z : it.y, box: box(itemBox(it, sh)), M: placeM(it.x, it.y, it.s, it.flip), wl: null, Lx, lk, o: it.o, v: it.v, season: it.season, which: '*', haze: hz(s.layer), tint: it.tint, sc: bucket(it.s) * vs, x2: undefined, sp: null, strip: srec }); }
         out.sprites.add({ c, bytes: c.width * c.height * 4 });
         yield* slice();
       }
@@ -613,7 +627,7 @@ function sceneRendererCreate(canvas, src, o) {
     const F = o.flush || false, tStart = _sccNow(), P = o.profile ? prof : null;
     let pm = tStart;
     const mark = P ? (name) => { flush(); const n = _sccNow(); P[name] = (P[name] || 0) + n - pm; pm = n; } : () => {};
-    let blit = 0, blitPx = 0, draws = 0;
+    let blit = 0, blitPx = 0, draws = 0, occDraws = 0;
     const Lx = L || S.L, W = S.W, H = S.H, vs = S.vs, ox = S.ox, oy = S.oy;
     const blitAt = (c, x, y, sy0, sy1) => {          // a bitmap, only its rows sy0..sy1 (device px)
       const h = Math.min(c.height, sy1 - y) - Math.max(0, sy0 - y);
@@ -682,16 +696,47 @@ function sceneRendererCreate(canvas, src, o) {
       }
       if (env) { const extra = []; sceneRunPasses(env, 'movers', [g, t, (m) => { if (m && typeof m.draw === 'function') extra.push(Object.assign({ kind: 'custom' }, m)); }], true); if (extra.length) list = list.concat(extra); }
       list.sort((a, b) => a.y - b.y);
+      // the static sprites of this group nearer than a mover, drawn again over it inside its box (10 Oct: the depth order)
+      const v1o = !env || S.C.v !== 2;
+      const occlude = (sb, z, layer) => {
+        if (!g.occ || !sb) return;
+        const db = [sb[0] * vs + ox, sb[1] * vs + oy, sb[2] * vs + ox, Math.min(sb[3] * vs + oy, below)];
+        if (db[2] <= db[0] || db[3] <= db[1]) return;
+        if (occDraws >= SCENE_OCC_FRAME) return;   // the frame's budget of redraws (counted apart from the animated draws: st.occDraws)
+        const recs = _sccOccOf(g, db, z, layer, v1o);
+        if (!recs.length) return;
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(db[0] - 1, db[1] - 1, db[2] - db[0] + 2, db[3] - db[1] + 2); ctx.clip();
+        for (const r of recs) {
+          if (!r.sp) { r.sp = sprite(r.Lx, r.lk, r.o, r.v, r.season, r.which, r.haze, r.tint, r.sc, false, false, r.x2); if (r.sp && S.sprites) S.sprites.add(r.sp); }
+          if (!r.sp || !r.sp.c) continue;
+          let M = r.M;
+          if (r.strip) { const st = r.strip, k = (st.amp || 1) * sceneWindSafe(t, st.xMid, Lx) * 0.02; M = [M[0] + k * M[1], M[1], M[2] + k * M[3], M[3], M[4] + k * M[5] - k * st.base, M[5]]; }
+          if (_sccAbove(ctx, r.wl, () => drawSprite(ctx, r.sp, M, 1))) occDraws++;
+          if (occDraws >= SCENE_OCC_FRAME) break;
+        }
+        ctx.restore();
+      };
+      const boxAt = (p, b, fc) => { const fl = fc < 0; return [fl ? p.x - b[2] * p.s : p.x + b[0] * p.s, p.y + b[1] * p.s, fl ? p.x - b[0] * p.s : p.x + b[2] * p.s, p.y + b[3] * p.s]; };
+      const agentBox = (a) => { const sh = a && a.o ? sceneObjShapes(a.o, a.v || 0, S.C.season) : null; return sh ? boxAt({ x: a.X, y: a.Y, s: a.s }, sh.box, a.flip ? -1 : 1) : null; };
       const drawMover = (m) => {
         if (m.kind === 'sign') { if (m.top < below) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(m.c, m.x, m.top); } return; }
-        if (m.kind === 'custom') { const n = m.draw(ctx); if (n > 0) draws += n; _sccReset(ctx); return; }
+        if (m.kind === 'custom') {
+          const n = m.draw(ctx); if (n > 0) draws += n; _sccReset(ctx);
+          const a = m.agent;
+          if (n > 0 && a && Number.isFinite(a.d) && env && env.cam) occlude(agentBox(a), env.cam.horizon + env.cam.f * env.cam.eye / Math.max(0.01, a.d), a.layer);
+          return;
+        }
         if (m.kind === 'item') {
           if (m.b[1] * vs + oy > below) return;
-          for (const pt of m.parts) {
-            const pose = sceneAnimPose(pt.a, t, Lx, m.x), A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m, al = _scPartAlpha(pose, pt.j || 0);
-            if (al > 0 && drawSprite(ctx, pt.sp, _scMul(m.M, A), al)) draws++;
-          }
+          _sccAbove(ctx, m.wl, () => {
+            for (const pt of m.parts) {
+              const pose = sceneAnimPose(pt.a, t, Lx, m.x), A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m, al = _scPartAlpha(pose, pt.j || 0);
+              if (al > 0 && drawSprite(ctx, pt.sp, _scMul(m.M, A), al)) draws++;
+            }
+          });
+          if (m.z != null) occlude(m.b, m.z, m.layer);
         } else {
+          if (m.kind === 'actor' && m.active === false) return;   // drawn by its copy in the group of its depth now
           const p = m.p, b = m.box, fl = p.dir < 0;
           if (!sceneMoverDrawn(p, b, vs, ox, oy, W, below)) return;   // the shadow pass asks the same (78-scene-shadow.js)
           // the facing (from -1 to 1: an actor turning round narrows through side-on) and the walk's swing (0 to 1: legs at rest
@@ -701,18 +746,24 @@ function sceneRendererCreate(canvas, src, o) {
           const hook = (h) => (m.kind === 'bird' ? Object.assign({}, h, { phase: p.phase }) : h.kind === 'walk' && go < 1 ? Object.assign({}, h, { deg: (h.deg || 22) * go, bob: (h.bob == null ? 1.5 : h.bob) * go }) : h);
           let bob = 0;
           if (m.kind === 'actor') for (const pt of m.parts) if (pt.a && pt.a.kind === 'walk') { bob = sceneAnimPose(hook(pt.a), t, Lx, p.x).bob || 0; break; }
-          for (const pt of m.parts) {
-            let A = _SC_ID, al = 1;
-            if (pt.a) {
-              const a = hook(pt.a), pose = sceneAnimPose(a, t, Lx, p.x);
-              A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m;
-              if (!pt.rest && pose.alphas) al = pose.alphas[pt.j || 0];   // a frames hook: one part at a time (an actor part never took the pose alpha)
+          // a floater on the water sits in it: its sink lower, clipped at its waterline (10 Oct)
+          const sink = m.kind === 'actor' && m.sinkU ? _sccSinkOf(S.C, m.actor.o, p.x, p.y, p.d) : 0;
+          if (sink) M[5] += sink * vs * p.s;
+          _sccAbove(ctx, sink ? p.y * vs + oy : null, () => {
+            for (const pt of m.parts) {
+              let A = _SC_ID, al = 1;
+              if (pt.a) {
+                const a = hook(pt.a), pose = sceneAnimPose(a, t, Lx, p.x);
+                A = pt.j === 1 && pose.m2 ? pose.m2 : pose.m;
+                if (!pt.rest && pose.alphas) al = pose.alphas[pt.j || 0];   // a frames hook: one part at a time (an actor part never took the pose alpha)
+              }
+              if (al <= 0) continue;
+              const MM = _scMul(M, A);
+              if (pt.rest && bob) MM[5] += bob * vs * p.s;
+              if (drawSprite(ctx, pt.sp, MM, (p.alpha == null ? 1 : p.alpha) * al)) draws++;
             }
-            if (al <= 0) continue;
-            const MM = _scMul(M, A);
-            if (pt.rest && bob) MM[5] += bob * vs * p.s;
-            if (drawSprite(ctx, pt.sp, MM, (p.alpha == null ? 1 : p.alpha) * al)) draws++;
-          }
+          });
+          if (m.kind === 'actor') occlude(boxAt(p, b, fc), m.z != null ? m.z : p.y, m.layer != null ? m.layer : m.actor.layer);
         }
       };
       if (!P) for (const m of list) drawMover(m);
@@ -745,7 +796,7 @@ function sceneRendererCreate(canvas, src, o) {
     const total = _sccNow() - tStart;
     drawTimes.push(total); dynTimes.push(Math.max(0, total - blit));
     if (drawTimes.length > 900) { drawTimes.splice(0, 300); dynTimes.splice(0, 300); }
-    st.blitPx = blitPx; st.animatedDraws = draws;
+    st.blitPx = blitPx; st.animatedDraws = draws; st.occDraws = occDraws;
     if (env && !o.still && t > 0) _sccGovern(env, Math.max(0, total - blit), o);
   }
 
@@ -1109,7 +1160,7 @@ function sceneRendererCreate(canvas, src, o) {
       let bytes = 0;
       if (S) for (const sp of S.sprites) bytes += sp.bytes || 0;
       return { rid, drawMs: _sccStat(drawTimes), dynMs: _sccStat(dynTimes), bakeMs: st.bakeMs, maxSliceMs: st.maxSliceMs || 0, firstBakeMs: st.firstBakeMs, bakes: st.bakes, sprites: S ? S.sprites.size : 0, spriteBytes: bytes,
-        bitmaps: S ? 1 + S.groups.filter(g => g.c).length : 0, blitPx: st.blitPx, animatedDraws: st.animatedDraws, actors: S ? S.C.actors.length : 0, placements: S ? S.C.items.length : 0,
+        bitmaps: S ? 1 + S.groups.filter(g => g.c).length : 0, blitPx: st.blitPx, animatedDraws: st.animatedDraws, occDraws: st.occDraws || 0, actors: S ? S.C.actors.length : 0, placements: S ? S.C.items.length : 0,
         lightKey: S ? S.lk : null, size: S ? [S.W, S.H] : null, profile: o.profile ? Object.fromEntries(Object.entries(prof).map(([k, v]) => [k, k === 'frames' ? v : Math.round(v / Math.max(1, prof.frames) * 100) / 100])) : undefined,
         passes: S && S.env ? _sccPassStats(S.env) : undefined,
         restored: st.restored || null, bakeWallMs: st.bakeWallMs || 0, warmWallMs: st.warmWallMs || 0, newSprites: phNew.sprites, newSpriteBytes: phNew.bytes, sharedSprites: sceneSprites.size, sharedSpriteBytes: sceneSprites.bytes,
@@ -1497,18 +1548,31 @@ function _sccEnv(a) {
  */
 function _sccMoversNow(env, S, t, L) {
   env.frameNo++; env.t = t; env.actorsNow.length = 0;
-  const cam = env.cam;
+  const cam = env.cam, memo = env.apNow || (env.apNow = new Map()), bands = env.C && env.C.cam && env.C.cam.bands;
+  memo.clear();
   S.groups.forEach((g, gi) => {
     for (const m of g.movers) {
       if (m.kind === 'actor') {
         const a = m.actor;
-        let p = null;
-        if (a.ground && typeof sceneActorAtV2 === 'function') {
-          try { const q = sceneActorAtV2(a, t, cam); if (q) p = { x: q.X != null ? q.X : q.x, y: q.Y != null ? q.Y : q.y, s: q.s, dir: q.dir != null ? q.dir : q.flip ? -1 : 1, alpha: q.alpha == null ? 1 : q.alpha, d: q.d }; } catch (e) { p = null; }
+        let p = memo.get(a);   // an actor registered in several groups (by depth) is placed once a frame
+        if (!p) {
+          if (a.ground && typeof sceneActorAtV2 === 'function') {
+            try { const q = sceneActorAtV2(a, t, cam); if (q) p = { x: q.X != null ? q.X : q.x, y: q.Y != null ? q.Y : q.y, s: q.s, dir: q.dir != null ? q.dir : q.flip ? -1 : 1, alpha: q.alpha == null ? 1 : q.alpha, d: q.d }; } catch (e) { p = null; }
+          }
+          if (!p) p = sceneActorAt(a, t);
+          p.face = _sccFace(a, t, p, cam);
+          memo.set(a, p);
         }
-        if (!p) p = sceneActorAt(a, t);
-        p.face = _sccFace(a, t, p, cam);
         m.p = p; m.y = p.y;
+        // drawn in the group of the depth band it is in now (10 Oct); the nearest of its groups when that one holds none of it
+        if (m.copies && m.copies.length > 1 && Number.isFinite(p.d)) {
+          const bi = _sccBandOf(bands, p.d), tg = bi != null && env.layerOfGroup[bi] != null ? env.layerOfGroup[bi] : m.copies[0];
+          let best = m.copies[0];
+          for (const c of m.copies) if (Math.abs(c - tg) < Math.abs(best - tg)) best = c;
+          m.active = best === gi;
+        } else m.active = true;
+        m.z = Number.isFinite(p.d) && cam ? cam.horizon + cam.f * cam.eye / Math.max(0.01, p.d) : p.y;
+        if (!m.active) continue;
         const d = Number.isFinite(p.d) ? p.d : sceneCamDepthAt(cam, p.y);
         env.actorsNow.push({ m, a, gi, x: p.x, y: p.y, s: p.s, dir: p.dir, face: p.face, alpha: p.alpha == null ? 1 : p.alpha, d, o: a.o, v: a.v, cls: a.cls || sceneObjClassOf(a.o),
           sp: m.parts && m.parts[0] ? m.parts[0].sp : null, box: m.box, speed: a.speed || 0 });
@@ -1561,4 +1625,74 @@ function _sccPassStats(env) {
   for (const [id, p] of Object.entries(env.passStats)) out[id] = { bakeMs: r(p.bakeMs), frameMs: r(p.frameMs / Math.max(1, p.frames)), draws: p.draws, frames: p.frames };
   for (const p of sceneRenderPasses('stats', env.C)) { try { out[p.id] = Object.assign(out[p.id] || {}, p.stats(env)); } catch (e) { /* no stats */ } }
   return out;
+}
+
+/* ---------- movers in depth (user request, 10 Oct: the animation overhaul) ----------
+   1. A v2 ground actor is registered in EVERY bake group its path passes through (by its depth bands) and drawn, each frame, only
+      in the group of the band it is in now: it goes behind the nearer bitmaps and over the farther ones as it moves.
+   2. Within its group a mover is drawn over the group's bitmap, which also holds the things NEARER than it (a reed clump, a
+      moored boat, a tree, a wall, a seated figure). Each group keeps a grid of the static sprites it baked (and of its wind-strip
+      items); after a mover is drawn, those nearer than it (z, the flat-ground row of their depth; in a v1 scene a later layer, or
+      the same layer and a lower row) that overlap it are drawn again over it, clipped to its box. The depth order is right
+      whatever the bake merged, with no per-scene work, at a few extra draws per mover.
+   3. What floats (ducks, swans, coots, boats) sits IN the water: on water it is drawn sceneMoverSize(id).sink object units lower
+      and clipped at its waterline. Static, animated and moving floaters alike. */
+const _SCC_CELL = 96, _SCC_OCC_MAX = 32, SCENE_OCC_FRAME = 160;
+function _sccBandOf(bands, d) { for (const b of bands || []) if (b.d0 != null && d >= b.d0 && (b.d1 == null || d < b.d1)) return b.i; return null; }
+/** The layers an actor's path passes through: a v2 ground actor's depth bands (unless its layer was forced), else its layer. */
+function _sccActorLayers(C, a) {
+  const bands = C.cam && Array.isArray(C.cam.bands) ? C.cam.bands : null;
+  if (!bands || !Array.isArray(a.ground) || a.layerForced) return [a.layer];
+  const set = new Set();
+  for (const p of a.ground) { const b = _sccBandOf(bands, p[1]); if (b != null) set.add(b); }
+  return set.size ? [...set].sort((u, v) => u - v) : [a.layer];
+}
+/** The object units a floater sinks below its waterline at screen (X, Y) (depth d when known): its sink on water, else 0. */
+function _sccSinkOf(C, o, X, Y, d) {
+  if (typeof sceneMoverSize !== 'function' || typeof sceneMotionWorld !== 'function') return 0;
+  let ms;
+  try { ms = sceneMoverSize(o); } catch (e) { return 0; }
+  if (!ms || !ms.sink) return 0;
+  const W = sceneMotionWorld(C);
+  if (!W) return 0;
+  const g = Number.isFinite(d) && d > 0 ? [(X - W.cam.x0) * d / W.cam.f, d] : W.unproj(X, Y, W.cam.water);
+  return g && W.water(g[0], g[1]) ? ms.sink : 0;
+}
+/** A matrix moved down by u object units (M: a placement matrix, M[3] its device scale). */
+const _sccSunk = (M, u) => (u ? [M[0], M[1], M[2], M[3], M[4] + M[2] * u, M[5] + M[3] * u] : M);
+/** Run draw() with the context clipped above device row y (a floater's waterline); y null: no clip. */
+function _sccAbove(cx, y, draw) {
+  if (y == null) return draw();
+  cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.beginPath(); cx.rect(-1e5, -1e5, 2e5, 1e5 + y); cx.clip();
+  try { return draw(); } finally { cx.restore(); }
+}
+/** Add a static sprite record to a group's occluder grid (rec.box: its device box). */
+function _sccOccAdd(grp, rec) {
+  const g = grp.occ || (grp.occ = { cells: new Map(), n: 0 }), b = rec.box;
+  rec.id = g.n++;
+  const c0 = Math.floor(b[0] / _SCC_CELL), c1 = Math.floor(b[2] / _SCC_CELL), r0 = Math.floor(b[1] / _SCC_CELL), r1 = Math.floor(b[3] / _SCC_CELL);
+  if ((c1 - c0 + 1) * (r1 - r0 + 1) > 400) return;   // a huge sprite (a whole hillside): never an occluder of a mover
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { const k = r * 4096 + c; let l = g.cells.get(k); if (!l) g.cells.set(k, l = []); l.push(rec); }
+}
+/**
+ * The group's static sprites nearer than a mover that overlap its device box, in their bake order. z: the mover's draw key
+ * (flat-ground row); layer: its layer (v1: a later layer occludes, the same layer only with a larger z); v1: the layer rule.
+ */
+function _sccOccOf(grp, box, z, layer, v1) {
+  const g = grp.occ;
+  if (!g || !box) return [];
+  const seen = new Set(), out = [];
+  const c0 = Math.floor(box[0] / _SCC_CELL), c1 = Math.floor(box[2] / _SCC_CELL), r0 = Math.floor(box[1] / _SCC_CELL), r1 = Math.floor(box[3] / _SCC_CELL);
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+    const l = g.cells.get(r * 4096 + c);
+    if (l) for (const rec of l) {
+      if (seen.has(rec.id)) continue;
+      seen.add(rec.id);
+      const nearer = v1 ? (rec.layer > layer || (rec.layer === layer && rec.z > z + 0.01)) : rec.z > z + 0.01;
+      if (!nearer || rec.box[2] <= box[0] || rec.box[0] >= box[2] || rec.box[3] <= box[1] || rec.box[1] >= box[3]) continue;
+      out.push(rec);
+    }
+  }
+  out.sort((a, b) => a.ord - b.ord);
+  return out.length > _SCC_OCC_MAX ? out.slice(out.length - _SCC_OCC_MAX) : out;
 }

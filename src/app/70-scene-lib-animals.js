@@ -16,7 +16,17 @@
   if (typeof sceneObjDefine !== 'function') return;   // the engine core (70-scene-0core.js) is not in this build
   /** Drop shapes with no path data (a season or variant that draws nothing in a slot); strokes are round-capped. */
   const tidy = parts => { for (const k of Object.keys(parts)) parts[k] = parts[k].filter(sh => sh && (Array.isArray(sh) ? sh[1] : sh.d)).map(sh => (!Array.isArray(sh) && sh.s && !sh.cap ? Object.assign({ cap: 'round' }, sh) : sh)); return parts; };
-  const defineObj = def => sceneObjDefine(Object.assign({}, def, { build: (v, r, ctx) => tidy(def.build(v, r, ctx)) }));
+  // def.behave: [preset, params] (or v => [preset, params]): the hooks of a behaviour preset (70-scene-lib-behaviours.js), per variant
+  // (looked up when built: the behaviours file loads after this one; without it, the def's own anim)
+  const defineObj = def => sceneObjDefine(Object.assign({}, def, def.behave ? { anim: undefined } : {}, { build: (v, r, ctx) => {
+    const p = tidy(def.build(v, r, ctx));
+    if (def.behave) {
+      const b = typeof def.behave === 'function' ? def.behave(v) : def.behave;
+      const hooks = typeof sceneBehave !== 'undefined' ? sceneBehave.hooks(b[0], b[1]) : Object.entries(def.anim || {}).map(([kind, a]) => Object.assign({ kind }, a));
+      Object.defineProperty(p, '$anim', { value: hooks, enumerable: false });
+    }
+    return p;
+  } }));
   const f1 = v => Math.round(v * 10) / 10;
   const ell = (x, y, rx, ry) => `M${f1(x - rx)} ${f1(y)}a${f1(rx)} ${f1(ry)} 0 1 0 ${f1(2 * rx)} 0a${f1(rx)} ${f1(ry)} 0 1 0 ${f1(-2 * rx)} 0`;
   const circ = (x, y, r) => ell(x, y, r, r);
@@ -33,6 +43,7 @@
     id: 'animal.cattle', category: 'animal', size: [177, 99], variants: 4, seasonal: false, flippable: true, parts: ['legsFar', 'tail', 'body', 'legsNear', 'head'],
     palette: { base: { c0: coat('#7a3f22'), c1: coat('#26221f'), c2: coat('#24211e'), c3: coat('#b0642e'), belt: ['#f2ede2', '#d4cec0'], hoof: '#2a221c', nose: ['#c89a8a', '#5a4a46'], horn: '#e8dcc0' } },
     anim: { turn: { part: 'head', pivot: [44, -54], deg: 16, period: 11, hold: .7 }, sway: { part: 'tail', pivot: [-56, -56], deg: 9 } },
+    behave: ['graze', { neck: [44, -54], deg: 13, period: 6.5, tail: [-56, -56], swish: 24, swishPeriod: 4.2 }],   // cropping grass, swishing at flies
     shadow: { rx: 70, ry: 8, h: 80 },
     tags: ['uk', 'heath', 'common', 'farm', 'cattle', 'cow', 'belted-galloway', 'grazing', 'kit:animals', 'kit:temperate', 'role:animal'],
     credit: 'the Yateley Common view art (conservation-grazing cattle), redrawn',
@@ -119,6 +130,7 @@
     id: 'animal.dog', category: 'animal', size: [71, 46], variants: 3, seasonal: false, flippable: true, parts: ['legsFar', 'tail', 'body', 'legsNear', 'head'],
     palette: { base: { lab: coat('#24201e'), spaniel: coat('#6a3a22'), white: coat('#f2ece2'), terrier: coat('#a87a4a'), nose: '#141010', tongue: '#d86a6a', collar: ['#c83a2a', '#2a6ac8', '#e0a82a'] } },
     anim: { walk: { parts: ['legsNear', 'legsFar'], pivot: [0, -16], deg: 14, period: .55, bob: 1.2 }, sway: { part: 'tail', pivot: [-18, -22], deg: 14 } },
+    behave: ['dog', { hip: [0, -16], deg: 14, period: .55, bob: 1.2, tail: [-18, -24], neck: [14, -28] }],   // trotting legs, a wagging tail, a sniffing dip
     shadow: { rx: 22, ry: 3, h: 30 },
     tags: ['uk', 'path', 'park', 'common', 'dog', 'pet', 'kit:animals', 'kit:people', 'kit:temperate', 'kit:urban', 'role:animal'],
     credit: "the nature kit's walker's dog, redrawn as an animal of its own",

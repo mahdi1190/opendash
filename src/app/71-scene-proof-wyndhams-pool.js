@@ -161,13 +161,19 @@ function sceneProofWyndhamsPool() {
   [[-4.1,14.8],[-8.2,20.3],[4.6,18.4],[10,45],[-12,57],[16,68],[-18,82],[2,105]].forEach((at,i)=>P.push({obj:'water.fish-ring',at,k:.8+i*.1,variant:i%3,seed:90+i,anim:{flicker:{period:5+i*.4}}}));
   P.push({ obj: 'water.fish-ring', at: [-2, 38], k: 1.4, seed: 5, anim: { flicker: { period: 5.2 } } }, { obj: 'water.fish-ring', at: [14, 72], k: 1.6, variant: 1, seed: 9, anim: { flicker: { period: 7.4 } } });
 
-  // ---- the heron: stalking the shallows in front of the right-hand reeds, stabbing as it goes
-  A.push({ obj: 'bird.wp-heron-stalk', ground: [[4.3, 11.9], [3.5, 12.3], [2.6, 12.8], [1.7, 13.1]], speedM: 0.06, loop: 'pingpong', k: 1.15, seed: 3, offset: 0.2 });
-  // ---- coots and a pair of mallards
-  A.push({ obj: 'bird.coot', ground: [[-12, 44], [-2, 48], [6, 46]], speedM: 0.22, loop: 'pingpong', seed: 11, offset: 0.3 });
-  A.push({ obj: 'bird.coot', ground: [[18, 84], [4, 90]], speedM: 0.18, loop: 'pingpong', seed: 12, offset: 0.7 });
-  A.push({ obj: 'bird.mallard', ground: [[22, 62], [10, 66], [2, 64]], speedM: 0.25, loop: 'pingpong', seed: 13, offset: 0.1 });
-  A.push({ obj: 'bird.mallard', ground: [[23.2, 63], [11.2, 67.2], [3.2, 65.2]], speedM: 0.25, loop: 'pingpong', variant: 1, seed: 14, offset: 0.1 });
+  // ---- the heron stalking the shallows in front of the right-hand reeds; coots and a pair of mallards on the open water.
+  // Built by the behaviour presets (sceneBehave, 70-scene-lib-behaviours.js; user request, 10 Oct: the animation overhaul): on
+  // the water a body length clear of the banks, eased starts and stops, look-round and preening pauses, out and back (no jump).
+  // No dive or dabble stops (their hidden legs read as a dash across the bank to the motion lint); k brings the small water
+  // birds' drawn figures to their real sizes (the lint measures the drawn figure, the preset its box)
+  if (typeof sceneBehave !== 'undefined') {
+    const B = (spec) => A.push(...sceneBehave.actors(data, spec).map(a => { delete a.$behave; return a; }));
+    B({ obj: 'bird.wp-heron-stalk', preset: 'heron-stalk', route: [[4.3, 11.9], [3.5, 12.3], [2.6, 12.8], [1.7, 13.1]], k: 1.3, seed: 3, offset: 0.2 });
+    B({ obj: 'bird.coot', preset: 'coot', route: [[-12, 44], [-2, 48], [6, 46]], acts: ['look', 'preen'], k: 1.42, seed: 11, offset: 0.3 });
+    B({ obj: 'bird.coot', preset: 'coot', route: [[18, 84], [4, 90]], acts: ['look', 'preen'], k: 1.42, seed: 12, offset: 0.7 });
+    B({ obj: 'bird.mallard', preset: 'duck', route: [[22, 62], [10, 66], [2, 64]], acts: ['look', 'preen', 'look'], k: 1.42, seed: 13, offset: 0.1 });
+    B({ obj: 'bird.mallard', preset: 'duck', route: [[23.2, 63], [11.2, 67.2], [3.2, 65.2]], acts: ['look', 'preen', 'look'], k: 1.42, variant: 1, seed: 14, offset: 0.1 });
+  }
 
   // ---- the kingfisher: three actors on one clock (perched, flight, splash), timed so each shows only in its moment
   {

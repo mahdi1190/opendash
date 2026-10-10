@@ -91,8 +91,7 @@ function sceneYateleyCommon4(season) {
       { obj: { 'plant.bilberry': 2, 'plant.fern': 1, 'ground.leaf-litter': 1 }, layer: 'fore', seed: 44, area: { rect: [-160, 810, 1760, 905] }, n: 30, minGap: 70, s: [1.4, 2.0], mask: { avoid: [{ poly: trackFore }] }, flip: 0.5, variant: [0, 1, 2], anim: false },
     ],
     actors: [
-      // the last walker of the day heading home along the path
-      { obj: 'person.walker', layer: 'far', path: Y.path(TRACK, 560, 640, 10), speed: 4, loop: 'pingpong', s: 0.4, variant: 2, sByY: [[560, 0.7], [640, 1]], seed: 72, offset: 0.65 },
+      // a light aircraft going over (the last walker of the day: sceneYgMovers, below)
       { obj: 'vehicle.light-aircraft', layer: 'horizon', path: [[1820, 330], [-220, 260]], speed: 24, loop: 'loop', s: 0.6, seed: 73, offset: 0.2 },
     ],
     flocks: [
@@ -110,5 +109,10 @@ function sceneYateleyCommon4(season) {
   }
   if (winter) d.place.push({ obj: 'bird.robin', x: 1000, y: 770, s: 1.3, layer: 'near', variant: 0, seed: 95 });
   if (autumn) d.flocks.push({ obj: 'bird.goose-flight', n: 7, area: [500, 140, 1200, 260], speed: 30, s: 0.5, seed: 97, layer: 'horizon' });
+  // the late walker by the motion behaviours (sceneYgMovers, 70-scene-lib-yateley-green-views.js): on the path, at its real
+  // size for the view's fitted eye (3.1 m)
+  if (typeof sceneYgMovers === 'function') d.actors = sceneYgMovers(d, 3.1, [
+    { obj: 'person.walker', preset: 'elderly', px: Y.path(TRACK, 560, 640, 10), layer: 'far', variant: 2, seed: 72, offset: 0.65 },
+  ]).concat(d.actors);
   return d;
 }

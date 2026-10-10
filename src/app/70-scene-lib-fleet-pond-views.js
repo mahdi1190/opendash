@@ -102,6 +102,37 @@ const SCENE_FPV = Object.freeze({
     return out;
   },
   /** The camera's projection: [X, Y] of ground (x, d) at height h. */
+  /**
+   * The life of a view (10 Oct, the animation overhaul): every mover from a behaviour preset (70-scene-lib-behaviours.js) at its
+   * real size. specs: [{ obj, preset, route: [[x, d], ...] (ground metres), variant, seed, offset, k, acts }]. A floater whose
+   * route stays in ONE depth band becomes sceneBehave actors (eased drift, looks, preens, dabbles, dives, out and back); anything
+   * that crosses a band (a walker coming toward the camera) stays a v2 ground actor at the preset's speed and stride, so the
+   * engine draws it in the band it is in at each moment (behind nearer reeds, over farther ones) and keeps it off water and walls.
+   * Call with the finished data (camera, surfaces, water, place), after the last data.place push.
+   */
+  life(data, specs) {
+    const B = typeof sceneBehave !== 'undefined' ? sceneBehave : null, cam = typeof sceneCamera === 'function' ? sceneCamera(data) : null, out = [];
+    const band = (d) => (cam && cam.bands ? cam.bands.find(b => b.d0 != null && d >= b.d0 && (b.d1 == null || d < b.d1)) : null);
+    for (const s of specs) {
+      const G = B ? B.preset(s.preset || B.presetFor(s.obj)) : null, ds = s.route.map(p => p[1]), b0 = band(Math.min(...ds)), b1 = band(Math.max(...ds));
+      if (B && G && G.floats && b0 && b0 === b1 && !s.ground) {
+        // the true size is the engine's (sceneMoverSize: the real height over the DRAWN top, not the padded box): the behaviour
+        // sizes by size[1], so scale its k by the ratio (and the motion lint's moverScale reads 1)
+        let k = s.k || 1;
+        if (typeof sceneMoverSize === 'function' && typeof sceneObj === 'function') { const ms = sceneMoverSize(s.obj), def = sceneObj(s.obj), real = typeof sceneObjReal === 'function' ? sceneObjReal(s.obj) : { h: ms.h }; if (ms && def && real && real.h) k *= (ms.h / Math.max(1, ms.top)) / (real.h / Math.max(1, def.size[1])); }
+        out.push(...B.actors(data, Object.assign({}, s, { k: Math.round(k * 1000) / 1000 })));
+        continue;
+      }
+      const a = { obj: s.obj, ground: s.route, loop: 'pingpong', seed: s.seed };
+      const speedM = s.speedM || (G ? G.speedM : 0);
+      if (speedM) a.speedM = speedM;
+      for (const key of ['variant', 'k', 'offset']) if (s[key] != null) a[key] = s[key];
+      const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(s.obj, s.variant | 0, 'summer') : null;
+      if (B && G && G.stepM && sh && (sh.anim || []).some(h => h.kind === 'walk')) a.anim = { walk: Object.assign({ period: B.stride(G, speedM) }, G.deg ? { deg: G.deg } : {}) };
+      out.push(a);
+    }
+    return out;
+  },
   proj(cam) { const f = 800 / Math.tan(cam.fov * Math.PI / 360), x0 = cam.x0 || 800; return { f, p: (x, d, h) => [x0 + f * x / d, cam.horizon + f * (cam.eye - (h || 0)) / d] }; },
 
   // ---- v2: the Gelvert stream boardwalk (south-west carr), looking north down the stream to the pond and the main line

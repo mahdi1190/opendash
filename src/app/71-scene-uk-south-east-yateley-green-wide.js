@@ -117,20 +117,8 @@
     ],
     actors: [
       // waterbirds paddling across the pond
-      { obj: 'bird.mallard', layer: 'mid', path: [[640, 668], [820, 662]], speed: 5, loop: 'pingpong', s: 0.42, seed: 61, variant: 0, offset: 0.2 },
-      { obj: 'bird.mallard', layer: 'mid', path: [[700, 678], [860, 684]], speed: 4.5, loop: 'pingpong', s: 0.4, seed: 62, variant: 1, offset: 0.6 },
-      { obj: 'bird.mallard', layer: 'mid', path: [[1060, 704], [880, 712]], speed: 5, loop: 'pingpong', s: 0.46, seed: 63, variant: 0, offset: 0.4 },
-      { obj: 'bird.mallard', layer: 'mid', path: [[860, 726], [960, 730]], speed: 3.5, loop: 'pingpong', s: 0.5, seed: 64, variant: 1, offset: 0.1 },
-      { obj: 'bird.coot', layer: 'mid', path: [[540, 652], [660, 646]], speed: 4, loop: 'pingpong', s: 0.36, seed: 65, offset: 0.5 },
-      { obj: 'bird.moorhen', layer: 'mid', path: [[1160, 642], [1060, 638]], speed: 4, loop: 'pingpong', s: 0.34, seed: 66, offset: 0.3 },
-      { obj: 'bird.goose', layer: 'mid', path: [[960, 628], [800, 624]], speed: 3, loop: 'pingpong', s: 0.36, seed: 67, variant: 0, offset: 0.7 },
-      { obj: 'bird.goose', layer: 'mid', path: [[1010, 634], [850, 630]], speed: 3, loop: 'pingpong', s: 0.38, seed: 68, variant: 0, offset: 0.66 },
       // people: a cyclist and a dog walker on the lane, walkers on the green and by the pond
       { obj: 'person.cyclist', layer: 'far', path: [[-80, 534], [1700, 530]], speed: 26, loop: 'loop', s: 0.36, seed: 71, offset: 0.15 },
-      { obj: 'person.dog-walker', layer: 'far', path: [[760, 536], [480, 536]], speed: 5, loop: 'pingpong', s: 0.34, seed: 72, offset: 0.5 },
-      { obj: 'person.walker', layer: 'mid', path: [[820, 572], [1060, 576]], speed: 4, loop: 'pingpong', s: 0.55, seed: 73, variant: 1, offset: 0.3 },
-      { obj: 'person.walker', layer: 'mid', path: [[300, 600], [120, 612]], speed: 6, loop: 'pingpong', s: 0.66, seed: 75, variant: 1, offset: 0.2 },
-      { obj: 'person.dog-walker', layer: 'fore', path: [[1290, 830], [1180, 890]], speed: 6, loop: 'pingpong', s: 1.0, seed: 76, variant: 2, offset: 0.6 },
     ],
     flocks: [{ obj: 'bird.small-flight', n: 6, area: [380, 160, 1180, 280], speed: 26, s: 0.5, seed: 81, layer: 'far' }],
     particles: 'season', weather: 'live', fx: { shadows: 2 },
@@ -138,9 +126,29 @@
   /** All-year life (waterbirds, a squirrel): the season comes from the date (season 'auto'), so nothing that belongs to
       one season only (butterflies, bees, dragonflies) is drawn; the four seasonal items of the view share this one scene. */
   const YEAR_ROUND = [
-      { obj: 'animal.squirrel', layer: 'fore', path: [[300, 806], [380, 812]], speed: 8, loop: 'pingpong', s: 0.6, seed: 99, offset: 0.4 },
-      { obj: 'bird.heron', layer: 'mid', path: [[1236, 650], [1226, 660]], speed: 1, loop: 'pingpong', s: 0.4, seed: 100, offset: 0.5 },
+      { obj: 'animal.squirrel', layer: 'fore', path: [[300, 806], [380, 812]], speed: 5, loop: 'pingpong', s: 0.34, seed: 99, offset: 0.4 },
   ];
+  /** The ground and water movers (sceneYgMovers: the behaviour presets at their real size; 5.38: the view's fitted eye, metres). */
+  const movers = (d) => {
+    const M = typeof sceneYgMovers === 'function' ? sceneYgMovers(d, 5.38, [
+      { obj: 'bird.mallard', px: [[640, 668], [820, 662]], layer: 'mid', seed: 61, variant: 0, offset: 0.2 },
+      { obj: 'bird.mallard', px: [[700, 678], [860, 684]], layer: 'mid', seed: 62, variant: 1, offset: 0.6 },
+      { obj: 'bird.mallard', px: [[1060, 704], [880, 712]], layer: 'mid', seed: 63, variant: 0, offset: 0.4 },
+      { obj: 'bird.mallard', px: [[850, 714], [950, 718]], layer: 'mid', seed: 64, variant: 1, offset: 0.1 },
+      { obj: 'bird.coot', px: [[540, 652], [660, 646]], layer: 'mid', seed: 65, offset: 0.5 },
+      { obj: 'bird.moorhen', px: [[1160, 642], [1060, 638]], layer: 'mid', seed: 66, offset: 0.3 },
+      { obj: 'bird.goose', preset: 'goose-swim', px: [[960, 628], [800, 624]], layer: 'mid', seed: 67, variant: 0, offset: 0.7 },
+      { obj: 'bird.goose', preset: 'goose-swim', px: [[1010, 634], [850, 630]], layer: 'mid', seed: 68, variant: 0, offset: 0.66 },
+      { obj: 'person.dog-walker', px: [[760, 536], [480, 536]], layer: 'far', seed: 72, offset: 0.5 },
+      { obj: 'person.walker', px: [[820, 572], [1060, 576]], layer: 'mid', seed: 73, variant: 1, offset: 0.3 },
+      { obj: 'person.walker', px: [[300, 600], [120, 612]], layer: 'mid', seed: 75, variant: 1, offset: 0.2 },
+      { obj: 'person.dog-walker', px: [[1290, 830], [1180, 890]], layer: 'fore', seed: 76, variant: 2, offset: 0.6 },
+    ]) : [];
+    d.actors = M.concat(d.actors);
+    // the heron in the reeds stands still and fishes (its own idle hooks: long freezes, then the neck strikes), at its real size
+    d.place.push({ obj: 'bird.heron', x: 1232, y: 656, s: 0.2, layer: 'mid', seed: 100, flip: true });
+    return d;
+  };
   sceneAdd(PACK, { id: ID, label: 'Yateley Green', site: 'Yateley Green — The pond within the summer green', tags: ['uk', 'yateley', 'village green', 'pond', 'church', 'st peters'], mood: 'calm', colour: 'green' },
-    () => { const d = base(); d.actors = d.actors.concat(YEAR_ROUND); return d; });
+    (...a) => { const d = movers(base(...a)); d.actors = d.actors.concat(YEAR_ROUND); return d; });
 })();

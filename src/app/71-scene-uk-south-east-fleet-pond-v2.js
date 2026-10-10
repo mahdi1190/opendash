@@ -151,15 +151,7 @@ function sceneUkFleetPondV2() {
   Pl.push({ obj: 'bird.kingfisher', at: [-2.6, 11.7], k: 1.7 });
   A.push({ obj: 'bird.kingfisher-flight', ground: [[14, 2.6], [8.8, 4.6], [6, 6.4], [3.4, 8.6], [1, 10.8], [-1.6, 13.4], [-3.6, 17], [-4.4, 21.5], [-5, 26], [-4, 30], [0, 36], [8, 60], [30, 160], [60, 320]], speedM: 7, loop: 'loop', k: 1.3, seed: 41, offset: 0.35 });
   // ---- the moorhen working the stream edge; the heron stalking the shallows at the mouth
-  A.push({ obj: 'bird.moorhen', ground: [[-3.4, 18], [-4.2, 21.5], [-4.9, 25]], speedM: 0.12, loop: 'pingpong', k: 1.1, seed: 42, offset: 0.2 });
-  A.push({ obj: 'bird.wp-heron-stalk', ground: [[-4.2, 25.4], [-4.9, 27], [-5.6, 28.6]], speedM: 0.05, loop: 'pingpong', k: 1.2, seed: 43, offset: 0.3 });
   // ---- out on the pond: swans, grebes, mallards and coots
-  A.push({ obj: 'bird.swan', ground: [[-30, 120], [-6, 112], [20, 118]], speedM: 0.3, loop: 'pingpong', k: 1, seed: 44 });
-  A.push({ obj: 'bird.swan', ground: [[-27, 124], [-3, 116], [23, 122]], speedM: 0.3, loop: 'pingpong', k: 0.95, seed: 45, offset: 0.06 });
-  A.push({ obj: 'bird.grebe', ground: [[12, 80], [-4, 76]], speedM: 0.2, loop: 'pingpong', seed: 46, offset: 0.5 });
-  A.push({ obj: 'bird.mallard', ground: [[4, 33], [-1, 31.5], [-5, 33]], speedM: 0.25, loop: 'pingpong', seed: 47, offset: 0.1 });
-  A.push({ obj: 'bird.mallard', ground: [[4.8, 33.5], [-0.2, 32], [-4.2, 33.5]], speedM: 0.25, loop: 'pingpong', variant: 1, seed: 48, offset: 0.1 });
-  A.push({ obj: 'bird.coot', ground: [[-40, 92], [-22, 98], [-8, 94]], speedM: 0.2, loop: 'pingpong', seed: 49, offset: 0.7 });
   Pl.push({ obj: 'bird.coot', at: [30, 84], k: 1 }, { obj: 'bird.grebe', at: [-24, 150], k: 1.1, flip: true });
   // ---- a birdwatcher on the platform
   Pl.push({ obj: 'person.birdwatcher', on: 'platform', d: 22, u: 0.3 });
@@ -186,5 +178,16 @@ function sceneUkFleetPondV2() {
   Pl.push({ obj: 'plant.bulrush', x: 1440, y: 950, s: 2.3, pin: true, layer: 'front', shadow: false, anim: false, flip: true },
     { obj: 'plant.fern', x: 1610, y: 960, s: 2.0, pin: true, layer: 'front', shadow: false, anim: false },
     { obj: 'plant.grass-long', x: 1250, y: 940, s: 2.2, pin: true, layer: 'front', shadow: false, anim: false });
+  // ---- the movers (10 Oct, the animation overhaul): behaviour presets at their real size (SCENE_FPV.life), after every placement
+  A.push(...F.life(data, [
+    { obj: 'bird.moorhen', preset: 'moorhen', route: [[-3.4, 18], [-4.2, 21.5], [-4.9, 25]], seed: 42, offset: 0.2 },
+    { obj: 'bird.wp-heron-stalk', preset: 'heron-stalk', route: [[-4.2, 25.4], [-4.9, 27], [-5.6, 28.6]], seed: 43, offset: 0.3 },
+    { obj: 'bird.swan', preset: 'swan', route: [[-30, 120], [-6, 112], [20, 118]], seed: 44 },
+    { obj: 'bird.swan', preset: 'swan', route: [[-27, 124], [-3, 116], [23, 122]], seed: 45, offset: 0.06 },
+    { obj: 'bird.grebe', preset: 'grebe', route: [[12, 80], [-4, 76]], seed: 46, offset: 0.5, acts: ['look', 'preen', 'look'] },
+    { obj: 'bird.mallard', preset: 'duck', route: [[4, 33], [-1, 31.5], [-5, 33]], seed: 47, offset: 0.1 },
+    { obj: 'bird.mallard', preset: 'duck', route: [[4.8, 33.5], [-0.2, 32], [-4.2, 33.5]], variant: 1, seed: 48, offset: 0.45 },
+    { obj: 'bird.coot', preset: 'coot', route: [[-40, 92], [-22, 98], [-8, 94]], seed: 49, offset: 0.7, acts: ['look', 'preen', 'look'] },
+  ]));
   return data;
 }

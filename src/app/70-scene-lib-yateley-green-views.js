@@ -44,6 +44,96 @@ function sceneYgClumps(o) {
   }
   return out.sort((p, q) => p.y - q.y);
 }
+/**
+ * Movers for the v1 Yateley views built by the motion behaviours (70-scene-lib-behaviours.js, sceneBehave), so they sit on the
+ * water, keep to the ground, go round benches, lamps, trunks and closed gates, and are their REAL size for their depth.
+ * A v1 view has no camera: `eye` is the eye height (metres) the engine fits to the view's own figures (sceneMotionWorld,
+ * `scene motion` prints it); with the view's fov and horizon it is a flat-ground camera, and every pixel route is laid on the
+ * ground through it. specs: [{ obj, preset, px: [[X, Y], ...] (screen points of the route), layer, variant, seed, offset, k,
+ * loop, acts, dog: { obj, variant, k } (a walker with an off-lead dog) }]. Returns v1 actors (timed paths, sByY).
+ */
+function sceneYgMovers(data, eye, specs) {
+  const B = typeof sceneBehave !== 'undefined' ? sceneBehave : null;
+  const v = data.view || {}, fov = v.fov || 80, hz = v.horizon != null ? v.horizon : 560, f = 800 / Math.tan(fov * Math.PI / 360);
+  const un = (X, Y) => { const d = f * eye / Math.max(2, Y - hz); return [Math.round((X - 800) * d / f * 100) / 100, Math.round(d * 100) / 100]; };
+  if (!B) return specs.map(s => ({ obj: s.obj, layer: s.layer, path: s.px, speed: 6, loop: 'pingpong', s: 0.6, variant: s.variant | 0, seed: s.seed }));
+  // the water outlines (absolute M L H V Q T C Z paths), sampled, in metres
+  const polyOf = (d) => {
+    const t = String(d).match(/[A-Za-z]|-?\d*\.?\d+(?:e-?\d+)?/g) || [], P = [];
+    let i = 0, cmd = '', x = 0, y = 0, qx = 0, qy = 0;
+    const num = () => +t[i++], quad = (x1, y1, x2, y2) => { for (let k = 1; k <= 8; k++) { const u = k / 8, w = 1 - u; P.push([w * w * x + 2 * w * u * x1 + u * u * x2, w * w * y + 2 * w * u * y1 + u * u * y2]); } qx = x1; qy = y1; x = x2; y = y2; };
+    while (i < t.length) {
+      if (/[A-Za-z]/.test(t[i])) cmd = t[i++];
+      if (cmd === 'M' || cmd === 'L') { x = num(); y = num(); P.push([x, y]); qx = x; qy = y; }
+      else if (cmd === 'H') { x = num(); P.push([x, y]); }
+      else if (cmd === 'V') { y = num(); P.push([x, y]); }
+      else if (cmd === 'Q') { const a = num(), b = num(), c = num(), e = num(); quad(a, b, c, e); }
+      else if (cmd === 'T') { const a = 2 * x - qx, b = 2 * y - qy, c = num(), e = num(); quad(a, b, c, e); }
+      else if (cmd === 'C') { const a = num(), b = num(), c2 = num(), e2 = num(), g = num(), h = num(); for (let k = 1; k <= 8; k++) { const u = k / 8, w = 1 - u; P.push([w * w * w * x + 3 * w * w * u * a + 3 * w * u * u * c2 + u * u * u * g, w * w * w * y + 3 * w * w * u * b + 3 * w * u * u * e2 + u * u * u * h]); } x = g; y = h; qx = x; qy = y; }
+      else if (cmd === 'Z' || cmd === 'z') { if (i < t.length && !/[A-Za-z]/.test(t[i])) i++; }
+      else i++;
+    }
+    return P;
+  };
+  const water = (data.water || []).filter(w => typeof w.d === 'string').map((w, j) => ({ id: 'w' + j, poly: polyOf(w.d).map(([X, Y]) => un(X, Math.max(hz + 3, Y))) }));
+  // what a walker goes round: benches, lamps, signs, buildings, gates and fences, boats, and the trunks of trees on the ground
+  const avoid = [];
+  for (const p of data.place || []) {
+    if (!p || !p.obj || !(p.y > hz + 3)) continue;
+    const cls = p.obj.split('.')[0], at = un(p.x, p.y), r = typeof sceneObjReal === 'function' ? sceneObjReal(p.obj) : { l: 1, w: 0.5 };
+    if (/gate|fence|rail|stile/.test(p.obj)) { if (!p.open && !/open/.test(p.obj)) avoid.push({ line: [[at[0] - r.l / 2, at[1]], [at[0] + r.l / 2, at[1]]], w: Math.max(0.3, r.w), obj: p.obj }); }
+    else if (['street', 'structure', 'building', 'boat', 'landmark', 'vehicle'].includes(cls)) avoid.push({ at, r: Math.max(0.35, Math.min(2.5, Math.max(r.l, r.w) / 2)), obj: p.obj });
+    else if (cls === 'tree' && !/distant|woods/.test(p.obj)) avoid.push({ at, r: 0.5, obj: p.obj });
+  }
+  const fake = { id: data.id, camera: { eye, fov, horizon: hz, heading: v.heading }, water, surfaces: [], place: [] };
+  // the size the motion lint measures on the drawn figure (sceneMoverSize) against the behaviours' def.size: the small water
+  // birds' sprites are padded, so the behaviours draw them about two thirds of their real size without this
+  const KFIX = { 'bird.mallard': 1.55, 'bird.coot': 1.5, 'bird.moorhen': 1.6 };
+  // no dives or dabbles in the v1 views (the hidden row would read as a jump off the water): look, preen, rest
+  const QUIET = { 'bird.mallard': ['look', 'preen', 'look', 'rest'], 'bird.coot': ['look', 'preen'], 'bird.grebe': ['look'], 'bird.goose': ['look', 'preen'], 'bird.swan': ['look', 'preen'] };
+  const out = [];
+  for (const s of specs) {
+    const spec = Object.assign({ k: KFIX[s.obj], acts: QUIET[s.obj] }, s, { route: s.px.map(([X, Y]) => un(X, Y)), avoid: avoid.concat(s.avoid || []) });
+    delete spec.px;
+    // far off a look round is a few pixels: rests there (a still pause costs one point of the path, a look three)
+    const dMed = spec.route.map(p => p[1]).sort((a, b) => a - b)[spec.route.length >> 1];
+    if (!s.acts && dMed > (/^bird\./.test(s.obj) ? 22 : 45)) spec.acts = ['rest', 'rest', 'preen'].slice(0, /^bird\./.test(s.obj) ? 3 : 2);
+    try {
+      if (s.dog) out.push(...B.walkWithDog(fake, Object.assign(spec, { walker: s.obj, dog: s.dog.obj || 'animal.dog', dogVariant: s.dog.variant | 0, dogK: s.dog.k })));
+      else out.push(...B.actors(fake, spec));
+    } catch (e) { out.push({ obj: s.obj, layer: s.layer, path: s.px, speed: 6, loop: 'pingpong', s: 0.6, variant: s.variant | 0, seed: s.seed }); }
+  }
+  // slim the timed paths (the data budget): drop a point with no wait on a straight run whose two legs keep the same pace
+  // (or where one leg is a few pixels: an ease too small to see)
+  for (const a of out) {
+    const P = a.path;
+    if (!Array.isArray(P) || P.length < 3 || !Array.isArray(P[0]) || P[0].length < 5) continue;
+    const keep = [P[0]];
+    for (let i = 1; i < P.length - 1; i++) {
+      const A = keep[keep.length - 1], Q = P[i], C = P[i + 1];
+      const l1 = Math.hypot(Q[0] - A[0], Q[1] - A[1]), l2 = Math.hypot(C[0] - Q[0], C[1] - Q[1]);
+      const off = Math.abs((C[0] - A[0]) * (Q[1] - A[1]) - (C[1] - A[1]) * (Q[0] - A[0])) / Math.max(1e-6, l1 + l2);
+      const v1 = Q[4] > 0 ? l1 / Q[4] : -1, v2 = C[4] > 0 ? l2 / C[4] : -1;
+      if (!Q[2] && !Q[3] && !C[3] && off < 0.35 && v1 > 0 && v2 > 0 && (Math.abs(v1 - v2) < 0.12 * Math.max(v1, v2) || Math.min(l1, l2) < 9) && Q[1] < 2000 && C[1] < 2000) {
+        C[4] = Math.round((Q[4] + C[4]) * 1000) / 1000;   // C's leg now starts at A: both legs' seconds
+        continue;
+      }
+      keep.push(Q);
+    }
+    keep.push(P[P.length - 1]);
+    a.path = keep;
+  }
+  // on flat ground the size is linear in the row (s = k (Y - horizon)): two rows of sByY say it all
+  for (const a of out) {
+    delete a.$behave;
+    if (a.variant === 0) delete a.variant;
+    // whole pixels and tenths of a second are plenty for a mover (the data budget)
+    if (Array.isArray(a.path)) a.path = a.path.map(p => (p.length >= 5 ? [Math.round(p[0]), Math.round(p[1]), Math.round(p[2] * 10) / 10, p[3], p[4] == null ? null : Math.round(p[4] * 10) / 10] : p));
+    const T = a.sByY;
+    if (Array.isArray(T) && T.length > 2 && T.every(r => r[0] < 2000)) a.sByY = [T[0], T[T.length - 1]];
+  }
+  return out;
+}
 (function () {
   if (typeof sceneObjDefine !== 'function') return;
   const f1 = v => Math.round(v * 10) / 10;

@@ -83,15 +83,33 @@
   const NIGHT = { on: 1, glow: Object.assign({}, PP.NIGHT.glow, { led: '#ff4d3d', beam: '#fff4d6', tail: '#ff3b30', collar: '#6dffc4', isotope: '#d4ff5c', kicks: '#ff6ad5' }) };
   const t = (slot, k) => `@${slot}.${k || 0}`;
 
+  /**
+   * A walking figure whose NEAR arm hangs free and swings (its own part, armA, about the near shoulder, against the far leg) on the
+   * walk hooks of sceneBehave.hooks('person-walk'): the legs' hook first (the flow renderer's), the arm's second. A hand that
+   * holds a phone or an open umbrella keeps its pose (the legs' hook only). extra(f, parts) may add to the parts before return.
+   */
+  function swingArm(o, g, extra) {
+    const busy = o.hold === 'phone' || o.hold === 'umbrella';
+    let f = PP.figure(o);
+    if (!busy) { const sh = f.shoulders.near; f = PP.figure(Object.assign({}, o, { arms: { far: g.far || 'forward', near: { hand: [sh[0] + (g.handX || 1.6), sh[1] + (g.handY || 18.4)] } } })); }
+    const body = f.body.slice(), parts = { legB: f.legB, body, legA: f.legA };
+    if (!busy) parts.armA = body.splice(f.at.nearArm[0], f.at.nearArm[1] - f.at.nearArm[0]);
+    if (extra) extra(f, parts);
+    const hk = typeof sceneBehave !== 'undefined' ? sceneBehave.hooks('person-walk', { hip: f.pivot.slice(), shoulder: f.shoulders.near.slice(), deg: g.deg, period: g.period, bob: g.bob, arm: g.arm })
+      : [Object.assign({ kind: 'walk' }, PP.walkAnim(g.period, g.deg, g.bob).walk)];
+    Object.defineProperty(parts, '$anim', { value: busy || !parts.armA ? hk.slice(0, 1) : hk, enumerable: false });
+    return parts;
+  }
+
   /* ---------- person.walker: the reference person on the shared builder (70-scene-lib-people-0figure.js) ----------
      8 presets (scenePeople.PRESETS): age, build, skin, hair and a wardrobe per season; faceless; 100 to 150 shapes
      near, the fine ones (detail: true) dropped under 48 px (detailPx); at night a cool rim light, lit strips and screens. */
   PP.define({
-    id: 'person.walker', category: 'person', size: [29, 64], variants: PP.PRESETS.length, seasonal: true, shapeBySeason: true, flippable: true, parts: ['legB', 'body', 'legA'],
-    palette: PP.palette(), anim: PP.walkAnim(0.9, 22, 1.5), shadow: { rx: 11, ry: 2.4, h: 64 }, night: PP.NIGHT, detailPx: true,
+    id: 'person.walker', category: 'person', size: [29, 64], variants: PP.PRESETS.length, seasonal: true, shapeBySeason: true, flippable: true, parts: ['legB', 'body', 'legA', 'armA'],
+    palette: PP.palette(), shadow: { rx: 11, ry: 2.4, h: 64 }, night: PP.NIGHT, detailPx: true,
     tags: PP.tags(['walker', 'path']),
     credit: 'the shared people builder (scenePeople.figure, 8 presets with a seasonal wardrobe)',
-    build(v, r, ctx) { const f = PP.figure(PP.outfit(PP.PRESETS[v], ctx.season)); return { legB: f.legB, body: f.body, legA: f.legA }; },
+    build(v, r, ctx) { return swingArm(PP.outfit(PP.PRESETS[v], ctx.season), { deg: 22, period: 0.9, bob: 1.4, arm: 16 }); },
   });
 
   /* ---------- person.jogger: run arms and legs, a forward lean, sportswear; at night a reflective band and a red clip light ---------- */
@@ -118,8 +136,8 @@
       winter: { top: { kind: 'hoodie', col: 'black', hood: 'up' }, bottom: { kind: 'joggers', col: 'black' }, shoes: { kind: 'trainer', col: 'white' }, gloves: 'black', band: 1 } },
   ];
   PP.define({
-    id: 'person.jogger', category: 'person', size: [37, 64], variants: JOG.length, seasonal: true, shapeBySeason: true, flippable: true, parts: ['legB', 'body', 'legA'],
-    palette: PAL, anim: PP.walkAnim(0.55, 28, 2), shadow: { rx: 11, ry: 2.4, h: 64 }, night: NIGHT, detailPx: true,
+    id: 'person.jogger', category: 'person', size: [37, 64], variants: JOG.length, seasonal: true, shapeBySeason: true, flippable: true, parts: ['legB', 'body', 'legA', 'armA'],
+    palette: PAL, shadow: { rx: 11, ry: 2.4, h: 64 }, night: NIGHT, detailPx: true,
     tags: PP.tags(['jogger', 'runner', 'path']),
     credit: 'the shared people builder (scenePeople.figure: run arms and legs, sportswear)',
     build(v, r, ctx) {
@@ -135,7 +153,12 @@
         body.splice(f.at.nearArm[1], 0, det([t('charcoal', 0), quad(1.5, 1.9)]), det({ f: t('sky', 1), d: quad(1.0, 1.2), glow: 'screen' }));
       }
       body.splice(f.at.nearArm[0], 0, ...extra);   // under the near arm
-      return { legB: farTier(f.legB), body: farTier(move(body, about(7, f.pivot[0], f.pivot[1], 1))), legA: farTier(f.legA) };
+      // the near arm (with its armband) is its own part, armA, pumping about the leaning shoulder against the far leg
+      const a0 = f.at.nearArm[0] + extra.length, a1 = f.at.nearArm[1] + extra.length + (o.band ? 0 : 2), lean = about(7, f.pivot[0], f.pivot[1], 1);
+      const armA = body.splice(a0, a1 - a0), parts = { legB: farTier(f.legB), body: farTier(move(body, lean)), legA: farTier(f.legA), armA: farTier(move(armA, lean)) };
+      const hk = typeof sceneBehave !== 'undefined' ? sceneBehave.hooks('person-walk', { hip: f.pivot.slice(), shoulder: apply(lean, f.shoulders.near), deg: 28, period: 0.55, bob: 2, arm: 20 }) : [Object.assign({ kind: 'walk' }, PP.walkAnim(0.55, 28, 2).walk)];
+      Object.defineProperty(parts, '$anim', { value: hk, enumerable: false });
+      return parts;
     },
   });
 

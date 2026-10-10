@@ -129,9 +129,6 @@ function sceneUkFleetPondV3() {
 
   // ---- the life below: roe deer at the reed edge, a walker going down to the boardwalk, swans and geese on the water
   Pl.push({ obj: 'animal.deer', at: [-6.2, 22.6], k: 1, flip: true }, { obj: 'animal.deer', at: [-8.4, 23.6], k: 0.9, variant: 1 });
-  A.push({ obj: 'person.walker', ground: [[-0.4, 11.5], [0.4, 14], [1.8, 17], [2.4, 20.5], [2.6, 25], [4.4, 38], [3.6, 54]], speedM: 0.8, loop: 'pingpong', seed: 41, offset: 0.25 });
-  A.push({ obj: 'bird.swan', ground: [[-30, 190], [-6, 182], [20, 190]], speedM: 0.3, loop: 'pingpong', seed: 42 });
-  A.push({ obj: 'bird.swan', ground: [[-27, 194], [-3, 186], [23, 194]], speedM: 0.3, loop: 'pingpong', k: 0.95, seed: 43, offset: 0.06 });
   Pl.push({ obj: 'bird.goose', at: [30, 230], k: 1 }, { obj: 'bird.goose', at: [34, 236], k: 1, variant: 1, flip: true }, { obj: 'bird.coot', at: [-14, 160], k: 1.1 });
   Pl.push({ obj: 'boat.dinghy', at: [60, 380], k: 1, variant: 0 });
   data.flocks.push({ obj: 'bird.goose-flight', n: 9, area: [300, 140, 1400, 320], speed: 30, s: 0.36, seed: 61, layer: 'horizon' });
@@ -156,5 +153,11 @@ function sceneUkFleetPondV3() {
   Pl.push({ obj: 'plant.gorse', x: 1500, y: 950, s: 1.8, pin: true, layer: 'front', shadow: false, anim: false, flip: true },
     { obj: 'plant.heather', x: 120, y: 950, s: 2.2, pin: true, layer: 'front', shadow: false, anim: false },
     { obj: 'plant.bracken', x: 1700, y: 960, s: 2.0, pin: true, layer: 'front', shadow: false, anim: false });
+  // ---- the movers (10 Oct, the animation overhaul): behaviour presets at their real size (SCENE_FPV.life), after every placement
+  A.push(...F.life(data, [
+    { obj: 'person.walker', preset: 'stroll', route: [[-0.4, 11.5], [0.4, 14], [1.8, 17], [2.4, 20.5], [2.6, 25], [4.4, 38], [3.6, 54]], seed: 41, offset: 0.25 },
+    { obj: 'bird.swan', preset: 'swan', route: [[-30, 190], [-6, 182], [20, 190]], seed: 42 },
+    { obj: 'bird.swan', preset: 'swan', route: [[-27, 194], [-3, 186], [23, 194]], seed: 43, offset: 0.06 },
+  ]));
   return data;
 }

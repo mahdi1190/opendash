@@ -749,8 +749,8 @@ function sceneCanalViewV2(id) {
     { obj: { 'tree.bank-oak': 2, 'tree.pond-oak': 2, 'tree.bank-alder': 2, 'tree.bank-willow': 1, 'tree.bank-birch': 1 }, on: ['wood-o', 'beyond-t', 'bank-o', 'hedge'], d: [140, 420], n: 50, dist: 'ground', seed: 44, anim: false, k: [0.85, 1.3] },
     // the towpath itself: grass tufts down its middle and edges, a few stones (a worn gravel track, not a flat band)
     { obj: { 'plant.grass': 5, 'plant.daisies': 2 }, on: ['tow-mid'], d: [2, 50], n: 34, dist: 'ground', cluster: { centres: 9, spread: 10 }, seed: 43, anim: false, k: [0.8, 1.3] },
-    // (round 2) the towpath's litter: drifts of fallen leaves under the trees, a few stones, never an even sprinkle
-    { obj: { 'ground.leaves': 3, 'ground.leaf-litter': 2, 'rock.stones': 1 }, on: ['tow'], d: [2.5, 70], n: 26, dist: 'ground', cluster: { centres: 7, spread: 5 }, seed: 45, anim: false, k: [0.7, 1.25] },
+    // (round 2) the towpath's litter: drifts of fallen leaves under the trees (no stones: a stone on the walking line is a blocker)
+    { obj: { 'ground.leaves': 3, 'ground.leaf-litter': 2 }, on: ['tow'], d: [2.5, 70], n: 26, dist: 'ground', cluster: { centres: 7, spread: 5 }, seed: 45, anim: false, k: [0.7, 1.25] },
   );
   // (round 2) water lilies in rafts along the offside margin (the Basingstoke Canal's still summit pound is full of them)
   const uOff = T > 0 ? 0.06 : 0.94, lr = (n) => { const x = Math.sin(n * 12.9898 + id.charCodeAt(id.length - 1) * 78.233) * 43758.5453; return x - Math.floor(x); };   // a seeded hash per view
@@ -765,13 +765,36 @@ function sceneCanalViewV2(id) {
     at: id === 'fleet-canal-4' ? 'sunset' : 'afternoon', season: 'auto', setting: 'natural', atmos: 'auto', weather: 'live', cover: 'auto', particles: 'season',
     kits: ['temperate', 'water', 'birds', 'people'],
     surfaces, water, place, scatter, actors,
-    flows: [
-      { id: 'walkers', kind: 'walk', on: 'tow', density: 0.5, profile: 'leisure', mix: { 'person.walker': 3, 'person.dog-walker': 3, 'person.jogger': 1, 'person.family': 1 }, max: 4, seed: 41 },
-      { id: 'cycles', kind: 'cycle', on: 'tow', density: 0.2, profile: 'leisure', mix: { 'person.cyclist': 1 }, max: 1, seed: 42 },
-    ],
+    flows: [],
   };
   if (V.relief) data.ground = { relief: V.relief };
+  sceneCanalViewMovers(data, V, T, hw, tw);
   return data;
+}
+
+/* ---------- the movers: every swimmer and walker is a sceneBehave preset built from ground metres (kept in the water and
+   clear of the boats, on the towpath and round its obstacles, sized for its depth, in the right layer). A view's life pushes
+   markers { behave: 'actors' | 'pair' | 'walkWithDog', obj, preset, o: [offset...] | tow: true, s: [arc...], ... }: o metres
+   right of the canal's centre at arc s (or the towpath's walking line, tow), resolved here once the data has its camera. */
+function sceneCanalViewMovers(data, V, T, hw, tw) {
+  if (typeof sceneBehave === 'undefined') { data.actors = data.actors.filter(a => !a.behave); return; }
+  // a cyclist on every towpath (was a flow: flows walk the surface's centre, through moored boats' footprints and towpath stones)
+  data.actors.push({ behave: 'actors', obj: 'person.cyclist', preset: 'brisk', speedM: 4.2, acts: false, tow: true, s: [3, ({ 'fleet-canal-1': 60, 'fleet-canal-3': 34 })[data.id] || 90], seed: 77, offset: 0.5 });
+  const landData = Object.assign({}, data, { place: data.place.filter(p => !/^boat./.test(p.obj)) });
+  const out = [];
+  for (const a of data.actors) {
+    if (!a.behave) { out.push(a); continue; }
+    const s = a.s, o = a.tow ? s.map(() => T * (hw + 0.55 + tw / 2 + 0.35)) : a.o;
+    const route = a.tow ? V.line(o[0], Math.min(s[0], s[1]), Math.max(s[0], s[1]), 3) : s.map((q, i) => { const p = V.at(q); return [Math.round((p[0] + p[3] * o[i]) * 100) / 100, Math.round((p[1] - p[2] * o[i]) * 100) / 100]; });
+    if (a.tow && s[0] > s[1]) route.reverse();
+    const spec = Object.assign({}, a, { route });
+    for (const k of ['behave', 'o', 's', 'tow']) delete spec[k];
+    // a moored boat floats beside the towpath and never blocks a walker (as the engine has it); sceneBehave's obstacle for a pinned
+    // boat piece is its screen box laid on the ground, which spills over the towpath and pushed the walkers into the hedge
+    const r = sceneBehave[a.behave](a.tow ? landData : data, spec);
+    out.push(...(Array.isArray(r) ? r : [r]));
+  }
+  data.actors = out;
 }
 
 /* ---------- the life and framing of each view (hand-placed, ground metres) ---------- */
@@ -786,19 +809,32 @@ const SCENE_CANAL_VIEW_LIFE = {
     place.push({ obj: 'tree.canal-willow', at: [12, 36], k: 1.1, variant: 1 }, { obj: 'tree.canal-oak', at: [-14.5, 26], k: 1.1, variant: 0 }, { obj: 'tree.canal-oak', at: [-16, 50], k: 1.05, variant: 2, flip: true });
     place.push({ obj: 'plant.canal-view-fronds', x: 1680, y: -40, s: 1.05, pin: true, layer: 'front', shadow: false, flip: true, variant: 0 });
     // waterfowl: a swan pair gliding up the reach, mallards, a moorhen in the offside reeds, a coot
-    actors.push({ obj: 'bird.swan', ground: [[2.5, 70], [1, 52], [3, 36]], speedM: 0.25, loop: 'pingpong', k: 1 }, { obj: 'bird.swan', ground: [[3.4, 72], [1.9, 54], [3.9, 38]], speedM: 0.25, loop: 'pingpong', k: 0.95, offset: 0.06 });
+    // (motion) the swan pair in the clear water between the moored boats and the trip boat's line, a pair of mallards near the bridge
+    actors.push({ behave: 'actors', obj: 'bird.swan', o: [-1.4, -1.9, -1.2], s: [58, 42, 24], seed: 3 }, { behave: 'actors', obj: 'bird.swan', o: [-0.6, -1.1, -0.4], s: [60, 44, 26], seed: 4, variant: 1, offset: 0.03 });
+    actors.push({ behave: 'actors', obj: 'bird.mallard', k: 1.22, o: [1.0, 1.8, 0.6], s: [26, 32, 38], seed: 5 }, { behave: 'actors', obj: 'bird.mallard', k: 1.22, o: [1.6, 2.4, 1.2], s: [26.6, 32.6, 38.6], seed: 6, variant: 1, offset: 0.01 });
+    // the towpath (left): a stroller, a dog walker, a jogger, an older walker, a walker with an off-lead dog
+    actors.push({ behave: 'actors', obj: 'person.walker', preset: 'stroll', tow: true, s: [4, 80], seed: 11, variant: 1, offset: 0.1 },
+      { behave: 'actors', obj: 'person.dog-walker', preset: 'dog-walker', tow: true, s: [75, 4], seed: 12, offset: 0.4 },
+      { behave: 'actors', obj: 'person.jogger', preset: 'jogger', tow: true, s: [4, 95], seed: 13, offset: 0.7 },
+      { behave: 'actors', obj: 'person.walker', preset: 'elderly', tow: true, s: [50, 6], seed: 14, variant: 6, offset: 0.2 },
+      { behave: 'walkWithDog', walker: 'person.walker', tow: true, s: [60, 8], seed: 16, variant: 4, dogVariant: 1, offset: 0.55 });
     // (round 2) the near offside: the garden bottoms meet the water in reed, loosestrife and meadowsweet, a birch and an alder
     // at the lawn's edge; a canoeist paddling up the cut (the canal is a canoe trail)
     scatter.push({ obj: { 'plant.reed': 4, 'plant.canal-view-loosestrife': 3, 'plant.bulrush': 1, 'plant.canal-view-meadowsweet': 2 }, on: ['reeds-o', 'bank-o'], d: [9, 40], n: 70, dist: 'ground', cluster: { centres: 6, spread: 4 }, seed: 53, anim: false, k: [1.0, 1.5] });
     place.push({ obj: 'tree.bank-birch', at: [15, 19], k: 0.95 }, { obj: 'tree.bank-alder', at: [17.5, 29], k: 0.85 });
-    actors.push({ obj: 'person.kayaker', ground: [[-1.5, 24], [-2.6, 60], [0.5, 110]], speedM: 0.9, loop: 'pingpong', k: 1 });
-    place.push({ obj: 'bird.mallard', on: 'canal', d: 22, u: 0.55 }, { obj: 'bird.mallard', on: 'canal', d: 22.8, u: 0.6, variant: 1 }, { obj: 'bird.moorhen', on: 'canal', d: 30, u: 0.92 }, { obj: 'bird.coot', on: 'canal', d: 84, u: 0.7 });
+    actors.push({ behave: 'actors', obj: 'person.kayaker', preset: 'swan', speedM: 0.9, acts: false, o: [3.2, 3.5, 3.3], s: [18, 30, 40], seed: 9 });   // up the offside of the cut, clear of the trip boat
+    place.push({ obj: 'bird.moorhen', on: 'canal', d: 30, u: 0.92 }, { obj: 'bird.coot', on: 'canal', d: 84, u: 0.7 });
     void surfaces; void V;
   },
   'fleet-canal-2'({ place, scatter, actors }) {
-    place.push({ obj: 'bird.wp-heron-stalk', on: 'canal', d: 26, u: 0.04 });
-    place.push({ obj: 'bird.mallard', on: 'canal', d: 16, u: 0.22 }, { obj: 'bird.mallard', on: 'canal', d: 16.8, u: 0.28, variant: 1 }, { obj: 'bird.proof-duckling', on: 'canal', d: 17.4, u: 0.31 }, { obj: 'bird.proof-duckling', on: 'canal', d: 17.9, u: 0.35, variant: 1 }, { obj: 'bird.moorhen', on: 'canal', d: 40, u: 0.15 });
-    actors.push({ obj: 'bird.swan', ground: [[-9.5, 34], [-8, 24], [-9.8, 16]], speedM: 0.2, loop: 'pingpong', k: 1 }, { obj: 'bird.swan', ground: [[-8.8, 36], [-7.3, 26], [-9.1, 18]], speedM: 0.2, loop: 'pingpong', k: 0.95, offset: 0.06 });
+    actors.push({ behave: 'actors', obj: 'bird.wp-heron-stalk', preset: 'heron-stalk', o: [-5.3, -5.4, -5.3], s: [25, 26.2, 27.4], seed: 29 });   // (motion) stalking the margin, long freezes and a strike (a still placement swung its legs on the spot)
+    place.push({ obj: 'bird.proof-duckling', on: 'canal', d: 17.4, u: 0.31 }, { obj: 'bird.proof-duckling', on: 'canal', d: 17.9, u: 0.35, variant: 1 }, { obj: 'bird.moorhen', on: 'canal', d: 40, u: 0.15 });
+    actors.push({ behave: 'actors', obj: 'bird.swan', o: [-2.6, -1.8, -2.8], s: [40, 28, 18], seed: 21 }, { behave: 'actors', obj: 'bird.swan', o: [-1.4, -0.4, -1.6], s: [46, 34, 24], seed: 22, variant: 1, offset: 0.2 });
+    actors.push({ behave: 'actors', obj: 'bird.mallard', k: 1.22, o: [-1.6, -0.6, -2.2], s: [8, 11, 14], seed: 23 }, { behave: 'actors', obj: 'bird.mallard', k: 1.22, o: [-1.0, 0, -1.6], s: [8.6, 11.6, 14.6], seed: 24, variant: 1, offset: 0.01 });
+    actors.push({ behave: 'actors', obj: 'person.walker', preset: 'stroll', tow: true, s: [3, 70], seed: 25, variant: 2, offset: 0.15 },
+      { behave: 'actors', obj: 'person.dog-walker', preset: 'dog-walker', tow: true, s: [70, 3], seed: 26, offset: 0.5 },
+      { behave: 'actors', obj: 'person.jogger', preset: 'jogger', tow: true, s: [3, 90], seed: 27, offset: 0.8 },
+      { behave: 'walkWithDog', walker: 'person.walker', tow: true, s: [60, 10], seed: 28, variant: 3, dogVariant: 1, offset: 0.85 });
     // hero trees: an old alder leaning over the offside, an oak behind the towpath hedge on the right
     place.push({ obj: 'tree.pond-alder', at: [-19, 22], k: 1.15 }, { obj: 'tree.canal-willow', at: [-17, 40], k: 1.1, variant: 0 }, { obj: 'tree.canal-oak', at: [12, 27], k: 1.1, variant: 1 }, { obj: 'tree.canal-oak', at: [11.5, 42], k: 1.0, variant: 0, flip: true });
     // the foreground: tall loosestrife, meadowsweet and reed by the towpath at the bottom right (a frame), the willow curtain top left
@@ -806,9 +842,12 @@ const SCENE_CANAL_VIEW_LIFE = {
     place.push({ obj: 'plant.canal-view-fronds', x: -40, y: -14, s: 1.1, pin: true, layer: 'front', shadow: false, anim: undefined });
   },
   'fleet-canal-3'({ place, scatter, actors }) {
-    place.push({ obj: 'bird.wp-heron-stalk', on: 'canal', d: 58, u: 0.95 });
-    place.push({ obj: 'bird.mallard', on: 'canal', d: 18, u: 0.3 }, { obj: 'bird.mallard', on: 'canal', d: 18.7, u: 0.37, variant: 1 }, { obj: 'bird.moorhen', on: 'canal', d: 36, u: 0.9 });
-    actors.push({ obj: 'bird.swan', ground: [[4, 44], [6, 30], [5, 20]], speedM: 0.22, loop: 'pingpong', k: 1 }, { obj: 'bird.swan', ground: [[4.8, 46], [6.8, 32], [5.8, 22]], speedM: 0.22, loop: 'pingpong', k: 0.95, offset: 0.06 });
+    actors.push({ behave: 'actors', obj: 'bird.wp-heron-stalk', preset: 'heron-stalk', o: [-4.8, -4.9, -4.8], s: [40, 41.2, 42.4], seed: 39 });
+    place.push({ obj: 'bird.moorhen', on: 'canal', d: 36, u: 0.9 });
+    actors.push({ behave: 'actors', obj: 'bird.swan', o: [-1.6, -2.4, -1.4], s: [46, 32, 18], seed: 31 }, { behave: 'actors', obj: 'bird.swan', o: [-0.7, -1.5, -0.5], s: [48, 34, 20], seed: 32, variant: 1, offset: 0.04 });
+    actors.push({ behave: 'actors', obj: 'bird.mallard', k: 1.22, o: [-2.6, -1.6, -3], s: [7, 10, 13], seed: 33 }, { behave: 'actors', obj: 'bird.mallard', k: 1.22, o: [-2, -1, -2.4], s: [7.6, 10.6, 13.6], seed: 34, variant: 1, offset: 0.01 });
+    actors.push({ behave: 'actors', obj: 'person.walker', preset: 'stroll', tow: true, s: [3, 36], seed: 35, variant: 5, offset: 0.2 },
+      { behave: 'walkWithDog', walker: 'person.walker', tow: true, s: [4, 34], seed: 36, variant: 1, dogVariant: 0, offset: 0.6 });
     // the kingfisher on a dead twig over the water at the near bank (pixel, pinned: a perch, not the ground)
     scatter.push({ obj: { 'plant.grass': 3, 'plant.grass-long': 2, 'plant.wildflowers': 1, 'plant.daisies': 1 }, on: ['bank-o'], avoid: ['reeds-o'], d: [4, 40], n: 50, dist: 'screen', seed: 73, anim: false, k: [0.8, 1.2] });
     place.push({ obj: 'bird.kingfisher', x: 1125, y: 612, s: 1.6, pin: true, layer: 'fore', variant: 0, flip: true });
@@ -823,8 +862,11 @@ const SCENE_CANAL_VIEW_LIFE = {
     scatter.push({ obj: { 'plant.hedge': 2, 'plant.shrub': 1, 'plant.towpath-hedge': 1, 'plant.wildflowers': 3, 'plant.daisies': 2 }, on: ['gardens'], d: [8, 140], n: 40, dist: 'screen', cluster: { centres: 12, spread: 6 }, seed: 81, anim: false, k: [0.7, 1.2] });
     scatter.push({ obj: { 'tree.bank-willow': 2, 'tree.bank-alder': 1, 'tree.bank-birch': 2 }, on: ['gardens'], d: [14, 150], n: 10, dist: 'ground', cluster: { centres: 4, spread: 10 }, gap: 'foot', seed: 82, anim: false, k: [0.8, 1.15] });
     place.push({ obj: 'tree.canal-oak', at: [-10, 21], k: 1.0, variant: 1, flip: true }, { obj: 'tree.bank-birch', at: [-10.5, 36], k: 0.8 });   // (round 3) out from behind the oak's crown (there only its bare white limbs showed, as sticks in the sky)
-    actors.push({ obj: 'bird.swan', ground: [[9, 34], [7, 22], [8.5, 14]], speedM: 0.22, loop: 'pingpong', k: 1 }, { obj: 'bird.swan', ground: [[9.8, 36], [7.8, 24], [9.3, 16]], speedM: 0.22, loop: 'pingpong', k: 0.95, offset: 0.06 });
-    place.push({ obj: 'bird.mallard', on: 'canal', d: 9, u: 0.45 }, { obj: 'bird.mallard', on: 'canal', d: 9.5, u: 0.5, variant: 1 });
+    actors.push({ behave: 'actors', obj: 'bird.swan', o: [-0.4, 0.2, -0.6], s: [40, 26, 15], seed: 41 }, { behave: 'actors', obj: 'bird.swan', o: [-1.6, -1.0, -1.8], s: [44, 30, 18], seed: 42, variant: 1, offset: 0.12 });
+    actors.push({ behave: 'actors', obj: 'bird.mallard', k: 1.22, o: [-0.8, 0.2, -1.2], s: [5, 8, 11], seed: 43 }, { behave: 'actors', obj: 'bird.mallard', k: 1.22, o: [-0.2, 0.8, -0.6], s: [5.6, 8.6, 11.6], seed: 44, variant: 1, offset: 0.01 });
+    actors.push({ behave: 'actors', obj: 'person.walker', preset: 'stroll', tow: true, s: [3, 70], seed: 45, variant: 2, offset: 0.1 },
+      { behave: 'actors', obj: 'person.dog-walker', preset: 'dog-walker', tow: true, s: [66, 3], seed: 46, offset: 0.45 },
+      { behave: 'actors', obj: 'person.walker', preset: 'elderly', tow: true, s: [40, 4], seed: 47, variant: 6, offset: 0.75 });
     place.push({ obj: 'plant.canal-view-fronds', x: 1660, y: -30, s: 1.05, pin: true, layer: 'front', shadow: false, flip: true, variant: 1 });
     scatter.push({ obj: { 'plant.reed': 4, 'plant.bulrush': 2, 'plant.canal-view-loosestrife': 2, 'plant.grass-long': 2 }, on: ['lip-t', 'hedge'], d: [2.2, 9], n: 60, dist: 'screen', cluster: { centres: 3, spread: 20 }, seed: 83, anim: false, k: [0.9, 1.2] });
     scatter.push({ obj: { 'plant.canal-view-meadowsweet': 2, 'plant.grass-long': 3, 'plant.bracken': 1, 'plant.wildflowers': 2, 'plant.canal-view-loosestrife': 1 }, on: ['hedge'], d: [2.4, 12], n: 70, dist: 'screen', cluster: { centres: 4, spread: 30 }, seed: 84, anim: false, k: [0.85, 1.2] });

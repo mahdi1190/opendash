@@ -464,6 +464,16 @@ function sceneFlowCompile(data, C, opt) {
     // the expected crowd at the peak (agents per 100 m of lane): thin it so it stays under 85 % of max, then the hard cap rarely bites
     const expected = out.timetable ? 0 : lanes.reduce((n, ln) => n + out.density * out.peak * ln.len / 100, 0);
     if (expected > 0 && out.max > 0 && expected > out.max * 0.85) out.thin = _scflR(Math.max(0.02, out.max * 0.85 / expected));
+    // the motion rules (user request, 10 Oct; A's sceneMoverFixPath): walkers, cyclists, grazers and boats keep to what they may use,
+    // clear of hulls, walls, fences, closed gates and benches (a lane is moved or detoured, never dropped; what stays wrong is the lint's)
+    if (C && (F.kind === 'walk' || F.kind === 'cycle' || F.kind === 'graze' || F.kind === 'boat') && typeof sceneMotionWorld === 'function' && typeof sceneMoverFixPath === 'function') {
+      const W = sceneMotionWorld(C), obj = Object.keys(mix)[0];
+      if (W && obj) for (const ln of lanes) {
+        const fx = sceneMoverFixPath(W, obj, ln.path);
+        if (!fx.moved && !fx.detours) continue;
+        ln.path = fx.pts.map(p => [_scflR(p[0]), _scflR(p[1])]); ln.len = _scflR1(_scflLen(ln.path)); ln.$moved = fx.moved + fx.detours;
+      }
+    }
     flows.push(out);
   });
   const other = opt.otherDraws != null ? opt.otherDraws : (C && C.stats && Number.isFinite(C.stats.animatedDraws) ? C.stats.animatedDraws : 0);
@@ -646,7 +656,8 @@ function _scflPlace(cam, flow, fi, li, a, tau0, tau, ctx) {
   const real = _scflReal(vw.o), def = typeof sceneObj === 'function' ? sceneObj(vw.o) : null, sz = def && def.size ? def.size[1] : 100;
   let kk = 1;
   if (flow.cls === 'person' || flow.cls === 'cyclist') kk = 0.94 + _scflU(ak + '|k') * 0.12;
-  const sc = kk * k3 * real.h / sz;
+  // the movers' size classes over their drawn height (user request, 10 Oct: A's sceneMoverScale), else the real height over size[1]
+  const sc = typeof sceneMoverScale === 'function' && flow.cls !== 'car' && flow.cls !== 'bus' && flow.cls !== 'tram' && flow.cls !== 'train' ? sceneMoverScale(vw.o, kk, k3) : kk * k3 * real.h / sz;
   // fades: over 1 s where a lane starts or ends inside the frame
   const fadeM = Math.max(1.2, a.v * 1);
   let alpha = 1;

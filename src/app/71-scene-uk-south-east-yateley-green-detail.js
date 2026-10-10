@@ -108,17 +108,7 @@
     ],
     actors: [
       // waterbirds
-      { obj: 'bird.mallard', layer: 'near', path: [[620, 690], [800, 696]], speed: 5, loop: 'pingpong', s: 0.62, seed: 61, variant: 0, offset: 0.2 },
-      { obj: 'bird.mallard', layer: 'near', path: [[690, 702], [860, 708]], speed: 5, loop: 'pingpong', s: 0.58, seed: 62, variant: 1, offset: 0.24 },
-      { obj: 'bird.coot', layer: 'near', path: [[1040, 655], [920, 652]], speed: 4, loop: 'pingpong', s: 0.44, seed: 63, offset: 0.4 },
-      { obj: 'bird.coot', layer: 'near', path: [[1100, 664], [990, 662]], speed: 3.6, loop: 'pingpong', s: 0.42, seed: 64, offset: 0.6 },
-      { obj: 'bird.moorhen', layer: 'near', path: [[420, 650], [520, 648]], speed: 4, loop: 'pingpong', s: 0.4, seed: 65, offset: 0.3 },
-      { obj: 'bird.mallard', layer: 'near', path: [[1280, 730], [1100, 740]], speed: 5, loop: 'pingpong', s: 0.7, seed: 66, variant: 0, offset: 0.7 },
       // people on the green
-      { obj: 'person.dog-walker', layer: 'mid', path: [[420, 556], [700, 550]], speed: 5, loop: 'pingpong', s: 0.56, seed: 71, offset: 0.3 },
-      { obj: 'person.walker', layer: 'mid', path: [[1260, 548], [1040, 552]], speed: 4.5, loop: 'pingpong', s: 0.5, seed: 72, variant: 1, offset: 0.5 },
-      { obj: 'person.walker', layer: 'mid', path: [[700, 552], [880, 550]], speed: 3.5, loop: 'pingpong', s: 0.56, seed: 73, variant: 1, offset: 0.6 },
-      { obj: 'person.walker', layer: 'mid', path: [[160, 560], [300, 558]], speed: 4, loop: 'pingpong', s: 0.6, seed: 74, variant: 1, offset: 0.2 },
     ],
     flocks: [{ obj: 'bird.small-flight', n: 6, area: [260, 160, 1300, 300], speed: 26, s: 0.55, seed: 81, layer: 'far' }],
     particles: 'season', weather: 'live', fx: { shadows: 2 },
@@ -126,9 +116,25 @@
   /** All-year life (waterbirds, a squirrel): the season comes from the date (season 'auto'), so nothing that belongs to
       one season only (butterflies, bees, dragonflies) is drawn; the four seasonal items of the view share this one scene. */
   const YEAR_ROUND = [
-      { obj: 'animal.squirrel', layer: 'fore', path: [[520, 868], [640, 872]], speed: 9, loop: 'pingpong', s: 0.8, seed: 99, offset: 0.4 },
       { obj: 'bird.goose-flight', layer: 'far', path: [[-120, 220], [1720, 160]], speed: 40, loop: 'loop', s: 0.6, seed: 100, offset: 0.3 },
   ];
+  /** The ground and water movers (sceneYgMovers: the behaviour presets at their real size; 4.37: the view's fitted eye, metres). */
+  const movers = (d) => {
+    const M = typeof sceneYgMovers === 'function' ? sceneYgMovers(d, 4.37, [
+      { obj: 'bird.mallard', px: [[620, 690], [800, 696]], layer: 'near', seed: 61, variant: 0, offset: 0.2 },
+      { obj: 'bird.mallard', px: [[690, 702], [860, 708]], layer: 'near', seed: 62, variant: 1, offset: 0.24 },
+      { obj: 'bird.coot', px: [[1040, 655], [920, 652]], layer: 'near', seed: 63, offset: 0.4 },
+      { obj: 'bird.coot', px: [[1100, 664], [990, 662]], layer: 'near', seed: 64, offset: 0.6 },
+      { obj: 'bird.moorhen', px: [[420, 650], [520, 648]], layer: 'near', seed: 65, offset: 0.3 },
+      { obj: 'bird.mallard', px: [[1280, 730], [1100, 740]], layer: 'near', seed: 66, variant: 0, offset: 0.7 },
+      { obj: 'person.dog-walker', px: [[420, 556], [700, 550]], layer: 'mid', seed: 71, offset: 0.3 },
+      { obj: 'person.walker', px: [[1260, 548], [1040, 552]], layer: 'mid', seed: 72, variant: 1, offset: 0.5 },
+      { obj: 'person.walker', px: [[700, 552], [880, 550]], layer: 'mid', seed: 73, variant: 1, offset: 0.6 },
+      { obj: 'person.walker', px: [[160, 560], [300, 558]], layer: 'mid', seed: 74, variant: 1, offset: 0.2 },
+    ]) : [];
+    d.actors = M.concat(d.actors);
+    return d;
+  };
   sceneAdd(PACK, { id: ID, label: 'Yateley Green', site: 'Yateley Green — Autumn shade beside the open green', tags: ['uk', 'yateley', 'village green', 'pond', 'church', 'st peters'], mood: 'calm', colour: 'green' },
-    () => { const d = base(); d.actors = d.actors.concat(YEAR_ROUND); return d; });
+    (...a) => { const d = movers(base(...a)); d.actors = d.actors.concat(YEAR_ROUND); return d; });
 })();

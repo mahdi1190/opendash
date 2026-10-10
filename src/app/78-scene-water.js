@@ -563,7 +563,8 @@ function _scwaMovers(env, R, ctx, t, tq, below) {
     // the reflection: flipped about its own waterline, at mirror * .5, with its band's ripple shift
     if (sp && sp.c) {
       const d = Number.isFinite(m.d) ? m.d : sceneCamDepthAt(cam, m.Y);
-      const floating = m.on || m.cls === 'boat' || m.cls === 'bird-water';
+      // only what is ON the water mirrors about its own foot (10 Oct: a duck or a beached boat on the bank mirrors about the waterline)
+      const floating = !!m.on;
       const Ym = R.legacy ? 2 * R.y0 - m.Y : floating ? m.Y : sceneWaterMirrorY(cam, d, R.level, -R.level);
       const dx = _scwaShift(R, Ym * vs + oy - R.db[1], tq, wind);
       const s = m.s || 1, fl = Number.isFinite(m.face) ? m.face : m.flip ? -1 : 1;   // a turning actor's reflection turns with it
