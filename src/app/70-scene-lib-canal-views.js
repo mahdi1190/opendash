@@ -69,7 +69,7 @@ const SCENE_CANAL_VIEWS = (function () {
     'fleet-canal-1': mk('fleet-canal-1', {
       camera: { eye: 5.6, fov: 66, horizon: 380, heading: 240, lat: 51.2806, lon: -0.8395, water: -0.5 },
       path: [[-3.2, 0.5], [-3.6, 15], [-4.6, 35], [-4.2, 60], [-1, 90], [5, 125], [9.5, 165], [8, 215], [-1, 270], [-18, 350], [-48, 450], [-90, 560]],
-      width: 12, tow: 'left', towW: 2.8, mirror: 0.75,
+      width: 12, tow: 'left', towW: 2.8,
       boats: [
         { s: 15, o: -4.5, len: 19, liv: 0, smoke: true, roof: 'logs' },
         { s: 35, o: -4.5, len: 17, liv: 1, roof: 'solar' },
@@ -154,7 +154,10 @@ const SCENE_CANAL_VIEWS = (function () {
     // the anchor: the LOWEST end of that waterline in the slice (nothing of the hull hangs below the engine's waterline clip);
     // slope: the waterline's screen slope, so the engine mirrors about the true (perspective) waterline, not a level row
     const e0 = at(pc.a0, sg), e1 = at(pc.a1, sg), lo = e0.p[1] >= e1.p[1] ? e0 : e1, dx = e1.p[0] - e0.p[0];
-    return { g: lo.g, p: lo.p, slope: Math.abs(dx) > 0.5 ? (e1.p[1] - e0.p[1]) / dx : 0 };
+    // a piece seen nearly end-on (its waterline steeper than 0.35 on the screen) mirrors level: the shear extrapolated past the
+    // side's few pixels stretched its bow into a long streak down the water
+    const t = Math.abs(dx) > 0.5 ? (e1.p[1] - e0.p[1]) / dx : 0;
+    return { g: lo.g, p: lo.p, slope: Math.abs(t) > 0.35 ? 0 : t };
   }
   return { views, boatPieces, bridges, parapets, boatFrame, pieceAnchor, spline };
 })();
