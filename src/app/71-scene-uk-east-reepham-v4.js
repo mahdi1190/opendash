@@ -19,7 +19,7 @@ function sceneUkReephamV4() {
     {obj:'street.rph-platform-fence',at:[9,13],anim:false},
     {obj:'street.rph-platform-fence',at:[10,24],anim:false},
     {obj:'tree.pool-oak',at:[-15,23],variant:1},{obj:'tree.pool-birch',at:[17,28],variant:2},
-    {obj:'tree.bank-oak',at:[26,70],variant:0},{obj:'tree.bank-oak',at:[-29,87],variant:1});
+    {obj:'tree.rph-bank-oak',at:[26,70],variant:0},{obj:'tree.rph-bank-oak',at:[-29,87],variant:1});
   R.woodland(D,'grass',93811,[170,500],36);
   R.plants(D,'grass',95257,610,[4.8,40]);
   // The platform is broad enough for visitors to pass safely, well clear of stock.

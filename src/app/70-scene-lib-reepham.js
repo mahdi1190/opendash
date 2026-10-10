@@ -7,8 +7,10 @@
    a leading line and distance-scaled life; use original masonry/roof geometry.
    Engine owns sky, illumination, shadows, seasons and weather throughout.
    Dimensions are visual estimates, not a measured architectural survey. */
+let sceneReephamTrees;
 const SCENE_REEPHAM = (function () {
   function base(id, lat, lon, heading, setting, x0) {
+    sceneReephamTrees();
     return {v:2,id,view:{lat,lon},camera:{eye:1.65,fov:66,horizon:450,x0:x0||800,lat,lon,heading},
       at:'afternoon',season:'auto',setting,atmos:'auto',weather:'live',cover:'auto',particles:'season',signage:false,
       kits:['temperate','urban','people','birds'],sky:{stars:180,clouds:{n:3,y:[50,305],speed:3},sunR:24,moonR:18},
@@ -22,7 +24,7 @@ const SCENE_REEPHAM = (function () {
       dist:'screen',gap:.16,k:[.9,1.1],seed:seed+1039,anim:false,tint:{col:'#b5ad80',k:[0,.05]}});
   }
   function woodland(data,on,seed,d,n) {
-    data.scatter.push({obj:{'tree.pond-oak':3,'tree.pool-birch':2},on,d,n,dist:'ground',
+    data.scatter.push({obj:{'tree.rph-pond-oak':3,'tree.rph-pool-birch':2},on,d,n,dist:'ground',
       cluster:{centres:9,spread:12},gap:'foot',seed,k:[.8,1.2],anim:false,shadow:false,tint:{col:'#b7c6bc',k:[0,.15]}});
   }
   function life(data,route,seed) {
@@ -70,6 +72,23 @@ const SCENE_REEPHAM = (function () {
   const r1=x=>Math.round(x*10)/10;
   const rect=(x,y,w,h)=>`M${r1(x)} ${r1(y)}h${r1(w)}v${r1(h)}h${r1(-w)}z`;
   const ell=(x,y,rx,ry)=>`M${r1(x-rx)} ${r1(y)}a${r1(rx)} ${r1(ry)} 0 1 0 ${r1(rx*2)} 0a${r1(rx)} ${r1(ry)} 0 1 0 ${r1(-rx*2)} 0z`;
+  // Reuse library oaks intact at full-screen size. Reserve fine foliage and
+  // twigs for the large view, following the gold reference's tile method.
+  function sceneReephamTreeDefinitions(){if(sceneObj('tree.rph-pond-oak'))return;for(const src of ['tree.pond-oak','tree.bank-oak','tree.pool-birch']){
+    const base=sceneObj(src);if(!base)continue;
+    sceneObjDefine(Object.assign({},base,{id:src.replace('.','.rph-'),weight:0,real:sceneObjReal(src),build(v,r,ctx){
+      const sh=sceneObjShapes(src,v,ctx&&ctx.season||'summer'),out={};let leaf=0;
+      for(const p of sh.order){out[p]=[];for(const q of sh.parts[p]){
+        const subs=(q.d||'').split(/(?=M)/);
+        if(subs.length>1&&(q.d||'').length>400){
+          out[p].push(Object.assign({},q,{d:subs.filter((_,i)=>i%8===0).join('')}));
+          out[p].push(Object.assign({},q,{d:subs.filter((_,i)=>i%8!==0).join(''),detail:true}));
+        }else out[p].push(Object.assign({},q,q.s&&q.w<4.5||q.m&&q.f&&(leaf++%8)!==0?{detail:true}:{}));
+      }}
+      Object.defineProperty(out,'$anim',{value:sh.anim});return out;
+    }}));
+  }}
+  sceneReephamTrees=sceneReephamTreeDefinitions;
   sceneObjDefine({id:'plant.rph-short-grass',category:'plant',size:[31,18],real:{h:.09,l:.16,w:.12},variants:3,seasonal:true,shapeBySeason:false,flippable:true,
     palette:{base:{},spring:{leaf:['#59813c','#9fad51']},summer:{leaf:['#456c38','#7e994a']},autumn:{leaf:['#75694b','#a99668']},winter:{leaf:['#7a8170','#b2b5a2']}},
     parts:['body'],tags:['uk','reepham','kit:temperate','role:ground','class:cover'],build(v,r){

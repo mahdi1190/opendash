@@ -13,12 +13,12 @@ function sceneUkReephamV3() {
     {obj:'plant.hedge',at:[-22,65],variant:1,anim:false},
     {obj:'plant.hedge',at:[7,48],variant:2,anim:false},
     {obj:'plant.hedge',at:[-9,97],variant:0,anim:false},
-    {obj:'tree.pool-birch',at:[-17,132],variant:2,anim:false},
-    {obj:'tree.pond-oak',at:[8,115],variant:1,anim:false},
+    {obj:'tree.rph-pool-birch',at:[-17,132],variant:2,anim:false},
+    {obj:'tree.rph-pond-oak',at:[8,115],variant:1,anim:false},
     {obj:'street.bench',at:[-4.8,19]},
-    {obj:'tree.pool-oak',at:[8,14],variant:2},{obj:'tree.pool-birch',at:[-10,13],variant:1},
-    {obj:'tree.pool-oak',at:[15,45],variant:0},{obj:'tree.pool-birch',at:[-28,52],variant:2},
-    {obj:'tree.bank-oak',at:[-11,84],variant:1},{obj:'tree.bank-oak',at:[12,92],variant:0},
+    {obj:'tree.pool-oak',at:[8,14],variant:2},{obj:'tree.rph-pool-birch',at:[-10,13],variant:1},
+    {obj:'tree.pool-oak',at:[15,45],variant:0},{obj:'tree.rph-pool-birch',at:[-28,52],variant:2},
+    {obj:'tree.rph-bank-oak',at:[-11,84],variant:1},{obj:'tree.rph-bank-oak',at:[12,92],variant:0},
     {obj:'ground.log',at:[6,23],variant:1},{obj:'plant.bracken',at:[-5,7],variant:1});
   D.camera.horizon=490;
   R.raised(D,D.surfaces.find(s=>s.id==='platform').poly,.55);
