@@ -298,56 +298,220 @@ function _scwaSinkU(C, o, X, Y, d, cls) {
   try { return _sccSinkOf(C, o, X, Y, d) || 0; } catch (e) { return 0; }
 }
 /**
- * One multi-piece object's reflection (members: [{ it, i }] of one waterGroup): the pieces composited as drawn (device px),
- * then that composite mirrored by the water in 2 px columns, each about the group's waterline in that column (the pieces'
- * def.waterLine segments, the lowest where they overlap; a level line through the anchor when a piece declares none).
+ * (fix, 10 Oct) What stands on and above the water (this layer and nearer, not yet in a bitmap) is mirrored by the WATER as
+ * one image per THING, never one copy per piece. A thing is the placements of one def.waterGroup (the slices of one canal
+ * boat) or, automatically, placements of the same built object (boat, structure, building, landmark, vehicle, rail) whose
+ * screen boxes overlap (the pieces of a bridge, a jetty, a viaduct, a train). Its pieces are composited exactly as the canvas
+ * draws them (a sunk floater clipped at its waterline; the lit part and windows after dusk); each pixel of the composite
+ * belongs to the piece it shows (the last drawn there at half cover or more), and the water mirrors it about that piece's
+ * line: the mirror row of its foot, or a perspective hull's footprint (def.waterLine: the lowest edge of the footprint in
+ * each column, one continuous line per waterGroup). So each pixel of a thing lands in the water once and a thing drawn in
+ * overlapping pieces cannot repeat; each piece's share of the image is painted at that piece's own turn in the canvas's draw
+ * order (far to near), so a nearer thing's image covers a farther one's. A thing of one placement is a flipped draw (the same
+ * image, faster). One flattened composite of the whole view was tried and dropped: things at different depths lost the
+ * parts a nearer one hides on the screen, and the water showed holes. Bake time only: the frames ripple the kept bitmap.
  */
-function _scwaMirrorGroup(env, R, rc, members, bucket, night) {
-  const parts = [];
-  let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
-  for (const { it, i } of members) {
-    const sp = env.itemSprite ? env.itemSprite(i) : env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: '*', haze: it.haze || 0, tint: it.tint, scale: bucket(it.s) * env.vs, flip: it.flip, cls: it.cls, i }));
-    if (!sp || !sp.c) continue;
-    const M = env.placeM(it.x, it.y, it.s, it.flip), xa = M[4] + sp.x0 * M[0], xb = M[4] + (sp.x0 + sp.w) * M[0], ya = M[5] + sp.y0 * M[3], yb = M[5] + (sp.y0 + sp.h) * M[3];
-    const def = sceneObj(it.o), wl = def && typeof def.waterLine === 'function' ? def.waterLine(it.v) : null;
-    const seg = (wl && wl.length === 2 ? wl : [[sp.x0, 0], [sp.x0 + sp.w, 0]]).map(p => [M[4] + p[0] * M[0], M[5] + p[1] * M[3]]);
-    parts.push({ it, i, sp, M, seg });
-    bx0 = Math.min(bx0, xa, xb); bx1 = Math.max(bx1, xa, xb); by0 = Math.min(by0, ya, yb); by1 = Math.max(by1, ya, yb);
+const _SCWA_PIECE_CATS = new Set(['boat', 'structure', 'building', 'landmark', 'vehicle', 'rail']);
+function _scwaMirrorScene(env, R, rc, cand, bucket, night) {
+  const { vs, ox, oy, C, L } = env;
+  const defOf = (o) => (typeof sceneObj === 'function' ? sceneObj(o) : null);
+  const rx0 = R.db[0], ry0 = R.db[1], bh = R.bh;
+  const toR = (M) => [M[0], M[1], M[2], M[3], M[4] - R.db[0], M[5] - R.db[1]];
+  const P = [], segs = new Map();
+  for (const { it, i, Ym } of cand) {
+    const p = { it, i, Ym, M: null, sp: null, dir: null, clipY: null, A0: 0, sl: 0, px: 0, gk: null, line: null, box: null };
+    let xa, xb, ya, yb;
+    if (it.direct) {
+      const fy = it.direct.anchor ? it.direct.anchor[1] : it.y, b = Array.isArray(it.direct.box) ? it.direct.box : [-100, -100, 1700, fy];
+      p.dir = it.direct; p.A0 = (Ym + fy) * vs + 2 * oy;
+      xa = b[0] * vs + ox; xb = b[2] * vs + ox; ya = b[1] * vs + oy; yb = b[3] * vs + oy;
+    } else {
+      const sp = env.itemSprite ? env.itemSprite(i) : env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: '*', haze: it.haze || 0, tint: it.tint, scale: bucket(it.s) * vs, flip: it.flip, cls: it.cls, i }));
+      if (!sp || !sp.c) continue;
+      // drawn as the canvas draws it: a floater its sink lower, clipped at its waterline row
+      const sinkU = _scwaSinkU(C, it.o, it.x, it.y, it.g && it.g.d, it.cls), M0 = env.placeM(it.x, it.y, it.s, it.flip);
+      const M = sinkU ? [M0[0], M0[1], M0[2], M0[3], M0[4] + M0[2] * sinkU, M0[5] + M0[3] * sinkU] : M0;
+      p.sp = sp; p.M = M; p.clipY = sinkU ? it.y * vs + oy : null;
+      const def = defOf(it.o), wl = def && typeof def.waterLine === 'function' ? def.waterLine(it.v) : null;
+      const gk0 = def && typeof def.waterGroup === 'function' ? def.waterGroup(it.v) : null;
+      if (gk0 != null) p.gk = it.o + '|' + gk0;
+      if (Array.isArray(wl) && wl.length >= 2 && wl.every(q => q && Number.isFinite(q[0]) && Number.isFinite(q[1]))) {
+        // a perspective floater's true waterline (object units from its anchor: a line, or its footprint's outline as a
+        // closed polygon), shared by the pieces of one thing; each column mirrors about the lowest edge over it
+        const lk = p.gk || 'item:' + i, q = wl.map(u => [M0[4] + u[0] * M0[0], M0[5] + u[1] * M0[3]]);
+        if (!segs.has(lk)) segs.set(lk, []);
+        for (let j = 0; j < q.length - (q.length > 2 ? 0 : 1); j++) segs.get(lk).push([q[j], q[(j + 1) % q.length]]);
+        p.lk = lk;
+      } else {
+        const st = def && typeof def.waterSlope === 'function' ? def.waterSlope(it.v) : 0;
+        p.A0 = (Ym + it.y) * vs + 2 * oy; p.sl = Number.isFinite(st) ? 2 * st : 0; p.px = M0[4];
+      }
+      xa = M[4] + sp.x0 * M[0]; xb = M[4] + (sp.x0 + sp.w) * M[0]; ya = M[5] + sp.y0 * M[3]; yb = M[5] + (sp.y0 + sp.h) * M[3];
+      if (p.clipY != null) yb = Math.min(Math.max(ya, yb), p.clipY);
+    }
+    p.box = [Math.floor(Math.min(xa, xb)) - 2, Math.floor(Math.min(ya, yb)) - 2, Math.ceil(Math.max(xa, xb)) + 2, Math.ceil(Math.max(ya, yb)) + 2];
+    P.push(p);
   }
-  if (!parts.length) return;
-  bx0 = Math.floor(bx0); by0 = Math.floor(by0); bx1 = Math.ceil(bx1); by1 = Math.ceil(by1);
-  const W = bx1 - bx0, H = by1 - by0;
-  if (W < 1 || H < 1 || W * H > 4e6) return;
-  const c = _sccCanvas(W, H), g = c.getContext('2d', _SCC_CPU);
-  for (const p of parts) {
-    const M = [p.M[0], p.M[1], p.M[2], p.M[3], p.M[4] - bx0, p.M[5] - by0];
-    g.setTransform(...M); g.drawImage(p.sp.c, p.sp.x0, p.sp.y0, p.sp.w, p.sp.h);
+  if (!P.length) return;
+  // the canvas's own draw order: layer by layer, far to near, and the compiled order within a layer (C.items is not sorted
+  // by layer in every scene: a nearer boat listed before a farther one must still be composited over it)
+  P.sort((a, b) => a.it.layer - b.it.layer || a.i - b.i);
+  // the shared waterlines, per column (the lowest where two pieces meet; held flat past the ends)
+  const lines = new Map();
+  for (const [lk, list] of segs) {
+    let l0 = Infinity, l1 = -Infinity;
+    for (const s of list) { l0 = Math.min(l0, s[0][0], s[1][0]); l1 = Math.max(l1, s[0][0], s[1][0]); }
+    l0 = Math.floor(l0); l1 = Math.ceil(l1);
+    const Yw = new Float64Array(Math.max(1, l1 - l0 + 1)).fill(NaN);
+    for (const s of list) {
+      let [[xa, ya], [xb, yb]] = s; if (xb < xa) [xa, ya, xb, yb] = [xb, yb, xa, ya];
+      for (let x = Math.floor(xa); x <= Math.ceil(xb); x++) {
+        const t = xb - xa > 0.5 ? Math.min(1, Math.max(0, (x - xa) / (xb - xa))) : 0.5, y = ya + (yb - ya) * t, j = x - l0;
+        if (j >= 0 && j < Yw.length && !(Yw[j] >= y)) Yw[j] = y;
+      }
+    }
+    for (let j = 1; j < Yw.length; j++) if (Number.isNaN(Yw[j])) Yw[j] = Yw[j - 1];
+    for (let j = Yw.length - 2; j >= 0; j--) if (Number.isNaN(Yw[j])) Yw[j] = Yw[j + 1];
+    lines.set(lk, { l0, Yw });
+  }
+  for (const p of P) if (p.lk) p.line = lines.get(p.lk);
+  // the things: one waterGroup, or placements of one object whose boxes overlap (union-find)
+  const up = P.map((_, k) => k), find = (k) => { while (up[k] !== k) { up[k] = up[up[k]]; k = up[k]; } return k; };
+  const join = (a, b) => { a = find(a); b = find(b); if (a !== b) up[Math.max(a, b)] = Math.min(a, b); };
+  const byKey = new Map(), byObj = new Map();
+  P.forEach((p, k) => {
+    if (p.gk) { if (byKey.has(p.gk)) join(byKey.get(p.gk), k); else byKey.set(p.gk, k); }
+    // (built things only: separate plants, trees, birds or people of one kind overlapping on the screen stand at different
+    // depths, and each keeps its own whole reflection)
+    const def = p.dir ? null : defOf(p.it.o), cat = def ? def.category || String(p.it.o).split('.')[0] : null;
+    if (cat && _SCWA_PIECE_CATS.has(cat)) { if (!byObj.has(p.it.o)) byObj.set(p.it.o, []); byObj.get(p.it.o).push(k); }
+  });
+  for (const ks of byObj.values()) {
+    if (ks.length < 2) continue;
+    for (let a = 0; a < ks.length; a++) for (let b = a + 1; b < ks.length; b++) {
+      const A = P[ks[a]].box, B = P[ks[b]].box;
+      if (A[0] < B[2] && B[0] < A[2] && A[1] < B[3] && B[1] < A[3]) join(ks[a], ks[b]);
+    }
+  }
+  const things = new Map();
+  P.forEach((p, k) => { const r = find(k); if (!things.has(r)) things.set(r, []); things.get(r).push(k); });
+  // one placement drawn (the canvas's way) onto g, its device origin at (dx, dy)
+  const paint = (g, p, dx, dy) => {
+    g.save();
+    if (p.clipY != null) { g.setTransform(1, 0, 0, 1, 0, 0); g.beginPath(); g.rect(-1e5, -1e5, 2e5, p.clipY - dy + 1e5); g.clip(); }
+    if (p.dir) {
+      g.setTransform(vs, 0, 0, vs, ox - dx, oy - dy);
+      for (const s0 of p.dir.shapes || []) { if (typeof s0.f !== 'string') continue; g.globalAlpha = s0.op == null ? 1 : s0.op; g.fillStyle = _scCol(s0.f, L); g.fill(_sccPath(s0.d)); }
+    } else {
+      const it = p.it, M = [p.M[0], p.M[1], p.M[2], p.M[3], p.M[4] - dx, p.M[5] - dy];
+      g.setTransform(...M); g.drawImage(p.sp.c, p.sp.x0, p.sp.y0, p.sp.w, p.sp.h);
+      if (night) {
+        if (it.lit) { const lp = env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: 'lit', scale: bucket(it.s) * vs, flip: it.flip, cls: it.cls, i: p.i })); if (lp && lp.c) { g.setTransform(...M); g.drawImage(lp.c, lp.x0, lp.y0, lp.w, lp.h); } }
+        if (it.glowOn && typeof _sccGlows === 'function') _sccGlows(g, M, it, null, env.windowShare);
+      }
+    }
+    g.restore();
+  };
+  // a thing of one placement: flipped about its own waterline (a shear for a sloped one), its visible part only
+  const single = (p) => {
+    const it = p.it, Ym = p.Ym;
+    if (p.dir) {
+      const fy = it.direct.anchor ? it.direct.anchor[1] : it.y;
+      rc.setTransform(vs, 0, 0, -vs, ox - R.db[0], (Ym + fy) * vs + oy - R.db[1]);
+      for (const s0 of p.dir.shapes || []) { if (typeof s0.f !== 'string') continue; rc.globalAlpha = s0.op == null ? 1 : s0.op; rc.fillStyle = _scCol(s0.f, L); rc.fill(_sccPath(s0.d)); }
+      rc.globalAlpha = 1;
+      return;
+    }
+    const def = defOf(it.o), st = def && typeof def.waterSlope === 'function' ? def.waterSlope(it.v) : null, wsl = Number.isFinite(st) ? st : null;
+    const sinkU = wsl == null ? _scwaSinkU(C, it.o, it.x, it.y, it.g && it.g.d, it.cls) : 0;
+    const M = env.placeM(it.x, Ym, it.s, it.flip), MR = toR([M[0], wsl ? 2 * wsl * M[0] : 0, 0, -M[3], M[4], M[5] - M[3] * sinkU]);
+    const clip = () => { if (sinkU) { rc.setTransform(1, 0, 0, 1, 0, 0); rc.beginPath(); rc.rect(0, Ym * vs + oy - R.db[1], R.bw, R.bh); rc.clip(); } };
+    rc.save(); clip(); rc.setTransform(...MR); rc.drawImage(p.sp.c, p.sp.x0, p.sp.y0, p.sp.w, p.sp.h); rc.restore();
     if (night) {
-      const it = p.it;
-      if (it.lit) { const lp = env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: 'lit', scale: bucket(it.s) * env.vs, flip: it.flip, cls: it.cls, i: p.i })); if (lp && lp.c) { g.setTransform(...M); g.drawImage(lp.c, lp.x0, lp.y0, lp.w, lp.h); } }
-      if (it.glowOn && typeof _sccGlows === 'function') _sccGlows(g, M, it, null, env.windowShare);
+      if (it.lit) { const lp = env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: 'lit', scale: bucket(it.s) * vs, flip: it.flip, cls: it.cls, i: p.i })); if (lp && lp.c) { rc.save(); clip(); rc.setTransform(...MR); rc.drawImage(lp.c, lp.x0, lp.y0, lp.w, lp.h); rc.restore(); } }
+      if (it.glowOn && typeof _sccGlows === 'function') _sccGlows(rc, MR, it, null, env.windowShare);
     }
-  }
-  // the waterline per column: each piece's segment over its own span (the lowest row where two meet), gaps filled from the nearest
-  const Yw = new Float64Array(W).fill(NaN);
-  for (const p of parts) {
-    let [[xa, ya], [xb, yb]] = p.seg; if (xb < xa) [xa, ya, xb, yb] = [xb, yb, xa, ya];
-    for (let x = Math.max(0, Math.floor(xa - bx0)); x <= Math.min(W - 1, Math.ceil(xb - bx0)); x++) {
-      const t = xb - xa > 0.5 ? Math.min(1, Math.max(0, (x + bx0 - xa) / (xb - xa))) : 0.5, y = ya + (yb - ya) * t;
-      if (!(Yw[x] >= y)) Yw[x] = y;
+  };
+  // a thing of several pieces: composited, then mirrored by the water pixel by pixel (computed once; each piece's share of
+  // the image is painted at that piece's own turn, so what is drawn between two pieces layers as it did)
+  const several = (ks) => {
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (const k of ks) { const b = P[k].box; bx0 = Math.min(bx0, b[0]); by0 = Math.min(by0, b[1]); bx1 = Math.max(bx1, b[2]); by1 = Math.max(by1, b[3]); }
+    bx0 = Math.max(bx0, rx0); bx1 = Math.min(bx1, R.db[2]);   // a mirror keeps x: only the water's columns
+    const W = bx1 - bx0, H = by1 - by0;
+    if (W < 1 || H < 1) return null;
+    const comp = _sccCanvas(W, H), cg = comp.getContext('2d', _SCC_CPU), own = new Int16Array(W * H).fill(-1), ownA = new Uint8Array(W * H);
+    let tc = null, tg = null;
+    for (const k of ks) {
+      const p = P[k];
+      paint(cg, p, bx0, by0);
+      // the pixels this piece shows: the last drawn there at half cover or more (a faint veil over the top does not take them)
+      const qx0 = Math.max(bx0, p.box[0]), qy0 = Math.max(by0, p.box[1]), qx1 = Math.min(bx1, p.box[2]), qy1 = Math.min(by1, p.box[3]);
+      if (qx1 <= qx0 || qy1 <= qy0) continue;
+      const w = qx1 - qx0, h = qy1 - qy0;
+      if (!tc || tc.width < w || tc.height < h) { tc = _sccCanvas(Math.max(w, tc ? tc.width : 0), Math.max(h, tc ? tc.height : 0)); tg = tc.getContext('2d', _SCC_CPU); }
+      tg.setTransform(1, 0, 0, 1, 0, 0); tg.clearRect(0, 0, w, h);
+      paint(tg, p, qx0, qy0);
+      const a = tg.getImageData(0, 0, w, h).data;
+      for (let yy = 0; yy < h; yy++) {
+        const o0 = (qy0 - by0 + yy) * W + (qx0 - bx0);
+        for (let xx = 0, s = yy * w * 4 + 3; xx < w; xx++, s += 4) { const av = a[s]; if (av && (av >= 128 || av > ownA[o0 + xx])) { own[o0 + xx] = k; ownA[o0 + xx] = av; } }
+      }
     }
+    const src = cg.getImageData(0, 0, W, H).data, od = new Uint8ClampedArray(W * bh * 4), zb = new Int16Array(W * bh).fill(-1);
+    for (let x = 0; x < W; x++) {
+      const X = bx0 + x;
+      for (let y = 0; y < H; y++) {
+        const pi = y * W + x, k = own[pi];
+        if (k < 0 || !src[pi * 4 + 3]) continue;
+        const q = P[k], ln = q.line;
+        const A = ln ? 2 * ln.Yw[Math.min(ln.Yw.length - 1, Math.max(0, X - ln.l0))] : q.A0 + q.sl * (X + 0.5 - q.px);
+        const Y = by0 + y;
+        // a perspective hull (its footprint line) mirrors only what stands above it; anything else is flipped whole about its
+        // line, as a placement of its own is (the same image as the single flipped draw)
+        if (ln && 2 * Y + 1 >= A) continue;
+        const ry = Math.round(A - Y - 1) - ry0;
+        if (ry < 0 || ry >= bh) continue;
+        const t = ry * W + x;
+        if (zb[t] > k) continue;   // two pixels land on one: the nearer piece's
+        zb[t] = k;
+        const s4 = pi * 4, t4 = t * 4;
+        od[t4] = src[s4]; od[t4 + 1] = src[s4 + 1]; od[t4 + 2] = src[s4 + 2]; od[t4 + 3] = src[s4 + 3];
+      }
+    }
+    // each piece's share: its box in the mirrored image
+    const share = new Map();
+    for (let t = 0; t < zb.length; t++) {
+      const k = zb[t]; if (k < 0) continue;
+      const x = t % W, y = (t - x) / W, b = share.get(k);
+      if (!b) share.set(k, [x, y, x + 1, y + 1]);
+      else { if (x < b[0]) b[0] = x; if (x >= b[2]) b[2] = x + 1; if (y < b[1]) b[1] = y; if (y >= b[3]) b[3] = y + 1; }
+    }
+    return { bx0, W, od, zb, share };
+  };
+  const paintShare = (G, k) => {
+    const b = G && G.share.get(k);
+    if (!b) return;
+    const w = b[2] - b[0], h = b[3] - b[1], c = _sccCanvas(w, h), g = c.getContext('2d', _SCC_CPU), img = g.createImageData(w, h), d = img.data;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const t = (b[1] + y) * G.W + b[0] + x;
+      if (G.zb[t] !== k) continue;
+      const t4 = t * 4, o4 = (y * w + x) * 4;
+      d[o4] = G.od[t4]; d[o4 + 1] = G.od[t4 + 1]; d[o4 + 2] = G.od[t4 + 2]; d[o4 + 3] = G.od[t4 + 3];
+    }
+    g.putImageData(img, 0, 0);
+    rc.setTransform(1, 0, 0, 1, 0, 0); rc.globalAlpha = 1;
+    rc.drawImage(c, G.bx0 - rx0 + b[0], b[1]);
+  };
+  // far to near, in the canvas's order: a single placement flipped; a piece of a thing, its share of the thing's image
+  const done = new Map();
+  for (let k = 0; k < P.length; k++) {
+    const r = find(k), ks = things.get(r);
+    if (ks.length === 1) { single(P[k]); continue; }
+    if (!done.has(r)) done.set(r, several(ks) || null);
+    paintShare(done.get(r), k);
   }
-  for (let x = 1; x < W; x++) if (Number.isNaN(Yw[x])) Yw[x] = Yw[x - 1];
-  for (let x = W - 2; x >= 0; x--) if (Number.isNaN(Yw[x])) Yw[x] = Yw[x + 1];
-  if (Number.isNaN(Yw[0])) return;
-  rc.save();
-  for (let x = 0; x < W; x += 2) {
-    const cw = Math.min(2, W - x), y = Yw[x], h = Math.min(H, y - by0);
-    if (h <= 0) continue;
-    rc.setTransform(1, 0, 0, -1, -R.db[0], 2 * y - R.db[1]);
-    rc.drawImage(c, x, 0, cw, h, bx0 + x, by0, cw, h);
-  }
-  rc.restore();
+  return things.size;
 }
 
 /** Bake one region into its layer: base, reflection (calm: into the layer; rippling: kept for the frames), edges. */
@@ -363,7 +527,6 @@ function _scwaBake(env, R, gx) {
   gx.globalAlpha = 1; gx.fillStyle = g; gx.fill(R.path);
   // 2. the reflection bitmap (device px, cropped to the region)
   const c = _sccCanvas(R.bw, R.bh), rc = c.getContext('2d', _SCC_CPU);
-  const toR = (M) => [M[0], M[1], M[2], M[3], M[4] - R.db[0], M[5] - R.db[1]];
   rc.save();
   rc.setTransform(vs, 0, 0, vs, ox - R.db[0], oy - R.db[1]); rc.clip(R.path);
   const Yh = (R.legacy ? R.y0 : cam.horizon) * vs + oy;
@@ -432,45 +595,8 @@ function _scwaBake(env, R, gx) {
   cand.sort((a, b) => a.i - b.i);
   R.mirrored = cand.length;
   const bucket = (s) => (typeof sceneScaleBucket === 'function' ? sceneScaleBucket(s) : s), night = !!(L && L.windows);
-  const floatSlope = (it) => { const def = typeof sceneObj === 'function' ? sceneObj(it.o) : null; if (!def || typeof def.waterSlope !== 'function') return null; const t = def.waterSlope(it.v); return Number.isFinite(t) ? t : null; };
-  // (fix, 10 Oct) an object drawn in several pieces (one boat in slices) is ONE image on the water: its pieces are composited
-  // as drawn and the WATER mirrors that composite once, column by column, about the group's continuous waterline. Mirroring
-  // each piece about its own anchor gave a staircase of repeated hulls (SCENE_LESSONS C).
-  const grpOf = (it) => {  const def = typeof sceneObj === 'function' ? sceneObj(it.o) : null; if (!def || typeof def.waterGroup !== 'function') return null; const k = def.waterGroup(it.v); return k == null ? null : it.o + '|' + k; };
-  const groupsW = new Map();
-  for (const c0 of cand) { if (c0.it.direct) continue; const k = grpOf(c0.it); if (k == null) continue; c0.gk = k; if (!groupsW.has(k)) groupsW.set(k, []); groupsW.get(k).push(c0); }
-  const doneW = new Set();
-  for (const { it, i, Ym, gk } of cand) {
-    if (gk != null) { if (!doneW.has(gk)) { doneW.add(gk); _scwaMirrorGroup(env, R, rc, groupsW.get(gk), bucket, night); } continue; }
-    if (it.direct) {
-      // a projected building: its fills, flipped about its own waterline (its foot row to Ym)
-      const fy = it.direct.anchor ? it.direct.anchor[1] : it.y;
-      rc.setTransform(vs, 0, 0, -vs, ox - R.db[0], (Ym + fy) * vs + oy - R.db[1]);
-      for (const s0 of it.direct.shapes || []) { if (typeof s0.f !== 'string') continue; rc.globalAlpha = s0.op == null ? 1 : s0.op; rc.fillStyle = _scCol(s0.f, L); rc.fill(_sccPath(s0.d)); }
-      rc.globalAlpha = 1;
-      continue;
-    }
-    const sp = env.itemSprite ? env.itemSprite(i) : env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: '*', haze: it.haze || 0, tint: it.tint, scale: bucket(it.s) * vs, flip: it.flip, cls: it.cls, i }));
-    if (!sp || !sp.c) continue;
-    // (lock, 10 Oct) a floater is drawn its sink lower and clipped at its waterline (78-scene-canvas.js): its reflection is the
-    // mirror of the SAME visible part (the art above -sink), starting exactly at the waterline row, never the submerged hull
-    // a perspective floater (a canal boat drawn in the camera's projection) declares its waterline's screen slope and draws
-    // its own waterline: it mirrors about that sloped line through its anchor (a shear), with no sink
-    const wsl = floatSlope(it);
-    const sinkU = wsl == null ? _scwaSinkU(C, it.o, it.x, it.y, it.g && it.g.d, it.cls) : 0;
-    const M = env.placeM(it.x, Ym, it.s, it.flip), MR = toR([M[0], wsl ? 2 * wsl * M[0] : 0, 0, -M[3], M[4], M[5] - M[3] * sinkU]);
-    rc.save();
-    if (sinkU) { rc.setTransform(1, 0, 0, 1, 0, 0); rc.beginPath(); rc.rect(0, Ym * vs + oy - R.db[1], R.bw, R.bh); rc.clip(); }
-    rc.setTransform(...MR);
-    rc.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h);
-    rc.restore();
-    // after real dusk the lit things mirror too: the lit part (through the atmos pass's lit treatment: no lamp pools or mist
-    // mirrored as light), lit windows and lamps (the brightest thing in a night canal)
-    if (night) {
-      if (it.lit) { const lp = env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: 'lit', scale: bucket(it.s) * vs, flip: it.flip, cls: it.cls, i })); if (lp && lp.c) { rc.save(); if (sinkU) { rc.setTransform(1, 0, 0, 1, 0, 0); rc.beginPath(); rc.rect(0, Ym * vs + oy - R.db[1], R.bw, R.bh); rc.clip(); } rc.setTransform(...MR); rc.drawImage(lp.c, lp.x0, lp.y0, lp.w, lp.h); rc.restore(); } }
-      if (it.glowOn && typeof _sccGlows === 'function') _sccGlows(rc, MR, it, null, env.windowShare);
-    }
-  }
+  // what stands on and above this water (not yet in a bitmap): mirrored by the water, one image per thing
+  R.mirrorThings = _scwaMirrorScene(env, R, rc, cand, bucket, night) || 0;
   // Fresnel (5.3): stronger toward the far edge; then 25 % of the water's mid colour
   rc.setTransform(1, 0, 0, 1, 0, 0);
   rc.globalCompositeOperation = 'destination-in';

@@ -348,15 +348,20 @@ const SCENE_CANAL_VIEWS = (function () {
     anim: { flicker: { part: 'smoke', op: [0.35, 0.85], period: 6 } }, shadow: false,
     // (lock, 10 Oct) the engine's water pass mirrors a floater about its waterline; a perspective piece's waterline is sloped
     waterSlope(v) { const pc = CV.boatPieces[v]; return pc ? CV.pieceAnchor(CV.views[pc.id], pc).slope : 0; },
-    // (fix, 10 Oct) the pieces of one boat are ONE thing on the water: the engine composites the group and mirrors it once,
-    // column by column, about the hull's true near-side waterline (each slice mirrored on its own gave a staircase of hulls)
+    // (fix, 10 Oct) the pieces of one boat are ONE thing on the water: the engine composites them and the water mirrors that
+    // once, column by column, about the lowest edge of the hull's footprint at the waterline (each slice mirrored on its own,
+    // about its own level row, gave a staircase of repeated hulls)
     waterGroup(v) { const pc = CV.boatPieces[v]; return pc ? pc.id + ':' + pc.bi : null; },
     waterLine(v) {
+      // the slice's footprint at the waterline (both sides, the bow sweep), projected, relative to the piece's anchor
       const pc = CV.boatPieces[v]; if (!pc) return null;
-      const V = CV.views[pc.id], B = V.boats[pc.bi], F = CV.boatFrame(V, B), A = CV.pieceAnchor(V, pc), o = A.p;
-      const mid = (pc.a0 + pc.a1) / 2, side = (a, sg) => { const g = F.P(a, sg * F.beam / 2, 0); return V.proj(g[0], g[1], g[2]); };
-      const sg = side(mid, 1)[1] >= side(mid, -1)[1] ? 1 : -1, e0 = side(pc.a0, sg), e1 = side(pc.a1, sg);
-      return [[e0[0] - o[0], e0[1] - o[1]], [e1[0] - o[0], e1[1] - o[1]]];
+      const V = CV.views[pc.id], B = V.boats[pc.bi], F = CV.boatFrame(V, B), o = CV.pieceAnchor(V, pc).p;
+      const L = B.len, hb = F.beam / 2, BOW = L - 2.6, bowB = (a) => (a <= BOW ? hb : hb * Math.sqrt(Math.max(0, 1 - Math.pow((a - BOW) / (L - BOW), 2))));
+      const n = Math.max(1, Math.ceil((pc.a1 - pc.a0) / 0.9)), at = (k) => pc.a0 + (pc.a1 - pc.a0) * k / n, pts = [];
+      const pt = (a, b) => { const g = F.P(a, b, 0), p = V.proj(g[0], g[1], g[2]); return [p[0] - o[0], p[1] - o[1]]; };
+      for (let k = 0; k <= n; k++) pts.push(pt(at(k), bowB(at(k))));
+      for (let k = n; k >= 0; k--) pts.push(pt(at(k), -bowB(at(k))));
+      return pts;
     },
     tags: ['uk', 'canal', 'narrowboat', 'boat', 'perspective', 'kit:water', 'kit:boats', 'role:boat', 'class:boat'],
     credit: 'drawn for the Basingstoke Canal views: narrowboats and the trip boat in the camera\'s perspective',
