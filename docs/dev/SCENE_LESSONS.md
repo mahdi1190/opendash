@@ -48,6 +48,7 @@ Run `node tools/anim-pack.mjs scene motion <ref> --out <png>` on every view and 
 - Black hole in the water near the camera, and huge jagged bank bands up close: fixed in the canvas and water passes.
 - Snowflakes on every winter day, too-strong dawn frost: snow only on seeded snow days or real snow.
 - Waterline clip cutting whole boats away: boats without a hull part do not sink.
+- Boat reflections repeated (a staircase of hulls): boats drawn in slices, each mirrored separately about its own anchor. Multi-piece objects reflect once as a group: give the def `waterGroup(v)` (and `waterLine(v)`); the water pass composites the group and mirrors it column by column about its continuous waterline (`_scwaMirrorGroup`, 78-scene-water.js).
 - Boat reflections starting below the hull with a gap, doubled and stretched (10 Oct): a floater's mirror is the art above its sink, flipped about the SAME waterline row the canvas clips it at; a perspective boat piece (`waterSlope(v)` on its object) is anchored at its near-side waterline and mirrored about that sloped line (a shear), with no sink.
 - v1 ponds mirrored about one level row (y0): the reflection band sat offset from a curving bank, and herons, snags and posts standing in the water had no reflection. The legacy water path now mirrors each column about the region's own top there, and anything whose foot is in the water about its own foot, whatever its layer; reflect flags are ignored.
 - Per-scene water colours and mirror / ripple / clarity overrides: ignored by the water pass (`sceneWaterPlanOf` reads the kind only).
@@ -137,3 +138,4 @@ These must be fixed IN THE ENGINE before any test scene is shown again:
 - It fills what the author leaves empty: bank and hedge planting, scatter, people and the backdrop are generated from the surfaces and the place style unless the author says otherwise.
 - It frames sensibly: no cropped flat slabs and no half movers at the edges.
 - An author error can make a scene plainer, never wrong.
+- Foliage hanging from nothing (willow fronds, boughs, branches with no tree). World sense: every attached thing declares its PARENT (a bough needs a trunk, either in frame or clearly just outside it on the same side; fronds need a willow; lamps need a post; lead lines need a dog and a walker). The engine drops or re-attaches orphans at load and logs them.

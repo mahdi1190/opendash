@@ -436,7 +436,7 @@ function _scwaBake(env, R, gx) {
   // (fix, 10 Oct) an object drawn in several pieces (one boat in slices) is ONE image on the water: its pieces are composited
   // as drawn and the WATER mirrors that composite once, column by column, about the group's continuous waterline. Mirroring
   // each piece about its own anchor gave a staircase of repeated hulls (SCENE_LESSONS C).
-  const grpOf = (it) => { if (globalThis.__NOGRP) return null; const def = typeof sceneObj === 'function' ? sceneObj(it.o) : null; if (!def || typeof def.waterGroup !== 'function') return null; const k = def.waterGroup(it.v); return k == null ? null : it.o + '|' + k; };
+  const grpOf = (it) => {  const def = typeof sceneObj === 'function' ? sceneObj(it.o) : null; if (!def || typeof def.waterGroup !== 'function') return null; const k = def.waterGroup(it.v); return k == null ? null : it.o + '|' + k; };
   const groupsW = new Map();
   for (const c0 of cand) { if (c0.it.direct) continue; const k = grpOf(c0.it); if (k == null) continue; c0.gk = k; if (!groupsW.has(k)) groupsW.set(k, []); groupsW.get(k).push(c0); }
   const doneW = new Set();
