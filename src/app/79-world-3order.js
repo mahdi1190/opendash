@@ -1,18 +1,19 @@
-// 79-world-3order.js - World engine v3, module D: depth order and chunks (docs/dev/WORLD_ENGINE.md 2.2, 2.3, 8.4).
+// 79-world-3order.js - World engine v3, package render: depth order and chunks (docs/dev/WORLD_ENGINE.md 2.2, 2.3; R1, R2).
 // Pure (Node + browser). Depth convention: larger z = farther from the camera; draw far to near.
-//   worldChunks(world, nav, cam)        -> [{ i, z0, z1, ents, bbox, stand, backdrop? }]  (far to near, <= 24)
-//   worldFrameOrder(chunks, agents, cam) -> [{ kind: 'chunk' | 'agent' | 'redraw', ref }]
-//   worldOrderCheck(order, boxes)        -> [{ a, b, why }]   (must be empty)
+//   worldChunks(world, nav, cam, opts)       -> [{ i, z0, z1, ents, bbox, stand, backdrop? }]  (far to near, <= 24)
+//   worldFrameOrder(chunks, agents, cam, boxes) -> [{ kind: 'chunk' | 'agent' | 'redraw', ref, chunk? }]
+//   worldOrderCheck(order, boxes, opts)      -> [{ a, b, why }]   (must be empty; opts.all also tests static pairs)
+//   worldOrderNearer(a, b)                   -> true when a is nearer than b (footprint test, stable tie by id)
+//   worldOrderFrontZ(foot, x)                -> the footprint's front edge z at x (x clamped into the footprint)
 // Entities/agents: { id, x, z, y?, foot?: [[x, z], ...], box?: { x0, y0, x1, y1 }, attach?, static? }.
-// A screen box comes from boxes (Map / object / function), else ent.box, else cam projection.
+// A screen box comes from boxes (Map / object / function), else ent.box, else the cam projection of the footprint.
+// Size never exempts an occluder (R2): a building or a boat occludes like a post. Budget (7): < 0.7 ms per frame for
+// 500 statics + 60 agents; the checker is O(movers x entities) per frame, not O(n^2).
 
 var WORLD_CHUNK_CAP = 24;
 
+/** The z of a footprint's front (camera-facing) edge at x; x is clamped into the footprint's x range. */
 function worldOrderFrontZ(foot, x) {
-  if (typeof worldFrontZ === 'function' && worldFrontZ !== worldOrderFrontZ) {
-    var r = worldFrontZ(foot, x);
-    if (typeof r === 'number' && isFinite(r)) return r;
-  }
   if (!foot || !foot.length) return Infinity;
   if (foot.length === 1) return foot[0][1];
   var lo = Infinity, hi = -Infinity, i;
@@ -22,8 +23,8 @@ function worldOrderFrontZ(foot, x) {
   for (i = 0; i < foot.length; i++) {
     var a = foot[i], b = foot[(i + 1) % foot.length];
     var ax = a[0], bx = b[0];
-    if ((x >= Math.min(ax, bx)) && (x <= Math.max(ax, bx))) {
-      var z = ax === bx ? Math.min(a[1], b[1]) : a[1] + (b[1] - a[1]) * (x - ax) / (bx - ax);
+    if (x >= (ax < bx ? ax : bx) && x <= (ax > bx ? ax : bx)) {
+      var z = ax === bx ? (a[1] < b[1] ? a[1] : b[1]) : a[1] + (b[1] - a[1]) * (x - ax) / (bx - ax);
       if (z < best) best = z;
     }
   }
@@ -32,33 +33,27 @@ function worldOrderFrontZ(foot, x) {
 
 function worldOrderFoot(e) { return e.foot && e.foot.length ? e.foot : [[e.x, e.z]]; }
 
-function worldOrderZKey(e) {
-  if (e._zk != null && e._zkF === e.foot && e._zkZ === e.z) return e._zk;
-  var f = worldOrderFoot(e), m = Infinity;
-  for (var i = 0; i < f.length; i++) if (f[i][1] < m) m = f[i][1];
-  e._zk = m; e._zkF = e.foot; e._zkZ = e.z;
+// per-entity memo of the footprint's z range and x range (invalidated when the foot array or the anchor changes)
+function _worldOrderMemo(e) {
+  var m = e._om;
+  if (m && m.f === e.foot && m.x === e.x && m.z === e.z && m.at === e.attach) return m;
+  var f = worldOrderFoot(e), zl = Infinity, zh = -Infinity, xl = Infinity, xh = -Infinity;
+  for (var i = 0; i < f.length; i++) {
+    var p = f[i];
+    if (p[1] < zl) zl = p[1]; if (p[1] > zh) zh = p[1];
+    if (p[0] < xl) xl = p[0]; if (p[0] > xh) xh = p[0];
+  }
+  m = { f: e.foot, x: e.x, z: e.z, at: e.attach, h: worldOrderHostId(e), zk: zl, zm: zh, xr: [xl, xh] };
+  e._om = m;
   return m;
 }
-
-function worldOrderZMax(e) {
-  if (e._zm != null && e._zmF === e.foot && e._zmZ === e.z) return e._zm;
-  var f = worldOrderFoot(e), m = -Infinity;
-  for (var i = 0; i < f.length; i++) if (f[i][1] > m) m = f[i][1];
-  e._zm = m; e._zmF = e.foot; e._zmZ = e.z;
-  return m;
-}
+function worldOrderZKey(e) { return _worldOrderMemo(e).zk; }
+function worldOrderZMax(e) { return _worldOrderMemo(e).zm; }
+function worldOrderXRange(e) { return _worldOrderMemo(e).xr; }
 
 function worldOrderChunkZMax(ch) {
-  if (ch._zm == null) { var m = -Infinity; for (var i = 0; i < ch.ents.length; i++) m = Math.max(m, worldOrderZMax(ch.ents[i])); ch._zm = m; }
+  if (ch._zm == null) { var m = -Infinity; for (var i = 0; i < ch.ents.length; i++) { var z = worldOrderZMax(ch.ents[i]); if (z > m) m = z; } ch._zm = m; }
   return ch._zm;
-}
-
-function worldOrderXRange(e) {
-  if (e._xr && e._xrF === e.foot && e._xrX === e.x) return e._xr;
-  var f = worldOrderFoot(e), lo = Infinity, hi = -Infinity;
-  for (var i = 0; i < f.length; i++) { if (f[i][0] < lo) lo = f[i][0]; if (f[i][0] > hi) hi = f[i][0]; }
-  e._xr = [lo, hi]; e._xrF = e.foot; e._xrX = e.x;
-  return e._xr;
 }
 
 // Screen-column index of a chunk's statics (built once per chunk; statics do not move).
@@ -72,7 +67,7 @@ function worldOrderNearby(ch, box, boxes, cam) {
       if (!b) continue;
       var c0 = Math.floor(b.x0 / WORLD_ORDER_COLW), c1 = Math.floor(b.x1 / WORLD_ORDER_COLW);
       if (c1 - c0 > 200) c1 = c0 + 200;
-      for (var c = c0; c <= c1; c++) (cols[c] = cols[c] || []).push(i);
+      for (var c = c0; c <= c1; c++) (cols[c] || (cols[c] = [])).push(i);
     }
     ch._cols = cols;
   }
@@ -101,21 +96,37 @@ function worldOrderHostId(e) {
   return (kind === 'deck' || kind === 'wall' || kind === 'perch' || kind === 'host') ? a.slice(k + 1) : null;
 }
 
-// True when a is nearer than b (a must be drawn after b). Footprint test, not anchor test (2.3 rule 3).
+// True when a is nearer than b (a must be drawn after b). Footprint test, not anchor test (2.3 rule 3); a stable tie by
+// height then id, so two things at one depth never swap from frame to frame (no z-fighting, 19).
 function worldOrderNearer(a, b) {
-  if (worldOrderHostId(a) === b.id) return true;
-  if (worldOrderHostId(b) === a.id) return false;
-  var ka = worldOrderZKey(a), kb = worldOrderZKey(b);
-  if (worldOrderZMax(a) < kb) return true;
-  if (worldOrderZMax(b) < ka) return false;
-  var ra = worldOrderXRange(a), rb = worldOrderXRange(b);
-  var lo = Math.max(ra[0], rb[0]), hi = Math.min(ra[1], rb[1]);
+  var ma = _worldOrderMemo(a), mb = _worldOrderMemo(b);
+  if (ma.h !== null && ma.h === b.id) return true;
+  if (mb.h !== null && mb.h === a.id) return false;
+  if (ma.zm < mb.zk) return true;
+  if (mb.zm < ma.zk) return false;
+  var ra = ma.xr, rb = mb.xr;
+  var lo = ra[0] > rb[0] ? ra[0] : rb[0], hi = ra[1] < rb[1] ? ra[1] : rb[1];
   var x = lo <= hi ? (lo + hi) / 2 : (ra[1] < rb[0] ? (ra[1] + rb[0]) / 2 : (rb[1] + ra[0]) / 2);
-  var da = worldOrderFrontZ(worldOrderFoot(a), x), db = worldOrderFrontZ(worldOrderFoot(b), x);
+  var fa = worldOrderFoot(a), fb = worldOrderFoot(b);
+  var da = worldOrderFrontZ(fa, x), db = worldOrderFrontZ(fb, x);
+  // a mover standing INSIDE a passable footprint (a walker in a stand of meadow plants, a heron in a reed clump) is compared
+  // with the thing's own anchor, not its front edge: the order stays transitive with the things beside it
+  if (fa.length === 1 && fb.length > 2 && worldOrderInside(fb, fa[0][0], fa[0][1])) db = Number.isFinite(b.z) ? b.z : db;
+  else if (fb.length === 1 && fa.length > 2 && worldOrderInside(fa, fb[0][0], fb[0][1])) da = Number.isFinite(a.z) ? a.z : da;
   if (Math.abs(da - db) > 1e-6) return da < db;
   var ya = a.y || 0, yb = b.y || 0;
   if (ya !== yb) return ya > yb;
   return String(a.id) > String(b.id);
+}
+
+/** Is (x, z) inside a footprint polygon? */
+function worldOrderInside(P, x, z) {
+  var c = false;
+  for (var i = 0, j = P.length - 1; i < P.length; j = i++) {
+    var xi = P[i][0], zi = P[i][1], xj = P[j][0], zj = P[j][1];
+    if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c;
+  }
+  return c;
 }
 
 function worldOrderBoxOf(e, boxes, cam) {
@@ -131,7 +142,7 @@ function worldOrderBoxOf(e, boxes, cam) {
     for (var k = 0; k < 2; k++) {
       var p = proj.call(cam, f[i][0], f[i][1], (e.y || 0) + (k ? h : 0));
       if (!p) continue;
-      var px = p.x != null ? p.x : p[0], py = p.y != null ? p.y : p[1];
+      var px = p.x != null ? p.x : p.X != null ? p.X : p[0], py = p.y != null ? p.y : p.Y != null ? p.Y : p[1];
       if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
     }
   }
@@ -168,7 +179,7 @@ function worldOrderStandCount(nav, zNear, zFar) {
 function worldChunks(world, nav, cam, opts) {
   opts = opts || {};
   var cap = opts.cap || WORLD_CHUNK_CAP;
-  var ents = ((world && world.entities) || []).filter(function (e) { return e.static !== false; });
+  var ents = ((world && world.entities) || []).filter(function (e) { return e && e.static !== false; });
   ents.sort(function (a, b) { var d = worldOrderZKey(b) - worldOrderZKey(a); return d || (worldOrderNearer(a, b) ? 1 : -1); });
   var chunks = [], cur = null;
   for (var i = 0; i < ents.length; i++) {
@@ -197,10 +208,46 @@ function worldChunks(world, nav, cam, opts) {
   for (var q = 0; q < chunks.length; q++) {
     var ch = chunks[q], bb = null;
     for (var r = 0; r < ch.ents.length; r++) {
-      var b = worldOrderBoxOf(ch.ents[r], null, cam);
+      var b = worldOrderBoxOf(ch.ents[r], opts.boxes || null, cam);
       if (b) { ch.ents[r].box = ch.ents[r].box || b; bb = worldOrderUnion(bb, b); }
     }
     out.push({ i: out.length, z0: ch.z0, z1: ch.z1, ents: ch.ents, bbox: bb, stand: worldOrderStandCount(nav, ch.z0, ch.z1) });
+  }
+  return out;
+}
+
+/**
+ * Movers in drawing order (far to near): the zKey order, corrected where movers with a real footprint overlap on screen and
+ * their depth ranges meet (an edge from the farther to the nearer by the footprint test). Kahn's algorithm with the zKey
+ * position as priority; a cycle (rare: the footprint relation is not transitive) is broken at the earliest remaining one.
+ * Points only: the zKey order is exact and returned as it is.
+ */
+function worldOrderMovers(roots) {
+  var N = roots.length, i, j, ext = false;
+  for (i = 0; i < N && !ext; i++) if (roots[i].foot && roots[i].foot.length > 1) ext = true;
+  if (!ext || N < 2) return roots;
+  var adj = null, indeg = null;
+  for (i = 0; i < N; i++) {
+    var A = roots[i], zA = worldOrderZKey(A), eA = A.foot && A.foot.length > 1;
+    for (j = i + 1; j < N; j++) {
+      var B = roots[j];
+      if (!eA && !(B.foot && B.foot.length > 1)) continue;          // two points: the zKey order is right
+      if (worldOrderZMax(B) < zA) continue;                          // B wholly nearer: the order already has it after A
+      if (!worldOrderOverlap(A._box, B._box)) continue;
+      if (!adj) { adj = []; indeg = new Int32Array(N); for (var k = 0; k < N; k++) adj.push(null); }
+      if (worldOrderNearer(A, B)) { (adj[j] || (adj[j] = [])).push(i); indeg[i]++; }   // A is nearer: B first
+      else { (adj[i] || (adj[i] = [])).push(j); indeg[j]++; }
+    }
+  }
+  if (!adj) return roots;
+  var out = [], done = new Uint8Array(N);
+  for (var n = 0; n < N; n++) {
+    var pick = -1;
+    for (i = 0; i < N; i++) if (!done[i] && indeg[i] === 0) { pick = i; break; }
+    if (pick < 0) for (i = 0; i < N; i++) if (!done[i]) { pick = i; break; }   // a cycle: the earliest by zKey
+    done[pick] = 1; out.push(roots[pick]);
+    var l = adj[pick];
+    if (l) for (j = 0; j < l.length; j++) indeg[l[j]]--;
   }
   return out;
 }
@@ -213,24 +260,33 @@ function worldFrameOrder(chunks, agents, cam, boxes) {
   var n = chunks.length, i, j, k;
   var byId = {}, roots = [], kids = {};
   for (i = 0; i < agents.length; i++) byId[agents[i].id] = agents[i];
-  var staticHost = {};
-  for (i = 0; i < n; i++) for (j = 0; j < chunks[i].ents.length; j++) staticHost[chunks[i].ents[j].id] = i;
+  // the chunk of each static id (kept on the chunk list: statics do not move between frames)
+  var staticHost = chunks._host;
+  if (!staticHost) {
+    staticHost = {};
+    for (i = 0; i < n; i++) for (j = 0; j < chunks[i].ents.length; j++) staticHost[chunks[i].ents[j].id] = i;
+    try { Object.defineProperty(chunks, '_host', { value: staticHost, enumerable: false, configurable: true }); } catch (e) { /* frozen: rebuilt per frame */ }
+  }
   for (i = 0; i < agents.length; i++) {
     var a = agents[i], h = worldOrderHostId(a);
     a._box = worldOrderBoxOf(a, boxes, cam);
-    if (h != null && byId[h] && byId[h] !== a) (kids[h] = kids[h] || []).push(a); else roots.push(a);
+    if (h != null && byId[h] && byId[h] !== a) (kids[h] || (kids[h] = [])).push(a); else roots.push(a);
   }
   roots.sort(function (p, q) { var d = worldOrderZKey(q) - worldOrderZKey(p); return d || (worldOrderNearer(p, q) ? 1 : -1); });
+  // movers with a footprint (a long boat, a swaying fern drawn live) are not points: where two overlap on screen and their
+  // depth ranges meet, the footprint test decides. A topological order of those constraints, the zKey order breaking ties
+  // (and any cycle): a nearer one never goes before a farther one it overlaps.
+  roots = worldOrderMovers(roots);
   // slot per root (group = root + attached descendants share one slot)
   var slots = [];
-  for (i = 0; i <= n; i++) slots.push([]);
+  for (i = 0; i <= n; i++) slots.push(null);
   var minSlot = 0;
   function groupOf(r, acc) { acc.push(r); var c = kids[r.id]; if (c) for (var t = 0; t < c.length; t++) groupOf(c[t], acc); return acc; }
   for (i = 0; i < roots.length; i++) {
     var r = roots[i], grp = groupOf(r, []), zk = worldOrderZKey(r);
-    // slot = number of chunks drawn before the agent (chunks with z0 > zk are behind it)
+    // slot = number of chunks drawn before the agent (chunks with z0 >= zk are behind it; chunks run far to near)
     var slot = 0;
-    for (k = 0; k < n; k++) if (chunks[k].backdrop || chunks[k].z0 >= zk) slot = k + 1;
+    for (k = 0; k < n; k++) { if (chunks[k].backdrop || chunks[k].z0 >= zk) slot = k + 1; else if (!chunks[k].backdrop) break; }
     var hostChunk = staticHost[worldOrderHostId(r)];
     if (hostChunk != null && hostChunk + 1 > slot) slot = hostChunk + 1;
     for (k = slot; k < n; k++) {
@@ -248,62 +304,89 @@ function worldFrameOrder(chunks, agents, cam, boxes) {
     }
     if (slot < minSlot) slot = minSlot;
     minSlot = slot;
-    slots[slot].push(grp);
+    (slots[slot] || (slots[slot] = [])).push(grp);
   }
   var out = [];
   function emitGroup(grp, upTo) {
     for (var t = 0; t < grp.length; t++) {
-      var m = grp[t];
+      var m = grp[t], mz = worldOrderZMax(m), hid = worldOrderHostId(m);
       out.push({ kind: 'agent', ref: m });
-      // occluder redraws: statics drawn so far that are nearer than m and overlap it
+      if (!m._box) continue;
+      // occluder redraws: statics drawn so far that are nearer than m and overlap it (size never exempts one, R2)
       for (var c = 0; c < upTo; c++) {
         var ch = chunks[c];
-        if (!ch.bbox || ch.z0 > worldOrderZMax(m) || !worldOrderOverlap(m._box, ch.bbox)) continue;
-        var list = [], near = worldOrderNearby(ch, m._box, boxes, cam), hid = worldOrderHostId(m);
+        if (!ch.bbox || ch.z0 > mz || !worldOrderOverlap(m._box, ch.bbox)) continue;
+        var near = worldOrderNearby(ch, m._box, boxes, cam);
         for (var e = 0; e < near.length; e++) {
           var s = near[e];
-          if (s.id !== hid && worldOrderNearer(s, m)) list.push(s);
+          if (s.id !== hid && worldOrderNearer(s, m)) out.push({ kind: 'redraw', ref: s, chunk: c });
         }
-        for (e = 0; e < list.length; e++) out.push({ kind: 'redraw', ref: list[e], chunk: c });
       }
     }
   }
   for (i = 0; i <= n; i++) {
-    for (j = 0; j < slots[i].length; j++) emitGroup(slots[i][j], i);
+    var sl = slots[i];
+    if (sl) for (j = 0; j < sl.length; j++) emitGroup(sl[j], i);
     if (i < n) out.push({ kind: 'chunk', ref: chunks[i] });
   }
   return out;
 }
 
 // Expand the order into per-entity last draw positions and test every overlapping pair involving a mover
-// (opts.all also tests static pairs): the nearer one must be drawn later.
+// (opts.all also tests static pairs): the nearer one must be drawn later. O(movers x entities) per frame.
+var _worldOrderCheckStamp = 0;
 function worldOrderCheck(order, boxes, opts) {
   opts = opts || {};
-  var pos = new Map(), list = [], p = 0;
+  var stamp = ++_worldOrderCheckStamp, ents = [], pos = [], mov = [], p = 0, i, j;
   function put(e, mover) {
-    if (!pos.has(e)) list.push({ e: e, mover: mover });
-    pos.set(e, p++);
+    var k;
+    if (e._ocs === stamp) k = e._oci;
+    else { e._ocs = stamp; k = e._oci = ents.length; ents.push(e); mov.push(false); }
+    pos[k] = p++;
+    if (mover) mov[k] = true;
   }
-  for (var i = 0; i < (order || []).length; i++) {
+  for (i = 0; i < (order || []).length; i++) {
     var it = order[i];
-    if (it.kind === 'chunk') { var es = it.ref.ents || []; for (var j = 0; j < es.length; j++) put(es[j], false); }
+    if (it.kind === 'chunk') { var es = it.ref.ents || []; for (j = 0; j < es.length; j++) put(es[j], false); }
     else put(it.ref, it.kind === 'agent');
   }
-  for (i = 0; i < list.length; i++) {
-    var e = list[i].e;
-    list[i].box = worldOrderBoxOf(e, boxes, null) || e._box || null;
-    if (list[i].mover) list[i].mover = true; else list[i].mover = e.static === false;
+  var n = ents.length, X0 = new Float64Array(n), Y0 = new Float64Array(n), X1 = new Float64Array(n), Y1 = new Float64Array(n), has = new Uint8Array(n), movers = [];
+  for (i = 0; i < n; i++) {
+    var e = ents[i], b = worldOrderBoxOf(e, boxes, null) || e._box || null;
+    if (e.static === false) mov[i] = true;
+    if (!b) continue;
+    has[i] = 1; X0[i] = b.x0; Y0[i] = b.y0; X1[i] = b.x1; Y1[i] = b.y1;
+    if (mov[i]) movers.push(i);
   }
   var bad = [];
-  for (i = 0; i < list.length; i++) {
-    var A = list[i];
-    if (!A.box) continue;
-    for (j = i + 1; j < list.length; j++) {
-      var B = list[j];
-      if (!opts.all && !A.mover && !B.mover) continue;
-      if (!worldOrderOverlap(A.box, B.box)) continue;
-      var aNear = worldOrderNearer(A.e, B.e), pa = pos.get(A.e), pb = pos.get(B.e);
-      if (aNear ? pa < pb : pb < pa) bad.push({ a: A.e.id, b: B.e.id, why: (aNear ? A.e.id : B.e.id) + ' is nearer but drawn first' });
+  function test(a, b) {
+    var aNear = worldOrderNearer(ents[a], ents[b]);
+    if (aNear ? pos[a] < pos[b] : pos[b] < pos[a]) bad.push({ a: ents[a].id, b: ents[b].id, why: (aNear ? ents[a].id : ents[b].id) + ' is nearer but drawn first' });
+  }
+  if (opts.all) {
+    // a sweep over x: only pairs whose x ranges meet are compared
+    var idx = [];
+    for (i = 0; i < n; i++) if (has[i]) idx.push(i);
+    idx.sort(function (a, b) { return X0[a] - X0[b]; });
+    var act = [];
+    for (i = 0; i < idx.length; i++) {
+      var A = idx[i], keep = [];
+      for (j = 0; j < act.length; j++) {
+        var B = act[j];
+        if (X1[B] <= X0[A]) continue;
+        keep.push(B);
+        if (Y0[A] < Y1[B] && Y0[B] < Y1[A] && X0[B] < X1[A]) test(B, A);
+      }
+      keep.push(A);
+      act = keep;
+    }
+    return bad;
+  }
+  for (i = 0; i < movers.length; i++) {
+    var m = movers[i], mx0 = X0[m], my0 = Y0[m], mx1 = X1[m], my1 = Y1[m];
+    for (j = 0; j < n; j++) {
+      if (j === m || !has[j] || (mov[j] && j < m)) continue;   // a mover pair is tested once
+      if (mx0 < X1[j] && X0[j] < mx1 && my0 < Y1[j] && Y0[j] < my1) test(m, j);
     }
   }
   return bad;
@@ -311,5 +394,5 @@ function worldOrderCheck(order, boxes, opts) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { worldChunks: worldChunks, worldFrameOrder: worldFrameOrder, worldOrderCheck: worldOrderCheck,
-    worldOrderNearer: worldOrderNearer, worldOrderFrontZ: worldOrderFrontZ, WORLD_CHUNK_CAP: WORLD_CHUNK_CAP };
+    worldOrderNearer: worldOrderNearer, worldOrderFrontZ: worldOrderFrontZ, worldOrderMovers: worldOrderMovers, WORLD_CHUNK_CAP: WORLD_CHUNK_CAP };
 }

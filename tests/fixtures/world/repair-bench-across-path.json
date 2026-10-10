@@ -1,0 +1,84 @@
+{
+ "about": "a bench set across a footpath: it moves to the path edge, off the walking line, facing the path",
+ "expect": {
+  "bench": {
+   "kept": true,
+   "actions": [
+    "move"
+   ],
+   "rules": [
+    "blocksPath"
+   ],
+   "offPath": "walk",
+   "maxMove": 4
+  }
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 51.28,
+   "lon": -0.83,
+   "region": "hampshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 62,
+   "horizon": 460,
+   "heading": 0
+  },
+  "surfaces": [
+   {
+    "id": "park",
+    "kind": "grass",
+    "poly": [
+     [
+      -60,
+      1
+     ],
+     [
+      60,
+      1
+     ],
+     [
+      60,
+      200
+     ],
+     [
+      -60,
+      200
+     ]
+    ]
+   },
+   {
+    "id": "walk",
+    "kind": "path",
+    "path": [
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      200
+     ]
+    ],
+    "width": 2.4
+   }
+  ],
+  "entities": [
+   {
+    "obj": "street.bench",
+    "id": "bench",
+    "at": [
+     0.1,
+     20
+    ],
+    "facing": 0
+   }
+  ],
+  "backdrop": {
+   "style": "woodland"
+  },
+  "seed": 5
+ }
+}

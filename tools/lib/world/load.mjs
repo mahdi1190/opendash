@@ -14,7 +14,8 @@ import { readRasterAsset } from '../raster-assets.mjs';
 export const WORLD_FILE_RE = /^79-world-[a-z0-9-]+\.js$/;
 const SCENE_NAMES = ['sceneObj', 'sceneObjs', 'sceneObjDefine', 'sceneObjReal', 'sceneObjClass', 'sceneMoverSize', 'sceneObjShapes', 'scenePathBox',
   'sceneCamera', 'sceneGroundHeight', 'sceneProject', 'sceneUnproject', 'sceneAdd', 'sceneItems', 'sceneItem', 'sceneRasterSource',
-  'sceneRenderPassDefine', 'sceneRenderPasses', 'sceneWaterMoverReflect', 'sceneLightV2'];
+  'sceneRenderPassDefine', 'sceneRenderPasses', 'sceneWaterMoverReflect', 'sceneLightV2', 'sceneSeason', 'sceneSnowCover', 'sceneFrostAt', 'almSunPosition',
+  'almMoonPosition', 'almSceneLight', 'sceneWind', 'sceneShadowSun', 'sceneShadowTip', 'sceneSvg', 'sceneCompile', 'sceneData'];
 
 export function worldSourceFiles(root = repoRoot(), { fixtures = false, browser = false } = {}) {
   const app = join(root, 'src', 'app');
@@ -26,8 +27,8 @@ export function worldSourceFiles(root = repoRoot(), { fixtures = false, browser 
   return [...src.sort((a, b) => (a.split(/[\\/]/).pop() < b.split(/[\\/]/).pop() ? -1 : 1)), ...fx];
 }
 
-/** The world* / WORLD_* names declared at the top level of the 79-world sources. */
-function worldNames(paths) {
+/** The world* / WORLD_* names declared at the top level of the 79-world sources (tools/lib/world/convert.mjs loadEngine uses them too). */
+export function worldNames(paths) {
   const out = new Set();
   for (const p of paths) {
     if (!WORLD_FILE_RE.test(p.split(/[\\/]/).pop())) continue;

@@ -1,0 +1,74 @@
+{
+ "id": "empty-scene",
+ "title": "An empty scene: a camera and a water polygon",
+ "req": [
+  "P5",
+  "P6",
+  "P7",
+  "C3",
+  "C6",
+  "U1"
+ ],
+ "about": "Only a camera and a pond. The engine must give it ground, bank dressing, planting, a framing foreground, life and a backdrop from the place style, and log every fill.",
+ "expect": {
+  "log": [
+   {
+    "any": [
+     "fill",
+     "dress",
+     "frame"
+    ],
+    "n": 3
+   },
+   {
+    "any": [
+     "default",
+     "fill",
+     "dress"
+    ],
+    "match": "backdrop|style"
+   }
+  ]
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 51.2905,
+   "lon": -0.8228,
+   "alt": 68,
+   "region": "hampshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 64,
+   "horizon": 460,
+   "heading": 0
+  },
+  "surfaces": [
+   {
+    "id": "pond",
+    "kind": "water",
+    "water": "pond",
+    "poly": [
+     [
+      -24,
+      10
+     ],
+     [
+      22,
+      10
+     ],
+     [
+      34,
+      80
+     ],
+     [
+      -38,
+      80
+     ]
+    ]
+   }
+  ],
+  "seed": 19
+ }
+}

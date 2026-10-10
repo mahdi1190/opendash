@@ -1,0 +1,153 @@
+{
+ "id": "people-in-hedge-and-wall",
+ "title": "People inside a hedge and a wall",
+ "req": [
+  "K1",
+  "P1",
+  "A2"
+ ],
+ "about": "Two people placed inside a hedge and one inside a stone wall. The engine must move each to the nearest walkable spot or drop it.",
+ "expect": {
+  "log": [
+   {
+    "any": [
+     "snap",
+     "move",
+     "drop"
+    ],
+    "id": "p-hedge-1"
+   },
+   {
+    "any": [
+     "snap",
+     "move",
+     "drop"
+    ],
+    "id": "p-hedge-2"
+   },
+   {
+    "any": [
+     "snap",
+     "move",
+     "drop"
+    ],
+    "id": "p-wall"
+   }
+  ]
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 51.2905,
+   "lon": -0.8228,
+   "alt": 68,
+   "region": "hampshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 64,
+   "horizon": 460,
+   "heading": 0
+  },
+  "surfaces": [
+   {
+    "id": "land",
+    "kind": "grass",
+    "poly": [
+     [
+      -120,
+      1
+     ],
+     [
+      120,
+      1
+     ],
+     [
+      160,
+      400
+     ],
+     [
+      -160,
+      400
+     ]
+    ]
+   },
+   {
+    "id": "lane",
+    "kind": "path",
+    "path": [
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      200
+     ]
+    ],
+    "width": 2.4
+   },
+   {
+    "id": "hedge-r",
+    "kind": "hedge",
+    "path": [
+     [
+      3,
+      1
+     ],
+     [
+      3,
+      200
+     ]
+    ],
+    "width": 1.4
+   }
+  ],
+  "entities": [
+   {
+    "obj": "structure.stone-wall",
+    "id": "wall-1",
+    "at": [
+     -5,
+     18
+    ],
+    "facing": 0
+   },
+   {
+    "obj": "person.walker",
+    "id": "p-hedge-1",
+    "at": [
+     3,
+     12
+    ]
+   },
+   {
+    "obj": "person.walker",
+    "id": "p-hedge-2",
+    "at": [
+     3.1,
+     30
+    ]
+   },
+   {
+    "obj": "person.walker",
+    "id": "p-wall",
+    "at": [
+     -5,
+     18
+    ]
+   }
+  ],
+  "life": [
+   {
+    "who": "walkers",
+    "on": "lane",
+    "rate": "3/min"
+   }
+  ],
+  "backdrop": {
+   "style": "farmland"
+  },
+  "seed": 14
+ }
+}

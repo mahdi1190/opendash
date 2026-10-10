@@ -28,7 +28,11 @@ test('the three test scenes convert from v2 and validate (8.6 acceptance)', () =
     const c = conv(r);
     assert.equal(c.validation.by, 'worldValidate');
     assert.deepEqual(c.validation.errors, [], `${r}: ${JSON.stringify(c.validation.errors.slice(0, 3))}`);
-    assert.ok(c.ok);
+    // U4: ok means valid AND at least as rich as the source (the critic's box measure on both sides)
+    assert.ok(c.critic && Number.isFinite(c.critic.source) && Number.isFinite(c.critic.converted), `${r}: the critic compared both`);
+    assert.equal(c.ok, c.validation.ok && c.critic.ok);
+    assert.equal(c.report.critic, c.critic);
+    if (!c.critic.ok) assert.ok(c.report.review.some(x => x.path === 'critic'), 'a poorer conversion is a review item');
     assert.match(c.meta.id, /-w3$/);
     assert.equal(c.spec.v, 3);
     assert.ok(c.spec.backdrop && c.spec.backdrop.style, 'a backdrop is always chosen');
@@ -104,15 +108,20 @@ test('host: the derived v2 data compiles with no refused placement (statics are 
 test('host: a static is scaled from its real size and stands on its anchor', () => {
   const cam = E.sceneCamera({ camera: { eye: 1.65, fov: 64, horizon: 460, heading: 0 } });
   const def = E.sceneObj('street.bench');
-  const P = E.sceneProject(cam, 2, 10, 0);
-  const d = E.worldHostV2Data({ v: 3, camera: { eye: 1.65, fov: 64, horizon: 460, heading: 0 }, surfaces: [{ id: 'g', kind: 'grass', poly: [[-50, 1], [50, 1], [50, 200], [-50, 200]] }],
-    entities: [{ obj: 'street.bench', at: [2, 10], facing: 90 }], life: [], backdrop: { style: 'farmland' } }, { id: 'y' });
+  // the bench stands on the grass edge of a path, facing it (K1: benches on paving or the grass edge); the engine may still
+  // nudge it (P1-P3), so the anchor is checked against where the world put it
+  const spec = { v: 3, camera: { eye: 1.65, fov: 64, horizon: 460, heading: 0 }, surfaces: [{ id: 'g', kind: 'grass', poly: [[-50, 1], [50, 1], [50, 200], [-50, 200]] }, { id: 'p', kind: 'path', path: [[3.5, 1], [3.5, 200]], width: 1.6 }],
+    entities: [{ obj: 'street.bench', at: [2, 10], facing: 90 }], life: [], backdrop: { style: 'farmland' } };
+  const w = E.worldHostWorld(spec, {}), be = w.entities.find(e => e.obj === 'street.bench');
+  assert.ok(be, 'the world keeps the bench');
+  const d = E.worldHostV2Data(spec, { id: 'y', world: w });
+  const P = E.sceneProject(cam, be.x, be.z, be.y);
   const p = d.place.find(q => /^street\.bench/.test(q.obj));
   assert.ok(p, 'the bench is placed');
   assert.ok(Math.abs(p.x - P.X) < 0.2 && Math.abs(p.y - P.Y) < 0.2, 'anchor = projected foot');
   const info = E.worldObjectInfo('street.bench');
   const h = (info && info.size.h) || 0.9;
-  assert.ok(Math.abs(p.s * def.size[1] - cam.f / 10 * h) / (cam.f / 10 * h) < 0.02, 'drawn height = f x real h / z');
+  assert.ok(Math.abs(p.s * def.size[1] - cam.f / be.z * h) / (cam.f / be.z * h) < 0.02, 'drawn height = f x real h / z');
 });
 
 test('host: views from facing against the line of sight (5 views + mirrors)', () => {
@@ -129,13 +138,18 @@ test('host: views from facing against the line of sight (5 views + mirrors)', ()
 test('perf gate: warn over budget, fail at 1.2x, any order violation fails', () => {
   const ok = worldPerfCheck({ frameMs: 9, lifeTickMs: 1.4, orderViolations: 0 });
   assert.equal(ok.ok, true);
-  const warn = worldPerfCheck({ frameMs: 15 });
+  // F1: frame median < 8 ms, p95 < 14 ms; cold load < 5 s, warm load < 1 s; F2: sprites < 600 and the sprite memory
+  const warn = worldPerfCheck({ frameMs: 9 });
   assert.equal(warn.ok, true);
   assert.equal(warn.lines.find(l => l.item === 'frameMs').status, 'warn');
-  const fail = worldPerfCheck({ frameMs: 14 * 1.21 });
+  assert.equal(worldPerfCheck({ frameP95: 15 }).ok, true);
+  assert.equal(worldPerfCheck({ frameP95: 14 * 1.21 }).ok, false);
+  assert.equal(worldPerfCheck({ warmLoadMs: 1300 }).ok, false);
+  const fail = worldPerfCheck({ frameMs: 8 * 1.21 });
   assert.equal(fail.ok, false);
   assert.equal(worldPerfCheck({ orderViolations: 1 }).ok, false);
-  for (const k of ['coldLoadMs', 'frameMs', 'lifeTickMs', 'orderMs', 'chunks', 'sprites']) assert.ok(WORLD_BUDGET[k], k);
+  for (const k of ['coldLoadMs', 'warmLoadMs', 'frameMs', 'frameP95', 'lifeTickMs', 'orderMs', 'chunks', 'sprites', 'spriteMB']) assert.ok(WORLD_BUDGET[k], k);
+  assert.equal(WORLD_BUDGET.frameMs.budget, 8); assert.equal(WORLD_BUDGET.frameP95.budget, 14); assert.equal(WORLD_BUDGET.coldLoadMs.budget, 5000); assert.equal(WORLD_BUDGET.warmLoadMs.budget, 1000);
 });
 
 test('perf: the Node part measures every stage of a converted scene', () => {
@@ -165,14 +179,16 @@ test('CLI: validate and convert', () => {
   assert.equal(v.status, 0, v.stdout + v.stderr);
   assert.match(v.stdout, /valid/);
   const c = run('convert', 'fleet-canal-2', '--json');
-  assert.equal(c.status, 0, c.stderr);
   const j = JSON.parse(c.stdout);
   assert.equal(j.spec.v, 3);
   assert.equal(j.meta.id, 'fleet-canal-2-w3');
+  // exit 0 only when valid and at least as rich as the source (U4)
+  assert.equal(c.status, j.report.validation.ok && j.report.critic && j.report.critic.ok ? 0 : 1, c.stderr);
   // --out never replaces an existing file without --force (the hand-built scene files stay)
   const tmp = mkdtempSync(join(tmpdir(), 'world-conv-')), f = join(tmp, 'x.js');
-  assert.equal(run('convert', 'sheffield-kelham-1', '--out=' + f).status, 0);
-  assert.ok(existsSync(f));
+  const first = run('convert', 'sheffield-kelham-1', '--out=' + f);
+  assert.match(first.stdout, /critic: converted [\d.]+ vs source [\d.]+/);
+  assert.ok(existsSync(f), first.stdout);
   const again = run('convert', 'sheffield-kelham-1', '--out=' + f);
   assert.equal(again.status, 1);
   assert.match(again.stdout, /NOT written/);

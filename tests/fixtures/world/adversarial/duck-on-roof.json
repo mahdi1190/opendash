@@ -1,0 +1,114 @@
+{
+ "id": "duck-on-roof",
+ "title": "A duck on a roof",
+ "req": [
+  "K1",
+  "P1"
+ ],
+ "about": "A mallard placed on the roof of a cottage beside a pond. The engine must move it to the water or the bank, or drop it.",
+ "expect": {
+  "log": [
+   {
+    "any": [
+     "snap",
+     "move",
+     "drop"
+    ],
+    "id": "duck-1"
+   }
+  ]
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 51.2905,
+   "lon": -0.8228,
+   "alt": 68,
+   "region": "hampshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 64,
+   "horizon": 460,
+   "heading": 0
+  },
+  "surfaces": [
+   {
+    "id": "land",
+    "kind": "grass",
+    "poly": [
+     [
+      -120,
+      1
+     ],
+     [
+      120,
+      1
+     ],
+     [
+      160,
+      400
+     ],
+     [
+      -160,
+      400
+     ]
+    ]
+   },
+   {
+    "id": "pond",
+    "kind": "water",
+    "water": "pond",
+    "poly": [
+     [
+      -26,
+      10
+     ],
+     [
+      -4,
+      10
+     ],
+     [
+      -6,
+      60
+     ],
+     [
+      -30,
+      60
+     ]
+    ]
+   }
+  ],
+  "entities": [
+   {
+    "obj": "building.cottage",
+    "id": "cottage",
+    "at": [
+     9,
+     30
+    ],
+    "facing": 270
+   },
+   {
+    "obj": "bird.mallard",
+    "id": "duck-1",
+    "at": [
+     9,
+     30
+    ],
+    "attach": "deck:cottage"
+   }
+  ],
+  "life": [
+   {
+    "who": "mallard",
+    "count": 4,
+    "on": "pond"
+   }
+  ],
+  "backdrop": {
+   "style": "town-low"
+  },
+  "seed": 17
+ }
+}

@@ -1,0 +1,112 @@
+{
+ "id": "fronds-mid-air",
+ "title": "Willow fronds in mid-air",
+ "req": [
+  "K4"
+ ],
+ "about": "Willow fronds hung in the air over a pond with no willow. The engine must re-attach them to a willow or drop them.",
+ "expect": {
+  "log": [
+   {
+    "any": [
+     "drop",
+     "reattach"
+    ],
+    "id": "fronds-1"
+   }
+  ]
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 51.2905,
+   "lon": -0.8228,
+   "alt": 68,
+   "region": "hampshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 64,
+   "horizon": 460,
+   "heading": 0
+  },
+  "surfaces": [
+   {
+    "id": "land",
+    "kind": "grass",
+    "poly": [
+     [
+      -120,
+      1
+     ],
+     [
+      120,
+      1
+     ],
+     [
+      160,
+      400
+     ],
+     [
+      -160,
+      400
+     ]
+    ]
+   },
+   {
+    "id": "pond",
+    "kind": "water",
+    "water": "pond",
+    "poly": [
+     [
+      -30,
+      12
+     ],
+     [
+      26,
+      12
+     ],
+     [
+      40,
+      90
+     ],
+     [
+      -44,
+      90
+     ]
+    ],
+    "shallow": 1.2
+   }
+  ],
+  "entities": [
+   {
+    "obj": "plant.fpv-willow-fronds",
+    "id": "fronds-1",
+    "at": [
+     3,
+     14
+    ],
+    "attach": "air",
+    "y": 5
+   },
+   {
+    "obj": "tree.pool-birch",
+    "at": [
+     -36,
+     60
+    ]
+   }
+  ],
+  "life": [
+   {
+    "who": "mallard",
+    "count": 6,
+    "on": "pond"
+   }
+  ],
+  "backdrop": {
+   "style": "woodland"
+  },
+  "seed": 13
+ }
+}

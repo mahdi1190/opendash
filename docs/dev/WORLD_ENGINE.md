@@ -1,222 +1,326 @@
-# World engine (scene format v3): a world-first, game-style core
+# World engine (scene format v3.1): a world-first, game-style core
 
-Status: design, 10 Oct 2026. Sits ON TOP of scene engine v2 (`SCENE_ENGINE_V2.md`) and reuses its camera
-maths, sprite cache, object library, live sky, seasons, weather and the water / shadow passes. Read
-`SCENE_LESSONS.md` first: every row of its tables A-C maps to a construction rule below (section 10).
+Status: design, second pass, 10 Oct 2026. **The contract is `WORLD_ENGINE_REQUIREMENTS.md`.** Where this file and the
+requirements disagree, the requirements win. This file says how the engine meets them, and cites the requirement ids (W1, K3,
+H1 ...) in each section. The gap analysis behind this pass lists, for every id, what exists and what is left.
 
-## 0. The one principle
+The engine sits on top of scene engine v2 (`SCENE_ENGINE_V2.md`) and reuses its camera maths, object library, sprite rasteriser,
+live sky and almanac, seasons, weather, ground compile and procedural building generator. Read `SCENE_LESSONS.md` first: every
+row of its tables maps to a construction rule or an invariant below (sections 10 and 16).
 
-**A scene describes a WORLD, never a picture.** The author says what exists where, in metres, and what lives
-there. Everything you see (screen position, scale, facing, layer, draw order, shadow, reflection, light,
-haze, backdrop, motion) is DERIVED by the engine every frame. The format has no field that could express a
-past mistake: there is no pixel, no scale, no layer, no y for grounded things, no shadow, no reflection, no
-light, no colour grade, no hand path. A v3 scene that the validator accepts cannot float a duck, put a dog
-inside a wall, draw a far boat over a near walker, or leave the background empty.
+## 0. The principles
 
-Visual style and budget are unchanged: flat-vector 2D sprites from the object library, seasons, live sky;
-cold load < 5 s at `--gpu --throttle=4`, frame < 14 ms (target 8 ms), distinct sprites < 600.
+1. **A scene describes a WORLD, never a picture.** The author says what exists where, in metres, and what lives there.
+   Everything you see (screen position, scale, view, draw order, shadow, reflection, light, colour, haze, backdrop, motion,
+   animation) is derived by the engine every frame. The format has no field that could express a past mistake: no pixel, scale,
+   layer, y for grounded things, shadow, reflection, light, colour grade, hand path or per-season data.
+2. **Bad input makes a scene plainer, never wrong.** At load the engine repairs, snaps, re-attaches, drops and fills, and logs
+   every action with its reason. A scene always renders something sensible: `worldAdd` never refuses a spec. Strictness is
+   for authors and tools (`world validate` exits 1 on any error).
+3. **The engine knows what is weird.** Every object class carries its own rules (the knowledge base, 1.3); the placement
+   solver applies them at load (12); the invariant checker proves them every frame in tests (16).
+4. **Causes are fixed in the engine, never per scene.** A scene that looks wrong is an engine bug or a missing descriptor.
+5. **Time, season and weather are parameters.** One spec renders correctly at any date, time and weather with no extra
+   authoring (15).
+6. **One world, many cameras.** The four views of a place are four cameras on one world (14).
+
+Visual style and budget are unchanged: flat-vector 2D sprites from the object library, live sky; cold load < 5 s at
+`--gpu --throttle=4`, frame median < 8 ms and p95 < 14 ms, distinct sprites < 600 (7).
 
 ## 1. World model
 
-### 1.1 Axes and units
+### 1.1 Axes, units and frames (W1, W5, Q7)
 
-All metres, right-handed, camera-relative ground frame (identical to v2 ground coords):
+All metres. Two frames:
 
-| axis | meaning | v2 name |
+| frame | x | z | y | facing | used by |
+|---|---|---|---|---|---|
+| camera (v3.0, still valid) | right of the camera axis | forward depth (`z > 0`) | height above the ground plane | 0 = away from the camera, 90 = right | every module after load |
+| place (v3.1) | east of `place.origin` | north of it | height above the place datum | compass bearing, 0 = north | the spec when it has `cameras` |
+
+A v3.1 spec with `cameras` is written in the place frame. `worldBuild(spec, { camera })` resolves that camera (14) and transforms
+every point, polygon, path and facing into its camera frame BEFORE anything else runs, so navigation, life, order, light and
+the renderer only ever see camera metres. Changing the camera changes nothing else in the spec (Q7). A v3.0 spec (one
+`camera`, camera frame) is migrated in place (5.3).
+
+The v2 camera (`sceneCamera`, `SCENE_ENGINE_V2.md` 2.1) projects with `sceneProject(cam, x, z, y)` from `70-scene-1ground.js`.
+Nothing else converts world to screen. The world store keeps no screen values; renderers and checks ask the camera.
+
+### 1.2 Entities and components (G1)
+
+One record per entity. Statics (authored, generated by the fill, backdrop members) and agents (the life sim) share the shape;
+particles are a separate pool (11.8). Components are named groups of fields; every system declares the groups it reads and
+writes (11.2).
+
+```js
+{ id, obj, cls, variant, kb,                       // desc: the knowledge-base descriptor (1.3), set at load
+  x, y, z, facing, parent, local,                  // transform: y DERIVED (ground, water less sink, deck, host); local = offset from parent
+  foot, r, height, size, solidity, layer, clearance, deck, waterline,   // collider (from the descriptor, rotated by facing)
+  attach, host,                                    // attach: 'ground' | 'water' | 'deck:<id>' | 'rail:<id>' | 'air' | 'wall:<id>' | 'lead:<id>' | 'perch:<id>'
+  static, auto, landmark, framing, src, born,      // tags: auto = 'fill' | 'edge' | 'frame' (generated), born = spawn time
+  goals, state, pose, age, lookAt, group,          // brain (agents; life)
+  anim,                                            // anim: { state, clip, rate, phase, period, pose, t } (animation system, 13)
+  view, mirror, lod, culled, look }                // render: view chosen from the camera angle (14.4); look = material state (15)
+```
+
+| component | written by (package) | read by |
 |---|---|---|
-| `x` | right of the camera axis | `x` |
-| `z` | forward depth along the axis (`z > 0`) | `d` |
-| `y` | height above the ground plane (relief from `sceneGroundHeight`) | `h` |
+| desc, collider, attach (load) | sense | everyone |
+| transform (agents) | life (move), systems (attach: children follow parents) | anim, render, look, tools |
+| brain | life | anim, tools |
+| anim | appearance (anim system) | render, tools |
+| render (view, lod, culled) | appearance (view), systems (lod, cull) | render, tools |
+| look (leaf, bloom, snow, wet, lit) | kb state through the time system | look (materials), render |
 
-The camera (`camera` block, same fields as v2 2.1: `eye, fov, horizon, heading, x0, lat, lon, alt, water`)
-projects with `sceneProject(cam, x, z, y)` from `70-scene-1ground.js`. Nothing else ever converts world to
-screen. The world store keeps no screen values; renderers ask the camera.
+### 1.3 Knowledge base: every object class knows itself (K1-K9)
 
-### 1.2 Entity
-
-```js
-// the runtime record (built by the core from the scene's entity entries + the object library)
-{
-  id, obj,                  // object library id, e.g. 'boat.narrowboat'
-  variant,                  // optional library variant (livery, species, colour); never a size
-  x, z,                     // world position of the anchor (ground contact centre)
-  y,                        // DERIVED from attachment (author may give y only for attach 'air' and 'wall')
-  facing,                   // world heading, degrees (0 = away from camera, 90 = to the right); statics only
-  foot: [[x, z], ...],      // DERIVED: world footprint polygon = library footprint rotated by facing
-  height,                   // DERIVED: real height from the library size class (metres)
-  solidity,                 // DERIVED from library class: 'solid' | 'walkable' | 'water' | 'passable'
-  attach,                   // 'ground' | 'water' | 'deck:<hostId>' | 'rail:<surfaceId>' | 'air' | 'wall:<hostId>'
-  deck,                     // optional DERIVED walkable top (boat decks, boardwalk, bridge) as a surface polygon + y
-  waterline,                // DERIVED: y of the contact with water (floaters, waders, piles), else null
-  lights,                   // DERIVED from library glow parts: [{ x, y, z, r, col, kind }]
-  static: true | false,
-}
-```
-
-### 1.3 Size, solidity and attachment come from the library, not the scene
-
-Each object id gets a world descriptor from `worldObjectInfo(id)` (A, section 9), built once from the
-existing library metadata (`sceneReal` sizes, v2 classes in 4.2-4.4, `sceneMoverSize`) plus a small table
-for gaps:
+`79-world-0kb.js` holds a descriptor for every world class and per-object overrides. The ENGINE reads it; scenes never repeat
+it. `worldObjectInfo(id)` (core) is the library's real size and drawn views merged with `worldKb(id)`; an object with neither
+cannot be placed (`unknownSize`). Contract:
 
 ```js
-{ cls: 'person' | 'dog' | 'duck' | 'swan' | 'heron' | 'boat' | 'train' | 'tree' | 'building' | 'reed' | 'bench' | ...,
-  size: { w, d, h },                 // metres; true scale, never scaled by the scene
-  foot: 'box' | 'disc' | [[x, z], ...],
-  solidity, attachOk: ['ground', 'water', ...],
-  sink: metres,                      // waterline depth below the deck for floaters (0 for no hull part)
-  views: ['side', 'q-front', 'front', 'q-back', 'back'] | ['side'],   // 5 drawn views, the other 3 are mirrors
-  deck: { poly, y } | null,          // walkable top
-  seasonal: true | false }
+worldKb(id) -> {
+  cls,                                                          // world class: person, dog, duck, swan, heron, boat, car, bus, tram, train, tree, bough, frond, reed, lily, lamp, bench, ...
+  habitat: { on: [tag], inset, avoid: [tag], pit },             // K1 where it may exist (tags below)
+  foot: 'disc' | 'box' | [[x, z]], solidity: 'solid' | 'walkable' | 'water' | 'passable' | 'overhead', clearance,   // K2
+  size: { h: [min, max], l, w, poses: { stand, sit, lie }, ages: { adult: [1.6, 1.9], child: [1.0, 1.4] } },        // K2, K8
+  orient: 'bank' | 'lane' | 'rail' | 'path' | 'view' | 'street' | 'fence' | 'free',                               // K3
+  parent: null | { cls: [...], reach, side: 'same', anchor: 'trunk' | 'post' | 'wall' | 'chimney' | 'two' | 'dog-walker' },  // K4
+  group: { kind: 'single' | 'pair' | 'loose' | 'clump' | 'stand' | 'family' | 'traffic' | 'nose-tail', size: [a, b], gap },  // K5
+  when: { months, hours, weather, days, tempMin, dates, density },                          // K6 (evaluated by worldKbWhen)
+  region: { only, not }, liveries,                                                          // K7
+  care: { text, flags, faces, symbols },                                                    // K9: false for anything a world scene may use
+  floats, sink, perch, deck,                                                                // waterline, perch points [[x, y, z]], walkable top
+  material: { <part>: <material> },                                                         // V2 defaults by library part name (15.2)
+  anim: { clips, stride, idle, stiffness, secondary } }                                     // M1, A6, M3 (sway), M5
 ```
 
-An object with no descriptor cannot be placed (validator error `unknownSize`). This kills "wrong scale"
-by construction.
+Habitat tags (K1): `water` (the WHOLE footprint inside water, `inset` metres from every bank), `water-margin` (within the water's
+`shallow` of a bank, wet ground, reeds), `bank`, `walk` (any walkable surface or deck), `paving`, `grass`, `soil`, `grass-edge`
+(grass within 1.5 m of a walk path, never on its walking line), `road-lane`, `rail`, `tram`, `roof`, `perch`, `deck`, `air`,
+`wall`. `worldKbSurfaceTags(kind)` maps surface kinds to tags; the core's probe (12.1) adds the distance tags.
 
-### 1.4 Surfaces
+| class | K1 habitat | K3 orientation | K4 parent | K5 group |
+|---|---|---|---|---|
+| boat (under way / moored) | water, inset half-beam; moored: alongside a bank or pontoon | parallel to the bank or channel; moored either way | mooring line to a bollard or ring | nose to tail |
+| duck, coot, grebe | water; bank when grazing | free | | loose groups |
+| swan | water; bank when grazing | free | | pairs |
+| car, van, bus | road lanes | lane direction, UK left | | traffic with gaps |
+| tram / train | tram rails / rail | along the rails | | |
+| person | walk | free (life) | | singles, pairs, families, groups |
+| bench, bin, lamp | paving or grass-edge, never across a path line | bench faces the path or the view | lamp: post or wall | |
+| tree | soil or grass; paving only in a pit or planter | free | | clumps with gaps |
+| bough, branch, frond | (attached) | | a tree whose trunk is in frame or just outside on the same side at a plausible height | |
+| reed | water-margin, wet ground | | | stands |
+| lily, fish ring | water (calm) | | | loose |
+| gate | in its fence line | the fence line | | |
+| smoke, steam | (attached) | downwind | a chimney or a boat stove | |
+| washing line | (attached) | | two supports | |
+| window light | (attached) | | a building | |
+| lead | (attached) | | a dog and a walker | |
+
+Evaluators (all pure; ctx is the `WorldTimeCtx` of 11.11):
+`worldKbWhen(kb, ctx) -> { ok, share }` (K6: present, and how much of a population), `worldKbState(kb, ctx, key) -> { present, leaf:
+'bare' | 'bud' | 'full' | 'turn', turn, bloom, snow, lit }` (S1, V3: `key` seeds per-entity unevenness, so trees turn unevenly
+and windows light at different times), `worldKbDensity(who, ctx, placeType)` (A1), `worldKbSize(kb, pose, age, rnd)` (K8),
+`worldKbVariant(kb, place, rnd)` (A11, K7 liveries), `worldKbRegionOk(kb, place)` (K7), `worldKbCare(id)` (K9),
+`worldKbHabitatOk(kb, probe)`, `worldKbOrient(kb, probe)`.
+
+### 1.4 Surfaces (W3, W4, Q2, Q3)
 
 Polygons in metres (`poly: [[x, z], ...]`) or centre lines (`path` + `width`). Kinds and who may use them:
 
 | kind | walk | swim | drive | rail | notes |
 |---|---|---|---|---|---|
-| `path`, `pavement`, `towpath`, `plaza`, `boardwalk`, `bridge-deck`, `deck` | people, dogs | | | | `deck` = a host's top |
+| `path`, `pavement`, `towpath`, `plaza`, `boardwalk`, `bridge-deck`, `deck`, `platform` | people, dogs | | | | may carry `y` (a raised deck) |
+| `stairs`, `ramp` | people, dogs | | | | join two levels: `from`, `to` (W3) |
 | `grass`, `heath`, `field`, `sand` | people, dogs, grazers, birds | | | | |
-| `road` | crossing only at `crossing` | | vehicles | | |
-| `water` (`kind`: pond, lake, canal, river, sea, harbour, puddle) | waders within `shallow` m of the edge | swimmers, boats | | | colour, mirror and ripple from kind only (the water lock) |
+| `road` | crossing only at `crossing` | | vehicles (lanes, UK left) | | |
+| `water` (`water`: pond, lake, canal, river, sea, harbour, puddle) | waders within `shallow` m of the edge | swimmers, boats | | | geometry, kind, `level`, `hint: calm \| breezy`, `flow` (rivers), `step` (W4) |
 | `rail`, `tram` | | | | trains, trams | a centre line |
 | `reeds`, `bed`, `hedge` | | waders, small birds | | | `hedge` is solid to people |
-| `weir` | | | | | solid to swimmers; animates as falling water |
+| `weir` | | | | | solid to swimmers; drawn as falling water (H4) |
 
-Overlap rule: later surfaces override earlier ones; `water` is cut by any solid footprint over it.
+A raised walkable surface (`y`) is first class: movers stand on it at its height; a `bridge-deck` or a deck host is `overhead` to
+whatever passes beneath (a duck under a bridge, a walker above, never blocked by it). Overlap rule: later surfaces override
+earlier ones; `water` is cut by any solid footprint over it.
+
+Linear features (Q2): `lines: [{ id, kind: 'wall' | 'fence' | 'railing' | 'hedge' | 'kerb' | 'coping', path, width?, h?, gaps? }]`,
+drawn by the extruder (14.2) with converging edges and true widths, solid to walkers (except kerb and coping), with gates as gaps.
+Buildings (Q3): `buildings: [{ id, foot: [[x, z]], storeys | h, roof, style }]`, extruded through the v2 building generator
+(`sceneBuildingProject`), solid footprints, facing their street (K3).
+
+### 1.5 Terrain (W2)
+
+The ground height `h(x, z)` is defined everywhere in view: the v2 relief grid (`ground.relief`) plus authored features
+`ground.features: [{ kind: 'bank' | 'embankment' | 'cutting', path, width, h }]` compiled into it. A grounded thing stands at `h`,
+a decked thing at its deck, a floater at the water level less its sink, a wader at the water level, a flyer at its altitude.
+Nothing is placed through the ground or floating above it (invariant `floating`).
 
 ## 2. Derived rendering
 
 ### 2.1 Pipeline (per scene load, then per frame)
 
 ```
-load:   validate -> world store -> nav (3) -> static chunks (2.2) -> bake chunks + reflections + shadows (2.4-2.6)
-frame:  life tick (4) -> movers' screen boxes -> merge into chunk order (2.3) -> blit / draw -> water fx -> light post
+load:   migrate (G11) -> repair (strip, log) -> camera resolve (Q1, Q7) -> build entities (desc, collider)
+        -> place (P1-P4, K3, K4, K7, K9) -> fill (P5-P8, C3, C6) -> frame and landmark checks (C1, C4)
+        -> nav -> life init (deterministic warm-up) -> chunks (2.2) -> bake chunks (statics, shadows, lights, materials)
+        -> bake the water mirror of the statics (2.5)
+tick:   the runner (11): time -> brain -> nav -> move -> anim -> attach -> fx (wind, particles, water) -> light -> render
+frame:  v2 base (sky, ground surfaces, base water, ripples) -> the world compositor (2.8): chunks and agents in
+        worldFrameOrder, occluder redraws, agent shadows, the water mirror of the agents, lights -> v2 weather on top
 ```
 
 ### 2.2 Static entities in depth-sorted chunks
 
-- Sort key of an entity: `zKey = min z over its footprint front edge` (the nearest ground contact).
-  Tie-break: larger `y` later, then id.
+- Sort key of an entity: `zKey = min z over its footprint front edge` (the nearest ground contact). Tie-break: larger `y`
+  later, then id (a stable tie: no z-fighting, 19).
 - Chunks: walk statics in `zKey` order (far to near); start a new chunk when
   (a) the span exceeds `max(0.5, 0.04 * z)` m, or
   (b) a nav cell that any mover can occupy lies inside the span (from the nav map, 3.2), or
-  (c) the chunk count would exceed the cap (24; then merge the two chunks with the fewest mover-reachable
-  cells between them).
-- Each chunk bakes to its own bitmap clipped to its screen bounding box (not full frame), via the existing
-  sprite cache (`78-scene-canvas.js` rasteriser, called through the pass env). Haze per entity from its
-  own depth (v2 7.1); never per layer. Near and far are never merged into one bitmap because rule (a)
-  bounds the span.
+  (c) the chunk count would exceed the cap (24; then merge the two chunks with the fewest mover-reachable cells between them).
+- Each chunk bakes to its own bitmap clipped to its screen bounding box (not full frame), with integer-snapped edges and a
+  1 px overlap bleed so no seam shows between chunks (19). Haze per entity from its own depth; never per chunk. Near and far
+  are never merged into one bitmap because rule (a) bounds the span.
 - Horizon, far and backdrop bands (2.7) are one extra chunk at the back.
 
-### 2.3 Frame order (movers interleave by true depth)
+### 2.3 Frame order (movers interleave by true depth; R1, R2)
 
 1. Draw order list = chunks (by their nearest `zKey`) + movers (by their own `zKey` = foot z).
-2. A mover whose `zKey` falls inside a chunk's span is drawn after that chunk, then every entity of that
-   chunk that is nearer than the mover AND overlaps its screen box is re-blitted from the sprite cache
-   (the "occluder redraw"; typically 0-2 sprites).
-3. Footprint test, not anchor test, for big things: a mover is behind a solid when the mover's foot z is
-   greater than the solid's footprint front edge at the mover's x (`worldFrontZ(foot, x)`). This handles
-   long boats, walls and buildings seen at an angle.
-4. Attached movers draw immediately after their host (a person on a deck, a duck on a boat roof, a heron
-   on a post), regardless of key.
-5. Debug invariant (tests): for every pair whose screen boxes overlap, the one with the smaller
-   footprint-front z is drawn later. `worldOrderCheck(frame)` returns violations; must be 0.
+2. A mover whose `zKey` falls inside a chunk's span is drawn after that chunk, then every entity of that chunk that is nearer
+   than the mover AND overlaps its screen box is re-blitted from the sprite cache (the occluder redraw; typically 0-2 sprites).
+   Size never exempts an occluder: a big building or boat occludes like a post.
+3. Footprint test, not anchor test, for big things: a mover is behind a solid when the mover's foot z is greater than the
+   solid's footprint front edge at the mover's x (`worldFrontZ(foot, x)`). This handles long boats, walls and buildings seen at
+   an angle.
+4. Attached movers draw immediately after their host (a person on a deck, a duck on a boat roof, a heron on a post), whatever
+   their key; the parts of one entity draw in tiers (hull, cabin, roof).
+5. Invariant (tests, 16): for every pair whose screen boxes overlap, the one with the smaller footprint-front z is drawn later.
+   `worldOrderCheck(order, boxes)` returns violations; it must be 0.
 
-### 2.4 Shadows (engine only)
+### 2.4 Shadows (engine only; L2, L5)
 
-- Sun azimuth / elevation from the live sky (`K.live` via the existing sky code) and the camera heading.
-- Static casters: the footprint extruded to `height`, projected along the sun onto the ground surfaces
-  under it; baked into the chunk that holds the receiving ground (reuses the v2 shadow pass silhouette
-  code in `78-scene-shadow.js`). Not cast onto water as dark shapes; water gets a darkened-reflection
-  zone instead (the water pass).
-- Contact shadows for every grounded or decked entity and mover, always.
-- Mover shadows per frame, projected (blobs under the governor).
-- Night: shadows from the moon (weak) and from lamps within `r` (v2 6.5).
+- One sun for the whole scene: azimuth and elevation from the almanac (`worldSkyOf`, 2.6) and the camera heading. Night:
+  the moon (weak) and lamps within their radius.
+- Static casters: the footprint extruded to its real height, laid along the sun onto the ground under it, baked into the chunk
+  that holds the receiving ground (`worldShadowPlan` + `worldDrawShadows`). Never onto water: the water mirror is dimmed under
+  the shadow polygon instead. Thin things (railings, wires, reeds) cast from their real outline, never a solid block (19).
+- Contact shadows for every grounded or decked entity and mover. Movers' shadows are drawn per frame, only while the mover is
+  visible, and move with it; a person on a moving boat casts onto the moving deck (the scene graph, 11.4). Things under a
+  bridge lie in the bridge's shadow by geometry; nothing is hand-shaded (19).
+- Overcast flattens shadows (cloud cover lowers their opacity and widens their blur); fog fades them with depth.
 
-### 2.5 Reflections (engine only, per entity about its own waterline)
+### 2.5 Reflections come FROM THE WATER SURFACE (H1-H3, H6)
 
-For each entity or mover whose mirror image reaches a water surface:
+This replaces the per-entity plan of the first pass (`worldReflectPlan`, retired). Objects never make their own reflection, so a
+thing drawn in many pieces (a boat in slices, a bridge, a viaduct, a reed stand) can never repeat or double.
 
-- The mirror plane is `y = water level` at the entity's own position. A point `(x, y, z)` reflects to
-  `(x, 2*yw - y, z)`; for an upright sprite this is a vertical flip about the projected row of
-  `(x, yw, zFoot)` with the same scale.
-- Floaters (boats, ducks, swans): mirror only the art above the `sink` line, about the same row the canvas
-  clips at (the 10 Oct fix). Perspective boat pieces with `waterSlope`: shear about the sloped waterline.
-- Standing in water (heron, post, snag, pile): mirror about its own foot.
-- On the bank: mirror about the projected water level at its foot z (so a bank tree reflects starting at
-  the bank's water edge, not offset).
-- Clipped to the water polygon's screen projection; tinted and broken up by the kind (ripple, clarity).
-- Static reflections bake into the water chunk; mover reflections draw per frame (reuses
-  `sceneWaterMoverReflect`).
+- For each water region the compositor keeps the composite of everything drawn above that region's screen area, plus, per
+  pixel, its OWNER (the entity whose pixel it is, the nearest drawn there at half cover or more) and the owner's contact row:
+  the projected row of `(x, level, zContact)`, where `zContact` is the owner's own waterline for anything standing or floating in
+  the water, and the bank's water edge at that column for anything on the bank (so a far-bank tree reflects starting exactly
+  at the bank edge, following the bank in perspective).
+- The water mirrors that composite column by column, each pixel about its owner's contact row (a perspective boat about its
+  sloped waterline: one continuous line per thing), then applies the kind's ripple displacement (drifting with `flow` on
+  rivers, still on canals), a fade with distance, a Fresnel falloff (more reflection towards grazing angles, near the horizon)
+  and the kind's tint. Where two mirrored pixels land on one, the nearer owner wins.
+- Statics are mirrored once at bake time (into the water chunk); movers above the water are composited and mirrored per
+  frame (only their columns). Anything drawn above the surface reflects, including herons, posts, snags, reeds, piers and
+  people on jetties (H2); nothing reflects outside the water's clip.
+- Floaters sit IN the water: drawn with a waterline cut at `level - sink`, a wake when moving, rings when bobbing (H3, the
+  water system 11.11). Water under a cast shadow darkens subtly.
+- No black holes or gaps: the mirror covers the whole region at the frame edge, near the camera and where water meets an
+  occluder (a gap is filled from the sky colour of that column, never left transparent; invariant `waterGap`, H6).
+- The v2 water pass keeps drawing the base water (colour by kind, ripples); for world scenes it gets no placements, so it
+  mirrors nothing itself.
 
-### 2.6 Light, haze, night lights
+### 2.6 Light, haze, night lights and materials (L1, L4, L5, V2, V4)
 
-- Grade, exposure, ambient and tint come from the live sky only (`sceneLightV2`, `78-scene-host.js`).
-- Haze from depth (v2 7.1) per entity.
-- Night lights from library glow parts (windows, lamps, boat portholes, signals) with per-window random
-  thresholds (`_sccWindowU`); pools of light on the ground surfaces beneath lamps.
-- The scene has NO light key. The validator rejects `grade`, `light`, `tint`, `exposure`, `ambient`,
-  `shadow`, `reflect`, `mirror`, `ripple`, `glint`, `colour` anywhere.
+- Sun and moon from the real almanac for the scene's lat/lon and date/time; sky gradient, ambient and light colour from the
+  sun's elevation (dawn, noon, golden hour, dusk, night): the v2 live sky (`K.live`, `sceneLightV2`) behind `worldSkyOf(ctx)`.
+  Sky and water gradients are dithered (no banding, 19).
+- Colour comes from MATERIALS (15.2): each library part has a material; the engine colours it from the season, the light, the
+  weather (wet darkening, frost and snow) and the haze of its depth.
+- Night lights come from the library's glow parts only (windows, lamps, portholes, signals, head and tail lights, lit tram and
+  train windows): windows by a per-window seeded threshold against the sun's elevation (`worldKbState` lit share), lamps with
+  pools of light on the ground beneath, the moon's glitter on water.
+- Weather light: overcast flattens shadows, fog hazes by depth, rain darkens and wets (materials).
+- The scene has NO light key. The validator rejects `grade`, `light`, `tint`, `exposure`, `ambient`, `shadow`, `reflect`,
+  `mirror`, `ripple`, `glint`, `colour` anywhere (L3); library parts named as shadows or reflections are never drawn.
 
-### 2.7 Backdrop bands (no empty backgrounds)
+### 2.7 Backdrop bands (no empty backgrounds; B1, B2, C5)
 
-`backdrop: { style, skyline? }` is REQUIRED. Styles are engine presets that generate 2-4 bands at fixed
-depths (e.g. 300, 800, 2500 m) from library objects with seeded clustered scatter: `heath`, `woodland`,
-`downs`, `farmland`, `town-low`, `city-victorian`, `city-sheffield-hills`, `city-manchester-towers`,
-`canal-wooded`, `coast`. `skyline` lists real far landmarks (object id + bearing + distance) placed
-in world coordinates. The load check `worldCoverage` measures the share of the frame below the horizon
-row that is sky-only or bare ground; > 15 % bare is an error with the offending screen region named.
+`backdrop: { style, skyline? }` is optional in v3.1 (the default style comes from `place.style`). Styles are engine presets
+(`WORLD_BACKDROP_STYLES`) that generate 2-4 bands at fixed depths (e.g. 200, 600, 1800 m) from library objects with seeded
+clustered scatter: `heath`, `woodland`, `downs`, `farmland`, `town-low`, `city-victorian`, `city-sheffield-hills`,
+`city-manchester-towers`, `canal-wooded`, `coast`. `skyline` lists real far landmarks (object id, bearing, distance, `src`)
+placed in world coordinates. Bands haze by distance, follow the seasons and light at night (window share). The backdrop shows
+wherever sky meets ground and YIELDS wherever the scene or its skyline already has something in that bearing range (no
+duplicate skylines). `worldCoverage` measures bare frame and open horizon (> 15 % of either is `emptyBackground`).
+
+### 2.8 The world compositor (R1-R5, F3, F4, V5)
+
+A world scene uses the v2 renderer as a base layer only: sky, clouds, ground surfaces, base water and weather particles. The
+statics are NOT v2 placements on the live canvas any more. A render pass (`world-frame`, `79-world-5frame.js`) draws:
+
+- at bake: D's chunks into their bitmaps (sprites through the v2 rasteriser and sprite cache, coloured by materials, with their
+  shadows and lights), and the water mirror of the statics (2.5);
+- per frame: the chunks and the agents in `worldFrameOrder` order with the occluder redraws, the agents' shadows, the water
+  mirror of the agents, the lights.
+
+Caches are keyed by what they depend on (V5): chunk bitmaps by season state, light band, weather and snow; the water mirror by
+the same plus the ripple phase bucket; a change of time re-grades and re-lights without re-rasterising the statics. The SVG
+still (reduced motion, small tiles; F4) keeps drawing the derived v2 data with statics. The scene clock starts at first show
+(R5), pauses when hidden and resumes without a jump (M8); re-renders of the app never restart it or re-roll its life (G10).
 
 ## 3. Navigation
 
 ### 3.1 The walkable map
 
-`worldNavBuild(world)` rasterises surfaces into per-layer grids (cell = 0.5 m to z 60 m, 2 m from 60 to
-300 m; nothing beyond 300 m moves except flyers and far trains on rails):
+`worldNavBuild(world)` rasterises surfaces into per-layer grids: cell 0.5 m to z 60 m and 2 m from 60 to 300 m (two grids
+joined at 60 m; nothing beyond 300 m moves except flyers and far trains on rails). Never coarsen the near grid to fit a cap:
+narrow diagonal paths must stay connected.
 
 | layer | made from | used by |
 |---|---|---|
-| `walk` | walk surfaces, decks (with their y) | people, dogs |
+| `walk` | walk surfaces, decks (with their y; one sub-layer per level, joined by stairs and ramps) | people, dogs |
 | `graze` | grass, field, heath | grazers, ground birds |
-| `swim` | water minus solids, minus `shallow` margin for boats | ducks, swans, coots, grebes, boats (boats use a dilated solid mask: their half-beam) |
+| `swim` | water minus solids, minus `shallow` margin for boats | ducks, swans, coots, grebes, boats (boats use their half-beam) |
 | `wade` | water within `shallow` of edges, reeds | herons, egrets |
-| `drive` | roads | vehicles |
-| `rail` | rail centre lines (1D, no grid) | trains, trams |
+| `drive` | road lanes (directed, UK left), crossings | vehicles, cyclists |
+| `rail` | rail centre lines (1D) | trains, trams |
 
-Solid footprints are cut out of every layer, dilated by the mover's radius (person 0.25 m, dog 0.2,
-duck 0.15, swan 0.3, boat half-beam). Gates are solid unless `open: true`. Hedges are solid. Edge cells at
-the frame edge and cells behind cover (screen-occluded by a solid nearer than them) are marked `spawn`.
+Solid footprints are cut out of every layer, dilated by the mover's radius (person 0.25 m, dog 0.2, duck 0.15, swan 0.3, boat
+half-beam). Gates are solid unless `open: true`. Hedges are solid. `overhead` spans cut nothing beneath them. Spawn cells: the
+first row BEYOND the near band, the cells just outside the real frustum sides, doors, stops, and cells behind cover
+(screen-occluded by a solid nearer than them).
 
 ### 3.2 Paths
 
-- Goals are few (frame edges, benches, moorings, points of interest), so each goal gets a cached
-  **flow field** (Dijkstra over the layer, lazy, at most 32 per scene). Per-agent cost is O(1) per tick.
-- Ad-hoc goals (a dog chasing a stick, a heron's next stalk spot) use A* on the same grid, capped at
-  2,000 expansions, then string-pulled.
-- Cost weights: paths 1, grass 1.6, crossing 1.2, deck 1; avoid cells near the camera that break the near
-  band (`moverNear`: depth < `f * h / 405`) with cost infinity unless the entity is `framed`.
-- A path is valid only if every cell is on the agent's layer; an agent can never be stepped into a
-  non-layer cell (the integrator clamps: a step that would enter a forbidden cell slides along the edge).
+- Goals are few (frame edges, benches, moorings, stops, points of interest), so each goal gets a cached flow field
+  (Dijkstra over the layer, lazy, at most 32 per scene). Per-agent cost is O(1) per tick. Edge and surface goals always use
+  flow fields.
+- Ad-hoc goals (a dog chasing a ball, a heron's next stalk spot) use A* on the same grid, capped at 2,000 expansions, then
+  string-pulled. A failed route backs off (no retry for 2-8 s, then another goal); it is never retried every tick.
+- Cost weights: paths 1, grass 1.6, crossing 1.2, deck 1; the near band (`depth < f * h / 405`) costs infinity unless the
+  entity is `framed`.
+- A path is valid only if every cell is on the agent's layer; `worldStep` clamps a step that would enter a forbidden cell to a
+  slide along the edge.
 
-### 3.3 Local avoidance
+### 3.3 Local avoidance and crowd physics (Y4)
 
-Velocity-obstacle lite (RVO-style, 6 neighbours, 1.5 s horizon) between agents on the same layer, in a
-uniform spatial hash (2 m cells). Pairs on different layers do not interact (a duck under a bridge, a
-walker above). Groups (a couple, a dog and walker) share a leader and keep formation offsets. A stuck
-detector (speed < 10 % of desired for 3 s) re-plans; after two re-plans the agent idles then leaves.
+Steering (seek, arrive, separate, avoid) with velocity-obstacle avoidance (6 neighbours, 1.5 s horizon) between agents on the
+same layer and level, through the shared spatial index (11.5). Personal space by setting (rural, village, city centre),
+queues at stops and benches, groups keep formation offsets round a leader, speeds by age and gait. A stuck detector (speed
+< 10 % of desired for 3 s) re-plans; after two re-plans the agent idles, then leaves by the nearest spawn cell.
 
-## 4. Characters
+## 4. Characters (A1-A11, M6, T1)
 
 ### 4.1 State machines
 
-States: `walk, turn, idle, look, sit, chat, graze, swim, dabble, dive, fly, stalk, perch, ride`.
-Each class has a table (`worldBrains[cls]`): allowed states, durations, speeds and animation clip names
-from the object library (walk cycle, peck, dip). Transitions are data, e.g. for `duck`:
+States: `walk, turn, idle, look, sit, chat, graze, swim, dabble, dive, fly, stalk, perch, ride, drive, wait, board`. Each class
+has a table (`worldBrains[cls]`): allowed states, durations, speeds and animation clip names. Transitions are data, e.g. for
+`duck`:
 
 ```js
 duck: { start: 'swim', states: {
@@ -229,238 +333,558 @@ duck: { start: 'swim', states: {
 
 ### 4.2 Goals
 
-A character runs a goal list: `[{ go: 'bench-1' }, { do: 'sit', for: 20 }, { leave: 'E' }]`. Goal verbs:
-`go <target>`, `do <state> for <s>`, `wander <surface> for <s>`, `follow <id>`, `meet <id>` (then chat),
-`leave <edge|cover>`. Targets are entity ids, surface ids, edge letters or `[x, z]`.
+A character runs a goal list: `[{ go: 'bench-1' }, { do: 'sit', for: 20 }, { leave: 'far' }]`. Verbs: `go <target>`,
+`do <state> for <s>`, `wander <surface> for <s>`, `follow <id>`, `meet <id>` (then chat), `sit <bench>` (respects the bench's
+capacity), `wait <stop>` then `board`, `enter <door>`, `fish <swim>`, `feed <water>`, `view <point>`, `leave <edge | cover>`.
+Targets are entity ids, surface ids, edges or `[x, z]`. Edges: `left`, `right`, `far`, `near` (frame edges); in a camera-frame
+spec `W`, `E`, `N`, `S` are their aliases. Movers are never stuck, walking on the spot or going nowhere (invariant `stuck`).
 
-### 4.3 Facing and scale
+### 4.3 Facing, scale and variety
 
-- Facing from velocity in WORLD space projected to the camera: the angle between the velocity and the view
-  ray selects one of 8 directions = 5 drawn views (`side, q-front, front, q-back, back`) + 3 mirrors.
-  Hysteresis 15 degrees. Classes with only `side` views get turned only side-on paths by the brain.
-- Scale is `f * size.h / z` from the descriptor. There is no scale knob anywhere.
-- Statics: `facing` (world degrees) picks the view in the same way.
+- Facing from velocity in WORLD space against the view ray: one of 8 directions = 5 drawn views (`side, q-front, front, q-back,
+  back`) + 3 mirrors, hysteresis 15 degrees (A5). A standing mover keeps its last facing or faces its point of interest.
+- Scale is `f * h / z` with `h` from the descriptor's range for its pose and age, seeded per agent (A10, K8). There is no scale
+  knob anywhere. No giants near the camera: the near band is reserved for framing.
+- Variety (A11): variant, outfit colours, gait and breed are seeded per agent from the descriptor's pools; two agents walking
+  together never share a variant.
 
-### 4.4 Spawn and despawn
+### 4.4 Populations, spawn and despawn (A1, A3, C2)
 
-Only at `spawn` cells (frame edges or behind cover). A population that cannot find a spawn cell on its
-layer is a load error. Despawn on reaching a leave goal. No in-frame loops; no popping. For stills and
-captures, the life sim is warmed up deterministically (seed + scene time, fixed 0.25 s step, 90 s).
+Scenes declare who lives there (`{ who: 'walkers', on: 'tow', rate: '6/min', mix: { ... } }`, `{ who: 'mallard', count: 8 }`,
+`{ who: 'tram', every: '3min' }`); the engine spawns, routes and despawns them. Density scales with
+`worldKbDensity(who, ctx, placeType)` (hour, weekday, season, weather). Spawn and despawn only at spawn cells (3.1); never in
+the near clip band; never a half-person left at a frame edge. A population that cannot find a spawn cell on its layer is a
+load-log entry (the population is dropped), not a crash. For stills and captures the life sim is warmed up deterministically
+(seed + scene time, fixed 0.25 s step, 90 s).
 
-## 5. Scene format v3
+### 4.5 Groups, traffic, schedules and reactions (A7, A8, A9, T1, M6)
+
+- Groups move as units: couples, families, friends, a dog and its walker (the dog roams within the lead's length; the lead is
+  an attached entity drawn between them).
+- Water animals swim in loose groups clear of hulls, dabble, preen and take off; herons stalk margins; birds perch only on
+  perch points from the descriptors (branches, roofs, posts, wires, rails) and fly round building and tree volumes.
+- Vehicles keep to directed lanes on the left, keep gaps, stop at crossings and stops (buses at stops, trams at platforms),
+  turn on curves with their views and never pass through each other. Trains run on rails to a timetable at a plausible
+  speed. Boats under way travel mid-channel at walking pace with wakes; moored boats never move.
+- Schedules (trams, trains, boats) are periodic and their periods divide the loop length `WORLD_LOOP_S` (T1).
+- Reactions are scripted by the engine from populations and events (11.7), never hand-timed: ducks paddle away from a dog at
+  the bank, pigeons lift when someone walks through and settle again, people wait for a tram, board and get off, a heron
+  freezes then strikes, a cyclist rings and passes.
+
+## 5. Scene format v3.1
 
 ### 5.1 Shape
 
 ```js
-worldAdd('uk-south-east', { id: 'fleet-canal-2-w3', label: 'Basingstoke Canal', site: 'Basingstoke Canal, Fleet',
-  tags: [...], liveSky: { lat: 51.279, lon: -0.836 } }, {
-  v: 3,
-  place: { lat: 51.279, lon: -0.836, alt: 68, region: 'hampshire' },
-  camera: { eye: 1.65, fov: 62, horizon: 455, heading: 70 },
+worldAdd('uk-south-east', { id: 'fleet-canal', label: 'Basingstoke Canal', site: 'Basingstoke Canal, Fleet', county: 'hampshire',
+  ukPlace: 'fleet-canal', tags: [...] }, {
+  v: 3.1,
+  place: { lat: 51.2905, lon: -0.8228, alt: 68, region: 'hampshire', style: 'canal-wooded' },   // origin of the place frame
+  cameras: [                                                                                     // 1-4 views of ONE world
+    { id: 'towpath-sw', at: [12, -4], height: 1.65, lookAt: 'pondtail-bridge', fov: 62 },
+    { id: 'bridge-ne', at: [40, 210], height: 4.2, lookAt: 35, fov: 58 },
+    { id: 'moorings', frame: ['nb1', 'nb2'] },
+  ],
   surfaces: [
-    { id: 'cut', kind: 'water', water: 'canal', poly: [[-30, 8], [6, 8], [40, 140], [10, 160]], shallow: 0.6 },
-    { id: 'tow', kind: 'towpath', path: [[8, 5], [14, 60], [30, 160]], width: 2.4 },
+    { id: 'cut', kind: 'water', water: 'canal', poly: [...], shallow: 0.6, hint: 'calm' },
+    { id: 'tow', kind: 'towpath', path: [...], width: 2.4 },
     { id: 'verge', kind: 'grass', poly: [...] },
-    { id: 'hedge-r', kind: 'hedge', path: [...], width: 1.2, obj: 'hedge.canal-hawthorn' },
   ],
+  lines: [{ id: 'hedge-r', kind: 'hedge', path: [...], width: 1.2 }],
+  buildings: [{ id: 'lock-cottage', foot: [...], storeys: 2, roof: 'pitched', style: 'stone-cottage' }],
   entities: [
-    { obj: 'boat.narrowboat', at: [-2, 14], facing: 20, attach: 'water', variant: 'green-cream', id: 'nb1' },
-    { obj: 'bench.wood', at: [11, 22], facing: 250, id: 'bench-1' },
+    { obj: 'boat.narrowboat', at: [-2, 14], id: 'nb1' },        // facing from K3 (parallel to the bank); waterline from K
+    { obj: 'bench.wood', at: [11, 22], id: 'bench-1' },          // faces the path (K3)
     { obj: 'tree.canal-willow', at: [-12, 18] },
-    { cluster: 'reed.canal', on: 'cut', edge: true, n: 40, seed: 3 },   // clustered scatter, world metres
+    { cluster: 'reed.canal', on: 'cut', edge: true, n: 40, seed: 3 },
   ],
-  landmarks: [ { obj: 'bridge.pondtail', at: [4, 120], facing: 0, src: 'listing / OS map' } ],
+  landmarks: [{ obj: 'bridge.pondtail', at: [4, 120], id: 'pondtail-bridge', src: 'listing / OS map' }],
   life: [
-    { who: 'walkers', on: 'tow', rate: '6/min', mix: { stroll: 0.6, brisk: 0.2, 'dog-walker': 0.2 }, edges: ['S', 'N'] },
-    { who: 'visit', mix: { elderly: 1 }, rate: '1/3min', goals: [{ go: 'bench-1' }, { do: 'sit', for: [20, 60] }, { leave: 'N' }] },
+    { who: 'walkers', on: 'tow', rate: '6/min', mix: { stroll: 0.6, brisk: 0.2, 'dog-walker': 0.2 }, edges: ['near', 'far'] },
+    { who: 'visit', mix: { elderly: 1 }, rate: '1/3min', goals: [{ sit: 'bench-1', for: [20, 60] }, { leave: 'far' }] },
     { who: 'mallard', count: 8, on: 'cut' },
-    { who: 'mute-swan', count: 2, on: 'cut', group: 'pair' },
-    { who: 'heron', count: 1, on: 'cut', state: 'stalk' },
+    { who: 'mute-swan', count: 2, on: 'cut' },                    // pairs from K5
     { who: 'narrowboat-cruising', on: 'cut', every: '6min' },
   ],
-  backdrop: { style: 'canal-wooded' },
   seed: 2,
 });
 ```
 
-### 5.2 Rules (the validator, `worldValidate(spec) -> { ok, errors: [{ path, rule, msg, fix }] }`)
+Everything not given is derived or filled: facings (K3), parents (K4), edge dressing and planting (P5, P6), framing (C3),
+the backdrop from `place.style`, density by time (A1). `fill: false` switches the auto-fill off.
 
-- Closed key sets at every level. Unknown key = error. Any of `X, Y, px, s, scale, layer, flip, tint,
-  shadow, reflect, light, grade, mirror, ripple, glint, clarity, colour, path` (on an entity), `y` (on a
-  grounded entity) = error `screenOrLookField`.
-- Every `obj` has a descriptor (`unknownSize`); every `variant` exists (`unknownVariant`).
-- Attachment legal for the class and the surface under `at` (`badAttach`: a duck on grass with
-  `attach: 'water'`, a boat on a towpath, a train off rail). Default attach = the class's first legal one.
-- Solid footprints do not overlap other solids (`overlap`, tolerance 5 cm) and do not cover a whole
-  path width (`blocksPath`, unless `blocks: true`).
-- Every life population resolves: its layer exists, it has a spawn and a leave cell, its goals are
-  reachable (`unreachable`).
-- `backdrop.style` is a known preset; `worldCoverage` passes (`emptyBackground`).
-- Layout uniqueness across views of the same place (`templated`): the four cameras must differ by
-  >= 25 degrees heading or >= 30 m position, and the entity layout signature (a 6x6 grid of
-  object-class histograms in screen space) must differ by Jaccard >= 0.35 between any two views.
-- Grid lint for clusters (v2 rule reused) and the composition rules of `SCENE_LESSONS.md` A
-  (bare area <= 15 %; landmarks carry `src`).
+### 5.2 Rules (the validator, `worldValidate(spec) -> { ok, errors: [{ path, rule, msg, fix, severity }] }`)
 
-A spec that fails does not load: the registry keeps the scene's previous version (v2) and logs the errors.
+Every error has a friendly message and a fix (U2) and a severity: `repair` (the engine strips or corrects it and logs it),
+`drop` (the entry is dropped and logged), `fatal` (none in practice: a spec with no camera gets a default camera, a spec with no
+surfaces gets bare ground). `worldAdd` registers the repaired spec; `world validate` reports every error and exits 1.
 
-## 6. Converter v2 / v1 -> v3
+| rule | when | repair at load |
+|---|---|---|
+| `unknownKey`, `screenOrLookField`, `seasonPinned`, `perSeasonData` (V1) | closed key sets; look keys (`X, Y, px, s, scale, layer, flip, tint, shadow, reflect, light, grade, mirror, ripple, glint, clarity, colour`, `y` on a grounded entity); any per-season, per-time or per-weather data (seasonal variants, night copies, colour lists) | strip the key, log |
+| `unknownSize`, `unknownVariant`, `careRule` (K9), `regionInvalid` (K7) | an object with no descriptor, a variant it lacks, an object that breaks the care rules or does not belong in the region | drop (variant: the seeded default), log |
+| `badAttach`, `overlap`, `blocksPath`, `orphan` (K4) | habitat, footprint and parent rules | snap, move, re-attach or drop (12.2), log |
+| `badSurface`, `unknownSurface`, `badValue`, `badType`, `dupId`, `missingField` | malformed entries | drop the entry or default the value, log |
+| `unknownWho`, `unreachable` | a population that resolves to nothing | drop the population, log |
+| `unknownBackdrop`, `emptyBackground`, `landmarkSrc` | backdrop and landmark sources | default style from `place.style`; a landmark without `src` stays and is flagged |
+| `templated` (C7) | two cameras of one place too alike (< 25 degrees heading and < 30 m apart, layout signature Jaccard < 0.35) | warning only |
+| `badVersion` | unknown `v` | migrate (5.3) |
+
+### 5.3 Versions (G11)
+
+`v: 3` (camera frame, one `camera`) and `v: 3.1` (place frame, `cameras`) are both valid. `worldMigrate(spec)` upgrades a
+v3.0 spec to v3.1 in memory (one camera at the place origin with the old heading; facings and edges re-expressed); the
+validator knows every version. v1 and v2 scenes keep working until they are converted (I2); the converter (6) writes v3.1.
+
+## 6. Converter v2 / v1 -> v3.1
 
 `node tools/world.mjs convert <pack>/<id> [--out src/app/79-world-zscene-<id>.js] [--report]`
 
-1. Load the scene sources in Node (`tools/lib/world/load.mjs`, same evaluation as `scene-page.mjs` plus
-   `79-world-*`), call the item's builder to get its expanded data (v2 views are built by functions such as
-   `sceneCanalViewV2`).
-2. v2: `camera` copied; `surfaces[].polyM` -> `poly` (d -> z); water regions -> `kind: 'water'` with only
-   geometry and kind; ground placements `(x, d)` -> `at: [x, z]` with `facing` from their view;
-   scatter / cover -> `cluster` entries; flows and `sceneBehave` actors -> `life` populations (rate from
-   density, mix from the flow mix); landmarks kept with `src` from the header comment.
-3. Pixel placements (v1 or v2 `pixel`): unproject the foot row with `sceneUnproject`; sky and horizon-layer
-   art (no foot) -> a `backdrop.skyline` entry or dropped; each one is listed under `review` in the report.
+1. Load the scene sources in Node (`tools/lib/world/load.mjs`), call the item's builder to get its expanded data.
+2. v2: `camera` copied; `surfaces[].polyM` -> `poly`; water regions -> `kind: 'water'` with only geometry and kind; ground
+   placements `(x, d)` -> `at: [x, z]`; scatter, cover, hedgerows and planting -> `cluster` entries; flows and `sceneBehave`
+   actors -> `life` populations (rate from density, mix from the flow mix); landmarks kept with `src`.
+3. Pixel placements (v1 or v2 `pixel`): unproject the foot row with `sceneUnproject`; sky and horizon-layer art (no foot) ->
+   a `backdrop.skyline` entry or dropped; each one is listed under `review` in the report.
 4. v1 scenes: synthesize a camera from `view` (horizon, fov, heading, eye 1.65) and do step 3 for all.
-5. Dropped fields (light, tint, reflect, layer, scale, hand paths) are listed in the report, never kept.
-6. The output is validated; failures are listed with the `fix` hints. Converted scenes are new items
-   (`<id>-w3`) and never replace or delete the original until the user approves.
+5. Dropped fields (light, tint, reflect, layer, scale, hand paths, per-scene water looks) are listed in the report, never kept.
+6. The converted scene must be at least as rich as its source (P7, U4): `world critic` compares the two richness scores and the
+   conversion fails below.
+7. Converted scenes are new items (`<id>-w3`) and never replace or delete the original until the user approves.
 
-## 7. Performance plan and budget
+## 7. Performance plan and budget (F1-F4, Y7, Z1, Z2)
 
 | item | budget | how |
 |---|---|---|
-| cold load (validate + nav + chunks + bake) | < 5 s at `--gpu --throttle=4`; world part < 600 ms | nav grids are typed arrays; flow fields lazy; bake sliced with `env.slice()` |
-| frame total | < 14 ms (target 8) at throttle 4 | |
-| life sim | < 1.5 ms for 60 agents at 15 Hz, interpolated per frame | flow fields, spatial hash, no allocation in tick |
-| sort + interleave | < 0.7 ms | chunks pre-sorted; movers insertion-sorted (nearly sorted frame to frame) |
+| cold load (migrate + repair + build + place + fill + nav + chunks + bake) | < 5 s at `--gpu --throttle=4`; world part < 600 ms | nav grids are typed arrays; flow fields lazy; bake sliced |
+| frame total | median < 8 ms, p95 < 14 ms at throttle 4, 1920x1080 @1.25 and 3440x1440 | |
+| per system | life < 1.5 ms (60 agents), anim < 0.5, attach < 0.1, wind < 0.2, particles < 0.5, water < 0.8, light < 0.3, order < 0.7 | each system declares `budgetMs`; over budget it degrades (11.3) |
 | occluder redraws | < 40 per frame | sprite cache blits |
-| chunk bitmaps | <= 24, total <= 1.5 x frame area of pixels | clipped to bbox; backdrop chunk shared across seasons only when no seasonal objects |
-| distinct sprites | < 600 | movers share clip frames across instances; clusters use clump sprites |
-| agents on screen | <= 60 (cities), <= 25 (nature) | populations scaled by the v2 time-of-day density profile |
-| governor | reuse v2 13.2 step-down order, then agents x 0.7, then sim 10 Hz | |
+| chunk bitmaps | <= 24, total <= 1.5 x frame area of pixels | clipped to bbox |
+| distinct sprites | < 600 | movers share clip frames; clusters use clump sprites |
+| agents on screen | <= 60 (cities), <= 25 (nature) | populations scaled by density |
+| matrix extremes (Z1) | the same budgets at a snowy night with many lights | |
+| authoring (Z2) | a new place (one world + 4 cameras) to a first good render in < 30 minutes, no glitch rounds | measured per test scene |
 
-`node tools/world.mjs perf <ref>` reports each line; tests fail at 1.2x budget.
+`node tools/world.mjs perf <ref>` reports each line and the per-system profile (G12); tests fail at 1.2x budget.
 
-## 8. Modules (6 builders + integrator)
+## 8. Work packages (second pass)
 
-Load order: `79-world-0core < 79-world-1nav < 79-world-2life < 79-world-3order < 79-world-4light <
-79-world-5host < 79-world-zscene-*`. Files 0-2 and the scenes are pure (Node + browser); 3-5 are browser
-plus a pure part guarded by `typeof document`. Every function is prefixed `world`. No builder edits an
-existing file; the integrator makes the few hook edits (8.7).
+The first pass built modules A-F (core, nav, life, order, light/backdrop, host) and the tools. This pass splits the remaining
+work into 8 packages that build in parallel. Each owns ONLY its files; nobody edits `70-*`, `71-*`, `72-*` or `78-*` files (a
+needed hook is reported to the orchestrator); the three `79-world-zscene-*` files are frozen (the engine must make them right).
+Each package uses a private name prefix, reaches other packages' functions through `typeof` guards (a missing package removes
+a feature, never the scene), and runs `node build.mjs --syntax` and its own tests before finishing.
 
-### 8.1 A: core, descriptors and validator
+| key | files | requirement ids |
+|---|---|---|
+| `kb` | `src/app/79-world-0kb.js`, `src/app/79-world-1fill.js`, `tests/world-kb.test.mjs`, `tests/world-fill.test.mjs` | K1-K9, S1, S4, V3, P5, P6, P7, P8, C3, C6 |
+| `sense` | `src/app/79-world-0core.js`, `src/app/79-world-1place.js`, `tests/world-core.test.mjs`, `tests/world-place.test.mjs`, `tests/fixtures/world/bad-*.json`, `tests/fixtures/world/repair-*.json` | W1-W4, P1-P4, C7, U1, U2, G8, G11, V1, Q7, I1, I2, L3 |
+| `systems` | `src/app/79-world-0sys.js`, `src/app/79-world-6wind.js`, `src/app/79-world-6particles.js`, `tests/world-sys.test.mjs`, `tests/world-wind.test.mjs` | G1-G7, G12, Y1, Y2, Y5, Y6, Y7, S3, M3 |
+| `life` | `src/app/79-world-1nav.js`, `src/app/79-world-2brains.js`, `src/app/79-world-2life.js`, `src/app/79-world-2traffic.js`, `tests/world-nav.test.mjs`, `tests/world-life.test.mjs`, `tests/world-traffic.test.mjs` | A1-A5, A7-A11, Y4, M6, T1, C2 |
+| `appearance` | `src/app/79-world-1camera.js`, `src/app/79-world-4extrude.js`, `src/app/79-world-6anim.js`, `tests/world-camera.test.mjs`, `tests/world-extrude.test.mjs`, `tests/world-anim.test.mjs` | W5, Q1-Q6, C1, C4, M1, M2, M4, M5, M7, A6 |
+| `render` | `src/app/79-world-3order.js`, `src/app/79-world-5frame.js`, `src/app/79-world-5host.js`, `tests/world-order.test.mjs`, `tests/world-host.test.mjs`, `tests/world-integrator.test.mjs` | R1-R5, M8, F3, F4, V5, G10, T2 |
+| `look` | `src/app/79-world-4light.js`, `src/app/79-world-4backdrop.js`, `src/app/79-world-4water.js`, `src/app/79-world-4material.js`, `tests/world-light.test.mjs`, `tests/world-water.test.mjs`, `tests/world-material.test.mjs` | L1, L2, L4, L5, H1-H6, S2, B1, B2, C5, V2, V4, Y3 |
+| `tools` | `tools/world.mjs`, `tools/lib/world/{convert,load,perf,refs,capture,compare,critic,sheet,adversarial}.mjs`, `src/app/79-world-9inv.js`, `src/app/79-world-9debug.js`, `tests/world-tools.test.mjs`, `tests/world-convert.test.mjs`, `tests/world-invariants.test.mjs`, `tests/world-acceptance.test.mjs`, `tests/fixtures/world/adversarial/*.json` | U3, U4, V6, V7, F1, F2, Z1, Z2, X1-X4, I3, G9 |
 
-- Files: `src/app/79-world-0core.js`, `tools/lib/world/load.mjs`, `tests/world-core.test.mjs`,
-  `tests/fixtures/world/bad-*.json` (>= 30 rejected fixtures).
-- Interface:
-  `worldObjectInfo(id) -> Desc | null`; `worldValidate(spec) -> { ok, errors }`;
-  `worldBuild(spec, { season }) -> World { cam, surfaces, entities, life, backdrop, seed, problems }`;
-  `worldSurfaceAt(world, x, z) -> surface | null`; `worldFrontZ(foot, x) -> z`;
-  `worldAdd(pack, meta, spec)` (registers through `sceneAdd` with data `{ v: 3, spec }`; integration: the item keeps the spec in `item.worldSpec` and, with F loaded, its `scene` becomes a thunk of the derived v2 data, `worldHostData`, so the host's live canvas, the prebaked player, the bake cache, `sceneSvg` and the tools all draw it unchanged).
-- Acceptance: every bad fixture rejected with the right `rule`; a grounded entity's `y` equals
-  `sceneGroundHeight`; a floater's waterline equals the water level; every library id used by the three
-  test scenes has a descriptor; `load.mjs` evaluates sources in < 1.5 s in Node.
+Section 19 pitfalls: z-fighting, LOD popping and chunk seams -> render; banding, thin things, moving shadows, shade under
+bridges -> look; wide aspect and tiny screens -> appearance. The section 16 suite -> tools.
 
-### 8.2 B: navigation
+Load order is the build's name order: `0core < 0kb < 0sys < 1camera < 1fill < 1nav < 1place < 2brains < 2life < 2traffic <
+3order < 4backdrop < 4extrude < 4light < 4material < 4water < 5frame < 5host < 6anim < 6particles < 6wind < 9debug < 9inv <
+zscene-*`. Nothing may run at load except constants, `worldSystem(...)` and `sceneRenderPassDefine(...)` registrations (and the
+zscenes' `worldAdd`), so the order between packages does not matter at runtime.
 
-- Files: `src/app/79-world-1nav.js`, `tests/world-nav.test.mjs`.
-- Interface: `worldNavBuild(world) -> Nav`; `worldNavLayer(nav, layer) -> Grid { w, h, cell, ox, oz, data }`;
-  `worldFlowField(nav, layer, goal) -> Field`; `worldPath(nav, layer, from, to) -> [[x, z], ...] | null`;
-  `worldStep(nav, layer, pos, vel, r, dt) -> pos` (clamped slide); `worldSpawnCells(nav, layer) -> cells`.
-- Acceptance: on synthetic worlds, no path cell intersects any dilated solid; boats keep half-beam off
-  banks; closed gate blocks, open gate passes; flow-field build < 15 ms for a 160 x 120 m grid at 0.5 m;
-  `worldStep` never returns a forbidden cell over 10^5 random steps.
-
-### 8.3 C: life (characters, populations, avoidance)
-
-- Files: `src/app/79-world-2life.js`, `src/app/79-world-2brains.js` (class tables), `tests/world-life.test.mjs`.
-- Interface: `worldLifeInit(world, nav, t0) -> Life`; `worldLifeTick(life, dt)`;
-  `worldAgents(life) -> [{ id, cls, obj, variant, x, y, z, vx, vz, state, clip, phase, view, mirror, host }]`;
-  `worldBrains` (data). Uses only B for movement.
-- Acceptance (600 s simulated per test scene): 0 agents ever on a forbidden cell; 0 floaters with
-  `y != water level`; no agent appears or vanishes except on a spawn cell; turn rate within class limit;
-  view matches the velocity bucket; stuck agents leave within 15 s; tick < 1.5 ms for 60 agents in Node;
-  same seed + time -> identical positions.
-
-### 8.4 D: depth order and chunks
-
-- Files: `src/app/79-world-3order.js`, `tests/world-order.test.mjs`.
-- Interface: `worldChunks(world, nav, cam) -> [{ i, z0, z1, ents, bbox }]`;
-  `worldFrameOrder(chunks, agents, cam) -> [{ kind: 'chunk' | 'agent' | 'redraw', ref }]`;
-  `worldOrderCheck(order, boxes) -> violations`.
-- Acceptance: random worlds of 500 statics and 60 agents: `worldOrderCheck` = 0 violations over 1,000
-  frames; long boat seen at 30 degrees correctly in front of / behind a swan on either side; chunks <= 24;
-  order < 0.7 ms.
-
-### 8.5 E: light, shadow, reflection, backdrop
-
-- Files: `src/app/79-world-4light.js`, `src/app/79-world-4backdrop.js`, `tests/world-light.test.mjs`.
-- Interface: `worldBackdrop(world, cam, season) -> entities[]` (far bands in world metres);
-  `worldCoverage(world, cam) -> { bare, regions }`;
-  `worldReflectPlan(world, cam) -> [{ ref, rowY, clip, shear }]`;
-  `worldShadowPlan(world, cam, sun) -> [{ ref, poly }]`; `worldLights(world) -> lights[]`.
-  The renderer half registers passes with `sceneRenderPassDefine` (v2 13.1) and reuses
-  `78-scene-water.js` / `78-scene-shadow.js` functions; it does not edit them.
-- Acceptance: a heron, a post and a boat each reflect about their own waterline (pixel row equality
-  within 1 unit); a bank tree's reflection starts at the projected bank edge; no reflection outside water;
-  shadow direction rotates with sun azimuth across a day; a night render lights only library glow parts;
-  every backdrop style passes `worldCoverage` for the three test cameras.
-
-### 8.6 F: host, renderer glue, tools, converter
-
-- Files: `src/app/79-world-5host.js` (the v3 renderer: bake chunks, frame loop calling C/D/E, stats, the
-  governor; SVG still fallback = statics only via the v2 SVG path), `tools/world.mjs`,
-  `tools/lib/world/convert.mjs`, `tools/lib/world/perf.mjs`, `tests/world-convert.test.mjs`.
-- Interface: `worldRendererFor(item, canvas, o) -> r` with the same surface as the v2 renderer
-  (`start, stop, setTime, stats, still`); CLI `world validate | convert | render | motion | perf <ref>`.
-- Acceptance: the three converted specs validate; `world render` produces PNGs for 3 dates and night;
-  `world motion` overlays agent tracks with 0 red marks; perf report within budget.
-
-### 8.7 The integrator
-
-1. Hook edits (only after other agents finish with these files): in `78-scene-player.js` (or the host)
-   route `data.v === 3` to `worldRendererFor`; add `79-world-*` to `SCENE_SRC_RE` / `SCENE_BROWSER_RE` in
-   `tools/lib/scene-page.mjs` and `tools/lib/anim-sources.mjs`; register v3 items in a dev pack
-   `world-test` (hidden from users) until approved.
-2. Build the three test scenes (8.8) as `src/app/79-world-zscene-*.js`, first by `world convert`, then by
-   hand to the rich bar (`feedback`: Yateley-rich, never templated).
-3. Run: `node build.mjs --syntax`, `node --test tests/world-*.test.mjs`, `world render` (3 seasons +
-   night), `world motion`, `world perf`; compare side by side with the v2 view and proof Fleet Pond.
-4. Write the lessons back into `SCENE_LESSONS.md` (new section E: what v3 makes impossible).
-
-### 8.8 Test scenes
-
-| id | place | must show | life |
-|---|---|---|---|
-| `fleet-canal-2-w3` (`79-world-zscene-fleet-canal-2.js`) | Basingstoke Canal at Pondtail, towpath right | moored narrowboats nose to tail with deck walkable, willow, loosestrife and meadowsweet, bridge in distance, `canal-wooded` backdrop | towpath walkers 6/min (20 % dog), a boater stepping on deck, 8 mallards, swan pair, heron stalking the offside, a cruising boat every 6 min that ducks avoid |
-| `fleet-pond-2-w3` (`79-world-zscene-fleet-pond-2.js`) | Fleet Pond, the boardwalk through the reed bed | boardwalk as a deck surface over water, reeds as `reeds` surface, birch and sallow, railway embankment behind the pond | walkers on the boardwalk only, a train on the rail every 4 min (lit windows at night), heron in `wade`, kingfisher `perch` -> `dive` -> `perch` on a real post, coots |
-| `sheffield-kelham-1-w3` (`79-world-zscene-sheffield-kelham-1.js`) | Kelham Island, the Don by the weir | river with `weir` surface, riverside path, mill and brick buildings from the library, `city-sheffield-hills` backdrop with real skyline entries | crowds on paths 20/min with chat groups, cyclists on the road, ducks above and below the weir (weir solid to swimmers), goosanders diving |
-
-## 9. API summary (names are a contract)
+## 9. API summary (the contracts between packages)
 
 ```
-A  worldObjectInfo, worldValidate, worldBuild, worldSurfaceAt, worldFrontZ, worldAdd
-B  worldNavBuild, worldNavLayer, worldFlowField, worldPath, worldStep, worldSpawnCells
-C  worldLifeInit, worldLifeTick, worldAgents, worldBrains
-D  worldChunks, worldFrameOrder, worldOrderCheck
-E  worldBackdrop, worldCoverage, worldReflectPlan, worldShadowPlan, worldLights
-F  worldRendererFor; tools/world.mjs validate | convert | render | motion | perf
+kb          WORLD_KB_CLASSES, WORLD_KB_TAGS, worldKb, worldKbClassOf, worldKbSurfaceTags, worldKbHabitatOk, worldKbOrient,
+            worldKbWhen, worldKbState, worldKbDensity, worldKbSize, worldKbVariant, worldKbRegionOk, worldKbCare;
+            WORLD_FILL_STYLES, worldFill(world, o) -> log, worldRichness(world, cam) -> { near, mid, far, score }
+sense       worldMigrate, worldRepair(spec) -> { spec, log }, worldValidate, worldBuild(spec, { camera, season, ctx, fill }),
+            worldObjectInfo, worldSurfaceAt, worldFrontZ, worldPlaceProbe(world, x, z) -> Probe,
+            worldPlaceOk(world, e, x, z, facing) -> { ok, reason }, worldPlaceAdd(world, e, why) -> ent | null,
+            worldPlace(world) -> log, worldItem(meta, spec, o) -> item, worldAdd, worldAddLog(id), worldAddProblems
+systems     WORLD_PHASES, WORLD_TICK_HZ, WORLD_LOOP_S, worldSystem(def), worldSystemList, worldRun(world, o) -> Runner,
+            worldRng(world, sys, id), worldGrid(cell), worldBus(world), worldAttach, worldResolve, worldLod, worldTimeCtx;
+            worldWind(world, x, z, t) -> { dx, dz, s }, worldSway(ent, wind, t); worldEmit, worldParticles, worldBody
+life        worldNavBuild, worldNavLayer, worldNavOk, worldFlowField, worldFlowDir, worldPath, worldStep, worldSpawnCells;
+            worldLifeInit, worldLifeTick, worldAgents, worldBrains, worldLifeWho; worldTraffic(world, nav) -> { lanes, stops, timetable }
+appearance  worldCameraResolve(spec, i, o) -> camera, worldCameraXform(spec, i) -> { toCam, facing }, worldFrameCheck,
+            worldLandmarkCheck, worldOverscan, worldExtrude(world, cam) -> prims, worldExtrudeDraw, worldViewOf(ent, cam),
+            worldAnimOf(ent) -> anim, worldAnimHooks(ent) -> v2 AnimHooks
+render      worldChunks, worldFrameOrder, worldOrderCheck, worldHostData, worldRendererFor, worldFrameAt(scene, t) -> WorldFrame
+look        worldSkyOf(ctx), worldSunOf, worldShadowPlan, worldDrawShadows, worldLights, worldDrawLights, worldHazePlan,
+            WORLD_BACKDROP_STYLES, worldBackdrop, worldBackdropValidate, worldCoverage, worldWaterPlan(world, cam) -> regions,
+            worldWaterMirror(ctx, region, comp, owner, o), WORLD_MATERIALS, worldMaterialOf(obj, part, fill),
+            worldMaterialColour(mat, hex, mctx), worldMaterialKey(mctx)
+tools       WORLD_INVARIANTS, worldInvariants(frame, o) -> violations, worldDebug(env, o);
+            tools/world.mjs validate | convert | render | motion | perf | sheet [--matrix] | capture --full | critic | compare | adversarial | accept
 ```
+
+Shared shapes: the entity record (1.2), the descriptor (1.3), the probe (12.1), the time context (11.11), the load log (12.5)
+and the frame record (16.1).
 
 ## 10. Past mistakes and the rule that makes each impossible
 
-| mistake (SCENE_LESSONS) | v3 construction |
+| mistake (SCENE_LESSONS) | v3.1 construction |
 |---|---|
-| ducks floating | no `y` for floaters; `y` = water level - sink, derived |
-| through walls, boats, hedges, gates | nav cuts dilated solids; `worldStep` cannot enter a forbidden cell |
-| wrong layering, far boat over near walker | per-frame true-depth order with footprint fronts; no layers in the format; `worldOrderCheck` = 0 |
-| people inside objects / stuck | solids never overlap walk cells; stuck detector re-plans or leaves |
-| wrong scale | size only from descriptors; no scale field |
-| wrong facing / sliding sideways | view from world velocity, 5 views + mirrors, hysteresis |
-| popping mid-frame | spawn only at edge / cover cells |
-| giant walker at the lens | near band costs infinity in nav |
-| hand shadows, reflections, light | no such fields; engine passes only |
-| reflection offsets, missing under herons | mirror per entity about its own waterline |
-| trains off the line | trains attach to `rail` only |
-| kingfisher on a floating twig | `perch` needs a host entity with a perch point |
-| empty backgrounds, bare paving | backdrop required; `worldCoverage` <= 15 % bare |
-| templated layouts | `templated` rule across a place's views |
-| off-season objects | `seasonal` from descriptors; scenes cannot pin season |
-| slow loads | budget table, enforced by `world perf` in tests |
+| ducks floating | no `y` for floaters; `y` = water level - sink, derived; invariant `floating` |
+| boats overlapping the towpath | K1 `water` habitat tests the WHOLE footprint, inset from the banks; the solver snaps or drops |
+| through walls, boats, hedges, gates | nav cuts dilated solids; `worldStep` cannot enter a forbidden cell; invariant `inSolid` |
+| wrong layering, far boat over near walker | the world compositor draws D's chunks and agents in true-depth order; invariant `order` = 0 |
+| big things never occluding a mover | occluder redraws from D's list; size never exempts an occluder |
+| people inside objects / stuck | solids never overlap walk cells; stuck detector re-plans or leaves; invariant `stuck` |
+| wrong scale, seated people at adult height | size only from descriptors per pose and age; no scale field; invariant `giant` |
+| wrong facing / sliding sideways / sliding feet | view from world velocity with hysteresis; stride from speed; invariants `facing`, `slidingFeet` |
+| popping mid-frame | spawn only at spawn cells beyond the near band; invariant `popping` |
+| giant walker at the lens, half-person at the edge | near band costs infinity; spawn rows outside it; invariants `nearBand`, `edgeCut` |
+| hand shadows, reflections, light | no such fields (stripped and logged); engine passes only |
+| reflections offset, doubled, missing under herons | the water mirrors the composite per column about each owner's waterline (2.5); objects never reflect themselves |
+| trains off the line | trains attach to `rail` only; snapped or dropped |
+| kingfisher on a floating twig | perches only at descriptor perch points |
+| foliage hanging from nothing | K4 parent rules; orphans re-attached or dropped at load; invariant `orphan` |
+| empty backgrounds, bare paving, emptier conversions | backdrop by default; auto-fill and richness floor; invariants `bare`; critic >= source |
+| the near boat a flat cropped slab | views by camera angle (Q4) and the frame check (C1) |
+| templated layouts | one world, four cameras; `templated` warning |
+| off-season objects, picnics in January | `when` rules in descriptors; scenes cannot pin season |
+| nothing sways, everything bobs the same | one wind field; per-entity animation phases; invariants `windDir`, `clones` |
+| slow loads, A* retried every tick | budget table and per-system profile, enforced by `world perf`; route back-off |
+
+## 11. Runtime: entities, systems and the scheduler (G1-G12, Y1-Y7)
+
+### 11.1 Phases and order (G1)
+
+Systems run over components in a fixed order of phases: `time` (clock, almanac, weather context) -> `brain` (goals, state
+machines) -> `nav` (routes, flow fields) -> `move` (steering, avoidance, integration) -> `anim` (animation state) -> `attach`
+(the scene graph: children follow parents) -> `fx` (wind, particles, water) -> `light` (sun, lights on and off, shadow plans)
+-> `render` (LOD, culling, the frame record, drawing). Within a phase, systems sort by their `after` / `before` lists, then by
+id, so the order is total and deterministic.
+
+### 11.2 The system interface (Y1)
+
+```js
+worldSystem({
+  id: 'water',                         // unique
+  phase: 'fx', after: ['wind'], before: [],
+  components: { read: ['transform', 'desc'], write: ['look'] },
+  rate: 30,                            // Hz, a divisor of WORLD_TICK_HZ (30); 'frame' for once per drawn frame
+  budgetMs: 0.8,                       // per frame (7)
+  init(world) {},                      // once, after load
+  update(world, dt) {},                // dt in seconds of scene time (fixed)
+  onEvent: { spawn(world, e) {}, lightsOn(world, e) {} },
+  degrade(level) {},                   // 1, 2, 3: lower detail when over budget
+});
+```
+
+Every built-in system uses this interface (Y2): `time`, `wind`, `particles`, `attach` and `lod` (systems), `life` (life:
+brain, nav and move), `anim` (appearance), `water` and `light` (look), `render` (render). A new physics system plugs in
+without touching scenes or other systems.
+
+### 11.3 The runner (G8, M8, Y7)
+
+`worldRun(world, o) -> Runner { step(dtReal), t, alpha, pause(), resume(), stats(), bus }`. A fixed tick of 30 Hz
+(`WORLD_TICK_HZ`), at most 8 sub-steps per call (a long gap is absorbed, never replayed); render interpolates with `alpha`.
+Time is real time, never frames (M8): the scene pauses when hidden or the tab is inactive and resumes from where it stopped
+without a jump. A system that throws is disabled for that scene and logged; the rest keep running (G8). A system over its
+`budgetMs` for 30 frames halves its rate, then calls `degrade(1..3)` (Y7); it recovers when it is under budget again.
+
+### 11.4 Scene graph (G2)
+
+`worldAttach(world, child, parentId, local)` gives a child a parent and a local offset `{ dx, dy, dz, dfacing }` in the parent's
+frame (a lead on a dog, a rider on a bike, a person on a boat deck, a lamp on a bridge, a duck on a cabin roof). The `attach`
+system resolves world transforms every tick, parents first; `worldResolve(world, ent)` gives the current one. Moving the
+parent moves the children; a child's shadow and reflection follow.
+
+### 11.5 Spatial index (G3)
+
+`worldGrid(cell) -> { add(id, x, z, r), move, remove, query(x, z, r, fn) }`, a uniform hash grid in metres. Placement,
+collision, avoidance, occluder lookup and the invariant checker use it; no O(n^2) scan runs per frame.
+
+### 11.6 Random streams (G4)
+
+`worldRng(world, system, id)` is a stream seeded from a hash of (world seed, system, entity id). Each system and entity draws
+from its own stream, so adding or changing one entity never reshuffles the rest. Agent ids are stable (population index +
+spawn ordinal).
+
+### 11.7 Event bus (G5)
+
+`world.bus.on(kind, fn)`, `emit(kind, data)`. Standard kinds: `spawn`, `leave`, `arrive`, `depart`, `board`, `alight`, `sit`,
+`stand`, `stop`, `go`, `scare` (a dog at the bank), `strike`, `lightsOn`, `lightsOff` (the sun crosses the lamp threshold),
+`weather` (a change), `snowStart`, `snowStop`, `schedule` (a timetabled departure), `wake` (a boat passes). Systems subscribe;
+events never hand-time anything.
+
+### 11.8 Particles and rigid bodies (G6, Y6)
+
+Pooled, capped emitters: `worldEmit(world, kind, o)` with kinds `leaf`, `snow`, `rain`, `spray` (weirs), `smoke`, `steam`,
+`splash`, `seed`, `ring`. Smoke and steam drift downwind; leaves fall only in autumn and in wind. `worldBody(world, o)`: cheap
+ballistic bodies with ground and water contact and bounce (a ball thrown for a dog, a heron's splash). A global cap and a
+per-kind cap; the oldest is recycled.
+
+### 11.9 Level of detail and culling (G7)
+
+`worldLod(ent, cam)`: 0 (near: full sprite, secondary motion, every tick), 1 (mid: no secondary motion, half rate), 2 (far:
+simplest sprite, quarter rate). Off-screen and fully occluded entities are culled from drawing and from per-tick animation.
+Changes of LOD or view cross-fade or use hysteresis, so nothing pops (19).
+
+### 11.10 Profiling (G12)
+
+The runner keeps per-system ms per frame (median and p95 over a window) in `runner.stats()`; `world perf` prints it, the dev
+overlay shows it, and tests fail when a system exceeds 1.2x its budget.
+
+### 11.11 Time and context (the `time` system)
+
+`worldTimeCtx(world, ms, o) -> { ms, lat, lon, month, doy, hour, dow, weekend, season, weather: 'clear' | 'cloud' | 'rain' |
+'snow' | 'fog', cover, temp, snowDay, snowing, frost, wind: { dir, s }, sun: { az, alt }, moon: { az, alt, illum }, dark }`,
+from the live clock in the app or a fixed time in previews (T2), the v2 almanac and weather (`sceneSeason`, `sceneSnowCover`,
+`sceneFrostAt`, the live sky). Everything that varies with time reads this context; nothing else reads the clock.
+
+## 12. World sense: knowledge, placement and fill (K, P, C)
+
+### 12.1 The probe
+
+`worldPlaceProbe(world, x, z) -> { surface, kind, tags, y, waterDist, bankDist, pathDist, laneDir, bankDir, onRail, under }`:
+what is at a ground point, how far it is from water edges and walking lines, the lane and bank directions there, and whether
+an overhead span covers it. The knowledge base judges habitats and orientations from probes; it never reads the spec.
+
+### 12.2 The placement solver (P1-P4, K1-K4, K7, K9)
+
+`worldPlace(world)` runs once after the entities are built, in this order, and logs every action:
+
+1. Care and region (K9, K7): drop objects that break the care rules or do not belong in the region (swap a livery if the
+   descriptor has a local one).
+2. Parents (K4): every attached class finds its parent (a bough its tree on the same side within reach, a lamp its post or
+   wall, a mooring line its boat and bollard, smoke its chimney); an orphan is re-attached to the nearest legal parent or
+   dropped.
+3. Habitat snap (P1, K1): the whole footprint is tested against the class habitat. A failure moves the entity to the nearest
+   legal spot within `max(2 m, half its size)` (a spiral search over the probe), else drops it.
+4. Orientation (K3): facings from the rules (boats parallel to the bank, cars along their lane, benches facing the path or the
+   view, gates in their fence line, buildings to their street), unless the author's facing already satisfies the rule.
+5. Overlaps and clearance (P2): solid footprints never intersect; the later or smaller one is pushed apart, else dropped;
+   clearance is kept round paths, doors and gates.
+6. Paths clear (P3): a 1.2 m walking line stays clear on every walk path; gate and bridge approaches stay open.
+7. No rows or grids (P4): a grid detector over authored and clustered placements jitters anything that is not declared real
+   (`row: true`: a terrace street, an avenue, a row of moorings).
+
+`worldPlaceOk(world, e, x, z, facing)` and `worldPlaceAdd(world, e, why)` expose the same rules to the fill and to tools.
+
+### 12.3 The fill (P5-P8, C3, C6)
+
+`worldFill(world, o)` runs after the solver (unless the spec says `fill: false`; edge dressing and framing still run):
+
+- Edge dressing (P5): water edges get banks, reeds and coping by water kind; paths get verges; roads get kerbs and pavements;
+  walls get bases; fields get hedgerows; by place style.
+- Auto-fill (P6): any visible surface area with no dressing gets the surface's default planting or scatter by place style and
+  season (grass: tussocks and flowers in season; heath: heather and gorse; paving: texture and leaf litter; calm water: lilies
+  and rings), clustered and seeded, through `worldPlaceAdd` so every generated item obeys 12.2.
+- Framing (C3): with no framing element in the near band, add a natural one from the place style (a bough with its tree, reeds,
+  a hedge, a railing, a lamp post).
+- Landmark protection (P8): nothing auto-placed may hide a declared landmark's main face.
+- Richness floor (P7) and empty areas (C6): `worldRichness(world, cam)` per frame band (near, mid, far: coverage and object
+  variety) must reach the floor (and, for a converted scene, the source's score); `worldCoverage` must leave no bare region
+  over 15 % of the frame (sky excluded). The fill repeats with the next dressing tier until both pass or it runs out of legal
+  places (logged).
+
+### 12.4 Framing checks (C1, C2, C4)
+
+- `worldFrameCheck(world, cam)` (C1): no entity larger than about 25 % of the frame is cut by the frame edge unless it is a
+  declared framing element (bough, trunk, hedge, wall edge); a near entity that would be cut is moved along its habitat,
+  turned to a view that fits, or dropped (logged).
+- The near clip band (C2) is reserved: no mover idles or spawns in it (3.1, 4.4).
+- `worldLandmarkCheck(world, cam)` (C4): each declared landmark shows at least 60 % of its main face, is not dwarfed or cropped,
+  at full size and in the tile crop; a camera by intent (`lookAt`, `frame`) is solved to satisfy it.
+
+### 12.5 The load log (U2)
+
+`world.log` (and `worldAddLog(id)` in the app): `[{ id, obj, action: 'strip' | 'default' | 'snap' | 'move' | 'rotate' |
+'reattach' | 'drop' | 'fill' | 'dress' | 'frame' | 'jitter' | 'migrate', rule, reason, from, to, by }]`, where `by` is the
+package that acted. `world validate --log` prints it. The adversarial fixtures (16.3) must explain every fix through it.
+
+## 13. Animation state: things animate only when they should (M1-M8, A6)
+
+The animation system (`anim`, appearance) runs after movement and sets `ent.anim = { state, clip, rate, phase, period, pose, t }`
+from what the entity is DOING, never from a timer:
+
+| doing | anim state | clip | rate |
+|---|---|---|---|
+| moving on foot, pedalling, swimming, flying, driving | `move` | walk, run, pedal, swim, fly, drive | speed / stride length (no sliding feet, A6) |
+| standing still | `idle` | idle micro-motion (breathing, head turn, tail swish) | slow, seeded |
+| sitting or lying | `sit`, `lie` | seated pose, no leg motion | none |
+| a stopped vehicle | `stopped` | wheels still, no wake, no exhaust unless idling | none |
+| a moored boat | `moored` | a slight bob only | from the water system |
+| a static (building, wall, bench, parked car, rock, paving, sign, bridge) | `none` | never animates (M2) | |
+
+- Things move only by cause (M3, systems): trees, reeds, grass, washing and ripples sway with the ONE wind in proportion to
+  size and stiffness (`worldSway`); smoke drifts downwind; leaves fall only in autumn and in wind.
+- No synchronised clones (M4): phases and periods are varied per entity (from its random stream), so no two ducks bob in step
+  and no two walkers swing arms together.
+- Secondary motion (M5), cheap and dropped first under budget: leads swing between dog and walker, coats lag, a dog's ears and
+  tail react to its gait, boats rock in passing wakes, reeds part as a heron walks through.
+- Transitions (M7): walk to stop, stand to sit, swim to take-off are eased over 0.2-0.6 s with the right view; never instant.
+- Drawing: the renderer draws an agent's sprite with the v2 animation hooks of its state (`worldAnimHooks`: `sceneBehave.hooks`
+  and `sceneBehave.stride` periods), so limbs move at the speed the agent travels.
+- Frame-rate independence (M8): all motion uses scene time from the runner (11.3).
+
+## 14. Perspective is automatic (Q1-Q7, W5)
+
+### 14.1 Cameras by intent (Q1, W5)
+
+`camera: { at: [lat, lon] | [x, z], height, lookAt: <landmark id> | <bearing>, fov }` or `camera: { frame: [<ids>] }`.
+`worldCameraResolve(spec, i)` sets the heading, pitch, horizon row and, for `frame`, the position and fov that fit the chosen
+subjects with the landmark rule (C4) and the cut rule (C1). The camera has a real position, height, heading, fov, lat/lon and
+date/time; the horizon, scale and backdrop bearings all come from it.
+
+### 14.2 Linear features and buildings (Q2, Q3)
+
+`worldExtrude(world, cam)` turns `lines` (walls, fences, railings, hedges, kerbs, coping) and `buildings` into primitives in
+world metres: vertical faces along centre lines with true widths at every depth (curves and slopes included), roofs, windows in
+courses (buildings through `sceneBuildingProject`: visible faces only, foreshortened, styles from the v2 generator). Each
+primitive has a footprint, so it is ordered and occludes like any static (2.2); landmarks keep their hand-drawn art but are
+placed and scaled by the camera.
+
+### 14.3 Views, foreshortening and overscan (Q4, Q5, Q6)
+
+- `worldViewOf(ent, cam)`: objects choose their view (front, three-quarter, side, the same 5 views as movers, + mirrors) from
+  the camera's angle to them and keep their real size at their depth; a boat seen end-on is drawn end-on, never as a flat
+  side slab.
+- Ground textures, paving courses, mowing stripes and ripples foreshorten with depth (the v2 ground compile in camera metres).
+- Wide and tall frames (21:9, 4K, phone) show more of the same world: surfaces, fill and backdrop extend past the default
+  frame (`worldOverscan`), nothing is stretched, and 21:9 never shows an unfinished edge.
+
+### 14.4 One world, four cameras (Q7)
+
+A place is one v3.1 spec with up to four `cameras`. `worldAdd` registers one item per camera (`<id>-<camera id>`); each item
+builds the same world through its own camera. A new view needs only a new camera entry.
+
+## 15. Variation is free: time, season and weather are parameters (V1-V7)
+
+### 15.1 No per-variation data (V1)
+
+A spec contains no per-season, per-time or per-weather data: no seasonal variants, no night copies, no colour lists. The
+validator rejects them (`perSeasonData`); repair strips them.
+
+### 15.2 Materials (V2)
+
+Every object part has a material (`WORLD_MATERIALS`: bark, leaf, needle, grass, reed, flower, brick, stone, slate, tile,
+render, timber, paint, metal, glass, water, skin, fabric, fur, feather, tarmac, paving, gravel, soil). `worldMaterialOf(obj,
+part, fill)` finds it (the descriptor's `material` map by part name, else a rule on the fill). `worldMaterialColour(mat, hex,
+mctx)` colours it from the season and leaf state (month, bare, budding, turning), the light (sun colour and elevation, sky
+ambient, overcast, night), the weather (wet darkening of hard materials, frost and snow overlays on roofs, boughs, grass) and
+the haze of its depth. `worldMaterialKey(mctx)` is the cache key part.
+
+### 15.3 State from descriptors (V3)
+
+Trees leaf out, turn and drop by date; flowers bloom in their months; snow sits on surfaces on snow days; windows and lamps
+light by sun elevation, varied per window; cafe furniture and markets appear by season and date; populations change by hour,
+weekday and weather. All from `worldKbState` and `worldKbWhen` with the time context.
+
+### 15.4 Almanac light (V4) and invalidation (V5)
+
+Light is computed from the almanac for the scene's lat/lon and date/time (2.6). Changing the date, time or weather invalidates
+only what it affects:
+
+| change | invalidates | reuses |
+|---|---|---|
+| time within a light band | light grade, lit windows, shadow plans | sprites, chunk geometry, nav, life |
+| light band (dawn, day, golden, dusk, night) | chunk bitmaps (grade, lights) | sprite shapes, nav, life |
+| season state (leaf, bloom) | sprites of seasonal classes, their chunks | everything else |
+| weather (wet, snow, frost) | material overlays, affected chunks, particles | geometry, nav, life |
+| camera | everything derived from the camera | the spec, the knowledge base |
+
+### 15.5 Matrix and scrubber (V6, V7)
+
+`node tools/world.mjs sheet <ref> --matrix` renders a scene across 4 seasons x 5 times x 3 weathers in one go. A dev
+time / season / weather scrubber (`#worlddev=1`) lets the user drag through a day or a year live. Acceptance: every test scene
+renders at every cell with zero invariant violations, and a fresh reviewer checks the matrix for wrong colours (green trees in
+January, lit windows at noon, shadows at night, snow in July).
+
+## 16. Invariants, tools and the acceptance suite (U3, section 16, section 19)
+
+### 16.1 The frame record
+
+`worldFrameAt(scene, t)` (render) builds, without drawing, what a frame would show:
+
+```js
+{ t, ctx, cam, W, H,
+  ents: [{ id, cls, obj, static, auto, landmark, framing, x, y, z, facing, foot, height, layer, host, parent, view, mirror,
+           box: [X0, Y0, X1, Y1], order, speed, vx, vz, state, born, anim, sway: { dir, amp }, shadow: { poly, dir } | null,
+           reflect: { surface, rowY } | null, waterline }],
+  wind: { dir, s }, sun: { az, alt, g }, lights, log }
+```
+
+Life fills the agent fields, appearance `anim` and `view`, systems `sway`, look `shadow` and `reflect`, render `box` and
+`order`. The invariant checker reads only this record, so it runs in Node over the life sim and in the browser on real frames.
+
+### 16.2 The invariants (`worldInvariants(frame, o)`, `79-world-9inv.js`)
+
+Run every frame in test mode over the FULL loop (`WORLD_LOOP_S`) at 3 dates x 5 times (and the V6 matrix for V7). Each
+violation is `{ rule, req, id, msg }`; the count must be zero.
+
+| rule | checks | req |
+|---|---|---|
+| `habitat` | every entity on its K1 habitat (whole footprint for floaters) | K1, P1 |
+| `overlap` | solid footprints never intersect | P2 |
+| `inSolid`, `onWater`, `floating` | no mover inside a solid, no walker on water, nothing above or through the ground | A2, W2 |
+| `orphan` | every attached class has its parent | K4 |
+| `pathBlocked` | walking lines clear | P3 |
+| `reflectOutsideWater`, `shadowOnWater`, `shadowDir`, `waterGap` | the water and shadow rules | H1, H2, H6, L2 |
+| `edgeCut`, `nearBand`, `giant` | frame cuts, the near band, true scale | C1, C2, A10 |
+| `popping`, `stuck` | appear and vanish only at spawn cells; no progress for 10 s outside an idle goal | A3, A4 |
+| `slidingFeet`, `facing`, `laneDir` | stride vs speed, view vs velocity, lanes on the left | A5, A6, A9 |
+| `animStill`, `stillMoving`, `staticAnim` | animating while still, still while moving, statics animating | M1, M2 |
+| `clones`, `windDir` | synchronised phases, sway against the wind | M4, M3 |
+| `order` | `worldOrderCheck` = 0 | R1, R2 |
+| `landmark`, `bare` | landmark face visible, no bare region > 15 % | C4, C6 |
+| `season` | descriptor state matches the date (no green trees in January, no lit windows at noon) | S1, V3, V7 |
+
+### 16.3 Adversarial scenes (`tests/fixtures/world/adversarial/*.json`)
+
+Written deliberately wrong: boats on the towpath; a bough with no tree; willow fronds in mid-air; people placed inside a hedge
+and a wall; a bench across the path; cars driving on the right; a duck on a roof; a train off its rails; an empty scene with
+only a camera and a water polygon; a scene with hand-set light and reflections; a landmark behind a tree wall; a giant person
+at 2 m; a population larger than the space; a camera looking straight into a wall. Each must load, render plain-but-sensible
+with zero invariant violations, and carry a load log that explains every fix.
+
+### 16.4 Tools (`node tools/world.mjs ...`)
+
+| command | does |
+|---|---|
+| `validate <ref> [--log]` | strict errors (exit 1) and the load log |
+| `convert <ref>` | v1/v2 -> v3.1 with the report (6) |
+| `render <ref>` | PNGs on the real renderer |
+| `sheet <ref> [--matrix] [--sizes]` | dates x times x sizes on one sheet; `--matrix` = 4 seasons x 5 times x 3 weathers |
+| `motion <ref>` | paths, footprints and violations over the still |
+| `capture <ref> --full` | the WHOLE loop as a frame strip, not just 20 s |
+| `critic <ref> [--against <ref>]` | richness, emptiness and framing scores (and against a source) |
+| `compare <v3> <original>` | side by side at 3 dates x 5 times |
+| `adversarial` | every adversarial fixture: load, render, invariants, log |
+| `perf <ref>` | the budget table and the per-system profile |
+| `accept` | the whole suite below; prints the gate |
+
+In the app, `#worlddev=1` toggles the debug overlays (G9): footprints, nav map, paths, depth order, light direction, wind field,
+water mirror lines, invariant violations, the per-system profile, and the scrubber (15.5).
+
+### 16.5 The acceptance suite (must pass before showing the user; X4)
+
+1. `node --test tests/world-*.test.mjs` all green (timing tests compare medians at 1.2x, so a loaded machine does not fail them).
+2. The invariant checker over the full loop at 3 dates x 5 times: zero violations.
+3. The adversarial scenes: all load and render, zero violations, a log for every fix.
+4. The test scenes (fleet-canal-2, fleet-pond-2, sheffield-kelham-1) are at least as rich as their originals (critic), have
+   zero violations, and look right in `world compare` at 3 dates x 5 times and in full-loop captures.
+5. Performance gates (F1, F2, Z1) at both average-machine sizes.
+6. A fresh-context reviewer (not an author) looks at every compare sheet, matrix and full-loop strip and lists anything weird;
+   the list must be empty. Then the privacy scan (I3), then a checkpoint commit (X2).
+
+### 16.6 The 2D pitfalls checklist (section 19)
+
+| pitfall | rule | owner |
+|---|---|---|
+| z-fighting | stable tie-break by id (2.2) | render |
+| popping between LOD or view sets | cross-fade or hysteresis (11.9) | render, systems |
+| seams between chunks | overlap bleed, integer-snapped edges (2.2) | render |
+| banding in sky and water | dither (2.6) | look |
+| shadows and reflections of thin things | real outlines, not solid blocks (2.4) | look |
+| moving shadows on moving surfaces | the scene graph carries them (2.4, 11.4) | look |
+| shade under bridges | the bridge casts by geometry (2.4) | look |
+| wide aspect showing unfinished edges | overscan (14.3) | appearance |
+| tiny screens | the subject stays readable in the tile crop (C4 at tile size) | appearance |

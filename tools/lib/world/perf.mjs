@@ -8,12 +8,21 @@
 //   worldPerfCheck(measures)              -> { ok, lines: [{ item, value, budget, unit, ratio, status: 'ok' | 'warn' | 'fail' | 'n/a' }] }
 //   worldPerfText(check)                  a printable report
 //   worldMotion(E, spec, { seconds })     the life sim with every motion check (red marks); worldMotionSvg(E, spec, r): the overlay
+//   WORLD_PERF_SIZES, WORLD_PERF_EXTREMES the average machine's two sizes (1920 x 1080 at 1.25, 3440 x 1440; F1) and the matrix
+//                                         extremes (Z1: a summer noon and a snowy winter night with many lights)
+//   worldPerfProfile(E, spec, o)          the per-system profile (G12): the systems runner (worldRun) over o.seconds, p50 / p95 ms
+//                                         per system against its budgetMs (fail at 1.2x); { systems: [...], ok, by }
+//   worldPerfMatrix(chrome, spec, o)      the browser gates at both sizes x both extremes, GPU on, CPU throttle 4: cold and warm load,
+//                                         frame median and p95, sprites and sprite memory (F1, F2, Z1) -> [{ size, extreme, measures, check }]
 import { scenePerf } from '../scene-page.mjs';
 
 export const WORLD_BUDGET = Object.freeze({
   coldLoadMs: { budget: 5000, unit: 'ms', label: 'cold load at --gpu --throttle=4 (first bake)' },
   worldMs: { budget: 600, unit: 'ms', label: 'world part (validate + build + nav + life + chunks)' },
-  frameMs: { budget: 14, unit: 'ms', label: 'frame total (median drawMs)', target: 8 },
+  warmLoadMs: { budget: 1000, unit: 'ms', label: 'warm load (the same scene mounted again)' },
+  frameMs: { budget: 8, unit: 'ms', label: 'frame median (drawMs)' },
+  frameP95: { budget: 14, unit: 'ms', label: 'frame p95 (drawMs)' },
+  spriteMB: { budget: 96, unit: 'MB', label: 'sprite memory (distinct sprites x bytes)' },
   lifeTickMs: { budget: 1.5, unit: 'ms', label: 'life tick, 60 agents' },
   orderMs: { budget: 0.7, unit: 'ms', label: 'sort + interleave per frame' },
   occDraws: { budget: 40, unit: '', label: 'occluder redraws per frame' },
@@ -70,12 +79,104 @@ export async function worldPerfBrowser(chrome, spec, o = {}) {
   if (o.throttle && chrome.cdp) await chrome.cdp('Emulation.setCPUThrottlingRate', { rate: Number(o.throttle) || 1 });
   const data = `worldHostData(${JSON.stringify(spec)}, { id: ${JSON.stringify(o.id || 'perf')} })`;
   const t0 = Date.now();
-  const r = await scenePerf(chrome, { data, seconds: o.seconds || 4, at: o.at, season: o.season, governor: false, size: o.size });
+  const r = await scenePerf(chrome, { data, seconds: o.seconds || 4, at: o.at, season: o.season, governor: false, size: o.size, dpr: o.dpr, wx: o.wx });
   const wall = Date.now() - t0;
   const pass = (r.passes && r.passes['world-life']) || {};
-  return { coldLoadMs: r.firstBakeMs != null ? Math.round(r.firstBakeMs) : null, wallMs: wall, frameMs: r.drawMs ? r.drawMs.median : null, frameP95: r.drawMs ? r.drawMs.p95 : null,
-    dynMs: r.dynMs ? r.dynMs.median : null, sprites: r.sprites, bitmaps: r.bitmaps, occDraws: r.occDraws != null ? r.occDraws : null, agentsShown: pass.agents != null ? pass.agents : null,
-    raw: r };
+  // warm load: the same scene mounted again in this page (a second host, another key): what opening it a second time costs
+  let warm = null;
+  try { warm = await chrome.evaluate(WARM_JS); } catch { warm = null; }
+  if (o.throttle && chrome.cdp) await chrome.cdp('Emulation.setCPUThrottlingRate', { rate: 1 });
+  return { coldLoadMs: r.firstBakeMs != null ? Math.round(r.firstBakeMs) : null, warmLoadMs: Number.isFinite(warm) ? warm : null, wallMs: wall, frameMs: r.drawMs ? r.drawMs.median : null, frameP95: r.drawMs ? r.drawMs.p95 : null,
+    dynMs: r.dynMs ? r.dynMs.median : null, sprites: r.sprites, spriteMB: Number.isFinite(r.spriteBytes) ? Math.round(r.spriteBytes / 1048576 * 10) / 10 : null, bitmaps: r.bitmaps,
+    occDraws: r.occDraws != null ? r.occDraws : null, agentsShown: pass.agents != null ? pass.agents : null, passes: r.passes || null, governor: r.governor || null, raw: r };
+}
+const WARM_JS = `(async () => {
+  const box = document.querySelector('.sp-box'), host = box && box.querySelector('.anim-scene');
+  if (!host) return null;
+  // the first copy stops (in the app a scene is shown once): the second mount measures the warm path, not two scenes at once
+  if (typeof _schHosts !== 'undefined') for (const r of _schHosts.values()) if (r.r) { r.still = true; r.r.stop(); }
+  const b2 = document.createElement('div'); b2.className = 'sp-box'; b2.setAttribute('data-scene-key', 'warm-' + Date.now());
+  b2.innerHTML = host.outerHTML.replace(/ sc-ready/g, '');
+  const t0 = performance.now(); box.parentNode.appendChild(b2);
+  if (typeof sceneHostScan === 'function') sceneHostScan(document);
+  await new Promise(r => requestAnimationFrame(r));
+  const el = b2.querySelector('.anim-scene'), rec = typeof _schHosts !== 'undefined' ? _schHosts.get(el) : null;
+  if (!rec) return null;
+  while (performance.now() - t0 < 20000) { if (rec.r && rec.r.ready) break; await new Promise(r => setTimeout(r, 20)); }
+  return Math.round(performance.now() - t0);
+})()`;
+
+/** The average machine (F1): 1920 x 1080 at 1.25 (a laptop at 125 %: a 1536 x 864 css box) and 3440 x 1440 (the ultrawide). */
+export const WORLD_PERF_SIZES = Object.freeze([
+  { id: '1920x1080@1.25', size: { w: 1536, h: 864 }, dpr: 1.25 },
+  { id: '3440x1440', size: { w: 3440, h: 1440 }, dpr: 1 },
+]);
+/** The matrix extremes (Z1): an easy summer noon and a snowy winter night with every light on. */
+export const WORLD_PERF_EXTREMES = Object.freeze([
+  { id: 'summer-noon', mmdd: '07-15', hour: 12, wx: 'clear' },
+  { id: 'snowy-night', mmdd: '01-15', hour: 22, wx: 'snow' },
+]);
+/** The ISO moment of an extreme at a place (local solar time from the longitude). */
+export function worldPerfAt(ext, spec, year = new Date().getUTCFullYear()) {
+  const lon = spec && spec.place && Number.isFinite(spec.place.lon) ? spec.place.lon : 0;
+  return new Date(Date.parse(`${year}-${ext.mmdd}T00:00:00Z`) + (ext.hour - lon / 15) * 3600000).toISOString();
+}
+
+/**
+ * The per-system profile (G12) in Node: the systems runner over o.seconds (default 20) of scene time, p50 / p95 ms per
+ * system and its budget; a system over 1.2 x its budget fails. Without the runner: the life tick and the order alone.
+ */
+export function worldPerfProfile(E, spec, o = {}) {
+  const out = { systems: [], ok: true, by: null, seconds: o.seconds || 20 };
+  const world = E.worldBuild(spec, { season: o.season || 'summer' });
+  if (typeof E.worldRun === 'function') {
+    let R = null;
+    try { R = E.worldRun(world, { ms: o.ms, wx: o.wx, quiet: true }); } catch (e) { out.error = e.message; }
+    if (R) {
+      const n = Math.round(out.seconds * 30);
+      for (let i = 0; i < n; i++) R.step(1 / 30);
+      const st = R.stats();
+      out.by = 'worldRun';
+      for (const s of st.systems || []) {
+        const budget = Number.isFinite(s.budgetMs) ? s.budgetMs : null, p50 = s.p50 != null ? s.p50 : s.avg;
+        const status = budget == null ? 'n/a' : p50 > budget * WORLD_FAIL_FACTOR ? 'fail' : p50 > budget ? 'warn' : 'ok';
+        if (status === 'fail') out.ok = false;
+        out.systems.push({ id: s.id, phase: s.phase, p50: r2(p50 || 0), p95: r2(s.p95 || 0), budget, status, enabled: s.enabled !== false, error: s.error || null, level: s.level || 0 });
+      }
+      return out;
+    }
+  }
+  const n = worldPerfNode(spec, E, { ticks: 150 });
+  out.by = 'life+order';
+  for (const [id, v, b] of [['life', n.lifeTickMs, WORLD_BUDGET.lifeTickMs.budget], ['order', n.orderMs, WORLD_BUDGET.orderMs.budget]]) {
+    const status = v == null ? 'n/a' : v > b * WORLD_FAIL_FACTOR ? 'fail' : v > b ? 'warn' : 'ok';
+    if (status === 'fail') out.ok = false;
+    out.systems.push({ id, p50: v, p95: null, budget: b, status });
+  }
+  return out;
+}
+
+export function worldPerfProfileText(p, title = '') {
+  const out = [`per-system profile${title ? ': ' + title : ''} (${p.by || 'n/a'}, ${p.seconds} s; fail at 1.2x budget)`];
+  for (const s of p.systems) out.push(`  ${String(s.status).padEnd(4)} ${String(s.id).padEnd(12)} p50 ${s.p50} ms  p95 ${s.p95 == null ? '-' : s.p95} ms  budget ${s.budget == null ? '-' : s.budget} ms${s.error ? '  ERROR ' + s.error : ''}${s.level ? '  degraded ' + s.level : ''}`);
+  if (p.error) out.push('  error: ' + p.error);
+  return out.join('\n');
+}
+
+/**
+ * The browser gates (F1, F2, Z1): both sizes x both extremes, GPU on (the caller launches Chrome with it), CPU throttle 4.
+ * o: { id, seconds, throttle (4), sizes, extremes }. Returns [{ size, extreme, at, measures, check }].
+ */
+export async function worldPerfMatrix(chrome, spec, o = {}) {
+  const out = [];
+  for (const sz of o.sizes || WORLD_PERF_SIZES) for (const ex of o.extremes || WORLD_PERF_EXTREMES) {
+    const at = worldPerfAt(ex, spec);
+    let m;
+    try { m = await worldPerfBrowser(chrome, spec, { id: (o.id || 'perf') + '-' + sz.id + '-' + ex.id, seconds: o.seconds || 4, throttle: o.throttle == null ? 4 : o.throttle, at, wx: ex.wx, size: sz.size, dpr: sz.dpr }); }
+    catch (e) { m = { error: e.message }; }
+    out.push({ size: sz.id, extreme: ex.id, at, measures: m, check: m.error ? { ok: false, lines: [], error: m.error } : worldPerfCheck(m) });
+  }
+  return out;
 }
 
 /** Lines against the budget. A value over budget warns; over 1.2 x budget fails. orderViolations: any is a fail. */

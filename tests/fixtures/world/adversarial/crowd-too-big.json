@@ -1,0 +1,95 @@
+{
+ "id": "crowd-too-big",
+ "title": "A population larger than the space",
+ "req": [
+  "A1",
+  "U2"
+ ],
+ "about": "Four hundred walkers living on a 4 m square plaza. The engine must cap the population to what the space holds (logged), never stack people.",
+ "expect": {
+  "log": [
+   {
+    "any": [
+     "drop",
+     "default",
+     "move",
+     "snap",
+     "fill"
+    ],
+    "match": "life|walkers|population|capacity"
+   }
+  ]
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 53.383,
+   "lon": -1.47,
+   "alt": 60,
+   "region": "south-yorkshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 64,
+   "horizon": 460,
+   "heading": 0
+  },
+  "surfaces": [
+   {
+    "id": "land",
+    "kind": "grass",
+    "poly": [
+     [
+      -120,
+      1
+     ],
+     [
+      120,
+      1
+     ],
+     [
+      160,
+      400
+     ],
+     [
+      -160,
+      400
+     ]
+    ]
+   },
+   {
+    "id": "plaza",
+    "kind": "plaza",
+    "poly": [
+     [
+      -2,
+      20
+     ],
+     [
+      2,
+      20
+     ],
+     [
+      2,
+      24
+     ],
+     [
+      -2,
+      24
+     ]
+    ]
+   }
+  ],
+  "life": [
+   {
+    "who": "walkers",
+    "on": "plaza",
+    "count": 400
+   }
+  ],
+  "backdrop": {
+   "style": "town-low"
+  },
+  "seed": 23
+ }
+}

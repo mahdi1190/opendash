@@ -1,100 +1,179 @@
 /* ============================================================
-   WORLD ENGINE v3, module F: the host (docs/dev/WORLD_ENGINE.md 2.1, 7, 8.6).
-   The v3 renderer. A v3 item's world (A: worldBuild) is turned into the v2 scene form the existing engine already
-   renders well (ground, water, static shadows and reflections, haze, live sky, seasons, weather, night lights,
-   the sprite cache and the bake), with EVERY static given in world metres (`at`, `fix`: nothing to snap, nothing
-   in pixels). The movers come from the life sim (C: worldLifeInit / worldLifeTick / worldAgents) through one
-   render pass ('world-life', 78-scene-0pass.js registry): each agent is projected by the camera every frame,
-   scaled from its descriptor, faced from its velocity, slotted into the depth group of its true depth and
-   occluded by the nearer statics of that group (the renderer's occluder redraw). D's worldFrameOrder is used
-   as the debug invariant (worldHostOrderCheck; `world motion` and `world perf` run it).
-   The still (SVG, reduced motion, small tiles) is the v2 SVG path over the same derived data: statics only.
-   PURE part: worldHostWorld, worldHostV2Data, worldHostAgents, worldHostSim (Node and browser).
-   BROWSER part (guarded): the pass and worldRendererFor(item, canvas, o) -> { start, stop, setTime, stats, still, ... }.
-   Every A-E function is reached through typeof guards: a missing module removes its feature, never the scene.
+   WORLD ENGINE v3, package render: the host (docs/dev/WORLD_ENGINE.md 2.1, 2.8, 11.3; requirements R3-R5, M8, F4, G10, T2).
+   A v3 item's scene data is DERIVED v2 data: the v2 renderer draws the base layer (sky, clouds, ground surfaces, base water,
+   weather) and the world compositor (79-world-5frame.js, pass 'world-frame') draws every static and every agent in true
+   depth order on top. So the LIVE data carries no statics (R1: no baked layer merges near and far); the STILL data (SVG:
+   reduced motion, small tiles, tools) keeps them as v2 placements in metres (F4).
+     worldHostSpec(x)                    the v3 spec of an item, data, thunk or spec (v 3 and 3.1)
+     worldHostWorld(spec, o)             the world (sense: worldBuild; else a minimal world) + hedge dressing
+     worldHostV2Data(spec, o)            the derived v2 data; o.statics === false: the live form (no statics)
+     worldHostData(spec, o)              the data an item's scene is: live (registers the live record) or, with o.sim === false /
+                                         o.still, the still form (memoised; never touches the live record: G10)
+     worldHostDriver(world, o)           the life of a world: the systems runner (worldRun) when it drives agents, else the
+                                         life sim (worldHostSim); fixed whole ticks, so the agents at scene time t are a function
+                                         of seed, date and t (R4); interpolated between ticks
+     worldHostClock(o)                   the scene clock: starts at the first visible frame (R5), never moves during hidden
+                                         preparation, pauses when hidden and resumes without a jump (M8), restarts when the host
+                                         restarts its clock (the scene is shown now)
+     worldHostAt(rec, t, flags)          -> { tau, agents, ready }: the agents a frame draws (the pass calls it)
+     worldHostLive(id)                   the live record of a data id
+     worldRendererFor(item, canvas, o)   the v3 renderer for the player's data.v === 3 route (v2 renderer + the passes)
+   Every other package is reached through typeof guards: a missing package removes a feature, never the scene. The scene's
+   time of day and date come from the light the host gives the renderer (the live clock in the app, a fixed moment in
+   previews: T2); nothing here reads the wall clock for scene time.
    ============================================================ */
 
+const _wh5IsV3 = (v) => Number(v) >= 3 && Number(v) < 4;
 /** The v3 spec of an item, a data object, a thunk or a spec. */
 function worldHostSpec(x) {
-  if (x && x.worldSpec && x.worldSpec.v === 3) return x.worldSpec;   // a worldAdd item (its scene is the derived v2 data)
+  if (x && x.worldSpec && _wh5IsV3(x.worldSpec.v)) return x.worldSpec;   // a worldAdd item (its scene is the derived v2 data)
   let d = x;
   if (d && typeof d === 'object' && d.scene !== undefined && !d.surfaces) d = d.scene;
   if (typeof d === 'function') d = typeof sceneData === 'function' ? sceneData({ scene: d }) : d();
-  if (d && d.v === 3 && d.spec) return d.spec;
-  if (d && d.v === 3) return d;
+  if (d && d.world3 && d.$spec && _wh5IsV3(d.$spec.v)) return d.$spec;   // derived data carries its spec
+  if (d && _wh5IsV3(d.v) && d.spec) return d.spec;
+  if (d && _wh5IsV3(d.v)) return d;
   return null;
 }
 
 const _WH5_R = (v) => Math.round(v * 100) / 100;
 
 /**
- * The world of a spec: A's worldBuild when loaded, else a minimal world from the spec's own entries (entities with
- * `at`, landmarks), enough to draw the statics. o: { season }.
+ * The world of a spec: sense's worldBuild when loaded, else a minimal world from the spec's own entries (entities with
+ * `at`, landmarks), enough to draw the statics. Then the hedge dressing (a hedge surface nothing dresses gets its hedge,
+ * logged). o: { season }.
  */
 function worldHostWorld(spec, o) {
   o = o || {};
+  let world = null;
   if (typeof worldBuild === 'function') {
-    try { const w = worldBuild(spec, { season: o.season }); if (w) return w; } catch (e) { /* the minimal world below */ }
+    try { world = worldBuild(spec, { season: o.season }) || null; } catch (e) { world = null; }
   }
-  const entities = [];
-  let n = 0;
-  for (const e of [].concat(spec.entities || [], spec.landmarks || [])) {
-    if (!e || !e.obj || !Array.isArray(e.at)) continue;
-    entities.push({ id: e.id || 'e' + (n++), obj: e.obj, variant: e.variant, x: e.at[0], z: e.at[1], y: Number.isFinite(e.y) ? e.y : 0,
-      facing: e.facing || 0, attach: e.attach || 'ground', static: true, height: null, foot: null, minimal: true });
+  if (!world) {
+    const entities = [];
+    let n = 0;
+    for (const e of [].concat(spec.entities || [], spec.landmarks || [])) {
+      if (!e || !e.obj || !Array.isArray(e.at)) continue;
+      entities.push({ id: e.id || 'e' + (n++), obj: e.obj, variant: e.variant, x: e.at[0], z: e.at[1], y: Number.isFinite(e.y) ? e.y : 0,
+        facing: e.facing || 0, attach: e.attach || 'ground', static: true, height: null, foot: null, minimal: true });
+    }
+    world = { cam: null, surfaces: spec.surfaces || [], entities, life: spec.life || [], backdrop: spec.backdrop || null, seed: spec.seed || 1, problems: [{ rule: 'noCore', msg: 'worldBuild not loaded: minimal world' }], minimal: true };
   }
-  return { cam: null, surfaces: spec.surfaces || [], entities, life: spec.life || [], backdrop: spec.backdrop || null, seed: spec.seed || 1, problems: [{ rule: 'noCore', msg: 'worldBuild not loaded: minimal world' }], minimal: true };
+  if (!world.minimal) { try { _wh5Hedges(world); } catch (e) { /* no dressing: the hedge strip stays plain */ } }
+  return world;
+}
+
+/**
+ * A hedge surface is solid ground drawn as a hedge (1.4). Where nothing in the world already stands on it (the fill may
+ * dress it), its hedge is laid along it as world entities: sections of the library hedge end to end, seeded jitter, never a
+ * grid; each is logged as a dressing (U2).
+ */
+function _wh5Hedges(world) {
+  const cam = world.cam;
+  if (!cam || typeof sceneObj !== 'function') return;
+  for (const s of world.surfaces || []) {
+    if (!s || s.kind !== 'hedge' || !Array.isArray(s.path) || s.path.length < 2) continue;
+    const obj = s.obj && sceneObj(s.obj) ? s.obj : 'plant.towpath-hedge';
+    if (!sceneObj(obj)) continue;
+    const near = (e) => {
+      if (!e || e.static === false || !/hedge(?!row)/.test(String(e.obj || '')) && e.cls !== 'hedge') return false;
+      return _wh5LineDist(s.path, e.x, e.z) <= (s.width || 1.2) / 2 + 0.5;
+    };
+    if ((world.entities || []).some(near)) continue;
+    const info = typeof worldObjectInfo === 'function' ? worldObjectInfo(obj) : null;
+    const L = info && info.size ? info.size.w : 3, D = info && info.size ? info.size.d : 1.2, H = info && info.size ? info.size.h : 2.2;
+    const step = Math.max(0.8, L * 0.72), rnd = _wh5Rng((world.seed | 0) * 7907 + _wh5Hash(s.id || 'hedge'));
+    const nv = info && info.variants ? info.variants : 1;
+    let n = 0;
+    for (let i = 1; i < s.path.length; i++) {
+      const [ax, az] = s.path[i - 1], [bx, bz] = s.path[i], len = Math.hypot(bx - ax, bz - az);
+      if (!(len > 0.01)) continue;
+      const ux = (bx - ax) / len, uz = (bz - az) / len, bearing = Math.atan2(ux, uz) * 180 / Math.PI;
+      for (let u = (n ? rnd() * step * 0.5 : 0); u < len; u += step * (0.85 + rnd() * 0.3)) {
+        const off = (rnd() - 0.5) * Math.max(0, (s.width || 1.2) - D) * 0.8;
+        const x = ax + ux * u - uz * off, z = az + uz * u + ux * off;
+        if (!(z > 0.5)) continue;
+        const facing = ((bearing + 90) % 360 + 360) % 360, y = typeof sceneGroundHeight === 'function' ? sceneGroundHeight(cam, x, z) : 0;
+        const id = 'hedge-' + s.id + '-' + (n++);
+        world.entities.push({ id, obj, cls: 'hedge', variant: Math.floor(rnd() * nv), x: _WH5_R(x), z: _WH5_R(z), y: Math.round(y * 1000) / 1000, facing,
+          foot: _wh5Box(x, z, L, D, facing), height: H, size: { w: L, d: D, h: H }, solidity: 'solid', attach: 'ground', host: null, deck: null,
+          waterline: null, lights: [], static: true, seasonal: true, auto: 'dress', on: s.id });
+      }
+    }
+    if (n && Array.isArray(world.log)) world.log.push({ id: s.id, obj, action: 'dress', rule: 'hedgeSurface', reason: 'hedge surface laid with ' + n + ' sections', by: 'render' });
+  }
+}
+function _wh5Box(x, z, w, d, facing) {
+  const r = (facing || 0) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+  // local x across (width), local z along the facing; facing 0 = away from the camera
+  return [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([lx, lz]) => [_WH5_R(x + lz * s + lx * c), _WH5_R(z + lz * c - lx * s)]);
+}
+function _wh5LineDist(path, x, z) {
+  let best = Infinity;
+  for (let i = 1; i < path.length; i++) {
+    const [ax, az] = path[i - 1], [bx, bz] = path[i], dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
+    const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2)) : 0;
+    best = Math.min(best, Math.hypot(ax + t * dx - x, az + t * dz - z));
+  }
+  return best;
+}
+function _wh5Hash(s) { let h = 2166136261 >>> 0; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+function _wh5Rng(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
 // v3 surface kinds -> the v2 surface kinds the ground compile paints (3.1 of SCENE_ENGINE_V2)
 const WORLD_HOST_KIND_V2 = Object.freeze({ path: 'path', pavement: 'pavement', towpath: 'towpath', plaza: 'plaza', boardwalk: 'bridge', 'bridge-deck': 'bridge',
-  deck: 'bridge', grass: 'grass', heath: 'heath', field: 'field', sand: 'sand', road: 'road', rail: 'rail', tram: 'tramway', reeds: 'reedbed', bed: 'garden',
+  deck: 'bridge', platform: 'pavement', stairs: 'pavement', ramp: 'pavement', grass: 'grass', heath: 'heath', field: 'field', sand: 'sand', road: 'road', rail: 'rail', tram: 'tramway', reeds: 'reedbed', bed: 'garden',
   hedge: 'verge', weir: 'edge' });
 // v3 water kinds -> v2 water kinds
 const WORLD_HOST_WATER_V2 = Object.freeze({ pond: 'pond', lake: 'lake', canal: 'canal', river: 'river', sea: 'sea', harbour: 'harbour', puddle: 'pond' });
 
 /**
- * The v2 scene data that draws a world's statics (the bake): camera and place from the spec, surfaces and water as
- * geometry and kind only (the water lock: colour, mirror and ripple from the kind), every static entity as a ground
- * placement in metres with `fix` (the world is already validated: nothing is snapped or refused), clusters A did not
- * expand as clustered scatter, the backdrop bands (E) as far placements. The id carries the live world (the pass).
- * o: { id, season, world }.
+ * The v2 scene data of a world. Always: camera and place from the spec, surfaces and water as geometry and kind only (the
+ * water lock: colour, mirror and ripple from the kind). With statics (the default: the SVG still, tools and Node): every
+ * static entity as a pinned ground placement in metres and the backdrop bands as far placements (the world is already
+ * placed: nothing is judged or snapped again). o.statics === false (the live canvas): no statics at all; the compositor draws
+ * them. o: { id, season, world, statics }.
  */
 function worldHostV2Data(spec, o) {
   o = o || {};
-  const world = o.world || worldHostWorld(spec, o);
+  const world = o.world || worldHostWorld(spec, o), statics = o.statics !== false;
   const P = spec.place || {}, cam0 = spec.camera || {};
   const camera = Object.assign({}, cam0);
   if (camera.lat == null && Number.isFinite(P.lat)) camera.lat = P.lat;
   if (camera.lon == null && Number.isFinite(P.lon)) camera.lon = P.lon;
   if (camera.alt == null && Number.isFinite(P.alt)) camera.alt = P.alt;
-  const style = spec.backdrop && spec.backdrop.style;
+  const style = (spec.backdrop && spec.backdrop.style) || P.style;
   const urban = /^(city|town)/.test(style || '');
   const data = { v: 2, id: o.id || spec.id || 'world', view: { lat: camera.lat, lon: camera.lon }, camera, at: 'afternoon', season: 'auto',
     setting: urban ? 'urban' : 'natural', atmos: 'auto', weather: 'live', cover: 'auto', particles: 'season',
     surfaces: [{ id: 'world-rest', kind: urban ? 'plot' : 'grass', rest: true }], water: [], place: [], scatter: [], actors: [], flows: [], world3: true };
+  // the spec rides along (not enumerable: the bake cache and JSON never see it) so worldHostSpec finds it from the data
+  try { Object.defineProperty(data, '$spec', { value: spec, enumerable: false }); } catch (e) { /* frozen */ }
   for (const s of spec.surfaces || []) {
     if (!s || !s.id) continue;
     const geo = s.poly ? { poly: s.poly } : s.path ? { path: s.path, width: s.width || 2 } : null;
     if (!geo) continue;
     if (s.kind === 'water') { data.water.push(Object.assign({ id: s.id, kind: WORLD_HOST_WATER_V2[s.water] || 'pond' }, geo)); continue; }
     data.surfaces.push(Object.assign({ id: s.id, kind: WORLD_HOST_KIND_V2[s.kind] || 'grass' }, geo));
-    // a hedge surface carries its own hedge object along it (clustered, never a wall)
-    if (s.kind === 'hedge') data.scatter.push({ obj: s.obj || 'plant.towpath-hedge', on: [s.id], n: Math.max(6, Math.round((s.path ? _wh5Len(s.path) : 40) / 2)), dist: 'ground', cluster: { centres: 8, spread: 4 }, seed: 17, anim: false });
   }
-  // the statics: A has validated and placed them, so the v2 compile must not judge or snap them again. Each goes in as a
-  // pinned placement at the camera's projection of its world anchor, its scale from its real height (the descriptor), its
-  // mirror from its facing; the compile infers its depth back from the foot row (haze, shadow, reflection and order by depth).
+  if (!statics) return data;
+  // the statics: placed by the world, so the v2 compile must not judge or snap them again. Each goes in as a pinned placement
+  // at the camera's projection of its world anchor, its scale from its real height (the descriptor), its view from its facing.
   const cam = world.cam || (typeof sceneCamera === 'function' ? sceneCamera({ camera }) : null);
   const ents = (world.entities || []).filter(e => e && e.static !== false && e.obj);
   if (cam) for (const e of ents) data.place.push(...worldHostPlace(cam, e));
-  // clusters the core did not expand (the spec's { cluster, on, n, seed } entries): v2's clustered Poisson scatter
+  // a minimal world (no core): the clusters it could not expand, as v2 clustered scatter; hedge surfaces as hedge scatter
   if (world.minimal) for (const e of spec.entities || []) {
     if (!e || !e.cluster) continue;
-    const obj = typeof e.cluster === 'string' ? e.cluster : e.cluster;
-    data.scatter.push({ obj, on: [e.on].filter(Boolean), n: e.n || 20, dist: 'ground', cluster: { centres: Math.max(2, Math.round((e.n || 20) / 8)), spread: e.edge ? 2.5 : 6 }, seed: e.seed || 1, anim: false });
+    data.scatter.push({ obj: e.cluster, on: [e.on].filter(Boolean), n: e.n || 20, dist: 'ground', cluster: { centres: Math.max(2, Math.round((e.n || 20) / 8)), spread: e.edge ? 2.5 : 6 }, seed: e.seed || 1, anim: false });
   }
-  // the backdrop bands (E): far entities in metres, placed the same way
+  if (world.minimal) for (const s of spec.surfaces || []) {
+    if (s && s.kind === 'hedge' && s.id) data.scatter.push({ obj: s.obj || 'plant.towpath-hedge', on: [s.id], n: Math.max(6, Math.round((s.path ? _wh5Len(s.path) : 40) / 2)), dist: 'ground', cluster: { centres: 8, spread: 4 }, seed: 17, anim: false });
+  }
+  // the backdrop bands (look): far entities in metres, placed the same way
   if (typeof worldBackdrop === 'function' && cam) {
     try { for (const b of worldBackdrop(world, cam, o.season || 'summer') || []) if (b && b.obj && Number.isFinite(b.x) && b.z > 0) data.place.push(...worldHostPlace(cam, b)); } catch (e) { /* no bands: the v2 distant hills remain */ }
   }
@@ -102,7 +181,7 @@ function worldHostV2Data(spec, o) {
 }
 /**
  * The v2 placement of one world entity: [] when it is behind the camera or has no drawing. Pure. cam: a v2 camera.
- * { obj, variant, x, y, s, pin: true, flip, layer } with x, y the projected anchor (scene units) and s = (f / z) x real h / drawn h.
+ * { obj, variant, x, y, s, pin: true, flip, anim: false } with x, y the projected anchor (scene units) and s = (f / z) x real h / drawn h.
  */
 function worldHostPlace(cam, e) {
   if (!(e.z > 0.3) || typeof sceneProject !== 'function') return [];
@@ -110,8 +189,7 @@ function worldHostPlace(cam, e) {
   const v = worldHostViewOf(e.facing || 0, e.x, e.z), obj = _wh5ViewObj(e.obj, v.view);
   const def = typeof sceneObj === 'function' ? sceneObj(obj) : null;
   if (!def || !def.size) return [];
-  const info = typeof worldObjectInfo === 'function' ? worldObjectInfo(e.obj) : null;
-  const hM = (Number.isFinite(e.height) && e.height > 0 ? e.height : null) || (info && info.size && info.size.h) || _wh5RealH(e.obj);
+  const hM = _wh5HeightOf(e);
   const P = sceneProject(cam, e.x, e.z, Number.isFinite(e.y) ? e.y : null), s = (cam.f / e.z) * hM / def.size[1];
   if (P.X < -2000 || P.X > 3600) return [];
   const p = { obj, x: Math.round(P.X * 10) / 10, y: Math.round(P.Y * 10) / 10, s: Math.round(s * 1e4) / 1e4, pin: true, anim: false };
@@ -119,43 +197,130 @@ function worldHostPlace(cam, e) {
   if (v.mirror) p.flip = true;
   return [p];
 }
+/** The real height of a world entity or agent (metres): its own, the descriptor's, else the v2 size table. */
+function _wh5HeightOf(e) {
+  if (Number.isFinite(e.height) && e.height > 0) return e.height;
+  if (Number.isFinite(e.h) && e.h > 0) return e.h;
+  const info = typeof worldObjectInfo === 'function' ? worldObjectInfo(e.obj) : null;
+  return (info && info.size && info.size.h) || _wh5RealH(e.obj);
+}
 function _wh5Len(path) { let L = 0; for (let i = 1; i < path.length; i++) L += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); return L; }
 
-/* ---------- the life sim (pure) ---------- */
+/* ---------- the life of a world: a deterministic driver (R4) ---------- */
 const WORLD_HOST_SIM_HZ = 15, WORLD_HOST_WARM_S = 90;
 /**
- * A life sim for a world: C's life over B's nav, ticked at a fixed 15 Hz (10 under the governor) so any time t is
- * reproducible from the seed (stills and captures warm up 90 s, 4.4). Returns null when B or C is not loaded.
+ * The life sim of a world (life package: worldNavBuild, worldLifeInit, worldLifeTick, worldAgents), ticked in WHOLE fixed
+ * steps only, so the state after n ticks depends on the seed and n alone. The warm-up (4.4: seed + scene time, a fixed
+ * 0.25 s step over 90 s) is the life package's own init; when an init does not warm, it is done here. o: { nav (reuse a
+ * built nav: a reset costs only the warm-up), warm (false: none) }. Returns null when the life package is not loaded.
+ * The returned sim: { nav, life, hz, step, ticks, tick(), snapshot(), base, error? }.
  */
 function worldHostSim(world, o) {
   o = o || {};
   if (typeof worldNavBuild !== 'function' || typeof worldLifeInit !== 'function' || typeof worldLifeTick !== 'function' || typeof worldAgents !== 'function') return null;
-  let nav = null, life = null;
-  const t0 = Number.isFinite(o.t0) ? o.t0 : 0;
-  try { nav = worldNavBuild(world); life = worldLifeInit(world, nav, t0); } catch (e) { return { error: String(e && e.message || e), agents: () => [], to() {}, t: 0 }; }
-  const sim = { nav, life, t: 0, hz: WORLD_HOST_SIM_HZ, tickMs: [], ticks: 0, cur: null };
-  const snap = () => { try { return worldAgents(life) || []; } catch (e) { return []; } };
-  sim.cur = snap();
-  /** Advance to time t (seconds since the start of the sim; never backwards). Bounded per call (a hidden tab does not spin). */
-  sim.to = (t, maxSteps, step) => {
-    const dt = step || 1 / sim.hz;
-    let n = 0;
-    while (sim.t + dt <= t && n < (maxSteps || 30)) {
-      const a = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      worldLifeTick(life, dt);
-      sim.cur = snap();
-      sim.t += dt; n++; sim.ticks++;
-      const ms = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - a;
-      sim.tickMs.push(ms); if (sim.tickMs.length > 240) sim.tickMs.shift();
-    }
-    if (sim.t + dt <= t) sim.t = t;   // far behind (a background tab): jump, the agents are where the last tick put them
+  let nav = o.nav || null, life = null;
+  const bad = (e) => ({ error: String(e && e.message || e), nav, life: null, hz: WORLD_HOST_SIM_HZ, step: 1 / WORLD_HOST_SIM_HZ, ticks: 0, tickMs: [], tick() {}, snapshot: () => [], base: [] });
+  const lo = { warm: o.warm !== false };
+  if (Number.isFinite(o.ms)) lo.ms = o.ms;
+  if (o.ctx || world.time || world.ctx) lo.ctx = o.ctx || world.time || world.ctx;
+  try { if (!nav) nav = worldNavBuild(world); life = worldLifeInit(world, nav, 0, lo); } catch (e) { return bad(e); }
+  if (o.warm !== false && !(life && life.t >= 1)) {
+    try { for (let s = 0; s < WORLD_HOST_WARM_S; s += 0.25) worldLifeTick(life, 0.25); } catch (e) { return bad(e); }
+  }
+  const step = life && life.step > 0 ? life.step : 1 / WORLD_HOST_SIM_HZ;
+  const sim = { kind: 'sim', nav, life, hz: 1 / step, step, ticks: 0, tickMs: [], error: null };
+  sim.snapshot = () => { try { return (worldAgents(life) || []).map(a => Object.assign({}, a)); } catch (e) { return []; } };
+  sim.tick = () => {
+    const a = _wh5Now();
+    try { worldLifeTick(life, step); } catch (e) { sim.error = String(e && e.message || e); }
+    sim.ticks++;
+    sim.tickMs.push(_wh5Now() - a); if (sim.tickMs.length > 240) sim.tickMs.shift();
   };
-  /** The agents at t (C interpolates between its own ticks; nothing is extrapolated here, so no drawn position is ever illegal). */
-  sim.agents = (t) => { sim.to(t); return sim.cur || []; };
-  // the warm-up (4.4): seed + scene time, a fixed 0.25 s step over 90 s, so a still or a capture is the same every time
-  if (o.warm !== false) sim.to(o.warm || WORLD_HOST_WARM_S, 1e6, 0.25);
-  sim.base = sim.t;
+  sim.base = sim.snapshot();
   return sim;
+}
+const _wh5Now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());   // profiling only, never scene time
+
+/**
+ * The driver of a world's life (11.3). The systems runner (worldRun, systems package) drives every system the registry has
+ * (time, wind, water, anim, attach, lod, light ...) in WHOLE fixed ticks (runner.advance), never by frame time. The agents
+ * come from the runner's own life system when it has one (world.agents after its init), else from the life sim
+ * (worldHostSim), ticked on its own exact schedule inside the same ticks and handed to the runner as world.agents, so the
+ * other systems see them. With no runner: the life sim alone. No life package: statics only (null).
+ * The scene time t is one tick ahead of floor(t * hz) and the agents are interpolated between the two last ticks: the agents
+ * at t are a pure function of the world (seed, date) and t (R4). o: { nav, warm, ms (the date and time of the time context),
+ * deterministic (budgets never act: stills, captures, frame records) }.
+ *   driver.at(t) -> agents (t never runs backwards on one driver: a reset builds a new one)
+ */
+function worldHostDriver(world, o) {
+  o = o || {};
+  let R = null;
+  if (typeof worldRun === 'function') {
+    try { R = worldRun(world, { ms: Number.isFinite(o.ms) ? o.ms : undefined, deterministic: o.deterministic !== false, quiet: true }); } catch (e) { R = null; }
+    if (R && typeof R.advance !== 'function') R = null;
+  }
+  // the runner's own life systems (life package: worldLifeOf(world), made by their init)
+  const lifeOfWorld = () => { try { return typeof worldLifeOf === 'function' ? worldLifeOf(world) : null; } catch (e) { return null; } };
+  // ... only while every life system of the runner is alive (one that threw at init is disabled: the life sim drives instead)
+  const lifeSysOk = () => { try { const st = R.stats().systems.filter(q => /^life/.test(q.id)); return st.length > 0 && st.every(q => q.enabled); } catch (e) { return false; } };
+  const own = !!(R && lifeOfWorld() && typeof worldAgents === 'function' && lifeSysOk());
+  if (own && !Array.isArray(world.agents) && Array.isArray(lifeOfWorld().agents)) world.agents = lifeOfWorld().agents;
+  const sim = own ? null : worldHostSim(world, { nav: o.nav || world.nav || null, warm: o.warm, ms: o.ms });
+  if (sim && sim.nav && !world.nav) world.nav = sim.nav;
+  if (!R && !sim) return null;
+  const hz = R ? (typeof WORLD_TICK_HZ === 'number' && WORLD_TICK_HZ > 0 ? WORLD_TICK_HZ : 30) : sim.hz;
+  const d = { kind: R ? (own ? 'run' : 'run+sim') : 'sim', runner: R, sim, nav: world.nav || (sim && sim.nav) || null, hz, step: 1 / hz, ticks: 0, simTicks: 0, tickMs: [], error: null };
+  const lifeOf = () => (own ? lifeOfWorld() : sim && sim.life);
+  d.snapshot = () => {
+    try {
+      if (own) return (worldAgents(lifeOfWorld()) || []).map(a => Object.assign({}, a));
+      return sim ? sim.snapshot() : [];
+    } catch (e) { d.error = String(e && e.message || e); return []; }
+  };
+  d.tick = () => {
+    const a = _wh5Now();
+    d.ticks++;
+    if (sim) {
+      // the life sim on its own exact schedule (15 Hz inside 30 Hz ticks): whole steps only
+      const need = Math.floor(d.ticks * sim.hz / hz + 1e-9);
+      while (d.simTicks < need) { sim.tick(); d.simTicks++; }
+      if (R && sim.life) world.agents = sim.life.agents;
+    }
+    if (R) { try { R.advance(1 / hz); } catch (e) { d.error = String(e && e.message || e); } }
+    d.tickMs.push(_wh5Now() - a); if (d.tickMs.length > 240) d.tickMs.shift();
+  };
+  if (sim && R && sim.life) world.agents = sim.life.agents;
+  d.life = lifeOf;
+  d.base = d.snapshot();
+  d.tau = 0; d.prev = d.base; d.cur = d.base; d.done = 0;
+  // the next tick count for scene time t: one ahead of floor(t * hz), so t lies between prev and cur
+  d.at = (t) => {
+    t = Math.max(0, Number(t) || 0);
+    const k = t * d.hz, need = Math.floor(k + 1e-9) + 1;
+    while (d.done < need) { d.prev = d.cur; d.tick(); d.cur = d.snapshot(); d.done++; }
+    d.tau = t;
+    return _wh5Lerp(d.prev, d.cur, Math.max(0, Math.min(1, k - (need - 1))));
+  };
+  /** The date and time of the time context (a new light in the app; T2). */
+  d.setTime = (ms) => { if (R && typeof R.setTime === 'function' && Number.isFinite(ms)) { try { R.setTime(ms); } catch (e) { /* keep */ } } };
+  d.stop = () => { if (R && typeof R.stop === 'function') { try { R.stop(); } catch (e) { /* gone */ } } };
+  return d;
+}
+/** Agents between two snapshots by id (alpha 0: prev); one that only exists in cur is drawn where it is (it just spawned). */
+function _wh5Lerp(prev, cur, al) {
+  if (!al || prev === cur) return al ? cur.map(a => Object.assign({}, a)) : prev.map(a => Object.assign({}, a));
+  const P = new Map();
+  for (const a of prev) P.set(a.id, a);
+  const out = [];
+  for (const c of cur) {
+    const p = P.get(c.id), a = Object.assign({}, c);
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.z)) {
+      a.x = p.x + (c.x - p.x) * al; a.z = p.z + (c.z - p.z) * al;
+      if (Number.isFinite(p.y) && Number.isFinite(c.y)) a.y = p.y + (c.y - p.y) * al;
+    }
+    out.push(a);
+  }
+  return out;
 }
 
 /**
@@ -172,8 +337,7 @@ function worldHostAgents(agents, cam, o) {
     const obj = _wh5ViewObj(a.obj, a.view);
     const def = typeof sceneObj === 'function' ? sceneObj(obj) : null;
     if (!def || !def.size) continue;
-    const info = typeof worldObjectInfo === 'function' ? worldObjectInfo(a.obj) : null;
-    const hM = (info && info.size && info.size.h) || _wh5RealH(a.obj);
+    const hM = _wh5HeightOf({ obj: a.obj, h: a.h });
     // the near band (3.2: nav forbids it; a giant at the lens is never drawn even if a module let one through)
     if (a.z < cam.f * hM / 405 && !a.framed) { if (o.dropped) o.dropped.near++; continue; }
     const p = sceneProject(cam, a.x, a.z, Number.isFinite(a.y) ? a.y : null);
@@ -200,9 +364,10 @@ function worldHostViewOf(facing, x, z) {
 function _wh5ViewObj(obj, view) {
   if (!view || view === 'side') return obj;
   const def = typeof sceneObj === 'function' ? sceneObj(obj) : null;
-  const links = (def && def.views) || (typeof SCENE_OBJ_VIEWS !== 'undefined' && SCENE_OBJ_VIEWS[obj]) || null;
+  const links = (def && def.views && !Array.isArray(def.views) && def.views) || (typeof SCENE_OBJ_VIEWS !== 'undefined' && SCENE_OBJ_VIEWS[obj]) || null;
   const k = links && (links[view] || (view === 'back' && links.rear) || (view === 'q-front' && links.q));
-  const id = k && (typeof k === 'string' ? k : k.o || k.obj);
+  let id = k && (typeof k === 'string' ? k : k.o || k.obj);
+  if (!id && typeof sceneObj === 'function' && sceneObj(obj + '-' + view)) id = obj + '-' + view;
   return id && (typeof sceneObj !== 'function' || sceneObj(id)) ? id : obj;
 }
 function _wh5RealH(obj) {
@@ -215,33 +380,142 @@ function _wh5LayerOf(cam, d, layers) {
   return layers != null ? layers - 1 : null;
 }
 
-/* ---------- the live worlds the pass draws (keyed by the derived data's id) ---------- */
+/* ---------- the scene clock (R5, M8) ---------- */
+const WORLD_HOST_MAX_DT = 0.25;            // a frame later than this is a pause (offscreen, held): resume without a jump
+/**
+ * The scene clock of a live world: scene seconds (tau) since the scene was first SHOWN. frame(key, t, flags) takes the host
+ * time t of a frame (seconds; key: the renderer's bake) and returns tau:
+ *   - flags.still: 0 (a still is the base moment, the clock is untouched);
+ *   - flags.warming / flags.hidden (hidden preparation, a hidden tab): the clock neither starts nor moves (R5, M8);
+ *   - the first visible frame starts it at 0; each next one moves it by the host's step;
+ *   - a step over WORLD_HOST_MAX_DT is a pause (offscreen, held, a background tab): one nominal frame, no jump (M8);
+ *   - a step back (the host restarted its clock: the scene is shown now) restarts it at 0 (R5);
+ *   - another renderer drawing the same world at once only shows the moment (one clock per world, G10).
+ * pin(t): tools and captures put the clock at t and keep it equal to the frame time (R4). o: { now } (tests).
+ */
+function worldHostClock(o) {
+  o = o || {};
+  const now = typeof o.now === 'function' ? o.now : _wh5Now;
+  const c = { tau: 0, started: false, owner: null, lastT: 0, lastWall: -1e12, restarts: 0, pauses: 0, pinned: false };
+  c.frame = (key, t, f) => {
+    f = f || {};
+    if (f.still) return 0;
+    if (!Number.isFinite(t)) return c.tau;
+    if (c.pinned) { c.tau = Math.max(0, t); c.started = true; return c.tau; }
+    if (f.warming || f.hidden) return c.tau;
+    const w = now();
+    if (!c.started) { c.started = true; c.owner = key; c.lastT = t; c.lastWall = w; c.tau = 0; return 0; }
+    const d = t - c.lastT;
+    // another bake key drawing while the owner draws: the same renderer after a re-bake (its time runs on: it takes over), or
+    // another renderer of the same world (its own host time: it shows the moment and never moves the clock twice)
+    if (key !== c.owner && w - c.lastWall < 500 && Math.abs(d) > WORLD_HOST_MAX_DT) return c.tau;
+    if (d < -WORLD_HOST_MAX_DT) { c.tau = 0; c.restarts++; }
+    else if (d > WORLD_HOST_MAX_DT) { c.tau += 1 / 60; c.pauses++; }
+    else if (d > 0) c.tau += d;
+    c.owner = key; c.lastT = t; c.lastWall = w;
+    return c.tau;
+  };
+  c.pin = (t) => { c.pinned = true; c.started = true; c.tau = Math.max(0, Number(t) || 0); return c.tau; };
+  c.unpin = () => { c.pinned = false; };
+  return c;
+}
+
+/* ---------- the live worlds the passes draw (keyed by the derived data's id) ---------- */
 const _wh5Live = new Map();
-/** Register a world for the pass; returns the derived v2 data the v2 renderer bakes. o: { id, season, sim (false: statics only), t0 }. */
+const _wh5Still = new Map();
+/** Is the world compositor (79-world-5frame.js) loaded and registered? Then the live data carries no statics. */
+function _wh5Compositor() { return typeof worldFramePassOn === 'function' && !!worldFramePassOn(); }
+/**
+ * The scene data of a v3 spec (what a worldAdd item's scene is). o: { id, season, sim (false: the still), still, sync (build
+ * the life now: stills, captures, tools and Node), t0 }.
+ * - The still (o.sim === false or o.still): the derived data WITH statics (F4), memoised per id and season; it never touches
+ *   the live record, so drawing a tile or an SVG never re-rolls a playing scene (G10).
+ * - The live data: registered once per id and spec; a second call (a re-render, live sync, a task save) returns the same
+ *   data and keeps the same world, life and clock (G10). With the compositor loaded it carries no statics (R1).
+ */
 function worldHostData(spec, o) {
   o = o || {};
-  const id = (o.id || spec.id || 'world') + '~w3';
+  const base = o.id || spec.id || 'world';
+  if (o.sim === false || o.still === true) {
+    const key = base + '|' + (o.season || '');
+    const hit = _wh5Still.get(key);
+    if (hit && _wh5SameSpec(hit.spec, spec)) return hit.data;
+    const world = worldHostWorld(spec, o);
+    const data = worldHostV2Data(spec, Object.assign({}, o, { id: base + '~w3s', world, statics: true }));
+    if (_wh5Still.size > 64) _wh5Still.clear();
+    _wh5Still.set(key, { spec, data });
+    return data;
+  }
+  const id = base + '~w3';
+  const old = _wh5Live.get(id);
+  if (old && _wh5SameSpec(old.spec, spec)) {
+    if (o.sync && !old.driver) _wh5Init(old);
+    return old.data;
+  }
   const world = worldHostWorld(spec, o);
-  const data = worldHostV2Data(spec, Object.assign({}, o, { id, world }));
-  const rec = { id, spec, world, data, sim: null, stats: { agents: 0, draws: 0, frames: 0, tickMs: 0, governor: 0, simInitMs: 0 }, govern: 0, };
+  const comp = _wh5Compositor() && !world.minimal;
+  const data = worldHostV2Data(spec, Object.assign({}, o, { id, world, statics: !comp }));
+  const rec = { id, spec, world, data, compositor: comp, driver: null, clock: worldHostClock(), resetting: null, frame: {},
+    stats: { agents: 0, draws: 0, frames: 0, tickMs: 0, governor: 0, simInitMs: 0, resets: 0 } };
   _wh5Live.set(id, rec);
-  // the life sim (nav + populations + the 90 s warm-up) is built OFF the cold-load path in a page: the statics bake and show
-  // first, the movers walk in when it is ready (o.sync: now, for stills, captures, tools and Node)
-  const init = () => {
-    if (_wh5Live.get(id) !== rec || rec.sim) return;
-    const a = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    rec.sim = worldHostSim(world, { t0: o.t0, warm: o.warm });
-    rec.stats.simInitMs = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - a);
-    rec.simAt = null;
-  };
-  if (o.sim === false) { /* statics only */ }
-  else if (o.sync || typeof document === 'undefined') init();
-  else if (typeof requestIdleCallback === 'function') requestIdleCallback(init, { timeout: 1500 }); else setTimeout(init, 300);
+  // the life (nav + populations + the warm-up) is built OFF the cold-load path in a page: the statics bake and show first,
+  // the movers are there when it is ready (o.sync: now, for stills, captures, tools and Node)
+  if (o.sim === 'none') { /* statics only */ }
+  else if (o.sync || typeof document === 'undefined') _wh5Init(rec);
+  else _wh5Idle(() => _wh5Init(rec), 1500);
   return data;
+}
+function _wh5SameSpec(a, b) {
+  if (a === b) return true;
+  try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return false; }
+}
+const _wh5Idle = (fn, timeout) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: timeout || 1000 }) : setTimeout(fn, 50));
+function _wh5Init(rec, nav) {
+  if (_wh5Live.get(rec.id) !== rec || (rec.driver && !nav)) return;
+  const a = _wh5Now();
+  try { rec.driver = worldHostDriver(rec.world, { nav: nav || null }); } catch (e) { rec.driver = null; rec.stats.simError = String(e && e.message || e); }
+  rec.stats.simInitMs = Math.round(_wh5Now() - a);
 }
 function worldHostLive(id) { return _wh5Live.get(id) || null; }
 
-/* ---------- the browser part ---------- */
+/**
+ * The agents a frame draws (the passes call it). rec: a live record (or its data id); t: the host's frame time (seconds);
+ * flags: { key (the renderer's bake), warming, hidden, still, sync (a reset is built now) }. Returns { tau, agents, ready }.
+ * A restart of the clock puts the life back at its base (deterministic): built now in Node, in idle time in a page, the base
+ * moment held meanwhile (R5).
+ */
+function worldHostAt(rec, t, f) {
+  f = f || {};
+  if (typeof rec === 'string') rec = _wh5Live.get(rec);
+  if (!rec) return { tau: 0, agents: [], ready: false };
+  const hidden = !!f.hidden || (f.hidden == null && typeof document !== 'undefined' && !!document.hidden);
+  let tau = rec.clock.frame(f.key || 'k', t, { warming: f.warming, hidden, still: f.still });
+  const d = rec.driver;
+  if (!d) return { tau, agents: [], ready: false };
+  if (f.still) return { tau: 0, agents: d.base.map(a => Object.assign({}, a)), ready: true };
+  if (rec.resetting) { rec.clock.tau = 0; return { tau: 0, agents: d.base.map(a => Object.assign({}, a)), ready: false }; }
+  if (tau + 1e-9 < d.tau) {
+    // back to an earlier moment: the life again from its base (the same world, nav and seed: the same base)
+    rec.stats.resets++;
+    const nav = d.nav || null;
+    if (f.sync || typeof document === 'undefined') { rec.driver = null; _wh5Init(rec, nav); }
+    else {
+      rec.resetting = { at: tau };
+      _wh5Idle(() => { if (_wh5Live.get(rec.id) !== rec) return; const old = rec.driver; rec.driver = null; _wh5Init(rec, nav); if (!rec.driver) rec.driver = old; rec.resetting = null; rec.clock.tau = 0; }, 300);
+      rec.clock.tau = 0;
+      return { tau: 0, agents: d.base.map(a => Object.assign({}, a)), ready: false };
+    }
+  }
+  const D = rec.driver;
+  if (!D) return { tau, agents: [], ready: false };
+  let agents = [];
+  try { agents = D.at(tau); } catch (e) { agents = []; rec.stats.simError = String(e && e.message || e); }
+  rec.stats.agents = agents.length; rec.stats.frames++;
+  rec.stats.tickMs = D.tickMs && D.tickMs.length ? D.tickMs.reduce((x, y) => x + y, 0) / D.tickMs.length : 0;
+  return { tau, agents, ready: true };
+}
+
+/* ---------- without the compositor: the agents through the v2 movers (a fallback; the live data then keeps its statics) ---------- */
 if (typeof sceneRenderPassDefine === 'function') {
   const blob = { c: null };
   const blobOf = () => {
@@ -253,20 +527,17 @@ if (typeof sceneRenderPassDefine === 'function') {
     return (blob.c = c);
   };
   const bucket = (s) => 2 ** (Math.ceil(Math.log2(Math.max(1e-3, s)) * 2) / 2);
+  const recOf = (env) => { const r = _wh5Live.get(env.C && env.C.id); return r && !r.compositor ? r : null; };
   const now = (env, t) => {
-    const rec = _wh5Live.get(env.C && env.C.id);
-    if (!rec || !rec.sim) return null;
-    if (env._wh5t === t) return env._wh5now;
+    const rec = recOf(env);
+    if (!rec) return null;
+    if (env._wh5t === t && env._wh5now) return env._wh5now;
     env._wh5t = t;
-    // the governor (v2 13.2 order first; then agents x 0.7, then the sim at 10 Hz)
+    const st = worldHostAt(rec, t, { key: env, warming: !!env.warming, still: !!env.still });
+    let list = worldHostAgents(st.agents, env.cam || env.C.cam, { layers: (env.C.layers || []).length });
     const lvl = env.gov ? env.gov.level : 0;
-    rec.sim.hz = lvl >= 5 ? 10 : WORLD_HOST_SIM_HZ;
-    if (rec.simAt == null) rec.simAt = t;   // the sim's clock starts when it is ready (its warm-up already put everyone in place)
-    let list = worldHostAgents(rec.sim.agents(rec.sim.base + Math.max(0, t - rec.simAt)), env.cam || env.C.cam, { layers: (env.C.layers || []).length });
     if (lvl >= 4) list = list.filter((a, i) => (i % 10) < 7);
     rec.stats.govern = lvl;
-    rec.stats.agents = list.length; rec.stats.frames++;
-    rec.stats.tickMs = rec.sim.tickMs.length ? rec.sim.tickMs.reduce((x, y) => x + y, 0) / rec.sim.tickMs.length : 0;
     env._wh5now = list;
     return list;
   };
@@ -277,9 +548,8 @@ if (typeof sceneRenderPassDefine === 'function') {
   sceneRenderPassDefine({
     id: 'world-life',
     order: { frameGroup: 26, movers: 55, default: 55 },
-    applies(C) { return !!(C && _wh5Live.has(C.id)); },
+    applies(C) { return !!recOf({ C }); },
     frameGroup(env, grp, ctx, t) {
-      // contact shadows of the grounded agents of this group (floaters get the water's rings instead)
       const list = now(env, t);
       if (!list) return 0;
       const gi = (env.groups || []).indexOf(grp), c = blobOf();
@@ -305,56 +575,58 @@ if (typeof sceneRenderPassDefine === 'function') {
           let sp = null;
           try { sp = env.sprite({ o: a.o, v: a.v, part: '*', season, haze: 0, tint: null, scale: bucket(a.s) * env.vs, flip: false, cls: null }); if (sp && env.keep) env.keep(sp); } catch (e) { sp = null; }
           if (!sp || !sp.c) return 0;
-          const bob = a.moving && a.kind !== 'boat' ? Math.abs(Math.sin(2 * Math.PI * (t * 1.6 + a.phase))) * 0.8 * a.s : 0;
           ctx.globalAlpha = a.alpha;
-          ctx.setTransform(env.vs * a.s * (a.flip ? -1 : 1), 0, 0, env.vs * a.s, env.vs * a.X + env.ox, env.vs * (a.Y - bob) + env.oy);
+          ctx.setTransform(env.vs * a.s * (a.flip ? -1 : 1), 0, 0, env.vs * a.s, env.vs * a.X + env.ox, env.vs * a.Y + env.oy);
           ctx.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h);
           ctx.globalAlpha = 1;
-          const rec = _wh5Live.get(env.C.id); if (rec) rec.stats.draws++;
+          const rec = recOf(env); if (rec) rec.stats.draws++;
           return 1;
         } });
       }
       return 0;
     },
-    stats(env) { const rec = _wh5Live.get(env.C && env.C.id); return rec ? Object.assign({}, rec.stats) : {}; },
+    stats(env) { const rec = recOf(env); return rec ? Object.assign({}, rec.stats) : {}; },
   });
 }
 
 /**
- * The v3 renderer (8.6): the same surface as the v2 renderer (start, stop, setTime, stats, still, resize, setLight,
- * frame, snapshot, destroy). item: a v3 item ({ scene: { v: 3, spec } }), a data object or a spec. canvas: a canvas
- * (null: the SVG still only). o: the v2 renderer's options (+ season, sim: false).
+ * The v3 renderer (the player's data.v === 3 route): the same surface as the v2 renderer (start, stop, setTime, stats,
+ * still, resize, setLight, frame, snapshot, destroy). item: a v3 item ({ scene: { v: 3, spec } }), a data object or a spec.
+ * canvas: a canvas (null: the SVG still only). o: the v2 renderer's options (+ season, sim).
  */
 function worldRendererFor(item, canvas, o) {
   o = o || {};
   const spec = worldHostSpec(item);
   if (!spec) throw new Error('not a v3 scene');
   const season = o.season || (typeof sceneSeason === 'function' && o.sky && Number.isFinite(o.sky.ms) ? sceneSeason(o.sky.ms, spec.place && spec.place.lat) : null) || 'summer';
-  const data = worldHostData(spec, { id: (item && item.id) || spec.id, season, sim: o.sim, sync: !!o.still });
-  const rec = _wh5Live.get(data.id);
-  const svgStill = (so) => (typeof sceneSvg === 'function' ? sceneSvg(data, Object.assign({ season }, o, so || {}, { renderer: 'svg' })) : '');
+  const id = (item && item.id) || spec.id;
+  const svgStill = (so) => (typeof sceneSvg === 'function' ? sceneSvg(worldHostData(spec, { id, season, sim: false }), Object.assign({ season }, o, so || {}, { renderer: 'svg' })) : '');
   if (!canvas || typeof sceneRendererCreate !== 'function' || (typeof sceneCanvasSupported === 'function' && !sceneCanvasSupported())) {
-    return { kind: 'svg', start() {}, stop() {}, setTime() {}, stats: () => ({ world: rec.stats, svg: true }), still: svgStill, destroy() { _wh5Live.delete(data.id); }, data };
+    const data = worldHostData(spec, { id, season, sim: false });
+    return { kind: 'svg', start() {}, stop() {}, setTime() {}, stats: () => ({ svg: true }), still: svgStill, destroy() {}, data };
   }
+  const data = worldHostData(spec, { id, season, sync: !!o.still });
+  const rec = _wh5Live.get(data.id);
   const r = sceneRendererCreate(canvas, data, Object.assign({}, o, { season }));
   const api = Object.create(r);
   Object.assign(api, {
-    kind: 'canvas', data, world: rec.world,
-    /** Jump the scene clock: the sim advances deterministically to t (seconds after the warm-up). */
-    setTime(t) { if (rec.sim) { rec.simAt = 0; rec.sim.to(rec.sim.base + Math.max(0, t), 1e6); } r.frame(t); },
+    kind: 'canvas', data, world: rec ? rec.world : null,
+    /** Put the scene clock at t (seconds of scene time; tools and captures): frames then show exactly t (R4). */
+    setTime(t) { if (rec) rec.clock.pin(t); r.frame(t); },
     still(so) { return svgStill(so); },
     stats() {
       const s = r.stats();
-      s.world = Object.assign({}, rec.stats, { minimal: !!rec.world.minimal, problems: (rec.world.problems || []).length, sim: !!rec.sim, simError: rec.sim && rec.sim.error || null });
+      s.world = rec ? Object.assign({}, rec.stats, { compositor: rec.compositor, minimal: !!rec.world.minimal, problems: (rec.world.problems || []).length, sim: !!rec.driver, driver: rec.driver ? rec.driver.kind : null,
+        simError: rec.driver && rec.driver.error || null, tau: rec.clock.tau, restarts: rec.clock.restarts }) : null;
       return s;
     },
-    destroy() { r.destroy(); _wh5Live.delete(data.id); },
+    destroy() { r.destroy(); },
   });
   return api;
 }
 
 /**
- * The order invariant for one frame (tests and `world motion`): D's worldFrameOrder over A's statics and the agents
+ * The order invariant for one frame (tests and `world motion`): D's worldFrameOrder over the world's statics and the agents
  * at t; returns the violations (2.3 item 5; must be 0). Pure.
  */
 function worldHostOrderCheck(world, agents, cam) {

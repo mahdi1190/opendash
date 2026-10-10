@@ -1,0 +1,115 @@
+{
+ "about": "a mallard put on a building roof (inside its footprint, far from the pond): it is dropped, the building stays",
+ "expect": {
+  "duck": {
+   "kept": false,
+   "actions": [
+    "drop"
+   ],
+   "rules": [
+    "badAttach"
+   ]
+  }
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 51.28,
+   "lon": -0.83,
+   "region": "hampshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 62,
+   "horizon": 460,
+   "heading": 0
+  },
+  "surfaces": [
+   {
+    "id": "yard",
+    "kind": "plaza",
+    "poly": [
+     [
+      -60,
+      1
+     ],
+     [
+      60,
+      1
+     ],
+     [
+      60,
+      200
+     ],
+     [
+      -60,
+      200
+     ]
+    ]
+   },
+   {
+    "id": "pond",
+    "kind": "water",
+    "water": "pond",
+    "poly": [
+     [
+      20,
+      20
+     ],
+     [
+      40,
+      20
+     ],
+     [
+      40,
+      40
+     ],
+     [
+      20,
+      40
+     ]
+    ]
+   }
+  ],
+  "buildings": [
+   {
+    "id": "house",
+    "foot": [
+     [
+      -6,
+      24
+     ],
+     [
+      6,
+      24
+     ],
+     [
+      6,
+      34
+     ],
+     [
+      -6,
+      34
+     ]
+    ],
+    "storeys": 2,
+    "roof": "pitched",
+    "style": "victorian-terrace"
+   }
+  ],
+  "entities": [
+   {
+    "obj": "bird.mallard",
+    "id": "duck",
+    "at": [
+     0,
+     29
+    ]
+   }
+  ],
+  "backdrop": {
+   "style": "woodland"
+  },
+  "seed": 5
+ }
+}

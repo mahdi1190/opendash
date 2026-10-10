@@ -4,28 +4,37 @@
 //                                            names the tools need (sceneData, sceneCamera, sceneProject, sceneUnproject, worldValidate ...)
 //   resolveRef(E, ref)                       a registry item by 'pack/id', by a bare id, or by a short alias ('fleet-canal-2') -> { ref, item }
 //   convertData(data, meta, E, o)            v2 or v1 scene data -> { spec, meta, report }; pure apart from the engine functions in E
-//   convertRef(ref, { root, E })             resolve + convert + validate (A's worldValidate when loaded)
+//   convertRef(ref, { root, E, critic })     resolve + convert + validate (worldValidate when loaded) + the critic against the source:
+//                                            ok only when valid AND at least as rich as the source (U4, P7; out.critic { source, converted, ok })
 //   sceneFileSource(meta, spec, report)      the text of src/app/79-world-zscene-<id>.js (worldAdd into the hidden pack 'world-test')
 //
 // What it keeps: the camera; surfaces as geometry and kind; water as geometry and kind only (the water lock); ground placements in
-// metres with facing; scatter as clustered entries; flows and behaving actors as life populations; landmarks with a src.
+// metres with facing; flows and behaving actors as life populations; landmarks with a src; and everything else the v2 compile
+// places (U4: kits, hedgerows, bank and edge planting, scatter): exact near the camera (< 35 m), clustered beyond, hedge pieces as
+// hedgerow surfaces (one solid strip each). Without the compile, scatter becomes clustered entries.
 // What it drops (listed in report.dropped, never kept): light, tint, shadow, reflect, layer, scale (s, k, sByY), flip, pixel paths,
 // water colours / mirror / ripple. Pixel placements are unprojected at their foot row; what has no foot goes to backdrop.skyline or is
 // dropped, and each one is listed under report.review. Converted scenes are NEW items (<id>-w3); the original is never touched.
 import { loadScenes, repoRoot } from '../scene-page.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { worldNames, WORLD_FILE_RE } from './load.mjs';
+import { worldCritic, criticOfRef } from './critic.mjs';
 
 const ENGINE_NAMES = ['sceneData', 'sceneCamera', 'sceneProject', 'sceneUnproject', 'sceneObj', 'sceneObjClassOf', 'sceneItems', 'animItem',
   'worldObjectInfo', 'worldValidate', 'worldBuild', 'worldAdd', 'worldNavBuild', 'worldLifeInit', 'worldLifeTick', 'worldAgents', 'worldChunks',
   'worldFrameOrder', 'worldOrderCheck', 'worldBackdrop', 'worldCoverage', 'worldHostV2Data', 'worldHostWorld', 'worldHostSim', 'worldHostAgents',
-  'worldHostOrderCheck', 'worldHostData', 'worldHostSpec', 'worldRendererFor', 'worldBrains', 'sceneCompile', 'sceneSvg', 'worldNavOk', 'worldNavLayer', 'worldAddProblems', 'worldSurfaceAt', 'worldLifeIsSpawn', 'worldHostViewOf', 'worldHostPlace'];
+  'worldHostOrderCheck', 'worldHostData', 'worldHostSpec', 'worldRendererFor', 'worldBrains', 'sceneCompile', 'sceneSvg', 'worldNavOk', 'worldNavLayer', 'worldAddProblems', 'worldSurfaceAt', 'worldLifeIsSpawn', 'worldHostViewOf', 'worldHostPlace',
+  'sceneGroundHeight', 'sceneObjs', 'sceneObjReal', 'sceneSeason', 'sceneSnowCover', 'sceneFrostAt', 'almSunPosition', 'almMoonPosition', 'almSceneLight', 'sceneLightV2', 'sceneObjShapes'];
 
 let _cache = null;
 /** Evaluate the sources once per process (about 0.3 s). */
 export function loadEngine({ root = repoRoot(), fresh = false } = {}) {
   if (_cache && !fresh && _cache.root === root) return _cache.E;
-  const extra = 'globalThis.__worldEngine = { ' + ENGINE_NAMES.map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ') +
+  // every top-level world* / WORLD_* name of the 79-world sources (each package adds its own; a missing one is undefined)
+  let names = ENGINE_NAMES;
+  try { const app = join(root, 'src', 'app'); names = [...new Set([...ENGINE_NAMES, ...worldNames(readdirSync(app).filter(f => WORLD_FILE_RE.test(f)).map(f => join(app, f)))])]; } catch (e) { /* the fixed list */ }
+  const extra = 'globalThis.__worldEngine = { ' + names.map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ') +
     ", refs: typeof _animRefs === 'undefined' ? null : _animRefs, packs: typeof _scPacks === 'undefined' ? null : _scPacks };";
   loadScenes(root, { fixtures: false, extra });
   const E = globalThis.__worldEngine;
@@ -280,10 +289,12 @@ export function convertData(data, meta, E, o = {}) {
     review(path, `building footprint (${b.style}, ${b.storeys || '?'} storeys) -> one 'building.${b.style}' entity at its centre: the library size replaces the authored footprint`);
     drop(path, 'foot,storeys,seed', 'size comes from the descriptor');
   }
-  // scatter -> clusters (world metres)
+  // scatter -> clusters (world metres); with the compile (3b) the scatter's real result is carried instead
+  const carrying = o.carry !== false && !!E.sceneCompile;
   for (const [i, s] of ((data && data.scatter) || []).entries()) {
     const path = `scatter[${i}]`;
     if (!s || !s.obj) continue;
+    if (carrying) { drop(path, 'scatter', 'carried from the compiled scene (what the scatter placed: exact near the camera, clusters beyond)'); continue; }
     const ons = [].concat(s.on || []).flatMap(k => (byId.has(k) ? [k] : surfaces.filter(x => x.kind === SURF_V3[k] || x.kind === k).map(x => x.id)));
     if (!ons.length) { review(path, `scatter of ${typeof s.obj === 'string' ? s.obj : Object.keys(s.obj).join('+')} on ${JSON.stringify(s.on)}: no surface; dropped`); continue; }
     const objs = typeof s.obj === 'string' ? [s.obj] : Object.keys(s.obj).filter(k => s.obj[k] > 0);
@@ -302,6 +313,11 @@ export function convertData(data, meta, E, o = {}) {
     }
     for (const k of ['d', 'dist', 'cluster', 'k', 'tint', 'anim', 'shadow', 'gap', 'avoid', 'minGap', 'mask', 'species', 'variant']) if (s[k] !== undefined) drop(path, k, k === 'd' ? 'the depth range: the cluster fills its surface' : 'derived by the engine');
   }
+
+  // 3b. carry everything else that is visible (U4, P7): the v2 compile places items the data above does not name (kits,
+  // hedgerows, bank and edge planting, auto dressing, scatter that expanded beyond its n). Per object and surface, the shortfall
+  // between the compiled items and what the spec already holds is carried: 4 or more as a cluster, fewer as entities.
+  if (o.carry !== false && E.sceneCompile) carryCompiled(data, E, { surfaces, byId, entities, landmarks, surfAt, info, report, rest: surfaces[0] });
 
   // 4. life: flows and behaving actors
   const life = [];
@@ -364,8 +380,102 @@ export function convertData(data, meta, E, o = {}) {
   return { spec, meta: m2, report };
 }
 
+/** Hedge pieces into chains: each piece joins the chain whose end is within 7 m, else starts one; each chain ordered along its
+ *  main axis and thinned to a point every 2 m or more. */
+function hedgeChains(pieces) {
+  const chains = [];
+  for (const p of pieces.slice().sort((a, b) => a.z - b.z || a.x - b.x)) {
+    let best = null, bd = 7;
+    for (const c of chains) for (const q of c) { const d = Math.hypot(q.x - p.x, q.z - p.z); if (d < bd) { bd = d; best = c; } }
+    if (best) best.push(p); else chains.push([p]);
+  }
+  return chains.map(c => {
+    if (c.length < 3) return c;
+    const mx = c.reduce((s, p) => s + p.x, 0) / c.length, mz = c.reduce((s, p) => s + p.z, 0) / c.length;
+    let sxx = 0, szz = 0, sxz = 0;
+    for (const p of c) { sxx += (p.x - mx) ** 2; szz += (p.z - mz) ** 2; sxz += (p.x - mx) * (p.z - mz); }
+    const a = 0.5 * Math.atan2(2 * sxz, sxx - szz), ux = Math.cos(a), uz = Math.sin(a);
+    const s = c.slice().sort((p, q) => (p.x * ux + p.z * uz) - (q.x * ux + q.z * uz)), out = [s[0]];
+    for (const p of s.slice(1)) if (Math.hypot(p.x - out[out.length - 1].x, p.z - out[out.length - 1].z) >= 2) out.push(p);
+    return out.length >= 2 ? out : s.slice(0, 2);
+  });
+}
+/** Compiled items nearer than this (metres) are carried at their exact place; farther ones as clusters. */
+const CARRY_EXACT_M = 35;
+/** A small stable hash (cluster seeds). */
+const hashOf = (s) => { let h = 2166136261 >>> 0; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return (h % 9973) + 1; };
+/**
+ * Carry the compiled v2 items the spec does not hold yet (3b). Mutates entities; adds report.counts.carried and a note.
+ * Items beyond 400 m are the backdrop's (the style's bands); items with no ground record (sky art) were reviewed above.
+ */
+function carryCompiled(data, E, { surfaces, byId, entities, landmarks, surfAt, info, report, rest }) {
+  let C;
+  try { C = E.sceneCompile(data, { season: 'summer' }); } catch (e) { report.notes.push('carry: the v2 compile threw (' + e.message + '); nothing carried'); return; }
+  const restId = rest ? rest.id : null, groups = new Map();
+  for (const it of C.items || []) {
+    const g = it.g;
+    if (!g || !Number.isFinite(g.x) || !Number.isFinite(g.d) || g.d <= 0.5 || g.d > 400) continue;
+    // perspective pieces are screen art (boats, walks, bridges cut to one view); plants and ground cover from those libraries are real
+    if ((PIECE_RE.test(it.o) && !/^(plant|ground|tree|water|flower)\./.test(it.o)) || /^(landmark|sky|bird-air)\./.test(it.o)) continue;
+    let on = g.surf && byId.has(g.surf) ? g.surf : null;
+    if (!on) { const s = surfAt(g.x, g.d); on = s ? s.id : restId; }
+    if (!on) continue;
+    const k = it.o + '|' + on;
+    if (!groups.has(k)) groups.set(k, { obj: it.o, on, items: [] });
+    groups.get(k).items.push(it);
+  }
+  // hedgerows: a run of hedge pieces becomes a hedge surface along its line (one solid strip, never overlapping pieces)
+  const hedges = [];
+  for (const [k, grp] of groups) {
+    const d = info(grp.obj);
+    if (!d || d.cls !== 'hedge') continue;
+    groups.delete(k);
+    hedges.push(...grp.items.map(it => ({ obj: grp.obj, x: it.g.x, z: it.g.d, w: d.size && d.size.d ? d.size.d : 1.2 })));
+  }
+  let nh = 0;
+  const byObj = new Map(); for (const h of hedges) { if (!byObj.has(h.obj)) byObj.set(h.obj, []); byObj.get(h.obj).push(h); }
+  for (const chain of [...byObj.values()].flatMap(hedgeChains)) {
+    if (chain.length < 2) { entities.push({ obj: chain[0].obj, at: [r2(chain[0].x), r2(chain[0].z)] }); continue; }
+    const id = 'hedgerow-' + (++nh), obj = chain[Math.floor(chain.length / 2)].obj;
+    const s = { id, kind: 'hedge', path: chain.map(p => [r2(p.x), r2(p.z)]), width: r2(Math.max(0.8, chain[0].w)), obj };
+    surfaces.push(s); byId.set(id, s);
+  }
+  if (nh) report.notes.push(`carried ${hedges.length} hedge piece(s) as ${nh} hedgerow surface(s) (kind hedge: one solid strip each)`);
+  // what the spec already holds per object and surface
+  const have = new Map(), add = (k, n) => have.set(k, (have.get(k) || 0) + n);
+  for (const e of entities.concat(landmarks)) {
+    if (e.cluster) add(e.cluster + '|' + e.on, e.n || 0);
+    else if (e.obj && Array.isArray(e.at)) { const s = surfAt(e.at[0], e.at[1]); add(e.obj + '|' + (s ? s.id : restId), 1); }
+  }
+  let clusters = 0, singles = 0, items = 0;
+  for (const [k, grp] of groups) {
+    const need = grp.items.length - (have.get(k) || 0);
+    if (need <= 0) continue;
+    const d = info(grp.obj);
+    if (d === null) continue;
+    if (d && (d.attachOk || [])[0] === 'air' && !(d.attachOk || []).includes('ground')) continue;
+    const sk = byId.get(grp.on) ? byId.get(grp.on).kind : 'grass';
+    if (d && !(d.attachOk || []).includes(sk === 'water' ? 'water' : 'ground')) continue;
+    // the near ground (what the eye reads first) keeps its composition: those items are carried exactly; the rest as a cluster
+    const ordered = grp.items.slice().sort((a, b) => a.g.d - b.g.d), near = ordered.filter(it => it.g.d < CARRY_EXACT_M).slice(0, need), rest = need - near.length;
+    for (const it of near) entities.push({ obj: grp.obj, at: [r2(it.g.x), r2(it.g.d)] });
+    singles += near.length;
+    if (rest >= 4) {
+      const e = { cluster: grp.obj, on: grp.on, n: rest, seed: hashOf(k) };
+      if (sk === 'water' || /reed|bulrush|sedge|rush/.test(grp.obj)) e.edge = true;
+      entities.push(e); clusters++;
+    } else if (rest > 0) {
+      for (const it of ordered.slice(-rest)) entities.push({ obj: grp.obj, at: [r2(it.g.x), r2(it.g.d)] });
+      singles += rest;
+    }
+    items += need;
+  }
+  report.counts.carried = items;
+  if (items) report.notes.push(`carried ${items} compiled item(s) the data did not name (kits, hedgerows, edge planting, scatter): ${clusters} cluster(s), ${singles} entit${singles === 1 ? 'y' : 'ies'}`);
+}
+
 /** Resolve, convert and validate one ref. Returns { ok, ref, spec, meta, report, validation }. */
-export function convertRef(ref, { root = repoRoot(), E = null } = {}) {
+export function convertRef(ref, { root = repoRoot(), E = null, critic = true } = {}) {
   E = E || loadEngine({ root });
   const hit = resolveRef(E, ref);
   if (!hit) throw new Error(`unknown scene '${ref}'`);
@@ -378,6 +488,16 @@ export function convertRef(ref, { root = repoRoot(), E = null } = {}) {
   out.report.validation = out.validation;
   out.ok = out.validation.ok;
   out.ref = hit.ref;
+  // U4, P7: the converted scene must be at least as rich as its source (the critic's box measure on both sides)
+  if (critic && E.worldBuild && E.sceneCompile) {
+    try {
+      const v3 = worldCritic(E, out.spec, {}), source = criticOfRef(E, hit.ref, {}, resolveRef);
+      out.critic = { source: source.score, converted: v3.score, ok: v3.score + 0.5 >= source.score, bands: { source: source.richness, converted: v3.richness } };
+    } catch (e) { out.critic = { source: null, converted: null, ok: false, error: e.message }; }
+    out.report.critic = out.critic;
+    if (!out.critic.ok) out.report.review.push({ path: 'critic', msg: `richness ${out.critic.converted} is below the source's ${out.critic.source} (P7, U4): carry or add the missing dressing before it ships` });
+    out.ok = out.ok && out.critic.ok;
+  }
   return out;
 }
 
