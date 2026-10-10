@@ -290,3 +290,30 @@ Each library object class has a descriptor that the ENGINE reads; scenes never r
 - Wide aspect ratios revealing unfinished scene edges: the world extends beyond the default frame (overscan) so 21:9 never shows
   an edge.
 - Tiny screens: the subject stays readable in the tile crop (C4 at tile size).
+
+## 20. Variation is free: time, season and weather are parameters, not work (the user, 10 Oct)
+
+One v3 scene renders correctly at ANY date, time and weather with zero extra authoring.
+- V1 [T] A scene spec contains no per-season, per-time or per-weather data: no seasonal variants, no night copies, no
+  colour lists. The validator rejects them.
+- V2 [T] Colour comes from materials, not baked colours. Every object part has a material (bark, leaf, brick, stone,
+  water, glass, paint, skin, fabric and so on). The engine colours each material from:
+  - the season (leaf and grass colour by month, bare and budding states);
+  - the light (sun colour and elevation, sky ambient, overcast, night);
+  - the weather (wet darkening, frost or snow overlay);
+  - the haze of its depth.
+- V3 [T] Object state comes from descriptors (K6):
+  - trees leaf out, turn and drop by date;
+  - flowers bloom in their months;
+  - snow sits on surfaces on snow days;
+  - windows and lamps light by sun elevation, varied per window;
+  - café furniture and markets appear by season and dates;
+  - populations change by hour, weekday and weather.
+- V4 [T] Light is computed from the almanac for the scene's lat/lon and date/time: sun and moon positions, shadow direction
+  and length, sky gradient, golden hour and twilight.
+- V5 [T] Changing the date, time or weather invalidates only what it affects (season sprites, light grade, lit windows,
+  snow overlays) and reuses the rest from cache, so a change of time or season is fast.
+- V6 Tools: `world sheet <ref> --matrix` renders the same scene across 4 seasons x 5 times x 3 weathers in one go. A dev
+  time/season/weather scrubber in the gallery preview lets the user drag through a day or a year live.
+- V7 [T] Acceptance: every test scene renders at every cell of that matrix with zero invariant violations, and a fresh
+  reviewer checks the matrix for wrong colours (green trees in January, lit windows at noon, shadows at night, snow in July).
