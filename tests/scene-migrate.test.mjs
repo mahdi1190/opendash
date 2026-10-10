@@ -75,7 +75,7 @@ test('migrate: a crafted v1 scene: surfaces by slot, a canal, ground placements 
   assert.ok(report.check.maxDX <= 1.5 && report.check.maxDY <= 1.5 && report.check.maxDS <= 0.03);
 });
 
-const REFS = ['uk-area-woking-b/surrey-woking-commercial-way', 'uk-area-yateley/hampshire-yateley-green-1', 'uk-area-fleet/hampshire-fleet-pond-1'];
+const REFS = ['texas/fort-worth-stockyards-scene', 'texas/hill-country-bluebonnets', 'texas/gulf-coast-sunrise'];
 const REG = loadRegistry(ROOT), E_REAL = engineOf(REG);
 const HAVE = E_REAL.ready && REFS.every(r => REG.items().some(e => e.ref === r)) ? false : 'the engine or the sample scenes are not in this checkout';
 test('migrate (CLI): three real v1 scenes, --dry-run: converted or pinned, the place and scale kept, the defects listed, nothing written', { skip: HAVE, timeout: 300000 }, async () => {
@@ -94,7 +94,7 @@ test('migrate (CLI): three real v1 scenes, --dry-run: converted or pinned, the p
     assert.equal(r.file, undefined, 'dry run');
   }
   assert.equal(readdirSync(app).sort().join('|'), before, 'nothing written to src/app');
-  for (const p of ['uk-area-woking-b', 'uk-area-yateley', 'uk-area-fleet']) assert.ok(existsSync(join(dir, `migrate-${p}.json`)), `--report: migrate-${p}.json`);
-  const rep = JSON.parse(readFileSync(join(dir, 'migrate-uk-area-woking-b.json'), 'utf8'));
-  assert.equal(rep.pack, 'uk-area-woking-b'); assert.equal(rep.scenes[0].ref, REFS[0]);
+  assert.ok(existsSync(join(dir, 'migrate-texas.json')), '--report: migrate-texas.json');
+  const rep = JSON.parse(readFileSync(join(dir, 'migrate-texas.json'), 'utf8'));
+  assert.equal(rep.pack, 'texas'); assert.deepEqual(rep.scenes.map(s=>s.ref), REFS);
 });

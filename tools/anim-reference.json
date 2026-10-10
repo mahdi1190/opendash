@@ -1,80 +1,77 @@
 {
-  "_about": "THE NEW STANDARD (docs/dev/SCENE_ENGINE.md section 15, user decision 7 Oct 2026): `bar` is what every scene must reach: the rich Yateley and Fleet scenes (depth layers, dense ground cover, life at every depth, a signature, the live sky, seasons, shadows, reflections and night lights) at a frame budget. The composed profile measures it (scene lint), and new scenes are COMPOSED from the object library (scene new, scene upgrade). `scenes` and `items` are the earlier gold set, now the LEGACY exemplars: hand-drawn craft to learn from, below the new bar. `weaker` lists accepted scenes that fall short: do better than them. `node tools/anim-pack.mjs reference` prints it; `reference --render` writes the PNGs to .anim-ref/.",
+  "_about": "THE NEW STANDARD (docs/dev/SCENE_ENGINE.md section 15, user decision 7 Oct 2026): `bar` is what every scene must reach: the released composed Texas scenes (the historical Yateley and Fleet descriptions are retained under archivedBar) (depth layers, dense ground cover, life at every depth, a signature, the live sky, seasons, shadows, reflections and night lights) at a frame budget. The composed profile measures it (scene lint), and new scenes are COMPOSED from the object library (scene new, scene upgrade). `scenes` and `items` are the earlier gold set, now the LEGACY exemplars: hand-drawn craft to learn from, below the new bar. `weaker` lists accepted scenes that fall short: do better than them. `node tools/anim-pack.mjs reference` prints it; `reference --render` writes the PNGs to .anim-ref/.",
   "standard": 2,
   "bar": [
     {
-      "ref": "uk-area-yateley/hampshire-yateley-common-1",
-      "kind": "rich",
-      "source": "src/app/71-scene-uk-yateley-common.js",
-      "why": "THE BAR for open country. Depth: a hazy far tree line, a mid band of birch and pine, near heath and a framing foreground, each in its own layer with haze between them. Cover: heather, gorse and grass carpet the whole lower ground, no bare columns. Life: walkers with a dog, rabbits, butterflies, bees, birds crossing and swaying plants at three depths. Light: the live sky of the real sun, shadows along it, the season by date.",
+      "ref": "texas/fort-worth-stockyards-scene",
+      "kind": "composed",
+      "source": "src/app/71-scene-upgrade-texas-fort-worth.js",
+      "why": "A clear architectural gate, moving longhorns and layered native planting establish a single readable subject. The released composed view demonstrates grounded life, seasonal cover, lit windows and restrained night lighting.",
       "tags": [
-        "heath",
-        "depth-layers",
+        "architecture",
+        "grounded-life",
         "dense-cover",
-        "live-sky",
-        "shadows"
+        "night-lit"
       ]
     },
     {
-      "ref": "uk-area-yateley/hampshire-yateley-common-4",
-      "kind": "rich",
-      "source": "src/app/71-scene-uk-yateley-common.js",
-      "why": "The same heath at evening: match the low warm light, the long shadows and the way the far layers fade into the glow while the near cover stays crisp.",
+      "ref": "texas/dallas-skyline",
+      "kind": "composed",
+      "source": "src/app/71-scene-upgrade-texas-dallas.js",
+      "why": "A skyline with distinct towers and a bridge shares the frame with a river and moving boats. Study the hierarchy between the skyline, reflective water and near planting, and the separate window and beacon lighting after dusk.",
       "tags": [
-        "evening",
-        "golden-light",
-        "long-shadows",
-        "depth-layers"
-      ]
-    },
-    {
-      "ref": "uk-area-yateley/hampshire-wyndhams-pool-1-winter",
-      "kind": "rich",
-      "source": "src/app/71-scene-uk-yateley-wyndhams-pool.js",
-      "why": "Winter done right: bare twig lattices, frost and russet cover instead of summer green, a still pool reflecting the trees, and life that still moves (water birds, a walker) under a low winter sun.",
-      "tags": [
-        "winter",
-        "reflection",
-        "bare-trees",
-        "water-birds"
-      ]
-    },
-    {
-      "ref": "uk-area-yateley/hampshire-yateley-green-2-spring",
-      "kind": "rich",
-      "source": "src/app/71-scene-uk-yateley-green.js",
-      "why": "Spring and a mixed setting: a village green with houses, a pond and wild flowers. Match the density of the meadow cover, the blossom, and the windows that light at real dusk.",
-      "tags": [
-        "spring",
-        "village",
-        "pond",
-        "wildflowers",
-        "lit-windows"
-      ]
-    },
-    {
-      "ref": "uk-area-fleet/hampshire-fleet-pond-1",
-      "kind": "rich",
-      "source": "src/app/71-scene-uk-fleet-scenes.js",
-      "why": "THE BAR for water: a wide lake with reflections of everything at its edge, reed beds along the margins, swans, ducks and dragonflies on and over the water, walkers on the shore, shimmer and the glitter road of the real sun.",
-      "tags": [
-        "lake",
+        "skyline",
+        "bridge",
         "reflections",
-        "reedbed",
-        "water-birds",
-        "glitter-road"
+        "night-lit"
       ]
     },
     {
-      "ref": "uk-area-fleet/hampshire-fleet-pond-2-autumn",
-      "kind": "rich",
-      "source": "src/app/71-scene-uk-fleet-scenes.js",
-      "why": "Autumn: copper and gold crowns, falling leaves, reeds gone tawny; the same depth, cover and life as summer in the colours of the season.",
+      "ref": "texas/austin-capitol-walk",
+      "kind": "composed",
+      "source": "src/app/71-scene-upgrade-texas-austin.js",
+      "why": "The Capitol dome and its path remain central within an expansive park. Native planting, walkers and birds give separate depth bands life, while evening architectural lighting keeps the landmark readable.",
       "tags": [
-        "autumn",
-        "falling-leaves",
-        "reflections",
+        "monument",
+        "park",
+        "depth-layers",
+        "live-sky"
+      ]
+    },
+    {
+      "ref": "texas/alamo-morning",
+      "kind": "composed",
+      "source": "src/app/71-scene-upgrade-texas-san-antonio.js",
+      "why": "The mission facade is treated as respectful architecture, with a shaded plaza and detailed near planting. Study the quiet masonry palette, layered vegetation and the measured lighting that distinguishes dusk from noon.",
+      "tags": [
+        "architecture",
+        "plaza",
+        "dense-cover",
         "seasons"
+      ]
+    },
+    {
+      "ref": "texas/hill-country-bluebonnets",
+      "kind": "composed",
+      "source": "src/app/71-scene-upgrade-texas-hill-country.js",
+      "why": "Bluebonnets and native grasses create a varied foreground beneath layered Hill Country terrain. The composed scene provides the released benchmark for a natural setting, with distinct seasonal colours and moving wildlife at several depths.",
+      "tags": [
+        "landscape",
+        "dense-cover",
+        "wildlife",
+        "seasons"
+      ]
+    },
+    {
+      "ref": "texas/gulf-coast-sunrise",
+      "kind": "composed",
+      "source": "src/app/71-scene-upgrade-texas-gulf-coast.js",
+      "why": "A coastal pier and native dune planting separate land, water and distant atmosphere. Pelicans, moving surf and water reflections give the view life, with a coherent change of light through dawn, day, dusk and night.",
+      "tags": [
+        "coast",
+        "water",
+        "reflections",
+        "birds"
       ]
     }
   ],
@@ -82,7 +79,7 @@
     "Before drawing: render the exemplars nearest your subject (skyline, mountains, monument, water, desert, snow, tropics, night lights, wildlife) and read their source (the 'source' field).",
     "After drawing: `node tools/anim-pack.mjs sheet <your refs> --contact` (light) and `--mode night`, then hold your render next to the exemplar: same depth layers, same finish, same life. Passing the lint is the floor; this comparison is the bar.",
     "Study technique, not content: ask what each exemplar does that makes it look finished (layers, haze between them, a reflection, framing foreground, motion at three depths, a lit evening grade) and do the same for your subject.",
-    "For a NEW scene: render the bar (reference --render) and match it: compose from the library and check with scene lint --perf and scene sheet --times --seasons. The convert stage replaces the bar entries by their composed versions (kind: composed) and adds the pilot upgrades."
+    "For a NEW scene: render the bar (reference --render) and match it: compose from the library and check with scene lint --perf and scene sheet --times --seasons. The live bar uses released composed scenes; archived entries document the retired UK inventory."
   ],
   "scenes": [
     {
@@ -287,6 +284,12 @@
   ],
   "weaker": [
     {
+      "ref": "texas/west-texas-sunset",
+      "wrong": "The retained original is one of the five thinnest accepted hand-drawn scenes: its limited moving groups require the existing richness exception. It is useful as a negative example alongside the released composed replacement, which passes without that exception.",
+      "fix": "Study the retained original and replacement together: keep the sunset's clear focus while adding distinct depth planes, structured native ground cover and independently moving life at several distances.",
+      "source": "src/app/71-anim-texas-scenes.js (id: 'west-texas-sunset'; retained original)"
+    },
+    {
       "ref": "asia-west/sa-signature",
       "wrong": "Five identical camel silhouettes stand in a straight row (cloned shapes at one scale), the rock arch is one fat blob with a few parallel stripes, the clouds are flat ellipses, and the middle distance is empty.",
       "fix": "Vary the animals (pose, size, spacing along a perspective line), build the rock from banded strata with a shadow side, and fill the middle distance with layers and life.",
@@ -314,12 +317,6 @@
       "ref": "uk-south-east/west-sussex-ardingly-show",
       "wrong": "Five identical white tents stamped in a row, ant-like figures in grey dots, and a flat green field under the same template sky, sun and clouds as 160 other UK scenes.",
       "fix": "Draw each tent differently (size, colour, perspective), add a recognisable subject and real foreground, and give the scene its own sky and palette."
-    },
-    {
-      "ref": "uk-area-woking-b/surrey-woking-kingfield",
-      "wrong": "A car park drawn in screen pixels: some 85 cars, buses and taxis stamped edge to edge at mismatched sizes (a taxi 1.5 times the car beside it), people standing in the carriageway, shrubs and reeds growing out of the tarmac and lamp posts planted among the cars, with the ground stand half hidden behind a wall of identical trees.",
-      "fix": "Declare it on the v2 ground grid (docs/dev/SCENE_ENGINE_V2.md): a road and a parking surface with a few cars placed on them (the engine sizes them by depth and keeps them on the tarmac), people on the pavements, cover only on the verges, and the stand on a clear third. scene migrate and the placement-sanity lint list every one of these defects.",
-      "source": "src/app/71-scene-uk-woking-b-scenes.js (Kingfield)"
     }
   ],
   "weakerItems": [
@@ -347,5 +344,97 @@
       "wrong": "A pale lilac kite on a pale lilac tile: the upper half of the diamond is near-white on near-white and vanishes at 28 px, the tail is a short grey squiggle, and the ground is an empty flat grey slab.",
       "fix": "Use the hero colour at full strength for the whole kite body with an `s` / `k` contrast plane and cross-spars, a tail with bows, and a ground line with something on it; keep three motions (sway, tail ripple, a drifting cloud)."
     }
-  ]
+  ],
+  "archivedBar": {
+    "retiredIn": "2.11.0",
+    "reason": "The older Yateley/Fleet and templated UK packs were intentionally removed; descriptions remain as historical craft notes.",
+    "scenes": [
+      {
+        "ref": "uk-area-yateley/hampshire-yateley-common-1",
+        "kind": "rich",
+        "source": "src/app/71-scene-uk-yateley-common.js",
+        "why": "THE BAR for open country. Depth: a hazy far tree line, a mid band of birch and pine, near heath and a framing foreground, each in its own layer with haze between them. Cover: heather, gorse and grass carpet the whole lower ground, no bare columns. Life: walkers with a dog, rabbits, butterflies, bees, birds crossing and swaying plants at three depths. Light: the live sky of the real sun, shadows along it, the season by date.",
+        "tags": [
+          "heath",
+          "depth-layers",
+          "dense-cover",
+          "live-sky",
+          "shadows"
+        ]
+      },
+      {
+        "ref": "uk-area-yateley/hampshire-yateley-common-4",
+        "kind": "rich",
+        "source": "src/app/71-scene-uk-yateley-common.js",
+        "why": "The same heath at evening: match the low warm light, the long shadows and the way the far layers fade into the glow while the near cover stays crisp.",
+        "tags": [
+          "evening",
+          "golden-light",
+          "long-shadows",
+          "depth-layers"
+        ]
+      },
+      {
+        "ref": "uk-area-yateley/hampshire-wyndhams-pool-1-winter",
+        "kind": "rich",
+        "source": "src/app/71-scene-uk-yateley-wyndhams-pool.js",
+        "why": "Winter done right: bare twig lattices, frost and russet cover instead of summer green, a still pool reflecting the trees, and life that still moves (water birds, a walker) under a low winter sun.",
+        "tags": [
+          "winter",
+          "reflection",
+          "bare-trees",
+          "water-birds"
+        ]
+      },
+      {
+        "ref": "uk-area-yateley/hampshire-yateley-green-2-spring",
+        "kind": "rich",
+        "source": "src/app/71-scene-uk-yateley-green.js",
+        "why": "Spring and a mixed setting: a village green with houses, a pond and wild flowers. Match the density of the meadow cover, the blossom, and the windows that light at real dusk.",
+        "tags": [
+          "spring",
+          "village",
+          "pond",
+          "wildflowers",
+          "lit-windows"
+        ]
+      },
+      {
+        "ref": "uk-area-fleet/hampshire-fleet-pond-1",
+        "kind": "rich",
+        "source": "src/app/71-scene-uk-fleet-scenes.js",
+        "why": "THE BAR for water: a wide lake with reflections of everything at its edge, reed beds along the margins, swans, ducks and dragonflies on and over the water, walkers on the shore, shimmer and the glitter road of the real sun.",
+        "tags": [
+          "lake",
+          "reflections",
+          "reedbed",
+          "water-birds",
+          "glitter-road"
+        ]
+      },
+      {
+        "ref": "uk-area-fleet/hampshire-fleet-pond-2-autumn",
+        "kind": "rich",
+        "source": "src/app/71-scene-uk-fleet-scenes.js",
+        "why": "Autumn: copper and gold crowns, falling leaves, reeds gone tawny; the same depth, cover and life as summer in the colours of the season.",
+        "tags": [
+          "autumn",
+          "falling-leaves",
+          "reflections",
+          "seasons"
+        ]
+      }
+    ]
+  },
+  "archivedWeaker": {
+    "retiredIn": "2.11.0",
+    "scenes": [
+      {
+        "ref": "uk-area-woking-b/surrey-woking-kingfield",
+        "wrong": "A car park drawn in screen pixels: some 85 cars, buses and taxis stamped edge to edge at mismatched sizes (a taxi 1.5 times the car beside it), people standing in the carriageway, shrubs and reeds growing out of the tarmac and lamp posts planted among the cars, with the ground stand half hidden behind a wall of identical trees.",
+        "fix": "Declare it on the v2 ground grid (docs/dev/SCENE_ENGINE_V2.md): a road and a parking surface with a few cars placed on them (the engine sizes them by depth and keeps them on the tarmac), people on the pavements, cover only on the verges, and the stand on a clear third. scene migrate and the placement-sanity lint list every one of these defects.",
+        "source": "src/app/71-scene-uk-woking-b-scenes.js (Kingfield)"
+      }
+    ]
+  }
 }

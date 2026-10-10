@@ -55,7 +55,7 @@ function sceneV2BCanal(o) {
   const y0 = Math.max(cam.horizon, Math.min(...wpts.map(p => p[1]))), y1 = Math.min(900, Math.max(...wpts.map(p => p[1])));
   // the placements, in ground metres: [obj, x, d, real height (m), extra]
   const P = [
-    ['building.mcr-mill', -34, 74, 19], ['building.warehouse-canal', -70, 150, 16], ['building.terrace-victorian', 30, 62, 10], ['building.warehouse-canal', 46, 118, 15],
+    ['building.townhouse', -34, 74, 19], ['building.shopfront', -70, 150, 16], ['building.terrace-victorian', 30, 62, 10], ['building.shopfront', 46, 118, 15],
     ['tree.oak', 19, 34, 15], ['tree.oak', -16, 32, 14], ['tree.birch', 13, 84, 13], ['tree.birch', -48, 88, 12], ['tree.alder', 10, 24, 11], ['tree.alder', -9, 47, 10],
     ['street.lamp', 8.6, 19, 4.6], ['street.lamp', 8.6, 41, 4.6], ['street.bench', 9.7, 29, 0.85],
     ['person.walker', 7.6, 25, 1.72], ['person.dog-walker', 8.0, 52, 1.72],

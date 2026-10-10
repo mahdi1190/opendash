@@ -26,7 +26,7 @@ const APP = join(ROOT, 'src', 'app');
 const run = async (argv, extra = {}) => { const out = [], err = []; const code = await main(argv, { out: (s) => out.push(s), err: (s) => err.push(s), ...extra }); return { code, out: out.join('\n'), err: err.join('\n') }; };
 
 /** The animation sources of the first regions and the fixed pack families: a region added to the repo since (and its packs) is not copied, so these tests never depend on it. */
-const isBase = (f) => !/^71-anim-region-/.test(f) && (!/^72-anim-pack-/.test(f) || /^72-anim-pack-(core|moments|rewards|seasons|sky|texas|world|uk|us|asia)[-.]/.test(f));
+const isBase = (f) => !/^71-anim-region-/.test(f) && (!/^72-anim-pack-/.test(f) || /^72-anim-pack-(core|moments|rewards|seasons|sky|texas|world|uk|us|asia|proof)[-.]/.test(f));
 /** A temp checkout with just the animation sources: what the registry load, the lint and the generated test need. */
 const temps = [];
 function makeRoot() {

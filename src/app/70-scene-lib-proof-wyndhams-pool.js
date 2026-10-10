@@ -1,3 +1,5 @@
+/* Compact SVG numeric separators without changing the drawing: minus signs delimit coordinates. */
+function sceneProofWyndhamsCompactParts(parts){for(const p of Object.keys(parts))if(Array.isArray(parts[p]))for(const sh of parts[p]){if(Array.isArray(sh)&&typeof sh[1]==='string')sh[1]=sh[1].replace(/\s+(?=-)/g,'');else if(sh&&typeof sh.d==='string')sh.d=sh.d.replace(/\s+(?=-)/g,'');}return parts;}
 /* ============================================================
    SCENE LIBRARY: the Wyndham's Pool proof scene's own objects (docs/dev/SCENE_ENGINE.md 2, SCENE_ENGINE_V2.md 4.2).
    PURE: sceneObjDefine calls only, built lazily per (variant, season). Every bird faces RIGHT; anchors at the waterline
@@ -17,7 +19,8 @@
   const tidy = parts => { for (const k of Object.keys(parts)) parts[k] = parts[k].filter(sh => sh && (Array.isArray(sh) ? sh[1] : sh.d)).map(sh => (!Array.isArray(sh) && sh.s && !sh.cap ? Object.assign({ cap: 'round' }, sh) : sh)); return parts; };
   const defineObj = def => sceneObjDefine(Object.assign({}, def, { build: (v, r, ctx) => tidy(def.build(v, r, ctx)) }));
   const f1 = v => Math.round(v * 10) / 10;
-  const ell = (x, y, rx, ry) => `M${f1(x - rx)} ${f1(y)}a${f1(rx)} ${f1(ry)} 0 1 0 ${f1(2 * rx)} 0a${f1(rx)} ${f1(ry)} 0 1 0 ${f1(-2 * rx)} 0`;
+  // Cubic ellipses retain their shallow bounds in both the SVG and sprite bakers.
+  const ell = (x, y, rx, ry) => { const k = .55228475, X = rx * k, Y = ry * k; return `M${f1(x-rx)} ${f1(y)}C${f1(x-rx)} ${f1(y-Y)} ${f1(x-X)} ${f1(y-ry)} ${f1(x)} ${f1(y-ry)}C${f1(x+X)} ${f1(y-ry)} ${f1(x+rx)} ${f1(y-Y)} ${f1(x+rx)} ${f1(y)}C${f1(x+rx)} ${f1(y+Y)} ${f1(x+X)} ${f1(y+ry)} ${f1(x)} ${f1(y+ry)}C${f1(x-X)} ${f1(y+ry)} ${f1(x-rx)} ${f1(y+Y)} ${f1(x-rx)} ${f1(y)}Z`; };
   const circ = (x, y, r) => ell(x, y, r, r);
   const eye = (x, y, r) => [['#101414', circ(x, y, r)], ['#ffffff', circ(x - r * .35, y - r * .35, r * .35), .9]];
   const rndOf = seed => { let s = seed >>> 0 || 1; return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296); };
@@ -28,6 +31,7 @@
     real: { h: 0.8, l: 3, w: 1.2 }, foot: [0.4, 0.4], reflect: true,
     palette: {
       base: { wood: ['#7a6650', '#5c4a3a', '#9c876a', '#3e3228'], wet: ['#2e2a24', '#46403a'], moss: ['#5a6a3a', '#6e7e44'], rope: '#b8a274' },
+      spring: { moss: ['#587441', '#7e9454'] }, summer: { moss: ['#4e6635', '#748446'] },
       autumn: { wood: ['#74604a', '#564434', '#94805f', '#3a2e24'], moss: ['#7a6a32', '#8e7a3c'] }, winter: { wood: ['#5e5a54', '#46423c', '#86817a', '#302c28'], wet: ['#24221e', '#3a3632'], moss: ['#4a5446', '#5c6456'] },
     },
     tags: ['uk', 'pond', 'angling', 'swim', 'platform', 'wyndhams-pool', 'class:structure', 'kit:water', 'kit:temperate', 'role:street'],
@@ -57,6 +61,7 @@
     night: { glow: { lamp: '#ffd08a' }, on: 1 },
     palette: {
       base: { tent: ['#4e5a3a', '#3a4430', '#66724a', '#2a3022'], rod: '#2a2620', pod: '#6a6a6a', chair: ['#3a3e30', '#55583f'] },
+      spring:{tent:['#52633c','#3b4c30','#6b7b4b','#2b3824']}, summer:{tent:['#4e5a3a','#3a4430','#66724a','#2a3022']},
       autumn: { tent: ['#56583a', '#40422e', '#6e7048', '#2c2e22'] }, winter: { tent: ['#4a5246', '#383e36', '#606a5c', '#262a24'] },
     },
     tags: ['uk', 'pond', 'angling', 'bivvy', 'night', 'wyndhams-pool', 'class:structure', 'kit:water', 'kit:temperate', 'role:street'],
@@ -194,7 +199,7 @@
       for (let i = 0, n = small ? 3 : 7; i < n; i++) {
         const x = small ? -110 + i * 100 + (r() - .5) * 40 : -280 + i * 90 + (r() - .5) * 60, w = small ? 60 + r() * 50 : 90 + r() * 110, h = 5 + r() * 7, y = off - 4 + (r() - .5) * 8;
         lit.push(['@mist.' + (i % 3), ell(f1(x), f1(y), f1(w), f1(h)), f1(.045 + r() * .035)]);
-        lit.push(['@mist.1', ell(f1(x + 10), f1(y + 1), f1(w * .55), f1(h * .5)), f1(.03 + r() * .03)]);
+        lit.push({f:'@mist.1',d:ell(f1(x + 10), f1(y + 1), f1(w * .55), f1(h * .5)),op:f1(.03 + r() * .03),detail:true});
       }
       lit.push(['@mist.2', ell(0, off - 1, small ? 150 : 330, 6), .03]);
       return { body: [], lit };
@@ -208,6 +213,7 @@
     palette: {
       base: { bark: ['#b8673a', '#8a4a2a', '#d88a52', '#4a2e22'], needle: ['#24382c', '#2f4a36', '#3e5e40', '#5a7a4a', '#16241c'], cone: ['#6a4a30', '#8a6a46'] },
       spring: { needle: ['#26402e', '#335238', '#4a6e44', '#7a9a52', '#16241c'] },
+      summer: { needle: ['#24382c', '#2f4a36', '#3e5e40', '#5a7a4a', '#16241c'] },
       autumn: { bark: ['#b06a40', '#86502e', '#cc8a58', '#4a3024'], needle: ['#34402a', '#445432', '#5a6a38', '#8a8a44', '#1e261a'] },
       winter: { bark: ['#9a6040', '#744430', '#b8805a', '#3e2a22'], needle: ['#1e2e2a', '#283a34', '#34483e', '#5a6a5e', '#121c18'] },
     },
@@ -235,14 +241,53 @@
       };
       for (const [x, y, k] of tufts) {
         body.push(['@needle.4', ell(x, y + k * .06, k * .42, k * .2), .95]);
-        body.push({ s: '@needle.4', w: 2.6, op: .95, d: fan(x, y + 2, k, Math.PI * .05, Math.PI * .95, 14, .45, .8, 1) });
-        body.push({ s: '@needle.0', w: 2.4, d: fan(x, y, k, -Math.PI * 1.05, Math.PI * .05, 20, .55, 1, .2) });
-        body.push({ s: '@needle.1', w: 2.1, d: fan(x, y - 2, k * .9, -Math.PI * .95, -Math.PI * .05, 16, .5, .9, 0) });
-        body.push({ s: '@needle.2', w: 1.8, op: .9, d: fan(x - k * .05, y - 4, k * .75, -Math.PI * .85, -Math.PI * .2, 11, .45, .85, 0) });
-        body.push({ s: '@needle.3', w: 1.4, op: .7, d: fan(x - k * .1, y - 6, k * .55, -Math.PI * .8, -Math.PI * .3, 6, .4, .8, 0) });
+        const needles=fan(x, y + 2, k, Math.PI * .05, Math.PI * .95, 14, .45, .8, 1).split(/(?=M)/);
+        body.push({s:'@needle.4',w:2.6,op:.95,d:needles.filter((_,j)=>j%2===0).join('')},{s:'@needle.4',w:2.6,op:.95,d:needles.filter((_,j)=>j%2!==0).join(''),detail:true});
+        body.push({ s: '@needle.0', w: 2.4, d: fan(x, y, k, -Math.PI * 1.05, Math.PI * .05, 20, .55, 1, .2), detail: true });
+        body.push({ s: '@needle.1', w: 2.1, d: fan(x, y - 2, k * .9, -Math.PI * .95, -Math.PI * .05, 16, .5, .9, 0), detail: true });
+        body.push({ s: '@needle.2', w: 1.8, op: .9, d: fan(x - k * .05, y - 4, k * .75, -Math.PI * .85, -Math.PI * .2, 11, .45, .85, 0), detail: true });
+        body.push({ s: '@needle.3', w: 1.4, op: .7, d: fan(x - k * .1, y - 6, k * .55, -Math.PI * .8, -Math.PI * .3, 6, .4, .8, 0), detail: true });
       }
       body.push(['@cone.0', ell(352, 206, 7, 11)], ['@cone.1', ell(350, 202, 4, 6), .7], ['@cone.0', ell(486, 160, 6, 9)]);
       return { body };
     },
   });
 })();
+
+function sceneProofWyndhamsCanopy(base, seed, hMin, hMax, pine, foot) {
+    let state=seed>>>0||1; const r=()=>((state=(Math.imul(state,1664525)+1013904223)>>>0)/4294967296), R1=v=>Math.round(v*10)/10;
+    let d = `M-170 ${foot}V${base}`, x = -170;
+    while (x < 1770) {
+      const w = 14 + r() * 40, h = hMin + Math.pow(r(), 1.6) * (hMax - hMin), y1 = base - h;
+      if (r() < pine) {   // a Scots pine: a bare trunk, then a flat, ragged umbrella crown
+        const cw = 16 + r() * 22, ch = 6 + r() * 7, tx = x + w / 2, ty = y1 - 14 - r() * 26;
+        d += `L${R1(tx - 1.2)} ${R1(y1 + 4)}L${R1(tx - 1.2)} ${R1(ty + ch * 0.6)}Q${R1(tx - cw)} ${R1(ty + ch)} ${R1(tx - cw * 0.7)} ${R1(ty)}Q${R1(tx - cw * 0.3)} ${R1(ty - ch)} ${R1(tx + cw * 0.1)} ${R1(ty - ch * 0.6)}Q${R1(tx + cw * 0.8)} ${R1(ty - ch * 0.9)} ${R1(tx + cw)} ${R1(ty + ch * 0.3)}Q${R1(tx + cw * 0.6)} ${R1(ty + ch)} ${R1(tx + 1.2)} ${R1(ty + ch * 0.6)}L${R1(tx + 1.2)} ${R1(y1 + 4)}`;
+      } else d += `Q${R1(x + w * 0.1)} ${R1(y1 - h * 0.25)} ${R1(x + w * 0.5)} ${R1(y1 - h * 0.3)}Q${R1(x + w * 0.95)} ${R1(y1 - h * 0.2)} ${R1(x + w)} ${R1(base - h * (0.3 + r() * 0.5))}`;
+      x += w * (0.6 + r() * 0.35);
+    }
+    return d + `L1770 ${base}V${foot}Z`;
+  };
+(function(){ if(typeof sceneObjDefine!=='function')return; sceneObjDefine({id:'tree.wp-treeline',category:'tree',weight:0,size:[1940,105],variants:3,seasonal:true,flippable:false,parts:['body'],shade:false,
+ palette:{base:{leaf:['#7d9088','#5a6e60','#3e4e40','#6a7a52']},spring:{leaf:['#82968a','#5e7462','#405440','#7e9058']},summer:{leaf:['#7d9088','#5a6e60','#3e4e40','#6a7a52']},autumn:{leaf:['#8a8a78','#6a6a50','#46482e','#9a7e46']},winter:{leaf:['#868a8e','#62686a','#44494a','#74706a']}},
+ tags:['uk','heath','woodland','kit:temperate','class:air','role:tree'],credit:"Wyndham's Pool layered pine and birch woodland, retained as reusable native paths",
+ build(v){const a=[[-30,81,10,34,.12,6,0,1],[-12,82,6,30,.22,10,1,2],[2,83,4,22,.08,14,3,2]][v];return{body:[{f:{lin:[[0,'@leaf.'+a[6]],[1,'@leaf.'+a[7]]],x1:0,y1:-70,x2:0,y2:14},d:sceneProofWyndhamsCanopy(...a.slice(0,6)),detail:v===1}]};}});})();
+
+/* Scene-local woodland LOD: fine leaf clusters and needle hatching remain in the large view;
+   the tile keeps complete trunks, branches and overlapping crown masses. */
+function sceneProofWyndhamsLocalObjects(){const compact=d=>d.replace(/[-+]?(?:\d*\.?\d+)(?:e[-+]?\d+)?/gi,n=>String(Math.round(Number(n)*10)/10)).replace(/\s+(?=-)/g,'');if(sceneProofWyndhamsLocalObjects.done)return;sceneProofWyndhamsLocalObjects.done=true;
+ for(const src of ['tree.pool-pine','tree.birch-heath','tree.pond-wood','tree.pond-birch','plant.bracken','plant.heather','plant.gorse','plant.holly','plant.wildflowers','tree.pool-birch','tree.pond-oak']){
+  const base=sceneObj(src),id=src.replace('.','.wp-local-');sceneObjDefine(Object.assign({},base,{id,weight:0,real:sceneObjReal(src),credit:base.credit+'; proof-local size detail',build(v,r,ctx){
+   const sh=sceneObjShapes(src,v,ctx&&ctx.season||'summer'),out={};let leaf=0,index=0;
+   for(const p of sh.order){out[p]=[];for(const source of sh.parts[p]){const q=Object.assign({},source,{d:compact(source.d)});const subs=q.d.split(/(?=M)/);const n=index++;
+    if(q.s&&q.w<4.5)out[p].push(Object.assign({},q,{detail:true}));
+    else if(q.f&&/^M[^a]*a/.test(q.d))out[p].push(Object.assign({},q,{detail:true}));
+    else if(src==='tree.pool-pine'&&p==='crown'&&q.f==='#55895a')out[p].push(Object.assign({},q,{detail:true}));
+    else if(src.startsWith('tree.')&&n>8&&q.f&&!q.s&&q.d.length>170&&q.d.length<600)out[p].push(Object.assign({},q,{detail:q.detail||n%4!==0}));
+    else if(q.m&&q.f)out[p].push(Object.assign({},q,{detail:q.detail||(leaf++%12)!==0}));
+    else if(subs.length>1&&q.d.length>300){out[p].push(Object.assign({},q,{d:subs.filter((_,j)=>j%8===0).join(''),detail:q.detail}));out[p].push(Object.assign({},q,{d:subs.filter((_,j)=>j%8!==0).join(''),detail:true}));}
+    else if(q.s&&q.w<2)out[p].push(Object.assign({},q,{detail:true}));
+    else out[p].push(q);
+   }}Object.defineProperty(out,'$anim',{value:sh.anim});return sceneProofWyndhamsCompactParts(out);
+  }}));
+ }
+}

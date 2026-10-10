@@ -93,11 +93,12 @@ test('flows: no two vehicles of one lane closer than the headway, at 200 sampled
 });
 
 test('flows: the bus dwells at its stop; timetabled trams run every few minutes and stop at night', { skip: FLOW }, () => {
+  g('sceneObjDefine')({ id: 'vehicle.tram-test', category: 'vehicle', size: [200,40], real: {h:3.5,l:30,w:2.5}, tags: ['tram'], build:()=>({body:[['#334455','M-100-40H100V0H-100Z']]}) });
   const C = compiled(scene({ flows: [{ id: 'traffic', kind: 'drive', on: 'road', density: 0.1, profile: 'commuter', mix: { 'vehicle.car': 1 }, bus: { obj: 'vehicle.bus', every: 3, stops: [{ along: 0.3, dwell: 25 }] }, max: 10 }] }));
   let dwelling = 0;
   for (let t = 0; t < 400; t += 2) dwelling += g('sceneFlowAgents')(C, t, L(9)).filter(a => a.bus && !a.moving && a.speed === 0).length;
   assert.ok(dwelling > 0, 'a bus stands at its stop');
-  const T = compiled(scene({ surfaces: scene().surfaces.concat([{ id: 'tramline', kind: 'tramway', path: [[-1.5, 3], [-1.5, 400]], width: 6 }]), flows: [{ id: 'trams', kind: 'tram', on: 'tramline', timetable: { every: 4, dwell: 20, stops: [{ along: 0.4 }] }, obj: 'vehicle.nottingham-tram' }] }));
+  const T = compiled(scene({ surfaces: scene().surfaces.concat([{ id: 'tramline', kind: 'tramway', path: [[-1.5, 3], [-1.5, 400]], width: 6 }]), flows: [{ id: 'trams', kind: 'tram', on: 'tramline', timetable: { every: 4, dwell: 20, stops: [{ along: 0.4 }] }, obj: 'vehicle.tram-test' }] }));
   const day = [], night = [];
   for (let t = 0; t < 600; t += 5) { day.push(g('sceneFlowAgents')(T, t, L(12)).length); night.push(g('sceneFlowAgents')(T, t, L(3)).length); }
   assert.ok(day.some(n => n > 0), 'trams by day'); assert.ok(night.every(n => n === 0), 'no service at 3 h');

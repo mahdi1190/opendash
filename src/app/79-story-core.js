@@ -290,14 +290,19 @@ function storyCreateTimeline(opts) {
   const sch = _stScheduler(T, now);
   const call = (name, ...a) => { try { if (hooks[name]) hooks[name](...a); } catch (e) { if (typeof console !== 'undefined') console.error('[story] ' + name, e); } };
   const setState = (s) => { if (state !== s) { state = s; call('onState', s); } };
-  const ms = (beat, key) => Math.round((Number.isFinite(beat && beat[key]) ? beat[key] : STORY_TIMING[key]) / speed);
+  const ms = (beat, key) => {
+    const pause = beat && beat.delivery && beat.delivery.pauseMs;
+    const value = Number.isFinite(beat && beat[key]) ? beat[key]
+      : key === 'after' && Number.isFinite(pause) ? Math.max(0, Math.min(1200, pause)) : STORY_TIMING[key];
+    return Math.round(value / speed);
+  };
   const sayText = (b) => String((b && b.say) || '').trim();
 
   function speakFrom(from) {
     const b = beats[i];
     if (say) say.cancel();
     say = narrator.speak(sayText(b), {
-      speed, silent: muted, fromChar: from,
+      speed, silent: muted, fromChar: from, delivery: b && b.delivery, kind: b && (b.voiceKind || b.kind), cloudVoice: b && b.cloudVoice,
       onWord: (c) => { lastChar = c; call('onWord', i, c, b); },
       onEnd: () => { spoken = true; say = null; maybeExit(); },
       onMode: (m) => call('onMode', m),

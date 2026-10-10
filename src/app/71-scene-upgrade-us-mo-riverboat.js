@@ -1,0 +1,26 @@
+/* us-midwest/mo-riverboat: The Gateway Arch. Unique hand-placed composition, pending panel. */
+(function(){const SITE={"lat":38.63,"lon":-90.2};
+ const B=(o)=>({v:1,id:o.id,view:{lat:o.lat??SITE.lat,lon:o.lon??SITE.lon,heading:o.heading||110,fov:78,horizon:o.H||530},at:o.at||'golden',season:'auto',setting:o.setting||'natural',weather:'live',particles:'season',layers:SCENE_LAYERS_DEFAULT.map(l=>Object.assign({},l)),sky:{stars:180,clouds:{n:4,y:[65,(o.H||530)-230],speed:4},sunR:26,moonR:22},palette:{base:{hill:['#a2b6b5','#749496','#4e7477'],ground:['#789359','#526f45','#304c38'],path:['#c4b79b','#918d77'],sand:['#d2bd91','#b39d73','#8c7c5d'],rock:['#a0aaa6','#718687','#475e68'],water:['#aed0d5','#73a1b2','#365f7b']},spring:{ground:['#92ad65','#6e8f4d','#446a40']},summer:{ground:['#7e9a55','#55793f','#355b39']},autumn:{ground:['#a18d59','#78643d','#4d4c32'],hill:['#aeb6a6','#929b87','#687e76']},winter:{ground:['#d2dcd8','#afc3bf','#769996'],path:['#cdd9d5','#a3bbb8'],sand:['#d5d3c1','#bdbca6','#969f92'],hill:['#c0d2d4','#9bb8c0','#7298a8']}},ground:[],water:[],place:[],scatter:[],actors:[],flocks:[],camera:{pan:0,period:90}});
+ const G=(d,l,p,f)=>d.ground.push({layer:l,d:p,fill:f});
+ const P=(d,obj,x,y,s,layer,seed,extra={})=>d.place.push(Object.assign({obj,x,y,s,layer,seed},extra));
+ const W=(d,l,p,y0,y1,base=['#b3d1d4','#77a3b2','#365f7a'])=>d.water.push({layer:l,d:p,y0,y1,base,reflect:true,shimmer:32,lightPath:true});
+ const C=(d,areas,mix,n=190,seed=1103)=>areas.forEach((area,i)=>{d.scatter.push({obj:mix,layer:'fore',seed:seed+i*211,area,n,minGap:11,s:[.36,.75],variant:[0,1,2],flip:.5,anim:false,tint:{col:'#988c66',k:[0,.16]}});d.scatter.push({obj:'plant.us-midwest-switchgrass',layer:'near',seed:seed+701+i*149,area,n:18,minGap:31,s:[.44,.75],variant:[0,1,2],flip:.5,anim:'strip',tint:{col:'#77836a',k:[0,.16]}});});
+ const T=(d,l,area,n,seed,range=[.25,.7],mix={'tree.us-lake-paper-birch':2,'tree.us-loon-spruce':1})=>d.scatter.push({obj:mix,layer:l,area,n,seed,minGap:39,s:range,variant:[0,1,2],flip:.5,anim:false,reflect:true,tint:{col:'#9aaba6',k:[0,.16]}});
+ const A=(d,obj,path,s,speed,seed,layer='mid',offset=.2)=>d.actors.push({obj,path,s,speed,seed,layer,offset,loop:'loop',reflect:true});
+ const Life=(d,seed=3301,{coast=false,cold=false,city=false}={})=>{d.flocks.push({obj:coast?'bird.herring-gull-flight':'bird.goose-flight',n:9,area:[100,90,1520,(d.view.horizon||530)-115],speed:25,s:coast?.5:.4,seed,layer:'far'},{obj:cold?'bird.goose-flight':'animal.butterfly',n:6,area:cold?[200,125,1440,350]:[250,680,1390,820],speed:cold?20:9,s:cold?.3:.5,seed:seed+137,layer:cold?'far':'near'});P(d,'animal.rabbit',307,842,.7,'fore',seed+283);P(d,'animal.squirrel',1393,829,.7,'fore',seed+419);if(city)for(let i=0;i<3;i++)A(d,'person.walker',i%2?[[1750,789],[-150,789]]:[[-150,801],[1750,801]],scenePersonScale(sceneObj('person.walker').size[1],795,d.view),14+i*4,seed+557+i*103,'near',.12+i*.29);};
+
+ function compose(){return (function(){const d=B({id:'us-mo-riverboat',H:541,heading:285,at:'golden',setting:'mixed'});
+ for(const [season,c]of Object.entries({base:['#203a36','#38534a'],spring:['#203c32','#3a5945'],summer:['#1e362f','#365241'],autumn:['#332f2a','#504a37'],winter:['#253a41','#40565c']}))d.palette[season].frame=c;
+ G(d,'horizon','M-160 573Q492 534 1760 556V647H-160Z','@hill.0');G(d,'far','M-160 633Q239 605 727 624T1760 607V682H-160Z','@rock.1');
+ P(d,'building.us-st-louis-gateway-arch-context',800,627,.9,'far',19091,{shadow:false,tint:['#9aabaa',.18]});
+ T(d,'far',{poly:[[-140,619],[590,608],[592,646],[-140,659]]},17,19111,[.16,.34]);T(d,'far',{poly:[[1088,607],[1740,615],[1740,651],[1091,645]]},15,19189,[.15,.33]);
+ P(d,'landmark.us-st-louis-gateway-arch',826,625,.57,'far',19261,{shadow:false,tint:['#a8b7b4',.16]});
+ W(d,'mid','M-160 653Q657 642 1760 657V900H-160Z',654,900,['#bdcbb9','#819e98','#456d75']);P(d,'boat.us-mississippi-riverboat',802,744,.82,'mid',19337,{reflect:true,shadow:false});
+ G(d,'near','M-160 900V754Q71 750 235 783Q389 829 514 900ZM1132 900Q1381 808 1760 804V900Z',{lin:[[0,'@rock.0'],[.4,'@rock.1'],[1,'@frame.1']],y1:750,y2:900});
+ G(d,'near','M-160 758Q75 754 235 787Q386 831 512 900H489Q374 839 228 798Q71 765-160 772ZM1137 900Q1388 814 1760 808V821Q1404 824 1170 900Z',{lin:[[0,'@water.0',.38],[1,'@water.0',0]],y1:750,y2:842});
+ G(d,'fore','M-160 900V815Q84 804 319 900ZM1239 900Q1517 836 1760 850V900Z','@ground.2');
+ C(d,[{poly:[[-140,818],[299,822],[523,900],[-140,900]]},{poly:[[1009,900],[1361,837],[1740,853],[1740,900]]}],{'plant.us-lake-meadow':3,'plant.us-lake-clover':1},260,19413);
+ G(d,'front','M-160 900V822Q-12 774 74 801Q119 769 170 796L224 811Q274 794 317 842L354 859Q390 865 419 900ZM1193 900Q1248 855 1313 859Q1355 814 1417 826Q1491 784 1572 813L1760 802V900Z','@frame.0');
+ G(d,'front','M-160 851Q-15 814 79 838L130 824 176 842 214 836 266 867 301 863 342 900H-160ZM1281 900Q1362 864 1410 876Q1505 837 1602 856L1760 842V900Z','@frame.1');
+ P(d,'tree.us-mackinac-paper-birch',96,906,1.08,'front',19513,{tint:['#294d43',.22]});P(d,'tree.us-lake-paper-birch',1498,913,1.13,'front',19579,{tint:['#294d43',.24]});Life(d,19651,{coast:true});return d;})();}
+ animRegionSceneUpgrade('us',"state:MO",{state:'live',landmarks:["boat.us-mississippi-riverboat"],scene:compose});})();

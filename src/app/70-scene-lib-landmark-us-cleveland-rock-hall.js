@@ -1,0 +1,26 @@
+/* Native geometry for The glass pyramid on Lake Erie, Cleveland. Original subject, no painting import.
+   Draft composition lives in the matching 71 file. */
+(function(){
+ const D=sceneD,F=n=>Math.round(n*10)/10;
+ sceneObjDefine({id:"landmark.us-cleveland-rock-hall",category:"landmark",weight:0,size:[750,310],variants:1,seasonal:false,shapeBySeason:false,flippable:false,parts:["body","lit"],palette:{"base":{"stone":["#d9d6c7","#a6aaa5","#707c7e"],"metal":["#e9eee8","#a2b9bd","#556f79"],"glass":["#2c6377","#91bdc6","#173c50"],"wood":["#84513c","#ba7751","#573a31"],"roof":["#2f4953","#657982"],"accent":"#a94938","white":"#eef1e8","black":"#223237","water":"#a0d6da","soil":["#877754","#b8a17a","#5c5e42"]},"spring":{},"summer":{},"autumn":{},"winter":{"stone":["#d9e1df","#a9b8bb","#7c8f98"]}},night:{glow:{window:'#ffdc97',lamp:'#ffe5a9'},on:.78},shadow:{rx:270,ry:9,h:310},reflect:true,tags:["landmark","signature","place:us/place:cleveland","us","us-midwest"],
+ build(v,r,ctx){const body=[],lit=[],P=(f,d,op,detail)=>body.push({f,d,op,detail}),S=(s,w,d,op,detail)=>body.push({s,w,d,op,detail,cap:'round'}),L=(f,d,op)=>lit.push({f,d,op}),W=(x,y,w,h)=>body.push({f:'@glass.1',d:D.rect(x,y,w,h),glow:'window',detail:true});
+ ((D,F,P,S,L,W)=>{
+ P('@metal.1',D.rect(-359,-112,168,112));P('@white',D.ell(-270,-113,89,40));P('@stone.1',D.rect(-342,-105,142,105));P('@metal.0',D.ell(-270,-105,72,25));
+ P('@glass.0','M-194 0L45-310 359 0Z');P('@glass.2','M45-310L359 0 63-25Z');P('@glass.1','M45-310L-194 0 63-25Z',.48);S('@metal.0',4,'M-194 0L45-310 359 0M45-310L63-25');
+ for(let i=1;i<15;i++){let t=i/15;S('@metal.1',1.2,`M${F(45-239*t)} ${F(-310+310*t)}L${F(45+314*t)} ${F(-310+310*t)}`,.8);S('@metal.1',1,`M${F(-194+i*37)} 0L45-310`,.65,true);}
+ for(let j=0;j<10;j++)for(let i=0;i<=j;i++){let t=(j+1)/11,x=45-239*t+i*(553*t/(j+1));W(F(x+4),F(-310+310*t+3),5,4);}
+ P('@metal.2',D.rect(-370,-11,750,11));for(let i=0;i<14;i++)L('#ffd7bb',D.rect(-345+i*51,-7,22,2));
+})(D,F,P,S,L,W,body,lit,r,ctx);// Window grids retain their geometry while sharing a few paint paths.
+ const compactWindows=body.filter(q=>q.glow==='window');if(compactWindows.length>55){const keep=body.filter(q=>q.glow!=='window'),groups=Array.from({length:40},()=>[]);compactWindows.forEach((q,i)=>groups[i%40].push(q.d));for(const paths of groups)keep.push({f:'@glass.1',d:paths.join(''),glow:'window',detail:true});body.splice(0,body.length,...keep);}
+ return{body,lit};}});
+ 
+})();
+/* Native The Rock Hall on Lake Erie; original location subject, modeled facets and real detail.
+   Explicit placement only; draft scene stays under independent review. */
+(function(){const D=sceneD,F=n=>Math.round(n*10)/10;sceneObjDefine(Object.assign({"id":"building.us-cleveland-terminal-tower","category":"building","weight":0,"size":[310,436],"variants":1,"seasonal":false,"shapeBySeason":false,"flippable":false,"parts":["body","lit"],"palette":{"base":{"stone":["#c7c9b3","#a4b4a7","#7c9695"],"snow":["#f4f0dd","#b9d8df","#7ea7c1"],"soil":["#88734e","#b7a171","#51483a"],"wood":["#8b523c","#be845c","#4c3a31"],"leaf":["#3b6849","#648851","#294b3b"],"metal":["#edf0e8","#a9bfc4","#587681"],"glass":["#7f9e9f","#b3c6ba","#5d838f"],"red":["#b35342","#d8835c","#783c37"],"white":"#f2f0df","black":"#1e333d","water":["#afd5d7","#729fae","#3f687c"],"light":"#ffe1a7"},"spring":{},"summer":{},"autumn":{"leaf":["#8d824a","#aea264","#59613f"]},"winter":{"stone":["#d4dedd","#b2c2c5","#788f9c"],"snow":["#f3f4eb","#d1e5e6","#9ebdcd"],"leaf":["#607a6e","#8ca094","#3d5a51"],"soil":["#c7d3d0","#dbe3df","#8ba09a"]}},"shadow":{"rx":105.4,"ry":8,"h":436},"reflect":true,"tags":["place:us/place:cleveland","us","us-midwest","kit:urban","role:building-far"],"night":{"glow":{"window":"#899d97","lamp":"#a8b7a2"},"on":0.58}}, {build(v,r,ctx){const body=[],lit=[],P=(f,d,op,detail)=>body.push({f,d,op,detail}),S=(s,w,d,op,detail)=>body.push({s,w,d,op,detail,cap:'round'}),W=(x,y,w,h)=>body.push({f:'@glass.1',d:D.rect(x,y,w,h),glow:'window',detail:true}),L=(f,d,op)=>lit.push({f,d,op});const extra=(function(D,F,P,S,W,L,body){
+ P('@stone.2',D.rect(-155,-133,310,133));P('@stone.0',D.rect(-151,-131,227,131));P('@stone.1',D.rect(-111,-179,222,47));P('@stone.0',D.rect(-87,-222,174,43));P('@stone.2',D.rect(-63,-311,126,89));P('@stone.0',D.rect(-59,-307,83,85));P('@stone.1',D.rect(-44,-352,88,41));
+ P('@stone.2','M-49-352V-365L-32-384H32L49-365V-352Z');P('@stone.0','M-45-365L-30-380H-1V-352H-45Z');P('@stone.1','M-31-384L-21-411H21L31-384Z');P('@stone.0','M-22-411L0-436 22-411Z');
+ for(let i=0;i<8;i++){const y=-142-i*10;S('@stone.2',1,'M-108 '+y+'h216',.45,true);}for(let i=0;i<10;i++)S('@stone.1',.9,'M-59 '+(-228-i*8)+'h118',.6,true);
+ for(let j=0;j<5;j++)for(let i=0;i<9;i++)W(-142+i*33,-120+j*22,12,13);for(let j=0;j<4;j++)for(let i=0;i<3;i++)W(-43+i*32,-297+j*18,10,12);for(let i=0;i<4;i++)W(-35+i*20,-344,9,17);
+ S('@stone.0',2,'M-155-132H155M-111-179H111M-87-222H87M-63-311H63');L('#b0c7c8','M-45-365L-30-380H-24L-38-362Z',.22);
+})(D,F,P,S,W,L,body,lit,r,ctx,v);const out=Object.assign({body,lit},extra||{});for(const shapes of Object.values(out))if(Array.isArray(shapes))for(const q of shapes)if(q.d)q.d=q.d.replace(/-?\d+\.\d+/g,n=>String(Math.round(Number(n)*10)/10));return out;}}));})();

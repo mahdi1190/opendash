@@ -149,10 +149,10 @@ ${boxCss}</style></head><body>${rasterAssetBlocks(root)}<div id="sp-root">${scen
     const box = (side) => rootEl.querySelector('.sp-box[data-ref="' + CSS.escape(ref) + '"][data-side="' + side + '"]');
     if (!it) { const b = box(cfg.compare ? 'new' : 'one'); if (b) b.textContent = 'unknown: ' + ref; continue; }
     const draft = it.upgrade && it.upgrade.scene ? it.upgrade.scene : null;
-    const composedOf = () => it.composed ? it : (draft ? Object.assign({}, it, { composed: true, rich: true, full: true, scene: draft, svg: (o) => sceneSvg(draft, o), ref: it.ref + '#upgrade' }) : null);
+    const composedOf = () => it.composed ? it : (draft ? Object.assign({}, it, { label: it.upgrade.label || it.label, composed: true, rich: true, full: true, scene: draft, svg: (o) => sceneSvg(draft, o), ref: it.ref + '#upgrade' }) : null);
     if (cfg.compare) {
       const neu = composedOf();
-      let old = it.composed && it.legacySvg ? Object.assign({}, it, { composed: false, svg: it.legacySvg, reduced: 'static' }) : (it.composed ? null : it);
+      let old = it.composed && it.legacySvg ? Object.assign({}, it, { label: it.legacyLabel || it.label, composed: false, svg: it.legacySvg, reduced: 'static' }) : (it.composed ? null : it);
       if (old && it.composed && typeof sceneRetrofit === 'function') { try { old = sceneRetrofit(old, it.retro || {}); } catch (e) { /* the plain legacy art */ } }
       if (neu) window.__sceneItems = Object.assign(window.__sceneItems || {}, { [neu.ref]: neu });
       box('old').innerHTML = old ? hostHtml(old, Object.assign(optsFor(it), { renderer: 'svg' })) : '';

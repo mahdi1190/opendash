@@ -1,0 +1,22 @@
+.st-narration-state {
+  position: absolute;
+  right: max(24px, env(safe-area-inset-right));
+  top: max(72px, env(safe-area-inset-top));
+  z-index: 7;
+  margin: 0;
+  font-size: 12px;
+  color: inherit;
+  opacity: .7;
+  pointer-events: none;
+}
+.st-narration-state[hidden] { display: none; }
+.st-voice-preparation { margin: 0; min-height: 1.4em; font-size: 14px; opacity: .8; }
+.st-voice-progress { width: min(260px, 70vw); height: 5px; border: 0; border-radius: 999px; overflow: hidden; accent-color: var(--st-fg); }
+.st-voice-progress::-webkit-progress-bar { background: color-mix(in oklab, var(--st-fg) 15%, transparent); }
+.st-voice-progress::-webkit-progress-value { background: var(--st-fg); }
+.st-voice-progress::-moz-progress-bar { background: var(--st-fg); }
+.st-voice-preparation[hidden], .st-voice-progress[hidden] { display: none; }
+.story.is-preparing-voice .st-bigplay { animation: none; }
+@media (max-width: 600px) {
+  .st-narration-state { right: 20px; top: 62px; font-size: 11px; }
+}

@@ -11,6 +11,7 @@
    72-anim-pack-proof-wyndhams-pool.js. sceneProofWyndhamsPool() returns the scene data (pure; built once per item).
    ============================================================ */
 function sceneProofWyndhamsPool() {
+  sceneProofWyndhamsLocalObjects();
   const R2 = v => Math.round(v * 100) / 100, R1 = v => Math.round(v * 10) / 10;
   const rnd = (seed) => { let s = seed >>> 0 || 1; return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296); };
   /** A closed Catmull-Rom loop through control points [x, d], every ~step metres, with a seeded wobble (natural edges). */
@@ -18,7 +19,7 @@ function sceneProofWyndhamsPool() {
     const r = rnd(seed), out = [], n = pts.length;
     for (let i = 0; i < n; i++) {
       const a = pts[(i - 1 + n) % n], b = pts[i], c = pts[(i + 1) % n], e = pts[(i + 2) % n];
-      const k = Math.max(2, Math.ceil(Math.hypot(c[0] - b[0], c[1] - b[1]) / step));
+      const k = Math.min(3, Math.max(2, Math.ceil(Math.hypot(c[0] - b[0], c[1] - b[1]) / step)));
       for (let j = 0; j < k; j++) {
         const t = j / k, t2 = t * t, t3 = t2 * t, cr = (p0, p1, p2, p3) => 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - p0 - 3 * p2 + p3) * t3);
         const x = cr(a[0], b[0], c[0], e[0]), d = cr(a[1], b[1], c[1], e[1]), w = wob * Math.min(1, d / 25);
@@ -32,7 +33,7 @@ function sceneProofWyndhamsPool() {
     const out = [];
     for (let i = 0; i < pts.length - 1; i++) {
       const a = pts[Math.max(0, i - 1)], b = pts[i], c = pts[i + 1], e = pts[Math.min(pts.length - 1, i + 2)];
-      const k = Math.max(2, Math.ceil(Math.hypot(c[0] - b[0], c[1] - b[1]) / step));
+      const k = Math.min(3, Math.max(2, Math.ceil(Math.hypot(c[0] - b[0], c[1] - b[1]) / step)));
       for (let j = 0; j < k; j++) { const t = j / k, t2 = t * t, t3 = t2 * t, cr = (p0, p1, p2, p3) => 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - p0 - 3 * p2 + p3) * t3); out.push([R2(cr(a[0], b[0], c[0], e[0])), R2(cr(a[1], b[1], c[1], e[1]))]); }
     }
     out.push(pts[pts.length - 1]);
@@ -94,70 +95,50 @@ function sceneProofWyndhamsPool() {
   const P = data.place, S = data.scatter, A = data.actors;
   // ---- the woods behind the far shore: layered, lobed canopies with flat-topped Scots pines standing out of them (pixel fills,
   // painted far to near; never a straight band: every lobe has its own width, height and kind)
-  const canopy = (base, seed, hMin, hMax, pine, foot) => {
-    const r = rnd(seed);
-    let d = `M-170 ${foot}V${base}`, x = -170;
-    while (x < 1770) {
-      const w = 14 + r() * 40, h = hMin + Math.pow(r(), 1.6) * (hMax - hMin), y1 = base - h;
-      if (r() < pine) {   // a Scots pine: a bare trunk, then a flat, ragged umbrella crown
-        const cw = 16 + r() * 22, ch = 6 + r() * 7, tx = x + w / 2, ty = y1 - 14 - r() * 26;
-        d += `L${R1(tx - 1.2)} ${R1(y1 + 4)}L${R1(tx - 1.2)} ${R1(ty + ch * 0.6)}Q${R1(tx - cw)} ${R1(ty + ch)} ${R1(tx - cw * 0.7)} ${R1(ty)}Q${R1(tx - cw * 0.3)} ${R1(ty - ch)} ${R1(tx + cw * 0.1)} ${R1(ty - ch * 0.6)}Q${R1(tx + cw * 0.8)} ${R1(ty - ch * 0.9)} ${R1(tx + cw)} ${R1(ty + ch * 0.3)}Q${R1(tx + cw * 0.6)} ${R1(ty + ch)} ${R1(tx + 1.2)} ${R1(ty + ch * 0.6)}L${R1(tx + 1.2)} ${R1(y1 + 4)}`;
-      } else d += `Q${R1(x + w * 0.1)} ${R1(y1 - h * 0.25)} ${R1(x + w * 0.5)} ${R1(y1 - h * 0.3)}Q${R1(x + w * 0.95)} ${R1(y1 - h * 0.2)} ${R1(x + w)} ${R1(base - h * (0.3 + r() * 0.5))}`;
-      x += w * (0.6 + r() * 0.35);
-    }
-    return d + `L1770 ${base}V${foot}Z`;
-  };
-  data.ground.push(
-    { layer: 'horizon', d: canopy(H - 30, 81, 10, 34, 0.12, H + 6), fill: { lin: [[0, '@tl.0'], [1, '@tl.1']], y1: H - 70, y2: H + 6 } },
-    { layer: 'far', d: canopy(H - 12, 82, 6, 30, 0.22, H + 10), fill: { lin: [[0, '@tl.1'], [1, '@tl.2']], y1: H - 50, y2: H + 10 } },
-    { layer: 'far', d: canopy(H + 2, 83, 4, 22, 0.08, H + 14), fill: { lin: [[0, '@tl.3'], [1, '@tl.2']], y1: H - 30, y2: H + 14 } });
+  P.push(...[0,1,2].map(v=>({obj:'tree.wp-treeline',x:0,y:H,s:1,variant:v,pin:true,layer:v?'far':'horizon',anim:false,shadow:false})));
   const tree = (obj, x, d, k, o) => P.push(Object.assign({ obj, at: [x, d], k, anim: false }, o || {}));
 
   // ---- the far shore (d 120 to 175): pines in groups and singles, birch between; one group stands in the evening sun
-  // (the pines' heights vary a lot, so their crowns never make one level row along the skyline)
-  tree('tree.pool-pine', 36, 140, 1.3, { variant: 0 }); tree('tree.pool-pine', 42.5, 151, 0.72, { variant: 1, flip: true }); tree('tree.pool-pine', 47, 136, 0.95, { variant: 2 });
-  tree('tree.birch-heath', 29, 134, 0.9, { variant: 1 }); tree('tree.pool-pine', 55, 168, 1.35, { variant: 0, flip: true });
-  tree('tree.pool-pine', -5, 144, 1.45, { variant: 1 }); tree('tree.pond-wood', -12, 140, 1.1, { variant: 2 }); tree('tree.birch-heath', 3, 139, 0.85, { variant: 2 });
-  tree('tree.pond-birch', 22, 132, 0.7, { variant: 1 }); tree('tree.pond-wood', -30, 146, 1.35, { variant: 1, flip: true }); tree('tree.birch-heath', 17, 146, 1.1, { variant: 0, flip: true });
-  tree('tree.pool-pine', -34, 128, 0.78, { variant: 2 }); tree('tree.birch-heath', -26, 125, 0.75, { variant: 0, flip: true });
-  tree('tree.pool-pine', 70, 116, 1.2, { variant: 0 }); tree('tree.birch-heath', 62, 112, 0.8, { variant: 1 });
-  tree('tree.pool-pine', 24, 215, 1.6, { variant: 1 }); tree('tree.pond-wood', -2, 190, 1.2, { variant: 3 }); tree('tree.pool-pine', -26, 236, 1.25, { variant: 2 });
-  tree('tree.pond-wood', -50, 172, 1.1, { variant: 0 }); tree('tree.birch-heath', -40, 140, 0.8, { variant: 2, flip: true }); tree('tree.pool-pine', -62, 150, 0.82, { variant: 1, flip: true });
-  tree('tree.pond-oak', -20, 138, 0.8, { variant: 1 }); tree('tree.pond-oak', 58, 140, 0.9, { variant: 0, flip: true }); tree('tree.birch-heath', 12, 137, 0.6, { variant: 0 });
-  tree('tree.pond-wood', 84, 186, 1.2, { variant: 1 }); tree('tree.birch-heath', 44, 160, 0.7, { variant: 1, flip: true });
-  S.push({ obj: { 'tree.far-pine': 3, 'tree.far-birch': 2, 'tree.pond-wood': 2 }, on: 'far-wood', d: [175, 520], n: 70, dist: 'ground', cluster: { centres: 9, spread: 22 }, gap: 'foot', k: [0.75, 1.25], seed: 31, anim: false, species: 1 });
-  S.push({ obj: { 'plant.gorse': 2, 'plant.heather': 3 }, on: 'far-wood', d: [118, 175], n: 60, dist: 'ground', cluster: { centres: 6, spread: 6 }, k: [0.8, 1.3], seed: 32, anim: false, species: 1 });
+  tree('tree.wp-local-pool-pine', 36, 140, 1.05, { variant: 0 }); tree('tree.wp-local-pool-pine', 42.5, 151, 0.9, { variant: 1, flip: true }); tree('tree.wp-local-pool-pine', 47, 136, 0.8, { variant: 2 });
+  tree('tree.wp-local-birch-heath', 29, 134, 0.9, { variant: 1 }); tree('tree.wp-local-pool-pine', 55, 162, 1.1, { variant: 0, flip: true });
+  tree('tree.wp-local-pool-pine', -5, 144, 1.2, { variant: 1 }); tree('tree.wp-local-pond-wood', -12, 140, 1.1, { variant: 2 }); tree('tree.wp-local-birch-heath', 3, 139, 0.85, { variant: 2 });
+  tree('tree.wp-local-pond-birch', 22, 132, 0.7, { variant: 1 }); tree('tree.wp-local-pond-wood', -30, 146, 1.35, { variant: 1, flip: true }); tree('tree.wp-local-birch-heath', 17, 146, 1.1, { variant: 0, flip: true });
+  tree('tree.wp-local-pool-pine', -34, 128, 1, { variant: 2 }); tree('tree.wp-local-birch-heath', -26, 125, 0.75, { variant: 0, flip: true });
+  tree('tree.wp-local-pool-pine', 70, 120, 1, { variant: 0 }); tree('tree.wp-local-birch-heath', 62, 112, 0.8, { variant: 1 });
+  tree('tree.wp-local-pool-pine', 24, 215, 1.3, { variant: 1 }); tree('tree.wp-local-pond-wood', -2, 190, 1.2, { variant: 3 }); tree('tree.wp-local-pool-pine', -26, 236, 1.25, { variant: 2 });
+  tree('tree.wp-local-pond-wood', -50, 172, 1.1, { variant: 0 }); tree('tree.wp-local-birch-heath', -40, 140, 0.8, { variant: 2, flip: true }); tree('tree.wp-local-pool-pine', -62, 150, 1.1, { variant: 1, flip: true });
+  tree('tree.wp-local-pond-oak', -20, 138, 0.8, { variant: 1 }); tree('tree.wp-local-pond-oak', 58, 140, 0.9, { variant: 0, flip: true }); tree('tree.wp-local-birch-heath', 12, 137, 0.6, { variant: 0 });
+  tree('tree.wp-local-pond-wood', 84, 186, 1.2, { variant: 1 }); tree('tree.wp-local-birch-heath', 44, 160, 0.7, { variant: 1, flip: true });
+  S.push({ obj: { 'tree.far-pine': 3, 'tree.far-birch': 2, 'tree.wp-local-pond-wood': 2 }, on: 'far-wood', d: [175, 520], n: 70, dist: 'ground', cluster: { centres: 9, spread: 22 }, gap: 'foot', k: [0.75, 1.25], seed: 31, anim: false, species: 1 });
+  S.push({ obj: { 'plant.wp-local-gorse': 2, 'plant.wp-local-heather': 3 }, on: 'far-wood', d: [118, 175], n: 60, dist: 'ground', cluster: { centres: 6, spread: 6 }, k: [0.8, 1.3], seed: 32, anim: false, species: 1 });
 
   // ---- the pine headland on the left (d 40 to 100): tall Scots pines, a birch, holly beneath
-  tree('tree.pool-pine', -37, 55, 1.05, { variant: 0 });
-  tree('tree.pool-pine', -30.5, 63, 0.95, { variant: 1, flip: true });
-  tree('tree.pool-pine', -36, 77, 0.85, { variant: 2 });
-  tree('tree.pool-pine', -52, 92, 1.1, { variant: 1 });
-  tree('tree.birch-heath', -24.5, 43.5, 0.9, { variant: 0 });
-  tree('tree.birch-heath', -28, 49, 0.7, { variant: 2, flip: true });
-  P.push({ obj: 'plant.holly', at: [-28, 58], k: 1 }, { obj: 'plant.holly', at: [-33, 70], k: 0.9, flip: true });
-  S.push({ obj: { 'plant.bracken': 3, 'plant.fern': 1, 'plant.gorse': 1 }, on: 'headland', d: [24, 95], n: 40, dist: 'ground', cluster: { centres: 5, spread: 3 }, k: [0.8, 1.2], seed: 33, anim: false, species: 1 });
+  tree('tree.wp-local-pool-pine', -37, 55, 1.05, { variant: 0 });
+  tree('tree.wp-local-pool-pine', -30.5, 63, 0.95, { variant: 1, flip: true });
+  tree('tree.wp-local-pool-pine', -36, 77, 0.85, { variant: 2 });
+  tree('tree.wp-local-pool-pine', -52, 92, 1.1, { variant: 1 });
+  tree('tree.wp-local-birch-heath', -24.5, 43.5, 0.9, { variant: 0 });
+  tree('tree.wp-local-birch-heath', -28, 49, 0.7, { variant: 2, flip: true });
+  P.push({ obj: 'plant.wp-local-holly', at: [-28, 58], k: 1 }, { obj: 'plant.wp-local-holly', at: [-33, 70], k: 0.9, flip: true });
+  S.push({ obj: { 'plant.wp-local-bracken': 3, 'plant.fern': 1, 'plant.wp-local-gorse': 1 }, on: 'headland', d: [24, 95], n: 40, dist: 'ground', cluster: { centres: 5, spread: 3 }, k: [0.8, 1.2], seed: 33, anim: false, species: 1 });
 
   // ---- the birch promontory on the right (d 10 to 35): birches at different depths, gorse and heather at their feet
-  tree('tree.birch-heath', 15.8, 23.4, 1.1, { variant: 1 });
-  tree('tree.pool-birch', 12.4, 19.2, 0.75, { variant: 2, flip: true });
-  tree('tree.pool-pine', 25.5, 31.4, 0.9, { variant: 2 });
-  tree('tree.birch-heath', 32.6, 40.3, 0.8, { variant: 0 });
-  P.push({ obj: 'plant.gorse', at: [9.6, 15.4], k: 1.1 }, { obj: 'plant.gorse', at: [11.2, 17.6], k: 0.8, flip: true }, { obj: 'plant.gorse', at: [18.5, 23.4], k: 1.2 });
+  tree('tree.wp-local-birch-heath', 15.8, 23.4, 1.1, { variant: 1 });
+  tree('tree.wp-local-pool-birch', 12.4, 19.2, 0.75, { variant: 2, flip: true });
+  tree('tree.wp-local-pool-pine', 25.5, 31.4, 0.9, { variant: 2 });
+  tree('tree.wp-local-birch-heath', 32.6, 40.3, 0.8, { variant: 0 });
+  P.push({ obj: 'plant.wp-local-gorse', at: [9.6, 15.4], k: 1.1 }, { obj: 'plant.wp-local-gorse', at: [11.2, 17.6], k: 0.8, flip: true }, { obj: 'plant.wp-local-gorse', at: [18.5, 23.4], k: 1.2 });
 
   // ---- reeds and bulrushes hugging the water, in clumps with gaps
   S.push({ obj: { 'plant.reed': 3, 'plant.bulrush': 1 }, on: 'reeds-right', d: [8, 40], n: 70, dist: 'ground', cluster: { centres: 5, spread: 1.1 }, k: [0.75, 1.15], seed: 41, anim: 'strip', species: 1 });
-  S.push({ obj: { 'plant.yg-reedbed': 2, 'plant.reed': 3, 'plant.bulrush': 1 }, on: 'reeds-left', d: [14, 60], n: 36, dist: 'ground', cluster: { centres: 4, spread: 1.4 }, k: [0.75, 1.1], seed: 42, anim: 'strip', species: 1 });
+  S.push({ obj: { 'plant.reed': 3, 'plant.bulrush': 1 }, on: 'reeds-left', d: [14, 60], n: 42, dist: 'ground', cluster: { centres: 4, spread: 1.4 }, k: [0.75, 1.1], seed: 42, anim: 'strip', species: 1 });
   S.push({ obj: { 'plant.reed': 3, 'plant.grass-long': 1 }, on: 'reeds-near', d: [8.5, 11.5], n: 8, dist: 'ground', cluster: { centres: 2, spread: 0.3 }, k: [0.4, 0.7], seed: 44, anim: 'strip', species: 1 });
   S.push({ obj: { 'plant.reed': 2, 'plant.bulrush': 1 }, on: ['reeds-far-r', 'reeds-far-l'], d: [100, 140], n: 60, dist: 'ground', cluster: { centres: 6, spread: 3 }, k: [0.8, 1.2], seed: 43, anim: false, species: 1 });
 
   // ---- the near bank: heather and bracken in clumps, grass, a fallen birch, flowers thinning off the path, the platform
-  S.push({ obj: { 'plant.heather': 6, 'plant.bracken': 1, 'plant.grass-long': 2, 'plant.grass': 3 }, on: ['bank-near', 'land'], avoid: ['path', 'bank-open'], d: [4.3, 16], n: 190, dist: 'screen', cluster: { centres: 7, spread: 0.7 }, gap: 'foot', k: [0.5, 1.35], seed: 51, anim: false, species: 1 });
-  // moor-grass tussocks among the heather (70-scene-lib-yateley-green-views.js): they overlap the heather's feet, so the near
-  // bank reads as one rough heath, never as separate cut-off clumps on bare ground
-  S.push({ obj: 'plant.yg-meadow', on: ['bank-near', 'land'], avoid: ['path', 'bank-open'], d: [4.6, 14], n: 40, dist: 'screen', cluster: { centres: 8, spread: 0.9 }, k: [0.5, 0.95], variant: 4, seed: 54, anim: false });
-  S.push({ obj: { 'plant.grass': 3, 'plant.wildflowers': 1 }, on: 'bank-open', d: [5, 9], n: 26, dist: 'screen', cluster: { centres: 4, spread: 0.5 }, k: [0.45, 0.8], seed: 53, anim: false, species: 1 });
-  S.push({ obj: { 'plant.heather': 4, 'plant.gorse': 1, 'plant.grass': 2 }, on: 'land', d: [9, 40], n: 80, dist: 'screen', cluster: { centres: 6, spread: 2 }, gap: 'foot', k: [0.8, 1.2], seed: 52, anim: false, species: 1 });
+  S.push({ obj: { 'plant.wp-local-heather': 6, 'plant.wp-local-bracken': 1, 'plant.grass-long': 2, 'plant.grass': 3 }, on: ['bank-near', 'land'], avoid: ['path', 'bank-open'], d: [4.3, 16], n: 190, dist: 'screen', cluster: { centres: 7, spread: 0.7 }, gap: 'foot', k: [0.5, 1.35], seed: 51, anim: false, species: 1 });
+  S.push({ obj: { 'plant.grass': 3, 'plant.wp-local-wildflowers': 1 }, on: 'bank-open', d: [5, 9], n: 26, dist: 'screen', cluster: { centres: 4, spread: 0.5 }, k: [0.45, 0.8], seed: 53, anim: false, species: 1 });
+  S.push({ obj: { 'plant.wp-local-heather': 4, 'plant.wp-local-gorse': 1, 'plant.grass': 2 }, on: 'land', d: [9, 40], n: 80, dist: 'screen', cluster: { centres: 6, spread: 2 }, gap: 'foot', k: [0.8, 1.2], seed: 52, anim: false, species: 1 });
   { // wild flowers and short grass along the path, thinning as they leave it
     const r = rnd(61), pl = line([[0.6, 3.9], [-0.9, 4.8], [-2.6, 5.9], [-4.4, 7.0], [-6.4, 8.4]], 0.35);
     for (let i = 0; i < pl.length - 1; i++) for (const side of [-1, 1]) {
@@ -165,18 +146,19 @@ function sceneProofWyndhamsPool() {
       if (r() > 1.15 - off * 0.35 || pl[i][1] < 4.5) continue;
       const a = pl[i], b = pl[i + 1], tx = b[0] - a[0], td = b[1] - a[1], m = Math.hypot(tx, td) || 1, q = [R2(a[0] - td / m * off * side), R2(a[1] + tx / m * off * side)];
       if (q[1] < 4.4 || q[1] > 7.6 || PX(q[0], q[1]) < -60 || PX(q[0], q[1]) > 1660) continue;
-      P.push({ obj: r() < 0.55 ? 'plant.wildflowers' : 'plant.grass', at: q, k: R2(0.6 + r() * 0.5), variant: Math.floor(r() * 3), anim: false });
+      P.push({ obj: r() < 0.55 ? 'plant.wp-local-wildflowers' : 'plant.grass', at: q, k: R2(0.6 + r() * 0.5), variant: Math.floor(r() * 3), anim: false });
     }
   }
   P.push({ obj: 'ground.log', at: [2.6, 6.4], k: 1, variant: 1 });
-  P.push({ obj: 'plant.bracken', at: [-2.75, 4.45], k: 1.25, anim: { sway: { k: 0.8 } } }, { obj: 'plant.bracken', at: [3.1, 5.6], k: 0.9, anim: false });
+  P.push({ obj: 'plant.wp-local-bracken', at: [-2.75, 4.45], k: 1.25, anim: { sway: { k: 0.8 } } }, { obj: 'plant.wp-local-bracken', at: [3.1, 5.6], k: 0.9, anim: false });
   P.push({ obj: 'plant.grass-long', at: [-1.2, 4.4], k: 1.1 }, { obj: 'plant.grass-long', at: [2.2, 4.5], k: 1, flip: true });
   P.push({ obj: 'structure.wp-bivvy', at: [-27.5, 125.5], k: 1, fix: true });
   const PLAT = { x: -9.1, d: 14 };
   P.push({ obj: 'structure.wp-angler-platform', at: [PLAT.x, PLAT.d], k: 1, fix: true });
 
   // ---- on the water: lilies in loose rafts, fish rising
-  { const r = rnd(71); [[-5.6, 13.5, 7], [-3.2, 17, 5], [-7.5, 22, 6], [3.2, 16.5, 4], [8, 58, 4], [-14, 70, 5]].forEach(([x, d, n], g) => { for (let i = 0; i < n; i++) P.push({ obj: 'water.lily', at: [R2(x + (r() - 0.5) * d * 0.09), R2(d + (r() - 0.5) * d * 0.12)], k: R2(0.8 + r() * 0.6), variant: Math.floor(r() * 3), anim: false }); }); }
+  { const r = rnd(71); [[-5.6, 13.5, 7], [-3.2, 17, 5], [-7.5, 22, 6], [3.2, 16.5, 4], [8, 58, 4], [-14, 70, 5]].forEach(([x, d, n], g) => { for (let i = 0; i < n; i++) P.push({ obj: 'water.lily', at: [R2(x + (r() - 0.5) * d * 0.09), R2(d + (r() - 0.5) * d * 0.12)], k: R2(0.8 + r() * 0.6), tint:['#6f8e58',(i%3)*.03], variant: Math.floor(r() * 3), anim: false }); }); }
+  [[-4.1,14.8],[-8.2,20.3],[4.6,18.4],[10,45],[-12,57],[16,68],[-18,82],[2,105]].forEach((at,i)=>P.push({obj:'water.fish-ring',at,k:.8+i*.1,variant:i%3,seed:90+i,anim:{flicker:{period:5+i*.4}}}));
   P.push({ obj: 'water.fish-ring', at: [-2, 38], k: 1.4, seed: 5, anim: { flicker: { period: 5.2 } } }, { obj: 'water.fish-ring', at: [14, 72], k: 1.6, variant: 1, seed: 9, anim: { flicker: { period: 7.4 } } });
 
   // ---- the heron: stalking the shallows in front of the right-hand reeds, stabbing as it goes
@@ -187,34 +169,37 @@ function sceneProofWyndhamsPool() {
   A.push({ obj: 'bird.mallard', ground: [[22, 62], [10, 66], [2, 64]], speedM: 0.25, loop: 'pingpong', seed: 13, offset: 0.1 });
   A.push({ obj: 'bird.mallard', ground: [[23.2, 63], [11.2, 67.2], [3.2, 65.2]], speedM: 0.25, loop: 'pingpong', variant: 1, seed: 14, offset: 0.1 });
 
-  // ---- the kingfisher: three actors on one clock (perched, flight, splash), each a TIMED path (sceneActorAt: waits and jumps
-  // in seconds), so each shows only in its moment and they hand over in the same instant, for ever (a clock made of rounded
-  // speeds and distances drifted apart: after some minutes two birds, or none, showed at a hand-over)
+  // ---- the kingfisher: three actors on one clock (perched, flight, splash), timed so each shows only in its moment
   {
     const sP = f * 0.8 / PLAT.d / 80, ax = PX(PLAT.x, PLAT.d), ay = PY(PLAT.d);
     const post = [R1(ax + 291.5 * sP), R1(ay - 92 * sP)];      // the post top (the bird's feet)
     const pc = [post[0] + 1, post[1] - 7];                        // the flying bird's centre when it leaves the post
     const wd = 13.2, W = [R1(post[0] + 46), R1(WY(wd))];          // where it hits the water
-    const vF = 420;                                               // units per second: the flight
+    const vF = 420, vP = 2, vR = 60;                              // units per second: the flight, the perched bird, the ring
     const len = pts => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
-    // the flight: waits hidden above the post (any row above it draws at scale 0), down, a curving dive, under water, back up
-    const hide = [pc[0], pc[1] - 6], dwell = 2 * (hide[1] + 1600) / vF;
+    // the flight: hidden above the post (out of sight: any row above it draws at scale 0), down, a curving dive, under water, back up
+    const hide = [pc[0], pc[1] - 6], dwellUp = 2 * (hide[1] + 1600);
     const dive = [[pc[0], pc[1]], [pc[0] + 10, pc[1] + 14], [pc[0] + 24, pc[1] + 40], [W[0] - 6, W[1] - 22], [W[0], W[1]]];
     const under = [[W[0] + 1, W[1] + 3], [W[0] + 1, W[1] + 80], [W[0] + 1, W[1] + 3]];
     const back = [[W[0], W[1]], [W[0] - 4, W[1] - 26], [pc[0] + 34, pc[1] + 18], [pc[0] + 12, pc[1] + 2], [pc[0], pc[1]]];
-    const route = [hide, ...dive, ...under, ...back, hide];
-    const T = dwell + len(route) / vF;
-    const tLeave = dwell + 6 / vF, tHit = tLeave + len(dive) / vF, tBack = T - 6 / vF;
+    const flight = [hide, [hide[0], -1600], hide, ...dive, ...under, ...back, hide];
+    const T = len(flight) / vF;
+    const tLeave = (dwellUp + 6) / vF, tHit = (dwellUp + 6 + len(dive)) / vF, tBack = (len(flight) - 6) / vF;
     const sF = 0.82;
-    A.push({ obj: 'bird.kingfisher-flight', layer: 'fore', path: [[hide[0], hide[1], dwell, 0, null], ...route.slice(1)], speed: vF, loop: 'loop', s: 1, sByY: [[pc[1] - 0.6, 0.001], [pc[1] - 0.1, sF], [W[1] + 1.5, sF], [W[1] + 2.5, 0.001]], seed: 21, offset: 0 });
-    // the perched bird: sits still from the moment the flier is back until it leaves again, hidden under its row meanwhile
-    const visT = T - (tBack - tLeave);
+    A.push({ obj: 'bird.kingfisher-flight', layer: 'fore', path: flight, speed: vF, loop: 'loop', s: 1, sByY: [[pc[1] - 0.6, 0.001], [pc[1] - 0.1, sF], [W[1] + 1.5, sF], [W[1] + 2.5, 0.001]], seed: 21, offset: 0 });
+    // the perched bird: sits from the moment it is back until it leaves again (a subpixel tremor keeps it on its path)
+    const visT = T - (tBack - tLeave), sit = [];
+    for (let i = 0, n = Math.max(2, Math.round(visT * vP / 0.3)); i <= n; i++) sit.push([post[0], R2(post[1] - (i % 2) * 0.3)]);
+    const away = (tBack - tLeave) * vP;
+    const perch = sit.concat([[post[0], post[1] + away / 2], [post[0], post[1] + 0.06]]);
     const sK = R2(f * 0.17 / PLAT.d / 26 * 1.5);
-    A.push({ obj: 'bird.wp-kingfisher-perch', layer: 'fore', path: [[post[0], post[1], visT, 1, null], [post[0], post[1] + 1, T - visT, 0, 0], [post[0], post[1], 0, 0, 0]], speed: 1, loop: 'loop', s: 1,
-      sByY: [[post[1], sK], [post[1] + 0.05, 0.001]], seed: 22, offset: ((-tBack / T) % 1 + 1) % 1 });
-    // the splash: from the moment it hits, the rings grow for 1.4 s and fade (the 'fade' loop fades the end of the cycle)
-    const ring = [[W[0], W[1] + 0.7, T - 1.4, 0, null], [W[0], W[1], 0, 0, 0], [W[0], W[1] + 0.6, 0, 0, 1.4], [W[0], W[1] + 0.7, 0, 0, 0]];
-    A.push({ obj: 'water.wp-dive-ring', layer: 'fore', path: ring, speed: 60, loop: 'fade', s: 1, sByY: [[W[1], 0.3], [W[1] + 0.6, 1.25], [W[1] + 0.68, 0.001]], seed: 23, offset: (((T - 1.4 - tHit) / T) % 1 + 1) % 1 });
+    A.push({ obj: 'bird.wp-kingfisher-perch', layer: 'fore', path: perch, speed: R2(len(perch) / T), loop: 'loop', s: 1, sByY: [[post[1], sK], [post[1] + 0.05, 0.001]], seed: 22, offset: R2(((-tBack / T) % 1 + 1) % 1) });
+    // the splash: rings grow from the moment it hits, then fade (the 'fade' loop fades the end of its path)
+    const grow = [], gN = Math.round(1.4 * vR / 2.4);
+    for (let i = 0; i <= gN; i++) grow.push([R2(W[0] + (i % 2) * 2.4), R2(W[1] + 0.6 * i / gN)]);
+    const ringPath = [[W[0], W[1] + 0.7]].concat([[W[0], W[1] + 0.7 + (T - 1.4) * vR / 2]], [[W[0], W[1] + 0.7]], grow);
+    const tGrow = (len(ringPath) - len(grow)) / (len(ringPath) / T);
+    A.push({ obj: 'water.wp-dive-ring', layer: 'fore', path: ringPath, speed: R2(len(ringPath) / T), loop: 'fade', s: 1, sByY: [[W[1], 0.3], [W[1] + 0.6, 1.25], [W[1] + 0.68, 0.001]], seed: 23, offset: R2((((tGrow - tHit) / T) % 1 + 1) % 1) });
   }
 
   // ---- swallows skimming low over the water (spring to early autumn: the object draws nothing in winter)
@@ -242,5 +227,7 @@ function sceneProofWyndhamsPool() {
 
   // ---- framing: a Scots pine bough over the top left
   P.push({ obj: 'tree.wp-pine-bough', x: -36, y: -22, s: 0.92, layer: 'front', pin: true, anim: { sway: { k: 1 } } });
+  S.push({obj:{'plant.grass':4,'plant.grass-long':1,'plant.wp-local-heather':1},on:['bank-near','land'],avoid:['path','pool','bank-open'],d:[4.4,7.5],n:420,dist:'screen',k:[.22,.48],gap:0,variant:'random',flip:.5,tint:{col:'#8b8058',k:[0,.06]},anim:false,seed:89});
+  for(const rule of S){rule.tint={col:'#8b8058',k:[0,.06]}; if(rule.gap==null)rule.gap=rule.d[0]>=100?2.5:1.2;}
   return typeof sceneFromRecipe === 'function' ? sceneFromRecipe(data) : data;
 }
