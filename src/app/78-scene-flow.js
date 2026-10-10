@@ -132,6 +132,7 @@ function sceneFlowLayer(C, L, o) {
   const data = o.data || { at: C.at || (C.view && C.view.at) || null, view: C.view || {} };
   const pool = new Map(), byBase = new Map(), st = { agents: 0, draws: 0, built: 0, fallbacks: 0, frames: 0 };
   let mults = typeof sceneFlowMults === 'function' ? sceneFlowMults(C, L, data) : [], budget = Infinity, lastT = NaN, now = [];
+  const viewMemo = new Map();   // the facing's hysteresis per agent (sceneHeadingView): one view switch per corner
   const hazeOf = (a) => {
     if (typeof sceneHazeAt !== 'function' || !L) return 0;
     try { return Math.round(sceneHazeAt(a.d, C.atmos, L) * 10) / 10; } catch (e) { return 0; }
@@ -195,7 +196,8 @@ function sceneFlowLayer(C, L, o) {
       if (t === lastT) return now;
       lastT = t;
       const gov = typeof o.governor === 'function' ? o.governor() : o.governor;
-      now = typeof sceneFlowAgents === 'function' ? sceneFlowAgents(C, t, L, { mults, data, maxScale: gov > 0 ? gov : 1 }) : [];
+      if (viewMemo.size > 4000) viewMemo.clear();
+      now = typeof sceneFlowAgents === 'function' ? sceneFlowAgents(C, t, L, { mults, data, maxScale: gov > 0 ? gov : 1, viewMemo: o.still ? null : viewMemo }) : [];
       st.agents = now.length;
       return now;
     },
@@ -236,19 +238,27 @@ function sceneFlowLayer(C, L, o) {
     drawAgent(ctx, a, t) {
       const pl = planOf(a);
       if (!pl) return 0;
-      const haze = hazeOf(a), b = _scflfBucket(a.s), M = [vs * a.s * (a.flip ? -1 : 1), 0, 0, vs * a.s, vs * a.X + ox, vs * a.Y + oy];
+      const haze = hazeOf(a), b = _scflfBucket(a.s);
+      let M = [vs * a.s * (a.flip ? -1 : 1), 0, 0, vs * a.s, vs * a.X + ox, vs * a.Y + oy];
+      // a cyclist banks into a turn (sceneTurnLean, + clockwise on screen): a rotation about the wheels' contact
+      if (a.lean) { const c = Math.cos(a.lean), sn = Math.sin(a.lean), f = a.flip ? -1 : 1; M = mul(M, [c, f * sn, -f * sn, c, 0, 0]); }
       let n = 0;
       if (pl.walk) {
         const parts = pl.walk.parts || [pl.walk.part], rest = spriteFor(a.o, a.v, 'rest:' + parts.join(','), haze, b);
         const per = (pl.walk.period || 0.9) * Math.max(0.7, Math.min(1.4, 1.3 / Math.max(0.3, a.speed || 1.3)));
-        const pose = typeof sceneAnimPose === 'function' ? sceneAnimPose(Object.assign({}, pl.walk, { period: per, phase: a.phase || 0 }), t, L, a.X) : { m: [1, 0, 0, 1, 0, 0], bob: 0 };
+        // the stride foreshortens with the heading (fs: 1 side-on, 0 head-on): the legs' swing narrows and the bob shrinks; seen
+        // from the front or back the legs alternate by lifting (no sideways swing)
+        const fs = a.fs == null ? 1 : a.fs, wk = Object.assign({}, pl.walk, { period: per, phase: a.phase || 0, deg: (pl.walk.deg || 22) * fs, bob: (pl.walk.bob == null ? 1.5 : pl.walk.bob) * (0.45 + 0.55 * fs) });
+        const pose = typeof sceneAnimPose === 'function' ? sceneAnimPose(wk, t, L, a.X) : { m: [1, 0, 0, 1, 0, 0], bob: 0 };
+        const liftU = (1 - fs) * (pl.sh.box[3] - pl.sh.box[1]) * 0.03, ph = 2 * Math.PI * (t / per + (a.phase || 0));
         if (!ctx) { for (const p of parts) spriteFor(a.o, a.v, p, haze, b); return 0; }
         // the far leg first, the body (bobbing), then the near leg: the people builder's order (legB, body, legA)
         const order = pl.sh.order.filter(p => parts.includes(p) || p === pl.sh.order.find(q => !parts.includes(q) && q !== 'lit'));
         for (const p of order) {
           if (!parts.includes(p)) { const MM = M.slice(); MM[5] += (pose.bob || 0) * vs * a.s; n += draw(ctx, rest, MM, a.alpha); continue; }
-          const j = parts.indexOf(p), A = j === 1 && pose.m2 ? pose.m2 : pose.m;
-          n += draw(ctx, spriteFor(a.o, a.v, p, haze, b), mul(M, A), a.alpha);
+          const j = parts.indexOf(p), A = j === 1 && pose.m2 ? pose.m2 : pose.m, MM = mul(M, A);
+          if (liftU > 0) MM[5] -= Math.max(0, Math.sin(ph + j * Math.PI)) * liftU * vs * a.s;
+          n += draw(ctx, spriteFor(a.o, a.v, p, haze, b), MM, a.alpha);
         }
         return n;
       }
@@ -266,14 +276,16 @@ function sceneFlowLayer(C, L, o) {
     lights(ctx, a, b) {
       const def = typeof sceneObj === 'function' ? sceneObj(a.o) : null;
       if (!def) return 0;
+      // the lamp sprites know side, front and rear: the three-quarter views take the nearer end
+      const lv = a.view === 'back' || a.view === 'q-back' ? 'rear' : a.view === 'front' || a.view === 'q-front' ? 'front' : 'side';
       let spr = null;
-      if (typeof sceneHeadlightSprite === 'function') { try { spr = sceneHeadlightSprite(b * vs, a.view); } catch (e) { spr = null; } }
+      if (typeof sceneHeadlightSprite === 'function') { try { spr = sceneHeadlightSprite(b * vs, lv); } catch (e) { spr = null; } }
       const hgt = def.size[1] * a.s, wid = def.size[0] * a.s;
       if (spr && spr.c) { ctx.globalAlpha = a.alpha; ctx.setTransform(vs * (a.flip ? -1 : 1), 0, 0, vs, vs * a.X + ox, vs * a.Y + oy); ctx.drawImage(spr.c, spr.x0 != null ? spr.x0 : -spr.c.width / 2, spr.y0 != null ? spr.y0 : -spr.c.height, spr.w || spr.c.width, spr.h || spr.c.height); return 1; }
-      const tail = a.view === 'rear', g = _scflfGlow(tail ? '#ff4a30' : '#fff0c0'), r = Math.max(2, hgt * (a.view === 'side' ? 0.55 : 0.75));
-      const gx = a.view === 'side' ? (a.flip ? -1 : 1) * wid * 0.5 : 0, gy = -hgt * 0.35;
+      const tail = lv === 'rear', g = _scflfGlow(tail ? '#ff4a30' : '#fff0c0'), r = Math.max(2, hgt * (lv === 'side' ? 0.55 : 0.75));
+      const gx = lv === 'side' ? (a.flip ? -1 : 1) * wid * 0.5 : 0, gy = -hgt * 0.35;
       ctx.globalAlpha = a.alpha * (tail ? 0.7 : 0.85); ctx.setTransform(vs, 0, 0, vs, vs * (a.X + gx) + ox, vs * (a.Y + gy) + oy);
-      ctx.drawImage(g, -r * (a.view === 'side' ? 1.4 : 1.2), -r * 0.6, r * (a.view === 'side' ? 2.8 : 2.4), r * 1.2);
+      ctx.drawImage(g, -r * (lv === 'side' ? 1.4 : 1.2), -r * 0.6, r * (lv === 'side' ? 2.8 : 2.4), r * 1.2);
       return 1;
     },
     /** The contact shadow of an agent (one draw): a soft ellipse under its foot, the length of the vehicle or the width of a person. */
@@ -281,7 +293,7 @@ function sceneFlowLayer(C, L, o) {
       const def = typeof sceneObj === 'function' ? sceneObj(a.o) : null;
       if (!def || a.kind === 'boat') return 0;
       const real = typeof _scflReal === 'function' ? _scflReal(a.o) : { l: 1, w: 0.5 }, k3 = a.k3 || 1;
-      const side = a.view === 'side', len = side ? Math.max(0.6, real.l || 0.6) : Math.max(0.6, real.w || 0.6), w = len * k3 * 1.1, h = Math.max(1.5, w * 0.18);
+      const fs = a.fs == null ? (a.view === 'side' ? 1 : 0) : a.fs, len = Math.max(0.6, (real.l || 0.6) * fs + (real.w || 0.6) * (1 - fs)), w = len * k3 * 1.1, h = Math.max(1.5, w * 0.18);
       const op = (L && L.dark > 0.7 ? 0.6 : 1) * a.alpha;
       ctx.globalAlpha = op; ctx.setTransform(vs, 0, 0, vs, ox, oy);
       ctx.drawImage(_scflfBlob(), a.X - w / 2, a.Y - h / 2, w, h);

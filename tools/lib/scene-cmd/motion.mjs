@@ -6,9 +6,9 @@
 // what is still wrong after the engine's automatic fixes: off the water or against a bank (moverWater), through a boat (moverHull),
 // through a wall, fence, building, bench or trunk (moverBlocked), through a closed gate (moverGate), a walker on water or mid-air
 // (moverGround), over 25 % off its real size at its depth (moverScale), popping in or out inside the frame (moverPop), two movers
-// in one place (moverOverlap); moverFixed (info) lists what the engine corrected by itself.
+// in one place (moverOverlap), drawn side-on more than 30 degrees off its heading for want of a view (moverFacing); moverFixed (info) lists what the engine corrected by itself.
 // --out draws a frame of the scene with the paths (authored dashed, drawn solid), the blockers' footprints, the water, a depth
-// ruler and every violation in red. --violations writes { scenes: { ref: { counts, problems } }, totals }. Exit 2 with errors under --strict.
+// ruler, a heading arrow per leg of every mover (labelled with its view) and every violation in red. --violations writes { scenes: { ref: { counts, problems } }, totals }. Exit 2 with errors under --strict.
 import { writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 
@@ -24,7 +24,7 @@ export function motionReport(C, check) {
   const sev = (s) => R.problems.filter(p => p.sev === s).length;
   return {
     v2: R.v2, errors: sev('error'), warns: sev('warn'), infos: sev('info'), counts,
-    movers: R.movers.map(m => ({ i: m.i, o: m.o, cls: m.cls, mode: m.mode, flow: !!m.flow, moved: m.moved, detours: m.detours, scale: m.scale, bad: m.bad.length })),
+    movers: R.movers.map(m => ({ i: m.i, o: m.o, cls: m.cls, mode: m.mode, flow: !!m.flow, moved: m.moved, detours: m.detours, scale: m.scale, bad: m.bad.length, facing: (m.facing || []).map(f => ({ d: f.d, view: f.view, off: f.off, bad: f.bad })) })),
     blockers: R.blockers.length,
     problems: R.problems.map(p => ({ rule: p.rule, sev: p.sev, i: p.i, obj: p.obj, at: p.at, msg: p.msg, fix: p.fix })),
     $R: R,
@@ -65,6 +65,12 @@ export function motionOverlay(R, title) {
       out.push(`<circle cx="${R1(s[0])}" cy="${R1(s[1])}" r="4" fill="${col}"/><text x="${R1(s[0] + 6)}" y="${R1(s[1] - 6)}" class="t">${esc(String(m.i))} ${esc(m.o)}${dd ? ` ${R1(Math.min(...dd))}-${R1(Math.max(...dd))} m` : ''}${m.scale != null && Math.abs(m.scale - 1) > 0.25 ? ` x${m.scale}` : ''}</text>`);
     }
     for (const b of m.bad || []) out.push(`<circle cx="${R1(b.X)}" cy="${R1(b.Y)}" r="7" fill="none" stroke="#ff3b30" stroke-width="3"/>`);
+    // facing (4.3): a heading arrow per leg, labelled with the view drawn; red where it is drawn side-on off its heading
+    for (const f of m.facing || []) {
+      const fc = f.bad ? '#ff3b30' : '#ffffff', ang = Math.atan2(f.AY - f.Y, f.AX - f.X), hx = (s) => R1(f.AX - 7 * Math.cos(ang + s)), hy = (s) => R1(f.AY - 7 * Math.sin(ang + s));
+      out.push(`<line x1="${f.X}" y1="${f.Y}" x2="${f.AX}" y2="${f.AY}" stroke="${fc}" stroke-width="${f.bad ? 3 : 2}"/><path d="M${f.AX} ${f.AY}L${hx(0.5)} ${hy(0.5)}M${f.AX} ${f.AY}L${hx(-0.5)} ${hy(-0.5)}" stroke="${fc}" stroke-width="${f.bad ? 3 : 2}"/>`);
+      if (f.bad || f.view !== 'side') out.push(`<text x="${R1(f.AX + 4)}" y="${R1(f.AY + 4)}" class="t s${f.bad ? ' r' : ''}">${esc(f.bad ? 'side (wants ' + f.want + ')' : f.view)}</text>`);
+    }
   }
   // violations (every error and warning with a place)
   for (const p of R.problems || []) {
@@ -78,7 +84,7 @@ export function motionOverlay(R, title) {
   if (lines.length === 2) lines.push('no violations');
   const h = 16 * lines.length + 10;
   out.push(`<rect x="1180" y="8" width="412" height="${h}" rx="6" fill="#000" fill-opacity=".62"/>` + lines.map((l, i) => `<text x="1192" y="${28 + 16 * i}" class="t${i > 1 ? ' r' : ''}">${esc(l)}</text>`).join(''));
-  out.push(`<text x="1188" y="${h + 24}" class="t s">green: path as drawn; dashed white: as authored (the engine moved it); red: a fault</text><text x="1188" y="${h + 37}" class="t s">blue: water; orange: hulls; yellow: walls, fences, solids, logs; brown: trunks; pink: closed gates</text>`);
+  out.push(`<text x="1188" y="${h + 24}" class="t s">green: path as drawn; dashed white: as authored (the engine moved it); red: a fault</text><text x="1188" y="${h + 50}" class="t s">arrows: heading and view; red arrow: drawn side-on off its heading (moverFacing)</text><text x="1188" y="${h + 37}" class="t s">blue: water; orange: hulls; yellow: walls, fences, solids, logs; brown: trunks; pink: closed gates</text>`);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;font:12px system-ui,sans-serif"><style>.t{fill:#fff;paint-order:stroke;stroke:#000;stroke-width:3px}.s{font-size:10px}.r{fill:#ff8a80}</style>${out.join('')}</svg>`;
 }
 

@@ -518,4 +518,110 @@
       return { gear: farTier(gear(A)), body: farTier(body), rod: rod(o) };
     },
   });
+
+  /* ---------- the directional views (q-front, front, q-back, back) of the walking people: sceneMoverViews (70-scene-lib-mover-views.js) ----------
+     A path toward or away from the camera, or on a diagonal, shows the person facing the way they go (docs/dev/SCENE_ENGINE_V2.md 4.3).
+     Every view shares its side object's variants and wardrobe (a walker's v3 in winter is the same person from any side). */
+  if (typeof sceneMoverViews !== 'undefined') {
+    const MV = sceneMoverViews, VIEWS = ['q-front', 'front', 'q-back', 'back'], VID = { 'q-front': 'qfront', front: 'front', 'q-back': 'qback', back: 'back' };
+    const SEEN = { 'q-front': 'three-quarter, coming toward the camera', front: 'head on', 'q-back': 'three-quarter, going away', back: 'from behind' };
+    const vtags = (side, view) => (sceneObj(side) ? sceneObj(side).tags : PP.tags()).filter(x => x !== 'role:walker').concat([view, 'view', 'role:walker']);
+    const withHooks = (parts, hooks) => { Object.defineProperty(parts, '$anim', { value: hooks, enumerable: false }); return parts; };
+    /** Define the four views of a side person: build(view, v, ctx) -> parts with $anim; link them to the side object. */
+    const viewsOf = (side, size, build, extra) => {
+      const links = {}, sd = sceneObj(side);
+      for (const view of VIEWS) {
+        const id = side + '-' + VID[view];
+        PP.define(Object.assign({
+          id, category: 'person', size, variants: sd ? sd.variants : 1, seasonal: true, shapeBySeason: true, flippable: true, weight: 0, parts: ['legB', 'body', 'legA', 'armA'],
+          palette: PAL, shadow: { rx: 7, ry: 2.4, h: 64 }, night: NIGHT, detailPx: true, real: { h: 1.72, l: 0.5, w: 0.5 },
+          tags: vtags(side, view), credit: side + ' seen ' + SEEN[view] + ' (sceneMoverViews.figure)',
+          build: (v, r, ctx) => build(view, v, ctx),
+        }, extra || {}));
+        links[view] = id;
+      }
+      links.rear = links.back; links.q = links['q-front'];
+      MV.link(side, links);
+    };
+    const single = (o, view, g) => { const f = MV.figure(o, view, g); return withHooks({ legB: f.legB, body: f.body, legA: f.legA, armA: f.armA }, f.hooks); };
+
+    // person.walker: the 8 presets (a phone, an open umbrella, a stick or a closed umbrella as each holds them)
+    viewsOf('person.walker', [30, 80], (view, v, ctx) => single(PP.outfit(PP.PRESETS[v], ctx.season), view, { deg: 22, period: 0.9, bob: 1.4, armDeg: 16 }));
+    // person.jogger: run arms (bent, pumping), a longer stride
+    viewsOf('person.jogger', [30, 66], (view, v, ctx) => {
+      const o = PP.outfit(JOG[v], ctx.season), f = MV.figure(o, view, { arms: 'run', deg: 28, period: 0.55, bob: 2, armDeg: 20, endDeg: 5 });
+      if (o.band) f.body.push({ f: t('lime', 0), d: P('M', -6, -44, 'L', 6, -44, 'L', 6, -42.6, 'L', -6, -42.6, 'Z'), op: 0.9, glow: 'lamp' });
+      return withHooks({ legB: f.legB, body: f.body, legA: f.legA, armA: f.armA }, f.hooks);
+    });
+
+    // person.dog-walker: the walker and the dog on its lead. Head on the dog trots beside and a little ahead (nearer: drawn over);
+    // going away it is ahead and farther (drawn under); three-quarter the dog is its side drawing squeezed
+    const dogPaint = g => (slot, k) => t(slot === 'bib' ? (g.bib || g.coat) : slot === 'patch' ? (g.patch || g.coat) : slot === 'collar' ? g.collar : slot === 'jacket' ? (g.jacket || g.coat) : g.coat, k);
+    const dlinks = {};
+    for (const view of VIEWS) {
+      const id = 'person.dog-walker-' + VID[view], back = view === 'back' || view === 'q-back', end = view === 'front' || view === 'back';
+      PP.define({
+        id, category: 'person', size: [44, 70], variants: DOGW.length, seasonal: true, shapeBySeason: true, flippable: true, weight: 0,
+        parts: back ? ['dog', 'legB', 'body', 'legA'] : ['legB', 'body', 'legA', 'dog'],
+        palette: PAL, anim: { walk: { parts: ['legB', 'legA'], pivot: [0, HIP], deg: end ? 3.5 : 16, period: 0.9, bob: 1.4 }, bob: { part: 'dog', dy: 1.4, period: 0.42 } },
+        shadow: { rx: 16, ry: 2.6, h: 64 }, night: NIGHT, detailPx: true, real: { h: 1.75, l: 0.9, w: 1.4 },
+        tags: vtags('person.dog-walker', view), credit: 'person.dog-walker seen ' + SEEN[view] + ' (sceneMoverViews.figure and dogEnd)',
+        build(v, r, ctx) {
+          const W = DOGW[v], g = DOGS[v], o = PP.outfit(W, ctx.season);
+          const dx = end ? 13 : (back ? 10 : 15), dy = back ? -1.6 : 0.8;
+          let dogShapes, ring;
+          if (end) { dogShapes = MV.dogEnd(Object.assign({}, g, { w: g.w + 0.4 }), view, dogPaint(g), { jacket: g.jacket && ctx.season === 'winter' }); ring = [0, -g.H * (view === 'front' ? 0.94 : 1.0)]; }
+          else { const d = dog(g, ctx.season), k = 0.55, x0 = -(DOG_X + g.L * 0.5) * k; dogShapes = MV.xform([...d.body, ...d.near], k, x0, 1, 0); ring = [d.ring[0] * k + x0, d.ring[1]]; }
+          dogShapes = MV.xform(dogShapes, 1, dx, 1, dy); ring = [ring[0] + dx, ring[1] + dy];
+          // the hand on the dog's side (screen right) holds the lead low and forward
+          const hand = end ? [9.4, -32] : [6 + (back ? 1 : 2), -33];
+          const f = MV.figure(o, view, { hand: view === 'front' ? { far: hand } : { near: hand }, deg: 22 });
+          const h = view === 'front' ? f.hands.far : f.hands.near, sag = Math.max(h[1], ring[1]) + 5;
+          const lead = [line(t(W.lead, 1), 0.8, P('M', h[0], h[1], 'Q', (h[0] + ring[0]) / 2, sag, ring[0], ring[1]))];
+          return { legB: f.legB, body: [...f.body, ...f.armA, ...(back ? [] : lead)], legA: f.legA, dog: back ? [...dogShapes, ...lead] : dogShapes };
+        },
+      });
+      dlinks[view] = id;
+    }
+    dlinks.rear = dlinks.back; dlinks.q = dlinks['q-front'];
+    MV.link('person.dog-walker', dlinks);
+
+    // person.family: the adult and the child side by side, hand in hand (a second adult; the buggy pushed ahead)
+    viewsOf('person.family', [56, 76], (view, v, ctx) => {
+      const F = FAM[v], se = ctx.season, back = view === 'back' || view === 'q-back', end = view === 'front' || view === 'back';
+      const yaw = MV.YAW[view] * Math.PI / 180, c = Math.cos(yaw), sn = Math.sin(yaw), K = F.k;
+      // lateral places (+: the lead's left): the child on the left, the other adult on the right
+      const kidL = 11, othL = -14, kx = kidL * c * (end ? 1 : 1.4), ox = othL * c * (end ? 1 : 1.4);
+      const kidO = PP.outfit(KIDS[F.kid], se), leadO = Object.assign(PP.outfit(PP.PRESETS[F.lead], se), { hold: null });
+      const meet = [kx * 0.55, -26];
+      const lead = MV.figure(leadO, view, F.buggy ? { hand: { far: [2.6, -38], near: [-2.6, -38] } } : { hand: { far: meet } });
+      const kid = MV.figure(kidO, view, F.buggy ? {} : { hand: { near: [(meet[0] - kx) / K, meet[1] / K] } });
+      const groups = [{ z: -kidL * sn, list: MV.xform([...kid.legB, ...kid.body, ...kid.legA, ...kid.armA], K, kx, K, 0) }];
+      if (F.other != null) { const oth = MV.figure(Object.assign(PP.outfit(PP.PRESETS[F.other], se), { hold: null }), view, { dx: ox }); groups.push({ z: -othL * sn, list: [...oth.legB, ...oth.body, ...oth.legA, ...oth.armA] }); }
+      const under = [], over = [];
+      for (const g of groups) (g.z > 0.5 ? over : under).push(...g.list);
+      if (F.buggy) {   // the buggy ahead: coming toward us it is nearer (over the lead), going away farther (under)
+        let bb;
+        if (end) {
+          bb = [line(t('tyre', 0), 1.6, P('M', -6.6, -4.8, 'L', -6.6, -0.4, 'M', 6.6, -4.8, 'L', 6.6, -0.4)), line(t('charcoal', 0), 0.9, P('M', -6.4, -6, 'L', -4.6, -37, 'M', 6.4, -6, 'L', 4.6, -37, 'M', -4.6, -37.4, 'L', 4.6, -37.4)),
+            [t('teal', 0), P('M', -6, -22, 'Q', 0, -24, 6, -22, 'L', 6.4, -11, 'Q', 0, -9.6, -6.4, -11, 'Z')], [t('teal', 1), P('M', -6.4, -21, 'Q', -6, -31, 0, -31.6, 'Q', 6, -31, 6.4, -21, 'Q', 0, -23.4, -6.4, -21, 'Z')]];
+          if (!back) bb.push([t('teal', 3), P('M', -4.8, -21.4, 'Q', 0, -23, 4.8, -21.4, 'L', 4.8, -13, 'Q', 0, -12, -4.8, -13, 'Z')], [t('sk1', 0), ell(0, -18.4, 2.4, 2.4)], [t('cream', 0), P('M', -4.4, -16, 'Q', 0, -17.4, 4.4, -16, 'L', 4.6, -11.6, 'Q', 0, -10.6, -4.6, -11.6, 'Z')],
+            { f: t('charcoal', 1), d: P('M', -0.8, -9.4, 'L', 0.8, -9.4, 'L', 0.8, -8, 'L', -0.8, -8, 'Z'), glow: 'led' });
+          bb = MV.xform(bb, 1, 0, 1, back ? -2 : 1.6);
+        } else bb = MV.xform(buggy(), 0.62, back ? -4 : -3, 1, back ? -1.4 : 0.6);
+        (back ? under : over).push(...bb);
+      }
+      return withHooks({ legB: lead.legB, body: [...under, ...lead.body, ...lead.armA], legA: [...lead.legA, ...over], armA: [] }, lead.hooks.slice(0, 1));
+    });
+
+    // the cyclists: three-quarter is the side drawing squeezed (the wheels become ellipses); head on and from behind exist already
+    for (const side of ['person.cyclist', 'person.cyclist-commuter']) {
+      if (!sceneObj(side)) continue;
+      for (const [q, away] of [['qfront', false], ['qback', true]]) {
+        const d = MV.foreshorten(side, { id: side + '-' + q, k: 0.6, away });
+        if (d) { d.real = { h: 1.75, l: 1.3, w: 1.3 }; sceneObjDefine(d); }
+      }
+      MV.link(side, { front: 'person.cyclist-front', back: 'person.cyclist-rear', rear: 'person.cyclist-rear', 'q-front': side + '-qfront', 'q-back': side + '-qback', q: side + '-qfront' });
+    }
+  }
 })();

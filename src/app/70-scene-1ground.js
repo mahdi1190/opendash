@@ -1037,28 +1037,18 @@ function _scgrViews(id) {
   return (def && def.views) || null;
 }
 /**
- * Which view to draw (4.3): from the angle between the direction of travel (tx, td) and the line of sight to (x, d), the rule the
- * flows use (D's sceneFlowViewOf when loaded): side-on when it crosses the view (over 55 degrees), front or rear when it runs
- * toward or away (under 35), q between when the object has one. face 'away' / 'toward' asks for rear / front directly.
- * -> { view, o (the object to draw), missing, want? }
+ * Which view to draw (4.3): from the ground heading (tx, td) against the line of sight to (x, d), D's sceneHeadingView (5 views:
+ * 'back', 'q-back', 'side', 'q-front', 'front', the nearest the object has). face 'away' / 'toward' asks for back / front directly.
+ * -> { view, o (the object to draw), missing, want, off, flip? }
  */
 function sceneViewOf(id, tangent, x, d, face) {
-  let across = 90, toward = false;
-  if (face === 'away' || face === 'toward') { across = 0; toward = face === 'toward'; }
-  else if (tangent) {
-    const l = Math.hypot(x, d) || 1, sx = x / l, sd = d / l, dot = tangent[0] * sx + tangent[1] * sd;
-    across = Math.acos(_scgrClamp(Math.abs(dot), 0, 1)) / _SCGR_DEG;
-    toward = dot < 0;
+  if (typeof sceneViewAt === 'function') {
+    try {
+      if (face === 'away' || face === 'toward') return sceneViewAt(id, face === 'away' ? 0 : 180, null);
+      if (tangent && typeof sceneHeadingView === 'function') return sceneHeadingView(id, tangent[0], tangent[1], x, d, null);
+    } catch (e) { /* below */ }
   }
-  if (typeof sceneFlowViewOf === 'function') { try { const r = sceneFlowViewOf(id, across, toward); if (r && r.o) return r; } catch (e) { /* below */ } }
-  const ang = 90 - across;
-  let want = ang < 35 ? 'side' : ang > 55 ? (toward ? 'front' : 'rear') : 'q';
-  const vw = want === 'side' ? null : _scgrViews(id);
-  if (want === 'q') { if (vw && vw.q) return { view: 'q', o: vw.q, missing: false }; want = ang < 45 ? 'side' : (toward ? 'front' : 'rear'); }
-  if (want === 'side') return { view: 'side', o: id, missing: false };
-  const o = vw && vw[want];
-  if (o && (typeof sceneObj !== 'function' || sceneObj(o))) return { view: want, o, missing: false };
-  return { view: 'side', o: id, missing: true, want };
+  return { view: 'side', o: id, missing: false, want: 'side', off: 0 };
 }
 const _SCGR_MOVERS = ['car', 'bus', 'tram', 'train', 'bike', 'cyclist', 'tractor', 'boat', 'person', 'animal', 'animal-dog', 'animal-graze', 'bird-water', 'bird-ground'];
 /** Is a placement in ground form (4.1)? */
@@ -1167,11 +1157,11 @@ function scenePlaceResolve(G, p, i) {
   let travel = tan && want ? [tan[0] * want, tan[1] * want] : null;
   if (moves && (travel || p.face === 'away' || p.face === 'toward')) {
     const vw = sceneViewOf(p.obj, travel, x, d, travel ? null : p.face);
-    if (vw.missing && d < 30) prob('view', 'warn', [x, d], `place[${i}] ${p.obj}: drawn side-on where a ${vw.want} view is wanted (no ${vw.want} view in the library)`, `add views: { ${vw.want}: '<object id>' } to ${p.obj}`);
+    if (vw.missing && d < 30) prob('moverFacing', 'warn', [x, d], `place[${i}] ${p.obj}: drawn side-on ${Math.round(vw.off)} degrees off its heading (no '${vw.want}' view)`, `add views: { '${vw.want}': '<object id>' } to ${p.obj}, or turn its path across the view`);
     if (vw.o !== p.obj && typeof sceneObj === 'function' && sceneObj(vw.o)) obj = vw.o;
     view = vw.view;
   }
-  if (moves && def.flippable !== false && view === 'side') {
+  if (moves && def.flippable !== false && (view === 'side' || view === 'q-front' || view === 'q-back')) {
     if (p.face === 'left') flip = true;
     else if (p.face === 'right') flip = false;
     else if (travel) { const a = sceneProject(cam, x, d, h), b = sceneProject(cam, x + travel[0], d + travel[1], h); flip = b.X < a.X; }
@@ -1919,11 +1909,38 @@ function sceneMotionFixed(C) {
 
 /* ---------- the motion lint (tools: node tools/anim-pack.mjs scene motion <ref>) ---------- */
 /**
+ * The facing of a mover along a ground path (4.3): one sample per leg (its middle, in frame, nearer than dMax) -> { samples:
+ * [{ x, d, X, Y, AX, AY (the heading arrow's tip, 22 units long on screen), view, want, off, bad }], worst (the bad sample
+ * farthest off side-on, or null) }. bad: drawn side-on more than SCENE_FACING.warnOff off its heading, for want of a view.
+ */
+function sceneFacingSamples(cam, id, pts, o) {
+  o = o || {};
+  const out = { samples: [], worst: null };
+  if (!cam || !Array.isArray(pts) || pts.length < 2 || typeof sceneHeadingView !== 'function') return out;
+  const h = o.h || 0, dMax = o.dMax || 80, proj = (x, d) => { const P = o.proj ? o.proj(x, d, h) : sceneProject(cam, x, d, h); return [P.X, P.Y]; };
+  for (let j = 1; j < pts.length; j++) {
+    const a = pts[j - 1], b = pts[j], tx = b[0] - a[0], td = b[1] - a[1], L = Math.hypot(tx, td);
+    if (L < 0.2) continue;
+    const x = (a[0] + b[0]) / 2, d = (a[1] + b[1]) / 2;
+    if (!(d > cam.dMin) || d > dMax) continue;
+    const P = proj(x, d);
+    if (P[0] < -40 || P[0] > 1640 || P[1] > 940) continue;
+    const r = sceneHeadingView(id, tx, td, x, d, null), Q = proj(x + tx / L * 0.5, d + td / L * 0.5);
+    let ux = Q[0] - P[0], uy = Q[1] - P[1];
+    const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
+    const smp = { x: _scgrR1(x), d: _scgrR1(d), X: _scgrR1(P[0]), Y: _scgrR1(P[1]), AX: _scgrR1(P[0] + ux * 22), AY: _scgrR1(P[1] + uy * 22), view: r.view, want: r.want, off: Math.round(r.off), bad: !!r.missing };
+    out.samples.push(smp);
+    if (smp.bad && (!out.worst || smp.off > out.worst.off)) out.worst = smp;
+  }
+  return out;
+}
+/**
  * Every ground mover of a compiled scene checked (v1 pixel paths through the inferred camera): -> { v2, cam, blockers, water
  * (screen polygons), movers: [{ i, o, cls, mode, flow, path (screen, as authored), fixed (screen, as drawn), bad, moved, detours,
  * scale }], problems: [{ rule, sev, i, obj, at: [X, Y], msg, fix }] }. Rules: moverWater (off the water, or against a bank),
  * moverHull (through a boat), moverBlocked (through a wall, fence, building, bench, trunk...), moverGate (through a closed gate),
- * moverGround (a walker on water, an unwalkable surface or in mid-air; a ground bird on water), moverScale (over 25 % off its real
+ * moverGround (a walker on water, an unwalkable surface or in mid-air; a ground bird on water), moverFacing (drawn side-on over 30
+ * degrees off its heading, for want of a view; movers[].facing holds the heading arrows), moverScale (over 25 % off its real
  * size at its depth), moverPop (appears or vanishes inside the frame), moverOverlap (two movers in one place), moverLayer (a layer
  * forced against its depth); moverFixed (info: what the engine corrected by itself).
  */
@@ -1988,6 +2005,10 @@ function sceneMotionCheck(C, o) {
       m.scale = _scgrR2(med);
       if (med < 0.75 || med > 1.25) prob('moverScale', med < 0.6 || med > 1.6 ? 'error' : 'warn', i, a.o, authored[0], `actors[${i}] ${a.o}: drawn x${_scgrR2(med)} its real size (${ms.size || ms.cls} ${ms.h} m) at its depth`, Array.isArray(a.ground) ? 'set k near 1' : `use a ground path (ground: [[x, d], ...]) or scale it by ${_scgrR2(1 / med)}`);
     }
+    // facing (4.3): drawn side-on on a path that runs toward or away from the eye, for want of a view
+    const fc = sceneFacingSamples(cam, a.o, gd, { h: floats ? h : 0, proj: W.proj });
+    m.facing = fc.samples;
+    if (fc.worst) prob('moverFacing', 'warn', i, a.o, [fc.worst.X, fc.worst.Y], `actors[${i}] ${a.o}: drawn side-on ${fc.worst.off} degrees off its heading (no '${fc.worst.want}' view) at x ${fc.worst.x} m, d ${fc.worst.d} m`, `give ${a.o} views (side, q-front, front, q-back, back), or run its path across the view`);
     // popping: a loop or fade whose ends are inside the frame
     const loop = a.loop || 'pingpong';
     if ((loop === 'loop' || loop === 'fade') && _scgrPops(W, g) && !m.pop) prob('moverPop', loop === 'loop' ? 'error' : 'warn', i, a.o, authored[0], `actors[${i}] ${a.o}: a ${loop} path that ${loop === 'loop' ? 'jumps' : 'fades'} back to its start inside the frame`, 'start and end it off the frame edge or behind cover, or use loop: pingpong');
@@ -1999,6 +2020,7 @@ function sceneMotionCheck(C, o) {
   (C.flows || []).forEach((F, fi) => {
     const obj = F && F.mix ? Object.keys(F.mix)[0] : null;
     if (!obj || !Array.isArray(F.lanes)) return;
+    const faced = new Set();   // one moverFacing per object of a flow
     for (const ln of F.lanes) {
       if (!Array.isArray(ln.path) || ln.path.length < 2) continue;
       const floats = F.kind === 'boat', r = sceneMoverFixPath(W, obj, ln.path, { insert: true });
@@ -2006,6 +2028,15 @@ function sceneMotionCheck(C, o) {
       const m = { i: 'flow:' + (F.id || fi), o: obj, cls: sceneMoverSize(obj).cls, mode: r.mode, flow: true, path: drawn, fixed: drawn, bad: r.bad.map(b => { const P = W.proj(b.x, b.d, floats ? cam.water : 0); return Object.assign({ X: R1(P.X), Y: R1(P.Y) }, b); }), moved: ln.$moved || 0, detours: 0 };
       const seen = new Set();
       for (const b of m.bad) { const rule = ruleOf(b.why); if (seen.has(rule)) continue; seen.add(rule); prob(rule, 'error', 'flow:' + (F.id || fi), obj, [b.X, b.Y], `flow ${F.id || fi} (${F.kind}): ${b.why.replace(':', ' ')} at x ${b.x} m, d ${b.d} m`, fixOf[rule], { flow: true }); }
+      // facing (4.3): every object of the mix, the lane both ways when it carries both directions
+      const objs = Object.keys(typeof F.mix === 'object' && F.mix ? F.mix : {}).filter(id => typeof sceneObj !== 'function' || sceneObj(id));
+      m.facing = [];
+      for (const id of objs.length ? objs : [obj]) {
+        const fwd = ln.dir === -1 ? ln.path.slice().reverse() : ln.path, fc = sceneFacingSamples(cam, id, fwd, { h: floats ? cam.water : 0, proj: W.proj });
+        if (id === (objs[0] || obj)) m.facing = fc.samples;
+        else for (let q = 0; q < fc.samples.length && q < m.facing.length; q++) if (fc.samples[q].bad) m.facing[q] = fc.samples[q];
+        if (fc.worst && !faced.has(id)) { faced.add(id); prob('moverFacing', 'warn', 'flow:' + (F.id || fi), id, [fc.worst.X, fc.worst.Y], `flow ${F.id || fi} (${F.kind}): ${id} drawn side-on ${fc.worst.off} degrees off its heading (no '${fc.worst.want}' view) at x ${fc.worst.x} m, d ${fc.worst.d} m`, `give ${id} views (side, q-front, front, q-back, back), or run the lane across the view`, { flow: true }); }
+      }
       rep.movers.push(m);
     }
   });

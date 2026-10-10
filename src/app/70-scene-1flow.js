@@ -29,7 +29,9 @@
                x, d, h, X, Y, s, k3, view, viewMissing, flip, alpha, layer, speed, moving, night, bus, water, len, phase }
                (a pure function of (C, t, L): no state, any frame; t = 0 is half a period into the schedule, so a still shows a
                street already in motion). sceneFlowAt(flow, k, t, cam, mult): one agent; sceneFlowCount(C, t, L)
-   Views       sceneObjViews(id) -> { front, rear, q } | null; sceneFlowViewOf(id, across, toward) -> { view, o, missing }
+   Views       sceneObjViews(id) -> { side?, 'q-front', front, 'q-back', back } | null (rear = back, q = q-front);
+               sceneHeadingView(id, tx, td, x, d, prev) -> { view, o, v, flip, rel, off, fs, lat, want, missing }; sceneViewAt(id,
+               rel, prev); sceneTurnLean(...) -> radians; sceneFlowViewOf(id, across, toward, prev) (compatibility); SCENE_FACING
    ============================================================ */
 const SCENE_FLOW_PERIOD = 600, SCENE_FLOW_MAX_AGENTS = 60, SCENE_FLOW_MAX_SPRITES = 120, SCENE_FLOW_DRAW_BUDGET = 300;
 const SCENE_FLOW_KINDS = Object.freeze(['walk', 'cycle', 'drive', 'tram', 'train', 'boat', 'graze']);
@@ -138,22 +140,83 @@ function sceneObjViews(id) {
   return (def && def.views) || SCENE_OBJ_VIEWS[id] || null;
 }
 /**
- * Which view to draw (4.3), from the angle between the direction of travel and the line of sight (both on the ground):
- * `across` is that angle folded into 0..90 degrees (90: crossing the view; 0: straight toward or away from the camera).
- * Crossing by more than 55: 'side'; by less than 35: 'front' (coming toward the camera) or 'rear' (going away); between: 'q' if
- * the object has one, else the nearer of the two. (The spec words it as the screen angle of the projected tangent; that agrees
- * near the camera but calls a far car on a receding road side-on, because every line flattens toward the horizon. The sightline
- * is what decides which face of a vehicle the eye sees.) Returns { view, o (the object to draw), missing, want }.
+ * Facing (4.3, user request 10 Oct: movers face the way they travel). The heading on the ground is measured against the line of
+ * sight: rel = 0 straight away from the camera, 90 crossing the view, 180 straight toward it. Eight directions fold to five views
+ * plus the mirror: 'back' (0), 'q-back' (45), 'side' (90), 'q-front' (135), 'front' (180); side and the three-quarter views are
+ * mirrored when the mover goes left on screen (the library draws them facing right). An object names its views in `views`
+ * (its def, else SCENE_OBJ_VIEWS): { side?, 'q-front', front, 'q-back', back } (older names: rear = back, q = q-front).
+ * SCENE_FACING: hyst (degrees past a boundary before the view changes: no flicker, one switch per corner), warnOff (a mover more
+ * than this off side-on drawn side-on, for want of a view, is a moverFacing warning), win (metres each side of the mover the
+ * heading is averaged over: turns are smooth), lean (most bank of a cyclist in a turn, radians).
  */
-function sceneFlowViewOf(id, across, toward) {
-  const ang = 90 - across;   // 0 = side-on
-  let want = ang < 35 ? 'side' : ang > 55 ? (toward ? 'front' : 'rear') : 'q';
-  const vw = want === 'side' ? null : sceneObjViews(id);
-  if (want === 'q') { if (vw && vw.q) return { view: 'q', o: vw.q, missing: false }; want = ang < 45 ? 'side' : (toward ? 'front' : 'rear'); }
-  if (want === 'side') return { view: 'side', o: id, missing: false };
-  const o = vw && vw[want];
-  if (o && (typeof sceneObj !== 'function' || sceneObj(o))) return { view: want, o, missing: false, v: Number.isInteger(vw.v) ? vw.v : null };
-  return { view: 'side', o: id, missing: true, want };
+const SCENE_FACING = Object.freeze({ hyst: 9, warnOff: 30, win: 1.2, lean: 0.2 });
+const SCENE_VIEW_NAMES = Object.freeze(['back', 'q-back', 'side', 'q-front', 'front']);
+const _SCFL_VIEW_AT = Object.freeze({ back: 0, 'q-back': 45, side: 90, 'q-front': 135, front: 180 });
+/** The object of one named view in a views map (aliases: rear -> back, q -> q-front); null when it has none. */
+function sceneViewObj(vw, name) {
+  if (!vw) return null;
+  const o = name === 'back' ? (vw.back || vw.rear) : name === 'q-front' ? (vw['q-front'] || vw.q) : vw[name];
+  return o && (typeof sceneObj !== 'function' || sceneObj(o)) ? o : null;
+}
+/** The ideal view of a heading rel (degrees, 0 away .. 180 toward), with hysteresis about prev (a view name). */
+function _scflWantView(rel, prev) {
+  if (prev && _SCFL_VIEW_AT[prev] != null && Math.abs(rel - _SCFL_VIEW_AT[prev]) <= 22.5 + SCENE_FACING.hyst) return prev;
+  return rel < 22.5 ? 'back' : rel < 67.5 ? 'q-back' : rel <= 112.5 ? 'side' : rel <= 157.5 ? 'q-front' : 'front';
+}
+/**
+ * The view to draw at a heading: rel (0 away .. 180 toward); prev: the view drawn last frame (hysteresis). The nearest view the
+ * object has wins (side always exists). -> { view, o, v (a view's variant or null), want, missing (drawn side-on more than
+ * SCENE_FACING.warnOff off side-on for want of a view), off (degrees off side-on), fs (foreshortening: 1 side-on, 0 head-on) }
+ */
+function sceneViewAt(id, rel, prev) {
+  const want = _scflWantView(rel, prev), off = Math.abs(rel - 90), fs = Math.sin(rel * Math.PI / 180);
+  const vw = sceneObjViews(id), has = { side: (vw && sceneViewObj(vw, 'side')) || id };
+  if (vw) for (const n of SCENE_VIEW_NAMES) if (n !== 'side') { const o = sceneViewObj(vw, n); if (o) has[n] = o; }
+  let view = has[want] ? want : null;
+  if (!view) {
+    let best = 'side', bd = Math.abs(rel - 90);
+    for (const n of Object.keys(has)) { const dd = Math.abs(rel - _SCFL_VIEW_AT[n]); if (dd < bd - 1e-6) { best = n; bd = dd; } }
+    // hysteresis between the fallbacks too: keep the last view until the new one is clearly nearer
+    if (prev && has[prev] && prev !== best && Math.abs(rel - _SCFL_VIEW_AT[prev]) - bd < 2 * SCENE_FACING.hyst) best = prev;
+    view = best;
+  }
+  const v = vw && view !== 'side' && Number.isInteger(vw.v) ? vw.v : null;
+  return { view, o: has[view], v, want, missing: view === 'side' && want !== 'side' && off > SCENE_FACING.warnOff, off, fs: Math.abs(fs) };
+}
+/**
+ * A mover's facing from its ground heading: (tx, td) the direction of travel on the ground, (x, d) where it is; prev the last
+ * result ({ view, flip }) for hysteresis. -> sceneViewAt's record plus rel, flip (mirrored: going left on screen; side and q views
+ * only) and lat (the screen-sideways share of the heading, -1 left .. 1 right).
+ */
+function sceneHeadingView(id, tx, td, x, d, prev) {
+  const rl = Math.hypot(x, d) || 1, tl = Math.hypot(tx, td) || 1;
+  const along = (tx * x + td * d) / (rl * tl), lat = (tx * d - td * x) / (rl * tl);
+  const rel = Math.acos(_scflClamp(along, -1, 1)) * 180 / Math.PI;
+  const r = sceneViewAt(id, rel, prev && prev.view);
+  // the mirror holds while the heading is nearly straight along the sightline (no flicker head-on)
+  let flip = lat < 0;
+  if (prev && prev.flip != null && Math.abs(lat) < Math.sin(SCENE_FACING.hyst * Math.PI / 180)) flip = !!prev.flip;
+  if (r.view === 'front' || r.view === 'back') flip = false;
+  return Object.assign(r, { rel, flip, lat });
+}
+/**
+ * The bank of a two-wheeler (or any mover) in a turn, as a screen rotation in radians (+ clockwise): from the heading before
+ * (t0x, t0d) and after (t1x, t1d) over `metres` of travel at `speed` m/s at (x, d). Leans into the turn; seen side-on the bank
+ * is toward or away from the eye, so only its screen-sideways share shows.
+ */
+function sceneTurnLean(t0x, t0d, t1x, t1d, metres, speed, x, d) {
+  const a0 = Math.atan2(t0x, t0d), a1 = Math.atan2(t1x, t1d);
+  let da = a1 - a0; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+  if (!(metres > 0) || !(speed > 0) || Math.abs(da) < 1e-3) return 0;
+  const w = da * speed / metres, bank = _scflClamp(Math.atan(speed * Math.abs(w) / 9.81), 0, SCENE_FACING.lean);
+  // the inside of the turn: the right normal of the mean heading for da > 0 (turning toward +x), the left for da < 0
+  const mx = t0x + t1x, md = t0d + t1d, ml = Math.hypot(mx, md) || 1, sg = da > 0 ? 1 : -1, nx = sg * md / ml, nd = -sg * mx / ml;
+  const rl = Math.hypot(x, d) || 1, lat = (nx * d - nd * x) / rl;
+  return bank * lat;
+}
+/** Which view to draw (compatibility): across (0 head-on .. 90 crossing) and toward -> sceneViewAt's record. */
+function sceneFlowViewOf(id, across, toward, prev) {
+  return sceneViewAt(id, toward ? 180 - across : across, prev);
 }
 /** Does an object walk (a 'walk' hook), so it can travel a pavement without sliding? */
 function _scflWalks(id) {
@@ -648,11 +711,17 @@ function _scflPlace(cam, flow, fi, li, a, tau0, tau, ctx) {
   // in the rain most walkers carry an umbrella (the library's umbrella walker, when there is one)
   let base = a.o, vv = a.var;
   if (ctx.rain && flow.rainObj && !a.bus && _scflU(ak + '|umb') < 0.6) { base = flow.rainObj; const dd = typeof sceneObj === 'function' ? sceneObj(base) : null; vv = Math.floor(_scflU(ak + '|uv') * ((dd && dd.variants) || 1)); }
-  // the view (4.3): the angle between the direction of travel and the sightline; the screen direction sets the flip
-  const d2 = Math.max(0.5, d + td * 2), X2 = cam.x0 + cam.f * (x + tx * 2) / d2;
-  const rl = Math.hypot(x, d) || 1, dot = (tx * x + td * d) / rl, across = Math.acos(_scflClamp(Math.abs(dot), 0, 1)) * 180 / Math.PI;
-  const vw = sceneFlowViewOf(base, across, dot < 0);
+  // the view (4.3): the ground heading against the sightline (8 directions -> 5 views + mirror), averaged over SCENE_FACING.win
+  // metres each side (or half a second of travel, the longer) so a corner turns smoothly, with hysteresis (ctx.memo) so it
+  // switches view once
+  const win = Math.max(SCENE_FACING.win, a.v * 0.5), pa = _scflAlong(ln.path, s - win * ln.dir), pb = _scflAlong(ln.path, s + win * ln.dir);
+  let hx = pb[0] - pa[0], hd = pb[1] - pa[1];
+  if (Math.hypot(hx, hd) < 1e-6) { hx = tx; hd = td; }
+  const mk = ak + '|' + tau0, prev = ctx.memo ? ctx.memo.get(mk) : null;
+  const vw = sceneHeadingView(base, hx, hd, x, d, prev);
+  if (ctx.memo) ctx.memo.set(mk, { view: vw.view, flip: vw.flip });
   if (vw.v != null) vv = vw.v;
+  const lean = flow.kind === 'cycle' ? sceneTurnLean(p[0] - pa[0], p[1] - pa[1], pb[0] - p[0], pb[1] - p[1], win, a.v, x, d) : 0;
   const real = _scflReal(vw.o), def = typeof sceneObj === 'function' ? sceneObj(vw.o) : null, sz = def && def.size ? def.size[1] : 100;
   let kk = 1;
   if (flow.cls === 'person' || flow.cls === 'cyclist') kk = 0.94 + _scflU(ak + '|k') * 0.12;
@@ -666,14 +735,15 @@ function _scflPlace(cam, flow, fi, li, a, tau0, tau, ctx) {
   alpha = _scflClamp(alpha, 0, 1);
   if (alpha <= 0.01) return null;
   const moving = !(a.stop && s0 === a.stop.s);
-  return { flow: fi, lane: li, k: a.key, o: vw.o, base, v: vv, cls: flow.cls, kind: flow.kind, x: _scflR(x), d: _scflR(d), h, X, Y, s: sc, k3, view: vw.view, viewMissing: !!vw.missing,
-    flip: vw.view === 'side' ? (X2 - X) < 0 : false, alpha, layer: _scflBand(cam, d), speed: moving ? a.v : 0, moving, night: !!ctx.night, bus: !!a.bus, water: flow.water, len: a.len,
+  return { flow: fi, lane: li, k: a.key, o: vw.o, base, v: vv, cls: flow.cls, kind: flow.kind, x: _scflR(x), d: _scflR(d), h, X, Y, s: sc, k3, view: vw.view, viewMissing: !!vw.missing, viewWant: vw.want,
+    flip: vw.flip, rel: _scflR1(vw.rel), fs: _scflR(vw.fs), lean: _scflR(lean), alpha, layer: _scflBand(cam, d), speed: moving ? a.v : 0, moving, night: !!ctx.night, bus: !!a.bus, water: flow.water, len: a.len,
     phase: _scflU(ak + '|ph'), dirX: tx, dirD: td };
 }
 /**
  * Every visible agent at time t (seconds; t = 0 is half a period into the schedule, so a still shows a street in motion):
  * [{ flow, lane, k, o, v, base, cls, kind, x, d, h, X, Y, s, k3, view, viewMissing, flip, alpha, layer, speed, moving, ... }]
- * sorted far to near. opt: { mults (sceneFlowMults; default from L), data, maxScale (the governor: max x 0.7) }. Pure: it depends
+ * sorted far to near. opt: { mults (sceneFlowMults; default from L), data, maxScale (the governor: max x 0.7), viewMemo (a Map the
+ * renderer keeps: the facing's hysteresis; without it the view is a pure function of t) }. Pure: it depends
  * only on (C, t, L). The active set comes from a moving window over each sorted spawn list (cost in proportion to the agents on
  * screen); a flow over its max keeps a stable subset (by a hash of the agent, never by position).
  */
@@ -682,7 +752,7 @@ function sceneFlowAgents(C, t, L, opt) {
   const flows = (C && C.flows) || [];
   if (!flows.length) return [];
   const cam = (C.cam && C.cam.f) ? C.cam : _scflCam(opt.data || {}, C), P = SCENE_FLOW_PERIOD, tau = (t || 0) + P / 2;
-  const mults = opt.mults || sceneFlowMults(C, L, opt.data || {}), wx = _scflWeather(L), ctx = { night: !!(L && (L.lamps || L.windows)), rain: wx.rain && !wx.snow };
+  const mults = opt.mults || sceneFlowMults(C, L, opt.data || {}), wx = _scflWeather(L), ctx = { night: !!(L && (L.lamps || L.windows)), rain: wx.rain && !wx.snow, memo: opt.viewMemo || null };
   const out = [];
   // agents behind a projected building (the ray from the camera to their feet crosses its footprint) are not drawn: they are
   // painted each frame over the baked layers, so they would walk across the facade (integration, 8 Oct)

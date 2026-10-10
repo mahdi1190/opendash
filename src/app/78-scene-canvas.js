@@ -541,12 +541,22 @@ function sceneRendererCreate(canvas, src, o) {
           if (_sccBugOff(life, a.o)) continue;   // out of its months, by night, in the wet or the cold
           const sh = sceneObjShapes(a.o, a.v, C.season); if (!sh) continue;
           const sMax = (a.s || 1) * (a.sByY ? Math.max(...a.sByY.map(p => p[1])) : 1), sc = bucket(sMax) * vs, lit = !!(Lx && Lx.windows);
-          const anim = a.anim || [], whole = anim.find(h => _scAnimParts(h)[0] === '*'), moved = [...new Set(anim.flatMap(_scAnimParts))].filter(p => p !== '*');
           // the lit part rides in the rest sprite (it moves with the body, at no extra draw)
-          const parts = [{ a: whole || null, sp: keep(sprite(Lx, lk, a.o, a.v, C.season, moved.length ? 'rest:' + moved.join(',') : '*', hz(l), null, sc, lit, lit && !!(sh.parts.lit && sh.parts.lit.length))), rest: true }]
-            .concat(anim.filter(h => _scAnimParts(h)[0] !== '*').flatMap(h => _scAnimParts(h).map((p, j) => ({ a: h, j, sp: keep(sprite(Lx, lk, a.o, a.v, C.season, p, hz(l), null, sc, lit)) }))));
+          const mkParts = (oid, vv, anim, shp) => {
+            const whole = anim.find(h => _scAnimParts(h)[0] === '*'), moved = [...new Set(anim.flatMap(_scAnimParts))].filter(p => p !== '*');
+            return [{ a: whole || null, sp: keep(sprite(Lx, lk, oid, vv, C.season, moved.length ? 'rest:' + moved.join(',') : '*', hz(l), null, sc, lit, lit && !!(shp.parts.lit && shp.parts.lit.length))), rest: true }]
+              .concat(anim.filter(h => _scAnimParts(h)[0] !== '*').flatMap(h => _scAnimParts(h).map((p, j) => ({ a: h, j, sp: keep(sprite(Lx, lk, oid, vv, C.season, p, hz(l), null, sc, lit)) }))));
+          };
+          const parts = mkParts(a.o, a.v, a.anim || [], sh);
+          // the other views (4.3: front, back, three-quarter), built on first use: { parts, box, k (drawn-height ratio) } by object
+          const viewOf = (oid, vv) => {
+            const vsh = sceneObjShapes(oid, vv, C.season);
+            if (!vsh) return null;
+            const anim = (a.anim && a.anim.length) ? (vsh.anim || []) : [], hb = (b) => Math.max(1e-3, b[3] - b[1]);
+            return { parts: mkParts(oid, vv, anim, vsh), box: vsh.box, k: hb(sh.box) / hb(vsh.box) };
+          };
           actorCopies[ai].push(gi);
-          grp.movers.push({ kind: 'actor', actor: a, parts, box: sh.box, y: 0, gi, copies: actorCopies[ai], layer: l, sinkU: typeof sceneMoverSize === 'function' ? sceneMoverSize(a.o).sink : 0 });
+          grp.movers.push({ kind: 'actor', actor: a, parts, box: sh.box, y: 0, gi, copies: actorCopies[ai], layer: l, sinkU: typeof sceneMoverSize === 'function' ? sceneMoverSize(a.o).sink : 0, viewOf, views: new Map() });
         }
         for (const f of C.flocks) if (f.layer === l) {
           if (_sccBugOff(life, f.o)) continue;
@@ -737,20 +747,34 @@ function sceneRendererCreate(canvas, src, o) {
           if (m.z != null) occlude(m.b, m.z, m.layer);
         } else {
           if (m.kind === 'actor' && m.active === false) return;   // drawn by its copy in the group of its depth now
-          const p = m.p, b = m.box, fl = p.dir < 0;
+          let p = m.p, b = m.box, parts = m.parts;
+          // the view of its heading (4.3, _sccHeading): another object's parts, scaled to the same drawn height
+          if (m.kind === 'actor' && p.vo && p.vo !== m.actor.o && m.viewOf) {
+            const vv = p.vv == null ? m.actor.v : p.vv, key = p.vo + '|' + vv;
+            let vw = m.views.get(key);
+            if (vw === undefined) { vw = m.viewOf(p.vo, vv); m.views.set(key, vw); }
+            if (vw) { parts = vw.parts; b = vw.box; p = Object.assign({}, p, { s: p.s * vw.k }); }
+          }
+          const fl = p.dir < 0;
           if (!sceneMoverDrawn(p, b, vs, ox, oy, W, below)) return;   // the shadow pass asks the same (78-scene-shadow.js)
           // the facing (from -1 to 1: an actor turning round narrows through side-on) and the walk's swing (0 to 1: legs at rest
           // while a scripted mover waits; sceneActorAt's go)
-          const fc = Number.isFinite(p.face) ? p.face : (fl ? -1 : 1), go = Number.isFinite(p.go) ? p.go : 1;
-          const M = [vs * p.s * fc, 0, 0, vs * p.s, vs * p.x + ox, vs * p.y + oy];
-          const hook = (h) => (m.kind === 'bird' ? Object.assign({}, h, { phase: p.phase }) : h.kind === 'walk' && go < 1 ? Object.assign({}, h, { deg: (h.deg || 22) * go, bob: (h.bob == null ? 1.5 : h.bob) * go }) : h);
+          // front and back views are never mirrored; side and three-quarter views take the facing (it narrows through a reversal)
+          const head = p.view === 'front' || p.view === 'back';
+          const fc = head ? 1 : Number.isFinite(p.face) ? p.face : (fl ? -1 : 1), go = Number.isFinite(p.go) ? p.go : 1;
+          let M = [vs * p.s * fc, 0, 0, vs * p.s, vs * p.x + ox, vs * p.y + oy];
+          if (p.lean) { const c = Math.cos(p.lean), sn = Math.sin(p.lean), f = fc < 0 ? -1 : 1; M = _scMul(M, [c, f * sn, -f * sn, c, 0, 0]); }
+          // the stride foreshortens with the heading (fs 1 side-on, 0 head-on): narrower swing, smaller bob, legs that lift instead
+          const fs = Number.isFinite(p.fs) ? p.fs : 1;
+          const hook = (h) => (m.kind === 'bird' ? Object.assign({}, h, { phase: p.phase }) : h.kind === 'walk' && (go < 1 || fs < 1) ? Object.assign({}, h, { deg: (h.deg || 22) * go * fs, bob: (h.bob == null ? 1.5 : h.bob) * go * (0.45 + 0.55 * fs) }) : h);
+          const liftU = m.kind === 'actor' && fs < 1 ? (1 - fs) * go * (b[3] - b[1]) * 0.03 : 0;
           let bob = 0;
-          if (m.kind === 'actor') for (const pt of m.parts) if (pt.a && pt.a.kind === 'walk') { bob = sceneAnimPose(hook(pt.a), t, Lx, p.x).bob || 0; break; }
+          if (m.kind === 'actor') for (const pt of parts) if (pt.a && pt.a.kind === 'walk') { bob = sceneAnimPose(hook(pt.a), t, Lx, p.x).bob || 0; break; }
           // a floater on the water sits in it: its sink lower, clipped at its waterline (10 Oct)
           const sink = m.kind === 'actor' && m.sinkU ? _sccSinkOf(S.C, m.actor.o, p.x, p.y, p.d) : 0;
           if (sink) M[5] += sink * vs * p.s;
           _sccAbove(ctx, sink ? p.y * vs + oy : null, () => {
-            for (const pt of m.parts) {
+            for (const pt of parts) {
               let A = _SC_ID, al = 1;
               if (pt.a) {
                 const a = hook(pt.a), pose = sceneAnimPose(a, t, Lx, p.x);
@@ -760,6 +784,7 @@ function sceneRendererCreate(canvas, src, o) {
               if (al <= 0) continue;
               const MM = _scMul(M, A);
               if (pt.rest && bob) MM[5] += bob * vs * p.s;
+              if (liftU && pt.a && pt.a.kind === 'walk' && !pt.rest) MM[5] -= Math.max(0, Math.sin(2 * Math.PI * (t / (pt.a.period || 0.9) + (pt.a.phase || 0)) + (pt.j || 0) * Math.PI)) * liftU * vs * p.s;
               if (drawSprite(ctx, pt.sp, MM, (p.alpha == null ? 1 : p.alpha) * al)) draws++;
             }
           });
@@ -1561,6 +1586,7 @@ function _sccMoversNow(env, S, t, L) {
           }
           if (!p) p = sceneActorAt(a, t);
           p.face = _sccFace(a, t, p, cam);
+          _sccHeading(a, t, cam, p);
           memo.set(a, p);
         }
         m.p = p; m.y = p.y;
@@ -1579,6 +1605,37 @@ function _sccMoversNow(env, S, t, L) {
       } else if (m.kind === 'bird') { const p = sceneFlockAt(m.flock, m.i, t); m.p = p; m.y = p.y; }
     }
   });
+}
+/**
+ * An actor's facing from its GROUND heading (4.3, user request 10 Oct: movers face the way they travel): its place half a
+ * second before and after (a v2 actor's ground path; a v1 pixel path unprojected through the camera) -> on p: view, vo (the
+ * object of that view), vv, fs (foreshortening), lean (a cyclist's bank in a turn), heading [tx, td]. Hysteresis on a.$hv, so a
+ * corner switches the view once; a mover standing still keeps its last view.
+ */
+const _SCC_HEAD_DT = 0.5;
+function _sccHeading(a, t, cam, p) {
+  if (!cam || !(cam.f > 0) || typeof sceneHeadingView !== 'function') return;
+  const cls = a.cls || (typeof sceneObjClassOf === 'function' ? sceneObjClassOf(a.o) : '');
+  const v2 = !!(a.ground && typeof sceneActorAtV2 === 'function'), lift = (cls === 'boat' || cls === 'bird-water') && Number.isFinite(cam.water) ? cam.water : 0;
+  const at = (tt) => {
+    try {
+      if (v2) { const q = sceneActorAtV2(a, tt, cam); return q && Number.isFinite(q.x) && Number.isFinite(q.d) ? [q.x, q.d] : null; }
+      const q = sceneActorAt(a, tt);
+      if (!q || !(q.s > 0) || !(q.y - cam.horizon > 0.5)) return null;
+      const d = cam.f * Math.max(0.1, cam.eye - lift) / (q.y - cam.horizon);
+      return [(q.x - cam.x0) * d / cam.f, d];
+    } catch (e) { return null; }
+  };
+  const P0 = at(t - _SCC_HEAD_DT), P1 = at(t), P2 = at(t + _SCC_HEAD_DT);
+  if (!P1) return;
+  const prev = a.$hv || null;
+  const tx = P2 && P0 ? P2[0] - P0[0] : 0, td = P2 && P0 ? P2[1] - P0[1] : 0, len = Math.hypot(tx, td);
+  if (len < 0.05) { if (prev) Object.assign(p, prev.p); return; }   // standing (or turning on the spot): the last view
+  const r = sceneHeadingView(a.o, tx, td, P1[0], P1[1], prev);
+  const lean = (cls === 'cyclist' || cls === 'bike') && typeof sceneTurnLean === 'function' ? sceneTurnLean(P1[0] - P0[0], P1[1] - P0[1], P2[0] - P1[0], P2[1] - P1[1], len / 2, len / (2 * _SCC_HEAD_DT), P1[0], P1[1]) : 0;
+  const out = { view: r.view, vo: r.o, vv: r.v, fs: r.fs, lean, heading: [tx / len, td / len] };
+  a.$hv = { view: r.view, flip: r.flip, p: out };
+  Object.assign(p, out);
 }
 /**
  * Is a mover drawn this frame? p: its place ({ x, y, s, dir, alpha }), b: its box. The one test of the sprite draw (drawMover)
