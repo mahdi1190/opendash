@@ -317,3 +317,46 @@ One v3 scene renders correctly at ANY date, time and weather with zero extra aut
   time/season/weather scrubber in the gallery preview lets the user drag through a day or a year live.
 - V7 [T] Acceptance: every test scene renders at every cell of that matrix with zero invariant violations, and a fresh
   reviewer checks the matrix for wrong colours (green trees in January, lit windows at noon, shadows at night, snow in July).
+
+## 21. Physics and simulation plug in cleanly (the user, 10 Oct)
+
+The engine is a set of SYSTEMS over components (G1), so new physics plugs in without touching scenes or other systems.
+- Y1 [T] A documented system interface: `worldSystem({ id, after, before, components, init(world), update(world, dt),
+  onEvent })`, with a fixed tick (for example 30 Hz) and render interpolation. Systems declare their order and the
+  components they read and write.
+- Y2 [T] The built-in systems use that same interface, as proof that it works: time and almanac, wind field, water (surface,
+  ripple, waves, flow, wakes, rings, buoyancy for floaters), navigation and avoidance (people, animals, vehicles), animation
+  state, attachments (leads, mooring lines), particles, lighting, render.
+- Y3 Water physics: buoyancy bob from waves and wakes (a boat rocks when another passes), wakes spreading and fading, rings
+  from paddling birds, flow advecting floating leaves, rain rings on the surface in rain.
+- Y4 People and crowd physics: steering (seek, arrive, separate, avoid), personal space, queues at stops and benches, groups
+  keeping formation, speeds by age and gait.
+- Y5 Wind as a field (strength, direction and gusts travelling across the scene) read by trees, reeds, grass, water, smoke,
+  leaves and washing.
+- Y6 Simple rigid bodies where useful: a thrown ball for a dog (an arc and bounces), falling leaves and seeds, a heron's
+  splash. All cheap and capped.
+- Y7 [T] Budgets per system (ms per frame); a system over budget degrades (lower rate, LOD) instead of slowing the frame.
+
+## 22. Perspective is automatic (the user, 10 Oct)
+
+The author never thinks about perspective. They describe the world in metres and pick a viewpoint; the engine projects it.
+- Q1 Camera by intent: `camera: { at: [lat, lon] or [x, z], height, lookAt: <landmark id or bearing>, fov }`, or
+  `camera: { frame: [<landmark ids>] }` to fit chosen subjects. The engine sets the heading, horizon and framing (C3, C4).
+- Q2 [T] Linear features are given as centrelines and widths (roads, canals, rivers, paths, towpaths, rails, kerbs, walls,
+  hedges, fences, railings). The engine draws them in correct perspective, with converging edges and correct widths at every
+  depth, including curves and slopes.
+- Q3 [T] Buildings are given as footprints, heights and a style (terrace, mill, warehouse, civic, glass tower, cottage, church).
+  The engine extrudes them in perspective: visible faces, roofs, windows in courses, foreshortened correctly. Landmarks can
+  use their hand-drawn art but are still placed and scaled by the camera.
+- Q4 [T] Objects choose their view from the camera's angle to them (front, three-quarter or side; the same 5 views as
+  movers) and keep their real size at their depth. A boat seen end-on is drawn end-on and never as a flat side slab.
+- Q5 [T] Ground textures, paving courses, mowing stripes and water ripples foreshorten with depth.
+- Q6 Wide and tall frames (21:9, 4K, phone) extend the same world. Nothing is stretched, and the frame shows more of it (overscan).
+- Q7 [T] Changing the camera (a new viewpoint of the same place) needs no other change to the scene. That is how the 4
+  views of a place are made: one world, four cameras.
+
+## 23. Speed (render and authoring)
+
+- Z1 Render: the targets in F1-F2 hold for every test scene and at the matrix extremes (snowy night with many lights).
+- Z2 Authoring: a new place (one world plus 4 cameras) should take an agent under 30 minutes to a first good render, with
+  no glitch rounds. Measure and report it for each test scene.
