@@ -372,3 +372,24 @@ The author never thinks about perspective. They describe the world in metres and
 - QP4 No untextured or unlit surfaces (flat white or flat colour bands), no missing materials, and night keeps every
   structure readable.
 - QP5 Stills must show life: the simulation is pre-warmed so populations are on screen at t = 0.
+
+## 25. Quality without an example (the user, 10 Oct: "how do we make sure new scenes with no examples match the quality")
+
+Quality has to live in the engine, the library and the gate, never in having a reference scene to copy.
+- N1 Style kits: per setting (canal, lake or pond, heath, woodland, village green, river city, civic square, quayside,
+  terraced street, park, moor, coast), a curated kit of the BEST library objects (hero trees, boughs, reeds, boats, street
+  furniture, buildings, people mixes) with density and grouping targets. Fill, framing and backdrop draw from the kit, so a
+  new place inherits gold-standard parts automatically. Weak objects (blob trees, placeholder shapes) are excluded from
+  kits.
+- N2 Composition rules as engine defaults: a framing foreground, a leading line toward the subject, the subject placed off
+  centre, at least 5 depth layers, near/mid/far coverage targets and sky share by setting. Camera-by-intent (Q1) applies
+  them, so an author picks a place and a subject and gets a well-composed frame.
+- N3 Life defaults per setting: populations, wildlife and traffic at real densities by time, so no scene ships lifeless.
+- N4 A gold set as a benchmark, not a template: the proof Fleet Pond and the approved best views are scored by the critic
+  and a reviewer. A new scene must reach the gold set's band on every critic axis: coverage, layering, framing, variety,
+  life, light, motion cleanliness.
+- N5 [T] The no-example test: the acceptance suite builds at least one brand-new place that has never been drawn, from a short
+  spec only, and a fresh reviewer compares it with the gold set at the same date and time. It must pass with no glitch
+  rounds. This is repeated for each new setting kit.
+- N6 Object quality gate: any new library object must pass object lint, look right at near, mid and far sizes in all four
+  seasons and at night, and be approved before it can join a kit.
