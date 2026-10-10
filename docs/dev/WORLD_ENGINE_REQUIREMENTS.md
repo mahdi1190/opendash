@@ -206,7 +206,8 @@ Each library object class has a descriptor that the ENGINE reads; scenes never r
    violations of every [T] item that can be checked per frame. That covers habitat, footprint overlap, mover in solid,
    mover on water, floating, orphan attachment, reflection outside water, shadow on water, shadow direction consistency, mover
    cut at the edge, giant near mover, popping, stuck mover (no progress for 10 s while not in an idle goal), sliding feet,
-   facing mismatch, and lane direction.
+   facing mismatch, lane direction, animating while still or still while moving (M1, M2), synchronised clones (M4) and
+   wind direction disagreement (M3).
 3. Adversarial scenes (`tests/fixtures/world/adversarial/*.json`), written deliberately wrong:
    - boats on the towpath;
    - a bough with no tree;
@@ -229,3 +230,63 @@ Each library object class has a descriptor that the ENGINE reads; scenes never r
 5. Performance gates (F1, F2) at both average-machine sizes.
 6. A fresh-context reviewer (not an author) looks at every compare sheet and full-loop strip and lists anything weird; the
    list must be empty.
+
+## 17. Animation state: things animate only when they should (added on the user's request)
+
+- M1 [T] One animation state per entity, driven by what it is DOING, never by a timer:
+  - moving: walk, run, pedal, swim, fly or drive cycles, at a rate tied to the actual speed;
+  - still: idle micro-motion only (breathing, head turns, a tail swish);
+  - sitting or lying: a seated pose, no leg motion;
+  - stopped vehicles: wheels still, no wake, no exhaust drift unless idling;
+  - moored boats: no wake and no motion beyond a slight bob.
+- M2 [T] Static things never animate: buildings, walls, benches, parked cars, rocks, paving, signs, bridges.
+- M3 [T] Things move only by cause:
+  - trees, reeds, grass, washing and water ripples move with the scene's ONE wind (shared strength and direction, gusts that
+    travel across the scene), in proportion to size and stiffness;
+  - smoke and steam drift downwind;
+  - falling leaves only in autumn and in wind.
+- M4 [T] No synchronised clones: animation phases and periods are varied per entity, so no two ducks bob in step and no two
+  walkers swing arms together.
+- M5 Secondary motion: leads swing between dog and walker, coats and scarves lag slightly, a dog's ears and tail react to its
+  gait, boats rock in wakes passing by, reeds part as a heron walks through. All of it is cheap and optional by budget.
+- M6 Reactions and events: ducks paddle away from a dog at the bank; pigeons lift when someone walks through them and settle
+  again; people wait for a tram, board when it stops, and get off; a heron freezes, then strikes; a cyclist rings and passes.
+  Events are scripted by the engine from populations, not hand-timed.
+- M7 [T] Transitions: walk to stop, stand to sit, swim to take-off, each eased and with the right view, never instant.
+- M8 [T] Frame-rate independence: motion uses real time, not frames. The scene pauses when hidden or the tab is inactive,
+  and resumes without a jump.
+
+## 18. Game-engine fundamentals (what a real engine gives you for free)
+
+- G1 Entity and component model: an entity has a transform, a descriptor (K), a renderer, an animator, a brain, a
+  collider and attachments. Systems run over components in a fixed order: input/time, brains, navigation, movement,
+  animation, attachments, wind and particles, lighting, render.
+- G2 Scene graph: children inherit their parent's transform (a lead on a dog, a rider on a bike, a person on a boat deck, a
+  lamp on a bridge). Moving the parent moves the children.
+- G3 [T] Spatial index (a grid or quadtree) for placement, collision, avoidance and occlusion queries; no O(n^2) scans each
+  frame.
+- G4 [T] Deterministic random streams per system and entity, so changing one entity does not reshuffle the whole scene.
+- G5 Event bus: arrivals, departures, a sunset threshold (lights on), weather changes and schedules; systems subscribe.
+- G6 Particles: leaves, snow, rain, spray at weirs, smoke, chimney steam, splashes when a kingfisher dives. Pooled and capped.
+- G7 Level of detail: far entities use simpler sprites, no secondary motion, and lower update rates. Off-screen and fully
+  occluded entities are culled.
+- G8 [T] Error isolation: one bad entity or object never crashes a scene. It is dropped, logged and the rest renders.
+- G9 Debug overlays: footprints, nav map, paths, depth order, light direction, wind field, water mirror lines and
+  invariant violations, toggled in tools and in a dev URL flag.
+- G10 [T] State continuity: re-renders of the app (saving tasks, live sync) do not restart the scene or re-roll its life.
+- G11 Format versioning: the scene format carries a version; migrations upgrade old scenes; the validator knows every
+  version.
+- G12 Profiling hooks per system (ms per frame), surfaced by the perf tool, so regressions are visible.
+
+## 19. Things that commonly go wrong in 2D engines (check each)
+
+- Z-fighting between objects at the same depth: a stable tie-break by id.
+- Sprites popping between LOD or view sets: cross-fade or hysteresis.
+- Outlines and anti-aliasing seams between chunks or tiles: overlap bleed, integer snapping of chunk edges.
+- Colour banding in the sky and water gradients: dither.
+- Shadows and reflections of transparent or thin things (railings, wires, reeds): handled, not solid blocks.
+- Moving shadows on moving surfaces (a person on a moving boat).
+- Things under bridges in shade: the bridge casts its shadow by geometry; no hand shade.
+- Wide aspect ratios revealing unfinished scene edges: the world extends beyond the default frame (overscan) so 21:9 never shows
+  an edge.
+- Tiny screens: the subject stays readable in the tile crop (C4 at tile size).
