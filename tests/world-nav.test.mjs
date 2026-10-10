@@ -5,9 +5,17 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const ctx = vm.createContext({ console });
-vm.runInContext(readFileSync(new URL('../src/app/79-world-1nav.js', import.meta.url), 'utf8'), ctx);
-const W = ctx;
+// The module runs in a function scope through vm.Script.runInThisContext, as the build concatenates it (a vm context's
+// global interceptors made every global call slow and crashed V8's optimiser on Node 24: "unreachable code").
+function bundle(files) {
+  const body = files.map(f => readFileSync(new URL('../src/app/' + f, import.meta.url), 'utf8')).join('\n;\n');
+  const names = new Set();
+  for (const m of body.matchAll(/^(?:async\s+)?function\s+([A-Za-z_]\w*)\s*\(/gm)) names.add(m[1]);
+  for (const m of body.matchAll(/^(?:const|let|var)\s+([A-Za-z_]\w*)\s*=/gm)) names.add(m[1]);
+  const tail = '\nreturn { ' + [...names].map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ') + ' };';
+  return new vm.Script('(function () {\n' + body + tail + '\n})', { filename: 'nav-bundle.js' }).runInThisContext()();
+}
+const W = bundle(['79-world-1nav.js']);
 
 const cam = { fov: 62, eye: 1.65 };
 function rect(x0, z0, x1, z1) { return [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]; }
@@ -118,7 +126,7 @@ test('a narrow diagonal towpath (2.6 m) stays connected at 0.5 m and at 2 m', ()
 
 test('no path cell intersects any dilated solid; paths stay on the layer', () => {
   const world = park({ gateOpen: true }), nav = W.worldNavBuild(world);
-  const solids = world.entities.map(e => ({ e, foot: e.size ? ctx._wnavFoot(e) : null }));
+  const solids = world.entities.map(e => ({ e, foot: e.size ? W._wnavFoot(e) : null }));
   const r = 0.25, rand = rng(3);
   let paths = 0;
   for (let t = 0; t < 60; t++) {
@@ -311,4 +319,21 @@ test('decks: a low deck joins the ground; a raised one is its own level with lan
   const p = W.worldStep(nav, 'rail', [-30, 150], [10, 3], 0, 1);
   assert.equal(p[1], 150);
   assert.ok(W.worldNavOk(nav, 'rail', 0, 152, 0), 'a track within the line\'s width');
+});
+
+test('worldFlowTarget: a legal steering point planned per cell; steering at it while in that cell still reaches the goal, across the seam', () => {
+  const nav = W.worldNavBuild(park({ gateOpen: true }));
+  const f = W.worldFlowField(nav, 'walk', [0, 30]);
+  let pos = [-60, 112], memo = null, plans = 0, steps = 0;
+  for (; steps < 6000; steps++) {
+    const k = W.worldNavCell(nav, 'walk', pos[0], pos[1]);
+    if (!memo || memo[2] !== k || Math.hypot(memo[0] - pos[0], memo[1] - pos[1]) < 0.3) { memo = W.worldFlowTarget(f, pos[0], pos[1]); plans++; if (!memo) break; }
+    assert.ok(W.worldNavOk(nav, 'walk', memo[0], memo[1], 0.25), 'the steering point is legal');
+    const dx = memo[0] - pos[0], dz = memo[1] - pos[1], d = Math.hypot(dx, dz) || 1;
+    const np = W.worldStep(nav, 'walk', pos, [dx / d * 1.4, dz / d * 1.4], 0.25, 1 / 15);
+    if (Math.hypot(np[0] - pos[0], np[1] - pos[1]) < 1.4 / 15 * 0.7) memo = null;   // held up: plan again from here (as the life sim does)
+    pos = np;
+  }
+  assert.ok(Math.hypot(pos[0], pos[1] - 30) < 1.5, 'reached ' + pos);
+  assert.ok(plans < steps / 3, `planned ${plans} times in ${steps} steps (once per cell, not per tick)`);
 });

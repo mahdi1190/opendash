@@ -7,12 +7,17 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const src = name => readFileSync(new URL('../src/app/' + name, import.meta.url), 'utf8');
-function load(extra = '') {
-  const ctx = vm.createContext({ console })   // the context's own builtins (handing it this realm's crashes V8 in vm contexts);
-  if (extra) vm.runInContext(extra, ctx);
-  for (const f of ['79-world-1nav.js', '79-world-2brains.js', '79-world-2traffic.js', '79-world-2life.js']) vm.runInContext(src(f), ctx);
-  return ctx;
+// The files run in ONE function scope through vm.Script.runInThisContext, as the build concatenates them (a vm context's
+// global interceptors made every global call slow and crashed V8's optimiser on Node 24: "unreachable code").
+function bundle(files, extra = '') {
+  const body = (extra ? extra + '\n;\n' : '') + files.map(src).join('\n;\n');
+  const names = new Set();
+  for (const m of body.matchAll(/^(?:async\s+)?function\s+([A-Za-z_]\w*)\s*\(/gm)) names.add(m[1]);
+  for (const m of body.matchAll(/^(?:const|let|var)\s+([A-Za-z_]\w*)\s*=/gm)) names.add(m[1]);
+  const tail = '\nreturn { ' + [...names].map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ') + ' };';
+  return new vm.Script('(function () {\n' + body + tail + '\n})', { filename: 'traffic-bundle.js' }).runInThisContext()();
 }
+function load(extra = '') { return bundle(['79-world-1nav.js', '79-world-2brains.js', '79-world-2traffic.js', '79-world-2life.js'], extra); }
 function rect(x0, z0, x1, z1) { return [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]; }
 const cam = { fov: 64, eye: 1.65, horizon: 470 };
 // a street across the frame: a road (7 m) with pavements both sides, a zebra crossing in the middle

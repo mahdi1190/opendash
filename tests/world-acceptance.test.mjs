@@ -8,23 +8,30 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { loadEngine, resolveRef, WORLD_TEST_REFS, WORLD_ALIASES } from '../tools/lib/world/convert.mjs';
-import { adversarialFixtures, adversarialRun, adversarialText, worldInvariantRun, worldMatrixCells, OWNERS } from '../tools/lib/world/adversarial.mjs';
+import { adversarialFixtures, adversarialText, worldMatrixCells, OWNERS } from '../tools/lib/world/adversarial.mjs';
+import { runCells } from '../tools/lib/world/cells.mjs';
 import { criticOfRef } from '../tools/lib/world/critic.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const E = loadEngine({ root: ROOT });
 const BROWSER = process.env.WORLD_BROWSER === '1';
 const SECONDS = Number(process.env.WORLD_ADV_SECONDS) || 120;
+// child processes at once: few, so the suite's timing tests (run beside this file) are not starved (WORLD_CELLS to change)
+const CELLS = Number(process.env.WORLD_CELLS) || 2;
 const fixtures = adversarialFixtures(ROOT);
+// the runs go through the cell runner: one child process per fixture or cell, several at once (a native fault stays in its cell)
+let advRes = null;
+const advOf = async (i) => (advRes || (advRes = runCells(fixtures.map(fx => ({ op: 'adv', file: fx.file, seconds: SECONDS, hz: 5 })), { root: ROOT, concurrency: CELLS }))).then(all => all[i]);
 const why = (r) => `\n${adversarialText([r])}\n(owners: ${r.owners.join('; ') || 'none'})`;
 
 test('there are 14 adversarial fixtures (16.3)', () => {
   assert.equal(fixtures.length, 14);
 });
 
-for (const fx of fixtures) {
-  test(`adversarial: ${fx.title} (${fx.req.join(', ')}): loads, builds, a log entry per fix, ${SECONDS} s with zero violations`, () => {
-    const r = adversarialRun(E, fx, { seconds: SECONDS, hz: 5 });
+for (const [i, fx] of fixtures.entries()) {
+  test(`adversarial: ${fx.title} (${fx.req.join(', ')}): loads, builds, a log entry per fix, ${SECONDS} s with zero violations`, async () => {
+    const r = await advOf(i);
+    assert.ok(!r.error, 'the cell ran: ' + r.error);
     assert.notEqual(r.registered, false, 'worldAdd registered it (bad input makes a scene plainer, never refused)' + why(r));
     assert.ok(r.built, 'worldBuild did not throw (G8)' + why(r));
     assert.ok(!r.run.error, 'the life sim and the runner did not throw: ' + r.run.error + why(r));
@@ -42,15 +49,16 @@ test('the test scenes are at least as rich as their originals (16.4, P7: the cri
   assert.deepEqual(bad, []);
 });
 
-test('V7: every test scene at every cell of the matrix (4 seasons x 5 times x 3 weathers) with zero invariant violations', () => {
-  const seconds = Number(process.env.WORLD_MATRIX_SECONDS) || 2, bad = [];
+test('V7: every test scene at every cell of the matrix (4 seasons x 5 times x 3 weathers) with zero invariant violations', async () => {
+  const seconds = Number(process.env.WORLD_MATRIX_SECONDS) || 2, bad = [], jobs = [], meta = [];
   for (const r of WORLD_TEST_REFS) {
     const spec = E.worldHostSpec(resolveRef(E, 'world-test/' + r + '-w3').item);
-    for (const c of worldMatrixCells(spec)) {
-      const run = worldInvariantRun(E, spec, { ms: c.ms, wx: c.wx, seconds, hz: 1 });
-      if (run.uniq || run.error) bad.push(`${r} ${c.season} ${c.moment} ${c.wx}: ${run.error || Object.entries(run.counts).map(([k, n]) => `${k} x${n} [${OWNERS[k] || '?'}]`).join(', ')}`);
-    }
+    for (const c of worldMatrixCells(spec)) { jobs.push({ op: 'inv', spec, ms: c.ms, wx: c.wx, seconds, hz: 1 }); meta.push({ r, c }); }
   }
+  (await runCells(jobs, { root: ROOT, concurrency: CELLS })).forEach((run, i) => {
+    const { r, c } = meta[i];
+    if (run.uniq || run.error) bad.push(`${r} ${c.season} ${c.moment} ${c.wx}: ${run.error || Object.entries(run.counts).map(([k, n]) => `${k} x${n} [${OWNERS[k] || '?'}]`).join(', ')}`);
+  });
   assert.deepEqual(bad.slice(0, 40), [], `${bad.length} matrix cell(s) with violations`);
 });
 

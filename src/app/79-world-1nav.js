@@ -30,6 +30,8 @@
 //   worldNavLevels(nav) -> [{ layer, y, id }];  worldNavPortals(nav) -> [{ kind, a, b, id, pairs: [[ax, az, bx, bz]] }]
 //   worldFlowField(nav, layer, goal, r, framed) -> Field     (lazy, cached, <= 32 per nav; Dial's bucket queue)
 //   worldFlowDir(field, x, z) -> [dx, dz] | null             (unit direction downhill, looking ahead along the field)
+//   worldFlowTarget(field, x, z) -> [tx, tz, k] | null        (the point it steers at, planned from cell k: callers may reuse it
+//                                                             while they stay in cell k, so line checks run once per cell)
 //   worldFlowDist(field, x, z) -> metres-ish cost | Infinity (0 on the goal)
 //   worldPath(nav, layer, from, to, r, framed) -> [[x, z], ...] | null   (A* capped at 2,000 expansions, string-pulled; a
 //                                                                         failed search returns null: the CALLER backs off)
@@ -902,6 +904,17 @@ function _wnavLook(f, k) {
 }
 /** Unit direction to follow the field from (x, z); null at the goal or where the goal is unreachable. */
 function worldFlowDir(field, x, z) {
+  const t = worldFlowTarget(field, x, z);
+  if (!t) return null;
+  const dx = t[0] - x, dz = t[1] - z, D = Math.hypot(dx, dz) || 1;
+  return [dx / D, dz / D];
+}
+/**
+ * The point to steer at from (x, z) down the field: [tx, tz, k] (k = the cell it was planned from), or null at the goal or
+ * where the goal is unreachable. A caller may keep steering at the same point while it stays in cell k (the life sim does:
+ * the line checks then run once per cell, not once per tick; worldStep keeps every step legal regardless).
+ */
+function worldFlowTarget(field, x, z) {
   const L = field.L || field.grid, k = _wnavIdx(L, x, z);
   if (k < 0 || field.dist[k] >= 0x3fffffff || field.dist[k] === 0) return null;
   // the look-ahead is planned from the cell's anchor: from where the mover really is, it must be in a clear line too, else
@@ -913,13 +926,23 @@ function worldFlowDir(field, x, z) {
     n = _wnavDown(field, k);
     if (n < 0) return null;
     if (!_wnavLineOk(L, field.ok, x, z, _wnavCX(L, n), _wnavCZ(L, n))) {
-      const ax = _wnavCX(L, k), az = _wnavCZ(L, k), d0 = Math.hypot(ax - x, az - z);
-      if (d0 > 0.05) return [(ax - x) / d0, (az - z) / d0];
+      // another downhill neighbour in a clear line (a 2 m cell whose steepest neighbour lies behind a bench), else back to
+      // this cell's anchor first
+      const m = _wnavNb(L, k, field.ok, _WNAV_NK, _WNAV_NW), down = [];
+      for (let q = 0; q < m; q++) { const kk = _WNAV_NK[q]; if (kk !== n && field.dist[kk] < field.dist[k]) down.push(kk); }
+      down.sort((p, q) => field.dist[p] - field.dist[q]);
+      let alt = -1;
+      for (const kk of down) if (_wnavLineOk(L, field.ok, x, z, _wnavCX(L, kk), _wnavCZ(L, kk))) { alt = kk; break; }
+      if (alt >= 0) n = alt;
+      else {
+        const ax = _wnavCX(L, k), az = _wnavCZ(L, k), d0 = Math.hypot(ax - x, az - z);
+        if (d0 > 0.05) return [ax, az, k];
+      }
     }
   }
-  let tx = _wnavCX(L, n), tz = _wnavCZ(L, n), dx = tx - x, dz = tz - z, D = Math.hypot(dx, dz);
-  if (D < 0.05) { const n2 = _wnavDown(field, n); if (n2 < 0) return null; tx = _wnavCX(L, n2); tz = _wnavCZ(L, n2); dx = tx - x; dz = tz - z; D = Math.hypot(dx, dz) || 1; }
-  return [dx / D, dz / D];
+  let tx = _wnavCX(L, n), tz = _wnavCZ(L, n);
+  if (Math.hypot(tx - x, tz - z) < 0.05) { const n2 = _wnavDown(field, n); if (n2 < 0) return null; tx = _wnavCX(L, n2); tz = _wnavCZ(L, n2); }
+  return [tx, tz, k];
 }
 /** The field's cost at a point (0 on the goal; Infinity where the goal cannot be reached from there). */
 function worldFlowDist(field, x, z) {
@@ -932,7 +955,8 @@ function worldFlowDist(field, x, z) {
 /* ---------- straight lines and A* ---------- */
 /** Is the straight segment legal on mask ok? Visits every cell it touches (sampled at a quarter of the finest cell, corners included). */
 function _wnavLineOk(L, ok, ax, az, bx, bz) {
-  const len = Math.hypot(bx - ax, bz - az), stepL = (az < L.seam && bz < L.seam ? L.cell : Math.min(L.cell, L.far ? L.far.cell : L.cell)) * 0.25;
+  // a quarter of a near cell; beyond the seam worldStep's own 0.2 m sub-step (a line this passes, a mover can walk)
+  const far = L.far && az >= L.seam && bz >= L.seam, len = Math.hypot(bx - ax, bz - az), stepL = far ? 0.2 : (L.N0 ? L.cell : (L.far ? L.far.cell : L.cell)) * 0.25;
   const n = Math.max(1, Math.ceil(len / stepL));
   let last = -2;
   const r = L._lineR || 0.25;

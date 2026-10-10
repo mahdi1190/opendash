@@ -8,12 +8,17 @@ import vm from 'node:vm';
 
 const src = name => readFileSync(new URL('../src/app/' + name, import.meta.url), 'utf8');
 const LIFE_FILES = ['79-world-1nav.js', '79-world-2brains.js', '79-world-2traffic.js', '79-world-2life.js'];
-function load(extra = '') {
-  const ctx = vm.createContext({ console })   // the context's own builtins (handing it this realm's crashes V8 in vm contexts);
-  if (extra) vm.runInContext(extra, ctx);
-  for (const f of LIFE_FILES) vm.runInContext(src(f), ctx);
-  return ctx;
+// The files run in ONE function scope through vm.Script.runInThisContext, as the build concatenates them (a vm context's
+// global interceptors made every global call slow and crashed V8's optimiser on Node 24: "unreachable code").
+function bundle(files, extra = '') {
+  const body = (extra ? extra + '\n;\n' : '') + files.map(src).join('\n;\n');
+  const names = new Set();
+  for (const m of body.matchAll(/^(?:async\s+)?function\s+([A-Za-z_]\w*)\s*\(/gm)) names.add(m[1]);
+  for (const m of body.matchAll(/^(?:const|let|var)\s+([A-Za-z_]\w*)\s*=/gm)) names.add(m[1]);
+  const tail = '\nreturn { ' + [...names].map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ') + ' };';
+  return new vm.Script('(function () {\n' + body + tail + '\n})', { filename: 'life-bundle.js' }).runInThisContext()();
 }
+function load(extra = '') { return bundle(LIFE_FILES, extra); }
 const median = (a) => { const s = a.slice().sort((p, q) => p - q); return s[s.length >> 1]; };
 const REF_MS = 16;   // the reference workload on the machine the budgets were set on (see tests/world-nav.test.mjs)
 function refMs() { const a = new Float64Array(200000); let s = 12345; for (let i = 0; i < a.length; i++) { s = (s * 1103515245 + 12345) >>> 0; a[i] = s; } const t = performance.now(); a.sort(); return performance.now() - t; }
@@ -415,7 +420,7 @@ test('tick median < 1.5 ms for 60 agents (median of runs at 1.2x, judged against
 
 test('the systems runtime: life registers its brain, nav and move systems; the Life of a world is found again', () => {
   const reg = [];
-  const C = load('function worldSystem(def) { (globalThis.__reg || (globalThis.__reg = [])).push(def); return def; }');
+  const C = load('var __reg = [];\nfunction worldSystem(def) { __reg.push(def); return def; }');
   const defs = C.__reg || [];
   for (const d of defs) reg.push(d.id + ':' + d.phase);
   assert.deepEqual(reg, ['life:brain', 'life-nav:nav', 'life-move:move']);
@@ -427,4 +432,33 @@ test('the systems runtime: life registers its brain, nav and move systems; the L
   for (const d of defs) d.update(world, 1 / 15);
   assert.ok(Math.abs(L.t - before - 1 / 15) < 1e-9, 'one fixed step through the three phases');
   for (const a of world.agents) assert.ok(typeof a.state === 'string' && Number.isFinite(a.facing) && Number.isFinite(a.h), 'agents carry what they are doing');
+});
+
+test('A1 again on a weather change: worldLifeRetime re-reads the density of rate populations; residents stay', () => {
+  const stub = 'function worldKbDensity(who, ctx, placeType) { return ctx && ctx.weather === "rain" ? 0.25 : 1; }';
+  const C = load(stub), world = canal([{ who: 'walkers', on: 'tow', rate: '8/min', mix: { stroll: 1 } }, { who: 'mallard', count: 6, on: 'cut' }]);
+  const life = C.worldLifeInit(world, C.worldNavBuild(world), 0, { ctx: { hour: 12, weather: 'clear' }, warm: false });
+  assert.ok(Math.abs(life.pops[0].rate - 8 / 60) < 1e-9);
+  const ducks = life.agents.length;
+  C.worldLifeRetime(life, { hour: 12, weather: 'rain' });
+  assert.ok(Math.abs(life.pops[0].rate - 8 / 60 * 0.25) < 1e-9, 'rain: a quarter of the walkers');
+  assert.equal(life.agents.length, ducks, 'nobody already out is removed');
+});
+
+test('A11: seeded outfits differ inside a group, dogs have breeds, and the same seed gives the same looks', () => {
+  const run = () => {
+    const C = load(), world = canal([{ who: 'walkers', on: 'tow', rate: '12/min', mix: { family: 0.5, 'dog-walker': 0.5 }, edges: ['S', 'N'] }]);
+    const life = C.worldLifeInit(world, C.worldNavBuild(world), 4);
+    return C.worldAgents(life);
+  };
+  const ag = run();
+  assert.ok(ag.length > 6, 'agents ' + ag.length);
+  for (const a of ag) {
+    if (a.cls === 'dog') assert.ok(typeof a.breed === 'string' && a.breed, 'a dog has a breed');
+    else if (a.kind === 'walker') assert.ok(Number.isInteger(a.outfit), a.id + ' has an outfit');
+  }
+  const groups = new Map();
+  for (const a of ag) if (a.group && a.cls !== 'dog') { if (!groups.has(a.group)) groups.set(a.group, []); groups.get(a.group).push(a.outfit); }
+  for (const [g, o] of groups) if (o.length > 1) assert.equal(new Set(o).size, o.length, 'group ' + g + ' dressed alike');
+  assert.deepEqual(run().map(a => [a.id, a.outfit, a.breed]), ag.map(a => [a.id, a.outfit, a.breed]));
 });

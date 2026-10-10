@@ -533,11 +533,36 @@ function worldAnimStep(world, dt, o) {
   // the variety slots of agents that have left are forgotten now and then (their ids never come back)
   S.ticks = (S.ticks | 0) + 1;
   if (S.slotOf && S.ticks % 300 === 0) for (const k of [...S.slotOf.keys()]) if (!S.byId.has(k)) S.slotOf.delete(k);
+  if (S.ticks % 8 === 0) _wanDeclone(agents);
   _wanSecondary(world, agents, dt, S);
   _wanStatics(world, dt, S);
   // statics added later (the fill, a re-attach) get their record on the next tick
   for (const e of world.entities || []) if (e && e.static !== false && (!e.anim || e.anim.oid !== e.obj)) e.anim = _wanStatic(e);
   return n;
+}
+/**
+ * M4 at run time: two agents of one class within 10 m whose cycles have fallen into step (the same period within 2 % and the
+ * same place in the cycle; a group swimming or walking at one speed can drift there and stay) are put out of step: the later
+ * one's cycle moves on by a third of a cycle (a paddle or a step a third early is invisible; marching in step is not).
+ * Deterministic: agents in their list order, a grid of 10 m cells.
+ */
+function _wanDeclone(agents) {
+  const g = new Map(), cell = 10;
+  for (const a of agents) {
+    const an = a && !a.dead && a.anim;
+    if (!an || !(an.period > 0) || !_wanNum(a.x) || !_wanNum(a.z) || (an.state !== 'move' && an.state !== 'idle')) continue;
+    const cls = String(a.cls || a.obj || ''), cx = Math.floor(a.x / cell), cz = Math.floor(a.z / cell);
+    for (let i = cx - 1; i <= cx + 1; i++) for (let j = cz - 1; j <= cz + 1; j++) {
+      for (const b of g.get(i + ',' + j) || []) {
+        const bn = b.anim;
+        if (String(b.cls || b.obj || '') !== cls || bn.state !== an.state || Math.hypot(a.x - b.x, a.z - b.z) > 10) continue;
+        if (Math.abs(an.period - bn.period) / an.period < 0.02 && Math.abs(_wanFrac(an.cyc - bn.cyc + 0.5) - 0.5) < 0.04) an.cyc = _wanFrac(an.cyc + 0.333);
+      }
+    }
+    const k = cx + ',' + cz;
+    if (!g.has(k)) g.set(k, []);
+    g.get(k).push(a);
+  }
 }
 /** A pure snapshot anim for an entity with no live record (tools, stills): what it is doing now, at its own phase. */
 function _wanSnapshot(e, world) {

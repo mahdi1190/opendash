@@ -43,7 +43,7 @@ function _worldOrderMemo(e) {
     if (p[1] < zl) zl = p[1]; if (p[1] > zh) zh = p[1];
     if (p[0] < xl) xl = p[0]; if (p[0] > xh) xh = p[0];
   }
-  m = { f: e.foot, x: e.x, z: e.z, at: e.attach, h: worldOrderHostId(e), zk: zl, zm: zh, xr: [xl, xh] };
+  m = { f: e.foot, x: e.x, z: e.z, at: e.attach, h: worldOrderHostId(e), zk: zl, zm: zh, xr: [xl, xh], fl: undefined, oh: undefined };
   e._om = m;
   return m;
 }
@@ -98,12 +98,48 @@ function worldOrderHostId(e) {
 
 // True when a is nearer than b (a must be drawn after b). Footprint test, not anchor test (2.3 rule 3); a stable tie by
 // height then id, so two things at one depth never swap from frame to frame (no z-fighting, 19).
+/**
+ * How flat a thing is for the order (memoised on the entity): 2 = a ground decal (leaf litter, puddles, petals: kb `decal`, or
+ * under 0.15 m tall), always drawn under anything standing; 1 = a walkable or low thing (a boardwalk, a platform, a deck, under
+ * 0.6 m), drawn under a mover standing on or in it; 0 = upright.
+ */
+var _worldOrderKbMemo = new Map();
+function _worldOrderKb(obj) {
+  if (!obj || typeof worldKb !== 'function') return null;
+  var k = _worldOrderKbMemo.get(obj);
+  if (k === undefined) { try { k = worldKb(obj) || null; } catch (err) { k = null; } _worldOrderKbMemo.set(obj, k); }
+  return k;
+}
+function _worldOrderFlat(e) {
+  var m = _worldOrderMemo(e);
+  if (m.fl !== undefined) return m.fl;
+  var f = 0, h = Number.isFinite(e.height) ? e.height : null, kb = e.static === false ? null : _worldOrderKb(e.obj);
+  if (e.static !== false && (e.decal || (kb && kb.decal) || (h !== null && h <= 0.15))) f = 2;
+  else if (e.static !== false && (e.solidity === 'walkable' || (kb && kb.solidity === 'walkable') || (h !== null && h <= 0.6 && e.flat === true))) f = 1;
+  m.fl = f;
+  return f;
+}
+/** Is this an overhead span (solidity 'overhead': a bridge, a viaduct)? From the entity, its draw record's entity, or the kb. */
+function _worldOrderOverhead(e) {
+  var m = _worldOrderMemo(e);
+  if (m.oh !== undefined) return m.oh;
+  var so = e.solidity || (e.ent && e.ent.solidity), k = so ? null : _worldOrderKb(e.obj);
+  m.oh = so ? so === 'overhead' : !!(k && k.solidity === 'overhead');
+  return m.oh;
+}
 function worldOrderNearer(a, b) {
   var ma = _worldOrderMemo(a), mb = _worldOrderMemo(b);
   if (ma.h !== null && ma.h === b.id) return true;
   if (mb.h !== null && mb.h === a.id) return false;
   if (ma.zm < mb.zk) return true;
   if (mb.zm < ma.zk) return false;
+  // depth ranges that meet: flat things lie under what stands on them (a decal under anything upright; a walkable thing under
+  // a mover inside it). Strictly nearer or farther things are ordered by depth above, flat or not.
+  var la = _worldOrderFlat(a), lb = _worldOrderFlat(b);
+  if (lb === 2 && la < 2) return true;
+  if (la === 2 && lb < 2) return false;
+  if (lb === 1 && la === 0 && a.static === false && mb.f && mb.f.length > 2 && worldOrderInside(mb.f, a.x, a.z)) return true;
+  if (la === 1 && lb === 0 && b.static === false && ma.f && ma.f.length > 2 && worldOrderInside(ma.f, b.x, b.z)) return false;
   var ra = ma.xr, rb = mb.xr;
   var lo = ra[0] > rb[0] ? ra[0] : rb[0], hi = ra[1] < rb[1] ? ra[1] : rb[1];
   var x = lo <= hi ? (lo + hi) / 2 : (ra[1] < rb[0] ? (ra[1] + rb[0]) / 2 : (rb[1] + ra[0]) / 2);
@@ -111,8 +147,9 @@ function worldOrderNearer(a, b) {
   var da = worldOrderFrontZ(fa, x), db = worldOrderFrontZ(fb, x);
   // a mover standing INSIDE a passable footprint (a walker in a stand of meadow plants, a heron in a reed clump) is compared
   // with the thing's own anchor, not its front edge: the order stays transitive with the things beside it
-  if (fa.length === 1 && fb.length > 2 && worldOrderInside(fb, fa[0][0], fa[0][1])) db = Number.isFinite(b.z) ? b.z : db;
-  else if (fb.length === 1 && fa.length > 2 && worldOrderInside(fa, fb[0][0], fb[0][1])) da = Number.isFinite(a.z) ? a.z : da;
+  // (not under an overhead span: a bridge or a viaduct's near face is in front of whoever walks beneath it, by its front edge)
+  if (fa.length === 1 && fb.length > 2 && !_worldOrderOverhead(b) && worldOrderInside(fb, fa[0][0], fa[0][1])) db = Number.isFinite(b.z) ? b.z : db;
+  else if (fb.length === 1 && fa.length > 2 && !_worldOrderOverhead(a) && worldOrderInside(fa, fb[0][0], fb[0][1])) da = Number.isFinite(a.z) ? a.z : da;
   if (Math.abs(da - db) > 1e-6) return da < db;
   var ya = a.y || 0, yb = b.y || 0;
   if (ya !== yb) return ya > yb;
@@ -231,11 +268,11 @@ function worldOrderMovers(roots) {
     var A = roots[i], zA = worldOrderZKey(A), eA = A.foot && A.foot.length > 1;
     for (j = i + 1; j < N; j++) {
       var B = roots[j];
-      if (!eA && !(B.foot && B.foot.length > 1)) continue;          // two points: the zKey order is right
-      if (worldOrderZMax(B) < zA) continue;                          // B wholly nearer: the order already has it after A
+      // every pair that overlaps on the screen is constrained (two points too, and a B wholly nearer): once a footprint
+      // mover reorders the list, an unconstrained pair could come out of depth order (a walker drawn before the dog behind him)
       if (!worldOrderOverlap(A._box, B._box)) continue;
       if (!adj) { adj = []; indeg = new Int32Array(N); for (var k = 0; k < N; k++) adj.push(null); }
-      if (worldOrderNearer(A, B)) { (adj[j] || (adj[j] = [])).push(i); indeg[i]++; }   // A is nearer: B first
+      if (worldOrderZMax(B) >= zA && worldOrderNearer(A, B)) { (adj[j] || (adj[j] = [])).push(i); indeg[i]++; }   // A is nearer: B first
       else { (adj[i] || (adj[i] = [])).push(j); indeg[j]++; }
     }
   }

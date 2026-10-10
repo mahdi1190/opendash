@@ -481,7 +481,8 @@ function _wcmFix(world, ent, cam, F) {
   const cands = [];
   if (ent.cls === 'boat' || ent.cls === 'train' || ent.cls === 'tram' || ent.cls === 'vehicle') {
     const f = (_wcmNum(ent.facing) ? ent.facing : 0) * _WCM_DEG, ax = Math.sin(f), az = Math.cos(f);
-    const L = ent.size && ent.size.w ? ent.size.w : 10, maxS = Math.max(30, 3 * L);
+    // far enough to pass a row of moored boats nose to tail (an authored boat is kept whenever its bank has a gap in view)
+    const L = ent.size && ent.size.w ? ent.size.w : 10, maxS = Math.max(30, 3 * L, ent.cls === 'boat' ? 150 : 0);
     for (let s = 0.5; s <= maxS; s += s < 6 ? 0.5 : 1) for (const sg of [1, -1]) cands.push([ax * s * sg, az * s * sg, s]);
   } else {
     for (let r = 0.5; r <= 8; r += 0.5) for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; cands.push([Math.sin(a) * r, Math.cos(a) * r, r - 0.05 * Math.cos(a)]); }
@@ -522,10 +523,13 @@ function worldFrameCheck(world, cam, o) {
   const F = _wcmFrame(o), ents = Array.isArray(world.entities) ? world.entities.slice() : [];
   const list = ents.concat(o.agents ? (o.agents || []).map(a => Object.assign({ agent: true }, a)) : []);
   for (const e of list) {
-    if (!e || e.backdrop || _wcmIsFraming(e)) continue;
+    if (!e || e.backdrop) continue;
     if (e.agent && (e.framed || e.layer === 'air')) continue;
     const br = _wcmBreaks(e, cam, F);
     if (!br) continue;
+    // a framing element frames the view from its side; one that fills most of the frame (a wall or a hedge in the lens's face,
+    // cut on three or more edges) blocks it, and is fixed like anything else
+    if (_wcmIsFraming(e) && !(br.vis >= 0.6 && br.cut.length >= 3 && !/^(tree|plant|bough|frond)/.test(String(e.obj || '')))) continue;
     const issue = { id: e.id != null ? e.id : null, obj: e.obj || null, cls: e.cls || null, size: _wcmR(br.size, 3), cut: br.cut, box: br.box.map(v => _wcmR(v, 1)), fix: null };
     if (e.landmark) issue.fix = { action: 'aim', by: 'camera', reason: 'a landmark is never moved: re-aim the camera (lookAt / frame) or widen it' };
     else if (e.agent) issue.fix = { action: 'none', reason: 'movers are kept out of the clip band by life (C2)' };
@@ -842,7 +846,14 @@ function worldLandmarkCheck(world, cam, o) {
       else if (rec.visible < 0.6) rec.fix = clear;                              // in frame but hidden: the occluders are the cause
       else if (rec.tile < 0.6) rec.fix = S.inT / S.n < 0.6 ? aim : clear;     // off the tile's square, or hidden there
       else rec.fix = { action: 'nearer', reason: 'move the camera nearer or narrow the fov' };
-      out.ok = false;
+      // o.apply (the load path): a landmark this camera cannot show as a subject (hidden by buildings, dwarfed or cropped)
+      // stays as scenery, never as a broken subject: with o.demote (the load path, worldBuild) it is demoted (landmark: false) and
+      // the log names the fix for the author (bad input makes a scene plainer, never wrong); without it, it stays a failing landmark.
+      if (o.apply && o.demote === true) {
+        L.landmark = false; L.landmarkDemoted = { why: why.join(', '), fix: rec.fix };
+        _wcmLog(world, { id: L.id != null ? L.id : null, obj: L.obj, action: 'demote', rule: 'C4', reason: `landmark ${rec.id} cannot be a subject from this camera (${why.join(', ')}): kept as scenery. Fix: ${rec.fix.reason || rec.fix.action}${rec.fix.bearing != null ? ' (bearing ' + rec.fix.bearing + ')' : ''}`, from: null, to: null, by: 'appearance' });
+        rec.demoted = true;
+      } else out.ok = false;
     }
     out.landmarks.push(rec);
   }

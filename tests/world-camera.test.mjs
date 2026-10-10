@@ -38,7 +38,7 @@ const place = () => ({
   seed: 4,
 });
 /** A camera-frame world of camera i (the convenience path; sense's worldBuild does the same transform). */
-const worldOf = (spec, i) => W.worldBuild(W.worldCameraSpec(spec, i), { validate: false });
+const worldOf = (spec, i) => W.worldBuild(W.worldCameraSpec(spec, i), { validate: false, frame: false });
 
 test('the appearance camera API is loaded', () => {
   for (const n of ['worldCameraResolve', 'worldCameraXform', 'worldCameraSpec', 'worldCameraBearing', 'worldScreenBox', 'worldFrameCheck', 'worldLandmarkCheck', 'worldOverscan'])
@@ -140,7 +140,7 @@ test('Q7: one world through 4 cameras builds with no other spec change', () => {
   for (let i = 0; i < 4; i++) {
     const cs = W.worldCameraSpec(spec, i);
     assert.equal(cs.cameras, undefined, 'the camera-frame spec has one camera');
-    const world = W.worldBuild(cs, { validate: false }), X = W.worldCameraXform(spec, i);
+    const world = W.worldBuild(cs, { validate: false, frame: false }), X = W.worldCameraXform(spec, i);
     headings.add(Math.round(world.cam.heading));
     // every authored entity in front of this camera is in its world, at the same world point (the auto-fill may differ per view)
     for (const src of [...spec.entities, ...spec.landmarks]) {
@@ -182,7 +182,7 @@ const canal = (boats) => ({
 });
 
 test('C1: a near boat at the frame edge is moved along its bank, never left as a cut slab', () => {
-  const world = W.worldBuild(canal([{ obj: 'boat.narrowboat', at: [-7.5, 8], facing: 0, attach: 'water', id: 'nb1' }]), { validate: false });
+  const world = W.worldBuild(canal([{ obj: 'boat.narrowboat', at: [-7.5, 8], facing: 0, attach: 'water', id: 'nb1' }]), { validate: false, frame: false });
   const nb = world.entities.find(e => e.id === 'nb1');
   const v = W.worldViewOf(nb, world.cam);
   assert.equal(v.persp, true, 'a long hull is drawn in perspective, never a flat side slab');
@@ -206,7 +206,7 @@ test('C1: a boat with no legal place in frame is dropped and logged (plainer, ne
     { obj: 'boat.narrowboat', at: [-7.5, 26], facing: 0, attach: 'water', id: 'nb2' },
     { obj: 'boat.narrowboat', at: [-7.5, 45], facing: 0, attach: 'water', id: 'nb3' },
     { obj: 'boat.narrowboat', at: [-7.5, 64], facing: 0, attach: 'water', id: 'nb4' },
-  ]), { validate: false });
+  ]), { validate: false, frame: false });
   const r = W.worldFrameCheck(world, world.cam, { apply: true });
   const fixed = r.log.find(l => l.id === 'nb1');
   assert.ok(fixed, 'the near boat was dealt with');
@@ -218,7 +218,7 @@ test('C1: a boat with no legal place in frame is dropped and logged (plainer, ne
 test('C1: framing elements (a near tree) may be cut; landmarks are never moved', () => {
   const spec = canal([{ obj: 'tree.bank-willow', at: [6, 6], id: 'frame-tree' }]);
   spec.landmarks = [{ obj: 'structure.bridge-brick', at: [-2, 9], facing: 90, attach: 'water', id: 'lm', src: 'test' }];
-  const world = W.worldBuild(spec, { validate: false });
+  const world = W.worldBuild(spec, { validate: false, frame: false });
   const r = W.worldFrameCheck(world, world.cam, { apply: true });
   assert.ok(!r.issues.some(i => i.id === 'frame-tree'), 'the tree is a framing element');
   const lm = r.issues.find(i => i.id === 'lm');
@@ -232,7 +232,7 @@ test('C4: a landmark behind a tree wall is reported with its occluders; auto-pla
   const spec = canal([]);
   spec.landmarks = [{ obj: 'structure.bridge-brick', at: [-2, 140], facing: 90, attach: 'water', id: 'lm', src: 'test' }];
   for (let k = -5; k <= 5; k++) spec.entities.push({ obj: 'tree.bank-oak', at: [-2 + k * 1.6 + 6, 40 + (k % 2)], id: 'tw' + (k + 5) });
-  const world = W.worldBuild(spec, { validate: false });
+  const world = W.worldBuild(spec, { validate: false, frame: false });
   for (const e of world.entities) if (/^tw/.test(e.id || '')) { e.x -= 6; e.foot = e.foot.map(p => [p[0] - 6, p[1]]); e.auto = 'fill'; }
   const r = W.worldLandmarkCheck(world, world.cam), rec = r.landmarks[0];
   assert.equal(rec.ok, false);
@@ -250,7 +250,7 @@ test('C4, 16.3: an authored tree wall in front of a landmark is moved aside (pla
   spec.landmarks = [{ obj: 'structure.bridge-brick', at: [-2, 140], facing: 90, attach: 'water', id: 'lm', src: 'test' }];
   spec.surfaces.push({ id: 'offside', kind: 'grass', poly: [[-60, 1], [-12, 1], [-12, 260], [-60, 260]] });
   for (let k = 0; k < 5; k++) spec.entities.push({ obj: 'tree.bank-oak', at: [-13.2 - (k % 2) * 0.8, 38 + k * 2.2], id: 'wall-' + k });
-  const world = W.worldBuild(spec, { validate: false });
+  const world = W.worldBuild(spec, { validate: false, frame: false });
   // the authored trees stand in the line of sight on the offside bank (the build keeps them: they are legal there)
   for (const e of world.entities) if (/^wall-/.test(e.id || '')) { const dx = -2 - e.x + (e.z - 38) * 0.02; e.x += dx; e.foot = e.foot.map(p => [p[0] + dx, p[1]]); e.surfaceFix = true; }
   world.surfaces.push({ id: 'island', kind: 'grass', poly: [[-60, 30], [-1, 30], [-1, 50], [-60, 50]] });
@@ -267,7 +267,7 @@ test('C4, 16.3: an authored tree wall in front of a landmark is moved aside (pla
     surfaces: [{ id: 'yard', kind: 'grass', poly: [[-200, 1], [200, 1], [200, 400], [-200, 400]] }], fill: false,
     entities: [{ obj: 'building.mill-red-brick', at: [-3, 70], facing: 0, id: 'mill' }],
     landmarks: [{ obj: 'structure.bridge-brick', at: [-8, 200], facing: 90, id: 'lm', src: 'test' }], backdrop: { style: 'farmland' }, seed: 1 };
-  const w2 = W.worldBuild(spec2, { validate: false });
+  const w2 = W.worldBuild(spec2, { validate: false, frame: false });
   const mill = w2.entities.find(e => e.id === 'mill');
   assert.ok(mill, 'the mill stands');
   const r2 = W.worldLandmarkCheck(w2, w2.cam, { apply: true }).landmarks[0];
@@ -275,7 +275,7 @@ test('C4, 16.3: an authored tree wall in front of a landmark is moved aside (pla
   assert.ok(r2.fix.hard.includes('mill'), 'the mill is named as the cause');
   assert.ok(!w2.log.some(l => l.rule === 'C4' && l.id === 'mill') && w2.entities.includes(mill), 'and never moved or dropped');
   // an extruded building (spec.buildings) hides like any static: by its real outline
-  const w3 = W.worldBuild(Object.assign({}, spec2, { entities: [] }), { validate: false });
+  const w3 = W.worldBuild(Object.assign({}, spec2, { entities: [] }), { validate: false, frame: false });
   w3.buildings = [{ id: 'warehouse', foot: [[-12, 60], [6, 60], [6, 72], [-12, 72]], storeys: 4, style: 'victorian-terrace' }];
   const r3 = W.worldLandmarkCheck(w3, w3.cam, { apply: true }).landmarks[0];
   assert.equal(r3.ok, false, `the warehouse hides it (${r3.visible})`);
@@ -286,7 +286,7 @@ test('C4, section 19: a landmark at the frame side fails the tile crop and asks 
   const spec = canal([]);
   spec.landmarks = [{ obj: 'structure.bridge-brick', at: [-62, 140], facing: 90, attach: 'water', id: 'side', src: 'test' }];
   spec.surfaces[0].poly = [[-90, 1], [-3.5, 1], [-3.5, 260], [-90, 260]];
-  const world = W.worldBuild(spec, { validate: false });
+  const world = W.worldBuild(spec, { validate: false, frame: false });
   const rec = W.worldLandmarkCheck(world, world.cam).landmarks[0];
   assert.ok(rec.visible >= 0.6, `visible in the full frame: ${rec.visible}`);
   assert.ok(rec.tile < 0.6, `but not in the tile crop: ${rec.tile}`);

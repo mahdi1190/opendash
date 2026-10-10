@@ -13,9 +13,10 @@
     "any": [
      "move",
      "drop",
-     "frame"
+     "rotate"
     ],
-    "n": 1
+    "id": "terrace-1",
+    "rule": "C1"
    }
   ]
  },

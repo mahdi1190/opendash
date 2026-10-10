@@ -223,12 +223,15 @@ test('R1, R2: zero order violations in the frame records of the test scenes over
         frames++;
         const movers = f.ents.filter(e => !e.static), all = f.ents;
         const ov = (a, b) => a.box[0] < b.box[2] && b.box[0] < a.box[2] && a.box[1] < b.box[3] && b.box[1] < a.box[3];
-        const asEnt = (e) => ({ id: e.id, x: e.x, z: e.z, y: e.y, foot: e.foot, attach: e.host ? 'deck:' + e.host : null });
+        // the record carries what the order reads: flat things (decals, walkable decks) lie under what stands on them
+        const asEnt = (e) => ({ id: e.id, obj: e.obj, static: e.static, x: e.x, z: e.z, y: e.y, foot: e.foot, height: e.height, solidity: e.solidity, decal: e.decal, attach: e.host ? 'deck:' + e.host : null });
         for (const m of movers) for (const o of all) {
           if (o === m || !ov(m, o)) continue;
           pairs++;
           const mNear = X.worldOrderNearer(asEnt(m), asEnt(o));
-          assert.ok(mNear ? m.order > o.order : o.order > m.order, `${id} t=${t.toFixed(1)}: ${mNear ? m.id : o.id} is nearer but drawn first`);
+          // a static redrawn over this mover (the occluder redraw, clipped to it) is drawn after it
+          const oo = o.static && Array.isArray(o.redrawFor) && o.redrawFor.includes(m.id) ? Infinity : o.order;
+          assert.ok(mNear ? m.order > oo : oo > m.order, `${id} t=${t.toFixed(1)}: ${mNear ? m.id : o.id} is nearer but drawn first`);
         }
       }
       assert.ok(frames === 150);

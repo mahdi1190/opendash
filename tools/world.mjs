@@ -33,9 +33,10 @@ import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { loadEngine, resolveRef, convertRef, validateSpec, sceneFileSource, WORLD_TEST_REFS, WORLD_ALIASES } from './lib/world/convert.mjs';
 import { worldPerfNode, worldPerfBrowser, worldPerfCheck, worldPerfText, worldMotion, worldMotionSvg, worldPerfProfile, worldPerfProfileText, worldPerfMatrix } from './lib/world/perf.mjs';
-import { adversarialFixtures, adversarialRun, adversarialText, worldInvariantRun, worldMomentsOf, worldMatrixCells, OWNERS } from './lib/world/adversarial.mjs';
+import { adversarialFixtures, adversarialText, worldMomentsOf, worldMatrixCells, OWNERS } from './lib/world/adversarial.mjs';
 import { worldCritic, criticOfRef, criticText } from './lib/world/critic.mjs';
 import { repoRoot } from './lib/scene-page.mjs';
+import { runCells } from './lib/world/cells.mjs';
 
 const argv = process.argv.slice(2);
 const flags = Object.fromEntries(argv.filter(a => a.startsWith('--')).map(a => { const i = a.indexOf('='); return i < 0 ? [a.slice(2), true] : [a.slice(2, i), a.slice(i + 1)]; }));
@@ -159,20 +160,26 @@ export async function worldAccept(E, o = {}) {
   // 2. the invariant checker over the full loop at 3 dates x 5 times (and the V7 matrix)
   {
     const lines = []; let bad = 0;
+    // every cell in its own child process, several at once (tools/lib/world/cells.mjs): a native fault stays in its cell
+    const secs = o.matrix ? Math.min(seconds, quick ? 10 : 20) : seconds, jobs = [], meta = [];
     for (const s of scenes) {
       let spec; try { spec = specOf(E, s.ref).spec; } catch (e) { lines.push(`${s.ref}: ${e.message}`); bad++; continue; }
       const cells = o.matrix ? worldMatrixCells(spec).map(c => ({ label: `${c.season} ${c.moment} ${c.wx}`, ms: c.ms, wx: c.wx })) : worldMomentsOf(spec).map(m => ({ label: `${m.date} ${m.moment}`, ms: m.ms }));
-      for (const c of cells) {
-        const r = worldInvariantRun(E, spec, { ms: c.ms, wx: c.wx, seconds: o.matrix ? Math.min(seconds, quick ? 10 : 20) : seconds, hz });
-        if (r.uniq || r.error) { bad++; for (const k of Object.keys(r.counts)) failedRules.add(k); lines.push(`${s.ref} ${c.label}: ${r.uniq} violation(s)${r.error ? ' ERROR ' + r.error : ''} ${Object.entries(r.counts).map(([k, n]) => `${k} ${n} [${OWNERS[k] || '?'}]`).join(', ')}${r.frameNote ? ' (' + r.frameNote + ')' : ''}`); }
-      }
-      lines.push(`${s.ref}: ${cells.length} cells x ${o.matrix ? Math.min(seconds, quick ? 10 : 20) : seconds} s at ${hz} Hz checked`);
+      for (const c of cells) { jobs.push({ op: 'inv', spec, ms: c.ms, wx: c.wx, seconds: secs, hz }); meta.push({ s, c }); }
     }
+    const results = await runCells(jobs, { root });
+    results.forEach((r, i) => {
+      const { s, c } = meta[i];
+      if (r.uniq || r.error) { bad++; for (const k of Object.keys(r.counts || {})) failedRules.add(k); lines.push(`${s.ref} ${c.label}: ${r.uniq} violation(s)${r.error ? ' ERROR ' + r.error : ''} ${Object.entries(r.counts || {}).map(([k, n]) => `${k} ${n} [${OWNERS[k] || '?'}]`).join(', ')}${r.frameNote ? ' (' + r.frameNote + ')' : ''}`); }
+      if (r.retried) lines.push(`${s.ref} ${c.label}: its process died and was run again (${r.retried}x; a native fault, not the scene)`);
+    });
+    for (const s of scenes) lines.push(`${s.ref}: ${meta.filter(m => m.s === s).length} cells x ${secs} s at ${hz} Hz checked`);
     push(o.matrix ? '16.5.2 + V7' : '16.5.2', `invariant checker, ${o.matrix ? 'the matrix (4 seasons x 5 times x 3 weathers)' : 'full loop at 3 dates x 5 times'}: zero violations`, bad ? 'fail' : 'pass', lines);
   }
   // 3. the adversarial scenes
   {
-    const res = adversarialFixtures(root).map(fx => adversarialRun(E, fx, { seconds: quick ? 30 : 120, hz }));
+    const res = await runCells(adversarialFixtures(root).map(fx => ({ op: 'adv', file: fx.file, seconds: quick ? 30 : 120, hz })), { root });
+    res.forEach((r, i) => { if (r.error && !r.id) Object.assign(r, { id: adversarialFixtures(root)[i].id, ok: false, registered: null, built: false, logOk: false, missing: [], violations: 0, run: { counts: {}, first: {}, frames: 0, kind: '-', error: r.error } }); });
     for (const r of res) for (const k of Object.keys((r.run && r.run.counts) || {})) failedRules.add(k);
     push('16.5.3', `adversarial scenes (${res.length}): register, build, a log for every fix, zero violations over ${quick ? 30 : 120} s`, res.every(r => r.ok) && res.length >= 14 ? 'pass' : 'fail', adversarialText(res).split('\n'));
   }
@@ -342,8 +349,9 @@ async function main() {
     const s = specOf(E, ref);
     const cells = flags.matrix ? worldMatrixCells(s.spec).map(c => ({ label: `${c.season} ${c.moment} ${c.wx}`, ms: c.ms, wx: c.wx })) : worldMomentsOf(s.spec).map(m => ({ label: `${m.date} ${m.moment}`, ms: m.ms }));
     const seconds = Number(flags.seconds) || (flags.matrix ? 20 : (E.WORLD_LOOP_S || 360)), hz = Number(flags.hz) || 5, all = [];
-    for (const c of cells) {
-      const r = worldInvariantRun(E, s.spec, { ms: c.ms, wx: c.wx, seconds, hz });
+    const res = await runCells(cells.map(c => ({ op: 'inv', spec: s.spec, ms: c.ms, wx: c.wx, seconds, hz })), { root });
+    for (const [ci, c] of cells.entries()) {
+      const r = res[ci];
       all.push(Object.assign({ cell: c.label }, r, { violations: r.violations.slice(0, 20) }));
       if (!flags.json) {
         out(`${r.uniq ? 'FAIL' : 'ok  '} ${s.id} ${c.label}: ${r.frames} frames, ${r.agentsSeen} agents, ${r.uniq} violation(s), ${r.msPerFrame} ms a frame [${r.kind}${r.frameSource ? ', ' + r.frameSource : ''}]${r.error ? ' ERROR ' + r.error : ''}`);
@@ -358,7 +366,8 @@ async function main() {
   if (cmd === 'adversarial') {
     const fxs = adversarialFixtures(root).filter(f => !ref || f.id === ref);
     if (!fxs.length) { out(`no adversarial fixture ${ref || ''}`); return 2; }
-    const res = fxs.map(fx => adversarialRun(E, fx, { seconds: Number(flags.seconds) || 120, hz: Number(flags.hz) || 5 }));
+    const res = await runCells(fxs.map(fx => ({ op: 'adv', file: fx.file, seconds: Number(flags.seconds) || 120, hz: Number(flags.hz) || 5 })), { root });
+    res.forEach((r, i) => { if (r.error && !r.id) Object.assign(r, { id: fxs[i].id, ok: false, registered: null, built: false, logOk: false, missing: [], violations: 0, log: [], run: { counts: {}, first: {}, frames: 0, kind: '-', error: r.error } }); });
     if (flags.json) out(JSON.stringify(res.map(r => Object.assign({}, r, { log: r.log.slice(0, 200), run: r.run && Object.assign({}, r.run, { log: undefined, violations: r.run.violations.slice(0, 30) }) })), null, 1));
     else { out(adversarialText(res)); out(`${res.filter(r => r.ok).length} of ${res.length} pass`); }
     return res.every(r => r.ok) ? 0 : 1;
@@ -369,10 +378,12 @@ async function main() {
     const c = s.converted ? Object.assign({ ref: s.ref }, worldCritic(E, s.spec, {})) : criticOfRef(E, s.ref || ref, {}, resolveRef);
     let against = null;
     if (typeof flags.against === 'string') against = criticOfRef(E, flags.against, {}, resolveRef);
-    if (flags.json) { out(JSON.stringify({ critic: c, against }, null, 1)); return against && c.score + 0.5 < against.score ? 1 : 0; }
+    // one exit rule for both outputs: poorer than the source, or any critic problem
+    const bad = (against && c.score + 0.5 < against.score) || (c.problems && c.problems.length) ? 1 : 0;
+    if (flags.json) { out(JSON.stringify({ critic: c, against }, null, 1)); return bad; }
     out(criticText(c, s.id));
     if (against) out(`  against ${against.ref}: ${against.score} -> ${c.score + 0.5 >= against.score ? 'at least as rich' : 'POORER THAN THE SOURCE (P7, U4)'}`);
-    return (against && c.score + 0.5 < against.score) || (c.problems && c.problems.length) ? 1 : 0;
+    return bad;
   }
 
   if (cmd === 'sheet') {

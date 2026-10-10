@@ -142,7 +142,9 @@ export function worldCritic(E, spec, o = {}) {
   for (const c of badCuts) problems.push('frame: ' + (c.msg || c.why || c.id));
   for (const l of badLm) problems.push('landmark: ' + (l.msg || l.id));
   if (worldRichness && worldRichness.ok === false) problems.push('richness floor: ' + (worldRichness.msg || 'below the floor'));
-  return { score: richness.score, richness, worldRichness, coverage: coverage ? { bare: coverage.bare, sky: coverage.sky, ok: coverage.ok, msg: coverage.msg || '' } : null,
+  // advice for the author, not a fault of the render: landmarks the load path demoted to scenery (C4: this camera cannot show them)
+  const notes = (Array.isArray(world.log) ? world.log : []).filter(l => l && l.action === 'demote').map(l => 'demoted: ' + l.reason);
+  return { notes, score: richness.score, richness, worldRichness, coverage: coverage ? { bare: coverage.bare, sky: coverage.sky, ok: coverage.ok, msg: coverage.msg || '' } : null,
     framing: { cuts: badCuts, landmarks: badLm }, problems, records: records.length, by: { richness: 'critic-boxes', floor: E.worldRichness ? 'worldRichness' : null, coverage: E.worldCoverage ? 'worldCoverage' : null, framing: E.worldFrameCheck ? 'worldFrameCheck' : 'invariants' } };
 }
 
@@ -173,5 +175,6 @@ export function criticText(c, title = '') {
   if (c.coverage) out.push(`  coverage (C6): bare ${c.coverage.bare}, open horizon ${c.coverage.sky} ${c.coverage.ok ? 'ok' : 'FAIL'}`);
   if (c.framing) out.push(`  framing: ${c.framing.cuts.length} cut, ${c.framing.landmarks.length} landmark problem(s) [${c.by && c.by.framing}]`);
   for (const p of (c.problems || []).slice(0, 12)) out.push('    - ' + p);
+  for (const n of (c.notes || []).slice(0, 6)) out.push('    note: ' + n);
   return out.join('\n');
 }

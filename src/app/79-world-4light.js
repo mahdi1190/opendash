@@ -347,6 +347,8 @@ function worldLights(world, o) {
     const key = e.id || e.obj, moving = agent && !e.parked && e.state !== 'parked';
     G.parts.forEach((p, i) => {
       let kind = p.kind;
+      // a rim is the figure's own catch-light (drawn by its sprite at low sun), never a light source: no glow, no pool
+      if (kind === 'rim') return;
       if (veh && kind === 'lamp') kind = 'head';
       const t = _WL_GLOW[kind] || _WL_GLOW.window, r = _wlRng(key + '|g|' + i);
       let on = false;
@@ -506,8 +508,15 @@ function worldDrawLights(ctx, lights, cam, o) {
       const b = L.beam, a = _wlProj(cam, b.x, Math.max(0.3, b.z)), e1 = _wlProj(cam, b.x + b.dx * b.len - b.dz * b.w, Math.max(0.3, b.z + b.dz * b.len + b.dx * b.w)), e2 = _wlProj(cam, b.x + b.dx * b.len + b.dz * b.w, Math.max(0.3, b.z + b.dz * b.len - b.dx * b.w));
       ctx.globalAlpha = 0.12; ctx.fillStyle = L.col; ctx.beginPath(); ctx.moveTo(a.X * vs + ox, a.Y * vs + oy); ctx.lineTo(e1.X * vs + ox, e1.Y * vs + oy); ctx.lineTo(e2.X * vs + ox, e2.Y * vs + oy); ctx.closePath(); ctx.fill();
     }
-    const q = _wlProj(cam, L.x, L.z, L.y), r = Math.max(0.6, L.r * q.k * vs);
-    ctx.globalAlpha = 0.5; ctx.fillStyle = L.col; ctx.beginPath(); ctx.arc(q.X * vs + ox, q.Y * vs + oy, r, 0, 2 * Math.PI); ctx.fill();
+    // the halo round the bulb: a soft radial falloff at half the light's reach (a flat disc of the whole reach read as a white
+    // blob over the figure or the boat that carries it)
+    const q = _wlProj(cam, L.x, L.z, L.y), r = Math.max(0.6, L.r * 0.5 * q.k * vs), cx = q.X * vs + ox, cy = q.Y * vs + oy;
+    if (ctx.createRadialGradient) {
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, L.col); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = 0.45; ctx.fillStyle = g;
+    } else { ctx.globalAlpha = 0.3; ctx.fillStyle = L.col; }
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fill();
     n++;
   }
   ctx.restore();

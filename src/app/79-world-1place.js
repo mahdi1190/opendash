@@ -38,7 +38,9 @@ const _WPL_NATURAL = Object.freeze(['tree', 'shrub', 'reed', 'cover', 'rock', 'd
 /** Passable things that still never stand inside a solid (a hull, a mill, a wall, a trunk): plants, people and animals. */
 const _WPL_NOT_INSIDE = Object.freeze(['shrub', 'reed', 'duck', 'coot', 'swan', 'goose', 'grebe', 'grazer', 'animal', 'bird', 'heron', 'person', 'dog', 'cyclist', 'fish']);
 /** Classes drawn at true scale that become giants near the lens: kept out of the near band unless framed (A10, C2). */
-const _WPL_NEAR_BAND = Object.freeze(['person', 'dog', 'cyclist', 'grazer', 'animal', 'duck', 'coot', 'swan', 'goose', 'grebe', 'heron', 'bird', 'gull']);
+const _WPL_NEAR_BAND = Object.freeze(['person', 'dog', 'cyclist', 'grazer', 'animal', 'duck', 'coot', 'swan', 'goose', 'grebe', 'heron', 'bird', 'gull',
+  // props are no framing either: a bollard, a post or a bin at the lens is a dark blob filling the frame's corner
+  'post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle']);
 /** Classes that never stand on a walking line (P3). */
 const _WPL_OFFLINE = Object.freeze(['tree', 'shrub', 'reed', 'hedge', 'fence', 'rock', 'bench', 'lamp', 'post', 'street', 'building', 'vehicle', 'structure', 'gate']);
 /** Parents (K4) when kb has none: a bough by its tree, willow fronds by a willow. */
@@ -687,7 +689,10 @@ function worldPlace(world) {
   if (cam && _wcNum(cam.f) && cam.f > 0) for (const e of live()) guard(e, () => {
     const info = infoOf(e);
     if (e.landmark || e.framed || !_WPL_NEAR_BAND.includes(info.cls) || /^(air|wall)/.test(String(e.attach))) return;
-    const band = cam.f * info.size.h / 405;
+    // the drawn box (the art's own margins, a tall adult of K8's range) runs up to ~10 % over the class height: keep that margin
+    // ... and its foot is in the frame (a thing whose foot is below the bottom edge is a cut blob: the near band of the nav map)
+    const foot = _wcNum(cam.eye) && _wcNum(cam.horizon) && cam.horizon < 900 ? cam.f * Math.max(0.2, cam.eye - (_wcNum(e.y) ? e.y : 0)) / (900 - cam.horizon) + 0.3 : 0;
+    const band = Math.max(cam.f * Math.max(info.size.h, _wcNum(e.height) ? e.height : 0) * 1.1 / 405, foot);
     if (!(e.z < band)) return;
     const from = [e.x, e.z], z0 = Math.max(0.3, e.z);
     for (let k = 0; k < 16; k++) {

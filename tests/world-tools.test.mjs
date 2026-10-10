@@ -112,7 +112,8 @@ test('critic (P7, U4): one box measure for both sides; a poorer world scores low
   const spec = specOfRef('world-test/fleet-canal-2-w3');
   const full = C.worldCritic(E, spec);
   for (const k of ['score', 'richness', 'coverage', 'framing', 'problems', 'by']) assert.ok(k in full, k);
-  const bare = C.worldCritic(E, Object.assign({}, spec, { entities: [], landmarks: [] }));
+  // emptied AND unfilled (the kb fill would lift a bare world back to the richness target: P7 by design)
+  const bare = C.worldCritic(E, Object.assign({}, spec, { entities: [], landmarks: [], fill: false }));
   assert.ok(bare.score < full.score, `an emptied world scores lower (${bare.score} < ${full.score})`);
   const src = C.criticOfRef(E, 'fleet-canal-2', {}, resolveRef);
   assert.equal(src.v, 2); assert.ok(src.score > 0 && src.records > 100, 'the v2 source through its compile');

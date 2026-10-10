@@ -38,6 +38,10 @@ var WORLD_LIFE_WARM = { step: 0.25, secs: 90 };
 var WORLD_VIEWS = ['back', 'q-back', 'side', 'q-front', 'front'];
 /** Personal space by setting (Y4), metres between people. */
 var WORLD_LIFE_SPACE = { rural: 1.2, town: 0.9, city: 0.6 };
+/** A11 fallbacks when the knowledge base gives no outfit or breed: outfit palettes (an index the appearance package maps to
+ *  colours) and dog breeds (size and coat families). */
+var WORLD_LIFE_OUTFITS = 12;
+var WORLD_LIFE_BREEDS = ['labrador', 'spaniel', 'collie', 'terrier', 'whippet', 'retriever', 'dachshund', 'shepherd'];
 
 /* ---------- random streams (G4) ---------- */
 function worldLifeRng(seed) {
@@ -148,7 +152,44 @@ function worldLifeOk(life, layer, x, z, r) {
   if (typeof worldNavOk !== 'function') return false;
   return worldNavOk(life.nav, layer, x, z, r);
 }
-function _wlfOk(life, a, x, z) { return a.layer === 'air' || (typeof worldNavOk === 'function' && worldNavOk(life.nav, a.layer, x, z, a.r)); }
+function _wlfOk(life, a, x, z) { return a.layer === 'air' || (typeof worldNavOk === 'function' && worldNavOk(life.nav, a.layer, x, z, a.r) && _wlfHullOk(life, a, x, z)); }
+/**
+ * A long hull (a boat under way) keeps its WHOLE length beyond the layer's near band: the nav map holds its centre, so its near
+ * end would otherwise come up to the lens as a giant hull cut by the frame's bottom edge (A10, C2). Spawn cells and goal edges
+ * nearer than that are not used by hulls either.
+ */
+function _wlfHullNear(life, layer, len) {
+  if (!(len > 4)) return null;
+  var L = typeof worldNavLayer === 'function' ? worldNavLayer(life.nav, layer) : null;
+  return L && Number.isFinite(L.nearZ) ? L.nearZ + len / 2 + 0.5 : null;
+}
+function _wlfHullOk(life, a, x, z) {
+  if (a.kind !== 'boat') return true;
+  var nz = _wlfHullNear(life, a.layer, a.len);
+  if (nz == null) return true;
+  // the near end along the heading: only the depth matters for the cut
+  var halfZ = Math.abs(Math.cos(a.heading || 0)) * a.len / 2, nz0 = nz - a.len / 2 - 0.5;
+  if (!(z - halfZ >= nz0 || z >= a.z)) return false;   // never further into the band (a boat already there may still leave it)
+  // the whole keel stays on the water clear of solids too (a moored boat, a bank): the nav map holds only the centre
+  // a hull already touching may move only to touch less (it is getting clear), never further in
+  return _wlfKeelBad(life, a, x, z, a.heading) <= _wlfKeelBad(life, a, a.x, a.z, a.heading);
+}
+/** How many points of a hull's keel are not clear at (x, z) and heading h: points every ~1.5 m bow to stern, with the half-beam. */
+function _wlfKeelBad(life, a, x, z, h) {
+  if (a.kind !== 'boat' || !(a.len > 4) || typeof worldNavOk !== 'function') return 0;
+  var n = Math.max(2, Math.ceil(a.len * 0.9 / 1.5)), ux = Math.sin(h || 0), uz = Math.cos(h || 0), bad = 0;
+  for (var k = 0; k <= n; k++) {
+    var t = (k / n - 0.5) * a.len * 0.9;
+    if (Math.abs(t) < 0.5) continue;
+    if (!worldNavOk(life.nav, a.layer, x + ux * t, z + uz * t, a.r * 0.85)) bad++;   // the hull narrows to bow and stern
+  }
+  return bad;
+}
+function _wlfKeelOk(life, a, x, z, h) { return _wlfKeelBad(life, a, x, z, h) === 0; }
+function _wlfHullCells(life, layer, cells, len) {
+  var nz = _wlfHullNear(life, layer, len);
+  return nz == null ? cells : cells.filter(function (c) { return c.z >= nz; });
+}
 function worldLifeXZ(p) { if (!p) return null; if (Array.isArray(p)) return [p[0], p[1]]; return [p.x, p.z]; }
 function _wlfFlowR(a) { var d = (typeof WORLD_NAV_RADIUS !== 'undefined' && WORLD_NAV_RADIUS[String(a.layer).split('@')[0]]) || 0.25; return a.r <= d + 0.05 ? d : Math.ceil(a.r * 10) / 10; }
 /** The water level / deck / ground height under an agent on its layer. */
@@ -288,7 +329,7 @@ function worldLifeInit(world, nav, t0, opts) {
     world: world, nav: nav, t: 0, t0: Math.floor(t0 || 0), t0key: String(Math.floor(t0 || 0)), seed: seed, grids: {}, spawnc: {}, cells: {}, reach: {},
     agents: [], byId: new Map(), pops: [], acc: 0, alpha: 1, events: [], evlog: [], problems: [], hash: new Map(), extraSpawns: {},
     max: opts.max || 60, step: opts.step || WORLD_LIFE_STEP, seats: new Map(), stops: new Map(), perchTaken: new Map(), leads: [],
-    ctx: opts.ctx || (world && (world.ctx || world.timeCtx)) || null, placeType: _wlfPlaceType(world), flowc: new Map(),
+    ctx: opts.ctx || (world && (world.time || world.ctx || world.timeCtx)) || null, placeType: _wlfPlaceType(world), flowc: new Map(),
   };
   if (!life.ctx && typeof worldTimeCtx === 'function' && Number.isFinite(opts.ms)) { try { life.ctx = worldTimeCtx(world, opts.ms); } catch (e) { life.ctx = null; } }
   life.space = WORLD_LIFE_SPACE[life.placeType] || 1;
@@ -310,6 +351,16 @@ function worldLifeInit(world, nav, t0, opts) {
   life.events.length = 0;
   for (var k = 0; k < life.agents.length; k++) { var a = life.agents[k]; a.px = a.x; a.pz = a.z; }
   return life;
+}
+/** A new time context (weather, hour): rate populations re-read their density (A1); residents and traffic stay as they are. */
+function worldLifeRetime(life, ctx) {
+  if (!life) return;
+  if (ctx) life.ctx = ctx;
+  for (var i = 0; i < life.pops.length; i++) {
+    var pop = life.pops[i]; if (!pop.spec.rate) continue;
+    pop.dens = _wlfDensity(life, pop.spec.who);
+    pop.rate = worldLifeRate(pop.spec.rate) * pop.dens;
+  }
 }
 /** The scene clock (s) the timetables run on. */
 function _wlfClock(life) { return life.t0 + life.t; }
@@ -404,7 +455,7 @@ function _wlfNewAgent(life, pop, entry, x, z, id, o) {
 function _wlfSizes(life, a) {
   var b = a.brain, u = _wlfStream(life, a.id + ':size')();
   var get = function (pose) {
-    if (a.kb && typeof worldKbSize === 'function') {
+    if (a.kb && a.kb.size && typeof worldKbSize === 'function') {        // a descriptor without sizes says nothing: the brain's range
       try { var r = worldKbSize(a.kb, pose, a.age, worldLifeRng(_wlfHash(a.id + ':size:' + life.t0key))); var h = typeof r === 'number' ? r : r && (r.h || r.height); if (Number.isFinite(h) && h > 0.02 && h < 80) return h; } catch (e) { /* the brain's range */ }
     }
     var rg = (b.ages && b.ages[a.age]) || b.h || [1.7, 1.7];
@@ -426,7 +477,7 @@ function _wlfVariant(life, a, avoid) {
     var v = null, extra = null;
     if (a.kb && typeof worldKbVariant === 'function') {
       try {
-        var r = worldKbVariant(a.kb, (life.world && life.world.place) || {}, a.rng);
+        var r = worldKbVariant(a.kb, (life.world && life.world.place) || {}, a.rng, { ctx: life.ctx });
         if (typeof r === 'number' || typeof r === 'string') v = r;
         else if (r && typeof r === 'object') { v = r.variant != null ? r.variant : null; extra = r; }
       } catch (e) { v = null; }
@@ -437,6 +488,14 @@ function _wlfVariant(life, a, avoid) {
   }
   a.variant = out.v;
   if (out.extra) { a.outfit = out.extra.outfit || null; a.breed = out.extra.breed || null; if (Number.isFinite(out.extra.gait)) a.gait *= out.extra.gait; else if (out.extra.gait) a.gaitName = out.extra.gait; }
+  // seeded looks the descriptor did not give (A11): an outfit palette, a dog's breed, a named gait; never a group mate's outfit
+  var vr = _wlfStream(life, a.id + ':look');
+  if (a.outfit == null && (a.kind === 'walker' || a.kind === 'lane') && a.cls !== 'dog' && !a.brain.heavy) {
+    var taken = [], L = a.leader; if (L) { taken.push(L.outfit); if (L.members) L.members.forEach(function (m) { if (m !== a) taken.push(m.outfit); }); }
+    for (var q = 0; q < 6; q++) { a.outfit = Math.floor(vr() * WORLD_LIFE_OUTFITS); if (taken.indexOf(a.outfit) < 0) break; }
+  }
+  if (a.breed == null && a.cls === 'dog') a.breed = WORLD_LIFE_BREEDS[Math.floor(vr() * WORLD_LIFE_BREEDS.length)];
+  if (a.gaitName == null && a.kind === 'walker') a.gaitName = a.gait < 0.95 ? 'easy' : a.gait > 1.05 ? 'brisk' : 'even';
 }
 function _wlfEnter(life, a, state) {
   var b = a.brain, st = b.states[state];
@@ -539,12 +598,19 @@ function _wlfSpawnPass(life, dt) {
       for (var i = 0; i < pop.entries.length; i++) if (pop.entries[i].tt) _wlfRailSync(life, pop, pop.entries[i], clock);
       var hasOther = pop.entries.some(function (e) { return !e.tt && worldBrains[e.m.cls].kind !== 'rail'; });
       if (hasOther) {
+        // a scheduled arrival that found no place (a crowded cell, a hull that would not fit) tries again each tick for up to
+        // 60 s: a boat every 6 min must not silently miss its loop
+        if (pop.pending) {
+          if (clock > pop.pending.until) pop.pending = null;
+          else if (_wlfArrive(life, pop, pop.pending.entry, { scheduled: pop.pending.k })) pop.pending = null;
+        }
         var k = Math.floor((clock - pop.offset) / pop.period);
         while (pop.k < k) {
           pop.k++;
           var others = pop.entries.filter(function (e) { return !e.tt && worldBrains[e.m.cls].kind !== 'rail'; });
           var w = {}; others.forEach(function (e, j) { w[j] = e.w; });
-          _wlfArrive(life, pop, others[+worldLifePick(pop.rng, w)], { scheduled: pop.k });
+          var ent = others[+worldLifePick(pop.rng, w)];
+          if (!_wlfArrive(life, pop, ent, { scheduled: pop.k })) pop.pending = { entry: ent, k: pop.k, until: clock + 60 };
         }
       }
     }
@@ -566,6 +632,7 @@ function _wlfArrive(life, pop, entry, o) {
   if (b.layer === 'air') return null;
   var spec = pop.spec, r = _wlfFlowR({ layer: b.layer, r: b.kind === 'boat' ? _wlfBoatR(entry) : b.r });
   var cand = _wlfHomeCells(life, pop, b.layer, r, _wlfSpawnCells(life, b.layer, r, spec.on, pop.edges));
+  if (b.kind === 'boat') { var bi = _wlfInfo(entry.m.obj); cand = _wlfHullCells(life, b.layer, cand, bi && bi.size ? bi.size.w || 18 : 18); }
   if (!cand.length) return null;
   // an edge first (each of the population's edges as often), then a hidden cell of it when there is one (off the frame, below
   // its bottom edge, behind cover); a mover on a visible cell fades in
@@ -591,6 +658,8 @@ function _wlfArrive(life, pop, entry, o) {
   _wlfAddSpawnPoint(life, a.layer, sp.x, sp.z);
   _wlfAdd(life, a);
   _wlfFaceFirst(life, a);
+  // a hull that would lie across a solid (a moored boat, the bank) as it sets off does not arrive here (another cell next time)
+  if (a.kind === 'boat' && !_wlfKeelOk(life, a, a.x, a.z, a.heading)) { a.dead = true; return null; }
   if (b.group && b.group.members) _wlfGroupSpawn(life, pop, a, false);
   return a;
 }
@@ -648,6 +717,7 @@ function _wlfCrossGoals(life, pop, a, sp) {
   var edges = pop.edges || ['N', 'S', 'E', 'W'], r = _wlfFlowR(a), cand = [], spEdge = sp.edge;
   for (var i = 0; i < edges.length; i++) {
     var cells = _wlfSpawnCells(life, a.layer, r, pop.on, [edges[i]]);
+    if (a.kind === 'boat') cells = _wlfHullCells(life, a.layer, cells, a.len);
     if (!cells.length) continue;
     var near = Infinity;
     for (var j = 0; j < cells.length; j++) near = Math.min(near, Math.hypot(cells[j].x - sp.x, cells[j].z - sp.z));
@@ -691,11 +761,15 @@ function _wlfGroupSpawn(life, pop, lead, resident) {
 function _wlfSlotPoint(life, a) {
   var L = a.leader, hx = Math.sin(L.heading), hz = Math.cos(L.heading), rx = hz, rz = -hx;
   var s = a.slot, cands = [[s[0], s[1]], [s[0] * 0.5, s[1] - 0.6], [0, -0.9 - Math.abs(s[0])], [0, -1.6]];
+  // a slot that falls in an edge zone (a half body at the frame side, C2) is passed over while another fits
+  var firstOk = null;
   for (var i = 0; i < cands.length; i++) {
     var x = L.x + rx * cands[i][0] + hx * cands[i][1], z = L.z + rz * cands[i][0] + hz * cands[i][1];
-    if (_wlfOk(life, a, x, z)) return [x, z];
+    if (!_wlfOk(life, a, x, z)) continue;
+    if (!_wlfInEdgeZone(life, { layer: a.layer, x: x, z: z })) return [x, z];
+    if (!firstOk) firstOk = [x, z];
   }
-  return [L.x - hx * 0.8, L.z - hz * 0.8];
+  return firstOk || [L.x - hx * 0.8, L.z - hz * 0.8];
 }
 
 /* ---------- goals (A4) ---------- */
@@ -797,13 +871,24 @@ function _wlfFlowTo(life, a, tgt, layer) {
     if (!f || !f.seeds.length) return 'fail';
     a.route = { key: key, field: f };
   }
-  var fd = a.route.field;
+  var fd = a.route.field, R = a.route;
   var d = worldFlowDist(fd, a.x, a.z);
   if (d === 0) return 'here';
   if (!isFinite(d)) return 'fail';
-  var dir = worldFlowDir(fd, a.x, a.z);
-  if (!dir) return d < 40 ? 'here' : 'fail';
-  a.dir = dir; a.distLeft = d;
+  // the steering point is planned once per cell (its line checks are the costly part); worldStep keeps every step legal
+  var k = typeof worldNavCell === 'function' ? worldNavCell(life.nav, layer, a.x, a.z) : -1;
+  if (!(R.tk === k && k >= 0 && R.tp && Math.hypot(R.tp[0] - a.x, R.tp[1] - a.z) > 0.3)) {
+    var tp = typeof worldFlowTarget === 'function' ? worldFlowTarget(fd, a.x, a.z) : null;
+    if (!tp) {
+      var dir0 = worldFlowDir(fd, a.x, a.z);
+      if (!dir0) return d < 40 ? 'here' : 'fail';
+      R.tp = null; R.tk = -1; a.dir = dir0; a.distLeft = d; return 'go';
+    }
+    R.tp = tp; R.tk = k;
+  }
+  var dx = R.tp[0] - a.x, dz = R.tp[1] - a.z, dl = Math.hypot(dx, dz);
+  if (dl < 1e-6) { R.tk = -1; return d < 40 ? 'here' : 'fail'; }
+  a.dir = [dx / dl, dz / dl]; a.distLeft = d;
   return 'go';
 }
 /** Route to an ad-hoc point (A*, short, backs off on failure). */
@@ -885,6 +970,7 @@ function _wlfBrain(life, a, dt) {
   if (a.leader && !a.leader.dead) { _wlfFollowBrain(life, a, dt); return; }
   if (a.leader && a.leader.dead) { a.leader = null; if (!a.resident) _wlfLeave(life, a, null); else a.goals = [{ wander: null, 'for': Infinity }]; }
   if (a.attract && life.t < a.attract.until) { var ax2 = a.attract.x - a.x, az2 = a.attract.z - a.z, ad = Math.hypot(ax2, az2); if (ad > 1.6) { a.dir = [ax2 / ad, az2 / ad]; if (!a.spd) _wlfEnter(life, a, a.brain.states.swim ? 'swim' : a.bs); return; } a.attract = null; }
+  if (a.wait > life.t && _wlfInEdgeZone(life, a)) a.wait = 0;                // never backing off in an edge zone (C2)
   if (a.wait > life.t) { if (a.brain.states[a.bs] && a.brain.states[a.bs].speed) _wlfEnter(life, a, _wlfStillState(a)); a.st = Math.max(a.st, 0.2); return; }
   var g = _wlfGoal(a);
   if (!g) {
@@ -1119,8 +1205,10 @@ function _wlfEnterGoal(life, a, g) {
 function _wlfBankGoal(life, a, g, dt) {
   if (!a.bank) {
     var water = g.fish != null ? g.fish : g.feed, s = _wlfSurface(life, water), e = _wlfEntity(life, water);
-    var ref = e ? [e.x, e.z] : s ? _wlfCentroid(s) : [a.x, a.z + 10];
-    a.bank = _wlfBankSpot(life, a, ref);
+    // a swim (an entity) is where it is; on a water surface: feeding goes where the birds are, fishing near the angler, and
+    // both on THAT water's bank, in view
+    var ref = e ? [e.x, e.z] : g.feed != null ? (_wlfBirdsAt(life, a, s ? water : null) || [a.x, a.z]) : [a.x, a.z];
+    a.bank = _wlfBankSpot(life, a, ref, s && s.kind === 'water' ? water : null);
     if (!a.bank) { _wlfFail(life, a); return; }
   }
   var res = _wlfPathTo(life, a, a.bank[0], a.bank[1]);
@@ -1129,22 +1217,37 @@ function _wlfBankGoal(life, a, g, dt) {
   var stName = g.fish != null ? 'fish' : 'feed';
   if (a.bs !== stName) { a.bs = stName; a.clip = stName; a.spd = 0; a.gdur = worldLifeRange(a.rng, g['for'] != null ? g['for'] : [40, 120]); a.st = a.gdur; }
   a.lookAt = [a.bank[2], a.bank[3]];
-  if (g.feed != null && (!a.fedT || life.t - a.fedT > 2)) { a.fedT = life.t; life.bus.emit('feed', { id: a.id, x: a.bank[2], z: a.bank[3], r: 14, t: life.t }); }
+  if (g.feed != null && (!a.fedT || life.t - a.fedT > 2)) { a.fedT = life.t; life.bus.emit('feed', { id: a.id, x: a.bank[2], z: a.bank[3], r: 25, t: life.t }); }
   if (a.st <= 0) { a.bank = null; _wlfEnter(life, a, a.brain.start); _wlfNextGoal(life, a); }
 }
 function _wlfCentroid(s) { var p = s.poly || s.path, x = 0, z = 0; for (var i = 0; i < p.length; i++) { x += p[i][0]; z += p[i][1]; } return [x / p.length, z / p.length]; }
 /** A walkable cell within 1.6 m of open water, near a reference point: [x, z, waterX, waterZ]. */
-function _wlfBankSpot(life, a, ref) {
+function _wlfBankSpot(life, a, ref, waterId) {
   var cells = _wlfCells(life, a.layer, _wlfFlowR(a), null), best = null, bd = Infinity;
   for (var c = 0; c < cells.length; c += 2) {
     var x = cells[c], z = cells[c + 1], d = Math.hypot(x - ref[0], z - ref[1]);
     if (d >= bd) continue;
     for (var k = 0; k < 8; k++) {
       var an = k * Math.PI / 4, wx = x + Math.cos(an) * 1.6, wz = z + Math.sin(an) * 1.6;
-      if (worldLifeOk(life, 'swim', wx, wz, 0.1)) { bd = d; best = [x, z, wx, wz]; break; }
+      if (worldLifeOk(life, 'swim', wx, wz, 0.1) && (!waterId || _wlfSurfAt(life, 'swim', wx, wz) === waterId)) { bd = d; best = [x, z, wx, wz]; break; }
     }
   }
   return best;
+}
+/** Where the water birds that come to food are (the middle of the nearest few on that water), or null. */
+function _wlfBirdsAt(life, a, waterId) {
+  var pts = [];
+  for (var i = 0; i < life.agents.length; i++) {
+    var o = life.agents[i];
+    if (o.dead || !o.brain.react || !o.brain.react.feed || o.layer !== 'swim') continue;
+    if (waterId && _wlfSurfAt(life, 'swim', o.x, o.z) !== waterId) continue;
+    pts.push([Math.hypot(o.x - a.x, o.z - a.z), o.x, o.z]);
+  }
+  if (!pts.length) return null;
+  pts.sort(function (p, q) { return p[0] - q[0]; });
+  var n = Math.min(3, pts.length), x = 0, z = 0;
+  for (var j = 0; j < n; j++) { x += pts[j][1]; z += pts[j][2]; }
+  return [x / n, z / n];
 }
 function _wlfViewGoal(life, a, g, dt) {
   var tgt = g.view, p = null;
@@ -1225,16 +1328,19 @@ function _wlfFollowBrain(life, a, dt) {
 /** A loose group (ducks, geese, pigeons) or a pair (swans): each keeps its own states and drifts round the leader. */
 function _wlfLooseBrain(life, a, dt) {
   var L = a.leader, b = a.brain, R = b.group && b.group.kind === 'pair' ? 1.4 : 3.2;
+  var edge = _wlfInEdgeZone(life, a);
   if (a.st <= 0) { var st = b.states[a.bs]; _wlfEnter(life, a, st && st.next ? worldLifePick(a.rng, st.next) : b.start); }
   var far = Math.hypot(L.x - a.x, L.z - a.z);
   var stt = b.states[a.bs];
-  if (far > R * 2.2 && !(stt && stt.speed)) { var mv = b.states.swim ? 'swim' : b.states.walk ? 'walk' : b.start; _wlfEnter(life, a, mv); stt = b.states[a.bs]; }
+  // never dabbling or preening half out of the frame (C2): a member at an edge keeps swimming, in towards the group
+  if ((far > R * 2.2 || edge) && !(stt && stt.speed)) { var mv = b.states.swim ? 'swim' : b.states.walk ? 'walk' : b.start; _wlfEnter(life, a, mv); stt = b.states[a.bs]; }
   if (!stt || !stt.speed) return;
   if (!a.roam || life.t > a.roam.until) { var ang = a.rng() * Math.PI * 2, rr = R * (0.3 + 0.7 * a.rng()); a.roam = { dx: Math.cos(ang) * rr, dz: Math.sin(ang) * rr, until: life.t + 4 + a.rng() * 6 }; }
   var tx = L.x + a.roam.dx, tz = L.z + a.roam.dz;
-  if (!_wlfOk(life, a, tx, tz)) { tx = L.x; tz = L.z; }
+  if (!_wlfOk(life, a, tx, tz) || _wlfInEdgeZone(life, { layer: a.layer, x: tx, z: tz })) { tx = L.x; tz = L.z; a.roam = null; }
   var dx = tx - a.x, dz = tz - a.z, d = Math.hypot(dx, dz);
-  if (d < 0.3) { a.roam = null; _wlfEnter(life, a, _wlfStillState(a)); return; }
+  if (d < 0.3 && edge && !_wlfInEdgeZone(life, L)) { a.roam = null; return; }
+  if (d < 0.3) { a.roam = null; if (!edge) _wlfEnter(life, a, _wlfStillState(a)); else { var inX = a.x - Math.sign(a.x || 1) * 2; if (_wlfOk(life, a, inX, a.z)) a.dir = [-Math.sign(a.x || 1), 0]; } return; }
   if (d > 5 && !_wlfLine(life, a, a.x, a.z, tx, tz)) { if (_wlfPathTo(life, a, tx, tz) !== 'go') a.dir = null; }
   else a.dir = [dx / d, dz / d];
   if (far > R * 2) a.spd = Math.max(a.spd, (stt.speed[1] || 0.5) * 1.3);
@@ -1415,6 +1521,8 @@ function _wlfMove(life, a, dt) {
   var diff = _wlfAng(des - cur), maxd = Math.PI / b.turn * dt;
   if (diff > maxd) diff = maxd; else if (diff < -maxd) diff = -maxd;
   a.heading = _wlfAng(cur + diff);
+  // a hull never swings into a solid (its sides sweep as it turns): it keeps its heading until the turn is clear
+  if (a.kind === 'boat' && diff && _wlfKeelBad(life, a, a.x, a.z, a.heading) > _wlfKeelBad(life, a, a.x, a.z, cur)) a.heading = cur;
   var rem = Math.abs(_wlfAng(des - a.heading));
   var spd = dir ? want * Math.max(0, Math.cos(Math.min(rem, Math.PI / 2))) : 0;
   // ease the speed (M7: never instant)
@@ -1425,6 +1533,8 @@ function _wlfMove(life, a, dt) {
     var vx = Math.sin(a.heading) * a.v, vz = Math.cos(a.heading) * a.v;
     var np = typeof worldStep === 'function' ? worldStep(life.nav, a.layer, [a.x, a.z], [vx, vz], a.r, dt) : [a.x + vx * dt, a.z + vz * dt];
     if (np && _wlfOk(life, a, np[0], np[1])) { a.x = np[0]; a.z = np[1]; }
+    // held up or slid off the planned line: the steering point is planned again next tick (from where it really is)
+    if (a.route && a.route.tk != null && Math.hypot(a.x - ox, a.z - oz) < a.v * dt * 0.7) a.route.tk = -1;
   }
   // the dog stays within its lead (A7)
   if (a.lead && a.leader && !a.leader.dead) _wlfLeash(life, a);
@@ -1735,7 +1845,7 @@ function _wlfBusHandlers(life) {
     });
   });
   life.bus.on('feed', function (e) {
-    _wlfNear(life, e.x, e.z, e.r || 12, function (o) { if (o.brain.react && o.brain.react.feed && o.layer === 'swim' && !o.flee) { o.attract = { x: e.x, z: e.z, until: life.t + 3 }; o.route = null; } });
+    _wlfNear(life, e.x, e.z, e.r || 25, function (o) { if (o.brain.react && o.brain.react.feed && o.layer === 'swim' && !o.flee) { o.attract = { x: e.x, z: e.z, until: life.t + 3 }; o.route = null; } });
   });
   life.bus.on('arrive', function (e) {
     if (!e.stop) return;
@@ -1867,7 +1977,7 @@ function worldAgents(life) {
       heading: a.heading, facing: deg, speed: a.speed || 0, state: state, pose: pose, age: a.age, h: a.h, layer: a.layer,
       level: a.layer.indexOf('@') > 0 ? +a.layer.split('@')[1] : 0, host: a.host, group: a.group, lookAt: a.lookAt, view: a.view, mirror: a.mirror,
       born: a.born, leaving: a.leaving || false, alpha: alpha, clip: st.clip || a.clip, phase: a.phase, kind: a.kind, lead: a.lead, edge: a.edge,
-      outfit: a.outfit || null, breed: a.breed || null, gait: a.gait, len: a.len || null, framed: false });
+      outfit: a.outfit == null ? null : a.outfit, breed: a.breed || null, gait: a.gait, gaitName: a.gaitName || null, len: a.len || null, framed: false });
   }
   return out;
 }
@@ -1900,7 +2010,9 @@ function _wlfSysInit(world) {
   var life = function (world) { if (world && !world._wlfLife) _wlfSysInit(world); return world && world._wlfLife; };
   try {
     worldSystem({ id: 'life', phase: 'brain', rate: 15, budgetMs: 0.6, components: { read: ['transform', 'desc'], write: ['brain'] },
-      init: function (world) { _wlfSysInit(world); }, update: function (world, dt) { var L = life(world); if (L) _wlfPassBrain(L, dt); } });
+      init: function (world) { _wlfSysInit(world); }, update: function (world, dt) { var L = life(world); if (L) _wlfPassBrain(L, dt); },
+      // A1: a change of weather (or the hour band) re-reads the densities; nothing already out is removed
+      onEvent: { weather: function (world, e) { var L = life(world); if (L) worldLifeRetime(L, (e && e.ctx) || world.time || null); } } });
     worldSystem({ id: 'life-nav', phase: 'nav', rate: 15, budgetMs: 0.4, components: { read: ['brain', 'transform'], write: ['brain'] },
       update: function (world, dt) { var L = life(world); if (L) _wlfPassNav(L, dt); } });
     worldSystem({ id: 'life-move', phase: 'move', rate: 15, budgetMs: 0.5, components: { read: ['brain'], write: ['transform', 'agents'] },

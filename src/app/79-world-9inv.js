@@ -263,6 +263,13 @@ const _WIV_RULES = {
     const sol = _wivSolids(C);
     for (const e of C.statics) {
       if (e.backdrop || e.auto === 'backdrop') continue;
+      // an extruded line piece (coping, kerb, railing, wall, hedge) runs along an edge by construction: only one lying wholly
+      // in the water is off its habitat (its centroid may fall over the water on a curving bank)
+      if (e.prim === 'line') {
+        const f = _wivFootOf(e);
+        if (f && f.length && f.every(p => _wivIsWater(_wivSurfRaw(C, p[0], p[1])))) _wivPush(C, 'habitat', e.id, `${e.obj} (a line) lies wholly in the water`);
+        continue;
+      }
       const cls = _wivCls(e), info = _wivInfo(e.obj), host = _wivHostOf(e), att = String(e.attach || (info && info.attachOk && info.attachOk[0]) || 'ground');
       if (att.startsWith('air') || att.startsWith('wall') || att.startsWith('perch') || att.startsWith('lead')) continue;
       if (att.startsWith('deck')) {
@@ -339,6 +346,8 @@ const _WIV_RULES = {
       const walker = m.layer === 'walk' || m.layer === 'drive' || ((cls === 'person' || cls === 'dog' || cls === 'vehicle' || cls === 'cyclist') && m.layer !== 'swim' && m.layer !== 'wade');
       if (!walker || _wivHostOf(m)) continue;
       const s = _wivSurfaceAt(C, m.x, m.z);
+      // a body has width: feet within 0.2 m of a deck or a bank are standing on it (the walk grid is 0.5 m cells)
+      if (_wivIsWater(s) && [[0.2, 0], [-0.2, 0], [0, 0.2], [0, -0.2]].some(d => { const q = _wivSurfaceAt(C, m.x + d[0], m.z + d[1]); return q && !_wivIsWater(q); })) continue;
       if (_wivIsWater(s)) _wivPush(C, 'onWater', m.id, `${m.obj || cls} walks on the water (${s.id})`);
     }
   },
@@ -363,7 +372,13 @@ const _WIV_RULES = {
         wants = sink ? (e.static === false ? [lvl - sink, lvl] : [lvl - sink]) : [lvl]; what = 'the water';
       } else if (_wivIsWater(raw) || _wivNum(e.waterline)) { wants = [lvl, lvl - sink, g]; what = 'the water'; }
       else {
-        const s = e.static === false ? _wivSurfaceAt(C, e.x, e.z) : null;   // movers stand on decks; statics under a deck stand on the ground
+        // movers stand on decks; statics under a deck stand on the ground. A mover is judged at its own level (a walker on the
+        // towpath under a bridge stands on the ground, not on the deck above it): the surface at or below its height
+        let s = null;
+        if (e.static === false) {
+          if (C.world && typeof worldSurfaceAt === 'function') { try { s = worldSurfaceAt(C.world, e.x, e.z, { y: e.y }); } catch (err) { s = null; } }
+          else s = _wivSurfaceAt(C, e.x, e.z);
+        }
         wants = s && _wivNum(s.y) ? [s.y] : [g]; what = s && _wivNum(s.y) ? 'its deck' : 'the ground';
       }
       let best = wants[0];
@@ -434,6 +449,8 @@ const _WIV_RULES = {
       for (const p of pts) {
         const s = _wivWaterAt(C, p[0], p[1]);
         if (s && holes.some(h => (!h.surface || h.surface === s.id) && (_wivInPoly(h.poly, p[0], p[1]) || _wivPolyDist(h.poly, p[0], p[1]) < 0.02))) continue;
+        // a shadow that only touches the water's edge (within 2 cm: look's clip drops slivers that thin) is on the bank
+        if (s && Array.isArray(s.poly) && s.poly.length >= 3 && _wivPolyDist(s.poly, p[0], p[1]) > -0.02) continue;
         if (s && !cut.has(s.id) && !cut.has('water')) { _wivPush(C, 'shadowOnWater', e.id, `the shadow of ${e.obj || e.cls} falls on ${s.id}`); break; }
       }
     }
@@ -497,7 +514,15 @@ const _WIV_RULES = {
     for (const e of C.ents) {
       const cls = _wivCls(e);
       if (!cls || e.backdrop) continue;
-      const kb = _wivKb(e.obj), hr = kb && kb.size && Array.isArray(kb.size.h) ? kb.size.h : _WIV_SIZE[cls];
+      const kb = _wivKb(e.obj), S = kb && kb.size;
+      let hr = S && Array.isArray(S.h) ? S.h : _WIV_SIZE[cls];
+      // the range of its pose and age (K8): a seated adult is about 1.3 m to the head, a child 1.0-1.4 m
+      if (S) {
+        const pose = e.pose || (/^(sit|seated)/.test(String(e.state || '')) ? 'sit' : null), age = e.age || null;
+        if (age === 'child' && S.child && pose && Array.isArray(S.child[pose])) hr = S.child[pose];
+        else if (age === 'child' && S.ages && Array.isArray(S.ages.child) && (!pose || pose === 'stand' || pose === 'walk')) hr = S.ages.child;
+        else if (pose && S.poses && Array.isArray(S.poses[pose])) hr = S.poses[pose];
+      }
       const h = _wivNum(e.height) ? e.height : _wivNum(e.h) ? e.h : null;
       if (hr && h != null && (h > hr[1] * 1.15 || h < hr[0] / 1.15)) _wivPush(C, 'giant', e.id, `${e.obj || cls} is ${_wivR(h)} m tall; a ${cls} is ${hr[0]}-${hr[1]} m`);
       const b = _wivBox(e);
@@ -520,15 +545,32 @@ const _WIV_RULES = {
       }
       return false;
     };
-    const spawnOk = (e) => typeof C.o.isSpawn === 'function' && !!C.o.isSpawn(e);
+    // a newcomer may have walked on from its spawn cell since the last frame (sparse checks: 1 Hz in the matrix): try its track back
+    const dtp = _wivNum(prev.t) && _wivNum(C.t) ? Math.max(0, C.t - prev.t) : 0;
+    const spawnOk = (e) => {
+      if (typeof C.o.isSpawn !== 'function') return false;
+      if (C.o.isSpawn(e)) return true;
+      if (!(dtp > 0.25) || !_wivNum(e.vx) || !_wivNum(e.vz)) return false;
+      for (let k = 1; k <= 4; k++) { const f = dtp * k / 4; if (C.o.isSpawn(Object.assign({}, e, { x: e.x - e.vx * f, z: e.z - e.vz * f }))) return true; }
+      return false;
+    };
+    // ... and one that left may have gone on to its exit (a lane end, a door) and faded there since the last frame
+    const exitOk = (e) => {
+      if (typeof C.o.isSpawn !== 'function' || !(dtp > 0.25) || !_wivNum(e.vx) || !_wivNum(e.vz)) return false;
+      for (let k = 1; k <= 4; k++) { const f = dtp * k / 4; if (C.o.isSpawn(Object.assign({}, e, { x: e.x + e.vx * f, z: e.z + e.vz * f }))) return true; }
+      return false;
+    };
     for (const m of C.movers) {
       if (was.has(m.id) || m.layer === 'air' || _wivHostOf(m)) continue;
+      // a mover still fading in (life's visible spawn, A3) has not popped: it is appearing
+      if (_wivNum(m.alpha) && m.alpha < 0.95) continue;
       if (atEdge(m) || spawnOk(m) || covered(m, C.statics)) continue;
       _wivPush(C, 'popping', m.id, `${m.obj || m.cls} appeared mid-frame at (${_wivR(m.x)}, ${_wivR(m.z)})`);
     }
     for (const [id, m] of was) {
       if (C.byId.has(id) || m.layer === 'air' || _wivHostOf(m)) continue;
-      if (atEdge(m) || spawnOk(m) || covered(m, prev.ents)) continue;
+      if (_wivNum(m.alpha) && m.alpha < 0.95) continue;   // faded out before it left
+      if (atEdge(m) || spawnOk(m) || exitOk(m) || covered(m, prev.ents)) continue;
       _wivPush(C, 'popping', id, `${m.obj || m.cls} vanished mid-frame at (${_wivR(m.x)}, ${_wivR(m.z)})`);
     }
   },
@@ -568,9 +610,15 @@ const _WIV_RULES = {
       const b = V.indexOf(m.view);
       if (b < 0) continue;
       if (m.view !== 'side' || m.sideOnly === false) {
-        if (Math.abs(abs - b * 45) > 22.5 + 15 + 5 && !(m.view === 'side' && m.sideOnly)) _wivPush(C, 'facing', m.id, `${m.obj || m.cls} shows its ${m.view} moving ${Math.round(abs)} degrees off the line of sight`);
+        // an object that has no drawing of the wanted view shows its nearest drawn one (appearance's worldViewOf says so)
+        let nearestDrawn = false;
+        if (Math.abs(abs - b * 45) > 22.5 + 15 + 5 && typeof worldViewOf === 'function' && m.obj) {
+          try { const v = worldViewOf({ obj: m.obj, x: m.x, z: m.z, facing: Math.atan2(m.vx, m.vz) * _WIV_DEG }, null, { prev: m.view }); nearestDrawn = !!(v && v.missing && v.view === m.view); } catch (e) { nearestDrawn = false; }
+        }
+        if (!nearestDrawn && Math.abs(abs - b * 45) > 22.5 + 15 + 5 && !(m.view === 'side' && m.sideOnly)) _wivPush(C, 'facing', m.id, `${m.obj || m.cls} shows its ${m.view} moving ${Math.round(abs)} degrees off the line of sight`);
       }
-      if (abs > 20 && abs < 160 && typeof m.mirror === 'boolean' && m.mirror !== (ang < 0)) _wivPush(C, 'facing', m.id, `${m.obj || m.cls} faces ${m.mirror ? 'left' : 'right'} but moves ${ang < 0 ? 'left' : 'right'}`);
+      // front and back views are drawn unmirrored (they are symmetric): only the side and three-quarter views carry a mirror
+      if (m.view !== 'front' && m.view !== 'back' && abs > 20 && abs < 160 && typeof m.mirror === 'boolean' && m.mirror !== (ang < 0)) _wivPush(C, 'facing', m.id, `${m.obj || m.cls} faces ${m.mirror ? 'left' : 'right'} but moves ${ang < 0 ? 'left' : 'right'}`);
     }
   },
   laneDir(C) {
@@ -625,6 +673,7 @@ const _WIV_RULES = {
       if (sp <= 0.2) continue;
       const bad = _WIV_STILL_ANIM.has(String(a.state)) || !(a.rate > 0);
       if (!bad || (h && C.t - h.still < 0.65)) continue;   // M7: stop-to-walk eases
+      if (a.from && _wivNum(a.blend) && a.blend < 1 && a.from.state === 'move') continue;   // M7: walk-to-sit / walk-to-stop eases out
       _wivPush(C, 'stillMoving', m.id, `${m.obj || m.cls} moves at ${_wivR(sp)} m/s in '${a.state}' (rate ${_wivR(a.rate || 0)})`);
     }
   },
@@ -650,8 +699,20 @@ const _WIV_RULES = {
         const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
         if (seen.has(k)) continue;
         seen.add(k);
-        const dp = Math.abs(a.anim.period - b.anim.period) / a.anim.period, ph = Math.abs(((a.anim.phase - b.anim.phase) % 1 + 1.5) % 1 - 0.5);
-        if (dp < 0.015 && ph < 0.025) _wivPush(C, 'clones', a.id, `${a.obj || a.cls} ${a.id} and ${b.id} animate in step (period ${_wivR(a.anim.period)} s, phase ${_wivR(a.anim.phase)})`);
+        // in step = the same period AND the same place in the cycle now (anim.cyc, appearance's running cycle; the static
+        // phase offset only when the record has no cycle)
+        const pa = _wivNum(a.anim.cyc) && _wivNum(b.anim.cyc) ? a.anim.cyc : a.anim.phase, pb = _wivNum(a.anim.cyc) && _wivNum(b.anim.cyc) ? b.anim.cyc : b.anim.phase;
+        const dp = Math.abs(a.anim.period - b.anim.period) / a.anim.period, ph = Math.abs(((pa - pb) % 1 + 1.5) % 1 - 0.5);
+        // two cycles a hair apart in period drift through step now and then (a beat): only a pair that stays in step for 3 s is
+        // a clone (with a tracker; one frame without one)
+        let held = true;
+        if (C.track && C.track.cache && _wivNum(C.frame.t)) {
+          let since = C.track.cache.get('clones');
+          if (!since) { since = new Map(); C.track.cache.set('clones', since); }
+          if (dp < 0.015 && ph < 0.025) { if (!since.has(k)) since.set(k, C.frame.t); held = C.frame.t - since.get(k) >= 3; }
+          else { since.delete(k); held = false; }
+        }
+        if (held && dp < 0.015 && ph < 0.025) _wivPush(C, 'clones', a.id, `${a.obj || a.cls} ${a.id} and ${b.id} animate in step (period ${_wivR(a.anim.period)} s, phase ${_wivR(a.anim.phase)})`);
       }
     }
   },
@@ -687,7 +748,10 @@ const _WIV_RULES = {
         if (seen.has(k)) continue;
         seen.add(k);
         const aNear = _wivNearer(a, b);
-        if (aNear ? a.order < b.order : b.order < a.order) _wivPush(C, 'order', a.id, `${aNear ? a.id : b.id} is nearer than ${aNear ? b.id : a.id} but drawn first`);
+        // a static redrawn over this very mover (render's occluder redraw, clipped to the mover) counts as drawn after it
+        const oa = a.static !== false && Array.isArray(a.redrawFor) && a.redrawFor.includes(b.id) ? Infinity : a.order;
+        const ob = b.static !== false && Array.isArray(b.redrawFor) && b.redrawFor.includes(a.id) ? Infinity : b.order;
+        if (aNear ? oa < ob : ob < oa) _wivPush(C, 'order', a.id, `${aNear ? a.id : b.id} is nearer than ${aNear ? b.id : a.id} but drawn first`);
       }
     }
   },
@@ -769,6 +833,8 @@ const _WIV_RULES = {
 };
 /** a is nearer than b (drawn later): the footprint test of 2.3 rule 3; worldOrderNearer when the order module is loaded. */
 function _wivNearer(a, b) {
+  // one definition of "nearer" for the renderer and the checker: the order module's, when it is loaded
+  if (typeof worldOrderNearer === 'function') { try { return worldOrderNearer(a, b); } catch (e) { /* the checker's own below */ } }
   if (_wivHostOf(a) === b.id) return true;
   if (_wivHostOf(b) === a.id) return false;
   const fa = _wivFootOf(a) || [[a.x, a.z]], fb = _wivFootOf(b) || [[b.x, b.z]];

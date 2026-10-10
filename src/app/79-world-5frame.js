@@ -62,7 +62,7 @@ function _wfrPrimRec(prim, ent, vw) {
   let cx = 0, cz = 0;
   for (const p of foot) { cx += p[0]; cz += p[1]; }
   cx /= foot.length; cz /= foot.length;
-  const e = ent || { id: prim.id, obj: prim.obj || 'line.' + (prim.lineKind || prim.kind), cls: prim.kind, x: cx, z: cz, y: 0, static: true, solidity: prim.solidity || null, foot, height: prim.height || null };
+  const e = ent || { id: prim.id, obj: prim.obj || 'line.' + (prim.sub || prim.lineKind || prim.kind), cls: prim.kind === 'line' ? prim.sub || 'line' : prim.kind, x: cx, z: cz, y: 0, static: true, solidity: prim.solidity || null, foot, height: prim.height || null };
   const id = ent ? _wfrId(ent, prim.obj || 'hull') : String(prim.id != null ? prim.id : 'prim@' + cx.toFixed(2) + ',' + cz.toFixed(2));
   return { id, ent: e, prim, obj: e.obj, o: prim.obj || e.obj, v: Number.isInteger(prim.variant) ? prim.variant : 0, X: (b[0] + b[2]) / 2, Y: b[3], s: 1, flip: false,
     box: { x0: b[0], y0: b[1], x1: b[2], y1: b[3] }, x: Number.isFinite(e.x) ? e.x : cx, y: Number.isFinite(e.y) ? e.y : 0, z: Number.isFinite(e.z) ? e.z : cz, foot, height: prim.height || _wfrHeight(e),
@@ -116,7 +116,8 @@ function _wfrAgentFoot(a) {
   const info = typeof worldObjectInfo === 'function' ? worldObjectInfo(a.obj) : null;
   const L = info && info.size ? info.size.w : 0, D = info && info.size ? info.size.d : 0;
   if (!(L > 1.6)) return [[a.x, a.z]];
-  const sp = Math.hypot(a.vx || 0, a.vz || 0), hd = sp > 0.02 ? Math.atan2(a.vx, a.vz) : Number.isFinite(a.facing) ? a.facing * Math.PI / 180 : Number.isFinite(a.heading) ? a.heading : 0;
+  // a hull lies along its heading (a boat that slides sideways round an obstacle does not swing its hull with its velocity)
+  const sp = Math.hypot(a.vx || 0, a.vz || 0), hd = Number.isFinite(a.heading) ? a.heading : sp > 0.02 ? Math.atan2(a.vx, a.vz) : Number.isFinite(a.facing) ? a.facing * Math.PI / 180 : 0;
   const c = Math.cos(hd), s = Math.sin(hd), out = [];
   for (const [u, w] of [[-L / 2, -D / 2], [L / 2, -D / 2], [L / 2, D / 2], [-L / 2, D / 2]]) out.push([a.x + u * s + w * c, a.z + u * c - w * s]);
   return out;
@@ -124,7 +125,8 @@ function _wfrAgentFoot(a) {
 /** An agent as an entity record (the shape statics have: 1.2), from what the driver gives. */
 function _wfrAgentEnt(a) {
   const sp = Math.hypot(a.vx || 0, a.vz || 0);
-  const facing = sp > 0.02 ? Math.atan2(a.vx, a.vz) * 180 / Math.PI : Number.isFinite(a.facing) ? a.facing : Number.isFinite(a.heading) ? a.heading * 180 / Math.PI : 90;
+  const hull = a.len > 4 && Number.isFinite(a.heading);
+  const facing = hull ? a.heading * 180 / Math.PI : sp > 0.02 ? Math.atan2(a.vx, a.vz) * 180 / Math.PI : Number.isFinite(a.facing) ? a.facing : Number.isFinite(a.heading) ? a.heading * 180 / Math.PI : 90;
   return Object.assign({}, a, { id: a.id != null ? String(a.id) : null, static: false, facing, foot: _wfrAgentFoot(a), height: Number.isFinite(a.h) ? a.h : a.height,
     attach: a.attach || (a.host ? 'deck:' + a.host : a.layer === 'swim' ? 'water' : a.layer === 'air' ? 'air' : 'ground') });
 }
@@ -204,12 +206,29 @@ function _wfrRowsBetween(standZ, zNear, zFar) {
  * (plan.live, capped); the rest go into D's chunks. o: { season, nav, backdrop (false: none), cam, regions }.
  * -> { cam, recs, live, chunks, byId }
  */
+/**
+ * Is a static there at this moment (S1, V3, K6)? The knowledge base's state for the entity (worldKbState(kb, ctx, id).present):
+ * flowers out of their months, café tables in the rain, leaf litter in May are not drawn. Landmarks always are; without the
+ * knowledge base or a time context everything is. kb's fill reads this function (typeof) to place seasonal accents.
+ */
+function worldStaticPresent(e, ctx) {
+  if (!e || !ctx || typeof ctx !== 'object' || e.landmark || !e.obj || typeof worldKb !== 'function' || typeof worldKbState !== 'function') return true;
+  try { const kb = worldKb(e.obj); if (!kb) return true; const st = worldKbState(kb, ctx, e.id != null ? e.id : null); return !(st && st.present === false); } catch (err) { return true; }
+}
+/** The absent statics of a world at a time context, as a sorted id list and its key (plans and bakes are kept per key). */
+function _wfrAbsent(world, ctx) {
+  const ids = [];
+  if (ctx) for (const e of (world && world.entities) || []) if (e && e.static !== false && !worldStaticPresent(e, ctx)) ids.push(String(e.id));
+  ids.sort();
+  return { set: new Set(ids), key: ids.length ? _wfrHashStr(ids.join(',')) : '-' };
+}
 function worldFramePlan(world, o) {
   o = o || {};
   const cam = o.cam || (world && world.cam);
   const out = { cam, recs: [], live: [], chunks: [], byId: new Map() };
   if (!world || !cam) return out;
-  const ents = (world.entities || []).filter(e => e && e.static !== false && e.obj);
+  const absent = o.absent instanceof Set ? o.absent : o.ctx ? _wfrAbsent(world, o.ctx).set : null;
+  const ents = (world.entities || []).filter(e => e && e.static !== false && e.obj && !(absent && absent.has(String(e.id))));
   if (o.backdrop !== false && typeof worldBackdrop === 'function') {
     try { for (const b of worldBackdrop(world, cam, o.season || 'summer') || []) if (b && b.obj && Number.isFinite(b.x) && b.z > 0) ents.push(Object.assign({ static: true, backdrop: true }, b)); } catch (e) { /* no bands */ }
   }
@@ -281,7 +300,7 @@ function worldFrameScene(x, o) {
   const driver = typeof worldHostDriver === 'function' ? worldHostDriver(world, { ms: date != null ? date : undefined, deterministic: true }) : null;
   let regions = [];
   if (typeof worldWaterPlan === 'function' && world.cam) { try { regions = worldWaterPlan(world, world.cam) || []; } catch (e) { regions = []; } }
-  const plan = worldFramePlan(world, { season, nav: driver && driver.nav, regions });
+  const plan = worldFramePlan(world, { season, nav: driver && driver.nav, regions, ctx: date != null ? _wfrTimeCtx(world, date, { season }) : null });
   return { spec, world, cam: world.cam, season, date, driver, plan, regions, W: 1600, H: 900 };
 }
 function _wfrR3(v) { return Number.isFinite(v) ? Math.round(v * 1000) / 1000 : v; }
@@ -292,13 +311,14 @@ function _wfrPts(P) { return Array.isArray(P) ? P.map(q => [q[0], q[1]]) : null;
 function _wfrPlain(o) { if (o == null) return null; try { return JSON.parse(JSON.stringify(o)); } catch (e) { return null; } }
 /** The frame-record handle of a built world (kept on it, not enumerable): its plan, water regions, season and date. */
 function _wfrWorldScene(world, o) {
-  const season = o.season || world.season || 'summer', key = season + '|' + (world.nav ? 'n' : '-');
+  const season = o.season || world.season || 'summer', tctx = o.ctx || (world.time && Number.isFinite(world.time.ms) ? world.time : null);
+  const ab = _wfrAbsent(world, tctx), key = season + '|' + (world.nav ? 'n' : '-') + '|' + ab.key;
   let h = world.$wfr;
   if (h && h.key === key) return h;
   let regions = [];
   if (typeof worldWaterPlan === 'function') { try { regions = worldWaterPlan(world, world.cam) || []; } catch (e) { regions = []; } }
   const date = Number.isFinite(o.date) ? o.date : world.time && Number.isFinite(world.time.ms) ? world.time.ms : Number.isFinite(world.ms) ? world.ms : null;
-  h = { key, world, cam: world.cam, season, date, driver: null, plan: worldFramePlan(world, { season, nav: world.nav, regions }), regions, W: 1600, H: 900 };
+  h = { key, world, cam: world.cam, season, date, driver: null, plan: worldFramePlan(world, { season, nav: world.nav, regions, absent: ab.set }), regions, W: 1600, H: 900 };
   try { Object.defineProperty(world, '$wfr', { value: h, enumerable: false, configurable: true, writable: true }); } catch (e) { /* frozen: built again next time */ }
   return h;
 }
@@ -347,11 +367,15 @@ function worldFrameAt(scene, t, o) {
   }
   const movers = plan.live.concat(aRecs);
   const order = typeof worldFrameOrder === 'function' ? worldFrameOrder(plan.chunks, movers, null) : [];
-  const pos = new Map();
-  let p = 0;
+  scene._order = order;   // the last frame's draw list (tools and the debug overlay read it)
+  // draw positions: a static's own draw (its chunk), a mover's draw, and each occluder redraw with the mover it is clipped to
+  // (a redraw paints only over the mover just drawn, so it orders the static after THAT mover only)
+  const pos = new Map(), redrawn = new Map();
+  let p = 0, lastAgent = null;
   for (const it of order) {
     if (it.kind === 'chunk') for (const e of it.ref.ents || []) pos.set(e.id, p++);
-    else pos.set(it.ref.id, p++);
+    else if (it.kind === 'redraw') { const k = it.ref.id; if (!redrawn.has(k)) redrawn.set(k, []); if (lastAgent != null) redrawn.get(k).push(lastAgent); p++; if (!pos.has(k)) pos.set(k, p - 1); }
+    else { pos.set(it.ref.id, p++); lastAgent = it.ref.id; }
   }
   // look's fields (shadow, reflect) under the record's ids: an unnamed static is known by its object and place
   const asEnt = (r) => Object.assign({}, r.ent, { id: r.id });
@@ -376,14 +400,16 @@ function worldFrameAt(scene, t, o) {
       try { const s = worldSway(e, world, t); sway = s ? { dir: _wfrR3(s.dir), amp: _wfrR3(s.amp) } : null; } catch (err) { sway = null; }
     }
     const L = look ? look.get(r.id) : null, sh = L && L.shadow;
-    const shadow = sh ? { poly: _wfrPts(sh.poly), dir: sh.dir ? [_wfrR3(sh.dir[0]), _wfrR3(sh.dir[1])] : null } : null;
+    const shadow = sh ? { poly: _wfrPts(sh.poly), dir: sh.dir ? [_wfrR3(sh.dir[0]), _wfrR3(sh.dir[1])] : null, kind: sh.kind || null,
+      holes: Array.isArray(sh.holes) ? sh.holes.map(_wfrPts).filter(Boolean) : [] } : null;
     let reflect = L && L.reflect ? { surface: L.reflect.surface || null, rowY: _wfrR3(L.reflect.rowY) } : null;
     if (!reflect && !look && r.cut && r.cut.kind === 'row') reflect = { surface: null, rowY: _wfrR3(r.cut.row) };
     const sp = Math.hypot(e.vx || 0, e.vz || 0);
     return { id: r.id, cls: e.cls || null, obj: e.obj, static: !agent, auto: e.auto || null, landmark: !!e.landmark, framing: !!(e.framing || e.framed), x: r.x, y: r.y, z: r.z,
       facing: _wfrR3(Number(e.facing) || 0), foot: _wfrPts(r.foot), height: _wfrR3(r.height), layer: e.layer || null, host: e.host || null, parent: e.parent || null,
       view: r.view, mirror: !!r.mirror, box: _wfrBoxArr(r.box), order: pos.has(r.id) ? pos.get(r.id) : null, speed: agent ? _wfrR3(sp) : 0, vx: agent ? _wfrR3(e.vx || 0) : 0, vz: agent ? _wfrR3(e.vz || 0) : 0,
-      state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null };
+      state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null,
+      prim: r.prim ? r.prim.kind || null : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal };
   };
   const ents = plan.recs.map(r => one(r, false)).concat(aRecs.map(r => one(r, true)));
   let lights = [];
@@ -593,7 +619,7 @@ function _wfrScrPoly(cam, P, y) {
  * over the water (the surfaces after a water surface in the spec: a boardwalk, a deck, a towpath edge; later surfaces win).
  */
 function _wfrWet(world, cam, regions) {
-  const out = { water: [], over: [] };
+  const out = { water: [], over: [], decks: [] };
   if (!world || !cam || typeof sceneProject !== 'function') return out;
   const surfs = world.surfaces || [];
   if (Array.isArray(regions) && regions.length) { for (const R of regions) if (Array.isArray(R.clip) && R.clip.length >= 3) out.water.push(R.clip); }
@@ -603,9 +629,49 @@ function _wfrWet(world, cam, regions) {
     const s = surfs[i];
     if (!s || s.kind === 'water') continue;
     const P = _wfrSurfPoly(s), q = P && _wfrScrPoly(cam, P, Number.isFinite(s.y) ? s.y : null);
-    if (q) out.over.push(q);
+    if (q) { out.over.push(q); if (_WFR_DECK_KINDS.has(s.kind)) out.decks.push({ s, scr: q }); }
   }
   return out;
+}
+// walkable surfaces that lie over the water: the compositor draws their planks over its water (the v2 ground under the base
+// water would otherwise show the water's own colour through them: a pale, untextured slab, QP4)
+const _WFR_DECK_KINDS = new Set(['boardwalk', 'deck', 'bridge-deck', 'jetty', 'pontoon', 'platform']);
+const _WFR_DECK_COL = { boardwalk: '#7d7264', deck: '#7a6e60', 'bridge-deck': '#8c8478', jetty: '#766a5c', pontoon: '#6f6a62', platform: '#8a8478' };
+/** The decks over the water (scene units), each a timber fill coloured by the light and the weather, with its planks across. */
+function _wfrDrawDecks(ctx, env, S) {
+  const cam = S.rec.world.cam, vs = env.vs, ox = env.ox, oy = env.oy;
+  let n = 0;
+  ctx.save(); ctx.setTransform(vs, 0, 0, vs, ox, oy);
+  for (const D of (S.wet && S.wet.decks) || []) {
+    const s = D.s, hex = _WFR_DECK_COL[s.kind] || '#86694a', mat = s.kind === 'pontoon' || s.kind === 'platform' || s.kind === 'bridge-deck' ? 'stone' : 'timber';
+    let col = hex;
+    if (S.mat && S.mctx) { try { col = worldMaterialColour(mat, hex, S.mctx) || hex; } catch (e) { col = hex; } }
+    else if (env.L && env.L.dark > 0.5) col = '#2e2a26';
+    ctx.beginPath(); ctx.moveTo(D.scr[0][0], D.scr[0][1]); for (let i = 1; i < D.scr.length; i++) ctx.lineTo(D.scr[i][0], D.scr[i][1]); ctx.closePath();
+    ctx.fillStyle = col; ctx.globalAlpha = 1; ctx.fill();
+    // the planks: across a path every 0.3 m (they foreshorten by themselves), clipped to the deck
+    if (Array.isArray(s.path) && s.path.length >= 2 && typeof sceneProject === 'function') {
+      ctx.save(); ctx.clip();
+      ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 0.6;
+      const w = (Number(s.width) || 2) / 2, y = Number.isFinite(s.y) ? s.y : null;
+      ctx.beginPath();
+      for (let i = 1; i < s.path.length; i++) {
+        const a = s.path[i - 1], b = s.path[i], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1, nx = -dz / L * w, nz = dx / L * w;
+        for (let t = 0; t < L; t += 0.3) {
+          const cx = a[0] + dx * t / L, cz = a[1] + dz * t / L;
+          if (Math.min(cz - nz, cz + nz) < 0.5) continue;
+          const p = sceneProject(cam, cx - nx, cz - nz, y), q = sceneProject(cam, cx + nx, cz + nz, y);
+          if (Math.abs(p.Y - q.Y) + Math.abs(p.X - q.X) < 0.4) continue;
+          ctx.moveTo(p.X, p.Y); ctx.lineTo(q.X, q.Y);
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+    n++;
+  }
+  ctx.restore();
+  return n;
 }
 /** Clip a context (in scene units) to everything but these screen polygons (even-odd with a frame-sized rectangle). */
 function _wfrHoleClip(cx, polys) {
@@ -643,9 +709,10 @@ function* _wfrBakeJob(env, S) {
   S.wet = _wfrWet(world, cam, S.regions);
   yield;
   // 2. the plan: draw records and D's chunks (kept per world, season and nav: the camera does not move)
-  const pk = 'plan|' + S.season + '|' + (rec.driver && rec.driver.nav ? 'n' : '-');
+  const ab = _wfrAbsent(world, S.tctx && Number.isFinite(S.tctx.ms) ? S.tctx : null);
+  const pk = 'plan|' + S.season + '|' + (rec.driver && rec.driver.nav ? 'n' : '-') + '|' + ab.key;
   let plan = rec.frame.plan && rec.frame.planKey === pk ? rec.frame.plan : null;
-  if (!plan) { plan = worldFramePlan(world, { season: S.season, nav: rec.driver && rec.driver.nav, regions: S.regions }); rec.frame.plan = plan; rec.frame.planKey = pk; }
+  if (!plan) { plan = worldFramePlan(world, { season: S.season, nav: rec.driver && rec.driver.nav, regions: S.regions, absent: ab.set }); rec.frame.plan = plan; rec.frame.planKey = pk; }
   S.plan = plan;
   yield;
   // 3. the chunks: each its own bitmap, clipped to its box, integer-snapped, 1 px bleed
@@ -997,6 +1064,9 @@ function _wfrDraw(env, ctx, t) {
     try { draws += _wfrMirrorAgents(env, S, ctx, aRecs, tau); } catch (e) { S.agentMirrorOff = true; S.stats.errors.push('agentMirror: ' + (e && e.message)); }
   }
   if (world.water && typeof worldWaterDrawFx === 'function') { try { draws += worldWaterDrawFx(ctx, world, cam, { vs, ox, oy }) || 0; } catch (e) { /* none */ } }
+  // the decks over the water (boardwalks, jetties, platforms): planks over the water and its mirror, under everything that
+  // stands on them (shadows, chunks and movers come after)
+  if (S.wet && S.wet.decks && S.wet.decks.length) { try { draws += _wfrDrawDecks(ctx, env, S); } catch (e) { S.stats.errors.push('decks: ' + (e && e.message)); } }
   lap('mirror');
   // 2. the ground shadows of the statics, then the movers' shadows (look's plan per frame; else a contact blob)
   ctx.setTransform(1, 0, 0, 1, 0, 0);

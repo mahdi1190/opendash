@@ -156,7 +156,14 @@ function worldHostV2Data(spec, o) {
     if (!s || !s.id) continue;
     const geo = s.poly ? { poly: s.poly } : s.path ? { path: s.path, width: s.width || 2 } : null;
     if (!geo) continue;
-    if (s.kind === 'water') { data.water.push(Object.assign({ id: s.id, kind: WORLD_HOST_WATER_V2[s.water] || 'pond' }, geo)); continue; }
+    if (s.kind === 'water') {
+      // the bank by the place (P5): a town river, canal or dock is walled in stone (a quay face down to the water), a deep cut too;
+      // a country pond or river keeps its natural margin. A surface's own `edge` (geometry, allowed by the water lock) wins.
+      const wk = WORLD_HOST_WATER_V2[s.water] || 'pond', lvl = Number.isFinite(s.level) ? s.level : Number.isFinite(cam0.water) ? cam0.water : 0;
+      const edge = typeof s.edge === 'string' ? s.edge : wk === 'harbour' ? 'quay' : (urban && (wk === 'river' || wk === 'canal')) || (wk === 'river' && lvl <= -1) ? 'quay' : undefined;
+      data.water.push(Object.assign({ id: s.id, kind: wk }, edge ? { edge } : {}, geo));
+      continue;
+    }
     data.surfaces.push(Object.assign({ id: s.id, kind: WORLD_HOST_KIND_V2[s.kind] || 'grass' }, geo));
   }
   if (!statics) return data;

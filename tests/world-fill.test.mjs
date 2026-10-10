@@ -297,7 +297,15 @@ test('P7 the box measure (the critic measure): the richness tier lifts a bare wo
   assert.ok((world.log || []).some(l => l.rule === 'P7' && /richness tier/.test(l.reason)));
   // things that come and go (flowers, lilies, leaf litter) are placed only where the renderer hides them out of season
   const seasonalOf = w => w.entities.filter(e => { const k = W.worldKb(e.obj); return e.auto && k && k.when && (k.when.months || k.when.dates || k.when.weather); });
-  assert.deepEqual(seasonalOf(world).map(e => e.obj), [], 'no seasonal auto entities by default');
+  // the renderer (5frame) hides absent statics (worldStaticPresent), so the build places seasonal accents by default
+  assert.equal(typeof W.worldStaticPresent, 'function', 'the renderer hides absent statics');
+  assert.ok(seasonalOf(world).length > 0, 'seasonal accents by default when the renderer hides them out of season');
+  const w1 = bareWorld(W, waterOnly());
+  W.worldFill(w1, { seasonal: false });
+  assert.deepEqual(seasonalOf(w1).map(e => e.obj), [], 'none when switched off (o.seasonal: false)');
+  // and out of season they are not drawn: a January context hides the summer ones
+  const jan = { ms: Date.UTC(2026, 0, 15, 12), doy: 15, month: 0, hour: 12, weather: 'clear', lat: 51.3, dark: 0 };
+  assert.ok(seasonalOf(world).some(e => !W.worldStaticPresent(e, jan)), 'a summer accent is absent in January');
   const w2 = bareWorld(W, waterOnly());
   W.worldFill(w2, { seasonal: true });
   assert.ok(seasonalOf(w2).length > 0, 'seasonal accents when asked (o.seasonal or a renderer that hides them)');

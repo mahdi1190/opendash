@@ -16,7 +16,7 @@ const W = loadWorld(ROOT);
 const LOAD_MS = Date.now() - t0;
 const FIX = join(ROOT, 'tests', 'fixtures', 'world');
 const PLACE_RULES = ['badAttach', 'overlap', 'blocksPath', 'orphan', 'orient', 'gridRow'];
-const ACTIONS = ['strip', 'default', 'snap', 'move', 'rotate', 'reattach', 'drop', 'fill', 'dress', 'frame', 'jitter', 'migrate', 'flag', 'cull', 'warn'];
+const ACTIONS = ['strip', 'default', 'snap', 'move', 'rotate', 'reattach', 'drop', 'fill', 'dress', 'frame', 'jitter', 'migrate', 'flag', 'cull', 'warn', 'demote'];
 
 const good = () => ({ v: 3, place: { lat: 51.279, lon: -0.836, region: 'hampshire' }, camera: { eye: 1.65, fov: 62, horizon: 455, heading: 70 },
   surfaces: [

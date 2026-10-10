@@ -711,14 +711,28 @@ function _wflEdges(F) {
       const kerb = _wflOffsetLine(s.path, side * s.width / 2);
       if (E.kerb !== false) _wflLine(F, 'kerb', kerb, s.id);
       if (!E.pavement) continue;
-      const pave = _wflOffsetLine(s.path, side * (s.width / 2 + 1.1));
-      const free = pave.filter(q => { const pr = _wflProbe(F, q[0], q[1]); return !_WFL_WALK.has(pr.kind) && pr.kind !== 'water' && pr.kind !== 'road' && !_wflHits(F, q[0], q[1], 0.5, true); }).length;
-      if (free >= Math.max(2, Math.ceil(pave.length * 0.6)) && !(F.world.surfaces || []).some(q => q && q.id === s.id + '-pave' + (side < 0 ? 'L' : 'R'))) {
-        const ps = { id: s.id + '-pave' + (side < 0 ? 'L' : 'R'), kind: 'pavement', layer: 'walk', path: pave.map(q => [_wflR2(q[0]), _wflR2(q[1])]), width: 2.0, auto: 'edge' };
+      const pave = _wflOffsetLine(s.path, side * (s.width / 2 + 1.1)), base = s.id + '-pave' + (side < 0 ? 'L' : 'R');
+      if ((F.world.surfaces || []).some(q => q && typeof q.id === 'string' && q.id.startsWith(base))) continue;
+      // sampled every 0.75 m; a pavement is laid only where it is free: never through a solid (a building, a wall: whatever
+      // stands there was authored first and must not end up on an invented walking line), nor over water, roads or other walks.
+      // The free stretches of 8 m or more become pavements of their own.
+      const pts = [];
+      for (let i = 1; i < pave.length; i++) {
+        const a = pave[i - 1], b = pave[i], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.75));
+        for (let k = i === 1 ? 0 : 1; k <= n; k++) pts.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]);
+      }
+      const ok = (q) => { const pr = _wflProbe(F, q[0], q[1]); return !_WFL_WALK.has(pr.kind) && pr.kind !== 'water' && pr.kind !== 'road' && !_wflHits(F, q[0], q[1], 1.05, true); };
+      const runs = [];
+      let cur = [];
+      for (const q of pts) { if (ok(q)) cur.push(q); else { if (cur.length) runs.push(cur); cur = []; } }
+      if (cur.length) runs.push(cur);
+      const long = runs.filter(r => r.length >= 2 && _wflR2(r.reduce((L, q, i) => i ? L + Math.hypot(q[0] - r[i - 1][0], q[1] - r[i - 1][1]) : 0, 0)) >= 8);
+      long.forEach((r, k) => {
+        const ps = { id: base + (long.length > 1 ? '-' + (k + 1) : ''), kind: 'pavement', layer: 'walk', path: r.filter((q, i) => i % 4 === 0 || i === r.length - 1).map(q => [_wflR2(q[0]), _wflR2(q[1])]), width: 2.0, auto: 'edge' };
         F.world.surfaces.push(ps);
         F.ix = null; _wflIndexOf(F);
-        _wflLog(F, { id: ps.id, action: 'dress', rule: 'P5', reason: `a pavement beside road ${s.id}` });
-      }
+        _wflLog(F, { id: ps.id, action: 'dress', rule: 'P5', reason: `a pavement beside road ${s.id}${long.length > 1 || runs.length > 1 ? ' (only where it is free of solids, water and other walks)' : ''}` });
+      });
     }
   }
   // walls and fences get bases (tufts on the camera side); fields get hedgerows where no boundary runs

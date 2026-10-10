@@ -163,13 +163,33 @@ Nothing is placed through the ground or floating above it (invariant `floating`)
 
 ```
 load:   migrate (G11) -> repair (strip, log) -> camera resolve (Q1, Q7) -> build entities (desc, collider)
-        -> place (P1-P4, K3, K4, K7, K9) -> fill (P5-P8, C3, C6) -> frame and landmark checks (C1, C4)
+        -> place (P1-P4, K3, K4, K7, K9) -> frame check (C1: a wall in the lens's face goes first)
+        -> fill (P5-P8, C3, C6) -> frame and landmark checks (C1, C4; a landmark this camera cannot show is demoted)
         -> nav -> life init (deterministic warm-up) -> chunks (2.2) -> bake chunks (statics, shadows, lights, materials)
         -> bake the water mirror of the statics (2.5)
 tick:   the runner (11): time -> brain -> nav -> move -> anim -> attach -> fx (wind, particles, water) -> light -> render
-frame:  v2 base (sky, ground surfaces, base water, ripples) -> the world compositor (2.8): chunks and agents in
-        worldFrameOrder, occluder redraws, agent shadows, the water mirror of the agents, lights -> v2 weather on top
+frame:  v2 base (sky, ground surfaces, base water, ripples) -> the world compositor (2.8): water and its mirror, decks over
+        the water (boardwalks, jetties, platforms: planks, 2.8), chunks and agents in worldFrameOrder, occluder redraws,
+        agent shadows, the water mirror of the agents, lights -> v2 weather on top
 ```
+
+Integration rules (10 Oct, the integrator pass):
+- `worldBuild` runs the frame stage itself (appearance, typeof): `worldFrameCheck(apply)` before and after the fill and
+  `worldLandmarkCheck(apply, demote)` after it. `o.frame === false` skips it (tools that measure the raw spec, unit tests of
+  the checks). A landmark the camera cannot show (hidden by buildings, dwarfed, cropped) becomes scenery (`landmark: false`,
+  `landmarkDemoted`) with a `demote` log entry that names the camera fix; the critic lists it as a note.
+- `worldStaticPresent(e, ctx)` (render, 5frame): a static whose knowledge-base state says it is not there (flowers out of their
+  months, café tables in the rain) is neither drawn nor put in the frame record; the plan is kept per set of absent ids. The
+  fill places seasonal accents because this function exists.
+- "Nearer" has ONE definition, `worldOrderNearer` (3order), used by the compositor and by the checker. Depth ranges that do
+  not meet are ordered by depth; where they meet, a ground decal lies under anything upright and a walkable deck under a mover
+  standing on it; a mover inside a passable footprint compares with its anchor, except under an overhead span (a bridge's near
+  face is in front of whoever walks beneath it). An occluder redraw orders a static after the one mover it is clipped to
+  (frame record `redrawFor`).
+- Long hulls (boats under way) keep their whole length beyond the near band and their bow and stern clear of solids (life);
+  props (posts, bollards, benches, lamps, vehicles) get the near band of people and animals at load (sense), including the
+  depth where their foot leaves the frame's bottom edge.
+- A light's halo is half its reach with a radial falloff; a figure's `rim` part is its own catch-light, never a light source.
 
 ### 2.2 Static entities in depth-sorted chunks
 
@@ -697,7 +717,7 @@ an overhead span covers it. The knowledge base judges habitats and orientations 
 ### 12.5 The load log (U2)
 
 `world.log` (and `worldAddLog(id)` in the app): `[{ id, obj, action: 'strip' | 'default' | 'snap' | 'move' | 'rotate' |
-'reattach' | 'drop' | 'fill' | 'dress' | 'frame' | 'jitter' | 'migrate', rule, reason, from, to, by }]`, where `by` is the
+'reattach' | 'drop' | 'fill' | 'dress' | 'frame' | 'jitter' | 'migrate' | 'demote', rule, reason, from, to, by }]`, where `by` is the
 package that acted. `world validate --log` prints it. The adversarial fixtures (16.3) must explain every fix through it.
 
 ## 13. Animation state: things animate only when they should (M1-M8, A6)
@@ -867,6 +887,9 @@ water mirror lines, invariant violations, the per-system profile, and the scrubb
 ### 16.5 The acceptance suite (must pass before showing the user; X4)
 
 1. `node --test tests/world-*.test.mjs` all green (timing tests compare medians at 1.2x, so a loaded machine does not fail them).
+   The long runs (items 2 and 3, the V7 matrix) go through `tools/lib/world/cells.mjs`: one child process per cell, several at
+   once; a cell whose process dies (a native fault, seen at random on one development machine and not caused by the scene) is
+   run again and reported if it keeps dying.
 2. The invariant checker over the full loop at 3 dates x 5 times: zero violations.
 3. The adversarial scenes: all load and render, zero violations, a log for every fix.
 4. The test scenes (fleet-canal-2, fleet-pond-2, sheffield-kelham-1) are at least as rich as their originals (critic), have

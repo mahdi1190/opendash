@@ -1449,11 +1449,21 @@ function worldBuild(spec, o = {}) {
   if (o.place !== false && typeof worldPlace === 'function') {
     try { worldPlace(world); } catch (err) { _wcLogBuild(log, null, 'the placement solver: ' + String(err && err.message || err)); }
   }
+  // C1 first as well (appearance, typeof): a wall in the lens's face is moved or dropped BEFORE the fill dresses the view
+  // around it (the fill's framing and richness then see the real frame)
+  if (o.frame !== false && typeof worldFrameCheck === 'function') { try { worldFrameCheck(world, world.cam, { apply: true }); } catch (err) { _wcLogBuild(log, null, 'the frame check: ' + String(err && err.message || err)); } }
   if (o.fill !== false && typeof worldFill === 'function') {
     try {
       const before = world.log.length, r = worldFill(world, { fill: world.fill, ctx: o.ctx || null, season, style: world.style });
       if (Array.isArray(r) && world.log.length === before) for (const x of r) world.log.push(x);
     } catch (err) { _wcLogBuild(log, null, 'the fill: ' + String(err && err.message || err)); }
+  }
+  // the frame stage (pipeline 2.1; appearance, typeof): C1 nothing big cut by a frame edge, then C4 landmark faces cleared.
+  // Both log their own moves, turns and drops into world.log (by: 'appearance'). o.frame === false skips it (tools that
+  // measure the raw spec).
+  if (o.frame !== false) {
+    if (typeof worldFrameCheck === 'function') { try { worldFrameCheck(world, world.cam, { apply: true }); } catch (err) { _wcLogBuild(log, null, 'the frame check: ' + String(err && err.message || err)); } }
+    if (typeof worldLandmarkCheck === 'function') { try { worldLandmarkCheck(world, world.cam, { apply: true, demote: true, season }); } catch (err) { _wcLogBuild(log, null, 'the landmark check: ' + String(err && err.message || err)); } }
   }
   // one shape for every load-log entry, whoever acted (U2, 12.5)
   for (const l of world.log) if (l && typeof l === 'object') for (const k of ['id', 'obj', 'from', 'to']) if (!(k in l)) l[k] = null;

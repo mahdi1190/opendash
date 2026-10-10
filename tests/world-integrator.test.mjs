@@ -135,3 +135,67 @@ test('without the compositor the live data keeps its statics and the agents go t
   assert.ok(ids.includes('world-life'));
   assert.ok(!N.sceneRenderPasses('frameGroup', C).map(p => p.id).includes('world-frame'));
 });
+
+/* ---------- the integration pass (10 Oct): the packages end to end ---------- */
+const ADD = `
+(function () {
+  const spec = { v: 3, place: { lat: 51.29, lon: -0.82, style: 'canal-wooded' }, camera: { eye: 1.65, fov: 64, horizon: 468, heading: 200 },
+    surfaces: [{ id: 'cut', kind: 'water', water: 'canal', poly: [[-12, 1], [-3.5, 1], [-3.5, 260], [-12, 260]] }, { id: 'tow', kind: 'towpath', path: [[0, 1], [0, 260]], width: 2.6 }],
+    entities: [{ obj: 'boat.narrowboat', id: 'nb-near', at: [-7.5, 6], facing: 0, attach: 'water' }], life: [{ who: 'walkers', on: 'tow', rate: '4/min' }], backdrop: { style: 'canal-wooded' }, seed: 3 };
+  const meta = { id: 'integ-v3-1', label: 'Test canal (world)', site: 'a test canal', colour: 'green', mood: 'calm', intensity: 'subtle', priority: 1, theme: 'any',
+    region: ['GB-ENG'], tags: ['uk', 'test'], county: 'hampshire', ukRegion: 'south-east', ukKind: 'town', ukPlace: 'integ-canal', ukTown: 'Fleet', ukView: 'towpath', when: () => true };
+  globalThis.__integV = animRegisterPack({ id: 'integ-v3', name: 'Integration v3', version: '1.0.0', description: 'test', items: [worldItem(meta, spec)] });
+  const spec31 = Object.assign({}, spec, { v: 3.1, camera: undefined, cameras: [{ id: 'east', at: [0, -5], heading: 0, height: 1.65 }, { id: 'west', at: [-20, 120], heading: 180, height: 1.65 }] });
+  globalThis.__integItems = worldItems(Object.assign({}, meta, { id: 'integ-v31' }), spec31);
+})();`;
+const IX = loadR(ADD + "\n;globalThis.__ix = { animItem, worldBuild, worldAddLog, worldFrameAt, worldFrameScene, worldStaticPresent: typeof worldStaticPresent === 'function' ? worldStaticPresent : null, worldOrderNearer, worldKb: typeof worldKb === 'function' ? worldKb : null, v: globalThis.__integV, items: globalThis.__integItems };");
+const IXE = globalThis.__ix; delete globalThis.__ix;
+
+test('I1: a v3 item registers through animRegisterPack like any pack item (ref, county, ukPlace, ukView, when, still, load log)', () => {
+  assert.deepEqual(IXE.v, { ok: true, errors: [] });
+  const it = IXE.animItem('integ-v3/integ-v3-1');
+  assert.ok(it, 'in the animation registry by ref');
+  for (const [k, v] of Object.entries({ county: 'hampshire', ukPlace: 'integ-canal', ukView: 'towpath', composed: true, world: 3 })) assert.equal(it[k], v, k);
+  assert.equal(typeof it.when, 'function');
+  const d = R.sceneData(it);
+  assert.equal(d.v, 2, 'its scene is the derived v2 data (prebake, bake cache and restart clock work as for any composed item)');
+  assert.ok(d.world3, 'and it knows its world');
+  assert.ok(it.svg({ season: 'summer' }).length > 1000, 'the still (tiles, reduced motion) is not empty');
+  const log = IXE.worldAddLog('integ-v3-1');
+  assert.ok(log.some(l => l.id === 'nb-near' && l.rule === 'C1' && l.by === 'appearance'), 'the load log names the frame fix of the near boat');
+  // Q7: one item per camera, each with its own view
+  assert.deepEqual(IXE.items.map(i => i.id), ['integ-v31-east', 'integ-v31-west']);
+  assert.deepEqual(IXE.items.map(i => i.ukView), ['towpath-east', 'towpath-west']);
+});
+
+test('the load path runs the frame stage: C1 before and after the fill, C4 with demotion of a landmark this camera cannot show', () => {
+  const spec = { v: 3, place: { lat: 51.29, lon: -0.82 }, camera: { eye: 1.65, fov: 64, horizon: 468, heading: 0 },
+    surfaces: [{ id: 'yard', kind: 'grass', poly: [[-200, 1], [200, 1], [200, 400], [-200, 400]] }],
+    entities: [{ obj: 'building.terrace', id: 'wall', at: [0, 3], facing: 0 }, { obj: 'building.mill-red-brick', at: [-3, 70], facing: 0, id: 'mill' }],
+    landmarks: [{ obj: 'structure.bridge-brick', at: [-8, 200], facing: 90, id: 'lm', src: 'test' }], backdrop: { style: 'farmland' }, seed: 1 };
+  const w = IXE.worldBuild(spec, {});
+  assert.ok(w.log.some(l => l.id === 'wall' && l.rule === 'C1' && (l.action === 'drop' || l.action === 'move')), 'a wall in the lens\'s face is moved or dropped');
+  const lm = w.entities.find(e => e.id === 'lm');
+  assert.ok(lm && lm.landmark === false && lm.landmarkDemoted, 'the hidden landmark stays as scenery');
+  assert.ok(w.log.some(l => l.action === 'demote' && l.rule === 'C4' && /Fix:/.test(l.reason)), 'and the log tells the author how to fix the camera');
+  const raw = IXE.worldBuild(spec, { frame: false });
+  assert.ok(raw.entities.some(e => e.id === 'wall') && raw.entities.find(e => e.id === 'lm').landmark, 'frame: false skips the stage');
+});
+
+test('the frame record: absent statics are not drawn (S1, V3), shadows carry their water holes (L2), flat things lie under movers (R1)', () => {
+  assert.equal(typeof IXE.worldStaticPresent, 'function');
+  const sc = IXE.worldFrameScene(R.worldHostSpec(itemOf(R, 'world-test', 'fleet-canal-2-w3')), { date: Date.UTC(2026, 0, 15, 12) });
+  const f = IXE.worldFrameAt(sc, 2);
+  const jan = Object.assign({ ms: Date.UTC(2026, 0, 15, 12) }, f.ctx);
+  for (const e of f.ents) if (e.static && e.obj && !e.landmark) assert.ok(IXE.worldStaticPresent(Object.assign({}, e), jan), `${e.obj} drawn in January`);
+  assert.ok(f.ents.some(e => e.shadow && Array.isArray(e.shadow.holes)), 'shadows carry holes');
+  // a walker on a boardwalk is drawn after the boardwalk; a decal under anything standing
+  const deck = { id: 'bw', obj: 'structure.boardwalk', static: true, x: 0, z: 20, foot: [[-1, 10], [1, 10], [1, 30], [-1, 30]], height: 0.4, solidity: 'walkable' };
+  const walker = { id: 'p', obj: 'person.walker', static: false, x: 0, z: 20, foot: [[0, 20]] };
+  assert.equal(IXE.worldOrderNearer(walker, deck), true);
+  const litter = { id: 'lit', obj: 'ground.leaf-litter', static: true, x: 0, z: 20, foot: [[-1, 19], [1, 19], [1, 21], [-1, 21]], height: 0.02, decal: true };
+  assert.equal(IXE.worldOrderNearer(walker, litter), true);
+  // strictly nearer things stay nearer, flat or not
+  const nearKerb = { id: 'k', obj: 'line.kerb', static: true, x: 0, z: 5, foot: [[-1, 4], [1, 4], [1, 6], [-1, 6]], height: 0.12 };
+  assert.equal(IXE.worldOrderNearer(walker, nearKerb), false);
+});
