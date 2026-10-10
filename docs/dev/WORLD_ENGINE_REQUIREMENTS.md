@@ -360,3 +360,15 @@ The author never thinks about perspective. They describe the world in metres and
 - Z1 Render: the targets in F1-F2 hold for every test scene and at the matrix extremes (snowy night with many lights).
 - Z2 Authoring: a new place (one world plus 4 cameras) should take an agent under 30 minutes to a first good render, with
   no glitch rounds. Measure and report it for each test scene.
+
+## 24. Visual quality parity (the user, 10 Oct: the first v3 renders are "significantly worse")
+
+- QP1 The acceptance bar is VISUAL, not a score: each v3 test scene must look at least as good as its original (and the
+  gold proof Fleet Pond) to a fresh reviewer at the same date and time. Richness numbers are only a guide.
+- QP2 v3 must reuse the existing high-quality library art: hero trees, boughs, reeds, boats, buildings, landmarks,
+  people. It must not swap in simpler stand-ins. Converted scenes keep every hero object of the source.
+- QP3 Composition carries over: camera, framing foreground, leading line, landmark placement and depth layering match the
+  source within a small tolerance (`world compare` overlays both).
+- QP4 No untextured or unlit surfaces (flat white or flat colour bands), no missing materials, and night keeps every
+  structure readable.
+- QP5 Stills must show life: the simulation is pre-warmed so populations are on screen at t = 0.
