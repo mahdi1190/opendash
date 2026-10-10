@@ -103,7 +103,7 @@ const _scYc = (function () {
       for (let i = 0; i < n; i++) {
         const x = pond.x0 - 30 + (i + r() * 0.8) * (pond.x1 - pond.x0 + 60) / n, y = pond.y0 - 34 + r() * 30;
         const obj = ids[i % ids.length];   // the mid carpet's and the tinted drifts' variants, so the bank adds no new sprites
-        out.push({ obj, x: R(x), y: R(y), s: Math.round((s[0] + r() * (s[1] - s[0])) * (0.8 + (y - pond.y0 + 34) / 30 * 0.4) * 100) / 100, layer, variant: obj === 'plant.reed' ? i % 2 : i % 2 ? 1 : 3, flip: r() < 0.5, seed: seed + i, anim: false, reflect: true, tint: i % 2 && obj !== 'plant.reed' ? ['#8a7a40', 0.08] : null });
+        out.push({ obj, x: R(x), y: R(y), s: Math.round((s[0] + r() * (s[1] - s[0])) * (0.8 + (y - pond.y0 + 34) / 30 * 0.4) * 100) / 100, layer, variant: obj === 'plant.reed' ? i % 2 : i % 2 ? 1 : 3, flip: r() < 0.5, seed: seed + i, anim: false, tint: i % 2 && obj !== 'plant.reed' ? ['#8a7a40', 0.08] : null });
       }
       return out;
     },

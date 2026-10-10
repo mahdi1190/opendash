@@ -71,12 +71,12 @@ function sceneUkFleetPondV3() {
       { id: 'path', kind: 'path', path, width: 1.1 },
       { id: 'walk', kind: 'bridge', path: walk, width: 1.4 },
     ],
-    water: [{ id: 'pond', kind: 'lake', poly: pond, edge: 'natural', ripple: 0.25, mirror: 0.75 },
+    water: [{ id: 'pond', kind: 'lake', poly: pond, edge: 'natural' },
       // (round 2) a scrape in the near reedbed below the brow, open water among the reeds (the reserve keeps such pools open)
-      { id: 'scrape', kind: 'pond', poly: F.loop([[-23, 36], [-15, 34.5], [-8.5, 36.5], [-7.5, 40.5], [-11, 44.5], [-19, 46], [-25, 42]], 1.5, 1.4, 45), edge: 'natural', ripple: 0.12, mirror: 0.8, rings: true },
-      { id: 'chan-a', kind: 'pond', poly: chanA, edge: 'natural', ripple: 0.15, mirror: 0.8 },
-      { id: 'chan-b', kind: 'pond', poly: chanB, edge: 'natural', ripple: 0.15, mirror: 0.8 },
-      { id: 'mere', kind: 'pond', poly: mere, edge: 'natural', ripple: 0.15, mirror: 0.8, rings: true }],
+      { id: 'scrape', kind: 'pond', poly: F.loop([[-23, 36], [-15, 34.5], [-8.5, 36.5], [-7.5, 40.5], [-11, 44.5], [-19, 46], [-25, 42]], 1.5, 1.4, 45), edge: 'natural', rings: true },
+      { id: 'chan-a', kind: 'pond', poly: chanA, edge: 'natural' },
+      { id: 'chan-b', kind: 'pond', poly: chanB, edge: 'natural' },
+      { id: 'mere', kind: 'pond', poly: mere, edge: 'natural', rings: true }],
     place: [], scatter: [], actors: [], flocks: [],
   };
   const Pl = data.place, S = data.scatter, A = data.actors;

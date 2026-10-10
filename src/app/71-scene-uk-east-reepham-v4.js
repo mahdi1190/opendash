@@ -10,17 +10,17 @@ function sceneUkReephamV4() {
     {id:'siding',kind:'rail',path:[[-6,15],[-6,30],[-12,65],[-14,100]],width:3},
     {id:'platform',kind:'platform',poly:[[-.6,4],[7,4],[17,75],[-2,110],[-4,100],[0,35]]}];
   D.camera.horizon=475;
-  D.camera.eye=2.2;
-  R.raised(D,D.surfaces.find(s=>s.id==='platform').poly,.55);
+  // Keep the platform on the engine's level ground: a relief boundary here
+  // exposes a sky-coloured gap at the lower screen edge in the current engine.
   D.place.push({obj:'rail.rph-whitwell',at:[-6,23],subject:true,anim:false,face:'away'},
     {obj:'street.bench',at:[5,21],flip:true},{obj:'street.lamp',at:[7.8,31],variant:0},
-    {obj:'plant.planter',at:[5.8,8],variant:2},
+    {obj:'plant.rph-flower-tub',at:[5.8,8],variant:2},
     {obj:'street.rph-rail-lantern',at:[4.3,6.8],anim:false},
     {obj:'street.rph-platform-fence',at:[9,13],anim:false},
     {obj:'street.rph-platform-fence',at:[10,24],anim:false},
-    {obj:'tree.pool-oak',at:[-15,23],variant:1},{obj:'tree.pool-birch',at:[17,28],variant:2},
+    {obj:'tree.rph-canal-oak',at:[-15,23],variant:1},{obj:'tree.pool-birch',at:[17,28],variant:2},
     {obj:'tree.rph-bank-oak',at:[26,70],variant:0},{obj:'tree.rph-bank-oak',at:[-29,87],variant:1});
-  R.woodland(D,'grass',93811,[170,500],36);
+  R.woodland(D,'grass',93811,[65,220],58);
   R.plants(D,'grass',95257,610,[4.8,40]);
   // The platform is broad enough for visitors to pass safely, well clear of stock.
   D.actors.push(...sceneBehave.pair(D,{obj:'person.walker',preset:'chat',route:[[3,16],[3.2,20],[3.6,25]],seed:97303,offset:.2}),

@@ -217,7 +217,7 @@ function sceneUkWyndhamsPoolWide() {
       { layer: 'front', d: 'M1760 726Q1630 736 1530 790Q1446 836 1398 878Q1370 898 1360 912H1760Z', fill: { lin: [[0, '@near.0'], [1, '@mud.1']], x1: 0, y1: 726, x2: 0, y2: 912 } },
     ],
     water: [
-      { layer: 'mid', d: `M-160 ${WL + 4}Q260 ${WL - 2} 700 ${WL + 6}T1760 ${WL + 2}V804Q1300 810 640 814Q240 798 -160 820Z`, y0: WL + 2, y1: 860, base: ['#7c9a8c', '#3a5e56', '#1c3a36'], reflect: true, shimmer: 36, lightPath: true },
+      { layer: 'mid', kind: 'pond', d: `M-160 ${WL + 4}Q260 ${WL - 2} 700 ${WL + 6}T1760 ${WL + 2}V804Q1300 810 640 814Q240 798 -160 820Z`, y0: WL + 2, y1: 860 },
     ],
     place: [
       // the pool's signature: the tall veteran Scots pine leaning out from the spit
@@ -317,6 +317,7 @@ function sceneUkWyndhamsPoolWide() {
       { obj: 'bird.small-flight', n: 5, area: [200, 140, 1300, 320], speed: 34, s: 0.5, seed: 81, layer: 'far' },
       { obj: 'bird.goose-flight', n: 5, area: [500, 90, 1500, 220], speed: 26, s: 0.32, seed: 82, layer: 'far' },
     ],
+    fx: { water: 2 },   // (lock, 10 Oct) the engine's water pass draws the pond and every reflection
     particles: 'season',
     weather: 'live',
   };

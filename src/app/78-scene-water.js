@@ -38,7 +38,7 @@ const SCENE_WATER_KINDS = Object.freeze({
   puddle: { base: ['#6a7480', '#4a5560', '#2a3540'], clarity: 0, mirror: 0.9, ripple: 0.05, edge: 'none' },
 });
 const SCENE_WATER_RINGS_MAX = 16, SCENE_WATER_BANDS_REGION = 90, SCENE_WATER_BANDS_SCENE = 160, SCENE_WATER_MIRRORED_MAX = 600, SCENE_WATER_GLINTS = 30;
-const _scwaSprites = new Map();
+const _scwaSprites = new Map(), SCENE_WATER_BED = '#4a4030';
 
 /** The defaults of a kind of water (5.1). */
 function sceneWaterDefaults(kind) { return SCENE_WATER_KINDS[kind] || SCENE_WATER_KINDS.lake; }
@@ -48,20 +48,23 @@ function sceneWaterDefaults(kind) { return SCENE_WATER_KINDS[kind] || SCENE_WATE
  * bed, glint, rings, wakes, flow, dNear, dFar, polyM, edges, foam, calm(wind) }
  */
 function sceneWaterPlanOf(w, C, cam) {
-  const v = w.v2, kind = (v && v.kind) || 'lake', def = sceneWaterDefaults(kind), num = (x, d) => (Number.isFinite(x) ? x : d);
+  const v = w.v2, kind = (v && v.kind) || w.kind || 'pond', def = sceneWaterDefaults(kind), num = (x, d) => (Number.isFinite(x) ? x : d);
+  const hint = (v && v.hint) || w.hint || null;
   const box = scenePathBox(w.d) || [-160, w.y0 || 0, 1760, w.y1 || 900];
   const y0 = num(w.y0, box[1]), y1 = num(w.y1, box[3]);
   const level = v && Number.isFinite(v.level) ? v.level : cam.water || 0;
   const dNear = v && Number.isFinite(v.dNear) ? v.dNear : sceneCamDepthAt(cam, y1, level), dFar = v && Number.isFinite(v.dFar) ? v.dFar : sceneCamDepthAt(cam, y0, level);
   return {
     legacy: !v, kind, layer: w.layer, y0, y1, box, level,
-    base: (v && v.base) || w.base || def.base,
-    mirror: v ? num(v.mirror, def.mirror) : (w.reflect ? 0.6 : 0.3), ripple: v ? num(v.ripple, def.ripple) : 0.2,
-    clarity: v ? num(v.clarity, def.clarity) : 0.08, bed: (v && v.bed) || '#4a4030',
-    glint: v ? v.glint !== false : !!w.lightPath, rings: v ? v.rings !== false : true, wakes: v ? v.wakes !== false : true,
+    // (lock, 10 Oct: the user: "lighting and reflections should be set in stone, the engine handles that") the colour, mirror,
+    // ripple, clarity, bed and glitter come from the KIND only; a scene's own base / mirror / ripple / clarity / bed / glint /
+    // reflect / shimmer / lightPath are ignored. The one hint a region may give: hint 'calm' (half the ripple) or 'breezy'.
+    base: def.base, mirror: def.mirror, ripple: def.ripple * (hint === 'calm' ? 0.5 : hint === 'breezy' ? 1.6 : 1),
+    clarity: def.clarity, bed: SCENE_WATER_BED,
+    glint: true, rings: v ? v.rings !== false : false, wakes: v ? v.wakes !== false : true,
     flow: v && Array.isArray(v.flow) ? v.flow : [0, 0], dNear: Math.max(0.5, dNear), dFar: Math.max(dNear, Number.isFinite(dFar) ? dFar : 20000),
     polyM: v && Array.isArray(v.polyM) ? v.polyM : null, edges: v && Array.isArray(v.edges) ? v.edges : [], foam: v ? v.foam : 'none',
-    calm: (wind) => (v ? num(v.ripple, def.ripple) : 0.2) * (wind == null ? 1 : wind) < 0.05,
+    calm: (wind) => def.ripple * (hint === 'calm' ? 0.5 : hint === 'breezy' ? 1.6 : 1) * (wind == null ? 1 : wind) < 0.05,
   };
 }
 /** The glitter road's strokes (pure, seeded): [{ x, y, len, g }] in scene units, narrow at the far edge and wide near. */
@@ -266,6 +269,34 @@ function _scwaFarRows(R, cam, vs, ox, oy) {
   }
   return out.length > 400 ? fallback : out;
 }
+/** A v1 region's top (its far edge) at scene x: the first row inside the region in that column (cached per 4 units), else y0. */
+function _scwaLegacyTop(R, x) {
+  const m = R.topMemo || (R.topMemo = new Map()), k = Math.round(x / 4);
+  if (m.has(k)) return m.get(k);
+  let top = R.y0;
+  const X = k * 4;
+  if (X >= R.box[0] && X <= R.box[2]) {
+    for (let y = Math.floor(R.box[1]); y <= R.box[3]; y += 1) if (_scwaHit(R, X, y + 0.5)) { top = y; break; }
+  }
+  m.set(k, top);
+  return top;
+}
+/** A v1 region's mirror strips ([xa, xb, Yf] device px): each 8 px column flipped about the region's own far edge above it. */
+function _scwaLegacyRows(R, vs, ox, oy) {
+  const out = [], step = 8;
+  for (let xa = R.db[0]; xa < R.db[2]; xa += step) {
+    const xb = Math.min(R.db[2], xa + step), y = Math.round((_scwaLegacyTop(R, ((xa + xb) / 2 - ox) / vs) * vs + oy) * 2) / 2, last = out[out.length - 1];
+    if (last && Math.abs(last[2] - y) < 0.75) last[1] = xb; else out.push([xa, xb, y]);
+  }
+  return out.length > 400 ? [[R.db[0], R.db[2], R.y0 * vs + oy]] : out;
+}
+/** The object units a floater sinks below its waterline (the canvas's own _sccSinkOf: one rule for the hull and its mirror). */
+function _scwaSinkU(C, o, X, Y, d, cls) {
+  if (!o || !C || typeof _sccSinkOf !== 'function') return 0;
+  const c = cls || (typeof sceneObjClassOf === 'function' ? sceneObjClassOf(o) : null);
+  if (c !== 'boat' && c !== 'bird-water') return 0;
+  try { return _sccSinkOf(C, o, X, Y, d) || 0; } catch (e) { return 0; }
+}
 /** Bake one region into its layer: base, reflection (calm: into the layer; rippling: kept for the frames), edges. */
 function _scwaBake(env, R, gx) {
   const { vs, ox, oy, cam, L } = env, grp = env.grp, TG = env.TG, C = env.C;
@@ -288,7 +319,7 @@ function _scwaBake(env, R, gx) {
   if (env.out.sky) { rc.setTransform(1, 0, 0, -1, -R.db[0], 2 * Yh - R.db[1]); rc.drawImage(env.out.sky, 0, 0); }
   // farther bitmaps (and what this group holds so far: the far bank), flipped about the waterline of the far edge above each
   // column strip (a canal that turns across the view mirrors its own far bank, not the far end's)
-  const strips = R.legacy ? [[R.db[0], R.db[2], R.y0 * vs + oy]] : _scwaFarRows(R, cam, vs, ox, oy);
+  const strips = R.legacy ? _scwaLegacyRows(R, vs, ox, oy) : _scwaFarRows(R, cam, vs, ox, oy);
   rc.setTransform(1, 0, 0, 1, 0, 0);
   for (const [xa, xb, Yf] of strips) {
     // only the source rows that land in the water: [2 Yf - bottom, Yf], cut to each bitmap (one drawImage per bitmap and run)
@@ -316,7 +347,15 @@ function _scwaBake(env, R, gx) {
   for (let i = 0; i < C.items.length; i++) {
     const it = C.items[i];
     if (it.layer < R.layer || (it.direct && !it.direct.shapes)) continue;
-    if (R.legacy) { if (it.layer === R.layer && it.reflect && it.y <= R.y0 + 8) cand.push({ it, i, d: 0, Ym: 2 * R.y0 - it.y }); continue; }
+    if (R.legacy) {
+      // (lock, 10 Oct) v1: no reflect flags. What stands IN the water (a heron, a snag, a post, a boat, reeds) mirrors about its
+      // own foot, whatever its layer; what stands on this layer's far bank mirrors about the bank's edge above it (the region's
+      // top in its column, so a curving bank is matched, not one level row)
+      if (_scwaHit(R, it.x, it.y - 0.5)) { cand.push({ it, i, d: 0, Ym: it.y }); continue; }
+      const top = _scwaLegacyTop(R, it.x);
+      if (it.layer === R.layer && it.y <= top + 8) cand.push({ it, i, d: 0, Ym: it.y <= top ? 2 * top - it.y : it.y });
+      continue;
+    }
     const d = Number.isFinite(it.dz) ? it.dz : sceneCamDepthAt(cam, it.y);
     if (!(d > R.dNear * 0.98) || !Number.isFinite(d)) continue;
     const cls = it.cls || sceneObjClassOf(it.o), floating = cls === 'boat' || cls === 'bird-water' || (it.g && it.g.surf && /water|canal|river|pond|lake|sea/.test(it.g.surf));
@@ -340,6 +379,7 @@ function _scwaBake(env, R, gx) {
   cand.sort((a, b) => a.i - b.i);
   R.mirrored = cand.length;
   const bucket = (s) => (typeof sceneScaleBucket === 'function' ? sceneScaleBucket(s) : s), night = !!(L && L.windows);
+  const floatSlope = (it) => { const def = typeof sceneObj === 'function' ? sceneObj(it.o) : null; if (!def || typeof def.waterSlope !== 'function') return null; const t = def.waterSlope(it.v); return Number.isFinite(t) ? t : null; };
   for (const { it, i, Ym } of cand) {
     if (it.direct) {
       // a projected building: its fills, flipped about its own waterline (its foot row to Ym)
@@ -351,13 +391,22 @@ function _scwaBake(env, R, gx) {
     }
     const sp = env.itemSprite ? env.itemSprite(i) : env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: '*', haze: it.haze || 0, tint: it.tint, scale: bucket(it.s) * vs, flip: it.flip, cls: it.cls, i }));
     if (!sp || !sp.c) continue;
-    const M = env.placeM(it.x, Ym, it.s, it.flip), MR = toR([M[0], 0, 0, -M[3], M[4], M[5]]);
+    // (lock, 10 Oct) a floater is drawn its sink lower and clipped at its waterline (78-scene-canvas.js): its reflection is the
+    // mirror of the SAME visible part (the art above -sink), starting exactly at the waterline row, never the submerged hull
+    // a perspective floater (a canal boat drawn in the camera's projection) declares its waterline's screen slope and draws
+    // its own waterline: it mirrors about that sloped line through its anchor (a shear), with no sink
+    const wsl = floatSlope(it);
+    const sinkU = wsl == null ? _scwaSinkU(C, it.o, it.x, it.y, it.g && it.g.d, it.cls) : 0;
+    const M = env.placeM(it.x, Ym, it.s, it.flip), MR = toR([M[0], wsl ? 2 * wsl * M[0] : 0, 0, -M[3], M[4], M[5] - M[3] * sinkU]);
+    rc.save();
+    if (sinkU) { rc.setTransform(1, 0, 0, 1, 0, 0); rc.beginPath(); rc.rect(0, Ym * vs + oy - R.db[1], R.bw, R.bh); rc.clip(); }
     rc.setTransform(...MR);
     rc.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h);
+    rc.restore();
     // after real dusk the lit things mirror too: the lit part (through the atmos pass's lit treatment: no lamp pools or mist
     // mirrored as light), lit windows and lamps (the brightest thing in a night canal)
     if (night) {
-      if (it.lit) { const lp = env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: 'lit', scale: bucket(it.s) * vs, flip: it.flip, cls: it.cls, i })); if (lp && lp.c) { rc.setTransform(...MR); rc.drawImage(lp.c, lp.x0, lp.y0, lp.w, lp.h); } }
+      if (it.lit) { const lp = env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: 'lit', scale: bucket(it.s) * vs, flip: it.flip, cls: it.cls, i })); if (lp && lp.c) { rc.save(); if (sinkU) { rc.setTransform(1, 0, 0, 1, 0, 0); rc.beginPath(); rc.rect(0, Ym * vs + oy - R.db[1], R.bw, R.bh); rc.clip(); } rc.setTransform(...MR); rc.drawImage(lp.c, lp.x0, lp.y0, lp.w, lp.h); rc.restore(); } }
       if (it.glowOn && typeof _sccGlows === 'function') _sccGlows(rc, MR, it, null, env.windowShare);
     }
   }
@@ -532,7 +581,7 @@ function _scwaMovers(env, R, ctx, t, tq, below) {
     else if (!on && R.legacy) near = m.Y >= R.y0 - 6 && m.Y <= R.y0 + 2;
     if (near) list.push(Object.assign({ on }, m));
   };
-  for (const a of env.actorsNow) consider({ X: a.x, Y: a.y, s: a.s, flip: a.dir < 0, face: a.face, d: a.d, sp: a.sp, alpha: a.alpha, cls: a.cls, speed: a.speed, box: a.box });
+  for (const a of env.actorsNow) consider({ X: a.x, Y: a.y, o: a.o, s: a.s, flip: a.dir < 0, face: a.face, d: a.d, sp: a.sp, alpha: a.alpha, cls: a.cls, speed: a.speed, box: a.box });
   for (const f of env.flowNow || []) {
     if (!f || f.reflectDone) continue;
     consider({ X: f.X != null ? f.X : f.x, Y: f.Y != null ? f.Y : f.y, s: f.s, flip: !!f.flip, d: f.d, sp: f.sp || null, o: f.o, v: f.v, alpha: f.alpha == null ? 1 : f.alpha, cls: f.cls || (f.o ? sceneObjClassOf(f.o) : null), speed: f.speedU || 0, box: f.box, speedM: f.speed });
@@ -565,12 +614,17 @@ function _scwaMovers(env, R, ctx, t, tq, below) {
       const d = Number.isFinite(m.d) ? m.d : sceneCamDepthAt(cam, m.Y);
       // only what is ON the water mirrors about its own foot (10 Oct: a duck or a beached boat on the bank mirrors about the waterline)
       const floating = !!m.on;
-      const Ym = R.legacy ? 2 * R.y0 - m.Y : floating ? m.Y : sceneWaterMirrorY(cam, d, R.level, -R.level);
+      const Ym = floating ? m.Y : R.legacy ? 2 * _scwaLegacyTop(R, m.X) - m.Y : sceneWaterMirrorY(cam, d, R.level, -R.level);
       const dx = _scwaShift(R, Ym * vs + oy - R.db[1], tq, wind);
       const s = m.s || 1, fl = Number.isFinite(m.face) ? m.face : m.flip ? -1 : 1;   // a turning actor's reflection turns with it
-      mx.setTransform(vs * s * fl, 0, 0, -vs * s, m.X * vs + ox - R.db[0] + dx, Ym * vs + oy - R.db[1]);
+      // a floater's mirror starts at its waterline: the art above its sink only (the canvas draws it sunk and clipped there)
+      const sinkU = floating ? _scwaSinkU(env.C, m.o, m.X, m.Y, m.d, m.cls) : 0;
+      mx.save();
+      if (sinkU) { mx.beginPath(); mx.rect(0, Ym * vs + oy - R.db[1], R.bw, R.bh); mx.clip(); }
+      mx.setTransform(vs * s * fl, 0, 0, -vs * s, m.X * vs + ox - R.db[0] + dx, (Ym - s * sinkU) * vs + oy - R.db[1]);
       mx.globalAlpha = _scClamp(R.mirror * 0.5 * (m.alpha == null ? 1 : m.alpha), 0, 1);
       mx.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h); draws++;
+      mx.restore();
       const px = m.X * vs + ox - R.db[0] + dx, py = Ym * vs + oy - R.db[1], ax = vs * s * fl;
       grow(Math.min(px + ax * sp.x0, px + ax * (sp.x0 + sp.w)), py - vs * s * (sp.y0 + sp.h), Math.max(px + ax * sp.x0, px + ax * (sp.x0 + sp.w)), py - vs * s * sp.y0);
     }

@@ -152,7 +152,7 @@
       { id: 'bank', kind: 'bank', poly: bankOuter },
       { id: 'path', kind: 'path', path: PATH, width: 1.7 },
     ];
-    const water = [{ id: 'pond', kind: 'pond', poly: pond, edge: 'natural', ripple: 0.16, mirror: 0.8, clarity: 0.12 }];
+    const water = [{ id: 'pond', kind: 'pond', poly: pond, edge: 'natural' }];
 
     /* ===== the placements ===== */
     const place = [], clusters = [];

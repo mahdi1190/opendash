@@ -53,7 +53,7 @@ function sceneUkFleetPondV1() {
       { id: 'reeds-s', kind: 'bank', poly: reedsS },
     { id: 'fringe-s', kind: 'bank', poly: far.concat(far.slice().reverse().map(([x, d]) => [x, d + 9])) },
     ],
-    water: [{ id: 'pond', kind: 'lake', poly: pondRing, edge: 'none', ripple: 0.3, mirror: 0.7, rings: true }],
+    water: [{ id: 'pond', kind: 'lake', poly: pondRing, edge: 'none', rings: true }],
     ground: [], place: [], scatter: [], actors: [], flocks: [],
   };
   const Pl = data.place, S = data.scatter, A = data.actors;
@@ -90,7 +90,7 @@ function sceneUkFleetPondV1() {
       if (!def) continue;
       const p = proj(x, d, cam.water), k = (0.75 + 0.45 * r()) * (1 - 0.35 * rr);
       Pl.push({ obj: rush ? 'plant.bulrush' : 'plant.reed', x: R1(p[0]), y: R1(p[1]), s: Math.round(1000 * k * f / d * (rush ? 1.6 : 1.8) / def.size[1]) / 1000,
-        pin: true, variant: Math.floor(r() * 3), flip: r() < 0.5, reflect: true, shadow: false, anim: false, tint: ['#8a7a40', R2(r() * 0.1)] });
+        pin: true, variant: Math.floor(r() * 3), flip: r() < 0.5, shadow: false, anim: false, tint: ['#8a7a40', R2(r() * 0.1)] });
     } }
 
   // ---- (round 2) the landmark in the foreground water: a Scots pine blown down off the top of the beach, lying out across the

@@ -53,7 +53,7 @@
       { layer: 'mid', d: 'M874 530Q1000 540 1108 566Q1300 600 1334 642Q1350 700 1276 762Q1180 840 1074 905H1290Q1360 830 1388 760Q1410 690 1390 640Q1340 584 1134 562Q1010 536 888 530Z', fill: { lin: [[0, '@path.2'], [1, '@path.0']], x1: 0, y1: 530, x2: 0, y2: 900 } },
       { layer: 'mid', d: 'M362 612Q520 584 800 588Q1094 584 1258 614Q1326 666 1200 722Q900 762 618 754Q390 742 346 684Q324 640 362 612z', fill: '@bank' },
     ],
-    water: [{ layer: 'mid', d: POND, y0: 592, y1: 752, base: ['#8fb4a8', '#4f8088', '#244a54'], reflect: true, shimmer: 20, lightPath: true }],
+    water: [{ layer: 'mid', kind: 'pond', d: POND, y0: 592, y1: 752 }],
     place: [
       // Church End: St Peter's and the cottages between the trees
       { obj: 'landmark.st-peters-yateley', x: 1150, y: 510, s: 0.78, layer: 'far', variant: 0, seed: 1 },
@@ -71,7 +71,7 @@
       { obj: 'tree.green-chestnut', x: 1362, y: 560, s: 0.3, layer: 'far', variant: 1, seed: 30, flip: true, anim: false },
       // the far bank of Shute's Pond (mirrored in the water): the willow, a shrub, alders at staggered depths
       { obj: 'tree.green-willow', x: 392, y: 606, s: 0.5, layer: 'mid', variant: 0, seed: 11, anim: { sway: { k: 0.8 } } },
-      { obj: 'plant.shrub', x: 640, y: 593, s: 0.3, layer: 'mid', variant: 0, seed: 12, reflect: true, anim: false },
+      { obj: 'plant.shrub', x: 640, y: 593, s: 0.3, layer: 'mid', variant: 0, seed: 12, anim: false },
       { obj: 'tree.green-alder', x: 944, y: 594, s: 0.36, layer: 'mid', variant: 0, seed: 13, anim: false },
       { obj: 'tree.green-alder', x: 1226, y: 608, s: 0.44, layer: 'mid', variant: 1, seed: 14, anim: false },
       { obj: 'tree.green-alder', x: 120, y: 640, s: 0.46, layer: 'mid', variant: 0, seed: 15, anim: false, flip: true },
@@ -89,8 +89,8 @@
       { obj: 'plant.yg-oak-bough', x: 1640, y: -26, s: 1.0, layer: 'front', variant: 0, seed: 31, flip: true, anim: { sway: { k: 0.8 } } },
     ].concat(
       // reed beds hugging the pond in clumps with gaps (the far bank mirrored; open water where the church reflects)
-      YG({ obj: 'plant.yg-reedbed', centres: [[478, 598, 26, 2, 3], [712, 594, 22, 1.5, 2], [1010, 595, 30, 2, 3], [1176, 600, 16, 2, 2]], s: [0.2, 0.3], layer: 'mid', seed: 301, reflect: true }),
-      YG({ obj: { 'plant.yg-reedbed': 3, 'plant.bulrush': 1 }, centres: [[372, 698, 24, 10, 3], [468, 736, 34, 6, 3], [1212, 706, 26, 8, 3], [1300, 668, 14, 8, 2]], s: [0.42, 0.62], sByY: [[660, 0.8], [750, 1.1]], layer: 'near', seed: 302, reflect: true }),
+      YG({ obj: 'plant.yg-reedbed', centres: [[478, 598, 26, 2, 3], [712, 594, 22, 1.5, 2], [1010, 595, 30, 2, 3], [1176, 600, 16, 2, 2]], s: [0.2, 0.3], layer: 'mid', seed: 301 }),
+      YG({ obj: { 'plant.yg-reedbed': 3, 'plant.bulrush': 1 }, centres: [[372, 698, 24, 10, 3], [468, 736, 34, 6, 3], [1212, 706, 26, 8, 3], [1300, 668, 14, 8, 2]], s: [0.42, 0.62], sByY: [[660, 0.8], [750, 1.1]], layer: 'near', seed: 302 }),
       // the uncut margins: tussock masses on the green beyond the pond and along its near side
       YG({ obj: 'plant.yg-meadow', centres: [[150, 586, 60, 6, 4], [1440, 590, 70, 6, 4], [560, 760, 60, 6, 3], [880, 770, 40, 4, 2]], s: [0.28, 0.42], sByY: [[580, 0.8], [770, 1.3]], layer: 'mid', seed: 303,
         not: (x, y) => (y < 740 && x > 330 && x < 1330) }),
@@ -104,9 +104,9 @@
       { obj: { 'tree.distant': 3, 'tree.distant-pine': 2 }, layer: 'far', variant: [0, 1], seed: 42, area: { rect: [-160, 510, 1760, 520] }, n: 28, minGap: 20, s: [0.24, 0.5], anim: false, tint: { col: '#3a5a2a', k: [0.08, 0.08] },
         mask: { avoid: [{ rect: [450, 500, 850, 520] }, { rect: [1080, 500, 1230, 520] }] } },
       // tufts and daisies on the mown green (static: free per frame)
-      { obj: 'plant.grass', layer: 'far', variant: [0, 1], seed: 43, area: { rect: [-160, 540, 1760, 600] }, n: 70, minGap: 7, s: [0.18, 0.32], sByY: [[540, 0.8], [600, 1.2]], anim: false, reflect: false,
+      { obj: 'plant.grass', layer: 'far', variant: [0, 1], seed: 43, area: { rect: [-160, 540, 1760, 600] }, n: 70, minGap: 7, s: [0.18, 0.32], sByY: [[540, 0.8], [600, 1.2]], anim: false,
         mask: { avoid: [{ rect: [300, 548, 1400, 640] }] }, tint: { col: '#c0b060', k: [0.08, 0.08] } },
-      { obj: 'plant.grass', layer: 'mid', variant: [0, 1], seed: 44, area: { rect: [-160, 600, 1760, 780] }, n: 90, minGap: 10, s: [0.32, 0.6], sByY: [[600, 0.8], [780, 1.25]], anim: false, reflect: false,
+      { obj: 'plant.grass', layer: 'mid', variant: [0, 1], seed: 44, area: { rect: [-160, 600, 1760, 780] }, n: 90, minGap: 10, s: [0.32, 0.6], sByY: [[600, 0.8], [780, 1.25]], anim: false,
         mask: { avoid: [{ poly: [[300, 560], [1300, 560], [1370, 650], [1220, 740], [900, 772], [600, 770], [330, 742], [300, 660]] }, { poly: [[1080, 560], [1400, 620], [1410, 760], [1290, 905], [1070, 905], [1290, 740], [1320, 640]] }] }, tint: { col: '#c0b060', k: [0.08, 0.08] } },
       // reeds and bulrushes on the far bank (mirrored), then the near margin
       { obj: 'water.lily', layer: 'mid', variant: [0, 1], seed: 49, area: { rect: [460, 694, 720, 736] }, n: 12, minGap: 16, s: [0.32, 0.5], anim: false },
@@ -121,7 +121,7 @@
       { obj: 'person.cyclist', layer: 'far', path: [[-80, 534], [1700, 530]], speed: 26, loop: 'loop', s: 0.36, seed: 71, offset: 0.15 },
     ],
     flocks: [{ obj: 'bird.small-flight', n: 6, area: [380, 160, 1180, 280], speed: 26, s: 0.5, seed: 81, layer: 'far' }],
-    particles: 'season', weather: 'live', fx: { shadows: 2 },
+    particles: 'season', weather: 'live', fx: { shadows: 2, water: 2 },
   });
   /** All-year life (waterbirds, a squirrel): the season comes from the date (season 'auto'), so nothing that belongs to
       one season only (butterflies, bees, dragonflies) is drawn; the four seasonal items of the view share this one scene. */

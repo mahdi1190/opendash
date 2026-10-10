@@ -50,7 +50,7 @@ function sceneUkWyndhamsPoolClose() {
       { layer: 'front', d: 'M-160 838Q120 826 380 856Q520 878 600 900H-160Z', fill: '@mud.1' },
     ],
     water: [
-      { layer: 'mid', d: `M-160 ${WL - 2}Q400 ${WL + 4} 800 ${WL}T1760 ${WL + 2}V606Q1560 610 1400 656Q1250 706 1140 786Q1064 850 990 900H-160Z`, y0: WL, y1: 900, base: ['#8ab4b0', '#3f7680', '#1a4450'], reflect: true, shimmer: 40, lightPath: true },
+      { layer: 'mid', kind: 'pond', d: `M-160 ${WL - 2}Q400 ${WL + 4} 800 ${WL}T1760 ${WL + 2}V606Q1560 610 1400 656Q1250 706 1140 786Q1064 850 990 900H-160Z`, y0: WL, y1: 900 },
     ],
     place: [
       // the Scots pine at the bank's edge (the signature), birch beside it
@@ -136,6 +136,7 @@ function sceneUkWyndhamsPoolClose() {
       { obj: 'bird.goose-flight', n: 6, area: [200, 100, 1400, 220], speed: 26, s: 0.34, seed: 142, layer: 'far' },
       { obj: 'animal.wyv-dragonfly', n: 3, area: [260, 560, 1100, 760], speed: 30, s: 0.9, seed: 143, layer: 'fore' },
     ],
+    fx: { water: 2 },   // (lock, 10 Oct) the engine's water pass draws the pond and every reflection
     particles: 'season',
     weather: 'live',
   };

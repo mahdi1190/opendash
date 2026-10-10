@@ -1502,6 +1502,8 @@ function sceneCompileV2Finish(G, C) {
     for (const oi of idx) C.items.push(old[oi]);
     for (const st of C.strips) st.items = st.items.map(k => map.get(k));
   }
+  // the backdrop (an engine default, 70-scene-lib-backdrops.js): place-styled city or nature bands behind everything, then the emptyBackdrop lint
+  if (typeof sceneBackdropApply === 'function') sceneBackdropApply(G, C);
   _scgrOccludedStill(C);
   _scgrAnimLod(G, C);
   // D: flows; C: atmosphere, weather, lights (each guarded: a missing builder removes only its feature)

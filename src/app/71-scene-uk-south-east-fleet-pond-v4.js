@@ -50,7 +50,7 @@ function sceneUkFleetPondV4() {
       { id: 'reeds-w', kind: 'bank', poly: reedsW },
       { id: 'deck', kind: 'bridge', path: P.deck, width: P.deckW, over: 'water' },
     ],
-    water: [{ id: 'pond', kind: 'lake', poly: pond, edge: 'none', ripple: 0.28, mirror: 0.75, rings: true }],
+    water: [{ id: 'pond', kind: 'lake', poly: pond, edge: 'none', rings: true }],
     ground: [], place: [], scatter: [], actors: [], flocks: [],
   };
   const Pl = data.place, S = data.scatter, A = data.actors;

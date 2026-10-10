@@ -86,8 +86,8 @@ function sceneCanalView(V) {
   ground.push({ layer: 'land', d: strip(-0.35, 0, 0.35, 0, zA, ZM, 7), fill: grad('rut') });
   // ---------- the water: the far reach (reflecting the sky and the far tree line), the near reach (reflecting everything beyond it)
   const zW = B[3];
-  water.push({ layer: 'far', d: strip(W.WE, W.WY, W.WF, W.WY, zW * 0.98, ZM, 6), y0: r1(yOf(ZM, W.WY)), y1: r1(yOf(zW, W.WY)), base: ['#a8ccc4', '#7aaaa0', '#5a8a82'], reflect: true });
-  water.push({ layer: 'mid', d: strip(W.WE, W.WY, W.WF, W.WY, zA, zW, 7), y0: r1(yOf(zW, W.WY)), y1: 900, base: ['#86b4aa', '#4f8a80', '#2a5a54'], reflect: true, shimmer: 16, lightPath: true });
+  water.push({ layer: 'far', kind: 'pond', d: strip(W.WE, W.WY, W.WF, W.WY, zW * 0.98, ZM, 6), y0: r1(yOf(ZM, W.WY)), y1: r1(yOf(zW, W.WY)) });
+  water.push({ layer: 'mid', kind: 'pond', d: strip(W.WE, W.WY, W.WF, W.WY, zA, zW, 7), y0: r1(yOf(zW, W.WY)), y1: 900 });
   const yW = yOf(zW, W.WY), wl = P(W.WE, W.WY, zA), wr = P(W.WF, W.WY, zA);
   const edgeAvoid = [{ rect: [r1(Math.min(wl[0], wr[0]) - 60), r1(yW - 44), r1(Math.max(wl[0], wr[0]) + 60), r1(yW + 44)] }, { rect: [-200, r1(yOf(ZM, W.WY) - 44), 1800, r1(yOf(ZM, W.WY) + 44)] }];
   // ---------- tree lines: scatter rules on strips along both banks, a band at a time (far bands thinner, fewer kinds)
@@ -145,9 +145,9 @@ function sceneCanalView(V) {
   // ---------- the offside houses and their garden fences
   for (const [X, z, m, v, hl] of V.houses || []) {
     const p = P(X, 0.3, z);
-    place.push({ obj: 'building.cottage', x: r1(p[0]), y: r1(p[1]), s: r2(sAt('building.cottage', m, z)), layer: hl || layerOf(z), variant: v, flip: SIDE * (X - EX) < 0, seed: r1(z * 7), reflect: true });
+    place.push({ obj: 'building.cottage', x: r1(p[0]), y: r1(p[1]), s: r2(sAt('building.cottage', m, z)), layer: hl || layerOf(z), variant: v, flip: SIDE * (X - EX) < 0, seed: r1(z * 7) });
     const q = P(W.OFF + 1.6, 0.3, z + 1), s = sAt('structure.fence', 1.3, z + 1);
-    if (s < 1.6 && s > 0.12) place.push({ obj: 'structure.fence', x: r1(q[0]), y: r1(q[1]), s: r2(s), layer: layerOf(z), variant: r1(z) % 2, flip: r1(z) % 2 === 0, seed: r1(z * 3), reflect: true });
+    if (s < 1.6 && s > 0.12) place.push({ obj: 'structure.fence', x: r1(q[0]), y: r1(q[1]), s: r2(s), layer: layerOf(z), variant: r1(z) % 2, flip: r1(z) % 2 === 0, seed: r1(z * 3) });
   }
   // ---------- the brick road bridge down the reach (the towpath passes under its arch)
   if (V.bridge) {

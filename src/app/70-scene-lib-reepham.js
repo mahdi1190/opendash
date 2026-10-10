@@ -24,7 +24,7 @@ const SCENE_REEPHAM = (function () {
       dist:'screen',gap:.16,k:[.9,1.1],seed:seed+1039,anim:false,tint:{col:'#b5ad80',k:[0,.05]}});
   }
   function woodland(data,on,seed,d,n) {
-    data.scatter.push({obj:{'tree.rph-pond-oak':3,'tree.rph-pool-birch':2},on,d,n,dist:'ground',
+    data.scatter.push({obj:{'tree.rph-wyv-far-oak':3,'tree.rph-pool-birch':2,'tree.rph-wyv-far-sallow':1},on,d,n,dist:'ground',
       cluster:{centres:9,spread:12},gap:'foot',seed,k:[.8,1.2],anim:false,shadow:false,tint:{col:'#b7c6bc',k:[0,.15]}});
   }
   function life(data,route,seed) {
@@ -67,6 +67,96 @@ const SCENE_REEPHAM = (function () {
   }
   return {base,plants,woodland,life,finish,raised};
 })();
+
+/* Camera-specific station geometry, using the existing engine projection.
+   Unlike an elevation sprite, every window, roof course and platform coping
+   lies on its actual plane in metres. Placements remain ground anchors. */
+const SCENE_REEPHAM_STATION = (function () {
+  const camera={eye:1.65,fov:66,horizon:490,x0:800};
+  const edges=[];
+  for(let d=9;d<77;d+=4)edges.push({d,end:d+4,x:-2.65-.025*d});
+  function draw(anchor,realH,sizeH) {
+    const cam=sceneCamera({camera}),a=sceneProject(cam,anchor[0],anchor[1],anchor[2]||0),s=a.k*realH/sizeH;
+    const p=(x,d,h)=>{const q=sceneProject(cam,x,d,h);return [Math.round((q.X-a.X)/s*10)/10,Math.round((q.Y-a.Y)/s*10)/10];};
+    const path=pts=>pts.map((v,i)=>(i?'L':'M')+p(...v).join(' ')).join('')+'z';
+    return {p,path};
+  }
+  function define() {
+    if(sceneObj('landmark.rph-station-perspective'))return;
+    sceneObjDefine({id:'landmark.rph-station-perspective',category:'landmark',size:[1100,800],box:[-900,-800,200,35],
+      real:{h:8,l:8,w:16},variants:1,seasonal:false,flippable:false,parts:['body','roof','win'],
+      palette:{base:{}},night:{glow:{window:'#ffd5a0'},on:.65},
+      tags:['uk','reepham','kit:temperate','role:landmark'],build(v,r){
+        const G=draw([-4.9,28,.55],8,800),B=[],roof=[],win=[];
+        const poly=(out,col,pts,extra)=>out.push(Object.assign({f:col,d:G.path(pts)},extra));
+        // The buff-brick two-storey block, with its narrow gable facing the
+        // viewer; the long platform wall and lower range recede westward.
+        poly(B,'#c5ad78',[[-12,28,.55],[-4.9,28,.55],[-4.9,28,5.8],[-8.45,28,8.55],[-12,28,5.8]]);
+        poly(B,'#b79d69',[[-4.9,28,.55],[-4.9,39,.55],[-4.9,39,5.8],[-4.9,28,5.8]]);
+        poly(B,'#ac7451',[[-4.9,39,.55],[-4.9,62,.55],[-4.9,62,3.2],[-4.9,39,3.2]]);
+        const marks=['','',''];
+        for(let i=0;i<235;i++){
+          const h=.75+Math.floor(r()*33)*.145,x=-11.8+r()*6.6;
+          marks[i%3]+=G.path([[x,28,h],[x+.21,28,h],[x+.21,28,h+.09],[x,28,h+.09]]);
+        }
+        for(let i=0;i<245;i++){
+          const d=28.2+r()*10.5,h=.75+Math.floor(r()*33)*.145;
+          marks[i%3]+=G.path([[-4.9,d,h],[-4.9,d+.23,h],[-4.9,d+.23,h+.09],[-4.9,d,h+.09]]);
+        }
+        marks.forEach((d,i)=>B.push({f:['#cfb985','#ac976c','#cbb881'][i],d,detail:true}));
+        // Slate is laid on the pitched plane, not a rectangular roof grid.
+        poly(roof,'#525d59',[[-8.45,27.65,8.65],[-8.45,39.2,8.65],[-4.65,39.2,5.8],[-4.65,27.65,5.8]]);
+        poly(roof,'#707971',[[-12.25,27.65,5.8],[-12.25,39.2,5.8],[-8.45,39.2,8.65],[-8.45,27.65,8.65]]);
+        poly(roof,'#59655f',[[-8.2,38.8,4.25],[-8.2,62.4,4.25],[-4.6,62.4,3.2],[-4.6,38.8,3.2]]);
+        let tiles='';
+        for(let j=1;j<17;j++)for(let d=28;d<39;d+=.7){
+          const x=-8.45+j*3.8/17,h=8.65-j*2.85/17;
+          tiles+=G.path([[x,d,h+.015],[x,d+.62,h+.015],[x+.025,d+.62,h],[x+.025,d,h]]);
+        }
+        roof.push({f:'#a2aaa0',op:.4,d:tiles,detail:true});
+        // Quoins and string courses follow both visible masonry planes.
+        for(let h=.55;h<5.65;h+=.29){
+          poly(B,'#e0c99b',[[-5.2,28,h],[-4.9,28,h],[-4.9,28,h+.22],[-5.2,28,h+.22]],{detail:true});
+          poly(B,'#d4bb8c',[[-4.9,28,h],[-4.9,28.3,h],[-4.9,28.3,h+.22],[-4.9,28,h+.22]],{detail:true});
+        }
+        function opening(side,t,h,w,height,door){
+          const at=(u,z,depth)=>side?[-4.9+(depth||0),t+u,z]:[t+u,28-(depth||0),z];
+          const quad=(out,c,u,z,ww,hh,extra)=>poly(out,c,[at(u,z),at(u+ww,z),at(u+ww,z+hh),at(u,z+hh)],extra);
+          quad(B,'#e1d6b2',-.08,h-.1,w+.16,height+.22);
+          quad(B,'#454c46',0,h,w,height);
+          if(door){quad(B,'#64765f',.06,h+.08,w-.12,height-.16);quad(B,'#344b48',.13,h+height*.6,w-.26,height*.32);return;}
+          for(const u of [.065,w*.52])for(const z of [h+.06,h+height*.53])quad(win,'#526e72',u,z,w*.42,height*.43,{glow:'window'});
+          quad(B,'#eee6c9',w*.48,h,.045,height);
+          quad(B,'#eee6c9',0,h+height*.5,w,.045);
+          quad(B,'#d8c99f',-.13,h-.1,w+.26,.08);
+        }
+        for(const x of [-10.9,-7.4]){opening(false,x,1.3,1.15,1.7);opening(false,x,4.15,1.05,1.15);}
+        for(const d of [29.7,33.6,37]){opening(true,d,1.25,1.05,1.7);opening(true,d,4.1,1,1.2);}
+        opening(true,40.5,.55,.95,2.05,true);
+        for(const d of [44,48,52.5,57.5])opening(true,d,1.1,.9,1.35);
+        poly(B,'#8b7958',[[-10.2,32.4,7.4],[-9.6,32.4,7.4],[-9.6,32.4,9.05],[-10.2,32.4,9.05]]);
+        poly(B,'#bca37b',[[-9.6,32.4,7.4],[-9.6,33,7.4],[-9.6,33,9.05],[-9.6,32.4,9.05]]);
+        return {body:B,roof,win};
+      }});
+    edges.forEach((e,i)=>sceneObjDefine({id:'structure.rph-platform-perspective-'+i,category:'structure',size:[2400,100],
+      real:{h:.55,l:4,w:9},variants:1,seasonal:false,flippable:false,parts:['body'],palette:{base:{}},
+      tags:['uk','reepham','unlit','kit:temperate','role:street','class:street'],build(v,r){
+        const G=draw([e.x,e.d,0],.55,100),out=[],endx=-2.65-.025*e.end,left=-6.1-.075*e.d,leftEnd=-6.1-.075*e.end;
+        const shape=(f,pts,more)=>out.push(Object.assign({f,d:G.path(pts)},more));
+        shape('#aaa58d',[[left,e.d,.55],[e.x,e.d,.55],[endx,e.end,.55],[leftEnd,e.end,.55]]);
+        shape('#6c6857',[[e.x,e.d,0],[endx,e.end,0],[endx,e.end,.5],[e.x,e.d,.5]]);
+        shape('#cec7ac',[[e.x-.22,e.d,.55],[e.x+.05,e.d,.55],[endx+.05,e.end,.55],[endx-.22,e.end,.55]]);
+        let joints='',wear='';
+        for(let d=e.d+.45;d<e.end;d+=.72){const x=-2.65-.025*d;
+          joints+=G.path([[x-.23,d,.558],[x+.06,d,.558],[x+.06,d+.025,.558],[x-.23,d+.025,.558]]);
+          wear+=G.path([[x,d,.13],[x+.006,d+.42,.13],[x+.006,d+.42,.19],[x,d,.19]]);
+        }
+        out.push({f:'#736d59',d:joints,detail:true},{f:'#a38d68',d:wear,detail:true});
+        return {body:out};
+      }}));
+  }
+  return {camera,edges,define};
+})();
 (function () {
   if(typeof sceneObjDefine!=='function')return;
   const r1=x=>Math.round(x*10)/10;
@@ -74,7 +164,7 @@ const SCENE_REEPHAM = (function () {
   const ell=(x,y,rx,ry)=>`M${r1(x-rx)} ${r1(y)}a${r1(rx)} ${r1(ry)} 0 1 0 ${r1(rx*2)} 0a${r1(rx)} ${r1(ry)} 0 1 0 ${r1(-rx*2)} 0z`;
   // Reuse library oaks intact at full-screen size. Reserve fine foliage and
   // twigs for the large view, following the gold reference's tile method.
-  function sceneReephamTreeDefinitions(){if(sceneObj('tree.rph-pond-oak'))return;for(const src of ['tree.pond-oak','tree.bank-oak','tree.pool-birch']){
+  function sceneReephamTreeDefinitions(){if(sceneObj('tree.rph-pond-oak'))return;for(const src of ['tree.pond-oak','tree.bank-oak','tree.pool-birch','tree.canal-oak','tree.wyv-far-oak','tree.wyv-far-sallow']){
     const base=sceneObj(src);if(!base)continue;
     sceneObjDefine(Object.assign({},base,{id:src.replace('.','.rph-'),weight:0,real:sceneObjReal(src),build(v,r,ctx){
       const sh=sceneObjShapes(src,v,ctx&&ctx.season||'summer'),out={};let leaf=0;
@@ -143,33 +233,62 @@ const SCENE_REEPHAM = (function () {
       for(const x of [-15,-5,5,15])B.push({f:'#5c7065',d:rect(x,-143,4,8)});return {body:B};}});
   function pane(B,x,y,w,h,arched) {
     const d=arched?`M${x} ${y+h}V${y+h*.3}Q${x+w/2} ${y-h*.32} ${x+w} ${y+h*.3}V${y+h}z`:rect(x,y,w,h);
-    B.push({f:'#efe7d5',d},{f:'#526772',d:rect(x+3,y+8,w-6,h-11),glow:'window'},
+    const gx=x+4,gy=y+9,gw=w-8,gh=h-13,mx=gx+gw*.5,my=gy+gh*.52;
+    const glass=rect(gx,gy,gw*.5-1,gh*.52-1)+rect(mx+1,gy,gw*.5-1,gh*.52-1)+rect(gx,my+1,gw*.5-1,gh*.48-1)+rect(mx+1,my+1,gw*.5-1,gh*.48-1);
+    B.push({f:'#d3ccbb',d},{f:'#40525a',d:glass,glow:'window'},
+      {f:'#98b7bd',op:.35,d:rect(gx+1,gy+1,gw*.5-3,gh*.21)},
       {s:'#e7dfcf',w:1.7,d:`M${x+w/2} ${y+7}v${h-9}M${x+3} ${y+h*.56}h${w-6}`},
       {f:'#c9b89d',d:rect(x-2,y+h,w+4,3)});
+    if(arched)B.push({f:'#34464c',d:`M${x+4} ${y+h*.32}Q${x+w*.5} ${y-h*.16} ${x+w-4} ${y+h*.32}z`,glow:'window'},
+      {s:'#d4c8ab',w:1.5,d:`M${x+w*.5} ${y}v${h*.32}`});
   }
   function courses(B,x,y,w,h,r,stone) {
     // Irregular flint/chipped brick patches, kept inside the actual wall.
-    for(let i=0;i<(stone?100:65);i++){
-      const px=x+4+r()*(w-10),py=y+4+r()*(h-10),ww=stone?2+r()*4:4+r()*7,hh=stone?2+r()*3:2+r();
-      B.push({f:stone?['#8c8d84','#c0bbaa','#666b69','#a7a89a'][i%4]:['#b48065','#c89775','#9b6551'][i%3],
-        op:.58,d:stone?`M${r1(px)} ${r1(py)}l${r1(ww)} -1 1 ${r1(hh)} -${r1(ww)} 1z`:rect(px,py,ww,hh),detail:true});
+    const paths=['','','',''];
+    for(let i=0;i<(stone?285:260);i++){
+      const ww=stone?2+r()*4:4+r()*7,hh=stone?2+r()*3:2+r(),px=x+2+r()*(w-ww-4),py=y+2+r()*(h-hh-4);
+      paths[i%4]+=stone?`M${r1(px)} ${r1(py)}l${r1(ww*.7)} -1 ${r1(ww*.3)} 1.5 -1 ${r1(hh)} -${r1(ww*.8)} -.5z`:rect(px,py,ww,hh);
     }
+    for(let i=0;i<4;i++)B.push({f:stone?['#404946','#bcb9a6','#626b63','#d0cbb4'][i]:['#b48065','#d0a187','#8b5c4b','#c0896b'][i],op:stone?.85:.72,d:paths[i],detail:true});
+    if(!stone){let mortar='';for(let yy=y+7;yy<y+h;yy+=9)mortar+=`M${r1(x)} ${r1(yy)}h${r1(w)}`;
+      B.push({s:'#e0b194',w:.45,op:.36,d:mortar,detail:true});}
   }
   function tiles(B,x,y,w,h,r,col) {
-    for(let i=0;i<45;i++) {const px=x+r()*w,py=y+r()*h;B.push({s:col,w:.7,op:.45,d:`M${r1(px)} ${r1(py)}l${r1(3+r()*6)} -.8`,detail:true});}
+    let ribs='',joints='';for(let xx=x+2;xx<x+w-2;xx+=6)ribs+=`M${r1(xx)} ${r1(y)}q-2 ${r1(h*.5)} -4 ${r1(h)}`;
+    for(let yy=y+4;yy<y+h;yy+=7)joints+=`M${r1(x)} ${r1(yy)}l${r1(w)} -1`;
+    B.push({s:col,w:1.2,op:.65,d:ribs,detail:true},{s:col,w:.5,op:.5,d:joints,detail:true});
   }
   function def(id,size,real,build) {
     sceneObjDefine({id:(id==='whitwell'?'rail.rph-':'landmark.rph-')+id,category:id==='whitwell'?'rail':'landmark',size,real,variants:1,seasonal:false,flippable:false,
       parts:['body','lit'],palette:{base:{}},night:{glow:{window:'#ffd79b'},on:.8},
       tags:['uk','reepham','landmark','place:uk-east/reepham','kit:temperate',id==='whitwell'?'role:vehicle':'role:landmark'].concat(id==='whitwell'?['class:train']:[]),build});
   }
+  sceneObjDefine({id:'plant.rph-church-shrub',category:'plant',size:[260,220],real:{h:3.2,l:3.8,w:2.3},variants:3,seasonal:false,flippable:true,
+    parts:['stems','leaf'],palette:{base:{}},tags:['uk','reepham','unlit','kit:temperate','role:shrub'],
+    anim:{sway:{part:'leaf',pivot:[0,-60],deg:.6,period:9}},build(v,r){
+      const stems=[],leaf=[],P=['','','',''];
+      const centres=[[-80,-70,45],[-46,-132,39],[6,-156,48],[63,-116,38],[96,-56,30],[-16,-57,59]];
+      for(const [cx,cy,rad]of centres){stems.push({s:'#635849',w:3,d:`M0 0Q${cx*.3} ${cy*.7} ${cx} ${cy}`});
+        for(let i=0;i<95;i++){const a=r()*Math.PI*2,z=Math.sqrt(r()),x=cx+Math.cos(a)*rad*z,y=cy+Math.sin(a)*rad*z,len=4+r()*8;
+          P[i%4]+=`M${r1(x)} ${r1(y)}q-4 -${r1(len*.7)} 1 -${r1(len)}q4 ${r1(len*.6)} -1 ${r1(len)}z`;}}
+      for(let i=0;i<4;i++)leaf.push({f:['#192f25','#294536','#426044','#66805a'][i],d:P[i],detail:i>0});
+      return {stems,leaf};}});
+  sceneObjDefine({id:'plant.rph-flower-tub',category:'plant',size:[220,140],real:{h:1.15,l:1.8,w:.8},variants:3,seasonal:true,shapeBySeason:true,flippable:true,
+    parts:['body','leaf'],palette:{base:{}},tags:['uk','reepham','unlit','kit:urban','role:street','class:street'],build(v,r,ctx){
+      const body=[{f:'#514e43',d:'M-101-52h200l-12 52h-177z'},{f:'#83715a',d:'M-101-52l15-9 185 1 10 8z'},
+        {f:'#373d32',d:'M-86-53h174l-4 8h-166z'}],leaf=[],P=['','',''];
+      for(let i=0;i<115;i++){const x=-88+r()*172,y=-52-r()*55,z=3+r()*7;P[i%3]+=`M${r1(x)} ${r1(y)}q-${r1(z)} -${r1(z*1.8)} 0 -${r1(z*2)}q${r1(z*1.2)} ${r1(z)} 0 ${r1(z*2)}z`;}
+      for(let i=0;i<3;i++)leaf.push({f:ctx.season==='winter'?['#4a574a','#687767','#aab4a3'][i]:['#244c33','#416c43','#709254'][i],d:P[i],detail:i>0});
+      if(ctx.season!=='winter')for(let i=0;i<35;i++){const x=-83+r()*168,y=-60-r()*64;leaf.push({f:ctx.season==='autumn'?'#b77638':['#db9aae','#f2cf7d','#9d82ae'][(i+v)%3],d:ell(x,y,2.4+r()*1.8,2.2)});}
+      for(let i=0;i<17;i++){const x=-95+i*11;body.push({s:'#a49178',w:.6,op:.5,d:`M${x}-47l2 41`,detail:true});}
+      return {body,leaf};}});
   def('market',[660,310],{h:10,l:22,w:6},function(v,r){
     const B=[];
     // West frontage: brick house, the distinctive stepped gable, white shop.
     B.push({f:'#ac7056',d:rect(-326,-229,198,229)},{f:'#7c5246',d:'M-326-229l36-55h177l-15 55z'},
       {f:'#c99371',d:rect(-323,-220,191,216)});
     courses(B,-323,-219,190,212,r,false);tiles(B,-290,-280,160,40,r,'#d0a68b');
-    for(const x of [-291,-219,-153])pane(B,x,-179,30,53,false);
+    for(const x of [-280,-191])pane(B,x,-179,38,53,false);
     pane(B,-283,-90,44,66,false);pane(B,-172,-90,33,64,false);
     B.push({f:'#3b4246',d:rect(-223,-87,31,87)},{f:'#d8c7af',d:rect(-223,-91,31,5)},
       {f:'#95705d',d:rect(-305,-299,17,35)},{f:'#d4b293',d:rect(-309,-302,25,5)});
@@ -193,6 +312,12 @@ const SCENE_REEPHAM = (function () {
     B.push({f:'#434f52',d:rect(208,-82,29,82)},{f:'#344247',d:rect(82,-109,233,14)},
       {f:'#c8beb0',d:rect(80,-9,242,9)},{f:'#af9179',d:rect(286,-306,14,46)},
       {s:'#c8baa3',w:2,d:'M80-217H319M-320-210H-134M-120-117H69'});
+    B.push({f:'#8c634f',d:'M-326 0V-229l15-12V0z'},
+      {f:'#b7bbb0',d:'M77 0V-220l17-11V0z'},
+      {s:'#d9c4a5',w:1.4,d:'M-320-6V-211M81-9V-214'},
+      {f:'#512e34',d:rect(-126,-73,203,6)});
+    let scallop='';for(let x=-126;x<74;x+=13)scallop+=`M${x}-73q6 8 13 0z`;
+    B.push({f:'#985657',d:scallop});
     return {body:B,lit:[]};
   });
   def('churches',[750,460],{h:23,l:37.5,w:14},function(v,r){
@@ -212,6 +337,8 @@ const SCENE_REEPHAM = (function () {
     for(const x of [-105,-78,-51,-24,3,23])B.push({f:'#c3bea7',d:rect(x,-438,14,20)});
     for(const x of [-104,17])for(let y=-413;y<-10;y+=20)B.push({f:'#cec5ab',d:rect(x,y,12,17)});
     B.push({f:'#c9c2aa',d:rect(-106,-341,138,6)},{f:'#c9c2aa',d:rect(-106,-221,138,5)});
+    B.push({f:'#555f58',d:'M6 0V-418l35-17v408z'},{f:'#999b88',d:'M6-418l35-17v7L6-409z'},
+      {s:'#b8b59e',w:3,d:'M8-338l30-14M8-218l30-8'});
     pane(B,-78,-396,30,66,true);pane(B,-40,-396,30,66,true);pane(B,-61,-195,40,79,true);
     // Long flint nave to the right, with a clearly pitched dark slate roof.
     B.push({f:'#929487',d:'M30 0V-197l284-24 62 28V0z'},
@@ -260,7 +387,7 @@ const SCENE_REEPHAM = (function () {
     // Rounded tank, circular near end and elliptical distant end.
     B.push({f:'#45514d',d:'M-51-71Q-52-132-4-143l65-23q34 5 34 47l-48 71z'},
       {f:'#647069',d:'M-44-107q8-25 34-29l73-22q17 5 21 16l-75 29z'},
-      {f:'#273537',d:ell(0,-69,53,51)},{f:'#43514c',d:ell(-5,-75,45,43)},
+      {f:'#172326',d:ell(0,-69,53,51)},{f:'#28373a',d:ell(-5,-75,45,43)},
       {f:'#626c60',d:'M-40-91q15-28 43-24l25 11q-34-9-61 22z'},
       {s:'#7d8476',w:2,d:'M-33-108q-15 32 0 64M53-140q-4 27 15 39'},
       {f:'#939983',d:'M11-141l27-11 18 4-28 11z'},{f:'#303c3c',d:'M18-145l17-6v-9l-17 7z'},

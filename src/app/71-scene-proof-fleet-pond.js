@@ -50,7 +50,7 @@ function sceneProofFleetPondData() {
       if (!def) continue;
       const p = W.proj(x, d, P.camera.water), k = (0.7 + 0.45 * rnd()) * (1 - 0.35 * r);
       islands.push({ obj: rush ? 'plant.proof-fleet-rush' : 'plant.proof-fleet-reed', x: Math.round(p[0] * 10) / 10, y: Math.round(p[1] * 10) / 10, s: Math.round(1000 * k * W.f / d * (rush ? 1.6 : 1.8) / def.size[1]) / 1000,
-        pin: true, variant: Math.floor(rnd() * 3), flip: rnd() < 0.5, reflect: true, shadow: false, anim: false, tint: ['#8a7a40', Math.round(rnd() * 2) * .03] });
+        pin: true, variant: Math.floor(rnd() * 3), flip: rnd() < 0.5, shadow: false, anim: false, tint: ['#8a7a40', Math.round(rnd() * 2) * .03] });
     }
   }
   for(let i=islands.length-1;i>=0;i--)if(islands.slice(0,i).some(q=>Math.hypot(q.x-islands[i].x,q.y-islands[i].y)<10))islands.splice(i,1);
@@ -77,7 +77,7 @@ function sceneProofFleetPondData() {
       { id: 'deck', kind: 'bridge', path: P.deck, width: P.deckW, over: 'water' },
       { id: 'platform', kind: 'bridge', poly: P.platform, over: 'water' },
     ],
-    water: [{ id: 'pond', kind: 'lake', poly: water, edge: 'natural', ripple: 0.25, rings: false }],
+    water: [{ id: 'pond', kind: 'lake', poly: water, edge: 'natural', rings: false }],
     place: walk.concat(bank, islands, [
       { obj: 'bird.coot', at: [-13, 44] },
       { obj: 'bird.moorhen', at: [-3.4, 26] },

@@ -55,7 +55,7 @@
       { layer: 'fore', d: 'M-160 900V770Q200 740 520 790Q760 830 900 900Z', fill: { lin: [[0, '@grass.0'], [1, '@grass.1']], x1: 0, y1: 760, x2: 0, y2: 900 } },
       { layer: 'fore', d: 'M1760 900V740Q1500 720 1260 780Q1120 830 1060 900Z', fill: { lin: [[0, '@grass.0'], [1, '@grass.1']], x1: 0, y1: 730, x2: 0, y2: 900 } },
     ],
-    water: [{ layer: 'near', d: WATER, y0: 600, y1: 900, base: ['#9cc8c4', '#4e8e98', '#1e4f5e'], reflect: true, shimmer: 24, lightPath: true }],
+    water: [{ layer: 'near', kind: 'pond', d: WATER, y0: 600, y1: 900 }],
     place: [
       // Church End: St Peter's and four cottages, glimpsed between the trees
       { obj: 'landmark.st-peters-yateley', x: 1100, y: 508, s: 0.8, layer: 'far', variant: 0, seed: 1 },
@@ -67,10 +67,10 @@
       { obj: 'tree.green-oak', x: 300, y: 560, s: 0.48, layer: 'mid', variant: 2, seed: 10, anim: false },
       { obj: 'tree.green-oak', x: 1500, y: 556, s: 0.44, layer: 'mid', variant: 2, seed: 11, anim: false, flip: true },
       { obj: 'tree.green-oak', x: 880, y: 548, s: 0.3, layer: 'mid', variant: 2, seed: 12, anim: false },
-      { obj: 'street.bench', x: 560, y: 566, s: 0.5, layer: 'mid', variant: 0, seed: 13, reflect: true },
-      { obj: 'street.bench', x: 1180, y: 560, s: 0.46, layer: 'mid', variant: 2, seed: 14, flip: true, reflect: true },
+      { obj: 'street.bench', x: 560, y: 566, s: 0.5, layer: 'mid', variant: 0, seed: 13 },
+      { obj: 'street.bench', x: 1180, y: 560, s: 0.46, layer: 'mid', variant: 2, seed: 14, flip: true },
       { obj: 'bird.robin', x: 1160, y: 556, s: 0.36, layer: 'mid', variant: 1, seed: 15 },
-      { obj: 'animal.rabbit', x: 1020, y: 566, s: 0.36, layer: 'mid', variant: 0, seed: 16, reflect: true },
+      { obj: 'animal.rabbit', x: 1020, y: 566, s: 0.36, layer: 'mid', variant: 0, seed: 16 },
       // the water
       { obj: 'water.fish-ring', x: 860, y: 760, s: 0.8, layer: 'near', seed: 17 },
       { obj: 'water.fish-ring', x: 300, y: 700, s: 0.6, layer: 'near', variant: 1, seed: 18 },
@@ -84,12 +84,12 @@
       { obj: 'ground.log', x: 1300, y: 852, s: 1.0, layer: 'fore', variant: 0, seed: 25, flip: true },
     ].concat(
       // the far shore: reed beds in clumps with gaps (mirrored), the church's reflection left open
-      YG({ obj: { 'plant.yg-reedbed': 4, 'plant.bulrush': 1 }, centres: [[-80, 636, 60, 4, 4], [200, 618, 50, 3, 3], [520, 611, 26, 2, 2], [1290, 609, 40, 2, 3], [1560, 612, 60, 2, 4]], s: [0.22, 0.34], sByY: [[600, 0.95], [640, 1.15]], layer: 'near', seed: 501, reflect: true }),
+      YG({ obj: { 'plant.yg-reedbed': 4, 'plant.bulrush': 1 }, centres: [[-80, 636, 60, 4, 4], [200, 618, 50, 3, 3], [520, 611, 26, 2, 2], [1290, 609, 40, 2, 3], [1560, 612, 60, 2, 4]], s: [0.22, 0.34], sByY: [[600, 0.95], [640, 1.15]], layer: 'near', seed: 501 }),
       // the green beyond: uncut rings under the trees, daisy drifts
       YG({ obj: { 'plant.yg-meadow': 2, 'plant.grass-long': 1 }, centres: [[300, 562, 50, 3, 3], [1500, 558, 44, 3, 3], [880, 549, 26, 2, 2], [720, 592, 60, 3, 3], [1010, 590, 40, 2, 2], [60, 600, 50, 3, 2]], s: [0.22, 0.3], layer: 'mid', seed: 502 }),
       YG({ obj: { 'plant.daisies': 3, 'plant.grass': 2 }, centres: [[600, 530, 50, 5, 6], [1000, 524, 50, 4, 5], [1340, 540, 50, 5, 6], [120, 540, 40, 5, 5]], s: [0.26, 0.4], layer: 'mid', seed: 503 }),
       // the near banks: reed beds at the water's edge, the meadow deep, the front corners thick
-      YG({ obj: { 'plant.yg-reedbed': 3, 'plant.bulrush': 1 }, centres: [[470, 808, 60, 10, 4], [700, 846, 40, 10, 3], [1240, 790, 40, 8, 3]], s: [0.6, 0.9], sByY: [[780, 0.9], [880, 1.2]], layer: 'fore', seed: 504, reflect: true }),
+      YG({ obj: { 'plant.yg-reedbed': 3, 'plant.bulrush': 1 }, centres: [[470, 808, 60, 10, 4], [700, 846, 40, 10, 3], [1240, 790, 40, 8, 3]], s: [0.6, 0.9], sByY: [[780, 0.9], [880, 1.2]], layer: 'fore', seed: 504 }),
       YG({ obj: 'plant.yg-meadow', centres: [[120, 790, 120, 16, 5], [420, 870, 80, 10, 3], [1500, 770, 110, 16, 5], [1200, 878, 60, 8, 2]], s: [0.9, 1.3], sByY: [[740, 0.8], [900, 1.3]], layer: 'fore', seed: 505 }),
       YG({ obj: 'plant.yg-meadow', centres: [[140, 924, 140, 4, 4], [1440, 922, 130, 4, 4]], s: [1.6, 2.0], layer: 'front', seed: 506, anim: { sway: { k: 0.6 } } }),
     ),
@@ -111,7 +111,7 @@
       // people on the green
     ],
     flocks: [{ obj: 'bird.small-flight', n: 6, area: [260, 160, 1300, 300], speed: 26, s: 0.55, seed: 81, layer: 'far' }],
-    particles: 'season', weather: 'live', fx: { shadows: 2 },
+    particles: 'season', weather: 'live', fx: { shadows: 2, water: 2 },
   });
   /** All-year life (waterbirds, a squirrel): the season comes from the date (season 'auto'), so nothing that belongs to
       one season only (butterflies, bees, dragonflies) is drawn; the four seasonal items of the view share this one scene. */

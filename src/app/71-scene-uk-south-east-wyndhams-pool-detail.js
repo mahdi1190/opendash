@@ -50,7 +50,7 @@ function sceneUkWyndhamsPoolDetail() {
       { layer: 'front', d: 'M-160 880Q200 870 500 892Q640 900 760 910H-160Z', fill: '@verge.1' },
     ],
     water: [
-      { layer: 'mid', d: `M-160 ${WL + 2}H1760V640Q1560 650 1420 704Q1180 784 980 834Q700 892 420 862Q200 826 -160 766Z`, y0: WL, y1: 900, base: ['#6f9a8a', '#2f5e5a', '#173a3e'], reflect: true, shimmer: 40, lightPath: true },
+      { layer: 'mid', kind: 'pond', d: `M-160 ${WL + 2}H1760V640Q1560 650 1420 704Q1180 784 980 834Q700 892 420 862Q200 826 -160 766Z`, y0: WL, y1: 900 },
     ],
     place: [
       // the pine on the bank (the signature) and the angler's swim at the water
@@ -132,6 +132,7 @@ function sceneUkWyndhamsPoolDetail() {
       { obj: 'bird.goose-flight', n: 7, area: [300, 90, 1500, 200], speed: 26, s: 0.4, seed: 262, layer: 'far' },
       { obj: 'animal.wyv-dragonfly', n: 3, area: [400, 600, 1200, 760], speed: 30, s: 0.9, seed: 263, layer: 'fore' },
     ],
+    fx: { water: 2 },   // (lock, 10 Oct) the engine's water pass draws the pond and every reflection
     particles: 'season',
     weather: 'live',
   };

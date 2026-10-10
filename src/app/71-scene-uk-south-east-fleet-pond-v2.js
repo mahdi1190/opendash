@@ -79,7 +79,7 @@ function sceneUkFleetPondV2() {
       { id: 'platform', kind: 'bridge', poly: P.platform, over: 'water' },
     ],
     // (round 2) one water region: the pond, the pool and the stream (one reflection bake, not two)
-    water: [{ id: 'pond', kind: 'lake', poly: pond, edge: 'natural', ripple: 0.2, mirror: 0.8, rings: false }],
+    water: [{ id: 'pond', kind: 'lake', poly: pond, edge: 'natural', rings: false }],
     ground: [], place: [], scatter: [], actors: [], flocks: [],
     flows: [{ id: 'trains', kind: 'train', on: 'railway', timetable: { every: 2 }, mix: { 'rail.train': 1 }, speed: [12, 15], seed: 35 }],
   };
@@ -124,7 +124,7 @@ function sceneUkFleetPondV2() {
       const id = (dry ? u < 0.7 : rr > 0.75 && u < 0.5) ? 'plant.grass-long' : dry ? (u < 0.9 ? 'plant.bulrush' : 'plant.canal-view-loosestrife') : u < 0.62 ? 'plant.reed' : u < 0.9 ? 'plant.bulrush' : 'plant.canal-view-loosestrife', D = def(id);
       if (!D) continue;
       const p = proj(x, d, dry ? 0 : cam.water), k = (0.75 + 0.45 * r()) * (1 - 0.3 * rr) * (dry ? 0.8 : 1);
-      Pl.push({ obj: id, x: R1(p[0]), y: R1(p[1]), s: R2(q(k * f / d * Hm[id] / D.size[1])), pin: true, variant: Math.floor(r() * 3), flip: r() < 0.5, reflect: true, shadow: false, anim: false, tint: ['#8a7a40', [0, 0.05, 0.1][tk]] });
+      Pl.push({ obj: id, x: R1(p[0]), y: R1(p[1]), s: R2(q(k * f / d * Hm[id] / D.size[1])), pin: true, variant: Math.floor(r() * 3), flip: r() < 0.5, shadow: false, anim: false, tint: ['#8a7a40', [0, 0.05, 0.1][tk]] });
     } }
   // the fen right of the walk round the pool: reed and reedmace in stands, sedge between
   S.push({ obj: { 'plant.reed': 6, 'plant.bulrush': 2, 'plant.grass-long': 3 }, on: 'fen-r', avoid: ['deck', 'platform'], d: [13, 26], n: 80, dist: 'screen', cluster: { centres: 5, spread: 0.7 }, k: [0.65, 1.2], seed: 39, anim: 'strip', shadow: false, tint: { col: '#8a7a40', k: [0, 0.1] } });
@@ -141,7 +141,7 @@ function sceneUkFleetPondV2() {
       if (!def) continue;
       const p = proj(x, d, cam.water), k = (0.7 + 0.45 * r()) * (1 - 0.35 * rr);
       Pl.push({ obj: rush ? 'plant.bulrush' : 'plant.reed', x: R1(p[0]), y: R1(p[1]), s: Math.round(1000 * k * f / d * (rush ? 1.6 : 1.8) / def.size[1]) / 1000,
-        pin: true, variant: Math.floor(r() * 3), flip: r() < 0.5, reflect: true, shadow: false, anim: false, tint: ['#8a7a40', R2(r() * 0.1)] });
+        pin: true, variant: Math.floor(r() * 3), flip: r() < 0.5, shadow: false, anim: false, tint: ['#8a7a40', R2(r() * 0.1)] });
     } }
   // lilies in the slack water of the pool and the mouth, a few rafts on the pond
   { const r = F.rnd(71); [[-2.4, 14.6, 5], [-5.8, 20.8, 5], [-1.4, 25.4, 4], [4.4, 17.8, 3], [-3.5, 30.5, 4], [5, 40, 5], [-12, 44, 5], [10, 48, 4]].forEach(([x, d, n]) => { for (let i = 0; i < n; i++) Pl.push({ obj: 'water.lily', at: [R2(x + (r() - 0.5) * d * 0.1), R2(d + (r() - 0.5) * d * 0.08)], k: R2(0.8 + r() * 0.6), variant: Math.floor(r() * 3), anim: false }); }); }

@@ -142,7 +142,21 @@ const SCENE_CANAL_VIEWS = (function () {
     const P = (a, b, h) => [sx + a * hx + b * hd, sd + a * hd - b * hx, V.W + h];
     return { beam, P, hx, hd, len: B.len };
   }
-  return { views, boatPieces, bridges, parapets, boatFrame, spline };
+  /**
+   * (lock, 10 Oct) a piece's anchor: the waterline on the hull side NEAREST the camera (the lowest waterline row on the screen),
+   * in the middle of the slice. The engine draws a floater down to that row and mirrors it about it, so the reflection starts
+   * exactly where the visible hull meets the water (the centreline sat behind the near side: a gap and a doubled hull).
+   */
+  function pieceAnchor(V, pc) {
+    const B = V.boats[pc.bi], F = boatFrame(V, B), at = (a, sg) => { const g = F.P(a, sg * F.beam / 2, 0); return { g, p: V.proj(g[0], g[1], g[2]) }; };
+    // the near side: the one whose waterline is lower on the screen in the middle of the slice
+    const mid = (pc.a0 + pc.a1) / 2, sg = at(mid, 1).p[1] >= at(mid, -1).p[1] ? 1 : -1;
+    // the anchor: the LOWEST end of that waterline in the slice (nothing of the hull hangs below the engine's waterline clip);
+    // slope: the waterline's screen slope, so the engine mirrors about the true (perspective) waterline, not a level row
+    const e0 = at(pc.a0, sg), e1 = at(pc.a1, sg), lo = e0.p[1] >= e1.p[1] ? e0 : e1, dx = e1.p[0] - e0.p[0];
+    return { g: lo.g, p: lo.p, slope: Math.abs(dx) > 0.5 ? (e1.p[1] - e0.p[1]) / dx : 0 };
+  }
+  return { views, boatPieces, bridges, parapets, boatFrame, pieceAnchor, spline };
 })();
 
 /* ---------- boat.canal-view-boat: narrowboats and the trip boat, in the camera's own perspective ----------
@@ -180,7 +194,7 @@ const SCENE_CANAL_VIEWS = (function () {
     const pc = CV.boatPieces[v], V = CV.views[pc.id], B = V.boats[pc.bi], F = CV.boatFrame(V, B), Lv = LIV[B.liv] || LIV[0];
     const L = B.len, hb = F.beam / 2, trip = !!B.trip, GW = trip ? 0.62 : 0.55, RF = trip ? 2.15 : 1.82, cb = hb - 0.08, ct = cb - 0.1;
     const C0 = trip ? 2.2 : 1.5, C1 = trip ? L - 4.2 : L - 3.4, BOW = L - 2.6;
-    const mid = (pc.a0 + pc.a1) / 2, og = F.P(mid, 0, 0), o = V.proj(og[0], og[1], og[2]);
+    const o = CV.pieceAnchor(V, pc).p;
     const G = builder(V, F, o), faces = [], top = [], smoke = [];
     const inP = (a) => a >= pc.a0 - 1e-6 && a < pc.a1 + 1e-6;
     const clip = (a0, a1) => [Math.max(a0, pc.a0), Math.min(a1, pc.a1)];
@@ -328,8 +342,9 @@ const SCENE_CANAL_VIEWS = (function () {
     },
     night: { glow: { window: '#ffd68a' }, on: 0.85 },
     parts: ['body', 'smoke'],
-    anim: { flicker: { part: 'smoke', op: [0.35, 0.85], period: 6 } },
-    reflect: true, shadow: false,
+    anim: { flicker: { part: 'smoke', op: [0.35, 0.85], period: 6 } }, shadow: false,
+    // (lock, 10 Oct) the engine's water pass mirrors a floater about its waterline; a perspective piece's waterline is sloped
+    waterSlope(v) { const pc = CV.boatPieces[v]; return pc ? CV.pieceAnchor(CV.views[pc.id], pc).slope : 0; },
     tags: ['uk', 'canal', 'narrowboat', 'boat', 'perspective', 'kit:water', 'kit:boats', 'role:boat', 'class:boat'],
     credit: 'drawn for the Basingstoke Canal views: narrowboats and the trip boat in the camera\'s perspective',
     build(v, rnd, ctx) { return boat(v, rnd, (ctx && ctx.season) || 'summer'); },
@@ -453,7 +468,7 @@ const SCENE_CANAL_VIEWS = (function () {
       autumn: { ivy: ['#3a3a1f', '#5a4a24', '#4c5a2a'] },
       winter: { brick: ['#8e5a46', '#9a6650', '#704434', '#4a2e26', '#a87060'], ivy: ['#2a3a26', '#34482c', '#405a34'] },
     },
-    parts: ['body', 'ivy'], reflect: true, shadow: false,
+    parts: ['body', 'ivy'], shadow: false,
     tags: ['uk', 'canal', 'bridge', 'brick', 'perspective', 'kit:water', 'kit:temperate', 'role:landmark', 'class:structure'],
     credit: 'drawn for the Basingstoke Canal views: the brick arch road bridges (Malthouse, Pondtail) in the camera\'s perspective',
     build(v, rnd, ctx) { return bridge(v, rnd, (ctx && ctx.season) || 'summer'); },
@@ -471,7 +486,7 @@ const SCENE_CANAL_VIEWS = (function () {
     seasonal: true, shapeBySeason: true, flippable: false, real: { h: 1.1, l: 20, w: 0.5 },
     palette: { base: { brick: ['#8a4a36', '#6e3a2c', '#a05a42'], stone: ['#cfc6b4', '#a89e8c', '#e4ddcf'], moss: ['#5a6a34', '#7a8a44'] },
       winter: { moss: ['#6a7458', '#8a9478'] } },
-    parts: ['body'], reflect: false, shadow: false,
+    parts: ['body'], shadow: false,
     tags: ['uk', 'bridge', 'parapet', 'frame', 'kit:temperate', 'role:frame', 'class:shrub'],   // (round 2) class shrub, like the other frames: the frame we lean on casts no shadow (a structure's sheared silhouette fell across the sky)
     credit: 'drawn for the Basingstoke Canal views: the parapet of Reading Road bridge',
     build(v, rnd) {
@@ -515,8 +530,7 @@ const SCENE_CANAL_VIEWS = (function () {
       winter: { twig: ['#8a6a30', '#a8843a', '#c09a48'] },
     },
     parts: ['twigs', 'leaves'],
-    anim: { sway: { part: 'leaves', pivot: [300, 0], deg: 1.4 } },
-    reflect: false, shadow: false,
+    anim: { sway: { part: 'leaves', pivot: [300, 0], deg: 1.4 } }, shadow: false,
     tags: ['uk', 'willow', 'frame', 'canal', 'kit:temperate', 'role:frame', 'class:shrub'],
     credit: 'drawn for the Basingstoke Canal views: a weeping willow curtain',
     build(v, rnd, ctx) {
@@ -582,8 +596,7 @@ const SCENE_CANAL_VIEWS = (function () {
       autumn: { leaf: ['#7a5a1e', '#a0702a', '#c08a34', '#8a8a34'] },
     },
     parts: ['branch', 'leaves'],
-    anim: { sway: { part: 'leaves', pivot: [0, 40], deg: 1.1 } },
-    reflect: false, shadow: false,
+    anim: { sway: { part: 'leaves', pivot: [0, 40], deg: 1.1 } }, shadow: false,
     tags: ['uk', 'oak', 'frame', 'canal', 'kit:temperate', 'role:frame', 'class:shrub'],
     credit: 'drawn for the Basingstoke Canal views: a pedunculate oak (Quercus robur) bough',
     build(v, rnd, ctx) {
@@ -633,7 +646,7 @@ const SCENE_CANAL_VIEWS = (function () {
       autumn: { stem: ['#6a5a34', '#7a6a40'], leaf: ['#7a5a2a', '#946a30'], spike: ['#8a4a3a', '#a0604a', '#6a3a2a'] },
       winter: { stem: ['#6a5644', '#806a54'], leaf: ['#6a5644', '#806a54'], spike: ['#5a4434', '#6e5644', '#4a3a2a'] },
     },
-    parts: ['body'], anim: { sway: { part: 'body', pivot: [0, 0], deg: 2.2 } }, reflect: true, shadow: false,
+    parts: ['body'], anim: { sway: { part: 'body', pivot: [0, 0], deg: 2.2 } }, shadow: false,
     tags: ['uk', 'canal', 'wetland', 'wildflower', 'loosestrife', 'kit:temperate', 'kit:water', 'role:edge', 'class:shrub'],
     credit: 'drawn for the Basingstoke Canal views: purple loosestrife (Lythrum salicaria)',
     build(v, rnd, ctx) {
@@ -659,7 +672,7 @@ const SCENE_CANAL_VIEWS = (function () {
       autumn: { stem: ['#6a5a34', '#7a6a40'], leaf: ['#6a6a2e', '#84743a'], head: ['#9a7a4a', '#7a5a34', '#b08a5a'] },
       winter: { stem: ['#6a5644', '#806a54'], leaf: ['#6a5644', '#806a54'], head: ['#6a5040', '#5a4434', '#7a6050'] },
     },
-    parts: ['body'], anim: { sway: { part: 'body', pivot: [0, 0], deg: 2 } }, reflect: true, shadow: false,
+    parts: ['body'], anim: { sway: { part: 'body', pivot: [0, 0], deg: 2 } }, shadow: false,
     tags: ['uk', 'canal', 'wetland', 'wildflower', 'meadowsweet', 'kit:temperate', 'kit:water', 'role:edge', 'class:shrub'],
     credit: 'drawn for the Basingstoke Canal views: meadowsweet (Filipendula ulmaria)',
     build(v, rnd, ctx) {
@@ -696,7 +709,7 @@ function sceneCanalViewV2(id) {
   // would spend them all on the near bank's flowers and lose the boats and the bridge down the reach)
   // ONE region (a split shows its cut as a bank across the water); the counts below are kept lean so the boats and the bridge
   // stay inside the 600 placements a region mirrors (nearest first)
-  const water = [{ id: 'canal', kind: 'canal', path: V.line(0, 0, L, 2), width: V.width, edge: 'natural', ripple: 0.12, rings: true, base: ['#a4c09a', '#4a8442', '#2a6a1c'], mirror: V.mirror || 0.9, clarity: 0 }]   // (round 2) clear green near, lighter far (toward the sky it mirrors at a grazing angle);
+  const water = [{ id: 'canal', kind: 'canal', path: V.line(0, 0, L, 2), width: V.width, edge: 'natural', rings: true }]   // (round 2) clear green near, lighter far (toward the sky it mirrors at a grazing angle);
   const S = { land: 'wood' };
   const surfaces = [
     { id: 'land', kind: 'grass', rest: true },
@@ -717,7 +730,7 @@ function sceneCanalViewV2(id) {
   // ---- the boats and the bridge, in pieces (pixel placements, pinned, their layer from their depth)
   const layerOf = (d) => (d < 15 ? 'fore' : d < 50 ? 'near' : d < 200 ? 'mid' : 'far');
   for (const v of V.boatIdx) {
-    const pc = SCENE_CANAL_VIEWS.boatPieces[v], B = V.boats[pc.bi], F = SCENE_CANAL_VIEWS.boatFrame(V, B), g = F.P((pc.a0 + pc.a1) / 2, 0, 0), p = V.proj(g[0], g[1], g[2]);
+    const pc = SCENE_CANAL_VIEWS.boatPieces[v], B = V.boats[pc.bi], A = SCENE_CANAL_VIEWS.pieceAnchor(V, pc), g = A.g, p = A.p;
     place.push({ obj: 'boat.canal-view-boat', variant: v, x: r1(p[0]), y: r1(p[1]), s: 1, pin: true, layer: layerOf(g[1]), shadow: false, anim: B.smoke ? undefined : false });
   }
   if (V.bridge) {
@@ -787,6 +800,14 @@ function sceneCanalViewMovers(data, V, T, hw, tw) {
     const s = a.s, o = a.tow ? s.map(() => T * (hw + 0.55 + tw / 2 + 0.35)) : a.o;
     const route = a.tow ? V.line(o[0], Math.min(s[0], s[1]), Math.max(s[0], s[1]), 3) : s.map((q, i) => { const p = V.at(q); return [Math.round((p[0] + p[3] * o[i]) * 100) / 100, Math.round((p[1] - p[2] * o[i]) * 100) / 100]; });
     if (a.tow && s[0] > s[1]) route.reverse();
+    // (lock, 10 Oct: a dog walker routed past the camera rendered GIANT, cut by the frame and faceless) a walker never comes
+    // nearer than the depth where a 1.7 m figure fills 45 % of the frame while on screen: the route ends there (the engine
+    // turns it into a there-and-back) or runs on off the frame's side
+    if (a.tow) {
+      const near = (q) => { const p = V.proj(q[0], q[1], 0); return V.f * 1.7 / Math.max(0.1, q[1]) > 0.45 * 900 && p[0] > -80 && p[0] < 1680; };
+      while (route.length > 2 && near(route[route.length - 1])) route.pop();
+      while (route.length > 2 && near(route[0])) route.shift();
+    }
     const spec = Object.assign({}, a, { route });
     for (const k of ['behave', 'o', 's', 'tow']) delete spec[k];
     // a moored boat floats beside the towpath and never blocks a walker (as the engine has it); sceneBehave's obstacle for a pinned
@@ -848,9 +869,9 @@ const SCENE_CANAL_VIEW_LIFE = {
     actors.push({ behave: 'actors', obj: 'bird.mallard', k: 1.22, o: [-2.6, -1.6, -3], s: [7, 10, 13], seed: 33 }, { behave: 'actors', obj: 'bird.mallard', k: 1.22, o: [-2, -1, -2.4], s: [7.6, 10.6, 13.6], seed: 34, variant: 1, offset: 0.01 });
     actors.push({ behave: 'actors', obj: 'person.walker', preset: 'stroll', tow: true, s: [3, 36], seed: 35, variant: 5, offset: 0.2 },
       { behave: 'walkWithDog', walker: 'person.walker', tow: true, s: [4, 34], seed: 36, variant: 1, dogVariant: 0, offset: 0.6 });
-    // the kingfisher on a dead twig over the water at the near bank (pixel, pinned: a perch, not the ground)
     scatter.push({ obj: { 'plant.grass': 3, 'plant.grass-long': 2, 'plant.wildflowers': 1, 'plant.daisies': 1 }, on: ['bank-o'], avoid: ['reeds-o'], d: [4, 40], n: 50, dist: 'screen', seed: 73, anim: false, k: [0.8, 1.2] });
-    place.push({ obj: 'bird.kingfisher', x: 1125, y: 612, s: 1.6, pin: true, layer: 'fore', variant: 0, flip: true });
+    // (lock, 10 Oct) the pinned kingfisher was removed: its twig sat ON the open water (a bird floating on a stick, as big as the
+    // swan beyond it); a perch needs a real snag or branch placed in ground metres first
     // hero trees: big oaks on the towpath side making the tunnel, an alder and a birch on the offside
     place.push({ obj: 'tree.canal-oak', at: [-14, 22], k: 1.25, variant: 2 }, { obj: 'tree.canal-oak', at: [-12, 36], k: 1.15, variant: 1, flip: true }, { obj: 'tree.bank-birch', at: [-16, 48], k: 1.1 }, { obj: 'tree.pond-alder', at: [17.5, 24], k: 1.25 }, { obj: 'tree.canal-oak', at: [19, 40], k: 1.15, variant: 0 }, { obj: 'tree.bank-alder', at: [13, 64], k: 1.1 });
     scatter.push({ obj: { 'plant.reed': 5, 'plant.bulrush': 2, 'plant.canal-view-loosestrife': 1, 'plant.grass-long': 2 }, on: ['reeds-o', 'bank-o'], d: [2.5, 30], n: 70, dist: 'screen', cluster: { centres: 4, spread: 26 }, seed: 72, anim: false, k: [0.8, 1.2] });

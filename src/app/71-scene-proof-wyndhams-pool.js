@@ -88,7 +88,7 @@ function sceneProofWyndhamsPool() {
       { id: 'reeds-far-r', kind: 'bank', poly: fringe([[52, 109], [45.5, 123.5], [31, 130.6], [20, 128.4]], 3, -1, 25) },
       { id: 'reeds-far-l', kind: 'bank', poly: fringe([[-12, 127.6], [-23, 121.6], [-37, 116.6], [-50, 109]], 3, -1, 27) },
     ],
-    water: [{ id: 'pool', kind: 'pond', poly: pool, edge: 'natural', mirror: 0.8, ripple: 0.18, clarity: 0.12, base: ['#7a8c96', '#4a6470', '#26383c'] }],
+    water: [{ id: 'pool', kind: 'pond', poly: pool, edge: 'natural' }],
     ground: [],
     place: [], scatter: [], actors: [], flocks: [],
   };
