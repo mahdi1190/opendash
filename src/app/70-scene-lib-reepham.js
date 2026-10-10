@@ -83,16 +83,37 @@ const SCENE_REEPHAM_STATION = (function () {
   }
   function define() {
     if(sceneObj('landmark.rph-station-perspective'))return;
-    sceneObjDefine({id:'landmark.rph-station-perspective',category:'landmark',size:[1100,800],box:[-900,-800,200,35],
-      real:{h:8,l:8,w:16},variants:1,seasonal:false,flippable:false,parts:['body','roof','win'],
+    const bough=sceneObj('plant.canal-view-bough');
+    sceneObjDefine(Object.assign({},bough,{id:'plant.rph-station-bough',weight:0,tags:bough.tags.filter(t=>!t.startsWith('role:')).concat('role:shrub'),build(v,r,ctx){
+      const S=sceneObjShapes('plant.canal-view-bough',v,ctx.season),out={};
+      for(const part of S.order)out[part]=S.parts[part].map((q,i)=>{
+        const shape=Object.assign({},q,part==='leaves'&&i%8!==0?{detail:true}:{});
+        if(part==='leaves'&&q.f&&ctx.season!=='winter'){
+          const b=scenePathBox(q.d),cx=(b[0]+b[2])/2,cy=(b[1]+b[3])/2,
+            h=(b[3]-b[1])*.45,a=(r()-.5)*1.5,point=(x,y)=>[
+              Math.round(cx+(x*Math.cos(a)-y*Math.sin(a))*h/17),
+              Math.round(cy+(x*Math.sin(a)+y*Math.cos(a))*h/17)];
+          const side=[[0,-17],[5,-10],[3,-5],[6,1],[0,13]],
+            ring=side.concat(side.slice(1,-1).reverse().map(([x,y])=>[-x,y]));
+          const P=ring.map(p=>point(...p)),mid=(p,q)=>p.map((v,j)=>Math.round((v+q[j])/2));
+          shape.d='M'+mid(P[P.length-1],P[0]).join(' ');
+          P.forEach((p,j)=>{shape.d+='Q'+p.join(' ')+' '+mid(p,P[(j+1)%P.length]).join(' ');});
+          shape.d+='z';
+        }
+        return shape;
+      });
+      Object.defineProperty(out,'$anim',{value:S.anim});return out;
+    }}));
+    sceneObjDefine({id:'landmark.rph-station-perspective',category:'landmark',size:[1100,800],
+      real:{h:8.5,l:8,w:16},variants:1,seasonal:false,flippable:false,parts:['body','roof','win'],
       palette:{base:{}},night:{glow:{window:'#ffd5a0'},on:.65},
-      tags:['uk','reepham','kit:temperate','role:landmark'],build(v,r){
-        const G=draw([-4.9,28,.55],8,800),B=[],roof=[],win=[];
+      tags:['uk','reepham','landmark','place:uk-east/reepham','kit:temperate','role:landmark'],build(v,r){
+        const G=draw([-4.9,28,.55],8.5,800),B=[],roof=[],win=[];
         const poly=(out,col,pts,extra)=>out.push(Object.assign({f:col,d:G.path(pts)},extra));
         // The buff-brick two-storey block, with its narrow gable facing the
         // viewer; the long platform wall and lower range recede westward.
-        poly(B,'#c5ad78',[[-12,28,.55],[-4.9,28,.55],[-4.9,28,5.8],[-8.45,28,8.55],[-12,28,5.8]]);
-        poly(B,'#b79d69',[[-4.9,28,.55],[-4.9,39,.55],[-4.9,39,5.8],[-4.9,28,5.8]]);
+        poly(B,'#c5ad78',[[-12,28,.55],[-4.9,28,.55],[-4.9,28,5.8],[-12,28,5.8]]);
+        poly(B,'#b79d69',[[-4.9,28,.55],[-4.9,39,.55],[-4.9,39,5.8],[-4.9,33.5,8.55],[-4.9,28,5.8]]);
         poly(B,'#ac7451',[[-4.9,39,.55],[-4.9,62,.55],[-4.9,62,3.2],[-4.9,39,3.2]]);
         const marks=['','',''];
         for(let i=0;i<235;i++){
@@ -105,13 +126,12 @@ const SCENE_REEPHAM_STATION = (function () {
         }
         marks.forEach((d,i)=>B.push({f:['#cfb985','#ac976c','#cbb881'][i],d,detail:true}));
         // Slate is laid on the pitched plane, not a rectangular roof grid.
-        poly(roof,'#525d59',[[-8.45,27.65,8.65],[-8.45,39.2,8.65],[-4.65,39.2,5.8],[-4.65,27.65,5.8]]);
-        poly(roof,'#707971',[[-12.25,27.65,5.8],[-12.25,39.2,5.8],[-8.45,39.2,8.65],[-8.45,27.65,8.65]]);
+        poly(roof,'#525d59',[[-12.25,27.65,5.8],[-4.65,27.65,5.8],[-4.65,33.5,8.65],[-12.25,33.5,8.65]]);
         poly(roof,'#59655f',[[-8.2,38.8,4.25],[-8.2,62.4,4.25],[-4.6,62.4,3.2],[-4.6,38.8,3.2]]);
         let tiles='';
-        for(let j=1;j<17;j++)for(let d=28;d<39;d+=.7){
-          const x=-8.45+j*3.8/17,h=8.65-j*2.85/17;
-          tiles+=G.path([[x,d,h+.015],[x,d+.62,h+.015],[x+.025,d+.62,h],[x+.025,d,h]]);
+        for(let j=1;j<17;j++)for(let x=-12.2;x<-4.8;x+=.42){
+          const d=27.65+j*5.85/17,h=5.8+j*2.85/17;
+          tiles+=G.path([[x,d,h+.015],[x+.36,d,h+.015],[x+.36,d+.025,h],[x,d+.025,h]]);
         }
         roof.push({f:'#a2aaa0',op:.4,d:tiles,detail:true});
         // Quoins and string courses follow both visible masonry planes.
@@ -125,12 +145,29 @@ const SCENE_REEPHAM_STATION = (function () {
           quad(B,'#e1d6b2',-.08,h-.1,w+.16,height+.22);
           quad(B,'#454c46',0,h,w,height);
           if(door){quad(B,'#64765f',.06,h+.08,w-.12,height-.16);quad(B,'#344b48',.13,h+height*.6,w-.26,height*.32);return;}
-          for(const u of [.065,w*.52])for(const z of [h+.06,h+height*.53])quad(win,'#526e72',u,z,w*.42,height*.43,{glow:'window'});
+          let panes='';
+          for(const u of [.065,w*.52])for(const z of [h+.06,h+height*.53])panes+=G.path([at(u,z),at(u+w*.42,z),at(u+w*.42,z+height*.43),at(u,z+height*.43)]);
+          win.push({f:'#526e72',d:panes,glow:'window'});
           quad(B,'#eee6c9',w*.48,h,.045,height);
           quad(B,'#eee6c9',0,h+height*.5,w,.045);
           quad(B,'#d8c99f',-.13,h-.1,w+.26,.08);
         }
-        for(const x of [-10.9,-7.4]){opening(false,x,1.3,1.15,1.7);opening(false,x,4.15,1.05,1.15);}
+        opening(false,-10.9,.55,1.1,2.2,true);
+        opening(false,-7.4,1.3,1.15,1.7);
+        // The paired round-headed opening distinguishes the former station
+        // from a domestic frontage. Its arch and glazing share the wall plane.
+        for(const x of [-10.9,-10.08]){
+          const h=4.1,w=.66,hh=1.18,at=(u,z)=>[x+u,27.99,z],arch=(border)=>{
+            const pts=[at(-border,h-border),at(w+border,h-border),at(w+border,h+hh-.31)];
+            for(let j=0;j<=10;j++){const a=j*Math.PI/10;pts.push(at(w/2+(w/2+border)*Math.cos(a),h+hh-.31+(w/2+border)*Math.sin(a)));}
+            return pts.concat([at(-border,h-border)]);
+          };
+          poly(B,'#e4ddbf',arch(.085));
+          poly(win,'#526e72',arch(0),{glow:'window'});
+          // The white mullion is a hole in the single room's glow path.
+          const q=[at(w*.47,h),at(w*.53,h),at(w*.53,h+hh-.12),at(w*.47,h+hh-.12)];
+          win[win.length-1].d+=G.path(q.reverse());
+        }
         for(const d of [29.7,33.6,37]){opening(true,d,1.25,1.05,1.7);opening(true,d,4.1,1,1.2);}
         opening(true,40.5,.55,.95,2.05,true);
         for(const d of [44,48,52.5,57.5])opening(true,d,1.1,.9,1.35);
@@ -138,8 +175,8 @@ const SCENE_REEPHAM_STATION = (function () {
         poly(B,'#bca37b',[[-9.6,32.4,7.4],[-9.6,33,7.4],[-9.6,33,9.05],[-9.6,32.4,9.05]]);
         return {body:B,roof,win};
       }});
-    edges.forEach((e,i)=>sceneObjDefine({id:'structure.rph-platform-perspective-'+i,category:'structure',size:[2400,100],
-      real:{h:.55,l:4,w:9},variants:1,seasonal:false,flippable:false,parts:['body'],palette:{base:{}},
+    edges.forEach((e,i)=>sceneObjDefine({id:'structure.rph-platform-perspective-'+i,category:'structure',size:[1500,100],
+      real:{h:.55,l:4,w:.3},foot:.15,variants:1,seasonal:false,flippable:false,parts:['body'],palette:{base:{}},
       tags:['uk','reepham','unlit','kit:temperate','role:street','class:street'],build(v,r){
         const G=draw([e.x,e.d,0],.55,100),out=[],endx=-2.65-.025*e.end,left=-6.1-.075*e.d,leftEnd=-6.1-.075*e.end;
         const shape=(f,pts,more)=>out.push(Object.assign({f,d:G.path(pts)},more));
@@ -152,6 +189,12 @@ const SCENE_REEPHAM_STATION = (function () {
           wear+=G.path([[x,d,.13],[x+.006,d+.42,.13],[x+.006,d+.42,.19],[x,d,.19]]);
         }
         out.push({f:'#736d59',d:joints,detail:true},{f:'#a38d68',d:wear,detail:true});
+        const a=G.p(left+.5,e.d+1,.559),b=G.p((left+e.x)/2,e.d+1.65,.559),c=G.p(e.x-.6,e.d+1.4,.559);
+        out.push({s:'#837e69',w:.55,d:`M${a.join(' ')}Q${b.join(' ')} ${c.join(' ')}`,detail:true});
+        let moss='';
+        for(let j=0;j<12;j++){const d=e.d+r()*4,x=-2.65-.025*d;
+          moss+=G.path([[x-.2,d,.56],[x-.08,d+.15,.56],[x-.13,d+.29,.56],[x-.32,d+.16,.56]]);}
+        out.push({f:'#7b8863',d:moss,detail:true});
         return {body:out};
       }}));
   }
@@ -401,3 +444,5 @@ const SCENE_REEPHAM_STATION = (function () {
     return {body:B,lit:[]};
   });
 })();
+
+if(typeof sceneObjDefine==='function')SCENE_REEPHAM_STATION.define();

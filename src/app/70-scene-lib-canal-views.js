@@ -348,6 +348,16 @@ const SCENE_CANAL_VIEWS = (function () {
     anim: { flicker: { part: 'smoke', op: [0.35, 0.85], period: 6 } }, shadow: false,
     // (lock, 10 Oct) the engine's water pass mirrors a floater about its waterline; a perspective piece's waterline is sloped
     waterSlope(v) { const pc = CV.boatPieces[v]; return pc ? CV.pieceAnchor(CV.views[pc.id], pc).slope : 0; },
+    // (fix, 10 Oct) the pieces of one boat are ONE thing on the water: the engine composites the group and mirrors it once,
+    // column by column, about the hull's true near-side waterline (each slice mirrored on its own gave a staircase of hulls)
+    waterGroup(v) { const pc = CV.boatPieces[v]; return pc ? pc.id + ':' + pc.bi : null; },
+    waterLine(v) {
+      const pc = CV.boatPieces[v]; if (!pc) return null;
+      const V = CV.views[pc.id], B = V.boats[pc.bi], F = CV.boatFrame(V, B), A = CV.pieceAnchor(V, pc), o = A.p;
+      const mid = (pc.a0 + pc.a1) / 2, side = (a, sg) => { const g = F.P(a, sg * F.beam / 2, 0); return V.proj(g[0], g[1], g[2]); };
+      const sg = side(mid, 1)[1] >= side(mid, -1)[1] ? 1 : -1, e0 = side(pc.a0, sg), e1 = side(pc.a1, sg);
+      return [[e0[0] - o[0], e0[1] - o[1]], [e1[0] - o[0], e1[1] - o[1]]];
+    },
     tags: ['uk', 'canal', 'narrowboat', 'boat', 'perspective', 'kit:water', 'kit:boats', 'role:boat', 'class:boat'],
     credit: 'drawn for the Basingstoke Canal views: narrowboats and the trip boat in the camera\'s perspective',
     build(v, rnd, ctx) { return boat(v, rnd, (ctx && ctx.season) || 'summer'); },

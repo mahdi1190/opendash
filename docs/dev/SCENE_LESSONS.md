@@ -121,3 +121,12 @@ Found in the first integration (to fix in the engine, not in scenes):
 - No library object is a perch host (`worldLifePerches` matches `post|perch|mooring|stake` by name and none exists): a
   kingfisher needs a `structure.post` descriptor with a perch point.
 - The 1 m walk grid breaks narrow diagonal paths (a 2.6 m towpath) into pieces; use 0.5 m cells to 60 m as specified.
+
+## F. User review of the first world-engine render (10 Oct, fleet-canal-2 w3)
+
+These must be fixed IN THE ENGINE before any test scene is shown again:
+- Boats overlap the towpath. A boat's footprint must lie inside a water region, with its hull edge at the bank; the engine must refuse or snap any floating entity whose footprint touches land.
+- The scene is much emptier than the original. The engine must carry over or generate the original's density: hedgerow and bank planting, scatter, people and backdrop. A converted scene must be at least as rich as its source, judged side by side.
+- The near boat is a flat side-on slab cropped by the frame edge. Large near entities must be drawn in perspective and framed, never left as flat, cropped slabs.
+- The horizon is a thin flat tree line: the backdrop must be on.
+- A mover was cut off at the bottom edge (a dark head). Movers must not spawn or idle inside the near clip band.

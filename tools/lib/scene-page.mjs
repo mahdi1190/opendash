@@ -24,7 +24,7 @@ import { animRegistryFiles } from './anim-sources.mjs';
 import { rasterAssetBlocks, readRasterAsset } from './raster-assets.mjs';
 
 export const repoRoot = () => resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SCENE_SRC_RE = /^7[01]-scene-[a-z0-9-]+\.js$/, SCENE_BROWSER_RE = /^78-scene-[a-z0-9-]+\.js$/;
+const SCENE_SRC_RE = /^(7[01]-scene-[a-z0-9-]+|79-world-[a-z0-9-]+)\.js$/, SCENE_BROWSER_RE = /^(78-scene-[a-z0-9-]+)\.js$/;
 const FIXTURES = ['scene-test-objects.js', 'scene-test-scenes.js'];
 
 /** The source files (absolute paths), in build order. */

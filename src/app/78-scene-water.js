@@ -297,6 +297,59 @@ function _scwaSinkU(C, o, X, Y, d, cls) {
   if (c !== 'boat' && c !== 'bird-water') return 0;
   try { return _sccSinkOf(C, o, X, Y, d) || 0; } catch (e) { return 0; }
 }
+/**
+ * One multi-piece object's reflection (members: [{ it, i }] of one waterGroup): the pieces composited as drawn (device px),
+ * then that composite mirrored by the water in 2 px columns, each about the group's waterline in that column (the pieces'
+ * def.waterLine segments, the lowest where they overlap; a level line through the anchor when a piece declares none).
+ */
+function _scwaMirrorGroup(env, R, rc, members, bucket, night) {
+  const parts = [];
+  let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+  for (const { it, i } of members) {
+    const sp = env.itemSprite ? env.itemSprite(i) : env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: '*', haze: it.haze || 0, tint: it.tint, scale: bucket(it.s) * env.vs, flip: it.flip, cls: it.cls, i }));
+    if (!sp || !sp.c) continue;
+    const M = env.placeM(it.x, it.y, it.s, it.flip), xa = M[4] + sp.x0 * M[0], xb = M[4] + (sp.x0 + sp.w) * M[0], ya = M[5] + sp.y0 * M[3], yb = M[5] + (sp.y0 + sp.h) * M[3];
+    const def = sceneObj(it.o), wl = def && typeof def.waterLine === 'function' ? def.waterLine(it.v) : null;
+    const seg = (wl && wl.length === 2 ? wl : [[sp.x0, 0], [sp.x0 + sp.w, 0]]).map(p => [M[4] + p[0] * M[0], M[5] + p[1] * M[3]]);
+    parts.push({ it, i, sp, M, seg });
+    bx0 = Math.min(bx0, xa, xb); bx1 = Math.max(bx1, xa, xb); by0 = Math.min(by0, ya, yb); by1 = Math.max(by1, ya, yb);
+  }
+  if (!parts.length) return;
+  bx0 = Math.floor(bx0); by0 = Math.floor(by0); bx1 = Math.ceil(bx1); by1 = Math.ceil(by1);
+  const W = bx1 - bx0, H = by1 - by0;
+  if (W < 1 || H < 1 || W * H > 4e6) return;
+  const c = _sccCanvas(W, H), g = c.getContext('2d', _SCC_CPU);
+  for (const p of parts) {
+    const M = [p.M[0], p.M[1], p.M[2], p.M[3], p.M[4] - bx0, p.M[5] - by0];
+    g.setTransform(...M); g.drawImage(p.sp.c, p.sp.x0, p.sp.y0, p.sp.w, p.sp.h);
+    if (night) {
+      const it = p.it;
+      if (it.lit) { const lp = env.keep(env.sprite({ o: it.o, v: it.v, season: it.season, part: 'lit', scale: bucket(it.s) * env.vs, flip: it.flip, cls: it.cls, i: p.i })); if (lp && lp.c) { g.setTransform(...M); g.drawImage(lp.c, lp.x0, lp.y0, lp.w, lp.h); } }
+      if (it.glowOn && typeof _sccGlows === 'function') _sccGlows(g, M, it, null, env.windowShare);
+    }
+  }
+  // the waterline per column: each piece's segment over its own span (the lowest row where two meet), gaps filled from the nearest
+  const Yw = new Float64Array(W).fill(NaN);
+  for (const p of parts) {
+    let [[xa, ya], [xb, yb]] = p.seg; if (xb < xa) [xa, ya, xb, yb] = [xb, yb, xa, ya];
+    for (let x = Math.max(0, Math.floor(xa - bx0)); x <= Math.min(W - 1, Math.ceil(xb - bx0)); x++) {
+      const t = xb - xa > 0.5 ? Math.min(1, Math.max(0, (x + bx0 - xa) / (xb - xa))) : 0.5, y = ya + (yb - ya) * t;
+      if (!(Yw[x] >= y)) Yw[x] = y;
+    }
+  }
+  for (let x = 1; x < W; x++) if (Number.isNaN(Yw[x])) Yw[x] = Yw[x - 1];
+  for (let x = W - 2; x >= 0; x--) if (Number.isNaN(Yw[x])) Yw[x] = Yw[x + 1];
+  if (Number.isNaN(Yw[0])) return;
+  rc.save();
+  for (let x = 0; x < W; x += 2) {
+    const cw = Math.min(2, W - x), y = Yw[x], h = Math.min(H, y - by0);
+    if (h <= 0) continue;
+    rc.setTransform(1, 0, 0, -1, -R.db[0], 2 * y - R.db[1]);
+    rc.drawImage(c, x, 0, cw, h, bx0 + x, by0, cw, h);
+  }
+  rc.restore();
+}
+
 /** Bake one region into its layer: base, reflection (calm: into the layer; rippling: kept for the frames), edges. */
 function _scwaBake(env, R, gx) {
   const { vs, ox, oy, cam, L } = env, grp = env.grp, TG = env.TG, C = env.C;
@@ -380,7 +433,15 @@ function _scwaBake(env, R, gx) {
   R.mirrored = cand.length;
   const bucket = (s) => (typeof sceneScaleBucket === 'function' ? sceneScaleBucket(s) : s), night = !!(L && L.windows);
   const floatSlope = (it) => { const def = typeof sceneObj === 'function' ? sceneObj(it.o) : null; if (!def || typeof def.waterSlope !== 'function') return null; const t = def.waterSlope(it.v); return Number.isFinite(t) ? t : null; };
-  for (const { it, i, Ym } of cand) {
+  // (fix, 10 Oct) an object drawn in several pieces (one boat in slices) is ONE image on the water: its pieces are composited
+  // as drawn and the WATER mirrors that composite once, column by column, about the group's continuous waterline. Mirroring
+  // each piece about its own anchor gave a staircase of repeated hulls (SCENE_LESSONS C).
+  const grpOf = (it) => { if (globalThis.__NOGRP) return null; const def = typeof sceneObj === 'function' ? sceneObj(it.o) : null; if (!def || typeof def.waterGroup !== 'function') return null; const k = def.waterGroup(it.v); return k == null ? null : it.o + '|' + k; };
+  const groupsW = new Map();
+  for (const c0 of cand) { if (c0.it.direct) continue; const k = grpOf(c0.it); if (k == null) continue; c0.gk = k; if (!groupsW.has(k)) groupsW.set(k, []); groupsW.get(k).push(c0); }
+  const doneW = new Set();
+  for (const { it, i, Ym, gk } of cand) {
+    if (gk != null) { if (!doneW.has(gk)) { doneW.add(gk); _scwaMirrorGroup(env, R, rc, groupsW.get(gk), bucket, night); } continue; }
     if (it.direct) {
       // a projected building: its fills, flipped about its own waterline (its foot row to Ym)
       const fy = it.direct.anchor ? it.direct.anchor[1] : it.y;

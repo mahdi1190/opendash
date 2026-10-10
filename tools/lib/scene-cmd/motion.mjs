@@ -106,6 +106,28 @@ export default {
     if (!scenes.length) throw new Error('scene motion needs refs (<pack>/<id>) or --pack');
     const rows = [];
     for (const s of scenes) {
+      // a v3 scene (world engine): its movers are the life sim; the checks are the Node sim's (forbidden cells, floaters off
+      // the water, pops / vanishes off spawn cells, stuck walkers, depth order), over --seconds (default 300)
+      if (s.kind === 'world') {
+        const { worldMotion, worldMotionSvg } = await import('../world/perf.mjs');
+        const { worldEngineOf } = await import('../world/refs.mjs');
+        const WE = worldEngineOf(reg), seconds = Number(args.seconds) > 0 ? Number(args.seconds) : 300;
+        const m = worldMotion(WE, s.spec, { seconds });
+        const counts = {}; for (const x of m.red) counts[x.rule] = (counts[x.rule] || 0) + 1;
+        const r = { v2: false, v3: true, errors: m.red.length, warns: 0, infos: 0, counts, movers: m.tracks.map(t => ({ o: t.id, cls: t.cls })), blockers: 0,
+          problems: m.red.map(x => ({ rule: x.rule, sev: 'error', obj: x.id, at: x.x == null ? null : [x.x, x.z], msg: `t ${x.t.toFixed(1)} s ${x.id} (${x.cls}): ${x.msg}` })), $R: null, world: { seconds, agents: m.agentsSeen } };
+        rows.push({ s, r });
+        ctx.out(`${r.errors ? 'FAIL' : 'PASS'}  ${s.ref}  (v3; ${seconds} s of life sim, ${m.agentsSeen} agents)  ${Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(', ') || 'clean'}`);
+        for (const p of r.problems.slice(0, 40)) ctx.out(`    error ${p.rule.padEnd(13)} ${p.msg}`);
+        if (args.out) {
+          const many = scenes.length > 1 || extname(args.out).toLowerCase() !== '.png';
+          const file = many ? join(args.out, s.ref.replace(/\//g, '__') + '-motion.svg') : args.out.replace(/\.png$/i, '.svg');
+          mkdirSync(dirname(file), { recursive: true });
+          writeFileSync(file, worldMotionSvg(WE, s.spec, m));
+          ctx.out(`wrote ${file} (tracks green, red marks red)`);
+        }
+        continue;
+      }
       const C = E.compile(s.data(), { season: 'summer', lod: 1, L: null });
       const r = motionReport(C, check);
       rows.push({ s, r });
@@ -123,7 +145,7 @@ export default {
       writeFileSync(args.violations, JSON.stringify({ generated: new Date().toISOString(), scenes: scenesOut, totals }, null, 1));
       ctx.out(`wrote ${args.violations}`);
     }
-    if (args.out) {
+    if (args.out && rows.some(x => !x.r.v3)) {
       const many = rows.length > 1 || (existsSync(args.out) && statSync(args.out).isDirectory()) || extname(args.out).toLowerCase() !== '.png';
       if (many) mkdirSync(args.out, { recursive: true }); else mkdirSync(dirname(args.out), { recursive: true });
       const { launchChrome } = await import('../../release-chrome.mjs');
@@ -133,6 +155,7 @@ export default {
       const chrome = await launchChrome({ executable: exe });
       try {
         for (const { s, r } of rows) {
+          if (r.v3) continue;
           const entry = reg.items().find(e => e.ref === s.ref);
           if (!entry) { ctx.out(`(no registry entry for ${s.ref}: no picture)`); continue; }
           const html = itemPage(reg, entry, {}).replace('</body>', `${motionOverlay(r.$R, s.ref)}</body>`);

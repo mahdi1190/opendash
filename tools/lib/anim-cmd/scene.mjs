@@ -39,6 +39,7 @@ import { regions } from '../anim-region.mjs';
 import { launchChrome } from '../../release-chrome.mjs';
 import * as recipes from '../scene-recipe.mjs';
 import * as sceneTimes from '../scene-times.mjs';
+import { worldScenes, worldSceneOf, worldEntry, worldPageData, worldLintAdjust, worldLintPrepare } from '../world/refs.mjs';
 
 /* ---------------------------------------------------------------------------------------------
    Subcommands in their own files (V2 16.2): tools/lib/scene-cmd/<sub>.mjs, so builders never collide in this one
@@ -154,13 +155,22 @@ export function selectScenes(reg, E, args, positionals) {
     packs.push(...mine);
   }
   if (packs.length) {
-    const known = new Set(reg.items().map(e => e.pack));
-    for (const p of packs) if (!known.has(p)) throw new Error(`unknown pack "${p}"`);
+    const known = new Set(reg.items().map(e => e.pack)), w3 = worldScenes(reg);
+    for (const p of packs) if (!known.has(p) && !w3.some(w => w.pack === p)) throw new Error(`unknown pack "${p}"`);
     for (const e of reg.items().filter(x => packs.includes(x.pack) && x.full)) fromEntry(e, false);
+    // v3 (world engine) scenes of these packs that no animation pack lists (the hidden world-test pack)
+    for (const w of w3) if (packs.includes(w.pack) && !out.some(o => o.ref === w.ref)) out.push(worldEntry(reg, w));
   }
   if (refs.length) {
     const byRef = new Map(reg.items().map(e => [e.ref, e]));
-    for (const r of refs) { const e = byRef.get(r); if (!e) throw new Error(`unknown ref ${r} (a ref is <pack>/<item id>)`); fromEntry(e, true); }
+    for (const r of refs) {
+      const e = byRef.get(r);
+      // a v3 scene (world engine): by its ref, its id or its short name, also when an animation pack lists it
+      const w = (!e || (getV3(reg, e.item))) ? worldSceneOf(reg, r) : null;
+      if (w) { out.push(worldEntry(reg, w)); continue; }
+      if (!e) throw new Error(`unknown ref ${r} (a ref is <pack>/<item id>, or a v3 scene's id)`);
+      fromEntry(e, true);
+    }
   }
   return out;
 }
@@ -178,12 +188,16 @@ async function withChrome(args, fn) {
   const chrome = await launchChrome({ executable: exe, extraArgs: args.gpu ? ['--enable-gpu', '--ignore-gpu-blocklist'] : [] });
   try { return await fn(chrome); } finally { await chrome.close(); }
 }
+/** Is a registry item a v3 (world engine) scene? */
+function getV3(reg, it) { const f = reg && reg.R && reg.R.get && reg.R.get('worldHostSpec'); try { return !!(it && typeof f === 'function' && f(it)); } catch { return false; } }
 /** The page options for one selected scene (a registered item by ref, else its data). */
 function pageOpts(root, s, extra = {}, args = {}) {
   const base = { root, size: { w: 1600, h: 900 }, dpr: 1, still: false, renderer: 'canvas' };
   if (args.weather && !String(args.weather).includes(',')) base.wx = String(args.weather);
   if (args.fx != null) base.fx = Number(args.fx) === 2 ? { shadows: 2, water: 2, atmos: 2, weather: 2 } : null;
   if (s.kind === 'row') return Object.assign(base, { data: s.data() }, extra);
+  // a v3 scene goes through the app's own path (the player routes data.v === 3 to worldRendererFor: statics + the life sim)
+  if (s.kind === 'world') return Object.assign(base, { data: worldPageData(s) }, extra);
   return Object.assign(base, { refs: [s.ref], upgrades: s.kind === 'draft' }, extra);
 }
 async function measurePerf(chrome, root, s, args) {
@@ -595,6 +609,8 @@ const sceneCommand = {
           let r;
           try { r = lintScene(s.data, thresholds, { E, item: s.kind === 'item' ? s.item : s.kind === 'draft' ? Object.assign({}, s.item, { upgrade: s.item.upgrade }) : null, perf, ref: s.ref, gpu: !!args.gpu, svg: s.kind !== 'row' || idx < 3, strict: !!args['strict-placement'], reg, pack: s.pack || null }); }   // a batch renders the SVG fallback for the first 3 rows: the archetype's output size is alike row to row
           catch (e) { r = { pass: false, gold: false, rules: [{ group: 'data', rule: 'build', ok: false, value: 'error', limit: 'builds', message: e.message }], failures: [{ group: 'data', rule: 'build', message: e.message }], warnings: [], metrics: {} }; }
+          // a v3 scene: its movers are the life sim, its look is the engine's; plus the world group (validate, motion)
+          if (s.kind === 'world') { await worldLintPrepare(); r = worldLintAdjust(reg, s, r, { seconds: Number(args.seconds) > 0 && !args.perf ? Number(args.seconds) : 120 }); }
           results.push({ s, r, perf });
         }
       };
@@ -667,6 +683,7 @@ const sceneCommand = {
       for (const s of list) {
         const data = s.data();
         if (args.compare) {
+          if (s.kind === 'world') throw new Error('--compare needs a v2 scene with an upgrade; a v3 scene has no hand-drawn original (node tools/world.mjs convert shows the v2 -> v3 review)');
           if (s.kind === 'row') throw new Error('--compare needs a registered hand-drawn scene with an upgrade (a ref), not a table row');
           const times = momentsOf(data, args.date);
           const moments = args.times ? MOMENTS : ['noon', 'night'];

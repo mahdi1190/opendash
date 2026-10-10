@@ -217,6 +217,8 @@ async function _scpbSprites(man, K) {
  */
 function scenePrebakedPlayer(el, item, data, o) {
   o = o || {};
+  // world engine (format v3, docs/dev/WORLD_ENGINE.md): its own renderer, same player surface
+  if (data && data.v === 3 && typeof worldRendererFor === 'function') return worldRendererFor(item, el, Object.assign({ data }, o));
   const hostCanvas = el.querySelector('canvas.sc-canvas');
   const dpr = o.dpr || (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1), lod = o.lod == null ? 1 : o.lod;
   let cssW = el.clientWidth || 1600, cssH = el.clientHeight || 900, season = o.season, Llive = o.L;
