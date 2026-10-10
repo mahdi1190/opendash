@@ -13,7 +13,7 @@ Never ask me to run anything.
 beach looking south-west">`, slug `<slug, e.g. frensham-ponds>`, county `<county id, e.g. surrey>`, best moment
 `<e.g. golden hour in summer>`. It must be as good as the three proof scenes, and unique: its own view, its own life.
 
-**1. Study (do not skip).** Read `docs/dev/AGENT_HANDBOOK.md` in full (the quality bar, file ownership, commands, commit
+**1. Study (do not skip).** Read `docs/dev/SCENE_LESSONS.md` first: every past mistake and the rule against it. Then read `docs/dev/AGENT_HANDBOOK.md` in full (the quality bar, file ownership, commands, commit
 rules). Read the three proof scenes (`src/app/71-scene-proof-*.js`, their `70-scene-lib-proof-*.js` and
 `72-anim-pack-proof-*.js`) and render one: `node tools/anim-pack.mjs scene sheet
 proof-yateley-green/hampshire-proof-yateley-green --times`, then open the PNGs in `.anim-ref/scenes/`. Skim
@@ -38,7 +38,7 @@ trains on rails, cars on roads, boats on water, people on paths.
 
 **5. Check (light, handbook section 5).** `node build.mjs --syntax`; `node tools/anim-pack.mjs scene perf <ref>` once;
 `node tools/anim-pack.mjs scene sheet <ref> --times` once; open the noon, golden and night PNGs and compare them honestly
-with the proof renders; ONE improvement round on the three worst things; then `scene lint <ref>` (no placement errors).
+with the proof renders; ONE improvement round on the three worst things; then `scene lint <ref>` (no placement errors) and `scene motion <ref> --out <png>` (no red marks: no floating, no walking through things, correct layering and true scale). Build every person, dog, bird and animal with a `sceneBehave` preset from `src/app/70-scene-lib-behaviours.js`.
 Do not run the full test suite.
 
 **6. Commit.** Only your files, staged by name; `node tools/anim-pack.mjs guard --owned <your files>`;

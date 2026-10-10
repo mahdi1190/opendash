@@ -2,6 +2,7 @@
 
 For an AI agent that can read and write files and run commands in this checkout. **The user never runs a command by hand:
 you do every step yourself, from the first file to the local commit.** Copy-paste prompts: `docs/dev/agent-prompts/`
+n**Before any scene work, read `docs/dev/SCENE_LESSONS.md`** (past mistakes, their causes and the rules that prevent them).
 (`scene-builder.md`: one real place composed from library objects; `painted-scene.md`: one real place painted by image
 generation and animated by the engine; `object-artist.md`: new library objects). Each runs end to end from one paste.
 

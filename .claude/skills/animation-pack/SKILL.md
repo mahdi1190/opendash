@@ -12,6 +12,8 @@ indistinguishable in craft from it. The tools (`node tools/anim-pack.mjs`) and t
 **The bar is the median of the existing corpus, not its minimum.** The lint is calibrated at the minimum, so a piece can pass it and still be below the existing work. A skeleton built from the recipe numbers passes almost every lint rule and is a flat dusk with no subject.
 "Good enough" is a FAIL. The targets are measurable: lint richness >= 0.90 (1.0 = the median accepted piece) and at most 4 thin spots, both printed for every piece by `lint`; the exemplars are the BEST ten, used for technique. When a craft system the exemplar shows is missing from your piece, say so plainly and redraw it (at most 3 attempts, counted as "Attempts" below says).
 
+**READ FIRST, ALWAYS: `docs/dev/SCENE_LESSONS.md`.** It lists every mistake made in the Oct 2026 scene work, why it happened and the rule that prevents it (templated views, empty paving, blob trees, wrong landmarks, floating ducks, walking through walls, wrong layering, wrong scale, deleting good scenes, unpushed work lost). For composed v2 scenes it overrides older guidance below. Every view must also pass `node tools/anim-pack.mjs scene motion <ref>` with no red marks, and every mover is built with a `sceneBehave` preset (70-scene-lib-behaviours.js).
+
 ## Quick checklist (ten boxes; every box is a gate, none is optional)
 
 Per piece (a scene or a small item): **seven steps, the same seven in the same order as the agent briefs' "Definition of done"** (the care rules are READ before step 1, in section 3 of the brief, and CHECKED at step 6):
