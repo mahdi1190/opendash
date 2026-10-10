@@ -418,7 +418,8 @@ function sceneRendererCreate(canvas, src, o) {
     const layerOfGroup = [];
     plan.forEach((gr, gi) => gr.layers.forEach(l => { layerOfGroup[l] = gi; }));
     // a v1 scene's backdrop (70-scene-lib-backdrops.js; a v2 scene has it as direct items): drawn into its farthest layer after its ground
-    const bd1 = !v2 && typeof sceneBackdropV1 === 'function' ? sceneBackdropV1(C) : null;
+    const bd1 = C.v !== 2 && typeof sceneBackdropV1 === 'function' ? sceneBackdropV1(C) : null;
+    const bdL = bd1 ? Math.min(...plan.flatMap(gr => gr.layers)) : -1;   // the farthest layer the plan bakes
     for (let gi = 0; gi < plan.length; gi++) {
       const gr = plan[gi], rg = R ? R.meta.groups[gi] : null;
       // the crop: ground, water, signs and every item drawn into this bitmap (a restored group: its kept layout)
@@ -427,7 +428,7 @@ function sceneRendererCreate(canvas, src, o) {
         for (const gd of C.ground) if (gd.layer === l) bb = union(bb, scenePathBox(gd.d));
         for (const w of C.water) if (w.layer === l) bb = union(bb, scenePathBox(w.d));
         for (const s of C.signs) if (s.layer === l) bb = union(bb, [s.x - s.w, s.y - s.h * 3, s.x + s.w, s.y + s.h]);
-        if (bd1 && bd1.layer === l) for (const it of bd1.items) bb = union(bb, it.direct.box);
+        if (bd1 && bdL === l) for (const it of bd1.items) bb = union(bb, it.direct.box);
         let n = 0;
         for (const i of byLayer[l]) { const it = C.items[i]; if (it.strip >= 0) continue; const sh = sceneObjShapes(it.o, it.v, it.season); if (sh) bb = union(bb, itemBox(it, sh)); if (++n % 256 === 0) yield* slice(); }
         if (env) {
@@ -453,7 +454,7 @@ function sceneRendererCreate(canvas, src, o) {
         if (gx) {
           // ground
           for (const gd of C.ground) if (gd.layer === l) { gx.setTransform(...TG); gx.globalAlpha = 1; gx.fillStyle = paint(gx, gd.fill, col); gx.fill(_sccPath(gd.d)); }
-          if (bd1 && bd1.layer === l) for (const it of bd1.items) drawDirect(gx, TG, it, col, Lx, null);
+          if (bd1 && bdL === l) for (const it of bd1.items) drawDirect(gx, TG, it, col, Lx, null);
           if (env) { sceneRunPasses(env, 'ground', [l, gx]); _sccReset(gx); }
           // water: the live sky's colours, then the reflection of what stands above its line (sky, farther bitmaps, its own bank)
           for (const w of C.water) if (w.layer === l) {

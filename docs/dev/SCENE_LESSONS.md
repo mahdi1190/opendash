@@ -18,6 +18,7 @@ Gold reference: proof Fleet Pond (`--pack proof-fleet-pond`). Judge every view a
 | Generic or wrong landmarks | The author guessed instead of checking the real place | Every landmark must be a real building, with its real shape, material and position. Name it in the header with its source (listing entry, map, photo description). |
 | Things that look like planks, poles or slabs (a fallen tree, a flat green rectangle) | Placeholder shapes were left in | No placeholder geometry in a finished view; render and inspect every object at full size. |
 | Off-season things (daffodils in autumn, insects in winter, flowers in snow) | Objects without seasonal rules | Leave seasons to the engine and the seasonal objects; never pin a flower or insect to a scene without `season`. |
+| Empty backgrounds | Scenes only drew the near subject; the horizon was left as sky | The engine fills the background with place-styled city or nature bands by default (`70-scene-lib-backdrops.js`; a scene declares at most `backdrop: { style }`, never its own skyline); the `emptyBackdrop` lint warns when more than 20 % of the horizon band is bare. |
 | Painted backdrops (whole AI-painted scenes) | Tried as a shortcut | Rejected: off-style and nothing moves. Only library objects, composed by the engine. |
 | Water, light and reflections tuned per scene (own water colours, `mirror`, `ripple`, `clarity`, `bed`, `glint`, `shimmer`, `lightPath`, `reflect: true/false` on placements, hand-drawn reflections or shade on water, a scene's own grade) | Authors tweaked each view until it looked right in one light; the next light, season or engine fix broke it (reflections offset, doubled, missing under herons and snags) | **Locked (10 Oct).** A water region declares only its geometry (`poly` / `path` + `width`, `edge`) and a `kind` (pond, lake, canal, river, sea, harbour, puddle), at most `hint: 'calm' \| 'breezy'`. The water pass takes colour, mirror, ripple, clarity and glitter from the kind and decides what reflects from geometry (anything whose mirror image reaches the water; anything standing in it about its own foot). A v1 view opts in with `fx: { water: 2 }`. Never draw a reflection or a shadow; never set light. Lint: `waterOverride` (below). |
 | A walker routed past the camera renders giant, cut by the frame, faceless | Routes ran to 3 m from the eye after the true-scale change | No person on screen may stand nearer than the depth where 1.7 m fills 45 % of the frame (`f * 1.7 / d <= 405`) unless the view says `framed: true`; end the route there or run it off the frame's side. Lint: `moverNear`. |
@@ -92,3 +93,31 @@ Run `node tools/anim-pack.mjs scene motion <ref> --out <png>` on every view and 
 | Stacked faces drew in the wrong order (deck over cabin) | Plain centroid depth sort | Parts of one entity draw in tiers, entities by depth |
 | Scene data far over budget from long timed paths | Movers stored as long point lists | Store goals and populations, not paths; the engine generates motion |
 | Another agent's half-written edit broke everyone's renders | A shared working tree | Builders work in their own files or worktrees; syntax-check before saving shared files |
+
+## F. World engine v3 (10 Oct): what the format makes impossible, and what the first integration found
+
+Section E is the list of problems the world engine had to solve. This section records what the v3 format
+(`docs/dev/WORLD_ENGINE.md`) now rules out by construction, and what the first three v3 scenes
+(`79-world-zscene-*`, hidden pack `world-test`) showed.
+
+| Mistake class | Now impossible because |
+|---|---|
+| Floating ducks, boats at the wrong waterline | Floaters have no `y`; it comes from the water level less the descriptor's `sink` (`badAttach` if the surface under `at` is not water) |
+| Wrong scale | No `s`, `scale` or `px` key exists (`screenOrLookField`); size comes only from `worldObjectInfo` (`unknownSize` if an object has none) |
+| Hand layers, shadows, reflections, tints | Those keys are rejected; depth order, shadows, reflections and light are engine passes |
+| Solids overlapping or blocking a path | `overlap` (5 cm) and `blocksPath` at load; the first Kelham draft failed both (a landmark through two mills, a block across the pavement) and never loaded |
+| A tree in the water, a fence on a pond | `badAttach` against the surface under `at` (caught twice in the first Fleet Pond draft) |
+| Made-up variants and objects | `unknownVariant` / `unknownSize`: variants are library indices, so livery names in a scene fail |
+| Unknown life ("cyclist", a perch host key) | `unknownWho` / `unknownKey`: populations come from `WORLD_POPULATIONS`; the key sets are closed |
+| Landmarks and skyline entries without a source | `landmarkSrc` |
+| A spec that fails | `worldAdd` does not register it; the error list names path, rule and fix |
+
+Found in the first integration (to fix in the engine, not in scenes):
+
+- Spawn edges: the `S` edge falls inside the near band, so populations with `edges: ['S', ...]` (towpath, boardwalk) never
+  spawn; spawn cells should be the first row beyond the near band and the real frustum sides, not the grid box.
+- A failed `worldPath` (A* cap 2,000) is retried every tick: life ticks of 13-19 ms (budget 1.5 ms) in the canal and
+  Kelham scenes. Edge and surface goals must use the cached flow fields; a failed route must back off.
+- No library object is a perch host (`worldLifePerches` matches `post|perch|mooring|stake` by name and none exists): a
+  kingfisher needs a `structure.post` descriptor with a perch point.
+- The 1 m walk grid breaks narrow diagonal paths (a 2.6 m towpath) into pieces; use 0.5 m cells to 60 m as specified.
