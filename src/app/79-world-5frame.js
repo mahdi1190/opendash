@@ -159,7 +159,7 @@ function _wfrWalkwayPersp(world, e, cam, o) {
   const y = cover ? (Number.isFinite(cover.y) ? cover.y : 0) : Number.isFinite(e.deck.y) ? e.deck.y : Number.isFinite(e.y) ? e.y : 0;
   const prims = [];
   sides.forEach((sd, i) => {
-    try { for (const p of worldExtrudeLine({ id: String(e.id != null ? e.id : e.obj) + ':rail' + i, kind: 'fence', path: [sd.a, sd.b], h: 1.05, y }, cam, { season: o.season }) || []) prims.push(p); } catch (err) { /* no rail */ }
+    try { for (const p of worldExtrudeLine({ id: String(e.id != null ? e.id : e.obj) + ':rail' + i, kind: 'fence', path: [sd.a, sd.b], h: 1.05, y }, cam, { season: o.season }) || []) { p.walkway = true; prims.push(p); } } catch (err) { /* no rail */ }
   });
   let deck = null;
   if (!cover) {
@@ -476,7 +476,7 @@ function worldFrameAt(scene, t, o) {
       facing: _wfrR3(Number(e.facing) || 0), foot: _wfrPts(r.foot), height: _wfrR3(r.height), layer: e.layer || null, host: e.host || null, parent: e.parent || null,
       view: r.view, mirror: !!r.mirror, box: _wfrBoxArr(r.box), order: pos.has(r.id) ? pos.get(r.id) : null, speed: agent ? _wfrR3(sp) : 0, vx: agent ? _wfrR3(e.vx || 0) : 0, vz: agent ? _wfrR3(e.vz || 0) : 0,
       state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null,
-      prim: r.prim ? r.prim.kind || null : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal };
+      prim: r.prim ? (r.prim.walkway ? 'walkway' : r.prim.kind || null) : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal };
   };
   const ents = plan.recs.map(r => one(r, false)).concat(aRecs.map(r => one(r, true)));
   let lights = [];
