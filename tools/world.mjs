@@ -9,14 +9,14 @@
 //                         v2 / v1 -> v3 with the review report and the critic against the source (U4: exit 1 below it)
 //   node tools/world.mjs render <ref> [--dir=D] [--dates=spring,summer,autumn,night] [--wx=rain] [--gpu] [--dpr=1]
 //   node tools/world.mjs motion <ref> [--seconds=600] [--svg=file] [--json]
-//   node tools/world.mjs invariants <ref> [--seconds=360] [--hz=5] [--matrix] [--json]
+//   node tools/world.mjs invariants <ref> [--seconds=360] [--hz=5] [--matrix] [--browser] [--json]
 //                         the invariant checker (16.2) over the full loop at 3 dates x 5 times (--matrix: 4 seasons x 5 times x 3
 //                         weathers, V7); exit 1 on any violation
 //   node tools/world.mjs adversarial [<id>] [--seconds=120] [--hz=5] [--json]
 //                         every adversarial fixture (16.3): registers, builds, explains every fix in its log, zero violations
 //   node tools/world.mjs critic <ref> [--against=<ref>] [--json]      richness, emptiness and framing (P7, C1, C4, C6)
 //   node tools/world.mjs sheet <ref> [--matrix] [--sizes=16:9,tile] [--dir=D]   dates x times x sizes, or the V6 matrix
-//   node tools/world.mjs capture <ref> [--full] [--every=6] [--gif] [--dir=D]   the WHOLE loop as a frame strip
+//   node tools/world.mjs capture <ref> [--full] [--every=6] [--seconds=20 --fps=2] [--size=1600x900] [--at=<ISO>] [--wx=rain] [--gif] [--dir=D]   the WHOLE loop as a frame strip
 //   node tools/world.mjs compare <v3 ref> <original ref> [--dir=D]            side by side at 3 dates x 5 times
 //   node tools/world.mjs perf <ref> [--browser] [--no-gpu] [--throttle=4] [--seconds=4] [--json]
 //                         the Node budget table and the per-system profile (G12); --browser: both average-machine sizes x the
@@ -345,6 +345,28 @@ async function main() {
     return r.red.length ? 1 : 0;
   }
 
+  if (cmd === 'invariants' && flags.browser) {
+    // the checker on the REAL rendered frames: the page draws every frame of the loop and the record of what it drew is checked
+    const s = specOf(E, ref), loop = E.WORLD_LOOP_S || 360;
+    const moments = flags.matrix ? worldMatrixCells(s.spec).map(c => ({ label: `${c.season} ${c.moment} ${c.wx}`, at: c.at, wx: c.wx })) : worldMomentsOf(s.spec).map(m => ({ label: `${m.date} ${m.moment}`, at: m.at }));
+    const { worldBrowserInvariants } = await import('./lib/world/browserinv.mjs');
+    const chrome = await chromeOf(!flags['no-gpu']);
+    let bad = 0;
+    try {
+      const r = await worldBrowserInvariants(chrome, pageSrcOf(s), { moments, seconds: Number(flags.seconds) || (flags.matrix ? 20 : loop), hz: Number(flags.hz) || 2, loop, root,
+        onCell: (c) => {
+          const fail = c.uniq || c.error; if (fail) bad++;
+          if (!flags.json) {
+            out(`${fail ? 'FAIL' : 'ok  '} ${s.id} ${c.label}: ${c.frames} real frames, up to ${c.agents} agents drawn, ${c.uniq} violation(s)${c.error ? ' ERROR ' + c.error : ''}`);
+            for (const [k, n] of Object.entries(c.counts)) out(`       ${k.padEnd(20)} ${String(n).padStart(5)}  e.g. t ${c.first[k] ? c.first[k].t + ' s: ' + c.first[k].msg : ''}   [${OWNERS[k] || '?'}]`);
+          }
+        } });
+      for (const e of r.errors) out('  ERROR ' + e);
+      if (flags.json) out(JSON.stringify(r.cells, null, 1));
+      return bad || r.errors.length ? 1 : 0;
+    } finally { await chrome.close(); }
+  }
+
   if (cmd === 'invariants') {
     const s = specOf(E, ref);
     const cells = flags.matrix ? worldMatrixCells(s.spec).map(c => ({ label: `${c.season} ${c.moment} ${c.wx}`, ms: c.ms, wx: c.wx })) : worldMomentsOf(s.spec).map(m => ({ label: `${m.date} ${m.moment}`, ms: m.ms }));
@@ -403,7 +425,8 @@ async function main() {
     const { worldCapture } = await import('./lib/world/capture.mjs');
     const chrome = await chromeOf(!flags['no-gpu']);
     try {
-      const r = await worldCapture(chrome, pageSrcOf(s), { full: !!flags.full, every: Number(flags.every) || 6, seconds: Number(flags.seconds) || 20, gif: !!flags.gif, dir: dirOf('capture'), root, loop: E.WORLD_LOOP_S || 360 });
+      const sz = typeof flags.size === 'string' && /^\d+x\d+$/.test(flags.size) ? { w: Number(flags.size.split('x')[0]), h: Number(flags.size.split('x')[1]) } : undefined;
+      const r = await worldCapture(chrome, pageSrcOf(s), { full: !!flags.full, every: Number(flags.every) || 6, seconds: Number(flags.seconds) || 20, fps: Number(flags.fps) || 2, gif: !!flags.gif, dir: dirOf('capture'), root, loop: E.WORLD_LOOP_S || 360, size: sz, at: typeof flags.at === 'string' ? flags.at : undefined, wx: typeof flags.wx === 'string' ? flags.wx : undefined });
       for (const e of r.errors) out('  ERROR ' + e);
       out(`${r.frames.length} frames over ${r.seconds} s; strip: ${r.strip}${r.gif ? '; gif: ' + r.gif : ''}`);
       return r.errors.length ? 1 : 0;

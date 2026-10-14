@@ -191,7 +191,15 @@ function _wlfHullCells(life, layer, cells, len) {
   return nz == null ? cells : cells.filter(function (c) { return c.z >= nz; });
 }
 function worldLifeXZ(p) { if (!p) return null; if (Array.isArray(p)) return [p[0], p[1]]; return [p.x, p.z]; }
-function _wlfFlowR(a) { var d = (typeof WORLD_NAV_RADIUS !== 'undefined' && WORLD_NAV_RADIUS[String(a.layer).split('@')[0]]) || 0.25; return a.r <= d + 0.05 ? d : Math.ceil(a.r * 10) / 10; }
+function _wlfFlowR(a) {
+  var d = (typeof WORLD_NAV_RADIUS !== 'undefined' && WORLD_NAV_RADIUS[String(a.layer).split('@')[0]]) || 0.25;
+  var r = a.r <= d + 0.05 ? d : Math.ceil(a.r * 10) / 10;
+  // a long hull (a narrowboat is 18 m for 2 m of beam) swings wide at a bend: its route is planned for a wider body than its
+  // beam (tier 0, then 1, then its beam alone when the channel is too tight), so the hull is not wedged against a bank where
+  // the cut turns
+  if (a.kind === 'boat' && a.len > 8) { var tier = a.rTier || 0; if (tier < 2) r = Math.max(r, Math.min(tier ? 2 : 3.2, Math.ceil(a.len * (tier ? 1 : 1.6)) / 10)); }
+  return r;
+}
 /** The water level / deck / ground height under an agent on its layer. */
 function worldLifeY(life, a) {
   if (a.layer === 'air') return a.alt;
@@ -563,14 +571,24 @@ function _wlfPlaceResident(life, pop, entry, near) {
   var r = _wlfFlowR({ layer: b.layer, r: b.r }), cells = _wlfCells(life, b.layer, r, spec.on);
   if (!cells.length) cells = _wlfCells(life, b.layer, r, null);
   if (!cells.length) { _wlfProblem(life, { pop: pop.idx, rule: 'noSpawn', msg: 'no room on ' + b.layer + ' for ' + entry.key }); return null; }
+  // a resident whose first goal is somewhere (go / sit / view / meet a named entity) starts near it, never at a random cell of
+  // its layer (a boater placed in a far field could never reach its boat)
+  var pool = cells, anchor = _wlfAnchor(life, spec);
+  if (anchor && !near) {
+    for (var ri = 0, Rs = [6, 14, 40]; ri < Rs.length; ri++) {
+      var close = [];
+      for (var ci = 0; ci < cells.length; ci += 2) if (Math.hypot(cells[ci] - anchor[0], cells[ci + 1] - anchor[1]) < Rs[ri]) close.push(cells[ci], cells[ci + 1]);
+      if (close.length >= 8) { pool = close; break; }
+    }
+  }
   for (var tr = 0; tr < 16 && !ok; tr++) {
     if (near) {
       var ang = pop.rng() * Math.PI * 2, rr = 0.8 + pop.rng() * 2.2;
       x = near.x + Math.cos(ang) * rr; z = near.z + Math.sin(ang) * rr;
       ok = worldLifeOk(life, b.layer, x, z, b.r) && !_wlfCrowded(life, b.layer, x, z, b.r * 2 + 0.2);
     } else {
-      var c = Math.floor(pop.rng() * cells.length / 2) * 2;
-      x = cells[c]; z = cells[c + 1]; ok = !_wlfCrowded(life, b.layer, x, z, b.r * 3 + (b.space || 1) * 1.5);
+      var c = Math.floor(pop.rng() * pool.length / 2) * 2;
+      x = pool[c]; z = pool[c + 1]; ok = !_wlfCrowded(life, b.layer, x, z, b.r * 3 + (b.space || 1) * 1.5);
     }
   }
   if (!ok) return null;
@@ -581,6 +599,16 @@ function _wlfPlaceResident(life, pop, entry, near) {
   _wlfAdd(life, a);
   if (!near && b.group && b.group.members) _wlfGroupSpawn(life, pop, a, true);
   return a;
+}
+/** Where a population's first placed goal is (the entity a go / sit / view / meet names), or null. */
+function _wlfAnchor(life, spec) {
+  var gs = spec && spec.goals; if (!gs || !gs.length) return null;
+  for (var i = 0; i < gs.length; i++) {
+    var g = gs[i], t = g && (g.go != null ? g.go : g.sit != null ? g.sit : g.view != null ? g.view : g.meet != null ? g.meet : null);
+    if (typeof t !== 'string') continue;
+    var e = _wlfEntity(life, t); if (e && Number.isFinite(e.x) && Number.isFinite(e.z)) return [e.x, e.z];
+  }
+  return null;
 }
 function _wlfStateAlias(b, st) { if (!st) return null; if (b.states[st]) return st; var al = WORLD_STATE_ALIAS[st]; return al && b.states[al] ? al : null; }
 
@@ -787,7 +815,7 @@ function _wlfGoalsNorm(goals) {
 }
 function _wlfGoal(a) { return a.goals ? a.goals[a.gi] || null : null; }
 function _wlfNextGoal(life, a) { a.gi++; a.gt = 0; a.route = null; a.fails = 0; a.lookAt = null; a.gdur = null; }
-function _wlfLeave(life, a, edge) { a.goals = [{ leave: edge || 'any' }]; a.gi = 0; a.gt = 0; a.route = null; a.leaving = true; a.fails = 0; }
+function _wlfLeave(life, a, edge) { a.goals = [{ leave: edge || 'any' }]; a.gi = 0; a.gt = 0; a.route = null; a.leaving = true; a.fails = 0; a.lookAt = null; a.gdur = null; }
 /** A failed route: stand and back off 2-8 s (never a search every tick); after three, give the goal up. */
 function _wlfFail(life, a) {
   a.fails++; a.route = null;
@@ -799,6 +827,10 @@ function _wlfFail(life, a) {
     return;
   }
   a.wait = life.t + 2 + 6 * a.rng();
+  // a place it cannot reach (a boat's deck from a bank with no landing) is given up on the second failure, not the third: a mover
+  // that "wants" something unreachable is a statue with an excuse
+  var gq = _wlfGoal(a);
+  if (a.fails >= 2 && gq && gq.go != null && typeof gq.go === 'string' && !gq.leave) { _wlfNextGoal(life, a); return; }
   if (a.fails >= 3) {
     var g = _wlfGoal(a);
     if (g && g.leave && g.leave !== 'any') g.leave = 'any';
@@ -869,6 +901,13 @@ function _wlfFlowTo(life, a, tgt, layer) {
     if (!gc || (gc.cells && !gc.cells.length)) return 'fail';
     var f = typeof worldFlowField === 'function' ? worldFlowField(life.nav, layer, gc, _wlfFlowR(a)) : null;
     if (!f || !f.seeds.length) return 'fail';
+    // a hull that cannot reach its goal for the wider body is planned again for a narrower one (see _wlfFlowR)
+    while (a.kind === 'boat' && (a.rTier || 0) < 2 && !isFinite(worldFlowDist(f, a.x, a.z))) {
+      a.rTier = (a.rTier || 0) + 1;
+      gc = _wlfGoalCells(life, a, tgt, layer); if (!gc || (gc.cells && !gc.cells.length)) return 'fail';
+      f = worldFlowField(life.nav, layer, gc, _wlfFlowR(a));
+      if (!f || !f.seeds.length) return 'fail';
+    }
     a.route = { key: key, field: f };
   }
   var fd = a.route.field, R = a.route;
@@ -918,9 +957,15 @@ function _wlfWanderTarget(life, a, on, far) {
   var cells = _wlfCells(life, a.layer, _wlfFlowR(a), on);
   if (!cells.length) cells = _wlfCells(life, a.layer, _wlfFlowR(a), null);
   if (!cells.length) return null;
-  var best = null, bs = -Infinity;
-  for (var t = 0; t < 8; t++) {
+  var best = null, bs = -Infinity, tried = 0;
+  // only places the mover can reach from where it is (a heron on the near margin of a canal never picks the far margin: a walk
+  // that cannot be made fails, backs off and leaves it standing for the rest of the loop)
+  var Cc = typeof worldNavComponents === 'function' ? worldNavComponents(life.nav, a.layer, _wlfFlowR(a)) : null;
+  var ka = Cc && typeof worldNavCell === 'function' ? worldNavCell(life.nav, a.layer, a.x, a.z) : -1, ca = ka >= 0 ? Cc.comp[ka] : -1;
+  for (var t = 0; t < 24 && tried < 8; t++) {
     var c = Math.floor(a.rng() * cells.length / 2) * 2, x = cells[c], z = cells[c + 1], d = Math.hypot(x - a.x, z - a.z);
+    if (ca >= 0) { var kc = worldNavCell(life.nav, a.layer, x, z); if (kc < 0 || Cc.comp[kc] !== ca) continue; }
+    tried++;
     var score = far ? d : (d < 3 ? -10 : -Math.abs(d - (a.kind === 'swimmer' ? 6 : 12)));
     if (score > bs) { bs = score; best = [x, z]; }
   }
@@ -1513,7 +1558,9 @@ function _wlfMove(life, a, dt) {
   if (a.kind === 'boat' && dir && typeof worldTrafficBoatSteer === 'function') dir = worldTrafficBoatSteer(life.nav, a.layer, a.x, a.z, dir, a.r, { meet: _wlfBoatMeet(life, a) });
   // arrive: ease into a stop (Y4)
   if (dir && want > 0 && a.distLeft != null && a.distLeft < 50 && !a.leaving && !a.leader) want *= Math.max(0.35, a.distLeft / 50);
-  if (dir && want > 0) dir = _wlfSteer(life, a, dir, want);
+  if (a.members && want > 0) for (var mi = 0; mi < a.members.length; mi++) { var mm = a.members[mi]; if (mm.lead && !mm.dead && Math.hypot(mm.x - a.x, mm.z - a.z) > mm.lead.len * 0.9) { want *= 0.2; break; } }   // a taut lead: the walker waits for its dog
+  var wantRaw = want;
+  if (dir && want > 0) { dir = _wlfSteer(life, a, dir, want); want *= a.slow; }   // a queue eases off; being held up still counts as wanting to move (stuck)
   // the walker steps aside for a ringing cyclist (keeps to its left)
   if (dir && a.yieldT > life.t) { var lx = -dir[1], lz = dir[0], nx0 = dir[0] + lx * 0.6 * a.yieldSide, nz0 = dir[1] + lz * 0.6 * a.yieldSide, nl = Math.hypot(nx0, nz0) || 1; dir = [nx0 / nl, nz0 / nl]; }
   // turn rate: 180 degrees in brain.turn seconds; slow down while turning (no instant turns)
@@ -1536,23 +1583,47 @@ function _wlfMove(life, a, dt) {
     // held up or slid off the planned line: the steering point is planned again next tick (from where it really is)
     if (a.route && a.route.tk != null && Math.hypot(a.x - ox, a.z - oz) < a.v * dt * 0.7) a.route.tk = -1;
   }
+  // the sidestep: a shuffle to one side to let a mover by (the other side when that cell is forbidden)
+  if (dir && a.sideV > 0.01 && a.kind === 'walker') {
+    var sd = a.sideDir, st2 = a.sideV * dt, sdx = a.sideX * sd * st2, sdz = a.sideZ * sd * st2;
+    if (!_wlfTryAt(life, a, a.x + sdx, a.z + sdz)) _wlfTryAt(life, a, a.x - sdx, a.z - sdz);
+  }
   // the dog stays within its lead (A7)
-  if (a.lead && a.leader && !a.leader.dead) _wlfLeash(life, a);
+  if (a.lead && a.leader && !a.leader.dead) _wlfLeash(life, a, dt);
   a.vx = (a.x - ox) / dt; a.vz = (a.z - oz) / dt; a.speed = Math.hypot(a.vx, a.vz);
+  _wlfShownV(a, dt);
   a.y = worldLifeY(life, a);
   if (a.kind === 'boat' && a.speed > 0.2 && (!a.wakeT || life.t - a.wakeT >= 1)) { a.wakeT = life.t; life.bus.emit('wake', { id: a.id, x: a.x, z: a.z, heading: a.heading * 180 / Math.PI, speed: a.speed, beam: a.r * 2, len: a.len || 18, t: life.t }); }
-  _wlfStuck(life, a, want, dt);
+  _wlfStuck(life, a, wantRaw, dt);
   _wlfFace(life, a);
+}
+/**
+ * The velocity the records SHOW (the animation, the facing and the checkers read it): the real ground velocity, low-passed over
+ * 0.2 s, so a one-tick spike (a sidestep, a leash, a push) never flips a walk cycle or a view, and a stop eases (M7). The
+ * steering and the goals use the real one (a.vx, a.vz).
+ */
+function _wlfShownV(a, dt) {
+  var k = 1 - Math.exp(-dt / 0.2);
+  if (a.svx == null) { a.svx = a.vx; a.svz = a.vz; return; }
+  a.svx += (a.vx - a.svx) * k; a.svz += (a.vz - a.svz) * k;
+  if (Math.hypot(a.svx, a.svz) < 0.03 && Math.hypot(a.vx, a.vz) < 0.03) { a.svx = 0; a.svz = 0; }
 }
 function _wlfBoatMeet(life, a) {
   for (var i = 0; i < life.agents.length; i++) { var o = life.agents[i]; if (o !== a && o.kind === 'boat' && !o.dead && Math.hypot(o.x - a.x, o.z - a.z) < 40 && (o.vx * a.vx + o.vz * a.vz) < 0) return true; }
   return false;
 }
-/** Steering (Y4): seek the route direction, separate from neighbours within personal space, avoid by a velocity obstacle. */
+/**
+ * Steering (Y4): seek the route direction, separate from neighbours within personal space, avoid by a velocity obstacle, keep to
+ * the LEFT of an oncoming mover (UK) so two walkers pass side by side, and ease off behind something close ahead in the lane
+ * (a queue). Sets a.slow, the share of the wanted speed that is safe now (1 = free). The hard floor under all of this is
+ * _wlfSeparate: whatever the steering does, two movers never overlap.
+ */
 function _wlfSteer(life, a, dir, spd) {
+  a.slow = 1; a.sideV = 0;
   if (a.brain.heavy || a.layer === 'air') return dir;
-  var vx = dir[0] * spd, vz = dir[1] * spd, ax = 0, az = 0, sx = 0, sz = 0, n = 0, ns = 0;
+  var vx = dir[0] * spd, vz = dir[1] * spd, ax = 0, az = 0, sx = 0, sz = 0, n = 0, ns = 0, kx = 0, kz = 0, nk = 0, hitF = Infinity;
   var ps = (a.brain.space || 1) * life.space * (a.kind === 'swimmer' ? 0.6 : 0.5);
+  var rgx = dir[1], rgz = -dir[0];                                   // the right-hand side of the heading (x right, z away)
   var cx = Math.floor(a.x / 2), cz = Math.floor(a.z / 2);
   for (var ix = -1; ix <= 1; ix++) for (var iz = -1; iz <= 1; iz++) {
     var bk = life.hash.get((cx + ix + 4096) * 8192 + (cz + iz + 4096));
@@ -1561,6 +1632,22 @@ function _wlfSteer(life, a, dir, spd) {
       var o = bk[j];
       if (o === a || o.layer !== a.layer || o.dead || o === a.leader || o.leader === a || (a.group && o.group === a.group)) continue;
       var rx = o.x - a.x, rz = o.z - a.z, dd = Math.hypot(rx, rz);
+      // queue: something close ahead in my lane is a bumper (an oncoming one only when it is dead ahead)
+      var fwd = rx * dir[0] + rz * dir[1], lat = rx * rgx + rz * rgz, rs = a.r + o.r, onc = (o.vx * dir[0] + o.vz * dir[1]) < -0.2;
+      // squeezing past (a lane too narrow for two): an oncoming or standing mover is neither queued behind nor swerved round, it is
+      // passed shoulder to shoulder; only one going my way (slower) is still followed
+      if ((a.squeeze > life.t || o.squeeze > life.t) && (onc || (o.vx * dir[0] + o.vz * dir[1]) < 0.2 * spd)) continue;
+      if (fwd > 0 && fwd < rs + 1 && Math.abs(lat) < (onc ? rs * 0.6 : rs + 0.1)) a.slow = Math.min(a.slow, _wlfClamp((fwd - rs - 0.05) / 0.9, onc ? 0.3 : 0, 1));   // an oncoming one is passed, not waited for
+      // a sidestep (people shuffle aside whatever their forward speed): away from the other's side of my line; dead on, to my left
+      // (UK) for an oncoming mover and to my right (overtaking) for one going my way slower, or standing
+      if (fwd > 0 && fwd < rs + 1.6 && Math.abs(lat) < rs + 0.35 && fwd < hitF && (onc || (o.speed || 0) < spd * 0.8)) {
+        hitF = fwd;
+        a.sideDir = lat > 0.15 ? -1 : lat < -0.15 ? 1 : onc ? -1 : 1;                       // -1 = to my left, +1 = to my right
+        a.sideV = Math.min(0.9, (rs + 0.35 - Math.abs(lat)) * 1.6 + 0.2);
+        a.sideX = rgx; a.sideZ = rgz;
+      }
+      // keep left: an oncoming mover in my way (within a body or so of my line, up to 8 m ahead) is passed on my left side
+      if (onc && fwd > 0 && fwd < 8 && Math.abs(lat) < rs + 1 && nk < 4) { var kw = (1 - fwd / 8) * 1.1; kx -= rgx * kw; kz -= rgz * kw; nk++; }
       // separation (personal space)
       var minD = a.r + o.r + ps;
       if (dd < minD && dd > 1e-4 && ns < 6) { var w0 = (minD - dd) / minD; sx -= rx / dd * w0; sz -= rz / dd * w0; ns++; }
@@ -1574,25 +1661,111 @@ function _wlfSteer(life, a, dir, spd) {
       n++;
       var w = (rr - md) / rr * (1.5 - tca) / 1.5 * (o.brain.heavy ? 3 : 1);
       var px = -mx, pz = -mz;
-      if (md < 1e-3) { px = dir[1]; pz = -dir[0]; }
+      if (md < 1e-3) { px = -dir[1]; pz = dir[0]; }                    // dead on: to my left (UK)
       var pl = Math.hypot(px, pz) || 1;
       ax += px / pl * w; az += pz / pl * w;
     }
   }
-  if (!n && !ns) return dir;
-  var nx = dir[0] + ax * 1.5 + sx * 0.8, nz = dir[1] + az * 1.5 + sz * 0.8, l = Math.hypot(nx, nz);
+  if (!n && !ns && !nk) return dir;
+  var nx = dir[0] + ax * 1.5 + sx * 0.8 + kx, nz = dir[1] + az * 1.5 + sz * 0.8 + kz, l = Math.hypot(nx, nz);
   if (l < 1e-6) return dir;
   nx /= l; nz /= l;
   // never steer backwards against the route (keeps progress)
   if (nx * dir[0] + nz * dir[1] < 0) { var tx = -dir[1], tz = dir[0], sgn = (nx * tx + nz * tz) >= 0 ? 1 : -1; nx = (dir[0] * 0.2 + tx * sgn); nz = (dir[1] * 0.2 + tz * sgn); var l2 = Math.hypot(nx, nz); nx /= l2; nz /= l2; }
   return [nx, nz];
 }
-function _wlfLeash(life, a) {
+/**
+ * The watchdog: a mover with somewhere to go that makes no headway for 10 s is retired (it fades out and is logged), never left
+ * standing in the scene. The steering, the stuck handler and the goals all try first; this is the net under them, so a geometry
+ * nobody foresaw (a pinched bend, a wedged hull, an unreachable goal) can make a scene emptier, never wrong.
+ */
+var WORLD_LIFE_WATCHDOG_S = 10;
+function _wlfWatchdog(life, a) {
+  if (a.fadeOut || _wlfIntent(a) !== 'travel') { a.wdT = life.t; a.wdX = a.x; a.wdZ = a.z; return; }
+  if (a.wdT == null || Math.hypot(a.x - a.wdX, a.z - a.wdZ) > 0.6) { a.wdT = life.t; a.wdX = a.x; a.wdZ = a.z; return; }
+  if (life.t - a.wdT > WORLD_LIFE_WATCHDOG_S) {
+    _wlfProblem(life, { pop: a.pop, rule: 'stuckRetired', msg: a.id + ' (' + a.cls + ') made no headway for ' + WORLD_LIFE_WATCHDOG_S + ' s at ' + a.x.toFixed(1) + ', ' + a.z.toFixed(1) + ': retired' });
+    a.fadeOut = life.t;
+  }
+}
+/* ---------- hard personal space (Y4): movers on one layer never overlap ---------- */
+/** The floor under the soft steering: after every move pass, two movers on one layer and level that overlap are pushed apart
+ *  (a standing or seated one gives way less than a walking one; one wedged against a wall gives its share to the other).
+ *  Pairs of one group (a couple, a dog and its walker, a flock) keep a closer floor. Never into a forbidden cell. */
+var WORLD_LIFE_BODY = 1.2;           // the floor between two unrelated people is 1.2 x the sum of their radii (shoulder room)
+var WORLD_LIFE_PUSH_MAX = 0.2;       // metres a mover is pushed in one pass
+function _wlfMass(a) {
+  if (a.step || a.bs === 'sitting' || a.bs === 'freeze' || a.bs === 'strike' || a.bs === 'fish') return Infinity;
+  return (a.speed || 0) > 0.25 ? 1 : 2.2;
+}
+function _wlfTryAt(life, a, x, z) { if (_wlfOk(life, a, x, z)) { a.x = x; a.z = z; return true; } return false; }
+function _wlfRelated(a, o) { return a.leader === o || o.leader === a || (a.group && (a.group === o.id || a.group === o.group)) || (o.group && o.group === a.id); }
+/** One pair: returns 1 when something moved. */
+function _wlfPair(life, a, o) {
+  var dx = o.x - a.x, dz = o.z - a.z, d = Math.hypot(dx, dz);
+  var rel = _wlfRelated(a, o);
+  var sq = (a.squeeze > life.t || o.squeeze > life.t);                                // passing in a lane too narrow for two
+  // in a lane a body wide (one that stalled for 2.5 s) the pair turns sideways and brushes past, the sprites overlapping for a step or two
+  var minD = (a.r + o.r) * (rel ? 0.6 : sq ? 0.25 : (a.kind === 'walker' && o.kind === 'walker' ? WORLD_LIFE_BODY : 1));
+  if (d >= minD) return 0;
+  var ma = _wlfMass(a), mo = _wlfMass(o);
+  if (ma === Infinity && mo === Infinity) return 0;
+  var wa = mo === Infinity ? 1 : ma === Infinity ? 0 : mo / (ma + mo), wo = 1 - wa;
+  // dead on (or the same spot): a deterministic side, so two movers never both stay and never both go the same way
+  if (d < 1e-3) { var an = (_wlfHash(a.id + '|' + o.id) % 6283) / 1000; dx = Math.cos(an); dz = Math.sin(an); d = 1; }
+  var nx = dx / d, nz = dz / d, pen = Math.min(minD - Math.min(d, minD), WORLD_LIFE_PUSH_MAX * 2);
+  // a head-on pair (the push is along the lane) is also nudged sideways, each to its own left (UK), so it can never lock
+  var sgn = _wlfHash(a.id + '|' + o.id) % 2 ? 1 : -1;
+  var lx = -nz * sgn * 0.5, lz = nx * sgn * 0.5, l = Math.hypot(nx + lx, nz + lz) || 1, ux = (nx + lx) / l, uz = (nz + lz) / l;
+  var pa = Math.min(WORLD_LIFE_PUSH_MAX, pen * wa), po = Math.min(WORLD_LIFE_PUSH_MAX, pen * wo), moved = 0;
+  var ax = a.x, az = a.z, bx = o.x, bz = o.z;
+  if (pa > 1e-4) {
+    if (_wlfTryAt(life, a, ax - ux * pa, az - uz * pa) || _wlfTryAt(life, a, ax - nx * pa, az - nz * pa)) moved = 1;
+    else if (wo > 0) po = Math.min(WORLD_LIFE_PUSH_MAX, po + pa);                      // wedged: the other gives way instead
+  }
+  if (po > 1e-4) { if (_wlfTryAt(life, o, bx + ux * po, bz + uz * po) || _wlfTryAt(life, o, bx + nx * po, bz + nz * po)) moved = 1; }
+  if (!moved) { a.squeezed = life.t; o.squeezed = life.t; }                            // nothing could give: the stuck logic re-plans
+  return moved;
+}
+function _wlfSeparate(life) {
+  var A = life.agents, h = new Map(), L = [], i, j, k;
+  for (i = 0; i < A.length; i++) {
+    var a = A[i];
+    if (a.dead || a.layer === 'air' || a.kind === 'lane' || a.kind === 'rail' || a.kind === 'boat' || a.kind === 'moored' || a.hop || a.host) continue;
+    a._si = L.length; L.push(a);
+    k = (Math.floor(a.x / 2) + 4096) * 8192 + (Math.floor(a.z / 2) + 4096);
+    var b = h.get(k); if (!b) { b = []; h.set(k, b); } b.push(a);
+  }
+  if (L.length < 2) return;
+  for (var it = 0; it < 3; it++) {
+    var moved = 0;
+    for (i = 0; i < L.length; i++) {
+      var p = L[i], cx = Math.floor(p.x / 2), cz = Math.floor(p.z / 2);
+      for (var ix = -1; ix <= 1; ix++) for (var iz = -1; iz <= 1; iz++) {
+        var bk = h.get((cx + ix + 4096) * 8192 + (cz + iz + 4096)); if (!bk) continue;
+        for (j = 0; j < bk.length; j++) { var o = bk[j]; if (o._si > p._si && o.layer === p.layer) moved += _wlfPair(life, p, o); }
+      }
+    }
+    if (!moved) break;
+  }
+  for (i = 0; i < L.length; i++) L[i].y = worldLifeY(life, L[i]);
+}
+function _wlfLeash(life, a, dt) {
   var L = a.leader, len = a.lead.len, dx = a.x - L.x, dz = a.z - L.z, d = Math.hypot(dx, dz);
   if (d <= len) return;
-  var cands = [len * 0.97, len * 0.7, len * 0.4];
-  for (var i = 0; i < cands.length; i++) { var x = L.x + dx / d * cands[i], z = L.z + dz / d * cands[i]; if (_wlfOk(life, a, x, z)) { a.x = x; a.z = z; return; } }
-  a.x = L.x; a.z = L.z;
+  // the lead pulls the dog in at most 6 m/s (0.4 m a tick: a dog is not teleported), sliding round what is in the way ...
+  var ux = -dx / d, uz = -dz / d, pull = Math.min(d - len * 0.97, 6 * dt), tries = [0, 0.6, -0.6, 1.2, -1.2], done = false;
+  for (var i = 0; i < tries.length && !done; i++) {
+    var c = Math.cos(tries[i]), s2 = Math.sin(tries[i]), vx = ux * c - uz * s2, vz = ux * s2 + uz * c;
+    done = _wlfTryAt(life, a, a.x + vx * pull, a.z + vz * pull);
+  }
+  // ... and when nothing is open (a wall, a bench), the lead is never longer than it is: the nearest valid point on it
+  if (!done || Math.hypot(a.x - L.x, a.z - L.z) > len) {
+    var cands = [len * 0.97, len * 0.85, len * 0.7, len * 0.4];
+    dx = a.x - L.x; dz = a.z - L.z; d = Math.hypot(dx, dz) || 1;
+    for (var k = 0; k < cands.length; k++) { var x = L.x + dx / d * cands[k], z = L.z + dz / d * cands[k]; if (_wlfOk(life, a, x, z)) { a.x = x; a.z = z; break; } }
+    if (Math.hypot(a.x - L.x, a.z - L.z) > len) { a.x = L.x; a.z = L.z; }
+  }
 }
 /** A step aboard, a step off, sitting down and standing up: eased over the step's time, with the layer and host switched. */
 function _wlfStepMove(life, a, dt) {
@@ -1636,23 +1809,37 @@ function _wlfAirMove(life, a, dt) {
   } else if (a.perch) { a.x = a.perch.x; a.z = a.perch.z; a.alt = a.perch.y; }
   a.vx = (a.x - ox) / dt; a.vz = (a.z - oz) / dt; a.speed = Math.hypot(a.vx, a.vz); a.y = a.alt;
 }
-/** Stuck (no progress for 3 s while wanting to move): re-plan, then sidestep, then leave by the nearest spawn cell. */
+/** Stuck (no progress for 2.5 s while wanting to move): re-plan, then sidestep, then leave by the nearest spawn cell. */
 function _wlfStuck(life, a, want, dt) {
   if (want > 0.05 && a.dir) {
     if (Math.hypot(a.x - a.progX, a.z - a.progZ) > 0.4) { a.progX = a.x; a.progZ = a.z; a.lastProg = life.t; a.stuckT = 0; a.replans = Math.max(0, a.replans - 0.02); return; }
     a.stuckT = life.t - a.lastProg;
   } else { a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.stuckT = 0; return; }
-  if (a.stuckT > 3) {
+  if (a.stuckT > 2.5) {
     a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.replans++;
     var edgeZ = _wlfInEdgeZone(life, a);                     // never stand still in an edge zone (C2): re-plan at once
-    if (a.replans <= 1) { a.route = null; if (!edgeZ) a.wait = life.t + 0.5 + a.rng(); }
-    else if (a.replans <= 2) { a.route = null; if (!edgeZ) { a.wait = life.t + 2 + a.rng() * 4; if (a.brain.states[a.bs] && a.brain.states[a.bs].speed) _wlfEnter(life, a, _wlfStillState(a)); } }
+    // never stop in the lane to wait: a mover that stands still IS the next blockage (a jam feeds itself). First a new plan, at once;
+    // then the later arrival of a knot turns back the way it came (the knot unwinds from its edges); only then a short pause.
+    var back2 = a.edge && /^(N|S|E|W|cover|door)$/.test(a.edge) && !(a.goals && a.goals[a.gi] && a.goals[a.gi].leave === a.edge) ? a.edge : null;
+    if (a.replans <= 1) { a.route = null; }
+    else if (a.replans <= 2 && back2 && !a.resident && !a.leader && !a.members && a.kind === 'walker' && _wlfLater(life, a)) { _wlfLeave(life, a, back2); a.goalOn = null; a.replans = 0; }
+    else if (a.replans <= 2 && a.kind === 'walker') { a.route = null; a.squeeze = life.t + 3; }                  // a one-person lane: turn sideways and pass shoulder to shoulder
+    else if (a.replans <= 2) { a.route = null; if (!edgeZ) { a.wait = life.t + 1 + a.rng() * 2; if (a.brain.states[a.bs] && a.brain.states[a.bs].speed) _wlfEnter(life, a, _wlfStillState(a)); } }
     else {
       a.replans = 0; a.stuckOut = true;
       if (a.resident) { a.route = null; a.gi++; a.wait = life.t + 1; }
       else { var back = a.edge && /^(N|S|E|W|cover|door)$/.test(a.edge) && !(a.goals && a.goals[a.gi] && a.goals[a.gi].leave === a.edge) ? a.edge : 'any'; _wlfLeave(life, a, back); a.goalOn = null; }
     }
   }
+}
+/** Did this mover arrive after a neighbour within 2.5 m that is held up too (the later one of a knot gives way)? */
+function _wlfLater(life, a) {
+  for (var i = 0; i < life.agents.length; i++) {
+    var o = life.agents[i];
+    if (o === a || o.dead || o.layer !== a.layer || Math.hypot(o.x - a.x, o.z - a.z) > 2.5) continue;
+    if (o.born < a.born || (o.born === a.born && o.id < a.id)) return true;
+  }
+  return false;
 }
 /** Still actions shown in the shared vocabulary (the clip keeps the action: a heron's freeze and strike, a dog's sniff). */
 var _WLF_SHOW = { freeze: 'look', strike: 'look', sniff: 'look', hop: 'fly', sitting: 'sit' };
@@ -1702,7 +1889,7 @@ function _wlfFace(life, a) {
 }
 /** A still mover turns to its point of interest (A5) at its turn rate. */
 function _wlfLookTurn(life, a, dt) {
-  if (!a.lookAt || a.speed > 0.05 || a.step || a.layer === 'air') return;
+  if (!a.lookAt || a.speed > 0.05 || a.dir || a.step || a.layer === 'air') return;       // one that wants to go turns to its way, never back to what it was looking at
   var des = Math.atan2(a.lookAt[0] - a.x, a.lookAt[1] - a.z), diff = _wlfAng(des - a.heading), mx = Math.PI / a.brain.turn * dt;
   a.heading = _wlfAng(a.heading + _wlfClamp(diff, -mx, mx));
 }
@@ -1938,8 +2125,12 @@ function _wlfPassMove(life, dt) {
   var A = life.agents;
   for (var i = 0; i < A.length; i++) {
     var a = A[i]; if (a.dead) continue;
-    try { _wlfMove(life, a, dt); } catch (e) { a.vx = 0; a.vz = 0; }
+    try { _wlfMove(life, a, dt); } catch (e) { a.vx = 0; a.vz = 0; if (!a.moveErr) { a.moveErr = 1; _wlfProblem(life, { pop: a.pop, rule: 'error', msg: a.id + ' move: ' + (e && e.message) }); } }
   }
+  for (var wi = 0; wi < A.length; wi++) if (!A[wi].dead) _wlfWatchdog(life, A[wi]);
+  try { _wlfSeparate(life); } catch (e) { _wlfProblem(life, { pop: -1, rule: 'error', msg: 'separate: ' + (e && e.message) }); }
+  // the lead is never longer than it is: the last word, after the pushes of the separation pass
+  for (var li = 0; li < A.length; li++) { var dg = A[li]; if (!dg.dead && dg.lead && dg.leader && !dg.leader.dead) _wlfLeash(life, dg, dt); }
   _wlfTrafficPass(life, dt);
   var w = 0;
   for (var k = 0; k < A.length; k++) { if (!A[k].dead) A[w++] = A[k]; else life.byId.delete(A[k].id); }
@@ -1973,13 +2164,29 @@ function worldAgents(life) {
     if (a.fadeIn) alpha = Math.min(alpha, _wlfClamp((life.t - a.born) / a.fadeIn, 0, 1));
     if (a.fadeOut) alpha = Math.min(alpha, _wlfClamp(1 - (life.t - a.fadeOut) / 0.6, 0, 1));
     var deg = ((a.heading * 180 / Math.PI) % 360 + 360) % 360;
-    out.push({ id: a.id, cls: a.cls, who: a.who, obj: a.obj, variant: a.variant == null ? null : a.variant, x: x, y: a.y, z: z, vx: a.vx, vz: a.vz,
-      heading: a.heading, facing: deg, speed: a.speed || 0, state: state, pose: pose, age: a.age, h: a.h, layer: a.layer,
+    var shown = a.svx != null && a.kind !== 'lane' && a.kind !== 'rail';
+    out.push({ id: a.id, cls: a.cls, who: a.who, obj: a.obj, variant: a.variant == null ? null : a.variant, x: x, y: a.y, z: z, vx: shown ? a.svx : a.vx, vz: shown ? a.svz : a.vz,
+      heading: a.heading, facing: deg, speed: shown ? Math.hypot(a.svx, a.svz) : a.speed || 0, state: state, pose: pose, age: a.age, h: a.h, layer: a.layer,
       level: a.layer.indexOf('@') > 0 ? +a.layer.split('@')[1] : 0, host: a.host, group: a.group, lookAt: a.lookAt, view: a.view, mirror: a.mirror,
-      born: a.born, leaving: a.leaving || false, alpha: alpha, clip: st.clip || a.clip, phase: a.phase, kind: a.kind, lead: a.lead, edge: a.edge,
-      outfit: a.outfit == null ? null : a.outfit, breed: a.breed || null, gait: a.gait, gaitName: a.gaitName || null, len: a.len || null, framed: false });
+      born: a.born, leaving: a.leaving || false, alpha: alpha, clip: a.clip || st.clip, phase: a.phase, kind: a.kind, lead: a.lead, edge: a.edge,
+      outfit: a.outfit == null ? null : a.outfit, breed: a.breed || null, gait: a.gait, gaitName: a.gaitName || null, len: a.len || null, framed: false,
+      r: a.r, intent: _wlfIntent(a), squeeze: !!(a.squeeze > life.t), leader: a.leader ? a.leader.id : null });
   }
   return out;
+}
+/**
+ * What a mover is trying to do, for the checkers (invariants `stuck`, `personalSpace`): 'travel' (it has somewhere to go and
+ * should be getting there: a route goal, leaving, a vehicle or a boat under way) or 'stay' (seated, queuing, viewing,
+ * idling inside its goal, moored, aboard, in the air). A mover with travel intent that stops for ten seconds is stuck,
+ * whatever pose it is drawn in.
+ */
+function _wlfIntent(a) {
+  if (a.dead || a.kind === 'moored' || a.layer === 'air' || a.host || a.step) return 'stay';
+  if (a.kind === 'lane' || a.kind === 'rail') return a.bs === 'stopped' ? 'stay' : 'travel';
+  if (a.flee || a.leaving) return 'travel';
+  var g = a.goals ? a.goals[a.gi] || null : null;
+  if (!g) return a.kind === 'boat' ? 'travel' : 'stay';
+  return g.go != null || g.leave != null || g.follow != null || g.meet != null ? 'travel' : 'stay';
 }
 /** The dog leads: [{ id, a: walker id, b: dog id, len, ax, ay, az, bx, by, bz }] (the hand to the collar). */
 function worldLifeLeads(life) {

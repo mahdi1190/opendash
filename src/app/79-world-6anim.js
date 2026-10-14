@@ -243,9 +243,10 @@ function _wanPoseObj(obj, kind, pose, onBench) {
   return null;
 }
 function _wanTarget(e, prevState) {
-  const kind = _wanKind(e), vx = _wanNum(e.vx) ? e.vx : 0, vz = _wanNum(e.vz) ? e.vz : 0;
+  // the velocity life SHOWS (svx: low-passed over 0.2 s, so a one-tick spike never flips a walk cycle), else the real one
+  const kind = _wanKind(e), vx = _wanNum(e.svx) ? e.svx : _wanNum(e.vx) ? e.vx : 0, vz = _wanNum(e.svz) ? e.svz : _wanNum(e.vz) ? e.vz : 0;
   // the ACTUAL ground speed (the velocity), never the speed the brain is aiming for: the feet must match the ground (A6)
-  const speed = _wanNum(e.vx) || _wanNum(e.vz) ? Math.hypot(vx, vz) : _wanNum(e.speed) ? Math.abs(e.speed) : _wanNum(e.spd) ? Math.abs(e.spd) : 0;
+  const speed = _wanNum(e.svx) || _wanNum(e.vx) || _wanNum(e.vz) ? Math.hypot(vx, vz) : _wanNum(e.speed) ? Math.abs(e.speed) : _wanNum(e.spd) ? Math.abs(e.spd) : 0;
   const st = String(e.state || ''), clip0 = String(e.clip || '');
   const wasMoving = prevState === 'move';
   const moving = speed >= (wasMoving ? _WAN_MOVE_OUT : _WAN_MOVE_IN) || (speed >= _WAN_MOVE_OUT && prevState == null);

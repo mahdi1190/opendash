@@ -42,6 +42,7 @@ function _wfrHeight(e) {
   if (typeof _wh5HeightOf === 'function') return _wh5HeightOf(e);
   return Number.isFinite(e.height) && e.height > 0 ? e.height : Number.isFinite(e.h) && e.h > 0 ? e.h : 1.7;
 }
+function _wfrHash(str) { let h = 2166136261 >>> 0; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
 /** The drawn view of a static or an agent: appearance's worldViewOf, else the agent's own (life), else from its facing. */
 function _wfrView(e, cam, agent, prev) {
   if (typeof worldViewOf === 'function') {
@@ -409,7 +410,9 @@ function worldFrameAt(scene, t, o) {
       facing: _wfrR3(Number(e.facing) || 0), foot: _wfrPts(r.foot), height: _wfrR3(r.height), layer: e.layer || null, host: e.host || null, parent: e.parent || null,
       view: r.view, mirror: !!r.mirror, box: _wfrBoxArr(r.box), order: pos.has(r.id) ? pos.get(r.id) : null, speed: agent ? _wfrR3(sp) : 0, vx: agent ? _wfrR3(e.vx || 0) : 0, vz: agent ? _wfrR3(e.vz || 0) : 0,
       state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null,
-      prim: r.prim ? r.prim.kind || null : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal };
+      prim: r.prim ? r.prim.kind || null : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal,
+      // what the checkers need of a mover: its body radius, its group (the leader's id), whether it has a lead, and its intent (life)
+      r: agent && Number.isFinite(e.r) ? _wfrR3(e.r) : null, group: agent ? e.group || null : null, leash: agent ? !!e.lead : false, intent: agent ? e.intent || null : null, squeeze: agent ? !!e.squeeze : false, leader: agent ? e.leader || null : null };
   };
   const ents = plan.recs.map(r => one(r, false)).concat(aRecs.map(r => one(r, true)));
   let lights = [];
@@ -424,6 +427,17 @@ function worldFrameAt(scene, t, o) {
   if (sun && typeof worldSunOf === 'function') { try { const S = worldSunOf(sky || { az: sun.az, alt: sun.alt }, cam); sun.g = S && S.g ? [_wfrR3(S.g[0]), _wfrR3(S.g[1])] : null; } catch (e) { /* none */ } }
   return { t, ctx: _wfrPlain(ctx) || {}, cam: { f: cam.f, x0: cam.x0, horizon: cam.horizon, eye: cam.eye, heading: cam.heading, fov: cam.fov }, W: scene.W, H: scene.H, ents, wind,
     sun, lights, log: Array.isArray(world.log) ? world.log.slice() : [] };
+}
+
+/**
+ * The frame record of what the compositor drew last in the page (the same agents at the same scene time, after the draw's own
+ * drops): the invariant checker runs on the REAL frame, not on a parallel simulation. id: the world's host id (worldHostLive);
+ * o: as worldFrameAt. Null when nothing has been drawn.
+ */
+function worldFrameDrawn(id, o) {
+  const rec = typeof worldHostLive === 'function' ? worldHostLive(id) : null, S = rec && rec.frame && rec.frame.last;
+  if (!S || !S.drawn || !rec.world) return null;
+  return worldFrameAt(rec.world, S.drawn.tau, Object.assign({}, o || {}, { agents: S.drawn.agents }));
 }
 
 /* ---------- browser: the rasteriser ---------- */
@@ -1018,7 +1032,9 @@ function _wfrDraw(env, ctx, t) {
   const mem = rec.frame.agents || (rec.frame.agents = new Map()), seen = new Set(), aRecs = [];
   let list = st.agents || [];
   const lvl = env.gov ? env.gov.level : 0;
-  if (lvl >= 4) list = list.filter((a, i) => (i % 10) < 7);
+  // the governor's thinning (a slow machine): only the far ones (specks of a few pixels) and always the SAME ones (by a hash of the
+  // id, never by their place in the list, which shifts every time anyone arrives or leaves and made people pop in and out)
+  if (lvl >= 4) list = list.filter(a => a.z < 40 || _wfrHash(String(a.id)) % 10 < 7);
   for (const a of list) {
     if (a.culled && a.cullReason !== 'occluded') continue;   // off the frame (the lod system); an occluded one still orders
     const m0 = mem.get(String(a.id));
@@ -1027,6 +1043,7 @@ function _wfrDraw(env, ctx, t) {
     // the near band (3.2): a giant at the lens is never drawn even if a module let one through
     if (!r.prim && r.z < cam.f * r.height / 405 && !a.framed) continue;
     if (r.box.x1 * vs + ox < -50 || r.box.x0 * vs + ox > env.W + 50 || r.box.y1 * vs + oy < -50) continue;
+    r.agent = a;
     let m = m0;
     if (!m) { m = { e: Math.round(Math.log2(Math.max(1e-3, r.s)) * 4), view: r.view, mirror: r.mirror, o: r.o, flip: r.flip, prev: null, since: -1 }; mem.set(r.id, m); }
     const ex = Math.log2(Math.max(1e-3, r.s)) * 4;
@@ -1038,6 +1055,9 @@ function _wfrDraw(env, ctx, t) {
     aRecs.push(r);
   }
   for (const k of [...mem.keys()]) if (!seen.has(k)) mem.delete(k);
+  // what this frame really draws (the invariant checker's input on the real frame: worldFrameDrawn): the agents that survived the
+  // draw's own drops (the near band, the frame sides, the governor's thinning), at the scene time they were drawn
+  S.drawn = { t, tau, agents: aRecs.map(r => r.agent) };
   const movers = S.plan.live.concat(aRecs);
   const order = typeof worldFrameOrder === 'function' ? worldFrameOrder(S.plan.chunks, movers, null) : S.chunks.map(o => ({ kind: 'chunk', ref: o.ch })).concat(movers.map(r => ({ kind: 'agent', ref: r })));
   S.stats.orderMs = _wfrNow() - ta;
