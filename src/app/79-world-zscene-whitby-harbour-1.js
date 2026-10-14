@@ -15,7 +15,7 @@
     v: 3,
     place: { lat: 54.4858, lon: -0.6133, alt: 4, region: 'north-yorkshire', style: 'quayside' },
     camera: { eye: 1.7, fov: 66, horizon: 430, heading: 78, water: -3 },
-    ground: { features: [{ kind: 'embankment', path: [[-60, 170], [400, 170]], width: 150, h: 36 }] },
+    ground: { features: [{ kind: 'embankment', path: [[-60, 200], [400, 200]], width: 184, h: 36 }] },
     surfaces: [
       { id: 'quay-w', kind: 'plaza', poly: [[-120, 1], [120, 1], [120, 18], [-120, 18]] },
       { id: 'esk', kind: 'water', water: 'harbour', poly: [[-400, 18], [400, 18], [400, 100], [-400, 100]], shallow: 1.5 },
@@ -29,8 +29,8 @@
       { obj: 'boat.fishing-boat', at: [-22, 94], facing: 90 }, { obj: 'boat.fishing-boat', at: [6, 95], facing: 270 }, { obj: 'boat.fishing-boat', at: [34, 94], facing: 90 },
       { obj: 'boat.fishing-boat', at: [-70, 93], facing: 90 }, { obj: 'boat.dinghy', at: [14, 24], facing: 80 }, { obj: 'boat.dinghy', at: [-18, 28], facing: 100 },
       // the terraces of Church Street and the lanes above, in rows up the slope, then St Mary's on the crest
-      ...rows('building.terrace-victorian', 114, -90, 140, 24, 180), ...rows('building.cottage', 132, -85, 120, 21, 180), ...rows('building.terrace-victorian', 152, -70, 150, 26, 180),
-      ...rows('building.cottage', 178, -80, 110, 23, 180), { obj: 'building.church', at: [20, 198], facing: 180, id: 'st-marys' },
+      ...rows('building.terrace-victorian', 112, -90, 140, 24, 180), ...rows('building.cottage', 124, -85, 120, 21, 180), ...rows('building.terrace-victorian', 137, -70, 150, 26, 180),
+      ...rows('building.cottage', 150, -80, 110, 23, 180), ...rows('building.terrace-victorian', 164, -60, 150, 30, 180), { obj: 'building.church', at: [20, 190], facing: 180, id: 'st-marys' },
       { obj: 'building.lighthouse', at: [-200, 176], facing: 90, id: 'pier-light' },
       // the quay's own kit: bollards and lamps along the edge
       ...rows('street.bollard', 17, -100, 100, 16, 0), ...rows('street.lamppost', 13, -90, 90, 30, 0),

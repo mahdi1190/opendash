@@ -92,6 +92,59 @@ function _wwaClipNear(P, zn) {
   return out;
 }
 
+/* ---------- what of a lowered water can be seen (SCENE_LESSONS J: people walked on the water at a quay) ---------- */
+/** Ear-clipping of a simple polygon into triangles (convex pieces for the opening test); a convex polygon is its own piece. */
+function _wwaConvexPieces(P) {
+  const n = P.length;
+  if (n < 3) return [];
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  let area = 0; for (let i = 0, j = n - 1; i < n; j = i++) area += (P[j][0] + P[i][0]) * (P[j][1] - P[i][1]);
+  const sg = area < 0 ? 1 : -1;                                // the sign of a counter-clockwise turn for this winding
+  let convex = true;
+  for (let i = 0; i < n && convex; i++) if (sg * cross(P[i], P[(i + 1) % n], P[(i + 2) % n]) < -1e-9) convex = false;
+  if (convex) return [P];
+  const idx = P.map((_, i) => i), out = [];
+  const inTri = (p, a, b, c) => sg * cross(a, b, p) >= -1e-9 && sg * cross(b, c, p) >= -1e-9 && sg * cross(c, a, p) >= -1e-9;
+  let guard = n * n;
+  while (idx.length > 3 && guard-- > 0) {
+    let cut = false;
+    for (let k = 0; k < idx.length; k++) {
+      const a = P[idx[(k + idx.length - 1) % idx.length]], b = P[idx[k]], c = P[idx[(k + 1) % idx.length]];
+      if (sg * cross(a, b, c) <= 1e-9) continue;
+      let ear = true;
+      for (const j of idx) { const q = P[j]; if (q === a || q === b || q === c) continue; if (inTri(q, a, b, c)) { ear = false; break; } }
+      if (!ear) continue;
+      out.push([a, b, c]); idx.splice(k, 1); cut = true; break;
+    }
+    if (!cut) break;
+  }
+  if (idx.length === 3) out.push(idx.map(i => P[i]));
+  return out;
+}
+/**
+ * The part of a water polygon (metres, in front of the near plane) that the eye can see over the ground. The water lies below the
+ * ground plane (level < 0: a quay, a lock, a river in its cut): the sight line to a point of it crosses the ground level nearer by
+ * the factor k = (eye - level) / eye, and the point is seen only when it crosses INSIDE an opening of the ground (a water polygon);
+ * across the quay it is hidden. So the visible footprint is the polygon cut by every opening scaled by k about the camera's foot. Returns
+ * a list of convex-clipped pieces (each a polygon in metres), or null when the whole polygon is visible.
+ */
+function _wwaVisiblePieces(P, k, openings) {
+  const pieces = [];
+  for (const O of openings) {
+    const kO = O.map(p => [p[0] * k, p[1] * k]), c = typeof _wlClipConvex === 'function' ? _wlClipConvex(P, kO) : P;
+    if (c.length >= 3) pieces.push(c);
+  }
+  return pieces;
+}
+/** Pieces as one ring (keyholes of zero width join them), so a region's outline stays one polygon for every consumer. */
+function _wwaOutline(pieces) {
+  if (pieces.length === 1) return pieces[0];
+  const ring = [], keys = [];
+  for (const c of pieces) { for (const q of c) ring.push(q); ring.push(c[0]); keys.push(c[0]); }
+  for (let i = keys.length - 2; i >= 0; i--) ring.push(keys[i]);
+  return ring;
+}
+
 /* ---------- kinds (H5) ---------- */
 /** The look of a kind of water. Scenes give only a hint: 'calm' halves the ripple, 'breezy' raises it (x 1.6); nothing else. */
 function worldWaterLook(kind, hint) {
@@ -126,14 +179,28 @@ function worldWaterPlan(world, cam, o) {
   o = o || {};
   const zn = Number.isFinite(o.near) ? o.near : Math.max(0.15, (cam.dMin || 1) * 0.2), out = [], ov = Number.isFinite(o.overscan) ? o.overscan : 400;
   const surfs = (world && world.surfaces) || [];
+  // the openings of the ground: every water polygon in front of the near plane, in convex pieces (a lowered water is seen only through them)
+  const openings = [];
+  for (const s of surfs) {
+    if (!s || s.kind !== 'water') continue;
+    const P = _wwaPoly(s), c = Array.isArray(P) && P.length >= 3 ? _wwaClipNear(P, zn) : [];
+    if (c.length >= 3) for (const q of _wwaConvexPieces(c)) openings.push(q);
+  }
   for (const s of surfs) {
     if (!s || s.kind !== 'water') continue;
     const polyM = _wwaPoly(s);
     if (!Array.isArray(polyM) || polyM.length < 3) continue;
-    const clipM = _wwaClipNear(polyM, zn);
+    let clipM = _wwaClipNear(polyM, zn);
     if (clipM.length < 3) continue;
     const level = _wwaLevel(world, s), kind = WORLD_WATER_LOOK[s.water] ? s.water : WORLD_WATER_LOOK[s.waterKind] ? s.waterKind : 'pond';
     const look = worldWaterLook(kind, s.hint), flow = _wwaFlow(s, look);
+    // a water below the ground is hidden behind the near bank: only what the sight lines carry through an opening is seen
+    const k = cam.eye > 0.2 ? (cam.eye - level) / cam.eye : 1;
+    if (k > 1.02 && o.hide !== false) {
+      const pieces = _wwaVisiblePieces(clipM, k, openings);
+      if (!pieces.length) continue;
+      clipM = _wwaOutline(pieces);
+    }
     const clip = clipM.map(p => [cam.x0 + cam.f * p[0] / p[1], _wwaRow(cam, p[1], level)]);
     const box = [Math.min(...clip.map(p => p[0])), Math.min(...clip.map(p => p[1])), Math.max(...clip.map(p => p[0])), Math.max(...clip.map(p => p[1]))];
     const R = { id: s.id, kind, level, hint: look.hint, flow, speed: Math.hypot(flow[0], flow[1]), look, polyM, clipM, clip, box, cam,

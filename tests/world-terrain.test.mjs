@@ -73,3 +73,26 @@ test('the frame plan includes the strips among the statics (the chunk order does
   assert.ok(iFar >= 0 && iHouse >= 0 && iFar < iHouse, 'the far plateau is drawn before the house on the face');
   assert.ok(iNear < 0 || iNear >= 0, 'the near foot exists or is flat');
 });
+
+test('a water below the ground is hidden behind the near bank: only what the sight lines carry through the opening is drawn (W2, SCENE_LESSONS J)', () => {
+  const w = build(spec());                                    // quay z 1-16, water z 16-90 at -2 m, eye 1.7
+  const R = W.worldWaterPlan(w, w.cam).find(r => r.id === 'esk');
+  const k = (1.7 + 2) / 1.7;
+  assert.ok(R.dNear >= 16 * k - 0.05, `the nearest visible water is ${R.dNear} m, at least ${(16 * k).toFixed(1)} (the quay edge's shadow)`);
+  assert.ok(R.dNear <= 16 * k + 0.5, 'and no further than the sight line over the edge');
+  // the screen: no water row below the quay edge's own row (the paving covers it)
+  const edgeRow = w.cam.horizon + w.cam.f * w.cam.eye / 16;
+  assert.ok(Math.min(...R.clip.map(p => p[1])) > 0 && Math.max(...R.clip.map(p => p[1])) <= edgeRow + 0.5, `water rows end at the edge's row ${Math.round(edgeRow)}`);
+  // flush water (level 0) is not clipped
+  const flush = build(spec({ camera: { eye: 1.7, fov: 66, horizon: 430, heading: 0, water: 0 } }));
+  assert.ok(W.worldWaterPlan(flush, flush.cam).find(r => r.id === 'esk').dNear <= 16.01, 'water at the ground level is seen from its own edge');
+});
+
+test('two waters side by side are one opening: the seam between them hides nothing', () => {
+  const s = spec({ surfaces: [{ id: 'quay', kind: 'plaza', poly: [[-100, 1], [100, 1], [100, 16], [-100, 16]] },
+    { id: 'a', kind: 'water', water: 'harbour', poly: [[-300, 16], [300, 16], [300, 60], [-300, 60]] }, { id: 'b', kind: 'water', water: 'harbour', poly: [[-300, 60], [300, 60], [300, 140], [-300, 140]] }] });
+  const w = build(s), P = W.worldWaterPlan(w, w.cam), b = P.find(r => r.id === 'b');
+  const k = (1.7 + 2) / 1.7;
+  assert.ok(b && b.dNear < 60 * 1.0 + 0.5, `the far water starts at its own near edge ${b && b.dNear} (the sight line crosses the ground over the near water)`);
+  assert.ok(P.find(r => r.id === 'a').dNear >= 16 * k - 0.05);
+});
