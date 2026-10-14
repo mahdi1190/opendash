@@ -404,10 +404,16 @@ function _wcStyleKnown(s) {
   try { if (typeof WORLD_FILL_STYLES === 'object' && WORLD_FILL_STYLES && Object.prototype.hasOwnProperty.call(WORLD_FILL_STYLES, s)) return true; } catch (e) { /* not loaded */ }
   return false;
 }
-/** The default backdrop style of a spec (U1): place.style when it is a backdrop style, else a guess from its surfaces. */
+/** The backdrop style a place.style stands for: itself when it is a backdrop style, else its kit's backdrop (a style kit: 'quayside' draws the low town), else null. */
+function _wcPlaceBackdrop(ps) {
+  if (_wcBackdropKnown(ps)) return ps;
+  try { const k = typeof worldKit === 'function' ? worldKit(ps) : null; if (k && _wcBackdropKnown(k.backdrop)) return k.backdrop; } catch (e) { /* kits not loaded */ }
+  return null;
+}
+/** The default backdrop style of a spec (U1): place.style when it is a backdrop style or a kit, else a guess from its surfaces. */
 function _wcStyleGuess(spec) {
   const ps = spec && _wcObjOf(spec.place) ? spec.place.style : null;
-  if (_wcBackdropKnown(ps)) return ps;
+  const pb = _wcPlaceBackdrop(ps); if (pb) return pb;
   const surfs = spec && Array.isArray(spec.surfaces) ? spec.surfaces.filter(_wcObjOf) : [], has = k => surfs.some(s => s.kind === k), water = w => surfs.some(s => s.kind === 'water' && s.water === w);
   if (has('road') || has('pavement') || has('plaza') || has('tram')) return 'town-low';
   if (water('sea') || water('harbour')) return 'coast';
@@ -929,8 +935,8 @@ function _wcCheck(spec0, repair) {
 
   // backdrop (2.7, U1: the default style comes from place.style)
   if (spec.backdrop == null) {
-    if (!v31 || !_wcBackdropKnown(P.style)) act('backdrop', 'emptyBackground', v31 ? 'no backdrop and no place.style (no empty backgrounds)' : 'backdrop is required (no empty backgrounds)', set(spec, 'backdrop', { style: _wcStyleGuess(spec) }));
-    else if (repair) spec.backdrop = { style: P.style };
+    if (!_wcPlaceBackdrop(P.style)) act('backdrop', 'emptyBackground', v31 ? 'no backdrop and no place.style (no empty backgrounds)' : 'backdrop is required (no empty backgrounds)', set(spec, 'backdrop', { style: _wcStyleGuess(spec) }));
+    else if (repair) spec.backdrop = { style: _wcPlaceBackdrop(P.style) };
   } else if (!_wcObjOf(spec.backdrop)) act('backdrop', 'badType', 'backdrop is { style, skyline? }', set(spec, 'backdrop', { style: _wcStyleGuess(spec) }));
   else {
     const B = spec.backdrop;
