@@ -62,7 +62,12 @@ test('the report lists what was dropped and what needs review; the original is u
   assert.equal(R.from, 'v2');
   assert.ok(R.dropped.some(d => d.field === 'x,y,s'), 'pixel placements are listed');
   assert.ok(R.dropped.some(d => /water look/.test(d.why)), 'water look fields are listed');
-  assert.ok(R.review.some(x => /pinned perspective art/.test(x.msg)), 'pinned perspective pieces are reviewed, not kept');
+  // QP3: the pinned perspective pieces of a canal view are parts of real objects seen close; they are carried over as those objects
+  // (the hero narrowboat framing the view, the willow whose fronds hang from the corner), never dropped with the composition
+  assert.ok(R.review.some(x => /perspective pieces of one hull -> boat\.narrowboat/.test(x.msg) && /framing element/.test(x.msg)), 'the near hero boat is carried over as a framing narrowboat');
+  assert.ok(R.review.some(x => /tree\.canal-willow just outside the frame/.test(x.msg)), 'the fronds become the willow they hang from');
+  const hero = c.spec.entities.filter(e => /^conv-boat/.test(e.id || ''));
+  assert.ok(hero.length >= 1 && hero.some(e => e.framed === true && e.attach === 'water'), 'a near boat in the water, marked as a framing element');
   assert.ok(R.review.some(x => x.path === 'backdrop'), 'the chosen backdrop is a review item');
   for (const r of R.review) assert.ok(r.path && r.msg);
 });

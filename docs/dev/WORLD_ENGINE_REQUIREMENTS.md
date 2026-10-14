@@ -202,7 +202,9 @@ Each library object class has a descriptor that the ENGINE reads; scenes never r
 ## 16. Acceptance suite (must pass before showing the user)
 
 1. Unit tests: `node --test tests/world-*.test.mjs` all green.
-2. Invariant checker (`worldInvariants`, run every frame in test mode over the FULL loop, at 3 dates x 5 times): zero
+2. Invariant checker (`worldInvariants`, run every frame in test mode over the FULL loop, at 3 dates x 5 times, in Node over the
+   life sim AND in Chrome over the frame record of what the page really drew: `world invariants <ref> --browser`, accept item
+   16.2b; section 26): zero
    violations of every [T] item that can be checked per frame. That covers habitat, footprint overlap, mover in solid,
    mover on water, floating, orphan attachment, reflection outside water, shadow on water, shadow direction consistency, mover
    cut at the edge, giant near mover, popping, stuck mover (no progress for 10 s while not in an idle goal), sliding feet,
@@ -393,3 +395,41 @@ Quality has to live in the engine, the library and the gate, never in having a r
   rounds. This is repeated for each new setting kit.
 - N6 Object quality gate: any new library object must pass object lint, look right at near, mid and far sizes in all four
   seasons and at night, and be approved before it can join a kit.
+
+## 26. Movement holds in the rendered frames (the user, 14 Oct: "people walking into each other ... SO SO buggy")
+
+The unit tests and the Node run were green while the page was not. The contract now is on what the PAGE draws.
+
+- MV1 [T] The checker runs on the real frames: Chrome draws every frame of the loop at a pinned scene time and the record of
+  what it drew (`worldFrameDrawn`: the same agents at the same scene time, after the draw's own drops) goes to `worldInvariants`.
+  A run whose clock drifts (the page restarted its life mid-run) is an ERROR of the run, never a clean or a dirty result.
+- MV2 [T] Personal space is a hard floor: no two unrelated movers on one layer overlap or pass through each other (invariant
+  `personalSpace`, 85 % of the sum of their body radii; a walker and its dog never share a spot). The one exception is a lane
+  a body wide, where a pair that stalled for 2.5 s turns sideways and passes through each other for a step (`squeeze`).
+- MV3 [T] Oncoming movers pass side by side, keeping to the LEFT; a mover going the same way slower is followed (queue) or
+  overtaken on the right; a sideways shuffle needs no forward speed.
+- MV4 [T] Nobody stands in a lane to wait (a standing mover is the next blockage). A mover with somewhere to go that makes no
+  headway for 10 s is retired and logged (`stuckRetired`); the checker's `stuck` rule is about intent, not pose: 20 s for a
+  mover with somewhere to go whatever pose it is drawn in, 90 s for a statue (herons and residents longer).
+- MV5 [T] Targets are reachable: a wanderer only picks places in its own connected component; a resident starts beside the
+  entity its first goal names; an unreachable `go` is given up on the second failure; leaving forgets the point of interest.
+- MV6 [T] Nothing teleports: no walker or dog moves more than 0.45 m in one tick; the lead pulls at most 6 m/s, slides round
+  solids, and the walker waits while it is taut.
+- MV7 [T] What is drawn matches what the mover does: the record's clip is the presented clip, the shown velocity is the real one
+  low-passed over 0.2 s, positions interpolate but every other field is the latest tick's, and `slidingFeet` compares the feet's
+  ground speed with the range the mover covered over the last 0.8 s.
+- MV8 [T] Nobody pops: the governor thins movers by a hash of the id and only beyond 40 m; captures and the real-frame checker
+  run with it off; a pinned scene clock moves only for frames at the pinned time.
+- MV9 `capture --full` is the whole loop: a live page, the clock pinned per frame, `rewind()` per pass; a capture that shows the
+  same frame twice is broken.
+- MV10 [T] A converted view keeps its composition (QP3): the pinned perspective pieces of a v2 canal view become the real
+  objects they are parts of (the near narrowboat as a framing element, the willow the fronds hang from, the bridge).
+
+
+## 27. Terrain is drawn, and what it hides is not (the first no-example place, 14 Oct)
+
+- TR1 [T] A hill inside a surface polygon is drawn: `ground.features` and `ground.relief` become strips of the relief (far first,
+  3 % depth steps, quads shaded by slope, rock when steep, grass or the surface's own colour otherwise), ordered with every
+  other static, so a house stands on its strip and a hill hides what lies behind it. Flat ground draws nothing.
+- TR2 [T] An entity wholly behind a nearer rise of the ground is dropped and logged (`terrain`); floaters on water are exempt.
+- TR3 [T] A prop never fills more than about 12 % of the frame at the lens (a 1.3 m reference height), a person or animal 45 %.

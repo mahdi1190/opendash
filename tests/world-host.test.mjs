@@ -123,7 +123,11 @@ test('R5 and M8: the clock starts at the first visible frame, pauses without a j
   assert.ok(Math.abs(c.tau - (tau0 + 1 / 60)) < 1e-9);
   assert.equal(c.owner, 'a2');
   c.pin(12.5);
-  assert.equal(c.frame('a', 30, {}), 30, 'pinned (tools, captures): the frame time is the scene time');
+  assert.equal(c.frame('a', 12.5, {}), 12.5, 'pinned (tools, captures): a frame at the pinned time is that scene time');
+  assert.equal(c.frame('a', 0, {}), 12.5, 'a stray frame of the host (a relight redraws at t = 0) never moves a pinned clock');
+  assert.equal(c.frame('b', 30, {}), 12.5, 'nor does a frame at another host time');
+  c.pin(13);
+  assert.equal(c.frame('a', 13, {}), 13, 'the next pinned time');
 });
 
 test('R5: a renderer prepared hidden starts its life at show, from its base (deterministic)', () => {

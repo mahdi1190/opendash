@@ -41,7 +41,8 @@ const placeOf = (src) => { const P = (src.spec && src.spec.place) || {}; return 
  */
 export async function worldPageOpen(chrome, src, o = {}) {
   const size = o.size || WORLD_SIZES['16:9'];
-  const opts = Object.assign({ root: o.root, size, dpr: o.dpr || 1, still: o.still !== false, renderer: 'canvas', at: o.at || null, location: o.location || placeOf(src) }, pageSource(src));
+  // o.live: the page plays (the life advances with the scene time we pin); the default is a still (the base moment)
+  const opts = Object.assign({ root: o.root, size, dpr: o.dpr || 1, still: o.live ? false : o.still !== false, governor: o.live ? false : undefined, renderer: 'canvas', at: o.at || null, location: o.location || placeOf(src) }, pageSource(src));
   if (o.wx) opts.wx = o.wx;
   if (chrome.emulateMedia) await chrome.emulateMedia([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
   const t0 = Date.now();
@@ -54,25 +55,51 @@ export async function worldPageOpen(chrome, src, o = {}) {
       while (performance.now() - t0 < 30000) { const r = rec.r; if (r.ready && !r.baking && !r.waiting) break; await new Promise(r => setTimeout(r, 40)); }
       return true; })()`;
   const page = {
-    size, loadMs, src,
+    size, loadMs, src, autoFreeze: !!o.freeze, frozen: false,
     /** Waits for the (re-)bake. A host that fell back to the SVG still (no canvas) is ready as it is: page.svg is set. */
     async ready() { const r = await chrome.evaluate(waitBake); if (r === 'svg') { page.svg = true; return true; } if (r !== true) throw new Error(String(r)); return true; },
     /** Re-light: o.at (ISO or ms), o.wx (a weather kind or null), o.season. Waits for the re-bake. */
     async set(s) {
+      await page.thaw();
       const r = await chrome.evaluate(`(() => { const el = document.querySelector('.sp-box .anim-scene'); if (!el || typeof sceneHostSet !== 'function') return 'no host'; sceneHostSet(el, ${JSON.stringify(s)}); return true; })()`);
       if (r !== true) throw new Error('sceneHostSet: ' + r);
       return page.ready();
     },
-    /** The frame at scene time t (seconds): the host's clock is stopped and the world's life advanced to t, deterministically. */
+    /**
+     * The frame at scene time t (seconds), deterministically (R4): the host's loop is stopped, the world's clock is PINNED at t (the
+     * life advances to t, whole ticks only) and one frame is drawn. Needs a live page (worldPageOpen o.live): in a still page the
+     * renderer always shows the base moment. t must not go backwards: page.rewind() starts the loop again from its seed.
+     */
     async frameAt(t) {
+      if (page.autoFreeze) await page.freeze();
       const id = src.spec ? (src.id || (src.ref ? src.ref.split('/').pop() : 'world')) + '~w3' : null;
-      return chrome.evaluate(`(() => { const rec = [..._schHosts.values()].find(r => r.r); if (!rec) return false; rec.still = true; rec.r.stop();
-        if (typeof window.__worldSetTime === 'function') { window.__worldSetTime(${t}); rec.r.frame(${t}); return true; }
+      return chrome.evaluate(`(() => { const rec = [..._schHosts.values()].find(r => r.r); if (!rec) return false; rec.r.stop();
         const ids = ${JSON.stringify(id)} ? [${JSON.stringify(id)}] : (typeof _wh5Live !== 'undefined' ? [..._wh5Live.keys()] : []);
-        for (const k of ids) { const live = typeof worldHostLive === 'function' ? worldHostLive(k) : null; if (live && live.sim && live.sim.to) { live.simAt = 0; live.sim.to(live.sim.base + ${t}, 1e6); } }
+        for (const k of ids) { const live = typeof worldHostLive === 'function' ? worldHostLive(k) : null; if (live && live.clock && typeof live.clock.pin === 'function') live.clock.pin(${t}); }
         rec.r.frame(${t}); return true; })()`);
     },
-    png() { return chrome.capture({ width: size.w, height: size.h, scale: 1 }); },
+    /**
+     * Freeze the page's own animation loop: a capture draws exactly the frames it asks for. Without this the host restarts its loop
+     * now and then (visibility, resize, its own timers) and its frames carry the page's wall clock into the pinned scene clock.
+     */
+    async freeze() {
+      if (page.frozen) return true;
+      page.frozen = true;
+      return chrome.evaluate(`(() => { if (!window.__rafOrig) { window.__rafOrig = window.requestAnimationFrame; window.requestAnimationFrame = function () { return 0; }; } const rec = [..._schHosts.values()].find(r => r.r); if (rec) rec.r.stop(); return true; })()`);
+    },
+    async thaw() {
+      if (!page.frozen) return true;
+      page.frozen = false;
+      return chrome.evaluate(`(() => { if (window.__rafOrig) { window.requestAnimationFrame = window.__rafOrig; window.__rafOrig = null; } return true; })()`);
+    },
+    /** The world's life again from its seed, the clock at 0 (a new date, a new pass over the loop). */
+    async rewind() {
+      if (page.autoFreeze) await page.freeze();
+      const id = src.spec ? (src.id || (src.ref ? src.ref.split('/').pop() : 'world')) + '~w3' : null;
+      return chrome.evaluate(`(() => { const ids = ${JSON.stringify(id)} ? [${JSON.stringify(id)}] : (typeof _wh5Live !== 'undefined' ? [..._wh5Live.keys()] : []); let ok = true; for (const k of ids) ok = (typeof worldHostRewind === 'function' ? worldHostRewind(k) : false) && ok; return ok; })()`);
+    },
+    /** A screenshot of the canvas (the page's loop thawed for it: a stubbed frame loop never paints). */
+    async png() { const was = page.frozen; if (was) await page.thaw(); try { return await chrome.capture({ width: size.w, height: size.h, scale: 1 }); } finally { if (was) await page.freeze(); } },
     stats() { return chrome.evaluate('window.__sceneStats ? window.__sceneStats()[0] : null'); },
     errors() { return chrome.evaluate('window.__sceneErrors || []'); },
   };

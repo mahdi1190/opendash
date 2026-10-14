@@ -26,7 +26,8 @@
      worldExtrudeHull(ent, cam, o) -> prim | null   a long hull in perspective: its side art laid along its real length in
                                             depth slices (each slice an affine map of the art: nothing is a flat slab), the end the
                                             eye sees (bow or stern art), the roof when the eye is above it.
-     worldExtrudeDraw(ctx, prim, o) -> draws   draws a prim on a 2D context. o: { vs, ox, oy (device = vs * scene + o), sprite
+     worldExtrudeDraw(ctx, prim, o) -> draws   draws a prim on a 2D context. o: { vs, ox, oy (device = vs * scene + o), litGlow (a hull's
+                                            lit windows at night), sprite
                                             (the renderer's env.sprite: hull art), colour(mat, hex, { z, role }) (materials,
                                             look's worldMaterialColour by default), night, windowShare, alpha, season, haze }
      worldForeshorten(cam, z, w) -> { across, along, row }   Q5: the screen size of w metres at depth z across the view
@@ -609,7 +610,7 @@ function worldExtrudeDraw(ctx, prim, o) {
     } else if (prim.kind === 'hull') {
       const spriteOf = (obj) => {
         if (typeof o.sprite !== 'function') return null;
-        try { const s = o.sprite({ o: obj, v: prim.variant == null ? 0 : prim.variant, part: '*', season: o.season || 'summer', haze: o.haze || 0, tint: null, scale: Math.max(0.05, ((prim.box[3] - prim.box[1]) / Math.max(1, prim.art.box[3] - prim.art.box[1])) * vs), flip: false, cls: null }); return s && s.c ? s : null; } catch (e) { return null; }
+        try { const s = o.sprite({ o: obj, v: prim.variant == null ? 0 : prim.variant, part: '*', season: o.season || 'summer', haze: o.haze || 0, tint: null, scale: Math.max(0.05, ((prim.box[3] - prim.box[1]) / Math.max(1, prim.art.box[3] - prim.art.box[1])) * vs), flip: false, cls: null, litGlow: !!o.litGlow }); return s && s.c ? s : null; } catch (e) { return null; }
       };
       const grow = 0.6 / vs;   // half a device pixel or so: neighbouring triangles overlap, never leave a seam
       const triDraw = (s, t) => {

@@ -25,6 +25,7 @@ const WORLD_INVARIANTS = Object.freeze([
   { rule: 'habitat', req: 'K1, P1', what: 'every entity on its habitat (the whole footprint for floaters; nothing inside a solid)', needs: 'world' },
   { rule: 'overlap', req: 'P2', what: 'solid footprints never intersect (5 cm tolerance)' },
   { rule: 'inSolid', req: 'A2', what: 'no mover inside a solid footprint' },
+  { rule: 'personalSpace', req: 'A2, Y4', what: 'no two movers on one layer overlap or pass through each other (a floor of 0.85 x the sum of their body radii)' },
   { rule: 'onWater', req: 'A2', what: 'no walker on water', needs: 'world' },
   { rule: 'floating', req: 'W2', what: 'nothing above or through the ground, the water or its deck' },
   { rule: 'orphan', req: 'K4', what: 'every attached class (bough, frond, lead, mooring line, smoke, window light) has its parent' },
@@ -37,7 +38,7 @@ const WORLD_INVARIANTS = Object.freeze([
   { rule: 'nearBand', req: 'C2', what: 'no mover inside the near clip band' },
   { rule: 'giant', req: 'A10, K8', what: 'true scale: heights inside the class range, no giant at the lens' },
   { rule: 'popping', req: 'A3', what: 'movers appear and vanish only at frame edges, spawn cells or behind cover', needs: 'prev' },
-  { rule: 'stuck', req: 'A4', what: 'no mover without progress for 10 s outside an idle goal', needs: 'track' },
+  { rule: 'stuck', req: 'A4', what: 'no mover without progress for 20 s while it has somewhere to go (its pose does not excuse it)', needs: 'track' },
   { rule: 'slidingFeet', req: 'A6', what: 'stride rate matches speed', needs: 'anim' },
   { rule: 'facing', req: 'A5', what: 'the drawn view matches the velocity (with hysteresis)' },
   { rule: 'laneDir', req: 'A9, K3', what: 'vehicles keep to the left lane for their direction', needs: 'world' },
@@ -181,6 +182,8 @@ const _WIV_PARENT_RE = /(^|[.-])(bough|branch|fronds?)([.-]|$)/;
 const _WIV_PARENT_OF = { bough: ['tree'], branch: ['tree'], frond: ['tree'], lead: ['dog', 'person'], 'mooring-line': ['boat'], smoke: ['building', 'boat', 'landmark'], steam: ['building', 'boat', 'train'], 'washing-line': ['building', 'post', 'fence', 'tree'], 'window-light': ['building', 'landmark'] };
 const _WIV_SWAY_CLS = new Set(['tree', 'shrub', 'reed', 'hedge', 'grass', 'flower', 'cover', 'bough', 'branch', 'frond', 'washing-line', 'plant', 'smoke', 'steam', 'air']);
 const _WIV_IDLE = new Set(['idle', 'sit', 'lie', 'chat', 'look', 'graze', 'dabble', 'preen', 'perch', 'wait', 'fish', 'feed', 'view', 'moored', 'stopped', 'dive', 'board', 'none', 'still']);
+/** States a mover rests in by design (the stuck rule never counts them). */
+const _WIV_AT_REST = new Set(['sit', 'lie', 'wait', 'fish', 'feed', 'graze', 'perch', 'moored', 'stopped', 'board', 'view', 'dive']);
 const _WIV_MOVE_ANIM = new Set(['move', 'walk', 'run', 'swim', 'fly', 'drive', 'pedal']);
 const _WIV_STILL_ANIM = new Set(['idle', 'sit', 'lie', 'none', 'stopped', 'moored', 'still']);
 const _WIV_OPAQUE = new Set(['building', 'landmark', 'structure', 'tree', 'hedge', 'fence', 'wall', 'boat', 'vehicle', 'train', 'tram', 'rock']);
@@ -574,28 +577,69 @@ const _WIV_RULES = {
       _wivPush(C, 'popping', id, `${m.obj || m.cls} vanished mid-frame at (${_wivR(m.x)}, ${_wivR(m.z)})`);
     }
   },
+  personalSpace(C) {
+    const M = C.movers.filter(m => m.layer && m.layer !== 'air' && m.layer !== 'rail' && m.layer !== 'drive' && !/^(boat|vehicle|train|tram)$/.test(_wivCls(m) || '') && !_wivHostOf(m) && !(_wivNum(m.alpha) && m.alpha < 0.5));
+    if (M.length < 2) return;
+    const g = _wivGrid(2), by = new Map(), was = new Map(), prev = C.o.prev || (C.track && C.track.prev) || null;
+    for (const m of M) { by.set(m.id, m); g.add(m.id, m.x, m.z, 1); }
+    if (prev && Array.isArray(prev.ents)) for (const e of prev.ents) if (e && e.static === false) was.set(e.id, e);
+    const rad = (e) => (_wivNum(e.r) && e.r > 0 ? e.r : _wivRadiusOf(e));
+    for (const a of M) for (const id of _wivNear(g, a.x, a.z, 1.2)) {
+      const b = by.get(id);
+      if (!b || b === a || String(b.id) < String(a.id) || b.layer !== a.layer) continue;
+      const rel = (a.group != null && (a.group === b.id || a.group === b.group)) || (b.group != null && b.group === a.id) || a.leader === b.id || b.leader === a.id || (a.leader != null && a.leader === b.leader);
+      // a floor of 85 % of the bodies; a group (a walker and its dog) 27 %, never on the same spot; two passing in a lane a body wide (life's squeeze: they turn sideways and pass through each other for a step) are left to life
+      if (!rel && (a.squeeze || b.squeeze)) continue;   // a lane a body wide: they turn sideways and pass through each other for a step (life says so)
+      const minD = (rad(a) + rad(b)) * (rel ? 0.27 : 0.85), d = Math.hypot(a.x - b.x, a.z - b.z);
+      if (d < minD) { _wivPush(C, 'personalSpace', a.id, `${a.obj || a.cls} (${a.id}) and ${b.obj || b.cls} (${b.id}) are ${_wivR(d)} m apart; their bodies need ${_wivR(minD)} m`); continue; }
+      // passed through between two frames: the closest approach of their straight tracks over the interval
+      const pa = was.get(a.id), pb = was.get(b.id);
+      if (!rel && pa && pb && pa.layer === a.layer && pb.layer === b.layer) {
+        const r0x = pb.x - pa.x, r0z = pb.z - pa.z, r1x = b.x - a.x, r1z = b.z - a.z, dx = r1x - r0x, dz = r1z - r0z, L2 = dx * dx + dz * dz;
+        const s = L2 > 1e-9 ? Math.max(0, Math.min(1, -(r0x * dx + r0z * dz) / L2)) : 0, md = Math.hypot(r0x + dx * s, r0z + dz * s);
+        if (md < minD * 0.7 && Math.hypot(r0x, r0z) >= minD) _wivPush(C, 'personalSpace', a.id, `${a.obj || a.cls} (${a.id}) walked through ${b.obj || b.cls} (${b.id}) (${_wivR(md)} m at the closest, bodies ${_wivR(minD)} m)`);
+      }
+    }
+  },
   stuck(C) {
     const T = C.track;
     if (!T) return 'na';
     for (const m of C.movers) {
       let h = T.ids.get(m.id);
       if (!h) { h = { x: m.x, z: m.z, prog: C.t, mov: null, flagged: false }; T.ids.set(m.id, h); }
-      const st = String(m.state || ''), idle = _WIV_IDLE.has(st) || m.layer === 'air' || m.layer === 'rail' || !!_wivHostOf(m);
-      if (idle || Math.hypot(m.x - h.x, m.z - h.z) > 0.5) { h.x = m.x; h.z = m.z; h.prog = C.t; continue; }
-      if (C.t - h.prog > 10 && !h.flagged) { h.flagged = true; _wivPush(C, 'stuck', m.id, `${m.obj || m.cls} (${st || 'moving'}) has made no progress for ${Math.round(C.t - h.prog)} s at (${_wivR(m.x)}, ${_wivR(m.z)})`); }
+      // a mover with somewhere to go has 20 s (its pose does not excuse it: an idle pose IS what being stuck looks like); one
+      // without is a statue only after 90 s. Seated, queuing, fishing, grazing, moored, aboard and airborne movers are at rest by design.
+      const st = String(m.state || ''), travel = m.intent === 'travel', lim = travel ? 20 : m.cls === 'heron' || m.resident ? 400 : 90;   // a heron stands for minutes; a resident (an angler, a boater at its boat) lives where it is placed
+      const rest = m.layer === 'air' || m.layer === 'rail' || !!_wivHostOf(m) || _WIV_AT_REST.has(st);
+      if (rest || Math.hypot(m.x - h.x, m.z - h.z) > 0.5) { h.x = m.x; h.z = m.z; h.prog = C.t; h.tv = null; h.flagged = false; continue; }
+      // the 20 s run on the move starts when the wish to travel starts (an idle goal before it is a legitimate pause)
+      if (travel) { if (h.tv == null) h.tv = C.t; } else h.tv = null;
+      const since = travel ? Math.max(0, C.t - Math.max(h.prog, h.tv)) : C.t - h.prog;
+      if (since > lim && !h.flagged) { h.flagged = true; _wivPush(C, 'stuck', m.id, `${m.obj || m.cls} (${st || 'moving'}${travel ? ', with somewhere to go' : ''}) has made no progress for ${Math.round(since)} s at (${_wivR(m.x)}, ${_wivR(m.z)})`); }
     }
   },
   slidingFeet(C) {
     let any = false;
     for (const m of C.movers) {
       const a = m.anim;
-      if (!a || !_wivNum(m.speed) || m.speed < 0.15 || m.layer === 'air' || m.layer === 'rail') continue;
+      if (!a || !_wivNum(m.speed) || m.layer === 'air' || m.layer === 'rail') continue;
+      // the ground speeds of the last second: the animation system reads the world a tick (or a lower-rate LOD step) behind the
+      // record, so the feet are judged against the range the mover has really covered over the last 0.8 s, not one instant
+      const T = C.track, h = T ? (T.anim.get(m.id) || T.anim.set(m.id, { mov: -1e9, still: -1e9 }).get(m.id)) : null;
+      let lo = m.speed, hi = m.speed;
+      if (h) {
+        const H = h.hist || (h.hist = []);
+        if (!H.length || H[H.length - 1][0] !== C.t) H.push([C.t, m.speed]);
+        while (H.length > 1 && C.t - H[0][0] > 0.8) H.shift();
+        for (const q of H) { lo = Math.min(lo, q[1]); hi = Math.max(hi, q[1]); }
+      }
+      if (hi < 0.15) continue;
       any = true;
       if (!_WIV_MOVE_ANIM.has(String(a.state)) || !(a.rate > 0)) continue;   // stillMoving reports these
-      const kb = _wivKb(m.obj), stride = _wivNum(a.stride) ? a.stride : kb && kb.anim && _wivNum(kb.anim.stride) ? kb.anim.stride : null;
+      const kb = _wivKb(m.obj), stride = _wivNum(a.stride) && a.stride > 0 ? a.stride : kb && kb.anim && _wivNum(kb.anim.stride) ? kb.anim.stride : null;
       if (!stride) continue;
-      const want = m.speed / stride;
-      if (Math.abs(a.rate - want) / want > 0.35) _wivPush(C, 'slidingFeet', m.id, `${m.obj || m.cls} steps at ${_wivR(a.rate)} Hz for ${_wivR(m.speed)} m/s (${_wivR(want)} Hz at a ${stride} m stride)`);
+      const feet = a.rate * stride;          // the ground speed the feet pace out
+      if (feet < lo * 0.6 - 0.1 || feet > hi * 1.5 + 0.1) _wivPush(C, 'slidingFeet', m.id, `${m.obj || m.cls} steps at ${_wivR(a.rate)} Hz over a ${_wivR(stride)} m stride (${_wivR(feet)} m/s of feet) on ground moving ${_wivR(lo)}-${_wivR(hi)} m/s`);
     }
     if (!any && !C.movers.some(m => m.anim)) return 'na';
   },
@@ -966,7 +1010,7 @@ function worldInvariantFrame(world, agents, o) {
     let anim = a.anim || null;
     if (!anim && typeof worldAnimOf === 'function') { try { anim = worldAnimOf(a) || null; } catch (e) { anim = null; } }
     ents.push({ id: a.id, cls: a.cls || (info && info.cls) || null, obj: a.obj, static: false, x: a.x, y: a.y, z: a.z, facing: a.heading != null ? a.heading * _WIV_DEG : null,
-      foot, height: h, r, layer: a.layer || null, host: a.host || null, view: a.view || null, mirror: !!a.mirror, framed: !!a.framed, sideOnly: a.sideOnly,
+      foot, height: h, r: _wivNum(a.r) ? a.r : r, group: a.group || null, leash: !!a.lead, intent: a.intent || null, resident: !!a.resident, squeeze: !!a.squeeze, leader: a.leader || null, layer: a.layer || null, host: a.host || null, view: a.view || null, mirror: !!a.mirror, framed: !!a.framed, sideOnly: a.sideOnly,
       box: cam ? _wivBoxOf(cam, { x: a.x, z: a.z, y: a.y, foot: null }, h, info ? info.size.w : h * 0.4) : null, order: null,
       speed: Math.hypot(a.vx || 0, a.vz || 0), vx: a.vx || 0, vz: a.vz || 0, state: a.state || null, born: born ? born.get(a.id) : null,
       anim, sway: null, shadow: a.shadow || null, reflect: a.reflect || null, look: a.look || null, leaving: !!a.leaving });

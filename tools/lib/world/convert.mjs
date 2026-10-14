@@ -86,6 +86,16 @@ const WHO_OF = [[/mallard|duck/, 'mallard'], [/swan/, 'mute-swan'], [/heron/, 'h
 const whoOf = (obj) => { for (const [re, w] of WHO_OF) if (re.test(obj)) return w; return null; };
 // perspective pieces drawn for one camera (boats, walks, bridges, weirs cut to a view): screen art, never world objects
 const PIECE_RE = /[.-](p-v\d|[a-z]*-view-|fpv-|wl-\d|wr-\d)|-(parapet|bough)$/;
+// Pinned perspective pieces that are PARTS of one real library object seen close (the hero boat of a canal view in a dozen slices, the
+// willow fronds and the bough that frame it): carried over as that object, framing the view, at the world position the pieces'
+// feet unproject to. Dropping them (the first converter) lost the composition of every canal view (QP3: the big near narrowboat,
+// the fronds hanging from the top corner).
+const PIECE_FAMILY = {
+  'boat.canal-view-boat': { key: 'boat', obj: 'boat.narrowboat' },
+  'structure.canal-view-bridge': { key: 'bridge', obj: 'structure.bridge-brick' },
+  'plant.canal-view-fronds': { key: 'frame-tree', obj: 'tree.canal-willow' },
+  'plant.canal-view-bough': { key: 'frame-tree', obj: 'tree.canal-oak' },
+};
 const WATER_WHO = new Set(['mallard', 'mute-swan', 'heron', 'egret', 'coot', 'moorhen', 'grebe', 'goosander', 'kingfisher', 'narrowboat-cruising']);
 
 /** A band polygon (v2 `band: [d0, d1]`) across the frustum. */
@@ -240,6 +250,7 @@ export function convertData(data, meta, E, o = {}) {
     if (e.fix !== undefined) delete e.fix;
     entities.push(e);
   };
+  const pieceGroups = {};
   for (const [i, p] of ((data && data.place) || []).entries()) {
     const path = `place[${i}]`;
     if (!p || !p.obj) continue;
@@ -264,7 +275,16 @@ export function convertData(data, meta, E, o = {}) {
       // a pixel placement: unproject its foot row; sky and horizon art (no foot) -> the skyline or dropped
       const g = cam && E.sceneUnproject ? E.sceneUnproject(cam, p.x, p.y) : null;
       drop(path, 'x,y,s', 'pixel placement');
-      if (p.pin && v2 && !/^landmark\./.test(p.obj) && (info(p.obj) === null || PIECE_RE.test(p.obj))) { review(path, `${p.obj}: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead`); continue; }
+      if (p.pin && v2 && !/^landmark\./.test(p.obj) && (info(p.obj) === null || PIECE_RE.test(p.obj))) {
+        const fam = PIECE_FAMILY[p.obj];
+        if (fam && cam) {
+          // a hull stands in the water: its foot row is the waterline, which lies below the ground plane the unprojection assumes
+          const lvl = fam.key === 'boat' && Number.isFinite(cam.water) ? cam.water : 0, dd = p.y > cam.horizon + 1e-6 ? cam.f * (cam.eye - lvl) / (p.y - cam.horizon) : null;
+          (pieceGroups[p.obj] = pieceGroups[p.obj] || { fam, items: [] }).items.push({ p, g: dd ? { x: (p.x - cam.x0) * dd / cam.f, d: dd } : g, path });
+          continue;
+        }
+        review(path, `${p.obj}: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead`); continue;
+      }
       if (!g || p.layer === 'sky' || p.layer === 'horizon' || g.d > 2500) {
         if (/^(landmark|structure|building)\./.test(p.obj) && cam) {
           const bearing = Math.round(((cam.heading + Math.atan2(p.x - cam.x0, cam.f) * 180 / Math.PI) % 360 + 360) % 360);
@@ -278,6 +298,41 @@ export function convertData(data, meta, E, o = {}) {
     } else { review(path, `${p.obj}: no position; dropped`); continue; }
     if (facing == null && p.flip) facing = 270;
     placeEntity(path, p.obj, at, facing, extra);
+  }
+  // the pieces of one real object seen close: one entity of it (see PIECE_FAMILY)
+  {
+    const watr = surfaces.find(q => q.kind === 'water'), strip = watr && (watr.path ? { path: watr.path } : null);
+    const half = (d) => d * (cam.x0 || 800) / cam.f;
+    for (const [src, grp] of Object.entries(pieceGroups)) {
+      const { fam, items } = grp, ok = items.filter(it => it.g && it.g.d > 0.5 && it.g.d < 800);
+      if (fam.key === 'boat' && ok.length) {
+        // the slices of a hull run down the screen in order: a gap of more than 8 m in depth (or a span past one hull) starts the next boat
+        const sorted = ok.slice().sort((a, b) => a.g.d - b.g.d), clusters = [], di = info(fam.obj), len = di && di.size && di.size.w ? di.size.w : 18;
+        for (const it of sorted) { const c = clusters[clusters.length - 1]; if (c && it.g.d - c[c.length - 1].g.d <= 8 && it.g.d - c[0].g.d <= len + 6) c.push(it); else clusters.push([it]); }
+        clusters.forEach((c, k) => {
+          const near = c[0], far = c[c.length - 1], dx = far.g.x - near.g.x, dz = far.g.d - near.g.d, L = Math.hypot(dx, dz), long = L > 3;
+          const dir = long ? [dx / L, dz / L] : (() => { const q = strip ? pathAtZ(strip.path, near.g.d) : null; return q ? [q.tx, q.tz] : [0, 1]; })();
+          // the hull's near end is where the nearest slice stands: its middle is half a hull along from there (at most as far as the last slice)
+          const run = long ? Math.min(L, len) : len, half2 = Math.max(run, len) / 2;
+          const at = [near.g.x + dir[0] * half2, near.g.d + dir[1] * half2], facing = headingOf(dir[0], dir[1]);
+          const e = { obj: fam.obj, at: [r2(at[0]), r2(at[1])], facing, attach: 'water', id: 'conv-boat-' + (k + 1), framed: near.g.d < 16 };
+          entities.push(e);
+          review(`place[${c[0].path}]`, `${src}: ${c.length} perspective pieces of one hull -> ${fam.obj} at [${r1(at[0])}, ${r1(at[1])}] m, facing ${facing}${e.framed ? ', a framing element (near the eye)' : ''}`);
+        });
+      } else if (fam.key === 'bridge' && ok.length) {
+        const low = ok.reduce((a, b) => (b.p.y > a.p.y ? b : a));
+        const q = strip ? pathAtZ(strip.path, low.g.d) : null, facing = q ? (headingOf(q.tx, q.tz) + 90) % 360 : 90;
+        entities.push({ obj: fam.obj, at: [r2(q ? q.p[0] : low.g.x), r2(low.g.d)], facing, attach: 'water', id: 'conv-bridge' });
+        review(`place[${items[0].path}]`, `${src}: ${items.length} perspective pieces of a bridge -> one ${fam.obj} across the water at ${r1(low.g.d)} m`);
+      } else if (fam.key === 'frame-tree') {
+        // fronds and boughs pinned at a top corner: the tree they hang from stands just outside the frame on that side, near the eye
+        for (const it of items) {
+          const side = it.p.x < (cam.x0 || 800) ? -1 : 1, d = 9;
+          entities.push({ obj: fam.obj, at: [r2(side * half(d) * 1.12), d], framed: true, id: 'conv-frame-' + (side < 0 ? 'l' : 'r') });
+          review(it.path, `${src}: pinned at the ${side < 0 ? 'left' : 'right'} top corner -> a ${fam.obj} just outside the frame at ${d} m, a framing element`);
+        }
+      } else for (const it of items) review(it.path, `${src}: pinned perspective art with no foot on the ground; dropped`);
+    }
   }
   // buildings (v2 19): one entity per footprint, the library building of its style
   for (const [i, b] of ((data && data.buildings) || []).entries()) {

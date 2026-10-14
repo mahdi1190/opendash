@@ -9,18 +9,22 @@
 //                         v2 / v1 -> v3 with the review report and the critic against the source (U4: exit 1 below it)
 //   node tools/world.mjs render <ref> [--dir=D] [--dates=spring,summer,autumn,night] [--wx=rain] [--gpu] [--dpr=1]
 //   node tools/world.mjs motion <ref> [--seconds=600] [--svg=file] [--json]
-//   node tools/world.mjs invariants <ref> [--seconds=360] [--hz=5] [--matrix] [--json]
+//   node tools/world.mjs invariants <ref> [--seconds=360] [--hz=5] [--matrix] [--browser] [--json]
 //                         the invariant checker (16.2) over the full loop at 3 dates x 5 times (--matrix: 4 seasons x 5 times x 3
 //                         weathers, V7); exit 1 on any violation
 //   node tools/world.mjs adversarial [<id>] [--seconds=120] [--hz=5] [--json]
 //                         every adversarial fixture (16.3): registers, builds, explains every fix in its log, zero violations
 //   node tools/world.mjs critic <ref> [--against=<ref>] [--json]      richness, emptiness and framing (P7, C1, C4, C6)
 //   node tools/world.mjs sheet <ref> [--matrix] [--sizes=16:9,tile] [--dir=D]   dates x times x sizes, or the V6 matrix
-//   node tools/world.mjs capture <ref> [--full] [--every=6] [--gif] [--dir=D]   the WHOLE loop as a frame strip
+//   node tools/world.mjs capture <ref> [--full] [--every=6] [--seconds=20 --fps=2] [--size=1600x900] [--at=<ISO>] [--wx=rain] [--gif] [--dir=D]   the WHOLE loop as a frame strip
 //   node tools/world.mjs compare <v3 ref> <original ref> [--dir=D]            side by side at 3 dates x 5 times
 //   node tools/world.mjs perf <ref> [--browser] [--no-gpu] [--throttle=4] [--seconds=4] [--json]
 //                         the Node budget table and the per-system profile (G12); --browser: both average-machine sizes x the
 //                         matrix extremes (F1, F2, Z1). Exit 1 at 1.2x a budget
+//   node tools/world.mjs glitch <ref | file.png ...> [--dates=summer,winter,night,dusk] [--wx=rain] [--dir=D] [--json]
+//                         the render-glitch pixel checks (tools/lib/world/glitch.mjs; SCENE_LESSONS G) on rendered cells: flat bright
+//                         discs, a sawtooth in the water's reflection, an unreadable night. A ref is rendered first (its water's
+//                         near half is the sawtooth box). Exit 1 on any failure
 //   node tools/world.mjs accept [--browser] [--quick] [--reviewed=list.txt] [--authoring=times.json] [--out=report.md]
 //                         the acceptance suite of 16.5 with a printed PASS / FAIL gate (X4), the package owner table (X1), the
 //                         privacy scan of the world files (I3), the files to checkpoint per phase (X2), the SCENE_LESSONS
@@ -175,6 +179,37 @@ export async function worldAccept(E, o = {}) {
     });
     for (const s of scenes) lines.push(`${s.ref}: ${meta.filter(m => m.s === s).length} cells x ${secs} s at ${hz} Hz checked`);
     push(o.matrix ? '16.5.2 + V7' : '16.5.2', `invariant checker, ${o.matrix ? 'the matrix (4 seasons x 5 times x 3 weathers)' : 'full loop at 3 dates x 5 times'}: zero violations`, bad ? 'fail' : 'pass', lines);
+  }
+  // 2b. the same checker on the REAL rendered frames (browser): Chrome draws every frame of the loop and the record of what it drew
+  // is checked, so the checker is no longer a parallel simulation that can look clean while the page shows something else
+  if (o.browser) {
+    const lines = []; let bad = 0;
+    const { worldBrowserInvariants } = await import('./lib/world/browserinv.mjs');
+    const chrome = await chromeOf(true);
+    try {
+      for (const s of scenes) {
+        const sp = specOf(E, s.ref), moms = worldMomentsOf(sp.spec, ['07-15', '01-15', '10-15']);
+        const pick = [moms.find(m => m.date.endsWith('07-15') && m.moment === 'noon'), moms.find(m => m.date.endsWith('01-15') && m.moment === 'dusk'), moms.find(m => m.date.endsWith('10-15') && m.moment === 'night')].filter(Boolean);
+        const r = await worldBrowserInvariants(chrome, { ref: s.ref, spec: sp.spec, id: sp.id }, { moments: pick.map((m, i) => ({ label: `${m.date} ${m.moment}`, at: m.at, seconds: i === 0 ? seconds : Math.min(seconds, 120) })), hz: quick ? 1 : 2, loop: seconds, root });
+        for (const c of r.cells) {
+          if (c.uniq || c.error) { bad++; for (const k of Object.keys(c.counts || {})) failedRules.add(k); }
+          lines.push(`${c.uniq || c.error ? 'FAIL' : 'ok  '} ${s.ref} ${c.label}: ${c.frames} real frames, up to ${c.agents} agents drawn, ${c.uniq} violation(s)${c.error ? ' ERROR ' + c.error : ''} ${Object.entries(c.counts || {}).map(([k, n]) => `${k} ${n} [${OWNERS[k] || '?'}]`).join(', ')}`);
+        }
+        for (const e of r.errors) { bad++; lines.push(`FAIL ${s.ref}: ${e}`); }
+      }
+    } finally { await chrome.close(); }
+    push('16.2b', 'invariant checker on the real rendered frames (the page draws every frame; what it drew is checked): zero violations', bad ? 'fail' : 'pass', lines);
+  }
+  // 2c. the render-glitch pixel checks on real renders (SCENE_LESSONS G): flat bright discs, a sawtooth in the water, an unreadable night
+  if (o.browser) {
+    const lines = []; let bad = 0;
+    for (const s of scenes) {
+      const r = spawnSync(process.execPath, [join(root, 'tools', 'world.mjs'), 'glitch', s.ref, '--dates=summer,winter,night,dusk'], { cwd: root, encoding: 'utf8', timeout: 20 * 60000 });
+      const txt = ((r.stdout || '') + (r.stderr || '')).split(String.fromCharCode(10)).filter(l => l.trim());
+      if (r.status !== 0) bad++;
+      lines.push(`${r.status === 0 ? 'ok  ' : 'FAIL'} ${s.ref}: ${txt.filter(l => /FAIL|disc|sawtooth|night|ERROR/i.test(l)).slice(0, 6).join(' | ') || 'all cells clean'}`);
+    }
+    push('16.2c', 'render-glitch pixel checks on real renders (discs, sawtooth, night readability)', bad ? 'fail' : 'pass', lines);
   }
   // 3. the adversarial scenes
   {
@@ -345,6 +380,28 @@ async function main() {
     return r.red.length ? 1 : 0;
   }
 
+  if (cmd === 'invariants' && flags.browser) {
+    // the checker on the REAL rendered frames: the page draws every frame of the loop and the record of what it drew is checked
+    const s = specOf(E, ref), loop = E.WORLD_LOOP_S || 360;
+    const moments = flags.matrix ? worldMatrixCells(s.spec).map(c => ({ label: `${c.season} ${c.moment} ${c.wx}`, at: c.at, wx: c.wx })) : worldMomentsOf(s.spec).map(m => ({ label: `${m.date} ${m.moment}`, at: m.at }));
+    const { worldBrowserInvariants } = await import('./lib/world/browserinv.mjs');
+    const chrome = await chromeOf(!flags['no-gpu']);
+    let bad = 0;
+    try {
+      const r = await worldBrowserInvariants(chrome, pageSrcOf(s), { moments, seconds: Number(flags.seconds) || (flags.matrix ? 20 : loop), hz: Number(flags.hz) || 2, loop, root,
+        onCell: (c) => {
+          const fail = c.uniq || c.error; if (fail) bad++;
+          if (!flags.json) {
+            out(`${fail ? 'FAIL' : 'ok  '} ${s.id} ${c.label}: ${c.frames} real frames, up to ${c.agents} agents drawn, ${c.uniq} violation(s)${c.error ? ' ERROR ' + c.error : ''}`);
+            for (const [k, n] of Object.entries(c.counts)) out(`       ${k.padEnd(20)} ${String(n).padStart(5)}  e.g. t ${c.first[k] ? c.first[k].t + ' s: ' + c.first[k].msg : ''}   [${OWNERS[k] || '?'}]`);
+          }
+        } });
+      for (const e of r.errors) out('  ERROR ' + e);
+      if (flags.json) out(JSON.stringify(r.cells, null, 1));
+      return bad || r.errors.length ? 1 : 0;
+    } finally { await chrome.close(); }
+  }
+
   if (cmd === 'invariants') {
     const s = specOf(E, ref);
     const cells = flags.matrix ? worldMatrixCells(s.spec).map(c => ({ label: `${c.season} ${c.moment} ${c.wx}`, ms: c.ms, wx: c.wx })) : worldMomentsOf(s.spec).map(m => ({ label: `${m.date} ${m.moment}`, ms: m.ms }));
@@ -403,7 +460,8 @@ async function main() {
     const { worldCapture } = await import('./lib/world/capture.mjs');
     const chrome = await chromeOf(!flags['no-gpu']);
     try {
-      const r = await worldCapture(chrome, pageSrcOf(s), { full: !!flags.full, every: Number(flags.every) || 6, seconds: Number(flags.seconds) || 20, gif: !!flags.gif, dir: dirOf('capture'), root, loop: E.WORLD_LOOP_S || 360 });
+      const sz = typeof flags.size === 'string' && /^\d+x\d+$/.test(flags.size) ? { w: Number(flags.size.split('x')[0]), h: Number(flags.size.split('x')[1]) } : undefined;
+      const r = await worldCapture(chrome, pageSrcOf(s), { full: !!flags.full, every: Number(flags.every) || 6, seconds: Number(flags.seconds) || 20, fps: Number(flags.fps) || 2, gif: !!flags.gif, dir: dirOf('capture'), root, loop: E.WORLD_LOOP_S || 360, size: sz, at: typeof flags.at === 'string' ? flags.at : undefined, wx: typeof flags.wx === 'string' ? flags.wx : undefined });
       for (const e of r.errors) out('  ERROR ' + e);
       out(`${r.frames.length} frames over ${r.seconds} s; strip: ${r.strip}${r.gif ? '; gif: ' + r.gif : ''}`);
       return r.errors.length ? 1 : 0;
@@ -470,6 +528,45 @@ async function main() {
     return 0;
   }
 
+  if (cmd === 'glitch') {
+    const G = await import('./lib/world/glitch.mjs');
+    const files = pos.slice(1).filter(f => /\.png$/i.test(f));
+    const cells = [];   // [{ label, file, water, night }]
+    if (files.length) for (const f of files) cells.push({ label: f.replace(/^.*[\\/]/, ''), file: resolve(f), water: null, night: /night/i.test(f) });
+    else {
+      const s = specOf(E, ref), { sceneRenderPng } = await import('./lib/scene-page.mjs'), dir = dirOf('glitch');
+      const P = s.spec.place || {}, loc = [P.lat != null ? P.lat : 51.5, P.lon != null ? P.lon : -0.1];
+      // the sawtooth box: the near half of the scene's water on the screen (device px of the 1600 x 900 render)
+      let water = null;
+      try {
+        const w = E.worldBuild(JSON.parse(JSON.stringify(s.spec)), { season: 'summer' });
+        for (const R of (E.worldWaterPlan ? E.worldWaterPlan(w, w.cam) : []) || []) {
+          const b = [Math.max(0, R.box[0]), Math.max(R.box[1] + (Math.min(900, R.box[3]) - R.box[1]) * 0.45, 0), Math.min(1600, R.box[2]), Math.min(900, R.box[3])];
+          if (!water || (b[2] - b[0]) * (b[3] - b[1]) > (water[2] - water[0]) * (water[3] - water[1])) water = b;
+        }
+      } catch { water = null; }
+      const chrome = await chromeOf(!!flags.gpu);
+      try {
+        for (const nm of String(typeof flags.dates === 'string' ? flags.dates : 'summer,winter,night,dusk').split(',')) {
+          const at = DATES[nm] || nm, file = join(dir, `${s.id}-${nm.replace(/[^a-z0-9-]/gi, '')}${typeof flags.wx === 'string' ? '-' + flags.wx : ''}.png`);
+          await sceneRenderPng(chrome, { data: `worldHostData(${JSON.stringify(s.spec)}, { id: ${JSON.stringify(s.id)}, sync: true })`, at, location: loc, still: true, dpr: 1, wx: typeof flags.wx === 'string' ? flags.wx : undefined }, file);
+          cells.push({ label: `${s.id} ${nm}`, file, water, night: null });
+        }
+      } finally { await chrome.close(); }
+    }
+    const all = [];
+    for (const c of cells) {
+      const img = G.glitchLoad(c.file);
+      // the night checks on a dark frame (or one named night)
+      const lum = G.glitchLum(img), med = Array.from(lum.filter((_, i) => i % 11 === 0)).sort((a, b) => a - b), dark = med[Math.floor(med.length / 2)] < 0.22;
+      const r = G.glitchCheck(img, { night: c.night != null ? c.night || dark : dark, water: c.water ? c.water.map((v, i) => v * (i % 2 ? img.height / 900 : img.width / 1600)) : null });
+      all.push({ cell: c.label, file: c.file, res: r });
+      if (!flags.json) out(G.glitchText(r, `${c.label}  ${c.file}`));
+    }
+    if (flags.json) out(JSON.stringify(all.map(a => ({ cell: a.cell, file: a.file, ok: a.res.ok, discs: a.res.discs.discs, sawtooth: { value: a.res.sawtooth.value, rows: a.res.sawtooth.rows }, night: a.res.night ? { value: a.res.night.value, p5: a.res.night.p5, p95: a.res.night.p95 } : null })), null, 1));
+    return all.every(a => a.res.ok) ? 0 : 1;
+  }
+
   if (cmd === 'accept') {
     const forReview = [];
     const t0 = Date.now();
@@ -489,7 +586,7 @@ async function main() {
     out(`GATE: ${res.pass ? 'PASS' : 'FAIL'}${res.pass ? '' : ' - nothing is shown to the user until every item passes and a fresh reviewer signs off (X4)'}`);
     return res.pass ? 0 : 1;
   }
-  out(`unknown command '${cmd}' (validate | convert | render | motion | invariants | adversarial | critic | sheet | capture | compare | perf | accept)`);
+  out(`unknown command '${cmd}' (validate | convert | render | motion | invariants | adversarial | critic | sheet | capture | compare | perf | glitch | accept)`);
   return 2;
 }
 

@@ -35,7 +35,7 @@ const S = (o) => Object.assign({ id: 's1', static: true, y: 0, height: 1 }, o);
 const bench = (id, x, z, facing = 0) => S({ id, obj: 'street.bench', cls: 'bench', x, z, facing, solidity: 'solid', height: 0.85, foot: facing === 90 ? box(x - 0.95, z - 0.3, x + 0.95, z + 0.3) : box(x - 0.3, z - 0.95, x + 0.3, z + 0.95) });
 
 test('WORLD_INVARIANTS lists every rule of 16.2 with its requirement ids', () => {
-  const want = ['habitat', 'overlap', 'inSolid', 'onWater', 'floating', 'orphan', 'pathBlocked', 'reflectOutsideWater', 'shadowOnWater', 'shadowDir', 'waterGap',
+  const want = ['habitat', 'overlap', 'inSolid', 'personalSpace', 'onWater', 'floating', 'orphan', 'pathBlocked', 'reflectOutsideWater', 'shadowOnWater', 'shadowDir', 'waterGap',
     'edgeCut', 'nearBand', 'giant', 'popping', 'stuck', 'slidingFeet', 'facing', 'laneDir', 'animStill', 'stillMoving', 'staticAnim', 'clones', 'windDir', 'order', 'landmark', 'bare', 'season'];
   assert.deepEqual(E.WORLD_INVARIANTS.map(r => r.rule).sort(), want.slice().sort());
   for (const r of E.WORLD_INVARIANTS) { assert.match(r.req, /^[A-Z]\d/, r.rule); assert.ok(r.what.length > 10, r.rule); }
@@ -156,19 +156,35 @@ test('popping: a walker appearing mid-frame; one entering at the frame edge (or 
   assert.equal(run('popping', frame([]), { prev: frame([P({ box: [790, 470, 806, 500] })]) }).length, 1);
 });
 
-test('stuck: a walker making no progress for 11 s; one walking along is quiet', () => {
+test('stuck: a mover with somewhere to go has 20 s, whatever pose it is drawn in; one walking along or at rest by design is quiet', () => {
+  const frames = (mk, secs, o) => { const track = E.worldInvariantTracker(); let n = 0; for (let t = 0; t <= secs; t += 0.5) n += run('stuck', frame([mk(t)], { t }), { track }).length; return n; };
+  assert.equal(frames(() => P({ state: 'walk', speed: 1.3, vx: 1.3, intent: 'travel' }), 21), 1, 'on the move but going nowhere: reported once');
+  assert.equal(frames(() => P({ state: 'idle', intent: 'travel' }), 21), 1, 'an idle pose is what being stuck looks like: it does not excuse a mover with somewhere to go');
+  assert.equal(frames(() => P({ state: 'idle', intent: 'stay' }), 21), 0, 'an idle goal is not stuck');
+  assert.equal(frames(() => P({ state: 'idle', intent: 'stay' }), 91), 1, '... but a statue for 90 s is');
+  assert.equal(frames(() => P({ state: 'idle', cls: 'heron', obj: 'bird.heron', intent: 'stay' }), 91), 0, 'a heron stands for minutes');
+  assert.equal(frames(t => P({ state: 'walk', speed: 1.3, x: 3 + t * 1.3, intent: 'travel' }), 21), 0, 'one walking along is quiet');
+  assert.equal(frames(() => P({ state: 'sit', intent: 'travel' }), 91), 0, 'seated, queuing, fishing, grazing: at rest by design');
+  // the 20 s run starts with the wish to travel: an idle goal before it is a legitimate pause
+  const track = E.worldInvariantTracker(); let n = 0;
+  for (let t = 0; t <= 30; t += 0.5) n += run('stuck', frame([P({ state: 'idle', intent: t < 15 ? 'stay' : 'travel' })], { t }), { track }).length;
+  assert.equal(n, 0, '15 s of idling, then 15 s of wanting to go: 15 s of travel is not 20');
+});
+
+test('personalSpace: two movers on one layer never overlap or pass through each other; a walker and its dog may be close', () => {
+  const two = (a, b, o) => run('personalSpace', frame([P(Object.assign({ id: 'a', x: 3, z: 20, r: 0.25 }, a)), P(Object.assign({ id: 'b', x: 3.2, z: 20, r: 0.25 }, b))]), o || {});
+  assert.equal(two({}, {}).length, 1, 'two people 0.2 m apart (their bodies need 0.43 m)');
+  assert.equal(two({}, { x: 3.9 }).length, 0, '0.9 m apart is room');
+  assert.equal(two({}, { layer: 'swim' }).length, 0, 'another layer (a duck under a walker) is another place');
+  assert.equal(two({ group: 'b' }, { x: 3.4 }).length, 0, 'a group (a walker and its dog) keeps a closer floor');
+  assert.equal(two({ group: 'b' }, { x: 3.01 }).length, 1, '... but never the same spot');
+  assert.equal(two({ squeeze: true }, { x: 3.05 }).length, 0, 'passing in a lane a body wide: they turn sideways and pass through each other for a step');
+  // through each other between two frames: the tracks cross, both ends are clear
   const track = E.worldInvariantTracker();
-  let n = 0;
-  for (let t = 0; t <= 11; t += 0.5) n += run('stuck', frame([P({ state: 'walk', speed: 1.3, vx: 1.3 })], { t }), { track }).length;
-  assert.equal(n, 1, 'reported once');
-  const t2 = E.worldInvariantTracker();
-  let m = 0;
-  for (let t = 0; t <= 11; t += 0.5) m += run('stuck', frame([P({ state: 'walk', speed: 1.3, x: 3 + t * 1.3 })], { t }), { track: t2 }).length;
-  assert.equal(m, 0);
-  const t3 = E.worldInvariantTracker();
-  let k = 0;
-  for (let t = 0; t <= 11; t += 0.5) k += run('stuck', frame([P({ state: 'sit' })], { t }), { track: t3 }).length;
-  assert.equal(k, 0, 'an idle goal is not stuck');
+  run('personalSpace', frame([P({ id: 'a', x: 2, z: 20, r: 0.25 }), P({ id: 'b', x: 4, z: 20.05, r: 0.25 })], { t: 0 }), { track });
+  const v = run('personalSpace', frame([P({ id: 'a', x: 4, z: 20, r: 0.25 }), P({ id: 'b', x: 2, z: 20.05, r: 0.25 })], { t: 0.5 }), { track });
+  assert.equal(v.length, 1, 'two walkers swapped places through each other in half a second');
+  assert.match(v[0].msg, /walked through/);
 });
 
 test('slidingFeet: steps at twice the rate the speed needs; matching steps are quiet', () => {

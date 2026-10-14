@@ -150,6 +150,7 @@ function worldHostV2Data(spec, o) {
   const data = { v: 2, id: o.id || spec.id || 'world', view: { lat: camera.lat, lon: camera.lon }, camera, at: 'afternoon', season: 'auto',
     setting: urban ? 'urban' : 'natural', atmos: 'auto', weather: 'live', cover: 'auto', particles: 'season',
     surfaces: [{ id: 'world-rest', kind: urban ? 'plot' : 'grass', rest: true }], water: [], place: [], scatter: [], actors: [], flows: [], world3: true };
+  // the terrain (W2) is drawn by the world (79-world-4terrain.js): the v2 base keeps its flat ground, so it needs no relief
   // the spec rides along (not enumerable: the bake cache and JSON never see it) so worldHostSpec finds it from the data
   try { Object.defineProperty(data, '$spec', { value: spec, enumerable: false }); } catch (e) { /* frozen */ }
   for (const s of spec.surfaces || []) {
@@ -313,9 +314,14 @@ function worldHostDriver(world, o) {
   d.stop = () => { if (R && typeof R.stop === 'function') { try { R.stop(); } catch (e) { /* gone */ } } };
   return d;
 }
-/** Agents between two snapshots by id (alpha 0: prev); one that only exists in cur is drawn where it is (it just spawned). */
+/**
+ * Agents between two snapshots by id (alpha 0: the previous positions): POSITIONS are interpolated, everything else (velocity,
+ * state, clip, view) is always the latest tick's, which is what the systems (the animation) have already read. A frame on a tick
+ * boundary (alpha 0) must not show last tick's state beside this tick's animation. One that only exists in cur is drawn where it
+ * is (it just spawned).
+ */
 function _wh5Lerp(prev, cur, al) {
-  if (!al || prev === cur) return al ? cur.map(a => Object.assign({}, a)) : prev.map(a => Object.assign({}, a));
+  if (prev === cur) return cur.map(a => Object.assign({}, a));
   const P = new Map();
   for (const a of prev) P.set(a.id, a);
   const out = [];
@@ -398,7 +404,8 @@ const WORLD_HOST_MAX_DT = 0.25;            // a frame later than this is a pause
  *   - a step over WORLD_HOST_MAX_DT is a pause (offscreen, held, a background tab): one nominal frame, no jump (M8);
  *   - a step back (the host restarted its clock: the scene is shown now) restarts it at 0 (R5);
  *   - another renderer drawing the same world at once only shows the moment (one clock per world, G10).
- * pin(t): tools and captures put the clock at t and keep it equal to the frame time (R4). o: { now } (tests).
+ * pin(t): tools and captures put the clock at t; frames drawn at t confirm it, frames at any other host time leave it alone (R4).
+ * o: { now } (tests).
  */
 function worldHostClock(o) {
   o = o || {};
@@ -408,7 +415,10 @@ function worldHostClock(o) {
     f = f || {};
     if (f.still) return 0;
     if (!Number.isFinite(t)) return c.tau;
-    if (c.pinned) { c.tau = Math.max(0, t); c.started = true; return c.tau; }
+    // pinned (tools, captures): the scene time is the one pinned. A frame drawn at the pinned time confirms it; a stray frame of the
+    // host at ITS time (a relight, a resize, a media-query change redraws at t = 0) never moves the clock, so it can never send the
+    // life back to its base in the middle of a capture
+    if (c.pinned) { if (Math.abs(t - c.pinT) < 1e-6) c.tau = Math.max(0, t); c.started = true; return c.tau; }
     if (f.warming || f.hidden) return c.tau;
     const w = now();
     if (!c.started) { c.started = true; c.owner = key; c.lastT = t; c.lastWall = w; c.tau = 0; return 0; }
@@ -422,7 +432,7 @@ function worldHostClock(o) {
     c.owner = key; c.lastT = t; c.lastWall = w;
     return c.tau;
   };
-  c.pin = (t) => { c.pinned = true; c.started = true; c.tau = Math.max(0, Number(t) || 0); return c.tau; };
+  c.pin = (t) => { c.pinned = true; c.started = true; c.pinT = Number(t) || 0; c.tau = Math.max(0, c.pinT); return c.tau; };
   c.unpin = () => { c.pinned = false; };
   return c;
 }
@@ -484,6 +494,21 @@ function _wh5Init(rec, nav) {
   rec.stats.simInitMs = Math.round(_wh5Now() - a);
 }
 function worldHostLive(id) { return _wh5Live.get(id) || null; }
+/**
+ * Tools and captures: put a live world back at its base moment NOW (its life again from its seed, the clock pinned at 0), so the
+ * next frames at t = 0, 0.5, 1 ... run the same loop from the start on every cell (R4). A page does this in idle time on its own
+ * when the clock restarts; a capture cannot wait for that. Returns whether the driver is there.
+ */
+function worldHostRewind(id) {
+  const rec = typeof id === 'string' ? _wh5Live.get(id) : id;
+  if (!rec) return false;
+  const nav = (rec.driver && rec.driver.nav) || rec.world.nav || null;
+  try { if (rec.driver && typeof rec.driver.stop === 'function') rec.driver.stop(); } catch (e) { /* gone */ }
+  rec.driver = null; rec.resetting = null;
+  _wh5Init(rec, nav);
+  if (rec.clock && typeof rec.clock.pin === 'function') rec.clock.pin(0);
+  return !!rec.driver;
+}
 
 /**
  * The agents a frame draws (the passes call it). rec: a live record (or its data id); t: the host's frame time (seconds);
@@ -504,6 +529,7 @@ function worldHostAt(rec, t, f) {
   if (tau + 1e-9 < d.tau) {
     // back to an earlier moment: the life again from its base (the same world, nav and seed: the same base)
     rec.stats.resets++;
+    rec.stats.lastReset = { tau: tau, driverTau: d.tau, t: t, still: !!f.still, warming: !!f.warming, key: typeof f.key === 'object' ? 'env' : String(f.key), pinned: !!rec.clock.pinned };   // why (tools read it)
     const nav = d.nav || null;
     if (f.sync || typeof document === 'undefined') { rec.driver = null; _wh5Init(rec, nav); }
     else {

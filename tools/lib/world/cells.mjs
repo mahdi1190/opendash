@@ -33,7 +33,9 @@ export async function runCellHere(job) {
     if (!hit) throw new Error(`unknown scene '${job.ref}'`);
     spec = E.worldHostSpec(hit.item);
   }
-  const r = A.worldInvariantRun(E, spec, { ms: job.ms, wx: job.wx, seconds: job.seconds, hz: job.hz });
+  // always the real frame record (render's worldFrameAt): the checker's own record is a fallback that a loaded machine must never trigger,
+  // it has no attach data and reports habitat violations that are not there
+  const r = A.worldInvariantRun(E, spec, { ms: job.ms, wx: job.wx, seconds: job.seconds, hz: job.hz, frameAt: job.frameAt || 'render' });
   return Object.assign({}, r, { log: undefined, violations: (r.violations || []).slice(0, 20) });
 }
 

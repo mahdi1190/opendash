@@ -35,7 +35,9 @@ export async function worldCapture(chrome, src, o = {}) {
   const size = o.size || { w: 480, h: 270 }, dir = o.dir || join(tmpdir(), 'opendash-world', 'capture'), name = fileSafe(src.ref || src.id || 'world');
   mkdirSync(dir, { recursive: true });
   const times = worldCapturePlan(o), errors = [], frames = [], pngs = [];
-  const page = await worldPageOpen(chrome, src, { size, at: o.at || null, wx: o.wx || null, root: o.root, still: true });
+  // a LIVE page: the life advances with the pinned scene time (a still page shows the base moment in every frame)
+  const page = await worldPageOpen(chrome, src, { size, at: o.at || null, wx: o.wx || null, root: o.root, live: true });
+  await page.rewind();
   for (const t of times) {
     try {
       const ok = await page.frameAt(t);
