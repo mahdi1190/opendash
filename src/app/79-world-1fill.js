@@ -289,14 +289,15 @@ function _wflViewInit(F) {
     const X0 = Math.max(0, mid - half), X1 = Math.min(W, mid + half);
     if (X1 - X0 > 0.04 * W) F.vista = { rect: [X0, Math.max(0, hz - 0.22 * H), X1, Math.min(H, hz + 0.05 * (H - hz))], cells: new Uint8Array(16 * 8), n: 0 };
   }
-  // the sky: the frame above the horizon; its minimum share from the kit (N2), never below 85 % of what the author left
+  // the sky: the frame above the horizon; its minimum share from the kit (N2). Where the author already left less open sky than the
+  // kit asks, the fill may close at most a third of it (the trees round a pond rise into the sky; the upper sky stays open)
   F.sky = hz > 2 ? { rect: [0, 0, W, hz], cells: new Uint8Array(_WFL_SKY_C * _WFL_SKY_R), n: 0, min: 0 } : null;
   for (const e of F.world.entities || []) if (e && e.obj && !e.backdrop) { const kb = worldKb(e.obj); if (kb) _wflViewMark(F, e, kb, true); }
   for (const e of _wflBackdrop(F.world, cam)) if (e && e.obj) _wflViewMark(F, e, worldKb(e.obj) || {}, true);
   if (F.sky) {
     const free = 1 - F.sky.n / F.sky.cells.length, want = Array.isArray(F.style.sky) ? F.style.sky[0] : 0.2;
     // the minimum free share of the sky area: the kit's frame share as a share of the area above the horizon
-    F.sky.min = Math.min(free * 0.85, Math.max(0.05, want * H / hz));
+    F.sky.min = Math.min(free * 2 / 3, Math.max(0.05, want * H / hz));
   }
 }
 function _wflViewMark(F, e, kb, init) {
@@ -477,7 +478,7 @@ function _wflTry(F, c) {
     const hp = c.pit ? Object.assign({}, probe, { pit: true }) : probe;
     if (!worldKbHabitatOk(kb, hp).ok) return null;
     // a long thing, and anything in the water (reeds at a quay's foot: the invariant judges a floater's whole footprint)
-    const inWater = c.attach === 'water' || (probe.kind === 'water' && kb.floats);
+    const inWater = c.attach === 'water' || probe.kind === 'water';
     if ((kb.foot === 'box' && (kb.size.l > 1.2 || kb.size.w > 1.2)) || inWater) {
       const corners = _wflFoot(kb, c.x, c.z, c.facing).map(q => { const pq = _wflProbe(F, q[0], q[1]); return c.pit ? Object.assign(pq, { pit: true }) : pq; });
       if (!worldKbHabitatOk(kb, corners).ok) return null;
@@ -704,7 +705,22 @@ function worldFillStyle(world, o) {
       return 0;
     };
     const sum = (k) => S.filter(s => s.kind === k).reduce((t, s) => t + area(s), 0);
-    const urban = has('road') || has('pavement') || has('plaza') || has('tramway') || has('platform') || /^(city|town)/.test(String(bd || ''));
+    // what the view shows: the ground in the camera's cone, sampled evenly on screen (geometric depth steps), the top surface at
+    // each point. A grass field with a 4 m plaza on it is a green, not a civic square
+    const seen = {}; let nSeen = 0;
+    for (let i = 0; i < 24; i++) {
+      const z = 2 * Math.pow(100, (i + 0.5) / 24);
+      for (let j = 0; j < 24; j++) {
+        const x = (j / 23 - 0.5) * 1.9 * z;
+        let top = null; for (const s of S) if (_wflContains(s, x, z)) top = s;
+        if (top) { seen[top.kind] = (seen[top.kind] || 0) + 1; nSeen++; }
+      }
+    }
+    const share = (...k) => nSeen ? k.reduce((t, q) => t + (seen[q] || 0), 0) / nSeen : 0;
+    const paved = share('road', 'pavement', 'plaza', 'tramway', 'platform', 'driveway'), green = share('grass', 'heath', 'field', 'sand');
+    const built = ((world && world.buildings) || []).length > 0 || S.some(s => s.kind === 'road');
+    const urban = (has('road') || has('pavement') || has('plaza') || has('tramway') || has('platform') || /^(city|town)/.test(String(bd || ''))) &&
+      (built || paved >= 0.25 * green || !nSeen);
     if (urban) {
       if (wk('river', 'canal')) return 'river-city';
       if (wk('harbour', 'sea')) return 'quayside';
@@ -1048,11 +1064,15 @@ function _wflFrameClump(F, opt, s, wide) {
     if (lvl < 0) {
       // on the water at this level: step to its margin (within the shallows of the nearest bank)
       if (p.kind !== 'water') continue;
-      const sh = _wflNum(p.shallow) ? p.shallow : 0.5;
-      if (_wflNum(p.bankDist) && p.bankDist > sh * 0.8 && _wflNum(p.toWater)) {
-        const a = p.toWater * Math.PI / 180, step = p.bankDist - sh * 0.5;
-        x += Math.sin(a) * step; z += Math.cos(a) * step;
-        p = _wflProbe(F, x, z);
+      // ... its whole footprint in the water (a reed stand at a quay's foot keeps its radius off the wall)
+      const sh = _wflNum(p.shallow) ? p.shallow : 0.5, want = Math.max(sh * 0.5, (kb.r || 0.2) + 0.08);
+      if (_wflNum(p.bankDist) && Math.abs(p.bankDist - want) > 0.05 && _wflNum(p.toWater)) {
+        const a = p.toWater * Math.PI / 180, step = p.bankDist - want;
+        let q = _wflProbe(F, x + Math.sin(a) * step, z + Math.cos(a) * step);
+        // the probe's direction is the bank's: if the step went the wrong way, the other way
+        if (!(q.kind === 'water' && _wflNum(q.bankDist) && Math.abs(q.bankDist - want) < Math.abs(p.bankDist - want))) { const q2 = _wflProbe(F, x - Math.sin(a) * step, z - Math.cos(a) * step); if (q2.kind === 'water') { x -= Math.sin(a) * step; z -= Math.cos(a) * step; q = q2; } else continue; }
+        else { x += Math.sin(a) * step; z += Math.cos(a) * step; }
+        p = q;
         if (p.kind !== 'water') continue;
       }
     } else if (p.kind === 'water') continue;

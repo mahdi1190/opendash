@@ -173,7 +173,9 @@ const WORLD_STYLE_KITS = _wkbFreeze({
     edges: _WKT_EDGES_URBAN, frame: [_WKT_BOUGH_SYCAMORE, _WKT_BOUGH_PLANE, { kind: 'shrub', obj: 'plant.mqn-buddleia' }, { kind: 'reeds', obj: 'plant.reed' }, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'railing', obj: 'structure.mqn-quayrail-v1' }],
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'walkers', rate: '8/min', mix: { brisk: 0.35, stroll: 0.35, 'dog-walker': 0.1, friends: 0.1, couple: 0.1 } }, paving: { who: 'crowd', rate: '10/min' },
       water: [{ who: 'mallard', count: 8 }, { who: 'mute-swan', count: 2 }, { who: 'heron', count: 1 }] } },
-  // a civic square: setts and flags, plane trees in pits, planters, benches, lamps, a crowd and pigeons; the buildings frame it
+  // a civic square: setts and flags, plane trees in pits, planters, benches, lamps and a crowd; the buildings frame it. No pigeons
+  // by default yet: under the systems runner a lifting pigeon reports speed 0 while it flies (invariant animStill, the life
+  // package's to fix); add ground: [{ who: 'pigeons', count: 8 }] back once it does
   'civic-square': { label: 'civic square', place: 'city', backdrop: 'city-victorian', ground: 'grass', sky: [0.2, 0.45], layers: 5, bare: { ground: 0.35, paving: 0.2, near: 0.5 },
     look: { grass: 'mown', path: 'flags', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'stone' },
     fill: { grass: { near: _WKT_MOWN, mid: [['plant.rph-church-shrub', 2], ['tree.plane-avenue', 1], ['plant.shp-border', 1], ['plant.rph-short-grass', 2]], far: [['tree.plane-avenue', 3], ['tree.green-chestnut', 1]],
@@ -182,7 +184,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
         far: _WKT_STREET_FAR.concat([['person.cafe-goer', 1], ['street.mqn-parasol', 1]]), accents: _WKT_PAVING_ACCENTS, max: { near: 10, mid: 28, far: 18 } },
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
     edges: _WKT_EDGES_URBAN, frame: [{ kind: 'lamp', obj: 'street.lamppost' }, _WKT_BOUGH_PLANE, { kind: 'planter', obj: 'street.mqn-planter-grass' }],
-    rich: _WKT_RICH_TOWN, life: { walk: { who: 'crowd', rate: '12/min' }, paving: { who: 'crowd', rate: '12/min' }, ground: [{ who: 'pigeons', count: 8 }] } },
+    rich: _WKT_RICH_TOWN, life: { walk: { who: 'crowd', rate: '12/min' }, paving: { who: 'crowd', rate: '12/min' } } },
   // a quayside or harbour: stone quays with coping, bollards, lifebuoys and railings at the edge, lamps, gulls over the water
   quayside: { label: 'quayside or harbour', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.3, 0.55], layers: 5, bare: { ground: 0.25, paving: 0.15 },
     look: { grass: 'tussock', path: 'flags', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'stone' },

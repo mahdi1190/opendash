@@ -1,0 +1,16 @@
+{ "v": 3, "place": {"lat": 53.48, "lon": -2.24, "region": "manchester", "style": "terraced-street"},
+  "camera": {"eye": 1.65, "fov": 62, "horizon": 470, "heading": 90}, "backdrop": {"style": "town-low"},
+  "surfaces": [
+    {"id": "road", "kind": "road", "path": [[0, 1], [0, 300]], "width": 7},
+    {"id": "pave-l", "kind": "pavement", "path": [[-5, 1], [-5, 300]], "width": 3},
+    {"id": "pave-r", "kind": "pavement", "path": [[5, 1], [5, 300]], "width": 3}
+  ],
+  "buildings": [
+    {"id": "row-l", "foot": [[-16, 6], [-6.6, 6], [-6.6, 200], [-16, 200]], "storeys": 2, "style": "victorian-terrace"},
+    {"id": "row-r", "foot": [[6.6, 6], [16, 6], [16, 200], [6.6, 200]], "storeys": 2, "style": "victorian-terrace"}
+  ],
+  "life": [
+    {"who": "crowd", "on": "pave-l", "rate": "5/min", "edges": ["S", "N"]},
+    {"who": "cars", "on": "road", "rate": "3/min"}
+  ],
+  "seed": 29 }

@@ -710,6 +710,75 @@ an overhead span covers it. The knowledge base judges habitats and orientations 
   over 15 % of the frame (sky excluded). The fill repeats with the next dressing tier until both pass or it runs out of legal
   places (logged).
 
+#### Style kits (N1, N2, N3)
+
+A style kit is the curated dressing of one kind of place, as data (`src/app/79-world-0kits.js`, `WORLD_STYLE_KITS`). The fill,
+the edge dressing, the framing foreground, the backdrop, the ground looks and the default life all draw from the kit, so a new
+place written as a short spec (a camera, a few surfaces, `place.style: '<kit>'`) inherits the gold-standard parts instead of
+whatever the library holds. `WORLD_FILL_STYLES` is built from the kits; the old style names are aliases (`WORLD_KIT_ALIAS`:
+`canal-wooded` is `canal`, `town-low` is `village-green`, `city-victorian` is `civic-square`, ...). With no `place.style` the
+chooser `worldFillStyle(world)` picks the kit from what the camera's cone shows (sampled evenly on screen, so a 4 m plaza on a
+grass field is a green, not a square): a city river or canal is `river-city`, a harbour `quayside`, paving that outweighs
+pavements `civic-square`, a road with pavements or buildings `terraced-street`, then heath, field, coast, canal, pond, woodland.
+
+A kit: `{ label, place, backdrop, ground, sky: [min, max] (frame share, N2), layers (>= 5), bare: { ground, paving, near } (the
+open-by-nature allowance the strict critic uses), look (ground detail looks by surface kind), fill: { <group>: { near (< 12 m),
+mid (12-35 m), far (35-120 m), distant (beyond), accents (seasonal, K6), maxH (a number, or per band { near, mid }), max (paving
+furniture per band) } }, edges (P5: natural margins, quays with coping, top dressing and mooring posts, verges, hedgerows),
+frame: [options, best first] (a bough with its trunk outside the frame, reeds, a shrub, a lamp, a railing, a hedge), rich (the
+richness tier's pools), life: { walk, paving, sand, water, graze, air } }`. Entries are `[id, weight]`.
+
+| Setting | Backdrop / ground looks | Framing, best first | Characteristic dressing (near / mid / far) | Life |
+|---|---|---|---|---|
+| canal | canal-wooded / tussock, gravel towpath, earth banks | canal-view bough, proof Fleet reeds, reedbed, fern, bramble | tussocks, meadow, fern / sallow, hawthorn, willows, bramble, bracken / oaks, chestnut, alder, birch | walkers with dogs, mallards, moorhens, swans |
+| pond | woodland / tussock, earth banks | proof Fleet bough, reeds, reedbed, fern | tussocks, meadow / sallow, willows, pool birch, hawthorn / birches, oaks, veteran pine, alder | walkers, waterfowl |
+| heath | heath / heather drifts, sand paths | gorse spray, bough, gorse, reedbed | heather, cotton grass / gorse, heath bank, bracken / pines, birches | walkers |
+| woodland | woodland / leaf litter | oak bough, bough, fern, holly | fern, bracken / holly, hawthorn, birch / oaks, chestnut, pine | walkers with dogs |
+| village-green | town-low / mown stripes, gravel | park bough, lamp, hedge | mown tufts / hawthorn, chestnuts, oak, benches / chestnuts, oaks, planes | walkers, families |
+| river-city | city-victorian / stone quay walls, flags, setts | sycamore bough, plane bough, buddleia, reeds, lamppost, quay rail | tussocks / buddleia, planes, birch / planes; quay tops dressed | crowds, walkers, mallards, swans, heron |
+| civic-square | city-victorian / setts, flags | lamppost, plane bough, grass planter | planters, bins, benches, plane trees in pits, totems, kiosk, cafe-goers | crowds |
+| quayside | town-low / stone quays, flags | quay rail, lamppost, bollard | bollards and lifebuoys at mooring intervals, benches, lamps | crowds, mallards, gulls |
+| terraced-street | town-low / flags, setts | lamppost, plane bough, hedge | bins, tubs, bike hoops, bollards / planes, lamps, street trees | crowds, cars |
+| park | town-low / mown stripes, gravel | park bough, lamp, hedge | mown tufts / hawthorn, chestnut, bandstand (once), benches / planes, chestnuts, oaks | walkers, waterfowl |
+| moor | heath / heather, gravel | boulder, heather, bracken | heather, cotton grass / boulders, bracken, hawthorn / boulders, hawthorn, pine | walkers, sheep |
+| coast | coast / rippled sand, stone | gorse spray, quay rail, lamppost, boulder | stones / stones, boulders, groynes / groynes; beach huts on the grass | walkers on the prom and the sand, gulls |
+
+`farmland` and `downs` exist for the chooser (fields: rows; hedgerows, oaks, sheep or cattle).
+
+Why these objects: each kit names only objects that read as finished art at their band (inspected on object sheets: `node
+tools/anim-pack.mjs object sheet <ids> --out <dir>`). `WORLD_KIT_WEAK` lists what never appears (the blob, lollipop and
+stacked-ball trees `tree.pond-wood`, `tree.pond-oak`, `tree.pool-oak`, `tree.birch-heath`, the other pond-* and bank-birch domes,
+`tree.plane`, `ground.log`, the fallen-pine and treeline placeholders); `WORLD_KIT_DISTANT_ONLY` are dome trees that read as
+trees only beyond 120 m (`tree.bank-oak`, `tree.far-broad`, `tree.distant` ...); `WORLD_KIT_TRUNK_ONLY` are framing trunks. A
+weeping willow belongs by water, never on a dry green. A feature (`structure.*`: a bandstand, a kiosk) stands once in a view.
+
+Density and grouping: the cover passes sample what the strict measure (below) finds bare, nearest rows first, and plant clumps
+(trees 1-2, shrubs and cover 1-4) at seeded points; an open look (mown lawn, rippled sand) is half dressed by its texture and gets
+a sparse share of single things, never a carpet. Paving furniture comes in groups (a bench by a tree pit, a bin by a lamp), more
+where paving fills the frame (caps x1-3), in the kerb and building-line bands of a pavement, never in its walking line. Like
+furniture never stacks on screen; seated figures (picnickers, cafe-goers) are scenery: at most 8, apart, never nearer than where
+they fill a fifth of the frame. Seasons: accents carry `when` (K6) and the renderer hides them out of season. The view the fill
+keeps (N2): the vista where the leading lines meet the horizon (at most 35 % covered), and the sky down to the kit's minimum
+share (where the author left less than that, the fill closes at most a third of what is left).
+
+Ground and walls (`src/app/79-world-4ground.js`): every visible surface is drawn textured by its look (`WORLD_GROUND_LOOKS`:
+flags, setts, gravel, sand, tarmac, mown, tussock, heath, litter, rows, ripple); the ground the spec leaves undeclared is the
+kit's ground; a channel below its banks gets stone, brick or earth walls with coping (`worldChannelWalls`), never a flat slab.
+
+The strict critic (`src/app/79-world-4detail.js`, `worldCoverage(world, cam, { strict: true })`, `node tools/world.mjs critic
+<ref | spec.json>`): silhouettes (`worldArtMask`), not boxes. It FAILS, naming the fix, on a bare channel wall, a flat surface, a
+bare quay or paving, bare ground over the kit's allowance, a bare region over 55 %, an empty near band (under 60 % dressed or 4 %
+standing, held at both corners), fewer than 5 depth layers, no framing, no bough in a natural view whose kit leads with one, low
+variety (14 objects, 6 in the middle distance) and no life; the sky share outside the kit's range is a warning.
+
+Adding a kit: (1) look at the candidate objects on a sheet and in a render at their band; (2) add the kit to
+`WORLD_STYLE_KITS` (every group the fill needs: grass, paving, path, water; at least two framing options; backdrop, sky, layers,
+looks, life) and any old style name to `WORLD_KIT_ALIAS`; (3) `node --test tests/world-kits.test.mjs` (`worldKitCheck` fails
+loudly on a missing, weak, dome, foreign, wrong-class or careless entry; a missing object is never replaced by a stand-in);
+(4) write a short fixture `tests/fixtures/world/kits/<kit>.json` and run `node --test tests/world-kit-fixtures.test.mjs` (it
+validates clean, the critic passes in summer and winter, a minute of life has zero invariant violations); (5) render it at summer
+noon, winter, dusk and night (`node tools/world.mjs render <spec.json> --dates=summer,winter,dusk,night`) and look.
+
 ### 12.4 Framing checks (C1, C2, C4)
 
 - `worldFrameCheck(world, cam)` (C1): no entity larger than about 25 % of the frame is cut by the frame edge unless it is a

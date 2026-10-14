@@ -1,0 +1,13 @@
+{ "v": 3, "place": {"lat": 52.48, "lon": -1.9, "region": "england", "style": "civic-square"},
+  "camera": {"eye": 1.65, "fov": 64, "horizon": 470, "heading": 0}, "backdrop": {"style": "city-victorian"},
+  "surfaces": [
+    {"id": "square", "kind": "plaza", "poly": [[-45, 1], [45, 1], [45, 70], [-45, 70]]},
+    {"id": "street", "kind": "road", "path": [[-300, 76], [300, 76]], "width": 8}
+  ],
+  "buildings": [
+    {"id": "hall", "foot": [[-30, 84], [30, 84], [30, 104], [-30, 104]], "storeys": 5, "style": "georgian"},
+    {"id": "east", "foot": [[48, 10], [62, 10], [62, 70], [48, 70]], "storeys": 4, "style": "edwardian"}
+  ],
+  "entities": [{"obj": "street.mcr-statue", "at": [-6, 34]}],
+  "life": [{"who": "crowd", "on": "square", "rate": "12/min"}],
+  "seed": 27 }
