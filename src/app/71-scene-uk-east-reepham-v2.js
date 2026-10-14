@@ -3,7 +3,6 @@
    Flint towers, St Michael's pinnacles and St Mary's slate-roofed nave. */
 function sceneUkReephamV2() {
   const R=SCENE_REEPHAM,D=R.base('reepham-churchyard',52.76212,1.1134,337,'mixed',820);
-  D.backdrop=false; // The adjoining churchyard trees are the visible background.
   D.surfaces=[{id:'yard',kind:'grass',rest:true},
     {id:'walk',kind:'path',path:[[-4,4],[-3,8],[-1,14],[2,24],[6,38],[4,55],[-2,72],[-7,80]],width:2.2},
     {id:'crosswalk',kind:'path',path:[[-60,30],[-15,29],[3,30],[18,33],[50,40]],width:2},
