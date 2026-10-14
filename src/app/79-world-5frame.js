@@ -695,7 +695,7 @@ function _wfrWetClip(cx, wet, notOver) {
  */
 function* _wfrBakeJob(env, S) {
   const rec = S.rec, world = rec.world, cam = world.cam, L = env.L, vs = env.vs, ox = env.ox, oy = env.oy, W = env.W, H = env.H;
-  const cache = rec.frame.cache || (rec.frame.cache = new Map()), used = new Set();
+  const cache = rec.frame.cache || (rec.frame.cache = new Map()), used = new Set(), lk0 = 'v2' + ((env.out && env.out.lk) || '');
   S.used = used;
   // 1. the context: time (T2: the light's moment), the sky with the v2 light's grade, the materials, the water regions
   const ms = L && Number.isFinite(L.ms) ? L.ms : null;
@@ -707,6 +707,37 @@ function* _wfrBakeJob(env, S) {
   if (S.mat) { try { S.mctx = worldMaterialCtx(S.tctx, { sky: S.sky || undefined, L, atmos: env.C.atmos }); } catch (e) { S.mat = false; } }
   if (typeof worldWaterPlan === 'function') { try { S.regions = worldWaterPlan(world, cam) || []; } catch (e) { S.regions = []; S.stats.errors.push('waterPlan: ' + (e && e.message)); } }
   S.wet = _wfrWet(world, cam, S.regions);
+  // the ground detail (look, 79-world-4ground.js): every visible surface textured, the channel walls dressed; the plan is kept
+  // per world (the camera does not move), the two layers per light band and material key
+  if (typeof worldGroundDetail === 'function' && typeof worldGroundDetailDraw === 'function') {
+    try {
+      const gplan = rec.frame.groundPlan || (rec.frame.groundPlan = worldGroundDetail(world, cam, { W: 1600, H: 900 }));
+      let gk = '';
+      if (S.mctx) { try { gk = worldMaterialKey(S.mctx); } catch (e) { gk = ''; } }
+      const geoG = W + 'x' + H + '|' + Math.round(vs * 1e4) + '|' + Math.round(ox) + ',' + Math.round(oy);
+      const day = S.sky ? Math.max(0, 1 - (S.sky.dark || 0)) : (L && L.dark > 0.5 ? 0.2 : 1);
+      const colour = (mat, hex) => { if (S.mat && S.mctx) { try { return worldMaterialColour(mat, hex, S.mctx) || hex; } catch (e) { return hex; } } return env.L && env.L.dark > 0.5 ? '#2e2c2a' : hex; };
+      for (const part of ['marks', 'walls']) {
+        const key = 'gd|' + part + '|' + geoG + '|' + S.season + '|' + S.band + '|' + _wfrHashStr(gk + lk0);
+        used.add(key);
+        let lay = cache.get(key);
+        if (!lay) {
+          const list = part === 'marks' ? gplan.groups.map(g => g.clip) : [].concat(...gplan.walls.map(w => w.runs.map(r => r.scr)));
+          let X0 = Infinity, Y0 = Infinity, X1 = -Infinity, Y1 = -Infinity;
+          for (const P of list) for (const q of P) { X0 = Math.min(X0, q[0] * vs + ox); X1 = Math.max(X1, q[0] * vs + ox); Y0 = Math.min(Y0, q[1] * vs + oy); Y1 = Math.max(Y1, q[1] * vs + oy); }
+          const bx = Math.max(0, Math.floor(X0) - 1), by = Math.max(0, Math.floor(Y0) - 1), bw = Math.min(W, Math.ceil(X1) + 1) - bx, bh = Math.min(H, Math.ceil(Y1) + 1) - by;
+          lay = { c: null, x: 0, y: 0 };
+          if (list.length && bw > 0 && bh > 0) {
+            const c = _wfrCanvas(bw, bh), cx = c.getContext('2d', _WFR_CPU);
+            worldGroundDetailDraw(cx, gplan, { part, vs, ox: ox - bx, oy: oy - by, colour, light: day });
+            lay = { c, x: bx, y: by };
+          }
+          cache.set(key, lay);
+        }
+        S[part === 'marks' ? 'groundMarks' : 'groundWalls'] = lay.c ? lay : null;
+      }
+    } catch (e) { S.stats.errors.push('ground: ' + (e && e.message)); }
+  }
   yield;
   // 2. the plan: draw records and D's chunks (kept per world, season and nav: the camera does not move)
   const ab = _wfrAbsent(world, S.tctx && Number.isFinite(S.tctx.ms) ? S.tctx : null);
@@ -1049,6 +1080,8 @@ function _wfrDraw(env, ctx, t) {
   let tp = _wfrNow();
   const lap = (k) => { const n = _wfrNow(); pf[k] += n - tp; tp = n; };
   pf.order += tp - ta; pf.n++;
+  // 0. the ground detail under everything (look: textured surfaces, Q5); the water draws over its own footprint
+  if (S.groundMarks && S.groundMarks.c) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(S.groundMarks.c, S.groundMarks.x, S.groundMarks.y); draws++; }
   // 1. the water with the statics' mirror (rippled in bands), falls, then the agents' mirror on their columns, rings and wakes
   if (S.water && S.water.length) {
     ctx.save();
@@ -1067,6 +1100,8 @@ function _wfrDraw(env, ctx, t) {
   // the decks over the water (boardwalks, jetties, platforms): planks over the water and its mirror, under everything that
   // stands on them (shadows, chunks and movers come after)
   if (S.wet && S.wet.decks && S.wet.decks.length) { try { draws += _wfrDrawDecks(ctx, env, S); } catch (e) { S.stats.errors.push('decks: ' + (e && e.message)); } }
+  // the channel walls of sunken water (dressed stone or earth banks) over the water's edge, under everything standing on the banks
+  if (S.groundWalls && S.groundWalls.c) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(S.groundWalls.c, S.groundWalls.x, S.groundWalls.y); draws++; }
   lap('mirror');
   // 2. the ground shadows of the statics, then the movers' shadows (look's plan per frame; else a contact blob)
   ctx.setTransform(1, 0, 0, 1, 0, 0);

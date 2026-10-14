@@ -295,6 +295,12 @@ function worldEntityBox(cam, e) {
  */
 function worldCoverage(world, cam, o) {
   cam = _wlCam(world, cam); o = o || {};
+  // o.strict: the strict detail measure (79-world-4detail.js): silhouettes not boxes, textured and dressed ground, channel walls,
+  // the near band, depth layers, framing, variety and life (the critic's FAIL list in .problems)
+  if (o.strict && typeof worldDetailCoverage === 'function' && typeof worldDetailProblems === 'function') {
+    const r = worldDetailCoverage(world, cam, o), probs = worldDetailProblems(r, o), fails = probs.filter(p => p.severity !== 'warn');
+    return { bare: r.bare, sky: r.sky, ok: !fails.length, rule: fails.length ? fails[0].rule : null, msg: fails.map(p => p.msg).join('; '), problems: probs, detail: r, regions: r.regions, samples: r.samples, strict: true };
+  }
   const W = o.W || 1600, H = o.H || 900, cols = o.cols || 64, rows = o.rows || 40, top = Math.max(0, cam.horizon);
   const bd = o.backdrop || worldBackdrop(world, cam, o.season), ground = worldBackdropGround(world, cam);
   const ents = ((world && world.entities) || []).concat(bd, o.extra || []);

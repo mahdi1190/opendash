@@ -124,7 +124,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
     fill: { grass: { near: _WKT_TUFTS, mid: [['tree.wyv-far-sallow', 2], ['tree.hawthorn', 2], ['tree.green-willow', 1], ['tree.canal-willow', 1], ['plant.hedgerow-blackberry', 1], ['plant.rph-church-shrub', 1], ['plant.yg-meadow', 2], ['plant.bracken', 2], ['plant.holly', 1]],
       far: _WKT_BROADLEAF.concat(_WKT_WATERSIDE), distant: _WKT_DISTANT_WOOD, accents: _WKT_FLOWERS.concat([['ground.leaf-litter', 2], ['rock.stones', 1]]) },
       heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, paving: _WKT_PAVING, path: _WKT_PATH, water: _WKT_CALM },
-    edges: _WKT_EDGES_RURAL, frame: [_WKT_BOUGH_CANAL, { kind: 'fronds', fronds: 'plant.canal-view-fronds', trunk: 'tree.canal-willow' }, { kind: 'reeds', obj: 'plant.yg-reedbed' }, { kind: 'shrub', obj: 'plant.hedgerow-blackberry' }, _WKT_BOUGH],
+    edges: _WKT_EDGES_RURAL, frame: [_WKT_BOUGH_CANAL, { kind: 'reeds', obj: 'plant.proof-fleet-reed' }, { kind: 'reeds', obj: 'plant.yg-reedbed' }, { kind: 'shrub', obj: 'plant.fern' }, { kind: 'shrub', obj: 'plant.hedgerow-blackberry' }, _WKT_BOUGH],
     rich: _WKT_RICH_RURAL, life: Object.assign({ water: _WKT_WATERFOWL.concat([{ who: 'heron', count: 1 }]) }, _WKT_LIFE_RURAL) },
   // a pond or lake: the gold proof Fleet Pond kit. Dense reed and reedmace stands, lilies on calm water, birch, sallow and pine
   // round the far shore, the gold bough over the water
@@ -135,7 +135,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
       distant: _WKT_DISTANT_WOOD.concat([['tree.far-pine', 1]]), accents: _WKT_FLOWERS.concat([['rock.stones', 1], ['ground.leaf-litter', 1]]) },
       heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, paving: _WKT_PAVING, path: _WKT_PATH, water: { calm: [['water.lily', 6], ['water.fish-ring', 1]], share: 0.45 } },
     edges: Object.assign({}, _WKT_EDGES_RURAL, { natural: { margin: _WKT_REEDS, bank: _WKT_BANK, stands: 0.7 } }),
-    frame: [_WKT_BOUGH, { kind: 'reeds', obj: 'plant.yg-reedbed' }, { kind: 'reeds', obj: 'plant.proof-fleet-reed' }, { kind: 'shrub', obj: 'plant.rph-church-shrub' }],
+    frame: [_WKT_BOUGH, { kind: 'reeds', obj: 'plant.proof-fleet-reed' }, { kind: 'reeds', obj: 'plant.yg-reedbed' }, { kind: 'shrub', obj: 'plant.fern' }, { kind: 'shrub', obj: 'plant.rph-church-shrub' }],
     rich: _WKT_RICH_RURAL, life: Object.assign({ water: [{ who: 'mallard', count: 8 }, { who: 'mute-swan', count: 2 }, { who: 'coot', count: 3 }, { who: 'grebe', count: 2 }] }, _WKT_LIFE_RURAL) },
   // lowland heath: heather and gorse drifts, Scots pine and birch, cotton grass in the wet hollows
   heath: { label: 'heath', place: 'rural', backdrop: 'heath', ground: 'heath', sky: [0.35, 0.62], layers: 5,
@@ -147,7 +147,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
   woodland: { label: 'woodland', place: 'rural', backdrop: 'woodland', ground: 'wood', sky: [0.15, 0.45], layers: 5,
     look: { grass: 'tussock', wood: 'litter', path: 'gravel', paving: 'flags', quay: 'stone', bank: 'earth' },
     fill: { grass: _WKT_WOOD, wood: _WKT_WOOD, heath: _WKT_HEATH, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, paving: _WKT_PAVING, path: _WKT_PATH, water: _WKT_CALM },
-    edges: _WKT_EDGES_RURAL, frame: [_WKT_BOUGH_OAK, _WKT_BOUGH, { kind: 'shrub', obj: 'plant.holly' }, { kind: 'shrub', obj: 'plant.rph-church-shrub' }],
+    edges: _WKT_EDGES_RURAL, frame: [_WKT_BOUGH_OAK, _WKT_BOUGH, { kind: 'shrub', obj: 'plant.fern' }, { kind: 'shrub', obj: 'plant.holly' }, { kind: 'shrub', obj: 'plant.rph-church-shrub' }],
     rich: _WKT_RICH_RURAL, life: Object.assign({ water: [{ who: 'mallard', count: 4 }] }, _WKT_LIFE_RURAL) },
   // a village green: mown grass with chestnuts and oaks, benches and a lamp, the church and cottages behind (backdrop)
   'village-green': { label: 'village green', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.3, 0.55], layers: 5,
@@ -168,7 +168,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
       far: [['tree.plane-avenue', 3], ['tree.green-chestnut', 1], ['tree.green-birch', 1], ['plant.mqn-buddleia', 1]], distant: _WKT_DISTANT_TOWN,
       accents: [['plant.daisies', 2], ['ground.leaf-litter', 2], ['plant.wildflowers', 1]], maxH: 2.6 },
       paving: _WKT_PAVING, path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
-    edges: _WKT_EDGES_URBAN, frame: [_WKT_BOUGH_SYCAMORE, _WKT_BOUGH_PLANE, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'shrub', obj: 'plant.mqn-buddleia' }],
+    edges: _WKT_EDGES_URBAN, frame: [_WKT_BOUGH_SYCAMORE, _WKT_BOUGH_PLANE, { kind: 'shrub', obj: 'plant.mqn-buddleia' }, { kind: 'reeds', obj: 'plant.reed' }, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'railing', obj: 'structure.mqn-quayrail-v1' }],
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'walkers', rate: '8/min', mix: { brisk: 0.35, stroll: 0.35, 'dog-walker': 0.1, friends: 0.1, couple: 0.1 } }, paving: { who: 'crowd', rate: '10/min' },
       water: [{ who: 'mallard', count: 8 }, { who: 'mute-swan', count: 2 }, { who: 'heron', count: 1 }] } },
   // a civic square: setts and flags, plane trees in pits, planters, benches, lamps, a crowd and pigeons; the buildings frame it

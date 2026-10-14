@@ -244,7 +244,8 @@ function worldPlaceProbe(world, x, z, o) {
   // a deck high over the local ground or water is a span overhead (W3): what is below stands under it, not on it
   if (deck && deck.y - (inWater ? level : gy) >= WORLD_OVERHEAD_Y) { if (!under || deck.y < under.y) under = { id: deck.id, y: deck.y }; deck = null; }
   const tags = _wplTags(kind);
-  if (!inWater && waterDist <= 3) tags.push('bank');
+  // a walk, paving or road beside the water is that, not its bank: a log, a reed or a shrub never stands on a towpath (K1, P3)
+  if (!inWater && waterDist <= 3 && !tags.includes('walk') && !tags.includes('paving') && !tags.includes('road')) tags.push('bank');
   if (inWater && -waterDist <= shallow + 1) tags.push('water-margin');
   if (pathDist <= pathHalf) tags.push('path');
   if (pathDist <= pathLine) tags.push('path-line');

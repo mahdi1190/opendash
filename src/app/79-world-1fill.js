@@ -621,8 +621,17 @@ function _wflEdges(F) {
         if (!_wflVisible(F, p[0], p[1], 4)) { flush(); return; }
         const land = _wflProbe(F, p[0] + out[0] * 1.2, p[1] + out[1] * 1.2);
         if (land.kind === 'water' || land.kind === 'weir') { flush(); return; }
-        const hardBank = mode === 'urban' || _WFL_WALK.has(land.kind) || (land.tags || []).includes('paving') || land.walkDist <= 1.0 || !!_wflHits(F, p[0] + out[0] * 1.2, p[1] + out[1] * 1.2, 0.3, true);
-        if (hardBank) { if (mode === 'urban' && E.kerb !== false) hard.push([_wflR2(p[0]), _wflR2(p[1])]); else flush(); return; }
+        const walled = mode === 'urban' || mode === 'quay';
+        const hardBank = walled || _WFL_WALK.has(land.kind) || (land.tags || []).includes('paving') || land.walkDist <= 1.0 || !!_wflHits(F, p[0] + out[0] * 1.2, p[1] + out[1] * 1.2, 0.3, true);
+        if (hardBank) {
+          if (walled && E.kerb !== false) hard.push([_wflR2(p[0]), _wflR2(p[1])]); else flush();
+          // a quay's top: low tufts and the odd buddleia in the joints behind the coping (the wall face is the ground detail's)
+          if (mode === 'quay' && E.quay && Array.isArray(E.quay.top) && E.quay.top.length && r() < 0.3) {
+            const off = 0.45 + r() * 0.8;
+            _wflTry(F, { obj: _wflPick(E.quay.top, r), x: p[0] + out[0] * off + t[0] * (r() - 0.5) * step, z: p[1] + out[1] * off + t[1] * (r() - 0.5) * step, auto: 'edge', rule: 'P5', why: `${w.s.water || 'water'} quay top` });
+          }
+          return;
+        }
         flush();
         left -= step;
         if (left <= 0) { state = state === 'stand' ? 'gap' : 'stand'; left = state === 'stand' ? 2 + r() * 4.5 : 1.5 + r() * 8 * (1 - (E.natural.stands || 0.5)); if (state === 'stand') stObj = _wflPick(E.natural.margin, r); }
@@ -733,36 +742,112 @@ function _wflLine(F, kind, pts, of) {
   _wflLog(F, { id, action: 'dress', rule: 'P5', reason: `${kind} along ${of}` });
 }
 
-/* ---------- C3: framing ---------- */
-const _WFL_FRAME_CLS = new Set(['bough', 'frond', 'hedge', 'fence', 'lamp', 'reed', 'shrub', 'tree', 'post', 'signage']);
-/** Does the near band already have a framing element (the author's, or a stand of reeds at one side)? -> a description or null. */
-function _wflHasFrame(F) {
-  const side = [0, 0], what = [null, null];
+/* ---------- C3, N2: framing ---------- */
+const _WFL_FRAME_CLS = new Set(['bough', 'frond', 'hedge', 'fence', 'lamp', 'reed', 'shrub', 'tree', 'post', 'signage', 'rock', 'street', 'structure', 'building', 'bench']);
+/** The screen box of a building or a linear feature of the world (extruded: a footprint and a height), or null. */
+function _wflPrimBox(F, foot, h) {
+  const cam = F.cam, near = Math.max(0.4, (cam.dMin || 1) * 0.3), pts = [];
+  for (const p of foot) if (p[1] >= near) { const a = _wflProj(F, p[0], p[1], 0), c = _wflProj(F, p[0], p[1], h); pts.push([a.X, a.Y], [c.X, c.Y]); }
+  if (pts.length < 2) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const q of pts) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+  return [x0, y0, x1, y1];
+}
+/**
+ * What frames the view now (C3, N2): { top, side: [left, right], declared } as descriptions (or null). top: a bough or frond
+ * entering from a top corner, or a crown cut by the top edge at a side; a side: something standing in the near part of the frame
+ * (its foot below 60 % of the ground rows) at that side and tall enough to read (12 % of the frame): reeds, a shrub, a hedge, a
+ * lamp, a trunk, a railing, a building's edge, or a channel wall running to that bottom corner (a wall edge, C1). declared: the
+ * author marked an element framing: true / framed: true (it is kept and nothing is added).
+ */
+function _wflFrameState(F) {
+  const st = { top: null, topHang: 0, topCrown: 0, side: [null, null], declared: null }, W = F.W, H = F.H, hz = F.cam.horizon, nearRow = hz + (H - hz) * 0.6;
+  const side = (b, what) => {
+    if (!(b[3] >= nearRow && Math.min(H, b[3]) - Math.max(0, b[1]) >= 0.12 * H && Math.min(W, b[2]) - Math.max(0, b[0]) >= 0.035 * W)) return;
+    if (b[0] < 0.2 * W && b[2] > 0 && !st.side[0]) st.side[0] = what;
+    if (b[2] > 0.8 * W && b[0] < W && !st.side[1]) st.side[1] = what;
+  };
   for (const e of F.world.entities || []) {
     if (!e || !e.obj || e.backdrop || !(e.z > 0)) continue;
-    const kb = worldKb(e.obj); if (!kb) continue;
-    const framing = e.framing || e.framed || kb.framing || (_WFL_FRAME_CLS.has(kb.cls) && kb.size.h0 >= 1.2);
-    if (!framing) continue;
+    const kb = worldKb(e.obj); if (!kb || kb.decal) continue;
+    const what = `${e.auto ? 'a' : 'the author’s'} ${kb.cls} (${e.id || e.obj})`;
+    // the author's own declared framing (framing: true / framed: true) wins wherever it stands
+    if ((e.framing || e.framed) && !e.auto && !st.declared) st.declared = what;
     const b = _wflBox(F, e);
-    if (b[2] < 0 || b[0] > F.W || b[3] < 0 || b[1] > F.H) continue;
-    if (!(e.z <= _WFL_NEAR_Z || b[3] - b[1] >= 0.3 * F.H)) continue;
-    const area = (Math.min(F.W, b[2]) - Math.max(0, b[0])) * (Math.min(F.H, b[3]) - Math.max(0, b[1]));
-    if (b[0] < 0.22 * F.W) { side[0] += area; what[0] = what[0] || kb.cls; }
-    if (b[2] > 0.78 * F.W) { side[1] += area; what[1] = what[1] || kb.cls; }
-    if ((e.framing || e.framed || kb.cls === 'bough' || kb.cls === 'frond') && (b[0] < 0.22 * F.W || b[2] > 0.78 * F.W)) return `${e.auto ? 'a' : "the author's"} ${kb.cls} (${e.id || e.obj})`;
+    if (b[2] < 0 || b[0] > W || b[3] < 0 || b[1] > H) continue;
+    const hang = kb.cls === 'bough' || kb.cls === 'frond' || kb.hang;
+    if (!st.top && hang && b[1] <= 0.1 * H && (b[0] <= 0.03 * W || b[2] >= 0.97 * W)) { st.top = what; st.topHang = b[0] <= 0.03 * W ? -1 : 1; }
+    // a structured crown cut by the top edge at a side frames the top too; a dome or blob crown does not (SCENE_LESSONS A)
+    const domed = (typeof WORLD_KIT_WEAK === 'object' && WORLD_KIT_WEAK[e.obj]) || (typeof WORLD_KIT_DISTANT_ONLY === 'object' && WORLD_KIT_DISTANT_ONLY.includes(e.obj));
+    if (!st.top && kb.cls === 'tree' && !domed && b[1] < 0.02 * H && (b[0] < 0.08 * W || b[2] > 0.92 * W) && b[3] - b[1] > 0.6 * H) { st.top = what; st.topCrown = b[0] < 0.08 * W ? -1 : 1; }
+    if (_WFL_FRAME_CLS.has(kb.cls) && !hang) side(b, what);
   }
-  const i = side[0] >= side[1] ? 0 : 1;
-  return side[i] >= 0.04 * F.W * F.H ? `${what[i]}s at the ${i ? 'right' : 'left'}` : null;
+  for (const bd of F.world.buildings || []) { if (bd && Array.isArray(bd.foot)) { const b = _wflPrimBox(F, bd.foot, _wflNum(bd.h) ? bd.h : 6); if (b) side(b, 'the building ' + (bd.id || '')); } }
+  for (const L of F.world.lines || []) {
+    if (!L || !Array.isArray(L.path) || !/wall|hedge|fence|railing/.test(L.kind)) continue;
+    for (let i = 1; i < L.path.length; i++) { const b = _wflPrimBox(F, [L.path[i - 1], L.path[i]], _wflNum(L.h) ? L.h : 1.2); if (b) side(b, 'the ' + L.kind + ' ' + (L.id || '')); }
+  }
+  // the channel walls of sunken water reaching a bottom corner frame that side (look's worldChannelWalls)
+  if (typeof worldChannelWalls === 'function') {
+    try {
+      for (const rec of worldChannelWalls(F.world, F.cam)) for (const r of rec.runs) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const q of r.scr) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+        if (y1 >= 0.97 * H && rec.look !== 'earth') side([x0, y0, x1, y1], 'the ' + rec.look + ' wall of ' + rec.water);
+      }
+    } catch (e) { /* no walls */ }
+  }
+  return st;
 }
+/** Does the view already have its framing? -> a description or null. */
+function _wflHasFrame(F) {
+  const st = _wflFrameState(F);
+  if (st.declared) return st.declared;
+  const natural = F.style.place === 'rural' || F.style.place === 'park';
+  const sideD = st.side[0] || st.side[1];
+  if (natural ? (st.topHang && sideD) : (st.top || sideD)) return [st.top, st.side[0], st.side[1]].filter(Boolean).join(', ');
+  return null;
+}
+/**
+ * The framing foreground (C3, N2): an author's declared framing element is kept and nothing is added. Otherwise a view needs a
+ * side of its near band framed (reeds, a shrub, a hedge, a railing, a lamp from the kit, at the side with legal ground) and, in
+ * natural settings (rural, park), a top frame too: a bough reaching in from a top corner, its trunk just outside the frame on the
+ * SAME side (K4), placed on the side already framed below when it can be (one strong frame, the subject off to the other side).
+ */
 function _wflFrame(F) {
-  const has = _wflHasFrame(F);
-  if (has) { _wflLog(F, { action: 'frame', rule: 'C3', reason: `the near band is already framed: ${has}` }); return; }
-  const opts = F.style.frame || [], first = F.r() < 0.5 ? -1 : 1;
-  for (const opt of opts) for (const s of [first, -first]) {
-    const got = opt.kind === 'bough' ? _wflFrameBough(F, opt, s) : _wflFrameClump(F, opt, s);
-    if (got) { _wflLog(F, { id: got, action: 'frame', rule: 'C3', reason: `natural framing: ${opt.kind} at the ${s < 0 ? 'left' : 'right'} of the near band (${F.styleKey})` }); return; }
+  const st = _wflFrameState(F);
+  if (st.declared) { _wflLog(F, { action: 'frame', rule: 'C3', reason: `the author frames the view: ${st.declared}` }); return; }
+  const natural = F.style.place === 'rural' || F.style.place === 'park', opts = F.style.frame || [];
+  const boughs = opts.filter(o => o.kind === 'bough'), clumps = opts.filter(o => o.kind !== 'bough' && o.kind !== 'fronds');
+  let sideOf = st.side[0] ? -1 : st.side[1] ? 1 : 0;
+  const added = [];
+  if (!st.side[0] || !st.side[1]) {
+    // the open sides of the near band: the first from the kit's best option that fits, then (when both were open) the other
+    // side with the next option that fits there, so an open foreground (water, a wide lawn) is held at both corners
+    const open = [-1, 1].filter(sd => !st.side[sd < 0 ? 0 : 1]), first = open.length === 2 ? (F.r() < 0.5 ? -1 : 1) : open[0];
+    const order = open.length === 2 ? [first, -first] : [first];
+    const want = open.length === 2 ? 2 : 0;
+    for (const sd of order) {
+      if (added.length >= want) break;
+      for (const opt of clumps) {
+        const got = _wflFrameClump(F, opt, sd);
+        if (got) { if (!sideOf) sideOf = sd; added.push(opt.kind); _wflLog(F, { id: got, action: 'frame', rule: 'C3', reason: `natural framing: ${opt.kind} at the ${sd < 0 ? 'left' : 'right'} of the near band (${F.styleKey})` }); break; }
+      }
+    }
   }
-  _wflLog(F, { action: 'frame', rule: 'C3', reason: 'no legal place for a framing element in the near band' });
+  // the top frame: a bough or fronds reaching in from a corner (a crown cut by the top edge frames its side; the bough then
+  // takes the other). Natural settings always want one; a town or city when its kit leads with a bough (a river, a park)
+  const wantBough = natural || (opts[0] && opts[0].kind === 'bough');
+  if (!st.topHang && (wantBough || !(st.side[0] || st.side[1] || added.length))) {
+    const first = st.topCrown ? -st.topCrown : sideOf || (F.r() < 0.5 ? -1 : 1);
+    outer2: for (const opt of boughs) for (const sd of [first, -first]) {
+      const got = _wflFrameBough(F, opt, sd);
+      if (got) { added.push('bough'); _wflLog(F, { id: got, action: 'frame', rule: 'C3', reason: `natural framing: a bough reaching in from the top ${sd < 0 ? 'left' : 'right'} corner, its trunk just outside the frame (${F.styleKey})` }); break outer2; }
+    }
+  }
+  const has = [st.top && 'top: ' + st.top, st.side[0] && 'left: ' + st.side[0], st.side[1] && 'right: ' + st.side[1]].filter(Boolean);
+  if (!added.length) _wflLog(F, { action: 'frame', rule: 'C3', reason: has.length ? `the view is already framed (${has.join('; ')})` : 'no legal place for a framing element in the near band' });
+  else if (has.length) _wflLog(F, { action: 'frame', rule: 'C3', reason: `kept: ${has.join('; ')}` });
 }
 /** A bough with its trunk just outside the frame on the same side (K4: the parent in frame or just outside, at a plausible height). */
 function _wflFrameBough(F, opt, s) {
@@ -771,9 +856,10 @@ function _wflFrameBough(F, opt, s) {
   // the bough reaches about a third of the way across the frame: its depth follows from its drawn width
   const reach = kbB.art ? Math.abs(kbB.art[2] - kbB.art[0]) : kbB.size.l;
   const zBase = Math.max(cam.dMin * 1.5, cam.f * reach / (0.36 * F.W));
-  for (const zb of [zBase, zBase * 0.8, zBase * 1.25, zBase * 1.6]) for (const out of [0.03, 0.09, 0.16]) {
-    // the trunk just outside the frame on the same side (within a sixth of the frame width), on legal ground
-    const zt = zb + 0.5, xt = _wflXAt(cam, s < 0 ? -out * F.W : (1 + out) * F.W, zt);
+  const thw = kt.art ? Math.max(Math.abs(kt.art[0]), Math.abs(kt.art[2])) : (kt.size.l || 1) / 2;
+  for (const zb of [zBase, zBase * 0.8, zBase * 1.25, zBase * 1.6]) for (const out of [0.01, 0.06, 0.12]) {
+    // the trunk wholly outside the frame on the same side (its near edge beyond the frame edge), on legal ground
+    const zt = zb + 0.5, hw = thw * cam.f / zt, xt = _wflXAt(cam, s < 0 ? -hw - out * F.W : F.W + hw + out * F.W, zt);
     const trunk = _wflTry(F, { obj: opt.trunk, x: xt, z: zt, facing: 90, auto: 'frame', rule: 'C3', why: 'framing trunk', framing: true, any: true, exact: true });
     if (!trunk) continue;
     // the bough's anchor is where it enters the frame, at the top corner (its art hangs below the anchor and reaches inwards)
@@ -791,22 +877,70 @@ function _wflFrameBough(F, opt, s) {
   }
   return null;
 }
-/** A clump (reeds, shrub, hedge, railing, lamp) at one side of the near band, on its own habitat. */
+/**
+ * A clump (reeds, shrub, hedge, railing, lamp, rock) at one side of the near band, on its own habitat. The search runs in SCREEN
+ * space over the bottom rows at that side (C3, N2: the frame must stand in the near band), on the ground and on every water
+ * level (reeds in the margin at a quay's foot stand on the water, lower on the screen than the bank), and keeps the size of a
+ * frame: a tenth to a third of the frame wide, never a wall in the lens's face.
+ */
 function _wflFrameClump(F, opt, s) {
   const cam = F.cam, kb = _wflKb(F, opt.obj);
   if (!kb) return null;
-  // sized to about a quarter of the frame width, standing at the side with half of it outside: a frame, never a wall
-  const zIdeal = Math.max(cam.dMin * 1.2, cam.f * (kb.size.l || 1) / (0.26 * F.W));
-  for (const z of [zIdeal, zIdeal * 0.8, zIdeal * 1.25, zIdeal * 1.6]) for (const at of [0.04, 0.1, 0.16]) {
-    const x = _wflXAt(cam, s < 0 ? at * F.W : (1 - at) * F.W, z);
-    const p = _wflProbe(F, x, z), or = worldKbOrient(kb, p);
+  const W = F.W, H = F.H, hz = cam.horizon, ix = _wflIndexOf(F), x0 = _wflNum(cam.x0) ? cam.x0 : W / 2;
+  const levels = [0].concat([...new Set(ix.waters.map(w => _wflNum(w.s.level) ? w.s.level : _wflNum(cam.water) ? cam.water : 0))].filter(l => l < -0.05));
+  const aquatic = kb.cls === 'reed' || (kb.habitat && Array.isArray(kb.habitat.on) && kb.habitat.on.includes('water-margin'));
+  const n = opt.kind === 'reeds' ? 5 : opt.kind === 'shrub' || opt.kind === 'hedge' || opt.kind === 'rock' ? 2 : 1;
+  for (const fy of [0.95, 0.86, 0.77, 0.68]) for (const fx of [0.04, 0.09, 0.15, 0.21]) for (const lvl of levels) {
+    if (lvl < 0 && !aquatic) continue;
+    const X = s < 0 ? fx * W : (1 - fx) * W, Y = hz + (H - hz) * fy;
+    if (!(Y > hz + 1)) continue;
+    let z = cam.f * (cam.eye - lvl) / (Y - hz), x = (X - x0) * z / cam.f;
+    if (!(z > Math.max(0.6, cam.dMin * 1.05))) continue;
+    let p = _wflProbe(F, x, z);
+    if (lvl < 0) {
+      // on the water at this level: step to its margin (within the shallows of the nearest bank)
+      if (p.kind !== 'water') continue;
+      const sh = _wflNum(p.shallow) ? p.shallow : 0.5;
+      if (_wflNum(p.bankDist) && p.bankDist > sh * 0.8 && _wflNum(p.toWater)) {
+        const a = p.toWater * Math.PI / 180, step = p.bankDist - sh * 0.5;
+        x += Math.sin(a) * step; z += Math.cos(a) * step;
+        p = _wflProbe(F, x, z);
+        if (p.kind !== 'water') continue;
+      }
+    } else if (p.kind === 'water') continue;
+    // the size of a frame at this depth
+    const wPx = cam.f * (kb.size.l || 1) / z, hPx = cam.f * kb.size.h0 / z;
+    if (wPx > 0.36 * W || hPx > 0.75 * H || hPx < 0.09 * H) continue;
+    const Xs = x0 + cam.f * x / z;
+    if (s < 0 ? Xs > 0.3 * W : Xs < 0.7 * W) continue;
+    const or = worldKbOrient(kb, p);
     if (opt.kind === 'railing' && !(_wflNum(p.bankDist) && p.bankDist <= 3 && p.kind !== 'water')) continue;   // a quay railing stands at the water
     const facing = _wflNum(or.facing) ? or.facing : (s < 0 ? 90 : 270);
-    const n = opt.kind === 'reeds' ? 4 : opt.kind === 'shrub' || opt.kind === 'hedge' ? 2 : 1;
-    const got = _wflClump(F, opt.obj, x, z, n, Math.max(0.4, kb.size.l * 0.35), { auto: 'frame', rule: 'C3', why: `framing ${opt.kind}`, framing: true, facing });
+    const got = _wflClump(F, opt.obj, x, z, n, Math.max(0.35, kb.size.l * 0.4), { auto: 'frame', rule: 'C3', why: `framing ${opt.kind}`, framing: true, facing });
     if (got.length) return got[0].id;
   }
   return null;
+}
+/**
+ * The near band must hold something standing (N2: no empty foreground), not only water or bare texture: while under a tenth of
+ * it is covered by things (look's strict worldDetailCoverage), add the kit's framing clumps at its sides (reeds in the margin at
+ * a quay's foot, a shrub, a lamp), wider of the corners each round. Logged; capped at four clumps.
+ */
+function _wflNearBand(F) {
+  if (typeof worldDetailCoverage !== 'function') return;
+  // the author's declared framing is the author's composition: kept as it is
+  if ((F.world.entities || []).some(e => e && !e.auto && (e.framing || e.framed))) return;
+  const clumps = (F.style.frame || []).filter(o => o.kind !== 'bough' && o.kind !== 'fronds');
+  if (!clumps.length) return;
+  let rec = worldDetailCoverage(F.world, F.cam, { W: F.W, H: F.H, cols: 48, rows: 27 }), n = 0;
+  const start = rec.near.object;
+  for (let round = 0; round < 6 && rec.near.object < 0.13; round++) {
+    const sd = round % 2 ? 1 : -1;
+    let got = null;
+    for (const opt of clumps) { got = _wflFrameClump(F, opt, sd); if (got) break; }
+    if (got) { n++; rec = worldDetailCoverage(F.world, F.cam, { W: F.W, H: F.H, cols: 48, rows: 27 }); }
+  }
+  if (n) _wflLog(F, { action: 'frame', rule: 'N2', reason: `the near band held ${Math.round(start * 100)} % standing things: ${n} framing clump(s) added at its sides (now ${Math.round(rec.near.object * 100)} %)` });
 }
 /** Remove an entity the fill has just added (a framing trunk whose bough found no place). */
 function _wflUndo(F, e) {
@@ -1075,7 +1209,7 @@ function worldFill(world, o) {
       log.push({ id: null, obj: null, action: 'default', rule: 'emptyBackground', reason: `backdrop '${style.backdrop}' from the place style '${styleKey}'`, by: 'kb' });
     }
     if (!state.edges) { _wflEdges(F); state.edges = true; }
-    if (!state.frame) { _wflFrame(F); state.frame = true; }
+    if (!state.frame) { _wflFrame(F); _wflNearBand(F); state.frame = true; }
     if (!fillOff && !state.fill) {
       const floor = o.floor || null, maxTier = o.maxTier || 5;
       let cov = _wflCoverage(F), rich = worldRichness(world, cam, { perennial: true, floor, W: F.W, H: F.H, box: false });
