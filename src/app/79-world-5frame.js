@@ -157,14 +157,17 @@ function _wfrWalkwayPersp(world, e, cam, o) {
     if (Q && inPoly(cx, cz, Q)) { cover = s; break; }
   }
   const y = cover ? (Number.isFinite(cover.y) ? cover.y : 0) : Number.isFinite(e.deck.y) ? e.deck.y : Number.isFinite(e.y) ? e.y : 0;
+  // the walkway's axis and half width; on a covering deck surface the rails stand on that deck's edges (never beside it on the water)
+  const A = sides[0], u = [(A.b[0] - A.a[0]) / A.L, (A.b[1] - A.a[1]) / A.L], nrm = [-u[1], u[0]], half = A.L / 2;
+  const w = Math.max(0.6, Math.abs((sides[1].a[0] - A.a[0]) * -u[1] + (sides[1].a[1] - A.a[1]) * u[0]));
+  const hw = cover && Number.isFinite(cover.width) && cover.width > 0.4 ? Math.min(w / 2, cover.width / 2 - 0.05) : w / 2;
   const prims = [];
-  sides.forEach((sd, i) => {
-    try { for (const p of worldExtrudeLine({ id: String(e.id != null ? e.id : e.obj) + ':rail' + i, kind: 'fence', path: [sd.a, sd.b], h: 1.05, y }, cam, { season: o.season }) || []) { p.walkway = true; prims.push(p); } } catch (err) { /* no rail */ }
+  [-1, 1].forEach((sg, i) => {
+    const path = [[cx - u[0] * half + nrm[0] * sg * hw, cz - u[1] * half + nrm[1] * sg * hw], [cx + u[0] * half + nrm[0] * sg * hw, cz + u[1] * half + nrm[1] * sg * hw]];
+    try { for (const p of worldExtrudeLine({ id: String(e.id != null ? e.id : e.obj) + ':rail' + i, kind: 'fence', path, h: 1.05, y }, cam, { season: o.season }) || []) { p.walkway = true; prims.push(p); } } catch (err) { /* no rail */ }
   });
   let deck = null;
   if (!cover) {
-    const A = sides[0], u = [(A.b[0] - A.a[0]) / A.L, (A.b[1] - A.a[1]) / A.L], half = A.L / 2;
-    const w = Math.max(0.6, Math.abs((sides[1].a[0] - A.a[0]) * -u[1] + (sides[1].a[1] - A.a[1]) * u[0]));
     const s = { id: String(e.id) + ':deck', kind: 'boardwalk', path: [[cx - u[0] * half, cz - u[1] * half], [cx + u[0] * half, cz + u[1] * half]], width: w, y };
     const scr = _wfrScrPoly(cam, P, y);
     if (scr) deck = { s, scr };
