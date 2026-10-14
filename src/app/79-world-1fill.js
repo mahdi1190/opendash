@@ -115,6 +115,13 @@ function _wflUnproject(cam, X, Y) {
 const _wflXAt = (cam, X, z) => (X - cam.x0) * z / cam.f;
 const _wflDims = (obj) => { const kb = worldKb(obj); if (kb && kb.size && _wflNum(kb.size.h0)) return { h: kb.size.h0, l: kb.size.l || 1, w: kb.size.w || 0.5 }; const r = typeof sceneObjReal === 'function' ? sceneObjReal(obj) : null; return r ? { h: r.h, l: r.l, w: r.w } : { h: 1, l: 1, w: 0.6 }; };
 /** The screen box [X0, Y0, X1, Y1] of an entity standing at its real size (look's worldEntityBox when loaded). */
+/** The overlap of two screen boxes [x0, y0, x1, y1] as a share of the smaller one's area. */
+function _wflBoxOverlap(a, b) {
+  const w = Math.min(a[2], b[2]) - Math.max(a[0], b[0]), h = Math.min(a[3], b[3]) - Math.max(a[1], b[1]);
+  if (!(w > 0 && h > 0)) return 0;
+  const A = Math.max(1e-6, Math.min((a[2] - a[0]) * (a[3] - a[1]), (b[2] - b[0]) * (b[3] - b[1])));
+  return w * h / A;
+}
 function _wflBox(F, e) {
   const kb = e && e.obj ? worldKb(e.obj) : null;
   if (kb && kb.hang && Array.isArray(kb.art)) {
@@ -146,7 +153,9 @@ function _wflIndexOf(F) {
 function _wflIndexEnt(ix, e) {
   if (!e || !Array.isArray(e.foot) || e.foot.length < 3 || e.backdrop) return;
   const a = String(e.attach || '');
-  if (/^(air|wall|deck)/.test(a)) return;
+  // things in the air or on a wall or deck leave the ground free; an 'air' object standing on the ground (a framing trunk the
+  // library classes as overhead art) still has its footprint there
+  if (/^(wall|deck)/.test(a) || (/^air/.test(a) && !(Math.abs(Number(e.y) || 0) < 0.3))) return;
   const sol = e.solidity;
   if (sol !== 'solid' && sol !== 'walkable' && sol !== 'overhead') return;
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
@@ -439,8 +448,10 @@ function _wflTry(F, c) {
   // people-like statics (picnics, cafe tables, sitters) are a few groups per view, never a crowd of statues (life is the crowd)
   const peopleLike = kb.cls === 'picnic' || kb.cls === 'cafe-table' || kb.cls === 'person';
   if (peopleLike && c.auto === 'fill' && (F.peopleStatics || 0) >= 8) return null;
-  // ... and never a giant at the lens (A10): no nearer than where their height fills 45 % of the frame
-  if (peopleLike && c.z < F.cam.f * Math.max(1.2, kb.size.h0 || 1.3) / 405) return null;
+  // ... and never a giant at the lens (A10): no nearer than where their height fills 45 % of the frame; the fill's own stand back
+  // further (a fifth of the frame at most: they are scenery, the walkers are the life) and apart (never a heap of rugs)
+  if (peopleLike && c.z < F.cam.f * Math.max(1.2, kb.size.h0 || 1.3) / (c.auto === 'fill' ? 0.2 * F.H : 405)) return null;
+  if (peopleLike && c.auto === 'fill' && (F.peopleSpots || []).some(p => Math.hypot(p[0] - c.x, p[1] - c.z) < 4 + 0.04 * c.z)) return null;
   // K6 things that come and go (flowers, lilies, leaf litter) only where the renderer hides them out of season
   if (!F.seasonal && kb.when && (kb.when.months || kb.when.dates || kb.when.weather)) return null;
   // C1, P8 (on screen)
@@ -450,6 +461,12 @@ function _wflTry(F, c) {
   if (_wflHidesLandmark(F, b, c.z)) return null;
   // N2: the vista down the leading line stays open, and the sky keeps its share (auto fill only; framing and edges are exempt)
   if (c.auto === 'fill' && !c.framing && _wflBlocksView(F, c, kb, b)) return null;
+  // a feature (a bandstand, a kiosk, a memorial: a structure) stands once in a view, never as a set
+  if (c.auto === 'fill' && kb.cls === 'structure' && F.world.entities.some(e => e && e.obj === c.obj && !e.backdrop)) return null;
+  // furniture never stacks on screen: a bench over a bench, a rug over a rug at a like depth reads as clutter (a bin behind a lamp,
+  // or one far behind the other, is a street in perspective)
+  const furn = c.auto === 'fill' && b && ['bench', 'street', 'lamp', 'post', 'cafe-table', 'picnic', 'umbrella'].includes(kb.cls);
+  if (furn && (F.furnBoxes || []).some(q => q.cls === kb.cls && q.z < c.z * 1.6 && c.z < q.z * 1.6 && _wflBoxOverlap(q, b) > 0.45)) return null;
   // spacing: no stacked clones; a 'single' (a log, a boulder, a bench) keeps its group gap from its own kind
   const G = kb.group || {}, sp = c.any ? 0 : Math.max(0.18, 0.42 * Math.min(kb.size.l || 0.5, 3) * (F.tier >= 3 ? 0.75 : 1), G.kind === 'single' && _wflNum(G.gap) ? Math.min(G.gap, 12) : 0);
   if (sp && !_wflSpacingOk(F, c.x, c.z, sp, c.obj)) return null;
@@ -459,7 +476,9 @@ function _wflTry(F, c) {
     probe = _wflProbe(F, c.x, c.z);
     const hp = c.pit ? Object.assign({}, probe, { pit: true }) : probe;
     if (!worldKbHabitatOk(kb, hp).ok) return null;
-    if (kb.foot === 'box' && (kb.size.l > 1.2 || kb.size.w > 1.2)) {
+    // a long thing, and anything in the water (reeds at a quay's foot: the invariant judges a floater's whole footprint)
+    const inWater = c.attach === 'water' || (probe.kind === 'water' && kb.floats);
+    if ((kb.foot === 'box' && (kb.size.l > 1.2 || kb.size.w > 1.2)) || inWater) {
       const corners = _wflFoot(kb, c.x, c.z, c.facing).map(q => { const pq = _wflProbe(F, q[0], q[1]); return c.pit ? Object.assign(pq, { pit: true }) : pq; });
       if (!worldKbHabitatOk(kb, corners).ok) return null;
     }
@@ -507,13 +526,14 @@ function _wflTry(F, c) {
   }
   F.ids.add(ent.id || id);
   F.count++;
-  if (peopleLike && c.auto === 'fill') F.peopleStatics = (F.peopleStatics || 0) + 1;
+  if (peopleLike && c.auto === 'fill') { F.peopleStatics = (F.peopleStatics || 0) + 1; (F.peopleSpots || (F.peopleSpots = [])).push([c.x, c.z]); }
   F.added.push(ent);
   if (sp) _wflSpacingAdd(F, ent.x, ent.z, sp, c.obj);
   _wflIndexEnt(_wflIndexOf(F), ent);
   _wflLandmarkMark(F, b, c.z);
   _wflViewMark(F, ent, kb);
   if (F.boxes) F.boxes.push(b);
+  if (furn) (F.furnBoxes || (F.furnBoxes = [])).push(Object.assign(b.slice(), { z: c.z, cls: kb.cls }));
   return ent;
 }
 /** The descriptor of a kit object, or null; a name the library does not have is logged once (kitMissing), never swapped. */
@@ -1137,7 +1157,9 @@ function _wflCoverPass(F, tier) {
     // an open lawn or beach: single things, no flower carpet (flowers stay seasonal accents)
     if (q.open) list = list.filter(([id]) => { const k = worldKb(id); return k && k.cls !== 'flower'; });
     if (tier >= 2 && band === 'mid') list = list.concat(spec.far || []);
-    if (_wflNum(spec.maxH) && band !== 'far' && band !== 'distant') list = list.filter(([id]) => { const k = worldKb(id); return k && k.size.h0 <= spec.maxH; });
+    // maxH: the tallest near and mid dressing (a number), or per band ({ near, mid }: a green's specimen trees stand in the middle distance)
+    const maxH = _wflNum(spec.maxH) ? (band !== 'far' && band !== 'distant' ? spec.maxH : null) : spec.maxH && _wflNum(spec.maxH[band]) ? spec.maxH[band] : null;
+    if (maxH != null) list = list.filter(([id]) => { const k = worldKb(id); return k && k.size.h0 <= maxH; });
     if (!list.length) { F.unfillable.add(q.surf ? q.surf.kind : 'ground'); continue; }
     // paving gets its sparse furniture once (_wflPaving), never a carpet of planters
     if (g === 'paving') { if (F.pavingDone) F.pavingCapped.add(q.surf ? q.surf.id : 'paving'); continue; }
@@ -1237,6 +1259,7 @@ function _wflPeople(F) {
   for (const [id, n] of bare) {
     if (n / Math.max(1, S.n) < 0.03 || F.lived.has(id)) continue;
     const s = (W.surfaces || []).find(q => q.id === id), paving = s && ['pavement', 'plaza', 'platform', 'driveway'].includes(s.kind), sand = s && ['sand', 'beach'].includes(s.kind);
+    if (_wflCarriesBuilding(W, s)) { _wflLog(F, { id: 'life:' + id, action: 'skip', rule: 'A2', reason: `no people on ${id}: a building stands on it (walkers would cross its walls)` }); continue; }
     const pick = (sand && K.sand) || (paving && K.paving) || K.walk || (city ? { who: 'crowd', rate: '8/min' } : { who: 'walkers', rate: '3/min', mix: { stroll: 0.55, brisk: 0.2, 'dog-walker': 0.25 } });
     const L = Object.assign({ who: pick.who, on: id, rate: pick.rate }, pick.mix ? { mix: Object.assign({}, pick.mix) } : {});
     L.auto = 'fill';
@@ -1246,6 +1269,17 @@ function _wflPeople(F) {
     F.lived.add(id);
     _wflLog(F, { id: 'life:' + id, action: 'fill', rule: 'C6', reason: `${L.who} on ${id} (${s ? s.kind : 'walk'}, ${Math.round(n / S.n * 100)} % of the frame bare): ${city ? 'paving' : 'a path'} is dressed by its people (the ${F.styleKey} kit)` });
   }
+}
+/** A polygon surface with a building standing on it (a footprint corner or centre inside it). */
+function _wflCarriesBuilding(W, s) {
+  if (!s || !Array.isArray(s.poly) || s.poly.length < 3) return false;
+  for (const b of Array.isArray(W.buildings) ? W.buildings : []) {
+    const P = b && Array.isArray(b.foot) ? b.foot.filter(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])) : [];
+    if (!P.length) continue;
+    const c = [P.reduce((a, p) => a + p[0], 0) / P.length, P.reduce((a, p) => a + p[1], 0) / P.length];
+    if (P.concat([c]).some(p => _wflInPoly(s.poly, p[0], p[1]))) return true;
+  }
+  return false;
 }
 /**
  * The life defaults of the kit (N3: no scene ships lifeless): water birds on the largest visible water with no swimmers, grazers
@@ -1266,7 +1300,7 @@ function _wflLife(F) {
   const opens = (W.surfaces || []).filter(s => s && ['grass', 'heath', 'field', 'meadow'].includes(s.kind) && visible(s) && area(s) > 600).sort((a, b) => area(b) - area(a));
   if (Array.isArray(K.graze) && opens.length && !life.some(L => layerOf(L) === 'graze')) for (const it of K.graze) add({ who: it.who, count: it.count, on: opens[0].id }, 'grazers on the open ground');
   if (Array.isArray(K.air) && !life.some(L => layerOf(L) === 'air')) for (const it of K.air) add({ who: it.who, count: it.count }, 'birds over the scene');
-  const pavs = (W.surfaces || []).filter(s => s && ['plaza', 'pavement'].includes(s.kind) && visible(s)).sort((a, b) => area(b) - area(a));
+  const pavs = (W.surfaces || []).filter(s => s && ['plaza', 'pavement'].includes(s.kind) && visible(s) && !_wflCarriesBuilding(W, s)).sort((a, b) => area(b) - area(a));
   if (Array.isArray(K.ground) && pavs.length && !life.some(L => L && /pigeon/.test(String(L.who)))) for (const it of K.ground) add({ who: it.who, count: it.count, on: pavs[0].id }, 'birds on the paving');
   void cam;
 }

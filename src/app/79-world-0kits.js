@@ -32,7 +32,7 @@
        undressed ground and bare paving the strict critic allows, and the least dressed near band: 0.15, 0.1 and 0.6 unless the
        setting is open by nature, a civic square),
        fill: { <group>: { near (z < 12 m: low dressing), mid (12-35 m), far (35-120 m: structured trees only), distant (beyond),
-               accents (seasonal and occasional), maxH (the tallest near and mid dressing), max (paving furniture per band) } },
+               accents (seasonal and occasional), maxH (the tallest near and mid dressing, or per band: { near, mid }), max (paving furniture per band) } },
        edges: { water: { <water kind>: 'natural' | 'urban' | 'quay' | 'none' }, natural: { margin, bank, stands }, quay: { top },
                 verge, vergeShare, hedgerow, wallBase, kerb, pavement },
        frame: [{ kind: 'bough', bough, trunk } | { kind: 'fronds', fronds, trunk } | { kind, obj }] (the framing options, best first),
@@ -154,9 +154,9 @@ const WORLD_STYLE_KITS = _wkbFreeze({
   // a village green: mown grass with chestnuts and oaks, benches and a lamp, the church and cottages behind (backdrop)
   'village-green': { label: 'village green', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.2, 0.5], layers: 5, bare: { ground: 0.3, paving: 0.1 },
     look: { grass: 'mown', path: 'gravel', paving: 'flags', quay: 'stone', bank: 'earth' },
-    fill: { grass: { near: _WKT_MOWN, mid: [['tree.horse-chestnut', 1], ['tree.green-chestnut', 1], ['tree.oak', 1], ['street.bench', 1], ['plant.rph-short-grass', 2]],
-      far: [['tree.green-chestnut', 2], ['tree.horse-chestnut', 1], ['tree.oak', 2], ['tree.green-oak', 1], ['tree.green-willow', 1], ['tree.plane-avenue', 1]], distant: _WKT_DISTANT_TOWN,
-      accents: [['plant.daisies', 3], ['ground.leaf-litter', 2], ['person.picnicker', 1]], maxH: 3.5 },
+    fill: { grass: { near: _WKT_MOWN, mid: [['tree.hawthorn', 2], ['tree.horse-chestnut', 1], ['tree.green-chestnut', 1], ['tree.oak', 1], ['street.bench', 1], ['plant.rph-short-grass', 2]],
+      far: [['tree.green-chestnut', 2], ['tree.horse-chestnut', 1], ['tree.oak', 2], ['tree.green-oak', 1], ['tree.plane-avenue', 1]], distant: _WKT_DISTANT_TOWN,
+      accents: [['plant.daisies', 3], ['ground.leaf-litter', 2], ['person.picnicker', 1]], maxH: { near: 3.5, mid: 30 } },
       paving: _WKT_PAVING, path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_CALM },
     edges: Object.assign({}, _WKT_EDGES_RURAL, { hedgerow: [['plant.hedge', 2], ['plant.towpath-hedge', 1]], verge: [['plant.rph-short-grass', 3], ['plant.grass', 2], ['plant.daisies', 1]], vergeShare: 0.35 }),
     frame: [_WKT_BOUGH_PARK, { kind: 'lamp', obj: 'street.lamp' }, { kind: 'shrub', obj: 'plant.hedge' }],
@@ -209,9 +209,9 @@ const WORLD_STYLE_KITS = _wkbFreeze({
   // a town park: lawns, flower borders, specimen chestnuts, planes and willows, benches and lamps on the paths
   park: { label: 'park', place: 'park', backdrop: 'town-low', ground: 'grass', sky: [0.25, 0.55], layers: 5, bare: { ground: 0.28, paving: 0.1 },
     look: { grass: 'mown', path: 'gravel', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'earth' },
-    fill: { grass: { near: _WKT_MOWN, mid: [['tree.hawthorn', 1], ['tree.green-willow', 1], ['tree.green-chestnut', 1], ['street.bench', 1], ['plant.rph-short-grass', 2]],
+    fill: { grass: { near: _WKT_MOWN, mid: [['tree.hawthorn', 2], ['tree.green-chestnut', 1], ['structure.shp-bandstand', 1], ['street.bench', 1], ['plant.rph-short-grass', 2]],
       far: [['tree.plane-avenue', 2], ['tree.horse-chestnut', 1], ['tree.green-oak', 2], ['tree.green-chestnut', 2], ['tree.oak', 1], ['tree.green-birch', 1], ['tree.pine-veteran', 1], ['tree.green-willow', 1]],
-      distant: _WKT_DISTANT_TOWN, accents: [['plant.daisies', 3], ['plant.shp-border', 1], ['ground.leaf-litter', 2], ['ground.petals', 1], ['person.picnicker', 1]], maxH: 3.5 },
+      distant: _WKT_DISTANT_TOWN, accents: [['plant.daisies', 3], ['plant.shp-border', 1], ['ground.leaf-litter', 2], ['ground.petals', 1], ['person.picnicker', 1]], maxH: { near: 3.5, mid: 30 } },
       heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, paving: _WKT_PAVING, path: _WKT_PATH, water: _WKT_CALM },
     edges: Object.assign({}, _WKT_EDGES_RURAL, { verge: [['plant.rph-short-grass', 3], ['plant.grass', 2], ['plant.daisies', 1]], vergeShare: 0.35 }), frame: [_WKT_BOUGH_PARK, { kind: 'lamp', obj: 'street.lamp' }, { kind: 'shrub', obj: 'plant.hedge' }],
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'walkers', rate: '6/min', mix: { stroll: 0.35, 'dog-walker': 0.2, jogger: 0.1, family: 0.15, elderly: 0.1, couple: 0.1 } }, water: _WKT_WATERFOWL } },
