@@ -326,7 +326,7 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'tree.us-redwood-snag': { leaf: 'none' },
   'tree.fpv-fallen-pine': { cls: 'rock', habitat: { on: ['soil', 'grass', 'wet', 'water-margin', 'water', 'bank'] }, perch: 'top', leaf: 'none' },
   'tree.shp-trunk': { framing: true, leaf: 'none' }, 'tree.fpv-alder-trunk': { framing: true },
-  'tree.wp-treeline': { framing: false }, 'ground.log': { solidity: 'solid', habitat: { on: ['soil', 'grass', 'wet', 'bank', 'heath', 'water-margin'] }, group: { kind: 'single', size: [1, 1], gap: 8 } },
+  'tree.wp-treeline': { framing: false }, 'ground.log': { solidity: 'solid', foot: 'box', habitat: { on: ['soil', 'grass', 'wet', 'bank', 'heath', 'water-margin'], avoid: ['walk', 'path', 'paving', 'water', 'road-lane', 'rail', 'tram'] }, group: { kind: 'single', size: [1, 1], gap: 8 } },
   'rock.boulder': { group: { kind: 'single', size: [1, 2], gap: 6 }, habitat: { on: ['soil', 'grass', 'heath', 'bank', 'stone', 'sand'] } },
   'water.edge': { habitat: { on: ['bank', 'water-margin', 'wet', 'soil', 'grass'] } }, 'water.chalk-stream': { habitat: { on: ['water', 'water-margin', 'wet'] } },
   'water.shc-jet': { cls: 'street', habitat: { on: ['water', 'paving'] }, solidity: 'passable' }, 'water.shc-bubbler': { cls: 'street', habitat: { on: ['water', 'paving'] }, solidity: 'passable' },

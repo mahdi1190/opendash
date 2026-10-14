@@ -268,6 +268,62 @@ function worldExtrudeLine(line, cam, o) {
 }
 
 /* ---------- buildings (Q3) ---------- */
+// terrace-like styles and their house frontage (metres): a long footprint of one of these is a ROW of houses, never one blank block
+const _WEX_TERRACE = Object.freeze({ 'victorian-terrace': [4.6, 6.2], edwardian: [5, 7], georgian: [6, 9], 'stone-cottage': [5, 7.5], 'norfolk-flint': [5, 7],
+  'semi-1930s': [7, 9], 'interwar-shops': [5, 7] });
+const _WEX_STREET = new Set(['road', 'pavement', 'path', 'plaza', 'towpath', 'water', 'crossing', 'cycleway', 'tramway', 'platform', 'boardwalk', 'track']);
+function _wexInSurf(s, x, z) {
+  if (Array.isArray(s.poly) && s.poly.length >= 3) { let c = false; const P = s.poly; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > z) !== (P[j][1] > z) && x < (P[j][0] - P[i][0]) * (z - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; }
+  if (Array.isArray(s.path) && s.path.length >= 2) { const hw = (Number(s.width) || 2) / 2; for (let i = 1; i < s.path.length; i++) { const a = s.path[i - 1], b = s.path[i], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz, t = L2 ? _wexClamp(((x - a[0]) * dx + (z - a[1]) * dz) / L2, 0, 1) : 0; if (Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz) <= hw) return true; } }
+  return false;
+}
+/** The footprint edge (input order) that faces the building's street (K3: buildings face their street), or null to leave it to
+    the generator (the edge most toward the camera). The street: the nearest road, pavement, path, square, towpath or water. */
+function _wexFrontOf(b, world, cam) {
+  const P = b.foot, S = (world && world.surfaces || []).filter(s => s && _WEX_STREET.has(s.kind));
+  if (!S.length || P.length < 3) return null;
+  let area = 0; for (let i = 0; i < P.length; i++) { const a = P[i], c = P[(i + 1) % P.length]; area += a[0] * c[1] - c[0] * a[1]; }
+  let best = null;
+  for (let i = 0; i < P.length; i++) {
+    const a = P[i], c = P[(i + 1) % P.length], ex = c[0] - a[0], ez = c[1] - a[1], L = Math.hypot(ex, ez) || 1;
+    const n = area > 0 ? [ez / L, -ex / L] : [-ez / L, ex / L], m = [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2];
+    let hit = null;
+    for (const k of [1.2, 3, 6, 11, 18, 26]) { if (S.some(s => _wexInSurf(s, m[0] + n[0] * k, m[1] + n[1] * k))) { hit = k; break; } }
+    if (hit == null) continue;
+    const seen = n[0] * -m[0] + n[1] * -m[1] > 0 ? 4 : 0, score = 30 - hit + seen + Math.min(L, 60) * 0.05;
+    if (!best || score > best.score) best = { i, score };
+  }
+  return best ? best.i : null;
+}
+/**
+ * A world building as the buildings the generator draws (Q3, K3): its front turned to its street when the spec gives none, and a
+ * long footprint of a terrace-like style (a street of terraces) cut into houses of the style's frontage along that front, each
+ * with its own seed (doors, colours, wear vary house to house), so a row reads as houses with doors and windows, never as one
+ * blank 90 m wall. Any other building is returned as it is (with its front). -> [building]
+ */
+function worldBuildingParts(b, world, cam) {
+  if (!b || !Array.isArray(b.foot) || b.foot.length < 3) return [b];
+  const fi = Number.isInteger(b.front) ? b.front : _wexFrontOf(b, world, cam);
+  const range = _WEX_TERRACE[b.style || 'victorian-terrace'];
+  if (fi == null) return [b];
+  if (b.foot.length !== 4 || !range) return [Object.assign({}, b, { front: fi })];
+  const n0 = b.foot.length, P = b.foot.slice(fi).concat(b.foot.slice(0, fi)).map(p => [p[0], p[1]]);
+  const L = Math.hypot(P[1][0] - P[0][0], P[1][1] - P[0][1]);
+  if (L <= range[1] * 1.6) return [Object.assign({}, b, { foot: P, front: 0 })];
+  const mean = (range[0] + range[1]) / 2, n = Math.max(2, Math.min(80, Math.round(L / mean))), seed0 = _wexHash(String(b.id || '') + JSON.stringify(b.foot));
+  // seeded house widths within the style's range, scaled to fill the frontage exactly
+  const w = []; for (let k = 0; k < n; k++) w.push(0.88 + 0.24 * ((_wexHash(seed0 + '|' + k) % 1000) / 1000));
+  const tot = w.reduce((a, v) => a + v, 0), lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t], out = [];
+  let t0 = 0;
+  for (let k = 0; k < n; k++) {
+    const t1 = k === n - 1 ? 1 : t0 + w[k] / tot;
+    out.push(Object.assign({}, b, { id: (b.id || 'building') + '#' + k, foot: [lerp(P[0], P[1], t0), lerp(P[0], P[1], t1), lerp(P[3], P[2], t1), lerp(P[3], P[2], t0)].map(p => [_wexR(p[0], 3), _wexR(p[1], 3)]),
+      front: 0, seed: (seed0 + k * 7919) % 100000, frontage: undefined, part: { of: b.id || null, k, n } }));
+    t0 = t1;
+  }
+  void n0;
+  return out;
+}
 /** A building through the v2 generator (see the header); a plain prism without it. */
 function worldExtrudeBuilding(b, cam, o) {
   o = o || {};
@@ -474,7 +530,11 @@ function worldExtrude(world, cam, o) {
   if (!world || !cam || !_wexNum(cam.f)) return [];
   const prims = [];
   for (const L of Array.isArray(world.lines) ? world.lines : []) { try { prims.push(...worldExtrudeLine(L, cam, o)); } catch (e) { /* one bad line never stops the rest (G8) */ } }
-  for (const b of Array.isArray(world.buildings) ? world.buildings : []) { try { const p = worldExtrudeBuilding(b, cam, o); if (p) prims.push(p); } catch (e) { /* G8 */ } }
+  for (const b0 of Array.isArray(world.buildings) ? world.buildings : []) {
+    let parts = [b0];
+    try { parts = worldBuildingParts(b0, world, cam); } catch (e) { parts = [b0]; }
+    for (const b of parts) { try { const p = worldExtrudeBuilding(b, cam, o); if (p) prims.push(p); } catch (e) { /* G8 */ } }
+  }
   if (o.hulls !== false) for (const e of Array.isArray(world.entities) ? world.entities : []) {
     if (!e || e.static === false || typeof e.obj !== 'string' || e.landmark) continue;
     let v = null;

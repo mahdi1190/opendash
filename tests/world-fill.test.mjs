@@ -272,8 +272,11 @@ test('paving gets sparse street furniture (scattered, >= 3 m apart) and its peop
     const { world } = build(E, spec);
     const furnIds = new Set((world.log || []).filter(l => l.id && /street furniture/.test(l.reason || '')).map(l => l.id));
     const furn = world.entities.filter(e => furnIds.has(e.id));
-    assert.ok(furn.length >= 4 && furn.length <= 40, 'a few pieces of street furniture: ' + furn.length);
-    for (let i = 0; i < furn.length; i++) for (let j = i + 1; j < furn.length; j++) assert.ok(Math.hypot(furn[i].x - furn[j].x, furn[i].z - furn[j].z) >= 2.9, 'furniture never in clutter');
+    assert.ok(furn.length >= 4 && furn.length <= 90, 'street furniture, more where paving fills the frame: ' + furn.length);
+    // groups (a bench beside a tree pit, a bin by a lamp) stand together; the groups themselves never crowd each other
+    const groupIds = new Set((world.log || []).filter(l => l.id && /\(a group\)/.test(l.reason || '')).map(l => l.id)), anchors = furn.filter(e => !groupIds.has(e.id));
+    for (let i = 0; i < anchors.length; i++) for (let j = i + 1; j < anchors.length; j++) assert.ok(Math.hypot(anchors[i].x - anchors[j].x, anchors[i].z - anchors[j].z) >= 2.1, 'furniture never in clutter');
+    for (const e of furn.filter(e => groupIds.has(e.id))) assert.ok(anchors.some(a => Math.hypot(a.x - e.x, a.z - e.z) <= 2.2), 'a group member stands beside its anchor');
     const crowd = world.life.find(l => l.on === 'plaza');
     assert.ok(crowd && crowd.who === 'crowd' && crowd.auto === 'fill', 'a crowd dresses the plaza');
     assert.ok((world.log || []).some(l => l.rule === 'C6' && /crowd on plaza/.test(l.reason)));

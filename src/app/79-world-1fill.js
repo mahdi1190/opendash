@@ -30,90 +30,21 @@
         maxAuto (1400), W (1600), H (900), overscan (0.18 of W each side) }.
    ============================================================ */
 
-/* ---------- styles ---------- */
+/* ---------- styles: built from the style kits (79-world-0kits.js; N1) ---------- */
 // score / near / mid / far: the frame-band floor (cover below the horizon, variety); box: the default target of the box measure
 // (worldRichness(...).box, the same measure as the tools' critic: a converted scene must reach its source's) by place kind
 const WORLD_RICHNESS_FLOOR = Object.freeze({ score: 62, near: Object.freeze({ cover: 0.7, variety: 2 }), mid: Object.freeze({ cover: 0.7, variety: 3 }), far: Object.freeze({ cover: 0.6, variety: 2 }),
   box: Object.freeze({ rural: 96, park: 96, town: 75, city: 66 }) });
-const _WFL_NEAR_Z = 12, _WFL_MID_Z = 35, _WFL_EDGE_ZMAX = 150, _WFL_FILL_ZMAX = 260;
-// lists are [object id, weight]; near: z < 12 m (low dressing only), mid: 12-35 m, far: beyond; accents are seasonal or
-// occasional (flowers in their months, leaf litter in autumn, stones, logs): richness, never coverage
-const _WFL_RURAL_GRASS = { near: [['plant.grass-long', 4], ['plant.yg-meadow', 4], ['plant.grass', 2], ['plant.fern', 1], ['plant.bracken', 1]],
-  mid: [['plant.yg-meadow', 3], ['plant.bracken', 2], ['plant.rph-hazel-coppice', 2], ['plant.shrub', 2], ['plant.fern', 1], ['tree.hawthorn', 1]],
-  far: [['tree.bank-oak', 3], ['tree.bank-alder', 2], ['tree.bank-birch', 2], ['tree.wyv-far-sallow', 1], ['tree.hawthorn', 1], ['plant.shrub', 1]],
-  accents: [['plant.wildflowers', 3], ['plant.daisies', 1], ['plant.bluebells', 1], ['ground.leaf-litter', 2], ['rock.stones', 1], ['ground.log', 1]] };
-const _WFL_HEATH = { near: [['ground.yc-heath-drift', 4], ['plant.heather', 3], ['plant.wyv-heath-bank', 2], ['plant.moor-heather', 2], ['plant.grass-long', 1]],
-  mid: [['plant.gorse', 3], ['plant.yc-gorse-spray', 2], ['plant.wyv-heath-bank', 2], ['plant.bracken', 2], ['tree.wyv-far-sallow', 1]],
-  far: [['tree.pool-birch', 3], ['tree.pine', 2], ['tree.pond-pine', 2], ['tree.bank-birch', 1], ['plant.gorse', 1]],
-  accents: [['plant.yc-cotton-grass', 1], ['rock.stones', 1], ['ground.log', 1], ['ground.puddle', 1]] };
-const _WFL_WOOD = { near: [['plant.fern', 3], ['plant.bracken', 2], ['plant.rph-woodland-sedge', 3], ['plant.grass-long', 2]],
-  mid: [['plant.rph-hazel-coppice', 3], ['plant.holly', 1], ['plant.shrub', 2], ['plant.fern', 1], ['plant.bracken', 1]],
-  far: [['tree.bank-oak', 3], ['tree.wyv-far-oak', 2], ['tree.pool-birch', 2], ['tree.bank-birch', 1], ['tree.bank-alder', 1]],
-  accents: [['plant.bluebells', 3], ['ground.leaf-litter', 3], ['ground.log', 2], ['plant.daisies', 1]] };
-const _WFL_FARM = { near: [['plant.grass-long', 4], ['plant.yg-meadow', 3], ['plant.grass', 3]],
-  mid: [['plant.yg-meadow', 2], ['plant.hedge', 2], ['plant.hedgerow-blackberry', 1], ['plant.shrub', 1]],
-  far: [['tree.bank-oak', 3], ['tree.hawthorn', 2], ['tree.bank-birch', 1], ['plant.hedge', 2]],
-  accents: [['plant.wildflowers', 3], ['plant.daisies', 1], ['ground.hay-bales', 1], ['rock.stones', 1]] };
-const _WFL_PARK_GRASS = { near: [['plant.grass', 4], ['plant.grass-long', 2], ['plant.yg-meadow', 1]], maxH: 3.5,
-  mid: [['plant.shrub', 2], ['plant.rph-church-shrub', 2], ['plant.holly', 1], ['plant.grass-long', 1]],
-  far: [['tree.plane', 2], ['tree.bank-oak', 2], ['tree.horse-chestnut', 1], ['tree.bank-birch', 1], ['plant.rph-church-shrub', 1]],
-  accents: [['plant.daisies', 3], ['plant.shp-border', 2], ['ground.leaf-litter', 2], ['ground.petals', 1]] };
-// city verges and banks stay low (grass and long grass, the odd buddleia): fill never hides a street front or a mill's ground floor
-const _WFL_CITY_GRASS = { near: [['plant.grass', 4], ['plant.grass-long', 2]], mid: [['plant.grass-long', 3], ['plant.grass', 2], ['plant.yg-meadow', 1]],
-  far: [['tree.mqn-street-tree', 3], ['tree.plane', 1], ['plant.grass-long', 2]], accents: [['plant.daisies', 2], ['ground.leaf-litter', 2], ['plant.mqn-buddleia', 1]], maxH: 1.3 };
-const _WFL_PAVING = { near: [['plant.planter', 2], ['street.mqn-bin', 1], ['plant.rph-flower-tub', 1]],
-  mid: [['street.mqn-planter-grass', 2], ['tree.mqn-street-tree', 2], ['street.mcr-cycle-stand', 1], ['street.bench', 1], ['street.lamppost', 1]],
-  far: [['tree.mqn-street-tree', 3], ['street.mqn-planter-grass', 1]], accents: [['ground.rph-paving-wear', 3], ['ground.leaf-litter', 2], ['ground.puddle', 1]], max: { near: 6, mid: 14, far: 12 } };
-const _WFL_PATH = { near: [], mid: [], far: [], accents: [['ground.leaf-litter', 3], ['ground.puddle', 1]] };
-const _WFL_SAND = { near: [['rock.stones', 2], ['plant.grass-long', 1]], mid: [['rock.boulder', 1], ['plant.grass-long', 1]], far: [['rock.boulder', 1]], accents: [['rock.stones', 1]] };
-const _WFL_WET = { near: [['plant.rph-woodland-sedge', 2], ['plant.proof-fleet-rush', 1]], mid: [['plant.yg-reedbed', 2], ['plant.proof-fleet-reed', 1]], far: [['plant.yg-reedbed', 1], ['tree.wyv-far-sallow', 1]], accents: [] };
-const _WFL_WATER_CALM = { calm: [['water.lily', 4], ['water.fish-ring', 1]], share: 0.3 };
-const _WFL_NATURAL_BANK = { margin: [['plant.proof-fleet-reed', 3], ['plant.reed', 3], ['plant.bulrush', 2], ['plant.proof-fleet-rush', 1]],
-  bank: [['plant.grass-long', 4], ['plant.rph-woodland-sedge', 2], ['plant.fern', 1], ['plant.canal-view-meadowsweet', 1], ['plant.canal-view-loosestrife', 1], ['rock.stones', 1]], stands: 0.5 };
-// the richness tier's pools by band (perennial only; habitat decides where each may stand): the variety of the corpus scenes
-const _WFL_RICH_RURAL = {
-  mid: [['tree.bank-oak', 2], ['tree.bank-alder', 2], ['tree.bank-birch', 2], ['tree.bank-willow', 1], ['tree.pool-birch', 2], ['tree.wyv-far-oak', 1], ['tree.wyv-far-sallow', 2],
-    ['tree.hawthorn', 2], ['tree.pond-pine', 1], ['plant.holly', 1], ['plant.rph-hazel-coppice', 2], ['plant.shrub', 2], ['plant.gorse', 1], ['plant.bracken', 2], ['plant.fern', 2],
-    ['plant.yg-meadow', 2], ['plant.grass-long', 2], ['plant.rph-woodland-sedge', 1], ['plant.wyv-heath-bank', 1], ['rock.boulder', 1], ['ground.log', 1], ['plant.reed', 1],
-    ['plant.bulrush', 1], ['plant.proof-fleet-reed', 1], ['plant.yg-reedbed', 1]],
-  far: [['tree.bank-oak', 3], ['tree.bank-alder', 2], ['tree.bank-birch', 2], ['tree.wyv-far-oak', 2], ['tree.far-broad', 2], ['tree.far-birch', 1], ['tree.far-pine', 1],
-    ['tree.bank-distant', 2], ['tree.pond-pine', 1], ['tree.pool-birch', 1], ['tree.hawthorn', 1], ['plant.shrub', 1], ['tree.woods-edge', 3], ['tree.distant', 2]] };
-const _WFL_RICH_CITY = {
-  mid: [['tree.mqn-street-tree', 3], ['tree.plane', 1], ['plant.grass-long', 2], ['plant.grass', 2], ['plant.mqn-buddleia', 1]],
-  far: [['tree.mqn-street-tree', 2], ['tree.plane', 2], ['tree.far-broad', 1]] };
-const _WFL_EDGES_RURAL = { water: { pond: 'natural', lake: 'natural', canal: 'natural', river: 'natural', sea: 'none', harbour: 'urban', puddle: 'none' }, natural: _WFL_NATURAL_BANK,
-  verge: [['plant.grass-long', 4], ['plant.grass', 3], ['plant.wildflowers', 1]], hedgerow: [['plant.hedgerow-blackberry', 3], ['plant.hedge', 2], ['tree.hawthorn', 1]],
-  wallBase: [['plant.grass', 3], ['plant.rph-woodland-sedge', 2], ['plant.fern', 1]], kerb: true, pavement: false };
-const _WFL_EDGES_URBAN = { water: { pond: 'natural', lake: 'natural', canal: 'urban', river: 'urban', sea: 'urban', harbour: 'urban', puddle: 'none' }, natural: _WFL_NATURAL_BANK,
-  verge: [['plant.grass', 3], ['plant.grass-long', 2], ['plant.daisies', 1]], vergeShare: 0.35, hedgerow: [], wallBase: [['plant.grass', 3], ['plant.mqn-buddleia', 1]], kerb: true, pavement: true };
-const _WFL_FRAME_WOOD = [{ kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.canal-view-bough' }, { kind: 'reeds', obj: 'plant.yg-reedbed' },
-  { kind: 'shrub', obj: 'plant.rph-hazel-coppice' }, { kind: 'hedge', obj: 'plant.towpath-hedge' }];
-const WORLD_FILL_STYLES = _wkbFreeze({
-  'canal-wooded': { backdrop: 'canal-wooded', place: 'park', ground: 'grass', fill: { grass: _WFL_RURAL_GRASS, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: _WFL_FRAME_WOOD },
-  pond: { backdrop: 'woodland', place: 'park', ground: 'grass', fill: { grass: _WFL_RURAL_GRASS, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'reeds', obj: 'plant.yg-reedbed' }, { kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.canal-view-bough' }, { kind: 'shrub', obj: 'plant.rph-hazel-coppice' }] },
-  woodland: { backdrop: 'woodland', place: 'rural', ground: 'wood', fill: { grass: _WFL_WOOD, wood: _WFL_WOOD, heath: _WFL_HEATH, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: _WFL_FRAME_WOOD },
-  heath: { backdrop: 'heath', place: 'rural', ground: 'heath', fill: { grass: _WFL_HEATH, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'shrub', obj: 'plant.yc-gorse-spray' }, { kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.canal-view-bough' }, { kind: 'reeds', obj: 'plant.yg-reedbed' }] },
-  downs: { backdrop: 'downs', place: 'rural', ground: 'field', fill: { grass: _WFL_FARM, field: _WFL_FARM, heath: _WFL_HEATH, wood: _WFL_WOOD, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'hedge', obj: 'plant.hedgerow-blackberry' }, { kind: 'shrub', obj: 'plant.shrub' }] },
-  farmland: { backdrop: 'farmland', place: 'rural', ground: 'field', fill: { grass: _WFL_FARM, field: _WFL_FARM, heath: _WFL_HEATH, wood: _WFL_WOOD, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'hedge', obj: 'plant.hedgerow-blackberry' }, { kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.canal-view-bough' }, { kind: 'shrub', obj: 'plant.shrub' }] },
-  coast: { backdrop: 'coast', place: 'rural', ground: 'sand', fill: { grass: _WFL_FARM, sand: _WFL_SAND, field: _WFL_FARM, heath: _WFL_HEATH, wood: _WFL_WOOD, wet: _WFL_WET, paving: _WFL_PAVING, path: _WFL_PATH, water: { calm: [], share: 0 } },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'shrub', obj: 'plant.gorse' }, { kind: 'railing', obj: 'structure.mqn-quayrail-v1' }] },
-  park: { backdrop: 'town-low', place: 'park', ground: 'grass', fill: { grass: _WFL_PARK_GRASS, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.shp-bough' }, { kind: 'shrub', obj: 'plant.rph-church-shrub' }, { kind: 'lamp', obj: 'street.lamp' }] },
-  'town-low': { backdrop: 'town-low', place: 'town', ground: 'grass', fill: { grass: _WFL_PARK_GRASS, paving: _WFL_PAVING, path: _WFL_PATH, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_URBAN, frame: [{ kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.shp-bough' }, { kind: 'lamp', obj: 'street.lamp' }, { kind: 'shrub', obj: 'plant.rph-church-shrub' }] },
-  'city-victorian': { backdrop: 'city-victorian', place: 'city', ground: 'grass', fill: { grass: _WFL_CITY_GRASS, paving: _WFL_PAVING, path: _WFL_PATH, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, water: { calm: [], share: 0 } },
-    edges: _WFL_EDGES_URBAN, frame: [{ kind: 'lamp', obj: 'street.lamppost' }, { kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.mcf-plane-bough' }] },
-  'city-sheffield-hills': { backdrop: 'city-sheffield-hills', place: 'city', ground: 'grass', fill: { grass: _WFL_CITY_GRASS, paving: _WFL_PAVING, path: _WFL_PATH, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, water: { calm: [], share: 0 } },
-    edges: _WFL_EDGES_URBAN, frame: [{ kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.klm-sycamore-bough' }, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'railing', obj: 'structure.mqn-quayrail-v1' }] },
-  'city-manchester-towers': { backdrop: 'city-manchester-towers', place: 'city', ground: 'grass', fill: { grass: _WFL_CITY_GRASS, paving: _WFL_PAVING, path: _WFL_PATH, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, water: { calm: [], share: 0 } },
-    edges: _WFL_EDGES_URBAN, frame: [{ kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.mcf-plane-bough' }] },
-});
+// bands: near z < 12 m (low dressing only), mid 12-35 m, far 35-120 m (structured trees only), distant beyond (dome trees allowed)
+const _WFL_NEAR_Z = 12, _WFL_MID_Z = 35, _WFL_FAR_Z = 120, _WFL_EDGE_ZMAX = 150, _WFL_FILL_ZMAX = 260;
+// every kit and every legacy style name (canal-wooded, city-victorian ...) as a fill style: what dresses each surface (near / mid
+// / far / distant / seasonal accents), the edges, the framing options, the richness pools, the default life and backdrop
+const WORLD_FILL_STYLES = (() => {
+  const out = {};
+  if (typeof WORLD_STYLE_KITS !== 'object' || !WORLD_STYLE_KITS) return Object.freeze(out);
+  for (const k of Object.keys(WORLD_STYLE_KITS).concat(Object.keys(WORLD_KIT_ALIAS))) { const st = worldKitFillStyle(k); if (st) out[k] = st; }
+  return _wkbFreeze(out);
+})();
 // surface kind -> fill group
 const _WFL_GROUP = { grass: 'grass', lawn: 'grass', park: 'grass', verge: 'grass', garden: 'grass', meadow: 'grass', bank: 'grass', ground: null,
   heath: 'heath', field: 'field', wood: 'wood', sand: 'sand', beach: 'sand', shingle: 'sand', pavement: 'paving', plaza: 'paving', platform: 'paving', driveway: 'paving',
@@ -129,8 +60,10 @@ function _wflRng(seed) {
   let a = _wkbHash(seed) || 1;
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
-function _wflPick(list, r) {
+function _wflPick(list, r, seen) {
   if (!Array.isArray(list) || !list.length) return null;
+  // seen (a Map id -> count): favour kinds not placed yet, damp kinds placed many times (variety, P7)
+  if (seen instanceof Map) list = list.map(([id, w]) => [id, w * (seen.has(id) ? 1 / (1 + seen.get(id) / 3) : 2)]);
   let tot = 0; for (const [, w] of list) tot += Math.max(0, w);
   if (!(tot > 0)) return null;
   let u = r() * tot;
@@ -302,6 +235,81 @@ function _wflProbe(F, x, z) {
   return p;
 }
 
+/* ---------- N2: the vista and the sky ---------- */
+const _WFL_SKY_C = 40, _WFL_SKY_R = 16, _WFL_VISTA_MAX = 0.35;
+/** The silhouette cells an entity covers on a grid over a screen rectangle [X0, Y0, X1, Y1] (look's worldArtMask; else its box). */
+function _wflCells(F, e, kb, rect, C, R, fn) {
+  const b = _wflBox(F, e), cw = (rect[2] - rect[0]) / C, ch = (rect[3] - rect[1]) / R;
+  if (!(cw > 0 && ch > 0) || b[2] < rect[0] || b[0] > rect[2] || b[3] < rect[1] || b[1] > rect[3]) return;
+  const mask = typeof worldArtMask === 'function' ? worldArtMask(e.obj, e.variant, F.world.season || 'summer') : null;
+  const i0 = Math.max(0, Math.floor((b[0] - rect[0]) / cw)), i1 = Math.min(C - 1, Math.floor((b[2] - rect[0]) / cw)), j0 = Math.max(0, Math.floor((b[1] - rect[1]) / ch)), j1 = Math.min(R - 1, Math.floor((b[3] - rect[1]) / ch));
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    if (mask) {
+      const u = ((rect[0] + (i + 0.5) * cw) - b[0]) / Math.max(1e-6, b[2] - b[0]), v = ((rect[1] + (j + 0.5) * ch) - b[1]) / Math.max(1e-6, b[3] - b[1]);
+      const flip = _wflNum(e.facing) && e.facing > 180 && e.facing < 360, gi = Math.floor((flip ? 1 - u : u) * mask.n), gj = Math.floor(v * mask.n);
+      if (gi < 0 || gj < 0 || gi >= mask.n || gj >= mask.n || !mask.grid[gj * mask.n + gi]) continue;
+    }
+    fn(j * C + i);
+  }
+}
+/**
+ * The view the fill must keep (N2): the VISTA, the screen area where the main leading lines (the walks and waters running away
+ * from the camera) meet the horizon, and the SKY above the horizon down to the kit's minimum share. Both are grids marked by
+ * what stands there (silhouettes), the author's things and the backdrop first.
+ */
+function _wflViewInit(F) {
+  const cam = F.cam, hz = cam.horizon, W = F.W, H = F.H, ix = _wflIndexOf(F), x0 = _wflNum(cam.x0) ? cam.x0 : W / 2;
+  // the leading lines: walk and water surfaces that reach from the lower frame to beyond 60 m
+  const pts = [];
+  for (const sf of ix.waters.map(w => w.s).concat(ix.walks)) {
+    const P = Array.isArray(sf.path) ? sf.path : Array.isArray(sf.poly) ? sf.poly : null;
+    if (!P || P.length < 2) continue;
+    const zs = P.map(p => p[1]);
+    if (!(Math.min(...zs) < 15 && Math.max(...zs) > 60)) continue;
+    for (let z = 60; z <= Math.min(180, Math.max(...zs)); z += 15) {
+      let xs = [];
+      if (Array.isArray(sf.path)) { const near = _wflNear(sf.path, 0, z, false); for (let x = -400; x <= 400; x += 2) if (_wflContains(sf, x, z)) xs.push(x); void near; }
+      else for (let x = -400; x <= 400; x += 2) if (_wflInPoly(sf.poly, x, z)) xs.push(x);
+      if (xs.length) { pts.push(x0 + cam.f * Math.min(...xs) / z, x0 + cam.f * Math.max(...xs) / z); }
+    }
+  }
+  F.vista = null;
+  if (pts.length >= 2) {
+    // the vanishing area: centred on the far leading lines, never wider than a third of the frame (the sides stay the fill's)
+    const mid = pts.slice().sort((a, b) => a - b)[Math.floor(pts.length / 2)], half = Math.min(W / 6, (Math.max(...pts) - Math.min(...pts)) / 2 + 0.04 * W);
+    const X0 = Math.max(0, mid - half), X1 = Math.min(W, mid + half);
+    if (X1 - X0 > 0.04 * W) F.vista = { rect: [X0, Math.max(0, hz - 0.22 * H), X1, Math.min(H, hz + 0.05 * (H - hz))], cells: new Uint8Array(16 * 8), n: 0 };
+  }
+  // the sky: the frame above the horizon; its minimum share from the kit (N2), never below 85 % of what the author left
+  F.sky = hz > 2 ? { rect: [0, 0, W, hz], cells: new Uint8Array(_WFL_SKY_C * _WFL_SKY_R), n: 0, min: 0 } : null;
+  for (const e of F.world.entities || []) if (e && e.obj && !e.backdrop) { const kb = worldKb(e.obj); if (kb) _wflViewMark(F, e, kb, true); }
+  for (const e of _wflBackdrop(F.world, cam)) if (e && e.obj) _wflViewMark(F, e, worldKb(e.obj) || {}, true);
+  if (F.sky) {
+    const free = 1 - F.sky.n / F.sky.cells.length, want = Array.isArray(F.style.sky) ? F.style.sky[0] : 0.2;
+    // the minimum free share of the sky area: the kit's frame share as a share of the area above the horizon
+    F.sky.min = Math.min(free * 0.85, Math.max(0.05, want * H / hz));
+  }
+}
+function _wflViewMark(F, e, kb, init) {
+  if (!e || !e.obj || !kb) return;
+  if (F.vista && (init || e.z < 260)) _wflCells(F, e, kb, F.vista.rect, 16, 8, k => { if (!F.vista.cells[k]) { F.vista.cells[k] = 1; F.vista.n++; } });
+  if (F.sky) _wflCells(F, e, kb, F.sky.rect, _WFL_SKY_C, _WFL_SKY_R, k => { if (!F.sky.cells[k]) { F.sky.cells[k] = 1; F.sky.n++; } });
+}
+/** Would this auto item close the vista (more than 35 % of it covered) or take the sky below its minimum? */
+function _wflBlocksView(F, c, kb, b) {
+  if (!kb || !(kb.size.h0 >= 1.8)) return false;
+  const e = { obj: c.obj, x: c.x, z: c.z, y: c.y, variant: c.variant };
+  if (F.vista) {
+    let add = 0; _wflCells(F, e, kb, F.vista.rect, 16, 8, k => { if (!F.vista.cells[k]) add++; });
+    if (add && (F.vista.n + add) / F.vista.cells.length > _WFL_VISTA_MAX) return true;
+  }
+  if (F.sky && b[1] < F.cam.horizon) {
+    let add = 0; _wflCells(F, e, kb, F.sky.rect, _WFL_SKY_C, _WFL_SKY_R, k => { if (!F.sky.cells[k]) add++; });
+    if (add && 1 - (F.sky.n + add) / F.sky.cells.length < F.sky.min) return true;
+  }
+  return false;
+}
+
 /* ---------- placement ---------- */
 /** Does a candidate circle (x, z, r) hit a solid or walkable footprint (P2)? */
 function _wflHits(F, x, z, r, solidOnly) {
@@ -420,11 +428,19 @@ function _wflMake(F, c, kb, probe) {
  */
 function _wflTry(F, c) {
   if (F.count >= F.maxAuto) return null;
-  const kb = worldKb(c.obj);
-  if (!kb || !(c.z > 0.5) || !_wflNum(c.x)) return null;
+  if (!(c.z > 0.5) || !_wflNum(c.x) || typeof c.obj !== 'string') return null;
   if (F.bad.has(c.obj)) return null;
+  // a kit entry for an object the library does not have is skipped and logged ONCE, never replaced by a weaker stand-in
+  // (worldKitCheck and the kit tests fail loudly on it)
+  const kb = _wflKb(F, c.obj);
+  if (!kb) return null;
   if (!kb.care.ok || !worldKbRegionOk(kb, F.world.place).ok) { F.bad.add(c.obj); return null; }
   const air = c.attach === 'air';
+  // people-like statics (picnics, cafe tables, sitters) are a few groups per view, never a crowd of statues (life is the crowd)
+  const peopleLike = kb.cls === 'picnic' || kb.cls === 'cafe-table' || kb.cls === 'person';
+  if (peopleLike && c.auto === 'fill' && (F.peopleStatics || 0) >= 8) return null;
+  // ... and never a giant at the lens (A10): no nearer than where their height fills 45 % of the frame
+  if (peopleLike && c.z < F.cam.f * Math.max(1.2, kb.size.h0 || 1.3) / 405) return null;
   // K6 things that come and go (flowers, lilies, leaf litter) only where the renderer hides them out of season
   if (!F.seasonal && kb.when && (kb.when.months || kb.when.dates || kb.when.weather)) return null;
   // C1, P8 (on screen)
@@ -432,6 +448,8 @@ function _wflTry(F, c) {
   const b = _wflBox(F, ent0);
   if (!c.framing && _wflCut(F, b)) return null;
   if (_wflHidesLandmark(F, b, c.z)) return null;
+  // N2: the vista down the leading line stays open, and the sky keeps its share (auto fill only; framing and edges are exempt)
+  if (c.auto === 'fill' && !c.framing && _wflBlocksView(F, c, kb, b)) return null;
   // spacing: no stacked clones; a 'single' (a log, a boulder, a bench) keeps its group gap from its own kind
   const G = kb.group || {}, sp = c.any ? 0 : Math.max(0.18, 0.42 * Math.min(kb.size.l || 0.5, 3) * (F.tier >= 3 ? 0.75 : 1), G.kind === 'single' && _wflNum(G.gap) ? Math.min(G.gap, 12) : 0);
   if (sp && !_wflSpacingOk(F, c.x, c.z, sp, c.obj)) return null;
@@ -446,7 +464,15 @@ function _wflTry(F, c) {
       if (!worldKbHabitatOk(kb, corners).ok) return null;
     }
     if (_wflNum(probe.pathDist) && probe.pathDist < 0.6 + (kb.r || 0.1) + 0.05) return null;
-    if (probe.surfId && F.lived.has(probe.surfId) && _WFL_WALK.has(probe.kind)) return null;
+    // nothing on a lived walk strip; a lived square takes furniture (people walk round it)
+    if (probe.surfId && F.lived.has(probe.surfId) && _WFL_WALK.has(probe.kind)) {
+      const ls = (F.world.surfaces || []).find(q => q && q.id === probe.surfId);
+      const pavingStrip = ls && Array.isArray(ls.path) && _WFL_GROUP[ls.kind] === 'paving';
+      if (!ls || (Array.isArray(ls.path) && !pavingStrip) || !(c.why && /paving|street furniture|frame/.test(c.why))) return null;
+    }
+    // a lived walk keeps its whole width: nothing's footprint (not just its anchor) reaches onto it (P3)
+    const furniture = !!(c.why && /paving|street furniture|frame/.test(c.why));
+    if (_wflLivedWalkDist(F, c.x, c.z, furniture) < Math.max(0.12, kb.r || 0.1)) return null;
     const r = kb.solidity === 'solid' ? (kb.r || 0.2) + (kb.clearance || 0) * 0.5 : Math.min(kb.r || 0.2, 0.3);
     if (_wflHits(F, c.x, c.z, r, false)) return null;
     // a long solid (a hedge, a log, a bench, a planter): its whole footprint, not just a disc round its anchor
@@ -481,17 +507,39 @@ function _wflTry(F, c) {
   }
   F.ids.add(ent.id || id);
   F.count++;
+  if (peopleLike && c.auto === 'fill') F.peopleStatics = (F.peopleStatics || 0) + 1;
   F.added.push(ent);
   if (sp) _wflSpacingAdd(F, ent.x, ent.z, sp, c.obj);
   _wflIndexEnt(_wflIndexOf(F), ent);
   _wflLandmarkMark(F, b, c.z);
+  _wflViewMark(F, ent, kb);
   if (F.boxes) F.boxes.push(b);
   return ent;
+}
+/** The descriptor of a kit object, or null; a name the library does not have is logged once (kitMissing), never swapped. */
+function _wflKb(F, id) {
+  if (typeof id !== 'string' || !id) return null;
+  const kb = worldKb(id);
+  if (kb && kb.object !== false && kb.size && kb.size.h0 > 0) return kb;
+  if (!F.bad.has(id)) { F.bad.add(id); _wflLog(F, { obj: id, action: 'fill', rule: 'kitMissing', reason: `the kit names ${id}, which is not a library object: skipped (no stand-in); fix the kit (worldKitCheck)` }); }
+  return null;
+}
+/** The distance from (x, z) to the nearest lived walk strip (a population walks it): <= 0 inside it, Infinity with none. */
+function _wflLivedWalkDist(F, x, z, furniture) {
+  let d = Infinity;
+  for (const s of _wflIndexOf(F).walks) {
+    if (!F.lived.has(s.id)) continue;
+    // a pavement's furniture stands in its kerb and building-line bands (its walking line stays clear, P3)
+    if (furniture && _WFL_GROUP[s.kind] === 'paving') continue;
+    // a lived walk STRIP (a path, a towpath, a pavement) is walked along its width; a lived square is walked round what stands on it
+    if (Array.isArray(s.path) && s.width > 0) d = Math.min(d, _wflNear(s.path, x, z, false).d - s.width / 2);
+  }
+  return d;
 }
 function _wflId(F, auto) { let id; do { id = `${auto || 'fill'}-${F.seq++}`; } while (F.ids.has(id)); return id; }
 /** A clump of 1..n members of one object round (x, z) (K5: clumps with gaps, stands; never rows). */
 function _wflClump(F, obj, x, z, n, spread, c) {
-  const kb = worldKb(obj); if (!kb) return [];
+  const kb = _wflKb(F, obj); if (!kb) return [];
   const out = [], r = F.r, l = kb.size.l || 0.5;
   for (let i = 0, tries = 0; i < n && tries < n * 4; tries++) {
     const a = r() * Math.PI * 2, d = i === 0 ? 0 : spread * Math.sqrt(-2 * Math.log(Math.max(1e-6, r()))) * 0.55;
@@ -554,6 +602,15 @@ function _wflBackdrop(world, cam) {
 /** The official coverage (look's worldCoverage) over the perennial entities; the fill's own sampler without look. */
 function _wflCoverage(F) {
   const world = F.world, view = Object.assign({}, world, { entities: (world.entities || []).filter(_wflPerennial) }), bd = _wflBackdrop(view, F.cam);
+  // the STRICT measure when look has it (what the eye sees: silhouettes, textured versus dressed ground): the fill stops when
+  // the strict critic would pass the ground (<= 15 % undressed, no ninth over 55 %), never on the lenient box measure
+  if (typeof worldDetailCoverage === 'function') {
+    try {
+      const r = worldDetailCoverage(view, F.cam, { backdrop: bd, W: F.W, H: F.H, debug: true });
+      const bmax = Math.max(0.15, (F.style.bare && F.style.bare.ground) || 0);
+      if (r && _wflNum(r.bare) && r.grid) return { bare: r.bare, sky: r.sky, ok: r.bare <= bmax && r.regions.every(q => q.bare <= 0.55), regions: r.regions, by: 'strict', rec: r };
+    } catch (e) { /* the plain measure */ }
+  }
   if (typeof worldCoverage === 'function') {
     try { const r = worldCoverage(view, F.cam, { backdrop: bd, W: F.W, H: F.H }); if (r && _wflNum(r.bare)) return { bare: r.bare, sky: _wflNum(r.sky) ? r.sky : 0, ok: !!r.ok, regions: r.regions || [], by: 'look' }; } catch (e) { /* own */ }
   }
@@ -608,24 +665,40 @@ function worldRichness(world, cam, o) {
 
 /* ---------- the style ---------- */
 /**
- * The fill style of a world: the place's own style (place.style, or o.style when it is not just the backdrop's), else what its
- * surfaces say (a city or town backdrop with paving, heath, fields, a canal, a pond or lake, the sea), else the backdrop style,
- * else 'park'.
+ * The fill style (the KIT) of a world: the place's own style (place.style: a kit id or a legacy style name, or o.style when it
+ * is not just the backdrop's), else what its surfaces say. Urban (roads, pavements, plazas, tramways): a river or canal between
+ * them is a river city, a harbour or the sea a quayside, a plaza larger than the pavements a civic square, a road with pavements
+ * or buildings a terraced street, else a village green. Country: heath (a moor when the backdrop or the place says so), fields
+ * (downs or farmland), the sea (coast), a canal or river (canal), a pond or lake (pond), woodland, sand (coast), else the
+ * backdrop's kit, else a park.
  */
 function worldFillStyle(world, o) {
   try {
     const bd = world && world.backdrop && world.backdrop.style, ps = world && world.place && world.place.style;
     const own = ps || (o && o.style && o.style !== bd ? o.style : null);
     if (own && WORLD_FILL_STYLES[own]) return own;
-    const S = (world && world.surfaces) || [], has = k => S.some(s => s && s.kind === k), water = S.find(s => s && s.kind === 'water');
-    const urban = has('road') || has('pavement') || has('plaza') || has('tramway');
-    if (urban) return bd && WORLD_FILL_STYLES[bd] && WORLD_FILL_STYLES[bd].place !== 'rural' && bd !== 'canal-wooded' ? bd : S.filter(s => ['pavement', 'plaza', 'road'].includes(s.kind)).length >= 3 ? 'city-victorian' : 'town-low';
-    if (has('heath')) return 'heath';
+    const S = ((world && world.surfaces) || []).filter(s => s && !s.auto), has = k => S.some(s => s.kind === k), waters = S.filter(s => s.kind === 'water');
+    const wk = (...k) => waters.some(w => k.includes(w.water)), area = (s) => {
+      if (Array.isArray(s.poly)) { let A = 0; for (let i = 0, j = s.poly.length - 1; i < s.poly.length; j = i++) A += (s.poly[j][0] + s.poly[i][0]) * (s.poly[j][1] - s.poly[i][1]); return Math.abs(A / 2); }
+      if (Array.isArray(s.path)) { let L = 0; for (let i = 1; i < s.path.length; i++) L += Math.hypot(s.path[i][0] - s.path[i - 1][0], s.path[i][1] - s.path[i - 1][1]); return L * (s.width || 2); }
+      return 0;
+    };
+    const sum = (k) => S.filter(s => s.kind === k).reduce((t, s) => t + area(s), 0);
+    const urban = has('road') || has('pavement') || has('plaza') || has('tramway') || has('platform') || /^(city|town)/.test(String(bd || ''));
+    if (urban) {
+      if (wk('river', 'canal')) return 'river-city';
+      if (wk('harbour', 'sea')) return 'quayside';
+      if (has('plaza') && sum('plaza') >= sum('pavement')) return 'civic-square';
+      if (has('road') && (has('pavement') || ((world && world.buildings) || []).length)) return 'terraced-street';
+      return 'village-green';
+    }
+    if (has('heath')) return /moor|peak|gritstone/.test(String((world.place && (world.place.region || world.place.type)) || '') + String(bd || '')) ? 'moor' : 'heath';
     if (has('field')) return bd === 'downs' ? 'downs' : 'farmland';
-    if (water && (water.water === 'sea' || water.water === 'harbour')) return 'coast';
-    if (water && (water.water === 'canal' || water.water === 'river')) return bd === 'woodland' ? 'woodland' : 'canal-wooded';
-    if (water) return 'pond';
+    if (wk('sea', 'harbour')) return 'coast';
+    if (wk('canal', 'river')) return bd === 'woodland' ? 'woodland' : 'canal';
+    if (waters.length) return 'pond';
     if (has('wood')) return 'woodland';
+    if (has('sand') || has('beach') || has('shingle')) return 'coast';
     return bd && WORLD_FILL_STYLES[bd] ? bd : 'park';
   } catch (e) { return 'park'; }
 }
@@ -667,8 +740,25 @@ function _wflEdges(F) {
         if (!_wflVisible(F, p[0], p[1], 4)) { flush(); return; }
         const land = _wflProbe(F, p[0] + out[0] * 1.2, p[1] + out[1] * 1.2);
         if (land.kind === 'water' || land.kind === 'weir') { flush(); return; }
-        const hardBank = mode === 'urban' || _WFL_WALK.has(land.kind) || (land.tags || []).includes('paving') || land.walkDist <= 1.0 || !!_wflHits(F, p[0] + out[0] * 1.2, p[1] + out[1] * 1.2, 0.3, true);
-        if (hardBank) { if (mode === 'urban' && E.kerb !== false) hard.push([_wflR2(p[0]), _wflR2(p[1])]); else flush(); return; }
+        const walled = mode === 'urban' || mode === 'quay';
+        const hardBank = walled || _WFL_WALK.has(land.kind) || (land.tags || []).includes('paving') || land.walkDist <= 1.0 || !!_wflHits(F, p[0] + out[0] * 1.2, p[1] + out[1] * 1.2, 0.3, true);
+        if (hardBank) {
+          if (walled && E.kerb !== false) hard.push([_wflR2(p[0]), _wflR2(p[1])]); else flush();
+          // a quay's posts: bollards and lifebuoys along the edge, seeded at mooring intervals (never in a row: K5)
+          if (mode === 'quay' && E.quay && Array.isArray(E.quay.posts) && E.quay.posts.length) {
+            F.postLeft = (F.postLeft == null ? 2 + r() * 6 : F.postLeft) - step;
+            if (F.postLeft <= 0) {
+              F.postLeft = 6 + r() * 9;
+              _wflTry(F, { obj: _wflPick(E.quay.posts, r), x: p[0] + out[0] * 0.45, z: p[1] + out[1] * 0.45, auto: 'edge', rule: 'P5', why: `${w.s.water || 'water'} quay: mooring post` });
+            }
+          }
+          // a quay's top: low tufts and the odd buddleia in the joints behind the coping (the wall face is the ground detail's)
+          if (mode === 'quay' && E.quay && Array.isArray(E.quay.top) && E.quay.top.length && r() < 0.3) {
+            const off = 0.45 + r() * 0.8;
+            _wflTry(F, { obj: _wflPick(E.quay.top, r), x: p[0] + out[0] * off + t[0] * (r() - 0.5) * step, z: p[1] + out[1] * off + t[1] * (r() - 0.5) * step, auto: 'edge', rule: 'P5', why: `${w.s.water || 'water'} quay top` });
+          }
+          return;
+        }
         flush();
         left -= step;
         if (left <= 0) { state = state === 'stand' ? 'gap' : 'stand'; left = state === 'stand' ? 2 + r() * 4.5 : 1.5 + r() * 8 * (1 - (E.natural.stands || 0.5)); if (state === 'stand') stObj = _wflPick(E.natural.margin, r); }
@@ -779,47 +869,124 @@ function _wflLine(F, kind, pts, of) {
   _wflLog(F, { id, action: 'dress', rule: 'P5', reason: `${kind} along ${of}` });
 }
 
-/* ---------- C3: framing ---------- */
-const _WFL_FRAME_CLS = new Set(['bough', 'frond', 'hedge', 'fence', 'lamp', 'reed', 'shrub', 'tree', 'post', 'signage']);
-/** Does the near band already have a framing element (the author's, or a stand of reeds at one side)? -> a description or null. */
-function _wflHasFrame(F) {
-  const side = [0, 0], what = [null, null];
+/* ---------- C3, N2: framing ---------- */
+const _WFL_FRAME_CLS = new Set(['bough', 'frond', 'hedge', 'fence', 'lamp', 'reed', 'shrub', 'tree', 'post', 'signage', 'rock', 'street', 'structure', 'building', 'bench']);
+/** The screen box of a building or a linear feature of the world (extruded: a footprint and a height), or null. */
+function _wflPrimBox(F, foot, h) {
+  const cam = F.cam, near = Math.max(0.4, (cam.dMin || 1) * 0.3), pts = [];
+  for (const p of foot) if (p[1] >= near) { const a = _wflProj(F, p[0], p[1], 0), c = _wflProj(F, p[0], p[1], h); pts.push([a.X, a.Y], [c.X, c.Y]); }
+  if (pts.length < 2) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const q of pts) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+  return [x0, y0, x1, y1];
+}
+/**
+ * What frames the view now (C3, N2): { top, side: [left, right], declared } as descriptions (or null). top: a bough or frond
+ * entering from a top corner, or a crown cut by the top edge at a side; a side: something standing in the near part of the frame
+ * (its foot below 60 % of the ground rows) at that side and tall enough to read (12 % of the frame): reeds, a shrub, a hedge, a
+ * lamp, a trunk, a railing, a building's edge, or a channel wall running to that bottom corner (a wall edge, C1). declared: the
+ * author marked an element framing: true / framed: true (it is kept and nothing is added).
+ */
+function _wflFrameState(F) {
+  const st = { top: null, topHang: 0, topCrown: 0, side: [null, null], declared: null }, W = F.W, H = F.H, hz = F.cam.horizon, nearRow = hz + (H - hz) * 0.6;
+  const side = (b, what) => {
+    if (!(b[3] >= nearRow && Math.min(H, b[3]) - Math.max(0, b[1]) >= 0.12 * H && Math.min(W, b[2]) - Math.max(0, b[0]) >= 0.035 * W)) return;
+    if (b[0] < 0.2 * W && b[2] > 0 && !st.side[0]) st.side[0] = what;
+    if (b[2] > 0.8 * W && b[0] < W && !st.side[1]) st.side[1] = what;
+  };
   for (const e of F.world.entities || []) {
     if (!e || !e.obj || e.backdrop || !(e.z > 0)) continue;
-    const kb = worldKb(e.obj); if (!kb) continue;
-    const framing = e.framing || e.framed || kb.framing || (_WFL_FRAME_CLS.has(kb.cls) && kb.size.h0 >= 1.2);
-    if (!framing) continue;
+    const kb = worldKb(e.obj); if (!kb || kb.decal) continue;
+    const what = `${e.auto ? 'a' : 'the author’s'} ${kb.cls} (${e.id || e.obj})`;
+    // the author's own declared framing (framing: true / framed: true) wins wherever it stands
+    if ((e.framing || e.framed) && !e.auto && !st.declared) st.declared = what;
     const b = _wflBox(F, e);
-    if (b[2] < 0 || b[0] > F.W || b[3] < 0 || b[1] > F.H) continue;
-    if (!(e.z <= _WFL_NEAR_Z || b[3] - b[1] >= 0.3 * F.H)) continue;
-    const area = (Math.min(F.W, b[2]) - Math.max(0, b[0])) * (Math.min(F.H, b[3]) - Math.max(0, b[1]));
-    if (b[0] < 0.22 * F.W) { side[0] += area; what[0] = what[0] || kb.cls; }
-    if (b[2] > 0.78 * F.W) { side[1] += area; what[1] = what[1] || kb.cls; }
-    if ((e.framing || e.framed || kb.cls === 'bough' || kb.cls === 'frond') && (b[0] < 0.22 * F.W || b[2] > 0.78 * F.W)) return `${e.auto ? 'a' : "the author's"} ${kb.cls} (${e.id || e.obj})`;
+    if (b[2] < 0 || b[0] > W || b[3] < 0 || b[1] > H) continue;
+    const hang = kb.cls === 'bough' || kb.cls === 'frond' || (kb.hang && String(e.attach || '') === 'air');
+    if (!st.top && hang && b[1] <= 0.1 * H && (b[0] <= 0.03 * W || b[2] >= 0.97 * W)) { st.top = what; st.topHang = b[0] <= 0.03 * W ? -1 : 1; }
+    // a structured crown cut by the top edge at a side frames the top too; a dome or blob crown does not (SCENE_LESSONS A)
+    const domed = (typeof WORLD_KIT_WEAK === 'object' && WORLD_KIT_WEAK[e.obj]) || (typeof WORLD_KIT_DISTANT_ONLY === 'object' && WORLD_KIT_DISTANT_ONLY.includes(e.obj));
+    if (!st.top && kb.cls === 'tree' && !domed && b[1] < 0.02 * H && (b[0] < 0.08 * W || b[2] > 0.92 * W) && b[3] - b[1] > 0.6 * H) { st.top = what; st.topCrown = b[0] < 0.08 * W ? -1 : 1; }
+    if (_WFL_FRAME_CLS.has(kb.cls) && !hang) side(b, what);
   }
-  const i = side[0] >= side[1] ? 0 : 1;
-  return side[i] >= 0.04 * F.W * F.H ? `${what[i]}s at the ${i ? 'right' : 'left'}` : null;
+  for (const bd of F.world.buildings || []) { if (bd && Array.isArray(bd.foot)) { const b = _wflPrimBox(F, bd.foot, _wflNum(bd.h) ? bd.h : 6); if (b) side(b, 'the building ' + (bd.id || '')); } }
+  for (const L of F.world.lines || []) {
+    if (!L || !Array.isArray(L.path) || !/wall|hedge|fence|railing/.test(L.kind)) continue;
+    for (let i = 1; i < L.path.length; i++) { const b = _wflPrimBox(F, [L.path[i - 1], L.path[i]], _wflNum(L.h) ? L.h : 1.2); if (b) side(b, 'the ' + L.kind + ' ' + (L.id || '')); }
+  }
+  // the channel walls of sunken water reaching a bottom corner frame that side (look's worldChannelWalls)
+  if (typeof worldChannelWalls === 'function') {
+    try {
+      for (const rec of worldChannelWalls(F.world, F.cam)) for (const r of rec.runs) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const q of r.scr) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+        if (y1 >= 0.97 * H && rec.look !== 'earth') side([x0, y0, x1, y1], 'the ' + rec.look + ' wall of ' + rec.water);
+      }
+    } catch (e) { /* no walls */ }
+  }
+  return st;
 }
+/** Does the view already have its framing? -> a description or null. */
+function _wflHasFrame(F) {
+  const st = _wflFrameState(F);
+  if (st.declared) return st.declared;
+  const natural = F.style.place === 'rural' || F.style.place === 'park';
+  const sideD = st.side[0] || st.side[1];
+  if (natural ? (st.topHang && sideD) : (st.top || sideD)) return [st.top, st.side[0], st.side[1]].filter(Boolean).join(', ');
+  return null;
+}
+/**
+ * The framing foreground (C3, N2): an author's declared framing element is kept and nothing is added. Otherwise a view needs a
+ * side of its near band framed (reeds, a shrub, a hedge, a railing, a lamp from the kit, at the side with legal ground) and, in
+ * natural settings (rural, park), a top frame too: a bough reaching in from a top corner, its trunk just outside the frame on the
+ * SAME side (K4), placed on the side already framed below when it can be (one strong frame, the subject off to the other side).
+ */
 function _wflFrame(F) {
-  const has = _wflHasFrame(F);
-  if (has) { _wflLog(F, { action: 'frame', rule: 'C3', reason: `the near band is already framed: ${has}` }); return; }
-  const opts = F.style.frame || [], first = F.r() < 0.5 ? -1 : 1;
-  for (const opt of opts) for (const s of [first, -first]) {
-    const got = opt.kind === 'bough' ? _wflFrameBough(F, opt, s) : _wflFrameClump(F, opt, s);
-    if (got) { _wflLog(F, { id: got, action: 'frame', rule: 'C3', reason: `natural framing: ${opt.kind} at the ${s < 0 ? 'left' : 'right'} of the near band (${F.styleKey})` }); return; }
+  const st = _wflFrameState(F);
+  if (st.declared) { _wflLog(F, { action: 'frame', rule: 'C3', reason: `the author frames the view: ${st.declared}` }); return; }
+  const natural = F.style.place === 'rural' || F.style.place === 'park', opts = F.style.frame || [];
+  const boughs = opts.filter(o => o.kind === 'bough'), clumps = opts.filter(o => o.kind !== 'bough' && o.kind !== 'fronds');
+  let sideOf = st.side[0] ? -1 : st.side[1] ? 1 : 0;
+  const added = [];
+  if (!st.side[0] || !st.side[1]) {
+    // the open sides of the near band: the first from the kit's best option that fits, then (when both were open) the other
+    // side with the next option that fits there, so an open foreground (water, a wide lawn) is held at both corners
+    const open = [-1, 1].filter(sd => !st.side[sd < 0 ? 0 : 1]), first = open.length === 2 ? (F.r() < 0.5 ? -1 : 1) : open[0];
+    const order = open.length === 2 ? [first, -first] : [first];
+    const want = open.length === 2 ? 2 : 0;
+    for (const sd of order) {
+      if (added.length >= want) break;
+      for (const opt of clumps) {
+        const got = _wflFrameClump(F, opt, sd);
+        if (got) { if (!sideOf) sideOf = sd; added.push(opt.kind); _wflLog(F, { id: got, action: 'frame', rule: 'C3', reason: `natural framing: ${opt.kind} at the ${sd < 0 ? 'left' : 'right'} of the near band (${F.styleKey})` }); break; }
+      }
+    }
   }
-  _wflLog(F, { action: 'frame', rule: 'C3', reason: 'no legal place for a framing element in the near band' });
+  // the top frame: a bough or fronds reaching in from a corner (a crown cut by the top edge frames its side; the bough then
+  // takes the other). Natural settings always want one; a town or city when its kit leads with a bough (a river, a park)
+  const wantBough = natural || (opts[0] && opts[0].kind === 'bough');
+  if (!st.topHang && (wantBough || !(st.side[0] || st.side[1] || added.length))) {
+    const first = st.topCrown ? -st.topCrown : sideOf || (F.r() < 0.5 ? -1 : 1);
+    outer2: for (const opt of boughs) for (const sd of [first, -first]) {
+      const got = _wflFrameBough(F, opt, sd);
+      if (got) { added.push('bough'); _wflLog(F, { id: got, action: 'frame', rule: 'C3', reason: `natural framing: a bough reaching in from the top ${sd < 0 ? 'left' : 'right'} corner, its trunk just outside the frame (${F.styleKey})` }); break outer2; }
+    }
+  }
+  const has = [st.top && 'top: ' + st.top, st.side[0] && 'left: ' + st.side[0], st.side[1] && 'right: ' + st.side[1]].filter(Boolean);
+  if (!added.length) _wflLog(F, { action: 'frame', rule: 'C3', reason: has.length ? `the view is already framed (${has.join('; ')})` : 'no legal place for a framing element in the near band' });
+  else if (has.length) _wflLog(F, { action: 'frame', rule: 'C3', reason: `kept: ${has.join('; ')}` });
 }
 /** A bough with its trunk just outside the frame on the same side (K4: the parent in frame or just outside, at a plausible height). */
 function _wflFrameBough(F, opt, s) {
-  const cam = F.cam, kt = worldKb(opt.trunk), kbB = worldKb(opt.bough);
+  const cam = F.cam, kt = _wflKb(F, opt.trunk), kbB = _wflKb(F, opt.bough);
   if (!kt || !kbB) return null;
   // the bough reaches about a third of the way across the frame: its depth follows from its drawn width
   const reach = kbB.art ? Math.abs(kbB.art[2] - kbB.art[0]) : kbB.size.l;
   const zBase = Math.max(cam.dMin * 1.5, cam.f * reach / (0.36 * F.W));
-  for (const zb of [zBase, zBase * 0.8, zBase * 1.25, zBase * 1.6]) for (const out of [0.03, 0.09, 0.16]) {
-    // the trunk just outside the frame on the same side (within a sixth of the frame width), on legal ground
-    const zt = zb + 0.5, xt = _wflXAt(cam, s < 0 ? -out * F.W : (1 + out) * F.W, zt);
+  const thw = kt.art ? Math.max(Math.abs(kt.art[0]), Math.abs(kt.art[2])) : (kt.size.l || 1) / 2;
+  for (const zb of [zBase, zBase * 0.8, zBase * 1.25, zBase * 1.6]) for (const out of [0.01, 0.06, 0.12]) {
+    // the trunk wholly outside the frame on the same side (its near edge beyond the frame edge), on legal ground
+    const zt = zb + 0.5, hw = thw * cam.f / zt, xt = _wflXAt(cam, s < 0 ? -hw - out * F.W : F.W + hw + out * F.W, zt);
     const trunk = _wflTry(F, { obj: opt.trunk, x: xt, z: zt, facing: 90, auto: 'frame', rule: 'C3', why: 'framing trunk', framing: true, any: true, exact: true });
     if (!trunk) continue;
     // the bough's anchor is where it enters the frame, at the top corner (its art hangs below the anchor and reaches inwards)
@@ -837,22 +1004,74 @@ function _wflFrameBough(F, opt, s) {
   }
   return null;
 }
-/** A clump (reeds, shrub, hedge, railing, lamp) at one side of the near band, on its own habitat. */
-function _wflFrameClump(F, opt, s) {
-  const cam = F.cam, kb = worldKb(opt.obj);
+/**
+ * A clump (reeds, shrub, hedge, railing, lamp, rock) at one side of the near band, on its own habitat. The search runs in SCREEN
+ * space over the bottom rows at that side (C3, N2: the frame must stand in the near band), on the ground and on every water
+ * level (reeds in the margin at a quay's foot stand on the water, lower on the screen than the bank), and keeps the size of a
+ * frame: a tenth to a third of the frame wide, never a wall in the lens's face.
+ */
+function _wflFrameClump(F, opt, s, wide) {
+  const cam = F.cam, kb = _wflKb(F, opt.obj);
+  const used = F.frameSpots || (F.frameSpots = []);
   if (!kb) return null;
-  // sized to about a quarter of the frame width, standing at the side with half of it outside: a frame, never a wall
-  const zIdeal = Math.max(cam.dMin * 1.2, cam.f * (kb.size.l || 1) / (0.26 * F.W));
-  for (const z of [zIdeal, zIdeal * 0.8, zIdeal * 1.25, zIdeal * 1.6]) for (const at of [0.04, 0.1, 0.16]) {
-    const x = _wflXAt(cam, s < 0 ? at * F.W : (1 - at) * F.W, z);
-    const p = _wflProbe(F, x, z), or = worldKbOrient(kb, p);
+  const W = F.W, H = F.H, hz = cam.horizon, ix = _wflIndexOf(F), x0 = _wflNum(cam.x0) ? cam.x0 : W / 2;
+  const levels = [0].concat([...new Set(ix.waters.map(w => _wflNum(w.s.level) ? w.s.level : _wflNum(cam.water) ? cam.water : 0))].filter(l => l < -0.05));
+  const aquatic = kb.cls === 'reed' || (kb.habitat && Array.isArray(kb.habitat.on) && kb.habitat.on.includes('water-margin'));
+  const n = opt.kind === 'reeds' ? (wide ? 7 : 5) : opt.kind === 'shrub' || opt.kind === 'hedge' || opt.kind === 'rock' ? 2 : 1;
+  for (const fy of [0.95, 0.86, 0.77, 0.68]) for (const fx of wide ? [0.04, 0.09, 0.15, 0.21, 0.27, 0.33] : [0.04, 0.09, 0.15, 0.21]) for (const lvl of levels) {
+    if (lvl < 0 && !aquatic) continue;
+    const X = s < 0 ? fx * W : (1 - fx) * W, Y = hz + (H - hz) * fy;
+    if (!(Y > hz + 1)) continue;
+    let z = cam.f * (cam.eye - lvl) / (Y - hz), x = (X - x0) * z / cam.f;
+    if (!(z > Math.max(0.6, cam.dMin * 1.05))) continue;
+    let p = _wflProbe(F, x, z);
+    if (lvl < 0) {
+      // on the water at this level: step to its margin (within the shallows of the nearest bank)
+      if (p.kind !== 'water') continue;
+      const sh = _wflNum(p.shallow) ? p.shallow : 0.5;
+      if (_wflNum(p.bankDist) && p.bankDist > sh * 0.8 && _wflNum(p.toWater)) {
+        const a = p.toWater * Math.PI / 180, step = p.bankDist - sh * 0.5;
+        x += Math.sin(a) * step; z += Math.cos(a) * step;
+        p = _wflProbe(F, x, z);
+        if (p.kind !== 'water') continue;
+      }
+    } else if (p.kind === 'water') continue;
+    // the size of a frame at this depth
+    // a lamp or a post is a framing element that may rise past the top edge (C1); everything else stays inside three quarters
+    const wPx = cam.f * (kb.size.l || 1) / z, hPx = cam.f * kb.size.h0 / z, tall = kb.cls === 'lamp' || kb.cls === 'post' || kb.cls === 'signage';
+    if (wPx > 0.36 * W || hPx > (tall ? 1.6 : 0.75) * H || hPx < 0.09 * H) continue;
+    const Xs = x0 + cam.f * x / z;
+    if (s < 0 ? Xs > (wide ? 0.38 : 0.3) * W : Xs < (wide ? 0.62 : 0.7) * W) continue;
+    // a fresh spot each time (never stacked on an earlier frame clump)
+    if (used.some(q => Math.hypot(q[0] - x, q[1] - z) < Math.max(2.5, 0.12 * z))) continue;
+    const or = worldKbOrient(kb, p);
     if (opt.kind === 'railing' && !(_wflNum(p.bankDist) && p.bankDist <= 3 && p.kind !== 'water')) continue;   // a quay railing stands at the water
     const facing = _wflNum(or.facing) ? or.facing : (s < 0 ? 90 : 270);
-    const n = opt.kind === 'reeds' ? 4 : opt.kind === 'shrub' || opt.kind === 'hedge' ? 2 : 1;
-    const got = _wflClump(F, opt.obj, x, z, n, Math.max(0.4, kb.size.l * 0.35), { auto: 'frame', rule: 'C3', why: `framing ${opt.kind}`, framing: true, facing });
-    if (got.length) return got[0].id;
+    const got = _wflClump(F, opt.obj, x, z, n, Math.max(0.35, kb.size.l * 0.4), { auto: 'frame', rule: 'C3', why: `framing ${opt.kind}`, framing: true, facing });
+    if (got.length) { used.push([x, z]); return got[0].id; }
   }
   return null;
+}
+/**
+ * The near band must hold something standing (N2: no empty foreground), not only water or bare texture: while under a tenth of
+ * it is covered by things (look's strict worldDetailCoverage), add the kit's framing clumps at its sides (reeds in the margin at
+ * a quay's foot, a shrub, a lamp), wider of the corners each round. Logged; capped at four clumps.
+ */
+function _wflNearBand(F) {
+  if (typeof worldDetailCoverage !== 'function') return;
+  // the author's declared framing is the author's composition: kept as it is
+  if ((F.world.entities || []).some(e => e && !e.auto && (e.framing || e.framed))) return;
+  const clumps = (F.style.frame || []).filter(o => o.kind !== 'bough' && o.kind !== 'fronds');
+  if (!clumps.length) return;
+  let rec = worldDetailCoverage(F.world, F.cam, { W: F.W, H: F.H }), n = 0;
+  const start = rec.near.object;
+  for (let round = 0; round < 6 && rec.near.object < 0.12; round++) {
+    const sd = round % 2 ? 1 : -1;
+    let got = null;
+    for (const opt of clumps) { got = _wflFrameClump(F, opt, sd, true); if (got) break; }
+    if (got) { n++; rec = worldDetailCoverage(F.world, F.cam, { W: F.W, H: F.H }); }
+  }
+  if (n) _wflLog(F, { action: 'frame', rule: 'N2', reason: `the near band held ${Math.round(start * 100)} % standing things: ${n} framing clump(s) added at its sides (now ${Math.round(rec.near.object * 100)} %)` });
 }
 /** Remove an entity the fill has just added (a framing trunk whose bough found no place). */
 function _wflUndo(F, e) {
@@ -875,8 +1094,31 @@ function _wflGroupOf(F, surf) {
 function _wflCoverPass(F, tier) {
   F.tier = tier;
   const view = Object.assign({}, F.world, { entities: (F.world.entities || []).filter(_wflPerennial) });
-  const S = _wflSample(view, F.cam, { W: F.W, H: F.H, cols: 56, rows: 34, pad: F.pad, backdrop: _wflBackdrop(view, F.cam), surfAt: (x, z) => _wflSurfFast(F, x, z), ground: true });
-  const bare = S.samples.filter(q => !q.dressed && q.z != null && q.z <= _WFL_FILL_ZMAX);
+  let S = null, bare = null;
+  // the bare samples of the strict measure (silhouettes): the ground the eye sees undressed, not what an entity box happens to
+  // span; the plain sampler without look
+  const cov = _wflCoverage(F);
+  if (cov.by === 'strict' && cov.rec && cov.rec.grid) {
+    const g = cov.rec.grid, cw = F.W / g.cols, ch = F.H / g.rows, hz = F.cam.horizon;
+    S = { colW: cw, rowH: ch, samples: [] };
+    for (let k = 0; k < g.cells.length; k++) {
+      const c = g.cells[k];
+      // undressed ground; an open lawn or beach (half dressed by its texture) gets a sparse share of the samples, never a carpet
+      // (fewer near the lens, where one tuft fills a cell, more in the middle and far distance, where trees and benches stand)
+      const rowT = (Math.floor(k / g.cols) + 0.5) * ch, nearRow = (rowT - F.cam.horizon) / (F.H - F.cam.horizon);
+      if (c !== 't' && c !== 'f' && !(c === 'p' && F.r() < (nearRow > 2 / 3 ? 0.03 : nearRow > 1 / 3 ? 0.14 : 0.4))) continue;
+      const i = k % g.cols, j = Math.floor(k / g.cols), X = (i + 0.5) * cw, Y = (j + 0.5) * ch;
+      if (!(Y > hz + 1)) continue;
+      const gp = _wflUnproject(F.cam, X, Y);
+      if (!gp) continue;
+      const band = (Y - hz) / (F.H - hz) < 1 / 3 ? 'far' : (Y - hz) / (F.H - hz) < 2 / 3 ? 'mid' : 'near';
+      S.samples.push({ X, Y, x: gp.x, z: gp.d, band, surf: _wflSurfFast(F, gp.x, gp.d), dressed: false, inFrame: true, open: c === 'p' });
+    }
+    bare = S.samples.filter(q => q.z != null && q.z <= _WFL_FILL_ZMAX);
+  } else {
+    S = _wflSample(view, F.cam, { W: F.W, H: F.H, cols: 56, rows: 34, pad: F.pad, backdrop: _wflBackdrop(view, F.cam), surfAt: (x, z) => _wflSurfFast(F, x, z), ground: true });
+    bare = S.samples.filter(q => !q.dressed && q.z != null && q.z <= _WFL_FILL_ZMAX);
+  }
   // seeded order, nearest rows first (they are the largest share of the frame)
   const r = F.r;
   for (const q of bare) q.u = r() + (q.band === 'near' ? 0 : q.band === 'mid' ? 0.5 : 1);
@@ -888,24 +1130,26 @@ function _wflCoverPass(F, tier) {
     if (F.boxes.some(b => q.X >= b[0] && q.X <= b[2] && q.Y >= b[1] && q.Y <= b[3])) continue;
     const g = _wflGroupOf(F, q.surf), spec = g && F.style.fill[g];
     if (!spec) { F.unfillable.add(q.surf ? q.surf.kind : 'ground'); continue; }
-    const band = q.z < _WFL_NEAR_Z ? 'near' : q.z < _WFL_MID_Z ? 'mid' : 'far';
+    const band = q.z < _WFL_NEAR_Z ? 'near' : q.z < _WFL_MID_Z ? 'mid' : q.z >= _WFL_FAR_Z && Array.isArray(spec.distant) && spec.distant.length ? 'distant' : 'far';
     // the next tier reaches for the next band's dressing too (taller clumps cover more of the frame)
     let list = spec[band] || [];
-    if (tier >= 3 && band === 'near') list = list.concat((spec.mid || []).filter(([id]) => (worldKb(id) || { size: { h0: 9 } }).size.h0 <= 1.6));
+    if (tier >= 3 && band === 'near' && !q.open) list = list.concat((spec.mid || []).filter(([id]) => (worldKb(id) || { size: { h0: 9 } }).size.h0 <= 1.6));
+    // an open lawn or beach: single things, no flower carpet (flowers stay seasonal accents)
+    if (q.open) list = list.filter(([id]) => { const k = worldKb(id); return k && k.cls !== 'flower'; });
     if (tier >= 2 && band === 'mid') list = list.concat(spec.far || []);
-    if (_wflNum(spec.maxH) && band !== 'far') list = list.filter(([id]) => { const k = worldKb(id); return k && k.size.h0 <= spec.maxH; });
+    if (_wflNum(spec.maxH) && band !== 'far' && band !== 'distant') list = list.filter(([id]) => { const k = worldKb(id); return k && k.size.h0 <= spec.maxH; });
     if (!list.length) { F.unfillable.add(q.surf ? q.surf.kind : 'ground'); continue; }
     // paving gets its sparse furniture once (_wflPaving), never a carpet of planters
     if (g === 'paving') { if (F.pavingDone) F.pavingCapped.add(q.surf ? q.surf.id : 'paving'); continue; }
     let done = false;
     for (let tries = 0; tries < 4 && !done; tries++) {
-      const obj = _wflPick(list, r), kb = worldKb(obj);
+      const obj = _wflPick(list, r), kb = _wflKb(F, obj);
       if (!kb) continue;
       // a seeded point inside the sample's cell (never the sample lattice itself: no rows), a little nearer so its clump covers it
-      const gp = _wflUnproject(F.cam, q.X + (r() - 0.5) * S.colW, Math.max(F.cam.horizon + 0.5, q.Y + (r() - 0.5) * S.rowH)) || { x: q.x, d: q.z };
+      const jit = q.open ? 3 : 1, gp = _wflUnproject(F.cam, q.X + (r() - 0.5) * S.colW * jit, Math.max(F.cam.horizon + 0.5, q.Y + (r() - 0.5) * S.rowH * jit)) || { x: q.x, d: q.z };
       const zf = Math.max(F.cam.dMin * 1.03, gp.d * (0.82 + 0.14 * r())), xf = gp.x * zf / gp.d + (r() - 0.5) * Math.min(1.2, kb.size.l * 0.5);
       if (_wflGroupOf(F, _wflSurfAt(F, xf, zf)) !== g) continue;   // the dressing of this surface, not of its neighbour
-      const n = kb.cls === 'tree' ? 1 + (r() < 0.35 ? 1 : 0) : kb.cls === 'shrub' || kb.cls === 'cover' || kb.cls === 'flower' ? 1 + Math.floor(r() * (tier >= 2 ? 4 : 3)) : 1;
+      const n = q.open ? 1 : kb.cls === 'tree' ? 1 + (r() < 0.35 ? 1 : 0) : kb.cls === 'shrub' || kb.cls === 'cover' || kb.cls === 'flower' ? 1 + Math.floor(r() * (tier >= 2 ? 4 : 3)) : 1;
       const pit = g === 'paving' && kb.cls === 'tree';
       const or = kb.orient && kb.orient !== 'free' ? worldKbOrient(kb, _wflProbe(F, xf, zf)) : null;
       const got = _wflClump(F, obj, xf, zf, n, Math.max(0.5, kb.size.l * (kb.cls === 'tree' ? 1.6 : 0.9)), { auto: 'fill', rule: tier > 1 ? 'C6' : 'P6', why: `${g} ${band} dressing (tier ${tier})`, pit, facing: or && _wflNum(or.facing) ? or.facing : undefined });
@@ -915,51 +1159,116 @@ function _wflCoverPass(F, tier) {
   F.boxes = null;
   return placed;
 }
-/** Street furniture on paving (P6): a few bins, planters, benches, lamps and trees in pits per depth band, scattered at seeded
-    spots at least 3 m apart (never rows, never clutter). Paving is mostly dressed by its people (a crowd population). */
+/** Street furniture on paving (P6, SCENE_LESSONS A: no big empty paving): the kit's bins, planters, benches, lamps and trees in
+    pits per depth band at seeded spots (never rows), more where paving is a larger share of the frame, on lived plazas too (people
+    walk round furniture; a strip's walking line stays clear, P3). A tree in a pit or a lamp in the middle distance gets a companion
+    beside it (a bench, a bin, a planter): furniture comes in groups, as streets have it. */
 function _wflPaving(F) {
   F.pavingDone = true;
   const cam = F.cam, r = F.r, ix = _wflIndexOf(F), spec = F.style.fill.paving;
   if (!spec || !ix.surfs.some(s => _WFL_GROUP[s.kind] === 'paving')) return;
-  const cap = spec.max || { near: 6, mid: 14, far: 12 }, got = { near: 0, mid: 0, far: 0 }, spots = [];
-  for (let tries = 0; tries < 400; tries++) {
-    const X = -F.pad + r() * (F.W + 2 * F.pad), Y = cam.horizon + 4 + r() * (F.H - cam.horizon - 4), g = _wflUnproject(cam, X, Y);
-    if (!g || g.d > 90) continue;
+  // the paving's share of the frame below the horizon (a coarse grid): a square that fills the frame gets up to three times the furniture
+  let pv = 0, nn = 0;
+  for (let j = 0; j < 12; j++) for (let i = 0; i < 16; i++) { const g = _wflUnproject(cam, (i + 0.5) * F.W / 16, cam.horizon + (j + 0.5) * (F.H - cam.horizon) / 12); if (!g) continue; nn++; if (_wflGroupOf(F, _wflSurfFast(F, g.x, g.d)) === 'paving') pv++; }
+  const k = Math.max(1, Math.min(3, (nn ? pv / nn : 0) * 5));
+  const cap0 = spec.max || { near: 6, mid: 14, far: 12 }, cap = { near: Math.round(cap0.near * k), mid: Math.round(cap0.mid * k), far: Math.round(cap0.far * k) };
+  const got = { near: 0, mid: 0, far: 0 }, spots = [], seen = new Map();
+  const companions = (spec.near || []).filter(([id]) => { const kb = worldKb(id); return kb && kb.size.h0 <= 1.6; }).concat([['street.bench', 2], ['street.mcf-litter-bin', 1]]).filter(([id]) => typeof sceneObj !== 'function' || sceneObj(id));
+  // paving strips (pavements beside a road, a riverside walk): furniture stands in their kerb and building-line bands, outside
+  // the walking line (P3); the sampler aims half its spots there
+  const strips = ix.surfs.filter(s => _WFL_GROUP[s.kind] === 'paving' && Array.isArray(s.path) && s.path.length >= 2 && s.width >= 1.8);
+  const stripLen = strips.map(s => { let L = 0; for (let i = 1; i < s.path.length; i++) L += Math.hypot(s.path[i][0] - s.path[i - 1][0], s.path[i][1] - s.path[i - 1][1]); return L; });
+  const totLen = stripLen.reduce((a, v) => a + v, 0);
+  for (let tries = 0; tries < 900; tries++) {
+    let g = null;
+    if (strips.length && totLen > 0 && r() < 0.5) {
+      // a strip by length, a spot along it (nearer spots likelier: they are larger on screen), a side band
+      let u = r() * totLen, si = 0; while (si < strips.length - 1 && u > stripLen[si]) { u -= stripLen[si]; si++; }
+      const s = strips[si], P = s.path, at = Math.pow(r(), 1.6) * stripLen[si];
+      let acc = 0, x = P[0][0], z = P[0][1], tx = 0, tz = 1;
+      for (let i = 1; i < P.length; i++) { const L = Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]); if (acc + L >= at) { const t = (at - acc) / (L || 1); x = P[i - 1][0] + (P[i][0] - P[i - 1][0]) * t; z = P[i - 1][1] + (P[i][1] - P[i - 1][1]) * t; tx = (P[i][0] - P[i - 1][0]) / (L || 1); tz = (P[i][1] - P[i - 1][1]) / (L || 1); break; } acc += L; }
+      const side = r() < 0.5 ? -1 : 1, off = side * (s.width / 2 - 0.25 - r() * Math.max(0.05, s.width / 2 - 1.1));
+      g = { x: x + tz * off, d: z - tx * off };
+    } else {
+      const X = -F.pad + r() * (F.W + 2 * F.pad), Y = cam.horizon + 2 + r() * (F.H - cam.horizon - 2);
+      g = _wflUnproject(cam, X, Y);
+    }
+    if (!g || !(g.d > 0.6) || g.d > 160) continue;
     const surf = _wflSurfAt(F, g.x, g.d);
-    if (_wflGroupOf(F, surf) !== 'paving' || F.lived.has(surf.id)) continue;
+    if (!surf || _wflGroupOf(F, surf) !== 'paving') continue;
+    // a lived strip keeps its walking line (P3, _wflTry); a lived square keeps room to walk between groups
+    const livedPoly = F.lived.has(surf.id) && !Array.isArray(surf.path);
     const band = g.d < _WFL_NEAR_Z ? 'near' : g.d < _WFL_MID_Z ? 'mid' : 'far';
     if (got[band] >= cap[band]) continue;
-    if (spots.some(p => Math.hypot(p[0] - g.x, p[1] - g.d) < 3 + 0.05 * g.d)) continue;
-    const obj = _wflPick(spec[band], r), kb = worldKb(obj);
+    // spacing grows with depth (the near band is small in metres but large on screen); a lived square keeps more room to walk
+    if (spots.some(p => Math.hypot(p[0] - g.x, p[1] - g.d) < (livedPoly ? 2.6 : 2.2) + 0.07 * g.d)) continue;
+    const obj = _wflPick(spec[band], r, seen), kb = _wflKb(F, obj);
     if (!kb) continue;
     const or = kb.orient && kb.orient !== 'free' ? worldKbOrient(kb, _wflProbe(F, g.x, g.d)) : null;
     const e = _wflTry(F, { obj, x: g.x, z: g.d, auto: 'fill', rule: 'P6', why: `paving ${band}: street furniture`, pit: kb.cls === 'tree', facing: or && _wflNum(or.facing) ? or.facing : (r() < 0.5 ? 90 : 270) });
-    if (e) { got[band]++; spots.push([g.x, g.d]); }
+    if (!e) continue;
+    got[band]++; spots.push([g.x, g.d]); seen.set(obj, (seen.get(obj) || 0) + 1);
+    // the group: a companion beside a tree pit or a lamp (a bench under the tree, a bin by the lamp)
+    if (band !== 'far' && (kb.cls === 'tree' || kb.cls === 'lamp') && companions.length && r() < 0.75) {
+      for (let t = 0; t < 4; t++) {
+        const a = r() * Math.PI * 2, d = 1.1 + r() * 0.8, cobj = _wflPick(companions, r), ckb = _wflKb(F, cobj);
+        if (!ckb) continue;
+        const cx = g.x + Math.cos(a) * d, cz = g.d + Math.sin(a) * d, cor = ckb.orient && ckb.orient !== 'free' ? worldKbOrient(ckb, _wflProbe(F, cx, cz)) : null;
+        const c = _wflTry(F, { obj: cobj, x: cx, z: cz, auto: 'fill', rule: 'P6', why: `paving ${band}: street furniture (a group)`, facing: cor && _wflNum(cor.facing) ? cor.facing : (r() < 0.5 ? 90 : 270) });
+        if (c) break;
+      }
+    }
   }
-  if (spots.length) _wflLog(F, { action: 'fill', rule: 'P6', reason: `${spots.length} pieces of street furniture on the paving (near ${got.near}, mid ${got.mid}, far ${got.far})` });
+  if (spots.length) _wflLog(F, { action: 'fill', rule: 'P6', reason: `${spots.length} pieces of street furniture on the paving (near ${got.near}, mid ${got.mid}, far ${got.far}; caps x${Math.round(k * 10) / 10} for the paving share)` });
 }
 /**
  * People dress paving and paths (C6, SCENE_LESSONS A: crowd flows, never empty squares): a walk surface that still shows a large
- * bare share of the frame and has no population gets one by the place style (a crowd in towns and cities, walkers with dogs in
- * parks and the country). The life package spawns, routes and thins them by time (worldKbDensity).
+ * bare share of the frame and has no population gets the kit's own (a crowd in towns and cities, walkers with dogs in parks and
+ * the country). The life package spawns, routes and thins them by time (worldKbDensity).
  */
 function _wflPeople(F) {
   const W = F.world, view = Object.assign({}, W, { entities: (W.entities || []).filter(_wflPerennial) });
   const S = _wflSample(view, F.cam, { W: F.W, H: F.H, cols: 48, rows: 30, backdrop: _wflBackdrop(view, F.cam), surfAt: (x, z) => _wflSurfFast(F, x, z), ground: true });
   const bare = new Map();
-  for (const q of S.samples) if (q.inFrame && !q.dressed && q.surf && _WFL_WALK.has(q.surf.kind) && !q.surf.auto) bare.set(q.surf.id, (bare.get(q.surf.id) || 0) + 1);
-  const city = (F.style.place === 'city' || F.style.place === 'town');
+  // walks, and open sand (a beach is walked all over)
+  for (const q of S.samples) if (q.inFrame && !q.dressed && q.surf && (_WFL_WALK.has(q.surf.kind) || ['sand', 'beach'].includes(q.surf.kind)) && !q.surf.auto) bare.set(q.surf.id, (bare.get(q.surf.id) || 0) + 1);
+  // lived surfaces count as dressed to the plain sampler: the strict measure asks again for every unlived walk in the frame
+  const city = (F.style.place === 'city' || F.style.place === 'town'), K = F.style.life || {};
   for (const [id, n] of bare) {
     if (n / Math.max(1, S.n) < 0.03 || F.lived.has(id)) continue;
-    const s = (W.surfaces || []).find(q => q.id === id);
-    const L = city ? { who: 'crowd', on: id, rate: '8/min' } : { who: 'walkers', on: id, rate: '3/min', mix: { stroll: 0.55, brisk: 0.2, 'dog-walker': 0.25 } };
+    const s = (W.surfaces || []).find(q => q.id === id), paving = s && ['pavement', 'plaza', 'platform', 'driveway'].includes(s.kind), sand = s && ['sand', 'beach'].includes(s.kind);
+    const pick = (sand && K.sand) || (paving && K.paving) || K.walk || (city ? { who: 'crowd', rate: '8/min' } : { who: 'walkers', rate: '3/min', mix: { stroll: 0.55, brisk: 0.2, 'dog-walker': 0.25 } });
+    const L = Object.assign({ who: pick.who, on: id, rate: pick.rate }, pick.mix ? { mix: Object.assign({}, pick.mix) } : {});
     L.auto = 'fill';
     try { const P = typeof WORLD_POPULATIONS === 'object' && WORLD_POPULATIONS ? WORLD_POPULATIONS[L.who] : null; if (P) L.pop = Object.assign({}, P); } catch (e) { /* the core resolves it */ }
     if (!Array.isArray(W.life)) W.life = [];
     W.life.push(L);
     F.lived.add(id);
-    _wflLog(F, { id: 'life:' + id, action: 'fill', rule: 'C6', reason: `${L.who} on ${id} (${s ? s.kind : 'walk'}, ${Math.round(n / S.n * 100)} % of the frame bare): ${city ? 'paving' : 'a path'} is dressed by its people` });
+    _wflLog(F, { id: 'life:' + id, action: 'fill', rule: 'C6', reason: `${L.who} on ${id} (${s ? s.kind : 'walk'}, ${Math.round(n / S.n * 100)} % of the frame bare): ${city ? 'paving' : 'a path'} is dressed by its people (the ${F.styleKey} kit)` });
   }
+}
+/**
+ * The life defaults of the kit (N3: no scene ships lifeless): water birds on the largest visible water with no swimmers, grazers
+ * on the largest open grass or heath (moor sheep, farm cattle), gulls over the coast and harbours, pigeons on city paving, each
+ * only where the scene has none of that kind. Populations, never placed movers: the life package spawns and thins them by time.
+ */
+function _wflLife(F) {
+  const W = F.world, K = F.style.life || {}, life = Array.isArray(W.life) ? W.life : (W.life = []), cam = F.cam;
+  const visible = (s) => { const P = Array.isArray(s.poly) ? s.poly : Array.isArray(s.path) ? s.path : null; if (!P) return 0; let n = 0; for (const p of P) if (p[1] > 1 && Math.abs(p[0]) < 1.4 * p[1] + 30) n++; return n; };
+  const area = (s) => { if (!Array.isArray(s.poly)) return Array.isArray(s.path) ? 50 * (s.width || 2) : 0; let A = 0; for (let i = 0, j = s.poly.length - 1; i < s.poly.length; j = i++) A += (s.poly[j][0] + s.poly[i][0]) * (s.poly[j][1] - s.poly[i][1]); return Math.abs(A / 2); };
+  const layerOf = (L) => { const P = L && (L.pop || (typeof WORLD_POPULATIONS === 'object' && WORLD_POPULATIONS ? WORLD_POPULATIONS[L.who] : null)); return P ? P.layer : null; };
+  const add = (L, why) => { try { const P = typeof WORLD_POPULATIONS === 'object' && WORLD_POPULATIONS ? WORLD_POPULATIONS[L.who] : null; if (!P) return; L.pop = Object.assign({}, P); } catch (e) { return; } L.auto = 'fill'; life.push(L); _wflLog(F, { id: 'life:' + (L.on || L.who), action: 'fill', rule: 'N3', reason: `${L.who}${L.count ? ' x' + L.count : ''}${L.on ? ' on ' + L.on : ''}: ${why} (the ${F.styleKey} kit)` }); };
+  const waters = (W.surfaces || []).filter(s => s && s.kind === 'water' && s.water !== 'puddle' && visible(s)).sort((a, b) => area(b) - area(a));
+  if (Array.isArray(K.water) && waters.length && !waters.some(w => life.some(L => L && L.on === w.id && (layerOf(L) === 'swim' || layerOf(L) === 'wade')))) {
+    const w = waters[0];
+    for (const it of K.water) add({ who: it.who, count: it.count, on: w.id }, 'water birds on the largest water');
+  }
+  const opens = (W.surfaces || []).filter(s => s && ['grass', 'heath', 'field', 'meadow'].includes(s.kind) && visible(s) && area(s) > 600).sort((a, b) => area(b) - area(a));
+  if (Array.isArray(K.graze) && opens.length && !life.some(L => layerOf(L) === 'graze')) for (const it of K.graze) add({ who: it.who, count: it.count, on: opens[0].id }, 'grazers on the open ground');
+  if (Array.isArray(K.air) && !life.some(L => layerOf(L) === 'air')) for (const it of K.air) add({ who: it.who, count: it.count }, 'birds over the scene');
+  const pavs = (W.surfaces || []).filter(s => s && ['plaza', 'pavement'].includes(s.kind) && visible(s)).sort((a, b) => area(b) - area(a));
+  if (Array.isArray(K.ground) && pavs.length && !life.some(L => L && /pigeon/.test(String(L.who)))) for (const it of K.ground) add({ who: it.who, count: it.count, on: pavs[0].id }, 'birds on the paving');
+  void cam;
 }
 /** Seasonal and occasional accents (flowers in their months, leaf litter in autumn, lilies on calm water): variety, never coverage. */
 function _wflAccents(F) {
@@ -970,10 +1279,16 @@ function _wflAccents(F) {
     if (!g || g.d > _WFL_MID_Z * 2) continue;
     const surf = _wflSurfAt(F, g.x, g.d), grp = _wflGroupOf(F, surf), spec = grp && F.style.fill[grp];
     if (!spec || !spec.accents || !spec.accents.length || grp === 'water') continue;
-    const obj = _wflPick(spec.accents, r), kb = worldKb(obj);
+    const obj = _wflPick(spec.accents, r), kb = _wflKb(F, obj);
     if (!kb) continue;
+    // an accent that is there all year (stones, a picnic) is occasional: a few clumps per view, never a carpet; the seasonal ones
+    // (flowers, leaf litter) come and go with their months
+    const seasonal = !!(kb.when && (kb.when.months || kb.when.dates || kb.when.weather)) && kb.cls !== 'picnic';
+    const used = (F.accentN || (F.accentN = new Map())).get(obj) || 0;
+    if (!seasonal && used >= 6) continue;
     const G = kb.group || {}, n = G.kind === 'single' ? 1 : 1 + Math.floor(r() * Math.min(4, Array.isArray(G.size) ? G.size[1] : 4));
     const got = _wflClump(F, obj, g.x, g.d, n, Math.max(0.4, kb.size.l), { auto: 'fill', rule: 'P6', why: `${grp} seasonal accent` });
+    if (got.length) F.accentN.set(obj, used + 1);
     i += got.length;
   }
   // calm water: lilies in loose rafts near the banks, a few fish rings
@@ -986,7 +1301,7 @@ function _wflAccents(F) {
       if (!g || g.d > 90) continue;
       const p = _wflProbe(F, g.x, g.d);
       if (p.kind !== 'water' || !(p.bankDist < 6)) continue;
-      const obj = _wflPick(wspec.calm, r), kb = worldKb(obj);
+      const obj = _wflPick(wspec.calm, r), kb = _wflKb(F, obj);
       const got = _wflClump(F, obj, g.x, g.d, kb && kb.cls === 'lily' ? 3 + Math.floor(r() * 6) : 1, 0.8, { auto: 'fill', rule: 'P6', why: 'calm water: lilies and rings', attach: undefined });
       if (got.length) k++;
     }
@@ -1040,14 +1355,33 @@ function _wflBoxScore(world, cam, o) {
  */
 function _wflRichTier(F, floor) {
   const kind = F.style.place || 'park', target = floor && _wflNum(floor.score) ? floor.score : (WORLD_RICHNESS_FLOOR.box[kind] || 90);
-  const city = kind === 'city' || kind === 'town', pool = city ? _WFL_RICH_CITY : _WFL_RICH_RURAL, r = F.r, cam = F.cam;
+  // the kit's perennial pools (N1): every richness item is a curated kit object, never a stand-in
+  const city = kind === 'city' || kind === 'town', pool = F.style.rich || { mid: [], far: [] }, r = F.r, cam = F.cam;
+  const distant = (F.style.fill.grass && F.style.fill.grass.distant) || (F.style.fill[F.style.ground] && F.style.fill[F.style.ground].distant) || [];
   // the near band's pool: the style's near dressing, the wet margin and the small things of the mid pool
-  const nearGroups = city ? ['grass'] : ['grass', 'heath', 'wood', 'wet'];
+  // only the groups of the surfaces this world has (a park lawn never gets heather because the kit could dress a heath)
+  const present = new Set(((F.world.surfaces || []).map(s => s && _WFL_GROUP[s.kind]).filter(Boolean)).concat([F.style.ground || 'grass']));
+  const nearGroups = (city ? ['grass'] : ['grass', 'heath', 'wood', 'wet']).filter(g => present.has(g));
   const nearPool = [].concat(...nearGroups.map(g => F.style.fill[g]).filter(sp => sp && Array.isArray(sp.near)).map(sp => sp.near), (F.style.edges && F.style.edges.natural && !city) ? F.style.edges.natural.margin : [],
     (pool.mid || []).filter(([id]) => (worldKb(id) || { size: { h0: 9 } }).size.h0 < 2.5));
   const pools = { near: nearPool, mid: pool.mid || [], far: pool.far || [] }, Z = { near: [Math.max(cam.dMin * 1.1, 4), 15], mid: [15, 80], far: [80, 300] };
   let B = _wflBoxScore(F.world, cam), added = 0;
   const start = B.score, dead = new Set();
+  // what already stands nearer at each screen cell (the strict measure's depth grid): the richness tier never plants a tree that
+  // nothing of would show (behind a terrace, a mill, a wood), a waste of the scene's budget
+  let occ = null;
+  if (typeof worldDetailCoverage === 'function') { try { const rr = worldDetailCoverage(F.world, cam, { W: F.W, H: F.H, debug: true }); occ = rr && rr.grid; } catch (e) { occ = null; } }
+  const hidden = (x, z, h) => {
+    if (!occ) return false;
+    const cw = F.W / occ.cols, ch = F.H / occ.rows, P0 = _wflProj(F, x, z, null), P1 = _wflProj(F, x, z, _wflGround(F, x, z) + h);
+    for (const Y of [P0.Y - 2, (P0.Y + P1.Y) / 2, P1.Y + 2]) {
+      const i = Math.floor(P0.X / cw), j = Math.floor(Y / ch);
+      if (i < 0 || j < 0 || i >= occ.cols || j >= occ.rows) return false;
+      const zz = occ.z[j * occ.cols + i];
+      if (!(zz >= 0 && zz < z - 1)) return false;
+    }
+    return true;
+  };
   for (let round = 0; round < 18 && added < 300 && B.score < target; round++) {
     // the band and the part of the measure that lack most (a part with nothing left to add is skipped)
     let best = null;
@@ -1067,8 +1401,11 @@ function _wflRichTier(F, floor) {
       const front = what === 'cover' && band !== 'near' && tries < 100;
       const zr = front ? [Z[band][0] + (band === 'mid' ? 12 : 0), Z[band][0] + (Z[band][1] - Z[band][0]) * (band === 'far' ? 0.25 : 1)] : Z[band];
       const z = zr[0] + Math.pow(r(), 0.8) * (zr[1] - zr[0]), x = _wflXAt(cam, -F.pad + r() * (F.W + 2 * F.pad), z);
-      const obj = _wflPick(L, r), kb = worldKb(obj);
-      if (!kb) continue;
+      // beyond the far band (120 m) the distant pool (dome trees read as trees there); nearer, only structured trees
+      const LL = band === 'far' && z >= _WFL_FAR_Z && distant.length && what !== 'variety' ? distant : L;
+      const obj = _wflPick(LL, r), kb = _wflKb(F, obj);
+      if (!kb || kb.object === false) continue;
+      if (hidden(x, z, kb.size.h0)) continue;
       const n = kb.cls === 'tree' ? 1 + (r() < 0.3 ? 1 : 0) : 1 + Math.floor(r() * 3);
       const got = _wflClump(F, obj, x, z, n, Math.max(0.6, kb.size.l * (kb.cls === 'tree' ? 1.2 : 0.8)), { auto: 'fill', rule: 'P7', why: `richness: ${band} ${what}` });
       placed += got.length;
@@ -1100,7 +1437,8 @@ function worldFill(world, o) {
     if (!Array.isArray(world.surfaces)) world.surfaces = [];
     const state = world.fillState || (world.fillState = { edges: false, frame: false, fill: false, tiers: 0 });
     const fillOff = o.fill === false || world.fill === false || (world.spec && world.spec.fill === false);
-    const styleKey = worldFillStyle(world, o), style = WORLD_FILL_STYLES[styleKey];
+    // o.styleRecord: a fill style record to use as it is (tools and tests); else the world's kit
+    const styleKey = o.styleRecord && o.styleRecord.kit ? o.styleRecord.kit : worldFillStyle(world, o), style = o.styleRecord || WORLD_FILL_STYLES[styleKey];
     const F = { world, cam, log, style, styleKey, W: o.W || 1600, H: o.H || 900, pad: (o.overscan == null ? 0.18 : o.overscan) * (o.W || 1600), ctx: o.ctx || world.ctx || null,
       r: _wflRng('fill|' + (world.seed | 0) + '|' + styleKey + '|' + Math.round(cam.heading || 0)), count: 0, seq: 0, maxAuto: o.maxAuto || 1400, ids: new Set(), added: [], bad: new Set(),
       spacing: new Map(), tier: 1, unfillable: new Set(), pavingCapped: new Set(), lived: _wflLived(world), ix: null, boxes: null, pavingDone: false, authorReeds: [],
@@ -1109,6 +1447,7 @@ function worldFill(world, o) {
     F.count = Math.min(F.count, F.maxAuto);
     F.authorReeds = world.entities.filter(e => e && !e.auto && e.obj && (worldKb(e.obj) || {}).cls === 'reed');
     F.landmarks = _wflLandmarks(F);
+    _wflViewInit(F);
     for (const e of world.entities) if (e && e.auto && e.obj) { const kb = worldKb(e.obj); if (kb) _wflSpacingAdd(F, e.x, e.z, Math.max(0.18, 0.42 * Math.min(kb.size.l || 0.5, 3)), e.obj); }
     // the backdrop from the place style when the scene has none (no empty backgrounds)
     if (!world.backdrop && style.backdrop) {
@@ -1116,13 +1455,14 @@ function worldFill(world, o) {
       log.push({ id: null, obj: null, action: 'default', rule: 'emptyBackground', reason: `backdrop '${style.backdrop}' from the place style '${styleKey}'`, by: 'kb' });
     }
     if (!state.edges) { _wflEdges(F); state.edges = true; }
-    if (!state.frame) { _wflFrame(F); state.frame = true; }
+    if (!state.frame) { _wflFrame(F); _wflNearBand(F); state.frame = true; }
     if (!fillOff && !state.fill) {
       const floor = o.floor || null, maxTier = o.maxTier || 5;
       let cov = _wflCoverage(F), rich = worldRichness(world, cam, { perennial: true, floor, W: F.W, H: F.H, box: false });
       const start = cov.bare;
       _wflPaving(F);
       _wflPeople(F);
+      _wflLife(F);
       for (let tier = 1; tier <= maxTier; tier++) {
         if (cov.ok && rich.ok && tier > 1) break;
         const n = _wflCoverPass(F, tier);

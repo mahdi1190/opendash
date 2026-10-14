@@ -144,8 +144,21 @@ export function worldCritic(E, spec, o = {}) {
   if (worldRichness && worldRichness.ok === false) problems.push('richness floor: ' + (worldRichness.msg || 'below the floor'));
   // advice for the author, not a fault of the render: landmarks the load path demoted to scenery (C4: this camera cannot show them)
   const notes = (Array.isArray(world.log) ? world.log : []).filter(l => l && l.action === 'demote').map(l => 'demoted: ' + l.reason);
-  return { notes, score: richness.score, richness, worldRichness, coverage: coverage ? { bare: coverage.bare, sky: coverage.sky, ok: coverage.ok, msg: coverage.msg || '' } : null,
-    framing: { cuts: badCuts, landmarks: badLm }, problems, records: records.length, by: { richness: 'critic-boxes', floor: E.worldRichness ? 'worldRichness' : null, coverage: E.worldCoverage ? 'worldCoverage' : null, framing: E.worldFrameCheck ? 'worldFrameCheck' : 'invariants' } };
+  // the STRICT measure (look's worldDetailCoverage): what the eye sees, by silhouette, texture and dressing. Every FAIL rule is a
+  // problem (exit 1): bare channel walls, flat surfaces, bare quays and ground, an empty foreground, too few depth layers, no
+  // framing, no bough in a natural view, low variety, no life. Its warnings (the sky share) are notes. o.strict === false skips it.
+  let strict = null;
+  if (o.strict !== false && E.worldDetailCoverage && E.worldDetailProblems && cam) {
+    try {
+      const rec = E.worldDetailCoverage(world, cam, { season });
+      const kit = o.kit || (world.fillState && world.fillState.style) || (E.worldFillStyle ? E.worldFillStyle(world) : null);
+      const list = E.worldDetailProblems(rec, { kit });
+      strict = { rec, problems: list, kit, ok: !list.some(p => p.severity !== 'warn') };
+      for (const p of list) (p.severity === 'warn' ? notes : problems).push(`${p.rule}: ${p.msg} (fix: ${p.fix})`);
+    } catch (e) { problems.push('the strict measure threw: ' + e.message); }
+  }
+  return { notes, score: richness.score, richness, worldRichness, coverage: coverage ? { bare: coverage.bare, sky: coverage.sky, ok: coverage.ok, msg: coverage.msg || '' } : null, strict,
+    framing: { cuts: badCuts, landmarks: badLm }, problems, records: records.length, by: { richness: 'critic-boxes', floor: E.worldRichness ? 'worldRichness' : null, coverage: E.worldCoverage ? 'worldCoverage' : null, strict: E.worldDetailCoverage ? 'worldDetailCoverage' : null, framing: E.worldFrameCheck ? 'worldFrameCheck' : 'invariants' } };
 }
 
 /** The critic of a registered scene by ref: a v3 item through worldCritic, a v2 / v1 item through its compiled data. */
@@ -174,7 +187,11 @@ export function criticText(c, title = '') {
   if (c.worldRichness) out.push(`  worldRichness (kb floor): ${JSON.stringify(c.worldRichness).slice(0, 200)}`);
   if (c.coverage) out.push(`  coverage (C6): bare ${c.coverage.bare}, open horizon ${c.coverage.sky} ${c.coverage.ok ? 'ok' : 'FAIL'}`);
   if (c.framing) out.push(`  framing: ${c.framing.cuts.length} cut, ${c.framing.landmarks.length} landmark problem(s) [${c.by && c.by.framing}]`);
-  for (const p of (c.problems || []).slice(0, 12)) out.push('    - ' + p);
+  if (c.strict && c.strict.rec) {
+    const r = c.strict.rec, pc = v => Math.round(v * 100) + '%';
+    out.push(`  strict (${c.strict.kit || 'no kit'}): ${c.strict.ok ? 'PASS' : 'FAIL'}  bare ${pc(r.bare)} flat ${pc(r.flat)} | near ${pc(r.near.dressed)} dressed, ${pc(r.near.object)} standing | layers ${r.layerCount} [${r.layers.map(pc).join(' ')}] | frame top ${r.frame.top || '-'} left ${r.frame.left || '-'} right ${r.frame.right || '-'} | variety ${r.variety.all}/${r.variety.mid} | life ${r.life} | sky ${pc(r.sky)} | channel ${pc(r.channel.area)} (${pc(r.channel.flat)} flat) | paving bare ${pc(r.paving)}`);
+  }
+  for (const p of (c.problems || []).slice(0, 16)) out.push('    - ' + p);
   for (const n of (c.notes || []).slice(0, 6)) out.push('    note: ' + n);
   return out.join('\n');
 }
