@@ -20,7 +20,7 @@ For whoever picks this up next (a person or an agent). Read in this order: this 
 ## Known state of v3 (honest)
 
 When it works it looks good (see the fleet-pond-2 capture), but the renders still have many glitches and are worse than the
-v2 originals. The open list is in `C:/tmp/world/reports/test-orchestrator.md` on the original machine; the same items are
+v2 originals. The open list is in the orchestrator review notes (kept outside the repo); the same items are
 repeated here:
 
 - A huge glowing white disc next to moored boats at dawn and night: the stove smoke particle is drawn as a lit disc.
