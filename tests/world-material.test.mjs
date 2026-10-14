@@ -63,7 +63,9 @@ test('grass and leaf colours differ by month; trees are bare in winter, bud in s
   const ent = (id) => ({ id, obj: 'tree.oak', x: 0, z: 30 });
   const jan = W.worldMaterialFor(mctx(0), ent('t1')), apr = W.worldMaterialFor(mctx(3), ent('t1')), jun = W.worldMaterialFor(mctx(5), ent('t1')), oct = W.worldMaterialFor(mctx(9), ent('t1'));
   assert.equal(jan.leaf, 'bare'); assert.equal(apr.leaf, 'bud'); assert.equal(jun.leaf, 'full'); assert.equal(oct.leaf, 'turn');
-  assert.equal(W.worldMaterialVisible('leaf', jan), false, 'no green leaves in January');
+  assert.equal(W.worldMaterialVisible('leaf', Object.assign({}, jan, { formArt: false })), false, 'no green leaves in January (art without a bare form drops its leaves)');
+  // art with a bare form is drawn in it: its crown then holds limbs and twigs, which stay (dropping them left trunk slabs; SCENE_LESSONS G)
+  assert.equal(jan.form, 'winter'); assert.equal(W.worldMaterialVisible('leaf', jan), true);
   assert.equal(W.worldMaterialVisible('needle', jan), true, 'evergreens stay');
   assert.equal(W.worldMaterialVisible('bark', jan), true);
   const cA = W.worldMaterialColour('leaf', leaf, apr), cJ = W.worldMaterialColour('leaf', leaf, jun), cO = W.worldMaterialColour('leaf', leaf, oct);

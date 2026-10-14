@@ -55,6 +55,19 @@ function _wfrView(e, cam, agent, prev) {
   return { view: 'side', mirror: false, obj: null, variant: null, persp: false, s: null };
 }
 function _wfrIsWater(e) { return String(e.attach || '') === 'water' || e.layer === 'swim'; }
+/**
+ * The season whose shapes a static is drawn with (look: worldMaterialForm): a deciduous plant with seasonal art takes the form of
+ * its OWN leaf state (the knowledge base's worldKbState for this entity at this time), so a bare tree is drawn in the library's
+ * bare form (limbs and twigs), never as its summer art with the leaves cut away. Everything else: the calendar season.
+ */
+function _wfrFormOf(e, season, ctx) {
+  const s = season || 'summer';
+  if (!e || !e.obj || !ctx || typeof ctx !== 'object' || !/^(tree|plant)\./.test(e.obj)) return s;
+  if (typeof worldMaterialForm !== 'function' || typeof worldKbState !== 'function' || typeof worldKb !== 'function') return s;
+  try { const st = worldKbState(worldKb(e.obj), ctx, String(e.id || e.obj)); return worldMaterialForm(e.obj, s, st && st.leaf, st && st.grow, st && st.drop); } catch (err) { return s; }
+}
+/** The plan key part of the drawn forms: they change with the day of the year only. */
+function _wfrFormKey(ctx) { return ctx && Number.isFinite(ctx.doy) ? 'd' + ctx.doy : ctx && Number.isFinite(ctx.ms) ? 'd' + Math.floor(ctx.ms / 86400000) : '-'; }
 function _wfrId(e, oid) { return e.id != null ? String(e.id) : oid + '@' + e.x + ',' + e.z; }
 /** The record of an extruded primitive (a line piece, a building, a long hull in perspective). */
 function _wfrPrimRec(prim, ent, vw) {
@@ -87,11 +100,12 @@ function _wfrRec(e, cam, o) {
   if (!def || !def.size) return null;
   const v = vw.variant != null ? vw.variant : Number.isInteger(e.variant) ? e.variant : 0;
   const P = sceneProject(cam, e.x, e.z, Number.isFinite(e.y) ? e.y : null), s = vw.s || (cam.f / e.z) * _wfrHeight(e) / def.size[1];
-  const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(oid, v, o.season || 'summer') : null, b = (sh && sh.box) || [-def.size[0] / 2, -def.size[1], def.size[0] / 2, 0];
+  const form = o.agent ? (o.season || 'summer') : _wfrFormOf(e, o.season, o.ctx);
+  const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(oid, v, form) : null, b = (sh && sh.box) || [-def.size[0] / 2, -def.size[1], def.size[0] / 2, 0];
   const flip = !!vw.mirror && def.flippable !== false;
   const box = flip ? { x0: P.X - b[2] * s, y0: P.Y + b[1] * s, x1: P.X - b[0] * s, y1: P.Y + b[3] * s } : { x0: P.X + b[0] * s, y0: P.Y + b[1] * s, x1: P.X + b[2] * s, y1: P.Y + b[3] * s };
   const foot = Array.isArray(e.foot) && e.foot.length ? e.foot : [[e.x, e.z]];
-  return { id: _wfrId(e, oid), ent: e, obj: e.obj, o: oid, v, X: P.X, Y: P.Y, s, flip, box, x: e.x, y: Number.isFinite(e.y) ? e.y : 0, z: e.z, foot,
+  return { id: _wfrId(e, oid), ent: e, obj: e.obj, o: oid, v, X: P.X, Y: P.Y, s, flip, box, x: e.x, y: Number.isFinite(e.y) ? e.y : 0, z: e.z, foot, season: form,
     height: _wfrHeight(e), attach: e.attach || null, static: e.static !== false, cut: _wfrCutOf(e, cam, o.regions), view: vw.view, mirror: !!vw.mirror, backdrop: !!e.backdrop };
 }
 /**
@@ -239,7 +253,7 @@ function worldFramePlan(world, o) {
     if (out.byId.has(r.id)) r.id = r.id + '#' + out.recs.length;
     out.recs.push(r); out.byId.set(r.id, r);
   };
-  for (const e of ents) add(_wfrRec(e, cam, { season: o.season, regions: o.regions }));
+  for (const e of ents) add(_wfrRec(e, cam, { season: o.season, regions: o.regions, ctx: o.ctx || null }));
   // lines and buildings (Q2, Q3): footprints in metres, extruded by appearance; ordered and occluding like any static
   if (typeof worldExtrude === 'function') {
     try { for (const p of worldExtrude(world, cam, { season: o.season, hulls: false }) || []) if (p && p.box) add(_wfrPrimRec(p, null, null)); } catch (e) { /* no extrusion */ }
@@ -252,7 +266,7 @@ function worldFramePlan(world, o) {
       const vis = Math.max(0, Math.min(1600, r.box.x1) - Math.max(0, r.box.x0)) * Math.max(0, Math.min(900, r.box.y1) - Math.max(0, r.box.y0));
       if (vis > WORLD_FRAME_LIVE_AREA * 1600 * 900) continue;
       let h = null;
-      try { h = worldAnimHooks(r.ent, 0, { obj: r.o, variant: r.v, season: o.season, world }); } catch (e) { h = null; }
+      try { h = worldAnimHooks(r.ent, 0, { obj: r.o, variant: r.v, season: r.season || o.season, world }); } catch (e) { h = null; }
       if (Array.isArray(h) && h.some(x => x && _WFR_LIVE_KINDS.has(x.kind))) cand.push(r);
     }
     cand.sort((a, b) => a.z - b.z || (a.id < b.id ? -1 : 1));
@@ -312,13 +326,13 @@ function _wfrPlain(o) { if (o == null) return null; try { return JSON.parse(JSON
 /** The frame-record handle of a built world (kept on it, not enumerable): its plan, water regions, season and date. */
 function _wfrWorldScene(world, o) {
   const season = o.season || world.season || 'summer', tctx = o.ctx || (world.time && Number.isFinite(world.time.ms) ? world.time : null);
-  const ab = _wfrAbsent(world, tctx), key = season + '|' + (world.nav ? 'n' : '-') + '|' + ab.key;
+  const ab = _wfrAbsent(world, tctx), key = season + '|' + (world.nav ? 'n' : '-') + '|' + ab.key + '|' + _wfrFormKey(tctx);
   let h = world.$wfr;
   if (h && h.key === key) return h;
   let regions = [];
   if (typeof worldWaterPlan === 'function') { try { regions = worldWaterPlan(world, world.cam) || []; } catch (e) { regions = []; } }
   const date = Number.isFinite(o.date) ? o.date : world.time && Number.isFinite(world.time.ms) ? world.time.ms : Number.isFinite(world.ms) ? world.ms : null;
-  h = { key, world, cam: world.cam, season, date, driver: null, plan: worldFramePlan(world, { season, nav: world.nav, regions, absent: ab.set }), regions, W: 1600, H: 900 };
+  h = { key, world, cam: world.cam, season, date, driver: null, plan: worldFramePlan(world, { season, nav: world.nav, regions, absent: ab.set, ctx: tctx }), regions, W: 1600, H: 900 };
   try { Object.defineProperty(world, '$wfr', { value: h, enumerable: false, configurable: true, writable: true }); } catch (e) { /* frozen: built again next time */ }
   return h;
 }
@@ -472,14 +486,15 @@ function _wfrPaint(cx, p, col) {
  */
 function _wfrSprite(env, S, oid, v, part, sc, mc, x) {
   x = x || {};
-  const v2 = () => { try { return env.sprite({ o: oid, v, part, season: S.season, haze: x.haze || 0, tint: null, scale: sc, flip: false, cls: x.cls || null, litGlow: !!x.litGlow }); } catch (e) { return null; } };
+  const season = x.season || S.season;   // the drawn form (a bare tree in its winter form: _wfrFormOf)
+  const v2 = () => { try { return env.sprite({ o: oid, v, part, season, haze: x.haze || 0, tint: null, scale: sc, flip: false, cls: x.cls || null, litGlow: !!x.litGlow }); } catch (e) { return null; } };
   if (!S.mat || !mc || typeof sceneObjShapes !== 'function' || typeof Path2D !== 'function' || typeof sceneSprites === 'undefined') return v2();
-  const sh = sceneObjShapes(oid, v, S.season);
+  const sh = sceneObjShapes(oid, v, season);
   if (!sh) return null;
   if (_wfrHasImg(sh)) return v2();
   let mk = '';
   try { mk = worldMaterialKey(mc); } catch (e) { return v2(); }
-  const key = 'w3|' + oid + '|' + v + '|' + part + '|' + S.season + '|' + mk + '|' + S.band + '|' + Math.round(sc * 64) / 64 + (x.litGlow ? '|g' : '');
+  const key = 'w3|' + oid + '|' + v + '|' + part + '|' + season + '|' + mk + '|' + S.band + '|' + Math.round(sc * 64) / 64 + (x.litGlow ? '|g' : '');
   return sceneSprites.get(key, () => {
     const names = part === '*' ? _wfrStill(sh) : part.startsWith('rest:') ? _wfrStill(sh).filter(p => !part.slice(5).split(',').includes(p)) : [part];
     const detail = typeof sceneDetailAt !== 'function' || sceneDetailAt(oid, sh, sc);
@@ -536,7 +551,7 @@ function _wfrHaze(env, e) {
 /** The sprite of a draw record (part '*' or one part), at its scale bucket. */
 function _wfrSpriteOf(env, S, r, part, x) {
   const sc = _wfrBucket(x && x.bucket ? x.bucket : r.s) * env.vs, mc = _wfrMc(S, r.ent);
-  return _wfrSprite(env, S, r.o, r.v, part || '*', sc, mc, Object.assign({ haze: mc ? 0 : _wfrHaze(env, r.ent), cls: r.ent.cls || null }, x || {}));
+  return _wfrSprite(env, S, r.o, r.v, part || '*', sc, mc, Object.assign({ haze: mc ? 0 : _wfrHaze(env, r.ent), cls: r.ent.cls || null, season: r.season || null }, x || {}));
 }
 function _wfrM(env, r) { return [env.vs * r.s * (r.flip ? -1 : 1), 0, 0, env.vs * r.s, env.vs * r.X + env.ox, env.vs * r.Y + env.oy]; }
 /** Clip a context to what lies above a floater's cut (device px: scene units through vs, ox, oy, then less the bitmap's origin). */
@@ -710,9 +725,9 @@ function* _wfrBakeJob(env, S) {
   yield;
   // 2. the plan: draw records and D's chunks (kept per world, season and nav: the camera does not move)
   const ab = _wfrAbsent(world, S.tctx && Number.isFinite(S.tctx.ms) ? S.tctx : null);
-  const pk = 'plan|' + S.season + '|' + (rec.driver && rec.driver.nav ? 'n' : '-') + '|' + ab.key;
+  const pk = 'plan|' + S.season + '|' + (rec.driver && rec.driver.nav ? 'n' : '-') + '|' + ab.key + '|' + _wfrFormKey(S.tctx);
   let plan = rec.frame.plan && rec.frame.planKey === pk ? rec.frame.plan : null;
-  if (!plan) { plan = worldFramePlan(world, { season: S.season, nav: rec.driver && rec.driver.nav, regions: S.regions, absent: ab.set }); rec.frame.plan = plan; rec.frame.planKey = pk; }
+  if (!plan) { plan = worldFramePlan(world, { season: S.season, nav: rec.driver && rec.driver.nav, regions: S.regions, absent: ab.set, ctx: S.tctx }); rec.frame.plan = plan; rec.frame.planKey = pk; }
   S.plan = plan;
   yield;
   // 3. the chunks: each its own bitmap, clipped to its box, integer-snapped, 1 px bleed
@@ -874,7 +889,7 @@ function _wfrRun(S, ms) {
 function _wfrHooks(env, S, r, sh, tau) {
   if (typeof worldAnimHooks === 'function') {
     try {
-      const h = worldAnimHooks(r.ent, tau, { obj: r.o, variant: r.v, season: S.season, world: S.rec.world });
+      const h = worldAnimHooks(r.ent, tau, { obj: r.o, variant: r.v, season: r.season || S.season, world: S.rec.world });
       const list = Array.isArray(h) ? h : h && Array.isArray(h.hooks) ? h.hooks : null;
       if (list) return list.filter(x => x && x.kind);
     } catch (e) { /* below */ }
@@ -886,7 +901,7 @@ function _wfrHooks(env, S, r, sh, tau) {
 /** Draw one mover (an agent or a live static): its rest sprite and its moving parts posed at the scene time, cut at a waterline. */
 function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
   if (r.prim) return _wfrDrawRec(ctx, env, S, r, null, 0, 0, alpha);
-  const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(r.o, r.v, S.season) : null;
+  const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(r.o, r.v, r.season || S.season) : null;
   const L = env.Lnow || env.L, night = !!(L && (L.windows || L.dark > 0.5)), lit = !r.static && night && /vehicle|tram|train|boat|bus|car/.test(String(r.ent.cls || r.obj));
   const hooks = typeof sceneAnimPose === 'function' ? _wfrHooks(env, S, r, sh, tau) : [], d = r.static ? S.draw.get(r.id) : null, M = d && d.M ? d.M : _wfrM(env, r);
   const x = { litGlow: lit, bucket: r.bucket };

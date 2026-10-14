@@ -102,7 +102,7 @@ const _wmtOfMemo = new Map();
  * glow marks lit glass.
  */
 function worldMaterialOf(obj, part, fill, shape) {
-  const key = obj + '|' + part + '|' + fill + '|' + (shape && shape.glow ? 'g' : '');
+  const key = obj + '|' + part + '|' + fill + '|' + (shape && shape.glow ? 'g' : '') + (!fill && shape && typeof shape.s === 'string' && !shape.f ? '|s' + shape.s : '');
   let m = _wmtOfMemo.get(key);
   if (m) return m;
   m = _wmtOfRaw(String(obj || ''), String(part || ''), typeof fill === 'string' ? fill : null, shape);
@@ -110,7 +110,38 @@ function worldMaterialOf(obj, part, fill, shape) {
   _wmtOfMemo.set(key, m);
   return m;
 }
+// the palette keys that hold a plant's WOOD (trunk, limbs, twigs, stems): a crown part mixes leaf masses with the limbs and twigs
+// that carry them (and, in the bare winter form, holds nothing but limbs and twigs), so a part name alone cannot say leaf
+const _WMT_WOOD_KEY = /^(bark|limb|limbs|twig|twigs|stem|stems|trunk|pineTrunk|birchTrunk|peel|mark|wood|branch|branches|bole)$/;
+const _wmtWoodMemo = new Map();
+/** The wood colours of a library object's palette (every season), lower-case '#rrggbb'; an empty set for no palette. */
+function _wmtWoodCols(obj) {
+  let s = _wmtWoodMemo.get(obj);
+  if (s) return s;
+  s = new Set();
+  const def = typeof sceneObj === 'function' ? sceneObj(obj) : null, pal = def && def.palette;
+  if (pal && typeof pal === 'object') for (const sea of Object.keys(pal)) {
+    const P = pal[sea];
+    if (!P || typeof P !== 'object') continue;
+    for (const k of Object.keys(P)) {
+      if (!_WMT_WOOD_KEY.test(k)) continue;
+      for (const c of [].concat(P[k])) if (typeof c === 'string' && c[0] === '#') s.add(_wmtHex(_wmtRgb(c)));
+    }
+  }
+  _wmtWoodMemo.set(obj, s);
+  return s;
+}
+/** Is this shape of a plant drawn in its wood colours (a limb, a twig, the bare form's branches)? */
+function _wmtIsWood(obj, fill, shape) {
+  const W = _wmtWoodCols(obj);
+  if (!W.size) return false;
+  const c = typeof fill === 'string' && fill[0] === '#' ? fill : shape && typeof shape.s === 'string' && shape.s[0] === '#' && !shape.f ? shape.s : null;
+  return !!c && W.has(_wmtHex(_wmtRgb(c)));
+}
 function _wmtOfRaw(obj, part, fill, shape) {
+  // a plant's limbs and twigs are bark wherever they are drawn (a crown part holds them too): never leaf, so they are never dropped
+  // with the leaves and never turn gold in autumn (WORLD_ENGINE 15.2; SCENE_LESSONS G)
+  if (/^(tree|plant)\./.test(obj) && !(shape && shape.glow) && _wmtIsWood(obj, fill, shape)) return 'bark';
   if (typeof worldKb === 'function') {
     try { const kb = worldKb(obj), mm = kb && kb.material; if (mm && typeof mm === 'object') { const v = mm[part] || mm['*']; if (WORLD_MATERIALS[v]) return v; } } catch (e) { /* the rules below */ }
   }
@@ -180,9 +211,31 @@ function _wmtLeafOf(doy, key, evergreen) {
   if (d < 315) return { leaf: 'turn', turn: _wmtClamp((d - 262) / 45, 0.05, 1) };
   return { leaf: 'turn', turn: 1 };                                   // the last leaves of November
 }
+const _WMT_SEASONS = new Set(['spring', 'summer', 'autumn', 'winter']);
+/**
+ * The drawn FORM of a library object now: the season whose shapes it is drawn with. A deciduous plant whose art changes by season
+ * (shapeBySeason: the library draws a bare winter form with its limbs and twig haze, a spring form, a full summer form and a
+ * turning autumn form) is drawn in the form of ITS OWN leaf state, not of the calendar: bare -> 'winter' (also while the buds
+ * only begin to break: grow < 0.4), bud -> 'spring', turn -> 'autumn' (until most leaves are down: drop >= 0.7 -> 'winter'), full -> 'summer' ('spring' in spring). So a tree that is
+ * bare in late November shows its branches (never a trunk with its crown dropped), and trees turn and leaf out unevenly.
+ * Everything else is drawn in the calendar season. -> 'spring' | 'summer' | 'autumn' | 'winter'.
+ */
+function worldMaterialForm(obj, season, leaf, grow, drop) {
+  const s = _WMT_SEASONS.has(season) ? season : 'summer';
+  if (!leaf || typeof sceneObj !== 'function') return s;
+  const def = sceneObj(obj);
+  if (!def || !def.shapeBySeason) return s;
+  if (leaf === 'bare') return 'winter';
+  if (leaf === 'bud') return Number.isFinite(grow) && grow < 0.4 ? 'winter' : 'spring';
+  if (leaf === 'turn') return Number.isFinite(drop) && drop >= 0.7 ? 'winter' : 'autumn';
+  if (leaf === 'full') return s === 'spring' ? 'spring' : 'summer';
+  return s;
+}
 /**
  * The context of one entity: leaf state from the knowledge base (worldKbState(kb, ctx, key), typeof) or the seeded fallback, and
  * its haze from its depth (sceneHazeAt when loaded). ent: { id, obj, x, z }. ctx (optional): the time context for kb.
+ * Also its drawn form (worldMaterialForm) and formArt: true when that form's art already shows the leaf state (the bare form is
+ * drawn bare: nothing is dropped from it and its colours are the art's own).
  */
 function worldMaterialFor(mctx, ent, ctx) {
   const out = Object.assign({}, mctx || worldMaterialCtx({}));
@@ -193,8 +246,12 @@ function worldMaterialFor(mctx, ent, ctx) {
     try { st = worldKbState(worldKb(ent.obj), ctx || { month: out.month, doy: out.doy, season: out.season }, key); } catch (e) { st = null; }
   }
   const ever = ent && /pine|fir|yew|spruce|cedar|conifer|holly|ivy|box|laurel|palm/.test(String(ent.obj || ''));
-  if (st && st.leaf) { out.leaf = st.leaf; out.turn = Number.isFinite(st.turn) ? st.turn : st.leaf === 'turn' ? 0.6 : 0; }
-  else { const f = _wmtLeafOf(out.doy, key, ever); out.leaf = f.leaf; out.turn = f.turn; }
+  if (st && st.leaf) { out.leaf = st.leaf; out.turn = Number.isFinite(st.turn) ? st.turn : st.leaf === 'turn' ? 0.6 : 0; out.grow = Number.isFinite(st.grow) ? st.grow : 0; out.drop = Number.isFinite(st.drop) ? st.drop : 0; }
+  else { const f = _wmtLeafOf(out.doy, key, ever); out.leaf = f.leaf; out.turn = f.turn; out.grow = f.leaf === 'bud' ? 0.5 : 0; }
+  const season = out.season || (ctx && ctx.season) || null;
+  out.form = ent && ent.obj ? worldMaterialForm(ent.obj, season, out.leaf, out.grow, out.drop) : season;
+  const def = ent && ent.obj && typeof sceneObj === 'function' ? sceneObj(ent.obj) : null;
+  out.formArt = !!(def && def.shapeBySeason && out.leaf);
   if (ent && Number.isFinite(ent.z)) {
     const d = Math.hypot(ent.x || 0, ent.z);
     out.haze = typeof sceneHazeAt === 'function' ? sceneHazeAt(d, out.atmos, out.L) : 0.47 * (1 - Math.exp(-d / 12000));
@@ -203,9 +260,13 @@ function worldMaterialFor(mctx, ent, ctx) {
 }
 
 /* ---------- the colour ---------- */
-/** False for leaves on a bare tree (the renderer drops those shapes); needles and every other material stay. */
+/**
+ * False for leaves on a bare tree whose art has no bare form (the renderer drops those shapes); needles and every other material
+ * stay. A plant drawn in its own seasonal form (formArt: the library's bare winter form) keeps every shape: what its crown holds
+ * then is limbs and twigs (dropping it left bare trunk slabs and white poles, SCENE_LESSONS G).
+ */
 function worldMaterialVisible(mat, mctx) {
-  if (mat !== 'leaf' || !mctx) return true;
+  if (mat !== 'leaf' || !mctx || mctx.formArt) return true;
   return mctx.leaf !== 'bare';
 }
 /** Snow lying on a material now, 0..1 (S2): only on snow days, only on what catches it (ground, roofs, boughs). */
@@ -224,6 +285,10 @@ function _wmtSeason(mat, hex, c) {
   if (M.season === 'needle') return m <= 1 || m === 11 ? _wmtMix(hex, '#3c4a3a', 0.15) : hex;
   // leaf: bud, full (early summer bright, late summer dark), turning (seeded hue per tree), bare (a dead brown for what remains)
   const leaf = c.leaf || (m < 3 || m > 10 ? 'bare' : m === 3 ? 'bud' : m >= 9 ? 'turn' : 'full');
+  // the bare form's own art (limbs, twig haze, the willow's golden whips, a few marcescent leaves) is already its winter colour
+  if (c.formArt && c.form === 'winter' && leaf !== 'bud') return hex;
+  // budding on the bare form: the twig haze greens as the buds break (S1); the spring form keeps its fresh tint
+  if (leaf === 'bud' && c.formArt && c.form === 'winter') return _wmtMix(hex, '#a8cc5c', 0.3 + 0.5 * _wmtClamp(c.grow || 0, 0, 1));
   if (leaf === 'bud') return _wmtMix(hex, '#b3d468', 0.45);
   if (leaf === 'full') return m >= 7 ? _wmtMix(hex, '#56682e', 0.18) : m === 4 ? _wmtMix(hex, '#9cc95a', 0.15) : hex;
   if (leaf === 'turn') {
@@ -293,6 +358,6 @@ function worldMaterialColour(mat, hex, mctx) {
 /** The cache key part of a material context (V5): the season state, the light band, the weather buckets and the haze bucket. */
 function worldMaterialKey(mctx) {
   const c = mctx || {}, q = (v, n) => Math.round(_wmtClamp(Number(v) || 0, 0, 1) * n);
-  return 'm' + (c.month == null ? '' : c.month) + (c.leaf ? c.leaf[0] + q(c.turn, 4) : '') + '|' + (c.band || (c.sky && c.sky.band) || '-') +
+  return 'm' + (c.month == null ? '' : c.month) + (c.leaf ? c.leaf[0] + q(c.turn, 4) : '') + (c.formArt ? 'F' + String(c.form || '-')[0] + (c.leaf === 'bud' ? q(c.grow, 4) : '') : '') + '|' + (c.band || (c.sky && c.sky.band) || '-') +
     '|w' + q(c.wet, 3) + 'f' + q(c.frost, 3) + 's' + (c.snowDay ? q(c.snow, 4) : 0) + 'h' + q(c.haze, 10);
 }
