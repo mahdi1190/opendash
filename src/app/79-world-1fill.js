@@ -30,90 +30,21 @@
         maxAuto (1400), W (1600), H (900), overscan (0.18 of W each side) }.
    ============================================================ */
 
-/* ---------- styles ---------- */
+/* ---------- styles: built from the style kits (79-world-0kits.js; N1) ---------- */
 // score / near / mid / far: the frame-band floor (cover below the horizon, variety); box: the default target of the box measure
 // (worldRichness(...).box, the same measure as the tools' critic: a converted scene must reach its source's) by place kind
 const WORLD_RICHNESS_FLOOR = Object.freeze({ score: 62, near: Object.freeze({ cover: 0.7, variety: 2 }), mid: Object.freeze({ cover: 0.7, variety: 3 }), far: Object.freeze({ cover: 0.6, variety: 2 }),
   box: Object.freeze({ rural: 96, park: 96, town: 75, city: 66 }) });
-const _WFL_NEAR_Z = 12, _WFL_MID_Z = 35, _WFL_EDGE_ZMAX = 150, _WFL_FILL_ZMAX = 260;
-// lists are [object id, weight]; near: z < 12 m (low dressing only), mid: 12-35 m, far: beyond; accents are seasonal or
-// occasional (flowers in their months, leaf litter in autumn, stones, logs): richness, never coverage
-const _WFL_RURAL_GRASS = { near: [['plant.grass-long', 4], ['plant.yg-meadow', 4], ['plant.grass', 2], ['plant.fern', 1], ['plant.bracken', 1]],
-  mid: [['plant.yg-meadow', 3], ['plant.bracken', 2], ['plant.rph-hazel-coppice', 2], ['plant.shrub', 2], ['plant.fern', 1], ['tree.hawthorn', 1]],
-  far: [['tree.bank-oak', 3], ['tree.bank-alder', 2], ['tree.bank-birch', 2], ['tree.wyv-far-sallow', 1], ['tree.hawthorn', 1], ['plant.shrub', 1]],
-  accents: [['plant.wildflowers', 3], ['plant.daisies', 1], ['plant.bluebells', 1], ['ground.leaf-litter', 2], ['rock.stones', 1], ['ground.log', 1]] };
-const _WFL_HEATH = { near: [['ground.yc-heath-drift', 4], ['plant.heather', 3], ['plant.wyv-heath-bank', 2], ['plant.moor-heather', 2], ['plant.grass-long', 1]],
-  mid: [['plant.gorse', 3], ['plant.yc-gorse-spray', 2], ['plant.wyv-heath-bank', 2], ['plant.bracken', 2], ['tree.wyv-far-sallow', 1]],
-  far: [['tree.pool-birch', 3], ['tree.pine', 2], ['tree.pond-pine', 2], ['tree.bank-birch', 1], ['plant.gorse', 1]],
-  accents: [['plant.yc-cotton-grass', 1], ['rock.stones', 1], ['ground.log', 1], ['ground.puddle', 1]] };
-const _WFL_WOOD = { near: [['plant.fern', 3], ['plant.bracken', 2], ['plant.rph-woodland-sedge', 3], ['plant.grass-long', 2]],
-  mid: [['plant.rph-hazel-coppice', 3], ['plant.holly', 1], ['plant.shrub', 2], ['plant.fern', 1], ['plant.bracken', 1]],
-  far: [['tree.bank-oak', 3], ['tree.wyv-far-oak', 2], ['tree.pool-birch', 2], ['tree.bank-birch', 1], ['tree.bank-alder', 1]],
-  accents: [['plant.bluebells', 3], ['ground.leaf-litter', 3], ['ground.log', 2], ['plant.daisies', 1]] };
-const _WFL_FARM = { near: [['plant.grass-long', 4], ['plant.yg-meadow', 3], ['plant.grass', 3]],
-  mid: [['plant.yg-meadow', 2], ['plant.hedge', 2], ['plant.hedgerow-blackberry', 1], ['plant.shrub', 1]],
-  far: [['tree.bank-oak', 3], ['tree.hawthorn', 2], ['tree.bank-birch', 1], ['plant.hedge', 2]],
-  accents: [['plant.wildflowers', 3], ['plant.daisies', 1], ['ground.hay-bales', 1], ['rock.stones', 1]] };
-const _WFL_PARK_GRASS = { near: [['plant.grass', 4], ['plant.grass-long', 2], ['plant.yg-meadow', 1]], maxH: 3.5,
-  mid: [['plant.shrub', 2], ['plant.rph-church-shrub', 2], ['plant.holly', 1], ['plant.grass-long', 1]],
-  far: [['tree.plane', 2], ['tree.bank-oak', 2], ['tree.horse-chestnut', 1], ['tree.bank-birch', 1], ['plant.rph-church-shrub', 1]],
-  accents: [['plant.daisies', 3], ['plant.shp-border', 2], ['ground.leaf-litter', 2], ['ground.petals', 1]] };
-// city verges and banks stay low (grass and long grass, the odd buddleia): fill never hides a street front or a mill's ground floor
-const _WFL_CITY_GRASS = { near: [['plant.grass', 4], ['plant.grass-long', 2]], mid: [['plant.grass-long', 3], ['plant.grass', 2], ['plant.yg-meadow', 1]],
-  far: [['tree.mqn-street-tree', 3], ['tree.plane', 1], ['plant.grass-long', 2]], accents: [['plant.daisies', 2], ['ground.leaf-litter', 2], ['plant.mqn-buddleia', 1]], maxH: 1.3 };
-const _WFL_PAVING = { near: [['plant.planter', 2], ['street.mqn-bin', 1], ['plant.rph-flower-tub', 1]],
-  mid: [['street.mqn-planter-grass', 2], ['tree.mqn-street-tree', 2], ['street.mcr-cycle-stand', 1], ['street.bench', 1], ['street.lamppost', 1]],
-  far: [['tree.mqn-street-tree', 3], ['street.mqn-planter-grass', 1]], accents: [['ground.rph-paving-wear', 3], ['ground.leaf-litter', 2], ['ground.puddle', 1]], max: { near: 6, mid: 14, far: 12 } };
-const _WFL_PATH = { near: [], mid: [], far: [], accents: [['ground.leaf-litter', 3], ['ground.puddle', 1]] };
-const _WFL_SAND = { near: [['rock.stones', 2], ['plant.grass-long', 1]], mid: [['rock.boulder', 1], ['plant.grass-long', 1]], far: [['rock.boulder', 1]], accents: [['rock.stones', 1]] };
-const _WFL_WET = { near: [['plant.rph-woodland-sedge', 2], ['plant.proof-fleet-rush', 1]], mid: [['plant.yg-reedbed', 2], ['plant.proof-fleet-reed', 1]], far: [['plant.yg-reedbed', 1], ['tree.wyv-far-sallow', 1]], accents: [] };
-const _WFL_WATER_CALM = { calm: [['water.lily', 4], ['water.fish-ring', 1]], share: 0.3 };
-const _WFL_NATURAL_BANK = { margin: [['plant.proof-fleet-reed', 3], ['plant.reed', 3], ['plant.bulrush', 2], ['plant.proof-fleet-rush', 1]],
-  bank: [['plant.grass-long', 4], ['plant.rph-woodland-sedge', 2], ['plant.fern', 1], ['plant.canal-view-meadowsweet', 1], ['plant.canal-view-loosestrife', 1], ['rock.stones', 1]], stands: 0.5 };
-// the richness tier's pools by band (perennial only; habitat decides where each may stand): the variety of the corpus scenes
-const _WFL_RICH_RURAL = {
-  mid: [['tree.bank-oak', 2], ['tree.bank-alder', 2], ['tree.bank-birch', 2], ['tree.bank-willow', 1], ['tree.pool-birch', 2], ['tree.wyv-far-oak', 1], ['tree.wyv-far-sallow', 2],
-    ['tree.hawthorn', 2], ['tree.pond-pine', 1], ['plant.holly', 1], ['plant.rph-hazel-coppice', 2], ['plant.shrub', 2], ['plant.gorse', 1], ['plant.bracken', 2], ['plant.fern', 2],
-    ['plant.yg-meadow', 2], ['plant.grass-long', 2], ['plant.rph-woodland-sedge', 1], ['plant.wyv-heath-bank', 1], ['rock.boulder', 1], ['ground.log', 1], ['plant.reed', 1],
-    ['plant.bulrush', 1], ['plant.proof-fleet-reed', 1], ['plant.yg-reedbed', 1]],
-  far: [['tree.bank-oak', 3], ['tree.bank-alder', 2], ['tree.bank-birch', 2], ['tree.wyv-far-oak', 2], ['tree.far-broad', 2], ['tree.far-birch', 1], ['tree.far-pine', 1],
-    ['tree.bank-distant', 2], ['tree.pond-pine', 1], ['tree.pool-birch', 1], ['tree.hawthorn', 1], ['plant.shrub', 1], ['tree.woods-edge', 3], ['tree.distant', 2]] };
-const _WFL_RICH_CITY = {
-  mid: [['tree.mqn-street-tree', 3], ['tree.plane', 1], ['plant.grass-long', 2], ['plant.grass', 2], ['plant.mqn-buddleia', 1]],
-  far: [['tree.mqn-street-tree', 2], ['tree.plane', 2], ['tree.far-broad', 1]] };
-const _WFL_EDGES_RURAL = { water: { pond: 'natural', lake: 'natural', canal: 'natural', river: 'natural', sea: 'none', harbour: 'urban', puddle: 'none' }, natural: _WFL_NATURAL_BANK,
-  verge: [['plant.grass-long', 4], ['plant.grass', 3], ['plant.wildflowers', 1]], hedgerow: [['plant.hedgerow-blackberry', 3], ['plant.hedge', 2], ['tree.hawthorn', 1]],
-  wallBase: [['plant.grass', 3], ['plant.rph-woodland-sedge', 2], ['plant.fern', 1]], kerb: true, pavement: false };
-const _WFL_EDGES_URBAN = { water: { pond: 'natural', lake: 'natural', canal: 'urban', river: 'urban', sea: 'urban', harbour: 'urban', puddle: 'none' }, natural: _WFL_NATURAL_BANK,
-  verge: [['plant.grass', 3], ['plant.grass-long', 2], ['plant.daisies', 1]], vergeShare: 0.35, hedgerow: [], wallBase: [['plant.grass', 3], ['plant.mqn-buddleia', 1]], kerb: true, pavement: true };
-const _WFL_FRAME_WOOD = [{ kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.canal-view-bough' }, { kind: 'reeds', obj: 'plant.yg-reedbed' },
-  { kind: 'shrub', obj: 'plant.rph-hazel-coppice' }, { kind: 'hedge', obj: 'plant.towpath-hedge' }];
-const WORLD_FILL_STYLES = _wkbFreeze({
-  'canal-wooded': { backdrop: 'canal-wooded', place: 'park', ground: 'grass', fill: { grass: _WFL_RURAL_GRASS, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: _WFL_FRAME_WOOD },
-  pond: { backdrop: 'woodland', place: 'park', ground: 'grass', fill: { grass: _WFL_RURAL_GRASS, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'reeds', obj: 'plant.yg-reedbed' }, { kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.canal-view-bough' }, { kind: 'shrub', obj: 'plant.rph-hazel-coppice' }] },
-  woodland: { backdrop: 'woodland', place: 'rural', ground: 'wood', fill: { grass: _WFL_WOOD, wood: _WFL_WOOD, heath: _WFL_HEATH, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: _WFL_FRAME_WOOD },
-  heath: { backdrop: 'heath', place: 'rural', ground: 'heath', fill: { grass: _WFL_HEATH, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'shrub', obj: 'plant.yc-gorse-spray' }, { kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.canal-view-bough' }, { kind: 'reeds', obj: 'plant.yg-reedbed' }] },
-  downs: { backdrop: 'downs', place: 'rural', ground: 'field', fill: { grass: _WFL_FARM, field: _WFL_FARM, heath: _WFL_HEATH, wood: _WFL_WOOD, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'hedge', obj: 'plant.hedgerow-blackberry' }, { kind: 'shrub', obj: 'plant.shrub' }] },
-  farmland: { backdrop: 'farmland', place: 'rural', ground: 'field', fill: { grass: _WFL_FARM, field: _WFL_FARM, heath: _WFL_HEATH, wood: _WFL_WOOD, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'hedge', obj: 'plant.hedgerow-blackberry' }, { kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.canal-view-bough' }, { kind: 'shrub', obj: 'plant.shrub' }] },
-  coast: { backdrop: 'coast', place: 'rural', ground: 'sand', fill: { grass: _WFL_FARM, sand: _WFL_SAND, field: _WFL_FARM, heath: _WFL_HEATH, wood: _WFL_WOOD, wet: _WFL_WET, paving: _WFL_PAVING, path: _WFL_PATH, water: { calm: [], share: 0 } },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'shrub', obj: 'plant.gorse' }, { kind: 'railing', obj: 'structure.mqn-quayrail-v1' }] },
-  park: { backdrop: 'town-low', place: 'park', ground: 'grass', fill: { grass: _WFL_PARK_GRASS, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, paving: _WFL_PAVING, path: _WFL_PATH, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_RURAL, frame: [{ kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.shp-bough' }, { kind: 'shrub', obj: 'plant.rph-church-shrub' }, { kind: 'lamp', obj: 'street.lamp' }] },
-  'town-low': { backdrop: 'town-low', place: 'town', ground: 'grass', fill: { grass: _WFL_PARK_GRASS, paving: _WFL_PAVING, path: _WFL_PATH, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, water: _WFL_WATER_CALM },
-    edges: _WFL_EDGES_URBAN, frame: [{ kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.shp-bough' }, { kind: 'lamp', obj: 'street.lamp' }, { kind: 'shrub', obj: 'plant.rph-church-shrub' }] },
-  'city-victorian': { backdrop: 'city-victorian', place: 'city', ground: 'grass', fill: { grass: _WFL_CITY_GRASS, paving: _WFL_PAVING, path: _WFL_PATH, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, water: { calm: [], share: 0 } },
-    edges: _WFL_EDGES_URBAN, frame: [{ kind: 'lamp', obj: 'street.lamppost' }, { kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.mcf-plane-bough' }] },
-  'city-sheffield-hills': { backdrop: 'city-sheffield-hills', place: 'city', ground: 'grass', fill: { grass: _WFL_CITY_GRASS, paving: _WFL_PAVING, path: _WFL_PATH, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, water: { calm: [], share: 0 } },
-    edges: _WFL_EDGES_URBAN, frame: [{ kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.klm-sycamore-bough' }, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'railing', obj: 'structure.mqn-quayrail-v1' }] },
-  'city-manchester-towers': { backdrop: 'city-manchester-towers', place: 'city', ground: 'grass', fill: { grass: _WFL_CITY_GRASS, paving: _WFL_PAVING, path: _WFL_PATH, heath: _WFL_HEATH, wood: _WFL_WOOD, field: _WFL_FARM, wet: _WFL_WET, sand: _WFL_SAND, water: { calm: [], share: 0 } },
-    edges: _WFL_EDGES_URBAN, frame: [{ kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'bough', trunk: 'tree.shp-trunk', bough: 'plant.mcf-plane-bough' }] },
-});
+// bands: near z < 12 m (low dressing only), mid 12-35 m, far 35-120 m (structured trees only), distant beyond (dome trees allowed)
+const _WFL_NEAR_Z = 12, _WFL_MID_Z = 35, _WFL_FAR_Z = 120, _WFL_EDGE_ZMAX = 150, _WFL_FILL_ZMAX = 260;
+// every kit and every legacy style name (canal-wooded, city-victorian ...) as a fill style: what dresses each surface (near / mid
+// / far / distant / seasonal accents), the edges, the framing options, the richness pools, the default life and backdrop
+const WORLD_FILL_STYLES = (() => {
+  const out = {};
+  if (typeof WORLD_STYLE_KITS !== 'object' || !WORLD_STYLE_KITS) return Object.freeze(out);
+  for (const k of Object.keys(WORLD_STYLE_KITS).concat(Object.keys(WORLD_KIT_ALIAS))) { const st = worldKitFillStyle(k); if (st) out[k] = st; }
+  return _wkbFreeze(out);
+})();
 // surface kind -> fill group
 const _WFL_GROUP = { grass: 'grass', lawn: 'grass', park: 'grass', verge: 'grass', garden: 'grass', meadow: 'grass', bank: 'grass', ground: null,
   heath: 'heath', field: 'field', wood: 'wood', sand: 'sand', beach: 'sand', shingle: 'sand', pavement: 'paving', plaza: 'paving', platform: 'paving', driveway: 'paving',
@@ -420,9 +351,12 @@ function _wflMake(F, c, kb, probe) {
  */
 function _wflTry(F, c) {
   if (F.count >= F.maxAuto) return null;
-  const kb = worldKb(c.obj);
-  if (!kb || !(c.z > 0.5) || !_wflNum(c.x)) return null;
+  if (!(c.z > 0.5) || !_wflNum(c.x) || typeof c.obj !== 'string') return null;
   if (F.bad.has(c.obj)) return null;
+  // a kit entry for an object the library does not have is skipped and logged ONCE, never replaced by a weaker stand-in
+  // (worldKitCheck and the kit tests fail loudly on it)
+  const kb = _wflKb(F, c.obj);
+  if (!kb) return null;
   if (!kb.care.ok || !worldKbRegionOk(kb, F.world.place).ok) { F.bad.add(c.obj); return null; }
   const air = c.attach === 'air';
   // K6 things that come and go (flowers, lilies, leaf litter) only where the renderer hides them out of season
@@ -447,6 +381,8 @@ function _wflTry(F, c) {
     }
     if (_wflNum(probe.pathDist) && probe.pathDist < 0.6 + (kb.r || 0.1) + 0.05) return null;
     if (probe.surfId && F.lived.has(probe.surfId) && _WFL_WALK.has(probe.kind)) return null;
+    // a lived walk keeps its whole width: nothing's footprint (not just its anchor) reaches onto it (P3)
+    if (_wflLivedWalkDist(F, c.x, c.z) < Math.max(0.12, kb.r || 0.1)) return null;
     const r = kb.solidity === 'solid' ? (kb.r || 0.2) + (kb.clearance || 0) * 0.5 : Math.min(kb.r || 0.2, 0.3);
     if (_wflHits(F, c.x, c.z, r, false)) return null;
     // a long solid (a hedge, a log, a bench, a planter): its whole footprint, not just a disc round its anchor
@@ -488,10 +424,28 @@ function _wflTry(F, c) {
   if (F.boxes) F.boxes.push(b);
   return ent;
 }
+/** The descriptor of a kit object, or null; a name the library does not have is logged once (kitMissing), never swapped. */
+function _wflKb(F, id) {
+  if (typeof id !== 'string' || !id) return null;
+  const kb = worldKb(id);
+  if (kb && kb.object !== false && kb.size && kb.size.h0 > 0) return kb;
+  if (!F.bad.has(id)) { F.bad.add(id); _wflLog(F, { obj: id, action: 'fill', rule: 'kitMissing', reason: `the kit names ${id}, which is not a library object: skipped (no stand-in); fix the kit (worldKitCheck)` }); }
+  return null;
+}
+/** The distance from (x, z) to the nearest lived walk surface (a population walks it): <= 0 inside it, Infinity with none. */
+function _wflLivedWalkDist(F, x, z) {
+  let d = Infinity;
+  for (const s of _wflIndexOf(F).walks) {
+    if (!F.lived.has(s.id)) continue;
+    if (Array.isArray(s.path) && s.width > 0) d = Math.min(d, _wflNear(s.path, x, z, false).d - s.width / 2);
+    else if (Array.isArray(s.poly) && s.poly.length >= 3) d = Math.min(d, _wflInPoly(s.poly, x, z) ? -1 : _wflNear(s.poly, x, z, true).d);
+  }
+  return d;
+}
 function _wflId(F, auto) { let id; do { id = `${auto || 'fill'}-${F.seq++}`; } while (F.ids.has(id)); return id; }
 /** A clump of 1..n members of one object round (x, z) (K5: clumps with gaps, stands; never rows). */
 function _wflClump(F, obj, x, z, n, spread, c) {
-  const kb = worldKb(obj); if (!kb) return [];
+  const kb = _wflKb(F, obj); if (!kb) return [];
   const out = [], r = F.r, l = kb.size.l || 0.5;
   for (let i = 0, tries = 0; i < n && tries < n * 4; tries++) {
     const a = r() * Math.PI * 2, d = i === 0 ? 0 : spread * Math.sqrt(-2 * Math.log(Math.max(1e-6, r()))) * 0.55;
@@ -812,7 +766,7 @@ function _wflFrame(F) {
 }
 /** A bough with its trunk just outside the frame on the same side (K4: the parent in frame or just outside, at a plausible height). */
 function _wflFrameBough(F, opt, s) {
-  const cam = F.cam, kt = worldKb(opt.trunk), kbB = worldKb(opt.bough);
+  const cam = F.cam, kt = _wflKb(F, opt.trunk), kbB = _wflKb(F, opt.bough);
   if (!kt || !kbB) return null;
   // the bough reaches about a third of the way across the frame: its depth follows from its drawn width
   const reach = kbB.art ? Math.abs(kbB.art[2] - kbB.art[0]) : kbB.size.l;
@@ -839,7 +793,7 @@ function _wflFrameBough(F, opt, s) {
 }
 /** A clump (reeds, shrub, hedge, railing, lamp) at one side of the near band, on its own habitat. */
 function _wflFrameClump(F, opt, s) {
-  const cam = F.cam, kb = worldKb(opt.obj);
+  const cam = F.cam, kb = _wflKb(F, opt.obj);
   if (!kb) return null;
   // sized to about a quarter of the frame width, standing at the side with half of it outside: a frame, never a wall
   const zIdeal = Math.max(cam.dMin * 1.2, cam.f * (kb.size.l || 1) / (0.26 * F.W));
@@ -888,18 +842,18 @@ function _wflCoverPass(F, tier) {
     if (F.boxes.some(b => q.X >= b[0] && q.X <= b[2] && q.Y >= b[1] && q.Y <= b[3])) continue;
     const g = _wflGroupOf(F, q.surf), spec = g && F.style.fill[g];
     if (!spec) { F.unfillable.add(q.surf ? q.surf.kind : 'ground'); continue; }
-    const band = q.z < _WFL_NEAR_Z ? 'near' : q.z < _WFL_MID_Z ? 'mid' : 'far';
+    const band = q.z < _WFL_NEAR_Z ? 'near' : q.z < _WFL_MID_Z ? 'mid' : q.z >= _WFL_FAR_Z && Array.isArray(spec.distant) && spec.distant.length ? 'distant' : 'far';
     // the next tier reaches for the next band's dressing too (taller clumps cover more of the frame)
     let list = spec[band] || [];
     if (tier >= 3 && band === 'near') list = list.concat((spec.mid || []).filter(([id]) => (worldKb(id) || { size: { h0: 9 } }).size.h0 <= 1.6));
     if (tier >= 2 && band === 'mid') list = list.concat(spec.far || []);
-    if (_wflNum(spec.maxH) && band !== 'far') list = list.filter(([id]) => { const k = worldKb(id); return k && k.size.h0 <= spec.maxH; });
+    if (_wflNum(spec.maxH) && band !== 'far' && band !== 'distant') list = list.filter(([id]) => { const k = worldKb(id); return k && k.size.h0 <= spec.maxH; });
     if (!list.length) { F.unfillable.add(q.surf ? q.surf.kind : 'ground'); continue; }
     // paving gets its sparse furniture once (_wflPaving), never a carpet of planters
     if (g === 'paving') { if (F.pavingDone) F.pavingCapped.add(q.surf ? q.surf.id : 'paving'); continue; }
     let done = false;
     for (let tries = 0; tries < 4 && !done; tries++) {
-      const obj = _wflPick(list, r), kb = worldKb(obj);
+      const obj = _wflPick(list, r), kb = _wflKb(F, obj);
       if (!kb) continue;
       // a seeded point inside the sample's cell (never the sample lattice itself: no rows), a little nearer so its clump covers it
       const gp = _wflUnproject(F.cam, q.X + (r() - 0.5) * S.colW, Math.max(F.cam.horizon + 0.5, q.Y + (r() - 0.5) * S.rowH)) || { x: q.x, d: q.z };
@@ -930,7 +884,7 @@ function _wflPaving(F) {
     const band = g.d < _WFL_NEAR_Z ? 'near' : g.d < _WFL_MID_Z ? 'mid' : 'far';
     if (got[band] >= cap[band]) continue;
     if (spots.some(p => Math.hypot(p[0] - g.x, p[1] - g.d) < 3 + 0.05 * g.d)) continue;
-    const obj = _wflPick(spec[band], r), kb = worldKb(obj);
+    const obj = _wflPick(spec[band], r), kb = _wflKb(F, obj);
     if (!kb) continue;
     const or = kb.orient && kb.orient !== 'free' ? worldKbOrient(kb, _wflProbe(F, g.x, g.d)) : null;
     const e = _wflTry(F, { obj, x: g.x, z: g.d, auto: 'fill', rule: 'P6', why: `paving ${band}: street furniture`, pit: kb.cls === 'tree', facing: or && _wflNum(or.facing) ? or.facing : (r() < 0.5 ? 90 : 270) });
@@ -970,7 +924,7 @@ function _wflAccents(F) {
     if (!g || g.d > _WFL_MID_Z * 2) continue;
     const surf = _wflSurfAt(F, g.x, g.d), grp = _wflGroupOf(F, surf), spec = grp && F.style.fill[grp];
     if (!spec || !spec.accents || !spec.accents.length || grp === 'water') continue;
-    const obj = _wflPick(spec.accents, r), kb = worldKb(obj);
+    const obj = _wflPick(spec.accents, r), kb = _wflKb(F, obj);
     if (!kb) continue;
     const G = kb.group || {}, n = G.kind === 'single' ? 1 : 1 + Math.floor(r() * Math.min(4, Array.isArray(G.size) ? G.size[1] : 4));
     const got = _wflClump(F, obj, g.x, g.d, n, Math.max(0.4, kb.size.l), { auto: 'fill', rule: 'P6', why: `${grp} seasonal accent` });
@@ -986,7 +940,7 @@ function _wflAccents(F) {
       if (!g || g.d > 90) continue;
       const p = _wflProbe(F, g.x, g.d);
       if (p.kind !== 'water' || !(p.bankDist < 6)) continue;
-      const obj = _wflPick(wspec.calm, r), kb = worldKb(obj);
+      const obj = _wflPick(wspec.calm, r), kb = _wflKb(F, obj);
       const got = _wflClump(F, obj, g.x, g.d, kb && kb.cls === 'lily' ? 3 + Math.floor(r() * 6) : 1, 0.8, { auto: 'fill', rule: 'P6', why: 'calm water: lilies and rings', attach: undefined });
       if (got.length) k++;
     }
@@ -1040,7 +994,9 @@ function _wflBoxScore(world, cam, o) {
  */
 function _wflRichTier(F, floor) {
   const kind = F.style.place || 'park', target = floor && _wflNum(floor.score) ? floor.score : (WORLD_RICHNESS_FLOOR.box[kind] || 90);
-  const city = kind === 'city' || kind === 'town', pool = city ? _WFL_RICH_CITY : _WFL_RICH_RURAL, r = F.r, cam = F.cam;
+  // the kit's perennial pools (N1): every richness item is a curated kit object, never a stand-in
+  const city = kind === 'city' || kind === 'town', pool = F.style.rich || { mid: [], far: [] }, r = F.r, cam = F.cam;
+  const distant = (F.style.fill.grass && F.style.fill.grass.distant) || (F.style.fill[F.style.ground] && F.style.fill[F.style.ground].distant) || [];
   // the near band's pool: the style's near dressing, the wet margin and the small things of the mid pool
   const nearGroups = city ? ['grass'] : ['grass', 'heath', 'wood', 'wet'];
   const nearPool = [].concat(...nearGroups.map(g => F.style.fill[g]).filter(sp => sp && Array.isArray(sp.near)).map(sp => sp.near), (F.style.edges && F.style.edges.natural && !city) ? F.style.edges.natural.margin : [],
@@ -1067,8 +1023,10 @@ function _wflRichTier(F, floor) {
       const front = what === 'cover' && band !== 'near' && tries < 100;
       const zr = front ? [Z[band][0] + (band === 'mid' ? 12 : 0), Z[band][0] + (Z[band][1] - Z[band][0]) * (band === 'far' ? 0.25 : 1)] : Z[band];
       const z = zr[0] + Math.pow(r(), 0.8) * (zr[1] - zr[0]), x = _wflXAt(cam, -F.pad + r() * (F.W + 2 * F.pad), z);
-      const obj = _wflPick(L, r), kb = worldKb(obj);
-      if (!kb) continue;
+      // beyond the far band (120 m) the distant pool (dome trees read as trees there); nearer, only structured trees
+      const LL = band === 'far' && z >= _WFL_FAR_Z && distant.length && what !== 'variety' ? distant : L;
+      const obj = _wflPick(LL, r), kb = _wflKb(F, obj);
+      if (!kb || kb.object === false) continue;
       const n = kb.cls === 'tree' ? 1 + (r() < 0.3 ? 1 : 0) : 1 + Math.floor(r() * 3);
       const got = _wflClump(F, obj, x, z, n, Math.max(0.6, kb.size.l * (kb.cls === 'tree' ? 1.2 : 0.8)), { auto: 'fill', rule: 'P7', why: `richness: ${band} ${what}` });
       placed += got.length;
@@ -1100,7 +1058,8 @@ function worldFill(world, o) {
     if (!Array.isArray(world.surfaces)) world.surfaces = [];
     const state = world.fillState || (world.fillState = { edges: false, frame: false, fill: false, tiers: 0 });
     const fillOff = o.fill === false || world.fill === false || (world.spec && world.spec.fill === false);
-    const styleKey = worldFillStyle(world, o), style = WORLD_FILL_STYLES[styleKey];
+    // o.styleRecord: a fill style record to use as it is (tools and tests); else the world's kit
+    const styleKey = o.styleRecord && o.styleRecord.kit ? o.styleRecord.kit : worldFillStyle(world, o), style = o.styleRecord || WORLD_FILL_STYLES[styleKey];
     const F = { world, cam, log, style, styleKey, W: o.W || 1600, H: o.H || 900, pad: (o.overscan == null ? 0.18 : o.overscan) * (o.W || 1600), ctx: o.ctx || world.ctx || null,
       r: _wflRng('fill|' + (world.seed | 0) + '|' + styleKey + '|' + Math.round(cam.heading || 0)), count: 0, seq: 0, maxAuto: o.maxAuto || 1400, ids: new Set(), added: [], bad: new Set(),
       spacing: new Map(), tier: 1, unfillable: new Set(), pavingCapped: new Set(), lived: _wflLived(world), ix: null, boxes: null, pavingDone: false, authorReeds: [],
