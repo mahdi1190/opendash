@@ -616,7 +616,9 @@ function sceneRendererCreate(canvas, src, o) {
     if (Lx && Lx.rain) out.rain = sceneParticleSet('rain', Math.round(250 * Math.max(0.4, lod)), 91);
     if (Lx && Lx.snow) out.snow = sceneParticleSet('wsnow', Math.round(200 * Math.max(0.4, lod)), 93);
     out.fogVeil = Lx && Lx.fog ? `rgba(${_scHex(_scMixHex('#dfe4e6', '#2a3040', Lx.dark || 0)).join(',')},0.32)` : null;
-    out.pcol = (c) => (C.particles.kind === 'motes' || !Lx ? c : colourFn(Lx, 0, null)(c));
+    // motes are specks catching the sun: ungraded by day, graded like everything else after dark (ungraded, they glowed at night as
+    // white and yellow points over the whole scene; SCENE_LESSONS G)
+    out.pcol = (c) => ((C.particles.kind === 'motes' && !(Lx && (Lx.dark || 0) > 0.3)) || !Lx ? c : colourFn(Lx, 0, null)(c));
     out.rasterWait = rasterWait;
     out.restored = !!R;
     out.kept = R ? R.all : null;

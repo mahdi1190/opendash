@@ -183,14 +183,17 @@ function _wwaFootOf(e) {
  * nearest edge: one continuous sloped waterline for the whole boat, whatever pieces it is drawn in). On land: 'bank' (the bank's
  * water edge in each column, or its own waterline when that is nearer). Flyers: 'own' (a true mirror about the plane).
  */
-function worldWaterContact(R, e, cam) {
+function worldWaterContact(R, e, cam, o) {
   cam = cam || R.cam;
   const P = R.polyM, inW = _wwaInPoly(e.x, e.z, P), at = String(e.attach || '');
   if (/^air/.test(at) || e.cls === 'bird-air') return { kind: 'own', z: e.z };
   if (inW) {
     const foot = _wwaFootOf(e), xs = foot.map(p => p[0]), zs = foot.map(p => p[1]);
     const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs));
-    if (span > 2.5 && foot.every(p => p[1] > 0.05)) {
+    // the footprint's outline is the waterline of a thing drawn IN PERSPECTIVE along it (a hull, a walkway's rails); a sprite is
+    // drawn about its anchor, so it mirrors about its own waterline there (o.sprite), never the footprint's near edge (that left a
+    // gap: the platform's and the boardwalk's images hung far below them, SCENE_LESSONS G)
+    if (span > 2.5 && foot.every(p => p[1] > 0.05) && !(o && o.sprite)) {
       const pts = foot.map(p => [cam.x0 + cam.f * p[0] / p[1], _wwaRow(cam, p[1], R.level)]);
       return { kind: 'line', z: Math.min(...zs), pts };
     }
@@ -331,15 +334,26 @@ function _wwaLayers(byOwner, X0, Y0, X1, Y1) {
  * Rivers: a travelling pattern along the current (up the screen when it flows away, down when toward the camera); canals and
  * puddles: a standing shimmer in place (no drift); ponds and lakes: a slow wind drift; the sea: a swell rolling in.
  */
+// the ripple's wavenumber (radians per scene row) far and near: the pattern spreads over more rows toward the camera (perspective)
+const WORLD_RIPPLE_K = Object.freeze({ far: 0.5, near: 0.12 });
+// the most a reflection may shear from one row to the next (px per px): above it a vertical edge in the mirror breaks into a
+// sawtooth (the zigzag columns of the first v3 renders, SCENE_LESSONS G); the wind never raises the ripple past 1.6 x
+const WORLD_RIPPLE_SLOPE = 0.3, WORLD_RIPPLE_WIND_MAX = 1.6;
 function worldWaterRipple(R, yDev, t, o) {
   o = o || {};
-  const vs = o.vs || 1, oy = o.oy || 0, look = R.look || WORLD_WATER_LOOK.pond, wind = o.wind == null ? 1 : o.wind;
-  // the v2 ripple (78-scene-water's band shift), by the row within the region: small and quick far, larger and slower near; the
-  // phase is the integral of the wavenumber (0.55 far .. 0.23 near per px), so the pattern never folds back on itself
+  const vs = o.vs || 1, oy = o.oy || 0, look = R.look || WORLD_WATER_LOOK.pond, wind = _wwaClamp(o.wind == null ? 1 : o.wind, 0, WORLD_RIPPLE_WIND_MAX);
+  // by the row within the region: small and quick far, longer and gentler near. The phase is the integral of the wavenumber
+  // (WORLD_RIPPLE_K far .. near), so the pattern never folds back on itself; the amplitude is the kind's ripple, shrinking toward
+  // the camera, and never more than WORLD_RIPPLE_SLOPE / wavenumber, so the shift is smooth from row to row (no jagged columns)
   const top = R.box[1] * vs + oy, bh = Math.max(1, Math.min(R.box[3], 900) * vs + oy - top), yRel = _wwaClamp(yDev + 0.5 - top, 0, bh), u = yRel / bh;
-  const A = look.ripple * wind * (2 + 10 * u) * vs;
+  const K0 = WORLD_RIPPLE_K.far, K1 = WORLD_RIPPLE_K.near, k = (K0 - (K0 - K1) * u) / vs, kMid = (K0 - (K0 - K1) * 0.5) / vs;
+  // the shear a row may take: a breezy surface a little choppier, a calm one smoother, the wind within bounds (at most 0.45 px a row)
+  const slope = WORLD_RIPPLE_SLOPE * (look.hint === 'breezy' ? 1.25 : look.hint === 'calm' ? 0.8 : 1) * _wwaClamp(Math.sqrt(wind), 0.7, 1.2);
+  // never more than the middle distance's own cap either: the near water's long, slow swell stays gentle (the nearest reflections
+  // are of the biggest things, and a few pixels of shift there shears a whole trunk or post)
+  const A = Math.min(look.ripple * wind * (2 + 8 * u) * vs, slope / k, slope / kMid) * (1 - 0.35 * u);
   if (!(A > 0.01)) return 0;
-  const ph = (0.55 * yRel - 0.16 * yRel * yRel / bh) / vs + (R.phase || 0), tt = o.still ? 0 : (t || 0);
+  const ph = (K0 * yRel - (K0 - K1) * yRel * yRel / (2 * bh)) / vs + (R.phase || 0), tt = o.still ? 0 : (t || 0);
   switch (look.drift) {
     case 'flow': { const f = R.flow || [0, 0], dir = f[1] !== 0 ? Math.sign(f[1]) : f[0] !== 0 ? Math.sign(f[0]) : 1; return A * Math.sin(ph + (1.7 + 3 * (R.speed || 0)) * dir * tt); }
     case 'still': return A * Math.sin(ph) * Math.cos(0.9 * tt);
@@ -418,7 +432,9 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
   const list = (owner && owner.list) || [], entOf = (id) => (!o.ents ? null : o.ents instanceof Map ? o.ents.get(id) : o.ents[id]);
   const ctc = list.map(L => L.contact || (entOf(L.id) ? worldWaterContact(R, entOf(L.id), cam) : null));
   const stamp = new Int32Array(list.length).fill(-1), rowC = new Float64Array(list.length), rowB = new Float64Array(list.length);
-  const tint = _wwaRgb(look.tint || look.base[1]);
+  // the body colour the mirror is tinted by: the kind's, lit by the light now (at night its daylight green-grey lifted every
+  // mirrored dark into a grey veil over the water: SCENE_LESSONS G)
+  const tint = S.dark > 0.05 ? _wwaMixRgb(_wwaRgb(look.tint || look.base[1]), base3[1], _wwaClamp(S.dark * 1.2, 0, 1)) : _wwaRgb(look.tint || look.base[1]);
   // one source pixel into the reflection: about the owner's contact row (a bank owner's base laid on the water edge), only into
   // the water, faded with its mirrored height, Fresnel by the row, tinted by the kind; where two land on one, blended by depth
   // (the nearer over the farther, whatever the order), so the nearer owner wins and a soft edge stays soft
@@ -814,7 +830,8 @@ function worldWaterDraw(ctx, res, R, t, o) {
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
   if (res.baseCanvas) { ctx.drawImage(res.baseCanvas, res.x0, res.y0); n++; }
   if (res.reflCanvas) {
-    const bh = o.band || 3;
+    // bands of 2 rows: with the slope cap of worldWaterRipple a band steps at most 0.6 px from the next (never a staircase)
+    const bh = Math.max(1, Math.min(2, o.band || 2));
     for (let y = 0; y < res.h; y += bh) {
       const h = Math.min(bh, res.h - y), dx = worldWaterRipple(R, res.y0 + y, t, o);
       ctx.drawImage(res.reflCanvas, 0, y, res.w, h, res.x0 + dx, res.y0 + y, res.w, h); n++;

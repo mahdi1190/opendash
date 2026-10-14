@@ -318,12 +318,30 @@ function _wmtWeather(mat, hex, c) {
  * (worldSkyOf): factor = ambient colour x ambient strength + sun colour x sun strength, normalised so clear noon is the art's own
  * colour; overcast trades sun for a grey ambient, night leaves a dim blue ambient.
  */
+// materials that stand as dark masses at night (silhouettes against the sky: they see little of it), and lit glass's dark panes
+const _WMT_MASS = new Set(['leaf', 'needle', 'bark', 'reed', 'grass']);
+/**
+ * The night key (QP4: night keeps every structure readable): after the grade, foliage, trunks and reed beds sink into silhouettes
+ * (x (1 - 0.3 n)) against the sky, and every other material catches the night key in proportion to its OWN lightness (pale stone,
+ * render, paint, a white boat or shirt read as moonlit; dark brick stays dark), so the scene keeps its contrast instead of one
+ * murky blue-grey. n: the sky's nightKey.n (0 by day, 1 in deep night); k and col: the moon's strength and colour.
+ */
+function _wmtNightKey(mat, src, out, c) {
+  const sky = c.sky, NK = sky && sky.nightKey, dark = c.L && Number.isFinite(c.L.dark) ? c.L.dark : sky ? sky.dark || 0 : 0;
+  const n = NK ? NK.n : _wmtClamp((dark - 0.35) / 0.5, 0, 1);
+  if (!(n > 0.01)) return out;
+  const k = NK ? NK.k : 0.6, col = _wmtRgb(NK ? NK.col : '#9fb2dc'), o = _wmtRgb(out);
+  if (_WMT_MASS.has(mat)) return _wmtHex(o.map(v => v * (1 - 0.3 * n)));
+  if (mat === 'glass' || mat === 'water') return _wmtHex(o.map(v => v * (1 - 0.15 * n)));
+  const a = Math.pow(_wmtLum(src), 1.25) * 0.26 * n * k;
+  return _wmtHex(o.map((v, i) => v + a * col[i]));
+}
 function _wmtLight(mat, hex, c) {
   const M = WORLD_MATERIALS[mat] || {}, sky = c.sky;
   if (c.L && typeof sceneTone === 'function') {
     let out = sceneTone(c.L)(hex);
     if (M.gloss > 0 && c.L.mid) out = _wmtMix(out, c.L.mid, M.gloss * 0.25 * (1 - (c.L.dark || 0)));
-    return out;
+    return _wmtNightKey(mat, hex, out, c);
   }
   if (!sky) return hex;
   // normalised by a clear high summer sun (the light the library art is drawn in), so clear noon leaves the art as drawn
@@ -334,7 +352,7 @@ function _wmtLight(mat, hex, c) {
   if (M.gloss > 0 && sky.sky && sky.sky.mid) out = _wmtMix(out, sky.sky.mid, M.gloss * 0.25 * (1 - (sky.dark || 0)));
   // night: colour drains (a scotopic grey-blue), keeping the darks dark
   if (sky.dark > 0.3) { const L0 = _wmtLum(out), n = _wmtClamp((sky.dark - 0.3) / 0.6, 0, 1); out = _wmtMix(out, _wmtHex([L0 * 200, L0 * 215, L0 * 255]), 0.6 * n); }
-  return out;
+  return _wmtNightKey(mat, hex, out, c);
 }
 /**
  * The colour of a material now. mctx: worldMaterialCtx / worldMaterialFor (month, leaf, turn, wet, frost, snow, snowDay, sky or

@@ -124,8 +124,13 @@ function worldSkyOf(ctx, o) {
   const cols = L && L.top ? { top: L.top, mid: L.mid || L.top, low: L.low || L.mid || L.top } : _wlSkyCols(alt, golden, dusk, dark, cover);
   const ambient = dark > 0.6 ? _wlMix('#4a5a88', '#6a78a8', moon.alt > 0 ? moon.illum * 0.6 : 0) : _wlMix(_wlMix(cols.mid, cols.top, 0.3), '#c8cdd4', overcast * 0.7);
   const ambK = 0.35 + 0.25 * overcast * (1 - dark) - 0.15 * dark + (dark > 0.6 && moon.alt > 0 ? 0.05 * moon.illum : 0);
+  // the night key (QP4): the light a night scene is SEEN by, the moon (by its height and phase) over a floor of starlight and
+  // skyglow, dimmed by cloud. The material step lights pale things by it (in proportion to their own lightness) and darkens the
+  // foliage masses into silhouettes against the sky; the compositor lays it on the paths. 0 by day.
+  const moonUp = _wlClamp(moon.alt / 18, 0, 1) * (moon.illum == null ? 0.5 : moon.illum);
+  const nightK = _wlClamp((dark - 0.35) / 0.5, 0, 1), nightKey = { n: Math.round(nightK * 1000) / 1000, k: Math.round((0.5 + 0.5 * moonUp) * (1 - 0.45 * _wlClamp((cover - 0.4) / 0.5, 0, 1)) * 1000) / 1000, col: _wlMix('#8ea4d6', '#c4cfe6', moonUp) };
   const S = {
-    __sky: true, id: mk, ms, lat, lon, sun, moon, phase, band: phase === 'noon' ? 'day' : phase, morning, noonAlt: Math.round(noonAlt * 10) / 10,
+    __sky: true, id: mk, ms, lat, lon, sun, moon, phase, band: phase === 'noon' ? 'day' : phase, morning, noonAlt: Math.round(noonAlt * 10) / 10, nightKey,
     golden: Math.round(golden * 100) / 100, dusk: Math.round(dusk * 100) / 100, dark: Math.round(dark * 1000) / 1000, cover, overcast, fog, weather: wx,
     rain: /rain|drizzle|showers|thunder|sleet/.test(wx), snow: /snow|sleet/.test(wx),
     sunCol: L && L.light && alt > 0 ? _wlMix(L.light, _wlSunCol(alt, cover), 0.5) : _wlSunCol(alt, cover), sunK: Math.round(sunK * 1000) / 1000,
@@ -301,8 +306,21 @@ const _WL_GLOW = Object.freeze({ window: { r: 0.7, col: '#ffd890' }, win: { r: 0
   tail: { r: 0.5, col: '#ff4a3a' }, sign: { r: 1, col: '#ffe6b0' }, screen: { r: 0.8, col: '#cfe8ff' }, led: { r: 0.4, col: '#ffffff' }, beacon: { r: 1.5, col: '#ff5040' },
   rim: { r: 0.6, col: '#ffe0a0' }, port: { r: 0.4, col: '#ff4040' }, starboard: { r: 0.4, col: '#40ff70' }, beam: { r: 1, col: '#fff6e0' }, strip: { r: 0.4, col: '#ff6a50' }, amber: { r: 0.4, col: '#ffb030' } });
 const _WL_VEHICLE = /^(vehicle|rail)\.|^person\.cyclist|^boat\./;
+// glow kinds that are lit SURFACES, never light sources: lit glass and screens are drawn lit by their own shape (per window), with
+// no halo and no pool (a halo per window blurred whole facades; a phone screen or a rim drawn as a light read as a white blob)
+const _WL_SURFACE = new Set(['window', 'win', 'screen', 'rim', 'shop']);
+// things that CARRY their glow parts: a figure's glow parts are reflective strips, an umbrella's sheen, a phone; never sources. Only
+// a cyclist's own lamps (opaque front and rear lamps) light (SCENE_LESSONS G: the lit discs over walkers)
+const _WL_CARRIED = /^(person|animal|bird|insect)\./;
+// the halo of a source: its radius in metres from the glowing part's own size, at most this (a bulb's glow, never its reach)
+const _WL_HALO_MAX = Object.freeze({ lamp: 0.7, sign: 0.5, beacon: 0.6, head: 0.45, beam: 0.45, tail: 0.25, led: 0.15, port: 0.3, starboard: 0.3, strip: 0.2, amber: 0.25 });
+// caps of what a light may paint (scene units of the 1600 x 900 frame, peak alpha): soft additive radial falloffs, never flat discs
+const WORLD_LIGHT_CAPS = Object.freeze({ haloPx: 26, haloAlpha: 0.5, poolPx: 480, poolAlpha: 0.3, beamAlpha: 0.12 });
 const _wlGlowMemo = new Map();
-/** The glow parts of a library object: [{ kind, u, v }] (sprite units, foot at 0), and the sprite's top. */
+/**
+ * The glow parts of a library object: [{ kind, u, v, size, op, d, m, f }] (sprite units, foot at 0: the centre, the half size of the
+ * part's box, its opacity and its path for drawing it lit), and the sprite's top.
+ */
 function _wlGlowParts(id, variant, season) {
   const key = id + '|' + (variant | 0) + '|' + (season || '');
   let r = _wlGlowMemo.get(key);
@@ -315,11 +333,31 @@ function _wlGlowParts(id, variant, season) {
     for (const p of sh.order) for (const s of sh.parts[p] || []) {
       if (!s.glow) continue;
       const b = typeof scenePathBox === 'function' ? scenePathBox(s.d, s.m) : null;
-      if (b) r.parts.push({ kind: s.glow, u: (b[0] + b[2]) / 2, v: (b[1] + b[3]) / 2 });
+      if (b) r.parts.push({ kind: s.glow, u: (b[0] + b[2]) / 2, v: (b[1] + b[3]) / 2, size: Math.max(b[2] - b[0], b[3] - b[1]) / 2, op: s.op == null ? 1 : s.op, d: s.d, m: s.m || null, f: typeof s.f === 'string' ? s.f : null });
     }
   }
   _wlGlowMemo.set(key, r);
   return r;
+}
+/** The glow parts of a library object at a variant and a drawn form (see _wlGlowParts): the compositor draws lit glass from them. */
+function worldGlowParts(id, variant, season) { return _wlGlowParts(id, variant, season); }
+/**
+ * Is glow part i of an entity lit now? One seeded rule for the light plan and the compositor's lit glass. key: the entity's id;
+ * kind: the part's glow kind (after vehicle lamps became 'head'); alt: the sun's elevation; share: the lit share of windows;
+ * o: { veh, moving, murky, wetDim }. Windows light one by one (a threshold per window between -9 and +2 degrees and a share draw);
+ * a lamp's heads switch together (one photocell per lamp); vehicle lamps only while moving.
+ */
+function worldGlowOn(key, i, kind, alt, share, o) {
+  o = o || {};
+  const r = _wlRng(key + '|g|' + i);
+  if (kind === 'window' || kind === 'win' || kind === 'shop') {
+    if (o.veh) return !!o.moving && alt < 4;                         // a lit tram, train or bus interior
+    const thr = -9 + 11 * r(), u = r(); return alt < thr && u < share;
+  }
+  if (kind === 'head' || kind === 'tail' || kind === 'beam' || kind === 'strip' || kind === 'amber') return !!o.moving && (alt < 3 || !!o.murky || !!o.wetDim);
+  if (kind === 'lamp') { const q = _wlRng(key + '|lamp')(); return alt < -1 + 3 * q || !!o.murky; }
+  if (kind === 'rim') return false;
+  return alt < 0 || !!o.murky;
 }
 /**
  * Every light source of the world, ONLY from the library's glow parts: an entity with no glow part never lights.
@@ -343,23 +381,32 @@ function worldLights(world, o) {
     const G = _wlGlowParts(e.obj, e.variant, o.season);
     if (!G.parts.length) return;
     const h = _wlHeight(e), mpu = h / Math.max(1, -G.top), f = ((Number(e.facing) || 0) % 360 + 360) % 360, flip = e.mirror != null ? (e.mirror ? -1 : 1) : f > 180 ? -1 : 1;
-    const y0 = Number.isFinite(e.y) ? e.y : 0, src = typeof _scatSourceOf === 'function' ? _scatSourceOf(e.obj) : null, veh = _WL_VEHICLE.test(e.obj);
-    const key = e.id || e.obj, moving = agent && !e.parked && e.state !== 'parked';
+    // a moored boat (a static) is a home: its windows light one by one like a house's; a boat under way lights as a vehicle
+    const y0 = Number.isFinite(e.y) ? e.y : 0, src = typeof _scatSourceOf === 'function' ? _scatSourceOf(e.obj) : null, veh = _WL_VEHICLE.test(e.obj) && !(!agent && /^boat\./.test(e.obj));
+    const key = e.id || e.obj, moving = agent && !e.parked && e.state !== 'parked', carried = _WL_CARRIED.test(e.obj), cyclist = /^person\.cyclist/.test(e.obj);
+    // a fixed lamp lights ONE pool on the ground under its head(s) (a double lamp is not two pools)
+    const lampParts = G.parts.map((p, i) => [p, i]).filter(([p]) => p.kind === 'lamp');
+    let pooled = false;
     G.parts.forEach((p, i) => {
       let kind = p.kind;
       // a rim is the figure's own catch-light (drawn by its sprite at low sun), never a light source: no glow, no pool
       if (kind === 'rim') return;
+      // a figure's glow parts are reflective strips, an umbrella's sheen, a phone: lit by the sprite, never sources (only a
+      // cyclist's opaque lamps light)
+      if (carried && !(cyclist && (kind === 'lamp' || kind === 'tail') && p.op >= 0.95)) return;
       if (veh && kind === 'lamp') kind = 'head';
-      const t = _WL_GLOW[kind] || _WL_GLOW.window, r = _wlRng(key + '|g|' + i);
-      let on = false;
-      if (kind === 'window' || kind === 'win') {
-        if (veh) on = moving && alt < 4;                                    // a lit tram, train or bus interior
-        else { const thr = -9 + 11 * r(), u = r(); on = alt < thr && u < share; }
-      } else if (kind === 'head' || kind === 'tail' || kind === 'beam' || kind === 'strip' || kind === 'amber') on = moving && (alt < 3 || murky || wetDim);
-      else if (kind === 'lamp') on = alt < -1 + 3 * r() || murky;
-      else on = alt < 0 || (murky && kind !== 'rim');
-      const L = { ref: e.id, part: i, kind, x: e.x + flip * p.u * mpu, y: y0 - p.v * mpu, z: e.z, r: t.r, col: t.col, on, agent: !!agent };
-      if (kind === 'lamp' && !veh && src && src.kind === 'lamp') L.pool = { x: L.x, z: e.z, r: src.r || 6, col: src.col || t.col };
+      const t = _WL_GLOW[kind] || _WL_GLOW.window;
+      const on = worldGlowOn(key, i, kind, alt, share, { veh, moving, murky, wetDim });
+      const surface = _WL_SURFACE.has(kind);
+      // the halo: from the glowing part's own size (a bulb a few cm across glows a little; never the light's reach), capped by kind
+      const halo = surface ? 0 : Math.round(_wlClamp(p.size * mpu * 2.2, 0.06, _WL_HALO_MAX[kind] || 0.4) * 1000) / 1000;
+      const L = { ref: e.id, part: i, kind, x: e.x + flip * p.u * mpu, y: y0 - p.v * mpu, z: e.z, r: t.r, halo, src: !surface, col: t.col, on, agent: !!agent };
+      if (kind === 'lamp' && !veh && src && src.kind === 'lamp' && !pooled) {
+        // the pool under the lamp's head(s): centred under them, its reach from the lamp's light spec, its falloff from the head's height
+        const xs = lampParts.map(([q]) => e.x + flip * q.u * mpu), hy = Math.max(0.5, Math.max(...lampParts.map(([q]) => -q.v * mpu)));
+        L.pool = { x: xs.reduce((a, v) => a + v, 0) / xs.length, z: e.z, r: src.r || 6, h: Math.round(hy * 100) / 100, col: src.col || t.col };
+        pooled = true;
+      }
       if (kind === 'head' && /^vehicle\./.test(e.obj)) {
         // the beam: a cone on the road ahead of the vehicle, along its heading (camera frame: 0 = away, 90 = right)
         const hd = (Number.isFinite(e.heading) ? e.heading : f) * _WL_D;
@@ -492,31 +539,76 @@ function worldDrawShadows(ctx, plan, o) {
   }
   return n;
 }
-/** Draw the lit glow parts (small halos), the lamp pools and the head-lamp beams (flat shapes on the ground). */
+/**
+ * What the lights paint, in scene units (pure: the caps are tested here, the canvas only fills these). lights: worldLights; cam: the
+ * v2 camera; o: { sky (fog widens halos and dims pools), stage: 'ground' (pools and beams: on the ground, under what stands on it)
+ * | 'glow' (halos round the sources) | undefined (both) }.
+ * -> [{ kind: 'pool' | 'beam' | 'halo', ref, part, X, Y, rx, ry, a (peak alpha), col, h (pool: the head's height over its reach,
+ *       for the falloff), pts (beam: [apex, left, right]) }]
+ *   pool: a perspective ellipse of the lamp's reach on the ground with a physical falloff (bright under the head, a soft tail, nothing
+ *         at the rim); peak alpha <= WORLD_LIGHT_CAPS.poolAlpha, screen half-width <= poolPx (a nearer pool is scaled down whole);
+ *   halo: a soft radial glow round the glowing part, of the part's own size (L.halo metres), <= haloPx, peak alpha <= haloAlpha;
+ *         lit surfaces (windows, screens) and carried reflectors have none;
+ *   beam: a vehicle's head-lamp cone on the road, fading along its length, peak alpha <= beamAlpha.
+ */
+function worldLightDraws(lights, cam, o) {
+  o = o || {};
+  const out = [], C = WORLD_LIGHT_CAPS, sky = o.sky && o.sky.__sky ? o.sky : null, fog = sky ? sky.fog || 0 : 0;
+  if (!cam || !Array.isArray(lights)) return out;
+  const near = Math.max(0.3, (cam.dMin || 1) * 0.5), ground = o.stage !== 'glow', glow = o.stage !== 'ground';
+  for (const L of lights) {
+    if (!L || !L.on) continue;
+    if (ground && L.pool && L.pool.z > near) {
+      const P = L.pool, c = _wlProj(cam, P.x, Math.max(near, P.z));
+      const yN = _wlProj(cam, P.x, Math.max(near, P.z - P.r)).Y, yF = _wlProj(cam, P.x, P.z + P.r).Y;
+      let rx = P.r * c.k, ry = Math.max(0.5, (yN - yF) / 2, rx * 0.09);
+      if (rx > C.poolPx) { const k = C.poolPx / rx; rx *= k; ry *= k; }
+      const Y = _wlClamp(c.Y, Math.min(yF, yN), Math.max(yF, yN));
+      if (rx >= 1.5) out.push({ kind: 'pool', ref: L.ref, part: L.part, X: c.X, Y, rx, ry, a: C.poolAlpha * (1 - 0.45 * fog), col: P.col || L.col, h: Math.max(0.15, Math.min(1.2, (P.h || 4) / Math.max(0.5, P.r))) });
+    }
+    if (ground && L.beam && L.beam.z > near) {
+      const b = L.beam, a = _wlProj(cam, b.x, Math.max(near, b.z)), e1 = _wlProj(cam, b.x + b.dx * b.len - b.dz * b.w, Math.max(near, b.z + b.dz * b.len + b.dx * b.w)), e2 = _wlProj(cam, b.x + b.dx * b.len + b.dz * b.w, Math.max(near, b.z + b.dz * b.len - b.dx * b.w));
+      out.push({ kind: 'beam', ref: L.ref, part: L.part, X: a.X, Y: a.Y, rx: 0, ry: 0, a: C.beamAlpha, col: L.col, pts: [[a.X, a.Y], [e1.X, e1.Y], [e2.X, e2.Y]] });
+    }
+    if (glow && L.src !== false && L.halo !== 0 && L.z > near) {
+      const q = _wlProj(cam, L.x, L.z, L.y), hm = Number.isFinite(L.halo) ? L.halo : Math.min(0.4, (L.r || 0.6) * 0.3);
+      const r = _wlClamp(hm * q.k * (1 + 0.6 * fog), 0.8, C.haloPx);
+      out.push({ kind: 'halo', ref: L.ref, part: L.part, X: q.X, Y: q.Y, rx: r, ry: r, a: C.haloAlpha * (fog > 0 ? 0.85 : 1), col: L.col });
+    }
+  }
+  return out;
+}
+function _wlRgba(hex, a) { const c = _wlRgb(hex); return `rgba(${c[0]},${c[1]},${c[2]},${Math.max(0, Math.min(1, a)).toFixed(3)})`; }
+/**
+ * Paint the lights additively ('lighter'): the pools and beams on the ground (o.stage 'ground'), the halos round the sources (o.stage
+ * 'glow'), or both. Every shape is a soft gradient within the caps of worldLightDraws; nothing is a flat disc. o: { vs, ox, oy, sky,
+ * stage, only (a Set of refs: only their lights) }. -> the number of shapes painted.
+ */
 function worldDrawLights(ctx, lights, cam, o) {
   o = o || {};
   const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0;
+  const list = o.only ? (lights || []).filter(L => o.only.has(L.ref)) : lights;
   let n = 0;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  for (const L of lights) {
-    if (!L.on) continue;
-    if (L.pool) {
-      const p = _wlProj(cam, L.pool.x, L.pool.z), rx = L.pool.r * p.k * vs, ry = Math.max(1, rx * cam.eye / Math.max(1, L.pool.z));
-      ctx.globalAlpha = 0.28; ctx.fillStyle = L.pool.col; ctx.beginPath(); ctx.ellipse(p.X * vs + ox, p.Y * vs + oy, rx, ry, 0, 0, 2 * Math.PI); ctx.fill();
+  for (const d of worldLightDraws(list, cam, o)) {
+    if (!ctx.createRadialGradient && d.kind !== 'beam') continue;
+    if (d.kind === 'pool') {
+      // a point light h (of its reach) above the ground: the light falls as (1 + (rho / h)^2)^-1.5, eased to nothing at the rim
+      ctx.save(); ctx.translate(d.X * vs + ox, d.Y * vs + oy); ctx.scale(1, d.ry / d.rx);
+      const R = d.rx * vs, g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+      for (const u of [0, 0.1, 0.22, 0.36, 0.5, 0.65, 0.8, 1]) { const e = Math.pow(1 + (u / d.h) * (u / d.h), -1.5) * (1 - u * u * (3 - 2 * u)); g.addColorStop(u, _wlRgba(d.col, d.a * e)); }
+      ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(-R, -R, 2 * R, 2 * R);
+      ctx.restore();
+    } else if (d.kind === 'beam') {
+      const [A, B, Cc] = d.pts, mx = (B[0] + Cc[0]) / 2, my = (B[1] + Cc[1]) / 2;
+      const g = ctx.createLinearGradient ? ctx.createLinearGradient(A[0] * vs + ox, A[1] * vs + oy, mx * vs + ox, my * vs + oy) : null;
+      if (g) { g.addColorStop(0, _wlRgba(d.col, d.a)); g.addColorStop(1, _wlRgba(d.col, 0)); ctx.fillStyle = g; ctx.globalAlpha = 1; } else { ctx.fillStyle = d.col; ctx.globalAlpha = d.a * 0.5; }
+      ctx.beginPath(); ctx.moveTo(A[0] * vs + ox, A[1] * vs + oy); ctx.lineTo(B[0] * vs + ox, B[1] * vs + oy); ctx.lineTo(Cc[0] * vs + ox, Cc[1] * vs + oy); ctx.closePath(); ctx.fill();
+    } else {
+      const cx = d.X * vs + ox, cy = d.Y * vs + oy, r = d.rx * vs, g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, _wlRgba(d.col, d.a)); g.addColorStop(0.18, _wlRgba(d.col, d.a * 0.42)); g.addColorStop(0.45, _wlRgba(d.col, d.a * 0.12)); g.addColorStop(1, _wlRgba(d.col, 0));
+      ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
     }
-    if (L.beam) {
-      const b = L.beam, a = _wlProj(cam, b.x, Math.max(0.3, b.z)), e1 = _wlProj(cam, b.x + b.dx * b.len - b.dz * b.w, Math.max(0.3, b.z + b.dz * b.len + b.dx * b.w)), e2 = _wlProj(cam, b.x + b.dx * b.len + b.dz * b.w, Math.max(0.3, b.z + b.dz * b.len - b.dx * b.w));
-      ctx.globalAlpha = 0.12; ctx.fillStyle = L.col; ctx.beginPath(); ctx.moveTo(a.X * vs + ox, a.Y * vs + oy); ctx.lineTo(e1.X * vs + ox, e1.Y * vs + oy); ctx.lineTo(e2.X * vs + ox, e2.Y * vs + oy); ctx.closePath(); ctx.fill();
-    }
-    // the halo round the bulb: a soft radial falloff at half the light's reach (a flat disc of the whole reach read as a white
-    // blob over the figure or the boat that carries it)
-    const q = _wlProj(cam, L.x, L.z, L.y), r = Math.max(0.6, L.r * 0.5 * q.k * vs), cx = q.X * vs + ox, cy = q.Y * vs + oy;
-    if (ctx.createRadialGradient) {
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      g.addColorStop(0, L.col); g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.globalAlpha = 0.45; ctx.fillStyle = g;
-    } else { ctx.globalAlpha = 0.3; ctx.fillStyle = L.col; }
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fill();
     n++;
   }
   ctx.restore();
