@@ -21,6 +21,10 @@
 //   node tools/world.mjs perf <ref> [--browser] [--no-gpu] [--throttle=4] [--seconds=4] [--json]
 //                         the Node budget table and the per-system profile (G12); --browser: both average-machine sizes x the
 //                         matrix extremes (F1, F2, Z1). Exit 1 at 1.2x a budget
+//   node tools/world.mjs glitch <ref | file.png ...> [--dates=summer,winter,night,dusk] [--wx=rain] [--dir=D] [--json]
+//                         the render-glitch pixel checks (tools/lib/world/glitch.mjs; SCENE_LESSONS G) on rendered cells: flat bright
+//                         discs, a sawtooth in the water's reflection, an unreadable night. A ref is rendered first (its water's
+//                         near half is the sawtooth box). Exit 1 on any failure
 //   node tools/world.mjs accept [--browser] [--quick] [--reviewed=list.txt] [--authoring=times.json] [--out=report.md]
 //                         the acceptance suite of 16.5 with a printed PASS / FAIL gate (X4), the package owner table (X1), the
 //                         privacy scan of the world files (I3), the files to checkpoint per phase (X2), the SCENE_LESSONS
@@ -470,6 +474,45 @@ async function main() {
     return 0;
   }
 
+  if (cmd === 'glitch') {
+    const G = await import('./lib/world/glitch.mjs');
+    const files = pos.slice(1).filter(f => /\.png$/i.test(f));
+    const cells = [];   // [{ label, file, water, night }]
+    if (files.length) for (const f of files) cells.push({ label: f.replace(/^.*[\\/]/, ''), file: resolve(f), water: null, night: /night/i.test(f) });
+    else {
+      const s = specOf(E, ref), { sceneRenderPng } = await import('./lib/scene-page.mjs'), dir = dirOf('glitch');
+      const P = s.spec.place || {}, loc = [P.lat != null ? P.lat : 51.5, P.lon != null ? P.lon : -0.1];
+      // the sawtooth box: the near half of the scene's water on the screen (device px of the 1600 x 900 render)
+      let water = null;
+      try {
+        const w = E.worldBuild(JSON.parse(JSON.stringify(s.spec)), { season: 'summer' });
+        for (const R of (E.worldWaterPlan ? E.worldWaterPlan(w, w.cam) : []) || []) {
+          const b = [Math.max(0, R.box[0]), Math.max(R.box[1] + (Math.min(900, R.box[3]) - R.box[1]) * 0.45, 0), Math.min(1600, R.box[2]), Math.min(900, R.box[3])];
+          if (!water || (b[2] - b[0]) * (b[3] - b[1]) > (water[2] - water[0]) * (water[3] - water[1])) water = b;
+        }
+      } catch { water = null; }
+      const chrome = await chromeOf(!!flags.gpu);
+      try {
+        for (const nm of String(typeof flags.dates === 'string' ? flags.dates : 'summer,winter,night,dusk').split(',')) {
+          const at = DATES[nm] || nm, file = join(dir, `${s.id}-${nm.replace(/[^a-z0-9-]/gi, '')}${typeof flags.wx === 'string' ? '-' + flags.wx : ''}.png`);
+          await sceneRenderPng(chrome, { data: `worldHostData(${JSON.stringify(s.spec)}, { id: ${JSON.stringify(s.id)}, sync: true })`, at, location: loc, still: true, dpr: 1, wx: typeof flags.wx === 'string' ? flags.wx : undefined }, file);
+          cells.push({ label: `${s.id} ${nm}`, file, water, night: null });
+        }
+      } finally { await chrome.close(); }
+    }
+    const all = [];
+    for (const c of cells) {
+      const img = G.glitchLoad(c.file);
+      // the night checks on a dark frame (or one named night)
+      const lum = G.glitchLum(img), med = Array.from(lum.filter((_, i) => i % 11 === 0)).sort((a, b) => a - b), dark = med[Math.floor(med.length / 2)] < 0.22;
+      const r = G.glitchCheck(img, { night: c.night != null ? c.night || dark : dark, water: c.water ? c.water.map((v, i) => v * (i % 2 ? img.height / 900 : img.width / 1600)) : null });
+      all.push({ cell: c.label, file: c.file, res: r });
+      if (!flags.json) out(G.glitchText(r, `${c.label}  ${c.file}`));
+    }
+    if (flags.json) out(JSON.stringify(all.map(a => ({ cell: a.cell, file: a.file, ok: a.res.ok, discs: a.res.discs.discs, sawtooth: { value: a.res.sawtooth.value, rows: a.res.sawtooth.rows }, night: a.res.night ? { value: a.res.night.value, p5: a.res.night.p5, p95: a.res.night.p95 } : null })), null, 1));
+    return all.every(a => a.res.ok) ? 0 : 1;
+  }
+
   if (cmd === 'accept') {
     const forReview = [];
     const t0 = Date.now();
@@ -489,7 +532,7 @@ async function main() {
     out(`GATE: ${res.pass ? 'PASS' : 'FAIL'}${res.pass ? '' : ' - nothing is shown to the user until every item passes and a fresh reviewer signs off (X4)'}`);
     return res.pass ? 0 : 1;
   }
-  out(`unknown command '${cmd}' (validate | convert | render | motion | invariants | adversarial | critic | sheet | capture | compare | perf | accept)`);
+  out(`unknown command '${cmd}' (validate | convert | render | motion | invariants | adversarial | critic | sheet | capture | compare | perf | glitch | accept)`);
   return 2;
 }
 

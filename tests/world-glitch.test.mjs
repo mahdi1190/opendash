@@ -92,3 +92,139 @@ test('G2 the compositor plans each tree in its own form (the box and the sprite 
   const plan2 = W.worldFramePlan(world, { season: 'autumn', ctx: tctx(12, 20), backdrop: false });
   assert.equal(plan2.recs.find(r => r.ent && r.ent.id === 'oak').season, 'winter');
 });
+
+/* ---------- G1: lights are soft additive falloffs within caps; figures carry no light sources ---------- */
+const NIGHT = { night: true };
+test('G1 a figure\'s glow parts (reflective strips, a phone, a watch) are never light sources; a cyclist\'s own lamps are', () => {
+  for (const obj of ['person.jogger', 'person.walker', 'person.commuter', 'person.hiker', 'person.student']) {
+    const a = { id: 'p-' + obj, obj, x: 0, z: 20, y: 0, facing: 90, variant: obj === 'person.walker' ? 4 : 0 };
+    const L = W.worldLights({ entities: [] }, Object.assign({ agents: [a] }, NIGHT));
+    assert.deepEqual(L.filter(l => l.src !== false), [], obj + ' lights nothing');
+  }
+  const bike = W.worldLights({ entities: [] }, Object.assign({ agents: [{ id: 'c1', obj: 'person.cyclist', x: 0, z: 20, y: 0, facing: 90, heading: 90 }] }, NIGHT));
+  assert.ok(bike.some(l => l.kind === 'head' && l.on) && bike.some(l => l.kind === 'tail' && l.on), 'a cyclist lights its lamps');
+  assert.ok(bike.every(l => !(l.halo > 0.45)), 'a lamp glows by its own size, never its reach');
+});
+
+test('G1 what a light paints is capped: soft pools under lamps, small halos round bulbs, none round lit windows', () => {
+  const cam = W.sceneCamera({ camera: { eye: 1.65, fov: 64, horizon: 470, heading: 0 } }), C = W.WORLD_LIGHT_CAPS;
+  const world = { entities: [{ id: 'lamp', obj: 'street.lamp', x: 1.5, z: 6, y: 0 }, { id: 'lamp2', obj: 'street.lamp', x: -3, z: 40, y: 0 }, { id: 'house', obj: 'building.terrace-victorian', x: -10, z: 30, y: 0 }] };
+  const L = W.worldLights(world, NIGHT);
+  assert.ok(L.some(l => l.ref === 'lamp' && l.pool), 'the near lamp has a pool');
+  assert.equal(L.filter(l => l.pool && l.ref === 'lamp').length, 1, 'one pool per lamp');
+  const D = W.worldLightDraws(L, cam, {});
+  assert.ok(D.length > 0);
+  for (const d of D) {
+    if (d.kind === 'pool') { assert.ok(d.rx <= C.poolPx + 1e-6 && d.a <= C.poolAlpha + 1e-6, `pool ${d.rx} px at ${d.a}`); assert.ok(d.ry < d.rx, 'a pool lies flat in perspective'); }
+    if (d.kind === 'halo') assert.ok(d.rx <= C.haloPx + 1e-6 && d.a <= C.haloAlpha + 1e-6, `halo ${d.rx} px at ${d.a}`);
+  }
+  assert.ok(!D.some(d => d.kind === 'halo' && d.ref === 'house'), 'a lit window is lit glass, not a halo');
+  // a nearer pool is scaled down whole: the near lamp's pool is no wider on the screen than the cap
+  const near = D.find(d => d.kind === 'pool' && d.ref === 'lamp'), far = D.find(d => d.kind === 'pool' && d.ref === 'lamp2');
+  assert.ok(near && far && near.rx > far.rx && near.rx <= C.poolPx + 1e-6);
+});
+
+test('G1 the canvas paints every light as a radial or linear gradient, never a filled disc or ellipse', () => {
+  const cam = W.sceneCamera({ camera: { eye: 1.65, fov: 64, horizon: 470, heading: 0 } });
+  const L = W.worldLights({ entities: [{ id: 'lamp', obj: 'street.lamp', x: 1.5, z: 8, y: 0 }] }, NIGHT);
+  const calls = [];
+  const grad = () => ({ addColorStop: (o, c) => calls.push(['stop', o, c]) });
+  const ctx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : (...a) => { calls.push([k, ...a]); return k === 'createRadialGradient' || k === 'createLinearGradient' ? grad() : undefined; }), set: (t, k, v) => { if (k === 'fillStyle') calls.push(['fillStyle', typeof v]); t[k] = v; return true; } });
+  const n = W.worldDrawLights(ctx, L, cam, {});
+  assert.ok(n >= 2, 'a pool and a halo: ' + n);
+  assert.ok(!calls.some(c => c[0] === 'ellipse' || c[0] === 'arc'), 'no flat ellipse or disc');
+  assert.ok(!calls.some(c => c[0] === 'fillStyle' && c[1] === 'string'), 'every fill is a gradient');
+  const stops = calls.filter(c => c[0] === 'stop');
+  assert.ok(stops.length >= 8 && stops.some(s => /,0\.000\)$/.test(s[2])), 'falling off to nothing at the rim');
+});
+
+/* ---------- G3: night keeps its structure readable (QP4) ---------- */
+test('G3 at night foliage sinks into silhouettes against the sky and pale things catch the night key', () => {
+  const ms = Date.UTC(2026, 6, 16, 22, 30), lat = 51.29, lon = -0.82;
+  const L = W.sceneLightV2({ sky: W.almSceneLight(ms, lat, lon, 'UTC'), wx: 'clear' }, { heading: 215, lat, lon }, { v: 2, camera: { heading: 215, lat, lon }, weather: 'clear' });
+  const ctx = W.worldTimeCtx({ place: { lat, lon }, cam: { heading: 215 } }, ms), sky = W.worldSkyOf(ctx, { L, heading: 215 });
+  assert.ok(sky.nightKey && sky.nightKey.n > 0.9, 'a night key in deep night');
+  const mc = W.worldMaterialCtx(ctx, { sky, L }), lum = (h) => { const n = parseInt(h.slice(1), 16); return (0.2126 * (n >> 16 & 255) + 0.7152 * (n >> 8 & 255) + 0.0722 * (n & 255)) / 255; };
+  const leaf = lum(W.worldMaterialColour('leaf', '#46703a', mc)), render = lum(W.worldMaterialColour('render', '#ece4d4', mc)), skyLow = lum(sky.sky.low);
+  assert.ok(leaf < 0.62 * skyLow, `foliage ${leaf.toFixed(3)} against the sky low down ${skyLow.toFixed(3)}`);
+  assert.ok(render > 3.5 * leaf, `pale render ${render.toFixed(3)} reads against foliage ${leaf.toFixed(3)}`);
+  // by day nothing changes
+  const day = W.worldSkyOf(W.worldTimeCtx({ place: { lat, lon }, cam: { heading: 215 } }, Date.UTC(2026, 6, 16, 13)), {});
+  assert.equal(day.nightKey.n, 0);
+});
+
+/* ---------- G4: the water's ripple is smooth from row to row and gentle near the camera (no sawtooth columns) ---------- */
+test('G4 the ripple shift never shears a reflection by more than a fraction of a pixel a row, at any wind, and shrinks near the camera', () => {
+  const cam = W.sceneCamera({ camera: { eye: 1.65, fov: 66, horizon: 470, heading: 20, water: -0.6 } });
+  for (const kind of ['river', 'canal', 'pond', 'lake', 'sea', 'harbour']) {
+    const world = { cam, surfaces: [{ id: 'w', kind: 'water', water: kind, poly: [[-8, 1], [9, 1], [9, 220], [-8, 220]] }] };
+    const [R] = W.worldWaterPlan(world, cam);
+    for (const vs of [1, 1.6]) for (const wind of [0.5, 1, 2.5, 4]) for (const t of [0, 1.3, 7.7]) {
+      const y0 = Math.ceil(R.box[1] * vs), y1 = Math.floor(Math.min(R.box[3], 900) * vs);
+      let prev = null, worst = 0;
+      const amp = [];
+      for (let y = y0; y < y1; y++) {
+        const d = W.worldWaterRipple(R, y, t, { vs, oy: 0, wind });
+        if (prev != null) worst = Math.max(worst, Math.abs(d - prev));
+        prev = d; amp.push(Math.abs(d));
+      }
+      assert.ok(worst <= 0.46 * vs + 1e-9, `${kind} wind ${wind} vs ${vs}: a row shears ${worst.toFixed(3)} px`);
+      // the strongest shift sits in the middle distance; near the camera it is gentler than there
+      const n = amp.length, mid = Math.max(...amp.slice(Math.floor(n * 0.3), Math.floor(n * 0.6))), near = Math.max(...amp.slice(Math.floor(n * 0.92)));
+      if (mid > 0.2) assert.ok(near <= mid * 1.25, `${kind}: near ${near.toFixed(2)} px vs middle ${mid.toFixed(2)} px`);
+    }
+  }
+});
+
+/* ---------- G5: a walkway seen end-on is drawn in perspective, never as an elevation across the water ---------- */
+test('G5 a boardwalk running away from the eye: handrails in perspective along its real edges, never the broadside elevation', () => {
+  const spec = { v: 3, place: { lat: FLEET.lat, lon: FLEET.lon }, camera: { eye: 2.4, fov: 66, horizon: 400, heading: 0, water: -0.2 },
+    surfaces: [{ id: 'pond', kind: 'water', water: 'pond', poly: [[-60, 1], [60, 1], [60, 120], [-60, 120]] }],
+    entities: [{ obj: 'structure.boardwalk', at: [1, 16], facing: 4, id: 'endon', attach: 'water' }, { obj: 'structure.boardwalk', at: [-14, 40], facing: 90, id: 'broad', attach: 'water' }], fill: false, seed: 1 };
+  const world = W.worldBuild(spec, { season: 'summer' }), cam = world.cam;
+  const plan = W.worldFramePlan(world, { season: 'summer', backdrop: false });
+  const endon = plan.recs.filter(r => r.ent && r.ent.id === 'endon'), broad = plan.recs.filter(r => r.ent && r.ent.id === 'broad');
+  assert.ok(endon.length >= 2 && endon.every(r => r.prim && r.prim.kind === 'line' && r.prim.sub === 'fence'), 'end-on: rails in perspective, ' + endon.map(r => r.prim ? r.prim.sub : 'sprite').join(','));
+  // the rails follow the walkway's long edges: they converge toward the vanishing point (their screen boxes are tall and narrow)
+  for (const r of endon) assert.ok(r.box.y1 - r.box.y0 > r.box.x1 - r.box.x0, 'a rail piece running away from the eye');
+  assert.ok(plan.decks.some(d => d.s && d.s.id === 'endon:deck'), 'its deck is drawn (planks) over the water');
+  assert.equal(broad.length, 1); assert.ok(!broad[0].prim, 'seen broadside it keeps its own elevation art');
+});
+
+test('G5 a sprite standing in the water mirrors about its own waterline, a perspective piece about its footprint', () => {
+  const cam = W.sceneCamera({ camera: { eye: 2.4, fov: 66, horizon: 400, heading: 0, water: -0.2 } });
+  const world = { cam, surfaces: [{ id: 'pond', kind: 'water', water: 'pond', level: -0.2, poly: [[-60, 1], [60, 1], [60, 120], [-60, 120]] }] };
+  const [R] = W.worldWaterPlan(world, cam);
+  const e = { id: 'plat', obj: 'structure.viewing-platform', x: 6.6, z: 31, y: 0, foot: [[2.5, 29.2], [7.7, 35.4], [10.7, 32.8], [5.5, 26.6]] };
+  assert.equal(W.worldWaterContact(R, e, cam).kind, 'line', 'a perspective piece: its footprint outline');
+  const c = W.worldWaterContact(R, e, cam, { sprite: true });
+  assert.equal(c.kind, 'own');
+  assert.ok(Math.abs(W.worldWaterContactRow(R, c, 900) - (cam.horizon + cam.f * (cam.eye + 0.2) / 31)) < 0.5, 'about the waterline at its anchor');
+});
+
+/* ---------- the pixel detectors themselves (tools/lib/world/glitch.mjs) ---------- */
+const G = await import('../tools/lib/world/glitch.mjs');
+const canvas = (W0, H0, f) => { const data = new Uint8ClampedArray(W0 * H0 * 4); for (let y = 0; y < H0; y++) for (let x = 0; x < W0; x++) { const v = Math.round(255 * Math.max(0, Math.min(1, f(x, y)))), i = (y * W0 + x) * 4; data[i] = data[i + 1] = data[i + 2] = v; data[i + 3] = 255; } return { width: W0, height: H0, data }; };
+test('detector G1: a hard-edged bright ellipse on a night frame is a flat disc; the same light as a soft falloff is not', () => {
+  const night = (x, y) => 0.1 + 0.02 * Math.sin(x * 0.3) * Math.sin(y * 0.2);
+  const hard = canvas(800, 450, (x, y) => (((x - 400) / 220) ** 2 + ((y - 330) / 40) ** 2 < 1 ? 0.62 + 0.03 * Math.sin(x * 0.3) : night(x, y)));
+  const soft = canvas(800, 450, (x, y) => { const d = Math.sqrt(((x - 400) / 220) ** 2 + ((y - 330) / 40) ** 2); return night(x, y) + 0.32 * Math.max(0, Math.pow(1 + 3 * d * d, -1.5) * (1 - d * d * (3 - 2 * d))) * (d < 1 ? 1 : 0); });
+  assert.equal(G.glitchFlatDiscs(hard).ok, false);
+  assert.equal(G.glitchFlatDiscs(soft).ok, true);
+  // a lit window (a rectangle) is not a disc
+  assert.equal(G.glitchFlatDiscs(canvas(800, 450, (x, y) => (x > 300 && x < 360 && y > 100 && y < 160 ? 0.85 : night(x, y)))).ok, true);
+});
+test('detector G4: a reflection sheared in steps of 3 rows is a sawtooth; a smooth sub-pixel ripple is not', () => {
+  const stripes = (x) => ((Math.floor(x / 9) % 2) ? 0.7 : 0.25);
+  const saw = canvas(800, 300, (x, y) => stripes(x + 5 * Math.sin(Math.floor(y / 3) * 3 * 0.25)));
+  const smooth = canvas(800, 300, (x, y) => stripes(x + 0.8 * Math.sin(y * 0.15)));
+  const box = [0, 0, 800, 300];
+  assert.equal(G.glitchSawtooth(saw, { box }).ok, false, JSON.stringify(G.glitchSawtooth(saw, { box }).note));
+  assert.equal(G.glitchSawtooth(smooth, { box }).ok, true, JSON.stringify(G.glitchSawtooth(smooth, { box }).note));
+});
+test('detector G3: one murky blue-grey is unreadable; dark masses with pale paths and lit windows read', () => {
+  const murk = canvas(800, 450, (x, y) => 0.11 + 0.03 * Math.sin(x * 0.05 + y * 0.07));
+  const read = canvas(800, 450, (x, y) => (y > 250 && Math.abs(x - 400) < (y - 250) * 0.8 ? 0.22 : (x % 97 < 8 && y < 300 ? 0.8 : 0.05 + 0.02 * Math.sin(x * 0.05))));
+  assert.equal(G.glitchNightReadable(murk).ok, false);
+  assert.equal(G.glitchNightReadable(read).ok, true, G.glitchNightReadable(read).note);
+});
