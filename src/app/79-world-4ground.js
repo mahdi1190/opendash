@@ -52,6 +52,9 @@ const _WGD_KIT_KEY = Object.freeze({ pavement: 'paving', platform: 'paving', dri
   path: 'path', towpath: 'path', track: 'path', grass: 'grass', lawn: 'grass', park: 'grass', verge: 'grass', garden: 'grass', meadow: 'grass', bank: 'grass',
   heath: 'heath', wood: 'wood', field: 'field', sand: 'sand', beach: 'sand', shingle: 'sand' });
 const _WGD_SELF = new Set(['water', 'reeds', 'reedbed', 'bed', 'hedge', 'weir', 'rail', 'tram', 'boardwalk', 'bridge-deck', 'deck', 'jetty', 'pontoon', 'stairs', 'ramp']);
+// open looks: a mown lawn and a rippled beach are dressed by their texture at half weight (they are meant to be open: a village
+// green, a beach), so the fill keeps them open with sparse things rather than a carpet
+const WORLD_GROUND_OPEN = Object.freeze(['mown', 'ripple']);
 const _WGD_MIN_PX = 2.2;          // the smallest screen spacing a joint or course may have (denser reads as a grey smear)
 const _WGD_MARK_CAP = 9000;       // marks per surface (the bake draws them once into a cached layer)
 

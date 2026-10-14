@@ -169,7 +169,7 @@ function worldDetailCoverage(world, cam, o) {
       const P = _wdtP(cam, e.x, e.z, _wdtNum(e.y) ? e.y : null), s = P.k * _wdtHeight(e) / def.size[1], flip = _wdtNum(e.facing) && e.facing > 180 && e.facing < 360 ? -1 : 1;
       const b = mask.box, X0 = P.X + Math.min(b[0] * s * flip, b[2] * s * flip), X1 = P.X + Math.max(b[0] * s * flip, b[2] * s * flip), Y0 = P.Y + b[1] * s, Y1 = P.Y + b[3] * s;
       if (X1 < 0 || X0 > W || Y1 < 0 || Y0 > H) continue;
-      if (!e.backdrop) { seenObj.add(e.obj); if (e.z >= 15 && e.z < 80) seenMid.add(e.obj); }
+      if (!e.backdrop) { seenObj.add(e.obj); if (e.z >= 15 && e.z < 150) seenMid.add(e.obj); }
       const n = mask.n, gw = (b[2] - b[0]) / n, gh = (b[3] - b[1]) / n;
       const i0 = Math.max(0, Math.floor(X0 / cw)), i1 = Math.min(cols - 1, Math.floor(X1 / cw)), j0 = Math.max(0, Math.floor(Y0 / ch)), j1 = Math.min(rows - 1, Math.floor(Y1 / ch));
       for (let j = j0; j <= j1; j++) {
@@ -222,7 +222,7 @@ function worldDetailCoverage(world, cam, o) {
     // the samples
     const lived = new Set(); for (const p of world.life || []) if (p && p.on) lived.add(p.on);
     const regs = Array.from({ length: 9 }, () => ({ n: 0, bare: 0, flat: 0 })), surf = {};
-    let n = 0, bare = 0, flat = 0, sky = 0, skyN = 0, nearN = 0, nearD = 0, nearO = 0, paving = 0, chA = 0, chF = 0;
+    let n = 0, bare = 0, flat = 0, sky = 0, skyN = 0, nearN = 0, nearD = 0, nearO = 0, paving = 0, chA = 0, chF = 0, midN = 0, midSelf = 0;
     const layerHits = [0, 0, 0, 0, 0, 0], dbg = o.debug ? new Array(N).fill(' ') : null;
     const look = typeof worldGroundTextured === 'function';
     for (let j = 0; j < rows; j++) {
@@ -246,19 +246,25 @@ function worldDetailCoverage(world, cam, o) {
           if (!s) { tex = !!(g && (g.d > 400 || (look && worldGroundTextured(world, cam, g.x, g.d).textured))); cls = tex ? 'texture' : 'flat'; }
           else if (_WDT_SELF.has(s.kind)) { tex = true; cls = 'self'; }
           else {
-            tex = !!(look && worldGroundTextured(world, cam, g.x, g.d).textured);
-            cls = lived.has(s.id) && _WDT_STRIP.has(s.kind) && Array.isArray(s.path) && (Number(s.width) || 2) <= 6 ? 'life' : tex ? 'texture' : 'flat';
+            const gt = look ? worldGroundTextured(world, cam, g.x, g.d) : null;
+            tex = !!(gt && gt.textured);
+            var openLook = !!(gt && typeof WORLD_GROUND_OPEN === 'object' && WORLD_GROUND_OPEN.includes(gt.look));
+            // people dress the walk strips they walk, traffic the roads it drives; a crowd on a textured square dresses half of it
+            const strip = Array.isArray(s.path) && (Number(s.width) || 2) <= (s.kind === 'road' || s.kind === 'tramway' ? 12 : 6);
+            cls = lived.has(s.id) && strip && (_WDT_STRIP.has(s.kind) || s.kind === 'road' || s.kind === 'tramway') ? 'life' : lived.has(s.id) && tex && _WDT_PAVING.has(s.kind) ? 'crowd' : tex && openLook ? 'open' : tex ? 'texture' : 'flat';
           }
           if (!tex) { flat++; regs[ri].flat++; }
-          if (s) { const q = surf[s.id] || (surf[s.id] = { kind: s.kind, n: 0, bare: 0, flat: 0 }); q.n++; if (cls === 'texture' || cls === 'flat') q.bare++; if (!tex) q.flat++; }
-          if (s && _WDT_PAVING.has(s.kind) && (cls === 'texture' || cls === 'flat' || cls === 'life')) paving++;
+          if (s) { const q = surf[s.id] || (surf[s.id] = { kind: s.kind, n: 0, bare: 0, flat: 0 }); q.n++; if (cls === 'texture' || cls === 'flat') q.bare++; if (cls === 'open' || cls === 'crowd') q.bare += 0.5; if (!tex) q.flat++; }
+          if (s && _WDT_PAVING.has(s.kind) && (cls === 'texture' || cls === 'flat' || cls === 'life' || cls === 'crowd')) paving += cls === 'crowd' ? 0.5 : 1;
           // a dressed or textured surface is a depth layer of its own (a lake, a lawn), flat colour is not
           if (g && cls !== 'flat') layerHits[_wdtLayer(g.d, null)]++;
+          if (g && g.d >= 15 && g.d < 150) { midN++; if (cls === 'self') midSelf++; }
         }
-        if (dbg) dbg[k] = ({ object: 'o', self: 'w', life: 'l', texture: 't', flat: 'f' })[cls] || '?';
+        if (dbg) dbg[k] = ({ object: 'o', self: 'w', life: 'l', crowd: 'c', open: 'p', texture: 't', flat: 'f' })[cls] || '?';
         if (cls === 'texture' || cls === 'flat') { bare++; regs[ri].bare++; }
+        if (cls === 'crowd' || cls === 'open') { bare += 0.5; regs[ri].bare += 0.5; }
         if (cls === 'flat' && wl) { flat++; regs[ri].flat++; }
-        if (nearRow && cls !== 'texture' && cls !== 'flat') nearD++;
+        if (nearRow && cls !== 'texture' && cls !== 'flat') nearD += cls === 'crowd' || cls === 'open' ? 0.5 : 1;
         if (nearRow && cls === 'object') nearO++;
       }
     }
@@ -268,17 +274,21 @@ function worldDetailCoverage(world, cam, o) {
     rec.sky = skyN ? _wdtR(sky / frameN) : 0;
     rec.near = { dressed: nearN ? _wdtR(nearD / nearN) : 1, object: nearN ? _wdtR(nearO / nearN) : 0 };
     rec.layers = layerHits.map(h => _wdtR(h / frameN));
-    // a near layer must carry 1.5 % of the frame, a far one (from 40 m) 0.5 %: far things are small
-    rec.layerCount = rec.layers.filter((v, i) => v >= (i < 3 ? L.layerShare : L.layerShare / 3)).length;
+    // a near layer must carry 1.5 % of the frame, a far one (from 40 m) 0.5 %: far things are small; the sky is the farthest plane
+    // of an enclosed view (a street, a wood) when 4 % of the frame shows it
+    rec.layerCount = rec.layers.filter((v, i) => v >= (i < 3 ? L.layerShare : L.layerShare / 3)).length + (rec.layers[4] < L.layerShare / 3 && rec.layers[5] < L.layerShare / 3 && rec.sky >= 0.04 ? 1 : 0);
     rec.paving = _wdtR(paving / frameN);
     rec.channel = { area: _wdtR(chA / frameN), flat: _wdtR(chF / frameN) };
     const RN = ['far', 'mid', 'near'], CN = ['left', 'centre', 'right'];
     rec.regions = regs.map((q, i) => ({ name: RN[Math.floor(i / 3)] + '-' + CN[i % 3], bare: q.n ? _wdtR(q.bare / q.n) : 0, flat: q.n ? _wdtR(q.flat / q.n) : 0 }));
     for (const [sid, q] of Object.entries(surf)) rec.surfaces[sid] = { kind: q.kind, share: _wdtR(q.n / frameN), bare: q.n ? _wdtR(q.bare / q.n) : 0, flat: q.n ? _wdtR(q.flat / q.n) : 0 };
-    rec.variety = { all: seenObj.size, mid: seenMid.size };
+    // extruded buildings count by style, lines by kind (a row of houses is one kind of thing per style)
+    for (const bdg of world.buildings || []) if (bdg) seenObj.add('building:' + (bdg.style || 'victorian-terrace'));
+    for (const Ln of world.lines || []) if (Ln && /wall|hedge|fence|railing/.test(Ln.kind)) seenObj.add('line:' + Ln.kind);
+    rec.variety = { all: seenObj.size, mid: seenMid.size, midWater: midN ? _wdtR(midSelf / midN) : 0 };
     rec.frame = _wdtFraming(world, cam, W, H);
     rec.life = (world.life || []).filter(p => p && (p.on || p.count || p.rate || p.every || p.who)).length;
-    if (dbg) rec.grid = { cols, rows, cells: dbg.join('') };
+    if (dbg) rec.grid = { cols, rows, cells: dbg.join(''), z: Array.from(zOf, v => Number.isFinite(v) ? Math.round(v * 10) / 10 : -1) };
   } catch (e) { rec.error = String(e && e.message || e); }
   return rec;
 }
@@ -317,7 +327,7 @@ function _wdtFraming(world, cam, W, H) {
     const P = _wdtP(cam, e.x, e.z, _wdtNum(e.y) ? e.y : null), s = P.k * _wdtHeight(e) / def.size[1], b = mask.box, flip = _wdtNum(e.facing) && e.facing > 180 && e.facing < 360 ? -1 : 1;
     const X0 = P.X + Math.min(b[0] * s * flip, b[2] * s * flip), X1 = P.X + Math.max(b[0] * s * flip, b[2] * s * flip), Y0 = P.Y + b[1] * s, Y1 = P.Y + b[3] * s;
     if (X1 < 0 || X0 > W || Y1 < 0 || Y0 > H) continue;
-    const hang = kb.cls === 'bough' || kb.cls === 'frond' || kb.hang;
+    const hang = kb.cls === 'bough' || kb.cls === 'frond' || (kb.hang && String(e.attach || '') === 'air');
     const domed = (typeof WORLD_KIT_WEAK === 'object' && WORLD_KIT_WEAK && WORLD_KIT_WEAK[e.obj]) || (typeof WORLD_KIT_DISTANT_ONLY === 'object' && WORLD_KIT_DISTANT_ONLY && WORLD_KIT_DISTANT_ONLY.includes(e.obj));
     if (!out.hang && hang && Y0 <= 0.1 * H && (X0 <= 0.03 * W || X1 >= 0.97 * W)) { out.top = e.obj; out.hang = e.obj; }
     if (!out.top && kb.cls === 'tree' && !domed && Y0 < 0.02 * H && (X0 < 0.08 * W || X1 > 0.92 * W) && Y1 - Y0 > 0.6 * H) out.top = e.obj;
@@ -326,6 +336,12 @@ function _wdtFraming(world, cam, W, H) {
       if (X1 > 0.8 * W && !out.right) out.right = e.obj;
     }
   }
+  // buildings and walls standing in the near band at a side frame it (a building's edge, C1)
+  const sideBox = (x0, y0, x1, y1, what) => { if (y1 >= nearRow && Math.min(H, y1) - Math.max(0, y0) >= 0.12 * H && Math.min(W, x1) - Math.max(0, x0) >= 0.035 * W) { if (x0 < 0.2 * W && x1 > 0 && !out.left) out.left = what; if (x1 > 0.8 * W && x0 < W && !out.right) out.right = what; } };
+  const near0 = Math.max(0.4, (cam.dMin || 1) * 0.3);
+  const primBox = (foot, h, what) => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const p of foot) { if (p[1] < near0) continue; const A = _wdtP(cam, p[0], p[1], 0), B = _wdtP(cam, p[0], p[1], h); x0 = Math.min(x0, A.X, B.X); x1 = Math.max(x1, A.X, B.X); y0 = Math.min(y0, B.Y); y1 = Math.max(y1, A.Y); } if (Number.isFinite(x0)) sideBox(x0, y0, x1, y1, what); };
+  for (const bdg of world.buildings || []) if (bdg && Array.isArray(bdg.foot)) primBox(bdg.foot, _wdtNum(bdg.h) ? bdg.h : 6, 'building:' + (bdg.id || ''));
+  for (const Ln of world.lines || []) if (Ln && Array.isArray(Ln.path) && /wall|hedge|fence|railing/.test(Ln.kind)) for (let i = 1; i < Ln.path.length; i++) primBox([Ln.path[i - 1], Ln.path[i]], _wdtNum(Ln.h) ? Ln.h : 1.2, 'line:' + Ln.kind);
   // dressed channel walls reaching a bottom corner frame that side (a wall edge, C1)
   if (typeof worldChannelWalls === 'function' && typeof worldGroundDetail === 'function') {
     try {
@@ -343,21 +359,24 @@ function worldDetailProblems(rec, o) {
   o = o || {};
   const L = WORLD_DETAIL_LIMITS, out = [], P = (rule, msg, fix, severity) => out.push({ rule, msg, fix, severity: severity || 'fail' });
   if (!rec || rec.error) { P('noMeasure', 'the detail measure could not run: ' + (rec && rec.error), 'check the world'); return out; }
+  const K1 = o.kit ? (typeof o.kit === 'string' && typeof worldKit === 'function' ? worldKit(o.kit) : o.kit) : null, B = (K1 && K1.bare) || {};
+  const bareMax = Math.max(L.bare, B.ground || 0), pavMax = Math.max(L.paving, B.paving || 0);
   const pct = v => Math.round(v * 100) + ' %', worst = (key) => Object.entries(rec.surfaces).filter(([, q]) => q.share > 0.02 && q[key] > 0.3).sort((a, b) => b[1].share * b[1][key] - a[1].share * a[1][key]).slice(0, 3).map(([id, q]) => `${id} (${q.kind}, ${pct(q[key])} of it)`).join(', ');
   if (rec.channel.flat > L.channel) P('bareChannel', `${pct(rec.channel.flat)} of the frame is untextured channel wall (flat slabs of colour beside the water)`, 'the ground detail dresses sunken water walls (79-world-4ground.js worldChannelWalls): load it, or give the water its edge');
   if (rec.flat > L.flat) P('flatSurface', `${pct(rec.flat)} of the ground is flat untextured colour (max ${pct(L.flat)}): ${worst('flat') || 'bare ground'}`, 'every surface kind needs a ground look (WORLD_GROUND_LOOKS / the kit look map)');
-  if (rec.paving > L.paving) P('bareQuay', `${pct(rec.paving)} of the frame is paving with nothing on it (max ${pct(L.paving)})`, 'the kit paving dressing: more furniture, trees in pits, planters, people (the fill paving tier)');
-  if (rec.bare > L.bare) P('bareGround', `${pct(rec.bare)} of the ground below the horizon is undressed (max ${pct(L.bare)}): ${worst('bare') || ''}`, 'the fill dresses every surface from the kit until the strict measure passes (P6, C6)');
+  if (rec.paving > pavMax) P('bareQuay', `${pct(rec.paving)} of the frame is paving with nothing on it (max ${pct(pavMax)})`, 'the kit paving dressing: more furniture, trees in pits, planters, people (the fill paving tier)');
+  if (rec.bare > bareMax) P('bareGround', `${pct(rec.bare)} of the ground below the horizon is undressed (max ${pct(bareMax)}): ${worst('bare') || ''}`, 'the fill dresses every surface from the kit until the strict measure passes (P6, C6)');
   const badR = rec.regions.filter(r => r.bare > L.region);
   if (badR.length) P('bareRegion', `undressed ground region(s): ${badR.map(r => r.name + ' ' + pct(r.bare)).join(', ')} (max ${pct(L.region)})`, 'dress that part of the frame (fill tiers) or move the camera');
   // an open foreground (reflecting water, a lawn) held at BOTH bottom corners needs only half the standing share
   const held = rec.frame.left && rec.frame.right, needObj = held ? L.nearObject / 2 : L.nearObject;
-  if (rec.near.dressed < L.near || rec.near.object < needObj) P('emptyForeground', `the near band is ${pct(rec.near.dressed)} dressed and ${pct(rec.near.object)} of it has something standing (min ${pct(L.near)} and ${pct(needObj)}${held ? ', held at both corners' : ''})`, 'the framing foreground and the near dressing (C3, N2)');
+  const nearMin = Math.min(L.near, B.near || L.near);
+  if (rec.near.dressed < nearMin || rec.near.object < needObj) P('emptyForeground', `the near band is ${pct(rec.near.dressed)} dressed and ${pct(rec.near.object)} of it has something standing (min ${pct(nearMin)} and ${pct(needObj)}${held ? ', held at both corners' : ''})`, 'the framing foreground and the near dressing (C3, N2)');
   if (rec.layerCount < L.layers) P('fewLayers', `${rec.layerCount} depth layers carry content (min ${L.layers}): ${rec.layers.map((v, i) => ['0-6', '6-15', '15-40', '40-120', '120-400', 'backdrop'][i] + ' ' + pct(v)).join(', ')}`, 'dress the empty depth bands (near dressing, mid trees, far trees, the backdrop)');
   if (!rec.frame.top && !rec.frame.left && !rec.frame.right) P('noFraming', 'nothing frames the view: no bough or crown at a top corner, nothing at a side of the near band', 'the framing foreground (C3): a bough with its trunk outside the frame, reeds, a shrub, a lamp, a railing');
-  if (rec.variety.all < L.variety || rec.variety.mid < L.varietyMid) P('lowVariety', `${rec.variety.all} distinct objects in the frame, ${rec.variety.mid} in the middle distance (min ${L.variety} and ${L.varietyMid})`, 'more of the kit (variety pools, P7)');
+  if (rec.variety.all < L.variety || (rec.variety.mid < L.varietyMid && !(rec.variety.midWater >= 0.5))) P('lowVariety', `${rec.variety.all} distinct objects in the frame, ${rec.variety.mid} in the middle distance (min ${L.variety} and ${L.varietyMid})`, 'more of the kit (variety pools, P7)');
   const K0 = o.kit ? (typeof o.kit === 'string' && typeof worldKit === 'function' ? worldKit(o.kit) : o.kit) : null;
-  if (K0 && (K0.place === 'rural' || K0.place === 'park') && !rec.frame.hang) P('noBough', 'a natural view with no bough or fronds reaching in from a top corner (the gold frame: proof Fleet Pond)', 'the framing foreground (C3): the kit bough with its trunk just outside the frame on the same side');
+  if (K0 && (K0.place === 'rural' || K0.place === 'park') && Array.isArray(K0.frame) && K0.frame.some(f => f && f.kind === 'bough') && !rec.frame.hang) P('noBough', 'a natural view with no bough or fronds reaching in from a top corner (the gold frame: proof Fleet Pond)', 'the framing foreground (C3): the kit bough with its trunk just outside the frame on the same side');
   if (!(rec.life > 0)) P('noLife', 'no population of people or animals', 'the kit life defaults (N3)');
   const K = o.kit ? (typeof o.kit === 'string' && typeof worldKit === 'function' ? worldKit(o.kit) : o.kit) : null;
   if (K && Array.isArray(K.sky) && (rec.sky < K.sky[0] - L.skySlack || rec.sky > K.sky[1] + L.skySlack)) P('skyShare', `the sky is ${pct(rec.sky)} of the frame (the kit wants ${pct(K.sky[0])}-${pct(K.sky[1])})`, 'move the horizon or the framing', 'warn');

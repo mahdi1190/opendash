@@ -28,7 +28,9 @@
    Kit shape (every list is [[object id, weight], ...]):
      { label, place: 'rural' | 'park' | 'town' | 'city' (the density and richness kind), backdrop (a WORLD_BACKDROP_STYLES key),
        ground (what bare ground is), sky: [min, max] (the frame's sky share, N2), layers (the depth layers to show, N2),
-       look: { grass, path, paving, quay, bank } (the ground detail looks, 79-world-4ground.js),
+       look: { grass, path, paving, quay, bank } (the ground detail looks, 79-world-4ground.js), bare: { ground, paving, near } (the most
+       undressed ground and bare paving the strict critic allows, and the least dressed near band: 0.15, 0.1 and 0.6 unless the
+       setting is open by nature, a civic square),
        fill: { <group>: { near (z < 12 m: low dressing), mid (12-35 m), far (35-120 m: structured trees only), distant (beyond),
                accents (seasonal and occasional), maxH (the tallest near and mid dressing), max (paving furniture per band) } },
        edges: { water: { <water kind>: 'natural' | 'urban' | 'quay' | 'none' }, natural: { margin, bank, stands }, quay: { top },
@@ -101,10 +103,10 @@ const _WKT_PATH = { near: [], mid: [], far: [], accents: [['ground.leaf-litter',
 const _WKT_PAVING = { near: _WKT_STREET_NEAR, mid: _WKT_STREET_MID, far: _WKT_STREET_FAR, accents: _WKT_PAVING_ACCENTS, max: { near: 6, mid: 16, far: 12 } };
 const _WKT_CALM = { calm: [['water.lily', 5], ['water.fish-ring', 1]], share: 0.35 };
 const _WKT_NOLILY = { calm: [], share: 0 };
-const _WKT_RICH_RURAL = { mid: _WKT_BROADLEAF.concat(_WKT_WATERSIDE, [['plant.holly', 1], ['plant.rph-church-shrub', 2], ['plant.bracken', 2], ['plant.fern', 2], ['plant.yg-meadow', 2],
+const _WKT_RICH_RURAL = { mid: _WKT_BROADLEAF.concat(_WKT_WATERSIDE, [['plant.rph-church-shrub', 1], ['plant.bracken', 2], ['plant.fern', 2], ['plant.yg-meadow', 2],
     ['plant.grass-long', 2], ['plant.wyv-heath-bank', 1], ['rock.boulder', 1], ['plant.reed', 1], ['plant.bulrush', 1], ['plant.yg-reedbed', 1], ['plant.hedgerow-blackberry', 1]]),
   far: _WKT_BROADLEAF.concat([['tree.pine-veteran', 1], ['tree.pool-pine', 1], ['tree.green-willow', 1], ['tree.wyv-far-sallow', 1], ['tree.green-birch', 1], ['tree.alder', 1]]) };
-const _WKT_RICH_TOWN = { mid: [['tree.plane-avenue', 3], ['tree.green-chestnut', 1], ['tree.green-birch', 1], ['plant.rph-church-shrub', 2], ['plant.mqn-buddleia', 1], ['plant.grass-long', 2], ['plant.rph-short-grass', 2]],
+const _WKT_RICH_TOWN = { mid: [['tree.plane-avenue', 3], ['tree.green-chestnut', 1], ['tree.green-birch', 1], ['tree.horse-chestnut', 1], ['plant.rph-short-grass', 2], ['street.bench', 1]],
   far: [['tree.plane-avenue', 2], ['tree.green-chestnut', 1], ['tree.horse-chestnut', 1], ['tree.green-oak', 1]] };
 const _WKT_EDGES_RURAL = { water: { pond: 'natural', lake: 'natural', canal: 'natural', river: 'natural', sea: 'none', harbour: 'quay', puddle: 'none' },
   natural: { margin: _WKT_REEDS, bank: _WKT_BANK, stands: 0.55 }, quay: { top: [['plant.rph-short-grass', 2], ['plant.mqn-buddleia', 1]] },
@@ -130,7 +132,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
   // round the far shore, the gold bough over the water
   pond: { label: 'pond or lake', place: 'park', backdrop: 'woodland', ground: 'grass', sky: [0.3, 0.6], layers: 5,
     look: { grass: 'tussock', path: 'gravel', paving: 'flags', quay: 'stone', bank: 'earth' },
-    fill: { grass: { near: _WKT_TUFTS, mid: [['tree.wyv-far-sallow', 3], ['tree.green-willow', 1], ['tree.canal-willow', 1], ['tree.pool-birch', 1], ['tree.hawthorn', 1], ['plant.rph-church-shrub', 1], ['plant.bracken', 2], ['plant.yg-meadow', 2], ['plant.holly', 1]],
+    fill: { grass: { near: _WKT_TUFTS, mid: [['tree.wyv-far-sallow', 3], ['tree.green-willow', 1], ['tree.canal-willow', 1], ['tree.pool-birch', 1], ['tree.hawthorn', 1], ['plant.bracken', 2], ['plant.yg-meadow', 2]],
       far: [['tree.pool-birch', 2], ['tree.green-birch', 2], ['tree.oak', 2], ['tree.green-oak', 2], ['tree.wyv-far-oak', 1], ['tree.pine-veteran', 2], ['tree.pool-pine', 2], ['tree.wyv-far-sallow', 2], ['tree.alder', 1]],
       distant: _WKT_DISTANT_WOOD.concat([['tree.far-pine', 1]]), accents: _WKT_FLOWERS.concat([['rock.stones', 1], ['ground.leaf-litter', 1]]) },
       heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, paving: _WKT_PAVING, path: _WKT_PATH, water: { calm: [['water.lily', 6], ['water.fish-ring', 1]], share: 0.45 } },
@@ -150,14 +152,14 @@ const WORLD_STYLE_KITS = _wkbFreeze({
     edges: _WKT_EDGES_RURAL, frame: [_WKT_BOUGH_OAK, _WKT_BOUGH, { kind: 'shrub', obj: 'plant.fern' }, { kind: 'shrub', obj: 'plant.holly' }, { kind: 'shrub', obj: 'plant.rph-church-shrub' }],
     rich: _WKT_RICH_RURAL, life: Object.assign({ water: [{ who: 'mallard', count: 4 }] }, _WKT_LIFE_RURAL) },
   // a village green: mown grass with chestnuts and oaks, benches and a lamp, the church and cottages behind (backdrop)
-  'village-green': { label: 'village green', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.3, 0.55], layers: 5,
+  'village-green': { label: 'village green', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.2, 0.5], layers: 5, bare: { ground: 0.3, paving: 0.1 },
     look: { grass: 'mown', path: 'gravel', paving: 'flags', quay: 'stone', bank: 'earth' },
-    fill: { grass: { near: _WKT_MOWN, mid: [['tree.horse-chestnut', 1], ['tree.green-chestnut', 1], ['tree.oak', 1], ['plant.rph-church-shrub', 2], ['street.bench', 1], ['plant.shp-border', 1], ['plant.rph-short-grass', 2]],
+    fill: { grass: { near: _WKT_MOWN, mid: [['tree.horse-chestnut', 1], ['tree.green-chestnut', 1], ['tree.oak', 1], ['street.bench', 1], ['plant.rph-short-grass', 2]],
       far: [['tree.green-chestnut', 2], ['tree.horse-chestnut', 1], ['tree.oak', 2], ['tree.green-oak', 1], ['tree.green-willow', 1], ['tree.plane-avenue', 1]], distant: _WKT_DISTANT_TOWN,
-      accents: [['plant.daisies', 3], ['ground.leaf-litter', 2], ['plant.shp-border', 1]], maxH: 3.5 },
+      accents: [['plant.daisies', 3], ['ground.leaf-litter', 2], ['person.picnicker', 1]], maxH: 3.5 },
       paving: _WKT_PAVING, path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_CALM },
-    edges: Object.assign({}, _WKT_EDGES_RURAL, { hedgerow: [['plant.hedge', 2], ['plant.towpath-hedge', 1]] }),
-    frame: [_WKT_BOUGH_PARK, { kind: 'lamp', obj: 'street.lamp' }, { kind: 'shrub', obj: 'plant.rph-church-shrub' }],
+    edges: Object.assign({}, _WKT_EDGES_RURAL, { hedgerow: [['plant.hedge', 2], ['plant.towpath-hedge', 1]], verge: [['plant.rph-short-grass', 3], ['plant.grass', 2], ['plant.daisies', 1]], vergeShare: 0.35 }),
+    frame: [_WKT_BOUGH_PARK, { kind: 'lamp', obj: 'street.lamp' }, { kind: 'shrub', obj: 'plant.hedge' }],
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'walkers', rate: '5/min', mix: { stroll: 0.4, 'dog-walker': 0.25, family: 0.15, elderly: 0.1, couple: 0.1 } }, water: _WKT_WATERFOWL } },
   // a city river between walled quays (Kelham, Castlefield): textured stone quay walls with coping, buddleia on the banks,
   // plane trees, lamps and benches along the riverside walk, crowds on the paving, mallards and swans on the water
@@ -172,23 +174,26 @@ const WORLD_STYLE_KITS = _wkbFreeze({
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'walkers', rate: '8/min', mix: { brisk: 0.35, stroll: 0.35, 'dog-walker': 0.1, friends: 0.1, couple: 0.1 } }, paving: { who: 'crowd', rate: '10/min' },
       water: [{ who: 'mallard', count: 8 }, { who: 'mute-swan', count: 2 }, { who: 'heron', count: 1 }] } },
   // a civic square: setts and flags, plane trees in pits, planters, benches, lamps, a crowd and pigeons; the buildings frame it
-  'civic-square': { label: 'civic square', place: 'city', backdrop: 'city-victorian', ground: 'grass', sky: [0.2, 0.45], layers: 5,
+  'civic-square': { label: 'civic square', place: 'city', backdrop: 'city-victorian', ground: 'grass', sky: [0.2, 0.45], layers: 5, bare: { ground: 0.35, paving: 0.2, near: 0.5 },
     look: { grass: 'mown', path: 'flags', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'stone' },
     fill: { grass: { near: _WKT_MOWN, mid: [['plant.rph-church-shrub', 2], ['tree.plane-avenue', 1], ['plant.shp-border', 1], ['plant.rph-short-grass', 2]], far: [['tree.plane-avenue', 3], ['tree.green-chestnut', 1]],
       distant: _WKT_DISTANT_TOWN, accents: [['plant.daisies', 2], ['ground.leaf-litter', 2]], maxH: 2.6 },
-      paving: { near: _WKT_STREET_NEAR.concat([['structure.mcr-planter', 1]]), mid: _WKT_STREET_MID.concat([['street.mqn-totem', 1], ['street.mqn-parasol', 1]]), far: _WKT_STREET_FAR, accents: _WKT_PAVING_ACCENTS, max: { near: 8, mid: 24, far: 16 } },
+      paving: { near: _WKT_STREET_NEAR.concat([['structure.mcr-planter', 1], ['street.bench', 2], ['tree.plane-avenue', 1], ['street.mqn-totem', 1]]), mid: _WKT_STREET_MID.concat([['street.mqn-totem', 1], ['street.mqn-parasol', 1], ['person.cafe-goer', 2], ['structure.mqn-kiosk-v3', 1]]),
+        far: _WKT_STREET_FAR.concat([['person.cafe-goer', 1], ['street.mqn-parasol', 1]]), accents: _WKT_PAVING_ACCENTS, max: { near: 10, mid: 28, far: 18 } },
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
     edges: _WKT_EDGES_URBAN, frame: [{ kind: 'lamp', obj: 'street.lamppost' }, _WKT_BOUGH_PLANE, { kind: 'planter', obj: 'street.mqn-planter-grass' }],
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'crowd', rate: '12/min' }, paving: { who: 'crowd', rate: '12/min' }, ground: [{ who: 'pigeons', count: 8 }] } },
   // a quayside or harbour: stone quays with coping, bollards, lifebuoys and railings at the edge, lamps, gulls over the water
-  quayside: { label: 'quayside or harbour', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.3, 0.55], layers: 5,
+  quayside: { label: 'quayside or harbour', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.3, 0.55], layers: 5, bare: { ground: 0.25, paving: 0.15 },
     look: { grass: 'tussock', path: 'flags', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'stone' },
     fill: { grass: { near: [['plant.grass-long', 3], ['plant.rph-short-grass', 3]], mid: [['plant.rph-church-shrub', 1], ['plant.grass-long', 2], ['plant.mqn-buddleia', 1]], far: [['tree.plane-avenue', 1], ['tree.green-chestnut', 1]],
       distant: _WKT_DISTANT_TOWN, accents: [['ground.leaf-litter', 1], ['plant.daisies', 1]], maxH: 2.6 },
-      paving: { near: [['street.bollard', 3], ['street.mqn-lifebuoy', 1], ['street.mcf-litter-bin', 1], ['street.mqn-planter-grass', 1]], mid: [['street.bollard', 2], ['street.lamppost', 2], ['street.bench', 2], ['street.mqn-lifebuoy', 1], ['street.mqn-planter-grass', 1]],
-        far: [['street.lamppost', 2], ['street.bollard', 1], ['tree.plane-avenue', 1]], accents: [['ground.puddle', 2], ['ground.leaves', 1]], max: { near: 6, mid: 18, far: 12 } },
+      paving: { near: [['street.bollard', 3], ['street.mqn-lifebuoy', 1], ['street.mcf-litter-bin', 1], ['street.mqn-planter-grass', 1], ['plant.rph-flower-tub', 1], ['street.mqn-aboard', 1]],
+        mid: [['street.bollard', 2], ['street.lamppost', 2], ['street.bench', 2], ['street.mqn-lifebuoy', 1], ['street.mqn-planter-grass', 1], ['structure.mcr-planter', 1], ['street.mqn-parasol', 1], ['street.mcr-cycle-stand', 1]],
+        far: [['street.lamppost', 2], ['street.bollard', 1], ['tree.plane-avenue', 1], ['street.mqn-planter-grass', 1]], accents: [['ground.puddle', 2], ['ground.leaves', 1]], max: { near: 6, mid: 18, far: 12 } },
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
-    edges: Object.assign({}, _WKT_EDGES_URBAN, { water: { pond: 'natural', lake: 'quay', canal: 'quay', river: 'quay', sea: 'quay', harbour: 'quay', puddle: 'none' } }),
+    edges: Object.assign({}, _WKT_EDGES_URBAN, { water: { pond: 'natural', lake: 'quay', canal: 'quay', river: 'quay', sea: 'quay', harbour: 'quay', puddle: 'none' },
+      quay: { top: [['plant.rph-short-grass', 2]], posts: [['street.bollard', 4], ['street.mqn-lifebuoy', 1]] } }),
     frame: [{ kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'post', obj: 'street.bollard' }],
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'crowd', rate: '8/min' }, paving: { who: 'crowd', rate: '8/min' }, water: [{ who: 'mallard', count: 4 }], air: [{ who: 'gulls', count: 5 }] } },
   // a terraced street: flags and kerbs, street trees in pits, lamps, bins, hedges and front-garden borders
@@ -196,19 +201,19 @@ const WORLD_STYLE_KITS = _wkbFreeze({
     look: { grass: 'mown', path: 'flags', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'stone' },
     fill: { grass: { near: [['plant.rph-short-grass', 3], ['plant.grass', 2], ['plant.shp-border', 1]], mid: [['plant.hedge', 2], ['plant.towpath-hedge', 1], ['plant.shp-border', 1], ['plant.rph-church-shrub', 1], ['tree.mqn-street-tree', 1]],
       far: [['tree.plane-avenue', 2], ['tree.green-birch', 1], ['plant.hedge', 1]], distant: _WKT_DISTANT_TOWN, accents: [['plant.daisies', 2], ['ground.leaf-litter', 2]], maxH: 2.4 },
-      paving: { near: [['street.mcf-litter-bin', 1], ['plant.rph-flower-tub', 1], ['street.mqn-bike-hoop', 1]], mid: [['tree.plane-avenue', 2], ['street.lamppost', 2], ['street.mcr-bin', 1], ['street.mqn-bike-hoop', 1], ['tree.mqn-street-tree', 1]],
-        far: [['tree.plane-avenue', 2], ['street.lamppost', 1]], accents: _WKT_PAVING_ACCENTS, max: { near: 4, mid: 12, far: 10 } },
+      paving: { near: [['street.mcf-litter-bin', 1], ['plant.rph-flower-tub', 1], ['street.mqn-bike-hoop', 1], ['street.bollard', 1], ['plant.planter', 1]], mid: [['tree.plane-avenue', 2], ['street.lamppost', 2], ['street.mcr-bin', 1], ['street.mqn-bike-hoop', 1], ['tree.mqn-street-tree', 1], ['street.bollard', 1], ['street.mcr-cycle-stand', 1], ['street.bench', 1], ['plant.planter', 1], ['tree.green-birch', 1]],
+        far: [['tree.plane-avenue', 2], ['street.lamppost', 1], ['tree.mqn-street-tree', 1], ['tree.green-birch', 1]], accents: _WKT_PAVING_ACCENTS, max: { near: 4, mid: 12, far: 10 } },
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
     edges: Object.assign({}, _WKT_EDGES_URBAN, { hedgerow: [['plant.hedge', 2]] }), frame: [{ kind: 'lamp', obj: 'street.lamppost' }, _WKT_BOUGH_PLANE, { kind: 'hedge', obj: 'plant.hedge' }],
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'crowd', rate: '6/min' }, paving: { who: 'crowd', rate: '6/min' } } },
   // a town park: lawns, flower borders, specimen chestnuts, planes and willows, benches and lamps on the paths
-  park: { label: 'park', place: 'park', backdrop: 'town-low', ground: 'grass', sky: [0.25, 0.55], layers: 5,
+  park: { label: 'park', place: 'park', backdrop: 'town-low', ground: 'grass', sky: [0.25, 0.55], layers: 5, bare: { ground: 0.28, paving: 0.1 },
     look: { grass: 'mown', path: 'gravel', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'earth' },
-    fill: { grass: { near: _WKT_MOWN.concat([['plant.grass-long', 1]]), mid: [['plant.shp-border', 2], ['plant.rph-church-shrub', 2], ['plant.holly', 1], ['tree.hawthorn', 1], ['tree.green-willow', 1], ['plant.rph-short-grass', 2]],
+    fill: { grass: { near: _WKT_MOWN, mid: [['tree.hawthorn', 1], ['tree.green-willow', 1], ['tree.green-chestnut', 1], ['street.bench', 1], ['plant.rph-short-grass', 2]],
       far: [['tree.plane-avenue', 2], ['tree.horse-chestnut', 1], ['tree.green-oak', 2], ['tree.green-chestnut', 2], ['tree.oak', 1], ['tree.green-birch', 1], ['tree.pine-veteran', 1], ['tree.green-willow', 1]],
-      distant: _WKT_DISTANT_TOWN, accents: [['plant.daisies', 3], ['plant.shp-border', 1], ['ground.leaf-litter', 2], ['ground.petals', 1]], maxH: 3.5 },
+      distant: _WKT_DISTANT_TOWN, accents: [['plant.daisies', 3], ['plant.shp-border', 1], ['ground.leaf-litter', 2], ['ground.petals', 1], ['person.picnicker', 1]], maxH: 3.5 },
       heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, paving: _WKT_PAVING, path: _WKT_PATH, water: _WKT_CALM },
-    edges: _WKT_EDGES_RURAL, frame: [_WKT_BOUGH_PARK, { kind: 'shrub', obj: 'plant.rph-church-shrub' }, { kind: 'lamp', obj: 'street.lamp' }],
+    edges: Object.assign({}, _WKT_EDGES_RURAL, { verge: [['plant.rph-short-grass', 3], ['plant.grass', 2], ['plant.daisies', 1]], vergeShare: 0.35 }), frame: [_WKT_BOUGH_PARK, { kind: 'lamp', obj: 'street.lamp' }, { kind: 'shrub', obj: 'plant.hedge' }],
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'walkers', rate: '6/min', mix: { stroll: 0.35, 'dog-walker': 0.2, jogger: 0.1, family: 0.15, elderly: 0.1, couple: 0.1 } }, water: _WKT_WATERFOWL } },
   // moorland: heather and cotton grass, boulders and drystone walls, a lone thorn, sheep; big skies
   moor: { label: 'moor', place: 'rural', backdrop: 'heath', ground: 'heath', sky: [0.4, 0.68], layers: 5,
@@ -222,17 +227,17 @@ const WORLD_STYLE_KITS = _wkbFreeze({
     rich: { mid: [['rock.boulder', 2], ['plant.bracken', 2], ['plant.moor-heather', 2], ['tree.hawthorn', 1], ['plant.yc-cotton-grass', 1], ['plant.wyv-heath-bank', 1]], far: [['rock.boulder', 2], ['tree.hawthorn', 1], ['tree.pine-veteran', 1]] },
     life: { walk: { who: 'walkers', rate: '2/min', mix: { brisk: 0.5, 'dog-walker': 0.3, couple: 0.2 } }, graze: [{ who: 'sheep', count: 8 }] } },
   // the coast: sand and shingle, marram on the dunes, gorse on the cliff top, a railed promenade with lamps and benches, gulls
-  coast: { label: 'coast', place: 'rural', backdrop: 'coast', ground: 'sand', sky: [0.38, 0.65], layers: 5,
+  coast: { label: 'coast', place: 'rural', backdrop: 'coast', ground: 'sand', sky: [0.38, 0.65], layers: 5, bare: { ground: 0.3, paving: 0.1 },
     look: { grass: 'tussock', sand: 'ripple', path: 'flags', paving: 'flags', quay: 'stone', bank: 'stone' },
-    fill: { grass: { near: [['plant.grass-long', 4], ['plant.rph-short-grass', 2], ['plant.yc-gorse-spray', 1]], mid: [['plant.gorse', 2], ['plant.yc-gorse-spray', 2], ['plant.grass-long', 2], ['tree.hawthorn', 1]],
-      far: [['plant.gorse', 2], ['tree.hawthorn', 1], ['tree.pine-veteran', 1]], distant: [['tree.far-broad', 1]], accents: [['plant.wildflowers', 2], ['rock.stones', 1]] },
-      sand: { near: [['rock.stones', 3], ['plant.grass-long', 1]], mid: [['rock.boulder', 1], ['rock.stones', 2], ['plant.grass-long', 1]], far: [['rock.boulder', 1]], accents: [['rock.stones', 1]] },
-      paving: { near: [['street.mcf-litter-bin', 1], ['street.mqn-lifebuoy', 1], ['street.bollard', 1]], mid: [['street.bench', 2], ['street.lamppost', 2], ['street.mqn-lifebuoy', 1]], far: [['street.lamppost', 2]], accents: [['ground.puddle', 1]], max: { near: 4, mid: 12, far: 10 } },
+    fill: { grass: { near: [['plant.grass-long', 4], ['plant.rph-short-grass', 2], ['plant.yc-gorse-spray', 1], ['plant.yg-meadow', 1]], mid: [['plant.gorse', 2], ['plant.yc-gorse-spray', 2], ['plant.grass-long', 2], ['tree.hawthorn', 1], ['plant.bracken', 1], ['building.beach-huts', 1]],
+      far: [['plant.gorse', 2], ['tree.hawthorn', 1], ['tree.pine-veteran', 1], ['building.cottage', 1]], distant: [['tree.far-broad', 1]], accents: [['plant.wildflowers', 2], ['rock.stones', 1]] },
+      sand: { near: [['rock.stones', 2]], mid: [['rock.stones', 2], ['rock.boulder', 1]], far: [['structure.groyne', 2], ['rock.boulder', 1]], accents: [['rock.stones', 1]] },
+      paving: { near: [['street.mcf-litter-bin', 1], ['street.mqn-lifebuoy', 1], ['street.bollard', 1], ['plant.rph-flower-tub', 1]], mid: [['street.bench', 2], ['street.lamppost', 2], ['street.mqn-lifebuoy', 1], ['street.mqn-planter-grass', 1], ['street.mqn-parasol', 1]], far: [['street.lamppost', 2], ['street.bench', 1]], accents: [['ground.puddle', 1]], max: { near: 4, mid: 12, far: 10 } },
       heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, path: _WKT_PATH, water: _WKT_NOLILY },
     edges: Object.assign({}, _WKT_EDGES_RURAL, { water: { pond: 'natural', lake: 'natural', canal: 'natural', river: 'natural', sea: 'none', harbour: 'quay', puddle: 'none' } }),
     frame: [{ kind: 'shrub', obj: 'plant.yc-gorse-spray' }, { kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'rock', obj: 'rock.boulder' }],
     rich: { mid: [['plant.gorse', 2], ['plant.yc-gorse-spray', 2], ['rock.boulder', 2], ['plant.grass-long', 2], ['tree.hawthorn', 1]], far: [['plant.gorse', 2], ['tree.hawthorn', 1], ['rock.boulder', 1], ['tree.pine-veteran', 1]] },
-    life: { walk: { who: 'walkers', rate: '4/min', mix: { stroll: 0.45, 'dog-walker': 0.3, family: 0.15, couple: 0.1 } }, air: [{ who: 'gulls', count: 6 }] } },
+    life: { walk: { who: 'walkers', rate: '4/min', mix: { stroll: 0.45, 'dog-walker': 0.3, family: 0.15, couple: 0.1 } }, sand: { who: 'walkers', rate: '3/min', mix: { stroll: 0.4, 'dog-walker': 0.3, family: 0.2, child: 0.1 } }, air: [{ who: 'gulls', count: 6 }] } },
   // farmland and downland (the legacy styles): hedgerows with oaks and hawthorns, meadow margins, hay in summer
   farmland: { label: 'farmland', place: 'rural', backdrop: 'farmland', ground: 'field', sky: [0.35, 0.62], layers: 5,
     look: { grass: 'tussock', field: 'rows', path: 'gravel', paving: 'flags', quay: 'stone', bank: 'earth' },
@@ -250,7 +255,7 @@ const WORLD_KIT_ALIAS = Object.freeze({ 'canal-wooded': 'canal', lake: 'pond', '
   'city-victorian': 'civic-square', 'city-sheffield-hills': 'river-city', 'city-manchester-towers': 'river-city', harbour: 'quayside', docks: 'quayside', street: 'terraced-street',
   terrace: 'terraced-street', moorland: 'moor', seaside: 'coast', wood: 'woodland', square: 'civic-square' });
 // the slots whose objects stand in the frame (a framing trunk stands outside it), and the classes each kind of slot may hold
-const _WKT_SLOT_CLS = { tree: ['tree'], dressing: ['tree', 'shrub', 'hedge', 'reed', 'flower', 'cover', 'rock', 'street', 'bench', 'lamp', 'post', 'signage', 'umbrella', 'fence', 'structure'],
+const _WKT_SLOT_CLS = { tree: ['tree'], dressing: ['tree', 'shrub', 'hedge', 'reed', 'flower', 'cover', 'rock', 'street', 'bench', 'lamp', 'post', 'signage', 'umbrella', 'fence', 'structure', 'building', 'cafe-table', 'picnic'],
   water: ['lily', 'fish-ring'], margin: ['reed', 'shrub', 'flower'], bough: ['bough', 'frond'], trunk: ['tree'] };
 
 /* ---------- lookups ---------- */
@@ -272,7 +277,7 @@ function worldKitIds(kit) {
   }
   const E = K.edges || {};
   if (E.natural) { list(E.natural.margin, 'edges.margin', 'margin'); list(E.natural.bank, 'edges.bank', 'near'); }
-  if (E.quay) list(E.quay.top, 'edges.quay', 'near');
+  if (E.quay) { list(E.quay.top, 'edges.quay', 'near'); list(E.quay.posts, 'edges.quay.posts', 'near'); }
   list(E.verge, 'edges.verge', 'near'); list(E.hedgerow, 'edges.hedgerow', 'mid'); list(E.wallBase, 'edges.wallBase', 'near');
   for (const f of K.frame || []) {
     if (!f) continue;
@@ -299,7 +304,7 @@ function worldKitCheck(o) {
     if (!Array.isArray(K.frame) || !K.frame.length) out.push({ kit: k, slot: 'frame', id: null, rule: 'kitShape', msg: `${k} has no framing options` });
     if (typeof WORLD_BACKDROP_STYLES === 'object' && WORLD_BACKDROP_STYLES && !WORLD_BACKDROP_STYLES[K.backdrop]) out.push({ kit: k, slot: 'backdrop', id: K.backdrop, rule: 'kitShape', msg: `${k}: unknown backdrop ${K.backdrop}` });
     // N3: every life default names a known population
-    const L = K.life || {}, lives = [].concat(L.walk ? [L.walk] : [], L.paving ? [L.paving] : [], L.water || [], L.graze || [], L.air || [], L.ground || []);
+    const L = K.life || {}, lives = [].concat(L.walk ? [L.walk] : [], L.paving ? [L.paving] : [], L.sand ? [L.sand] : [], L.water || [], L.graze || [], L.air || [], L.ground || []);
     if (!L.walk) out.push({ kit: k, slot: 'life.walk', id: null, rule: 'kitShape', msg: `${k} has no people (life.walk)` });
     for (const it of lives) if (!it || typeof WORLD_POPULATIONS !== 'object' || !WORLD_POPULATIONS || !WORLD_POPULATIONS[it.who]) out.push({ kit: k, slot: 'life', id: it && it.who, rule: 'kitLife', msg: `${k} life: ${it && it.who} is not a population (WORLD_POPULATIONS)` });
     for (const s of worldKitIds(K)) {
@@ -326,5 +331,5 @@ function worldKitFillStyle(key) {
   const fill = {};
   for (const [g, sp] of Object.entries(K.fill || {})) if (sp) fill[g] = sp;
   if (!fill.heath && K.fill && K.fill.grass) fill.heath = K.fill.grass;
-  return { kit: id, label: K.label, backdrop: K.backdrop, place: K.place, ground: K.ground, sky: K.sky, layers: K.layers, look: K.look || {}, fill, edges: K.edges, frame: K.frame, rich: K.rich, life: K.life || {} };
+  return { kit: id, label: K.label, backdrop: K.backdrop, place: K.place, ground: K.ground, sky: K.sky, layers: K.layers, bare: K.bare || null, look: K.look || {}, fill, edges: K.edges, frame: K.frame, rich: K.rich, life: K.life || {} };
 }
