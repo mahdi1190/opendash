@@ -200,6 +200,18 @@ export async function worldAccept(E, o = {}) {
     } finally { await chrome.close(); }
     push('16.2b', 'invariant checker on the real rendered frames (the page draws every frame; what it drew is checked): zero violations', bad ? 'fail' : 'pass', lines);
   }
+  // 2c. the render-glitch pixel checks on real renders (SCENE_LESSONS G): flat bright discs, a sawtooth in the water, an unreadable night
+  if (o.browser) {
+    const lines = []; let bad = 0;
+    for (const s of scenes) {
+      const r = spawnSync(process.execPath, [join(root, 'tools', 'world.mjs'), 'glitch', s.ref, '--dates=summer,winter,night,dusk'], { cwd: root, encoding: 'utf8', timeout: 20 * 60000 });
+      const txt = ((r.stdout || '') + (r.stderr || '')).split('
+').filter(l => l.trim());
+      if (r.status !== 0) bad++;
+      lines.push(`${r.status === 0 ? 'ok  ' : 'FAIL'} ${s.ref}: ${txt.filter(l => /FAIL|disc|sawtooth|night|ERROR/i.test(l)).slice(0, 6).join(' | ') || 'all cells clean'}`);
+    }
+    push('16.2c', 'render-glitch pixel checks on real renders (discs, sawtooth, night readability)', bad ? 'fail' : 'pass', lines);
+  }
   // 3. the adversarial scenes
   {
     const res = await runCells(adversarialFixtures(root).map(fx => ({ op: 'adv', file: fx.file, seconds: quick ? 30 : 120, hz })), { root });
