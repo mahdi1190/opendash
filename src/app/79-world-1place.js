@@ -41,6 +41,7 @@ const _WPL_NOT_INSIDE = Object.freeze(['shrub', 'reed', 'duck', 'coot', 'swan', 
 const _WPL_NEAR_BAND = Object.freeze(['person', 'dog', 'cyclist', 'grazer', 'animal', 'duck', 'coot', 'swan', 'goose', 'grebe', 'heron', 'bird', 'gull',
   // props are no framing either: a bollard, a post or a bin at the lens is a dark blob filling the frame's corner
   'post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle']);
+const _WPL_PROPS = Object.freeze(['post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle']);
 /** Classes that never stand on a walking line (P3). */
 const _WPL_OFFLINE = Object.freeze(['tree', 'shrub', 'reed', 'hedge', 'fence', 'rock', 'bench', 'lamp', 'post', 'street', 'building', 'vehicle', 'structure', 'gate']);
 /** Parents (K4) when kb has none: a bough by its tree, willow fronds by a willow. */
@@ -692,7 +693,11 @@ function worldPlace(world) {
     // the drawn box (the art's own margins, a tall adult of K8's range) runs up to ~10 % over the class height: keep that margin
     // ... and its foot is in the frame (a thing whose foot is below the bottom edge is a cut blob: the near band of the nav map)
     const foot = _wcNum(cam.eye) && _wcNum(cam.horizon) && cam.horizon < 900 ? cam.f * Math.max(0.2, cam.eye - (_wcNum(e.y) ? e.y : 0)) / (900 - cam.horizon) + 0.3 : 0;
-    const band = Math.max(cam.f * Math.max(info.size.h, _wcNum(e.height) ? e.height : 0) * 1.1 / 405, foot);
+    // a person or animal is a giant when it would fill 45 % of the frame; an inanimate prop (a bollard, a post, a bin, a bench) is a dark
+    // blob in the frame's corner when it fills even a quarter of it, whatever its real height (a 5 m lamp is thin: it is the 1.3 m a
+    // blob is made of): such a prop keeps to where a 1.3 m thing is about 12 % of the frame
+    const prop = _WPL_PROPS.includes(info.cls), hRef = Math.max(info.size.h, _wcNum(e.height) ? e.height : 0);
+    const band = Math.max(prop ? cam.f * Math.min(hRef, 1.3) / 110 : cam.f * hRef * 1.1 / 405, foot);
     if (!(e.z < band)) return;
     const from = [e.x, e.z], z0 = Math.max(0.3, e.z);
     for (let k = 0; k < 16; k++) {
@@ -703,6 +708,22 @@ function worldPlace(world) {
       }
     }
     _wplDrop(world, e, log, 'nearBand', `inside the near band (${_wcR3(band)} m) with no legal spot behind it`);
+  });
+
+  // 3c. terrain hides things (W2): an entity wholly behind a nearer rise of the ground (a house on the plateau behind the face of a hill)
+  //     is not in the picture; it is dropped and logged, never drawn floating in the sky above the slope
+  if (cam && cam.relief && typeof sceneGroundHeight === 'function' && _wcNum(cam.f) && cam.f > 0 && _wcNum(cam.horizon)) for (const e of live()) guard(e, () => {
+    if (e.backdrop || !(e.z > 1) || /^(air|wall|water)/.test(String(e.attach)) || _wcNum(e.waterline)) return;
+    const info = infoOf(e), x0 = _wcNum(cam.x0) ? cam.x0 : 800, top = (_wcNum(e.y) ? e.y : sceneGroundHeight(cam, e.x, e.z)) + Math.max(0.3, _wcNum(e.height) ? e.height : info.size.h);
+    // the entity's top on the screen, and the highest rim of the ground nearer than it along that column
+    const Y = cam.horizon + cam.f * (cam.eye - top) / e.z, X = x0 + cam.f * e.x / e.z;
+    let rim = Infinity;
+    for (let k = 1; k <= 40; k++) {
+      const d = e.z * (1 - k / 41), xd = (X - x0) * d / cam.f;
+      if (d < 0.5) break;
+      rim = Math.min(rim, cam.horizon + cam.f * (cam.eye - sceneGroundHeight(cam, xd, d)) / d);
+    }
+    if (Y > rim + 3) _wplDrop(world, e, log, 'terrain', `hidden behind a nearer rise of the ground (its top is ${_wcR3(Y - rim)} px below the rim): it would float in the sky above the slope`);
   });
 
   // 4. orientation (K3): boats parallel to the bank, cars along their lane (UK left), trains on the rails, benches face the path

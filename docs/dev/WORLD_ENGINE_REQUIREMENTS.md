@@ -425,3 +425,11 @@ The unit tests and the Node run were green while the page was not. The contract 
 - MV10 [T] A converted view keeps its composition (QP3): the pinned perspective pieces of a v2 canal view become the real
   objects they are parts of (the near narrowboat as a framing element, the willow the fronds hang from, the bridge).
 
+
+## 27. Terrain is drawn, and what it hides is not (the first no-example place, 14 Oct)
+
+- TR1 [T] A hill inside a surface polygon is drawn: `ground.features` and `ground.relief` become strips of the relief (far first,
+  3 % depth steps, quads shaded by slope, rock when steep, grass or the surface's own colour otherwise), ordered with every
+  other static, so a house stands on its strip and a hill hides what lies behind it. Flat ground draws nothing.
+- TR2 [T] An entity wholly behind a nearer rise of the ground is dropped and logged (`terrain`); floaters on water are exempt.
+- TR3 [T] A prop never fills more than about 12 % of the frame at the lens (a 1.3 m reference height), a person or animal 45 %.

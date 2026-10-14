@@ -315,6 +315,11 @@ function worldFramePlan(world, o) {
   if (typeof worldExtrude === 'function') {
     try { for (const p of worldExtrude(world, cam, { season: o.season, hulls: false }) || []) if (p && p.box) add(_wfrPrimRec(p, null, null)); } catch (e) { /* no extrusion */ }
   }
+  // the terrain (W2): strips of the relief as prims, so the chunk order hides what lies behind a nearer rise and puts what stands on
+  // the slope in front of it (the v2 ground follows a relief along polygon edges only)
+  if (typeof worldTerrainPrims === 'function') {
+    try { for (const p of worldTerrainPrims(world, cam, { season: o.season }) || []) if (p && p.box) add(_wfrPrimRec(p, null, null)); } catch (e) { /* flat ground */ }
+  }
   // statics that move by cause (the wind's sway, a flame's flicker, a moored bob): drawn live, nearest first
   if (typeof worldAnimHooks === 'function') {
     const cand = [];
