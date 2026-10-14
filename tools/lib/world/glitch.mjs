@@ -27,7 +27,7 @@ export function glitchLoad(file) { return pngDecode(readFileSync(file)); }
  * G1: flat bright discs on a dark frame (a light drawn as a filled ellipse, a particle drawn as a lit disc; by day the check is not
  * applicable: clouds and white walls are bright regions). A pixel is a candidate when it is bright: lum >= max(o.minLum (0.4), the
  * frame's median + o.above (0.25)). Connected candidates form regions; a region of at least o.minArea px (scaled to a 1600 x 900
- * frame; 1200) that is an ellipse rather than a rectangle (it fills 50 to 92 % of its box: a lit window or a wall fills more), is
+ * frame; 2500: a figure's white shirt or a tall window is smaller) that is an ellipse rather than a rectangle (it fills 62 to 90 % of its box), is
  * evenly lit inside (p90 - p10 under o.spread, 0.14) and stops at a HARD edge (its rim is o.edge (0.16) brighter than just outside
  * it: a light's soft falloff fades into its surroundings) is a flat disc. ok: none.
  */
@@ -36,7 +36,7 @@ export function glitchFlatDiscs(img, o = {}) {
   const med = quant(L.filter((_, i) => i % 7 === 0), 0.5);
   if (med > (o.dayMedian == null ? 0.3 : o.dayMedian) && !o.always) return { ok: true, value: 0, limit: 0, discs: [], na: true, note: 'not applicable by day (median ' + med.toFixed(2) + ')' };
   const minLum = Math.max(o.minLum == null ? 0.4 : o.minLum, med + (o.above == null ? 0.25 : o.above));
-  const minArea = (o.minArea || 1200) * k, maxSpread = o.spread == null ? 0.14 : o.spread, minEdge = o.edge == null ? 0.16 : o.edge;
+  const minArea = (o.minArea || 2500) * k, maxSpread = o.spread == null ? 0.14 : o.spread, minEdge = o.edge == null ? 0.16 : o.edge;
   const cand = new Uint8Array(W * H);
   for (let p = 0; p < W * H; p++) if (L[p] >= minLum) cand[p] = 1;
   const seen = new Uint8Array(W * H), discs = [], stack = [];
@@ -59,7 +59,7 @@ export function glitchFlatDiscs(img, o = {}) {
     }
     if (n < minArea) continue;
     const fill = n / ((x1 - x0 + 1) * (y1 - y0 + 1)), spread = quant(vals, 0.9) - quant(vals, 0.1), edge = rimN ? (rimIn - rimOut) / rimN : 0;
-    if (spread < maxSpread && fill > 0.5 && fill < 0.92 && edge >= minEdge) discs.push({ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, area: n, fill: Math.round(fill * 100) / 100, lum: Math.round(quant(vals, 0.5) * 1000) / 1000, spread: Math.round(spread * 1000) / 1000, edge: Math.round(edge * 1000) / 1000 });
+    if (spread < maxSpread && fill > 0.62 && fill < 0.9 && edge >= minEdge) discs.push({ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, area: n, fill: Math.round(fill * 100) / 100, lum: Math.round(quant(vals, 0.5) * 1000) / 1000, spread: Math.round(spread * 1000) / 1000, edge: Math.round(edge * 1000) / 1000 });
   }
   return { ok: discs.length === 0, value: discs.length, limit: 0, discs, minLum: Math.round(minLum * 1000) / 1000, note: discs.length ? `${discs.length} flat bright disc(s), the largest ${Math.max(...discs.map(d => d.w))} x ${Math.max(...discs.map(d => d.h))} px` : 'no flat bright discs' };
 }
@@ -100,8 +100,9 @@ export function glitchSawtooth(img, o = {}) {
 
 /**
  * G3: a night frame's structure is readable. Below the horizon (o.horizon: a device row; default 45 % of the height) the darks are
- * deep (p5 <= o.dark, 0.1: no grey veil) and the spread from the darks to the lights is wide (p95 - p5 >= o.spread, 0.125: the
- * murky first v3 nights, and the v2 originals, spread 0.07 to 0.11 over one blue-grey; a readable night has pale paths, moonlit
+ * deep (p5 <= o.dark, 0.1: no grey veil) and the spread from the darks to the lights is wide (p95 - p5 >= o.spread, 0.105: the
+ * murky first v3 nights spread 0.087 to 0.094 over one blue-grey, most v2 originals 0.07 to 0.11; an overcast rainy night
+ * with lit windows and wet paths reads at about 0.11; a readable night has pale paths, moonlit
  * pale things and lit windows against dark masses). The mean edge step is reported (not judged: a night is darker, so are its
  * edges). value: the spread.
  */
@@ -115,7 +116,7 @@ export function glitchNightReadable(img, o = {}) {
     g += Math.abs(L[p] - L[p + 1]) + Math.abs(L[p] - L[p + W]); n++;
   }
   const p5 = quant(vals, 0.05), p50 = quant(vals, 0.5), p95 = quant(vals, 0.95), edge = n ? g / n / 2 : 0;
-  const lim = { dark: o.dark == null ? 0.1 : o.dark, spread: o.spread == null ? 0.125 : o.spread };
+  const lim = { dark: o.dark == null ? 0.1 : o.dark, spread: o.spread == null ? 0.105 : o.spread };
   const bad = [];
   if (p5 > lim.dark) bad.push(`a grey veil: the darkest 5 % at ${p5.toFixed(3)} (> ${lim.dark})`);
   if (p95 - p5 < lim.spread) bad.push(`murky: darks to lights only ${(p95 - p5).toFixed(3)} (< ${lim.spread})`);

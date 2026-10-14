@@ -228,3 +228,35 @@ test('detector G3: one murky blue-grey is unreadable; dark masses with pale path
   assert.equal(G.glitchNightReadable(murk).ok, false);
   assert.equal(G.glitchNightReadable(read).ok, true, G.glitchNightReadable(read).note);
 });
+
+/* ---------- G6: the matrix sweep (season x time x weather) ---------- */
+test('G6 the hoar frost the art paints on winter twigs shows on frosty mornings only, never as white limbs on a mild afternoon', () => {
+  const sh = W.sceneObjShapes('tree.hawthorn', 0, 'winter');
+  const frostShapes = [];
+  for (const p of sh.order) for (const s of sh.parts[p] || []) if (W.worldMaterialOf('tree.hawthorn', p, typeof s.f === 'string' ? s.f : null, s) === 'rime') frostShapes.push(s);
+  assert.ok(frostShapes.length > 0, 'the hawthorn\'s winter frost lines are rime');
+  const c = tctx(1, 20), mc = W.worldMaterialFor(W.worldMaterialCtx(c), { id: 'h', obj: 'tree.hawthorn', x: 0, z: 10 }, c);
+  assert.equal(W.worldMaterialVisible('rime', Object.assign({}, mc, { frost: 0, snowDay: false })), false, 'a mild day: no frost');
+  assert.equal(W.worldMaterialVisible('rime', Object.assign({}, mc, { frost: 0.8 })), true, 'a frosty morning');
+  assert.equal(W.worldMaterialVisible('rime', Object.assign({}, mc, { frost: 0, snowDay: true, snow: 0.8 })), true, 'a snow day');
+});
+test('G6 what stands dead in January (bracken, dock) is a weathered russet, not autumn flame', () => {
+  const sat = (h) => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255), mx = Math.max(...c), mn = Math.min(...c); return mx ? (mx - mn) / mx : 0; };
+  const lumOf = (h) => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255); return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]; };
+  const base = W.worldMaterialCtx({ month: 0, doy: 20, lat: FLEET.lat }), oct = W.worldMaterialCtx({ month: 9, doy: 290, lat: FLEET.lat });
+  for (let i = 0; i < 12; i++) {
+    const key = 'fern' + i, jan = W.worldMaterialColour('leaf', '#6a8a3a', Object.assign({}, base, { leaf: 'turn', turn: 1, key, sky: null, L: null }));
+    const autumn = W.worldMaterialColour('leaf', '#6a8a3a', Object.assign({}, oct, { leaf: 'turn', turn: 1, key, sky: null, L: null }));
+    assert.ok(lumOf(jan) < lumOf(autumn) && sat(jan) <= sat(autumn) + 0.02, `January ${jan} vs October ${autumn}`);
+    assert.ok(lumOf(jan) < 0.42, 'a dull dead brown: ' + jan);
+  }
+});
+test('G6 a moored boat is a home: its windows light one by one at night; a parked car stays dark', () => {
+  const ents = Array.from({ length: 12 }, (_, i) => ({ id: 'nb' + i, obj: 'boat.narrowboat', x: 4, z: 10 + i * 20, y: -0.4, attach: 'water', facing: 30 }));
+  const L = W.worldLights({ entities: ents.concat([{ id: 'car', obj: 'vehicle.car', x: 8, z: 18, y: 0, facing: 90 }]) }, NIGHT);
+  const lit = L.filter(l => /^nb/.test(l.ref) && l.on && (l.kind === 'window' || l.kind === 'win'));
+  assert.ok(lit.length > 0, 'moored boats light their windows at night');
+  assert.ok(L.filter(l => /^nb/.test(l.ref) && (l.kind === 'window' || l.kind === 'win')).some(l => !l.on), 'one by one, never all at once');
+  assert.ok(!L.some(l => l.ref === 'car' && l.on), 'a parked car stays dark');
+  assert.equal(W.worldLights({ entities: ents }, { night: false }).filter(l => l.on).length, 0, 'none by day');
+});

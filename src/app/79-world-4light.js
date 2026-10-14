@@ -128,7 +128,7 @@ function worldSkyOf(ctx, o) {
   // skyglow, dimmed by cloud. The material step lights pale things by it (in proportion to their own lightness) and darkens the
   // foliage masses into silhouettes against the sky; the compositor lays it on the paths. 0 by day.
   const moonUp = _wlClamp(moon.alt / 18, 0, 1) * (moon.illum == null ? 0.5 : moon.illum);
-  const nightK = _wlClamp((dark - 0.35) / 0.5, 0, 1), nightKey = { n: Math.round(nightK * 1000) / 1000, k: Math.round((0.5 + 0.5 * moonUp) * (1 - 0.45 * _wlClamp((cover - 0.4) / 0.5, 0, 1)) * 1000) / 1000, col: _wlMix('#8ea4d6', '#c4cfe6', moonUp) };
+  const nightK = _wlClamp((dark - 0.35) / 0.5, 0, 1), nightKey = { n: Math.round(nightK * 1000) / 1000, k: Math.round((0.62 + 0.38 * moonUp) * (1 - 0.3 * _wlClamp((cover - 0.4) / 0.5, 0, 1)) * 1000) / 1000, col: _wlMix('#8ea4d6', '#c4cfe6', moonUp) };
   const S = {
     __sky: true, id: mk, ms, lat, lon, sun, moon, phase, band: phase === 'noon' ? 'day' : phase, morning, noonAlt: Math.round(noonAlt * 10) / 10, nightKey,
     golden: Math.round(golden * 100) / 100, dusk: Math.round(dusk * 100) / 100, dark: Math.round(dark * 1000) / 1000, cover, overcast, fog, weather: wx,

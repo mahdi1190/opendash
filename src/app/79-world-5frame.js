@@ -639,7 +639,9 @@ function _wfrDrawRec(cx, env, S, r, d, bx, by, alpha) {
     if (r.prim) {
       if (typeof worldExtrudeDraw === 'function') {
         const L = env.Lnow || env.L;
-        n = worldExtrudeDraw(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, mctx: S.mctx || undefined, night: !!(L && (L.dark > 0.5 || L.windows)),
+        // a hull's windows at night: a boat under way is lit inside; a moored one is a home (one seeded draw per boat, as a house's windows)
+        const LN = S.lightNow, hullLit = r.prim.kind === 'hull' && !!LN && typeof worldGlowOn === 'function' && (r.static ? worldGlowOn(String(r.id), 0, 'window', LN.alt, LN.share, {}) : LN.alt < 4);
+        n = worldExtrudeDraw(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, litGlow: hullLit, mctx: S.mctx || undefined, night: !!(L && (L.dark > 0.5 || L.windows)),
           windowShare: S.sky && Number.isFinite(S.sky.windowShare) ? S.sky.windowShare : L && L.windowShare, season: S.season, haze: _wfrHaze(env, r.ent), alpha: alpha == null ? 1 : alpha }) || 0;
       }
     } else {
@@ -765,7 +767,7 @@ function _wfrDrawPathKey(ctx, env, S) {
   // on land only: never on the water (the decks over the water are drawn by the compositor in their material, night key included)
   ctx.save(); ctx.setTransform(env.vs, 0, 0, env.vs, env.ox, env.oy);
   if (S.wet && S.wet.water.length) _wfrHoleClip(ctx, S.wet.water);
-  ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = Math.min(0.2, 0.17 * NK.n * NK.k); ctx.fillStyle = NK.col;
+  ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = Math.min(0.22, 0.2 * NK.n * NK.k); ctx.fillStyle = NK.col;
   ctx.beginPath();
   for (const P of S.paths) { ctx.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) ctx.lineTo(P[i][0], P[i][1]); ctx.closePath(); }
   ctx.fill('nonzero');
@@ -979,7 +981,10 @@ function _wfrGlassOn(S, r, LN) {
 function _wfrChunkLit(S, ch, LN) {
   if (!LN || !(LN.alt < 4 || LN.murky)) return '-';
   let s = '';
-  for (const r of ch.ents) { const on = _wfrGlassOn(S, r, LN); if (on.length) s += r.id + ':' + on.join('.') + ';'; }
+  for (const r of ch.ents) {
+    if (r.prim) { if (r.prim.kind === 'hull' && r.static && typeof worldGlowOn === 'function' && worldGlowOn(String(r.id), 0, 'window', LN.alt, LN.share, {})) s += r.id + ':h;'; continue; }
+    const on = _wfrGlassOn(S, r, LN); if (on.length) s += r.id + ':' + on.join('.') + ';';
+  }
   return s ? _wfrHashStr(s) : '-';
 }
 /**

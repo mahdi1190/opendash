@@ -47,6 +47,9 @@ const WORLD_MATERIALS = Object.freeze({
   paving: { wet: 0.32, frost: 0.35, snow: 'ground', season: null, gloss: 0.05, hard: true },
   gravel: { wet: 0.3, frost: 0.4, snow: 'ground', season: null, gloss: 0, hard: true },
   soil: { wet: 0.35, frost: 0.5, snow: 'ground', season: null, gloss: 0 },
+  // hoar frost the art paints itself (the 'frost' palette colour on winter twigs, plates and seed heads): weather, not art; it shows
+  // on frosty and snowy days only (worldMaterialVisible), never as white limbs on every winter afternoon
+  rime: { wet: 0, frost: 0, snow: null, season: null, gloss: 0.2 },
 });
 // part name -> material (the library's part names: crown, trunk, leaves, hull, wheels ... ; first match wins)
 const _WMT_PART = [
@@ -114,9 +117,10 @@ function worldMaterialOf(obj, part, fill, shape) {
 // that carry them (and, in the bare winter form, holds nothing but limbs and twigs), so a part name alone cannot say leaf
 const _WMT_WOOD_KEY = /^(bark|limb|limbs|twig|twigs|stem|stems|trunk|pineTrunk|birchTrunk|peel|mark|wood|branch|branches|bole)$/;
 const _wmtWoodMemo = new Map();
-/** The wood colours of a library object's palette (every season), lower-case '#rrggbb'; an empty set for no palette. */
-function _wmtWoodCols(obj) {
-  let s = _wmtWoodMemo.get(obj);
+/** The colours of a library object's palette under keys matching re (every season), lower-case '#rrggbb'. */
+function _wmtPalCols(obj, re, tag) {
+  const mk = tag + '|' + obj;
+  let s = _wmtWoodMemo.get(mk);
   if (s) return s;
   s = new Set();
   const def = typeof sceneObj === 'function' ? sceneObj(obj) : null, pal = def && def.palette;
@@ -124,21 +128,26 @@ function _wmtWoodCols(obj) {
     const P = pal[sea];
     if (!P || typeof P !== 'object') continue;
     for (const k of Object.keys(P)) {
-      if (!_WMT_WOOD_KEY.test(k)) continue;
+      if (!re.test(k)) continue;
       for (const c of [].concat(P[k])) if (typeof c === 'string' && c[0] === '#') s.add(_wmtHex(_wmtRgb(c)));
     }
   }
-  _wmtWoodMemo.set(obj, s);
+  _wmtWoodMemo.set(mk, s);
   return s;
 }
-/** Is this shape of a plant drawn in its wood colours (a limb, a twig, the bare form's branches)? */
-function _wmtIsWood(obj, fill, shape) {
-  const W = _wmtWoodCols(obj);
+/** The wood colours of a library object's palette (every season); an empty set for no palette. */
+function _wmtWoodCols(obj) { return _wmtPalCols(obj, _WMT_WOOD_KEY, 'wood'); }
+/** Is this shape drawn in one of these colours (its fill, else its stroke)? */
+function _wmtShapeIn(W, fill, shape) {
   if (!W.size) return false;
   const c = typeof fill === 'string' && fill[0] === '#' ? fill : shape && typeof shape.s === 'string' && shape.s[0] === '#' && !shape.f ? shape.s : null;
   return !!c && W.has(_wmtHex(_wmtRgb(c)));
 }
+/** Is this shape of a plant drawn in its wood colours (a limb, a twig, the bare form's branches)? */
+function _wmtIsWood(obj, fill, shape) { return _wmtShapeIn(_wmtWoodCols(obj), fill, shape); }
 function _wmtOfRaw(obj, part, fill, shape) {
+  // hoar frost painted by the art (its palette's 'frost' colour): weather, shown on frosty days only
+  if (!(shape && shape.glow) && _wmtShapeIn(_wmtPalCols(obj, /^(frost|rime|hoar)$/, 'frost'), fill, shape)) return 'rime';
   // a plant's limbs and twigs are bark wherever they are drawn (a crown part holds them too): never leaf, so they are never dropped
   // with the leaves and never turn gold in autumn (WORLD_ENGINE 15.2; SCENE_LESSONS G)
   if (/^(tree|plant)\./.test(obj) && !(shape && shape.glow) && _wmtIsWood(obj, fill, shape)) return 'bark';
@@ -266,6 +275,8 @@ function worldMaterialFor(mctx, ent, ctx) {
  * then is limbs and twigs (dropping it left bare trunk slabs and white poles, SCENE_LESSONS G).
  */
 function worldMaterialVisible(mat, mctx) {
+  // the art's own hoar frost: on frosty or snowy days only
+  if (mat === 'rime') return !!mctx && ((mctx.frost || 0) >= 0.25 || !!mctx.snowDay);
   if (mat !== 'leaf' || !mctx || mctx.formArt) return true;
   return mctx.leaf !== 'bare';
 }
@@ -293,7 +304,10 @@ function _wmtSeason(mat, hex, c) {
   if (leaf === 'full') return m >= 7 ? _wmtMix(hex, '#56682e', 0.18) : m === 4 ? _wmtMix(hex, '#9cc95a', 0.15) : hex;
   if (leaf === 'turn') {
     const t = _wmtClamp(c.turn == null ? 0.6 : c.turn, 0, 1), pick = _WMT_TURN[_wmtHash('turn|' + (c.key || '') + '|' + hex) % _WMT_TURN.length];
-    return _wmtMix(_wmtMix(hex, '#8a8a3a', 0.25 * Math.min(1, t * 3)), pick, 0.85 * t);
+    const turned = _wmtMix(_wmtMix(hex, '#8a8a3a', 0.25 * Math.min(1, t * 3)), pick, 0.85 * t);
+    // what is still standing dead in December to February (bracken, dock, the last leaves) has weathered from gold and flame to a
+    // dull russet brown (the vivid autumn pick in January read as a bonfire in the frame)
+    return m === 11 || m <= 1 ? _wmtMix(turned, '#6e4a32', 0.7) : turned;
   }
   return _wmtMix(hex, '#7a5a3a', 0.7);
 }
