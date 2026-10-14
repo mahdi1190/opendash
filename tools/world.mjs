@@ -180,6 +180,26 @@ export async function worldAccept(E, o = {}) {
     for (const s of scenes) lines.push(`${s.ref}: ${meta.filter(m => m.s === s).length} cells x ${secs} s at ${hz} Hz checked`);
     push(o.matrix ? '16.5.2 + V7' : '16.5.2', `invariant checker, ${o.matrix ? 'the matrix (4 seasons x 5 times x 3 weathers)' : 'full loop at 3 dates x 5 times'}: zero violations`, bad ? 'fail' : 'pass', lines);
   }
+  // 2b. the same checker on the REAL rendered frames (browser): Chrome draws every frame of the loop and the record of what it drew
+  // is checked, so the checker is no longer a parallel simulation that can look clean while the page shows something else
+  if (o.browser) {
+    const lines = []; let bad = 0;
+    const { worldBrowserInvariants } = await import('./lib/world/browserinv.mjs');
+    const chrome = await chromeOf(true);
+    try {
+      for (const s of scenes) {
+        const sp = specOf(E, s.ref), moms = worldMomentsOf(sp.spec, ['07-15', '01-15', '10-15']);
+        const pick = [moms.find(m => m.date.endsWith('07-15') && m.moment === 'noon'), moms.find(m => m.date.endsWith('01-15') && m.moment === 'dusk'), moms.find(m => m.date.endsWith('10-15') && m.moment === 'night')].filter(Boolean);
+        const r = await worldBrowserInvariants(chrome, { ref: s.ref, spec: sp.spec, id: sp.id }, { moments: pick.map((m, i) => ({ label: `${m.date} ${m.moment}`, at: m.at, seconds: i === 0 ? seconds : Math.min(seconds, 120) })), hz: quick ? 1 : 2, loop: seconds, root });
+        for (const c of r.cells) {
+          if (c.uniq || c.error) { bad++; for (const k of Object.keys(c.counts || {})) failedRules.add(k); }
+          lines.push(`${c.uniq || c.error ? 'FAIL' : 'ok  '} ${s.ref} ${c.label}: ${c.frames} real frames, up to ${c.agents} agents drawn, ${c.uniq} violation(s)${c.error ? ' ERROR ' + c.error : ''} ${Object.entries(c.counts || {}).map(([k, n]) => `${k} ${n} [${OWNERS[k] || '?'}]`).join(', ')}`);
+        }
+        for (const e of r.errors) { bad++; lines.push(`FAIL ${s.ref}: ${e}`); }
+      }
+    } finally { await chrome.close(); }
+    push('16.2b', 'invariant checker on the real rendered frames (the page draws every frame; what it drew is checked): zero violations', bad ? 'fail' : 'pass', lines);
+  }
   // 3. the adversarial scenes
   {
     const res = await runCells(adversarialFixtures(root).map(fx => ({ op: 'adv', file: fx.file, seconds: quick ? 30 : 120, hz })), { root });

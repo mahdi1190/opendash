@@ -1753,18 +1753,17 @@ function _wlfSeparate(life) {
 function _wlfLeash(life, a, dt) {
   var L = a.leader, len = a.lead.len, dx = a.x - L.x, dz = a.z - L.z, d = Math.hypot(dx, dz);
   if (d <= len) return;
-  // the lead pulls the dog in at most 6 m/s (0.4 m a tick: a dog is not teleported), sliding round what is in the way ...
-  var ux = -dx / d, uz = -dz / d, pull = Math.min(d - len * 0.97, 6 * dt), tries = [0, 0.6, -0.6, 1.2, -1.2], done = false;
-  for (var i = 0; i < tries.length && !done; i++) {
-    var c = Math.cos(tries[i]), s2 = Math.sin(tries[i]), vx = ux * c - uz * s2, vz = ux * s2 + uz * c;
-    done = _wlfTryAt(life, a, a.x + vx * pull, a.z + vz * pull);
-  }
-  // ... and when nothing is open (a wall, a bench), the lead is never longer than it is: the nearest valid point on it
-  if (!done || Math.hypot(a.x - L.x, a.z - L.z) > len) {
-    var cands = [len * 0.97, len * 0.85, len * 0.7, len * 0.4];
-    dx = a.x - L.x; dz = a.z - L.z; d = Math.hypot(dx, dz) || 1;
+  // the lead pulls the dog in at most 6 m/s (0.4 m a tick: a dog is not teleported), round what is in the way: the navigation's own
+  // step slides along a solid, so a dog on the far side of a post is drawn round it, not through it
+  var pull = Math.min(d - len * 0.97, 6 * dt), ux = -dx / d, uz = -dz / d, np = null;
+  if (typeof worldStep === 'function') { np = worldStep(life.nav, a.layer, [a.x, a.z], [ux * pull / dt, uz * pull / dt], a.r, dt); if (np && _wlfOk(life, a, np[0], np[1])) { a.x = np[0]; a.z = np[1]; } }
+  else _wlfTryAt(life, a, a.x + ux * pull, a.z + uz * pull);
+  // still past the end of its lead (blocked): the walker waits (taut lead, _wlfMove), the dog is not snapped; only a dog that is far past
+  // it (an obstacle the step cannot slide round) is put on the nearest open point of the lead, never onto its walker
+  dx = a.x - L.x; dz = a.z - L.z; d = Math.hypot(dx, dz) || 1;
+  if (d > len * 1.6) {
+    var cands = [len * 0.97, len * 0.85, len * 0.7, len * 0.55];
     for (var k = 0; k < cands.length; k++) { var x = L.x + dx / d * cands[k], z = L.z + dz / d * cands[k]; if (_wlfOk(life, a, x, z)) { a.x = x; a.z = z; break; } }
-    if (Math.hypot(a.x - L.x, a.z - L.z) > len) { a.x = L.x; a.z = L.z; }
   }
 }
 /** A step aboard, a step off, sitting down and standing up: eased over the step's time, with the layer and host switched. */
@@ -2170,7 +2169,7 @@ function worldAgents(life) {
       level: a.layer.indexOf('@') > 0 ? +a.layer.split('@')[1] : 0, host: a.host, group: a.group, lookAt: a.lookAt, view: a.view, mirror: a.mirror,
       born: a.born, leaving: a.leaving || false, alpha: alpha, clip: a.clip || st.clip, phase: a.phase, kind: a.kind, lead: a.lead, edge: a.edge,
       outfit: a.outfit == null ? null : a.outfit, breed: a.breed || null, gait: a.gait, gaitName: a.gaitName || null, len: a.len || null, framed: false,
-      r: a.r, intent: _wlfIntent(a), squeeze: !!(a.squeeze > life.t), leader: a.leader ? a.leader.id : null });
+      r: a.r, intent: _wlfIntent(a), squeeze: !!(a.squeeze > life.t), leader: a.leader ? a.leader.id : null, resident: !!a.resident });
   }
   return out;
 }

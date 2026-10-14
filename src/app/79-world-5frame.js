@@ -482,7 +482,7 @@ function worldFrameAt(scene, t, o) {
       state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null,
       prim: r.prim ? (r.prim.walkway ? 'walkway' : r.prim.kind || null) : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal,
       // what the checkers need of a mover: its body radius, its group (the leader's id), whether it has a lead, and its intent (life)
-      r: agent && Number.isFinite(e.r) ? _wfrR3(e.r) : null, group: agent ? e.group || null : null, leash: agent ? !!e.lead : false, intent: agent ? e.intent || null : null, squeeze: agent ? !!e.squeeze : false, leader: agent ? e.leader || null : null };
+      r: agent && Number.isFinite(e.r) ? _wfrR3(e.r) : null, group: agent ? e.group || null : null, leash: agent ? !!e.lead : false, intent: agent ? e.intent || null : null, squeeze: agent ? !!e.squeeze : false, leader: agent ? e.leader || null : null, resident: agent ? !!e.resident : false };
   };
   const ents = plan.recs.map(r => one(r, false)).concat(aRecs.map(r => one(r, true)));
   let lights = [];

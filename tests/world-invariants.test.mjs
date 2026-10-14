@@ -178,7 +178,7 @@ test('personalSpace: two movers on one layer never overlap or pass through each 
   assert.equal(two({}, { layer: 'swim' }).length, 0, 'another layer (a duck under a walker) is another place');
   assert.equal(two({ group: 'b' }, { x: 3.4 }).length, 0, 'a group (a walker and its dog) keeps a closer floor');
   assert.equal(two({ group: 'b' }, { x: 3.01 }).length, 1, '... but never the same spot');
-  assert.equal(two({ squeeze: true }, { x: 3.4 }).length, 0, 'passing in a lane a body wide: they turn sideways and brush past');
+  assert.equal(two({ squeeze: true }, { x: 3.05 }).length, 0, 'passing in a lane a body wide: they turn sideways and pass through each other for a step');
   // through each other between two frames: the tracks cross, both ends are clear
   const track = E.worldInvariantTracker();
   run('personalSpace', frame([P({ id: 'a', x: 2, z: 20, r: 0.25 }), P({ id: 'b', x: 4, z: 20.05, r: 0.25 })], { t: 0 }), { track });

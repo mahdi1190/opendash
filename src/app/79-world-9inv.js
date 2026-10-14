@@ -588,8 +588,9 @@ const _WIV_RULES = {
       const b = by.get(id);
       if (!b || b === a || String(b.id) < String(a.id) || b.layer !== a.layer) continue;
       const rel = (a.group != null && (a.group === b.id || a.group === b.group)) || (b.group != null && b.group === a.id) || a.leader === b.id || b.leader === a.id || (a.leader != null && a.leader === b.leader);
-      // a floor of 85 % of the bodies; a group (a walker and its dog) 27 %, never on the same spot; two passing in a lane a body wide (life's squeeze: they turn sideways and brush past) 20 %
-      const minD = (rad(a) + rad(b)) * (rel ? 0.27 : a.squeeze || b.squeeze ? 0.2 : 0.85), d = Math.hypot(a.x - b.x, a.z - b.z);
+      // a floor of 85 % of the bodies; a group (a walker and its dog) 27 %, never on the same spot; two passing in a lane a body wide (life's squeeze: they turn sideways and pass through each other for a step) are left to life
+      if (!rel && (a.squeeze || b.squeeze)) continue;   // a lane a body wide: they turn sideways and pass through each other for a step (life says so)
+      const minD = (rad(a) + rad(b)) * (rel ? 0.27 : 0.85), d = Math.hypot(a.x - b.x, a.z - b.z);
       if (d < minD) { _wivPush(C, 'personalSpace', a.id, `${a.obj || a.cls} (${a.id}) and ${b.obj || b.cls} (${b.id}) are ${_wivR(d)} m apart; their bodies need ${_wivR(minD)} m`); continue; }
       // passed through between two frames: the closest approach of their straight tracks over the interval
       const pa = was.get(a.id), pb = was.get(b.id);
@@ -608,7 +609,7 @@ const _WIV_RULES = {
       if (!h) { h = { x: m.x, z: m.z, prog: C.t, mov: null, flagged: false }; T.ids.set(m.id, h); }
       // a mover with somewhere to go has 20 s (its pose does not excuse it: an idle pose IS what being stuck looks like); one
       // without is a statue only after 90 s. Seated, queuing, fishing, grazing, moored, aboard and airborne movers are at rest by design.
-      const st = String(m.state || ''), travel = m.intent === 'travel', lim = travel ? 20 : m.cls === 'heron' ? 300 : 90;   // a heron stands for minutes
+      const st = String(m.state || ''), travel = m.intent === 'travel', lim = travel ? 20 : m.cls === 'heron' || m.resident ? 400 : 90;   // a heron stands for minutes; a resident (an angler, a boater at its boat) lives where it is placed
       const rest = m.layer === 'air' || m.layer === 'rail' || !!_wivHostOf(m) || _WIV_AT_REST.has(st);
       if (rest || Math.hypot(m.x - h.x, m.z - h.z) > 0.5) { h.x = m.x; h.z = m.z; h.prog = C.t; h.tv = null; h.flagged = false; continue; }
       // the 20 s run on the move starts when the wish to travel starts (an idle goal before it is a legitimate pause)
@@ -1009,7 +1010,7 @@ function worldInvariantFrame(world, agents, o) {
     let anim = a.anim || null;
     if (!anim && typeof worldAnimOf === 'function') { try { anim = worldAnimOf(a) || null; } catch (e) { anim = null; } }
     ents.push({ id: a.id, cls: a.cls || (info && info.cls) || null, obj: a.obj, static: false, x: a.x, y: a.y, z: a.z, facing: a.heading != null ? a.heading * _WIV_DEG : null,
-      foot, height: h, r: _wivNum(a.r) ? a.r : r, group: a.group || null, leash: !!a.lead, intent: a.intent || null, squeeze: !!a.squeeze, leader: a.leader || null, layer: a.layer || null, host: a.host || null, view: a.view || null, mirror: !!a.mirror, framed: !!a.framed, sideOnly: a.sideOnly,
+      foot, height: h, r: _wivNum(a.r) ? a.r : r, group: a.group || null, leash: !!a.lead, intent: a.intent || null, resident: !!a.resident, squeeze: !!a.squeeze, leader: a.leader || null, layer: a.layer || null, host: a.host || null, view: a.view || null, mirror: !!a.mirror, framed: !!a.framed, sideOnly: a.sideOnly,
       box: cam ? _wivBoxOf(cam, { x: a.x, z: a.z, y: a.y, foot: null }, h, info ? info.size.w : h * 0.4) : null, order: null,
       speed: Math.hypot(a.vx || 0, a.vz || 0), vx: a.vx || 0, vz: a.vz || 0, state: a.state || null, born: born ? born.get(a.id) : null,
       anim, sway: null, shadow: a.shadow || null, reflect: a.reflect || null, look: a.look || null, leaving: !!a.leaving });

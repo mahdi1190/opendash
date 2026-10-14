@@ -79,7 +79,7 @@ export async function worldBrowserInvariants(chrome, src, o = {}) {
       await page.rewind();
     } catch (e) { errors.push(`${m.label}: ${e.message}`); cells.push({ label: m.label, frames: 0, agents: 0, violations: [], counts: {}, first: {}, uniq: 0, error: e.message }); continue; }
     const live = id || (await chrome.evaluate(`typeof _wh5Live !== 'undefined' ? [..._wh5Live.keys()][0] : null`));
-    const r = await runLoop(chrome, page, live, { seconds, hz, rules: o.rules, skip: o.skip });
+    const r = await runLoop(chrome, page, live, { seconds: Number.isFinite(m.seconds) ? m.seconds : seconds, hz, rules: o.rules, skip: o.skip });
     for (const e of await page.errors()) errors.push(`${m.label}: page: ${e}`);
     const cell = Object.assign({ label: m.label }, r);
     cells.push(cell);
