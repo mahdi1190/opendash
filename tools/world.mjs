@@ -205,8 +205,7 @@ export async function worldAccept(E, o = {}) {
     const lines = []; let bad = 0;
     for (const s of scenes) {
       const r = spawnSync(process.execPath, [join(root, 'tools', 'world.mjs'), 'glitch', s.ref, '--dates=summer,winter,night,dusk'], { cwd: root, encoding: 'utf8', timeout: 20 * 60000 });
-      const txt = ((r.stdout || '') + (r.stderr || '')).split('
-').filter(l => l.trim());
+      const txt = ((r.stdout || '') + (r.stderr || '')).split(String.fromCharCode(10)).filter(l => l.trim());
       if (r.status !== 0) bad++;
       lines.push(`${r.status === 0 ? 'ok  ' : 'FAIL'} ${s.ref}: ${txt.filter(l => /FAIL|disc|sawtooth|night|ERROR/i.test(l)).slice(0, 6).join(' | ') || 'all cells clean'}`);
     }
