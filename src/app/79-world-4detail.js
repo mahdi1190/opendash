@@ -38,36 +38,39 @@ const _WDT_N = 24;
 
 /* ---------- the art silhouette ---------- */
 const _wdtMaskMemo = new Map();
-/** The bounding box of an SVG path's points (every command, control points included: a conservative silhouette). */
-function _wdtPathBox(d) {
-  if (typeof d !== 'string' || !d) return null;
+/**
+ * The subpaths of an SVG path as point rings (every command; a curve by its control points and end point, an arc by its end
+ * points and its radius box), for the silhouette fill. -> [[[x, y], ...], ...]
+ */
+function _wdtPathRings(d) {
+  if (typeof d !== 'string' || !d) return [];
   const tok = d.match(/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g);
-  if (!tok) return null;
-  let i = 0, cx = 0, cy = 0, sx = 0, sy = 0, cmd = '', x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  const num = () => +tok[i++], put = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
+  if (!tok) return [];
+  const rings = [];
+  let i = 0, cx = 0, cy = 0, sx = 0, sy = 0, cmd = '', cur = null;
   const ARGS = { m: 2, l: 2, h: 1, v: 1, q: 4, t: 2, c: 6, s: 4, a: 7, z: 0 };
+  const put = (x, y) => { if (!cur) { cur = []; rings.push(cur); } cur.push([x, y]); };
   while (i < tok.length) {
     if (/[a-zA-Z]/.test(tok[i])) cmd = tok[i++];
-    const lc = cmd.toLowerCase(), rel = cmd !== cmd.toUpperCase() || false, n = ARGS[lc];
+    const lc = cmd.toLowerCase(), n = ARGS[lc];
     if (n == null) { i++; continue; }
-    if (lc === 'z') { cx = sx; cy = sy; continue; }
+    if (lc === 'z') { cx = sx; cy = sy; cur = null; continue; }
     if (i + n > tok.length) break;
-    const a = []; for (let k = 0; k < n; k++) a.push(num());
+    const a = []; for (let k = 0; k < n; k++) a.push(+tok[i++]);
     if (a.some(v => !Number.isFinite(v))) break;
-    const isRel = cmd === lc;
-    if (lc === 'h') { cx = isRel ? cx + a[0] : a[0]; put(cx, cy); }
-    else if (lc === 'v') { cy = isRel ? cy + a[0] : a[0]; put(cx, cy); }
-    else if (lc === 'a') { const x = isRel ? cx + a[5] : a[5], y = isRel ? cy + a[6] : a[6], r = Math.max(a[0], a[1]); put(x - r, y - r); put(x + r, y + r); cx = x; cy = y; }
-    else {
-      for (let k = 0; k < n; k += 2) put(isRel ? cx + a[k] : a[k], isRel ? cy + a[k + 1] : a[k + 1]);
-      cx = isRel ? cx + a[n - 2] : a[n - 2]; cy = isRel ? cy + a[n - 1] : a[n - 1];
-      if (lc === 'm') { sx = cx; sy = cy; cmd = isRel ? 'l' : 'L'; }
-    }
-    void rel;
+    const rel = cmd === lc;
+    if (lc === 'm') { cx = rel ? cx + a[0] : a[0]; cy = rel ? cy + a[1] : a[1]; sx = cx; sy = cy; cur = null; put(cx, cy); cmd = rel ? 'l' : 'L'; continue; }
+    if (lc === 'h') { cx = rel ? cx + a[0] : a[0]; put(cx, cy); continue; }
+    if (lc === 'v') { cy = rel ? cy + a[0] : a[0]; put(cx, cy); continue; }
+    if (lc === 'a') { cx = rel ? cx + a[5] : a[5]; cy = rel ? cy + a[6] : a[6]; put(cx, cy); continue; }
+    for (let k = 0; k < n; k += 2) put(rel ? cx + a[k] : a[k], rel ? cy + a[k + 1] : a[k + 1]);
+    cx = rel ? cx + a[n - 2] : a[n - 2]; cy = rel ? cy + a[n - 1] : a[n - 1];
   }
-  return Number.isFinite(x0) ? [x0, y0, x1, y1] : null;
+  return rings.filter(r => r.length >= 2);
 }
-/** The silhouette of a library object (see the header). The art box is the object's own (sceneObjShapes); null without one. */
+function _wdtRingIn(R, x, y) { let c = false; for (let i = 0, j = R.length - 1; i < R.length; j = i++) { const a = R[i], b = R[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+/** The silhouette of a library object (see the header): each filled shape's subpaths filled on the grid (cell centres and the
+    cells its outline crosses), strokes along their lines; the art box is the object's own (sceneObjShapes); null without one. */
 function worldArtMask(obj, variant, season) {
   const key = obj + '|' + (variant | 0) + '|' + (season || 'summer');
   if (_wdtMaskMemo.has(key)) return _wdtMaskMemo.get(key);
@@ -75,20 +78,30 @@ function worldArtMask(obj, variant, season) {
   try {
     const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(obj, variant | 0, season || 'summer') : null;
     if (sh && Array.isArray(sh.box) && sh.parts) {
-      const b = sh.box, w = Math.max(1e-6, b[2] - b[0]), h = Math.max(1e-6, b[3] - b[1]), N = _WDT_N, grid = new Uint8Array(N * N);
+      const b = sh.box, w = Math.max(1e-6, b[2] - b[0]), h = Math.max(1e-6, b[3] - b[1]), N = _WDT_N, grid = new Uint8Array(N * N), cw = w / N, ch = h / N;
+      const cell = (x, y) => { const i = Math.floor((x - b[0]) / cw), j = Math.floor((y - b[1]) / ch); if (i >= 0 && j >= 0 && i < N && j < N) grid[j * N + i] = 1; };
+      const trace = (R, closed) => { for (let k = 0; k < R.length - (closed ? 0 : 1); k++) { const p = R[k], q = R[(k + 1) % R.length], steps = Math.max(1, Math.ceil(Math.max(Math.abs(q[0] - p[0]) / cw, Math.abs(q[1] - p[1]) / ch) * 2)); for (let t = 0; t <= steps; t++) cell(p[0] + (q[0] - p[0]) * t / steps, p[1] + (q[1] - p[1]) * t / steps); } };
       for (const part of Object.keys(sh.parts)) {
         if (_WDT_SKIP_PART.test(part)) continue;
-        for (const s of sh.parts[part] || []) {
-          if (!s || s.m || s.glow) continue;
-          const fill = s.f && s.f !== 'none', line = s.s && s.s !== 'none' && (s.w || 0) > 0;
-          if (!fill && !line && !s.img) continue;
-          let bb = s.img && Array.isArray(s.rect) ? s.rect : _wdtPathBox(s.d);
-          if (!bb) continue;
-          if (!fill && line) { const pw = (s.w || 1) / 2; bb = [bb[0] - pw, bb[1] - pw, bb[2] + pw, bb[3] + pw]; }
-          if (s.op != null && s.op < 0.25) continue;
-          const i0 = Math.max(0, Math.floor((bb[0] - b[0]) / w * N)), i1 = Math.min(N - 1, Math.floor((bb[2] - b[0]) / w * N));
-          const j0 = Math.max(0, Math.floor((bb[1] - b[1]) / h * N)), j1 = Math.min(N - 1, Math.floor((bb[3] - b[1]) / h * N));
-          for (let j = j0; j <= j1; j++) for (let k = i0; k <= i1; k++) grid[j * N + k] = 1;
+        for (const s0 of sh.parts[part] || []) {
+          if (!s0 || s0.glow) continue;
+          if (s0.op != null && s0.op < 0.25) continue;
+          // a shape's own transform (m: [a, b, c, d, e, f], the library's affine) applies to its outline and its stroke width
+          const M = Array.isArray(s0.m) && s0.m.length === 6 ? s0.m : null, mk = M ? Math.sqrt(Math.abs(M[0] * M[3] - M[1] * M[2])) || 1 : 1;
+          const xf = (R) => M ? R.map(q => [M[0] * q[0] + M[2] * q[1] + M[4], M[1] * q[0] + M[3] * q[1] + M[5]]) : R;
+          const fill = s0.f && s0.f !== 'none', line = s0.s && s0.s !== 'none' && (s0.w || 0) > 0;
+          if (s0.img && Array.isArray(s0.rect)) { const r = s0.rect; for (let y = r[1]; y <= r[3]; y += ch) for (let x = r[0]; x <= r[2]; x += cw) cell(x, y); continue; }
+          if (!fill && !line) continue;
+          for (const R of _wdtPathRings(s0.d).map(xf)) {
+            if (fill && R.length >= 3) {
+              let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+              for (const q of R) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
+              const i0 = Math.max(0, Math.floor((x0 - b[0]) / cw)), i1 = Math.min(N - 1, Math.floor((x1 - b[0]) / cw)), j0 = Math.max(0, Math.floor((y0 - b[1]) / ch)), j1 = Math.min(N - 1, Math.floor((y1 - b[1]) / ch));
+              for (let j = j0; j <= j1; j++) for (let k = i0; k <= i1; k++) if (!grid[j * N + k] && _wdtRingIn(R, b[0] + (k + 0.5) * cw, b[1] + (j + 0.5) * ch)) grid[j * N + k] = 1;
+            }
+            // the outline itself (a thin leaf or a twig smaller than a cell still shows), and strokes along their lines
+            if ((fill && R.length >= 2) || (line && (s0.w || 0) * mk >= Math.min(cw, ch) * 0.2)) trace(R, fill);
+          }
         }
       }
       out = { box: b.slice(), n: N, grid };
@@ -176,7 +189,9 @@ function worldDetailCoverage(world, cam, o) {
       for (let a = 0; a < foot.length; a++) {
         const p = foot[a], q = foot[(a + 1) % foot.length];
         if (p[1] < near && q[1] < near) continue;
-        const steps = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / 1.5));
+        // steps by the screen length of the edge (a near wall spans the frame in a few metres)
+        const pa = _wdtP(cam, p[0], Math.max(near, p[1]), 0), pb = _wdtP(cam, q[0], Math.max(near, q[1]), 0);
+        const steps = Math.max(1, Math.min(600, Math.ceil(Math.hypot(pb.X - pa.X, pb.Y - pa.Y) / (cw * 0.5)), Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / 0.25)));
         for (let t = 0; t <= steps; t++) {
           const x = p[0] + (q[0] - p[0]) * t / steps, z = Math.max(near, p[1] + (q[1] - p[1]) * t / steps), g = _wdtG(cam, x, z) + (y0 || 0);
           const A = _wdtP(cam, x, z, g), B = _wdtP(cam, x, z, g + h), i = Math.floor(A.X / cw);
@@ -335,7 +350,9 @@ function worldDetailProblems(rec, o) {
   if (rec.bare > L.bare) P('bareGround', `${pct(rec.bare)} of the ground below the horizon is undressed (max ${pct(L.bare)}): ${worst('bare') || ''}`, 'the fill dresses every surface from the kit until the strict measure passes (P6, C6)');
   const badR = rec.regions.filter(r => r.bare > L.region);
   if (badR.length) P('bareRegion', `undressed ground region(s): ${badR.map(r => r.name + ' ' + pct(r.bare)).join(', ')} (max ${pct(L.region)})`, 'dress that part of the frame (fill tiers) or move the camera');
-  if (rec.near.dressed < L.near || rec.near.object < L.nearObject) P('emptyForeground', `the near band is ${pct(rec.near.dressed)} dressed and ${pct(rec.near.object)} of it has something standing (min ${pct(L.near)} and ${pct(L.nearObject)})`, 'the framing foreground and the near dressing (C3, N2)');
+  // an open foreground (reflecting water, a lawn) held at BOTH bottom corners needs only half the standing share
+  const held = rec.frame.left && rec.frame.right, needObj = held ? L.nearObject / 2 : L.nearObject;
+  if (rec.near.dressed < L.near || rec.near.object < needObj) P('emptyForeground', `the near band is ${pct(rec.near.dressed)} dressed and ${pct(rec.near.object)} of it has something standing (min ${pct(L.near)} and ${pct(needObj)}${held ? ', held at both corners' : ''})`, 'the framing foreground and the near dressing (C3, N2)');
   if (rec.layerCount < L.layers) P('fewLayers', `${rec.layerCount} depth layers carry content (min ${L.layers}): ${rec.layers.map((v, i) => ['0-6', '6-15', '15-40', '40-120', '120-400', 'backdrop'][i] + ' ' + pct(v)).join(', ')}`, 'dress the empty depth bands (near dressing, mid trees, far trees, the backdrop)');
   if (!rec.frame.top && !rec.frame.left && !rec.frame.right) P('noFraming', 'nothing frames the view: no bough or crown at a top corner, nothing at a side of the near band', 'the framing foreground (C3): a bough with its trunk outside the frame, reeds, a shrub, a lamp, a railing');
   if (rec.variety.all < L.variety || rec.variety.mid < L.varietyMid) P('lowVariety', `${rec.variety.all} distinct objects in the frame, ${rec.variety.mid} in the middle distance (min ${L.variety} and ${L.varietyMid})`, 'more of the kit (variety pools, P7)');

@@ -233,6 +233,81 @@ function _wflProbe(F, x, z) {
   return p;
 }
 
+/* ---------- N2: the vista and the sky ---------- */
+const _WFL_SKY_C = 40, _WFL_SKY_R = 16, _WFL_VISTA_MAX = 0.35;
+/** The silhouette cells an entity covers on a grid over a screen rectangle [X0, Y0, X1, Y1] (look's worldArtMask; else its box). */
+function _wflCells(F, e, kb, rect, C, R, fn) {
+  const b = _wflBox(F, e), cw = (rect[2] - rect[0]) / C, ch = (rect[3] - rect[1]) / R;
+  if (!(cw > 0 && ch > 0) || b[2] < rect[0] || b[0] > rect[2] || b[3] < rect[1] || b[1] > rect[3]) return;
+  const mask = typeof worldArtMask === 'function' ? worldArtMask(e.obj, e.variant, F.world.season || 'summer') : null;
+  const i0 = Math.max(0, Math.floor((b[0] - rect[0]) / cw)), i1 = Math.min(C - 1, Math.floor((b[2] - rect[0]) / cw)), j0 = Math.max(0, Math.floor((b[1] - rect[1]) / ch)), j1 = Math.min(R - 1, Math.floor((b[3] - rect[1]) / ch));
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    if (mask) {
+      const u = ((rect[0] + (i + 0.5) * cw) - b[0]) / Math.max(1e-6, b[2] - b[0]), v = ((rect[1] + (j + 0.5) * ch) - b[1]) / Math.max(1e-6, b[3] - b[1]);
+      const flip = _wflNum(e.facing) && e.facing > 180 && e.facing < 360, gi = Math.floor((flip ? 1 - u : u) * mask.n), gj = Math.floor(v * mask.n);
+      if (gi < 0 || gj < 0 || gi >= mask.n || gj >= mask.n || !mask.grid[gj * mask.n + gi]) continue;
+    }
+    fn(j * C + i);
+  }
+}
+/**
+ * The view the fill must keep (N2): the VISTA, the screen area where the main leading lines (the walks and waters running away
+ * from the camera) meet the horizon, and the SKY above the horizon down to the kit's minimum share. Both are grids marked by
+ * what stands there (silhouettes), the author's things and the backdrop first.
+ */
+function _wflViewInit(F) {
+  const cam = F.cam, hz = cam.horizon, W = F.W, H = F.H, ix = _wflIndexOf(F), x0 = _wflNum(cam.x0) ? cam.x0 : W / 2;
+  // the leading lines: walk and water surfaces that reach from the lower frame to beyond 60 m
+  const pts = [];
+  for (const sf of ix.waters.map(w => w.s).concat(ix.walks)) {
+    const P = Array.isArray(sf.path) ? sf.path : Array.isArray(sf.poly) ? sf.poly : null;
+    if (!P || P.length < 2) continue;
+    const zs = P.map(p => p[1]);
+    if (!(Math.min(...zs) < 15 && Math.max(...zs) > 60)) continue;
+    for (let z = 60; z <= Math.min(180, Math.max(...zs)); z += 15) {
+      let xs = [];
+      if (Array.isArray(sf.path)) { const near = _wflNear(sf.path, 0, z, false); for (let x = -400; x <= 400; x += 2) if (_wflContains(sf, x, z)) xs.push(x); void near; }
+      else for (let x = -400; x <= 400; x += 2) if (_wflInPoly(sf.poly, x, z)) xs.push(x);
+      if (xs.length) { pts.push(x0 + cam.f * Math.min(...xs) / z, x0 + cam.f * Math.max(...xs) / z); }
+    }
+  }
+  F.vista = null;
+  if (pts.length >= 2) {
+    // the vanishing area: centred on the far leading lines, never wider than a third of the frame (the sides stay the fill's)
+    const mid = pts.slice().sort((a, b) => a - b)[Math.floor(pts.length / 2)], half = Math.min(W / 6, (Math.max(...pts) - Math.min(...pts)) / 2 + 0.04 * W);
+    const X0 = Math.max(0, mid - half), X1 = Math.min(W, mid + half);
+    if (X1 - X0 > 0.04 * W) F.vista = { rect: [X0, Math.max(0, hz - 0.22 * H), X1, Math.min(H, hz + 0.05 * (H - hz))], cells: new Uint8Array(16 * 8), n: 0 };
+  }
+  // the sky: the frame above the horizon; its minimum share from the kit (N2), never below 85 % of what the author left
+  F.sky = hz > 2 ? { rect: [0, 0, W, hz], cells: new Uint8Array(_WFL_SKY_C * _WFL_SKY_R), n: 0, min: 0 } : null;
+  for (const e of F.world.entities || []) if (e && e.obj && !e.backdrop) { const kb = worldKb(e.obj); if (kb) _wflViewMark(F, e, kb, true); }
+  for (const e of _wflBackdrop(F.world, cam)) if (e && e.obj) _wflViewMark(F, e, worldKb(e.obj) || {}, true);
+  if (F.sky) {
+    const free = 1 - F.sky.n / F.sky.cells.length, want = Array.isArray(F.style.sky) ? F.style.sky[0] : 0.2;
+    // the minimum free share of the sky area: the kit's frame share as a share of the area above the horizon
+    F.sky.min = Math.min(free * 0.85, Math.max(0.05, want * H / hz));
+  }
+}
+function _wflViewMark(F, e, kb, init) {
+  if (!e || !e.obj || !kb) return;
+  if (F.vista && (init || e.z < 260)) _wflCells(F, e, kb, F.vista.rect, 16, 8, k => { if (!F.vista.cells[k]) { F.vista.cells[k] = 1; F.vista.n++; } });
+  if (F.sky) _wflCells(F, e, kb, F.sky.rect, _WFL_SKY_C, _WFL_SKY_R, k => { if (!F.sky.cells[k]) { F.sky.cells[k] = 1; F.sky.n++; } });
+}
+/** Would this auto item close the vista (more than 35 % of it covered) or take the sky below its minimum? */
+function _wflBlocksView(F, c, kb, b) {
+  if (!kb || !(kb.size.h0 >= 1.8)) return false;
+  const e = { obj: c.obj, x: c.x, z: c.z, y: c.y, variant: c.variant };
+  if (F.vista) {
+    let add = 0; _wflCells(F, e, kb, F.vista.rect, 16, 8, k => { if (!F.vista.cells[k]) add++; });
+    if (add && (F.vista.n + add) / F.vista.cells.length > _WFL_VISTA_MAX) return true;
+  }
+  if (F.sky && b[1] < F.cam.horizon) {
+    let add = 0; _wflCells(F, e, kb, F.sky.rect, _WFL_SKY_C, _WFL_SKY_R, k => { if (!F.sky.cells[k]) add++; });
+    if (add && 1 - (F.sky.n + add) / F.sky.cells.length < F.sky.min) return true;
+  }
+  return false;
+}
+
 /* ---------- placement ---------- */
 /** Does a candidate circle (x, z, r) hit a solid or walkable footprint (P2)? */
 function _wflHits(F, x, z, r, solidOnly) {
@@ -366,6 +441,8 @@ function _wflTry(F, c) {
   const b = _wflBox(F, ent0);
   if (!c.framing && _wflCut(F, b)) return null;
   if (_wflHidesLandmark(F, b, c.z)) return null;
+  // N2: the vista down the leading line stays open, and the sky keeps its share (auto fill only; framing and edges are exempt)
+  if (c.auto === 'fill' && !c.framing && _wflBlocksView(F, c, kb, b)) return null;
   // spacing: no stacked clones; a 'single' (a log, a boulder, a bench) keeps its group gap from its own kind
   const G = kb.group || {}, sp = c.any ? 0 : Math.max(0.18, 0.42 * Math.min(kb.size.l || 0.5, 3) * (F.tier >= 3 ? 0.75 : 1), G.kind === 'single' && _wflNum(G.gap) ? Math.min(G.gap, 12) : 0);
   if (sp && !_wflSpacingOk(F, c.x, c.z, sp, c.obj)) return null;
@@ -421,6 +498,7 @@ function _wflTry(F, c) {
   if (sp) _wflSpacingAdd(F, ent.x, ent.z, sp, c.obj);
   _wflIndexEnt(_wflIndexOf(F), ent);
   _wflLandmarkMark(F, b, c.z);
+  _wflViewMark(F, ent, kb);
   if (F.boxes) F.boxes.push(b);
   return ent;
 }
@@ -508,6 +586,14 @@ function _wflBackdrop(world, cam) {
 /** The official coverage (look's worldCoverage) over the perennial entities; the fill's own sampler without look. */
 function _wflCoverage(F) {
   const world = F.world, view = Object.assign({}, world, { entities: (world.entities || []).filter(_wflPerennial) }), bd = _wflBackdrop(view, F.cam);
+  // the STRICT measure when look has it (what the eye sees: silhouettes, textured versus dressed ground): the fill stops when
+  // the strict critic would pass the ground (<= 15 % undressed, no ninth over 55 %), never on the lenient box measure
+  if (typeof worldDetailCoverage === 'function') {
+    try {
+      const r = worldDetailCoverage(view, F.cam, { backdrop: bd, W: F.W, H: F.H, debug: true });
+      if (r && _wflNum(r.bare) && r.grid) return { bare: r.bare, sky: r.sky, ok: r.bare <= 0.15 && r.regions.every(q => q.bare <= 0.55), regions: r.regions, by: 'strict', rec: r };
+    } catch (e) { /* the plain measure */ }
+  }
   if (typeof worldCoverage === 'function') {
     try { const r = worldCoverage(view, F.cam, { backdrop: bd, W: F.W, H: F.H }); if (r && _wflNum(r.bare)) return { bare: r.bare, sky: _wflNum(r.sky) ? r.sky : 0, ok: !!r.ok, regions: r.regions || [], by: 'look' }; } catch (e) { /* own */ }
   }
@@ -562,24 +648,40 @@ function worldRichness(world, cam, o) {
 
 /* ---------- the style ---------- */
 /**
- * The fill style of a world: the place's own style (place.style, or o.style when it is not just the backdrop's), else what its
- * surfaces say (a city or town backdrop with paving, heath, fields, a canal, a pond or lake, the sea), else the backdrop style,
- * else 'park'.
+ * The fill style (the KIT) of a world: the place's own style (place.style: a kit id or a legacy style name, or o.style when it
+ * is not just the backdrop's), else what its surfaces say. Urban (roads, pavements, plazas, tramways): a river or canal between
+ * them is a river city, a harbour or the sea a quayside, a plaza larger than the pavements a civic square, a road with pavements
+ * or buildings a terraced street, else a village green. Country: heath (a moor when the backdrop or the place says so), fields
+ * (downs or farmland), the sea (coast), a canal or river (canal), a pond or lake (pond), woodland, sand (coast), else the
+ * backdrop's kit, else a park.
  */
 function worldFillStyle(world, o) {
   try {
     const bd = world && world.backdrop && world.backdrop.style, ps = world && world.place && world.place.style;
     const own = ps || (o && o.style && o.style !== bd ? o.style : null);
     if (own && WORLD_FILL_STYLES[own]) return own;
-    const S = (world && world.surfaces) || [], has = k => S.some(s => s && s.kind === k), water = S.find(s => s && s.kind === 'water');
-    const urban = has('road') || has('pavement') || has('plaza') || has('tramway');
-    if (urban) return bd && WORLD_FILL_STYLES[bd] && WORLD_FILL_STYLES[bd].place !== 'rural' && bd !== 'canal-wooded' ? bd : S.filter(s => ['pavement', 'plaza', 'road'].includes(s.kind)).length >= 3 ? 'city-victorian' : 'town-low';
-    if (has('heath')) return 'heath';
+    const S = ((world && world.surfaces) || []).filter(s => s && !s.auto), has = k => S.some(s => s.kind === k), waters = S.filter(s => s.kind === 'water');
+    const wk = (...k) => waters.some(w => k.includes(w.water)), area = (s) => {
+      if (Array.isArray(s.poly)) { let A = 0; for (let i = 0, j = s.poly.length - 1; i < s.poly.length; j = i++) A += (s.poly[j][0] + s.poly[i][0]) * (s.poly[j][1] - s.poly[i][1]); return Math.abs(A / 2); }
+      if (Array.isArray(s.path)) { let L = 0; for (let i = 1; i < s.path.length; i++) L += Math.hypot(s.path[i][0] - s.path[i - 1][0], s.path[i][1] - s.path[i - 1][1]); return L * (s.width || 2); }
+      return 0;
+    };
+    const sum = (k) => S.filter(s => s.kind === k).reduce((t, s) => t + area(s), 0);
+    const urban = has('road') || has('pavement') || has('plaza') || has('tramway') || has('platform') || /^(city|town)/.test(String(bd || ''));
+    if (urban) {
+      if (wk('river', 'canal')) return 'river-city';
+      if (wk('harbour', 'sea')) return 'quayside';
+      if (has('plaza') && sum('plaza') >= sum('pavement')) return 'civic-square';
+      if (has('road') && (has('pavement') || ((world && world.buildings) || []).length)) return 'terraced-street';
+      return 'village-green';
+    }
+    if (has('heath')) return /moor|peak|gritstone/.test(String((world.place && (world.place.region || world.place.type)) || '') + String(bd || '')) ? 'moor' : 'heath';
     if (has('field')) return bd === 'downs' ? 'downs' : 'farmland';
-    if (water && (water.water === 'sea' || water.water === 'harbour')) return 'coast';
-    if (water && (water.water === 'canal' || water.water === 'river')) return bd === 'woodland' ? 'woodland' : 'canal-wooded';
-    if (water) return 'pond';
+    if (wk('sea', 'harbour')) return 'coast';
+    if (wk('canal', 'river')) return bd === 'woodland' ? 'woodland' : 'canal';
+    if (waters.length) return 'pond';
     if (has('wood')) return 'woodland';
+    if (has('sand') || has('beach') || has('shingle')) return 'coast';
     return bd && WORLD_FILL_STYLES[bd] ? bd : 'park';
   } catch (e) { return 'park'; }
 }
@@ -883,14 +985,15 @@ function _wflFrameBough(F, opt, s) {
  * level (reeds in the margin at a quay's foot stand on the water, lower on the screen than the bank), and keeps the size of a
  * frame: a tenth to a third of the frame wide, never a wall in the lens's face.
  */
-function _wflFrameClump(F, opt, s) {
+function _wflFrameClump(F, opt, s, wide) {
   const cam = F.cam, kb = _wflKb(F, opt.obj);
+  const used = F.frameSpots || (F.frameSpots = []);
   if (!kb) return null;
   const W = F.W, H = F.H, hz = cam.horizon, ix = _wflIndexOf(F), x0 = _wflNum(cam.x0) ? cam.x0 : W / 2;
   const levels = [0].concat([...new Set(ix.waters.map(w => _wflNum(w.s.level) ? w.s.level : _wflNum(cam.water) ? cam.water : 0))].filter(l => l < -0.05));
   const aquatic = kb.cls === 'reed' || (kb.habitat && Array.isArray(kb.habitat.on) && kb.habitat.on.includes('water-margin'));
-  const n = opt.kind === 'reeds' ? 5 : opt.kind === 'shrub' || opt.kind === 'hedge' || opt.kind === 'rock' ? 2 : 1;
-  for (const fy of [0.95, 0.86, 0.77, 0.68]) for (const fx of [0.04, 0.09, 0.15, 0.21]) for (const lvl of levels) {
+  const n = opt.kind === 'reeds' ? (wide ? 7 : 5) : opt.kind === 'shrub' || opt.kind === 'hedge' || opt.kind === 'rock' ? 2 : 1;
+  for (const fy of [0.95, 0.86, 0.77, 0.68]) for (const fx of wide ? [0.04, 0.09, 0.15, 0.21, 0.27, 0.33] : [0.04, 0.09, 0.15, 0.21]) for (const lvl of levels) {
     if (lvl < 0 && !aquatic) continue;
     const X = s < 0 ? fx * W : (1 - fx) * W, Y = hz + (H - hz) * fy;
     if (!(Y > hz + 1)) continue;
@@ -912,12 +1015,14 @@ function _wflFrameClump(F, opt, s) {
     const wPx = cam.f * (kb.size.l || 1) / z, hPx = cam.f * kb.size.h0 / z;
     if (wPx > 0.36 * W || hPx > 0.75 * H || hPx < 0.09 * H) continue;
     const Xs = x0 + cam.f * x / z;
-    if (s < 0 ? Xs > 0.3 * W : Xs < 0.7 * W) continue;
+    if (s < 0 ? Xs > (wide ? 0.38 : 0.3) * W : Xs < (wide ? 0.62 : 0.7) * W) continue;
+    // a fresh spot each time (never stacked on an earlier frame clump)
+    if (used.some(q => Math.hypot(q[0] - x, q[1] - z) < Math.max(2.5, 0.12 * z))) continue;
     const or = worldKbOrient(kb, p);
     if (opt.kind === 'railing' && !(_wflNum(p.bankDist) && p.bankDist <= 3 && p.kind !== 'water')) continue;   // a quay railing stands at the water
     const facing = _wflNum(or.facing) ? or.facing : (s < 0 ? 90 : 270);
     const got = _wflClump(F, opt.obj, x, z, n, Math.max(0.35, kb.size.l * 0.4), { auto: 'frame', rule: 'C3', why: `framing ${opt.kind}`, framing: true, facing });
-    if (got.length) return got[0].id;
+    if (got.length) { used.push([x, z]); return got[0].id; }
   }
   return null;
 }
@@ -932,13 +1037,13 @@ function _wflNearBand(F) {
   if ((F.world.entities || []).some(e => e && !e.auto && (e.framing || e.framed))) return;
   const clumps = (F.style.frame || []).filter(o => o.kind !== 'bough' && o.kind !== 'fronds');
   if (!clumps.length) return;
-  let rec = worldDetailCoverage(F.world, F.cam, { W: F.W, H: F.H, cols: 48, rows: 27 }), n = 0;
+  let rec = worldDetailCoverage(F.world, F.cam, { W: F.W, H: F.H }), n = 0;
   const start = rec.near.object;
-  for (let round = 0; round < 6 && rec.near.object < 0.13; round++) {
+  for (let round = 0; round < 6 && rec.near.object < 0.12; round++) {
     const sd = round % 2 ? 1 : -1;
     let got = null;
-    for (const opt of clumps) { got = _wflFrameClump(F, opt, sd); if (got) break; }
-    if (got) { n++; rec = worldDetailCoverage(F.world, F.cam, { W: F.W, H: F.H, cols: 48, rows: 27 }); }
+    for (const opt of clumps) { got = _wflFrameClump(F, opt, sd, true); if (got) break; }
+    if (got) { n++; rec = worldDetailCoverage(F.world, F.cam, { W: F.W, H: F.H }); }
   }
   if (n) _wflLog(F, { action: 'frame', rule: 'N2', reason: `the near band held ${Math.round(start * 100)} % standing things: ${n} framing clump(s) added at its sides (now ${Math.round(rec.near.object * 100)} %)` });
 }
@@ -963,8 +1068,28 @@ function _wflGroupOf(F, surf) {
 function _wflCoverPass(F, tier) {
   F.tier = tier;
   const view = Object.assign({}, F.world, { entities: (F.world.entities || []).filter(_wflPerennial) });
-  const S = _wflSample(view, F.cam, { W: F.W, H: F.H, cols: 56, rows: 34, pad: F.pad, backdrop: _wflBackdrop(view, F.cam), surfAt: (x, z) => _wflSurfFast(F, x, z), ground: true });
-  const bare = S.samples.filter(q => !q.dressed && q.z != null && q.z <= _WFL_FILL_ZMAX);
+  let S = null, bare = null;
+  // the bare samples of the strict measure (silhouettes): the ground the eye sees undressed, not what an entity box happens to
+  // span; the plain sampler without look
+  const cov = _wflCoverage(F);
+  if (cov.by === 'strict' && cov.rec && cov.rec.grid) {
+    const g = cov.rec.grid, cw = F.W / g.cols, ch = F.H / g.rows, hz = F.cam.horizon;
+    S = { colW: cw, rowH: ch, samples: [] };
+    for (let k = 0; k < g.cells.length; k++) {
+      const c = g.cells[k];
+      if (c !== 't' && c !== 'f') continue;
+      const i = k % g.cols, j = Math.floor(k / g.cols), X = (i + 0.5) * cw, Y = (j + 0.5) * ch;
+      if (!(Y > hz + 1)) continue;
+      const gp = _wflUnproject(F.cam, X, Y);
+      if (!gp) continue;
+      const band = (Y - hz) / (F.H - hz) < 1 / 3 ? 'far' : (Y - hz) / (F.H - hz) < 2 / 3 ? 'mid' : 'near';
+      S.samples.push({ X, Y, x: gp.x, z: gp.d, band, surf: _wflSurfFast(F, gp.x, gp.d), dressed: false, inFrame: true });
+    }
+    bare = S.samples.filter(q => q.z != null && q.z <= _WFL_FILL_ZMAX);
+  } else {
+    S = _wflSample(view, F.cam, { W: F.W, H: F.H, cols: 56, rows: 34, pad: F.pad, backdrop: _wflBackdrop(view, F.cam), surfAt: (x, z) => _wflSurfFast(F, x, z), ground: true });
+    bare = S.samples.filter(q => !q.dressed && q.z != null && q.z <= _WFL_FILL_ZMAX);
+  }
   // seeded order, nearest rows first (they are the largest share of the frame)
   const r = F.r;
   for (const q of bare) q.u = r() + (q.band === 'near' ? 0 : q.band === 'mid' ? 0.5 : 1);
@@ -1028,26 +1153,51 @@ function _wflPaving(F) {
 }
 /**
  * People dress paving and paths (C6, SCENE_LESSONS A: crowd flows, never empty squares): a walk surface that still shows a large
- * bare share of the frame and has no population gets one by the place style (a crowd in towns and cities, walkers with dogs in
- * parks and the country). The life package spawns, routes and thins them by time (worldKbDensity).
+ * bare share of the frame and has no population gets the kit's own (a crowd in towns and cities, walkers with dogs in parks and
+ * the country). The life package spawns, routes and thins them by time (worldKbDensity).
  */
 function _wflPeople(F) {
   const W = F.world, view = Object.assign({}, W, { entities: (W.entities || []).filter(_wflPerennial) });
   const S = _wflSample(view, F.cam, { W: F.W, H: F.H, cols: 48, rows: 30, backdrop: _wflBackdrop(view, F.cam), surfAt: (x, z) => _wflSurfFast(F, x, z), ground: true });
   const bare = new Map();
   for (const q of S.samples) if (q.inFrame && !q.dressed && q.surf && _WFL_WALK.has(q.surf.kind) && !q.surf.auto) bare.set(q.surf.id, (bare.get(q.surf.id) || 0) + 1);
-  const city = (F.style.place === 'city' || F.style.place === 'town');
+  // lived surfaces count as dressed to the plain sampler: the strict measure asks again for every unlived walk in the frame
+  const city = (F.style.place === 'city' || F.style.place === 'town'), K = F.style.life || {};
   for (const [id, n] of bare) {
     if (n / Math.max(1, S.n) < 0.03 || F.lived.has(id)) continue;
-    const s = (W.surfaces || []).find(q => q.id === id);
-    const L = city ? { who: 'crowd', on: id, rate: '8/min' } : { who: 'walkers', on: id, rate: '3/min', mix: { stroll: 0.55, brisk: 0.2, 'dog-walker': 0.25 } };
+    const s = (W.surfaces || []).find(q => q.id === id), paving = s && ['pavement', 'plaza', 'platform', 'driveway'].includes(s.kind);
+    const pick = (paving && K.paving) || K.walk || (city ? { who: 'crowd', rate: '8/min' } : { who: 'walkers', rate: '3/min', mix: { stroll: 0.55, brisk: 0.2, 'dog-walker': 0.25 } });
+    const L = Object.assign({ who: pick.who, on: id, rate: pick.rate }, pick.mix ? { mix: Object.assign({}, pick.mix) } : {});
     L.auto = 'fill';
     try { const P = typeof WORLD_POPULATIONS === 'object' && WORLD_POPULATIONS ? WORLD_POPULATIONS[L.who] : null; if (P) L.pop = Object.assign({}, P); } catch (e) { /* the core resolves it */ }
     if (!Array.isArray(W.life)) W.life = [];
     W.life.push(L);
     F.lived.add(id);
-    _wflLog(F, { id: 'life:' + id, action: 'fill', rule: 'C6', reason: `${L.who} on ${id} (${s ? s.kind : 'walk'}, ${Math.round(n / S.n * 100)} % of the frame bare): ${city ? 'paving' : 'a path'} is dressed by its people` });
+    _wflLog(F, { id: 'life:' + id, action: 'fill', rule: 'C6', reason: `${L.who} on ${id} (${s ? s.kind : 'walk'}, ${Math.round(n / S.n * 100)} % of the frame bare): ${city ? 'paving' : 'a path'} is dressed by its people (the ${F.styleKey} kit)` });
   }
+}
+/**
+ * The life defaults of the kit (N3: no scene ships lifeless): water birds on the largest visible water with no swimmers, grazers
+ * on the largest open grass or heath (moor sheep, farm cattle), gulls over the coast and harbours, pigeons on city paving, each
+ * only where the scene has none of that kind. Populations, never placed movers: the life package spawns and thins them by time.
+ */
+function _wflLife(F) {
+  const W = F.world, K = F.style.life || {}, life = Array.isArray(W.life) ? W.life : (W.life = []), cam = F.cam;
+  const visible = (s) => { const P = Array.isArray(s.poly) ? s.poly : Array.isArray(s.path) ? s.path : null; if (!P) return 0; let n = 0; for (const p of P) if (p[1] > 1 && Math.abs(p[0]) < 1.4 * p[1] + 30) n++; return n; };
+  const area = (s) => { if (!Array.isArray(s.poly)) return Array.isArray(s.path) ? 50 * (s.width || 2) : 0; let A = 0; for (let i = 0, j = s.poly.length - 1; i < s.poly.length; j = i++) A += (s.poly[j][0] + s.poly[i][0]) * (s.poly[j][1] - s.poly[i][1]); return Math.abs(A / 2); };
+  const layerOf = (L) => { const P = L && (L.pop || (typeof WORLD_POPULATIONS === 'object' && WORLD_POPULATIONS ? WORLD_POPULATIONS[L.who] : null)); return P ? P.layer : null; };
+  const add = (L, why) => { try { const P = typeof WORLD_POPULATIONS === 'object' && WORLD_POPULATIONS ? WORLD_POPULATIONS[L.who] : null; if (!P) return; L.pop = Object.assign({}, P); } catch (e) { return; } L.auto = 'fill'; life.push(L); _wflLog(F, { id: 'life:' + (L.on || L.who), action: 'fill', rule: 'N3', reason: `${L.who}${L.count ? ' x' + L.count : ''}${L.on ? ' on ' + L.on : ''}: ${why} (the ${F.styleKey} kit)` }); };
+  const waters = (W.surfaces || []).filter(s => s && s.kind === 'water' && s.water !== 'puddle' && visible(s)).sort((a, b) => area(b) - area(a));
+  if (Array.isArray(K.water) && waters.length && !waters.some(w => life.some(L => L && L.on === w.id && (layerOf(L) === 'swim' || layerOf(L) === 'wade')))) {
+    const w = waters[0];
+    for (const it of K.water) add({ who: it.who, count: it.count, on: w.id }, 'water birds on the largest water');
+  }
+  const opens = (W.surfaces || []).filter(s => s && ['grass', 'heath', 'field', 'meadow'].includes(s.kind) && visible(s) && area(s) > 600).sort((a, b) => area(b) - area(a));
+  if (Array.isArray(K.graze) && opens.length && !life.some(L => layerOf(L) === 'graze')) for (const it of K.graze) add({ who: it.who, count: it.count, on: opens[0].id }, 'grazers on the open ground');
+  if (Array.isArray(K.air) && !life.some(L => layerOf(L) === 'air')) for (const it of K.air) add({ who: it.who, count: it.count }, 'birds over the scene');
+  const pavs = (W.surfaces || []).filter(s => s && ['plaza', 'pavement'].includes(s.kind) && visible(s)).sort((a, b) => area(b) - area(a));
+  if (Array.isArray(K.ground) && pavs.length && !life.some(L => L && /pigeon/.test(String(L.who)))) for (const it of K.ground) add({ who: it.who, count: it.count, on: pavs[0].id }, 'birds on the paving');
+  void cam;
 }
 /** Seasonal and occasional accents (flowers in their months, leaf litter in autumn, lilies on calm water): variety, never coverage. */
 function _wflAccents(F) {
@@ -1202,6 +1352,7 @@ function worldFill(world, o) {
     F.count = Math.min(F.count, F.maxAuto);
     F.authorReeds = world.entities.filter(e => e && !e.auto && e.obj && (worldKb(e.obj) || {}).cls === 'reed');
     F.landmarks = _wflLandmarks(F);
+    _wflViewInit(F);
     for (const e of world.entities) if (e && e.auto && e.obj) { const kb = worldKb(e.obj); if (kb) _wflSpacingAdd(F, e.x, e.z, Math.max(0.18, 0.42 * Math.min(kb.size.l || 0.5, 3)), e.obj); }
     // the backdrop from the place style when the scene has none (no empty backgrounds)
     if (!world.backdrop && style.backdrop) {
@@ -1216,6 +1367,7 @@ function worldFill(world, o) {
       const start = cov.bare;
       _wflPaving(F);
       _wflPeople(F);
+      _wflLife(F);
       for (let tier = 1; tier <= maxTier; tier++) {
         if (cov.ok && rich.ok && tier > 1) break;
         const n = _wflCoverPass(F, tier);

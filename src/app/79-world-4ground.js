@@ -146,7 +146,7 @@ function _wgdAxis(P) {
 }
 /** A world line (a to b, ground) cut into screen strokes where its spacing to the next parallel line (step metres along nrm)
     reads (>= _WGD_MIN_PX); alpha fades in as it gets denser. */
-function _wgdLine(cam, out, a, b, nrm, step, base, c, zMax) {
+function _wgdLine(cam, out, a, b, nrm, step, base, c, zMax, tag) {
   const near = _wgdNear(cam), L = Math.hypot(b[0] - a[0], b[1] - a[1]);
   if (!(L > 0)) return;
   let cur = null;
@@ -155,10 +155,13 @@ function _wgdLine(cam, out, a, b, nrm, step, base, c, zMax) {
   for (let i = 0; i <= n; i++) {
     const t = i / n, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t;
     if (z < near || z > zMax) { flush(); continue; }
-    const p = _wgdP(cam, x, z), q = _wgdP(cam, x + nrm[0] * step, z + nrm[1] * step), sp = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    // the spacing to the next parallel line ON SCREEN: the distance from its point to this line's own screen direction (a
+    // receding line's points slide along it with depth; that slide is not spacing)
+    const p = _wgdP(cam, x, z), q = _wgdP(cam, x + nrm[0] * step, z + nrm[1] * step), e = _wgdP(cam, x + (b[0] - a[0]) / L * 0.2, Math.max(near, z + (b[1] - a[1]) / L * 0.2));
+    const ex = e[0] - p[0], ey = e[1] - p[1], el = Math.hypot(ex, ey) || 1, sp = Math.abs((q[0] - p[0]) * ey - (q[1] - p[1]) * ex) / el;
     if (sp < _WGD_MIN_PX) { flush(); continue; }
     const al = base * Math.min(1, (sp - _WGD_MIN_PX) / 5 + 0.25);
-    if (!cur) cur = { t: 'line', pts: [], w: Math.max(0.35, Math.min(1.6, cam.f * 0.018 / z)), a: Math.round(al * 1000) / 1000, c };
+    if (!cur) { cur = { t: 'line', pts: [], w: Math.max(0.35, Math.min(1.6, cam.f * 0.018 / z)), a: Math.round(al * 1000) / 1000, c }; if (tag) cur.k = tag; }
     cur.pts.push([_wgdR(p[0]), _wgdR(p[1])]);
   }
   flush();
@@ -232,9 +235,9 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
         const t = [dx / Ls, dz / Ls], n = [-t[1], t[0]];
         for (let u = Math.ceil(acc / du) * du - acc; u < Ls; u += du) {
           const p = [a[0] + t[0] * u, a[1] + t[1] * u], k = Math.round((acc + u) / du), heavy = L.courseEvery && k % L.courseEvery === 0;
-          _wgdLine(cam, out, [p[0] - n[0] * hw, p[1] - n[1] * hw], [p[0] + n[0] * hw, p[1] + n[1] * hw], t, heavy ? du * L.courseEvery : du, heavy ? 0.3 : 0.2, 'dark', zMax);
+          _wgdLine(cam, out, [p[0] - n[0] * hw, p[1] - n[1] * hw], [p[0] + n[0] * hw, p[1] + n[1] * hw], t, heavy ? du * L.courseEvery : du, heavy ? 0.3 : 0.2, 'dark', zMax, 'joint');
         }
-        for (let v = -hw + dv; v < hw - 1e-6; v += dv) _wgdLine(cam, out, [a[0] + n[0] * v, a[1] + n[1] * v], [c[0] + n[0] * v, c[1] + n[1] * v], n, dv, 0.16, 'dark', zMax * 0.4);
+        for (let v = -hw + dv; v < hw - 1e-6; v += dv) _wgdLine(cam, out, [a[0] + n[0] * v, a[1] + n[1] * v], [c[0] + n[0] * v, c[1] + n[1] * v], n, dv, 0.16, 'dark', zMax * 0.4, 'joint-along');
         acc += Ls;
       }
     } else {
@@ -581,7 +584,8 @@ function worldGroundDetailDraw(ctx, plan, o) {
     for (const g of plan.groups || []) {
       ctx.save();
       ctx.beginPath(); path(g.clip); ctx.clip();
-      if (g.holes.length) { ctx.beginPath(); ctx.rect(-1e4, -1e4, 2e4, 2e4); for (const h of g.holes) path(h); ctx.clip('evenodd'); }
+      // each hole cut on its own (outside it AND outside the next): overlapping holes never cancel under even-odd
+      for (const h of g.holes) { ctx.beginPath(); ctx.rect(-1e4, -1e4, 2e4, 2e4); path(h); ctx.clip('evenodd'); }
       for (const m of g.marks) draw(m);
       ctx.restore();
     }

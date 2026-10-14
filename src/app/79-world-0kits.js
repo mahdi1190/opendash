@@ -119,7 +119,7 @@ const _WKT_EDGES_URBAN = { water: { pond: 'natural', lake: 'natural', canal: 'qu
 const WORLD_STYLE_KITS = _wkbFreeze({
   // a canal with a towpath through woodland and fields: reed stands with gaps, willows and alders on the offside, hawthorn
   // hedges behind the towpath, the gold bough over the cut, walkers with dogs, mallards, moorhens and a pair of swans
-  canal: { label: 'canal and towpath', place: 'park', backdrop: 'canal-wooded', ground: 'grass', sky: [0.25, 0.55], layers: 5,
+  canal: { label: 'canal and towpath', place: 'park', backdrop: 'canal-wooded', ground: 'grass', sky: [0.12, 0.45], layers: 5,
     look: { grass: 'tussock', path: 'gravel', paving: 'flags', quay: 'stone', bank: 'earth' },
     fill: { grass: { near: _WKT_TUFTS, mid: [['tree.wyv-far-sallow', 2], ['tree.hawthorn', 2], ['tree.green-willow', 1], ['tree.canal-willow', 1], ['plant.hedgerow-blackberry', 1], ['plant.rph-church-shrub', 1], ['plant.yg-meadow', 2], ['plant.bracken', 2], ['plant.holly', 1]],
       far: _WKT_BROADLEAF.concat(_WKT_WATERSIDE), distant: _WKT_DISTANT_WOOD, accents: _WKT_FLOWERS.concat([['ground.leaf-litter', 2], ['rock.stones', 1]]) },
@@ -298,6 +298,10 @@ function worldKitCheck(o) {
     for (const g of ['grass', 'paving', 'path', 'water']) if (!K.fill || !K.fill[g]) out.push({ kit: k, slot: 'fill.' + g, id: null, rule: 'kitShape', msg: `${k} does not dress ${g}` });
     if (!Array.isArray(K.frame) || !K.frame.length) out.push({ kit: k, slot: 'frame', id: null, rule: 'kitShape', msg: `${k} has no framing options` });
     if (typeof WORLD_BACKDROP_STYLES === 'object' && WORLD_BACKDROP_STYLES && !WORLD_BACKDROP_STYLES[K.backdrop]) out.push({ kit: k, slot: 'backdrop', id: K.backdrop, rule: 'kitShape', msg: `${k}: unknown backdrop ${K.backdrop}` });
+    // N3: every life default names a known population
+    const L = K.life || {}, lives = [].concat(L.walk ? [L.walk] : [], L.paving ? [L.paving] : [], L.water || [], L.graze || [], L.air || [], L.ground || []);
+    if (!L.walk) out.push({ kit: k, slot: 'life.walk', id: null, rule: 'kitShape', msg: `${k} has no people (life.walk)` });
+    for (const it of lives) if (!it || typeof WORLD_POPULATIONS !== 'object' || !WORLD_POPULATIONS || !WORLD_POPULATIONS[it.who]) out.push({ kit: k, slot: 'life', id: it && it.who, rule: 'kitLife', msg: `${k} life: ${it && it.who} is not a population (WORLD_POPULATIONS)` });
     for (const s of worldKitIds(K)) {
       const def = typeof sceneObj === 'function' ? sceneObj(s.id) : null;
       if (!def) { P(k, s, 'kitMissing', 'is not a library object (a kit names only real, approved objects; never a stand-in)'); continue; }
