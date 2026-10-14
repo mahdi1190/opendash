@@ -189,7 +189,12 @@ Integration rules (10 Oct, the integrator pass):
 - Long hulls (boats under way) keep their whole length beyond the near band and their bow and stern clear of solids (life);
   props (posts, bollards, benches, lamps, vehicles) get the near band of people and animals at load (sense), including the
   depth where their foot leaves the frame's bottom edge.
-- A light's halo is half its reach with a radial falloff; a figure's `rim` part is its own catch-light, never a light source.
+- A light's halo is the glowing part's own size (capped by kind, at most `WORLD_LIGHT_CAPS.haloPx` on the screen) with a soft
+  radial falloff; a lamp's pool is one soft perspective falloff on the ground (peak alpha and screen width capped), drawn under what
+  stands there and never on water. A figure's glow parts (its `rim`, reflective strips, a phone, a watch) are lit by its sprite and
+  are never light sources; only a cyclist's opaque lamps light. Lit windows are lit glass drawn per window inside their chunk.
+- Night keeps its structure (QP4): the sky's `nightKey` (moon and sky light) darkens foliage into silhouettes, lights pale
+  materials in proportion to their own lightness and lays a soft key on the paths (render glitches: SCENE_LESSONS G).
 
 ### 2.2 Static entities in depth-sorted chunks
 

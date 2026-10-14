@@ -16,9 +16,12 @@
                                              thin things from their real outline (sil); movers only while visible; a mover on a
                                              deck casts onto the deck (it moves with the deck); a bridge deck shades what is under it
      worldShadeAt(plan, x, z, o)          -> 0..1: how shaded a ground point is (under a bridge, in a tree's shadow); 0 on water
-     worldLights(world, o)                -> [{ ref, part, kind, x, y, z, r, col, on, pool?, beam?, agent? }] from LIBRARY GLOW PARTS
-                                             only: windows per window by a seeded threshold against the sun's elevation, lamps
-                                             with pools, head and tail lights of moving vehicles, lit tram and train windows
+     worldLights(world, o)                -> [{ ref, part, kind, x, y, z, r, halo, src, col, on, pool?, beam?, agent? }] from LIBRARY
+                                             GLOW PARTS only: windows per window by a seeded threshold against the sun's elevation
+                                             (lit surfaces: src false, no halo), lamps with one pool each, head and tail lights of
+                                             moving vehicles, lit tram and train windows; a figure's glow parts are never sources
+     worldGlowOn(key, i, kind, alt, share, o) -> is a glow part lit now (one seeded rule for the plan and the lit glass)
+     worldLightDraws(lights, cam, o)      -> the shapes the lights paint (pools, halos, beams) within WORLD_LIGHT_CAPS (pure)
      worldGlitterPlan(region, sky, cam, o) -> the sun's or the moon's glitter road on a water region (worldWaterPlan)
      worldHazePlan(world, cam, L, atmos)  -> Float32Array: each entity's haze from its own depth
      worldLookOf(world, cam, o)           -> Map id -> { shadow: { poly, dir, holes, on } | null, reflect: { surface, rowY } | null }
