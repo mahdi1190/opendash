@@ -64,7 +64,7 @@
     door: { w: 2.0, h: 3.0, fan: false, recess: 0.3, panels: 0, cols: ['#2a2a28'] },
     chimney: { where: 'none' },
     details: { downpipe: 0, alarm: 0, boxes: 0, ivy: 0, porch: 0 },
-    night: { on: 0, curtain: 0, tv: 0 },
+    night: { on: 0, curtain: 0, tv: 0, flood: 0.4 },   // floodlit after dark, as the famous ruins are
     flippable: false, sideWindows: false,
     ruin: { default: 'abbey', presets: { abbey, chapel } },
     resolve: _SCRU_HOOKS.resolve, build: _SCRU_HOOKS.build,

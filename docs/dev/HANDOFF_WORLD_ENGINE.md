@@ -175,3 +175,12 @@ evidence, is in the merge report kept outside the repo):
 - SCENE_LESSONS was renumbered (both lines' rows kept): A-F as before, G user review, H render glitches, I detail defaults,
   J movement, K terrain, L the Shambles, M the Pier Head, N Malham Cove, O light and water, P trees and seasons, Q looking,
   R fix-all verify, S this merge.
+
+## Whitby harbour with its landmarks (branch fix/whitby, 15 Oct)
+`world-test/whitby-harbour-1-w3` now has the ruined abbey on the East Cliff, St Mary's church at the head of the 199 steps (with railings and
+tread lines), red-pantiled houses stepping up the cliff in `along` rules on five lanes, and the swing bridge across the upper harbour that
+bends away to the right; the piers and lighthouses are behind the left shoulder (out of the frame). Built from reusable generators, not from
+art: `70-scene-gen-3ruin.js` (+ style `gothic-ruin`), `70-scene-gen-4bridge.js` (+ `swing-bridge`), styles `parish-church` and
+`pantile-cottage`, the `steps` ground look, and `landmark: true` on a building (`79-world-0core.js`, `79-world-1fill.js`). SCENE_LESSONS T,
+requirements section 30, tests `tests/scene-gen-ruin.test.mjs`. Not done: the harbour mouth (piers, lighthouses) needs a second view; the
+church has no dormers; the abbey's east end is seen at a grazing angle from this camera.

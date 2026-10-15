@@ -37,6 +37,12 @@ function worldTerrainKind(world, x, z) {
   }
   return 'grass';
 }
+/** Do the surfaces under a plan quad differ (five samples)? Then the strip cuts it finer. */
+function worldTerrainMixed(world, x0, x1, z0, z1) {
+  const first = worldTerrainKind(world, (x0 + x1) / 2, (z0 + z1) / 2);
+  for (const [u, v] of [[0.15, 0.15], [0.85, 0.15], [0.15, 0.85], [0.85, 0.85], [0.5, 0.15], [0.5, 0.85]]) if (worldTerrainKind(world, x0 + (x1 - x0) * u, z0 + (z1 - z0) * v) !== first) return true;
+  return false;
+}
 function _wtrMat(kind, slope) {
   if (kind === 'water') return null;
   if (slope > 1.3) return { mat: 'stone', hex: _WTR_COL.rock };               // a cliff face: bare rock
@@ -181,7 +187,16 @@ function _wtrPrims(world, cam, o) {
     let hi = 0, xmin = Infinity, xmax = -Infinity, minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
     for (let x = xl; x < xr - 1e-6; x += step) {
       const x2 = Math.min(xr, x + step);
-      const pieces = cliffs.length ? _wtrCliffPieces([[x, za], [x2, za], [x2, zb], [x, zb]], cliffs, cam, hAt) : [{ poly: [[x, za], [x2, za], [x2, zb], [x, zb]], scree: 0 }];
+      // a quad that more than one surface kind lies under (a lane, a flight of steps, a path across a slope) is cut into a finer grid, so a
+      // narrow surface is never lost between the centres of two big quads (SCENE_LESSONS T: the 199 steps vanished from the cliff)
+      const quads = [[[x, za], [x2, za], [x2, zb], [x, zb]]];
+      if (!cliffs.length && worldTerrainMixed(world, x, x2, za, zb)) {
+        quads.length = 0;
+        const nx = Math.max(2, Math.min(8, Math.round((x2 - x) / 0.7))), nz = 2;
+        for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const xa = x + (x2 - x) * i / nx, xb = x + (x2 - x) * (i + 1) / nx, za2 = za + (zb - za) * j / nz, zb2 = za + (zb - za) * (j + 1) / nz; quads.push([[xa, za2], [xb, za2], [xb, zb2], [xa, zb2]]); }
+      }
+      for (const qd of quads) {
+      const pieces = cliffs.length ? _wtrCliffPieces(qd, cliffs, cam, hAt) : [{ poly: qd, scree: 0 }];
       for (const pc of pieces) {
         const poly = pc.poly, hs = poly.map(p => hAt(p[0], p[1])), hm = Math.max(...hs);
         if (hm < 0.12 && Math.min(...hs) > -0.12) continue;                      // flat ground: the v2 base
@@ -209,6 +224,7 @@ function _wtrPrims(world, cam, o) {
         for (const q of pts) { minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); minY = Math.min(minY, q[1]); maxY = Math.max(maxY, q[1]); }
         hi = Math.max(hi, hm); xmin = Math.min(xmin, x); xmax = Math.max(xmax, x2);
         faces.push({ pts, role: 'ground', mat: m.mat, hex: _wtrShade(m.hex, shade * jit), z: cz0, alpha: 1 });
+      }
       }
     }
     // the stones and tussocks of a talus skirt that stand in this strip, near ones last (they overlap the far)

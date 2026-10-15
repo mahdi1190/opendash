@@ -218,6 +218,15 @@ _scbgElemKinds.mesh = function (e, face, ctx, T) {
   const base = _scbgSeasonal(_scbgDark(face.col, shade), season), tones = [base, _scbgLight(base, 0.1), _scbgDark(base, 0.14)], groups = [[], [], []];
   for (const p of e.polys) { const m = _scbgMap(pl, view, p.pts, 0.003); if (m) groups[p.tone].push(_scbgPath(m)); }
   for (let i = 0; i < 3; i++) if (groups[i].length) sink.add(1, { f: tones[i], d: groups[i].join(''), op: 1, part: 'body' });
+  // floodlit after dark (a style's `night.flood`): a warm wash on the pieces, stronger on those that start at the foot, where the lamps
+  // stand (lit shapes: drawn after dusk only, as a plain colour)
+  const nf = (ctx.sp.style.night && ctx.sp.style.night.flood) || 0;
+  if (nf > 0 && !view.ortho) {
+    const all = [], foot = [];
+    for (const p of e.polys) { const m = _scbgMap(pl, view, p.pts, 0.004); if (!m) continue; const d = _scbgPath(m); all.push(d); if (Math.min(...p.pts.map(q => q[1])) <= e.z0 + 0.6) foot.push(d); }
+    if (all.length) sink.add(9, { f: '#ffd08a', d: all.join(''), op: Math.min(0.3, nf * 0.34), part: 'lit' });
+    if (foot.length) sink.add(9, { f: '#ffdc9c', d: foot.join(''), op: Math.min(0.3, nf * 0.4), part: 'lit' });
+  }
   // reveals: the wall's thickness inside the openings, by light level (a quantised shade of each one's own normal)
   if (T >= 1 && e.reveals && e.reveals.length) {
     const buckets = new Map();
