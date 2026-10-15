@@ -148,9 +148,13 @@ export function worldAuthoring(rootDir, ids, file) {
 }
 
 /** The acceptance suite (16.5). Returns { pass, items: [{ id, name, status: 'pass' | 'fail' | 'pending' | 'skip', lines }], report }. */
+/** The places drawn from a short spec with no original (requirements 25). */
+export const WORLD_NEW_PLACES = Object.freeze(['whitby-harbour-1', 'york-shambles-1', 'liverpool-pier-head-1', 'malham-cove-1']);
 export async function worldAccept(E, o = {}) {
   const items = [], push = (id, name, status, lines) => { items.push({ id, name, status, lines }); if (o.onItem) o.onItem(items[items.length - 1]); };
   const scenes = (o.scenes || WORLD_TEST_REFS).map(r => ({ alias: r, ref: 'world-test/' + r + '-w3', source: WORLD_ALIASES[r] }));
+  // the places drawn from a short spec with no original (the no-example test, requirements 25): judged by every check that needs no original
+  const places = (o.places || WORLD_NEW_PLACES).map(r => ({ alias: r, ref: 'world-test/' + r + '-w3', source: null })), every = scenes.concat(places);
   const quick = !!o.quick, seconds = quick ? 30 : (Number.isFinite(E.WORLD_LOOP_S) ? E.WORLD_LOOP_S : 360), hz = quick ? 2 : (o.hz || 5);
   const failedRules = new Set();
   // 1. unit tests (world-acceptance runs items 2 and 3 below itself)
@@ -166,7 +170,7 @@ export async function worldAccept(E, o = {}) {
     const lines = []; let bad = 0;
     // every cell in its own child process, several at once (tools/lib/world/cells.mjs): a native fault stays in its cell
     const secs = o.matrix ? Math.min(seconds, quick ? 10 : 20) : seconds, jobs = [], meta = [];
-    for (const s of scenes) {
+    for (const s of every) {
       let spec; try { spec = specOf(E, s.ref).spec; } catch (e) { lines.push(`${s.ref}: ${e.message}`); bad++; continue; }
       const cells = o.matrix ? worldMatrixCells(spec).map(c => ({ label: `${c.season} ${c.moment} ${c.wx}`, ms: c.ms, wx: c.wx })) : worldMomentsOf(spec).map(m => ({ label: `${m.date} ${m.moment}`, ms: m.ms }));
       for (const c of cells) { jobs.push({ op: 'inv', spec, ms: c.ms, wx: c.wx, seconds: secs, hz }); meta.push({ s, c }); }
@@ -177,7 +181,7 @@ export async function worldAccept(E, o = {}) {
       if (r.uniq || r.error) { bad++; for (const k of Object.keys(r.counts || {})) failedRules.add(k); lines.push(`${s.ref} ${c.label}: ${r.uniq} violation(s)${r.error ? ' ERROR ' + r.error : ''} ${Object.entries(r.counts || {}).map(([k, n]) => `${k} ${n} [${OWNERS[k] || '?'}]`).join(', ')}${r.frameNote ? ' (' + r.frameNote + ')' : ''}`); }
       if (r.retried) lines.push(`${s.ref} ${c.label}: its process died and was run again (${r.retried}x; a native fault, not the scene)`);
     });
-    for (const s of scenes) lines.push(`${s.ref}: ${meta.filter(m => m.s === s).length} cells x ${secs} s at ${hz} Hz checked`);
+    for (const s of every) lines.push(`${s.ref}: ${meta.filter(m => m.s === s).length} cells x ${secs} s at ${hz} Hz checked`);
     push(o.matrix ? '16.5.2 + V7' : '16.5.2', `invariant checker, ${o.matrix ? 'the matrix (4 seasons x 5 times x 3 weathers)' : 'full loop at 3 dates x 5 times'}: zero violations`, bad ? 'fail' : 'pass', lines);
   }
   // 2b. the same checker on the REAL rendered frames (browser): Chrome draws every frame of the loop and the record of what it drew
@@ -187,7 +191,7 @@ export async function worldAccept(E, o = {}) {
     const { worldBrowserInvariants } = await import('./lib/world/browserinv.mjs');
     const chrome = await chromeOf(true);
     try {
-      for (const s of scenes) {
+      for (const s of every) {
         const sp = specOf(E, s.ref), moms = worldMomentsOf(sp.spec, ['07-15', '01-15', '10-15']);
         const pick = [moms.find(m => m.date.endsWith('07-15') && m.moment === 'noon'), moms.find(m => m.date.endsWith('01-15') && m.moment === 'dusk'), moms.find(m => m.date.endsWith('10-15') && m.moment === 'night')].filter(Boolean);
         const r = await worldBrowserInvariants(chrome, { ref: s.ref, spec: sp.spec, id: sp.id }, { moments: pick.map((m, i) => ({ label: `${m.date} ${m.moment}`, at: m.at, seconds: i === 0 ? seconds : Math.min(seconds, 120) })), hz: quick ? 1 : 2, loop: seconds, root });
@@ -203,7 +207,7 @@ export async function worldAccept(E, o = {}) {
   // 2c. the render-glitch pixel checks on real renders (SCENE_LESSONS G): flat bright discs, a sawtooth in the water, an unreadable night
   if (o.browser) {
     const lines = []; let bad = 0;
-    for (const s of scenes) {
+    for (const s of every) {
       const r = spawnSync(process.execPath, [join(root, 'tools', 'world.mjs'), 'glitch', s.ref, '--dates=summer,winter,night,dusk'], { cwd: root, encoding: 'utf8', timeout: 20 * 60000 });
       const txt = ((r.stdout || '') + (r.stderr || '')).split(String.fromCharCode(10)).filter(l => l.trim());
       if (r.status !== 0) bad++;
@@ -243,12 +247,30 @@ export async function worldAccept(E, o = {}) {
         }
       } finally { await chrome.close(); }
     } else lines.push('compare sheets and full-loop captures: not rendered (--browser)');
+    // the new places have no original: the strict critic must pass and, with --browser, the whole loop and the matrix are captured
+    for (const s of places) {
+      try { const v3 = criticOfRef(E, s.ref, {}, resolveRef); if (v3.problems.length) bad++; lines.push(`${v3.problems.length ? 'FAIL' : 'ok  '} ${s.ref}: critic ${v3.score}${v3.problems.length ? '; ' + v3.problems.slice(0, 3).join('; ') : ' (strict passes)'}`); } catch (e) { bad++; lines.push(`FAIL ${s.ref}: ${e.message}`); }
+    }
+    if (o.browser) {
+      const { worldCapture } = await import('./lib/world/capture.mjs'), { worldSheet } = await import('./lib/world/sheet.mjs');
+      const chrome = await chromeOf(true);
+      try {
+        for (const s of places) {
+          const sp = specOf(E, s.ref);
+          const cap = await worldCapture(chrome, { ref: s.ref, spec: sp.spec, id: sp.id }, { full: true, dir: join(o.out || WORLD_OUT, 'capture') });
+          const mat = o.matrix ? await worldSheet(chrome, { ref: s.ref, spec: sp.spec, id: sp.id }, { matrix: true, dir: join(o.out || WORLD_OUT, 'sheet') }) : null;
+          for (const e of [...cap.errors, ...((mat && mat.errors) || [])]) { bad++; lines.push(`FAIL ${s.ref}: ${e}`); }
+          lines.push(`     ${s.ref}: loop strip ${cap.strip}${mat ? '; matrix ' + mat.sheet : ''}`);
+          (o.forReview || []).push(cap.strip, ...(mat ? [mat.sheet] : []));
+        }
+      } finally { await chrome.close(); }
+    }
     push('16.5.4', 'test scenes at least as rich as their originals (critic), compare sheets and full-loop captures', bad ? 'fail' : o.browser ? 'pass' : 'pending', lines);
   }
   // 5. performance (F1, F2, Z1): the Node profile always, the browser gates with --browser
   {
     const lines = []; let bad = 0;
-    for (const s of scenes) {
+    for (const s of every) {
       try {
         const sp = specOf(E, s.ref).spec, p = worldPerfProfile(E, sp, { seconds: quick ? 5 : 20 });
         if (!p.ok) bad++;
