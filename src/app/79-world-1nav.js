@@ -652,6 +652,14 @@ function _wnavSlotCost(L) {
   for (let j = 0; j < h; j++) mark(j * w, 1, w);
   for (let i = 0; i < w; i++) mark(i, w, h);
   for (let k = 0; k < N; k++) if (slot[k] && L.data[k]) L.data[k] = Math.max(L.data[k] + 1, Math.round(L.data[k] * WORLD_NAV_SLOT.cost));
+  L.slot = slot;
+}
+/** Is the point in a slot (a run of legal cells no wider than 1 m, walled in at both ends: two cannot pass in it)? Near grid only. */
+function worldNavSlot(nav, layer, x, z) {
+  const L = nav && nav.layers && nav.layers[layer];
+  if (!L || !L.slot) return false;
+  const k = _wnavIdx(L, x, z);
+  return k >= 0 && k < L.slot.length && L.slot[k] === 1;
 }
 function _wnavPaint(L, s, cost) {
   _wnavCells(L, s, k => { if (!L.data[k]) { L.data[k] = cost; L.clear[k] = Math.max(L.clear[k], 0.3); } });

@@ -160,8 +160,11 @@ function worldLifeOk(life, layer, x, z, r) {
  */
 function _wlfNavR(a) {
   if (a.kind === 'boat') return a.r;
-  var d = (typeof WORLD_NAV_RADIUS !== 'undefined' && WORLD_NAV_RADIUS[String(a.layer).split('@')[0]]) || 0.25;
-  return a.r <= d + 0.05 ? d : a.r;
+  if (a._nrL !== a.layer || a._nrR !== a.r) {
+    var d = (typeof WORLD_NAV_RADIUS !== 'undefined' && WORLD_NAV_RADIUS[String(a.layer).split('@')[0]]) || 0.25;
+    a._nrL = a.layer; a._nrR = a.r; a._nr = a.r <= d + 0.05 ? d : a.r;
+  }
+  return a._nr;
 }
 function _wlfOk(life, a, x, z) { return a.layer === 'air' || (typeof worldNavOk === 'function' && worldNavOk(life.nav, a.layer, x, z, _wlfNavR(a)) && _wlfHullOk(life, a, x, z)); }
 /**
@@ -1966,6 +1969,19 @@ function _wlfOneBodyAt(life, a, x, z, dir) {
 var WORLD_LIFE_PINCH_WAIT_S = 6;
 function _wlfPinchYield(life, a, dir) {
   if (a.kind !== 'walker' || a.layer === 'air' || a.step || a.squeeze > life.t || a.fadeOut) return false;
+  // a decision lasts a fifth of a second (the scan of the neighbours and of the gap is the dearest thing a walker does in a tick)
+  if (a._pyT != null && life.t - a._pyT < 0.2 && life.t >= a._pyT) { if (a._pyRes) a.yieldPinch = life.t; return a._pyRes; }
+  a._pyT = life.t; a._pyRes = _wlfPinchYield0(life, a, dir);
+  return a._pyRes;
+}
+function _wlfPinchYield0(life, a, dir) {
+  if (typeof worldNavSlot !== 'function') return false;
+  // the gap first (a few reads of the navigation's slot mask: it is rare): none within 2.6 m ahead, or already in it, nothing to wait for
+  if (worldNavSlot(life.nav, a.layer, a.x, a.z)) { a.pinchT0 = null; return false; }
+  var k = 0.5, gx = 0, gz = 0, found = false;
+  for (; k <= 2.6; k += 0.4) { gx = a.x + dir[0] * k; gz = a.z + dir[1] * k; if (worldNavSlot(life.nav, a.layer, gx, gz)) { found = true; break; } }
+  if (!found) { a.pinchT0 = null; return false; }
+  // somebody coming through it the other way (within 7 m ahead, in my lane)
   var o0 = null, fw0 = Infinity;
   _wlfNearXZ(life, a.x, a.z, 7, function (o) {
     if (o === a || o.kind !== 'walker' || o.layer !== a.layer || o.dead || o.step || o.fadeOut || o === a.leader || o.leader === a || (a.group && o.group === a.group)) return;
@@ -1976,12 +1992,7 @@ function _wlfPinchYield(life, a, dir) {
     if (fwd < 0.4 || fwd > 7 || Math.abs(lat) > 1.1 || (ox * dir[0] + oz * dir[1]) > -0.3 * os) return;
     if (fwd < fw0) { fw0 = fwd; o0 = o; }
   });
-  if (!o0) { a.pinchT0 = null; return false; }
-  // inside a gap already: go on, the other waits for it
-  if (_wlfOneBodyAt(life, a, a.x, a.z, dir)) { a.pinchT0 = null; return false; }
-  var k = 0.5, gx = 0, gz = 0, found = false;
-  for (; k <= Math.min(fw0, 2.6); k += 0.4) { gx = a.x + dir[0] * k; gz = a.z + dir[1] * k; if (_wlfOneBodyAt(life, a, gx, gz, dir)) { found = true; break; } }
-  if (!found) { a.pinchT0 = null; return false; }
+  if (!o0 || fw0 < k - 0.2) { a.pinchT0 = null; return false; }
   // the nearer to the gap goes first (a tie: the earlier arrival)
   var dO = Math.hypot(o0.x - gx, o0.z - gz), tie = Math.abs(dO - k) < 0.5;
   if (dO < k - 0.5 || (tie && (o0.born < a.born || (o0.born === a.born && o0.id < a.id)))) {
