@@ -329,20 +329,24 @@ function worldHostDriver(world, o) {
  * boundary (alpha 0) must not show last tick's state beside this tick's animation. One that only exists in cur is drawn where it
  * is (it just spawned).
  */
+const _wh5LerpMemo = { prev: null, cur: null, out: null, P: null };   // the clones of one pair of ticks live for every frame between them
 function _wh5Lerp(prev, cur, al) {
   if (prev === cur) return cur.map(a => Object.assign({}, a));
-  const P = new Map();
-  for (const a of prev) P.set(a.id, a);
-  const out = [];
-  for (const c of cur) {
-    const p = P.get(c.id), a = Object.assign({}, c);
+  // the objects are made once per pair of ticks (a crowd of 60 cloned 45 fields each frame was the biggest cost of Kelham's frame after the sprites)
+  // and only their positions move from frame to frame
+  const M = _wh5LerpMemo;
+  if (!(M.prev === prev && M.cur === cur && M.out && M.out.length === cur.length)) {
+    M.prev = prev; M.cur = cur; M.out = cur.map(c => Object.assign({}, c)); M.P = new Map(); for (const q of prev) M.P.set(q.id, q);
+  }
+  const out = M.out, P = M.P;
+  for (let i = 0; i < cur.length; i++) {
+    const c = cur[i], a = out[i], p = P.get(c.id);
     if (p && Number.isFinite(p.x) && Number.isFinite(p.z)) {
       a.x = p.x + (c.x - p.x) * al; a.z = p.z + (c.z - p.z) * al;
       if (Number.isFinite(p.y) && Number.isFinite(c.y)) a.y = p.y + (c.y - p.y) * al;
       // the footprint moves with the body: two long vehicles passing within a tick are ordered by where they are drawn, not where they were
       if (Array.isArray(c.foot)) { const dx = a.x - c.x, dz = a.z - c.z; a.foot = c.foot.map(q => (Array.isArray(q) ? [q[0] + dx, q[1] + dz] : q)); }
-    }
-    out.push(a);
+    } else { a.x = c.x; a.z = c.z; a.y = c.y; if (Array.isArray(c.foot)) a.foot = c.foot; }
   }
   return out;
 }

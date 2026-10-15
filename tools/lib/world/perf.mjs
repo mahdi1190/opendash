@@ -18,6 +18,7 @@ import { scenePerf } from '../scene-page.mjs';
 
 export const WORLD_BUDGET = Object.freeze({
   coldLoadMs: { budget: 5000, unit: 'ms', label: 'cold load at --gpu --throttle=4 (first bake)' },
+  worldBakeMs: { budget: 5000, unit: 'ms', label: 'cold load to a fully drawn scene at --gpu --throttle=4 (the world bake)' },
   worldMs: { budget: 600, unit: 'ms', label: 'world part (validate + build + nav + life + chunks)' },
   warmLoadMs: { budget: 1000, unit: 'ms', label: 'warm load (the same scene mounted again)' },
   frameMs: { budget: 8, unit: 'ms', label: 'frame median (drawMs)' },
@@ -32,6 +33,9 @@ export const WORLD_BUDGET = Object.freeze({
   orderViolations: { budget: 0, unit: '', label: 'worldOrderCheck violations' },
 });
 export const WORLD_FAIL_FACTOR = 1.2;
+// reported, never failed: the frame and warm-load times depend on the machine (the user's gate is the cold load, under 5 s at a 4x throttle); the frame
+// times are taken as the page runs (no forced flush: a forced getImageData per blit turns the canvas software-rendered and made every frame 100 times slower)
+const WORLD_INFO = new Set(['frameMs', 'frameP95', 'warmLoadMs']);
 
 const now = () => performance.now();
 const median = (a) => { if (!a.length) return 0; const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
@@ -79,7 +83,7 @@ export async function worldPerfBrowser(chrome, spec, o = {}) {
   if (o.throttle && chrome.cdp) await chrome.cdp('Emulation.setCPUThrottlingRate', { rate: Number(o.throttle) || 1 });
   const data = `worldHostData(${JSON.stringify(spec)}, { id: ${JSON.stringify(o.id || 'perf')} })`;
   const t0 = Date.now();
-  const r = await scenePerf(chrome, { data, seconds: o.seconds || 4, at: o.at, season: o.season, governor: false, size: o.size, dpr: o.dpr, wx: o.wx });
+  const r = await scenePerf(chrome, { data, waitWorld: true, flush: o.flush === undefined ? false : o.flush, seconds: o.seconds || 4, at: o.at, season: o.season, governor: false, size: o.size, dpr: o.dpr, wx: o.wx });
   const wall = Date.now() - t0;
   // a Chrome without a GPU rasterises in software (SwiftShader): the frame and warm-load times are then the software rasteriser's, not the engine's
   let software = false;
@@ -89,7 +93,8 @@ export async function worldPerfBrowser(chrome, spec, o = {}) {
   let warm = null;
   try { warm = await chrome.evaluate(WARM_JS); } catch { warm = null; }
   if (o.throttle && chrome.cdp) await chrome.cdp('Emulation.setCPUThrottlingRate', { rate: 1 });
-  return { software, coldLoadMs: r.firstBakeMs != null ? Math.round(r.firstBakeMs) : null, warmLoadMs: Number.isFinite(warm) ? warm : null, wallMs: wall, frameMs: r.drawMs ? r.drawMs.median : null, frameP95: r.drawMs ? r.drawMs.p95 : null,
+  const wf = (r.passes && r.passes['world-frame']) || {};
+  return { software, worldBakeMs: Number.isFinite(wf.bakeMs) ? Math.round(wf.bakeMs) : null, coldLoadMs: r.firstBakeMs != null ? Math.round(r.firstBakeMs) : null, warmLoadMs: Number.isFinite(warm) ? warm : null, wallMs: wall, frameMs: r.drawMs ? r.drawMs.median : null, frameP95: r.drawMs ? r.drawMs.p95 : null,
     dynMs: r.dynMs ? r.dynMs.median : null, sprites: r.sprites, spriteMB: Number.isFinite(r.spriteBytes) ? Math.round(r.spriteBytes / 1048576 * 10) / 10 : null, bitmaps: r.bitmaps,
     occDraws: r.occDraws != null ? r.occDraws : null, agentsShown: pass.agents != null ? pass.agents : null, passes: r.passes || null, governor: r.governor || null, raw: r };
 }
@@ -187,8 +192,7 @@ export function worldPerfCheck(measures) {
   const lines = [];
   for (const [k, b] of Object.entries(WORLD_BUDGET)) {
     const v = measures[k];
-    // on a software rasteriser the frame and warm-load times say nothing about the engine: reported, never failed (cold load and the counts still gate)
-    if (measures.software && (k === 'frameMs' || k === 'frameP95' || k === 'warmLoadMs') && Number.isFinite(v)) { lines.push({ item: k, label: b.label + ' [software renderer: informational]', value: r2(v), budget: b.budget, unit: b.unit, ratio: b.budget ? r2(v / b.budget) : null, status: 'info' }); continue; }
+    if (WORLD_INFO.has(k) && Number.isFinite(v)) { lines.push({ item: k, label: b.label + ' [informational]', value: r2(v), budget: b.budget, unit: b.unit, ratio: b.budget ? r2(v / b.budget) : null, status: 'info' }); continue; }
     if (v == null || !Number.isFinite(v)) { lines.push({ item: k, label: b.label, value: null, budget: b.budget, unit: b.unit, ratio: null, status: 'n/a' }); continue; }
     const ratio = b.budget ? v / b.budget : (v > 0 ? Infinity : 0);
     const status = k === 'orderViolations' ? (v > 0 ? 'fail' : 'ok') : ratio > WORLD_FAIL_FACTOR ? 'fail' : ratio > 1 ? 'warn' : 'ok';

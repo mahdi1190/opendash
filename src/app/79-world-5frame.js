@@ -580,7 +580,7 @@ function _wfrSprite(env, S, oid, v, part, sc, mc, x) {
   if (!sh) return null;
   if (_wfrHasImg(sh)) return v2();
   let mk = '';
-  try { mk = worldMaterialKey(mc); } catch (e) { return v2(); }
+  try { mk = mc._mk || (mc._mk = worldMaterialKey(mc)); } catch (e) { return v2(); }
   const key = 'w3|' + oid + '|' + v + '|' + part + '|' + season + '|' + mk + '|' + S.band + '|' + Math.round(sc * 64) / 64 + (x.litGlow ? '|g' : '');
   return sceneSprites.get(key, () => {
     const names = part === '*' ? _wfrStill(sh) : part.startsWith('rest:') ? _wfrStill(sh).filter(p => !part.slice(5).split(',').includes(p)) : [part];
@@ -628,7 +628,11 @@ function _wfrSprite(env, S, oid, v, part, sc, mc, x) {
 /** The material context of one entity (look), or null when materials are not loaded. */
 function _wfrMc(S, e) {
   if (!S.mat || !S.mctx) return null;
-  try { return worldMaterialFor(S.mctx, e, S.tctx); } catch (err) { return S.mctx; }
+  // one material context per entity and 2 m of distance per bake: a mover asks every frame, and the context (and its key) does not change within a bake
+  const M = S.mcMemo || (S.mcMemo = new Map()), k = (e.id != null ? e.id : e.obj) + '|' + Math.round(Math.hypot(e.x || 0, e.z || 0) / 2);
+  let mc = M.get(k);
+  if (mc === undefined) { try { mc = worldMaterialFor(S.mctx, e, S.tctx); } catch (err) { mc = S.mctx; } if (M.size > 4000) M.clear(); M.set(k, mc); }
+  return mc;
 }
 /** The v2 haze of an entity from its own depth (never per chunk). */
 function _wfrHaze(env, e) {

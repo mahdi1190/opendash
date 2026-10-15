@@ -212,6 +212,12 @@ export async function scenePerf(chrome, opts = {}) {
   await loadPage(chrome, Object.assign({}, opts, { flush: opts.flush === false ? false : opts.flush || true }));
   const r = await chrome.evaluate(`(async () => {
     await new Promise(r => setTimeout(r, 300));
+    // a world scene bakes its statics in slices after the page is up (seconds under a CPU throttle): the frames are measured once it is ready,
+    // never over the bake (a frame that has to finish the bake takes seconds and says nothing about the steady state)
+    if (${opts.waitWorld ? 'true' : 'false'}) { const t0 = performance.now(); while (performance.now() - t0 < 40000) { const st = window.__sceneStats ? window.__sceneStats()[0] : null, wf = st && st.passes && st.passes['world-frame']; if (wf && wf.ready === true) break; await new Promise(r => setTimeout(r, 100)); }
+      // ... and until the bakes have stopped (the first visible frames re-bake once at the real size): 2 s without a new one
+      let last = -1, since = performance.now(); const t1 = performance.now();
+      while (performance.now() - t1 < 30000) { const st = window.__sceneStats ? window.__sceneStats()[0] : null, b = st ? st.bakes : 0; if (b !== last) { last = b; since = performance.now(); } else if (performance.now() - since > 2000) break; await new Promise(r => setTimeout(r, 100)); } }
     if (window.__sceneStatsReset) window.__sceneStatsReset();
     const t0 = performance.now(); let frames = 0, last = t0; const gaps = [];
     const rebakeMs = ${rebakeMs}; let forced = 0, worstGap = 0, worstDraw = 0;
