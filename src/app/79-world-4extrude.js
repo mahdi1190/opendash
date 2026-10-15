@@ -390,7 +390,13 @@ function worldExtrudeHull(ent, cam, o) {
   if (Math.max(...foot.map(p => p[1])) < near) return null;
   const art = _wexArt(ent.obj, ent.variant, season);
   if (!art) return null;
-  const [bx0, by0, bx1, by1raw] = art.box, kv = h / art.size[1];   // metres per art unit (the host's scale), for lengths
+  const [bxa, by0, bxb, by1raw] = art.box, kv = h / art.size[1];   // metres per art unit (the host's scale), for lengths
+  // the side art's hull runs between its first and last columns that rise to at least 40 % of its height: open decks, tillers
+  // and fenders beyond them are not the hull's ends, so the end faces meet the side where the hull really starts (15 Oct)
+  let bx0 = bxa, bx1 = bxb;
+  { const pf = typeof _wexProfile === 'function' ? _wexProfile(ent.obj, ent.variant, season) : null;
+    if (pf && pf.tops) { const lim = by0 * 0.4, ok = pf.tops.map(t => Number.isFinite(t) && t <= lim), i0 = ok.indexOf(true), i1 = ok.lastIndexOf(true), w = pf.box[2] - pf.box[0];
+      if (i0 >= 0 && i1 > i0 + 8) { bx0 = pf.box[0] + w * i0 / pf.N; bx1 = pf.box[0] + w * (i1 + 1) / pf.N; } } }
   // the side and the end share ONE vertical frame: the art from its top down to the waterline (anything the art draws below
   // its foot is clipped) spans exactly y0 .. y0 + h, so the end face and the side meet edge to edge (15 Oct: they drew about
   // 20 px apart and the side's hull fell under the waterline cut)
@@ -436,7 +442,11 @@ function worldExtrudeHull(ent, cam, o) {
   // the end the eye sees: the bow (front view art) or the stern (back view art), mapped onto the end face
   let end = null;
   const views = typeof sceneObjViews === 'function' ? (sceneObjViews(ent.obj) || {}) : {};
+  // the side's drawn span along the hull: an end face is drawn only where the side reaches it (15 Oct: a stern face near the
+  // lens floated apart from its side, whose nearest strips were dropped inside the near plane)
+  const drawnA0 = strips.length ? Math.min(...strips.map(t => t.a0)) : null, drawnA1 = strips.length ? Math.max(...strips.map(t => t.a1)) : null;
   for (const [which, aEnd, sgn] of [['bow', L / 2, 1], ['stern', -L / 2, -1]]) {
+    if (sg && strips.length && (which === 'bow' ? drawnA1 < aEnd - 0.5 : drawnA0 > aEnd + 0.5)) continue;
     const c = P(aEnd, 0, y0 + h / 2);
     if (!_wexSees(cam, [ax * sgn, 0, az * sgn], c)) continue;
     const corners = [P(aEnd, -B / 2, y0), P(aEnd, B / 2, y0), P(aEnd, B / 2, y0 + h), P(aEnd, -B / 2, y0 + h)];
@@ -445,7 +455,12 @@ function worldExtrudeHull(ent, cam, o) {
     const eObj = which === 'bow' ? (views.front || null) : (views.back || views.rear || null), eArt = eObj ? _wexArt(eObj, ent.variant, season) : null;
     let tris = null, m = null;
     if (eArt) {
-      const [ex0, ey0, ex1, ey1raw] = eArt.box, ey1 = Math.min(ey1raw, 0), ek = h / Math.max(1e-6, ey1 - ey0);   // the same frame as the side
+      let [ex0, ey0, ex1, ey1raw] = eArt.box;
+      const ey1 = Math.min(ey1raw, 0), ek = h / Math.max(1e-6, ey1 - ey0);   // the same frame as the side
+      // the end's solid width (columns rising to 40 % of its height) spans the full beam, like the side's hull (15 Oct)
+      { const pf = typeof _wexProfile === 'function' ? _wexProfile(eObj, ent.variant, season) : null;
+        if (pf && pf.tops) { const lim = ey0 * 0.4, ok = pf.tops.map(t => Number.isFinite(t) && t <= lim), i0 = ok.indexOf(true), i1 = ok.lastIndexOf(true), w = pf.box[2] - pf.box[0];
+          if (i0 >= 0 && i1 > i0 + 8) { ex0 = pf.box[0] + w * i0 / pf.N; ex1 = pf.box[0] + w * (i1 + 1) / pf.N; } } }
       // facing the bow the viewer's right is the boat's left; facing the stern it is the boat's right
       const latOf = u => (which === 'bow' ? -1 : 1) * ((u - (ex0 + ex1) / 2) / (ex1 - ex0)) * B;
       const E = (u, v) => Q(P(aEnd, latOf(u), y0 - v * ek));
