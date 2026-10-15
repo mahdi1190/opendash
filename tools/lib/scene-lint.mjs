@@ -36,7 +36,7 @@ const ENGINE_NAMES = {
   signText: 'sceneSignText', archetype: 'sceneArchetype', table: 'sceneTable', tableDefine: 'sceneTableDefine', batch: 'sceneBatch', fromArchetype: 'sceneFromArchetype',
   kitPick: 'sceneKitPick', item: 'sceneItem', scaleBucket: 'sceneScaleBucket', light: 'sceneLight', colour: 'sceneColour', line: 'sceneLine',
   index: 'SCENE_ARCHETYPE_INDEX', regionKits: 'SCENE_REGION_KITS', regionParams: 'SCENE_REGION_PARAMS', kits: 'SCENE_KITS', roles: 'SCENE_ROLES', categories: 'SCENE_CATEGORIES',
-  retroMax: 'SCENE_RETRO_MAX_BYTES', dups: 'sceneObjDups',
+  retroMax: 'SCENE_RETRO_MAX_BYTES', dups: 'sceneObjDups', moverSize: 'sceneMoverSize',
   // scene engine v2 (each optional: a builder that has not landed leaves its name undefined)
   real: 'sceneObjReal', objClass: 'sceneObjClass', placeRules: 'SCENE_PLACE_RULES', surfaceKinds: 'SCENE_SURFACE_KINDS', camera: 'sceneCamera', hazeAt: 'sceneHazeAt',
   objViews: 'sceneObjViews', flowReal: '_scflReal', flowViewOf: 'sceneFlowViewOf', flowStats: 'sceneFlowStats', flowCompile: 'sceneFlowCompile', compositionOf: 'sceneCompositionOf',

@@ -1387,10 +1387,10 @@
    ],
    "allow": {
     "svgTileBytes": {
-     "max": 800000
+     "max": 850000
     },
     "svgFillBytes": {
-     "max": 1600000
+     "max": 1800000
     },
     "dataBytes": {
      "max": 170000
@@ -1473,10 +1473,10 @@
    ],
    "allow": {
     "svgTileBytes": {
-     "max": 1800000
+     "max": 1900000
     },
     "svgFillBytes": {
-     "max": 3000000
+     "max": 3100000
     },
     "dataBytes": {
      "max": 115000

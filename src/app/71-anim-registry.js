@@ -95,11 +95,12 @@ const ANIM_RICH_ITEM_MAX_BYTES = 1000000;  // a rich local scene (item.rich, ful
 const ANIM_RICH_TILE_MAX_BYTES = 150000;   // the same rich scene drawn in a small tile (gallery grid, cards): up to 80 tiles share a gallery page (12 MB at most)
 // Two kinds of composed scene hold thousands of explicitly placed library objects, so their still is far larger than a region
 // scene's: a hand-composed PLACE view (item.composed with item.ukPlace: the Hampshire, Manchester and Sheffield views), measured at
-// 750 KB as a tile and 1.5 MB full screen, and a WORLD-ENGINE scene (item.ukView 'world-engine': gallery only, drawn on the canvas;
-// the still is a fallback), 1.7 MB and 2.8 MB. The budgets sit a few per cent over the heaviest of each (tools/anim-quality.json,
+// 750 KB as a tile and 1.6 MB full screen, and a WORLD-ENGINE scene (item.ukView 'world-engine': gallery only, drawn on the canvas;
+// the still is a fallback), 1.7 MB and 2.8 MB. The budgets sit about 10 % over the heaviest of each (the size moves by a per cent
+// with the length of the per-render ids, so a tighter budget would fail by render order; tools/anim-quality.json,
 // "composed-kinds", holds the same numbers for the lint; tests/anim-quality.test.mjs checks they agree).
-const ANIM_PLACE_TILE_MAX_BYTES = 800000, ANIM_PLACE_ITEM_MAX_BYTES = 1600000;
-const ANIM_WORLD_TILE_MAX_BYTES = 1800000, ANIM_WORLD_ITEM_MAX_BYTES = 3000000;
+const ANIM_PLACE_TILE_MAX_BYTES = 850000, ANIM_PLACE_ITEM_MAX_BYTES = 1800000;
+const ANIM_WORLD_TILE_MAX_BYTES = 1900000, ANIM_WORLD_ITEM_MAX_BYTES = 3100000;
 const ANIM_PACK_MAX_BYTES = 400000;    // every item of a pack, rendered as a tile, plus its css (plus 2 x its own tile budget per full or rich scene)
 /** The rendered-size budget of one item (either variant): full and rich scenes have their own. A rich
  *  scene has about 1 MB full screen ('fill', 'hero') and the smaller tile budget at any other size. */

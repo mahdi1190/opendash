@@ -89,7 +89,11 @@ test('scatter: deterministic; the LOD keeps a seeded share; species fill-out (an
   assert.ok(A.items.some(i => i.o === 'plant.v2ascrub-b'), 'a second species of the same kit and role');
   assert.ok(A.problems.some(p => p.rule === 'species' && p.sev === 'info'));
   const one = compile(base({ id: 'v2a-one', scatter: [{ obj: 'plant.v2ascrub', on: 'heath', d: [8, 120], n: 100, seed: 9, species: 1 }] }));
-  assert.ok(one.items.every(i => i.o === 'plant.v2ascrub'));
+  // species: 1 keeps ONE species among what the scatter rule places; the engine's own directly drawn buildings (item.direct: the
+  // building generator's placeholders, building.gen-direct) are not the rule's
+  const placed = one.items.filter(i => !i.direct);
+  assert.ok(placed.length >= 90 && placed.every(i => i.o === 'plant.v2ascrub'), 'one species only');
+  assert.ok(one.items.every(i => i.direct || i.o === 'plant.v2ascrub'));
 });
 
 test('scatter: the scale comes from the depth and k; flips and sizes are stratified; strips per layer', () => {

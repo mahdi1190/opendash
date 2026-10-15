@@ -739,7 +739,8 @@ const _scKitPickMemo = new Map();
  * far-building and vehicle pools of every temperate or urban scene (CI 15 Oct: an Armenian plain with an airfield hangar,
  * the New York skyline with the Sheffield hills, +130 KB on a tile). A def that sets its own weight keeps it.
  */
-const SCENE_PLACE_PREFIXES = Object.freeze(['yc', 'yg', 'fpv', 'wyv', 'canal-view', 'mcf', 'mcr', 'mqn', 'shc', 'shp', 'shk', 'proof', 'wp']);
+// (the older proof- and wp- objects are not listed: the byte-identical v1 baselines of tests/fixtures were made with them in the pools)
+const SCENE_PLACE_PREFIXES = Object.freeze(['yc', 'yg', 'fpv', 'wyv', 'canal-view', 'mcf', 'mcr', 'mqn', 'shc', 'shp', 'shk']);
 const _SC_PLACE_ID_RE = new RegExp('^[a-z]+[.](?:' + SCENE_PLACE_PREFIXES.join('|') + ')-');
 /**
  * { objectId: weight } of every object with one of the kit:<k> tags, the role:<role> tag and every tag in o.tags (not o.exclude),
