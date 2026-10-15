@@ -1243,6 +1243,15 @@ function _wlfWaterAhead(life, a) {
   }
   return [a.x + Math.sin(a.heading) * 1.2, a.z + Math.cos(a.heading) * 1.2];
 }
+/** Is another body (not a group mate, not one seated) within d of a spot? A step onto or off a seat is eased and pushed by nobody: two on one spot are drawn through each other. */
+function _wlfSpotBusy(life, a, x, z, d) {
+  for (var i = 0; i < life.agents.length; i++) {
+    var o = life.agents[i];
+    if (o === a || o.dead || o.layer !== a.layer || o.host || o.kind !== 'walker' || _wlfRelated(a, o)) continue;
+    if ((o.x - x) * (o.x - x) + (o.z - z) * (o.z - z) < d * d) return true;
+  }
+  return false;
+}
 function _wlfSitGoal(life, a, g, dt) {
   var ent = _wlfEntity(life, g.sit);
   if (!ent || !_wlfIsBench(ent)) { var r0 = _wlfFlowTo(life, a, g.sit); if (r0 === 'here') { _wlfNextGoal(life, a); } else if (r0 === 'fail') _wlfFail(life, a); else _wlfKeepMoving(life, a); return; }
@@ -1251,7 +1260,8 @@ function _wlfSitGoal(life, a, g, dt) {
     // seated: the bench's facing, no leg motion, for the goal's time; then stand up off the bench (eased)
     if (a.bs !== 'sit') { _wlfEnter(life, a, a.brain.states.sit ? 'sit' : 'idle'); a.bs = 'sit'; a.gdur = worldLifeRange(a.rng, g['for'] != null ? g['for'] : [20, 60]); a.st = a.gdur; life.bus.emit('sit', { id: a.id, x: a.x, z: a.z, bench: ent.id }); }
     a.lookAt = [a.x + Math.sin(a.seat.facing) * 10, a.z + Math.cos(a.seat.facing) * 10];
-    if (a.st <= 0) { a.step = { t0: life.t, dur: Math.max(0.6, Math.hypot(a.seat.ax - a.x, a.seat.az - a.z) / 1.1), x0: a.x, z0: a.z, x1: a.seat.ax, z1: a.seat.az, layer: a.layer, stand: true }; life.bus.emit('stand', { id: a.id, x: a.x, z: a.z }); }
+    if (a.st <= 0 && _wlfSpotBusy(life, a, a.seat.ax, a.seat.az, 0.6) && (a.standWait = (a.standWait || 0) + dt) < 3) return;   // somebody stands where I would step: a moment more
+    if (a.st <= 0) { a.standWait = 0; a.step = { t0: life.t, dur: Math.max(0.6, Math.hypot(a.seat.ax - a.x, a.seat.az - a.z) / 1.1), x0: a.x, z0: a.z, x1: a.seat.ax, z1: a.seat.az, layer: a.layer, stand: true }; life.bus.emit('stand', { id: a.id, x: a.x, z: a.z }); }
     return;
   }
   if (!a.seat) {
@@ -1281,6 +1291,8 @@ function _wlfSitGoal(life, a, g, dt) {
   if (!a.seat.cells) a.seat.cells = _wlfNearCells(life, a.layer, _wlfFlowR(a), a.seat.ax, a.seat.az, 1.6);
   var res = a.seat.cells.length ? _wlfFlowTo(life, a, { key: sk, cells: a.seat.cells }) : _wlfFlowTo(life, a, g.sit);
   if (res === 'here' || Math.hypot(a.seat.ax - a.x, a.seat.az - a.z) < 0.5) {
+    if ((_wlfSpotBusy(life, a, a.x, a.z, 0.45) || _wlfSpotBusy(life, a, a.seat.x, a.seat.z, 0.5)) && (a.sitWait = (a.sitWait || 0) + dt) < 3) { a.dir = null; return; }   // two stepping on one spot are drawn through each other
+    a.sitWait = 0;
     a.step = { t0: life.t, dur: Math.max(0.6, Math.hypot(a.seat.x - a.x, a.seat.z - a.z) / 1.1), x0: a.x, z0: a.z, x1: a.seat.x, z1: a.seat.z, layer: a.layer, sit: bid };
     a.host = bid;
     return;
