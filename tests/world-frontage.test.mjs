@@ -170,3 +170,21 @@ test('people never walk through the houses of a lane and nothing in it is cut by
   assert.ok(r && !r.error, r && r.error);
   for (const k of ['inSolid', 'habitat', 'edgeCut', 'pathBlocked', 'floating', 'overlap']) assert.equal((r.counts || {})[k] || 0, 0, k + ': ' + (r.first && r.first[k] && r.first[k].msg));
 });
+
+test('a group that spawns in a lane never stacks its members on the leader (the formation slot is blocked by a wall: another free spot, or no member)', () => {
+  // the old fallback put a member whose slot was blocked EXACTLY on its leader (0.000 m apart, the browser checker's personalSpace at
+  // t = 1.5 s); the spawn events carry where every mover appeared
+  const spec = clone(lane());
+  spec.life[0].mix = { family: 0.6, chat: 0.2, couple: 0.2 }; spec.life[0].rate = '24/min';
+  const w = W.worldBuild(spec, {}), nav = W.worldNavBuild(w), life = W.worldLifeInit(w, nav, 3, { warm: false });
+  for (let s = 0; s < 120 * 15; s++) W.worldLifeTick(life, 1 / 15);
+  const at = new Map(life.events.filter(e => e.kind === 'spawn').map(e => [e.id, e]));
+  let pairs = 0, minD = 9;
+  for (const [id, e] of at) {
+    const k = id.lastIndexOf('.');
+    if (k < 0 || !at.has(id.slice(0, k))) continue;
+    pairs++; minD = Math.min(minD, Math.hypot(e.x - at.get(id.slice(0, k)).x, e.z - at.get(id.slice(0, k)).z));
+  }
+  assert.ok(pairs >= 10, 'groups arrived: ' + pairs + ' members');
+  assert.ok(minD > 0.12, 'the closest a member appeared to its leader: ' + minD.toFixed(3) + ' m');
+});
