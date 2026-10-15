@@ -192,6 +192,8 @@ function _wtrPrims(world, cam, o) {
         const e = Math.max(0.3, (x2 - x) * 0.5), gx = (hAt(cx0 + e, cz0) - hAt(cx0 - e, cz0)) / (2 * e), gz = (hAt(cx0, cz0 + e) - hAt(cx0, Math.max(0.1, cz0 - e))) / (cz0 + e - Math.max(0.1, cz0 - e)), slope = Math.hypot(gx, gz);
         let m = _wtrMat(kind, slope);
         if (!m) continue;
+        // the scree of a cliff is where the cliff's own talus is the ground: a hill that rises higher there (the dale side beside the cove) is not scree
+        if (pc.scree > 0 && baseGrid && sceneGroundHeight(baseGrid, cx0, cz0) > hAt(cx0, cz0) - 0.3 && sceneGroundHeight(baseGrid, cx0, cz0) > 0.5) pc.scree = 0;
         const jit0 = _wtrU(cx0, cz0);
         // a talus skirt: pale broken rock where the slope comes off the foot of a cliff, grass creeping up from the toe
         const lf = Math.sin(cx0 * 0.09 + 1.3) * Math.sin(cz0 * 0.12 - 0.4);
@@ -297,7 +299,7 @@ function _wtrDrawOps(ctx, prim, o, colour) {
     else if (op.t === 'fg') {
       // a smooth fill whose colour drifts along it: the stops carry the colour and the normal of their own column (shaded one by one)
       const gr = ctx.createLinearGradient(op.x0, 0, op.x1, 0);
-      for (const st of op.st) { const kk = Math.round(_wtrLight({ n: [st[2], st[3]] }, sun) * 50) / 50; gr.addColorStop(Math.max(0, Math.min(1, st[0])), colour(op.m, kk === 1 ? st[1] : _wtrShade(st[1], kk))); }
+      for (const st of op.st) { const kk = Math.round(_wtrLight({ n: [st[2], st[3]] }, sun) * (wet > 0 ? 1 - 0.2 * wet : 1) * 50) / 50; gr.addColorStop(Math.max(0, Math.min(1, st[0])), colour(op.m, kk === 1 ? st[1] : _wtrShade(st[1], kk))); }
       ctx.fillStyle = gr; _wtrPoly(ctx, op.p); ctx.closePath(); ctx.fill(); n++;
     } else if (op.t === 'fv') {
       // a vertical ramp of one tint's opacity (ambient shade, the soft shadow under a ledge, a water stain)
