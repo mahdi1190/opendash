@@ -149,6 +149,21 @@ test('giant: a 3.4 m person and one drawn half the frame tall; a 1.75 m person i
   assert.deepEqual(run('giant', frame([P({ height: 1.75 })])), []);
 });
 
+test('popping: a walker that walks in from beyond a side between two samples is not a pop (sampled at 2 Hz, 100 px in); one mid-frame is', () => {
+  // 1.5 m/s at 8 m from the lens with f = ${cam.f | 0}: in half a second it walks in by f * 1.5 * 0.5 / 8 px; the previous sample had it past the side
+  const prev = frame([], { t: 10 });
+  const inFromRight = (x) => P({ id: 'm1', x, z: 8, vx: -1.5, vz: 0, speed: 1.5, state: 'walk', intent: 'travel' });
+  // x chosen so that the body's box ends 60 to 90 px inside the right side
+  const edgeX = 800 / cam.f * 8;                                   // the frame's right side at 8 m
+  const near = frame([inFromRight(edgeX - 0.55)], { t: 10.5 });
+  const b = near.ents[0].box;
+  assert.ok(b[2] < 1600 - 2 && b[2] > 1600 - 150, 'the figure stands a little inside the right side (' + Math.round(b[2]) + ')');
+  assert.deepEqual(run('popping', near, { prev }), [], 'it walked in from beyond the side between the samples');
+  // the same figure standing still mid-frame appearing at once is a pop; so is a slow one that cannot have come from the side
+  assert.equal(run('popping', frame([P({ id: 'm2', x: 0, z: 8, vx: 0, vz: 0, speed: 0 })], { t: 10.5 }), { prev }).length, 1);
+  assert.equal(run('popping', frame([P({ id: 'm3', x: edgeX - 3, z: 8, vx: -1.5, vz: 0, speed: 1.5, state: 'walk' })], { t: 10.5 }), { prev }).length, 1, 'three metres in is no entry');
+});
+
 test('popping: a walker appearing mid-frame; one entering at the frame edge (or at a spawn cell) is quiet', () => {
   const prev = frame([]);
   assert.equal(run('popping', frame([P({ box: [790, 470, 806, 500] })]), { prev }).length, 1);

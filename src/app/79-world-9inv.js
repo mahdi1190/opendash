@@ -608,7 +608,21 @@ const _WIV_RULES = {
     if (!prev || !Array.isArray(prev.ents)) return 'na';
     const W = C.W, H = C.H, was = new Map();
     for (const e of prev.ents) if (e && e.static === false) was.set(e.id, e);
-    const atEdge = (e) => { const b = _wivBox(e); if (!b) return true; return b[0] <= 2 || b[2] >= W - 2 || b[3] >= H - 2 || b[1] <= 0 || b[2] < 0 || b[0] > W || (b[3] - b[1]) < 4; };
+    // a frame is only a sample of the page's 60 a second: a mover that walks in from beyond a side comes in by as far as it walks between
+    // two samples (and by the 50 px the draw keeps past the frame), so 'at the edge' is as wide as that reach (the real-frame run samples
+    // at 2 Hz: a family member entering at 1.5 m/s showed up 100 px inside the frame and was called a pop)
+    const f = C.cam && _wivNum(C.cam.f) && C.cam.f > 0 ? C.cam.f : null, gapT = _wivNum(prev.t) && _wivNum(C.t) ? Math.min(1.5, Math.max(0, C.t - prev.t)) : 0;
+    const reach = (e, dz) => {
+      const z = _wivNum(e.z) && e.z > 0.3 ? e.z : null;
+      if (!f || !z) return 0;
+      const v = Math.hypot(_wivNum(e.vx) ? e.vx : 0, _wivNum(e.vz) ? e.vz : 0) || (_wivNum(e.speed) ? e.speed : 0);
+      return Math.min(240, f * v * gapT / z * (dz ? Math.max(0.3, (C.cam.eye || 1.7) / z) : 1)) + 50;
+    };
+    const atEdge = (e) => {
+      const b = _wivBox(e); if (!b) return true;
+      const rx = reach(e, false), rz = reach(e, true);
+      return b[0] <= 2 + rx || b[2] >= W - 2 - rx || b[3] >= H - 2 - rz || b[1] <= 0 || b[2] < 0 || b[0] > W || (b[3] - b[1]) < 4;
+    };
     const covered = (e, list) => {
       const b = _wivBox(e); if (!b) return true;
       const area = Math.max(1, (b[2] - b[0]) * (b[3] - b[1]));

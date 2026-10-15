@@ -104,7 +104,9 @@ function _wfrRec(e, cam, o) {
   if (!def || !def.size) return null;
   const v = vw.variant != null ? vw.variant : Number.isInteger(e.variant) ? e.variant : 0;
   const P = sceneProject(cam, e.x, e.z, Number.isFinite(e.y) ? e.y : null), s = vw.s || (cam.f / e.z) * _wfrHeight(e) / def.size[1];
-  const form = o.agent ? (o.season || 'summer') : _wfrFormOf(e, o.season, o.ctx);
+  // a person is drawn in the wardrobe of the day's weather (an umbrella is up in rain or showers and furled when it is dry: SCENE_LESSONS J);
+  // o.wet: true | false from the draw's light, undefined (a record made without one) keeps the season's wardrobe
+  const form = o.agent ? (o.season || 'summer') + (o.wet != null && /^person./.test(String(e.obj)) ? (o.wet ? '~wet' : '~dry') : '') : _wfrFormOf(e, o.season, o.ctx);
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(oid, v, form) : null, b = (sh && sh.box) || [-def.size[0] / 2, -def.size[1], def.size[0] / 2, 0];
   const flip = !!vw.mirror && def.flippable !== false;
   const box = flip ? { x0: P.X - b[2] * s, y0: P.Y + b[1] * s, x1: P.X - b[0] * s, y1: P.Y + b[3] * s } : { x0: P.X + b[0] * s, y0: P.Y + b[1] * s, x1: P.X + b[2] * s, y1: P.Y + b[3] * s };
@@ -1457,13 +1459,15 @@ function _wfrDraw(env, ctx, t) {
   const mem = rec.frame.agents || (rec.frame.agents = new Map()), seen = new Set(), aRecs = [];
   let list = st.agents || [];
   const lvl = env.gov ? env.gov.level : 0;
+  // the weather now (rain, showers, drizzle: the v2 light's own reading): people carry an umbrella up only in it
+  const wet = typeof _scflWeather === 'function' ? !!_scflWeather(L).rain : !!(L && L.rain);
   // the governor's thinning (a slow machine): only the far ones (specks of a few pixels) and always the SAME ones (by a hash of the
   // id, never by their place in the list, which shifts every time anyone arrives or leaves and made people pop in and out)
   if (lvl >= 4) list = list.filter(a => a.z < 40 || _wfrHash(String(a.id)) % 10 < 7);
   for (const a of list) {
     if (a.culled && a.cullReason !== 'occluded') continue;   // off the frame (the lod system); an occluded one still orders
     const m0 = mem.get(String(a.id));
-    const r = _wfrRec(_wfrAgentEnt(a), cam, { season: S.season, agent: true, prev: m0, regions: S.regions });
+    const r = _wfrRec(_wfrAgentEnt(a), cam, { season: S.season, agent: true, prev: m0, regions: S.regions, wet });
     if (!r) continue;
     // the near band (3.2): a giant at the lens is never drawn even if a module let one through
     if (!r.prim && r.z < cam.f * r.height / 405 && !a.framed) continue;

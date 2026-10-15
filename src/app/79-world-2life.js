@@ -1703,10 +1703,14 @@ function _wlfSteer(life, a, dir, spd) {
       if (o === a || o.layer !== a.layer || o.dead || o === a.leader || o.leader === a || (a.group && o.group === a.group)) continue;
       var rx = o.x - a.x, rz = o.z - a.z, dd = Math.hypot(rx, rz);
       // queue: something close ahead in my lane is a bumper (an oncoming one only when it is dead ahead)
-      var fwd = rx * dir[0] + rz * dir[1], lat = rx * rgx + rz * rgz, rs = a.r + o.r, onc = (o.vx * dir[0] + o.vz * dir[1]) < -0.2;
+      // oncoming is judged by where the other WANTS to go (its planned direction), not by the velocity it has: two walkers met head on
+      // in a gap both stand still, each sees a standing obstacle, neither is 'oncoming' and both wait nose to nose (a deadlock that only a squeeze breaks)
+      var ovx = o.vx, ovz = o.vz;
+      if (o.dir && o.spd > 0.2 && o.kind === 'walker' && !o.step && !o.fadeOut) { ovx = o.dir[0] * o.spd; ovz = o.dir[1] * o.spd; }
+      var fwd = rx * dir[0] + rz * dir[1], lat = rx * rgx + rz * rgz, rs = a.r + o.r, onc = (ovx * dir[0] + ovz * dir[1]) < -0.2;
       // squeezing past (a lane too narrow for two): an oncoming or standing mover is neither queued behind nor swerved round, it is
       // passed shoulder to shoulder; only one going my way (slower) is still followed
-      if ((a.squeeze > life.t || o.squeeze > life.t) && (onc || (o.vx * dir[0] + o.vz * dir[1]) < 0.2 * spd)) continue;
+      if ((a.squeeze > life.t || o.squeeze > life.t) && (onc || (ovx * dir[0] + ovz * dir[1]) < 0.2 * spd)) continue;
       if (fwd > 0 && fwd < rs + 1 && Math.abs(lat) < (onc ? rs * 0.6 : rs + 0.1)) a.slow = Math.min(a.slow, _wlfClamp((fwd - rs - 0.05) / 0.9, onc ? 0.3 : 0, 1));   // an oncoming one is passed, not waited for
       // a sidestep (people shuffle aside whatever their forward speed): away from the other's side of my line; dead on, to my left
       // (UK) for an oncoming mover and to my right (overtaking) for one going my way slower, or standing
@@ -1782,6 +1786,9 @@ function _wlfPair(life, a, o) {
   var people = rel && /^person\./.test(String(a.obj || '')) && /^person\./.test(String(o.obj || ''));
   var minD = (a.r + o.r) * (rel ? (people ? 0.96 : 0.6) : sq ? 0.25 : (a.kind === 'walker' && o.kind === 'walker' ? WORLD_LIFE_BODY : 1));
   if (d >= minD) return 0;
+  // shoulder room only where there is room for it: in a gap between two solids (a bollard and a bench 1.6 m apart: the legal centres
+  // lie 0.75 m apart, less than the 1.2 x floor) two people pass at their shoulder width, never pushed back along the lane for ever
+  if (!rel && !sq && minD > (a.r + o.r) && d >= (a.r + o.r) && a.kind === 'walker' && o.kind === 'walker' && (_wlfOneBody(life, a) || _wlfOneBody(life, o))) return 0;
   var ma = _wlfMass(a), mo = _wlfMass(o);
   if (ma === Infinity && mo === Infinity) return 0;
   var wa = mo === Infinity ? 1 : ma === Infinity ? 0 : mo / (ma + mo), wo = 1 - wa;
