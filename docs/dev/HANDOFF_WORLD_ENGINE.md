@@ -54,3 +54,24 @@ repeated here:
   is drawn without its object. Wiring particles into the frame (`79-world-5frame.js`) is its own task.
 - No smoke, stove or lamp entity appears in `79-world-zscene-fleet-canal-2.js`, so the disc comes from defaults (the fill,
   the kit or object parts), which is exactly the kind of engine-default bug to fix once.
+
+## Findings, 15 Oct (later): the DRAWING step loses things the simulation has. Fix this first.
+
+Checked on world-test/fleet-canal-2-w3 at 2026-10-15 13:00 (`node tools/world.mjs render ... --dates=autumn,night`):
+- Fixed since 10 Oct: the glowing white disc by the boats and the head cut off in the bottom-left corner are gone.
+- The life sim spawns everything the spec asks for: mallard 8, moorhen 2, heron 1, mute-swan 2, walkers, dog-walkers,
+  boater, narrowboat-cruising. `worldFrameAt` lists them all with sane boxes (ducks about 25x20 px at z 24 m, beside the
+  swans). But the rendered PNG shows ONLY the swans and the heron. The ducks and coots/moorhens are lost between the frame
+  record and the canvas: check `_wfrRec` / the agent draw in `79-world-5frame.js` (near-band test, `culled`, the waterline cut
+  `_wfrCutOf` / `worldWaterCut` for small floaters, sprite availability for `bird.mallard` variants 2 and 3, which are the
+  dabbling variants), then the per-agent draw at line ~886.
+- Moored narrowboats (`boat.narrowboat`) lose their hull body: one reads as a cabin box, the next as just a red railing.
+  The library narrowboat is a side-view sprite; seen obliquely, the engine squeezes or slices it. Requirement Q4 says objects
+  choose a view by camera angle and are drawn end-on when end-on. The canal needs a proper perspective boat (one object,
+  extruded like buildings in `79-world-4extrude.js`) instead of a side sprite.
+- Reeds are placed in open water in front of moored boats (margin clusters with `edge: true` spill into the channel).
+- The invariant checker reports 0 violations while all of this is visibly wrong: it validates the simulation, not the
+  drawn pixels. Add a "drawn vs simulated" check: every agent and static in the frame record must produce non-empty pixels
+  in its box (or be explicitly occluded), so missing drawings fail a test.
+- `tools/lib/world/sheet.mjs` `worldPageOpen` needs `{ ref, spec, id }` (as `world.mjs` passes it); with `{ ref }` alone
+  it fails with "no scene host".
