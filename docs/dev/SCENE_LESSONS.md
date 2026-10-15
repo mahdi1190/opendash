@@ -139,3 +139,40 @@ These must be fixed IN THE ENGINE before any test scene is shown again:
 - It frames sensibly: no cropped flat slabs and no half movers at the edges.
 - An author error can make a scene plainer, never wrong.
 - Foliage hanging from nothing (willow fronds, boughs, branches with no tree). World sense: every attached thing declares its PARENT (a bough needs a trunk, either in frame or clearly just outside it on the same side; fronds need a willow; lamps need a post; lead lines need a dog and a walker). The engine drops or re-attaches orphans at load and logs them.
+
+## G. Light and water (audit of 15 Oct, world engine v3)
+
+| Mistake | Why | Rule (test: tests/world-lightwater.test.mjs) |
+|---|---|---|
+| Petals, summer motes (fireflies at night) and autumn leaves fell from an empty sky in every world scene | The world host asked the v2 base for its seasonal screen particles | A world scene has no v2 particles (`particles: 'none'`); its particles come from the world (trees, chimneys) |
+| Lamp pools painted as opaque cream discs over grass, shrubs and kerbs, even at dawn | Pools and halos were one layer drawn over the finished frame at a fixed strength | Light on the ground is drawn under every static and mover, as a soft additive falloff scaled by how dark it is (`worldLightNightK`) |
+| Window halos read as fireflies in the trees and floated between dark panes | Halos were drawn after everything, from a world-space guess of the pane | A halo is drawn with its owner in depth order, on the drawn sprite's own glow point; the lit pane itself glows |
+| A straight glass-slab seam across a pond | Two overlapping water surfaces were two regions: the second painted its base over the first one's mirror | Water surfaces that overlap or touch at one level are one region (one wet mask, base and mirror) |
+| Reflections broken into zigzag chevrons; canals rippling like rivers | The v2 ripple table (2 + 10 u px) over a whole channel of tall reflected facades | A quiet shimmer (1 + 5 u px), still water at half again |
+| Night reflections paler than the trees they mirror | The day tint of the water was mixed into the night reflection | The reflection takes its tint from the graded (night) water |
+| A dark rectangle on the grass with nothing above it | Every planned static cast its footprint prism, drawn or not | Only what draws pixels now casts (`worldShadowPlan` o.drawn) |
+| Green ghosts of trees across a boardwalk at golden hour | Thin casters' shadows drew the sprite itself (its own colours) at the shadow's alpha | A shadow is the sprite's silhouette in the shadow colour |
+
+## H. Trees, plants and seasons (audit of 15 Oct, world engine v3)
+
+- ONE source of seasonal state. The library draws plants per season (winter branch skeletons, spring blossom, autumn
+  crowns, dead winter herbs); the material layer must never season that art again. Each entity's leaf state (kb
+  `worldKbState`, seeded per entity) picks WHICH seasonal art it is drawn in (`worldMaterialArtSeason`); the material season
+  step only touches the summer reference art of objects whose art does not change. Seasoning twice beheaded every tree in
+  winter (the winter crown, part `crown` = material `leaf`, was dropped as "leaves on a bare tree"), made far trees, hedges
+  and brambles vanish, and painted reeds and shrubs orange in January and April. Test: `tests/world-season.test.mjs`.
+- Herbs (reeds, bracken, buddleia, meadow) are dormant ('bare', the winter art) from mid November until they bud; never
+  'turn' all winter.
+- Name flower parts as flowers (`spikes`, `tops`, `heads`, `blossom` ... are material `flower`, never `leaf`).
+- A brown or grey stroke inside a crown is bark (the winter skeleton), whatever the part is called.
+- Weather is never baked into art in v3: the kit's winter frost and snow strokes (`@frost`, `@snow`) show only as much as
+  the day is frosty or snowy (`worldMaterialRime`).
+- Thin tree strokes (twigs, fronds) must not be magnified with a near tree: at most 1.6x their art width in device pixels
+  (`_wfrLineK`), or a near willow's fronds become flat bars.
+- A plant's record box is the union of its seasonal arts (`_wfrArtBox`): each plant is drawn in its own season, and chunk
+  bitmaps and culling are cut to the record box.
+
+## H. Looking, not only rules (15 Oct)
+| Mistake | Why | Rule |
+|---|---|---|
+| A boardwalk crossed open water to a platform mid-lake; every check passed and reviewers called it "better" | Reviews judged by scores, test counts and their own reports, and only checked what a rule anticipated | Every review first DESCRIBES each image in plain words (what is where, on what, connected to what), then asks of each sentence "is this how it is in real life at this place?". Anything implausible fails, rule or no rule. Then turn it into an engine fix and, where possible, a check. |
