@@ -413,6 +413,8 @@ function sceneRendererCreate(canvas, src, o) {
     phMark('layers');
     const plan = sceneBakePlan(C), byLayer = C.layers.map(() => []);
     const actorsB = typeof sceneMotionFixed === 'function' ? sceneMotionFixed(C) : C.actors, actorLays = actorsB.map(a => _sccActorLayers(C, a)), actorCopies = actorsB.map(() => []);
+    // the crowd pass's one-off work (its nav grids and the movers' groups, memoised per scene) in the bake, not the first frame
+    if (env && typeof sceneXCrowdAt === 'function' && actorsB.length > 1) { try { sceneXCrowdAt(C, 0, Lx, { actors: actorsB, cam: env.cam }); } catch (e) { /* the frame will try again */ } yield* slice(); }
     let occOrd = 0;
     C.items.forEach((it, i) => byLayer[it.layer] && byLayer[it.layer].push(i));
     const layerOfGroup = [];
@@ -644,6 +646,12 @@ function sceneRendererCreate(canvas, src, o) {
     const mark = P ? (name) => { flush(); const n = _sccNow(); P[name] = (P[name] || 0) + n - pm; pm = n; } : () => {};
     let blit = 0, blitPx = 0, draws = 0, occDraws = 0;
     const Lx = L || S.L, W = S.W, H = S.H, vs = S.vs, ox = S.ox, oy = S.oy;
+    // the drawn-vs-simulated contract (merge package "crowd", 15 Oct): window.__sceneOpts.records -> stats().movers, this frame's
+    // movers [{ id ('a' + actor index, 'f' + flow.lane.key: sceneXCrowdAt's ids), box (scene units, 1600 x 900), drawn, occludedBy
+    // (the nearer statics drawn over it) }]; window.__sceneOpts.moversOff -> the frame without movers (actors, flock birds, flow
+    // agents, and so their shadows, reflections and wakes)
+    const so = typeof window !== 'undefined' && window.__sceneOpts ? window.__sceneOpts : null, moversOff = !!(so && so.moversOff);
+    const recs = so && so.records ? [] : null;
     const blitAt = (c, x, y, sy0, sy1) => {          // a bitmap, only its rows sy0..sy1 (device px)
       const h = Math.min(c.height, sy1 - y) - Math.max(0, sy0 - y);
       if (h <= 0) return;
@@ -661,6 +669,7 @@ function sceneRendererCreate(canvas, src, o) {
     // v2: every mover's place now, before the frame passes (water wakes and reflections, actor shadows read them)
     const env = S.env;
     if (env) _sccMoversNow(env, S, t, Lx);
+    if (env && moversOff) env.actorsNow.length = 0;
     mark('pre'); if (!LY) blitAt(S.sky, 0, 0, 0, hb); mark('blit');
     // stars: three twinkle groups
     if (S.stars.length) {
@@ -733,11 +742,21 @@ function sceneRendererCreate(canvas, src, o) {
       };
       const boxAt = (p, b, fc) => { const fl = fc < 0; return [fl ? p.x - b[2] * p.s : p.x + b[0] * p.s, p.y + b[1] * p.s, fl ? p.x - b[0] * p.s : p.x + b[2] * p.s, p.y + b[3] * p.s]; };
       const agentBox = (a) => { const sh = a && a.o ? sceneObjShapes(a.o, a.v || 0, S.C.season) : null; return sh ? boxAt({ x: a.X, y: a.Y, s: a.s }, sh.box, a.flip ? -1 : 1) : null; };
+      const record = (id, sb, drawn, z, layer) => {
+        let occ = [];
+        if (drawn && g.occ && sb) {
+          const db = [sb[0] * vs + ox, sb[1] * vs + oy, sb[2] * vs + ox, Math.min(sb[3] * vs + oy, below)];
+          if (db[2] > db[0] && db[3] > db[1]) occ = _sccOccOf(g, db, z, layer, v1o).map(r => r.o);
+        }
+        recs.push({ id, box: sb ? sb.map(v => Math.round(v * 10) / 10) : null, drawn: !!drawn, occludedBy: [...new Set(occ)] });
+      };
       const drawMover = (m) => {
         if (m.kind === 'sign') { if (m.top < below) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(m.c, m.x, m.top); } return; }
+        if (moversOff && (m.kind === 'custom' || m.kind === 'actor' || m.kind === 'bird')) return;
         if (m.kind === 'custom') {
           const n = m.draw(ctx); if (n > 0) draws += n; _sccReset(ctx);
           const a = m.agent;
+          if (recs && a && a.flow != null) { const zz = Number.isFinite(a.d) && env && env.cam ? env.cam.horizon + env.cam.f * env.cam.eye / Math.max(0.01, a.d) : a.Y; record('f' + a.flow + '.' + a.lane + '.' + a.k, agentBox(a), n > 0, zz, a.layer); }
           if (n > 0 && a && Number.isFinite(a.d) && env && env.cam) occlude(agentBox(a), env.cam.horizon + env.cam.f * env.cam.eye / Math.max(0.01, a.d), a.layer);
           return;
         }
@@ -760,8 +779,9 @@ function sceneRendererCreate(canvas, src, o) {
             if (vw === undefined) { vw = m.viewOf(p.vo, vv); m.views.set(key, vw); }
             if (vw) { parts = vw.parts; b = vw.box; p = Object.assign({}, p, { s: p.s * vw.k }); }
           }
-          const fl = p.dir < 0;
-          if (!sceneMoverDrawn(p, b, vs, ox, oy, W, below)) return;   // the shadow pass asks the same (78-scene-shadow.js)
+          const fl = p.dir < 0, shown = sceneMoverDrawn(p, b, vs, ox, oy, W, below);
+          if (recs && m.kind === 'actor') { const ai = typeof sceneMotionFixed === 'function' ? sceneMotionFixed(S.C).indexOf(m.actor) : S.C.actors.indexOf(m.actor); record('a' + ai, boxAt(p, b, fl ? -1 : 1), shown && !(p.alpha != null && !(p.alpha > 0)), m.z != null ? m.z : p.y, m.layer != null ? m.layer : m.actor.layer); }
+          if (!shown) return;   // the shadow pass asks the same (78-scene-shadow.js)
           // the facing (from -1 to 1: an actor turning round narrows through side-on) and the walk's swing (0 to 1: legs at rest
           // while a scripted mover waits; sceneActorAt's go)
           // front and back views are never mirrored; side and three-quarter views take the facing (it narrows through a reversal)
@@ -827,6 +847,7 @@ function sceneRendererCreate(canvas, src, o) {
     drawTimes.push(total); dynTimes.push(Math.max(0, total - blit));
     if (drawTimes.length > 900) { drawTimes.splice(0, 300); dynTimes.splice(0, 300); }
     st.blitPx = blitPx; st.animatedDraws = draws; st.occDraws = occDraws;
+    st.movers = recs || undefined;
     if (env && !o.still && t > 0) _sccGovern(env, Math.max(0, total - blit), o);
   }
 
@@ -1190,7 +1211,7 @@ function sceneRendererCreate(canvas, src, o) {
       let bytes = 0;
       if (S) for (const sp of S.sprites) bytes += sp.bytes || 0;
       return { rid, drawMs: _sccStat(drawTimes), dynMs: _sccStat(dynTimes), bakeMs: st.bakeMs, maxSliceMs: st.maxSliceMs || 0, firstBakeMs: st.firstBakeMs, bakes: st.bakes, sprites: S ? S.sprites.size : 0, spriteBytes: bytes,
-        bitmaps: S ? 1 + S.groups.filter(g => g.c).length : 0, blitPx: st.blitPx, animatedDraws: st.animatedDraws, occDraws: st.occDraws || 0, actors: S ? S.C.actors.length : 0, placements: S ? S.C.items.length : 0,
+        bitmaps: S ? 1 + S.groups.filter(g => g.c).length : 0, blitPx: st.blitPx, movers: st.movers, animatedDraws: st.animatedDraws, occDraws: st.occDraws || 0, actors: S ? S.C.actors.length : 0, placements: S ? S.C.items.length : 0,
         lightKey: S ? S.lk : null, size: S ? [S.W, S.H] : null, profile: o.profile ? Object.fromEntries(Object.entries(prof).map(([k, v]) => [k, k === 'frames' ? v : Math.round(v / Math.max(1, prof.frames) * 100) / 100])) : undefined,
         passes: S && S.env ? _sccPassStats(S.env) : undefined,
         restored: st.restored || null, bakeWallMs: st.bakeWallMs || 0, warmWallMs: st.warmWallMs || 0, newSprites: phNew.sprites, newSpriteBytes: phNew.bytes, sharedSprites: sceneSprites.size, sharedSpriteBytes: sceneSprites.bytes,
@@ -1580,20 +1601,25 @@ function _sccMoversNow(env, S, t, L) {
   env.frameNo++; env.t = t; env.actorsNow.length = 0;
   const cam = env.cam, memo = env.apNow || (env.apNow = new Map()), bands = env.C && env.C.cam && env.C.cam.bands;
   memo.clear();
+  // every actor's base place first (an actor registered in several groups, by depth, is placed once a frame), then the crowd pass
+  // (78-scene-x-crowd.js: actors and flow agents together, a pure function of t) moves the ones that would walk into each other
+  for (const g of S.groups) for (const m of g.movers) {
+    if (m.kind !== 'actor' || memo.has(m.actor)) continue;
+    const a = m.actor;
+    let p = null;
+    if (a.ground && typeof sceneActorAtV2 === 'function') {
+      try { const q = sceneActorAtV2(a, t, cam); if (q) p = { x: q.X != null ? q.X : q.x, y: q.Y != null ? q.Y : q.y, s: q.s, dir: q.dir != null ? q.dir : q.flip ? -1 : 1, alpha: q.alpha == null ? 1 : q.alpha, d: q.d, gx: q.x }; } catch (e) { p = null; }
+    }
+    if (!p) p = sceneActorAt(a, t);
+    p.face = _sccFace(a, t, p, cam);
+    _sccHeading(a, t, cam, p);
+    memo.set(a, p);
+  }
+  _sccCrowd(env, t, L, memo);
   S.groups.forEach((g, gi) => {
     for (const m of g.movers) {
       if (m.kind === 'actor') {
-        const a = m.actor;
-        let p = memo.get(a);   // an actor registered in several groups (by depth) is placed once a frame
-        if (!p) {
-          if (a.ground && typeof sceneActorAtV2 === 'function') {
-            try { const q = sceneActorAtV2(a, t, cam); if (q) p = { x: q.X != null ? q.X : q.x, y: q.Y != null ? q.Y : q.y, s: q.s, dir: q.dir != null ? q.dir : q.flip ? -1 : 1, alpha: q.alpha == null ? 1 : q.alpha, d: q.d }; } catch (e) { p = null; }
-          }
-          if (!p) p = sceneActorAt(a, t);
-          p.face = _sccFace(a, t, p, cam);
-          _sccHeading(a, t, cam, p);
-          memo.set(a, p);
-        }
+        const a = m.actor, p = memo.get(a);
         m.p = p; m.y = p.y;
         // drawn in the group of the depth band it is in now (10 Oct); the nearest of its groups when that one holds none of it
         if (m.copies && m.copies.length > 1 && Number.isFinite(p.d)) {
@@ -1610,6 +1636,36 @@ function _sccMoversNow(env, S, t, L) {
       } else if (m.kind === 'bird') { const p = sceneFlockAt(m.flock, m.i, t); m.p = p; m.y = p.y; }
     }
   });
+}
+/**
+ * The crowd pass of a frame (merge package "crowd", 15 Oct; 78-scene-x-crowd.js): the actors' base places (memo: actor -> p) and the
+ * flow agents of this t (the flow layer's own list, which the flow pass then draws) go through sceneXCrowdAt together, and the
+ * resolved places are written back (p.x, p.y, p.s, p.d; an agent's X, Y, s, x, d), so the shadows, reflections and wakes the
+ * passes draw follow them. env.crowdNow keeps the records (the drawn-vs-simulated check reads them). Off: window.__sceneOpts.x.crowd
+ * === false (or C.x.crowd === false): nothing moves.
+ */
+function _sccCrowd(env, t, L, memo) {
+  env.crowdNow = null;
+  const C = env.C;
+  if (!C || typeof sceneXCrowdAt !== 'function' || (typeof sceneXCrowdOn === 'function' && !sceneXCrowdOn(C))) return;
+  let flows = [];
+  if (Array.isArray(C.flows) && C.flows.length && typeof _scflfLayerOf === 'function') { try { flows = _scflfLayerOf(env).layer.agents(t) || []; } catch (e) { flows = []; } }
+  if (memo.size + flows.length < 2) return;
+  const pre = new Map();
+  for (const [a, p] of memo) pre.set(a, { X: p.x, Y: p.y, s: p.s, alpha: p.alpha, x: p.gx, d: p.d, v2: !!(a.ground && Number.isFinite(p.gx) && Number.isFinite(p.d)) });
+  let recs;
+  try { recs = sceneXCrowdAt(C, t, L, { actors: typeof sceneMotionFixed === 'function' ? sceneMotionFixed(C) : C.actors, flows, pre, cam: env.cam }); } catch (e) { return; }
+  for (const r of recs) {
+    if (r.x === r.bx && r.d === r.bd) continue;
+    if (r.kind === 'actor') {
+      const p = memo.get(r.ref);
+      if (!p) continue;
+      p.x = r.X; p.y = r.Y; p.s = r.s;
+      if (Number.isFinite(p.d)) p.d = r.d;
+      if (Number.isFinite(p.gx)) p.gx = r.x;
+    } else if (r.ref) { const ag = r.ref; ag.X = r.X; ag.Y = r.Y; ag.s = r.s; ag.x = r.x; ag.d = r.d; }
+  }
+  env.crowdNow = recs;
 }
 /**
  * An actor's facing from its GROUND heading (4.3, user request 10 Oct: movers face the way they travel): its place half a

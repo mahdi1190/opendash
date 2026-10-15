@@ -7,11 +7,13 @@
 //   lzwEncode(indices, minCodeSize = 8)     -> Uint8Array   the GIF LZW code stream (before the 255-byte sub-blocks)
 //   gifEncode({ width, height, palette, frames, loop = 0 }) -> Buffer   GIF89a, one global palette, NETSCAPE2.0 loop;
 //                                              frame: { indices, x, y, w, h, delay (1/100 s), transparent (index or -1) }
-//   gifFromPngs(pngs, { fps, dither, diff, onFrame }) -> { gif, frames, colours }   the whole pipeline over PNG buffers; diff (default on)
-//                                              writes only the changed rectangle of each frame, unchanged pixels transparent
-//   sceneCapture(chrome, pageOpts, { seconds, fps, dither, framesDir }) -> { gif, frames, colours, width, height }
+//   gifFromPngs(pngs, { fps, dither, diff, onFrame }) -> { gif, frames, colours, still }   the whole pipeline over PNG buffers; diff (default
+//                                              on) writes only the changed rectangle of each frame, unchanged pixels transparent; still:
+//                                              how many frames equal the one before (diff only)
+//   sceneCapture(chrome, pageOpts, { seconds, fps, dither, framesDir }) -> { gif, frames, colours, width, height, still, frozen }
 //                                              loads the scene through the page harness, stops its clock and draws frame k at t = k / fps
-//                                              itself (deterministic, independent of the machine's speed), one PNG per frame
+//                                              itself (deterministic, independent of the machine's speed), one PNG per frame; frozen: every
+//                                              frame equals the one before (the clock did not advance)
 import { inflateSync, deflateSync } from 'node:zlib';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -219,7 +221,7 @@ export function gifFromPngs(pngs, { fps = 12, dither = false, diff = true, onFra
   });
   const palette = quantise(Uint8Array.from(sample), diff ? 255 : 256), TR = diff ? 255 : -1;
   const cache = new Int16Array(1 << 24).fill(-1), frames = [];
-  let prev = null;
+  let prev = null, still = 0;
   pngs.forEach((png, k) => {
     const cur = indexFrame(k ? pngDecode(png).data : first.data, W, H, palette, { dither, cache });
     const delay = Math.round(((k + 1) * 100) / fps) - Math.round((k * 100) / fps);
@@ -227,13 +229,13 @@ export function gifFromPngs(pngs, { fps = 12, dither = false, diff = true, onFra
     if (!diff || !prev) { frames.push({ indices: cur, delay }); prev = cur; return; }
     let x0 = W, y0 = H, x1 = -1, y1 = -1;
     for (let y = 0, p = 0; y < H; y++) for (let x = 0; x < W; x++, p++) if (cur[p] !== prev[p]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-    if (x1 < 0) { frames.push({ indices: Uint8Array.of(TR), x: 0, y: 0, w: 1, h: 1, delay, transparent: TR }); return; }
+    if (x1 < 0) { still++; frames.push({ indices: Uint8Array.of(TR), x: 0, y: 0, w: 1, h: 1, delay, transparent: TR }); return; }
     const w = x1 - x0 + 1, h = y1 - y0 + 1, sub = new Uint8Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const p = (y0 + y) * W + x0 + x; sub[y * w + x] = cur[p] === prev[p] ? TR : cur[p]; }
     frames.push({ indices: sub, x: x0, y: y0, w, h, delay, transparent: TR });
     prev = cur;
   });
-  return { gif: gifEncode({ width: W, height: H, palette, frames }), frames: frames.length, colours: palette.length / 3 };
+  return { gif: gifEncode({ width: W, height: H, palette, frames }), frames: frames.length, colours: palette.length / 3, still: diff ? still : null };
 }
 
 /**
@@ -264,5 +266,8 @@ export async function sceneCapture(chrome, pageOpts, { seconds = 3, fps = 12, di
     writeFileSync(join(framesDir, `frame-${String(k).padStart(3, '0')}.png`), pngEncode(W, H, rgb));
   } : null;
   const res = gifFromPngs(pngs, { fps, dither, diff, onFrame });
-  return Object.assign(res, { width: size.w, height: size.h, fps, seconds: n / fps });
+  // the clock really advances (merge package "checks", 15 Oct: the v3 capture once drew the base moment in every frame): frame k
+  // is drawn at t = k / fps, so a scene that moves at all changes between frames; every frame equal to the one before is a frozen clock
+  const frozen = n > 2 && res.still === n - 1;
+  return Object.assign(res, { width: size.w, height: size.h, fps, seconds: n / fps, frozen });
 }

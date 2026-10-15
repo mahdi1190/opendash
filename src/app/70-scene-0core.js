@@ -20,7 +20,8 @@
    Scene engine v2 (docs/dev/SCENE_ENGINE_V2.md 12, 14): data whose camera has eye / fov / horizon / preset (sceneIsV2) compiles
                through the guarded v2 stages of 70-scene-1ground.js, -1scatter.js and the other builders' files: the camera,
                surfaces, water geometry, ground placements, scatter, cover, flows, atmosphere, weather, lights, draw order. v1
-               data takes exactly the path below (byte-identical compiles: tests/scene-compat.test.mjs). A recipe item
+               data takes exactly the path below (byte-identical compiles: tests/scene-compat.test.mjs). v2 compiles end with world
+               sense (sceneXSense, 78-scene-x-sense.js; off with opt.x.sense === false). A recipe item
                (item.recipe, 70-scene-1recipe.js) supersedes a v1 item of the same pack and id in sceneItems.
    Archetypes  sceneArchetypeDefine(id, a), sceneArchetype(id), sceneArchetypes(),
                sceneArchetypeCheck(id, row), sceneFromArchetype(archId, params, patch),
@@ -494,17 +495,18 @@ function sceneCompile(data, opt) {
   };
   let order = 0;
   // v2: a resolved placement (pixel form + its ground record $v2) is pushed as v1, then gains its v2 fields
-  const pushV2 = (q, seedOf) => {
+  // src: where the item came from ({ place: i } | { scatter: ri } | { cover: true }), noted for the world-sense pass (78-scene-x-sense.js)
+  const pushV2 = (q, seedOf, src) => {
     const it = push(seedOf != null ? Object.assign({}, q, { seed: q.seed != null ? q.seed : seedOf }) : q, order++);
-    if (it) { sceneCompileV2Attach(G, it, q); G.placed.push(q); if (typeof sceneScatterFootAdd === 'function' && q.$v2 && !q.$v2.cover) sceneScatterFootAdd(G, it.o, q.$v2.g, q.$v2.k); }
+    if (it) { sceneCompileV2Attach(G, it, q); G.placed.push(q); if (typeof sceneScatterFootAdd === 'function' && q.$v2 && !q.$v2.cover) sceneScatterFootAdd(G, it.o, q.$v2.g, q.$v2.k); if (typeof sceneXSenseNote === 'function') sceneXSenseNote(it, q, src); }
     return it;
   };
-  if (G) (data.place || []).forEach((p, i) => { const q = sceneCompileV2Place(G, p, i); if (q) pushV2(q, sceneHash(data.id + '|p|' + i) % 1e6); });
+  if (G) (data.place || []).forEach((p, i) => { const q = sceneCompileV2Place(G, p, i); if (q) pushV2(q, sceneHash(data.id + '|p|' + i) % 1e6, { place: i }); });
   else (data.place || []).forEach((p, i) => push(Object.assign({}, p, { seed: p.seed != null ? p.seed : sceneHash(data.id + '|p|' + i) % 1e6 }), order++));
   (data.scatter || []).forEach((rule, ri) => {
     if (G && rule && !rule.area) {
       // a v2 rule (V2 11): ground metres, surfaces, Poisson disk, clusters, footprints; wind strips per layer
-      const made = (typeof sceneScatterV2 === 'function' ? sceneScatterV2(G, rule, ri) : []).map(q => pushV2(q)).filter(Boolean);
+      const made = (typeof sceneScatterV2 === 'function' ? sceneScatterV2(G, rule, ri) : []).map(q => pushV2(q, null, { scatter: ri })).filter(Boolean);
       if (rule.anim === 'strip' && made.length && typeof sceneScatterStrips === 'function') strips.push(...sceneScatterStrips(made, rule));
       return;
     }
@@ -565,7 +567,7 @@ function sceneCompile(data, opt) {
       for (const [c, list] of byCol) strips.push({ layer: li(rule.layer), x0: -160 + c * w, x1: -160 + (c + 1) * w, y0: Math.min(...list.map(i => i.y)), y1: Math.max(...list.map(i => i.y)), items: list, amp: rule.amp || 1 });
     }
   });
-  if (G && typeof sceneCoverAuto === 'function') for (const q of sceneCoverAuto(G, G.placed)) pushV2(q);   // seasonal cover (V2 10)
+  if (G && typeof sceneCoverAuto === 'function') for (const q of sceneCoverAuto(G, G.placed)) pushV2(q, null, { cover: true });   // seasonal cover (V2 10)
   items.sort((a, b) => a.layer - b.layer || a.z - b.z || a.order - b.order);
   items.forEach(it => { delete it.order; });
   const index = new Map(items.map((it, i) => [it, i]));
@@ -604,6 +606,14 @@ function sceneCompile(data, opt) {
       actors: actors.length, flockBirds, signs: signs.length, animatedDraws: animatedParts + strips.length + actorParts + flockBirds, objects, categories, layersUsed: used.size,
       distinctSprites: new Set(items.map(i => [i.o, i.v, i.season, i.haze, i.tint ? i.tint[1] : 0, sceneScaleBucket(i.s)].join('|'))).size, dataBytes: _scDataBytes(data) } };
   if (G && typeof sceneCompileV2Finish === 'function') sceneCompileV2Finish(G, C);   // flows, atmosphere, weather, lights, draw order, stats.v2
+  // world sense (78-scene-x-sense.js, v3's placement knowledge ported to v2): every placement checked against what its class
+  // may be (boats in water, floaters at the water level, reeds in the margin, no orphan boughs); clear errors repaired, the
+  // rest warned, all logged in C.sense and C.problems. v2 only (v1 compiles never change: sceneXSenseReport reports on them).
+  // Off: opt.x.sense === false (or 'report'), window.__sceneOpts.x.sense, env SCENE_X=off / sense=off
+  if (G && C.v === 2 && typeof sceneXSense === 'function') {
+    try { sceneXSense(C, data, { x: opt.x }); }
+    catch (e) { if (Array.isArray(C.problems)) C.problems.push({ rule: 'sense', sev: 'warn', i: null, obj: null, at: null, msg: 'world sense failed: ' + String(e && e.message).slice(0, 120), fix: 'none: the scene compiles as authored' }); }
+  }
   // v1 opt-in effects (V2 14.2): fx { shadows, water, atmos, weather: 2 } rides on the compiled scene for the render passes (only when set)
   if (data.fx && typeof data.fx === 'object') { const fx = {}; for (const k of ['shadows', 'water', 'atmos', 'weather']) if (data.fx[k] === 2) fx[k] = 2; if (Object.keys(fx).length) C.fx = fx; }
   // a painted scene (docs/dev/PAINTED_SCENES.md): the backdrop objects ride on the compiled scene for the paint pass (78-scene-paint.js)

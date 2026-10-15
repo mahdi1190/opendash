@@ -1275,7 +1275,7 @@ function sceneCompileV2Actor(G, a, i) {
   // the motion rules (user request, 10 Oct): on its water or ground, clear of hulls and blockers; a loop that would pop turns round
   let loop = a.loop;
   if (a.motion !== false) {
-    const W = _scgrWorldG(G), fx = sceneMoverFixPath(W, a.obj, pts), pop = (a.loop || 'pingpong') === 'loop' && _scgrPops(W, pts);
+    const W = _scgrWorldG(G), fx = sceneMoverFixPath(W, a.obj, pts, { C: G.data }), pop = (a.loop || 'pingpong') === 'loop' && _scgrPops(W, pts);
     if (fx.moved || fx.detours || pop) {
       pts = fx.pts.map(p => [_scgrR2(p[0]), _scgrR2(p[1])]);
       if (pop) loop = 'pingpong';
@@ -1789,7 +1789,9 @@ function _scgrSegHits(a, b, bl, N) {
 /**
  * A mover's ground path made right (see the head of this section). obj: the mover's object id; pts: [[x, d, ...extra], ...] in
  * metres (extra elements, a timed v1 path's waits, ride along on moved points); o: { insert: false } never adds points (a timed
- * path). -> { pts, mode, moved, detours, bad: [{ x, d, why }] } (bad: the faults it could not fix).
+ * path), C (the compiled scene, for the off switch). -> { pts, mode, moved, detours, nav (detours found by A*), navFail, bad: [{ x,
+ * d, why }] } (bad: the faults it could not fix). A blocker with no short way round falls back to A* over the walkable map
+ * (78-scene-x-nav.js sceneXNavPath) before it is a fault.
  */
 function sceneMoverFixPath(W, obj, pts, o) {
   o = o || {};
@@ -1838,7 +1840,8 @@ function sceneMoverFixPath(W, obj, pts, o) {
   // 2. a blocker crossed between two points: round one under 16 m long, else a fault
   const fin = [out[0]];
   for (let i = 1; i < out.length; i++) {
-    const a = fin[fin.length - 1], b = out[i];
+    const a = fin[fin.length - 1];
+    let b = out[i];
     const hits = (u, v, q) => (!q.wet || N.mode === 'water') && _scgrSegHits(u, v, q, N);
     const bl = W.shown(a[0], a[1]) || W.shown(b[0], b[1]) ? W.blockers.find(q => hits(a, b, q)) : null;
     if (bl) {
@@ -1856,6 +1859,37 @@ function sceneMoverFixPath(W, obj, pts, o) {
           const chain = [a].concat(pp, [b]);
           if (pp.every(p => !_scgrWhyNot(W, N, p[0], p[1])) && chain.every((p, k) => !k || !W.blockers.some(q => hits(chain[k - 1], p, q)))) { fin.push(...pp); res.detours++; ok = true; break; }
         }
+      }
+      // (merge package "crowd", 15 Oct) no short way round: A* over the walkable map (78-scene-x-nav.js, ported from the v3 world
+      // engine: a clearance grid of this mover's own rules, 0.5 m cells, 2,000 expansions, string-pulled); a closed gate stays a
+      // fault (it is the author's to open), and a failed search is memoised, never retried
+      // (a timed path keeps its timing: the leg's seconds are shared over the new legs by length)
+      if (!ok && bl.kind !== 'gate' && typeof sceneXNavPath === 'function' && (typeof sceneXNavOn !== 'function' || sceneXNavOn(o.C))) {
+        let via = null;
+        try { via = sceneXNavPath(W, N, a, b, { around: [bl.x - bl.hx - N.rx - 2, bl.d - bl.hd - N.rd - 2, bl.x + bl.hx + N.rx + 2, bl.d + bl.hd + N.rd + 2], pad: 3 }); } catch (e) { via = null; }
+        // a short leg that only grazes a corner of the grown footprint (both ends legal, inside one grid cell): bend it through a
+        // point pushed out of the blocker
+        if (via && via.length < 2) {
+          via = null;
+          const mx = (a[0] + b[0]) / 2, md = (a[1] + b[1]) / 2, ux = mx - bl.x, ud = md - bl.d, ul = Math.hypot(ux, ud) || 1;
+          for (let k = 0.1; k <= 1.5 + 1e-9 && !via; k += 0.1) {
+            const p = [mx + ux / ul * k, md + ud / ul * k];
+            if (!_scgrWhyNot(W, N, p[0], p[1]) && !W.blockers.some(q => hits(a, p, q) || hits(p, b, q))) via = [p, [b[0], b[1]]];
+          }
+        }
+        if (via && via.length) {
+          const chain = [a].concat(via);
+          if (chain.every((p, k) => !k || !W.blockers.some(q => hits(chain[k - 1], p, q)))) {
+            const pts = via.slice(0, -1).map(p => [_scgrR2(p[0]), _scgrR2(p[1])]);
+            if (b.length > 2) {
+              const lens = chain.map((p, k) => (k ? Math.hypot(p[0] - chain[k - 1][0], p[1] - chain[k - 1][1]) : 0)), tot = lens.reduce((u, v) => u + v, 0) || 1, dur = b[4];
+              pts.forEach((p, k) => p.push(0, 0, dur == null ? null : _scgrR2(dur * lens[k + 1] / tot)));
+              if (dur != null) { b = b.slice(); b[4] = _scgrR2(dur * lens[lens.length - 1] / tot); }
+            }
+            fin.push(...pts); res.detours++; res.nav = (res.nav || 0) + 1; ok = true;
+          }
+        }
+        if (!ok) res.navFail = (res.navFail || 0) + 1;
       }
       if (!ok) res.bad.push({ x: _scgrR2((a[0] + b[0]) / 2), d: _scgrR2((a[1] + b[1]) / 2), why: (bl.kind === 'gate' ? 'gate:' : bl.kind === 'hull' ? 'hull:' : 'cross:') + bl.o });
     }
@@ -1899,14 +1933,27 @@ function sceneMotionFixed(C) {
     if (!ms) return a;
     const h = ms.cls === 'boat' || ms.cls === 'bird-water' ? W.cam.water : 0, g = _scgrPathToGround(W, a.path, h);
     if (!g) return a;
-    const timed = a.path.some(p => p.length > 2), r = sceneMoverFixPath(W, a.o, g, { insert: !timed });
+    const timed = a.path.some(p => p.length > 2), r = sceneMoverFixPath(W, a.o, g, { insert: !timed, C });
     const pop = (a.loop || 'pingpong') === 'loop' && _scgrPops(W, g);
     if (!r.moved && !r.detours && !pop) return a;
     const path = r.pts.map(p => { const P = W.proj(p[0], p[1], h); return [_scgrR1(P.X), _scgrR1(P.Y)].concat(p.slice(2)); });
     return Object.assign({}, a, { path, len: _scgrLen(path), loop: pop ? 'pingpong' : a.loop, $motion: { moved: r.moved, detours: r.detours, pop } });
   });
-  _scgrFixedMemo.set(C, out);
-  return out;
+  // (merge package "crowd") walkers that would meet where the way is too narrow to pass get their phases moved apart
+  // (78-scene-x-crowd.js sceneXPhase); worked on a copy, so the crowd's caches of the final list see the final offsets
+  let fin = out;
+  if (typeof sceneXPhase === 'function') {
+    let ph = null;
+    try { ph = sceneXPhase(C, out.slice()); } catch (e) { ph = null; }
+    // applied in a v2 scene (its walkable map is its declared surfaces); a v1 scene's map is a guess (no surfaces: only the water
+    // and the blockers), so there it is only a hint in the motion lint, and the authored offsets (and the still) stay as they are
+    if (ph && ph.offsets.size) {
+      const byI = new Map(ph.log.map(l => [l.i, l])), apply = C.v === 2;
+      fin = out.map((a, i) => (ph.offsets.has(i) ? Object.assign({}, a, apply ? { offset: ph.offsets.get(i) } : {}, { $motion: Object.assign({}, a.$motion || {}, { phase: Object.assign({ applied: apply }, byI.get(i)) }) }) : a));
+    }
+  }
+  _scgrFixedMemo.set(C, fin);
+  return fin;
 }
 
 /* ---------- the motion lint (tools: node tools/anim-pack.mjs scene motion <ref>) ---------- */
@@ -1977,13 +2024,15 @@ function sceneMotionCheck(C, o) {
     }
     // what is still wrong after the engine's own fix (the drawn path, in metres)
     const gd = Array.isArray(a.ground) ? g : (_scgrPathToGround(W, drawn, h) || g);
-    const r = sceneMoverFixPath(W, a.o, gd, { insert: true });
+    const r = sceneMoverFixPath(W, a.o, gd, { insert: true, C });
     const m = { i, o: a.o, cls: ms.cls, mode: r.mode, path: authored, fixed: drawn, bad: r.bad.map(b => { const P = W.proj(b.x, b.d, floats ? h : 0); return Object.assign({ X: R1(P.X), Y: R1(P.Y) }, b); }), moved: 0, detours: 0, ground: g };
     const f = fixed[i];
     if (f && f.$motion) { m.moved = f.$motion.moved; m.detours = f.$motion.detours; m.pop = f.$motion.pop; }
     const vf = v2Fixed.get(i);
     if (vf) { m.moved = vf.moved || 0; m.detours = vf.detours || 0; m.pop = !!vf.pop; }
     if (m.moved || m.detours || m.pop) prob('moverFixed', 'info', i, a.o, drawn[0], `actors[${i}] ${a.o}: the engine moved ${m.moved} point(s), went round ${m.detours} blocker(s)${m.pop ? ', and turned its popping loop into a pingpong' : ''}`, 'fix the path in the scene so the authored path is already right');
+    const ph = f && f.$motion && f.$motion.phase;
+    if (ph) prob('moverPhase', 'info', i, a.o, drawn[0], ph.applied ? `actors[${i}] ${a.o}: its phase moved from ${ph.from} to ${ph.to} so it does not meet another walker where the way is too narrow to pass (${ph.before} -> ${ph.after} meetings in 120 s)` : `actors[${i}] ${a.o}: meets another walker where the way may be too narrow to pass (${ph.before} times in 120 s; offset ${ph.to} would make it ${ph.after}; a v1 scene: not applied)`, 'give the two walkers offsets that keep them apart on the narrow stretch, or widen it');
     const seen = new Set();
     for (const b of m.bad) {
       const rule = ruleOf(b.why);
@@ -2025,7 +2074,7 @@ function sceneMotionCheck(C, o) {
     const faced = new Set();   // one moverFacing per object of a flow
     for (const ln of F.lanes) {
       if (!Array.isArray(ln.path) || ln.path.length < 2) continue;
-      const floats = F.kind === 'boat', r = sceneMoverFixPath(W, obj, ln.path, { insert: true });
+      const floats = F.kind === 'boat', r = sceneMoverFixPath(W, obj, ln.path, { insert: true, C });
       const drawn = ln.path.map(p => { const P = W.proj(p[0], p[1], floats ? cam.water : 0); return [R1(P.X), R1(P.Y)]; });
       const m = { i: 'flow:' + (F.id || fi), o: obj, cls: sceneMoverSize(obj).cls, mode: r.mode, flow: true, path: drawn, fixed: drawn, bad: r.bad.map(b => { const P = W.proj(b.x, b.d, floats ? cam.water : 0); return Object.assign({ X: R1(P.X), Y: R1(P.Y) }, b); }), moved: ln.$moved || 0, detours: 0 };
       const seen = new Set();
@@ -2042,13 +2091,19 @@ function sceneMotionCheck(C, o) {
       rep.movers.push(m);
     }
   });
-  // overlaps: two ground movers in the same place at the same time (sampled over two minutes)
+  // overlaps: two ground movers in the same place at the same time (sampled over two minutes), where they are DRAWN: through the
+  // crowd pass (78-scene-x-crowd.js) when it is on, so what it resolves is no longer an overlap
   const live = rep.movers.filter(m => !m.flow && m.mode);
   if (live.length > 1 && typeof sceneActorAt === 'function') {
-    const T = o.seconds || 120, step = o.step || 0.5, pos = live.map(m => {
+    const T = o.seconds || 120, step = o.step || 0.5;
+    const crowd = o.crowd !== false && typeof sceneXCrowdAt === 'function' && (typeof sceneXCrowdOn !== 'function' || sceneXCrowdOn(C)) ? [] : null;
+    if (crowd) for (let t = 0; t <= T; t += step) { const mp = new Map(); try { for (const r of sceneXCrowdAt(C, t, null, {})) if (r.kind === 'actor') mp.set(r.id, [r.x, r.d]); } catch (e) { /* the base places */ } crowd.push(mp); }
+    const pos = live.map(m => {
       const a = (fixed[m.i] && fixed[m.i] !== C.actors[m.i]) ? fixed[m.i] : C.actors[m.i], N = _scgrMoverNeeds(W, a.o, m.ground || []), out = [];
-      for (let t = 0; t <= T; t += step) {
+      for (let t = 0, k = 0; t <= T; t += step, k++) {
         let x, d;
+        const cr = crowd && crowd[k] ? crowd[k].get('a' + m.i) : null;
+        if (cr) { out.push(W.shown(cr[0], cr[1]) ? cr : null); continue; }
         if (Array.isArray(a.ground)) { const q = sceneActorAtV2(a, t, cam); x = q.x; d = q.d; }
         else { const q = sceneActorAt(a, t), gq = W.unproj(q.x, q.y, N.mode === 'water' ? cam.water : 0); if (!gq || !(q.alpha > 0) || !(q.s > 0)) { out.push(null); continue; } x = gq[0]; d = gq[1]; }
         out.push(W.shown(x, d) ? [x, d] : null);
