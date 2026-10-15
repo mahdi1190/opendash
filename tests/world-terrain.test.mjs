@@ -96,3 +96,17 @@ test('two waters side by side are one opening: the seam between them hides nothi
   assert.ok(b && b.dNear < 60 * 1.0 + 0.5, `the far water starts at its own near edge ${b && b.dNear} (the sight line crosses the ground over the near water)`);
   assert.ok(P.find(r => r.id === 'a').dNear >= 16 * k - 0.05);
 });
+
+test('a bench on a quay edge faces the water, and the sitter who stands up never steps into it (SCENE_LESSONS J)', () => {
+  const sp = spec({ surfaces: [{ id: 'quay', kind: 'plaza', poly: [[-60, 1], [60, 1], [60, 10], [-60, 10]] }, { id: 'esk', kind: 'water', water: 'harbour', poly: [[-60, 10], [60, 10], [60, 80], [-60, 80]], shallow: 1 }],
+    entities: [{ obj: 'street.bench', at: [-6, 9.2], facing: 0, id: 'bench-q' }],
+    life: [{ who: 'visit', mix: { elderly: 1 }, rate: '4/min', goals: [{ go: 'bench-q' }, { do: 'sit', for: [10, 20] }, { leave: 'W' }] }] });
+  const w = W.worldBuild(sp, { fill: false }), nav = W.worldNavBuild(w), life = W.worldLifeInit(w, nav, 0);
+  let sat = 0, wet = 0;
+  for (let t = 0; t < 240 * 15; t++) {
+    W.worldLifeTick(life, 1 / 15);
+    for (const a of life.agents) { if (a.dead || a.kind !== 'walker') continue; if (a.bs === 'sit') sat++; if (a.z > 10) wet++; }
+  }
+  assert.ok(sat > 15, `somebody sat down (${sat} ticks)`);
+  assert.equal(wet, 0, `${wet} ticks on the water`);
+});

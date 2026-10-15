@@ -196,7 +196,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
     edges: Object.assign({}, _WKT_EDGES_URBAN, { water: { pond: 'natural', lake: 'quay', canal: 'quay', river: 'quay', sea: 'quay', harbour: 'quay', puddle: 'none' },
       quay: { top: [['plant.rph-short-grass', 2]], posts: [['street.bollard', 4], ['street.mqn-lifebuoy', 1]] } }),
-    frame: [{ kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'post', obj: 'street.bollard' }],
+    frame: [{ kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'lamp', obj: 'street.lamppost' }],   // never a bollard: a 1 m post cut by the frame's bottom edge is a dark blob (SCENE_LESSONS G)
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'crowd', rate: '8/min' }, paving: { who: 'crowd', rate: '8/min' }, water: [{ who: 'mallard', count: 4 }], air: [{ who: 'gulls', count: 5 }] } },
   // a terraced street: flags and kerbs, street trees in pits, lamps, bins, hedges and front-garden borders
   'terraced-street': { label: 'terraced street', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.15, 0.45], layers: 5,

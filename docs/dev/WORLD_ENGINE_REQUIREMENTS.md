@@ -432,7 +432,7 @@ The unit tests and the Node run were green while the page was not. The contract 
   3 % depth steps, quads shaded by slope, rock when steep, grass or the surface's own colour otherwise), ordered with every
   other static, so a house stands on its strip and a hill hides what lies behind it. Flat ground draws nothing.
 - TR2 [T] An entity wholly behind a nearer rise of the ground is dropped and logged (`terrain`); floaters on water are exempt.
-- TR3 [T] A prop never fills more than about 12 % of the frame at the lens (a 1.3 m reference height), a person or animal 45 %.
+- TR3 [T] A prop never fills more than about 20 % of the frame at the lens (a 1.3 m reference height), a person or animal 45 %.
 - TR4 [T] A water below the ground level is hidden behind the near bank: its visible footprint is the polygon cut by the water openings
   scaled by (eye - level) / eye about the camera's foot, so a quay never shows the harbour over its own paving, and two waters
   side by side are one opening.

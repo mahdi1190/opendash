@@ -696,9 +696,9 @@ function worldPlace(world) {
     const foot = _wcNum(cam.eye) && _wcNum(cam.horizon) && cam.horizon < 900 ? cam.f * Math.max(0.2, cam.eye - (_wcNum(e.y) ? e.y : 0)) / (900 - cam.horizon) + 0.3 : 0;
     // a person or animal is a giant when it would fill 45 % of the frame; an inanimate prop (a bollard, a post, a bin, a bench) is a dark
     // blob in the frame's corner when it fills even a quarter of it, whatever its real height (a 5 m lamp is thin: it is the 1.3 m a
-    // blob is made of): such a prop keeps to where a 1.3 m thing is about 12 % of the frame
+    // blob is made of): such a prop keeps to where a 1.3 m thing is about 20 % of the frame
     const prop = _WPL_PROPS.includes(info.cls), hRef = Math.max(info.size.h, _wcNum(e.height) ? e.height : 0);
-    const band = Math.max(prop ? cam.f * Math.min(hRef, 1.3) / 110 : cam.f * hRef * 1.1 / 405, foot);
+    const band = Math.max(prop ? cam.f * Math.min(hRef, 1.3) / 180 : cam.f * hRef * 1.1 / 405, foot);
     if (!(e.z < band)) return;
     const from = [e.x, e.z], z0 = Math.max(0.3, e.z);
     for (let k = 0; k < 16; k++) {

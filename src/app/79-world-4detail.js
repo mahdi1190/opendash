@@ -277,6 +277,9 @@ function worldDetailCoverage(world, cam, o) {
     // a near layer must carry 1.5 % of the frame, a far one (from 40 m) 0.5 %: far things are small; the sky is the farthest plane
     // of an enclosed view (a street, a wood) when 4 % of the frame shows it
     rec.layerCount = rec.layers.filter((v, i) => v >= (i < 3 ? L.layerShare : L.layerShare / 3)).length + (rec.layers[4] < L.layerShare / 3 && rec.layers[5] < L.layerShare / 3 && rec.sky >= 0.04 ? 1 : 0);
+    // a layer wholly nearer than the ground at the frame's bottom edge cannot be seen from a raised camera (a terrace, a bridge): it is not missing
+    const zBottom = cam && cam.f > 0 && cam.eye > 0 ? cam.f * cam.eye / Math.max(1, H - (cam.horizon || 0)) : 0;
+    for (let i = 0; i < WORLD_DETAIL_LAYERS.length; i++) if (WORLD_DETAIL_LAYERS[i] <= zBottom && rec.layers[i] < (i < 3 ? L.layerShare : L.layerShare / 3)) rec.layerCount++;
     rec.paving = _wdtR(paving / frameN);
     rec.channel = { area: _wdtR(chA / frameN), flat: _wdtR(chF / frameN) };
     const RN = ['far', 'mid', 'near'], CN = ['left', 'centre', 'right'];
