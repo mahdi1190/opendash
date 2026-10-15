@@ -130,6 +130,10 @@ test('the Shambles has the Minster at the end of the street: over the roofs, in 
   // no house fell back to the grey prism (a generator exception used to be swallowed and a rust-coloured slab drawn in its place)
   const fell = prims.filter(q => q.kind === 'building' && q.fallback);
   assert.deepEqual(fell.map(q => q.id + ': ' + q.error), [], 'every house comes from the generator');
+  // the backdrop's generic church and terraces never stand inside the Minster or behind it (the checker's habitat rule): the scene's own far building is its skyline
+  const z0 = Math.min(...m.foot.map(p2 => p2[1])), bs = m.foot.map(p2 => Math.atan2(p2[0], p2[1]) * 180 / Math.PI), lo = Math.min(...bs), hi = Math.max(...bs);
+  const inside = E.worldBackdrop(world, world.cam, 'summer').filter(e => { const c = Math.atan2(e.x, e.z) * 180 / Math.PI; return e.z >= z0 && c >= lo && c <= hi; });
+  assert.deepEqual(inside.map(e => e.obj + '@' + e.x + ',' + e.z), [], 'the backdrop yields to the Minster');
   // the church is a landmark, not a house: no frontage rule made it, and it was not moved or dropped by the load
   assert.ok(!world.log.some(l => l.id === m.id && new RegExp('drop|mo' + 've').test(l.action)), 'untouched by the load');
 });

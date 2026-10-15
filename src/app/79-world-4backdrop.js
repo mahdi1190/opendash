@@ -205,6 +205,16 @@ function worldBackdropYield(world, cam) {
     const c = Math.atan2(e.x, e.z) / _WBD_D, hw = Math.atan2(_wlDims(e.obj).l / 2, Math.hypot(e.x, e.z)) / _WBD_D + 0.5;
     out.push([c - hw, c + hw]);
   }
+  // the scene's own FAR BUILDINGS (a church at the end of a street, 120 m or more away) are its skyline too: the backdrop's generic church or
+  // terrace never stands inside one or doubles it (the checker's habitat rule). The range is the footprint's bearing span, and only members
+  // BEYOND the building's nearest point yield (a house standing in front of it stays), so a third number carries that depth.
+  for (const b of (world && world.buildings) || []) {
+    if (!b || !Array.isArray(b.foot) || b.foot.length < 3) continue;
+    const zs = b.foot.map(p => p[1]), z0 = Math.min(...zs);
+    if (!(z0 > 120)) continue;
+    const bs = b.foot.map(p => Math.atan2(p[0], Math.max(1, p[1])) / _WBD_D);
+    out.push([Math.min(...bs) - 0.5, Math.max(...bs) + 0.5, z0 - 1]);
+  }
   return out;
 }
 /**
@@ -225,7 +235,7 @@ function worldBackdrop(world, cam, season, o) {
   const yielded = (x, z, l) => {
     if (!yields.length) return false;
     const c = Math.atan2(x, z) / _WBD_D, hw = Math.atan2(l / 2, z) / _WBD_D * 0.5;
-    return yields.some(r => c + hw >= r[0] && c - hw <= r[1]);
+    return yields.some(r => c + hw >= r[0] && c - hw <= r[1] && (r[2] == null || z >= r[2]));
   };
   st.bands.forEach((band, bi) => {
     const objs = band.objs.filter(has);
