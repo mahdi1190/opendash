@@ -479,7 +479,7 @@ The unit tests and the Node run were green while the page was not. The contract 
   at every distance.
 - CV3 [T] Stone is lit by the sun: a shape of a generated face carries its normal and the world lights it by the real sun (lighter and warmer
   toward it, darker and cooler away, by how directional the light is); the bake key carries a coarse sun bucket on chunks with a building only (V5).
-- CV4 [T] An estuary is a water kind of its own, in every table indexed by kind (look, v2 table, host map, kit quay rules), brown-grey and opaque with
+- CV4 [T] An estuary is a water kind of its own, in every table indexed by kind (look, v2 table, host map, kit quay rules), umber-grey and opaque with
   a poor mirror and a tide's flow; open choppy water carries wavelets in its base bake, fixed in metres, deterministic, faded under a pixel.
 - CV5 [T] A hull with no end art gets a stepped silhouette from its side art (hull, house, deck, mast, windows); `boat.river-ferry` is a generic
   double-ended passenger ferry with end views.
@@ -492,6 +492,6 @@ The unit tests and the Node run were green while the page was not. The contract 
 - CV9 [T] The three waterfront offices are three silhouettes: a tall block with two clock towers and a lantern tower (`liver-towers`), a palazzo with
   no tower or dome (`palazzo`), a great ribbed dome on a drum with four domed corner turrets (`port-dome`); each in its own style (stone tone, bay,
   order, cornice), so no two read as one block at any distance or angle.
-- CV10 [T] Open estuary water reads as water: a silvery sheen toward the horizon, brown silt that grows toward the viewer (off at night), white
+- CV10 [T] Open estuary water reads as water: a silvery sheen toward the horizon, umber silt that grows toward the viewer (off at night), white
   crests in the chop; a ferry at a landing stage floats on it with its waterline and its reflection.
 - CV11 [T] A static drawn live (a flickering lamp, a flame) is lit like any other: its glass shows lit and its halo is drawn when it is on.

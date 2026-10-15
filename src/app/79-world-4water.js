@@ -554,7 +554,7 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
     // open water seen at a grazing angle mirrors the pale sky near the horizon: a silvery sheen that thins toward the viewer (look.sheen)
     const sheen = look.sheen > 0 ? _wwaClamp(look.sheen * Math.pow(Math.max(0, (u - 0.3) / 0.7), 1.6), 0, 0.9) : 0;
     rowBase[r] = _wwaMixRgb(_wwaMixRgb(_wwaMixRgb(b, bed, _wwaClamp(look.clarity * 2.5 * g * g, 0, 0.5)), skyc, F * 0.6), _wwaMixRgb(S.low, S.mid, 0.45), sheen * 0.6);
-    // silt: a tidal river is brown through the sky's mirror (look.silt), more of it where the water is near; none at night (the tint is a daylight colour)
+    // silt: a tidal river is umber through the sky's mirror (look.silt), more of it where the water is near; none at night (the tint is a daylight colour)
     if (look.silt > 0) { const st = _wwaRgb(look.tint || look.base[1]), k = look.silt * (1 - _wwaClamp(S.dark * 1.3, 0, 1)) * (0.3 + 0.7 * g); rowBase[r] = _wwaMixRgb(rowBase[r], [st[0] * 1.2, st[1] * 1.2, st[2] * 1.15], k); }
   }
   // 2. the base (statics' bake): every wet pixel opaque, dithered
