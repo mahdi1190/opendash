@@ -290,6 +290,26 @@ function worldEntityBox(cam, e) {
   const p = _wlProj(cam, e.x, z, y), h = _wlHeight(e), hw = d.l * p.k / 2;
   return [p.X - hw, p.Y - h * p.k, p.X + hw, p.Y];
 }
+const _wbdPrimMemo = new WeakMap();
+/**
+ * A world's extruded buildings and walls at a camera (appearance's worldExtrude) as pseudo-entities { id, obj: 'building:<style>#<seed class>' | 'line:<kind>', z (the nearest
+ * ground depth), primBox (the screen box) }, memoised: the fill's samplers and the coverage measure ask again and again while it dresses. A street of generated houses is
+ * a wall of the frame, not bare ground; every house has its own seed, so it counts as one of eight kinds of thing at most.
+ */
+function worldPrimEntities(world, cam) {
+  if (!world || typeof worldExtrude !== 'function' || !((world.buildings && world.buildings.length) || (world.lines && world.lines.length))) return [];
+  const key = (world.buildings || []).length + '|' + (world.lines || []).length + '|' + cam.f + '|' + cam.horizon + '|' + cam.eye, hit = _wbdPrimMemo.get(world);
+  if (hit && hit.key === key) return hit.boxes;
+  let boxes = [];
+  try {
+    boxes = worldExtrude(world, cam, { hulls: false }).filter(p => p && p.box && (p.kind === 'building' || p.solidity === 'solid')).map(p => {
+      const b = p.kind === 'building' ? (world.buildings || []).find(q => q && q.id === p.id) : null, sd = b && Number.isFinite(b.seed) ? '#' + (Math.abs(b.seed) % 8) : '';
+      return { id: p.id, obj: p.kind === 'building' ? 'building:' + (p.style || (b && b.style) || 'victorian-terrace') + sd : 'line:' + (p.sub || 'wall'), z: p.zKey, primBox: p.box, cls: p.kind === 'building' ? 'building' : 'wall', static: true };
+    });
+  } catch (e) { boxes = []; }
+  _wbdPrimMemo.set(world, { key, boxes });
+  return boxes;
+}
 /**
  * The share of the frame below the horizon row that is bare: neither inside an entity's screen box (the scene's, the
  * backdrop's, o.extra's) nor on a self-dressed surface (water, reeds, beds, hedges, rails) nor on a surface a life population
@@ -309,6 +329,8 @@ function worldCoverage(world, cam, o) {
   const bd = o.backdrop || worldBackdrop(world, cam, o.season), ground = worldBackdropGround(world, cam);
   const ents = ((world && world.entities) || []).concat(bd, o.extra || []);
   const lived = new Set();
+  // extruded buildings and lines are not entities, but they fill the frame (a lane between two rows of houses is not bare): their screen boxes count (memoised per world and camera)
+  const prims = worldPrimEntities(world, cam).map(p => p.primBox);
   for (const p of (world && world.life) || []) if (p && p.on) lived.add(p.on);
   // boxes bucketed by column
   const colOf = (X) => Math.max(0, Math.min(cols - 1, Math.floor(X / W * cols)));
@@ -319,6 +341,7 @@ function worldCoverage(world, cam, o) {
     if (bx[2] < 0 || bx[0] > W || bx[3] < top) continue;
     for (let c = colOf(bx[0]); c <= colOf(bx[2]); c++) byCol[c].push(bx);
   }
+  for (const bx of prims) { if (bx[2] < 0 || bx[0] > W || bx[3] < top) continue; for (let c = colOf(bx[0]); c <= colOf(bx[2]); c++) byCol[c].push(bx); }
   const reg = Array.from({ length: 9 }, () => ({ n: 0, bare: 0 }));
   let n = 0, bare = 0;
   // an open look (a mown lawn's stripes, a beach's ripples: 79-world-4ground.js) is half dressed by its texture, as the strict

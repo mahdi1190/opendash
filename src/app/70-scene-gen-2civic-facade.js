@@ -200,3 +200,7 @@ function _scbcBlock(bk, wall, sp, model) {
   out.push(mk([X(bk.s0 - 0.5, zt - 0.7, 0.5), X(bk.s1 + 0.5, zt - 0.7, 0.5), X(bk.s1 + 0.5, zt, 0.5), X(bk.s0 - 0.5, zt, 0.5)], _scbgLight(bk.col, 0.05), 'roof', 'coping'));
   return out;
 }
+
+/* ---------- registered through the generator's extension points (_scbgElemKinds, _scbgBlockKinds) ---------- */
+for (const k of ['rustic', 'order', 'entab', 'balus', 'clock', 'louvre', 'portal', 'cquoins', 'flood']) _scbgElemKinds[k] = function (e, face, ctx, T) { return _scbcElem(e, face, ctx, T); };
+_scbgBlockKinds.tympanum = function (bk, wall, sp, model) { return _scbcBlock(bk, wall, sp, model); };

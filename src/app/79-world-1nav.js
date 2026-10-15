@@ -523,6 +523,9 @@ function worldNavBuild(world, o) {
     wet.push(sh);
     if (!lowHosts.has(e)) ground.push(sh);                                                 // a low deck replaces its host's solid for walkers
   }
+  // extruded buildings are solid to everything that walks, swims or drives: their footprints cut the ground like any solid (a house standing proud
+  // of a lane's edge by 30 cm, a terrace beside a pavement): people never walk through a wall the extruder drew (SCENE_LESSONS K)
+  for (const b of world.buildings || []) if (b && Array.isArray(b.foot) && b.foot.length >= 3) { const sh = { poly: b.foot }; wet.push(sh); ground.push(sh); }
   for (const s of surfaces) {
     if (s.kind === 'hedge' && s.open !== true) ground.push({ poly: s.poly, path: s.path, width: s.width });
     if (s.kind === 'gate' && s.open !== true) ground.push({ poly: s.poly, path: s.path, width: s.width });

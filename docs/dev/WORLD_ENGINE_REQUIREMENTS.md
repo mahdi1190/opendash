@@ -432,7 +432,27 @@ The unit tests and the Node run were green while the page was not. The contract 
   3 % depth steps, quads shaded by slope, rock when steep, grass or the surface's own colour otherwise), ordered with every
   other static, so a house stands on its strip and a hill hides what lies behind it. Flat ground draws nothing.
 - TR2 [T] An entity wholly behind a nearer rise of the ground is dropped and logged (`terrain`); floaters on water are exempt.
-- TR3 [T] A prop never fills more than about 12 % of the frame at the lens (a 1.3 m reference height), a person or animal 45 %.
+- TR3 [T] A prop never fills more than about 20 % of the frame at the lens (a 1.3 m reference height), a person or animal 45 %.
 - TR4 [T] A water below the ground level is hidden behind the near bank: its visible footprint is the polygon cut by the water openings
   scaled by (eye - level) / eye about the camera's foot, so a quay never shows the harbour over its own paving, and two waters
   side by side are one opening.
+
+## 28. A medieval street from a short spec (the second no-example place, 14 Oct: the Shambles, York)
+
+- ST1 [T] A whole side of a street is ONE rule: `buildings: [{ id, along: <surface id>, side: 'left' | 'right', style, storeys: n | [a, b], from, to, depth }]`.
+  The engine walks the surface's centre line and cuts the side into houses (`worldFrontageExpand`, `79-world-1frontage.js`): irregular frontages
+  and depths, storey counts, a front line that steps in and out by tens of cm, party walls, ground-floor shops, one seed each. A bend in
+  the lane bends the row. The houses are the world's buildings: the solver, the navigation and the extruder see their real footprints.
+- ST2 [T] Jetties are generic: each storey of a style that asks may overhang the one below, on its own wall plane, with the underside of the
+  overhang (a soffit) seen from below, the bressummer and brackets, and the shadow it throws on the storey below, in the projected AND
+  the elevation view (`70-scene-gen-1timber.js`, the `timber-framed` style). Roof, gable and chimneys sit on the top storey.
+- ST3 [T] Frames follow the screen: the stud pitch is drawn only where it is at least ~2.6 px on screen (a wall seen at a grazing angle is
+  a toned panel, never a dark smear); storey heights and overhangs vary house to house so no two neighbours' floor lines line up.
+- ST4 [T] What hangs from a wall (a stall board, an awning, a sign, a lantern, a basket) hangs from it and keeps out of the near band
+  (stall, awning 9 m; basket 8 m; sign, lantern 6 m in a perspective view): nothing floats and nothing fills the corner of the frame. No
+  lettering, brand, flag, religious symbol or house number, ever.
+- ST5 [T] Extruded buildings are solid to navigation and are the frame: people never walk through a wall the extruder drew; the coverage,
+  richness and strict measures count them as cover (a lane between two rows of houses is not 'bare'); a walled street's slot of sky is its
+  farthest layer; a building cut by the frame at its sides and top is the street, not an `edgeCut`.
+- ST6 [T] The `old-town-lane` kit keeps the lane clear (no bench, bin, bollard or lamp post; tubs and A-boards at the walls) and its ground look
+  `lane` is a running bond with a worn central drain. A shop's A-board, a parasol and a cafe table obey the near band like any prop.

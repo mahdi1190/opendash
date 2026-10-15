@@ -123,6 +123,7 @@ function _wflBoxOverlap(a, b) {
   return w * h / A;
 }
 function _wflBox(F, e) {
+  if (e && Array.isArray(e.primBox)) return e.primBox;   // an extruded building or wall: its own screen box (worldPrimEntities)
   const kb = e && e.obj ? worldKb(e.obj) : null;
   if (kb && kb.hang && Array.isArray(kb.art)) {
     const z = Math.max(0.05, e.z), y = _wflNum(e.y) ? e.y : _wflGround(F, e.x, z), p = _wflProj(F, e.x, z, y), mir = _wflNum(e.facing) && e.facing > 180 && e.facing < 360 ? -1 : 1;
@@ -453,6 +454,9 @@ function _wflTry(F, c) {
   // further (a fifth of the frame at most: they are scenery, the walkers are the life) and apart (never a heap of rugs)
   if (peopleLike && c.z < F.cam.f * Math.max(1.2, kb.size.h0 || 1.3) / (c.auto === 'fill' ? 0.2 * F.H : 405)) return null;
   if (peopleLike && c.auto === 'fill' && (F.peopleSpots || []).some(p => Math.hypot(p[0] - c.x, p[1] - c.z) < 4 + 0.04 * c.z)) return null;
+  // no prop at the lens either (SCENE_LESSONS J): a bollard, a sandwich board or a bin nearer than where a 1.3 m thing is about 20 % of the
+  // frame is a dark blob filling a corner; the placement solver's near band has the same rule for what an author places
+  if (!c.framing && ['post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle', 'signage'].includes(kb.cls) && c.z < F.cam.f * Math.min(kb.size.h0 || 1, 1.3) / 270) return null;
   // K6 things that come and go (flowers, lilies, leaf litter) only where the renderer hides them out of season
   if (!F.seasonal && kb.when && (kb.when.months || kb.when.dates || kb.when.weather)) return null;
   // C1, P8 (on screen)
@@ -589,7 +593,8 @@ function _wflSample(world, cam, o) {
   const fake = { cam, world, W, H };
   const byCol = Array.from({ length: cols }, () => []);
   const X0 = -pad, X1 = W + pad, colW = (X1 - X0) / cols;
-  for (const e of ents.concat(bd)) {
+  const prims = typeof worldPrimEntities === 'function' ? worldPrimEntities(world, cam) : [];
+  for (const e of ents.concat(bd, prims)) {
     const b = _wflBox(fake, e);
     if (b[2] < X0 || b[0] > X1 || b[3] < top) continue;
     const c0 = Math.max(0, Math.floor((b[0] - X0) / colW)), c1 = Math.min(cols - 1, Math.floor((b[2] - X0) / colW));

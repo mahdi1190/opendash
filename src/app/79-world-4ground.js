@@ -28,6 +28,8 @@
 const WORLD_GROUND_LOOKS = Object.freeze({
   flags: Object.freeze({ mat: 'paving', joint: [0.9, 0.6], tone: 0.075, edge: true, cracks: 0.04 }),
   setts: Object.freeze({ mat: 'paving', joint: [0.24, 0.16], tone: 0.08, edge: true, cracks: 0, courseEvery: 5 }),
+  // an old-town lane (the Shambles): irregular flags in a running bond with a worn central drain; the joints are cut per course (stagger), never a tile grid
+  lane: Object.freeze({ mat: 'paving', joint: [0.62, 0.5], tone: 0.1, edge: true, cracks: 0, courseEvery: 4, stagger: true, drain: 0.14 }),
   gravel: Object.freeze({ mat: 'gravel', specks: 1 / 190, ruts: true, fray: true, tone: 0.09, damp: 0.25 }),
   sand: Object.freeze({ mat: 'soil', specks: 1 / 260, ruts: true, fray: true, tone: 0.07, damp: 0.1 }),
   tarmac: Object.freeze({ mat: 'tarmac', tone: 0.05, gutter: true, cracks: 0.06, patches: 0.4, drains: 26 }),
@@ -240,7 +242,12 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
           const p = [a[0] + t[0] * u, a[1] + t[1] * u], k = Math.round((acc + u) / du), heavy = L.courseEvery && k % L.courseEvery === 0;
           _wgdLine(cam, out, [p[0] - n[0] * hw, p[1] - n[1] * hw], [p[0] + n[0] * hw, p[1] + n[1] * hw], t, heavy ? du * L.courseEvery : du, heavy ? 0.3 : 0.2, 'dark', zMax, 'joint');
         }
-        for (let v = -hw + dv; v < hw - 1e-6; v += dv) _wgdLine(cam, out, [a[0] + n[0] * v, a[1] + n[1] * v], [c[0] + n[0] * v, c[1] + n[1] * v], n, dv, 0.16, 'dark', zMax * 0.4, 'joint-along');
+        if (!L.stagger) for (let v = -hw + dv; v < hw - 1e-6; v += dv) _wgdLine(cam, out, [a[0] + n[0] * v, a[1] + n[1] * v], [c[0] + n[0] * v, c[1] + n[1] * v], n, dv, 0.16, 'dark', zMax * 0.4, 'joint-along');
+        else for (let u = Math.ceil(acc / du) * du - acc; u < Ls; u += du) {
+          // a running bond: each course's cuts across its width sit at their own offset (seeded by the course), so no joint runs on
+          const kc = Math.round((acc + u) / du), ph = ((Math.sin(kc * 12.9898 + (s.id || '').length * 7.1) * 43758.5453) % 1 + 1) % 1, nj = Math.max(1, Math.round(s.width / dv));
+          for (let j = 0; j < nj; j++) { const v = -hw + (j + ph) * dv; if (v > hw - 0.05) continue; const p = [a[0] + t[0] * u + n[0] * v, a[1] + t[1] * u + n[1] * v]; _wgdLine(cam, out, p, [p[0] + t[0] * du, p[1] + t[1] * du], n, dv, 0.16, 'dark', zMax * 0.4, 'joint-along'); }
+        }
         acc += Ls;
       }
     } else {
@@ -253,6 +260,12 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
       for (let u = Math.ceil(u0 / du) * du; u <= u1 && !lim(out.length); u += du, k++) { const heavy = L.courseEvery && k % L.courseEvery === 0; _wgdLine(cam, out, at(u, v0), at(u, v1), ax.u, heavy ? du * L.courseEvery : du, heavy ? 0.3 : 0.2, 'dark', zMax); }
       for (let v = Math.ceil(v0 / dv) * dv; v <= v1 && !lim(out.length); v += dv) _wgdLine(cam, out, at(u0, v), at(u1, v), ax.v, dv, 0.16, 'dark', zMax * 0.4);
     }
+  }
+  // a worn central drain (an old-town lane's channel): a dark strip along the centre line, foreshortened with depth, with a lighter lip
+  if (L.drain && strip) {
+    const off = e => s.path.map((p, i) => { const a = s.path[Math.max(0, i - 1)], c = s.path[Math.min(s.path.length - 1, i + 1)], dx = c[0] - a[0], dz = c[1] - a[1], n = Math.hypot(dx, dz) || 1; return [p[0] - dz / n * e, p[1] + dx / n * e]; });
+    const strip2 = (e0, e1, al, col) => { const A = off(e0), B = off(e1); for (let i = 1; i < A.length; i++) { const q = [A[i - 1], A[i], B[i], B[i - 1]], zs = q.map(p => p[1]); if (Math.max(...zs) < _wgdNear(cam) || Math.min(...zs) > 90) continue; out.push({ t: 'poly', pts: q.map(p => _wgdP(cam, p[0], Math.max(_wgdNear(cam), p[1]))).map(p => [_wgdR(p[0]), _wgdR(p[1])]), a: al, c: col }); } };
+    strip2(-L.drain / 2, L.drain / 2, 0.3, 'dark'); strip2(-L.drain / 2 - 0.05, -L.drain / 2, 0.07, 'light'); strip2(L.drain / 2, L.drain / 2 + 0.05, 0.07, 'light');
   }
   // kerb and edge lines along the surface's boundary (a light top and a dark joint beside it)
   if (L.edge) {

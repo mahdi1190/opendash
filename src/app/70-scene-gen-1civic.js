@@ -19,7 +19,8 @@
    more than the generator's shape budget (SCENE_GEN_MAX_SHAPES) allows because the generator steps the tier down until it fits.
 
    Hooks in 70-scene-gen-0building.js (each a line or two): sceneBuildingResolve copies b.crown; _scbgModel calls _scbcModel; _scbgBuild
-   draws the crowns (_scbcDrawCrowns); _scbgDrawElem and _scbgBlock hand unknown kinds to _scbcElem and _scbcBlock; _scbgTierAt reads e.hm.
+   draws the crowns (_scbcDrawCrowns); _scbgTierAt reads e.hm; the sink stamps a face's normal on its shapes. The element and block kinds are
+   registered in 70-scene-gen-2civic-facade.js through the generator's extension points (_scbgElemKinds, _scbgBlockKinds).
    ============================================================ */
 
 const _SCBC_LIGHT = Object.freeze([-0.4, 0.62, -0.67]);   // the generator's soft sky light (upper left, toward the camera)
