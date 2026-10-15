@@ -45,3 +45,12 @@ repeated here:
 - Nothing goes live or to `main` without the owner seeing contact sheets.
 - Never delete good scenes; improve them in place.
 - Every new class of mistake gets a row in SCENE_LESSONS.md.
+
+## Findings from 15 Oct (for the next session)
+
+- The particle system (`79-world-6particles.js`: `worldParticles`, smoke, steam, leaves, spray) is never drawn: no renderer
+  calls it. So the glowing white disc by the canal boats is NOT a particle. Look for its source elsewhere: the boat object's
+  own `smoke` part (`70-scene-lib-boats-canal.js`), an auto-filled entity, or a lamp or window glow from the light pass that
+  is drawn without its object. Wiring particles into the frame (`79-world-5frame.js`) is its own task.
+- No smoke, stove or lamp entity appears in `79-world-zscene-fleet-canal-2.js`, so the disc comes from defaults (the fill,
+  the kit or object parts), which is exactly the kind of engine-default bug to fix once.
