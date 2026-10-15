@@ -152,7 +152,18 @@ function worldLifeOk(life, layer, x, z, r) {
   if (typeof worldNavOk !== 'function') return false;
   return worldNavOk(life.nav, layer, x, z, r);
 }
-function _wlfOk(life, a, x, z) { return a.layer === 'air' || (typeof worldNavOk === 'function' && worldNavOk(life.nav, a.layer, x, z, a.r) && _wlfHullOk(life, a, x, z)); }
+/**
+ * The radius a mover is held to by the navigation: the one its routes are planned for. A dog (0.30 m) and a person were planned for the
+ * layer's 0.25 m (the flow fields are shared by every body up to 0.05 m over it) but stepped and tested at their own radius, so a cell
+ * a route runs through (clear 0.25 to 0.3) was one the body could not step into: a dog stood pressed against a lifebuoy, going
+ * nowhere, on a route that ran through it. A hull keeps its own.
+ */
+function _wlfNavR(a) {
+  if (a.kind === 'boat') return a.r;
+  var d = (typeof WORLD_NAV_RADIUS !== 'undefined' && WORLD_NAV_RADIUS[String(a.layer).split('@')[0]]) || 0.25;
+  return a.r <= d + 0.05 ? d : a.r;
+}
+function _wlfOk(life, a, x, z) { return a.layer === 'air' || (typeof worldNavOk === 'function' && worldNavOk(life.nav, a.layer, x, z, _wlfNavR(a)) && _wlfHullOk(life, a, x, z)); }
 /**
  * A long hull (a boat under way) keeps its WHOLE length beyond the layer's near band: the nav map holds its centre, so its near
  * end would otherwise come up to the lens as a giant hull cut by the frame's bottom edge (A10, C2). Spawn cells and goal edges
@@ -1654,7 +1665,7 @@ function _wlfMove(life, a, dt) {
   a.turning = !!dir && rem > Math.PI / 4;
   if (a.v > 0 && dir) {
     var vx = Math.sin(a.heading) * a.v, vz = Math.cos(a.heading) * a.v;
-    var np = typeof worldStep === 'function' ? worldStep(life.nav, a.layer, [a.x, a.z], [vx, vz], a.r, dt) : [a.x + vx * dt, a.z + vz * dt];
+    var np = typeof worldStep === 'function' ? worldStep(life.nav, a.layer, [a.x, a.z], [vx, vz], _wlfNavR(a), dt) : [a.x + vx * dt, a.z + vz * dt];
     if (np && _wlfOk(life, a, np[0], np[1])) { a.x = np[0]; a.z = np[1]; }
     // held up or slid off the planned line: the steering point is planned again next tick (from where it really is)
     if (a.route && a.route.tk != null && Math.hypot(a.x - ox, a.z - oz) < a.v * dt * 0.7) a.route.tk = -1;
@@ -1843,7 +1854,7 @@ function _wlfLeash(life, a, dt) {
   // the lead pulls the dog in at most 6 m/s (0.4 m a tick: a dog is not teleported), round what is in the way: the navigation's own
   // step slides along a solid, so a dog on the far side of a post is drawn round it, not through it
   var pull = Math.min(d - len * 0.97, 6 * dt), ux = -dx / d, uz = -dz / d, np = null;
-  if (typeof worldStep === 'function') { np = worldStep(life.nav, a.layer, [a.x, a.z], [ux * pull / dt, uz * pull / dt], a.r, dt); if (np && _wlfOk(life, a, np[0], np[1])) { a.x = np[0]; a.z = np[1]; } }
+  if (typeof worldStep === 'function') { np = worldStep(life.nav, a.layer, [a.x, a.z], [ux * pull / dt, uz * pull / dt], _wlfNavR(a), dt); if (np && _wlfOk(life, a, np[0], np[1])) { a.x = np[0]; a.z = np[1]; } }
   else _wlfTryAt(life, a, a.x + ux * pull, a.z + uz * pull);
   // still past the end of its lead (blocked): the walker waits (taut lead, _wlfMove), the dog is not snapped; only a dog that is far past
   // it (an obstacle the step cannot slide round) is put on the nearest open point of the lead, never onto its walker
@@ -1867,7 +1878,7 @@ function _wlfStepMove(life, a, dt) {
     if (s.sit) { a.x = s.x1; a.z = s.z1; a.bs = 'sitting'; a.gdur = null; return; }      // the sit goal takes it from here
     if (s.stand) { a.host = null; _wlfReleaseSeat(life, a); _wlfEnter(life, a, a.brain.start); _wlfNextGoal(life, a); a.y = worldLifeY(life, a); return; }
     a.layer = s.layer; a.host = null; a.route = null;
-    if (!_wlfOk(life, a, a.x, a.z)) { var p = worldStep(life.nav, a.layer, [a.x, a.z], [0, 0], a.r, dt); a.x = p[0]; a.z = p[1]; }
+    if (!_wlfOk(life, a, a.x, a.z)) { var p = worldStep(life.nav, a.layer, [a.x, a.z], [0, 0], _wlfNavR(a), dt); a.x = p[0]; a.z = p[1]; }
     a.y = worldLifeY(life, a);
   }
 }

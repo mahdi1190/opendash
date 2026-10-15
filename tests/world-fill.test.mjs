@@ -353,3 +353,29 @@ for (const id of ['fleet-canal-2-w3', 'fleet-pond-2-w3', 'sheffield-kelham-1-w3'
     assert.ok(ms < 2000 * Math.max(cpuScale(), 3), `${id}: build + fill ${ms} ms (machine at ${cpuScale().toFixed(1)}x)`);
   }
 });
+
+// ---- 15 Oct (movement round): the fill left furniture that closed a promenade. A bollard 2 m from an authored bench, a second bench
+// behind it and a lifebuoy half a metre off the lowest row people may stand on were the only ways along Whitby's quay: walkers met in
+// them, stood nose to nose and were put through each other. A walked square now keeps a way for two abreast (worldFillLane): the
+// last-placed fill piece that closes it is taken away, never an authored one.
+const quay = (seed, extra = {}) => Object.assign({ v: 3, place: { lat: 54.4858, lon: -0.6133, alt: 4, region: 'north-yorkshire', style: 'quayside' }, camera: { eye: 3, fov: 66, horizon: 430, heading: 78, water: -3 }, seed,
+  surfaces: [{ id: 'quay', kind: 'plaza', poly: [[-150, 1], [150, 1], [150, 14], [-150, 14]] }, { id: 'harbour', kind: 'water', water: 'sea', poly: [[-200, 14], [200, 14], [200, 300], [-200, 300]], shallow: 2 }],
+  life: [{ who: 'walkers', on: 'quay', rate: '5/min', edges: ['W', 'E'] }] }, extra);
+test('worldFillLane: a bollard 2 m from a bench with the far side shut is no way through for two; one bench alone is open', () => {
+  const at = (zb) => ({ entities: [{ id: 'bench-q', obj: 'street.bench', at: [-3, 11], facing: 180 }, { id: 'post', obj: 'street.bollard', at: [-3, zb] }, { id: 'wall-a', obj: 'street.bench', at: [-3, 13.4], facing: 180 }, { id: 'wall-b', obj: 'street.bench', at: [-4.6, 13.4], facing: 180 }], fill: false });
+  const narrow = W.worldBuild(quay(1, at(8.6)), { season: 'summer' }), wide = W.worldBuild(quay(1, { entities: [{ id: 'bench-q', obj: 'street.bench', at: [-3, 11], facing: 180 }], fill: false }), { season: 'summer' });
+  const n = W.worldFillLane(narrow), w = W.worldFillLane(wide);
+  assert.ok(n && n.slack < 0, 'a pinched quay measures too narrow: ' + JSON.stringify(n));
+  assert.ok(!w || w.slack >= 0, 'a quay with one bench is open: ' + JSON.stringify(w));
+});
+test('the fill keeps a way through the quay: nothing it places leaves less than two abreast need, and an authored bench stays', () => {
+  let placed = 0;
+  for (let seed = 1; seed <= 8; seed++) {
+    const w = W.worldBuild(quay(seed, { entities: [{ id: 'bench-q', obj: 'street.bench', at: [-3, 11], facing: 180 }] }), { season: 'summer', ms: Date.parse('2026-07-15T12:00:00Z') });
+    placed += w.entities.filter(e => e.auto === 'fill' && e.solidity === 'solid' && e.z < 20).length;
+    const lane = W.worldFillLane(w);
+    assert.ok(!lane || lane.slack >= 0, `seed ${seed}: the quay's tightest way is ${lane && lane.len.toFixed(2)} m at x ${lane && lane.at[0].toFixed(1)}`);
+    assert.ok(w.entities.some(e => e.id === 'bench-q'), 'the authored bench is never taken away');
+  }
+  assert.ok(placed > 8, 'furniture still stands on the quay: ' + placed);
+});

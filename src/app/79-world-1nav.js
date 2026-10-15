@@ -627,8 +627,31 @@ function worldNavBuild(world, o) {
     _wnavCells(L, p.surface, k => { const x = _wnavCX(L, k), z = _wnavCZ(L, k); if (worldNavOk({ layers }, p.a, x, z) && worldNavOk({ layers }, p.b, x, z)) pairs.push([x, z, x, z]); });
     p.pairs = pairs;
   }
+  // a slot one body wide costs more to walk (SCENE_LESSONS J): two cannot pass in it, so routes and flow fields go round by the open ground
+  // when that is not much longer (the quay's lifebuoy left 0.5 m between itself and the near band: walkers met in it)
+  for (const Ln of Object.keys(layers)) if (/^walk(@|$)/.test(Ln) && layers[Ln] && layers[Ln].data && layers[Ln].N0) _wnavSlotCost(layers[Ln]);
   layers.rail = { layer: 'rail', lines: surfaces.filter(s => (s.kind === 'rail' || s.kind === 'tram') && s.path).map(s => ({ id: s.id, kind: s.kind, path: s.path, width: s.width || 0 })) };
   return { layers, cam, world, flows: new Map(), solids: ground, wetSolids: wet, ents, surfaces, owners, extra, levels: levelRecs, portals, waterLevel };
+}
+const WORLD_NAV_SLOT = { width: 1.0, cost: 3 };           // a run of ok cells no wider than this (m), bounded by blocked ones both ends, costs this much more
+/** Raise the cost of the near grid's cells that lie in a slot (a run of legal cells <= WORLD_NAV_SLOT.width wide, across x or across z). */
+function _wnavSlotCost(L) {
+  const w = L.w, h = L.hLive, N = w * h, maxRun = Math.max(1, Math.round(WORLD_NAV_SLOT.width / L.cell));
+  const ok = new Uint8Array(N);
+  for (let k = 0; k < N; k++) ok[k] = _wnavCellOk(L, k, 0.25, false) ? 1 : 0;
+  const slot = new Uint8Array(N);
+  const mark = (start, step, count) => {                     // one line of cells: its runs, marked when short and walled in at both ends
+    let i = 0;
+    while (i < count) {
+      if (!ok[start + i * step]) { i++; continue; }
+      let j = i; while (j < count && ok[start + j * step]) j++;
+      if (i > 0 && j < count && j - i <= maxRun) for (let q = i; q < j; q++) slot[start + q * step] = 1;
+      i = j;
+    }
+  };
+  for (let j = 0; j < h; j++) mark(j * w, 1, w);
+  for (let i = 0; i < w; i++) mark(i, w, h);
+  for (let k = 0; k < N; k++) if (slot[k] && L.data[k]) L.data[k] = Math.max(L.data[k] + 1, Math.round(L.data[k] * WORLD_NAV_SLOT.cost));
 }
 function _wnavPaint(L, s, cost) {
   _wnavCells(L, s, k => { if (!L.data[k]) { L.data[k] = cost; L.clear[k] = Math.max(L.clear[k], 0.3); } });
