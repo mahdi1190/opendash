@@ -140,21 +140,21 @@ test('host: views from facing against the line of sight (5 views + mirrors)', ()
   assert.equal(S(45, 10, 10).view, 'back', 'off-axis: a thing 45 degrees right facing 45 is seen from behind');
 });
 
-test('perf gate: warn over budget, fail at 1.2x, any order violation fails', () => {
+test('perf gate: the cold load and the world bake fail at 1.2x, frame and warm-load times are reported, any order violation fails', () => {
   const ok = worldPerfCheck({ frameMs: 9, lifeTickMs: 1.4, orderViolations: 0 });
   assert.equal(ok.ok, true);
-  // F1: frame median < 8 ms, p95 < 14 ms; cold load < 5 s, warm load < 1 s; F2: sprites < 600 and the sprite memory
-  const warn = worldPerfCheck({ frameMs: 9 });
-  assert.equal(warn.ok, true);
-  assert.equal(warn.lines.find(l => l.item === 'frameMs').status, 'warn');
-  assert.equal(worldPerfCheck({ frameP95: 15 }).ok, true);
-  assert.equal(worldPerfCheck({ frameP95: 14 * 1.21 }).ok, false);
-  assert.equal(worldPerfCheck({ warmLoadMs: 1300 }).ok, false);
-  const fail = worldPerfCheck({ frameMs: 8 * 1.21 });
-  assert.equal(fail.ok, false);
+  // the user's gate is the cold load (under 5 s at a 4x CPU throttle, to a fully drawn scene); the frame and warm-load times depend on the machine:
+  // reported ('info'), never failed (SCENE_LESSONS: a forced flush once made every frame 100 times slower)
+  const info = worldPerfCheck({ frameMs: 90, frameP95: 400, warmLoadMs: 9000 });
+  assert.equal(info.ok, true);
+  for (const k of ['frameMs', 'frameP95', 'warmLoadMs']) assert.equal(info.lines.find(l => l.item === k).status, 'info', k);
+  assert.equal(worldPerfCheck({ coldLoadMs: 4000, worldBakeMs: 4900 }).ok, true);
+  assert.equal(worldPerfCheck({ worldBakeMs: 5000 * 1.21 }).ok, false);
+  assert.equal(worldPerfCheck({ coldLoadMs: 5000 * 1.21 }).ok, false);
+  assert.equal(worldPerfCheck({ worldBakeMs: 5200 }).lines.find(l => l.item === 'worldBakeMs').status, 'warn');
   assert.equal(worldPerfCheck({ orderViolations: 1 }).ok, false);
-  for (const k of ['coldLoadMs', 'warmLoadMs', 'frameMs', 'frameP95', 'lifeTickMs', 'orderMs', 'chunks', 'sprites', 'spriteMB']) assert.ok(WORLD_BUDGET[k], k);
-  assert.equal(WORLD_BUDGET.frameMs.budget, 8); assert.equal(WORLD_BUDGET.frameP95.budget, 14); assert.equal(WORLD_BUDGET.coldLoadMs.budget, 5000); assert.equal(WORLD_BUDGET.warmLoadMs.budget, 1000);
+  for (const k of ['coldLoadMs', 'worldBakeMs', 'warmLoadMs', 'frameMs', 'frameP95', 'lifeTickMs', 'orderMs', 'chunks', 'sprites', 'spriteMB']) assert.ok(WORLD_BUDGET[k], k);
+  assert.equal(WORLD_BUDGET.frameMs.budget, 8); assert.equal(WORLD_BUDGET.frameP95.budget, 14); assert.equal(WORLD_BUDGET.coldLoadMs.budget, 5000); assert.equal(WORLD_BUDGET.worldBakeMs.budget, 5000); assert.equal(WORLD_BUDGET.warmLoadMs.budget, 1000);
 });
 
 test('perf: the Node part measures every stage of a converted scene', () => {
