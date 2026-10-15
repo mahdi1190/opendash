@@ -157,6 +157,13 @@ The ground height `h(x, z)` is defined everywhere in view: the v2 relief grid (`
 a decked thing at its deck, a floater at the water level less its sink, a wader at the water level, a flyer at its altitude.
 Nothing is placed through the ground or floating above it (invariant `floating`).
 
+A **marsh** (`worldMarsh`, `79-world-4marsh.js`) is a generator, not a feature kind: given a boardwalk (`walk`, its `width`) and a few numbers (`from`, `reach`, `open`,
+`density`, a `platform`) it returns surfaces, lines and clusters to spread into a spec: one organic water, a spine of `reeds` ground under the walk, islands of
+wet ground with a channel of open water between any two, reed / reedmace / sedge clusters, lilies, litter and mud at the toes, rails along the walk and round the
+platform only, and the platform at the reed edge. Every outline is a smooth curve through noise-driven points. Built worlds also roughen every `reeds` surface and
+every pond or lake shore (`_wcNaturalEdge`: a noise field of the point, so a shared edge stays shared): a natural edge is never a ruled line. A walkway never
+crosses open water (`worldWalkwayWater`, rule and invariant `walkwayWater`).
+
 A **cliff** (`kind: 'cliff'`, `79-world-4cliff.js`) is analytic, because a face that is vertical over a metre cannot live in a grid whose rows are metres
 deep at 200 m: a plan (`path`, or an `arc: { c: [x, z], r, from, to }` in bearings from straight ahead), `h` (the foot of the talus to the plateau),
 `scree: { w, h } | false` (the talus skirt), `batter` (setback per metre of height; an overhang is texture, never geometry), `rim: { w, h }` (the rounded
