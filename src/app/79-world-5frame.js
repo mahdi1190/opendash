@@ -97,7 +97,7 @@ function _wfrRec(e, cam, o) {
   if (!(e.z > WORLD_FRAME_ZMIN) || !Number.isFinite(e.x)) return null;
   const vw = _wfrView(e, cam, o.agent, o.prev);
   // a long hull seen at an angle or end-on: drawn in true perspective, never a flat side slab (Q4)
-  if (vw.persp && !e.landmark && typeof worldExtrudeHull === 'function') {
+  if ((vw.persp || (typeof worldModelHas === 'function' && worldModelHas(e.obj))) && !e.landmark && typeof worldExtrudeHull === 'function') {   // a registered model (79-world-4models.js) draws in 3D at any angle
     try { const prim = worldExtrudeHull(e, cam, { season: o.season, regions: o.regions }); if (prim && prim.box) { const r = _wfrPrimRec(prim, e, vw); r.cut = prim.noCut ? null : _wfrCutOf(e, cam, o.regions); return r; } } catch (err) { /* a sprite below */ }
   }
   const oid = vw.obj && sceneObj(vw.obj) ? vw.obj : (typeof _wh5ViewObj === 'function' ? _wh5ViewObj(e.obj, vw.view) : e.obj), def = sceneObj(oid);
@@ -997,7 +997,7 @@ function* _wfrBakeJob(env, S) {
       x0 = Math.min(x0, b.x0 * vs + ox); y0 = Math.min(y0, b.y0 * vs + oy); x1 = Math.max(x1, b.x1 * vs + ox); y1 = Math.max(y1, b.y1 * vs + oy);
       const mc = _wfrMc(S, r.ent);
       if (mc) { try { mk += worldMaterialKey(mc) + ';'; } catch (e) { /* none */ } }
-      if (r.prim && r.prim.direct && S.sun) mk += 'u' + S.sun.key + ';';
+      if (r.prim && (r.prim.direct || r.prim.sunLit) && S.sun) mk += 'u' + S.sun.key + ';';
       // the sprite and the device transform of every member, per bake (the frame's occluder redraws and the mirror reuse them)
       S.draw.set(r.id, { sp: null, M: r.prim ? null : _wfrM(env, r) });
     }
