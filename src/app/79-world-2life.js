@@ -1806,7 +1806,9 @@ function _wlfPair(life, a, o) {
   // drawn figures just touch); a dog at heel or a flock keeps the closer group floor (merge of 15 Oct: uk-rebuild's crowd check
   // found couples drawn 0.3 m apart, half inside each other)
   var people = rel && /^person\./.test(String(a.obj || '')) && /^person\./.test(String(o.obj || ''));
-  var minD = (a.r + o.r) * (rel ? (people ? 0.96 : 0.6) : sq ? 0.25 : (a.kind === 'walker' && o.kind === 'walker' ? WORLD_LIFE_BODY : 1));
+  // a person who is standing still has no swing to make room for: somebody passing a viewer on a narrow boardwalk keeps shoulder width, not 1.2 x
+  var stander = a.kind === 'walker' && o.kind === 'walker' && ((a.speed || 0) < 0.2 || (o.speed || 0) < 0.2);
+  var minD = (a.r + o.r) * (rel ? (people ? 0.96 : 0.6) : sq ? 0.25 : (a.kind === 'walker' && o.kind === 'walker' && !stander ? WORLD_LIFE_BODY : 1));
   if (d >= minD) return 0;
   // shoulder room only where there is room for it: in a gap between two solids (a bollard and a bench 1.6 m apart: the legal centres
   // lie 0.75 m apart, less than the 1.2 x floor) two people pass at their shoulder width, never pushed back along the lane for ever
