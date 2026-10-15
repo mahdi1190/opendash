@@ -31,7 +31,7 @@ const _wmdVesLerp = (a, b, t) => a + (b - a) * t;
  */
 function _wmdVesCtx(h, p, L0, B0, H0) {
   const ka = p.L / L0, kl = p.B / B0, ky = p.H / H0, kr = Math.sqrt(ka * kl);
-  const V = { h, p, ka, kl, ky, kr, xf: null };
+  const V = { h, p, ka, kl, ky, kr, xf: null, crewLit: null };   // crewLit: the largest 'theta' of a lit pane (a vessel with a crew aboard: lit in any dusk)
   /** Heel the whole boat by rad about its centre line at the waterline (+: the +l side goes down). */
   V.heel = (rad) => { if (!rad) { V.xf = null; return; } const c = Math.cos(rad), s = Math.sin(rad); V.xf = (a, l, y) => [a, l * c + y * s, y * c - l * s]; };
   V.X = (a, l, y) => (V.xf ? V.xf(a, l, y) : [a, l, y]);
@@ -263,14 +263,15 @@ function _wmdVesHouse(V, S) {
       if (na * ((A[0] + B[0]) / 2 - ca) + nl * ((A[1] + B[1]) / 2 - cl) < 0) { na = -na; nl = -nl; }
       if (!V.sees([na, nl, 0], [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (S.y0 + S.y1) / 2])) continue;
       const Sf = V.wall(A[0], A[1], da / len, dl / len, na, nl), step = win.step || 1.4;
-      const tight = V.px(step) < 2.6, share = win.share == null ? 0.2 : win.share;
+      const tight = V.px(step) < 2.6, share = win.share == null ? 0.2 : win.share, crew = win.crew != null ? win.crew : V.crewLit;
+      const fx = (key) => { const dark = h.u(key) < share, f = h.litFx(dark); if (!dark && crew != null) f.theta = Math.round(crew * h.u(key + 't') * 1000) / 1000; return f; };
       for (let r = 0; r < win.rows.length; r++) {
         const [v0, v1] = win.rows[r];
-        if (tight) { Sf.rect(0.25, len - 0.25, v0, v1, win.glass || '#3a4a5a', 'glass', 'window', 0.03, h.litFx(h.u((S.tag || 'h') + 'b' + e + r) < share)); continue; }
+        if (tight) { Sf.rect(0.25, len - 0.25, v0, v1, win.glass || '#3a4a5a', 'glass', 'window', 0.03, fx((S.tag || 'h') + 'b' + e + r)); continue; }
         const nW = Math.max(1, Math.round((len - 0.4) / step)), pitch = (len - 0.4) / nW, w = pitch * (win.frame == null ? 0.74 : win.frame);
         for (let k = 0; k < nW; k++) {
           const u = 0.2 + pitch * (k + 0.5) - w / 2;
-          Sf.rect(u, u + w, v0, v1, win.glass || '#3a4a5a', 'glass', 'window', 0.03, h.litFx(h.u((S.tag || 'h') + 'w' + e + ':' + k + ':' + r) < share));
+          Sf.rect(u, u + w, v0, v1, win.glass || '#3a4a5a', 'glass', 'window', 0.03, fx((S.tag || 'h') + 'w' + e + ':' + k + ':' + r));
         }
       }
     }
@@ -322,7 +323,7 @@ const _WMD_VES_FERRY_RIVER = Object.freeze([
 /** A double-ended Mersey passenger ferry, 46 m: rounded ends, an enclosed saloon with an open deck at each end, a promenade deck
  *  with rails and boats, an upper house, a bridge with a mast, two funnels. Nominal 46 x 11.2 x 15.2 m. */
 function _wmdVesBuildRiverFerry(p, h) {
-  const V = _wmdVesCtx(h, p, 46, 11.2, 15.2), liv = p.livery, L = 46, hb = 5.6;
+  const V = _wmdVesCtx(h, p, 46, 11.2, 15.2), liv = p.livery, L = 46, hb = 5.6; V.crewLit = 0.4;
   const age = (hex, kind) => h.aged(hex, kind || 'paint', 0.6);
   const bul = 1.0, ydeck = a => 2.1 + 0.45 * Math.pow(Math.abs(a) / (L / 2), 3), yd = a => ydeck(a) + bul;
   const two = p.opts.funnels !== 1;
@@ -411,7 +412,7 @@ const _WMD_VES_TRIP = Object.freeze([
 /** A river trip boat, 30 m: a bulwarked hull, a glazed saloon, an open upper deck with rails, seats and a striped awning, a
  *  wheelhouse forward, a small stack. Nominal 30 x 7.4 x 9 m. */
 function _wmdVesBuildTrip(p, h) {
-  const V = _wmdVesCtx(h, p, 30, 7.4, 9.0), liv = p.livery, L = 30, hb = 3.7;
+  const V = _wmdVesCtx(h, p, 30, 7.4, 9.0), liv = p.livery, L = 30, hb = 3.7; V.crewLit = 0.4;
   const age = (hex, k) => h.aged(hex, k || 'paint', 0.7);
   const bul = 0.85, ydeck = a => 1.75 + 0.5 * Math.pow(Math.max(0, (a - 3) / 12), 2) + 0.1 * Math.pow(Math.max(0, (-a - 8) / 7), 2), yd = a => ydeck(a) + bul;
   V.part('hull', 0, 0, 1.2, 3);
@@ -473,7 +474,7 @@ const _WMD_VES_CARFERRY = Object.freeze([
 /** A car ferry, 90 m: a high slab-sided hull with its stern door, a block of passenger decks with rows of windows, a bridge across
  *  the beam, a boat deck with enclosed lifeboats, a wide funnel. Nominal 90 x 17 x 18 m. */
 function _wmdVesBuildCarFerry(p, h) {
-  const V = _wmdVesCtx(h, p, 90, 17, 18), liv = p.livery, L = 90, hb = 8.5;
+  const V = _wmdVesCtx(h, p, 90, 17, 18), liv = p.livery, L = 90, hb = 8.5; V.crewLit = 0.4;
   const age = (hex, k) => h.aged(hex, k || 'paint', 0.7);
   const yTop = 7.0, yd = a => yTop + 0.7 * Math.pow(Math.max(0, (a - 20) / 25), 2);
   V.part('hull', 0, 0, 3.5, 3);
@@ -838,7 +839,7 @@ const _WMD_VES_TUG = Object.freeze([
 /** A harbour tug, 24 m: a rounded hull with a flared bow and a low working deck aft, a two-tier house with the wheelhouse over it,
  *  an oval funnel, a mast with radar, rubbing strakes and tyre fenders, a towing bollard. Nominal 24 x 8.6 x 9 m. */
 function _wmdVesBuildTug(p, h) {
-  const V = _wmdVesCtx(h, p, 24, 8.6, 9.0), liv = p.livery, L = 24, hb = 4.3;
+  const V = _wmdVesCtx(h, p, 24, 8.6, 9.0), liv = p.livery, L = 24, hb = 4.3; V.crewLit = 0.4;
   const age = (hex, k) => h.aged(hex, k || 'paint', 0.8);
   const bul = 0.9, yd = a => 2.15 + 1.0 * Math.pow(Math.max(0, (a - 1) / (L / 2 - 1)), 2) - 0.55 * Math.pow(Math.max(0, (-a - 1) / (L / 2 - 1)), 1.3);
   V.part('hull', 0, 0, 1.0, 3);
@@ -905,7 +906,7 @@ const _WMD_VES_LIFEBOAT = Object.freeze([
 /** An all-weather lifeboat, 14 m: a high bow, a low aft deck, a forward wheelhouse and an aft survivor cabin, a self-righting arch
  *  with its mast and aerials, a blue light, a D-fender along the gunwale. Nominal 14 x 4.4 x 6.5 m. */
 function _wmdVesBuildLifeboat(p, h) {
-  const V = _wmdVesCtx(h, p, 14, 4.4, 6.5), liv = p.livery, L = 14, hb = 2.2;
+  const V = _wmdVesCtx(h, p, 14, 4.4, 6.5), liv = p.livery, L = 14, hb = 2.2; V.crewLit = 0.4;
   const age = (hex, k) => h.aged(hex, k || 'paint', 0.7);
   const yd = a => 1.1 + 0.65 * Math.pow(Math.max(0, (a - 1.5) / (L / 2 - 1.5)), 2) + 0.12 * Math.pow(Math.max(0, (-a - 3) / 4), 2);
   V.part('hull', 0, 0, 0.6, 3);
@@ -962,7 +963,7 @@ const _WMD_VES_STEAMER = Object.freeze([
 /** A paddle steamer, 44 m: a slim hull with sponsons, two paddle boxes with their vents, saloons fore and aft of the engine casing,
  *  a promenade deck on rails, a bridge across the beam, two raked funnels, two masts. Nominal 44 x 11.4 x 14 m. */
 function _wmdVesBuildSteamer(p, h) {
-  const V = _wmdVesCtx(h, p, 44, 11.4, 14), liv = p.livery, L = 44, hb = 3.9;
+  const V = _wmdVesCtx(h, p, 44, 11.4, 14), liv = p.livery, L = 44, hb = 3.9; V.crewLit = 0.4;
   const age = (hex, k) => h.aged(hex, k || 'paint', 0.7);
   const yd = a => 2.35 + 0.75 * Math.pow(Math.max(0, (a - 6) / 16), 2) + 0.2 * Math.pow(Math.max(0, (-a - 10) / 12), 2), yDk = a => yd(a) - 0.05;
   V.part('hull', 0, 0, 1.2, 3);
@@ -1089,6 +1090,66 @@ worldModelDefine('barge', {
   liveries: () => _WMD_VES_BARGE,
   samples: [{ livery: 'black' }, { livery: 'green', age: 0.6 }, { livery: 'oxide' }, { livery: 'blue', size: 1.1 }],
   build: _wmdVesBuildBarge,
+});
+
+/* ============================================================
+   A PASSENGER LAUNCH: a water taxi (a cabin forward, an open well aft) or a bumboat (an open boat under a striped canopy)
+   ============================================================ */
+const _WMD_VES_LAUNCH = Object.freeze([
+  { name: 'yellow', hull: '#e8c030', top: '#25282c', antifoul: '#2a2a2e', house: '#f2efe6', roof: '#e8c030', canopy: ['#e8c030', '#25282c'], glass: '#33414f', seat: '#6a4a2a' },
+  { name: 'white-blue', hull: '#f2f4f4', top: '#2a5a8a', antifoul: '#2a2a2e', house: '#f2f4f4', roof: '#2a5a8a', canopy: ['#2a5a8a', '#f2f4f4'], glass: '#33414f', seat: '#a07a4a' },
+  { name: 'green', hull: '#2f6a4a', top: '#e8dcb0', antifoul: '#3a3a3a', house: '#efe9d4', roof: '#2f6a4a', canopy: ['#2f6a4a', '#efe9d4'], glass: '#33414f', seat: '#a07a4a' },
+  { name: 'red', hull: '#b6382c', top: '#f2efe6', antifoul: '#2a2a2e', house: '#f2efe6', roof: '#b6382c', canopy: ['#b6382c', '#f2efe6'], glass: '#33414f', seat: '#8a6a44' },
+  { name: 'navy', hull: '#22304c', top: '#e0b838', antifoul: '#3a3a3a', house: '#f1efe6', roof: '#22304c', canopy: ['#22304c', '#e0b838'], glass: '#33414f', seat: '#a07a4a' },
+]);
+
+/** A passenger launch, 8 to 12 m: a flared bow, a bulwark, a cabin with a sloping windscreen (water taxi) or a canopy on poles over
+ *  benches (bumboat), an outboard or a stern light, fenders. */
+function _wmdVesBuildLaunch(p, h) {
+  const L = p.L0, V = _wmdVesCtx(h, p, L, L * 0.325, L * 0.31), liv = p.livery, hb = L * 0.325 / 2, k = L / 8;
+  const age = (hex, kk) => h.aged(hex, kk || 'paint', 0.8);
+  const canopy = p.style === 'canopy', bul = 0.32 * k;
+  const yd = a => (0.78 + 0.32 * Math.pow(Math.max(0, (a - 0.2 * k) / (L / 2 - 0.2 * k)), 2.2)) * k;
+  V.part('hull', 0, 0, 0.4 * k, 3);
+  const Hh = _wmdVesHull(V, { L, hb, kW: 0.74, bow: { len: 2.3 * k, p: 1.7, q: 1.1, rake: 0.25 * k }, stern: { len: 0.7 * k, p: 2, q: 1, tip: 0.78, rake: 0 }, yd, bulwark: bul, step: 1.6 * k,
+    bands: [{ to: 0.28 * k, hex: age(liv.antifoul), role: 'antifoul' }, { to: y => y - 0.2 * k, hex: age(liv.hull), role: 'hull' }, { to: 'top', hex: age(liv.top), role: 'strake' }] });
+  Hh.cap(age(liv.top), 0.08 * k, 'paint', 0.015);
+  _wmdVesFoam(V, Hh, 0.2 * k, 0.3);
+  V.part('deck', 0, 0, 0.5 * k, 1);
+  Hh.deck(age('#8a8070', 'timber'), 'timber', 0.1);
+  Hh.inner(age(liv.hull), 0.08);
+  const yDk = a => yd(a) - bul;
+  if (!canopy) {
+    const a0 = -1.9 * k, a1 = 1.7 * k, y0 = yDk(0), y1 = y0 + 1.55 * k;
+    V.part('cabin', (a0 + a1) / 2, 0, (y0 + y1) / 2);
+    _wmdVesHouse(V, { a0, a1, hb: hb * 0.74, y0: y0 - 0.02, y1, hex: age(liv.house), roof: age(liv.roof), round: [0.2 * k, 0.5 * k], taper: 0.22 * k, over: 0.1 * k, slab: 0.08 * k, tag: 'c', arc: 3,
+      win: { rows: [[y0 + 0.6 * k, y1 - 0.25 * k]], step: 0.95 * k, glass: liv.glass, share: 0.12, frame: 0.85, crew: 0.4 } });
+    V.part('sign', (a0 + a1) / 2, 0, y1 + 0.2);
+    V.box((a0 + a1) / 2 - 0.3 * k, (a0 + a1) / 2 + 0.3 * k, -0.17 * k, 0.17 * k, y1 + 0.12 * k, y1 + 0.3 * k, '#f2efe6', '#f2efe6', 'paint', 'sign');
+    V.part('motor', -L / 2 - 0.1, 0, yDk(-L / 2) + 0.2);
+    V.box(-L / 2 - 0.28 * k, -L / 2 - 0.02 * k, -0.14 * k, 0.14 * k, yDk(-L / 2) - 0.1 * k, yDk(-L / 2) + 0.55 * k, '#2a2c30', '#3a3d42', 'metal', 'outboard');
+  } else {
+    const aa0 = -2.8 * k, aa1 = 2.2 * k, y0 = yDk(0), yT = y0 + 1.85 * k;
+    V.part('seats', 0, 0, y0 + 0.3, 2);
+    for (const l of [-0.6 * k, 0.6 * k]) V.box(aa0 + 0.2 * k, aa1 - 0.2 * k, l - 0.17 * k, l + 0.17 * k, y0, y0 + 0.4 * k, age(liv.seat, 'timber'), age(h.shade(liv.seat, 1.1), 'timber'), 'timber', 'seat');
+    V.part('canopy', (aa0 + aa1) / 2, 0, yT, 2.2);
+    for (const [a, l] of [[aa0, -0.95 * k], [aa0, 0.95 * k], [aa1, -0.95 * k], [aa1, 0.95 * k], [0, -0.95 * k], [0, 0.95 * k]]) V.line([[a, l, y0], [a, l, yT]], 0.06 * k, age('#d9d6cc'), 'metal', 'pole');
+    V.cloth([[aa0 - 0.2 * k, -1.15 * k, yT], [aa1 + 0.2 * k, -1.15 * k, yT], [aa1 + 0.2 * k, 1.15 * k, yT], [aa0 - 0.2 * k, 1.15 * k, yT]], 0.1 * k, liv.canopy[0], { stripe: liv.canopy, nu: 8, nv: 1, role: 'canopy', side: 1 });
+  }
+  V.part('lamp', L / 2 - 0.5 * k, 0, yd(L / 2 - 0.5 * k) + 0.5);
+  V.lamp(L / 2 - 0.9 * k, 0, yd(L / 2 - 0.9 * k) + 0.25 * k, 0.07 * k, { col: '#fff2c8', kind: 'bow', theta: h.aboard });
+  if (h.fine) for (const sg of [1, -1]) { V.sidePart('fend', sg, 0, sg * hb, 0.6 * k); for (const a of [-1.8 * k, 0.2 * k, 2.0 * k]) { const w = Hh.half(a); V.line([[a, sg * w, yd(a) - 0.02], [a, sg * w * 1.06, yd(a) - 0.34 * k]], 0.12 * k, '#1a1a1a', 'fabric', 'fender'); } }
+  return { height: (canopy ? 2.6 : 2.4) * k * V.ky };
+}
+
+worldModelDefine('launch', {
+  name: 'Passenger launch (water taxi, bumboat)', ids: ['boat.water-taxi', 'boat.bumboat'], sampleObj: 'boat.water-taxi', float: true, solidity: 'solid',
+  bob: { heave: 0.03, roll: 0.01, pitch: 0.005, period: 2.9 },
+  dims(info, ent) { const L = ent && ent.obj === 'boat.bumboat' ? 12 : 8; return { L, B: L * 0.325, H: L * 0.31 }; },
+  liveries: () => _WMD_VES_LAUNCH,
+  params(ent, o, p) { const bum = ent.obj === 'boat.bumboat', st = p.opts.style; return { L0: bum ? 12 : 8, style: st === 'canopy' || st === 'cabin' ? st : bum ? 'canopy' : 'cabin' }; },
+  samples: [{ livery: 'yellow' }, { livery: 'white-blue', age: 0.5 }, { livery: 'green' }, { livery: 'red', size: 1.2 }],
+  build: _wmdVesBuildLaunch,
 });
 
 /* ============================================================
@@ -1237,6 +1298,7 @@ worldModelDefine('paddle', {
     ['boat.trip-boat', 'boat.ferry', { h: 9, l: 30, w: 7.4 }, 'a river trip boat'],
     ['boat.paddle-steamer', 'boat.river-ferry', { h: 14, l: 44, w: 11.4 }, 'a paddle steamer'],
     ['boat.canal-barge', 'boat.narrowboat', { h: 3.4, l: 24, w: 4.6 }, 'a working barge'],
+    ['boat.widebeam', 'boat.narrowboat', { h: 2.3, l: 15, w: 3.6 }, 'a widebeam canal boat (the narrowboat model, 15 m x 3.6 m)'],
     ['boat.rowing-boat', 'boat.dinghy', { h: 0.75, l: 3.7, w: 1.35 }, 'a rowing boat'],
     ['boat.kayak', 'boat.dinghy', { h: 1.0, l: 4.3, w: 0.62 }, 'a kayak'],
     ['boat.canoe', 'boat.dinghy', { h: 1.1, l: 4.8, w: 0.86 }, 'a canoe'],
