@@ -75,3 +75,9 @@ Checked on world-test/fleet-canal-2-w3 at 2026-10-15 13:00 (`node tools/world.mj
   in its box (or be explicitly occluded), so missing drawings fail a test.
 - `tools/lib/world/sheet.mjs` `worldPageOpen` needs `{ ref, spec, id }` (as `world.mjs` passes it); with `{ ref }` alone
   it fails with "no scene host".
+- `worldPageOpen(...).frameAt(t)` does not advance the scene. After `frameAt(60)` the frame stats report `tau: 0`, and the
+  frames of `world capture` look identical across the strip. So the full-loop captures and the reviewer have NOT been
+  watching motion. Fix the frame clock in capture first, otherwise no motion bug (bunching, walking into each other) can be
+  seen or tested in the browser.
+- In the browser frame the engine reports 34 agents drawn (`world-frame.agents`), yet the PNG shows 2 swans, a heron and
+  people, and no ducks or moorhens. Compare the agent draw records with the pixels at the same t.
