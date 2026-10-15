@@ -24,14 +24,14 @@
   worldAdd('world-test', { id: 'liverpool-pier-head-1-w3', label: 'Liverpool Pier Head (world)', site: 'The Pier Head and the River Mersey, Liverpool', mood: 'proud', colour: 'slate',
     tags: ['uk', 'merseyside', 'liverpool', 'pier-head', 'waterfront', 'river-mersey', 'ferry', 'world-v3'], liveSky: { lat: 53.4064, lon: -2.9958 } }, {
     v: 3,
-    place: { lat: 53.4064, lon: -2.9958, alt: 8, region: 'merseyside', style: 'quayside' },
+    place: { lat: 53.4064, lon: -2.9958, alt: 8, region: 'merseyside', style: 'waterfront-city' },
     camera: { eye: 1.7, fov: 72, horizon: 470, heading: CAM.heading, water: -3 },
     surfaces: [
       { id: 'prom', kind: 'pavement', poly: rect(-900, 900, 0, 26) },
       { id: 'plaza', kind: 'plaza', poly: rect(-900, 900, 26, 80) },
       { id: 'road', kind: 'road', poly: rect(-900, 900, 80, 92) },
-      { id: 'mersey', kind: 'water', water: 'estuary', poly: rect(-900, 900, -1500, 0), shallow: 2 },
-      { id: 'stage', kind: 'boardwalk', poly: rect(-170, -40, -24, -1) },
+      { id: 'mersey', kind: 'water', water: 'estuary', poly: rect(-900, 1500, -1250, 0), shallow: 2 },
+      { id: 'stage', kind: 'boardwalk', poly: rect(-110, 10, -24, -1) },
     ],
     // the three great waterfront offices, their river fronts on the plaza (b = 95), in Portland stone
     buildings: [
@@ -40,12 +40,13 @@
       { id: 'liver', foot: rect(78, 142, 95, 150), storeys: 12, style: 'baroque-civic', crown: 'twin-towers' },
     ],
     entities: [
-      { obj: 'boat.ferry', at: at(-105, -31), facing: 348, id: 'ferry-1' },
+      { obj: 'boat.river-ferry', at: at(-48, -34), facing: 348, id: 'ferry-1' },
     ],
     life: [
       { who: 'walkers', on: 'plaza', rate: '10/min', mix: { stroll: 0.5, chat: 0.2, family: 0.15, 'dog-walker': 0.15 } },
       { who: 'walkers', on: 'prom', rate: '8/min', mix: { stroll: 0.5, brisk: 0.2, couple: 0.15, friends: 0.15 } },
       { who: 'gulls', count: 10 },
+      { who: 'boat.river-ferry', on: 'mersey', every: '4min' },
       { who: 'buses', on: 'road', rate: '2/min' }, { who: 'cars', on: 'road', rate: '5/min' },
     ],
     seed: 5,

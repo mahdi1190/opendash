@@ -323,11 +323,12 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
     const n = Math.round(area * L.cracks / 400);
     for (let i = 0, tries = 0; i < n && tries < n * 4; tries++) {
       const X = Math.max(0, b[0]) + rnd() * (Math.min(W, b[2]) - Math.max(0, b[0])), Y = Math.max(cam.horizon + 2, b[1]) + rnd() * (Math.min(H, b[3]) - Math.max(cam.horizon + 2, b[1])), g = _wgdUn(cam, X, Y);
-      if (!g || g.d > 25 || !_wgdIn(s, g.x, g.d)) continue;
+      // never at the lens: a crack seen from 4 m is a long dark wire crossing the foreground (a twig), and cracks are short, faint and few
+      if (!g || g.d > 25 || g.d < 8 || !_wgdIn(s, g.x, g.d)) continue;
       const pts = [[g.x, g.d]];
       let ang = rnd() * 6.28;
-      for (let j = 0; j < 3 + Math.floor(rnd() * 3); j++) { ang += (rnd() - 0.5) * 1.4; const q = pts[pts.length - 1], len = 0.15 + rnd() * 0.3; pts.push([q[0] + Math.cos(ang) * len, q[1] + Math.sin(ang) * len]); }
-      out.push({ t: 'line', pts: pts.map(q => _wgdP(cam, q[0], Math.max(_wgdNear(cam), q[1]))).map(p => [_wgdR(p[0]), _wgdR(p[1])]), w: Math.max(0.4, Math.min(1.2, cam.f * 0.012 / g.d)), a: 0.4, c: 'dark' });
+      for (let j = 0; j < 2 + Math.floor(rnd() * 3); j++) { ang += (rnd() - 0.5) * 0.9; const q = pts[pts.length - 1], len = 0.15 + rnd() * 0.3; pts.push([q[0] + Math.cos(ang) * len, q[1] + Math.sin(ang) * len]); }
+      out.push({ t: 'line', pts: pts.map(q => _wgdP(cam, q[0], Math.max(_wgdNear(cam), q[1]))).map(p => [_wgdR(p[0]), _wgdR(p[1])]), w: Math.max(0.4, Math.min(0.9, cam.f * 0.008 / g.d)), a: 0.3, c: 'dark' });
       i++;
     }
   }

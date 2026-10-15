@@ -96,7 +96,7 @@ const WORLD_WATER_HINTS = Object.freeze(['calm', 'breezy']);
 const WORLD_STEP_KINDS = Object.freeze(['weir', 'lock', 'fall']);
 const WORLD_LINE_KINDS = Object.freeze(['wall', 'fence', 'railing', 'hedge', 'kerb', 'coping']);
 const WORLD_FEATURE_KINDS = Object.freeze(['bank', 'embankment', 'cutting']);
-const WORLD_BACKDROPS = Object.freeze(['heath', 'woodland', 'downs', 'farmland', 'town-low', 'city-victorian', 'city-sheffield-hills', 'city-manchester-towers', 'canal-wooded', 'coast']);
+const WORLD_BACKDROPS = Object.freeze(['heath', 'woodland', 'downs', 'farmland', 'town-low', 'city-victorian', 'city-sheffield-hills', 'city-manchester-towers', 'canal-wooded', 'coast', 'estuary']);
 /** Frame edges: the v3.1 names and the camera-frame letters (their aliases). */
 const WORLD_EDGES = Object.freeze(['left', 'right', 'far', 'near', 'W', 'E', 'N', 'S']);
 const WORLD_EDGE_ALIAS = Object.freeze({ left: 'W', right: 'E', far: 'N', near: 'S', W: 'left', E: 'right', N: 'far', S: 'near' });

@@ -449,6 +449,42 @@ function _wexAffine(p0, p1, p2, q0, q1, q2) {
   return [X[0], Y[0], X[1], Y[1], X[2], Y[2]].map(v => _wexR(v, 5));
 }
 /**
+ * The end face of a hull that has NO end art (a ferry with only a side view), built from its side art so it is never one flat slab: a
+ * STEPPED silhouette, the hull across the full beam, the house narrower over it, the upper deck and the mast narrower still, each band the
+ * colour of the largest shape of the side art at that height, and rows of windows when the art has lit glass. -> { bands: [{ t0, t1, u, hex }]
+ * (t: the share of the height from the waterline, u: the inset each side as a share of the beam), rows: [{ t0, t1, u, hex }] }, or null.
+ */
+const _WEX_END_STEPS = Object.freeze([[0, 0.36, 0], [0.36, 0.64, 0.1], [0.64, 0.86, 0.22], [0.86, 1, 0.4]]);
+function _wexEndBands(obj, v, season) {
+  let sh = null;
+  try { sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(obj, v | 0, season || 'summer') : null; } catch (e) { sh = null; }
+  if (!sh || !Array.isArray(sh.box) || !sh.parts) return null;
+  const b = sh.box, H = (b[3] - b[1]) || 1, zone = _WEX_END_STEPS.map(() => new Map());
+  let glass = null;
+  for (const part of Object.keys(sh.parts)) {
+    if (/lit|shadow|reflect|smoke|wake|snow/.test(part)) continue;
+    for (const s0 of sh.parts[part] || []) {
+      if (!s0 || !s0.d || s0.m || typeof s0.f !== 'string' || s0.f[0] !== '#' || (s0.op != null && s0.op < 0.6)) continue;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      const pt = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
+      _wexTrace({ moveTo: pt, lineTo: pt, quadraticCurveTo(a, c, x, y) { pt(x, y); }, bezierCurveTo(a, c, d, e, x, y) { pt(x, y); }, closePath() {} }, s0.d);
+      if (!(x1 > x0) || !(y1 > y0)) continue;
+      const t = (b[3] - (y0 + y1) / 2) / H, area = (x1 - x0) * (y1 - y0);
+      if (s0.glow) { glass = glass || s0.f; continue; }
+      if (t < 0 || t > 1.05) continue;
+      const k = _WEX_END_STEPS.findIndex(st => t < st[1]), z = zone[k < 0 ? zone.length - 1 : k];
+      z.set(s0.f, (z.get(s0.f) || 0) + area);
+    }
+  }
+  const top = (m) => { let best = null, a = 0; for (const [k, v0] of m) if (v0 > a) { a = v0; best = k; } return best; };
+  let prev = null;
+  const hexes = zone.map(m => (prev = top(m) || prev));
+  const first = hexes.find(h => h);
+  if (!first) return null;
+  const bands = _WEX_END_STEPS.map((st, i) => ({ t0: st[0], t1: st[1], u: st[2], hex: hexes[i] || first }));
+  return { bands, rows: glass ? [{ t0: 0.42, t1: 0.5, u: 0.16, hex: glass }, { t0: 0.7, t1: 0.77, u: 0.28, hex: glass }] : [] };
+}
+/**
  * A long hull drawn in perspective (see the header). ent in camera metres: { id, obj, variant, x, z, y, facing | vx, vz, height }.
  * The side art is laid along the hull's real length: when the art is much shorter than the hull at its own proportions (a 9 m
  * picture of an 18 m narrowboat) its middle is repeated rather than stretched, so portholes keep their shape. The side is
@@ -530,6 +566,7 @@ function worldExtrudeHull(ent, cam, o) {
       if (A && C) { tris = [A, C]; m = A.m; }
     }
     end = { which, obj: eObj && tris ? eObj : null, m, tris, quad, z: _wexR(c[2], 3), hex: '#2a2e30' };
+    if (!end.obj) end.face = _wexEndBands(ent.obj, ent.variant, season);   // no end art: hull and house bands from the side art, never a flat dark slab
     box = _wexBox(quad, box);
     break;
   }
@@ -662,7 +699,13 @@ function worldExtrudeDraw(ctx, prim, o) {
       if (prim.end) {
         const es = prim.end.obj && prim.end.tris ? spriteOf(prim.end.obj) : null;
         if (es) for (const t of prim.end.tris) n += triDraw(es, t);
-        else { ctx.setTransform(vs, 0, 0, vs, ox, oy); n += _wexFillPts(ctx, prim.end.quad, colour('paint', prim.end.hex, prim.end.z, 'end'), A); }
+        else if (prim.end.face) {
+          // the end without art: bands from the waterline up (the quad runs bottom-left, bottom-right, top-right, top-left), windows across the house
+          ctx.setTransform(vs, 0, 0, vs, ox, oy);
+          const q = prim.end.quad, L = (p, c, t) => [p[0] + (c[0] - p[0]) * t, p[1] + (c[1] - p[1]) * t], at = (u, t) => L(L(q[0], q[1], u), L(q[3], q[2], u), t);
+          for (const b of prim.end.face.bands) n += _wexFillPts(ctx, [at(b.u, b.t0), at(1 - b.u, b.t0), at(1 - b.u, b.t1), at(b.u, b.t1)], colour('paint', b.hex, prim.end.z, 'end'), A);
+          for (const r of prim.end.face.rows) n += _wexFillPts(ctx, [at(r.u, r.t0), at(1 - r.u, r.t0), at(1 - r.u, r.t1), at(r.u, r.t1)], colour('glass', r.hex, prim.end.z, 'end'), A * 0.92);
+        } else { ctx.setTransform(vs, 0, 0, vs, ox, oy); n += _wexFillPts(ctx, prim.end.quad, colour('paint', prim.end.hex, prim.end.z, 'end'), A); }
       }
     }
   } finally { ctx.restore(); }

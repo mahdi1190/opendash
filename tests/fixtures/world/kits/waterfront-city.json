@@ -1,0 +1,10 @@
+{ "v": 3, "place": {"lat": 53.4064, "lon": -2.9958, "region": "merseyside", "style": "waterfront-city"},
+  "camera": {"eye": 1.7, "fov": 66, "horizon": 440, "heading": 60, "water": -3}, "backdrop": {"style": "estuary"},
+  "surfaces": [
+    {"id": "river", "kind": "water", "water": "estuary", "poly": [[-300, 1], [3, 1], [10, 300], [-300, 300]]},
+    {"id": "prom", "kind": "pavement", "poly": [[3, 1], [28, 1], [28, 300], [10, 300]]},
+    {"id": "plaza", "kind": "plaza", "poly": [[28, 1], [110, 1], [110, 300], [28, 300]]}
+  ],
+  "buildings": [{"id": "hall", "foot": [[112, 70], [180, 70], [180, 130], [112, 130]], "storeys": 7, "style": "baroque-civic", "crown": "great-dome"}],
+  "life": [{"who": "crowd", "on": "plaza", "rate": "8/min"}],
+  "seed": 41 }
