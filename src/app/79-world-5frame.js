@@ -1521,6 +1521,10 @@ function _wfrDraw(env, ctx, t) {
   if (!S) return 0;
   if (!S.ready) { if (env.warming) { _wfrRun(S, 8); if (!S.ready) return 0; } else _wfrRun(S, Infinity); }
   if (!S.plan) return 0;
+  // the renderer's warm-up draws 24 unseen frames at "sample times" to make what a frame makes on first sight; the world's clock does not
+  // move while it warms, so they are the same frame 24 times. Two make every sprite and silhouette (the second sees what the first
+  // made); the other 22 cost a warm remount 250 ms (a second at a 4x throttle) for nothing.
+  if (env.warming && S.ready) { if ((S.warmDrawn | 0) >= 2) return 0; S.warmDrawn = (S.warmDrawn | 0) + 1; }
   const rec = S.rec, world = rec.world, cam = world.cam, vs = env.vs, ox = env.ox, oy = env.oy, ta = _wfrNow(), L = env.Lnow || env.L;
   const st = typeof worldHostAt === 'function' ? worldHostAt(rec, t, { key: env, warming: !!env.warming, still: !!env.still }) : { tau: 0, agents: [] };
   const tau = st.tau;
