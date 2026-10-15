@@ -9,6 +9,8 @@
    ============================================================ */
 (function () {
   if (typeof worldAdd !== 'function') return;
+  // the church's footprint in the camera frame: 30 m west front, 150 m long, centred 235 m ahead, axis turned 14 degrees
+  const MINSTER = (() => { const a = -0.03, c = Math.cos(a), s = Math.sin(a); return [[-15, 0], [15, 0], [15, 150], [-15, 150]].map(([x, d]) => [Math.round((x * c - d * s + 1.5) * 10) / 10, Math.round((x * s + d * c + 285) * 10) / 10]); })();
   worldAdd('world-test', { id: 'york-shambles-1-w3', label: 'The Shambles, York (world)', site: 'The Shambles, York', mood: 'cheerful', colour: 'brick',
     tags: ['uk', 'north-yorkshire', 'york', 'shambles', 'medieval', 'timber-framed', 'lane', 'world-v3'], liveSky: { lat: 53.959, lon: -1.0815 } }, {
     v: 3,
@@ -19,9 +21,10 @@
       { id: 'cross', kind: 'pavement', path: [[-40, 122], [40, 122]], width: 5 },
     ],
     buildings: [
+      { id: 'minster', foot: MINSTER, storeys: 4, style: 'gothic-minster', crown: 'twin-towers' },
       { id: 'west', along: 'lane', side: 'left', style: 'timber-framed', storeys: [2, 3], from: 2, to: 119 },
       { id: 'east', along: 'lane', side: 'right', style: 'timber-framed', storeys: [2, 3], from: 2, to: 119 },
-      { id: 'end', along: 'cross', side: 'left', style: 'timber-framed', storeys: [3, 4], from: 24, to: 58, depth: [8, 10] },
+      { id: 'end', along: 'cross', side: 'left', style: 'timber-framed', storeys: [2, 3], from: 24, to: 58, depth: [8, 10] },
     ],
     life: [
       { who: 'walkers', on: 'lane', rate: '9/min', mix: { stroll: 0.6, chat: 0.15, couple: 0.25 }, edges: ['S', 'N'] },
