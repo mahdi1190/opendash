@@ -1527,7 +1527,7 @@ function _wfrDraw(env, ctx, t) {
   if (env.warming && S.ready) { if ((S.warmDrawn | 0) >= 2) return 0; S.warmDrawn = (S.warmDrawn | 0) + 1; }
   const rec = S.rec, world = rec.world, cam = world.cam, vs = env.vs, ox = env.ox, oy = env.oy, ta = _wfrNow(), L = env.Lnow || env.L;
   const st = typeof worldHostAt === 'function' ? worldHostAt(rec, t, { key: env, warming: !!env.warming, still: !!env.still }) : { tau: 0, agents: [] };
-  const tau = st.tau;
+  const tau = st.tau, tHost = _wfrNow();
   // the agents as draw records (views by appearance with hysteresis; scale buckets with hysteresis; view changes cross-fade)
   const mem = rec.frame.agents || (rec.frame.agents = new Map()), seen = new Set(), aRecs = [];
   let list = st.agents || [];
@@ -1558,6 +1558,7 @@ function _wfrDraw(env, ctx, t) {
   // what this frame really draws (the invariant checker's input on the real frame: worldFrameDrawn): the agents that survived the
   // draw's own drops (the near band, the frame sides, the governor's thinning), at the scene time they were drawn
   S.drawn = { t, tau, agents: aRecs.map(r => r.agent) };
+  const tRecs = _wfrNow();
   const movers = S.plan.live.concat(aRecs);
   const order = typeof worldFrameOrder === 'function' ? worldFrameOrder(S.plan.chunks, movers, null) : S.chunks.map(o => ({ kind: 'chunk', ref: o.ch })).concat(movers.map(r => ({ kind: 'agent', ref: r })));
   S.stats.orderMs = _wfrNow() - ta;
@@ -1565,10 +1566,11 @@ function _wfrDraw(env, ctx, t) {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   // per-section profile (ms, averaged over the frames since the bake: stats().prof)
-  const pf = S.stats.prof || (S.stats.prof = { order: 0, water: 0, mirror: 0, shadows: 0, depth: 0, lights: 0, n: 0 });
+  // (host: the systems' ticks and the agents; recs: their draw records; order: the depth order; the rest as named)
+  const pf = S.stats.prof || (S.stats.prof = { host: 0, recs: 0, order: 0, water: 0, mirror: 0, shadows: 0, depth: 0, lights: 0, n: 0 });
   let tp = _wfrNow();
   const lap = (k) => { const n = _wfrNow(); pf[k] += n - tp; tp = n; };
-  pf.order += tp - ta; pf.n++;
+  pf.host += tHost - ta; pf.recs += tRecs - tHost; pf.order += tp - tRecs; pf.n++;
   // 0. the ground detail under everything (look: textured surfaces, Q5); the water draws over its own footprint
   if (S.groundMarks && S.groundMarks.c) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(S.groundMarks.c, S.groundMarks.x, S.groundMarks.y); draws++; }
   // 1. the water with the statics' mirror (rippled in bands), falls, then the agents' mirror on their columns, rings and wakes

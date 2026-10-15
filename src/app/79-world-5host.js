@@ -414,10 +414,10 @@ function _wh5LayerOf(cam, d, layers) {
 
 /* ---------- the scene clock (R5, M8) ---------- */
 const WORLD_HOST_MAX_DT = 0.25;            // a frame later than this is a pause (offscreen, held): resume without a jump
-// a slow frame advances the scene by at most this (3 ticks of the fixed step): without the cap a frame that took 200 ms owed 6 ticks of
+// a slow frame advances the scene by at most this (2 ticks of the fixed step): without the cap a frame that took 200 ms owed 6 ticks of
 // every system, which made the next frame slower still (140 ms a frame at a 4x throttle, 90 ms of it the catch-up). The scene then runs
 // slower than real time on a machine that cannot keep 10 frames a second, instead of spending its frames on catching up.
-const WORLD_HOST_CATCHUP = 0.1;
+const WORLD_HOST_CATCHUP = 2 / 30;
 /**
  * The scene clock of a live world: scene seconds (tau) since the scene was first SHOWN. frame(key, t, flags) takes the host
  * time t of a frame (seconds; key: the renderer's bake) and returns tau:
