@@ -254,7 +254,7 @@ _scbgElemKinds.tpatch = function (e, face, ctx, T) {
 /** A lit shop interior over a display window (drawn only after dusk, ungraded): a warm gradient, brighter low. */
 _scbgElemKinds.tlit = function (e, face, ctx) {
   const p = _scbgRect(face.plane, ctx.view, e.s, e.z, e.w, e.h, -0.06);
-  if (p) ctx.sink.add(9, { f: { lin: [[0, '#fff2d0', 0.75], [1, '#ffd890', 0.35]], x1: p[3][0], y1: p[3][1], x2: p[0][0], y2: p[0][1] }, d: _scbgPath(p), op: 0.8, part: 'lit' });
+  if (p) ctx.sink.add(9, { f: { lin: [[0, '#fff2d0', 0.75], [1, '#ffd890', 0.35]], x1: (p[3] || p[p.length - 1])[0], y1: (p[3] || p[p.length - 1])[1], x2: p[0][0], y2: p[0][1] }, d: _scbgPath(p), op: 0.8, part: 'lit' });
 };
 
 /* ---------- fittings (block kinds): faces in metres from the wall plane ---------- */

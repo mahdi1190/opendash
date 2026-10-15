@@ -575,8 +575,9 @@ function _scbgRoofTex(face, ctx) {
 /** Map a wall-local rectangle (s, z, w, h at offset o) to screen points; null when any corner is behind the near plane. */
 function _scbgRect(pl, view, s, z, w, h, o) {
   const P = [_scbgOn(pl, s, z, o), _scbgOn(pl, s + w, z, o), _scbgOn(pl, s + w, z + h, o), _scbgOn(pl, s, z + h, o)];
-  if (P.some(p => p[2] < view.near)) return null;
-  return P.map(view.P);
+  // a rectangle that crosses the near plane is CUT there, never dropped (SCENE_LESSONS L: the nearest house's frame and windows vanished)
+  const C = _scbgClipNear(P, view.near);
+  return C ? C.map(view.P) : null;
 }
 /** The outline of an opening (flat, segmental or round head) as wall-local points. */
 function _scbgOpening(e, inset) {
@@ -594,7 +595,7 @@ function _scbgOpening(e, inset) {
   }
   return [[s, z], [s + w, z], [s + w, z + h], [s, z + h]];
 }
-const _scbgMap = (pl, view, pts2, o) => { const P = pts2.map(([s, z]) => _scbgOn(pl, s, z, o)); if (P.some(p => p[2] < view.near)) return null; return P.map(view.P); };
+const _scbgMap = (pl, view, pts2, o) => { const P = pts2.map(([s, z]) => _scbgOn(pl, s, z, o)), C = _scbgClipNear(P, view.near); return C ? C.map(view.P) : null; };   // cut at the near plane, not dropped
 /** The tier of an element: the on-screen height of its storey where it stands. */
 function _scbgTierAt(ctx, face, e) {
   if (ctx.view.ortho) return Math.min(ctx.tierCap, 3);
@@ -882,7 +883,7 @@ function _scbgDrawShop(e, face, ctx, T) {
     add(4, g, _scbgMix(sp.glass, '#a8b8c4', 0.2), { glow: 'shop', theta: gl.theta * 0.5 });
     if (T >= 2) for (let k = 1; k < Math.max(2, Math.round((b - a) / 1.2)); k++) { const m = a + (b - a) * k / Math.max(2, Math.round((b - a) / 1.2)); add(5, _scbgRect(pl, view, m - 0.04, glassZ, 0.08, glassH, 0.02), _scbgDark(col, shade * 0.5)); }
     const lit = _scbgRect(pl, view, a + 0.05, glassZ + 0.05, b - a - 0.1, glassH - 0.1, 0.0);
-    if (lit) sink.add(9, { f: { lin: [[0, '#fff2d0', 0.75], [1, '#ffd890', 0.35]], x1: lit[3][0], y1: lit[3][1], x2: lit[0][0], y2: lit[0][1] }, d: _scbgPath(lit), op: 0.8, part: 'lit' });
+    if (lit) sink.add(9, { f: { lin: [[0, '#fff2d0', 0.75], [1, '#ffd890', 0.35]], x1: (lit[3] || lit[lit.length - 1])[0], y1: (lit[3] || lit[lit.length - 1])[1], x2: lit[0][0], y2: lit[0][1] }, d: _scbgPath(lit), op: 0.8, part: 'lit' });
   }
   add(3, _scbgRect(pl, view, dS, 0.02, dW, fz - 0.15, 0.01), _scbgDark(col, 0.55));
   add(7, _scbgRect(pl, view, dS + 0.05, 0.02, dW - 0.1, fz - 0.3, view.ortho ? 0 : -0.5), _scbgMix(sp.glass, '#9fb0c0', 0.15), { glow: 'shop', theta: 0.0625 });
