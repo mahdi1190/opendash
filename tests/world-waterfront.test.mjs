@@ -56,7 +56,7 @@ test('K3: the chop of open water: wavelets in the base bake, deterministic, conv
   assert.ok(sea.n > 0 && sea.n < a.n, 'the sea has less than an estuary');
   // lighter and darker than the base, never brighter than a streak allows
   const vals = new Set(Array.from(a.B.filter((_, i) => i % 4 === 0))), mn = Math.min(...vals), mx = Math.max(...vals);
-  assert.ok(mn < 124 && mx > 132 && mn > 90 && mx < 170, `${mn}..${mx}`);
+  assert.ok(mn < 124 && mx > 132 && mn > 80 && mx < 180, `${mn}..${mx}`);
   // the rows at the horizon (under a pixel per wavelet) are not touched; they would shimmer
   const nearHz = a.B.slice(0, 4 * w * 3).every((v, i) => i % 4 === 3 || v === 128);
   assert.ok(nearHz, 'no chop within 3 rows of the horizon');

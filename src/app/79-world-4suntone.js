@@ -37,7 +37,7 @@ function worldSunTone(hex, n, sun) {
   // brightness: a lit face up to a quarter brighter, a face turned from the sun up to a third darker (at full directional light)
   const m = 1 + sun.k * (0.5 * lit - 0.3 * (1 - lit)), c = _wstRgb(hex);
   // colour: lit faces toward the sun's gold (stronger as it sinks), shaded faces toward the cool sky
-  const gold = [255, 206, 140], cool = [112, 128, 168], wk = sun.warm * lit * 0.3, ck = sun.k * (1 - lit) * 0.12;
+  const gold = [255, 206, 140], cool = [112, 128, 168], wk = sun.warm * lit * 0.16, ck = sun.k * (1 - lit) * 0.12;
   const out = c.map((v, i) => { let x = v * m; x = x + (gold[i] - x) * wk; x = x + (cool[i] - x) * ck; return _wstClamp(Math.round(x), 0, 255); });
   const r = '#' + out.map(v => v.toString(16).padStart(2, '0')).join('');
   if (_wstMemo.size > 20000) _wstMemo.clear();

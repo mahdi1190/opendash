@@ -205,7 +205,8 @@ const WORLD_STYLE_KITS = _wkbFreeze({
     look: { grass: 'mown', path: 'flags', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'stone' },
     fill: { grass: { near: _WKT_MOWN, mid: [['plant.rph-church-shrub', 2], ['tree.plane-avenue', 1], ['plant.shp-border', 1], ['plant.rph-short-grass', 2]], far: [['tree.plane-avenue', 3], ['tree.green-chestnut', 1]],
       distant: _WKT_DISTANT_TOWN, accents: [['plant.daisies', 2], ['ground.leaf-litter', 2]], maxH: 2.6 },
-      paving: { near: _WKT_STREET_NEAR.concat([['structure.mcr-planter', 1], ['street.bench', 2], ['street.bollard', 2], ['tree.plane-avenue', 1]]),
+      // near the lens a great plaza has low things (tubs, a bin, a bollard, a planter), never a bicycle stand or a bench, which fill a corner of the frame
+      paving: { near: [['plant.rph-flower-tub', 3], ['street.mcf-litter-bin', 1], ['street.bollard', 1], ['street.mqn-planter-grass', 2], ['tree.plane-avenue', 1]],
         mid: _WKT_STREET_MID.concat([['street.mqn-parasol', 1], ['person.cafe-goer', 2], ['street.bollard', 2], ['street.mqn-lifebuoy', 1]]),
         far: _WKT_STREET_FAR.concat([['person.cafe-goer', 1], ['street.bench', 1]]), accents: _WKT_PAVING_ACCENTS, max: { near: 10, mid: 34, far: 22 } },
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
