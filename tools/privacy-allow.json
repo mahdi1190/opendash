@@ -576,1531 +576,1849 @@
       "rule": "private-term",
       "path": ".claude/skills/animation-pack/SKILL.md",
       "line_sha256": "462a034a431cf5485adf4ef4d8daf1a209793dadedb5bf66636ec6a3d7cfa832",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": ".claude/skills/animation-pack/SKILL.md",
       "line_sha256": "9ee611b78980187fe62fa5ae55dfbe55cfc13fd475d060a2d9d6fd40cbb7efdb",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "9bc218a4dfefa1d5a7fed734327f40d4cb211fbab515b0a2605e32ce80bebbbf",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "228004d04de630adc9bf1544bea56d253eb7311d3fa90171d30ba136674367cd",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "a8d4f4415110492ec8619c687f9f03151631cc131f2a12bd1a48b8180efa84dc",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "2d2c435c1a14bdcfec9263db28f0792ae406c17f4f1297076fdbe7c3c6c8e8e6",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "e17fa584ce4a3fa17dcd517e6513d4c5eb99bde56702c5f98f51d0cb38972ee0",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "089affe326da809f275292b2d2d852f5c052a9cc16595cb5bef40da89a51150a",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "98e4345a728b0e5c5b7542ffb4f738dd25318335399bd95df7f0e1af2f369f4f",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "b1043dbdd48c2222de4aa6e74ed4292fca9cf33c4e4e134b6072d1eb4d262ac1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "a0f1b89d2c104b4b7211e67932b8099d80c6dfa75a811ae8c22ec030299ace4a",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "70a5788e586001322f27bcf3d314ef5bca43ca67e57668a7a36ab7d728738dec",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "5db8cec12fd0f1d74d59b3440ba99cb144b846feb7188005189d7364eded26c4",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "54666ffc7ce5d1af0f6112d065ad6aab35a7d4822226ba1bcf691e532330afdf",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "MODULES.md",
       "line_sha256": "c651c16ff10c61697c5347f4dedbd9e72b31efe167944134953c2010e16d12b3",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/SCENE_ENGINE_V2.md",
       "line_sha256": "6649038baf29b7e29b4f75df605be1fc0c19b0386809992967eb5c235ffd869f",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/SCENE_ENGINE_V2.md",
       "line_sha256": "6567d632de5f8862e8587c45f5c61a79e01c497b7e6229284b0b1cfc575bc5d6",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/SCENE_ENGINE_V2.md",
       "line_sha256": "da93755418cfd109373f0efed795fbe63d40118b85b4a791785c046aa21e7fa5",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/SCENE_ENGINE_V2.md",
       "line_sha256": "c2f2fa0dac9e12d3f0bb7addb17be8cba74db4aa323e23b3d7a6d79712283ddd",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/SCENE_ENGINE_V2.md",
       "line_sha256": "0580bbc65a6a19acffe4270c2335dd30261998045849b6bdfd6edcb658c67e82",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/SCENE_ENGINE_V2.md",
       "line_sha256": "77ece9d73a21273cffae3f186924f41f29e5f8e30ef61ed97fe56731f86b51fe",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/SCENE_ENGINE_V2.md",
       "line_sha256": "7be1628792697d53d1497002fb897ae0b9265dbcdf0208e22558a6b29364d659",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/SCENE_LESSONS.md",
       "line_sha256": "fa3038e9e48aa304f4b621966631945354161536729c2f06c11417c78f01edee",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "8099da041a06cb196efbd90d21b7e3db103fa51f66c0da40d528c36ee173b68a",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "838d9271792641355ee662f5a3d34f6edb52e872c5011c5fa1ae3b2d9eff0142",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "20642827ae531a39e9eb59e9bbbae8f52217f8de6b40d871a977acc854d14f44",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "f6c1045d309eedc511530ba492a526dd0c5692d4cd0bfd6e6f6040ebe191a8d1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "878f9c663dec21a049233567f27101fbe8a7a6766d29c9902fc117bd09efea2a",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "4bbae9531189964fe7d9e09a0e8ef4ebc8436a706b74ea2270b9a4c3f3898ad9",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "0a80931a0f4113836a4a2fbc92a80775982bfb1ab1f5094ef9dd9ea91dc68a62",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "f7b2e193d5e02f2ebfa43c91cf4459ce25a4490a03f46661e874e2aadf3f7dab",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "6f6b29e33d3fb02b63657537c38c4229b961a97233bc3d6284865c50ee90deed",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "c9131fa1ef720f09d7d22a3d3b905f65be8a266481c5bb2a9acfc55898a8f6d1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "00256f0e46ba5709b31a539c3f5ea23f004831328262fbe54c8b08fa5ee04d8f",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "2e1c64b8dde546cc3ac69057a3534e9a0753ba7f756733ef09627891c7548ca4",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE.md",
       "line_sha256": "7edb876a8db64d1e46b5f8c4b73bb478c9f24fac19c7a18279a7b3f27581ece5",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE_REQUIREMENTS.md",
       "line_sha256": "4ec2dacead15a535399e7c3a3b32828c7345159d15c7c55ec775da275e283bf1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE_REQUIREMENTS.md",
       "line_sha256": "654a4b0055d382800d220887090d95e15e8e3240fa5cf4bd9e2282cfa689f2e4",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE_REQUIREMENTS.md",
       "line_sha256": "a527a669ff2fe9aa99c3b84fcdc59e4279168cf2af582ddff93453be0bc53955",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE_REQUIREMENTS.md",
       "line_sha256": "59f08062d017c704801f73c8ea8c893d9d70c4f84b053e9f46c70b3176c2aef6",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE_REQUIREMENTS.md",
       "line_sha256": "082d210c9caa00029dfe2d761870c90957841152a2c7294985e124e98c9f5442",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-1ground.js",
       "line_sha256": "76bab958ff91a5536fa4426f3c8578da0d1eba6dbbb3aab710da03b6dd3924ef",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-1ground.js",
       "line_sha256": "8ef75d1f8381716ffcd09aeb6ad63db54b7ad74e63236a01242c5be7c712619a",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-1ground.js",
       "line_sha256": "a5e5f96d859dded4beec93256545537b435d60b49d57386ed87bc078bc6c8788",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-behaviours.js",
       "line_sha256": "87896c2b8329eba8e8e44d38746f160090f7acc24e9ff521fc5136f5f15072b3",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-behaviours.js",
       "line_sha256": "a54cb87edc1e0f5fb6f68da6099fcad50024ac459e4467c868ac9be0cb4bbe37",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-canal-views.js",
       "line_sha256": "3b318a81cacd7aad85e4c41814ea0ede16a7a573926cdff5114b24499c250727",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-canal-views.js",
       "line_sha256": "7514d5070d756b3abbe7c2e844470d53c986395926e3335d430b29d9fed3e6ca",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-manchester-centre.js",
       "line_sha256": "1112d23e8ceef4c8b4d98b26993edc11b791881efe04910d0477ed71257ecafb",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-manchester-centre.js",
       "line_sha256": "3cf0cef710edc78dd8ff934e919641da28b1db4c18511c8bba75c7e6e565c4c4",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-manchester-centre.js",
       "line_sha256": "6e89e1c2427cd737d75bce6c18dba6e70cf98b1a63c0a24f8a610924877ebac8",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-manchester-centre.js",
       "line_sha256": "2d5c946af2180ee628ddeee5d395b828d7e583c936fe39941ac859ededd631dc",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-manchester-quays-nq.js",
       "line_sha256": "623ff44244aacb958f86df6f64af1a74ef2226bf4986497627193d0fd19d5c44",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people-plus.js",
       "line_sha256": "c7e3160fe22c2cf38ccd3c06a27d4e972ab6e04f3827f8ee88d91c6e90a82089",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people-plus.js",
       "line_sha256": "3c0312d26c9df3325d2845f25720e08e71fcba53488ea7e3bb0405fe25640571",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people-plus.js",
       "line_sha256": "7b73cb676ca0c6038bf107e68f9231ce3406eaeb78f1324e8d02493731fcd02f",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people-plus.js",
       "line_sha256": "84a6fc08feb1694ea9ae69be07a2deea01715787f03e402067a527218339cefd",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people-plus.js",
       "line_sha256": "c0c9741bb40f271fc04524291874cd5a773bcad0ff8cfd8db01ae940947c101c",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people-plus.js",
       "line_sha256": "4bc9440b3ee7c03609e5d2aa16e661f3adc038f763512470618ffa8a51104494",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people-plus.js",
       "line_sha256": "77f7cda3929de3c05246021ff44a8972843c61c351e921748faacba670b90c3d",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people-plus.js",
       "line_sha256": "5c03074aacfdcd7262e7c39ef74a7d186fe30d08991ecf58b04c9347c8b47c6b",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people.js",
       "line_sha256": "c7e3160fe22c2cf38ccd3c06a27d4e972ab6e04f3827f8ee88d91c6e90a82089",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people.js",
       "line_sha256": "a57314954b689743a725f1e1e2936f6d4deba93f5961c2587747a08216d0509e",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people.js",
       "line_sha256": "0ccd64e401536e83ccf0aa912d241418f9bbf148cea2aa2147d784fa8f2e2e8a",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people.js",
       "line_sha256": "431f91a18b8f224a5b9b83dc4f453e02c6c6cb4c4c2ee974ba2f76a839af5759",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people.js",
       "line_sha256": "65c9a5309a54ea519ffff9c7d2e8c051ee795eb4ea718456908039487363272c",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people.js",
       "line_sha256": "2da3e1785289f05f8a5b51170bac73e97855157c0769dc5edeacef9cc8405468",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people.js",
       "line_sha256": "02b836e1e9f08f7d7a31f73781e6c3b1071119f4c6212f8a6c14e17931ba22e7",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people.js",
       "line_sha256": "2403807fa88dc6335075fd693c5628f48c6965ea9bf9f94d0d028d0346a26134",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-people.js",
       "line_sha256": "7a237f9a60ed7cdc47ebab12725b25b8e9ad655baece2701b6df1a8202532a10",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-plants.js",
       "line_sha256": "a20f0e3799b8ff8fd93b3c9a8000bf122d666a01f3ac80e40db69bc21f955f91",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-sheffield-centre.js",
       "line_sha256": "7b0fe3b5e31c2f30726c83fea5d87fc29381a60d258fdaa0fddf1a377d990d1d",
-      "why": "Walkley, a district of Sheffield, in a scene comment"
+      "why": "a Sheffield district name in a scene comment (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-sheffield-centre.js",
       "line_sha256": "719601c9851d0f7811f10c103d08062e582ee647757d5a9f7baa33b4af47add1",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-sheffield-parks.js",
       "line_sha256": "9b140bc5f8db44626ba8514cf8e4cb394ebb3441d21be7969969b50c0fcb57ae",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-trees-canal.js",
       "line_sha256": "92e35841efce2d245b2fead5662d13f3e8377a206cecff72be22d057d42f9fe9",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-trees-water.js",
       "line_sha256": "8486770758a9bfa69b6a301a43a12592d975e0f6a56c4435aea90333aae87213",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-trees-water.js",
       "line_sha256": "10a8942f0bbdf9ec7be3c5fef9ea15f44cd05188fa212a4355103ab04df84d1c",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-trees-water.js",
       "line_sha256": "eebaf9f32d3bbbcb3d97f540941fd9b2e18df7be7f6393ff858ba9dd20bcdb45",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-wyndhams-views.js",
       "line_sha256": "d0d77c3db2406d5eabb49cc36234e103d231db3bf5335cc99d215337e80a7bb8",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-wyndhams-views.js",
       "line_sha256": "b44429341489014c825eb1828cd24e2117a03e9b237c053a10dc37a98d8f06bd",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-yateley-common-views.js",
       "line_sha256": "90e448b3e20a40294bf1354d44aea9715900885f2ea45150645ed198e8fc3b9e",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-yateley-common-views.js",
       "line_sha256": "bb125bbc8d08bbc22ae0dfc6b57e1949eb89cf343c3ac7d7d4665a10819a9bd5",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-lib-yateley-common-views.js",
       "line_sha256": "0742d5d7f38fa65b7c585215a748cd187f5fee73c31ef069d787f1c56193c6bc",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/70-scene-svg.js",
       "line_sha256": "e1c7b74c1794a91dff0dd2ba5efa2f3c477b1fae63cdbfde9d09629cdbda44f9",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/71-anim-uk-nature-kit.js",
       "line_sha256": "9953ae21df419aa6ce5d29e80a77b120a67232d38584a7307b9e2efb08052fa3",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/71-anim-uk-nature-kit.js",
       "line_sha256": "5e3404dfd7ffdc660f616a58a69766764b1afff11646ca04dd1a898b0005110b",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/71-anim-uk-nature-kit.js",
       "line_sha256": "ebdf79f62e4a5856d941f5ec44b66dd13df6efe2c54dca58f14aacd4d331a6fd",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/71-anim-uk-nature-kit.js",
       "line_sha256": "b13347b2b24ee429c8297d385f24dc3b8848c290a742a3bdb67fd54eb8742018",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/71-scene-uk-north-manchester-centre-3.js",
       "line_sha256": "e8ea0d00168ab21356300044da02f6c9636bf17fcd9b53ba9fab0da63ce00066",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/71-scene-uk-north-manchester-quays-nq.js",
       "line_sha256": "8e38520ddd0508556bc10c3c2b8a1ce3bfefa257e8d193654c8e2ad23d894640",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/71-scene-uk-north-sheffield-centre.js",
       "line_sha256": "1d895d5578b5a15e392989625b5e470b6b92ffe1f26a3820ae54386098e6e2dd",
-      "why": "Walkley, a district of Sheffield, in a scene comment"
+      "why": "a Sheffield district name in a scene comment (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/71-scene-uk-north-sheffield-centre.js",
       "line_sha256": "50251939a29b95291348fb8a0bff4e878a72f469bc4c365a1f1e7cf419304e85",
-      "why": "Walkley, a district of Sheffield, in a scene comment"
+      "why": "a Sheffield district name in a scene comment (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/71-scene-uk-north-sheffield-kelham.js",
       "line_sha256": "10aaa1ecf98d100b5c7976517f1b8f82163f2b6552b9c16b555d2568c347643c",
-      "why": "Walkley, a district of Sheffield, in a scene comment"
+      "why": "a Sheffield district name in a scene comment (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v1.js",
       "line_sha256": "ba15cbd86505a4031d2d8f3f8326aae6b3c62cf992567a788f5c3f1d4b764e68",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v1.js",
       "line_sha256": "4f6547696d47e64418f51b83f7c7e5631d05d1d48d860f2f97976b3718b9992c",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v1.js",
       "line_sha256": "c000a3c9c590ed851fa31d499f716a6a930311da1cbd72c418b253a0a3080406",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v1.js",
       "line_sha256": "4fe127f3e968ab7315ee79adf02549bf00ce37380fa315d47b72abe0e573ae41",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v2.js",
       "line_sha256": "ba15cbd86505a4031d2d8f3f8326aae6b3c62cf992567a788f5c3f1d4b764e68",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v2.js",
       "line_sha256": "4f6547696d47e64418f51b83f7c7e5631d05d1d48d860f2f97976b3718b9992c",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v2.js",
       "line_sha256": "c000a3c9c590ed851fa31d499f716a6a930311da1cbd72c418b253a0a3080406",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v2.js",
       "line_sha256": "8623f128c2abe10fead5c7e25a9697ac29854e9d4295f76df25b747d6d5f125d",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v3.js",
       "line_sha256": "ba15cbd86505a4031d2d8f3f8326aae6b3c62cf992567a788f5c3f1d4b764e68",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v3.js",
       "line_sha256": "4f6547696d47e64418f51b83f7c7e5631d05d1d48d860f2f97976b3718b9992c",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v3.js",
       "line_sha256": "c000a3c9c590ed851fa31d499f716a6a930311da1cbd72c418b253a0a3080406",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v4.js",
       "line_sha256": "ba15cbd86505a4031d2d8f3f8326aae6b3c62cf992567a788f5c3f1d4b764e68",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v4.js",
       "line_sha256": "4f6547696d47e64418f51b83f7c7e5631d05d1d48d860f2f97976b3718b9992c",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/72-anim-pack-uk-south-east-basingstoke-canal-fleet-v4.js",
       "line_sha256": "c000a3c9c590ed851fa31d499f716a6a930311da1cbd72c418b253a0a3080406",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/78-scene-canvas.js",
       "line_sha256": "b7b0434536128dc30754babfeac58df692117eb059da2ecad5e754666586ee2a",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/78-scene-canvas.js",
       "line_sha256": "8c2947d0af8210b4693b02b4ea3b8f1a38503b25cbdfe78f4cad55575fff15b8",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/78-scene-player.js",
       "line_sha256": "1f57a7fdb063118daa52e9d65f753bda3ea5c184194b67ca47ef12aefc408171",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-0core.js",
       "line_sha256": "d8882dd0e14b1bed17154c57c0742ea43641d340b0b90840849b1f4dea62cade",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-0core.js",
       "line_sha256": "e10ca025900e9f2999dcff09d57452cae7790c9d0bcd8b9035fa3ed3e7a78f27",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-0core.js",
       "line_sha256": "ecefbe42ac1db7c54b4e7da1c1b0db7a4273874244957a1a1e183859a86d5161",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-0core.js",
       "line_sha256": "e504560f26b68ccf9e8f26111ac5b6c5e828f3d28d061545899ea7dabad6a5da",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-0kb.js",
       "line_sha256": "dad00a7ce9d80f83c50c26722e5ed60f43280c282d0c89d701112d3c2a855a19",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-0sys.js",
       "line_sha256": "a3bd53d3cc1e530d940dd573d5803969c3777196b442f016f21eb40e956e8ca0",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-0sys.js",
       "line_sha256": "5aeea4d83078d121f1e91a2055cd716862320fd62b79a68590e34a8565833468",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-0sys.js",
       "line_sha256": "4957729938d257c816700d1c073311480e0f83dfd271801838c42670c79617f4",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-0sys.js",
       "line_sha256": "d0ae3dd6e2ea7378589933b3374dcabe4c4f7aec0f16c54e7551d3f4f13a47cf",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-0sys.js",
       "line_sha256": "4322e06d1ee8ac808e26894b490d729c04da71b544e994dd00d1aa3d5d91c6bb",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-0sys.js",
       "line_sha256": "b7ff2ecbb1e30174681f12c5416598d333651ab86ffe460bac532e5660f19ea6",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1camera.js",
       "line_sha256": "5d09c6a1799df4e76c17b831ac194d3b8244b7a1594010f929557a283c0c8e2e",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1camera.js",
       "line_sha256": "edd552e98728bdd23e306d2f3590017dd024cd6f75847071b502329f7439de4a",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1camera.js",
       "line_sha256": "f2eee9c6dfc81a6a1e7201d851e534a93e1d403de2e5c3e90429c41d16f3eb51",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1camera.js",
       "line_sha256": "2c730b844c154a1ade23763817ac724ce2925a1770439bb2f600f371fa209705",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1camera.js",
       "line_sha256": "35edc9844e856bc5d881673709a3dffb536ab1f09165ae7284def30f91c11048",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1camera.js",
       "line_sha256": "d757de71b45a16167c144bb786268ca399c3bd6a15042b2da8619a394126b437",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1camera.js",
       "line_sha256": "ed647bad450004a013f2918aecd9ac1abcdea97fd05b3eb0c2204ab9041ef08e",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1camera.js",
       "line_sha256": "0fa14c4f4bdd9055b3845d485b0b9a540257b63242ec4ea90445e347b7e45d5d",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1camera.js",
       "line_sha256": "d374840f78b61f36720ce8003ab63422089867fb8f28b12421276825e2eec9d9",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1camera.js",
       "line_sha256": "442a279d6ada35ce15fd5bb942f733b672818762cb786a4b8d8e5148e008d41e",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1place.js",
       "line_sha256": "41a0630a68dcb1dabb5a60a02454e58ad6e45f1fb72a18dfe1da7344933655ae",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1place.js",
       "line_sha256": "4e09e18b653493aa9d82c0aa1023f3cd480d2431c7a07a69fcef5c1d5918915c",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1place.js",
       "line_sha256": "ad49ce0aac416af70eabb98fa6fcc0ecaf6398808552a4ade1100df8df3e3264",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1place.js",
       "line_sha256": "9c2329a5adea2733ab8f086804b93c7a12c6a1605df95e8debda37b051f4e779",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1place.js",
       "line_sha256": "af7ce2c457776ba741d1fb4a4772d95fd806be220ab81646d76853fe0edc8d57",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1place.js",
       "line_sha256": "9769ff149b8b70f8447764a8a7266c89db7d857bec9b5774afef928ab3ebbe22",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1place.js",
       "line_sha256": "51c35a18534ecff94963e7dabe07dfe798e5a447171597e428b6965bff003a68",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1place.js",
       "line_sha256": "4d6397ceb2411ca47f740ce00b520ee886519bc9d19fd25c63b2affaf3900099",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1place.js",
       "line_sha256": "d0f1c5f10be93a77e237967c0d5dd04c6e8dcebfe81f1c166c5029ff08633181",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-1place.js",
       "line_sha256": "c5c05fe04141c0116fba69cdce5d4826f9fb9359017fc388060b76d82c84b06d",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2life.js",
       "line_sha256": "f57b6e8cb52cdf83ee65d2f0a6fdb64300edb664a5c1caddcce12ac50dc0f1fb",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2life.js",
       "line_sha256": "791208f4c0942b6eab8ce473bf4719272caac87490aa02c853288f8faae74174",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2life.js",
       "line_sha256": "7f9f9ae7db8099b0f4a271ef42d7da2579e9aa21347c9b589382663c72cee23c",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2life.js",
       "line_sha256": "d42b92f6382eadb788f9867c274b8c4d75fe8aea6b268281616109e27e492582",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2life.js",
       "line_sha256": "cbd4fbff2aa25003e0025706830096f2675592edddbfa8048e901518b37aba90",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2life.js",
       "line_sha256": "24a38be61e510bc686be6f1b6e86649153cdd2c345e9a614dc34bc1175f1f50d",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2life.js",
       "line_sha256": "6fd2f5250c045290daf8443178dec1bdbf7a39318a96876a86bbbe394482161e",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2life.js",
       "line_sha256": "fa8da911ac7096fca86fa93f3eb83ba6117c874c496a2613178ecb80d05f89b3",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2life.js",
       "line_sha256": "19359dc2dfb06d700f601663dbdabd05602f4707699e6e23605af09ed10fc47d",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2life.js",
       "line_sha256": "861f7ae2b0fd47adb0d78e623c3dcbefe2b00085034d9e84d618a5397fb4c04f",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2life.js",
       "line_sha256": "528b626da85cf0676b6d36013f14e8a5717d696fb6e1d604ad1c6e3da20ee90d",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-2traffic.js",
       "line_sha256": "275b224a5974a234b49f9f6213b5884d4360cd7725b0818044bac2f742dab624",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-3order.js",
       "line_sha256": "66f1a0ed35b0d924026e6795d0f792db34991bb7101a401f05cd73551a9b6ee3",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-3order.js",
       "line_sha256": "8c1004f4b0f2b69e0764adc3f3f4dc0344ed4feb44d726b116a0950581e9d172",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-4material.js",
       "line_sha256": "d9e2ce4d689d05bbc465ef9fade801770bd54ff0d557fd7d010c30208e4e81f3",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-4material.js",
       "line_sha256": "3ebcaf2d85454527f704cc0d8efa70967a99ca330979870f3dbbb177e2a6b579",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-4material.js",
       "line_sha256": "fc6cac475d804d74aab5d4b1746461f9d879a2645728fe36fbf42a64f52fd8fd",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-4material.js",
       "line_sha256": "fe1cb54cfb7c6b8418c2a8683e51aada0931e1f1ec77e43c1c2a93b35b3eb969",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-4material.js",
       "line_sha256": "c43ce475ff505ff91ea9909a12ba80a9b6522a336d59a3ff4ebca1dc0e997b32",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-4material.js",
       "line_sha256": "acad6a62800ea72ec01142d06ffa516db6f82b58cb469fa266cb23d74906e483",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-4material.js",
       "line_sha256": "0d58fd0a7e5ad0d0f934878eb8e41d859e134f48613b96971816ea45dd9fad95",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-4material.js",
       "line_sha256": "339f19ff149aeb2d1eaf6916a7f897ae66c7466051da1f64a4381de5aff8e3ae",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-4material.js",
       "line_sha256": "4a0dcffa30d41bcdd4b6c41d11f7f725396c46a0e32f479b90b70ca452906099",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-5frame.js",
       "line_sha256": "b7f888792a4b33552c668980d2796e833e87a34ab7ec499c3956019bdf77230d",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-5frame.js",
       "line_sha256": "635ec36291fa034a793a2ae7dfa531695b4a193eb32ecdf3586b7e3d32d61c9c",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-5frame.js",
       "line_sha256": "f49b3b43121a0d4a092f481600748a023f98c26f9246ee219bdff749c108a912",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "57ae089371c14fe5da326921da8306d094a084c5f308afbcdc04fc50fcea1930",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "b0f5fb7da464872080f84612b25f3fad35a6f5af6d960672950cecbbf762e288",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "efbb8aad489e05453fe36451f5821c0ca6193964a770a99be48629ae8798b4fb",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "fdaf584143f5ed2dfa61238029a40080c334db631d596e8a56a53c3f918384f4",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "5e9d5807c0119fcfec6698b75426cee28b62c377f642463efcc387d442978766",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "5ea3b5cb05863ac4e1c9193e3a891cf534044ce73627d24bf1477862967aef52",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "ce672a380911f9b295b24b2ab5ac880a8cfa658ab32dd4dac010c53e947ecf33",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "62a9ff5dea5e224b7b5270692a5c363ffdb632ade279fe8169727c154b16deae",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "f24e0a77255e5dd69741663479cdcb4bc5130c941154a95f83e9f01bf754a3bf",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "24079954167b2e2bd87e14f862b1a46f60baccc6a75d2523e8c216ea80375788",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "61cf2db86774b4f1749d3d5dbb42697ff66da28cdbfd9cc6f07a48d45476d3d8",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "a1541352b0f105c7073c1e488b92630438b4e546ad3846dbf0309f980f48543b",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "8e29cf3d7fec0f00761f5914ae905824697ac59af762e884133f83b5d8708a4b",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "a956a625a8642039c068259abb73e39e1dc782b03c324a291d7c9c6fd716f180",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "48443663582f1a0645b505161d3cfd93b43b0d36321939c6c4d4b4728d76f0c9",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "0e15b6994426f78a3d86f178d73a7cfe1d757afc5f5025add8d8283b083d8731",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "a001325bb023c2490e8608b84231a4f15d9a0242a442feed593c169ba0f1caa6",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "2a2573d0c2be541fa75a9cca4bed1d2cc5b4949d94fa03e2d5773ec45cb383c9",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "878fcfda0f82db13068f66d6c6a7ca84f6be216a8162f3084b495cc43f8d41b7",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "17d34c95134385efb546893963a68e3123c6572cb261cbdbe6317dc5a87cd677",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-6anim.js",
       "line_sha256": "fe7a7a4b2addea51cd9f77bc5ae4ba0677029195e81aca9c7332856c3e35d708",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-9inv.js",
       "line_sha256": "e05bc3f44af7baec30064c4b9b3abcf202bd3464b759d06294855a522eca9efb",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-9inv.js",
       "line_sha256": "c45048280136ea8bcff8e9168ef52c27e53c6dd3f467655ef15f229f8fb16252",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "src/app/79-world-9inv.js",
       "line_sha256": "13a9992278196a7e3beeb6d1000080588ad1dd078b7782c5a5f936f3be212dab",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/bench-across-path.json",
       "line_sha256": "0dccd319c26dfc53d966af760319af1eb67b88c6f7b0d20d409105437b6057a4",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/bench-across-path.json",
       "line_sha256": "16646dc8e8aff9b55d2f3ee1927fc38922f56725399e890928c57aef04ddebb1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/boats-on-towpath.json",
       "line_sha256": "8575ac07bc171c39ce7d26c52b95f0e4b32faa13efb94520b578f871425931e5",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/boats-on-towpath.json",
       "line_sha256": "16646dc8e8aff9b55d2f3ee1927fc38922f56725399e890928c57aef04ddebb1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/camera-into-wall.json",
       "line_sha256": "f88a7513568694cffa9ccf879af5ca315ee2519774c4b3ad1e721269d640d33d",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/camera-into-wall.json",
       "line_sha256": "16646dc8e8aff9b55d2f3ee1927fc38922f56725399e890928c57aef04ddebb1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/cars-on-the-right.json",
       "line_sha256": "20fdfafdcd7e1bc15c4efdb12d6be65b0d36e34c76cdf6a28d4e2b7d6f6bcfa3",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/cars-on-the-right.json",
       "line_sha256": "16646dc8e8aff9b55d2f3ee1927fc38922f56725399e890928c57aef04ddebb1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/crowd-too-big.json",
       "line_sha256": "16646dc8e8aff9b55d2f3ee1927fc38922f56725399e890928c57aef04ddebb1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/duck-on-roof.json",
       "line_sha256": "694b255675be02f047a983fa11e55261df9c6f4a0b0677392d9ca9e8dfc217a5",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/duck-on-roof.json",
       "line_sha256": "16646dc8e8aff9b55d2f3ee1927fc38922f56725399e890928c57aef04ddebb1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/giant-person.json",
       "line_sha256": "058302b9c48729fb6a60b415500e22e2356f46136f0c8c9707075d9bf97d809e",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/giant-person.json",
       "line_sha256": "16646dc8e8aff9b55d2f3ee1927fc38922f56725399e890928c57aef04ddebb1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/landmark-behind-trees.json",
       "line_sha256": "51c5e012c95a92e5c3589411c9dff21e61a694d7f78bfd7b8c2c1452e00d9810",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/landmark-behind-trees.json",
       "line_sha256": "16646dc8e8aff9b55d2f3ee1927fc38922f56725399e890928c57aef04ddebb1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/people-in-hedge-and-wall.json",
       "line_sha256": "9495caa5c29718aa240ce46a84104d695851d11f7ed398fe9f70bd42eaf75a1d",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/people-in-hedge-and-wall.json",
       "line_sha256": "16646dc8e8aff9b55d2f3ee1927fc38922f56725399e890928c57aef04ddebb1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/adversarial/train-off-rails.json",
       "line_sha256": "16646dc8e8aff9b55d2f3ee1927fc38922f56725399e890928c57aef04ddebb1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/fixtures/world/repair-bench-across-path.json",
       "line_sha256": "74c460cb5a40ce96bdc04f71e792b47c8ed92b83a761ddeb51bfe65ce0940444",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/scene-core.test.mjs",
       "line_sha256": "136e9968da36265c8c5e6bec5e5a7a6bad33fc371dc39d64dc899ed1a5af52e2",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/scene-core.test.mjs",
       "line_sha256": "d067c7d392ac2fb76875cd6e25d2be14cf9340cf9a296e74485d2a1284ce3808",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/scene-flow.test.mjs",
       "line_sha256": "8bb62dbf83427b17a9ae270fcb5d7a2e19794af5592562cbfa07d4596bf60505",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-anim.test.mjs",
       "line_sha256": "90e32e28829eed4354b3c63325d1c1643bb271749603d6f155b522f22a8972d4",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-anim.test.mjs",
       "line_sha256": "64be4cadb2f1be220268a0b09b2ac92c2e8c30f43423cb65d4123ed5e6ddab88",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-anim.test.mjs",
       "line_sha256": "b6ae9b84998f9865ccbf7aa2377c966b1f053b3ef5b0a493529f001c2d526544",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-anim.test.mjs",
       "line_sha256": "24dfc491c00e1e366e078f36845c470d4ec4d890c55dee17fbe77bc22bad31fb",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-anim.test.mjs",
       "line_sha256": "dfcd5cf4fb4d5246f9fa443fb4dae8cbca42804b473298286e2a8678e4103be0",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-anim.test.mjs",
       "line_sha256": "39b4eb3f7e67dd92fffc117585c97434dec30cc996db2957357d57a5aa27c0a3",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-anim.test.mjs",
       "line_sha256": "33441eed6eea1c1e0c9844033ae9abb6ee855e37ae3d00b4dae863074f5046a3",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-camera.test.mjs",
       "line_sha256": "b5bd8778b15d662e1b2e5159ee5038a0c96e944facbb7d9046182af4e212eefd",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-camera.test.mjs",
       "line_sha256": "2f4a998dfb9ed8fddfadc1edddc463940e364a7f1c4ae7f0b3a031f2c3ecef47",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-camera.test.mjs",
       "line_sha256": "96fd127987a94a3c4c2478f83b59c8a0ca3b440178abefe40296bf37a37a8e36",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-camera.test.mjs",
       "line_sha256": "e21b6dbd0ceea8d05e62b2073d4d7c0994e5704918364f2c1b83c8bcfeb36cff",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-camera.test.mjs",
       "line_sha256": "de58f9df32c8a827363567fe2dd442f7cf59fee7cce2a7142338eb2b3e4d2492",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-core.test.mjs",
       "line_sha256": "7c73cf91a6152ef369d38d1c8835b935b63297aacc08309dacd64d0041d42624",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-integrator.test.mjs",
       "line_sha256": "22b6b5f6364369ab9a055def347fa4c07d9b658f5d7de9b1d152c3b59c715e95",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-invariants.test.mjs",
       "line_sha256": "719a08b10f5072bd5c896ce4bd4f6f65a241dd1c08d84ff7688c7cda164770f3",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-invariants.test.mjs",
       "line_sha256": "dbffb81025457313c8456f026e814f92aeccb516b0bafffe3a4508f4b5971d93",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-invariants.test.mjs",
       "line_sha256": "fede4d1b442e669adc9fbf438d6438a997b1b95e1b907a5e59992e04ac1d00af",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-invariants.test.mjs",
       "line_sha256": "9d9841cc85f9ace365f6dfc91e4dfb1c7c5116122d8f017a106878ebd523b308",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-invariants.test.mjs",
       "line_sha256": "02e7b701e818ceb6213856a0ce3c7df77ced52a4b89eb0157bee7dd802371a2e",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-invariants.test.mjs",
       "line_sha256": "369d826b72f2f034794dc0bcc0a9e07055e4c33d1fc985166ad7c3d2250968c1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-invariants.test.mjs",
       "line_sha256": "41af592693383acffec2b4a046083b73936bafe8d47818b717f10ce97095f660",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-life.test.mjs",
       "line_sha256": "16efcf70e6db0bc98b485b0b18eeabf198779584869e924f5fe4c6b73c291a56",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-life.test.mjs",
       "line_sha256": "96cba86bece60113352ea01760dcf4991a778c009b7122ec8e8a74a2552c984b",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-life.test.mjs",
       "line_sha256": "48a8c9a8ae90607cd17cb5c6f1a03584d78a42cba8a0075729e5b51d431de105",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-place.test.mjs",
       "line_sha256": "6ed2afe278f93094dd71278700ea8f882d051096ce587a1763e6639152d390ca",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-place.test.mjs",
       "line_sha256": "8dd9f01fb851337c7bfd627be672334f1bcc0f31f3b56451ccecd1ad181f1cbb",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-sys.test.mjs",
       "line_sha256": "9fca3c20dc6cf7819e14e83270ee989224e526e289c1a3dee3c954331ea8e275",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-sys.test.mjs",
       "line_sha256": "a1eeff7e02730de94969c57c84ea2f3b0c4e85d392a80a3db28a67b7c363324f",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-sys.test.mjs",
       "line_sha256": "d6b26d72d97254bf8296270929042b4273c5b0f788ba04c7a9c206ec88c9dc16",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-sys.test.mjs",
       "line_sha256": "9d4a18beaed39ff63ad7537dc75418d757abc4aee0581cc3f8db40db1d9f5fe5",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-sys.test.mjs",
       "line_sha256": "c4f370fc819c3f8b5a83842988317181d5dbcc8b7ae8084ff1e0400140d8f2d2",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-sys.test.mjs",
       "line_sha256": "28183182c6bf231dc8c68e0c0ba3df9edfc37ca3ec325e5b00f01bf5e7a1b578",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-sys.test.mjs",
       "line_sha256": "352b582310dae8ced3b1bd8738c33609b80f1f3ac79161a48c1d8c21279fabfc",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-sys.test.mjs",
       "line_sha256": "4c194cb7614bc3a9a790eed47ea7ace4bdff4be497ab18f70abed56e94fcdaba",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-sys.test.mjs",
       "line_sha256": "a8f806fb372c5a2c507cb13df94ba46ca1217dd8f31c647c26da4ff08194922f",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-sys.test.mjs",
       "line_sha256": "216456153b56a47e30d3edd179f80ed8c536a41d9a5f61b27c664b975280fc5a",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-sys.test.mjs",
       "line_sha256": "4eb6e3cf128f19fa006836aa875e4a36ac7895d6660f6a916b3cdfa6b5be4cfe",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tests/world-traffic.test.mjs",
       "line_sha256": "2700b9d89f6429886e151eba2dac672117c3b27bed04fd8cbc2d9944f1eb64f4",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tools/lib/scene-cmd/motion.mjs",
       "line_sha256": "b65ed1be2817f589ae8a9cd0a93c6e0429d6476cc7f980ee06691b55c4151b08",
-      "why": "the colour word 'brown' in a plant description"
+      "why": "a colour word in a material or plant description (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tools/lib/scene-page.mjs",
       "line_sha256": "459e591e1faebeae7c81529bb9dafeeeae65481f45fb85ce65f426c54b82fce7",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tools/lib/world/convert.mjs",
       "line_sha256": "1a3dc79a12a3e5c378f068a84f8e2258153d4fe4270058f1f06a3d72f36a3dc1",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
     },
     {
       "rule": "private-term",
       "path": "tools/world.mjs",
       "line_sha256": "e430a9180fb44390d6754c2a941ee85e749884e7b0fc829956b36d5bfaea5bae",
-      "why": "the ordinary verb 'move' in code and docs"
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/HANDOFF_WORLD_ENGINE.md",
+      "line_sha256": "12969937d5ef172c1ff7d2174a2657dbf2f347eb512377a50e782a611b177564",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_LESSONS.md",
+      "line_sha256": "17a7d2dded156cdd03c162ffffa16d3720258da4278c589502910d1735252f34",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_LESSONS.md",
+      "line_sha256": "2f9a0cf73ed03dae72ce356c0979e586193db962fc7649e2ad97c8d1c0e3b323",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_LESSONS.md",
+      "line_sha256": "911e9bf4af76aec8076800beece039f5ffda6066805b219479eefd44b25128f3",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_LESSONS.md",
+      "line_sha256": "5d5f4f97defb6fc2716ebdcbf960650fcd518e978c6f6f7750076dd61b134a72",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_LESSONS.md",
+      "line_sha256": "2b75fdb2e34b95c9f12f90f12c9fbc194e73ca10d840f71128ef053acb2dfa9c",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_LESSONS.md",
+      "line_sha256": "a403ccc73ca9088abf70a20460f4017b2ff6fdc65ab8385164878f045b5c7901",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_LESSONS.md",
+      "line_sha256": "8a6cbac93d209c61403b3144bb1a10f0ba259a2e2c6145b1e4e54afaaafa4685",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_LESSONS.md",
+      "line_sha256": "5af45957f89343e2c948495b49585b6d9e9ef45e31f14ebed96ee0191ac4be85",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/WORLD_ENGINE.md",
+      "line_sha256": "f02d2db68c1a2df1abbe17685c650770c2e53c5012076c32cc0e033e9259b2f7",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-crowd.js",
+      "line_sha256": "c3898393ff3a393db4bdd1547e565ff3251f0765536a8186e2d0b92e8f453565",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-crowd.js",
+      "line_sha256": "a51d14a6f1b5731f9d48525e9e161abc872312a84c5cd0944352cc913e4ff83a",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-inv.js",
+      "line_sha256": "9c13907d15d69fd5dcb61027a1f25bbd4c4f7066f5a7eb76223d756a773af58e",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-sense.js",
+      "line_sha256": "02d97a5666c08ae819b27e3a8e3a13dec39db6b899fe8254cc8711a2c43ff390",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-sense.js",
+      "line_sha256": "335746a94d2baf21a458e66df40d01b80501d429dd42d5260f85b77c9a7af5a9",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-sense.js",
+      "line_sha256": "c8f6072f56fbea581981b94573ebd1132606e9c518c3bbb2784779d5f56e701c",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-sense.js",
+      "line_sha256": "17d3728bc3290ca4b65208e1c767312252d3a0bc4b3dd95893d1e22e001707ab",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-sense.js",
+      "line_sha256": "16666bf447612acd9cce5d96b8ed9ced9610fe112a50d714417fae10f3062759",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-sense.js",
+      "line_sha256": "642f39150f7f3df3b09327659288db5ad2b02dcbccb164627e5f69a51795e423",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-sense.js",
+      "line_sha256": "4974966fe9a0fde63086865eaae8ab63a2b986bfac5f75923892ac3e1fbc1b2d",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-sense.js",
+      "line_sha256": "f2a71a12a44d0dfeaf95f6112eb2744531eb570ca874eb39b89979aaaebd1ee0",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-x-sense.js",
+      "line_sha256": "c00a2aada96ef198de76d8713257b77461f4b519954e1d0b11940cbed4e6670c",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-0kb.js",
+      "line_sha256": "b244c397dc2953d32c3019c22da3bc8ec36cb666742127779fe87990f4420c33",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-1place.js",
+      "line_sha256": "fbe81717fc7c5ae54ea8bc83d02e2d8a75d0af5d8613589daf0c0bc458f925ec",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-1place.js",
+      "line_sha256": "2418d2eb3029a49ede9e3319b2a774b748956798ab01be0efcd92e5859fe629a",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-1place.js",
+      "line_sha256": "7a17c3863c51998b9897ecd416696ba92bb88ebff53e893d3496dab013707081",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-1place.js",
+      "line_sha256": "e3f1e59db6357d92bfaaacf5b1f005e5c0dec6abb10a5705707123fe0bc34952",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-1place.js",
+      "line_sha256": "6c15bb9fd3afa291ca5f2640a54158016559cf8f97c9b14e57e56d69b4568988",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-2life.js",
+      "line_sha256": "d15c4e10dae198898db8158461d234d4cb6453d50a892f58e5d56d4be0afcbd5",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-2life.js",
+      "line_sha256": "d2e3a2aaffcb9a2b5574d316b50c5ec90fd25ea10dee546dd2611c828dc3ffce",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-2life.js",
+      "line_sha256": "9a3010014efdc2a3cefac815c9fbaa82a695e01adf9828198490a4562845e838",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-2life.js",
+      "line_sha256": "dce5546c6017bd75b49557ec7e51142b246d6f94fc96d495263bb5c1fb79ee3e",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-2life.js",
+      "line_sha256": "0412d95c30388329186599ea799c5e8b563ca677225aa2a8c0ddc5b714d9ca70",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-2life.js",
+      "line_sha256": "29bbec9bee775d0c1ac23547bd23d5c54c6a10812b7d23528282ca1b4b481f37",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-2life.js",
+      "line_sha256": "728312186f9bef220c45bd826822103c54ef685900d72c1b375889c61fc16904",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-4material.js",
+      "line_sha256": "05c9761c690d58bb4688b24dc8558a17aee762470fdc2e33bde6627b0fd61223",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-4water.js",
+      "line_sha256": "0cda0ef4f5cff471578c1354693b3196e915cd7212fd906980f55f3fa720c188",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-5frame.js",
+      "line_sha256": "fc50630ef9e2445961381ffa3b1b650c7159873a66f28472e0a10248b3264e11",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-5host.js",
+      "line_sha256": "ec6a6dfca7521de38996c84f634b09c949c8d70ed1588a5515a8365ccb4dab4e",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-9inv.js",
+      "line_sha256": "251d50758bb2fb442518c0ed51ec7996c4aecf0ff91a4b909a64110d41a77899",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/scene-x-inv.test.mjs",
+      "line_sha256": "0b5c9b957b6c97b845bacc747e55fa94739d0acce2e0f1d06007ef2978f1949d",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/world-composition.test.mjs",
+      "line_sha256": "3bb971590b1df392d72949ca6a97181d8e27be104402a5c304ab3dbeec2230b7",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/world-composition.test.mjs",
+      "line_sha256": "d69b371653aa337cebe886238294703d95907773d4ca8b3675e99a191038dd0d",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/world-crowd.test.mjs",
+      "line_sha256": "e5787ee22a4ff91ed4f8aed946589046b13ad36551c3790b1cba5357261c8c83",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/world-glitch.test.mjs",
+      "line_sha256": "509206bffa7417c279089ee00c502935ae47d1d3426f26b59f704e8c2fe6a989",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/world-glitch.test.mjs",
+      "line_sha256": "a4768d586bfcb203a1de5185ec04ac53cdb059c50ffc856ebb53ad0db085c00d",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/world-invariants.test.mjs",
+      "line_sha256": "11c78b4005cce63812f542bfa7ee77f5ffdf16d1122222fdaec80d8f00c968e3",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/world-life-crowd.test.mjs",
+      "line_sha256": "8e9129538a711eb9749c75c5487e5295ba71fbd6e73af28c5e63bc2c58ae0082",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/world-season.test.mjs",
+      "line_sha256": "2b25b6c3ded5675c1b4df02420da467c8e61b07e11fd3f812b2a1e8edb4158a8",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/world-season.test.mjs",
+      "line_sha256": "34626ce358a1197401fefd2711f857da1c5dcfcc04d08bcb64e205a7f96ae785",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/world-waterfront.test.mjs",
+      "line_sha256": "2bbf8f29f0d9656b8e1598d62b385da5639866d1e6b6758c45c916482ea957e0",
+      "why": "a colour word in a material or plant description (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tools/lib/world/adversarial.mjs",
+      "line_sha256": "38817a038557871c1a2ff05bf69dd9216031a3c2dc60565fbe751c716d09d16b",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tools/lib/world/check.mjs",
+      "line_sha256": "c665cbca3e529a03050ed873ea3d8908401fc3ad2dad33cf30eebc43ee4b96a8",
+      "why": "an ordinary English verb in code and docs (reviewed)"
     }
   ]
 }
