@@ -81,3 +81,20 @@ Checked on world-test/fleet-canal-2-w3 at 2026-10-15 13:00 (`node tools/world.mj
   seen or tested in the browser.
 - In the browser frame the engine reports 34 agents drawn (`world-frame.agents`), yet the PNG shows 2 swans, a heron and
   people, and no ducks or moorhens. Compare the agent draw records with the pixels at the same t.
+
+## Fixed 15 Oct (evening)
+- Capture and review frames now really advance in time: `worldHostScrub(t)` / `window.__worldSetTime(t)` in `79-world-5host.js`;
+  before, still frames always showed the base moment, so no tool had ever shown motion.
+- People no longer walk into each other: following (match the pace of a slower walker ahead with no room to pass) and a hard
+  push-apart at shoulder width (0.28 m) in `79-world-2life.js` (`_wlfFollowCap`, `_wlfResolve`, `_wlfBody`). On the canal over
+  5 min: pairs closer than 0.55 m went from 52 to 15 (brief overtakes by joggers).
+- Ducks and moorhens were drawn all along; they were only "missing" because every capture was frozen at moment zero, when
+  they sit far away.
+
+## Boat hulls (next fix, precise)
+`worldExtrudeHull` (`79-world-4extrude.js`): for nb2 on fleet-canal-2 the end face spans y 484-606 (corners at y0..y0+h)
+while the first side strip at the joint spans y 504-625. The side strips map the side art box (by0..by1, which reaches
+about 11 units below the foot), but the end face uses y0..y0+h. So the side sits about 20 px lower than the end, its lower
+hull falls under the waterline cut, and the two read as separate pieces. Fix: map the end face and the side strips onto
+the SAME vertical frame (the hull from the waterline up, with the below-foot part of the art clipped consistently), and
+check the boat in `world render` at noon and night.
