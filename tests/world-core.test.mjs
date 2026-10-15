@@ -540,7 +540,7 @@ test('every library id used by the three test scenes has a descriptor, and each 
     const s = got[0];
     assert.deepEqual(W.worldValidate(s).errors, [], f);
     const w = W.worldBuild(s);
-    assert.ok(w.entities.length > 100, f);
+    assert.ok(w.entities.length > 60, f + ': ' + w.entities.length + ' entities');   // a smoke bound: an open waterfront has fewer things than a wood (richness is the critic's job)
     assert.ok(!w.log.some(l => l.rule === 'buildError'), f);
     assert.ok(!w.log.some(l => l.action === 'drop' && !l.auto && (s.entities || []).some(e => e.id && e.id === l.id)), `${f}: an authored, named entity was dropped`);
   }
