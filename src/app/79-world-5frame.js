@@ -1231,7 +1231,7 @@ function _wfrLightOnRec(l, r) {
   return l;
 }
 function _wfrLightsPlan(env, S) {
-  S.lights = null;
+  S.lights = null; S.liveLights = null;
   const rec = S.rec, world = rec.world, LN = _wfrLightNow(env, S);
   S.lightNow = LN;
   if (typeof worldLights !== 'function' || typeof worldDrawLights !== 'function' || !LN || !S.plan) return;
@@ -1244,6 +1244,9 @@ function _wfrLightsPlan(env, S) {
   if (!list.length) return;
   // each halo on its owner's drawn sprite (the glow part's art point through the record's own transform: bug 13)
   for (const l of list) _wfrLightOnRec(l, S.plan.byId && S.plan.byId.get(String(l.ref)));
+  // a static drawn LIVE (a flickering lamp, a flame) is in no chunk: its lights are drawn right after it (SCENE_LESSONS M: lamps lit at night)
+  S.liveLights = new Map();
+  if (S.plan.live && S.plan.live.length) { const liveIds = new Set(S.plan.live.map(r => String(r.id))); for (const l of list) if (liveIds.has(String(l.ref)) && l.src !== false && l.halo > 0) { if (!S.liveLights.has(l.ref)) S.liveLights.set(l.ref, []); S.liveLights.get(l.ref).push(l); } }
   const cache = rec.frame.cache || (rec.frame.cache = new Map()), W = env.W, H = env.H, vs = env.vs, ox = env.ox, oy = env.oy, cam = world.cam;
   const key = 'li|' + W + 'x' + H + '|' + Math.round(vs * 1e4) + '|' + _wfrHashStr(list.map(x => x.ref + ':' + x.part).join(',')) + '|' + Math.round(LN.alt * 2) + '|' + (LN.sky ? Math.round((LN.sky.fog || 0) * 10) : 0);
   let lay = cache.get(key);
@@ -1364,6 +1367,8 @@ function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
       }
     }
   } finally { if (r.cut) ctx.restore(); ctx.globalAlpha = 1; }
+  // a live static's lit glass (a lamp's lantern, a lit window): the chunk path draws it for a baked one
+  if (r.static && !r.prim && S.lightNow) { try { n += _wfrDrawGlass(ctx, env, S, r, 0, 0, S.lightNow) || 0; } catch (e) { /* unlit */ } }
   return n;
 }
 /** The contact blob under a grounded agent (no look package): a soft ellipse, never on water or in the air. */
@@ -1593,7 +1598,7 @@ function _wfrDraw(env, ctx, t) {
       if (k < 1 && m.prev && m.prev.o && !r.prim) draws += _wfrDrawMover(env, S, ctx, Object.assign({}, r, { o: m.prev.o, flip: !!m.prev.flip }), tau, 1 - k);
       else if (m) m.prev = null;
       draws += _wfrDrawMover(env, S, ctx, r, tau, k);
-      const own = agentLights && agentLights.get(r.id);
+      const own = (agentLights && agentLights.get(r.id)) || (r.static && S.liveLights && S.liveLights.get(r.id));
       if (own) { try { draws += worldDrawLights(ctx, own, cam, { vs, ox, oy, sky: S.sky || undefined, stage: 'glow' }) || 0; } catch (e) { /* no lamp */ } ctx.setTransform(1, 0, 0, 1, 0, 0); }
       const b = r.box;
       clip = [Math.floor(b.x0 * vs + ox) - 1, Math.floor(b.y0 * vs + oy) - 1, Math.ceil(b.x1 * vs + ox) + 1, Math.ceil(b.y1 * vs + oy) + 1];

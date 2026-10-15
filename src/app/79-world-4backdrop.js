@@ -51,7 +51,7 @@ const WORLD_BACKDROP_STYLES = Object.freeze({
     { z: 1800, dz: 0.15, objs: ['tree.woods-edge', 'tree.pond-wood', 'building.skyline-band'], fill: 0.9, cl: [5, 10], sp: 120, max: 80 }] },
   // the far shore of a wide estuary or river (a mile across): a low line of terraces, mills, warehouses, a church and trees, never a skyline
   estuary: { ground: 'town', bands: [
-    { z: 1100, dz: 0.08, objs: ['tree.bank-distant', 'building.mill-red-brick', 'tree.far-broad', 'building.terrace-northern', 'tree.bank-oak', 'building.warehouse-canal', 'tree.bank-distant', 'building.church'], fill: 1.4, cl: [5, 10], sp: 60, max: 120 },
+    { z: 1100, dz: 0.08, objs: ['building.terrace-northern', 'building.mill-red-brick', 'tree.bank-distant', 'building.warehouse-canal', 'building.terrace-northern', 'building.warehouse-canal', 'building.church', 'building.mill-red-brick', 'tree.far-broad'], fill: 1.4, cl: [5, 10], sp: 60, max: 120 },
     { z: 2400, dz: 0.08, objs: ['building.skyline-band', 'tree.bank-distant', 'tree.far-broad', 'building.skyline-band'], fill: 1.2, cl: [4, 9], sp: 150, max: 80 }] },
   'city-victorian': { ground: 'town', bands: [
     { z: 180, dz: 0.2, objs: ['building.terrace-victorian', 'building.terrace-victorian', 'building.townhouse', 'building.church', 'building.shopfront'], fill: 1.4, cl: [4, 9], sp: 18, max: 120 },

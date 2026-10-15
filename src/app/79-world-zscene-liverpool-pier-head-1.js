@@ -15,7 +15,7 @@
 (function () {
   if (typeof worldAdd !== 'function') return;
   // the camera: on the river wall 215 m south of the middle building's frontage, looking 352 degrees (compass)
-  const CAM = { a: -215, b: 3, heading: 352 };
+  const CAM = { a: -250, b: 1, heading: 358 };
   const D = Math.PI / 180, A = [Math.sin(340 * D), Math.cos(340 * D)], B = [Math.sin(70 * D), Math.cos(70 * D)];
   const f = [Math.sin(CAM.heading * D), Math.cos(CAM.heading * D)], r = [Math.cos(CAM.heading * D), -Math.sin(CAM.heading * D)];
   /** A waterfront point (a along the wall, b inland) in the camera frame (x right, z ahead). */
@@ -25,29 +25,34 @@
     tags: ['uk', 'merseyside', 'liverpool', 'pier-head', 'waterfront', 'river-mersey', 'ferry', 'world-v3'], liveSky: { lat: 53.4064, lon: -2.9958 } }, {
     v: 3,
     place: { lat: 53.4064, lon: -2.9958, alt: 8, region: 'merseyside', style: 'waterfront-city' },
-    camera: { eye: 1.7, fov: 72, horizon: 500, heading: CAM.heading, water: -3 },
+    camera: { eye: 1.7, fov: 86, horizon: 500, heading: CAM.heading, water: -2.4 },
     surfaces: [
       { id: 'prom', kind: 'pavement', poly: rect(-900, 900, 0, 26) },
       { id: 'plaza', kind: 'plaza', poly: rect(-900, 900, 26, 80) },
       { id: 'road', kind: 'road', poly: rect(-900, 900, 80, 92) },
       { id: 'mersey', kind: 'water', water: 'estuary', poly: rect(-900, 1500, -1250, 0), shallow: 2 },
-      { id: 'stage', kind: 'boardwalk', poly: rect(-110, 10, -24, -1) },
+      { id: 'stage', kind: 'boardwalk', poly: rect(-190, 40, -26, -1) },
     ],
     // the river wall's railing, set back a little from the edge
     lines: [{ id: 'river-rail', kind: 'railing', path: [at(-420, 0.7), at(420, 0.7)] }],
     // the three great waterfront offices, their river fronts on the plaza (b = 95), in Portland stone
     buildings: [
-      { id: 'port', foot: rect(-135, -52, 95, 145), storeys: 7, style: 'baroque-civic', crown: 'great-dome' },
-      { id: 'cunard', foot: rect(-30, 30, 95, 140), storeys: 8, style: 'baroque-civic', crown: 'corner-dome' },
-      { id: 'liver', foot: rect(78, 142, 95, 150), storeys: 12, style: 'baroque-civic', crown: 'twin-towers' },
+      { id: 'port', foot: rect(-150, -60, 95, 148), storeys: 7, style: 'baroque-civic-port', crown: 'port-dome' },
+      { id: 'cunard', foot: rect(-30, 30, 95, 140), storeys: 8, style: 'baroque-civic-palazzo', crown: 'palazzo' },
+      { id: 'liver', foot: rect(70, 150, 95, 150), storeys: 11, style: 'baroque-civic-liver', crown: 'liver-towers' },
     ],
     entities: [
-      { obj: 'boat.river-ferry', at: at(-66, -34), facing: 348, id: 'ferry-1' }, { obj: 'boat.river-ferry', at: at(-2, -34), facing: 348, id: 'ferry-2' },
+      { obj: 'boat.river-ferry', at: at(-125, -34), facing: 348, id: 'ferry-1' }, { obj: 'boat.river-ferry', at: at(-38, -34), facing: 348, id: 'ferry-2' },
+      // the walking bronze group on the plaza and one named bench (the kit scatters the rest of the benches, lamps and planters)
+      { obj: 'street.walker-group', at: at(-228, 15), facing: 90, id: 'statue' },
+      { obj: 'street.bench', at: at(-215, 10), facing: 250, id: 'bench-b' },
     ],
     life: [
-      { who: 'walkers', on: 'plaza', rate: '10/min', mix: { stroll: 0.5, chat: 0.2, family: 0.15, 'dog-walker': 0.15 } },
-      { who: 'walkers', on: 'prom', rate: '8/min', mix: { stroll: 0.5, brisk: 0.2, couple: 0.15, friends: 0.15 } },
-      { who: 'gulls', count: 10 },
+      { who: 'walkers', on: 'plaza', rate: '16/min', mix: { stroll: 0.5, chat: 0.2, family: 0.15, 'dog-walker': 0.15 } },
+      { who: 'walkers', on: 'prom', rate: '14/min', mix: { stroll: 0.45, brisk: 0.15, couple: 0.2, friends: 0.2 } },
+      { who: 'visit', mix: { stroll: 0.5, family: 0.5 }, rate: '1/40s', goals: [{ go: 'statue' }, { do: 'look', for: [20, 60] }, { leave: 'N' }] },
+      { who: 'visit', mix: { elderly: 0.5, couple: 0.5 }, rate: '1/90s', goals: [{ go: 'bench-b' }, { do: 'sit', for: [30, 90] }, { leave: 'N' }] },
+      { who: 'gulls', count: 16 },
       { who: 'buses', on: 'road', rate: '2/min' }, { who: 'cars', on: 'road', rate: '5/min' },
     ],
     seed: 5,

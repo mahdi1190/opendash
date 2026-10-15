@@ -68,7 +68,7 @@ const WORLD_WATER_LOOK = Object.freeze({
   sea: { base: ['#5f8aa6', '#3a6a8c', '#234a66'], tint: '#3a6a8c', clarity: 0.1, mirror: 0.35, ripple: 0.6, drift: 'swell', rings: false, chop: 0.7 },
   harbour: { base: ['#5a7480', '#3f5e6a', '#2d4652'], tint: '#3f5e6a', clarity: 0.06, mirror: 0.6, ripple: 0.25, drift: 'wind', rings: true },
   // a wide tidal estuary (Mersey, Thames, Severn, Humber): silt-laden, brown-grey, opaque, choppy, running with the tide
-  estuary: { base: ['#946c3e', '#704f2c', '#4b351b'], tint: '#704f2c', clarity: 0.02, mirror: 0.12, ripple: 0.55, drift: 'flow', rings: true, flow: 0.5, chop: 1 },
+  estuary: { base: ['#946c3e', '#704f2c', '#4b351b'], tint: '#704f2c', clarity: 0.02, mirror: 0.14, ripple: 0.55, drift: 'flow', rings: true, flow: 0.5, chop: 1, sheen: 0.75 },
   puddle: { base: ['#6a7480', '#4a5560', '#2a3540'], tint: '#4a5560', clarity: 0, mirror: 0.9, ripple: 0.05, drift: 'still', rings: false },
 });
 const _WWA_BED = '#4a4030', _WWA_FLOATS = /^(boat|duck|swan|coot|grebe|goose|gull|fish)$/, _WWA_SWIMMERS = /^(duck|swan|coot|grebe|goose)$/;
@@ -551,7 +551,9 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
     const b = g < 0.5 ? _wwaMixRgb(base3[0], base3[1], g * 2) : _wwaMixRgb(base3[1], base3[2], (g - 0.5) * 2);
     const skyc = g < 0.35 ? _wwaMixRgb(S.low, S.mid, g / 0.35) : _wwaMixRgb(S.mid, S.top, _wwaClamp((g - 0.35) / 0.65, 0, 1));   // the sky mirrored about the horizon
     const F = _wwaClamp(look.mirror * (0.25 + 0.55 * u), 0, 0.95);
-    rowBase[r] = _wwaMixRgb(_wwaMixRgb(b, bed, _wwaClamp(look.clarity * 2.5 * g * g, 0, 0.5)), skyc, F * 0.6);
+    // open water seen at a grazing angle mirrors the pale sky near the horizon: a silvery sheen that thins toward the viewer (look.sheen)
+    const sheen = look.sheen > 0 ? _wwaClamp(look.sheen * Math.pow(Math.max(0, (u - 0.3) / 0.7), 1.6), 0, 0.9) : 0;
+    rowBase[r] = _wwaMixRgb(_wwaMixRgb(_wwaMixRgb(b, bed, _wwaClamp(look.clarity * 2.5 * g * g, 0, 0.5)), skyc, F * 0.6), S.low, sheen * 0.55);
   }
   // 2. the base (statics' bake): every wet pixel opaque, dithered
   const D = res.img.data;

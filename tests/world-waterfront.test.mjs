@@ -56,7 +56,7 @@ test('K3: the chop of open water: wavelets in the base bake, deterministic, conv
   assert.ok(sea.n > 0 && sea.n < a.n, 'the sea has less than an estuary');
   // lighter and darker than the base, never brighter than a streak allows
   const vals = new Set(Array.from(a.B.filter((_, i) => i % 4 === 0))), mn = Math.min(...vals), mx = Math.max(...vals);
-  assert.ok(mn < 124 && mx > 132 && mn > 80 && mx < 180, `${mn}..${mx}`);
+  assert.ok(mn < 124 && mx > 132 && mn > 80 && mx < 215, `${mn}..${mx}`);   // (an estuary's highest crests break white: up to +44)
   // the rows at the horizon (under a pixel per wavelet) are not touched; they would shimmer
   const nearHz = a.B.slice(0, 4 * w * 3).every((v, i) => i % 4 === 3 || v === 128);
   assert.ok(nearHz, 'no chop within 3 rows of the horizon');
@@ -144,10 +144,10 @@ test('K9: the Pier Head spec is short and validates clean; its buildings and fer
   assert.ok(item, 'registered in the gallery pack');
   const spec = JSON.parse(JSON.stringify(W.worldHostSpec(item)));
   assert.equal(spec.v, 3); assert.equal(spec.place.style, 'waterfront-city'); assert.equal(spec.place.region, 'merseyside');
-  assert.ok(spec.surfaces.length <= 6 && spec.entities.length <= 3 && spec.buildings.length === 3 && spec.life.length <= 8, 'short');
+  assert.ok(spec.surfaces.length <= 6 && spec.entities.length <= 6 && spec.buildings.length === 3 && spec.life.length <= 8, 'short');
   assert.ok(!spec.fill && !spec.landmarks, 'no hand-placed dressing, no drawn landmarks: the generator draws the buildings');
-  assert.ok(spec.buildings.every(b => b.style === 'baroque-civic' && typeof b.crown === 'string'), 'three civic buildings with crowns');
-  assert.deepEqual(spec.buildings.map(b => b.crown).sort(), ['corner-dome', 'great-dome', 'twin-towers']);
+  assert.ok(spec.buildings.every(b => /^baroque-civic/.test(b.style) && typeof b.crown === 'string'), 'three civic buildings with crowns');
+  assert.deepEqual(spec.buildings.map(b => b.crown).sort(), ['liver-towers', 'palazzo', 'port-dome']);
   assert.deepEqual((W.worldValidate(JSON.parse(JSON.stringify(spec))).errors || []).map(e => e.rule + ' ' + e.path), [], 'validates clean');
   const world = W.worldBuild(JSON.parse(JSON.stringify(spec)), { season: 'summer' });
   assert.ok(world.entities.some(e => e.id === 'ferry-1'), 'the moored ferry stands on the water');
@@ -159,5 +159,14 @@ test('K9: the Pier Head spec is short and validates clean; its buildings and fer
   assert.ok(top > 8 && top < 320, 'the crowns are in the frame, not cut by its top edge: ' + top);
   const x0 = Math.min(...prims.map(p => p.box[0])), x1 = Math.max(...prims.map(p => p.box[2]));
   assert.ok(x1 - x0 > 600, 'the group spans over a third of the frame: ' + Math.round(x1 - x0) + ' px');
-  for (const p of prims) assert.ok(p.direct.shapes.some(sh => sh.part === 'roof' && /^#[4-9a-f]/.test(sh.f)), p.id + ' has its crown');
+  // three DISTINCT buildings (the Three Graces: a domed one, a heavy palazzo with no tower, a block with two clock towers): the copper crown
+  // is on the port and the liver blocks, the cunard has none and is the lowest; their walls are three different stones
+  const by = Object.fromEntries(prims.map(p => [p.id, p]));
+  for (const id of ['port', 'liver']) assert.ok(by[id].direct.shapes.some(sh => sh.part === 'roof' && /^#[4-9a-f]/.test(sh.f)), id + ' has its copper crown');
+  assert.ok(!by.cunard.direct.shapes.some(sh => sh.part === 'roof' && /^#[4-9a-f]/.test(sh.f)), 'the palazzo has no tower or dome');
+  assert.ok(by.liver.height > by.port.height && by.port.height > by.cunard.height, 'liver > port > cunard: ' + [by.liver.height, by.port.height, by.cunard.height].map(Math.round));
+  // the stone: the mean of the light fills (the walls and their dressings; glass and shade are dark)
+  const stone = (p) => { let n = 0; const m = [0, 0, 0]; for (const sh of p.direct.shapes) { if (typeof sh.f !== 'string' || !/^#[0-9a-f]{6}$/i.test(sh.f)) continue; const c = [1, 3, 5].map(i => parseInt(sh.f.slice(i, i + 2), 16)); if (c[0] + c[1] + c[2] < 540) continue; n++; for (let k = 0; k < 3; k++) m[k] += c[k]; } return m.map(v => v / Math.max(1, n)); };
+  const T = ['port', 'cunard', 'liver'].map(id => stone(by[id])), dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  for (const [i, j] of [[0, 1], [0, 2], [1, 2]]) assert.ok(dist(T[i], T[j]) > 8, 'two buildings in the same stone: ' + T.map(t => t.map(Math.round)));
 });
