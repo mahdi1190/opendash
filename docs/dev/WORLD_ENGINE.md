@@ -157,6 +157,16 @@ The ground height `h(x, z)` is defined everywhere in view: the v2 relief grid (`
 a decked thing at its deck, a floater at the water level less its sink, a wader at the water level, a flyer at its altitude.
 Nothing is placed through the ground or floating above it (invariant `floating`).
 
+A **cliff** (`kind: 'cliff'`, `79-world-4cliff.js`) is analytic, because a face that is vertical over a metre cannot live in a grid whose rows are metres
+deep at 200 m: a plan (`path`, or an `arc: { c: [x, z], r, from, to }` in bearings from straight ahead), `h` (the foot of the talus to the plateau),
+`scree: { w, h } | false` (the talus skirt), `batter` (setback per metre of height; an overhang is texture, never geometry), `rim: { w, h }` (the rounded
+lip), `high: 'far' | 'left' | 'right'` (which side is the high ground; default away from the camera), `fade` (the face tapers to the ground over this length at each
+end) and `rock` (limestone, gritstone, chalk, sandstone, slate, granite: tone, bedding, jointing). `worldCliffHeight(f, x, z)` is the shape; the relief compiler
+samples it into a finer grid, `relief.base` (kept as `world.reliefBase`) holds the relief that is not a cliff, and the terrain pass draws the face itself
+(`worldCliffPrims`) in depth-binned columns with strata, joints, ledges, streaks, vegetation and a talus of stones (`worldCliffStones`). The strips cut at the foot and
+the lip, and `worldCliffHides` says exactly what the face hides. A terrain prim is a `line` prim with `faces` (the strip quads) and `ops` (the face: gradient fills, fills,
+strokes, trees), drawn by `worldTerrainDraw`; `tops` is its upper edge by screen column, which lets the order skip a strip that cannot cover a mover.
+
 ## 2. Derived rendering
 
 ### 2.1 Pipeline (per scene load, then per frame)
