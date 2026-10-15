@@ -23,6 +23,8 @@
      worldCliffHeight(f, x, z)     -> the ground height at (x, z) from this cliff alone (0 away from it)
      worldCliffZone(f, x, z)       -> true where the face's own picture stands in for the ground (the face and its lip, with a margin)
    ============================================================ */
+// where a face tapers below this share of its height it is no longer drawn as a face (the terrain strips draw the slope that is left)
+const WORLD_CLIFF_MIN_M = 0.2;
 const WORLD_CLIFF_ROCKS = Object.freeze(['limestone', 'gritstone', 'chalk', 'sandstone', 'slate', 'granite']);
 const _wclMemo = new WeakMap();
 const _wclSm = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
@@ -116,7 +118,7 @@ function worldCliffZone(f, x, z) {
   const g = worldCliffGeom(f);
   if (!g) return false;
   const n = _wclNear(g, x, z), t = (n.side * g.hi > 0 ? 1 : -1) * n.d, m = _wclTaper(g, n.s);
-  if (m < 0.05) return false;
+  if (m < WORLD_CLIFF_MIN_M) return false;
   const tTop = Math.max(0.05, g.b * Math.max(0, g.H * m - Math.min(g.lipH * m, g.H * m * 0.2) - g.hs * m));
   return t > -1.2 && t < tTop + g.lipW + 1.2;
 }
@@ -206,12 +208,12 @@ function _wclTex(g) {
   // weathering streaks: the long dark water stains from a ledge or the rim down the face (the signature of a limestone cliff), short
   // runs under ledges, and a few clean pale ones
   const streaks = [];
-  for (let s = r() * 14; s < g.L; s += (8 + r() * 22) / Math.max(0.2, lk.streak)) streaks.push({ s, w: 0.4 + r() * 1.6, k: Math.floor(r() * beds.length), len: 3 + r() * 20, a: 0.07 + r() * 0.13, pale: r() < 0.2, major: false });
-  for (let s = r() * 24; s < g.L; s += (22 + r() * 55) / Math.max(0.2, lk.streak)) streaks.push({ s, w: 1.4 + r() * 4, k: beds.length - 1, len: g.H * (0.45 + r() * 0.6), a: 0.1 + r() * 0.14, pale: false, major: true });
+  for (let s = r() * 14; s < g.L; s += (5 + r() * 16) / Math.max(0.2, lk.streak)) streaks.push({ s, w: 0.4 + r() * 1.8, k: Math.floor(r() * beds.length), len: 3 + r() * 24, a: 0.09 + r() * 0.16, pale: r() < 0.15, major: false });
+  for (let s = r() * 24; s < g.L; s += (14 + r() * 38) / Math.max(0.2, lk.streak)) streaks.push({ s, w: 1.2 + r() * 4.2, k: beds.length - 1, len: g.H * (0.4 + r() * 0.65), a: 0.1 + r() * 0.16, pale: false, major: true });
   // fine marks: hairlines along the bed boundaries (in runs) and short dashes and cracks scattered over the face
   const hair = [], dashes = [];
   beds.forEach((b, k) => { if (k < 1) return; for (let s = r() * 20; s < g.L; ) { const len = 10 + r() * 70; hair.push({ k, s0: s, s1: Math.min(g.L, s + len), a: 0.08 + 0.12 * r() }); s += len + 3 + r() * 25; } });
-  for (let s = r() * 2; s < g.L; s += 0.7 + r() * 1.4) { const k = Math.floor(r() * beds.length); dashes.push({ s, k, dh: (r() - 0.3) * Math.min(2.2, beds[k].th) * 0.9, len: 0.8 + Math.pow(r(), 2) * 6, a: 0.07 + r() * 0.15, v: r() < 0.3, w: 0.8 + r() * 0.6 }); }
+  for (let s = r() * 2; s < g.L; s += 0.7 + r() * 1.4) { const k = Math.floor(r() * beds.length); dashes.push({ s, k, dh: (r() - 0.3) * Math.min(2.2, beds[k].th) * 0.9, len: 0.8 + Math.pow(r(), 2) * 6, a: 0.1 + r() * 0.2, v: r() < 0.3, w: 0.8 + r() * 0.7 }); }
   const lichen = [];
   for (let s = r() * 9; s < g.L; s += 7 + r() * 16) lichen.push({ s, h: r() * g.H, w: 0.8 + r() * 3, hh: 0.5 + r() * 1.6, k: r() * 0.14 + 0.05, seed: Math.floor(r() * 1e6), g: r() < 0.5 });
   // the rim: turf tussocks and a few thorns standing against the sky
@@ -236,7 +238,7 @@ function _wclColumns(g, cam) {
     if (z > near) {
       const X = x0 + f * x / z, cross = Math.abs(a.tx * z - x * a.tz);
       step = Math.max(0.25, Math.min(5, 7 * z * z / (f * Math.max(0.02, cross))));
-      if (m > 0.04 && -(x * nx + z * nz) > 0.02 * Math.hypot(x, z) && X > -450 && X < 2050) cols.push({ s, x, z, X, nx, nz, tx: a.tx, tz: a.tz, m });
+      if (m > WORLD_CLIFF_MIN_M && -(x * nx + z * nz) > 0.02 * Math.hypot(x, z) && X > -450 && X < 2050) cols.push({ s, x, z, X, nx, nz, tx: a.tx, tz: a.tz, m });
     }
     s += step;
   }
@@ -303,40 +305,37 @@ function _wclFace(g, cam, o) {
     // ---- 1. the beds: one smooth gradient fill a bed across the whole group (the tone drifts along it, shaded by each column's own normal)
     for (let k = 0; k < T.beds.length; k++) {
       const bed = T.beds[k], top = [], bot = [], stops = [];
-      let any = false;
+      let any = false, thin = false;
       const X0 = Cb[0].X, X1 = Cb[Cb.length - 1].X, span = Math.max(1, X1 - X0);
       Cb.forEach((c, i) => {
         const [lo, hi] = bounds(c.m), yb = Math.max(lo, Math.min(hi, _wclBound(g, T, k, c.s))), yt = Math.max(lo, Math.min(hi, k + 1 < T.beds.length ? _wclBound(g, T, k + 1, c.s) : g.H + 5));
-        if (yt - yb > 0.02) any = true;
+        if (yt - yb > 0.02) any = true; else thin = true;
         const pb = P(c.s, yb), pt = P(c.s, yt);
-        top.push([pt.X, pt.Y]); bot.push([pb.X, pb.Y + 0.7]);
+        top.push([pt.X, pt.Y]); bot.push([pb.X, pb.Y + (yt - yb > 0.02 ? 0.7 : 0)]);
         if (i % 2 === 0 || i === Cb.length - 1) {
-          const hmid = (bed.h0 + bed.th / 2) / Math.max(1, g.H), tone = 1 + lk.tone * (0.6 * bed.tone + 1.2 * (bed.prom - 0.4)) + 0.03 * _wclN1(bed.seed + 't', c.s / 11) + 0.045 * _wclN1(T.seed + 'v', c.s / 13) + 0.08 * (hmid - 0.5);
-          let hex = _wclShade(lk.base, Math.round(tone * 80) / 80);
+          const hmid = (bed.h0 + bed.th / 2) / Math.max(1, g.H), tone = 1 + lk.tone * (0.6 * bed.tone + 1.2 * (bed.prom - 0.4)) + 0.03 * _wclN1(bed.seed + 't', c.s / 11) + 0.045 * _wclN1(T.seed + 'v', c.s / 13) + 0.07 * (hmid - 0.5);
+          // the foot is damp and dark, the top dry and pale
+          const amb = 0.86 + 0.18 * Math.pow(Math.max(0, Math.min(1, hmid)), 0.6);
+          let hex = _wclShade(lk.base, Math.round(tone * amb * 80) / 80);
           if (hmid < 0.08) hex = _wclMix(hex, lk.moss, 0.2 * (1 - hmid / 0.08));
           if (bed.lich) { const ln = _wclN1(bed.seed + 'l', c.s / 22); if (ln > 0.35) hex = _wclMix(hex, lk.lichen, 0.28 * Math.min(1, (ln - 0.35) * 3)); }
-          stops.push([_wclR1((c.X - X0) / span * 100) / 100, hex, _wclR1(c.nx * 100) / 100, _wclR1(c.nz * 100) / 100]);
+          // the face is never one plane: pillars and recesses turn its normal a little (lit on one side, shaded on the other)
+          const wob = 0.28 * _wclN1(T.seed + 'w', c.s / 9) + 0.16 * _wclN1(T.seed + 'w2', c.s / 3.7), cw = Math.cos(wob), sw = Math.sin(wob);
+          stops.push([_wclR1((c.X - X0) / span * 100) / 100, hex, _wclR1((c.nx * cw - c.nz * sw) * 100) / 100, _wclR1((c.nx * sw + c.nz * cw) * 100) / 100]);
         }
       });
       if (!any) continue;
       const poly = top.concat(bot.reverse()), cx = poly.reduce((s, q) => s + q[0], 0) / poly.length, cy = poly.reduce((s, q) => s + q[1], 0) / poly.length;
-      const pp = rnd1(poly.map(q => { const dx = q[0] - cx, dy = q[1] - cy, L = Math.hypot(dx, dy) || 1; return [q[0] + dx / L * 0.5, q[1] + dy / L * 0.3]; }));
+      // (a bed that pinches out where the face tapers to nothing is not grown: slivers there would stripe the ground beyond)
+      const pp = rnd1(thin ? poly : poly.map(q => { const dx = q[0] - cx, dy = q[1] - cy, L = Math.hypot(dx, dy) || 1; return [q[0] + dx / L * 0.5, q[1] + dy / L * 0.3]; }));
       note(pp);
       add({ t: 'fg', p: pp, m: 'stone', x0: _wclR1(X0), x1: _wclR1(X1), st: stops, a: 1, n: nrm });
     }
-    // ---- 2. the ambient shade over the whole face of the group: the foot is damp and dark, the top dry and pale
-    {
-      const topL = [], botL = [];
-      for (const c of C) { const [lo, hi] = bounds(c.m); topL.push(P(c.s, hi)); botL.push(P(c.s, lo)); }
-      const ymin = Math.min(...topL.map(q => q.Y)), ymax = Math.max(...botL.map(q => q.Y));
-      const poly = topL.map(q => [q.X, q.Y]).concat(botL.map(q => [q.X, q.Y + 0.7]).reverse());
-      const pp = rnd1(poly); note(pp);
-      add({ t: 'fv', p: pp, y0: _wclR1(ymin), y1: _wclR1(ymax), st: [[0, lk.light, 0.14], [0.3, lk.light, 0.03], [0.62, lk.dark, 0.05], [1, lk.stain, 0.34]], m: 'stone', n: nrm, up: true });
-    }
+    // ---- 2. (the ambient shade of the foot and the top is in the beds' own tone: an overlay per group left a hairline at every group's edge)
     // ---- 3. weathering streaks (the long dark water stains first), then lichen
     for (const st of T.streaks) {
       if (st.s < sa || st.s >= sb) continue;
-      const kk = Math.min(T.beds.length - 1, st.k), p0 = P(st.s, 0), [lo, hi] = bounds(p0.m), yTop = st.major ? hi : Math.min(hi - 0.5, _wclBound(g, T, kk, st.s)), yBot = Math.max(lo, yTop - st.len);
+      const kk = Math.min(T.beds.length - 1, st.k), p0 = P(st.s, 0), [lo, hi] = bounds(p0.m), yTop = st.major ? hi - 0.4 - 2.5 * Math.abs(_wclN1(T.seed + 'st' + Math.round(st.s), 2.1)) : Math.min(hi - 0.5, _wclBound(g, T, kk, st.s)), yBot = Math.max(lo, yTop - st.len);
       if (yTop - yBot < 1) continue;
       const pa = P(st.s - st.w / 2, yTop), pb = P(st.s + st.w / 2, yTop), qa = P(st.s - st.w * (st.major ? 0.7 : 0.9), yBot), qb = P(st.s + st.w * (st.major ? 0.7 : 0.9), yBot);
       const col = st.pale ? lk.light : lk.stain, rr = _wclRng(Math.round(st.s * 100) + 7), nS = 9, L2 = [], R2 = [];
@@ -349,7 +348,7 @@ function _wclFace(g, cam, o) {
       if (st.major) {
         // a soft vertical gradient: dark under the rim, fading out down the face
         const pp = rnd1(poly); note(pp);
-        add({ t: 'fv', p: pp, y0: _wclR1(Math.min(...L2.map(q => q.Y), ...R2.map(q => q.Y))), y1: _wclR1(Math.max(...L2.map(q => q.Y), ...R2.map(q => q.Y))), st: [[0, col, st.a * 1.2], [0.5, col, st.a * 0.85], [1, col, 0]], m: 'stone', n: nrm });
+        add({ t: 'fv', p: pp, y0: _wclR1(Math.min(...L2.map(q => q.Y), ...R2.map(q => q.Y))), y1: _wclR1(Math.max(...L2.map(q => q.Y), ...R2.map(q => q.Y))), st: [[0, col, st.a * 1.2], [0.5, col, st.a * 0.85], [1, col, 0]], m: 'stone', n: nrm, wetK: 1.4 });
       } else fill(poly, 'stone', col, st.a * (st.pale ? 0.7 : 1));
     }
     for (const l of T.lichen) {
@@ -379,12 +378,14 @@ function _wclFace(g, cam, o) {
       if (ld.s1 <= sa || ld.s0 >= sb) continue;
       const run = runPts(ld.k, ld.s0, ld.s1, 0);
       if (run.length < 2) continue;
-      const kk = run.reduce((a, q) => a + q[2], 0) / run.length, sh = (0.5 + 2.4 * ld.prom * ld.prom * lk.ledge) * kk;
+      const kk = run.reduce((a, q) => a + q[2], 0) / run.length, sh = (0.5 + 3.4 * ld.prom * ld.prom * ld.prom * lk.ledge) * kk;
       const pp = rnd1(run.map(q => [q[0], q[1]]).concat(run.slice().reverse().map(q => [q[0], q[1] + sh]))); note(pp);
       add({ t: 'fv', p: pp, y0: _wclR1(Math.min(...run.map(q => q[1]))), y1: _wclR1(Math.max(...run.map(q => q[1])) + sh), st: [[0, lk.dark, (0.22 + 0.32 * ld.prom) * lk.ledge], [0.35, lk.dark, (0.1 + 0.14 * ld.prom) * lk.ledge], [1, lk.dark, 0]], m: 'stone', n: nrm });
       if (ld.prom > 0.42) {
         stroke(run.map(q => [q[0], q[1] + 0.3]), 'stone', lk.dark, Math.max(1, kk * (0.12 + 0.34 * ld.prom) * lk.ledge), 0.42 + 0.4 * ld.prom);
         stroke(run.map(q => [q[0], q[1] - Math.max(0.9, kk * 0.14)]), 'stone', lk.light, Math.max(0.8, kk * 0.1), 0.16 + 0.2 * ld.prom, { up: true });
+        // snow lies along the lip of a ledge that stands proud (snow days only)
+        stroke(run.map(q => [q[0], q[1] - Math.max(0.9, kk * 0.12)]), 'grass', '#cbd8c4', Math.max(1.4, kk * (0.16 + 0.3 * ld.prom)), 0.95, { snow: true, up: true });
       }
     }
     // ---- 5. the joints: grykes
@@ -477,12 +478,12 @@ function worldCliffStones(world, cam) {
     const g = worldCliffGeom(ft);
     if (!g || !(g.w > 2) || !(g.hs > 0.3)) continue;
     const T = _wclTex(g), lk = T.lk, r = _wclRng(_wclHash(T.seed + 'stones'));
-    for (let s = 0; s < g.L && out.length < 1400; s += 1.8 + r() * 1.6) {
+    for (let s = 0; s < g.L && out.length < 2400; s += 1.1 + r() * 1.5) {
       const m = _wclTaper(g, s), a = _wclAt(g, s), nx = g.hi > 0 ? -a.tz : a.tz, nz = g.hi > 0 ? a.tx : -a.tx;
       if (m < 0.2 || -(a.x * nx + a.z * nz) <= 0) continue;
-      const n = 1 + Math.floor(r() * 3);
+      const n = 2 + Math.floor(r() * 3);
       for (let i = 0; i < n; i++) {
-        const u = Math.pow(r(), 1.35), t = -g.w * u * 0.97, tuft = u > 0.45 && r() < 0.5 + 0.4 * u;
+        const u = Math.pow(r(), 1.2), t = -g.w * u * 0.97, tuft = u > 0.45 && r() < 0.5 + 0.4 * u;
         const x = a.x + nx * -t + a.tx * (r() - 0.5) * 2, z = a.z + nz * -t + a.tz * (r() - 0.5) * 2, y = _wclProfile(g, t, m);
         if (z <= near) continue;
         const X = x0 + f * x / z;
@@ -495,12 +496,13 @@ function worldCliffStones(world, cam) {
           pts.push([X + w * 0.45, Y + 0.3], [X - w * 0.45, Y + 0.3]);
           ops.push({ t: 'f', p: pts.map(q => [_wclR1(q[0]), _wclR1(q[1])]), m: 'grass', h: _wclShade('#5f7c3f', 0.8 + 0.35 * rr()), a: 0.95 });
         } else {
-          const sz = 0.3 + Math.pow(r(), 2.4) * 2.7, w = Math.max(1.6, sz * k), h = Math.max(1.2, sz * k * (0.5 + 0.25 * r())), tone = 0.7 + 0.32 * rr();
+          const fleck = r() < 0.35, sz = fleck ? 0.12 + r() * 0.2 : 0.3 + Math.pow(r(), 2) * 3.2, w = Math.max(1.6, sz * k), h = Math.max(1.2, sz * k * (0.5 + 0.25 * r())), tone = 0.64 + 0.3 * rr();
           const J = () => (rr() - 0.5) * 0.18;
           const body = [[X - w * 0.5, Y + 0.4], [X - w * (0.5 + J()), Y - h * 0.45], [X - w * (0.2 + J()), Y - h], [X + w * (0.22 + J()), Y - h * 0.96], [X + w * (0.5 + J()), Y - h * 0.4], [X + w * 0.48, Y + 0.4]];
           ops.push({ t: 'f', p: [[X - w * 0.6, Y + 0.5], [X + w * 0.7, Y + 0.5], [X + w * 0.55, Y + 1.4 + h * 0.1], [X - w * 0.45, Y + 1.4 + h * 0.1]].map(q => [_wclR1(q[0]), _wclR1(q[1])]), m: 'stone', h: lk.dark, a: 0.26 });
           ops.push({ t: 'f', p: body.map(q => [_wclR1(q[0]), _wclR1(q[1])]), m: 'stone', h: _wclShade(lk.base, tone), a: 1, n: nrm });
           ops.push({ t: 'f', p: [body[1], body[2], body[3], body[4], [X + w * 0.25, Y - h * 0.62], [X - w * 0.25, Y - h * 0.6]].map(q => [_wclR1(q[0]), _wclR1(q[1])]), m: 'stone', h: _wclShade(lk.light, 0.82 + 0.2 * rr()), a: 0.85, up: true });
+          ops.push({ t: 'f', p: [body[2], body[3], [X + w * 0.32, Y - h * 0.68], [X - w * 0.3, Y - h * 0.7]].map(q => [_wclR1(q[0]), _wclR1(q[1])]), m: 'grass', h: '#d3deca', a: 0.95, snow: true, up: true });
         }
         out.push({ z, x, ops });
       }
@@ -508,4 +510,22 @@ function worldCliffStones(world, cam) {
   }
   out.sort((p, q) => p.z - q.z);
   return out;
+}
+/**
+ * Does a cliff hide the ground point (x, z) at height h from the eye (0, eye)? The sight line crosses the plan of the face at some
+ * point; the point is hidden when the line is still below the top of the face there (never for a camera above the rim, never for a
+ * point the line reaches before the face, and not for what lies beyond a face's tapering end: the line misses it).
+ */
+function worldCliffHides(g, x, z, h, eye) {
+  const P = g.pts;
+  let best = Infinity, bs = 0;
+  for (let i = 1; i < P.length; i++) {
+    const ax = P[i - 1][0], az = P[i - 1][1], dx = P[i][0] - ax, dz = P[i][1] - az, den = x * dz - z * dx;
+    if (Math.abs(den) < 1e-9) continue;
+    const u = (ax * dz - az * dx) / den, v = (ax * z - az * x) / den;          // the ray O + u (x, z) against the segment A + v (dx, dz)
+    if (u > 0 && u < 1 && v >= 0 && v <= 1 && u < best) { best = u; bs = g.cum[i - 1] + v * Math.sqrt(g.l2[i - 1]); }
+  }
+  if (!(best < 1)) return false;
+  const m = _wclTaper(g, bs), top = g.H * m, yRay = eye + (h - eye) * best;
+  return m > WORLD_CLIFF_MIN_M && yRay < top - 0.3;
 }

@@ -54,6 +54,20 @@ function _wtrMixHex(a, b, t) {
   const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16), m = (x, y) => Math.round(x + (y - x) * t);
   return '#' + ((1 << 24) | (m((A >> 16) & 255, (B >> 16) & 255) << 16) | (m((A >> 8) & 255, (B >> 8) & 255) << 8) | m(A & 255, B & 255)).toString(16).slice(1);
 }
+/** A polygon offset outward by d on every edge (each vertex along the bisector of its two edge normals, mitre limited). */
+function _wtrGrow(P, d) {
+  const n = P.length;
+  let A = 0; for (let i = 0; i < n; i++) { const a = P[i], b = P[(i + 1) % n]; A += a[0] * b[1] - b[0] * a[1]; }
+  const sg = A >= 0 ? 1 : -1, out = [];
+  for (let i = 0; i < n; i++) {
+    const a = P[(i + n - 1) % n], b = P[i], c = P[(i + 1) % n], e0 = [b[0] - a[0], b[1] - a[1]], e1 = [c[0] - b[0], c[1] - b[1]], l0 = Math.hypot(e0[0], e0[1]) || 1, l1 = Math.hypot(e1[0], e1[1]) || 1;
+    const n0 = [e0[1] / l0 * sg, -e0[0] / l0 * sg], n1 = [e1[1] / l1 * sg, -e1[0] / l1 * sg];
+    let bx = n0[0] + n1[0], by = n0[1] + n1[1]; const bl = Math.hypot(bx, by) || 1; bx /= bl; by /= bl;
+    const k = Math.min(3, d / Math.max(0.3, bx * n0[0] + by * n0[1]));
+    out.push([Math.round((b[0] + bx * k) * 10) / 10, Math.round((b[1] + by * k) * 10) / 10]);
+  }
+  return out;
+}
 function _wtrU(x, z) { let h = Math.imul(Math.round(x * 4) | 0, 374761393) ^ Math.imul(Math.round(z * 4) | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
 
 /** Clip a polygon of vertices { x, z, t, m } to t <= T (sgn 1) or t >= T (sgn -1): Sutherland-Hodgman on one line, attributes interpolated. */
@@ -77,21 +91,23 @@ function _wtrScreeOf(G, V, mm) {
  * much of it is scree), and the part behind it unless it is hidden (a plateau above the eye seen from below). The face itself and its
  * lip are the cliff pass's. -> [{ poly: [[x, z]], scree: 0..1 }]
  */
-function _wtrCliffPieces(corners, cliffs, cam) {
+function _wtrCliffPieces(corners, cliffs, cam, hAt) {
   let pieces = [{ poly: corners.map(p => ({ x: p[0], z: p[1], t: 0, m: 0 })), scree: 0, fresh: true }];
   for (const G of cliffs) {
     const next = [];
     for (const pc of pieces) {
       const V = pc.fresh ? pc.poly.map(v => { const s = worldCliffSample(G, v.x, v.z); return { x: v.x, z: v.z, t: s.t, m: s.m }; }) : pc.poly;
       const mm = Math.max(...V.map(v => v.m));
-      if (mm < 0.05) { next.push({ poly: V, scree: pc.scree, fresh: false }); continue; }
-      const E = worldCliffEdges(G, mm), tmin = Math.min(...V.map(v => v.t)), tmax = Math.max(...V.map(v => v.t)), hidden = G.camLow && G.H * mm > cam.eye + 2;
+      if (mm < WORLD_CLIFF_MIN_M) { next.push({ poly: V, scree: pc.scree, fresh: false }); continue; }
+      const E = worldCliffEdges(G, mm), tmin = Math.min(...V.map(v => v.t)), tmax = Math.max(...V.map(v => v.t));
+      // what lies behind the face is hidden only where the sight line from the eye is still below the face's top where it crosses it
+      const hide = (poly) => { let cx = 0, cz = 0, hh = 0; for (const v of poly) { cx += v.x; cz += v.z; if (hAt) hh = Math.max(hh, hAt(v.x, v.z)); } return worldCliffHides(G, cx / poly.length, cz / poly.length, hh, cam.eye); };
       if (tmax <= E.tA) next.push({ poly: V, scree: Math.max(pc.scree, _wtrScreeOf(G, V, mm)), fresh: false });
-      else if (tmin >= E.tB) { if (!hidden) next.push({ poly: V, scree: pc.scree, fresh: false }); }
+      else if (tmin >= E.tB) { if (!hide(V)) next.push({ poly: V, scree: pc.scree, fresh: false }); }
       else {
-        const fr = tmin < E.tA ? _wtrClipT(V, E.tA, 1) : [], bk = tmax > E.tB && !hidden ? _wtrClipT(V, E.tB, -1) : [];
+        const fr = tmin < E.tA ? _wtrClipT(V, E.tA, 1) : [], bk = tmax > E.tB ? _wtrClipT(V, E.tB, -1) : [];
         if (fr.length >= 3) next.push({ poly: fr, scree: Math.max(pc.scree, _wtrScreeOf(G, fr, mm)), fresh: false });
-        if (bk.length >= 3) next.push({ poly: bk, scree: pc.scree, fresh: false });
+        if (bk.length >= 3 && !hide(bk)) next.push({ poly: bk, scree: pc.scree, fresh: false });
       }
     }
     pieces = next;
@@ -112,7 +128,6 @@ function worldTerrainPrims(world, cam, o) {
   for (const h of R.h) { if (h > hmax) hmax = h; if (h < hmin) hmin = h; }
   if (hmax - Math.min(0, hmin) < WORLD_TERRAIN_FLAT) return [];
   const cliffs = typeof worldCliffGeom === 'function' ? (world.features || []).map(f => worldCliffGeom(f)).filter(Boolean) : [];
-  for (const G of cliffs) if (G.camLow === undefined) G.camLow = worldCliffSample(G, 0, 0).t < 0;
   const d0 = Math.max(0.5, R.d[0]), d1 = R.d[1], out = [];
   // the height of the ground: the grid; with a cliff, the cliff's own analytic function over the relief that is not a cliff
   const baseGrid = world.reliefBase ? { relief: world.reliefBase } : null;
@@ -126,11 +141,11 @@ function worldTerrainPrims(world, cam, o) {
   let k = 0;
   for (let z = d0; z < d1 - 1e-6; z *= WORLD_TERRAIN_STEP, k++) {
     const za = z, zb = Math.min(d1, z * WORLD_TERRAIN_STEP), zm = (za + zb) / 2;
-    const xlim = Math.min(Math.abs(R.x[0]), Math.abs(R.x[1]), zb * 1.6 + 6), screeStrip = cliffs.some(G => G.w > 0 && _wtrHasScree(G, zm, xlim)), step = Math.max(screeStrip ? 0.6 : 0.9, zm / (screeStrip ? 220 : cliffs.length ? 70 : 44)), faces = [], sops = [];
+    const xl = Math.max(R.x[0], -(zb * 1.6 + 6)), xr = Math.min(R.x[1], zb * 1.6 + 6), xlim = Math.max(Math.abs(xl), Math.abs(xr)), screeStrip = cliffs.some(G => G.w > 0 && _wtrHasScree(G, zm, xlim)), step = Math.max(screeStrip ? 0.6 : 0.9, zm / (screeStrip ? 220 : cliffs.length ? 70 : 44)), faces = [], sops = [];
     let hi = 0, xmin = Infinity, xmax = -Infinity, minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
-    for (let x = -xlim; x < xlim - 1e-6; x += step) {
-      const x2 = Math.min(xlim, x + step);
-      const pieces = cliffs.length ? _wtrCliffPieces([[x, za], [x2, za], [x2, zb], [x, zb]], cliffs, cam) : [{ poly: [[x, za], [x2, za], [x2, zb], [x, zb]], scree: 0 }];
+    for (let x = xl; x < xr - 1e-6; x += step) {
+      const x2 = Math.min(xr, x + step);
+      const pieces = cliffs.length ? _wtrCliffPieces([[x, za], [x2, za], [x2, zb], [x, zb]], cliffs, cam, hAt) : [{ poly: [[x, za], [x2, za], [x2, zb], [x, zb]], scree: 0 }];
       for (const pc of pieces) {
         const poly = pc.poly, hs = poly.map(p => hAt(p[0], p[1])), hm = Math.max(...hs);
         if (hm < 0.12 && Math.min(...hs) > -0.12) continue;                      // flat ground: the v2 base
@@ -144,15 +159,15 @@ function worldTerrainPrims(world, cam, o) {
         const jit0 = _wtrU(cx0, cz0);
         // a talus skirt: pale broken rock where the slope comes off the foot of a cliff, grass creeping up from the toe
         const lf = Math.sin(cx0 * 0.09 + 1.3) * Math.sin(cz0 * 0.12 - 0.4);
-        if (pc.scree > 0.05 && rock) { const sc = Math.max(0, Math.min(1, pc.scree * (0.9 + 0.3 * lf))); m = sc > 0.5 ? { mat: 'stone', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.82), Math.min(1, sc * 1.1)) } : { mat: 'grass', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.82), sc * 0.9) }; }
+        if (pc.scree > 0.05 && rock) { const sc = Math.max(0, Math.min(1, pc.scree * (0.9 + 0.3 * lf))); m = sc > 0.5 ? { mat: 'stone', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), Math.min(1, sc * 1.1)) } : { mat: 'grass', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), sc * 0.9) }; }
         // the shade of the slope against a sun high on the left behind the eye (the light pass grades the colour by the real sun after)
         const nl = Math.hypot(gx, gz, 1), lam = (-gx * -0.45 + -gz * -0.4 + 1 * 0.8) / (nl * 1.0), shade = Math.max(0.6, Math.min(1.12, 0.78 + 0.34 * lam));
         // a few percent of variation along the strip (mowing, grazing) so a slope is never one flat tone; scree varies more
         const jit = 1 + 0.018 * Math.sin(cx0 * 0.37 + cz0 * 0.21) + 0.012 * Math.sin(cx0 * 1.3 - cz0 * 0.7) + (pc.scree > 0.05 ? 0.03 * lf : 0);
         const P = poly.map((p, i) => { const q = sceneProject(cam, p[0], p[1], hs[i]); return [q.X, q.Y]; });
-        // a half scene unit of overlap so neighbouring quads never leave a seam
-        const cx = P.reduce((a, q) => a + q[0], 0) / P.length, cy = P.reduce((a, q) => a + q[1], 0) / P.length;
-        const pts = P.map(q => { const dx = q[0] - cx, dy = q[1] - cy, L = Math.hypot(dx, dy) || 1; return [Math.round((q[0] + dx / L * 0.7) * 10) / 10, Math.round((q[1] + dy / L * 0.7) * 10) / 10]; });
+        // a half scene unit of overlap so neighbouring quads never leave a seam (offset along the edges' normals: a thin quad seen along its
+        // length is not grown only at its ends)
+        const pts = _wtrGrow(P, 0.65);
         for (const q of pts) { minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); minY = Math.min(minY, q[1]); maxY = Math.max(maxY, q[1]); }
         hi = Math.max(hi, hm); xmin = Math.min(xmin, x); xmax = Math.max(xmax, x2);
         faces.push({ pts, role: 'ground', mat: m.mat, hex: _wtrShade(m.hex, shade * jit), z: cz0, alpha: 1 });
@@ -186,7 +201,7 @@ function _wtrLight(op, sun) {
   const n = op.n;
   if (!n) return 1;
   const lam = Math.max(0, n[0] * sun.sx + n[1] * sun.sz) * Math.max(0, Math.cos(sun.alt) * 0.7 + 0.3 * Math.max(0, Math.sin(sun.alt)));
-  return 0.84 + 0.26 * lam;
+  return 0.8 + 0.34 * lam;
 }
 /** '#rrggbb' and an opacity as an rgba() string (a gradient stop). */
 function _wtrRgba(hex, a) { const n = parseInt(hex.slice(1), 16); return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + Math.max(0, Math.min(1, a)).toFixed(3) + ')'; }
@@ -228,13 +243,16 @@ function _wtrTree(ctx, op, colour, A, month) {
 }
 /** Draw the ops of a terrain prim (see 79-world-4cliff.js). Returns the number of draw calls. */
 function _wtrDrawOps(ctx, prim, o, colour) {
+  const wet = o.mctx && Number.isFinite(o.mctx.wet) ? o.mctx.wet : 0, snowDay = !!(o.mctx && o.mctx.snowDay);
   const A = Number.isFinite(o.alpha) ? o.alpha : 1, sun = _wtrSun(o, prim.heading), month = o.mctx && Number.isFinite(o.mctx.month) ? o.mctx.month : 6, mk = Math.round(sun.sx * 20) + ',' + Math.round(sun.sz * 20) + ',' + Math.round(sun.alt * 10);
   let n = 0;
   ctx.lineCap = 'butt'; ctx.lineJoin = 'round';
   for (const op of prim.ops) {
     if (op.t === 'tree') { n += _wtrTree(ctx, op, colour, A * (op.a == null ? 1 : op.a), month); ctx.lineCap = 'butt'; continue; }
+    if (op.snow && !snowDay) continue;                                                // snow caps and snow on the ledges: snow days only
     let hex = op.h;
-    const k = Math.round(_wtrLight(op, sun) * 50) / 50;
+    // rock in the rain is darker and its water stains run darker (the material's own wet is a few percent here: a face is the wettest thing in a frame)
+    const k = Math.round(_wtrLight(op, sun) * (op.m === 'stone' && wet > 0 ? 1 - 0.2 * wet : 1) * 50) / 50;
     if (k !== 1 && op.m === 'stone' && hex) { const key = hex + k + mk; let v = _wtrShadeMemo.get(key); if (!v) { v = _wtrShade(hex, k); if (_wtrShadeMemo.size > 4000) _wtrShadeMemo.clear(); _wtrShadeMemo.set(key, v); } hex = v; }
     ctx.globalAlpha = A * (op.a == null ? 1 : op.a);
     if (op.t === 'f') { ctx.fillStyle = colour(op.m, hex); _wtrPoly(ctx, op.p); ctx.closePath(); ctx.fill(); n++; }
@@ -246,7 +264,7 @@ function _wtrDrawOps(ctx, prim, o, colour) {
     } else if (op.t === 'fv') {
       // a vertical ramp of one tint's opacity (ambient shade, the soft shadow under a ledge, a water stain)
       const gr = ctx.createLinearGradient(0, op.y0, 0, op.y1);
-      for (const st of op.st) gr.addColorStop(Math.max(0, Math.min(1, st[0])), _wtrRgba(colour(op.m, st[1]), st[2] * (op.a == null ? 1 : op.a)));
+      for (const st of op.st) gr.addColorStop(Math.max(0, Math.min(1, st[0])), _wtrRgba(colour(op.m, st[1]), st[2] * (op.a == null ? 1 : op.a) * (op.wetK && wet > 0 ? 1 + op.wetK * wet : 1)));
       ctx.globalAlpha = A; ctx.fillStyle = gr; _wtrPoly(ctx, op.p); ctx.closePath(); ctx.fill(); n++;
     }
     else if (op.t === 's') { ctx.strokeStyle = colour(op.m, hex); ctx.lineWidth = op.w || 1; _wtrPoly(ctx, op.p); ctx.stroke(); n++; }

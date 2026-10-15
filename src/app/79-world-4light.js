@@ -233,7 +233,13 @@ function _wlDeckOf(e) {
  */
 function worldShadowPlan(world, cam, sun, o) {
   cam = _wlCam(world, cam); o = o || {};
-  const S = worldSunOf(sun, cam), out = [], waters = ((world && world.surfaces) || []).filter(_wlIsWater).map(w => ({ id: w.id, P: _wlSurfPoly(w) }));
+  const S = worldSunOf(sun, cam), out = [], waters = [].concat(...((world && world.surfaces) || []).filter(_wlIsWater).map(w => {
+    // a winding stream is a concave polygon: its shadow holes come piece by piece (convex pieces of the water), never one clip of a concave shape
+    const P = _wlSurfPoly(w);
+    let pcs = [P];
+    if (P && P.length > 4 && typeof _wwaConvexPieces === 'function') { try { const q = _wwaConvexPieces(P); if (Array.isArray(q) && q.length) pcs = q; } catch (e) { pcs = [P]; } }
+    return pcs.map(q => ({ id: w.id, P: q }));
+  }));
   const fogV = S.fogV || (sun && sun.fogV) || null, W = o.W || 2 * (cam.x0 || 800);
   const scr = (P, y) => P.map(p => { const q = _wlProj(cam, p[0], Math.max(0.05, p[1]), y); return [q.X, q.Y]; });
   const holesOf = (poly) => { const H = []; for (const w of waters) { const q = _wlClipConvex(w.P, poly); if (q.length) H.push({ surface: w.id, poly: q }); } return H; };

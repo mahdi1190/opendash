@@ -193,7 +193,7 @@ function worldWaterPlan(world, cam, o) {
     let clipM = _wwaClipNear(polyM, zn);
     if (clipM.length < 3) continue;
     const level = _wwaLevel(world, s), kind = WORLD_WATER_LOOK[s.water] ? s.water : WORLD_WATER_LOOK[s.waterKind] ? s.waterKind : 'pond';
-    const look = worldWaterLook(kind, s.hint), flow = _wwaFlow(s, look);
+    const look = typeof worldWaterNarrow === 'function' ? worldWaterNarrow(worldWaterLook(kind, s.hint), s) : worldWaterLook(kind, s.hint), flow = _wwaFlow(s, look);   // a narrow river is a clear beck (4beck)
     // a water below the ground is hidden behind the near bank: only what the sight lines carry through an opening is seen
     const k = cam.eye > 0.2 ? (cam.eye - level) / cam.eye : 1;
     if (k > 1.02 && o.hide !== false) {
@@ -471,7 +471,7 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
   let base3 = look.base.map(_wwaRgb);
   if (S.L && typeof S.L.water === 'function') { try { const wb = S.L.water(look.base); if (Array.isArray(wb) && wb.length === 3) base3 = wb.map(_wwaRgb); } catch (e) { /* the kind's own */ } }
   else if (S.dark > 0.05) base3 = base3.map(c => _wwaMixRgb(c, _wwaMixRgb(S.mid, [5, 7, 12], 0.4), _wwaClamp(S.dark, 0, 1) * 0.85));
-  const bed = _wwaRgb(_WWA_BED);
+  const bed = _wwaRgb(look.bed || _WWA_BED);
   for (let r = 0; r < h; r++) {
     const Y = (y0 + r + 0.5 - oy) / vs, g = _wwaClamp((Y - cam.horizon) / Math.max(1, 900 - cam.horizon), 0, 1), u = 1 - g;
     rowU[r] = u;

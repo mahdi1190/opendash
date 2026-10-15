@@ -730,7 +730,7 @@ function _wcCheck(spec0, repair) {
     if (!WORLD_LINE_KINDS.includes(l.kind)) { const al = { hedgerow: 'hedge', railings: 'railing', walls: 'wall', fences: 'fence', curb: 'kerb' }[l.kind]; if (al) act(p + '.kind', 'badValue', `unknown line kind ${l.kind}: read as ${al}`, set(l, 'kind', al, l.id)); else { act(p + '.kind', 'badValue', 'kind is ' + WORLD_LINE_KINDS.join(', '), drop(lines, l, l.id)); return; } }
     if (!(Array.isArray(l.path) && l.path.length >= 2 && l.path.every(_wcPt))) { act(p + '.path', 'badSurface', 'a line needs path (>= 2 points)', drop(lines, l, l.id)); return; }
     for (const k of ['width', 'h']) if (l[k] != null && !(_wcNum(l[k]) && l[k] > 0)) act(`${p}.${k}`, 'badValue', k + ' is metres > 0', strip(l, k, l.id));
-    if (l.gaps != null && !(Array.isArray(l.gaps) && l.gaps.every(g => _wcPt(g) && g[0] >= 0 && g[1] > g[0]))) act(p + '.gaps', 'badValue', 'gaps are [[s0, s1]] arc lengths in metres', strip(l, 'gaps', l.id));
+    if (l.gaps != null && !(Array.isArray(l.gaps) && l.gaps.every(g => (_wcPt(g) && g[0] >= 0 && g[1] > g[0]) || (g && typeof g === 'object' && !Array.isArray(g) && (_wcNum(g.at) || _wcPt(g.at)) && (g.w == null || (_wcNum(g.w) && g.w > 0)))))) act(p + '.gaps', 'badValue', 'gaps are [[s0, s1]] arc lengths in metres, or { at: metres along | [x, z], w } (the extruder reads both)', strip(l, 'gaps', l.id));
     if (l.obj != null && !worldObjectInfo(l.obj)) act(p + '.obj', 'unknownSize', 'no world descriptor for ' + l.obj, strip(l, 'obj', l.id));
   });
   const blds = listOf(spec, 'buildings', 'buildings');
@@ -1449,7 +1449,7 @@ function worldBuild(spec, o = {}) {
   const world = { v: 3, format: rep.spec.v, camera: camInfo, cam, place: Object.assign({}, P), seed: cs.seed | 0, season, ctx: o.ctx || null,
     style: _wcStyleKnown(P.style) ? P.style : (cs.backdrop && cs.backdrop.style) || null, fill: cs.fill !== false,
     surfaces: (Array.isArray(cs.surfaces) ? cs.surfaces : []).filter(_wcSurfOk).map(_wcSurfRecord),
-    lines: (Array.isArray(cs.lines) ? cs.lines : []).map(l => Object.assign({ width: l.kind === 'hedge' ? 1.2 : l.kind === 'wall' ? 0.45 : 0.2, h: l.kind === 'kerb' ? 0.12 : l.kind === 'coping' ? 0.3 : l.kind === 'hedge' ? 1.8 : l.kind === 'wall' ? 1.8 : 1.2 }, _wcCopy(l))),
+    lines: (Array.isArray(cs.lines) ? cs.lines : []).map(l => { const dry = l.kind === 'wall' && typeof WORLD_DRYSTONE_STYLES !== 'undefined' && WORLD_DRYSTONE_STYLES.includes(P.style); return Object.assign({ width: l.kind === 'hedge' ? 1.2 : l.kind === 'wall' ? (dry ? 0.6 : 0.45) : 0.2, h: l.kind === 'kerb' ? 0.12 : l.kind === 'coping' ? 0.3 : l.kind === 'hedge' ? 1.8 : l.kind === 'wall' ? (dry ? 1.3 : 1.8) : 1.2 }, _wcCopy(l)); }),   // a dry-stone wall is 0.6 m thick and 1.3 m high (4drystone)
     buildings: (Array.isArray(cs.buildings) ? cs.buildings : []).map(b => Object.assign({ solidity: 'solid', h: _wcNum(b.h) ? b.h : (b.storeys || 2) * 3.1 }, _wcCopy(b))),
     features: _wcObjOf(cs.ground) && Array.isArray(cs.ground.features) ? _wcCopy(cs.ground.features) : [],
     reliefBase: relief && relief.base ? relief.base : null,

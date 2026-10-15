@@ -118,6 +118,11 @@ const _WKT_EDGES_URBAN = { water: { pond: 'natural', lake: 'natural', canal: 'qu
   wallBase: [['plant.rph-short-grass', 3], ['plant.mqn-buddleia', 1], ['plant.fern', 1]], kerb: true, pavement: true };
 
 /* ---------- the kits ---------- */
+// a limestone dale's dressing (the `dale` kit): short sheep-grazed turf, limestone scatter, a lone hawthorn, no hedgerow bushes
+const _WKT_DALE = { near: [['plant.rph-short-grass', 6], ['plant.rph-rosette', 2], ['plant.daisies', 2], ['plant.yg-meadow', 1]],
+  mid: [['rock.boulder', 2], ['plant.rph-short-grass', 6], ['plant.rph-rosette', 1], ['plant.grass-long', 1], ['rock.stones', 1]],
+  far: [['rock.boulder', 2], ['plant.rph-short-grass', 4], ['plant.grass-long', 1]], distant: [],
+  accents: [['plant.wildflowers', 3], ['plant.daisies', 2], ['rock.stones', 1], ['ground.leaf-litter', 1]] };
 const WORLD_STYLE_KITS = _wkbFreeze({
   // a canal with a towpath through woodland and fields: reed stands with gaps, willows and alders on the offside, hawthorn
   // hedges behind the towpath, the gold bough over the cut, walkers with dogs, mallards, moorhens and a pair of swans
@@ -255,14 +260,10 @@ const WORLD_STYLE_KITS = _wkbFreeze({
   // lines; no hedgerows), a lone hawthorn or ash, a clear beck with rushes and stones, sheep and walkers; the crag is the spec's cliff
   dale: { label: 'limestone dale', place: 'rural', backdrop: 'downs', ground: 'grass', sky: [0.3, 0.62], layers: 5,
     look: { grass: 'tussock', field: 'tussock', path: 'gravel', paving: 'flags', quay: 'stone', bank: 'earth' },
-    fill: { grass: { near: [['plant.rph-short-grass', 4], ['plant.yg-meadow', 3], ['plant.grass-long', 2], ['plant.rph-rosette', 1], ['plant.daisies', 1]],
-      mid: [['rock.boulder', 2], ['rock.stones', 2], ['tree.hawthorn', 1], ['plant.rph-short-grass', 3], ['plant.grass-long', 2], ['plant.bracken', 1]],
-      far: [['tree.hawthorn', 2], ['tree.oak', 1], ['tree.green-oak', 1], ['tree.pool-birch', 1], ['rock.boulder', 1]], distant: _WKT_DISTANT_HEATH,
-      accents: [['plant.wildflowers', 3], ['plant.daisies', 2], ['rock.stones', 2], ['ground.leaf-litter', 1]] },
-      field: _WKT_FIELD, heath: _WKT_HEATH, wood: _WKT_WOOD, wet: _WKT_WET, sand: _WKT_SAND, paving: _WKT_PAVING, path: _WKT_PATH, water: _WKT_NOLILY },
-    edges: Object.assign({}, _WKT_EDGES_RURAL, { hedgerow: [], natural: { margin: [['plant.proof-fleet-rush', 3], ['plant.grass-long', 2], ['plant.fern', 1]], bank: [['rock.stones', 3], ['plant.rph-short-grass', 3], ['plant.grass-long', 1], ['plant.fern', 1]], stands: 0.4 } }),
+    fill: { grass: _WKT_DALE, field: _WKT_DALE, heath: _WKT_DALE, wood: _WKT_DALE, wet: _WKT_WET, sand: _WKT_SAND, paving: _WKT_PAVING, path: _WKT_PATH, water: _WKT_NOLILY },
+    edges: Object.assign({}, _WKT_EDGES_RURAL, { hedgerow: [], natural: { margin: [['plant.proof-fleet-rush', 1], ['plant.rph-short-grass', 4]], bank: [['rock.stones', 3], ['plant.rph-short-grass', 4]], stands: 0.18 } }),
     frame: [_WKT_BOUGH_OAK, { kind: 'rock', obj: 'rock.boulder' }, { kind: 'shrub', obj: 'tree.hawthorn' }, { kind: 'shrub', obj: 'plant.fern' }],
-    rich: { mid: [['rock.boulder', 2], ['rock.stones', 1], ['tree.hawthorn', 1], ['plant.grass-long', 2], ['plant.yg-meadow', 2], ['plant.bracken', 1], ['plant.fern', 1]], far: [['tree.hawthorn', 2], ['tree.oak', 1], ['rock.boulder', 1], ['tree.pool-birch', 1]] },
+    rich: { mid: [['rock.boulder', 2], ['plant.rph-short-grass', 3], ['plant.grass-long', 2], ['plant.yg-meadow', 2], ['plant.fern', 1], ['rock.stones', 1]], far: [['rock.boulder', 3], ['plant.grass-long', 2], ['plant.rph-short-grass', 2]] },
     life: { walk: { who: 'walkers', rate: '2/min', mix: { brisk: 0.4, 'dog-walker': 0.3, couple: 0.2, stroll: 0.1 } }, graze: [{ who: 'sheep', count: 9 }] } },
 });
 // legacy fill and backdrop style names (place.style, backdrop.style) -> kit
