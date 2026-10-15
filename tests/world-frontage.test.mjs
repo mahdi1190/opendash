@@ -136,7 +136,8 @@ test('the measures know an extruded street is the frame: coverage, richness and 
   const rich = W.worldRichness(w, cam);
   assert.ok(rich.ok && rich.near.cover >= 0.7 && rich.mid.cover >= 0.7, 'richness counts the houses: ' + JSON.stringify(rich.near) + JSON.stringify(rich.mid));
   // the fill did not bury the street behind the houses (it used to add hundreds of far entities to make up for houses it could not see)
-  assert.ok(w.entities.length < 120, 'a lane needs no forest behind its houses: ' + w.entities.length + ' entities');
+  assert.ok(w.entities.filter(e => /^tree./.test(e.obj) && e.z < 100).length === 0, 'no tree in or behind the lane within 100 m');
+  assert.ok(w.entities.length < 170, 'a lane needs no forest behind its houses: ' + w.entities.length + ' entities');
   for (const season of ['summer', 'winter']) { const c = worldCritic(W, clone(lane()), { season }); assert.deepEqual(c.problems, [], season + ': ' + JSON.stringify(c.problems)); }
 });
 

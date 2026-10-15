@@ -43,6 +43,7 @@ const _WPL_NEAR_BAND = Object.freeze(['person', 'dog', 'cyclist', 'grazer', 'ani
   'post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle',
   // ... nor is a shop's A-board (class signage), a parasol or a cafe table: the same dark blob in a lane's near corner
   'signage', 'umbrella', 'cafe-table']);
+const _WPL_FILL_BAND = Object.freeze(['signage', 'umbrella', 'cafe-table']);
 const _WPL_PROPS = Object.freeze(['post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle', 'signage', 'umbrella', 'cafe-table']);
 /** Classes that never stand on a walking line (P3). */
 const _WPL_OFFLINE = Object.freeze(['tree', 'shrub', 'reed', 'hedge', 'fence', 'rock', 'bench', 'lamp', 'post', 'street', 'building', 'vehicle', 'structure', 'gate']);
@@ -434,10 +435,10 @@ function _wplInKeep(world, e, foot) {
 const _wplOffline = (info, e) => !e.landmark && e.blocks !== true && _WPL_OFFLINE.includes(info.cls) && !/^(deck|wall|air)/.test(String(e.attach || ''));
 
 /** Could entity e stand at (x, z) with facing? Habitat over the footprint, no walking line, no overlap, no kept approach. */
-/** The depth in front of which a PROP (post, bench, lamp, street furniture, signage, umbrella, cafe table, gate, rock, vehicle) would be a dark blob at the lens: where a 1.3 m thing is about 12 % of the frame (step 3b's rule, TR3); 0 for anything else. */
+/** The depth in front of which a shop's A-board, a parasol or a cafe table (the classes the fill places with no near band of their own) would be a dark blob at the lens: where a 1.3 m thing is about 12 % of the frame (step 3b's rule, TR3); 0 for anything else. The kits' low near dressing (bins, tubs, planters) keeps its own tier. */
 function _wplPropBand(world, e, info) {
   const cam = world && world.cam;
-  if (!cam || !_wcNum(cam.f) || !(cam.f > 0) || !_WPL_PROPS.includes(info.cls) || e.landmark || e.framed || e.framing || e.auto === 'frame' || /^(air|wall)/.test(String(e.attach))) return 0;
+  if (!cam || !_wcNum(cam.f) || !(cam.f > 0) || !(_WPL_FILL_BAND.includes(info.cls) || _WPL_FILL_BAND.includes(((typeof worldKb === 'function' && worldKb(e.obj)) || {}).cls)) || e.landmark || e.framed || e.framing || e.auto === 'frame' || /^(air|wall)/.test(String(e.attach))) return 0;
   const hRef = Math.max(info.size.h, _wcNum(e.height) ? e.height : 0), foot = _wcNum(cam.eye) && _wcNum(cam.horizon) && cam.horizon < 900 ? cam.f * Math.max(0.2, cam.eye - (_wcNum(e.y) ? e.y : 0)) / (900 - cam.horizon) + 0.3 : 0;
   return Math.max(cam.f * Math.min(hRef, 1.3) / 110, foot);
 }

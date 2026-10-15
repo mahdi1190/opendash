@@ -218,7 +218,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
     edges: Object.assign({}, _WKT_EDGES_URBAN, { hedgerow: [] }), frame: [{ kind: 'planter', obj: 'plant.rph-flower-tub' }],
     rich: { mid: [['plant.rph-flower-tub', 1], ['street.mqn-aboard', 1]], far: [['plant.rph-flower-tub', 1]] },
-    life: { walk: { who: 'crowd', rate: '12/min' }, paving: { who: 'crowd', rate: '8/min' }, ground: [{ who: 'pigeons', count: 4 }] } },
+    life: { walk: { who: 'crowd', rate: '12/min' }, paving: { who: 'crowd', rate: '8/min' } } },   // no pigeons: in a packed lane they lift on every pass (animStill: a pigeon plays 'fly' on the spot)
   // a town park: lawns, flower borders, specimen chestnuts, planes and willows, benches and lamps on the paths
   park: { label: 'park', place: 'park', backdrop: 'town-low', ground: 'grass', sky: [0.25, 0.55], layers: 5, bare: { ground: 0.28, paving: 0.1 },
     look: { grass: 'mown', path: 'gravel', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'earth' },

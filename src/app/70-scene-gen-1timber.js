@@ -122,7 +122,9 @@ function _sctfFrontLayout(sp, face, model) {
   const win = (s, z, w, h, over) => { out.elems.push(Object.assign({ k: 'win', s, z, w, h, type: 'leaded', panes: [Math.max(2, Math.round(w / 0.42)), 1], head: 'flat', recess: 0.1, storey: i, frame: tf.timber }, over || {})); holes.push([s - 0.07, s + w + 0.07, z - 0.1, z + h + 0.11]); rect(s - 0.07, z - 0.1, w + 0.14, 0.1); rect(s - 0.07, z + h, w + 0.14, 0.11); };
   // the plinth, the splash zone and the bressummer
   if (i === 0 && !shop) out.elems.push({ k: 'band', s0: 0, s1: len, z0: 0, z1: 0.4, col: '#7d6c5a', layer: 2, o: 0.02 });
-  if (i === 0) out.elems.push({ k: 'band', s0: 0, s1: len, z0: 0.4, z1: 1.0, col: _scbgDark(sp.wall, 0.3), layer: 1, op: 0.22, o: 0.006 });
+  // a lane is dark at the foot (the walls stand a few metres apart): the plaster darkens toward the ground in three steps, damper at the foot
+  if (i === 0) for (const [za, zb, op] of [[0.4, 1.0, 0.24], [1.0, 1.9, 0.12], [1.9, zB, 0.06]]) out.elems.push({ k: 'band', s0: 0, s1: len, z0: za, z1: zb, col: _scbgDark(sp.wall, 0.55), layer: 1, op, o: 0.006 });
+  out.elems.push({ k: 'tpatch', s0: 0, s1: len, z0: zA, z1: zB, storey: i, seed: sp.seed * 7 + i, col: sp.wall });
   if (i >= 1) rect(0, zA, len, 0.28, 1);
   rect(0, zB - 0.15, len, 0.15, 1);
   rect(0, zA + (i >= 1 ? 0.28 : 0.4), pw, zB - zA - (i >= 1 ? 0.43 : 0.55), 1); rect(len - pw, zA + (i >= 1 ? 0.28 : 0.4), pw, zB - zA - (i >= 1 ? 0.43 : 0.55), 1);
@@ -237,6 +239,18 @@ _scbgElemKinds.tframe = function (e, face, ctx, T) {
   if (!studsOk && e.studZone && T >= 1) { const z = e.studZone, p = _scbgRect(pl, view, z[0], z[1], z[2], z[3], 0.012); if (p) sink.add(1, { f: col, d: _scbgPath(p), op: 0.3, part: 'body' }); }
 };
 
+/** Limewash patches on the plaster (a few lighter, a few damper), seeded: a wall is never one flat colour. Near enough to read (tier 2). */
+_scbgElemKinds.tpatch = function (e, face, ctx, T) {
+  if (T < 2) return;
+  const { view, sink } = ctx, pl = face.plane, r = sceneRnd(sceneHash('tpatch|' + e.seed)), light = [], dark = [], n = 3 + Math.floor(r() * 4);
+  for (let k = 0; k < n; k++) {
+    const w = 0.5 + r() * 1.1, h = 0.4 + r() * 1.0, s = e.s0 + 0.2 + r() * Math.max(0.1, e.s1 - e.s0 - w - 0.4), z = e.z0 + 0.3 + r() * Math.max(0.1, e.z1 - e.z0 - h - 0.5), j = () => (r() - 0.5) * 0.2;
+    const p = _scbgMap(pl, view, [[s + j(), z + j()], [s + w + j(), z + j()], [s + w + j(), z + h + j()], [s + j(), z + h + j()]], 0.007);
+    if (p) (r() < 0.5 ? light : dark).push(_scbgPath(p));
+  }
+  if (light.length) sink.add(1, { f: _scbgLight(e.col, 0.35), d: light.join(''), op: 0.28, part: 'body', detail: true });
+  if (dark.length) sink.add(1, { f: _scbgDark(e.col, 0.35), d: dark.join(''), op: 0.2, part: 'body', detail: true });
+};
 /** A lit shop interior over a display window (drawn only after dusk, ungraded): a warm gradient, brighter low. */
 _scbgElemKinds.tlit = function (e, face, ctx) {
   const p = _scbgRect(face.plane, ctx.view, e.s, e.z, e.w, e.h, -0.06);
