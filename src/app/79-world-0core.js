@@ -1405,8 +1405,8 @@ function _wcNaturalEdge(poly, seed, eyes) {
   const n = poly.length;
   if (n < 3) return poly;
   const k0 = (seed | 0) % 97, E = Array.isArray(eyes) && eyes.length ? eyes : [[0, 0]];
-  // how far a point is from the nearest viewpoint of the place (the same for every camera of it): near edges are cut fine and move
-  // about a metre, far ones are cut coarse and move more (a metre at 200 m is a hand's breadth on screen)
+  // how far a point is from the nearest viewpoint of the place (the same for every camera of it): near edges are cut fine and shift
+  // about a metre, far ones are cut coarse and shift more (a metre at 200 m is a hand's breadth on screen)
   const far = (x, z) => { let d = Infinity; for (const e of E) d = Math.min(d, Math.hypot(x - e[0], z - e[1])); return d; };
   const disp = (x, z, d) => {
     const A = Math.min(1.6, 0.7 + 0.008 * d);
