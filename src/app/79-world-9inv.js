@@ -341,7 +341,9 @@ const _WIV_RULES = {
       if (kb && kb.habitat && typeof worldKbHabitatOk === 'function' && typeof worldPlaceProbe === 'function' && C.world) {
         let ok = true, why = '';
         try {
-          const pts = (kb.floats || att === 'water') && _wivFootOf(e) ? _wivFootOf(e) : [[e.x, e.z]];
+          // (a plant stands on its root: a reed's stems lean over a deck's edge; only a floater needs its whole footprint on the water)
+          const plant = /^plant\./.test(String(e.obj || '')) || _WIV_GROUND_COVER.has(cls || '');
+          const pts = (kb.floats || att === 'water') && !plant && _wivFootOf(e) ? _wivFootOf(e) : [[e.x, e.z]];
           for (const p of pts) { const r = worldKbHabitatOk(kb, worldPlaceProbe(C.world, p[0], p[1])); if (r === false || (r && r.ok === false)) { ok = false; why = r && r.reason ? r.reason : ''; break; } }
           judged = true;
         } catch (err) { judged = false; }
