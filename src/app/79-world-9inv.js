@@ -1014,7 +1014,10 @@ const _WIV_RULES = {
       const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
       if (seen.has(k)) continue;
       seen.add(k);
-      const ab = _wivBox(a), bb = _wivBox(b), sm = Math.max(1, Math.min((ab[2] - ab[0]) * (ab[3] - ab[1]), (bb[2] - bb[0]) * (bb[3] - bb[1])));
+      // the bodies, not the art boxes: a box holds the swing of the arms and legs, so two people walking shoulder to shoulder (0.6 m) overlap by
+      // 40 % of their boxes and not at all by their bodies; the core is the middle 70 % of a box's width
+      const core = (q) => { const k = 0.15 * (q[2] - q[0]); return [q[0] + k, q[1], q[2] - k, q[3]]; };
+      const ab = core(_wivBox(a)), bb = core(_wivBox(b)), sm = Math.max(1, Math.min((ab[2] - ab[0]) * (ab[3] - ab[1]), (bb[2] - bb[0]) * (bb[3] - bb[1])));
       if (_wivBoxOverlap(ab, bb) / sm <= 0.4) continue;
       now.add(k);
       let held = true;

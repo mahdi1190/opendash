@@ -366,6 +366,11 @@ test('crowd (A2): two walkers drawn through each other for 0.5 s; side by side a
   for (let t = 0; t <= 1; t += 0.25) m += run('crowd', frame([P({ id: 'a', x: 3, z: 20 }), P({ id: 'b', x: 3.6, z: 20 })], { t }), { track: t2 }).length;
   assert.equal(m, 0, 'shoulder to shoulder');
   assert.deepEqual(run('crowd', frame([P({ id: 'a', x: 3, z: 20, group: 'g1' }), P({ id: 'b', x: 3.05, z: 20.05, group: 'g1' })])), [], 'one group (a couple arm in arm)');
+  // 15 Oct: two strangers passing at 0.55 m: their art boxes (arm swing) overlap by 40 %, their bodies do not
+  const t3 = E.worldInvariantTracker();
+  let k = 0;
+  for (let t = 0; t <= 1; t += 0.25) k += run('crowd', frame([P({ id: 'a', x: 3, z: 20, state: 'walk', w: 1.0 }), P({ id: 'b', x: 3.55, z: 20.05, state: 'walk', w: 1.0 })], { t }), { track: t3 }).length;
+  assert.equal(k, 0, 'passing at 0.55 m with the arms swinging');
 });
 
 test('outfitClone (A11): two walkers in the same outfit side by side for 3 s; different variants are quiet; no variant is n/a', () => {
