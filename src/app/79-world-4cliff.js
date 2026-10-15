@@ -74,6 +74,7 @@ function worldCliffGeom(f) {
         g = { f, pts, cum, l2, L, H, hs: sh, w: sw, b: _wclNum(f.batter) && f.batter > 0 ? Math.min(f.batter, 3) : 0, lipW, lipH,
           fade: _wclNum(f.fade) && f.fade >= 0 ? Math.min(f.fade, L / 2) : Math.min(40, 0.15 * L), hi: 1, rock: WORLD_CLIFF_ROCKS.includes(f.rock) ? f.rock : 'limestone', id: f.id || null };
         // which side is the high ground: away from the camera (the origin) unless the spec says left or right
+        g.fold = _wclFolds(pts, cum);
         if (f.high === 'left') g.hi = -1; else if (f.high === 'right') g.hi = 1;
         else { const n0 = _wclNear(g, 0, 0); g.hi = n0.side > 0 ? -1 : 1; }
       }
@@ -82,18 +83,41 @@ function worldCliffGeom(f) {
   _wclMemo.set(f, g);
   return g;
 }
-/** The nearest point of the plan to (x, z): { d, s (arc length), side (> 0: right of the direction), i (segment) }. */
-function _wclNear(g, x, z) {
+/** Does the plan fold back on itself: a vertex within 60 m of one more than 100 m further along? (the two-step nearest search is exact only when it does not) */
+function _wclFolds(P, C) {
+  for (let i = 0; i < P.length; i += 4) for (let j = i + 1; j < P.length; j += 4) {
+    if (C[j] - C[i] <= 100) continue;
+    const dx = P[i][0] - P[j][0], dz = P[i][1] - P[j][1];
+    if (dx * dx + dz * dz < 3600) return true;
+  }
+  return false;
+}
+/** The nearest segment of the plan to (x, z) among segments [i0, i1): the best { d2, s, side, i }. */
+function _wclNearIn(g, x, z, i0, i1, best) {
   const P = g.pts;
-  let bd = Infinity, bs = 0, bside = 0, bi = 0;
-  for (let i = 1; i < P.length; i++) {
+  for (let i = Math.max(1, i0); i < Math.min(P.length, i1); i++) {
     const ax = P[i - 1][0], az = P[i - 1][1], dx = P[i][0] - ax, dz = P[i][1] - az, L2 = g.l2[i - 1];
     if (L2 < 1e-12) continue;
     let t = ((x - ax) * dx + (z - az) * dz) / L2; t = t < 0 ? 0 : t > 1 ? 1 : t;
     const px = ax + t * dx - x, pz = az + t * dz - z, d2 = px * px + pz * pz;
-    if (d2 < bd) { bd = d2; bs = g.cum[i - 1] + t * Math.sqrt(L2); bside = ((x - ax) * dz - (z - az) * dx); bi = i - 1; }
+    if (d2 < best.d2) { best.d2 = d2; best.s = g.cum[i - 1] + t * Math.sqrt(L2); best.side = ((x - ax) * dz - (z - az) * dx); best.i = i - 1; }
   }
-  return { d: Math.sqrt(bd), s: bs, side: bside, i: bi };
+  return best;
+}
+/**
+ * The nearest point of the plan to (x, z): { d, s (arc length), side (> 0: right of the direction), i (segment) }. A short plan is
+ * searched whole; a long one in two steps (every sixth vertex, then the segments round the best of those): the same answer for any
+ * plan that does not fold back on itself (g.fold: a stretch of it within 60 m of another more than 100 m along), at a third of the cost
+ * (the strips ask about 100 000 points). A folded plan is always searched whole.
+ */
+function _wclNear(g, x, z) {
+  const P = g.pts, n = P.length;
+  const best = { d2: Infinity, s: 0, side: 0, i: 0 };
+  if (n <= 24 || g.fold) { _wclNearIn(g, x, z, 1, n, best); return { d: Math.sqrt(best.d2), s: best.s, side: best.side, i: best.i }; }
+  let k = 0, bd = Infinity;
+  for (let i = 0; i < n; i += 6) { const dx = P[i][0] - x, dz = P[i][1] - z, d2 = dx * dx + dz * dz; if (d2 < bd) { bd = d2; k = i; } }
+  _wclNearIn(g, x, z, k - 8, k + 9, best);
+  return { d: Math.sqrt(best.d2), s: best.s, side: best.side, i: best.i };
 }
 /** The height profile across the face at signed distance t (positive toward the high ground) for a taper multiplier m: foot talus, face, lip, plateau. */
 function _wclProfile(g, t, m) {

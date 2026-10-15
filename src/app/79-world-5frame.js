@@ -318,7 +318,14 @@ function worldFramePlan(world, o) {
   // the terrain (W2): strips of the relief as prims, so the chunk order hides what lies behind a nearer rise and puts what stands on
   // the slope in front of it (the v2 ground follows a relief along polygon edges only)
   if (typeof worldTerrainPrims === 'function') {
-    try { for (const p of worldTerrainPrims(world, cam, { season: o.season }) || []) if (p && p.box) add(_wfrPrimRec(p, null, null)); } catch (e) { /* flat ground */ }
+    try {
+      for (const p of worldTerrainPrims(world, cam, { season: o.season }) || []) if (p && p.box) {
+        const r = _wfrPrimRec(p, null, null);
+        // ground below a mover's feet never covers the mover: the strip is an occluder only where its upper edge reaches above them (4terrain)
+        if (p.tops && typeof worldTerrainOccludes === 'function') r.occlude = (box) => worldTerrainOccludes(p, box);
+        add(r);
+      }
+    } catch (e) { /* flat ground */ }
   }
   // statics that move by cause (the wind's sway, a flame's flicker, a moored bob): drawn live, nearest first
   if (typeof worldAnimHooks === 'function') {

@@ -356,7 +356,7 @@ function worldFrameOrder(chunks, agents, cam, boxes) {
         var near = worldOrderNearby(ch, m._box, boxes, cam);
         for (var e = 0; e < near.length; e++) {
           var s = near[e];
-          if (s.id !== hid && worldOrderNearer(s, m)) out.push({ kind: 'redraw', ref: s, chunk: c });
+          if (s.id !== hid && (!s.occlude || s.occlude(m._box)) && worldOrderNearer(s, m)) out.push({ kind: 'redraw', ref: s, chunk: c });
         }
       }
     }
@@ -423,7 +423,7 @@ function worldOrderCheck(order, boxes, opts) {
     var m = movers[i], mx0 = X0[m], my0 = Y0[m], mx1 = X1[m], my1 = Y1[m];
     for (j = 0; j < n; j++) {
       if (j === m || !has[j] || (mov[j] && j < m)) continue;   // a mover pair is tested once
-      if (mx0 < X1[j] && X0[j] < mx1 && my0 < Y1[j] && Y0[j] < my1) test(m, j);
+      if (mx0 < X1[j] && X0[j] < mx1 && my0 < Y1[j] && Y0[j] < my1) { if (ents[j].occlude && !ents[j].occlude({ x0: mx0, y0: my0, x1: mx1, y1: my1 })) continue; test(m, j); }
     }
   }
   return bad;

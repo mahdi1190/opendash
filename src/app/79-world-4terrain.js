@@ -54,6 +54,29 @@ function _wtrMixHex(a, b, t) {
   const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16), m = (x, y) => Math.round(x + (y - x) * t);
   return '#' + ((1 << 24) | (m((A >> 16) & 255, (B >> 16) & 255) << 16) | (m((A >> 8) & 255, (B >> 8) & 255) << 8) | m(A & 255, B & 255)).toString(16).slice(1);
 }
+/** The upper edge of a terrain prim by screen column (32 units wide): what a mover's feet can be hidden by. { w, x0, y: [min Y of the prim's points in each column] } */
+function _wtrTops(prim) {
+  const W = 32;
+  let a = Infinity, b = -Infinity;
+  const pts = [];
+  for (const f of prim.faces || []) for (const q of f.pts) pts.push(q);
+  for (const op of prim.ops || []) { if (op.p) for (const q of op.p) pts.push(q); else if (op.t === 'tree') { pts.push([op.x - op.w, op.y - op.h * 1.1], [op.x + op.w, op.y]); } }
+  for (const q of pts) { if (q[0] < a) a = q[0]; if (q[0] > b) b = q[0]; }
+  if (!pts.length || !isFinite(a)) return null;
+  const x0 = Math.floor(a / W), n = Math.floor(b / W) - x0 + 1, y = new Array(n).fill(Infinity);
+  for (const q of pts) { const i = Math.floor(q[0] / W) - x0; if (q[1] < y[i]) y[i] = q[1]; }
+  // a quad spans columns its corners do not touch: carry the lower edge across (a column between two corners is at most as high as them)
+  return { w: W, x0, y };
+}
+/** Can this terrain prim hide (part of) a mover with the screen box `box`? Only where the prim's upper edge over the mover's columns reaches above the mover's feet: ground below a mover's feet never covers it. */
+function worldTerrainOccludes(prim, box) {
+  const T = prim && prim.tops;
+  if (!T || !box) return true;
+  const b0 = Math.floor(box.x0 / T.w) - T.x0, b1 = Math.floor(box.x1 / T.w) - T.x0;
+  let top = Infinity;
+  for (let i = Math.max(0, b0); i <= Math.min(T.y.length - 1, b1); i++) if (T.y[i] < top) top = T.y[i];
+  return top < box.y1 - 0.5;
+}
 /** A polygon offset outward by d on every edge (each vertex along the bisector of its two edge normals, mitre limited). */
 function _wtrGrow(P, d) {
   const n = P.length;
@@ -120,15 +143,28 @@ function _wtrHasScree(G, zm, xlim) {
   for (let x = -xlim; x <= xlim; x += Math.max(4, xlim / 16)) { const s = worldCliffSample(G, x, zm); if (s.m > 0.1 && s.t > -G.w - 3 && s.t < 0.5) return true; }
   return false;
 }
+// the prims of a world for a camera and a season are made once (the page builds its frame plan more than once: the host's still, the bake, the tools)
+const _wtrMemo = new WeakMap();
 function worldTerrainPrims(world, cam, o) {
   o = o || {};
+  if (world && typeof world === 'object' && cam && cam.relief) {
+    const key = (o.season || '') + '|' + cam.f + '|' + cam.horizon + '|' + cam.x0 + '|' + cam.eye + '|' + (world.features ? world.features.length : 0);
+    let m = _wtrMemo.get(world);
+    if (m && m.key === key && m.relief === cam.relief) return m.out.slice();
+    const out = _wtrPrims(world, cam, o);
+    _wtrMemo.set(world, { key, relief: cam.relief, out });
+    return out.slice();
+  }
+  return _wtrPrims(world, cam, o);
+}
+function _wtrPrims(world, cam, o) {
   const R = cam && cam.relief;
   if (!R || !Array.isArray(R.d) || !Array.isArray(R.x) || !Array.isArray(R.h) || typeof sceneGroundHeight !== 'function' || typeof sceneProject !== 'function' || !(cam.f > 0)) return [];
   let hmax = 0, hmin = 0;
   for (const h of R.h) { if (h > hmax) hmax = h; if (h < hmin) hmin = h; }
   if (hmax - Math.min(0, hmin) < WORLD_TERRAIN_FLAT) return [];
   const cliffs = typeof worldCliffGeom === 'function' ? (world.features || []).map(f => worldCliffGeom(f)).filter(Boolean) : [];
-  const d0 = Math.max(0.5, R.d[0]), d1 = R.d[1], out = [];
+  const d0 = Math.max(0.5, R.d[0]), d1 = R.d[1], out = [], x0 = Number.isFinite(cam.x0) ? cam.x0 : 800;   // the strips cover what the frame and its 21:9 crop can show: scene X from -330 to 1930
   // the height of the ground: the grid; with a cliff, the cliff's own analytic function over the relief that is not a cliff
   const baseGrid = world.reliefBase ? { relief: world.reliefBase } : null;
   const hAt = cliffs.length
@@ -141,7 +177,7 @@ function worldTerrainPrims(world, cam, o) {
   let k = 0;
   for (let z = d0; z < d1 - 1e-6; z *= WORLD_TERRAIN_STEP, k++) {
     const za = z, zb = Math.min(d1, z * WORLD_TERRAIN_STEP), zm = (za + zb) / 2;
-    const xl = Math.max(R.x[0], -(zb * 1.6 + 6)), xr = Math.min(R.x[1], zb * 1.6 + 6), xlim = Math.max(Math.abs(xl), Math.abs(xr)), screeStrip = cliffs.some(G => G.w > 0 && _wtrHasScree(G, zm, xlim)), step = Math.max(screeStrip ? 0.6 : 0.9, zm / (screeStrip ? 220 : cliffs.length ? 70 : 44)), faces = [], sops = [];
+    const xl = Math.max(R.x[0], (-330 - x0) * zb / cam.f - 6), xr = Math.min(R.x[1], (1930 - x0) * zb / cam.f + 6), xlim = Math.max(Math.abs(xl), Math.abs(xr)), screeStrip = cliffs.some(G => G.w > 0 && _wtrHasScree(G, zm, xlim)), step = Math.max(screeStrip ? 0.6 : 0.9, zm / (screeStrip ? 220 : cliffs.length ? 70 : 44)), faces = [], sops = [];
     let hi = 0, xmin = Infinity, xmax = -Infinity, minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
     for (let x = xl; x < xr - 1e-6; x += step) {
       const x2 = Math.min(xr, x + step);
@@ -178,10 +214,12 @@ function worldTerrainPrims(world, cam, o) {
     let sj = si; while (sj < stones.length && stones[sj].z < zb) sj++;
     for (let j = sj - 1; j >= si; j--) for (const op of stones[j].ops) { sops.push(op); for (const q of op.p) { minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); minY = Math.min(minY, q[1]); maxY = Math.max(maxY, q[1]); } xmin = Math.min(xmin, stones[j].x); xmax = Math.max(xmax, stones[j].x); }
     if (!faces.length) continue;
-    out.push({ id: 'terrain-' + k, kind: 'line', sub: 'terrain', lineKind: 'terrain', box: [minX, minY, maxX, maxY], zKey: za, foot: [[xmin, za], [xmax, za], [xmax, zb], [xmin, zb]], height: Math.max(0.3, hi), solidity: 'passable', faces, mat: 'grass', ops: sops.length ? sops : undefined, heading: cam.heading || 0 });
+    const strip = { id: 'terrain-' + k, kind: 'line', sub: 'terrain', lineKind: 'terrain', box: [minX, minY, maxX, maxY], zKey: za, foot: [[xmin, za], [xmax, za], [xmax, zb], [xmin, zb]], height: Math.max(0.3, hi), solidity: 'passable', faces, mat: 'grass', ops: sops.length ? sops : undefined, heading: cam.heading || 0 };
+    strip.tops = _wtrTops(strip);
+    out.push(strip);
   }
   // the faces of the cliffs (4cliff): true geometry, strata, joints, ledges, vegetation
-  if (cliffs.length && typeof worldCliffPrims === 'function') for (const p of worldCliffPrims(world, cam, o)) out.push(p);
+  if (cliffs.length && typeof worldCliffPrims === 'function') for (const p of worldCliffPrims(world, cam, o)) { p.tops = _wtrTops(p); out.push(p); }
   // far first: the nearer rise is drawn over what lies behind it
   out.sort((a, b) => b.zKey - a.zKey);
   return out;
