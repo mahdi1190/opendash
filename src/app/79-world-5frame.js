@@ -194,8 +194,9 @@ function _wfrAgentEnt(a) {
   const sp = Math.hypot(a.vx || 0, a.vz || 0);
   const hull = a.len > 4 && Number.isFinite(a.heading);
   const facing = hull ? a.heading * 180 / Math.PI : sp > 0.02 ? Math.atan2(a.vx, a.vz) * 180 / Math.PI : Number.isFinite(a.facing) ? a.facing : Number.isFinite(a.heading) ? a.heading * 180 / Math.PI : 90;
-  return Object.assign({}, a, { id: a.id != null ? String(a.id) : null, static: false, facing, foot: _wfrAgentFoot(a), height: Number.isFinite(a.h) ? a.h : a.height,
-    attach: a.attach || (a.host ? 'deck:' + a.host : a.layer === 'swim' ? 'water' : a.layer === 'air' ? 'air' : 'ground') });
+  // (a spread, not Object.assign: that makes dictionary-mode objects, and copying one of those costs 20 us for an agent's 45 fields)
+  return { ...a, id: a.id != null ? String(a.id) : null, static: false, facing, foot: _wfrAgentFoot(a), height: Number.isFinite(a.h) ? a.h : a.height,
+    attach: a.attach || (a.host ? 'deck:' + a.host : a.layer === 'swim' ? 'water' : a.layer === 'air' ? 'air' : 'ground') };
 }
 
 /** The rows of the nav grids a mover can stand on (sorted z, one per row with any standable cell in view): chunk rule (b). */
@@ -1293,7 +1294,7 @@ function _wfrLightsPlan(env, S) {
   let list = [];
   const recs = S.plan.recs.filter(r => !r.prim);
   try {
-    const ents = recs.map(r => Object.assign({}, r.ent, { id: r.id, mirror: !!r.flip }));
+    const ents = recs.map(r => ({ ...r.ent, id: r.id, mirror: !!r.flip }));
     list = (worldLights({ entities: ents }, { sky: LN.sky || undefined, L: LN.L, season: S.season }) || []).filter(x => x.on);
   } catch (e) { S.stats.errors.push('lights: ' + (e && e.message)); return; }
   if (!list.length) return;
@@ -1599,7 +1600,7 @@ function _wfrDraw(env, ctx, t) {
     if (typeof worldShadowPlan === 'function' && typeof worldDrawShadows === 'function') {
       if (sunOn && !S.agentShadowOff) {
         try {
-          const sun = S.sky || L, ag = aRecs.map(r => Object.assign({}, r.ent, { id: r.id }));
+          const sun = S.sky || L, ag = aRecs.map(r => ({ ...r.ent, id: r.id }));
           const plan = worldShadowPlan({ entities: [], surfaces: world.surfaces, cam }, cam, sun, { agents: ag, statics: false, W: 2 * (cam.x0 || 800) }) || [];
           const byId = new Map(aRecs.map(r => [r.id, r]));
           const spriteOf = (ref) => { const r = byId.get(String(ref)); const sp = r && !r.prim ? _wfrSpriteOf(env, S, r, '*', { bucket: r.bucket }) : null; return sp && sp.c ? { c: sp.c, x0: sp.x0, y0: sp.y0, w: sp.w, h: sp.h, s: r.s, flip: r.flip, X: r.X, Y: r.Y, x: r.x, d: r.z, top: sp.y0 } : null; };
@@ -1620,7 +1621,7 @@ function _wfrDraw(env, ctx, t) {
   let agentLights = null;
   if (aRecs.length && lightsOn && typeof worldLights === 'function' && typeof worldDrawLights === 'function') {
     try {
-      const al = (worldLights({ entities: [] }, { sky: S.sky || undefined, L, season: S.season, agents: aRecs.map(r => Object.assign({}, r.ent, { id: r.id, mirror: !!r.flip })) }) || []).filter(x => x.on);
+      const al = (worldLights({ entities: [] }, { sky: S.sky || undefined, L, season: S.season, agents: aRecs.map(r => ({ ...r.ent, id: r.id, mirror: !!r.flip })) }) || []).filter(x => x.on);
       if (al.length) {
         agentLights = new Map();
         const recOf = new Map(aRecs.map(r => [String(r.id), r]));

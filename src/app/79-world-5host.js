@@ -248,7 +248,7 @@ function worldHostSim(world, o) {
   }
   const step = life && life.step > 0 ? life.step : 1 / WORLD_HOST_SIM_HZ;
   const sim = { kind: 'sim', nav, life, hz: 1 / step, step, ticks: 0, tickMs: [], error: null };
-  sim.snapshot = () => { try { return (worldAgents(life) || []).map(a => Object.assign({}, a)); } catch (e) { return []; } };
+  sim.snapshot = () => { try { return worldAgents(life) || []; } catch (e) { return []; } };   // worldAgents makes fresh records on every call
   sim.tick = () => {
     const a = _wh5Now();
     try { worldLifeTick(life, step); } catch (e) { sim.error = String(e && e.message || e); }
@@ -292,7 +292,7 @@ function worldHostDriver(world, o) {
   const lifeOf = () => (own ? lifeOfWorld() : sim && sim.life);
   d.snapshot = () => {
     try {
-      if (own) return (worldAgents(lifeOfWorld()) || []).map(a => Object.assign({}, a));
+      if (own) return worldAgents(lifeOfWorld()) || [];   // fresh records on every call
       return sim ? sim.snapshot() : [];
     } catch (e) { d.error = String(e && e.message || e); return []; }
   };
@@ -333,12 +333,12 @@ function worldHostDriver(world, o) {
  */
 const _wh5LerpMemo = { prev: null, cur: null, out: null, P: null };   // the clones of one pair of ticks live for every frame between them
 function _wh5Lerp(prev, cur, al) {
-  if (prev === cur) return cur.map(a => Object.assign({}, a));
+  if (prev === cur) return cur.map(a => ({ ...a }));
   // the objects are made once per pair of ticks (a crowd of 60 cloned 45 fields each frame was the biggest cost of Kelham's frame after the sprites)
   // and only their positions move from frame to frame
   const M = _wh5LerpMemo;
   if (!(M.prev === prev && M.cur === cur && M.out && M.out.length === cur.length)) {
-    M.prev = prev; M.cur = cur; M.out = cur.map(c => Object.assign({}, c)); M.P = new Map(); for (const q of prev) M.P.set(q.id, q);
+    M.prev = prev; M.cur = cur; M.out = cur.map(c => ({ ...c })); M.P = new Map(); for (const q of prev) M.P.set(q.id, q);
   }
   const out = M.out, P = M.P;
   for (let i = 0; i < cur.length; i++) {
@@ -548,8 +548,8 @@ function worldHostAt(rec, t, f) {
   let tau = rec.clock.frame(f.key || 'k', t, { warming: f.warming, hidden, still: f.still });
   const d = rec.driver;
   if (!d) return { tau, agents: [], ready: false };
-  if (f.still) return { tau: 0, agents: d.base.map(a => Object.assign({}, a)), ready: true };
-  if (rec.resetting) { rec.clock.tau = 0; return { tau: 0, agents: d.base.map(a => Object.assign({}, a)), ready: false }; }
+  if (f.still) return { tau: 0, agents: d.base.map(a => ({ ...a })), ready: true };
+  if (rec.resetting) { rec.clock.tau = 0; return { tau: 0, agents: d.base.map(a => ({ ...a })), ready: false }; }
   if (tau + 1e-9 < d.tau) {
     // back to an earlier moment: the life again from its base (the same world, nav and seed: the same base)
     rec.stats.resets++;
@@ -560,7 +560,7 @@ function worldHostAt(rec, t, f) {
       rec.resetting = { at: tau };
       _wh5Idle(() => { if (_wh5Live.get(rec.id) !== rec) return; const old = rec.driver; rec.driver = null; _wh5Init(rec, nav); if (!rec.driver) rec.driver = old; rec.resetting = null; rec.clock.tau = 0; }, 300);
       rec.clock.tau = 0;
-      return { tau: 0, agents: d.base.map(a => Object.assign({}, a)), ready: false };
+      return { tau: 0, agents: d.base.map(a => ({ ...a })), ready: false };
     }
   }
   const D = rec.driver;
