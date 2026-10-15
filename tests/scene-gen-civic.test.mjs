@@ -14,7 +14,7 @@ const REG = loadRegistry(ROOT);
 const G = REG.R.get;
 const E = new Proxy({}, { get: (_, n) => G(n) });
 const CAM = { eye: 1.7, fov: 72, horizon: 500 };
-const CROWNS = ['twin-towers', 'great-dome', 'corner-dome', 'clock-tower', 'pediment'];
+const CROWNS = ['twin-towers', 'great-dome', 'corner-dome', 'clock-tower', 'pediment', 'liver-towers', 'palazzo', 'port-dome'];
 /** A W x D block, its front on the line d = d0 facing the camera. */
 const block = (x, d0, W, D) => [[x - W / 2, d0], [x + W / 2, d0], [x + W / 2, d0 + D], [x - W / 2, d0 + D]];
 const spec = (crown, extra) => Object.assign({ style: 'baroque-civic', seed: 11, storeys: crown === 'twin-towers' ? 12 : 7, foot: block(0, 220, 64, 50), crown }, extra || {});
@@ -51,6 +51,26 @@ test('every crown draws, is deterministic, and the clock faces, bird, dome rings
   const roofFills = new Set(dome.shapes.filter(s => s.part === 'roof').map(s => s.f));
   assert.ok(roofFills.size >= 4, 'a dome reads through several tone rings: ' + roofFills.size);
   assert.ok(E.sceneBuildingProject(spec('clock-tower'), CAM, {}).shapes.some(s => s.glow === 'core'), 'a town-hall clock tower has a clock');
+});
+
+test('the Three Graces: three styles and three crowns make three different silhouettes (towers, a palazzo with no tower, a great dome with turrets)', () => {
+  const mk = (style, crown, storeys, foot) => E.sceneBuildingProject({ style, seed: 11, storeys, foot: foot || block(0, 220, 80, 50), crown }, CAM, {});
+  const liver = mk('baroque-civic-liver', 'liver-towers', 11), pal = mk('baroque-civic-palazzo', 'palazzo', 8), port = mk('baroque-civic-port', 'port-dome', 7);
+  for (const id of ['baroque-civic-liver', 'baroque-civic-palazzo', 'baroque-civic-port']) { const st = E.sceneBuildingStyle(id); assert.ok(st && st.civic && typeof st.crowns['liver-towers'] === 'function', id + ' registers with the crowns'); }
+  assert.ok(liver.h > 88 && liver.h < 115, 'two clock towers: ' + liver.h);
+  assert.ok(port.h > 55 && port.h < liver.h - 8, 'a dome: ' + port.h);
+  assert.ok(pal.h < port.h - 8, 'the palazzo is the lowest: ' + pal.h);
+  const copper = (d) => d.shapes.filter(s => s.part === 'roof' && /^#[4-9a-f]/.test(s.f)).length;
+  assert.equal(copper(pal), 0, 'the palazzo has no dome and no tower (a flat, massive roofline)');
+  assert.ok(copper(liver) >= 3 && copper(port) >= 5, 'domes: liver ' + copper(liver) + ', port ' + copper(port));
+  // a bird on each outer tower of the liver block, a ball on the dome of the port (never a flag, a cross or a name)
+  assert.ok(liver.shapes.filter(s => s.part === 'roof' && /^#(3|4|5|6)[0-9a-f]/.test(s.f) && s.d.length > 90).length >= 2, 'two birds');
+  // three stones, never one wash of colour: the mean light fill of each
+  const stone = (d) => { const m = [0, 0, 0]; let n = 0; for (const s of d.shapes) { if (typeof s.f !== 'string' || !/^#[0-9a-f]{6}$/i.test(s.f)) continue; const c = [1, 3, 5].map(i => parseInt(s.f.slice(i, i + 2), 16)); if (c[0] + c[1] + c[2] < 540) continue; n++; for (let k = 0; k < 3; k++) m[k] += c[k]; } return m.map(v => v / Math.max(1, n)); };
+  const T = [liver, pal, port].map(stone), dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  assert.ok(dist(T[0], T[1]) > 8 && dist(T[0], T[2]) > 8 && dist(T[1], T[2]) > 8, 'three different stones: ' + T.map(t => t.map(Math.round)));
+  // both views: the elevation draws the palazzo and the dome too
+  assert.ok(E.sceneBuildingObject({ style: 'baroque-civic-port', seed: 3, storeys: 7, frontage: 70, depth: 44, crown: 'port-dome' }), 'a library object from the port style');
 });
 
 test('tall buildings stay cheap: under the shape budget at every distance and tier, and the tier steps down with distance', () => {

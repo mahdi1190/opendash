@@ -170,3 +170,17 @@ test('K9: the Pier Head spec is short and validates clean; its buildings and fer
   const T = ['port', 'cunard', 'liver'].map(id => stone(by[id])), dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
   for (const [i, j] of [[0, 1], [0, 2], [1, 2]]) assert.ok(dist(T[i], T[j]) > 8, 'two buildings in the same stone: ' + T.map(t => t.map(Math.round)));
 });
+
+/* ---------- the plaza's bronze group (the Pier Head dressing) ---------- */
+test('K10: street.walker-group is four bronze silhouettes on a low plinth: path data only, no text, no faces, three variants, a real size', () => {
+  const def = W.sceneObj('street.walker-group');
+  assert.ok(def && def.variants === 3, 'defined with three variants');
+  assert.ok(W.sceneObjReal('street.walker-group').h > 1.8 && W.sceneObjReal('street.walker-group').h < 2.6, 'about two metres tall');
+  for (let v = 0; v < 3; v++) {
+    const sh = W.sceneObjShapes('street.walker-group', v, 'summer');
+    assert.ok(sh && sh.box && sh.box[2] - sh.box[0] > (sh.box[3] - sh.box[1]) * 2, 'a long low group, variant ' + v);
+    const all = Object.values(sh.parts).flat();
+    assert.ok(all.length >= 20 && all.length <= 80, 'four figures and a plinth in a few dozen shapes: ' + all.length);
+    for (const s of all) { assert.ok(!s.text && !s.t, 'no text'); assert.match(String(s.d), /^[MmLlHhVvQqAaZz0-9., -]+$/, 'path data only'); }
+  }
+});
