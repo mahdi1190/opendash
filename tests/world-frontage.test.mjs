@@ -11,7 +11,7 @@ import { worldCritic } from '../tools/lib/world/critic.mjs';
 import { runCells } from '../tools/lib/world/cells.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const W = loadWorld(ROOT, { extra: 'globalThis.__york = { sceneBuildingProject, sceneBuildingResolve, sceneBuildingObject, sceneBuildingStyle, _scbgBuild, _scbgFoot, _scbgPersp, _scbgOrtho, _SCTF_NEAR, SCENE_GEN_UPM };' });
+const W = loadWorld(ROOT, { extra: 'globalThis.__york = { sceneBuildingProject, sceneBuildingResolve, sceneBuildingObject, sceneBuildingStyle, _scbgBuild, _scbgFoot, _scbgPersp, _scbgOrtho, _SCTF_NEAR, SCENE_GEN_UPM, _scbgElemKinds, _scbgWallPlane };' });
 const G = globalThis.__york;
 const lane = (o) => Object.assign({ v: 3, place: { lat: 53.959, lon: -1.0815, region: 'north-yorkshire', style: 'old-town-lane' }, camera: { eye: 1.7, fov: 62, horizon: 590, heading: 318 },
   surfaces: [{ id: 'lane', kind: 'plaza', path: [[0, -6], [0, 40], [3, 70], [3, 122]], width: 3.8 }],
@@ -187,4 +187,22 @@ test('a group that spawns in a lane never stacks its members on the leader (the 
   }
   assert.ok(pairs >= 10, 'groups arrived: ' + pairs + ' members');
   assert.ok(minD > 0.12, 'the closest a member appeared to its leader: ' + minD.toFixed(3) + ' m');
+});
+
+test('ST3: a wall seen at a grazing angle is not a smear of studs: the pitch is drawn only where it is >= 2.6 px on screen', () => {
+  const cam = { eye: 1.7, fov: 62, horizon: 590 }, view = G._scbgPersp(cam);
+  const run = (a, b) => {
+    const plane = G._scbgWallPlane(a, b), adds = [];
+    const ctx = { view, sink: { add: (layer, sh) => adds.push([layer, sh]) }, sp: {}, season: 'summer', tierCap: 3 };
+    const face = { plane, n: plane.N, part: 'wall', col: '#e8e1cd', elems: [] };
+    const rects = [[0, 0, 0.17, 3, 1], [plane.len - 0.17, 0, 0.17, 3, 1]];
+    for (let s = 0.3; s < plane.len - 0.2; s += 0.31) rects.push([s, 0.4, 0.08, 2.4, 2]);
+    G._scbgElemKinds.tframe({ s0: 0, s1: plane.len, z0: 0, z1: 3, storey: 0, rects, quads: [], col: '#33261b', pitch: 0.31, studZone: [0.17, 0.4, plane.len - 0.34, 2.4] }, face, ctx, 3);
+    const body = adds.find(x => x[0] === 2), tone = adds.find(x => x[0] === 1);
+    return { quads: body ? (body[1].d.match(/M/g) || []).length : 0, tone: !!tone };
+  };
+  const frontal = run([-2.7, 12], [2.7, 12]);         // square to the eye: every stud reads
+  const grazing = run([1.9, 40], [1.9, 46.4]);        // along the lane, 40 m away: studs would be a fraction of a pixel apart
+  assert.ok(frontal.quads > 12 && !frontal.tone, 'frontal: posts and studs, no tone panel: ' + JSON.stringify(frontal));
+  assert.ok(grazing.quads === 2 && grazing.tone, 'grazing: only the posts, the stud zone is one toned panel: ' + JSON.stringify(grazing));
 });
