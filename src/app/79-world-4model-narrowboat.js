@@ -36,7 +36,7 @@ const WORLD_BOAT_DIMS = Object.freeze({ freeboard: 0.5, cabin: 1.2, camber: 0.06
 
 /* ---------- the registered model ---------- */
 worldModelDefine('narrowboat', {
-  name: 'Canal narrowboat, widebeam and cruiser', ids: [/narrowboat|widebeam|boat\.canal/], float: true, bob: false, sunLit: false, faceCap: 1e9, solidity: 'solid',
+  name: 'Canal narrowboat, widebeam and cruiser', ids: [/narrowboat|widebeam|boat\.canal/], sampleObj: 'boat.narrowboat', float: true, bob: false, sunLit: false, faceCap: 1e9, solidity: 'solid',
   liveries: () => WORLD_BOAT_LIVERIES,
   samples: [{ livery: 0 }, { livery: 2, age: 0.8 }, { livery: 5, size: 1.15 }],
   /** A narrowboat is 6 to 22 m long and at most 3.6 m wide (a widebeam), whatever the library's size says. */

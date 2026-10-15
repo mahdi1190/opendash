@@ -12,7 +12,7 @@
 
    API
      worldModelDefine(id, def) -> def        register a model. def: {
-         ids: [object ids | 'prefix*' | RegExp]   the library objects it draws
+         ids: [object ids | 'prefix*' | RegExp]   the library objects it draws; sampleObj?: the object the sheet and the checks stand in
          name?, float?: bool (sits at the waterline, bobs; the hull starts there and is never cut),
          dims?(info, ent) -> { L, B, H }          the size at scale 1 in metres (default: the library object's size)
          params?(ent, o, p) -> { ...overrides }   livery, size, age, seed, anything the build reads (default: from ent.model)
@@ -22,11 +22,14 @@
          build(p, h) -> { height, footprint?, lights?, extra?, faces? } | void
        }
      worldModelFor(objId) -> def | null      worldModelHas(objId) -> bool      worldModelIds() -> [model id]
+     worldModelGet(id) -> def | null         worldModelRemove(id) -> bool (scratch models of tests)
      worldModelList() -> [{ id, name, ids, float, liveries, samples }]
      worldModelParams(ent, o) -> p           seed, season, size, L, B, H, age, livery, variant, facing, moving, t ... (pure)
      worldModelBuild(ent, cam, o) -> prim | null    the prim worldExtrudeDraw draws ({ kind: 'hull', model: true, faces, foot, zKey,
                                              height, box, ... }); never throws (o.strict rethrows; worldModelError() is the last one)
      worldModelBuildWith(id, ent, cam, o)    the same with a named model (a registered model id)
+     worldModelCheck(id, o) -> { ok, problems, stats }   the conformance run: 8 angles x 3 eyes x seasons x with and without a time:
+                                             builds, finite faces, known materials, a face budget, a footprint, determinism, no clones
      worldModelFit(ent, info, model)         the entity's own size, height, footprint from the model parameters (the engine's core
                                              calls it for an entity that carries `model`)
      worldModelSpecCheck(model) -> string | null   the spec check of an entity's `model` key
@@ -71,10 +74,14 @@ function worldModelFor(objId) {
   S.memo.set(objId, hit);
   return hit;
 }
+/** Remove a model (tests and tools that define scratch models). */
+function worldModelRemove(id) { const S = _wmdState(); const ok = S.defs.delete(id); S.memo.clear(); return ok; }
 function worldModelHas(objId) { return !!worldModelFor(objId); }
 /** A model that is not a hull falls back to the object's sprite when its build fails (worldExtrudeHull must not draw it as an art hull). */
 function worldModelSpriteOnly(objId) { const d = worldModelFor(objId); return !!d && !d.float && d.hullFallback !== true; }
 function worldModelIds() { return [..._wmdState().defs.keys()]; }
+/** The registered definition of a model id (not an object id: worldModelFor). */
+function worldModelGet(id) { return _wmdState().defs.get(id) || null; }
 function worldModelList() {
   return [..._wmdState().defs.values()].map(d => ({ id: d.id, name: d.name, ids: d.ids.map(String), float: d.float, liveries: _wmdLiveries(d).map((l, i) => l.name || String(i)), samples: Array.isArray(d.samples) ? d.samples : [] }));
 }
@@ -576,7 +583,7 @@ function _wmdRun(def, ent, cam, o) {
       faces = [].concat(...ordered.map(x => x.q.faces));
     }
     faces = faces.filter(fc => fc && fc.pts && fc.pts.length >= 2);
-    if (!faces.some(fc => !fc.line)) return null;
+    if (!faces.length) return null;
     let bx = null;
     for (const fc of faces) bx = _wexBox(fc.pts, bx);
     const poly = Array.isArray(res.footprint) ? res.footprint : typeof def.footprint === 'function' ? def.footprint(p) : [[-p.L / 2, -p.B / 2], [p.L / 2, -p.B / 2], [p.L / 2, p.B / 2], [-p.L / 2, p.B / 2]];
@@ -593,4 +600,75 @@ function _wmdRun(def, ent, cam, o) {
     if (o.strict) throw e;
     return null;
   }
+}
+
+/* ---------- the conformance check (tests/world-models.test.mjs runs it over every registered model; world.mjs models --check) ---------- */
+/**
+ * Builds a model from 8 angles x 3 eyes x 2 distances x the seasons, with and without a time, and reports what is wrong: no
+ * build (null), non-finite coordinates, an unknown material, a colour that is not '#rrggbb', more faces than the budget, an empty
+ * footprint, a second build that differs (not deterministic), a model whose instances are all clones, a slow build.
+ * o: { obj (the object id to stand in), cam (a camera), seasons, budget (faces, 1600), ms (a build budget, 40) }.
+ */
+function worldModelCheck(id, o) {
+  o = o || {};
+  const def = worldModelGet(id) || worldModelFor(id);
+  if (!def) return { ok: false, problems: ['no model ' + id], stats: {} };
+  const problems = [], seen = new Set(), say = (m) => { if (!seen.has(m) && problems.length < 40) { seen.add(m); problems.push(m); } };
+  const obj = o.obj || def.sampleObj || def.ids.find(x => typeof x === 'string' && !x.endsWith('*')) || null;
+  const mkCam = (eye) => (typeof sceneCamera === 'function' ? sceneCamera({ camera: { eye, fov: 64, horizon: 468, heading: 0 } }) : null);
+  const budget = o.budget || 1600, msMax = o.ms || 40, wl = -0.45;
+  const base = { obj, x: 0, y: def.float ? wl - 0.05 : 0, waterline: def.float ? wl : null, variant: 0, static: true };
+  const p0 = worldModelParams(Object.assign({ id: 'chk-0', z: 12 }, base), {}, def);
+  if (!p0) return { ok: false, problems: ['no parameters (is the object known? pass o.obj)'], stats: {} };
+  const dim = Math.max(p0.L, p0.B, p0.H, 0.4), z0 = Math.max(5, 2.4 * dim);
+  let nBuilt = 0, maxFaces = 0, maxMs = 0, nullAt = 0;
+  const mats = typeof WORLD_MATERIALS === 'object' ? WORLD_MATERIALS : null;
+  const seasons = o.seasons || ['summer', 'winter'];
+  for (const eye of [0.5, 1.65, 6]) {
+    const cam = mkCam(eye);
+    if (!cam) { say('no camera (sceneCamera is not loaded)'); break; }
+    for (const z of [z0, z0 * 0.45]) for (let k = 0; k < 8; k++) for (const season of seasons) for (const t of [null, 4.2]) {
+      const ent = Object.assign({}, base, { id: 'chk-' + k, z, facing: k * 45 });
+      const t0 = Date.now();
+      let prim = null;
+      try { prim = worldModelBuildWith(def.id, ent, cam, { season, strict: true, t }); } catch (e) { say('build threw: ' + String(e && e.message || e).slice(0, 160)); continue; }
+      const ms = Date.now() - t0;
+      if (ms > maxMs) maxMs = ms;
+      if (!prim) { nullAt++; continue; }
+      nBuilt++;
+      if (prim.faces.length > maxFaces) maxFaces = prim.faces.length;
+      for (const fc of prim.faces) {
+        if (!fc.pts.every(q => Number.isFinite(q[0]) && Number.isFinite(q[1]))) say('a face has non-finite coordinates (' + fc.role + ')');
+        if (!(typeof fc.hex === 'string' && /^#[0-9a-f]{6}$/i.test(fc.hex))) say('a face colour is not #rrggbb: ' + fc.hex + ' (' + fc.role + ')');
+        if (mats && !mats[fc.mat]) say('unknown material ' + fc.mat + ' (' + fc.role + ')');
+        if (typeof fc.role !== 'string' || !fc.role) say('a face has no role');
+      }
+      if (!prim.box.every(Number.isFinite)) say('the box is not finite');
+    }
+  }
+  if (!nBuilt) say('the model drew nothing from any of the views (it must draw from every angle: a prim or a fall back to the sprite only on a failed build)');
+  if (nullAt > 0 && nBuilt) say('the model drew nothing from ' + nullAt + ' views of ' + (nBuilt + nullAt));
+  if (maxFaces > budget) say('more faces than the budget: ' + maxFaces + ' > ' + budget + ' (use h.lod / h.fine to drop small detail by distance)');
+  if (maxMs > msMax) say('a build took ' + maxMs + ' ms (budget ' + msMax + ' ms)');
+  // determinism, and the instances differ (no clones)
+  const cam = mkCam(1.65);
+  if (cam) {
+    const sig = (e) => { try { const r = worldModelBuildWith(def.id, e, cam, { season: 'summer', strict: true }); return r ? JSON.stringify(r.faces.map(fc => [fc.pts, fc.hex])) : 'null'; } catch (err) { return 'err'; } };
+    const e1 = Object.assign({}, base, { id: 'chk-d', z: z0, facing: 40 });
+    if (sig(e1) !== sig(e1)) say('not deterministic: two builds of one entity differ');
+    const sigs = new Set();
+    for (let k = 0; k < 8; k++) sigs.add(sig(Object.assign({}, base, { id: 'chk-v' + k, z: z0, facing: 40 })));
+    if (sigs.size < 3) say('instances are clones: 8 entities with different ids made ' + sigs.size + ' different pictures (seed a livery, an age, details: h.rnd, h.pick, p.livery)');
+  }
+  // a scene's size must change the model (a build that hard-codes metres ignores it)
+  if (cam) {
+    const e0 = Object.assign({}, base, { id: 'chk-s', z: z0, facing: 40 });
+    try {
+      const a = worldModelBuildWith(def.id, e0, cam, { strict: true }), b = worldModelBuildWith(def.id, Object.assign({}, e0, { model: { size: 1.5 } }), cam, { strict: true });
+      if (a && b) { const ext = (q) => Math.max(q.box[2] - q.box[0], q.box[3] - q.box[1]); if (!(ext(b) > ext(a) * 1.25)) say('the size parameter is ignored: a 1.5 x model is not larger on screen (build from p.L, p.B, p.H or p.size)'); }
+    } catch (err) { say('build threw at size 1.5: ' + String(err && err.message || err).slice(0, 120)); }
+  }
+  const f0 = p0.L * p0.B;
+  if (!(f0 > 0)) say('the footprint has no area (dims L x B)');
+  return { ok: !problems.length, problems, stats: { built: nBuilt, maxFaces, maxMs, L: p0.L, B: p0.B, H: p0.H } };
 }

@@ -26,8 +26,9 @@
      worldExtrudeHull(ent, cam, o) -> prim | null   a long hull in perspective: its side art laid along its real length in
                                             depth slices (each slice an affine map of the art: nothing is a flat slab), the end the
                                             eye sees (bow or stern art), the roof when the eye is above it.
-     worldExtrudeBoatModel(ent, cam, o) -> prim   a canal boat (narrowboat, widebeam) as a 3D model: true size, hull, cabin, cratch, tiller,
-                                            roof clutter, ropes to the bank (o.regions), lit windows at night, a bob (o.t); see its block
+     worldExtrudeBoatModel(ent, cam, o) -> prim   a canal boat as the registered 'narrowboat' model (79-world-4model-narrowboat.js)
+                                            built by the shared kit of 79-world-4models.js (docs/dev/WORLD_MODELS.md); worldExtrudeHull asks
+                                            the model registry first, for any object that has a model
      worldExtrudeDraw(ctx, prim, o) -> draws   draws a prim on a 2D context. o: { vs, ox, oy (device = vs * scene + o), litGlow (a hull's
                                             lit windows at night), sprite
                                             (the renderer's env.sprite: hull art), colour(mat, hex, { z, role }) (materials,
