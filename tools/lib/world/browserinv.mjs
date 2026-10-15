@@ -30,7 +30,7 @@ const CHECK = (id, t, reset, rules, skip) => `(() => {
     o.personalFloor = 0.65;   // the page draws positions interpolated between life ticks: two bodies passing sideways dip 10 to 20 % below the tick-aligned floor (0.85)
     const v = worldInvariants(fr, o);
     const agents = fr.ents.filter(e => e.static === false).length;
-    return { n: v.length, agents, t: fr.t, resets: rec.stats ? rec.stats.resets : null, resetting: !!rec.resetting, lastReset: rec.stats && rec.stats.lastReset || null, v: v.slice(0, 40).map(x => ({ rule: x.rule, id: x.id, msg: x.msg })), na: stats.na || [] };
+    return { n: v.length, agents, t: fr.t, resets: rec.stats ? rec.stats.resets : null, resetting: !!rec.resetting, lastReset: rec.stats && rec.stats.lastReset || null, v: v.slice(0, 40).map(x => { const e = fr.ents.find(q => q.id === x.id), l = e && e.leader != null ? fr.ents.find(q => q.id === e.leader) : null; const f = (q) => q ? [q.state, q.speed != null ? Math.round(q.speed * 100) / 100 : null, Math.round(q.x * 10) / 10, Math.round(q.z * 10) / 10, q.intent || ''].join('/') : null; return { rule: x.rule, id: x.id, msg: x.msg + (e ? ' [' + f(e) + (l ? ' leader ' + l.id + ' ' + f(l) : '') + ']' : '') }; }), na: stats.na || [] };
   } catch (e) { return { error: String(e && e.stack || e) }; }
 })()`;
 

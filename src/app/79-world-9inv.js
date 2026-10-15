@@ -576,9 +576,12 @@ const _WIV_RULES = {
     };
     // a newcomer may have walked on from its spawn cell since the last frame (sparse checks: 1 Hz in the matrix): try its track back
     const dtp = _wivNum(prev.t) && _wivNum(C.t) ? Math.max(0, C.t - prev.t) : 0;
+    const spawnOkLeader = (L) => { if (!(dtp > 0.25) || !_wivNum(L.vx) || !_wivNum(L.vz)) return false; for (let k = 1; k <= 4; k++) { const f = dtp * k / 4; if (C.o.isSpawn(Object.assign({}, L, { x: L.x - L.vx * f, z: L.z - L.vz * f }))) return true; } return false; };
     const spawnOk = (e) => {
       if (typeof C.o.isSpawn !== 'function') return false;
       if (C.o.isSpawn(e)) return true;
+      // a member of a group appears with its leader, beside it (a family walks on together: only the leader stands on the spawn cell)
+      if (e.leader != null && e.leader !== e.id) { const L = C.byId.get(e.leader); if (L && !was.has(L.id) && Math.hypot(L.x - e.x, L.z - e.z) < 3 && (C.o.isSpawn(L) || spawnOkLeader(L))) return true; }
       if (!(dtp > 0.25) || !_wivNum(e.vx) || !_wivNum(e.vz)) return false;
       for (let k = 1; k <= 4; k++) { const f = dtp * k / 4; if (C.o.isSpawn(Object.assign({}, e, { x: e.x - e.vx * f, z: e.z - e.vz * f }))) return true; }
       return false;

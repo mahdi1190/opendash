@@ -1853,7 +1853,7 @@ function _wlfAirMove(life, a, dt) {
 function _wlfStuck(life, a, want, dt) {
   // one that is held at an edge of the frame (a queue behind someone waiting for a bench, a yield) is never left standing there half in the picture
   // (C2): it wants to go on, so it counts as stuck, and it gives up and leaves at once instead of waiting out the stages
-  var held = !!a.dir && !a.resident && !a.leader && !a.members && a.kind === 'walker' && !a.step && !a.seat && _wlfInEdgeZone(life, a);
+  var held = !!a.dir && !a.resident && !a.leader && a.kind === 'walker' && !a.step && !a.seat && _wlfInEdgeZone(life, a);
   if (held && want <= 0.05) want = 0.2;
   if (want > 0.05 && a.dir) {
     if (Math.hypot(a.x - a.progX, a.z - a.progZ) > 0.4) { a.progX = a.x; a.progZ = a.z; a.lastProg = life.t; a.stuckT = 0; a.replans = Math.max(0, a.replans - 0.02); return; }
