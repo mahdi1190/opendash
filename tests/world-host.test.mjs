@@ -310,3 +310,12 @@ test('16.1: worldFrameAt also takes a world its caller drives (the systems rende
   assert.ok(g.ents.some(e => !e.static), 'without o.agents: the agents the world has now (its life, world.agents)');
   assert.ok(!Object.keys(w).includes('$wfr'), 'not enumerable');
 });
+
+test('the second mount of a scene clones its built world instead of building it again (G12 warm load)', () => {
+  const spec = specOf(E, 'fleet-canal-2-w3');
+  const a = E.worldHostWorld(spec, { season: 'summer' }), b = E.worldHostWorld(JSON.parse(JSON.stringify(spec)), { season: 'summer' });
+  assert.notEqual(a, b, 'two worlds, not one shared object');
+  assert.deepEqual(a.entities.map(e => e.id), b.entities.map(e => e.id), 'the same entities');
+  b.entities.pop();
+  assert.equal(E.worldHostWorld(spec, { season: 'summer' }).entities.length, a.entities.length, 'a change to one world never reaches the next mount');
+});

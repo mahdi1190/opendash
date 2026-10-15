@@ -680,6 +680,25 @@ function _wfrDrawRec(cx, env, S, r, d, bx, by, alpha) {
   cx.globalAlpha = 1;
   return n;
 }
+/**
+ * The bitmap of a static prim for the occluder redraws: the prim drawn once on a canvas as large as its on-screen box (at most 2.5 M
+ * pixels, 48 of them a bake; a bigger one keeps drawing as vectors). d.pc: undefined = not tried, null = not cacheable.
+ */
+function _wfrPrimCache(env, S, r, d) {
+  if (d.pc !== undefined) return d.pc;
+  d.pc = null;
+  if (r.static === false || (S.primCacheN || 0) >= 48 || !r.box) return null;
+  const b = r.box, x0 = Math.max(0, Math.floor(b.x0 * env.vs + env.ox) - 1), y0 = Math.max(0, Math.floor(b.y0 * env.vs + env.oy) - 1), x1 = Math.min(env.W, Math.ceil(b.x1 * env.vs + env.ox) + 1), y1 = Math.min(env.H, Math.ceil(b.y1 * env.vs + env.oy) + 1);
+  const w = x1 - x0, h = y1 - y0;
+  if (!(w > 1 && h > 1) || w * h > 2.5e6) return null;
+  try {
+    const c = _wfrCanvas(w, h), cx = c.getContext('2d');
+    if (!_wfrDrawRec(cx, env, S, r, d, x0, y0, 1)) return null;
+    S.primCacheN = (S.primCacheN || 0) + 1;
+    d.pc = { c, x: x0, y: y0 };
+  } catch (e) { d.pc = null; }
+  return d.pc;
+}
 const _wfrNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 const _wfrHashStr = (s) => { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36); };
 
@@ -1474,7 +1493,10 @@ function _wfrDraw(env, ctx, t) {
       const r = it.ref, d = S.draw.get(r.id);
       if (!d) continue;
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(clip[0], clip[1], clip[2] - clip[0], clip[3] - clip[1]); ctx.clip();
-      if (_wfrDrawRec(ctx, env, S, r, d, 0, 0, 1)) { redraws++; draws++; if (S.lightNow) _wfrDrawGlass(ctx, env, S, r, 0, 0, S.lightNow); }
+      // a drawn piece (a wall, a building, the terrain) is vector work: it is rasterised once per bake and blitted by every redraw (G12)
+      const pc = r.prim && d ? _wfrPrimCache(env, S, r, d) : null;
+      if (pc) { ctx.globalAlpha = 1; ctx.drawImage(pc.c, pc.x, pc.y); redraws++; draws++; if (S.lightNow) _wfrDrawGlass(ctx, env, S, r, 0, 0, S.lightNow); }
+      else if (_wfrDrawRec(ctx, env, S, r, d, 0, 0, 1)) { redraws++; draws++; if (S.lightNow) _wfrDrawGlass(ctx, env, S, r, 0, 0, S.lightNow); }
       ctx.restore();
     }
   }
