@@ -109,3 +109,10 @@ TODO:
 - The user wants the boats to look BETTER still: rounded bow and tumblehome, cratch at the bow, tiller and rudder, roof
   clutter (plants, bike, coal bags, solar panel), mooring ropes to the bollards, curtains in the windows, night glow,
   name panel shapes (no text), more liveries, slight bob on water.
+
+## The goal (the user, 15 Oct)
+Mass-produce NEW scenes from scratch with the world engine. Old scenes are not the reference (many are weak); the bar is the
+gold proof Fleet Pond. After the fix-all run, the next step is the from-scratch test: several never-drawn places (for
+example Liverpool Pier Head, York's Shambles, Whitby harbour, Malham Cove, a Manchester street, a Sheffield park), each from
+a short spec with the style kits, judged against the gold reference, timing the authoring. Then a scene factory: briefs ->
+specs -> render -> automatic checks -> review sheet, so many scenes can be built in parallel.
