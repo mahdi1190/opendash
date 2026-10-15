@@ -1,0 +1,167 @@
+{
+ "id": "cars-on-the-right",
+ "title": "Cars driving on the right",
+ "req": [
+  "K3",
+  "A9"
+ ],
+ "about": "A two-lane road with two cars on the wrong side for their facing, and moving traffic. UK traffic keeps left: the engine must turn or move them to the left lane, and traffic must drive on the left.",
+ "expect": {
+  "log": [
+   {
+    "any": [
+     "rotate",
+     "move",
+     "snap",
+     "drop"
+    ],
+    "id": "car-1"
+   },
+   {
+    "any": [
+     "rotate",
+     "move",
+     "snap",
+     "drop"
+    ],
+    "id": "car-2"
+   }
+  ]
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 53.383,
+   "lon": -1.47,
+   "alt": 60,
+   "region": "south-yorkshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 64,
+   "horizon": 460,
+   "heading": 0
+  },
+  "surfaces": [
+   {
+    "id": "land",
+    "kind": "plaza",
+    "poly": [
+     [
+      -120,
+      1
+     ],
+     [
+      120,
+      1
+     ],
+     [
+      160,
+      400
+     ],
+     [
+      -160,
+      400
+     ]
+    ]
+   },
+   {
+    "id": "road",
+    "kind": "road",
+    "path": [
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      240
+     ]
+    ],
+    "width": 7
+   },
+   {
+    "id": "pave-l",
+    "kind": "pavement",
+    "path": [
+     [
+      -5,
+      1
+     ],
+     [
+      -5,
+      240
+     ]
+    ],
+    "width": 3
+   },
+   {
+    "id": "pave-r",
+    "kind": "pavement",
+    "path": [
+     [
+      5,
+      1
+     ],
+     [
+      5,
+      240
+     ]
+    ],
+    "width": 3
+   }
+  ],
+  "entities": [
+   {
+    "obj": "vehicle.car",
+    "id": "car-1",
+    "at": [
+     1.8,
+     24
+    ],
+    "facing": 0
+   },
+   {
+    "obj": "vehicle.car-city",
+    "id": "car-2",
+    "at": [
+     -1.8,
+     40
+    ],
+    "facing": 180
+   },
+   {
+    "obj": "building.terrace",
+    "at": [
+     -13,
+     40
+    ],
+    "facing": 90
+   },
+   {
+    "obj": "building.terrace",
+    "at": [
+     13,
+     60
+    ],
+    "facing": 270
+   }
+  ],
+  "life": [
+   {
+    "who": "cars",
+    "on": "road",
+    "rate": "6/min"
+   },
+   {
+    "who": "walkers",
+    "on": "pave-l",
+    "rate": "4/min"
+   }
+  ],
+  "backdrop": {
+   "style": "city-sheffield-hills"
+  },
+  "seed": 16
+ }
+}

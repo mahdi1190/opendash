@@ -41,7 +41,7 @@ export function packSourceFiles(app) {
  */
 /** The scene engine's files (docs/dev/SCENE_ENGINE.md): 70-scene-* (pure engine, library, archetypes), 71-scene-<pack>-N and
  *  71-scene-upgrade-*. The browser-only 78-scene-* files are not part of a pure load. */
-export const SCENE_FILE_RE = /^7[01]-scene-[a-z0-9-]+\.js$/;
+export const SCENE_FILE_RE = /^(7[01]-scene-[a-z0-9-]+|79-world-[a-z0-9-]+)\.js$/;
 export function sceneEngineFiles(app) {
   return readdirSync(app).filter(f => SCENE_FILE_RE.test(f)).sort();
 }

@@ -27,6 +27,8 @@
   sceneRenderPassDefine({
     id: 'paint',
     order: { prebake: 5, 'layer:over': 5, group: 5, frameGroup: 15, movers: 90 },
+    // its frame state (the water's glints, the occluder sprite) comes from the finished bitmap: never restored from the bake cache
+    cache: false,
     applies(C) { return !!(C && C.paint && C.paint.back); },
     // the crossfade joins the light key in steps of a tenth: the bake re-runs as the sky darkens
     key(L) { const f = fadeOf(L); return f ? String(Math.round(f * 10)) : ''; },

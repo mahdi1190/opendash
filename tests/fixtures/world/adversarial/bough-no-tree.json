@@ -1,0 +1,115 @@
+{
+ "id": "bough-no-tree",
+ "title": "A bough with no tree",
+ "req": [
+  "K4"
+ ],
+ "about": "Oak and plane boughs placed in an open meadow with no tree anywhere near. The engine must re-attach them to a tree on the same side or drop them.",
+ "expect": {
+  "log": [
+   {
+    "any": [
+     "drop",
+     "reattach"
+    ],
+    "id": "bough-1"
+   },
+   {
+    "any": [
+     "drop",
+     "reattach"
+    ],
+    "id": "bough-2"
+   }
+  ]
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 51.2905,
+   "lon": -0.8228,
+   "alt": 68,
+   "region": "hampshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 64,
+   "horizon": 460,
+   "heading": 0
+  },
+  "surfaces": [
+   {
+    "id": "land",
+    "kind": "field",
+    "poly": [
+     [
+      -120,
+      1
+     ],
+     [
+      120,
+      1
+     ],
+     [
+      160,
+      400
+     ],
+     [
+      -160,
+      400
+     ]
+    ]
+   },
+   {
+    "id": "lane",
+    "kind": "path",
+    "path": [
+     [
+      0,
+      1
+     ],
+     [
+      3,
+      80
+     ],
+     [
+      -4,
+      220
+     ]
+    ],
+    "width": 2.2
+   }
+  ],
+  "entities": [
+   {
+    "obj": "plant.yg-oak-bough",
+    "id": "bough-1",
+    "at": [
+     4,
+     7
+    ]
+   },
+   {
+    "obj": "tree.shc-plane-bough",
+    "id": "bough-2",
+    "at": [
+     -6,
+     9
+    ],
+    "attach": "air",
+    "y": 6
+   }
+  ],
+  "life": [
+   {
+    "who": "walkers",
+    "on": "lane",
+    "rate": "2/min"
+   }
+  ],
+  "backdrop": {
+   "style": "farmland"
+  },
+  "seed": 12
+ }
+}

@@ -100,7 +100,7 @@
 @keyframes od-seq-brand-out { to { opacity: 0; transform: translateY(-24px) scale(0.94); } }
 @keyframes od-seq-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes od-seq-fade-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes od-seq-kb { from { transform: scale(1.14); } to { transform: scale(1.0); } }
+@keyframes od-seq-kb { from { transform: scale(1.05); } to { transform: scale(1.0); } }
 @keyframes od-seq-title-in { from { opacity: 0; transform: translateY(26px) scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes od-seq-title-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-40px) scale(1.04); } }
 @keyframes od-seq-cap-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }

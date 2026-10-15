@@ -3,14 +3,18 @@
    PURE classic script: functions and consts only, no DOM, nothing expensive at load. Other 70-scene-1* files
    (the ground's surfaces and projection) are called only lazily, behind typeof guards.
 
-     sceneWeather(input, L, o)          -> { kind, rain, snow, fog, wind, wet, snowDepth, frost, banks, thunder, temp, src }
+     sceneWeather(input, L, o)          -> { kind, rain, snow, fog, wind, wet, snowDepth, frost, banks, thunder, temp, src, mood }
                                            input: 'live' (o.sky.wx; the authored moment is clear) | 'none' | a kind |
                                            { kind, intensity, wind, temp, snowDepth, wet, frost, banks } ('auto' or a number each)
      sceneWeatherCompile(data, C)       -> C.weather = { input }   (the authored input; resolved at bake from L)
      SCENE_SNOW_CLIMATE                 the share of snowy winter days by height and latitude (UK-tuned)
      sceneSnowCover(lat, lon, alt, ms)  -> 0..1 snow lying today by the climatology: seeded by the date and the place, so every
                                            scene of an area agrees, and higher ground is white whenever the valley is
+     sceneWinterMood(lat, lon, ms)      -> 'snow' | 'frost' | 'plain': the date's seeded winter look without live weather (8.3b)
      sceneFrostAt(L, temp, kind)        -> 0..1 hoar frost now (a cold clear morning, until the sun is 12 degrees up)
+     sceneSnowFalling(wx)               -> true when flakes may fall: live or fixed snow / sleet, or the date's snow mood (wx.mood)
+     sceneInsectsOut(L, wx, kind)       -> true when butterflies and bees fly: April to September, the sun up, dry and not cold;
+                                           kind 'dragonfly' (dragonflies, damselflies, their swarms): May to September
      scenePuddles(C, wx, o)             -> extra water regions (kind 'puddle') on the hard and path surfaces within 60 m
      SCENE_WEATHER_KINDS                the kinds: clear partly cloudy rain drizzle showers thunder snow sleet fog mist frost
    ============================================================ */
@@ -80,6 +84,21 @@ function sceneSnowCover(lat, lon, alt, ms) {
   return u < share ? Math.round(depth * 100) / 100 : 0;
 }
 /**
+ * The winter mood of a date without live weather (8.3b): 'snow' (light snow lying), 'frost' (a frosty day) or 'plain', seeded
+ * by the date and a 4-degree cell only, so every scene near a place agrees on the same day and the next day differs. In the
+ * three winter months, from about 47 degrees of latitude: about 1 day in 6 light snow (in spells of 2 days) and about 1 in 3
+ * frosty, the rest plain; fading out toward 35 degrees (no snow mood south of it); a third as often in the shoulder months.
+ */
+function sceneWinterMood(lat, lon, ms) {
+  const w = _scwxWinter(ms, lat);
+  if (!w) return 'plain';
+  const k = _scwxClamp((Math.abs(lat || 0) - 35) / 12, 0, 1);
+  if (!k) return 'plain';
+  const day = Math.floor(ms / 86400000), cell = Math.floor((lat || 0) / 4) + ',' + Math.floor((lon || 0) / 4);
+  if (_scwxRnd(_scwxHash('wmood-snow|' + Math.floor(day / 2) + '|' + cell))() < w * k / 6) return 'snow';
+  return _scwxRnd(_scwxHash('wmood-frost|' + day + '|' + cell))() < w * k * 0.36 ? 'frost' : 'plain';
+}
+/**
  * Hoar frost now (8.4), 0..1: when the temperature is at or below 0 C (live), or on a seeded 35 % of clear winter mornings without
  * live data; only in the morning (before solar noon) while the sun is under 12 degrees, fading out from 6 to 12 degrees.
  * kind: the weather kind (rain, snow, fog and thunder wash it out).
@@ -100,7 +119,8 @@ function sceneFrostAt(L, temp, kind) {
  * clear), 'none' (interiors: nothing), a kind, or { kind, intensity, wind (0.4..1.8), temp, snowDepth, wet, frost, banks } where
  * each of the last four is 'auto' or a number. An override o.wx (the editor, the gallery, the tools' --weather) is passed AS the
  * input by sceneLightV2. o.alt: the ground's elevation (the snow climatology). Returns
- * { kind, rain, snow, fog, wind, wet, snowDepth, frost, banks, thunder, temp, src: 'none' | 'live' | 'moment' | 'fixed' }.
+ * { kind, rain, snow, fog, wind, wet, snowDepth, frost, banks, thunder, temp, src: 'none' | 'live' | 'moment' | 'fixed', mood }
+ * (mood: the date's sceneWinterMood when nothing live or fixed decides, else 'plain'; undefined for 'none').
  */
 function sceneWeather(input, L, o) {
   o = o || {};
@@ -125,11 +145,44 @@ function sceneWeather(input, L, o) {
   const lat = L && Number.isFinite(L.lat) ? L.lat : o.lat, lon = L && Number.isFinite(L.lon) ? L.lon : o.lon;
   let depth = snow > 0 ? Math.max(0.5, 0.8 * Math.min(1, snow / 0.8)) : (L && Number.isFinite(L.ms) ? sceneSnowCover(lat, lon, o.alt, L.ms) : 0);
   if (Number.isFinite(temp)) { if (temp > 7) depth = 0; else if (temp > 4) depth = Math.min(depth, 0.3); }
+  // the date's winter mood (8.3b) when nothing live or fixed says otherwise: light snow lying, or a frosty day (rime strongest
+  // before the sun is up and through the morning, thinning in the afternoon, settling again at dusk)
+  const mood = !live && src === 'moment' && L && Number.isFinite(L.ms) && ['clear', 'partly', 'cloudy'].includes(kind) ? sceneWinterMood(lat, lon, L.ms) : 'plain';
+  if (mood === 'snow') depth = Math.max(depth, 0.4);
+  const moodFrost = mood === 'plain' ? 0 : (L.morning ? (L.alt < 12 ? 0.95 : 0.7) : L.alt > 6 ? 0.35 : 0.55) * (mood === 'snow' ? 0.6 : 1);
   const snowDepth = num(spec.snowDepth, Math.round(depth * 100) / 100);
-  const frost = num(spec.frost, kind === 'frost' ? (L && Number.isFinite(L.alt) ? Math.max(0.6, sceneFrostAt(Object.assign({}, L, { morning: true }), -2, 'frost')) : 1) : sceneFrostAt(L, temp, kind));
+  const frost = num(spec.frost, kind === 'frost' ? (L && Number.isFinite(L.alt) ? Math.max(0.6, sceneFrostAt(Object.assign({}, L, { morning: true }), -2, 'frost')) : 1) : Math.max(moodFrost, sceneFrostAt(L, temp, kind)));
   const banks = spec.banks != null && spec.banks !== 'auto' ? _scwxClamp(Math.round(Number(spec.banks) || 0), 0, 4) : row[4];
   return { kind, rain: Math.round(rain * 100) / 100, snow: Math.round(snow * 100) / 100, fog: Math.round(fog * 100) / 100, wind: Math.round(wind * 100) / 100, wet: Math.round(wet * 100) / 100,
-    snowDepth, frost: Math.round(frost * 100) / 100, banks, thunder: kind === 'thunder', temp, src };
+    snowDepth, frost: Math.round(frost * 100) / 100, banks, thunder: kind === 'thunder', temp, src, mood };
+}
+/**
+ * Whether snowflakes may fall now (the season's 'snow' particles too): falling snow or sleet (live or fixed), or the date's
+ * seeded snow mood (8.3b). A plain or frosty winter day has no flakes (user request, 9 Oct: they showed on every winter day).
+ */
+function sceneSnowFalling(wx) {
+  if (!wx) return false;
+  return (wx.snow || 0) > 0.05 || wx.kind === 'snow' || wx.kind === 'sleet' || wx.mood === 'snow';
+}
+/**
+ * Whether butterflies and bees are on the wing (user request, 9 Oct: none in autumn or winter): April to September (October
+ * to March south of the equator; March to October under 40 degrees of latitude, all year in the tropics), the sun at least 8 degrees up, no rain, snow or fog, and not under 12 C when the
+ * temperature is known. L: { ms, lat, alt } (a scene light, or the kit's K.live); wx: the weather (optional). kind 'dragonfly'
+ * (dragonflies, damselflies and their gnat swarms, engine follow-up 9 Oct): May to September (April to October under 40 degrees).
+ */
+function sceneInsectsOut(L, wx, kind) {
+  if (!L || !Number.isFinite(L.ms)) return true;
+  let m = _scwxMonth(L.ms);
+  const al = Number.isFinite(L.lat) ? Math.abs(L.lat) : 51;
+  if (Number.isFinite(L.lat) && L.lat < 0) m = (m + 6) % 12;
+  // the tropics all year; warm temperate latitudes (under 40 degrees) March to October (dragonflies April to October); the
+  // rest April to September (dragonflies May to September)
+  const late = kind === 'dragonfly' ? 1 : 0;
+  if (al >= 23.5 && (al < 40 ? m < 2 + late || m > 9 : m < 3 + late || m > 8)) return false;
+  if (Number.isFinite(L.alt) && L.alt < 8) return false;
+  if (wx && ((wx.rain || 0) > 0.05 || (wx.snow || 0) > 0.05 || (wx.fog || 0) > 0.4)) return false;
+  const temp = wx && Number.isFinite(wx.temp) ? wx.temp : Number.isFinite(L.temp) ? L.temp : null;
+  return !(temp != null && temp < 12);
 }
 /** The authored weather input (V2 12: C.weather = { input }); resolved at bake from L. Sets C.weather when C is given. */
 function sceneWeatherCompile(data, C) {

@@ -186,7 +186,7 @@ test('the view follows the angle: rear going away, front coming, side across; a 
   const C = compile(base({ id: 'v2a-views', surfaces: [{ id: 'land', kind: 'grass', rest: true }, { id: 'road', kind: 'road', path: [[0, 2], [0, 400]], width: 7.3 }, { id: 'cross', kind: 'road', path: [[-60, 35], [60, 35]], width: 7 }], water: [],
     place: [{ obj: 'vehicle.v2atest', on: 'road', d: 20, dir: 'away' }, { obj: 'vehicle.v2atest', on: 'road', d: 22, dir: 'toward' }, { obj: 'vehicle.v2atest', on: 'cross', d: 35, u: 0.6 }, { obj: 'vehicle.car', on: 'road', d: 18, dir: 'away' }] }));
   const byD = d => C.items.find(i => i.g && Math.abs(i.g.d - d) < (d === 35 ? 2.5 : 1.5) && i.o.startsWith('vehicle.v2atest'));
-  assert.equal(byD(20).view, 'rear'); assert.equal(byD(20).o, 'vehicle.v2atest-rear');
+  assert.equal(byD(20).view, 'back'); assert.equal(byD(20).o, 'vehicle.v2atest-rear');
   assert.equal(byD(22).view, 'front'); assert.equal(byD(22).o, 'vehicle.v2atest-front');
   assert.equal(byD(35).view, 'side'); assert.equal(byD(35).o, 'vehicle.v2atest');
   const s = E.sceneViewOf('vehicle.v2atest', [1, 0], 0, 40, null);
@@ -277,7 +277,7 @@ test('classes: from category, role and tags; an explicit class tag wins', () => 
 });
 
 test('actors on the ground: a projected path with the scale by depth, and sceneActorAtV2 any moment', () => {
-  const C = compile(base({ id: 'v2a-actor', actors: [{ obj: 'person.v2atest', on: 'canal-right', speedM: 1.3, k: 1 }, { obj: 'person.v2atest', ground: [[2, 6], [2, 60]], k: 1, loop: 'loop' }] }));
+  const C = compile(base({ id: 'v2a-actor', actors: [{ obj: 'person.v2atest', on: 'canal-right', speedM: 1.3, k: 1 }, { obj: 'person.v2atest', ground: [[2, 6], [2, 60]], k: 1, loop: 'loop', motion: false }] }));
   assert.equal(C.actors.length, 2);
   const a = C.actors[1];
   assert.ok(a.path.length > 10 && a.ground.length === a.path.length && a.sByY.length >= 2);

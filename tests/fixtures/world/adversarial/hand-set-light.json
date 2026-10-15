@@ -1,0 +1,135 @@
+{
+ "id": "hand-set-light",
+ "title": "A scene with hand-set light and reflections",
+ "req": [
+  "L3",
+  "H1",
+  "H5",
+  "V1",
+  "W1"
+ ],
+ "about": "Light, grade, tint, shadow, reflection and water-look keys set by hand. The engine must strip every one of them (logged) and light the scene itself.",
+ "expect": {
+  "log": [
+   {
+    "any": [
+     "strip"
+    ],
+    "n": 6
+   }
+  ]
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 51.2905,
+   "lon": -0.8228,
+   "alt": 68,
+   "region": "hampshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 64,
+   "horizon": 460,
+   "heading": 0
+  },
+  "light": {
+   "sun": 0.9
+  },
+  "grade": "warm",
+  "surfaces": [
+   {
+    "id": "land",
+    "kind": "grass",
+    "poly": [
+     [
+      -120,
+      1
+     ],
+     [
+      120,
+      1
+     ],
+     [
+      160,
+      400
+     ],
+     [
+      -160,
+      400
+     ]
+    ]
+   },
+   {
+    "id": "pond",
+    "kind": "water",
+    "water": "pond",
+    "mirror": 0.9,
+    "ripple": 0.2,
+    "colour": "#335577",
+    "poly": [
+     [
+      -20,
+      10
+     ],
+     [
+      20,
+      10
+     ],
+     [
+      28,
+      70
+     ],
+     [
+      -30,
+      70
+     ]
+    ]
+   }
+  ],
+  "entities": [
+   {
+    "obj": "tree.bank-oak",
+    "at": [
+     -26,
+     30
+    ],
+    "tint": [
+     "#ffcc88",
+     0.2
+    ],
+    "shadow": true
+   },
+   {
+    "obj": "tree.pool-birch",
+    "at": [
+     24,
+     26
+    ],
+    "reflect": true
+   },
+   {
+    "obj": "boat.narrowboat",
+    "at": [
+     0,
+     40
+    ],
+    "facing": 90,
+    "attach": "water",
+    "reflect": false,
+    "scale": 1.4
+   }
+  ],
+  "life": [
+   {
+    "who": "mallard",
+    "count": 4,
+    "on": "pond"
+   }
+  ],
+  "backdrop": {
+   "style": "woodland"
+  },
+  "seed": 20
+ }
+}

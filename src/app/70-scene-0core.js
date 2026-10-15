@@ -438,6 +438,28 @@ function _scGlowOn(id, v, season, seed) {
   return out;
 }
 const _scCompiled = new WeakMap();
+/** The memoised compiled form of (data, season, lod), or null (no compile is run). */
+function sceneCompileMemo(data, season, lod) {
+  const m = _scCompiled.get(sceneData(data));
+  return m ? m.get(season + '|' + (lod == null ? 1 : lod)) || null : null;
+}
+/**
+ * Seed the memo with a compiled form kept elsewhere (the persistent bake cache, 78-scene-cache.js). Refused (false) when an
+ * object it places is not defined on this page; the placeholder of projected buildings is defined as the compile would.
+ */
+function sceneCompileSeed(data, season, lod, C) {
+  if (!C || !Array.isArray(C.items)) return false;
+  data = sceneData(data);
+  for (const it of C.items) {
+    if (sceneObj(it.o)) continue;
+    if (it.o === 'building.gen-direct' && typeof _scbgDirectObj === 'function') { _scbgDirectObj(); if (sceneObj(it.o)) continue; }
+    return false;
+  }
+  let m = _scCompiled.get(data);
+  if (!m) { m = new Map(); _scCompiled.set(data, m); }
+  m.set(season + '|' + (lod == null ? 1 : lod), C);
+  return true;
+}
 /**
  * The COMPILED scene (section 4): pure, deterministic, memoised on (data, season, lod). Scatter rules expand with
  * sceneRnd(sceneHash(id | rule index | seed)); LOD keeps a seeded share of each rule (hand placements and actors

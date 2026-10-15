@@ -247,11 +247,30 @@ function ukNatureKit(T) {
     daisy: ['#fbfaf2', '#f2c53a', 3.4], buttercup: ['#f6cf22', '#fff09a', 3], campion: ['#e0679a', '#f7a8c8', 3.3], poppy: ['#d93a2a', '#2a1f22', 4.4],
     knapweed: ['#9b5aa8', '#c58ad0', 3], clover: ['#e8b3c7', '#fbe3ec', 2.8], dandelion: ['#f7c01e', '#ffe27a', 3.4], ragwort: ['#f2c21a', '#ffe070', 2.2],
     harebell: ['#8aa2e0'], bluebell: ['#5f6fd0'], foxglove: ['#c9559a'], cowparsley: ['#fbfbf2'], celandine: ['#f6d21e', '#fff1a0', 3], anemone: ['#fbf6f2', '#f0d060', 3],
+    primrose: ['#f4e48a', '#e0a030', 3.6],
+  };
+  /** The kinds in flower per season (K.blooms with a season keeps only these); autumn and winter draw no flowers at all. */
+  const BLOOM_SEASONS = {
+    spring: ['daisy', 'dandelion', 'celandine', 'anemone', 'bluebell', 'cowparsley', 'campion', 'primrose'],
+    summer: ['daisy', 'buttercup', 'campion', 'poppy', 'knapweed', 'clover', 'dandelion', 'ragwort', 'harebell', 'foxglove', 'cowparsley'],
   };
   const flowerSym = (kind, v) => sym(`flower|${kind}|${v}`, () => {
     const r = rnd(100 + v * 7 + kind.length * 31), c = FL[kind] || FL.daisy, stem = '#4f7a35';
     const tall = kind === 'foxglove' || kind === 'cowparsley' ? 1.9 : kind === 'bluebell' ? .6 : 1;
     let out = '';
+    if (kind === 'seedhead' || kind === 'withered') {
+      // gone over (autumn: straw stems, brown knobs, dried umbels, dock spikes) or dead (winter: grey bent stems, dark heads); no colour, no clocks
+      const win = kind === 'withered', sc = win ? '#7a6c58' : '#a8925c', hc = win ? '#3e3228' : '#5e4430';
+      let st = '', hd = '';
+      for (let i = 0; i < 3; i++) {
+        const h = rr(r, 20, 34) * (win ? .85 : 1), lean = rr(r, -.3, .3) * (win ? 1.5 : 1), bx = rr(r, -6, 6), tx = bx + lean * h, ty = -h, t = (i + v) % 3;
+        st += `M${f1(bx)} 0q${f1(lean * h * .2)} ${f1(-h * .5)} ${f1(tx - bx)} ${f1(ty)}`;
+        if (t === 0) hd += circ(tx, ty, 2.2);
+        else if (t === 1) for (let u = 0; u < 4; u++) { const ua = (u / 3 - .5) * 1.5, ux = tx + Math.sin(ua) * 6, uy = ty - Math.cos(ua) * 4; st += `M${f1(tx)} ${f1(ty + 3)}L${f1(ux)} ${f1(uy)}`; hd += circ(ux, uy, .9); }
+        else for (let j = 0; j < 4; j++) hd += circ(tx + j * .5, ty + j * 3, 1.5 - j * .15);
+      }
+      return `<path fill="none" stroke="${sc}" stroke-width="1.1" d="${st}"/><path fill="${hc}" d="${hd}"/>`;
+    }
     for (let i = 0; i < 3; i++) {
       const h = rr(r, 22, 36) * tall, lean = rr(r, -.25, .25), bx = rr(r, -6, 6), tx = bx + lean * h, ty = -h;
       if (kind === 'bluebell') { let bells = ''; for (let j = 0; j < 4; j++) bells += leafD(bx + h * .3 + j * 1.4, -h * .9 + j * 4, Math.PI * .92, 5.4, 2.4); out += `<path fill="none" stroke="${stem}" stroke-width="1.2" d="M${f1(bx)} 0q${f1(lean * h)} ${f1(-h * 1.2)} ${f1(h * .35)} ${f1(-h * .9)}"/><path fill="${c[0]}" d="${bells}"/>`; continue; }
@@ -301,7 +320,11 @@ function ukNatureKit(T) {
    * clover | dandelion | ragwort | harebell | bluebell | foxglove | cowparsley | celandine | anemone, k0, k1, z}.
    */
   K.blooms = o => {
-    const out = [], kinds = o.kinds || ['daisy', 'buttercup'];
+    const out = [], s = o.season;
+    let kinds = o.kinds || ['daisy', 'buttercup'];
+    // with a season, the band follows it: out-of-season kinds drop out (spring/summer), autumn goes to seed, winter withers
+    if (s === 'autumn' || s === 'winter') kinds = [s === 'winter' ? 'withered' : 'seedhead'];
+    else if (BLOOM_SEASONS[s]) { const k = kinds.filter(x => BLOOM_SEASONS[s].includes(x) || !FL[x]); kinds = k.length ? k : s === 'spring' ? ['daisy', 'celandine'] : ['daisy', 'buttercup']; }
     band(Object.assign({ k0: .35, k1: .9 }, o), o.n || 40, (x, y, k, r, i) => { const kind = kinds[i % kinds.length]; out.push({ x, y, z: o.z != null ? o.z : .5, use: flowerSym(kind, i % 3), k: f2(k * rr(r, .8, 1.2)) }); });
     return out;
   };
@@ -696,7 +719,7 @@ function ukNatureKit(T) {
     const twig = (x, y, a, L, dep) => { const x2 = x + Math.sin(a) * L, y2 = y - Math.cos(a) * L; (dep < 2 ? (d += `M${f1(x)} ${f1(y)}L${f1(x2)} ${f1(y2)}`) : (t += `M${f1(x)} ${f1(y)}L${f1(x2)} ${f1(y2)}`)); if (dep < (LOD < 1 ? 3 : 4)) for (let i = 0; i < 2; i++) twig(x2, y2, a + (i ? 1 : -1) * rr(r, .25, .55), L * rr(r, .6, .75), dep + 1); };
     const birch = kind === 'birch';
     for (let i = 0; i < (birch ? 5 : 4); i++) twig(rr(r, -2, 2), birch ? -30 - i * 13 : -32, (i - (birch ? 2 : 1.5)) * (birch ? .5 : .42), birch ? 26 : 34, 0);
-    return `<path fill="currentColor" opacity=".28" d="${blob(r, 0, -62, birch ? 26 : 40, birch ? 36 : 32, 9)}"/><path fill="none" stroke="${birch ? '#e6e2d8' : 'currentColor'}" stroke-width="${birch ? 2.6 : 3.2}" d="M0 0V-${birch ? 92 : 34}"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="${d}"/><path fill="none" stroke="currentColor" stroke-width=".8" d="${t}"/>` + (snow ? `<path fill="none" stroke="#fff" stroke-width="1.4" opacity=".8" transform="translate(0 -1)" d="${d}"/>` : '');
+    return `<path fill="currentColor" opacity=".1" d="${blob(r, 0, -62, birch ? 26 : 40, birch ? 36 : 32, 9)}"/><path fill="none" stroke="${birch ? '#e6e2d8' : 'currentColor'}" stroke-width="${birch ? 2.6 : 3.2}" d="M0 0V-${birch ? 92 : 34}"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="${d}"/><path fill="none" stroke="currentColor" stroke-width=".8" d="${t}"/>` + (snow ? `<path fill="none" stroke="#fff" stroke-width="1.4" opacity=".8" transform="translate(0 -1)" d="${d}"/>` : '');
   });
   // A whole small tree for tree lines (unit height about 100), drawn once per scene and reused:
   // the trunk takes the stroke, the leaf clusters the fill and currentColor (set on the <use>).
@@ -975,6 +998,7 @@ function ukNatureKit(T) {
   K.robin = (x, y, s, o = {}) => at(x, y, s, M('peck', { ad: sec(o.dur || 5), to: '0px 0px' }, `<path fill="#8a6a4e" d="M-12-2q-6-16 8-20 14-2 16 12l-4 10z"/><path fill="#e2643a" d="M2-18q10 2 8 14-8 4-12-6z"/><path fill="#efe6d4" d="M-4-2q8 2 12-4"/><path fill="#6a4e38" d="M-12-6l-10 4 10 2z"/><circle cx="6" cy="-18" r="1.3" fill="#141010"/><path fill="#3a2e24" d="M12-17l5 1-5 2z"/>`) + `<path stroke="#5a4a3a" stroke-width="1.4" d="M-3 0v4M3 0v4"/>`, o.flip);
   /** A butterfly wandering, wings flapping. kind: brimstone | admiral | peacock | blue | orangetip | tortoiseshell. o: {dx, dy, dur}. */
   K.butterfly = (x, y, s, o = {}) => {
+    if (!insectsOut()) return '';
     const C = { brimstone: ['#f1e45a', '#d9c63a'], admiral: ['#24242a', '#d8402a'], peacock: ['#9a2a24', '#3a5aa8'], blue: ['#7a9fe6', '#c9d8f6'], orangetip: ['#f6f4ee', '#ef8a2a'], tortoiseshell: ['#e2742a', '#2a2a2e'] }[o.kind || 'brimstone'] || ['#f1e45a', '#d9c63a'];
     const r = rnd(R(x + y * 3));
     return at(x, y, s, M('flit', { ad: sec(o.dur || rr(r, 10, 16)), d: sec(-rr(r, 0, 10)), dx: R(o.dx || 160) + 'px', dy: R(o.dy || 50) + 'px' }, M('wing', { ad: sec(rr(r, .28, .4)) }, `<path fill="${C[0]}" d="M0 0q-16-20-20-6 0 8 20 6zM0 0q16-20 20-6 0 8-20 6zM0 1q-12 12-14 4 0-6 14-4zM0 1q12 12 14 4 0-6-14-4z"/><path fill="${C[1]}" d="M-14-9a3 3 0 1 0 1 0zM14-9a3 3 0 1 0 1 0z"/>`) + `<path stroke="#2a2422" stroke-width="1.6" stroke-linecap="round" d="M0-5v10M0-5l-3-5M0-5l3-5"/>`), o.flip);
@@ -986,6 +1010,7 @@ function ukNatureKit(T) {
   };
   /** A bumblebee buzzing about flowers. */
   K.bee = (x, y, s, o = {}) => {
+    if (!insectsOut()) return '';
     const r = rnd(R(x + y * 5));
     return at(x, y, s, M('dart', { ad: sec(o.dur || rr(r, 6, 9)), d: sec(-rr(r, 0, 6)), dx: R(o.dx || 60) + 'px', dy: R(o.dy || -24) + 'px' }, M('buzz', { ad: '.1s' }, `<ellipse cx="-3" cy="-7" rx="6" ry="3.4" fill="#eef8fa" opacity=".8"/><ellipse cx="3" cy="-7" rx="6" ry="3.4" fill="#eef8fa" opacity=".8"/>`) + `<ellipse rx="7.5" ry="5.5" fill="#2a2420"/><path stroke="#f2c23a" stroke-width="2.6" d="M-2-5v10M3-5v10"/><path fill="#f6f2ea" d="M-7.5 0q-2-3 1-5l1 5z"/>`), o.flip);
   };
@@ -1122,6 +1147,7 @@ function ukNatureKit(T) {
    * screen per loop, swaying a little. o: {seed, n (per layer), layers, col, dur}.
    */
   K.snow = o => {
+    if (!snowDay()) return '';
     const r = rnd(o.seed || 22); let out = ''; const L = o.layers || 3;
     for (let l = 0; l < L; l++) {
       let d = ''; const sz = 1.4 + l * 1.3;
@@ -1151,6 +1177,11 @@ function ukNatureKit(T) {
   // Without a sky (gallery QA, tests, no location) it draws the view's authored moment (v.at) on
   // a fixed date in the scene's season at the place's own coordinates: deterministic.
   let LV = null;   // the light of the scene being drawn (set by K.live inside K.scene)
+  // (user request, 9 Oct) with a light (K.live): butterflies and bees only April to September, by day, dry and not cold
+  // (sceneInsectsOut), and falling snow only when it snows live or the date is one of the seeded snow days (sceneWinterMood:
+  // the same days the composed scenes lie white); without a light the art is drawn as authored
+  const insectsOut = () => !LV || typeof sceneInsectsOut !== 'function' || sceneInsectsOut(LV, { rain: LV.rain ? 1 : 0, snow: LV.snow ? 1 : 0, fog: LV.fog ? 1 : 0, temp: LV.temp });
+  const snowDay = () => !LV || LV.snow || (!LV.wxLive && typeof sceneWinterMood === 'function' && sceneWinterMood(LV.lat, LV.lon, LV.ms) === 'snow');
   const SEASON_DAY = { spring: '2027-04-22', summer: '2026-07-08', autumn: '2026-10-14', winter: '2027-01-20' };
   /** Sky and light by the sun's altitude (degrees): interpolated between these keys. */
   const SKY_KEYS = [
@@ -1200,7 +1231,8 @@ function ukNatureKit(T) {
     const cover = clamp(wx && Number.isFinite(wx.cloud) ? wx.cloud : w[0], 0, 1), alt = sp.alt, c = skyAt(alt);
     const px = (az, al) => { const rel = wrap(az - heading); return { rel, x: R(800 + rel / (fov / 2) * 800), y: R(hor - al * ppd) }; };
     const L = { live: !!sk, ms, lat: plat, lon: plon, heading, fov, horizon: hor, alt, az: sp.az, morning: wrap(sp.az - 180) < 0, cover, px,
-      rain: w[1] === 'rain', snow: w[1] === 'snow', fog: w[1] === 'fog', wind: clamp(wx && Number.isFinite(wx.wind) ? .4 + wx.wind / 28 : 1, .4, 1.8) };
+      rain: w[1] === 'rain', snow: w[1] === 'snow', fog: w[1] === 'fog', wind: clamp(wx && Number.isFinite(wx.wind) ? .4 + wx.wind / 28 : 1, .4, 1.8),
+      temp: wx && Number.isFinite(wx.temp) ? wx.temp : null, wxLive: !!wx };
     L.tod = sk && sk.tod ? sk.tod : alt < -6 ? 'night' : alt < 7 ? (L.morning ? 'dawn' : 'dusk') : 'day';
     L.phase = alt >= 8 ? 'day' : alt >= 0 ? 'golden' : alt >= -6 ? 'civil' : alt >= -12 ? 'nautical' : alt >= -18 ? 'astro' : 'night';
     L.dark = clamp((2 - alt) / 16, 0, 1);

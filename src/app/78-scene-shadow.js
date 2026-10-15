@@ -26,7 +26,7 @@
    The pure maths (sceneShadowSun, sceneShadowTip, sceneShadowMatrix, sceneContactOf) lives in 70-scene-svg.js (the SVG
    still draws the same shadows).
    ============================================================ */
-const SCENE_SHADOW_LAMP_PAIRS = 40;
+const SCENE_SHADOW_LAMP_PAIRS = 40, SCENE_SHADOW_MOVER_TAN = 2.5;
 const _scshSil = new WeakMap();
 let _scshBlob = null;
 const _SCSH_NO_CAST = new Set(['boat', 'bird-water', 'bird-air', 'air', 'cover', 'shrub', 'rail']);
@@ -78,7 +78,11 @@ sceneRenderPassDefine({
     const st = { sun, col: _scshCol(L), byLayer: C.layers.map(() => []), lamps: C.layers.map(() => []), draws: 0, casters: 0, contacts: 0, lampPairs: 0, silhouettes: 0 };
     env.own.shadows = true;
     env.shadow = st;
-    if (!cam) return;
+    // the shadows' coverage per group, for the water pass (only when some water reflects; freed after the bake)
+    st.lift = (C.water || []).length ? [] : null;
+    // a restored bake (78-scene-cache.js): the casters, contacts and lamp pairs are in the kept bitmaps already; the frames
+    // need only the sun and the colour
+    if (!cam || env.restoring) return;
     C.items.forEach((it, i) => {
       if (it.strip >= 0) return;
       const cls = it.cls || sceneObjClassOf(it.o);
@@ -126,8 +130,11 @@ sceneRenderPassDefine({
     if (!st) return 0;
     const gi = env.groups.indexOf(grp);
     let draws = 0;
+    if (st.lift) { for (const q of st.lift) q.c.width = 0; st.lift = null; }   // the bake is done: the water has its reflections
     for (const a of env.actorsNow) {
       if (a.gi !== gi || _SCSH_NO_CAST.has(a.cls) || a.y * env.vs + env.oy > below) continue;
+      // only a mover drawn now casts (its timeline may hide it: scale 0 under its row, alpha 0; or it is off the canvas)
+      if (typeof sceneMoverDrawn === 'function' && !sceneMoverDrawn(a, a.box, env.vs, env.ox, env.oy, env.W, below)) continue;
       const m = { X: a.x, Y: a.y, s: a.s, flip: a.dir < 0, d: a.d, cls: a.cls, box: a.box, alpha: a.alpha, o: a.o, v: a.v, sp: a.sp, rec: a };
       draws += _scshMover(env, ctx, m);
     }
@@ -136,7 +143,7 @@ sceneRenderPassDefine({
       const fgi = Number.isFinite(f.gi) ? f.gi : Number.isFinite(f.layer) ? env.layerOfGroup[f.layer] : -1;
       if (fgi !== gi) continue;
       const cls = f.cls || (f.o ? sceneObjClassOf(f.o) : null);
-      if (_SCSH_NO_CAST.has(cls)) continue;
+      if (_SCSH_NO_CAST.has(cls) || !(f.s > 0) || (f.alpha != null && !(f.alpha > 0))) continue;
       draws += _scshMover(env, ctx, { X: f.X != null ? f.X : f.x, Y: f.Y != null ? f.Y : f.y, s: f.s, flip: !!f.flip, d: f.d, cls, box: f.box, alpha: f.alpha, o: f.o, v: f.v, sp: f.sp, rec: f });
     }
     return draws;
@@ -151,6 +158,8 @@ function _scshBake(env, layer, gx) {
   const { vs, ox, oy, cam, C } = env, grp = env.grp, sun = st.sun, L = env.L;
   const bucket = (s) => (typeof sceneScaleBucket === 'function' ? sceneScaleBucket(s) : s);
   const spriteOf = (rec) => (env.itemSprite ? env.itemSprite(rec.i) : env.keep(env.sprite({ o: rec.it.o, v: rec.it.v, season: rec.it.season, part: '*', haze: 0, tint: null, scale: bucket(rec.it.s) * vs, plain: true })));
+  // the water surfaces a shadow of this layer may lie over (this layer's and the farther layers'; a nearer one covers it)
+  const waterCut = (C.water || []).filter(w => w && w.d && w.layer <= layer && (!w.v2 || !w.v2.kind || w.v2.kind !== 'puddle'));
   /** One scratch the size of a box (device px, clipped to the group), drawn by fill(sx, ox', oy'), then silhouetted and composited. */
   const composite = (bounds, op, blur, fill) => {
     if (!bounds || op <= 0.004) return;
@@ -162,12 +171,33 @@ function _scshBake(env, layer, gx) {
     fill(sx, ox - x0, oy - y0);
     sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalAlpha = 1;
     sx.globalCompositeOperation = 'source-in'; sx.fillStyle = st.col; sx.fillRect(0, 0, c.width, c.height);
+    // never a dark solid shadow on water (shared fix, 9 Oct: tree shadows lay on ponds as dark ovals and stripes): the water
+    // of this layer and every farther one (what shows through this bitmap) is cut out of the silhouette, leaving a faint tint
+    if (waterCut.length) {
+      sx.globalCompositeOperation = 'destination-out'; sx.globalAlpha = 0.88; sx.fillStyle = '#000';
+      sx.setTransform(vs, 0, 0, vs, ox - x0, oy - y0);
+      for (const w of waterCut) sx.fill(_sccPath(w.d));
+      sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalAlpha = 1; sx.globalCompositeOperation = 'source-over';
+    }
     gx.setTransform(1, 0, 0, 1, 0, 0);
     const b = blur * vs;
     if (typeof gx.filter === 'string' && b >= 0.5) { gx.filter = `blur(${_scR1(b)}px)`; gx.globalAlpha = op; gx.drawImage(c, x0 - grp.x, y0 - grp.y); gx.filter = 'none'; }
     else if (b >= 0.5) { gx.globalAlpha = op / 4; for (const [dx, dy] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) gx.drawImage(c, x0 - grp.x + dx * b, y0 - grp.y + dy * b); }
     else { gx.globalAlpha = op; gx.drawImage(c, x0 - grp.x, y0 - grp.y); }
     gx.globalAlpha = 1;
+    // the water reflections mirror this bitmap: keep the shadow's coverage (grey = alpha, half resolution) so the water pass
+    // lifts it back out of the mirrored ground (shared fix, 9 Oct: ground shadows on the far bank mirrored into ponds as dark
+    // ovals and diagonal stripes; a reflection shows what stands above the water, not the shade on the grass)
+    if (st.lift) {
+      const lw = Math.ceil((x1 - x0) / 2), lh = Math.ceil((y1 - y0) / 2), D = _sccCanvas(lw, lh), dx = D.getContext('2d', _SCC_CPU);
+      dx.setTransform(0.5, 0, 0, 0.5, 0, 0);
+      if (typeof dx.filter === 'string' && b >= 0.5) dx.filter = `blur(${_scR1(b)}px)`;
+      dx.globalAlpha = op; dx.drawImage(c, 0, 0); dx.filter = 'none';
+      dx.setTransform(1, 0, 0, 1, 0, 0); dx.globalAlpha = 1;
+      dx.globalCompositeOperation = 'source-in'; dx.fillStyle = '#fff'; dx.fillRect(0, 0, lw, lh);
+      dx.globalCompositeOperation = 'destination-over'; dx.fillStyle = '#000'; dx.fillRect(0, 0, lw, lh);
+      st.lift.push({ gi: env.gi, c: D, x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+    }
     c.width = 0;
   };
   // 1-3. the cast shadows of the sun (or the moon)
@@ -230,7 +260,7 @@ function _scshBake(env, layer, gx) {
 /** One mover's shadow now (6.4): projected when the sun is out and it is near, else a blob. Returns draws. */
 function _scshMover(env, ctx, m) {
   const st = env.shadow, sun = st.sun, gov = env.gov ? env.gov.level : 0;
-  if (!Number.isFinite(m.X) || !Number.isFinite(m.Y)) return 0;
+  if (!Number.isFinite(m.X) || !Number.isFinite(m.Y) || !(m.s > 0) || (m.alpha != null && !(m.alpha > 0))) return 0;   // nothing drawn, no shadow
   const d = Number.isFinite(m.d) ? m.d : sceneCamDepthAt(env.cam, m.Y);
   if (!Number.isFinite(d)) return 0;
   const veh = ['car', 'bus', 'tram', 'tractor', 'bike', 'cyclist', 'train'].includes(m.cls), person = m.cls === 'person' || m.cls === 'animal-dog' || m.cls === 'animal';
@@ -280,7 +310,12 @@ function sceneShadowProjected(env, ctx, m) {
   if (!box) return 0;
   const d = Number.isFinite(m.d) ? m.d : sceneCamDepthAt(cam, m.Y);
   const foot = { X: m.X, Y: m.Y, x: (m.X - cam.x0) * d / cam.f, d };
-  const M = sceneShadowMatrix(cam, foot, m.s || 1, Math.max(1, -box[1]), !!m.flip, sun, vs, ox, oy);
+  // a mover's shadow stays a readable, attached shape (shared fix, 9 Oct: at golden hour a walker's 20 m silhouette, seen edge
+  // on, read as long dark stripes across the grass): at most 2.5 x its height, the live sun's direction; none over water
+  const shm = { g: sun.g, tan: Math.min(sun.tan, SCENE_SHADOW_MOVER_TAN) };
+  const hTop = Math.max(1, -box[1]), M = sceneShadowMatrix(cam, foot, m.s || 1, hTop, !!m.flip, shm, vs, ox, oy);
+  // the tip (sprite (0, -hTop) through M, in scene units): over water, the caller falls back to the contact blob
+  if (env.water && typeof sceneWaterRegionAt === 'function' && sceneWaterRegionAt(env, (M[4] - M[2] * hTop - ox) / vs, (M[5] - M[3] * hTop - oy) / vs)) return 0;
   const sil = _scshSilhouette(sp, st.col);
   ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
   ctx.globalAlpha = sun.op * (m.alpha == null ? 1 : m.alpha);

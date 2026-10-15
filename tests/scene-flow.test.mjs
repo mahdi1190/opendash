@@ -144,7 +144,7 @@ test('flows: problems name the flow and the fix (an unknown surface, an unknown 
 
 test('flows: views: a car along the sightline is drawn from the front or the rear; crossing, from the side; the view objects pass object lint', { skip: FLOW }, () => {
   const V = g('sceneFlowViewOf');
-  assert.equal(V('vehicle.car', 10, false).view, 'rear'); assert.equal(V('vehicle.car', 10, true).view, 'front');
+  assert.equal(V('vehicle.car', 10, false).view, 'back'); assert.equal(V('vehicle.car', 10, true).view, 'front');
   assert.equal(V('vehicle.car', 80, true).view, 'side');
   assert.equal(V('vehicle.car', 10, true).o, 'vehicle.car-front');
   assert.equal(V('vehicle.metrolink-tram', 5, true).v, 1, 'a tram view keeps its livery');
@@ -152,7 +152,7 @@ test('flows: views: a car along the sightline is drawn from the front or the rea
   assert.equal(missing.view, 'side'); assert.equal(missing.missing, true);
   const C = compiled(scene()), views = new Set();
   for (let t = 0; t < 120; t += 3) for (const a of g('sceneFlowAgents')(C, t, L(17))) if (a.kind === 'drive') views.add(a.view);
-  assert.ok(views.has('front') && views.has('rear'), 'a road along the view: fronts coming, rears going');
+  assert.ok(views.has('front') && views.has('back'), 'a road along the view: fronts coming, backs going');
   const TH = { object: {} };
   for (const id of ['vehicle.car-front', 'vehicle.car-rear', 'vehicle.taxi-front', 'vehicle.taxi-rear', 'vehicle.bus-front', 'vehicle.bus-rear', 'vehicle.tram-front', 'vehicle.tram-rear', 'person.cyclist-front', 'person.cyclist-rear', 'boat.narrowboat-bow', 'boat.narrowboat-stern']) {
     const r = lintObject(id, { E, thresholds: TH });

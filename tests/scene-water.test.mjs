@@ -102,3 +102,15 @@ test('the bank edges: a far bank shows its face down to the water; a near bank o
   const all = top.flatMap(g => g.quads).filter(q => q.every(p => p[0] > -160 && p[0] < 1760)).sort((a, b) => b[0][1] - a[0][1]);
   assert.ok(ext(all[0]) > ext(all[all.length - 1]), 'near coping wider than far coping');
 });
+
+test('the lock (10 Oct): a region\'s own colour / mirror / ripple / clarity are ignored; the kind decides; a v1 region mirrors about its own top', () => {
+  const C = S.sceneV2BCanal(), cam = S.sceneRenderCam(C), w = C.water[0];
+  const forced = Object.assign({}, w, { base: ['#ff0000', '#ff0000', '#ff0000'], v2: Object.assign({}, w.v2, { mirror: 0.1, ripple: 0.9, clarity: 0.9, base: ['#00ff00', '#00ff00', '#00ff00'], bed: '#ffffff' }) });
+  const R = S.sceneWaterPlanOf(forced, C, cam), D = S.sceneWaterDefaults('canal');
+  assert.deepEqual(R.base, D.base); assert.equal(R.mirror, D.mirror); assert.equal(R.ripple, D.ripple); assert.equal(R.clarity, D.clarity);
+  const calm = S.sceneWaterPlanOf(Object.assign({}, w, { v2: Object.assign({}, w.v2, { hint: 'calm' }) }), C, cam);
+  assert.equal(calm.ripple, D.ripple * 0.5, 'the one hint: calm halves the ripple');
+  const v1 = { layer: 2, d: 'M0 600L1600 600L1600 900L0 900Z', y0: 600, y1: 900, base: ['#ff0000', '#ff0000', '#ff0000'], reflect: false };
+  const R1 = S.sceneWaterPlanOf(v1, { view: { fov: 80, horizon: 560 } }, S.sceneRenderCam({ view: { fov: 80, horizon: 560 } }));
+  assert.deepEqual(R1.base, S.sceneWaterDefaults('pond').base, 'a v1 region opted in is a pond by default, its own base ignored');
+});

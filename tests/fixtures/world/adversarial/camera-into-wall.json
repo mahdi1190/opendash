@@ -1,0 +1,107 @@
+{
+ "id": "camera-into-wall",
+ "title": "A camera looking straight into a wall",
+ "req": [
+  "C1",
+  "C4",
+  "W5"
+ ],
+ "about": "A terrace 3 m in front of the camera fills the frame. The engine must move or drop it, or move the camera, so the view shows the place.",
+ "expect": {
+  "log": [
+   {
+    "any": [
+     "move",
+     "drop",
+     "rotate"
+    ],
+    "id": "terrace-1",
+    "rule": "C1"
+   }
+  ]
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 53.383,
+   "lon": -1.47,
+   "alt": 60,
+   "region": "south-yorkshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 64,
+   "horizon": 460,
+   "heading": 0
+  },
+  "surfaces": [
+   {
+    "id": "land",
+    "kind": "plaza",
+    "poly": [
+     [
+      -120,
+      1
+     ],
+     [
+      120,
+      1
+     ],
+     [
+      160,
+      400
+     ],
+     [
+      -160,
+      400
+     ]
+    ]
+   },
+   {
+    "id": "street",
+    "kind": "road",
+    "path": [
+     [
+      -120,
+      30
+     ],
+     [
+      120,
+      30
+     ]
+    ],
+    "width": 7
+   }
+  ],
+  "entities": [
+   {
+    "obj": "building.terrace",
+    "id": "terrace-1",
+    "at": [
+     0,
+     3
+    ],
+    "facing": 90
+   },
+   {
+    "obj": "building.terrace",
+    "at": [
+     -20,
+     50
+    ],
+    "facing": 90
+   }
+  ],
+  "life": [
+   {
+    "who": "walkers",
+    "on": "land",
+    "rate": "2/min"
+   }
+  ],
+  "backdrop": {
+   "style": "city-sheffield-hills"
+  },
+  "seed": 24
+ }
+}

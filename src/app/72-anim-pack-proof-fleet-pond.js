@@ -24,7 +24,14 @@ function sceneProofFleetPondItems() {
     if (typeof sceneProofFleetPondPass === 'function') sceneProofFleetPondPass();
     return data || (data = sceneProofFleetPondData());
   });
-  return [it];
+  // the same scene PREBAKED (78-scene-player.js; node tools/anim-pack.mjs scene prebake <the ref above>): its static picture from
+  // the build-time images under assets/scenes/proof-fleet-pond/<id>/, only what moves drawn live. Gallery only, beside the live one.
+  const pre = sceneItem(Object.assign({}, meta, { id: `${COUNTY}-fleet-pond-prebaked`, label: 'Fleet Pond (prebaked), ' + NAME, priority: 0,
+    prebaked: 'proof-fleet-pond/' + meta.id, when: () => false }), () => {
+    if (typeof sceneProofFleetPondPass === 'function') sceneProofFleetPondPass();
+    return data || (data = sceneProofFleetPondData());
+  });
+  return [it, pre];
 }
 (function () {
   if (typeof animRegisterPack !== 'function') return;

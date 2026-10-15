@@ -1037,28 +1037,18 @@ function _scgrViews(id) {
   return (def && def.views) || null;
 }
 /**
- * Which view to draw (4.3): from the angle between the direction of travel (tx, td) and the line of sight to (x, d), the rule the
- * flows use (D's sceneFlowViewOf when loaded): side-on when it crosses the view (over 55 degrees), front or rear when it runs
- * toward or away (under 35), q between when the object has one. face 'away' / 'toward' asks for rear / front directly.
- * -> { view, o (the object to draw), missing, want? }
+ * Which view to draw (4.3): from the ground heading (tx, td) against the line of sight to (x, d), D's sceneHeadingView (5 views:
+ * 'back', 'q-back', 'side', 'q-front', 'front', the nearest the object has). face 'away' / 'toward' asks for back / front directly.
+ * -> { view, o (the object to draw), missing, want, off, flip? }
  */
 function sceneViewOf(id, tangent, x, d, face) {
-  let across = 90, toward = false;
-  if (face === 'away' || face === 'toward') { across = 0; toward = face === 'toward'; }
-  else if (tangent) {
-    const l = Math.hypot(x, d) || 1, sx = x / l, sd = d / l, dot = tangent[0] * sx + tangent[1] * sd;
-    across = Math.acos(_scgrClamp(Math.abs(dot), 0, 1)) / _SCGR_DEG;
-    toward = dot < 0;
+  if (typeof sceneViewAt === 'function') {
+    try {
+      if (face === 'away' || face === 'toward') return sceneViewAt(id, face === 'away' ? 0 : 180, null);
+      if (tangent && typeof sceneHeadingView === 'function') return sceneHeadingView(id, tangent[0], tangent[1], x, d, null);
+    } catch (e) { /* below */ }
   }
-  if (typeof sceneFlowViewOf === 'function') { try { const r = sceneFlowViewOf(id, across, toward); if (r && r.o) return r; } catch (e) { /* below */ } }
-  const ang = 90 - across;
-  let want = ang < 35 ? 'side' : ang > 55 ? (toward ? 'front' : 'rear') : 'q';
-  const vw = want === 'side' ? null : _scgrViews(id);
-  if (want === 'q') { if (vw && vw.q) return { view: 'q', o: vw.q, missing: false }; want = ang < 45 ? 'side' : (toward ? 'front' : 'rear'); }
-  if (want === 'side') return { view: 'side', o: id, missing: false };
-  const o = vw && vw[want];
-  if (o && (typeof sceneObj !== 'function' || sceneObj(o))) return { view: want, o, missing: false };
-  return { view: 'side', o: id, missing: true, want };
+  return { view: 'side', o: id, missing: false, want: 'side', off: 0 };
 }
 const _SCGR_MOVERS = ['car', 'bus', 'tram', 'train', 'bike', 'cyclist', 'tractor', 'boat', 'person', 'animal', 'animal-dog', 'animal-graze', 'bird-water', 'bird-ground'];
 /** Is a placement in ground form (4.1)? */
@@ -1167,18 +1157,18 @@ function scenePlaceResolve(G, p, i) {
   let travel = tan && want ? [tan[0] * want, tan[1] * want] : null;
   if (moves && (travel || p.face === 'away' || p.face === 'toward')) {
     const vw = sceneViewOf(p.obj, travel, x, d, travel ? null : p.face);
-    if (vw.missing && d < 30) prob('view', 'warn', [x, d], `place[${i}] ${p.obj}: drawn side-on where a ${vw.want} view is wanted (no ${vw.want} view in the library)`, `add views: { ${vw.want}: '<object id>' } to ${p.obj}`);
+    if (vw.missing && d < 30) prob('moverFacing', 'warn', [x, d], `place[${i}] ${p.obj}: drawn side-on ${Math.round(vw.off)} degrees off its heading (no '${vw.want}' view)`, `add views: { '${vw.want}': '<object id>' } to ${p.obj}, or turn its path across the view`);
     if (vw.o !== p.obj && typeof sceneObj === 'function' && sceneObj(vw.o)) obj = vw.o;
     view = vw.view;
   }
-  if (moves && def.flippable !== false && view === 'side') {
+  if (moves && def.flippable !== false && (view === 'side' || view === 'q-front' || view === 'q-back')) {
     if (p.face === 'left') flip = true;
     else if (p.face === 'right') flip = false;
     else if (travel) { const a = sceneProject(cam, x, d, h), b = sceneProject(cam, x + travel[0], d + travel[1], h); flip = b.X < a.X; }
     else if (p.flip == null) flip = r() < 0.5;
   }
   const odef = sceneObj(obj) || def, oreal = obj === p.obj ? real : _scgrReal(obj), P = sceneProject(cam, x, d, h);
-  const s = k * P.k * oreal.h / Math.max(1, odef.size[1]);
+  const s = _SCGR_SIZED.includes(cls) ? sceneMoverScale(obj, k, P.k) : k * P.k * oreal.h / Math.max(1, odef.size[1]);   // movers: their size class over the drawn height (10 Oct)
   const band = sceneDepthBand(cam, d), forced = p.layer != null ? layerOf(p.layer) : null, layer = forced != null ? forced : band;
   if (forced != null && Math.abs(forced - band) > 1 && p.layer !== 'front') prob('layer', 'warn', [x, d], `place[${i}] ${p.obj}: layer ${p.layer} disagrees with its depth ${_scgrR1(d)} m (band ${G.layers[band].id})`, 'leave layer out: the depth decides it');
   const q = Object.assign({}, p, { obj, x: _scgrR1(P.X), y: _scgrR1(P.Y), s: _scgrR3(Math.max(0.001, s)), flip, layer: G.layers[layer].id });
@@ -1278,20 +1268,31 @@ function _scgrActorGround(G, a) {
 function sceneCompileV2Actor(G, a, i) {
   const def = typeof sceneObj === 'function' ? sceneObj(a.obj) : null;
   if (!def) return null;
-  const pts = _scgrActorGround(G, a);
+  let pts = _scgrActorGround(G, a);
   if (!pts) { G.problems.push({ rule: 'actor', sev: 'warn', i, obj: a.obj, at: null, msg: `actors[${i}] ${a.obj}: no ground path (ground: [[x, d], ...] or on: '<surface>')`, fix: 'give it a ground path', actor: true }); return null; }
-  const cam = G.cam, cls = sceneObjClass(a.obj), real = _scgrReal(a.obj), r = sceneRnd(sceneHash((G.data.id || 'scene') + '|actor|' + i));
+  const cam = G.cam, cls = sceneObjClass(a.obj), ms = sceneMoverSize(a.obj), r = sceneRnd(sceneHash((G.data.id || 'scene') + '|actor|' + i));
   const k = a.k != null ? +a.k : _scgrDefaultK(cls, r), floats = cls === 'boat' || cls === 'bird-water';
+  // the motion rules (user request, 10 Oct): on its water or ground, clear of hulls and blockers; a loop that would pop turns round
+  let loop = a.loop;
+  if (a.motion !== false) {
+    const W = _scgrWorldG(G), fx = sceneMoverFixPath(W, a.obj, pts), pop = (a.loop || 'pingpong') === 'loop' && _scgrPops(W, pts);
+    if (fx.moved || fx.detours || pop) {
+      pts = fx.pts.map(p => [_scgrR2(p[0]), _scgrR2(p[1])]);
+      if (pop) loop = 'pingpong';
+      G.problems.push({ rule: 'moverFixed', sev: 'info', i, obj: a.obj, at: [_scgrR1(pts[0][0]), _scgrR1(pts[0][1])], msg: `actors[${i}] ${a.obj}: ${fx.moved} point(s) moved onto its ${fx.mode === 'water' ? 'water' : 'ground'}, ${fx.detours} detour(s)${pop ? ', loop -> pingpong (it popped in the frame)' : ''}`, fix: 'author the path so it needs no fix', actor: true, moved: fx.moved, detours: fx.detours, pop });
+    }
+    for (const b of fx.bad.slice(0, 3)) G.problems.push({ rule: /^hull/.test(b.why) ? 'moverHull' : /^gate/.test(b.why) ? 'moverGate' : /^(blocked|cross)/.test(b.why) ? 'moverBlocked' : /^ground/.test(b.why) ? 'moverGround' : 'moverWater', sev: 'warn', i, obj: a.obj, at: [b.x, b.d], msg: `actors[${i}] ${a.obj}: ${b.why.replace(':', ' ')} at x ${b.x} m, d ${b.d} m (could not be fixed)`, fix: 'move the path', actor: true });
+  }
   const lvl = (x, d) => { if (floats) { const s = sceneSurfaceAt(G, x, d); if (s && s.kind === 'water') { const w = G.water.find(q => q.v2.id === s.id); return w ? w.v2.level : cam.water; } } return sceneGroundHeight(cam, x, d) + _scgrNum(a.h, 0); };
   const path = [], tab = [];
   let kSum = 0;
-  for (const p of pts) { const P = sceneProject(cam, p[0], p[1], lvl(p[0], p[1])); path.push([_scgrR1(P.X), _scgrR1(P.Y)]); tab.push([_scgrR1(P.Y), _scgrR3(k * P.k * real.h / Math.max(1, def.size[1]))]); kSum += P.k; }
+  for (const p of pts) { const P = sceneProject(cam, p[0], p[1], lvl(p[0], p[1])); path.push([_scgrR1(P.X), _scgrR1(P.Y)]); tab.push([_scgrR1(P.Y), _scgrR3(k * P.k * ms.h / Math.max(1, ms.top))]); kSum += P.k; }
   tab.sort((u, v) => u[0] - v[0]);
   const sByY = tab.filter((t, j) => !j || t[0] - tab[j - 1][0] > 0.5);
   const speedM = _scgrNum(a.speedM, _scgrNum(a.speed, cls === 'person' ? 1.3 : cls === 'boat' ? 1.1 : cls === 'car' ? 8 : 1.2));
   const minD = Math.min(...pts.map(p => p[1]));
-  return Object.assign({}, a, { path, sByY: sByY.length >= 2 ? sByY : [[sByY[0][0], sByY[0][1]], [sByY[0][0] + 1, sByY[0][1]]], s: 1, speed: _scgrR2(speedM * kSum / pts.length),
-    layer: a.layer || G.layers[sceneDepthBand(cam, minD)].id, $ground: { ground: pts, speedM, k: _scgrR3(k), cls, floats } });
+  return Object.assign({}, a, { path, loop, sByY: sByY.length >= 2 ? sByY : [[sByY[0][0], sByY[0][1]], [sByY[0][0] + 1, sByY[0][1]]], s: 1, speed: _scgrR2(speedM * kSum / pts.length),
+    layer: a.layer || G.layers[sceneDepthBand(cam, minD)].id, $ground: { ground: pts, speedM, k: _scgrR3(k), cls, floats, layerForced: !!a.layer } });
 }
 /**
  * A v2 actor at t seconds (4.8), pure: { x, d, X, Y, s, flip, alpha } from its ground path at its speed in metres per second
@@ -1304,8 +1305,7 @@ function sceneActorAtV2(a, t, cam) {
   if ((a.loop || 'pingpong') === 'pingpong') { const u = ((d0 % (2 * L)) + 2 * L) % (2 * L); back = u > L; s = back ? 2 * L - u : u; }
   else { s = ((d0 % L) + L) % L; if (a.loop === 'fade') alpha = _scgrClamp(Math.min(s, L - s) / 3, 0, 1); }
   const q = _scgrAlong(pts, s), x = q[0], d = q[1], P = sceneProject(cam, x, d, g.floats ? cam.water : null);
-  const def = typeof sceneObj === 'function' ? sceneObj(a.o || a.obj) : null, real = _scgrReal(a.o || a.obj);
-  const sc = (g.k || 1) * P.k * real.h / Math.max(1, def ? def.size[1] : 64);
+  const sc = sceneMoverScale(a.o || a.obj, g.k || 1, P.k);
   const tx = q[2] * (back ? -1 : 1), td = q[3] * (back ? -1 : 1), P2 = sceneProject(cam, x + tx, d + td, null);
   return { x, d, X: P.X, Y: P.Y, s: sc, flip: P2.X < P.X, alpha };
 }
@@ -1502,6 +1502,8 @@ function sceneCompileV2Finish(G, C) {
     for (const oi of idx) C.items.push(old[oi]);
     for (const st of C.strips) st.items = st.items.map(k => map.get(k));
   }
+  // the backdrop (an engine default, 70-scene-lib-backdrops.js): place-styled city or nature bands behind everything, then the emptyBackdrop lint
+  if (typeof sceneBackdropApply === 'function') sceneBackdropApply(G, C);
   _scgrOccludedStill(C);
   _scgrAnimLod(G, C);
   // D: flows; C: atmosphere, weather, lights (each guarded: a missing builder removes only its feature)
@@ -1531,4 +1533,549 @@ function sceneCompileV2Finish(G, C) {
     flows: C.flows.length, flowMax, flowDraws, fxDraws, lights: C.lights.length, buildings: C.buildings.length, coverItems: G.stats.coverItems, problems: pr };
   C.stats.animatedDraws = v1Draws + flowDraws + fxDraws;
   return C;
+}
+
+/* ============================================================
+   MOVERS THAT BEHAVE (user request, 10 Oct: the animation overhaul). PURE: both renderers, the compile and the lint share it.
+   Seen wrong before: ducks floating on the water instead of sitting in it, ducks swimming through boats, dog walkers through
+   walls, fences and gates, people and animals too small for their distance, movers popping in mid-frame, two movers in one
+   place. The engine now prevents these for every scene, so a new scene gets them right without per-scene work:
+
+     sceneMoverSize(id)                 -> { h, l, w, cls, size, top, sink }: the real size class of a mover (person 1.7 m, dog 0.5,
+                                           duck 0.35, swan 0.6, cow 1.4, pony 1.4, deer 1.2, heron 0.9 ...), the drawn height above
+                                           its foot in object units (top: the scale divides by it, not by size[1]) and, for what
+                                           floats, the object units that sit below the waterline (sink: the renderer draws it lower
+                                           and clips it at the waterline)
+     sceneMoverScale(id, k, Pk)         -> the scale of a mover at projection factor Pk (f / d)
+     sceneMotionBlockers(items, cam)    -> the ground footprints [{ kind, o, x, d, hx, hd, i }] of solid placed things: boats (hull),
+                                           walls, fences and closed gates (line, gate), buildings and structures (solid), vehicles,
+                                           benches, logs, rocks, bins, posts (small), the trunks of near trees (trunk). A gate is
+                                           open with open: true on its placement or an id with 'open' in it.
+     sceneMotionWorld(C)                -> the world a compiled scene's movers live in (v1 or v2: the v1 camera is inferred)
+     sceneMoverFixPath(W, obj, pts, o)  -> { pts, mode, moved, detours, bad: [{ x, d, why }] }: a ground path (metres) moved onto
+                                           what its mover may use (water inset from the banks and clear of hulls for what floats; a
+                                           walkable surface, never water or mid-air, for walkers and ground birds), detoured round
+                                           blockers under 16 m long, every remaining fault listed
+     sceneMotionFixed(C)                -> C.actors with v1 pixel paths fixed the same way (the renderer calls it at bake; v2 actors
+                                           are fixed by the compile, sceneCompileV2Actor). The v1 COMPILE never changes (V2 14.1).
+     sceneMotionCheck(C, o)             -> { movers, blockers, water, problems }: the motion lint (tools: scene motion)
+   ============================================================ */
+const SCENE_MOVER_SIZES = Object.freeze([
+  [/cyclist|bike-rider/, 1.7, 'cyclist'], [/^person\./, 1.7, 'person'],
+  [/dog/, 0.5, 'dog'], [/mallard|duck|teal|wigeon|pochard|tufted|mandarin/, 0.35, 'duck'], [/swan/, 0.6, 'swan'], [/goose/, 0.7, 'goose'],
+  [/coot|moorhen/, 0.3, 'coot'], [/grebe/, 0.4, 'grebe'], [/heron|egret/, 0.9, 'heron'], [/gull/, 0.45, 'gull'], [/cormorant/, 0.8, 'cormorant'],
+  [/cattle|cow|galloway|highland/, 1.4, 'cow'], [/pony|donkey/, 1.4, 'pony'], [/horse/, 1.6, 'horse'], [/deer|stag/, 1.2, 'deer'], [/sheep|lamb/, 0.9, 'sheep'],
+  [/fox/, 0.45, 'fox'], [/rabbit|hare/, 0.3, 'rabbit'], [/squirrel/, 0.25, 'squirrel'], [/pigeon|crow|rook|jackdaw|magpie/, 0.3, 'pigeon'], [/robin|blackbird|thrush|wagtail|sparrow/, 0.15, 'small bird'],
+]);
+const _SCGR_SIZED = ['person', 'cyclist', 'animal', 'animal-dog', 'animal-graze', 'bird-water', 'bird-ground'];
+const _scgrMoverMemo = new Map();
+function sceneMoverSize(id) {
+  const def = typeof sceneObj === 'function' ? sceneObj(id) : null;
+  const hit = _scgrMoverMemo.get(id);
+  if (hit && hit.def === def) return hit.r;
+  const cls = sceneObjClass(id), real = _scgrReal(id);
+  let h = real.h, size = null;
+  if (_SCGR_SIZED.includes(cls) && real.src !== 'def') for (const [re, hh, name] of SCENE_MOVER_SIZES) if (re.test(id)) { h = hh; size = name; break; }   // an object's own real: { h } wins
+  let sh = null;
+  if (typeof sceneObjShapes === 'function') { try { sh = sceneObjShapes(id, 0, 'summer'); } catch (e) { sh = null; } }
+  // the drawn top: the highest point of its shapes (the shapes' box carries a margin), else its box, else size[1]
+  let minTop = 0;
+  if (sh && sh.parts && typeof scenePathBox === 'function') for (const [pn, list] of Object.entries(sh.parts)) if (pn !== 'lit') for (const q of list || []) { const b = q && q.d ? scenePathBox(q.d, q.m) : null; if (b && b[1] < minTop) minTop = b[1]; }
+  const top = minTop < -1 ? -minTop : sh && sh.box && sh.box[1] < -1 ? -sh.box[1] : (def && def.size ? def.size[1] : 64);
+  let sink = 0;
+  if ((cls === 'bird-water' && !/heron|egret|stork|crane|gull|wader|curlew|kingfisher/.test(id)) || cls === 'boat') {
+    const part = sh && sh.parts ? (sh.parts.hull || sh.parts.body) : null;
+    let minY = 0;
+    if (part && typeof scenePathBox === 'function') for (const s of part) { const b = scenePathBox(s.d, s.m); if (b && b[1] < minY) minY = b[1]; }
+    // a boat without a hull/body part (a dinghy whose top is its mast) would sink by 40 % of the mast: its art already
+    // draws its waterline, so it does not sink; a hull taller than 40 % of the drawn top is capped there (10 Oct)
+    const body = minY < -1 ? Math.min(-minY, top * 0.4) : cls === 'boat' ? 0 : top * 0.4;
+    sink = _scgrR2((cls === 'boat' ? 0.08 : 0.3) * body);
+  }
+  const r = Object.freeze({ h, l: real.l || h, w: real.w || h * 0.5, cls, size, top: _scgrR2(top), sink });
+  _scgrMoverMemo.set(id, { def, r });
+  return r;
+}
+/** The scale of a mover k times its real size at projection factor Pk (sceneProject's k: f / d). */
+function sceneMoverScale(id, k, Pk) { const m = sceneMoverSize(id); return (k == null ? 1 : k) * Pk * m.h / Math.max(1, m.top); }
+
+/* ---------- blockers: the ground footprints of solid placed things ---------- */
+const _SCGR_BLOCK_SKIP = /boardwalk|platform|bridge|jetty|pontoon|steps|stile|causeway|mist|sky\.|shadow|puddle|leaves|reflection|ripple|path|track|reed|grass|flower|bough|canopy/;
+const _SCGR_BLOCK_LINE = /fence|wall|hedge|railing|barrier|palisade/;
+const _SCGR_BLOCK_SMALL = /bench|\blog\b|\.log|trunk|stump|fallen|litter-bin|\bbin\b|-bin|bollard|post\b|signpost|kiosk|picnic|boulder|rock|statue|memorial|trough|hut|shed|shelter|lamp|bike-rack|buoy/;
+/** The kind of blocker a placed object is, or null (open gates, plants, ground marks, sky things, walkable structures). */
+function _scgrBlockKind(id, cls, open) {
+  id = String(id || '');
+  if (/gate/.test(id) && !/gateway|lock-gate|gatehouse/.test(id)) return open || /open/.test(id) ? null : 'gate';
+  if (_SCGR_BLOCK_SKIP.test(id) || /^plant\./.test(id)) return null;   // plants (brambles, hedgerow shrubs, reeds) are soft: movers brush past
+  if (cls === 'boat') return 'hull';
+  if (_SCGR_BLOCK_LINE.test(id)) return 'line';
+  if (cls === 'car' || cls === 'bus' || cls === 'tram' || cls === 'train' || cls === 'tractor') return 'vehicle';
+  if (_SCGR_BLOCK_SMALL.test(id)) return 'small';
+  if (cls === 'building' || cls === 'landmark' || cls === 'structure') return 'solid';
+  if (cls === 'tree') return /far-|distant|bank-|-row|hedge|\.wp-/.test(id) ? null : 'trunk';
+  if (cls === 'rock') return 'small';
+  return null;
+}
+/**
+ * The blockers of a list of placed items (compiled items or resolved placements): { o, x (X), y (Y), s, flip, v, season, g, cls,
+ * open, i }. -> [{ kind, o, i, x, d, hx, hd }] in ground metres (x across, d forward), the nearest 600 m only.
+ */
+function sceneMotionBlockers(items, cam) {
+  const out = [];
+  if (!cam || !Array.isArray(items)) return out;
+  items.forEach((it, i) => {
+    if (!it || !it.o || it.direct) return;
+    const cls = it.cls || sceneObjClass(it.o), kind = _scgrBlockKind(it.o, cls, !!it.open);
+    if (!kind) return;
+    const d = it.g && Number.isFinite(it.g.d) ? it.g.d : _scgrDepthOfRow(cam, it.y);
+    if (!d || d > 600) return;
+    let sh = null;
+    if (typeof sceneObjShapes === 'function') { try { sh = sceneObjShapes(it.o, it.v || 0, it.season || 'summer'); } catch (e) { sh = null; } }
+    if (!sh || !sh.box) return;
+    const b = sh.box, s = it.s || 1, X0 = it.flip ? it.x - b[2] * s : it.x + b[0] * s, X1 = it.flip ? it.x - b[0] * s : it.x + b[2] * s, m = d / cam.f;
+    let xa = (X0 - cam.x0) * m, xb = (X1 - cam.x0) * m;
+    const real = _scgrReal(it.o), gx = it.g && Number.isFinite(it.g.x) ? it.g.x : (it.x - cam.x0) * m;
+    let hd;
+    if (kind === 'hull') { const c = (xa + xb) / 2, h = (xb - xa) / 2 * 0.9; xa = c - h; xb = c + h; hd = Math.max(0.5, Math.min(real.w || 2, 8) / 2); }
+    else if (kind === 'line' || kind === 'gate') hd = 0.2;
+    else if (kind === 'vehicle') hd = Math.max(0.9, (real.w || 1.8) / 2);
+    else if (kind === 'trunk') { const r = 0.25; xa = gx - r; xb = gx + r; hd = r; }
+    else if (kind === 'small') hd = /fallen|log/.test(it.o) ? 0.5 : Math.max(0.25, Math.min(real.w || 0.6, 2) / 2);
+    else hd = Math.max(1, Math.min(real.w || 4, 14) / 2);
+    out.push({ kind, o: it.o, i: it.i != null ? it.i : i, x: _scgrR2((xa + xb) / 2), d: _scgrR2(d), hx: _scgrR2(Math.max(0.1, (xb - xa) / 2)), hd: _scgrR2(hd) });
+  });
+  return out;
+}
+
+/* ---------- the world of a scene's movers ---------- */
+/** Path data to closed polygons (one per subpath, absolute or relative commands; curves by their end points). */
+function _scgrPolysOf(d) {
+  const out = [];
+  if (typeof d !== 'string') return out;
+  let cur = null, x = 0, y = 0, sx = 0, sy = 0, cmd = '';
+  const toks = d.match(/[a-zA-Z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g) || [];
+  let i = 0;
+  const num = () => Number(toks[i++]), more = () => i < toks.length && !/^[a-zA-Z]$/.test(toks[i]);
+  while (i < toks.length) {
+    if (/^[a-zA-Z]$/.test(toks[i])) cmd = toks[i++];
+    else if (!cmd) { i++; continue; }
+    const C = cmd.toUpperCase(), rel = cmd !== C;
+    if (C === 'Z') { x = sx; y = sy; continue; }
+    if (!more()) continue;
+    const bx = rel ? x : 0, by = rel ? y : 0;
+    if (C === 'M') { x = bx + num(); y = by + num(); sx = x; sy = y; cur = [[x, y]]; out.push(cur); cmd = rel ? 'l' : 'L'; continue; }
+    if (!cur) { cur = [[x, y]]; out.push(cur); }
+    if (C === 'L' || C === 'T') { x = bx + num(); y = by + num(); }
+    else if (C === 'H') x = (rel ? x : 0) + num();
+    else if (C === 'V') y = (rel ? y : 0) + num();
+    else if (C === 'C') { num(); num(); num(); num(); x = bx + num(); y = by + num(); }
+    else if (C === 'S' || C === 'Q') { num(); num(); x = bx + num(); y = by + num(); }
+    else if (C === 'A') { num(); num(); num(); num(); num(); x = bx + num(); y = by + num(); }
+    else { i++; continue; }
+    cur.push([x, y]);
+  }
+  return out.filter(p => p.length >= 3);
+}
+const _scgrWorlds = new WeakMap();
+/**
+ * The world a compiled scene's movers live in: { cam, v2, proj, unproj, surf(x, d) -> { id, kind } | null, water(x, d) -> bool,
+ * shown(x, d) -> bool (inside the frame), blockers, waterScr: [polys] }. A v1 scene: the inferred camera (sceneRenderCam), the
+ * water from its pixel regions, no surfaces (walkers are only kept off the water and below the horizon).
+ */
+function sceneMotionWorld(C) {
+  if (!C || typeof C !== 'object') return null;
+  if (_scgrWorlds.has(C)) return _scgrWorlds.get(C);
+  let cam = C.cam && Number.isFinite(C.cam.f) ? C.cam : (typeof sceneRenderCam === 'function' ? sceneRenderCam(C) : null);
+  if (!cam) return null;
+  const v2 = C.v === 2 && Array.isArray(C.surfaces);
+  if (cam.inferred) cam = _scgrFitEye(C, cam);
+  const items = (C.items || []).map((it, i) => ({ o: it.o, x: it.x, y: it.y, s: it.s, flip: it.flip, v: it.v, season: it.season, g: it.g, cls: it.cls, open: it.open, direct: it.direct, i }));
+  const W = _scgrWorldOf(cam, v2 ? (x, d) => sceneSurfaceAt(C, x, d) : null, C.water || [], items);
+  _scgrWorlds.set(C, W);
+  return W;
+}
+/**
+ * A v1 scene's camera with its eye height FITTED to what it draws: v1 scenes are not drawn from 1.65 m, so the eye that makes
+ * the scene's people and big animals (placed and moving; every figure when there are fewer than 2) their real sizes at their
+ * rows, the median over them (1 to 60 m; 1.65 m with fewer than 3). The motion lint then judges each mover against the scene's own scale.
+ */
+function _scgrFitEye(C, cam) {
+  const es = [], add = (o, y, s) => {
+    if (!o || !(y > cam.horizon + 4) || !(s > 0)) return;
+    const ms = _scgrGroundMover({ o });
+    if (!ms || ms.cls === 'boat') return;
+    (ms.h >= 0.9 ? es : small).push(ms.h * (y - cam.horizon) / (s * ms.top));
+  }, small = [];
+  for (const it of C.items || []) add(it.o, it.y, it.s);
+  for (const a of C.actors || []) if (Array.isArray(a.path) && a.path.length) { const p = a.path[0]; add(a.o, p[1], (a.s || 1) * (a.sByY ? _scgrLerp(a.sByY, p[1]) : 1)); }
+  if (es.length < 2) es.push(...small);   // people and big animals set the scale; small birds are often drawn up for legibility
+  if (es.length < 3) return cam;
+  es.sort((u, v) => u - v);
+  const eye = _scgrClamp(es[Math.floor(es.length / 2)], 1, 60);
+  return Object.assign({}, cam, { eye: _scgrR2(eye), dMin: cam.f * eye / Math.max(1, 900 - cam.horizon), fitted: es.length });
+}
+/** The compile's world (G: the surfaces, the water and the placements so far). */
+function _scgrWorldG(G) {
+  if (G.motion) return G.motion;
+  const items = (G.placed || []).map((q, i) => ({ o: q.obj, x: q.x, y: q.y, s: q.s, flip: q.flip, v: q.variant | 0, season: G.season, g: q.$v2 && q.$v2.g, cls: q.$v2 && q.$v2.cls, open: q.open, i }));
+  G.motion = _scgrWorldOf(G.cam, (x, d) => sceneSurfaceAt(G, x, d), G.water || [], items);
+  return G.motion;
+}
+function _scgrWorldOf(cam, surfAt, water, items) {
+  let W = null;
+  const scr = [];
+  for (const w of water) for (const P of _scgrPolysOf(w.d)) scr.push({ P, box: _scgrBox(P) });
+  const proj = (x, d, h) => ({ X: cam.x0 + cam.f * x / Math.max(1e-3, d), Y: cam.horizon + cam.f * (cam.eye - (h || 0)) / Math.max(1e-3, d) });
+  const wetScr = (X, Y) => { let c = false; for (const p of scr) if (X >= p.box[0] && X <= p.box[2] && Y >= p.box[1] && Y <= p.box[3] && _scgrInPoly(X, Y, p.P)) c = !c; return c; };
+  W = {
+    cam, v2: !!surfAt, proj, blockers: [], waterScr: scr.map(p => p.P),
+    unproj: (X, Y, h) => { const dy = Y - cam.horizon; if (!(dy > 0.5)) return null; const d = cam.f * (cam.eye - (h || 0)) / dy; return [(X - cam.x0) * d / cam.f, d]; },
+    surf: surfAt ? (x, d) => surfAt(x, d) : (x, d) => { const P = proj(x, d, cam.water); return wetScr(P.X, P.Y) ? { id: 'water', kind: 'water' } : null; },
+    water: (x, d) => { if (surfAt) { const s = surfAt(x, d); return !!s && s.kind === 'water'; } const P = proj(x, d, cam.water); return wetScr(P.X, P.Y); },
+    shown: (x, d) => { if (!(d >= cam.dMin * 0.98)) return false; const X = cam.x0 + cam.f * x / d; return X >= -20 && X <= 1620; },
+  };
+  // a boat on the water blocks only what floats (a walker never reaches it); a beached one blocks walkers too
+  W.blockers = sceneMotionBlockers(items, cam).map(b => (b.kind === 'hull' ? Object.assign(b, { wet: W.water(b.x, b.d) }) : b));
+  return W;
+}
+
+/* ---------- fixing a path ---------- */
+const _SCGR_LAND_CLS = ['person', 'cyclist', 'animal', 'animal-dog', 'animal-graze', 'bird-ground'];
+/** What a mover needs: { mode: 'water' | 'land' | 'mixed' | null, cls, rx, rd, inset, kinds, ms }. */
+function _scgrMoverNeeds(W, id, pts) {
+  const ms = sceneMoverSize(id), cls = ms.cls;
+  const rx = Math.max(0.12, ms.l * 0.4), rd = Math.max(0.1, ms.w * 0.5);
+  let mode = null;
+  if (cls === 'boat') mode = 'water';
+  else if (cls === 'bird-water' && /heron|egret|stork|crane|wader|curlew|kingfisher/.test(id)) mode = 'mixed';   // waders stand in the shallows
+  else if (cls === 'bird-water') {
+    const shown = pts.filter(p => W.shown(p[0], p[1])), wet = shown.filter(p => W.water(p[0], p[1])).length;
+    mode = shown.length && wet >= shown.length * 0.5 ? 'water' : 'mixed';
+  } else if (_SCGR_LAND_CLS.includes(cls)) mode = 'land';
+  const rule = SCENE_PLACE_RULES[cls] || SCENE_PLACE_RULES.person;
+  const kinds = mode === 'mixed' ? SCENE_PLACE_RULES['bird-water'].on : mode === 'land' ? rule.on.filter(k => k !== 'water') : ['water'];
+  const inset = cls === 'boat' ? Math.max(1, ms.w / 2 + 0.6) : Math.max(0.25, ms.l * 0.5);
+  return { mode, cls, rx, rd, inset, kinds, ms };
+}
+/** Why a mover may not be at (x, d), or '' (fine). Points outside the frame are never faulted (movers enter from there). */
+function _scgrWhyNot(W, N, x, d) {
+  if (!W.shown(x, d)) return '';
+  for (const b of W.blockers) if ((!b.wet || N.mode === 'water') && Math.abs(x - b.x) < b.hx + N.rx && Math.abs(d - b.d) < b.hd + N.rd) return (b.kind === 'hull' ? 'hull' : b.kind === 'gate' ? 'gate' : 'blocked') + ':' + b.o;
+  if (N.mode === 'water') {
+    if (!W.water(x, d)) return 'water';
+    const r = N.inset;
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, px = x + Math.cos(a) * r, pd = d + Math.sin(a) * r * 0.6; if (W.shown(px, pd) && !W.water(px, pd)) return 'bank'; }
+    return '';
+  }
+  const s = W.surf(x, d);
+  if (N.mode === 'land' && s && s.kind === 'water') return 'ground:water';
+  if (W.v2 && s && !N.kinds.includes(s.kind) && !(N.mode === 'land' && s.kind === 'bridge')) return 'ground:' + s.kind;
+  if (W.v2 && !s && N.mode === 'land') return 'ground:none';
+  return '';
+}
+/** Does the segment a-b cross the blocker's rect (grown by the mover's radii)? (Liang-Barsky) */
+function _scgrSegHits(a, b, bl, N) {
+  const x0 = bl.x - bl.hx - N.rx, x1 = bl.x + bl.hx + N.rx, d0 = bl.d - bl.hd - N.rd, d1 = bl.d + bl.hd + N.rd;
+  let t0 = 0, t1 = 1;
+  const dx = b[0] - a[0], dd = b[1] - a[1];
+  for (const [p, q] of [[-dx, a[0] - x0], [dx, x1 - a[0]], [-dd, a[1] - d0], [dd, d1 - a[1]]]) {
+    if (Math.abs(p) < 1e-9) { if (q < 0) return false; continue; }
+    const r = q / p;
+    if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; }
+  }
+  return t0 < t1 && t1 > 1e-6 && t0 < 1 - 1e-6;
+}
+/**
+ * A mover's ground path made right (see the head of this section). obj: the mover's object id; pts: [[x, d, ...extra], ...] in
+ * metres (extra elements, a timed v1 path's waits, ride along on moved points); o: { insert: false } never adds points (a timed
+ * path). -> { pts, mode, moved, detours, bad: [{ x, d, why }] } (bad: the faults it could not fix).
+ */
+function sceneMoverFixPath(W, obj, pts, o) {
+  o = o || {};
+  const res = { pts: (pts || []).map(p => p.slice()), mode: null, moved: 0, detours: 0, bad: [] };
+  if (!W || !pts || pts.length < 2) return res;
+  const N = _scgrMoverNeeds(W, obj, pts);
+  res.mode = N.mode;
+  if (!N.mode) return res;
+  const canInsert = o.insert !== false;
+  const find = (x, d) => {
+    const maxR = Math.max(1.5, 0.06 * d), step = 0.2 * (1 + d / 40);
+    for (let r = step; r <= maxR + 1e-9; r += step) for (let k = 0; k < 16; k++) {
+      const a = k * Math.PI / 8, px = x + Math.cos(a) * r, pd = d + Math.sin(a) * r;
+      if (pd > 0.5 && !_scgrWhyNot(W, N, px, pd)) return [px, pd];
+    }
+    return null;
+  };
+  const fix = (p) => {
+    const why = _scgrWhyNot(W, N, p[0], p[1]);
+    if (!why) return p;
+    const q = find(p[0], p[1]);
+    if (!q) {
+      // deep inside a blocker: drop the point (step 2 then goes round the blocker); deep in the wrong ground: a fault
+      if (canInsert && /^(hull|blocked|gate)/.test(why)) { res.moved++; return null; }
+      res.bad.push({ x: _scgrR2(p[0]), d: _scgrR2(p[1]), why }); return p;
+    }
+    res.moved++;
+    return [_scgrR2(q[0]), _scgrR2(q[1])].concat(p.slice(2));
+  };
+  // 1. the points, and samples every ~0.6 m between them (a new point where a sample is wrong)
+  const out = [];
+  let budget = 900;
+  for (let i = 0; i < res.pts.length; i++) {
+    const p = res.pts[i];
+    if (i && canInsert) {
+      const a = res.pts[i - 1], L = Math.hypot(p[0] - a[0], p[1] - a[1]), n = Math.min(40, Math.floor(L / 0.6));
+      for (let j = 1; j < n && budget > 0; j++, budget--) {
+        const u = j / n, sx = a[0] + (p[0] - a[0]) * u, sd = a[1] + (p[1] - a[1]) * u;
+        if (_scgrWhyNot(W, N, sx, sd)) { const q = fix([sx, sd]); if (q && (q[0] !== sx || q[1] !== sd)) out.push(q); }
+      }
+    }
+    const q = fix(p);
+    if (q) out.push(q);
+  }
+  if (out.length < 2) { res.bad.push({ x: _scgrR2(pts[0][0]), d: _scgrR2(pts[0][1]), why: 'blocked:everywhere' }); return res; }
+  // 2. a blocker crossed between two points: round one under 16 m long, else a fault
+  const fin = [out[0]];
+  for (let i = 1; i < out.length; i++) {
+    const a = fin[fin.length - 1], b = out[i];
+    const hits = (u, v, q) => (!q.wet || N.mode === 'water') && _scgrSegHits(u, v, q, N);
+    const bl = W.shown(a[0], a[1]) || W.shown(b[0], b[1]) ? W.blockers.find(q => hits(a, b, q)) : null;
+    if (bl) {
+      let ok = false;
+      if (canInsert && bl.hx < 8) {
+        // round it: past either end (x), or in front of or behind it (d); the shortest way that is clear wins
+        const pad = 0.3, X0 = bl.x - bl.hx - N.rx - pad, X1 = bl.x + bl.hx + N.rx + pad, D0 = bl.d - bl.hd - N.rd - pad, D1 = bl.d + bl.hd + N.rd + pad;
+        const edge = (p) => (p[1] < bl.d ? D0 : D1), R = (p) => [_scgrR2(p[0]), _scgrR2(p[1])];
+        const ways = [[X0, edge(a)], [X1, edge(a)]].map(([sx, da]) => [R([sx, da]), R([sx, edge(b)])])
+          .concat([D0, D1].map(dd => [R([Math.min(Math.max(a[0], X0), X1), dd]), R([Math.min(Math.max(b[0], X0), X1), dd])]))
+          .map(pp => (Math.hypot(pp[0][0] - pp[1][0], pp[0][1] - pp[1][1]) < 0.05 ? [pp[0]] : pp))
+          .map(pp => ({ pp, len: [a].concat(pp, [b]).reduce((n, p, k, A) => n + (k ? Math.hypot(p[0] - A[k - 1][0], p[1] - A[k - 1][1]) : 0), 0) }))
+          .sort((u, v) => u.len - v.len);
+        for (const { pp } of ways) {
+          const chain = [a].concat(pp, [b]);
+          if (pp.every(p => !_scgrWhyNot(W, N, p[0], p[1])) && chain.every((p, k) => !k || !W.blockers.some(q => hits(chain[k - 1], p, q)))) { fin.push(...pp); res.detours++; ok = true; break; }
+        }
+      }
+      if (!ok) res.bad.push({ x: _scgrR2((a[0] + b[0]) / 2), d: _scgrR2((a[1] + b[1]) / 2), why: (bl.kind === 'gate' ? 'gate:' : bl.kind === 'hull' ? 'hull:' : 'cross:') + bl.o });
+    }
+    fin.push(b);
+  }
+  res.pts = fin;
+  return res;
+}
+/** A loop path whose ends show inside the frame (not a closed ring) pops: it should be a pingpong (the mover turns round). */
+function _scgrPops(W, pts) {
+  if (!pts || pts.length < 2) return false;
+  const a = pts[0], b = pts[pts.length - 1];
+  if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.5) return false;
+  const inner = (p) => { if (!(p[1] >= W.cam.dMin)) return false; const X = W.cam.x0 + W.cam.f * p[0] / p[1]; return X > 40 && X < 1560; };
+  return inner(a) || inner(b);
+}
+/** A pixel path (v1 form) in ground metres: [[x, d, ...extra]] (null when a point is at or above the horizon). */
+function _scgrPathToGround(W, path, h) {
+  const out = [];
+  for (const p of path) { const g = W.unproj(p[0], p[1], h); if (!g) return null; out.push([g[0], g[1]].concat(p.slice(2))); }
+  return out;
+}
+/** Is a pixel-path actor a ground mover the motion rules apply to (not a flier, an insect or a sky thing)? */
+function _scgrGroundMover(a) {
+  const ms = sceneMoverSize(a.o || a.obj);
+  if (!_SCGR_SIZED.includes(ms.cls) && ms.cls !== 'boat') return null;
+  if (/flight|swallow|swift|martin|bat|butterfly|dragonfly|bee\b|kite|buzzard|hobby|skylark/.test(a.o || a.obj)) return null;
+  return ms;
+}
+const _scgrFixedMemo = new WeakMap();
+/**
+ * C.actors with every v1 pixel path made right (sceneMoverFixPath through the inferred camera) and loops that would pop turned into
+ * pingpongs; v2 actors (fixed by the compile) and fliers pass through. The renderer calls it at bake; memoised per C.
+ */
+function sceneMotionFixed(C) {
+  if (!C || !Array.isArray(C.actors)) return [];
+  if (_scgrFixedMemo.has(C)) return _scgrFixedMemo.get(C);
+  const W = sceneMotionWorld(C), out = C.actors.map(a => {
+    if (!W || !a || a.ground || !Array.isArray(a.path) || a.path.length < 2) return a;
+    const ms = _scgrGroundMover(a);
+    if (!ms) return a;
+    const h = ms.cls === 'boat' || ms.cls === 'bird-water' ? W.cam.water : 0, g = _scgrPathToGround(W, a.path, h);
+    if (!g) return a;
+    const timed = a.path.some(p => p.length > 2), r = sceneMoverFixPath(W, a.o, g, { insert: !timed });
+    const pop = (a.loop || 'pingpong') === 'loop' && _scgrPops(W, g);
+    if (!r.moved && !r.detours && !pop) return a;
+    const path = r.pts.map(p => { const P = W.proj(p[0], p[1], h); return [_scgrR1(P.X), _scgrR1(P.Y)].concat(p.slice(2)); });
+    return Object.assign({}, a, { path, len: _scgrLen(path), loop: pop ? 'pingpong' : a.loop, $motion: { moved: r.moved, detours: r.detours, pop } });
+  });
+  _scgrFixedMemo.set(C, out);
+  return out;
+}
+
+/* ---------- the motion lint (tools: node tools/anim-pack.mjs scene motion <ref>) ---------- */
+/**
+ * The facing of a mover along a ground path (4.3): one sample per leg (its middle, in frame, nearer than dMax) -> { samples:
+ * [{ x, d, X, Y, AX, AY (the heading arrow's tip, 22 units long on screen), view, want, off, bad }], worst (the bad sample
+ * farthest off side-on, or null) }. bad: drawn side-on more than SCENE_FACING.warnOff off its heading, for want of a view.
+ */
+function sceneFacingSamples(cam, id, pts, o) {
+  o = o || {};
+  const out = { samples: [], worst: null };
+  if (!cam || !Array.isArray(pts) || pts.length < 2 || typeof sceneHeadingView !== 'function') return out;
+  const h = o.h || 0, dMax = o.dMax || 80, proj = (x, d) => { const P = o.proj ? o.proj(x, d, h) : sceneProject(cam, x, d, h); return [P.X, P.Y]; };
+  for (let j = 1; j < pts.length; j++) {
+    const a = pts[j - 1], b = pts[j], tx = b[0] - a[0], td = b[1] - a[1], L = Math.hypot(tx, td);
+    if (L < 0.2) continue;
+    const x = (a[0] + b[0]) / 2, d = (a[1] + b[1]) / 2;
+    if (!(d > cam.dMin) || d > dMax) continue;
+    const P = proj(x, d);
+    if (P[0] < -40 || P[0] > 1640 || P[1] > 940) continue;
+    const r = sceneHeadingView(id, tx, td, x, d, null), Q = proj(x + tx / L * 0.5, d + td / L * 0.5);
+    let ux = Q[0] - P[0], uy = Q[1] - P[1];
+    const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
+    const smp = { x: _scgrR1(x), d: _scgrR1(d), X: _scgrR1(P[0]), Y: _scgrR1(P[1]), AX: _scgrR1(P[0] + ux * 22), AY: _scgrR1(P[1] + uy * 22), view: r.view, want: r.want, off: Math.round(r.off), bad: !!r.missing };
+    out.samples.push(smp);
+    if (smp.bad && (!out.worst || smp.off > out.worst.off)) out.worst = smp;
+  }
+  return out;
+}
+/**
+ * Every ground mover of a compiled scene checked (v1 pixel paths through the inferred camera): -> { v2, cam, blockers, water
+ * (screen polygons), movers: [{ i, o, cls, mode, flow, path (screen, as authored), fixed (screen, as drawn), bad, moved, detours,
+ * scale }], problems: [{ rule, sev, i, obj, at: [X, Y], msg, fix }] }. Rules: moverWater (off the water, or against a bank),
+ * moverHull (through a boat), moverBlocked (through a wall, fence, building, bench, trunk...), moverGate (through a closed gate),
+ * moverGround (a walker on water, an unwalkable surface or in mid-air; a ground bird on water), moverFacing (drawn side-on over 30
+ * degrees off its heading, for want of a view; movers[].facing holds the heading arrows), moverScale (over 25 % off its real
+ * size at its depth), moverPop (appears or vanishes inside the frame), moverOverlap (two movers in one place), moverLayer (a layer
+ * forced against its depth); moverFixed (info: what the engine corrected by itself).
+ */
+function sceneMotionCheck(C, o) {
+  o = o || {};
+  const W = sceneMotionWorld(C);
+  const rep = { v2: C && C.v === 2, cam: W ? W.cam : null, blockers: W ? W.blockers : [], water: W ? W.waterScr : [], movers: [], problems: [] };
+  if (!W) return rep;
+  const cam = W.cam, R1 = _scgrR1;
+  const prob = (rule, sev, i, obj, at, msg, fix, extra) => rep.problems.push(Object.assign({ rule, sev, i, obj, at: at ? [R1(at[0]), R1(at[1])] : null, msg, fix }, extra || {}));
+  const ruleOf = (why) => (/^hull/.test(why) ? 'moverHull' : /^gate/.test(why) ? 'moverGate' : /^(blocked|cross)/.test(why) ? 'moverBlocked' : /^ground/.test(why) ? 'moverGround' : 'moverWater');
+  const fixOf = { moverHull: 'route it round the boat (or move the boat)', moverGate: 'give the gate open: true, or leave a gap', moverBlocked: 'route it round, or through a gap', moverGround: 'keep the path on a walkable surface', moverWater: 'keep the path inside the water, a body length from the banks' };
+  const fixed = sceneMotionFixed(C);
+  const v2Fixed = new Map();
+  for (const p of C.problems || []) if (p.rule === 'moverFixed' && Number.isInteger(p.i)) v2Fixed.set(p.i, p);
+  (C.actors || []).forEach((a, i) => {
+    if (!a) return;
+    const ms = _scgrGroundMover(a);
+    if (!ms) return;
+    const floats = ms.cls === 'boat' || ms.cls === 'bird-water', h = floats ? cam.water : 0;
+    let g, authored, drawn;
+    if (Array.isArray(a.ground) && a.ground.length >= 2) {
+      g = a.ground.map(p => [p[0], p[1]]);
+      drawn = g.map(p => { const P = W.proj(p[0], p[1], floats && W.water(p[0], p[1]) ? h : 0); return [R1(P.X), R1(P.Y)]; });
+      authored = drawn;
+    } else {
+      authored = (a.path || []).map(p => [p[0], p[1]]);
+      g = _scgrPathToGround(W, a.path || [], h);
+      if (!g) { prob('moverGround', 'error', i, a.o, authored.find(p => p[1] <= cam.horizon + 0.5) || authored[0], `actors[${i}] ${a.o}: its path rises to or above the horizon (in mid-air)`, 'keep its foot on the ground (y below the horizon)'); rep.movers.push({ i, o: a.o, cls: ms.cls, mode: null, path: authored, fixed: authored, bad: [], moved: 0, detours: 0 }); return; }
+      const f = fixed[i];
+      drawn = f && f !== a ? f.path.map(p => [p[0], p[1]]) : authored;
+    }
+    // what is still wrong after the engine's own fix (the drawn path, in metres)
+    const gd = Array.isArray(a.ground) ? g : (_scgrPathToGround(W, drawn, h) || g);
+    const r = sceneMoverFixPath(W, a.o, gd, { insert: true });
+    const m = { i, o: a.o, cls: ms.cls, mode: r.mode, path: authored, fixed: drawn, bad: r.bad.map(b => { const P = W.proj(b.x, b.d, floats ? h : 0); return Object.assign({ X: R1(P.X), Y: R1(P.Y) }, b); }), moved: 0, detours: 0, ground: g };
+    const f = fixed[i];
+    if (f && f.$motion) { m.moved = f.$motion.moved; m.detours = f.$motion.detours; m.pop = f.$motion.pop; }
+    const vf = v2Fixed.get(i);
+    if (vf) { m.moved = vf.moved || 0; m.detours = vf.detours || 0; m.pop = !!vf.pop; }
+    if (m.moved || m.detours || m.pop) prob('moverFixed', 'info', i, a.o, drawn[0], `actors[${i}] ${a.o}: the engine moved ${m.moved} point(s), went round ${m.detours} blocker(s)${m.pop ? ', and turned its popping loop into a pingpong' : ''}`, 'fix the path in the scene so the authored path is already right');
+    const seen = new Set();
+    for (const b of m.bad) {
+      const rule = ruleOf(b.why);
+      if (seen.has(rule + b.why)) continue;
+      seen.add(rule + b.why);
+      prob(rule, 'error', i, a.o, [b.X, b.Y], `actors[${i}] ${a.o} (${r.mode}): ${b.why.replace(':', ' ')} at x ${b.x} m, d ${b.d} m`, fixOf[rule]);
+    }
+    if (ms.cls === 'bird-ground' && g.some(p => W.shown(p[0], p[1]) && W.water(p[0], p[1]))) prob('moverGround', 'error', i, a.o, authored[0], `actors[${i}] ${a.o}: a ground bird on the water`, 'keep it on the ground');
+    // scale: the drawn height against the real size at its depth (a v2 ground actor: by construction, k only)
+    const ratios = [];
+    if (Array.isArray(a.ground)) ratios.push(_scgrNum(a.k, 1));
+    else for (let j = 0; j < authored.length; j += Math.max(1, Math.floor(authored.length / 12))) {
+      const p = authored[j], d = g[j][1];
+      if (!W.shown(g[j][0], d)) continue;
+      const s = (a.s || 1) * (a.sByY ? _scgrLerp(a.sByY, p[1]) : 1), want = cam.f * ms.h / d;
+      if (s > 0) ratios.push(s * ms.top / want);   // a scripted mover is scale 0 while hidden
+    }
+    if (ratios.length) {
+      ratios.sort((u, v) => u - v);
+      const med = ratios[Math.floor(ratios.length / 2)];
+      m.scale = _scgrR2(med);
+      if (med < 0.75 || med > 1.25) prob('moverScale', med < 0.6 || med > 1.6 ? 'error' : 'warn', i, a.o, authored[0], `actors[${i}] ${a.o}: drawn x${_scgrR2(med)} its real size (${ms.size || ms.cls} ${ms.h} m) at its depth`, Array.isArray(a.ground) ? 'set k near 1' : `use a ground path (ground: [[x, d], ...]) or scale it by ${_scgrR2(1 / med)}`);
+    }
+    // facing (4.3): drawn side-on on a path that runs toward or away from the eye, for want of a view
+    const fc = sceneFacingSamples(cam, a.o, gd, { h: floats ? h : 0, proj: W.proj });
+    m.facing = fc.samples;
+    if (fc.worst) prob('moverFacing', 'warn', i, a.o, [fc.worst.X, fc.worst.Y], `actors[${i}] ${a.o}: drawn side-on ${fc.worst.off} degrees off its heading (no '${fc.worst.want}' view) at x ${fc.worst.x} m, d ${fc.worst.d} m`, `give ${a.o} views (side, q-front, front, q-back, back), or run its path across the view`);
+    // popping: a loop or fade whose ends are inside the frame
+    const loop = a.loop || 'pingpong';
+    if ((loop === 'loop' || loop === 'fade') && _scgrPops(W, g) && !m.pop) prob('moverPop', loop === 'loop' ? 'error' : 'warn', i, a.o, authored[0], `actors[${i}] ${a.o}: a ${loop} path that ${loop === 'loop' ? 'jumps' : 'fades'} back to its start inside the frame`, 'start and end it off the frame edge or behind cover, or use loop: pingpong');
+    // a forced layer that disagrees with the depth (v2): the renderer now draws it by its depth band in any case
+    if (rep.v2 && a.layerForced && cam.bands) prob('moverLayer', 'info', i, a.o, authored[0], `actors[${i}] ${a.o}: layer forced; drawn by its depth now`, 'leave layer out');
+    rep.movers.push(m);
+  });
+  // flows (v2): their lanes, checked like any ground path of their kind's first object
+  (C.flows || []).forEach((F, fi) => {
+    const obj = F && F.mix ? Object.keys(F.mix)[0] : null;
+    if (!obj || !Array.isArray(F.lanes)) return;
+    const faced = new Set();   // one moverFacing per object of a flow
+    for (const ln of F.lanes) {
+      if (!Array.isArray(ln.path) || ln.path.length < 2) continue;
+      const floats = F.kind === 'boat', r = sceneMoverFixPath(W, obj, ln.path, { insert: true });
+      const drawn = ln.path.map(p => { const P = W.proj(p[0], p[1], floats ? cam.water : 0); return [R1(P.X), R1(P.Y)]; });
+      const m = { i: 'flow:' + (F.id || fi), o: obj, cls: sceneMoverSize(obj).cls, mode: r.mode, flow: true, path: drawn, fixed: drawn, bad: r.bad.map(b => { const P = W.proj(b.x, b.d, floats ? cam.water : 0); return Object.assign({ X: R1(P.X), Y: R1(P.Y) }, b); }), moved: ln.$moved || 0, detours: 0 };
+      const seen = new Set();
+      for (const b of m.bad) { const rule = ruleOf(b.why); if (seen.has(rule)) continue; seen.add(rule); prob(rule, 'error', 'flow:' + (F.id || fi), obj, [b.X, b.Y], `flow ${F.id || fi} (${F.kind}): ${b.why.replace(':', ' ')} at x ${b.x} m, d ${b.d} m`, fixOf[rule], { flow: true }); }
+      // facing (4.3): every object of the mix, the lane both ways when it carries both directions
+      const objs = Object.keys(typeof F.mix === 'object' && F.mix ? F.mix : {}).filter(id => typeof sceneObj !== 'function' || sceneObj(id));
+      m.facing = [];
+      for (const id of objs.length ? objs : [obj]) {
+        const fwd = ln.dir === -1 ? ln.path.slice().reverse() : ln.path, fc = sceneFacingSamples(cam, id, fwd, { h: floats ? cam.water : 0, proj: W.proj });
+        if (id === (objs[0] || obj)) m.facing = fc.samples;
+        else for (let q = 0; q < fc.samples.length && q < m.facing.length; q++) if (fc.samples[q].bad) m.facing[q] = fc.samples[q];
+        if (fc.worst && !faced.has(id)) { faced.add(id); prob('moverFacing', 'warn', 'flow:' + (F.id || fi), id, [fc.worst.X, fc.worst.Y], `flow ${F.id || fi} (${F.kind}): ${id} drawn side-on ${fc.worst.off} degrees off its heading (no '${fc.worst.want}' view) at x ${fc.worst.x} m, d ${fc.worst.d} m`, `give ${id} views (side, q-front, front, q-back, back), or run the lane across the view`, { flow: true }); }
+      }
+      rep.movers.push(m);
+    }
+  });
+  // overlaps: two ground movers in the same place at the same time (sampled over two minutes)
+  const live = rep.movers.filter(m => !m.flow && m.mode);
+  if (live.length > 1 && typeof sceneActorAt === 'function') {
+    const T = o.seconds || 120, step = o.step || 0.5, pos = live.map(m => {
+      const a = (fixed[m.i] && fixed[m.i] !== C.actors[m.i]) ? fixed[m.i] : C.actors[m.i], N = _scgrMoverNeeds(W, a.o, m.ground || []), out = [];
+      for (let t = 0; t <= T; t += step) {
+        let x, d;
+        if (Array.isArray(a.ground)) { const q = sceneActorAtV2(a, t, cam); x = q.x; d = q.d; }
+        else { const q = sceneActorAt(a, t), gq = W.unproj(q.x, q.y, N.mode === 'water' ? cam.water : 0); if (!gq || !(q.alpha > 0) || !(q.s > 0)) { out.push(null); continue; } x = gq[0]; d = gq[1]; }
+        out.push(W.shown(x, d) ? [x, d] : null);
+      }
+      return { m, N, out };
+    });
+    for (let u = 0; u < pos.length; u++) for (let v = u + 1; v < pos.length; v++) {
+      const A = pos[u], B = pos[v];
+      if ((A.N.mode === 'water') !== (B.N.mode === 'water')) continue;
+      // a dog at its walker's heel, and two poses of one animal (heron-stalk and heron-strike shown in turn), are meant to share a place
+      const pair = [A.N.cls, B.N.cls].sort().join('+'), base = (o) => String(o).replace(/-[a-z]+$/, '');
+      if (pair === 'animal-dog+person' || (A.m.o !== B.m.o && base(A.m.o) === base(B.m.o))) continue;
+      let hits = 0, at = null;
+      for (let k = 0; k < A.out.length; k++) {
+        const p = A.out[k], q = B.out[k];
+        if (!p || !q) continue;
+        if (Math.abs(p[0] - q[0]) < (A.N.rx + B.N.rx) * 0.8 && Math.abs(p[1] - q[1]) < Math.max(0.25, (A.N.rd + B.N.rd) * 0.8)) { hits++; if (!at) at = p; }
+      }
+      if (hits) { const P = W.proj(at[0], at[1], 0); prob('moverOverlap', hits * step > 3 ? 'warn' : 'info', A.m.i, A.m.o, [P.X, P.Y], `actors[${A.m.i}] ${A.m.o} and actors[${B.m.i}] ${B.m.o} overlap for ${_scgrR1(hits * step)} s of ${T} s`, 'separate their paths or their offsets', { with: B.m.i }); }
+    }
+  }
+  return rep;
+}
+/** sByY lookup (v1 scale by row). */
+function _scgrLerp(tab, y) {
+  if (!tab || !tab.length) return 1;
+  if (y <= tab[0][0]) return tab[0][1];
+  for (let i = 1; i < tab.length; i++) if (y <= tab[i][0]) { const [y0, s0] = tab[i - 1], [y1, s1] = tab[i]; return s0 + (s1 - s0) * (y - y0) / ((y1 - y0) || 1); }
+  return tab[tab.length - 1][1];
 }

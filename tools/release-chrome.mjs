@@ -144,6 +144,8 @@ export async function launchChrome({ executable = findChrome(), timeoutMs = 3000
     async emulateMedia(features) {
       await s('Emulation.setEmulatedMedia', { features });
     },
+    /** A raw DevTools call on the page's session (the load profiler: Profiler.start / stop). */
+    cdp(method, params = {}) { return s(method, params); },
     /** Evaluate an expression in the current page (returns its value). */
     async evaluate(expression) {
       const r = await s('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });

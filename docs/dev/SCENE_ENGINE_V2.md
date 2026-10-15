@@ -523,24 +523,53 @@ structure landmark rock air`.
 - The class drives the surface rules (4.4), the default `k` (4.2), contact
   shadows (6.3) and flows (9).
 
-**Views.** Library vehicles, boats and people are drawn side-on. A side-view
-car on a road that runs straight away from the camera is wrong. Objects may
-declare their other views:
+**Views (user request, 10 Oct: movers face the way they travel).** A mover
+on a path that runs toward or away from the camera, or on a diagonal, must not
+slide sideways drawn side-on. Every moving object may declare up to five views
+by these names (the art and the engine agree on them):
 
 ```js
-views: { front: 'vehicle.car-front', rear: 'vehicle.car-rear', q: null }   // q: a three-quarter view
+views: { side: 'person.walker' /* optional: the object itself */, 'q-front': 'person.walker-qf',
+         front: 'person.walker-front', 'q-back': 'person.walker-qb', back: 'person.walker-back' }
 ```
 
-- **Choosing a view.** Project the lane or path tangent at the placement to
-  the screen. Its angle from horizontal decides:
-  - under 35 degrees: `side` (flipped to face the direction of travel)
-  - over 55 degrees: `front` (moving toward the camera) or `rear` (moving
-    away)
-  - in between: `q` if the object has one, else whichever is nearer
-- **A missing view** keeps the side view and records a `view` problem (a
-  warning). This is how the lint finds the library gaps.
-- **Facing.** `face` (or `dir` on a road) sets the facing. The engine sets
-  `flip` itself for anything with a class that moves.
+- `side` faces right (the engine mirrors it for travel to the left); `q-front`
+  is three-quarter from the front, turned toward the right; `q-back` is
+  three-quarter from behind, walking away to the right. Front and back are
+  never mirrored. Older names still work: `rear` = `back`, `q` = `q-front`.
+- The links may live on the def (`views`) or in `SCENE_OBJ_VIEWS`
+  (70-scene-1flow.js) so a library object need not be edited. A view object
+  shares its side view's variants unless the link names one (`v`).
+- **Choosing a view** (`sceneHeadingView`, 70-scene-1flow.js). Every frame each
+  actor and flow agent takes its GROUND heading (dx across, dd in depth),
+  averaged over `SCENE_FACING.win` metres each side (actors: half a second
+  each side) so corners turn smoothly, and measures it against the line of
+  sight: `rel` 0 = straight away, 90 = crossing, 180 = straight toward. Eight
+  directions fold to five views plus the mirror: `back` under 22.5, `q-back` to
+  67.5, `side` to 112.5, `q-front` to 157.5, `front` above. The nearest view the
+  object has wins (side always exists).
+- **Hysteresis.** A view is kept until the heading is `SCENE_FACING.hyst` (9)
+  degrees past the boundary, and the mirror holds while the heading is nearly
+  along the sightline, so a turn at a corner switches view once and never
+  flickers. A mover standing still keeps its last view.
+- **Gait.** The walk foreshortens with the heading (`fs` = 1 side-on, 0
+  head-on): the legs' swing narrows, the vertical bob shrinks, and seen from
+  the front or back the legs alternate by lifting, with no sideways swing.
+  Cadence comes from the real speed; screen speed follows the perspective by
+  construction (paths are in ground metres), so a mover in depth is slower on
+  screen.
+- **Wheels.** Cars, buses, trams and boats use the same mechanism with their
+  front, rear and three-quarter views. Cyclists lean into turns
+  (`sceneTurnLean`, at most `SCENE_FACING.lean` rad); only the screen-sideways
+  part of the bank shows.
+- **A missing view** keeps the side view. When the heading is more than
+  `SCENE_FACING.warnOff` (30) degrees off side-on this is a `moverFacing`
+  warning (placements in the compile; actors and flow lanes in `scene motion`,
+  which draws a heading arrow per leg, labelled with its view, red where the
+  view is missing). This is how the lint finds the library gaps.
+- **Facing.** `face` (or `dir` on a road) sets the facing of a still
+  placement. The engine sets `flip` itself for anything with a class that
+  moves.
 
 ### 4.4 Which surfaces each class may stand on
 

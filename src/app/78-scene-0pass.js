@@ -50,7 +50,7 @@ function sceneRenderIsV2(C) {
   if (!C) return false;
   if (C.v === 2) return true;
   const fx = C.fx;
-  return !!(fx && typeof fx === 'object' && Object.keys(fx).some(k => fx[k] === 2));
+  return !!(fx && typeof fx === 'object' && Object.keys(fx).some(k => fx[k] === 2)) || (typeof _scwxPLite === 'function' && _scwxPLite(C));   // v1 winter: the weather pass's frost and snow
 }
 /**
  * The passes for a stage ('layer:under' and 'layer:over' sort the layer stage by those order keys), that apply to C, in
@@ -67,6 +67,17 @@ function sceneRenderPasses(stage, C) {
     if (ok) out.push(p);
   }
   return out.sort((a, b) => _scpsOrder(a, stage) - _scpsOrder(b, stage) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+/** May a bake of C be kept in the persistent cache (78-scene-cache.js)? No when a pass that applies says cache: false. */
+function sceneRenderPassesCacheable(C) {
+  if (!sceneRenderIsV2(C)) return true;
+  for (const p of _scpsPasses) {
+    if (p.cache !== false) continue;
+    let ok = false;
+    try { ok = !!p.applies(C); } catch (e) { ok = false; }
+    if (ok) return false;
+  }
+  return true;
 }
 function sceneRenderPassList() { return _scpsPasses.map(p => ({ id: p.id, order: p.order, stages: SCENE_PASS_STAGES.filter(s => typeof p[s] === 'function') })); }
 /** The light-key part of the passes that apply (each pass's key(L, C), joined); '' for v1 scenes. */

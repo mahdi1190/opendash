@@ -15,7 +15,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REG = loadRegistry(ROOT);
 const G = REG.R.get;
 const E = new Proxy({}, { get: (_, n) => G(n) });
-const STYLES = ['victorian-terrace', 'georgian', 'edwardian', '1930s-semi', 'interwar-shops', 'mill', 'norfolk-flint', 'stone-cottage', 'modern-glass', 'brutalist', 'station'];
+const STYLES = ['victorian-terrace', 'georgian', 'edwardian', '1930s-semi', 'interwar-shops', 'mill', 'norfolk-flint', 'stone-cottage', 'modern-glass', 'brutalist', 'station', 'timber-framed'];
 const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
 const CAM = { eye: 1.65, fov: 66, horizon: 470 };
 const F = 800 / Math.tan(33 * Math.PI / 180);
@@ -37,9 +37,10 @@ const inQuad = (p, q, tol = 1.5) => {
   return true;
 };
 
-test('styles: all eleven register as data, with labels, eras and groupings', () => {
+test('styles: the eleven core styles register as data, with labels, eras and groupings (places add their own)', () => {
   const list = E.sceneBuildingStyles();
-  assert.deepEqual(list.map(s => s.id).sort(), STYLES.slice().sort());
+  const ids = list.map(s => s.id);
+  for (const id of STYLES) assert.ok(ids.includes(id), id);
   for (const s of list) { assert.ok(s.label && s.grouping, s.id); assert.ok(Array.isArray(s.regions)); }
   assert.throws(() => E.sceneBuildingStyleDefine('Bad Id', { label: 'x' }), /bad id/);
   assert.throws(() => E.sceneBuildingStyleDefine('nolabel', {}), /label/);

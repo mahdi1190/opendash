@@ -17,7 +17,8 @@
    sceneLightKey(L, season)    the quantised light: sprites and bitmaps re-bake only when it changes
    sceneSpriteKey(...)         the sprite cache key (6.3)
    sceneAnimPose(a, t, L, x)   one hook's object-local affine matrix [a b c d e f] and alpha at time t
-   sceneActorAt(a, t)          an actor's place on its path at t: {x, y, s, dir, alpha}
+   sceneActorAt(a, t)          an actor's place on its path at t: {x, y, s, dir, alpha, go} (a timed path: waits, faces, jumps)
+   sceneActorFacing(a, t, pos) its facing from -1 to 1 (a reversal in view turns over a.turn s instead of snapping)
    sceneFlockAt(f, i, t)       bird i of a flock at t: {x, y, s, dir}
    sceneParticleSet / sceneParticleAt   seeded season particles (petals, motes, leaves, snow) and rain
    sceneBakePlan(C)            which layers share a bake bitmap (at most 5 land bitmaps + the sky)
@@ -96,7 +97,21 @@ function _scCol(c, L, haze, tint) { return typeof sceneColour === 'function' && 
 function _scRndOf(seed) { let s = (seed >>> 0) || 1; return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296); }
 
 /** Conservative bounds [x0, y0, x1, y1] of SVG path data (control points included), mapped through m. */
+const _scPathBoxMemo = new Map();   // path text -> its raw bounds (the same path is boxed for every scale, part and light of its sprite)
 function scenePathBox(d, m) {
+  const key = typeof d === 'string' && d.length > 24 ? d : null;
+  let b = key ? _scPathBoxMemo.get(key) : undefined;
+  if (b === undefined) {
+    b = _scPathBoxRaw(d);
+    if (key) { if (_scPathBoxMemo.size > 30000) _scPathBoxMemo.clear(); _scPathBoxMemo.set(key, b); }
+  }
+  if (!b) return null;
+  const x0 = b[0], y0 = b[1], x1 = b[2], y1 = b[3];
+  if (!m) return [x0, y0, x1, y1];
+  const pts = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map(([x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]);
+  return [Math.min(...pts.map(p => p[0])), Math.min(...pts.map(p => p[1])), Math.max(...pts.map(p => p[0])), Math.max(...pts.map(p => p[1]))];
+}
+function _scPathBoxRaw(d) {
   const tok = String(d || '').match(/[MLHVCSQTAZmlhvcsqtaz]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g);
   if (!tok) return null;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, cx = 0, cy = 0, sx = 0, sy = 0, cmd = 'M', i = 0;
@@ -115,9 +130,7 @@ function scenePathBox(d, m) {
     if (U === 'M') { sx = cx; sy = cy; cmd = rel ? 'l' : 'L'; }
   }
   if (!isFinite(x0)) return null;
-  if (!m) return [x0, y0, x1, y1];
-  const pts = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map(([x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]);
-  return [Math.min(...pts.map(p => p[0])), Math.min(...pts.map(p => p[1])), Math.max(...pts.map(p => p[0])), Math.max(...pts.map(p => p[1]))];
+  return [x0, y0, x1, y1];
 }
 
 /**
@@ -184,15 +197,117 @@ function _scLerpTab(tab, y) {
 }
 /** An actor's place at t: along its path at `speed` units per second from `offset` (0..1 of the length). */
 function sceneActorAt(a, t) {
-  const path = a.path || [[0, 0], [1, 0]], len = a.len || 1, d0 = (a.offset || 0) * len + (a.speed || 0) * t;
+  const path = a.path || [[0, 0], [1, 0]];
+  const tl = _scActorTimed(path);
+  if (tl) return _scActorAtTimed(a, tl, t);
+  const len = a.len || 1, d0 = (a.offset || 0) * len + (a.speed || 0) * t;
   let d, back = false, alpha = 1;
   if (a.loop === 'pingpong') { const u = ((d0 % (2 * len)) + 2 * len) % (2 * len); back = u > len; d = back ? 2 * len - u : u; }
   else { d = ((d0 % len) + len) % len; if (a.loop === 'fade') alpha = _scClamp(Math.min(d, len - d) / 60, 0, 1); }
+  const dirs = _scPathDirs(path);
   let i = 1, acc = 0;
-  for (; i < path.length; i++) { const sl = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); if (acc + sl >= d || i === path.length - 1) { const u = sl ? _scClamp((d - acc) / sl, 0, 1) : 0, x = path[i - 1][0] + (path[i][0] - path[i - 1][0]) * u, y = path[i - 1][1] + (path[i][1] - path[i - 1][1]) * u, dx = path[i][0] - path[i - 1][0];
-    const dir = (dx < 0) !== back ? -1 : 1;
+  for (; i < path.length; i++) { const sl = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); if (acc + sl >= d || i === path.length - 1) { const u = sl ? _scClamp((d - acc) / sl, 0, 1) : 0, x = path[i - 1][0] + (path[i][0] - path[i - 1][0]) * u, y = path[i - 1][1] + (path[i][1] - path[i - 1][1]) * u;
+    const dir = (dirs[i] < 0) !== back ? -1 : 1;
     return { x, y, s: (a.s || 1) * (a.sByY ? _scLerpTab(a.sByY, y) : 1), dir, alpha }; } acc += sl; }
   return { x: path[0][0], y: path[0][1], s: a.s || 1, dir: 1, alpha };
+}
+/**
+ * The facing of each step of a path (index i: the step from point i - 1 to i): the sign of its dx; a step straight up or down
+ * (dx 0) keeps the facing of the step before it (round the loop), so a mover pausing on the spot never flips back and forth.
+ */
+const _scDirsMemo = new WeakMap();
+function _scPathDirs(path) {
+  let d = _scDirsMemo.get(path);
+  if (d) return d;
+  const n = path.length, raw = new Array(n).fill(0);
+  for (let i = 1; i < n; i++) { const dx = path[i][0] - path[i - 1][0]; raw[i] = dx < 0 ? -1 : dx > 0 ? 1 : 0; }
+  let cur = 1;
+  for (let i = n - 1; i >= 1; i--) if (raw[i]) { cur = raw[i]; break; }
+  d = [0];
+  for (let i = 1; i < n; i++) { if (raw[i]) cur = raw[i]; d[i] = cur; }
+  _scDirsMemo.set(path, d);
+  return d;
+}
+/**
+ * A TIMED path (any point with more than [x, y]): points [x, y, wait, face, dur]. The mover travels to each point at its speed
+ * (dur: that leg's seconds instead; 0: a jump, no time), then waits there `wait` seconds facing `face` (1 | -1; 0 or none: the
+ * way it came). One cycle lasts the sum of the legs and waits; offset is a fraction of the cycle. Scripted acts (a dog at
+ * fetch, a heron's hunt) pause, turn and swap actors at exact times this way: no zigzag "pause" (a mover jittering on the
+ * spot and flipping its facing every step), no visible crossing into a hidden row. Returns null for a plain path.
+ */
+const _scTimedMemo = new WeakMap();
+function _scActorTimed(path) {
+  let tl = _scTimedMemo.get(path);
+  if (tl !== undefined) return tl;
+  tl = null;
+  if (path.some(p => p.length > 2)) {
+    // per point: arrive (a leg; dur null: at the actor's speed), then wait
+    const legs = [];
+    let face = 1;
+    for (let i = 0; i < path.length; i++) {
+      const p = path[i], q = i ? path[i - 1] : null, dx = q ? p[0] - q[0] : 0;
+      if (q) { const dist = Math.hypot(dx, p[1] - q[1]), dur = p[4] == null ? null : Math.max(0, +p[4]); if (dx) face = dx < 0 ? -1 : 1; legs.push({ kind: 'go', from: q, to: p, dist, dur, dir: face }); }
+      const w = Math.max(0, +p[2] || 0);
+      if (p[3] === 1 || p[3] === -1) face = p[3];
+      if (w > 0) legs.push({ kind: 'wait', at: p, w, dir: face });
+    }
+    // the facing at the start of the cycle is the one it ends with (a loop)
+    tl = { legs, path };
+  }
+  _scTimedMemo.set(path, tl);
+  return tl;
+}
+const _SC_GO_RAMP = 0.15;   // seconds for the legs to come to rest after a stop (and to get going before a start)
+function _scActorAtTimed(a, tl, t) {
+  const sp = Math.max(1e-6, a.speed || 20);
+  // the legs' times at this speed (memoised: one actor, one speed)
+  if (!tl.at || tl.at.sp !== sp) {
+    let T0 = 0;
+    const ls = tl.legs.map(l => { const d = l.kind === 'wait' ? l.w : l.dur != null ? l.dur : l.dist / sp; const r = Object.assign({ t0: T0, d }, l); T0 += d; return r; });
+    tl.at = { sp, legs: ls, T: T0 };
+  }
+  const legs = tl.at.legs, T = tl.at.T;
+  if (!(T > 0)) return { x: tl.path[0][0], y: tl.path[0][1], s: (a.s || 1) * (a.sByY ? _scLerpTab(a.sByY, tl.path[0][1]) : 1), dir: 1, alpha: 1, go: 0, cycle: 0 };
+  const w0 = (a.offset || 0) * T + t;
+  let u, back = false;
+  if (a.loop === 'pingpong') { const v = ((w0 % (2 * T)) + 2 * T) % (2 * T); back = v > T; u = back ? 2 * T - v : v; }
+  else u = ((w0 % T) + T) % T;
+  let x = tl.path[0][0], y = tl.path[0][1], dir = 1, go = 0;
+  // the leg u falls in: the last one starting at or before u (a jump takes no time)
+  let k = 0;
+  for (let i = 0; i < legs.length; i++) if (legs[i].t0 <= u && (legs[i].d > 0 || legs[i].t0 < u)) k = i;
+  const L = legs[k];
+  if (L.kind === 'go') {
+    const f = L.d > 0 ? _scClamp((u - L.t0) / L.d, 0, 1) : 1;
+    x = L.from[0] + (L.to[0] - L.from[0]) * f; y = L.from[1] + (L.to[1] - L.from[1]) * f; dir = L.dir; go = L.d > 0 && L.dist > 0 ? 1 : 0;
+  } else {
+    x = L.at[0]; y = L.at[1]; dir = L.dir;
+    // the legs settle after a stop and swing up before the next start (a walk hook's swing scales with go)
+    const since = u - L.t0, until = L.t0 + L.d - u, prevGo = k > 0 && legs[k - 1].kind === 'go' && legs[k - 1].d > 0, nextGo = k + 1 < legs.length && legs[k + 1].kind === 'go' && legs[k + 1].d > 0;
+    go = Math.max(prevGo ? 1 - _scSmooth(since / _SC_GO_RAMP) : 0, nextGo ? 1 - _scSmooth(until / _SC_GO_RAMP) : 0);
+  }
+  if (back) dir = -dir;
+  let alpha = 1;
+  if (a.loop === 'fade') alpha = _scClamp(Math.min(u, T - u) * sp / 60, 0, 1);
+  return { x, y, s: (a.s || 1) * (a.sByY ? _scLerpTab(a.sByY, y) : 1), dir, alpha, go };
+}
+function _scSmooth(v) { const u = _scClamp(v, 0, 1); return u * u * (3 - 2 * u); }
+/**
+ * An actor's facing as a number from -1 to 1 at t: its direction, except for `turn` seconds (a.turn, default 0.3) after it
+ * reverses while in view, when it turns through side-on (the sprite narrows to nothing and opens the other way) instead of
+ * snapping round in one frame. pos(t) -> { dir, s } is the actor's own place function (v1 path, timed path or v2 ground).
+ */
+function sceneActorFacing(a, t, pos, now) {
+  const tau = a.turn != null ? +a.turn : 0.3, p = now || pos(t);
+  if (!(tau > 0)) return p.dir;
+  const q = pos(t - tau);
+  if (q.dir === p.dir) return p.dir;
+  let lo = t - tau, hi = t;
+  for (let i = 0; i < 7; i++) { const mid = (lo + hi) / 2; if (pos(mid).dir === q.dir) lo = mid; else hi = mid; }
+  // a turn made out of sight (a hidden row, scale 0) is not shown
+  if (!(pos(lo).s > 0) || !(pos(hi).s > 0)) return p.dir;
+  const k = _scSmooth((t - hi) / tau);
+  return q.dir + (p.dir - q.dir) * k;
 }
 /** Bird i of a flock at t: seeded height, speed and drift; the flock crosses its area and wraps. */
 function sceneFlockAt(f, i, t) {

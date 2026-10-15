@@ -480,7 +480,7 @@
   def('person.kayaker', {
     pick: [11, 6, 7, 3],
     def: { size: [70, 44], parts: ['legB', 'body', 'legA', 'hull', 'paddle'], anim: { paddle: { dy: 0.7, deg: 1.5, period: 2.4 }, turn: { part: 'paddle', pivot: [10, -26], deg: 22, period: 1.6, hold: 0 } },
-      shadow: false, tags: TAGS(['kayak', 'canoe', 'river', 'lake', 'canal', 'harbour'], ['kit:temperate', 'kit:water']) },
+      shadow: false, tags: TAGS(['kayak', 'canoe', 'river', 'lake', 'canal', 'harbour'], ['kit:temperate', 'kit:water']).concat(['role:boat']) },
     over: (s, v) => ({ hold: null, bag: null, legs: 'seated', seat: 3, hat: s === 'summer' ? { kind: 'sunhat', col: 'stone', band: 'teal' } : { kind: 'helmet', col: ['red', 'white', 'yellow', 'sky'][v] },
       top: { kind: 'jacket', col: ['red', 'mustard', 'teal', 'navy'][v] }, arms: { far: { hand: [13, -29] }, near: { hand: [8, -24] } } }),
     make: (o, v) => {
@@ -512,6 +512,68 @@
       return { hull, sail, legB: shift(f.legB), body: shift(f.body), legA: shift(f.legA), side };
     },
   });
+
+  /* ================= DIRECTIONAL VIEWS (docs/dev/SCENE_ENGINE_V2.md 4.3) =================
+     The pool walkers that walk paths in the Hampshire scenes, seen head on, from behind and three-quarter (sceneMoverViews):
+     the same pool people and wardrobes as their side objects, so a variant is the same person from any side. */
+  if (typeof sceneMoverViews !== 'undefined') {
+    const MV = sceneMoverViews, VIEWS = ['q-front', 'front', 'q-back', 'back'], VID = { 'q-front': 'qfront', front: 'front', 'q-back': 'qback', back: 'back' };
+    const SEEN = { 'q-front': 'three-quarter, coming toward the camera', front: 'head on', 'q-back': 'three-quarter, going away', back: 'from behind' };
+    const withHooks = (parts, hooks) => { Object.defineProperty(parts, '$anim', { value: hooks, enumerable: false }); return parts; };
+    const viewsOf = (side, size, pick, over, build, shadow, partsOf) => {
+      const sd = sceneObj(side), links = {};
+      if (!sd) return;
+      for (const view of VIEWS) {
+        const id = side + '-' + VID[view];
+        PP.define({
+          id, category: 'person', size, variants: pick.length, seasonal: true, shapeBySeason: true, flippable: true, weight: 0, parts: partsOf ? partsOf(view) : ['legB', 'body', 'legA', 'armA'],
+          palette: PAL, night: NIGHT, detailPx: true, shadow: shadow || { rx: 12, ry: 2.4, h: 64 }, real: sd.real || { h: 1.72, l: 0.6, w: 1.0 },
+          tags: (sd.tags || []).filter(x => x !== 'role:walker').concat([view, 'view', 'role:walker']), credit: side + ' seen ' + SEEN[view] + ' (sceneMoverViews.figure)',
+          build(v, r, ctx) { const o = look(A[pick[v]], ctx.season, over, v); return build(view, v, ctx.season, o); },
+        });
+        links[view] = id;
+      }
+      links.rear = links.back; links.q = links['q-front'];
+      MV.link(side, links);
+    };
+    // person.elderly-couple: two older people side by side, arm in arm, a slow short stride
+    const PARTNER = [5, 3, 4, 5];
+    viewsOf('person.elderly-couple', [40, 62], [9, 4, 5, 2], () => ({ age: 'older', hold: null }), (view, v, se, o) => {
+      const yaw = MV.YAW[view] * Math.PI / 180, c = Math.cos(yaw), sn = Math.sin(yaw), end = Math.abs(sn) < 0.01;
+      const lat = -10, ox = lat * c * (end ? 1 : 1.3), meet = [ox * 0.5, -36];
+      const a = MV.figure(o, view, { hand: { far: meet }, deg: 12, period: 1.25, bob: 0.8, armDeg: 8 });
+      const po = look(A[PARTNER[v]], se, { age: 'older', hold: null });
+      const b = MV.figure(po, view, { dx: ox, hand: { near: [meet[0] - ox, meet[1]] }, deg: 12, period: 1.25, bob: 0.8, armDeg: 8 });
+      // the partner walks on its own hook (its hip), drawn over the lead when nearer the camera
+      const pHook = Object.assign({}, b.hooks[0], { parts: ['pB', 'pA'] });
+      return withHooks({ pB: b.legB, pBody: [...b.body, ...b.armA], pA: b.legA, legB: a.legB, body: a.body, legA: a.legA, armA: a.armA }, [a.hooks[0], pHook]);
+    }, { rx: 18, ry: 2.4, h: 64 }, view => {
+      const sn = Math.sin(MV.YAW[view] * Math.PI / 180), P4 = ['pB', 'pBody', 'pA'], L4 = ['legB', 'body', 'legA', 'armA'];
+      return 10 * sn > 0.5 ? [...L4, ...P4] : [...P4, ...L4];
+    });
+    // person.buggy-walker: pushing the buggy ahead (head on it is nearer and drawn over; going away farther and drawn under)
+    const BCOL = ['teal', 'navy', 'red', 'charcoal'];
+    viewsOf('person.buggy-walker', [44, 64], [0, 2, 6, 8], () => ({ hold: null, bag: null }), (view, v, se, o) => {
+      const back = view === 'back' || view === 'q-back', end = view === 'front' || view === 'back', col = BCOL[v];
+      const f = MV.figure(o, view, end ? { hand: { far: [2.6, -37], near: [-2.6, -37] } } : { hand: { far: [5.6, -37], near: [4.8, -36.4] } });
+      let bb;
+      if (end) {
+        bb = [line(t('tyre', 0), 1.6, P('M', -6.6, -4.8, 'L', -6.6, -0.4, 'M', 6.6, -4.8, 'L', 6.6, -0.4)), line(t('iron', 0), 0.9, P('M', -6.4, -6, 'L', -4.6, -37, 'M', 6.4, -6, 'L', 4.6, -37, 'M', -4.6, -37.4, 'L', 4.6, -37.4)),
+          [t(col, 0), P('M', -6, -22, 'Q', 0, -24, 6, -22, 'L', 6.4, -11, 'Q', 0, -9.6, -6.4, -11, 'Z')], [t(col, 1), P('M', -6.4, -21, 'Q', -6, -31, 0, -31.6, 'Q', 6, -31, 6.4, -21, 'Q', 0, -23.4, -6.4, -21, 'Z')]];
+        if (!back) bb.push([t(col, 3), P('M', -4.8, -21.4, 'Q', 0, -23, 4.8, -21.4, 'L', 4.8, -13, 'Q', 0, -12, -4.8, -13, 'Z')], [t('cream', 0), P('M', -4.4, -16, 'Q', 0, -17.4, 4.4, -16, 'L', 4.6, -11.6, 'Q', 0, -10.6, -4.6, -11.6, 'Z')],
+          { f: t('iron', 1), d: P('M', -0.8, -9.4, 'L', 0.8, -9.4, 'L', 0.8, -8, 'L', -0.8, -8, 'Z'), glow: 'led' });
+        else bb.push({ f: t('iron', 1), d: P('M', -0.8, -9.4, 'L', 0.8, -9.4, 'L', 0.8, -8, 'L', -0.8, -8, 'Z'), glow: 'led' });
+        bb = MV.xform(bb, 1, 0, 1, back ? -2 : 1.6);
+      } else bb = MV.xform(buggy(col, v === 1 ? 'pram' : 'buggy'), 0.62, back ? -2 : -1, 1, back ? -1.4 : 0.6);
+      return withHooks({ legB: f.legB, body: f.body, legA: f.legA, armA: f.armA, buggy: bb }, f.hooks);
+    }, { rx: 16, ry: 2.6, h: 64 }, view => (view === 'back' || view === 'q-back' ? ['buggy', 'legB', 'body', 'legA', 'armA'] : ['legB', 'body', 'legA', 'armA', 'buggy']));
+    // person.kayaker: three-quarter is the side drawing squeezed (the kayak an ellipse-ish hull); head on falls back to these
+    for (const [q, away] of [['qfront', false], ['qback', true]]) {
+      const d = sceneObj('person.kayaker') && MV.foreshorten('person.kayaker', { id: 'person.kayaker-' + q, k: 0.42, away });
+      if (d) sceneObjDefine(d);
+    }
+    if (sceneObj('person.kayaker')) MV.link('person.kayaker', { 'q-front': 'person.kayaker-qfront', 'q-back': 'person.kayaker-qback', q: 'person.kayaker-qfront' });
+  }
 
   void SEASONS;
 })();

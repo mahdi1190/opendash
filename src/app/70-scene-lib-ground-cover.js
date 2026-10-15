@@ -49,7 +49,8 @@
     id: 'ground.petals', category: 'ground', size: [56, 10], variants: 2, seasonal: true, flippable: true, weight: 0,
     real: { h: 0.08, l: 0.6, w: 0.6 },
     palette: bySeason({
-      petal: { spring: ['#fbe4ec', '#f4c4d4', '#ffffff'], summer: ['#e8d8d0', '#d8c0b8', '#f0e8e0'], autumn: ['#c8a890', '#b49078', '#d8c0a8'], winter: ['#d8d0cc', '#c8c0bc', '#e8e4e0'] },
+      // fresh blossom only in spring; placed in another season the scatter reads as old leaf bits (no white petals in winter)
+      petal: { spring: ['#fbe4ec', '#f4c4d4', '#ffffff'], summer: ['#8a7a4a', '#7a6a40', '#9a8a58'], autumn: ['#a8683a', '#8a5a30', '#c08a4a'], winter: ['#6a5640', '#5a4836', '#7a6450'] },
     }),
     tags: ['uk', 'blossom', 'petals', 'spring', 'cover', 'park', 'kit:temperate', 'kit:urban', 'role:ground'],
     credit: 'v2 seasonal cover (SCENE_ENGINE_V2.md 10)',
@@ -75,7 +76,8 @@
     build(v, r, ctx) {
       let blades = '', blades2 = '', pet = '', pet2 = '', eye = '', cel = '';
       for (let i = 0; i < 14; i++) { const x = rr(r, -20, 20), h = rr(r, 4, 9), a = rr(r, -3, 3); const b = `M${f1(x - 1)} 0Q${f1(x + a * 0.4)} ${f1(-h * 0.6)} ${f1(x + a)} ${f1(-h)}Q${f1(x + a * 0.3)} ${f1(-h * 0.5)} ${f1(x + 1)} 0z`; if (i % 2) blades += b; else blades2 += b; }
-      const nd = ctx.season === 'winter' ? 1 : 3 + v;
+      // lawn daisies flower spring and summer; a late one in autumn, none in winter (the clump stays as a grass tuft)
+      const nd = ctx.season === 'winter' ? 0 : ctx.season === 'autumn' ? (v === 1 ? 1 : 0) : 3 + v;
       for (let i = 0; i < nd; i++) {
         const x = rr(r, -17, 17), y = -rr(r, 6, 12), rx = rr(r, 2.4, 3.4);
         const pd = `M${f1(x - rx)} ${f1(y)}a${f1(rx)} ${f1(rx * 0.6)} 0 1 0 ${f1(2 * rx)} 0a${f1(rx)} ${f1(rx * 0.6)} 0 1 0 ${f1(-2 * rx)} 0z`;
@@ -83,7 +85,7 @@
         eye += `M${f1(x - 0.9)} ${f1(y)}a0.9 0.7 0 1 0 1.8 0a0.9 0.7 0 1 0 -1.8 0z`;
         blades += `M${f1(x - 0.3)} ${f1(y + 1)}L${f1(x + 0.3)} ${f1(y + 1)}L${f1(x + 0.5)} 0L${f1(x - 0.5)} 0z`;
       }
-      if (v === 2) { const x = rr(r, -12, 12), y = -rr(r, 5, 8); cel += `M${f1(x - 2.2)} ${f1(y)}a2.2 1.3 0 1 0 4.4 0a2.2 1.3 0 1 0 -4.4 0z`; }
+      if (v === 2 && ctx.season === 'spring') { const x = rr(r, -12, 12), y = -rr(r, 5, 8); cel += `M${f1(x - 2.2)} ${f1(y)}a2.2 1.3 0 1 0 4.4 0a2.2 1.3 0 1 0 -4.4 0z`; }
       return tidy({ body: [['@blade.0', blades2], ['@blade.1', blades], ['@petal.1', pet2], ['@petal.0', pet], ['@eye', eye], ['@cel', cel]] });
     },
   });

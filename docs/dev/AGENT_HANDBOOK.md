@@ -5,6 +5,8 @@ you do every step yourself, from the first file to the local commit.** Copy-past
 (`scene-builder.md`: one real place composed from library objects; `painted-scene.md`: one real place painted by image
 generation and animated by the engine; `object-artist.md`: new library objects). Each runs end to end from one paste.
 
+**Before any scene work, read `docs/dev/SCENE_LESSONS.md`** (past mistakes, their causes and the rules that prevent them).
+
 ## 1. What a scene is
 
 An OpenDash scene is a full-screen 1600 x 900 animated illustration of one real place, drawn live in the browser by the

@@ -1,0 +1,133 @@
+{
+ "about": "a narrowboat whose hull overlaps the towpath, set across the cut: it ends inside the water, parallel to the bank",
+ "expect": {
+  "nb": {
+   "kept": true,
+   "actions": [
+    "snap",
+    "rotate"
+   ],
+   "rules": [
+    "badAttach",
+    "orient"
+   ],
+   "inWater": "cut",
+   "parallel": 0
+  }
+ },
+ "spec": {
+  "v": 3,
+  "place": {
+   "lat": 51.28,
+   "lon": -0.83,
+   "region": "hampshire"
+  },
+  "camera": {
+   "eye": 1.65,
+   "fov": 62,
+   "horizon": 460,
+   "heading": 0
+  },
+  "surfaces": [
+   {
+    "id": "verge-l",
+    "kind": "grass",
+    "poly": [
+     [
+      -60,
+      1
+     ],
+     [
+      -10,
+      1
+     ],
+     [
+      -10,
+      200
+     ],
+     [
+      -60,
+      200
+     ]
+    ]
+   },
+   {
+    "id": "cut",
+    "kind": "water",
+    "water": "canal",
+    "poly": [
+     [
+      -10,
+      1
+     ],
+     [
+      6,
+      1
+     ],
+     [
+      6,
+      200
+     ],
+     [
+      -10,
+      200
+     ]
+    ],
+    "shallow": 0.6
+   },
+   {
+    "id": "tow",
+    "kind": "towpath",
+    "path": [
+     [
+      7.5,
+      1
+     ],
+     [
+      7.5,
+      200
+     ]
+    ],
+    "width": 3
+   },
+   {
+    "id": "verge-r",
+    "kind": "grass",
+    "poly": [
+     [
+      9,
+      1
+     ],
+     [
+      60,
+      1
+     ],
+     [
+      60,
+      200
+     ],
+     [
+      9,
+      200
+     ]
+    ]
+   }
+  ],
+  "entities": [
+   {
+    "obj": "boat.narrowboat",
+    "id": "nb",
+    "at": [
+     5.5,
+     40
+    ],
+    "facing": 35,
+    "attach": "water"
+   }
+  ],
+  "backdrop": {
+   "style": "woodland"
+  },
+  "seed": 5
+ }
+}

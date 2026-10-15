@@ -113,6 +113,8 @@ function _scbgClip2(subject, clip) {
 
 /* ---------- styles (19.3) ---------- */
 const _scbgStyles = new Map();
+/** Extension points a style file fills (docs/dev/WORLD_ENGINE.md 14.2): element kinds drawn on a wall plane, and block kinds expanded into faces. */
+const _scbgElemKinds = {}, _scbgBlockKinds = {};
 const _SCBG_ROOFS = ['gable', 'hip', 'mansard', 'flat', 'butterfly', 'pitched-side'];
 /** Register a style: DATA (materials, windows, doors, roofs, chimneys, shopfronts, seasons, night) plus small layout hooks. */
 function sceneBuildingStyleDefine(id, style) {
@@ -197,6 +199,8 @@ function sceneBuildingResolve(b) {
   if (Array.isArray(st.roofs) && !_SCBG_ROOFS.includes(b.roof)) sp.roof = _scbgPickW(r, st.roofs); else r();
   sp.dutch = !!st.dutch && r() < st.dutch;
   sp.rnd = sceneRnd(sceneHash('bg|' + st.id + '|' + seed + '|layout'));   // the layout's own stream (window lights, flints, bricks)
+  sp.crown = typeof b.crown === 'string' ? b.crown : null;   // a key of the style's `crowns` (towers and domes: 70-scene-gen-1civic.js)
+  if (typeof st.resolve === 'function') st.resolve(sp, b);   // a style's own seeded choices, from its own stream (no other style's draws move)
   return sp;
 }
 
@@ -349,7 +353,9 @@ function _scbgModel(b, sp, foot) {
   }
   // the style's own blocks beside the building (a mill's engine-house chimney)
   if (typeof st.extraBlocks === 'function') for (const bk of st.extraBlocks(sp, { foot, W, Dp, E, H, Q, quad }) || []) blocks.push(bk);
-  return { faces, blocks, E: wallE, E0, H: Math.max(H, wallE), W, Dp, quad, Q, roofZ, zs: sp.zs, roof };
+  const model = { faces, blocks, E: wallE, E0, H: Math.max(H, wallE), W, Dp, quad, Q, roofZ, zs: sp.zs, roof };
+  if (typeof _scbcModel === 'function') _scbcModel(b, sp, foot, model);   // civic crowns: stacks of towers and domes on the roof (70-scene-gen-1civic.js)
+  return model;
 }
 
 /* ---------- facade layout: elements in metres on a wall plane (s along, z up) ---------- */
@@ -358,6 +364,7 @@ function _scbgModel(b, sp, foot) {
  * front()), 'side' a simple column of windows (or none), 'back' a plain rear, 'party' nothing but texture.
  */
 function _scbgLayout(sp, face, model) {
+  if (typeof face.layout === 'function') return face.layout(sp, face, model);   // a style's own face (stacked jetty storeys)
   const st = sp.style, len = face.plane.len, zs = sp.zs, nS = sp.storeys, out = { elems: [], blocks: [] };
   if (face.role === 'party') { out.elems.push({ k: 'tex', s0: 0, s1: len, z0: 0, z1: model.E }); return out; }
   out.elems.push({ k: 'tex', s0: 0, s1: len, z0: 0, z1: model.E });
@@ -506,11 +513,12 @@ function _scbgSink(opt) {
   let cur = null;
   const api = {
     shapes, lit, snow, count: 0,
-    begin() { cur = new Map(); },
+    begin(n) { cur = new Map(); api.nrm = !opt.ortho && Array.isArray(n) ? n.map(v => Math.round(v * 100) / 100) : null; },   // n: the face's outward normal, stamped on its shapes so the world can light them by the real sun (79-world-4suntone.js)
     add(layer, sh) {
       if (!sh || !sh.d) return;
       if (sh.part === 'lit') { lit.push(Object.assign({}, sh, { layer })); return; }
       if (sh.part === 'snow') { snow.push(Object.assign({}, sh, { layer })); return; }
+      if (api.nrm && sh.n == null) sh = Object.assign({}, sh, { n: api.nrm });
       const key = layer + '|' + (sh.part || '') + '|' + (typeof sh.f === 'string' ? sh.f : JSON.stringify(sh.f)) + '|' + (sh.op == null ? 1 : sh.op) + '|' + (sh.glow || '') + '|' + (sh.theta == null ? '' : sh.theta) + '|' + (sh.detail ? 1 : 0);
       const noMerge = sh.glow && opt.ortho;
       let L = cur.get(layer); if (!L) cur.set(layer, (L = new Map()));
@@ -533,7 +541,7 @@ function _scbgDrawFace(face, ctx) {
   if (!clipped) return;
   const pts = clipped.map(view.P), shade = _scbgFaceShade(face, ctx);
   if (ctx.debug && face.part === 'wall' && face.edge != null && face.role !== 'block') ctx.debug.walls.push({ edge: face.edge, role: face.role, poly: pts });
-  sink.begin();
+  sink.begin(face.n);
   sink.add(0, { f: _scbgSeasonal(_scbgDark(face.col, shade), ctx.season), d: _scbgPath(pts), op: 1, part: face.part === 'roof' ? 'roof' : 'body' });
   if (face.part === 'roof' && ctx.tier(face.poly) >= 2) _scbgRoofTex(face, ctx);
   if (face.part === 'roof') {
@@ -591,7 +599,7 @@ const _scbgMap = (pl, view, pts2, o) => { const P = pts2.map(([s, z]) => _scbgOn
 function _scbgTierAt(ctx, face, e) {
   if (ctx.view.ortho) return Math.min(ctx.tierCap, 3);
   const pl = face.plane, mid = _scbgOn(pl, (e.s != null ? e.s + (e.w || 0) / 2 : ((e.s0 || 0) + (e.s1 || 0)) / 2), e.z || e.z0 || 0, 0);
-  const hS = ctx.sp.hs[Math.min(ctx.sp.hs.length - 1, e.storey || 0)] || 3;
+  const hS = e.hm || ctx.sp.hs[Math.min(ctx.sp.hs.length - 1, e.storey || 0)] || 3;
   return Math.min(ctx.tierCap, sceneBuildingTier(ctx.view.px(hS, mid)));
 }
 function _scbgDrawElem(e, face, ctx) {
@@ -691,7 +699,7 @@ function _scbgDrawElem(e, face, ctx) {
       if (p) sink.add(9, { f: SCENE_GEN_NIGHT.core, d: _scbgPath(p), op: 0.55, part: 'lit' });
       return;
     }
-    default: return;
+    default: { const h = _scbgElemKinds[e.k]; return h ? h(e, face, ctx, T) : undefined; }
   }
 }
 /** Wall texture hints at tier 3: brick courses, stone courses and joints, flint knaps, render, pebbledash, board marks, tile-hanging. */
@@ -732,7 +740,8 @@ function _scbgTexture(kind, e, face, ctx, col) {
 function _scbgGlowOf(sp, e, face) {
   const r = sceneRnd(sceneHash('glow|' + sp.seed + '|' + (face.edge || 0) + '|' + _scbgR1(e.s) + '|' + _scbgR1(e.z)));
   const a = r(), theta = (Math.floor(r() * 8) + 0.5) / 8;   // 8 buckets, exact in binary (windows merge per bucket)
-  return { kind: e.shopGlass ? 'shop' : a < sp.tv ? 'tv' : a < sp.tv + sp.curtain ? 'curtain' : 'window', theta, refl: r() };
+  const rf = r(), q = sp.style.win && sp.style.win.reflQ;   // reflQ: a few sky-reflection levels (a tall facade's panes merge into few shapes)
+  return { kind: e.shopGlass ? 'shop' : a < sp.tv ? 'tv' : a < sp.tv + sp.curtain ? 'curtain' : 'window', theta, refl: q ? Math.round(rf * q) / q : rf };
 }
 function _scbgDrawWin(e, face, ctx, T) {
   const { view, sink, sp, season } = ctx, pl = face.plane, st = sp.style, wn = st.win || {};
@@ -904,6 +913,7 @@ function _scbgBlockFaces(foot, z0, z1, col, topCol, part, bottomCol) {
 }
 /** Expand a front-wall block (wall-local s, o, z) into faces with their elements, through the wall plane. */
 function _scbgBlock(bk, wall, sp, model) {
+  if (_scbgBlockKinds[bk.kind]) return _scbgBlockKinds[bk.kind](bk, wall, sp, model);
   const pl = wall.plane, W = (s, o) => { const p = _scbgOn(pl, s, 0, o); return [p[0], p[2]]; };
   const st = sp.style, faces = [];
   if (bk.kind === 'bay') {
@@ -1051,7 +1061,7 @@ function _scbgStack(bk) {
 /* ---------- the build: model + layout + draw through a view ---------- */
 /** Draw a building through a view. Returns the sink plus the smoke anchors, signs (fascia boxes) and the model. */
 function _scbgBuild(b, sp, foot, view, opt) {
-  const model = _scbgModel(b, sp, foot);
+  const model = typeof sp.style.build === 'function' ? sp.style.build(b, sp, foot, _scbgModel, opt, view) : _scbgModel(b, sp, foot);   // a style may stack its storeys (jetties)
   const ctx = { view, sp, season: opt.season || 'summer', tierCap: opt.tierCap == null ? 3 : opt.tierCap, sink: _scbgSink({ ortho: view.ortho }), debug: opt.debug ? { walls: [], windows: [] } : null };
   const storeyH = sp.hs[Math.min(1, sp.hs.length - 1)] || 3;
   ctx.tier = (poly) => view.ortho ? Math.min(ctx.tierCap, 3) : Math.min(ctx.tierCap, sceneBuildingTier(view.px(storeyH, poly.reduce((a, p) => (p[2] < a[2] ? p : a), poly[0]))));
@@ -1080,16 +1090,18 @@ function _scbgBuild(b, sp, foot, view, opt) {
     for (const f of bl.faces) {
       if (f.part === 'lit') {
         // canopy lamps: small lit squares (night only)
-        for (const p of f.poly) { const q = view.P(p); if (p[2] < view.near) continue; const r = view.ortho ? 3 : Math.max(0.6, view.px(0.14, p)); ctx.sink.lit.push({ f: SCENE_GEN_NIGHT.lamp, d: _scbgPath([[q[0] - r, q[1] - r], [q[0] + r, q[1] - r], [q[0] + r, q[1] + r], [q[0] - r, q[1] + r]]), op: 1, part: 'lit' }); }
+        for (const p of f.poly) { const q = view.P(p); if (p[2] < view.near) continue; const r = view.ortho ? 3 * ((f.rad || 0.14) / 0.14) : Math.max(0.6, view.px(f.rad || 0.14, p)); ctx.sink.lit.push({ f: f.col && f.rad ? f.col : SCENE_GEN_NIGHT.lamp, d: _scbgPath(f.round ? Array.from({ length: 12 }, (_, k) => [q[0] + r * Math.cos(k * Math.PI / 6), q[1] + r * Math.sin(k * Math.PI / 6)]) : [[q[0] - r, q[1] - r], [q[0] + r, q[1] - r], [q[0] + r, q[1] + r], [q[0] - r, q[1] + r]]), op: f.op == null ? 1 : f.op, part: 'lit' }); }
         continue;
       }
       if (f.flat || view.sees(f.n, f.poly[0])) _scbgDrawFace(f, ctx);
     }
     ctx.sink.blk = false;
   };
+  if (typeof _scbcDrawCrowns === 'function') _scbcDrawCrowns(model, ctx, true);   // crowns inside the footprint stand behind the visible walls
   for (const bl of before) drawBlock(bl);
   for (const f of drawFaces) _scbgDrawFace(f, ctx);
   for (const bl of after) drawBlock(bl);
+  if (typeof _scbcDrawCrowns === 'function') _scbcDrawCrowns(model, ctx, false);
   return { sink: ctx.sink, smoke, shops, model, debug: ctx.debug };
 }
 const _scbgDistOf = (faces, view) => { if (view.ortho) return 0; let s = 0, n = 0; for (const f of faces) for (const p of f.poly) { s += Math.hypot(p[0], p[1] - view.eye, p[2]); n++; } return n ? s / n : 0; };
@@ -1101,7 +1113,7 @@ function _scbgParams(params) {
   const st = sceneBuildingStyle(p.style) || sceneBuildingStyle('victorian-terrace');
   const out = { style: st ? st.id : String(p.style || 'victorian-terrace'), seed: (Number(p.seed) || 0) >>> 0 };
   for (const k of ['frontage', 'storeys', 'depth', 'pitch']) if (Number.isFinite(p[k])) out[k] = Math.round(p[k] * 100) / 100;
-  for (const k of ['roof', 'party', 'door']) if (typeof p[k] === 'string') out[k] = p[k];
+  for (const k of ['roof', 'party', 'door', 'crown']) if (typeof p[k] === 'string') out[k] = p[k];
   if (p.shop) out.shop = typeof p.shop === 'object' ? { kind: String(p.shop.kind || 'bakery'), sign: p.shop.sign ? String(p.shop.sign) : undefined, brand: p.shop.brand ? true : undefined } : true;
   if (p.bays === false || p.bays === 0) out.bays = false;
   if (p.snow) out.snow = true;
@@ -1260,7 +1272,7 @@ function sceneBuildingProject(b, cam, ctx) {
     box: [Math.floor(x0), Math.floor(y0), Math.ceil(x1), Math.ceil(y1)], foot, h: Math.round(T.H * 100) / 100, eave: Math.round(T.E * 100) / 100,
     style: sp0.id, roof: T.roof, seed: sp0.seed, src: b.src || 'gen', n: shapes.length + sink.lit.length, tier: tierCap,
     dz: Math.round(dz * 10) / 10, dc: Math.round(dc * 10) / 10, anchor, smoke: res.smoke.filter(p => p[2] >= view.near).map(p => view.P(p).map(_scbgR1)), signs,
-    walls: res.model.faces.filter(f => f.part === 'wall' && view.sees(f.n, f.poly[0])).map(f => f.edge),
+    walls: [...new Set(res.model.faces.filter(f => f.part === 'wall' && view.sees(f.n, f.poly[0])).map(f => f.edge))],
     debug: res.debug || undefined,
   };
 }

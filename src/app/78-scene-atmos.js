@@ -352,13 +352,15 @@ const sceneAtmosPass = {
       const cam = _scatPCam(C);
       const lights = C.lights && C.lights.length ? C.lights : (typeof sceneLightsOf === 'function' ? sceneLightsOf(C) : []);
       st.lights = lights;
-      st.hid = sceneLightHidden(C, lights);
+      // (a restored bake, 78-scene-cache.js: what hides a light only matters to the baked pools and halos, already in the bitmaps)
+      st.hid = env.restoring ? null : sceneLightHidden(C, lights);
       if (Array.isArray(env.lights)) for (const l of lights) env.lights.push(l);
       const n = C.items.length;
       if (!env.itemHaze || env.itemHaze.length !== n) env.itemHaze = new Float32Array(n);
       if (!env.itemLift || env.itemLift.length !== n) env.itemLift = new Float32Array(n);
       for (let i = 0; i < n; i++) {
         const it = C.items[i];
+        if (env.restoring && !(it.anim && it.anim.length)) continue;   // restored: only a moving placement's sprites are made
         let d = Number.isFinite(it.dz) ? it.dz : it.g && Number.isFinite(it.g.d) ? it.g.d : null;
         if (d == null && cam && it.y > cam.horizon + 0.5) d = cam.f * cam.eye / (it.y - cam.horizon);
         // a placement with no depth (a pixel placement in the sky): the layer's haze as authored, else none

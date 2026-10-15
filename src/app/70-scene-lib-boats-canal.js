@@ -73,6 +73,9 @@
       // the rear deck and its tiller
       body.push(['@deck.0', Q([[B, GW, 0], [B, GW, C0], [0, GW, C0], [0, GW, 0]])]);
       body.push({ s: '@trim.' + l, w: w(3), cap: 'round', d: line([[B / 2, GW, 0.25], [B / 2, GW + 0.75, 0.15], [B / 2 + 0.3, GW + 1.05, -0.35]]) });
+      // the cratch board and cover over the bow well: BEHIND the cabin seen from the stern, so drawn before it (it was painted over the portholes)
+      body.push(['@cratch.' + l, Q([[X0, GW + 0.15, C1], [-1.05, RF - 0.2, C1 + 0.15], [-1.05, GW + 0.2, L - 0.5]])]);
+      body.push(['@cratch.' + l, Q([[X0, GW + 0.15, C1], [X1, GW + 0.15, C1], [-1.05, RF - 0.2, C1 + 0.15]])]);
       // the cabin: rear doors, the side with its shaded base, panel and coachlines, the roof
       body.push(['@cabinD.' + l, Q([[X1, GW, C0], [X1, RF, C0], [X0, RF, C0], [X0, GW, C0]])]);
       for (const [d0, d1] of [[X1 + 0.12, -1.07], [-1.03, X0 - 0.12]]) {
@@ -108,9 +111,7 @@
       const cz = C1 - 1.6, ck = kAt(cz), cb = P(-0.7, RF, cz), ctop = P(-0.7, RF + 0.62, cz), cw = 0.11 * U * ck;
       body.push(['@stove', `M${f1(cb[0] - cw)} ${cb[1]}V${ctop[1]}h${f1(2 * cw)}V${cb[1]}z`]);
       body.push({ s: '@trim.' + l, w: w(1.6), detail: true, d: `M${f1(cb[0] - cw)} ${f1(ctop[1] + 0.1 * U * ck)}h${f1(2 * cw)}M${f1(cb[0] - cw)} ${f1(ctop[1] + 0.25 * U * ck)}h${f1(2 * cw)}` });
-      // the cratch board and cover over the bow well, a coil of rope at the stern
-      body.push(['@cratch.' + l, Q([[X0, GW + 0.15, C1], [-1.05, RF - 0.2, C1 + 0.15], [-1.05, GW + 0.2, L - 0.5]])]);
-      body.push(['@cratch.' + l, Q([[X0, GW + 0.15, C1], [X1, GW + 0.15, C1], [-1.05, RF - 0.2, C1 + 0.15]])]);
+      // a coil of rope at the stern
       body.push({ s: '@rope', w: w(2.6), detail: true, d: line([[-0.25, GW, 0.4], [-0.45, GW + 0.06, 0.65], [-0.25, GW + 0.03, 0.9], [-0.1, GW, 0.6]]) });
       // stove smoke from the chimney (not on summer days): soft puffs drifting up and away
       if (season !== 'summer') {

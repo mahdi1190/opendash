@@ -50,7 +50,7 @@ function sceneProofFleetPondData() {
       if (!def) continue;
       const p = W.proj(x, d, P.camera.water), k = (0.7 + 0.45 * rnd()) * (1 - 0.35 * r);
       islands.push({ obj: rush ? 'plant.proof-fleet-rush' : 'plant.proof-fleet-reed', x: Math.round(p[0] * 10) / 10, y: Math.round(p[1] * 10) / 10, s: Math.round(1000 * k * W.f / d * (rush ? 1.6 : 1.8) / def.size[1]) / 1000,
-        pin: true, variant: Math.floor(rnd() * 3), flip: rnd() < 0.5, reflect: true, shadow: false, anim: false, tint: ['#8a7a40', Math.round(rnd() * 2) * .03] });
+        pin: true, variant: Math.floor(rnd() * 3), flip: rnd() < 0.5, shadow: false, anim: false, tint: ['#8a7a40', Math.round(rnd() * 2) * .03] });
     }
   }
   for(let i=islands.length-1;i>=0;i--)if(islands.slice(0,i).some(q=>Math.hypot(q.x-islands[i].x,q.y-islands[i].y)<10))islands.splice(i,1);
@@ -77,7 +77,7 @@ function sceneProofFleetPondData() {
       { id: 'deck', kind: 'bridge', path: P.deck, width: P.deckW, over: 'water' },
       { id: 'platform', kind: 'bridge', poly: P.platform, over: 'water' },
     ],
-    water: [{ id: 'pond', kind: 'lake', poly: water, edge: 'natural', ripple: 0.25, rings: false }],
+    water: [{ id: 'pond', kind: 'lake', poly: water, edge: 'natural', rings: false }],
     place: walk.concat(bank, islands, [
       { obj: 'bird.coot', at: [-13, 44] },
       { obj: 'bird.moorhen', at: [-3.4, 26] },
@@ -108,13 +108,16 @@ function sceneProofFleetPondData() {
       // The commuter trains follow the two real tracks. Their lit windows travel with them after dusk.
       { obj:'rail.pfp-train', ground:[[-320,railD(-320)-2.25],[320,railD(320)-2.25]],speedM:12,loop:'loop',k:1,seed:35,offset:.17,layer:'mid' },
       { obj:'rail.pfp-train', ground:[[320,railD(320)+2.25],[-320,railD(-320)+2.25]],speedM:11,loop:'loop',k:1,seed:36,offset:.68,variant:1,layer:'mid' },
-      { obj: 'bird.swan', ground: [[-18, 46], [-4, 43], [14, 47]], speedM: 0.3, loop: 'pingpong', k: 1 },
-      { obj: 'bird.swan', ground: [[-15, 48], [-1, 45.5], [16, 49]], speedM: 0.3, loop: 'pingpong', k: 0.95, offset: 0.08 },
     ],
     flocks:[{obj:'bird.gull',n:4,area:[80,210,1450,370],speed:32,s:.42,seed:77,layer:'far'},{obj:'bird.small-flight',n:5,area:[80,430,1460,500],speed:68,s:.45,seed:78,layer:'mid'}],
     flows: [],
   };
   data.scatter.push({obj:{'plant.grass':3,'plant.grass-long':1},on:['reeds-w','reeds-e','cut'],avoid:['deck','platform'],d:[4.6,7.5],n:230,dist:'screen',k:[.25,.6],gap:0,variant:'random',flip:.5,anim:false,species:1,seed:91});
   for(const rule of data.scatter){rule.tint={col:'#8b8058',k:[0,.06]}; if(rule.gap==null)rule.gap=rule.d[0]>=300?30:rule.d[0]>=30?3.5:rule.d[0]>=5?.5:.18;}
+  // the swan pair (10 Oct, the animation overhaul): the swan behaviour preset at its real size, layered behind the boardwalk
+  data.actors.push(...SCENE_FPV.life(data, [
+    { obj: 'bird.swan', preset: 'swan', route: [[-18, 46], [-4, 43], [14, 47]], seed: 11 },
+    { obj: 'bird.swan', preset: 'swan', route: [[-15, 48.5], [-1, 45.5], [16, 49]], seed: 12, offset: 0.5 },
+  ]));
   return data;
 }

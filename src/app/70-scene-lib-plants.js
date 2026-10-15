@@ -66,7 +66,8 @@
     id: 'plant.heather', category: 'plant', size: [78, 38], variants: 4, seasonal: true, flippable: true,
     palette: Object.assign({ base: { glint: '#ffffff' } }, bySeason({
       heather: { spring: ['#3d4f30', '#5f7340', '#93a65c'], summer: ['#3b4a2e', '#55663a', '#7c8d52'], autumn: ['#4a3f30', '#6a5040', '#8a6a55'], winter: ['#3e3a30', '#5a4a3c', '#7a6550'] },
-      bloom: { spring: ['#8a9a55', '#a3b26a'], summer: ['#a8509c', '#c875b8'], autumn: ['#8a5a6a', '#a87a84'], winter: ['#6a4f45', '#80665a'] },
+      // purple in flower (late summer); gone over by October: rusty brown spikes with a last hint of mauve; dead brown in winter
+      bloom: { spring: ['#8a9a55', '#a3b26a'], summer: ['#a8509c', '#c875b8'], autumn: ['#7a5248', '#946a64'], winter: ['#6a4f45', '#80665a'] },
     })),
     anim: { sway: { part: 'body', pivot: [0, 0], deg: 2.5 } },
     tags: ['uk', 'heath', 'heather', 'ling', 'ground-cover', 'kit:temperate', 'role:ground'],
@@ -208,26 +209,54 @@
     daisy: ['#fbfaf2', '#f2c53a', 3.4], buttercup: ['#f6cf22', '#fff09a', 3], campion: ['#e0679a', '#f7a8c8', 3.3], poppy: ['#d93a2a', '#2a1f22', 4.4],
     knapweed: ['#9b5aa8', '#c58ad0', 3], clover: ['#e8b3c7', '#fbe3ec', 2.8], dandelion: ['#f7c01e', '#ffe27a', 3.4], ragwort: ['#f2c21a', '#ffe070', 2.2],
     harebell: ['#8aa2e0'], foxglove: ['#c9559a'], cowparsley: ['#fbfbf2'], celandine: ['#f6d21e', '#fff1a0', 3], anemone: ['#fbf6f2', '#f0d060', 3],
+    primrose: ['#f4e48a', '#e0a030', 3.6],
   };
+  // The season's flowers (the spring bulbs and hedge-bank flowers, then the summer meadow). Autumn and winter draw no
+  // flowers: the patch dies back to seed heads, dried stems and a low leaf clump (built below), so a patch placed in a
+  // spring scene follows the date and never shows a spring flower in October or a dandelion clock in January.
   const MIXES = {
-    spring: [['celandine', 'anemone', 'dandelion'], ['cowparsley', 'campion', 'daisy'], ['dandelion', 'daisy', 'celandine'], ['campion', 'cowparsley', 'anemone']],
+    spring: [['celandine', 'anemone', 'dandelion'], ['cowparsley', 'campion', 'daisy'], ['primrose', 'daisy', 'celandine'], ['campion', 'cowparsley', 'primrose']],
     summer: [['daisy', 'buttercup', 'clover'], ['poppy', 'daisy', 'knapweed'], ['foxglove', 'campion', 'buttercup'], ['knapweed', 'ragwort', 'harebell']],
-    autumn: [['ragwort', 'knapweed'], ['harebell', 'dandelion'], ['knapweed', 'daisy'], ['ragwort', 'harebell']],
   };
   defineObj({
     id: 'plant.wildflowers', category: 'plant', size: [80, 77], variants: 4, seasonal: true, shapeBySeason: true, flippable: true,
-    palette: Object.assign({ base: { stem: '#4f7a35', seed: '#8a7a5a', fluff: '#eeeae0' } }, bySeason({ stem: { spring: '#5a8a3a', summer: '#4f7a35', autumn: '#6a7a3a', winter: '#7a6a4a' } })),
+    palette: Object.assign({ base: { stem: '#4f7a35', seed: '#8a7a5a', fluff: '#eeeae0', frost: '#e6eef2', faded: '#8a6a86' } }, bySeason({
+      stem: { spring: '#5a8a3a', summer: '#4f7a35', autumn: '#7a7a40', winter: '#6e6250' },
+      straw: { spring: '#9aa660', summer: '#b9ad6a', autumn: '#b49a62', winter: '#8e8068' },
+      seed: { spring: '#8a7a5a', summer: '#8a7a5a', autumn: '#5e4430', winter: '#3e3228' },
+      leaf: { spring: '#5a8a3a', summer: '#4f7a35', autumn: '#6a7238', winter: '#5c6048' },
+    })),
     anim: { sway: { part: 'body', pivot: [0, 0], deg: 6 } },
     tags: ['uk', 'meadow', 'verge', 'flowers', 'wildflowers', 'kit:temperate', 'role:ground'],
     credit: "the nature kit's flower symbols (flowerSym)",
     build(v, r, ctx) {
       const body = [], stems = [];
       const leafs = [], umbels = [];
-      if (ctx.season === 'winter') {
-        // winter: dead seed heads and a dandelion clock or two
-        let st = '', hd = '', fl = '';
-        for (let i = 0; i < 6; i++) { const bx = rr(r, -22, 22), h = rr(r, 18, 40), lean = rr(r, -.3, .3), tx = bx + lean * h, ty = -h; st += `M${f1(bx)} 0q${f1(lean * h * .2)} ${f1(-h * .5)} ${f1(tx - bx)} ${f1(ty)}`; if (i % 3 === 0) fl += circ(tx, ty, 4.2); else hd += circ(tx, ty, 2); }
-        return { body: [{ s: '@stem', w: 1.1, d: st }, ['@seed', hd], ['@fluff', fl, .8]] };
+      if (ctx.season === 'autumn' || ctx.season === 'winter') {
+        // autumn: the meadow gone over: straw stems, knapweed knobs, dock spikes, dried umbels over a low leaf clump (one
+        // faded knapweed at most). winter: the same patch withered: fewer, bent bare stems, dark dead heads, frost-tinted tips.
+        const win = ctx.season === 'winter';
+        let st = '', dry = '', hd = '', umb = '', lv = '', frost = '', faded = '';
+        for (let i = 0; i < 9; i++) lv += leafD(rr(r, -22, 22), 0, rr(r, -1.2, 1.2), rr(r, 8, 14) * (win ? .7 : 1), 3);
+        const n = (win ? 6 : 7) + (v % 2) * 3;
+        for (let i = 0; i < n; i++) {
+          const h = rr(r, 18, 40) * (i % 4 === 3 ? 1.35 : 1) * (win && i % 3 === 0 ? .7 : 1), lean = rr(r, -.3, .3) * (win ? 1.5 : 1), bx = rr(r, -24, 24), tx = bx + lean * h, ty = -h;
+          const d = `M${f1(bx)} 0q${f1(lean * h * .2)} ${f1(-h * .5)} ${f1(tx - bx)} ${f1(ty)}`;
+          if (i % 2) dry += d; else st += d;
+          const kind = (i + v) % 4;
+          if (kind === 0) hd += circ(tx, ty, 2.3);   // knapweed / thistle knob
+          else if (kind === 1) { for (let u = 0; u < 4; u++) { const ua = (u / 3 - .5) * 1.5, ux = tx + Math.sin(ua) * 6, uy = ty - Math.cos(ua) * 4; umb += `M${f1(tx)} ${f1(ty + 3)}L${f1(ux)} ${f1(uy)}`; hd += circ(ux, uy, .9); } }   // a dried umbel
+          else if (kind === 2) for (let j = 0; j < 4; j++) hd += circ(tx + j * .5, ty + j * 3, 1.5 - j * .15);   // dock / plantain spike
+          else hd += circ(tx, ty, 1.5) + circ(tx + 2, ty + 3, 1.3);   // seed capsules
+          if (win && i % 2 === 0) frost += circ(tx - .4, ty - .6, 1);
+        }
+        if (!win && v % 2) { const x = rr(r, -14, 14), h = rr(r, 22, 30); st += `M${f1(x)} 0L${f1(x + 2)} ${f1(-h)}`; faded = circ(x + 2, -h, 2.6); }
+        const body = [['@leaf', lv, win ? .7 : .9], { s: '@straw', w: 1.1, d: dry }, { s: '@stem', w: 1.2, d: st }];
+        if (umb) body.push({ s: '@seed', w: .8, d: umb });
+        body.push(['@seed', hd]);
+        if (faded) body.push(['@faded', faded, .85]);
+        if (frost) body.push({ f: '@frost', d: frost, op: .7, detail: true });
+        return { body };
       }
       const kinds = MIXES[ctx.season][v % 4], byCol = new Map(), add = (c, d) => byCol.set(c, (byCol.get(c) || '') + d);
       let st = '';

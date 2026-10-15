@@ -1,0 +1,13 @@
+{ "v": 3, "place": {"lat": 50.37, "lon": -4.14, "region": "devon", "style": "quayside"},
+  "camera": {"eye": 1.7, "fov": 62, "horizon": 440, "heading": 160, "water": -1.8}, "backdrop": {"style": "town-low"},
+  "surfaces": [
+    {"id": "quay", "kind": "pavement", "poly": [[2, 1], [15, 1], [15, 260], [8, 260]]},
+    {"id": "harbour", "kind": "water", "water": "harbour", "poly": [[-200, 1], [2, 1], [8, 260], [-200, 260]]}
+  ],
+  "entities": [
+    {"obj": "boat.fishing-boat", "at": [-4, 26], "attach": "water"},
+    {"obj": "boat.fishing-boat", "at": [-12, 60], "attach": "water"}
+  ],
+  "buildings": [{"id": "quay-row", "foot": [[16, 30], [26, 30], [26, 140], [16, 140]], "storeys": 3, "style": "stone-cottage"}],
+  "life": [{"who": "crowd", "on": "quay", "rate": "6/min"}],
+  "seed": 28 }
