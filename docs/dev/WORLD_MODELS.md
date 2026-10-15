@@ -112,10 +112,10 @@ those 3D points, so a face is projected, clipped at the near plane and sorted co
 | `h.tube(p0, p1, r, hex, mat, role)` | a tube between two model points: a boom, a pipe, a tyre, a log |
 | `h.wheel(a, l, y, r, { w, tyre, rim, spokes, axis })` | a tyre, a rim disc, spokes on the side the eye sees, a hub; axis `'l'` (a cart wheel) or `'a'` |
 | `h.gable(a0, a1, l0, l1, yEave, yRidge, hex, { ridge, over, end })`, `h.hip(...)` | a gable roof with its end triangles, a hip roof (a pyramid when square) |
-| `h.cloth([c00, c10, c11, c01], belly, hex, { nu, nv, stripe, side })` | a sail, awning, flag, tarpaulin: a bilinear patch pushed out by a belly (m), cut into cells, optionally striped |
+| `h.cloth([c00, c10, c11, c01], belly, hex, { nu, nv, stripe, side, seams })` | a sail, awning, flag, tarpaulin: a bilinear patch pushed out by a belly (m), cut into cells by size on screen (smooth shading, never facets), optionally striped, with `seams` panel lines |
 | `h.rail(path, y, height, hex, { post, mid })` | a rail run along a plan path on posts |
 | `h.mast(a, l, y0, y1, { r, rake, spreader, stays })` | a mast with a rake, a spreader with shrouds, stays to model points |
-| `h.hullSides(outline, yBot, yTop \| fn(a, l), hex, mat, role)`, `h.deck(outline, y \| fn, hex)` | the sides of a hull from a plan outline (returns the seen edges, for strakes), a deck over it |
+| `h.hullSides(outline, yBot, yTop \| fn(a, l), hex, mat, role, { keel })`, `h.deck(outline, y \| fn, hex)` | the sides of a hull from a plan outline (`keel`: the half-width at the water relative to the deck, about 0.6 for a V hull; returns the seen edges, for strakes), a deck over it |
 | `worldModelOutline({ L, B, bowLen, bowPow, sternLen, stern: 'round' \| 'transom' \| 'point' })` | `{ outline, half(a), R }`: a hull's plan outline |
 | `h.surface((u, v, off) => p3, { normal })` | decals on a surface: `.rect`, `.ring`, `.windows({ u0, u1, v, step, kind: 'port' \| 'rect', ... })` (lit panes by the seeded rule) |
 | `h.lamp(a, l, y, r, { col, theta })`, `h.litFx(dark)` | a lamp (lit after dusk, with a halo and a world light); the extra of a lit pane |

@@ -201,6 +201,14 @@ test('the kit helpers: wheel, tube, cyl, cloth with a belly, gable and hip roofs
   const belly = run((h) => h.cloth([[-1, -0.5, 1], [1, -0.5, 1], [1, 0.5, 1], [-1, 0.5, 1]], 0.4, '#ccc', { nu: 4, nv: 2 }));
   assert.equal(flat.faces.length, 8);
   assert.ok(belly.box[1] < flat.box[1] - 0.5 || belly.box[3] > flat.box[3] + 0.5, 'a belly changes the silhouette');
+  const sail = run((h) => h.cloth([[-1, -0.5, 1], [1, -0.5, 1], [1, 0.5, 1], [-1, 0.5, 1]], 0.3, '#eeeeee', { seams: 2, role: 'sail' }));
+  assert.ok(sail.faces.filter(f => f.line && f.role === 'sail-seam').length === 2, 'panel seams');
+  assert.ok(sail.faces.filter(f => !f.line).length >= 6, 'cells by size on screen');
+  // a V hull: the base is narrower than the deck
+  const vh = run((h) => { h.hullSides([[-1, -0.5], [1, -0.5], [1, 0.5], [-1, 0.5]], 0, 0.5, '#445566', 'paint', 'hull', { keel: 0.5 }); }, { facing: 0 });
+  const wide = (q) => q.box[2] - q.box[0];
+  const fl = run((h) => { h.hullSides([[-1, -0.5], [1, -0.5], [1, 0.5], [-1, 0.5]], 0, 0.5, '#445566', 'paint', 'hull', { keel: 1 }); }, { facing: 0 });
+  assert.ok(vh.faces.length > 0 && fl.faces.length > 0 && wide(vh) <= wide(fl) + 1e-6);
   // a cylinder is faceted by size; a box shows at most three sides plus its top from above
   const bx = run((h) => h.box(-1, 1, -0.5, 0.5, 0, 1, '#aa8866', '#bb9977', 'paint', 'body'), { facing: 30 });
   assert.ok(bx.faces.length >= 2 && bx.faces.length <= 4, 'a box seen from outside: ' + bx.faces.length);
@@ -308,7 +316,7 @@ test('the frame record draws a model for an entity that carries `model`; its siz
   clean();
   defineCart();
   const spec = { v: 3, place: { lat: 51.5, lon: -0.1, region: 'london' }, camera: { eye: 1.65, fov: 62, horizon: 455, heading: 0 },
-    surfaces: [{ id: 'pave', kind: 'paving', poly: [[-40, 3], [40, 3], [40, 80], [-40, 80]] }],
+    surfaces: [{ id: 'pave', kind: 'plaza', poly: [[-40, 3], [40, 3], [40, 80], [-40, 80]] }],
     entities: [{ id: 'cart-a', obj: 'street.bench', at: [-3, 14], facing: 80, model: { livery: 'blue', size: 1.5, age: 0.6, seed: 7 } },
       { id: 'cart-b', obj: 'street.bench', at: [4, 18], facing: 200 }],
     backdrop: { style: 'canal-wooded' }, seed: 3 };
