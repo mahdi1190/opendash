@@ -1,5 +1,5 @@
 // The civic part of the procedural building generator (src/app/70-scene-gen-1civic.js, 70-scene-gen-2civic-facade.js, the
-// `baroque-civic` style; docs/dev/SCENE_LESSONS.md K): a building's `crown` (towers, domes, clock faces, finials) and its giant-order
+// `baroque-civic` style; docs/dev/SCENE_LESSONS.md M): a building's `crown` (towers, domes, clock faces, finials) and its giant-order
 // facade, in BOTH views (projected and elevation), cheap, deterministic, care-clean, lit by the real sun, never a flat slab.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,4 +1,4 @@
-// World engine: PIXEL CHECKS for render glitches on real renders (the 14 Oct review; docs/dev/SCENE_LESSONS.md section G).
+// World engine: PIXEL CHECKS for render glitches on real renders (the 14 Oct review; docs/dev/SCENE_LESSONS.md section H).
 // Node >= 20, no dependencies. Each detector reads an RGBA image ({ width, height, data }: tools/lib/png.mjs pngDecode) and returns
 // { ok, value, limit, note, ... } so a test, the `glitch` subcommand of tools/world.mjs or a reviewer can run it on any cell.
 //

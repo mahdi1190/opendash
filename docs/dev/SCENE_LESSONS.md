@@ -123,7 +123,7 @@ Found in the first integration (to fix in the engine, not in scenes):
   kingfisher needs a `structure.post` descriptor with a perch point.
 - The 1 m walk grid breaks narrow diagonal paths (a 2.6 m towpath) into pieces; use 0.5 m cells to 60 m as specified.
 
-## F. User review of the first world-engine render (10 Oct, fleet-canal-2 w3)
+## G. User review of the first world-engine render (10 Oct, fleet-canal-2 w3)
 
 These must be fixed IN THE ENGINE before any test scene is shown again:
 - Boats overlap the towpath. A boat's footprint must lie inside a water region, with its hull edge at the bank; the engine must refuse or snap any floating entity whose footprint touches land.
@@ -140,7 +140,7 @@ These must be fixed IN THE ENGINE before any test scene is shown again:
 - An author error can make a scene plainer, never wrong.
 - Foliage hanging from nothing (willow fronds, boughs, branches with no tree). World sense: every attached thing declares its PARENT (a bough needs a trunk, either in frame or clearly just outside it on the same side; fronds need a willow; lamps need a post; lead lines need a dog and a walker). The engine drops or re-attaches orphans at load and logs them.
 
-## G. Render glitches (14 Oct)
+## H. Render glitches (14 Oct)
 
 The user on the first v3 test scenes: "SO SO buggy ... it's an engine problem". Every row was fixed at its cause in the engine (no
 scene was edited) and has a check that failed on the engine as it was: `node --test tests/world-glitch.test.mjs` (one section per
@@ -153,17 +153,17 @@ scene the engine change touches; all 180 cells of the three test scenes pass.
 | Lamp pools drawn as huge, flat, opaque cream ellipses on the quay | A pool was a filled ellipse of the lamp's whole reach at a fixed alpha, one per lamp head, painted over everything at the end of the frame | Every light is a soft additive falloff within `WORLD_LIGHT_CAPS` (pool: peak alpha 0.3, at most 480 scene units wide, a physical falloff from the head's height; halo: at most 26 units, peak 0.5). One pool per lamp, on the ground under what stands there, never on the water (`worldLightDraws`, G1) |
 | Glowing white blobs over walkers and boaters at dawn and night | Every library glow part was a light source with a halo of a fixed reach, including a figure's reflective strips, phone screen and watch LED | A glow part is a source (lamp, head, tail, sign ...) or a lit surface (window, screen). Things that carry glow parts (people, animals) never emit, except a cyclist's opaque lamps; a halo is the glowing part's own size (G1) |
 | Lit windows painted over the trees in front of the building (found while fixing the pools) | The lights were one layer drawn after every chunk | Lit glass is drawn over each member's own sprite inside its chunk, so depth order holds; the chunk is keyed by its lit set and drawn again on a relight when windows come on |
-| Winter trees as bare trunk slabs, birches as white poles, far tree lines gone | Materials came from the part name: the whole `crown` (and `body`) part was leaf and was dropped when bare, though the library's winter form draws its limbs and twig haze in that part | A plant with seasonal art is drawn in the FORM of its own leaf state (`worldMaterialForm`); nothing is dropped from a bare form; the palette's wood colours are bark wherever they are drawn (G2) |
-| A tree bare in late November drawn as its summer art with the crown cut away; budding never shown | The shapes followed the calendar season while the leaves followed the tree's own state | The form follows the leaf state: bare and early bud -> winter form (the twig haze greens as buds break), bud -> spring, turn -> autumn until most leaves are down, full -> summer (G2) |
-| White frost on every winter twig on a mild afternoon (pale lavender limbs at the lens) | The library paints hoar frost with its palette's `frost` colour; the engine drew it as art | Painted frost is the material `rime`: shown on frosty and snowy days only (G6) |
-| Bracken and dock bright orange in January | The autumn turning pick stayed all winter | What stands dead in December to February weathers to a dull russet (G6) |
+| Winter trees as bare trunk slabs, birches as white poles, far tree lines gone | Materials came from the part name: the whole `crown` (and `body`) part was leaf and was dropped when bare, though the library's winter form draws its limbs and twig haze in that part | A plant with seasonal art is drawn in the FORM of its own leaf state (`worldMaterialForm`); nothing is dropped from a bare form; the palette's wood colours are bark wherever they are drawn (G2) Merge of 15 Oct: ONE mechanism, section P's (the leaf state picks the library's seasonal art, `worldMaterialArtSeason`; a brown or grey stroke in a crown is bark) |
+| A tree bare in late November drawn as its summer art with the crown cut away; budding never shown | The shapes followed the calendar season while the leaves followed the tree's own state | The form follows the leaf state: bare and early bud -> winter form (the twig haze greens as buds break), bud -> spring, turn -> autumn until most leaves are down, full -> summer (G2) Merge of 15 Oct: section P's mapping (bud -> spring art from the first bud; turn -> autumn art from 15 % turned) |
+| White frost on every winter twig on a mild afternoon (pale lavender limbs at the lens) | The library paints hoar frost with its palette's `frost` colour; the engine drew it as art | Painted frost is the material `rime`: shown on frosty and snowy days only (G6) Merge of 15 Oct: `worldMaterialRime` fades painted rime and snow by the day's frost and snow (section P) |
+| Bracken and dock bright orange in January | The autumn turning pick stayed all winter | What stands dead in December to February weathers to a dull russet (G6) Merge of 15 Oct: herbs go dormant about seven weeks after they turn and draw the library's winter art (section P): no orange in January or in April |
 | Night as one murky blue-grey soup | The v2 night grade compresses everything into 0.07 to 0.15; the mirror was tinted with the water's DAYLIGHT body colour (a grey veil over every reflection); sun motes stayed ungraded and glowed | The night key (`worldSkyOf(...).nightKey`, a floor of sky light plus the moon): foliage and trunks sink to silhouettes, pale materials catch the key by their own lightness, the paths read as pale ribbons, the mirror is tinted by the water's night colour, motes are graded after dark, the moon's glitter road is drawn. Readability on renders: darks to lights spread >= 0.105 below the horizon (G3) |
 | Moored narrowboats dark at night | A static boat was treated as a vehicle (lit only while moving); hulls in perspective never got lit windows | A moored boat is a home: its windows light by the seeded per-window rule; a hull in perspective by one seeded draw per boat (G6) |
 | Vertical sawtooth zigzag in reflections near the camera | The ripple grew to about 8 px near the camera (wind x 12) on a 27 px period and was blitted in 3-row bands, so each band jumped several pixels | The ripple's shear is capped (at most 0.45 px a row), its amplitude never exceeds the middle distance's cap and shrinks near the camera, bands are 2 rows (G4) |
 | A boardwalk's rails and piles floating across the water as a T with no deck | A walkway with only a side elevation was drawn square to the eye even when it ran away from it (the view fell back to `side`), and an entity's deck was never drawn (only deck surfaces were) | An elevation-only walkway within about 20 degrees of end-on is drawn in perspective: handrails along its real long edges and its deck planks (unless a deck surface already lies there) (G5) |
 | Reflections of a platform or a boat sprite hanging far below it | The near edge of a long footprint was used as the waterline for anything in the water, but a sprite is drawn about its anchor | A sprite mirrors about its own waterline at its anchor; only pieces drawn in perspective mirror about their footprint (G5) |
 
-## H. Detail and composition defaults (14 Oct)
+## I. Detail and composition defaults (14 Oct)
 
 The user: "the scenes are missing so many details ... we iterate on them way too much, so it's an engine problem". Every row is
 fixed in the engine's defaults (kits, fill, ground detail, critic; no scene was edited) and has a check that failed on the engine
@@ -184,7 +184,7 @@ tests/world-kit-fixtures.test.mjs`, and `node tools/world.mjs critic <ref | spec
 | A green with willows, a beach of stones, a civic square chosen for a grass field with a 4 m plaza | The chooser looked at which kinds exist, not at what the view shows | Kits per setting (no willows on a dry green); the chooser weighs the surfaces the camera's cone shows |
 | Reeds at a quay's foot, a framing trunk and a birch overlapping, walkers through a house | Placement checked a floater's anchor only; the fill's index skipped ground-standing 'air' art; people were added to paving that carries a building | A floater's whole footprint is in the water; anything on the ground is indexed; the kit's people never go on paving with a building on it |
 
-## I. Movement, and the checker that looked clean while the page did not (14 Oct)
+## J. Movement, and the checker that looked clean while the page did not (14 Oct)
 
 The user: "people walking into each other ... all the animations are SO SO buggy". The unit tests and the Node invariant run were all
 green, and the page was not. Every row below is fixed in the engine (life, host, anim, tools; no scene was edited) and has a check:
@@ -206,7 +206,7 @@ green, and the page was not. Every row below is fixed in the engine (life, host,
 | The Node invariant run fell back to the checker's own frame record on a slow machine and reported habitat violations that were not there | `worldFrameAt` over 60 ms twice switched to `worldInvariantFrame` for the rest of the process | The tools always ask for the real record (`frameAt: 'render'`); a run that cannot is an error, never a different checker |
 | The Node simulation and the page ran different sims (different ids, different people) | The page builds its world with its own options and date | Check the page. `invariants --browser` and `accept --browser` (item 16.2b) draw every frame of the loop in Chrome and check what was drawn |
 
-## J. Terrain, and a place nobody drew (14 Oct, the first no-example place: Whitby harbour under a 36 m cliff)
+## K. Terrain, and a place nobody drew (14 Oct, the first no-example place: Whitby harbour under a 36 m cliff)
 
 | Mistake | Why it happened | Rule |
 |---|---|---|
@@ -224,7 +224,7 @@ green, and the page was not. Every row below is fixed in the engine (life, host,
 | A frame took 140 ms at 4x CPU throttle, 1.75 s of it vector redraws of walls and buildings | An occluder redraw (a static nearer than a mover) re-ran the vector drawing of a drawn piece for every mover every frame | A static prim is rasterised once per bake (`_wfrPrimCache`, at most 48 bitmaps of 2.5 M px) and every redraw blits it. Profile with a CPU profile of the page (`flush` is the software GPU in a Chrome without one, not the engine) |
 | Mounting a scene again took 2 to 4 s at 4x throttle | The whole world (validate, build, fill, nav) was built again for the same spec | `worldHostWorld` keeps the three last built worlds by spec text and season and hands out a structured clone |
 
-## K. A medieval street from a short spec (14 Oct, the second no-example place: the Shambles, York)
+## L. A medieval street from a short spec (14 Oct, the second no-example place: the Shambles, York)
 
 `node --test tests/world-frontage.test.mjs` (one test per row) and `node tools/world.mjs invariants york-shambles-1-w3 --browser`. No scene was edited to fix a row.
 
@@ -244,7 +244,7 @@ green, and the page was not. Every row below is fixed in the engine (life, host,
 | A raised camera made the lane a thin strip of paving | The horizon row stayed where a street view of open ground wants it | A lane camera looks up a little (the horizon below the middle row): the jetties and the sky slot show, the paving keeps the near third |
 | Family and chat groups overlapped (0.00 to 0.1 m apart) in the first second and now and then later; the browser checker's `personalSpace` fired in 12 of 15 cells | A group member whose formation slot was blocked (a wall, a step of a house) was put exactly on its leader's spot | The slot is tried mirrored, then behind and beside the leader, nearer each time; a member with no free spot is not made (`_wlfGroupSpawn`); separation runs up to six passes |
 
-## L. A grand civic building and a wide river from a short spec (14 Oct, the third no-example place: the Pier Head, Liverpool)
+## M. A grand civic building and a wide river from a short spec (14 Oct, the third no-example place: the Pier Head, Liverpool)
 
 The place: a broad brown tidal river, a ferry landing stage, and three huge Edwardian offices in Portland stone (twin clock towers with copper
 cupolas and bird finials, a corner tower with a dome, a great dome). The spec is short (`79-world-zscene-liverpool-pier-head-1.js`: five
@@ -271,9 +271,9 @@ Open item (the kit and strict-measure owners decide): the strict measure demands
 first 6 m), while the near band (TR3) keeps a 1.3 m prop beyond about 13 m; the kits' near furniture (a bench, a bollard, a planter) therefore
 stands at 3 to 6 m and fills a corner. A tighter fill rule fails the kit fixtures (`civic-square`, `coast`, `terraced-street`: `emptyForeground`).
 
-## K. A cliff nobody drew (14 Oct, the second no-example place: Malham Cove, a 70 m limestone amphitheatre)
+## N. A cliff nobody drew (14 Oct, the second no-example place: Malham Cove, a 70 m limestone amphitheatre)
 
-The terrain of J drew a hill with houses. A 70 m face of rock is another thing, and the place showed a dozen more engine gaps. Every row was
+The terrain of K drew a hill with houses. A 70 m face of rock is another thing, and the place showed a dozen more engine gaps. Every row was
 fixed at its cause (cliff: `79-world-4cliff.js`; strips and drawing: `79-world-4terrain.js`; dry-stone walls: `79-world-4drystone.js`; the beck:
 `79-world-4beck.js`) and has a test in `tests/world-terrain.test.mjs`; the scene is a short spec, `79-world-zscene-malham-cove-1.js`.
 
@@ -298,3 +298,63 @@ fixed at its cause (cliff: `79-world-4cliff.js`; strips and drawing: `79-world-4
 | A narrow lane held walkers 0.27 m apart | 14 a minute, a third of them families walking abreast, in a lane 3.8 m wide | A lane's population is set for its width (singles and couples, 9 a minute) |
 | Every scene measured at 100 to 500 ms a frame, and the pond at 0.6 s on a machine with a real GPU | The perf harness forced a `getImageData` after every blit so the draw time was "honest"; Chrome then rendered that canvas in software (the whole cost showed up as one `save()` a frame) | Frame times are taken as the page runs, with no forced readback: 3 to 4 ms a frame natively, 5 to 50 ms at a 4x CPU throttle. The gates are the cold load and the time to a fully drawn scene (under 5 s at a 4x throttle); frame and warm-load times are reported, not failed. Profile with `Profiler` plus a counter on the canvas calls, never with a flush |
 | A mover's material context was rebuilt for every mover every frame | `worldMaterialFor` and its key were called per draw | One context per entity and 2 m of distance per bake (`_wfrMc`), its key kept on it |
+
+## O. Light and water (audit of 15 Oct, world engine v3)
+
+| Mistake | Why | Rule (test: tests/world-lightwater.test.mjs) |
+|---|---|---|
+| Petals, summer motes (fireflies at night) and autumn leaves fell from an empty sky in every world scene | The world host asked the v2 base for its seasonal screen particles | A world scene has no v2 particles (`particles: 'none'`); its particles come from the world (trees, chimneys) |
+| Lamp pools painted as opaque cream discs over grass, shrubs and kerbs, even at dawn | Pools and halos were one layer drawn over the finished frame at a fixed strength | Light on the ground is drawn under every static and mover, as a soft additive falloff scaled by how dark it is (`worldLightNightK`) |
+| Window halos read as fireflies in the trees and floated between dark panes | Halos were drawn after everything, from a world-space guess of the pane | A halo is drawn with its owner in depth order, on the drawn sprite's own glow point; the lit pane itself glows |
+| A straight glass-slab seam across a pond | Two overlapping water surfaces were two regions: the second painted its base over the first one's mirror | Water surfaces that overlap or touch at one level are one region (one wet mask, base and mirror) |
+| Reflections broken into zigzag chevrons; canals rippling like rivers | The v2 ripple table (2 + 10 u px) over a whole channel of tall reflected facades | A quiet shimmer (1 + 5 u px), still water at half again |
+| Night reflections paler than the trees they mirror | The day tint of the water was mixed into the night reflection | The reflection takes its tint from the graded (night) water |
+| A dark rectangle on the grass with nothing above it | Every planned static cast its footprint prism, drawn or not | Only what draws pixels now casts (`worldShadowPlan` o.drawn) |
+| Green ghosts of trees across a boardwalk at golden hour | Thin casters' shadows drew the sprite itself (its own colours) at the shadow's alpha | A shadow is the sprite's silhouette in the shadow colour |
+
+## P. Trees, plants and seasons (audit of 15 Oct, world engine v3)
+
+- ONE source of seasonal state. The library draws plants per season (winter branch skeletons, spring blossom, autumn
+  crowns, dead winter herbs); the material layer must never season that art again. Each entity's leaf state (kb
+  `worldKbState`, seeded per entity) picks WHICH seasonal art it is drawn in (`worldMaterialArtSeason`); the material season
+  step only touches the summer reference art of objects whose art does not change. Seasoning twice beheaded every tree in
+  winter (the winter crown, part `crown` = material `leaf`, was dropped as "leaves on a bare tree"), made far trees, hedges
+  and brambles vanish, and painted reeds and shrubs orange in January and April. Test: `tests/world-season.test.mjs`.
+- Herbs (reeds, bracken, buddleia, meadow) are dormant ('bare', the winter art) from mid November until they bud; never
+  'turn' all winter.
+- Name flower parts as flowers (`spikes`, `tops`, `heads`, `blossom` ... are material `flower`, never `leaf`).
+- A brown or grey stroke inside a crown is bark (the winter skeleton), whatever the part is called.
+- Weather is never baked into art in v3: the kit's winter frost and snow strokes (`@frost`, `@snow`) show only as much as
+  the day is frosty or snowy (`worldMaterialRime`).
+- Thin tree strokes (twigs, fronds) must not be magnified with a near tree: at most 1.6x their art width in device pixels
+  (`_wfrLineK`), or a near willow's fronds become flat bars.
+- A plant's record box is the union of its seasonal arts (`_wfrArtBox`): each plant is drawn in its own season, and chunk
+  bitmaps and culling are cut to the record box.
+
+## Q. Looking, not only rules (15 Oct)
+| Mistake | Why | Rule |
+|---|---|---|
+| A boardwalk crossed open water to a platform mid-lake; every check passed and reviewers called it "better" | Reviews judged by scores, test counts and their own reports, and only checked what a rule anticipated | Every review first DESCRIBES each image in plain words (what is where, on what, connected to what), then asks of each sentence "is this how it is in real life at this place?". Anything implausible fails, rule or no rule. Then turn it into an engine fix and, where possible, a check. |
+
+## R. Fix-all verify, round 1 (15 Oct, world engine v3)
+| Mistake | Why | Rule |
+|---|---|---|
+| The crowd push-apart and the following cap never ran | Two top-level functions shared the name `_wlfNear`; in the concatenated build the later one replaced the earlier | No two top-level functions of one name in src/app (test: `tests/world-life-crowd.test.mjs`) |
+| Two strangers walked together as clones | Life chose an outfit per person but nothing drew it, so a crowd of 40 had only 8 looks | A look the simulation tracks must be drawn: the outfit recolours the top (`worldMaterialOutfit`), and life picks the least-worn (variant, outfit) |
+| Mills 20 m behind a 2.6 m quay mirrored down the whole near water as huge sheared facades | A bank owner's reflection base was laid on the water's edge, whatever the bank height; the quay's own wall never hid anything | Mirror about the water plane (2 x water row - ground row) on high banks; the image of the bank's wall hides what stands beyond it (`worldWaterContactClip`). Low banks (under 0.4 m) keep the edge rule |
+| Quay walls drew as flat dark slabs over a quarter of the frame | The v2 base layer filled a sunk channel with one dark colour | Sunk channels draw coursed stone walls and their mirrored image (`_wfrQuayWalls`) |
+| A bollard slid down the camera ray onto the canal edge | The near-band move only knew the line of sight | Things set by a line slide back ALONG it and may not come nearer the water or leave their path; people and animals keep their screen place (A10) |
+| A bollard stood in the canal and no check caught it | The `post` class lists `water` in its habitat, and bollards inherited it | A thing that is never in the water says so in its kb entry |
+| Margin reeds clustered on seams between two water regions, on decks, or half on the towpath | Core edge clusters measured distance to ANY polygon edge at their anchor | Water edge clusters use sense's probe (real banks only) and keep the whole footprint inside the margin |
+| Timing tests failed only when the whole suite ran | Files run side by side; wall time doubled under load | Timing tests take the quietest round or the process CPU time and wait for a quiet moment before failing |
+| Checks passed while the picture was wrong | Every check read the simulation or the plan, none the drawn pixels | Run `node tools/world.mjs check <ref>` (drawn vs simulated, crowns, orphan shadows, walkers off planks, night lights); no scene is shown with a violation there |
+
+## S. Merging two lines that fixed the same bugs (15 Oct, main after PR #19 and uk-rebuild)
+| Mistake | Why | Rule |
+|---|---|---|
+| Two winter-tree mechanisms, two crowd systems, two light systems and two capture clocks met in one merge | Both lines fixed the same reported bugs on their own, a day apart | Keep ONE implementation per fix, chosen by renders of both on the same base (season x scene), browser invariants and full-loop captures; the other one's tests are rewritten to check the same behaviour on the kept one, never deleted or loosened. The record of each choice goes in the merge report |
+| Herbs and grasses bright orange in mid-April and orange carpets over a January dale | The dead-russet rule only covered December to February and painted every herb (grass included) with the autumn pick | Herbs are dormant from about seven weeks after they turn until they bud, and draw the library's winter art (section P) |
+| A walker squeezed through an idle family on the Pier Head's wide plaza | The lane squeeze (turn sideways and brush past) fired for any walker held up twice, whatever the room | A squeeze only where no legal spot lies a shoulder's width to either side (`_wlfOneBody`); elsewhere they step round |
+| Couples drawn 0.3 m apart, half inside each other | The group floor (0.6 x the radii) was set for a dog at heel and used for two people | Two people of one group keep 0.96 x their radii (just touching); a dog at heel keeps the group floor |
+| After the high-quay mirror clip the water under a quay showed bare sky colour | The clip hid what stands beyond the quay, and nothing drew the wall's own image (the walls are ground detail, outside the mirror composite) | A sunk channel's walls draw their image in the water (`_wfrWallImages`) from the water's edge to the mirrored quay top |
+| A lamp's halo floated up to 75 px off its head at 14 m | The halo was placed at the projected world point of the glow part, which drifts from the sprite's own drawing | The halo is laid on the drawn record's glow point (`_wfrLightOnRec`, lights carry u, v) |

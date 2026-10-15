@@ -12,6 +12,9 @@
    sceneBehave.actors(data, spec)   -> [actor, ...companions] (a dabbling duck is two actors: the swimmer and the up-ended duck)
    sceneBehave.pair(data, spec)     -> [a, b] two people walking side by side who stop, turn to each other and chat
    sceneBehave.walkWithDog(data, spec) -> [walker, dog] a walker and an off-lead dog that trots ahead, stops to sniff, catches up
+   sceneBehave.meet(data, specA, specB, o) -> [a, b] two walkers on crossing routes who arrive at the crossing together, stop,
+                                    face each other and chat, then go on (one clock: the same cycle, offsets aligned)
+   sceneBehave.states(data, spec)   -> the deterministic states a route gets (below): [{ s, state, at, face }] (for tools and tests)
    sceneBehave.route(data, pts, o)  -> the cleaned route in metres (kept on water / on walkable ground, round obstacles)
    sceneBehave.layerFor(data, pts, o) -> the layer id that draws a mover on that route behind what is nearer, over what is farther
    sceneBehave.lint(data)           -> [{ rule, sev, i, obj, msg, fix }] the motion problems of a scene's actors and placements
@@ -34,6 +37,15 @@
               dives), grebe (dives: hidden under for a few seconds), moorhen (jerky, head-bobbing)
      ground   goose-graze (a step, a crop of grass, a look up), heron-stalk (slow steps, long freezes), cattle-graze, pony-graze,
               sheep-graze, deer (wary: freezes and looks)
+   STATES (merge package "crowd", 15 Oct: the v3 brains' sit / view / chat goals, 79-world-2brains.js, as DATA in the timed path:
+   seeded, no runtime state, nothing for the author to do):
+     view   a person's look stop within 6 m of water faces the water for the whole stop (instead of looking back and forth); the
+            stop keeps its place and its seconds, so the timeline (and every other mover's) is unchanged
+     sit    spec.sit: { at: [x, d] (within 3 m of the route), obj ('person.bench-sitter'), variant, w }: the walker steps to the seat
+            and is replaced for the stop by the seated figure, which brings its own seat, then steps back to its route. Not
+            automatic: the library's benches (street.bench) are FRONT views and its seated people SIDE views with their own
+            bench, so a seated figure drawn over a placed bench would show two benches; a scene asks for it where it wants one
+     chat   spec.stops: [{ at: [x, d], act: 'chat', w, face }]: a stop at a set place; meet() builds two of them
    Every water preset floats at the water's level (a per-water level as the compile has it) and keeps half a body length
    off every bank and boat; every ground preset stays on walkable surfaces. Starts and stops ease over preset.easeM metres;
    corners are rounded (no instant turns); out-and-back routes turn round with a pause (no teleport); the walk hook's period
@@ -468,6 +480,23 @@ const sceneBehave = (function () {
       while (s < total - 0.3) { stops.push({ s, act: acts[Math.floor(rnd() * acts.length)], w: between(rnd, G.pause.wait) }); s += between(rnd, G.pause.every); }
     }
     if (loop === 'out-back') { const half = C[pts.length - 1]; if (!stops.some(q => Math.abs(q.s - half) < 0.6)) stops.push({ s: half, act: 'turn', w: 0.6 + rnd() * (floats ? 2.5 : 1.2) }); stops.sort((a, b) => a.s - b.s); }
+    // the states (merge package "crowd"): set stops (meet), a seat (sit) and views of the water; none draws from rnd, so a route
+    // without them keeps every stop and every second it had
+    const nearestS = (p) => { let best = 0, bd = Infinity; for (let i = 0; i < pts.length; i++) { const dd = dist(pts[i], p); if (dd < bd) { bd = dd; best = i; } } return { s: C[best], d: bd, i: best }; };
+    for (const st of Array.isArray(spec.stops) ? spec.stops : []) {
+      if (!st || !Array.isArray(st.at)) continue;
+      const n = nearestS(st.at);
+      if (n.d > 3) continue;
+      for (let k = stops.length - 1; k >= 0; k--) if (Math.abs(stops[k].s - n.s) < 1.5 && stops[k].act !== 'turn') stops.splice(k, 1);
+      stops.push({ s: n.s, act: st.act || 'chat', w: st.w != null ? +st.w : 8, face: st.face, set: true });
+    }
+    const seat = G.cls === 'person' ? seatFor(data, spec, pts) : null;
+    if (seat) {
+      const n = nearestS(seat.at);
+      for (let k = stops.length - 1; k >= 0; k--) if (Math.abs(stops[k].s - n.s) < 2 && stops[k].act !== 'turn') stops.splice(k, 1);
+      stops.push({ s: n.s, act: 'sit', w: seat.w, seat });
+    }
+    stops.sort((a, b) => a.s - b.s);
     // the timed path: metres -> screen points, each leg with its seconds (eased near the stops)
     const easeM = G.easeM || 0.5, path = [], tab = [];
     const atS = (s) => { let i = 1; while (i < C.length - 1 && C[i] < s) i++; const u = (s - C[i - 1]) / ((C[i] - C[i - 1]) || 1); return [legsM[i - 1][0] + (legsM[i][0] - legsM[i - 1][0]) * u, legsM[i - 1][1] + (legsM[i][1] - legsM[i - 1][1]) * u]; };
@@ -482,7 +511,8 @@ const sceneBehave = (function () {
     for (const q of stops) marks.push({ s: q.s, stop: q });
     marks.sort((a, b) => a.s - b.s || (a.stop ? 1 : -1));
     const hidden = [];   // [t0, t1, point] spans when this mover is out of sight (a dive, a dabble shown by a companion)
-    let T = 0, prev = null, dirNow = 1;
+    let T = 0, prev = null, dirNow = 1, views = 0, sits = 0;
+    const setT = [];   // when each set stop (meet) begins, seconds into the cycle
     const HIDE_Y = 2400;
     const push = (p, wait, face, dur) => { const q = scaleAt(p); path.push([R1(q.X), R1(q.Y), R2(wait || 0), face || 0, dur == null ? null : R3(dur)]); tab.push([R1(q.Y), R3(q.s)]); return q; };
     for (const m of marks) {
@@ -503,8 +533,24 @@ const sceneBehave = (function () {
             // face round (the facing turns through side-on: sceneActorFacing), hold, face back
             const w1 = q.w * (q.act === 'look-back' ? 0.55 : 0.4), w2 = q.w - w1;
             last[2] = R2(0.3 + q.w * 0.1); T += last[2];
-            if (q.act !== 'freeze' && q.act !== 'chat') { path.push([last[0], last[1], R2(w1), -fwd, 0]); tab.push([last[1], tab[tab.length - 1][1]]); path.push([last[0], last[1], R2(w2), fwd, 0]); tab.push([last[1], tab[tab.length - 1][1]]); T += w1 + w2; }
-            else { path.push([last[0], last[1], R2(q.w), q.act === 'chat' ? (spec.chatFace || fwd) : fwd, 0]); tab.push([last[1], tab[tab.length - 1][1]]); T += q.w; }
+            // view (a v3 brain state): a person's look within 6 m of water faces the water the whole stop (same place, same seconds)
+            const vf = (q.act === 'look' || q.act === 'look-back') && G.cls === 'person' && spec.states !== false ? viewFace(cam, W0, atS(m.s), last[0]) : 0;
+            if (vf) { path.push([last[0], last[1], R2(q.w), vf, 0]); tab.push([last[1], tab[tab.length - 1][1]]); T += q.w; views++; }
+            else if (q.act !== 'freeze' && q.act !== 'chat') { path.push([last[0], last[1], R2(w1), -fwd, 0]); tab.push([last[1], tab[tab.length - 1][1]]); path.push([last[0], last[1], R2(w2), fwd, 0]); tab.push([last[1], tab[tab.length - 1][1]]); T += w1 + w2; }
+            else { path.push([last[0], last[1], R2(q.w), q.act === 'chat' ? (q.face || spec.chatFace || fwd) : fwd, 0]); tab.push([last[1], tab[tab.length - 1][1]]); if (q.set) setT.push(R2(T)); T += q.w; }
+            break;
+          }
+          case 'sit': {
+            // step to the seat (easy, 0.9 m/s), hidden while the seated figure (a companion, same clock) shows, step back
+            const st = q.seat, sp = scaleAt(st.at), back = [last[0], last[1]], dOut = Math.max(0.3, dist(atS(m.s), st.at)), legT = R3(dOut / 0.9);
+            path.push([R1(sp.X), R1(sp.Y), 0.3, 0, legT]); tab.push([R1(sp.Y), R3(sp.s)]); T += legT + 0.3;
+            const t0 = T;
+            path.push([R1(sp.X), HIDE_Y, R2(q.w), fwd, 0]); tab.push([HIDE_Y, 0]);
+            path.push([R1(sp.X), R1(sp.Y), 0.3, fwd, 0]); tab.push([R1(sp.Y), R3(sp.s)]);
+            hidden.push({ t0, t1: t0 + q.w, X: R1(sp.X), Y: R1(sp.Y), act: 'sit', face: st.face || fwd, s: R3(sp.s), seat: st });
+            T += q.w + 0.3;
+            path.push([back[0], back[1], 0, fwd, legT]); tab.push([back[1], tab[tab.length - 1][1]]); T += legT;
+            sits++;
             break;
           }
           case 'dive': case 'dabble': {
@@ -535,10 +581,18 @@ const sceneBehave = (function () {
     const seed = syncSeed(spec.obj, v, seed0);
     const pxLen = path.reduce((s, p, i) => s + (i ? Math.hypot(p[0] - path[i - 1][0], p[1] - path[i - 1][1]) : 0), 0);
     const main = { obj: spec.obj, variant: v, path, sByY, speed: R2(Math.max(1, pxLen / Math.max(1, T))), loop: 'loop', offset: spec.offset != null ? spec.offset : R3(rnd()), seed, layer,
-      anim: Object.keys(anim).length ? anim : undefined, $behave: { preset: name, cycle: R2(T), problems: rt.problems } };
+      anim: Object.keys(anim).length ? anim : undefined, $behave: Object.assign({ preset: name, cycle: R2(T), problems: rt.problems }, views ? { views } : {}, sits ? { sits } : {}, setT.length ? { setT } : {}) };
     if (!main.anim) delete main.anim;
     const out = [main];
     // companions: the up-ended duck shown while the swimmer is hidden (same cycle, same offset: they stay in step)
+    // the seated figure of a sit stop: shown only while the walker is hidden (same cycle, same offset)
+    for (const h of hidden) if (h.act === 'sit') {
+      const so = h.seat.obj || 'person.bench-sitter', sd = E.obj(so), sr = E.real(so);
+      if (!sd) continue;
+      const pr = E.proj(cam, h.seat.at[0], h.seat.at[1], E.gh(cam, h.seat.at[0], h.seat.at[1])), ss = R3((spec.k || 1) * pr.k * (sr.h || 1.3) / Math.max(1, sd.size[1]));
+      out.push({ obj: so, variant: h.seat.variant != null ? h.seat.variant : v % Math.max(1, sd.variants || 1), path: [[R1(pr.X), HIDE_Y, R2(h.t0), h.face, null], [R1(pr.X), R1(pr.Y), R2(h.t1 - h.t0), h.face, 0], [R1(pr.X), HIDE_Y, R2(Math.max(0.01, T - h.t1)), h.face, 0]],
+        sByY: [[R1(pr.Y - 0.5), ss], [R1(pr.Y + 0.5), ss], [HIDE_Y - 1, 0], [HIDE_Y, 0]], speed: 1, loop: 'loop', offset: main.offset, seed: seed + 2, layer, $behave: { preset: name, companion: 'sit' } });
+    }
     for (const h of hidden) if (h.act === 'dabble' && def.variants >= 4) {
       const cv = v % 2 + 2;
       out.push({ obj: spec.obj, variant: cv, path: [[h.X, HIDE_Y, R2(h.t0), h.face, null], [h.X, h.Y, R2(h.t1 - h.t0), h.face, 0], [h.X, HIDE_Y, R2(Math.max(0.01, T - h.t1)), h.face, 0]],
@@ -547,6 +601,72 @@ const sceneBehave = (function () {
     return out;
   }
   const actor = (data, spec) => actors(data, spec)[0];
+
+  /* ---------- states (merge package "crowd", 15 Oct; from the v3 brains, 79-world-2brains.js: view, sit, chat) ---------- */
+  /** view: a stop within 6 m of water (not in it) faces the water: -1 | 1 (the screen side of the nearest water), else 0. */
+  function viewFace(cam, W0, p, X) {
+    if (!cam || !W0 || !W0.length || !p) return 0;
+    let best = null;
+    for (const w of W0) { if (inPoly(p, w.poly)) return 0; const e = polyEdgeDist(p, w.poly); if (!best || e.d < best.d) best = e; }
+    if (!best || best.d > 6) return 0;
+    const q = E.proj(cam, best.q[0], best.q[1], null).X;
+    return Math.abs(q - X) < 0.5 ? 0 : q < X ? -1 : 1;
+  }
+  /** sit: the seat a route stops at: spec.sit { at, obj, variant, w } within 3 m of the route (w: seconds, seeded 14-30). */
+  function seatFor(data, spec, pts) {
+    const st = spec && spec.sit;
+    if (!st || !Array.isArray(st.at) || spec.states === false) return null;
+    let dmin = Infinity;
+    for (const p of pts) dmin = Math.min(dmin, dist(p, st.at));
+    if (dmin > 3) return null;
+    const u = (E.hash((data.id || 'scene') + '|sit|' + st.at.join(',')) % 1000) / 1000;
+    return { at: st.at.slice(0, 2), obj: st.obj || 'person.bench-sitter', variant: st.variant, w: st.w != null ? +st.w : R2(14 + 16 * u), face: st.face };
+  }
+  /** The states a route gets (tools and tests): [{ s (metres along), state: 'view' | 'sit' | 'chat', at, face }]. */
+  function states(data, spec) {
+    const a = actor(data, spec), cam = E.cam(data), out = [];
+    if (!a || !cam) return out;
+    for (let i = 1; i < a.path.length; i++) {
+      const p = a.path[i], q = a.path[i - 1];
+      if (p[1] >= 2000 && q[1] < 2000) out.push({ i, state: 'sit', at: [q[0], q[1]] });
+      else if (p[0] === q[0] && p[1] === q[1] && p[2] > 1 && (p[3] === 1 || p[3] === -1)) out.push({ i, state: 'stop', at: [p[0], p[1]], face: p[3], w: p[2] });
+    }
+    return out;
+  }
+  /**
+   * meet: two walkers on routes that cross (or pass within 3 m) arrive at the crossing together, stop 0.7 m apart facing each other
+   * and chat (seeded 6-12 s; o.wait), then go on. One clock: B's speed is scaled so its cycle matches A's, the shorter cycle is
+   * padded with a wait at its end, and B's offset is set so both reach the meeting at the same moment. Without a meeting place
+   * (routes more than 3 m apart): two plain actors. -> [a, b]
+   */
+  function meet(data, a, b, o) {
+    o = o || {};
+    const cam = E.cam(data);
+    const ra = route(data, a.route, { ground: 'walk', obj: a.obj }).pts, rb = route(data, b.route, { ground: 'walk', obj: b.obj }).pts;
+    let best = null;
+    for (const p of resample(ra, 0.5)) for (const q of resample(rb, 0.5)) { const dd = dist(p, q); if (!best || dd < best.d) best = { p, q, d: dd }; }
+    if (!cam || !best || best.d > 3) return [actor(data, a), actor(data, b)];
+    // 0.7 m apart (a chatting pair's gap, as pair()), on the line between the two routes (across them where they cross)
+    let ux = best.q[0] - best.p[0], ud = best.q[1] - best.p[1], ul = Math.hypot(ux, ud);
+    if (ul < 0.05) { const i = Math.max(1, ra.findIndex(p => dist(p, best.p) < 0.6)), t = [ra[i][0] - ra[i - 1][0], ra[i][1] - ra[i - 1][1]], tl = Math.hypot(t[0], t[1]) || 1; ux = -t[1] / tl; ud = t[0] / tl; ul = 1; }
+    else { ux /= ul; ud /= ul; }
+    const mid = [(best.p[0] + best.q[0]) / 2, (best.p[1] + best.q[1]) / 2], pA = [mid[0] - ux * 0.35, mid[1] - ud * 0.35], pB = [mid[0] + ux * 0.35, mid[1] + ud * 0.35];
+    const XA = E.proj(cam, pA[0], pA[1], null).X, XB = E.proj(cam, pB[0], pB[1], null).X, faceA = XB < XA ? -1 : 1, faceB = -faceA;
+    const w = o.wait != null ? +o.wait : R2(6 + 6 * ((E.hash((data.id || 'scene') + '|meet|' + mid.map(v => R1(v)).join(',')) % 1000) / 1000));
+    const mk = (s, at, face, extra) => actors(data, Object.assign({}, s, { preset: s.preset || 'stroll', acts: s.acts != null ? s.acts : false, stops: [{ at, act: 'chat', w, face }], offset: s.offset != null ? s.offset : 0 }, extra))[0];
+    const A = mk(a, [ra.reduce((u, p) => (dist(p, pA) < dist(u, pA) ? p : u))[0], ra.reduce((u, p) => (dist(p, pA) < dist(u, pA) ? p : u))[1]], faceA);
+    let spB = b.speedM || (preset(b.preset || 'stroll') || P.stroll).speedM, B = mk(b, rb.reduce((u, p) => (dist(p, pB) < dist(u, pB) ? p : u)), faceB, { speedM: spB });
+    for (let k = 0; k < 4 && Math.abs(B.$behave.cycle - A.$behave.cycle) > 0.3; k++) { spB = clamp(spB * B.$behave.cycle / A.$behave.cycle, 0.5, 2.5); B = mk(b, rb.reduce((u, p) => (dist(p, pB) < dist(u, pB) ? p : u)), faceB, { speedM: spB }); }
+    // one cycle: pad the shorter with a wait at its last point
+    const pad = (M, dt) => { if (dt > 0.005) { const l = M.path[M.path.length - 1]; l[2] = R2((l[2] || 0) + dt); M.$behave.cycle = R2(M.$behave.cycle + dt); } };
+    const dT = A.$behave.cycle - B.$behave.cycle;
+    pad(B, dT); pad(A, -dT);
+    const T = Math.max(A.$behave.cycle, B.$behave.cycle), tA = (A.$behave.setT || [0])[0], tB = (B.$behave.setT || [0])[0];
+    A.offset = a.offset != null ? a.offset : R3(((E.hash((data.id || 'scene') + '|meetoff|' + mid.join(',')) % 1000) / 1000));
+    B.offset = R3((((A.offset * T + tB - tA) / T) % 1 + 1) % 1);
+    A.$behave.meet = { at: pA, with: 1, w }; B.$behave.meet = { at: pB, with: 0, w };
+    return [A, B];
+  }
 
   /** Two people side by side (0.7 m apart) on one route: the same stops, where they turn to each other and talk. */
   function pair(data, spec) {
@@ -663,6 +783,6 @@ const sceneBehave = (function () {
   }
 
   const names = () => Object.keys(P);
-  return Object.freeze({ PRESETS: P, ACTS, preset, presetFor, names, stride, hooks, syncSeed, route, layerFor, actor, actors, pair, walkWithDog, lint,
+  return Object.freeze({ PRESETS: P, ACTS, preset, presetFor, names, stride, hooks, syncSeed, route, layerFor, actor, actors, pair, walkWithDog, meet, states, lint,
     _geo: { staticBoxes, inPoly, polyEdgeDist, stripPoly, waters, surfaces, obstacles, resample, roundCorners } });
 })();

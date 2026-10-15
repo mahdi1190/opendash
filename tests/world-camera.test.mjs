@@ -215,8 +215,10 @@ test('C1: a boat with no legal place in frame is dropped and logged (plainer, ne
   assert.equal(W.worldFrameCheck(world, world.cam).issues.length, 0, 'nothing is left cut');
 });
 
+// (15 Oct, bug 19 / 4) an undeclared framing tree may be cut at a side while it covers at most 35 % of the frame (the invariant
+// checker's edgeCut); one filling half the frame from 6 m is fixed (tests/world-composition.test.mjs)
 test('C1: framing elements (a near tree) may be cut; landmarks are never moved', () => {
-  const spec = canal([{ obj: 'tree.bank-willow', at: [6, 6], id: 'frame-tree' }]);
+  const spec = canal([{ obj: 'tree.bank-willow', at: [12, 18], id: 'frame-tree' }]);
   spec.landmarks = [{ obj: 'structure.bridge-brick', at: [-2, 9], facing: 90, attach: 'water', id: 'lm', src: 'test' }];
   const world = W.worldBuild(spec, { validate: false, frame: false });
   const r = W.worldFrameCheck(world, world.cam, { apply: true });
@@ -258,7 +260,12 @@ test('C4, 16.3: an authored tree wall in front of a landmark is moved aside (pla
   assert.ok(before.visible < 0.6, `the tree wall hides it: ${before.visible}`);
   W.worldLandmarkCheck(world, world.cam, { apply: true });
   const moves = world.log.filter(l => l.rule === 'C4');
-  assert.ok(moves.length > 0 && moves.every(l => l.by === 'appearance' && /^wall-/.test(l.id)), 'the trees are dealt with, each logged');
+  // (merge of 15 Oct) the bank planting the fill adds in front of the face (uk-rebuild's wet-bank margin gives the kit's reeds more
+  // room on this bank) may be dropped by the same net: every authored tree is dealt with and logged, and nothing but the authored
+  // trees and the fill's own auto items is touched
+  const wall = moves.filter(l => /^wall-/.test(l.id));
+  assert.ok(new Set(wall.map(l => l.id)).size === 5 && moves.every(l => l.by === 'appearance'), 'the trees are dealt with, each logged');
+  assert.ok(moves.every(l => /^wall-/.test(l.id) || (world.log.some(q => q.id === l.id && q.action === 'add' && q.rule !== 'C4') || /^(edge|fill|frame)-/.test(l.id))), 'only the trees and auto items: ' + moves.map(l => l.id).join(','));
   assert.ok(moves.some(l => l.action === 'move'), 'moved aside first, not just dropped');
   const after = W.worldLandmarkCheck(world, world.cam).landmarks[0];
   assert.ok(after.ok && after.visible >= 0.6, `the face shows: ${after.visible} ${after.msg}`);

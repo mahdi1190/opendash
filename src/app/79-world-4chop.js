@@ -1,5 +1,5 @@
 /* ============================================================
-   WORLD ENGINE (scene format v3.1), package look: the CHOP of open water (docs/dev/SCENE_LESSONS.md K; requirements WA1).
+   WORLD ENGINE (scene format v3.1), package look: the CHOP of open water (docs/dev/SCENE_LESSONS.md M; requirements WA1).
    PURE (Node + browser): only functions at load. Private prefix _wch.
 
    A wide river or estuary is a kilometre of water seen at a grazing angle: with only the kind's gradient, the sky's mirror and the

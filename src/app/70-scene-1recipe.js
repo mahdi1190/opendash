@@ -12,10 +12,14 @@
                                     the v2 keys and types, the surface and water ids and kinds, and every reference (beside, on,
                                     flows' on, actors' on)
      sceneValidateV2(data)          the problems of v2 scene data as strings (what sceneValidate returns for v2 data)
+   World sense keys (78-scene-x-sense.js): scene framing / keep (place indices or object ids), a placement's framing / keep
+   (booleans), a scatter rule's edge (boolean) and margin ({ in, out } metres).
    ============================================================ */
 const SCENE_RECIPE_KEYS = Object.freeze(['v', 'pack', 'meta', 'scene']);
 const SCENE_RECIPE_SCENE_KEYS = Object.freeze(['id', 'v', 'view', 'camera', 'layers', 'ground', 'surfaces', 'water', 'place', 'scatter', 'actors', 'flocks', 'flows', 'signs', 'signage', 'buildings', 'streets',
-  'terrain', 'source', 'atmos', 'weather', 'cover', 'season', 'tropic', 'at', 'setting', 'palette', 'sky', 'particles', 'drive', 'kits', 'fx', 'meta']);
+  'terrain', 'source', 'atmos', 'weather', 'cover', 'season', 'tropic', 'at', 'setting', 'palette', 'sky', 'particles', 'drive', 'kits', 'fx', 'meta',
+  // world sense (78-scene-x-sense.js): the placements it never moves or drops, by place index or object id
+  'framing', 'keep']);
 const _SCRC_ID_RE = /^[a-z0-9-]{1,40}$/, _SCRC_SURF_RE = /^[a-z0-9-]{1,30}$/;
 function _scrcFreeze(o) { if (o && typeof o === 'object' && !Object.isFrozen(o)) { Object.freeze(o); for (const k of Object.keys(o)) _scrcFreeze(o[k]); } return o; }
 const _scrcClone = (o) => JSON.parse(JSON.stringify(o));
@@ -155,7 +159,9 @@ function _scrcSceneProblems(s) {
     if (q.k != null && !(Number.isFinite(q.k) && q.k > 0.05 && q.k < 5)) err(P + '.k', 'k: a size factor, 0.05 to 5');
     if (q.face != null && !['left', 'right', 'away', 'toward'].includes(q.face)) err(P + '.face', "face: 'left' | 'right' | 'away' | 'toward'");
     if (q.dir != null && !['away', 'toward'].includes(q.dir)) err(P + '.dir', "dir: 'away' | 'toward'");
+    for (const k of ['framing', 'keep']) if (q[k] != null && typeof q[k] !== 'boolean') err(P + '.' + k, k + ': true | false (world sense never moves or drops it)');
   });
+  for (const k of ['framing', 'keep']) if (s[k] != null && !(Array.isArray(s[k]) && s[k].every(v => (Number.isInteger(v) && v >= 0) || (typeof v === 'string' && v.length)))) err('scene.' + k, k + ': a list of place indices or object ids (world sense never moves or drops them)');
   (Array.isArray(s.scatter) ? s.scatter : []).forEach((r, i) => {
     if (!r || r.area) return;
     const P = `scene.scatter[${i}]`;
@@ -164,6 +170,8 @@ function _scrcSceneProblems(s) {
     if (r.dist != null && !['ground', 'screen'].includes(r.dist)) err(P + '.dist', "dist: 'ground' | 'screen'");
     if (r.n != null && !(Number.isFinite(r.n) && r.n >= 0 && r.n <= 3000)) err(P + '.n', 'n: 0 to 3000');
     if (r.k != null && !(Array.isArray(r.k) && r.k.length === 2 && r.k.every(Number.isFinite))) err(P + '.k', 'k: [a, b]');
+    if (r.edge != null && typeof r.edge !== 'boolean') err(P + '.edge', 'edge: true (a margin cluster, clipped to the water margin) | false');
+    if (r.margin != null && !(r.margin && typeof r.margin === 'object' && ['in', 'out'].every(k => r.margin[k] == null || (Number.isFinite(r.margin[k]) && r.margin[k] >= 0 && r.margin[k] <= 20)))) err(P + '.margin', 'margin: { in, out } metres (0 to 20)');
   });
   (Array.isArray(s.flows) ? s.flows : []).forEach((f, i) => { for (const x of [].concat((f && f.on) || [])) if (!ids.has(x)) err(`scene.flows[${i}].on`, `on: no surface or water ${x}`); });
   (Array.isArray(s.actors) ? s.actors : []).forEach((a, i) => {

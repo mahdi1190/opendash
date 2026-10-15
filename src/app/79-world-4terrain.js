@@ -5,7 +5,7 @@
    The ground has height (W2: slopes, banks, embankments, cuttings, cliffs: `ground.features` and `ground.relief`). The v2 ground
    follows a relief along the EDGES of a surface polygon only, so a hill INSIDE a polygon (the face of a cliff between its near and
    far edge) was never drawn and everything standing on it hung in the sky above a flat ground (found by the first no-example place,
-   Whitby: SCENE_LESSONS J). Terrain is therefore drawn by the world like any other static: the relief is cut into strips of
+   Whitby: SCENE_LESSONS K). Terrain is therefore drawn by the world like any other static: the relief is cut into strips of
    constant depth (3 % steps), each strip a prim of quads (the same `line` prim the extruder makes), with a zKey and a footprint
    in metres, so the chunk order puts every house, tree and boat on the strip it stands on, hides what lies behind a nearer rise, and
    reflects the hill in the water, with no special case in the compositor.

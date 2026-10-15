@@ -332,7 +332,9 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'water.shc-jet': { cls: 'street', habitat: { on: ['water', 'paving'] }, solidity: 'passable' }, 'water.shc-bubbler': { cls: 'street', habitat: { on: ['water', 'paving'] }, solidity: 'passable' },
   'structure.shp-stepping-stone': { cls: 'rock', habitat: { on: ['water', 'water-margin', 'wet'] }, solidity: 'walkable' },
   'structure.mqn-ole-v2': { cls: 'post', solidity: 'solid' },
-  'street.bollard': { cls: 'post' }, 'prop.yc-windsock': { cls: 'post' },
+  // a bollard stands on land at the edge (a mooring post in the water is its own object): the post class allows water, so a
+  // near-band move left a bollard in the canal at the stern and no habitat check caught it (audit bug 5)
+  'street.bollard': { cls: 'post', habitat: { on: ['paving', 'path', 'grass-edge', 'grass', 'bank', 'water-margin', 'deck', 'soil'], avoid: ['walkline', 'water', 'road-lane', 'rail', 'tram'] } }, 'prop.yc-windsock': { cls: 'post' },
 });
 
 /* ---------- classification ---------- */
@@ -489,6 +491,8 @@ function _wkbMaterialOf(part, cls, id, leaf) {
   if (/shadow|reflect|mirror/.test(p)) return null;
   if (/^(trunk|branch|branches|limb|limbs|twigs|bark|stump|log|stem|stems)$/.test(p)) return 'bark';
   if (/^(crown|crowns|leaves|leaf|foliage|whips|canopy-leaves|needles)$/.test(p)) return needle ? 'needle' : 'leaf';
+  // flower heads, spikes and blossom are flowers (buddleia spikes, meadow tops, catkins), never leaves
+  if (/^(flowers?|blooms?|blossoms?|petals?|spikes?|panicles?|catkins?|heads|tops|umbels?|plumes?)$/.test(p) && ['tree', 'shrub', 'hedge', 'reed', 'flower', 'bough'].includes(cls)) return 'flower';
   if (/^(wake|rings|ring|splash|ripple|ripples|spray|jet|water)$/.test(p)) return 'water';
   if (/^(lit|glass|windows|window|glazing)$/.test(p)) return 'glass';
   if (/^(wheels|wheel|rails|rail|chain|frame)$/.test(p)) return 'metal';
@@ -1067,10 +1071,14 @@ function worldKbState(kb, ctx, key) {
       const ph = kb.pheno || { spring: 0, autumn: 0 }, north = lat - 51.5;
       if (kb.leaf === 'evergreen') out.leaf = 'full';
       else if (kb.leaf === 'herb') {
+        // herbs (reeds, bracken, buddleia, meadow): green from late spring, turning from late September, then dormant (dead
+        // straw stands, the library's winter art) from mid November until they bud again; never 'turn' through the winter
         const bud = 105 + ph.spring + north * 3 + (_wkbU(k, 'spring') - 0.5) * 14, full = bud + 35, turn = 268 + ph.autumn - north * 2 + (_wkbU(k, 'autumn') - 0.5) * 24;
+        const dormant = turn + 48 + (_wkbU(k, 'dormant') - 0.5) * 12;
         if (doy >= bud && doy < full) { out.leaf = 'bud'; out.grow = _wkbR3((doy - bud) / (full - bud)); }
         else if (doy >= full && doy < turn) out.leaf = 'full';
-        else { out.leaf = 'turn'; out.turn = 1; }
+        else if (doy >= turn && doy < dormant) { out.leaf = 'turn'; out.turn = _wkbR3(_wkbClamp((doy - turn) / 30, 0.05, 1)); }
+        else { out.leaf = 'bare'; out.drop = 1; }
       } else {
         const bud = 98 + ph.spring + north * 3 + (_wkbU(k, 'spring') - 0.5) * 16, full = bud + 22;
         const turn = 282 + ph.autumn - north * 2 + (_wkbU(k, 'autumn') - 0.5) * 28, drop = turn + 30, bare = drop + 14;

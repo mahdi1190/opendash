@@ -1,7 +1,8 @@
 // World engine: RENDER GLITCHES (14 Oct review: "the v3 scenes are so buggy ... it's an engine problem"). One section per class
 // of glitch; each test fails on the engine as it was and passes once the cause is fixed, so none can come back. The pixel
 // detectors are in tools/lib/world/glitch.mjs (run on real renders with `node tools/world.mjs glitch <ref | png>`); their own
-// behaviour on synthetic images is tested here too. docs/dev/SCENE_LESSONS.md section G lists the mistakes and the rules.
+// behaviour on synthetic images is tested here too. docs/dev/SCENE_LESSONS.md section H lists the mistakes and the rules (the
+// winter-tree rows run on section P's single source of seasonal state since the merge of 15 Oct).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join, dirname } from 'node:path';
@@ -20,10 +21,10 @@ const TREES = () => W.sceneObjs().map(o => (typeof o === 'string' ? o : o.id)).f
   const kb = W.worldKb(id), def = W.sceneObj(id);
   return kb && kb.leaf === 'deciduous' && def && def.shapeBySeason;
 });
-/** What a tree draws for an entity at a time: the form's shapes that its materials keep. */
+/** What a tree draws for an entity at a time: the shapes of the art its leaf state picks (worldMaterialArtSeason) that its materials keep. */
 function drawn(id, c) {
   const mc0 = W.worldMaterialCtx(c), mc = W.worldMaterialFor(mc0, { id: id + '@g', obj: id, x: 0, z: 20 }, c);
-  const sh = W.sceneObjShapes(id, 0, mc.form || c.season), out = [];
+  const sh = W.sceneObjShapes(id, 0, mc.art || c.season), out = [];
   for (const p of sh.order) for (const s of sh.parts[p] || []) {
     const m = W.worldMaterialOf(id, p, typeof s.f === 'string' ? s.f : null, s);
     if (W.worldMaterialVisible(m, mc)) out.push({ p, s, m, box: W.scenePathBox(s.d, s.m) });
@@ -39,7 +40,7 @@ test('G2 a bare deciduous tree is drawn in its own bare form: limbs and twigs ab
   for (const id of ids) {
     const { mc, out } = drawn(id, tctx(1, 20)), full = drawn(id, tctx(7, 16));
     assert.equal(mc.leaf, 'bare', id + ' is bare on 20 January');
-    assert.equal(mc.form, 'winter', id + ' is drawn in its bare (winter) form');
+    assert.equal(mc.art, 'winter', id + ' is drawn in its bare (winter) art'); assert.ok(mc.artOwn, id + ': the winter art carries the season itself');
     assert.equal(full.mc.leaf, 'full', id + ' is in full leaf in July');
     // the bare tree keeps its stature: its limbs and twig haze span most of the height and the width of the leafy crown (a trunk
     // slab keeps a third of the height; a bare white pole keeps the height and a tenth of the width)
@@ -51,32 +52,41 @@ test('G2 a bare deciduous tree is drawn in its own bare form: limbs and twigs ab
 });
 
 test('G2 limbs keep their bark colour in every season (a crown part holds the limbs: wood colours are bark, never leaf)', () => {
-  // the white birch limbs and the oak limbs in the crown part
-  assert.equal(W.worldMaterialOf('tree.bank-birch', 'crown', null, { s: '#e8e4dc', f: null }), 'bark');
-  assert.equal(W.worldMaterialOf('tree.canal-oak', 'crown', '#4a3c30', { f: '#4a3c30' }), 'bark');
+  // (merge of 15 Oct) one source of seasonal state (SCENE_LESSONS P): a brown or grey stroke in a crown is bark, and a tree drawn
+  // in a seasonal art (winter, spring, autumn) keeps every colour of that art: its limbs never turn gold with its leaves
+  assert.equal(W.worldMaterialOf('tree.canal-oak', 'crown', null, { s: '#4a3c30', f: null }), 'bark', 'a brown limb stroke in the crown');
+  assert.equal(W.worldMaterialOf('tree.bank-birch', 'crown', null, { s: '#8a8680', f: null }), 'bark', 'a grey twig stroke in the crown');
   // the leaves of the same crowns stay leaf
   assert.equal(W.worldMaterialOf('tree.bank-birch', 'crown', '#5e8e3a', { f: '#5e8e3a' }), 'leaf');
-  // in autumn the oak's limbs do not turn gold with its leaves
-  const c = tctx(10, 28), mc = W.worldMaterialFor(W.worldMaterialCtx(c), { id: 'o1', obj: 'tree.canal-oak', x: 0, z: 20 }, c);
-  assert.equal(W.worldMaterialColour('bark', '#4a3c30', mc), W.worldMaterialColour('bark', '#4a3c30', Object.assign({}, mc, { leaf: 'full', turn: 0 })));
+  let own = 0;
+  for (const [m, d] of [[10, 28], [11, 12], [1, 20], [4, 22], [7, 16]]) {
+    const c = tctx(m, d), mc = Object.assign({}, W.worldMaterialFor(W.worldMaterialCtx(c), { id: 'o1', obj: 'tree.canal-oak', x: 0, z: 20 }, c), { sky: null, L: null, haze: 0 });
+    assert.equal(W.worldMaterialColour('bark', '#4a3c30', mc), '#4a3c30', `${m}/${d}: bark keeps its colour`);
+    // a seasonal art (winter, spring, autumn) keeps every colour it draws, whatever a shape is classed
+    if (mc.artOwn) { own++; assert.equal(W.worldMaterialColour('leaf', '#4a3c30', mc), '#4a3c30', `${m}/${d}: the ${mc.art} art keeps its limb colour`); }
+  }
+  assert.ok(own >= 2, 'drawn in its own seasonal art on most of these dates');
 });
 
 test('G2 forms follow each tree\'s own leaf state: bare in winter, budding on the bare form, full in summer, turning unevenly', () => {
-  const F = (leaf, season, grow, drop) => W.worldMaterialForm('tree.bank-oak', season, leaf, grow, drop);
+  // (merge of 15 Oct) the art follows the leaf state (worldMaterialArtSeason, SCENE_LESSONS P): bare -> the winter skeleton, bud ->
+  // the spring art (from the first bud: the budding haze on the bare form is superseded by the spring art), full -> summer (still
+  // green in October), turning -> the autumn art from 15 % turned
+  const F = (leaf, season, turn, ever) => W.worldMaterialArtSeason('tree.bank-oak', leaf, turn, season, ever).art;
   assert.equal(F('bare', 'autumn'), 'winter', 'a tree bare in late November shows its branches');
-  assert.equal(F('bud', 'spring', 0.1), 'winter', 'buds just breaking: the bare form, greening');
-  assert.equal(F('bud', 'spring', 0.7), 'spring');
+  assert.equal(F('bud', 'spring'), 'spring');
   assert.equal(F('full', 'autumn'), 'summer', 'still green in October');
-  assert.equal(F('turn', 'autumn', 0, 0.2), 'autumn');
-  assert.equal(F('turn', 'autumn', 0, 0.9), 'winter', 'most leaves down');
-  assert.equal(W.worldMaterialForm('tree.pond-pine', 'winter', 'full'), 'winter', 'an evergreen keeps the calendar form');
-  // the budding twig haze greens; the bare form keeps its own art colour
-  const twig = '#5a4c40', cBare = tctx(1, 20), cBud = tctx(4, 22);
+  assert.equal(F('turn', 'autumn', 0.2), 'autumn');
+  assert.equal(F('turn', 'autumn', 0.05), 'summer', 'only just turning: the summer art with a light turn');
+  assert.equal(W.worldMaterialArtSeason('tree.pond-pine', 'full', 0, 'winter', true).art, 'winter', 'an evergreen keeps the calendar art');
+  // turning unevenly: one date, many trees, more than one art
+  const c = tctx(10, 28), arts = new Set();
+  for (let i = 0; i < 24; i++) arts.add(W.worldMaterialFor(W.worldMaterialCtx(c), { id: 'oak' + i, obj: 'tree.bank-oak', x: i, z: 20 }, c).art);
+  assert.ok(arts.size >= 2, 'trees turn unevenly: ' + [...arts].join());
+  // a seasonal art is drawn in its own colours (never seasoned again)
+  const twig = '#5a4c40', cBare = tctx(1, 20);
   const mBare = W.worldMaterialFor(W.worldMaterialCtx(cBare), { id: 't', obj: 'tree.bank-oak', x: 0, z: 20 }, cBare);
-  assert.equal(W.worldMaterialColour('leaf', twig, Object.assign({}, mBare, { sky: null, L: null, haze: 0 })), twig, 'the bare form is drawn in its own colours');
-  const mBud = Object.assign({}, W.worldMaterialFor(W.worldMaterialCtx(cBud), { id: 't', obj: 'tree.bank-oak', x: 0, z: 20 }, cBud), { leaf: 'bud', grow: 0.2, form: 'winter', sky: null, L: null, haze: 0 });
-  const g = W.worldMaterialColour('leaf', twig, mBud), rgb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-  assert.ok(rgb(g)[1] > rgb(twig)[1] + 20, `the budding haze greens: ${twig} -> ${g}`);
+  assert.equal(W.worldMaterialColour('leaf', twig, Object.assign({}, mBare, { sky: null, L: null, haze: 0 })), twig, 'the bare art is drawn in its own colours');
 });
 
 test('G2 the compositor plans each tree in its own form (the box and the sprite agree with the drawn form)', () => {
@@ -231,24 +241,31 @@ test('detector G3: one murky blue-grey is unreadable; dark masses with pale path
 
 /* ---------- G6: the matrix sweep (season x time x weather) ---------- */
 test('G6 the hoar frost the art paints on winter twigs shows on frosty mornings only, never as white limbs on a mild afternoon', () => {
+  // (merge of 15 Oct) worldMaterialRime (SCENE_LESSONS P): the winter art's frost and snow strokes show as much as the day is frosty or snowy
   const sh = W.sceneObjShapes('tree.hawthorn', 0, 'winter');
   const frostShapes = [];
-  for (const p of sh.order) for (const s of sh.parts[p] || []) if (W.worldMaterialOf('tree.hawthorn', p, typeof s.f === 'string' ? s.f : null, s) === 'rime') frostShapes.push(s);
+  for (const p of sh.order) for (const s of sh.parts[p] || []) { const hex = typeof s.s === 'string' ? s.s : s.f; if (W.worldMaterialRime(hex, { frost: 0 }) < 1) frostShapes.push(hex); }
   assert.ok(frostShapes.length > 0, 'the hawthorn\'s winter frost lines are rime');
   const c = tctx(1, 20), mc = W.worldMaterialFor(W.worldMaterialCtx(c), { id: 'h', obj: 'tree.hawthorn', x: 0, z: 10 }, c);
-  assert.equal(W.worldMaterialVisible('rime', Object.assign({}, mc, { frost: 0, snowDay: false })), false, 'a mild day: no frost');
-  assert.equal(W.worldMaterialVisible('rime', Object.assign({}, mc, { frost: 0.8 })), true, 'a frosty morning');
-  assert.equal(W.worldMaterialVisible('rime', Object.assign({}, mc, { frost: 0, snowDay: true, snow: 0.8 })), true, 'a snow day');
+  for (const hex of frostShapes) {
+    assert.equal(W.worldMaterialRime(hex, Object.assign({}, mc, { frost: 0, snowDay: false, snow: 0 })), 0, 'a mild day: no frost');
+    assert.ok(W.worldMaterialRime(hex, Object.assign({}, mc, { frost: 0.8 })) >= 0.8, 'a frosty morning');
+    assert.equal(W.worldMaterialRime(hex, Object.assign({}, mc, { frost: 0, snowDay: true, snow: 0.8 })), 1, 'a snow day');
+  }
 });
 test('G6 what stands dead in January (bracken, dock) is a weathered russet, not autumn flame', () => {
-  const sat = (h) => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255), mx = Math.max(...c), mn = Math.min(...c); return mx ? (mx - mn) / mx : 0; };
-  const lumOf = (h) => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255); return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]; };
-  const base = W.worldMaterialCtx({ month: 0, doy: 20, lat: FLEET.lat }), oct = W.worldMaterialCtx({ month: 9, doy: 290, lat: FLEET.lat });
-  for (let i = 0; i < 12; i++) {
-    const key = 'fern' + i, jan = W.worldMaterialColour('leaf', '#6a8a3a', Object.assign({}, base, { leaf: 'turn', turn: 1, key, sky: null, L: null }));
-    const autumn = W.worldMaterialColour('leaf', '#6a8a3a', Object.assign({}, oct, { leaf: 'turn', turn: 1, key, sky: null, L: null }));
-    assert.ok(lumOf(jan) < lumOf(autumn) && sat(jan) <= sat(autumn) + 0.02, `January ${jan} vs October ${autumn}`);
-    assert.ok(lumOf(jan) < 0.42, 'a dull dead brown: ' + jan);
+  // (merge of 15 Oct) herbs go dormant some seven weeks after they turn (SCENE_LESSONS P): in January they draw the library's
+  // winter art (dead stands in their own colours), never the October turning pick
+  for (const id of ['plant.bracken', 'plant.fern']) {
+    const kb = W.worldKb(id);
+    for (let i = 0; i < 12; i++) {
+      const key = id + i, jan = W.worldKbState(kb, tctx(1, 20), key), oct = W.worldKbState(kb, tctx(10, 20), key);
+      assert.equal(oct.leaf, 'turn', `${key} turns in October`);
+      assert.equal(jan.leaf, 'bare', `${key} is dormant in January, never still 'turn'`);
+      const c = tctx(1, 20), mc = W.worldMaterialFor(W.worldMaterialCtx(c), { id: key, obj: id, x: 0, z: 10 }, c);
+      assert.ok(mc.art === 'winter' && mc.artOwn, `${key}: the winter art, in its own colours`);
+      assert.equal(W.worldMaterialColour('leaf', '#6a8a3a', Object.assign({}, mc, { sky: null, L: null, haze: 0 })), '#6a8a3a', 'no autumn pick laid over it');
+    }
   }
 });
 test('G6 a moored boat is a home: its windows light one by one at night; a parked car stays dark', () => {

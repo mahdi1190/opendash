@@ -9,6 +9,9 @@
 //   scene new <pack> <id> [--v1] [--brief file.md | --archetype <id> --row '<json>'] [--lat .. --lon .. --heading ..] [--setting s] [--kits a,b]
 //       (without --preset / --v2 / --osm / --terrain, for now) the v1 scaffold: src/app/71-scene-<pack>-<n>.js, a composed scene that compiles at once, composed from the library by kit and
 //       role (or from an archetype; --archetype implies --v1), ready to lint and look at
+//   scene check <ref>[,...] [--pack p] [--loop 300] [--hz 4] [--browser] [--probe 12] [--out dir] [--baseline report.json] [--crowd off]
+//       (tools/lib/scene-cmd/check.mjs) the per-frame mover invariants over a full loop that advances t (src/app/78-scene-x-inv.js),
+//       --browser: drawn vs simulated on the real renderer and an 8-frame strip
 //   scene <sub> ...   any other subcommand is a module tools/lib/scene-cmd/<sub>.mjs (export default { summary, usage, options,
 //       run(args, ctx, lib) }; lib = { loadRegistry, engineOf, lintScene, recipes, harness, times }): migrate (D), osm and terrain (E),
 //       street and building (F), compose, critique, golden and compare-to-golden (G). Their options are merged into this command's.
@@ -26,7 +29,8 @@
 //       drawMs and dynMs in the real canvas renderer against the budget (x swFactor in software raster)
 //   scene capture <ref> [--seconds 3] [--fps 12] [--width 640] [--at ISO | --mode light|night] [--date D] [--dither] [--frames] [--upgrades] [--out file.gif]
 //       a few seconds of one scene as an animated GIF (tools/lib/scene-capture.mjs, no dependencies): frame k is drawn at t = k / fps,
-//       so the same command gives the same file on any machine; default .anim-ref/capture/<ref with / as __>.gif
+//       so the same command gives the same file on any machine; default .anim-ref/capture/<ref with / as __>.gif; it prints how many
+//       frames change and exits 1 when none does (a frozen clock)
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -68,7 +72,8 @@ const SCENE_SUBS = await loadSceneCommands();
 async function sceneLib() {
   let harness = null;
   try { harness = await import('../scene-page.mjs'); } catch { harness = null; }
-  return { loadRegistry, engineOf, lintScene, perfRules, dataOf, recipes, harness, times: sceneTimes, selectScenes, loadThresholds };
+  // withChrome, pageOpts and momentsOf: the browser half of a subcommand (scene check --browser) loads pages as sheet and capture do
+  return { loadRegistry, engineOf, lintScene, perfRules, dataOf, recipes, harness, times: sceneTimes, selectScenes, loadThresholds, withChrome, pageOpts, momentsOf };
 }
 /** Run a delegated subcommand (the built-in folder, or ctx.sceneCmdDir for tests). */
 async function runSub(sub, args, ctx) {
@@ -597,7 +602,8 @@ const sceneCommand = {
       ctx.out(out);
       ctx.out(`  ${res.width} x ${res.height}, ${res.frames} frames at ${co.fps} fps (${r2(res.seconds)} s, looping), ${res.colours} colours${args.dither ? ' (dithered)' : ''}, ${r2(res.gif.length / 1048576)} MB; sky: ${at || 'the authored moment'}`);
       if (framesDir) ctx.out(`  frames: ${framesDir}`);
-      return 0;
+      if (res.still != null) ctx.out(`  motion: ${res.frames - 1 - res.still} of ${res.frames - 1} frames change${res.frozen ? '  FROZEN: no frame differs from the one before (the clock did not advance)' : ''}`);
+      return res.frozen ? 1 : 0;
     }
 
     if (sub === 'lint') {

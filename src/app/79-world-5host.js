@@ -157,7 +157,9 @@ function worldHostV2Data(spec, o) {
   const style = (spec.backdrop && spec.backdrop.style) || P.style;
   const urban = /^(city|town)/.test(style || '');
   const data = { v: 2, id: o.id || spec.id || 'world', view: { lat: camera.lat, lon: camera.lon }, camera, at: 'afternoon', season: 'auto',
-    setting: urban ? 'urban' : 'natural', atmos: 'auto', weather: 'live', cover: 'auto', particles: 'season',
+    // particles 'none' (audit 15 Oct, bug 12): the v2 seasonal screen particles (petals, summer motes that glow as fireflies at
+    // night, autumn leaves from an empty sky) belong to no tree or chimney (M3, K7); a world's particles come from the world
+    setting: urban ? 'urban' : 'natural', atmos: 'auto', weather: 'live', cover: 'auto', particles: 'none',
     surfaces: [{ id: 'world-rest', kind: urban ? 'plot' : 'grass', rest: true }], water: [], place: [], scatter: [], actors: [], flows: [], world3: true };
   // the terrain (W2) is drawn by the world (79-world-4terrain.js): the v2 base keeps its flat ground, so it needs no relief
   // the spec rides along (not enumerable: the bake cache and JSON never see it) so worldHostSpec finds it from the data
@@ -343,7 +345,9 @@ function _wh5Lerp(prev, cur, al) {
     const c = cur[i], a = out[i], p = P.get(c.id);
     if (p && Number.isFinite(p.x) && Number.isFinite(p.z)) {
       a.x = p.x + (c.x - p.x) * al; a.z = p.z + (c.z - p.z) * al;
-      if (Number.isFinite(p.y) && Number.isFinite(c.y)) a.y = p.y + (c.y - p.y) * al;
+      // the height only between two ticks on one layer: a bird that lands (air -> walk) is drawn on the ground in its walk pose,
+      // never hovering half-way down in it (the real-frame run's 'floating' pigeons of the Pier Head, merge of 15 Oct)
+      if (Number.isFinite(p.y) && Number.isFinite(c.y) && p.layer === c.layer) a.y = p.y + (c.y - p.y) * al; else a.y = c.y;
       // the footprint moves with the body: two long vehicles passing within a tick are ordered by where they are drawn, not where they were
       if (Array.isArray(c.foot)) { const dx = a.x - c.x, dz = a.z - c.z; a.foot = c.foot.map(q => (Array.isArray(q) ? [q[0] + dx, q[1] + dz] : q)); }
     } else { a.x = c.x; a.z = c.z; a.y = c.y; if (Array.isArray(c.foot)) a.foot = c.foot; }

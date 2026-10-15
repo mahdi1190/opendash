@@ -1,5 +1,5 @@
 // World engine terrain (src/app/79-world-4terrain.js, the terrain step of the placement solver, the frame plan): requirement W2 and
-// SCENE_LESSONS J. The first no-example place (Whitby, a harbour under a 36 m cliff) showed that the ground followed a relief along
+// SCENE_LESSONS K. The first no-example place (Whitby, a harbour under a 36 m cliff) showed that the ground followed a relief along
 // the edges of a polygon only: a hill inside one was never drawn and every house on it hung in the sky. Terrain is drawn by the
 // world, as strips of the relief ordered with everything else.
 import { test } from 'node:test';
@@ -74,7 +74,7 @@ test('the frame plan includes the strips among the statics (the chunk order does
   assert.ok(iNear < 0 || iNear >= 0, 'the near foot exists or is flat');
 });
 
-test('a water below the ground is hidden behind the near bank: only what the sight lines carry through the opening is drawn (W2, SCENE_LESSONS J)', () => {
+test('a water below the ground is hidden behind the near bank: only what the sight lines carry through the opening is drawn (W2, SCENE_LESSONS K)', () => {
   const w = build(spec());                                    // quay z 1-16, water z 16-90 at -2 m, eye 1.7
   const R = W.worldWaterPlan(w, w.cam).find(r => r.id === 'esk');
   const k = (1.7 + 2) / 1.7;
@@ -91,10 +91,13 @@ test('a water below the ground is hidden behind the near bank: only what the sig
 test('two waters side by side are one opening: the seam between them hides nothing', () => {
   const s = spec({ surfaces: [{ id: 'quay', kind: 'plaza', poly: [[-100, 1], [100, 1], [100, 16], [-100, 16]] },
     { id: 'a', kind: 'water', water: 'harbour', poly: [[-300, 16], [300, 16], [300, 60], [-300, 60]] }, { id: 'b', kind: 'water', water: 'harbour', poly: [[-300, 60], [300, 60], [300, 140], [-300, 140]] }] });
-  const w = build(s), P = W.worldWaterPlan(w, w.cam), b = P.find(r => r.id === 'b');
+  // (merge of 15 Oct) two waters that touch at one level are ONE region (no seam: SCENE_LESSONS O); each keeps its own visible part
+  const w = build(s), P = W.worldWaterPlan(w, w.cam), R = P.find(r => (r.ids || [r.id]).includes('b'));
+  const near = (id) => { const i = R.ids.indexOf(id); return Math.min(...R.clipsM[i].map(p => p[1])); };
   const k = (1.7 + 2) / 1.7;
-  assert.ok(b && b.dNear < 60 * 1.0 + 0.5, `the far water starts at its own near edge ${b && b.dNear} (the sight line crosses the ground over the near water)`);
-  assert.ok(P.find(r => r.id === 'a').dNear >= 16 * k - 0.05);
+  assert.ok(R && R.ids.includes('a'), 'one water: ' + (R && R.ids));
+  assert.ok(near('b') < 60 * 1.0 + 0.5, `the far water starts at its own near edge ${near('b')} (the sight line crosses the ground over the near water)`);
+  assert.ok(near('a') >= 16 * k - 0.05);
 });
 
 // ---------- cliffs (src/app/79-world-4cliff.js; requirement TR5): a face is analytic, the grid only holds its coarse shape ----------
@@ -276,7 +279,7 @@ test('line gaps: the validator reads both forms the extruder reads (metres along
   assert.deepEqual(errs.map(e => e.path), ['lines[2].gaps'], 'only the malformed gap is refused');
 });
 
-test('a bench on a quay edge faces the water, and the sitter who stands up never steps into it (SCENE_LESSONS J)', () => {
+test('a bench on a quay edge faces the water, and the sitter who stands up never steps into it (SCENE_LESSONS K)', () => {
   const sp = spec({ surfaces: [{ id: 'quay', kind: 'plaza', poly: [[-60, 1], [60, 1], [60, 10], [-60, 10]] }, { id: 'esk', kind: 'water', water: 'harbour', poly: [[-60, 10], [60, 10], [60, 80], [-60, 80]], shallow: 1 }],
     entities: [{ obj: 'street.bench', at: [-6, 9.2], facing: 0, id: 'bench-q' }],
     life: [{ who: 'visit', mix: { elderly: 1 }, rate: '4/min', goals: [{ go: 'bench-q' }, { do: 'sit', for: [10, 20] }, { leave: 'W' }] }] });

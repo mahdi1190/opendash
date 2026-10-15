@@ -6,7 +6,7 @@
 //                                                   loads ONE scene page (a registered ref, or a v3 spec through worldHostData) and keeps it;
 //                                                   every cell after the first is a re-light (sceneHostSet), not a reload
 //   worldSheetPlan(spec, o)                      -> [{ row, col, label, at, wx, size }]: the cells of a sheet (o.matrix: 4 seasons x 5 times
-//                                                   x 3 weathers; else 3 dates x 5 times, plus a row of sizes at summer noon)
+//                                                   x 3 weathers + a winter snow day; else 3 dates x 5 times, plus a row of sizes at summer noon)
 //   worldSheet(chrome, src, o)                   -> { sheet, cells: [{ ..., file }], errors }: renders the cells and composes the sheet PNG
 //   worldReviewChecklist(kind)                   -> the fresh reviewer's checklist (V7 and 16.6) printed beside every sheet
 //   composeSheet(chrome, cells, o)               -> PNG buffer of captioned thumbnails in a grid (also used by capture and compare)
@@ -191,7 +191,7 @@ export async function worldSheet(chrome, src, o = {}) {
   }
   if (page) for (const e of await page.errors()) errors.push('page: ' + e);
   const sheet = join(dir, `${name}--${o.matrix ? 'matrix' : 'sheet'}.png`);
-  writeFileSync(sheet, await composeSheet(chrome, cells, { title: (o.title || src.ref || src.id) + (o.matrix ? ': 4 seasons x 5 times x 3 weathers' : ': 3 dates x 5 times, and sizes'),
+  writeFileSync(sheet, await composeSheet(chrome, cells, { title: (o.title || src.ref || src.id) + (o.matrix ? ': 4 seasons x 5 times x 3 weathers, and a winter snow day' : ': 3 dates x 5 times, and sizes'),
     notes: ['Reviewer: look for each of these and list every one you see (the list must be empty):', ...worldReviewChecklist('sheet')] }));
   return { sheet, cells, errors };
 }

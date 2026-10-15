@@ -1,7 +1,7 @@
 // Crowd behaviour of the world engine's life (src/app/79-world-2life.js with 1nav, 2brains and 2traffic): the classes of
 // movement bug the owner reported ("people walking into each other, through objects, stuck, sliding, popping") as automatic
 // checks on hand-made worlds. Each test would FAIL on the engine as it was on 14 Oct 2026 (soft steering only, no floor under
-// it): see docs/dev/SCENE_LESSONS.md section G.
+// it): see docs/dev/SCENE_LESSONS.md section J.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

@@ -2,7 +2,9 @@
 //
 //   WORLD_BUDGET                          the budget table (ms, counts); a measure FAILS at 1.2 x its budget (7: "tests fail at 1.2x")
 //   worldPerfNode(spec, E, o)             the pure world part in Node: validate, build, nav, life init, life tick (median ms over
-//                                         o.ticks at 15 Hz, scaled to 60 agents), chunks, frame order (median per frame), statics
+//                                         o.ticks at 15 Hz, scaled to 60 agents), chunks, frame order (median per frame, on render's
+//                                         own plan: worldPerfRenderOrder), occluder redraws, statics
+//   worldPerfRenderOrder(E, world, nav, life, o)  the depth order exactly as the renderer runs it -> { orderMs, chunks, redraws }
 //   worldPerfBrowser(chrome, spec, o)     the real renderer on a scene page (78-scene-* + 79-world-*): first bake, drawMs, dynMs,
 //                                         sprites, bitmaps, agents, order violations; o: { seconds, throttle, at, season }
 //   worldPerfCheck(measures)              -> { ok, lines: [{ item, value, budget, unit, ratio, status: 'ok' | 'warn' | 'fail' | 'n/a' }] }
@@ -72,10 +74,44 @@ export function worldPerfNode(spec, E, o = {}) {
     m.agentsSim = n; m.agents = agents;
     m.lifeTickMsRaw = r2(median(ms));
     m.lifeTickMs = r2(median(ms) * 60 / n);   // per 60 agents (the budget's unit)
-    m.orderMs = ord.length ? r2(median(ord)) : null;
+    m.orderMsNav = ord.length ? r2(median(ord)) : null;
     m.orderViolations = E.worldOrderCheck ? viol : null;
+    // the order the RENDERER runs (audit 15 Oct, bug 21): render's own plan (worldFramePlan: its merged chunks and the statics drawn
+    // live) against the agents as screen records, the same call _wfrDraw makes every frame. The nav-chunk order above measured
+    // 0.1 ms while the browser spent 126 ms ordering 2 merged chunks of 704 statics.
+    const R = worldPerfRenderOrder(E, world, nav, life, { season: o.season || 'summer', samples: 12 });
+    if (R) { m.orderMs = R.orderMs; m.chunks = R.chunks; m.occDraws = R.redraws; m.liveStatics = R.live; m.planStatics = R.statics; }
+    else m.orderMs = m.orderMsNav;
   }
   return m;
+}
+
+/**
+ * The per-frame depth order as the renderer runs it, in Node: render's worldFramePlan (its merged chunks and live statics) and the
+ * life's agents as screen records (box from the camera, true height), ordered by worldFrameOrder each sample. -> { orderMs
+ * (median), chunks, redraws (median occluder redraws a frame), live, statics } or null when render is not loaded.
+ */
+export function worldPerfRenderOrder(E, world, nav, life, o = {}) {
+  if (typeof E.worldFramePlan !== 'function' || typeof E.worldFrameOrder !== 'function' || !E.sceneProject || !world.cam) return null;
+  const cam = world.cam;
+  let plan;
+  try { plan = E.worldFramePlan(world, { season: o.season || 'summer', nav }); } catch { return null; }
+  const rec = (a) => {
+    const h = Number.isFinite(a.h) ? a.h : Number.isFinite(a.height) ? a.height : 1.7, z = Math.max(0.3, a.z);
+    const p = E.sceneProject(cam, a.x, z, a.y || 0), q = E.sceneProject(cam, a.x, z, (a.y || 0) + h), w = Math.max(2, (q.Y - p.Y) * -0.45);
+    return { id: String(a.id), ent: a, obj: a.obj, x: a.x, y: a.y || 0, z: a.z, foot: [[a.x, a.z]], height: h, static: false, s: 1, X: p.X, Y: p.Y,
+      box: { x0: p.X - w / 2, y0: q.Y, x1: p.X + w / 2, y1: p.Y }, attach: a.host ? 'deck:' + a.host : null };
+  };
+  const ms = [], red = [];
+  for (let i = 0; i < (o.samples || 12); i++) {
+    for (let k = 0; k < 15; k++) E.worldLifeTick(life, 1 / 15);
+    const ag = (E.worldAgents(life) || []).filter(a => a && a.z > 0.3).map(rec).filter(r => r.box.x1 > -50 && r.box.x0 < 1650 && r.box.y1 > -50);
+    const a = now(); let order = [];
+    try { order = E.worldFrameOrder(plan.chunks, plan.live.concat(ag), null) || []; } catch { return null; }
+    ms.push(now() - a);
+    red.push(order.filter(x => x && x.kind === 'redraw').length);
+  }
+  return { orderMs: r2(median(ms)), chunks: plan.chunks.length, redraws: median(red), live: plan.live.length, statics: plan.recs.length };
 }
 
 /** The real renderer on a scene page. chrome: tools/release-chrome.mjs launchChrome(). */
@@ -198,6 +234,9 @@ export function worldPerfCheck(measures) {
     const status = k === 'orderViolations' ? (v > 0 ? 'fail' : 'ok') : ratio > WORLD_FAIL_FACTOR ? 'fail' : ratio > 1 ? 'warn' : 'ok';
     lines.push({ item: k, label: b.label, value: r2(v), budget: b.budget, unit: b.unit, ratio: Number.isFinite(ratio) ? r2(ratio) : null, status });
   }
+  // too FEW chunks is a fault too (bug 21): one bitmap holding the whole static world makes every mover redraw its occluders
+  if (Number.isFinite(measures.planStatics) && measures.planStatics >= 300 && Number.isFinite(measures.chunks) && measures.chunks < 6)
+    lines.push({ item: 'chunkSpread', label: 'at least 6 chunk bitmaps for 300+ statics spread over depth', value: measures.chunks, budget: 6, unit: '', ratio: null, status: 'fail' });
   return { ok: !lines.some(l => l.status === 'fail'), lines };
 }
 
@@ -211,7 +250,9 @@ export function worldPerfText(check, title = '') {
 /**
  * The life sim of a spec in Node for `seconds` at 15 Hz with every check of 8.3 / 8.6, each failure a red mark:
  * forbidden (an agent on a cell its layer forbids), float (a floater or wader off the water level), pop / vanish (appearing or
- * leaving off a spawn cell), stuck (a walking agent that has not moved 0.3 m in 20 s), order (worldOrderCheck, every 2 s).
+ * leaving off a spawn cell), stuck (a walking agent that has not moved 0.3 m in 20 s), order (worldOrderCheck, every 2 s),
+ * overlap (two people under 0.35 m apart across the view and 0.4 m in depth for 0.5 s: drawn through each other), clone (two people in the same outfit within 3 m for
+ * 3 s, A11) and water (a walker on open water, no deck under it).
  */
 export function worldMotion(E, spec, o = {}) {
   const seconds = o.seconds || 600, dt = 1 / 15;
@@ -224,6 +265,14 @@ export function worldMotion(E, spec, o = {}) {
   let prev = new Map((E.worldAgents(life) || []).map(a => [a.id, a]));
   for (const a of prev.values()) seen.add(a.id);
   const still = new Map();
+  // 15 Oct (audit bug 8): bodies through each other, outfit clones walking together, walkers on open water (0 red marks while
+  // all three were on screen); each held for a while so a brief overtake or crossing is not a mark
+  const person = (a) => /^person\./.test(String(a.obj || ''));
+  const pairSince = new Map(), cloneSince = new Map(), marked = new Set();
+  const onWaterAt = (a) => {
+    if (a.layer !== 'walk' || a.host || !E.worldSurfaceAt) return false;
+    try { const s = E.worldSurfaceAt(world, a.x, a.z, { y: a.y }); return !!s && s.kind === 'water'; } catch { return false; }
+  };
   for (let i = 1, t = dt; t <= seconds; i++, t += dt) {
     E.worldLifeTick(life, dt);
     const now = E.worldAgents(life) || [], cur = new Map();
@@ -241,6 +290,26 @@ export function worldMotion(E, spec, o = {}) {
       }
     }
     for (const [id, a] of prev) if (!cur.has(id) && isSpawn && !a.host && a.layer !== 'air' && !isSpawn(a.layer, a.x, a.z)) mark(t, a, 'vanish', 'left the scene off a spawn cell');
+    if (i % 5 === 0) {
+      const ppl = now.filter(person), live = new Set(), liveC = new Set();
+      for (let x = 0; x < ppl.length; x++) for (let y = x + 1; y < ppl.length; y++) {
+        const a = ppl[x], b = ppl[y], d = Math.hypot(a.x - b.x, a.z - b.z), k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
+        if (d > 3) continue;
+        // the frame's view: side by side under 0.35 m across the line of sight and under 0.4 m in depth, their figures overlap by
+        // over 40 % (the crowd invariant's measure on screen boxes)
+        if (Math.abs(a.x - b.x) < 0.35 && Math.abs(a.z - b.z) < 0.4 && !(a.group != null && a.group === b.group) && a.lead !== b.id && b.lead !== a.id && Math.abs((a.y || 0) - (b.y || 0)) < 0.3) {
+          live.add(k); if (!pairSince.has(k)) pairSince.set(k, t);
+          if (t - pairSince.get(k) >= 0.5 && !marked.has('o' + k)) { marked.add('o' + k); mark(t, a, 'overlap', `${a.id} and ${b.id} stand ${Math.round(d * 100)} cm apart: drawn through each other`); }
+        }
+        if (a.obj === b.obj && a.variant != null && a.variant === b.variant && (a.outfit == null || b.outfit == null || a.outfit === b.outfit)) {
+          liveC.add(k); if (!cloneSince.has(k)) cloneSince.set(k, t);
+          if (t - cloneSince.get(k) >= 3 && !marked.has('c' + k)) { marked.add('c' + k); mark(t, a, 'clone', `${a.id} and ${b.id} walk together in the same outfit (${a.obj} variant ${a.variant})`); }
+        }
+      }
+      for (const k of [...pairSince.keys()]) if (!live.has(k)) pairSince.delete(k);
+      for (const k of [...cloneSince.keys()]) if (!liveC.has(k)) cloneSince.delete(k);
+      for (const a of ppl) if (onWaterAt(a) && !marked.has('w' + a.id)) { marked.add('w' + a.id); mark(t, a, 'water', `walks on open water at (${a.x.toFixed(2)}, ${a.z.toFixed(2)})`); }
+    }
     if (i % 30 === 0 && E.worldHostOrderCheck) {
       const v = E.worldHostOrderCheck(world, now, world.cam) || [];
       for (const x of v.slice(0, 3)) red.push({ t, id: x.a + '/' + x.b, cls: 'order', rule: 'order', msg: x.why, x: null, z: null });

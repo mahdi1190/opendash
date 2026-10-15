@@ -201,7 +201,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
     edges: Object.assign({}, _WKT_EDGES_URBAN, { water: { pond: 'natural', lake: 'quay', canal: 'quay', river: 'quay', estuary: 'quay', sea: 'quay', harbour: 'quay', puddle: 'none' },
       quay: { top: [['plant.rph-short-grass', 2]], posts: [['street.bollard', 4], ['street.mqn-lifebuoy', 1]] } }),
-    frame: [{ kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'lamp', obj: 'street.lamppost' }],   // never a bollard: a 1 m post cut by the frame's bottom edge is a dark blob (SCENE_LESSONS G)
+    frame: [{ kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'lamp', obj: 'street.lamppost' }],   // never a bollard: a 1 m post cut by the frame's bottom edge is a dark blob (SCENE_LESSONS K)
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'crowd', rate: '8/min' }, paving: { who: 'crowd', rate: '8/min' }, water: [{ who: 'mallard', count: 4 }], air: [{ who: 'gulls', count: 5 }] } },
   // a great city waterfront (the Pier Head, a Thames embankment, a Clyde quay): a river promenade and a wide paved plaza behind it under big
   // public buildings; flags and setts, plane trees in pits, planters, benches, lamp standards, bollards and railings at the quay edge, crowds,

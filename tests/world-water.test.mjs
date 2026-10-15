@@ -12,7 +12,7 @@ import { sceneSourceFiles } from '../tools/lib/scene-page.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOOK = ['79-world-4backdrop.js', '79-world-4light.js', '79-world-4material.js', '79-world-4water.js'];
-const NAMES = ['WORLD_WATER_LOOK', 'WORLD_WATER_CAPS', 'worldWaterLook', 'worldWaterPlan', 'worldWaterSpansAt', 'worldWaterContact', 'worldWaterContactRow', 'worldWaterOwners',
+const NAMES = ['WORLD_WATER_LOOK', 'WORLD_WATER_CAPS', 'worldWaterLook', 'worldWaterPlan', 'worldWaterSpansAt', 'worldWaterContact', 'worldWaterContactRow', 'worldWaterContactClip', 'worldWaterOwners',
   'worldWaterComposite', 'worldWaterMirror', 'worldWaterRipple', 'worldWaterCut', 'worldWaterReflectOf', 'worldWaterFalls', 'worldWaterInit', 'worldWaterTick',
   'worldWaterEvent', 'worldWaterBob', 'worldSkyOf', 'sceneCamera', 'sceneProject'];
 // a stand-in for the systems package's worldSystem, so the registrations can be checked
@@ -377,4 +377,27 @@ test('the water and light systems register through worldSystem (phases fx and li
   world.ctx = { ms: Date.UTC(2026, 5, 21, 12), lat: 51.28, lon: -0.84, weather: 'clear' };
   light.update(world, 0.5);
   assert.ok(world.sky && world.sky.phase === 'noon');
+});
+
+test('a mill set back on a high quay mirrors where the water plane puts it, not from the channel edge (verify round 1, Kelham)', () => {
+  // a 6 m channel 2.6 m below its quays, running away from the eye; a mill 20 m to the side of it
+  const level = -2.6, world = { cam, surfaces: [{ id: 'ch', kind: 'water', water: 'canal', level, poly: [[-3, 4], [3, 4], [3, 200], [-3, 200]] }] };
+  const [R] = W.worldWaterPlan(world, cam);
+  const mill = { id: 'mill', obj: 'building.terrace', x: -23, z: 40, y: 0, height: 18, foot: [[-30, 30], [-23, 30], [-23, 50], [-30, 50]] };
+  const c = W.worldWaterContact(R, mill, cam);
+  assert.equal(c.kind, 'bank');
+  const X = Xof(-23, 30), row = W.worldWaterContactRow(R, c, X);
+  const truth = 2 * Rl(30, level) - Rl(30, 0);   // the mirrored base: 2 x the water-level row - the ground row at its front
+  assert.ok(Math.abs(row - truth) < 1, `the mill's base mirrors to ${row.toFixed(1)}, the water plane puts it at ${truth.toFixed(1)}`);
+  // ... and the image of the quay's own wall hides the mill down to the wall's mirrored top in that column
+  const Xw = Xof(-2.9, 40), top = W.worldWaterSpansAt(R, Xw)[0][0], clip = W.worldWaterContactClip(R, c, Xw);
+  assert.ok(Math.abs(clip - (top + (top - cam.horizon) * 2.6 / (cam.eye + 2.6))) < 0.5, `clip ${clip} under the edge ${top}`);
+  // ... while a tree on a low bank still lays its base on the edge (no gap)
+  const low = [{ id: 'p', kind: 'water', water: 'pond', level: -0.1, poly: [[-40, 6], [40, 6], [40, 50], [-40, 50]] }];
+  const [R2] = W.worldWaterPlan({ cam, surfaces: low }, cam);
+  const tree = { id: 't', obj: 'tree.bank-oak', x: 0, z: 52, y: 0, height: 12, foot: [[-0.3, 51.7], [0.3, 51.7], [0.3, 52.3], [-0.3, 52.3]] };
+  const c2 = W.worldWaterContact(R2, tree, cam), edge = W.worldWaterSpansAt(R2, Xof(0, 52))[0][0];
+  const r2 = W.worldWaterContactRow(R2, c2, Xof(0, 52));
+  assert.equal(W.worldWaterContactClip(R2, c2, Xof(0, 52)), -Infinity, 'a low bank hides nothing');
+  assert.ok(Math.abs(r2 - edge) < 0.6, `a low bank: from the edge (${r2.toFixed(2)} vs ${edge.toFixed(2)}, f ${cam.f})`);
 });
