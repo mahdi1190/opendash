@@ -292,7 +292,9 @@ _scbgBlockKinds.lantern = function (bk, wall) {
   faces.push(_sctfFace([X(bk.s, o - hw, z - 0.05), X(bk.s, o + hw, z - 0.05), X(bk.s, o + hw, z - 0.3), X(bk.s, o - hw, z - 0.3)], '#cdd2c4'));
   faces.push(_sctfFace([X(bk.s, o - hw - 0.03, z - 0.3), X(bk.s, o + hw + 0.03, z - 0.3), X(bk.s, o + hw, z - 0.34), X(bk.s, o - hw, z - 0.34)], '#1c1f22'));
   faces.push(_sctfFace([X(bk.s, o - hw - 0.04, z + 0.0), X(bk.s, o + hw + 0.04, z), X(bk.s, o, z + 0.14)], '#1c1f22'));
-  faces.push({ poly: [X(bk.s, o, z - 0.17)], n: [0, 1, 0], part: 'lit', role: 'lamps', col: '#fff1c8', elems: [], flat: true, lit: true });
+  // its glow after dusk: a soft falloff of round lights (the lamp's own warm colour), wider and fainter outward, then the glass itself
+  for (const [rad, op] of [[0.95, 0.07], [0.6, 0.12], [0.36, 0.22]]) faces.push({ poly: [X(bk.s, o, z - 0.17)], n: [0, 1, 0], part: 'lit', role: 'lamps', col: '#ffd890', rad, op, round: true, elems: [], flat: true, lit: true });
+  faces.push({ poly: [X(bk.s, o, z - 0.17)], n: [0, 1, 0], part: 'lit', role: 'lamps', col: '#fff1c8', rad: 0.1, op: 1, elems: [], flat: true, lit: true });
   return faces;
 };
 _scbgBlockKinds.basket = function (bk, wall, sp) {

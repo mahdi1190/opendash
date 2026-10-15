@@ -1737,7 +1737,7 @@ function _wlfSeparate(life) {
     var b = h.get(k); if (!b) { b = []; h.set(k, b); } b.push(a);
   }
   if (L.length < 2) return;
-  for (var it = 0; it < 3; it++) {
+  for (var it = 0; it < 6; it++) {
     var moved = 0;
     for (i = 0; i < L.length; i++) {
       var p = L[i], cx = Math.floor(p.x / 2), cz = Math.floor(p.z / 2);

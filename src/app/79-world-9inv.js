@@ -500,6 +500,8 @@ const _WIV_RULES = {
       if (vis / A <= 0.25) continue;
       if (e.framing || _WIV_FRAMERS.has(cls)) continue;
       if (cut.t && !cut.l && !cut.r && !cut.b && /^(building|landmark|structure)$/.test(cls)) continue;   // a tall building cut at the top
+      // an extruded building is the PLACE, never moved (C1): a street's frontage runs out of the frame at its sides and top, it is cut by the frame by perspective (its ground line leaves at the bottom corner too), not by a bad placement (a lane between two rows of houses)
+      if (cls === 'building' && /^line[.]/.test(String(e.obj || ''))) continue;
       _wivPush(C, 'edgeCut', e.id, `${e.obj} fills ${Math.round(vis / A * 100)} % of the frame and is cut by the ${['l', 'r', 't', 'b'].filter(k => cut[k]).map(k => ({ l: 'left', r: 'right', t: 'top', b: 'bottom' })[k]).join(' and ')} edge`);
     }
   },

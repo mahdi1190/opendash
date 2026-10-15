@@ -123,6 +123,7 @@ function _wflBoxOverlap(a, b) {
   return w * h / A;
 }
 function _wflBox(F, e) {
+  if (e && Array.isArray(e.primBox)) return e.primBox;   // an extruded building or wall: its own screen box (worldPrimEntities)
   const kb = e && e.obj ? worldKb(e.obj) : null;
   if (kb && kb.hang && Array.isArray(kb.art)) {
     const z = Math.max(0.05, e.z), y = _wflNum(e.y) ? e.y : _wflGround(F, e.x, z), p = _wflProj(F, e.x, z, y), mir = _wflNum(e.facing) && e.facing > 180 && e.facing < 360 ? -1 : 1;
@@ -589,7 +590,8 @@ function _wflSample(world, cam, o) {
   const fake = { cam, world, W, H };
   const byCol = Array.from({ length: cols }, () => []);
   const X0 = -pad, X1 = W + pad, colW = (X1 - X0) / cols;
-  for (const e of ents.concat(bd)) {
+  const prims = typeof worldPrimEntities === 'function' ? worldPrimEntities(world, cam) : [];
+  for (const e of ents.concat(bd, prims)) {
     const b = _wflBox(fake, e);
     if (b[2] < X0 || b[0] > X1 || b[3] < top) continue;
     const c0 = Math.max(0, Math.floor((b[0] - X0) / colW)), c1 = Math.min(cols - 1, Math.floor((b[2] - X0) / colW));
