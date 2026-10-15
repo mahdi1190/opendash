@@ -15,7 +15,7 @@
     shop: { always: false, allowed: false },
     plinth: false, quoins: false, sideWindows: false, flippable: false,
     details: { downpipe: 0, alarm: 0, boxes: 0, ivy: 0 },
-    night: { on: 0.85, curtain: 0, tv: 0, flood: 0.3 },
+    night: { on: 0.85, curtain: 0, tv: 0, flood: 0.55 },
     resolve: _SCCD_HOOKS.resolve, build: _SCCD_HOOKS.build,
   });
 })();
