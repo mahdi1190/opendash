@@ -163,6 +163,27 @@ scene the engine change touches; all 180 cells of the three test scenes pass.
 | A boardwalk's rails and piles floating across the water as a T with no deck | A walkway with only a side elevation was drawn square to the eye even when it ran away from it (the view fell back to `side`), and an entity's deck was never drawn (only deck surfaces were) | An elevation-only walkway within about 20 degrees of end-on is drawn in perspective: handrails along its real long edges and its deck planks (unless a deck surface already lies there) (G5) |
 | Reflections of a platform or a boat sprite hanging far below it | The near edge of a long footprint was used as the waterline for anything in the water, but a sprite is drawn about its anchor | A sprite mirrors about its own waterline at its anchor; only pieces drawn in perspective mirror about their footprint (G5) |
 
+## H. Detail and composition defaults (14 Oct)
+
+The user: "the scenes are missing so many details ... we iterate on them way too much, so it's an engine problem". Every row is
+fixed in the engine's defaults (kits, fill, ground detail, critic; no scene was edited) and has a check that failed on the engine
+as it was: `node --test tests/world-kits.test.mjs tests/world-critic.test.mjs tests/world-ground.test.mjs
+tests/world-kit-fixtures.test.mjs`, and `node tools/world.mjs critic <ref | spec.json>` (exit 1 on any FAIL).
+
+| Mistake | Why it happened | Rule |
+|---|---|---|
+| The fill named objects that do not exist (`plant.rph-hazel-coppice`) and quietly used weaker stand-ins | The fill styles were hand lists with no check against the library | The fill styles ARE the style kits; `worldKitCheck` fails loudly on a missing, weak, dome, foreign or wrong-class entry; a missing object is skipped and logged, never replaced |
+| Blob and lollipop trees, placeholder logs and planks in new places | The fill drew from everything the library holds | Kits list curated objects per band; `WORLD_KIT_WEAK` never appears; dome trees only beyond 120 m (`WORLD_KIT_DISTANT_ONLY`) |
+| Sunken rivers with flat dark slab walls; flat towpaths, paving and lawns | The ground was drawn as flat colour and the old critic counted lived surfaces as dressed | Every visible surface is textured by its look; a channel gets stone, brick or earth walls with coping; the strict critic fails `bareChannel`, `flatSurface`, `bareQuay` |
+| The critic passed empty foregrounds, bare lawns and scenes with no framing | It judged entity boxes (an oak's box is 93 % of its picture) | The strict measure uses art silhouettes and fails `emptyForeground`, `bareGround`, `bareRegion`, `fewLayers`, `noFraming`, `noBough`, `lowVariety`, `noLife`, each naming the fix |
+| No framing foreground, or a bough with no tree, or a domed crown cut by the frame top | Framing was a token clump in the near band | A natural kit frames with a hanging bough whose trunk stands just outside the frame on the same side, plus reeds, a shrub, a hedge, a railing or a lamp at the sides; buildings, lines and walls count as side frames |
+| An overfilled canal (a jungle) once the fill was driven by the strict measure | Nothing kept the view open | The vista where the leading lines meet the horizon stays at most 35 % covered; the sky keeps the kit's share (where the author left less, the fill closes at most a third of it) |
+| Flower carpets, heaps of picnic rugs and giant seated figures at the lens | Open lawns were sampled like rough grass; seated scenery took the standing mover height (1.7 m) | An open look (mown, ripple) is half dressed by its texture and gets sparse single things; seated figures keep their seated height, at most 8, apart, never filling more than a fifth of the frame |
+| Benches stacked on screen, two bandstands in one view | Furniture was spaced in metres only | Like furniture never overlaps another's picture at a like depth; a feature (`structure.*`) stands once |
+| A 90 m blank wall for a long terrace footprint | The extruder drew one footprint as one house | A long terrace footprint is split into houses with their own seeds and fronts facing the street |
+| A green with willows, a beach of stones, a civic square chosen for a grass field with a 4 m plaza | The chooser looked at which kinds exist, not at what the view shows | Kits per setting (no willows on a dry green); the chooser weighs the surfaces the camera's cone shows |
+| Reeds at a quay's foot, a framing trunk and a birch overlapping, walkers through a house | Placement checked a floater's anchor only; the fill's index skipped ground-standing 'air' art; people were added to paving that carries a building | A floater's whole footprint is in the water; anything on the ground is indexed; the kit's people never go on paving with a building on it |
+
 ## I. Movement, and the checker that looked clean while the page did not (14 Oct)
 
 The user: "people walking into each other ... all the animations are SO SO buggy". The unit tests and the Node invariant run were all

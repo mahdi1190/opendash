@@ -124,7 +124,7 @@ const WORLD_KB_CLASSES = _wkbFreeze({
     anim: { clips: ['sit', 'idle'], stride: null, idle: 'breathe', stiffness: 1, secondary: [] } },
   umbrella: { habitat: { on: ['walk', 'paving', 'sand', 'deck', 'grass'], avoid: ['water', 'road-lane'] }, foot: 'disc', solidity: 'passable', clearance: 0.4, orient: 'free',
     group: { kind: 'single', size: [1, 2], gap: 1 }, density: 'people',
-    when: { weather: ['rain'] }, anim: { clips: [], stride: null, idle: null, stiffness: 0.8, secondary: [] } },
+    when: { weather: ['rain'] }, anim: { clips: [], stride: null, idle: null, stiffness: 1, secondary: [] } },   // rigid: statics never sway (M2)
   // ---- animals ----
   dog: { habitat: { on: ['walk', 'grass', 'sand', 'deck', 'soil', 'crossing'], avoid: ['water', 'hedge', 'weir', 'rail', 'road-lane'] }, foot: 'box', solidity: 'passable', clearance: 0.2,
     orient: 'free', group: { kind: 'single', size: [1, 2], gap: 0.5 }, density: 'dog', size: { poses: { stand: [0.3, 0.7], sit: [0.25, 0.55], lie: [0.15, 0.3] } },

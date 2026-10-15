@@ -1,0 +1,17 @@
+{ "v": 3, "place": {"lat": 53.8, "lon": -1.55, "region": "yorkshire", "style": "river-city"},
+  "camera": {"eye": 1.7, "fov": 62, "horizon": 420, "heading": 80, "water": -2.4}, "backdrop": {"style": "city-victorian"},
+  "surfaces": [
+    {"id": "walk-l", "kind": "pavement", "poly": [[-30, 1], [-8, 1], [-8, 260], [-30, 260]]},
+    {"id": "river", "kind": "water", "water": "river", "poly": [[-8, 1], [10, 1], [10, 260], [-8, 260]]},
+    {"id": "walk-r", "kind": "pavement", "path": [[12.5, 1], [12.5, 260]], "width": 5},
+    {"id": "road", "kind": "road", "path": [[19, 1], [19, 260]], "width": 7}
+  ],
+  "buildings": [
+    {"id": "mill-l", "foot": [[-30, 40], [-14, 40], [-14, 90], [-30, 90]], "storeys": 5, "style": "mill"},
+    {"id": "row-r", "foot": [[24, 20], [36, 20], [36, 110], [24, 110]], "storeys": 4, "style": "victorian-terrace"}
+  ],
+  "life": [
+    {"who": "crowd", "on": "walk-r", "rate": "8/min", "edges": ["S", "N"]},
+    {"who": "cars", "on": "road", "rate": "4/min"}
+  ],
+  "seed": 26 }
