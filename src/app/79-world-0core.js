@@ -432,7 +432,7 @@ const _WC_KEYS = {
   place: ['lat', 'lon', 'alt', 'region', 'origin', 'style'],
   camera: ['eye', 'fov', 'horizon', 'heading', 'x0', 'lat', 'lon', 'alt', 'water', 'preset'],
   camera31: ['id', 'at', 'height', 'eye', 'heading', 'lookAt', 'frame', 'fov', 'horizon', 'pitch', 'x0', 'lat', 'lon', 'alt', 'water', 'preset', 'relief'],
-  ground: ['relief', 'features'], relief: ['x', 'd', 'nx', 'nd', 'h', 'src'], feature: ['id', 'kind', 'path', 'width', 'h', 'arc', 'scree', 'batter', 'rim', 'high', 'fade', 'rock'],
+  ground: ['relief', 'features'], relief: ['x', 'd', 'nx', 'nd', 'h', 'src'], feature: ['id', 'kind', 'path', 'width', 'h', 'arc', 'scree', 'batter', 'rim', 'high', 'fade', 'rock', 'rough', 'scoop'],
   surface: ['id', 'kind', 'water', 'poly', 'path', 'width', 'shallow', 'level', 'obj', 'open', 'y', 'from', 'to', 'hint', 'flow', 'step'],
   step: ['to', 'kind'],
   line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj'],
@@ -661,6 +661,8 @@ function _wcCheck(spec0, repair) {
           if (!(_wcNum(f.h) && f.h > 0 && f.h <= 400)) act(p + '.h', f.h == null ? 'missingField' : 'badValue', 'h is metres (0..400)', set(f, 'h', 30, f.id));
           if (f.rock != null && typeof WORLD_CLIFF_ROCKS !== 'undefined' && !WORLD_CLIFF_ROCKS.includes(f.rock)) act(p + '.rock', 'badValue', 'rock is ' + WORLD_CLIFF_ROCKS.join(', '), strip(f, 'rock', f.id));
           if (f.high != null && !['far', 'left', 'right'].includes(f.high)) act(p + '.high', 'badValue', 'high is far, left or right', strip(f, 'high', f.id));
+          if (f.rough != null && f.rough !== false && !(_wcNum(f.rough) && f.rough >= 0 && f.rough <= 3)) act(p + '.rough', 'badValue', 'rough is 0..3 (default 1) or false', strip(f, 'rough', f.id));
+          if (f.scoop != null && typeof f.scoop !== 'boolean' && !_wcObjOf(f.scoop)) act(p + '.scoop', 'badValue', 'scoop is true, false or { at: 0..1, w, depth }', strip(f, 'scoop', f.id));
           return;
         }
         if (!(_wcNum(f.width) && f.width > 0)) act(p + '.width', f.width == null ? 'missingField' : 'badValue', 'width is metres > 0', set(f, 'width', 6, f.id));

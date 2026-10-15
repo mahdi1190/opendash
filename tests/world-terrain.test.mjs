@@ -101,7 +101,9 @@ test('two waters side by side are one opening: the seam between them hides nothi
 });
 
 // ---------- cliffs (src/app/79-world-4cliff.js; requirement TR5): a face is analytic, the grid only holds its coarse shape ----------
-const CLIFF = { features: [{ kind: 'cliff', arc: { c: [0, 60], r: 190, from: -62, to: 62 }, h: 70 }] };
+// rough: 0 is the ruled face (a plan with no buttresses, a level rim, one talus): the maths of the profile is tested on it; the default,
+// irregular face has its own tests below
+const CLIFF = { features: [{ kind: 'cliff', arc: { c: [0, 60], r: 190, from: -62, to: 62 }, h: 70, rough: 0 }] };
 const cspec = (extra) => spec(Object.assign({ camera: { eye: 1.7, fov: 66, horizon: 560, heading: 0 }, surfaces: [{ id: 'floor', kind: 'grass', poly: [[-400, 1], [400, 1], [400, 400], [-400, 400]] }], ground: CLIFF }, extra || {}));
 
 test('a cliff feature validates: an arc becomes its polyline, a face needs h, a bad rock or side is stripped', () => {
@@ -134,14 +136,14 @@ test('the cliff is analytic: a vertical face of the full height, a talus skirt b
 
 test('a straight cliff with the high ground on the left, a batter and no scree takes the same spec', () => {
   // the path runs along +x: its LEFT is the far side (+z), its right the camera's side
-  const w = build(cspec({ ground: { features: [{ kind: 'cliff', path: [[-300, 220], [300, 220]], h: 40, high: 'left', batter: 0.3, scree: false, fade: 0 }] } }));
+  const w = build(cspec({ ground: { features: [{ kind: 'cliff', path: [[-300, 220], [300, 220]], h: 40, high: 'left', batter: 0.3, scree: false, fade: 0, rough: 0 }] } }));
   const f = w.features[0];
   assert.equal(W.worldCliffHeight(f, 0, 200), 0, 'no scree: flat to the foot');
   assert.ok(W.worldCliffHeight(f, 0, 220 + 2) < 10 && Math.abs(W.worldCliffHeight(f, 0, 220 + 15) - 40) < 0.5, 'a battered face leans back: 0.3 m of plan per metre of height, so about 12 m of plan to climb 40 m');
   const half = W.worldCliffHeight(f, 0, 220 + 0.3 * 38.5 * 0.5);
   assert.ok(half > 15 && half < 25, 'halfway across the batter it is about half the height: ' + half);
   assert.equal(W.worldCliffHeight(f, 0, 260), 40);
-  const r = build(cspec({ ground: { features: [{ kind: 'cliff', path: [[-300, 220], [300, 220]], h: 40, high: 'right', scree: false, fade: 0 }] } }));
+  const r = build(cspec({ ground: { features: [{ kind: 'cliff', path: [[-300, 220], [300, 220]], h: 40, high: 'right', scree: false, fade: 0, rough: 0 }] } }));
   assert.equal(W.worldCliffHeight(r.features[0], 0, 260), 0, 'high: right puts the plateau on the camera side');
   assert.equal(W.worldCliffHeight(r.features[0], 0, 200), 40);
 });
@@ -206,7 +208,7 @@ test('the strips leave the face to the cliff pass: no ground quad lies on the fa
 });
 
 test('what a cliff hides is exact: a point behind the rim is hidden while the sight line passes below it, not from above the rim, not beyond the end of the face (TR7)', () => {
-  const w = COVE(), G = W.worldCliffGeom(w.features[0]);
+  const w = build(cspec({ camera: { eye: 1.7, fov: 66, horizon: 580, heading: 0 }, ground: { features: [Object.assign({}, COVE_FEATURES().features[0], { rough: 0 })] } })), G = W.worldCliffGeom(w.features[0]);
   assert.equal(W.worldCliffHides(G, 0, 330, 70, 1.7), true, 'the plateau behind the apex');
   assert.equal(W.worldCliffHides(G, 0, 330, 70, 90), false, 'seen from above the rim');
   assert.equal(W.worldCliffHides(G, 0, 200, 0, 1.7), false, 'in front of the face');
