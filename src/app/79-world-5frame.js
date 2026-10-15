@@ -1531,7 +1531,15 @@ function _wfrDraw(env, ctx, t) {
   // the channel walls' own image in the water (look's worldWaterContactClip hides what stands beyond a high quay there)
   if (S.water && S.water.length && !S.wallImageOff) { try { draws += _wfrWallImages(ctx, env, S); } catch (e) { S.wallImageOff = true; S.stats.errors.push('wallImage: ' + (e && e.message)); } }
   // the channel walls of sunken water (dressed stone or earth banks) over the water's edge, under everything standing on the banks
-  if (S.groundWalls && S.groundWalls.c) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(S.groundWalls.c, S.groundWalls.x, S.groundWalls.y); draws++; }
+  if (S.groundWalls && S.groundWalls.c) {
+    // a deck laid over the water is nearer than the far bank's wall face behind it: the walls never draw over a low deck (the dark
+    // band that cut a footbridge in two at the pond's stream, 16 Oct); a high bridge (y over 0.6 m) is judged by the draw order
+    const low = ((S.wet && S.wet.decks) || []).filter(D => !Number.isFinite(D.s.y) || D.s.y < 0.6).map(D => D.scr);
+    ctx.save();
+    if (low.length) { ctx.setTransform(vs, 0, 0, vs, ox, oy); _wfrHoleClip(ctx, low); }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(S.groundWalls.c, S.groundWalls.x, S.groundWalls.y); draws++;
+    ctx.restore();
+  }
   lap('mirror');
   // 2. the ground shadows of the statics, then the movers' shadows (look's plan per frame; else a contact blob)
   ctx.setTransform(1, 0, 0, 1, 0, 0);

@@ -53,13 +53,13 @@
 const WORLD_VERSIONS = Object.freeze([3, 3.1]);
 const WORLD_RULES = Object.freeze(['badVersion', 'badType', 'badValue', 'unknownKey', 'screenOrLookField', 'seasonPinned', 'perSeasonData', 'missingField',
   'dupId', 'unknownSize', 'unknownVariant', 'careRule', 'regionInvalid', 'badAttach', 'overlap', 'blocksPath', 'orphan', 'orient', 'gridRow', 'nearBand', 'badSurface',
-  'unknownSurface', 'unknownWho', 'unreachable', 'emptyBackground', 'unknownBackdrop', 'landmarkSrc', 'templated', 'buildError']);
+  'unknownSurface', 'unknownWho', 'unreachable', 'emptyBackground', 'unknownBackdrop', 'landmarkSrc', 'walkwayWater', 'templated', 'buildError']);
 /** The usual severity of each rule (5.2): repair = stripped, defaulted, snapped or moved; drop = the entry goes; warn = advice only. */
 const WORLD_RULE_SEVERITY = Object.freeze({
   badVersion: 'repair', badType: 'repair', badValue: 'repair', unknownKey: 'repair', screenOrLookField: 'repair', seasonPinned: 'repair', perSeasonData: 'repair',
   missingField: 'repair', dupId: 'repair', unknownSize: 'drop', unknownVariant: 'repair', careRule: 'drop', regionInvalid: 'drop', badAttach: 'repair',
   overlap: 'repair', blocksPath: 'repair', orphan: 'repair', orient: 'repair', gridRow: 'repair', nearBand: 'repair', badSurface: 'drop', unknownSurface: 'drop', unknownWho: 'drop',
-  unreachable: 'drop', emptyBackground: 'repair', unknownBackdrop: 'repair', landmarkSrc: 'repair', templated: 'warn', buildError: 'drop' });
+  unreachable: 'drop', emptyBackground: 'repair', unknownBackdrop: 'repair', landmarkSrc: 'repair', walkwayWater: 'repair', templated: 'warn', buildError: 'drop' });
 /** Keys that describe a picture or a look, never a world: refused anywhere in a spec (W1, L3). */
 const WORLD_LOOK_KEYS = Object.freeze(['X', 'Y', 'px', 's', 'scale', 'layer', 'flip', 'tint', 'shadow', 'reflect', 'light', 'grade', 'mirror', 'ripple',
   'glint', 'clarity', 'colour', 'color', 'exposure', 'ambient', 'k', 'z-index', 'zIndex', 'band', 'pixel', 'shade', 'shadowCol', 'shadows', 'reflection',
@@ -433,7 +433,7 @@ const _WC_KEYS = {
   camera: ['eye', 'fov', 'horizon', 'heading', 'x0', 'lat', 'lon', 'alt', 'water', 'preset'],
   camera31: ['id', 'at', 'height', 'eye', 'heading', 'lookAt', 'frame', 'fov', 'horizon', 'pitch', 'x0', 'lat', 'lon', 'alt', 'water', 'preset', 'relief'],
   ground: ['relief', 'features'], relief: ['x', 'd', 'nx', 'nd', 'h', 'src'], feature: ['id', 'kind', 'path', 'width', 'h', 'arc', 'scree', 'batter', 'rim', 'high', 'fade', 'rock'],
-  surface: ['id', 'kind', 'water', 'poly', 'path', 'width', 'shallow', 'level', 'obj', 'open', 'y', 'from', 'to', 'hint', 'flow', 'step'],
+  surface: ['id', 'kind', 'water', 'poly', 'path', 'width', 'shallow', 'level', 'obj', 'open', 'y', 'from', 'to', 'hint', 'flow', 'step', 'over'],
   step: ['to', 'kind'],
   line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj'],
   building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap', 'crown'],
@@ -460,6 +460,7 @@ const _WC_FIX = {
   templated: 'move the camera (>= 25 degrees or >= 30 m) and recompose the layout', dupId: 'make ids unique', unknownSurface: 'refer to a surface id that exists',
   unknownWho: 'use a population name (WORLD_POPULATIONS) or a library object id', badSurface: 'give poly (>= 3 points) or path (>= 2 points) + width',
   badVersion: 'set v: 3 (camera frame) or v: 3.1 (place frame with cameras)', badType: 'use the documented type', badValue: 'use a value in range', missingField: 'add the field',
+  walkwayWater: 'a walkway joins land to land, or runs to a platform at a reed edge, and never crosses open water: run it over the carr, the reed bed or a bridge between two banks (a jetty, pier or pontoon says over: "water" and is fixed to the shore)',
   buildError: 'the entry threw while loading; give it plain data',
 };
 /** Split a key into its words (camelCase, kebab, snake). */
@@ -685,6 +686,7 @@ function _wcCheck(spec0, repair) {
       if (al) {
         act(p + '.kind', 'badValue', `unknown surface kind ${kind}: read as ${al}`, set(s, 'kind', al, who));
         if (al === 'water' && s.water == null && repair) s.water = WORLD_WATER_KINDS.includes(kind) ? kind : 'pond';
+        if (/^(jetty|pier|pontoon)$/.test(kind) && s.over == null && repair) s.over = 'water';   // a jetty is a walkway meant to lie over the water
         kind = al;
       } else { act(p + '.kind', 'badValue', 'unknown surface kind ' + kind, drop(surfs, s, who)); return; }
     }
@@ -719,7 +721,13 @@ function _wcCheck(spec0, repair) {
     if (WORLD_JOIN_KINDS.includes(kind) && !Array.isArray(s.path)) { act(p, 'badSurface', `${kind} need a path (from the first point to the last)`, drop(surfs, s, who)); return; }
     if (s.obj != null && !worldObjectInfo(s.obj)) act(p + '.obj', 'unknownSize', 'no world descriptor for ' + s.obj, strip(s, 'obj', who));
     if (s.open != null && (kind !== 'hedge' || typeof s.open !== 'boolean')) act(p + '.open', 'badValue', 'open is a boolean on a hedge (a gap)', strip(s, 'open', who));
+    if (s.over != null && !(s.over === 'water' && WORLD_WALKWAY_KINDS.includes(kind))) act(p + '.over', 'unknownKey', "over is 'water' and only for a walkway (boardwalk, deck, platform, bridge-deck) that is meant to lie over the water", strip(s, 'over', who));
   });
+  // walkways never cross open water (SCENE_LESSONS Q: a boardwalk ran across the pond to a platform mid-lake and every check passed)
+  {
+    const okS = surfs.filter(q => _wcObjOf(q) && _wcSurfOk(q) && !threw(q));
+    for (const v of worldWalkwayWater(okS)) act(`surfaces[${surfs.indexOf(v.surface)}]`, 'walkwayWater', v.msg, { do: 'flag', who: v.id });
+  }
 
   // lines and buildings (Q2, Q3: drawn by appearance; solid to the solver)
   const lines = listOf(spec, 'lines', 'lines');
@@ -1331,6 +1339,48 @@ function _wcLights(info, x, y, z, facing, season) {
   const f = (_wcNum(facing) ? facing : 90) * _WC_DEG, hx = Math.sin(f), hz = Math.cos(f), kind = info.cls === 'lamp' ? 'lamp' : info.cls === 'train' || info.cls === 'tram' ? 'signal' : 'window';
   return rel.map(l => ({ x: _wcR3(x + l.u * hx), y: _wcR3(y + l.y), z: _wcR3(z + l.u * hz), r: _wcR3(l.r), col: l.col, kind }));
 }
+/* ---------- natural edges: wet ground and open natural water never end in a ruled line ---------- */
+function _wcNoiseAt(i, j, k) { let h = (Math.imul(i | 0, 374761393) + Math.imul(j | 0, 668265263) + Math.imul(k | 0, 1274126177)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967295 * 2 - 1; }
+/** Smooth value noise in -1..1 at a ground point (cell metres), channel k. */
+function _wcValueNoise(x, z, cell, k) {
+  const u = x / cell, v = z / cell, i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j, su = fu * fu * (3 - 2 * fu), sv = fv * fv * (3 - 2 * fv);
+  const a = _wcNoiseAt(i, j, k), b = _wcNoiseAt(i + 1, j, k), c = _wcNoiseAt(i, j + 1, k), d = _wcNoiseAt(i + 1, j + 1, k);
+  return (a + (b - a) * su) * (1 - sv) + (c + (d - c) * su) * sv;
+}
+/**
+ * A ragged, soft outline for a natural polygon (a reed bed, the shore of a pond or lake): every edge is cut into short pieces and
+ * each point is moved by one smooth noise field of the ground (two octaves, bigger and rounder with the depth, where a metre
+ * is a hand's breadth on screen). The field depends on the POINT only, so two natural polygons that share an edge keep sharing
+ * it. Before this a reed bed or a bank drew as its ruled polygon: a flat slab with a perfectly straight cut edge (the Fleet
+ * Pond boardwalk, 16 Oct). Points near the lens or far outside the scene stay put.
+ */
+function _wcNaturalEdge(poly, seed) {
+  const n = poly.length;
+  if (n < 3) return poly;
+  const k0 = (seed | 0) % 97;
+  const disp = (x, z) => {
+    if (z < 2 || z > 500 || Math.abs(x) > 400) return [0, 0];
+    // metres: a near edge shifts by up to a metre in depth (a metre of depth at 9 m is 38 px on screen), a far one by more in width
+    const A = Math.min(1.6, 0.75 + 0.012 * z) * Math.min(1, (z - 2) / 6);
+    return [A * (_wcValueNoise(x, z, 7.3, k0 + 1) + 0.5 * _wcValueNoise(x, z, 2.4, k0 + 2)) / 1.5, 0.9 * A * (_wcValueNoise(x, z, 6.1, k0 + 3) + 0.5 * _wcValueNoise(x, z, 2.1, k0 + 4)) / 1.5];
+  };
+  let step = 1, out = [];
+  for (let tries = 0; tries < 4; tries++) {
+    out = [];
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], b = poly[(i + 1) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]), zm = Math.max(1, Math.min(a[1], b[1]));
+      const m = Math.max(1, Math.ceil(L / (Math.min(6, Math.max(0.8, zm * 0.03)) * step)));
+      for (let j = 0; j < m; j++) {
+        const t = j / m, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t, d = disp(x, z);
+        out.push([Math.round((x + d[0]) * 100) / 100, Math.round((z + d[1]) * 100) / 100]);
+      }
+    }
+    if (out.length <= 2500) break;
+    step *= 2;
+  }
+  return out;
+}
+const WORLD_NATURAL_WATERS = Object.freeze(['pond', 'lake']);
 function _wcSurfRecord(s) {
   const r = { id: s.id, kind: s.kind, layer: WORLD_SURFACE_KINDS[s.kind] || null };
   if (Array.isArray(s.poly)) r.poly = s.poly.map(p => [p[0], p[1]]);
@@ -1345,6 +1395,7 @@ function _wcSurfRecord(s) {
   if (_wcNum(s.y) && s.y > 0) { r.y = s.y; r.level = s.y; r.overhead = s.y >= WORLD_OVERHEAD_Y; }
   if (WORLD_JOIN_KINDS.includes(s.kind)) { r.from = s.from; r.to = s.to; }
   if (s.obj) r.obj = s.obj;
+  if (s.over) r.over = s.over;
   if (s.kind === 'hedge') r.open = s.open === true;
   return r;
 }
@@ -1471,7 +1522,7 @@ function worldBuild(spec, o = {}) {
   const P = _wcObjOf(cs.place) ? cs.place : {};
   const world = { v: 3, format: rep.spec.v, camera: camInfo, cam, place: Object.assign({}, P), seed: cs.seed | 0, season, ctx: o.ctx || null,
     style: _wcStyleKnown(P.style) ? P.style : (cs.backdrop && cs.backdrop.style) || null, fill: cs.fill !== false,
-    surfaces: (Array.isArray(cs.surfaces) ? cs.surfaces : []).filter(_wcSurfOk).map(_wcSurfRecord),
+    surfaces: (Array.isArray(cs.surfaces) ? cs.surfaces : []).filter(_wcSurfOk).map(_wcSurfRecord).map(r => (Array.isArray(r.poly) && (r.kind === 'reeds' || (r.kind === 'water' && WORLD_NATURAL_WATERS.includes(r.water))) ? Object.assign(r, { poly: _wcNaturalEdge(r.poly, cs.seed) }) : r)),
     lines: (Array.isArray(cs.lines) ? cs.lines : []).map(l => { const dry = l.kind === 'wall' && typeof WORLD_DRYSTONE_STYLES !== 'undefined' && WORLD_DRYSTONE_STYLES.includes(P.style); return Object.assign({ width: l.kind === 'hedge' ? 1.2 : l.kind === 'wall' ? (dry ? 0.6 : 0.45) : 0.2, h: l.kind === 'kerb' ? 0.12 : l.kind === 'coping' ? 0.3 : l.kind === 'hedge' ? 1.8 : l.kind === 'wall' ? (dry ? 1.3 : 1.8) : 1.2 }, _wcCopy(l)); }),   // a dry-stone wall is 0.6 m thick and 1.3 m high (4drystone)
     buildings: (Array.isArray(cs.buildings) ? cs.buildings : []).map(b => Object.assign({ solidity: 'solid', h: _wcNum(b.h) ? b.h : (b.storeys || 2) * 3.1 }, _wcCopy(b))),
     features: _wcObjOf(cs.ground) && Array.isArray(cs.ground.features) ? _wcCopy(cs.ground.features) : [],
@@ -1528,6 +1579,84 @@ function worldBuild(spec, o = {}) {
   // one shape for every load-log entry, whoever acted (U2, 12.5)
   for (const l of world.log) if (l && typeof l === 'object') for (const k of ['id', 'obj', 'from', 'to']) if (!(k in l)) l[k] = null;
   return world;
+}
+/* ---------- walkways never cross open water (the validator's rule and the invariant checker's 'walkwayWater') ---------- */
+/** Surface kinds that are walkways: a deck laid over what is beneath it (ground, reeds or water). */
+const WORLD_WALKWAY_KINDS = Object.freeze(['boardwalk', 'deck', 'platform', 'bridge-deck']);
+/** The longest stretch (metres) a boardwalk or deck may lie over water: a footbridge between two banks of a stream or a leat (a
+ *  bridge-deck is a bridge: it spans what it spans, between two banks). */
+const WORLD_WALKWAY_SPAN = 6;
+/**
+ * Walkways over water, judged on surfaces alone (the spec's or the built world's). A walkway joins land to land (a footbridge of
+ * at most WORLD_WALKWAY_SPAN between two banks), or runs to a platform at a reed edge, and never crosses open water:
+ *   - a path walkway: no stretch over water longer than the span (a bridge-deck: any span, between two banks), and no end over water; one marked over: 'water' (a jetty, pier,
+ *     pontoon, landing stage) may end over water but is fixed to the shore at the other end;
+ *   - a polygon walkway (a platform, a stage): attached to land (its edge touches non-water ground) and at most a quarter over
+ *     water, unless marked over: 'water';
+ *   - reeds that stand over water must really be reeds: o.reedNear(x, z) -> boolean (the built world's plants); a reeds surface
+ *     laid over open water to dodge the rule fails.
+ * The ground under a walkway is the last surface that is not itself a walkway there (a water, a reeds bed, grass, a path).
+ * -> [{ id, kind, surface, msg, run }]
+ */
+function worldWalkwayWater(surfaces, o) {
+  o = o || {};
+  const S = (Array.isArray(surfaces) ? surfaces : []).filter(s => s && typeof s === 'object' && (Array.isArray(s.poly) || Array.isArray(s.path)));
+  const out = [], walk = s => WORLD_WALKWAY_KINDS.includes(s.kind);
+  const has = (s, x, z) => (Array.isArray(s.poly) && s.poly.length >= 3 ? _wcInPoly(s.poly, x, z) : Array.isArray(s.path) && s.path.length >= 2 && s.width > 0 ? _wcLineDist(s.path, x, z) <= s.width / 2 : false);
+  const under = (x, z) => { for (let i = S.length - 1; i >= 0; i--) if (!walk(S[i]) && S[i].kind !== 'stairs' && S[i].kind !== 'ramp' && has(S[i], x, z)) return S[i]; return null; };
+  const water = (x, z) => { const g = under(x, z); return !!g && g.kind === 'water'; };
+  const land = (x, z) => { const g = under(x, z); return !g || g.kind !== 'water'; };
+  const R1 = v => Math.round(v * 10) / 10;
+  for (const s of S) {
+    if (!walk(s)) continue;
+    const id = s.id || s.kind, jetty = s.over === 'water';
+    if (Array.isArray(s.path) && s.path.length >= 2 && s.width > 0) {
+      // samples along the centre line every half metre, the end points included
+      const pts = [];
+      for (let i = 1; i < s.path.length; i++) {
+        const a = s.path[i - 1], b = s.path[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(L / 0.5));
+        for (let k = i === 1 ? 0 : 1; k <= n; k++) pts.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]);
+      }
+      const wet = pts.map(p => water(p[0], p[1]));
+      let i = 0, bad = null;
+      while (i < wet.length && !bad) {
+        if (!wet[i]) { i++; continue; }
+        let j = i;
+        while (j + 1 < wet.length && wet[j + 1]) j++;
+        const len = (j - i + 1) * 0.5, atStart = i === 0, atEnd = j === wet.length - 1, at = pts[i];
+        if (jetty) { if (atStart && atEnd) bad = { msg: `${id} (over water) is not fixed to the shore at either end`, run: len }; }
+        else if (atStart || atEnd) bad = { msg: `${id} (${s.kind}) ends over open water (${R1(len)} m from ${R1(at[0])}, ${R1(at[1])}): a walkway joins land to land or runs to a platform at a reed edge`, run: len };
+        else if (len > WORLD_WALKWAY_SPAN && s.kind !== 'bridge-deck') bad = { msg: `${id} (${s.kind}) crosses ${R1(len)} m of open water from ${R1(at[0])}, ${R1(at[1])} (a footbridge between two banks is at most ${WORLD_WALKWAY_SPAN} m)`, run: len };
+        i = j + 1;
+      }
+      if (!bad && typeof o.reedNear === 'function') {
+        const fake = pts.find(p => { const g = under(p[0], p[1]); return g && g.kind === 'reeds' && S.some(q => q.kind === 'water' && has(q, p[0], p[1])) && !o.reedNear(p[0], p[1]); });
+        if (fake) bad = { msg: `${id} (${s.kind}) runs over a reeds surface laid on open water with no reeds growing at ${R1(fake[0])}, ${R1(fake[1])}`, run: 0 };
+      }
+      if (bad) out.push({ id, kind: s.kind, surface: s, msg: bad.msg, run: bad.run });
+    } else if (Array.isArray(s.poly) && s.poly.length >= 3) {
+      const P = s.poly, xs = P.map(p => p[0]), zs = P.map(p => p[1]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs), step = Math.max(0.5, Math.sqrt((x1 - x0) * (z1 - z0) / 400));
+      let n = 0, w = 0;
+      for (let x = x0 + step / 2; x < x1; x += step) for (let z = z0 + step / 2; z < z1; z += step) if (_wcInPoly(P, x, z)) { n++; if (water(x, z)) w++; }
+      // the walkway's own edge touches land: non-water ground within a gangway's reach (1.6 m) outside the edge
+      let touches = false;
+      for (let a = 0; a < P.length && !touches; a++) {
+        const p = P[a], q = P[(a + 1) % P.length], L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, nx = (q[1] - p[1]) / L, nz = -(q[0] - p[0]) / L;
+        for (const t of [0.1, 0.5, 0.9]) {
+          const x = p[0] + (q[0] - p[0]) * t, z = p[1] + (q[1] - p[1]) * t;
+          for (const d of [0.7, 1.6]) for (const sgn of [1, -1]) {
+            const u = x + nx * d * sgn, v = z + nz * d * sgn;
+            if (!_wcInPoly(P, u, v) && land(u, v)) touches = true;
+          }
+        }
+      }
+      const share = n ? w / n : 0;
+      if (!touches) out.push({ id, kind: s.kind, surface: s, msg: `${id} (${s.kind}) floats in open water: no edge of it touches land or a reed bed`, run: 0 });
+      else if (share > 0.25 && !jetty) out.push({ id, kind: s.kind, surface: s, msg: `${id} (${s.kind}) lies ${Math.round(share * 100)} % over open water: a platform stands at a reed edge on the bank, not out in the water`, run: 0 });
+    }
+  }
+  return out;
 }
 /**
  * The surface at a point: a host's deck first, then raised surfaces (decks, bridges, platforms; stairs and ramps), then the ground

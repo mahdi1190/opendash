@@ -31,7 +31,7 @@
       { id: 'plaza', kind: 'plaza', poly: rect(-900, 900, 26, 80) },
       { id: 'road', kind: 'road', poly: rect(-900, 900, 80, 92) },
       { id: 'mersey', kind: 'water', water: 'estuary', poly: rect(-900, 1500, -1250, 0), shallow: 2 },
-      { id: 'stage', kind: 'boardwalk', poly: rect(-110, 10, -24, -1) },
+      { id: 'stage', kind: 'boardwalk', over: 'water', poly: rect(-110, 10, -24, -1) },   // the floating landing stage lies over the river, by a gangway from the quay
     ],
     // the river wall's railing, set back a little from the edge
     lines: [{ id: 'river-rail', kind: 'railing', path: [at(-420, 0.7), at(420, 0.7)] }],
