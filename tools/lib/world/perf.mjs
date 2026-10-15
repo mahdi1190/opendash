@@ -81,12 +81,15 @@ export async function worldPerfBrowser(chrome, spec, o = {}) {
   const t0 = Date.now();
   const r = await scenePerf(chrome, { data, seconds: o.seconds || 4, at: o.at, season: o.season, governor: false, size: o.size, dpr: o.dpr, wx: o.wx });
   const wall = Date.now() - t0;
+  // a Chrome without a GPU rasterises in software (SwiftShader): the frame and warm-load times are then the software rasteriser's, not the engine's
+  let software = false;
+  try { const r = await chrome.evaluate(`(() => { const c = document.createElement('canvas').getContext('webgl'); if (!c) return 'none'; const e = c.getExtension('WEBGL_debug_renderer_info'); return e ? String(c.getParameter(e.UNMASKED_RENDERER_WEBGL)) : 'unknown'; })()`); software = /swiftshader|llvmpipe|software|none/i.test(String(r)); } catch { software = false; }
   const pass = (r.passes && r.passes['world-life']) || {};
   // warm load: the same scene mounted again in this page (a second host, another key): what opening it a second time costs
   let warm = null;
   try { warm = await chrome.evaluate(WARM_JS); } catch { warm = null; }
   if (o.throttle && chrome.cdp) await chrome.cdp('Emulation.setCPUThrottlingRate', { rate: 1 });
-  return { coldLoadMs: r.firstBakeMs != null ? Math.round(r.firstBakeMs) : null, warmLoadMs: Number.isFinite(warm) ? warm : null, wallMs: wall, frameMs: r.drawMs ? r.drawMs.median : null, frameP95: r.drawMs ? r.drawMs.p95 : null,
+  return { software, coldLoadMs: r.firstBakeMs != null ? Math.round(r.firstBakeMs) : null, warmLoadMs: Number.isFinite(warm) ? warm : null, wallMs: wall, frameMs: r.drawMs ? r.drawMs.median : null, frameP95: r.drawMs ? r.drawMs.p95 : null,
     dynMs: r.dynMs ? r.dynMs.median : null, sprites: r.sprites, spriteMB: Number.isFinite(r.spriteBytes) ? Math.round(r.spriteBytes / 1048576 * 10) / 10 : null, bitmaps: r.bitmaps,
     occDraws: r.occDraws != null ? r.occDraws : null, agentsShown: pass.agents != null ? pass.agents : null, passes: r.passes || null, governor: r.governor || null, raw: r };
 }
@@ -184,6 +187,8 @@ export function worldPerfCheck(measures) {
   const lines = [];
   for (const [k, b] of Object.entries(WORLD_BUDGET)) {
     const v = measures[k];
+    // on a software rasteriser the frame and warm-load times say nothing about the engine: reported, never failed (cold load and the counts still gate)
+    if (measures.software && (k === 'frameMs' || k === 'frameP95' || k === 'warmLoadMs') && Number.isFinite(v)) { lines.push({ item: k, label: b.label + ' [software renderer: informational]', value: r2(v), budget: b.budget, unit: b.unit, ratio: b.budget ? r2(v / b.budget) : null, status: 'info' }); continue; }
     if (v == null || !Number.isFinite(v)) { lines.push({ item: k, label: b.label, value: null, budget: b.budget, unit: b.unit, ratio: null, status: 'n/a' }); continue; }
     const ratio = b.budget ? v / b.budget : (v > 0 ? Infinity : 0);
     const status = k === 'orderViolations' ? (v > 0 ? 'fail' : 'ok') : ratio > WORLD_FAIL_FACTOR ? 'fail' : ratio > 1 ? 'warn' : 'ok';

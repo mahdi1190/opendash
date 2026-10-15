@@ -73,6 +73,8 @@ const DATES = {
   spring: '2026-04-18T14:00:00Z', summer: '2026-07-16T13:00:00Z', autumn: '2026-10-22T13:00:00Z', winter: '2026-01-20T13:00:00Z',
   night: '2026-07-16T22:30:00Z', dusk: '2026-10-22T17:15:00Z',
 };
+/** The moment a name stands for at a scene's latitude: from 53 degrees north the sun is only 12 to 14 degrees below the horizon at a July midnight (twilight, not night), so 'night' is a January midnight there. */
+const dateOf = (nm, spec) => { const lat = spec && spec.place && Number.isFinite(spec.place.lat) ? spec.place.lat : 51.5; return nm === 'night' && lat > 53 ? '2026-01-20T22:30:00Z' : DATES[nm] || nm; };
 const chromeOf = async (gpu) => { const { launchChrome } = await import('./release-chrome.mjs'); return launchChrome(gpu ? { extraArgs: ['--enable-gpu', '--ignore-gpu-blocklist'] } : {}); };
 
 /* ---------- the acceptance suite's pieces (exported for the tests) ---------- */
@@ -540,7 +542,7 @@ async function main() {
     const chrome = await chromeOf(!!flags.gpu);
     try {
       for (const nm of names) {
-        const at = DATES[nm] || nm;
+        const at = dateOf(nm, s.spec);
         const file = join(dir, `${s.id}-${nm.replace(/[^a-z0-9-]/gi, '')}.png`);
         // sync: the life sim is built before the first frame, so the still shows the warmed-up movers
         await sceneRenderPng(chrome, { data: `worldHostData(${JSON.stringify(s.spec)}, { id: ${JSON.stringify(s.id)}, sync: true })`, at, location: loc, still: true, dpr: Number(flags.dpr) || 1, wx: typeof flags.wx === 'string' ? flags.wx : undefined }, file);
@@ -570,7 +572,7 @@ async function main() {
       const chrome = await chromeOf(!!flags.gpu);
       try {
         for (const nm of String(typeof flags.dates === 'string' ? flags.dates : 'summer,winter,night,dusk').split(',')) {
-          const at = DATES[nm] || nm, file = join(dir, `${s.id}-${nm.replace(/[^a-z0-9-]/gi, '')}${typeof flags.wx === 'string' ? '-' + flags.wx : ''}.png`);
+          const at = dateOf(nm, s.spec), file = join(dir, `${s.id}-${nm.replace(/[^a-z0-9-]/gi, '')}${typeof flags.wx === 'string' ? '-' + flags.wx : ''}.png`);
           await sceneRenderPng(chrome, { data: `worldHostData(${JSON.stringify(s.spec)}, { id: ${JSON.stringify(s.id)}, sync: true })`, at, location: loc, still: true, dpr: 1, wx: typeof flags.wx === 'string' ? flags.wx : undefined }, file);
           cells.push({ label: `${s.id} ${nm}`, file, water, night: null });
         }
