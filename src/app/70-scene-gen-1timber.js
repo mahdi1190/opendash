@@ -115,6 +115,7 @@ function _sctfFrontLayout(sp, face, model) {
   const zA = zs[i], zB = top ? model.E0 : zs[i + 1], out = { elems: [], blocks: [] }, rects = [], quads = [], holes = [];
   const gable = top && model.roof === 'gable' && face.poly.length > 4, rise = gable ? Math.max(0, model.H - model.E0) : 0;
   const topZ = s => gable ? zB + rise * (1 - Math.abs(2 * s / len - 1)) : zB;
+  const put = bk => { out.blocks.push(bk); (tf.fit || (tf.fit = [])).push({ kind: bk.kind, i, s: bk.s != null ? bk.s : bk.s0 }); };   // tf.fit: what hangs from this house (the checks read it)
   const shop = i === 0 && sp.shop, rail = tf.rail, pw = 0.17, deep = (s, kind) => !sp.persp || _scbgOn(face.plane, s, 1.5, 0.3)[2] >= _SCTF_NEAR[kind];
   const rect = (s, z, w, h, lv) => { if (w > 0.01 && h > 0.01) rects.push([s, z, w, h, lv || 1]); };
   const slant = (s0, z0, s1, z1, t, lv) => quads.push([[[s0, z0], [s1, z1], [s1, z1 - t], [s0, z0 - t]], lv || 1]);
@@ -138,8 +139,8 @@ function _sctfFrontLayout(sp, face, model) {
     out.elems.push({ k: 'band', s0: gs - 0.05, s1: ge + 0.05, z0: 0.05, z1: 0.9, col: _scbgMix(tf.fascia, tf.timber, 0.4), layer: 2, o: 0.03 });   // the stall riser
     const mid = (gs + ge) / 2; rect(mid - 0.05, 0.05, 0.1, 0.85, 2);
     out.elems.push({ k: 'band', s0: 0.1, s1: len - 0.1, z0: zB - 0.75, z1: zB - 0.18, col: tf.fascia, layer: 2, o: 0.05 });   // the fascia board: plain, never lettering
-    if (tf.stall && deep(Math.min(gs, ge), 'stall') && deep(Math.max(gs, ge), 'stall')) out.blocks.push({ kind: 'stall', s0: gs, s1: ge, o: 0.34, z: 0.92, col: _scbgLight(tf.timber, 0.12), kindOf: sp.shop && sp.shop.kind });
-    if (tf.awning && deep(gs, 'awning') && deep(ge, 'awning')) out.blocks.push({ kind: 'awning', s0: gs - 0.1, s1: ge + 0.1, z: zB - 0.78, drop: 0.42, out: 0.8, cols: tf.awnCols });
+    if (tf.stall && deep(Math.min(gs, ge), 'stall') && deep(Math.max(gs, ge), 'stall')) put({ kind: 'stall', s0: gs, s1: ge, o: 0.34, z: 0.92, col: _scbgLight(tf.timber, 0.12), kindOf: sp.shop && sp.shop.kind });
+    if (tf.awning && deep(gs, 'awning') && deep(ge, 'awning')) put({ kind: 'awning', s0: gs - 0.1, s1: ge + 0.1, z: zB - 0.78, drop: 0.42, out: 0.8, cols: tf.awnCols });
   } else {
     const ps = tf.pattern === 'close' ? 1.9 + r() * 0.7 : tf.pattern === 'box' ? 1.4 + r() * 0.5 : 1.05 + r() * 0.25, nb = Math.max(1, Math.round(len / ps)), bw = len / nb;
     const doorBay = i === 0 ? (sp.doorSide === 'left' ? 0 : nb - 1) : -1;
@@ -194,9 +195,9 @@ function _sctfFrontLayout(sp, face, model) {
   const fit = _sctfRnd(sp, 'fit' + i);
   const free = (s, w) => !holes.some(h => s + w > h[0] && s - w < h[1]);
   const spot = (w, tries) => { for (let t = 0; t < (tries || 8); t++) { const s = 0.45 + fit() * Math.max(0.1, len - 0.9); if (free(s, w)) return s; } return null; };
-  if (i === 0 && tf.sign) { const s = spot(0.3); if (s != null && deep(s, 'sign')) out.blocks.push({ kind: 'sign', s: len - s < 0.5 ? len - 0.5 : s, z: zB - 0.18, out: 0.85, tf: { board: tf.board, motif: tf.motif } }); }
-  if (i === 0 && tf.lantern) { const s = fit() < 0.5 ? 0.22 : len - 0.22; if (deep(s, 'lantern')) out.blocks.push({ kind: 'lantern', s, z: zB - 0.3, out: 0.5 }); }
-  if (i === 1 && tf.basket) { const s = spot(0.4); if (s != null && deep(s, 'basket')) out.blocks.push({ kind: 'basket', s, z: zA + 1.05, out: 0.42, seed: sp.seed }); }
+  if (i === 0 && tf.sign) { const s = shop ? 0.45 + fit() * Math.max(0.1, len - 0.9) : spot(0.3); if (s != null && deep(s, 'sign')) put({ kind: 'sign', s: len - s < 0.5 ? len - 0.5 : s, z: zB - 0.18, out: 0.85, tf: { board: tf.board, motif: tf.motif } }); }
+  if (i === 0 && tf.lantern) { const s = fit() < 0.5 ? 0.22 : len - 0.22; if (deep(s, 'lantern')) put({ kind: 'lantern', s, z: zB - 0.3, out: 0.5 }); }
+  if (i === 1 && tf.basket) { const s = spot(0.4); if (s != null && deep(s, 'basket')) put({ kind: 'basket', s, z: zA + 1.05, out: 0.42, seed: sp.seed }); }
   return out;
 }
 
