@@ -231,7 +231,7 @@ function worldCliffZone(f, x, z) {
    (TR8). The colours are base colours: the material system and the light grade them when drawn.
    ============================================================ */
 const _WCL_LOOK = Object.freeze({
-  limestone: { base: '#c7c3b8', warm: '#d6cbb0', cool: '#aab0b2', dark: '#4b4843', light: '#e6e3d8', stain: '#3f443f', lichen: '#aaa66a', moss: '#667f48', bed: [1.5, 6.5], joint: [3, 10], tone: 0.13, joints: 1, streak: 1, ledge: 1, veg: 1 },
+  limestone: { base: '#c7c3b8', warm: '#d6cbb0', cool: '#aab0b2', dark: '#4b4843', light: '#e6e3d8', stain: '#3f443f', lichen: '#aaa66a', moss: '#667f48', bed: [1.5, 6.5], joint: [4.5, 15], tone: 0.13, joints: 1, streak: 1, ledge: 1, veg: 1 },
   gritstone: { base: '#968d7c', warm: '#a89a80', cool: '#837f78', dark: '#3b3731', light: '#b9b09e', stain: '#34332e', lichen: '#9b9656', moss: '#586f3a', bed: [3, 9], joint: [9, 28], tone: 0.07, joints: 0.5, streak: 0.8, ledge: 0.9, veg: 0.6 },
   chalk: { base: '#e9e7de', warm: '#f1eadb', cool: '#dcdfdc', dark: '#85827a', light: '#f7f6ee', stain: '#868b7c', lichen: '#bab58c', moss: '#7b9b50', bed: [0.7, 2.4], joint: [10, 30], tone: 0.03, joints: 0.3, streak: 0.4, ledge: 0.55, veg: 1.2 },
   sandstone: { base: '#c8aa80', warm: '#d9b88a', cool: '#b99f84', dark: '#5f4932', light: '#dfc59e', stain: '#5a4a38', lichen: '#a9a35c', moss: '#62793e', bed: [1.2, 4.5], joint: [5, 16], tone: 0.07, joints: 0.7, streak: 0.9, ledge: 0.9, veg: 0.8 },
@@ -340,7 +340,7 @@ function _wclTex(g) {
   const panels = [];
   if (g.rough > 0) for (let s = r() * 10; s < g.L; s += 3 + r() * 11) {
     const k0 = Math.floor(r() * Math.max(1, beds.length - 2)), span = 1 + Math.floor(r() * 3.5), dark = r() < 0.5;
-    panels.push({ s0: s, s1: Math.min(g.L, s + 4 + r() * 20), k0, k1: Math.min(beds.length - 1, k0 + span), dark, a: 0.05 + 0.09 * r() * g.rough });
+    panels.push({ s0: s, s1: Math.min(g.L, s + 4 + r() * 20), k0, k1: Math.min(beds.length - 1, k0 + span), dark, a: 0.04 + 0.06 * r() * g.rough });
   }
   // the scoop's own stains: a dense run of broad dark water streaks falling from the notch in the rim
   if (g.scoop) {
@@ -354,13 +354,13 @@ function _wclTex(g) {
   // the pavement at the lip: blocks (clints) 1 to 5 m wide with a narrow dark gap (a grike) between, the top of each at its own height
   const blocks = [];
   for (let s = 0; s < g.L; ) {
-    const w = 1.1 + Math.pow(r(), 1.3) * 4.6, gap = r() < 0.16 ? 0.7 + r() * 1.6 : 0.18 + r() * 0.4;
-    blocks.push({ s0: s, s1: Math.min(g.L, s + w), dh: (r() - 0.35) * 1.1, tone: r(), step: r() });
+    const w = 0.9 + Math.pow(r(), 1.2) * 6, gap = r() < 0.12 ? 0.6 + r() * 1.4 : 0.1 + r() * 0.3;
+    blocks.push({ s0: s, s1: Math.min(g.L, s + w), dh: (r() - 0.4) * 2.2, sl: (r() - 0.5) * 0.9, tone: r(), step: r() });
     s += w + gap;
   }
   // turf along the lip comes in patches of a few to a few tens of metres; the rest of the rim is bare pavement
   const turf = [];
-  for (let s = r() * 25; s < g.L; s += 6 + r() * 30) turf.push([s, s + 4 + r() * 22]);
+  for (let s = r() * 20; s < g.L; s += 5 + r() * 22) turf.push([s, s + 4 + r() * 24]);
   const com = (sx) => {
     if (!faults.length) return 0;
     let o = 0;
@@ -538,7 +538,7 @@ function _wclFace(g, cam, o, baseGrid) {
       if (st.major) {
         // a soft vertical gradient: dark under the rim, fading out down the face
         const pp = rnd1(poly); note(pp);
-        add({ t: 'fv', p: pp, y0: _wclR1(Math.min(...L2.map(q => q.Y), ...R2.map(q => q.Y))), y1: _wclR1(Math.max(...L2.map(q => q.Y), ...R2.map(q => q.Y))), st: [[0, col, st.a * 1.2], [0.5, col, st.a * 0.85], [1, col, 0]], m: 'stone', n: nrm, wetK: 1.4 });
+        add({ t: 'fv', p: pp, y0: _wclR1(Math.min(...L2.map(q => q.Y), ...R2.map(q => q.Y))), y1: _wclR1(Math.max(...L2.map(q => q.Y), ...R2.map(q => q.Y))), st: [[0, col, st.a * 0.3], [0.1, col, st.a * 1.2], [0.5, col, st.a * 0.85], [1, col, 0]], m: 'stone', n: nrm, wetK: 1.4 });
       } else fill(poly, 'stone', col, st.a * (st.pale ? 0.7 : 1));
     }
     for (const l of T.lichen) {
@@ -578,7 +578,11 @@ function _wclFace(g, cam, o, baseGrid) {
         add({ t: 'fv', p: pr, y0: _wclR1(Math.min(...run.map(q => q[1]))), y1: _wclR1(Math.max(...lowr.map(q => q[1]))), st: [[0, lk.dark, 0.36], [0.55, lk.dark, 0.24], [1, lk.dark, 0.05]], m: 'stone', n: nrm });
       }
       if (ld.prom > 0.42) {
-        stroke(run.map(q => [q[0], q[1] + 0.3]), 'stone', lk.dark, Math.max(1, kk * (0.12 + 0.34 * ld.prom) * lk.ledge), 0.42 + 0.4 * ld.prom);
+        // (broken where the lip is worn away, heavier where it stands further out)
+        let seg = [];
+        const flush = () => { if (seg.length > 1) stroke(seg, 'stone', lk.dark, Math.max(1, kk * (0.1 + 0.36 * ld.prom * (0.6 + 0.4 * _wclN1(T.seed + 'lw' + ld.k, seg[0][2] / 12))) * lk.ledge), 0.42 + 0.4 * ld.prom); seg = []; };
+        for (const q of run) { if (_wclN1(T.seed + 'lg' + ld.k + Math.round(ld.s0), q[3] / 8) < -0.45) flush(); else seg.push([q[0], q[1] + 0.3, q[3]]); }
+        flush();
         stroke(run.map(q => [q[0], q[1] - Math.max(0.9, kk * 0.14)]), 'stone', lk.light, Math.max(0.8, kk * 0.1), 0.16 + 0.2 * ld.prom, { up: true });
         // snow lies along the lip of a ledge that stands proud (snow days only)
         stroke(run.map(q => [q[0], q[1] - Math.max(0.9, kk * 0.12)]), 'grass', '#cbd8c4', Math.max(1.4, kk * (0.16 + 0.3 * ld.prom)), 0.95, { snow: true, up: true });
@@ -597,7 +601,7 @@ function _wclFace(g, cam, o, baseGrid) {
       if (pts.length < 2) continue;
       const kk = pts.reduce((a, q) => a + q[2], 0) / pts.length, wpx = Math.max(0.9, kk * j.w * lk.joints * 0.9);
       if (j.major) stroke(pts.map(q => [q[0] + wpx, q[1]]), 'stone', lk.dark, Math.max(3, wpx * 4), 0.1);
-      stroke(pts.map(q => [q[0], q[1]]), 'stone', lk.dark, wpx, Math.min(0.85, 0.26 + 0.5 * j.k));
+      stroke(pts.map(q => [q[0], q[1]]), 'stone', lk.dark, wpx, Math.min(0.8, 0.2 + 0.45 * j.k));
       stroke(pts.map(q => [q[0] + wpx * 0.9, q[1]]), 'stone', lk.light, Math.max(0.7, wpx * 0.6), 0.14 + 0.12 * j.k, { up: true });
     }
     // ---- 6. vegetation on the ledges: tufts (clustered), then the odd small tree
@@ -635,9 +639,9 @@ function _wclFace(g, cam, o, baseGrid) {
       for (const bl of T.blocks) {
         if (bl.s1 <= sa || bl.s0 >= sb) continue;
         const s0 = Math.max(bl.s0, sa), s1 = Math.min(bl.s1, sb), A = lipAt(s0), B = lipAt(s1);
-        const yb0 = A.hi - 0.3, yb1 = B.hi - 0.3, yt0 = A.hi + A.lip * (0.55 + 0.5 * bl.step) + bl.dh * 0.5, yt1 = B.hi + B.lip * (0.55 + 0.5 * bl.step) + bl.dh * 0.5;
+        const yb0 = A.hi - 0.3, yb1 = B.hi - 0.3, yt0 = A.hi + A.lip * (0.55 + 0.5 * bl.step) + bl.dh * 0.5, yt1 = B.hi + B.lip * (0.55 + 0.5 * bl.step) + bl.dh * 0.5 + bl.sl;
         const q = [P(s0, yb0), P(s0, yt0), P(s1, yt1), P(s1, yb1)].map(p => [p.X, p.Y]);
-        fill(q, 'stone', _wclShade(lk.light, 0.8 + 0.22 * bl.tone), 1, { up: true });
+        fill(q, 'stone', _wclShade(lk.base, 0.86 + 0.26 * bl.tone), 1, { up: true });
         // the front face of the clint a little darker under its lit top
         const mid = [P(s0, (yb0 + yt0) / 2), P(s1, (yb1 + yt1) / 2)].map(p => [p.X, p.Y]);
         fill([mid[0], q[0], q[3], mid[1]], 'stone', lk.dark, 0.22);
@@ -707,7 +711,7 @@ function worldCliffStones(world, cam) {
     for (let s = 0; s < g.L && out.length < 2400; s += 1.1 + r() * 1.5) {
       const m = _wclTaper(g, s), a = _wclAt(g, s), nx = g.hi > 0 ? -a.tz : a.tz, nz = g.hi > 0 ? a.tx : -a.tx;
       if (m < 0.2 || -(a.x * nx + a.z * nz) <= 0) continue;
-      const fh = _wclTab(g.fanH, s), fw = _wclTab(g.fanW, s), n = Math.max(1, Math.round((2 + Math.floor(r() * 3)) * (0.35 + 0.85 * fh)));
+      const fh = _wclTab(g.fanH, s), fw = _wclTab(g.fanW, s), n = Math.max(1, Math.round((2 + Math.floor(r() * 3)) * (0.6 + 0.7 * fh)));
       for (let i = 0; i < n; i++) {
         const u = Math.pow(r(), 1.2), t = -g.w * fw * u * 0.97, tuft = u > 0.45 && r() < 0.5 + 0.4 * u;
         const x = a.x + nx * -t + a.tx * (r() - 0.5) * 2, z = a.z + nz * -t + a.tz * (r() - 0.5) * 2, y = _wclProfile(g, t, m, fh, fw);

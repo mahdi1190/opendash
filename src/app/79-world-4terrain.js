@@ -343,7 +343,9 @@ function _wtrTree(ctx, op, colour, A, month) {
     ctx.globalAlpha = 1;
     return n;
   }
-  const cols = thorn ? ['#4a6a35', '#5d7f3f', '#7ba14c'] : ['#486b35', '#628a43', '#8fb45a'], lobes = thorn ? 5 : 7;
+  // October: an ash goes yellow before it drops its leaves, a thorn red and orange
+  const turn = month === 9;
+  const cols = turn ? (thorn ? ['#74381f', '#a3472a', '#c96a30'] : ['#82701f', '#b99a2c', '#dcc04b']) : thorn ? ['#4a6a35', '#5d7f3f', '#7ba14c'] : ['#486b35', '#628a43', '#8fb45a'], lobes = (thorn ? 5 : 7) - (turn ? 1 : 0);
   for (let pass = 0; pass < 3; pass++) {
     ctx.fillStyle = colour('leaf', cols[pass]); ctx.globalAlpha = A * (pass === 2 ? 0.75 : 1);
     for (let i = 0; i < lobes - pass * 2; i++) {
