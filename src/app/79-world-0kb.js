@@ -269,6 +269,9 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'vehicle.shp-bus': { region: { not: ['london'] }, swap: { london: 'vehicle.bus-double-decker' }, liveries: { default: [0, 1], names: ['deep purple with a lilac band', 'white with a blue skirt and an orange swoosh'] } },
   'vehicle.bus-ai': { region: { not: ['london'] } },
   'rail.train': { liveries: { default: [0, 1, 2], names: ['blue and grey', 'white and green', 'dark grey and yellow'] } },
+  // a suburban or main-line electric unit seen across a pond is a pale one: the light bodies of the 12 line colours (0, 3, 6, 9),
+  // never a dark unit with a green band that reads as a hole in the trees
+  'rail.train-mainline': { liveries: { default: [0, 3, 6, 9], names: ['white with a red band', 'grey with a dark blue band', 'dark with a green band', 'white with a yellow band', 'grey with a brown band', 'dark with a pink band', 'white with a purple band', 'grey with a light blue band', 'dark with a grey band', 'white with a black band', 'grey with a teal band', 'dark with an orange band'] } },
   'rail.train-tube': { region: { only: ['london'] }, swap: { uk: 'rail.train' } }, 'rail.train-subsurface': { region: { only: ['london'] }, swap: { uk: 'rail.train' } },
   'rail.train-dlr': { region: { only: ['london'] }, swap: { uk: 'rail.train' } },
   'vehicle.tram-front': { region: { only: ['sheffield', 'manchester', 'nottingham'] } }, 'vehicle.tram-rear': { region: { only: ['sheffield', 'manchester', 'nottingham'] } },

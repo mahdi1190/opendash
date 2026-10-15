@@ -819,6 +819,7 @@ function _wflHedges(F) {
 function _wflEdges(F) {
   const E = F.style.edges || {}, ix = _wflIndexOf(F), r = F.r, before = F.count;
   _wflHedges(F);
+  _wflRailBeds(F);
   // water banks by water kind: reed stands with gaps in the margin and bank planting (natural), coping lines (urban)
   for (const w of ix.waters) {
     const mode = (E.water || {})[w.s.water] || 'natural';
@@ -949,6 +950,27 @@ function _wflEdges(F) {
     });
   }
   if (F.count > before) _wflLog(F, { action: 'dress', rule: 'P5', reason: `edges dressed: ${F.count - before} entities (banks, verges, wall bases, hedgerows)` });
+}
+/**
+ * A main line's bed (P5): every `rail` surface with a centre line gets the ballast its trains ride on, the rails of each track
+ * (two tracks 4 m apart when the line is 6 m wide or more, as the timetable's tracks: 79-world-2traffic.js) and a cable trough
+ * along each side, as lines for the extruder (kinds ballast, trough). A line the author drew there stands. Trams run flush in
+ * their street and get none.
+ */
+function _wflRailBeds(F) {
+  const B = typeof WORLD_RAIL_BED === 'object' ? WORLD_RAIL_BED : { shoulder: 1.65, trough: 0.9, ballast: 0.35 };
+  if (!Array.isArray(F.world.lines)) F.world.lines = [];
+  for (const s of F.world.surfaces || []) {
+    if (!s || s.kind !== 'rail' || !Array.isArray(s.path) || s.path.length < 2 || !(s.width > 0)) continue;
+    const path = s.path.filter(p => p[1] > 0.5).map(p => [_wflR2(p[0]), _wflR2(p[1])]);
+    if (path.length < 2) continue;
+    const id = 'ballast-' + (s.id || 'rail');
+    if (F.world.lines.some(L => L && (L.id === id || L.kind === 'ballast') && Array.isArray(L.path) && _wflNear(L.path, path[0][0], path[0][1], false).d < 1)) continue;
+    const two = s.width >= 6, off = two ? Math.min(2, s.width / 4) : 0, bed = _wflR2(2 * off + 2 * B.shoulder);
+    F.world.lines.push({ id, kind: 'ballast', path, width: bed, h: B.ballast, tracks: two ? [off, -off] : [0], auto: 'rail' });
+    for (const side of [-1, 1]) F.world.lines.push({ id: `trough-${s.id || 'rail'}-${side < 0 ? 'r' : 'l'}`, kind: 'trough', path: _wflOffsetLine(path, side * (bed / 2 + B.trough)).map(p => [_wflR2(p[0]), _wflR2(p[1])]), width: 0.45, h: 0.25, auto: 'rail' });
+    _wflLog(F, { id, action: 'dress', rule: 'P5', reason: `a bed of ballast with ${two ? 'two tracks' : 'one track'} and a cable trough each side along ${s.id || 'the rail surface'}` });
+  }
 }
 /** A linear feature added for the extruder (kerb, coping), unless one already runs there. */
 function _wflLine(F, kind, pts, of) {

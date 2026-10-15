@@ -10,12 +10,18 @@
    along the walk and its platform. Beyond: the open pond, the south western main line on its low bank along the far (north)
    shore with trains, birches along the line, Fleet's woods behind; ivy-clad alder and willow frame the sides. The walk never
    leaves land (invariant walkwayWater, SCENE_LESSONS Q, S).
+   The line is third-rail (no masts or wires). The engine lays its bed (ballast, two tracks, cable troughs), dresses the bank (mottled
+   grass, bramble and sallow scrub) and phases the timetable so that a train crosses left to right in the first seconds and every loop
+   (SCENE_LESSONS U); the water ends at the bank's foot, 15 m before the line's centre.
      https://www.hart.gov.uk/fleet-pond-local-nature-reserve   https://fleetpond.org.uk/about-fleet-pond/
    PURE. Registered in the hidden dev pack 'world-test' until approved.
    ============================================================ */
 (function () {
   if (typeof worldAdd !== 'function') return;
   const rail0 = 196, slope = 0.06, railZ = x => Math.round((rail0 + slope * x) * 10) / 10;
+  // the water ends at the foot of the main line's bank: the embankment feature below is 30 m across (a flat top 15 m, a slope 7.5 m
+  // each side), so its foot is 15 m before the line's centre; the reeds stand in the shallows there
+  const toe = x => railZ(x) - 15.5;
   // the boardwalk's centre line: carr floor, the stream bridge (z 8.4 .. 11.8), then the reed bed to the platform
   const walk = [[0.2, 1.0], [0.2, 5], [0.4, 7.4], [0.6, 10], [0.9, 12.4], [1.9, 14.6], [2.4, 17], [2.8, 19.0]];
   const ent = [];
@@ -51,7 +57,7 @@
         [14, 9.7], [11.4, 9.3], [8.8, 9.9], [6.2, 9.3], [3.9, 9.7], [2.2, 8.9], [-0.2, 8.6], [-2.4, 8.4],
         [-4.0, 9.4], [-5.0, 11.4], [-5.8, 14.0], [-6.6, 16.6], [-7.2, 19.4], [-7.6, 21.8], [-8.4, 24.8], [-8.2, 27], [-8.4, 30.4], [-8.8, 33.6], [-11, 38],
         [-20, 44], [-40, 50], [-80, 56], [-150, 64], [-300, 86],
-        [-300, railZ(-300) - 0.5], [300, railZ(300) - 0.5],
+        [-300, toe(-300)], [300, toe(300)],
         [300, 86], [120, 62], [60, 52], [30, 46], [14, 41], [8, 36], [5.6, 31],
         [3.4, 27.8], [3.1, 25.4], [2.6, 23.0], [1.8, 20.6], [0.6, 18.4], [-0.2, 16.0], [-0.6, 13.6], [-0.4, 11.8],
         [1.6, 11.4], [3.3, 11.9], [5.1, 11.3], [7.0, 10.9], [9.1, 11.2], [11.3, 10.6], [14, 10.5]] },   // the stream meanders and thins toward the right: no ruled bank

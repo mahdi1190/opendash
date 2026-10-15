@@ -21,6 +21,9 @@
                                                     with ops only (strokes, fills, trees: see worldTerrainDraw).
      worldTerrainDraw(ctx, prim, o)   -> draws a terrain prim (its faces, then its ops); o as worldExtrudeDraw's (vs, ox, oy, mctx, alpha)
      worldTerrainKind(world, x, z)    -> the surface kind the ground at (x, z) is painted as (the topmost surface there; 'grass' else)
+   A RAILWAY BANK (an embankment or cutting with a `rail` surface along its crest) is lineside ground: its slope is mottled grass,
+   darker and wetter at a foot in the water, and carries scrub (op `scrub`: bramble, hawthorn and sallow thickets in patches, on
+   the slope the camera sees only: the far side falls away behind the crest). The bed and rails on top are the fill's (4extrude).
    ============================================================ */
 
 const WORLD_TERRAIN_STEP = 1.03;                    // depth ratio between strips
@@ -60,7 +63,7 @@ function _wtrTops(prim) {
   let a = Infinity, b = -Infinity;
   const pts = [];
   for (const f of prim.faces || []) for (const q of f.pts) pts.push(q);
-  for (const op of prim.ops || []) { if (op.p) for (const q of op.p) pts.push(q); else if (op.t === 'tree') { pts.push([op.x - op.w, op.y - op.h * 1.1], [op.x + op.w, op.y]); } }
+  for (const op of prim.ops || []) { if (op.p) for (const q of op.p) pts.push(q); else if (op.t === 'tree' || op.t === 'scrub') { pts.push([op.x - op.w, op.y - op.h * 1.1], [op.x + op.w, op.y]); } }
   for (const q of pts) { if (q[0] < a) a = q[0]; if (q[0] > b) b = q[0]; }
   if (!pts.length || !isFinite(a)) return null;
   const x0 = Math.floor(a / W), n = Math.floor(b / W) - x0 + 1, y = new Array(n).fill(1e9);                     // 1e9: no quad in the column (a plain number: the frame record is JSON, which turns Infinity into null)
@@ -90,6 +93,81 @@ function _wtrGrow(P, d) {
     out.push([Math.round((b[0] + bx * k) * 10) / 10, Math.round((b[1] + by * k) * 10) / 10]);
   }
   return out;
+}
+/**
+ * The railway banks of a world: the embankments and cuttings with a `rail` surface along their crest -> [{ path, half }]. A railway
+ * bank is lineside ground, never a lawn: its slope is mottled (rough grass, scrub, dry patches) and darker and wetter at a foot
+ * that stands in the water (see _wtrPrims).
+ */
+function _wtrRailBanks(world) {
+  const out = [], feats = (world && world.features) || [], rails = ((world && world.surfaces) || []).filter(s => s && s.kind === 'rail' && Array.isArray(s.path) && s.path.length >= 2);
+  if (!rails.length || typeof _wcLineDist !== 'function') return out;
+  for (const f of feats) {
+    if (!f || (f.kind !== 'embankment' && f.kind !== 'cutting') || !Array.isArray(f.path) || f.path.length < 2 || !(f.width > 0)) continue;
+    const half = f.width / 2;
+    if (rails.some(s => s.path.every(p => _wcLineDist(f.path, p[0], p[1]) < half * 0.5))) out.push({ path: f.path, half, h: Math.abs(f.h || 0) });
+  }
+  return out;
+}
+/**
+ * The scrub of a railway bank in the strip between depths za and zb: thickets (low wide bramble, hawthorn, taller sallow) in
+ * patches on the slope the camera sees (the near side, from the foot to the bed's edge), seeded by plan cell so the same bush
+ * stands in the same place whatever the strip steps are. -> ops far to near, each { t: 'scrub', x, y, w, h, seed, k } in scene units.
+ */
+function _wtrBankScrub(world, cam, banks, za, zb, xl, xr, hAt) {
+  const ops = [];
+  if (!banks.length || typeof _wcLineDist !== 'function') return ops;
+  const cell = 2.6, c0 = Math.floor(xl / cell), c1 = Math.floor(xr / cell);
+  for (const b of banks) {
+    for (let c = c0; c <= c1; c++) {
+      for (let j = 0; j < 3; j++) {
+        // a patch field: thickets cluster along the bank (value noise on a 16 m grain) and leave open grass between
+        const px = (c + 0.5) * cell, patch = _wtrU(Math.floor(px / 16) + 55, Math.floor(za * 0.37) + j * 3);
+        if (patch < 0.42) continue;
+        const u1 = _wtrU(c * 5 + j, Math.round(za * 7) + 11), u2 = _wtrU(c * 5 + j + 91, Math.round(za * 7) + 13), u3 = _wtrU(c * 7 + j + 3, Math.round(za * 5) + 29), u4 = _wtrU(c * 11 + j, Math.round(za * 3) + 37);
+        if (u3 > 0.35 + 0.55 * patch) continue;
+        const x = c * cell + u1 * cell, z = za + (zb - za) * u2;
+        if (z >= zb) continue;
+        // the near side of the bank only, between the foot and the bed (0.6 m of margin each side), never in the water
+        const d = _wcLineDist(b.path, x, z);
+        if (!(d < b.half - 0.6 && d > 5.4)) continue;
+        if (!(z < _wtrPathZ(b.path, x, z))) continue;                                      // the camera side of the line
+        const h0 = hAt(x, z);
+        if (h0 < 0.3) continue;                                                        // the wet foot is reeds, not scrub
+        if (worldTerrainKind(world, x, z) === 'water') continue;
+        const tall = u4 > 0.86, wm = tall ? 2.2 + 1.6 * u1 : 1.6 + 2.4 * u2, hm = tall ? 3.0 + 1.8 * u2 : 0.8 + 1.1 * u1 + 0.6 * u4;
+        const q = sceneProject(cam, x, z, h0), k = cam.f / Math.max(1, z);
+        ops.push({ t: 'scrub', x: Math.round(q.X * 10) / 10, y: Math.round(q.Y * 10) / 10, w: Math.max(2.2, wm * k), h: Math.max(1.6, hm * k), seed: Math.floor(u1 * 1e6) + c * 131 + j, k: tall ? 1 : u4 < 0.4 ? 0 : 2, z, wx: Math.round(x * 100) / 100 });
+      }
+    }
+  }
+  ops.sort((a, b) => b.z - a.z);
+  return ops;
+}
+/** The z of the point of a path nearest to (x, z) (the side of a line a point lies on). */
+function _wtrPathZ(path, x, z) {
+  let best = path[0][1], bd = Infinity;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], e = path[i], dx = e[0] - a[0], dz = e[1] - a[1], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L2)), q = Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz);
+    if (q < bd) { bd = q; best = a[1] + t * dz; }
+  }
+  return best;
+}
+/** The colour of a railway bank's ground at (x, z): the base grass broken into patches of olive scrub and dry straw by a seeded field. */
+function _wtrBankTone(hex, x, z, wet) {
+  // smooth value noise (two scales: long patches along the bank, and a finer grain), so neighbouring quads shade into each other
+  const sm = (a) => a * a * (3 - 2 * a), vn = (px, pz, sx, sz, k) => {
+    const gx = px / sx, gz = pz / sz, ix = Math.floor(gx), iz = Math.floor(gz), fx = sm(gx - ix), fz = sm(gz - iz);
+    const a = _wtrU(ix + k, iz), b = _wtrU(ix + 1 + k, iz), c = _wtrU(ix + k, iz + 1), d = _wtrU(ix + 1 + k, iz + 1);
+    return (a + (b - a) * fx) * (1 - fz) + (c + (d - c) * fx) * fz;
+  };
+  const t = 0.62 * vn(x, z, 14, 4, 0) + 0.38 * vn(x, z, 5, 1.8, 311), u = vn(x, z, 22, 7, 977);
+  let c = hex;
+  if (t < 0.5) c = _wtrMixHex(c, '#4f6d36', Math.min(0.62, (0.5 - t) * 1.5));        // scrub and bramble
+  else c = _wtrMixHex(c, '#aaa862', Math.min(0.45, (t - 0.5) * 1.1));                // dry grass
+  if (u > 0.74) c = _wtrMixHex(c, '#6e5f3c', Math.min(0.4, (u - 0.74) * 2));         // a patch of bare earth
+  if (wet > 0) c = _wtrMixHex(c, '#4a6234', Math.min(0.7, wet));                      // damp grass at the water's foot
+  return c;
 }
 function _wtrU(x, z) { let h = Math.imul(Math.round(x * 4) | 0, 374761393) ^ Math.imul(Math.round(z * 4) | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
 
@@ -170,6 +248,7 @@ function _wtrPrims(world, cam, o) {
   const hAt = cliffs.length
     ? (x, z) => { let h = baseGrid ? sceneGroundHeight(baseGrid, x, z) : 0; for (const G of cliffs) { const v = worldCliffHeight(G.f, x, z); if (v > h) h = v; } return h; }
     : (x, z) => sceneGroundHeight(cam, x, z);
+  const railBanks = _wtrRailBanks(world);
   const rock = cliffs.length && typeof _WCL_LOOK === 'object' ? (_WCL_LOOK[cliffs[0].rock] || _WCL_LOOK.limestone) : null;
   const stones = cliffs.length && typeof worldCliffStones === 'function' ? worldCliffStones(world, cam) : [];
   let si = 0;
@@ -177,7 +256,10 @@ function _wtrPrims(world, cam, o) {
   let k = 0;
   for (let z = d0; z < d1 - 1e-6; z *= WORLD_TERRAIN_STEP, k++) {
     const za = z, zb = Math.min(d1, z * WORLD_TERRAIN_STEP), zm = (za + zb) / 2;
-    const xl = Math.max(R.x[0], (-330 - x0) * zb / cam.f - 6), xr = Math.min(R.x[1], (1930 - x0) * zb / cam.f + 6), xlim = Math.max(Math.abs(xl), Math.abs(xr)), screeStrip = cliffs.some(G => G.w > 0 && _wtrHasScree(G, zm, xlim)), step = Math.max(screeStrip ? 0.6 : 0.9, zm / (screeStrip ? 220 : cliffs.length ? 70 : 44)), faces = [], sops = [];
+    const xl = Math.max(R.x[0], (-330 - x0) * zb / cam.f - 6), xr = Math.min(R.x[1], (1930 - x0) * zb / cam.f + 6), xlim = Math.max(Math.abs(xl), Math.abs(xr)), screeStrip = cliffs.some(G => G.w > 0 && _wtrHasScree(G, zm, xlim));
+    // a strip crossing a railway bank is cut finer (its mottling is smooth patches, not slabs)
+    const bankStrip = railBanks.length && typeof _wcLineDist === 'function' && railBanks.some(b => { for (let x = xl; x <= xr; x += Math.max(20, (xr - xl) / 8)) if (_wcLineDist(b.path, x, zm) < b.half) return true; return false; });
+    const step = Math.max(screeStrip ? 0.6 : 0.9, zm / (screeStrip ? 220 : cliffs.length ? 70 : bankStrip ? 120 : 44)), faces = [], sops = [];
     let hi = 0, xmin = Infinity, xmax = -Infinity, minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
     for (let x = xl; x < xr - 1e-6; x += step) {
       const x2 = Math.min(xr, x + step);
@@ -202,6 +284,12 @@ function _wtrPrims(world, cam, o) {
         const nl = Math.hypot(gx, gz, 1), lam = (-gx * -0.45 + -gz * -0.4 + 1 * 0.8) / (nl * 1.0), shade = Math.max(0.6, Math.min(1.12, 0.78 + 0.34 * lam));
         // a few percent of variation along the strip (mowing, grazing) so a slope is never one flat tone; scree varies more
         const jit = 1 + 0.018 * Math.sin(cx0 * 0.37 + cz0 * 0.21) + 0.012 * Math.sin(cx0 * 1.3 - cz0 * 0.7) + (pc.scree > 0.05 ? 0.03 * lf : 0);
+        // a railway bank is mottled, and wetter at a foot standing in the water
+        if (railBanks.length && m.mat === 'grass' && pc.scree <= 0.05) {
+          for (const rb of railBanks) {
+            if (typeof _wcLineDist === 'function' && _wcLineDist(rb.path, cx0, cz0) < rb.half) { m = { mat: m.mat, hex: _wtrBankTone(m.hex, cx0, cz0, Math.max(0, 1 - hm / 0.5)) }; break; }
+          }
+        }
         const P = poly.map((p, i) => { const q = sceneProject(cam, p[0], p[1], hs[i]); return [q.X, q.Y]; });
         // a half scene unit of overlap so neighbouring quads never leave a seam (offset along the edges' normals: a thin quad seen along its
         // length is not grown only at its ends)
@@ -209,6 +297,13 @@ function _wtrPrims(world, cam, o) {
         for (const q of pts) { minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); minY = Math.min(minY, q[1]); maxY = Math.max(maxY, q[1]); }
         hi = Math.max(hi, hm); xmin = Math.min(xmin, x); xmax = Math.max(xmax, x2);
         faces.push({ pts, role: 'ground', mat: m.mat, hex: _wtrShade(m.hex, shade * jit), z: cz0, alpha: 1 });
+      }
+    }
+    // scrub on a railway bank's slope: drawn with the strip (the same depth as the ground it stands on), far to near
+    if (bankStrip && faces.length) {
+      for (const op of _wtrBankScrub(world, cam, railBanks, za, zb, xl, xr, hAt)) {
+        sops.push(op);
+        minX = Math.min(minX, op.x - op.w); maxX = Math.max(maxX, op.x + op.w); minY = Math.min(minY, op.y - op.h * 1.1); maxY = Math.max(maxY, op.y);
       }
     }
     // the stones and tussocks of a talus skirt that stand in this strip, near ones last (they overlap the far)
@@ -281,6 +376,38 @@ function _wtrTree(ctx, op, colour, A, month) {
   ctx.globalAlpha = 1;
   return n;
 }
+/**
+ * A thicket on a railway bank: a dark foot, then lobes of mid and light leaf (bramble and hawthorn low and wide, sallow tall on
+ * grey stems), the light on the upper left; in summer colours through the leaf material (the look package turns, browns and bares
+ * them by the date: ONE source of seasonal state). op: { x, y (its foot), w, h, seed, k: 0 bramble, 1 sallow, 2 hawthorn }.
+ */
+function _wtrScrub(ctx, op, colour, A, month) {
+  let a = (op.seed >>> 0) || 1;
+  const rr = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const bare = month <= 2 || month >= 11, x = op.x, y = op.y, w = op.w, h = op.h;
+  const pal = op.k === 1 ? ['#486f33', '#5f8a3e', '#86ad54'] : op.k === 2 ? ['#3f6532', '#5a8540', '#7fa650'] : ['#37602d', '#4f7d38', '#78a24c'];
+  let n = 0;
+  // a soft dark foot where the bush sits in the grass
+  ctx.globalAlpha = A * 0.35; ctx.fillStyle = colour('leaf', '#2c4a22');
+  ctx.beginPath(); ctx.ellipse(x, y - h * 0.04, w * 0.55, Math.max(0.6, h * 0.1), 0, 0, 6.2832); ctx.fill(); n++;
+  if (op.k === 1) {
+    // a sallow: two or three grey-green stems and a tall loose crown
+    ctx.globalAlpha = A * (bare ? 0.7 : 1); ctx.strokeStyle = colour('bark', '#5c5446'); ctx.lineWidth = Math.max(0.8, w * 0.06); ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) { const bx = x + (i - 1) * w * 0.14; ctx.beginPath(); ctx.moveTo(bx, y); ctx.lineTo(bx + (i - 1) * w * 0.1, y - h * 0.55); ctx.stroke(); n++; }
+    ctx.lineCap = 'butt';
+  }
+  const lobes = op.k === 1 ? 6 : 5, top = op.k === 1 ? 0.28 : 0.1;
+  for (let pass = 0; pass < 3; pass++) {
+    ctx.fillStyle = colour('leaf', pal[pass]); ctx.globalAlpha = A * (bare ? 0.5 : pass === 2 ? 0.85 : 1);
+    for (let i = 0; i < lobes - pass; i++) {
+      const u = rr(), v = rr(), cx = x + (u - 0.5) * w * (0.9 - pass * 0.18) - pass * w * 0.07, cy = y - h * (top + v * (1 - top) * 0.7) - pass * h * 0.06;
+      const rx = w * (0.2 + 0.2 * rr()) * (1 - pass * 0.12), ry = Math.min(h * 0.4, rx * (0.8 + 0.3 * rr()));
+      ctx.beginPath(); ctx.ellipse(cx, cy, Math.max(0.8, rx), Math.max(0.7, ry), 0, 0, 6.2832); ctx.fill(); n++;
+    }
+  }
+  ctx.globalAlpha = 1;
+  return n;
+}
 /** Draw the ops of a terrain prim (see 79-world-4cliff.js). Returns the number of draw calls. */
 function _wtrDrawOps(ctx, prim, o, colour) {
   const wet = o.mctx && Number.isFinite(o.mctx.wet) ? o.mctx.wet : 0, snowDay = !!(o.mctx && o.mctx.snowDay);
@@ -289,6 +416,7 @@ function _wtrDrawOps(ctx, prim, o, colour) {
   ctx.lineCap = 'butt'; ctx.lineJoin = 'round';
   for (const op of prim.ops) {
     if (op.t === 'tree') { n += _wtrTree(ctx, op, colour, A * (op.a == null ? 1 : op.a), month); ctx.lineCap = 'butt'; continue; }
+    if (op.t === 'scrub') { n += _wtrScrub(ctx, op, colour, A, month); continue; }
     if (op.snow && !snowDay) continue;                                                // snow caps and snow on the ledges: snow days only
     let hex = op.h;
     // rock in the rain is darker and its water stains run darker (the material's own wet is a few percent here: a face is the wettest thing in a frame)

@@ -408,7 +408,13 @@ load-log entry (the population is dropped), not a crash. For stills and captures
 - Vehicles keep to directed lanes on the left, keep gaps, stop at crossings and stops (buses at stops, trams at platforms),
   turn on curves with their views and never pass through each other. Trains run on rails to a timetable at a plausible
   speed. Boats under way travel mid-channel at walking pace with wakes; moored boats never move.
-- Schedules (trams, trains, boats) are periodic and their periods divide the loop length `WORLD_LOOP_S` (T1).
+- Schedules (trams, trains, boats) are periodic and their periods divide the loop length `WORLD_LOOP_S` (T1). A timetable on a
+  line the camera sees is PHASED so that the first train of its first track is a third of the way across the frame at the moment
+  the scene is first drawn (`life.show0`: the clock after the warm-up), and the same crossing comes round every loop; `phase:
+  'free'` (a schedule option) keeps the seeded random phase. A main line (`rail` surface) is laid on a bed by the fill
+  (`ballast` and `trough` lines, rails of every track; `WORLD_RAIL_BED`: the wheels of a train are 0.5 m over the ground) and an
+  embankment or cutting with a rail along its crest is a RAILWAY BANK (4terrain): mottled ground and scrub on the slope the camera
+  sees.
 - Reactions are scripted by the engine from populations and events (11.7), never hand-timed: ducks paddle away from a dog at
   the bank, pigeons lift when someone walks through and settle again, people wait for a tram, board and get off, a heron
   freezes then strikes, a cyclist rings and passes.

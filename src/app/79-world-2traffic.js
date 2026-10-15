@@ -23,6 +23,12 @@
 //   worldTrafficBoatSteer(nav, layer, x, z, dir, r) -> [dx, dz]  (flow direction pulled to the middle of the channel)
 
 const WORLD_TRAFFIC = Object.freeze({ s0: 2.5, headway: 1.2, a: 1.4, b: 2.2, kerb: 0.75, trackGap: 2, railLen: { train: 60, tram: 30 } });
+/**
+ * The bed a main line's trains run on (a `rail` surface; a tram runs flush in its street): ballast 0.35 m over the ground it is laid
+ * on, the rail head 0.15 m over that. A train's wheels are at `h` over the ground (life lifts it), the extruder draws the bed
+ * (a `ballast` line under the rails, 79-world-4extrude.js) and the invariants judge a train at the ground plus this.
+ */
+const WORLD_RAIL_BED = Object.freeze({ ballast: 0.35, rail: 0.15, h: 0.5, gauge: 1.435, shoulder: 1.65, trough: 0.9 });
 
 function _wtrLoopS() { return typeof WORLD_LOOP_S !== 'undefined' && Number.isFinite(WORLD_LOOP_S) && WORLD_LOOP_S > 0 ? WORLD_LOOP_S : 360; }
 /** A period near `sec` that divides the loop (T1); for an alternating pattern, twice the period divides it. */
@@ -228,8 +234,47 @@ function worldTrafficSchedule(T, o) {
     for (let n = 0; n < 12 && e.period < trip + 10 && e.period * 2 < _wtrLoopS(); n++) e.period = worldLoopPeriod(e.period * 1.5, true);
   }
   e.offset = Math.floor(rnd() * e.period * 100) / 100;
+  // the phase (T1): a line the camera sees shows a train when the scene is shown. o.show0 is the timetable clock at the moment the
+  // scene is first drawn: the first train of the first track (a left to right crossing on a line drawn left to right) is then
+  // a little way across the frame, so a still and the first seconds of the app carry a crossing, and the same one comes round
+  // every loop (the pattern divides it). o.phase 'free' keeps the seeded random phase.
+  // (a train parked on the line itself is an obstacle the timetable cannot run round: the seeded phase stays, as it always was)
+  if (o.show0 != null && o.phase !== 'free' && !_wtrParkedOn(T, tracks)) { const off = _wtrFramedOffset(T, e, +o.show0); if (off != null) e.offset = off; }
   T.timetable.push(e);
   return e;
+}
+/** Does a static train or tram stand on one of these tracks (within 2.5 m of its centre line)? */
+function _wtrParkedOn(T, tracks) {
+  const ents = (T.world && T.world.entities) || [];
+  for (const e of ents) {
+    if (!e || e.static === false || !Number.isFinite(e.x) || !Number.isFinite(e.z)) continue;
+    const cls = e.cls || '';
+    if (cls !== 'train' && cls !== 'tram') continue;
+    for (const tr of tracks) { const p = _wtrProject(tr, e.x, e.z); if (p.d < 2.5) return true; }
+  }
+  return false;
+}
+/**
+ * The offset (s, in [0, period x tracks)) that puts the first train of the entry's first track at 30 % of the stretch of that track
+ * the frame shows (by the train's middle, entering side first) at clock `show0`. null when the track is never on screen.
+ */
+function _wtrFramedOffset(T, e, show0) {
+  const cam = T.cam, tr = e.tracks[0];
+  if (!cam || !tr || !(cam.f > 0) || !Number.isFinite(show0)) return null;
+  const tl = cam.tanL0 || cam.tanL, tr0 = cam.tanR0 || cam.tanR;
+  if (!(tl > 0) || !(tr0 > 0)) return null;
+  const seen = (s) => { const p = worldTrafficLaneAt(tr, s); return p.z > 1 && p.x > -p.z * tl && p.x < p.z * tr0; };
+  let sA = null, sB = null;
+  for (let s = 0; s <= tr.len; s += 0.5) if (seen(s)) { if (sA == null) sA = s; sB = s; }
+  if (sA == null || sB - sA < 5) return null;
+  const sStar = sA + 0.3 * (sB - sA), prof = _wtrProfile(e, tr);
+  let tau = null;
+  for (let t = 0; t <= prof.tEnd + 1e-6; t += 0.1) if (prof.s(t) >= sStar) { tau = t; break; }
+  if (tau == null) return null;
+  const span = e.period * e.tracks.length;
+  let off = (show0 - tau) % span;
+  if (off < 0) off += span;
+  return Math.floor(off * 100) / 100;
 }
 /** The trip time of an entry on each of its tracks (s). */
 function _wtrTrips(e) { return e.tracks.map(tr => { const p = _wtrProfile(e, tr); return p.tEnd; }); }
