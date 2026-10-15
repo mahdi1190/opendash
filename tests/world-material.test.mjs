@@ -11,7 +11,7 @@ import { sceneSourceFiles } from '../tools/lib/scene-page.mjs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOOK = ['79-world-4backdrop.js', '79-world-4light.js', '79-world-4material.js', '79-world-4water.js'];
 const NAMES = ['WORLD_MATERIALS', 'worldMaterialOf', 'worldMaterialCtx', 'worldMaterialFor', 'worldMaterialColour', 'worldMaterialVisible', 'worldMaterialSnow', 'worldMaterialKey',
-  'worldSkyOf', 'sceneObjShapes', 'sceneObjs'];
+  'worldSkyOf', 'sceneObjShapes', 'sceneObjs', 'worldMaterialOutfit'];
 const files = sceneSourceFiles(ROOT, { browser: true, fixtures: false }).filter(f => !/79-world-/.test(f.split(/[\\/]/).pop())).concat(LOOK.map(f => join(ROOT, 'src', 'app', f)));
 const load = (pre = '') => new vm.Script('(function () {\n' + pre + files.map(f => readFileSync(f, 'utf8')).join('\n;\n') +
   `\n;return { ${NAMES.map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ')} };\n})`, { filename: 'material-bundle.js' }).runInThisContext()();
@@ -63,16 +63,26 @@ test('grass and leaf colours differ by month; trees are bare in winter, bud in s
   const ent = (id) => ({ id, obj: 'tree.oak', x: 0, z: 30 });
   const jan = W.worldMaterialFor(mctx(0), ent('t1')), apr = W.worldMaterialFor(mctx(3), ent('t1')), jun = W.worldMaterialFor(mctx(5), ent('t1')), oct = W.worldMaterialFor(mctx(9), ent('t1'));
   assert.equal(jan.leaf, 'bare'); assert.equal(apr.leaf, 'bud'); assert.equal(jun.leaf, 'full'); assert.equal(oct.leaf, 'turn');
-  assert.equal(W.worldMaterialVisible('leaf', jan), false, 'no green leaves in January');
-  assert.equal(W.worldMaterialVisible('needle', jan), true, 'evergreens stay');
-  assert.equal(W.worldMaterialVisible('bark', jan), true);
-  const cA = W.worldMaterialColour('leaf', leaf, apr), cJ = W.worldMaterialColour('leaf', leaf, jun), cO = W.worldMaterialColour('leaf', leaf, oct);
+  // ONE source of seasonal state: the leaf state picks the library's seasonal art; that art is never seasoned again and no
+  // shape of it is dropped (the winter art's crown is the bare branch skeleton: dropping it beheaded every tree)
+  assert.equal(jan.art, 'winter'); assert.equal(apr.art, 'spring'); assert.equal(jun.art, 'summer');
+  assert.ok(jan.artOwn && apr.artOwn && !jun.artOwn);
+  assert.equal(W.worldMaterialVisible('leaf', jan), true, 'the winter art draws the bare crown itself');
+  assert.equal(W.worldMaterialColour('leaf', '#5a4c40', jan), W.worldMaterialColour('leaf', '#5a4c40', Object.assign({}, jan, { month: 6, leaf: 'full' })), 'a seasonal art keeps its own colours');
+  // without a seasonal art (an object drawn the same all year) the material models the season and drops bare leaves
+  const noArt = (c) => Object.assign({}, c, { art: null, artOwn: false });
+  assert.equal(W.worldMaterialVisible('leaf', noArt(jan)), false, 'no green leaves in January');
+  assert.equal(W.worldMaterialVisible('needle', noArt(jan)), true, 'evergreens stay');
+  assert.equal(W.worldMaterialVisible('bark', noArt(jan)), true);
+  const cA = W.worldMaterialColour('leaf', leaf, noArt(apr)), cJ = W.worldMaterialColour('leaf', leaf, noArt(jun)), cO = W.worldMaterialColour('leaf', leaf, noArt(oct));
   assert.ok(lum(cA) > lum(cJ), 'spring leaves are fresh and light');
   const [r, gg] = rgb(cO);
   assert.ok(r > gg * 0.9, 'autumn leaves turn: ' + cO);
   // unevenly: across 40 trees in mid October the states and turning colours differ
   const many = Array.from({ length: 40 }, (_, i) => W.worldMaterialFor(Object.assign(mctx(9), { doy: 285 }), ent('tree' + i)));
-  assert.ok(new Set(many.map(m => W.worldMaterialColour('leaf', leaf, m))).size >= 4, 'uneven turning');
+  assert.ok(new Set(many.map(m => W.worldMaterialColour('leaf', leaf, noArt(m)))).size >= 4, 'uneven turning');
+  const early = Array.from({ length: 40 }, (_, i) => W.worldMaterialFor(Object.assign(mctx(8), { doy: 272 }), ent('tree' + i)));
+  assert.ok(new Set(early.map(m => m.art)).size >= 2, 'unevenly: some trees still in summer art, some in autumn art');
   assert.ok(Math.max(...many.map(m => m.turn)) - Math.min(...many.map(m => m.turn)) > 0.2);
   // the reed beds go straw in winter
   assert.ok(dist(W.worldMaterialColour('reed', '#6f9a48', mctx(0)), W.worldMaterialColour('reed', '#6f9a48', mctx(6))) > 30);
@@ -141,4 +151,36 @@ test('the knowledge base decides when it is loaded: its material map and its lea
   assert.equal(K.worldMaterialOf('tree.oak', 'crown', '#4f8538'), 'needle');
   const st = K.worldMaterialFor(K.worldMaterialCtx({ month: 5 }), { id: 'x', obj: 'tree.oak', x: 0, z: 10 });
   assert.equal(st.leaf, 'turn'); assert.equal(st.turn, 0.9);
+});
+
+test('A11 outfits are drawn: the top changes colour per outfit, skin, hair and the legs never do (audit bug 8, clones)', () => {
+  const shirt = '#60829c', tee = '#f1ebdc', skin = '#e2b08c', skinShade = '#a37f65', hair = '#35251a';
+  const tops = new Set();
+  for (let o = 0; o < 12; o++) tops.add(W.worldMaterialOutfit(shirt, o, 'body'));
+  assert.ok(tops.size >= 11, `12 outfits give ${tops.size} shirt colours`);
+  assert.equal(W.worldMaterialOutfit(shirt, 0, 'body'), shirt, 'outfit 0 is the art');
+  assert.notEqual(W.worldMaterialOutfit(tee, 3, 'armA'), tee, 'a white tee takes a tint');
+  for (let o = 1; o < 12; o++) {
+    for (const c of [skin, skinShade, hair]) assert.equal(W.worldMaterialOutfit(c, o, 'body'), c, `outfit ${o} keeps ${c}`);
+    assert.equal(W.worldMaterialOutfit(shirt, o, 'legA'), shirt, 'trousers keep their colour');
+    assert.ok(Math.abs(lum(W.worldMaterialOutfit(shirt, o, 'body')) - lum(shirt)) < 0.12, 'lightness kept');
+  }
+});
+
+test('bug 14: a bud leaf is fresh green, not lime or lemon (hue 80-130, saturation gain under 0.15)', () => {
+  const hsl = (h) => { const c = rgb(h).map(v => v / 255), mx = Math.max(...c), mn = Math.min(...c), l = (mx + mn) / 2, d = mx - mn; if (!d) return [0, 0, l];
+    let hh = mx === c[0] ? ((c[1] - c[2]) / d) % 6 : mx === c[1] ? (c[2] - c[0]) / d + 2 : (c[0] - c[1]) / d + 4; hh *= 60; if (hh < 0) hh += 360; return [hh, d / (1 - Math.abs(2 * l - 1)), l]; };
+  for (const base of ['#5a8a3a', '#4f7a34', '#6b9a44']) {
+    const out = W.worldMaterialColour('leaf', base, Object.assign(mctx(3), { leaf: 'bud', art: null, artOwn: false }));
+    const [h, s] = hsl(out), [, s0] = hsl(base);
+    assert.ok(h >= 80 && h <= 130, `${base} -> ${out}: hue ${h.toFixed(0)}`);
+    assert.ok(s - s0 < 0.15, `${base} -> ${out}: saturation gain ${(s - s0).toFixed(2)}`);
+  }
+});
+
+test('bug 15: rain wets things you can see: leaf, grass, paint, fabric, timber and paving darken by at least 10 %', () => {
+  for (const [mat, hex] of [['leaf', '#5a8a3a'], ['grass', '#6f9a48'], ['paint', '#2f5a3a'], ['fabric', '#60829c'], ['timber', '#8a6a48'], ['paving', '#a8a49a']]) {
+    const dry = W.worldMaterialColour(mat, hex, mctx(6)), wet = W.worldMaterialColour(mat, hex, mctx(6, { weather: 'rain' }));
+    assert.ok(lum(wet) <= lum(dry) * 0.9, `${mat}: dry ${dry} (${lum(dry).toFixed(3)}), wet ${wet} (${lum(wet).toFixed(3)})`);
+  }
 });

@@ -30,7 +30,7 @@ const _WPL_HAB = Object.freeze({
   walkway: 'free', structure: 'free', landmark: 'free', weir: 'free', air: 'free', 'bird-air': 'free', kingfisher: 'free', bough: 'free', frond: 'free',
 });
 /** Classes whose whole footprint must satisfy the habitat (boats inside the water, cars on the road, buildings off water). */
-const _WPL_WHOLE = Object.freeze(['boat', 'vehicle', 'building', 'train', 'tram', 'tree']);
+const _WPL_WHOLE = Object.freeze(['boat', 'vehicle', 'building', 'train', 'tram', 'tree', 'reed', 'rock']);   // reeds and stones: the whole stand in the margin (bug 11)
 /** Orientation rules of the fallback table (K3) and the tolerance within which the author's facing stands. */
 const _WPL_ORIENT = Object.freeze({ boat: ['bank', 20], vehicle: ['lane', 30], train: ['rail', 12], tram: ['rail', 12], bench: ['path', 45], gate: ['fence', 15], building: ['street', 45] });
 /** Natural classes: never in rows or grids unless declared (P4). */
@@ -52,8 +52,21 @@ const _WPL_KIND_TAGS = Object.freeze({
   road: ['road', 'road-lane'], water: ['water'], rail: ['rail'], tram: ['tram', 'rail'], reeds: ['reeds', 'water-margin', 'wet', 'soil'], bed: ['soil', 'bed'],
   hedge: ['hedge'], weir: ['weir'], bare: ['grass', 'soil', 'walk', 'bare'],
 });
+/** Walks laid over the water (a boardwalk, a jetty): the water runs on beneath them, so they are no bank (bug 11). */
+const _WPL_OVER_WATER = Object.freeze(['boardwalk', 'deck', 'bridge-deck', 'jetty', 'pontoon']);
 const _WPL_LINE_SOLID = Object.freeze(['wall', 'fence', 'railing', 'hedge']);
 const _WPL_KEEP_R = 1.5;          // gate and bridge approaches kept clear (m)
+/** The water margin (bug 11): how far into the water margin plants may stand (its shallow shelf plus 1 m, at most 1.5 m from a real bank), and
+    how far up the bank the ground counts as wet margin (the core's edge clusters use a 1.5 m band from the region edge). */
+const WORLD_MARGIN_MAX = 1.5, _WPL_MARGIN_LAND = 0.5;
+const _wplMarginIn = shallow => Math.min(WORLD_MARGIN_MAX, Math.max(0.3, (shallow > 0 ? shallow : 0.5) + 1));
+/** Statics that are no framing by themselves: low plants, stones, props. Near the lens they are giants (a bramble filling the
+    corner, bug 4) unless the entity is declared framing (framed / framing / auto 'frame'): kept out of the near band by size. */
+const _WPL_NEAR_STATIC = Object.freeze(['shrub', 'reed', 'cover', 'hedge', 'flower']);
+/** The size a non-framing static may reach on screen: its drawn height at most 44 % of the frame (the people's 45 % near band of
+    SCENE_LESSONS, with a margin; a hedge or fence line running past the lens is exempt from the height while it stays small),
+    its box at most 17 % of it. The invariant checker's nearStatic rule (79-world-9inv.js) judges the same with 45 % / 20 %. */
+const WORLD_NEAR_STATIC = Object.freeze({ h: 0.44, area: 0.17 });
 const _WPL_LINE_HALF = 0.6;       // the walking line: the central 1.2 m of a path (P3)
 
 /* ---------- geometry helpers ---------- */
@@ -168,8 +181,72 @@ function _wplPrep(world) {
     else P.obstacles.push({ id: 'hedge:' + g.s.id, kind: 'line', line: 'hedge', poly: _wplHull(g.s.poly) });
   }
   for (const o of P.obstacles) o.box = _wplBox(o.poly);
+  P.banks = _wplBankSegs(P.waters);
   Object.defineProperty(world, '_wpl', { value: P, writable: true, configurable: true, enumerable: false });
   return P;
+}
+/**
+ * The banks of the water (bug 11): the outline pieces of every water region (about 1 m each) whose outside is not water. An edge
+ * two water regions share (a pond and the cut beside its boardwalk) is open water, never a bank: before, reeds snapped to the
+ * margin of that seam stood in the middle of the pond. -> { segs: [[ax, az, bx, bz]], grid: Map(cell -> [i]), cell }
+ */
+const _WPL_BANK_CELL = 4, _WPL_BANK_R = 8;   // banks are searched within 8 m (the margin, a hull touching the bank, a wader)
+function _wplBankSegs(waters) {
+  const segs = [], grid = new Map(), cell = _WPL_BANK_CELL;
+  const outline = s => {
+    if (Array.isArray(s.poly)) return s.poly;
+    const Pt = s.path, hw = s.width / 2, L = [], R = [];
+    for (let i = 0; i < Pt.length; i++) {
+      const a = Pt[Math.max(0, i - 1)], b = Pt[Math.min(Pt.length - 1, i + 1)], dx = b[0] - a[0], dz = b[1] - a[1], n = Math.hypot(dx, dz) || 1;
+      L.push([Pt[i][0] - dz / n * hw, Pt[i][1] + dx / n * hw]); R.push([Pt[i][0] + dz / n * hw, Pt[i][1] - dx / n * hw]);
+    }
+    return L.concat(R.reverse());
+  };
+  const inWater = (x, z, self) => waters.some(g => g.s !== self && _wplIn(g.box, x, z) && _wcSurfContains(g.s, x, z));
+  for (const g of waters) {
+    const ring = outline(g.s);
+    if (!Array.isArray(ring) || ring.length < 3) continue;
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (!(L > 1e-6)) continue;
+      const n = Math.max(1, Math.ceil(L / 1)), tx = (b[0] - a[0]) / L, tz = (b[1] - a[1]) / L;
+      let run = null;
+      const flush = () => {
+        if (!run) return;
+        const id = segs.length, r0 = run;
+        segs.push(r0); run = null;
+        // the cells along the segment (sampled every half cell)
+        const len = Math.hypot(r0[2] - r0[0], r0[3] - r0[1]), k = Math.max(1, Math.ceil(len / (cell / 2))), keys = new Set();
+        for (let t = 0; t <= k; t++) { const px = r0[0] + (r0[2] - r0[0]) * t / k, pz = r0[1] + (r0[3] - r0[1]) * t / k; keys.add(Math.floor(px / cell) + ',' + Math.floor(pz / cell)); }
+        for (const key of keys) { let arr = grid.get(key); if (!arr) grid.set(key, arr = []); arr.push(id); }
+      };
+      // the outward normal: the side of the edge away from the region (tested, not assumed from the winding)
+      for (let k = 0; k < n; k++) {
+        const p = [a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n], q = [a[0] + (b[0] - a[0]) * (k + 1) / n, a[1] + (b[1] - a[1]) * (k + 1) / n];
+        const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+        let nx = -tz, nz = tx;
+        if (_wcSurfContains(g.s, m[0] + nx * 0.25, m[1] + nz * 0.25)) { nx = -nx; nz = -nz; }
+        if (inWater(m[0] + nx * 0.3, m[1] + nz * 0.3, g.s)) { flush(); continue; }   // the other side is water too: a seam, not a bank
+        if (!run) run = [p[0], p[1], q[0], q[1]]; else { run[2] = q[0]; run[3] = q[1]; }   // contiguous bank pieces of one edge: one segment
+      }
+      flush();
+    }
+  }
+  return { segs, grid, cell };
+}
+/** The nearest bank piece to (x, z) within R metres: { d, dir } (dir: the bank's facing, 0..180), or null. */
+function _wplBankNear(P, x, z, R) {
+  const B = P.banks;
+  if (!B || !B.segs.length) return null;
+  let best = null;
+  const c0 = Math.floor((x - R) / B.cell), c1 = Math.floor((x + R) / B.cell), d0 = Math.floor((z - R) / B.cell), d1 = Math.floor((z + R) / B.cell), seen = new Set();
+  for (let i = c0; i <= c1; i++) for (let j = d0; j <= d1; j++) for (const id of B.grid.get(i + ',' + j) || []) {
+    if (seen.has(id)) continue; seen.add(id);
+    const s = B.segs[id], d = _wcSegDist(x, z, [s[0], s[1]], [s[2], s[3]]);
+    if (!best || d < best.d) best = { d, s };
+  }
+  if (!best || best.d > R) return null;
+  return { d: best.d, dir: _wcFace(Math.atan2(best.s[2] - best.s[0], best.s[3] - best.s[1]) / _WC_DEG) % 180 };
 }
 /** The entities of a kind (with decks, fences), cached until an entity is added or removed (moves keep the same records). */
 function _wplEntList(world, P, key, pick) {
@@ -199,8 +276,11 @@ function worldPlaceProbe(world, x, z, o) {
   let waterDist = Infinity, bankDir = null, shallow = 0.5;
   if (inWater) {
     shallow = surface.shallow || 0.5;
+    // how far to land: the nearest real bank (an edge shared with another water region is no bank, bug 11), else the region's edge
     let d = -_wplSd(surface, x, z); bankDir = _wplEdgeDir(surface, x, z);
-    for (let i = gi + 1; i < P.ground.length; i++) { const g = P.ground[i]; if (g.s.kind === 'water' || !_wplIn(g.box, x, z, d)) continue; const sd = _wplSd(g.s, x, z); if (sd < d) { d = sd; bankDir = _wplEdgeDir(g.s, x, z); } }
+    // (the nearest bank is never nearer than the region's own edge: search only when that edge is within reach)
+    if (P.banks && P.banks.segs.length && d < _WPL_BANK_R) { const bn = _wplBankNear(P, x, z, _WPL_BANK_R); if (bn) { d = bn.d; bankDir = bn.dir; } else d = _WPL_BANK_R; }
+    for (let i = gi + 1; i < P.ground.length; i++) { const g = P.ground[i]; if (g.s.kind === 'water' || _WPL_OVER_WATER.includes(g.s.kind) || !_wplIn(g.box, x, z, d)) continue; const sd = _wplSd(g.s, x, z); if (sd < d) { d = sd; bankDir = _wplEdgeDir(g.s, x, z); } }
     waterDist = -Math.max(0, d);
   } else {
     for (const g of P.waters) {
@@ -245,7 +325,13 @@ function worldPlaceProbe(world, x, z, o) {
   if (deck && deck.y - (inWater ? level : gy) >= WORLD_OVERHEAD_Y) { if (!under || deck.y < under.y) under = { id: deck.id, y: deck.y }; deck = null; }
   const tags = _wplTags(kind);
   if (!inWater && waterDist <= 3) tags.push('bank');
-  if (inWater && -waterDist <= shallow + 1) tags.push('water-margin');
+  // the margin (15 Oct audit, bug 11): reeds, waders and posts stand where the water is shallow, at most WORLD_MARGIN_MAX
+  // (1.2 m) from the bank line, never out in open water; on land the last half metre of soft ground at the water is wet margin
+  if (inWater && -waterDist <= _wplMarginIn(shallow)) tags.push('water-margin');
+  if (!inWater && waterDist <= _WPL_MARGIN_LAND && !tags.includes('paving') && !tags.includes('road') && !tags.includes('rail') && (tags.includes('soil') || tags.includes('grass'))) {
+    if (!tags.includes('wet')) tags.push('wet');
+    if (!tags.includes('water-margin')) tags.push('water-margin');
+  }
   if (pathDist <= pathHalf) tags.push('path');
   if (pathDist <= pathLine) tags.push('path-line');
   if ((tags.includes('grass') || tags.includes('soil')) && !tags.includes('path') && pathDist <= pathHalf + 1.5) tags.push('grass-edge');
@@ -427,7 +513,43 @@ function _wplInKeep(world, e, foot) {
   for (const k of P.keep) { if (k.owner === e.id) continue; for (const p of foot.concat([[e.x, e.z]])) if (Math.hypot(p[0] - k.x, p[1] - k.z) < k.r) return k; }
   return null;
 }
-const _wplOffline = (info, e) => !e.landmark && e.blocks !== true && _WPL_OFFLINE.includes(info.cls) && !/^(deck|wall|air)/.test(String(e.attach || ''));
+// ... and any other solid static (a fallen log is class 'cover': it lay across the towpath, 15 Oct audit); walkways, weirs and boats
+// are where people walk or float, never moved off a walking line
+const _wplOffline = (info, e) => !e.landmark && e.blocks !== true && (_WPL_OFFLINE.includes(info.cls) || (info.solidity === 'solid' && !['walkway', 'weir', 'boat', 'landmark', 'rail-kit', 'train', 'tram'].includes(info.cls))) && !/^(deck|wall|air)/.test(String(e.attach || ''));
+
+/* ---------- the near band for statics (bug 4): a non-framing plant at the lens is a giant blob over the frame ---------- */
+const _wplFramed = e => !!(e && (e.framed === true || e.framing === true || e.auto === 'frame' || e.landmark));
+/** The screen box [X0, Y0, X1, Y1] of entity e if it stood at (x, z) with facing (appearance's worldScreenBox when loaded). */
+function _wplScreenBox(world, e, info, x, z, facing) {
+  const cam = world.cam, f = _wcNum(facing) ? facing : (_wcNum(e.facing) ? e.facing : 90), foot = _wcFoot(info, x, z, f);
+  const y = /^water/.test(String(e.attach || '')) && _wcNum(e.y) ? e.y : sceneGroundHeight(cam, x, z), h = _wcNum(e.height) && e.height > 0 ? e.height : info.size.h;
+  if (typeof worldScreenBox === 'function') {
+    try { const r = worldScreenBox({ obj: e.obj, variant: e.variant, x, z, y, facing: f, foot, height: h, attach: e.attach, cls: info.cls }, cam); if (r && Array.isArray(r.box) && r.box.every(_wcNum)) return r.box; } catch (err) { /* the prism */ }
+  }
+  let X0 = Infinity, X1 = -Infinity, Y0 = Infinity, Y1 = -Infinity;
+  for (const p of foot.concat([[x, z]])) {
+    const d = Math.max(0.3, p[1]), k = cam.f / d, X = (_wcNum(cam.x0) ? cam.x0 : 800) + k * p[0];
+    X0 = Math.min(X0, X); X1 = Math.max(X1, X); Y0 = Math.min(Y0, cam.horizon + k * (cam.eye - y - h)); Y1 = Math.max(Y1, cam.horizon + k * (cam.eye - y));
+  }
+  return [X0, Y0, X1, Y1];
+}
+/**
+ * Would e be a giant at (x, z) (bug 4)? A non-framing low static (shrub, reed, cover, hedge, flower) drawn taller than 55 % of the
+ * frame or covering more than 18 % of it (WORLD_NEAR_STATIC) is a blob at the lens. -> a reason, or null. Framed entities pass.
+ */
+function _wplGiant(world, e, info, x, z, facing) {
+  const cam = world.cam;
+  if (!cam || !_wcNum(cam.f) || _wplFramed(e) || !_WPL_NEAR_STATIC.includes(info.cls) || /^(air|wall|deck)/.test(String(e.attach || ''))) return null;
+  const W = 1600, H = 900, big = Math.max(info.size.h, info.size.w, info.size.d);
+  if (cam.f * big / Math.max(0.3, z - big) < 0.3 * H) return null;   // far enough: cheap out
+  const b = _wplScreenBox(world, e, info, x, z, facing);
+  const vis = Math.max(0, Math.min(W, b[2]) - Math.max(0, b[0])) * Math.max(0, Math.min(H, b[3]) - Math.max(0, b[1])) / (W * H);
+  if (vis <= 0) return null;   // wholly off the frame: nothing to see
+  const hS = (b[3] - b[1]) / H;
+  if (hS > WORLD_NEAR_STATIC.h && !(['hedge', 'fence'].includes(info.cls) && vis <= WORLD_NEAR_STATIC.area)) return `${Math.round(hS * 100)} % of the frame tall at ${_wcR3(z)} m from the lens`;
+  if (vis > WORLD_NEAR_STATIC.area) return `covers ${Math.round(vis * 100)} % of the frame at ${_wcR3(z)} m from the lens`;
+  return null;
+}
 
 /** Could entity e stand at (x, z) with facing? Habitat over the footprint, no walking line, no overlap, no kept approach. */
 function worldPlaceOk(world, e, x, z, facing) {
@@ -439,6 +561,8 @@ function worldPlaceOk(world, e, x, z, facing) {
     if (_wplOffline(info, e)) { const line = _wplOnLine(world, foot); if (line) return { ok: false, reason: 'on the walking line of ' + line, rule: 'blocksPath' }; }
     const hab = _wplHabitat(world, e, info, x, z, f);
     if (hab) return { ok: false, reason: hab, rule: 'badAttach' };
+    const giant = _wplGiant(world, e, info, x, z, f);
+    if (giant) return { ok: false, reason: 'a giant at the lens: ' + giant, rule: 'nearBand' };
     const solidLike = info.solidity === 'solid' && !(info.cls === 'gate' && e.open === true);
     if (solidLike && !e.landmark) {
       const ov = _wplOverlaps(world, e, foot, info);
@@ -473,6 +597,7 @@ function _wplRebuild(world, e, x, z, facing, attach) {
 function _wplMove(world, e, x, z, facing, attach) {
   const dx = x - e.x, dz = z - e.z, df = _wcNum(facing) ? facing - e.facing : 0, ox = e.x, oz = e.z;
   _wplRebuild(world, e, x, z, _wcNum(facing) ? facing : e.facing, attach);
+  if (world._wplMoved) world._wplMoved.add(e.id);   // re-checked by the solver's final step
   // children on its deck or wall follow (G2 at load): offset rotated with the host
   const a = df * _WC_DEG, cs = Math.cos(a), sn = Math.sin(a);
   for (const c of world.entities) {
@@ -685,25 +810,62 @@ function worldPlace(world) {
 
   // 3b. the near band (A10, C2): a person or animal nearer than the depth where it would fill 45 % of the frame is a giant at
   //     the lens; it moves back along its line of sight (the same place on screen, at its true size) or is dropped
+  //     ... and (bug 4) a non-framing low static (a bramble, a shrub, a reed stand) that would fill the frame's corner as a blob
   const cam = world.cam;
-  if (cam && _wcNum(cam.f) && cam.f > 0) for (const e of live()) guard(e, () => {
+  const nearFix = (e) => {
     const info = infoOf(e);
-    if (e.landmark || e.framed || !_WPL_NEAR_BAND.includes(info.cls) || /^(air|wall)/.test(String(e.attach))) return;
-    // the drawn box (the art's own margins, a tall adult of K8's range) runs up to ~10 % over the class height: keep that margin
-    // ... and its foot is in the frame (a thing whose foot is below the bottom edge is a cut blob: the near band of the nav map)
-    const foot = _wcNum(cam.eye) && _wcNum(cam.horizon) && cam.horizon < 900 ? cam.f * Math.max(0.2, cam.eye - (_wcNum(e.y) ? e.y : 0)) / (900 - cam.horizon) + 0.3 : 0;
-    const band = Math.max(cam.f * Math.max(info.size.h, _wcNum(e.height) ? e.height : 0) * 1.1 / 405, foot);
-    if (!(e.z < band)) return;
-    const from = [e.x, e.z], z0 = Math.max(0.3, e.z);
-    for (let k = 0; k < 16; k++) {
-      const z = band + 0.3 + k * 0.5;
-      for (const x of [e.x * z / z0, e.x]) {
-        if (Math.abs(x - e.x) > 30) continue;
-        if (worldPlaceOk(world, e, x, z, e.facing).ok) { _wplMove(world, e, x, z, e.facing); _wplLogMove(log, e, 'move', 'nearBand', `${_wcR3(from[1])} m from the lens it would be a giant (the near band ends at ${_wcR3(band)} m): moved back`, from); return; }
+    if (e.landmark || e.framed || /^(air|wall)/.test(String(e.attach))) return;
+    let band = 0, why = null;
+    if (_WPL_NEAR_BAND.includes(info.cls)) {
+      // the drawn box (the art's own margins, a tall adult of K8's range) runs up to ~10 % over the class height: keep that margin
+      // ... and its foot is in the frame (a thing whose foot is below the bottom edge is a cut blob: the near band of the nav map)
+      const foot = _wcNum(cam.eye) && _wcNum(cam.horizon) && cam.horizon < 900 ? cam.f * Math.max(0.2, cam.eye - (_wcNum(e.y) ? e.y : 0)) / (900 - cam.horizon) + 0.3 : 0;
+      band = Math.max(cam.f * Math.max(info.size.h, _wcNum(e.height) ? e.height : 0) * 1.1 / 405, foot);
+      if (!(e.z < band)) return;
+      why = `${_wcR3(e.z)} m from the lens it would be a giant (the near band ends at ${_wcR3(band)} m)`;
+    } else {
+      const g = _wplGiant(world, e, info, e.x, e.z, e.facing);
+      if (!g) return;
+      why = `${info.cls} ${g}: a blob, not a frame (bug 4)`;
+    }
+    const from = [e.x, e.z], z0 = Math.max(0.3, e.z), z1 = Math.max(band + 0.3, e.z + 0.5);
+    // (bug 5) a thing placed beside a line (a towpath, a bank) first slides back ALONG that line, and no candidate may come
+    // nearer the water or leave the path it stood on: down the camera ray a towpath-edge bollard landed on the canal edge
+    let p0 = null;
+    try { p0 = worldPlaceProbe(world, e.x, e.z); } catch (err) { p0 = null; }
+    const landed = p0 && !p0.inWater && Number.isFinite(p0.waterDist);
+    const lineTags = p0 ? (p0.tags || []).filter(t => t === 'path' || t === 'towpath' || t === 'bank') : [];
+    const keep = (x, z) => {
+      if (!landed && !lineTags.length) return true;
+      let p = null;
+      try { p = worldPlaceProbe(world, x, z); } catch (err) { return false; }
+      if (landed && !(p.waterDist >= Math.min(p0.waterDist, 0.6) - 0.05)) return false;
+      return lineTags.every(t => (p.tags || []).includes(t));
+    };
+    // (people and animals keep their place on screen: they move down their line of sight, A10; things set by a line slide along it)
+    const mover = /^(person|animal|bird|dog|duck|swan|goose|coot|heron|gull|grebe|cyclist|grazer)$/.test(String(info.cls)) || /^(person|animal|bird)\./.test(String(e.obj));
+    const dir = !mover && p0 ? (p0.pathDir != null && p0.pathDist <= (p0.pathHalf || 0) + 1.5 ? p0.pathDir : landed && p0.waterDist <= 3 ? p0.bankDir : null) : null;
+    if (dir != null) {
+      const ux = Math.sin(dir * _WC_DEG), uz = Math.cos(dir * _WC_DEG), sg = uz >= 0 ? 1 : -1;
+      for (let k = 0; k < 40; k++) {
+        const t = sg * (0.5 + k * 0.5), x = e.x + ux * t, z = e.z + uz * t;
+        if (z < band + 0.3) continue;
+        if (keep(x, z) && worldPlaceOk(world, e, x, z, e.facing).ok) { _wplMove(world, e, x, z, e.facing); _wplLogMove(log, e, 'move', 'nearBand', `${why}: moved back along its line`, from); return; }
       }
     }
-    _wplDrop(world, e, log, 'nearBand', `inside the near band (${_wcR3(band)} m) with no legal spot behind it`);
-  });
+    for (let k = 0; k < 24; k++) {
+      const z = z1 + k * 0.5;
+      for (const x of [e.x * z / z0, e.x]) {
+        if (Math.abs(x - e.x) > 30) continue;
+        if (keep(x, z) && worldPlaceOk(world, e, x, z, e.facing).ok) { _wplMove(world, e, x, z, e.facing); _wplLogMove(log, e, 'move', 'nearBand', `${why}: moved back`, from); return; }
+      }
+    }
+    _wplDrop(world, e, log, 'nearBand', `${why}, with no legal spot behind it`);
+  };
+  if (cam && _wcNum(cam.f) && cam.f > 0) for (const e of live()) guard(e, () => nearFix(e));
+  // every later move is re-checked at the end (step 8: order-independent, bug 4 / 5)
+  const moved = new Set();
+  Object.defineProperty(world, '_wplMoved', { value: moved, writable: true, configurable: true, enumerable: false });
 
   // 4. orientation (K3): boats parallel to the bank, cars along their lane (UK left), trains on the rails, benches face the path
   //    or the view, gates in their fence line, buildings to their street; the author's facing stands when it already fits
@@ -856,6 +1018,24 @@ function worldPlace(world) {
       }
     });
   }
+
+  // 8. the final check (order-independent, bugs 4 and 5): whatever steps 4-7 moved or turned is checked again against its habitat
+  //    (K1) and the near band (A10, C2, bug 4); a move never leaves a thing where no step would have put it. Snapped back within
+  //    reach, else moved back along its line of sight, else dropped.
+  Object.defineProperty(world, '_wplMoved', { value: null, writable: true, configurable: true, enumerable: false });
+  for (const e of live()) guard(e, () => {
+    if (e.landmark) return;
+    const info = infoOf(e);
+    if (moved.has(e.id) && _wplMode(info, e) !== 'free' && !/^(air|wall|deck)/.test(String(e.attach || ''))) {
+      const why = _wplHabitat(world, e, info, e.x, e.z, e.facing);
+      if (why) {
+        const from = [e.x, e.z], spot = _wplSpiral(world, e, Math.max(2, _wplHalf(info)), [e.facing], (x, z, f) => { const ok = worldPlaceOk(world, e, x, z, f); return ok.ok ? ok : null; });
+        if (spot) { _wplMove(world, e, spot.x, spot.z, e.facing); _wplLogMove(log, e, 'snap', 'badAttach', `moved by a later rule onto a wrong spot (${why}): snapped back`, from); }
+        else { _wplDrop(world, e, log, 'badAttach', `moved by a later rule onto a wrong spot (${why}) with no legal spot near`); return; }
+      }
+    }
+    if (cam && _wcNum(cam.f) && cam.f > 0) nearFix(e);
+  });
 
   world.entities = world.entities.filter(e => !e._wplDropped);
   for (const r of log) world.log.push(r);

@@ -116,3 +116,30 @@ gold proof Fleet Pond. After the fix-all run, the next step is the from-scratch 
 example Liverpool Pier Head, York's Shambles, Whitby harbour, Malham Cove, a Manchester street, a Sheffield park), each from
 a short spec with the style kits, judged against the gold reference, timing the authoring. Then a scene factory: briefs ->
 specs -> render -> automatic checks -> review sheet, so many scenes can be built in parallel.
+
+## Fix-all, round 1 (15 Oct, late): six area fixers plus a verifier
+Fixed in the engine (see SCENE_LESSONS sections G, H and I; reports kept outside the repo):
+- Trees keep their crowns in every season: one source of seasonal state (the leaf state picks the library's seasonal art).
+  Herbs go dormant in winter. Flower parts are flowers. Rime follows the weather.
+- Water: overlapping water surfaces merge into one region (no seams). Calm canals ripple less. On a high quay, bank owners
+  mirror about the water plane and the quay's own wall image hides what stands beyond it. Sunk channels draw coursed stone
+  walls and their reflection (Kelham's flat dark slabs are gone).
+- Night: light pools are additive and lie on the ground under everything. Halos are baked with their owners. Panes glow.
+  Lamps are off at dawn. The v2 seasonal screen particles are off in v3.
+- Boats: the narrowboat is a full 3D model with true K8 proportions, liveries, roof clutter, ropes, night glow and a bob.
+  Walkways are modelled from the nav deck, and their deck sits under the railing.
+- Placement: there is a near band for low statics (no bramble blobs). The solver re-checks every move. Reeds keep to the real
+  margin. Logs stay off paths. A sky window is kept open. Near-band moves slide along their line (bollards).
+- Life: the push-apart really runs (the duplicate `_wlfNear`), with passing, following and spawn spacing. Outfits are drawn
+  and picked least-worn, so no clones.
+- Checks: `node tools/world.mjs check <ref>` runs the pixel checks on real frames. Captures are 1600x900. The matrix has a
+  snow day. Snow on a warm date is refused.
+
+Still open (details in the round-1 verify notes): spring golden hour is a lemon wash and dawn and dusk are mauve (the shared
+v2 grade). The pond at night is near black. Willow fronds read as streaks, and near willows hang from the frame top. The
+canal's near bollard is a big dark post at the lens, and the boat is seen end-on (v2 shows it side-on). The canal in
+mid-October is still mostly green where v2 is autumnal. Brambles show winter berries and white flowers. The pond's near
+boardwalk is a flat deck surface with no rails or piles (a deck surface and a walkway entity overlap: one deck rule needed).
+The chunking (2 chunks for 700 statics) and the order cost still fail the browser frame budget. The richness box measure
+fails for the pond and Kelham (two todo tests). The narrowboat standing deck is still a slab over the whole boat (a stern-only
+deck broke specs that put people mid-boat).

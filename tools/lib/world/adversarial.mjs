@@ -5,7 +5,8 @@
 //   ADVERSARIAL_DIR, adversarialFixtures(root)  the 14 deliberately wrong scenes of 16.3: [{ file, id, title, req, about, expect, spec }]
 //   logMatches(log, expect)                     -> { ok, missing: [expect entry], matched: n }: the load log explains every fix
 //   worldMomentsOf(spec, dates)                 -> [{ date, moment, at (ISO), ms }]: 3 dates x 5 times (dawn, noon, golden, dusk, night)
-//   WORLD_MATRIX                                the V6 matrix: 4 seasons x 5 times x 3 weathers; worldMatrixCells(spec) lists its cells
+//   WORLD_MATRIX                                the V6 matrix: 4 seasons x 5 times x 3 weathers (+ a winter snow day); worldMatrixCells(spec)
+//   worldWeatherFits(wx, at, lat)               -> { ok, why }: a forced weather against the date (no snow in July; the tools refuse it)
 //   worldTimeOf(E, world, ms, wx)               the time context (systems' worldTimeCtx, else a small almanac fallback)
 //   worldSimOf(E, spec, o)                      -> Sim { world, ctx, t, step(dt), agents(), frame(), isSpawn, log, kind, error }
 //   worldInvariantRun(E, spec, o)               -> { frames, counts, first, uniq, na, ran, agentsSeen, msPerFrame, log, error }: the
@@ -30,7 +31,11 @@ export const OWNERS = Object.freeze({
   edgeCut: 'appearance (C1) + life (C2)', nearBand: 'life', giant: 'life (A10) + kb (K8)', popping: 'life', stuck: 'life', slidingFeet: 'appearance',
   facing: 'life (A5)', laneDir: 'life (A9 traffic) + sense (K3)', animStill: 'appearance', stillMoving: 'appearance', staticAnim: 'appearance + systems',
   clones: 'appearance (M4)', windDir: 'systems (wind) + look', order: 'render', landmark: 'appearance (C4) + kb (P8)', bare: 'kb (fill) + look (coverage)',
-  season: 'kb (state) + look (materials, light)', log: 'sense (load log)', register: 'sense (worldAdd never refuses)', build: 'sense (G8 isolation)',
+  season: 'kb (state) + look (materials, light)',
+  nearStatic: 'sense (near band after every solver move) + kb (fill)', crownCut: 'appearance (C1 framing) + kb (fill: tree depth)', crowd: 'life (A2 push-apart)',
+  outfitClone: 'life (A11 outfit de-dup)', drawn: 'render (draw records) + look (materials)', crown: 'look (materials: seasonal art) + kb (leaf state)',
+  shadowOrphan: 'look (shadow plan from drawn sprites)', deckDrawn: 'life (nav deck) + render (drawn deck)', particles: 'render (host data)', nightLight: 'look (lights)',
+  log: 'sense (load log)', register: 'sense (worldAdd never refuses)', build: 'sense (G8 isolation)',
 });
 
 const r2 = (v) => Math.round(v * 100) / 100;
@@ -73,16 +78,34 @@ export function worldMomentsOf(spec, dates = WORLD_DATES3, year = new Date().get
   }
   return out;
 }
-/** The V6 matrix cells of a spec: 4 seasons x 5 times x 3 weathers. */
+/** The V6 matrix cells of a spec: 4 seasons x 5 times x 3 weathers, plus a seeded snow day in winter (5 more cells): the
+ *  matrix had no snow at all until 15 Oct, so snow on trees, roofs and water was never reviewed. */
 export function worldMatrixCells(spec, year = new Date().getUTCFullYear()) {
   const P = (spec && spec.place) || {}, lat = Number.isFinite(P.lat) ? P.lat : 51.5;
   const dates = seasonDates(lat, year);
   const out = [];
   for (const s of WORLD_SEASONS) {
     const d = dates.find(x => x.season === s);
-    for (const m of worldMomentsOf(spec, [d.date], year)) for (const wx of WORLD_WEATHERS) out.push({ season: s, date: m.date, moment: m.moment, at: m.at, ms: m.ms, wx });
+    for (const m of worldMomentsOf(spec, [d.date], year)) for (const wx of WORLD_WEATHERS.concat(s === 'winter' ? ['snow'] : [])) out.push({ season: s, date: m.date, moment: m.moment, at: m.at, ms: m.ms, wx });
   }
   return out;
+}
+
+/** Mean monthly air temperature (degrees C) of lowland England, January first (the Met Office 1991-2020 means, rounded). */
+export const WORLD_MEAN_TEMP = Object.freeze([4.6, 4.8, 6.7, 8.9, 12.0, 15.0, 17.2, 16.9, 14.3, 11.0, 7.4, 5.0]);
+/**
+ * Does a weather fit a date (V7: no snow in July)? Snow only in a month whose mean temperature is below 8 degrees (November to
+ * March in England; the months swap south of the equator). -> { ok, why }. The tools refuse a forced weather that does not fit
+ * (world render / sheet / capture --wx=snow on a summer date) unless --force, so a review picture can never show snow on full
+ * summer trees again.
+ */
+export function worldWeatherFits(wx, at, lat = 51.5) {
+  const ms = typeof at === 'number' ? at : Date.parse(at);
+  if (!wx || !Number.isFinite(ms) || !/snow|sleet|frost/.test(String(wx))) return { ok: true, why: '' };
+  let mo = new Date(ms).getUTCMonth();
+  if (lat < 0) mo = (mo + 6) % 12;
+  const t = WORLD_MEAN_TEMP[mo];
+  return t < 8 ? { ok: true, why: '' } : { ok: false, why: `${wx} in ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][new Date(ms).getUTCMonth()]} (mean ${t} degrees C): snow needs a month below 8 degrees` };
 }
 
 /** The time context: systems' worldTimeCtx, else a fallback from the almanac (month 0-11, as worldTimeCtx gives it). */
@@ -96,8 +119,6 @@ export function worldTimeOf(E, world, ms, wx) {
   return { ms, lat, lon, month: d.getUTCMonth(), hour: d.getUTCHours() + d.getUTCMinutes() / 60, dow: d.getUTCDay(), season, weather: wx || 'clear', sun, wind: null, snowing: wx === 'snow', snowDay: wx === 'snow', src: 'fallback' };
 }
 
-/** render's worldFrameAt, measured once per process: when it is too slow to run every frame the runs use the checker's own record. */
-const FRAME_AT = { slow: false, note: null };
 /**
  * A running scene in Node: the systems runner when it is loaded (worldRun), the life sim over the nav map (worldNavBuild +
  * worldLifeInit) when no registered system moves the agents, and the frame record from render's worldFrameAt when loaded, else
@@ -131,24 +152,20 @@ export function worldSimOf(E, spec, o = {}) {
     if (world.time) sim.ctx = world.time;
   };
   sim.isSpawn = (e) => { try { return !!(sim.life && E.worldLifeIsSpawn && E.worldLifeIsSpawn(sim.life, e.layer, e.x, e.z)); } catch { return false; } };
-  // the frame record: render's worldFrameAt (the real one) unless o.frameAt === 'own', or it throws, gives no ents, or is too
-  // slow to run every frame (> 60 ms twice: then the checker's own record, and the run says so in frameSource)
-  sim.frameSource = typeof E.worldFrameAt === 'function' && o.frameAt !== 'own' && !(FRAME_AT.slow && o.frameAt !== 'render') ? 'worldFrameAt' : 'worldInvariantFrame';
-  if (FRAME_AT.slow && sim.frameSource !== 'worldFrameAt' && typeof E.worldFrameAt === 'function') sim.frameNote = FRAME_AT.note;
-  let slow = 0;
+  // the frame record: ALWAYS render's worldFrameAt (the real one) unless o.frameAt === 'own' or it throws / gives no ents (then
+  // the checker's own record, and the run says so). It never switches on speed any more: until 15 Oct a slow worldFrameAt made
+  // the run swap records mid-process, and the same scene passed habitat in one cell and failed it in the next. A slow frame
+  // record is reported (frameNote, frameMs), not hidden.
+  sim.frameSource = typeof E.worldFrameAt === 'function' && o.frameAt !== 'own' ? 'worldFrameAt' : 'worldInvariantFrame';
+  sim.frameMs = [];
   sim.frame = () => {
     let fr = null;
     if (sim.frameSource === 'worldFrameAt') {
       const a = performance.now();
       try { fr = E.worldFrameAt(world, sim.t); } catch (e) { fr = null; sim.frameNote = 'worldFrameAt threw: ' + e.message; }
       if (fr && !Array.isArray(fr.ents)) { fr = null; sim.frameNote = 'worldFrameAt gave no ents'; }
-      const ms = performance.now() - a;
-      if (ms > 60 && o.frameAt !== 'render' && ++slow >= 2) {
-        // too slow to run every frame: the checker's own record, for this run and the rest of the process (re-tried with frameAt: 'render')
-        sim.frameSource = 'worldInvariantFrame';
-        FRAME_AT.slow = true; FRAME_AT.note = sim.frameNote = `worldFrameAt took ${Math.round(ms)} ms a frame (render budget 4 ms): the checker's own frame record was used`;
-      }
-      if (!fr && o.frameAt !== 'render') sim.frameSource = 'worldInvariantFrame';
+      sim.frameMs.push(performance.now() - a);
+      if (!fr) sim.frameSource = 'worldInvariantFrame';
     }
     if (!fr) fr = E.worldInvariantFrame(world, sim.agents(), { t: sim.t, ctx: sim.ctx, cache, born, sun: sim.ctx && sim.ctx.sun, season });
     // the run checks the date it was asked for: a frame record built at another time (a default clock) is judged at this one
@@ -176,7 +193,7 @@ export function worldInvariantRun(E, spec, o = {}) {
   const check = () => {
     const fr = sim.frame(), st = {};
     for (const e of fr.ents || []) if (e.static === false) ids.add(e.id);
-    const v = E.worldInvariants(fr, { world: sim.world, track, stats: st, isSpawn: sim.isSpawn, rules: o.rules, skip: o.skip });
+    const v = E.worldInvariants(fr, { world: sim.world, agents: sim.agents(), track, stats: st, isSpawn: sim.isSpawn, rules: o.rules, skip: o.skip });
     ms += st.ms || 0; out.frames++;
     for (const r of st.na || []) na.add(r);
     for (const r of st.ran || []) ran.add(r);
@@ -196,6 +213,7 @@ export function worldInvariantRun(E, spec, o = {}) {
   out.msPerFrame = out.frames ? r2(ms / out.frames) : 0;
   out.error = out.error || sim.error;
   out.frameSource = sim.frameSource; out.frameNote = sim.frameNote || null;
+  if (sim.frameMs && sim.frameMs.length) { const f = sim.frameMs.slice().sort((a, b) => a - b); out.frameRecordMs = r2(f[Math.floor(f.length / 2)]); }
   return out;
 }
 

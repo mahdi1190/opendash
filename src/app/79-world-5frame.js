@@ -80,19 +80,44 @@ function _wfrRec(e, cam, o) {
   if (!(e.z > WORLD_FRAME_ZMIN) || !Number.isFinite(e.x)) return null;
   const vw = _wfrView(e, cam, o.agent, o.prev);
   // a long hull seen at an angle or end-on: drawn in true perspective, never a flat side slab (Q4)
-  if (vw.persp && !e.landmark && typeof worldExtrudeHull === 'function') {
-    try { const prim = worldExtrudeHull(e, cam, { season: o.season }); if (prim && prim.box) { const r = _wfrPrimRec(prim, e, vw); r.cut = prim.noCut ? null : _wfrCutOf(e, cam, o.regions); return r; } } catch (err) { /* a sprite below */ }
+  // walkways (boardwalks, jetties, platforms) are always modelled from the nav's own deck, so people stand on what is drawn
+  // (audit bug 7: the side sprite of a boardwalk running away from the eye read as a railing across open water)
+  const walkway = typeof WORLD_WALKWAY_RX !== 'undefined' && WORLD_WALKWAY_RX.test(String(e.obj));
+  if ((vw.persp || walkway) && !e.landmark && typeof worldExtrudeHull === 'function') {
+    try { const prim = worldExtrudeHull(e, cam, { season: o.season, regions: o.regions }); if (prim && prim.box) { const r = _wfrPrimRec(prim, e, vw); r.cut = prim.noCut ? null : _wfrCutOf(e, cam, o.regions); return r; } } catch (err) { /* a sprite below */ }
   }
   const oid = vw.obj && sceneObj(vw.obj) ? vw.obj : (typeof _wh5ViewObj === 'function' ? _wh5ViewObj(e.obj, vw.view) : e.obj), def = sceneObj(oid);
   if (!def || !def.size) return null;
   const v = vw.variant != null ? vw.variant : Number.isInteger(e.variant) ? e.variant : 0;
   const P = sceneProject(cam, e.x, e.z, Number.isFinite(e.y) ? e.y : null), s = vw.s || (cam.f / e.z) * _wfrHeight(e) / def.size[1];
-  const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(oid, v, o.season || 'summer') : null, b = (sh && sh.box) || [-def.size[0] / 2, -def.size[1], def.size[0] / 2, 0];
+  const b = _wfrArtBox(oid, v, o.season || 'summer') || [-def.size[0] / 2, -def.size[1], def.size[0] / 2, 0];
   const flip = !!vw.mirror && def.flippable !== false;
   const box = flip ? { x0: P.X - b[2] * s, y0: P.Y + b[1] * s, x1: P.X - b[0] * s, y1: P.Y + b[3] * s } : { x0: P.X + b[0] * s, y0: P.Y + b[1] * s, x1: P.X + b[2] * s, y1: P.Y + b[3] * s };
   const foot = Array.isArray(e.foot) && e.foot.length ? e.foot : [[e.x, e.z]];
   return { id: _wfrId(e, oid), ent: e, obj: e.obj, o: oid, v, X: P.X, Y: P.Y, s, flip, box, x: e.x, y: Number.isFinite(e.y) ? e.y : 0, z: e.z, foot,
     height: _wfrHeight(e), attach: e.attach || null, static: e.static !== false, cut: _wfrCutOf(e, cam, o.regions), view: vw.view, mirror: !!vw.mirror, backdrop: !!e.backdrop };
+}
+/**
+ * The art box of an object for its record: a plant's is the union of its four seasonal arts, because each plant is drawn in its
+ * own season (its leaf state, look's worldMaterialArtSeason): a tree still in summer leaf in an autumn scene, or a winter
+ * skeleton wider than the summer crown, must fit the record box (chunk bitmaps, culling and the order are cut to it).
+ */
+const _wfrArtBoxMemo = new Map();
+function _wfrArtBox(oid, v, season) {
+  if (typeof sceneObjShapes !== 'function') return null;
+  if (!/^(tree|plant|hedge)\./.test(oid)) { const sh = sceneObjShapes(oid, v, season); return sh && sh.box; }
+  const key = oid + '|' + v;
+  if (_wfrArtBoxMemo.has(key)) return _wfrArtBoxMemo.get(key);
+  let b = null;
+  for (const se of ['summer', 'winter', 'spring', 'autumn']) {
+    let sh = null;
+    try { sh = sceneObjShapes(oid, v, se); } catch (e) { sh = null; }
+    const q = sh && sh.box;
+    if (!Array.isArray(q)) continue;
+    b = b ? [Math.min(b[0], q[0]), Math.min(b[1], q[1]), Math.max(b[2], q[2]), Math.max(b[3], q[3])] : q.slice();
+  }
+  _wfrArtBoxMemo.set(key, b);
+  return b;
 }
 /**
  * Where a floater's art is cut (H3): look's worldWaterCut on the region it floats in, else its waterline row when it sinks
@@ -409,7 +434,10 @@ function worldFrameAt(scene, t, o) {
       facing: _wfrR3(Number(e.facing) || 0), foot: _wfrPts(r.foot), height: _wfrR3(r.height), layer: e.layer || null, host: e.host || null, parent: e.parent || null,
       view: r.view, mirror: !!r.mirror, box: _wfrBoxArr(r.box), order: pos.has(r.id) ? pos.get(r.id) : null, speed: agent ? _wfrR3(sp) : 0, vx: agent ? _wfrR3(e.vx || 0) : 0, vz: agent ? _wfrR3(e.vz || 0) : 0,
       state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null,
-      prim: r.prim ? r.prim.kind || null : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal };
+      prim: r.prim ? r.prim.kind || null : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal,
+      // the look drawn (A11) and what a check needs to judge the frame by itself (verify round 1)
+      variant: r.v != null ? r.v : null, outfit: agent && e.outfit != null ? e.outfit : null, group: agent && e.group != null ? e.group : null,
+      attach: e.attach || null, deck: e.deck || null, live: !!r.live };
   };
   const ents = plan.recs.map(r => one(r, false)).concat(aRecs.map(r => one(r, true)));
   let lights = [];
@@ -466,20 +494,29 @@ function _wfrPaint(cx, p, col) {
 }
 /**
  * A sprite coloured by MATERIALS (V2): each shape of each part gets look's material (worldMaterialOf) and colour
- * (worldMaterialColour) for this entity's material context (season and leaf state, light, weather, snow, haze); leaves on a
- * bare tree are dropped (worldMaterialVisible). Kept in the shared sprite cache (sceneSprites) under a key of what it depends
+ * (worldMaterialColour) for this entity's material context (season and leaf state, light, weather, snow, haze). The art is the
+ * entity's own season (mc.art: a bare tree draws its winter skeleton, nothing is dropped from a seasonal art); only an art that
+ * does not change with the season drops its leaves when bare (worldMaterialVisible). Kept in the shared sprite cache (sceneSprites) under a key of what it depends
  * on. Raster objects and a missing look package take the v2 path (env.sprite, graded by the v2 light).
  */
 function _wfrSprite(env, S, oid, v, part, sc, mc, x) {
   x = x || {};
-  const v2 = () => { try { return env.sprite({ o: oid, v, part, season: S.season, haze: x.haze || 0, tint: null, scale: sc, flip: false, cls: x.cls || null, litGlow: !!x.litGlow }); } catch (e) { return null; } };
+  // the art season is the entity's own (look's worldMaterialFor: its leaf state picks the library's seasonal art, so trees turn
+  // and leaf out unevenly and a bare tree is drawn as its winter branch skeleton); the scene season when materials are off
+  const se = (mc && mc.art) || S.season;
+  const v2 = () => { try { return env.sprite({ o: oid, v, part, season: se, haze: x.haze || 0, tint: null, scale: sc, flip: false, cls: x.cls || null, litGlow: !!x.litGlow }); } catch (e) { return null; } };
   if (!S.mat || !mc || typeof sceneObjShapes !== 'function' || typeof Path2D !== 'function' || typeof sceneSprites === 'undefined') return v2();
-  const sh = sceneObjShapes(oid, v, S.season);
+  const sh = sceneObjShapes(oid, v, se);
   if (!sh) return null;
   if (_wfrHasImg(sh)) return v2();
   let mk = '';
   try { mk = worldMaterialKey(mc); } catch (e) { return v2(); }
-  const key = 'w3|' + oid + '|' + v + '|' + part + '|' + S.season + '|' + mk + '|' + S.band + '|' + Math.round(sc * 64) / 64 + (x.litGlow ? '|g' : '');
+  // x.lit: { parts: [glow index...], k } the lit windows and lamps of this static now (look's worldLights: per window, seeded), so
+  // the pane itself glows where its halo is (bug 13: halos floated beside dark panes)
+  const litKey = x.lit && x.lit.parts && x.lit.parts.length ? '|L' + Math.round((x.lit.k || 1) * 10) + ':' + x.lit.parts.join('.') : '';
+  // x.outfit: a person's A11 outfit (life), drawn as the colour of the top (look's worldMaterialOutfit)
+  const outfit = x.outfit && typeof worldMaterialOutfit === 'function' ? x.outfit : 0;
+  const key = 'w3|' + oid + '|' + v + '|' + part + '|' + se + '|' + mk + '|' + S.band + '|' + Math.round(sc * 64) / 64 + (x.litGlow ? '|g' : '') + litKey + (outfit ? '|o' + outfit : '');
   return sceneSprites.get(key, () => {
     const names = part === '*' ? _wfrStill(sh) : part.startsWith('rest:') ? _wfrStill(sh).filter(p => !part.slice(5).split(',').includes(p)) : [part];
     const detail = typeof sceneDetailAt !== 'function' || sceneDetailAt(oid, sh, sc);
@@ -498,7 +535,16 @@ function _wfrSprite(env, S, oid, v, part, sc, mc, x) {
     const W = Math.ceil((b[2] - b[0]) * k + 2 * _WFR_PAD), H = Math.ceil((b[3] - b[1]) * k + 2 * _WFR_PAD);
     const c = _wfrCanvas(W, H), cx = c.getContext('2d', _WFR_CPU);
     cx.setTransform(k, 0, 0, k, _WFR_PAD - b[0] * k, _WFR_PAD - b[1] * k);
-    const def = x.litGlow ? sceneObj(oid) : null, nc = (def && def.night && def.night.glow) || {};
+    const def = x.litGlow || litKey ? sceneObj(oid) : null, nc = (def && def.night && def.night.glow) || {};
+    // the glow shapes in look's order (_wlGlowParts: every part, shapes with a glow and a box) -> their index, for x.lit
+    let litOf = null;
+    if (litKey) {
+      const on = new Set(x.lit.parts);
+      litOf = new Map();
+      let gi = 0;
+      for (const p of sh.order) for (const s of sh.parts[p] || []) { if (!s.glow) continue; if (typeof scenePathBox === 'function' && !scenePathBox(s.d, s.m)) continue; if (on.has(gi)) litOf.set(s, true); gi++; }
+    }
+    const tree = /^tree\./.test(oid);
     let any = false;
     for (const p of names) for (const s of sh.parts[p] || []) {
       if (!detail && s.detail) continue;
@@ -506,14 +552,19 @@ function _wfrSprite(env, S, oid, v, part, sc, mc, x) {
       let mat = 'paint';
       try { mat = worldMaterialOf(oid, p, fillHex, s); } catch (e) { mat = 'paint'; }
       if (typeof worldMaterialVisible === 'function' && !worldMaterialVisible(mat, mc)) continue;
-      const col = (hex) => { try { return worldMaterialColour(mat, hex, mc); } catch (e) { return hex; } };
+      // frost and snow baked into a winter art show only as much as the day is frosty or snowy (look's worldMaterialRime)
+      const rime = se === 'winter' && typeof worldMaterialRime === 'function' ? worldMaterialRime(typeof s.s === 'string' ? s.s : fillHex, mc) : 1;
+      if (!(rime > 0)) continue;
+      const col = (hex) => { try { return worldMaterialColour(mat, outfit ? worldMaterialOutfit(hex, outfit, p) : hex, mc); } catch (e) { return hex; } };
       if (s.m) { cx.save(); cx.transform(s.m[0], s.m[1], s.m[2], s.m[3], s.m[4], s.m[5]); }
       const path = _wfrPath(s.d);
       if (x.litGlow && s.glow) { cx.globalAlpha = 1; cx.fillStyle = nc[s.glow] || (s.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'); cx.fill(path); }
       else {
-        cx.globalAlpha = s.op == null ? 1 : s.op;
+        cx.globalAlpha = (s.op == null ? 1 : s.op) * rime;
         if (s.f) { cx.fillStyle = _wfrPaint(cx, s.f, col); cx.fill(path); }
-        if (s.s) { cx.strokeStyle = _wfrPaint(cx, s.s, col); cx.lineWidth = s.w || 1; cx.lineCap = s.cap || 'butt'; cx.stroke(path); }
+        if (s.s) { cx.strokeStyle = _wfrPaint(cx, s.s, col); cx.lineWidth = (s.w || 1) * (tree ? _wfrLineK(s.w || 1, k) : 1); cx.lineCap = s.cap || 'butt'; cx.stroke(path); }
+        // a lit pane or bulb: its warm light over the material, as strong as the night is dark
+        if (litOf && litOf.has(s)) { cx.globalAlpha = 0.35 + 0.65 * Math.max(0, Math.min(1, x.lit.k == null ? 1 : x.lit.k)); cx.fillStyle = nc[s.glow] || (s.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'); cx.fill(path); }
       }
       if (s.m) cx.restore();
       any = true;
@@ -522,6 +573,18 @@ function _wfrSprite(env, S, oid, v, part, sc, mc, x) {
     try { cx.getImageData(0, 0, 1, 1); } catch (e) { /* drawn on first use */ }
     return { c, x0: b[0] - _WFR_PAD / k, y0: b[1] - _WFR_PAD / k, w: W / k, h: H / k, sc: k, bytes: W * H * 4 };
   });
+}
+/**
+ * Line-weight LOD for a tree's thin strokes (twigs, winter branch tips, willow fronds): the library draws them for a tree seen
+ * whole (about 1 device px per art unit), so a near tree magnified 3x turned its 2.6-unit fronds into flat 9 px bars hanging
+ * from nothing. Strokes up to 3 art units keep at most 1.6x their art width in device pixels; thicker ones (limbs, trunks)
+ * blend back to true scale by 6 units. w: the art width, k: device px per art unit. -> the factor on w.
+ */
+const _WFR_LINE_KMAX = 1.6;
+function _wfrLineK(w, k) {
+  if (!(k > _WFR_LINE_KMAX) || !(w < 6)) return 1;
+  const capped = _WFR_LINE_KMAX / k, t = w <= 3 ? 0 : (w - 3) / 3;
+  return capped + (1 - capped) * t;
 }
 /** The material context of one entity (look), or null when materials are not loaded. */
 function _wfrMc(S, e) {
@@ -536,7 +599,8 @@ function _wfrHaze(env, e) {
 /** The sprite of a draw record (part '*' or one part), at its scale bucket. */
 function _wfrSpriteOf(env, S, r, part, x) {
   const sc = _wfrBucket(x && x.bucket ? x.bucket : r.s) * env.vs, mc = _wfrMc(S, r.ent);
-  return _wfrSprite(env, S, r.o, r.v, part || '*', sc, mc, Object.assign({ haze: mc ? 0 : _wfrHaze(env, r.ent), cls: r.ent.cls || null }, x || {}));
+  const outfit = !r.ent.static && r.ent.outfit != null && /^person\./.test(String(r.o || '')) ? r.ent.outfit : 0;
+  return _wfrSprite(env, S, r.o, r.v, part || '*', sc, mc, Object.assign({ haze: mc ? 0 : _wfrHaze(env, r.ent), cls: r.ent.cls || null, outfit }, x || {}));
 }
 function _wfrM(env, r) { return [env.vs * r.s * (r.flip ? -1 : 1), 0, 0, env.vs * r.s, env.vs * r.X + env.ox, env.vs * r.Y + env.oy]; }
 /** Clip a context to what lies above a floater's cut (device px: scene units through vs, ox, oy, then less the bitmap's origin). */
@@ -622,7 +686,7 @@ function _wfrWet(world, cam, regions) {
   const out = { water: [], over: [], decks: [] };
   if (!world || !cam || typeof sceneProject !== 'function') return out;
   const surfs = world.surfaces || [];
-  if (Array.isArray(regions) && regions.length) { for (const R of regions) if (Array.isArray(R.clip) && R.clip.length >= 3) out.water.push(R.clip); }
+  if (Array.isArray(regions) && regions.length) { for (const R of regions) for (const P of (Array.isArray(R.clips) && R.clips.length ? R.clips : [R.clip])) if (Array.isArray(P) && P.length >= 3) out.water.push(P); }
   else for (const s of surfs) if (s && s.kind === 'water') { const P = _wfrSurfPoly(s), q = P && _wfrScrPoly(cam, P, Number.isFinite(s.level) ? s.level : Number.isFinite(cam.water) ? cam.water : null); if (q) out.water.push(q); }
   const first = surfs.findIndex(s => s && s.kind === 'water');
   if (first >= 0) for (let i = first + 1; i < surfs.length; i++) {
@@ -674,6 +738,84 @@ function _wfrDrawDecks(ctx, env, S) {
   return n;
 }
 /** Clip a context (in scene units) to everything but these screen polygons (even-odd with a frame-sized rectangle). */
+/**
+ * The faces of a sunk channel's walls (verify round 1, audit bug 9 / R3): a town river or canal whose water lies more than 0.4 m
+ * below its quays showed its walls as the v2 base layer's one flat dark fill, about a quarter of Kelham's frame. Each wall is
+ * drawn here as coursed stone: a stone colour (look's material, so light, season and wet apply), courses every 0.3 m that follow
+ * the bank in perspective, staggered joints near the eye, a damp band at the water and a green-black slime line, all clipped to
+ * the wall faces (the channel's ground outline less the water at its level). Baked once per light key into one bitmap.
+ */
+const _WFR_QUAY = Object.freeze({ stone: '#8a8172', course: 0.3, joint: 0.75, damp: 0.45, coping: 0.12, maxZ: 90 });
+function _wfrQuayWalls(ctx, env, S, o) {
+  const world = S.rec && S.rec.world, cam = world && world.cam;
+  if (!cam || !S.water || !S.water.length || typeof _wwaClipNear !== 'function') return 0;
+  const walls = S.water.map(w => w.R).filter(R => R && Number.isFinite(R.level) && R.level < -0.4 && Array.isArray(R.polys) && R.polys.length);
+  if (!walls.length) return 0;
+  let mk = '';
+  try { mk = S.mat && S.mctx && typeof worldMaterialKey === 'function' ? worldMaterialKey(S.mctx) : ''; } catch (e) { mk = ''; }
+  const key = mk + '|' + env.W + 'x' + env.H + '|' + env.vs + '|' + walls.map(R => (R.ids || [R.id]).join(',') + R.level).join(';');
+  if (!S.quay || S.quay.key !== key) {
+    const c = _wfrCanvas(env.W, env.H), g = c.getContext('2d', _WFR_CPU), vs = env.vs, ox = env.ox, oy = env.oy, Q = _WFR_QUAY;
+    const mc = _wfrCanvas(env.W, env.H), m = mc.getContext('2d', _WFR_CPU);
+    const col = (hex, mat) => { if (S.mat && S.mctx && typeof worldMaterialColour === 'function') { try { return worldMaterialColour(mat || 'stone', hex, S.mctx) || hex; } catch (e) { return hex; } } return hex; };
+    const P = (x, z, y) => [(cam.x0 + cam.f * x / z) * vs + ox, (cam.horizon + cam.f * (cam.eye - y) / z) * vs + oy];
+    const path = (poly, y, cx) => { cx = cx || g; const q = poly.map(p => P(p[0], p[1], y)); cx.moveTo(q[0][0], q[0][1]); for (let i = 1; i < q.length; i++) cx.lineTo(q[i][0], q[i][1]); cx.closePath(); };
+    for (const R of walls) {
+      const lvl = R.level, top = -Q.coping;
+      for (const poly0 of R.polys) {
+        const poly = _wwaClipNear(poly0, 0.5);
+        if (poly.length < 3) continue;
+        g.save();
+        // the wall faces: inside the outline at the quay top, outside the outline at the water level
+        g.beginPath(); path(poly, 0); g.clip();
+        g.beginPath(); g.rect(-10, -10, env.W + 20, env.H + 20); path(poly, lvl); g.clip('evenodd');
+        // the stone, lighter up the wall (a soft sky light on it), then the damp band and the slime line at the water
+        g.fillStyle = col(Q.stone); g.fillRect(0, 0, env.W, env.H);
+        g.globalAlpha = 0.5; g.fillStyle = col('#4c4a3c', 'stone');
+        g.beginPath(); path(poly, lvl + Q.damp); g.fill();
+        g.globalAlpha = 0.65; g.fillStyle = col('#2f3a2a', 'leaf');
+        g.beginPath(); path(poly, lvl + 0.12); g.fill();
+        g.globalAlpha = 1;
+        // the courses: the outline at each course height (they foreshorten and follow the bank by themselves)
+        g.strokeStyle = col('#4e483e'); g.lineWidth = Math.max(0.6, 0.9 * vs);
+        g.globalAlpha = 0.55;
+        g.beginPath();
+        for (let y = lvl + Q.course; y < top; y += Q.course) path(poly, y);
+        g.stroke();
+        // the joints: staggered every 0.75 m along each edge, near enough that a course is 3 px or more
+        g.beginPath();
+        for (let i = 0; i < poly.length; i++) {
+          const a = poly[i], b = poly[(i + 1) % poly.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+          if (!(L > 0.5)) continue;
+          for (let k = 0, y = lvl; y < top; k++, y += Q.course) {
+            for (let t = (k % 2) * Q.joint / 2; t < L; t += Q.joint) {
+              const x = a[0] + (b[0] - a[0]) * t / L, z = a[1] + (b[1] - a[1]) * t / L;
+              if (z < 0.5 || z > Q.maxZ || cam.f * Q.course / z * vs < 3) continue;
+              const p = P(x, z, y), q = P(x, z, Math.min(top, y + Q.course));
+              g.moveTo(p[0], p[1]); g.lineTo(q[0], q[1]);
+            }
+          }
+        }
+        g.globalAlpha = 0.4; g.stroke();
+        g.restore();
+        // the wall's image in the water (look's worldWaterContactClip hides what stands beyond it there): from the water edge down
+        // to the mirrored quay top, the stone darkened and tinted by the water, its courses mirrored
+        m.save();
+        m.beginPath(); path.call(null, poly, lvl, m); m.clip();
+        m.beginPath(); m.rect(-10, -10, env.W + 20, env.H + 20); path.call(null, poly, 2 * lvl, m); m.clip('evenodd');
+        m.globalAlpha = 0.55; m.fillStyle = col('#5a5650'); m.fillRect(0, 0, env.W, env.H);
+        m.globalAlpha = 0.25; m.strokeStyle = col('#3a3832'); m.lineWidth = Math.max(0.6, 0.9 * vs);
+        m.beginPath();
+        for (let y = lvl - Q.course; y > 2 * lvl + Q.coping; y -= Q.course) path.call(null, poly, y, m);
+        m.stroke();
+        m.restore();
+      }
+    }
+    S.quay = { key, c, m: mc };
+  }
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(o && o.mirror ? S.quay.m : S.quay.c, 0, 0); ctx.restore();
+  return 1;
+}
 function _wfrHoleClip(cx, polys) {
   cx.beginPath(); cx.rect(-1e4, -1e4, 2e4, 2e4);
   for (const P of polys) { cx.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) cx.lineTo(P[i][0], P[i][1]); cx.closePath(); }
@@ -715,6 +857,9 @@ function* _wfrBakeJob(env, S) {
   if (!plan) { plan = worldFramePlan(world, { season: S.season, nav: rec.driver && rec.driver.nav, regions: S.regions, absent: ab.set }); rec.frame.plan = plan; rec.frame.planKey = pk; }
   S.plan = plan;
   yield;
+  // 2b. the static lights of this light (look: library glow parts only): their halos are baked into the chunks right after their
+  //     owner, so whatever stands nearer covers them (bug 13: drawn over the whole frame they read as fireflies in the trees)
+  _wfrStaticLights(env, S);
   // 3. the chunks: each its own bitmap, clipped to its box, integer-snapped, 1 px bleed
   const geo = W + 'x' + H + '|' + Math.round(vs * 1e4) + '|' + Math.round(ox) + ',' + Math.round(oy);
   const lk = S.mat ? '' : 'v2' + ((env.out && env.out.lk) || '');
@@ -728,11 +873,13 @@ function* _wfrBakeJob(env, S) {
       x0 = Math.min(x0, b.x0 * vs + ox); y0 = Math.min(y0, b.y0 * vs + oy); x1 = Math.max(x1, b.x1 * vs + ox); y1 = Math.max(y1, b.y1 * vs + oy);
       const mc = _wfrMc(S, r.ent);
       if (mc) { try { mk += worldMaterialKey(mc) + ';'; } catch (e) { /* none */ } }
+      const lit = S.litBy && S.litBy.get(r.id);
+      if (lit) mk += 'L' + r.id + ':' + lit.map(l => l.part).join('.') + '@' + Math.round(S.litK * 20) + ';';
       // the sprite and the device transform of every member, per bake (the frame's occluder redraws and the mirror reuse them)
       S.draw.set(r.id, { sp: null, M: r.prim ? null : _wfrM(env, r) });
     }
     const bx = Math.max(0, Math.floor(x0) - 1), by = Math.max(0, Math.floor(y0) - 1), bx1 = Math.min(W, Math.ceil(x1) + 1), by1 = Math.min(H, Math.ceil(y1) + 1);
-    for (const r of ch.ents) if (!r.prim) S.draw.get(r.id).sp = _wfrSpriteOf(env, S, r, '*');
+    for (const r of ch.ents) if (!r.prim) S.draw.get(r.id).sp = _wfrSpriteOf(env, S, r, '*', _wfrLitX(S, r.id));
     if (bx1 <= bx || by1 <= by) continue;
     const key = 'ch|' + geo + '|' + S.season + '|' + S.band + '|' + _wfrHashStr(mk + lk) + '|' + _wfrHashStr(ch.ents.map(r => r.id).join(','));
     used.add(key);
@@ -742,6 +889,7 @@ function* _wfrBakeJob(env, S) {
     let n = 0;
     for (const r of ch.ents) {
       S.stats.spritesDrawn += _wfrDrawRec(cx, env, S, r, S.draw.get(r.id), bx, by, 1) ? 1 : 0;
+      _wfrHalos(cx, env, S, S.litBy && S.litBy.get(r.id), bx, by);
       if (++n % 8 === 0) yield;
     }
     try { cx.getImageData(0, 0, 1, 1); } catch (e) { /* drawn on first use */ }
@@ -752,17 +900,23 @@ function* _wfrBakeJob(env, S) {
   }
   S.stats.chunkPx = S.chunks.reduce((a, o) => a + (o.c ? o.w * o.h : 0), 0);
   for (const r of plan.live) S.draw.set(r.id, { sp: null, M: _wfrM(env, r) });
+  for (const r of plan.live) if (S.litBy && S.litBy.has(r.id)) r.litX = _wfrLitX(S, r.id);
   // 4. the static shadows on the ground (look), one layer under every chunk (shadows lie on the ground; never on water)
   const sunOn = S.sky ? S.sky.sun.alt > 0 && S.sky.dark < 0.6 : !!(L && (L.alt || 0) > 0 && !(L.dark > 0.6));
   if (typeof worldShadowPlan === 'function' && typeof worldDrawShadows === 'function' && sunOn) {
     const sun = S.sky || L, sa = S.sky ? S.sky.sun : { alt: L.alt, az: L.az };
-    const sk = 'sh|' + geo + '|' + Math.round((sa.alt || 0) * 2) + '|' + Math.round((sa.az || 0) * 2) + '|' + Math.round(((S.sky && S.sky.cover) || L.cover || 0) * 10);
+    const sk = 'sh|' + geo + '|' + S.season + '|' + Math.round((sa.alt || 0) * 2) + '|' + Math.round((sa.az || 0) * 2) + '|' + Math.round(((S.sky && S.sky.cover) || L.cover || 0) * 10);
     used.add(sk);
     let lay = cache.get(sk);
     if (!lay) {
       try {
-        const ents = plan.recs.filter(r => !r.backdrop && !r.prim).map(r => Object.assign({}, r.ent, { id: r.id }));
-        const sp = worldShadowPlan({ entities: ents, surfaces: world.surfaces, cam }, cam, sun) || [];
+        // only what is DRAWN casts (audit 15 Oct, bug 17: a bramble with no winter art left its dark footprint prism on the grass):
+        // a static whose sprite has no pixels now (absent, bare, culled by its season) casts nothing
+        const drawn = (r) => { const d = S.draw.get(r.id); let sp = d && d.sp; if (!sp) { try { sp = _wfrSpriteOf(env, S, r, '*'); } catch (e) { sp = null; } } return !!(sp && sp.c && sp.w > 0 && sp.h > 0); };
+        const ents = plan.recs.filter(r => !r.backdrop && !r.prim).map(r => Object.assign({}, r.ent, { id: r.id })), isDrawn = new Map(plan.recs.map(r => [String(r.id), r]));
+        let skipped = 0;
+        const sp = worldShadowPlan({ entities: ents, surfaces: world.surfaces, cam }, cam, sun, { drawn: (e) => { const r = isDrawn.get(String(e.id)); const ok = !r || drawn(r); if (!ok) skipped++; return ok; } }) || [];
+        S.stats.shadowSkipped = skipped;
         let X0 = Infinity, Y0 = Infinity, X1 = -Infinity, Y1 = -Infinity;
         for (const s of sp) for (const q of s.scr || []) { X0 = Math.min(X0, q[0] * vs + ox); X1 = Math.max(X1, q[0] * vs + ox); Y0 = Math.min(Y0, q[1] * vs + oy); Y1 = Math.max(Y1, q[1] * vs + oy); }
         const bx = Math.max(0, Math.floor(X0) - 2), by = Math.max(0, Math.floor(Y0) - 2), bw = Math.min(W, Math.ceil(X1) + 2) - bx, bh = Math.min(H, Math.ceil(Y1) + 2) - by;
@@ -808,6 +962,11 @@ function* _wfrBakeJob(env, S) {
       cache.set(wk, kept);
     }
     S.water = kept;
+    // the glitter road of the low sun or a bright moon on each water (L4: "the moon's glitter on water"; look plans it, nothing drew it)
+    S.glitter = [];
+    if (S.sky && typeof worldGlitterPlan === 'function' && typeof worldWaterDrawGlitter === 'function') {
+      for (const R of S.regions) { try { const g = worldGlitterPlan(R, S.sky, cam, { H }); if (g && g.kind && g.glints.length) S.glitter.push({ R, g }); } catch (e) { S.stats.errors.push('glitter: ' + (e && e.message)); } }
+    }
     if (typeof worldWaterFalls === 'function') { try { S.falls = worldWaterFalls(world, cam, S.regions) || []; } catch (e) { S.falls = []; } }
   }
   // 6. the static night lights (look: library glow parts only; per-window seeded thresholds)
@@ -830,24 +989,69 @@ function _wfrImage(env, S, r, d) {
   if (!_wfrDrawRec(cx, env, S, r, dd, cx0, cy0, 1)) return null;
   try { return { img: cx.getImageData(0, 0, cx1 - cx0, cy1 - cy0), x: cx0, y: cy0 }; } catch (e) { return null; }
 }
-/** The static lights of this light (look's worldLights): lit glows and lamp pools baked into one layer, keyed by the lit set. */
+/** The lit static lights of a light (look's worldLights; not the extruded prims, which light their own windows). */
+function _wfrLitStatics(env, S, L, sky) {
+  const world = S.rec.world;
+  if (typeof worldLights !== 'function' || !L) return [];
+  const ents = S.plan ? S.plan.recs.filter(r => !r.prim).map(r => Object.assign({}, r.ent, { id: r.id })) : world.entities;
+  return (worldLights({ entities: ents }, { sky: sky || undefined, L, season: S.season }) || []).filter(x => x.on);
+}
+/** The bake's static lights grouped by owner (S.litBy) with the light's strength (S.litK): the halos baked into the chunks. */
+function _wfrStaticLights(env, S) {
+  S.litBy = new Map(); S.litK = 0;
+  if (typeof worldDrawLights !== 'function') return;
+  let list = [];
+  try { list = _wfrLitStatics(env, S, env.L, S.sky); } catch (e) { S.stats.errors.push('lights: ' + (e && e.message)); return; }
+  S.litK = typeof worldLightNightK === 'function' ? worldLightNightK(S.sky || env.L) : 1;
+  if (!(S.litK > 0.01)) return;
+  const byId = S.plan && S.plan.byId;
+  for (const l of list) {
+    const k = String(l.ref);
+    _wfrLightOnRec(l, byId && byId.get(k));
+    if (!S.litBy.has(k)) S.litBy.set(k, []);
+    S.litBy.get(k).push(l);
+  }
+}
+/** A light's halo on its owner's drawn sprite: the glow part's art point through the record's own transform (scene units). */
+function _wfrLightOnRec(l, r) {
+  if (!r || !Number.isFinite(l.u) || !Number.isFinite(l.v) || !Number.isFinite(r.X) || !Number.isFinite(r.s)) return l;
+  l.scr = [r.X + (r.flip ? -1 : 1) * l.u * r.s, r.Y + l.v * r.s];
+  return l;
+}
+/** The sprite option of a static's lit glow parts now ({ lit: { parts, k } }), or undefined. */
+function _wfrLitX(S, id) {
+  const L = S.litBy && S.litBy.get(String(id));
+  return L && L.length ? { lit: { parts: L.map(l => l.part).sort((a, b) => a - b), k: S.litK } } : undefined;
+}
+/** Draw the halos of one owner's lights on a context whose device origin is (bx, by). */
+function _wfrHalos(cx, env, S, lights, bx, by, k) {
+  if (!lights || !lights.length || typeof worldDrawLights !== 'function') return 0;
+  try {
+    cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0);
+    const n = worldDrawLights(cx, lights, S.rec.world.cam, { vs: env.vs, ox: env.ox - (bx || 0), oy: env.oy - (by || 0), only: 'halo', k: k == null ? S.litK : k });
+    cx.restore();
+    return n;
+  } catch (e) { return 0; }
+}
+/**
+ * The light that falls on the GROUND from the static lamps (pools): one layer the frame draws under every static and mover (after
+ * the ground shadows), keyed by the lit set and the light's strength; planned again on relight (V5: nothing is rasterised again).
+ */
 function _wfrLightsPlan(env, S) {
   S.lights = null;
   const rec = S.rec, world = rec.world, L = env.Lnow || env.L;
   if (typeof worldLights !== 'function' || typeof worldDrawLights !== 'function' || !L) return;
   const sky = L === env.L ? S.sky : _wfrSky(_wfrTimeCtx(world, L.ms, { L, season: S.season }), world.cam, L);
   let list = [];
-  try {
-    const ents = S.plan ? S.plan.recs.filter(r => !r.prim).map(r => Object.assign({}, r.ent, { id: r.id })) : world.entities;
-    list = (worldLights({ entities: ents }, { sky: sky || undefined, L, season: S.season }) || []).filter(x => x.on);
-  } catch (e) { S.stats.errors.push('lights: ' + (e && e.message)); return; }
-  if (!list.length) return;
+  try { list = _wfrLitStatics(env, S, L, sky).filter(x => x.pool || x.beam); } catch (e) { S.stats.errors.push('lights: ' + (e && e.message)); return; }
+  const k = typeof worldLightNightK === 'function' ? worldLightNightK(sky || L) : 1;
+  if (!list.length || !(k > 0.01)) return;
   const cache = rec.frame.cache || (rec.frame.cache = new Map());
-  const key = 'li|' + env.W + 'x' + env.H + '|' + Math.round(env.vs * 1e4) + '|' + _wfrHashStr(list.map(x => x.ref + ':' + x.part).join(','));
+  const key = 'li|' + env.W + 'x' + env.H + '|' + Math.round(env.vs * 1e4) + '|' + Math.round(k * 20) + '|' + _wfrHashStr(list.map(x => x.ref + ':' + x.part).join(','));
   let lay = cache.get(key);
   if (!lay) {
     const c = _wfrCanvas(env.W, env.H), cx = c.getContext('2d', _WFR_CPU);
-    try { worldDrawLights(cx, list, world.cam, { vs: env.vs, ox: env.ox, oy: env.oy }); } catch (e) { S.stats.errors.push('drawLights: ' + (e && e.message)); }
+    try { worldDrawLights(cx, list, world.cam, { vs: env.vs, ox: env.ox, oy: env.oy, only: 'ground', k }); } catch (e) { S.stats.errors.push('drawLights: ' + (e && e.message)); }
     lay = { c, n: list.length };
     cache.set(key, lay);
   }
@@ -889,7 +1093,7 @@ function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(r.o, r.v, S.season) : null;
   const L = env.Lnow || env.L, night = !!(L && (L.windows || L.dark > 0.5)), lit = !r.static && night && /vehicle|tram|train|boat|bus|car/.test(String(r.ent.cls || r.obj));
   const hooks = typeof sceneAnimPose === 'function' ? _wfrHooks(env, S, r, sh, tau) : [], d = r.static ? S.draw.get(r.id) : null, M = d && d.M ? d.M : _wfrM(env, r);
-  const x = { litGlow: lit, bucket: r.bucket };
+  const x = { litGlow: lit, bucket: r.bucket, lit: r.litX ? r.litX.lit : undefined };
   if (r.cut) { ctx.save(); _wfrClipCut(ctx, r.cut, env, 0, 0); }
   let n = 0;
   try {
@@ -956,26 +1160,29 @@ function _wfrMirrorAgents(env, S, ctx, aRecs, tau) {
   const vs = env.vs, ox = env.ox, oy = env.oy, cam = S.rec.world.cam;
   let n = 0;
   for (const w of S.water) {
-    const R = w.R, P = R.clip;
-    if (!Array.isArray(P) || P.length < 3) continue;
+    const R = w.R, PP = (Array.isArray(R.clips) && R.clips.length ? R.clips : [R.clip]).filter(P => Array.isArray(P) && P.length >= 3);
+    if (!PP.length) continue;
     const over = aRecs.filter(r => r.box.x1 > R.box[0] && r.box.x0 < R.box[2] && r.box.y0 < R.box[3] && r.z >= (R.dNear || 0) - 1 && !/^air/.test(String(r.ent.attach || '')));
     if (!over.length) continue;
     const look = R.look || {}, k = Math.max(0, Math.min(1, (look.mirror == null ? 0.7 : look.mirror))) * 0.6;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.beginPath(); ctx.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy);
-    for (const q of P) ctx.lineTo(q[0] * vs + ox, q[1] * vs + oy);
-    ctx.closePath(); ctx.clip();
+    ctx.beginPath();
+    for (const P of PP) { ctx.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy); for (const q of P) ctx.lineTo(q[0] * vs + ox, q[1] * vs + oy); ctx.closePath(); }
+    ctx.clip('nonzero');   // the parts of one water are wound one way (worldWaterPlan): nonzero is their union
     if (S.wet && S.wet.over.length) { ctx.setTransform(vs, 0, 0, vs, ox, oy); _wfrHoleClip(ctx, S.wet.over); }
     for (const r of over.sort((a, b) => b.z - a.z)) {
       let c = null;
       try { c = worldWaterContact(R, r.ent, cam); } catch (e) { c = null; }
       if (!c) continue;
-      const row = worldWaterContactRow(R, c, r.X);
+      // the flip axis: the agent's base row is laid on its contact row (look's mapping, the same as the statics' mirror): the
+      // axis is halfway between them (on the bank: the true image under a high quay; in the water: its own waterline)
+      const row0 = worldWaterContactRow(R, c, r.X), base = c.kind === 'bank' && typeof worldWaterContactBase === 'function' ? worldWaterContactBase(R, c, r.X) : row0;
+      const row = Number.isFinite(base) ? (row0 + base) / 2 : row0;
       if (!Number.isFinite(row) || !(r.box.y0 < row)) continue;
-      const Yc = row * vs + oy;
+      const Yc = row * vs + oy, Kc = typeof worldWaterContactClip === 'function' ? worldWaterContactClip(R, c, r.X) * vs + oy : -Infinity;
       ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(-1e5, Yc, 2e5, 1e5); ctx.clip();
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(-1e5, Math.max(Yc, Kc), 2e5, 1e5); ctx.clip();
       ctx.globalAlpha = k;
       if (r.prim) {
         const b = r.box, x0 = Math.floor(b.x0 * vs + ox) - 1, y0 = Math.floor(b.y0 * vs + oy) - 1, ww = Math.ceil((b.x1 - b.x0) * vs) + 2, hh = Math.min(Math.ceil(Yc - y0) + 1, Math.ceil((b.y1 - b.y0) * vs) + 2);
@@ -1049,6 +1256,8 @@ function _wfrDraw(env, ctx, t) {
   let tp = _wfrNow();
   const lap = (k) => { const n = _wfrNow(); pf[k] += n - tp; tp = n; };
   pf.order += tp - ta; pf.n++;
+  // 0. the faces of a sunk channel's walls (coursed stone, under everything that stands by them)
+  if (S.water && S.water.length && !S.quayOff) { try { draws += _wfrQuayWalls(ctx, env, S); } catch (e) { S.quayOff = true; S.stats.errors.push('quay: ' + (e && e.message)); } }
   // 1. the water with the statics' mirror (rippled in bands), falls, then the agents' mirror on their columns, rings and wakes
   if (S.water && S.water.length) {
     ctx.save();
@@ -1056,8 +1265,10 @@ function _wfrDraw(env, ctx, t) {
     for (const w of S.water) {
       try { draws += worldWaterDraw(ctx, w.res, w.R, tau, { vs, oy, wind: L && L.wind != null ? L.wind : 1 }) || 0; } catch (e) { /* the v2 base water shows */ }
     }
+    for (const G of S.glitter || []) { try { draws += worldWaterDrawGlitter(ctx, G.g, G.R, tau, { vs, ox, oy, wind: L && L.wind != null ? L.wind : 1 }) || 0; } catch (e) { /* no glitter */ } }
     ctx.restore();
   }
+  if (S.quay && S.quay.m && !S.quayOff) { try { draws += _wfrQuayWalls(ctx, env, S, { mirror: true }); } catch (e) { S.quayOff = true; } }
   if (S.falls && S.falls.length && typeof worldWaterDrawFalls === 'function') { try { draws += worldWaterDrawFalls(ctx, S.falls, tau, { vs, ox, oy }) || 0; } catch (e) { /* none */ } }
   lap('water');
   if (aRecs.length && S.water && S.water.length && !S.agentMirrorOff) {
@@ -1088,6 +1299,23 @@ function _wfrDraw(env, ctx, t) {
       }
     } else for (const r of aRecs) draws += _wfrBlob(ctx, env, r);
   }
+  // the light on the ground (lamp pools, head-lamp beams): under every static and mover, so it never paints over a plant or a person
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+  if (S.lights && S.lights.c) { ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(S.lights.c, 0, 0); ctx.globalCompositeOperation = 'source-over'; draws++; }
+  let moverLit = null;
+  const moverK = typeof worldLightNightK === 'function' ? worldLightNightK(S.sky || L) : 1;
+  if (aRecs.length && typeof worldLights === 'function' && typeof worldDrawLights === 'function' && L && moverK > 0.01) {
+    try {
+      const al = (worldLights({ entities: [] }, { sky: S.sky || undefined, L, season: S.season, agents: aRecs.map(r => Object.assign({}, r.ent, { id: r.id })) }) || []).filter(x => x.on);
+      if (al.length) {
+        moverLit = new Map();
+        const recOf = new Map(aRecs.map(r => [String(r.id), r]));
+        for (const l of al) { const k = String(l.ref); _wfrLightOnRec(l, recOf.get(k)); if (!moverLit.has(k)) moverLit.set(k, []); moverLit.get(k).push(l); }
+        const gr = al.filter(l => l.beam || l.pool);
+        if (gr.length) draws += worldDrawLights(ctx, gr, cam, { vs, ox, oy, only: 'ground', k: moverK }) || 0;
+      }
+    } catch (e) { moverLit = null; }
+  }
   lap('shadows');
   // 3. chunks and movers in true depth order, with the occluder redraws (clipped to the mover drawn just before)
   const chunkOf = new Map(S.chunks.map(o => [o.ch, o]));
@@ -1104,6 +1332,8 @@ function _wfrDraw(env, ctx, t) {
       if (k < 1 && m.prev && m.prev.o && !r.prim) draws += _wfrDrawMover(env, S, ctx, Object.assign({}, r, { o: m.prev.o, flip: !!m.prev.flip }), tau, 1 - k);
       else if (m) m.prev = null;
       draws += _wfrDrawMover(env, S, ctx, r, tau, k);
+      if (moverLit && moverLit.has(r.id)) draws += _wfrHalos(ctx, env, S, moverLit.get(r.id), 0, 0, moverK);   // its own lamps, in depth order
+      else if (r.static && S.litBy && S.litBy.has(r.id)) draws += _wfrHalos(ctx, env, S, S.litBy.get(r.id), 0, 0);   // a live static's (a swaying lamp)
       const b = r.box;
       clip = [Math.floor(b.x0 * vs + ox) - 1, Math.floor(b.y0 * vs + oy) - 1, Math.ceil(b.x1 * vs + ox) + 1, Math.ceil(b.y1 * vs + oy) + 1];
       continue;
@@ -1112,20 +1342,12 @@ function _wfrDraw(env, ctx, t) {
       const r = it.ref, d = S.draw.get(r.id);
       if (!d) continue;
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(clip[0], clip[1], clip[2] - clip[0], clip[3] - clip[1]); ctx.clip();
-      if (_wfrDrawRec(ctx, env, S, r, d, 0, 0, 1)) { redraws++; draws++; }
+      if (_wfrDrawRec(ctx, env, S, r, d, 0, 0, 1)) { redraws++; draws++; _wfrHalos(ctx, env, S, S.litBy && S.litBy.get(r.id), 0, 0); }
       ctx.restore();
     }
   }
   lap('depth');
-  // 4. the lights: the static layer, then the movers' own (head and tail lights, lit windows of trams and trains)
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
-  if (S.lights && S.lights.c) { ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(S.lights.c, 0, 0); ctx.globalCompositeOperation = 'source-over'; draws++; }
-  if (aRecs.length && typeof worldLights === 'function' && typeof worldDrawLights === 'function' && L && ((L.dark || 0) > 0.3 || L.windows || L.fog)) {
-    try {
-      const al = (worldLights({ entities: [] }, { sky: S.sky || undefined, L, season: S.season, agents: aRecs.map(r => Object.assign({}, r.ent, { id: r.id })) }) || []).filter(x => x.on);
-      if (al.length) draws += worldDrawLights(ctx, al, cam, { vs, ox, oy }) || 0;
-    } catch (e) { /* no mover lights */ }
-  }
+  // 4. the lights: the ground part is drawn under everything (above), the halos with their owners in depth order
   ctx.restore();
   lap('lights');
   S.stats.frames++; S.stats.agents = aRecs.length; S.stats.redraws = redraws; S.stats.tau = tau;

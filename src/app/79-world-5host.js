@@ -148,7 +148,9 @@ function worldHostV2Data(spec, o) {
   const style = (spec.backdrop && spec.backdrop.style) || P.style;
   const urban = /^(city|town)/.test(style || '');
   const data = { v: 2, id: o.id || spec.id || 'world', view: { lat: camera.lat, lon: camera.lon }, camera, at: 'afternoon', season: 'auto',
-    setting: urban ? 'urban' : 'natural', atmos: 'auto', weather: 'live', cover: 'auto', particles: 'season',
+    // particles 'none' (audit 15 Oct, bug 12): the v2 seasonal screen particles (petals, summer motes that glow as fireflies at
+    // night, autumn leaves from an empty sky) belong to no tree or chimney (M3, K7); a world's particles come from the world
+    setting: urban ? 'urban' : 'natural', atmos: 'auto', weather: 'live', cover: 'auto', particles: 'none',
     surfaces: [{ id: 'world-rest', kind: urban ? 'plot' : 'grass', rest: true }], water: [], place: [], scatter: [], actors: [], flows: [], world3: true };
   // the spec rides along (not enumerable: the bake cache and JSON never see it) so worldHostSpec finds it from the data
   try { Object.defineProperty(data, '$spec', { value: spec, enumerable: false }); } catch (e) { /* frozen */ }

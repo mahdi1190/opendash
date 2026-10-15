@@ -364,7 +364,8 @@ function _wcInfoOf(id, def, kb) {
   let sink = floats && mv && mv.top > 0 ? _wcR3(mv.sink * h / mv.top) : 0;
   if (kb && _wcNum(kb.sink) && kb.sink >= 0) sink = _wcR3(kb.sink);
   let deck = null;
-  if (cls === 'walkway') deck = { poly: [[-l / 2, -w / 2], [l / 2, -w / 2], [l / 2, w / 2], [-l / 2, w / 2]], y: _wcR3(h > 3 ? h * 0.55 : Math.min(h, 1.2)) };
+  // the walkway deck lies under its ~1 m railing (it sat at railing height: people walked 1 m above the planks)
+  if (cls === 'walkway') deck = { poly: [[-l / 2, -w / 2], [l / 2, -w / 2], [l / 2, w / 2], [-l / 2, w / 2]], y: _wcR3(h > 3 ? h * 0.55 : Math.max(0.15, h - 1.0)) };
   else if (cls === 'boat' && h < 6 && l > 5) deck = { poly: [[-l * 0.4, -w * 0.4], [l * 0.4, -w * 0.4], [l * 0.4, w * 0.4], [-l * 0.4, w * 0.4]], y: _wcR3(h * 0.8) };
   if (kb && _wcObjOf(kb.deck) && Array.isArray(kb.deck.poly) && kb.deck.poly.length >= 3 && _wcNum(kb.deck.y)) deck = { poly: kb.deck.poly.map(p => [p[0], p[1]]), y: kb.deck.y };
   // the trunk of a tree, the post of a lamp: a small solid disc; the plant's spread is passable
@@ -1365,7 +1366,17 @@ function _wcCluster(world, c, info, idx, season, solids) {
   const L = pts.map(loc), pad = s.path ? s.width / 2 : 0;
   const a0 = Math.min(...L.map(p => p[0])) - pad, a1 = Math.max(...L.map(p => p[0])) + pad, b0 = Math.min(...L.map(p => p[1])) - pad, b1 = Math.max(...L.map(p => p[1])) + pad;
   const gap = _wcNum(c.gap) ? c.gap : 0, edgeBand = 1.5, out = [], all = [];
+  // an edge cluster on WATER keeps to the margin of a real bank (sense's probe: a seam between two water regions or a deck over
+  // the water is not a bank), within the shallows + 1 m less the plant's own radius: margin reeds stood mid-pond, or on the
+  // boardwalk, and sense had to snap them (verify round 1, the scene-fill request R1)
+  // (its whole footprint in the water: sense judges reeds by the footprint, so one touching the towpath was snapped)
+  const rIn = (_wcNum(info.r) ? info.r : 0.3) + 0.05, waterBand = Math.max(rIn + 0.1, Math.min(edgeBand, (_wcNum(s.shallow) && s.shallow > 0 ? s.shallow : 0.5) + 1) - rIn);
   const nearEdge = (x, z) => {
+    if (s.kind === 'water' && typeof worldPlaceProbe === 'function') {
+      let p = null;
+      try { p = worldPlaceProbe(world, x, z); } catch (err) { p = null; }
+      if (p && Number.isFinite(p.waterDist)) return !!p.inWater && -p.waterDist >= rIn && -p.waterDist <= waterBand && !(p.tags || []).some(t => t === 'walk' || t === 'deck' || t === 'path');
+    }
     if (s.path) return _wcLineDist(s.path, x, z) >= s.width / 2 - edgeBand;
     let d = Infinity; for (let i = 0, j = s.poly.length - 1; i < s.poly.length; j = i++) d = Math.min(d, _wcSegDist(x, z, s.poly[j], s.poly[i])); return d <= edgeBand;
   };

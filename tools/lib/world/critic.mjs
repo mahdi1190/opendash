@@ -22,6 +22,9 @@ export const CRITIC_BANDS = Object.freeze([
   { id: 'far', z0: 80, z1: Infinity, w: 0.25, cover: 0.25, variety: 15, n: 500 },
 ]);
 const W0 = 1600, H0 = 900, COLS = 64, ROWS = 36;
+/** The most of the frame below the horizon that may hold nothing (C6, SCENE_LESSONS A: no bare area over about 15 %; the box
+ *  measure counts every surface as bare, so its limit is wider). */
+export const CRITIC_BARE_MAX = 0.35;
 const r3 = (v) => Math.round(v * 1000) / 1000;
 const r1 = (v) => Math.round(v * 10) / 10;
 
@@ -129,12 +132,15 @@ export function worldCritic(E, spec, o = {}) {
   let worldRichness = null, coverage = null, cuts = null, landmarks = null;
   if (E.worldRichness && cam) { try { worldRichness = E.worldRichness(world, cam); } catch (e) { problems.push('worldRichness threw: ' + e.message); } }
   if (E.worldCoverage && cam) { try { coverage = E.worldCoverage(world, cam, { season }); } catch (e) { problems.push('worldCoverage threw: ' + e.message); } }
-  if (E.worldFrameCheck && cam) { try { const r = E.worldFrameCheck(world, cam); cuts = Array.isArray(r) ? r : r && (r.cuts || r.problems || r.items) || []; } catch (e) { problems.push('worldFrameCheck threw: ' + e.message); } }
+  if (E.worldFrameCheck && cam) { try { const r = E.worldFrameCheck(world, cam); cuts = Array.isArray(r) ? r : r && (r.issues || r.cuts || r.problems || r.items) || []; } catch (e) { problems.push('worldFrameCheck threw: ' + e.message); } }
   if (E.worldLandmarkCheck && cam) { try { const r = E.worldLandmarkCheck(world, cam); landmarks = Array.isArray(r) ? r : r && (r.landmarks || r.items) || []; } catch (e) { problems.push('worldLandmarkCheck threw: ' + e.message); } }
-  if ((cuts == null || landmarks == null) && E.worldInvariants && E.worldInvariantFrame) {
+  // the invariant checker's framing rules ALWAYS run beside appearance's check (15 Oct: worldFrameCheck said '0 cut' while a
+  // bramble covered 41 % of the canal frame): C1 cuts, giants at the lens (nearStatic) and trees with their crown above the frame
+  if (E.worldInvariants && E.worldInvariantFrame) {
     const fr = E.worldInvariantFrame(world, [], { season });
-    const v = E.worldInvariants(fr, { world, rules: ['edgeCut', 'landmark'] });
-    if (cuts == null) cuts = v.filter(x => x.rule === 'edgeCut').map(x => ({ id: x.id, ok: false, msg: x.msg, by: 'invariants' }));
+    const v = E.worldInvariants(fr, { world, rules: ['edgeCut', 'nearStatic', 'crownCut', 'landmark'] });
+    const seen = new Set((cuts || []).map(c => c && c.id).filter(Boolean));
+    cuts = (cuts || []).concat(v.filter(x => x.rule !== 'landmark' && !seen.has(x.id)).map(x => ({ id: x.id, ok: false, msg: x.msg, by: 'invariants:' + x.rule })));
     if (landmarks == null) landmarks = v.filter(x => x.rule === 'landmark').map(x => ({ id: x.id, ok: false, msg: x.msg, by: 'invariants' }));
   }
   const badCuts = (cuts || []).filter(c => c && c.ok !== true), badLm = (landmarks || []).filter(l => l && l.ok === false);
@@ -142,8 +148,15 @@ export function worldCritic(E, spec, o = {}) {
   for (const c of badCuts) problems.push('frame: ' + (c.msg || c.why || c.id));
   for (const l of badLm) problems.push('landmark: ' + (l.msg || l.id));
   if (worldRichness && worldRichness.ok === false) problems.push('richness floor: ' + (worldRichness.msg || 'below the floor'));
-  // advice for the author, not a fault of the render: landmarks the load path demoted to scenery (C4: this camera cannot show them)
-  const notes = (Array.isArray(world.log) ? world.log : []).filter(l => l && l.action === 'demote').map(l => 'demoted: ' + l.reason);
+  // a landmark the load path demoted to scenery is a C4 FAILURE, not advice (15 Oct: kelham-island showed 17 % and passed)
+  const demoted = (Array.isArray(world.log) ? world.log : []).filter(l => l && l.action === 'demote');
+  for (const l of demoted) problems.push('landmark demoted (C4): ' + (l.reason || l.id || l.obj));
+  // ONE emptiness measure gates: when the box measure and look's C6 coverage disagree, the stricter one stands (15 Oct: Kelham's
+  // near quays were 83 % bare by the boxes and 1 % by C6, and C6 passed it)
+  const boxBare = richness.bare, c6Bare = coverage && Number.isFinite(coverage.bare) ? coverage.bare : null;
+  if (Number.isFinite(boxBare) && boxBare > CRITIC_BARE_MAX && (c6Bare == null || c6Bare <= CRITIC_BARE_MAX))
+    problems.push(`bare ground: ${Math.round(boxBare * 100)} % of the frame below the horizon holds nothing (the box measure)${c6Bare != null ? `; C6 coverage says ${Math.round(c6Bare * 100)} %: the measures disagree and the stricter one gates` : ''}`);
+  const notes = demoted.map(l => 'demoted: ' + l.reason);
   return { notes, score: richness.score, richness, worldRichness, coverage: coverage ? { bare: coverage.bare, sky: coverage.sky, ok: coverage.ok, msg: coverage.msg || '' } : null,
     framing: { cuts: badCuts, landmarks: badLm }, problems, records: records.length, by: { richness: 'critic-boxes', floor: E.worldRichness ? 'worldRichness' : null, coverage: E.worldCoverage ? 'worldCoverage' : null, framing: E.worldFrameCheck ? 'worldFrameCheck' : 'invariants' } };
 }

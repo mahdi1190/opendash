@@ -36,7 +36,9 @@ const bench = (id, x, z, facing = 0) => S({ id, obj: 'street.bench', cls: 'bench
 
 test('WORLD_INVARIANTS lists every rule of 16.2 with its requirement ids', () => {
   const want = ['habitat', 'overlap', 'inSolid', 'onWater', 'floating', 'orphan', 'pathBlocked', 'reflectOutsideWater', 'shadowOnWater', 'shadowDir', 'waterGap',
-    'edgeCut', 'nearBand', 'giant', 'popping', 'stuck', 'slidingFeet', 'facing', 'laneDir', 'animStill', 'stillMoving', 'staticAnim', 'clones', 'windDir', 'order', 'landmark', 'bare', 'season'];
+    'edgeCut', 'nearBand', 'giant', 'popping', 'stuck', 'slidingFeet', 'facing', 'laneDir', 'animStill', 'stillMoving', 'staticAnim', 'clones', 'windDir', 'order', 'landmark', 'bare', 'season',
+    // 15 Oct: the checks that read what the frame shows (audit bugs 3, 4, 8, 12, 13, 17, 19)
+    'nearStatic', 'crownCut', 'crowd', 'outfitClone', 'drawn', 'crown', 'shadowOrphan', 'deckDrawn', 'particles', 'nightLight'];
   assert.deepEqual(E.WORLD_INVARIANTS.map(r => r.rule).sort(), want.slice().sort());
   for (const r of E.WORLD_INVARIANTS) { assert.match(r.req, /^[A-Z]\d/, r.rule); assert.ok(r.what.length > 10, r.rule); }
 });
@@ -287,4 +289,115 @@ test('worldInvariantFrame builds a full frame record from a world and agents (16
   assert.equal(a.box.length, 4); assert.ok(a.box[3] > a.box[1]);
   assert.ok(Number.isFinite(a.order) && Number.isFinite(b.order));
   assert.equal(a.born, 1);
+});
+
+/* ---------- 15 Oct: the checks that read what the frame shows (audit bugs 3, 4, 8, 12, 13, 17, 19) ---------- */
+
+test('edgeCut (C1): a bramble blob covering the bottom right is NOT framing; a hedge over 35 % of the frame is not either; a side trunk frames', () => {
+  // the 15 Oct canal bug: plant.hedgerow-blackberry (cls hedge) 2.7 m from the lens, box 579..3054 x 322..1299, passed as framing
+  const blob = S({ id: 'br', obj: 'plant.hedgerow-blackberry', cls: 'hedge', x: 2, z: 2.7, height: 2.5, box: [579, 322, 3054, 1299] });
+  assert.equal(run('edgeCut', frame([blob])).length, 1, 'a hedge covering 41 % of the frame is not a framing element');
+  const shrub = S({ id: 'sh', obj: 'plant.bramble', cls: 'shrub', x: 2, z: 4, height: 1.5, box: [700, 300, 1700, 950] });
+  assert.equal(run('edgeCut', frame([shrub])).length, 1, 'shrubs, reeds and cover are not framing (C1: bough, trunk, hedge, wall edge)');
+  const trunk = S({ id: 'tr', obj: 'tree.bank-oak', cls: 'tree', x: -4, z: 5, height: 16, box: [-400, -600, 450, 880] });
+  assert.deepEqual(run('edgeCut', frame([trunk])), [], 'a tree framing from the side');
+  assert.deepEqual(run('edgeCut', frame([Object.assign({}, shrub, { framing: true })])), [], 'a declared framing element');
+});
+
+test('nearStatic (C2, K8): a 2.5 m bramble 2.7 m from the lens is a giant; 12 m away it is quiet; a declared framing bough is quiet', () => {
+  const near = S({ id: 'br', obj: 'plant.hedgerow-blackberry', cls: 'hedge', x: 2, z: 2.7, height: 2.5, box: [579, 322, 3054, 1299] });
+  assert.equal(run('nearStatic', frame([near])).length, 1);
+  // a piece of a hedge line running past the lens at the frame side frames the view (C1): quiet while it stays small in frame
+  assert.deepEqual(run('nearStatic', frame([S({ id: 'hl', obj: 'plant.towpath-hedge', cls: 'hedge', x: -3, z: 5, height: 2.2, box: [-200, 300, 150, 700] })])), []);
+  assert.deepEqual(run('nearStatic', frame([S({ id: 'b2', obj: 'plant.hedgerow-blackberry', cls: 'hedge', x: 2, z: 12, height: 2.5 })])), []);
+  assert.deepEqual(run('nearStatic', frame([Object.assign({}, near, { framing: true })])), []);
+  // the giant bollard at the canal stern: 1 m tall, 2 m from the lens
+  assert.equal(run('nearStatic', frame([S({ id: 'bo', obj: 'street.bollard', cls: 'post', x: -1.2, z: 2, height: 1 })])).length, 1);
+});
+
+test('crownCut (C1, K4): a tree with its trunk in frame and 70 % of it above the top; a whole tree is quiet', () => {
+  assert.equal(run('crownCut', frame([S({ id: 'pl', obj: 'tree.plane', cls: 'tree', x: 8, z: 9, height: 20, box: [1200, -1400, 1500, 600] })])).length, 1);
+  assert.deepEqual(run('crownCut', frame([S({ id: 'p2', obj: 'tree.plane', cls: 'tree', x: 8, z: 40, height: 20, box: [1200, 100, 1500, 600] })])), []);
+  assert.deepEqual(run('crownCut', frame([S({ id: 'p3', obj: 'tree.plane', cls: 'tree', x: 8, z: 9, height: 20, box: [1200, -200, 1500, 600] })])), [], 'a crown cut a little at the top');
+});
+
+test('crowd (A2): two walkers drawn through each other for 0.5 s; side by side at shoulder width or in one group is quiet', () => {
+  const track = E.worldInvariantTracker();
+  let n = 0;
+  for (let t = 0; t <= 1; t += 0.25) n += run('crowd', frame([P({ id: 'a', x: 3, z: 20, state: 'walk' }), P({ id: 'b', x: 3.08, z: 20.1, state: 'walk' })], { t }), { track }).length;
+  assert.ok(n >= 1, 'bodies through each other');
+  const t2 = E.worldInvariantTracker();
+  let m = 0;
+  for (let t = 0; t <= 1; t += 0.25) m += run('crowd', frame([P({ id: 'a', x: 3, z: 20 }), P({ id: 'b', x: 3.6, z: 20 })], { t }), { track: t2 }).length;
+  assert.equal(m, 0, 'shoulder to shoulder');
+  assert.deepEqual(run('crowd', frame([P({ id: 'a', x: 3, z: 20, group: 'g1' }), P({ id: 'b', x: 3.05, z: 20.05, group: 'g1' })])), [], 'one group (a couple arm in arm)');
+});
+
+test('outfitClone (A11): two walkers in the same outfit side by side for 3 s; different variants are quiet; no variant is n/a', () => {
+  const track = E.worldInvariantTracker();
+  let n = 0;
+  for (let t = 0; t <= 3.5; t += 0.5) n += run('outfitClone', frame([P({ id: 'a', x: 3, z: 20, variant: 4 }), P({ id: 'b', x: 4, z: 20.5, variant: 4 })], { t }), { track }).length;
+  assert.ok(n >= 1);
+  assert.deepEqual(run('outfitClone', frame([P({ id: 'a', x: 3, z: 20, variant: 4 }), P({ id: 'b', x: 4, z: 20.5, variant: 5 })])), []);
+  const st = {};
+  E.worldInvariants(frame([P({ id: 'a' }), P({ id: 'b', x: 4 })]), { world, rules: ['outfitClone'], stats: st });
+  assert.deepEqual(st.na, ['outfitClone']);
+});
+
+test('drawn (drawn vs simulated): an agent with no pixels, one the renderer never drew, one lost on the canvas; a drawn or occluded one is quiet; no pixel data is n/a', () => {
+  const duck = (id, o) => Object.assign({ id, cls: 'duck', obj: 'bird.mallard', static: false, x: -5, y: 0, z: 24, height: 0.35, layer: 'swim', box: [700, 500, 730, 520] }, o);
+  const fr = (ents, px) => frame(ents, { px });
+  assert.equal(run('drawn', fr([duck('d1')], { d1: { a: 0, top: 0, own: 0, match: 0, sp: 0 } })).length, 1, 'empty sprite');
+  assert.equal(run('drawn', fr([duck('d1')], {})).length, 1, 'never drawn');
+  assert.equal(run('drawn', fr([duck('d1')], { d1: { a: 500, top: 100, own: 480, match: 20 } })).length, 1, 'its pixels are not on the canvas');
+  assert.deepEqual(run('drawn', fr([duck('d1')], { d1: { a: 500, top: 100, own: 480, match: 450 } })), []);
+  assert.deepEqual(run('drawn', fr([duck('d1')], { d1: { a: 500, top: 100, own: 0, match: 0 } })), [], 'fully occluded by something nearer');
+  const st = {};
+  E.worldInvariants(frame([duck('d1')]), { world, rules: ['drawn'], stats: st });
+  assert.deepEqual(st.na, ['drawn'], 'without pixel data the rule is n/a, never a pass');
+});
+
+test('crown (S1, K4): a winter oak drawn as a trunk cut flat at the top; branches in the top 40 % are quiet', () => {
+  const oak = S({ id: 'o1', obj: 'tree.bank-oak', cls: 'tree', x: -10, z: 30, height: 16, box: [300, 100, 700, 600] });
+  assert.equal(run('crown', frame([oak], { px: { o1: { a: 2400, top: 0, own: 2400, match: 2400 } } })).length, 1);
+  assert.deepEqual(run('crown', frame([oak], { px: { o1: { a: 2400, top: 600, own: 2400, match: 2400 } } })), []);
+});
+
+test('shadowOrphan (L2): a shadow cast for a bramble that draws nothing, and for something not drawn; a drawn caster is quiet', () => {
+  const br = S({ id: 'br', obj: 'plant.hedgerow-blackberry', cls: 'hedge', x: 4, z: 9, height: 2.5 });
+  assert.equal(run('shadowOrphan', frame([br], { px: { br: { a: 0, top: 0, own: 0, match: 0, sp: 0 } }, shadowsCast: [{ ref: 'br', kind: 'cast' }] })).length, 1);
+  assert.equal(run('shadowOrphan', frame([br], { px: {}, shadowsCast: [{ ref: 'ghost', kind: 'cast' }] })).length, 1);
+  assert.deepEqual(run('shadowOrphan', frame([br], { px: { br: { a: 900, top: 300, own: 900, match: 900 } }, shadowsCast: [{ ref: 'br', kind: 'cast' }] })), []);
+});
+
+test('deckDrawn (A2, W2): a birder on the nav deck where no planks are drawn; on the drawn deck is quiet', () => {
+  const deck = S({ id: 'bw', obj: 'structure.boardwalk', cls: 'walkway', x: -6, z: 40, solidity: 'walkable', deck: { y: 0.4, poly: box(-10, 38, -2, 42) } });
+  const birder = P({ id: 'b1', x: -9, z: 40, y: 0.4 });
+  assert.equal(run('deckDrawn', frame([deck, birder], { decksDrawn: [{ id: 'bw', poly: box(-6, 38, -2, 42) }] })).length, 1);
+  assert.deepEqual(run('deckDrawn', frame([deck, birder], { decksDrawn: [{ id: 'bw', poly: box(-10, 38, -2, 42) }] })), []);
+  // the pixel probe's answer per walker (its feet on drawn planks or not)
+  assert.equal(run('deckDrawn', frame([deck, birder], { deckFoot: { b1: false } })).length, 1);
+  assert.deepEqual(run('deckDrawn', frame([deck, birder], { deckFoot: { b1: true } })), []);
+});
+
+test('particles (M3, K7): a world scene running the v2 season particles; none is quiet', () => {
+  assert.equal(run('particles', frame([], { particles: 'season' })).length, 1);
+  assert.deepEqual(run('particles', frame([], { particles: 'none' })), []);
+});
+
+test('nightLight (L4, QP4): a dark night with boats and no lit pixel; a lamp lit at noon; a lit night is quiet', () => {
+  const boat = S({ id: 'nb', obj: 'boat.narrowboat', cls: 'boat', x: -6, z: 30 });
+  assert.equal(run('nightLight', frame([boat], { sun: { alt: -20 }, litPx: 0 })).length, 1);
+  assert.deepEqual(run('nightLight', frame([boat], { sun: { alt: -20 }, litPx: 900 })), []);
+  assert.equal(run('nightLight', frame([boat], { sun: { alt: 30 }, litPx: 0, lights: [{ ref: 'l1', kind: 'lamp', on: true }] })).length, 1);
+});
+
+test('frame sources agree: a frame record without deck / variant is filled from the world and the agents', () => {
+  const deck = { id: 'bw', obj: 'structure.boardwalk', cls: 'walkway', x: -6, y: 0, z: 40, static: true, solidity: 'walkable', deck: { y: 0.4, poly: box(-10, 38, -2, 42) } };
+  const w2 = Object.assign({}, world, { entities: [deck] });
+  const bare = { id: 'bw', obj: 'structure.boardwalk', cls: 'walkway', static: true, x: -6, y: 0, z: 40, height: 0.4 };
+  const fr = frame([bare, P({ id: 'b1', x: -9, z: 40, y: 0.4 })], { decksDrawn: [] });
+  const v = E.worldInvariants(fr, { world: w2, rules: ['deckDrawn'], agents: [{ id: 'b1', variant: 3 }] });
+  assert.equal(v.length, 1, 'the deck came from the world entity');
+  assert.equal(fr.ents[1].variant, 3, 'the variant came from the agent');
 });

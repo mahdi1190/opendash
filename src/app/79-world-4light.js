@@ -24,7 +24,9 @@
      worldLookOf(world, cam, o)           -> Map id -> { shadow: { poly, dir, holes, on } | null, reflect: { surface, rowY } | null }
                                              the fields look owns in the frame record (WORLD_ENGINE 16.1)
      worldLightTick(world, ctx)           -> the 'light' system's step: world.sky, world.sun; lightsOn / lightsOff on world.bus
-   Browser part (guarded by typeof document): worldDrawShadows, worldDrawLights; the 'world-light' v2 pass for a compiled
+     worldLightNightK(sky)                -> 0..1: how strongly lights show now (0 by day, faint in twilight, 1 in the dark)
+   Browser part (guarded by typeof document): worldDrawShadows, worldDrawLights (o.only 'ground': pools and beams, drawn under
+   everything; 'halo': the glow round a bulb, drawn with its owner in depth order); the 'world-light' v2 pass for a compiled
    v3 scene that carries C.world (C.fx.world = 2 opts in).
    ============================================================ */
 const _WL_D = Math.PI / 180;
@@ -222,6 +224,7 @@ function _wlDeckOf(e) {
  * see-through ones are lighter; bridges and raised decks cast their deck slab onto what is beneath. Every grounded or decked
  * thing gets a contact shadow. Nothing lies on water: the part of a shadow over a water surface is a hole (holes / holesScr),
  * where the water mirror dims a little instead. A mover on a deck casts onto the deck plane (it moves with the deck).
+ * o.drawn(e) (optional): the renderer's word on whether e drew any pixels now; a thing that is not drawn casts no shadow.
  */
 function worldShadowPlan(world, cam, sun, o) {
   cam = _wlCam(world, cam); o = o || {};
@@ -233,6 +236,8 @@ function worldShadowPlan(world, cam, sun, o) {
   const push = (r) => { if (r.holes && r.holes.length) r.holesScr = r.holes.map(h => scr(h.poly, r.y)); out.push(r); };
   const one = (e, mover) => {
     if (!e || !e.obj || !(e.z > 0) || e.backdrop) return;
+    // o.drawn(e): false for a thing that draws no pixels now (no art this season, absent): it casts nothing (bug 17, orphan shadows)
+    if (typeof o.drawn === 'function' && o.drawn(e) === false) return;
     const at = _wlAttachOf(e);
     if (at === 'water' || at === 'air' || at.startsWith('air') || e.layer === 'swim' || e.layer === 'air' || e.cls === 'boat') return;   // floaters and flyers: the water dims
     const deck = _wlDeckOf(e), y = deck != null && Number.isFinite(e.y) ? e.y : null;   // the receiver plane: a deck, else the ground
@@ -358,7 +363,8 @@ function worldLights(world, o) {
       } else if (kind === 'head' || kind === 'tail' || kind === 'beam' || kind === 'strip' || kind === 'amber') on = moving && (alt < 3 || murky || wetDim);
       else if (kind === 'lamp') on = alt < -1 + 3 * r() || murky;
       else on = alt < 0 || (murky && kind !== 'rim');
-      const L = { ref: e.id, part: i, kind, x: e.x + flip * p.u * mpu, y: y0 - p.v * mpu, z: e.z, r: t.r, col: t.col, on, agent: !!agent };
+      // u, v: the glow part's point in the sprite's own units (the compositor lays the halo on the drawn sprite there)
+      const L = { ref: e.id, part: i, kind, x: e.x + flip * p.u * mpu, y: y0 - p.v * mpu, z: e.z, u: p.u, v: p.v, r: t.r, col: t.col, on, agent: !!agent };
       if (kind === 'lamp' && !veh && src && src.kind === 'lamp') L.pool = { x: L.x, z: e.z, r: src.r || 6, col: src.col || t.col };
       if (kind === 'head' && /^vehicle\./.test(e.obj)) {
         // the beam: a cone on the road ahead of the vehicle, along its heading (camera frame: 0 = away, 90 = right)
@@ -392,7 +398,7 @@ function worldGlitterPlan(region, sky, cam, o) {
   if (Math.abs(rel) > half + 12) return none;                           // behind or far to the side: no road on this water
   const X = (cam.x0 || 800) + cam.f * Math.tan(_wlClamp(rel, -80, 80) * _WL_D);
   const box = region.box || [0, cam.horizon, 2 * (cam.x0 || 800), 900], rnd = _wlRng('glitter|' + (region.id || '') + '|' + kind), yMax = Math.min(box[3], o.H || 900);
-  const inside = (x, y) => (Array.isArray(region.clip) ? _wlInPoly(x, y, region.clip) : true);
+  const clips = Array.isArray(region.clips) && region.clips.length ? region.clips : Array.isArray(region.clip) ? [region.clip] : null, inside = (x, y) => (clips ? clips.some(P => _wlInPoly(x, y, P)) : true);
   const glints = [], n = o.n || 30, y0 = Math.max(box[1], cam.horizon + 1), span = Math.max(1, yMax - y0);
   for (let i = 0, tries = 0; i < n && tries < n * 6; tries++) {
     const t = Math.pow(rnd(), 0.8), y = y0 + 2 + t * Math.max(0, span - 4), hw = 50 * (0.2 + t * 1.6), x = X + (rnd() * 2 - 1) * hw, len = (5 + rnd() * 15) * (0.35 + t);
@@ -468,6 +474,20 @@ if (typeof worldSystem === 'function') {
  * spriteOf(ref) -> { c, x0, y0, w, h, s, flip, X, Y, top } (sil entries then lay the sprite's silhouette with sceneShadowMatrix,
  * so a railing's shadow keeps its gaps), cam, sun (worldSunOf) }.
  */
+const _wlSilMemo = typeof WeakMap === 'function' ? new WeakMap() : null;
+/** A sprite canvas as a flat silhouette in one colour (memoised per canvas and colour); null when no canvas can be made. */
+function _wlSilhouette(c, col) {
+  if (!c || !c.width || !c.height) return null;
+  let byCol = _wlSilMemo && _wlSilMemo.get(c);
+  if (byCol && byCol.has(col)) return byCol.get(col);
+  let t = null;
+  try {
+    t = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(c.width, c.height) : typeof document !== 'undefined' ? Object.assign(document.createElement('canvas'), { width: c.width, height: c.height }) : null;
+    if (t) { const g = t.getContext('2d'); g.drawImage(c, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height); }
+  } catch (e) { t = null; }
+  if (_wlSilMemo) { if (!byCol) { byCol = new Map(); _wlSilMemo.set(c, byCol); } byCol.set(col, t); }
+  return t;
+}
 function worldDrawShadows(ctx, plan, o) {
   o = o || {};
   const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0, col = o.col || '#14202e';
@@ -482,41 +502,74 @@ function worldDrawShadows(ctx, plan, o) {
       ctx.clip('evenodd');
     }
     ctx.globalAlpha = s.op; ctx.fillStyle = col;
-    const sp = s.sil && o.spriteOf ? o.spriteOf(s.ref) : null;
-    if (sp && sp.c && o.cam && o.sun && typeof sceneShadowMatrix === 'function') {
+    const sp = s.sil && o.spriteOf ? o.spriteOf(s.ref) : null, sil = sp && sp.c ? _wlSilhouette(sp.c, col) : null;
+    if (sil && o.cam && o.sun && typeof sceneShadowMatrix === 'function') {
+      // the sprite's SILHOUETTE in the shadow colour (drawing the sprite itself laid its own colours on the ground: a green ghost
+      // of every tree across a boardwalk at golden hour)
       const fz = Math.max(0.5, (s.poly[0] && s.poly[0][1]) || 1), M = sceneShadowMatrix(o.cam, { X: sp.X, Y: sp.Y, x: sp.x, d: sp.d || fz }, sp.s || 1, -(sp.top || sp.y0 || -1), sp.flip, o.sun, vs, ox, oy);
       ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
-      ctx.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h);
+      ctx.drawImage(sil, sp.x0, sp.y0, sp.w, sp.h);
     } else { ctx.beginPath(); path(s.scr); ctx.fill(); }
     ctx.restore(); n++;
   }
   return n;
 }
-/** Draw the lit glow parts (small halos), the lamp pools and the head-lamp beams (flat shapes on the ground). */
+/**
+ * How strongly lights show now (0..1): 0 in daylight, rising through twilight to 1 in the dark; murk (fog, deep overcast) lifts it
+ * a little. From a Sky (worldSkyOf), else a v2 L (its dark), else 1. A lamp lit at dawn or dusk is a faint warm glow, never the
+ * cream disc of the night (audit 15 Oct, bug 13).
+ */
+function worldLightNightK(sky) {
+  if (!sky) return 1;
+  const dark = Number.isFinite(sky.dark) ? sky.dark : sky.L && Number.isFinite(sky.L.dark) ? sky.L.dark : 1;
+  const alt = sky.sun && Number.isFinite(sky.sun.alt) ? sky.sun.alt : Number.isFinite(sky.alt) ? sky.alt : null;
+  let k = _wlClamp((dark - 0.12) / 0.55, 0, 1);
+  if (alt != null) k = Math.max(k, _wlClamp(-alt / 10, 0, 1));
+  if (sky.fog > 0.3 || sky.overcast > 0.85) k = Math.max(k, 0.3);
+  return Math.round(k * 1000) / 1000;
+}
+/**
+ * Draw lights. The GROUND part (o.only 'ground': lamp pools and head-lamp beams) is light falling on the ground: the compositor
+ * draws it under every static and mover (after the ground shadows), so a pool never paints over a shrub, a kerb or a person; the
+ * HALO part (o.only 'halo': the soft glow round each lit bulb or window) is drawn right after the thing that carries it, in depth
+ * order, so a nearer tree or wall covers it (a window's halo drawn over the whole frame read as fireflies in the trees). Both are
+ * additive with a radial falloff and scaled by o.k (worldLightNightK: faint at dawn and dusk). o: { vs, ox, oy, only, k }.
+ */
 function worldDrawLights(ctx, lights, cam, o) {
   o = o || {};
-  const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0;
+  const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0, K = o.k == null ? 1 : _wlClamp(o.k, 0, 1), ground = o.only !== 'halo', halo = o.only !== 'ground';
   let n = 0;
+  if (!(K > 0.01)) return 0;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const rgba = (hex, a) => { const c = _wlRgb(hex); return `rgba(${c[0]},${c[1]},${c[2]},${Math.round(_wlClamp(a, 0, 1) * 1000) / 1000})`; };
   for (const L of lights) {
     if (!L.on) continue;
-    if (L.pool) {
-      const p = _wlProj(cam, L.pool.x, L.pool.z), rx = L.pool.r * p.k * vs, ry = Math.max(1, rx * cam.eye / Math.max(1, L.pool.z));
-      ctx.globalAlpha = 0.28; ctx.fillStyle = L.pool.col; ctx.beginPath(); ctx.ellipse(p.X * vs + ox, p.Y * vs + oy, rx, ry, 0, 0, 2 * Math.PI); ctx.fill();
+    if (ground && L.pool) {
+      // the pool: light on the ground round the lamp's foot, brightest under it and falling off to nothing (never a flat disc)
+      const p = _wlProj(cam, L.pool.x, Math.max(0.3, L.pool.z)), rx = L.pool.r * p.k * vs, ry = Math.max(1, rx * cam.eye / Math.max(1, L.pool.z)), cx = p.X * vs + ox, cy = p.Y * vs + oy;
+      if (rx > 0.5 && ctx.createRadialGradient) {
+        ctx.save(); ctx.translate(cx, cy); ctx.scale(1, ry / rx);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+        g.addColorStop(0, rgba(L.pool.col, 0.26 * K)); g.addColorStop(0.45, rgba(L.pool.col, 0.12 * K)); g.addColorStop(1, rgba(L.pool.col, 0));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 2 * Math.PI); ctx.fill(); ctx.restore(); n++;
+      }
     }
-    if (L.beam) {
+    if (ground && L.beam) {
       const b = L.beam, a = _wlProj(cam, b.x, Math.max(0.3, b.z)), e1 = _wlProj(cam, b.x + b.dx * b.len - b.dz * b.w, Math.max(0.3, b.z + b.dz * b.len + b.dx * b.w)), e2 = _wlProj(cam, b.x + b.dx * b.len + b.dz * b.w, Math.max(0.3, b.z + b.dz * b.len - b.dx * b.w));
-      ctx.globalAlpha = 0.12; ctx.fillStyle = L.col; ctx.beginPath(); ctx.moveTo(a.X * vs + ox, a.Y * vs + oy); ctx.lineTo(e1.X * vs + ox, e1.Y * vs + oy); ctx.lineTo(e2.X * vs + ox, e2.Y * vs + oy); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.12 * K; ctx.fillStyle = L.col; ctx.beginPath(); ctx.moveTo(a.X * vs + ox, a.Y * vs + oy); ctx.lineTo(e1.X * vs + ox, e1.Y * vs + oy); ctx.lineTo(e2.X * vs + ox, e2.Y * vs + oy); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1; n++;
     }
+    if (!halo) continue;
     // the halo round the bulb: a soft radial falloff at half the light's reach (a flat disc of the whole reach read as a white
     // blob over the figure or the boat that carries it)
-    const q = _wlProj(cam, L.x, L.z, L.y), r = Math.max(0.6, L.r * 0.5 * q.k * vs), cx = q.X * vs + ox, cy = q.Y * vs + oy;
+    // L.scr: the point on the owner's drawn sprite (scene units), when the compositor knows it
+    const q = _wlProj(cam, L.x, L.z, L.y), r = Math.max(0.6, L.r * 0.5 * q.k * vs), cx = (L.scr ? L.scr[0] : q.X) * vs + ox, cy = (L.scr ? L.scr[1] : q.Y) * vs + oy;
     if (ctx.createRadialGradient) {
       const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      g.addColorStop(0, L.col); g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.globalAlpha = 0.45; ctx.fillStyle = g;
-    } else { ctx.globalAlpha = 0.3; ctx.fillStyle = L.col; }
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fill();
+      g.addColorStop(0, rgba(L.col, 0.45 * K)); g.addColorStop(1, rgba(L.col, 0));
+      ctx.fillStyle = g;
+    } else { ctx.globalAlpha = 0.3 * K; ctx.fillStyle = L.col; }
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fill(); ctx.globalAlpha = 1;
     n++;
   }
   ctx.restore();
@@ -538,7 +591,7 @@ if (typeof sceneRenderPassDefine === 'function') {
     framePost(env, ctx) {
       const st = env.worldLight;
       if (!st || typeof document === 'undefined') return 0;
-      return worldDrawLights(ctx, st.lights, env.cam || env.C.world.cam, env);
+      return worldDrawLights(ctx, st.lights, env.cam || env.C.world.cam, Object.assign({}, env, { k: worldLightNightK(st.sky || env.L) }));
     },
     stats(env) { const st = env.worldLight || {}; return { shadows: (st.shadow || []).length, lights: (st.lights || []).filter(l => l.on).length }; },
   });

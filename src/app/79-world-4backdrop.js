@@ -76,6 +76,29 @@ const WORLD_COVERAGE_MAX = 0.15;
 const _WBD_DRESSED_KINDS = new Set(['water', 'reeds', 'bed', 'hedge', 'weir', 'rail', 'tram']);
 const _WBD_SKY_KEYS = ['obj', 'bearing', 'dist', 'src', 'id', 'variant'];
 
+/**
+ * Does a surface dress the frame at a sample by itself (C6; the one rule for look's worldCoverage and kb's fill and richness)?
+ * -> true (dressed), false (bare) or 'wall' (bare: the face of a sunk channel's wall, see below). s: the surface under the
+ * sample on the ground plane, g: { x, d } that ground point, lived: the ids of surfaces a population walks.
+ *   - water, reeds, beds, hedges, weirs and rails dress themselves (texture, mirror, stems) ... except where the water lies
+ *     more than 0.4 m below the ground and the ray reaches the channel's wall before the water: a plain wall face (Kelham's
+ *     2.6 m river walls read as two dark bands, 15 Oct audit bug 9) is bare until something dresses it;
+ *   - a surface a population walks is dressed by its people (SCENE_LESSONS A: crowd flows dress paving).
+ */
+function worldSurfaceDressed(world, cam, s, X, Y, g, lived) {
+  if (!s) return false;
+  if (_WBD_DRESSED_KINDS.has(s.kind)) {
+    if (s.kind !== 'water') return true;
+    const level = Number.isFinite(s.level) ? s.level : Number.isFinite(cam.water) ? cam.water : 0, ground = _wlGroundY(cam, g.x, g.d);
+    if (!(ground - level > 0.4) || !(Y > cam.horizon)) return true;
+    const dw = cam.f * (cam.eye - level) / (Y - cam.horizon), xw = (X - (Number.isFinite(cam.x0) ? cam.x0 : 800)) * dw / cam.f;
+    const sw = _wlSurfAt(world, xw, dw);
+    return sw && sw.kind === 'water' ? true : 'wall';
+  }
+  return !!(lived && lived.has(s.id));
+  return false;
+}
+
 /* ---------- small helpers (shared with 79-world-4light.js: one classic scope) ---------- */
 function _wlHash(s) { let h = 2166136261 >>> 0; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
 function _wlRng(seed) {
@@ -310,7 +333,7 @@ function worldCoverage(world, cam, o) {
     for (let c = colOf(bx[0]); c <= colOf(bx[2]); c++) byCol[c].push(bx);
   }
   const reg = Array.from({ length: 9 }, () => ({ n: 0, bare: 0 }));
-  let n = 0, bare = 0;
+  let n = 0, bare = 0, walls = 0;
   if (top >= H) return { bare: 0, ok: true, regions: [], samples: 0 };
   for (let r = 0; r < rows; r++) {
     const Y = top + (r + 0.5) * (H - top) / rows;
@@ -320,8 +343,9 @@ function worldCoverage(world, cam, o) {
       if (!dressed) {
         const g = typeof sceneUnproject === 'function' ? sceneUnproject(cam, X, Y) : (Y > cam.horizon ? { x: (X - cam.x0) * cam.f * cam.eye / (Y - cam.horizon) / cam.f, d: cam.f * cam.eye / (Y - cam.horizon) } : null);
         if (g) {
-          const s = _wlSurfAt(world, g.x, g.d);
-          if (s && (_WBD_DRESSED_KINDS.has(s.kind) || lived.has(s.id))) dressed = true;
+          const s = _wlSurfAt(world, g.x, g.d), why = s ? worldSurfaceDressed(world, cam, s, X, Y, g, lived) : null;
+          if (why === 'wall') walls++;
+          if (why === true) dressed = true;
           // the far ground beyond the last band is dressed by the bands themselves only where they stand: rows within a
           // pixel of the horizon read as the horizon line, not as bare ground
           else if (!s && ground && Y - cam.horizon < 1.5) dressed = true;
@@ -350,7 +374,7 @@ function worldCoverage(world, cam, o) {
     thirds.forEach((k, i) => { if (k) regions.push({ name: 'horizon-' + CN[i], box: [Math.round(i * W / 3), Math.round(cam.horizon - 0.04 * H), Math.round((i + 1) * W / 3), Math.round(cam.horizon)], bare: Math.round(k / (cols / 3) * 1000) / 1000 }); });
   }
   const share = n ? bare / n : 0, ok = share <= WORLD_COVERAGE_MAX && sky <= WORLD_COVERAGE_MAX;
-  return { bare: Math.round(share * 1000) / 1000, sky: Math.round(sky * 1000) / 1000, ok, rule: ok ? null : 'emptyBackground', regions, samples: n,
+  return { bare: Math.round(share * 1000) / 1000, sky: Math.round(sky * 1000) / 1000, walls: n ? Math.round(walls / n * 1000) / 1000 : 0, ok, rule: ok ? null : 'emptyBackground', regions, samples: n,
     msg: ok ? '' : `${Math.round(share * 100)} % of the frame below the horizon is bare and ${Math.round(sky * 100)} % of the horizon is open sky (max 15 % each); worst: ${regions.slice().sort((a, b) => b.bare - a.bare).slice(0, 2).map(q => q.name + ' ' + Math.round(q.bare * 100) + ' %').join(', ')}` };
 }
 

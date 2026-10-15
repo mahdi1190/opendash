@@ -176,3 +176,16 @@ These must be fixed IN THE ENGINE before any test scene is shown again:
 | Mistake | Why | Rule |
 |---|---|---|
 | A boardwalk crossed open water to a platform mid-lake; every check passed and reviewers called it "better" | Reviews judged by scores, test counts and their own reports, and only checked what a rule anticipated | Every review first DESCRIBES each image in plain words (what is where, on what, connected to what), then asks of each sentence "is this how it is in real life at this place?". Anything implausible fails, rule or no rule. Then turn it into an engine fix and, where possible, a check. |
+
+## I. Fix-all verify, round 1 (15 Oct, world engine v3)
+| Mistake | Why | Rule |
+|---|---|---|
+| The crowd push-apart and the following cap never ran | Two top-level functions shared the name `_wlfNear`; in the concatenated build the later one replaced the earlier | No two top-level functions of one name in src/app (test: `tests/world-life-crowd.test.mjs`) |
+| Two strangers walked together as clones | Life chose an outfit per person but nothing drew it, so a crowd of 40 had only 8 looks | A look the simulation tracks must be drawn: the outfit recolours the top (`worldMaterialOutfit`), and life picks the least-worn (variant, outfit) |
+| Mills 20 m behind a 2.6 m quay mirrored down the whole near water as huge sheared facades | A bank owner's reflection base was laid on the water's edge, whatever the bank height; the quay's own wall never hid anything | Mirror about the water plane (2 x water row - ground row) on high banks; the image of the bank's wall hides what stands beyond it (`worldWaterContactClip`). Low banks (under 0.4 m) keep the edge rule |
+| Quay walls drew as flat dark slabs over a quarter of the frame | The v2 base layer filled a sunk channel with one dark colour | Sunk channels draw coursed stone walls and their mirrored image (`_wfrQuayWalls`) |
+| A bollard slid down the camera ray onto the canal edge | The near-band move only knew the line of sight | Things set by a line slide back ALONG it and may not come nearer the water or leave their path; people and animals keep their screen place (A10) |
+| A bollard stood in the canal and no check caught it | The `post` class lists `water` in its habitat, and bollards inherited it | A thing that is never in the water says so in its kb entry |
+| Margin reeds clustered on seams between two water regions, on decks, or half on the towpath | Core edge clusters measured distance to ANY polygon edge at their anchor | Water edge clusters use sense's probe (real banks only) and keep the whole footprint inside the margin |
+| Timing tests failed only when the whole suite ran | Files run side by side; wall time doubled under load | Timing tests take the quietest round or the process CPU time and wait for a quiet moment before failing |
+| Checks passed while the picture was wrong | Every check read the simulation or the plan, none the drawn pixels | Run `node tools/world.mjs check <ref>` (drawn vs simulated, crowns, orphan shadows, walkers off planks, night lights); no scene is shown with a violation there |

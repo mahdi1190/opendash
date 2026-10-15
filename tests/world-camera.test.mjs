@@ -215,8 +215,10 @@ test('C1: a boat with no legal place in frame is dropped and logged (plainer, ne
   assert.equal(W.worldFrameCheck(world, world.cam).issues.length, 0, 'nothing is left cut');
 });
 
+// (15 Oct, bug 19 / 4) an undeclared framing tree may be cut at a side while it covers at most 35 % of the frame (the invariant
+// checker's edgeCut); one filling half the frame from 6 m is fixed (tests/world-composition.test.mjs)
 test('C1: framing elements (a near tree) may be cut; landmarks are never moved', () => {
-  const spec = canal([{ obj: 'tree.bank-willow', at: [6, 6], id: 'frame-tree' }]);
+  const spec = canal([{ obj: 'tree.bank-willow', at: [12, 18], id: 'frame-tree' }]);
   spec.landmarks = [{ obj: 'structure.bridge-brick', at: [-2, 9], facing: 90, attach: 'water', id: 'lm', src: 'test' }];
   const world = W.worldBuild(spec, { validate: false, frame: false });
   const r = W.worldFrameCheck(world, world.cam, { apply: true });

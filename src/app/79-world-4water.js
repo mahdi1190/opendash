@@ -9,8 +9,10 @@
 
      WORLD_WATER_LOOK                         per kind: base colours (far, mid, near), tint, clarity, mirror, ripple, drift
      worldWaterLook(kind, hint)               -> the look of a kind; scenes give only hint: 'calm' | 'breezy' (H5)
-     worldWaterPlan(world, cam, o)            -> regions [{ id, kind, level, hint, flow, speed, look, polyM, clipM, clip, box, topRow,
-                                                 col0, dNear, dFar, steps }]: the polygon clipped at the near plane (so water running
+     worldWaterPlan(world, cam, o)            -> regions [{ id, ids, kind, level, hint, flow, speed, look, polyM, clipM, clip, polys, clips,
+                                                 box, topRow, col0, dNear, dFar, steps }]: water surfaces that overlap or touch at one
+                                                 level are ONE region (ids, polys, clips: its parts; one wet mask, base and mirror, so
+                                                 no seam along a part's outline); each polygon clipped at the near plane (so water running
                                                  under the camera reaches the frame's bottom edge: H6), projected at its level;
                                                  topRow[i] = the first water row of scene column col0 + i (the far bank's edge there)
      worldWaterSpansAt(region, X)             -> [[Y0, Y1], ...] the water rows of scene column X (islands make several)
@@ -20,6 +22,8 @@
                                                  nearer of its own waterline and the bank's water edge there, so a far-bank tree's
                                                  mirror starts exactly at the bank edge and follows the bank in perspective)
      worldWaterContactRow(region, c, X)       -> the contact row (scene units) of a contact at scene column X
+     worldWaterContactClip(region, c, X)      -> the first row a bank owner's image may show in (a high quay's mirrored wall hides
+                                                 the rows above it); -Infinity for a low bank
      worldWaterContactBase(region, c, X)      -> the row the owner's art stands on there (its waterline; a bank owner's ground),
                                                  laid on the contact row by the mirror so a bank thing's image has no gap
      worldWaterOwners(world, cam, region, ents) -> [{ id, z, contact }] the owner table for the entities that can reflect here
@@ -126,6 +130,9 @@ function worldWaterPlan(world, cam, o) {
   o = o || {};
   const zn = Number.isFinite(o.near) ? o.near : Math.max(0.15, (cam.dMin || 1) * 0.2), out = [], ov = Number.isFinite(o.overscan) ? o.overscan : 400;
   const surfs = (world && world.surfaces) || [];
+  // 1. one part per water surface: its outline clipped at the near plane, projected at its level, wound one way (so a nonzero fill
+  //    or clip of several parts is their union)
+  const parts = [];
   for (const s of surfs) {
     if (!s || s.kind !== 'water') continue;
     const polyM = _wwaPoly(s);
@@ -133,11 +140,30 @@ function worldWaterPlan(world, cam, o) {
     const clipM = _wwaClipNear(polyM, zn);
     if (clipM.length < 3) continue;
     const level = _wwaLevel(world, s), kind = WORLD_WATER_LOOK[s.water] ? s.water : WORLD_WATER_LOOK[s.waterKind] ? s.waterKind : 'pond';
+    let clip = clipM.map(p => [cam.x0 + cam.f * p[0] / p[1], _wwaRow(cam, p[1], level)]);
+    if (_wwaArea(clip) < 0) clip = clip.reverse();
+    parts.push({ s, id: s.id, polyM, clipM, clip, level, kind, area: Math.abs(_wwaArea(clipM)) });
+  }
+  // 2. overlapping or touching parts at one level are ONE water (audit 15 Oct, bug 16: a pond with an inlet drawn as two regions
+  //    painted the second one's base over the first one's mirror, a straight glass-slab seam along its outline): their union is
+  //    one region with one wet mask, one base and one mirror
+  const groups = [];
+  for (const p of parts) {
+    const hits = groups.filter(g => g.some(q => Math.abs(q.level - p.level) < 0.02 && _wwaOverlap(q.polyM, p.polyM)));
+    if (!hits.length) { groups.push([p]); continue; }
+    const g = hits[0];
+    g.push(p);
+    for (const h of hits.slice(1)) { g.push(...h); groups.splice(groups.indexOf(h), 1); }
+  }
+  for (const g of groups) {
+    g.sort((a, b) => b.area - a.area);
+    const P0 = g[0], s = P0.s, kind = P0.kind, level = P0.level;
     const look = worldWaterLook(kind, s.hint), flow = _wwaFlow(s, look);
-    const clip = clipM.map(p => [cam.x0 + cam.f * p[0] / p[1], _wwaRow(cam, p[1], level)]);
-    const box = [Math.min(...clip.map(p => p[0])), Math.min(...clip.map(p => p[1])), Math.max(...clip.map(p => p[0])), Math.max(...clip.map(p => p[1]))];
-    const R = { id: s.id, kind, level, hint: look.hint, flow, speed: Math.hypot(flow[0], flow[1]), look, polyM, clipM, clip, box, cam,
-      dNear: Math.min(...clipM.map(p => p[1])), dFar: Math.max(...clipM.map(p => p[1])), steps: [], phase: (_wwaHash('water|' + s.id) % 6283) / 1000 };
+    const all = g.flatMap(p => p.clip), allM = g.flatMap(p => p.clipM);
+    const box = [Math.min(...all.map(p => p[0])), Math.min(...all.map(p => p[1])), Math.max(...all.map(p => p[0])), Math.max(...all.map(p => p[1]))];
+    const R = { id: s.id, ids: g.map(p => p.id), kind, level, hint: look.hint, flow, speed: Math.hypot(flow[0], flow[1]), look, polyM: P0.polyM, clipM: P0.clipM, clip: P0.clip,
+      polys: g.map(p => p.polyM), clips: g.map(p => p.clip), box, cam,
+      dNear: Math.min(...allM.map(p => p[1])), dFar: Math.max(...allM.map(p => p[1])), steps: [], phase: (_wwaHash('water|' + s.id) % 6283) / 1000 };
     // topRow: the first water row of each scene column (the bank's water edge there), NaN where the column has no water
     const c0 = Math.floor(Math.max(box[0], -ov)), c1 = Math.ceil(Math.min(box[2], 2 * (cam.x0 || 800) + ov));
     R.col0 = c0; R.topRow = new Float32Array(Math.max(0, c1 - c0 + 1));
@@ -146,22 +172,48 @@ function worldWaterPlan(world, cam, o) {
   }
   // steps between regions (W4, H4): a region's own step, and weir surfaces between two waters
   for (const R of out) {
-    const s = surfs.find(q => q && q.id === R.id);
-    if (s && s.step && typeof s.step === 'object') R.steps.push(Object.assign({ kind: s.step.kind || 'weir' }, s.step));
+    for (const id of R.ids) {
+      const s = surfs.find(q => q && q.id === id);
+      if (s && s.step && typeof s.step === 'object') R.steps.push(Object.assign({ kind: s.step.kind || 'weir' }, s.step));
+    }
   }
   return out;
 }
+/** Signed area of a polygon (shoelace). */
+function _wwaArea(P) { let a = 0; for (let i = 0, j = P.length - 1; i < P.length; j = i++) a += (P[j][0] + P[i][0]) * (P[j][1] - P[i][1]); return a / 2; }
+/** Whether two polygons (metres) overlap or touch: a vertex of one inside (or within 5 cm of) the other, or two edges crossing. */
+function _wwaOverlap(A, B) {
+  const bb = (P) => [Math.min(...P.map(p => p[0])), Math.min(...P.map(p => p[1])), Math.max(...P.map(p => p[0])), Math.max(...P.map(p => p[1]))];
+  const a = bb(A), b = bb(B);
+  if (a[0] > b[2] + 0.05 || b[0] > a[2] + 0.05 || a[1] > b[3] + 0.05 || b[1] > a[3] + 0.05) return false;
+  if (A.some(p => _wwaInPoly(p[0], p[1], B) || _wwaEdgeDist(B, p) < 0.05) || B.some(p => _wwaInPoly(p[0], p[1], A) || _wwaEdgeDist(A, p) < 0.05)) return true;
+  const cr = (o, p, q) => (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
+  for (let i = 0, j = A.length - 1; i < A.length; j = i++) for (let k = 0, l = B.length - 1; k < B.length; l = k++) {
+    const p1 = A[j], p2 = A[i], q1 = B[l], q2 = B[k];
+    if ((cr(p1, p2, q1) > 0) !== (cr(p1, p2, q2) > 0) && (cr(q1, q2, p1) > 0) !== (cr(q1, q2, p2) > 0)) return true;
+  }
+  return false;
+}
+/** Whether a ground point (metres) lies in a region's water (any of its parts). */
+function _wwaInR(R, x, z) { for (const P of R.polys || [R.polyM]) if (_wwaInPoly(x, z, P)) return true; return false; }
 /** The water rows [[Y0, Y1], ...] of a scene column X (even-odd crossings of the projected outline). */
 function worldWaterSpansAt(R, X) {
-  const P = R.clip, ys = [];
-  for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
-    const a = P[j], b = P[i];
-    if ((a[0] <= X) === (b[0] <= X)) continue;
-    ys.push(a[1] + (b[1] - a[1]) * (X - a[0]) / (b[0] - a[0]));
+  const clips = Array.isArray(R.clips) && R.clips.length ? R.clips : [R.clip], all = [];
+  for (const P of clips) {
+    const ys = [];
+    for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+      const a = P[j], b = P[i];
+      if ((a[0] <= X) === (b[0] <= X)) continue;
+      ys.push(a[1] + (b[1] - a[1]) * (X - a[0]) / (b[0] - a[0]));
+    }
+    ys.sort((a, b) => a - b);
+    for (let i = 0; i + 1 < ys.length; i += 2) all.push([ys[i], ys[i + 1]]);
   }
-  ys.sort((a, b) => a - b);
+  if (clips.length < 2) return all;
+  // the union of the parts' spans (one water: an overlap is wet once, never a seam)
+  all.sort((a, b) => a[0] - b[0]);
   const out = [];
-  for (let i = 0; i + 1 < ys.length; i += 2) out.push([ys[i], ys[i + 1]]);
+  for (const sp of all) { const L = out[out.length - 1]; if (L && sp[0] <= L[1] + 1e-6) L[1] = Math.max(L[1], sp[1]); else out.push(sp.slice()); }
   return out;
 }
 function _wwaTopAt(R, X) {
@@ -185,7 +237,7 @@ function _wwaFootOf(e) {
  */
 function worldWaterContact(R, e, cam) {
   cam = cam || R.cam;
-  const P = R.polyM, inW = _wwaInPoly(e.x, e.z, P), at = String(e.attach || '');
+  const inW = _wwaInR(R, e.x, e.z), at = String(e.attach || '');
   if (/^air/.test(at) || e.cls === 'bird-air') return { kind: 'own', z: e.z };
   if (inW) {
     const foot = _wwaFootOf(e), xs = foot.map(p => p[0]), zs = foot.map(p => p[1]);
@@ -204,10 +256,23 @@ function worldWaterContact(R, e, cam) {
   if (real) {
     const xs = e.foot.map(p => p[0]), zs = e.foot.map(p => p[1]);
     if (Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs)) > 2.5 && zs.every(z => z > 0.05)) {
-      return { kind: 'bank', z: zf, ptsL: e.foot.map(p => [cam.x0 + cam.f * p[0] / p[1], _wwaRow(cam, p[1], R.level)]), ptsG: e.foot.map(p => [cam.x0 + cam.f * p[0] / p[1], _wwaRow(cam, p[1], g)]) };
+      return { kind: 'bank', z: zf, gy: g, ptsL: e.foot.map(p => [cam.x0 + cam.f * p[0] / p[1], _wwaRow(cam, p[1], R.level)]), ptsG: e.foot.map(p => [cam.x0 + cam.f * p[0] / p[1], _wwaRow(cam, p[1], g)]) };
     }
   }
-  return { kind: 'bank', z: zf, base: _wwaRow(cam, zf, g) };
+  return { kind: 'bank', z: zf, gy: g, base: _wwaRow(cam, zf, g) };
+}
+/**
+ * The first row a bank owner's image may show in at scene column X: the image of the bank's own wall hides the rest (verify
+ * round 1). Seen in the water, a quay g - level high mirrors as a wall from the water edge down to edge + (edge - horizon) x
+ * (g - level) / (eye - level) in that column (the mirrored top of the wall at the edge's depth); what stands beyond the quay
+ * shows only below it (on Kelham only the upper storeys of the mills reach the near water). A low bank (under 0.4 m) hides
+ * nothing (-Infinity).
+ */
+function worldWaterContactClip(R, c, X) {
+  if (!c || c.kind !== 'bank' || !Number.isFinite(c.gy) || !(c.gy - R.level > 0.4)) return -Infinity;
+  const cam = R.cam, top = _wwaTopAt(R, X);
+  if (!Number.isFinite(top) || !(cam.eye - R.level > 0.05)) return -Infinity;
+  return top + (top - cam.horizon) * (c.gy - R.level) / (cam.eye - R.level);
 }
 /** The contact row (scene units) of a contact at scene column X. */
 function worldWaterContactRow(R, c, X) {
@@ -216,8 +281,14 @@ function worldWaterContactRow(R, c, X) {
   if (c.kind === 'own') return _wwaRow(cam, c.z, R.level);
   if (c.kind === 'line') return _wwaLineAt(c.pts, X);
   if (c.kind === 'fixed') return c.row;
+  // a bank owner's base is laid on the water edge (no gap under a low bank) ... but never ABOVE where the water plane mirrors its
+  // base: 2 x its water-level row - its ground row (the true image). Set back on a high quay (Kelham's 2.6 m channel walls) the
+  // edge rule mirrored mills 20 m behind the wall down the whole near water as huge sheared facades (verify round 1)
   const own = c.ptsL ? _wwaLineAt(c.ptsL, X) : _wwaRow(cam, c.z, R.level), top = _wwaTopAt(R, X);
-  return Number.isFinite(top) ? Math.max(own, top) : own;
+  const g = c.ptsG ? _wwaLineAt(c.ptsG, X) : c.base, mir = Number.isFinite(g) ? 2 * own - g : own;
+  // (within 3 rows of the edge, the edge: a low bank keeps its reflection touching the bank, H6 no gap)
+  if (!Number.isFinite(top)) return mir;
+  return mir - top > 3 ? mir : Math.max(own, top);
 }
 /** The row a contact's art stands on at scene column X: its contact row in the water; its own ground on the bank. */
 function worldWaterContactBase(R, c, X) {
@@ -337,7 +408,9 @@ function worldWaterRipple(R, yDev, t, o) {
   // the v2 ripple (78-scene-water's band shift), by the row within the region: small and quick far, larger and slower near; the
   // phase is the integral of the wavenumber (0.55 far .. 0.23 near per px), so the pattern never folds back on itself
   const top = R.box[1] * vs + oy, bh = Math.max(1, Math.min(R.box[3], 900) * vs + oy - top), yRel = _wwaClamp(yDev + 0.5 - top, 0, bh), u = yRel / bh;
-  const A = look.ripple * wind * (2 + 10 * u) * vs;
+  // the amplitude (audit 15 Oct, bug 16): the v2 table's 2 + 10 u px broke a mill's reflection into zigzag chevrons across the whole
+  // channel; 1 + 5 u keeps a near shimmer and a quiet far mirror, and still water (canals, puddles: H5) moves half as much again
+  const A = look.ripple * wind * (1 + 5 * u) * (look.drift === 'still' ? 0.5 : 1) * vs;
   if (!(A > 0.01)) return 0;
   const ph = (0.55 * yRel - 0.16 * yRel * yRel / bh) / vs + (R.phase || 0), tt = o.still ? 0 : (t || 0);
   switch (look.drift) {
@@ -417,15 +490,17 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
   const refl = new Uint8ClampedArray(w * h * 4), zb = new Float32Array(w * h).fill(Infinity), zPrev = o.zb && o.zb.data ? o.zb : null;
   const list = (owner && owner.list) || [], entOf = (id) => (!o.ents ? null : o.ents instanceof Map ? o.ents.get(id) : o.ents[id]);
   const ctc = list.map(L => L.contact || (entOf(L.id) ? worldWaterContact(R, entOf(L.id), cam) : null));
-  const stamp = new Int32Array(list.length).fill(-1), rowC = new Float64Array(list.length), rowB = new Float64Array(list.length);
-  const tint = _wwaRgb(look.tint || look.base[1]);
+  const stamp = new Int32Array(list.length).fill(-1), rowC = new Float64Array(list.length), rowB = new Float64Array(list.length), rowK = new Float64Array(list.length);
+  // the tint the reflection takes from the water: the kind's own by day; after dark the graded mid base (audit 15 Oct, bug 13: the day
+  // teal mixed into a night reflection made every mirrored tree paler than the tree itself, a milky veil over the night water)
+  const tint = S.dark > 0.05 || (S.L && typeof S.L.water === 'function') ? base3[1].slice() : _wwaRgb(look.tint || look.base[1]);
   // one source pixel into the reflection: about the owner's contact row (a bank owner's base laid on the water edge), only into
   // the water, faded with its mirrored height, Fresnel by the row, tinted by the kind; where two land on one, blended by depth
   // (the nearer over the farther, whatever the order), so the nearer owner wins and a soft edge stays soft
-  const put = (k, ix, x, yc, S, s4, a, A, B) => {
+  const put = (k, ix, x, yc, S, s4, a, A, B, C) => {
     if (!(yc < B)) return;                                          // at or below its own waterline (its base on the bank): not mirrored
     const ty = Math.floor(A + B - yc), r = ty - y0;
-    if (r < 0 || r >= h) return;
+    if (r < 0 || r >= h || ty < C) return;                          // (C: the image of a high quay's own wall hides it)
     const t = r * w + ix;
     if (!wet[t]) return;                                            // nothing reflects outside the water
     const z = list[k].z || 0;
@@ -442,7 +517,7 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
     refl[t4 + 3] = Math.round(ra * 255);
     if (near) zb[t] = z;
   };
-  const rowsOf = (k, x) => { const X = (x + 0.5 - ox) / vs, A = worldWaterContactRow(R, ctc[k], X) * vs + oy; return [A, ctc[k].kind === 'bank' ? worldWaterContactBase(R, ctc[k], X) * vs + oy : A]; };
+  const rowsOf = (k, x) => { const X = (x + 0.5 - ox) / vs, A = worldWaterContactRow(R, ctc[k], X) * vs + oy; return [A, ctc[k].kind === 'bank' ? worldWaterContactBase(R, ctc[k], X) * vs + oy : A, worldWaterContactClip(R, ctc[k], X) * vs + oy]; };
   if (owner && Array.isArray(owner.layers) && owner.layers.length) {
     for (const Ly of owner.layers) {
       const k = Ly.k;
@@ -450,8 +525,8 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
       for (let lx = 0; lx < Ly.w; lx++) {
         const x = Ly.x0 + lx, ix = x - x0;
         if (ix < 0 || ix >= w) continue;
-        const [A, B] = rowsOf(k, x);
-        for (let ly = 0; ly < Ly.h; ly++) { const s4 = (ly * Ly.w + lx) * 4, a = Ly.data[s4 + 3]; if (a) put(k, ix, x, Ly.y0 + ly + 0.5, Ly.data, s4, a, A, B); }
+        const [A, B, C] = rowsOf(k, x);
+        for (let ly = 0; ly < Ly.h; ly++) { const s4 = (ly * Ly.w + lx) * 4, a = Ly.data[s4 + 3]; if (a) put(k, ix, x, Ly.y0 + ly + 0.5, Ly.data, s4, a, A, B, C); }
       }
     }
   } else if (comp && comp.data && owner && owner.idx) {
@@ -464,8 +539,8 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
         if (k < 0 || !ctc[k]) continue;
         const a = comp.data[pi * 4 + 3];
         if (!a) continue;
-        if (stamp[k] !== x) { stamp[k] = x; const q = rowsOf(k, x); rowC[k] = q[0]; rowB[k] = q[1]; }
-        put(k, ix, x, cy0 + cy + 0.5, comp.data, pi * 4, a, rowC[k], rowB[k]);
+        if (stamp[k] !== x) { stamp[k] = x; const q = rowsOf(k, x); rowC[k] = q[0]; rowB[k] = q[1]; rowK[k] = q[2]; }
+        put(k, ix, x, cy0 + cy + 0.5, comp.data, pi * 4, a, rowC[k], rowB[k], rowK[k]);
       }
     }
   }
@@ -588,7 +663,7 @@ function _wwaBlit(dst, img, x0, y0) {
 function worldWaterCut(e, cam, R) {
   if (!e || !R) return null;
   cam = cam || R.cam;
-  if (!_wwaInPoly(e.x, e.z, R.polyM)) return null;
+  if (!_wwaInR(R, e.x, e.z)) return null;
   const sink = Number.isFinite(e.y) ? Math.max(0, R.level - e.y) : Math.max(0, Number(e.sink) || 0);
   const c = worldWaterContact(R, e, cam);
   if (c.kind === 'line') return { kind: 'line', pts: c.pts, sink };
@@ -619,7 +694,7 @@ function worldWaterReflectOf(world, cam, e, regions) {
 function worldWaterFalls(world, cam, regions) {
   cam = typeof _wlCam === 'function' ? _wlCam(world, cam) : cam;
   const regs = regions || worldWaterPlan(world, cam), out = [];
-  const near = (P, d) => regs.filter(R => P.some(p => _wwaInPoly(p[0], p[1], R.polyM) || R.polyM.some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < d) || _wwaEdgeDist(R.polyM, p) < d));
+  const near = (P, d) => regs.filter(R => (R.polys || [R.polyM]).some(Q => P.some(p => _wwaInPoly(p[0], p[1], Q) || Q.some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < d) || _wwaEdgeDist(Q, p) < d)));
   const mk = (id, kind, crest, upper, lower) => {
     const C = crest.filter(p => p[1] > 0.2);
     if (C.length < 2) return;

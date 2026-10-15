@@ -34,7 +34,10 @@
 // score / near / mid / far: the frame-band floor (cover below the horizon, variety); box: the default target of the box measure
 // (worldRichness(...).box, the same measure as the tools' critic: a converted scene must reach its source's) by place kind
 const WORLD_RICHNESS_FLOOR = Object.freeze({ score: 62, near: Object.freeze({ cover: 0.7, variety: 2 }), mid: Object.freeze({ cover: 0.7, variety: 3 }), far: Object.freeze({ cover: 0.6, variety: 2 }),
-  box: Object.freeze({ rural: 96, park: 96, town: 75, city: 66 }) });
+  // box: what the richness tier aims at; gate: what worldRichness(...).ok needs (bug 9: one gate, band floor AND box measure).
+  // The gate sits below the aim: the gold proof Fleet Pond scores 94 by this measure, and the sky window (bugs 9, 21) keeps the
+  // centre of the sky open, which a box measure cannot reward. A converted scene's own source score (o.floor) raises both.
+  box: Object.freeze({ rural: 96, park: 96, town: 75, city: 66 }), gate: Object.freeze({ rural: 88, park: 88, town: 72, city: 64 }) });
 const _WFL_NEAR_Z = 12, _WFL_MID_Z = 35, _WFL_EDGE_ZMAX = 150, _WFL_FILL_ZMAX = 260;
 // lists are [object id, weight]; near: z < 12 m (low dressing only), mid: 12-35 m, far: beyond; accents are seasonal or
 // occasional (flowers in their months, leaf litter in autumn, stones, logs): richness, never coverage
@@ -361,6 +364,45 @@ function _wflCut(F, b) {
   if (area <= 0.25 * F.W * F.H) return false;
   return b[0] < 0 || b[2] > F.W || b[1] < 0 || b[3] > F.H;
 }
+/** The sky window (composition, bug 9 / 21): the middle 40 % of the frame width over the upper 70 % of the sky stays open of
+    anything auto-placed (the gold proof's open sky over the subject; tall fill trees there make a corridor of crowns). */
+const WORLD_SKY_WINDOW = Object.freeze({ x0: 0.35, x1: 0.65, top: 0.55 });
+function _wflInSkyWindow(F, b) {
+  const hz = F.cam.horizon;
+  if (!(hz > 40)) return false;
+  const X0 = WORLD_SKY_WINDOW.x0 * F.W, X1 = WORLD_SKY_WINDOW.x1 * F.W, Y1 = hz * WORLD_SKY_WINDOW.top;
+  const w = Math.min(X1, b[2]) - Math.max(X0, b[0]), h = Math.min(Y1, b[3]) - Math.max(0, b[1]);
+  return w > 0 && h > 0 && w * h > 0.01 * (X1 - X0) * Y1;
+}
+/** A coarse depth buffer of the frame (64 x 36 cells, the nearest depth that covers each), from the entities' boxes inset by a
+    sixth (crowns have gaps): enough to tell an item nearer things hide completely. */
+const _WFL_ZB_C = 64, _WFL_ZB_R = 36;
+function _wflZInit(F) {
+  F.zb = new Float32Array(_WFL_ZB_C * _WFL_ZB_R).fill(Infinity);
+  for (const e of F.world.entities || []) {
+    if (!e || !e.obj || !(e.z > 0) || e.backdrop) continue;
+    const kb = worldKb(e.obj);
+    if (kb) _wflZAdd(F, _wflBox(F, e), e.z, kb);
+  }
+}
+function _wflZCells(F, b, inset) {
+  const w = b[2] - b[0], h = b[3] - b[1], x0 = b[0] + w * inset, x1 = b[2] - w * inset, y0 = b[1] + h * inset, y1 = b[3] - h * inset * 0.3;
+  return [Math.max(0, Math.ceil(x0 / F.W * _WFL_ZB_C - 0.5)), Math.min(_WFL_ZB_C - 1, Math.floor(x1 / F.W * _WFL_ZB_C - 0.5)),
+    Math.max(0, Math.ceil(y0 / F.H * _WFL_ZB_R - 0.5)), Math.min(_WFL_ZB_R - 1, Math.floor(y1 / F.H * _WFL_ZB_R - 0.5))];
+}
+function _wflZAdd(F, b, z, kb) {
+  if (!F.zb || !b || !b.every(_wflNum) || !kb || !(kb.size.h0 >= 1) || !['tree', 'building', 'hedge', 'shrub', 'structure', 'landmark', 'boat', 'reed'].includes(kb.cls)) return;
+  const [c0, c1, r0, r1] = _wflZCells(F, b, kb.cls === 'tree' ? 1 / 6 : 0.05);
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { const k = r * _WFL_ZB_C + c; if (z < F.zb[k]) F.zb[k] = z; }
+}
+/** Is an item at depth z with screen box b hidden (>= 92 % of its in-frame cells behind something at least 1 m nearer)? */
+function _wflHidden(F, b, z) {
+  if (!F.zb) _wflZInit(F);
+  const [c0, c1, r0, r1] = _wflZCells(F, b, 0);
+  let n = 0, hid = 0;
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { n++; if (F.zb[r * _WFL_ZB_C + c] < z - 1) hid++; }
+  return n > 0 && hid / n >= 0.92;
+}
 /** P8: nothing auto-placed hides a declared landmark's main face (a coarse grid per landmark; at most 8 % of it, tufts at its foot). */
 function _wflLandmarks(F) {
   const out = [];
@@ -432,6 +474,10 @@ function _wflTry(F, c) {
   const b = _wflBox(F, ent0);
   if (!c.framing && _wflCut(F, b)) return null;
   if (_wflHidesLandmark(F, b, c.z)) return null;
+  // composition (15 Oct audit, bugs 9 and 21): nothing auto-placed closes the sky window over the subject, and nothing is added
+  // where nearer things already hide it (a hidden tree costs a draw and an occluder redraw every frame and adds nothing)
+  if (!c.framing && _wflInSkyWindow(F, b)) { F.skyRefused = (F.skyRefused || 0) + 1; return null; }
+  if (!c.framing && c.auto === 'fill' && c.z < 80 && _wflHidden(F, b, c.z)) { F.hiddenRefused = (F.hiddenRefused || 0) + 1; return null; }
   // spacing: no stacked clones; a 'single' (a log, a boulder, a bench) keeps its group gap from its own kind
   const G = kb.group || {}, sp = c.any ? 0 : Math.max(0.18, 0.42 * Math.min(kb.size.l || 0.5, 3) * (F.tier >= 3 ? 0.75 : 1), G.kind === 'single' && _wflNum(G.gap) ? Math.min(G.gap, 12) : 0);
   if (sp && !_wflSpacingOk(F, c.x, c.z, sp, c.obj)) return null;
@@ -485,6 +531,7 @@ function _wflTry(F, c) {
   if (sp) _wflSpacingAdd(F, ent.x, ent.z, sp, c.obj);
   _wflIndexEnt(_wflIndexOf(F), ent);
   _wflLandmarkMark(F, b, c.z);
+  _wflZAdd(F, b, ent.z, kb);
   if (F.boxes) F.boxes.push(b);
   return ent;
 }
@@ -537,7 +584,8 @@ function _wflSample(world, cam, o) {
       let surf = null, dressed = !!by;
       if (g) {
         surf = o.surfAt ? o.surfAt(g.x, g.d) : null;
-        if (!dressed && surf && (_WFL_DRESSED.has(surf.kind) || lived.has(surf.id))) dressed = true;
+        // the one surface rule of C6 (look's worldSurfaceDressed: sunk channel walls and broad near paving are bare)
+        if (!dressed && surf && (typeof worldSurfaceDressed === 'function' ? worldSurfaceDressed(world, cam, surf, X, Y, g, lived) === true : (_WFL_DRESSED.has(surf.kind) || lived.has(surf.id)))) dressed = true;
         else if (!dressed && !surf && ground && Y - cam.horizon < 1.5) dressed = true;
       }
       res.samples.push({ X, Y, x: g ? g.x : null, z: g ? g.d : null, band, surf, dressed, by, inFrame: X >= 0 && X <= W });
@@ -563,6 +611,8 @@ function _wflCoverage(F) {
 
 /* ---------- P7: richness ---------- */
 const _WFL_VTARGET = { near: 4, mid: 5, far: 4 };
+/** What the richness tier may add at most (bug 21: the canal had 122 tier trees, most of them hidden or crowding the sky). */
+const WORLD_RICH_BUDGET = Object.freeze({ items: 300, trees: 120 });
 /**
  * The richness of a world through a camera (P7): per frame band (the thirds of the frame below the horizon: far, mid, near) the
  * covered share and the variety (distinct objects, self-dressed surface kinds and life populations seen there), and a score
@@ -600,6 +650,11 @@ function worldRichness(world, cam, o) {
     out.floor = want;
     if (o.box === false) return out;
     const box = _wflBoxScore(view, cam, { W: o.W, H: o.H, backdrop: bd });
+    // one gate (bug 9: the band measure said 100 while the box measure said 67): ok needs the box measure's target as well
+    let kind = 'park'; try { kind = (WORLD_FILL_STYLES[worldFillStyle(world, { style: world.style })] || {}).place || 'park'; } catch (e) { /* park */ }
+    const boxTarget = Math.max(fl.gate[kind] || fl.gate.park, o.floor && _wflNum(o.floor.box) ? o.floor.box : 0);
+    out.ok = out.ok && box.score >= boxTarget;
+    out.boxTarget = boxTarget;
     out.box = { near: { cover: box.near.cover, variety: box.near.variety, n: box.near.n }, mid: { cover: box.mid.cover, variety: box.mid.variety, n: box.mid.n },
       far: { cover: box.far.cover, variety: box.far.variety, n: box.far.n }, score: box.score };
     return out;
@@ -652,8 +707,50 @@ function _wflWalk(pts, closed, fn) {
     s += L;
   }
 }
+/**
+ * A hedge surface is a hedge (P5, 1.4): its whole visible length gets library hedge sections end to end (seeded jitter, never a
+ * grid), except where a hedge-class thing already stands on it (an author's brambles dress their own stretch, never the whole
+ * line: before, one bramble on a 400 m hedge left the rest of it as bare ground, 15 Oct audit bug 9). Through sense
+ * (worldPlaceAdd: habitat, overlap, walking lines, the near band) so a section never lands where the solver would refuse it.
+ */
+function _wflHedges(F) {
+  const ix = _wflIndexOf(F), r = _wflRng('hedge|' + (F.world.seed | 0)), cam = F.cam, before = F.count;
+  for (const s of ix.surfs) {
+    if (s.kind !== 'hedge' || s.open === true || !Array.isArray(s.path) || s.path.length < 2) continue;
+    const obj = s.obj && worldKb(s.obj) ? s.obj : 'plant.towpath-hedge', kb = worldKb(obj);
+    if (!kb) continue;
+    const L = kb.size.l || 3, D = kb.size.w || 1.2;
+    let n = 0;
+    for (let i = 1; i < s.path.length; i++) {
+      const a = s.path[i - 1], b = s.path[i], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (!(len > 0.01)) continue;
+      const ux = (b[0] - a[0]) / len, uz = (b[1] - a[1]) / len, facing = (_wflDeg(Math.atan2(ux, uz)) + 360) % 360;
+      for (let u = L / 2 + r() * 0.3; u < len; u += L + 0.08 + r() * 0.35) {
+        const off = (r() - 0.5) * Math.max(0, (s.width || 1.2) - D) * 0.6, x = a[0] + ux * u - uz * off, z = a[1] + uz * u + ux * off;
+        if (!(z > cam.dMin * 0.85) || z > _WFL_FILL_ZMAX) continue;
+        const xa = _wflXAt(cam, -F.pad, z) - L, xb = _wflXAt(cam, F.W + F.pad, z) + L;
+        if (x < xa || x > xb) continue;
+        // an author's hedge-class thing (a bramble, a holly) already stands on this stretch
+        const hit = _wflHits(F, x, z, L * 0.45, true);
+        if (hit && hit.e && (worldKb(hit.e.obj) || {}).cls === 'hedge') continue;
+        const spec = { obj, at: [_wflR2(x), _wflR2(z)], facing: _wflR2(facing), variant: worldKbVariant(kb, F.world.place, F.r, { ctx: F.ctx }), auto: 'edge' };
+        let ent = null;
+        if (typeof worldPlaceAdd === 'function') { try { ent = worldPlaceAdd(F.world, spec, { action: 'dress', rule: 'P5', reason: `hedge surface ${s.id}: a section of its hedge`, by: 'kb', snap: false, log: false }); } catch (e) { ent = null; } }
+        else ent = _wflMake(F, Object.assign({ id: _wflId(F, 'edge'), x, z, auto: 'edge' }, spec), kb, null), F.world.entities.push(ent);
+        if (!ent) continue;
+        ent.on = s.id;
+        F.count++; F.added.push(ent); F.ids.add(ent.id); n++;
+        _wflIndexEnt(ix, ent);
+        if (F.zb) _wflZAdd(F, _wflBox(F, ent), ent.z, kb);
+      }
+    }
+    if (n) _wflLog(F, { id: s.id, obj, action: 'dress', rule: 'P5', reason: `hedge surface ${s.id} laid with ${n} sections of ${obj} (stretches an author's hedge-class things dress are kept)` });
+  }
+  return F.count - before;
+}
 function _wflEdges(F) {
   const E = F.style.edges || {}, ix = _wflIndexOf(F), r = F.r, before = F.count;
+  _wflHedges(F);
   // water banks by water kind: reed stands with gaps in the margin and bank planting (natural), coping lines (urban)
   for (const w of ix.waters) {
     const mode = (E.water || {})[w.s.water] || 'natural';
@@ -1046,9 +1143,9 @@ function _wflRichTier(F, floor) {
   const nearPool = [].concat(...nearGroups.map(g => F.style.fill[g]).filter(sp => sp && Array.isArray(sp.near)).map(sp => sp.near), (F.style.edges && F.style.edges.natural && !city) ? F.style.edges.natural.margin : [],
     (pool.mid || []).filter(([id]) => (worldKb(id) || { size: { h0: 9 } }).size.h0 < 2.5));
   const pools = { near: nearPool, mid: pool.mid || [], far: pool.far || [] }, Z = { near: [Math.max(cam.dMin * 1.1, 4), 15], mid: [15, 80], far: [80, 300] };
-  let B = _wflBoxScore(F.world, cam), added = 0;
+  let B = _wflBoxScore(F.world, cam), added = 0, trees = 0;
   const start = B.score, dead = new Set();
-  for (let round = 0; round < 18 && added < 300 && B.score < target; round++) {
+  for (let round = 0; round < 18 && added < WORLD_RICH_BUDGET.items && B.score < target; round++) {
     // the band and the part of the measure that lack most (a part with nothing left to add is skipped)
     let best = null;
     for (const band of ['near', 'mid', 'far']) for (const what of ['cover', 'variety', 'count']) {
@@ -1058,20 +1155,26 @@ function _wflRichTier(F, floor) {
       if (need > 0.002 && (!best || gain > best.gain)) best = { band, what, need, gain };
     }
     if (!best) break;
-    const { band, what } = best, list = pools[band];
-    let L = what === 'variety' ? list.filter(([id]) => !B[band].objs.has(id)) : what === 'cover' ? list.filter(([id]) => (worldKb(id) || { size: { h0: 0 } }).size.h0 >= (band === 'near' ? 0.8 : 4)) : list.filter(([id]) => (worldKb(id) || { size: { h0: 9 } }).size.h0 < 4);
+    const { band, what } = best;
+    let list = pools[band];
+    // the tree budget (bug 21: every tree is a draw and an occluder redraw each frame): spent, the band takes low things only
+    if (trees >= WORLD_RICH_BUDGET.trees) list = list.filter(([id]) => (worldKb(id) || { cls: 'tree' }).cls !== 'tree');
+    let L = what === 'variety' ? list.filter(([id]) => !B[band].objs.has(id)) : what === 'cover' ? list.filter(([id]) => (worldKb(id) || { size: { h0: 0 } }).size.h0 >= (band === 'near' ? 0.8 : band === 'mid' ? 1.8 : 4)) : list.filter(([id]) => (worldKb(id) || { size: { h0: 9 } }).size.h0 < 4);
     if (!L.length) { dead.add(band + what); continue; }
     let placed = 0;
     for (let tries = 0; tries < 200 && placed < 30; tries++) {
       // cover is bought nearest the band's front (a tree at 90 m covers twice the frame of one at 180 m), then wherever there is land
       const front = what === 'cover' && band !== 'near' && tries < 100;
       const zr = front ? [Z[band][0] + (band === 'mid' ? 12 : 0), Z[band][0] + (Z[band][1] - Z[band][0]) * (band === 'far' ? 0.25 : 1)] : Z[band];
-      const z = zr[0] + Math.pow(r(), 0.8) * (zr[1] - zr[0]), x = _wflXAt(cam, -F.pad + r() * (F.W + 2 * F.pad), z);
+      const z = zr[0] + Math.pow(r(), 0.8) * (zr[1] - zr[0]), x = _wflXAt(cam, r() < 0.85 ? r() * F.W : -F.pad + r() * (F.W + 2 * F.pad), z);   // mostly in frame: the overscan is for wide screens only
       const obj = _wflPick(L, r), kb = worldKb(obj);
       if (!kb) continue;
-      const n = kb.cls === 'tree' ? 1 + (r() < 0.3 ? 1 : 0) : 1 + Math.floor(r() * 3);
+      const n = kb.cls === 'tree' ? Math.min(1 + (r() < 0.3 ? 1 : 0), WORLD_RICH_BUDGET.trees - trees) : 1 + Math.floor(r() * 3);
+      if (n <= 0) continue;
       const got = _wflClump(F, obj, x, z, n, Math.max(0.6, kb.size.l * (kb.cls === 'tree' ? 1.2 : 0.8)), { auto: 'fill', rule: 'P7', why: `richness: ${band} ${what}` });
       placed += got.length;
+      trees += got.filter(e => (worldKb(e.obj) || {}).cls === 'tree').length;
+      if (trees >= WORLD_RICH_BUDGET.trees && kb.cls === 'tree') break;
       if (what === 'variety' && got.length) { L = L.filter(([id]) => id !== obj); if (!L.length) break; }
     }
     added += placed;

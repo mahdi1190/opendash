@@ -1,5 +1,6 @@
 // The full-loop capture (docs/dev/WORLD_ENGINE.md 16.4, 16.5 item 4; requirements U3, T1, A3). Node >= 20, no dependencies.
 //
+//   WORLD_CAPTURE_SIZE, worldSizeOf(s) the default frame size (1600 x 900) and the --size parser ('WxH' or a WORLD_SIZES name)
 //   worldCapturePlan(o)               -> [t]: the scene times of the frames (o.full: the WHOLE loop, WORLD_LOOP_S, every o.every s,
 //                                        default 6 s -> 60 frames, plus the frame after the seam, so a restart would show; else
 //                                        o.seconds of the start)
@@ -14,6 +15,17 @@ import { worldPageOpen, composeSheet, worldReviewChecklist, fileSafe, WORLD_SIZE
 import { gifFromPngs } from '../scene-capture.mjs';
 
 export const WORLD_LOOP_DEFAULT_S = 360;
+/** The capture frame size: full 16:9 review size (1600 x 900) unless asked otherwise. Until 15 Oct captures were 480 x 270, too
+ *  small to see a person drawn through another, a duck missing or a bollard in the water. */
+export const WORLD_CAPTURE_SIZE = Object.freeze({ w: 1600, h: 900 });
+/** '1600x900', '480x270' or a WORLD_SIZES name ('16:9', 'tile', ...) -> { w, h }; null for anything else. */
+export function worldSizeOf(s) {
+  if (s && typeof s === 'object' && Number.isFinite(s.w) && Number.isFinite(s.h)) return { w: Math.round(s.w), h: Math.round(s.h) };
+  if (typeof s !== 'string') return null;
+  if (WORLD_SIZES[s]) return Object.assign({}, WORLD_SIZES[s]);
+  const m = /^(\d{2,5})x(\d{2,5})$/i.exec(s.trim());
+  return m ? { w: Number(m[1]), h: Number(m[2]) } : null;
+}
 
 export function worldCapturePlan(o = {}) {
   const loop = Number.isFinite(o.loop) ? o.loop : WORLD_LOOP_DEFAULT_S;
@@ -30,9 +42,9 @@ export function worldCapturePlan(o = {}) {
 
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}${t % 1 ? "." + Math.round((t % 1) * 10) : ""}`;
 
-/** src: { ref } | { spec, id }. o: { full, every, seconds, loop, at, wx, size, dir, gif, root, cols }. */
+/** src: { ref } | { spec, id }. o: { full, every, seconds, loop, at, wx, size ({ w, h } or '1600x900'; default 1600 x 900), dir, gif, root, cols }. */
 export async function worldCapture(chrome, src, o = {}) {
-  const size = o.size || { w: 480, h: 270 }, dir = o.dir || join(tmpdir(), 'opendash-world', 'capture'), name = fileSafe(src.ref || src.id || 'world');
+  const size = worldSizeOf(o.size) || Object.assign({}, WORLD_CAPTURE_SIZE), dir = o.dir || join(tmpdir(), 'opendash-world', 'capture'), name = fileSafe(src.ref || src.id || 'world');
   mkdirSync(dir, { recursive: true });
   const times = worldCapturePlan(o), errors = [], frames = [], pngs = [];
   const page = await worldPageOpen(chrome, src, { size, at: o.at || null, wx: o.wx || null, root: o.root, still: true });
@@ -56,5 +68,5 @@ export async function worldCapture(chrome, src, o = {}) {
     gif = join(dir, `${name}--${o.full ? 'loop' : 'capture'}.gif`);
     writeFileSync(gif, g.gif);
   }
-  return { strip, frames, gif, seconds: times[times.length - 1], errors, size: size || WORLD_SIZES.tile };
+  return { strip, frames, gif, seconds: times[times.length - 1], errors, size };
 }
