@@ -186,7 +186,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
     edges: _WKT_EDGES_URBAN, frame: [{ kind: 'lamp', obj: 'street.lamppost' }, _WKT_BOUGH_PLANE, { kind: 'planter', obj: 'street.mqn-planter-grass' }],
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'crowd', rate: '12/min' }, paving: { who: 'crowd', rate: '12/min' } } },
   // a quayside or harbour: stone quays with coping, bollards, lifebuoys and railings at the edge, lamps, gulls over the water
-  quayside: { label: 'quayside or harbour', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.3, 0.55], layers: 5, bare: { ground: 0.25, paving: 0.15 },
+  quayside: { label: 'quayside or harbour', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.3, 0.55], layers: 5, bare: { ground: 0.25, paving: 0.15, near: 0.5 },
     look: { grass: 'tussock', path: 'flags', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'stone' },
     fill: { grass: { near: [['plant.grass-long', 3], ['plant.rph-short-grass', 3]], mid: [['plant.rph-church-shrub', 1], ['plant.grass-long', 2], ['plant.mqn-buddleia', 1]], far: [['tree.plane-avenue', 1], ['tree.green-chestnut', 1]],
       distant: _WKT_DISTANT_TOWN, accents: [['ground.leaf-litter', 1], ['plant.daisies', 1]], maxH: 2.6 },
@@ -196,7 +196,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
     edges: Object.assign({}, _WKT_EDGES_URBAN, { water: { pond: 'natural', lake: 'quay', canal: 'quay', river: 'quay', sea: 'quay', harbour: 'quay', puddle: 'none' },
       quay: { top: [['plant.rph-short-grass', 2]], posts: [['street.bollard', 4], ['street.mqn-lifebuoy', 1]] } }),
-    frame: [{ kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'post', obj: 'street.bollard' }],
+    frame: [{ kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'lamp', obj: 'street.lamppost' }],   // never a bollard: a 1 m post cut by the frame's bottom edge is a dark blob (SCENE_LESSONS G)
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'crowd', rate: '8/min' }, paving: { who: 'crowd', rate: '8/min' }, water: [{ who: 'mallard', count: 4 }], air: [{ who: 'gulls', count: 5 }] } },
   // a terraced street: flags and kerbs, street trees in pits, lamps, bins, hedges and front-garden borders
   'terraced-street': { label: 'terraced street', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.15, 0.45], layers: 5,

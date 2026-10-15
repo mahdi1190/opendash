@@ -649,7 +649,27 @@ function _wlfSpawnPass(life, dt) {
 function _wlfRoom(life, kind, need) {
   var tr = kind === 'lane' || kind === 'rail', n = 0;
   for (var i = 0; i < life.agents.length; i++) { var k = life.agents[i].kind; if (!life.agents[i].dead && ((k === 'lane' || k === 'rail') === tr)) n++; }
+  if (!tr && _wlfCrowdFull(life, need || 1)) return false;
   return n + (need || 1) <= (tr ? Math.max(4, Math.round(life.max * 0.2)) : life.max);
+}
+/**
+ * A crowd never hides the place (SCENE_LESSONS J): the people on foot together cover at most ~7 % of the frame. A person at 6 m is
+ * 20 times the area of one at 27 m, so a busy quay seen from its edge is a few people at the lens or a street of them further off,
+ * never a wall of giants. Nobody is removed; arrivals wait until the people on screen have left some room.
+ */
+function _wlfCrowdFull(life, need) {
+  var cam = life.world && life.world.cam;
+  if (!cam || !(cam.f > 0)) return false;
+  var area = 0, n = 0, W = 1600, H = 900;
+  for (var i = 0; i < life.agents.length; i++) {
+    var a = life.agents[i];
+    if (a.dead || a.kind !== 'walker' || a.z < 0.5) continue;
+    var hp = cam.f * (a.hStand || 1.7) / a.z;
+    area += 0.3 * hp * hp; n++;
+  }
+  // a group arrives together: its members count as well as the first (each about the average of the people already on screen)
+  if (need > 1) { var hm = cam.f * 1.7 / 15; area += (need - 1) * (n ? area / n : 0.3 * hm * hm); }
+  return area > 0.07 * W * H;
 }
 function _wlfArrive(life, pop, entry, o) {
   if (!entry) return null;
@@ -989,7 +1009,19 @@ function _wlfSeats(life, ent) {
   var span = Math.max(0.5, (sz.w || 1.8) - 0.5), seats = [];
   for (var i = 0; i < n; i++) {
     var u = n === 1 ? 0 : -span / 2 + span * i / (n - 1);
-    seats.push({ i: i, x: ent.x + ax * u, z: ent.z + az * u, ax: ent.x + ax * u + fx * ((sz.d || 0.6) / 2 + 0.45), az: ent.z + az * u + fz * ((sz.d || 0.6) / 2 + 0.45), by: null, facing: f });
+    var sx = ent.x + ax * u, sz2 = ent.z + az * u, off = (sz.d || 0.6) / 2 + 0.45, stand = [sx + fx * off, sz2 + fz * off];
+    // where one stands up to is a legal spot (a bench on a quay edge faces the water: the stand-up step walked the sitter into the harbour);
+    // else behind the bench, else beside it
+    if (typeof worldNavOk === 'function' && life.nav && !worldNavOk(life.nav, 'walk', stand[0], stand[1], 0.28)) {
+      // the nearest legal spot round the seat, in front first, then behind, then to the sides, outward to 2.2 m (a bench's solid ring is about 1 m)
+      var dirs = [[fx, fz], [-fx, -fz], [ax, az], [-ax, -az], [fx + ax, fz + az], [fx - ax, fz - az], [-fx + ax, -fz + az], [-fx - ax, -fz - az]], found = null;
+      for (var rr = off; rr <= 2.2 && !found; rr += 0.25) for (var q = 0; q < dirs.length && !found; q++) {
+        var dl = Math.hypot(dirs[q][0], dirs[q][1]) || 1, cx = sx + dirs[q][0] / dl * rr, cz = sz2 + dirs[q][1] / dl * rr;
+        if (worldNavOk(life.nav, 'walk', cx, cz, 0.28)) found = [cx, cz];
+      }
+      if (found) stand = found;
+    }
+    seats.push({ i: i, x: sx, z: sz2, ax: stand[0], az: stand[1], by: null, facing: f });
   }
   var rec = { ent: ent, seats: seats, queue: [] };
   life.seats.set(k, rec);
@@ -1174,7 +1206,7 @@ function _wlfSitGoal(life, a, g, dt) {
     // seated: the bench's facing, no leg motion, for the goal's time; then stand up off the bench (eased)
     if (a.bs !== 'sit') { _wlfEnter(life, a, a.brain.states.sit ? 'sit' : 'idle'); a.bs = 'sit'; a.gdur = worldLifeRange(a.rng, g['for'] != null ? g['for'] : [20, 60]); a.st = a.gdur; life.bus.emit('sit', { id: a.id, x: a.x, z: a.z, bench: ent.id }); }
     a.lookAt = [a.x + Math.sin(a.seat.facing) * 10, a.z + Math.cos(a.seat.facing) * 10];
-    if (a.st <= 0) { a.step = { t0: life.t, dur: 0.6, x0: a.x, z0: a.z, x1: a.seat.ax, z1: a.seat.az, layer: a.layer, stand: true }; life.bus.emit('stand', { id: a.id, x: a.x, z: a.z }); }
+    if (a.st <= 0) { a.step = { t0: life.t, dur: Math.max(0.6, Math.hypot(a.seat.ax - a.x, a.seat.az - a.z) / 1.1), x0: a.x, z0: a.z, x1: a.seat.ax, z1: a.seat.az, layer: a.layer, stand: true }; life.bus.emit('stand', { id: a.id, x: a.x, z: a.z }); }
     return;
   }
   if (!a.seat) {
@@ -1204,7 +1236,7 @@ function _wlfSitGoal(life, a, g, dt) {
   if (!a.seat.cells) a.seat.cells = _wlfNearCells(life, a.layer, _wlfFlowR(a), a.seat.ax, a.seat.az, 1.6);
   var res = a.seat.cells.length ? _wlfFlowTo(life, a, { key: sk, cells: a.seat.cells }) : _wlfFlowTo(life, a, g.sit);
   if (res === 'here' || Math.hypot(a.seat.ax - a.x, a.seat.az - a.z) < 0.5) {
-    a.step = { t0: life.t, dur: 0.6, x0: a.x, z0: a.z, x1: a.seat.x, z1: a.seat.z, layer: a.layer, sit: bid };
+    a.step = { t0: life.t, dur: Math.max(0.6, Math.hypot(a.seat.x - a.x, a.seat.z - a.z) / 1.1), x0: a.x, z0: a.z, x1: a.seat.x, z1: a.seat.z, layer: a.layer, sit: bid };
     a.host = bid;
     return;
   }
@@ -1783,7 +1815,7 @@ function _wlfStepMove(life, a, dt) {
   if (s.x1 !== s.x0 || s.z1 !== s.z0) { var des = Math.atan2(s.x1 - s.x0, s.z1 - s.z0); if (!s.sit && !s.stand) { var dd = _wlfAng(des - a.heading), mx = Math.PI / a.brain.turn * dt; a.heading = _wlfAng(a.heading + _wlfClamp(dd, -mx, mx)); } }
   if (s.sit && a.seat) { var df = _wlfAng(a.seat.facing - a.heading), mx2 = Math.PI / a.brain.turn * dt; a.heading = _wlfAng(a.heading + _wlfClamp(df, -mx2, mx2)); }
   if (t >= 1) {
-    a.step = null;
+    a.step = null; a.stepEnd = life.t;
     if (s.sit) { a.x = s.x1; a.z = s.z1; a.bs = 'sitting'; a.gdur = null; return; }      // the sit goal takes it from here
     if (s.stand) { a.host = null; _wlfReleaseSeat(life, a); _wlfEnter(life, a, a.brain.start); _wlfNextGoal(life, a); a.y = worldLifeY(life, a); return; }
     a.layer = s.layer; a.host = null; a.route = null;
@@ -2176,7 +2208,7 @@ function worldAgents(life) {
       level: a.layer.indexOf('@') > 0 ? +a.layer.split('@')[1] : 0, host: a.host, group: a.group, lookAt: a.lookAt, view: a.view, mirror: a.mirror,
       born: a.born, leaving: a.leaving || false, alpha: alpha, clip: a.clip || st.clip, phase: a.phase, kind: a.kind, lead: a.lead, edge: a.edge,
       outfit: a.outfit == null ? null : a.outfit, breed: a.breed || null, gait: a.gait, gaitName: a.gaitName || null, len: a.len || null, framed: false,
-      r: a.r, intent: _wlfIntent(a), squeeze: !!(a.squeeze > life.t), leader: a.leader ? a.leader.id : null, resident: !!a.resident });
+      r: a.r, intent: _wlfIntent(a), squeeze: !!(a.squeeze > life.t), stepping: !!a.step || (a.stepEnd != null && life.t - a.stepEnd < 0.6), leader: a.leader ? a.leader.id : null, resident: !!a.resident });
   }
   return out;
 }
