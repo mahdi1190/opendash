@@ -883,6 +883,12 @@ rails, studs, braces, rake boards in oak around the openings) with the stud pitc
 window, shopfronts (display window, stall riser, fascia board, a lit interior after dusk), limewash patches, and fittings hung from the wall
 (stall board with wares, striped awning, a hanging sign with a plain motif, an iron lantern with its glow, a basket in the season's flowers),
 each beyond its own near depth in a perspective view (`_SCTF_NEAR`). Roof, gable and chimneys come from the generator's model on the top storey.
+Second pass (SCENE_LESSONS L2): every storey below the top may lean (`sp.tf.lean`, `sp.tf.top`: the plane's `V` is tilted), each overhang
+is carried by curved brackets (`bracket`) over a joisted soffit (`tjoist`), an upper floor may carry an oriel (`oriel`), a shop shows its
+goods behind small panes (`tgoods`, a lit copy after dusk), a butcher keeps meat hooks (`thooks`), windows get leaded lights (`tlead`).
+Great churches are `70-scene-gen-1cathedral.js` + `70-scene-gen-style-gothic-minster.js`: `crown` picks a plan (`sceneCathedralPlans()`), the
+footprint's front edge is the west front; the model is a list of crown stacks (the civic crowns' drawing path), one per mass, drawn far to
+near; the gothic element kinds `gwin`, `garc`, `gcren`, `grake`, `gportal`, `gniches`, `gbutt` register in `_scbgElemKinds`.
 The kit `old-town-lane` (`79-world-0kits.js`) and the ground look `lane` (`79-world-4ground.js`: a running bond, a central drain) complete it.
 
 ### 14.3 Views, foreshortening and overscan (Q4, Q5, Q6)

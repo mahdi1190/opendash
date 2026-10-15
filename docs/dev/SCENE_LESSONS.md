@@ -244,6 +244,24 @@ green, and the page was not. Every row below is fixed in the engine (life, host,
 | A raised camera made the lane a thin strip of paving | The horizon row stayed where a street view of open ground wants it | A lane camera looks up a little (the horizon below the middle row): the jetties and the sky slot show, the paving keeps the near third |
 | Family and chat groups overlapped (0.00 to 0.1 m apart) in the first second and now and then later; the browser checker's `personalSpace` fired in 12 of 15 cells | A group member whose formation slot was blocked (a wall, a step of a house) was put exactly on its leader's spot | The slot is tried mirrored, then behind and beside the leader, nearer each time; a member with no free spot is not made (`_wlfGroupSpawn`); separation runs up to six passes |
 
+### L2. The Shambles, second pass (16 Oct): looking at it, not at the scores
+
+`node --test tests/world-york.test.mjs`. The first pass passed every rule and still looked like boxes: the user's review was "atmospheric,
+especially at night; the Minster glimpsed at the end; jetties are boxy slabs". Each row below was found by describing the picture in words
+first (what is where, on what) and asking whether a local would find it strange.
+
+| Mistake | Why it happened | Rule |
+|---|---|---|
+| The nearest houses were huge blank slabs: no studs, no windows, a grey wall with one dark beam | A window, a frame or a band that began behind the near plane (about 1.8 m at this lens) was dropped whole (`_scbgRect` / `_scbgMap` returned null if any corner was behind it); the first house of a lane starts behind the camera | A rectangle or outline that crosses the near plane is CUT there (`_scbgClipNear`), never dropped; one wholly behind is not drawn |
+| A silent red-brown prism stood where a house should be (any generator exception) | `worldExtrudeBuilding` swallowed the generator's error and drew its fallback prism | The prism carries `error`; `tests/world-york.test.mjs` asserts no house of the Shambles falls back |
+| An overhang read as a black slab with nothing under it | The soffit was one downward face in shaded timber (black) and nothing carried the beam | The soffit is boarded in a lighter timber tone with joist ends (`tjoist`); a curved oak bracket (`bracket`: a concave gusset, 12 cm wide) under the beam at each end and about every 2 m, never nearer than 4.5 m |
+| Every storey plumb and every front a ruler's edge | Storeys stacked on exact vertical planes | A storey below the top leans out by up to about 3 degrees (its plane's `V` is tilted so every element follows); the ground floor and the top storey stay true; the next overhang starts from where the storey below ended (never negative) |
+| A bay of an upper floor was a flat wall | No projecting form | An oriel (`oriel`): a boxed bay on a corbel, a small-paned ribbon in its front, timber-framed returns (a return is seen face-on from a lane: never a bare slab), a pent roof; never nearer than 5 m |
+| A shop window was one dark sheet, goods only on a board far away | Wares existed only as a stall-board shelf, dropped at near depth | A shop window is small panes (about 0.36 m, three rows); `tgoods` draws the kind's goods behind the glass (shapes, never lettering) and a lit copy after dusk; a butcher has `thooks`: an iron rail with hooks and hung joints (the Shambles was the street of the butchers), other shops sometimes keep the bare rail |
+| Butchers could not be seen: the random mix put them 40 m away at a grazing angle | The frontage rule drew shops from a fixed list | A rule may name its kinds: `shops: ['butcher', 'butcher', 'deli']` (85 % of its houses get one); a scene that wants a hint of something in the near field pins it in the near houses |
+| The lane's lantern halo was a visible 12-gon | A fixed 12 segments at any radius | The segments grow with the radius (12 to 40) |
+| The Minster: a cathedral cannot be a house with a crown stack | No church generator | `gothic-minster` (`70-scene-gen-1cathedral.js`, `70-scene-gen-style-gothic-minster.js`): a building's `crown` is its plan (`twin-towers`, `central-spire`, `west-tower`); west front (two towers, nave gable, a deep portal under a canopy, a great window with tracery, niches, a rake), towers in stages with louvred belfries, crenellations and four pinnacles, nave and aisles in bays with buttresses, transepts, a crossing tower, choir; glass glows and the stone is floodlit after dusk. A glimpsed landmark is placed where the slot of sky is (285 m, on the lane's axis): its foot is hidden by the lane's last roofs, its towers show, both west towers and the crossing tower in a line |
+
 ## M. A grand civic building and a wide river from a short spec (14 Oct, the third no-example place: the Pier Head, Liverpool)
 
 The place: a broad brown tidal river, a ferry landing stage, and three huge Edwardian offices in Portland stone (twin clock towers with copper
