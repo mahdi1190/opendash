@@ -22,8 +22,13 @@
     ],
     buildings: [
       { id: 'minster', foot: MINSTER, storeys: 4, style: 'gothic-minster', crown: 'twin-towers' },
-      { id: 'west', along: 'lane', side: 'left', style: 'timber-framed', storeys: [2, 3], from: 2, to: 119 },
-      { id: 'east', along: 'lane', side: 'right', style: 'timber-framed', storeys: [2, 3], from: 2, to: 119 },
+      // the Shambles was the street of the butchers: the first houses on each side still keep their stall boards and hooks, then the mix of today
+      { id: 'west-0', along: 'lane', side: 'left', style: 'timber-framed', storeys: [2, 3], from: 2, to: 6.4, shops: false },
+      { id: 'west-a', along: 'lane', side: 'left', style: 'timber-framed', storeys: [2, 3], from: 6.4, to: 21, shops: ['butcher', 'butcher', 'deli'] },
+      { id: 'west', along: 'lane', side: 'left', style: 'timber-framed', storeys: [2, 3], from: 21, to: 119 },
+      { id: 'east-0', along: 'lane', side: 'right', style: 'timber-framed', storeys: [2, 3], from: 2, to: 8.2, shops: false },
+      { id: 'east-a', along: 'lane', side: 'right', style: 'timber-framed', storeys: [2, 3], from: 8.2, to: 24, shops: ['butcher', 'bakery', 'butcher'] },
+      { id: 'east', along: 'lane', side: 'right', style: 'timber-framed', storeys: [2, 3], from: 24, to: 119 },
       { id: 'end', along: 'cross', side: 'left', style: 'timber-framed', storeys: [2, 3], from: 24, to: 58, depth: [8, 10] },
     ],
     life: [

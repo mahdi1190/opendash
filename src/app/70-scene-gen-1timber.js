@@ -181,7 +181,7 @@ function _sctfFrontLayout(sp, face, model) {
       if (h > 0.45) { win((sa + sb) / 2 - w / 2, zA + sill, w, h); out.elems.push({ k: 'tlead', s: (sa + sb) / 2 - w / 2, z: zA + sill, w, h, storey: i }); }
     }
   }
-  if (oriel && !shop) {
+  if (oriel && !shop && deep(oriel.s0, 'oriel') && deep(oriel.s1, 'oriel')) {
     holes.push([oriel.s0 - 0.15, oriel.s1 + 0.15, oriel.z0 - 0.35, oriel.z1 + 0.5]);
     put({ kind: 'oriel', s0: oriel.s0, s1: oriel.s1, z0: oriel.z0, z1: oriel.z1, d: 0.42 + (oriel.s1 - oriel.s0) * 0.07, col: tf.timber, plaster: sp.wall, seed: sp.seed + i });
   }
@@ -333,9 +333,9 @@ _scbgElemKinds.tgoods = function (e, face, ctx, T) {
     // a rail across the top, joints and birds hung from it on hooks, a tray of chops on the marble below
     rc('#1c1f22', x0, y1 - 0.05, e.w, 0.04);
     for (let s = x0 + 0.12; s < x1 - 0.14; s += 0.26 + r() * 0.12) {
-      const h = 0.35 + r() * 0.3, w = 0.1 + r() * 0.07, c = r() < 0.5 ? pal[0] : pal[2];
+      const h = 0.22 + r() * 0.22, w = 0.13 + r() * 0.08, c = r() < 0.5 ? pal[0] : pal[2];
       rc('#1c1f22', s + w / 2 - 0.006, y1 - 0.15, 0.012, 0.1);
-      oval(c, s, y1 - 0.15 - h, w, h);
+      add(c, [[s + w * 0.35, y1 - 0.15], [s + w * 0.65, y1 - 0.15], [s + w, y1 - 0.15 - h * 0.2], [s + w * 0.96, y1 - 0.15 - h * 0.5], [s + w * 0.62, y1 - 0.15 - h * 0.82], [s + w * 0.55, y1 - 0.15 - h], [s + w * 0.45, y1 - 0.15 - h], [s + w * 0.38, y1 - 0.15 - h * 0.82], [s + w * 0.04, y1 - 0.15 - h * 0.5], [s, y1 - 0.15 - h * 0.2]]);
       if (r() < 0.5) oval(pal[1], s + w * 0.3, y1 - 0.15 - h * 0.85, w * 0.35, h * 0.5);
     }
     for (let s = x0 + 0.1; s < x1 - 0.3; s += 0.3 + r() * 0.1) oval(r() < 0.5 ? pal[0] : pal[1], s, y0 + 0.04, 0.22, 0.1 + r() * 0.05);
@@ -366,20 +366,21 @@ _scbgElemKinds.thooks = function (e, face, ctx, T) {
   const q = (arr, pts) => { const p = _scbgMap(pl, view, pts, o); if (p) arr.push(_scbgPath(p)); };
   q(rails, [[e.s0, e.z], [e.s1, e.z], [e.s1, e.z + 0.05], [e.s0, e.z + 0.05]]);
   if (T >= 2) {
-    const step = e.full ? 0.34 : 0.5, n = Math.floor((e.s1 - e.s0) / step);
+    const step = e.full ? 0.4 : 0.55, n = Math.floor((e.s1 - e.s0) / step);
     for (let k = 0; k < n; k++) {
       const s = e.s0 + step * (k + 0.5) + (r() - 0.5) * 0.08;
       q(hk, [[s - 0.012, e.z - 0.2], [s + 0.012, e.z - 0.2], [s + 0.012, e.z], [s - 0.012, e.z]]);
       q(hk, [[s - 0.05, e.z - 0.2], [s + 0.012, e.z - 0.2], [s + 0.012, e.z - 0.17], [s - 0.05, e.z - 0.17]]);
       if (e.full && r() < 0.8) {
-        const h = 0.4 + r() * 0.35, w = 0.13 + r() * 0.07;
-        q(meat, [[s - w / 2, e.z - 0.2 - h * 0.15], [s + w / 2, e.z - 0.2 - h * 0.15], [s + w * 0.35, e.z - 0.2 - h], [s - w * 0.35, e.z - 0.2 - h]]);
-        if (r() < 0.6) q(fat, [[s - w * 0.15, e.z - 0.3], [s + w * 0.1, e.z - 0.3], [s + w * 0.05, e.z - 0.2 - h * 0.7], [s - w * 0.1, e.z - 0.2 - h * 0.7]]);
+        // a joint or a bird: a plump lump hung by the hook, a pale edge of fat down one side
+        const h = 0.24 + r() * 0.2, w = 0.15 + r() * 0.1, z1 = e.z - 0.2, z0 = z1 - h;
+        q(meat, [[s - w * 0.15, z1], [s + w * 0.15, z1], [s + w * 0.5, z1 - h * 0.2], [s + w * 0.48, z1 - h * 0.5], [s + w * 0.2, z1 - h * 0.8], [s + w * 0.09, z0], [s - w * 0.09, z0], [s - w * 0.2, z1 - h * 0.8], [s - w * 0.48, z1 - h * 0.5], [s - w * 0.5, z1 - h * 0.2]]);
+        if (r() < 0.7) q(fat, [[s - w * 0.5, z1 - h * 0.3], [s - w * 0.38, z1 - h * 0.28], [s - w * 0.34, z1 - h * 0.68], [s - w * 0.45, z1 - h * 0.7]]);
       }
     }
   }
   sink.add(6, { f: '#1c1f22', d: rails.concat(hk).join(''), op: 1, part: 'body' });
-  if (meat.length) sink.add(6, { f: '#9a3a34', d: meat.join(''), op: 1, part: 'body' });
+  if (meat.length) sink.add(6, { f: '#a8574a', d: meat.join(''), op: 1, part: 'body' });
   if (fat.length) sink.add(7, { f: '#e8d6c8', d: fat.join(''), op: 0.9, part: 'body', detail: true });
 };
 

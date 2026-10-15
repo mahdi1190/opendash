@@ -1091,7 +1091,7 @@ function _scbgBuild(b, sp, foot, view, opt) {
     for (const f of bl.faces) {
       if (f.part === 'lit') {
         // canopy lamps: small lit squares (night only)
-        for (const p of f.poly) { const q = view.P(p); if (p[2] < view.near) continue; const r = view.ortho ? 3 * ((f.rad || 0.14) / 0.14) : Math.max(0.6, view.px(f.rad || 0.14, p)); ctx.sink.lit.push({ f: f.col && f.rad ? f.col : SCENE_GEN_NIGHT.lamp, d: _scbgPath(f.round ? Array.from({ length: 12 }, (_, k) => [q[0] + r * Math.cos(k * Math.PI / 6), q[1] + r * Math.sin(k * Math.PI / 6)]) : [[q[0] - r, q[1] - r], [q[0] + r, q[1] - r], [q[0] + r, q[1] + r], [q[0] - r, q[1] + r]]), op: f.op == null ? 1 : f.op, part: 'lit' }); }
+        for (const p of f.poly) { const q = view.P(p); if (p[2] < view.near) continue; const r = view.ortho ? 3 * ((f.rad || 0.14) / 0.14) : Math.max(0.6, view.px(f.rad || 0.14, p)); ctx.sink.lit.push({ f: f.col && f.rad ? f.col : SCENE_GEN_NIGHT.lamp, d: _scbgPath(f.round ? (n => Array.from({ length: n }, (_, k) => [q[0] + r * Math.cos(k * 2 * Math.PI / n), q[1] + r * Math.sin(k * 2 * Math.PI / n)]))(Math.max(12, Math.min(40, Math.round(r * 0.9)))) : [[q[0] - r, q[1] - r], [q[0] + r, q[1] - r], [q[0] + r, q[1] + r], [q[0] - r, q[1] + r]]), op: f.op == null ? 1 : f.op, part: 'lit' }); }
         continue;
       }
       if (f.flat || view.sees(f.n, f.poly[0])) _scbgDrawFace(f, ctx);

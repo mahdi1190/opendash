@@ -127,6 +127,9 @@ test('the Shambles has the Minster at the end of the street: over the roofs, in 
   assert.ok(y1 > 470, 'its foot is hidden behind the end of the lane');
   // the lane's last houses stand in front of its foot: nothing of the lane is behind it
   assert.ok(prims.filter(q => q.kind === 'building' && q.id !== m.id).every(q => q.zKey < p.zKey), 'the church is the farthest thing');
+  // no house fell back to the grey prism (a generator exception used to be swallowed and a red-brown slab drawn in its place)
+  const fell = prims.filter(q => q.kind === 'building' && q.fallback);
+  assert.deepEqual(fell.map(q => q.id + ': ' + q.error), [], 'every house comes from the generator');
   // the church is a landmark, not a house: no frontage rule made it, and it was not moved or dropped by the load
   assert.ok(!world.log.some(l => l.id === m.id && /drop|move/.test(l.action)), 'untouched by the load');
 });
