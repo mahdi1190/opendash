@@ -190,3 +190,62 @@ test('a thin thing\'s shadow is its silhouette in the shadow colour, never its o
   assert.ok(seen.length > 0);
   assert.ok(!seen.includes('ART'), 'the sprite itself is never drawn as a shadow: ' + seen.join(','));
 });
+
+/* ---------- 16 Oct: a lowered water with an overlapping inlet stays wet; a sloped edge mirrors smooth ---------- */
+test('a lowered water (below the ground) with a cut inside it is wet all over: overlapping visible pieces are a union, not a hole', () => {
+  // the Fleet Pond boardwalk's 'cut' lay inside the 'pond' and the water sat 0.2 m under the carr floor: the visible pieces
+  // overlapped, even-odd crossings made the overlap a hole, and the middle of the pond was left to the v2 base water (a stepped
+  // diagonal reflection of the far trees about the cut's bank line)
+  const lowCam = E.sceneCamera({ camera: { eye: 2.4, fov: 66, horizon: 400, heading: 8, water: -0.2 } });
+  const world = { cam: lowCam, surfaces: [
+    pond('pond', [[-300, 24], [-8.6, 21.5], [-4.4, 1], [4.6, 1], [6.2, 14], [10, 22], [300, 30], [300, 190], [-300, 190]], { level: undefined }),
+    pond('cut', [[-3.6, 1], [3.8, 1], [5.2, 18], [3.4, 28], [-2, 28], [-6, 18]], { level: undefined })] };
+  for (const s of world.surfaces) delete s.level;
+  const R = E.worldWaterPlan(world, lowCam);
+  assert.equal(R.length, 1);
+  // a column through the cut (straight ahead of the camera): its water runs from the far bank to the near edge of the opening,
+  // in ONE run, over the rows where the cut lies (z 3 .. 28 -> rows 400 + f x 2.6 / z)
+  const X = lowCam.x0 + lowCam.f * 0.2 / 12;
+  const sp = E.worldWaterSpansAt(R[0], X);
+  const rowAt = (z) => lowCam.horizon + lowCam.f * (lowCam.eye + 0.2) / z;
+  assert.equal(sp.length, 1, 'one run: ' + JSON.stringify(sp));
+  assert.ok(sp[0][0] < rowAt(150) + 20 && sp[0][1] > rowAt(6), `the run ${JSON.stringify(sp[0])} covers the rows of z 6 .. 150`);
+  // an island wound the other way is still dry (the pond's reed islands stay holes): a keyhole ring, as the v2 views build them
+  const ring = [[-40, 40], [40, 40], [40, 200], [-40, 200]], isle = [[-5, 80], [-5, 100], [5, 100], [5, 80]];
+  const area = (P) => P.reduce((a, p, i) => { const q = P[(i + 1) % P.length]; return a + p[0] * q[1] - q[0] * p[1]; }, 0);
+  const hole = Math.sign(area(isle)) === Math.sign(area(ring)) ? isle.slice().reverse() : isle.slice();
+  const keyed = ring.concat(hole, [hole[0], ring[ring.length - 1]]);
+  const Ri = E.worldWaterPlan({ cam: lowCam, surfaces: [pond('p', keyed)] }, lowCam)[0];
+  const Xi = lowCam.x0 + lowCam.f * 0.2 / 90;
+  assert.equal(E.worldWaterSpansAt(Ri, Xi).length, 2, 'the island splits the column: ' + JSON.stringify(E.worldWaterSpansAt(Ri, Xi)));
+});
+
+test('a mirrored edge on a sloped contact is smooth: its edge row follows the slope to a fraction of a pixel (no one-pixel staircase)', () => {
+  const R = E.worldWaterPlan({ cam, surfaces: [pond('p', [[-80, 3], [80, 3], [80, 120], [-80, 120]])] }, cam)[0];
+  // a flat-topped opaque block high on the screen, owned by a thing whose contact line slopes 0.1 row per column (a diagonal bank)
+  const x0 = 400, x1 = 800, yTop = 480, yBot = 500;
+  const w = x1 - x0, h = yBot - yTop, data = new Uint8ClampedArray(w * h * 4);
+  for (let i = 0; i < w * h; i++) { data[i * 4] = 60; data[i * 4 + 1] = 120; data[i * 4 + 2] = 60; data[i * 4 + 3] = 255; }
+  const pts = [[x0, 560], [x1, 600], [x1, 520], [x0, 520]];       // its sloped near edge: row 560 at x 400 to 600 at x 800
+  const contact = { kind: 'line', z: 30, pts };
+  const cmp = E.worldWaterComposite(R, [{ id: 'b', z: 30, contact, img: { data, width: w, height: h }, x: x0, y: yTop }], { W: 1600, H: 900 });
+  const res = E.worldWaterMirror(null, R, cmp.comp, cmp.owner, { W: 1600, H: 900, ripple: false, base: true, sky: skyAt('2026-07-15T12:00:00Z') });
+  const A = (X) => 560 + 0.1 * (X + 0.5 - 400);                  // the contact row at a column's centre
+  let worst = 0, soft = 0, n = 0;
+  for (let x = x0 + 20; x < x1 - 20; x += 7) {
+    const at = (r) => res.refl.data[((r - res.y0) * res.w + x - res.x0) * 4 + 3];
+    // the block mirrors to rows [2 A - yBot, 2 A - yTop] (flipped about the contact row)
+    const r0 = Math.floor(2 * A(x) - yBot) - 3;
+    let first = -1;
+    for (let r = r0; r < r0 + 8; r++) if (at(r) > 0) { first = r; break; }
+    assert.ok(first >= 0, 'the mirrored block shows in column ' + x);
+    // the block's own edge is the LOWER row of its mirror (the image is flipped): the first lit row is the one holding bottom
+    // edge 2 A - yBot; coverage of that row = (first + 1) - edge
+    const edge = 2 * A(x) - yBot, full = at(first + 4), cover = at(first) / full;
+    const est = first + 1 - cover;
+    worst = Math.max(worst, Math.abs(est - edge));
+    n++; if (cover > 0.08 && cover < 0.92) soft++;
+  }
+  assert.ok(worst < 0.2, `the mirrored edge lies within ${worst.toFixed(2)} px of its true row`);
+  assert.ok(soft > n * 0.5, `most edge rows are anti-aliased (${soft} of ${n}), not a hard staircase`);
+});
