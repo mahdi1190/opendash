@@ -3,6 +3,18 @@
   "repository": "mahdi1190/opendash",
   "allow": [
     {
+      "rule": "private-term",
+      "path": "src/app/70-scene-gen-0building.js",
+      "line_sha256": "2b4dd7ee1129531a2f51f445d19c2ed4902e927cd100a96f030d24a8cf8d6645",
+      "why": "an ordinary English verb in a code comment (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-gen-0building.js",
+      "line_sha256": "8c5f5bd336d4def35e913fda4b7eb06a4d9ab4292e3dd10904418ff3e7ee168a",
+      "why": "an ordinary English verb in a code comment (reviewed)"
+    },
+    {
       "rule": "email",
       "path": "**",
       "match": "^[a-z0-9._-]{1,12}@([xyz]\\.org|b\\.co)$",
