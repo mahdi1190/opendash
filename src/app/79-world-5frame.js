@@ -354,7 +354,12 @@ function _wfrMonth(ms) { return Number.isFinite(ms) ? new Date(ms).getUTCMonth()
 /** The time context (11.11): the systems package's worldTimeCtx when loaded, else a small one from the date and the light. */
 function _wfrTimeCtx(world, ms, o) {
   o = o || {};
-  if (typeof worldTimeCtx === 'function' && Number.isFinite(ms)) { try { const c = worldTimeCtx(world, ms); if (c) return c; } catch (e) { /* below */ } }
+  if (typeof worldTimeCtx === 'function' && Number.isFinite(ms)) { try {
+    // a FIXED weather (a tool's or a scene's override, v2 light L.wx.src 'fixed') is the world's weather too: the rock, the grass and the roofs are wet or snowy as the base ground is
+    const fx = o.L && o.L.wx && o.L.wx.src === 'fixed' && typeof o.L.wx.kind === 'string' ? { wx: o.L.wx.kind } : undefined;
+    const c = worldTimeCtx(world, ms, fx);
+    if (c) return c;
+  } catch (e) { /* below */ } }
   const P = (world && world.place) || {}, L = o.L || null, m = _wfrMonth(ms);
   const d0 = Number.isFinite(ms) ? Date.UTC(new Date(ms).getUTCFullYear(), 0, 1) : null;
   return { ms: Number.isFinite(ms) ? ms : null, lat: P.lat, lon: P.lon, month: m, doy: d0 != null ? Math.floor((ms - d0) / 86400000) + 1 : null,

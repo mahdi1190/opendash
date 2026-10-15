@@ -292,14 +292,14 @@ function _wtrDrawOps(ctx, prim, o, colour) {
     if (op.snow && !snowDay) continue;                                                // snow caps and snow on the ledges: snow days only
     let hex = op.h;
     // rock in the rain is darker and its water stains run darker (the material's own wet is a few percent here: a face is the wettest thing in a frame)
-    const k = Math.round(_wtrLight(op, sun) * (op.m === 'stone' && wet > 0 ? 1 - 0.2 * wet : 1) * 50) / 50;
+    const k = Math.round(_wtrLight(op, sun) * (op.m === 'stone' && wet > 0 ? 1 - 0.12 * wet : 1) * 50) / 50;
     if (k !== 1 && op.m === 'stone' && hex) { const key = hex + k + mk; let v = _wtrShadeMemo.get(key); if (!v) { v = _wtrShade(hex, k); if (_wtrShadeMemo.size > 4000) _wtrShadeMemo.clear(); _wtrShadeMemo.set(key, v); } hex = v; }
     ctx.globalAlpha = A * (op.a == null ? 1 : op.a);
     if (op.t === 'f') { ctx.fillStyle = colour(op.m, hex); _wtrPoly(ctx, op.p); ctx.closePath(); ctx.fill(); n++; }
     else if (op.t === 'fg') {
       // a smooth fill whose colour drifts along it: the stops carry the colour and the normal of their own column (shaded one by one)
       const gr = ctx.createLinearGradient(op.x0, 0, op.x1, 0);
-      for (const st of op.st) { const kk = Math.round(_wtrLight({ n: [st[2], st[3]] }, sun) * (wet > 0 ? 1 - 0.2 * wet : 1) * 50) / 50; gr.addColorStop(Math.max(0, Math.min(1, st[0])), colour(op.m, kk === 1 ? st[1] : _wtrShade(st[1], kk))); }
+      for (const st of op.st) { const kk = Math.round(_wtrLight({ n: [st[2], st[3]] }, sun) * (wet > 0 ? 1 - 0.12 * wet : 1) * 50) / 50; gr.addColorStop(Math.max(0, Math.min(1, st[0])), colour(op.m, kk === 1 ? st[1] : _wtrShade(st[1], kk))); }
       ctx.fillStyle = gr; _wtrPoly(ctx, op.p); ctx.closePath(); ctx.fill(); n++;
     } else if (op.t === 'fv') {
       // a vertical ramp of one tint's opacity (ambient shade, the soft shadow under a ledge, a water stain)
