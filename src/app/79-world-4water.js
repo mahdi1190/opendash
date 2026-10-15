@@ -964,18 +964,21 @@ try {
 function worldWaterDraw(ctx, res, R, t, o) {
   if (!ctx || !res || !res.w || typeof document === 'undefined') return 0;
   o = o || {};
+  // o.into: the region drawn at the context's own origin (a cached composite of it: 79-world-5frame.js keeps one per water and refreshes it
+  // at WORLD_FRAME_WATER_HZ); the ripple still reads the region's own rows
+  const ax = o.into ? 0 : res.x0, ay = o.into ? 0 : res.y0;
   const mk = (img) => { const c = document.createElement('canvas'); c.width = res.w; c.height = res.h; c.getContext('2d').putImageData(new ImageData(img.data, res.w, res.h), 0, 0); return c; };
   if (!res.baseCanvas && res.base) res.baseCanvas = mk(res.base);
   if (!res.reflCanvas && res.refl) res.reflCanvas = mk(res.refl);
   let n = 0;
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
-  if (res.baseCanvas) { ctx.drawImage(res.baseCanvas, res.x0, res.y0); n++; }
+  if (res.baseCanvas) { ctx.drawImage(res.baseCanvas, ax, ay); n++; }
   if (res.reflCanvas) {
     // bands of 2 rows: with the slope cap of worldWaterRipple a band steps at most 0.6 px from the next (never a staircase)
     const bh = Math.max(1, Math.min(2, o.band || 2));
     for (let y = 0; y < res.h; y += bh) {
       const h = Math.min(bh, res.h - y), dx = worldWaterRipple(R, res.y0 + y, t, o);
-      ctx.drawImage(res.reflCanvas, 0, y, res.w, h, res.x0 + dx, res.y0 + y, res.w, h); n++;
+      ctx.drawImage(res.reflCanvas, 0, y, res.w, h, ax + dx, ay + y, res.w, h); n++;
     }
   }
   ctx.restore();

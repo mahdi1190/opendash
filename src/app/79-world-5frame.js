@@ -33,6 +33,8 @@ const WORLD_FRAME_ZMIN = 0.3;              // nearer than this (metres): behind 
 const WORLD_FRAME_FADE_S = 0.25;           // a view change cross-fades over this (19)
 const WORLD_FRAME_LIVE_CAP = 24;           // statics drawn live (they sway by cause, M3): the nearest this many
 const WORLD_FRAME_LIVE_H = 36;             // ... at least this tall on screen (scene units)
+const WORLD_FRAME_LOD_PX = 14;             // a walker or a paddler shorter than this on screen (device px) is drawn whole: its limbs cannot be told apart
+const WORLD_FRAME_WATER_HZ = 15;           // the rippled water is composed this many times a second and blitted once per frame between (ripple: 0.2 Hz, under 0.2 px a refresh)
 const WORLD_FRAME_LIVE_AREA = 0.4;         // ... and covering at most this share of the frame (a giant framing crown stays baked)
 const _WFR_PAD = 2;
 const _WFR_LIVE_KINDS = new Set(['sway', 'flicker', 'spin', 'bob', 'paddle', 'turn']);
@@ -661,9 +663,31 @@ function _wfrHaze(env, e) {
 }
 /** The sprite of a draw record (part '*' or one part), at its scale bucket. */
 function _wfrSpriteOf(env, S, r, part, x) {
-  const sc = _wfrBucket(x && x.bucket ? x.bucket : r.s) * env.vs, mc = _wfrMc(S, r.ent);
+  // a mover asks for the same sprites every frame (its rest art and each moving part at its scale bucket): remembered on what outlives
+  // the frame (an agent's memory, a live static's record) against exactly what the sprite depends on, so the key string, the material
+  // key and the shared cache are not walked per part per frame (the sprite lookups were a fifth of a crowded frame)
+  const h = r.mem || (r.live ? r : null), bk = x && x.bucket ? x.bucket : r.s, p = part || '*';
+  const mc = h ? _wfrMcOf(S, r, h) : _wfrMc(S, r.ent);
+  let memo = null;
+  if (h && mc) {
+    memo = h._spm;
+    if (!memo || memo.S !== S) memo = h._spm = { S, m: new Map() };
+    const e = memo.m.get(p);
+    if (e && e.bk === bk && e.mc === mc && e.o === r.o && e.v === r.v && e.season === r.season && e.glow === !!(x && x.litGlow) && e.outfit === r.ent.outfit) return e.sp;
+  }
+  const sc = _wfrBucket(bk) * env.vs;
   const outfit = !r.ent.static && r.ent.outfit != null && /^person\./.test(String(r.o || '')) ? r.ent.outfit : 0;
-  return _wfrSprite(env, S, r.o, r.v, part || '*', sc, mc, Object.assign({ haze: mc ? 0 : _wfrHaze(env, r.ent), cls: r.ent.cls || null, season: r.season || null, outfit }, x || {}));
+  const sp = _wfrSprite(env, S, r.o, r.v, p, sc, mc, Object.assign({ haze: mc ? 0 : _wfrHaze(env, r.ent), cls: r.ent.cls || null, season: r.season || null, outfit }, x || {}));
+  if (memo) memo.m.set(p, { bk, mc, o: r.o, v: r.v, season: r.season, glow: !!(x && x.litGlow), outfit: r.ent.outfit, sp });
+  return sp;
+}
+/** The material context of a mover, remembered per 2 m of distance on its holder (the key string was built on every call). */
+function _wfrMcOf(S, r, h) {
+  const e = r.ent, dk = Math.round(Math.hypot(e.x || 0, e.z || 0) / 2);
+  if (h._mcS === S && h._mcD === dk && h._mcI === e.id) return h._mc;
+  const mc = _wfrMc(S, e);
+  h._mcS = S; h._mcD = dk; h._mcI = e.id; h._mc = mc;
+  return mc;
 }
 function _wfrM(env, r) { return [env.vs * r.s * (r.flip ? -1 : 1), 0, 0, env.vs * r.s, env.vs * r.X + env.ox, env.vs * r.Y + env.oy]; }
 /** Clip a context to what lies above a floater's cut (device px: scene units through vs, ox, oy, then less the bitmap's origin). */
@@ -718,6 +742,37 @@ function _wfrDrawRec(cx, env, S, r, d, bx, by, alpha) {
   if (r.cut) cx.restore();
   cx.globalAlpha = 1;
   return n;
+}
+/**
+ * One water region of a frame. Its rows are drawn as bands of two, each shifted by the ripple (a couple of hundred blits a frame): that
+ * composite is made at WORLD_FRAME_WATER_HZ for the ripple's time rounded down to a step (so a frame at a given scene time always looks
+ * the same, whatever came before it) and each frame blits it once. The ripple moves under 0.2 px between two refreshes.
+ */
+function _wfrWaterDraw(ctx, w, tau, o) {
+  const res = w.res;
+  if (!res || !res.w || !res.h || typeof document === 'undefined') return worldWaterDraw(ctx, res, w.R, tau, o);
+  const k = Math.floor((tau || 0) * WORLD_FRAME_WATER_HZ + 1e-9), wk = Math.round((o.wind == null ? 1 : o.wind) * 20);
+  let c = w.band;
+  if (!c || c.res !== res) {
+    let cv = null;
+    try { cv = _wfrCanvas(res.w, res.h); } catch (e) { cv = null; }
+    c = w.band = { res, cv, k: null, wk: null };
+  }
+  if (!c.cv) return worldWaterDraw(ctx, res, w.R, tau, o);
+  if (c.k !== k || c.wk !== wk) {
+    const g = c.cv.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.clearRect(0, 0, res.w, res.h);
+    worldWaterDraw(g, res, w.R, k / WORLD_FRAME_WATER_HZ, Object.assign({}, o, { into: true }));
+    c.k = k; c.wk = wk;
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+  ctx.drawImage(c.cv, res.x0, res.y0);
+  return 1;
+}
+/** Is a record's box wholly outside the canvas (device px)? Then nothing of it can be seen: it is neither cached nor redrawn. */
+function _wfrOffCanvas(r, env) {
+  const b = r.box;
+  return !b || b.x1 * env.vs + env.ox <= 0 || b.x0 * env.vs + env.ox >= env.W || b.y1 * env.vs + env.oy <= 0 || b.y0 * env.vs + env.oy >= env.H;
 }
 /**
  * The bitmap of a static prim for the occluder redraws: the prim drawn once on a canvas as large as its on-screen box (at most 2.5 M
@@ -1324,7 +1379,10 @@ function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
   if (r.prim) return _wfrDrawRec(ctx, env, S, r, null, 0, 0, alpha);
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(r.o, r.v, r.season || S.season) : null;
   const L = env.Lnow || env.L, night = !!(L && (L.windows || L.dark > 0.5)), lit = !r.static && night && /vehicle|tram|train|boat|bus|car/.test(String(r.ent.cls || r.obj));
-  const hooks = typeof sceneAnimPose === 'function' ? _wfrHooks(env, S, r, sh, tau) : [], d = r.static ? S.draw.get(r.id) : null, M = d && d.M ? d.M : _wfrM(env, r);
+  let hooks = typeof sceneAnimPose === 'function' ? _wfrHooks(env, S, r, sh, tau) : [];
+  // a far mover (a few pixels tall): the swing of a leg is under a pixel, so its rest art is one blit instead of the body and four limbs
+  if (hooks.length && !r.static && (r.box.y1 - r.box.y0) * env.vs < WORLD_FRAME_LOD_PX) hooks = hooks.filter(h => h.kind !== 'walk' && h.kind !== 'paddle');
+  const d = r.static ? S.draw.get(r.id) : null, M = d && d.M ? d.M : _wfrM(env, r);
   const x = { litGlow: lit, bucket: r.bucket };
   if (r.cut) { ctx.save(); _wfrClipCut(ctx, r.cut, env, 0, 0); }
   let n = 0;
@@ -1501,7 +1559,7 @@ function _wfrDraw(env, ctx, t) {
     ctx.save();
     if (S.wet && S.wet.over.length) { ctx.setTransform(vs, 0, 0, vs, ox, oy); _wfrHoleClip(ctx, S.wet.over); }
     for (const w of S.water) {
-      try { draws += worldWaterDraw(ctx, w.res, w.R, tau, { vs, oy, wind: L && L.wind != null ? L.wind : 1 }) || 0; } catch (e) { /* the v2 base water shows */ }
+      try { draws += _wfrWaterDraw(ctx, w, tau, { vs, oy, wind: L && L.wind != null ? L.wind : 1 }) || 0; } catch (e) { /* the v2 base water shows */ }
     }
     ctx.restore();
   }
@@ -1602,6 +1660,9 @@ function _wfrDraw(env, ctx, t) {
     if (it.kind === 'redraw' && clip) {
       const r = it.ref, d = S.draw.get(r.id);
       if (!d) continue;
+      // a piece wholly off the canvas (the plan keeps pieces a 21:9 crop could show) cannot show over a mover: no vector redraw of it
+      if (d.off === undefined) d.off = _wfrOffCanvas(r, env);
+      if (d.off) continue;
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(clip[0], clip[1], clip[2] - clip[0], clip[3] - clip[1]); ctx.clip();
       // a drawn piece (a wall, a building, the terrain) is vector work: it is rasterised once per bake and blitted by every redraw (G12)
       const pc = r.prim && d ? _wfrPrimCache(env, S, r, d) : null;
