@@ -455,7 +455,11 @@ function worldExtrudeBoatModel(ent, cam, o) {
   let box = null;
   for (const fc of faces) box = _wexBox(fc.pts, box);
   const foot = [[-L / 2, -hb], [L / 2, -hb], [L / 2, hb], [-L / 2, hb]].map(([a, l]) => { const p = P(a, l, 0); return [_wexR(p[0], 3), _wexR(p[2], 3)]; });
-  return { id: ent.id != null ? ent.id : null, kind: 'hull', model: true, noCut: true, ent: ent.id != null ? ent.id : null, obj: ent.obj, variant: ent.variant == null ? null : ent.variant,
+  // the shape older callers read: the visible end (bow or stern) and the side panels as strips
+  const sternSeen = _wexSees(cam, [-ax, 0, -az], P(s0, 0, y0 + 0.4)), bowSeen = _wexSees(cam, [ax, 0, az], P(bowA, 0, y0 + 0.4));
+  const end = sternSeen ? { which: 'stern', quad: (faces.find(fc => fc.role === 'hull' && fc.pts.length === 4) || faces[0]).pts, z: faces[0].z } : bowSeen ? { which: 'bow', quad: faces[faces.length - 1].pts, z: faces[faces.length - 1].z } : null;
+  const strips = faces.filter(fc => fc.role === 'cabin' || fc.role === 'hull').map(fc => ({ quad: fc.pts, z: fc.z, tris: [] }));
+  return { end, strips, side: 1, id: ent.id != null ? ent.id : null, kind: 'hull', model: true, noCut: true, ent: ent.id != null ? ent.id : null, obj: ent.obj, variant: ent.variant == null ? null : ent.variant,
     faces, foot, zKey: _wexR(Math.min(...foot.map(p => p[1])), 3), height: CT + 0.55 - y0, box: box.map(v => _wexR(v, 1)), solidity: 'solid', art: { box: [0, 0, 1, 1], size: [1, 1], repeat: 0 } };
 }
 function worldExtrudeHull(ent, cam, o) {

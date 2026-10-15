@@ -98,3 +98,14 @@ about 11 units below the foot), but the end face uses y0..y0+h. So the side sits
 hull falls under the waterline cut, and the two read as separate pieces. Fix: map the end face and the side strips onto
 the SAME vertical frame (the hull from the waterline up, with the below-foot part of the art clipped consistently), and
 check the boat in `world render` at noon and night.
+
+## 15 Oct (late): canal boats are a 3D model
+`worldExtrudeBoatModel` in `79-world-4extrude.js` draws narrowboats as real 3D geometry: a hull with bow sweep and counter,
+decks, a cabin with coachlines, portholes and doors, a roof and a chimney, faces culled and sorted. Any obj matching
+narrowboat, widebeam or boat.canal uses it. It looks right from any angle on the canal test scene.
+TODO:
+- Two tests in `tests/world-extrude.test.mjs` still expect the old sprite-hull prim shape (Q4 end-on/angle, and
+  worldExtrudeDraw draws every prim kind). Update them to the model (end.which, faces).
+- The user wants the boats to look BETTER still: rounded bow and tumblehome, cratch at the bow, tiller and rudder, roof
+  clutter (plants, bike, coal bags, solar panel), mooring ropes to the bollards, curtains in the windows, night glow,
+  name panel shapes (no text), more liveries, slight bob on water.
