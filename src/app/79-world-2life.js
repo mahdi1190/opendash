@@ -1161,6 +1161,8 @@ function _wlfBrain(life, a, dt) {
     var lim = g['for'] == null ? Infinity : (a.gdur != null ? a.gdur : (a.gdur = worldLifeRange(a.rng, g['for'])));
     if (a.gt > lim) { a.gdur = null; _wlfNextGoal(life, a); return; }
     var stt = b.states[a.bs];
+    // nobody idles in an edge zone (C2): a flock's leader grazing half out of the frame ends its pause now, it does not wait it out
+    if ((!stt || !stt.speed) && a.st > 0.3 && !a.host && _wlfGroupEdge(life, a)) a.st = 0.3;
     if (!stt || !stt.speed) { a.route = a.route && a.route.path ? a.route : null; return; }    // idle / dabble / graze: still
     if (!a.route || !a.route.path) {
       var tp = _wlfWanderTarget(life, a, g.wander, g.far);
