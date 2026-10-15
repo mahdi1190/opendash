@@ -51,7 +51,7 @@
     life: [
       { who: 'walkers', on: 'plaza', rate: '16/min', mix: { stroll: 0.5, chat: 0.2, family: 0.15, 'dog-walker': 0.15 } },
       { who: 'walkers', on: 'prom', rate: '14/min', mix: { stroll: 0.45, brisk: 0.15, couple: 0.2, friends: 0.2 } },
-      { who: 'visit', mix: { stroll: 0.5, family: 0.5 }, rate: '1/40s', goals: [{ go: 'statue' }, { do: 'look', for: [20, 60] }, { leave: 'N' }] },
+      { who: 'visit', mix: { stroll: 0.5, family: 0.5 }, rate: '1/40s', goals: [{ view: 'statue', for: [20, 60] }, { leave: 'N' }] },
       { who: 'visit', mix: { elderly: 0.5, couple: 0.5 }, rate: '1/90s', goals: [{ go: 'bench-b' }, { do: 'sit', for: [30, 90] }, { leave: 'N' }] },
       { who: 'gulls', count: 16 },
       { who: 'buses', on: 'road', rate: '2/min' }, { who: 'cars', on: 'road', rate: '5/min' },

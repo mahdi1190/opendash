@@ -1369,9 +1369,17 @@ function _wlfViewGoal(life, a, g, dt) {
   else { var e = _wlfEntity(life, tgt), s = _wlfSurface(life, tgt); p = e ? [e.x, e.z] : s ? _wlfCentroid(s) : null; }
   if (g.here || !p) p = p && !g.here ? p : [a.x + Math.sin(a.heading) * 25, a.z + Math.cos(a.heading) * 25];
   if (!g.here && !a.viewAt) {
-    // a spot to view from: the nearest walkable cell 3-12 m from the point of interest
-    var cells = _wlfCells(life, a.layer, _wlfFlowR(a), null), best = null, bd = Infinity;
-    for (var c = 0; c < cells.length; c += 2) { var d = Math.hypot(cells[c] - p[0], cells[c + 1] - p[1]), sc = Math.abs(d - 6) + Math.hypot(cells[c] - a.x, cells[c + 1] - a.z) * 0.05; if (d >= 2.5 && sc < bd) { bd = sc; best = [cells[c], cells[c + 1]]; } }
+    // a spot to view from: a walkable cell 3-12 m from the point of interest, among the nearest few that no other viewer has taken (0.9 m clear):
+    // a crowd at a statue stands round it, never on one cell (the browser checker: people drawn through each other)
+    var cells = _wlfCells(life, a.layer, _wlfFlowR(a), null), cand = [];
+    for (var c = 0; c < cells.length; c += 2) { var d = Math.hypot(cells[c] - p[0], cells[c + 1] - p[1]), sc = Math.abs(d - 6) + Math.hypot(cells[c] - a.x, cells[c + 1] - a.z) * 0.05; if (d >= 2.5) cand.push([sc, cells[c], cells[c + 1]]); }
+    cand.sort(function (u, v) { return u[0] - v[0]; });
+    var taken = [];
+    for (var ti = 0; ti < life.agents.length; ti++) { var oa = life.agents[ti]; if (oa !== a && !oa.dead && oa.viewAt) taken.push(oa.viewAt); }
+    var pool = [];
+    for (var ci = 0; ci < cand.length && ci < 400 && pool.length < 4; ci++) { var cc = cand[ci]; if (taken.every(function (t) { return Math.hypot(t[0] - cc[1], t[1] - cc[2]) > 0.9; })) pool.push(cc); }
+    var best = pool.length ? pool[Math.floor(a.rng() * pool.length) % pool.length] : cand[0];
+    best = best ? [best[1], best[2]] : null;
     a.viewAt = best || [a.x, a.z];
   }
   if (a.viewAt && !g.here) {
