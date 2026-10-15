@@ -351,8 +351,10 @@ function _wcInfoOf(id, def, kb) {
   if (!(real && real.h > 0 && real.src !== 'class')) return null;
   const c2 = typeof sceneObjClass === 'function' ? sceneObjClass(id) : 'street', cls = _wcClass(id, c2), ci = WORLD_CLASS_INFO[cls] || WORLD_CLASS_INFO.street;
   const mv = typeof sceneMoverSize === 'function' ? sceneMoverSize(id) : null;
-  // movers keep the v2 real size classes (a duck 0.35 m, a person 1.7 m); everything else its real table size
-  const h = mv && mv.size ? mv.h : real.h, l = Math.max(0.05, real.l || h), w = Math.max(0.05, real.w || Math.min(l, h) * 0.6);
+  // movers keep the v2 real size classes (a duck 0.35 m, a person 1.7 m); everything else its real table size. A seated scenery
+  // figure (a picnicker on a rug, a cafe-goer at a table: kb pose 'sit' and a scenery class) is drawn at its seated height (K8)
+  const seated = !!(kb && kb.size && kb.size.pose === 'sit' && kb.cls !== 'person' && Array.isArray(kb.size.h) && real.src !== 'class');
+  const h = mv && mv.size && !seated ? mv.h : seated ? (kb.size.h[0] + kb.size.h[1]) / 2 : real.h, l = Math.max(0.05, real.l || h), w = Math.max(0.05, real.w || Math.min(l, h) * 0.6);
   let foot = ci.foot, solidity = ci.solidity;
   if (cls === 'street' && (h < 1 || w < 0.3)) solidity = 'passable';
   if (kb && _WC_SOLIDITY.includes(kb.solidity)) solidity = kb.solidity;

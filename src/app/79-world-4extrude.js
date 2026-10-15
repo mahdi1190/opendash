@@ -295,6 +295,18 @@ function _wexFrontOf(b, world, cam) {
   }
   return best ? best.i : null;
 }
+/** The long edge of a four-cornered footprint that faces the camera most (the camera is at the origin looking along +z); its index. */
+function _wexLongFront(P) {
+  let area = 0; for (let i = 0; i < 4; i++) { const a = P[i], c = P[(i + 1) % 4]; area += a[0] * c[1] - c[0] * a[1]; }
+  let best = 0, bs = -Infinity;
+  const Ls = P.map((a, i) => { const c = P[(i + 1) % 4]; return Math.hypot(c[0] - a[0], c[1] - a[1]); }), Lmax = Math.max(...Ls);
+  for (let i = 0; i < 4; i++) {
+    const a = P[i], c = P[(i + 1) % 4], ex = c[0] - a[0], ez = c[1] - a[1], L = Ls[i] || 1, n = area > 0 ? [ez / L, -ex / L] : [-ez / L, ex / L], m = [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2];
+    const seen = n[0] * -m[0] + n[1] * -m[1], sc = (L >= Lmax * 0.8 ? 100 : 0) + seen / Math.hypot(m[0], m[1] || 1);
+    if (sc > bs) { bs = sc; best = i; }
+  }
+  return best;
+}
 /**
  * A world building as the buildings the generator draws (Q3, K3): its front turned to its street when the spec gives none, and a
  * long footprint of a terrace-like style (a street of terraces) cut into houses of the style's frontage along that front, each
@@ -303,8 +315,15 @@ function _wexFrontOf(b, world, cam) {
  */
 function worldBuildingParts(b, world, cam) {
   if (!b || !Array.isArray(b.foot) || b.foot.length < 3) return [b];
-  const fi = Number.isInteger(b.front) ? b.front : _wexFrontOf(b, world, cam);
+  let fi = Number.isInteger(b.front) ? b.front : _wexFrontOf(b, world, cam);
   const range = _WEX_TERRACE[b.style || 'victorian-terrace'];
+  // no street within reach (a lane high on a hillside): a terrace faces the camera along its LONG side, never its gable end (a roof spanning
+  // the long side was a pyramid 60 m tall: SCENE_LESSONS J)
+  if (range && b.foot.length === 4) {
+    const P4 = b.foot, Ls = P4.map((q, i) => Math.hypot(P4[(i + 1) % 4][0] - q[0], P4[(i + 1) % 4][1] - q[1]));
+    // a gable end that faces the street or the sea (the nearest 'street' was beside the row, not in front of it) is not the front either
+    if (fi == null || Ls[fi] < Math.max(...Ls) * 0.8) fi = _wexLongFront(P4);
+  }
   if (fi == null) return [b];
   if (b.foot.length !== 4 || !range) return [Object.assign({}, b, { front: fi })];
   const n0 = b.foot.length, P = b.foot.slice(fi).concat(b.foot.slice(0, fi)).map(p => [p[0], p[1]]);
@@ -317,7 +336,9 @@ function worldBuildingParts(b, world, cam) {
   let t0 = 0;
   for (let k = 0; k < n; k++) {
     const t1 = k === n - 1 ? 1 : t0 + w[k] / tot;
-    out.push(Object.assign({}, b, { id: (b.id || 'building') + '#' + k, foot: [lerp(P[0], P[1], t0), lerp(P[0], P[1], t1), lerp(P[3], P[2], t1), lerp(P[3], P[2], t0)].map(p => [_wexR(p[0], 3), _wexR(p[1], 3)]),
+    // a street of terraces is never one height: a house in four is a storey lower or higher (seeded; a spec that pins `storeys: [n]` or `level: false` keeps its own)
+    const r = (_wexHash(seed0 + '|s' + k) % 1000) / 1000, st0 = _wexNum(b.storeys) ? b.storeys : 3, st = b.level === false ? st0 : r < 0.14 ? Math.max(2, st0 - 1) : r > 0.86 ? st0 + 1 : st0;
+    out.push(Object.assign({}, b, { storeys: st, id: (b.id || 'building') + '#' + k, foot: [lerp(P[0], P[1], t0), lerp(P[0], P[1], t1), lerp(P[3], P[2], t1), lerp(P[3], P[2], t0)].map(p => [_wexR(p[0], 3), _wexR(p[1], 3)]),
       front: 0, seed: (seed0 + k * 7919) % 100000, frontage: undefined, part: { of: b.id || null, k, n } }));
     t0 = t1;
   }
@@ -334,7 +355,10 @@ function worldExtrudeBuilding(b, cam, o) {
   if (!spec.style) spec.style = 'victorian-terrace';
   if (typeof sceneBuildingProject === 'function') {
     let d = null;
-    try { d = sceneBuildingProject(spec, cam, { season: o.season || 'summer', snowDepth: o.snowDepth || 0, tierCap: o.tierCap }); } catch (e) { d = null; }
+    // a building stands on the ground where it is (W2): a footprint on a slope is projected from an eye lowered by the ground's height at
+    // its lowest corner (the generator measures everything from a flat ground), so a terrace on a cliff stands on the cliff, not at its foot
+    const g = foot.reduce((m, p) => Math.min(m, _wexG(cam, p[0], p[1])), Infinity), camB = Number.isFinite(g) && Math.abs(g) > 0.02 ? Object.assign({}, cam, { eye: cam.eye - g }) : cam;
+    try { d = sceneBuildingProject(spec, camB, { season: o.season || 'summer', snowDepth: o.snowDepth || 0, tierCap: o.tierCap }); } catch (e) { d = null; }
     if (d) {
       // the outward normal of every visible wall (the generator's counter-clockwise footprint, front edge first)
       const F = d.foot || foot, walls = (d.walls || []).map(i => { const a = F[i], c = F[(i + 1) % F.length], ex = c[0] - a[0], ez = c[1] - a[1], L = Math.hypot(ex, ez) || 1; return { edge: i, a, b: c, n: [ez / L, -ex / L] }; });

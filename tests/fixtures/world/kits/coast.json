@@ -1,0 +1,14 @@
+{ "v": 3, "place": {"lat": 54.48, "lon": -0.61, "region": "yorkshire", "style": "coast"},
+  "camera": {"eye": 1.7, "fov": 62, "horizon": 430, "heading": 40}, "backdrop": {"style": "coast"},
+  "surfaces": [
+    {"id": "beach", "kind": "sand", "poly": [[-200, 1], [5.5, 1], [9.5, 300], [-200, 300]]},
+    {"id": "sea", "kind": "water", "water": "sea", "poly": [[-400, 30], [-20, 22], [-10, 900], [-400, 900]]},
+    {"id": "cliff", "kind": "grass", "poly": [[10.5, 1], [300, 1], [300, 300], [14.5, 300]]},
+    {"id": "prom", "kind": "pavement", "path": [[8, 1], [12, 300]], "width": 5}
+  ],
+  "entities": [
+    {"obj": "building.beach-huts", "at": [16, 30], "facing": 270},
+    {"obj": "building.beach-huts", "at": [17.5, 48], "facing": 270}
+  ],
+  "life": [{"who": "walkers", "on": "prom", "rate": "4/min", "edges": ["S", "N"]}],
+  "seed": 32 }

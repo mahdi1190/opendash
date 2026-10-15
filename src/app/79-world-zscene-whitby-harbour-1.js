@@ -9,32 +9,36 @@
    ============================================================ */
 (function () {
   if (typeof worldAdd !== 'function') return;
-  const rows = (obj, z, from, to, step, facing) => { const out = []; for (let x = from; x <= to; x += step) out.push({ obj, at: [x, z], facing }); return out; };
   worldAdd('world-test', { id: 'whitby-harbour-1-w3', label: 'Whitby harbour (world)', site: 'The River Esk from Pier Road, Whitby', mood: 'cheerful', colour: 'brick',
     tags: ['uk', 'north-yorkshire', 'whitby', 'harbour', 'quay', 'fishing-boats', 'world-v3'], liveSky: { lat: 54.4858, lon: -0.6133 } }, {
     v: 3,
     place: { lat: 54.4858, lon: -0.6133, alt: 4, region: 'north-yorkshire', style: 'quayside' },
     camera: { eye: 1.7, fov: 66, horizon: 430, heading: 78, water: -3 },
-    ground: { features: [{ kind: 'embankment', path: [[-60, 200], [400, 200]], width: 184, h: 36 }] },
+    ground: { features: [{ kind: 'embankment', path: [[-60, 252], [400, 252]], width: 184, h: 36 }] },
     surfaces: [
-      { id: 'quay-w', kind: 'plaza', poly: [[-120, 1], [120, 1], [120, 18], [-120, 18]] },
-      { id: 'esk', kind: 'water', water: 'harbour', poly: [[-400, 18], [400, 18], [400, 100], [-400, 100]], shallow: 1.5 },
-      { id: 'quay-e', kind: 'pavement', path: [[-400, 104], [400, 104]], width: 7 },
-      { id: 'cliff', kind: 'grass', poly: [[-110, 107.5], [400, 107.5], [400, 330], [-110, 330]] },
-      { id: 'sea', kind: 'water', water: 'sea', poly: [[-400, 100], [-110, 100], [-110, 420], [-400, 420]] },
-      { id: 'west-head', kind: 'grass', poly: [[-225, 120], [-180, 120], [-180, 200], [-225, 200]] },
+      { id: 'quay-w', kind: 'plaza', poly: [[-150, 1], [150, 1], [150, 10], [-150, 10]] },
+      { id: 'esk', kind: 'water', water: 'harbour', poly: [[-400, 10], [400, 10], [400, 150], [-400, 150]], shallow: 1.5 },
+      { id: 'quay-e', kind: 'pavement', path: [[-400, 152], [400, 152]], width: 6 },
+      { id: 'cliff', kind: 'grass', poly: [[-110, 155], [400, 155], [400, 330], [-110, 330]] },
+      { id: 'sea', kind: 'water', water: 'sea', poly: [[-400, 150], [-110, 150], [-110, 420], [-400, 420]] },
+      { id: 'west-head', kind: 'grass', poly: [[-240, 170], [-190, 170], [-190, 260], [-240, 260]] },
+    ],
+    // the terraces of Church Street and the lanes above, in rows up the slope (the engine cuts each long footprint into houses)
+    buildings: [
+      { id: 'cs-a1', foot: [[-130, 158], [-30, 158], [-30, 166], [-130, 166]], storeys: 3, style: 'victorian-terrace' }, { id: 'cs-a2', foot: [[-22, 158], [70, 158], [70, 166], [-22, 166]], storeys: 3, style: 'victorian-terrace' },
+      { id: 'cs-a3', foot: [[78, 158], [170, 158], [170, 166], [78, 166]], storeys: 2, style: 'victorian-terrace' },
+      { id: 'cs-b1', foot: [[-120, 172], [-6, 172], [-6, 179], [-120, 179]], storeys: 2, style: 'stone-cottage' }, { id: 'cs-b2', foot: [[4, 172], [160, 172], [160, 179], [4, 179]], storeys: 2, style: 'stone-cottage' },
+      { id: 'cs-c1', foot: [[-110, 185], [-30, 185], [-30, 193], [-110, 193]], storeys: 3, style: 'victorian-terrace' }, { id: 'cs-c2', foot: [[-20, 185], [90, 185], [90, 193], [-20, 193]], storeys: 3, style: 'victorian-terrace' },
+      { id: 'cs-c3', foot: [[100, 185], [190, 185], [190, 193], [100, 193]], storeys: 3, style: 'victorian-terrace' },
+      { id: 'cs-d1', foot: [[-100, 198], [40, 198], [40, 205], [-100, 205]], storeys: 2, style: 'stone-cottage' }, { id: 'cs-d2', foot: [[52, 198], [200, 198], [200, 205], [52, 205]], storeys: 2, style: 'stone-cottage' },
     ],
     entities: [
       // the fleet under the east quay and a few boats on the near side
-      { obj: 'boat.fishing-boat', at: [-22, 94], facing: 90 }, { obj: 'boat.fishing-boat', at: [6, 95], facing: 270 }, { obj: 'boat.fishing-boat', at: [34, 94], facing: 90 },
-      { obj: 'boat.fishing-boat', at: [-70, 93], facing: 90 }, { obj: 'boat.dinghy', at: [14, 24], facing: 80 }, { obj: 'boat.dinghy', at: [-18, 28], facing: 100 },
-      // the terraces of Church Street and the lanes above, in rows up the slope, then St Mary's on the crest
-      ...rows('building.terrace-victorian', 112, -90, 140, 24, 180), ...rows('building.cottage', 124, -85, 120, 21, 180), ...rows('building.terrace-victorian', 137, -70, 150, 26, 180),
-      ...rows('building.cottage', 150, -80, 110, 23, 180), ...rows('building.terrace-victorian', 164, -60, 150, 30, 180), { obj: 'building.church', at: [20, 190], facing: 180, id: 'st-marys' },
-      { obj: 'building.lighthouse', at: [-200, 176], facing: 90, id: 'pier-light' },
-      // the quay's own kit: bollards and lamps along the edge
-      ...rows('street.bollard', 17, -100, 100, 16, 0), ...rows('street.lamppost', 13, -90, 90, 30, 0),
-      { obj: 'street.bench', at: [-34, 11], facing: 0, id: 'bench-q1' }, { obj: 'street.bench', at: [48, 11], facing: 0, id: 'bench-q2' },
+      { obj: 'boat.fishing-boat', at: [-30, 143], facing: 90 }, { obj: 'boat.fishing-boat', at: [8, 144], facing: 270 }, { obj: 'boat.fishing-boat', at: [52, 143], facing: 90 },
+      { obj: 'boat.fishing-boat', at: [-96, 142], facing: 90 }, { obj: 'boat.dinghy', at: [14, 34], facing: 80 }, { obj: 'boat.dinghy', at: [-22, 44], facing: 100 },
+      // St Mary's on the crest of the cliff, and the lighthouse on the west head
+      { obj: 'building.church', at: [30, 238], facing: 180, id: 'st-marys' }, { obj: 'building.lighthouse', at: [-215, 232], facing: 90, id: 'pier-light' },
+      { obj: 'street.bench', at: [-30, 8], facing: 0, id: 'bench-q1' },
     ],
     life: [
       { who: 'walkers', on: 'quay-w', rate: '14/min', mix: { stroll: 0.5, chat: 0.2, family: 0.15, 'dog-walker': 0.15 }, edges: ['W', 'E'] },

@@ -317,17 +317,25 @@ function worldCoverage(world, cam, o) {
   }
   const reg = Array.from({ length: 9 }, () => ({ n: 0, bare: 0 }));
   let n = 0, bare = 0;
+  // an open look (a mown lawn's stripes, a beach's ripples: 79-world-4ground.js) is half dressed by its texture, as the strict
+  // measure has it (79-world-4detail.js 'open'); every other undressed sample is bare
+  const openMemo = new Map(), openOf = (s) => {
+    if (!s || typeof worldGroundLookOf !== 'function' || typeof WORLD_GROUND_OPEN === 'undefined') return false;
+    if (!openMemo.has(s)) { let k = null; try { k = worldGroundLookOf(world, s); } catch (e) { k = null; } openMemo.set(s, !!k && WORLD_GROUND_OPEN.includes(k)); }
+    return openMemo.get(s);
+  };
   if (top >= H) return { bare: 0, ok: true, regions: [], samples: 0 };
   for (let r = 0; r < rows; r++) {
     const Y = top + (r + 0.5) * (H - top) / rows;
     for (let c = 0; c < cols; c++) {
       const X = (c + 0.5) * W / cols;
-      let dressed = byCol[c].some(b => X >= b[0] && X <= b[2] && Y >= b[1] && Y <= b[3]);
+      let dressed = byCol[c].some(b => X >= b[0] && X <= b[2] && Y >= b[1] && Y <= b[3]), half = false;
       if (!dressed) {
         const g = typeof sceneUnproject === 'function' ? sceneUnproject(cam, X, Y) : (Y > cam.horizon ? { x: (X - cam.x0) * cam.f * cam.eye / (Y - cam.horizon) / cam.f, d: cam.f * cam.eye / (Y - cam.horizon) } : null);
         if (g) {
           const s = _wlSurfAt(world, g.x, g.d);
           if (s && (_WBD_DRESSED_KINDS.has(s.kind) || lived.has(s.id))) dressed = true;
+          else if (s && openOf(s)) half = true;
           // the far ground beyond the last band is dressed by the bands themselves only where they stand: rows within a
           // pixel of the horizon read as the horizon line, not as bare ground
           else if (!s && ground && Y - cam.horizon < 1.5) dressed = true;
@@ -335,7 +343,7 @@ function worldCoverage(world, cam, o) {
       }
       const ri = Math.min(2, Math.floor(r / rows * 3)) * 3 + Math.min(2, Math.floor(c / cols * 3));
       reg[ri].n++; n++;
-      if (!dressed) { reg[ri].bare++; bare++; }
+      if (!dressed) { const w = half ? 0.5 : 1; reg[ri].bare += w; bare += w; }
     }
   }
   const RN = ['far', 'mid', 'near'], CN = ['left', 'centre', 'right'];
