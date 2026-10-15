@@ -81,7 +81,7 @@ function _wfrRec(e, cam, o) {
   const vw = _wfrView(e, cam, o.agent, o.prev);
   // a long hull seen at an angle or end-on: drawn in true perspective, never a flat side slab (Q4)
   if (vw.persp && !e.landmark && typeof worldExtrudeHull === 'function') {
-    try { const prim = worldExtrudeHull(e, cam, { season: o.season }); if (prim && prim.box) { const r = _wfrPrimRec(prim, e, vw); r.cut = _wfrCutOf(e, cam, o.regions); return r; } } catch (err) { /* a sprite below */ }
+    try { const prim = worldExtrudeHull(e, cam, { season: o.season }); if (prim && prim.box) { const r = _wfrPrimRec(prim, e, vw); r.cut = prim.noCut ? null : _wfrCutOf(e, cam, o.regions); return r; } } catch (err) { /* a sprite below */ }
   }
   const oid = vw.obj && sceneObj(vw.obj) ? vw.obj : (typeof _wh5ViewObj === 'function' ? _wh5ViewObj(e.obj, vw.view) : e.obj), def = sceneObj(oid);
   if (!def || !def.size) return null;

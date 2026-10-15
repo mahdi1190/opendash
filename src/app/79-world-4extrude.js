@@ -375,9 +375,93 @@ function _wexAffine(p0, p1, p2, q0, q1, q2) {
  * each mapped exactly from the art (a triangle's affine map is exact at its corners): neighbouring slices share their edges,
  * so the hull's lines run straight and continuous into the distance with no steps.
  */
+/* ---------- a narrowboat as a real 3D model (15 Oct) ----------
+   A side sprite and a back sprite glued onto a box broke at most angles (ends floating apart, sides squeezed into stripes).
+   Canal boats are now a small 3D model drawn from any angle: a black hull with a tapered bow and a counter stern, the decks,
+   a painted cabin with coachlines, portholes and stern doors, a roof and a chimney. Faces are culled by facing and drawn far
+   to near. Colours come from the variant; the material pass grades them by light like everything else. */
+const WORLD_BOAT_LIVERIES = Object.freeze([
+  { cabin: '#2f5e3e', trim: '#d9b44a', roof: '#5a5048', door: '#9a2a24' },
+  { cabin: '#7a1f2b', trim: '#e0c060', roof: '#4a4440', door: '#2f5e3e' },
+  { cabin: '#22406b', trim: '#d9b44a', roof: '#5a5048', door: '#7a1f2b' },
+  { cabin: '#2e2e33', trim: '#c9a24a', roof: '#6a5a48', door: '#9a2a24' },
+  { cabin: '#5b2a4a', trim: '#e0c060', roof: '#4a4440', door: '#22406b' },
+]);
+function worldExtrudeBoatModel(ent, cam, o) {
+  o = o || {};
+  const info = typeof worldObjectInfo === 'function' ? worldObjectInfo(ent.obj) : null;
+  const L = info && info.size && info.size.w > 4 ? info.size.w : 18, B = info && info.size && info.size.d > 1 ? Math.min(info.size.d, 3.6) : 2.1;
+  const y0 = _wexNum(ent.y) ? ent.y : 0, near = _wexNear(cam);
+  const sp = Math.hypot(ent.vx || 0, ent.vz || 0), fdeg = sp > 0.05 ? Math.atan2(ent.vx, ent.vz) * 180 / Math.PI : _wexNum(ent.facing) ? ent.facing : 90;
+  const f = fdeg * Math.PI / 180, ax = Math.sin(f), az = Math.cos(f), rx = az, rz = -ax;
+  const P = (a, lat, y) => [ent.x + ax * a + rx * lat, y, ent.z + az * a + rz * lat];
+  const liv = WORLD_BOAT_LIVERIES[Math.abs(ent.variant | 0) % WORLD_BOAT_LIVERIES.length];
+  const H = 0.72, CB = y0 + H, CT = CB + 1.25, hb = B / 2, cb = hb - 0.16;   // freeboard, cabin bottom and top, half beams
+  const s0 = -L / 2, bowA = L / 2, bowTaper = 2.6, c0 = s0 + 1.1, c1 = bowA - 3.4;  // stern, bow, the cabin from c0 to c1
+  const faces = [];
+  const face = (pts3, hex, mat, role, normal) => {
+    if (pts3.some(p => p[2] < near)) return;
+    if (normal && !_wexSees(cam, normal, pts3[0])) return;
+    const pts = pts3.map(p => _wexP(cam, p[0], p[2], p[1]).map(v => _wexR(v, 2)));
+    const z = pts3.reduce((t, p) => t + p[2], 0) / pts3.length;
+    faces.push({ pts, hex, mat, role, z: _wexR(z, 3) });
+  };
+  const side = (lat) => [rx * Math.sign(lat), 0, rz * Math.sign(lat)];
+  // the hull sides: straight, then the bow sweep to the stem; a gunwale band in the trim colour
+  for (const sg of [-1, 1]) {
+    const n = side(sg);
+    face([P(s0, sg * hb, y0), P(bowA - bowTaper, sg * hb, y0), P(bowA - bowTaper, sg * hb, CB), P(s0, sg * hb, CB)], '#1c1d1f', 'paint', 'hull', n);
+    const bn = [ax * 0.6 + rx * sg * 0.8, 0, az * 0.6 + rz * sg * 0.8];
+    face([P(bowA - bowTaper, sg * hb, y0), P(bowA, 0, y0), P(bowA, 0, CB + 0.18), P(bowA - bowTaper, sg * hb, CB)], '#1c1d1f', 'paint', 'hull', bn);
+    face([P(s0, sg * hb, CB - 0.12), P(bowA - bowTaper, sg * hb, CB - 0.12), P(bowA - bowTaper, sg * hb, CB), P(s0, sg * hb, CB)], liv.trim, 'paint', 'trim', n);
+  }
+  // the stern counter
+  face([P(s0, -hb, y0), P(s0, hb, y0), P(s0, hb, CB), P(s0, -hb, CB)], '#232426', 'paint', 'hull', [-ax, 0, -az]);
+  // the decks (seen from above when the eye is higher than the gunwale)
+  if (cam.eye > CB) {
+    face([P(s0, -hb, CB), P(c0, -hb, CB), P(c0, hb, CB), P(s0, hb, CB)], '#7a6650', 'wood', 'deck', [0, 1, 0]);
+    face([P(c1, -hb, CB), P(bowA - bowTaper, -hb, CB), P(bowA, 0, CB + 0.18), P(bowA - bowTaper, hb, CB), P(c1, hb, CB)], '#7a6650', 'wood', 'deck', [0, 1, 0]);
+  }
+  // the cabin: sides with coachlines and portholes, ends, roof
+  for (const sg of [-1, 1]) {
+    const n = side(sg);
+    face([P(c0, sg * cb, CB), P(c1, sg * cb, CB), P(c1, sg * cb, CT), P(c0, sg * cb, CT)], liv.cabin, 'paint', 'cabin', n);
+    face([P(c0, sg * cb, CT - 0.2), P(c1, sg * cb, CT - 0.2), P(c1, sg * cb, CT - 0.14), P(c0, sg * cb, CT - 0.14)], liv.trim, 'paint', 'trim', n);
+    face([P(c0, sg * cb, CB + 0.12), P(c1, sg * cb, CB + 0.12), P(c1, sg * cb, CB + 0.17), P(c0, sg * cb, CB + 0.17)], liv.trim, 'paint', 'trim', n);
+    if (_wexSees(cam, n, P((c0 + c1) / 2, sg * cb, (CB + CT) / 2))) for (let a = c0 + 1.0; a < c1 - 0.6; a += 1.3) {
+      const ring = (r, hex, role) => { const pts = []; for (let k = 0; k < 8; k++) { const t = k / 8 * Math.PI * 2; pts.push(P(a + Math.cos(t) * r, sg * (cb + 0.01), CB + 0.68 + Math.sin(t) * r)); } face(pts, hex, 'paint', role, null); };
+      ring(0.17, '#c9a24a', 'brass'); ring(0.12, '#9fb3bd', 'window');
+    }
+  }
+  face([P(c0, -cb, CB), P(c0, cb, CB), P(c0, cb, CT), P(c0, -cb, CT)], liv.cabin, 'paint', 'cabin', [-ax, 0, -az]);
+  if (_wexSees(cam, [-ax, 0, -az], P(c0, 0, CB + 0.6))) {
+    face([P(c0 - 0.01, -0.5, CB + 0.05), P(c0 - 0.01, -0.03, CB + 0.05), P(c0 - 0.01, -0.03, CT - 0.25), P(c0 - 0.01, -0.5, CT - 0.25)], liv.door, 'paint', 'door', null);
+    face([P(c0 - 0.01, 0.03, CB + 0.05), P(c0 - 0.01, 0.5, CB + 0.05), P(c0 - 0.01, 0.5, CT - 0.25), P(c0 - 0.01, 0.03, CT - 0.25)], liv.door, 'paint', 'door', null);
+  }
+  face([P(c1, -cb, CB), P(c1, cb, CB), P(c1, cb, CT), P(c1, -cb, CT)], liv.cabin, 'paint', 'cabin', [ax, 0, az]);
+  if (cam.eye > CT) face([P(c0, -cb + 0.05, CT), P(c1, -cb + 0.05, CT), P(c1, cb - 0.05, CT), P(c0, cb - 0.05, CT)], liv.roof, 'paint', 'roof', [0, 1, 0]);
+  // the chimney near the front of the cabin
+  {
+    const ca = c1 - 1.2, w = 0.09, t1 = CT + 0.55;
+    face([P(ca - w, w, CT), P(ca + w, w, CT), P(ca + w, w, t1), P(ca - w, w, t1)], '#141414', 'metal', 'chimney', [rx, 0, rz]);
+    face([P(ca - w, -w, CT), P(ca + w, -w, CT), P(ca + w, -w, t1), P(ca - w, -w, t1)], '#141414', 'metal', 'chimney', [-rx, 0, -rz]);
+    face([P(ca - w, -w, CT), P(ca - w, w, CT), P(ca - w, w, t1), P(ca - w, -w, t1)], '#141414', 'metal', 'chimney', [-ax, 0, -az]);
+    face([P(ca + w, -w, CT), P(ca + w, w, CT), P(ca + w, w, t1), P(ca + w, -w, t1)], '#141414', 'metal', 'chimney', [ax, 0, az]);
+  }
+  if (!faces.length) return null;
+  // far to near: the painter's order inside the boat (details after the panel they sit on when at the same depth)
+  const rank = { hull: 0, deck: 1, cabin: 2, trim: 3, roof: 3, brass: 4, door: 4, window: 5, chimney: 6 };
+  faces.sort((p, q) => (q.z - p.z) || ((rank[p.role] || 0) - (rank[q.role] || 0)));
+  let box = null;
+  for (const fc of faces) box = _wexBox(fc.pts, box);
+  const foot = [[-L / 2, -hb], [L / 2, -hb], [L / 2, hb], [-L / 2, hb]].map(([a, l]) => { const p = P(a, l, 0); return [_wexR(p[0], 3), _wexR(p[2], 3)]; });
+  return { id: ent.id != null ? ent.id : null, kind: 'hull', model: true, noCut: true, ent: ent.id != null ? ent.id : null, obj: ent.obj, variant: ent.variant == null ? null : ent.variant,
+    faces, foot, zKey: _wexR(Math.min(...foot.map(p => p[1])), 3), height: CT + 0.55 - y0, box: box.map(v => _wexR(v, 1)), solidity: 'solid', art: { box: [0, 0, 1, 1], size: [1, 1], repeat: 0 } };
+}
 function worldExtrudeHull(ent, cam, o) {
   o = o || {};
   if (!ent || !cam || !_wexNum(cam.f) || typeof ent.obj !== 'string') return null;
+  if (/narrowboat|widebeam|boat\.canal/.test(ent.obj)) { const m = worldExtrudeBoatModel(ent, cam, o); if (m) return m; }
   const info = typeof worldObjectInfo === 'function' ? worldObjectInfo(ent.obj) : null;
   if (!info || !info.size) return null;
   const L = info.size.w, B = Math.max(0.3, info.size.d), h = _wexNum(ent.height) && ent.height > 0 ? ent.height : info.size.h, y0 = _wexNum(ent.y) ? ent.y : 0;
@@ -544,7 +628,9 @@ function worldExtrudeDraw(ctx, prim, o) {
   ctx.save();
   ctx.setTransform(vs, 0, 0, vs, ox, oy);
   try {
-    if (prim.kind === 'line' || (prim.kind === 'building' && prim.fallback)) {
+    if (prim.model) {
+      for (const f of prim.faces || []) n += _wexFillPts(ctx, f.pts, colour(f.mat, f.hex, f.z, f.role), A);
+    } else if (prim.kind === 'line' || (prim.kind === 'building' && prim.fallback)) {
       for (const f of prim.faces || []) n += _wexFillPts(ctx, f.pts, colour(f.mat, f.hex, f.z, f.role), (f.alpha == null ? 1 : f.alpha) * A);
       for (const d of prim.details || []) {
         if (d.type === 'fill') n += _wexFillPts(ctx, d.pts, colour(prim.mat, d.hex, prim.zKey, 'detail'), (d.alpha == null ? 1 : d.alpha) * A);
