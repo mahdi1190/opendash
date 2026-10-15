@@ -119,8 +119,14 @@ function canonicalArt(html) {
 export function selectEntries(reg, { refs = [], packs = [], baseline = null } = {}) {
   let list = reg.items();
   if (baseline) {
-    const was = new Map(baseline.items().map(e => [e.ref, canonicalArt(baseline.html(e.item))]));
-    list = list.filter(e => !was.has(e.ref) || was.get(e.ref) !== canonicalArt(reg.html(e.item)));
+    // what an item draws, to tell a changed item from an unchanged one. A COMPOSED scene is compared by its DATA (sceneData: the thunk's
+    // scene, no compile and no SVG): drawing it means a full compile of the scene, about a second each, and a file passed to --file
+    // changes a composed scene only through its data. (Rendering every composed view of both registries made `lint --file` of one
+    // lazy test scene a minute and a half.)
+    const dataOf = (r) => { try { const g = r.R.get('sceneData'); return typeof g === 'function' ? g : null; } catch { return null; } };
+    const artOf = (r, e) => { const g = e.composed ? dataOf(r) : null; if (g) { try { return 'data:' + JSON.stringify(g(e.item)); } catch { /* drawn below */ } } return canonicalArt(r.html(e.item)); };
+    const was = new Map(baseline.items().map(e => [e.ref, artOf(baseline, e)]));
+    list = list.filter(e => !was.has(e.ref) || was.get(e.ref) !== artOf(reg, e));
   }
   if (packs.length) {
     const known = new Set(reg.items().map(e => e.pack));

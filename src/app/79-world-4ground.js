@@ -114,9 +114,21 @@ function _wgdUn(cam, X, Y) {
 
 /* ---------- looks of surfaces ---------- */
 /** The kit look map of a world (the fill's style, else the style the fill would choose). */
+const _wgdStyleMemo = new WeakMap();
+/** worldFillStyle of a world, memoised while its surfaces and buildings stay as they are: it samples the view on a 24 x 24 grid against every
+ *  surface, and the ground asks it once per surface (a build of Fleet Canal spent 60 % of its time here). */
+function _wgdFillStyle(world) {
+  if (typeof worldFillStyle !== 'function') return null;
+  if (!world || typeof world !== 'object') return worldFillStyle(world);
+  const n = (world.surfaces || []).length, nb = (world.buildings || []).length, hit = _wgdStyleMemo.get(world);
+  if (hit && hit.n === n && hit.nb === nb) return hit.key;
+  const key = worldFillStyle(world);
+  _wgdStyleMemo.set(world, { n, nb, key });
+  return key;
+}
 function _wgdKitLook(world) {
   try {
-    const key = (world && world.fillState && world.fillState.style) || (typeof worldFillStyle === 'function' ? worldFillStyle(world) : null);
+    const key = (world && world.fillState && world.fillState.style) || _wgdFillStyle(world);
     const st = key && typeof WORLD_FILL_STYLES === 'object' && WORLD_FILL_STYLES ? WORLD_FILL_STYLES[key] : null;
     return (st && st.look) || {};
   } catch (e) { return {}; }

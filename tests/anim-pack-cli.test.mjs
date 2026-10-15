@@ -26,7 +26,10 @@ const APP = join(ROOT, 'src', 'app');
 const run = async (argv, extra = {}) => { const out = [], err = []; const code = await main(argv, { out: (s) => out.push(s), err: (s) => err.push(s), ...extra }); return { code, out: out.join('\n'), err: err.join('\n') }; };
 
 /** The animation sources of the first regions and the fixed pack families: a region added to the repo since (and its packs) is not copied, so these tests never depend on it. */
-const isBase = (f) => !/^71-anim-region-/.test(f) && (!/^72-anim-pack-/.test(f) || /^72-anim-pack-(core|moments|rewards|seasons|sky|texas|world|uk|us|asia|proof)[-.]/.test(f));
+// (the place packs added since 9 Oct - the Hampshire, Manchester, Sheffield and Reepham views and the proofs: composed scenes of 1 to 5 s
+// each to draw - are not copied either: nothing here uses them, and every lint, status and nested test run of a temp checkout
+// drew all of them. The two legacy UK packs stay: the registry's own tests read them.)
+const isBase = (f) => !/^71-anim-region-/.test(f) && (!/^72-anim-pack-/.test(f) || /^72-anim-pack-(core|moments|rewards|seasons|sky|texas|world|us|asia)[-.]/.test(f) || /^72-anim-pack-uk-south-(west|east)(-d+)?.js$/.test(f));
 /** A temp checkout with just the animation sources: what the registry load, the lint and the generated test need. */
 const temps = [];
 function makeRoot() {
@@ -1185,7 +1188,10 @@ test('a scaffold keeps the repo-wide tests GREEN (region-framework: structural c
   for (const f of ['region-framework.test.mjs', 'anim-packs.test.mjs']) cpSync(join(ROOT, 'tests', f), join(root, 'tests', f));
   assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
   const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
-  const test = () => spawnSync(process.execPath, ['--test', '--test-reporter=tap', 'tests/region-framework.test.mjs', 'tests/anim-packs.test.mjs'], { cwd: root, encoding: 'utf8', env });
+  // anim-packs.test.mjs runs here for its registration test (a scaffold's empty pack file may register nothing until complete: true). Its
+  // per-pack quality gates and the UK place tests are the repo's own run's business: in this temp checkout (no place packs) they would only
+  // draw every scene again, twice.
+  const test = () => spawnSync(process.execPath, ['--test', '--test-reporter=tap', '--test-name-pattern=^(?!quality gate: pack|UK packs:|Hampshire replacement|Yateley live skies)', 'tests/region-framework.test.mjs', 'tests/anim-packs.test.mjs'], { cwd: root, encoding: 'utf8', env });
   const wip = test();
   assert.equal(wip.status, 0, 'the scaffold is green: ' + wip.stdout.split('\n').filter(l => /^not ok|^# (pass|fail)/.test(l)).join('\n'));
   assert.match(wip.stdout, /# fail 0/); assert.match(wip.stdout, /# todo 1/);
