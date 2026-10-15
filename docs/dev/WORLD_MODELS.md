@@ -194,3 +194,21 @@ windows do this for you. A model with `sunLit` (the default) carries each face's
   only sprite records: no pool on the ground under a model's lamp yet (put a faint `contactShadow`-style disc if the pool matters).
 * The engine's cast shadows come from sprite records; a model carries its own `h.contactShadow`.
 * Faces are sorted by part, not by BSP: two parts that interlock (a mast through a sail) must be one part or ordered by `key`.
+
+## 8. Working in parallel
+
+Several people (or agents) add models at once without touching each other:
+
+* One model, one file: `src/app/79-world-4model-<name>.js` (the name sorts after the extruder and before the frame; the registry
+  is created on first use, so the file order never matters). Private helpers are `_wmd<Name><Thing>`. A test for a particular
+  model goes in `tests/world-model-<name>.test.mjs`; the conformance test of `world-models.test.mjs` already runs over yours.
+* Do not edit `79-world-4models.js`, `79-world-4extrude.js` or `79-world-5frame.js` for a model. If the kit lacks a helper, write
+  it in your own file as a function that takes `h` (`function _wmdFerryFunnel(h, a, l, y, r) { ... }`) and say so in your report:
+  the architect folds the useful ones into the kit.
+* Claim object ids that are yours. Two models that claim one id: the one defined later (file name order) wins, silently.
+* Check your work on the sheet before anything else: `node tools/world.mjs models <id> --full --out <dir>`, and put the PNG
+  path in your report. Review every cell by describing it in words first (what is where, on what, joined to what), then ask
+  whether someone who knows the thing would find it strange.
+* Then in a scene: an entity of the object (a plain `{ obj, at, facing, attach }`) is already drawn by your model; `model:`
+  chooses livery, size, age.
+* Add one row for your model class to SCENE_LESSONS section T when you find a mistake worth keeping.
