@@ -198,7 +198,7 @@ function pageProbe(opts) {
     return { id: r.id, cls: e.cls || null, obj: e.obj, static: !agent, auto: e.auto || null, landmark: !!e.landmark, framing: !!(e.framing || e.framed), x: r.x, y: r.y, z: r.z,
       facing: Number(e.facing) || 0, foot: r.foot, height: r.height, layer: e.layer || null, host: e.host || null, parent: e.parent || null, view: r.view, mirror: !!r.mirror,
       box: [r.box.x0, r.box.y0, r.box.x1, r.box.y1], order: null, speed: agent ? Math.hypot(e.vx || 0, e.vz || 0) : 0, vx: agent ? e.vx || 0 : 0, vz: agent ? e.vz || 0 : 0,
-      state: agent ? a.state || null : null, attach: e.attach || null, deck: e.deck || null, prim: r.prim ? r.prim.kind || null : null, backdrop: !!r.backdrop, decal: !!e.decal,
+      state: agent ? a.state || null : null, attach: e.attach || null, deck: e.deck || null, prim: r.prim ? r.prim.kind || null : null, spans: !!(r.prim && r.prim.spans), backdrop: !!r.backdrop, decal: !!e.decal,
       variant: agent ? (a.variant != null ? a.variant : r.v) : r.v, outfit: agent ? a.outfit : null, group: agent ? a.group : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null,
       framed: !!(a.framed || e.framed), solidity: e.solidity || null, waterline: Number.isFinite(e.waterline) ? e.waterline : null };
   };

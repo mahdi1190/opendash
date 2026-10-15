@@ -77,7 +77,7 @@ function _wfrPrimRec(prim, ent, vw) {
   let cx = 0, cz = 0;
   for (const p of foot) { cx += p[0]; cz += p[1]; }
   cx /= foot.length; cz /= foot.length;
-  const e = ent || { id: prim.id, obj: prim.obj || 'line.' + (prim.sub || prim.lineKind || prim.kind), cls: prim.kind === 'line' ? prim.sub || 'line' : prim.kind, x: cx, z: cz, y: Number.isFinite(prim.y0) ? prim.y0 : 0, static: true, solidity: prim.solidity || null, foot, height: prim.height || null };
+  const e = ent || { id: prim.id, obj: prim.obj || 'line.' + (prim.sub || prim.lineKind || prim.kind), cls: prim.kind === 'line' ? prim.sub || 'line' : prim.kind, x: cx, z: cz, y: Number.isFinite(prim.y0) ? prim.y0 : 0, static: true, solidity: prim.solidity || null, foot, height: prim.height || null, spans: !!prim.spans };
   const id = ent ? _wfrId(ent, prim.obj || 'hull') : String(prim.id != null ? prim.id : 'prim@' + cx.toFixed(2) + ',' + cz.toFixed(2));
   // a piece of an entity drawn as lines (a walkway's handrails) sits at its own depth, not at the entity's anchor
   const own = !ent || prim.kind === 'line';
@@ -498,7 +498,7 @@ function worldFrameAt(scene, t, o) {
       facing: _wfrR3(Number(e.facing) || 0), foot: _wfrPts(r.foot), height: _wfrR3(r.height), layer: e.layer || null, host: e.host || null, parent: e.parent || null,
       view: r.view, mirror: !!r.mirror, box: _wfrBoxArr(r.box), order: pos.has(r.id) ? pos.get(r.id) : null, speed: agent ? _wfrR3(sp) : 0, vx: agent ? _wfrR3(e.vx || 0) : 0, vz: agent ? _wfrR3(e.vz || 0) : 0,
       state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null,
-      prim: r.prim ? (r.prim.walkway ? 'walkway' : r.prim.kind || null) : null, tops: r.prim && r.prim.tops ? _wfrPlain(r.prim.tops) : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal,
+      prim: r.prim ? (r.prim.walkway ? 'walkway' : r.prim.kind || null) : null, spans: !!(r.prim && r.prim.spans), tops: r.prim && r.prim.tops ? _wfrPlain(r.prim.tops) : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal,
       // what the checkers need of a mover: its body radius, its group (the leader's id), whether it has a lead, and its intent (life)
       r: agent && Number.isFinite(e.r) ? _wfrR3(e.r) : null, group: agent ? e.group || null : null, leash: agent ? !!e.lead : false, intent: agent ? e.intent || null : null, squeeze: agent ? !!e.squeeze : false, stepping: agent ? !!e.stepping : false, leader: agent ? e.leader || null : null, resident: agent ? !!e.resident : false,
       // the look drawn (A11) and what a check needs to judge the frame by itself (variant, outfit, attach, deck, live)

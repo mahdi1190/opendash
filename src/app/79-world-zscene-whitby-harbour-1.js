@@ -21,7 +21,7 @@
 (function () {
   if (typeof worldAdd !== 'function') return;
   // the 199 steps: from Church Street up the cliff to the churchyard, between the houses; a railing each side
-  const STEPS = [[-104, 157], [-98, 172], [-93, 188], [-88, 202], [-85, 209]];
+  const STEPS = [[-94, 157], [-88, 172], [-83, 188], [-78, 202], [-75, 209]];
   const stepX = (z) => {
     for (let i = 1; i < STEPS.length; i++) if (z <= STEPS[i][1]) { const a = STEPS[i - 1], b = STEPS[i]; return a[0] + (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]); }
     return STEPS[STEPS.length - 1][0];
@@ -38,14 +38,14 @@
    */
   function lane(id, pts, o) {
     o = o || {};
-    const zc = zAt(pts, -90), xa = stepX(zc + 1.2) - 3.4, xb = stepX(zc + 9.5) + 3.4, cuts = [[xa, xb]].concat(o.skip || []).sort((p, q) => p[0] - q[0]);
+    const zc = zAt(pts, -80), xa = stepX(zc + 1.2) - 4.2, xb = stepX(zc + 9.5) + 4.2, cuts = [[xa, xb]].concat(o.skip || []).sort((p, q) => p[0] - q[0]);
     const x0 = pts[0][0], x1 = pts[pts.length - 1][0], out = { surfaces: [], buildings: [] };
     let cur = x0, k = 0;
     const piece = (a, b) => {
       if (b - a < 9) return;
       const path = [[Math.round(a * 10) / 10, zAt(pts, a)]].concat(pts.filter(p => p[0] > a && p[0] < b), [[Math.round(b * 10) / 10, zAt(pts, b)]]), sid = id + '-' + k++;
       out.surfaces.push({ id: sid, kind: 'path', path, width: 2.4 });
-      out.buildings.push(Object.assign({ id: sid + '-h', along: sid, side: 'left', style: 'pantile-cottage', storeys: o.storeys || [2, 3], shops: false }, o.depth ? { depth: o.depth } : null));
+      out.buildings.push({ id: sid + '-h', along: sid, side: 'left', style: 'pantile-cottage', storeys: o.storeys || [2, 3], depth: o.depth || [5.2, 7.2], shops: false });
     };
     for (const [s0, s1] of cuts) { if (s0 > cur) piece(cur, Math.min(s0, x1)); cur = Math.max(cur, s1); }
     if (cur < x1) piece(cur, x1);
@@ -83,8 +83,8 @@
     ],
     buildings: [
       // Church Street along the east quay (broken at the foot of the steps), the lanes above it, the two banks of the upper harbour
-      { id: 'q-a', along: 'church-st', side: 'left', style: 'pantile-cottage', storeys: [2, 3], from: 230, to: 297, shops: false },
-      { id: 'q-b', along: 'church-st', side: 'left', style: 'pantile-cottage', storeys: [2, 3], from: 306, to: 458, shops: false },
+      { id: 'q-a', along: 'church-st', side: 'left', style: 'pantile-cottage', storeys: [2, 3], from: 240, to: 301, shops: false },
+      { id: 'q-b', along: 'church-st', side: 'left', style: 'pantile-cottage', storeys: [2, 3], from: 314, to: 458, shops: false },
     ].concat(L1.buildings, L2.buildings, L3.buildings, L4.buildings, [
       { id: 'be-a', along: 'bank-e', side: 'left', style: 'pantile-cottage', storeys: [2, 3], from: 8, to: 38, shops: false },
       { id: 'be-b', along: 'bank-e', side: 'left', style: 'pantile-cottage', storeys: [2, 3], from: 58, to: 190, shops: false },
@@ -92,9 +92,9 @@
       { id: 'bw-b', along: 'bank-w', side: 'right', style: 'pantile-cottage', storeys: [2, 3], from: 216, to: 400, shops: false },
       { id: 'bw2', along: 'w-lane', side: 'right', style: 'pantile-cottage', storeys: [2, 3], from: 0, to: 10000, shops: false, depth: [7, 10] },
       // the landmarks (`landmark: true`: the fill never plants a tree across their faces); the abbey is turned a few degrees to the quay
-      { id: 'st-marys', foot: [[-88, 212], [-64, 212], [-64, 222], [-88, 222]], storeys: 1, h: 16, landmark: true, style: 'parish-church', crown: 'squat-tower', src: "OS Explorer OL27: St Mary's church on the East Cliff, Whitby (NZ 902 112)" },
+      { id: 'st-marys', foot: [[-80, 212], [-56, 212], [-56, 222], [-80, 222]], storeys: 1, h: 16, landmark: true, style: 'parish-church', crown: 'squat-tower', src: "OS Explorer OL27: St Mary's church on the East Cliff, Whitby (NZ 902 112)" },
       { id: 'abbey', foot: [[-46, 206], [11.5, 234.1], [1.0, 255.7], [-56.5, 227.6]], storeys: 1, h: 28, landmark: true, style: 'gothic-ruin', crown: 'abbey', src: 'OS Explorer OL27: Whitby Abbey on the East Cliff (NZ 903 112)' },
-      { id: 'swing-bridge', foot: [[68, 196], [124, 196], [124, 204], [68, 204]], storeys: 1, h: 8, landmark: true, style: 'swing-bridge', src: 'OS Explorer OL27: the swing bridge over the Esk, Whitby (NZ 898 108)' },
+      { id: 'swing-bridge', foot: [[70.5, 196], [121.5, 196], [121.5, 204], [70.5, 204]], storeys: 1, h: 8, landmark: true, style: 'swing-bridge', src: 'OS Explorer OL27: the swing bridge over the Esk, Whitby (NZ 898 108)' },
     ]),
     entities: [
       // the fleet under the east quay and in the upper harbour, and a few boats on the near side

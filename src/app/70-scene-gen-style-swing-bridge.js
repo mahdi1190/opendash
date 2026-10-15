@@ -15,6 +15,7 @@
     details: { downpipe: 0, alarm: 0, boxes: 0, ivy: 0, porch: 0 },
     night: { on: 0, curtain: 0, tv: 0 },
     flippable: false, sideWindows: false,
+    spans: true,   // it stands over water by design (the world's habitat check lets it)
     bridge: { deck: 0.6, depth: 3.5, rise: 1.8, panel: 3.0, steel: '#5b6870', stone: '#8d8a80', road: '#4a4c50', roof: '#5a5f66', water: -3.2 },
     resolve: _SCBR_HOOKS.resolve, build: _SCBR_HOOKS.build,
   });
