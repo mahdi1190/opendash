@@ -527,6 +527,12 @@ function worldNavBuild(world, o) {
   // extruded buildings are solid to everything that walks, swims or drives: their footprints cut the ground like any solid (a house standing proud
   // of a lane's edge by 30 cm, a terrace beside a pavement): people never walk through a wall the extruder drew (SCENE_LESSONS K)
   for (const b of world.buildings || []) if (b && Array.isArray(b.foot) && b.foot.length >= 3) { const sh = { poly: b.foot }; wet.push(sh); ground.push(sh); }
+  // lines (walls, fences, hedges, railings) are solid to everything that walks, except where the author left a gap (a gate); kerbs and coping are
+  // only edges (docs 1.4). A sheep stood 10 cm inside a dry-stone wall and a walker could cross any fence: the nav had never read `lines`
+  for (const l of world.lines || []) {
+    if (!l || !Array.isArray(l.path) || l.path.length < 2 || !['wall', 'fence', 'hedge', 'railing'].includes(l.kind)) continue;
+    for (const part of _wnavLineParts(l)) ground.push({ path: part, width: Math.max(0.1, Number(l.width) || 0.3) });
+  }
   for (const s of surfaces) {
     if (s.kind === 'hedge' && s.open !== true) ground.push({ poly: s.poly, path: s.path, width: s.width });
     if (s.kind === 'gate' && s.open !== true) ground.push({ poly: s.poly, path: s.path, width: s.width });
@@ -964,6 +970,31 @@ function worldFlowDist(field, x, z) {
   if (k < 0) return Infinity;
   const d = field.dist[k];
   return d >= 0x3fffffff ? Infinity : d;
+}
+
+/**
+ * The parts of a line's path that are solid: the path cut at its gaps (`gaps: [{ at: [x, z], w }]` or [x, z, w]; a gate is a gap of its width).
+ * -> [[[x, z], ...]] (each part a polyline of at least two points).
+ */
+function _wnavLineParts(l) {
+  const gaps = (Array.isArray(l.gaps) ? l.gaps : []).map(g => Array.isArray(g) ? { at: [g[0], g[1]], w: g[2] } : g).filter(g => g && Array.isArray(g.at) && Number.isFinite(g.w) && g.w > 0);
+  if (!gaps.length) return [l.path];
+  const out = [];
+  for (let i = 1; i < l.path.length; i++) {
+    const a = l.path[i - 1], b = l.path[i], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
+    if (!(L > 1e-6)) continue;
+    // the cut intervals along the segment (metres from a): where the gap's centre projects, half its width each way, only when it lies on the segment
+    const cuts = [];
+    for (const g of gaps) {
+      const t = ((g.at[0] - a[0]) * dx + (g.at[1] - a[1]) * dz) / L, off = Math.abs((g.at[0] - a[0]) * dz - (g.at[1] - a[1]) * dx) / L;
+      if (off <= Math.max(1.5, g.w) && t > -g.w && t < L + g.w) cuts.push([t - g.w / 2, t + g.w / 2]);
+    }
+    cuts.sort((p, q) => p[0] - q[0]);
+    let t0 = 0;
+    for (const c of cuts) { if (c[0] > t0 + 0.05) out.push([[a[0] + dx * t0 / L, a[1] + dz * t0 / L], [a[0] + dx * Math.min(c[0], L) / L, a[1] + dz * Math.min(c[0], L) / L]]); t0 = Math.max(t0, c[1]); }
+    if (t0 < L - 0.05) out.push([[a[0] + dx * t0 / L, a[1] + dz * t0 / L], b]);
+  }
+  return out;
 }
 
 /* ---------- straight lines and A* ---------- */

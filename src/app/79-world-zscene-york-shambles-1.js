@@ -24,7 +24,7 @@
       { id: 'end', along: 'cross', side: 'left', style: 'timber-framed', storeys: [3, 4], from: 24, to: 58, depth: [8, 10] },
     ],
     life: [
-      { who: 'walkers', on: 'lane', rate: '14/min', mix: { stroll: 0.5, chat: 0.2, family: 0.15, couple: 0.15 }, edges: ['S', 'N'] },
+      { who: 'walkers', on: 'lane', rate: '9/min', mix: { stroll: 0.6, chat: 0.15, couple: 0.25 }, edges: ['S', 'N'] },
     ],
     seed: 5,
   });

@@ -38,7 +38,7 @@
       { obj: 'boat.fishing-boat', at: [-96, 142], facing: 90 }, { obj: 'boat.dinghy', at: [14, 34], facing: 80 }, { obj: 'boat.dinghy', at: [-22, 44], facing: 100 },
       // St Mary's on the crest of the cliff, and the lighthouse on the west head
       { obj: 'building.church', at: [30, 238], facing: 180, id: 'st-marys' }, { obj: 'building.lighthouse', at: [-215, 232], facing: 90, id: 'pier-light' },
-      { obj: 'street.bench', at: [-30, 11], facing: 0, id: 'bench-q1' },
+      { obj: 'street.bench', at: [-3, 11], facing: 0, id: 'bench-q1' },
     ],
     life: [
       { who: 'walkers', on: 'quay-w', rate: '14/min', mix: { stroll: 0.5, chat: 0.2, family: 0.15, 'dog-walker': 0.15 }, edges: ['W', 'E'] },

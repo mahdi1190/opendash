@@ -289,3 +289,15 @@ test('a bench on a quay edge faces the water, and the sitter who stands up never
   assert.ok(sat > 15, `somebody sat down (${sat} ticks)`);
   assert.equal(wet, 0, `${wet} ticks on the water`);
 });
+
+test('walls, fences, hedges and railings are solid to the nav, except at their gaps (docs 1.4; a sheep stood in a dry-stone wall)', () => {
+  const sp = spec({ surfaces: [{ id: 'field', kind: 'grass', poly: [[-80, 1], [80, 1], [80, 120], [-80, 120]] }], entities: [],
+    lines: [{ id: 'w', kind: 'wall', path: [[-40, 30], [40, 30]], width: 0.6, h: 1.3, gaps: [{ at: [0, 30], w: 3 }] }, { id: 'k', kind: 'kerb', path: [[-40, 60], [40, 60]], width: 0.2 }] });
+  const w = W.worldBuild(sp, { fill: false }), nav = W.worldNavBuild(w);
+  for (const layer of ['walk', 'graze']) {
+    assert.equal(W.worldNavOk(nav, layer, 15, 30, 0.25), false, layer + ': the wall blocks');
+    assert.equal(W.worldNavOk(nav, layer, 15, 33, 0.25), true, layer + ': beside it is open');
+    assert.equal(W.worldNavOk(nav, layer, 0, 30, 0.25), true, layer + ': the gap is open');
+    assert.equal(W.worldNavOk(nav, layer, 15, 60, 0.25), true, layer + ': a kerb is only an edge');
+  }
+});

@@ -328,6 +328,9 @@ const _WIV_RULES = {
         if (!b || _wivRelated(a, b)) continue;
         if (_wivCls(a) === 'hedge' && _wivCls(b) === 'hedge') continue;   // hedge clumps merge into one hedge
         if (a.line != null && a.line === b.line) continue;                 // pieces of one line feature (Q2)
+        // a long footprint (a bus, a hull) and a body that the camera sees on opposite sides of it never hide each other: only their sprite margins
+        // meet, and which is 'nearer' there is the front edge at a column neither occupies
+        if (_wivDisjointLong(a, b)) continue;
         const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
         if (seen.has(k)) continue;
         seen.add(k);
@@ -461,6 +464,9 @@ const _WIV_RULES = {
       const holes = Array.isArray(sh.holes) ? sh.holes.map(h => (Array.isArray(h) ? { poly: h } : h)).filter(h => h && Array.isArray(h.poly) && h.poly.length >= 3) : [];
       for (const p of pts) {
         const s = _wivWaterAt(C, p[0], p[1]);
+        // a water 0.5 m or more below the ground (a quay, a lock) lies below the plane a shadow is cast on: the shadow past the edge is on nothing,
+        // and the compositor clips it away from the visible water (lowered water is seen only through its opening)
+        if (s && _wivLevel(C, s) < -0.5) continue;
         if (s && holes.some(h => (!h.surface || h.surface === s.id) && (_wivInPoly(h.poly, p[0], p[1]) || _wivPolyDist(h.poly, p[0], p[1]) < 0.02))) continue;
         // a shadow that only touches the water's edge (within 2 cm: look's clip drops slivers that thin) is on the bank
         const sp = s && (Array.isArray(s.poly) && s.poly.length >= 3 ? s.poly : Array.isArray(s.path) && s.width > 0 && typeof _wlSurfPoly === 'function' ? _wivPathPoly(s) : null);   // a stream (a path surface) is the drawn polygon too
@@ -494,6 +500,8 @@ const _WIV_RULES = {
   },
   edgeCut(C) {
     const W = C.W, H = C.H, A = W * H;
+    // a mover that pauses at an edge for a moment (a step of a queue, a yield) is not 'left' there: it must idle 1.5 s running
+    const eh = C.track ? (C.track.edge || (C.track.edge = new Map())) : null, edgeNow = new Set();
     for (const e of C.ents) {
       const b = _wivBox(e);
       if (!b || e.backdrop || e.cls === 'terrain' || /^line.terrain/.test(String(e.obj || ''))) continue;      // the ground is not an object: a hill runs off the frame
@@ -504,7 +512,11 @@ const _WIV_RULES = {
         if (e.framed || cls === 'bird-air' || e.layer === 'air') continue;
         if (cut.b) { _wivPush(C, 'edgeCut', e.id, `${e.obj || cls} is cut by the bottom edge (a half mover at the lens)`); continue; }
         const still = !(e.speed > 0.05) && _WIV_IDLE.has(String(e.state || 'idle'));
-        if ((cut.l || cut.r) && still && b[2] > 0 && b[0] < W) _wivPush(C, 'edgeCut', e.id, `${e.obj || cls} idles half out of the frame at the ${cut.l ? 'left' : 'right'} edge`);
+        if ((cut.l || cut.r) && still && b[2] > 0 && b[0] < W) {
+          edgeNow.add(e.id);
+          const t0 = eh ? (eh.has(e.id) ? eh.get(e.id) : (eh.set(e.id, C.t), C.t)) : -Infinity;
+          if (C.t - t0 >= 1.5) _wivPush(C, 'edgeCut', e.id, `${e.obj || cls} idles half out of the frame at the ${cut.l ? 'left' : 'right'} edge`);
+        }
         continue;
       }
       const vis = Math.max(0, Math.min(W, b[2]) - Math.max(0, b[0])) * Math.max(0, Math.min(H, b[3]) - Math.max(0, b[1]));
@@ -515,6 +527,7 @@ const _WIV_RULES = {
       if (cls === 'building' && /^line[.]/.test(String(e.obj || ''))) continue;
       _wivPush(C, 'edgeCut', e.id, `${e.obj} fills ${Math.round(vis / A * 100)} % of the frame and is cut by the ${['l', 'r', 't', 'b'].filter(k => cut[k]).map(k => ({ l: 'left', r: 'right', t: 'top', b: 'bottom' })[k]).join(' and ')} edge`);
     }
+    if (eh) for (const id of [...eh.keys()]) if (!edgeNow.has(id)) eh.delete(id);
   },
   nearBand(C) {
     const f = C.cam && _wivNum(C.cam.f) ? C.cam.f : null;
@@ -610,7 +623,10 @@ const _WIV_RULES = {
       if (!rel && pa && pb && pa.layer === a.layer && pb.layer === b.layer) {
         const r0x = pb.x - pa.x, r0z = pb.z - pa.z, r1x = b.x - a.x, r1z = b.z - a.z, dx = r1x - r0x, dz = r1z - r0z, L2 = dx * dx + dz * dz;
         const s = L2 > 1e-9 ? Math.max(0, Math.min(1, -(r0x * dx + r0z * dz) / L2)) : 0, md = Math.hypot(r0x + dx * s, r0z + dz * s);
-        if (md < minD * 0.7 && Math.hypot(r0x, r0z) >= minD) _wivPush(C, 'personalSpace', a.id, `${a.obj || a.cls} (${a.id}) walked through ${b.obj || b.cls} (${b.id}) (${_wivR(md)} m at the closest, bodies ${_wivR(minD)} m)`);
+        // two frames more than 0.3 s apart (the real-frame run samples at 2 Hz) cannot say how two bodies passed: a track that bends round the other
+        // one is not a straight line. The sweep holds at the Node run's 5 Hz (the same life sim); the instantaneous floor above holds at every rate
+        const gap = _wivNum(prev && prev.t) ? C.t - prev.t : 0;
+        if (gap <= 0.3 && md < minD * 0.7 && Math.hypot(r0x, r0z) >= minD) _wivPush(C, 'personalSpace', a.id, `${a.obj || a.cls} (${a.id}) walked through ${b.obj || b.cls} (${b.id}) (${_wivR(md)} m at the closest, bodies ${_wivR(minD)} m)`);
       }
     }
   },
@@ -810,7 +826,7 @@ const _WIV_RULES = {
         // a static redrawn over this very mover (render's occluder redraw, clipped to the mover) counts as drawn after it
         const oa = a.static !== false && Array.isArray(a.redrawFor) && a.redrawFor.includes(b.id) ? Infinity : a.order;
         const ob = b.static !== false && Array.isArray(b.redrawFor) && b.redrawFor.includes(a.id) ? Infinity : b.order;
-        if (aNear ? oa < ob : ob < oa) _wivPush(C, 'order', a.id, `${aNear ? a.id : b.id} is nearer than ${aNear ? b.id : a.id} but drawn first`);
+        if ((aNear ? oa < ob : ob < oa) && !(a.static === false && b.static === false && _wivOrderCycle(C, aNear ? a : b, aNear ? b : a))) _wivPush(C, 'order', a.id, `${aNear ? a.id : b.id} is nearer than ${aNear ? b.id : a.id} but drawn first`);
       }
     }
   },
@@ -891,6 +907,36 @@ const _WIV_RULES = {
   },
 };
 /** a is nearer than b (drawn later): the footprint test of 2.3 rule 3; worldOrderNearer when the order module is loaded. */
+/** Two footprints (one of them over 3 m deep) whose directions from the camera (x / z) do not overlap: nothing of one can hide the other. */
+function _wivDisjointLong(a, b) {
+  const fa = _wivFootOf(a), fb = _wivFootOf(b);
+  if (!fa || !fb || fa.length < 3 || fb.length < 3) return false;
+  const ext = (f) => { let z0 = Infinity, z1 = -Infinity, t0 = Infinity, t1 = -Infinity; for (const q of f) { if (!(q[1] > 0.3)) return null; z0 = Math.min(z0, q[1]); z1 = Math.max(z1, q[1]); t0 = Math.min(t0, q[0] / q[1]); t1 = Math.max(t1, q[0] / q[1]); } return { d: z1 - z0, t0, t1 }; };
+  const ea = ext(fa), eb = ext(fb);
+  if (!ea || !eb || Math.max(ea.d, eb.d) <= 3) return false;
+  return ea.t1 < eb.t0 || eb.t1 < ea.t0;
+}
+/**
+ * Is the pair (near, far) on a cycle of overlapping movers, each nearer than the one before it (a bus, a car and a walker that each hide the next)?
+ * The footprint relation is not transitive, so no one drawing order satisfies a cycle: one pair is always the wrong way round, and the renderer
+ * breaks it where it must. Such a pair is not a bug of the order.
+ */
+function _wivOrderCycle(C, near, far) {
+  const M = C.ents.filter(e => _wivNum(e.order) && _wivBox(e));
+  const boxes = new Map(M.map(e => [e.id, _wivBox(e)]));
+  const seen = new Set([near.id]), stack = [near];
+  // from near, walk to things that are nearer than the current one and overlap it (the chain near -> ... -> far closes the cycle with far -> near)
+  while (stack.length) {
+    const u = stack.pop();
+    for (const v of M) {
+      if (seen.has(v.id) || v === u || _wivBoxOverlap(boxes.get(u.id), boxes.get(v.id)) < 1 || _wivRelated(u, v)) continue;
+      if (!_wivNearer(v, u)) continue;
+      if (v.id === far.id) return true;
+      seen.add(v.id); stack.push(v);
+    }
+  }
+  return false;
+}
 function _wivNearer(a, b) {
   // one definition of "nearer" for the renderer and the checker: the order module's, when it is loaded
   if (typeof worldOrderNearer === 'function') { try { return worldOrderNearer(a, b); } catch (e) { /* the checker's own below */ } }

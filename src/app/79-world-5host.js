@@ -339,6 +339,8 @@ function _wh5Lerp(prev, cur, al) {
     if (p && Number.isFinite(p.x) && Number.isFinite(p.z)) {
       a.x = p.x + (c.x - p.x) * al; a.z = p.z + (c.z - p.z) * al;
       if (Number.isFinite(p.y) && Number.isFinite(c.y)) a.y = p.y + (c.y - p.y) * al;
+      // the footprint moves with the body: two long vehicles passing within a tick are ordered by where they are drawn, not where they were
+      if (Array.isArray(c.foot)) { const dx = a.x - c.x, dz = a.z - c.z; a.foot = c.foot.map(q => (Array.isArray(q) ? [q[0] + dx, q[1] + dz] : q)); }
     }
     out.push(a);
   }

@@ -182,9 +182,13 @@ test('personalSpace: two movers on one layer never overlap or pass through each 
   // through each other between two frames: the tracks cross, both ends are clear
   const track = E.worldInvariantTracker();
   run('personalSpace', frame([P({ id: 'a', x: 2, z: 20, r: 0.25 }), P({ id: 'b', x: 4, z: 20.05, r: 0.25 })], { t: 0 }), { track });
-  const v = run('personalSpace', frame([P({ id: 'a', x: 4, z: 20, r: 0.25 }), P({ id: 'b', x: 2, z: 20.05, r: 0.25 })], { t: 0.5 }), { track });
-  assert.equal(v.length, 1, 'two walkers swapped places through each other in half a second');
+  const v = run('personalSpace', frame([P({ id: 'a', x: 4, z: 20, r: 0.25 }), P({ id: 'b', x: 2, z: 20.05, r: 0.25 })], { t: 0.2 }), { track });
+  assert.equal(v.length, 1, 'two walkers swapped places through each other in one 5 Hz step');
   assert.match(v[0].msg, /walked through/);
+  // frames half a second apart (the real-frame run) cannot say how two bodies passed: the sweep is left to the 5 Hz run
+  const track2 = E.worldInvariantTracker();
+  run('personalSpace', frame([P({ id: 'a', x: 2, z: 20, r: 0.25 }), P({ id: 'b', x: 4, z: 20.05, r: 0.25 })], { t: 0 }), { track: track2 });
+  assert.equal(run('personalSpace', frame([P({ id: 'a', x: 4, z: 20, r: 0.25 }), P({ id: 'b', x: 2, z: 20.05, r: 0.25 })], { t: 0.5 }), { track: track2 }).length, 0, 'not judged at 2 Hz');
 });
 
 test('slidingFeet: steps at twice the rate the speed needs; matching steps are quiet', () => {
