@@ -30,7 +30,10 @@ const BY_REF = new Map(RES.results.map(r => [r.ref, r]));
 // as lintRegistry judges a hand-drawn item. So a scene going live never moves the scene corpus or its pins, and RICH_LEGACY keeps
 // meaning the retired rich art of the convert stage (composed items that are not live upgrades).
 const isLiveUpgrade = e => !!(e.item.upgrade && e.item.upgrade.state === 'live');
-const RETIRED = REG.items().filter(e => e.full && e.composed && typeof e.item.legacySvg === 'function');
+// The UK place views (item.ukPlace: the Hampshire views since 9 Oct, Manchester, Sheffield) also keep a hand-drawn fallback as legacySvg
+// for a build without the engine. That art was never part of the corpus the floors were calibrated on (the convert stage's retired
+// scenes); the views are judged by the composed profile and their kind (composed-kinds), so they are not in this corpus.
+const RETIRED = REG.items().filter(e => e.full && e.composed && !e.item.ukPlace && typeof e.item.legacySvg === 'function');
 const retiredAs = (e, rich) => Object.assign({}, e, { composed: false, rich, item: Object.assign({}, e.item, { composed: false, rich, svg: e.item.legacySvg }) });
 const RICH_LEGACY = RES.results.some(r => r.profile === 'scene-rich') ? [] : measureRegistry(REG, RETIRED.filter(e => !isLiveUpgrade(e)).map(e => retiredAs(e, true)), TH)
   .map(r => ({ ref: r.entry.ref, pack: r.entry.pack, profile: 'scene-rich', metrics: r.metrics, failures: [], waived: [] }));
