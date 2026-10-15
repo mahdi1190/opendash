@@ -1050,7 +1050,7 @@ function* _wfrBakeJob(env, S) {
         if (sp.length && bw > 0 && bh > 0) {
           const c = _wfrCanvas(bw, bh), cx = c.getContext('2d', _WFR_CPU), byId = plan.byId;
           const spriteOf = (ref) => { const r = byId.get(String(ref)), d = r && S.draw.get(r.id); return d && d.sp && d.sp.c ? { c: d.sp.c, x0: d.sp.x0, y0: d.sp.y0, w: d.sp.w, h: d.sp.h, s: r.s, flip: r.flip, X: r.X, Y: r.Y, x: r.x, d: r.z, top: d.sp.y0 } : null; };
-          worldDrawShadows(cx, sp, { vs, ox: ox - bx, oy: oy - by, spriteOf, cam, sun: typeof worldSunOf === 'function' ? worldSunOf(sun, cam) : null });
+          worldDrawShadows(cx, sp, { union: true, vs, ox: ox - bx, oy: oy - by, spriteOf, cam, sun: typeof worldSunOf === 'function' ? worldSunOf(sun, cam) : null });
           // never on water (L2): whatever the plan's holes missed, the water's own outline is cut out (what lies on it stays)
           if (S.wet && S.wet.water.length) { cx.save(); cx.setTransform(vs, 0, 0, vs, ox - bx, oy - by); _wfrWetClip(cx, S.wet, true); cx.globalCompositeOperation = 'destination-out'; cx.fillStyle = '#000'; cx.fillRect(-1e4, -1e4, 2e4, 2e4); cx.restore(); }
           lay = { c, x: bx, y: by, plan: sp };

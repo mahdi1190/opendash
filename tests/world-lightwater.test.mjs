@@ -249,3 +249,17 @@ test('a mirrored edge on a sloped contact is smooth: its edge row follows the sl
   assert.ok(worst < 0.2, `the mirrored edge lies within ${worst.toFixed(2)} px of its true row`);
   assert.ok(soft > n * 0.5, `most edge rows are anti-aliased (${soft} of ${n}), not a hard staircase`);
 });
+
+/* ---------- 16 Oct: the shadows of the static bake are a union, never a pile ---------- */
+test('the static shadow layer asks for the union (a shadow is the sun blocked once); a context with no canvas still draws the plain way', () => {
+  // five contact discs of one opacity stacked on a spot were 1 - 0.65^5 = 0.88 dark (the near-black strips along the Fleet Pond
+  // foreground); with union the bake lays them into one mask by their own opacity and paints it once. Node has no canvas: the
+  // union path declines and the plain path draws every polygon, so the count still comes back and nothing throws
+  const disc = (cx) => ({ ref: 'g' + cx, kind: 'contact', op: 0.35, scr: [[cx, 0], [cx + 4, 2], [cx + 4, 6], [cx, 8], [cx - 4, 6], [cx - 4, 2]], holesScr: [] });
+  const plan = [disc(10), disc(11), disc(12), disc(13), disc(14)];
+  const seen = [];
+  const ctx = { globalAlpha: 1, fillStyle: null, save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, closePath() {}, rect() {}, clip() {}, setTransform() {}, drawImage() {}, fill() { seen.push(this.globalAlpha); } };
+  const n = E.worldDrawShadows(ctx, plan, { union: true, col: '#14202e' });
+  assert.equal(n, 5);
+  assert.deepEqual(seen, [0.35, 0.35, 0.35, 0.35, 0.35]);
+});

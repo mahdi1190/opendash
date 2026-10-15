@@ -542,8 +542,58 @@ function _wlSilhouette(c, col) {
   if (_wlSilMemo) { if (!byCol) { byCol = new Map(); _wlSilMemo.set(c, byCol); } byCol.set(col, t); }
   return t;
 }
+/**
+ * The union of the shadows (o.union, the static bake): a shadow is the sun blocked ONCE. Drawn one over another each at its own
+ * opacity they compound (five grass clumps' contact discs at 0.35 are 0.88: the near-black strips along the foreground of the
+ * Fleet Pond, 16 Oct), so every polygon is laid into a mask by its own opacity with 'lighten' (the strongest wins where they
+ * overlap), then the mask is painted once in the shadow colour with a half-pixel penumbra. Returns the polygons drawn, or -1 when
+ * the context cannot (no canvas, no pixel read): the caller then falls back to the plain draw.
+ */
+function _wlDrawShadowUnion(ctx, plan, o) {
+  const cv = ctx && ctx.canvas, cw = cv && cv.width | 0, ch = cv && cv.height | 0;
+  if (!(cw > 0 && ch > 0) || !(typeof OffscreenCanvas === 'function' || typeof document !== 'undefined')) return -1;
+  const mk = (w, h) => (typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h }));
+  let m, g, id;
+  try { m = mk(cw, ch); g = m.getContext('2d', { willReadFrequently: true }); } catch (e) { return -1; }
+  if (!g || !g.getImageData) return -1;
+  const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0, col = o.col || '#14202e';
+  g.fillStyle = '#000'; g.fillRect(0, 0, cw, ch);
+  g.globalCompositeOperation = 'lighten';
+  const path = (P) => { g.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy); for (const q of P) g.lineTo(q[0] * vs + ox, q[1] * vs + oy); g.closePath(); };
+  let n = 0;
+  for (const s of plan) {
+    if (!s.scr || s.scr.length < 3 || !(s.op > 0)) continue;
+    const v = Math.max(1, Math.min(255, Math.round(s.op * 255))), grey = `rgb(${v},${v},${v})`;
+    g.save();
+    if (s.holesScr && s.holesScr.length && g.clip) {
+      g.beginPath(); g.rect(-1e5, -1e5, 2e5, 2e5);
+      for (const H of s.holesScr) if (H.length >= 3) path(H);
+      g.clip('evenodd');
+    }
+    g.fillStyle = grey;
+    const sp = s.sil && o.spriteOf ? o.spriteOf(s.ref) : null, sil = sp && sp.c ? _wlSilhouette(sp.c, grey) : null;
+    if (sil && o.cam && o.sun && typeof sceneShadowMatrix === 'function') {
+      const fz = Math.max(0.5, (s.poly[0] && s.poly[0][1]) || 1), M = sceneShadowMatrix(o.cam, { X: sp.X, Y: sp.Y, x: sp.x, d: sp.d || fz }, sp.s || 1, -(sp.top || sp.y0 || -1), sp.flip, o.sun, vs, ox, oy);
+      g.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
+      g.drawImage(sil, sp.x0, sp.y0, sp.w, sp.h);
+    } else { g.beginPath(); path(s.scr); g.fill(); }
+    g.restore(); n++;
+  }
+  try { id = g.getImageData(0, 0, cw, ch); } catch (e) { return -1; }
+  const c = _wlRgb(col), out = new Uint8ClampedArray(cw * ch * 4);
+  for (let p = 0, q = 0; p < cw * ch; p++, q += 4) { const v = id.data[q]; if (v) { out[q] = c[0]; out[q + 1] = c[1]; out[q + 2] = c[2]; out[q + 3] = v; } }
+  let t;
+  try { t = mk(cw, ch); t.getContext('2d').putImageData(new ImageData(out, cw, ch), 0, 0); } catch (e) { return -1; }
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+  if ('filter' in ctx) ctx.filter = `blur(${Math.max(0.6, 0.9 * vs).toFixed(2)}px)`;   // the penumbra: no octagon or polygon keeps a ruled edge
+  ctx.drawImage(t, 0, 0);
+  ctx.restore();
+  return n;
+}
 function worldDrawShadows(ctx, plan, o) {
   o = o || {};
+  if (o.union) { const k = _wlDrawShadowUnion(ctx, plan, o); if (k >= 0) return k; }
   const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0, col = o.col || '#14202e';
   let n = 0;
   const path = (P) => { ctx.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy); for (const q of P) ctx.lineTo(q[0] * vs + ox, q[1] * vs + oy); ctx.closePath(); };
