@@ -33,6 +33,10 @@ const WORLD_GROUND_LOOKS = Object.freeze({
   gravel: Object.freeze({ mat: 'gravel', specks: 1 / 190, ruts: true, fray: true, tone: 0.09, damp: 0.25 }),
   sand: Object.freeze({ mat: 'soil', specks: 1 / 260, ruts: true, fray: true, tone: 0.07, damp: 0.1 }),
   tarmac: Object.freeze({ mat: 'tarmac', tone: 0.05, gutter: true, cracks: 0.06, patches: 0.4, drains: 26 }),
+  // a flight of steps (a `stairs` surface: the 199 steps of Whitby, a cliff stair, a quay stair): worn treads across the flight, a dark
+  // riser line and a pale nosing every `treads` metres along it (a tread is 0.3 m: drawn singly it is under a pixel at 100 m, so the
+  // marks are the landings and the course lines of the flight, where they read), the flight's own edges
+  steps: Object.freeze({ mat: 'paving', treads: 1.1, tone: 0.07, edge: true, cracks: 0 }),
   mown: Object.freeze({ mat: 'grass', stripes: 2.6, ticks: 1 / 260, tone: 0.06 }),
   tussock: Object.freeze({ mat: 'grass', ticks: 1 / 150, clumps: true, tone: 0.085 }),
   heath: Object.freeze({ mat: 'grass', ticks: 1 / 200, heather: true, tone: 0.11 }),
@@ -45,7 +49,7 @@ const WORLD_GROUND_LOOKS = Object.freeze({
   earth: Object.freeze({ mat: 'soil', wall: true, earth: true, top: '#6e6046', low: '#5a4e38', wet: '#3a3a2c', fringe: '#55693a' }),
 });
 // surface kind -> its default look (a kit's look map overrides: kit.look.grass = 'mown', kit.look.path = 'flags' ...)
-const _WGD_KIND_LOOK = Object.freeze({ pavement: 'flags', platform: 'flags', driveway: 'setts', crossing: 'flags', plaza: 'setts', steps: 'flags',
+const _WGD_KIND_LOOK = Object.freeze({ pavement: 'flags', platform: 'flags', driveway: 'setts', crossing: 'flags', plaza: 'setts', steps: 'steps', stairs: 'steps',
   path: 'gravel', towpath: 'gravel', track: 'gravel', cycleway: 'tarmac', road: 'tarmac', tramway: 'tarmac', parking: 'tarmac', plot: 'sand',
   grass: 'tussock', lawn: 'mown', park: 'mown', verge: 'tussock', garden: 'mown', meadow: 'tussock', bank: 'tussock',
   heath: 'heath', wood: 'litter', field: 'rows', sand: 'ripple', beach: 'ripple', shingle: 'ripple', mud: 'litter' });
@@ -53,7 +57,7 @@ const _WGD_KIND_LOOK = Object.freeze({ pavement: 'flags', platform: 'flags', dri
 const _WGD_KIT_KEY = Object.freeze({ pavement: 'paving', platform: 'paving', driveway: 'paving', crossing: 'paving', steps: 'paving', plaza: 'plaza',
   path: 'path', towpath: 'path', track: 'path', grass: 'grass', lawn: 'grass', park: 'grass', verge: 'grass', garden: 'grass', meadow: 'grass', bank: 'grass',
   heath: 'heath', wood: 'wood', field: 'field', sand: 'sand', beach: 'sand', shingle: 'sand' });
-const _WGD_SELF = new Set(['water', 'reeds', 'reedbed', 'bed', 'hedge', 'weir', 'rail', 'tram', 'boardwalk', 'bridge-deck', 'deck', 'jetty', 'pontoon', 'stairs', 'ramp']);
+const _WGD_SELF = new Set(['water', 'reeds', 'reedbed', 'bed', 'hedge', 'weir', 'rail', 'tram', 'boardwalk', 'bridge-deck', 'deck', 'jetty', 'pontoon', 'ramp']);
 // open looks: a mown lawn and a rippled beach are dressed by their texture at half weight (they are meant to be open: a village
 // green, a beach), so the fill keeps them open with sparse things rather than a carpet
 const WORLD_GROUND_OPEN = Object.freeze(['mown', 'ripple']);
@@ -259,6 +263,22 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
       let k = 0;
       for (let u = Math.ceil(u0 / du) * du; u <= u1 && !lim(out.length); u += du, k++) { const heavy = L.courseEvery && k % L.courseEvery === 0; _wgdLine(cam, out, at(u, v0), at(u, v1), ax.u, heavy ? du * L.courseEvery : du, heavy ? 0.3 : 0.2, 'dark', zMax); }
       for (let v = Math.ceil(v0 / dv) * dv; v <= v1 && !lim(out.length); v += dv) _wgdLine(cam, out, at(u0, v), at(u1, v), ax.v, dv, 0.16, 'dark', zMax * 0.4);
+    }
+  }
+  // a flight of steps: a dark riser line then a pale nosing every `treads` metres along the strip, across its width (kept where they read)
+  if (L.treads && strip) {
+    const path = s.path, hw = s.width / 2, du = L.treads;
+    let acc = 0;
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1], c = path[i], dx = c[0] - a[0], dz = c[1] - a[1], Ls = Math.hypot(dx, dz);
+      if (!(Ls > 0)) continue;
+      const t = [dx / Ls, dz / Ls], n = [-t[1], t[0]];
+      for (let u = Math.ceil(acc / du) * du - acc; u < Ls; u += du) {
+        const p = [a[0] + t[0] * u, a[1] + t[1] * u], q = [p[0] + t[0] * du * 0.42, p[1] + t[1] * du * 0.42];
+        _wgdLine(cam, out, [p[0] - n[0] * hw, p[1] - n[1] * hw], [p[0] + n[0] * hw, p[1] + n[1] * hw], t, du, 0.5, 'dark', 320, 'tread');
+        _wgdLine(cam, out, [q[0] - n[0] * hw, q[1] - n[1] * hw], [q[0] + n[0] * hw, q[1] + n[1] * hw], t, du, 0.42, 'light', 320, 'nosing');
+      }
+      acc += Ls;
     }
   }
   // a worn central drain (an old-town lane's channel): a dark strip along the centre line, foreshortened with depth, with a lighter lip
