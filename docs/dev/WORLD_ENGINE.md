@@ -846,6 +846,26 @@ courses (buildings through `sceneBuildingProject`: visible faces only, foreshort
 primitive has a footprint, so it is ordered and occludes like any static (2.2); landmarks keep their hand-drawn art but are
 placed and scaled by the camera.
 
+#### Streets of houses and jetties (ST1-ST6)
+
+`buildings: [{ id, along: <surface id>, side: 'left' | 'right', style, storeys: n | [a, b], from, to, depth, shops }]` is a whole side of a
+street. `worldFrontageExpand` (`79-world-1frontage.js`, called once from `worldBuild` before anything reads a footprint) walks the surface's
+centre line and replaces the rule by its houses: a polygon each (a bend bends the row), a frontage and depth from the style's range, a storey
+count, a seed, party walls, a front line that steps in and out by up to a third of a metre, ground-floor shops. From then on they are
+ordinary `world.buildings`: solid to the solver and to the navigation (`worldNavBuild` cuts their footprints out of the ground grids), cover
+for the measures (`worldPrimEntities`), extruded like any other.
+
+The generator reaches a style's own machinery through four small hooks in `70-scene-gen-0building.js`: `style.resolve(sp, b)` (seeded
+choices from the style's own stream), `style.build(b, sp, foot, modelFn, opt, view)` (the model; the timber style stacks its storeys),
+`face.layout(sp, face, model)` (a face with its own layout) and the registries `_scbgElemKinds` / `_scbgBlockKinds` (element and block kinds
+a style file defines). `70-scene-gen-1timber.js` + `70-scene-gen-style-timber-framed.js`: each storey's front is a face on its own plane
+shifted by its overhang (`sp.tf.jet[i]`), side faces start at the shifted corner, a soffit under each overhang, frames (`tframe`: posts, plates,
+rails, studs, braces, rake boards in oak around the openings) with the stud pitch following the projected spacing, leaded casements, a gable
+window, shopfronts (display window, stall riser, fascia board, a lit interior after dusk), limewash patches, and fittings hung from the wall
+(stall board with wares, striped awning, a hanging sign with a plain motif, an iron lantern with its glow, a basket in the season's flowers),
+each beyond its own near depth in a perspective view (`_SCTF_NEAR`). Roof, gable and chimneys come from the generator's model on the top storey.
+The kit `old-town-lane` (`79-world-0kits.js`) and the ground look `lane` (`79-world-4ground.js`: a running bond, a central drain) complete it.
+
 ### 14.3 Views, foreshortening and overscan (Q4, Q5, Q6)
 
 - `worldViewOf(ent, cam)`: objects choose their view (front, three-quarter, side, the same 5 views as movers, + mirrors) from

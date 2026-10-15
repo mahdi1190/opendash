@@ -170,7 +170,7 @@ function _wivWaterAt(C, x, z) {
   return s;
 }
 function _wivGroundY(C, x, z) {
-  // the world's own camera carries the relief (the frame record's copy may not): a hill or a cliff is ground, never 'above the ground'
+  // the frame record's camera is the reduced one (no relief): the world's own camera knows the terrain (W2, a church on a cliff is not floating)
   const cam = C.world && C.world.cam && C.world.cam.relief ? C.world.cam : C.cam;
   if (cam && typeof sceneGroundHeight === 'function') { try { const h = sceneGroundHeight(cam, x, z); if (_wivNum(h)) return h; } catch (e) { /* flat */ } }
   return 0;
@@ -203,7 +203,8 @@ const _WIV_SIZE = { person: [0.9, 2.0], cyclist: [1.3, 2.1], dog: [0.25, 0.75], 
 
 /* ---------- the context of one call ---------- */
 function _wivContext(frame, o) {
-  const ents = Array.isArray(frame && frame.ents) ? frame.ents.filter(e => e && e.id != null) : [];
+  // the terrain's own strips are the ground, not things standing on it (79-world-4terrain.js): no rule judges them
+  const ents = Array.isArray(frame && frame.ents) ? frame.ents.filter(e => e && e.id != null && e.obj !== 'line.terrain') : [];
   const world = o.world || null, track = o.track || null;
   const C = { frame, o, world, track, ents, byId: new Map(), cam: frame.cam || (world && world.cam) || null,
     W: _wivNum(frame.W) ? frame.W : 1600, H: _wivNum(frame.H) ? frame.H : 900, t: _wivNum(frame.t) ? frame.t : 0,
@@ -373,7 +374,10 @@ const _WIV_RULES = {
         if (h && h.deck && _wivNum(h.deck.y) && Math.abs(e.y - h.deck.y) > 0.08 && e.static !== false) _wivPush(C, 'floating', e.id, `${e.obj} is at y ${_wivR(e.y)} on a deck at ${_wivR(h.deck.y)}`);
         continue;
       }
-      const info = _wivInfo(e.obj), raw = _wivSurfRaw(C, e.x, e.z), g = _wivGroundY(C, e.x, e.z);
+      const info = _wivInfo(e.obj), raw = _wivSurfRaw(C, e.x, e.z);
+      // a drawn piece (a building, a wall) stands on the ground at its LOWEST corner: on a slope its back is in the hill by design
+      let g = _wivGroundY(C, e.x, e.z);
+      if (e.prim && Array.isArray(e.foot) && e.foot.length) { for (const q of e.foot) if (Array.isArray(q) && _wivNum(q[0]) && _wivNum(q[1])) g = Math.min(g, _wivGroundY(C, q[0], q[1])); }
       const lvl = _wivNum(e.waterline) ? e.waterline : _wivLevel(C, _wivIsWater(raw) ? raw : null), sink = info && info.floats ? (info.sink || 0) : 0;
       let wants, what;
       if (e.layer === 'swim' || e.layer === 'wade' || att === 'water') {
@@ -507,6 +511,8 @@ const _WIV_RULES = {
       if (vis / A <= 0.25) continue;
       if (e.framing || _WIV_FRAMERS.has(cls)) continue;
       if (cut.t && !cut.l && !cut.r && !cut.b && /^(building|landmark|structure)$/.test(cls)) continue;   // a tall building cut at the top
+      // an extruded building is the PLACE, never moved (C1): a street's frontage runs out of the frame at its sides and top, it is cut by the frame by perspective (its ground line leaves at the bottom corner too), not by a bad placement (a lane between two rows of houses)
+      if (cls === 'building' && /^line[.]/.test(String(e.obj || ''))) continue;
       _wivPush(C, 'edgeCut', e.id, `${e.obj} fills ${Math.round(vis / A * 100)} % of the frame and is cut by the ${['l', 'r', 't', 'b'].filter(k => cut[k]).map(k => ({ l: 'left', r: 'right', t: 'top', b: 'bottom' })[k]).join(' and ')} edge`);
     }
   },
@@ -717,7 +723,7 @@ const _WIV_RULES = {
     if (!C.ents.some(e => e.anim)) return 'na';
     for (const m of C.movers) {
       const a = m.anim;
-      if (!a || m.layer === 'rail') continue;
+      if (!a || m.layer === 'rail' || m.stepping) continue;   // a step onto or off a seat is the transition itself (eased, under 2 s)
       const h = C.track ? (C.track.anim.get(m.id) || C.track.anim.set(m.id, { mov: -1e9, still: -1e9 }).get(m.id)) : null;
       const sp = _wivNum(m.speed) ? m.speed : Math.hypot(m.vx || 0, m.vz || 0);
       if (h && sp < 0.05) h.still = C.t;
@@ -1019,7 +1025,7 @@ function worldInvariantFrame(world, agents, o) {
     let anim = a.anim || null;
     if (!anim && typeof worldAnimOf === 'function') { try { anim = worldAnimOf(a) || null; } catch (e) { anim = null; } }
     ents.push({ id: a.id, cls: a.cls || (info && info.cls) || null, obj: a.obj, static: false, x: a.x, y: a.y, z: a.z, facing: a.heading != null ? a.heading * _WIV_DEG : null,
-      foot, height: h, r: _wivNum(a.r) ? a.r : r, group: a.group || null, leash: !!a.lead, intent: a.intent || null, resident: !!a.resident, squeeze: !!a.squeeze, leader: a.leader || null, layer: a.layer || null, host: a.host || null, view: a.view || null, mirror: !!a.mirror, framed: !!a.framed, sideOnly: a.sideOnly,
+      foot, height: h, r: _wivNum(a.r) ? a.r : r, group: a.group || null, leash: !!a.lead, intent: a.intent || null, resident: !!a.resident, squeeze: !!a.squeeze, stepping: !!a.stepping, leader: a.leader || null, layer: a.layer || null, host: a.host || null, view: a.view || null, mirror: !!a.mirror, framed: !!a.framed, sideOnly: a.sideOnly,
       box: cam ? _wivBoxOf(cam, { x: a.x, z: a.z, y: a.y, foot: null }, h, info ? info.size.w : h * 0.4) : null, order: null,
       speed: Math.hypot(a.vx || 0, a.vz || 0), vx: a.vx || 0, vz: a.vz || 0, state: a.state || null, born: born ? born.get(a.id) : null,
       anim, sway: null, shadow: a.shadow || null, reflect: a.reflect || null, look: a.look || null, leaving: !!a.leaving });

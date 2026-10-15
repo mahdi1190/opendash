@@ -12,7 +12,8 @@
   // group each under its real place, next to its v2 views (the gallery's "all versions at this location")
   const PLACE = { 'fleet-canal-2-w3': ['fleet-canal', 'hampshire', 'Fleet'], 'fleet-pond-2-w3': ['fleet-pond', 'hampshire', 'Fleet'],
     'sheffield-kelham-1-w3': ['kelham-island', 'south-yorkshire', 'Sheffield'], 'whitby-harbour-1-w3': ['whitby-harbour', 'north-yorkshire', 'Whitby'],
-    'malham-cove-1-w3': ['malham-cove', 'north-yorkshire', 'Malham'] };
+    'malham-cove-1-w3': ['malham-cove', 'north-yorkshire', 'Malham'],
+    'york-shambles-1-w3': ['york-shambles', 'north-yorkshire', 'York'] };
   const items = src.map(it => Object.assign({}, it, PLACE[it.id] ? { ukPlace: PLACE[it.id][0], county: PLACE[it.id][1], ukTown: PLACE[it.id][2], ukView: 'world-engine' } : {}, {
     label: /\(world\)/.test(String(it.label || '')) ? it.label : String(it.label || it.id) + ' (world)',
     tags: (Array.isArray(it.tags) ? it.tags : []).concat(['world-engine', 'preview']),

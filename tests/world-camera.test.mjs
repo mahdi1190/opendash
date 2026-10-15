@@ -279,7 +279,8 @@ test('C4, 16.3: an authored tree wall in front of a landmark is moved aside (pla
   w3.buildings = [{ id: 'warehouse', foot: [[-12, 60], [6, 60], [6, 72], [-12, 72]], storeys: 4, style: 'victorian-terrace' }];
   const r3 = W.worldLandmarkCheck(w3, w3.cam, { apply: true }).landmarks[0];
   assert.equal(r3.ok, false, `the warehouse hides it (${r3.visible})`);
-  assert.ok(r3.fix.hard.includes('warehouse') && !w3.log.some(l => l.rule === 'C4'), 'named, never touched');
+  // a long terrace-like footprint is cut into houses (warehouse#0, #1, ...): each is named, none is touched
+  assert.ok(r3.fix.hard.length > 0 && r3.fix.hard.every(id => id === 'warehouse' || id.startsWith('warehouse#')) && !w3.log.some(l => l.rule === 'C4'), 'named, never touched');
 });
 
 test('C4, section 19: a landmark at the frame side fails the tile crop and asks for a re-aim', () => {

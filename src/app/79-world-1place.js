@@ -40,8 +40,11 @@ const _WPL_NOT_INSIDE = Object.freeze(['shrub', 'reed', 'duck', 'coot', 'swan', 
 /** Classes drawn at true scale that become giants near the lens: kept out of the near band unless framed (A10, C2). */
 const _WPL_NEAR_BAND = Object.freeze(['person', 'dog', 'cyclist', 'grazer', 'animal', 'duck', 'coot', 'swan', 'goose', 'grebe', 'heron', 'bird', 'gull',
   // props are no framing either: a bollard, a post or a bin at the lens is a dark blob filling the frame's corner
-  'post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle']);
-const _WPL_PROPS = Object.freeze(['post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle']);
+  'post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle',
+  // ... nor is a shop's A-board (class signage), a parasol or a cafe table: the same dark blob in a lane's near corner
+  'signage', 'umbrella', 'cafe-table']);
+const _WPL_FILL_BAND = Object.freeze(['signage', 'umbrella', 'cafe-table']);
+const _WPL_PROPS = Object.freeze(['post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle', 'signage', 'umbrella', 'cafe-table']);
 /** Classes that never stand on a walking line (P3). */
 const _WPL_OFFLINE = Object.freeze(['tree', 'shrub', 'reed', 'hedge', 'fence', 'rock', 'bench', 'lamp', 'post', 'street', 'building', 'vehicle', 'structure', 'gate']);
 /** Parents (K4) when kb has none: a bough by its tree, willow fronds by a willow. */
@@ -432,11 +435,21 @@ function _wplInKeep(world, e, foot) {
 const _wplOffline = (info, e) => !e.landmark && e.blocks !== true && _WPL_OFFLINE.includes(info.cls) && !/^(deck|wall|air)/.test(String(e.attach || ''));
 
 /** Could entity e stand at (x, z) with facing? Habitat over the footprint, no walking line, no overlap, no kept approach. */
+/** The depth in front of which a shop's A-board, a parasol or a cafe table (the classes the fill places with no near band of their own) would be a dark blob at the lens: where a 1.3 m thing is about 12 % of the frame (step 3b's rule, TR3); 0 for anything else. The kits' low near dressing (bins, tubs, planters) keeps its own tier. */
+function _wplPropBand(world, e, info) {
+  const cam = world && world.cam;
+  if (!cam || !_wcNum(cam.f) || !(cam.f > 0) || !(_WPL_FILL_BAND.includes(info.cls) || _WPL_FILL_BAND.includes(((typeof worldKb === 'function' && worldKb(e.obj)) || {}).cls)) || e.landmark || e.framed || e.framing || e.auto === 'frame' || /^(air|wall)/.test(String(e.attach))) return 0;
+  const hRef = Math.max(info.size.h, _wcNum(e.height) ? e.height : 0), foot = _wcNum(cam.eye) && _wcNum(cam.horizon) && cam.horizon < 900 ? cam.f * Math.max(0.2, cam.eye - (_wcNum(e.y) ? e.y : 0)) / (900 - cam.horizon) + 0.3 : 0;
+  return Math.max(cam.f * Math.min(hRef, 1.3) / 110, foot);
+}
 function worldPlaceOk(world, e, x, z, facing) {
   try {
     const info = e && worldObjectInfo(e.obj);
     if (!info) return { ok: false, reason: 'no descriptor for ' + (e && e.obj) };
     if (!_wcNum(x) || !_wcNum(z)) return { ok: false, reason: 'no position' };
+    // the fill's furniture obeys the near band too (SCENE_LESSONS J: a prop at the lens is a blob in the corner of the frame)
+    const nb = _wplPropBand(world, e, info);
+    if (nb > 0 && z < nb) return { ok: false, reason: 'in the near band of the lens (a prop nearer than ' + (Math.round(nb * 10) / 10) + ' m fills the corner of the frame)', rule: 'nearBand' };
     const f = _wcNum(facing) ? facing : (_wcNum(e.facing) ? e.facing : 90), foot = _wcFoot(info, x, z, f);
     if (_wplOffline(info, e)) { const line = _wplOnLine(world, foot); if (line) return { ok: false, reason: 'on the walking line of ' + line, rule: 'blocksPath' }; }
     const hab = _wplHabitat(world, e, info, x, z, f);
@@ -696,9 +709,9 @@ function worldPlace(world) {
     const foot = _wcNum(cam.eye) && _wcNum(cam.horizon) && cam.horizon < 900 ? cam.f * Math.max(0.2, cam.eye - (_wcNum(e.y) ? e.y : 0)) / (900 - cam.horizon) + 0.3 : 0;
     // a person or animal is a giant when it would fill 45 % of the frame; an inanimate prop (a bollard, a post, a bin, a bench) is a dark
     // blob in the frame's corner when it fills even a quarter of it, whatever its real height (a 5 m lamp is thin: it is the 1.3 m a
-    // blob is made of): such a prop keeps to where a 1.3 m thing is about 12 % of the frame
+    // blob is made of): such a prop keeps to where a 1.3 m thing is about 20 % of the frame
     const prop = _WPL_PROPS.includes(info.cls), hRef = Math.max(info.size.h, _wcNum(e.height) ? e.height : 0);
-    const band = Math.max(prop ? cam.f * Math.min(hRef, 1.3) / 110 : cam.f * hRef * 1.1 / 405, foot);
+    const band = Math.max(prop ? cam.f * Math.min(hRef, 1.3) / 180 : cam.f * hRef * 1.1 / 405, foot);
     if (!(e.z < band)) return;
     const from = [e.x, e.z], z0 = Math.max(0.3, e.z);
     for (let k = 0; k < 16; k++) {

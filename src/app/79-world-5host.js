@@ -43,11 +43,20 @@ const _WH5_R = (v) => Math.round(v * 100) / 100;
  * `at`, landmarks), enough to draw the statics. Then the hedge dressing (a hedge surface nothing dresses gets its hedge,
  * logged). o: { season }.
  */
+const _wh5WorldMemo = new Map();   // spec text + season -> the built world (three kept): the second mount of a scene (G12: warm load) clones it, never rebuilds it
+function _wh5Sig(spec, season) { try { return String(season || '') + '|' + JSON.stringify(spec); } catch (e) { return null; } }
 function worldHostWorld(spec, o) {
   o = o || {};
   let world = null;
   if (typeof worldBuild === 'function') {
-    try { world = worldBuild(spec, { season: o.season }) || null; } catch (e) { world = null; }
+    const sig = typeof structuredClone === 'function' ? _wh5Sig(spec, o.season) : null, memo = sig ? _wh5WorldMemo.get(sig) : null;
+    if (memo) { try { world = structuredClone(memo); } catch (e) { world = null; } }
+    if (!world) {
+      try { world = worldBuild(spec, { season: o.season }) || null; } catch (e) { world = null; }
+      if (world && sig) {
+        try { _wh5WorldMemo.set(sig, structuredClone(world)); while (_wh5WorldMemo.size > 3) _wh5WorldMemo.delete(_wh5WorldMemo.keys().next().value); } catch (e) { /* not cloneable: built each time */ }
+      }
+    }
   }
   if (!world) {
     const entities = [];

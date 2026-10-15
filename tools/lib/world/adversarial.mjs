@@ -218,7 +218,7 @@ export function adversarialRun(E, fx, o = {}) {
       if (res.addNotes.some(n => /\(fatal\)/.test(n))) res.registered = false;
     } catch (e) { res.registered = false; res.registerError = e.message; }
   }
-  const run = worldInvariantRun(E, JSON.parse(JSON.stringify(fx.spec)), { seconds: o.seconds || 120, hz: o.hz || 5, ms: o.ms });
+  const run = worldInvariantRun(E, JSON.parse(JSON.stringify(fx.spec)), { seconds: o.seconds || 120, hz: o.hz || 5, ms: o.ms, frameAt: o.frameAt || 'render' });
   res.run = run;
   res.built = !run.error || !/worldBuild threw/.test(run.error);
   res.log = run.log || [];

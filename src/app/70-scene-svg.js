@@ -97,7 +97,21 @@ function _scCol(c, L, haze, tint) { return typeof sceneColour === 'function' && 
 function _scRndOf(seed) { let s = (seed >>> 0) || 1; return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296); }
 
 /** Conservative bounds [x0, y0, x1, y1] of SVG path data (control points included), mapped through m. */
+const _scPathBoxMemo = new Map();   // path text -> its raw bounds (the same path is boxed for every scale, part and light of its sprite)
 function scenePathBox(d, m) {
+  const key = typeof d === 'string' && d.length > 24 ? d : null;
+  let b = key ? _scPathBoxMemo.get(key) : undefined;
+  if (b === undefined) {
+    b = _scPathBoxRaw(d);
+    if (key) { if (_scPathBoxMemo.size > 30000) _scPathBoxMemo.clear(); _scPathBoxMemo.set(key, b); }
+  }
+  if (!b) return null;
+  const x0 = b[0], y0 = b[1], x1 = b[2], y1 = b[3];
+  if (!m) return [x0, y0, x1, y1];
+  const pts = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map(([x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]);
+  return [Math.min(...pts.map(p => p[0])), Math.min(...pts.map(p => p[1])), Math.max(...pts.map(p => p[0])), Math.max(...pts.map(p => p[1]))];
+}
+function _scPathBoxRaw(d) {
   const tok = String(d || '').match(/[MLHVCSQTAZmlhvcsqtaz]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g);
   if (!tok) return null;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, cx = 0, cy = 0, sx = 0, sy = 0, cmd = 'M', i = 0;
@@ -116,9 +130,7 @@ function scenePathBox(d, m) {
     if (U === 'M') { sx = cx; sy = cy; cmd = rel ? 'l' : 'L'; }
   }
   if (!isFinite(x0)) return null;
-  if (!m) return [x0, y0, x1, y1];
-  const pts = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map(([x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]);
-  return [Math.min(...pts.map(p => p[0])), Math.min(...pts.map(p => p[1])), Math.max(...pts.map(p => p[0])), Math.max(...pts.map(p => p[1]))];
+  return [x0, y0, x1, y1];
 }
 
 /**
