@@ -47,6 +47,8 @@ const WORLD_MATERIALS = Object.freeze({
   paving: { wet: 0.32, frost: 0.35, snow: 'ground', season: null, gloss: 0.05, hard: true },
   gravel: { wet: 0.3, frost: 0.4, snow: 'ground', season: null, gloss: 0, hard: true },
   soil: { wet: 0.35, frost: 0.5, snow: 'ground', season: null, gloss: 0 },
+  // broken rock on a slope (the talus at the foot of a cliff, 4terrain): wet like stone, and snow lies on it as on any ground
+  scree: { wet: 0.34, frost: 0.25, snow: 'ground', season: null, gloss: 0, hard: true },
   // hoar frost the art paints itself (the 'frost' palette colour on winter twigs, plates and seed heads): weather, not art; it shows
   // on frosty and snowy days only (worldMaterialVisible), never as white limbs on every winter afternoon
   rime: { wet: 0, frost: 0, snow: null, season: null, gloss: 0.2 },

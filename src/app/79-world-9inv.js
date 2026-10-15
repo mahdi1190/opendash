@@ -795,6 +795,8 @@ const _WIV_RULES = {
         if (b === a || !_wivNum(b.order)) continue;
         const bb = _wivBox(b);
         if (_wivBoxOverlap(ab, bb) < 1 || _wivRelated(a, b)) continue;
+        // terrain that does not reach above a mover's feet cannot hide it (the order skips its redraw: 4terrain worldTerrainOccludes)
+        if (typeof worldTerrainOccludes === 'function' && ((a.static !== false && a.tops && !worldTerrainOccludes({ tops: a.tops }, { x0: bb[0], y0: bb[1], x1: bb[2], y1: bb[3] })) || (b.static !== false && b.tops && !worldTerrainOccludes({ tops: b.tops }, { x0: ab[0], y0: ab[1], x1: ab[2], y1: ab[3] })))) continue;
         const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
         if (seen.has(k)) continue;
         seen.add(k);

@@ -160,12 +160,12 @@ function worldCliffZone(f, x, z) {
    (TR8). The colours are base colours: the material system and the light grade them when drawn.
    ============================================================ */
 const _WCL_LOOK = Object.freeze({
-  limestone: { base: '#c7c3b8', dark: '#4b4843', light: '#e6e3d8', stain: '#3f443f', lichen: '#aaa66a', moss: '#667f48', bed: [1.5, 6.5], joint: [3, 10], tone: 0.1, joints: 1, streak: 1, ledge: 1, veg: 1 },
-  gritstone: { base: '#968d7c', dark: '#3b3731', light: '#b9b09e', stain: '#34332e', lichen: '#9b9656', moss: '#586f3a', bed: [3, 9], joint: [9, 28], tone: 0.07, joints: 0.5, streak: 0.8, ledge: 0.9, veg: 0.6 },
-  chalk: { base: '#e9e7de', dark: '#85827a', light: '#f7f6ee', stain: '#868b7c', lichen: '#bab58c', moss: '#7b9b50', bed: [0.7, 2.4], joint: [10, 30], tone: 0.03, joints: 0.3, streak: 0.4, ledge: 0.55, veg: 1.2 },
-  sandstone: { base: '#c8aa80', dark: '#5f4932', light: '#dfc59e', stain: '#5a4a38', lichen: '#a9a35c', moss: '#62793e', bed: [1.2, 4.5], joint: [5, 16], tone: 0.07, joints: 0.7, streak: 0.9, ledge: 0.9, veg: 0.8 },
-  slate: { base: '#6e7278', dark: '#25282c', light: '#8f949a', stain: '#23262a', lichen: '#7e8564', moss: '#4f6a3e', bed: [0.35, 1.3], joint: [1.2, 4], tone: 0.06, joints: 1.6, streak: 0.8, ledge: 0.6, veg: 0.4 },
-  granite: { base: '#a29d95', dark: '#3d3a36', light: '#c4c0b8', stain: '#383a38', lichen: '#a09b62', moss: '#5a7340', bed: [2.5, 7.5], joint: [2.5, 8], tone: 0.06, joints: 1.2, streak: 0.8, ledge: 0.7, veg: 0.5 },
+  limestone: { base: '#c7c3b8', warm: '#d6cbb0', cool: '#aab0b2', dark: '#4b4843', light: '#e6e3d8', stain: '#3f443f', lichen: '#aaa66a', moss: '#667f48', bed: [1.5, 6.5], joint: [3, 10], tone: 0.1, joints: 1, streak: 1, ledge: 1, veg: 1 },
+  gritstone: { base: '#968d7c', warm: '#a89a80', cool: '#837f78', dark: '#3b3731', light: '#b9b09e', stain: '#34332e', lichen: '#9b9656', moss: '#586f3a', bed: [3, 9], joint: [9, 28], tone: 0.07, joints: 0.5, streak: 0.8, ledge: 0.9, veg: 0.6 },
+  chalk: { base: '#e9e7de', warm: '#f1eadb', cool: '#dcdfdc', dark: '#85827a', light: '#f7f6ee', stain: '#868b7c', lichen: '#bab58c', moss: '#7b9b50', bed: [0.7, 2.4], joint: [10, 30], tone: 0.03, joints: 0.3, streak: 0.4, ledge: 0.55, veg: 1.2 },
+  sandstone: { base: '#c8aa80', warm: '#d9b88a', cool: '#b99f84', dark: '#5f4932', light: '#dfc59e', stain: '#5a4a38', lichen: '#a9a35c', moss: '#62793e', bed: [1.2, 4.5], joint: [5, 16], tone: 0.07, joints: 0.7, streak: 0.9, ledge: 0.9, veg: 0.8 },
+  slate: { base: '#6e7278', warm: '#7b7468', cool: '#5f666e', dark: '#25282c', light: '#8f949a', stain: '#23262a', lichen: '#7e8564', moss: '#4f6a3e', bed: [0.35, 1.3], joint: [1.2, 4], tone: 0.06, joints: 1.6, streak: 0.8, ledge: 0.6, veg: 0.4 },
+  granite: { base: '#a29d95', warm: '#b3a590', cool: '#8f9396', dark: '#3d3a36', light: '#c4c0b8', stain: '#383a38', lichen: '#a09b62', moss: '#5a7340', bed: [2.5, 7.5], joint: [2.5, 8], tone: 0.06, joints: 1.2, streak: 0.8, ledge: 0.7, veg: 0.5 },
 });
 function _wclHash(s) { let h = 2166136261 >>> 0; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
 function _wclRng(seed) { let a = (seed >>> 0) || 1; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -201,7 +201,7 @@ function _wclTex(g) {
   let h = -r() * 2;
   while (h < g.H + 3) {
     const th = lk.bed[0] + (lk.bed[1] - lk.bed[0]) * Math.pow(r(), 1.5);
-    beds.push({ h0: h, th, tone: r() * 2 - 1, prom: Math.pow(r(), 1.4), dip: (r() * 2 - 1) * 0.6, seed: seed + 'b' + beds.length, lich: r() < 0.3 });
+    beds.push({ h0: h, th, tone: r() * 2 - 1, warm: r() * 2 - 1, prom: Math.pow(r(), 1.4), dip: (r() * 2 - 1) * 0.6, seed: seed + 'b' + beds.length, lich: r() < 0.3 });
     h += th;
   }
   // ledges: a run of a few metres to a few tens along a bed boundary where that bed stands proud (a dark line, shade below, tufts on it)
@@ -341,10 +341,12 @@ function _wclFace(g, cam, o) {
           // the foot is damp and dark, the top dry and pale
           const amb = 0.86 + 0.18 * Math.pow(Math.max(0, Math.min(1, hmid)), 0.6);
           let hex = _wclShade(lk.base, Math.round(tone * amb * 80) / 80);
+          // the beds differ in hue as well as tone: a cream bed, a cooler grey one
+          if (Math.abs(bed.warm) > 0.2) hex = _wclMix(hex, bed.warm > 0 ? lk.warm : lk.cool, Math.abs(bed.warm) * 0.28);
           if (hmid < 0.08) hex = _wclMix(hex, lk.moss, 0.2 * (1 - hmid / 0.08));
           if (bed.lich) { const ln = _wclN1(bed.seed + 'l', c.s / 22); if (ln > 0.35) hex = _wclMix(hex, lk.lichen, 0.28 * Math.min(1, (ln - 0.35) * 3)); }
           // the face is never one plane: pillars and recesses turn its normal a little (lit on one side, shaded on the other)
-          const wob = 0.28 * _wclN1(T.seed + 'w', c.s / 9) + 0.16 * _wclN1(T.seed + 'w2', c.s / 3.7), cw = Math.cos(wob), sw = Math.sin(wob);
+          const wob = 0.42 * _wclN1(T.seed + 'w', c.s / 11) + 0.2 * _wclN1(T.seed + 'w2', c.s / 4.1), cw = Math.cos(wob), sw = Math.sin(wob);
           stops.push([_wclR1((c.X - X0) / span * 100) / 100, hex, _wclR1((c.nx * cw - c.nz * sw) * 100) / 100, _wclR1((c.nx * sw + c.nz * cw) * 100) / 100]);
         }
       });
@@ -424,6 +426,7 @@ function _wclFace(g, cam, o) {
       if (j.major) { const c0 = P(j.s, 0), [lo, hi] = bounds(c0.m); const pt = P(j.s, hi), pb = P(j.s, lo); pts.unshift([pt.X, pt.Y, pt.k]); pts.push([pb.X, pb.Y, pb.k]); pts.sort((a, b) => a[1] - b[1]); }
       if (pts.length < 2) continue;
       const kk = pts.reduce((a, q) => a + q[2], 0) / pts.length, wpx = Math.max(0.9, kk * j.w * lk.joints * 0.9);
+      if (j.major) stroke(pts.map(q => [q[0] + wpx, q[1]]), 'stone', lk.dark, Math.max(3, wpx * 4), 0.1);
       stroke(pts.map(q => [q[0], q[1]]), 'stone', lk.dark, wpx, Math.min(0.85, 0.26 + 0.5 * j.k));
       stroke(pts.map(q => [q[0] + wpx * 0.9, q[1]]), 'stone', lk.light, Math.max(0.7, wpx * 0.6), 0.14 + 0.12 * j.k, { up: true });
     }
@@ -454,15 +457,16 @@ function _wclFace(g, cam, o) {
       capBot.push([pb.X, pb.Y]); capTop.push([pt.X, pt.Y]);
     }
     if (g.H > 3) {
-      fill(capTop.concat(capBot.slice().reverse()), 'grass', '#6d8a45', 1, { up: true });
-      fill(capTop.map((q, i) => [q[0], q[1] + (capBot[i][1] - q[1]) * 0.45]).concat(capBot.slice().reverse().map(q => [q[0], q[1] + 0.6])), 'grass', '#4f6a35', 0.55);
+      fill(capTop.concat(capBot.slice().reverse()), 'grass', '#7d9358', 1, { up: true });
+      fill(capTop.map((q, i) => [q[0], q[1] + (capBot[i][1] - q[1]) * 0.45]).concat(capBot.slice().reverse().map(q => [q[0], q[1] + 0.6])), 'grass', '#5d7541', 0.5);
+      stroke(capBot.map(q => [q[0], q[1] + 0.2]), 'stone', lk.light, Math.max(1.2, cm.m * f / cm.z * 0.45), 0.55, { up: true });
       stroke(capBot.map(q => [q[0], q[1] + 0.8]), 'stone', lk.dark, Math.max(1.2, cm.m * f / cm.z * 0.5), 0.5);
       for (const rm of T.rim) {
         if (rm.s < sa || rm.s >= sb) continue;
         const m = P(rm.s, 0).m, [, hi] = bounds(m), lipH = Math.min(g.lipH * m, g.H * m * 0.2), p = P(rm.s, hi * rimLift(rm.s) + lipH), p2 = P(rm.s + rm.w, hi * rimLift(rm.s) + lipH + rm.h);
         const rr = _wclRng(rm.seed), n = 6, pts = [], cxp = (p.X + p2.X) / 2, w2 = Math.max(1.5, Math.abs(p2.X - p.X) / 2), hh = Math.max(1.5, Math.abs(p.Y - p2.Y));
         for (let i = 0; i < n; i++) { const an = Math.PI + i / (n - 1) * Math.PI; pts.push([cxp + Math.cos(an) * w2 * (0.8 + rr() * 0.3), p.Y + 1 + Math.sin(an) * hh * (0.7 + rr() * 0.4)]); }
-        fill(pts, 'grass', rm.a < 0.5 ? '#6a8944' : '#5a7a3b', 1, { up: true });
+        fill(pts, 'grass', rm.a < 0.5 ? '#778f50' : '#69804a', 1, { up: true });
       }
       for (const rt of T.rimTrees) {
         if (rt.s < sa || rt.s >= sb) continue;

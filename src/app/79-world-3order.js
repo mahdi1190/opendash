@@ -397,6 +397,10 @@ function worldOrderCheck(order, boxes, opts) {
   }
   var bad = [];
   function test(a, b) {
+    // a terrain strip that does not reach above a mover's feet cannot hide it: the frame does not redraw it over the mover (4terrain)
+    var ea = ents[a], eb = ents[b];
+    if (ea.occlude && mov[b] && !ea.occlude({ x0: X0[b], y0: Y0[b], x1: X1[b], y1: Y1[b] })) return;
+    if (eb.occlude && mov[a] && !eb.occlude({ x0: X0[a], y0: Y0[a], x1: X1[a], y1: Y1[a] })) return;
     var aNear = worldOrderNearer(ents[a], ents[b]);
     if (aNear ? pos[a] < pos[b] : pos[b] < pos[a]) bad.push({ a: ents[a].id, b: ents[b].id, why: (aNear ? ents[a].id : ents[b].id) + ' is nearer but drawn first' });
   }
@@ -423,7 +427,7 @@ function worldOrderCheck(order, boxes, opts) {
     var m = movers[i], mx0 = X0[m], my0 = Y0[m], mx1 = X1[m], my1 = Y1[m];
     for (j = 0; j < n; j++) {
       if (j === m || !has[j] || (mov[j] && j < m)) continue;   // a mover pair is tested once
-      if (mx0 < X1[j] && X0[j] < mx1 && my0 < Y1[j] && Y0[j] < my1) { if (ents[j].occlude && !ents[j].occlude({ x0: mx0, y0: my0, x1: mx1, y1: my1 })) continue; test(m, j); }
+      if (mx0 < X1[j] && X0[j] < mx1 && my0 < Y1[j] && Y0[j] < my1) test(m, j);
     }
   }
   return bad;

@@ -63,7 +63,7 @@ function _wtrTops(prim) {
   for (const op of prim.ops || []) { if (op.p) for (const q of op.p) pts.push(q); else if (op.t === 'tree') { pts.push([op.x - op.w, op.y - op.h * 1.1], [op.x + op.w, op.y]); } }
   for (const q of pts) { if (q[0] < a) a = q[0]; if (q[0] > b) b = q[0]; }
   if (!pts.length || !isFinite(a)) return null;
-  const x0 = Math.floor(a / W), n = Math.floor(b / W) - x0 + 1, y = new Array(n).fill(Infinity);
+  const x0 = Math.floor(a / W), n = Math.floor(b / W) - x0 + 1, y = new Array(n).fill(1e9);                     // 1e9: no quad in the column (a plain number: the frame record is JSON, which turns Infinity into null)
   for (const q of pts) { const i = Math.floor(q[0] / W) - x0; if (q[1] < y[i]) y[i] = q[1]; }
   // a quad spans columns its corners do not touch: carry the lower edge across (a column between two corners is at most as high as them)
   return { w: W, x0, y };
@@ -73,8 +73,8 @@ function worldTerrainOccludes(prim, box) {
   const T = prim && prim.tops;
   if (!T || !box) return true;
   const b0 = Math.floor(box.x0 / T.w) - T.x0, b1 = Math.floor(box.x1 / T.w) - T.x0;
-  let top = Infinity;
-  for (let i = Math.max(0, b0); i <= Math.min(T.y.length - 1, b1); i++) if (T.y[i] < top) top = T.y[i];
+  let top = 1e9;
+  for (let i = Math.max(0, b0); i <= Math.min(T.y.length - 1, b1); i++) { const v = T.y[i]; if (v != null && v < top) top = v; }
   return top < box.y1 - 0.5;
 }
 /** A polygon offset outward by d on every edge (each vertex along the bisector of its two edge normals, mitre limited). */
@@ -197,7 +197,7 @@ function _wtrPrims(world, cam, o) {
         const jit0 = _wtrU(cx0, cz0);
         // a talus skirt: pale broken rock where the slope comes off the foot of a cliff, grass creeping up from the toe
         const lf = Math.sin(cx0 * 0.09 + 1.3) * Math.sin(cz0 * 0.12 - 0.4);
-        if (pc.scree > 0.05 && rock) { const sc = Math.max(0, Math.min(1, pc.scree * (0.9 + 0.3 * lf))); m = sc > 0.5 ? { mat: 'stone', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), Math.min(1, sc * 1.1)) } : { mat: 'grass', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), sc * 0.9) }; }
+        if (pc.scree > 0.05 && rock) { const sc = Math.max(0, Math.min(1, pc.scree * (0.9 + 0.3 * lf))); m = sc > 0.5 ? { mat: 'scree', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), Math.min(1, sc * 1.1)) } : { mat: 'grass', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), sc * 0.9) }; }
         // the shade of the slope against a sun high on the left behind the eye (the light pass grades the colour by the real sun after)
         const nl = Math.hypot(gx, gz, 1), lam = (-gx * -0.45 + -gz * -0.4 + 1 * 0.8) / (nl * 1.0), shade = Math.max(0.6, Math.min(1.12, 0.78 + 0.34 * lam));
         // a few percent of variation along the strip (mowing, grazing) so a slope is never one flat tone; scree varies more

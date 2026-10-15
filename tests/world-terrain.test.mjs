@@ -217,6 +217,8 @@ test('a mover is hidden by terrain only where the ground reaches above its feet 
   assert.equal(W.worldTerrainOccludes({ tops: { w: 32, x0: 20, y: [500, 500, 500] } }, { x0: 650, x1: 700, y0: 300, y1: 420 }), false, 'ground below the feet does not hide the mover');
   assert.equal(W.worldTerrainOccludes({ tops: { w: 32, x0: 20, y: [300, 300, 300] } }, { x0: 650, x1: 700, y0: 300, y1: 420 }), true, 'a rise above the feet does');
   assert.equal(W.worldTerrainOccludes({ tops: { w: 32, x0: 60, y: [100] } }, { x0: 650, x1: 700, y0: 300, y1: 420 }), false, 'a strip that does not reach the mover columns');
+  assert.equal(W.worldTerrainOccludes({ tops: JSON.parse(JSON.stringify({ w: 32, x0: 20, y: [1e9, 1e9, 1e9] })) }, { x0: 650, x1: 700, y0: 300, y1: 420 }), false, 'columns with no quad (the frame record is JSON) hide nothing');
+  assert.equal(W.worldTerrainOccludes({ tops: { w: 32, x0: 20, y: [null, null, null] } }, { x0: 650, x1: 700, y0: 300, y1: 420 }), false, 'a null column (JSON of Infinity) hides nothing');
   const plan = W.worldFramePlan(COVE(), { season: 'summer' }), strips = plan.recs.filter(r => r.prim && r.prim.sub === 'terrain' && r.prim.lineKind === 'terrain');
   assert.ok(strips.length > 5 && strips.every(r => typeof r.occlude === 'function'), 'the plan gives each strip its occlusion rule');
 });
