@@ -175,3 +175,11 @@ evidence, is in the merge report kept outside the repo):
 - SCENE_LESSONS was renumbered (both lines' rows kept): A-F as before, G user review, H render glitches, I detail defaults,
   J movement, K terrain, L the Shambles, M the Pier Head, N Malham Cove, O light and water, P trees and seasons, Q looking,
   R fix-all verify, S this merge.
+
+## Malham Cove pass (15 Oct, branch fix/malham)
+The cliff generator (`79-world-4cliff.js`), the terrain strips (`79-world-4terrain.js`) and the Malham spec were reworked so that
+every cliff benefits (SCENE_LESSONS N, the rows marked "the Malham pass"): `rough` (default 1; 0 is the old ruled face) makes the
+plan, the rim and the scree irregular and cuts a stained scoop into a long limestone face; beds wander and step at faults; ledges
+break into runs and some overhang; the lip is pavement; the face rises out of a hill instead of being painted over by it; a pasture
+hillside has patches, sheep trods, tussocks and scars. `tests/world-terrain.test.mjs` pins the ruled geometry with `rough: 0` and
+tests the irregular defaults. Open: a wall that passes behind a face is drawn over it (a line is not clipped by a face).
