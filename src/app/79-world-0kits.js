@@ -119,9 +119,9 @@ const _WKT_EDGES_URBAN = { water: { pond: 'natural', lake: 'natural', canal: 'qu
 
 /* ---------- the kits ---------- */
 // a limestone dale's dressing (the `dale` kit): short sheep-grazed turf, limestone scatter, a lone hawthorn, no hedgerow bushes
-const _WKT_DALE = { near: [['plant.rph-short-grass', 6], ['plant.rph-rosette', 2], ['plant.daisies', 2], ['plant.yg-meadow', 1]],
-  mid: [['rock.boulder', 2], ['plant.rph-short-grass', 6], ['plant.rph-rosette', 1], ['plant.grass-long', 1], ['rock.stones', 1]],
-  far: [['rock.boulder', 2], ['plant.rph-short-grass', 4], ['plant.grass-long', 1]], distant: [],
+const _WKT_DALE = { near: [['plant.rph-short-grass', 4], ['plant.rph-rosette', 2], ['plant.daisies', 2], ['plant.yg-meadow', 2], ['plant.grass-long', 2], ['plant.proof-fleet-rush', 2]],
+  mid: [['rock.boulder', 2], ['plant.rph-short-grass', 3], ['plant.grass-long', 3], ['plant.yg-meadow', 2], ['plant.proof-fleet-rush', 2], ['plant.rph-rosette', 1], ['plant.daisies', 1], ['rock.stones', 1]],
+  far: [['rock.boulder', 2], ['plant.grass-long', 3], ['plant.rph-short-grass', 3], ['plant.yg-meadow', 1], ['plant.bracken', 1]], distant: [],
   accents: [['plant.wildflowers', 3], ['plant.daisies', 2], ['rock.stones', 1], ['ground.leaf-litter', 1]] };
 const WORLD_STYLE_KITS = _wkbFreeze({
   // a canal with a towpath through woodland and fields: reed stands with gaps, willows and alders on the offside, hawthorn
