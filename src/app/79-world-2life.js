@@ -788,7 +788,14 @@ function _wlfGroupSpawn(life, pop, lead, resident) {
     var b = worldBrains[m.cls]; if (!b) continue;
     var hx = Math.sin(lead.heading), hz = Math.cos(lead.heading);
     var x = lead.x + hz * gm.slot[0] * 0.5 + hx * gm.slot[1] * 0.5, z = lead.z - hx * gm.slot[0] * 0.5 + hz * gm.slot[1] * 0.5;
-    if (!worldLifeOk(life, b.layer, x, z, b.r)) { x = lead.x; z = lead.z; }
+    // the formation slot, else the slot mirrored, else behind and beside the leader, then nearer: the first free spot (a lane leaves little). Never ON the
+    // leader (the old fallback stacked a family on one spot for the whole first second) and never on another mover: no free spot, no member
+    var cands = [[x, z], [lead.x - hz * gm.slot[0] * 0.5 + hx * gm.slot[1] * 0.5, lead.z + hx * gm.slot[0] * 0.5 + hz * gm.slot[1] * 0.5]];
+    for (var cb = 0, ds = [0.8, 1.3, 1.8]; cb < ds.length; cb++) for (var cs = 0, sd = [0, 0.7, -0.7]; cs < sd.length; cs++) cands.push([lead.x - hx * ds[cb] + hz * sd[cs], lead.z - hz * ds[cb] - hx * sd[cs]]);
+    var spot = null;
+    for (var ck = 0; ck < cands.length && !spot; ck++) if (worldLifeOk(life, b.layer, cands[ck][0], cands[ck][1], b.r) && !_wlfCrowded(life, b.layer, cands[ck][0], cands[ck][1], (b.r + lead.r) * 0.9)) spot = cands[ck];
+    if (!spot) continue;
+    x = spot[0]; z = spot[1];
     var f = _wlfNewAgent(life, pop, { key: gm.who, m: { cls: m.cls, obj: m.obj } }, x, z, lead.id + '.' + (i + 1), { edge: lead.edge, resident: resident, age: b.age });
     f.leader = lead; f.group = lead.id; f.slot = gm.slot.slice(); f.goals = []; f.fadeIn = lead.fadeIn; f.heading = lead.heading;
     lead.group = lead.id;
@@ -1769,7 +1776,7 @@ function _wlfSeparate(life) {
     var b = h.get(k); if (!b) { b = []; h.set(k, b); } b.push(a);
   }
   if (L.length < 2) return;
-  for (var it = 0; it < 3; it++) {
+  for (var it = 0; it < 6; it++) {
     var moved = 0;
     for (i = 0; i < L.length; i++) {
       var p = L[i], cx = Math.floor(p.x / 2), cz = Math.floor(p.z / 2);

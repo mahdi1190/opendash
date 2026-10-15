@@ -274,9 +274,10 @@ function worldDetailCoverage(world, cam, o) {
     rec.sky = skyN ? _wdtR(sky / frameN) : 0;
     rec.near = { dressed: nearN ? _wdtR(nearD / nearN) : 1, object: nearN ? _wdtR(nearO / nearN) : 0 };
     rec.layers = layerHits.map(h => _wdtR(h / frameN));
+    rec.frame = _wdtFraming(world, cam, W, H);
     // a near layer must carry 1.5 % of the frame, a far one (from 40 m) 0.5 %: far things are small; the sky is the farthest plane
     // of an enclosed view (a street, a wood) when 4 % of the frame shows it
-    rec.layerCount = rec.layers.filter((v, i) => v >= (i < 3 ? L.layerShare : L.layerShare / 3)).length + (rec.layers[4] < L.layerShare / 3 && rec.layers[5] < L.layerShare / 3 && rec.sky >= 0.04 ? 1 : 0);
+    rec.layerCount = rec.layers.filter((v, i) => v >= (i < 3 ? L.layerShare : L.layerShare / 3)).length + (rec.layers[4] < L.layerShare / 3 && rec.layers[5] < L.layerShare / 3 && rec.sky >= ((rec.frame.left && rec.frame.right && /^building/.test(String(rec.frame.left)) && /^building/.test(String(rec.frame.right))) ? 0.015 : 0.04) ? 1 : 0);   // a street walled by houses on both sides shows a slot of sky between the roofs: 1.5 % is its farthest plane
     // a layer wholly nearer than the ground at the frame's bottom edge cannot be seen from a raised camera (a terrace, a bridge): it is not missing
     const zBottom = cam && cam.f > 0 && cam.eye > 0 ? cam.f * cam.eye / Math.max(1, H - (cam.horizon || 0)) : 0;
     for (let i = 0; i < WORLD_DETAIL_LAYERS.length; i++) if (WORLD_DETAIL_LAYERS[i] <= zBottom && rec.layers[i] < (i < 3 ? L.layerShare : L.layerShare / 3)) rec.layerCount++;
@@ -286,10 +287,10 @@ function worldDetailCoverage(world, cam, o) {
     rec.regions = regs.map((q, i) => ({ name: RN[Math.floor(i / 3)] + '-' + CN[i % 3], bare: q.n ? _wdtR(q.bare / q.n) : 0, flat: q.n ? _wdtR(q.flat / q.n) : 0 }));
     for (const [sid, q] of Object.entries(surf)) rec.surfaces[sid] = { kind: q.kind, share: _wdtR(q.n / frameN), bare: q.n ? _wdtR(q.bare / q.n) : 0, flat: q.n ? _wdtR(q.flat / q.n) : 0 };
     // extruded buildings count by style, lines by kind (a row of houses is one kind of thing per style)
-    for (const bdg of world.buildings || []) if (bdg) seenObj.add('building:' + (bdg.style || 'victorian-terrace'));
+    // a street of generated houses is eight kinds of thing at most, not one: every house has its own seed (colours, frame, openings, fittings)
+    for (const bdg of world.buildings || []) if (bdg) { const k = 'building:' + (bdg.style || 'victorian-terrace') + (_wdtNum(bdg.seed) ? '#' + (Math.abs(bdg.seed) % 8) : ''); seenObj.add(k); if (Array.isArray(bdg.foot) && bdg.foot.length && Math.min(...bdg.foot.map(p => p[1])) >= 15 && Math.min(...bdg.foot.map(p => p[1])) < 150) seenMid.add(k); }
     for (const Ln of world.lines || []) if (Ln && /wall|hedge|fence|railing/.test(Ln.kind)) seenObj.add('line:' + Ln.kind);
     rec.variety = { all: seenObj.size, mid: seenMid.size, midWater: midN ? _wdtR(midSelf / midN) : 0 };
-    rec.frame = _wdtFraming(world, cam, W, H);
     rec.life = (world.life || []).filter(p => p && (p.on || p.count || p.rate || p.every || p.who)).length;
     if (dbg) rec.grid = { cols, rows, cells: dbg.join(''), z: Array.from(zOf, v => Number.isFinite(v) ? Math.round(v * 10) / 10 : -1) };
   } catch (e) { rec.error = String(e && e.message || e); }

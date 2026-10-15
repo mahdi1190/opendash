@@ -15,7 +15,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REG = loadRegistry(ROOT);
 const G = REG.R.get;
 const E = new Proxy({}, { get: (_, n) => G(n) });
-const STYLES = ['victorian-terrace', 'georgian', 'edwardian', '1930s-semi', 'interwar-shops', 'mill', 'norfolk-flint', 'stone-cottage', 'modern-glass', 'brutalist', 'station'];
+const STYLES = ['victorian-terrace', 'georgian', 'edwardian', '1930s-semi', 'interwar-shops', 'mill', 'norfolk-flint', 'stone-cottage', 'modern-glass', 'brutalist', 'station', 'timber-framed'];
 const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
 const CAM = { eye: 1.65, fov: 66, horizon: 470 };
 const F = 800 / Math.tan(33 * Math.PI / 180);

@@ -435,7 +435,7 @@ const _WC_KEYS = {
   surface: ['id', 'kind', 'water', 'poly', 'path', 'width', 'shallow', 'level', 'obj', 'open', 'y', 'from', 'to', 'hint', 'flow', 'step'],
   step: ['to', 'kind'],
   line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj'],
-  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src'],
+  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap'],
   entity: ['id', 'obj', 'at', 'facing', 'attach', 'variant', 'y', 'open', 'blocks', 'framed', 'row', 'parent'],
   cluster: ['cluster', 'on', 'edge', 'n', 'seed', 'gap', 'variant'],
   landmark: ['id', 'obj', 'at', 'facing', 'src', 'variant', 'attach'],
@@ -729,6 +729,18 @@ function _wcCheck(spec0, repair) {
     const p = `buildings[${i}]`;
     if (!_wcObjOf(b) || threw(b)) { act(p, 'badType', 'a building is an object', drop(blds, b)); return; }
     keys(b, _WC_KEYS.building, p, b.id);
+    // a whole side of a street (79-world-1frontage.js): the engine cuts it into houses along a surface's centre line
+    if (b.along != null) {
+      const as = sIds.get(b.along);
+      if (!as || !Array.isArray(as.path) || !(_wcNum(as.width) && as.width > 0)) { act(p + '.along', 'unknownSurface', 'along names a surface with a centre line (path) and a width: ' + b.along, drop(blds, b, b.id)); return; }
+      if (b.side != null && b.side !== 'left' && b.side !== 'right') act(p + '.side', 'badValue', "side is 'left' or 'right' (of the direction of the centre line)", strip(b, 'side', b.id));
+      if (b.storeys != null && !((Number.isInteger(b.storeys) && b.storeys >= 1 && b.storeys <= 100) || (Array.isArray(b.storeys) && b.storeys.length === 2 && b.storeys.every(v => Number.isInteger(v) && v >= 1 && v <= 100) && b.storeys[0] <= b.storeys[1]))) act(p + '.storeys', 'badValue', 'storeys is 1..100 or [min, max]', strip(b, 'storeys', b.id));
+      for (const k of ['from', 'to']) if (b[k] != null && !(_wcNum(b[k]) && b[k] >= 0)) act(p + '.' + k, 'badValue', k + ' is metres along the centre line', strip(b, k, b.id));
+      if (b.depth != null && !((_wcNum(b.depth) && b.depth > 1) || (Array.isArray(b.depth) && b.depth.length === 2 && b.depth.every(v => _wcNum(v) && v > 1)))) act(p + '.depth', 'badValue', 'depth is metres or [min, max]', strip(b, 'depth', b.id));
+      if (b.foot != null) act(p + '.foot', 'unknownKey', 'an along building has no foot (its houses get theirs from the centre line)', strip(b, 'foot', b.id));
+      for (const k of ['roof', 'style', 'src', 'id']) if (b[k] != null && !_wcStr(b[k])) act(`${p}.${k}`, 'badType', k + ' is a string', strip(b, k, b.id));
+      return;
+    }
     if (!(Array.isArray(b.foot) && b.foot.length >= 3 && b.foot.every(_wcPt) && Math.abs(_wcPolyArea(b.foot)) > 1)) { act(p + '.foot', 'badSurface', 'a building needs foot (>= 3 points, area > 1 m2)', drop(blds, b, b.id)); return; }
     if (b.storeys != null && !(Number.isInteger(b.storeys) && b.storeys >= 1 && b.storeys <= 100)) act(p + '.storeys', 'badValue', 'storeys is 1..100', strip(b, 'storeys', b.id));
     if (b.h != null && !(_wcNum(b.h) && b.h > 0 && b.h < 1000)) act(p + '.h', 'badValue', 'h is metres', strip(b, 'h', b.id));
@@ -1165,7 +1177,7 @@ function _wcToCamera(spec31, cam, log) {
   // stay whole (the v2 ground clips them to the view frustum) so a surface is the same shape for every camera: its clusters
   // scatter in its own frame and come out the same for every view (Q7)
   if (Array.isArray(s.lines)) s.lines = s.lines.flatMap(l => _wcClipPath(l.path || [], _WC_NEAR).map((r, k) => Object.assign(k ? _wcCopy(l) : l, { path: r }, k && l.id ? { id: l.id + '~' + k } : {})));
-  if (Array.isArray(s.buildings)) s.buildings = s.buildings.map(b => { const c = _wcClipPoly(b.foot || [], _WC_NEAR); if (!c) { culled++; return null; } b.foot = c; return b; }).filter(Boolean);
+  if (Array.isArray(s.buildings)) s.buildings = s.buildings.map(b => { if (b && typeof b.along === 'string') return b; const c = _wcClipPoly(b.foot || [], _WC_NEAR); if (!c) { culled++; return null; } b.foot = c; return b; }).filter(Boolean);
   if (_wcObjOf(s.ground) && Array.isArray(s.ground.features)) s.ground.features = s.ground.features.flatMap(f => _wcClipPath(f.path || [], _WC_NEAR).map(r => Object.assign(_wcCopy(f), { path: r })));
   for (const key of ['entities', 'landmarks']) if (Array.isArray(s[key])) s[key] = s[key].filter(e => { if (e.cluster != null || !_wcPt(e.at) || e.at[1] >= _WC_NEAR) return true; culled++; return false; });
   s.camera = X.block;
@@ -1429,6 +1441,8 @@ function worldBuild(spec, o = {}) {
     entities: [], life: [], backdrop: _wcObjOf(cs.backdrop) ? _wcCopy(cs.backdrop) : null, waterSteps: [],
     problems: o.validate === false ? [] : rep.errors, warnings: rep.warnings, log, culled };
   try { _wcJoinLevels(world); } catch (e) { /* flat joins */ }
+  // a whole side of a street becomes its houses (79-world-1frontage.js), before anything reads the footprints
+  if (typeof worldFrontageExpand === 'function') { try { worldFrontageExpand(world); } catch (e) { _wcLogBuild(log, null, 'the frontage: ' + String(e && e.message || e), 'buildings'); } }
   for (const s of world.surfaces) if (s.step) { const t = world.surfaces.find(q => q.id === s.step.to); if (t) world.waterSteps.push({ from: s.id, to: t.id, kind: s.step.kind, drop: _wcR3(_wcWaterLevel(cam, s) - _wcWaterLevel(cam, t)) }); }
   world.life = (Array.isArray(cs.life) ? cs.life : []).map(L => Object.assign(_wcCopy(L), { pop: _wcPopOf(L.who) }));
   const all = [...(Array.isArray(cs.entities) ? cs.entities : []), ...(Array.isArray(cs.landmarks) ? cs.landmarks.map(l => Object.assign({ landmark: true }, l)) : [])];

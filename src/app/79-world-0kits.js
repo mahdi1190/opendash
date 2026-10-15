@@ -208,6 +208,17 @@ const WORLD_STYLE_KITS = _wkbFreeze({
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
     edges: Object.assign({}, _WKT_EDGES_URBAN, { hedgerow: [['plant.hedge', 2]] }), frame: [{ kind: 'lamp', obj: 'street.lamppost' }, _WKT_BOUGH_PLANE, { kind: 'hedge', obj: 'plant.hedge' }],
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'crowd', rate: '6/min' }, paving: { who: 'crowd', rate: '6/min' } } },
+  // an old-town lane (the Shambles in York, Chester's Rows, a market-town ginnel): setts or flags between timber-framed or brick fronts a few
+  // metres apart. NOTHING stands in the lane (no bench, bin, lamp post or bollard: the lanterns, signs, baskets and stalls belong to the
+  // buildings, which the generator hangs on their walls); flower tubs and A-boards stand against the walls; the street is a crowd of visitors
+  'old-town-lane': { label: 'old-town lane', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.02, 0.18], layers: 5, bare: { ground: 0.3, paving: 0.3, near: 0.4 },
+    look: { grass: 'mown', path: 'flags', paving: 'flags', plaza: 'lane', quay: 'stone', bank: 'stone' },
+    fill: { grass: { near: [['plant.rph-short-grass', 3], ['plant.grass', 2]], mid: [['plant.hedge', 1]], far: [['plant.hedge', 1]], distant: _WKT_DISTANT_TOWN, accents: [['plant.daisies', 1]], maxH: 1.6 },
+      paving: { near: [['plant.rph-flower-tub', 1], ['street.mqn-aboard', 1]], mid: [['plant.rph-flower-tub', 2], ['street.mqn-aboard', 1]], far: [['plant.rph-flower-tub', 1]], accents: [['ground.leaf-litter', 2], ['ground.puddle', 1]], max: { near: 2, mid: 4, far: 4 } },
+      path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
+    edges: Object.assign({}, _WKT_EDGES_URBAN, { hedgerow: [] }), frame: [{ kind: 'planter', obj: 'plant.rph-flower-tub' }],
+    rich: { mid: [['plant.rph-flower-tub', 1], ['street.mqn-aboard', 1]], far: [['plant.rph-flower-tub', 1]] },
+    life: { walk: { who: 'crowd', rate: '12/min' }, paving: { who: 'crowd', rate: '8/min' } } },   // no pigeons: in a packed lane they lift on every pass (animStill: a pigeon plays 'fly' on the spot)
   // a town park: lawns, flower borders, specimen chestnuts, planes and willows, benches and lamps on the paths
   park: { label: 'park', place: 'park', backdrop: 'town-low', ground: 'grass', sky: [0.25, 0.55], layers: 5, bare: { ground: 0.28, paving: 0.1 },
     look: { grass: 'mown', path: 'gravel', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'earth' },
@@ -255,7 +266,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
 // legacy fill and backdrop style names (place.style, backdrop.style) -> kit
 const WORLD_KIT_ALIAS = Object.freeze({ 'canal-wooded': 'canal', lake: 'pond', 'lake-pond': 'pond', 'town-low': 'village-green', village: 'village-green', green: 'village-green',
   'city-victorian': 'civic-square', 'city-sheffield-hills': 'river-city', 'city-manchester-towers': 'river-city', harbour: 'quayside', docks: 'quayside', street: 'terraced-street',
-  terrace: 'terraced-street', moorland: 'moor', seaside: 'coast', wood: 'woodland', square: 'civic-square' });
+  terrace: 'terraced-street', lane: 'old-town-lane', 'medieval-street': 'old-town-lane', ginnel: 'old-town-lane', moorland: 'moor', seaside: 'coast', wood: 'woodland', square: 'civic-square' });
 // the slots whose objects stand in the frame (a framing trunk stands outside it), and the classes each kind of slot may hold
 const _WKT_SLOT_CLS = { tree: ['tree'], dressing: ['tree', 'shrub', 'hedge', 'reed', 'flower', 'cover', 'rock', 'street', 'bench', 'lamp', 'post', 'signage', 'umbrella', 'fence', 'structure', 'building', 'cafe-table', 'picnic'],
   water: ['lily', 'fish-ring'], margin: ['reed', 'shrub', 'flower'], bough: ['bough', 'frond'], trunk: ['tree'] };
