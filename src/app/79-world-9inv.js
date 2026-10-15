@@ -141,13 +141,17 @@ function _wivSurfaceAt(C, x, z) {
   const S = C.surfaces;
   for (let i = S.length - 1; i >= 0; i--) {
     const s = S[i];
-    if (Array.isArray(s.poly) && s.poly.length >= 3 ? _wivInPoly(s.poly, x, z) : Array.isArray(s.path) && s.width > 0 ? _wivLineDist(s.path, x, z) <= s.width / 2 : false) return s;
+    // a path surface is the polygon the world draws and clips by (look's _wlSurfPoly: mitred joints), not a round-jointed band: a bend of a stream is where the water is
+    const P = Array.isArray(s.poly) && s.poly.length >= 3 ? s.poly : Array.isArray(s.path) && s.width > 0 && typeof _wlSurfPoly === 'function' ? _wivPathPoly(s) : null;
+    if (P ? _wivInPoly(P, x, z) : Array.isArray(s.path) && s.width > 0 ? _wivLineDist(s.path, x, z) <= s.width / 2 : false) return s;
   }
   return null;
 }
 function _wivLineDist(path, x, z) { let d = Infinity; for (let i = 1; i < path.length; i++) d = Math.min(d, _wivSegDist(x, z, path[i - 1], path[i])); return d; }
 /** The authored surface under a ground point (later surfaces win), ignoring decks and the water cut of solids: a boat's own
  *  footprint must not hide the water it floats on. */
+const _wivPathMemo = new WeakMap();
+function _wivPathPoly(s) { let P = _wivPathMemo.get(s); if (!P) { try { P = _wlSurfPoly(s); } catch (e) { P = null; } if (!Array.isArray(P) || P.length < 3) P = false; _wivPathMemo.set(s, P); } return P || null; }
 function _wivSurfRaw(C, x, z) {
   const S = C.surfaces;
   for (let i = S.length - 1; i >= 0; i--) {
@@ -359,6 +363,7 @@ const _WIV_RULES = {
   floating(C) {
     for (const e of C.ents) {
       if (!_wivNum(e.y) || e.backdrop) continue;
+      if (/^line./.test(String(e.obj || ''))) continue;                         // extruded lines, buildings and terrain follow the ground by construction (4extrude, 4terrain)
       const cls = _wivCls(e), att = String(e.attach || ''), host = _wivHostOf(e);
       if (e.layer === 'air' || att.startsWith('air') || att.startsWith('wall') || att.startsWith('perch') || att.startsWith('lead') || cls === 'bird-air' || cls === 'air') continue;
       if (e.state === 'fly' || e.state === 'perch' || e.state === 'dive') continue;
@@ -458,7 +463,8 @@ const _WIV_RULES = {
         const s = _wivWaterAt(C, p[0], p[1]);
         if (s && holes.some(h => (!h.surface || h.surface === s.id) && (_wivInPoly(h.poly, p[0], p[1]) || _wivPolyDist(h.poly, p[0], p[1]) < 0.02))) continue;
         // a shadow that only touches the water's edge (within 2 cm: look's clip drops slivers that thin) is on the bank
-        if (s && Array.isArray(s.poly) && s.poly.length >= 3 && _wivPolyDist(s.poly, p[0], p[1]) > -0.02) continue;
+        const sp = s && (Array.isArray(s.poly) && s.poly.length >= 3 ? s.poly : Array.isArray(s.path) && s.width > 0 && typeof _wlSurfPoly === 'function' ? _wivPathPoly(s) : null);   // a stream (a path surface) is the drawn polygon too
+        if (s && sp && _wivPolyDist(sp, p[0], p[1]) > -0.02) continue;
         if (s && !cut.has(s.id) && !cut.has('water')) { _wivPush(C, 'shadowOnWater', e.id, `the shadow of ${e.obj || e.cls} falls on ${s.id}`); break; }
       }
     }
@@ -490,7 +496,7 @@ const _WIV_RULES = {
     const W = C.W, H = C.H, A = W * H;
     for (const e of C.ents) {
       const b = _wivBox(e);
-      if (!b || e.backdrop) continue;
+      if (!b || e.backdrop || e.cls === 'terrain' || /^line.terrain/.test(String(e.obj || ''))) continue;      // the ground is not an object: a hill runs off the frame
       const cut = { l: b[0] < -0.5, r: b[2] > W + 0.5, t: b[1] < -0.5, b: b[3] > H + 0.5 };
       if (!(cut.l || cut.r || cut.t || cut.b)) continue;
       const cls = _wivCls(e) || '';
@@ -795,6 +801,8 @@ const _WIV_RULES = {
         if (b === a || !_wivNum(b.order)) continue;
         const bb = _wivBox(b);
         if (_wivBoxOverlap(ab, bb) < 1 || _wivRelated(a, b)) continue;
+        // terrain that does not reach above a mover's feet cannot hide it (the order skips its redraw: 4terrain worldTerrainOccludes)
+        if (typeof worldTerrainOccludes === 'function' && ((a.static !== false && a.tops && !worldTerrainOccludes({ tops: a.tops }, { x0: bb[0], y0: bb[1], x1: bb[2], y1: bb[3] })) || (b.static !== false && b.tops && !worldTerrainOccludes({ tops: b.tops }, { x0: ab[0], y0: ab[1], x1: ab[2], y1: ab[3] })))) continue;
         const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
         if (seen.has(k)) continue;
         seen.add(k);

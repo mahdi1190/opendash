@@ -382,7 +382,11 @@ function worldCoverage(world, cam, o) {
   const openCols = [];
   for (let c = 0; c < cols; c++) {
     const X = (c + 0.5) * W / cols, hz = cam.horizon;
-    if (!byCol[c].some(b => X >= b[0] && X <= b[2] && b[1] < hz - 0.5 && b[3] >= hz - 0.5 - 0.02 * (H - hz))) { open++; openCols.push(c); }
+    if (!byCol[c].some(b => X >= b[0] && X <= b[2] && b[1] < hz - 0.5 && b[3] >= hz - 0.5 - 0.02 * (H - hz))) {
+      // a rise of the ground that stands across the horizon (a cliff, a hill) hides it: the ray at the horizon row meets the terrain
+      if (cam.relief && typeof sceneUnproject === 'function') { let hit = null; try { hit = sceneUnproject(cam, X, hz - 0.5); } catch (e) { hit = null; } if (hit) continue; }
+      open++; openCols.push(c);
+    }
   }
   const sky = cols ? open / cols : 0;
   if (sky > 0) {

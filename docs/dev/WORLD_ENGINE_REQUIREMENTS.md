@@ -436,6 +436,16 @@ The unit tests and the Node run were green while the page was not. The contract 
 - TR4 [T] A water below the ground level is hidden behind the near bank: its visible footprint is the polygon cut by the water openings
   scaled by (eye - level) / eye about the camera's foot, so a quay never shows the harbour over its own paving, and two waters
   side by side are one opening.
+- TR5 [T] A cliff is a ground feature (`kind: 'cliff'`: a `path` or an `arc`, `h`, `scree`, `batter`, `rim`, `high`, `fade`, `rock`) whose shape is analytic (`worldCliffHeight`): a vertical
+  face of the full height, a talus skirt below it, a rounded lip and the plateau behind; the relief grid carries a coarse copy (rows every 1 % of the depth, columns every metre) for
+  everything else, and the strips take their heights from the analytic function.
+- TR6 [T] The face is drawn with true geometry in depth-binned columns (far first, each prim with a footprint in metres along the face): beds of rock, ledges, joints, weathering streaks,
+  lichen, tufts and small trees on the ledges, turf and thorns on the rim, and a talus of stones and tussocks placed in metres. It reads as the rock of the spec (`rock`), at every light.
+- TR7 [T] The strips are cut at the face foot and lip; what the face hides is exact (the sight line against the face top: `worldCliffHides`), so a plateau behind it is not drawn from
+  below and is from above, and a hill beside its horn is; terrain hides a mover only where its upper edge reaches above the mover feet (the occluder redraws stay under budget).
+- TR8 [T] The texture is stable: the same ops for the same cliff in every build and frame (it lives in metres along the face and up it, from one seed), and no seam between depth groups.
+- TR9 [T] The face follows the light and the weather by the materials: lit by the real sun column by column, darker when wet, snow along the ledges on snow days, trees bare in winter;
+  an upland wall is dry-stone, a narrow river a beck, the `dale` kit an open limestone pasture (the 13th kit).
 
 ## 28. A medieval street from a short spec (the second no-example place, 14 Oct: the Shambles, York)
 

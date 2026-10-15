@@ -318,7 +318,14 @@ function worldFramePlan(world, o) {
   // the terrain (W2): strips of the relief as prims, so the chunk order hides what lies behind a nearer rise and puts what stands on
   // the slope in front of it (the v2 ground follows a relief along polygon edges only)
   if (typeof worldTerrainPrims === 'function') {
-    try { for (const p of worldTerrainPrims(world, cam, { season: o.season }) || []) if (p && p.box) add(_wfrPrimRec(p, null, null)); } catch (e) { /* flat ground */ }
+    try {
+      for (const p of worldTerrainPrims(world, cam, { season: o.season }) || []) if (p && p.box) {
+        const r = _wfrPrimRec(p, null, null);
+        // ground below a mover's feet never covers the mover: the strip is an occluder only where its upper edge reaches above them (4terrain)
+        if (p.tops && typeof worldTerrainOccludes === 'function') r.occlude = (box) => worldTerrainOccludes(p, box);
+        add(r);
+      }
+    } catch (e) { /* flat ground */ }
   }
   // statics that move by cause (the wind's sway, a flame's flicker, a moored bob): drawn live, nearest first
   if (typeof worldAnimHooks === 'function') {
@@ -347,7 +354,12 @@ function _wfrMonth(ms) { return Number.isFinite(ms) ? new Date(ms).getUTCMonth()
 /** The time context (11.11): the systems package's worldTimeCtx when loaded, else a small one from the date and the light. */
 function _wfrTimeCtx(world, ms, o) {
   o = o || {};
-  if (typeof worldTimeCtx === 'function' && Number.isFinite(ms)) { try { const c = worldTimeCtx(world, ms); if (c) return c; } catch (e) { /* below */ } }
+  if (typeof worldTimeCtx === 'function' && Number.isFinite(ms)) { try {
+    // a FIXED weather (a tool's or a scene's override, v2 light L.wx.src 'fixed') is the world's weather too: the rock, the grass and the roofs are wet or snowy as the base ground is
+    const fx = o.L && o.L.wx && o.L.wx.src === 'fixed' && typeof o.L.wx.kind === 'string' ? { wx: o.L.wx.kind } : undefined;
+    const c = worldTimeCtx(world, ms, fx);
+    if (c) return c;
+  } catch (e) { /* below */ } }
   const P = (world && world.place) || {}, L = o.L || null, m = _wfrMonth(ms);
   const d0 = Number.isFinite(ms) ? Date.UTC(new Date(ms).getUTCFullYear(), 0, 1) : null;
   return { ms: Number.isFinite(ms) ? ms : null, lat: P.lat, lon: P.lon, month: m, doy: d0 != null ? Math.floor((ms - d0) / 86400000) + 1 : null,
@@ -485,7 +497,7 @@ function worldFrameAt(scene, t, o) {
       facing: _wfrR3(Number(e.facing) || 0), foot: _wfrPts(r.foot), height: _wfrR3(r.height), layer: e.layer || null, host: e.host || null, parent: e.parent || null,
       view: r.view, mirror: !!r.mirror, box: _wfrBoxArr(r.box), order: pos.has(r.id) ? pos.get(r.id) : null, speed: agent ? _wfrR3(sp) : 0, vx: agent ? _wfrR3(e.vx || 0) : 0, vz: agent ? _wfrR3(e.vz || 0) : 0,
       state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null,
-      prim: r.prim ? (r.prim.walkway ? 'walkway' : r.prim.kind || null) : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal,
+      prim: r.prim ? (r.prim.walkway ? 'walkway' : r.prim.kind || null) : null, tops: r.prim && r.prim.tops ? _wfrPlain(r.prim.tops) : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal,
       // what the checkers need of a mover: its body radius, its group (the leader's id), whether it has a lead, and its intent (life)
       r: agent && Number.isFinite(e.r) ? _wfrR3(e.r) : null, group: agent ? e.group || null : null, leash: agent ? !!e.lead : false, intent: agent ? e.intent || null : null, squeeze: agent ? !!e.squeeze : false, stepping: agent ? !!e.stepping : false, leader: agent ? e.leader || null : null, resident: agent ? !!e.resident : false };
   };
@@ -659,11 +671,13 @@ function _wfrDrawRec(cx, env, S, r, d, bx, by, alpha) {
   let n = 0;
   try {
     if (r.prim) {
-      if (typeof worldExtrudeDraw === 'function') {
+      // a terrain prim (strips, a cliff's face) has its own drawing (4terrain: quads then ops); every other prim is the extruder's
+      const drawPrim = r.prim.sub === 'terrain' && typeof worldTerrainDraw === 'function' ? worldTerrainDraw : typeof worldExtrudeDraw === 'function' ? worldExtrudeDraw : null;
+      if (drawPrim) {
         const L = env.Lnow || env.L;
         // a hull's windows at night: a boat under way is lit inside; a moored one is a home (one seeded draw per boat, as a house's windows)
         const LN = S.lightNow, hullLit = r.prim.kind === 'hull' && !!LN && typeof worldGlowOn === 'function' && (r.static ? worldGlowOn(String(r.id), 0, 'window', LN.alt, LN.share, {}) : LN.alt < 4);
-        n = worldExtrudeDraw(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, litGlow: hullLit, mctx: S.mctx || undefined, sun: S.sun || null, night: !!(L && (L.dark > 0.5 || L.windows)),
+        n = drawPrim(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, litGlow: hullLit, mctx: S.mctx || undefined, sun: S.sun || null, night: !!(L && (L.dark > 0.5 || L.windows)),
           windowShare: S.sky && Number.isFinite(S.sky.windowShare) ? S.sky.windowShare : L && L.windowShare, season: S.season, haze: _wfrHaze(env, r.ent), alpha: alpha == null ? 1 : alpha }) || 0;
       }
     } else {

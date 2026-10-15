@@ -356,7 +356,7 @@ function worldFrameOrder(chunks, agents, cam, boxes) {
         var near = worldOrderNearby(ch, m._box, boxes, cam);
         for (var e = 0; e < near.length; e++) {
           var s = near[e];
-          if (s.id !== hid && worldOrderNearer(s, m)) out.push({ kind: 'redraw', ref: s, chunk: c });
+          if (s.id !== hid && (!s.occlude || s.occlude(m._box)) && worldOrderNearer(s, m)) out.push({ kind: 'redraw', ref: s, chunk: c });
         }
       }
     }
@@ -397,6 +397,10 @@ function worldOrderCheck(order, boxes, opts) {
   }
   var bad = [];
   function test(a, b) {
+    // a terrain strip that does not reach above a mover's feet cannot hide it: the frame does not redraw it over the mover (4terrain)
+    var ea = ents[a], eb = ents[b];
+    if (ea.occlude && mov[b] && !ea.occlude({ x0: X0[b], y0: Y0[b], x1: X1[b], y1: Y1[b] })) return;
+    if (eb.occlude && mov[a] && !eb.occlude({ x0: X0[a], y0: Y0[a], x1: X1[a], y1: Y1[a] })) return;
     var aNear = worldOrderNearer(ents[a], ents[b]);
     if (aNear ? pos[a] < pos[b] : pos[b] < pos[a]) bad.push({ a: ents[a].id, b: ents[b].id, why: (aNear ? ents[a].id : ents[b].id) + ' is nearer but drawn first' });
   }

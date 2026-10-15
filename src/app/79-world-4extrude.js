@@ -211,6 +211,8 @@ function _wexPiece(line, K, cam, ss, ends, o, idx) {
   if (K.detail === 'courses') {
     const zMid = C[Math.floor(C.length / 2)].p[1];
     if (cam.f * 0.3 / Math.max(near, zMid) >= 3) for (let hy = 0.3; hy < h - 0.05; hy += 0.3) { const pts = line3(seenSide, hy, seenBase); if (pts.length >= 2) details.push({ type: 'stroke', pts, width: _wexR(Math.max(0.4, cam.f * 0.012 / Math.max(near, zMid)), 2), hex: _wexMat(o, K.mat, '#6e665a', zMid, 'course'), alpha: 0.45 }); }
+  } else if (K.detail === 'drystone') {
+    if (typeof worldDrystoneDetails === 'function') worldDrystoneDetails({ line, cam, ss, K, details, h, w, seenL, idx, grow: (p) => { box = _wexBox(p, box); } });
   } else if (K.detail === 'rails' || K.detail === 'bars') {
     const zMid = C[Math.floor(C.length / 2)].p[1], lw = Math.max(0.5, cam.f * (K.detail === 'rails' ? 0.06 : 0.035) / Math.max(near, zMid));
     for (const hy of K.detail === 'rails' ? [0.4 * h, 0.9 * h] : [0.1, h]) { const pts = line3(C.map(c => c.p), hy); if (pts.length >= 2) details.push({ type: 'stroke', pts, width: _wexR(lw, 2), hex: _wexMat(o, K.mat, K.hex, zMid, 'rail'), alpha: 1 }); }
@@ -247,7 +249,8 @@ function _wexPiece(line, K, cam, ss, ends, o, idx) {
 function worldExtrudeLine(line, cam, o) {
   o = o || {};
   if (!line || !cam || !_wexNum(cam.f) || !Array.isArray(line.path) || line.path.length < 2 || !line.path.every(_wexPt)) return [];
-  const K = WORLD_EXTRUDE_KINDS[line.kind] || WORLD_EXTRUDE_KINDS.wall, total = _wexLen(line.path), near = _wexNear(cam);
+  // a wall in the uplands is a dry-stone wall (4drystone: the place's style says so)
+  const K = line.kind === 'wall' && o.drystone && typeof WORLD_EXTRUDE_DRYSTONE === 'object' ? WORLD_EXTRUDE_DRYSTONE : (WORLD_EXTRUDE_KINDS[line.kind] || WORLD_EXTRUDE_KINDS.wall), total = _wexLen(line.path), near = _wexNear(cam);
   const out = [];
   let idx = 0;
   for (const [s0, s1] of _wexRuns(line, total)) {
@@ -590,6 +593,7 @@ function worldExtrude(world, cam, o) {
   cam = cam || (world && world.cam);
   if (!world || !cam || !_wexNum(cam.f)) return [];
   const prims = [];
+  if (o.drystone === undefined && typeof worldDrystoneIs === 'function') o = Object.assign({}, o, { drystone: worldDrystoneIs(world) });
   for (const L of Array.isArray(world.lines) ? world.lines : []) { try { prims.push(...worldExtrudeLine(L, cam, o)); } catch (e) { /* one bad line never stops the rest (G8) */ } }
   for (const b0 of Array.isArray(world.buildings) ? world.buildings : []) {
     let parts = [b0];
