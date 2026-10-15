@@ -854,7 +854,10 @@ function worldWaterTick(world, dt, ctx) {
   if (!W || !(dt > 0)) return W;
   ctx = ctx || world.time || world.ctx || {};
   W.t += dt; W.degrade = _wwaDegrade;
-  const t = W.t, rnd = _wwaRng('water|' + (world.seed | 0) + '|' + Math.floor(t * 30));
+  // (the tick's random stream is made when something first asks: rain, leaves and spray; a calm tick no longer hashes a string for nothing)
+  const t = W.t;
+  let rng = null;
+  const rnd = () => (rng || (rng = _wwaRng('water|' + (world.seed | 0) + '|' + Math.floor(t * 30))))();
   for (const k of ['wakes', 'rings', 'leaves']) { for (const q of W[k]) q.age += dt; W[k] = W[k].filter(q => q.age < q.life); }
   const agents = Array.isArray(world.agents) ? world.agents : typeof worldAgents === 'function' ? (() => { try { return worldAgents(world) || []; } catch (e) { return []; } })() : [];
   const floaters = [];
@@ -898,7 +901,11 @@ function worldWaterTick(world, dt, ctx) {
   }
   // buoyancy: a seeded bob per floater (no two in step), plus rocking from wakes passing within reach
   for (const [e, R] of floaters) {
-    const key = e.id == null ? e.obj + '@' + e.x + ',' + e.z : e.id, r = _wwaRng('bob|' + key), ph = r() * 6.283, w = 1.1 + r() * 0.9, amp = 0.012 + 0.05 * R.look.ripple;
+    // a floater's phase and rate are its own, from its key: made once (a string hash each per tick before)
+    const key = e.id == null ? e.obj + '@' + e.x + ',' + e.z : e.id, bk = W.bobK || (W.bobK = new Map());
+    let kc = bk.get(key);
+    if (!kc) { const r = _wwaRng('bob|' + key); kc = { ph: r() * 6.283, w: 1.1 + r() * 0.9 }; bk.set(key, kc); }
+    const ph = kc.ph, w = kc.w, amp = 0.012 + 0.05 * R.look.ripple;
     let roll = Math.sin(t * w * 0.7 + ph * 1.3) * 0.6, dy = amp * Math.sin(t * w + ph), kmax = 0;
     // a passing wake: its front spreads from where the boat was at 0.8 x its speed; the strongest front over this floater rocks it
     for (const q of W.wakes) {

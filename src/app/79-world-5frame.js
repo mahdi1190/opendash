@@ -1623,7 +1623,7 @@ function _wfrDraw(env, ctx, t) {
           const byId = new Map(aRecs.map(r => [r.id, r]));
           const spriteOf = (ref) => { const r = byId.get(String(ref)); const sp = r && !r.prim ? _wfrSpriteOf(env, S, r, '*', { bucket: r.bucket }) : null; return sp && sp.c ? { c: sp.c, x0: sp.x0, y0: sp.y0, w: sp.w, h: sp.h, s: r.s, flip: r.flip, X: r.X, Y: r.Y, x: r.x, d: r.z, top: sp.y0 } : null; };
           ctx.save();
-          if (S.wet && S.wet.water.length) { ctx.setTransform(vs, 0, 0, vs, ox, oy); _wfrHoleClip(ctx, S.wet.water); }   // never on water (L2)
+          if (S.wet && S.wet.water.length) { ctx.setTransform(vs, 0, 0, vs, ox, oy); _wfrHoleClip(ctx, S.wet.water); ctx.setTransform(1, 0, 0, 1, 0, 0); }   // never on water (L2); the shadows are in device px
           draws += worldDrawShadows(ctx, plan, { vs, ox, oy, spriteOf, cam, sun: typeof worldSunOf === 'function' ? worldSunOf(sun, cam) : null }) || 0;
           ctx.restore();
         } catch (e) { S.agentShadowOff = true; S.stats.errors.push('agentShadows: ' + (e && e.message)); }
