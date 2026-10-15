@@ -252,8 +252,10 @@
         }
         if (!win && v % 2) { const x = rr(r, -14, 14), h = rr(r, 22, 30); st += `M${f1(x)} 0L${f1(x + 2)} ${f1(-h)}`; faded = circ(x + 2, -h, 2.6); }
         const body = [['@leaf', lv, win ? .7 : .9], { s: '@straw', w: 1.1, d: dry }, { s: '@stem', w: 1.2, d: st }];
-        if (umb) body.push({ s: '@seed', w: .8, d: umb });
-        body.push(['@seed', hd]);
+        // the umbels and the seed heads are detail: a tile (LOD < 0.5) keeps the leaf clump and the stems (CI 15 Oct: the winter
+        // patch was 3x its autumn-of-last-week size in every tile that holds one)
+        if (umb) body.push({ s: '@seed', w: .8, d: umb, detail: true });
+        body.push({ f: '@seed', d: hd, detail: true });
         if (faded) body.push(['@faded', faded, .85]);
         if (frost) body.push({ f: '@frost', d: frost, op: .7, detail: true });
         return { body };

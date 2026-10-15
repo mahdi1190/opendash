@@ -161,8 +161,9 @@
       // bare: fine twig sprays drooping from every limb end, and the purple-brown haze of the crown
       let fine = '';
       for (const [cx, cy, rad] of tops) for (let k = 0; k < 6; k++) { const a = -Math.PI / 2 + rr(r, -1.3, 1.3), L = rad * rr(r, 0.7, 1.2); fine += `M${f1(cx)} ${f1(cy)}q${f1(Math.cos(a) * L * 0.6)} ${f1(Math.sin(a) * L * 0.6)} ${f1(Math.cos(a) * L)} ${f1(Math.sin(a) * L * 0.4 + L * 0.3)}`; }
-      crown.push({ s: '@haze', w: 0.8, cap: 'round', op: 0.5, d: tops.map(([cx, cy, rad]) => sceneDraw.twigHaze(r, cx, cy, rad * 0.85, rad * 0.7, 5)).join('') });
-      crown.push({ s: '@twig', w: 1.2, d: fine });
+      const hzs = tops.map(([cx, cy, rad]) => sceneDraw.twigHazeLod(r, cx, cy, rad * 0.85, rad * 0.7, 5));
+      crown.push({ s: '@haze', w: 0.8, cap: 'round', op: 0.5, d: hzs.map(h => h.core).join('') }, { s: '@haze', w: 0.8, cap: 'round', op: 0.5, d: hzs.map(h => h.fine).join(''), detail: true });
+      crown.push({ s: '@twig', w: 1.2, d: fine, detail: true });   // the drooping sprays: a tile keeps the haze and the limbs
       return { trunk, crown };
     }
     // leafy: per limb end a cluster (dark under, the mass, a lit top), and drooping leaf tips (detail)
@@ -215,7 +216,7 @@
   const woods = (v, r, season) => {
     const winter = season === 'winter';
     const mixes = [{ pine: 0.6, birch: 0.3, oak: 0.1 }, { pine: 0.25, birch: 0.6, oak: 0.15 }, { pine: 0.35, birch: 0.25, oak: 0.4 }][v];
-    const W = 180, under = [], stems = [], white = [], pine = ['', ''], birch = ['', ''], oak = ['', ''], bare = [];
+    const W = 180, under = [], stems = [], white = [], pine = ['', ''], birch = ['', ''], oak = ['', ''], bare = [], bareF = [];
     // the under-storey: a low dark mass along the whole belt
     let d = `M${-W - 10} 2`;   // tapered at both ends, so belts placed side by side do not read as blocks
     for (let x = -W - 10; x <= W + 10; x += 14) { const e = Math.min(1, (W + 10 - Math.abs(x)) / 60); d += `L${x} ${R(-rr(r, 26, 44) * (0.25 + 0.75 * e))}`; }
@@ -229,17 +230,17 @@
         for (let j = 0; j < 3; j++) { const py = -h * (1 - j * 0.18) + 6, pw = rr(r, 14, 26) * (j ? 0.85 : 1); pine[j === 0 ? 1 : 0] += sceneD.lobed(r, f1(x + rr(r, -9, 9)), R(py), R(pw), R(rr(r, 6, 10)), 7, 0.2); }
       } else if (kind === 'birch') {
         white.push(`M${f1(x - 1.4)} 0L${f1(x - 0.6)} ${R(-h * (0.4 + (i * 7 % 5) * 0.05))}h1.2L${f1(x + 1.4)} 0z`);   // the white stems show below the crowns only
-        if (winter) bare.push(sceneDraw.twigHaze(r, x, -h * 0.62, h * 0.17, h * 0.34, 4));
+        if (winter) { const hz = sceneDraw.twigHazeLod(r, x, -h * 0.62, h * 0.17, h * 0.34, 4); bare.push(hz.core); bareF.push(hz.fine); }
         else birch[lit] += sceneD.lobed(r, f1(x), R(-h * 0.62), R(h * 0.17), R(h * 0.34), 8, 0.22);
       } else {
         stems.push(`M${f1(x - 3)} 0L${f1(x - 2)} ${R(-h * 0.45)}h4L${f1(x + 3)} 0z`);
-        if (winter) bare.push(sceneDraw.twigs(r, [[x - 1, -h * 0.45, -0.6, h * 0.22], [x + 1, -h * 0.45, 0.55, h * 0.22]], 0, 0) + sceneDraw.twigHaze(r, x, -h * 0.66, h * 0.4, h * 0.32, 6));
+        if (winter) { const hz = sceneDraw.twigHazeLod(r, x, -h * 0.66, h * 0.4, h * 0.32, 6); bare.push(sceneDraw.twigs(r, [[x - 1, -h * 0.45, -0.6, h * 0.22], [x + 1, -h * 0.45, 0.55, h * 0.22]], 0, 0) + hz.core); bareF.push(hz.fine); }
         else oak[lit] += sceneD.lobed(r, f1(x), R(-h * 0.66), R(h * 0.42), R(h * 0.34), 9, 0.3);
       }
     }
     // the lit halves and the white stems are detail: a small still (a tile) draws the belt as its dark masses only
     const body = [['@under', under.join('')], { f: '@stem', d: stems.join(''), detail: true }, { f: '@white', d: white.join(''), op: 0.7, detail: true }];
-    if (winter) body.push({ s: '@twig', w: 1, cap: 'round', op: 0.7, d: bare.join('') });
+    if (winter) body.push({ s: '@twig', w: 1, cap: 'round', op: 0.7, d: bare.join('') }, { s: '@twig', w: 1, cap: 'round', op: 0.7, d: bareF.join(''), detail: true });
     body.push(['@oak.0', oak[0]], { f: '@oak.1', d: oak[1], detail: true }, ['@birch.0', birch[0]], { f: '@birch.1', d: birch[1], detail: true }, ['@pine.0', pine[0]], { f: '@pine.1', d: pine[1], detail: true });
     return { body: body.filter(sh => (Array.isArray(sh) ? sh[1] : sh.d)) };
   };

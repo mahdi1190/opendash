@@ -836,6 +836,9 @@ function sceneSvg(x, o) {
   const actorSvg = (a) => {
     const at = sceneActorAt(a, 0), it = { o: a.o, v: a.v, season: C.season, haze: C.layers[a.layer] ? Math.round(C.layers[a.layer].haze * 10) / 10 : 0, tint: null, s: at.s };
     const flip = at.dir < 0, sh = sceneObjShapes(a.o, a.v, C.season);
+    // a tile (LOD < 0.5) leaves out what is about a pixel tall, as the placements do below (a walker 30 units tall is a 1 px speck in
+    // a tile, and a crowd of distinct walkers is the biggest part of what a tile costs once the people library varies them)
+    if (lod < 0.5 && sh && sh.box && (sh.box[3] - sh.box[1]) * at.s < 30) return '';
     let out = '', wp = null;
     if (!a.anim || !a.anim.length) out = use(sym(it, '*', lit), at.x, at.y, at.s, flip, null, at.alpha);
     else {
@@ -929,7 +932,7 @@ function sceneSvg(x, o) {
       // (seasonal cover, far grass, ducks): the canvas draws the scene everywhere it can; this is the still's budget
       if (C.v === 2 && lod < 0.5 && !it.direct) {
         const sh = sceneObjShapes(it.o, it.v, it.season);
-        if (it.cover || (sh && (sh.box[3] - sh.box[1]) * it.s < 24)) continue;
+        if (it.cover || (sh && (sh.box[3] - sh.box[1]) * it.s < 30)) continue;
         // no tints: a tile cannot show a few per cent of colour shift, and every distinct tint is its own symbol
         if (it.tint) { movers.push([it.y, placed(Object.assign({}, it, { tint: null }))]); continue; }
       }

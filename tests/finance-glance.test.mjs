@@ -154,7 +154,13 @@ test('GET /api/finance/glance: {status:empty} without data, then the Overview\'s
   writeFileSync(join(sys, 'analysis.json'), JSON.stringify(a));
   const r = await get('/api/finance/glance');
   assert.equal(r.status, 200, r.text);
-  const { B } = briefFor(a, { currency: 'GBP', locale: 'en-GB' });
+  // financeData() moves analysis.today up to the server's real day (todayIn(cfg.timezone); the
+  // test data dir has no zone, so the process's own day), so the expected numbers use that
+  // day too. Before 15 Oct this compared against the data's own date (2026-10-14) and so
+  // failed on every later calendar day.
+  const day = todayIn(null);
+  const { B } = briefFor({ ...a, today: a.today < day ? day : a.today }, { currency: 'GBP', locale: 'en-GB' });
+  assert.equal(r.json.today, diso(B.anchor));
   assert.deepEqual(r.json.safe, plain(B.safe));
   assert.equal(r.json.payday.next, diso(B.cycle.next));
   assert.equal(r.json.bills.length, B.bills.length);
