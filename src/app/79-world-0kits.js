@@ -251,6 +251,19 @@ const WORLD_STYLE_KITS = _wkbFreeze({
     fill: { grass: _WKT_FIELD, field: _WKT_FIELD, heath: _WKT_HEATH, wood: _WKT_WOOD, wet: _WKT_WET, sand: _WKT_SAND, paving: _WKT_PAVING, path: _WKT_PATH, water: _WKT_CALM },
     edges: _WKT_EDGES_RURAL, frame: [{ kind: 'hedge', obj: 'plant.hedgerow-blackberry' }, { kind: 'shrub', obj: 'plant.rph-church-shrub' }, _WKT_BOUGH_OAK],
     rich: _WKT_RICH_RURAL, life: Object.assign({ graze: [{ who: 'sheep', count: 10 }] }, _WKT_LIFE_RURAL) },
+  // a limestone dale (Malham, Ingleton, Wharfedale): short sheep-grazed pasture with scattered limestone and rush, dry-stone walls (a spec's
+  // lines; no hedgerows), a lone hawthorn or ash, a clear beck with rushes and stones, sheep and walkers; the crag is the spec's cliff
+  dale: { label: 'limestone dale', place: 'rural', backdrop: 'downs', ground: 'grass', sky: [0.3, 0.62], layers: 5,
+    look: { grass: 'tussock', field: 'tussock', path: 'gravel', paving: 'flags', quay: 'stone', bank: 'earth' },
+    fill: { grass: { near: [['plant.rph-short-grass', 4], ['plant.yg-meadow', 3], ['plant.grass-long', 2], ['plant.rph-rosette', 1], ['plant.daisies', 1]],
+      mid: [['rock.boulder', 2], ['rock.stones', 2], ['tree.hawthorn', 1], ['plant.rph-short-grass', 3], ['plant.grass-long', 2], ['plant.bracken', 1]],
+      far: [['tree.hawthorn', 2], ['tree.oak', 1], ['tree.green-oak', 1], ['tree.pool-birch', 1], ['rock.boulder', 1]], distant: _WKT_DISTANT_HEATH,
+      accents: [['plant.wildflowers', 3], ['plant.daisies', 2], ['rock.stones', 2], ['ground.leaf-litter', 1]] },
+      field: _WKT_FIELD, heath: _WKT_HEATH, wood: _WKT_WOOD, wet: _WKT_WET, sand: _WKT_SAND, paving: _WKT_PAVING, path: _WKT_PATH, water: _WKT_NOLILY },
+    edges: Object.assign({}, _WKT_EDGES_RURAL, { hedgerow: [], natural: { margin: [['plant.proof-fleet-rush', 3], ['plant.grass-long', 2], ['plant.fern', 1]], bank: [['rock.stones', 3], ['plant.rph-short-grass', 3], ['plant.grass-long', 1], ['plant.fern', 1]], stands: 0.4 } }),
+    frame: [_WKT_BOUGH_OAK, { kind: 'rock', obj: 'rock.boulder' }, { kind: 'shrub', obj: 'tree.hawthorn' }, { kind: 'shrub', obj: 'plant.fern' }],
+    rich: { mid: [['rock.boulder', 2], ['rock.stones', 1], ['tree.hawthorn', 1], ['plant.grass-long', 2], ['plant.yg-meadow', 2], ['plant.bracken', 1], ['plant.fern', 1]], far: [['tree.hawthorn', 2], ['tree.oak', 1], ['rock.boulder', 1], ['tree.pool-birch', 1]] },
+    life: { walk: { who: 'walkers', rate: '2/min', mix: { brisk: 0.4, 'dog-walker': 0.3, couple: 0.2, stroll: 0.1 } }, graze: [{ who: 'sheep', count: 9 }] } },
 });
 // legacy fill and backdrop style names (place.style, backdrop.style) -> kit
 const WORLD_KIT_ALIAS = Object.freeze({ 'canal-wooded': 'canal', lake: 'pond', 'lake-pond': 'pond', 'town-low': 'village-green', village: 'village-green', green: 'village-green',

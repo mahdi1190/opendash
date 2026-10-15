@@ -659,11 +659,13 @@ function _wfrDrawRec(cx, env, S, r, d, bx, by, alpha) {
   let n = 0;
   try {
     if (r.prim) {
-      if (typeof worldExtrudeDraw === 'function') {
+      // a terrain prim (strips, a cliff's face) has its own drawing (4terrain: quads then ops); every other prim is the extruder's
+      const drawPrim = r.prim.sub === 'terrain' && typeof worldTerrainDraw === 'function' ? worldTerrainDraw : typeof worldExtrudeDraw === 'function' ? worldExtrudeDraw : null;
+      if (drawPrim) {
         const L = env.Lnow || env.L;
         // a hull's windows at night: a boat under way is lit inside; a moored one is a home (one seeded draw per boat, as a house's windows)
         const LN = S.lightNow, hullLit = r.prim.kind === 'hull' && !!LN && typeof worldGlowOn === 'function' && (r.static ? worldGlowOn(String(r.id), 0, 'window', LN.alt, LN.share, {}) : LN.alt < 4);
-        n = worldExtrudeDraw(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, litGlow: hullLit, mctx: S.mctx || undefined, night: !!(L && (L.dark > 0.5 || L.windows)),
+        n = drawPrim(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, litGlow: hullLit, mctx: S.mctx || undefined, night: !!(L && (L.dark > 0.5 || L.windows)),
           windowShare: S.sky && Number.isFinite(S.sky.windowShare) ? S.sky.windowShare : L && L.windowShare, season: S.season, haze: _wfrHaze(env, r.ent), alpha: alpha == null ? 1 : alpha }) || 0;
       }
     } else {

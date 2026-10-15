@@ -1254,19 +1254,26 @@ function _wcReliefCompile(cs) {
   let nx = Math.max(2, Math.min(NXC, Math.ceil((x1 - x0) / (cliffs ? 1 : 0.75)) + 1)), nd = Math.max(2, Math.min(NDC, Math.ceil(Math.log(z1 / z0) / Math.log(ratio)) + 1));
   while (nx * nd * segs > budget && (nx > 33 || nd > 33)) { nx = Math.max(33, Math.ceil(nx * 0.8)); nd = Math.max(33, Math.ceil(nd * 0.8)); }
   const baseCam = base ? { relief: { x: base.x, d: base.d, nx: base.nx, nd: base.nd, h: base.h } } : null, h = new Array(nx * nd);
+  // a world with a cliff AND other relief keeps the relief without the cliff (relief.base): the cliff is drawn analytically (4terrain), the rest from the grid
+  const mixed = cliffs > 0 && (!!base || feats.some(f => f.kind !== 'cliff')), hb = mixed ? new Array(nx * nd) : null;
   for (let j = 0; j < nd; j++) {
     const d = z0 * Math.pow(z1 / z0, j / (nd - 1));
     for (let i = 0; i < nx; i++) {
       const x = x0 + (x1 - x0) * i / (nx - 1);
-      let up = 0, down = 0;
+      let up = 0, down = 0, cl = 0;
       for (const f of feats) {
-        if (f.kind === 'cliff') { up = Math.max(up, worldCliffHeight(f, x, d)); continue; }
+        if (f.kind === 'cliff') { cl = Math.max(cl, worldCliffHeight(f, x, d)); continue; }
         const pr = _wcFeatProfile(f, _wcLineDist(f.path, x, d)); if (!pr) continue; if (f.kind === 'cutting') down = Math.min(down, -Math.abs(f.h) * pr); else up = Math.max(up, Math.abs(f.h) * pr);
       }
-      h[j * nx + i] = _wcR3((baseCam ? sceneGroundHeight(baseCam, x, d) : 0) + up + down);
+      let upc = up;
+      if (cl > 0) upc = Math.max(up, cl);
+      const b0 = baseCam ? sceneGroundHeight(baseCam, x, d) : 0;
+      h[j * nx + i] = _wcR3(b0 + upc + down);
+      if (hb) hb[j * nx + i] = _wcR3(b0 + up + down);
     }
   }
   const r = { x: [_wcR3(x0), _wcR3(x1)], d: [_wcR3(z0), _wcR3(z1)], nx, nd, h, src: 'features' };
+  if (hb) r.base = { x: r.x, d: r.d, nx, nd, h: hb };
   _wcReliefMemo.set(g, r);
   return r;
 }
@@ -1445,6 +1452,7 @@ function worldBuild(spec, o = {}) {
     lines: (Array.isArray(cs.lines) ? cs.lines : []).map(l => Object.assign({ width: l.kind === 'hedge' ? 1.2 : l.kind === 'wall' ? 0.45 : 0.2, h: l.kind === 'kerb' ? 0.12 : l.kind === 'coping' ? 0.3 : l.kind === 'hedge' ? 1.8 : l.kind === 'wall' ? 1.8 : 1.2 }, _wcCopy(l))),
     buildings: (Array.isArray(cs.buildings) ? cs.buildings : []).map(b => Object.assign({ solidity: 'solid', h: _wcNum(b.h) ? b.h : (b.storeys || 2) * 3.1 }, _wcCopy(b))),
     features: _wcObjOf(cs.ground) && Array.isArray(cs.ground.features) ? _wcCopy(cs.ground.features) : [],
+    reliefBase: relief && relief.base ? relief.base : null,
     entities: [], life: [], backdrop: _wcObjOf(cs.backdrop) ? _wcCopy(cs.backdrop) : null, waterSteps: [],
     problems: o.validate === false ? [] : rep.errors, warnings: rep.warnings, log, culled };
   try { _wcJoinLevels(world); } catch (e) { /* flat joins */ }
