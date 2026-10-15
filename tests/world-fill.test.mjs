@@ -86,6 +86,13 @@ function onWalkingLines(world) {
 const coverage = (E, world) => typeof E.worldCoverage === 'function' ? E.worldCoverage(world, world.cam) : { bare: E.worldRichness(world, world.cam).bare, ok: true };
 const perennial = (E, world) => Object.assign({}, world, { entities: world.entities.filter(e => { const k = E.worldKb(e.obj); return !k || !k.when || !(k.when.months || k.when.dates || k.when.weather); }) });
 
+/** How much slower than an idle machine this one is right now (a fixed workload, about 25 ms idle). A timing test allows at least 3x: it guards against a regression, not against a busy machine. */
+function cpuScale() {
+  let best = Infinity;
+  for (let k = 0; k < 3; k++) { const t = process.hrtime.bigint(); let x = 0; for (let n = 0; n < 2e7; n++) x += n % 7; best = Math.min(best, Number(process.hrtime.bigint() - t) / 1e6 + (x < 0 ? 1 : 0)); }
+  return Math.max(1, best / 25);
+}
+
 test('the fill interface and its styles: every object exists, belongs in the UK and keeps the care rules', () => {
   for (const n of ['worldFill', 'worldRichness', 'worldFillStyle']) assert.equal(typeof W[n], 'function', n);
   assert.ok(W.WORLD_RICHNESS_FLOOR && W.WORLD_RICHNESS_FLOOR.score > 0);
@@ -125,7 +132,7 @@ test('a spec with only a camera and a water polygon becomes a scene above the ri
     assert.deepEqual(overlaps(world), []);
     assert.deepEqual(onWalkingLines(world), []);
     assert.ok(world.backdrop && world.backdrop.style, 'a backdrop from the place style');
-    assert.ok(ms < 1500, `build and fill took ${ms} ms`);
+    assert.ok(ms < 1500 * Math.max(cpuScale(), 3), `build and fill took ${ms} ms (machine at ${cpuScale().toFixed(1)}x)`);
     // every auto entity stands on its habitat (K1) and belongs in the region (K7)
     for (const e of auto) {
       const kb = E.worldKb(e.obj);
@@ -335,6 +342,6 @@ test('the three test scenes are at or above the richness floor and <= 15 % bare 
     assert.ok(rich.ok, `${id}: ${JSON.stringify(rich)}`);
     assert.ok(cov.bare <= 0.15, `${id}: bare ${cov.bare}`);
     assert.deepEqual(onWalkingLines(world), [], id);
-    assert.ok(ms < 2000, `${id}: build + fill ${ms} ms`);
+    assert.ok(ms < 2000 * Math.max(cpuScale(), 3), `${id}: build + fill ${ms} ms (machine at ${cpuScale().toFixed(1)}x)`);
   }
 });
