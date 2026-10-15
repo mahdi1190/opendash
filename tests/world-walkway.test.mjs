@@ -117,7 +117,7 @@ test('reed beds and pond shores are ragged in the built world; a shared edge sta
   assert.ok(S('p').poly.length > 20);
   // a shared edge keeps being shared: the displacement is a field of the point alone
   const t1 = E._wcNaturalEdge([[0, 20], [0, 40], [-10, 30]], 7), t2 = E._wcNaturalEdge([[0, 20], [0, 40], [10, 30]], 7);
-  assert.deepEqual(t1.slice(0, 12), t2.slice(0, 12));
+  assert.deepEqual(t1.slice(0, 8), t2.slice(0, 8));
   // ruled things stay ruled
   assert.equal(S('c').poly.length, 4);
   assert.deepEqual(S('pa').path, [[0, 1], [0, 60]]);

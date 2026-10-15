@@ -198,6 +198,8 @@ export function convertData(data, meta, E, o = {}) {
     for (const k of Object.keys(s)) if (!['id', 'kind', 'poly', 'path', 'width', 'rest', 'band', 'beside', 'side', 'gap', 'over', 'tracks', 'markings', 'crossing', 'kerb', 'crop'].includes(k)) drop(path, k, 'not a world field');
     for (const k of ['markings', 'kerb', 'crop', 'tracks']) if (s[k] !== undefined) drop(path, k, 'drawn by the engine from the kind');
     const out = { id: s.id, kind };
+    // a v2 walkway laid over the water (bridge, over: 'water') keeps saying so: a jetty, pier or landing stage is not a boardwalk across a lake
+    if (s.over === 'water' && ['boardwalk', 'bridge-deck', 'deck', 'platform'].includes(kind)) out.over = 'water';
     if (s.rest) { rest = { id: s.id, kind }; continue; }
     if (Array.isArray(s.poly)) out.poly = s.poly.map(p => [r2(p[0]), r2(p[1])]);
     else if (Array.isArray(s.path)) { out.path = s.path.map(p => [r2(p[0]), r2(p[1])]); out.width = s.width || 2; }
