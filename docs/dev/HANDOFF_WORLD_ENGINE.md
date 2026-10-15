@@ -17,27 +17,36 @@ For whoever picks this up next (a person or an agent). Read in this order: this 
    integrated (commit 99d3f90). 329 tests pass. The invariant checker and the 14 adversarial fixtures pass. The browser perf
    gates and the visual review are NOT done.
 
-## Known state of v3 (honest)
+## Known state of v3 (honest, 15 Oct)
 
-When it works it looks good (see the fleet-pond-2 capture), but the renders still have many glitches and are worse than the
-v2 originals. The open list is in the orchestrator review notes (kept outside the repo); the same items are
-repeated here:
+What now holds, by default, in the engine (each with a test and a SCENE_LESSONS row):
 
-- A huge glowing white disc next to moored boats at dawn and night: the stove smoke particle is drawn as a lit disc.
-- A dark round head cut off in the bottom-left near band in every canal cell (C2 is not enforced in render).
-- Winter birches render as bare white poles; some winter trees have flat dark disc canopies.
-- The original composition is lost on conversion (QP3), and night is murky (QP4).
-- The richness critic is too lenient: a bare channel passed it.
+- **Movement** (lessons I, requirements 26): hard personal space, keep-left passing, queues, squeeze in one-body lanes, a watchdog,
+  leashes that never teleport a dog, shown velocity, a crowd that never covers more than 7 % of the frame, bench stand-up spots
+  that are legal cells. `node tools/world.mjs invariants <ref> --browser` checks the frames the page really drew.
+- **Terrain** (lessons J, requirements 27): ground features are drawn as depth strips of shaded quads; buildings stand on the
+  slope; what lies behind a rise is dropped; a water below the ground is hidden behind the near bank.
+- **Style kits and the strict critic** (lessons H): short specs get fill, edges, framing and backdrop from a kit.
+- **Render glitches** (lessons G): discs, winter trees, T-pier decks, night key, ripple zigzag.
+- **No-example places**: Whitby harbour is built from a 45-line spec and reads well in every season, time and rain. York,
+  Liverpool and Malham are in progress on the branches uk-york, uk-liverpool and uk-malham (timber-framed jetty style and frontage
+  expansion; civic towers, domes and clock faces; a cliff feature with strata, ledges and scree).
+
+Still not right:
+
+- **Frame time.** At 4x CPU throttle the compositor takes about 140 ms a frame (budget 8 ms) and a warm remount 1.7 to 2.6 s (budget
+  1 s); the cold first bake is fine (well under 5 s). The cost is the chunk blits and the occluder redraws in
+  `_wfrDraw` (the `depth` section of `stats().prof`); idea: pre-composite the run of chunks behind the farthest mover once per bake.
+- The pond's boardwalk reflection has a stair-stepped edge on its diagonals; the nav map does not treat extruded buildings as
+  solid in every case; a walker can still pass through a jogger for one frame (swept check) in the canal at night.
+- Library art gaps: no timber or jettied style until uk-york merges, no landmark art for the Liver Building or the Abbey.
 
 ## What is next
 
-1. Fix the list above in the ENGINE, never per scene.
-2. Run the test phase: the adversarial red team, plus four places never drawn before, each from a short spec with no example:
-   Liverpool Pier Head, York (the Shambles), Whitby harbour and Malham Cove. Compare each against the gold proof Fleet Pond and
-   the best Castlefield view.
-3. Refine plus fresh-eyes verify rounds until `node tools/world.mjs accept --browser` passes AND a reviewer finds nothing weird
-   across the season x time x weather matrix (requirements section 16, 20, 24 and 25).
-4. Then convert Hampshire, Manchester and Sheffield to v3, and release.
+1. Merge the three place branches, fix whatever the matrix shows, then the frame-time work above.
+2. Run `node tools/world.mjs accept --browser` until it passes and review the season x time x weather matrix with fresh eyes
+   (requirements sections 16, 20, 24, 25).
+3. Then convert Hampshire, Manchester and Sheffield to v3, and release.
 
 ## Rules
 
