@@ -33,6 +33,8 @@
       { id: 'mersey', kind: 'water', water: 'estuary', poly: rect(-900, 1500, -1250, 0), shallow: 2 },
       { id: 'stage', kind: 'boardwalk', poly: rect(-110, 10, -24, -1) },
     ],
+    // the river wall's railing, set back a little from the edge
+    lines: [{ id: 'river-rail', kind: 'railing', path: [at(-420, 0.7), at(420, 0.7)] }],
     // the three great waterfront offices, their river fronts on the plaza (b = 95), in Portland stone
     buildings: [
       { id: 'port', foot: rect(-135, -52, 95, 145), storeys: 7, style: 'baroque-civic', crown: 'great-dome' },

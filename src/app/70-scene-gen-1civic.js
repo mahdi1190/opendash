@@ -82,13 +82,13 @@ function _scbcDrawRev(op, ctx) {
   if (op.ribs && ctx.T >= 2) {
     const segs = [], per = op.seg / op.ribs;
     for (const q of quads) {
-      if (Math.abs((q.i % per) - 0) > 1e-6 && !(per < 1)) continue;
+      if (per >= 1 && q.i % Math.round(per) !== 0) continue;   // a rib on every per-th side
       const r0 = op.prof[q.j][0], r1 = op.prof[q.j + 1][0], am = (q.i + 0.5) / op.seg * _scbcTau + (op.rot || 0), k = 1.012, hw = (op.rib || 0.14) / 2;
       const pt = (r, z, da) => [op.c[0] + r * k * Math.cos(am + da), z, op.c[1] + r * k * Math.sin(am + da)];
       const z0 = op.prof[q.j][1], z1 = op.prof[q.j + 1][1], w0 = r0 > 0.01 ? hw / r0 : 0, w1 = r1 > 0.01 ? hw / r1 : 0;
       const d = _scbcPoly(view, [pt(r0, z0, -w0), pt(r0, z0, w0), pt(r1, z1, w1), pt(r1, z1, -w1)]); if (d) segs.push(d);
     }
-    if (segs.length) sink.add(3, { f: _scbcTone(col, 1, 0.5), d: segs.join(''), op: 0.9, part, detail: true });
+    if (segs.length) sink.add(3, { f: _scbcTone(col, 6, 0.3), d: segs.join(''), op: 0.9, part, detail: true });
   }
   // a drum's windows (dark glass in every k-th side, lit at night) and its colonnade (pilasters between them)
   if (op.open && ctx.T >= 1) {
