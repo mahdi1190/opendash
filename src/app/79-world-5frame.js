@@ -663,7 +663,7 @@ function _wfrDrawRec(cx, env, S, r, d, bx, by, alpha) {
         const L = env.Lnow || env.L;
         // a hull's windows at night: a boat under way is lit inside; a moored one is a home (one seeded draw per boat, as a house's windows)
         const LN = S.lightNow, hullLit = r.prim.kind === 'hull' && !!LN && typeof worldGlowOn === 'function' && (r.static ? worldGlowOn(String(r.id), 0, 'window', LN.alt, LN.share, {}) : LN.alt < 4);
-        n = worldExtrudeDraw(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, litGlow: hullLit, mctx: S.mctx || undefined, night: !!(L && (L.dark > 0.5 || L.windows)),
+        n = worldExtrudeDraw(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, litGlow: hullLit, mctx: S.mctx || undefined, sun: S.sun || null, night: !!(L && (L.dark > 0.5 || L.windows)),
           windowShare: S.sky && Number.isFinite(S.sky.windowShare) ? S.sky.windowShare : L && L.windowShare, season: S.season, haze: _wfrHaze(env, r.ent), alpha: alpha == null ? 1 : alpha }) || 0;
       }
     } else {
@@ -828,6 +828,10 @@ function* _wfrBakeJob(env, S) {
   if (rec.driver && typeof rec.driver.setTime === 'function' && ms != null) rec.driver.setTime(ms);
   S.mat = typeof worldMaterialColour === 'function' && typeof worldMaterialOf === 'function' && typeof worldMaterialKey === 'function' && typeof worldMaterialFor === 'function' && typeof worldMaterialCtx === 'function';
   if (S.mat) { try { S.mctx = worldMaterialCtx(S.tctx, { sky: S.sky || undefined, L, atmos: env.C.atmos }); } catch (e) { S.mat = false; } }
+  // the real sun on a generated building's faces (79-world-4suntone.js); only the chunks that hold a building carry its (coarse) bucket in their key, so
+  // a change of time inside a light band still reuses every other bitmap (V5)
+  S.sun = null;
+  if (typeof worldSunLight === 'function') { try { S.sun = worldSunLight(S.sky, cam); } catch (e) { S.sun = null; } }
   if (typeof worldWaterPlan === 'function') { try { S.regions = worldWaterPlan(world, cam) || []; } catch (e) { S.regions = []; S.stats.errors.push('waterPlan: ' + (e && e.message)); } }
   S.wet = _wfrWet(world, cam, S.regions);
   S.paths = _wfrPathScr(world, cam);
@@ -888,6 +892,7 @@ function* _wfrBakeJob(env, S) {
       x0 = Math.min(x0, b.x0 * vs + ox); y0 = Math.min(y0, b.y0 * vs + oy); x1 = Math.max(x1, b.x1 * vs + ox); y1 = Math.max(y1, b.y1 * vs + oy);
       const mc = _wfrMc(S, r.ent);
       if (mc) { try { mk += worldMaterialKey(mc) + ';'; } catch (e) { /* none */ } }
+      if (r.prim && r.prim.direct && S.sun) mk += 'u' + S.sun.key + ';';
       // the sprite and the device transform of every member, per bake (the frame's occluder redraws and the mirror reuse them)
       S.draw.set(r.id, { sp: null, M: r.prim ? null : _wfrM(env, r) });
     }

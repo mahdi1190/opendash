@@ -61,10 +61,10 @@ const WORLD_WATER_LOOK = Object.freeze({
   river: { base: ['#5a7480', '#3f5e6a', '#2d4652'], tint: '#3f5e6a', clarity: 0.08, mirror: 0.6, ripple: 0.35, drift: 'flow', rings: true, flow: 0.45 },
   lake: { base: ['#6a8a9a', '#446a7c', '#2a4a5a'], tint: '#446a7c', clarity: 0.12, mirror: 0.7, ripple: 0.3, drift: 'wind', rings: true },
   pond: { base: ['#6a8a9a', '#446a7c', '#2a4a5a'], tint: '#446a7c', clarity: 0.15, mirror: 0.8, ripple: 0.2, drift: 'wind', rings: true },
-  sea: { base: ['#5f8aa6', '#3a6a8c', '#234a66'], tint: '#3a6a8c', clarity: 0.1, mirror: 0.35, ripple: 0.6, drift: 'swell', rings: false },
+  sea: { base: ['#5f8aa6', '#3a6a8c', '#234a66'], tint: '#3a6a8c', clarity: 0.1, mirror: 0.35, ripple: 0.6, drift: 'swell', rings: false, chop: 0.7 },
   harbour: { base: ['#5a7480', '#3f5e6a', '#2d4652'], tint: '#3f5e6a', clarity: 0.06, mirror: 0.6, ripple: 0.25, drift: 'wind', rings: true },
   // a wide tidal estuary (Mersey, Thames, Severn, Humber): silt-laden, brown-grey, opaque, choppy, running with the tide
-  estuary: { base: ['#8d8977', '#6f6a58', '#514c3f'], tint: '#6f6a58', clarity: 0.02, mirror: 0.3, ripple: 0.55, drift: 'flow', rings: true, flow: 0.5 },
+  estuary: { base: ['#946c3e', '#704f2c', '#4b351b'], tint: '#704f2c', clarity: 0.02, mirror: 0.12, ripple: 0.55, drift: 'flow', rings: true, flow: 0.5, chop: 1 },
   puddle: { base: ['#6a7480', '#4a5560', '#2a3540'], tint: '#4a5560', clarity: 0, mirror: 0.9, ripple: 0.05, drift: 'still', rings: false },
 });
 const _WWA_BED = '#4a4030', _WWA_FLOATS = /^(boat|duck|swan|coot|grebe|goose|gull|fish)$/, _WWA_SWIMMERS = /^(duck|swan|coot|grebe|goose)$/;
@@ -493,6 +493,7 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
       B[q] = c[0] + dz; B[q + 1] = c[1] + dz; B[q + 2] = c[2] + dz; B[q + 3] = 255;
       res.wet++;
     }
+    if (typeof worldWaterChop === 'function') worldWaterChop(B, wet, w, h, x0, y0, { R, look, vs, ox, oy, cam });   // wavelets on open water (79-world-4chop.js)
     res.base = { data: B, width: w, height: h };
     D.set(B);
   } else for (let p = 0; p < w * h; p++) if (wet[p]) res.wet++;

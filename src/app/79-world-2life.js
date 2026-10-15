@@ -1544,9 +1544,11 @@ function _wlfMove(life, a, dt) {
   var ox = a.x, oz = a.z;
   if (a.kind === 'lane' || a.kind === 'rail') return;                            // traffic moves these
   if (a.kind === 'moored') { a.vx = 0; a.vz = 0; a.speed = 0; _wlfFace(life, a); return; }
-  if (a.layer === 'air' && !a.hop) { _wlfAirMove(life, a, dt); _wlfFace(life, a); return; }
-  if (a.step) { _wlfStepMove(life, a, dt); _wlfFace(life, a); return; }
-  if (a.hop) { _wlfHopMove(life, a, dt); _wlfFace(life, a); return; }
+  // every path that moves a mover keeps the SHOWN velocity (what the records and the animation read): a bird in a hop, a flight or a step
+  // aboard was drawn flying while its shown velocity was still the 0 of the moment before (pigeons 'flying' while still)
+  if (a.layer === 'air' && !a.hop) { _wlfAirMove(life, a, dt); _wlfShownV(a, dt); _wlfFace(life, a); return; }
+  if (a.step) { _wlfStepMove(life, a, dt); _wlfShownV(a, dt); _wlfFace(life, a); return; }
+  if (a.hop) { _wlfHopMove(life, a, dt); _wlfShownV(a, dt); _wlfFace(life, a); return; }
   if (a.fadeOut) {
     if (life.t - a.fadeOut >= 0.6) { _wlfDespawn(life, a); return; }
     a.vx = 0; a.vz = 0; a.speed = 0; _wlfFace(life, a); return;
@@ -2086,6 +2088,8 @@ function _wlfLift(life, a, o) {
   a.homeLayer = a.layer; a.layer = 'air';
   a.hop = { t0: life.t, dur: 0.9 + a.rng() * 0.6, x0: a.x, z0: a.z, x1: best[0], z1: best[1], y0: worldNavY(life.nav, a.homeLayer, a.x, a.z), up: 0.8 + a.rng() * 0.8 };
   a.bs = 'fly'; a.clip = 'fly';
+  // the lift-off already moves: the first tick of the hop has the hop's speed, so a bird in the air is never drawn flying while it is 'still' (animStill)
+  a.vx = (best[0] - a.x) / a.hop.dur; a.vz = (best[1] - a.z) / a.hop.dur; a.speed = Math.hypot(a.vx, a.vz); a.svx = a.vx; a.svz = a.vz;   // a bird takes off at once: the shown velocity too
   life.bus.emit('lift', { id: a.id, x: a.x, z: a.z, by: o.id });
 }
 

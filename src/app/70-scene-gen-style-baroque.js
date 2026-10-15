@@ -71,7 +71,7 @@
     wall: { cols: ['#d9d2c0', '#dcd5c4', '#d5cebb'], grime: '#5b5548', texture: 'stone', mortar: '#c6bea9' },
     roofMat: { cols: ['#6d7880'], kind: 'lead' },
     dress: { cols: ['#e7e0cf', '#eae3d3'] },
-    win: { type: 'sash', panes: [2, 3], w: 1.9, hk: 0.64, sill: 0.9, head: 'flat', recess: 0.22, frames: ['#f2efe5'], surround: true, lintelH: 0.3, glass: ['#34414e', '#3a4654', '#2f3b47'] },
+    win: { type: 'sash', panes: [2, 3], w: 1.9, hk: 0.64, sill: 0.9, head: 'flat', recess: 0.22, frames: ['#f2efe5'], surround: true, lintelH: 0.3, reflQ: 2, glass: ['#34414e', '#3a4654', '#2f3b47'] },
     door: { w: 2.6, h: 4.4, fan: true, recess: 0.3, panels: 0, canopy: false, step: false, cols: ['#3a3834'] },
     chimney: { where: 'none' },
     details: { downpipe: 0, alarm: 0, boxes: 0, ivy: 0, porch: 0 },

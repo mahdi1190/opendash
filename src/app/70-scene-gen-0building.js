@@ -509,11 +509,12 @@ function _scbgSink(opt) {
   let cur = null;
   const api = {
     shapes, lit, snow, count: 0,
-    begin() { cur = new Map(); },
+    begin(n) { cur = new Map(); api.nrm = !opt.ortho && Array.isArray(n) ? n.map(v => Math.round(v * 100) / 100) : null; },   // n: the face's outward normal, stamped on its shapes so the world can light them by the real sun (79-world-4suntone.js)
     add(layer, sh) {
       if (!sh || !sh.d) return;
       if (sh.part === 'lit') { lit.push(Object.assign({}, sh, { layer })); return; }
       if (sh.part === 'snow') { snow.push(Object.assign({}, sh, { layer })); return; }
+      if (api.nrm && sh.n == null) sh = Object.assign({}, sh, { n: api.nrm });
       const key = layer + '|' + (sh.part || '') + '|' + (typeof sh.f === 'string' ? sh.f : JSON.stringify(sh.f)) + '|' + (sh.op == null ? 1 : sh.op) + '|' + (sh.glow || '') + '|' + (sh.theta == null ? '' : sh.theta) + '|' + (sh.detail ? 1 : 0);
       const noMerge = sh.glow && opt.ortho;
       let L = cur.get(layer); if (!L) cur.set(layer, (L = new Map()));
@@ -536,7 +537,7 @@ function _scbgDrawFace(face, ctx) {
   if (!clipped) return;
   const pts = clipped.map(view.P), shade = _scbgFaceShade(face, ctx);
   if (ctx.debug && face.part === 'wall' && face.edge != null && face.role !== 'block') ctx.debug.walls.push({ edge: face.edge, role: face.role, poly: pts });
-  sink.begin();
+  sink.begin(face.n);
   sink.add(0, { f: _scbgSeasonal(_scbgDark(face.col, shade), ctx.season), d: _scbgPath(pts), op: 1, part: face.part === 'roof' ? 'roof' : 'body' });
   if (face.part === 'roof' && ctx.tier(face.poly) >= 2) _scbgRoofTex(face, ctx);
   if (face.part === 'roof') {
@@ -735,7 +736,8 @@ function _scbgTexture(kind, e, face, ctx, col) {
 function _scbgGlowOf(sp, e, face) {
   const r = sceneRnd(sceneHash('glow|' + sp.seed + '|' + (face.edge || 0) + '|' + _scbgR1(e.s) + '|' + _scbgR1(e.z)));
   const a = r(), theta = (Math.floor(r() * 8) + 0.5) / 8;   // 8 buckets, exact in binary (windows merge per bucket)
-  return { kind: e.shopGlass ? 'shop' : a < sp.tv ? 'tv' : a < sp.tv + sp.curtain ? 'curtain' : 'window', theta, refl: r() };
+  const rf = r(), q = sp.style.win && sp.style.win.reflQ;   // reflQ: a few sky-reflection levels (a tall facade's panes merge into few shapes)
+  return { kind: e.shopGlass ? 'shop' : a < sp.tv ? 'tv' : a < sp.tv + sp.curtain ? 'curtain' : 'window', theta, refl: q ? Math.round(rf * q) / q : rf };
 }
 function _scbgDrawWin(e, face, ctx, T) {
   const { view, sink, sp, season } = ctx, pl = face.plane, st = sp.style, wn = st.win || {};

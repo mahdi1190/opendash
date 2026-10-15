@@ -25,7 +25,7 @@
     tags: ['uk', 'merseyside', 'liverpool', 'pier-head', 'waterfront', 'river-mersey', 'ferry', 'world-v3'], liveSky: { lat: 53.4064, lon: -2.9958 } }, {
     v: 3,
     place: { lat: 53.4064, lon: -2.9958, alt: 8, region: 'merseyside', style: 'waterfront-city' },
-    camera: { eye: 1.7, fov: 72, horizon: 470, heading: CAM.heading, water: -3 },
+    camera: { eye: 1.7, fov: 72, horizon: 500, heading: CAM.heading, water: -3 },
     surfaces: [
       { id: 'prom', kind: 'pavement', poly: rect(-900, 900, 0, 26) },
       { id: 'plaza', kind: 'plaza', poly: rect(-900, 900, 26, 80) },

@@ -35,7 +35,7 @@ const SCENE_WATER_KINDS = Object.freeze({
   pond: { base: ['#6a8a9a', '#446a7c', '#2a4a5a'], clarity: 0.15, mirror: 0.8, ripple: 0.2, edge: 'natural' },
   sea: { base: ['#5f8aa6', '#3a6a8c', '#234a66'], clarity: 0.1, mirror: 0.35, ripple: 0.6, edge: 'beach' },
   harbour: { base: ['#5a7480', '#3f5e6a', '#2d4652'], clarity: 0.06, mirror: 0.6, ripple: 0.25, edge: 'quay' },
-  estuary: { base: ['#8d8977', '#6f6a58', '#514c3f'], clarity: 0.02, mirror: 0.3, ripple: 0.55, edge: 'quay' },   // a wide tidal estuary: silt-brown, opaque, choppy
+  estuary: { base: ['#946c3e', '#704f2c', '#4b351b'], clarity: 0.02, mirror: 0.12, ripple: 0.55, edge: 'quay' },   // a wide tidal estuary: silt-brown, opaque, choppy
   puddle: { base: ['#6a7480', '#4a5560', '#2a3540'], clarity: 0, mirror: 0.9, ripple: 0.05, edge: 'none' },
 });
 const SCENE_WATER_RINGS_MAX = 16, SCENE_WATER_BANDS_REGION = 90, SCENE_WATER_BANDS_SCENE = 160, SCENE_WATER_MIRRORED_MAX = 600, SCENE_WATER_GLINTS = 30;

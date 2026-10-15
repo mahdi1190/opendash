@@ -663,7 +663,7 @@ function worldExtrudeDraw(ctx, prim, o) {
         if (!sh || !sh.d) continue;
         const lit = night && sh.glow && (sh.theta == null || sh.theta < share);
         ctx.globalAlpha = (sh.op == null ? 1 : sh.op) * A;
-        ctx.fillStyle = lit ? (nightCol[sh.glow] || '#ffd98a') : colour(sh.part === 'roof' ? 'slate' : 'brick', sh.f, prim.zKey, sh.part || 'wall');
+        ctx.fillStyle = lit ? (nightCol[sh.glow] || '#ffd98a') : colour(sh.part === 'roof' ? 'slate' : 'brick', o.sun && sh.n && typeof worldSunTone === 'function' && typeof sh.f === 'string' ? worldSunTone(sh.f, sh.n, o.sun) : sh.f, prim.zKey, sh.part || 'wall');
         if (typeof Path2D === 'function') ctx.fill(new Path2D(sh.d)); else { ctx.beginPath(); _wexTrace(ctx, sh.d); ctx.fill(); }
         n++;
       }
