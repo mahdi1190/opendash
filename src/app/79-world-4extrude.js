@@ -390,8 +390,12 @@ function worldExtrudeHull(ent, cam, o) {
   if (Math.max(...foot.map(p => p[1])) < near) return null;
   const art = _wexArt(ent.obj, ent.variant, season);
   if (!art) return null;
-  const [bx0, by0, bx1, by1] = art.box, kv = h / art.size[1];   // metres per art unit, vertically (the host's scale)
-  const toY = v => y0 - v * kv;
+  const [bx0, by0, bx1, by1raw] = art.box, kv = h / art.size[1];   // metres per art unit (the host's scale), for lengths
+  // the side and the end share ONE vertical frame: the art from its top down to the waterline (anything the art draws below
+  // its foot is clipped) spans exactly y0 .. y0 + h, so the end face and the side meet edge to edge (15 Oct: they drew about
+  // 20 px apart and the side's hull fell under the waterline cut)
+  const by1 = Math.min(by1raw, 0), kvy = h / Math.max(1e-6, by1 - by0);
+  const toY = v => y0 - v * kvy;
   const tri = (pa, pb, pc, qa, qb, qc) => { const m = _wexAffine(pa, pb, pc, qa, qb, qc); return m ? { m, pts: [qa, qb, qc].map(q => q.map(v => _wexR(v, 2))), art: [pa, pb, pc] } : null; };
   // the art along the hull: pieces [art u0, u1] -> [hull a0, a1]; the middle repeats when the art is short for the hull
   const natural = (bx1 - bx0) * kv, segs = [], cuts = L / natural > 1.25 ? _wexRepeatCuts(ent.obj, ent.variant, season) : null;
@@ -441,7 +445,7 @@ function worldExtrudeHull(ent, cam, o) {
     const eObj = which === 'bow' ? (views.front || null) : (views.back || views.rear || null), eArt = eObj ? _wexArt(eObj, ent.variant, season) : null;
     let tris = null, m = null;
     if (eArt) {
-      const [ex0, ey0, ex1, ey1] = eArt.box, ek = h / eArt.size[1];
+      const [ex0, ey0, ex1, ey1raw] = eArt.box, ey1 = Math.min(ey1raw, 0), ek = h / Math.max(1e-6, ey1 - ey0);   // the same frame as the side
       // facing the bow the viewer's right is the boat's left; facing the stern it is the boat's right
       const latOf = u => (which === 'bow' ? -1 : 1) * ((u - (ex0 + ex1) / 2) / (ex1 - ex0)) * B;
       const E = (u, v) => Q(P(aEnd, latOf(u), y0 - v * ek));
