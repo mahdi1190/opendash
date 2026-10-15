@@ -1,5 +1,5 @@
 /* ============================================================
-   SCENE ENGINE v2: the timber-framed building machinery (docs/dev/WORLD_ENGINE.md 14.2; docs/dev/SCENE_LESSONS.md K). PURE. Private
+   SCENE ENGINE v2: the timber-framed building machinery (docs/dev/WORLD_ENGINE.md 14.2; docs/dev/SCENE_LESSONS.md L). PURE. Private
    names: _sctf. Functions and consts only, nothing expensive at load. The STYLE (data) is 70-scene-gen-style-timber-framed.js.
 
    What a medieval street needs that a brick terrace does not, built ONCE for any town (York, Chester, Lavenham, Stratford ...):
@@ -27,7 +27,7 @@ const _SCTF_WARES = Object.freeze({ butcher: ['#b5443c', '#e0b8a0', '#8c2f2a', '
   antiques: ['#8a6a3a', '#b8a888', '#5a6a7a'], books: ['#7a3a3a', '#3a5a7a', '#5a7a4a', '#a88a4a'], tea: ['#d8c8a8', '#a86a4a', '#7a8a6a'] });
 const _SCTF_SEASON_FLOWERS = Object.freeze({ spring: ['#f2d24a', '#b58ad9', '#f0f0f0'], summer: ['#d23a4a', '#e86aa0', '#f4f0f0', '#8a4ab8'], autumn: ['#c9702a', '#a8442a', '#d8a030'], winter: [] });
 const _SCTF_SEASON_LEAF = Object.freeze({ spring: '#5f8a3a', summer: '#3f6a2c', autumn: '#6a6a30', winter: '#4a4a38' });
-// the nearest depth (metres) a fitting may hang at in a perspective view: what hangs from a wall never fills more than about a seventh of the frame at the lens (the engine's prop rule, SCENE_LESSONS J, for fittings)
+// the nearest depth (metres) a fitting may hang at in a perspective view: what hangs from a wall never fills more than about a seventh of the frame at the lens (the engine's prop rule, SCENE_LESSONS K, for fittings)
 const _SCTF_NEAR = Object.freeze({ stall: 9, awning: 9, sign: 6, lantern: 6, basket: 8 });
 const _sctfRnd = (sp, tag) => sceneRnd(sceneHash('tf|' + sp.seed + '|' + tag));
 const _sctfPick = (r, a) => a[Math.floor(r() * a.length) % a.length];
@@ -35,7 +35,7 @@ const _sctfPick = (r, a) => a[Math.floor(r() * a.length) % a.length];
 /* ---------- the seeded choices of one timber house (the style's resolve hook) ---------- */
 /**
  * sp.tf: { timber, plaster, pattern, jet: [offset per storey, metres lane-ward of the ground wall], sign, lantern, basket, awning, stall, ... }.
- * Storey heights vary house to house (the ground floor tall, the attic low) so floor lines never line up with a neighbour's: SCENE_LESSONS K.
+ * Storey heights vary house to house (the ground floor tall, the attic low) so floor lines never line up with a neighbour's: SCENE_LESSONS L.
  */
 function _sctfResolve(sp, b) {
   const st = sp.style, r = _sctfRnd(sp, 'resolve'), nS = sp.storeys, T = st.timber || {};

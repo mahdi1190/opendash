@@ -454,7 +454,7 @@ function _wflTry(F, c) {
   // further (a fifth of the frame at most: they are scenery, the walkers are the life) and apart (never a heap of rugs)
   if (peopleLike && c.z < F.cam.f * Math.max(1.2, kb.size.h0 || 1.3) / (c.auto === 'fill' ? 0.2 * F.H : 405)) return null;
   if (peopleLike && c.auto === 'fill' && (F.peopleSpots || []).some(p => Math.hypot(p[0] - c.x, p[1] - c.z) < 4 + 0.04 * c.z)) return null;
-  // no prop at the lens either (SCENE_LESSONS J): a bollard, a sandwich board or a bin nearer than where a 1.3 m thing is about 20 % of the
+  // no prop at the lens either (SCENE_LESSONS K): a bollard, a sandwich board or a bin nearer than where a 1.3 m thing is about 20 % of the
   // frame is a dark blob filling a corner; the placement solver's near band has the same rule for what an author places
   if (!c.framing && ['post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle', 'signage'].includes(kb.cls) && c.z < F.cam.f * Math.min(kb.size.h0 || 1, 1.3) / 270) return null;
   // K6 things that come and go (flowers, lilies, leaf litter) only where the renderer hides them out of season
@@ -766,8 +766,49 @@ function _wflWalk(pts, closed, fn) {
     s += L;
   }
 }
+/**
+ * A hedge surface is a hedge (P5, 1.4): its whole visible length gets library hedge sections end to end (seeded jitter, never a
+ * grid), except where a hedge-class thing already stands on it (an author's brambles dress their own stretch, never the whole
+ * line: before, one bramble on a 400 m hedge left the rest of it as bare ground, 15 Oct audit bug 9). Through sense
+ * (worldPlaceAdd: habitat, overlap, walking lines, the near band) so a section never lands where the solver would refuse it.
+ */
+function _wflHedges(F) {
+  const ix = _wflIndexOf(F), r = _wflRng('hedge|' + (F.world.seed | 0)), cam = F.cam, before = F.count;
+  for (const s of ix.surfs) {
+    if (s.kind !== 'hedge' || s.open === true || !Array.isArray(s.path) || s.path.length < 2) continue;
+    const obj = s.obj && worldKb(s.obj) ? s.obj : 'plant.towpath-hedge', kb = worldKb(obj);
+    if (!kb) continue;
+    const L = kb.size.l || 3, D = kb.size.w || 1.2;
+    let n = 0;
+    for (let i = 1; i < s.path.length; i++) {
+      const a = s.path[i - 1], b = s.path[i], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (!(len > 0.01)) continue;
+      const ux = (b[0] - a[0]) / len, uz = (b[1] - a[1]) / len, facing = (_wflDeg(Math.atan2(ux, uz)) + 360) % 360;
+      for (let u = L / 2 + r() * 0.3; u < len; u += L + 0.08 + r() * 0.35) {
+        const off = (r() - 0.5) * Math.max(0, (s.width || 1.2) - D) * 0.6, x = a[0] + ux * u - uz * off, z = a[1] + uz * u + ux * off;
+        if (!(z > cam.dMin * 0.85) || z > _WFL_FILL_ZMAX) continue;
+        const xa = _wflXAt(cam, -F.pad, z) - L, xb = _wflXAt(cam, F.W + F.pad, z) + L;
+        if (x < xa || x > xb) continue;
+        // an author's hedge-class thing (a bramble, a holly) already stands on this stretch
+        const hit = _wflHits(F, x, z, L * 0.45, true);
+        if (hit && hit.e && (worldKb(hit.e.obj) || {}).cls === 'hedge') continue;
+        const spec = { obj, at: [_wflR2(x), _wflR2(z)], facing: _wflR2(facing), variant: worldKbVariant(kb, F.world.place, F.r, { ctx: F.ctx }), auto: 'edge' };
+        let ent = null;
+        if (typeof worldPlaceAdd === 'function') { try { ent = worldPlaceAdd(F.world, spec, { action: 'dress', rule: 'P5', reason: `hedge surface ${s.id}: a section of its hedge`, by: 'kb', snap: false, log: false }); } catch (e) { ent = null; } }
+        else ent = _wflMake(F, Object.assign({ id: _wflId(F, 'edge'), x, z, auto: 'edge' }, spec), kb, null), F.world.entities.push(ent);
+        if (!ent) continue;
+        ent.on = s.id;
+        F.count++; F.added.push(ent); F.ids.add(ent.id); n++;
+        _wflIndexEnt(ix, ent);
+      }
+    }
+    if (n) _wflLog(F, { id: s.id, obj, action: 'dress', rule: 'P5', reason: `hedge surface ${s.id} laid with ${n} sections of ${obj} (stretches an author's hedge-class things dress are kept)` });
+  }
+  return F.count - before;
+}
 function _wflEdges(F) {
   const E = F.style.edges || {}, ix = _wflIndexOf(F), r = F.r, before = F.count;
+  _wflHedges(F);
   // water banks by water kind: reed stands with gaps in the margin and bank planting (natural), coping lines (urban)
   for (const w of ix.waters) {
     const mode = (E.water || {})[w.s.water] || 'natural';

@@ -7,7 +7,8 @@
                                    (its ground record), already thinned by the LOD. Fields: obj, on, avoid (kinds or ids), d: [d0, d1],
                                    x: [x0, x1], n | density (per 100 m2 for 'ground', per 100 x 100 units for 'screen'), dist
                                    ('ground' | 'screen'), cluster: { centres, spread }, gap: 'foot' | metres, k: [a, b], species: 1,
-                                   seed, variant, flip, tint, anim ('strip' | hooks | false), shadow, reflect, layer.
+                                   seed, variant, flip, tint, anim ('strip' | hooks | false), shadow, reflect, layer, edge: true
+                                   (a margin cluster: clipped to the water's margin band, sceneXSenseMarginOk; margin: { in, out } m).
      sceneCoverAuto(G, placed)     seasonal ground cover (10): leaves in autumn (thicker under deciduous crowns), daisies and blossom
                                    petals in spring, long grass and wild flowers in summer, winter tufts; screen-even, cut beyond 60 m
                                    or under 3 units tall, at most 1,500 placements, all static (baked).
@@ -199,6 +200,10 @@ function sceneScatterV2(G, rule, ri) {
     if (on && !_scscMatch(s, on)) return null;
     if (avoid.length && _scscMatch(s, avoid)) return null;
     if (cls && typeof scenePlaceAllowed === 'function' && !scenePlaceAllowed(cls, s, rule, {})) return null;
+    // edge: true (world sense, 78-scene-x-sense.js): a margin cluster (reeds, reedmace) stays in the water's margin band, clipped
+    // here at generation (in the water within 2.5 m of a bank, on land within 1 m of the water; margin: { in, out } overrides),
+    // so an edge cluster never spills into an open channel or up a dry field
+    if (rule.edge === true && typeof sceneXSenseMarginOk === 'function' && !sceneXSenseMarginOk(G, x, d, rule.margin)) return null;
     return s;
   };
   const anyValid = (x, d) => { for (const c of classes) if (validFor(x, d, c)) return true; return false; };

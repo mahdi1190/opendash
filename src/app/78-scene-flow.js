@@ -16,9 +16,13 @@
    vehicle's head and tail lights (C's sceneHeadlightSprite when loaded, else a glow of its own). New sprites are built at most 2
    a frame (the rest draw from the nearest bucket already in the pool), so a frame never stalls on rasterising.
 
-     sceneFlowLayer(C, L, { vs, ox, oy, lod, still, data, sprite, governor }) -> a standalone layer for a harness or a fallback:
+     sceneFlowLayer(C, L, { vs, ox, oy, lod, still, data, sprite, governor, crowd }) -> a standalone layer for a harness or a fallback:
        { prebake(), relight(L), agents(t), frame(ctx, t) -> draws (shadows then agents, far to near), drawAgent(ctx, a, t),
          shadow(ctx, a), stats() }
+   The crowd pass (merge package "crowd", 15 Oct; 78-scene-x-crowd.js): agents of different lanes and flows never walk into each
+   other. In a renderer the canvas runs it once a frame for the actors and the agents together (_sccCrowd), so the pass's layer has
+   crowd: false; a standalone layer (crowd not false) runs it over its own agents in agents(t). window.__sceneOpts.moversOff: the
+   pass draws no agent (and leaves env.flowNow empty, so no shadow, reflection or wake either).
    Private names: _scfl* (the flow prefix; this file uses _scflf*).
    ============================================================ */
 const _SCFLF_BUILD_PER_FRAME = 2, _SCFLF_FAR_PX = 26;
@@ -198,6 +202,7 @@ function sceneFlowLayer(C, L, o) {
       const gov = typeof o.governor === 'function' ? o.governor() : o.governor;
       if (viewMemo.size > 4000) viewMemo.clear();
       now = typeof sceneFlowAgents === 'function' ? sceneFlowAgents(C, t, L, { mults, data, maxScale: gov > 0 ? gov : 1, viewMemo: o.still ? null : viewMemo }) : [];
+      if (o.crowd !== false && now.length > 1) _scflfCrowd(C, t, L, now);
       st.agents = now.length;
       return now;
     },
@@ -318,6 +323,16 @@ function sceneFlowLayer(C, L, o) {
   return api;
 }
 
+/** A standalone layer's crowd pass: its agents through sceneXCrowdAt (no actors), the resolved places written back. */
+function _scflfCrowd(C, t, L, agents) {
+  if (typeof sceneXCrowdAt !== 'function' || (typeof sceneXCrowdOn === 'function' && !sceneXCrowdOn(C))) return;
+  let recs;
+  try { recs = sceneXCrowdAt(C, t, L, { actors: [], flows: agents }); } catch (e) { return; }
+  for (const r of recs) if (r.ref && (r.x !== r.bx || r.d !== r.bd)) { const a = r.ref; a.X = r.X; a.Y = r.Y; a.s = r.s; a.x = r.x; a.d = r.d; }
+}
+/** Is the frame drawn without movers (window.__sceneOpts.moversOff: the drawn-vs-simulated check's empty frame)? */
+const _scflfMoversOff = () => typeof window !== 'undefined' && !!(window.__sceneOpts && window.__sceneOpts.moversOff);
+
 /* ---------- the pass (B's registry, 78-scene-0pass.js) ---------- */
 const _scflfEnv = new WeakMap();
 function _scflfLayerOf(env) {
@@ -328,7 +343,7 @@ function _scflfLayerOf(env) {
   lg.forEach((gi, l) => { if (gi != null) groupOf.set(l, gi); });
   if (!groupOf.size) (env.groups || []).forEach((g, gi) => (g.layers || []).forEach(l => groupOf.set(l, gi)));
   // the sprites go through the bake's keep (env.keep): the renderer's warm-up sends them to the raster with the rest
-  const layer = sceneFlowLayer(C, env.L, { vs: env.vs, ox: env.ox, oy: env.oy, lod: env.lod, still: !!env.still,
+  const layer = sceneFlowLayer(C, env.L, { vs: env.vs, ox: env.ox, oy: env.oy, lod: env.lod, still: !!env.still, crowd: false,
     sprite: typeof env.sprite === 'function' ? (req) => (typeof env.keep === 'function' ? env.keep(env.sprite(req)) : env.sprite(req)) : null,
     governor: () => (env.governor && env.governor.flowMax) || 1 });
   s = { layer, groupOf, shadowPass: false, t: NaN, last: Math.max(0, (env.groups || []).length - 1, ...[...groupOf.values()]) };
@@ -345,6 +360,7 @@ if (typeof sceneRenderPassDefine === 'function') {
     frameGroup(env, grp, ctx, t) {
       const s = _scflfLayerOf(env);
       if (s.t !== t) { s.t = t; s.layer.beginFrame(!!env.warming); env.flowNow = s.layer.agents(t); }
+      if (_scflfMoversOff()) { env.flowNow = []; return 0; }
       if (s.shadowPass) return 0;
       // no shadow pass: a soft contact blob under each agent of this group, before its movers (every agent stands on its shadow)
       const gi = (env.groups || []).indexOf(grp);
@@ -356,6 +372,7 @@ if (typeof sceneRenderPassDefine === 'function') {
     movers(env, grp, t, push) {
       const s = _scflfLayerOf(env), gi = (env.groups || []).indexOf(grp);
       if (s.t !== t) { s.t = t; s.layer.beginFrame(!!env.warming); env.flowNow = s.layer.agents(t); }
+      if (_scflfMoversOff()) { env.flowNow = []; return 0; }
       for (const a of env.flowNow || []) {
         if ((s.groupOf.has(a.layer) ? s.groupOf.get(a.layer) : s.last) !== gi) continue;
         push({ kind: 'custom', y: a.Y, agent: a, draw(ctx) { const n = s.layer.drawAgent(ctx, a, t); s.layer.count(n); return n; } });

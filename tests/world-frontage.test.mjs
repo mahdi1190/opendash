@@ -1,4 +1,4 @@
-// World engine, the no-example medieval street (the Shambles, York; docs/dev/SCENE_LESSONS.md K; WORLD_ENGINE_REQUIREMENTS.md 28):
+// World engine, the no-example medieval street (the Shambles, York; docs/dev/SCENE_LESSONS.md L; WORLD_ENGINE_REQUIREMENTS.md 28):
 // a whole side of a lane is ONE rule (`buildings: [{ along, side, style, storeys }]`) that the engine cuts into irregular houses along the
 // surface's centre line; the timber-framed generator stacks its storeys (jetties) and hangs its fittings from the wall; the measures
 // (coverage, richness, the strict critic, the edge-cut invariant, the near band) know an extruded street is the frame, not a gap.

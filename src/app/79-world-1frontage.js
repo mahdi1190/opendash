@@ -1,6 +1,6 @@
 /* ============================================================
    WORLD ENGINE (scene format v3.1), package `sense`: STREET FRONTAGES (docs/dev/WORLD_ENGINE.md 1.4, 14.2; requirements Q3, K3, P4;
-   SCENE_LESSONS K). Private prefix _wfg. PURE classic script: nothing runs at load; the v2 building generator (sceneBuildingStyle,
+   SCENE_LESSONS L). Private prefix _wfg. PURE classic script: nothing runs at load; the v2 building generator (sceneBuildingStyle,
    sceneBuildingResolve) is reached through typeof guards.
 
    A street is not one box. `buildings: [{ id, along: <surface id>, side: 'left' | 'right', style, storeys: n | [a, b], from, to,

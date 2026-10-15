@@ -51,6 +51,17 @@ const WORLD_INVARIANTS = Object.freeze([
   { rule: 'landmark', req: 'C4', what: 'each landmark shows at least 60 % of its face' },
   { rule: 'bare', req: 'C6', what: 'no bare region over 15 % of the frame (sky excluded)', needs: 'world' },
   { rule: 'season', req: 'S1, V3, V7', what: 'state matches the date: no green trees in January, lit windows at noon, shadows at night or snow in July', needs: 'ctx' },
+  // added 15 Oct (audit bugs 3, 4, 8, 19): checks that read what the frame SHOWS, not only what the simulation holds
+  { rule: 'nearStatic', req: 'C1, C2, K8', what: 'no non-framing static stands inside its near band (a giant at the lens) or, as a plant or hedge, fills over 35 % of the frame' },
+  { rule: 'crownCut', req: 'C1, K4', what: 'no tree shows its trunk with most of its crown above the frame top (a pole with fronds hanging from nothing)' },
+  { rule: 'crowd', req: 'A2, A11', what: 'no two people drawn through each other (boxes overlapping over 40 % at the same depth for 0.5 s) unless one group' },
+  { rule: 'outfitClone', req: 'A11', what: 'no two people within 3 m in the same outfit (object and variant) for 3 s' },
+  { rule: 'drawn', req: 'R1, V5, 16.1', what: 'drawn vs simulated: every entity and agent in the frame record makes pixels in its box, and what it owns shows in the frame unless occluded', needs: 'pixels' },
+  { rule: 'crown', req: 'S1, V3, K4', what: 'every drawn tree has its crown or its winter branches (pixels in the top 40 % of its box)', needs: 'pixels' },
+  { rule: 'shadowOrphan', req: 'L2', what: 'every cast shadow belongs to something drawn at that moment', needs: 'pixels' },
+  { rule: 'deckDrawn', req: 'A2, W2', what: 'a walker stands on drawn ground or planks, never on open water in the picture (the nav deck and the drawn deck agree)', needs: 'pixels' },
+  { rule: 'particles', req: 'M3, K7', what: 'no v2 screen particles in a world scene (petals, motes, fireflies, leaves in an empty sky)', needs: 'pixels' },
+  { rule: 'nightLight', req: 'L4, QP4', what: 'after dusk a scene with buildings, boats or lamps shows lit lights; no lamp is lit with the sun up', needs: 'pixels' },
 ]);
 
 /* ---------- small maths ---------- */
@@ -211,10 +222,38 @@ function _wivContext(frame, o) {
     surfaces: Array.isArray(frame.surfaces) ? frame.surfaces : (world && Array.isArray(world.surfaces) ? world.surfaces : []),
     out: [], na: new Set(), ran: new Set() };
   for (const e of ents) C.byId.set(e.id, e);
+  _wivEnrich(C, o);
   C.statics = ents.filter(e => e.static !== false);
   C.movers = ents.filter(e => e.static === false);
   C.solids = null; C.screen = null;
   return C;
+}
+/**
+ * Fill the fields a frame record may leave out (render's worldFrameAt carries no attach, deck, blocks, parentOff, line, parked
+ * or variant) from the world's entities and the life sim's agents (o.agents), so every frame source is judged alike: the
+ * same scene must never pass with one frame record and fail with another. The record's own values always win.
+ */
+const _WIV_STATIC_FIELDS = ['attach', 'deck', 'blocks', 'parentOff', 'line', 'parked', 'solidity', 'framing', 'auto', 'variant', 'waterline', 'host', 'parent'];
+const _WIV_AGENT_FIELDS = ['variant', 'outfit', 'group', 'kind', 'who', 'lead', 'host', 'pose', 'age', 'alpha', 'framed'];
+function _wivEnrich(C, o) {
+  const W = C.world, ents = W && Array.isArray(W.entities) ? W.entities : null, ags = Array.isArray(o.agents) ? o.agents : null;
+  if (!ents && !ags) return;
+  let byE = null, byA = null;
+  if (ents) {
+    byE = C.track && C.track.entMap && C.track.entMap.src === ents ? C.track.entMap.map : null;
+    if (!byE) {
+      byE = new Map();
+      for (const e of ents) if (e && e.obj) { if (e.id != null) byE.set(String(e.id), e); byE.set(e.obj + '@' + _wivR(e.x) + ',' + _wivR(e.z), e); }
+      if (C.track) C.track.entMap = { src: ents, map: byE };
+    }
+  }
+  if (ags) { byA = new Map(); for (const a of ags) if (a && a.id != null) byA.set(String(a.id), a); }
+  for (const e of C.ents) {
+    const src = e.static === false ? (byA && byA.get(String(e.id))) : (byE && byE.get(String(e.id)));
+    if (!src) continue;
+    for (const k of e.static === false ? _WIV_AGENT_FIELDS : _WIV_STATIC_FIELDS) if ((e[k] === undefined || e[k] === null) && src[k] != null) e[k] = src[k];
+    if (e.static !== false && !e.framing && src.framed) e.framing = true;
+  }
 }
 function _wivPush(C, rule, id, msg) {
   const d = WORLD_INVARIANTS.find(r => r.rule === rule);
@@ -521,7 +560,13 @@ const _WIV_RULES = {
       }
       const vis = Math.max(0, Math.min(W, b[2]) - Math.max(0, b[0])) * Math.max(0, Math.min(H, b[3]) - Math.max(0, b[1]));
       if (vis / A <= 0.25) continue;
-      if (e.framing || _WIV_FRAMERS.has(cls)) continue;
+      // C1's framing elements are boughs, trunks, hedges and wall edges: a declared framing element, or one of those classes
+      // (a tree only when its trunk frames: cut at a side or the top, never by the bottom edge alone; crownCut judges a crown lost
+      // above the frame). Shrubs, reeds, cover and plants are not
+      // framing, and an undeclared framer may not cover over 35 % of the frame (the 41 % bramble blob of 15 Oct passed as a 'hedge').
+      if (e.framing) continue;
+      const framer = _WIV_FRAMERS.has(cls) && !/^(shrub|reed|cover|plant|flower|grass)$/.test(cls) && !(cls === 'tree' && !(cut.l || cut.r || cut.t));
+      if (framer && vis / A <= 0.35) continue;
       if (cut.t && !cut.l && !cut.r && !cut.b && /^(building|landmark|structure)$/.test(cls)) continue;   // a tall building cut at the top
       // an extruded building is the PLACE, never moved (C1): a street's frontage runs out of the frame at its sides and top, it is cut by the frame by perspective (its ground line leaves at the bottom corner too), not by a bad placement (a lane between two rows of houses)
       if (cls === 'building' && /^line[.]/.test(String(e.obj || ''))) continue;
@@ -908,6 +953,159 @@ const _WIV_RULES = {
       if (sh && sh.kind !== 'contact' && (sh.sun === 'sun' || sh.kind === 'sun' || sh.kind === 'cast') && !(sh.sun === 'moon' || sh.sun === 'lamp') && (!_wivNum(sh.op) || sh.op > 0.12)) { _wivPush(C, 'season', e.id, `${e.obj} casts a sun shadow with the sun at ${Math.round(sunAlt)} degrees (night)`); break; }
     }
   },
+  /* ---------- 15 Oct: what the frame shows (audit bugs 3, 4, 8, 12, 13, 17, 19) ---------- */
+  nearStatic(C) {
+    const f = C.cam && _wivNum(C.cam.f) ? C.cam.f : null, W = C.W, H = C.H, A = W * H;
+    for (const e of C.statics) {
+      if (e.backdrop || e.framing || e.landmark || e.decal || e.prim === 'line' || e.prim === 'building') continue;
+      const cls = _wivCls(e) || '', h = _wivNum(e.height) ? e.height : 0;
+      if (/^(walkway|building|landmark|structure|water|ground|surface|bridge)$/.test(cls) || /^(ground|water|surface)\./.test(String(e.obj || ''))) continue;
+      const b = _wivBox(e);
+      if (!b || b[2] < 0 || b[0] > W || b[3] < 0 || b[1] > H) continue;
+      // a giant at the lens (K8 / C2 for statics): nearer than the depth where its height fills 45 % of the frame
+      // (props, plants and hedges up to 3 m: a tree is always taller than 45 % of the frame within some 40 m; crownCut judges trees).
+      // A line of hedge, fence or wall running past the lens frames the view (C1): one of those only when it reaches 20 % of the frame
+      const vis0 = Math.max(0, Math.min(W, b[2]) - Math.max(0, b[0])) * Math.max(0, Math.min(H, b[3]) - Math.max(0, b[1]));
+      const lineish = /^(hedge|fence|wall)$/.test(cls) && vis0 / A <= 0.2;
+      if (f && h >= 0.6 && h <= 3 && cls !== 'tree' && !lineish && e.z > 0 && e.z < f * h / 405 - 0.01) { _wivPush(C, 'nearStatic', e.id, `${e.obj} (${cls}, ${_wivR(h)} m) stands ${_wivR(e.z)} m from the lens, inside its near band (${_wivR(f * h / 405)} m): a giant at the lens`); continue; }
+      const vis = Math.max(0, Math.min(W, b[2]) - Math.max(0, b[0])) * Math.max(0, Math.min(H, b[3]) - Math.max(0, b[1]));
+      if (/^(shrub|reed|cover|plant|flower|grass|hedge)$/.test(cls) && vis / A > 0.35) _wivPush(C, 'nearStatic', e.id, `${e.obj} (${cls}) covers ${Math.round(vis / A * 100)} % of the frame`);
+    }
+  },
+  crownCut(C) {
+    const W = C.W, H = C.H;
+    for (const e of C.statics) {
+      if (e.backdrop || (_wivCls(e) || '') !== 'tree' || /trunk|stump|snag|log/.test(String(e.obj || ''))) continue;
+      const b = _wivBox(e);
+      if (!b) continue;
+      const h = b[3] - b[1], cx = (b[0] + b[2]) / 2;
+      if (!(h > 40) || b[1] >= 0) continue;
+      // the trunk is in frame (its foot inside the frame and its column on screen) while over 60 % of the tree is above the top
+      const above = -b[1] / h, footIn = b[3] > 0 && b[3] <= H * 1.02 && cx >= 0 && cx <= W;
+      if (footIn && above > 0.6) _wivPush(C, 'crownCut', e.id, `${e.obj} shows its trunk but ${Math.round(above * 100)} % of it is above the frame top (a pole; its crown and fronds hang from nothing)`);
+    }
+  },
+  crowd(C) {
+    const ppl = C.movers.filter(m => (_wivCls(m) === 'person' || /^person\./.test(String(m.obj || ''))) && _wivBox(m));
+    if (ppl.length < 2) return;
+    const g = _wivGrid(2), by = new Map(), seen = new Set(), now = new Set();
+    for (const m of ppl) { by.set(m.id, m); g.add(m.id, m.x, m.z, 0.6); }
+    let since = null;
+    if (C.track) { since = C.track.cache.get('crowd'); if (!since) { since = new Map(); C.track.cache.set('crowd', since); } }
+    for (const a of ppl) for (const id of _wivNear(g, a.x, a.z, 0.6)) {
+      if (id === a.id) continue;
+      const b = by.get(id);
+      if (!b || Math.abs(a.z - b.z) >= 0.4 || _wivRelated(a, b) || (a.group != null && a.group === b.group)) continue;
+      if (a.squeeze || b.squeeze) continue;   // a lane a body wide: they turn sideways and brush past for a step (life says so; personalSpace alike)
+      const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const ab = _wivBox(a), bb = _wivBox(b), sm = Math.max(1, Math.min((ab[2] - ab[0]) * (ab[3] - ab[1]), (bb[2] - bb[0]) * (bb[3] - bb[1])));
+      if (_wivBoxOverlap(ab, bb) / sm <= 0.4) continue;
+      now.add(k);
+      let held = true;
+      if (since) { if (!since.has(k)) since.set(k, C.t); held = C.t - since.get(k) >= 0.5; }
+      if (held) _wivPush(C, 'crowd', a.id, `${a.obj || a.cls} ${a.id} and ${b.id} are drawn through each other (${Math.round(Math.hypot(a.x - b.x, a.z - b.z) * 100)} cm apart, boxes ${Math.round(_wivBoxOverlap(ab, bb) / sm * 100)} % overlapped)`);
+    }
+    if (since) for (const k of [...since.keys()]) if (!now.has(k)) since.delete(k);
+  },
+  outfitClone(C) {
+    const ppl = C.movers.filter(m => /^person\./.test(String(m.obj || '')) && (m.variant != null || m.outfit != null));
+    if (!ppl.length) return C.movers.some(m => /^person\./.test(String(m.obj || ''))) ? 'na' : undefined;
+    const g = _wivGrid(3), by = new Map(), seen = new Set(), now = new Set();
+    for (const m of ppl) { by.set(m.id, m); g.add(m.id, m.x, m.z, 0); }
+    let since = null;
+    if (C.track) { since = C.track.cache.get('outfit'); if (!since) { since = new Map(); C.track.cache.set('outfit', since); } }
+    for (const a of ppl) for (const id of _wivNear(g, a.x, a.z, 3)) {
+      if (id === a.id) continue;
+      const b = by.get(id);
+      if (!b || a.obj !== b.obj || a.variant !== b.variant || (a.outfit != null && b.outfit != null && a.outfit !== b.outfit) || Math.hypot(a.x - b.x, a.z - b.z) > 3) continue;
+      const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
+      if (seen.has(k)) continue;
+      seen.add(k); now.add(k);
+      let held = true;
+      if (since) { if (!since.has(k)) since.set(k, C.t); held = C.t - since.get(k) >= 3; }
+      if (held) _wivPush(C, 'outfitClone', a.id, `${a.id} and ${b.id} wear the same outfit (${a.obj} variant ${a.variant}${a.outfit != null ? ', outfit ' + a.outfit : ''}) ${_wivR(Math.hypot(a.x - b.x, a.z - b.z))} m apart`);
+    }
+    if (since) for (const k of [...since.keys()]) if (!now.has(k)) since.delete(k);
+  },
+  drawn(C) {
+    const px = C.frame.px;
+    if (!px || typeof px !== 'object') return 'na';
+    const W = C.W, H = C.H, f = C.cam && _wivNum(C.cam.f) ? C.cam.f : null;
+    for (const e of C.ents) {
+      if (e.backdrop || e.decal || (_wivKb(e.obj) || {}).decal) continue;   // ground decals (lily pads, fish rings) may fade to nothing
+      const b = _wivBox(e);
+      if (!b) continue;
+      const on = Math.max(0, Math.min(W, b[2]) - Math.max(0, b[0])) * Math.max(0, Math.min(H, b[3]) - Math.max(0, b[1]));
+      if (on < 64) continue;
+      // an agent the renderer leaves out by design (the near band: nearBand reports it) is not a drawing fault
+      if (e.static === false && !e.framed && f && e.z < f * (_wivNum(e.height) ? e.height : 1.7) / 405) continue;
+      const p = px[e.id];
+      if (!p) { _wivPush(C, 'drawn', e.id, `${e.obj || e.cls} is simulated in the frame (box ${Math.round(on)} px on screen) but the renderer never drew it`); continue; }
+      // p.sp: 0 when its whole sprite is empty (every shape dropped); p.a: its pixels inside the frame (a box mostly on screen
+      // with none of them is a drawing that landed outside its own box)
+      const area = Math.max(1, (b[2] - b[0]) * (b[3] - b[1]));
+      if (p.sp === 0 || (!(p.a > 0) && on / area >= 0.5 && on >= 400)) { _wivPush(C, 'drawn', e.id, `${e.obj || e.cls} is drawn with no pixels (an empty sprite over ${Math.round(on)} px of box)`); continue; }
+      if (p.own >= (e.static === false ? 30 : p.live ? 200 : 40) && p.match / p.own < 0.3) _wivPush(C, 'drawn', e.id, `${e.obj || e.cls} is lost between the frame record and the canvas: only ${Math.round(p.match / p.own * 100)} % of the ${p.own} px it should show are its own colours (never drawn, or painted over by a pass outside the depth order: a light pool, a particle or weather layer)`);
+    }
+  },
+  crown(C) {
+    const px = C.frame.px;
+    if (!px || typeof px !== 'object') return 'na';
+    for (const e of C.statics) {
+      if (e.backdrop || (_wivCls(e) || '') !== 'tree' || /trunk|stump|snag|log/.test(String(e.obj || ''))) continue;
+      const p = px[e.id], b = _wivBox(e);
+      if (!p || !b || !(p.a >= 80) || !(b[3] - b[1] >= 40) || b[1] < -0.2 * (b[3] - b[1])) continue;
+      // the probe counts pixels inside the frame: a tree cut at a side shows only part of its crown there (judge whole trees)
+      if ((Math.min(C.W, b[2]) - Math.max(0, b[0])) / Math.max(1, b[2] - b[0]) < 0.7) continue;
+      // the faint pixels when the probe gives them (fa / ft: alpha over 40: a distant winter crown is a haze of thin twigs)
+      const all = _wivNum(p.fa) && p.fa > 0 ? p.fa : p.a, top = _wivNum(p.fa) && p.fa > 0 ? p.ft : p.top;
+      if (top / all < 0.01) _wivPush(C, 'crown', e.id, `${e.obj} has lost its crown: ${top} of its ${all} px lie in the top 40 % of its box (a trunk cut flat at the top)`);
+    }
+  },
+  shadowOrphan(C) {
+    const list = C.frame.shadowsCast, px = C.frame.px;
+    if (!Array.isArray(list) || !px) return 'na';
+    for (const s of list) {
+      if (!s || s.ref == null || s.kind === 'contact') continue;
+      const p = px[String(s.ref)];
+      if (!p) _wivPush(C, 'shadowOrphan', String(s.ref), `a shadow is cast for ${s.ref}${s.obj ? ' (' + s.obj + ')' : ''}, which is not drawn in this frame`);
+      else if (p.sp === 0 || (p.sp == null && !(p.a > 0))) _wivPush(C, 'shadowOrphan', String(s.ref), `a shadow is cast for ${s.ref}${s.obj ? ' (' + s.obj + ')' : ''}, whose sprite is empty (a shadow of nothing)`);
+    }
+  },
+  deckDrawn(C) {
+    // frame.deckFoot (the pixel probe): { agent id: do its feet land on drawn planks? }; else frame.decksDrawn: the drawn deck
+    // outlines in metres
+    const D = C.frame.decksDrawn, FT = C.frame.deckFoot && typeof C.frame.deckFoot === 'object' ? C.frame.deckFoot : null;
+    if (!Array.isArray(D) && !FT) return 'na';
+    if (!C.decks) C.decks = C.ents.filter(e => e.deck && Array.isArray(e.deck.poly) && e.deck.poly.length >= 3);
+    for (const m of C.movers) {
+      if (m.layer === 'air' || m.layer === 'swim' || m.layer === 'wade' || m.layer === 'fly') continue;
+      const host = _wivHostOf(m), hd = host != null ? C.byId.get(host) : null;
+      const onNav = (hd && hd.deck) || C.decks.some(e => _wivInPoly(e.deck.poly, m.x, m.z));
+      // the pixel probe sees the feet on open water: wrong whatever the nav says (a walker on the water in the picture)
+      if (FT) { if (FT[m.id] === false) _wivPush(C, 'deckDrawn', m.id, `${m.obj || m.cls} at (${_wivR(m.x)}, ${_wivR(m.z)}) stands on open water in the picture${onNav ? ': the walkable deck there has no planks drawn' : ''}`); continue; }
+      if (!onNav) continue;
+      if (D.some(d => Array.isArray(d.poly) && d.poly.length >= 3 && (_wivInPoly(d.poly, m.x, m.z) || _wivPolyDist(d.poly, m.x, m.z) < 0.1))) continue;
+      _wivPush(C, 'deckDrawn', m.id, `${m.obj || m.cls} stands on the walkable deck at (${_wivR(m.x)}, ${_wivR(m.z)}) but no planks are drawn there (it stands on the water in the picture)`);
+    }
+  },
+  particles(C) {
+    const p = C.frame.particles;
+    if (p === undefined) return 'na';
+    if (p && p !== 'none' && p !== 'world' && p !== 'snow') _wivPush(C, 'particles', null, `the world scene runs the v2 screen particles ('${p}'): petals, motes and leaves drawn in screen space, over the sky and as fireflies at night`);
+  },
+  nightLight(C) {
+    const f = C.frame, sun = f.sun && _wivNum(f.sun.alt) ? f.sun.alt : f.ctx && f.ctx.sun && _wivNum(f.ctx.sun.alt) ? f.ctx.sun.alt : null;
+    if (sun == null || !_wivNum(f.litPx)) return 'na';
+    const lights = Array.isArray(f.lights) ? f.lights : [];
+    if (sun > 0) { const on = lights.filter(l => l && l.on && l.kind === 'lamp'); if (on.length) _wivPush(C, 'nightLight', on[0].ref || null, `${on.length} street lamp(s) lit with the sun ${Math.round(sun)} degrees up`); }
+    if (sun < -8) {
+      const hosts = C.ents.filter(e => /^(building|landmark|boat|lamp|vehicle|tram|train)$/.test(_wivCls(e) || '') || /lamp|lantern/.test(String(e.obj || '')));
+      if (hosts.length && f.litPx < 50) _wivPush(C, 'nightLight', null, `night (sun ${Math.round(sun)} degrees) with ${hosts.length} building(s), boat(s) or lamp(s) in frame, but only ${f.litPx} lit pixel(s): no window, lamp or cabin light shows`);
+    }
+  },
 };
 /** a is nearer than b (drawn later): the footprint test of 2.3 rule 3; worldOrderNearer when the order module is loaded. */
 /** Two footprints (one of them over 3 m deep) whose directions from the camera (x / z) do not overlap: nothing of one can hide the other. */
@@ -1077,7 +1275,8 @@ function worldInvariantFrame(world, agents, o) {
       foot, height: h, r: _wivNum(a.r) ? a.r : r, group: a.group || null, leash: !!a.lead, intent: a.intent || null, resident: !!a.resident, squeeze: !!a.squeeze, stepping: !!a.stepping, leader: a.leader || null, layer: a.layer || null, host: a.host || null, view: a.view || null, mirror: !!a.mirror, framed: !!a.framed, sideOnly: a.sideOnly,
       box: cam ? _wivBoxOf(cam, { x: a.x, z: a.z, y: a.y, foot: null }, h, info ? info.size.w : h * 0.4) : null, order: null,
       speed: Math.hypot(a.vx || 0, a.vz || 0), vx: a.vx || 0, vz: a.vz || 0, state: a.state || null, born: born ? born.get(a.id) : null,
-      anim, sway: null, shadow: a.shadow || null, reflect: a.reflect || null, look: a.look || null, leaving: !!a.leaving });
+      anim, sway: null, shadow: a.shadow || null, reflect: a.reflect || null, look: a.look || null, leaving: !!a.leaving,
+      variant: a.variant != null ? a.variant : null, outfit: a.outfit != null ? a.outfit : null, group: a.group != null ? a.group : null, alpha: _wivNum(a.alpha) ? a.alpha : null });
   }
   // depth order: the order module's chunks and frame order when loaded (the last draw position of each entity), else depth
   const byId = new Map(ents.map(e => [e.id, e]));

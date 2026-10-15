@@ -57,15 +57,16 @@ function _wfrView(e, cam, agent, prev) {
 }
 function _wfrIsWater(e) { return String(e.attach || '') === 'water' || e.layer === 'swim'; }
 /**
- * The season whose shapes a static is drawn with (look: worldMaterialForm): a deciduous plant with seasonal art takes the form of
- * its OWN leaf state (the knowledge base's worldKbState for this entity at this time), so a bare tree is drawn in the library's
- * bare form (limbs and twigs), never as its summer art with the leaves cut away. Everything else: the calendar season.
+ * The season whose library art a static is drawn in (look: worldMaterialArtSeason, ONE source of seasonal state): a plant takes
+ * the art of its OWN leaf state (the knowledge base's worldKbState for this entity at this time), so a bare tree is drawn as the
+ * library's winter skeleton (limbs and twigs), never as its summer art with the leaves cut away, trees turn and leaf out unevenly,
+ * and dormant herbs stand as their winter straw. Everything else: the calendar season.
  */
 function _wfrFormOf(e, season, ctx) {
   const s = season || 'summer';
   if (!e || !e.obj || !ctx || typeof ctx !== 'object' || !/^(tree|plant)\./.test(e.obj)) return s;
-  if (typeof worldMaterialForm !== 'function' || typeof worldKbState !== 'function' || typeof worldKb !== 'function') return s;
-  try { const st = worldKbState(worldKb(e.obj), ctx, String(e.id || e.obj)); return worldMaterialForm(e.obj, s, st && st.leaf, st && st.grow, st && st.drop); } catch (err) { return s; }
+  if (typeof worldMaterialArtSeason !== 'function' || typeof worldKbState !== 'function' || typeof worldKb !== 'function') return s;
+  try { const kb = worldKb(e.obj), st = worldKbState(kb, ctx, String(e.id || e.obj)), ever = /pine|fir|yew|spruce|cedar|conifer|holly|ivy|box|laurel|palm/.test(e.obj) || !!(kb && kb.evergreen); return worldMaterialArtSeason(e.obj, st && st.leaf, st && st.turn, s, ever).art; } catch (err) { return s; }
 }
 /** The plan key part of the drawn forms: they change with the day of the year only. */
 function _wfrFormKey(ctx) { return ctx && Number.isFinite(ctx.doy) ? 'd' + ctx.doy : ctx && Number.isFinite(ctx.ms) ? 'd' + Math.floor(ctx.ms / 86400000) : '-'; }
@@ -97,7 +98,7 @@ function _wfrRec(e, cam, o) {
   const vw = _wfrView(e, cam, o.agent, o.prev);
   // a long hull seen at an angle or end-on: drawn in true perspective, never a flat side slab (Q4)
   if (vw.persp && !e.landmark && typeof worldExtrudeHull === 'function') {
-    try { const prim = worldExtrudeHull(e, cam, { season: o.season }); if (prim && prim.box) { const r = _wfrPrimRec(prim, e, vw); r.cut = _wfrCutOf(e, cam, o.regions); return r; } } catch (err) { /* a sprite below */ }
+    try { const prim = worldExtrudeHull(e, cam, { season: o.season, regions: o.regions }); if (prim && prim.box) { const r = _wfrPrimRec(prim, e, vw); r.cut = prim.noCut ? null : _wfrCutOf(e, cam, o.regions); return r; } } catch (err) { /* a sprite below */ }
   }
   const oid = vw.obj && sceneObj(vw.obj) ? vw.obj : (typeof _wh5ViewObj === 'function' ? _wh5ViewObj(e.obj, vw.view) : e.obj), def = sceneObj(oid);
   if (!def || !def.size) return null;
@@ -306,7 +307,7 @@ function worldFramePlan(world, o) {
   out.decks = [];
   for (const e of ents) {
     // a walkway whose art is one side elevation, seen near end-on: its deck and its handrails in perspective (Q4), never the
-    // elevation laid broadside across the water (the floating rails and piles of the Fleet Pond T, SCENE_LESSONS G)
+    // elevation laid broadside across the water (the floating rails and piles of the Fleet Pond T, SCENE_LESSONS H)
     const pw = _wfrWalkwayPersp(world, e, cam, o);
     if (pw) { for (const p of pw.prims) add(_wfrPrimRec(p, e, null)); if (pw.deck) out.decks.push(pw.deck); continue; }
     add(_wfrRec(e, cam, { season: o.season, regions: o.regions, ctx: o.ctx || null }));
@@ -499,7 +500,9 @@ function worldFrameAt(scene, t, o) {
       state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null,
       prim: r.prim ? (r.prim.walkway ? 'walkway' : r.prim.kind || null) : null, tops: r.prim && r.prim.tops ? _wfrPlain(r.prim.tops) : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal,
       // what the checkers need of a mover: its body radius, its group (the leader's id), whether it has a lead, and its intent (life)
-      r: agent && Number.isFinite(e.r) ? _wfrR3(e.r) : null, group: agent ? e.group || null : null, leash: agent ? !!e.lead : false, intent: agent ? e.intent || null : null, squeeze: agent ? !!e.squeeze : false, stepping: agent ? !!e.stepping : false, leader: agent ? e.leader || null : null, resident: agent ? !!e.resident : false };
+      r: agent && Number.isFinite(e.r) ? _wfrR3(e.r) : null, group: agent ? e.group || null : null, leash: agent ? !!e.lead : false, intent: agent ? e.intent || null : null, squeeze: agent ? !!e.squeeze : false, stepping: agent ? !!e.stepping : false, leader: agent ? e.leader || null : null, resident: agent ? !!e.resident : false,
+      // the look drawn (A11) and what a check needs to judge the frame by itself (variant, outfit, attach, deck, live)
+      variant: r.v != null ? r.v : null, outfit: agent && e.outfit != null ? e.outfit : null, attach: e.attach || null, deck: e.deck || null, live: !!r.live };
   };
   const ents = plan.recs.map(r => one(r, false)).concat(aRecs.map(r => one(r, true)));
   let lights = [];
@@ -581,7 +584,9 @@ function _wfrSprite(env, S, oid, v, part, sc, mc, x) {
   if (_wfrHasImg(sh)) return v2();
   let mk = '';
   try { mk = mc._mk || (mc._mk = worldMaterialKey(mc)); } catch (e) { return v2(); }
-  const key = 'w3|' + oid + '|' + v + '|' + part + '|' + season + '|' + mk + '|' + S.band + '|' + Math.round(sc * 64) / 64 + (x.litGlow ? '|g' : '');
+  // x.outfit: a person's A11 outfit (life), drawn as the colour of the top (look's worldMaterialOutfit)
+  const outfit = x.outfit && typeof worldMaterialOutfit === 'function' ? x.outfit : 0;
+  const key = 'w3|' + oid + '|' + v + '|' + part + '|' + season + '|' + mk + '|' + S.band + '|' + Math.round(sc * 64) / 64 + (x.litGlow ? '|g' : '') + (outfit ? '|o' + outfit : '');
   return sceneSprites.get(key, () => {
     const names = part === '*' ? _wfrStill(sh) : part.startsWith('rest:') ? _wfrStill(sh).filter(p => !part.slice(5).split(',').includes(p)) : [part];
     const detail = typeof sceneDetailAt !== 'function' || sceneDetailAt(oid, sh, sc);
@@ -600,7 +605,7 @@ function _wfrSprite(env, S, oid, v, part, sc, mc, x) {
     const W = Math.ceil((b[2] - b[0]) * k + 2 * _WFR_PAD), H = Math.ceil((b[3] - b[1]) * k + 2 * _WFR_PAD);
     const c = _wfrCanvas(W, H), cx = c.getContext('2d', _WFR_CPU);
     cx.setTransform(k, 0, 0, k, _WFR_PAD - b[0] * k, _WFR_PAD - b[1] * k);
-    const def = x.litGlow ? sceneObj(oid) : null, nc = (def && def.night && def.night.glow) || {};
+    const def = x.litGlow ? sceneObj(oid) : null, nc = (def && def.night && def.night.glow) || {}, tree = /^tree\./.test(oid);
     let any = false;
     for (const p of names) for (const s of sh.parts[p] || []) {
       if (!detail && s.detail) continue;
@@ -608,14 +613,17 @@ function _wfrSprite(env, S, oid, v, part, sc, mc, x) {
       let mat = 'paint';
       try { mat = worldMaterialOf(oid, p, fillHex, s); } catch (e) { mat = 'paint'; }
       if (typeof worldMaterialVisible === 'function' && !worldMaterialVisible(mat, mc)) continue;
-      const col = (hex) => { try { return worldMaterialColour(mat, hex, mc); } catch (e) { return hex; } };
+      // frost and snow baked into a winter art show only as much as the day is frosty or snowy (look's worldMaterialRime)
+      const rime = season === 'winter' && typeof worldMaterialRime === 'function' ? worldMaterialRime(typeof s.s === 'string' ? s.s : fillHex, mc) : 1;
+      if (!(rime > 0)) continue;
+      const col = (hex) => { try { return worldMaterialColour(mat, outfit ? worldMaterialOutfit(hex, outfit, p) : hex, mc); } catch (e) { return hex; } };
       if (s.m) { cx.save(); cx.transform(s.m[0], s.m[1], s.m[2], s.m[3], s.m[4], s.m[5]); }
       const path = _wfrPath(s.d);
       if (x.litGlow && s.glow) { cx.globalAlpha = 1; cx.fillStyle = nc[s.glow] || (s.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'); cx.fill(path); }
       else {
-        cx.globalAlpha = s.op == null ? 1 : s.op;
+        cx.globalAlpha = (s.op == null ? 1 : s.op) * rime;
         if (s.f) { cx.fillStyle = _wfrPaint(cx, s.f, col); cx.fill(path); }
-        if (s.s) { cx.strokeStyle = _wfrPaint(cx, s.s, col); cx.lineWidth = s.w || 1; cx.lineCap = s.cap || 'butt'; cx.stroke(path); }
+        if (s.s) { cx.strokeStyle = _wfrPaint(cx, s.s, col); cx.lineWidth = (s.w || 1) * (tree ? _wfrLineK(s.w || 1, k) : 1); cx.lineCap = s.cap || 'butt'; cx.stroke(path); }
       }
       if (s.m) cx.restore();
       any = true;
@@ -624,6 +632,18 @@ function _wfrSprite(env, S, oid, v, part, sc, mc, x) {
     try { cx.getImageData(0, 0, 1, 1); } catch (e) { /* drawn on first use */ }
     return { c, x0: b[0] - _WFR_PAD / k, y0: b[1] - _WFR_PAD / k, w: W / k, h: H / k, sc: k, bytes: W * H * 4 };
   });
+}
+/**
+ * Line-weight LOD for a tree's thin strokes (twigs, winter branch tips, willow fronds): the library draws them for a tree seen
+ * whole (about 1 device px per art unit), so a near tree magnified 3x turned its 2.6-unit fronds into flat 9 px bars hanging
+ * from nothing. Strokes up to 3 art units keep at most 1.6x their art width in device pixels; thicker ones (limbs, trunks)
+ * blend back to true scale by 6 units. w: the art width, k: device px per art unit. -> the factor on w.
+ */
+const _WFR_LINE_KMAX = 1.6;
+function _wfrLineK(w, k) {
+  if (!(k > _WFR_LINE_KMAX) || !(w < 6)) return 1;
+  const capped = _WFR_LINE_KMAX / k, t = w <= 3 ? 0 : (w - 3) / 3;
+  return capped + (1 - capped) * t;
 }
 /** The material context of one entity (look), or null when materials are not loaded. */
 function _wfrMc(S, e) {
@@ -642,7 +662,8 @@ function _wfrHaze(env, e) {
 /** The sprite of a draw record (part '*' or one part), at its scale bucket. */
 function _wfrSpriteOf(env, S, r, part, x) {
   const sc = _wfrBucket(x && x.bucket ? x.bucket : r.s) * env.vs, mc = _wfrMc(S, r.ent);
-  return _wfrSprite(env, S, r.o, r.v, part || '*', sc, mc, Object.assign({ haze: mc ? 0 : _wfrHaze(env, r.ent), cls: r.ent.cls || null, season: r.season || null }, x || {}));
+  const outfit = !r.ent.static && r.ent.outfit != null && /^person\./.test(String(r.o || '')) ? r.ent.outfit : 0;
+  return _wfrSprite(env, S, r.o, r.v, part || '*', sc, mc, Object.assign({ haze: mc ? 0 : _wfrHaze(env, r.ent), cls: r.ent.cls || null, season: r.season || null, outfit }, x || {}));
 }
 function _wfrM(env, r) { return [env.vs * r.s * (r.flip ? -1 : 1), 0, 0, env.vs * r.s, env.vs * r.X + env.ox, env.vs * r.Y + env.oy]; }
 /** Clip a context to what lies above a floater's cut (device px: scene units through vs, ox, oy, then less the bitmap's origin). */
@@ -751,7 +772,7 @@ function _wfrWet(world, cam, regions) {
   const out = { water: [], over: [], decks: [] };
   if (!world || !cam || typeof sceneProject !== 'function') return out;
   const surfs = world.surfaces || [];
-  if (Array.isArray(regions) && regions.length) { for (const R of regions) if (Array.isArray(R.clip) && R.clip.length >= 3) out.water.push(R.clip); }
+  if (Array.isArray(regions) && regions.length) { for (const R of regions) for (const P of (Array.isArray(R.clips) && R.clips.length ? R.clips : [R.clip])) if (Array.isArray(P) && P.length >= 3) out.water.push(P); }
   else for (const s of surfs) if (s && s.kind === 'water') { const P = _wfrSurfPoly(s), q = P && _wfrScrPoly(cam, P, Number.isFinite(s.level) ? s.level : Number.isFinite(cam.water) ? cam.water : null); if (q) out.water.push(q); }
   const first = surfs.findIndex(s => s && s.kind === 'water');
   if (first >= 0) for (let i = first + 1; i < surfs.length; i++) {
@@ -831,6 +852,53 @@ function _wfrDrawPathKey(ctx, env, S) {
   for (const P of S.paths) { ctx.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) ctx.lineTo(P[i][0], P[i][1]); ctx.closePath(); }
   ctx.fill('nonzero');
   ctx.restore();
+  return 1;
+}
+/**
+ * The image of a sunk channel's walls in its water (uk-rebuild's verify round 1, merged 15 Oct): seen in calm water a quay g - level
+ * high mirrors as a band from the water's edge down to the mirrored quay top (the outline at 2 x level); look's
+ * worldWaterContactClip hides the mills and terraces beyond the quay there, so without this band the water under a quay showed the
+ * bare sky colour. Drawn in the wall's own look (4ground's stone, brick or earth bank), darkened and with its courses mirrored;
+ * baked once per light key.
+ */
+function _wfrWallImages(ctx, env, S) {
+  const world = S.rec && S.rec.world, cam = world && world.cam;
+  if (!cam || typeof _wwaClipNear !== 'function') return 0;
+  const regs = S.water.map(w => w.R).filter(R => R && Number.isFinite(R.level) && R.level < -0.4 && Array.isArray(R.polys) && R.polys.length);
+  if (!regs.length) return 0;
+  let mk = '';
+  try { mk = S.mat && S.mctx && typeof worldMaterialKey === 'function' ? worldMaterialKey(S.mctx) : ''; } catch (e) { mk = ''; }
+  const key = mk + '|' + env.W + 'x' + env.H + '|' + env.vs + '|' + regs.map(R => (R.ids || [R.id]).join(',') + R.level).join(';');
+  if (!S.wallImg || S.wallImg.key !== key) {
+    const c = _wfrCanvas(env.W, env.H), m = c.getContext('2d', _WFR_CPU), vs = env.vs, ox = env.ox, oy = env.oy;
+    const col = (hex, mat) => { if (S.mat && S.mctx && typeof worldMaterialColour === 'function') { try { return worldMaterialColour(mat, hex, S.mctx) || hex; } catch (e) { return hex; } } return hex; };
+    const P = (x, z, y) => [(cam.x0 + cam.f * x / z) * vs + ox, (cam.horizon + cam.f * (cam.eye - y) / z) * vs + oy];
+    const path = (poly, y) => { const q = poly.map(p => P(p[0], p[1], y)); m.moveTo(q[0][0], q[0][1]); for (let i = 1; i < q.length; i++) m.lineTo(q[i][0], q[i][1]); m.closePath(); };
+    for (const R of regs) {
+      const s = ((world && world.surfaces) || []).find(q => q && q.id === R.id) || {};
+      let look = 'stone';
+      try { if (typeof _wgdEdgeLook === 'function') look = _wgdEdgeLook(world, s); } catch (e) { look = 'stone'; }
+      const LK = (typeof WORLD_GROUND_LOOKS !== 'undefined' && WORLD_GROUND_LOOKS[look]) || { mat: 'stone', top: '#8c867b', low: '#625d55', course: 0.3 };
+      const lvl = R.level;
+      for (const poly0 of R.polys) {
+        const poly = _wwaClipNear(poly0, 0.5);
+        if (poly.length < 3) continue;
+        m.save();
+        m.beginPath(); path(poly, lvl); m.clip();
+        m.beginPath(); m.rect(-10, -10, env.W + 20, env.H + 20); path(poly, 2 * lvl); m.clip('evenodd');
+        m.globalAlpha = 0.55; m.fillStyle = col(LK.low || LK.top, LK.mat || 'stone'); m.fillRect(0, 0, env.W, env.H);
+        if (LK.course > 0) {
+          m.globalAlpha = 0.25; m.strokeStyle = col('#3a3832', LK.mat || 'stone'); m.lineWidth = Math.max(0.6, 0.9 * vs);
+          m.beginPath();
+          for (let y = lvl - LK.course; y > 2 * lvl + 0.12; y -= LK.course) path(poly, y);
+          m.stroke();
+        }
+        m.restore();
+      }
+    }
+    S.wallImg = { key, c };
+  }
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(S.wallImg.c, 0, 0); ctx.restore();
   return 1;
 }
 /** Clip a context (in scene units) to everything but these screen polygons (even-odd with a frame-sized rectangle). */
@@ -964,13 +1032,18 @@ function* _wfrBakeJob(env, S) {
   const sunOn = S.sky ? S.sky.sun.alt > 0 && S.sky.dark < 0.6 : !!(L && (L.alt || 0) > 0 && !(L.dark > 0.6));
   if (typeof worldShadowPlan === 'function' && typeof worldDrawShadows === 'function' && sunOn) {
     const sun = S.sky || L, sa = S.sky ? S.sky.sun : { alt: L.alt, az: L.az };
-    const sk = 'sh|' + geo + '|' + Math.round((sa.alt || 0) * 2) + '|' + Math.round((sa.az || 0) * 2) + '|' + Math.round(((S.sky && S.sky.cover) || L.cover || 0) * 10);
+    const sk = 'sh|' + geo + '|' + S.season + '|' + Math.round((sa.alt || 0) * 2) + '|' + Math.round((sa.az || 0) * 2) + '|' + Math.round(((S.sky && S.sky.cover) || L.cover || 0) * 10);
     used.add(sk);
     let lay = cache.get(sk);
     if (!lay) {
       try {
-        const ents = plan.recs.filter(r => !r.backdrop && !r.prim).map(r => Object.assign({}, r.ent, { id: r.id }));
-        const sp = worldShadowPlan({ entities: ents, surfaces: world.surfaces, cam }, cam, sun) || [];
+        // only what is DRAWN casts (audit 15 Oct, bug 17: a bramble with no winter art left its dark footprint prism on the grass):
+        // a static whose sprite has no pixels now (absent, bare, culled by its season) casts nothing
+        const drawn = (r) => { const d = S.draw.get(r.id); let sp = d && d.sp; if (!sp) { try { sp = _wfrSpriteOf(env, S, r, '*'); } catch (e) { sp = null; } } return !!(sp && sp.c && sp.w > 0 && sp.h > 0); };
+        const ents = plan.recs.filter(r => !r.backdrop && !r.prim).map(r => Object.assign({}, r.ent, { id: r.id })), isDrawn = new Map(plan.recs.map(r => [String(r.id), r]));
+        let skipped = 0;
+        const sp = worldShadowPlan({ entities: ents, surfaces: world.surfaces, cam }, cam, sun, { drawn: (e) => { const r = isDrawn.get(String(e.id)); const ok = !r || !!r.prim || drawn(r); if (!ok) skipped++; return ok; } }) || [];
+        S.stats.shadowSkipped = skipped;
         let X0 = Infinity, Y0 = Infinity, X1 = -Infinity, Y1 = -Infinity;
         for (const s of sp) for (const q of s.scr || []) { X0 = Math.min(X0, q[0] * vs + ox); X1 = Math.max(X1, q[0] * vs + ox); Y0 = Math.min(Y0, q[1] * vs + oy); Y1 = Math.max(Y1, q[1] * vs + oy); }
         const bx = Math.max(0, Math.floor(X0) - 2), by = Math.max(0, Math.floor(Y0) - 2), bw = Math.min(W, Math.ceil(X1) + 2) - bx, bh = Math.min(H, Math.ceil(Y1) + 2) - by;
@@ -1151,6 +1224,12 @@ function _wfrMixHex(a, b, t) { const A = parseInt(a.slice(1), 16), B = parseInt(
  *           movers cover them; a halo a nearer member of its own chunk covers is not drawn).
  * The lit windows themselves are glass drawn over each member's sprite inside its chunk bitmap (_wfrDrawGlass, _wfrChunkLit).
  */
+/** A light's halo on its owner's drawn sprite: the glow part's art point (u, v) through the record's own transform (scene units). */
+function _wfrLightOnRec(l, r) {
+  if (!r || r.prim || !Number.isFinite(l.u) || !Number.isFinite(l.v) || !Number.isFinite(r.X) || !Number.isFinite(r.s)) return l;
+  l.scr = [r.X + (r.flip ? -1 : 1) * l.u * r.s, r.Y + l.v * r.s];
+  return l;
+}
 function _wfrLightsPlan(env, S) {
   S.lights = null;
   const rec = S.rec, world = rec.world, LN = _wfrLightNow(env, S);
@@ -1163,6 +1242,8 @@ function _wfrLightsPlan(env, S) {
     list = (worldLights({ entities: ents }, { sky: LN.sky || undefined, L: LN.L, season: S.season }) || []).filter(x => x.on);
   } catch (e) { S.stats.errors.push('lights: ' + (e && e.message)); return; }
   if (!list.length) return;
+  // each halo on its owner's drawn sprite (the glow part's art point through the record's own transform: bug 13)
+  for (const l of list) _wfrLightOnRec(l, S.plan.byId && S.plan.byId.get(String(l.ref)));
   const cache = rec.frame.cache || (rec.frame.cache = new Map()), W = env.W, H = env.H, vs = env.vs, ox = env.ox, oy = env.oy, cam = world.cam;
   const key = 'li|' + W + 'x' + H + '|' + Math.round(vs * 1e4) + '|' + _wfrHashStr(list.map(x => x.ref + ':' + x.part).join(',')) + '|' + Math.round(LN.alt * 2) + '|' + (LN.sky ? Math.round((LN.sky.fog || 0) * 10) : 0);
   let lay = cache.get(key);
@@ -1188,7 +1269,7 @@ function _wfrLightsPlan(env, S) {
       const out = { glass: null, glow: null };
       try {
         const src = members.flatMap(r => byRef.get(r.id)).filter(l => l.src !== false && l.halo > 0).filter(l => {
-          const q = typeof sceneProject === 'function' ? sceneProject(cam, l.x, l.z, l.y) : null;
+          const q = l.scr ? { X: l.scr[0], Y: l.scr[1] } : typeof sceneProject === 'function' ? sceneProject(cam, l.x, l.z, l.y) : null;
           return !(q && _wfrHaloHidden(ch.ents, l, q.X, q.Y));
         });
         if (src.length) {
@@ -1311,26 +1392,29 @@ function _wfrMirrorAgents(env, S, ctx, aRecs, tau) {
   const vs = env.vs, ox = env.ox, oy = env.oy, cam = S.rec.world.cam;
   let n = 0;
   for (const w of S.water) {
-    const R = w.R, P = R.clip;
-    if (!Array.isArray(P) || P.length < 3) continue;
+    const R = w.R, PP = (Array.isArray(R.clips) && R.clips.length ? R.clips : [R.clip]).filter(P => Array.isArray(P) && P.length >= 3);
+    if (!PP.length) continue;
     const over = aRecs.filter(r => r.box.x1 > R.box[0] && r.box.x0 < R.box[2] && r.box.y0 < R.box[3] && r.z >= (R.dNear || 0) - 1 && !/^air/.test(String(r.ent.attach || '')));
     if (!over.length) continue;
     const look = R.look || {}, k = Math.max(0, Math.min(1, (look.mirror == null ? 0.7 : look.mirror))) * 0.6;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.beginPath(); ctx.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy);
-    for (const q of P) ctx.lineTo(q[0] * vs + ox, q[1] * vs + oy);
-    ctx.closePath(); ctx.clip();
+    ctx.beginPath();
+    for (const P of PP) { ctx.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy); for (const q of P) ctx.lineTo(q[0] * vs + ox, q[1] * vs + oy); ctx.closePath(); }
+    ctx.clip('nonzero');   // the parts of one water are wound one way (worldWaterPlan): nonzero is their union
     if (S.wet && S.wet.over.length) { ctx.setTransform(vs, 0, 0, vs, ox, oy); _wfrHoleClip(ctx, S.wet.over); }
     for (const r of over.sort((a, b) => b.z - a.z)) {
       let c = null;
       try { c = _wfrContact(R, r, cam); } catch (e) { c = null; }
       if (!c) continue;
-      const row = worldWaterContactRow(R, c, r.X);
+      // the flip axis: the agent's base row is laid on its contact row (look's mapping, the same as the statics' mirror): the
+      // axis is halfway between them (on the bank: the true image under a high quay; in the water: its own waterline)
+      const row0 = worldWaterContactRow(R, c, r.X), base = c.kind === 'bank' && typeof worldWaterContactBase === 'function' ? worldWaterContactBase(R, c, r.X) : row0;
+      const row = Number.isFinite(base) ? (row0 + base) / 2 : row0;
       if (!Number.isFinite(row) || !(r.box.y0 < row)) continue;
-      const Yc = row * vs + oy;
+      const Yc = row * vs + oy, Kc = typeof worldWaterContactClip === 'function' ? worldWaterContactClip(R, c, r.X) * vs + oy : -Infinity;
       ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(-1e5, Yc, 2e5, 1e5); ctx.clip();
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(-1e5, Math.max(Yc, Kc), 2e5, 1e5); ctx.clip();
       ctx.globalAlpha = k;
       if (r.prim) {
         const b = r.box, x0 = Math.floor(b.x0 * vs + ox) - 1, y0 = Math.floor(b.y0 * vs + oy) - 1, ww = Math.ceil((b.x1 - b.x0) * vs) + 2, hh = Math.min(Math.ceil(Yc - y0) + 1, Math.ceil((b.y1 - b.y0) * vs) + 2);
@@ -1444,6 +1528,8 @@ function _wfrDraw(env, ctx, t) {
   // the decks over the water (boardwalks, jetties, platforms): planks over the water and its mirror, under everything that
   // stands on them (shadows, chunks and movers come after)
   if (S.wet && S.wet.decks && S.wet.decks.length) { try { draws += _wfrDrawDecks(ctx, env, S); } catch (e) { S.stats.errors.push('decks: ' + (e && e.message)); } }
+  // the channel walls' own image in the water (look's worldWaterContactClip hides what stands beyond a high quay there)
+  if (S.water && S.water.length && !S.wallImageOff) { try { draws += _wfrWallImages(ctx, env, S); } catch (e) { S.wallImageOff = true; S.stats.errors.push('wallImage: ' + (e && e.message)); } }
   // the channel walls of sunken water (dressed stone or earth banks) over the water's edge, under everything standing on the banks
   if (S.groundWalls && S.groundWalls.c) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(S.groundWalls.c, S.groundWalls.x, S.groundWalls.y); draws++; }
   lap('mirror');
@@ -1479,7 +1565,8 @@ function _wfrDraw(env, ctx, t) {
       const al = (worldLights({ entities: [] }, { sky: S.sky || undefined, L, season: S.season, agents: aRecs.map(r => Object.assign({}, r.ent, { id: r.id, mirror: !!r.flip })) }) || []).filter(x => x.on);
       if (al.length) {
         agentLights = new Map();
-        for (const l of al) { if (!agentLights.has(l.ref)) agentLights.set(l.ref, []); agentLights.get(l.ref).push(l); }
+        const recOf = new Map(aRecs.map(r => [String(r.id), r]));
+        for (const l of al) { _wfrLightOnRec(l, recOf.get(String(l.ref))); if (!agentLights.has(l.ref)) agentLights.set(l.ref, []); agentLights.get(l.ref).push(l); }
         draws += worldDrawLights(ctx, al.filter(l => l.beam), cam, { vs, ox, oy, sky: S.sky || undefined, stage: 'ground' }) || 0;
       }
     } catch (e) { agentLights = null; }

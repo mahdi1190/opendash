@@ -1,5 +1,5 @@
 // World engine: what the Liverpool Pier Head (the second no-example place: a wide tidal river, three huge stone buildings, a ferry,
-// a great plaza) found missing, each with the check that fails on the engine as it was. docs/dev/SCENE_LESSONS.md K;
+// a great plaza) found missing, each with the check that fails on the engine as it was. docs/dev/SCENE_LESSONS.md M;
 // docs/dev/WORLD_ENGINE_REQUIREMENTS.md section 28.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -86,11 +86,14 @@ test('K5: a hull with no end art gets a stepped silhouette (hull, house, deck, m
   const ctx = mockCtx();
   W.worldExtrudeDraw(ctx, hull, { vs: 1, ox: 0, oy: 0 });
   assert.ok(ctx.calls.filter(c => c[0] === 'fill').length >= 1 + f.bands.length, 'the bands are drawn');
-  // a boat WITH end art (the new river ferry, the narrowboat) uses it
+  // a boat WITH end art (the new river ferry) uses it
   const rf = W.worldExtrudeHull({ id: 'rf', obj: 'boat.river-ferry', x: -6, z: 60, y: -3, facing: 0 }, cam);
   assert.equal(rf.end.obj, 'boat.river-ferry-end'); assert.ok(!rf.end.face);
+  // (merge of 15 Oct) a narrowboat is the 3D boat model (worldExtrudeBoatModel): its ends are modelled faces (stern counter, bow),
+  // never end art on a face and never a flat slab
   const nb = W.worldExtrudeHull({ id: 'nb', obj: 'boat.narrowboat', x: 0, z: 30, y: -0.5, facing: 0 }, cam);
-  assert.equal(nb.end.obj, 'boat.narrowboat-stern'); assert.ok(!nb.end.face);
+  assert.ok(nb.model && nb.end && nb.end.which === 'stern' && !nb.end.face && !nb.end.obj, 'the stern of the model, seen from behind');
+  assert.ok(nb.faces.filter(f => !f.line).length > 20, 'a solid model, not one slab');
 });
 
 test('K6: the river passenger ferry is a library object with both end views, a real size and lit windows', () => {

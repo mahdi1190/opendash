@@ -204,7 +204,7 @@ Integration rules (10 Oct, the integrator pass):
   stands there and never on water. A figure's glow parts (its `rim`, reflective strips, a phone, a watch) are lit by its sprite and
   are never light sources; only a cyclist's opaque lamps light. Lit windows are lit glass drawn per window inside their chunk.
 - Night keeps its structure (QP4): the sky's `nightKey` (moon and sky light) darkens foliage into silhouettes, lights pale
-  materials in proportion to their own lightness and lays a soft key on the paths (render glitches: SCENE_LESSONS G).
+  materials in proportion to their own lightness and lays a soft key on the paths (render glitches: SCENE_LESSONS H).
 
 ### 2.2 Static entities in depth-sorted chunks
 

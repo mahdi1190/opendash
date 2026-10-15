@@ -12,7 +12,9 @@
 (function () {
   if (typeof worldAdd !== 'function') return;
   // the canal centreline (from the v2 view) and lines offset from it (+ = towpath side, right)
-  const C = [[-8.6, 1], [-6.9, 10], [-4.6, 20], [-1.5, 35], [3, 55], [7.5, 85], [9, 120], [6, 165], [-2, 230], [-15, 320], [-37, 420]];
+  // (15 Oct) the near reach runs straight past the camera's left, so the moored boats are seen along their sides as in the
+  // v2 view, then it bends right towards the bridge
+  const C = [[-7.9, 1], [-7.9, 15], [-7.6, 35], [-7, 55], [-5.5, 85], [-2.5, 120], [0, 165], [-4, 230], [-15, 320], [-37, 420]];
   const R1 = v => Math.round(v * 10) / 10;
   const off = (o) => C.map((p, i) => {
     const a = C[Math.max(0, i - 1)], b = C[Math.min(C.length - 1, i + 1)], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1;
@@ -29,9 +31,9 @@
   const ent = [], P = (obj, s, o, x) => { const a = along(s, o); ent.push(Object.assign({ obj, at: a.at, facing: a.h }, x || {})); };
 
   // moored boats, nose to tail on the towpath side (decks walkable: the boater steps aboard)
-  P('boat.narrowboat', 9, 4.5, { id: 'nb1', attach: 'water', variant: 0 });
-  P('boat.narrowboat', 29.5, 4.5, { id: 'nb2', attach: 'water', variant: 1 });
-  P('boat.narrowboat', 49, 4.4, { id: 'nb3', attach: 'water', variant: 2 });
+  P('boat.narrowboat', 19, 4.5, { id: 'nb1', attach: 'water', variant: 0 });
+  P('boat.narrowboat', 39.5, 4.5, { id: 'nb2', attach: 'water', variant: 1 });
+  P('boat.narrowboat', 59.5, 4.4, { id: 'nb3', attach: 'water', variant: 2 });
   // mooring kit on the towpath edge
   for (const s of [3, 15, 24, 36, 44, 56]) P('street.bollard', s, 6.7, {});
   P('ground.log', 19, 8.6, {}); P('street.bench', 64, 8.2, { id: 'bench-1', facing: 270 });

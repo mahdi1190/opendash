@@ -110,17 +110,18 @@ test('Q3: a building shows the faces on the eye\'s side', () => {
   assert.ok(ahead.zKey === 30 && ahead.solidity === 'solid');
 });
 
-test('Q4: a boat seen end-on is drawn end-on; seen at an angle it recedes in perspective', () => {
+test('Q4: a long hull seen end-on is drawn end-on; seen at an angle it recedes in perspective (sprite hulls: a bus)', () => {
   const cam = camOf();
-  const away = W.worldExtrudeHull({ id: 'nb', obj: 'boat.narrowboat', x: 0, z: 30, y: -0.5, facing: 0 }, cam);
+  const away = W.worldExtrudeHull({ id: 'bus', obj: 'vehicle.bus', x: 0, z: 30, y: 0, facing: 0 }, cam);
   assert.equal(away.end.which, 'stern');
-  assert.equal(away.end.obj, 'boat.narrowboat-stern', 'the stern art');
+  assert.equal(away.end.obj, 'vehicle.bus-rear', 'the rear art');
   assert.equal(away.strips.length, 0, 'no side slab when exactly end-on');
-  const toward = W.worldExtrudeHull({ id: 'nb', obj: 'boat.narrowboat', x: 0, z: 30, y: -0.5, facing: 180 }, cam);
-  assert.equal(toward.end.obj, 'boat.narrowboat-bow');
+  const toward = W.worldExtrudeHull({ id: 'bus', obj: 'vehicle.bus', x: 0, z: 30, y: 0, facing: 180 }, cam);
+  assert.equal(toward.end.which, 'bow');
+  assert.equal(toward.end.obj, 'vehicle.bus-front');
   const v = W.worldViewOf({ obj: 'boat.narrowboat', x: 0, z: 30, facing: 0 }, cam);
   assert.equal(v.view, 'back'); assert.equal(v.persp, true); assert.equal(v.end, 'stern');
-  const oblique = W.worldExtrudeHull({ id: 'nb', obj: 'boat.narrowboat', x: -4, z: 22, y: -0.5, facing: 25 }, cam);
+  const oblique = W.worldExtrudeHull({ id: 'bus', obj: 'vehicle.bus', x: -4, z: 22, y: 0, facing: 25 }, cam);
   assert.ok(oblique.strips.length >= 4);
   const hs = oblique.strips.map(s => ({ z: s.z, h: Math.abs(s.quad[3][1] - s.quad[0][1]) })).sort((a, b) => a.z - b.z);
   for (let i = 1; i < hs.length; i++) assert.ok(hs[i].h < hs[i - 1].h + 1e-6, 'farther slices are shorter');
@@ -133,7 +134,136 @@ test('Q4: a boat seen end-on is drawn end-on; seen at an angle it recedes in per
   });
   const ord = oblique.strips.slice().sort((a, b) => a.a0 - b.a0);
   for (let i = 1; i < ord.length; i++) if (Math.abs(ord[i].a0 - ord[i - 1].a1) < 1e-6) assert.ok(Math.hypot(ord[i].quad[0][0] - ord[i - 1].quad[1][0], ord[i].quad[0][1] - ord[i - 1].quad[1][1]) < 0.05 && Math.hypot(ord[i].quad[3][0] - ord[i - 1].quad[2][0], ord[i].quad[3][1] - ord[i - 1].quad[2][1]) < 0.05, 'slices meet edge to edge');
-  assert.ok(oblique.art.repeat >= 1, 'a short picture of a long boat repeats its middle instead of stretching');
+  assert.ok(Number.isInteger(oblique.art.repeat));
+});
+
+// ---- the narrowboat model (16 Oct): true size, the end it shows, faces seen, the painter's order, night, ropes, bob ----
+const NB = (o) => Object.assign({ id: 'nb', obj: 'boat.narrowboat', x: 0, z: 30, y: -0.511, waterline: -0.45, facing: 0, static: true }, o || {});
+test('narrowboat model: the end the eye sees, a 3D model drawn from any angle', () => {
+  const cam = camOf();
+  const away = W.worldExtrudeHull(NB({ facing: 0 }), cam), toward = W.worldExtrudeHull(NB({ facing: 180 }), cam);
+  assert.ok(away.model && toward.model, 'canal boats are the 3D model');
+  assert.equal(away.end.which, 'stern');
+  assert.equal(toward.end.which, 'bow');
+  assert.equal(away.strips.length, 0, 'no sprite slices');
+  assert.ok(away.faces.some(f => f.role === 'tiller') && away.faces.some(f => f.role === 'rudder'), 'a tiller and a rudder at the stern');
+  assert.ok(toward.faces.some(f => f.role === 'cratch') && toward.faces.some(f => f.role === 'cover'), 'a cratch board and its cover at the bow');
+  for (const facing of [0, 30, 60, 90, 135, 180, 225, 270, 315]) {
+    const m = W.worldExtrudeHull(NB({ facing, x: 3, z: 25 }), cam);
+    assert.ok(m && m.faces.length > 40, `${facing}: a full model (${m && m.faces.length} faces)`);
+    for (const f of m.faces) for (const p of f.pts) assert.ok(Number.isFinite(p[0]) && Number.isFinite(p[1]), `${facing}: finite points (${f.role})`);
+  }
+});
+
+test('narrowboat model: true size above the waterline (K8 1.7-2.1 m: the giant invariant) and nothing drawn under the water', () => {
+  const cam = camOf();
+  for (const v of [0, 1, 2]) {
+    const m = W.worldExtrudeHull(NB({ variant: v, facing: 90, x: 0, z: 20 }), cam);
+    assert.ok(m.height >= 1.7 && m.height <= 2.1, `variant ${v}: ${m.height} m to the chimney's hat`);
+    assert.ok(m.roofH >= 1.6 && m.roofH <= 1.85, `roof ${m.roofH} m above the water`);
+    assert.equal(m.waterline, -0.45, 'the hull starts at the waterline');
+    // the hull's lowest drawn row is the waterline's row at its nearest point (never a black slab on the surface)
+    const yRow = (z) => cam.horizon + cam.f * (cam.eye - -0.45) / z;
+    const hullMax = Math.max(...m.faces.filter(f => f.role === 'hull').flatMap(f => f.pts.map(p => p[1])));
+    assert.ok(hullMax <= yRow(20 - 1.05) + 0.5, `hull bottom ${hullMax} vs waterline row ${yRow(20 - 1.05)}`);
+  }
+});
+
+test('narrowboat model: only the faces that face the eye, in a painter order valid from the side, above and below', () => {
+  const cam = camOf();
+  const side = W.worldExtrudeHull(NB({ facing: 90, x: 0, z: 20 }), cam);   // broadside, bow to the right
+  const hull = side.faces.filter(f => f.role === 'hull');
+  assert.ok(hull.length >= 3 && hull.every(f => f.z < 20 + 0.3), 'the far side of the hull is culled');
+  const cab = side.faces.filter(f => f.role === 'cabin');
+  assert.ok(cab.every(f => f.z < 20 + 0.3), 'the far cabin side is culled');
+  const roles = side.faces.map(f => f.role), iLast = (r) => roles.lastIndexOf(r), iFirst = (r) => roles.indexOf(r);
+  assert.ok(iLast('hull') < iFirst('cabin'), 'the hull before the cabin');
+  assert.ok(iFirst('roof') > iLast('cabin') && iFirst('chimney') > iLast('roof'), 'eye above the roof: cabin, roof, then the clutter on it');
+  const low = W.worldExtrudeHull(NB({ facing: 90, x: 0, z: 20, y: 0.9, waterline: 0.95 }), cam);   // the roof above the eye
+  const lr = low.faces.map(f => f.role);
+  assert.ok(!lr.includes('roof'), 'no roof face from below');
+  assert.ok(lr.lastIndexOf('chimney') < lr.indexOf('cabin'), 'eye below the roof: the cabin side hides the foot of the chimney');
+  // the near end's gear after the cabin, the far end's before it
+  const st = W.worldExtrudeHull(NB({ facing: 0 }), cam), sr = st.faces.map(f => f.role);
+  assert.ok(sr.indexOf('tiller') > sr.lastIndexOf('cabin'), 'stern towards the eye: the tiller over the cabin');
+  assert.ok(sr.indexOf('cratch') < 0 || sr.indexOf('cratch') < sr.lastIndexOf('cabin'), 'the cratch behind the cabin');
+});
+
+test('narrowboat model: liveries vary by boat within the variant family; near boats carry their details', () => {
+  assert.ok(W.WORLD_BOAT_LIVERIES.length >= 8, 'more liveries');
+  const cam = camOf(), seen = new Set();
+  for (let i = 0; i < 12; i++) for (const v of [0, 1, 2]) {
+    const m = W.worldExtrudeHull(NB({ id: 'nb' + i, variant: v, facing: 90 }), cam);
+    assert.equal(m.livery % 3, v, 'the variant keeps its family');
+    seen.add(m.livery);
+  }
+  assert.ok(seen.size >= 6, `${seen.size} liveries over 36 boats`);
+  const near = W.worldExtrudeHull(NB({ facing: 90, x: 0, z: 14 }), cam);
+  for (const r of ['window', 'curtain', 'name', 'door', 'brass', 'strake', 'handrail', 'chimney', 'vent', 'plank']) assert.ok(near.faces.some(f => f.role === r), `a near boat has ${r}`);
+  const far = W.worldExtrudeHull(NB({ facing: 90, x: 0, z: 140 }), cam);
+  assert.ok(far.faces.length < near.faces.length / 2, `far away the small details drop (${far.faces.length} vs ${near.faces.length})`);
+});
+
+test('narrowboat model: windows light up after dusk (emissive, a glow) and stay dark by day', () => {
+  const cam = camOf();
+  let litBoats = 0;
+  for (let i = 0; i < 10; i++) {
+    const m = W.worldExtrudeHull(NB({ id: 'moored-' + i, facing: 90, x: 0, z: 16 }), cam);
+    const fills = (night) => { const ctx = mockCtx(), seen = []; ctx.fill = () => seen.push(ctx.fillStyle); W.worldExtrudeDraw(ctx, m, { night, colour: (mat, hex) => hex }); return seen; };
+    assert.ok(!fills(false).includes('#ffd48a'), 'no lit window by day');
+    if (fills(true).includes('#ffd48a')) litBoats++;
+  }
+  assert.ok(litBoats >= 4 && litBoats <= 10, `${litBoats} of 10 moored boats have someone aboard after dusk`);
+});
+
+test('narrowboat model: mooring ropes run to the bank (never into the water); none under way or with no bank known', () => {
+  const cam = camOf();
+  // a canal along z from x -6 to 0: the bank is at x > 0
+  const regions = [{ polyM: [[-6, 0], [0, 0], [0, 200], [-6, 200]] }];
+  const ent = NB({ x: -2.2, z: 24, facing: 0 });
+  const m = W.worldExtrudeHull(ent, cam, { regions });
+  assert.equal(m.bank, 1);
+  assert.equal(m.faces.filter(f => f.role === 'rope').length, 2, 'stern and bow lines');
+  for (const p of m.faces.filter(f => f.role === 'pin')) {
+    const x = (p.pts[0][0] - cam.x0) * p.z / cam.f;
+    assert.ok(x > 0, `the pin stands on the bank (x ${x.toFixed(2)})`);
+  }
+  assert.ok(!W.worldExtrudeHull(ent, cam).faces.some(f => f.role === 'rope'), 'no ropes when the bank is not known');
+  assert.ok(!W.worldExtrudeHull(Object.assign({}, ent, { vx: 0, vz: 1.2, static: false }), cam, { regions }).faces.some(f => f.role === 'rope'), 'none under way');
+});
+
+test('narrowboat model: a gentle bob with time; a still (no time) never moves', () => {
+  const cam = camOf();
+  const a = W.worldExtrudeHull(NB({ facing: 90, x: 0, z: 16 }), cam), b = W.worldExtrudeHull(NB({ facing: 90, x: 0, z: 16 }), cam);
+  assert.deepEqual(a.faces.map(f => f.pts), b.faces.map(f => f.pts), 'deterministic');
+  const ys = [0, 0.9, 1.8, 2.7].map(t => W.worldExtrudeHull(NB({ facing: 90, x: 0, z: 16 }), cam, { t }).faces.find(f => f.role === 'chimney').pts[0][1]);
+  const span = Math.max(...ys) - Math.min(...ys), px1cm = cam.f * 0.01 / 16;
+  assert.ok(span > 0.2 * px1cm && span < 4 * px1cm, `the chimney bobs ${span.toFixed(2)} px (1 cm is ${px1cm.toFixed(2)} px)`);
+});
+
+// (merge of 15 Oct) superseded: uk-rebuild's walkway model (worldExtrudeWalkway: every walkway rebuilt from its nav deck with posts,
+// piles and rails) is not kept. main's walkway drawing is (render's _wfrWalkwayPersp, SCENE_LESSONS H: an end-on walkway's rails
+// and planks on its own deck, seen broadside its art). On the Fleet Pond the model drew the boardwalk entity as a railed box on
+// top of the deck surface and the platform as a long pier on stilts; main's drawing read as the real boardwalk and platform, and
+// `world check fleet-pond-2-w3` (deckDrawn) found no walker off the drawn planks in 6 frames over 300 s. Bug 7 is checked here
+// on what is kept: the rails stand on the nav deck's own long edges, at its level, and the planks are its outline.
+test('walkways (bug 7): a boardwalk or platform is drawn from the nav deck itself, so people stand on what is drawn', () => {
+  const spec = { v: 3, place: { lat: 51.29, lon: -0.82 }, camera: { eye: 2.4, fov: 66, horizon: 400, heading: 0, water: -0.2 },
+    surfaces: [{ id: 'pond', kind: 'water', water: 'pond', poly: [[-60, 1], [60, 1], [60, 120], [-60, 120]] }],
+    entities: [{ obj: 'structure.boardwalk', at: [1, 16], facing: 4, id: 'bw', attach: 'water' }], fill: false, seed: 1 };
+  const world = W.worldBuild(spec, { season: 'summer' }), bw = world.entities.find(e => e.id === 'bw');
+  assert.ok(bw && bw.deck && Array.isArray(bw.deck.poly), 'the boardwalk has a nav deck');
+  const hull = W.worldExtrudeHull(Object.assign({}, bw, { static: true }), world.cam);
+  assert.ok(!hull || !hull.walkway, 'no second walkway drawing: the hull path never models a walkway');
+  const plan = W.worldFramePlan(world, { season: 'summer', backdrop: false });
+  const rails = plan.recs.filter(r => r.ent && r.ent.id === 'bw' && r.prim);
+  assert.ok(rails.length >= 2, 'drawn in perspective along its deck');
+  const P = bw.deck.poly, cx = P.reduce((s, q) => s + q[0], 0) / P.length, cz = P.reduce((s, q) => s + q[1], 0) / P.length;
+  const grown = P.map(q => [cx + (q[0] - cx) * 1.05, cz + (q[1] - cz) * 1.05]);
+  const inside = (Q, x, z) => { let c = false; for (let i = 0, j = Q.length - 1; i < Q.length; j = i++) { const a = Q[i], b = Q[j]; if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / ((b[1] - a[1]) || 1e-12) + a[0]) c = !c; } return c; };
+  for (const r of rails) for (const q of r.prim.foot || r.foot || []) assert.ok(inside(grown, q[0], q[1]), `a rail stands on the deck (${q.map(v => v.toFixed(2))})`);
+  const planks = plan.decks.find(d => d.s && d.s.id === 'bw:deck');
+  assert.ok(planks && planks.s.y === bw.deck.y, 'the planks are drawn at the deck level people stand at');
 });
 
 test('Q4: worldExtrude gives long statics their perspective hull, sorted far to near; one bad entry never stops the rest', () => {
@@ -162,14 +292,23 @@ test('worldExtrudeDraw draws every kind of prim on a 2D context, with materials'
   assert.equal(ctx.calls.filter(c => c[0] === 'fill').length, wall.faces.length + wall.details.filter(d => d.type === 'fill').length);
   assert.ok(ctx.calls.some(c => c[0] === 'setTransform' && c[1] === 2 && c[5] === 10 && c[6] === 5), 'one uniform scale');
   assert.ok(mats.has('stone'));
-  const hull = W.worldExtrudeHull({ id: 'nb', obj: 'boat.narrowboat', x: -4, z: 22, y: -0.5, facing: 25 }, cam);
-  const sprite = (req) => { const b = req.o === 'boat.narrowboat' ? [-240, -86, 246, 16] : [-58, -88, 58, 15]; return { c: { width: 200, height: 50 }, x0: b[0], y0: b[1], w: b[2] - b[0], h: b[3] - b[1] }; };
+  const hull = W.worldExtrudeHull({ id: 'bus', obj: 'vehicle.bus', x: -4, z: 22, y: 0, facing: 25 }, cam);
+  const sprite = (req) => { const b = req.o === 'vehicle.bus' ? [-76, -68, 77, 5] : [-30, -68, 30, 5]; return { c: { width: 200, height: 50 }, x0: b[0], y0: b[1], w: b[2] - b[0], h: b[3] - b[1] }; };
   ctx = mockCtx();
   W.worldExtrudeDraw(ctx, hull, { sprite });
   assert.equal(ctx.calls.filter(c => c[0] === 'drawImage').length, 2 * hull.strips.length + (hull.end && hull.end.obj ? 2 : 0), 'two exactly mapped triangles per slice and for the end');
   assert.equal(ctx.calls.filter(c => c[0] === 'clip').length, ctx.calls.filter(c => c[0] === 'drawImage').length, 'each triangle clipped');
   ctx = mockCtx();
   assert.ok(W.worldExtrudeDraw(ctx, hull, {}) >= hull.strips.length, 'without art the slices are filled, never skipped');
+  // the boat model: a fill per face, a stroke per line (ropes, rails, tiller), a hairline seal on big panels; by day no glow
+  const boat = W.worldExtrudeHull({ id: 'nb', obj: 'boat.narrowboat', x: -4, z: 22, y: -0.5, facing: 25 }, cam);
+  ctx = mockCtx();
+  const nB = W.worldExtrudeDraw(ctx, boat, { colour });
+  const nLines = boat.faces.filter(f => f.line).length, nFills = boat.faces.length - nLines, nSeal = boat.faces.filter(f => f.seal).length;
+  assert.equal(nB, boat.faces.length, 'one draw per face');
+  assert.equal(ctx.calls.filter(c => c[0] === 'fill').length, nFills);
+  assert.equal(ctx.calls.filter(c => c[0] === 'stroke').length, nLines + nSeal);
+  assert.ok(mats.has('paint') && mats.has('metal'), 'materials graded by the look');
   const b = W.worldExtrudeBuilding({ id: 'b', foot: [[-6, 25], [6, 25], [6, 33], [-6, 33]], storeys: 2, style: 'victorian-terrace' }, cam);
   ctx = mockCtx();
   const nb = W.worldExtrudeDraw(ctx, b, { night: true, windowShare: 1 });
@@ -207,4 +346,13 @@ test('Q5: paving courses and mowing stripes of the v2 ground compile foreshorten
   assert.ok(Math.abs(a.across / b.across - 2) < 1e-9);
   assert.ok(Math.abs(a.along / b.along - 4) < 0.03);
   assert.ok(Math.abs(a.row - (cam.horizon + cam.f * cam.eye / 10)) < 1e-3);
+});
+
+test('bug 7: the nav deck of a walkway lies under its railing (the drawn planks), not at the railing top', () => {
+  for (const id of ['structure.boardwalk', 'structure.viewing-platform']) {
+    const wi = W.worldObjectInfo(id);
+    if (!wi || !wi.deck) continue;
+    const top = Array.isArray(wi.size) ? wi.size[1] : wi.size && (wi.size.h || wi.size.height);
+    assert.ok(Number.isFinite(top) && wi.deck.y <= top - 0.9, `${id}: the deck (${wi.deck.y} m) lies under the railing top (${top} m)`);
+  }
 });

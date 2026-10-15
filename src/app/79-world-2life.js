@@ -478,29 +478,58 @@ function _wlfSizes(life, a) {
   a.hSit = get('sit');
   if (!(a.hSit < a.hStand)) a.hSit = a.hStand * 0.72;
 }
-/** A11: a seeded variant (worldKbVariant: liveries, outfits, gaits, breeds) never equal to a group mate's or a neighbour's. */
+/** A11: a seeded variant (worldKbVariant: liveries, outfits, gaits, breeds) never equal to a group mate's or a neighbour's.
+    The candidates are the descriptor's own picks (so liveries and variantWhen still rule); among them the one least worn by
+    movers of the same object nearby wins: a group mate or one of avoid (the population's last arrivals) costs most, then each
+    look-alike by distance. Before, only the last three arrivals of the same population were avoided, so two populations (or a
+    resident and an arrival) walked the towpath side by side as clones. */
 function _wlfVariant(life, a, avoid) {
-  var n = a.info && a.info.variants ? a.info.variants : 1, out = null;
-  for (var t = 0; t < 8; t++) {
+  var n = a.info && a.info.variants ? a.info.variants : 1, cands = [], extras = {}, out = null;
+  // every variant the descriptor allows here (its pick enumerated with fixed draws: liveries and variantWhen still rule), in a
+  // seeded order (the tie-break)
+  for (var t = 0; t < n; t++) {
     var v = null, extra = null;
     if (a.kb && typeof worldKbVariant === 'function') {
       try {
-        var r = worldKbVariant(a.kb, (life.world && life.world.place) || {}, a.rng, { ctx: life.ctx });
+        var fx = (t + 0.5) / n, r = worldKbVariant(a.kb, (life.world && life.world.place) || {}, function () { return fx; }, { ctx: life.ctx });
         if (typeof r === 'number' || typeof r === 'string') v = r;
         else if (r && typeof r === 'object') { v = r.variant != null ? r.variant : null; extra = r; }
       } catch (e) { v = null; }
     }
-    if (v == null) v = Math.floor(a.rng() * n);
-    out = { v: v, extra: extra };
-    if (!avoid || avoid.indexOf(v) < 0 || n <= 1) break;
+    if (v == null) v = t;
+    if (!Object.prototype.hasOwnProperty.call(extras, String(v))) { extras[String(v)] = extra; cands.push(v); }
   }
+  for (var sh = cands.length - 1; sh > 0; sh--) { var sj = Math.floor(a.rng() * (sh + 1)), tmp = cands[sh]; cands[sh] = cands[sj]; cands[sj] = tmp; }
+  var best = cands[0];
+  if (cands.length > 1) {
+    var same = [], L = a.leader, bestS = Infinity;
+    for (var i = 0; i < life.agents.length; i++) { var o = life.agents[i]; if (o !== a && !o.dead && o.obj === a.obj && o.variant != null) same.push(o); }
+    for (var c = 0; c < cands.length; c++) {
+      var sc = avoid && avoid.indexOf(cands[c]) >= 0 ? 4 : 0;
+      for (var j = 0; j < same.length; j++) {
+        var q = same[j]; if (q.variant !== cands[c]) continue;
+        var mate = L && (q === L || q.leader === L);
+        sc += mate ? 8 : 1 / (1 + Math.hypot(q.x - a.x, q.z - a.z) / 20);
+      }
+      if (sc < bestS - 1e-9) { bestS = sc; best = cands[c]; }
+    }
+  }
+  out = { v: best, extra: extras[String(best)] };
   a.variant = out.v;
   if (out.extra) { a.outfit = out.extra.outfit || null; a.breed = out.extra.breed || null; if (Number.isFinite(out.extra.gait)) a.gait *= out.extra.gait; else if (out.extra.gait) a.gaitName = out.extra.gait; }
   // seeded looks the descriptor did not give (A11): an outfit palette, a dog's breed, a named gait; never a group mate's outfit
   var vr = _wlfStream(life, a.id + ':look');
   if (a.outfit == null && (a.kind === 'walker' || a.kind === 'lane') && a.cls !== 'dog' && !a.brain.heavy) {
+    // the outfit is drawn (appearance recolours the top), so the look is (object, variant, outfit): never a group mate's outfit,
+    // and the least worn among everyone alive in the same object and variant (a clone pair walked Kelham together: same variant,
+    // same outfit drawn by chance from 12)
     var taken = [], L = a.leader; if (L) { taken.push(L.outfit); if (L.members) L.members.forEach(function (m) { if (m !== a) taken.push(m.outfit); }); }
-    for (var q = 0; q < 6; q++) { a.outfit = Math.floor(vr() * WORLD_LIFE_OUTFITS); if (taken.indexOf(a.outfit) < 0) break; }
+    var worn = []; for (var wi = 0; wi < WORLD_LIFE_OUTFITS; wi++) worn.push(0);
+    for (var ai = 0; ai < life.agents.length; ai++) { var oa = life.agents[ai]; if (oa !== a && !oa.dead && oa.obj === a.obj && oa.variant === a.variant && oa.outfit != null && oa.outfit >= 0 && oa.outfit < WORLD_LIFE_OUTFITS) worn[oa.outfit] += 1 / (1 + Math.hypot(oa.x - a.x, oa.z - a.z) / 40); }
+    for (var ti = 0; ti < taken.length; ti++) if (taken[ti] != null && taken[ti] >= 0 && taken[ti] < WORLD_LIFE_OUTFITS) worn[taken[ti]] += 100;
+    var start = Math.floor(vr() * WORLD_LIFE_OUTFITS), bestO = start, bestW = Infinity;
+    for (var oq = 0; oq < WORLD_LIFE_OUTFITS; oq++) { var oc = (start + oq) % WORLD_LIFE_OUTFITS; if (worn[oc] < bestW - 1e-9) { bestW = worn[oc]; bestO = oc; } }
+    a.outfit = bestO;
   }
   if (a.breed == null && a.cls === 'dog') a.breed = WORLD_LIFE_BREEDS[Math.floor(vr() * WORLD_LIFE_BREEDS.length)];
   if (a.gaitName == null && a.kind === 'walker') a.gaitName = a.gait < 0.95 ? 'easy' : a.gait > 1.05 ? 'brisk' : 'even';
@@ -653,7 +682,7 @@ function _wlfRoom(life, kind, need) {
   return n + (need || 1) <= (tr ? Math.max(4, Math.round(life.max * 0.2)) : life.max);
 }
 /**
- * A crowd never hides the place (SCENE_LESSONS J): the people on foot together cover at most ~7 % of the frame. A person at 6 m is
+ * A crowd never hides the place (SCENE_LESSONS K): the people on foot together cover at most ~7 % of the frame. A person at 6 m is
  * 20 times the area of one at 27 m, so a busy quay seen from its edge is a few people at the lens or a street of them further off,
  * never a wall of giants. Nobody is removed; arrivals wait until the people on screen have left some room.
  */
@@ -692,7 +721,7 @@ function _wlfArrive(life, pop, entry, o) {
   var sp = null;
   for (var t = 0; t < 6 && !sp; t++) {
     var c = pool[Math.floor(pop.rng() * pool.length)];
-    if (!_wlfCrowded(life, b.layer, c.x, c.z, b.r * 3 + 0.6)) sp = c;
+    if (!_wlfCrowded(life, b.layer, c.x, c.z, Math.max(b.r * 3 + 0.6, b.kind === 'walker' || b.kind === 'runner' ? 3 : 0))) sp = c;
   }
   if (!sp) return null;
   var id = 'p' + pop.idx + '-' + (pop.ord++);
@@ -1363,7 +1392,7 @@ function _wlfFollowBrain(life, a, dt) {
     if (a.dir && a.speed < 0.05) { a.heldT = (a.heldT || 0) + dt; if (a.heldT > 0.5) { a.roam = null; a.heldT = 0; a.roamNear = true; } } else a.heldT = 0;
     if (_wlfInEdgeZone(life, a) && a.roam && life.t + 1.5 < a.roam.until) { a.roam.until = life.t; a.roamNear = true; }
     if (!a.roam || life.t > a.roam.until) {
-      var ang = a.rng() * Math.PI * 2, rr = a.lead.len * (a.roamNear ? 0.2 + 0.2 * a.rng() : 0.35 + 0.5 * a.rng());
+      var ang = a.rng() * Math.PI * 2, rr = Math.max(0.65, a.lead.len * (a.roamNear ? 0.2 + 0.2 * a.rng() : 0.35 + 0.5 * a.rng()));   // never a spot inside the walker
       a.roam = { dx: Math.cos(ang) * rr, dz: Math.sin(ang) * rr, until: life.t + 2 + a.rng() * 3 }; a.roamNear = false;
     }
     var tx = L.x + a.roam.dx, tz = L.z + a.roam.dz;
@@ -1747,7 +1776,11 @@ function _wlfPair(life, a, o) {
   var rel = _wlfRelated(a, o);
   var sq = (a.squeeze > life.t || o.squeeze > life.t);                                // passing in a lane too narrow for two
   // in a lane a body wide (one that stalled for 2.5 s) the pair turns sideways and brushes past, the sprites overlapping for a step or two
-  var minD = (a.r + o.r) * (rel ? 0.6 : sq ? 0.25 : (a.kind === 'walker' && o.kind === 'walker' ? WORLD_LIFE_BODY : 1));
+  // two PEOPLE of one group (a couple, a family) walk shoulder to shoulder, never through each other (0.96 x their radii: the
+  // drawn figures just touch); a dog at heel or a flock keeps the closer group floor (merge of 15 Oct: uk-rebuild's crowd check
+  // found couples drawn 0.3 m apart, half inside each other)
+  var people = rel && /^person\./.test(String(a.obj || '')) && /^person\./.test(String(o.obj || ''));
+  var minD = (a.r + o.r) * (rel ? (people ? 0.96 : 0.6) : sq ? 0.25 : (a.kind === 'walker' && o.kind === 'walker' ? WORLD_LIFE_BODY : 1));
   if (d >= minD) return 0;
   var ma = _wlfMass(a), mo = _wlfMass(o);
   if (ma === Infinity && mo === Infinity) return 0;
@@ -1873,7 +1906,7 @@ function _wlfStuck(life, a, want, dt) {
     var back2 = a.edge && /^(N|S|E|W|cover|door)$/.test(a.edge) && !(a.goals && a.goals[a.gi] && a.goals[a.gi].leave === a.edge) ? a.edge : null;
     if (a.replans <= 1) { a.route = null; }
     else if (a.replans <= 2 && back2 && !a.resident && !a.leader && !a.members && a.kind === 'walker' && _wlfLater(life, a)) { _wlfLeave(life, a, back2); a.goalOn = null; a.replans = 0; }
-    else if (a.replans <= 2 && a.kind === 'walker') { a.route = null; a.squeeze = life.t + 3; }                  // a one-person lane: turn sideways and pass shoulder to shoulder
+    else if (a.replans <= 2 && a.kind === 'walker' && _wlfOneBody(life, a)) { a.route = null; a.squeeze = life.t + 3; }   // a one-person lane: turn sideways and pass shoulder to shoulder
     else if (a.replans <= 2) { a.route = null; if (!edgeZ) { a.wait = life.t + 1 + a.rng() * 2; if (a.brain.states[a.bs] && a.brain.states[a.bs].speed) _wlfEnter(life, a, _wlfStillState(a)); } }
     else {
       a.replans = 0; a.stuckOut = true;
@@ -1881,6 +1914,16 @@ function _wlfStuck(life, a, want, dt) {
       else { var back = a.edge && /^(N|S|E|W|cover|door)$/.test(a.edge) && !(a.goals && a.goals[a.gi] && a.goals[a.gi].leave === a.edge) ? a.edge : 'any'; _wlfLeave(life, a, back); a.goalOn = null; }
     }
   }
+}
+/**
+ * Is this mover in a lane a body wide (a boardwalk, a gap between solids): no legal spot a shoulder's width to either side of its way?
+ * Only there do two people turn sideways and brush past (squeeze); on a towpath, a quay or a plaza they step round (merge of 15 Oct:
+ * uk-rebuild's motion check caught a walker squeezing through an idle family on the Pier Head's plaza).
+ */
+function _wlfOneBody(life, a) {
+  var dir = a.dir || [Math.sin(a.heading || 0), Math.cos(a.heading || 0)], lx = -dir[1], lz = dir[0], w = (a.r || 0.25) * 2 + 0.25;
+  for (var sg = -1; sg <= 1; sg += 2) if (_wlfOk(life, a, a.x + lx * w * sg, a.z + lz * w * sg)) return false;
+  return true;
 }
 /** Did this mover arrive after a neighbour within 2.5 m that is held up too (the later one of a knot gives way)? */
 function _wlfLater(life, a) {
@@ -1937,7 +1980,8 @@ function _wlfFace(life, a) {
   a.bucket = b; a.view = WORLD_VIEWS[b];
   if (abs > 15 && abs < 165) a.mirror = ang < 0;
 }
-/** A still mover turns to its point of interest (A5) at its turn rate. */
+/** A still mover turns to its point of interest (A5) at its turn rate; one that wants to move (held up a moment, or turning
+    to set off) never: the two turns fought each tick and held it facing away from its way, at no speed, for good. */
 function _wlfLookTurn(life, a, dt) {
   if (!a.lookAt || a.speed > 0.05 || a.dir || a.step || a.layer === 'air') return;       // one that wants to go turns to its way, never back to what it was looking at
   var des = Math.atan2(a.lookAt[0] - a.x, a.lookAt[1] - a.z), diff = _wlfAng(des - a.heading), mx = Math.PI / a.brain.turn * dt;
@@ -2074,7 +2118,7 @@ function _wlfMoor(life, a, pop) {
 /* ---------- reactions (M6) ---------- */
 function _wlfBusHandlers(life) {
   life.bus.on('scare', function (e) {
-    _wlfNear(life, e.x, e.z, e.r || 6, function (o) {
+    _wlfNearXZ(life, e.x, e.z, e.r || 6, function (o) {
       if (o.brain.react && o.brain.react.flee && (o.layer === 'swim' || o.layer === 'wade') && Math.hypot(o.x - e.x, o.z - e.z) < o.brain.react.flee) {
         if (!o.flee) o.fleeN = (o.fleeN || 0) + 1;
         o.flee = { x: e.x, z: e.z, until: life.t + 3 + o.rng() * 2 }; o.route = null;
@@ -2082,7 +2126,7 @@ function _wlfBusHandlers(life) {
     });
   });
   life.bus.on('feed', function (e) {
-    _wlfNear(life, e.x, e.z, e.r || 25, function (o) { if (o.brain.react && o.brain.react.feed && o.layer === 'swim' && !o.flee) { o.attract = { x: e.x, z: e.z, until: life.t + 3 }; o.route = null; } });
+    _wlfNearXZ(life, e.x, e.z, e.r || 25, function (o) { if (o.brain.react && o.brain.react.feed && o.layer === 'swim' && !o.flee) { o.attract = { x: e.x, z: e.z, until: life.t + 3 }; o.route = null; } });
   });
   life.bus.on('arrive', function (e) {
     if (!e.stop) return;
@@ -2091,7 +2135,7 @@ function _wlfBusHandlers(life) {
   life.bus.on('depart', function (e) { var v = life.byId.get(e.id); if (v) v.departed = true; });
   life.bus.on('ring', function (e) { var w = life.byId.get(e.to); if (w && !w.dead) { w.yieldT = life.t + 3; w.yieldSide = 1; } });
 }
-function _wlfNear(life, x, z, R, fn) {
+function _wlfNearXZ(life, x, z, R, fn) {
   var c0 = Math.floor((x - R) / 2), c1 = Math.floor((x + R) / 2), d0 = Math.floor((z - R) / 2), d1 = Math.floor((z + R) / 2);
   for (var cx = c0; cx <= c1; cx++) for (var cz = d0; cz <= d1; cz++) {
     var bk = life.hash.get((cx + 4096) * 8192 + (cz + 4096)); if (!bk) continue;
@@ -2106,17 +2150,17 @@ function _wlfReactions(life, dt) {
     if (R.scareWater && a.speed > 0.2 && (!a.scareT || life.t - a.scareT > 0.5)) {
       a.scareT = life.t;
       var birds = false;
-      _wlfNear(life, a.x, a.z, 7, function (o) { if (!birds && o.brain.react && o.brain.react.flee && (o.layer === 'swim' || o.layer === 'wade')) birds = true; });
+      _wlfNearXZ(life, a.x, a.z, 7, function (o) { if (!birds && o.brain.react && o.brain.react.flee && (o.layer === 'swim' || o.layer === 'wade')) birds = true; });
       if (birds && _wlfNearWater(life, a.x, a.z, 2.5)) life.bus.emit('scare', { id: a.id, by: a.id, x: a.x, z: a.z, r: 6, t: life.t });
     }
     if (R.lift && !a.hop && a.layer !== 'air') {
       var hit = null;
-      _wlfNear(life, a.x, a.z, R.lift, function (o) { if (!hit && o !== a && o.layer === 'walk' && o.kind === 'walker' && o.brain.react !== R && o.cls !== 'pigeon' && o.speed > 0.3 && Math.hypot(o.x - a.x, o.z - a.z) < R.lift) hit = o; });
+      _wlfNearXZ(life, a.x, a.z, R.lift, function (o) { if (!hit && o !== a && o.layer === 'walk' && o.kind === 'walker' && o.brain.react !== R && o.cls !== 'pigeon' && o.speed > 0.3 && Math.hypot(o.x - a.x, o.z - a.z) < R.lift) hit = o; });
       if (hit) _wlfLift(life, a, hit);
     }
     if (R.ring && a.speed > 1) {
       var hx = Math.sin(a.heading), hz = Math.cos(a.heading);
-      _wlfNear(life, a.x + hx * 4, a.z + hz * 4, 5, function (o) {
+      _wlfNearXZ(life, a.x + hx * 4, a.z + hz * 4, 5, function (o) {
         if (o === a || o.layer !== a.layer || o.kind !== 'walker' || o.cls === 'cyclist' || o.cls === 'dog' || (a.rung && a.rung[o.id])) return;
         var rx = o.x - a.x, rz = o.z - a.z, d = Math.hypot(rx, rz);
         if (d < 1 || d > 8 || (rx * hx + rz * hz) / d < 0.8) return;
@@ -2222,8 +2266,54 @@ function worldAgents(life) {
       level: a.layer.indexOf('@') > 0 ? +a.layer.split('@')[1] : 0, host: a.host, group: a.group, lookAt: a.lookAt, view: a.view, mirror: a.mirror,
       born: a.born, leaving: a.leaving || false, alpha: alpha, clip: a.clip || st.clip, phase: a.phase, kind: a.kind, lead: a.lead, edge: a.edge,
       outfit: a.outfit == null ? null : a.outfit, breed: a.breed || null, gait: a.gait, gaitName: a.gaitName || null, len: a.len || null, framed: false,
-      r: a.r, intent: _wlfIntent(a), squeeze: !!(a.squeeze > life.t), stepping: !!a.step || (a.stepEnd != null && life.t - a.stepEnd < 0.6), leader: a.leader ? a.leader.id : null, resident: !!a.resident });
+      r: a.r, intent: _wlfIntent(a), squeeze: !!(a.squeeze > life.t), stepping: !!a.step || (a.stepEnd != null && life.t - a.stepEnd < 0.6), leader: a.leader ? a.leader.id : null, resident: !!a.resident,
+      wants: !!(a.dir && a.spd > 0) });
   }
+  return out;
+}
+/**
+ * The crowd check (Y4, A2, A11) over one frame of agent records (worldAgents), for the motion tool, the invariants and tests.
+ * mem: an object kept between frames by the caller (the streaks); t: the scene time. Returns [{ rule, a, b, t, msg }]:
+ *   overlap   two bodies on the walk layer closer than 0.85 x their radii (people 0.28 m, others 0.15 m), group mates too;
+ *   standoff  two walkers that both want to move stand still within 1.2 m of each other for over 6 s (nose to nose; the
+ *             stuck handler re-plans at 3 s);
+ *   clone     two people with the same object and variant within 3 m, going the same way (or both still), for over 8 s.
+ * Movers fading in or out, seated, aboard a host, lanes and rails are left out. Each streak is reported once.
+ */
+function worldLifeCrowdCheck(agents, mem, t) {
+  mem = mem || {}; t = +t || 0;
+  var out = [], live = {}, P = [];
+  for (var i = 0; i < (agents || []).length; i++) {
+    var a = agents[i];
+    if (!a || !a.layer || String(a.layer).split('@')[0] !== 'walk' || a.host || a.kind === 'lane' || a.kind === 'rail') continue;
+    if (a.alpha != null && a.alpha < 1) continue;
+    if (a.pose === 'sit' || a.state === 'sit') continue;
+    P.push(a);
+  }
+  var person = function (a) { return /^person./.test(a.obj || '') || a.kind === 'walker' && a.cls !== 'dog' && a.cls !== 'pigeon'; };
+  var body = function (a) { return person(a) ? 0.28 : 0.15; };                     // a dog at heel may brush a leg
+  var streak = function (k, limit, rule, a, b, msg) {
+    live[k] = 1;
+    if (mem[k] == null) mem[k] = { t0: t, done: false };
+    if (!mem[k].done && t - mem[k].t0 > limit) { mem[k].done = true; out.push({ rule: rule, a: a.id, b: b.id, t: t, msg: msg + ' for ' + (t - mem[k].t0).toFixed(1) + ' s' }); }
+  };
+  for (i = 0; i < P.length; i++) for (var j = i + 1; j < P.length; j++) {
+    var p = P[i], q = P[j], d = Math.hypot(p.x - q.x, p.z - q.z);
+    if (d > 3.2 || p.layer !== q.layer) continue;
+    // a dog at heel on its own walker's lead walks by the walker's legs: through it only nearer than life's group floor (0.6 x their
+    // radii; merge of 15 Oct: main's leash keeps a dog at heel, uk-rebuild's kept it 0.65 m off); a dog snapped onto its walker still is one
+    var heel = (p.lead && q.id === p.leader) || (q.lead && p.id === q.leader);
+    var floor = heel && Number.isFinite(p.r) && Number.isFinite(q.r) ? 0.57 * (p.r + q.r) : 0.85 * (body(p) + body(q));   // (5 % under the floor: its rounding)
+    if (d < floor) out.push({ rule: 'overlap', a: p.id, b: q.id, t: t, msg: p.id + ' and ' + q.id + ' are ' + d.toFixed(2) + ' m apart (bodies through each other)' });
+    var key = p.id < q.id ? p.id + '|' + q.id : q.id + '|' + p.id;
+    if (p.wants && q.wants && (p.speed || 0) < 0.05 && (q.speed || 0) < 0.05 && d < 1.2) streak('s:' + key, 6, 'standoff', p, q, p.id + ' and ' + q.id + ' both want to move and stand ' + d.toFixed(2) + ' m apart');
+    if (person(p) && p.obj === q.obj && p.variant != null && p.variant === q.variant && (p.outfit == null || q.outfit == null || p.outfit === q.outfit) && d < 3) {
+      var vp = Math.hypot(p.vx || 0, p.vz || 0), vq = Math.hypot(q.vx || 0, q.vz || 0);
+      var same = (vp < 0.2 && vq < 0.2) || (vp >= 0.2 && vq >= 0.2 && ((p.vx || 0) * (q.vx || 0) + (p.vz || 0) * (q.vz || 0)) > 0.5 * vp * vq);
+      if (same) streak('c:' + key, 8, 'clone', p, q, p.id + ' and ' + q.id + ' look the same (' + p.obj + ' #' + p.variant + ') side by side');
+    }
+  }
+  for (var k in mem) if (!live[k]) delete mem[k];
   return out;
 }
 /**

@@ -1,5 +1,5 @@
 /* ============================================================
-   WORLD ENGINE (scene format v3.1), package look: the SUN ON A FACE (docs/dev/SCENE_LESSONS.md K; requirements L6).
+   WORLD ENGINE (scene format v3.1), package look: the SUN ON A FACE (docs/dev/SCENE_LESSONS.md M; requirements L6).
    PURE (Node + browser): only functions at load. Private prefix _wst.
 
    A building the generator draws has its own soft studio shade (a fixed light from the upper left), and every wall, whatever the sun

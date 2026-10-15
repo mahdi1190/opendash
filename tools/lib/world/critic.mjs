@@ -129,12 +129,15 @@ export function worldCritic(E, spec, o = {}) {
   let worldRichness = null, coverage = null, cuts = null, landmarks = null;
   if (E.worldRichness && cam) { try { worldRichness = E.worldRichness(world, cam); } catch (e) { problems.push('worldRichness threw: ' + e.message); } }
   if (E.worldCoverage && cam) { try { coverage = E.worldCoverage(world, cam, { season }); } catch (e) { problems.push('worldCoverage threw: ' + e.message); } }
-  if (E.worldFrameCheck && cam) { try { const r = E.worldFrameCheck(world, cam); cuts = Array.isArray(r) ? r : r && (r.cuts || r.problems || r.items) || []; } catch (e) { problems.push('worldFrameCheck threw: ' + e.message); } }
+  if (E.worldFrameCheck && cam) { try { const r = E.worldFrameCheck(world, cam); cuts = Array.isArray(r) ? r : r && (r.issues || r.cuts || r.problems || r.items) || []; } catch (e) { problems.push('worldFrameCheck threw: ' + e.message); } }
   if (E.worldLandmarkCheck && cam) { try { const r = E.worldLandmarkCheck(world, cam); landmarks = Array.isArray(r) ? r : r && (r.landmarks || r.items) || []; } catch (e) { problems.push('worldLandmarkCheck threw: ' + e.message); } }
-  if ((cuts == null || landmarks == null) && E.worldInvariants && E.worldInvariantFrame) {
+  // the invariant checker's framing rules ALWAYS run beside appearance's check (15 Oct: worldFrameCheck said '0 cut' while a
+  // bramble covered 41 % of the canal frame): C1 cuts, giants at the lens (nearStatic) and trees with their crown above the frame
+  if (E.worldInvariants && E.worldInvariantFrame) {
     const fr = E.worldInvariantFrame(world, [], { season });
-    const v = E.worldInvariants(fr, { world, rules: ['edgeCut', 'landmark'] });
-    if (cuts == null) cuts = v.filter(x => x.rule === 'edgeCut').map(x => ({ id: x.id, ok: false, msg: x.msg, by: 'invariants' }));
+    const v = E.worldInvariants(fr, { world, rules: ['edgeCut', 'nearStatic', 'crownCut', 'landmark'] });
+    const seen = new Set((cuts || []).map(c => c && c.id).filter(Boolean));
+    cuts = (cuts || []).concat(v.filter(x => x.rule !== 'landmark' && !seen.has(x.id)).map(x => ({ id: x.id, ok: false, msg: x.msg, by: 'invariants:' + x.rule })));
     if (landmarks == null) landmarks = v.filter(x => x.rule === 'landmark').map(x => ({ id: x.id, ok: false, msg: x.msg, by: 'invariants' }));
   }
   const badCuts = (cuts || []).filter(c => c && c.ok !== true), badLm = (landmarks || []).filter(l => l && l.ok === false);

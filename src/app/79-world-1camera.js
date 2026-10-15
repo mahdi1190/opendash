@@ -353,10 +353,17 @@ function _wcmPrismBox(cam, foot, y0, h) {
 }
 function _wcmInfo(obj) { return typeof worldObjectInfo === 'function' && typeof obj === 'string' ? worldObjectInfo(obj) : null; }
 /** The sprite box of an object id at scale s (object units: anchor at the foot, y up negative). */
+// the union of the four seasons' art (a bare winter crown spreads wider than the summer one: the frame check holds all year,
+// as the renderer's frame record sees each season)
+const _wcmArtMemo = new Map();
 function _wcmArtBox(obj, v) {
+  const key = obj + '|' + (v | 0);
+  if (_wcmArtMemo.has(key)) return _wcmArtMemo.get(key);
   let b = null;
-  if (typeof sceneObjShapes === 'function') { try { const sh = sceneObjShapes(obj, v | 0, 'summer'); if (sh && Array.isArray(sh.box)) b = sh.box; } catch (e) { b = null; } }
+  if (typeof sceneObjShapes === 'function') for (const season of ['summer', 'winter', 'autumn', 'spring']) { try { const sh = sceneObjShapes(obj, v | 0, season); if (sh && Array.isArray(sh.box) && sh.box.every(Number.isFinite)) b = b ? [Math.min(b[0], sh.box[0]), Math.min(b[1], sh.box[1]), Math.max(b[2], sh.box[2]), Math.max(b[3], sh.box[3])] : sh.box.slice(); } catch (e) { /* next */ } }
   if (!b && typeof sceneObj === 'function') { const d = sceneObj(obj); if (d && Array.isArray(d.size)) b = [-d.size[0] / 2, -d.size[1], d.size[0] / 2, 0]; }
+  if (_wcmArtMemo.size > 4000) _wcmArtMemo.clear();
+  _wcmArtMemo.set(key, b);
   return b;
 }
 /**
@@ -420,6 +427,51 @@ function _wcmBreaks(ent, cam, F) {
   if (r.near && c.vis > 0 && !c.cut.length) c.cut.push('bottom');
   return c.size >= 0.25 && c.cut.length ? { size: c.size, vis: c.vis, cut: c.cut, box: r.box } : null;
 }
+const _wcmNatural = e => { const cls = e.cls || (_wcmInfo(e.obj) || {}).cls; return ['tree', 'hedge', 'shrub', 'reed', 'cover', 'flower'].includes(cls) || /^(tree|plant)\./.test(String(e.obj || '')); };
+const _wcmDeclared = e => !!(e && (e.framing === true || e.framed === true || e.auto === 'frame'));
+/** A natural framing element (not declared framing) whose visible box reaches across the frame's centre column, and covers
+    more than a quarter of the frame: it blocks the view instead of framing it from a side (bug 4: the bramble blob). */
+function _wcmBlocksCentre(e, br, F) {
+  if (!br || _wcmDeclared(e) || !_wcmNatural(e)) return false;
+  const cx = (F[0] + F[2]) / 2, b = br.box;
+  return br.vis >= 0.25 && Math.max(F[0], b[0]) < cx && Math.min(F[2], b[2]) > cx;
+}
+/** The share of a tree's drawn box above the frame top while its trunk stands in the frame (bug 3, K4): over 30 % and the crown
+    is mostly cut away (a pole with fronds hanging from the top edge). -> a C1-like break { size, vis, cut: ['top'], box, crown } */
+const WORLD_CROWN_CUT = 0.3;
+function _wcmCrownCut(e, cam, F, parents) {
+  // a tree something hangs from (a bough, fronds) frames the view with them: its crown above the frame is the point
+  if (!e || e.landmark || e.backdrop || _wcmDeclared(e) || (parents && parents.has(e.id))) return null;
+  const cls = e.cls || (_wcmInfo(e.obj) || {}).cls;
+  if (cls !== 'tree' && !/^tree\./.test(String(e.obj || ''))) return null;
+  const r = worldScreenBox(e, cam);
+  if (!r || r.persp) return null;
+  const b = r.box, h = b[3] - b[1];
+  if (!(h > 0) || !(b[1] < F[1])) return null;
+  const ax = r.anchor ? r.anchor[0] : (b[0] + b[2]) / 2, ay = r.anchor ? r.anchor[1] : b[3];
+  if (ax < F[0] || ax > F[2] || ay < F[1]) return null;   // the trunk outside the frame: a side frame, its crown reaching in
+  const above = (F[1] - b[1]) / h;
+  if (above <= WORLD_CROWN_CUT) return null;
+  const c = _wcmCut(b, F);
+  return { size: Math.max(c.size, 0.25), vis: c.vis, cut: ['top'], box: b, crown: _wcmR(above, 3) };
+}
+/** Everything the frame check fixes about one entity: a C1 cut (framing elements excepted unless they block the centre) or a
+    cut crown. -> null or the break. */
+function _wcmBad(e, cam, F, parents) {
+  let br = _wcmBreaks(e, cam, F);
+  if (br) {
+    const cls = e.cls || (_wcmInfo(e.obj) || {}).cls || '', soft = /^(shrub|reed|cover|plant|flower|grass)$/.test(cls);
+    const face = br.vis >= 0.6 && br.cut.length >= 3 && !/^(tree|plant|bough|frond)/.test(String(e.obj || ''));   // a wall in the lens's face
+    // a declared framing element frames; an undeclared one (a tree, a hedge, a wall edge, a building) only from a side, cut, never
+    // over 35 % of the frame (the invariant checker's edgeCut, bug 19); low plants (shrubs, reeds, cover) are no framing unless
+    // declared (the 41 % bramble blob, bug 4); a tall building cut by the top alone is a street front
+    if (_wcmDeclared(e) || e.kind === 'line' || e.line || (parents && parents.has(e.id))) { if (!face) br = null; }
+    else if (_wcmIsFraming(e) && !soft && !face && br.vis <= 0.35 && !_wcmBlocksCentre(e, br, F)) br = null;
+    else if (/^(building|landmark|structure)$/.test(cls) && br.cut.length === 1 && br.cut[0] === 'top' && !face) br = null;
+  }
+  if (!br && !e.agent) br = _wcmCrownCut(e, cam, F, parents);
+  return br;
+}
 /** Convex penetration depth (separating axis), 0 when apart. */
 function _wcmPen(A, B) {
   let best = Infinity;
@@ -475,7 +527,11 @@ function _wcmFix(world, ent, cam, F) {
   const foot0 = Array.isArray(ent.foot) && ent.foot.length >= 3 ? ent.foot : [[ent.x, ent.z]];
   const test = (x, z, facing, foot) => {
     if (!_wcmLegal(world, ent, x, z, facing, foot)) return false;
-    return !_wcmBreaks(Object.assign({}, ent, { x, z, facing, foot, view: null }), cam, F);
+    const at = Object.assign({}, ent, { x, z, facing, foot, view: null });
+    if (_wcmBad(at, cam, F, world._wcmParents)) return false;
+    // a framing element may stay cut at its side, never fill half the frame (a wall in the lens's face, a hedge blob)
+    const br = _wcmBreaks(at, cam, F);
+    return !(br && br.vis >= 0.5);
   };
   // 1. move along the habitat: a hull along its own axis (parallel to its bank); others outward in rings, farther first
   const cands = [];
@@ -521,15 +577,20 @@ function worldFrameCheck(world, cam, o) {
   const out = { ok: true, issues: [], log: [] };
   if (!world || !cam || !_wcmNum(cam.f)) return out;
   const F = _wcmFrame(o), ents = Array.isArray(world.entities) ? world.entities.slice() : [];
+  const parents = new Set(ents.filter(q => q && q.parent != null).map(q => q.parent));
+  // a tree a bough or fronds hang from frames the view with them (K4, C3): it is a framing element (the frame record says so)
+  if (o.apply) for (const e of ents) if (e && parents.has(e.id) && !e.framing && !e.landmark) e.framing = true;
+  try { Object.defineProperty(world, '_wcmParents', { value: parents, writable: true, configurable: true, enumerable: false }); } catch (err) { /* frozen */ }
   const list = ents.concat(o.agents ? (o.agents || []).map(a => Object.assign({ agent: true }, a)) : []);
   for (const e of list) {
     if (!e || e.backdrop) continue;
     if (e.agent && (e.framed || e.layer === 'air')) continue;
-    const br = _wcmBreaks(e, cam, F);
-    if (!br) continue;
     // a framing element frames the view from its side; one that fills most of the frame (a wall or a hedge in the lens's face,
-    // cut on three or more edges) blocks it, and is fixed like anything else
-    if (_wcmIsFraming(e) && !(br.vis >= 0.6 && br.cut.length >= 3 && !/^(tree|plant|bough|frond)/.test(String(e.obj || '')))) continue;
+    // cut on three or more edges) blocks it, and is fixed like anything else; a natural one (a hedge, a bramble, a shrub, a
+    // tree) that reaches across the frame's centre is no frame either: a blob over the subject (bug 4); a tree whose crown is
+    // mostly above the frame top while its trunk stands in frame is a pole with fronds hanging from nothing (bug 3, K4)
+    const br = _wcmBad(e, cam, F, parents);
+    if (!br) continue;
     const issue = { id: e.id != null ? e.id : null, obj: e.obj || null, cls: e.cls || null, size: _wcmR(br.size, 3), cut: br.cut, box: br.box.map(v => _wcmR(v, 1)), fix: null };
     if (e.landmark) issue.fix = { action: 'aim', by: 'camera', reason: 'a landmark is never moved: re-aim the camera (lookAt / frame) or widen it' };
     else if (e.agent) issue.fix = { action: 'none', reason: 'movers are kept out of the clip band by life (C2)' };
@@ -550,7 +611,7 @@ function worldFrameCheck(world, cam, o) {
           if (!/^water/.test(String(e.attach || '')) && typeof sceneGroundHeight === 'function' && !/^(deck|wall|air)/.test(String(e.attach || ''))) e.y = _wcmR(sceneGroundHeight(world.cam || cam, e.x, e.z), 3);
         }
         const rec = { id: e.id != null ? e.id : null, obj: e.obj || null, action: fx.action === 'rotate' ? 'rotate' : fx.action, rule: 'C1',
-          reason: `${e.obj} was too big for the frame (${Math.round(br.vis * 100)} % of it, as wide as ${Math.round((br.box[2] - br.box[0]) / (F[2] - F[0]) * 100)} % of the frame) and cut by the ${br.cut.join(' and ')} edge`, from, to: fx.action === 'drop' ? null : fx.to, by: 'appearance' };
+          reason: br.crown ? `${e.obj} had ${Math.round(br.crown * 100)} % of its height above the frame top with its trunk in frame (a crown cut away, fronds hanging from nothing)` : `${e.obj} was too big for the frame (${Math.round(br.vis * 100)} % of it, as wide as ${Math.round((br.box[2] - br.box[0]) / (F[2] - F[0]) * 100)} % of the frame) and cut by the ${br.cut.join(' and ')} edge`, from, to: fx.action === 'drop' ? null : fx.to, by: 'appearance' };
         out.log.push(rec); _wcmLog(world, rec);
       }
     }
