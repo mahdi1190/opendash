@@ -1493,12 +1493,6 @@
     {
       "rule": "private-term",
       "path": "src/app/79-world-3order.js",
-      "line_sha256": "66f1a0ed35b0d924026e6795d0f792db34991bb7101a401f05cd73551a9b6ee3",
-      "why": "an ordinary English verb in code and docs (reviewed)"
-    },
-    {
-      "rule": "private-term",
-      "path": "src/app/79-world-3order.js",
       "line_sha256": "8c1004f4b0f2b69e0764adc3f3f4dc0344ed4feb44d726b116a0950581e9d172",
       "why": "an ordinary English verb in code and docs (reviewed)"
     },
@@ -2418,6 +2412,36 @@
       "rule": "private-term",
       "path": "tools/lib/world/check.mjs",
       "line_sha256": "c665cbca3e529a03050ed873ea3d8908401fc3ad2dad33cf30eebc43ee4b96a8",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/HANDOFF_WORLD_ENGINE.md",
+      "line_sha256": "1f62dc92f4ab8d359c9d802c601b5ba2afeb54c77ebae8cfd80f29f839cb7157",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_LESSONS.md",
+      "line_sha256": "5400a3e150a5f96cf78abf2ff8eba8e17e9d07388b97d76e29a7daf15cb75186",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-3order.js",
+      "line_sha256": "c91cf46f81ff7ff6573d9900f845c176a972cd2b857ecdaebb859ab915ee10aa",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-4water.js",
+      "line_sha256": "3a8dd0c6ec8d89bc897a97ded658b60b4f7f08ca341d75ebd68c2daddb5daef3",
+      "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-5frame.js",
+      "line_sha256": "e39fc352a19cf22e8a5a1b3e95ecb8edf25974f56364f9c2d0d24ae6815bc434",
       "why": "an ordinary English verb in code and docs (reviewed)"
     }
   ]
