@@ -1,7 +1,7 @@
 /* ============================================================
    WORLD SCENE (format v3) world-test / liverpool-pier-head-1-w3: the Pier Head on the Liverpool waterfront, from the river wall.
    The second no-example test of WORLD_ENGINE_REQUIREMENTS.md 25 (N5): a place that was never drawn, from a SHORT spec (place, camera,
-   surfaces, a few buildings, a ferry, life). No fill, no framing, no backdrop, no seasons: the engine's kit ("quayside") supplies them,
+   surfaces, a few buildings, a ferry, life). No fill, no framing, no backdrop, no seasons: the engine's kit ("waterfront-city") supplies them,
    and the buildings come from the generator's `baroque-civic` style (towers, domes, clock faces, giant orders), not from drawn art.
    Positions are metres along the waterfront (a, toward 340 degrees: north-north-west) and inland from the river wall (b, toward
    70 degrees), turned into the camera frame by at() below, so the camera can be re-aimed by changing three numbers.
@@ -40,13 +40,12 @@
       { id: 'liver', foot: rect(78, 142, 95, 150), storeys: 12, style: 'baroque-civic', crown: 'twin-towers' },
     ],
     entities: [
-      { obj: 'boat.river-ferry', at: at(-48, -34), facing: 348, id: 'ferry-1' },
+      { obj: 'boat.river-ferry', at: at(-66, -34), facing: 348, id: 'ferry-1' }, { obj: 'boat.river-ferry', at: at(-2, -34), facing: 348, id: 'ferry-2' },
     ],
     life: [
       { who: 'walkers', on: 'plaza', rate: '10/min', mix: { stroll: 0.5, chat: 0.2, family: 0.15, 'dog-walker': 0.15 } },
       { who: 'walkers', on: 'prom', rate: '8/min', mix: { stroll: 0.5, brisk: 0.2, couple: 0.15, friends: 0.15 } },
       { who: 'gulls', count: 10 },
-      { who: 'boat.river-ferry', on: 'mersey', every: '4min' },
       { who: 'buses', on: 'road', rate: '2/min' }, { who: 'cars', on: 'road', rate: '5/min' },
     ],
     seed: 5,

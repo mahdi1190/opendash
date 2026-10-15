@@ -462,7 +462,8 @@ function _wnavLayerRec(name, G, data, clear, y, cam, extra) {
   // the near band: where the tallest user would fill 45 % of the frame, and never so near that its feet (its waterline) are
   // below the frame's bottom edge (a half mover at the lens)
   const yb = fam === 'swim' || fam === 'wade' ? (extra && Number.isFinite(extra.baseY) ? extra.baseY : 0) : 0;
-  const nearZ = Math.max(cam.f * (WORLD_NAV_HEIGHT[fam] || 1.9) / 405, cam.f * (cam.eye - yb) / Math.max(1, cam.H - cam.horizon) + 0.3);
+  // (the tallest user of the layer: a river ferry is 16 m, so its band is where IT fills 45 % of the frame, not a duck's)
+  const nearZ = Math.max(cam.f * Math.max(WORLD_NAV_HEIGHT[fam] || 1.9, (extra && extra.tallUser) || 0) / 405, cam.f * (cam.eye - yb) / Math.max(1, cam.H - cam.horizon) + 0.3);
   const L = Object.assign({ layer: name, cell: n ? n.cell : WORLD_NAV_GRID.far, w: n ? n.w : 0, h: n ? n.h : 0, ox: n ? n.ox : 0, oz: n ? n.oz : 0,
     hLive: n ? n.hLive : 0, far: F ? Object.assign({}, F) : null, N0: G.N0, N: G.N, seam: G.seam, data, clear, y,
     nearZ, tanL: cam.tanL, tanR: cam.tanR, okc: new Map() }, extra || {});
@@ -544,9 +545,19 @@ function worldNavBuild(world, o) {
     levelY: (s, Ln) => (Ln === 'swim' || Ln === 'wade') ? (s.kind === 'water' ? waterLevel(s) : null) : (Ln === 'walk' && Number.isFinite(s.y) ? s.y : null),
   }, cam);
   const layers = {};
+  // the tallest thing that lives on each layer (a population of big boats keeps its routes beyond ITS near band)
+  const tall = {};
+  for (const p of world.life || []) {
+    try {
+      const d = typeof WORLD_POPULATIONS === 'object' && p && WORLD_POPULATIONS[p.who] || null, obj = d ? d.obj : (p && typeof p.who === 'string' && p.who.includes('.') ? p.who : null);
+      const info = obj && typeof worldObjectInfo === 'function' ? worldObjectInfo(obj) : null;
+      const ly = d ? d.layer : info && info.cls === 'boat' ? 'swim' : null;
+      if (info && ly && info.size && Number.isFinite(info.size.h)) tall[ly] = Math.max(tall[ly] || 0, info.size.h);
+    } catch (e) { /* a population the nav cannot size keeps the layer's own band */ }
+  }
   for (const Ln of ['walk', 'graze', 'swim', 'wade', 'drive']) {
     const r = fam.layers[Ln];
-    layers[Ln] = _wnavLayerRec(Ln, G, r.data, r.clear, r.y, cam, { own: fam.own, xown: fam.xown, anchorX: fam.anchorX, anchorZ: fam.anchorZ, level: 0, levelY: null, farSol: r.farSol, baseY: waterLevel(null), shapes: owners, xshapes: extra });
+    layers[Ln] = _wnavLayerRec(Ln, G, r.data, r.clear, r.y, cam, { tallUser: tall[Ln] || 0, own: fam.own, xown: fam.xown, anchorX: fam.anchorX, anchorZ: fam.anchorZ, level: 0, levelY: null, farSol: r.farSol, baseY: waterLevel(null), shapes: owners, xshapes: extra });
   }
   // wade y and swim y where there is no owner level: the base water level
   for (const Ln of ['swim', 'wade']) { const L = layers[Ln], b = waterLevel(null); for (let k = 0; k < L.N; k++) if (L.data[k] && !(L.y[k] === L.y[k])) L.y[k] = b; }

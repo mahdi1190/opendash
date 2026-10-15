@@ -836,6 +836,25 @@ courses (buildings through `sceneBuildingProject`: visible faces only, foreshort
 primitive has a footprint, so it is ordered and occludes like any static (2.2); landmarks keep their hand-drawn art but are
 placed and scaled by the camera.
 
+#### Civic buildings: towers, domes, clocks, giant orders (CV1-CV3)
+
+A building may carry `crown: '<preset>'`, a key of its style's `crowns` (`baroque-civic`: `twin-towers`, `great-dome`, `corner-dome`, `clock-tower`,
+`pediment`). A preset returns STACKS (`{ at: [s, t] metres along and in from the front edge, w, d, stages: [...] }`) and
+`70-scene-gen-1civic.js` builds each stage bottom to top: `shaft` (clock, slender windows, corner quoins), `cornice`, `belfry` (louvred
+arches), `drum` and `cupola` (a window drum or an open colonnade), `dome` (a surface of revolution: `hemi`, `ogee`, `saucer`; one base shape, one
+merged shape per light level, ribs), `lantern`, `spire`, `pyramid`, `finial` (`bird`, `urn`, `ball`, `spike`: a billboard silhouette turned to the
+eye). The facade is `70-scene-gen-2civic-facade.js` (rusticated base, giant order, entablature with a deep cornice, attic, balustrade, a
+tympanum on request), registered through the generator's `_scbgElemKinds` and `_scbgBlockKinds`. Both views (projected and elevation) draw crowns;
+stacks inside the footprint are drawn before the visible walls. Each shape of a face carries the face's normal, and the world lights it by the real
+sun (`79-world-4suntone.js`, CV3). Short spec: `{ id, foot, storeys, style: 'baroque-civic', crown: 'twin-towers' }`.
+
+#### Wide water (CV4-CV6)
+
+`water: 'estuary'` is a tidal silt-brown water (opaque, a poor mirror, `chop: 1`: wavelets in the base bake, `79-world-4chop.js`); the sea has
+`chop: 0.7`. `boat.river-ferry` is a generic passenger ferry with end views. The `waterfront-city` kit (a great paved plaza on a promenade by a wide
+river: civic-square limits, the quay's posts and lamps, gulls) and the `estuary` backdrop (a low far shore a mile off) dress such a place from a
+short spec.
+
 #### Streets of houses and jetties (ST1-ST6)
 
 `buildings: [{ id, along: <surface id>, side: 'left' | 'right', style, storeys: n | [a, b], from, to, depth, shops }]` is a whole side of a

@@ -12,7 +12,7 @@
      WORLD_KIT_WEAK                  object -> why it is excluded from every kit
      WORLD_KIT_DISTANT_ONLY          objects allowed only in a kit's `distant` lists (round domes: fine at 120 m, weak nearer)
      WORLD_KIT_TRUNK_ONLY            objects allowed only as a framing bough's parent trunk (it stands just outside the frame)
-     WORLD_STYLE_KITS                the kits: canal, pond, heath, woodland, village-green, river-city, civic-square, quayside,
+     WORLD_STYLE_KITS                the kits: canal, pond, heath, woodland, village-green, river-city, civic-square, quayside, waterfront-city,
                                      terraced-street, park, moor, coast (and farmland, downs)
      WORLD_KIT_ALIAS                 legacy fill / backdrop style names -> kit (canal-wooded -> canal, city-victorian -> civic-square ...)
      worldKit(key)                   -> the kit of a kit id or an alias, or null

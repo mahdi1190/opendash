@@ -456,3 +456,25 @@ The unit tests and the Node run were green while the page was not. The contract 
   farthest layer; a building cut by the frame at its sides and top is the street, not an `edgeCut`.
 - ST6 [T] The `old-town-lane` kit keeps the lane clear (no bench, bin, bollard or lamp post; tubs and A-boards at the walls) and its ground look
   `lane` is a running bond with a worn central drain. A shop's A-board, a parasol and a cafe table obey the near band like any prop.
+
+## 29. A grand civic building and a wide river from a short spec (the third no-example place, 14 Oct: the Pier Head, Liverpool)
+
+- CV1 [T] A building's `crown` (a key of its style's `crowns`) puts towers and domes on its roof, built by the generator and drawn in both views:
+  a square shaft with clock faces and slender windows, a cornice, a louvred belfry, a colonnaded cupola or a window drum, a dome (a surface of
+  revolution through a few quantised tone rings, with ribs), a lantern, a spire or pyramid, and a finial that is a bird, an urn, a ball or a spike
+  (never a flag, a religious symbol, a name or a number). Crowns inside the footprint are drawn behind the visible walls.
+- CV2 [T] A civic facade (`baroque-civic`): a rusticated base with arched openings and a central door, a giant order of pilasters or columns over
+  the middle storeys (two tiers with a string course on a tall block), an entablature with a deep cornice, an attic and a balustraded parapet,
+  a pediment on request; detail follows the size of the storey on screen and a 12-storey block with two clock towers stays under the shape budget
+  at every distance.
+- CV3 [T] Stone is lit by the sun: a shape of a generated face carries its normal and the world lights it by the real sun (lighter and warmer
+  toward it, darker and cooler away, by how directional the light is); the bake key carries a coarse sun bucket on chunks with a building only (V5).
+- CV4 [T] An estuary is a water kind of its own, in every table indexed by kind (look, v2 table, host map, kit quay rules), brown-grey and opaque with
+  a poor mirror and a tide's flow; open choppy water carries wavelets in its base bake, fixed in metres, deterministic, faded under a pixel.
+- CV5 [T] A hull with no end art gets a stepped silhouette from its side art (hull, house, deck, mast, windows); `boat.river-ferry` is a generic
+  double-ended passenger ferry with end views.
+- CV6 [T] The `waterfront-city` kit and the `estuary` backdrop dress a great plaza on a wide river from a short spec: the strict critic passes
+  with no hand-placed dressing; the far shore covers the horizon with a low line a mile off.
+- CV7 [T] A mover moved by a hop, a flight or a step keeps its shown velocity: nothing is drawn flying (or walking) while the record says it is still.
+- CV8 [T] The Pier Head spec itself (`liverpool-pier-head-1-w3`): at most five surfaces, three buildings with a crown, one ferry and life; no fill, no
+  landmark art, no backdrop; the three buildings span over a third of the frame, the crowns are inside it, the sky is open.
