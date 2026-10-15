@@ -754,11 +754,13 @@ function _wfrWaterDraw(ctx, w, tau, o) {
   if (!res || !res.w || !res.h || typeof document === 'undefined') return worldWaterDraw(ctx, res, w.R, tau, o);
   const k = Math.floor((tau || 0) * WORLD_FRAME_WATER_HZ + 1e-9), wk = Math.round((o.wind == null ? 1 : o.wind) * 20);
   let c = w.band;
-  if (!c || c.res !== res) {
-    let cv = null;
-    try { cv = _wfrCanvas(res.w, res.h); } catch (e) { cv = null; }
-    c = w.band = { res, cv, k: null, wk: null };
-  }
+  if (!c || c.res !== res) c = w.band = { res, cv: null, k: null, wk: null, last: null };
+  // frames slower than the refresh rate would refresh every frame: then it is drawn straight (the ripple still at the step's time),
+  // without the detour through a second canvas
+  const slow = c.last == null || (tau || 0) - c.last >= 1 / WORLD_FRAME_WATER_HZ || (tau || 0) < c.last;
+  c.last = tau || 0;
+  if (slow && c.k !== k) return worldWaterDraw(ctx, res, w.R, k / WORLD_FRAME_WATER_HZ, o);
+  if (!c.cv) { try { c.cv = _wfrCanvas(res.w, res.h); } catch (e) { c.cv = null; } }
   if (!c.cv) return worldWaterDraw(ctx, res, w.R, tau, o);
   if (c.k !== k || c.wk !== wk) {
     const g = c.cv.getContext('2d');
@@ -1034,6 +1036,8 @@ function* _wfrBakeJob(env, S) {
   let plan = rec.frame.plan && rec.frame.planKey === pk ? rec.frame.plan : null;
   if (!plan) { plan = worldFramePlan(world, { season: S.season, nav: rec.driver && rec.driver.nav, regions: S.regions, absent: ab.set, ctx: S.tctx }); rec.frame.plan = plan; rec.frame.planKey = pk; }
   S.plan = plan;
+  // the wind system moves only what is drawn live (the rest is baked: its sway is read by nothing in a frame)
+  try { world._swayOnly = new Set(plan.live.map(r => r.ent)); } catch (e) { /* every static keeps its sway */ }
   // the decks of walkways drawn in perspective lie over the water like deck surfaces (planks; the water does not show through)
   if (S.wet && Array.isArray(plan.decks)) for (const D of plan.decks) { S.wet.decks.push(D); S.wet.over.push(D.scr); }
   yield;
@@ -1388,7 +1392,8 @@ function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
   if (r.cut) { ctx.save(); _wfrClipCut(ctx, r.cut, env, 0, 0); }
   let n = 0;
   try {
-    const blit = (sp, MM, al) => { if (!sp || !sp.c || !(al > 0)) return; ctx.globalAlpha = al; ctx.setTransform(MM[0], MM[1], MM[2], MM[3], MM[4], MM[5]); ctx.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h); n++; };
+    let ga = -1;   // the alpha last set here (the first blit always sets it): not set again when it is the same
+    const blit = (sp, MM, al) => { if (!sp || !sp.c || !(al > 0)) return; if (al !== ga) { ctx.globalAlpha = ga = al; } ctx.setTransform(MM[0], MM[1], MM[2], MM[3], MM[4], MM[5]); ctx.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h); n++; };
     const A0 = alpha == null ? 1 : alpha;
     if (!hooks.length) {
       const sp = _wfrSpriteOf(env, S, r, '*', x);
@@ -1462,6 +1467,7 @@ function _wfrMirrorAgents(env, S, ctx, aRecs, tau) {
     for (const P of PP) { ctx.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy); for (const q of P) ctx.lineTo(q[0] * vs + ox, q[1] * vs + oy); ctx.closePath(); }
     ctx.clip('nonzero');   // the parts of one water are wound one way (worldWaterPlan): nonzero is their union
     if (S.wet && S.wet.over.length) { ctx.setTransform(vs, 0, 0, vs, ox, oy); _wfrHoleClip(ctx, S.wet.over); }
+    ctx.globalAlpha = k;
     for (const r of over.sort((a, b) => b.z - a.z)) {
       let c = null;
       try { c = _wfrContact(R, r, cam); } catch (e) { c = null; }
@@ -1472,10 +1478,11 @@ function _wfrMirrorAgents(env, S, ctx, aRecs, tau) {
       const row = Number.isFinite(base) ? (row0 + base) / 2 : row0;
       if (!Number.isFinite(row) || !(r.box.y0 < row)) continue;
       const Yc = row * vs + oy, Kc = typeof worldWaterContactClip === 'function' ? worldWaterContactClip(R, c, r.X) * vs + oy : -Infinity;
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(-1e5, Math.max(Yc, Kc), 2e5, 1e5); ctx.clip();
-      ctx.globalAlpha = k;
+      const yClip = Math.max(Yc, Kc);
       if (r.prim) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(-1e5, yClip, 2e5, 1e5); ctx.clip();
+        ctx.globalAlpha = k;
         const b = r.box, x0 = Math.floor(b.x0 * vs + ox) - 1, y0 = Math.floor(b.y0 * vs + oy) - 1, ww = Math.ceil((b.x1 - b.x0) * vs) + 2, hh = Math.min(Math.ceil(Yc - y0) + 1, Math.ceil((b.y1 - b.y0) * vs) + 2);
         if (ww > 0 && hh > 0 && ww < 4 * env.W && hh < 4 * env.H) {
           const sc = S.scratch && S.scratch.width >= ww && S.scratch.height >= hh ? S.scratch : (S.scratch = _wfrCanvas(Math.max(ww, 64), Math.max(hh, 64)));
@@ -1486,16 +1493,21 @@ function _wfrMirrorAgents(env, S, ctx, aRecs, tau) {
           ctx.drawImage(sc, 0, 0, ww, hh, x0, y0, ww, hh);
           n++;
         }
+        ctx.restore();
       } else {
         const sp = _wfrSpriteOf(env, S, r, '*', { bucket: r.bucket });
         if (sp && sp.c) {
-          const M = _wfrM(env, r);
-          ctx.setTransform(M[0], 0, 0, -M[3], M[4], 2 * Yc - M[5]);
-          ctx.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h);
-          n++;
+          // the mirror shows only below the contact row: the art rows from the top down to ycut (the sprite's own rows below its anchor
+          // flip above the axis); cropped from the source, not clipped (a save, a rect clip and a restore an agent)
+          const M = _wfrM(env, r), ycut = (2 * Yc - M[5] - yClip) / M[3];
+          if (ycut > sp.y0) {
+            ctx.setTransform(M[0], 0, 0, -M[3], M[4], 2 * Yc - M[5]);
+            if (ycut >= sp.y0 + sp.h) ctx.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h);
+            else ctx.drawImage(sp.c, 0, 0, sp.c.width, Math.max(1, sp.c.height * (ycut - sp.y0) / sp.h), sp.x0, sp.y0, sp.w, ycut - sp.y0);
+            n++;
+          }
         }
       }
-      ctx.restore();
     }
     ctx.restore();
   }
@@ -1633,8 +1645,9 @@ function _wfrDraw(env, ctx, t) {
   // 3. chunks and movers in true depth order, with the occluder redraws (clipped to the mover drawn just before); each chunk's lit
   // glass and halos right after it, each mover's lamps right after it (so whatever is nearer hides a light, as it hides the lamp)
   const chunkOf = new Map(S.chunks.map(o => [o.ch, o])), litOf = S.lights && S.lights.byChunk ? S.lights.byChunk : null;
-  let clip = null, redraws = 0;
+  let clip = null, redraws = 0, clipOpen = false;
   for (const it of order) {
+    if (clipOpen && it.kind !== 'redraw') { ctx.restore(); clipOpen = false; }
     if (it.kind === 'chunk') {
       const o = chunkOf.get(it.ref);
       if (o && o.c) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(o.c, o.x, o.y); draws++; }
@@ -1664,14 +1677,24 @@ function _wfrDraw(env, ctx, t) {
       // a piece wholly off the canvas (the plan keeps pieces a 21:9 crop could show) cannot show over a mover: no vector redraw of it
       if (d.off === undefined) d.off = _wfrOffCanvas(r, env);
       if (d.off) continue;
-      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(clip[0], clip[1], clip[2] - clip[0], clip[3] - clip[1]); ctx.clip();
       // a drawn piece (a wall, a building, the terrain) is vector work: it is rasterised once per bake and blitted by every redraw (G12)
-      const pc = r.prim && d ? _wfrPrimCache(env, S, r, d) : null;
-      if (pc) { ctx.globalAlpha = 1; ctx.drawImage(pc.c, pc.x, pc.y); redraws++; draws++; if (S.lightNow) _wfrDrawGlass(ctx, env, S, r, 0, 0, S.lightNow); }
-      else if (_wfrDrawRec(ctx, env, S, r, d, 0, 0, 1)) { redraws++; draws++; if (S.lightNow) _wfrDrawGlass(ctx, env, S, r, 0, 0, S.lightNow); }
-      ctx.restore();
+      const pc = r.prim ? _wfrPrimCache(env, S, r, d) : null;
+      if (pc) {
+        // the cache is drawn 1:1 at an integer origin and the mover's box is integer: the rectangle they share is copied, no clip
+        const x0 = Math.max(clip[0], pc.x), y0 = Math.max(clip[1], pc.y), x1 = Math.min(clip[2], pc.x + pc.c.width), y1 = Math.min(clip[3], pc.y + pc.c.height);
+        if (x1 > x0 && y1 > y0) {
+          ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+          ctx.drawImage(pc.c, x0 - pc.x, y0 - pc.y, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0);
+          redraws++; draws++;
+        }
+        continue;
+      }
+      // a sprite is scaled, so it keeps a clip: one for all of a mover's redraws, opened here and closed at the next item that is not one
+      if (!clipOpen) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(clip[0], clip[1], clip[2] - clip[0], clip[3] - clip[1]); ctx.clip(); clipOpen = true; }
+      if (_wfrDrawRec(ctx, env, S, r, d, 0, 0, 1)) { redraws++; draws++; if (S.lightNow) _wfrDrawGlass(ctx, env, S, r, 0, 0, S.lightNow); }
     }
   }
+  if (clipOpen) { ctx.restore(); clipOpen = false; }
   lap('depth');
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   ctx.restore();

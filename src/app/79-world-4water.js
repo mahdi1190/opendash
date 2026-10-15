@@ -858,7 +858,18 @@ function worldWaterTick(world, dt, ctx) {
   for (const k of ['wakes', 'rings', 'leaves']) { for (const q of W[k]) q.age += dt; W[k] = W[k].filter(q => q.age < q.life); }
   const agents = Array.isArray(world.agents) ? world.agents : typeof worldAgents === 'function' ? (() => { try { return worldAgents(world) || []; } catch (e) { return []; } })() : [];
   const floaters = [];
-  for (const e of [].concat((world.entities || []), agents)) {
+  // the statics do not move: the ones that float are found once per entity list (a pass over a thousand plants per tick found none)
+  const ents0 = world.entities || [];
+  if (!W.statF || W.statF.src !== ents0 || W.statF.n !== ents0.length || W.statF.regions !== W.regions) {
+    const list = [];
+    for (const e of ents0) {
+      if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) continue;
+      if (!(String(e.attach || '') === 'water' || e.layer === 'swim' || _WWA_FLOATS.test(e.cls || ''))) continue;
+      list.push(e);
+    }
+    W.statF = { src: ents0, n: ents0.length, regions: W.regions, list };
+  }
+  for (const e of W.statF.list.concat(agents)) {
     if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) continue;
     const cls = e.cls || '', onW = String(e.attach || '') === 'water' || e.layer === 'swim' || _WWA_FLOATS.test(cls);
     if (!onW) continue;
@@ -974,11 +985,18 @@ function worldWaterDraw(ctx, res, R, t, o) {
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
   if (res.baseCanvas) { ctx.drawImage(res.baseCanvas, ax, ay); n++; }
   if (res.reflCanvas) {
-    // bands of 2 rows: with the slope cap of worldWaterRipple a band steps at most 0.6 px from the next (never a staircase)
-    const bh = Math.max(1, Math.min(2, o.band || 2));
-    for (let y = 0; y < res.h; y += bh) {
-      const h = Math.min(bh, res.h - y), dx = worldWaterRipple(R, res.y0 + y, t, o);
+    // bands of rows that the ripple shifts alike: with the slope cap of worldWaterRipple (0.3 px a row) a band of 2 rows was never more than
+    // 0.3 px off a row's own shift, so a band here grows (up to 8 rows) while every row in it is within 0.3 px of the band's shift: the same
+    // error bound, and the calm and the near rows of a pond are a quarter of the draws (never a staircase)
+    const maxB = Math.max(1, Math.min(8, o.maxBand || 8)), TOL = 0.3;
+    for (let y = 0; y < res.h;) {
+      const dx = worldWaterRipple(R, res.y0 + y, t, o);
+      let h = 1;
+      while (h < maxB && y + h < res.h && Math.abs(worldWaterRipple(R, res.y0 + y + h, t, o) - dx) <= TOL) h++;
+      if (h === 1 && y + 1 < res.h) h = 2;   // (a steep stretch: the old band of two rows, whose own bound is 0.3 px a row)
+      h = Math.min(h, res.h - y);
       ctx.drawImage(res.reflCanvas, 0, y, res.w, h, ax + dx, ay + y, res.w, h); n++;
+      y += h;
     }
   }
   ctx.restore();

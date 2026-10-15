@@ -575,10 +575,13 @@ function worldDrawShadows(ctx, plan, o) {
   const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0, col = o.col || '#14202e';
   let n = 0;
   const path = (P) => { ctx.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy); for (const q of P) ctx.lineTo(q[0] * vs + ox, q[1] * vs + oy); ctx.closePath(); };
+  // a save and a restore are made only round a hole clip (most shadows have none): the state a shadow sets is put back at the end
+  const a0 = ctx.globalAlpha, f0 = ctx.fillStyle;
   for (const s of plan) {
     if (!s.scr || s.scr.length < 3 || !(s.op > 0)) continue;
-    ctx.save();
-    if (s.holesScr && s.holesScr.length && ctx.clip) {
+    const cut = !!(s.holesScr && s.holesScr.length && ctx.clip);
+    if (cut) {
+      ctx.save();
       ctx.beginPath(); ctx.rect(-1e5, -1e5, 2e5, 2e5);
       for (const H of s.holesScr) if (H.length >= 3) path(H);
       ctx.clip('evenodd');
@@ -591,9 +594,12 @@ function worldDrawShadows(ctx, plan, o) {
       const fz = Math.max(0.5, (s.poly[0] && s.poly[0][1]) || 1), M = sceneShadowMatrix(o.cam, { X: sp.X, Y: sp.Y, x: sp.x, d: sp.d || fz }, sp.s || 1, -(sp.top || sp.y0 || -1), sp.flip, o.sun, vs, ox, oy);
       ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
       ctx.drawImage(sil, sp.x0, sp.y0, sp.w, sp.h);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
     } else { ctx.beginPath(); path(s.scr); ctx.fill(); }
-    ctx.restore(); n++;
+    if (cut) ctx.restore();
+    n++;
   }
+  ctx.globalAlpha = a0; ctx.fillStyle = f0;
   return n;
 }
 /**
