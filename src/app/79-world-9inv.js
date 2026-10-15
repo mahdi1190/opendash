@@ -499,9 +499,9 @@ const _WIV_RULES = {
     const plants = C.ents.filter(e => e.static !== false ? /(^|[.-])(reeds?|bulrush|rush|sedge|cane|phragmites)([.-]|$)/.test(String(e.obj || '')) : false);
     const grid = new Map(), key = (x, z) => Math.floor(x / 3) + ',' + Math.floor(z / 3);
     for (const e of plants) { const k = key(e.x, e.z); (grid.get(k) || grid.set(k, []).get(k)).push(e); }
-    const reedNear = (x, z) => {
-      const cx = Math.floor(x / 3), cz = Math.floor(z / 3);
-      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const e of grid.get((cx + a) + ',' + (cz + b)) || []) if (Math.hypot(e.x - x, e.z - z) <= 3) return true;
+    const reedNear = (x, z, r) => {
+      const rad = r > 0 ? r : 3, cx = Math.floor(x / 3), cz = Math.floor(z / 3), k = Math.ceil(rad / 3);
+      for (let a = -k; a <= k; a++) for (let b = -k; b <= k; b++) for (const e of grid.get((cx + a) + ',' + (cz + b)) || []) if (Math.hypot(e.x - x, e.z - z) <= rad) return true;
       return false;
     };
     for (const v of worldWalkwayWater(C.surfaces, { reedNear })) _wivPush(C, 'walkwayWater', v.id, v.msg);

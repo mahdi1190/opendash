@@ -1684,7 +1684,10 @@ function worldWalkwayWater(surfaces, o) {
         i = j + 1;
       }
       if (!bad && typeof o.reedNear === 'function') {
-        const fake = pts.find(p => { const g = under(p[0], p[1]); return g && g.kind === 'reeds' && S.some(q => q.kind === 'water' && has(q, p[0], p[1])) && !o.reedNear(p[0], p[1]); });
+        // (reeds count within 3 m of the deck's EDGE: the deck's own footprint is kept clear of plants, so a wide platform's middle is
+        // judged by the reeds round it)
+        const rr = 3 + (Number(s.width) || 0) / 2;
+        const fake = pts.find(p => { const g = under(p[0], p[1]); return g && g.kind === 'reeds' && S.some(q => q.kind === 'water' && has(q, p[0], p[1])) && !o.reedNear(p[0], p[1], rr); });
         if (fake) bad = { msg: `${id} (${s.kind}) runs over a reeds surface laid on open water with no reeds growing at ${R1(fake[0])}, ${R1(fake[1])}`, run: 0 };
       }
       if (bad) out.push({ id, kind: s.kind, surface: s, msg: bad.msg, run: bad.run });
@@ -1701,7 +1704,8 @@ function worldWalkwayWater(surfaces, o) {
           const x = p[0] + (q[0] - p[0]) * t, z = p[1] + (q[1] - p[1]) * t;
           for (const d of [0.7, 1.6]) for (const sgn of [1, -1]) {
             const u = x + nx * d * sgn, v = z + nz * d * sgn;
-            if (!_wcInPoly(P, u, v) && land(u, v)) touches = true;
+            // land, or the end of another walkway (a platform at the end of a walk is attached by it)
+            if (!_wcInPoly(P, u, v) && (land(u, v) || S.some(q => q !== s && walk(q) && has(q, u, v)))) touches = true;
           }
         }
       }
