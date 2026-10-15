@@ -1371,6 +1371,171 @@
    "shadowPairs": 40
   }
  },
+ "composed-kinds": {
+  "_note": "Calibrated KINDS of composed scene (15 Oct 2026). The strict \"composed\" profile above is the bar of the rich Yateley and Fleet scenes and stays the bar: a scene of a kind below can never be GOLD (its tier is 'composed', below the bar until it passes the strict profile). A kind is a list of packs whose scenes legitimately exceed designed limits that were set before they existed: `allow` names the rules such a scene may fail and by how much (rows: how many failing rows of that rule one scene may have; max / min: the largest / smallest value a failing row may carry). Each bound sits a few per cent past the worst scene of the kind on the day it was measured, so a new scene may not be worse than the worst existing one, and tests/anim-quality.test.mjs fails when a bound is no longer needed (lower it, or drop the rule), so the lists only shrink. Never raise a bound to let a new scene in: fix the scene, or calibrate a new kind with a reason.",
+  "place": {
+   "for": "hand-composed PLACE views: the Hampshire views and proofs (Yateley Common and Green, Wyndham's Pool, Fleet Pond, the Basingstoke Canal), the Manchester (Castlefield, Salford Quays and NQ) and Sheffield (centre, parks) drafts. Thousands of explicitly placed library objects (heath drifts, pavement setts, crowds) rather than scatter rules over an archetype, so the data, the still, the sprite cache and the crowd are larger than a region scene's; several of them are drafts that wait for conversion to the world engine. Measured on 100 scenes.",
+   "packs": [
+    "proof-fleet-pond",
+    "proof-wyndhams-pool",
+    "proof-yateley-green",
+    "uk-south-east",
+    "uk-north-manchester-castlefield",
+    "uk-north-manchester-quays-nq",
+    "uk-north-sheffield-centre",
+    "uk-north-sheffield-parks"
+   ],
+   "allow": {
+    "svgTileBytes": {
+     "max": 800000
+    },
+    "svgFillBytes": {
+     "max": 1600000
+    },
+    "dataBytes": {
+     "max": 170000
+    },
+    "spriteMB": {
+     "max": 133
+    },
+    "bitmaps": {
+     "max": 7
+    },
+    "distinctSprites": {
+     "max": 640
+    },
+    "animatedDraws": {
+     "max": 340
+    },
+    "coverItems": {
+     "min": 30
+    },
+    "groundCover": {
+     "min": 0.25
+    },
+    "movers": {
+     "min": 8
+    },
+    "nightLights": {
+     "min": 6
+    },
+    "shadows": {
+     "min": 0.4
+    },
+    "signature": {
+     "rows": 1
+    },
+    "reflections": {
+     "rows": 1
+    },
+    "people": {
+     "max": 32
+    },
+    "crowd": {
+     "max": 22
+    },
+    "personHeight": {
+     "max": 900
+    },
+    "silhouettes": {
+     "rows": 1
+    },
+    "tintUse": {
+     "rows": 20
+    },
+    "scaleSpread": {
+     "rows": 2
+    },
+    "flipShare": {
+     "rows": 2
+    },
+    "species": {
+     "rows": 1
+    },
+    "topShare": {
+     "rows": 1
+    },
+    "variantUse": {
+     "rows": 1
+    },
+    "grid": {
+     "max": 0.8
+    },
+    "stacked": {
+     "max": 220
+    }
+   }
+  },
+  "world": {
+   "for": "the WORLD ENGINE's scenes (format v3, gallery only): the lint reads the v2 data DERIVED from the spec at one still moment, with no life sim, so what the engine draws at run time (walkers, boats, birds, the sun's path, lights) is not in it: movers, travellers, motion kinds and lamps count 0 here, and the derived data and still are far larger than the spec the author writes. The spec itself is judged by `scene lint` (worldValidate and the motion check, tools/lib/world/refs.mjs worldLintAdjust) and the world tests. Measured on 7 scenes.",
+   "packs": [
+    "world-preview"
+   ],
+   "allow": {
+    "svgTileBytes": {
+     "max": 1800000
+    },
+    "svgFillBytes": {
+     "max": 3000000
+    },
+    "dataBytes": {
+     "max": 115000
+    },
+    "spriteMB": {
+     "max": 380
+    },
+    "coverItems": {
+     "min": 40
+    },
+    "groundCover": {
+     "min": 0.7
+    },
+    "movers": {
+     "min": 0
+    },
+    "travellers": {
+     "min": 0
+    },
+    "motionKinds": {
+     "min": 0
+    },
+    "nightLights": {
+     "min": 0
+    },
+    "signature": {
+     "min": 0
+    },
+    "liveSky": {
+     "rows": 1
+    },
+    "tintUse": {
+     "rows": 16
+    },
+    "scaleSpread": {
+     "rows": 6
+    },
+    "flipShare": {
+     "rows": 8
+    },
+    "species": {
+     "rows": 1
+    },
+    "topShare": {
+     "rows": 1
+    },
+    "variantUse": {
+     "rows": 8
+    },
+    "grid": {
+     "rows": 2,
+     "max": 0.7
+    },
+    "stacked": {
+     "max": 80
+    }
+   }
+  }
+ },
  "object": {
   "_note": "The object lint (2.6): node tools/anim-pack.mjs object lint.",
   "size": [

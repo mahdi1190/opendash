@@ -79,6 +79,20 @@ function sceneObjDefine(def) {
   return def;
 }
 function sceneObj(id) { return _scObjs.get(id) || null; }
+/**
+ * Whether an object has a hook of this kind (walk, paddle, flap, turn ...) for an archetype's pick filter: its def.anim, or for a
+ * PERSON the hooks its build() returns in $anim (the walking people have swinging arms and directional views, so their hooks are
+ * per variant). An archetype that read def.anim alone dropped person.walker and person.jogger from every walkers slot once their
+ * hooks moved to $anim (CI 15 Oct: the compiled v1 scenes changed). Other categories keep reading def.anim only, as before: a
+ * kit adapter's $anim never made a bird or a boat eligible, and it must not now (the same scenes, byte for byte).
+ */
+function sceneObjHasHook(id, kind) {
+  const d = _scObjs.get(id);
+  if (!d) return false;
+  if (d.anim) return !!d.anim[kind];
+  if (d.category !== 'person') return false;
+  try { const sh = sceneObjShapes(id, 0, 'summer'); return !!(sh && sh.anim.some(h => h.kind === kind)); } catch (e) { return false; }
+}
 function sceneObjs() { return [..._scObjs.values()]; }
 function sceneObjDups() { return _scObjDups.slice(); }
 function _scSlot(def, season, slot) {

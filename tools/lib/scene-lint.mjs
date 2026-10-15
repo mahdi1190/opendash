@@ -542,6 +542,46 @@ export function perfRules(perf, thresholds = {}, { gpu = false } = {}) {
 }
 
 /* ---------------------------------------------------------------------------------------------
+   A scene KIND's calibrated exceptions (thresholds["composed-kinds"][kind].allow)
+   --------------------------------------------------------------------------------------------- */
+/**
+ * The calibrated kind (thresholds["composed-kinds"]) the composed scenes of a pack belong to: { name, allow, packs }, or null (the
+ * strict composed profile). A kind is a list of packs: hand-composed place views, and the world engine's scenes.
+ */
+export function composedKindOf(pack, thresholds) {
+  const K = thresholds && thresholds['composed-kinds'];
+  if (!K || !pack) return null;
+  for (const [name, k] of Object.entries(K)) {
+    if (name[0] === '_' || !k || !Array.isArray(k.packs) || !k.packs.includes(pack)) continue;
+    return { name, allow: k.allow || {}, packs: k.packs };
+  }
+  return null;
+}
+/**
+ * A failing rule row that its kind allows, within the kind's measured bounds, becomes a passing row that keeps its message as a
+ * warning ("[kind] ..."). allow: { <rule name>: { rows?: most failing rows of that rule in one scene, max?: the largest value
+ * (a ceiling rule), min?: the smallest value (a floor rule) } } (a bare number is rows). A row beyond its bound still fails:
+ * the kind is calibrated on the scenes that exist, so a new scene may not be worse than the worst of them. Returns
+ * { rules, allowed: [{ group, rule, value, message }] } (what was let through, for the stale-bound check).
+ */
+export function applyAllow(rules, allow, kind = 'kind') {
+  if (!allow || !Object.keys(allow).length) return { rules, allowed: [] };
+  const rows = new Map();
+  for (const r of rules) if (!r.ok && allow[r.rule]) rows.set(r.rule, (rows.get(r.rule) || 0) + 1);
+  const allowed = [];
+  const out = rules.map((r) => {
+    if (r.ok || !allow[r.rule]) return r;
+    const a = typeof allow[r.rule] === 'number' ? { rows: allow[r.rule] } : allow[r.rule], v = typeof r.value === 'number' ? r.value : null;
+    const within = (a.rows == null || rows.get(r.rule) <= a.rows) && (a.max == null || (v != null && v <= a.max)) && (a.min == null || (v != null && v >= a.min))
+      && (a.rows != null || a.max != null || a.min != null);
+    if (!within) return r;
+    allowed.push({ group: r.group, rule: r.rule, value: r.value, message: r.message });
+    return Object.assign({}, r, { ok: true, message: '', warn: `[${kind}] ${r.message}`, allowed: true });
+  });
+  return { rules: out, allowed };
+}
+
+/* ---------------------------------------------------------------------------------------------
    The whole profile
    --------------------------------------------------------------------------------------------- */
 export function lintScene(input, thresholds, { E, item = null, perf = null, ref = '', gpu = false, season = null, svg = true, strict = false, reg = null, pack = null, siblings = null } = {}) {
@@ -564,11 +604,15 @@ export function lintScene(input, thresholds, { E, item = null, perf = null, ref 
   rules.push(...railFlowRules(C, data, { strict }));
   rules.push(...compositionGroup(C, data, { E, thresholds, strict, reg, pack, siblings, ref }));
   rules.push(...perfRules(perf, thresholds, { gpu }));
+  // a scene KIND (thresholds["composed-kinds"], chosen by the item's pack): its calibrated exceptions; strictPass stays the strict verdict
+  const kindOf = composedKindOf(pack || (it && it.pack) || null, thresholds), strictPass = !rules.some(r => !r.ok);
+  const al = kindOf ? applyAllow(rules, kindOf.allow, kindOf.name) : { rules, allowed: [] };
+  rules.splice(0, rules.length, ...al.rules);
   const failures = rules.filter(r => !r.ok), warnings = rules.filter(r => r.ok && r.warn).map(r => r.warn);
   const pass = !failures.length;
   const refused = (C.problems || []).some(p => p && p.rule === 'refused');
   const sanity = { errors: rules.filter(r => r.group === 'sanity' && !r.ok).length, warnings: rules.filter(r => r.group === 'sanity' && r.ok && r.warn).length };
-  return { ref, profile: 'composed', v: C.v === 2 ? 2 : 1, strict: !!strict, pass, gold: pass && !refused && !!perf && !perf.skipped, rules, failures, warnings, metrics: { stats: C.stats, bar: bar.metrics, variety: { objects: variety.objects, categories: variety.categories, stacked: variety.stacked }, sanity }, compiled: C, data };
+  return { ref, profile: 'composed', kind: kindOf ? kindOf.name : null, strictPass, allowed: al.allowed, v: C.v === 2 ? 2 : 1, strict: !!strict, pass, gold: pass && strictPass && !refused && !!perf && !perf.skipped, rules, failures, warnings, metrics: { stats: C.stats, bar: bar.metrics, variety: { objects: variety.objects, categories: variety.categories, stacked: variety.stacked }, sanity }, compiled: C, data };
 }
 
 /** The sanity group (V2 15.1): a broken check never breaks the lint (it reports itself as one failing rule). */

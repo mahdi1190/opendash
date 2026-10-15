@@ -193,12 +193,13 @@ export function lintRegistry(reg, thresholds, entries = reg.items(), { sky = nul
     const E = engineOf(reg);
     for (const e of composed) {
       let r;
-      try { r = E.ready ? lintScene(e.item, thresholds, { E, item: e.item, ref: e.ref }) : null; } catch (err) { r = { pass: false, rules: [{ group: 'data', rule: 'compile', ok: false, value: 'error', limit: 'compiles', message: err.message }], metrics: {} }; }
+      try { r = E.ready ? lintScene(e.item, thresholds, { E, item: e.item, ref: e.ref, pack: e.pack }) : null; } catch (err) { r = { pass: false, rules: [{ group: 'data', rule: 'compile', ok: false, value: 'error', limit: 'compiles', message: err.message }], metrics: {} }; }
       if (!r) r = { pass: false, rules: [{ group: 'data', rule: 'engine', ok: false, value: 'missing', limit: 'the scene engine', message: 'a composed item needs the scene engine (src/app/70-scene-0core.js), which this checkout does not load' }], metrics: {} };
       const failures = r.rules.filter(x => !x.ok).map(x => ({ rule: x.rule, group: x.group, message: x.message, value: x.value }));
       const split = e.item.upgrade?.state === 'live' ? { failures, waived: [] } : applyWaivers(failures, e.ref, thresholds);
-      const lint = { pass: !split.failures.length };
-      results.push({ ref: e.ref, pack: e.pack, slot: e.slot, full: true, rich: true, composed: true, profile: 'composed', metrics: r.metrics, rules: r.rules, warnings: r.warnings || [], failures: split.failures, waived: split.waived, tier: standardOf(e, lint, null) });
+      // a scene of a calibrated kind (composed-kinds) that passes ITS limits is still below the bar: gold needs the strict profile
+      const lint = { pass: !split.failures.length && r.strictPass !== false };
+      results.push({ ref: e.ref, pack: e.pack, slot: e.slot, full: true, rich: true, composed: true, profile: 'composed', kind: r.kind || null, allowed: r.allowed || [], strictPass: r.strictPass !== false, metrics: r.metrics, rules: r.rules, warnings: r.warnings || [], failures: split.failures, waived: split.waived, tier: standardOf(e, lint, null) });
     }
     const order = new Map(entries.map((e, i) => [e.ref, i]));
     results.sort((a, b) => order.get(a.ref) - order.get(b.ref));

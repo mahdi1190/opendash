@@ -93,13 +93,23 @@ const ANIM_ITEM_MAX_BYTES = 14000;     // one rendered item (either variant)
 const ANIM_FULL_ITEM_MAX_BYTES = 32000;   // a full-viewport scene (item.full; 1600 x 900, sliced to fill any screen)
 const ANIM_RICH_ITEM_MAX_BYTES = 1000000;  // a rich local scene (item.rich, full scenes only) full screen: dense, layered nature art (71-anim-uk-nature-kit.js)
 const ANIM_RICH_TILE_MAX_BYTES = 150000;   // the same rich scene drawn in a small tile (gallery grid, cards): up to 80 tiles share a gallery page (12 MB at most)
+// Two kinds of composed scene hold thousands of explicitly placed library objects, so their still is far larger than a region
+// scene's: a hand-composed PLACE view (item.composed with item.ukPlace: the Hampshire, Manchester and Sheffield views), measured at
+// 750 KB as a tile and 1.5 MB full screen, and a WORLD-ENGINE scene (item.ukView 'world-engine': gallery only, drawn on the canvas;
+// the still is a fallback), 1.7 MB and 2.8 MB. The budgets sit a few per cent over the heaviest of each (tools/anim-quality.json,
+// "composed-kinds", holds the same numbers for the lint; tests/anim-quality.test.mjs checks they agree).
+const ANIM_PLACE_TILE_MAX_BYTES = 800000, ANIM_PLACE_ITEM_MAX_BYTES = 1600000;
+const ANIM_WORLD_TILE_MAX_BYTES = 1800000, ANIM_WORLD_ITEM_MAX_BYTES = 3000000;
 const ANIM_PACK_MAX_BYTES = 400000;    // every item of a pack, rendered as a tile, plus its css (plus 2 x its own tile budget per full or rich scene)
 /** The rendered-size budget of one item (either variant): full and rich scenes have their own. A rich
  *  scene has about 1 MB full screen ('fill', 'hero') and the smaller tile budget at any other size. */
 function animItemMaxBytes(it, size) {
   if (!it || !it.full) return ANIM_ITEM_MAX_BYTES;
   if (!it.rich) return ANIM_FULL_ITEM_MAX_BYTES;
-  return size && size !== 'fill' && size !== 'hero' ? ANIM_RICH_TILE_MAX_BYTES : ANIM_RICH_ITEM_MAX_BYTES;
+  const tile = !!size && size !== 'fill' && size !== 'hero';
+  if (it.ukView === 'world-engine') return tile ? ANIM_WORLD_TILE_MAX_BYTES : ANIM_WORLD_ITEM_MAX_BYTES;
+  if (it.composed && it.ukPlace) return tile ? ANIM_PLACE_TILE_MAX_BYTES : ANIM_PLACE_ITEM_MAX_BYTES;
+  return tile ? ANIM_RICH_TILE_MAX_BYTES : ANIM_RICH_ITEM_MAX_BYTES;
 }
 /** A pack's total budget for its tiles: the shared allowance, plus each full or rich scene's own tile
  *  budget (both variants). Rich scenes full screen are held to their own per-item cap, not the pack's. */
