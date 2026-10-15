@@ -186,7 +186,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
     edges: _WKT_EDGES_URBAN, frame: [{ kind: 'lamp', obj: 'street.lamppost' }, _WKT_BOUGH_PLANE, { kind: 'planter', obj: 'street.mqn-planter-grass' }],
     rich: _WKT_RICH_TOWN, life: { walk: { who: 'crowd', rate: '12/min' }, paving: { who: 'crowd', rate: '12/min' } } },
   // a quayside or harbour: stone quays with coping, bollards, lifebuoys and railings at the edge, lamps, gulls over the water
-  quayside: { label: 'quayside or harbour', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.3, 0.55], layers: 5, bare: { ground: 0.25, paving: 0.15 },
+  quayside: { label: 'quayside or harbour', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.3, 0.55], layers: 5, bare: { ground: 0.25, paving: 0.15, near: 0.5 },
     look: { grass: 'tussock', path: 'flags', paving: 'flags', plaza: 'setts', quay: 'stone', bank: 'stone' },
     fill: { grass: { near: [['plant.grass-long', 3], ['plant.rph-short-grass', 3]], mid: [['plant.rph-church-shrub', 1], ['plant.grass-long', 2], ['plant.mqn-buddleia', 1]], far: [['tree.plane-avenue', 1], ['tree.green-chestnut', 1]],
       distant: _WKT_DISTANT_TOWN, accents: [['ground.leaf-litter', 1], ['plant.daisies', 1]], maxH: 2.6 },
