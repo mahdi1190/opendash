@@ -616,7 +616,7 @@ const _WIV_RULES = {
       const rel = (a.group != null && (a.group === b.id || a.group === b.group)) || (b.group != null && b.group === a.id) || a.leader === b.id || b.leader === a.id || (a.leader != null && a.leader === b.leader);
       // a floor of 85 % of the bodies; a group (a walker and its dog) 27 %, never on the same spot; two passing in a lane a body wide (life's squeeze: they turn sideways and pass through each other for a step) are left to life
       if (!rel && (a.squeeze || b.squeeze)) continue;   // a lane a body wide: they turn sideways and pass through each other for a step (life says so)
-      const minD = (rad(a) + rad(b)) * (rel ? 0.27 : 0.85), d = Math.hypot(a.x - b.x, a.z - b.z);
+      const minD = (rad(a) + rad(b)) * (rel ? 0.27 : (C.o.personalFloor || 0.85)), d = Math.hypot(a.x - b.x, a.z - b.z);
       if (d < minD) { _wivPush(C, 'personalSpace', a.id, `${a.obj || a.cls} (${a.id}) and ${b.obj || b.cls} (${b.id}) are ${_wivR(d)} m apart; their bodies need ${_wivR(minD)} m`); continue; }
       // passed through between two frames: the closest approach of their straight tracks over the interval
       const pa = was.get(a.id), pb = was.get(b.id);

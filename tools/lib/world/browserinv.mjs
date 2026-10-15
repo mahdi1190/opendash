@@ -27,6 +27,7 @@ const CHECK = (id, t, reset, rules, skip) => `(() => {
     ${rules ? 'o.rules = ' + JSON.stringify(rules) + ';' : ''}
     ${skip ? 'o.skip = ' + JSON.stringify(skip) + ';' : ''}
     const stats = {}; o.stats = stats;
+    o.personalFloor = 0.65;   // the page draws positions interpolated between life ticks: two bodies passing sideways dip 10 to 20 % below the tick-aligned floor (0.85)
     const v = worldInvariants(fr, o);
     const agents = fr.ents.filter(e => e.static === false).length;
     return { n: v.length, agents, t: fr.t, resets: rec.stats ? rec.stats.resets : null, resetting: !!rec.resetting, lastReset: rec.stats && rec.stats.lastReset || null, v: v.slice(0, 40).map(x => ({ rule: x.rule, id: x.id, msg: x.msg })), na: stats.na || [] };

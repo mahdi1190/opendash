@@ -1851,10 +1851,20 @@ function _wlfAirMove(life, a, dt) {
 }
 /** Stuck (no progress for 2.5 s while wanting to move): re-plan, then sidestep, then leave by the nearest spawn cell. */
 function _wlfStuck(life, a, want, dt) {
+  // one that is held at an edge of the frame (a queue behind someone waiting for a bench, a yield) is never left standing there half in the picture
+  // (C2): it wants to go on, so it counts as stuck, and it gives up and leaves at once instead of waiting out the stages
+  var held = !!a.dir && !a.resident && !a.leader && !a.members && a.kind === 'walker' && !a.step && !a.seat && _wlfInEdgeZone(life, a);
+  if (held && want <= 0.05) want = 0.2;
   if (want > 0.05 && a.dir) {
     if (Math.hypot(a.x - a.progX, a.z - a.progZ) > 0.4) { a.progX = a.x; a.progZ = a.z; a.lastProg = life.t; a.stuckT = 0; a.replans = Math.max(0, a.replans - 0.02); return; }
     a.stuckT = life.t - a.lastProg;
   } else { a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.stuckT = 0; return; }
+  if (held && a.stuckT > 1.0 && Math.hypot(a.vx || 0, a.vz || 0) < 0.1) {
+    a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.replans = 0; a.stuckOut = true;
+    var eb = a.edge && /^(N|S|E|W|cover|door)$/.test(a.edge) && !(a.goals && a.goals[a.gi] && a.goals[a.gi].leave === a.edge) ? a.edge : 'any';
+    _wlfLeave(life, a, eb); a.goalOn = null;
+    return;
+  }
   if (a.stuckT > 2.5) {
     a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.replans++;
     var edgeZ = _wlfInEdgeZone(life, a);                     // never stand still in an edge zone (C2): re-plan at once

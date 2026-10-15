@@ -301,3 +301,22 @@ test('walls, fences, hedges and railings are solid to the nav, except at their g
     assert.equal(W.worldNavOk(nav, layer, 15, 60, 0.25), true, layer + ': a kerb is only an edge');
   }
 });
+
+test('nobody is left standing at an edge of the frame in a bench queue: a mover held in an edge zone leaves at once (C2)', () => {
+  // a quay with one bench in view and a steady stream of visitors who all want it: the queue grows to the frame's edge
+  const sp = spec({ surfaces: [{ id: 'quay', kind: 'plaza', poly: [[-150, 1], [150, 1], [150, 14], [-150, 14]] }, { id: 'esk', kind: 'water', water: 'harbour', poly: [[-300, 14], [300, 14], [300, 90], [-300, 90]], shallow: 1.5 }],
+    entities: [{ obj: 'street.bench', at: [-3, 11], facing: 0, id: 'bench-q' }],
+    life: [{ who: 'visit', mix: { elderly: 1 }, rate: '6/min', goals: [{ go: 'bench-q' }, { do: 'sit', for: [40, 70] }, { leave: 'W' }], edges: ['E'] }] });
+  sp.camera = { eye: 3, fov: 66, horizon: 430, heading: 0, water: -3 };
+  const w = W.worldBuild(sp, { fill: false }), nav = W.worldNavBuild(w), life = W.worldLifeInit(w, nav, 0);
+  const held = new Map(); let worst = 0;
+  for (let t = 0; t < 15 * 400; t++) {
+    W.worldLifeTick(life, 1 / 15);
+    for (const a of life.agents) {
+      if (a.dead || a.kind !== 'walker') continue;
+      const X = 800 + w.cam.f * a.x / Math.max(0.5, a.z), still = Math.hypot(a.vx || 0, a.vz || 0) < 0.1 && !a.seat && !a.step && (X < 30 || X > 1570);
+      if (still) { const t0 = held.get(a.id) != null ? held.get(a.id) : (held.set(a.id, life.t), life.t); worst = Math.max(worst, life.t - t0); } else held.delete(a.id);
+    }
+  }
+  assert.ok(worst < 2.5, `the longest anyone stood still in an edge zone: ${worst.toFixed(1)} s`);
+});
