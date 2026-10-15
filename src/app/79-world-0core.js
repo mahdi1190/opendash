@@ -95,7 +95,7 @@ const WORLD_WATER_ALIAS = Object.freeze({ ocean: 'sea', bay: 'sea', stream: 'riv
 const WORLD_WATER_HINTS = Object.freeze(['calm', 'breezy']);
 const WORLD_STEP_KINDS = Object.freeze(['weir', 'lock', 'fall']);
 const WORLD_LINE_KINDS = Object.freeze(['wall', 'fence', 'railing', 'hedge', 'kerb', 'coping']);
-const WORLD_FEATURE_KINDS = Object.freeze(['bank', 'embankment', 'cutting']);
+const WORLD_FEATURE_KINDS = Object.freeze(['bank', 'embankment', 'cutting', 'cliff']);
 const WORLD_BACKDROPS = Object.freeze(['heath', 'woodland', 'downs', 'farmland', 'town-low', 'city-victorian', 'city-sheffield-hills', 'city-manchester-towers', 'canal-wooded', 'coast']);
 /** Frame edges: the v3.1 names and the camera-frame letters (their aliases). */
 const WORLD_EDGES = Object.freeze(['left', 'right', 'far', 'near', 'W', 'E', 'N', 'S']);
@@ -431,7 +431,7 @@ const _WC_KEYS = {
   place: ['lat', 'lon', 'alt', 'region', 'origin', 'style'],
   camera: ['eye', 'fov', 'horizon', 'heading', 'x0', 'lat', 'lon', 'alt', 'water', 'preset'],
   camera31: ['id', 'at', 'height', 'eye', 'heading', 'lookAt', 'frame', 'fov', 'horizon', 'pitch', 'x0', 'lat', 'lon', 'alt', 'water', 'preset', 'relief'],
-  ground: ['relief', 'features'], relief: ['x', 'd', 'nx', 'nd', 'h', 'src'], feature: ['id', 'kind', 'path', 'width', 'h'],
+  ground: ['relief', 'features'], relief: ['x', 'd', 'nx', 'nd', 'h', 'src'], feature: ['id', 'kind', 'path', 'width', 'h', 'arc', 'scree', 'batter', 'rim', 'high', 'fade', 'rock'],
   surface: ['id', 'kind', 'water', 'poly', 'path', 'width', 'shallow', 'level', 'obj', 'open', 'y', 'from', 'to', 'hint', 'flow', 'step'],
   step: ['to', 'kind'],
   line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj'],
@@ -651,8 +651,17 @@ function _wcCheck(spec0, repair) {
         const p = `ground.features[${i}]`;
         if (!_wcObjOf(f) || threw(f)) { act(p, 'badType', 'a feature is an object', drop(feats, f)); return; }
         keys(f, _WC_KEYS.feature, p, f.id);
-        if (!WORLD_FEATURE_KINDS.includes(f.kind)) { act(p + '.kind', 'badValue', 'kind is bank, embankment or cutting', drop(feats, f, f.id)); return; }
-        if (!(Array.isArray(f.path) && f.path.length >= 2 && f.path.every(_wcPt))) { act(p + '.path', 'badSurface', 'a feature needs path (>= 2 points)', drop(feats, f, f.id)); return; }
+        if (!WORLD_FEATURE_KINDS.includes(f.kind)) { act(p + '.kind', 'badValue', 'kind is bank, embankment, cutting or cliff', drop(feats, f, f.id)); return; }
+        // a cliff's plan is a path or an arc (4cliff: the arc becomes its polyline here, before the camera transform maps the points)
+        const arcP = f.kind === 'cliff' && !f.path && _wcObjOf(f.arc) && typeof worldCliffArcPath === 'function' ? worldCliffArcPath(f.arc) : null;
+        if (arcP && repair) f.path = arcP;
+        if (!(Array.isArray(f.path || arcP) && (f.path || arcP).length >= 2 && (f.path || arcP).every(_wcPt))) { act(p + '.path', 'badSurface', f.kind === 'cliff' ? 'a cliff needs path (>= 2 points) or arc { c: [x, z], r, from, to }' : 'a feature needs path (>= 2 points)', drop(feats, f, f.id)); return; }
+        if (f.kind === 'cliff') {
+          if (!(_wcNum(f.h) && f.h > 0 && f.h <= 400)) act(p + '.h', f.h == null ? 'missingField' : 'badValue', 'h is metres (0..400)', set(f, 'h', 30, f.id));
+          if (f.rock != null && typeof WORLD_CLIFF_ROCKS !== 'undefined' && !WORLD_CLIFF_ROCKS.includes(f.rock)) act(p + '.rock', 'badValue', 'rock is ' + WORLD_CLIFF_ROCKS.join(', '), strip(f, 'rock', f.id));
+          if (f.high != null && !['far', 'left', 'right'].includes(f.high)) act(p + '.high', 'badValue', 'high is far, left or right', strip(f, 'high', f.id));
+          return;
+        }
         if (!(_wcNum(f.width) && f.width > 0)) act(p + '.width', f.width == null ? 'missingField' : 'badValue', 'width is metres > 0', set(f, 'width', 6, f.id));
         if (!(_wcNum(f.h) && f.h > 0 && f.h < 200)) act(p + '.h', f.h == null ? 'missingField' : 'badValue', 'h is metres (0..200)', set(f, 'h', 1, f.id));
       });
@@ -1224,26 +1233,36 @@ function _wcFeatProfile(f, t) {
   if (f.kind === 'bank') return 0.5 * (1 + Math.cos(Math.PI * t / half));
   return t <= half * 0.5 ? 1 : (half - t) / (half * 0.5);   // embankment and cutting: a flat top (bed) and straight sides
 }
-/** The camera-frame relief of a spec: its relief plus its features (banks, embankments, cuttings), sampled on the v2 grid (x, log d). */
+/** The camera-frame relief of a spec: its relief plus its features (banks, embankments, cuttings, cliffs), sampled on the v2 grid (x, log d). A cliff is analytic (4cliff): the grid holds its coarse shape, finer than a bank's. */
 function _wcReliefCompile(cs) {
   const g = _wcObjOf(cs.ground) ? cs.ground : null; if (!g) return null;
   const base = _wcRelief(g.relief) ? g.relief : null;
-  const feats = (Array.isArray(g.features) ? g.features : []).filter(f => _wcObjOf(f) && WORLD_FEATURE_KINDS.includes(f.kind) && Array.isArray(f.path) && f.path.length >= 2 && f.path.every(_wcPt) && _wcNum(f.width) && f.width > 0 && _wcNum(f.h));
+  const feats = (Array.isArray(g.features) ? g.features : []).filter(f => _wcObjOf(f) && WORLD_FEATURE_KINDS.includes(f.kind) && Array.isArray(f.path) && f.path.length >= 2 && f.path.every(_wcPt) && (f.kind === 'cliff' ? _wcNum(f.h) && f.h > 0 && typeof worldCliffGeom === 'function' && !!worldCliffGeom(f) : _wcNum(f.width) && f.width > 0 && _wcNum(f.h)));
   if (!feats.length) return base;
   if (_wcReliefMemo.has(g)) return _wcReliefMemo.get(g);
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, segs = 0;
-  for (const f of feats) { const pad = f.width / 2 + 4; segs += f.path.length - 1; for (const p of f.path) { x0 = Math.min(x0, p[0] - pad); x1 = Math.max(x1, p[0] + pad); z0 = Math.min(z0, p[1] - pad); z1 = Math.max(z1, p[1] + pad); } }
+  let cliffs = 0;
+  for (const f of feats) {
+    const G = f.kind === 'cliff' ? worldCliffGeom(f) : null, pad = G ? G.w + G.lipW + 12 : f.width / 2 + 4;
+    segs += G ? G.pts.length - 1 : f.path.length - 1; if (G) cliffs++;
+    for (const p of G ? G.pts : f.path) { x0 = Math.min(x0, p[0] - pad); x1 = Math.max(x1, p[0] + pad); z0 = Math.min(z0, p[1] - pad); z1 = Math.max(z1, p[1] + pad + (G ? 40 : 0)); }
+  }
   if (base) { x0 = Math.min(x0, base.x[0]); x1 = Math.max(x1, base.x[1]); z0 = Math.min(z0, base.d[0]); z1 = Math.max(z1, base.d[1]); }
   x0 = Math.max(x0, -3000); x1 = Math.min(x1, 3000); z0 = Math.max(0.3, z0); z1 = Math.max(z0 * 1.5, Math.min(z1, 6000));
-  let nx = Math.max(2, Math.min(257, Math.ceil((x1 - x0) / 0.75) + 1)), nd = Math.max(2, Math.min(257, Math.ceil(Math.log(z1 / z0) / Math.log(1.04)) + 1));
-  while (nx * nd * segs > 4e6 && (nx > 33 || nd > 33)) { nx = Math.max(33, Math.ceil(nx * 0.8)); nd = Math.max(33, Math.ceil(nd * 0.8)); }
+  // a cliff needs a finer grid (a face is steep over a few metres): a row every 1 % of the depth, a column every metre, capped
+  const NXC = cliffs ? 513 : 257, NDC = cliffs ? 401 : 257, ratio = cliffs ? 1.01 : 1.04, budget = cliffs ? 1.6e7 : 4e6;
+  let nx = Math.max(2, Math.min(NXC, Math.ceil((x1 - x0) / (cliffs ? 1 : 0.75)) + 1)), nd = Math.max(2, Math.min(NDC, Math.ceil(Math.log(z1 / z0) / Math.log(ratio)) + 1));
+  while (nx * nd * segs > budget && (nx > 33 || nd > 33)) { nx = Math.max(33, Math.ceil(nx * 0.8)); nd = Math.max(33, Math.ceil(nd * 0.8)); }
   const baseCam = base ? { relief: { x: base.x, d: base.d, nx: base.nx, nd: base.nd, h: base.h } } : null, h = new Array(nx * nd);
   for (let j = 0; j < nd; j++) {
     const d = z0 * Math.pow(z1 / z0, j / (nd - 1));
     for (let i = 0; i < nx; i++) {
       const x = x0 + (x1 - x0) * i / (nx - 1);
       let up = 0, down = 0;
-      for (const f of feats) { const pr = _wcFeatProfile(f, _wcLineDist(f.path, x, d)); if (!pr) continue; if (f.kind === 'cutting') down = Math.min(down, -Math.abs(f.h) * pr); else up = Math.max(up, Math.abs(f.h) * pr); }
+      for (const f of feats) {
+        if (f.kind === 'cliff') { up = Math.max(up, worldCliffHeight(f, x, d)); continue; }
+        const pr = _wcFeatProfile(f, _wcLineDist(f.path, x, d)); if (!pr) continue; if (f.kind === 'cutting') down = Math.min(down, -Math.abs(f.h) * pr); else up = Math.max(up, Math.abs(f.h) * pr);
+      }
       h[j * nx + i] = _wcR3((baseCam ? sceneGroundHeight(baseCam, x, d) : 0) + up + down);
     }
   }

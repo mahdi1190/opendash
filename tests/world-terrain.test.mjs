@@ -96,3 +96,49 @@ test('two waters side by side are one opening: the seam between them hides nothi
   assert.ok(b && b.dNear < 60 * 1.0 + 0.5, `the far water starts at its own near edge ${b && b.dNear} (the sight line crosses the ground over the near water)`);
   assert.ok(P.find(r => r.id === 'a').dNear >= 16 * k - 0.05);
 });
+
+// ---------- cliffs (src/app/79-world-4cliff.js; requirement TR5): a face is analytic, the grid only holds its coarse shape ----------
+const CLIFF = { features: [{ kind: 'cliff', arc: { c: [0, 60], r: 190, from: -62, to: 62 }, h: 70 }] };
+const cspec = (extra) => spec(Object.assign({ camera: { eye: 1.7, fov: 66, horizon: 560, heading: 0 }, surfaces: [{ id: 'floor', kind: 'grass', poly: [[-400, 1], [400, 1], [400, 400], [-400, 400]] }], ground: CLIFF }, extra || {}));
+
+test('a cliff feature validates: an arc becomes its polyline, a face needs h, a bad rock or side is stripped', () => {
+  const ok = W.worldValidate(cspec());
+  assert.ok(!ok.errors.some(e => /ground\.features/.test(e.path)), JSON.stringify(ok.errors.filter(e => /ground\.features/.test(e.path))));
+  const w = build(cspec());
+  assert.ok(Array.isArray(w.features[0].path) && w.features[0].path.length > 20, 'the arc is expanded to a path at repair (before the camera transform maps its points)');
+  const bad = W.worldValidate(cspec({ ground: { features: [{ kind: 'cliff', path: [[-100, 200], [100, 200]], h: 40, rock: 'cheese', high: 'up' }, { kind: 'cliff', h: 20 }] } }));
+  assert.ok(bad.errors.some(e => e.path === 'ground.features[0].rock') && bad.errors.some(e => e.path === 'ground.features[0].high') && bad.errors.some(e => e.path === 'ground.features[1].path'), JSON.stringify(bad.errors.map(e => e.path)));
+});
+
+test('the cliff is analytic: a vertical face of the full height, a talus skirt below it, the plateau behind; the grid is fine enough for the rest of the engine', () => {
+  const w = build(cspec()), f = w.features[0];
+  const apex = 250;                                                    // the arc's centre (0, 60) + radius 190
+  assert.ok(W.worldCliffHeight(f, 0, apex - 0.01) < 14, 'the face base is the talus top');
+  assert.ok(W.worldCliffHeight(f, 0, apex + 0.3) > 68, 'a third of a metre into the face is already within 2 m of the full height (the lip rounds the rest): it is vertical');
+  assert.ok(W.worldCliffHeight(f, 0, apex + 40) === 70 || Math.abs(W.worldCliffHeight(f, 0, apex + 40) - 70) < 1e-6, 'the plateau is level');
+  const foot = W.worldCliffHeight(f, 0, apex - 30);
+  assert.ok(foot > 0 && foot < W.worldCliffHeight(f, 0, apex - 10), 'the talus rises toward the face');
+  assert.equal(W.worldCliffHeight(f, 0, apex - 80), 0, 'the valley floor is flat');
+  // the camera is inside the arc, so the high ground is behind the face, never in front of it
+  assert.equal(W.worldCliffHeight(f, 0, 100), 0);
+  const R = w.cam.relief;
+  assert.ok(R && R.nx >= 300 && R.nd >= 90, `a cliff gets a fine relief grid (${R && R.nx} x ${R && R.nd})`);
+  assert.ok(W.sceneGroundHeight(w.cam, 0, apex + 8) > 69 && W.sceneGroundHeight(w.cam, 0, apex - 10) < 15, 'the grid carries the face to within a few metres');
+  // the ends taper: far along the arc the face has fallen to the ground
+  const e = f.path[0];
+  assert.ok(W.worldCliffHeight(f, e[0], e[1] + 5) < 8, 'the face tapers out at its ends');
+});
+
+test('a straight cliff with the high ground on the left, a batter and no scree takes the same spec', () => {
+  // the path runs along +x: its LEFT is the far side (+z), its right the camera's side
+  const w = build(cspec({ ground: { features: [{ kind: 'cliff', path: [[-300, 220], [300, 220]], h: 40, high: 'left', batter: 0.3, scree: false, fade: 0 }] } }));
+  const f = w.features[0];
+  assert.equal(W.worldCliffHeight(f, 0, 200), 0, 'no scree: flat to the foot');
+  assert.ok(W.worldCliffHeight(f, 0, 220 + 2) < 10 && Math.abs(W.worldCliffHeight(f, 0, 220 + 15) - 40) < 0.5, 'a battered face leans back: 0.3 m of plan per metre of height, so about 12 m of plan to climb 40 m');
+  const half = W.worldCliffHeight(f, 0, 220 + 0.3 * 38.5 * 0.5);
+  assert.ok(half > 15 && half < 25, 'halfway across the batter it is about half the height: ' + half);
+  assert.equal(W.worldCliffHeight(f, 0, 260), 40);
+  const r = build(cspec({ ground: { features: [{ kind: 'cliff', path: [[-300, 220], [300, 220]], h: 40, high: 'right', scree: false, fade: 0 }] } }));
+  assert.equal(W.worldCliffHeight(r.features[0], 0, 260), 0, 'high: right puts the plateau on the camera side');
+  assert.equal(W.worldCliffHeight(r.features[0], 0, 200), 40);
+});
