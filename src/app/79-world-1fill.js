@@ -83,8 +83,18 @@ function _wflNear(pts, x, z, closed) {
   for (let i = 0; i < m; i++) { const r = _wflSeg(x, z, pts[i], pts[(i + 1) % n]); if (r.d < best.d) best = r; }
   return best;
 }
+const _wflBoxes = new WeakMap();
 function _wflContains(s, x, z) {
-  if (Array.isArray(s.poly) && s.poly.length >= 3) return _wflInPoly(s.poly, x, z);
+  if (Array.isArray(s.poly) && s.poly.length >= 3) {
+    // a long outline (a ragged shore) is rejected by its box first (kept per outline)
+    const P = s.poly;
+    if (P.length > 12) {
+      let b = _wflBoxes.get(P);
+      if (!b) { b = [Infinity, Infinity, -Infinity, -Infinity]; for (const q of P) { if (q[0] < b[0]) b[0] = q[0]; if (q[1] < b[1]) b[1] = q[1]; if (q[0] > b[2]) b[2] = q[0]; if (q[1] > b[3]) b[3] = q[1]; } _wflBoxes.set(P, b); }
+      if (x < b[0] || x > b[2] || z < b[1] || z > b[3]) return false;
+    }
+    return _wflInPoly(P, x, z);
+  }
   if (Array.isArray(s.path) && s.path.length >= 2 && s.width > 0) return _wflNear(s.path, x, z, false).d <= s.width / 2;
   return false;
 }

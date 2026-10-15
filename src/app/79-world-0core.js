@@ -136,7 +136,18 @@ const _wcAngDiff = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
 const _wcBearing = (a, b) => _wcFace(Math.atan2(b[0] - a[0], b[1] - a[1]) / _WC_DEG);
 function _wcRng(seed) { let a = (seed >>> 0) || 0x9e3779b9; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function _wcHash(s) { let h = 2166136261; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+const _wcPolyBoxes = new WeakMap();
 function _wcInPoly(poly, x, z) {
+  // a long outline (a ragged shore, a reed bed) is rejected by its box first: the box is kept per outline
+  if (poly.length > 12) {
+    let b = _wcPolyBoxes.get(poly);
+    if (!b) {
+      b = [Infinity, Infinity, -Infinity, -Infinity];
+      for (const q of poly) { if (q[0] < b[0]) b[0] = q[0]; if (q[1] < b[1]) b[1] = q[1]; if (q[0] > b[2]) b[2] = q[0]; if (q[1] > b[3]) b[3] = q[1]; }
+      _wcPolyBoxes.set(poly, b);
+    }
+    if (x < b[0] || x > b[2] || z < b[1] || z > b[3]) return false;
+  }
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const xi = poly[i][0], zi = poly[i][1], xj = poly[j][0], zj = poly[j][1];
@@ -428,7 +439,7 @@ function _wcStyleGuess(spec) {
 
 /* ---------- the validator and the repair (5.2) ---------- */
 const _WC_KEYS = {
-  top: ['v', 'place', 'camera', 'cameras', 'ground', 'surfaces', 'lines', 'buildings', 'entities', 'landmarks', 'life', 'backdrop', 'fill', 'seed'],
+  top: ['v', 'place', 'camera', 'cameras', 'ground', 'surfaces', 'lines', 'buildings', 'entities', 'landmarks', 'life', 'backdrop', 'fill', 'seed', 'marsh'],
   place: ['lat', 'lon', 'alt', 'region', 'origin', 'style'],
   camera: ['eye', 'fov', 'horizon', 'heading', 'x0', 'lat', 'lon', 'alt', 'water', 'preset'],
   camera31: ['id', 'at', 'height', 'eye', 'heading', 'lookAt', 'frame', 'fov', 'horizon', 'pitch', 'x0', 'lat', 'lon', 'alt', 'water', 'preset', 'relief'],
@@ -512,6 +523,37 @@ function _wcCareOf(id) {
 }
 
 /**
+ * Expand `marsh: [{ id, walk, width, seed, from, reach, open, density, water, rails, platform }]` (see worldMarsh, 79-world-4marsh.js)
+ * into plain surfaces, lines and entities of the spec. The marsh's water is listed right after the last water the author listed
+ * (so the author's reeds and banks win over it), everything else of the marsh last (islands, spine, walk, platform: they win over
+ * the water, and over the author's far reed beds). -> { spec (a new object; `marsh` removed), problems: [{ path, msg }] }
+ */
+function _wcMarshExpand(spec) {
+  const out = Object.assign({}, spec), problems = [];
+  delete out.marsh;
+  const list = Array.isArray(spec.marsh) ? spec.marsh : [spec.marsh];
+  const surfaces = Array.isArray(spec.surfaces) ? spec.surfaces.slice() : [], lines = Array.isArray(spec.lines) ? spec.lines.slice() : [], entities = Array.isArray(spec.entities) ? spec.entities.slice() : [];
+  list.forEach((m, i) => {
+    const p = `marsh[${i}]`;
+    if (!_wcObjOf(m)) { problems.push({ path: p, msg: 'a marsh is an object: { walk: [[x, z], ...], width, seed, from, reach, open, density, platform }' }); return; }
+    if (!(Array.isArray(m.walk) && m.walk.length >= 2 && m.walk.every(_wcPt))) { problems.push({ path: p + '.walk', msg: 'a marsh needs walk: its boardwalk centre line, two points or more' }); return; }
+    if (typeof worldMarsh !== 'function') { problems.push({ path: p, msg: 'the marsh generator is not loaded' }); return; }
+    let g = null;
+    try { g = worldMarsh(m); } catch (e) { problems.push({ path: p, msg: 'the marsh generator threw: ' + String(e && e.message || e) }); return; }
+    if (!g || !g.surfaces || !g.surfaces.length) { problems.push({ path: p, msg: (g && g.report && g.report.error) || 'the marsh made nothing' }); return; }
+    let at = -1;
+    surfaces.forEach((s, k) => { if (_wcObjOf(s) && s.kind === 'water') at = k; });
+    surfaces.splice(at + 1, 0, g.surfaces[0]);
+    for (const s of g.surfaces.slice(1)) surfaces.push(s);
+    for (const l of g.lines) lines.push(l);
+    for (const e of g.entities) entities.push(e);
+  });
+  out.surfaces = surfaces;
+  if (lines.length) out.lines = lines;
+  if (entities.length) out.entities = entities;
+  return { spec: out, problems };
+}
+/**
  * The one checker behind worldValidate and worldRepair. Each error carries the action that repairs it: strip (delete the key),
  * set (default a value), drop (remove the entry), flag (keep, mark) or place (left to the placement solver, 1place). In
  * validate mode nothing is touched; in repair mode the checker runs on a robust copy and applies the actions after the pass.
@@ -532,8 +574,13 @@ function _wcCheck(spec0, repair) {
     if (repair) C.log.push({ id: null, obj: null, action: 'default', rule: 'badType', reason: 'a spec must be an object: an empty scene (default camera, bare ground)', from: null, to: 'empty', by: 'sense', path: 'spec', severity: 'fatal' });
     return { spec, errors: C.errs, warnings: C.warns, log: C.log };
   }
+  // a `marsh` list is expanded first (79-world-4marsh.js: the walk and a few numbers become the wetland's surfaces, rails and
+  // plants), so the validator and the repair see, and judge, exactly what will be built; the scene stays pure data
+  let marshProblems = [];
+  if (Array.isArray(spec0.marsh) || spec0.marsh != null) { const ex = _wcMarshExpand(spec0); spec0 = ex.spec; marshProblems = ex.problems; }
   const thrown = [];
   const spec = repair ? _wcClone(spec0, (p, m) => thrown.push({ p, m })) : spec0;
+  for (const mp of marshProblems) act(mp.path, 'badValue', mp.msg);
   for (const t of thrown) C.log.push({ id: null, obj: null, action: 'drop', rule: 'buildError', reason: `${t.p} threw: ${t.m}`, from: null, to: null, by: 'sense', path: t.p, severity: 'drop' });
   const threw = o => repair && o && typeof o === 'object' && _wcThrew.has(o) ? _wcThrew.get(o) : null;
 
@@ -1348,35 +1395,37 @@ function _wcValueNoise(x, z, cell, k) {
   return (a + (b - a) * su) * (1 - sv) + (c + (d - c) * su) * sv;
 }
 /**
- * A ragged, soft outline for a natural polygon (a reed bed, the shore of a pond or lake): every edge is cut into short pieces and
- * each point is moved by one smooth noise field of the ground (two octaves, bigger and rounder with the depth, where a metre
- * is a hand's breadth on screen). The field depends on the POINT only, so two natural polygons that share an edge keep sharing
- * it. Before this a reed bed or a bank drew as its ruled polygon: a flat slab with a perfectly straight cut edge (the Fleet
- * Pond boardwalk, 16 Oct). Points near the lens or far outside the scene stay put.
+ * A ragged, soft outline for a natural polygon (a reed bed, the shore of a pond or lake): every edge is cut into pieces of about
+ * 2 m (coarser far away) and each point is moved by one smooth noise field of the PLACE (two octaves, up to about a metre). The field depends on
+ * the point alone, so two natural polygons that share an edge keep sharing it, and it is applied in the place frame (before the
+ * camera transform), so every camera of a place sees the same shore (requirement Q7). Before this a reed bed or a bank drew as
+ * its ruled polygon: a flat slab with a perfectly straight cut edge (the Fleet Pond boardwalk, 16 Oct).
  */
-function _wcNaturalEdge(poly, seed) {
+function _wcNaturalEdge(poly, seed, eyes) {
   const n = poly.length;
   if (n < 3) return poly;
-  const k0 = (seed | 0) % 97;
-  const disp = (x, z) => {
-    if (z < 2 || z > 500 || Math.abs(x) > 400) return [0, 0];
-    // metres: a near edge shifts by up to a metre in depth (a metre of depth at 9 m is 38 px on screen), a far one by more in width
-    const A = Math.min(1.6, 0.75 + 0.012 * z) * Math.min(1, (z - 2) / 6);
-    return [A * (_wcValueNoise(x, z, 7.3, k0 + 1) + 0.5 * _wcValueNoise(x, z, 2.4, k0 + 2)) / 1.5, 0.9 * A * (_wcValueNoise(x, z, 6.1, k0 + 3) + 0.5 * _wcValueNoise(x, z, 2.1, k0 + 4)) / 1.5];
+  const k0 = (seed | 0) % 97, E = Array.isArray(eyes) && eyes.length ? eyes : [[0, 0]];
+  // how far a point is from the nearest viewpoint of the place (the same for every camera of it): near edges are cut fine and move
+  // about a metre, far ones are cut coarse and move more (a metre at 200 m is a hand's breadth on screen)
+  const far = (x, z) => { let d = Infinity; for (const e of E) d = Math.min(d, Math.hypot(x - e[0], z - e[1])); return d; };
+  const disp = (x, z, d) => {
+    const A = Math.min(1.6, 0.7 + 0.008 * d);
+    // three octaves: the long swell, the bay and the small bite (a straight run of bank 10 m long is never straight: 16 Oct, the island's front)
+    return [A * (_wcValueNoise(x, z, 8.3, k0 + 1) + 0.5 * _wcValueNoise(x, z, 3.7, k0 + 2) + 0.55 * _wcValueNoise(x, z, 2.5, k0 + 5)) / 2.05, 0.9 * A * (_wcValueNoise(x, z, 7.1, k0 + 3) + 0.5 * _wcValueNoise(x, z, 3.3, k0 + 4) + 0.55 * _wcValueNoise(x, z, 2.3, k0 + 6)) / 2.05];
   };
-  let step = 1, out = [];
-  for (let tries = 0; tries < 4; tries++) {
+  let mult = 1, out = [];
+  for (let tries = 0; tries < 6; tries++) {
     out = [];
     for (let i = 0; i < n; i++) {
-      const a = poly[i], b = poly[(i + 1) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]), zm = Math.max(1, Math.min(a[1], b[1]));
-      const m = Math.max(1, Math.ceil(L / (Math.min(6, Math.max(0.8, zm * 0.03)) * step)));
+      const a = poly[i], b = poly[(i + 1) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const dm = far((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), step = Math.min(16, Math.max(2.2, 0.06 * dm)) * mult, m = Math.max(1, Math.ceil(L / step));
       for (let j = 0; j < m; j++) {
-        const t = j / m, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t, d = disp(x, z);
+        const t = j / m, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t, d = disp(x, z, far(x, z));
         out.push([Math.round((x + d[0]) * 100) / 100, Math.round((z + d[1]) * 100) / 100]);
       }
     }
-    if (out.length <= 2500) break;
-    step *= 2;
+    if (out.length <= 90) break;
+    mult *= 1.6;
   }
   return out;
 }
@@ -1515,6 +1564,11 @@ function worldBuild(spec, o = {}) {
   const season = o.season || 'summer';
   const rep = worldRepair(spec), log = rep.log.slice();
   let cs = rep.spec, camInfo = { id: 'main', index: 0, count: 1 }, culled = 0;
+  // natural edges, in the place frame (before the camera transform: every camera of a place sees the same shore)
+  if (Array.isArray(cs.surfaces)) {
+    const eyes = Array.isArray(cs.cameras) && cs.cameras.length ? cs.cameras.map(c => (c && _wcPt(c.at) ? c.at : [0, 0])) : [[0, 0]];
+    cs.surfaces = cs.surfaces.map(q => (q && Array.isArray(q.poly) && q.poly.length >= 3 && (q.kind === 'reeds' || (q.kind === 'water' && WORLD_NATURAL_WATERS.includes(q.water))) ? Object.assign({}, q, { poly: _wcNaturalEdge(q.poly, cs.seed, eyes) }) : q));
+  }
   if (cs.v === 3.1) { try { const t = _wcToCamera(cs, o.camera, log); cs = t.spec; camInfo = t.camera; culled = t.culled; } catch (e) { _wcLogBuild(log, null, String(e && e.message || e), 'cameras'); cs = { v: 3, camera: {}, surfaces: [], entities: [], backdrop: cs.backdrop || { style: 'woodland' } }; } }
   let relief = null;
   try { relief = _wcReliefCompile(cs); } catch (e) { _wcLogBuild(log, null, String(e && e.message || e), 'ground.features'); }
@@ -1522,7 +1576,7 @@ function worldBuild(spec, o = {}) {
   const P = _wcObjOf(cs.place) ? cs.place : {};
   const world = { v: 3, format: rep.spec.v, camera: camInfo, cam, place: Object.assign({}, P), seed: cs.seed | 0, season, ctx: o.ctx || null,
     style: _wcStyleKnown(P.style) ? P.style : (cs.backdrop && cs.backdrop.style) || null, fill: cs.fill !== false,
-    surfaces: (Array.isArray(cs.surfaces) ? cs.surfaces : []).filter(_wcSurfOk).map(_wcSurfRecord).map(r => (Array.isArray(r.poly) && (r.kind === 'reeds' || (r.kind === 'water' && WORLD_NATURAL_WATERS.includes(r.water))) ? Object.assign(r, { poly: _wcNaturalEdge(r.poly, cs.seed) }) : r)),
+    surfaces: (Array.isArray(cs.surfaces) ? cs.surfaces : []).filter(_wcSurfOk).map(_wcSurfRecord),
     lines: (Array.isArray(cs.lines) ? cs.lines : []).map(l => { const dry = l.kind === 'wall' && typeof WORLD_DRYSTONE_STYLES !== 'undefined' && WORLD_DRYSTONE_STYLES.includes(P.style); return Object.assign({ width: l.kind === 'hedge' ? 1.2 : l.kind === 'wall' ? (dry ? 0.6 : 0.45) : 0.2, h: l.kind === 'kerb' ? 0.12 : l.kind === 'coping' ? 0.3 : l.kind === 'hedge' ? 1.8 : l.kind === 'wall' ? (dry ? 1.3 : 1.8) : 1.2 }, _wcCopy(l)); }),   // a dry-stone wall is 0.6 m thick and 1.3 m high (4drystone)
     buildings: (Array.isArray(cs.buildings) ? cs.buildings : []).map(b => Object.assign({ solidity: 'solid', h: _wcNum(b.h) ? b.h : (b.storeys || 2) * 3.1 }, _wcCopy(b))),
     features: _wcObjOf(cs.ground) && Array.isArray(cs.ground.features) ? _wcCopy(cs.ground.features) : [],
