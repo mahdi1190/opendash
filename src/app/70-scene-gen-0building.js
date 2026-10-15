@@ -197,6 +197,7 @@ function sceneBuildingResolve(b) {
   if (Array.isArray(st.roofs) && !_SCBG_ROOFS.includes(b.roof)) sp.roof = _scbgPickW(r, st.roofs); else r();
   sp.dutch = !!st.dutch && r() < st.dutch;
   sp.rnd = sceneRnd(sceneHash('bg|' + st.id + '|' + seed + '|layout'));   // the layout's own stream (window lights, flints, bricks)
+  sp.crown = typeof b.crown === 'string' ? b.crown : null;   // a key of the style's `crowns` (towers and domes: 70-scene-gen-1civic.js)
   return sp;
 }
 
@@ -349,7 +350,9 @@ function _scbgModel(b, sp, foot) {
   }
   // the style's own blocks beside the building (a mill's engine-house chimney)
   if (typeof st.extraBlocks === 'function') for (const bk of st.extraBlocks(sp, { foot, W, Dp, E, H, Q, quad }) || []) blocks.push(bk);
-  return { faces, blocks, E: wallE, E0, H: Math.max(H, wallE), W, Dp, quad, Q, roofZ, zs: sp.zs, roof };
+  const model = { faces, blocks, E: wallE, E0, H: Math.max(H, wallE), W, Dp, quad, Q, roofZ, zs: sp.zs, roof };
+  if (typeof _scbcModel === 'function') _scbcModel(b, sp, foot, model);   // civic crowns: stacks of towers and domes on the roof (70-scene-gen-1civic.js)
+  return model;
 }
 
 /* ---------- facade layout: elements in metres on a wall plane (s along, z up) ---------- */
@@ -591,7 +594,7 @@ const _scbgMap = (pl, view, pts2, o) => { const P = pts2.map(([s, z]) => _scbgOn
 function _scbgTierAt(ctx, face, e) {
   if (ctx.view.ortho) return Math.min(ctx.tierCap, 3);
   const pl = face.plane, mid = _scbgOn(pl, (e.s != null ? e.s + (e.w || 0) / 2 : ((e.s0 || 0) + (e.s1 || 0)) / 2), e.z || e.z0 || 0, 0);
-  const hS = ctx.sp.hs[Math.min(ctx.sp.hs.length - 1, e.storey || 0)] || 3;
+  const hS = e.hm || ctx.sp.hs[Math.min(ctx.sp.hs.length - 1, e.storey || 0)] || 3;
   return Math.min(ctx.tierCap, sceneBuildingTier(ctx.view.px(hS, mid)));
 }
 function _scbgDrawElem(e, face, ctx) {
@@ -691,7 +694,7 @@ function _scbgDrawElem(e, face, ctx) {
       if (p) sink.add(9, { f: SCENE_GEN_NIGHT.core, d: _scbgPath(p), op: 0.55, part: 'lit' });
       return;
     }
-    default: return;
+    default: return typeof _scbcElem === 'function' ? _scbcElem(e, face, ctx, T) : undefined;   // civic element kinds (70-scene-gen-2civic-facade.js)
   }
 }
 /** Wall texture hints at tier 3: brick courses, stone courses and joints, flint knaps, render, pebbledash, board marks, tile-hanging. */
@@ -1013,6 +1016,7 @@ function _scbgBlock(bk, wall, sp, model) {
     }
     return faces;
   }
+  if (typeof _scbcBlock === 'function') { const cf = _scbcBlock(bk, wall, sp, model); if (cf) return cf; }   // civic block kinds (a tympanum)
   return faces;
 }
 /** The canopy's night lamps: a row of small lit squares under the valance (a 'lit' face). */
@@ -1087,9 +1091,11 @@ function _scbgBuild(b, sp, foot, view, opt) {
     }
     ctx.sink.blk = false;
   };
+  if (typeof _scbcDrawCrowns === 'function') _scbcDrawCrowns(model, ctx, true);   // crowns inside the footprint stand behind the visible walls
   for (const bl of before) drawBlock(bl);
   for (const f of drawFaces) _scbgDrawFace(f, ctx);
   for (const bl of after) drawBlock(bl);
+  if (typeof _scbcDrawCrowns === 'function') _scbcDrawCrowns(model, ctx, false);
   return { sink: ctx.sink, smoke, shops, model, debug: ctx.debug };
 }
 const _scbgDistOf = (faces, view) => { if (view.ortho) return 0; let s = 0, n = 0; for (const f of faces) for (const p of f.poly) { s += Math.hypot(p[0], p[1] - view.eye, p[2]); n++; } return n ? s / n : 0; };
@@ -1101,7 +1107,7 @@ function _scbgParams(params) {
   const st = sceneBuildingStyle(p.style) || sceneBuildingStyle('victorian-terrace');
   const out = { style: st ? st.id : String(p.style || 'victorian-terrace'), seed: (Number(p.seed) || 0) >>> 0 };
   for (const k of ['frontage', 'storeys', 'depth', 'pitch']) if (Number.isFinite(p[k])) out[k] = Math.round(p[k] * 100) / 100;
-  for (const k of ['roof', 'party', 'door']) if (typeof p[k] === 'string') out[k] = p[k];
+  for (const k of ['roof', 'party', 'door', 'crown']) if (typeof p[k] === 'string') out[k] = p[k];
   if (p.shop) out.shop = typeof p.shop === 'object' ? { kind: String(p.shop.kind || 'bakery'), sign: p.shop.sign ? String(p.shop.sign) : undefined, brand: p.shop.brand ? true : undefined } : true;
   if (p.bays === false || p.bays === 0) out.bays = false;
   if (p.snow) out.snow = true;
