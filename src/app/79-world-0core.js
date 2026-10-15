@@ -88,9 +88,9 @@ const WORLD_OVERHEAD_Y = 1.2;
 const WORLD_SURFACE_ALIAS = Object.freeze({ footpath: 'path', track: 'path', trail: 'path', walkway: 'path', promenade: 'pavement', sidewalk: 'pavement',
   square: 'plaza', paving: 'plaza', yard: 'plaza', 'car-park': 'plaza', street: 'road', lane: 'road', lawn: 'grass', park: 'grass', verge: 'grass', bank: 'grass',
   meadow: 'field', moor: 'heath', beach: 'sand', jetty: 'boardwalk', pontoon: 'boardwalk', pier: 'boardwalk', bridge: 'bridge-deck', steps: 'stairs',
-  marsh: 'reeds', reedbed: 'reeds', railway: 'rail', tramway: 'tram', pond: 'water', lake: 'water', canal: 'water', river: 'water', sea: 'water', harbour: 'water' });
-const WORLD_WATER_KINDS = Object.freeze(['pond', 'lake', 'canal', 'river', 'sea', 'harbour', 'puddle']);
-const WORLD_WATER_ALIAS = Object.freeze({ ocean: 'sea', bay: 'sea', stream: 'river', brook: 'river', beck: 'river', burn: 'river', estuary: 'river', loch: 'lake',
+  marsh: 'reeds', reedbed: 'reeds', railway: 'rail', tramway: 'tram', pond: 'water', lake: 'water', canal: 'water', river: 'water', sea: 'water', harbour: 'water', estuary: 'water' });
+const WORLD_WATER_KINDS = Object.freeze(['pond', 'lake', 'canal', 'river', 'sea', 'harbour', 'puddle', 'estuary']);
+const WORLD_WATER_ALIAS = Object.freeze({ ocean: 'sea', bay: 'sea', stream: 'river', brook: 'river', beck: 'river', burn: 'river', loch: 'lake',
   mere: 'lake', tarn: 'lake', reservoir: 'lake', basin: 'canal', cut: 'canal', navigation: 'canal', dock: 'harbour', marina: 'harbour', pool: 'pond' });
 const WORLD_WATER_HINTS = Object.freeze(['calm', 'breezy']);
 const WORLD_STEP_KINDS = Object.freeze(['weir', 'lock', 'fall']);
@@ -435,7 +435,7 @@ const _WC_KEYS = {
   surface: ['id', 'kind', 'water', 'poly', 'path', 'width', 'shallow', 'level', 'obj', 'open', 'y', 'from', 'to', 'hint', 'flow', 'step'],
   step: ['to', 'kind'],
   line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj'],
-  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src'],
+  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'crown'],
   entity: ['id', 'obj', 'at', 'facing', 'attach', 'variant', 'y', 'open', 'blocks', 'framed', 'row', 'parent'],
   cluster: ['cluster', 'on', 'edge', 'n', 'seed', 'gap', 'variant'],
   landmark: ['id', 'obj', 'at', 'facing', 'src', 'variant', 'attach'],
@@ -733,7 +733,7 @@ function _wcCheck(spec0, repair) {
     if (b.storeys != null && !(Number.isInteger(b.storeys) && b.storeys >= 1 && b.storeys <= 100)) act(p + '.storeys', 'badValue', 'storeys is 1..100', strip(b, 'storeys', b.id));
     if (b.h != null && !(_wcNum(b.h) && b.h > 0 && b.h < 1000)) act(p + '.h', 'badValue', 'h is metres', strip(b, 'h', b.id));
     if (b.storeys == null && b.h == null) act(p, 'missingField', 'a building needs storeys or h', set(b, 'storeys', 2, b.id));
-    for (const k of ['roof', 'style', 'src', 'id']) if (b[k] != null && !_wcStr(b[k])) act(`${p}.${k}`, 'badType', k + ' is a string', strip(b, k, b.id));
+    for (const k of ['roof', 'style', 'src', 'id', 'crown']) if (b[k] != null && !_wcStr(b[k])) act(`${p}.${k}`, 'badType', k + ' is a string', strip(b, k, b.id));
     if (b.facing != null && !_wcNum(b.facing)) act(p + '.facing', 'badType', 'facing is degrees', strip(b, 'facing', b.id));
   });
 

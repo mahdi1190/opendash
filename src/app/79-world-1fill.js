@@ -141,7 +141,7 @@ function _wflIndexOf(F) {
   const W = F.world, surfs = (W.surfaces || []).filter(s => s && (Array.isArray(s.poly) || (Array.isArray(s.path) && s.width > 0)));
   const ix = { surfs, waters: [], walks: [], roads: [], solids: [], cell: 4, grid: new Map() };
   for (const s of surfs) {
-    if (s.kind === 'water') ix.waters.push({ s, rings: _wflRings(s), calm: !(s.water === 'river' || s.water === 'sea' || s.hint === 'breezy' || s.flow), shallow: _wflNum(s.shallow) ? s.shallow : 0.5 });
+    if (s.kind === 'water') ix.waters.push({ s, rings: _wflRings(s), calm: !(s.water === 'river' || s.water === 'estuary' || s.water === 'sea' || s.hint === 'breezy' || s.flow), shallow: _wflNum(s.shallow) ? s.shallow : 0.5 });
     else if (_WFL_WALK.has(s.kind)) ix.walks.push(s);
     else if (s.kind === 'road' || s.kind === 'tramway') ix.roads.push(s);
   }

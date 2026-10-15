@@ -63,6 +63,8 @@ const WORLD_WATER_LOOK = Object.freeze({
   pond: { base: ['#6a8a9a', '#446a7c', '#2a4a5a'], tint: '#446a7c', clarity: 0.15, mirror: 0.8, ripple: 0.2, drift: 'wind', rings: true },
   sea: { base: ['#5f8aa6', '#3a6a8c', '#234a66'], tint: '#3a6a8c', clarity: 0.1, mirror: 0.35, ripple: 0.6, drift: 'swell', rings: false },
   harbour: { base: ['#5a7480', '#3f5e6a', '#2d4652'], tint: '#3f5e6a', clarity: 0.06, mirror: 0.6, ripple: 0.25, drift: 'wind', rings: true },
+  // a wide tidal estuary (Mersey, Thames, Severn, Humber): silt-laden, brown-grey, opaque, choppy, running with the tide
+  estuary: { base: ['#8d8977', '#6f6a58', '#514c3f'], tint: '#6f6a58', clarity: 0.02, mirror: 0.3, ripple: 0.55, drift: 'flow', rings: true, flow: 0.5 },
   puddle: { base: ['#6a7480', '#4a5560', '#2a3540'], tint: '#4a5560', clarity: 0, mirror: 0.9, ripple: 0.05, drift: 'still', rings: false },
 });
 const _WWA_BED = '#4a4030', _WWA_FLOATS = /^(boat|duck|swan|coot|grebe|goose|gull|fish)$/, _WWA_SWIMMERS = /^(duck|swan|coot|grebe|goose)$/;

@@ -128,7 +128,7 @@ const WORLD_HOST_KIND_V2 = Object.freeze({ path: 'path', pavement: 'pavement', t
   deck: 'bridge', platform: 'pavement', stairs: 'pavement', ramp: 'pavement', grass: 'grass', heath: 'heath', field: 'field', sand: 'sand', road: 'road', rail: 'rail', tram: 'tramway', reeds: 'reedbed', bed: 'garden',
   hedge: 'verge', weir: 'edge' });
 // v3 water kinds -> v2 water kinds
-const WORLD_HOST_WATER_V2 = Object.freeze({ pond: 'pond', lake: 'lake', canal: 'canal', river: 'river', sea: 'sea', harbour: 'harbour', puddle: 'pond' });
+const WORLD_HOST_WATER_V2 = Object.freeze({ pond: 'pond', lake: 'lake', canal: 'canal', river: 'river', sea: 'sea', harbour: 'harbour', puddle: 'pond', estuary: 'river' });
 
 /**
  * The v2 scene data of a world. Always: camera and place from the spec, surfaces and water as geometry and kind only (the

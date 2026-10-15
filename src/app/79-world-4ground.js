@@ -133,7 +133,7 @@ function _wgdEdgeLook(world, s, kitLook) {
   const e = typeof s.edge === 'string' ? s.edge : null, wk = s.water || 'pond', lvl = _wgdLevel(world, s);
   const style = String((world.backdrop && world.backdrop.style) || (world.place && world.place.style) || '');
   const urban = /^(city|town)/.test(style) || /river-city|civic|quayside|terraced/.test(String(world.fillState && world.fillState.style || ''));
-  const quay = e === 'quay' || e === 'wall' || e === 'coping' || wk === 'harbour' || (urban && (wk === 'river' || wk === 'canal')) || (wk === 'river' && lvl <= -1);
+  const quay = e === 'quay' || e === 'wall' || e === 'coping' || wk === 'harbour' || (urban && (wk === 'river' || wk === 'canal' || wk === 'estuary')) || ((wk === 'river' || wk === 'estuary') && lvl <= -1);
   if (!quay) return 'earth';
   const k = (kitLook || {}).quay;
   return e === 'wall' ? 'brick' : k && WORLD_GROUND_LOOKS[k] && WORLD_GROUND_LOOKS[k].wall ? k : 'stone';
