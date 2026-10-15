@@ -1408,6 +1408,8 @@ function _wlfFollowBrain(life, a, dt) {
     if (d < 0.25) { a.dir = null; if (a.bs === 'walk') _wlfEnter(life, a, 'sniff'); a.st = Math.max(a.st, 0.5); return; }
     if (a.bs !== 'walk') _wlfEnter(life, a, 'walk');
     a.dir = [dx / d, dz / d]; a.spd = _wlfClamp(L.speed + d * 0.9, 0.6, 2.6);
+    // a post, a bench or a bollard between the dog and its spot: round it by a route (the straight line pressed the dog against it for good)
+    if (d > 0.5 && !_wlfLine(life, a, a.x, a.z, tx, tz)) { var rq = _wlfPathTo(life, a, Math.round(tx * 2) / 2, Math.round(tz * 2) / 2); if (rq !== 'go') { a.dir = [dx / d, dz / d]; } }
     return;
   }
   if (a.kind === 'swimmer' || a.kind === 'wader' || (a.brain.group && (a.brain.group.kind === 'loose' || a.brain.group.kind === 'pair'))) return _wlfLooseBrain(life, a, dt);
@@ -1434,7 +1436,10 @@ function _wlfFollowBrain(life, a, dt) {
   a.lookAt = null;
   if (d2 < 0.05) { a.dir = null; return; }
   a.dir = [dx2 / d2, dz2 / d2];
-  a.spd = _wlfClamp(Math.max(L.speed, 0.3) + (d2 - 0.2) * 1.2, 0, (a.brain.states[mv].speed ? a.brain.states[mv].speed[1] : 1.5) * 1.5);
+  // catching up its slot at a stride, not a sprint: a leader's pace plus what the gap asks, never more than half as much again and a step
+  a.spd = _wlfClamp(Math.max(L.speed, 0.3) + (d2 - 0.2) * 1.2, 0, Math.min((a.brain.states[mv].speed ? a.brain.states[mv].speed[1] : 1.5) * 1.5, Math.max(L.speed, 0.5) * 1.5 + 0.35));
+  // a post or a bench between the member and its slot: round it by a route
+  if (d2 > 0.8 && d2 <= 6 && !_wlfLine(life, a, a.x, a.z, p[0], p[1])) { var rm = _wlfPathTo(life, a, Math.round(p[0] * 2) / 2, Math.round(p[1] * 2) / 2); if (rm !== 'go') a.dir = [dx2 / d2, dz2 / d2]; }
   if (d2 > 6) { var res = _wlfPathTo(life, a, p[0], p[1]); if (res === 'fail') a.dir = [dx2 / d2, dz2 / d2]; }
 }
 
@@ -1631,6 +1636,7 @@ function _wlfMove(life, a, dt) {
   if (a.members && want > 0) for (var mi = 0; mi < a.members.length; mi++) { var mm = a.members[mi]; if (mm.lead && !mm.dead && Math.hypot(mm.x - a.x, mm.z - a.z) > mm.lead.len * 0.9) { want *= 0.2; break; } }   // a taut lead: the walker waits for its dog
   var wantRaw = want;
   if (dir && want > 0) { dir = _wlfSteer(life, a, dir, want); want *= a.slow; }   // a queue eases off; being held up still counts as wanting to move (stuck)
+  if (dir && want > 0 && a.kind === 'walker' && _wlfPinchYield(life, a, dir)) { want = 0; a.slow = 0; }   // waits at the mouth of a gap for the one coming through it
   // the walker steps aside for a ringing cyclist (keeps to its left)
   if (dir && a.yieldT > life.t) { var lx = -dir[1], lz = dir[0], nx0 = dir[0] + lx * 0.6 * a.yieldSide, nz0 = dir[1] + lz * 0.6 * a.yieldSide, nl = Math.hypot(nx0, nz0) || 1; dir = [nx0 / nl, nz0 / nl]; }
   // turn rate: 180 degrees in brain.turn seconds; slow down while turning (no instant turns)
@@ -1755,7 +1761,7 @@ function _wlfSteer(life, a, dir, spd) {
  */
 var WORLD_LIFE_WATCHDOG_S = 10;
 function _wlfWatchdog(life, a) {
-  if (a.fadeOut || _wlfIntent(a) !== 'travel') { a.wdT = life.t; a.wdX = a.x; a.wdZ = a.z; return; }
+  if (a.fadeOut || _wlfIntent(a) !== 'travel' || (a.yieldPinch != null && life.t - a.yieldPinch < 0.5)) { a.wdT = life.t; a.wdX = a.x; a.wdZ = a.z; return; }
   if (a.wdT == null || Math.hypot(a.x - a.wdX, a.z - a.wdZ) > 0.6) { a.wdT = life.t; a.wdX = a.x; a.wdZ = a.z; return; }
   if (life.t - a.wdT > WORLD_LIFE_WATCHDOG_S) {
     _wlfProblem(life, { pop: a.pop, rule: 'stuckRetired', msg: a.id + ' (' + a.cls + ') made no headway for ' + WORLD_LIFE_WATCHDOG_S + ' s at ' + a.x.toFixed(1) + ', ' + a.z.toFixed(1) + ': retired' });
@@ -1891,6 +1897,8 @@ function _wlfAirMove(life, a, dt) {
 }
 /** Stuck (no progress for 2.5 s while wanting to move): re-plan, then sidestep, then leave by the nearest spawn cell. */
 function _wlfStuck(life, a, want, dt) {
+  // waiting at the mouth of a gap for someone to come through is a courtesy, not a jam
+  if (a.yieldPinch != null && life.t - a.yieldPinch < 0.3) { a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.stuckT = 0; return; }
   // one that is held at an edge of the frame (a queue behind someone waiting for a bench, a yield) is never left standing there half in the picture
   // (C2): it wants to go on, so it counts as stuck, and it gives up and leaves at once instead of waiting out the stages
   var held = !!a.dir && !a.resident && !a.leader && a.kind === 'walker' && !a.step && !a.seat && _wlfInEdgeZone(life, a);
@@ -1928,9 +1936,50 @@ function _wlfStuck(life, a, want, dt) {
  * uk-rebuild's motion check caught a walker squeezing through an idle family on the Pier Head's plaza).
  */
 function _wlfOneBody(life, a) {
-  var dir = a.dir || [Math.sin(a.heading || 0), Math.cos(a.heading || 0)], lx = -dir[1], lz = dir[0], w = (a.r || 0.25) * 2 + 0.25;
-  for (var sg = -1; sg <= 1; sg += 2) if (_wlfOk(life, a, a.x + lx * w * sg, a.z + lz * w * sg)) return false;
+  return _wlfOneBodyAt(life, a, a.x, a.z, a.dir || [Math.sin(a.heading || 0), Math.cos(a.heading || 0)]);
+}
+/** The same at a point: no legal spot a shoulder's width to either side of the way (dir) there. */
+function _wlfOneBodyAt(life, a, x, z, dir) {
+  var lx = -dir[1], lz = dir[0], w = (a.r || 0.25) * 2 + 0.25;
+  for (var sg = -1; sg <= 1; sg += 2) if (_wlfOk(life, a, x + lx * w * sg, z + lz * w * sg)) return false;
   return true;
+}
+/**
+ * A gap two people cannot pass in (a one-body gap: a bollard and a bench 1.6 m apart, a doorway, a boardwalk): when a person is
+ * coming through it the other way, the one NEARER to the gap goes first and the other waits at its mouth, a metre or so short of
+ * it, never in it (two in the gap stood nose to nose until a squeeze put them through each other). A wait lasts 6 s at most; a
+ * group waits with its leader. Returns true when this mover waits now.
+ */
+var WORLD_LIFE_PINCH_WAIT_S = 6;
+function _wlfPinchYield(life, a, dir) {
+  if (a.kind !== 'walker' || a.layer === 'air' || a.step || a.squeeze > life.t || a.fadeOut) return false;
+  var o0 = null, fw0 = Infinity;
+  _wlfNearXZ(life, a.x, a.z, 7, function (o) {
+    if (o === a || o.kind !== 'walker' || o.layer !== a.layer || o.dead || o.step || o.fadeOut || o === a.leader || o.leader === a || (a.group && o.group === a.group)) return;
+    var ox = o.vx, oz = o.vz;
+    if (o.dir && o.spd > 0.2) { ox = o.dir[0] * o.spd; oz = o.dir[1] * o.spd; }
+    var os = Math.hypot(ox, oz); if (os < 0.2) return;
+    var rx = o.x - a.x, rz = o.z - a.z, fwd = rx * dir[0] + rz * dir[1], lat = rx * dir[1] - rz * dir[0];
+    if (fwd < 0.4 || fwd > 7 || Math.abs(lat) > 1.1 || (ox * dir[0] + oz * dir[1]) > -0.3 * os) return;
+    if (fwd < fw0) { fw0 = fwd; o0 = o; }
+  });
+  if (!o0) { a.pinchT0 = null; return false; }
+  // inside a gap already: go on, the other waits for it
+  if (_wlfOneBodyAt(life, a, a.x, a.z, dir)) { a.pinchT0 = null; return false; }
+  var k = 0.5, gx = 0, gz = 0, found = false;
+  for (; k <= Math.min(fw0, 2.6); k += 0.4) { gx = a.x + dir[0] * k; gz = a.z + dir[1] * k; if (_wlfOneBodyAt(life, a, gx, gz, dir)) { found = true; break; } }
+  if (!found) { a.pinchT0 = null; return false; }
+  // the nearer to the gap goes first (a tie: the earlier arrival)
+  var dO = Math.hypot(o0.x - gx, o0.z - gz), tie = Math.abs(dO - k) < 0.5;
+  if (dO < k - 0.5 || (tie && (o0.born < a.born || (o0.born === a.born && o0.id < a.id)))) {
+    if (k > 1.5) return false;                                        // not at the mouth yet: walk up to it
+    if (a.pinchT0 == null) a.pinchT0 = life.t;
+    if (life.t - a.pinchT0 > WORLD_LIFE_PINCH_WAIT_S) return false;   // waited long enough: go and meet it (a squeeze if it comes to that)
+    a.yieldPinch = life.t;
+    return true;
+  }
+  a.pinchT0 = null;
+  return false;
 }
 /** Did this mover arrive after a neighbour within 2.5 m that is held up too (the later one of a knot gives way)? */
 function _wlfLater(life, a) {

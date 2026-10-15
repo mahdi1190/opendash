@@ -501,6 +501,9 @@ function _wflTry(F, c) {
     if (_wflHits(F, c.x, c.z, r, false)) return null;
     // a long solid (a hedge, a log, a bench, a planter): its whole footprint, not just a disc round its anchor
     if (kb.solidity === 'solid' && kb.foot === 'box' && _wflHitsPoly(F, _wflFoot(kb, c.x, c.z, c.facing), false)) return null;
+    // no pinch (SCENE_LESSONS J): a piece of street furniture on ground that is walked never leaves a gap of a hand to a body and a half
+    // between itself and another solid or the lowest row people may stand on: two abreast do not fit and they stand nose to nose in it
+    if (furn && kb.solidity === 'solid' && probe.surfId && F.lived.has(probe.surfId) && _wflPinches(F, _wflFoot(kb, c.x, c.z, c.facing))) return null;
     if (probe.under && kb.size.h0 > 2.5) return null;
   }
   // through sense when loaded (its log lists the entity), else built here and logged
@@ -540,6 +543,39 @@ function _wflTry(F, c) {
   if (F.boxes) F.boxes.push(b);
   if (furn) (F.furnBoxes || (F.furnBoxes = [])).push(Object.assign(b.slice(), { z: c.z, cls: kb.cls }));
   return ent;
+}
+/**
+ * The narrowest gap between two solids that people use two abreast (a bench and a bollard 1.6 m apart pass one person, not two): a
+ * new solid footprint keeps either under WORLD_FILL_PINCH_MIN (touching: one piece of furniture) or over WORLD_FILL_PINCH_MAX
+ * (an open pass) of every other solid and of the nav's own lowest row (the near band: nobody stands nearer the lens than that).
+ */
+const WORLD_FILL_PINCH_MIN = 0.12, WORLD_FILL_PINCH_MAX = 2.4;   // the nav stands a mover off a solid by its radius and up to a 0.5 m cell: two abreast need 2.4 m between the pieces
+function _wflPolyGap(A, B) {
+  let d = Infinity;
+  for (const p of A) { const q = _wflNear(B, p[0], p[1], true).d; if (q < d) d = q; }
+  for (const p of B) { const q = _wflNear(A, p[0], p[1], true).d; if (q < d) d = q; }
+  return d;
+}
+function _wflPinches(F, foot) {
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const p of foot) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+  const ix = _wflIndexOf(F), c = ix.cell, R = WORLD_FILL_PINCH_MAX, seen = new Set();
+  // the lowest row people may stand on (the nav's near limit: where the tallest walker fills 45 % of the frame, and never so near that its feet leave the frame)
+  const cam = F.cam;
+  if (cam && cam.f > 0 && F.H > cam.horizon) {
+    const zn = Math.max(cam.f * 1.9 / 405, cam.f * cam.eye / Math.max(1, F.H - cam.horizon) + 0.3), g = z0 - zn;
+    if (g > WORLD_FILL_PINCH_MIN && g < WORLD_FILL_PINCH_MAX) return true;
+  }
+  for (let i = Math.floor((x0 - R) / c); i <= Math.floor((x1 + R) / c); i++) for (let j = Math.floor((z0 - R) / c); j <= Math.floor((z1 + R) / c); j++) {
+    for (const rec of ix.grid.get(i + ',' + j) || []) {
+      if (seen.has(rec)) continue; seen.add(rec);
+      if (rec.sol !== 'solid' || !Array.isArray(rec.foot) || rec.foot.length < 3) continue;
+      if (x1 + R < rec.box[0] || x0 - R > rec.box[2] || z1 + R < rec.box[1] || z0 - R > rec.box[3]) continue;
+      const g = _wflPolyGap(foot, rec.foot);
+      if (g > WORLD_FILL_PINCH_MIN && g < WORLD_FILL_PINCH_MAX) return true;
+    }
+  }
+  return false;
 }
 /** The descriptor of a kit object, or null; a name the library does not have is logged once (kitMissing), never swapped. */
 function _wflKb(F, id) {

@@ -150,7 +150,7 @@ test('giant: a 3.4 m person and one drawn half the frame tall; a 1.75 m person i
 });
 
 test('popping: a walker that walks in from beyond a side between two samples is not a pop (sampled at 2 Hz, 100 px in); one mid-frame is', () => {
-  // 1.5 m/s at 8 m from the lens with f = ${cam.f | 0}: in half a second it walks in by f * 1.5 * 0.5 / 8 px; the previous sample had it past the side
+  // 1.5 m/s at 8 m from the lens: in half a second it walks in by f * 1.5 * 0.5 / 8 px; the previous sample had it past the side
   const prev = frame([], { t: 10 });
   const inFromRight = (x) => P({ id: 'm1', x, z: 8, vx: -1.5, vz: 0, speed: 1.5, state: 'walk', intent: 'travel' });
   // x chosen so that the body's box ends 60 to 90 px inside the right side
