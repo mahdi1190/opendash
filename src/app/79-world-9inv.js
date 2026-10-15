@@ -446,6 +446,9 @@ const _WIV_RULES = {
         }
         wants = s && _wivNum(s.y) ? [s.y] : [g]; what = s && _wivNum(s.y) ? 'its deck' : 'the ground';
       }
+      // a rail vehicle rides on its track's bed: ballast and the rail head put its wheels up to 0.2 m over the ground it runs on
+      // (a train on a long embankment read 0.1 m "above the ground": the Fleet Pond main line, 16 Oct)
+      if (e.layer === 'rail' || cls === 'train' || cls === 'tram') wants = wants.concat(wants.map(w => w + 0.15));
       let best = wants[0];
       for (const w of wants) if (Math.abs(e.y - w) < Math.abs(e.y - best)) best = w;
       if (Math.abs(e.y - best) > 0.08) _wivPush(C, 'floating', e.id, `${e.obj || cls} at y ${_wivR(e.y)}: ${e.y > best ? 'above' : 'through'} ${what} (${_wivR(best)})`);
