@@ -113,6 +113,8 @@ function _scbgClip2(subject, clip) {
 
 /* ---------- styles (19.3) ---------- */
 const _scbgStyles = new Map();
+/** Extension points a style file fills (docs/dev/WORLD_ENGINE.md 14.2): element kinds drawn on a wall plane, and block kinds expanded into faces. */
+const _scbgElemKinds = {}, _scbgBlockKinds = {};
 const _SCBG_ROOFS = ['gable', 'hip', 'mansard', 'flat', 'butterfly', 'pitched-side'];
 /** Register a style: DATA (materials, windows, doors, roofs, chimneys, shopfronts, seasons, night) plus small layout hooks. */
 function sceneBuildingStyleDefine(id, style) {
@@ -197,6 +199,7 @@ function sceneBuildingResolve(b) {
   if (Array.isArray(st.roofs) && !_SCBG_ROOFS.includes(b.roof)) sp.roof = _scbgPickW(r, st.roofs); else r();
   sp.dutch = !!st.dutch && r() < st.dutch;
   sp.rnd = sceneRnd(sceneHash('bg|' + st.id + '|' + seed + '|layout'));   // the layout's own stream (window lights, flints, bricks)
+  if (typeof st.resolve === 'function') st.resolve(sp, b);   // a style's own seeded choices, from its own stream (no other style's draws move)
   return sp;
 }
 
@@ -358,6 +361,7 @@ function _scbgModel(b, sp, foot) {
  * front()), 'side' a simple column of windows (or none), 'back' a plain rear, 'party' nothing but texture.
  */
 function _scbgLayout(sp, face, model) {
+  if (typeof face.layout === 'function') return face.layout(sp, face, model);   // a style's own face (stacked jetty storeys)
   const st = sp.style, len = face.plane.len, zs = sp.zs, nS = sp.storeys, out = { elems: [], blocks: [] };
   if (face.role === 'party') { out.elems.push({ k: 'tex', s0: 0, s1: len, z0: 0, z1: model.E }); return out; }
   out.elems.push({ k: 'tex', s0: 0, s1: len, z0: 0, z1: model.E });
@@ -691,7 +695,7 @@ function _scbgDrawElem(e, face, ctx) {
       if (p) sink.add(9, { f: SCENE_GEN_NIGHT.core, d: _scbgPath(p), op: 0.55, part: 'lit' });
       return;
     }
-    default: return;
+    default: { const h = _scbgElemKinds[e.k]; return h ? h(e, face, ctx, T) : undefined; }
   }
 }
 /** Wall texture hints at tier 3: brick courses, stone courses and joints, flint knaps, render, pebbledash, board marks, tile-hanging. */
@@ -904,6 +908,7 @@ function _scbgBlockFaces(foot, z0, z1, col, topCol, part, bottomCol) {
 }
 /** Expand a front-wall block (wall-local s, o, z) into faces with their elements, through the wall plane. */
 function _scbgBlock(bk, wall, sp, model) {
+  if (_scbgBlockKinds[bk.kind]) return _scbgBlockKinds[bk.kind](bk, wall, sp, model);
   const pl = wall.plane, W = (s, o) => { const p = _scbgOn(pl, s, 0, o); return [p[0], p[2]]; };
   const st = sp.style, faces = [];
   if (bk.kind === 'bay') {
@@ -1051,7 +1056,7 @@ function _scbgStack(bk) {
 /* ---------- the build: model + layout + draw through a view ---------- */
 /** Draw a building through a view. Returns the sink plus the smoke anchors, signs (fascia boxes) and the model. */
 function _scbgBuild(b, sp, foot, view, opt) {
-  const model = _scbgModel(b, sp, foot);
+  const model = typeof sp.style.build === 'function' ? sp.style.build(b, sp, foot, _scbgModel, opt, view) : _scbgModel(b, sp, foot);   // a style may stack its storeys (jetties)
   const ctx = { view, sp, season: opt.season || 'summer', tierCap: opt.tierCap == null ? 3 : opt.tierCap, sink: _scbgSink({ ortho: view.ortho }), debug: opt.debug ? { walls: [], windows: [] } : null };
   const storeyH = sp.hs[Math.min(1, sp.hs.length - 1)] || 3;
   ctx.tier = (poly) => view.ortho ? Math.min(ctx.tierCap, 3) : Math.min(ctx.tierCap, sceneBuildingTier(view.px(storeyH, poly.reduce((a, p) => (p[2] < a[2] ? p : a), poly[0]))));
@@ -1260,7 +1265,7 @@ function sceneBuildingProject(b, cam, ctx) {
     box: [Math.floor(x0), Math.floor(y0), Math.ceil(x1), Math.ceil(y1)], foot, h: Math.round(T.H * 100) / 100, eave: Math.round(T.E * 100) / 100,
     style: sp0.id, roof: T.roof, seed: sp0.seed, src: b.src || 'gen', n: shapes.length + sink.lit.length, tier: tierCap,
     dz: Math.round(dz * 10) / 10, dc: Math.round(dc * 10) / 10, anchor, smoke: res.smoke.filter(p => p[2] >= view.near).map(p => view.P(p).map(_scbgR1)), signs,
-    walls: res.model.faces.filter(f => f.part === 'wall' && view.sees(f.n, f.poly[0])).map(f => f.edge),
+    walls: [...new Set(res.model.faces.filter(f => f.part === 'wall' && view.sees(f.n, f.poly[0])).map(f => f.edge))],
     debug: res.debug || undefined,
   };
 }

@@ -14,7 +14,7 @@ import { runCells } from '../tools/lib/world/cells.mjs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = join(ROOT, 'tests', 'fixtures', 'world', 'kits');
 const W = loadWorld(ROOT);
-const SETTINGS = ['canal', 'pond', 'heath', 'woodland', 'village-green', 'river-city', 'civic-square', 'quayside', 'terraced-street', 'park', 'moor', 'coast'];
+const SETTINGS = ['canal', 'pond', 'heath', 'woodland', 'village-green', 'river-city', 'civic-square', 'quayside', 'terraced-street', 'old-town-lane', 'park', 'moor', 'coast'];
 const files = readdirSync(DIR).filter(f => f.endsWith('.json')).sort();
 const specOf = (f) => JSON.parse(readFileSync(join(DIR, f), 'utf8'));
 const SECONDS = Number(process.env.WORLD_KIT_SECONDS) || 60;
