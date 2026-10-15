@@ -1514,6 +1514,8 @@ function _wlfMove(life, a, dt) {
   // arrive: ease into a stop (Y4)
   if (dir && want > 0 && a.distLeft != null && a.distLeft < 50 && !a.leaving && !a.leader) want *= Math.max(0.35, a.distLeft / 50);
   if (dir && want > 0) dir = _wlfSteer(life, a, dir, want);
+  // following (Y4): no room to pass a slower one ahead on the same line: match its pace instead of walking into it
+  if (dir && want > 0) want = _wlfFollowCap(life, a, dir, want);
   // the walker steps aside for a ringing cyclist (keeps to its left)
   if (dir && a.yieldT > life.t) { var lx = -dir[1], lz = dir[0], nx0 = dir[0] + lx * 0.6 * a.yieldSide, nz0 = dir[1] + lz * 0.6 * a.yieldSide, nl = Math.hypot(nx0, nz0) || 1; dir = [nx0 / nl, nz0 / nl]; }
   // turn rate: 180 degrees in brain.turn seconds; slow down while turning (no instant turns)
@@ -1536,6 +1538,8 @@ function _wlfMove(life, a, dt) {
     // held up or slid off the planned line: the steering point is planned again next tick (from where it really is)
     if (a.route && a.route.tk != null && Math.hypot(a.x - ox, a.z - oz) < a.v * dt * 0.7) a.route.tk = -1;
   }
+  // bodies never overlap (Y4, A2): a hard push apart after the move, on walkable ground only
+  _wlfResolve(life, a);
   // the dog stays within its lead (A7)
   if (a.lead && a.leader && !a.leader.dead) _wlfLeash(life, a);
   a.vx = (a.x - ox) / dt; a.vz = (a.z - oz) / dt; a.speed = Math.hypot(a.vx, a.vz);
@@ -1547,6 +1551,50 @@ function _wlfMove(life, a, dt) {
 function _wlfBoatMeet(life, a) {
   for (var i = 0; i < life.agents.length; i++) { var o = life.agents[i]; if (o !== a && o.kind === 'boat' && !o.dead && Math.hypot(o.x - a.x, o.z - a.z) < 40 && (o.vx * a.vx + o.vz * a.vz) < 0) return true; }
   return false;
+}
+/** The body radius for contact: a person's shoulders (about 0.28 m), never less than its nav radius. */
+function _wlfBody(a) { return a.layer === 'walk' && (a.kind === 'walker' || a.kind === 'runner' || a.cls === 'person' || /^person\./.test(a.obj || '')) ? Math.max(a.r || 0, 0.28) : (a.r || 0.2); }
+/** The neighbours of a mover on its layer (the 2 m hash, 3 x 3 cells), skipping itself, its group, its leader and its led. */
+function _wlfNear(life, a, fn) {
+  var cx = Math.floor(a.x / 2), cz = Math.floor(a.z / 2);
+  for (var ix = -1; ix <= 1; ix++) for (var iz = -1; iz <= 1; iz++) {
+    var bk = life.hash.get((cx + ix + 4096) * 8192 + (cz + iz + 4096));
+    if (!bk) continue;
+    for (var j = 0; j < bk.length; j++) {
+      var o = bk[j];
+      if (o === a || o.layer !== a.layer || o.dead || o === a.leader || o.leader === a || (a.group && o.group === a.group) || o.group === a.id || a.group === o.id) continue;
+      fn(o);
+    }
+  }
+}
+/** Following: a slower mover close ahead on the same line (within 25 degrees) caps this one's pace to its own (no walking into
+    backs); one that is clear to the side can still pass, since steering already moved this one's line off it. */
+function _wlfFollowCap(life, a, dir, want) {
+  if (a.layer === 'air' || a.kind === 'boat' || a.brain.heavy) return want;
+  var cap = want;
+  _wlfNear(life, a, function (o) {
+    var rx = o.x - a.x, rz = o.z - a.z, d = Math.hypot(rx, rz);
+    if (d < 1e-3) return;
+    var ahead = (rx * dir[0] + rz * dir[1]) / d, gap = _wlfBody(a) + _wlfBody(o) + 1.0;
+    if (ahead < 0.9 || d > gap + 1.5) return;                            // not in front, or far enough
+    var os = Math.max(0, (o.vx || 0) * dir[0] + (o.vz || 0) * dir[1]);  // its pace along this one's line
+    var k = Math.max(0, Math.min(1, (d - (_wlfBody(a) + _wlfBody(o) + 0.25)) / gap));    // closer: nearer its pace
+    cap = Math.min(cap, os + (want - os) * k);
+  });
+  return Math.max(0, cap);
+}
+/** A hard push apart: two bodies closer than their radii move apart along the line between them (this one takes half),
+    only to walkable spots. Keeps people from overlapping whatever the steering did. */
+function _wlfResolve(life, a) {
+  if (a.layer === 'air' || a.kind === 'moored' || a.seat || a.bs === 'sitting') return;
+  _wlfNear(life, a, function (o) {
+    var rx = a.x - o.x, rz = a.z - o.z, d = Math.hypot(rx, rz), minD = _wlfBody(a) + _wlfBody(o) + 0.05;
+    if (d >= minD) return;
+    if (d < 1e-4) { rx = Math.sin(a.heading + Math.PI / 2); rz = Math.cos(a.heading + Math.PI / 2); d = 1; }
+    var push = (minD - (d < 1 ? d : Math.hypot(a.x - o.x, a.z - o.z))) * (o.kind === 'moored' || o.seat ? 1 : 0.5);
+    var nx = a.x + rx / d * push, nz = a.z + rz / d * push;
+    if (_wlfOk(life, a, nx, nz)) { a.x = nx; a.z = nz; }
+  });
 }
 /** Steering (Y4): seek the route direction, separate from neighbours within personal space, avoid by a velocity obstacle. */
 function _wlfSteer(life, a, dir, spd) {

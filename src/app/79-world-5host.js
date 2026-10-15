@@ -484,6 +484,10 @@ function _wh5Init(rec, nav) {
   rec.stats.simInitMs = Math.round(_wh5Now() - a);
 }
 function worldHostLive(id) { return _wh5Live.get(id) || null; }
+/** The scrub time (seconds) for still frames (capture and review tools); null: a still frame shows the base moment. */
+const _wh5Scrub = { t: null };
+function worldHostScrub(t) { _wh5Scrub.t = Number.isFinite(t) ? t : null; return _wh5Scrub.t; }
+if (typeof window !== 'undefined') window.__worldSetTime = (t) => worldHostScrub(t);
 
 /**
  * The agents a frame draws (the passes call it). rec: a live record (or its data id); t: the host's frame time (seconds);
@@ -496,10 +500,13 @@ function worldHostAt(rec, t, f) {
   if (typeof rec === 'string') rec = _wh5Live.get(rec);
   if (!rec) return { tau: 0, agents: [], ready: false };
   const hidden = !!f.hidden || (f.hidden == null && typeof document !== 'undefined' && !!document.hidden);
-  let tau = rec.clock.frame(f.key || 'k', t, { warming: f.warming, hidden, still: f.still });
+  // a scrub (tools: capture, review): a still frame at a chosen scene time, the life advanced to it deterministically
+  const scrub = Number.isFinite(_wh5Scrub.t) ? _wh5Scrub.t : null;
+  let tau = scrub != null ? scrub : rec.clock.frame(f.key || 'k', t, { warming: f.warming, hidden, still: f.still });
   const d = rec.driver;
   if (!d) return { tau, agents: [], ready: false };
-  if (f.still) return { tau: 0, agents: d.base.map(a => Object.assign({}, a)), ready: true };
+  if (f.still && scrub == null) return { tau: 0, agents: d.base.map(a => Object.assign({}, a)), ready: true };
+  if (scrub != null) f = Object.assign({}, f, { sync: true });
   if (rec.resetting) { rec.clock.tau = 0; return { tau: 0, agents: d.base.map(a => Object.assign({}, a)), ready: false }; }
   if (tau + 1e-9 < d.tau) {
     // back to an earlier moment: the life again from its base (the same world, nav and seed: the same base)
