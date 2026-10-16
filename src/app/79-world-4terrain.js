@@ -97,23 +97,81 @@ function _wtrGrow(P, d) {
   }
   return out;
 }
+/** Smooth value noise in [-1, 1] on a metre lattice (bilinear, smoothstep): the same everywhere, so a hillside never shimmers. */
+function _wtrN2(x, z) {
+  const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz, ux = fx * fx * (3 - 2 * fx), uz = fz * fz * (3 - 2 * fz);
+  const v = (a, b) => _wtrU(a * 0.25 + 91, b * 0.25 - 37) * 2 - 1;
+  return (v(ix, iz) * (1 - ux) + v(ix + 1, iz) * ux) * (1 - uz) + (v(ix, iz + 1) * (1 - ux) + v(ix + 1, iz + 1) * ux) * uz;
+}
 function _wtrU(x, z) { let h = Math.imul(Math.round(x * 4) | 0, 374761393) ^ Math.imul(Math.round(z * 4) | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
 
+/**
+ * What a pasture hillside has that a flat colour has not (found on Malham Cove: a green slab): sheep trods along the contours
+ * (terracettes: a dark line with a pale catch under it), tussocks and rush, and pale limestone scars where the hill is steep. Placed in
+ * plan metres from hashes of the position (the same in every frame), in the colour of the quad they stand in so the season and the
+ * light grade them with it. q: { cx, cz, x, x2, za, zb, gx, gz, slope, hex, hm }; ops and ext (the strip's box) are filled.
+ */
+function _wtrHillDeco(q, cam, hAt, ops, ext) {
+  const h = (a, b, c) => _wtrU(q.cx * a + c, q.cz * b - c);
+  const P = (x, z, y) => { const p = sceneProject(cam, x, z, y); return [Math.round(p.X * 10) / 10, Math.round(p.Y * 10) / 10]; };
+  const k = cam.f / Math.max(1, q.cz), cl = Math.hypot(q.gx, q.gz) || 1, W = q.x2 - q.x;
+  const note = (pts) => { for (const p of pts) { if (p[0] < ext.minX) ext.minX = p[0]; if (p[0] > ext.maxX) ext.maxX = p[0]; if (p[1] < ext.minY) ext.minY = p[1]; if (p[1] > ext.maxY) ext.maxY = p[1]; } };
+  const n1 = _wtrN2(q.cx / 14, q.cz / 14), n2 = _wtrN2(q.cx / 5 + 3, q.cz / 5);
+  // a sheep trod: along the contour, a few metres to a dozen long, thicker where the slope is steeper
+  if (h(1.7, 1.3, 11) < 0.15 + 0.1 * Math.max(0, n2) && q.slope > 0.12) {
+    const cx = -q.gz / cl, cz = q.gx / cl, half = 2.5 + 6 * h(0.9, 2.1, 5), pts = [], lo = [];
+    for (let i = 0; i <= 4; i++) {
+      const t = (i / 4 * 2 - 1) * half, x = q.x + W * h(3.1, 0.7, 2) + cx * t, z = Math.max(1, Math.min(q.zb, q.za + (q.zb - q.za) * h(0.4, 4.3, 9)) + cz * t * 0.25), y = hAt(x, z);
+      const p = P(x, z, y + 0.03), p2 = P(x, z, y - 0.18); pts.push(p); lo.push(p2);
+    }
+    ops.push({ t: 's', p: pts, m: 'grass', h: _wtrShade(q.hex, 0.74), w: Math.max(0.7, Math.min(2.4, 0.2 * k)), a: 0.5 });
+    ops.push({ t: 's', p: lo, m: 'grass', h: _wtrShade(q.hex, 1.18), w: Math.max(0.6, Math.min(1.8, 0.12 * k)), a: 0.3 });
+    note(pts); note(lo);
+  }
+  // tussocks and rush: dark rounded bumps, in clusters where the noise is high
+  if (h(2.3, 1.1, 21) < 0.16 + 0.2 * Math.max(0, n1)) {
+    const x = q.x + W * h(5.3, 0.3, 4), z = q.za + (q.zb - q.za) * h(0.2, 6.1, 3), y = hAt(x, z), sz = 0.5 + 1.1 * h(1.9, 2.9, 8), pts = [];
+    const [X, Y] = P(x, z, y), w2 = Math.max(1.2, sz * k * 0.5), hh = Math.max(1.1, sz * k * 0.38);
+    for (let i = 0; i < 8; i++) { const an = Math.PI + i / 7 * Math.PI, rj = 0.78 + 0.3 * _wtrU(q.cx + i, q.cz); pts.push([X + Math.cos(an) * w2 * rj, Y + Math.sin(an) * hh * rj]); }
+    pts.push([X + w2 * 0.9, Y + 0.4], [X - w2 * 0.9, Y + 0.4]);
+    const e = pts.map(p => [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]);
+    ops.push({ t: 'f', p: e, m: 'grass', h: _wtrShade(n1 > 0.3 ? '#7f8f4c' : q.hex, 0.62 + 0.3 * h(7.1, 1.7, 6)), a: 0.9 });
+    note(e);
+  }
+  // limestone scars on the steeper pasture, in clusters: a ragged outcrop (a lit, stepped top, a darker front, a shadow under it)
+  if (q.slope > 0.25 && n1 + 0.6 * n2 > 0.62 && h(3.7, 2.7, 31) < 0.34) {
+    const x = q.x + W * h(2.1, 3.3, 13), z = q.za + (q.zb - q.za) * h(4.4, 0.9, 17), wm = 0.9 + 2.8 * h(1.3, 5.7, 19), hm = 0.7 + 1.2 * h(6.1, 1.1, 23), nS = 5;
+    const bot = [], top = [];
+    for (let i = 0; i <= nS; i++) {
+      const u = i / nS, xx = x + (u - 0.5) * wm, y0 = hAt(xx, z), env = Math.sin(Math.PI * Math.min(1, u * 0.92 + 0.04)) ** 0.7;
+      bot.push(P(xx, z, y0 - 0.05));
+      top.push(P(xx, z, y0 + hm * env * (0.55 + 0.6 * _wtrU(q.cx + i * 3.1, q.cz + 7))));
+    }
+    const shade = 0.82 + 0.25 * h(8.3, 1.9, 29), sh = Math.max(1, 0.1 * k);
+    const body = top.concat(bot.slice().reverse());
+    ops.push({ t: 'f', p: body.map(p => [p[0], p[1] + sh]), m: 'stone', h: '#4b4843', a: 0.28 });
+    ops.push({ t: 'f', p: body, m: 'stone', h: _wtrShade('#b9b5a8', shade * 0.82), a: 0.97, n: [0, -1] });
+    // the lit top edge: the upper half of the body in a paler tone
+    ops.push({ t: 'f', p: top.concat(top.map((p, i) => [p[0], p[1] + (bot[i][1] - p[1]) * 0.4]).reverse()), m: 'stone', h: _wtrShade('#d4d0c3', shade), a: 0.9, up: true });
+    note(body);
+  }
+}
 /** Clip a polygon of vertices { x, z, t, m } to t <= T (sgn 1) or t >= T (sgn -1): Sutherland-Hodgman on one line, attributes interpolated. */
 function _wtrClipT(poly, T, sgn) {
   const out = [], inside = v => sgn * (v.t - T) <= 1e-9;
   for (let i = 0; i < poly.length; i++) {
     const a = poly[i], b = poly[(i + 1) % poly.length], ia = inside(a), ib = inside(b);
     if (ia) out.push(a);
-    if (ia !== ib) { const u = (T - a.t) / (b.t - a.t); out.push({ x: a.x + (b.x - a.x) * u, z: a.z + (b.z - a.z) * u, t: T, m: a.m + (b.m - a.m) * u }); }
+    if (ia !== ib) { const u = (T - a.t) / (b.t - a.t); out.push({ x: a.x + (b.x - a.x) * u, z: a.z + (b.z - a.z) * u, t: T, m: a.m + (b.m - a.m) * u, fw: (a.fw == null ? 1 : a.fw) + ((b.fw == null ? 1 : b.fw) - (a.fw == null ? 1 : a.fw)) * u }); }
   }
   return out;
 }
 /** How much of a piece (vertices with t) in front of a face is scree: 1 at the face's foot, 0 at the toe of the talus and beyond. */
 function _wtrScreeOf(G, V, mm) {
-  if (!(G.w > 0)) return 0;
+  const W = G.w * V.reduce((a, v) => a + (v.fw == null ? 1 : v.fw), 0) / V.length;
+  if (!(W > 0)) return 0;
   const t = V.reduce((a, v) => a + v.t, 0) / V.length;
-  return Math.max(0, Math.min(1, 1 + t / G.w)) * Math.min(1, mm * 1.5);
+  return Math.max(0, Math.min(1, 1 + t / W)) * Math.min(1, mm * 1.5);
 }
 /**
  * The pieces of a ground quad (plan corners [[x, z] x 4]) that the cliffs leave to the strips: the part in front of a face (with how
@@ -125,7 +183,7 @@ function _wtrCliffPieces(corners, cliffs, cam, hAt) {
   for (const G of cliffs) {
     const next = [];
     for (const pc of pieces) {
-      const V = pc.fresh ? pc.poly.map(v => { const s = worldCliffSample(G, v.x, v.z); return { x: v.x, z: v.z, t: s.t, m: s.m }; }) : pc.poly;
+      const V = pc.fresh ? pc.poly.map(v => { const s = worldCliffSample(G, v.x, v.z); return { x: v.x, z: v.z, t: s.t, m: s.m, fw: s.fw }; }) : pc.poly;
       const mm = Math.max(...V.map(v => v.m));
       if (mm < WORLD_CLIFF_MIN_M) { next.push({ poly: V, scree: pc.scree, fresh: false }); continue; }
       const E = worldCliffEdges(G, mm), tmin = Math.min(...V.map(v => v.t)), tmax = Math.max(...V.map(v => v.t));
@@ -185,6 +243,7 @@ function _wtrPrims(world, cam, o) {
     const za = z, zb = Math.min(d1, z * WORLD_TERRAIN_STEP), zm = (za + zb) / 2;
     const xl = Math.max(R.x[0], (-330 - x0) * zb / cam.f - 6), xr = Math.min(R.x[1], (1930 - x0) * zb / cam.f + 6), xlim = Math.max(Math.abs(xl), Math.abs(xr)), screeStrip = cliffs.some(G => G.w > 0 && _wtrHasScree(G, zm, xlim)), step = Math.max(screeStrip ? 0.6 : 0.9, zm / (screeStrip ? 220 : cliffs.length ? 70 : 44)), faces = [], sops = [];
     let hi = 0, xmin = Infinity, xmax = -Infinity, minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
+    const hillQ = [];
     for (let x = xl; x < xr - 1e-6; x += step) {
       const x2 = Math.min(xr, x + step);
       // a quad that more than one surface kind lies under (a lane, a flight of steps, a path across a slope) is cut into a finer grid, so a
@@ -210,6 +269,14 @@ function _wtrPrims(world, cam, o) {
         // the scree of a cliff is where the cliff's own talus is the ground: a hill that rises higher there (the dale side beside the cove) is not scree
         if (pc.scree > 0 && baseGrid && sceneGroundHeight(baseGrid, cx0, cz0) > hAt(cx0, cz0) - 0.3 && sceneGroundHeight(baseGrid, cx0, cz0) > 0.5) pc.scree = 0;
         const jit0 = _wtrU(cx0, cz0);
+        // a pasture is patchy (dry bent, rush, a greener flush by a spring), never one tone: two scales of noise in the colour, the yellower and the darker patches mixed in
+        if (m.mat === 'grass' && pc.scree <= 0.05 && hm > 0.5) {
+          const na = _wtrN2(cx0 / 13, cz0 / 13), nb = _wtrN2(cx0 / 4.1 + 5, cz0 / 4.1 - 2);
+          let hx = m.hex;
+          if (na > 0.25) hx = _wtrMixHex(hx, '#b4ab62', Math.min(0.5, (na - 0.25) * 0.7)); else if (na < -0.3) hx = _wtrMixHex(hx, '#4d7a3a', Math.min(0.5, (-0.3 - na) * 0.8));
+          m = { mat: m.mat, hex: _wtrShade(hx, 1 + 0.07 * na + 0.05 * nb) };
+          hillQ.push({ cx: cx0, cz: cz0, x, x2, za, zb, gx, gz, slope, hex: m.hex, hm });
+        }
         // a talus skirt: pale broken rock where the slope comes off the foot of a cliff, grass creeping up from the toe
         const lf = Math.sin(cx0 * 0.09 + 1.3) * Math.sin(cz0 * 0.12 - 0.4);
         if (pc.scree > 0.05 && rock) { const sc = Math.max(0, Math.min(1, pc.scree * (0.9 + 0.3 * lf))); m = sc > 0.5 ? { mat: 'scree', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), Math.min(1, sc * 1.1)) } : { mat: 'grass', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), sc * 0.9) }; }
@@ -226,6 +293,12 @@ function _wtrPrims(world, cam, o) {
         faces.push({ pts, role: 'ground', mat: m.mat, hex: _wtrShade(m.hex, shade * jit), z: cz0, alpha: 1 });
       }
       }
+    }
+    // the pasture's own marks (trods, tussocks, scars), far to near within the strip
+    if (hillQ.length) {
+      const ext = { minX, maxX, minY, maxY };
+      for (const q of hillQ) _wtrHillDeco(q, cam, hAt, sops, ext);
+      ({ minX, maxX, minY, maxY } = ext);
     }
     // the stones and tussocks of a talus skirt that stand in this strip, near ones last (they overlap the far)
     while (si < stones.length && stones[si].z < za) si++;
@@ -271,8 +344,8 @@ function _wtrTree(ctx, op, colour, A, month) {
   // the trunk (a little crooked) and the limbs
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   ctx.strokeStyle = colour('bark', '#5b4a3a'); ctx.lineWidth = Math.max(1, h * 0.06);
-  const lean = (rr() - 0.5) * w * 0.4, ty = y - h * 0.5;
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + lean * 0.3, y - h * 0.25, x + lean, ty); ctx.stroke(); n++;
+  const lean = (rr() - 0.5) * w * 0.5, ty = y - h * 0.34;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + lean * 0.3, y - h * 0.16, x + lean, ty); ctx.stroke(); n++;
   if (bare || bud) {
     ctx.strokeStyle = colour('bark', '#6d5a48'); ctx.lineWidth = Math.max(0.7, h * 0.035);
     for (let i = 0; i < 9; i++) {
@@ -286,11 +359,13 @@ function _wtrTree(ctx, op, colour, A, month) {
     ctx.globalAlpha = 1;
     return n;
   }
-  const cols = thorn ? ['#4a6a35', '#5d7f3f', '#7ba14c'] : ['#4d7138', '#628a43', '#86ad54'], lobes = thorn ? 4 : 5;
+  // October: an ash goes yellow before it drops its leaves, a thorn red and orange
+  const turn = month === 9;
+  const cols = turn ? (thorn ? ['#74381f', '#a3472a', '#c96a30'] : ['#82701f', '#b99a2c', '#dcc04b']) : thorn ? ['#4a6a35', '#5d7f3f', '#7ba14c'] : ['#486b35', '#628a43', '#8fb45a'], lobes = (thorn ? 5 : 7) - (turn ? 1 : 0);
   for (let pass = 0; pass < 3; pass++) {
-    ctx.fillStyle = colour('leaf', cols[pass]); ctx.globalAlpha = A * (pass === 2 ? 0.8 : 1);
-    for (let i = 0; i < lobes - pass; i++) {
-      const cx = x + lean + (rr() - 0.5) * w * 1.5 * (1 - pass * 0.25) - pass * w * 0.08, cy = ty - h * (0.12 + rr() * 0.45) - pass * h * 0.05, rx = w * (0.32 + rr() * 0.22) * (1 - pass * 0.2), ry = rx * (0.7 + rr() * 0.25);
+    ctx.fillStyle = colour('leaf', cols[pass]); ctx.globalAlpha = A * (pass === 2 ? 0.75 : 1);
+    for (let i = 0; i < lobes - pass * 2; i++) {
+      const cx = x + lean + (rr() - 0.5) * w * 1.9 * (1 - pass * 0.25) - pass * w * 0.08, cy = ty - h * (0.04 + rr() * 0.5) - pass * h * 0.06, rx = w * (0.3 + rr() * 0.26) * (1 - pass * 0.18), ry = rx * (0.55 + rr() * 0.3);
       ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, 6.2832); ctx.fill(); n++;
     }
   }

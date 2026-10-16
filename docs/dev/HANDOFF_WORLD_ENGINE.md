@@ -184,3 +184,11 @@ art: `70-scene-gen-3ruin.js` (+ style `gothic-ruin`), `70-scene-gen-4bridge.js` 
 `pantile-cottage`, the `steps` ground look, and `landmark: true` on a building (`79-world-0core.js`, `79-world-1fill.js`). SCENE_LESSONS T,
 requirements section 30, tests `tests/scene-gen-ruin.test.mjs`. Not done: the harbour mouth (piers, lighthouses) needs a second view; the
 church has no dormers; the abbey's east end is seen at a grazing angle from this camera.
+
+## Malham Cove pass (15 Oct, branch fix/malham)
+The cliff generator (`79-world-4cliff.js`), the terrain strips (`79-world-4terrain.js`) and the Malham spec were reworked so that
+every cliff benefits (SCENE_LESSONS N, the rows marked "the Malham pass"): `rough` (default 1; 0 is the old ruled face) makes the
+plan, the rim and the scree irregular and cuts a stained scoop into a long limestone face; beds wander and step at faults; ledges
+break into runs and some overhang; the lip is pavement; the face rises out of a hill instead of being painted over by it; a pasture
+hillside has patches, sheep trods, tussocks and scars. `tests/world-terrain.test.mjs` pins the ruled geometry with `rough: 0` and
+tests the irregular defaults. Open: a wall that passes behind a face is drawn over it (a line is not clipped by a face).
