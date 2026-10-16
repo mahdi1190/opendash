@@ -127,6 +127,9 @@ TODO:
   clutter (plants, bike, coal bags, solar panel), mooring ropes to the bollards, curtains in the windows, night glow,
   name panel shapes (no text), more liveries, slight bob on water.
 
+16 Oct: the boat model now lives in the model registry (`79-world-4model-narrowboat.js`, kit in `79-world-4models.js`, byte-identical output):
+see `docs/dev/WORLD_MODELS.md` for how any repeatable object gets a parametric model, `node tools/world.mjs models <id|all>` for its sheet.
+
 ## The goal (the user, 15 Oct)
 Mass-produce NEW scenes from scratch with the world engine. Old scenes are not the reference (many are weak); the bar is the
 gold proof Fleet Pond. After the fix-all run, the next step is the from-scratch test: several never-drawn places (for

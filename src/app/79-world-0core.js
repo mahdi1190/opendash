@@ -448,7 +448,7 @@ const _WC_KEYS = {
   step: ['to', 'kind'],
   line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj'],
   building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap', 'crown', 'landmark'],
-  entity: ['id', 'obj', 'at', 'facing', 'attach', 'variant', 'y', 'open', 'blocks', 'framed', 'row', 'parent'],
+  entity: ['id', 'obj', 'at', 'facing', 'attach', 'variant', 'y', 'open', 'blocks', 'framed', 'row', 'parent', 'model'],
   cluster: ['cluster', 'on', 'edge', 'n', 'seed', 'gap', 'variant'],
   landmark: ['id', 'obj', 'at', 'facing', 'src', 'variant', 'attach'],
   life: ['id', 'who', 'on', 'rate', 'count', 'every', 'mix', 'edges', 'goals', 'group', 'state', 'framed'],
@@ -864,6 +864,11 @@ function _wcCheck(spec0, repair) {
       if (e.variant != null && !_wcVariantOk(info, e.variant)) act(p + '.variant', _wcObjOf(e.variant) || Array.isArray(e.variant) ? 'perSeasonData' : 'unknownVariant', `${obj} has no variant ${JSON.stringify(e.variant)}`, strip(e, 'variant', who));
       for (const k of ['open', 'blocks', 'framed', 'row']) if (e[k] != null && typeof e[k] !== 'boolean') act(p + '.' + k, 'badType', k + ' is a boolean', strip(e, k, who));
       if (e.parent != null && !_wcStr(e.parent)) act(p + '.parent', 'badType', 'parent is an id', strip(e, 'parent', who));
+      if (e.model != null) {   // a parametric model's parameters (79-world-4models.js): livery, size, age, seed, opts
+        const bad = typeof worldModelSpecCheck === 'function' ? worldModelSpecCheck(e.model) : null;
+        if (bad) act(p + '.model', 'badValue', bad, strip(e, 'model', who));
+        else if (typeof worldModelHas === 'function' && !worldModelHas(obj)) act(p + '.model', 'badValue', `${obj} has no parametric model (worldModelIds())`, strip(e, 'model', who));
+      }
       // the attachment
       let ak = e.attach == null ? null : _wcAttachKind(e.attach), ref = e.attach == null ? null : _wcAttachRef(e.attach);
       const stripAttach = (rule, msg) => { act(p + '.attach', rule, msg, strip(e, 'attach', who)); ak = null; ref = null; };
@@ -1485,6 +1490,7 @@ function _wcEntity(world, e, info, season) {
     attach: ak + (ref ? ':' + ref : ''), host: hostId, deck: null, waterline: waterline == null ? null : _wcR3(waterline), lights: null, static: true,
     seasonal: info.seasonal, blocks: e.blocks === true, framed: e.framed === true };
   if (e.row === true) ent.row = true;
+  if (e.model && typeof worldModelFit === 'function') worldModelFit(ent, info, e.model);   // the model's own size, height and footprint
   if (_wcStr(e.parent)) ent.parent = e.parent;
   if (info.kcls !== info.cls) ent.kcls = info.kcls;
   if (info.deck) ent.deck = { poly: _wcLocalToWorld(info.deck.poly, x, z, facing), y: _wcR3(y + info.deck.y) };
