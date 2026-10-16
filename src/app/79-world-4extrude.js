@@ -358,12 +358,13 @@ function worldExtrudeBuilding(b, cam, o) {
   if (Math.max(...foot.map(p => p[1])) < _wexNear(cam)) return null;
   const spec = Object.assign({}, b, { foot, seed: b.seed != null ? b.seed : _wexHash(b.id || JSON.stringify(foot)) % 100000 });
   if (!spec.style) spec.style = 'victorian-terrace';
+  let genErr = null;
   if (typeof sceneBuildingProject === 'function') {
     let d = null;
     // a building stands on the ground where it is (W2): a footprint on a slope is projected from an eye lowered by the ground's height at
     // its lowest corner (the generator measures everything from a flat ground), so a terrace on a cliff stands on the cliff, not at its foot
     const g = foot.reduce((m, p) => Math.min(m, _wexG(cam, p[0], p[1])), Infinity), camB = Number.isFinite(g) && Math.abs(g) > 0.02 ? Object.assign({}, cam, { eye: cam.eye - g }) : cam;
-    try { d = sceneBuildingProject(spec, camB, { season: o.season || 'summer', snowDepth: o.snowDepth || 0, tierCap: o.tierCap }); } catch (e) { d = null; }
+    try { d = sceneBuildingProject(spec, camB, { season: o.season || 'summer', snowDepth: o.snowDepth || 0, tierCap: o.tierCap }); } catch (e) { d = null; genErr = String(e && e.message || e); }   // never silent: the prism below carries the reason (the checks read prim.error)
     if (d) {
       // the outward normal of every visible wall (the generator's counter-clockwise footprint, front edge first)
       const F = d.foot || foot, walls = (d.walls || []).map(i => { const a = F[i], c = F[(i + 1) % F.length], ex = c[0] - a[0], ez = c[1] - a[1], L = Math.hypot(ex, ez) || 1; return { edge: i, a, b: c, n: [ez / L, -ex / L] }; });
@@ -385,7 +386,7 @@ function worldExtrudeBuilding(b, cam, o) {
   }
   if (cam.eye > h) { const pts = _wexProjPoly(cam, foot.map(p => [p[0], _wexG(cam, p[0], p[1]) + h, p[1]])); if (pts) { faces.push({ pts, role: 'roof', mat: 'slate', hex: _wexMat(o, 'slate', '#4a5058', zKey, 'roof'), z: zKey, alpha: 1 }); box = _wexBox(pts, box); } }
   if (!box) return null;
-  return { id: b.id || null, kind: 'building', ent: b.id || null, foot, zKey: _wexR(zKey, 3), height: h, box: box.map(v => _wexR(v, 1)), faces: faces.sort((p, q) => q.z - p.z), walls, solidity: 'solid', fallback: true };
+  return { id: b.id || null, kind: 'building', ent: b.id || null, foot, zKey: _wexR(zKey, 3), height: h, box: box.map(v => _wexR(v, 1)), faces: faces.sort((p, q) => q.z - p.z), walls, solidity: 'solid', fallback: true, error: genErr };
 }
 
 /* ---------- long hulls in perspective (Q4) ---------- */
