@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { loadScenes, repoRoot } from '../tools/lib/scene-page.mjs';
 
 const NAMES = ['worldHostData', 'worldHostLive', 'worldHostAt', 'worldHostClock', 'worldHostDriver', 'worldHostWorld', 'worldHostSpec', 'worldHostV2Data',
-  'worldFrameScene', 'worldFrameAt', 'worldFramePlan', 'worldFramePassOn', 'worldFrameOrder', 'worldOrderNearer', 'worldOrderCheck', 'worldChunks',
+  'worldFrameScene', 'worldFrameAt', 'worldFramePlan', 'worldFramePassOn', 'worldFrameOrder', 'worldOrderNearer', 'worldOrderCheck', 'worldTerrainOccludes', 'worldChunks',
   'sceneSvg', 'sceneCompile', 'sceneRenderPasses', '_scPacks', 'WORLD_HOST_MAX_DT', 'OffscreenCanvas'];
 const STUB_LIFE = `
 function worldNavBuild(world) { return { layers: {}, stub: true }; }
@@ -227,10 +227,13 @@ test('R1, R2: zero order violations in the frame records of the test scenes over
         frames++;
         const movers = f.ents.filter(e => !e.static), all = f.ents;
         const ov = (a, b) => a.box[0] < b.box[2] && b.box[0] < a.box[2] && a.box[1] < b.box[3] && b.box[1] < a.box[3];
-        // the record carries what the order reads: flat things (decals, walkable decks) lie under what stands on them
-        const asEnt = (e) => ({ id: e.id, obj: e.obj, static: e.static, x: e.x, z: e.z, y: e.y, foot: e.foot, height: e.height, solidity: e.solidity, decal: e.decal, attach: e.host ? 'deck:' + e.host : null });
+        // the record carries what the order reads: flat things (decals, walkable decks, ballast and track beds: .flat) lie under what stands on them
+        const asEnt = (e) => ({ id: e.id, obj: e.obj, static: e.static, x: e.x, z: e.z, y: e.y, foot: e.foot, height: e.height, solidity: e.solidity, decal: e.decal, flat: e.flat, attach: e.host ? 'deck:' + e.host : null });
         for (const m of movers) for (const o of all) {
           if (o === m || !ov(m, o)) continue;
+          // ground below a mover's feet never hides it (4terrain): the frame does not redraw such a terrain strip over the mover, so the
+          // order is not asserted for it (the record keeps the strip's upper edge as .tops; worldOrderCheck skips the pair the same way)
+          if (o.tops && X.worldTerrainOccludes && !X.worldTerrainOccludes(o, { x0: m.box[0], y0: m.box[1], x1: m.box[2], y1: m.box[3] })) continue;
           pairs++;
           const mNear = X.worldOrderNearer(asEnt(m), asEnt(o));
           // a static redrawn over this mover (the occluder redraw, clipped to it) is drawn after it
