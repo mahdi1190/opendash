@@ -8,6 +8,12 @@
 //   node tools/world.mjs convert <ref> [--out[=file]] [--force] [--report] [--json]
 //                         v2 / v1 -> v3 with the review report and the critic against the source (U4: exit 1 below it)
 //   node tools/world.mjs render <ref> [--dir=D] [--dates=spring,summer,autumn,night] [--wx=rain] [--gpu] [--dpr=1]
+//   node tools/world.mjs new <slug> --setting <kit> --place "<name>" --lat <n> --lon <n> --view "<words>" [--landmarks=church-tower:cotswold-church,pub,pond] [--houses=<style>] [--county=<c>]
+//                         SCAFFOLD a new place: writes src/app/79-world-zscene-<slug>-1.js (a short spec built from the kit's recipe; it shows in the gallery at once)
+//                         and prints the validation and the drops. Then: render <slug>-1-w3. docs/dev/NEW_SCENE_GUIDE.md
+//   node tools/world.mjs new <slug> --setting <kit> --place "<name>" --lat <n> --lon <n> --view "<words>" [--landmarks=church-tower:cotswold-church,pub,pond] [--houses=<style>] [--county=<c>] [--force]
+//                         SCAFFOLD a new place: writes src/app/79-world-zscene-<slug>-1.js (a short spec built from the kit's recipe; it shows in the gallery at once),
+//                         then validates it and prints what the engine dropped. Next: render <slug>-1-w3. docs/dev/NEW_SCENE_GUIDE.md
 //   node tools/world.mjs motion <ref> [--seconds=600] [--svg=file] [--json]
 //   node tools/world.mjs invariants <ref> [--seconds=360] [--hz=5] [--matrix] [--browser] [--json]
 //                         the invariant checker (16.2) over the full loop at 3 dates x 5 times (--matrix: 4 seasons x 5 times x 3
@@ -383,8 +389,48 @@ export function worldAcceptReport(res, o = {}) {
   return L.join('\n') + '\n';
 }
 
+/** `new`: --key value and --key=value both work (a value may hold spaces). Writes the scene file, then validates it. */
+export function newArgs(args) {
+  const o = {}, rest = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (!a.startsWith('--')) { rest.push(a); continue; }
+    const eq = a.indexOf('=');
+    if (eq > 0) o[a.slice(2, eq)] = a.slice(eq + 1);
+    else if (i + 1 < args.length && !args[i + 1].startsWith('--')) o[a.slice(2)] = args[++i];
+    else o[a.slice(2)] = true;
+  }
+  return { o, rest };
+}
+async function newPlace() {
+  const { scaffoldSource, KIT_FAMILY } = await import('./lib/world/scaffold.mjs');
+  const { o, rest } = newArgs(argv);
+  const slug = rest[1];
+  const need = ['setting', 'place', 'lat', 'lon'].filter(k => o[k] == null || o[k] === true);
+  if (!slug || !/^[a-z0-9][a-z0-9-]*$/.test(slug) || need.length) {
+    out(`usage: node tools/world.mjs new <slug> --setting <kit> --place "<name>" --lat <n> --lon <n> --view "<words>" [--landmarks=...]${need.length ? '\nmissing: --' + need.join(', --') : ''}\nkits: ${Object.keys(KIT_FAMILY).join(', ')}`);
+    return 2;
+  }
+  const r = scaffoldSource({ slug, kit: o.setting, place: o.place, lat: o.lat, lon: o.lon, view: o.view, landmarks: o.landmarks, houses: o.houses, county: o.county, town: o.town, seed: o.seed, mood: o.mood, colour: o.colour, region: o.region });
+  const file = join(root, 'src', 'app', r.file);
+  if (existsSync(file) && !o.force) { out(`${r.file} exists (use --force to overwrite)`); return 2; }
+  writeFileSync(file, r.text);
+  out(`wrote src/app/${r.file}  (${r.text.split('\n').length} lines)  id ${r.id}`);
+  for (const n of r.notes) out('  note: ' + n);
+  const E = loadEngine({ root, fresh: true });
+  const v = validateSpec(r.spec, E);
+  out(v.ok ? '  validate: ok' : '  validate: ' + v.errors.length + ' error(s)');
+  for (const e of v.errors.slice(0, 12)) out(`    ${e.path}: ${e.msg}`);
+  const log = E.worldAddLog ? E.worldAddLog(r.id) : [];
+  const drops = log.filter(l => l.action === 'drop' || l.action === 'warn');
+  for (const l of drops.slice(0, 20)) out(`  ${l.action}: ${l.id || l.obj || ''} ${l.rule}: ${l.reason}`);
+  out(`next: node tools/world.mjs render world-test/${r.id} --dir=<D> --dates=summer,autumn,night`);
+  return 0;
+}
+
 async function main() {
   if (!cmd || flags.help || (!ref && !['adversarial', 'accept'].includes(cmd))) { out(readFileSync(new URL(import.meta.url), 'utf8').split('\n').filter(l => l.startsWith('//')).map(l => l.slice(3)).join('\n')); return 2; }
+  if (cmd === 'new') return newPlace();
   const E = loadEngine({ root });
 
   if (cmd === 'models') {
