@@ -85,7 +85,7 @@ test('the model API is loaded and the narrowboat is registered', () => {
     assert.equal(typeof W[n], 'function', n);
   assert.ok(REGISTERED_AT_LOAD.includes('narrowboat'));
   for (const o of ['boat.narrowboat', 'boat.widebeam', 'boat.canal-cruiser']) assert.equal(W.worldModelFor(o).id, 'narrowboat', o);
-  assert.equal(W.worldModelFor('boat.dinghy'), null);
+  assert.equal(W.worldModelFor('boat.no-such-boat'), null);   // (boat.dinghy is served by the vessel models)
   assert.equal(W.worldModelHas('street.bench'), false);
 });
 
