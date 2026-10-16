@@ -2428,18 +2428,6 @@
     },
     {
       "rule": "private-term",
-      "path": "docs/dev/WORLD_ENGINE_REQUIREMENTS.md",
-      "line_sha256": "cb9708f7f012598d2a4c2c3c96261859428515dd6c754af1cb3632f7b1baaaa3",
-      "why": "an ordinary colour word describing the look of river water (reviewed)"
-    },
-    {
-      "rule": "private-term",
-      "path": "src/app/79-world-zscene-liverpool-pier-head-1.js",
-      "line_sha256": "1df4d27ba913b7137a4a7839182b755446cdc66acfdfa861f588cf2451d0d4b5",
-      "why": "an ordinary colour word describing the look of river water (reviewed)"
-    },
-    {
-      "rule": "private-term",
       "path": "docs/dev/HANDOFF_WORLD_ENGINE.md",
       "line_sha256": "1f62dc92f4ab8d359c9d802c601b5ba2afeb54c77ebae8cfd80f29f839cb7157",
       "why": "an ordinary English verb in code and docs (reviewed)"
@@ -2467,6 +2455,12 @@
       "path": "src/app/79-world-5frame.js",
       "line_sha256": "e39fc352a19cf22e8a5a1b3e95ecb8edf25974f56364f9c2d0d24ae6815bc434",
       "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-0kb.js",
+      "line_sha256": "045e8c0c7af30f3654065078a6c35fc3abb234090e839e7762b4ce409bee4ca5",
+      "why": "ordinary colour words in the livery names of the main-line train (reviewed)"
     }
   ]
 }
