@@ -440,7 +440,21 @@ function _wnavOnLayerAt(L, x, z, fam) {
   const S = L.shapes[top], kd = S.costs || _WNAV_KIND[S.kind];
   return !!(kd && kd[fam]);
 }
+/**
+ * The verdict for a point in a far cell, remembered (a small direct-mapped cache per layer): the walkers' step tests the point it
+ * steps to, the life pass tests it again as the mover's place, and the next tick's step starts from it, so one point is asked three
+ * times and each ask is a solid scan and five surface lookups. The navigation is not edited while a world runs.
+ */
 function _wnavFarPointOk(L, k, x, z, r) {
+  let C = L.fpc;
+  if (!C) C = L.fpc = { x: new Float64Array(256).fill(NaN), z: new Float64Array(256), r: new Float64Array(256), v: new Uint8Array(256) };
+  const h = ((Math.floor(x * 32) * 73856093) ^ (Math.floor(z * 32) * 19349663)) & 255;
+  if (C.x[h] === x && C.z[h] === z && C.r[h] === r) return C.v[h] === 1;
+  const v = _wnavFarPointOk0(L, k, x, z, r);
+  C.x[h] = x; C.z[h] = z; C.r[h] = r; C.v[h] = v ? 1 : 0;
+  return v;
+}
+function _wnavFarPointOk0(L, k, x, z, r) {
   if (_wnavFarSolidDist(L, k, x, z) < r) return false;
   const fam = L.layer.split('@')[0];
   if (!L.shapes || fam === 'wade') return true;

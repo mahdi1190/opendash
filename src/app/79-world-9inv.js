@@ -638,6 +638,9 @@ const _WIV_RULES = {
         else if (pose && S.poses && Array.isArray(S.poses[pose])) hr = S.poses[pose];
       }
       const h = _wivNum(e.height) ? e.height : _wivNum(e.h) ? e.h : null;
+      // a parametric model (79-world-4models.js) is built to its own real height, which differs by kind (a trawler 7 m, a potter 4.6 m, a
+      // coble 3.6 m) and by the scene's size: the library's one number is no judge of it; the range is what a scene may ask (0.3 to 3 x)
+      if (hr && S && typeof worldModelHas === 'function' && worldModelHas(e.obj)) { const m0 = _wivNum(S.h0) ? S.h0 : (hr[0] + hr[1]) / 2; hr = [m0 * 0.3, m0 * 3]; }
       if (hr && h != null && (h > hr[1] * 1.15 || h < hr[0] / 1.15)) _wivPush(C, 'giant', e.id, `${e.obj || cls} is ${_wivR(h)} m tall; a ${cls} is ${hr[0]}-${hr[1]} m`);
       const b = _wivBox(e);
       if (b && (cls === 'person' || cls === 'dog' || cls === 'cyclist') && !e.framed && (b[3] - b[1]) > 0.45 * H) _wivPush(C, 'giant', e.id, `${e.obj || cls} is drawn ${Math.round((b[3] - b[1]) / H * 100)} % of the frame tall (a giant at the lens)`);

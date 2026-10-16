@@ -151,6 +151,14 @@ test('giant: a 3.4 m person and one drawn half the frame tall; a 1.75 m person i
   assert.deepEqual(run('giant', frame([P({ height: 1.75 })])), []);
 });
 
+test('giant: a boat built by a parametric model keeps the model\'s own height (a 4.6 m potter), not the library\'s 7 m; a 30 m one is still a giant', () => {
+  const boat = (id, height) => S({ id, obj: 'boat.fishing-boat', cls: 'boat', x: -6, z: 60, y: 0, height, box: null });
+  assert.ok(E.worldModelHas('boat.fishing-boat'));
+  assert.deepEqual(run('giant', frame([boat('fb1', 4.6)])), []);
+  assert.deepEqual(run('giant', frame([boat('fb2', 6)])), []);
+  assert.equal(run('giant', frame([boat('fb3', 30)])).length, 1);
+});
+
 test('popping: a walker that walks in from beyond a side between two samples is not a pop (sampled at 2 Hz, 100 px in); one mid-frame is', () => {
   // 1.5 m/s at 8 m from the lens: in half a second it walks in by f * 1.5 * 0.5 / 8 px; the previous sample had it past the side
   const prev = frame([], { t: 10 });
