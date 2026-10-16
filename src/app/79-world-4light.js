@@ -223,6 +223,29 @@ function _wlDeckOf(e) {
 
 /* ---------- shadows (L2, L5, section 19) ---------- */
 /**
+ * The convex pieces of a world's water surfaces with their boxes (memoised per surfaces array: the waters do not change, and the
+ * plan is asked for every frame of a live scene; the convex decomposition of a winding stream was redone each time).
+ */
+const _wlWaterMemo = typeof WeakMap === 'function' ? new WeakMap() : null;
+function _wlWaterPieces(surfaces) {
+  const ws = surfaces.filter(_wlIsWater), polys = ws.map(_wlSurfPoly);
+  const hit = _wlWaterMemo && _wlWaterMemo.get(surfaces);
+  if (hit && hit.ws.length === ws.length && hit.ws.every((w, i) => w === ws[i] && hit.polys[i] === polys[i])) return hit.pieces;
+  const pieces = [].concat(...ws.map((w, i) => {
+    // a winding stream is a concave polygon: its shadow holes come piece by piece (convex pieces of the water), never one clip of a concave shape
+    const P = polys[i];
+    let pcs = [P];
+    if (P && P.length > 4 && typeof _wwaConvexPieces === 'function') { try { const q = _wwaConvexPieces(P); if (Array.isArray(q) && q.length) pcs = q; } catch (e) { pcs = [P]; } }
+    return pcs.map(q => {
+      let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+      for (const p of q || []) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < z0) z0 = p[1]; if (p[1] > z1) z1 = p[1]; }
+      return { id: w.id, P: q, x0, z0, x1, z1 };
+    });
+  }));
+  if (_wlWaterMemo) _wlWaterMemo.set(surfaces, { ws, polys, pieces });
+  return pieces;
+}
+/**
  * The shadows of a world now. sun: a Sky (worldSkyOf), a v2 L, { az, alt } or a resolved sun. o: { agents (movers, per frame;
  * only those visible: a.visible !== false, not culled, on screen), statics (false: movers only), W (frame width, 1600) }.
  * Static casters: the footprint extruded to the real height and laid along the sun (the hull of the foot and the tip footprint);
@@ -234,16 +257,21 @@ function _wlDeckOf(e) {
  */
 function worldShadowPlan(world, cam, sun, o) {
   cam = _wlCam(world, cam); o = o || {};
-  const S = worldSunOf(sun, cam), out = [], waters = [].concat(...((world && world.surfaces) || []).filter(_wlIsWater).map(w => {
-    // a winding stream is a concave polygon: its shadow holes come piece by piece (convex pieces of the water), never one clip of a concave shape
-    const P = _wlSurfPoly(w);
-    let pcs = [P];
-    if (P && P.length > 4 && typeof _wwaConvexPieces === 'function') { try { const q = _wwaConvexPieces(P); if (Array.isArray(q) && q.length) pcs = q; } catch (e) { pcs = [P]; } }
-    return pcs.map(q => ({ id: w.id, P: q }));
-  }));
+  const S = worldSunOf(sun, cam), out = [], waters = _wlWaterPieces((world && world.surfaces) || []);
   const fogV = S.fogV || (sun && sun.fogV) || null, W = o.W || 2 * (cam.x0 || 800);
   const scr = (P, y) => P.map(p => { const q = _wlProj(cam, p[0], Math.max(0.05, p[1]), y); return [q.X, q.Y]; });
-  const holesOf = (poly) => { const H = []; for (const w of waters) { const q = _wlClipConvex(w.P, poly); if (q.length) H.push({ surface: w.id, poly: q }); } return H; };
+  // a piece of water whose box does not meet the shadow's box cannot cut a hole in it (the clip would be empty): not clipped at all
+  const holesOf = (poly) => {
+    const H = [];
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    for (const p of poly) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < z0) z0 = p[1]; if (p[1] > z1) z1 = p[1]; }
+    for (const w of waters) {
+      if (w.x1 < x0 || w.x0 > x1 || w.z1 < z0 || w.z0 > z1) continue;
+      const q = _wlClipConvex(w.P, poly);
+      if (q.length) H.push({ surface: w.id, poly: q });
+    }
+    return H;
+  };
   const fogK = (z) => (fogV ? Math.exp(-z / fogV) : 1);
   const push = (r) => { if (r.holes && r.holes.length) r.holesScr = r.holes.map(h => scr(h.poly, r.y)); out.push(r); };
   const one = (e, mover) => {
@@ -597,10 +625,13 @@ function worldDrawShadows(ctx, plan, o) {
   const vs = o.vs || 1, ox = o.ox || 0, oy = o.oy || 0, col = o.col || '#14202e';
   let n = 0;
   const path = (P) => { ctx.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy); for (const q of P) ctx.lineTo(q[0] * vs + ox, q[1] * vs + oy); ctx.closePath(); };
+  // a save and a restore are made only round a hole clip (most shadows have none): the state a shadow sets is put back at the end
+  const a0 = ctx.globalAlpha, f0 = ctx.fillStyle;
   for (const s of plan) {
     if (!s.scr || s.scr.length < 3 || !(s.op > 0)) continue;
-    ctx.save();
-    if (s.holesScr && s.holesScr.length && ctx.clip) {
+    const cut = !!(s.holesScr && s.holesScr.length && ctx.clip);
+    if (cut) {
+      ctx.save();
       ctx.beginPath(); ctx.rect(-1e5, -1e5, 2e5, 2e5);
       for (const H of s.holesScr) if (H.length >= 3) path(H);
       ctx.clip('evenodd');
@@ -613,9 +644,12 @@ function worldDrawShadows(ctx, plan, o) {
       const fz = Math.max(0.5, (s.poly[0] && s.poly[0][1]) || 1), M = sceneShadowMatrix(o.cam, { X: sp.X, Y: sp.Y, x: sp.x, d: sp.d || fz }, sp.s || 1, -(sp.top || sp.y0 || -1), sp.flip, o.sun, vs, ox, oy);
       ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
       ctx.drawImage(sil, sp.x0, sp.y0, sp.w, sp.h);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
     } else { ctx.beginPath(); path(s.scr); ctx.fill(); }
-    ctx.restore(); n++;
+    if (cut) ctx.restore();
+    n++;
   }
+  ctx.globalAlpha = a0; ctx.fillStyle = f0;
   return n;
 }
 /**

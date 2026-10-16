@@ -895,11 +895,25 @@ function worldWaterTick(world, dt, ctx) {
   if (!W || !(dt > 0)) return W;
   ctx = ctx || world.time || world.ctx || {};
   W.t += dt; W.degrade = _wwaDegrade;
-  const t = W.t, rnd = _wwaRng('water|' + (world.seed | 0) + '|' + Math.floor(t * 30));
+  // (the tick's random stream is made when something first asks: rain, leaves and spray; a calm tick no longer hashes a string for nothing)
+  const t = W.t;
+  let rng = null;
+  const rnd = () => (rng || (rng = _wwaRng('water|' + (world.seed | 0) + '|' + Math.floor(t * 30))))();
   for (const k of ['wakes', 'rings', 'leaves']) { for (const q of W[k]) q.age += dt; W[k] = W[k].filter(q => q.age < q.life); }
   const agents = Array.isArray(world.agents) ? world.agents : typeof worldAgents === 'function' ? (() => { try { return worldAgents(world) || []; } catch (e) { return []; } })() : [];
   const floaters = [];
-  for (const e of [].concat((world.entities || []), agents)) {
+  // the statics do not move: the ones that float are found once per entity list (a pass over a thousand plants per tick found none)
+  const ents0 = world.entities || [];
+  if (!W.statF || W.statF.src !== ents0 || W.statF.n !== ents0.length || W.statF.regions !== W.regions) {
+    const list = [];
+    for (const e of ents0) {
+      if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) continue;
+      if (!(String(e.attach || '') === 'water' || e.layer === 'swim' || _WWA_FLOATS.test(e.cls || ''))) continue;
+      list.push(e);
+    }
+    W.statF = { src: ents0, n: ents0.length, regions: W.regions, list };
+  }
+  for (const e of W.statF.list.concat(agents)) {
     if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) continue;
     const cls = e.cls || '', onW = String(e.attach || '') === 'water' || e.layer === 'swim' || _WWA_FLOATS.test(cls);
     if (!onW) continue;
@@ -928,7 +942,11 @@ function worldWaterTick(world, dt, ctx) {
   }
   // buoyancy: a seeded bob per floater (no two in step), plus rocking from wakes passing within reach
   for (const [e, R] of floaters) {
-    const key = e.id == null ? e.obj + '@' + e.x + ',' + e.z : e.id, r = _wwaRng('bob|' + key), ph = r() * 6.283, w = 1.1 + r() * 0.9, amp = 0.012 + 0.05 * R.look.ripple;
+    // a floater's phase and rate are its own, from its key: made once (a string hash each per tick before)
+    const key = e.id == null ? e.obj + '@' + e.x + ',' + e.z : e.id, bk = W.bobK || (W.bobK = new Map());
+    let kc = bk.get(key);
+    if (!kc) { const r = _wwaRng('bob|' + key); kc = { ph: r() * 6.283, w: 1.1 + r() * 0.9 }; bk.set(key, kc); }
+    const ph = kc.ph, w = kc.w, amp = 0.012 + 0.05 * R.look.ripple;
     let roll = Math.sin(t * w * 0.7 + ph * 1.3) * 0.6, dy = amp * Math.sin(t * w + ph), kmax = 0;
     // a passing wake: its front spreads from where the boat was at 0.8 x its speed; the strongest front over this floater rocks it
     for (const q of W.wakes) {
@@ -1005,18 +1023,28 @@ try {
 function worldWaterDraw(ctx, res, R, t, o) {
   if (!ctx || !res || !res.w || typeof document === 'undefined') return 0;
   o = o || {};
+  // o.into: the region drawn at the context's own origin (a cached composite of it: 79-world-5frame.js keeps one per water and refreshes it
+  // at WORLD_FRAME_WATER_HZ); the ripple still reads the region's own rows
+  const ax = o.into ? 0 : res.x0, ay = o.into ? 0 : res.y0;
   const mk = (img) => { const c = document.createElement('canvas'); c.width = res.w; c.height = res.h; c.getContext('2d').putImageData(new ImageData(img.data, res.w, res.h), 0, 0); return c; };
   if (!res.baseCanvas && res.base) res.baseCanvas = mk(res.base);
   if (!res.reflCanvas && res.refl) res.reflCanvas = mk(res.refl);
   let n = 0;
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
-  if (res.baseCanvas) { ctx.drawImage(res.baseCanvas, res.x0, res.y0); n++; }
+  if (res.baseCanvas) { ctx.drawImage(res.baseCanvas, ax, ay); n++; }
   if (res.reflCanvas) {
-    // bands of 2 rows: with the slope cap of worldWaterRipple a band steps at most 0.6 px from the next (never a staircase)
-    const bh = Math.max(1, Math.min(2, o.band || 2));
-    for (let y = 0; y < res.h; y += bh) {
-      const h = Math.min(bh, res.h - y), dx = worldWaterRipple(R, res.y0 + y, t, o);
-      ctx.drawImage(res.reflCanvas, 0, y, res.w, h, res.x0 + dx, res.y0 + y, res.w, h); n++;
+    // bands of rows that the ripple shifts alike: with the slope cap of worldWaterRipple (0.3 px a row) a band of 2 rows was never more than
+    // 0.3 px off a row's own shift, so a band here grows (up to 8 rows) while every row in it is within 0.3 px of the band's shift: the same
+    // error bound, and the calm and the near rows of a pond are a quarter of the draws (never a staircase)
+    const maxB = Math.max(1, Math.min(8, o.maxBand || 8)), TOL = 0.3;
+    for (let y = 0; y < res.h;) {
+      const dx = worldWaterRipple(R, res.y0 + y, t, o);
+      let h = 1;
+      while (h < maxB && y + h < res.h && Math.abs(worldWaterRipple(R, res.y0 + y + h, t, o) - dx) <= TOL) h++;
+      if (h === 1 && y + 1 < res.h) h = 2;   // (a steep stretch: the old band of two rows, whose own bound is 0.3 px a row)
+      h = Math.min(h, res.h - y);
+      ctx.drawImage(res.reflCanvas, 0, y, res.w, h, ax + dx, ay + y, res.w, h); n++;
+      y += h;
     }
   }
   ctx.restore();

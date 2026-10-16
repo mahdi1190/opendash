@@ -34,9 +34,14 @@ What now holds, by default, in the engine (each with a test and a SCENE_LESSONS 
 
 Still not right:
 
-- **Frame time.** At 4x CPU throttle the compositor takes about 140 ms a frame (budget 8 ms) and a warm remount 1.7 to 2.6 s (budget
-  1 s); the cold first bake is fine (well under 5 s). The cost is the chunk blits and the occluder redraws in
-  `_wfrDraw` (the `depth` section of `stats().prof`); idea: pre-composite the run of chunks behind the farthest mover once per bake.
+- **Frame time** (16 Oct, fix/perf: SCENE_LESSONS W; the numbers are in the branch report). The cost was never the chunk blits (0.02 ms) but
+  the movers' own work: copies (`Object.assign` made dictionary objects), sprite lookups, the water's 217 bands, a clip per redraw, the systems
+  catching up after a slow frame. Fixed, with the pictures equal (York identical; the rest differ in the water's reflections by under 0.3 px and in walkers under 14 px
+  tall, drawn whole). At a 4x throttle on the dev box: median 17 to 117 ms (was 27 to 228), p95 35 to 149 ms, warm remount 0.6 to 1.4 s (was 1.0 to 4.0 s);
+  unthrottled: median 1.3 to 9.6 ms, p95 2 to 14 ms. The gate (median < 16 ms, p95 < 33 ms, warm < 1 s at 4x) is met by no scene in full (York: median 14 to 17 ms, p95 41; warm < 1 s
+  only York and Malham): a 4x throttle costs Map- and canvas-heavy code 8 to 12x, so 16 ms there is a 1.5 ms frame unthrottled. What is left, in order: the
+  movers' blits (2 to 4 canvas calls each), the contact shadow polygons (12 calls each), the systems' tick (life-move is over its budget:
+  the movement package's), the water bands. `stats().prof` has `host recs order water mirror shadows depth` now.
 - (fixed 16 Oct, fix/pond: the pond's reflection steps, the boardwalk across the lake, the flat marsh slab; see SCENE_LESSONS U.) The nav map does not treat extruded buildings as
   solid in every case; a walker can still pass through a jogger for one frame (swept check) in the canal at night.
 - Library art gaps: no timber or jettied style until uk-york merges, no landmark art for the Liver Building or the Abbey.
