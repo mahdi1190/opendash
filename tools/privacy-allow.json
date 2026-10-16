@@ -2461,6 +2461,12 @@
       "path": "src/app/79-world-0kb.js",
       "line_sha256": "045e8c0c7af30f3654065078a6c35fc3abb234090e839e7762b4ce409bee4ca5",
       "why": "ordinary colour words in the livery names of the main-line train (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-people-london-stations.js",
+      "line_sha256": "5e33bd225a3bb85c385bd0c361dd5d0a109e110180c46380d7b705877cbb37d7",
+      "why": "an ordinary English verb in a drawing comment (reviewed)"
     }
   ]
 }
