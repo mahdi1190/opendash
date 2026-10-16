@@ -479,15 +479,22 @@ The unit tests and the Node run were green while the page was not. The contract 
   at every distance.
 - CV3 [T] Stone is lit by the sun: a shape of a generated face carries its normal and the world lights it by the real sun (lighter and warmer
   toward it, darker and cooler away, by how directional the light is); the bake key carries a coarse sun bucket on chunks with a building only (V5).
-- CV4 [T] An estuary is a water kind of its own, in every table indexed by kind (look, v2 table, host map, kit quay rules), brown-grey and opaque with
+- CV4 [T] An estuary is a water kind of its own, in every table indexed by kind (look, v2 table, host map, kit quay rules), umber-grey and opaque with
   a poor mirror and a tide's flow; open choppy water carries wavelets in its base bake, fixed in metres, deterministic, faded under a pixel.
 - CV5 [T] A hull with no end art gets a stepped silhouette from its side art (hull, house, deck, mast, windows); `boat.river-ferry` is a generic
   double-ended passenger ferry with end views.
 - CV6 [T] The `waterfront-city` kit and the `estuary` backdrop dress a great plaza on a wide river from a short spec: the strict critic passes
   with no hand-placed dressing; the far shore covers the horizon with a low line a mile off.
 - CV7 [T] A mover moved by a hop, a flight or a step keeps its shown velocity: nothing is drawn flying (or walking) while the record says it is still.
-- CV8 [T] The Pier Head spec itself (`liverpool-pier-head-1-w3`): at most five surfaces, three buildings with a crown, one ferry and life; no fill, no
-  landmark art, no backdrop; the three buildings span over a third of the frame, the crowns are inside it, the sky is open.
+- CV8 [T] The Pier Head spec itself (`liverpool-pier-head-1-w3`): at most five surfaces, three buildings each with its own civic style and crown, ferries, a statue
+  group and a bench by id, and life; no fill, no landmark art, no backdrop; the three buildings span over a third of the frame, the crowns are inside it,
+  the sky is open.
+- CV9 [T] The three waterfront offices are three silhouettes: a tall block with two clock towers and a lantern tower (`liver-towers`), a palazzo with
+  no tower or dome (`palazzo`), a great ribbed dome on a drum with four domed corner turrets (`port-dome`); each in its own style (stone tone, bay,
+  order, cornice), so no two read as one block at any distance or angle.
+- CV10 [T] Open estuary water reads as water: a silvery sheen toward the horizon, umber silt that grows toward the viewer (off at night), white
+  crests in the chop; a ferry at a landing stage floats on it with its waterline and its reflection.
+- CV11 [T] A static drawn live (a flickering lamp, a flame) is lit like any other: its glass shows lit and its halo is drawn when it is on.
 
 ## 30. A town that must be recognised (the first no-example place, drawn again: Whitby with its abbey, church, steps and swing bridge, 15 Oct)
 
