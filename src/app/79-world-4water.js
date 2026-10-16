@@ -68,7 +68,7 @@ const WORLD_WATER_LOOK = Object.freeze({
   sea: { base: ['#5f8aa6', '#3a6a8c', '#234a66'], tint: '#3a6a8c', clarity: 0.1, mirror: 0.35, ripple: 0.6, drift: 'swell', rings: false, chop: 0.7 },
   harbour: { base: ['#5a7480', '#3f5e6a', '#2d4652'], tint: '#3f5e6a', clarity: 0.06, mirror: 0.6, ripple: 0.25, drift: 'wind', rings: true },
   // a wide tidal estuary (Mersey, Thames, Severn, Humber): silt-laden, brown-grey, opaque, choppy, running with the tide
-  estuary: { base: ['#946c3e', '#704f2c', '#4b351b'], tint: '#704f2c', clarity: 0.02, mirror: 0.12, ripple: 0.55, drift: 'flow', rings: true, flow: 0.5, chop: 1 },
+  estuary: { base: ['#946c3e', '#704f2c', '#4b351b'], tint: '#704f2c', clarity: 0.02, mirror: 0.14, ripple: 0.55, drift: 'flow', rings: true, flow: 0.5, chop: 1, sheen: 0.7, silt: 0.4 },
   puddle: { base: ['#6a7480', '#4a5560', '#2a3540'], tint: '#4a5560', clarity: 0, mirror: 0.9, ripple: 0.05, drift: 'still', rings: false },
 });
 const _WWA_BED = '#4a4030', _WWA_FLOATS = /^(boat|duck|swan|coot|grebe|goose|gull|fish)$/, _WWA_SWIMMERS = /^(duck|swan|coot|grebe|goose)$/;
@@ -265,18 +265,28 @@ function _wwaOverlap(A, B) {
 }
 /** Whether a ground point (metres) lies in a region's water (any of its parts). */
 function _wwaInR(R, x, z) { for (const P of R.polys || [R.polyM]) if (_wwaInPoly(x, z, P)) return true; return false; }
-/** The water rows [[Y0, Y1], ...] of a scene column X (even-odd crossings of the projected outline). */
+/**
+ * The water rows [[Y0, Y1], ...] of a scene column X: the NONZERO-winding span of each projected outline, then the union of the
+ * parts. A lowered water is one ring of overlapping visible pieces joined by zero-width slits (_wwaOutline), all wound one way;
+ * even-odd crossings made every overlap of two pieces a HOLE (a cut inside a pond lost its whole water: pond 'cut' of the Fleet
+ * Pond boardwalk, 16 Oct), while the winding rule keeps the overlap wet and still leaves an island (wound the other way) dry.
+ */
 function worldWaterSpansAt(R, X) {
   const clips = Array.isArray(R.clips) && R.clips.length ? R.clips : [R.clip], all = [];
   for (const P of clips) {
-    const ys = [];
+    const cr = [];
     for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
       const a = P[j], b = P[i];
       if ((a[0] <= X) === (b[0] <= X)) continue;
-      ys.push(a[1] + (b[1] - a[1]) * (X - a[0]) / (b[0] - a[0]));
+      cr.push([a[1] + (b[1] - a[1]) * (X - a[0]) / (b[0] - a[0]), b[0] > a[0] ? 1 : -1]);
     }
-    ys.sort((a, b) => a - b);
-    for (let i = 0; i + 1 < ys.length; i += 2) all.push([ys[i], ys[i + 1]]);
+    cr.sort((a, b) => a[0] - b[0]);
+    let wn = 0, y0 = 0;
+    for (const [y, d] of cr) {
+      const was = wn;
+      wn += d;
+      if (was === 0 && wn !== 0) y0 = y; else if (was !== 0 && wn === 0) all.push([y0, y]);
+    }
   }
   if (clips.length < 2) return all;
   // the union of the parts' spans (one water: an overlap is wet once, never a seam)
@@ -551,7 +561,11 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
     const b = g < 0.5 ? _wwaMixRgb(base3[0], base3[1], g * 2) : _wwaMixRgb(base3[1], base3[2], (g - 0.5) * 2);
     const skyc = g < 0.35 ? _wwaMixRgb(S.low, S.mid, g / 0.35) : _wwaMixRgb(S.mid, S.top, _wwaClamp((g - 0.35) / 0.65, 0, 1));   // the sky mirrored about the horizon
     const F = _wwaClamp(look.mirror * (0.25 + 0.55 * u), 0, 0.95);
-    rowBase[r] = _wwaMixRgb(_wwaMixRgb(b, bed, _wwaClamp(look.clarity * 2.5 * g * g, 0, 0.5)), skyc, F * 0.6);
+    // open water seen at a grazing angle mirrors the pale sky near the horizon: a silvery sheen that thins toward the viewer (look.sheen)
+    const sheen = look.sheen > 0 ? _wwaClamp(look.sheen * Math.pow(Math.max(0, (u - 0.3) / 0.7), 1.6), 0, 0.9) : 0;
+    rowBase[r] = _wwaMixRgb(_wwaMixRgb(_wwaMixRgb(b, bed, _wwaClamp(look.clarity * 2.5 * g * g, 0, 0.5)), skyc, F * 0.6), _wwaMixRgb(S.low, S.mid, 0.45), sheen * 0.6);
+    // silt: a tidal river is umber through the sky's mirror (look.silt), more of it where the water is near; none at night (the tint is a daylight colour)
+    if (look.silt > 0) { const st = _wwaRgb(look.tint || look.base[1]), k = look.silt * (1 - _wwaClamp(S.dark * 1.3, 0, 1)) * (0.3 + 0.7 * g); rowBase[r] = _wwaMixRgb(rowBase[r], [st[0] * 1.2, st[1] * 1.2, st[2] * 1.15], k); }
   }
   // 2. the base (statics' bake): every wet pixel opaque, dithered
   const D = res.img.data;
@@ -576,12 +590,11 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
   // the body colour the mirror is tinted by: the kind's, lit by the light now (at night its daylight green-grey lifted every
   // mirrored dark into a grey veil over the water: SCENE_LESSONS H)
   const tint = S.dark > 0.05 ? _wwaMixRgb(_wwaRgb(look.tint || look.base[1]), base3[1], _wwaClamp(S.dark * 1.2, 0, 1)) : _wwaRgb(look.tint || look.base[1]);
-  // one source pixel into the reflection: about the owner's contact row (a bank owner's base laid on the water edge), only into
-  // the water, faded with its mirrored height, Fresnel by the row, tinted by the kind; where two land on one, blended by depth
-  // (the nearer over the farther, whatever the order), so the nearer owner wins and a soft edge stays soft
-  const put = (k, ix, x, yc, S, s4, a, A, B, C) => {
-    if (!(yc < B)) return;                                          // at or below its own waterline (its base on the bank): not mirrored
-    const ty = Math.floor(A + B - yc), r = ty - y0;
+  // one mirrored pixel into the reflection: at dest row ty, only into the water, faded with its mirrored height, Fresnel by the
+  // row, tinted by the kind; where two land on one, blended by depth (the nearer over the farther, whatever the order), so the
+  // nearer owner wins and a soft edge stays soft. (cr, cg, cb: the source colour; a: its coverage 0..255)
+  const putAt = (k, ix, x, ty, cr, cg, cb, a, A, C) => {
+    const r = ty - y0;
     if (r < 0 || r >= h || ty < C) return;                          // (C: the image of a high quay's own wall hides it)
     const t = r * w + ix;
     if (!wet[t]) return;                                            // nothing reflects outside the water
@@ -590,7 +603,7 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
     const hM = (ty + 0.5 - A) / vs * Math.max(0.05, z) / cam.f, fade = Math.exp(-hM / 45), F = _wwaClamp(look.mirror * (0.3 + 0.6 * rowU[r]), 0, 0.95);
     const na = a * F * fade / 255;
     if (!(na > 0.002)) return;
-    const t4 = t * 4, nr = S[s4] * 0.78 + tint[0] * 0.22, ng = S[s4 + 1] * 0.78 + tint[1] * 0.22, nb = S[s4 + 2] * 0.78 + tint[2] * 0.22;
+    const t4 = t * 4, nr = cr * 0.78 + tint[0] * 0.22, ng = cg * 0.78 + tint[1] * 0.22, nb = cb * 0.78 + tint[2] * 0.22;
     const oa = refl[t4 + 3] / 255;
     if (!(oa > 0)) { refl[t4] = nr; refl[t4 + 1] = ng; refl[t4 + 2] = nb; refl[t4 + 3] = Math.round(na * 255); zb[t] = z; return; }
     const near = z <= zb[t], fa = near ? na : oa, ba = near ? oa : na, ra = fa + ba * (1 - fa);
@@ -599,16 +612,44 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
     refl[t4 + 3] = Math.round(ra * 255);
     if (near) zb[t] = z;
   };
+  // one source pixel (the composite path): about the owner's contact row (a bank owner's base laid on the water edge), the
+  // row snapped to a whole pixel
+  const put = (k, ix, x, yc, S, s4, a, A, B, C) => {
+    if (!(yc < B)) return;                                          // at or below its own waterline (its base on the bank): not mirrored
+    putAt(k, ix, x, Math.floor(A + B - yc), S[s4], S[s4 + 1], S[s4 + 2], a, A, C);
+  };
   const rowsOf = (k, x) => { const X = (x + 0.5 - ox) / vs, A = worldWaterContactRow(R, ctc[k], X) * vs + oy; return [A, ctc[k].kind === 'bank' ? worldWaterContactBase(R, ctc[k], X) * vs + oy : A, worldWaterContactClip(R, ctc[k], X) * vs + oy]; };
   if (owner && Array.isArray(owner.layers) && owner.layers.length) {
+    // each owner's own layer, column by column, RESAMPLED about the column's contact row: a dest row takes its source position
+    // s - (row + 0.5) (s = A + B, the sum of the contact and base rows, not a whole number on a sloped contact) with a linear
+    // blend of the two source rows it falls between. The old forward mapping floored the row per column, so any edge on a
+    // sloped contact (a walkway's diagonal edge, the lakeside's line, a bank in perspective) came out a staircase one pixel
+    // high; the blend lays the edge where it truly falls, anti-aliased (the mirror of a straight edge is a straight edge).
     for (const Ly of owner.layers) {
       const k = Ly.k;
       if (!ctc[k]) continue;
-      for (let lx = 0; lx < Ly.w; lx++) {
+      const D = Ly.data, LW = Ly.w, LH = Ly.h;
+      for (let lx = 0; lx < LW; lx++) {
         const x = Ly.x0 + lx, ix = x - x0;
         if (ix < 0 || ix >= w) continue;
-        const [A, B, C] = rowsOf(k, x);
-        for (let ly = 0; ly < Ly.h; ly++) { const s4 = (ly * Ly.w + lx) * 4, a = Ly.data[s4 + 3]; if (a) put(k, ix, x, Ly.y0 + ly + 0.5, Ly.data, s4, a, A, B, C); }
+        const [A, B, C] = rowsOf(k, x), s0 = A + B;
+        // the source rows that mirror: those above the owner's waterline (a row at or below it is its sunk part or its base)
+        let top = LH, bot = -1;
+        for (let ly = 0; ly < LH; ly++) { if (D[(ly * LW + lx) * 4 + 3]) { if (ly < top) top = ly; bot = ly; } }
+        if (bot < 0) continue;
+        const lim = Math.min(bot, Math.ceil(B - Ly.y0 - 0.5) - 1);     // the last source row with centre < B
+        if (lim < top) continue;
+        const tLo = Math.max(y0, Math.ceil(s0 - (Ly.y0 + lim + 1.5) - 0.5)), tHi = Math.min(y1 - 1, Math.floor(s0 - (Ly.y0 + top - 0.5) - 0.5));
+        for (let ty = tLo; ty <= tHi; ty++) {
+          const u = s0 - ty - Ly.y0 - 1, j0 = Math.floor(u), fr = u - j0;
+          let a0 = 0, a1 = 0, o0 = 0, o1 = 0;
+          if (j0 >= top && j0 <= lim) { o0 = (j0 * LW + lx) * 4; a0 = D[o0 + 3] * (1 - fr); }
+          if (j0 + 1 >= top && j0 + 1 <= lim) { o1 = ((j0 + 1) * LW + lx) * 4; a1 = D[o1 + 3] * fr; }
+          const a = a0 + a1;
+          if (!(a > 0.5)) continue;
+          const i0 = a0 / a, i1 = a1 / a;
+          putAt(k, ix, x, ty, D[o0] * i0 + D[o1] * i1, D[o0 + 1] * i0 + D[o1 + 1] * i1, D[o0 + 2] * i0 + D[o1 + 2] * i1, a, A, C);
+        }
       }
     }
   } else if (comp && comp.data && owner && owner.idx) {
@@ -854,11 +895,25 @@ function worldWaterTick(world, dt, ctx) {
   if (!W || !(dt > 0)) return W;
   ctx = ctx || world.time || world.ctx || {};
   W.t += dt; W.degrade = _wwaDegrade;
-  const t = W.t, rnd = _wwaRng('water|' + (world.seed | 0) + '|' + Math.floor(t * 30));
+  // (the tick's random stream is made when something first asks: rain, leaves and spray; a calm tick no longer hashes a string for nothing)
+  const t = W.t;
+  let rng = null;
+  const rnd = () => (rng || (rng = _wwaRng('water|' + (world.seed | 0) + '|' + Math.floor(t * 30))))();
   for (const k of ['wakes', 'rings', 'leaves']) { for (const q of W[k]) q.age += dt; W[k] = W[k].filter(q => q.age < q.life); }
   const agents = Array.isArray(world.agents) ? world.agents : typeof worldAgents === 'function' ? (() => { try { return worldAgents(world) || []; } catch (e) { return []; } })() : [];
   const floaters = [];
-  for (const e of [].concat((world.entities || []), agents)) {
+  // the statics do not move: the ones that float are found once per entity list (a pass over a thousand plants per tick found none)
+  const ents0 = world.entities || [];
+  if (!W.statF || W.statF.src !== ents0 || W.statF.n !== ents0.length || W.statF.regions !== W.regions) {
+    const list = [];
+    for (const e of ents0) {
+      if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) continue;
+      if (!(String(e.attach || '') === 'water' || e.layer === 'swim' || _WWA_FLOATS.test(e.cls || ''))) continue;
+      list.push(e);
+    }
+    W.statF = { src: ents0, n: ents0.length, regions: W.regions, list };
+  }
+  for (const e of W.statF.list.concat(agents)) {
     if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) continue;
     const cls = e.cls || '', onW = String(e.attach || '') === 'water' || e.layer === 'swim' || _WWA_FLOATS.test(cls);
     if (!onW) continue;
@@ -887,7 +942,11 @@ function worldWaterTick(world, dt, ctx) {
   }
   // buoyancy: a seeded bob per floater (no two in step), plus rocking from wakes passing within reach
   for (const [e, R] of floaters) {
-    const key = e.id == null ? e.obj + '@' + e.x + ',' + e.z : e.id, r = _wwaRng('bob|' + key), ph = r() * 6.283, w = 1.1 + r() * 0.9, amp = 0.012 + 0.05 * R.look.ripple;
+    // a floater's phase and rate are its own, from its key: made once (a string hash each per tick before)
+    const key = e.id == null ? e.obj + '@' + e.x + ',' + e.z : e.id, bk = W.bobK || (W.bobK = new Map());
+    let kc = bk.get(key);
+    if (!kc) { const r = _wwaRng('bob|' + key); kc = { ph: r() * 6.283, w: 1.1 + r() * 0.9 }; bk.set(key, kc); }
+    const ph = kc.ph, w = kc.w, amp = 0.012 + 0.05 * R.look.ripple;
     let roll = Math.sin(t * w * 0.7 + ph * 1.3) * 0.6, dy = amp * Math.sin(t * w + ph), kmax = 0;
     // a passing wake: its front spreads from where the boat was at 0.8 x its speed; the strongest front over this floater rocks it
     for (const q of W.wakes) {
@@ -964,18 +1023,28 @@ try {
 function worldWaterDraw(ctx, res, R, t, o) {
   if (!ctx || !res || !res.w || typeof document === 'undefined') return 0;
   o = o || {};
+  // o.into: the region drawn at the context's own origin (a cached composite of it: 79-world-5frame.js keeps one per water and refreshes it
+  // at WORLD_FRAME_WATER_HZ); the ripple still reads the region's own rows
+  const ax = o.into ? 0 : res.x0, ay = o.into ? 0 : res.y0;
   const mk = (img) => { const c = document.createElement('canvas'); c.width = res.w; c.height = res.h; c.getContext('2d').putImageData(new ImageData(img.data, res.w, res.h), 0, 0); return c; };
   if (!res.baseCanvas && res.base) res.baseCanvas = mk(res.base);
   if (!res.reflCanvas && res.refl) res.reflCanvas = mk(res.refl);
   let n = 0;
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
-  if (res.baseCanvas) { ctx.drawImage(res.baseCanvas, res.x0, res.y0); n++; }
+  if (res.baseCanvas) { ctx.drawImage(res.baseCanvas, ax, ay); n++; }
   if (res.reflCanvas) {
-    // bands of 2 rows: with the slope cap of worldWaterRipple a band steps at most 0.6 px from the next (never a staircase)
-    const bh = Math.max(1, Math.min(2, o.band || 2));
-    for (let y = 0; y < res.h; y += bh) {
-      const h = Math.min(bh, res.h - y), dx = worldWaterRipple(R, res.y0 + y, t, o);
-      ctx.drawImage(res.reflCanvas, 0, y, res.w, h, res.x0 + dx, res.y0 + y, res.w, h); n++;
+    // bands of rows that the ripple shifts alike: with the slope cap of worldWaterRipple (0.3 px a row) a band of 2 rows was never more than
+    // 0.3 px off a row's own shift, so a band here grows (up to 8 rows) while every row in it is within 0.3 px of the band's shift: the same
+    // error bound, and the calm and the near rows of a pond are a quarter of the draws (never a staircase)
+    const maxB = Math.max(1, Math.min(8, o.maxBand || 8)), TOL = 0.3;
+    for (let y = 0; y < res.h;) {
+      const dx = worldWaterRipple(R, res.y0 + y, t, o);
+      let h = 1;
+      while (h < maxB && y + h < res.h && Math.abs(worldWaterRipple(R, res.y0 + y + h, t, o) - dx) <= TOL) h++;
+      if (h === 1 && y + 1 < res.h) h = 2;   // (a steep stretch: the old band of two rows, whose own bound is 0.3 px a row)
+      h = Math.min(h, res.h - y);
+      ctx.drawImage(res.reflCanvas, 0, y, res.w, h, ax + dx, ay + y, res.w, h); n++;
+      y += h;
     }
   }
   ctx.restore();

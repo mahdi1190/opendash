@@ -200,10 +200,12 @@ function _wwdState(world) {
   return S;
 }
 function _wwdCollect(world) {
-  const S = _wwdState(world), ents = Array.isArray(world.entities) ? world.entities : [];
-  if (S.src === ents && S.n === ents.length) return S.list;
-  S.src = ents; S.n = ents.length; S.list = [];
-  for (const e of ents) if (e && typeof e === 'object' && _wwdConst(e).prof) S.list.push(e);
+  // world._swayOnly (a Set of entities; the compositor's frame plan sets it): only those are moved each tick. The compositor draws the
+  // rest of the statics baked, so their sway is read by nothing, and a scene of a thousand plants moved them all 30 times a second
+  const S = _wwdState(world), ents = Array.isArray(world.entities) ? world.entities : [], only = world._swayOnly instanceof Set ? world._swayOnly : null;
+  if (S.src === ents && S.n === ents.length && S.only === only) return S.list;
+  S.src = ents; S.n = ents.length; S.only = only; S.list = [];
+  for (const e of ents) if (e && typeof e === 'object' && (!only || only.has(e)) && _wwdConst(e).prof) S.list.push(e);
   return S.list;
 }
 /** The wind system's tick: world.wind in step with the time context; ent.sway (updated in place) on the swaying statics due now. */

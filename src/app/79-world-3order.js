@@ -56,30 +56,49 @@ function worldOrderChunkZMax(ch) {
   return ch._zm;
 }
 
-// Screen-column index of a chunk's statics (built once per chunk; statics do not move).
+// Screen-cell index of a chunk's statics (built once per chunk; statics do not move): a grid of 64 x 64 cells, each holding the statics whose box
+// covers it, so a mover's query reads the few cells under its box (the columns it was before held every static of that x range, and a thousand-
+// static chunk gave a mover a hundred candidates to test). A piece that covers more than 256 cells (a ground plane) is tested against every query.
 var WORLD_ORDER_COLW = 64, worldOrderStamp = 0;
 function worldOrderNearby(ch, box, boxes, cam) {
-  if (!ch._cols) {
-    var cols = {};
-    for (var i = 0; i < ch.ents.length; i++) {
+  var W = WORLD_ORDER_COLW, i, c, r, g = ch._grid;
+  if (!g) {
+    var bs = [], big = [], cmin = 1e9, cmax = -1e9, rmin = 1e9, rmax = -1e9;
+    for (i = 0; i < ch.ents.length; i++) {
       var s = ch.ents[i], b = worldOrderBoxOf(s, boxes, cam);
       s._ob = b;
-      if (!b) continue;
-      var c0 = Math.floor(b.x0 / WORLD_ORDER_COLW), c1 = Math.floor(b.x1 / WORLD_ORDER_COLW);
-      if (c1 - c0 > 200) c1 = c0 + 200;
-      for (var c = c0; c <= c1; c++) (cols[c] || (cols[c] = [])).push(i);
+      if (!b) { bs.push(null); continue; }
+      var cc = [Math.max(-500, Math.floor(b.x0 / W)), Math.min(500, Math.floor(b.x1 / W)), Math.max(-500, Math.floor(b.y0 / W)), Math.min(500, Math.floor(b.y1 / W))];
+      if ((cc[1] - cc[0] + 1) * (cc[3] - cc[2] + 1) > 256) { big.push(i); bs.push(null); continue; }
+      bs.push(cc);
+      if (cc[0] < cmin) cmin = cc[0]; if (cc[1] > cmax) cmax = cc[1]; if (cc[2] < rmin) rmin = cc[2]; if (cc[3] > rmax) rmax = cc[3];
     }
-    ch._cols = cols;
+    var nc = Math.max(0, cmax - cmin + 1), nr = Math.max(0, rmax - rmin + 1), cells = new Array(nc * nr);
+    for (i = 0; i < bs.length; i++) {
+      var q = bs[i];
+      if (!q) continue;
+      for (c = q[0]; c <= q[1]; c++) for (r = q[2]; r <= q[3]; r++) {
+        var k = (c - cmin) * nr + (r - rmin);
+        (cells[k] || (cells[k] = [])).push(i);
+      }
+    }
+    g = ch._grid = { cells: cells, big: big, cmin: cmin, rmin: rmin, nc: nc, nr: nr };
   }
   if (!box) return [];
-  var k0 = Math.floor(box.x0 / WORLD_ORDER_COLW), k1 = Math.floor(box.x1 / WORLD_ORDER_COLW), stamp = ++worldOrderStamp, idx = [];
-  for (var k = k0; k <= k1; k++) {
-    var l = ch._cols[k];
-    if (!l) continue;
-    for (var j = 0; j < l.length; j++) {
-      var e = ch.ents[l[j]];
-      if (e._os !== stamp) { e._os = stamp; if (worldOrderOverlap(box, e._ob)) idx.push(l[j]); }
+  var k0 = Math.max(g.cmin, Math.floor(box.x0 / W)), k1 = Math.min(g.cmin + g.nc - 1, Math.floor(box.x1 / W)), q0 = Math.max(g.rmin, Math.floor(box.y0 / W)), q1 = Math.min(g.rmin + g.nr - 1, Math.floor(box.y1 / W));
+  var stamp = ++worldOrderStamp, idx = [], j, e, lst;
+  for (c = k0; c <= k1; c++) for (r = q0; r <= q1; r++) {
+    lst = g.cells[(c - g.cmin) * g.nr + (r - g.rmin)];
+    if (!lst) continue;
+    for (j = 0; j < lst.length; j++) {
+      e = ch.ents[lst[j]];
+      if (e._os !== stamp) { e._os = stamp; if (worldOrderOverlap(box, e._ob)) idx.push(lst[j]); }
     }
+  }
+  lst = g.big;
+  for (j = 0; j < lst.length; j++) {
+    e = ch.ents[lst[j]];
+    if (e._os !== stamp) { e._os = stamp; if (worldOrderOverlap(box, e._ob)) idx.push(lst[j]); }
   }
   if (idx.length > 1) idx.sort(function (a, b) { return a - b; });
   var res = new Array(idx.length);

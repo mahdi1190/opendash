@@ -146,7 +146,9 @@ test('a spec with only a camera and a water polygon becomes a scene above the ri
     // the reeds stand in the margin of the pond, the trees out of the water
     const reeds = auto.filter(e => (E.worldKb(e.obj) || {}).cls === 'reed');
     assert.ok(reeds.length > 10, 'reed stands on the banks');
-    const inPond = (x, z) => { let c = false; const P = POND.poly; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > z) !== (P[j][1] > z) && x < (P[j][0] - P[i][0]) * (z - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; };
+    // the water as built (its shore is roughened, 16 Oct: natural edges): what stands out of the water stands out of THAT outline
+    const builtPond = (world.surfaces.find(q => q.id === POND.id) || POND).poly;
+    const inPond = (x, z) => { let c = false; const P = builtPond; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > z) !== (P[j][1] > z) && x < (P[j][0] - P[i][0]) * (z - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; };
     for (const e of auto.filter(e => ['tree', 'shrub', 'flower'].includes((E.worldKb(e.obj) || {}).cls))) assert.equal(inPond(e.x, e.z), false, `${e.obj} in the pond`);
   }
 });

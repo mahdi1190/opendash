@@ -4,7 +4,7 @@
    sceneBuildingResolve) is reached through typeof guards.
 
    A street is not one box. `buildings: [{ id, along: <surface id>, side: 'left' | 'right', style, storeys: n | [a, b], from, to,
-   depth: [a, b], shops: 'ground' | 'none', gap }]` is the whole of one side of a lane: the engine walks the surface's centre line
+   depth: [a, b], shops: true | false | 'none' | [kinds], gap }]` is the whole of one side of a lane: the engine walks the surface's centre line
    and cuts the side into HOUSES, each with its own footprint (a polygon, so a bend in the lane bends the row), frontage, depth,
    storey count, seed (doors, colours, jetties, shops, fittings), a front line that steps in and out by a few tens of cm (a house
    standing proud shows its end wall), party walls on both sides, and ground-floor shops. The houses ARE the world's buildings from
@@ -48,7 +48,9 @@ function worldFrontageHouses(b, world) {
   const fr = (S && S.frontage) || [4, 7], dep = Array.isArray(b.depth) ? b.depth : _wfgNum(b.depth) ? [b.depth, b.depth] : (S && S.depth) || [6, 10];
   const r = _wfgRng(_wfgHash((world.seed | 0) + '|frontage|' + (b.id || b.along) + '|' + b.side));
   const from = Math.max(0, _wfgNum(b.from) ? b.from : 0), to = Math.min(wk.len, _wfgNum(b.to) ? b.to : wk.len), edge = surf.width / 2 + (_wfgNum(b.gap) ? b.gap : 0);
-  const shops = b.shops === false || b.shops === 'none' ? false : true;
+  // shops: true (the default mix), false | 'none', or a list of kinds to draw from (['butcher', 'butcher', 'gift']: the street of the butchers)
+  const kinds = Array.isArray(b.shops) ? b.shops.filter(k => typeof k === 'string' && k) : [], shops = b.shops === false || b.shops === 'none' ? false : true;
+  const pool = kinds.length ? kinds : WORLD_FRONTAGE_SHOPS, pShop = kinds.length ? 0.85 : 0.6;
   const stor = Array.isArray(b.storeys) ? b.storeys : _wfgNum(b.storeys) ? [b.storeys, b.storeys] : [2, 3];
   const pickStoreys = () => { if (stor[0] === stor[1]) return stor[0]; const n = stor[1] - stor[0] + 1, q = r(); return n === 2 ? (q < 0.4 ? stor[0] : stor[1]) : n === 3 ? (q < 0.22 ? stor[0] : q < 0.78 ? stor[0] + 1 : stor[1]) : stor[0] + Math.floor(q * n); };
   const clampOff = v => Math.max(-0.12, Math.min(0.34, v));
@@ -68,7 +70,7 @@ function worldFrontageHouses(b, world) {
     const bl = [fl[0] + nL[0] * D, fl[1] + nL[1] * D], br = [frp[0] + nR[0] * D, frp[1] + nR[1] * D];
     const foot = [fl, frp, br, bl].map(p => [_wfgR3(p[0]), _wfgR3(p[1])]);
     const storeys = pickStoreys(), seed = (_wfgHash((b.id || 'f') + '|' + k) + (world.seed | 0)) % 100000;
-    const shop = shops && r() < 0.6 ? { kind: WORLD_FRONTAGE_SHOPS[Math.floor(r() * WORLD_FRONTAGE_SHOPS.length) % WORLD_FRONTAGE_SHOPS.length] } : null;
+    const shop = shops && r() < pShop ? { kind: pool[Math.floor(r() * pool.length) % pool.length] } : null;
     const h0 = storeys * 2.6;
     const rec = { id: (b.id || 'frontage') + '#' + k, foot, front: 0, storeys, h: h0, style, seed, party: 'both', solidity: 'solid', frontage: _wfgR3(F), depth: _wfgR3(D),
       part: { of: b.id || null, k, n: 0 }, src: b.src || 'frontage' };

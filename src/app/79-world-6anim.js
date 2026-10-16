@@ -538,7 +538,13 @@ function worldAnimStep(world, dt, o) {
   _wanSecondary(world, agents, dt, S);
   _wanStatics(world, dt, S);
   // statics added later (the fill, a re-attach) get their record on the next tick
-  for (const e of world.entities || []) if (e && e.static !== false && (!e.anim || e.anim.oid !== e.obj)) e.anim = _wanStatic(e);
+  // (when the list has changed, and every 30 ticks for an entity whose object was swapped: a pass over every static per tick was
+  // a tenth of a thousand-static scene's tick)
+  const ents = world.entities || [];
+  if (S.entsN !== ents.length || S.entsSrc !== ents || S.ticks % 30 === 1) {
+    S.entsN = ents.length; S.entsSrc = ents;
+    for (const e of ents) if (e && e.static !== false && (!e.anim || e.anim.oid !== e.obj)) e.anim = _wanStatic(e);
+  }
   return n;
 }
 /**

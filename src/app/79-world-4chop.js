@@ -44,9 +44,9 @@ function worldWaterChop(B, wet, w, h, x0, y0, o) {
       if (!wet[p]) continue;
       const X = (x0 + x + 0.5 - ox) / vs, Xm = (X - x0s) * d / f, u = Xm / _WCH_LX;
       const t = 0.62 * _wchNoise(seed, u, v) + 0.38 * _wchNoise(seed + 7, u * 2.3 + 11, v * 2.1 + 5) - 0.5;
-      const lit = _wchStep(0.1, 0.2, t) * scale, dark = _wchStep(0.1, 0.2, -t) * scale;
+      const lit = _wchStep(0.1, 0.2, t) * scale, dark = _wchStep(0.1, 0.2, -t) * scale, foam = look.chop >= 0.9 ? _wchStep(0.19, 0.25, t) * scale : 0;   // an estuary's highest crests break white
       if (lit < 0.01 && dark < 0.01) continue;
-      const q = p * 4, dv = lit * 27 - dark * 23;
+      const q = p * 4, dv = lit * 31 - dark * 27 + foam * 44;
       B[q] += dv; B[q + 1] += dv; B[q + 2] += dv * (lit > dark ? 0.95 : 1.05);
       n++;
     }
