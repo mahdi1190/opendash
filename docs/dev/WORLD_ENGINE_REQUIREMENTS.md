@@ -488,3 +488,16 @@ The unit tests and the Node run were green while the page was not. The contract 
 - CV7 [T] A mover moved by a hop, a flight or a step keeps its shown velocity: nothing is drawn flying (or walking) while the record says it is still.
 - CV8 [T] The Pier Head spec itself (`liverpool-pier-head-1-w3`): at most five surfaces, three buildings with a crown, one ferry and life; no fill, no
   landmark art, no backdrop; the three buildings span over a third of the frame, the crowns are inside it, the sky is open.
+
+## 30. A town that must be recognised (the first no-example place, drawn again: Whitby with its abbey, church, steps and swing bridge, 15 Oct)
+
+- LM1 [T] A ruin is built, not drawn: `gothic-ruin` (wall runs of columns with broken tops, real openings that show the sky, reveals, piers,
+  pinnacles, presets `abbey` and `chapel`) is a building style; the plan's front is the long edge that faces the eye; every face is a few
+  merged shapes (the abbey about 175), far to near, floodlit after dark by the style's `night.flood`.
+- LM2 [T] A steel truss bridge is a building style (`swing-bridge`): two trusses (the camel-back top chord of a swing span), deck, pivot pier,
+  abutments and cabin; a footprint over water is legal.
+- LM3 [T] A plain old parish church is a style (`parish-church`) with a `squat-tower` crown from the ground; a fishing-town house of the north-east
+  coast is a style (`pantile-cottage`: red pantiles, colour-washed walls, gables to the lane).
+- LM4 [T] A building may declare `landmark: true`: the fill (P8) never covers more than 3 % of its main face with what it plants nearer.
+- LM5 [T] A `stairs` surface is drawn with treads (look `steps`): a dark riser line and a pale nosing every 1.1 m, kept where they read.
+- LM6 The recognisable thing stands where the eye can see it: a cliff-top building stands at the near edge of the top, with open ground below it.

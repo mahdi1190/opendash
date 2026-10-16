@@ -436,7 +436,7 @@ const _WC_KEYS = {
   surface: ['id', 'kind', 'water', 'poly', 'path', 'width', 'shallow', 'level', 'obj', 'open', 'y', 'from', 'to', 'hint', 'flow', 'step'],
   step: ['to', 'kind'],
   line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj'],
-  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap', 'crown'],
+  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap', 'crown', 'landmark'],
   entity: ['id', 'obj', 'at', 'facing', 'attach', 'variant', 'y', 'open', 'blocks', 'framed', 'row', 'parent'],
   cluster: ['cluster', 'on', 'edge', 'n', 'seed', 'gap', 'variant'],
   landmark: ['id', 'obj', 'at', 'facing', 'src', 'variant', 'attach'],
@@ -756,6 +756,8 @@ function _wcCheck(spec0, repair) {
     if (b.h != null && !(_wcNum(b.h) && b.h > 0 && b.h < 1000)) act(p + '.h', 'badValue', 'h is metres', strip(b, 'h', b.id));
     if (b.storeys == null && b.h == null) act(p, 'missingField', 'a building needs storeys or h', set(b, 'storeys', 2, b.id));
     for (const k of ['roof', 'style', 'src', 'id', 'crown']) if (b[k] != null && !_wcStr(b[k])) act(`${p}.${k}`, 'badType', k + ' is a string', strip(b, k, b.id));
+    // a building may be declared a LANDMARK (an abbey, a church, a bridge): the fill never hides its main face (P8), as for a placed landmark
+    if (b.landmark != null && typeof b.landmark !== 'boolean') act(p + '.landmark', 'badType', 'landmark is true or false', strip(b, 'landmark', b.id));
     if (b.facing != null && !_wcNum(b.facing)) act(p + '.facing', 'badType', 'facing is degrees', strip(b, 'facing', b.id));
   });
 

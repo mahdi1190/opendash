@@ -2431,6 +2431,12 @@
       "path": "tools/lib/world/check.mjs",
       "line_sha256": "c665cbca3e529a03050ed873ea3d8908401fc3ad2dad33cf30eebc43ee4b96a8",
       "why": "an ordinary English verb in code and docs (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/WORLD_ENGINE_REQUIREMENTS.md",
+      "line_sha256": "cb9708f7f012598d2a4c2c3c96261859428515dd6c754af1cb3632f7b1baaaa3",
+      "why": "a colour word in a water description (reviewed)"
     }
   ]
 }

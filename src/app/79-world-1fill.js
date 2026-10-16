@@ -390,6 +390,23 @@ function _wflLandmarks(F) {
     const zf = Array.isArray(e.foot) && e.foot.length ? Math.min(...e.foot.map(p => p[1])) : e.z;
     out.push({ id: e.id || e.obj, box: [cx0, cy0, cx1, cy1], zf, n: 16, m: 10, cov: new Uint8Array(160), used: 0 });
   }
+  // a building declared a landmark (an extruded abbey, church or bridge: `landmark: true`): its prism standing on the ground it is on
+  for (const b of F.world.buildings || []) {
+    if (!b || b.landmark !== true || !Array.isArray(b.foot) || b.foot.length < 3) continue;
+    const near = Math.max(0.4, (F.cam.dMin || 1) * 0.3), h = _wflNum(b.h) ? b.h : (_wflNum(b.storeys) ? b.storeys : 2) * 3, pts = [];
+    let zf = Infinity;
+    for (const p of b.foot) {
+      if (p[1] < near) continue;
+      zf = Math.min(zf, p[1]);
+      const g = _wflGround(F, p[0], p[1]), a = _wflProj(F, p[0], p[1], g), c = _wflProj(F, p[0], p[1], g + h);
+      pts.push([a.X, a.Y], [c.X, c.Y]);
+    }
+    if (pts.length < 2) continue;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const q of pts) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+    const cx0 = Math.max(0, x0), cx1 = Math.min(F.W, x1), cy0 = Math.max(0, y0), cy1 = Math.min(F.H, y1);
+    if (cx1 > cx0 && cy1 > cy0) out.push({ id: b.id || 'building', box: [cx0, cy0, cx1, cy1], zf, n: 16, m: 10, cov: new Uint8Array(160), used: 0, lim: 0.03 });
+  }
   return out;
 }
 function _wflLandmarkCells(L, b) {
@@ -405,7 +422,7 @@ function _wflHidesLandmark(F, b, z) {
   for (const L of F.landmarks) {
     if (!(z < L.zf)) continue;
     const add = _wflLandmarkCells(L, b);
-    if (add.length && (L.used + add.length) / (L.n * (L.m - 1)) > 0.08) return L.id;
+    if (add.length && (L.used + add.length) / (L.n * (L.m - 1)) > (L.lim || 0.08)) return L.id;
   }
   return null;
 }

@@ -344,7 +344,7 @@ const _WIV_RULES = {
           const off = f.filter(p => !_wivIsWater(_wivSurfRaw(C, p[0], p[1])));
           if (off.length) { _wivPush(C, 'habitat', e.id, `${e.obj} floats but ${off.length} of ${f.length} footprint corners are on land (${(_wivSurfRaw(C, off[0][0], off[0][1]) || {}).kind || 'nothing'})`); continue; }
         } else if (att === 'water' && !_wivIsWater(s) && !okW) { _wivPush(C, 'habitat', e.id, `${e.obj} is attached to water but stands on ${s ? s.kind : 'nothing'}`); continue; }
-        else if (_wivIsWater(s) && !okW && cls !== 'walkway') { _wivPush(C, 'habitat', e.id, `${e.obj} (${cls}) stands in the water`); continue; }
+        else if (_wivIsWater(s) && !okW && cls !== 'walkway' && !e.spans) { _wivPush(C, 'habitat', e.id, `${e.obj} (${cls}) stands in the water`); continue; }
         if ((cls === 'train' || cls === 'tram') && !(s && (s.kind === 'rail' || s.kind === 'tram'))) { _wivPush(C, 'habitat', e.id, `${e.obj} is off its rails (on ${s ? s.kind : 'nothing'})`); continue; }
         if (cls === 'vehicle' && s && !/^(road|crossing|plaza|pavement|path)$/.test(s.kind) && !e.parked) { _wivPush(C, 'habitat', e.id, `${e.obj} stands on ${s.kind}, not a road`); continue; }
       }
@@ -1260,7 +1260,7 @@ function worldInvariantFrame(world, agents, o) {
     ents.push({ id: fid, cls: e.cls || (info && info.cls) || null, obj: e.obj, static: true, auto: e.auto || null,
       landmark: !!e.landmark, framing: !!e.framing, framed: !!e.framed, x: e.x, y: e.y, z: e.z, facing: e.facing, foot: e.foot || null, height: h,
       layer: null, host: e.host || null, parent: e.parent != null ? e.parent : null, parentOff: e.parentOff, attach: e.attach || null, solidity: e.solidity || (info && info.solidity) || null,
-      deck: e.deck || null, waterline: e.waterline != null ? e.waterline : null, blocks: !!e.blocks, view: e.view || null, mirror: !!e.mirror,
+      deck: e.deck || null, waterline: e.waterline != null ? e.waterline : null, blocks: !!e.blocks, spans: !!e.spans, view: e.view || null, mirror: !!e.mirror,
       box: cam ? _wivBoxOf(cam, e, h, info ? info.size.w : null) : null, order: null, speed: 0, vx: 0, vz: 0, state: null, born: null,
       anim: e.anim || null, sway: null, shadow: null, reflect: null, look: e.look || null, backdrop: !!e.backdrop });
   }

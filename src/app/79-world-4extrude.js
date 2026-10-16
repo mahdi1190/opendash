@@ -368,7 +368,9 @@ function worldExtrudeBuilding(b, cam, o) {
     if (d) {
       // the outward normal of every visible wall (the generator's counter-clockwise footprint, front edge first)
       const F = d.foot || foot, walls = (d.walls || []).map(i => { const a = F[i], c = F[(i + 1) % F.length], ex = c[0] - a[0], ez = c[1] - a[1], L = Math.hypot(ex, ez) || 1; return { edge: i, a, b: c, n: [ez / L, -ex / L] }; });
-      return { id: b.id || null, kind: 'building', ent: b.id || null, foot, zKey: _wexR(zKey, 3), y0: Number.isFinite(g) ? _wexR(g, 3) : 0, height: d.h, eave: d.eave, box: d.box, direct: d, walls, solidity: 'solid', style: d.style };
+      // a bridge style `spans` the water it stands over (its footprint is in the water by design: the habitat rule is not for it)
+      const sd = typeof sceneBuildingStyle === 'function' ? sceneBuildingStyle(d.style) : null;
+      return { id: b.id || null, kind: 'building', ent: b.id || null, foot, zKey: _wexR(zKey, 3), y0: Number.isFinite(g) ? _wexR(g, 3) : 0, height: d.h, eave: d.eave, box: d.box, direct: d, walls, solidity: 'solid', style: d.style, spans: !!(sd && sd.spans) };
     }
   }
   // the fallback prism: walls that face the eye and a flat roof
