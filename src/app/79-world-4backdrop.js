@@ -51,7 +51,7 @@ const WORLD_BACKDROP_STYLES = Object.freeze({
     { z: 1800, dz: 0.15, objs: ['tree.woods-edge', 'tree.pond-wood', 'building.skyline-band'], fill: 0.9, cl: [5, 10], sp: 120, max: 80 }] },
   // the far shore of a wide estuary or river (a mile across): a low line of terraces, mills, warehouses, a church and trees, never a skyline
   estuary: { ground: 'town', bands: [
-    { z: 1100, dz: 0.08, objs: ['tree.bank-distant', 'building.mill-red-brick', 'tree.far-broad', 'building.terrace-northern', 'tree.bank-oak', 'building.warehouse-canal', 'tree.bank-distant', 'building.church'], fill: 1.4, cl: [5, 10], sp: 60, max: 120 },
+    { z: 1100, dz: 0.08, objs: ['building.terrace-northern', 'building.mill-red-brick', 'tree.bank-distant', 'building.warehouse-canal', 'building.terrace-northern', 'building.warehouse-canal', 'building.church', 'building.mill-red-brick', 'tree.far-broad'], fill: 1.4, cl: [5, 10], sp: 60, max: 120 },
     { z: 2400, dz: 0.08, objs: ['building.skyline-band', 'tree.bank-distant', 'tree.far-broad', 'building.skyline-band'], fill: 1.2, cl: [4, 9], sp: 150, max: 80 }] },
   'city-victorian': { ground: 'town', bands: [
     { z: 180, dz: 0.2, objs: ['building.terrace-victorian', 'building.terrace-victorian', 'building.townhouse', 'building.church', 'building.shopfront'], fill: 1.4, cl: [4, 9], sp: 18, max: 120 },
@@ -205,6 +205,16 @@ function worldBackdropYield(world, cam) {
     const c = Math.atan2(e.x, e.z) / _WBD_D, hw = Math.atan2(_wlDims(e.obj).l / 2, Math.hypot(e.x, e.z)) / _WBD_D + 0.5;
     out.push([c - hw, c + hw]);
   }
+  // the scene's own FAR BUILDINGS (a church at the end of a street, 120 m or more away) are its skyline too: the backdrop's generic church or
+  // terrace never stands inside one or doubles it (the checker's habitat rule). The range is the footprint's bearing span, and only members
+  // BEYOND the building's nearest point yield (a house standing in front of it stays), so a third number carries that depth.
+  for (const b of (world && world.buildings) || []) {
+    if (!b || !Array.isArray(b.foot) || b.foot.length < 3) continue;
+    const zs = b.foot.map(p => p[1]), z0 = Math.min(...zs);
+    if (!(z0 > 120)) continue;
+    const bs = b.foot.map(p => Math.atan2(p[0], Math.max(1, p[1])) / _WBD_D);
+    out.push([Math.min(...bs) - 0.5, Math.max(...bs) + 0.5, z0 - 1]);
+  }
   return out;
 }
 /**
@@ -225,7 +235,7 @@ function worldBackdrop(world, cam, season, o) {
   const yielded = (x, z, l) => {
     if (!yields.length) return false;
     const c = Math.atan2(x, z) / _WBD_D, hw = Math.atan2(l / 2, z) / _WBD_D * 0.5;
-    return yields.some(r => c + hw >= r[0] && c - hw <= r[1]);
+    return yields.some(r => c + hw >= r[0] && c - hw <= r[1] && (r[2] == null || z >= r[2]));
   };
   st.bands.forEach((band, bi) => {
     const objs = band.objs.filter(has);

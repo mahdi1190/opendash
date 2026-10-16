@@ -83,8 +83,18 @@ function _wflNear(pts, x, z, closed) {
   for (let i = 0; i < m; i++) { const r = _wflSeg(x, z, pts[i], pts[(i + 1) % n]); if (r.d < best.d) best = r; }
   return best;
 }
+const _wflBoxes = new WeakMap();
 function _wflContains(s, x, z) {
-  if (Array.isArray(s.poly) && s.poly.length >= 3) return _wflInPoly(s.poly, x, z);
+  if (Array.isArray(s.poly) && s.poly.length >= 3) {
+    // a long outline (a ragged shore) is rejected by its box first (kept per outline)
+    const P = s.poly;
+    if (P.length > 12) {
+      let b = _wflBoxes.get(P);
+      if (!b) { b = [Infinity, Infinity, -Infinity, -Infinity]; for (const q of P) { if (q[0] < b[0]) b[0] = q[0]; if (q[1] < b[1]) b[1] = q[1]; if (q[0] > b[2]) b[2] = q[0]; if (q[1] > b[3]) b[3] = q[1]; } _wflBoxes.set(P, b); }
+      if (x < b[0] || x > b[2] || z < b[1] || z > b[3]) return false;
+    }
+    return _wflInPoly(P, x, z);
+  }
   if (Array.isArray(s.path) && s.path.length >= 2 && s.width > 0) return _wflNear(s.path, x, z, false).d <= s.width / 2;
   return false;
 }
@@ -390,6 +400,23 @@ function _wflLandmarks(F) {
     const zf = Array.isArray(e.foot) && e.foot.length ? Math.min(...e.foot.map(p => p[1])) : e.z;
     out.push({ id: e.id || e.obj, box: [cx0, cy0, cx1, cy1], zf, n: 16, m: 10, cov: new Uint8Array(160), used: 0 });
   }
+  // a building declared a landmark (an extruded abbey, church or bridge: `landmark: true`): its prism standing on the ground it is on
+  for (const b of F.world.buildings || []) {
+    if (!b || b.landmark !== true || !Array.isArray(b.foot) || b.foot.length < 3) continue;
+    const near = Math.max(0.4, (F.cam.dMin || 1) * 0.3), h = _wflNum(b.h) ? b.h : (_wflNum(b.storeys) ? b.storeys : 2) * 3, pts = [];
+    let zf = Infinity;
+    for (const p of b.foot) {
+      if (p[1] < near) continue;
+      zf = Math.min(zf, p[1]);
+      const g = _wflGround(F, p[0], p[1]), a = _wflProj(F, p[0], p[1], g), c = _wflProj(F, p[0], p[1], g + h);
+      pts.push([a.X, a.Y], [c.X, c.Y]);
+    }
+    if (pts.length < 2) continue;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const q of pts) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+    const cx0 = Math.max(0, x0), cx1 = Math.min(F.W, x1), cy0 = Math.max(0, y0), cy1 = Math.min(F.H, y1);
+    if (cx1 > cx0 && cy1 > cy0) out.push({ id: b.id || 'building', box: [cx0, cy0, cx1, cy1], zf, n: 16, m: 10, cov: new Uint8Array(160), used: 0, lim: 0.03 });
+  }
   return out;
 }
 function _wflLandmarkCells(L, b) {
@@ -405,7 +432,7 @@ function _wflHidesLandmark(F, b, z) {
   for (const L of F.landmarks) {
     if (!(z < L.zf)) continue;
     const add = _wflLandmarkCells(L, b);
-    if (add.length && (L.used + add.length) / (L.n * (L.m - 1)) > 0.08) return L.id;
+    if (add.length && (L.used + add.length) / (L.n * (L.m - 1)) > (L.lim || 0.08)) return L.id;
   }
   return null;
 }
@@ -479,6 +506,9 @@ function _wflTry(F, c) {
   let probe = null;
   if (!air) {
     probe = _wflProbe(F, c.x, c.z);
+    // a walkway laid over water (a floating landing stage, a jetty) is dressed by its author: the fill's benches and tufts stood on the Pier Head stage
+    // in front of the ferry hulls, with the stage a hairline at eye height, and read as benches on the hull side
+    if (c.auto === 'fill' && probe.surf && probe.surf.over === 'water') return null;
     const hp = c.pit ? Object.assign({}, probe, { pit: true }) : probe;
     if (!worldKbHabitatOk(kb, hp).ok) return null;
     // a long thing, and anything in the water (reeds at a quay's foot: the invariant judges a floater's whole footprint)
@@ -809,6 +839,7 @@ function _wflHedges(F) {
 function _wflEdges(F) {
   const E = F.style.edges || {}, ix = _wflIndexOf(F), r = F.r, before = F.count;
   _wflHedges(F);
+  _wflRailBeds(F);
   // water banks by water kind: reed stands with gaps in the margin and bank planting (natural), coping lines (urban)
   for (const w of ix.waters) {
     const mode = (E.water || {})[w.s.water] || 'natural';
@@ -939,6 +970,27 @@ function _wflEdges(F) {
     });
   }
   if (F.count > before) _wflLog(F, { action: 'dress', rule: 'P5', reason: `edges dressed: ${F.count - before} entities (banks, verges, wall bases, hedgerows)` });
+}
+/**
+ * A main line's bed (P5): every `rail` surface with a centre line gets the ballast its trains ride on, the rails of each track
+ * (two tracks 4 m apart when the line is 6 m wide or more, as the timetable's tracks: 79-world-2traffic.js) and a cable trough
+ * along each side, as lines for the extruder (kinds ballast, trough). A line the author drew there stands. Trams run flush in
+ * their street and get none.
+ */
+function _wflRailBeds(F) {
+  const B = typeof WORLD_RAIL_BED === 'object' ? WORLD_RAIL_BED : { shoulder: 1.65, trough: 0.9, ballast: 0.35 };
+  if (!Array.isArray(F.world.lines)) F.world.lines = [];
+  for (const s of F.world.surfaces || []) {
+    if (!s || s.kind !== 'rail' || !Array.isArray(s.path) || s.path.length < 2 || !(s.width > 0)) continue;
+    const path = s.path.filter(p => p[1] > 0.5).map(p => [_wflR2(p[0]), _wflR2(p[1])]);
+    if (path.length < 2) continue;
+    const id = 'ballast-' + (s.id || 'rail');
+    if (F.world.lines.some(L => L && (L.id === id || L.kind === 'ballast') && Array.isArray(L.path) && _wflNear(L.path, path[0][0], path[0][1], false).d < 1)) continue;
+    const two = s.width >= 6, off = two ? Math.min(2, s.width / 4) : 0, bed = _wflR2(2 * off + 2 * B.shoulder);
+    F.world.lines.push({ id, kind: 'ballast', path, width: bed, h: B.ballast, tracks: two ? [off, -off] : [0], auto: 'rail' });
+    for (const side of [-1, 1]) F.world.lines.push({ id: `trough-${s.id || 'rail'}-${side < 0 ? 'r' : 'l'}`, kind: 'trough', path: _wflOffsetLine(path, side * (bed / 2 + B.trough)).map(p => [_wflR2(p[0]), _wflR2(p[1])]), width: 0.45, h: 0.25, auto: 'rail' });
+    _wflLog(F, { id, action: 'dress', rule: 'P5', reason: `a bed of ballast with ${two ? 'two tracks' : 'one track'} and a cable trough each side along ${s.id || 'the rail surface'}` });
+  }
 }
 /** A linear feature added for the extruder (kerb, coping), unless one already runs there. */
 function _wflLine(F, kind, pts, of) {

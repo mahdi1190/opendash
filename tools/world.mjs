@@ -35,6 +35,12 @@
 //                         the acceptance suite of 16.5 with a printed PASS / FAIL gate (X4), the package owner table (X1), the
 //                         privacy scan of the world files (I3), the files to checkpoint per phase (X2), the SCENE_LESSONS
 //                         reminder (X3) and the authoring time per test scene (Z2). Exit 0 only on PASS
+//   node tools/world.mjs models <model id | object id | all> [--angles=8] [--seasons] [--night] [--water] [--full] [--eye=1.65] [--check | --check-only] [--out=dir]
+//                         the MODEL SHEET (docs/dev/WORLD_MODELS.md): every parametric model from N angles, with --seasons the four seasons, with
+//                         --night noon / golden hour / night (lit windows and lamps), with --water (floaters) the bob and the reflection, always at
+//                         three sizes, in its liveries and ages, and beside the old library sprite when there is one. --full = every row. Drawn in
+//                         Node by the model's own faces (no browser); one <model id>.png a model in --out (default: the temp folder). --check also
+//                         runs the conformance check (builds from every angle, finite faces, known materials, face budget, no clones)
 // <ref>: 'world-test/<id>-w3', a bare id ('fleet-canal-2-w3'), a v2 ref ('uk-south-east/hampshire-fleet-canal-2') or a short alias
 // ('fleet-canal-2'), or a .json file holding a v3 spec (or an adversarial fixture: { id, expect, spec }).
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
@@ -126,7 +132,7 @@ export function worldFiles(rootDir = root) {
   const list = [];
   const add = (dir, re) => { if (existsSync(join(rootDir, dir))) for (const n of readdirSync(join(rootDir, dir)).sort()) if (re.test(n)) list.push(dir + '/' + n); };
   add('src/app', /^79-world-.*\.js$/); add('tools', /^world\.mjs$/); add('tools/lib/world', /\.mjs$/); add('tests', /^world-.*\.test\.mjs$/);
-  add('tests/fixtures/world', /\.json$/); add('tests/fixtures/world/adversarial', /\.json$/); add('docs/dev', /^(WORLD_ENGINE.*|SCENE_LESSONS)\.md$/);
+  add('tests/fixtures/world', /\.json$/); add('tests/fixtures/world/adversarial', /\.json$/); add('docs/dev', /^(WORLD_ENGINE.*|WORLD_MODELS|SCENE_LESSONS)\.md$/);
   return list;
 }
 /** The privacy scan over the world files (docs/dev/PRIVACY-SCAN.md; the private term list when the user keeps one). */
@@ -380,6 +386,30 @@ export function worldAcceptReport(res, o = {}) {
 async function main() {
   if (!cmd || flags.help || (!ref && !['adversarial', 'accept'].includes(cmd))) { out(readFileSync(new URL(import.meta.url), 'utf8').split('\n').filter(l => l.startsWith('//')).map(l => l.slice(3)).join('\n')); return 2; }
   const E = loadEngine({ root });
+
+  if (cmd === 'models') {
+    const { modelSheet } = await import('./lib/world/models.mjs');
+    const nums = pos.slice(2).filter(x => /^[0-9.]+$/.test(x)), paths = pos.slice(2).filter(x => !/^[0-9.]+$/.test(x));
+    const angles = Number(typeof flags.angles === 'string' ? flags.angles : nums[0]) || 8;
+    const dir = resolve(typeof flags.out === 'string' ? flags.out : paths[0] || join(WORLD_OUT, 'models'));
+    const ids = ref === 'all' ? E.worldModelIds() : [ref];
+    if (!ids.length) { out('no models registered'); return 1; }
+    let bad = 0;
+    for (const id of ids) {
+      if (flags.check || flags['check-only']) {
+        const c = E.worldModelCheck(id);
+        out(`${c.ok ? 'ok  ' : 'FAIL'} ${id}: ${c.stats.built} views built, up to ${c.stats.maxFaces} faces, slowest ${c.stats.maxMs} ms`);
+        for (const p of c.problems) { out('  ' + p); bad++; }
+        if (flags['check-only']) continue;
+      }
+      try {
+        const r = modelSheet(E, id, { angles, seasons: !!flags.seasons, night: !!flags.night, water: !!flags.water, full: !!flags.full, eye: Number(flags.eye) || undefined, out: dir });
+        out(`${r.id}: ${r.cells.length} cells drawn, ${r.errors.length} error(s)  ${r.file}`);
+        for (const e of r.errors) { out('  ERROR ' + e); bad++; }
+      } catch (e) { out(`${id}: ${e.message}`); bad++; }
+    }
+    return bad ? 1 : 0;
+  }
 
   if (cmd === 'validate') {
     const s = specOf(E, ref);
@@ -663,7 +693,7 @@ async function main() {
     out(`GATE: ${res.pass ? 'PASS' : 'FAIL'}${res.pass ? '' : ' - nothing is shown to the user until every item passes and a fresh reviewer signs off (X4)'}`);
     return res.pass ? 0 : 1;
   }
-  out(`unknown command '${cmd}' (validate | convert | render | motion | invariants | adversarial | critic | sheet | capture | check | compare | perf | glitch | accept)`);
+  out(`unknown command '${cmd}' (validate | convert | render | motion | invariants | adversarial | critic | sheet | capture | check | compare | perf | glitch | models | accept)`);
   return 2;
 }
 

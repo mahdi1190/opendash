@@ -101,7 +101,9 @@ test('two waters side by side are one opening: the seam between them hides nothi
 });
 
 // ---------- cliffs (src/app/79-world-4cliff.js; requirement TR5): a face is analytic, the grid only holds its coarse shape ----------
-const CLIFF = { features: [{ kind: 'cliff', arc: { c: [0, 60], r: 190, from: -62, to: 62 }, h: 70 }] };
+// rough: 0 is the ruled face (a plan with no buttresses, a level rim, one talus): the maths of the profile is tested on it; the default,
+// irregular face has its own tests below
+const CLIFF = { features: [{ kind: 'cliff', arc: { c: [0, 60], r: 190, from: -62, to: 62 }, h: 70, rough: 0 }] };
 const cspec = (extra) => spec(Object.assign({ camera: { eye: 1.7, fov: 66, horizon: 560, heading: 0 }, surfaces: [{ id: 'floor', kind: 'grass', poly: [[-400, 1], [400, 1], [400, 400], [-400, 400]] }], ground: CLIFF }, extra || {}));
 
 test('a cliff feature validates: an arc becomes its polyline, a face needs h, a bad rock or side is stripped', () => {
@@ -134,14 +136,14 @@ test('the cliff is analytic: a vertical face of the full height, a talus skirt b
 
 test('a straight cliff with the high ground on the left, a batter and no scree takes the same spec', () => {
   // the path runs along +x: its LEFT is the far side (+z), its right the camera's side
-  const w = build(cspec({ ground: { features: [{ kind: 'cliff', path: [[-300, 220], [300, 220]], h: 40, high: 'left', batter: 0.3, scree: false, fade: 0 }] } }));
+  const w = build(cspec({ ground: { features: [{ kind: 'cliff', path: [[-300, 220], [300, 220]], h: 40, high: 'left', batter: 0.3, scree: false, fade: 0, rough: 0 }] } }));
   const f = w.features[0];
   assert.equal(W.worldCliffHeight(f, 0, 200), 0, 'no scree: flat to the foot');
   assert.ok(W.worldCliffHeight(f, 0, 220 + 2) < 10 && Math.abs(W.worldCliffHeight(f, 0, 220 + 15) - 40) < 0.5, 'a battered face leans back: 0.3 m of plan per metre of height, so about 12 m of plan to climb 40 m');
   const half = W.worldCliffHeight(f, 0, 220 + 0.3 * 38.5 * 0.5);
   assert.ok(half > 15 && half < 25, 'halfway across the batter it is about half the height: ' + half);
   assert.equal(W.worldCliffHeight(f, 0, 260), 40);
-  const r = build(cspec({ ground: { features: [{ kind: 'cliff', path: [[-300, 220], [300, 220]], h: 40, high: 'right', scree: false, fade: 0 }] } }));
+  const r = build(cspec({ ground: { features: [{ kind: 'cliff', path: [[-300, 220], [300, 220]], h: 40, high: 'right', scree: false, fade: 0, rough: 0 }] } }));
   assert.equal(W.worldCliffHeight(r.features[0], 0, 260), 0, 'high: right puts the plateau on the camera side');
   assert.equal(W.worldCliffHeight(r.features[0], 0, 200), 40);
 });
@@ -181,7 +183,12 @@ test('the face is drawn in depth-binned columns: far first, a footprint along th
   assert.ok(apex.ops.filter(o => o.t === 'fg').length >= 8, 'a bed of rock is one smooth gradient fill');
   // the rim: the face's top edge at the apex is the real rim row of a 70 m face 300 m away (less its rounded lip), within a few px
   const rimY = w.cam.horizon + w.cam.f * (w.cam.eye - 68.5) / 300, topY = Math.min(...apex.ops.filter(o => o.t === 'fg').flatMap(o => o.p.map(q => q[1])));
-  assert.ok(Math.abs(topY - rimY) < 14, `the rim is at ${Math.round(topY)}, expected about ${Math.round(rimY)}`);
+  // a ruled face (rough: 0) has its rim where a 70 m face 300 m away has it; the default irregular face has it a little lower and further
+  // back (a scoop, a rim that rises and falls), never higher than the spec's height
+  const w0 = build(cspec({ camera: { eye: 1.7, fov: 66, horizon: 580, heading: 0 }, ground: { features: [Object.assign({}, COVE_FEATURES().features[0], { rough: 0 })] } }));
+  const apex0 = W.worldCliffPrims(w0, w0.cam, {}).find(p => p.box[0] < 800 && p.box[2] > 800), top0 = Math.min(...apex0.ops.filter(o => o.t === 'fg').flatMap(o => o.p.map(q => q[1])));
+  assert.ok(Math.abs(top0 - rimY) < 14, `the ruled rim is at ${Math.round(top0)}, expected about ${Math.round(rimY)}`);
+  assert.ok(topY >= top0 - 2 && topY < w.cam.horizon + w.cam.f * (w.cam.eye - 55) / 310, `the irregular rim (${Math.round(topY)}) is never above the ruled one (${Math.round(top0)}) and keeps most of the height`);
 });
 
 test('the beds of two neighbouring groups overlap under the nearer one: no hairline seam between columns', () => {
@@ -206,7 +213,7 @@ test('the strips leave the face to the cliff pass: no ground quad lies on the fa
 });
 
 test('what a cliff hides is exact: a point behind the rim is hidden while the sight line passes below it, not from above the rim, not beyond the end of the face (TR7)', () => {
-  const w = COVE(), G = W.worldCliffGeom(w.features[0]);
+  const w = build(cspec({ camera: { eye: 1.7, fov: 66, horizon: 580, heading: 0 }, ground: { features: [Object.assign({}, COVE_FEATURES().features[0], { rough: 0 })] } })), G = W.worldCliffGeom(w.features[0]);
   assert.equal(W.worldCliffHides(G, 0, 330, 70, 1.7), true, 'the plateau behind the apex');
   assert.equal(W.worldCliffHides(G, 0, 330, 70, 90), false, 'seen from above the rim');
   assert.equal(W.worldCliffHides(G, 0, 200, 0, 1.7), false, 'in front of the face');
@@ -322,4 +329,49 @@ test('nobody is left standing at an edge of the frame in a bench queue: a mover 
     }
   }
   assert.ok(worst < 2.5, `the longest anyone stood still in an edge zone: ${worst.toFixed(1)} s`);
+});
+
+// ---------- an irregular face, a face that rises out of a hill, a pasture with marks (SCENE_LESSONS N, the Malham pass of 15 Oct) ----------
+const COVE_BANK = () => ({ features: [{ kind: 'cliff', arc: { c: [0, 110], r: 190, from: -90, to: 90 }, h: 70, rock: 'limestone' }, { kind: 'bank', path: [[185, 150], [165, 300]], width: 170, h: 46 }] });
+const ruled = (f) => Object.assign({}, f, { rough: 0 });
+
+test('a face is irregular by default: buttresses and recesses, a rim that rises and falls, a scoop, scree in fans; rough: 0 is the ruled face', () => {
+  const w = COVE(), G = W.worldCliffGeom(w.features[0]);
+  const w0 = build(cspec({ camera: { eye: 1.7, fov: 66, horizon: 580, heading: 0 }, ground: { features: [ruled(COVE_FEATURES().features[0])] } })), G0 = W.worldCliffGeom(w0.features[0]);
+  assert.ok(G0.mod === null && G0.fanH === null && G0.scoop === null, 'rough: 0 has no rim table, no fans, no scoop');
+  // the plan wanders off the circle by a few metres, never by more than a fifth of the height
+  const dev = G.pts.map(p => Math.abs(Math.hypot(p[0] - 0, p[1] - 110) - 190));
+  assert.ok(Math.max(...dev) > 2 && Math.max(...dev) < 14, `the plan deviates from the ruled arc by up to ${Math.max(...dev).toFixed(1)} m`);
+  // the rim: up to about 7 % lower in places, never higher than the spec's height
+  assert.ok(Math.max(...G.mod) <= 1 + 1e-6 && Math.min(...G.mod) < 0.97 && Math.min(...G.mod) > 0.8, `rim multipliers ${Math.min(...G.mod).toFixed(3)} to ${Math.max(...G.mod).toFixed(3)}`);
+  // a long high limestone face has a scoop; a short grit crag does not (unless the spec asks)
+  assert.ok(G.scoop && G.scoop.s > 0.3 * G.L && G.scoop.s < 0.7 * G.L, 'the scoop is near the middle');
+  const crag = build(cspec({ ground: { features: [{ kind: 'cliff', path: [[-40, 200], [40, 200]], h: 20, rock: 'gritstone' }] } }));
+  assert.equal(W.worldCliffGeom(crag.features[0]).scoop, null, 'no scoop on a short crag');
+  // scree in fans: the talus is several times higher under one gully than between two
+  assert.ok(Math.max(...G.fanH) / Math.min(...G.fanH) > 3, `fans ${Math.min(...G.fanH).toFixed(2)} to ${Math.max(...G.fanH).toFixed(2)}`);
+  // the same spec twice is the same ground (the grid, the strips and the picture all read this one function)
+  const again = W.worldCliffGeom(build(cspec({ camera: { eye: 1.7, fov: 66, horizon: 580, heading: 0 }, ground: COVE_FEATURES() })).features[0]);
+  for (const [x, z] of [[0, 280], [80, 250], [-120, 230], [30, 270]]) assert.equal(W.worldCliffHeight(w.features[0], x, z), W.worldCliffHeight(again.f, x, z));
+  // the relief grid carries the irregular face (the placement and the nav read the grid)
+  for (const [x, z] of [[0, 312], [60, 290], [-100, 270]]) assert.ok(Math.abs(W.sceneGroundHeight(w.cam, x, z) - W.worldCliffHeight(w.features[0], x, z)) < 12, `grid and function agree at ${x},${z}`);
+});
+
+test('a face rises out of a hill that lies against it: its foot is the hill, not the ground (no staircase where a hill was painted over it)', () => {
+  const cam = { eye: 1.7, fov: 66, horizon: 580, heading: 0 };
+  const flat = build(cspec({ camera: cam, ground: { features: [ruled(COVE_BANK().features[0])] } })), hill = build(cspec({ camera: cam, ground: { features: [ruled(COVE_BANK().features[0]), COVE_BANK().features[1]] } }));
+  // the lowest point of the beds in the columns at the right of the frame, where the hill climbs the face
+  const low = (w) => { let m = -Infinity; for (const p of W.worldCliffPrims(w, w.cam, {})) for (const o of p.ops) if (o.t === 'fg' && o.x0 > 1350) for (const q of o.p) if (q[0] > 1350) m = Math.max(m, q[1]); return m; };
+  const yFlat = low(flat), yHill = low(hill);
+  assert.ok(yFlat - yHill > 12, `the face starts higher on the screen where the hill lies against it (${Math.round(yHill)} against ${Math.round(yFlat)})`);
+});
+
+test('a pasture hillside has marks: patches of tone, sheep trods along the contours, tussocks, limestone scars', () => {
+  const w = build(cspec({ camera: { eye: 1.7, fov: 66, horizon: 580, heading: 0 }, ground: COVE_BANK() }));
+  const strips = W.worldTerrainPrims(w, w.cam, { season: 'summer' }).filter(p => p.lineKind === 'terrain');
+  const ops = strips.flatMap(p => p.ops || []), faces = strips.flatMap(p => p.faces.filter(f => f.mat === 'grass'));
+  assert.ok(ops.filter(o => o.t === 's' && o.m === 'grass').length >= 20, 'sheep trods');
+  assert.ok(ops.filter(o => o.t === 'f' && o.m === 'grass').length >= 40, 'tussocks');
+  assert.ok(ops.filter(o => o.t === 'f' && o.m === 'stone' && o.a > 0.9).length >= 5, 'limestone scars');
+  assert.ok(new Set(faces.map(f => f.hex)).size > 120, `the pasture is patchy: ${new Set(faces.map(f => f.hex)).size} tones`);
 });
