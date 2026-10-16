@@ -506,6 +506,9 @@ function _wflTry(F, c) {
   let probe = null;
   if (!air) {
     probe = _wflProbe(F, c.x, c.z);
+    // a walkway laid over water (a floating landing stage, a jetty) is dressed by its author: the fill's benches and tufts stood on the Pier Head stage
+    // in front of the ferry hulls, with the stage a hairline at eye height, and read as benches on the hull side
+    if (c.auto === 'fill' && probe.surf && probe.surf.over === 'water') return null;
     const hp = c.pit ? Object.assign({}, probe, { pit: true }) : probe;
     if (!worldKbHabitatOk(kb, hp).ok) return null;
     // a long thing, and anything in the water (reeds at a quay's foot: the invariant judges a floater's whole footprint)
