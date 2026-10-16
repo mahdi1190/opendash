@@ -270,7 +270,8 @@ const WORLD_STYLE_KITS = _wkbFreeze({
       heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, path: _WKT_PATH, water: _WKT_NOLILY },
     edges: Object.assign({}, _WKT_EDGES_RURAL, { water: { pond: 'natural', lake: 'natural', canal: 'natural', river: 'natural', estuary: 'natural', sea: 'none', harbour: 'quay', puddle: 'none' } }),
     frame: [{ kind: 'shrub', obj: 'plant.yc-gorse-spray' }, { kind: 'railing', obj: 'structure.mqn-quayrail-v1' }, { kind: 'lamp', obj: 'street.lamppost' }, { kind: 'rock', obj: 'rock.boulder' }],
-    rich: { mid: [['plant.gorse', 2], ['plant.yc-gorse-spray', 2], ['rock.boulder', 2], ['plant.grass-long', 2], ['tree.hawthorn', 1]], far: [['plant.gorse', 2], ['tree.hawthorn', 1], ['rock.boulder', 1], ['tree.pine-veteran', 1]] },
+    // no trees in the richness pools: they are placed on whatever ground is there, and a hawthorn at the tide line is wrong (the trees stay in the grass group)
+    rich: { mid: [['plant.gorse', 2], ['plant.yc-gorse-spray', 2], ['rock.boulder', 2], ['plant.grass-long', 2]], far: [['plant.gorse', 2], ['rock.boulder', 1], ['plant.yc-gorse-spray', 1]] },
     life: { walk: { who: 'walkers', rate: '4/min', mix: { stroll: 0.45, 'dog-walker': 0.3, family: 0.15, couple: 0.1 } }, sand: { who: 'walkers', rate: '3/min', mix: { stroll: 0.4, 'dog-walker': 0.3, family: 0.2, child: 0.1 } }, air: [{ who: 'gulls', count: 6 }] } },
   // farmland and downland (the legacy styles): hedgerows with oaks and hawthorns, meadow margins, hay in summer
   farmland: { label: 'farmland', place: 'rural', backdrop: 'farmland', ground: 'field', sky: [0.35, 0.62], layers: 5,
