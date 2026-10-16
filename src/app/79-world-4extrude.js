@@ -43,6 +43,10 @@ const WORLD_EXTRUDE_KINDS = Object.freeze({
   hedge: Object.freeze({ w: 1.1, h: 1.7, solid: true, mat: 'leaf', hex: '#4f6b35', top: '#5f7d40', detail: 'leafy' }),
   kerb: Object.freeze({ w: 0.15, h: 0.12, solid: false, mat: 'stone', hex: '#a8a49c', top: '#c2beb6', detail: null }),
   coping: Object.freeze({ w: 0.4, h: 0.08, solid: false, mat: 'stone', hex: '#a39b8a', top: '#c4bcab', detail: null }),
+  // a railway's bed (laid by the fill under every `rail` surface, 79-world-1fill.js): the ballast and the rails of its tracks
+  // (`tracks`: the offsets of each track's centre), and the concrete cable troughs along it
+  ballast: Object.freeze({ w: 7.4, h: 0.35, solid: false, mat: 'stone', hex: '#8d877b', top: '#a39c8d', detail: 'track' }),
+  trough: Object.freeze({ w: 0.45, h: 0.25, solid: false, mat: 'stone', hex: '#aeaaa0', top: '#c6c2b8', detail: null }),
 });
 const _wexNum = v => typeof v === 'number' && Number.isFinite(v);
 const _wexPt = p => Array.isArray(p) && p.length >= 2 && _wexNum(p[0]) && _wexNum(p[1]);
@@ -228,6 +232,31 @@ function _wexPiece(line, K, cam, ss, ends, o, idx) {
         const pts = _wexProjPoly(cam, q);
         if (pts) { details.push({ type: 'fill', pts, hex: _wexMat(o, K.mat, K.hex, a.p[1], 'post'), alpha: 1, minW: 0.6 }); box = _wexBox(pts, box); }
       }
+    }
+  } else if (K.detail === 'track') {
+    // the rails of every track on a ballast bed (line.tracks: the offsets of each track's centre from the bed's centre line): a pair
+    // 1.435 m apart a rail's height over the ballast, a hairline of at least half a pixel (a bed 200 m away is one fine dark line per
+    // track), and, near enough to read, the sleepers across the bed (the v2 ground's own sleepers stay under the bed)
+    const gauge = typeof WORLD_RAIL_BED === 'object' ? WORLD_RAIL_BED.gauge : 1.435, rh = typeof WORLD_RAIL_BED === 'object' ? WORLD_RAIL_BED.rail : 0.15;
+    const offs = (Array.isArray(line.tracks) && line.tracks.length ? line.tracks : [0]).filter(_wexNum), zMid = C[Math.floor(C.length / 2)].p[1];
+    const lw = Math.max(0.5, cam.f * 0.07 / Math.max(near, zMid));
+    const railAt = (o) => C.map((c, i) => [c.p[0] + N[i][0] * o, top[i] + rh, c.p[1] + N[i][1] * o]).filter(p => p[2] >= near).map(p => _wexP(cam, p[0], p[2], p[1]).map(v => _wexR(v, 2)));
+    if (cam.eye > Math.min(...top) + 1e-3 && cam.f * 0.6 / Math.max(near, zMid) >= 3) {
+      const s0 = ss[0], s1 = ss[ss.length - 1];
+      for (let s = Math.ceil(s0 / 0.6) * 0.6; s <= s1 + 1e-6; s += 0.6) {
+        const a = _wexAlong(line.path, s), nx = -a.t[1], nz = a.t[0], g = y0 + _wexG(cam, a.p[0], a.p[1]) + h + 0.02;
+        if (a.p[1] < near) continue;
+        for (const off of offs) {
+          const c0 = [a.p[0] + nx * off, a.p[1] + nz * off], hw = 1.3, lh = 0.13;
+          const q = [[c0[0] - nx * hw - a.t[0] * lh, g, c0[1] - nz * hw - a.t[1] * lh], [c0[0] + nx * hw - a.t[0] * lh, g, c0[1] + nz * hw - a.t[1] * lh], [c0[0] + nx * hw + a.t[0] * lh, g, c0[1] + nz * hw + a.t[1] * lh], [c0[0] - nx * hw + a.t[0] * lh, g, c0[1] - nz * hw + a.t[1] * lh]];
+          const pts = _wexProjPoly(cam, q);
+          if (pts) { details.push({ type: 'fill', pts, hex: '#5b4b3c', alpha: 0.9 }); box = _wexBox(pts, box); }
+        }
+      }
+    }
+    for (const off of offs) for (const g of [-gauge / 2, gauge / 2]) {
+      const pts = railAt(off + g);
+      if (pts.length >= 2) { details.push({ type: 'stroke', pts, width: _wexR(lw, 2), hex: '#3d4045', alpha: 0.95 }); for (const q of pts) box = _wexBox([q], box); }
     }
   } else if (K.detail === 'leafy') {
     // a seeded lumpy top: bumps of 0.1-0.25 m every 0.6-1 m along the outline seen against the sky

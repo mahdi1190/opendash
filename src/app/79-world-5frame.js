@@ -83,7 +83,9 @@ function _wfrPrimRec(prim, ent, vw) {
   const own = !ent || prim.kind === 'line';
   return { id, ent: e, prim, obj: e.obj, o: prim.obj || e.obj, v: Number.isInteger(prim.variant) ? prim.variant : 0, X: (b[0] + b[2]) / 2, Y: b[3], s: 1, flip: false,
     box: { x0: b[0], y0: b[1], x1: b[2], y1: b[3] }, x: own ? cx : Number.isFinite(e.x) ? e.x : cx, y: Number.isFinite(e.y) ? e.y : 0, z: own ? cz : Number.isFinite(e.z) ? e.z : cz, foot, height: prim.height || _wfrHeight(e),
-    attach: e.attach || null, static: e.static !== false, cut: null, view: vw ? vw.view : 'side', mirror: vw ? !!vw.mirror : false, backdrop: !!e.backdrop };
+    attach: e.attach || null, static: e.static !== false, cut: null, view: vw ? vw.view : 'side', mirror: vw ? !!vw.mirror : false, backdrop: !!e.backdrop,
+    // a low piece a mover runs on (a railway's ballast bed) lies under it in the order (79-world-3order.js: flat things)
+    flat: prim.sub === 'ballast' || prim.sub === 'trough' ? true : undefined };
 }
 /**
  * The draw record of a world entity or agent at a camera (scene units, 1600 x 900): { id, ent, obj, o (the view's object), v,
@@ -494,7 +496,7 @@ function worldFrameAt(scene, t, o) {
     let reflect = L && L.reflect ? { surface: L.reflect.surface || null, rowY: _wfrR3(L.reflect.rowY) } : null;
     if (!reflect && !look && r.cut && r.cut.kind === 'row') reflect = { surface: null, rowY: _wfrR3(r.cut.row) };
     const sp = Math.hypot(e.vx || 0, e.vz || 0);
-    return { id: r.id, cls: e.cls || null, obj: e.obj, static: !agent, auto: e.auto || null, landmark: !!e.landmark, framing: !!(e.framing || e.framed), x: r.x, y: r.y, z: r.z,
+    return { id: r.id, cls: e.cls || null, obj: e.obj, static: !agent, auto: e.auto || null, landmark: !!e.landmark, framing: !!(e.framing || e.framed), flat: r.flat === true ? true : undefined, x: r.x, y: r.y, z: r.z,
       facing: _wfrR3(Number(e.facing) || 0), foot: _wfrPts(r.foot), height: _wfrR3(r.height), layer: e.layer || null, host: e.host || null, parent: e.parent || null,
       view: r.view, mirror: !!r.mirror, box: _wfrBoxArr(r.box), order: pos.has(r.id) ? pos.get(r.id) : null, speed: agent ? _wfrR3(sp) : 0, vx: agent ? _wfrR3(e.vx || 0) : 0, vz: agent ? _wfrR3(e.vz || 0) : 0,
       state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null,
@@ -1050,7 +1052,7 @@ function* _wfrBakeJob(env, S) {
         if (sp.length && bw > 0 && bh > 0) {
           const c = _wfrCanvas(bw, bh), cx = c.getContext('2d', _WFR_CPU), byId = plan.byId;
           const spriteOf = (ref) => { const r = byId.get(String(ref)), d = r && S.draw.get(r.id); return d && d.sp && d.sp.c ? { c: d.sp.c, x0: d.sp.x0, y0: d.sp.y0, w: d.sp.w, h: d.sp.h, s: r.s, flip: r.flip, X: r.X, Y: r.Y, x: r.x, d: r.z, top: d.sp.y0 } : null; };
-          worldDrawShadows(cx, sp, { vs, ox: ox - bx, oy: oy - by, spriteOf, cam, sun: typeof worldSunOf === 'function' ? worldSunOf(sun, cam) : null });
+          worldDrawShadows(cx, sp, { union: true, vs, ox: ox - bx, oy: oy - by, spriteOf, cam, sun: typeof worldSunOf === 'function' ? worldSunOf(sun, cam) : null });
           // never on water (L2): whatever the plan's holes missed, the water's own outline is cut out (what lies on it stays)
           if (S.wet && S.wet.water.length) { cx.save(); cx.setTransform(vs, 0, 0, vs, ox - bx, oy - by); _wfrWetClip(cx, S.wet, true); cx.globalCompositeOperation = 'destination-out'; cx.fillStyle = '#000'; cx.fillRect(-1e4, -1e4, 2e4, 2e4); cx.restore(); }
           lay = { c, x: bx, y: by, plan: sp };
@@ -1536,7 +1538,15 @@ function _wfrDraw(env, ctx, t) {
   // the channel walls' own image in the water (look's worldWaterContactClip hides what stands beyond a high quay there)
   if (S.water && S.water.length && !S.wallImageOff) { try { draws += _wfrWallImages(ctx, env, S); } catch (e) { S.wallImageOff = true; S.stats.errors.push('wallImage: ' + (e && e.message)); } }
   // the channel walls of sunken water (dressed stone or earth banks) over the water's edge, under everything standing on the banks
-  if (S.groundWalls && S.groundWalls.c) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(S.groundWalls.c, S.groundWalls.x, S.groundWalls.y); draws++; }
+  if (S.groundWalls && S.groundWalls.c) {
+    // a deck laid over the water is nearer than the far bank's wall face behind it: the walls never draw over a low deck (the dark
+    // band that cut a footbridge in two at the pond's stream, 16 Oct); a high bridge (y over 0.6 m) is judged by the draw order
+    const low = ((S.wet && S.wet.decks) || []).filter(D => !Number.isFinite(D.s.y) || D.s.y < 0.6).map(D => D.scr);
+    ctx.save();
+    if (low.length) { ctx.setTransform(vs, 0, 0, vs, ox, oy); _wfrHoleClip(ctx, low); }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(S.groundWalls.c, S.groundWalls.x, S.groundWalls.y); draws++;
+    ctx.restore();
+  }
   lap('mirror');
   // 2. the ground shadows of the statics, then the movers' shadows (look's plan per frame; else a contact blob)
   ctx.setTransform(1, 0, 0, 1, 0, 0);

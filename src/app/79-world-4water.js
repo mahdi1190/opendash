@@ -265,18 +265,28 @@ function _wwaOverlap(A, B) {
 }
 /** Whether a ground point (metres) lies in a region's water (any of its parts). */
 function _wwaInR(R, x, z) { for (const P of R.polys || [R.polyM]) if (_wwaInPoly(x, z, P)) return true; return false; }
-/** The water rows [[Y0, Y1], ...] of a scene column X (even-odd crossings of the projected outline). */
+/**
+ * The water rows [[Y0, Y1], ...] of a scene column X: the NONZERO-winding span of each projected outline, then the union of the
+ * parts. A lowered water is one ring of overlapping visible pieces joined by zero-width slits (_wwaOutline), all wound one way;
+ * even-odd crossings made every overlap of two pieces a HOLE (a cut inside a pond lost its whole water: pond 'cut' of the Fleet
+ * Pond boardwalk, 16 Oct), while the winding rule keeps the overlap wet and still leaves an island (wound the other way) dry.
+ */
 function worldWaterSpansAt(R, X) {
   const clips = Array.isArray(R.clips) && R.clips.length ? R.clips : [R.clip], all = [];
   for (const P of clips) {
-    const ys = [];
+    const cr = [];
     for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
       const a = P[j], b = P[i];
       if ((a[0] <= X) === (b[0] <= X)) continue;
-      ys.push(a[1] + (b[1] - a[1]) * (X - a[0]) / (b[0] - a[0]));
+      cr.push([a[1] + (b[1] - a[1]) * (X - a[0]) / (b[0] - a[0]), b[0] > a[0] ? 1 : -1]);
     }
-    ys.sort((a, b) => a - b);
-    for (let i = 0; i + 1 < ys.length; i += 2) all.push([ys[i], ys[i + 1]]);
+    cr.sort((a, b) => a[0] - b[0]);
+    let wn = 0, y0 = 0;
+    for (const [y, d] of cr) {
+      const was = wn;
+      wn += d;
+      if (was === 0 && wn !== 0) y0 = y; else if (was !== 0 && wn === 0) all.push([y0, y]);
+    }
   }
   if (clips.length < 2) return all;
   // the union of the parts' spans (one water: an overlap is wet once, never a seam)
@@ -580,12 +590,11 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
   // the body colour the mirror is tinted by: the kind's, lit by the light now (at night its daylight green-grey lifted every
   // mirrored dark into a grey veil over the water: SCENE_LESSONS H)
   const tint = S.dark > 0.05 ? _wwaMixRgb(_wwaRgb(look.tint || look.base[1]), base3[1], _wwaClamp(S.dark * 1.2, 0, 1)) : _wwaRgb(look.tint || look.base[1]);
-  // one source pixel into the reflection: about the owner's contact row (a bank owner's base laid on the water edge), only into
-  // the water, faded with its mirrored height, Fresnel by the row, tinted by the kind; where two land on one, blended by depth
-  // (the nearer over the farther, whatever the order), so the nearer owner wins and a soft edge stays soft
-  const put = (k, ix, x, yc, S, s4, a, A, B, C) => {
-    if (!(yc < B)) return;                                          // at or below its own waterline (its base on the bank): not mirrored
-    const ty = Math.floor(A + B - yc), r = ty - y0;
+  // one mirrored pixel into the reflection: at dest row ty, only into the water, faded with its mirrored height, Fresnel by the
+  // row, tinted by the kind; where two land on one, blended by depth (the nearer over the farther, whatever the order), so the
+  // nearer owner wins and a soft edge stays soft. (cr, cg, cb: the source colour; a: its coverage 0..255)
+  const putAt = (k, ix, x, ty, cr, cg, cb, a, A, C) => {
+    const r = ty - y0;
     if (r < 0 || r >= h || ty < C) return;                          // (C: the image of a high quay's own wall hides it)
     const t = r * w + ix;
     if (!wet[t]) return;                                            // nothing reflects outside the water
@@ -594,7 +603,7 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
     const hM = (ty + 0.5 - A) / vs * Math.max(0.05, z) / cam.f, fade = Math.exp(-hM / 45), F = _wwaClamp(look.mirror * (0.3 + 0.6 * rowU[r]), 0, 0.95);
     const na = a * F * fade / 255;
     if (!(na > 0.002)) return;
-    const t4 = t * 4, nr = S[s4] * 0.78 + tint[0] * 0.22, ng = S[s4 + 1] * 0.78 + tint[1] * 0.22, nb = S[s4 + 2] * 0.78 + tint[2] * 0.22;
+    const t4 = t * 4, nr = cr * 0.78 + tint[0] * 0.22, ng = cg * 0.78 + tint[1] * 0.22, nb = cb * 0.78 + tint[2] * 0.22;
     const oa = refl[t4 + 3] / 255;
     if (!(oa > 0)) { refl[t4] = nr; refl[t4 + 1] = ng; refl[t4 + 2] = nb; refl[t4 + 3] = Math.round(na * 255); zb[t] = z; return; }
     const near = z <= zb[t], fa = near ? na : oa, ba = near ? oa : na, ra = fa + ba * (1 - fa);
@@ -603,16 +612,44 @@ function worldWaterMirror(ctx, R, comp, owner, o) {
     refl[t4 + 3] = Math.round(ra * 255);
     if (near) zb[t] = z;
   };
+  // one source pixel (the composite path): about the owner's contact row (a bank owner's base laid on the water edge), the
+  // row snapped to a whole pixel
+  const put = (k, ix, x, yc, S, s4, a, A, B, C) => {
+    if (!(yc < B)) return;                                          // at or below its own waterline (its base on the bank): not mirrored
+    putAt(k, ix, x, Math.floor(A + B - yc), S[s4], S[s4 + 1], S[s4 + 2], a, A, C);
+  };
   const rowsOf = (k, x) => { const X = (x + 0.5 - ox) / vs, A = worldWaterContactRow(R, ctc[k], X) * vs + oy; return [A, ctc[k].kind === 'bank' ? worldWaterContactBase(R, ctc[k], X) * vs + oy : A, worldWaterContactClip(R, ctc[k], X) * vs + oy]; };
   if (owner && Array.isArray(owner.layers) && owner.layers.length) {
+    // each owner's own layer, column by column, RESAMPLED about the column's contact row: a dest row takes its source position
+    // s - (row + 0.5) (s = A + B, the sum of the contact and base rows, not a whole number on a sloped contact) with a linear
+    // blend of the two source rows it falls between. The old forward mapping floored the row per column, so any edge on a
+    // sloped contact (a walkway's diagonal edge, the lakeside's line, a bank in perspective) came out a staircase one pixel
+    // high; the blend lays the edge where it truly falls, anti-aliased (the mirror of a straight edge is a straight edge).
     for (const Ly of owner.layers) {
       const k = Ly.k;
       if (!ctc[k]) continue;
-      for (let lx = 0; lx < Ly.w; lx++) {
+      const D = Ly.data, LW = Ly.w, LH = Ly.h;
+      for (let lx = 0; lx < LW; lx++) {
         const x = Ly.x0 + lx, ix = x - x0;
         if (ix < 0 || ix >= w) continue;
-        const [A, B, C] = rowsOf(k, x);
-        for (let ly = 0; ly < Ly.h; ly++) { const s4 = (ly * Ly.w + lx) * 4, a = Ly.data[s4 + 3]; if (a) put(k, ix, x, Ly.y0 + ly + 0.5, Ly.data, s4, a, A, B, C); }
+        const [A, B, C] = rowsOf(k, x), s0 = A + B;
+        // the source rows that mirror: those above the owner's waterline (a row at or below it is its sunk part or its base)
+        let top = LH, bot = -1;
+        for (let ly = 0; ly < LH; ly++) { if (D[(ly * LW + lx) * 4 + 3]) { if (ly < top) top = ly; bot = ly; } }
+        if (bot < 0) continue;
+        const lim = Math.min(bot, Math.ceil(B - Ly.y0 - 0.5) - 1);     // the last source row with centre < B
+        if (lim < top) continue;
+        const tLo = Math.max(y0, Math.ceil(s0 - (Ly.y0 + lim + 1.5) - 0.5)), tHi = Math.min(y1 - 1, Math.floor(s0 - (Ly.y0 + top - 0.5) - 0.5));
+        for (let ty = tLo; ty <= tHi; ty++) {
+          const u = s0 - ty - Ly.y0 - 1, j0 = Math.floor(u), fr = u - j0;
+          let a0 = 0, a1 = 0, o0 = 0, o1 = 0;
+          if (j0 >= top && j0 <= lim) { o0 = (j0 * LW + lx) * 4; a0 = D[o0 + 3] * (1 - fr); }
+          if (j0 + 1 >= top && j0 + 1 <= lim) { o1 = ((j0 + 1) * LW + lx) * 4; a1 = D[o1 + 3] * fr; }
+          const a = a0 + a1;
+          if (!(a > 0.5)) continue;
+          const i0 = a0 / a, i1 = a1 / a;
+          putAt(k, ix, x, ty, D[o0] * i0 + D[o1] * i1, D[o0 + 1] * i0 + D[o1 + 1] * i1, D[o0 + 2] * i0 + D[o1 + 2] * i1, a, A, C);
+        }
       }
     }
   } else if (comp && comp.data && owner && owner.idx) {

@@ -2436,7 +2436,13 @@
       "rule": "private-term",
       "path": "docs/dev/WORLD_ENGINE_REQUIREMENTS.md",
       "line_sha256": "cb9708f7f012598d2a4c2c3c96261859428515dd6c754af1cb3632f7b1baaaa3",
-      "why": "a colour word in a water description (reviewed)"
+      "why": "an ordinary colour word describing the look of river water (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-zscene-liverpool-pier-head-1.js",
+      "line_sha256": "1df4d27ba913b7137a4a7839182b755446cdc66acfdfa861f588cf2451d0d4b5",
+      "why": "an ordinary colour word describing the look of river water (reviewed)"
     }
   ]
 }

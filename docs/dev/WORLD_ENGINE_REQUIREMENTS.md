@@ -21,6 +21,9 @@ checked by looking at the renders.
 - W3 [T] Raised walkable surfaces are first class: decks, bridges, platforms, boardwalks, jetties, pontoons, stairs and
   ramps (stairs and ramps join levels). Movers stand on them at their height. A bridge deck is NOT a blocker for what passes
   under it.
+- W3a [T] A walkway joins land to land, or runs to a platform at a reed edge, and never crosses open water: a boardwalk, deck or platform lies
+  over water only as a footbridge of at most 6 m between two banks; a jetty, pier or pontoon (`over: 'water'`) is fixed to the shore. Reeds over
+  water must really grow reeds. Natural edges (reed beds, pond and lake shores) are never ruled lines. Invariant `walkwayWater`.
 - W4 [T] Water has a level per region, and it can step at a weir or a lock.
 - W5 The camera has a real position, height, heading, fov, lat/lon and date/time. The horizon, scale and backdrop bearings all
   come from it.

@@ -37,7 +37,7 @@ Still not right:
 - **Frame time.** At 4x CPU throttle the compositor takes about 140 ms a frame (budget 8 ms) and a warm remount 1.7 to 2.6 s (budget
   1 s); the cold first bake is fine (well under 5 s). The cost is the chunk blits and the occluder redraws in
   `_wfrDraw` (the `depth` section of `stats().prof`); idea: pre-composite the run of chunks behind the farthest mover once per bake.
-- The pond's boardwalk reflection has a stair-stepped edge on its diagonals; the nav map does not treat extruded buildings as
+- (fixed 16 Oct, fix/pond: the pond's reflection steps, the boardwalk across the lake, the flat marsh slab; see SCENE_LESSONS U.) The nav map does not treat extruded buildings as
   solid in every case; a walker can still pass through a jogger for one frame (swept check) in the canal at night.
 - Library art gaps: no timber or jettied style until uk-york merges, no landmark art for the Liver Building or the Abbey.
 
@@ -192,3 +192,11 @@ plan, the rim and the scree irregular and cuts a stained scoop into a long limes
 break into runs and some overhang; the lip is pavement; the face rises out of a hill instead of being painted over by it; a pasture
 hillside has patches, sheep trods, tussocks and scars. `tests/world-terrain.test.mjs` pins the ruled geometry with `rough: 0` and
 tests the irregular defaults. Open: a wall that passes behind a face is drawn over it (a line is not clipped by a face).
+
+## 16 Oct, fix/pond: Fleet Pond rebuilt, reflections smooth, a walkway never crosses open water
+- `worldWalkwayWater` + invariant / validator rule `walkwayWater`; surface key `over: 'water'` (jetty, pier, pontoon, landing stage).
+- Water: nonzero winding spans (a cut inside a lowered pond no longer leaves a hole), resampled mirror (no one-pixel staircases),
+  channel walls never over a low deck.
+- Natural edges for `reeds` and pond / lake polygons in the built world; `worldMarsh` (`79-world-4marsh.js`) for reed-bed walks.
+- `fleet-pond-2-w3` is built with it: the walk, a 3 m footbridge over the stream, the reed bed and a platform at the reed edge.
+- Liverpool's `stage` now says `over: 'water'` (a floating landing stage).

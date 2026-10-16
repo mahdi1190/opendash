@@ -146,6 +146,27 @@ const WORLD_HOST_WATER_V2 = Object.freeze({ pond: 'pond', lake: 'lake', canal: '
  * placed: nothing is judged or snapped again). o.statics === false (the live canvas): no statics at all; the compositor draws
  * them. o: { id, season, world, statics }.
  */
+/** A closed outline simplified (Douglas-Peucker, tol metres): the roughened outlines of the build carry a point every metre or less; the v2 base needs the shape. */
+function _wh5Simplify(P, tol) {
+  const n = P.length;
+  if (n <= 24) return P;
+  const keep = new Uint8Array(n);
+  const dist = (p, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], L = dx * dx + dz * dz; if (!L) return Math.hypot(p[0] - a[0], p[1] - a[1]); const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / L)); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dz); };
+  // split the ring at its two farthest-apart points, then recurse on each half
+  let i0 = 0, i1 = 0, best = -1;
+  for (let i = 1; i < n; i++) { const d = Math.hypot(P[i][0] - P[0][0], P[i][1] - P[0][1]); if (d > best) { best = d; i1 = i; } }
+  keep[i0] = 1; keep[i1] = 1;
+  const stack = [[i0, i1], [i1, n]];
+  while (stack.length) {
+    const [a, b] = stack.pop(), A = P[a], B = P[b % n];
+    let m = -1, md = tol;
+    for (let i = a + 1; i < b; i++) { const d = dist(P[i], A, B); if (d > md) { md = d; m = i; } }
+    if (m >= 0) { keep[m] = 1; stack.push([a, m], [m, b]); }
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) if (keep[i]) out.push(P[i]);
+  return out.length >= 3 ? out : P;
+}
 function worldHostV2Data(spec, o) {
   o = o || {};
   const world = o.world || worldHostWorld(spec, o), statics = o.statics !== false;
@@ -164,9 +185,15 @@ function worldHostV2Data(spec, o) {
   // the terrain (W2) is drawn by the world (79-world-4terrain.js): the v2 base keeps its flat ground, so it needs no relief
   // the spec rides along (not enumerable: the bake cache and JSON never see it) so worldHostSpec finds it from the data
   try { Object.defineProperty(data, '$spec', { value: spec, enumerable: false }); } catch (e) { /* frozen */ }
+  // the BUILT world's outlines (a reed bed's, a pond's shore: roughened by the natural-edge pass of the build, 79-world-0core.js
+  // _wcNaturalEdge): the v2 base draws the bank band and the ground along them, never along the ruled polygon the scene authored
+  // (the dark straight band along an island's front at the Fleet Pond, 16 Oct)
+  const built = new Map();
+  for (const q of (world && world.surfaces) || []) if (q && q.id != null && Array.isArray(q.poly) && q.poly.length >= 3) built.set(String(q.id), _wh5Simplify(q.poly, 0.12));
   for (const s of spec.surfaces || []) {
     if (!s || !s.id) continue;
-    const geo = s.poly ? { poly: s.poly } : s.path ? { path: s.path, width: s.width || 2 } : null;
+    const bp = s.poly && built.get(String(s.id));
+    const geo = s.poly ? { poly: bp || s.poly } : s.path ? { path: s.path, width: s.width || 2 } : null;
     if (!geo) continue;
     if (s.kind === 'water') {
       // the bank by the place (P5): a town river, canal or dock is walled in stone (a quay face down to the water), a deep cut too;
