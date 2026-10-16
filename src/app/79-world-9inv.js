@@ -16,7 +16,7 @@
                                                W, H, cache, born, sun, wind }
 
    The frame's ctx is the time context of 11.11 as systems' worldTimeCtx gives it (month 0-11, January = 0; sun { az, alt }).
-   Rules over the statics alone (habitat, pathBlocked) run once per world when a tracker is given and are replayed after.
+   Rules over the statics alone (habitat, pathBlocked, walkwayWater) run once per world when a tracker is given and are replayed after.
    The checker reads only the frame record (and, for the surface probes, o.world): pairs go through the spatial index
    (systems' worldGrid when loaded, a local hash grid otherwise), so nothing is all-pairs. Other packages are reached through
    typeof guards: a missing package makes its rules report n/a (stats.na), never a crash or a false alarm.
@@ -30,6 +30,7 @@ const WORLD_INVARIANTS = Object.freeze([
   { rule: 'floating', req: 'W2', what: 'nothing above or through the ground, the water or its deck' },
   { rule: 'orphan', req: 'K4', what: 'every attached class (bough, frond, lead, mooring line, smoke, window light) has its parent' },
   { rule: 'pathBlocked', req: 'P3', what: 'a 1.2 m walking line stays clear on every walk path', needs: 'world' },
+  { rule: 'walkwayWater', req: 'W3, QA', what: 'a walkway (boardwalk, deck, platform, bridge) joins land to land or runs to a platform at a reed edge and never crosses open water; reeds over water have reeds', needs: 'world' },
   { rule: 'reflectOutsideWater', req: 'H1, H2', what: 'reflections come from a water surface only', needs: 'world' },
   { rule: 'shadowOnWater', req: 'L2', what: 'no cast shadow falls on water (the mirror dims instead)', needs: 'world' },
   { rule: 'shadowDir', req: 'L2', what: 'one shadow direction for the whole scene' },
@@ -172,6 +173,14 @@ function _wivSurfRaw(C, x, z) {
   return null;
 }
 function _wivIsWater(s) { return !!s && s.kind === 'water'; }
+/** Is a point on a walkway (boardwalk, deck, platform, bridge-deck) or within pad metres of its edge? */
+function _wivOnWalkway(C, x, z, pad) {
+  for (const s of C.surfaces) {
+    if (!s || !/^(boardwalk|deck|platform|bridge-deck)$/.test(s.kind)) continue;
+    if (Array.isArray(s.path) && s.path.length >= 2 && s.width > 0 ? _wivLineDist(s.path, x, z) <= s.width / 2 + pad : Array.isArray(s.poly) && s.poly.length >= 3 && _wivInPoly(s.poly, x, z)) return true;
+  }
+  return false;
+}
 /** The open water surface under a point (no deck over it, no hull on it), or null. Decks are listed once per call. */
 function _wivWaterAt(C, x, z) {
   const s = _wivSurfRaw(C, x, z);
@@ -315,7 +324,8 @@ const _WIV_RULES = {
       // in the water is off its habitat (its centroid may fall over the water on a curving bank)
       if (e.prim === 'line') {
         const f = _wivFootOf(e);
-        if (f && f.length && f.every(p => _wivIsWater(_wivSurfRaw(C, p[0], p[1])))) _wivPush(C, 'habitat', e.id, `${e.obj} (a line) lies wholly in the water`);
+        // (a rail along a footbridge stands on its deck: the walkway's own edge, not the water under it)
+        if (f && f.length && f.every(p => _wivIsWater(_wivSurfRaw(C, p[0], p[1])) && !_wivOnWalkway(C, p[0], p[1], 0.35))) _wivPush(C, 'habitat', e.id, `${e.obj} (a line) lies wholly in the water`);
         continue;
       }
       const cls = _wivCls(e), info = _wivInfo(e.obj), host = _wivHostOf(e), att = String(e.attach || (info && info.attachOk && info.attachOk[0]) || 'ground');
@@ -331,7 +341,9 @@ const _WIV_RULES = {
       if (kb && kb.habitat && typeof worldKbHabitatOk === 'function' && typeof worldPlaceProbe === 'function' && C.world) {
         let ok = true, why = '';
         try {
-          const pts = (kb.floats || att === 'water') && _wivFootOf(e) ? _wivFootOf(e) : [[e.x, e.z]];
+          // (a plant stands on its root: a reed's stems lean over a deck's edge; only a floater needs its whole footprint on the water)
+          const plant = /^plant\./.test(String(e.obj || '')) || _WIV_GROUND_COVER.has(cls || '');
+          const pts = (kb.floats || att === 'water') && !plant && _wivFootOf(e) ? _wivFootOf(e) : [[e.x, e.z]];
           for (const p of pts) { const r = worldKbHabitatOk(kb, worldPlaceProbe(C.world, p[0], p[1])); if (r === false || (r && r.ok === false)) { ok = false; why = r && r.reason ? r.reason : ''; break; } }
           judged = true;
         } catch (err) { judged = false; }
@@ -344,7 +356,7 @@ const _WIV_RULES = {
           const off = f.filter(p => !_wivIsWater(_wivSurfRaw(C, p[0], p[1])));
           if (off.length) { _wivPush(C, 'habitat', e.id, `${e.obj} floats but ${off.length} of ${f.length} footprint corners are on land (${(_wivSurfRaw(C, off[0][0], off[0][1]) || {}).kind || 'nothing'})`); continue; }
         } else if (att === 'water' && !_wivIsWater(s) && !okW) { _wivPush(C, 'habitat', e.id, `${e.obj} is attached to water but stands on ${s ? s.kind : 'nothing'}`); continue; }
-        else if (_wivIsWater(s) && !okW && cls !== 'walkway') { _wivPush(C, 'habitat', e.id, `${e.obj} (${cls}) stands in the water`); continue; }
+        else if (_wivIsWater(s) && !okW && cls !== 'walkway' && !e.spans) { _wivPush(C, 'habitat', e.id, `${e.obj} (${cls}) stands in the water`); continue; }
         if ((cls === 'train' || cls === 'tram') && !(s && (s.kind === 'rail' || s.kind === 'tram'))) { _wivPush(C, 'habitat', e.id, `${e.obj} is off its rails (on ${s ? s.kind : 'nothing'})`); continue; }
         if (cls === 'vehicle' && s && !/^(road|crossing|plaza|pavement|path)$/.test(s.kind) && !e.parked) { _wivPush(C, 'habitat', e.id, `${e.obj} stands on ${s.kind}, not a road`); continue; }
       }
@@ -436,6 +448,11 @@ const _WIV_RULES = {
         }
         wants = s && _wivNum(s.y) ? [s.y] : [g]; what = s && _wivNum(s.y) ? 'its deck' : 'the ground';
       }
+      // a rail vehicle rides on its track's bed: ballast and the rail head put its wheels up to 0.2 m over the ground it runs on
+      // (a train on a long embankment read 0.1 m "above the ground": the Fleet Pond main line, 16 Oct)
+      if (e.layer === 'rail' || cls === 'train' || cls === 'tram') wants = wants.concat(wants.map(w => w + 0.15));
+      // a train of a main line rides on its bed: ballast and the rail head (WORLD_RAIL_BED.h, 79-world-2traffic.js) over the ground
+      if (cls === 'train' && typeof WORLD_RAIL_BED === 'object') wants = wants.concat(wants.map(w => w + WORLD_RAIL_BED.h));
       let best = wants[0];
       for (const w of wants) if (Math.abs(e.y - w) < Math.abs(e.y - best)) best = w;
       if (Math.abs(e.y - best) > 0.08) _wivPush(C, 'floating', e.id, `${e.obj || cls} at y ${_wivR(e.y)}: ${e.y > best ? 'above' : 'through'} ${what} (${_wivR(best)})`);
@@ -477,6 +494,29 @@ const _WIV_RULES = {
           }
         }
       }
+    }
+  },
+  walkwayWater(C) {
+    if (!C.surfaces.length && !C.ents.length) return 'na';
+    if (typeof worldWalkwayWater !== 'function') return 'na';
+    // the reeds that really grow: a reeds surface over water counts only where a plant stands within 3 m
+    const plants = C.ents.filter(e => e.static !== false ? /(^|[.-])(reeds?|bulrush|rush|sedge|cane|phragmites)([.-]|$)/.test(String(e.obj || '')) : false);
+    const grid = new Map(), key = (x, z) => Math.floor(x / 3) + ',' + Math.floor(z / 3);
+    for (const e of plants) { const k = key(e.x, e.z); (grid.get(k) || grid.set(k, []).get(k)).push(e); }
+    const reedNear = (x, z, r) => {
+      const rad = r > 0 ? r : 3, cx = Math.floor(x / 3), cz = Math.floor(z / 3), k = Math.ceil(rad / 3);
+      for (let a = -k; a <= k; a++) for (let b = -k; b <= k; b++) for (const e of grid.get((cx + a) + ',' + (cz + b)) || []) if (Math.hypot(e.x - x, e.z - z) <= rad) return true;
+      return false;
+    };
+    for (const v of worldWalkwayWater(C.surfaces, { reedNear })) _wivPush(C, 'walkwayWater', v.id, v.msg);
+    // a deck an entity carries (a viewing platform, a boardwalk section): its footprint is a polygon walkway, fixed to land
+    const surfs = C.surfaces.slice();
+    for (const e of C.ents) {
+      if (e.static === false || e.backdrop) continue;
+      const P = e.deck && Array.isArray(e.deck.poly) && e.deck.poly.length >= 3 ? e.deck.poly : null;
+      if (!P || !/(^|[.-])(boardwalk|platform|jetty|pier|pontoon|stage|walkway|deck)([.-]|$)/.test(String(e.obj || ''))) continue;
+      const over = /jetty|pier|pontoon|landing|stage/.test(String(e.obj || ''));
+      for (const v of worldWalkwayWater(surfs.concat([{ id: e.id || e.obj, kind: 'platform', poly: P, over: over ? 'water' : undefined }]), {})) if (v.id === (e.id || e.obj)) _wivPush(C, 'walkwayWater', e.id, v.msg);
     }
   },
   reflectOutsideWater(C) {
@@ -1170,7 +1210,7 @@ function _wivNearer(a, b) {
 }
 
 /** Rules that read the statics only (and the surfaces): computed once per world with a tracker, replayed on later frames. */
-const _WIV_STATIC_RULES = new Set(['habitat', 'pathBlocked']);
+const _WIV_STATIC_RULES = new Set(['habitat', 'pathBlocked', 'walkwayWater']);
 /** The history one run keeps across frames (popping, stuck, grace periods, the static cache). */
 function worldInvariantTracker() { return { prev: null, ids: new Map(), anim: new Map(), cache: new Map(), frames: 0 }; }
 
@@ -1260,7 +1300,7 @@ function worldInvariantFrame(world, agents, o) {
     ents.push({ id: fid, cls: e.cls || (info && info.cls) || null, obj: e.obj, static: true, auto: e.auto || null,
       landmark: !!e.landmark, framing: !!e.framing, framed: !!e.framed, x: e.x, y: e.y, z: e.z, facing: e.facing, foot: e.foot || null, height: h,
       layer: null, host: e.host || null, parent: e.parent != null ? e.parent : null, parentOff: e.parentOff, attach: e.attach || null, solidity: e.solidity || (info && info.solidity) || null,
-      deck: e.deck || null, waterline: e.waterline != null ? e.waterline : null, blocks: !!e.blocks, view: e.view || null, mirror: !!e.mirror,
+      deck: e.deck || null, waterline: e.waterline != null ? e.waterline : null, blocks: !!e.blocks, spans: !!e.spans, view: e.view || null, mirror: !!e.mirror,
       box: cam ? _wivBoxOf(cam, e, h, info ? info.size.w : null) : null, order: null, speed: 0, vx: 0, vz: 0, state: null, born: null,
       anim: e.anim || null, sway: null, shadow: null, reflect: null, look: e.look || null, backdrop: !!e.backdrop });
   }

@@ -157,6 +157,13 @@ The ground height `h(x, z)` is defined everywhere in view: the v2 relief grid (`
 a decked thing at its deck, a floater at the water level less its sink, a wader at the water level, a flyer at its altitude.
 Nothing is placed through the ground or floating above it (invariant `floating`).
 
+A **marsh** (`worldMarsh`, `79-world-4marsh.js`) is a generator, not a feature kind: given a boardwalk (`walk`, its `width`) and a few numbers (`from`, `reach`, `open`,
+`density`, a `platform`) it returns surfaces, lines and clusters to spread into a spec: one organic water, a spine of `reeds` ground under the walk, islands of
+wet ground with a channel of open water between any two, reed / reedmace / sedge clusters, lilies, litter and mud at the toes, rails along the walk and round the
+platform only, and the platform at the reed edge. Every outline is a smooth curve through noise-driven points. Built worlds also roughen every `reeds` surface and
+every pond or lake shore (`_wcNaturalEdge`: a noise field of the point, so a shared edge stays shared): a natural edge is never a ruled line. A walkway never
+crosses open water (`worldWalkwayWater`, rule and invariant `walkwayWater`).
+
 A **cliff** (`kind: 'cliff'`, `79-world-4cliff.js`) is analytic, because a face that is vertical over a metre cannot live in a grid whose rows are metres
 deep at 200 m: a plan (`path`, or an `arc: { c: [x, z], r, from, to }` in bearings from straight ahead), `h` (the foot of the talus to the plateau),
 `scree: { w, h } | false` (the talus skirt), `batter` (setback per metre of height; an overhang is texture, never geometry), `rim: { w, h }` (the rounded
@@ -401,7 +408,13 @@ load-log entry (the population is dropped), not a crash. For stills and captures
 - Vehicles keep to directed lanes on the left, keep gaps, stop at crossings and stops (buses at stops, trams at platforms),
   turn on curves with their views and never pass through each other. Trains run on rails to a timetable at a plausible
   speed. Boats under way travel mid-channel at walking pace with wakes; moored boats never move.
-- Schedules (trams, trains, boats) are periodic and their periods divide the loop length `WORLD_LOOP_S` (T1).
+- Schedules (trams, trains, boats) are periodic and their periods divide the loop length `WORLD_LOOP_S` (T1). A timetable on a
+  line the camera sees is PHASED so that the first train of its first track is a third of the way across the frame at the moment
+  the scene is first drawn (`life.show0`: the clock after the warm-up), and the same crossing comes round every loop; `phase:
+  'free'` (a schedule option) keeps the seeded random phase. A main line (`rail` surface) is laid on a bed by the fill
+  (`ballast` and `trough` lines, rails of every track; `WORLD_RAIL_BED`: the wheels of a train are 0.5 m over the ground) and an
+  embankment or cutting with a rail along its crest is a RAILWAY BANK (4terrain): mottled ground and scrub on the slope the camera
+  sees.
 - Reactions are scripted by the engine from populations and events (11.7), never hand-timed: ducks paddle away from a dog at
   the bank, pigeons lift when someone walks through and settle again, people wait for a tram, board and get off, a heron
   freezes then strikes, a cyclist rings and passes.
@@ -883,6 +896,12 @@ rails, studs, braces, rake boards in oak around the openings) with the stud pitc
 window, shopfronts (display window, stall riser, fascia board, a lit interior after dusk), limewash patches, and fittings hung from the wall
 (stall board with wares, striped awning, a hanging sign with a plain motif, an iron lantern with its glow, a basket in the season's flowers),
 each beyond its own near depth in a perspective view (`_SCTF_NEAR`). Roof, gable and chimneys come from the generator's model on the top storey.
+Second pass (SCENE_LESSONS L2): every storey below the top may lean (`sp.tf.lean`, `sp.tf.top`: the plane's `V` is tilted), each overhang
+is carried by curved brackets (`bracket`) over a joisted soffit (`tjoist`), an upper floor may carry an oriel (`oriel`), a shop shows its
+goods behind small panes (`tgoods`, a lit copy after dusk), a butcher keeps meat hooks (`thooks`), windows get leaded lights (`tlead`).
+Great churches are `70-scene-gen-1cathedral.js` + `70-scene-gen-style-gothic-minster.js`: `crown` picks a plan (`sceneCathedralPlans()`), the
+footprint's front edge is the west front; the model is a list of crown stacks (the civic crowns' drawing path), one per mass, drawn far to
+near; the gothic element kinds `gwin`, `garc`, `gcren`, `grake`, `gportal`, `gniches`, `gbutt` register in `_scbgElemKinds`.
 The kit `old-town-lane` (`79-world-0kits.js`) and the ground look `lane` (`79-world-4ground.js`: a running bond, a central drain) complete it.
 
 ### 14.3 Views, foreshortening and overscan (Q4, Q5, Q6)

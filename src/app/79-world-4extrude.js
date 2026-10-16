@@ -43,6 +43,10 @@ const WORLD_EXTRUDE_KINDS = Object.freeze({
   hedge: Object.freeze({ w: 1.1, h: 1.7, solid: true, mat: 'leaf', hex: '#4f6b35', top: '#5f7d40', detail: 'leafy' }),
   kerb: Object.freeze({ w: 0.15, h: 0.12, solid: false, mat: 'stone', hex: '#a8a49c', top: '#c2beb6', detail: null }),
   coping: Object.freeze({ w: 0.4, h: 0.08, solid: false, mat: 'stone', hex: '#a39b8a', top: '#c4bcab', detail: null }),
+  // a railway's bed (laid by the fill under every `rail` surface, 79-world-1fill.js): the ballast and the rails of its tracks
+  // (`tracks`: the offsets of each track's centre), and the concrete cable troughs along it
+  ballast: Object.freeze({ w: 7.4, h: 0.35, solid: false, mat: 'stone', hex: '#8d877b', top: '#a39c8d', detail: 'track' }),
+  trough: Object.freeze({ w: 0.45, h: 0.25, solid: false, mat: 'stone', hex: '#aeaaa0', top: '#c6c2b8', detail: null }),
 });
 const _wexNum = v => typeof v === 'number' && Number.isFinite(v);
 const _wexPt = p => Array.isArray(p) && p.length >= 2 && _wexNum(p[0]) && _wexNum(p[1]);
@@ -229,6 +233,31 @@ function _wexPiece(line, K, cam, ss, ends, o, idx) {
         if (pts) { details.push({ type: 'fill', pts, hex: _wexMat(o, K.mat, K.hex, a.p[1], 'post'), alpha: 1, minW: 0.6 }); box = _wexBox(pts, box); }
       }
     }
+  } else if (K.detail === 'track') {
+    // the rails of every track on a ballast bed (line.tracks: the offsets of each track's centre from the bed's centre line): a pair
+    // 1.435 m apart a rail's height over the ballast, a hairline of at least half a pixel (a bed 200 m away is one fine dark line per
+    // track), and, near enough to read, the sleepers across the bed (the v2 ground's own sleepers stay under the bed)
+    const gauge = typeof WORLD_RAIL_BED === 'object' ? WORLD_RAIL_BED.gauge : 1.435, rh = typeof WORLD_RAIL_BED === 'object' ? WORLD_RAIL_BED.rail : 0.15;
+    const offs = (Array.isArray(line.tracks) && line.tracks.length ? line.tracks : [0]).filter(_wexNum), zMid = C[Math.floor(C.length / 2)].p[1];
+    const lw = Math.max(0.5, cam.f * 0.07 / Math.max(near, zMid));
+    const railAt = (o) => C.map((c, i) => [c.p[0] + N[i][0] * o, top[i] + rh, c.p[1] + N[i][1] * o]).filter(p => p[2] >= near).map(p => _wexP(cam, p[0], p[2], p[1]).map(v => _wexR(v, 2)));
+    if (cam.eye > Math.min(...top) + 1e-3 && cam.f * 0.6 / Math.max(near, zMid) >= 3) {
+      const s0 = ss[0], s1 = ss[ss.length - 1];
+      for (let s = Math.ceil(s0 / 0.6) * 0.6; s <= s1 + 1e-6; s += 0.6) {
+        const a = _wexAlong(line.path, s), nx = -a.t[1], nz = a.t[0], g = y0 + _wexG(cam, a.p[0], a.p[1]) + h + 0.02;
+        if (a.p[1] < near) continue;
+        for (const off of offs) {
+          const c0 = [a.p[0] + nx * off, a.p[1] + nz * off], hw = 1.3, lh = 0.13;
+          const q = [[c0[0] - nx * hw - a.t[0] * lh, g, c0[1] - nz * hw - a.t[1] * lh], [c0[0] + nx * hw - a.t[0] * lh, g, c0[1] + nz * hw - a.t[1] * lh], [c0[0] + nx * hw + a.t[0] * lh, g, c0[1] + nz * hw + a.t[1] * lh], [c0[0] - nx * hw + a.t[0] * lh, g, c0[1] - nz * hw + a.t[1] * lh]];
+          const pts = _wexProjPoly(cam, q);
+          if (pts) { details.push({ type: 'fill', pts, hex: '#5b4b3c', alpha: 0.9 }); box = _wexBox(pts, box); }
+        }
+      }
+    }
+    for (const off of offs) for (const g of [-gauge / 2, gauge / 2]) {
+      const pts = railAt(off + g);
+      if (pts.length >= 2) { details.push({ type: 'stroke', pts, width: _wexR(lw, 2), hex: '#3d4045', alpha: 0.95 }); for (const q of pts) box = _wexBox([q], box); }
+    }
   } else if (K.detail === 'leafy') {
     // a seeded lumpy top: bumps of 0.1-0.25 m every 0.6-1 m along the outline seen against the sky
     const rnd = (() => { let a = _wexHash((line.id || 'hedge') + '|' + idx) || 1; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();
@@ -358,16 +387,19 @@ function worldExtrudeBuilding(b, cam, o) {
   if (Math.max(...foot.map(p => p[1])) < _wexNear(cam)) return null;
   const spec = Object.assign({}, b, { foot, seed: b.seed != null ? b.seed : _wexHash(b.id || JSON.stringify(foot)) % 100000 });
   if (!spec.style) spec.style = 'victorian-terrace';
+  let genErr = null;
   if (typeof sceneBuildingProject === 'function') {
     let d = null;
     // a building stands on the ground where it is (W2): a footprint on a slope is projected from an eye lowered by the ground's height at
     // its lowest corner (the generator measures everything from a flat ground), so a terrace on a cliff stands on the cliff, not at its foot
     const g = foot.reduce((m, p) => Math.min(m, _wexG(cam, p[0], p[1])), Infinity), camB = Number.isFinite(g) && Math.abs(g) > 0.02 ? Object.assign({}, cam, { eye: cam.eye - g }) : cam;
-    try { d = sceneBuildingProject(spec, camB, { season: o.season || 'summer', snowDepth: o.snowDepth || 0, tierCap: o.tierCap }); } catch (e) { d = null; }
+    try { d = sceneBuildingProject(spec, camB, { season: o.season || 'summer', snowDepth: o.snowDepth || 0, tierCap: o.tierCap }); } catch (e) { d = null; genErr = String(e && e.message || e); }   // never silent: the prism below carries the reason (the checks read prim.error)
     if (d) {
       // the outward normal of every visible wall (the generator's counter-clockwise footprint, front edge first)
       const F = d.foot || foot, walls = (d.walls || []).map(i => { const a = F[i], c = F[(i + 1) % F.length], ex = c[0] - a[0], ez = c[1] - a[1], L = Math.hypot(ex, ez) || 1; return { edge: i, a, b: c, n: [ez / L, -ex / L] }; });
-      return { id: b.id || null, kind: 'building', ent: b.id || null, foot, zKey: _wexR(zKey, 3), y0: Number.isFinite(g) ? _wexR(g, 3) : 0, height: d.h, eave: d.eave, box: d.box, direct: d, walls, solidity: 'solid', style: d.style };
+      // a bridge style `spans` the water it stands over (its footprint is in the water by design: the habitat rule is not for it)
+      const sd = typeof sceneBuildingStyle === 'function' ? sceneBuildingStyle(d.style) : null;
+      return { id: b.id || null, kind: 'building', ent: b.id || null, foot, zKey: _wexR(zKey, 3), y0: Number.isFinite(g) ? _wexR(g, 3) : 0, height: d.h, eave: d.eave, box: d.box, direct: d, walls, solidity: 'solid', style: d.style, spans: !!(sd && sd.spans) };
     }
   }
   // the fallback prism: walls that face the eye and a flat roof
@@ -385,7 +417,7 @@ function worldExtrudeBuilding(b, cam, o) {
   }
   if (cam.eye > h) { const pts = _wexProjPoly(cam, foot.map(p => [p[0], _wexG(cam, p[0], p[1]) + h, p[1]])); if (pts) { faces.push({ pts, role: 'roof', mat: 'slate', hex: _wexMat(o, 'slate', '#4a5058', zKey, 'roof'), z: zKey, alpha: 1 }); box = _wexBox(pts, box); } }
   if (!box) return null;
-  return { id: b.id || null, kind: 'building', ent: b.id || null, foot, zKey: _wexR(zKey, 3), height: h, box: box.map(v => _wexR(v, 1)), faces: faces.sort((p, q) => q.z - p.z), walls, solidity: 'solid', fallback: true };
+  return { id: b.id || null, kind: 'building', ent: b.id || null, foot, zKey: _wexR(zKey, 3), height: h, box: box.map(v => _wexR(v, 1)), faces: faces.sort((p, q) => q.z - p.z), walls, solidity: 'solid', fallback: true, error: genErr };
 }
 
 /* ---------- long hulls in perspective (Q4) ---------- */

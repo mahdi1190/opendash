@@ -45,8 +45,10 @@ for (const [id, file] of Object.entries(SCENES)) {
     }
     for (const l of spec.landmarks || []) assert.ok(l.src, `${l.obj} carries src`);
     const ids = new Set(spec.surfaces.map(s => s.id).concat(spec.entities.map(e => e.id).filter(Boolean)));
-    for (const e of spec.entities) if (e.on) assert.ok(ids.has(e.on), `${id}: cluster on ${e.on}`);
-    for (const p of spec.life) for (const k of ['on', 'host']) if (p[k]) assert.ok(ids.has(p[k]), `${id}: life ${p.who} ${k} ${p[k]}`);
+    // a marsh (79-world-4marsh.js) makes surfaces, rails and plants of its own, every id prefixed with the marsh's id
+    const known = (x) => ids.has(x) || (spec.marsh || []).some(m => typeof m.id === 'string' && String(x).startsWith(m.id + '-'));
+    for (const e of spec.entities) if (e.on) assert.ok(known(e.on), `${id}: cluster on ${e.on}`);
+    for (const p of spec.life) for (const k of ['on', 'host']) if (p[k]) assert.ok(known(p[k]), `${id}: life ${p.who} ${k} ${p[k]}`);
     // rich standard: not sparse
     assert.ok(spec.entities.length >= 35, 'at least 35 entity entries');
     assert.ok(spec.life.length >= 5, 'at least 5 populations');

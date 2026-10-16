@@ -34,10 +34,15 @@ What now holds, by default, in the engine (each with a test and a SCENE_LESSONS 
 
 Still not right:
 
-- **Frame time.** At 4x CPU throttle the compositor takes about 140 ms a frame (budget 8 ms) and a warm remount 1.7 to 2.6 s (budget
-  1 s); the cold first bake is fine (well under 5 s). The cost is the chunk blits and the occluder redraws in
-  `_wfrDraw` (the `depth` section of `stats().prof`); idea: pre-composite the run of chunks behind the farthest mover once per bake.
-- The pond's boardwalk reflection has a stair-stepped edge on its diagonals; the nav map does not treat extruded buildings as
+- **Frame time** (16 Oct, fix/perf: SCENE_LESSONS W; the numbers are in the branch report). The cost was never the chunk blits (0.02 ms) but
+  the movers' own work: copies (`Object.assign` made dictionary objects), sprite lookups, the water's 217 bands, a clip per redraw, the systems
+  catching up after a slow frame. Fixed, with the pictures equal (York identical; the rest differ in the water's reflections by under 0.3 px and in walkers under 14 px
+  tall, drawn whole). At a 4x throttle on the dev box: median 17 to 117 ms (was 27 to 228), p95 35 to 149 ms, warm remount 0.6 to 1.4 s (was 1.0 to 4.0 s);
+  unthrottled: median 1.3 to 9.6 ms, p95 2 to 14 ms. The gate (median < 16 ms, p95 < 33 ms, warm < 1 s at 4x) is met by no scene in full (York: median 14 to 17 ms, p95 41; warm < 1 s
+  only York and Malham): a 4x throttle costs Map- and canvas-heavy code 8 to 12x, so 16 ms there is a 1.5 ms frame unthrottled. What is left, in order: the
+  movers' blits (2 to 4 canvas calls each), the contact shadow polygons (12 calls each), the systems' tick (life-move is over its budget:
+  the movement package's), the water bands. `stats().prof` has `host recs order water mirror shadows depth` now.
+- (fixed 16 Oct, fix/pond: the pond's reflection steps, the boardwalk across the lake, the flat marsh slab; see SCENE_LESSONS U.) The nav map does not treat extruded buildings as
   solid in every case; a walker can still pass through a jogger for one frame (swept check) in the canal at night.
 - Library art gaps: no timber or jettied style until uk-york merges, no landmark art for the Liver Building or the Abbey.
 
@@ -175,3 +180,28 @@ evidence, is in the merge report kept outside the repo):
 - SCENE_LESSONS was renumbered (both lines' rows kept): A-F as before, G user review, H render glitches, I detail defaults,
   J movement, K terrain, L the Shambles, M the Pier Head, N Malham Cove, O light and water, P trees and seasons, Q looking,
   R fix-all verify, S this merge.
+
+## Whitby harbour with its landmarks (branch fix/whitby, 15 Oct)
+`world-test/whitby-harbour-1-w3` now has the ruined abbey on the East Cliff, St Mary's church at the head of the 199 steps (with railings and
+tread lines), red-pantiled houses stepping up the cliff in `along` rules on five lanes, and the swing bridge across the upper harbour that
+bends away to the right; the piers and lighthouses are behind the left shoulder (out of the frame). Built from reusable generators, not from
+art: `70-scene-gen-3ruin.js` (+ style `gothic-ruin`), `70-scene-gen-4bridge.js` (+ `swing-bridge`), styles `parish-church` and
+`pantile-cottage`, the `steps` ground look, and `landmark: true` on a building (`79-world-0core.js`, `79-world-1fill.js`). SCENE_LESSONS T,
+requirements section 30, tests `tests/scene-gen-ruin.test.mjs`. Not done: the harbour mouth (piers, lighthouses) needs a second view; the
+church has no dormers; the abbey's east end is seen at a grazing angle from this camera.
+
+## Malham Cove pass (15 Oct, branch fix/malham)
+The cliff generator (`79-world-4cliff.js`), the terrain strips (`79-world-4terrain.js`) and the Malham spec were reworked so that
+every cliff benefits (SCENE_LESSONS N, the rows marked "the Malham pass"): `rough` (default 1; 0 is the old ruled face) makes the
+plan, the rim and the scree irregular and cuts a stained scoop into a long limestone face; beds wander and step at faults; ledges
+break into runs and some overhang; the lip is pavement; the face rises out of a hill instead of being painted over by it; a pasture
+hillside has patches, sheep trods, tussocks and scars. `tests/world-terrain.test.mjs` pins the ruled geometry with `rough: 0` and
+tests the irregular defaults. Open: a wall that passes behind a face is drawn over it (a line is not clipped by a face).
+
+## 16 Oct, fix/pond: Fleet Pond rebuilt, reflections smooth, a walkway never crosses open water
+- `worldWalkwayWater` + invariant / validator rule `walkwayWater`; surface key `over: 'water'` (jetty, pier, pontoon, landing stage).
+- Water: nonzero winding spans (a cut inside a lowered pond no longer leaves a hole), resampled mirror (no one-pixel staircases),
+  channel walls never over a low deck.
+- Natural edges for `reeds` and pond / lake polygons in the built world; `worldMarsh` (`79-world-4marsh.js`) for reed-bed walks.
+- `fleet-pond-2-w3` is built with it: the walk, a 3 m footbridge over the stream, the reed bed and a platform at the reed edge.
+- Liverpool's `stage` now says `over: 'water'` (a floating landing stage).

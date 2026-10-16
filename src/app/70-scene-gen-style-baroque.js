@@ -65,7 +65,58 @@
     },
     pediment: () => [],
   };
-  sceneBuildingStyleDefine('baroque-civic', {
+
+  /* ---------- the three great waterfront offices, each its own silhouette (SCENE_LESSONS M, the Three Graces) ----------
+     'liver-towers'  a tall block with a clock tower at each river corner (a louvred belfry, a colonnaded cupola, a copper dome, a lantern and a bird) and a
+                     lower domed lantern tower between them, set back: two towers, three domes, birds on the outer two
+     'palazzo'       a heavy Italian palazzo: NO tower; a deep cornice, a balustrade, two low end pavilions and an urn on each (a flat, massive roofline)
+     'port-dome'     one great ribbed dome on a colonnaded drum over the middle of the block and four small domed turrets at the corners of the roof */
+  const turret = (K, s, t, w, h, fin) => ({ at: [s, t], w, d: w, z0: K.E, stages: [
+    { k: 'shaft', h, rows: [0.3, 0.64], cols: [0.5] },
+    { k: 'cornice', h: 0.8, out: 0.5 },
+    { k: 'drum', h: w * 0.4, r: w * 0.34, wins: 8, seg: 16 },
+    { k: 'dome', r: w * 0.37, h: w * 0.32, shape: 'hemi', ribs: 8, seg: 20 },
+    { k: 'lantern', r: w * 0.055, h: w * 0.12 },
+    { k: 'finial', kind: fin || 'urn', h: 2.2 },
+  ] });
+  crowns['liver-towers'] = (K) => {
+    const tw = clamp(K.W * 0.2, 11, 17), h = clamp(K.E * 0.8, 26, 50), cw = tw * 0.62;
+    return [
+      { at: [K.W / 2, K.Dp * 0.46], w: cw, d: cw, z0: K.E, stages: [
+        { k: 'shaft', h: h * 0.24, rows: [0.3, 0.66], cols: [0.5] },
+        { k: 'cornice', h: 0.8, out: 0.45 },
+        { k: 'cupola', h: h * 0.12, r: cw * 0.3, cols: 8 },
+        { k: 'dome', r: cw * 0.34, h: cw * 0.3, shape: 'hemi', ribs: 8 },
+        { k: 'lantern', r: cw * 0.05, h: h * 0.04 },
+        { k: 'finial', kind: 'ball', h: 2.4 },
+      ] },
+      clockTower(K, tw * 0.5 + 1.0, { w: tw, h, finial: 'bird', fh: 5.2 }), clockTower(K, K.W - tw * 0.5 - 1.0, { w: tw, h, finial: 'bird', fh: 5.2 }),
+    ];
+  };
+  crowns.palazzo = (K) => {
+    const w = clamp(K.W * 0.17, 8, 12), h = 3.4;
+    const end = (s) => ({ at: [s, w * 0.5 + 1.5], w, d: w, z0: K.E, stages: [
+      { k: 'shaft', h, rows: [0.5], cols: [0.5], flood: false },
+      { k: 'cornice', h: 0.9, out: 0.55 },
+      { k: 'finial', kind: 'urn', h: 3.0 },
+    ] });
+    return [end(w * 0.5 + 0.6), end(K.W - w * 0.5 - 0.6)];
+  };
+  crowns['port-dome'] = (K) => {
+    const r = clamp(Math.min(K.W, K.Dp) * 0.19, 7, 12), tw = clamp(K.W * 0.085, 6, 9), m = tw * 0.5 + 1.0, hh = clamp(K.E * 0.28, 7, 11);
+    return [
+      { at: [K.W / 2, clamp(K.Dp * 0.46, r + 1, K.Dp - r - 1)], w: r * 2.5, d: r * 2.5, z0: K.E, stages: [
+        { k: 'shaft', h: r * 0.5, rows: [0.4], cols: [0.5], flood: false },
+        { k: 'cornice', h: 0.9, out: 0.6 },
+        { k: 'drum', h: r * 1.3, r, wins: 16, seg: 32 },
+        { k: 'dome', r: r * 1.02, h: r * 0.9, shape: 'hemi', ribs: 16, seg: 40 },
+        { k: 'lantern', r: r * 0.17, h: r * 0.38 },
+        { k: 'finial', kind: 'ball', h: 3.0 },
+      ] },
+      turret(K, m, m, tw, hh), turret(K, K.W - m, m, tw, hh), turret(K, m, K.Dp - m, tw, hh), turret(K, K.W - m, K.Dp - m, tw, hh),
+    ];
+  };
+  const baseStyle = {
     label: 'Baroque civic (Portland stone)', eras: [1895, 1925], regions: ['uk'], grouping: 'block',
     storeys: [7, 7], storeyH: [5.8, 5.0, 4.6, 4.4], frontage: [58, 70], depth: [38, 50], roof: 'flat', parapet: 1.3, party: 'none', plinth: false,
     wall: { cols: ['#d9d2c0', '#dcd5c4', '#d5cebb'], grime: '#5b5548', texture: 'stone', mortar: '#c6bea9' },
@@ -81,5 +132,27 @@
     side: (sp, face, model, out) => _scbcFacade(sp, face, model, out, 'side'),
     frontBlocks: (sp, face, model) => _scbcFrontBlocks(sp, face, model),
     crowns,
+  };
+  sceneBuildingStyleDefine('baroque-civic', baseStyle);
+  // the three Graces: the same facade generator, three different faces (stone tone, bay, order, cornice), so they never read as one block
+  const variant = (id, label, over) => sceneBuildingStyleDefine(id, Object.assign({}, baseStyle, over, { label, civic: Object.assign({}, baseStyle.civic, over.civic || {}) }));
+  variant('baroque-civic-liver', 'Baroque civic: a tall granite-grey office block (twin clock towers)', {
+    storeys: [11, 11], storeyH: [5.4, 4.6, 4.2, 4.0], parapet: 1.0,
+    wall: { cols: ['#b3b8b7', '#b9bdbc', '#acb1b1'], grime: '#444a4c', texture: 'stone', mortar: '#a9aeae' },
+    dress: { cols: ['#cfd3d1', '#d3d6d4'] },
+    civic: { bay: 3.9, order: 'pilaster', entab: 1.5, course: 1.1, pil: 0.7, copper: '#6c9a86' },
+  });
+  variant('baroque-civic-palazzo', 'Baroque civic: a heavy Italian palazzo (deep cornice, columns, no tower)', {
+    storeys: [8, 8], storeyH: [6.2, 5.4, 4.8, 4.5], parapet: 1.8,
+    wall: { cols: ['#dccfa9', '#e0d3ae', '#d8caa4'], grime: '#5e5444', texture: 'stone', mortar: '#c9bc96' },
+    dress: { cols: ['#ece3c8', '#efe6cd'] },
+    win: Object.assign({}, baseStyle.win, { w: 2.2, hk: 0.7, recess: 0.3 }),
+    civic: { bay: 6.0, order: 'column', entab: 3.6, course: 1.6, pil: 1.15 },
+  });
+  variant('baroque-civic-port', 'Baroque civic: a great domed office with corner turrets (Portland stone)', {
+    storeys: [7, 7], storeyH: [5.8, 5.0, 4.6, 4.4], parapet: 1.3,
+    wall: { cols: ['#e0dccd', '#e4e0d1', '#dbd7c8'], grime: '#5a574c', texture: 'stone', mortar: '#cdc9ba' },
+    dress: { cols: ['#efebde', '#f2eee2'] },
+    civic: { bay: 5.0, order: 'pilaster', entab: 2.8, course: 1.2, pil: 1.0, copper: '#74908a' },
   });
 })();

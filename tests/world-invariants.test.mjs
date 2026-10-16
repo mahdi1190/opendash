@@ -38,7 +38,9 @@ test('WORLD_INVARIANTS lists every rule of 16.2 with its requirement ids', () =>
   const want = ['habitat', 'overlap', 'inSolid', 'personalSpace', 'onWater', 'floating', 'orphan', 'pathBlocked', 'reflectOutsideWater', 'shadowOnWater', 'shadowDir', 'waterGap',
     'edgeCut', 'nearBand', 'giant', 'popping', 'stuck', 'slidingFeet', 'facing', 'laneDir', 'animStill', 'stillMoving', 'staticAnim', 'clones', 'windDir', 'order', 'landmark', 'bare', 'season',
     // 15 Oct: the checks that read what the frame shows (audit bugs 3, 4, 8, 12, 13, 17, 19)
-    'nearStatic', 'crownCut', 'crowd', 'outfitClone', 'drawn', 'crown', 'shadowOrphan', 'deckDrawn', 'particles', 'nightLight'];
+    'nearStatic', 'crownCut', 'crowd', 'outfitClone', 'drawn', 'crown', 'shadowOrphan', 'deckDrawn', 'particles', 'nightLight',
+    // 16 Oct: a walkway never crosses open water
+    'walkwayWater'];
   assert.deepEqual(E.WORLD_INVARIANTS.map(r => r.rule).sort(), want.slice().sort());
   for (const r of E.WORLD_INVARIANTS) { assert.match(r.req, /^[A-Z]\d/, r.rule); assert.ok(r.what.length > 10, r.rule); }
 });
