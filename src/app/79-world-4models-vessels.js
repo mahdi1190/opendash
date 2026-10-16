@@ -300,9 +300,11 @@ function _wmdVesBoat(V, S) {
 }
 
 /** The foam of a moving vessel: a pale ring on the water round its waterline (drawn first, under the hull). */
-function _wmdVesFoam(V, H, wid, alpha) {
+function _wmdVesFoam(V, H, wid, alpha, rest) {
   const h = V.h;
-  if (!(h.p.moving || h.p.t != null)) return;
+  // a big boat at rest in a tideway (rest: a river ferry) still has a collar of foam where the hull meets the water: fainter than under way
+  const live = h.p.moving || h.p.t != null;
+  if (!live) { if (!rest) return; alpha = (alpha || 0.35) * 0.75; }
   const R = H.st.map(s => [s.a - s.ov, Math.max(0, s.hd * H.kW)]), pl = R.concat(R.slice().reverse().map(q => [q[0], -q[1]]));
   const outer = _wmdVesGrow(pl, wid || 0.35);
   h.part('foam', { layer: -5 });
@@ -334,7 +336,7 @@ function _wmdVesBuildRiverFerry(p, h) {
   for (const sg of [1, -1]) { V.sidePart('strake', sg, 0, sg * hb, 1.5); V.line(Hh.rim(sg, -bul - 0.35).map(q => [q[0], q[1] * 1.012, q[2]]), 0.34, '#17181b', 'metal', 'fender'); }
   V.part('hull', 0, 0, 1.5, 3);
   Hh.cap(age(liv.ring, 'paint'), 0.16, 'paint', 0.06);
-  _wmdVesFoam(V, Hh, 0.4, 0.3);
+  _wmdVesFoam(V, Hh, 0.5, 0.34, true);
   V.part('deck', 0, 0, 2.2, 1);
   Hh.deck(age(liv.deck, 'paint'), 'paint', 0.12);
   Hh.inner(age(liv.hull, 'paint'), 0.12);
@@ -560,12 +562,12 @@ function _wmdVesRig(V, S) {
 }
 
 function _wmdVesU(seed, key) { return (_wexHash(seed + '|' + key) % 100000) / 100000; }
-/** A crew member sitting out on the gunwale: hip at (a, l, y), leaning out to the side sg. */
-function _wmdVesCrew(V, a, l, y, sg, top, trousers, skin, hat) {
-  V.line([[a + 0.25, l - sg * 0.45, y - 0.28], [a + 0.05, l, y + 0.02]], 0.16, trousers, 'fabric', 'leg');   // legs in the boat
-  V.line([[a, l, y + 0.02], [a - 0.04, l + sg * 0.1, y + 0.5]], 0.3, top, 'fabric', 'torso');
-  V.disc([a - 0.05, l + sg * 0.14, y + 0.72], 0.1, skin, 'skin', 'head', 1);
-  if (hat) V.disc([a - 0.05, l + sg * 0.14, y + 0.78], 0.115, hat, 'fabric', 'hat', 0.55);
+/** A crew member SITTING in the boat (user, 16 Oct: the dinghy's crew stood upright and legless at the gunwale): the figure of
+ *  79-world-4models-landing.js (_wmdLdgSeated): hips on the side deck at (a, l, y), a torso leaning out to the side sg, thighs forward
+ *  and shins down into the boat on the inboard side, arms to the tiller extension or the sheet, a head and hair or a cap. o: more figure options. */
+function _wmdVesCrew(V, a, l, y, sg, top, trousers, skin, hat, o) {
+  const hair = ['#2a2220', '#4a3626', '#8a6a3e', '#c9b48a'][Math.abs(Math.round(a * 37 + l * 11 + y * 5)) % 4];
+  _wmdLdgSeated(V, Object.assign({ a, l, y: y - 0.12, face: 1, out: sg, lean: 0.3, leanA: -0.05, top, trousers, skin, hat, hair: hat ? null : hair, legs: 'bent', feet: [a + 0.46, l - sg * 0.5, 0.07], k: 1 }, o || null));
 }
 
 const _WMD_VES_DINGHY = Object.freeze([
@@ -618,8 +620,8 @@ function _wmdVesBuildDinghy(p, h) {
   if (!moored && h.u('crew') > 0.1) {
     const wsg = -lee, tops = ['#d8402e', '#2f6aa8', '#e8b030', '#f2efe6', '#2e8b57'], tp = tops[Math.floor(h.u('top') * tops.length)], trs = '#2a3340', sk = ['#e6bf9a', '#c89a78', '#9a6a48'][Math.floor(h.u('skin') * 3)];
     V.part('crew-helm', -0.85, wsg * 0.6, 0.6, 2);
-    _wmdVesCrew(V, -0.85, wsg * 0.62, 0.42, wsg, tp, trs, sk, h.u('hat') < 0.5 ? '#f2efe6' : null);
-    if (h.u('two') < 0.55) { V.part('crew-b', -0.1, wsg * 0.6, 0.6, 2); _wmdVesCrew(V, -0.12, wsg * 0.6, 0.42, wsg, tops[(Math.floor(h.u('top') * tops.length) + 2) % tops.length], trs, sk, null); }
+    _wmdVesCrew(V, -0.85, wsg * 0.62, 0.42, wsg, tp, trs, sk, h.u('hat') < 0.5 ? '#f2efe6' : null, { hands: [[-0.68, wsg * 0.14, 0.6], [-0.4, wsg * 0.3, 0.5]] });
+    if (h.u('two') < 0.55) { V.part('crew-b', -0.1, wsg * 0.6, 0.6, 2); _wmdVesCrew(V, -0.12, wsg * 0.6, 0.42, wsg, tops[(Math.floor(h.u('top') * tops.length) + 2) % tops.length], trs, ['#e6bf9a', '#c89a78', '#9a6a48'][Math.floor(h.u('skin2') * 3)], null, { hands: [[0.22, wsg * 0.3, 0.52], [0.3, wsg * 0.12, 0.45]] }); }
   }
   return { height: 5.95 * V.ky };
 }
@@ -1198,9 +1200,10 @@ function _wmdVesBuildRowing(p, h) {
   }
   if (rower && out) {
     V.part('rower', 0.0, 0, 0.9, 2);
-    V.line([[0.12, 0, yd(0) - 0.14], [0.02, 0, yd(0) + 0.48]], 0.3, ['#2a4a6a', '#7a2a24', '#d8d4cc', '#3a5a3a'][Math.floor(h.u('shirt') * 4)], 'fabric', 'torso');
-    V.disc([0.0, 0, yd(0) + 0.66], 0.1, ['#e6bf9a', '#c89a78', '#9a6a48'][Math.floor(h.u('skin') * 3)], 'skin', 'head', 1);
-    for (const sg of [1, -1]) V.line([[0.08, sg * 0.15, yd(0) + 0.38], [aR + 0.15, sg * 0.3, yR + 0.12]], 0.08, '#2a4a6a', 'fabric', 'arm');
+    // a rower sits on the thwart facing the stern, knees up, feet braced on the stretcher, hands on the oar looms
+    _wmdLdgSeated(V, { a: 0.0, l: 0, y: yd(0) - 0.13, face: -1, out: 0, lean: 0, leanA: 0.1, top: ['#2a4a6a', '#7a2a24', '#d8d4cc', '#3a5a3a'][Math.floor(h.u('shirt') * 4)], trousers: '#2f3640',
+      skin: ['#e6bf9a', '#c89a78', '#9a6a48'][Math.floor(h.u('skin') * 3)], hair: ['#2a2220', '#8a6a3e', '#c9b48a'][Math.floor(h.u('hair') * 3)], legs: 'bent', feet: [-0.72, 0, 0.1],
+      hands: [[aR + 0.1, -0.16, yR + 0.28], [aR + 0.1, 0.16, yR + 0.28]] });
   }
   return { height: 0.75 * V.ky };
 }
