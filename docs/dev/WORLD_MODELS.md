@@ -80,6 +80,7 @@ worldModelDefine(id, {
   liveries: [ { name, ...colours } ] | { name: {...} } | () => [...],
   sunLit: true,                       // faces carry their normal and the scene sun tones them (the narrowboat opts out: baked sky light only)
   bob: { heave, roll, pitch, period } | false,   // the floater's bob (metres, radians, seconds); only with a time (agents, o.t)
+  moor: { heave, roll, pitch, period },          // a floater MOORED in a swell (a static in rough water: the frame passes o.t and o.sea): larger than the idle bob; default 4x the heave, 3x the roll and pitch
   solidity: 'solid', footprint(p) -> [[a, l]...],  // the nav footprint (default: the L x B rectangle)
   samples: [ { livery, age, size, seed } ],        // what the sheet shows as "many instances"
   faceCap: 2500,                      // faces a build may emit (extra faces are dropped, never thrown)
@@ -168,6 +169,18 @@ windows do this for you. A model with `sunLit` (the default) carries each face's
 * The entity's own `size`, `height`, `foot` are set from the model at build (`worldModelFit`), so placement and navigation know
   the real size.
 
+Rocking at a mooring (17 Oct). A static floater (a ferry, a landing stage, a dinghy on a mooring) in ROUGH water (a water region whose
+look has `chop` of 0.5 or more: an estuary, the sea) is drawn live: `_wfrRocks` (79-world-5frame.js) marks it in the plan, takes it out of
+the baked chunks, and every 1/3 s the frame builds the model again with `o.t` (the scene time) and `o.sea` (0 flat calm .. 1 a fresh breeze
+.. 1.6 a gale, from the light's wind: `_wfrSea`) and draws it once into its own bitmap that the frames between blit. With a sea the kit's
+`h.bob` uses the def's `moor` (the sea scales it), so a ferry heaves about 10 cm and rolls about a degree, the 120 m pontoon of a landing
+stage less, and a flat calm is still. The baked mirror in the water stays at the rest pose (a pixel at most). A canal, a pond and a harbour
+never rock, and a model built without `o.sea` (an agent's, the sheet's) keeps its small idle bob. The build's `pose` ({ heave, roll, pitch }) is
+on the prim for checks. Test: `tests/world-river-detail.test.mjs` X3.
+
+The white water of a big hull (a ferry, a stage): `_wmdVesWash` (79-world-4models-vessels.js) draws a broken skirt of foam standing against
+the hull at the waterline and a bow wave at each stem. A flat collar is a sliver under a pixel from a quay 100 m away; upright pieces read.
+
 ## 6. Rules (what the review looks for)
 
 1. **Real form from every angle.** Look at the sheet: from 8 angles, end-on and from above. A flat panel with a paper outline
@@ -215,4 +228,4 @@ Several people (or agents) add models at once without touching each other:
 
 ## 9. The landing stage and seated figures (16 Oct)
 
-`boat.landing-stage` (`landing-stage`) is a floating pontoon moored off a river wall: a hull, deck lines, fenders, bollards, guide piles, lamp standards, a terminal shed, a hinged gangway down from the wall (its height is read from the waterline the entity floats at), brows to the ferries' gates and people waiting. A scene places it like a boat (`attach: 'water'`) and says where its gangway and brows are: `model: { opts: { gap: 14, gangway: 5, shed: 5, berthA: -30, berthB: 40, people: 0.8 } }` (metres along the stage from its middle; `gap` is the stage's inland edge to the wall). The scene leaves the wall's railing open at the gangway and lays the ferries alongside the berth side. `_wmdLdgSeated(d, o)` and `_wmdLdgStanding(d, o)` draw a seated or standing person through any `{ line, disc }` pair (the kit's `h` or a vessel's `V`): a person who sits has a thigh, a shin, arms and a head, so a dinghy's crew, a rower or someone on a bench is never a column.
+`boat.landing-stage` (`landing-stage`) is a floating pontoon moored off a river wall: a hull, deck lines, fenders, bollards, guide piles, lamp standards, a terminal shed, a hinged gangway down from the wall (its height is read from the waterline the entity floats at), brows to the ferries' gates and people waiting. A scene places it like a boat (`attach: 'water'`) and says where its gangway and brows are: `model: { opts: { gap: 14, gangway: 5, shed: 5, berthA: -30, berthB: 40, people: 0.8 } }` (metres along the stage from its middle; `gap` is the stage's inland edge to the wall). `shedSide: 1` puts the terminal shed on the INLAND edge instead of down the middle: seen along the wall, a shed on the stage's centre line hides the hull of a ferry lying behind it (the Pier Head's second ferry); on the inland edge it stands clear of the berth side. The scene leaves the wall's railing open at the gangway and lays the ferries alongside the berth side. `_wmdLdgSeated(d, o)` and `_wmdLdgStanding(d, o)` draw a seated or standing person through any `{ line, disc }` pair (the kit's `h` or a vessel's `V`): a person who sits has a thigh, a shin, arms and a head, so a dinghy's crew, a rower or someone on a bench is never a column.

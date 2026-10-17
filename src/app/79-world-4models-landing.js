@@ -17,7 +17,7 @@
    The wall's height above the water is read from the entity's waterline (h.base), so one model serves any quay.
 
    opts (numbers): gap (metres from the stage's inland edge to the wall face, 12), gangway (a of the gangway, +2),
-   shed (a of the shed's middle, the gangway's), berths ([a of each brow]: opts.berthA, opts.berthB; 0 = none), people (0 to 1: how many wait).
+   shed (a of the shed's middle, the gangway's), shedSide (1: the shed on the inland edge, so a ferry on the berth side shows over the stage; default: down the middle), berths ([a of each brow]: opts.berthA, opts.berthB; 0 = none), people (0 to 1: how many wait).
 
    Figures (_wmdLdgSeated, _wmdLdgStanding) are shared with the vessels (a crew sits in the boat, legs bent, hands on the tiller).
    ============================================================ */
@@ -128,6 +128,13 @@ function _wmdLdgBuild(p, h) {
   // the rubbing strake and the edge of the deck
   h.box(-hl, hl, hb, hb + 0.12, fb - 0.4, fb - 0.12, age(liv.strake, 'metal'), age(liv.strake, 'metal'), 'metal', 'strake');
   h.box(-hl, hl, -hb - 0.12, -hb, fb - 0.4, fb - 0.12, age(liv.strake, 'metal'), age(liv.strake, 'metal'), 'metal', 'strake');
+  // ---- the wash: a low broken skirt of foam at the waterline and a bow wave at each end (a flat collar is a sliver from the wall)
+  if (typeof _wmdVesWash === 'function') {
+    h.part('wash', { layer: 0.4 });
+    const ring = [[-hl, -hb], [-hl, hb], [hl, hb], [hl, -hb]];
+    _wmdVesWash({ face: (pts, hx, mt, rl, ins, ex) => h.face(pts.map(q => h.P(q[0], q[1], q[2])), hx, mt, rl, Array.isArray(ins) ? h.P(0, 0, 1.2) : ins, ex) },
+      ring, { h, L, tips: [hl - 0.3, -hl + 0.3], tipHb: hb, up: 0.5, fine: h.fine, wedge: 8, gapK: 0.5, sea: p.sea == null ? 1 : p.sea });
+  }
   // ---- the deck: yellow edge lines, seams
   h.part('deck', { layer: 1 });
   const yD = fb + 0.012;
@@ -140,13 +147,16 @@ function _wmdLdgBuild(p, h) {
   if (h.fine) for (let a = -hl + 7; a < hl - 3; a += 7) h.face([h.P(a, -hb + 0.1, yD), h.P(a + 0.06, -hb + 0.1, yD), h.P(a + 0.06, hb - 0.1, yD), h.P(a, hb - 0.1, yD)], h.shade(deckC, 0.8), 'stone', 'seam', null);
 
   // ---- the terminal shed: a long low building on the deck with a pitched roof, a canopy over the berth, lit windows
-  const sL = 24, a0 = sa - sL / 2, a1 = sa + sL / 2, l0 = -hb + 3.4, l1 = l0 + 6.2, yE = fb + 3.3, yR = fb + 4.5;
+  // (opts.shedSide > 0: the shed stands on the INLAND edge, behind the passengers' deck: a ferry moored on the berth side is then never
+  //  hidden by the shed when the stage is seen along the wall; the default keeps it down the middle)
+  const inland = +o.shedSide > 0;
+  const sL = 24, a0 = sa - sL / 2, a1 = sa + sL / 2, l1 = inland ? hb - 1.6 : -hb + 9.6, l0 = l1 - 6.2, yE = fb + 3.3, yR = fb + 4.5;
   h.part('shed', { layer: 2 });
   h.box(a0, a1, l0, l1, fb, yE, age(liv.house, 'paint'), age(liv.roof, 'metal'), 'render', 'wall');
   h.box(a0 - 0.05, a1 + 0.05, l0 - 0.05, l1 + 0.05, fb, fb + 0.7, age(liv.base, 'stone'), null, 'stone', 'plinth');
   h.gable(a0, a1, l0, l1, yE, yR, age(liv.roof, 'metal'), { ridge: 'a', over: 0.55, mat: 'metal', role: 'roof', end: age(liv.house, 'paint') });
   // a flat canopy over the berth side, on posts
-  const cl0 = -hb + 0.7, yC = fb + 3.0;
+  const cl0 = inland ? Math.max(-hb + 0.7, l0 - 4.2) : -hb + 0.7, yC = fb + 3.0;
   h.box(a0 - 1.5, a1 + 1.5, cl0, l0, yC, yC + 0.16, age(liv.roof, 'metal'), age(liv.roof, 'metal'), 'metal', 'canopy');
   if (h.fine) for (let a = a0 - 1; a <= a1 + 1.01; a += 5.2) h.line([h.P(a, cl0 + 0.2, fb), h.P(a, cl0 + 0.2, yC)], 0.14, age(liv.post, 'metal'), 'metal', 'post');
   // windows and doors on the walls the eye can see (the walk side, the berth side, the end)
@@ -245,7 +255,7 @@ function _wmdLdgBuild(p, h) {
 
   // ---- benches along the shed's walk side and the people on the deck (some seated)
   h.part('people', { layer: ns > 0 ? nearLayer - 0.5 : farLayer + 0.5 });
-  const benchL = l1 + 0.65;
+  const benchL = inland ? l0 - 0.65 : l1 + 0.65;
   const benches = [[a0 + 2.8, a0 + 4.8], [a1 - 4.8, a1 - 2.8]];
   for (const [b0, b1] of benches) {
     h.box(b0, b1, benchL - 0.22, benchL + 0.22, fb + 0.4, fb + 0.46, age('#7a5a38', 'timber'), age('#9a7448', 'timber'), 'timber', 'seat');
@@ -255,7 +265,7 @@ function _wmdLdgBuild(p, h) {
   const n = Math.round(crowd * 12);
   const standing = [];
   for (const b of berths) for (let i = 0; i < 4; i++) standing.push([b + (h.u('qa' + b + i) - 0.5) * 3.4, -hb + 1.3 + h.u('ql' + b + i) * 2.2]);
-  for (let i = 0; i < 6; i++) standing.push([sa + (h.u('pa' + i) - 0.5) * 30, hb - 1.2 - h.u('pl' + i) * 1.5]);
+  for (let i = 0; i < 6; i++) standing.push([sa + (h.u('pa' + i) - 0.5) * 30, inland ? l0 - 1.3 - h.u('pl' + i) * 1.5 : hb - 1.2 - h.u('pl' + i) * 1.5]);
   for (let i = 0; i < Math.min(n, standing.length); i++) {
     const [a, l] = standing[i], lk = _wmdLdgLook(h.u, i);
     if (Math.abs(a - ga) < 2.3 && l > hb - 3) continue;
@@ -273,6 +283,7 @@ function _wmdLdgBuild(p, h) {
 worldModelDefine('landing-stage', {
   name: 'Landing stage (a floating pontoon with a hinged gangway to the river wall, a terminal shed, fenders and a ferry berth)', ids: ['boat.landing-stage'], sampleObj: 'boat.landing-stage', float: true, solidity: 'solid',
   bob: { heave: 0.008, roll: 0.0006, pitch: 0.0003, period: 7.5 },
+  moor: { heave: 0.045, roll: 0.0028, pitch: 0.0013, period: 7.8 },   // a 120 m pontoon on its guide piles: less than the ferries it serves
   dims(info, ent) { return { L: 120, B: 14, H: 6.4 }; },
   liveries: () => _WMD_LDG,
   samples: [{ livery: 'grey' }, { livery: 'navy', age: 0.7 }, { livery: 'green', size: 0.8 }],
