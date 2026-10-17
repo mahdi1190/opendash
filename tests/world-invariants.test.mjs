@@ -151,6 +151,29 @@ test('giant: a 3.4 m person and one drawn half the frame tall; a 1.75 m person i
   assert.deepEqual(run('giant', frame([P({ height: 1.75 })])), []);
 });
 
+test('giant: a boat built by a parametric model keeps the model\'s own height (a 4.6 m potter), not the library\'s 7 m; a 30 m one is still a giant', () => {
+  const boat = (id, height) => S({ id, obj: 'boat.fishing-boat', cls: 'boat', x: -6, z: 60, y: 0, height, box: null });
+  assert.ok(E.worldModelHas('boat.fishing-boat'));
+  assert.deepEqual(run('giant', frame([boat('fb1', 4.6)])), []);
+  assert.deepEqual(run('giant', frame([boat('fb2', 6)])), []);
+  assert.equal(run('giant', frame([boat('fb3', 30)])).length, 1);
+});
+
+test('popping: a walker that walks in from beyond a side between two samples is not a pop (sampled at 2 Hz, 100 px in); one mid-frame is', () => {
+  // 1.5 m/s at 8 m from the lens: in half a second it walks in by f * 1.5 * 0.5 / 8 px; the previous sample had it past the side
+  const prev = frame([], { t: 10 });
+  const inFromRight = (x) => P({ id: 'm1', x, z: 8, vx: -1.5, vz: 0, speed: 1.5, state: 'walk', intent: 'travel' });
+  // x chosen so that the body's box ends 60 to 90 px inside the right side
+  const edgeX = 800 / cam.f * 8;                                   // the frame's right side at 8 m
+  const near = frame([inFromRight(edgeX - 0.55)], { t: 10.5 });
+  const b = near.ents[0].box;
+  assert.ok(b[2] < 1600 - 2 && b[2] > 1600 - 150, 'the figure stands a little inside the right side (' + Math.round(b[2]) + ')');
+  assert.deepEqual(run('popping', near, { prev }), [], 'it walked in from beyond the side between the samples');
+  // the same figure standing still mid-frame appearing at once is a pop; so is a slow one that cannot have come from the side
+  assert.equal(run('popping', frame([P({ id: 'm2', x: 0, z: 8, vx: 0, vz: 0, speed: 0 })], { t: 10.5 }), { prev }).length, 1);
+  assert.equal(run('popping', frame([P({ id: 'm3', x: edgeX - 3, z: 8, vx: -1.5, vz: 0, speed: 1.5, state: 'walk' })], { t: 10.5 }), { prev }).length, 1, 'three metres in is no entry');
+});
+
 test('popping: a walker appearing mid-frame; one entering at the frame edge (or at a spawn cell) is quiet', () => {
   const prev = frame([]);
   assert.equal(run('popping', frame([P({ box: [790, 470, 806, 500] })]), { prev }).length, 1);
@@ -353,6 +376,11 @@ test('crowd (A2): two walkers drawn through each other for 0.5 s; side by side a
   for (let t = 0; t <= 1; t += 0.25) m += run('crowd', frame([P({ id: 'a', x: 3, z: 20 }), P({ id: 'b', x: 3.6, z: 20 })], { t }), { track: t2 }).length;
   assert.equal(m, 0, 'shoulder to shoulder');
   assert.deepEqual(run('crowd', frame([P({ id: 'a', x: 3, z: 20, group: 'g1' }), P({ id: 'b', x: 3.05, z: 20.05, group: 'g1' })])), [], 'one group (a couple arm in arm)');
+  // 15 Oct: two strangers passing at 0.55 m: their art boxes (arm swing) overlap by 40 %, their bodies do not
+  const t3 = E.worldInvariantTracker();
+  let k = 0;
+  for (let t = 0; t <= 1; t += 0.25) k += run('crowd', frame([P({ id: 'a', x: 3, z: 20, state: 'walk', w: 1.0 }), P({ id: 'b', x: 3.55, z: 20.05, state: 'walk', w: 1.0 })], { t }), { track: t3 }).length;
+  assert.equal(k, 0, 'passing at 0.55 m with the arms swinging');
 });
 
 test('outfitClone (A11): two walkers in the same outfit side by side for 3 s; different variants are quiet; no variant is n/a', () => {

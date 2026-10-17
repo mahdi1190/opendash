@@ -144,6 +144,11 @@ test('accept pieces (X1, X2, I3, Z2): the owner table, the phase files, the priv
   assert.match(report, /## X3\. SCENE_LESSONS/); assert.match(report, /## Z2\. Authoring time/); assert.match(report, /habitat: sense/);
 });
 
+function refMedian() {
+  const t = [];
+  for (let k = 0; k < 5; k++) { const a = new Float64Array(200000); let x = 12345; for (let i = 0; i < a.length; i++) { x = (x * 1103515245 + 12345) >>> 0; a[i] = x; } const t0 = performance.now(); a.sort(); t.push(performance.now() - t0); }
+  t.sort((p, q) => p - q); return t[2];
+}
 test('perf (F1, F2, Z1, G12): both average-machine sizes, the matrix extremes, and the per-system profile within 1.2x of each budget', async () => {
   assert.deepEqual(PF.WORLD_PERF_SIZES.map(s => s.id), ['1920x1080@1.25', '3440x1440']);
   assert.equal(PF.WORLD_PERF_SIZES[0].size.w * PF.WORLD_PERF_SIZES[0].dpr, 1920);
@@ -159,7 +164,10 @@ test('perf (F1, F2, Z1, G12): both average-machine sizes, the matrix extremes, a
     if (k) await new Promise(r => setTimeout(r, 2500));
     const p = PF.worldPerfProfile(E, spec, { seconds: 8 });
     assert.ok(p.systems.length >= 1, 'the profile lists the systems');
-    over = p.systems.filter(s => s.status === 'fail').map(s => `${s.id} p50 ${s.p50} ms > 1.2 x ${s.budget} ms`);
+    // a slower machine than the one the budgets were set on (a shared CI runner) is allowed its ratio: a fixed reference workload (a sort of
+    // 200 000 numbers, 16 ms on that machine; the same as tests/world-life.test.mjs) says how much slower it is right now
+    const scale = Math.max(1, refMedian() / 16);
+    over = p.systems.filter(s => s.status === 'fail' && s.p50 > s.budget * 1.2 * scale).map(s => `${s.id} p50 ${s.p50} ms > 1.2 x ${s.budget} ms (x${scale.toFixed(2)} for this machine)`);
     if (!over.length) break;
   }
   assert.deepEqual(over, [], 'a system over its budget (tell its owner)');

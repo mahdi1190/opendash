@@ -15,7 +15,10 @@ const src = name => readFileSync(new URL('../src/app/' + name, import.meta.url),
 const SCRIPTS = new Map();   // compiled once, run in every harness
 const script = name => { if (!SCRIPTS.has(name)) SCRIPTS.set(name, new vm.Script(src(name), { filename: name })); return SCRIPTS.get(name); };
 const PACKS = ['72-anim-pack-seasons.js', '72-anim-pack-uk-south-east.js', ...HANTS_FILES];
-const LOAD = animRegistryFiles(fileURLToPath(new URL('../src/app/', import.meta.url)), ['69-travel-moments-logic.js']).filter(f => (!REGION_FILE_RE.test(f) || f === '71-anim-0region.js') && (!f.startsWith('72-anim-pack-') || PACKS.includes(f)));
+// The 3D world engine (79-world-*, 78-scene-x-*) draws nothing in the opening sequence and its files only load as one
+// script (the build joins them: 79-world-4model-narrowboat.js calls worldModelDefine from the later 79-world-4models.js),
+// so this per-file harness leaves them out.
+const LOAD = animRegistryFiles(fileURLToPath(new URL('../src/app/', import.meta.url)), ['69-travel-moments-logic.js']).filter(f => (!REGION_FILE_RE.test(f) || f === '71-anim-0region.js') && (!f.startsWith('72-anim-pack-') || PACKS.includes(f)) && !/^(79-world-|78-scene-x-)/.test(f));
 function harness({ day = '2026-12-25', look = {}, on = true, town = '', stored = new Map() } = {}) {
   const timers = [], attributes = {}; let gone = false;
   const element = () => ({

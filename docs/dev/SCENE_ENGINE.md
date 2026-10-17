@@ -1982,7 +1982,7 @@ the ground rules for the expected forbidden-file reasons).
    browser.
 2. Tests:
    - Run `npm test` FOUR times. Every run must pass.
-   - KNOWN ISSUE to find and fix: `tests/anim-pack-cli.test.mjs` sometimes
+   - KNOWN ISSUE to find and fix (the file is now five shard files, `tests/anim-pack-cli-1..5.test.mjs`, importing `anim-pack-cli.shared.mjs`): `tests/anim-pack-cli.test.mjs` sometimes
      crashes node on Windows (exit 3221225477, `0xC0000005`, an access
      violation) when run in the full suite. It passes alone.
      - Reproduce it with `node --test` (full suite), with

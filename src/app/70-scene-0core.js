@@ -67,6 +67,9 @@ const sceneD = {
 
 /* ---------- the object registry (2.1, 2.2) ---------- */
 const _scObjs = new Map(), _scShapeMemo = new Map(), _scObjDups = [];
+/** The weather of the figure being built (null: not said, the wardrobe keeps to its season; true: wet, an umbrella is up; false: dry). */
+let _scWardrobeWet = null;
+function sceneWardrobeWet() { return _scWardrobeWet; }
 const _SC_OBJ_ID_RE = /^[a-z]+\.[a-z0-9-]{1,40}$/;
 /** Define (or, for tests, redefine) an object. A second definition of an id replaces the first and is reported by sceneObjCheck / sceneObjDups. */
 function sceneObjDefine(def) {
@@ -79,6 +82,20 @@ function sceneObjDefine(def) {
   return def;
 }
 function sceneObj(id) { return _scObjs.get(id) || null; }
+/**
+ * Whether an object has a hook of this kind (walk, paddle, flap, turn ...) for an archetype's pick filter: its def.anim, or for a
+ * PERSON the hooks its build() returns in $anim (the walking people have swinging arms and directional views, so their hooks are
+ * per variant). An archetype that read def.anim alone dropped person.walker and person.jogger from every walkers slot once their
+ * hooks moved to $anim (CI 15 Oct: the compiled v1 scenes changed). Other categories keep reading def.anim only, as before: a
+ * kit adapter's $anim never made a bird or a boat eligible, and it must not now (the same scenes, byte for byte).
+ */
+function sceneObjHasHook(id, kind) {
+  const d = _scObjs.get(id);
+  if (!d) return false;
+  if (d.anim) return !!d.anim[kind];
+  if (d.category !== 'person') return false;
+  try { const sh = sceneObjShapes(id, 0, 'summer'); return !!(sh && sh.anim.some(h => h.kind === kind)); } catch (e) { return false; }
+}
 function sceneObjs() { return [..._scObjs.values()]; }
 function sceneObjDups() { return _scObjDups.slice(); }
 function _scSlot(def, season, slot) {
@@ -117,10 +134,18 @@ function _scBox(parts) {
 function sceneObjShapes(id, v, season) {
   const def = sceneObj(id);
   if (!def) return null;
+  // a season may carry the weather of the day ('autumn~wet', 'autumn~dry': the world engine's people, SCENE_LESSONS J): only the
+  // wardrobe of a person reads it (an umbrella is up in the rain and furled when it is dry); no suffix leaves a wardrobe to its season
+  let wet = null;
+  if (typeof season === 'string' && (season.endsWith('~wet') || season.endsWith('~dry'))) { wet = season.endsWith('~wet'); season = season.slice(0, -4); }
+  if (def.category !== 'person') wet = null;
   const vv = Math.max(0, Math.min((def.variants || 1) - 1, v | 0)), se = def.seasonal === false ? 'summer' : (season || 'summer');
-  const key = id + '|' + vv + '|' + se;
+  const key = id + '|' + vv + '|' + se + (wet == null ? '' : wet ? '~wet' : '~dry');
   if (_scShapeMemo.has(key)) return _scShapeMemo.get(key);
-  const raw = def.build(vv, sceneRnd(sceneHash(id + '|' + vv + (def.shapeBySeason ? '|' + se : ''))), { season: se, v: vv, id }) || {};
+  const wasWet = _scWardrobeWet;
+  _scWardrobeWet = wet;
+  let raw;
+  try { raw = def.build(vv, sceneRnd(sceneHash(id + '|' + vv + (def.shapeBySeason ? '|' + se : ''))), { season: se, v: vv, id, wet }) || {}; } finally { _scWardrobeWet = wasWet; }
   const want = def.parts || ['body'];
   const order = want.filter(n => raw[n]).concat(Object.keys(raw).filter(n => !want.includes(n)));
   const parts = {};
@@ -719,6 +744,16 @@ function sceneArchetypeCheck(id, row) {
 }
 const _scKitPickMemo = new Map();
 /**
+ * Objects drawn for ONE place's views are named with that place's prefix (<category>.<prefix>-<name>). A kit pick fills any
+ * scene of the kit, so such an object must be named by the scene that wants it (weight 0 by default, as the docs say for
+ * "only a scene that names it gets it"): without this a Blackbushe hangar, a Sheffield tram or the Sheffield hills joined the
+ * far-building and vehicle pools of every temperate or urban scene (CI 15 Oct: an Armenian plain with an airfield hangar,
+ * the New York skyline with the Sheffield hills, +130 KB on a tile). A def that sets its own weight keeps it.
+ */
+// (the older proof- and wp- objects are not listed: the byte-identical v1 baselines of tests/fixtures were made with them in the pools)
+const SCENE_PLACE_PREFIXES = Object.freeze(['yc', 'yg', 'fpv', 'wyv', 'canal-view', 'mcf', 'mcr', 'mqn', 'shc', 'shp', 'shk']);
+const _SC_PLACE_ID_RE = new RegExp('^[a-z]+[.](?:' + SCENE_PLACE_PREFIXES.join('|') + ')-');
+/**
  * { objectId: weight } of every object with one of the kit:<k> tags, the role:<role> tag and every tag in o.tags (not o.exclude),
  * keyed in id order (never registration order: library files load by file name). weight defaults to 1; weight 0 excludes. Empty-safe.
  */
@@ -729,7 +764,7 @@ function sceneKitPick(kits, role, o) {
   if (_scKitPickMemo.has(key)) return Object.assign({}, _scKitPickMemo.get(key));
   const out = {};
   for (const d of [..._scObjs.values()].sort((a, b) => (a.id < b.id ? -1 : 1))) {
-    const t = d.tags || [], w = d.weight == null ? 1 : d.weight;
+    const t = d.tags || [], w = d.weight == null ? (_SC_PLACE_ID_RE.test(d.id) ? 0 : 1) : d.weight;
     if (!(w > 0) || !t.includes('role:' + role) || !ks.some(k => t.includes('kit:' + k)) || !tags.every(x => t.includes(x))) continue;
     if ((Array.isArray(ex) ? ex : [ex]).some(x => x === d.id || t.includes(x))) continue;
     out[d.id] = w;

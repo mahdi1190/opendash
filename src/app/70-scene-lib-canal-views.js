@@ -785,7 +785,7 @@ function sceneCanalViewV2(id) {
   );
   // (round 2) water lilies in rafts along the offside margin (the Basingstoke Canal's still summit pound is full of them)
   const uOff = T > 0 ? 0.06 : 0.94, lr = (n) => { const x = Math.sin(n * 12.9898 + id.charCodeAt(id.length - 1) * 78.233) * 43758.5453; return x - Math.floor(x); };   // a seeded hash per view
-  for (let i = 0, d = 10 + lr(1) * 6; i < 5 && d < 75; i++, d += 7 + lr(i + 2) * 12) {
+  for (let i = 0, d = 12.4 + lr(1) * 6; i < 5 && d < 75; i++, d += 7 + lr(i + 2) * 12) {   // from 12.4 m: the canal is in view from 11.9 m in view 1 (a lily at 10.4 m was refused)
     for (let j = 0; j < 1 + Math.floor(lr(i * 7 + 3) * 2.5); j++) place.push({ obj: 'water.lily', on: 'canal', k: 2.2, d: r1(d + j * 0.9 + lr(i * 11 + j) * 0.8), u: Math.round((uOff + (T > 0 ? 1 : -1) * (0.02 + lr(i * 5 + j) * 0.09)) * 100) / 100, variant: (i + j) % 3 });
   }
   const cam = Object.assign({}, V.camera);

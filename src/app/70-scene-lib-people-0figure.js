@@ -569,11 +569,19 @@ const scenePeople = (function () {
   /** A preset's look for a season: the body (build, age, skin, hair, height) and that season's wardrobe. */
   function outfit(p, season) {
     const w = p[season] || p.summer || {};
-    return Object.assign({ season, build: p.build, age: p.age, skin: p.skin, hair: p.hair, tall: p.tall || 0 }, w);
+    const o = Object.assign({ season, build: p.build, age: p.age, skin: p.skin, hair: p.hair, tall: p.tall || 0 }, w);
+    // a carried umbrella follows the weather of the day when the host says it (the world engine): up in the rain, furled when dry;
+    // a build that is not told keeps what its season says
+    const wet = wetDay();
+    if (wet === true && o.hold === 'brolly') o.hold = 'umbrella';
+    else if (wet === false && o.hold === 'umbrella') o.hold = 'brolly';
+    return o;
   }
+  /** The weather of the figure being built: true (wet), false (dry), or null (not said). */
+  function wetDay() { return typeof sceneWardrobeWet === 'function' ? sceneWardrobeWet() : null; }
   const ARM_POSES = Object.freeze(['forward', 'back', 'run', 'hold', 'play', 'bars', 'phone', 'umbrella', 'none']);
   const LEG_POSES = Object.freeze(['walk', 'run', 'seated', 'cycle']);
   for (const tb of [BUILD, TOPS]) { Object.values(tb).forEach(Object.freeze); Object.freeze(tb); }   // exported read-only
-  return Object.freeze({ f1, D, ell, circ, rect, hx, mix, dark, light, tone4, tidy, define, palette, NIGHT, walkAnim, tags, figure, outfit, ik,
+  return Object.freeze({ f1, D, ell, circ, rect, hx, mix, dark, light, tone4, tidy, define, palette, NIGHT, walkAnim, tags, figure, outfit, wetDay, ik,
     PRESETS, SKIN, HAIR, CLOTH, HIP, BUILD, TOPS, ARM_POSES, LEG_POSES });
 })();

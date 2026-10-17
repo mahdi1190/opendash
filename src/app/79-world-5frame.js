@@ -108,7 +108,9 @@ function _wfrRec(e, cam, o) {
   if (!def || !def.size) return null;
   const v = vw.variant != null ? vw.variant : Number.isInteger(e.variant) ? e.variant : 0;
   const P = sceneProject(cam, e.x, e.z, Number.isFinite(e.y) ? e.y : null), s = vw.s || (cam.f / e.z) * _wfrHeight(e) / def.size[1];
-  const form = o.agent ? (o.season || 'summer') : _wfrFormOf(e, o.season, o.ctx);
+  // a person is drawn in the wardrobe of the day's weather (an umbrella is up in rain or showers and furled when it is dry: SCENE_LESSONS J);
+  // o.wet: true | false from the draw's light, undefined (a record made without one) keeps the season's wardrobe
+  const form = o.agent ? (o.season || 'summer') + (o.wet != null && /^person./.test(String(e.obj)) ? (o.wet ? '~wet' : '~dry') : '') : _wfrFormOf(e, o.season, o.ctx);
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(oid, v, form) : null, b = (sh && sh.box) || [-def.size[0] / 2, -def.size[1], def.size[0] / 2, 0];
   const flip = !!vw.mirror && def.flippable !== false;
   const box = flip ? { x0: P.X - b[2] * s, y0: P.Y + b[1] * s, x1: P.X - b[0] * s, y1: P.Y + b[3] * s } : { x0: P.X + b[0] * s, y0: P.Y + b[1] * s, x1: P.X + b[2] * s, y1: P.Y + b[3] * s };
@@ -292,6 +294,58 @@ function _wfrAbsent(world, ctx) {
   ids.sort();
   return { set: new Set(ids), key: ids.length ? _wfrHashStr(ids.join(',')) : '-' };
 }
+// A floater moored in rough water (a region whose look has chop: an estuary, the sea) rocks in the swell: its model is rebuilt with the
+// scene time and the sea state at this rate (the motion is a few centimetres a second: three a second is smooth: a hull moves a quarter of a pixel between two steps) and drawn as a live
+// static, in depth order like any mover. Calm water (a canal, a pond, a harbour) never rocks, and a baked static is never rebuilt.
+const WORLD_FRAME_ROCK_HZ = 3;
+function _wfrRocks(r, cam, regions) {
+  if (!r || !r.prim || !r.prim.model || !r.ent || !_wfrIsWater(r.ent) || typeof worldModelRocks !== 'function' || !worldModelRocks(r.obj) || !Array.isArray(regions) || typeof sceneProject !== 'function') return false;
+  const wl = Number.isFinite(r.ent.waterline) ? r.ent.waterline : Number.isFinite(cam.water) ? cam.water : null;
+  if (wl == null) return false;
+  const q = sceneProject(cam, r.ent.x, r.ent.z, wl);
+  for (const R of regions) {
+    if (!(R && R.look && Number(R.look.chop) >= 0.5)) continue;
+    for (const P of (Array.isArray(R.clips) && R.clips.length ? R.clips : [R.clip])) {
+      if (!Array.isArray(P) || P.length < 3) continue;
+      let c = false;
+      for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > q.Y) !== (b[1] > q.Y) && q.X < (b[0] - a[0]) * (q.Y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; }
+      if (c) return true;
+    }
+  }
+  return false;
+}
+/** The sea state of a light (0 flat calm .. 1 a fresh breeze .. 1.6 a gale) from its wind multiplier (0.4 calm .. 1 normal .. 1.8 strong). */
+function _wfrSea(L) {
+  const w = L && Number.isFinite(L.wind) ? L.wind : 1;
+  return Math.max(0, Math.min(1.6, 0.1 + (w - 0.4) * 1.5));
+}
+/**
+ * The record of a rocking floater at scene time tau: its model built with the time and the sea (kept for one step of the clock) and
+ * drawn once into its own bitmap per step (the frames between blit it: the model's 500 faces are not redrawn at 60 Hz).
+ */
+function _wfrRockRec(env, S, r, tau, sea) {
+  const k = Math.floor((tau || 0) * WORLD_FRAME_ROCK_HZ + 1e-9), sk = Math.round(sea * 20);
+  if (r._rk === k && r._rs === sk && r._rr) return r._rr;
+  let out = r;
+  try {
+    const prim = worldExtrudeHull(r.ent, S.rec.world.cam, { season: S.season, regions: S.regions, t: k / WORLD_FRAME_ROCK_HZ, sea });
+    if (prim && prim.box) {
+      const n = _wfrPrimRec(prim, r.ent, null);
+      out = { ...r, prim, box: n.box, X: n.X, Y: n.Y, foot: n.foot, bmp: null };
+      const b = n.box, x0 = Math.max(0, Math.floor(b.x0 * env.vs + env.ox) - 1), y0 = Math.max(0, Math.floor(b.y0 * env.vs + env.oy) - 1), x1 = Math.min(env.W, Math.ceil(b.x1 * env.vs + env.ox) + 1), y1 = Math.min(env.H, Math.ceil(b.y1 * env.vs + env.oy) + 1);
+      const w = x1 - x0, h = y1 - y0;
+      if (w > 1 && h > 1 && w * h <= 2.5e6) {
+        let cv = r._cv;
+        if (!cv || cv.width < w || cv.height < h) cv = r._cv = _wfrCanvas(w, h);
+        const cx = cv.getContext('2d');
+        cx.setTransform(1, 0, 0, 1, 0, 0); cx.globalAlpha = 1; cx.clearRect(0, 0, cv.width, cv.height);
+        if (_wfrDrawRec(cx, env, S, out, null, x0, y0, 1)) out.bmp = { c: cv, x: x0, y: y0, w, h };
+      }
+    }
+  } catch (e) { out = r; }
+  r._rk = k; r._rs = sk; r._rr = out;
+  return out;
+}
 function worldFramePlan(world, o) {
   o = o || {};
   const cam = o.cam || (world && world.cam);
@@ -317,6 +371,8 @@ function worldFramePlan(world, o) {
     if (pw) { for (const p of pw.prims) add(_wfrPrimRec(p, e, null)); if (pw.deck) out.decks.push(pw.deck); continue; }
     add(_wfrRec(e, cam, { season: o.season, regions: o.regions, ctx: o.ctx || null }));
   }
+  // a floater moored in rough water rocks: drawn live (never baked into a chunk), its model rebuilt with the clock (_wfrRockRec)
+  for (const r of out.recs) if (!r.live && _wfrRocks(r, cam, o.regions)) { r.live = true; r.rocks = true; out.live.push(r); }
   // lines and buildings (Q2, Q3): footprints in metres, extruded by appearance; ordered and occluding like any static
   if (typeof worldExtrude === 'function') {
     try { for (const p of worldExtrude(world, cam, { season: o.season, hulls: false }) || []) if (p && p.box) add(_wfrPrimRec(p, null, null)); } catch (e) { /* no extrusion */ }
@@ -1386,6 +1442,7 @@ function _wfrHooks(env, S, r, sh, tau) {
 }
 /** Draw one mover (an agent or a live static): its rest sprite and its moving parts posed at the scene time, cut at a waterline. */
 function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
+  if (r.bmp) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha == null ? 1 : alpha; ctx.drawImage(r.bmp.c, 0, 0, r.bmp.w, r.bmp.h, r.bmp.x, r.bmp.y, r.bmp.w, r.bmp.h); ctx.globalAlpha = 1; return 1; }
   if (r.prim) return _wfrDrawRec(ctx, env, S, r, null, 0, 0, alpha);
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(r.o, r.v, r.season || S.season) : null;
   const L = env.Lnow || env.L, night = !!(L && (L.windows || L.dark > 0.5)), lit = !r.static && night && /vehicle|tram|train|boat|bus|car/.test(String(r.ent.cls || r.obj));
@@ -1539,13 +1596,15 @@ function _wfrDraw(env, ctx, t) {
   const mem = rec.frame.agents || (rec.frame.agents = new Map()), seen = new Set(), aRecs = [];
   let list = st.agents || [];
   const lvl = env.gov ? env.gov.level : 0;
+  // the weather now (rain, showers, drizzle: the v2 light's own reading): people carry an umbrella up only in it
+  const wet = typeof _scflWeather === 'function' ? !!_scflWeather(L).rain : !!(L && L.rain);
   // the governor's thinning (a slow machine): only the far ones (specks of a few pixels) and always the SAME ones (by a hash of the
   // id, never by their place in the list, which shifts every time anyone arrives or leaves and made people pop in and out)
   if (lvl >= 4) list = list.filter(a => a.z < 40 || _wfrHash(String(a.id)) % 10 < 7);
   for (const a of list) {
     if (a.culled && a.cullReason !== 'occluded') continue;   // off the frame (the lod system); an occluded one still orders
     const m0 = mem.get(String(a.id));
-    const r = _wfrRec(_wfrAgentEnt(a), cam, { season: S.season, agent: true, prev: m0, regions: S.regions });
+    const r = _wfrRec(_wfrAgentEnt(a), cam, { season: S.season, agent: true, prev: m0, regions: S.regions, wet });
     if (!r) continue;
     // the near band (3.2): a giant at the lens is never drawn even if a module let one through
     if (!r.prim && r.z < cam.f * r.height / 405 && !a.framed) continue;
@@ -1566,7 +1625,8 @@ function _wfrDraw(env, ctx, t) {
   // draw's own drops (the near band, the frame sides, the governor's thinning), at the scene time they were drawn
   S.drawn = { t, tau, agents: aRecs.map(r => r.agent) };
   const tRecs = _wfrNow();
-  const movers = S.plan.live.concat(aRecs);
+  const sea = _wfrSea(L), live = S.plan.live.some(r => r.rocks) ? S.plan.live.map(r => (r.rocks ? _wfrRockRec(env, S, r, tau, sea) : r)) : S.plan.live;
+  const movers = live.concat(aRecs);
   const order = typeof worldFrameOrder === 'function' ? worldFrameOrder(S.plan.chunks, movers, null) : S.chunks.map(o => ({ kind: 'chunk', ref: o.ch })).concat(movers.map(r => ({ kind: 'agent', ref: r })));
   S.stats.orderMs = _wfrNow() - ta;
   let draws = 0;

@@ -26,7 +26,7 @@
    ============================================================ */
 
 /* ---------- presets ---------- */
-// band: z (metres, the band's nominal depth; the band never starts nearer than the scene's own far edge), dz (depth jitter, a
+// band: haze (a floor under the distance's own haze, 0..1: the far shore of an estuary is blue-grey at a mile), z (metres, the band's nominal depth; the band never starts nearer than the scene's own far edge), dz (depth jitter, a
 // share of z), objs (library ids, weighted by repetition), fill (members' widths per metre of band width; > 1 overlaps), cl (members per cluster [min, max]), sp (cluster spread, metres), max (member cap; the perf budget).
 const WORLD_BACKDROP_STYLES = Object.freeze({
   heath: { ground: 'heath', bands: [
@@ -51,8 +51,10 @@ const WORLD_BACKDROP_STYLES = Object.freeze({
     { z: 1800, dz: 0.15, objs: ['tree.woods-edge', 'tree.pond-wood', 'building.skyline-band'], fill: 0.9, cl: [5, 10], sp: 120, max: 80 }] },
   // the far shore of a wide estuary or river (a mile across): a low line of terraces, mills, warehouses, a church and trees, never a skyline
   estuary: { ground: 'town', bands: [
-    { z: 1100, dz: 0.08, objs: ['building.terrace-northern', 'building.mill-red-brick', 'tree.bank-distant', 'building.warehouse-canal', 'building.terrace-northern', 'building.warehouse-canal', 'building.church', 'building.mill-red-brick', 'tree.far-broad'], fill: 1.4, cl: [5, 10], sp: 60, max: 120 },
-    { z: 2400, dz: 0.08, objs: ['building.skyline-band', 'tree.bank-distant', 'tree.far-broad', 'building.skyline-band'], fill: 1.2, cl: [4, 9], sp: 150, max: 80 }] },
+    // the Wirral shore from the Liverpool side (a mile and more across): a low line of terraces, warehouses, a church spire, chimneys and dock cranes
+    // among trees, in haze (the distance does the fading), so the far shore is a long low shore of roofs, never a wall of green
+    { z: 1500, dz: 0.08, objs: ['building.terrace-northern', 'building.warehouse-canal', 'building.terrace-northern', 'building.mill-red-brick', 'building.church', 'building.warehouse-canal', 'building.terrace-northern', 'building.terrace-northern', 'structure.dock-crane', 'building.mill-red-brick', 'tree.far-broad'], fill: 1.5, cl: [5, 10], sp: 70, max: 130, haze: 0.4 },
+    { z: 2800, dz: 0.08, objs: ['building.skyline-band', 'building.skyline-band', 'building.skyline-band'], fill: 1.3, cl: [4, 9], sp: 160, max: 80, haze: 0.55 }] },
   'city-victorian': { ground: 'town', bands: [
     { z: 180, dz: 0.2, objs: ['building.terrace-victorian', 'building.terrace-victorian', 'building.townhouse', 'building.church', 'building.shopfront'], fill: 1.4, cl: [4, 9], sp: 18, max: 120 },
     { z: 550, dz: 0.2, objs: ['building.townhouse', 'building.tower-stone', 'building.terrace-victorian', 'tree.distant'], fill: 1.3, cl: [4, 9], sp: 40, max: 100 },
@@ -252,7 +254,7 @@ function worldBackdrop(world, cam, season, o) {
         const zz = Math.max(farZ + 5, cz + gauss() * band.sp * 0.4), x = cur + dm.l / 2;
         if (!yielded(x, zz, dm.l)) {
           out.push({ id: 'bd-' + bi + '-' + n, obj, x: Math.round(x * 10) / 10, z: Math.round(zz * 10) / 10, y: _wlGroundY(cam, x, zz), facing: 0,
-            height: dm.h, static: true, backdrop: true, band: bi, season: season || null, solidity: 'passable', attach: 'ground', haze: Math.round(_wbdHaze(Math.hypot(x, zz)) * 1000) / 1000 });
+            height: dm.h, static: true, backdrop: true, band: bi, season: season || null, solidity: 'passable', attach: 'ground', haze: Math.round(Math.max(_wbdHaze(Math.hypot(x, zz)), band.haze || 0) * 1000) / 1000 });
         }
         cur += dm.l / band.fill * (0.6 + 0.6 * rnd()) * stretch * (zz / z);
         n++;

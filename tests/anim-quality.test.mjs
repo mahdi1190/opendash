@@ -14,6 +14,7 @@ import { measure, check, richness, proposeThresholds, RULE_HINTS, thinSpots, par
 import { main, lintRegistry, measureRegistry, loadThresholds, loadReference, loadCommands, COMMANDS } from '../tools/anim-pack.mjs';
 import { loadRegistry, findBrowser, registrySources, CROPS, SIZES, DEFAULT_AT, itemPage, sizesPage, contactPage } from '../tools/lib/anim-render.mjs';
 import { mkdirSync } from 'node:fs';
+import { applyAllow, composedKindOf } from '../tools/lib/scene-lint.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TH = loadThresholds(ROOT);
@@ -30,7 +31,10 @@ const BY_REF = new Map(RES.results.map(r => [r.ref, r]));
 // as lintRegistry judges a hand-drawn item. So a scene going live never moves the scene corpus or its pins, and RICH_LEGACY keeps
 // meaning the retired rich art of the convert stage (composed items that are not live upgrades).
 const isLiveUpgrade = e => !!(e.item.upgrade && e.item.upgrade.state === 'live');
-const RETIRED = REG.items().filter(e => e.full && e.composed && typeof e.item.legacySvg === 'function');
+// The UK place views (item.ukPlace: the Hampshire views since 9 Oct, Manchester, Sheffield) also keep a hand-drawn fallback as legacySvg
+// for a build without the engine. That art was never part of the corpus the floors were calibrated on (the convert stage's retired
+// scenes); the views are judged by the composed profile and their kind (composed-kinds), so they are not in this corpus.
+const RETIRED = REG.items().filter(e => e.full && e.composed && !e.item.ukPlace && typeof e.item.legacySvg === 'function');
 const retiredAs = (e, rich) => Object.assign({}, e, { composed: false, rich, item: Object.assign({}, e.item, { composed: false, rich, svg: e.item.legacySvg }) });
 const RICH_LEGACY = RES.results.some(r => r.profile === 'scene-rich') ? [] : measureRegistry(REG, RETIRED.filter(e => !isLiveUpgrade(e)).map(e => retiredAs(e, true)), TH)
   .map(r => ({ ref: r.entry.ref, pack: r.entry.pack, profile: 'scene-rich', metrics: r.metrics, failures: [], waived: [] }));
@@ -861,4 +865,66 @@ test('sheet --crop: a phone and a square tile render what they show of a scene (
     const bad = await run(['sheet', 'us-mountain/nm-white-sands', '--out', dir, '--crop', 'wide']);
     assert.equal(bad.code, 1); assert.match(bad.err, /--crop must be one of square, phone/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+/* ---------- composed KINDS (thresholds["composed-kinds"]): calibrated allowances, never a way in for a worse scene ---------- */
+
+const KINDS = TH['composed-kinds'], KIND_NAMES = Object.keys(KINDS).filter(k => k[0] !== '_');
+
+test('composed kinds: a kind judges only its own packs, its members pass ITS limits, and only a scene that passes the strict bar is gold', () => {
+  assert.deepEqual(KIND_NAMES, ['place', 'world']);
+  const seen = new Set();
+  for (const k of KIND_NAMES) for (const p of KINDS[k].packs) { assert.ok(!seen.has(p), `${p} is in one kind only`); seen.add(p); assert.equal(composedKindOf(p, TH).name, k); }
+  assert.equal(composedKindOf('us-pacific', TH), null, 'the region packs keep the strict profile');
+  assert.equal(composedKindOf(null, TH), null);
+  for (const k of KIND_NAMES) {
+    const members = RES.results.filter(r => r.composed && KINDS[k].packs.includes(r.pack));
+    assert.ok(members.length >= (k === 'world' ? 7 : 90), `${k}: ${members.length} composed scenes`);
+    for (const r of members) {
+      assert.equal(r.kind, k, r.ref);
+      assert.deepEqual(r.failures, [], `${r.ref} passes the ${k} limits`);
+      assert.equal(r.tier === 'gold', r.strictPass, `${r.ref}: gold only when the strict composed profile passes (${r.tier})`);
+    }
+    // every pack of a kind has its scenes judged here, and none of the strict packs is judged by a kind
+    for (const p of KINDS[k].packs) assert.ok(RES.results.some(r => r.pack === p && r.composed), `${k}: the pack ${p} has composed scenes`);
+  }
+  for (const r of RES.results.filter(x => x.composed && !seen.has(x.pack))) assert.equal(r.kind, null, `${r.ref}: a strict scene`);
+});
+
+test('composed kinds: every allowance is still needed and sits within a few per cent of the worst scene of its kind (the lists only shrink)', () => {
+  for (const k of KIND_NAMES) {
+    const members = RES.results.filter(r => r.composed && KINDS[k].packs.includes(r.pack));
+    for (const [rule, a0] of Object.entries(KINDS[k].allow)) {
+      const a = typeof a0 === 'number' ? { rows: a0 } : a0;
+      const hits = members.map(r => ({ r, rows: r.allowed.filter(x => x.rule === rule) })).filter(x => x.rows.length);
+      assert.ok(hits.length, `${k}.${rule}: no scene of the kind needs this allowance any more: drop it`);
+      const values = hits.flatMap(x => x.rows.map(y => y.value)).filter(v => typeof v === 'number');
+      const rowsMax = Math.max(...hits.map(x => x.rows.length));
+      if (a.rows != null) assert.ok(a.rows >= rowsMax && a.rows <= rowsMax + 2, `${k}.${rule}: rows ${a.rows} for a worst scene of ${rowsMax}`);
+      if (a.max != null && values.length) { const m = Math.max(...values); const slack = /^svg(Tile|Fill)Bytes$/.test(rule) ? 1.25 : 1.14;   // the byte caps are the registry's budgets: about 10-20 % over the heaviest, the ids' length moves a still by a per cent
+      assert.ok(a.max >= m && a.max <= m * slack + 1, `${k}.${rule}: max ${a.max} for a worst value of ${m}`); }
+      if (a.min != null && values.length) { const m = Math.min(...values); assert.ok(a.min <= m && a.min >= m * 0.7 - 1e-9, `${k}.${rule}: min ${a.min} for a worst value of ${m}`); }
+    }
+  }
+});
+
+test('composed kinds: the byte allowances are the registry budgets of the kind (tile and full screen)', () => {
+  assert.equal(KINDS.place.allow.svgTileBytes.max, REG.limits.placeTile); assert.equal(KINDS.place.allow.svgFillBytes.max, REG.limits.placeFill);
+  assert.equal(KINDS.world.allow.svgTileBytes.max, REG.limits.worldTile); assert.equal(KINDS.world.allow.svgFillBytes.max, REG.limits.worldFill);
+  assert.equal(TH.composed.data.svgTileBytes.max, REG.limits.richTile, 'the strict tile cap is the rich tile budget');
+  assert.equal(TH.composed.data.svgFillBytes.max, REG.limits.rich, 'the strict full-screen cap is the rich budget');
+});
+
+test('applyAllow: a failing row passes as a warning only within its bound; beyond it, or for another rule, it still fails', () => {
+  const row = (rule, value, ok = false) => ({ group: 'data', rule, ok, value, limit: '', message: rule + ' failed' });
+  const allow = { dataBytes: { max: 100 }, movers: { min: 8 }, tintUse: { rows: 2 }, signature: { rows: 1 } };
+  const r = applyAllow([row('dataBytes', 90), row('movers', 9), row('tintUse', 1), row('tintUse', 1), row('signature', 0), row('placements', 5)], allow, 'test');
+  assert.deepEqual(r.rules.map(x => x.ok), [true, true, true, true, true, false], 'a rule that is not named stays a failure');
+  assert.ok(r.rules[0].warn.startsWith('[test] dataBytes failed') && r.rules[0].allowed === true && r.rules[0].message === '');
+  assert.deepEqual(r.allowed.map(x => x.rule), ['dataBytes', 'movers', 'tintUse', 'tintUse', 'signature']);
+  const worse = applyAllow([row('dataBytes', 101), row('movers', 7), row('tintUse', 1), row('tintUse', 1), row('tintUse', 1)], allow, 'test');
+  assert.deepEqual(worse.rules.map(x => x.ok), [false, false, false, false, false], 'above the ceiling, below the floor, more rows than allowed: all still fail');
+  assert.deepEqual(applyAllow([row('x', 1, true)], allow).allowed, [], 'a passing row is left alone');
+  assert.equal(applyAllow([row('dataBytes', 1)], null).rules[0].ok, false, 'no allowance, no change');
+  assert.equal(applyAllow([row('dataBytes', 'n/a')], { dataBytes: { max: 100 } }).rules[0].ok, false, 'a bound needs a number');
 });

@@ -162,7 +162,9 @@
           if (j % 2) d0 += pd; else d1 += pd;
         }
       }
-      return { body: [{ s: '@fern.2', w: 2, d: st }, ['@fern.0', d0], ['@fern.1', d1], ['@fern.2', 'M-14 0q14-10 28 0z', .6]] };
+      // the alternate pinnae are detail: a tile (LOD < 0.5) keeps the fronds and half the leaflets (a fern is 6 KB a symbol, and a
+      // scene holds nine of them in its tints and hazes: the winter tile of the Old Man scene sat on the 150 KB budget)
+      return { body: [{ s: '@fern.2', w: 2, d: st }, ['@fern.0', d0], { f: '@fern.1', d: d1, detail: true }, ['@fern.2', 'M-14 0q14-10 28 0z', .6]] };
     },
   });
 
@@ -221,10 +223,10 @@
   defineObj({
     id: 'plant.wildflowers', category: 'plant', size: [80, 77], variants: 4, seasonal: true, shapeBySeason: true, flippable: true,
     palette: Object.assign({ base: { stem: '#4f7a35', seed: '#8a7a5a', fluff: '#eeeae0', frost: '#e6eef2', faded: '#8a6a86' } }, bySeason({
-      stem: { spring: '#5a8a3a', summer: '#4f7a35', autumn: '#7a7a40', winter: '#6e6250' },
+      stem: { spring: '#5a8a3a', summer: '#4f7a35', autumn: '#8a7a3c', winter: '#6e6250' },
       straw: { spring: '#9aa660', summer: '#b9ad6a', autumn: '#b49a62', winter: '#8e8068' },
       seed: { spring: '#8a7a5a', summer: '#8a7a5a', autumn: '#5e4430', winter: '#3e3228' },
-      leaf: { spring: '#5a8a3a', summer: '#4f7a35', autumn: '#6a7238', winter: '#5c6048' },
+      leaf: { spring: '#5a8a3a', summer: '#4f7a35', autumn: '#7e7234', winter: '#5c6048' },
     })),
     anim: { sway: { part: 'body', pivot: [0, 0], deg: 6 } },
     tags: ['uk', 'meadow', 'verge', 'flowers', 'wildflowers', 'kit:temperate', 'role:ground'],
@@ -252,8 +254,10 @@
         }
         if (!win && v % 2) { const x = rr(r, -14, 14), h = rr(r, 22, 30); st += `M${f1(x)} 0L${f1(x + 2)} ${f1(-h)}`; faded = circ(x + 2, -h, 2.6); }
         const body = [['@leaf', lv, win ? .7 : .9], { s: '@straw', w: 1.1, d: dry }, { s: '@stem', w: 1.2, d: st }];
-        if (umb) body.push({ s: '@seed', w: .8, d: umb });
-        body.push(['@seed', hd]);
+        // the umbels and the seed heads are detail: a tile (LOD < 0.5) keeps the leaf clump and the stems (CI 15 Oct: the winter
+        // patch was 3x its autumn-of-last-week size in every tile that holds one)
+        if (umb) body.push({ s: '@seed', w: .8, d: umb, detail: true });
+        body.push({ f: '@seed', d: hd, detail: true });
         if (faded) body.push(['@faded', faded, .85]);
         if (frost) body.push({ f: '@frost', d: frost, op: .7, detail: true });
         return { body };

@@ -32,10 +32,10 @@
       { id: 'plaza', kind: 'plaza', poly: rect(-900, 900, 26, 80) },
       { id: 'road', kind: 'road', poly: rect(-900, 900, 80, 92) },
       { id: 'mersey', kind: 'water', water: 'estuary', poly: rect(-900, 1500, -1250, 0), shallow: 2 },
-      { id: 'stage', kind: 'boardwalk', over: 'water', poly: rect(-190, 40, -26, -1) },   // the floating landing stage lies over the river, by a gangway from the quay
     ],
     // the river wall's railing, set back a little from the edge
-    lines: [{ id: 'river-rail', kind: 'railing', path: [at(-420, 0.7), at(420, 0.7)] }],
+    // (open for the stage's gangway, which lands on the quay at a = -105)
+    lines: [{ id: 'river-rail-1', kind: 'railing', path: [at(-420, 0.7), at(-108.2, 0.7)] }, { id: 'river-rail-2', kind: 'railing', path: [at(-101.8, 0.7), at(420, 0.7)] }],
     // the three great waterfront offices, their river fronts on the plaza (b = 95), in Portland stone
     buildings: [
       { id: 'port', foot: rect(-150, -60, 95, 148), storeys: 7, style: 'baroque-civic-port', crown: 'port-dome' },
@@ -43,19 +43,22 @@
       { id: 'liver', foot: rect(70, 150, 95, 150), storeys: 11, style: 'baroque-civic-liver', crown: 'liver-towers' },
     ],
     entities: [
-      { obj: 'boat.river-ferry', at: at(-125, -34), facing: 348, id: 'ferry-1' }, { obj: 'boat.river-ferry', at: at(-38, -34), facing: 348, id: 'ferry-2' },
+      // the floating landing stage (a pontoon on guide piles, 120 m by 14 m) off the wall, with its terminal shed and a hinged gangway
+      // down from the quay; the two ferries lie alongside it with a brow to each gate (a, along the stage from its middle, a = -110)
+      { id: 'stage', obj: 'boat.landing-stage', at: at(-110, -21), facing: 342, attach: 'water', model: { opts: { gap: 14, gangway: 5, shed: 36, shedSide: 1, berthA: -30, berthB: 40, people: 0.8 } } },
+      { obj: 'boat.river-ferry', at: at(-140, -34), facing: 342, id: 'ferry-1' }, { obj: 'boat.river-ferry', at: at(-70, -34), facing: 162, id: 'ferry-2' },
       // the walking bronze group on the plaza and one named bench (the kit scatters the rest of the benches, lamps and planters)
       { obj: 'street.walker-group', at: at(-228, 15), facing: 90, id: 'statue' },
       { obj: 'street.bench', at: at(-215, 10), facing: 250, id: 'bench-b' },
     ],
     life: [
-      { who: 'walkers', on: 'plaza', rate: '16/min', mix: { stroll: 0.5, chat: 0.2, family: 0.15, 'dog-walker': 0.15 } },
-      { who: 'walkers', on: 'prom', rate: '14/min', mix: { stroll: 0.45, brisk: 0.15, couple: 0.2, friends: 0.2 } },
+      { who: 'walkers', on: 'plaza', rate: '30/min', mix: { stroll: 0.4, chat: 0.2, family: 0.15, 'dog-walker': 0.1, friends: 0.15 } },
+      { who: 'walkers', on: 'prom', rate: '18/min', mix: { stroll: 0.45, brisk: 0.15, couple: 0.2, friends: 0.2 } },
       { who: 'visit', mix: { stroll: 0.5, family: 0.5 }, rate: '1/40s', goals: [{ view: 'statue', for: [20, 60] }, { leave: 'N' }] },
       { who: 'visit', mix: { elderly: 0.5, couple: 0.5 }, rate: '1/90s', goals: [{ go: 'bench-b' }, { do: 'sit', for: [30, 90] }, { leave: 'N' }] },
       { who: 'gulls', count: 16 },
       { who: 'buses', on: 'road', rate: '2/min' }, { who: 'cars', on: 'road', rate: '5/min' },
     ],
-    seed: 5,
+    seed: 6,
   });
 })();

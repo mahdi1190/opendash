@@ -161,7 +161,7 @@ function worldModelParams(ent, o, defIn) {
   const p = { model: def.id, obj: ent.obj, seed, variant, season: o.season || ent.season || 'summer', size: scale, L, B, H, info,
     age: _wexNum(m.age) ? Math.max(0, Math.min(1, m.age)) : _wexNum(def.age) ? def.age : 0.1 + 0.55 * _wmdU(seed, 'age'),
     liveryKey: m.livery != null ? m.livery : null, opts: m.opts && typeof m.opts === 'object' ? Object.assign({}, m.opts) : {},
-    moving, speed: sp, facing, t, static: ent.static !== false };
+    moving, speed: sp, facing, t, static: ent.static !== false, sea: _wexNum(o.sea) ? Math.max(0, Math.min(2, o.sea)) : null };
   if (typeof def.params === 'function') {
     const x = def.params(ent, o, p);
     if (x && typeof x === 'object') Object.assign(p, x);
@@ -233,6 +233,16 @@ function worldModelOutline(o) {
   return { outline, half, R };
 }
 
+/** The swell motion of a moored floater from its idle bob: about four times the heave and three times the roll and pitch, a touch slower. */
+function _wmdMoorOf(b) {
+  b = b && typeof b === 'object' ? b : {};
+  return { heave: (b.heave == null ? 0.01 : b.heave) * 4, roll: (b.roll == null ? 0.006 : b.roll) * 3, pitch: (b.pitch == null ? 0.0015 : b.pitch) * 3, period: (b.period == null ? 3.6 : b.period) * 1.15 };
+}
+/** Does the model of this object rock when it lies moored in a swell (a floater with a bob)? */
+function worldModelRocks(objId) {
+  const def = typeof worldModelFor === 'function' ? worldModelFor(objId) : null;
+  return !!(def && def.float && def.bob !== false);
+}
 /* ---------- the builder context ---------- */
 function _wmdKit(def, p, ent, cam, o) {
   const near = _wexNear(cam), y0 = _wexNum(ent.y) ? ent.y : 0;
@@ -259,12 +269,18 @@ function _wmdKit(def, p, ent, cam, o) {
   // ---- the bob (a floater, when a time is given) ----
   h.bob = (spec) => {
     if (p.t == null) return;
-    const b = Object.assign({ heave: 0.01, roll: 0.006, pitch: 0.0015, period: 3.6 }, spec || {}), k = p.moving ? 1.8 : 1, ph = h.u('bob1') * Math.PI * 2, ph2 = h.u('bob2') * Math.PI * 2;
+    const b = Object.assign({ heave: 0.01, roll: 0.006, pitch: 0.0015, period: 3.6 }, spec || {}), k = (p.moving ? 1.8 : 1) * (_wexNum(b.k) ? b.k : 1), ph = h.u('bob1') * Math.PI * 2, ph2 = h.u('bob2') * Math.PI * 2;
     pose.heave = k * b.heave * Math.sin(p.t * 2 * Math.PI / b.period + ph);
     pose.roll = k * b.roll * Math.sin(p.t * 2 * Math.PI / (b.period * 1.3) + ph2);
     pose.pitch = b.pitch * Math.sin(p.t * 2 * Math.PI / (b.period * 1.47) + ph * 0.6);
   };
-  if (def.float && def.bob !== false) h.bob(def.bob);
+  // a floater MOORED in open water (the caller gives the sea state, o.sea: the frame's live statics, never a baked one) rocks in the swell:
+  // the def's `moor` { heave, roll, pitch, period } (metres, radians, seconds), else its idle bob scaled up (a dinghy's 3 cm is a swell's 12);
+  // scaled by the sea (about 0.1 in a flat calm, 1 in a fresh breeze) so a calm day is still
+  if (def.float && def.bob !== false) {
+    if (p.sea != null && p.t != null) h.bob(Object.assign({}, def.moor || _wmdMoorOf(def.bob), { k: p.sea }));
+    else h.bob(def.bob);
+  }
   // ---- parts: faces are emitted into the current part; parts draw by layer, then far to near ----
   const parts = [];
   let cur = null, count = 0;
@@ -614,7 +630,7 @@ function _wmdRun(def, ent, cam, o) {
     const sunLit = def.sunLit !== false && faces.some(fc => fc.n);
     return Object.assign({ end: null, strips: [], side: 1, id: ent.id != null ? ent.id : null, kind: 'hull', model: true, modelId: def.id, noCut: def.float === true, ent: ent.id != null ? ent.id : null,
       obj: ent.obj, variant: ent.variant == null ? null : ent.variant, faces, foot, zKey: _wexR(Math.min(...foot.map(q => q[1])), 3), height: _wexR(height, 3),
-      waterline: h.waterline != null ? _wexR(h.base, 3) : null, livery: p.liveryIndex, liveryName: p.liveryName, seed: p.seed, age: _wexR(p.age, 3), lights, sunLit,
+      waterline: h.waterline != null ? _wexR(h.base, 3) : null, pose: p.t != null && (h.pose.heave || h.pose.roll || h.pose.pitch) ? { heave: _wexR(h.pose.heave, 4), roll: _wexR(h.pose.roll, 5), pitch: _wexR(h.pose.pitch, 5) } : null, livery: p.liveryIndex, liveryName: p.liveryName, seed: p.seed, age: _wexR(p.age, 3), lights, sunLit,
       windows: faces.filter(fc => fc.role === 'window').length, box: bx.map(v => _wexR(v, 1)), solidity: def.solidity || 'solid', art: { box: [0, 0, 1, 1], size: [1, 1], repeat: 0 } }, res.extra || null);
   } catch (e) {
     S.err = { model: def.id, obj: ent && ent.obj, message: String((e && e.message) || e), stack: e && e.stack ? String(e.stack).split('\n').slice(0, 4).join('\n') : null };

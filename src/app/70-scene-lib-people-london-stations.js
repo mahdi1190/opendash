@@ -135,7 +135,7 @@
     tags: ['uk', 'london', 'people', 'anonymous', 'commuter', 'walker', 'station', 'street', 'kit:people', 'kit:london', 'kit:urban', 'role:walker'],
     credit: 'the shared people builder (scenePeople.figure) in travel kit, with what station commuters carry',
     build(v, r, ctx) {
-      const p = KIT[v], s = ctx.season, o = PP.outfit(p, s), golfUp = p.carry === 'golf' && s !== 'summer';
+      const p = KIT[v], s = ctx.season, o = PP.outfit(p, s), day = PP.wetDay(), golfUp = p.carry === 'golf' && (day == null ? s !== 'summer' : day);   // the weather of the day when the host says it
       if (p.carry === 'phone') o.arms = { far: 'forward', near: { hand: [7.4, -48.8] } };   // the phone up below the chin
       if (p.carry === 'golf') o.arms = { far: 'forward', near: golfUp ? { hand: [6.4, -46.6] } : 'phone' };   // the handle held in front: the shaft clears the face
       if (p.carry === 'wheelie') o.arms = { far: 'forward', near: { hand: [-9, -32] } };

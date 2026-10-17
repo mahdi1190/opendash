@@ -7,7 +7,7 @@
 //   reg.html(item, opts)                             animItemHtml (default: live, full scenes 'fill', small items 'hero')
 //   reg.classesFor(packObj)                          the css classes defined by the app css and the pack css
 //   reg.pageCss()                                    the css a rendered page needs (tokens, animation library, scene sizes, swatches)
-//   reg.limits                                       {item, scene, rich}: the registry's byte budgets
+//   reg.limits                                       {item, scene, rich, richTile, placeTile, placeFill, worldTile, worldFill}: the registry's byte budgets
 //   reg.R                                            the evaluated registry functions (animPacks, animItemHtml ...) and the regions (ANIM_REGIONS, animRegion);
 //                                                    reg.R.get(name) reads ANY top-level name of the bundle (the scene engine's sceneCompile, sceneObjs ...; undefined when absent)
 //   skyFor(reg, item, { at, location, tz })          o.sky for a live-sky render: almSceneLight at the ISO time `at`, at `location` [lat, lon] or the item's own liveSky place
@@ -144,7 +144,8 @@ function loadRegistryUncached(root, extraFiles, omit = []) {
       const sw = cssFiles.includes('01-components.css') ? (readFileSync(join(styles, '01-components.css'), 'utf8').match(/^\.c-[a-z]+ \{ --c:.*$/gm) || []).join('\n') : '';
       return text + '\n' + sw;
     },
-    limits: { item: R.ANIM_ITEM_MAX_BYTES || 14000, scene: R.ANIM_FULL_ITEM_MAX_BYTES || 32000, rich: R.ANIM_RICH_ITEM_MAX_BYTES || 1000000 },
+    limits: { item: R.ANIM_ITEM_MAX_BYTES || 14000, scene: R.ANIM_FULL_ITEM_MAX_BYTES || 32000, rich: R.ANIM_RICH_ITEM_MAX_BYTES || 1000000, richTile: R.get('ANIM_RICH_TILE_MAX_BYTES') || 150000,
+      placeTile: R.get('ANIM_PLACE_TILE_MAX_BYTES') || 0, placeFill: R.get('ANIM_PLACE_ITEM_MAX_BYTES') || 0, worldTile: R.get('ANIM_WORLD_TILE_MAX_BYTES') || 0, worldFill: R.get('ANIM_WORLD_ITEM_MAX_BYTES') || 0 },
   };
   return reg;
 }

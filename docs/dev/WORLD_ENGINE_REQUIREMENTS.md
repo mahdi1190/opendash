@@ -426,6 +426,12 @@ The unit tests and the Node run were green while the page was not. The contract 
 - MV9 `capture --full` is the whole loop: a live page, the clock pinned per frame, `rewind()` per pass; a capture that shows the
   same frame twice is broken.
 - MV10 [T] A converted view keeps its composition (QP3): the pinned perspective pieces of a v2 canal view become the real
+- MV11 [T] A way through: the walked ground keeps a way for two abreast across the width the frame shows (`worldFillLane`: 1.0 m of centre
+  room in the space the nav leaves a mover); the fill takes away the last piece that closes it, never an authored one. A slot one body wide
+  costs more to route through. At a gap two cannot pass in, the one nearer goes first and the other waits at its mouth (6 s at most).
+- MV12 [T] People carry what the weather says: an umbrella is up in rain, showers, drizzle or thunder and furled otherwise, never up under a
+  clear sky; the world engine draws a person in the form `<season>~wet` or `<season>~dry`.
+- MV13 [T] The checker judges a pop in samples: a mover that walks in from beyond a frame side between two samples is at the edge, not a pop.
   objects they are parts of (the near narrowboat as a framing element, the willow the fronds hang from, the bridge).
 
 

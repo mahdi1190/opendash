@@ -13,6 +13,7 @@
    sceneDraw.winGroups(r, cells, groups)            spread window cells [[x, y, w, h], ...] over N glow groups -> N path strings
    sceneDraw.twigs(r, starts, depth, spread)        bare winter twigs forking from [x, y, ang, len] starts -> one path string
    sceneDraw.twigHaze(r, cx, cy, rx, ry, n, depth)  a bare crown's fine twig sprays inside an ellipse (stroke thin, low opacity)
+   sceneDraw.twigHazeLod(r, cx, cy, rx, ry, n, depth)  the same split for the tile budget: { core, fine } (push fine with detail: true)
    ============================================================ */
 const sceneDraw = (function () {
   const f1 = v => Math.round(v * 10) / 10;
@@ -79,10 +80,20 @@ const sceneDraw = (function () {
     }
     return twigs(r, starts, depth == null ? 2 : depth, 0.42);
   }
+  /**
+   * twigHaze split for the SVG tile budget: { core, fine }. A bare crown of n fine sprays costs 3 to 10 KB a symbol and a tile
+   * (LOD < 0.5) shows them as a tone, not as twigs, so about a third of the sprays are the core (always drawn) and the rest
+   * is `fine`: push it with detail: true, so only a full-size drawing pays for it (CI 15 Oct: bare winter trees took the
+   * winter tiles of old scenes past the 150 KB tile budget).
+   */
+  function twigHazeLod(r, cx, cy, rx, ry, n, depth) {
+    const k = Math.max(1, Math.round(n * 0.34));
+    return { core: twigHaze(r, cx, cy, rx, ry, k, depth), fine: n > k ? twigHaze(r, cx, cy, rx, ry, n - k, depth) : '' };
+  }
   function winGroups(r, cells, groups) {
     const out = new Array(groups).fill('');
     for (const c of cells) out[Math.floor(r() * groups) % groups] += rect(c[0], c[1], c[2], c[3]);
     return out;
   }
-  return Object.freeze({ f1, rect, ell, circ, poly, blob, leaf, frond, seasons, define, winGroups, twigs, twigHaze, SEASONS: SEAS });
+  return Object.freeze({ f1, rect, ell, circ, poly, blob, leaf, frond, seasons, define, winGroups, twigs, twigHaze, twigHazeLod, SEASONS: SEAS });
 })();
