@@ -49,7 +49,7 @@ dressing, edges, framing, backdrop, sky share, life. Do not name a weak object (
 
 ## 4. Landmarks (`--landmarks`) and styles
 
-`kind` or `kind:style`. Known kinds: `church-tower`, `pub` (with its sign), `pond` (with ducks), `minster`, `abbey` (green, street,
+`kind` or `kind:style`. Known kinds: `church-tower` (a generated building), `parish-church[:honey|grey-limestone|ironstone|red-sandstone|flint]` (the church model with its churchyard: coursed wall, lychgate, yews, headstones, path to the porch), `pub` (with its sign), `pond` (with ducks), `minster`, `abbey` (green, street,
 water-edge families), `pier`, `lighthouse`, `beach-huts` (coast), `bridge` (swing bridge, water-edge). An unknown kind or one that
 has no recipe in that layout is printed as a note, never dropped silently. To add one: an entry in `LANDMARKS` in
 `tools/lib/world/scaffold.mjs` (a function returning buildings, entities, surfaces or lines at the recipe's slots).
@@ -126,7 +126,7 @@ With no missing piece, a place is a scaffold, a render and two or three layout t
 
 ## 9. Known gaps (not done)
 
-Church nave: no buttresses, porch or clerestory; the churchyard wall is a flat colour (no coursing) and the headstones are not seen. Pier
+A church from `church-tower` is still a plain nave: use `parish-church` (17 Oct). Pier
 kiosks are plain boxes, the pier has no people on it. The sea is a small part of the coast view (the layout looks along the promenade).
 The `street`, `water-edge` and `open` families are validated but not rendered in this pass (the guide's checklist applies to them first).
 `tests/world-kit-fixtures.test.mjs` has one failure that is on `main` too (a fishing boat in the quayside fixture is 6 m tall).
