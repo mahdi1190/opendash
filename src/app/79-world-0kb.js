@@ -317,6 +317,10 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'tree.mcr-xmas-tree': { cls: 'tree', leaf: 'evergreen', habitat: { on: ['paving', 'soil', 'grass'] }, when: { dates: [[11, 14], [1, 6]] } },
   'structure.mcr-market-chalet': { cls: 'market-stall', when: { dates: [[11, 8], [12, 23]], hours: [9.5, 21], days: null } },
   'structure.mcr-market-hut': { cls: 'market-stall', when: { dates: [[11, 8], [12, 23]], hours: [9.5, 21], days: null } },
+  // seafront (17 Oct): a kiosk is a stall (paving or a deck, faces its path); a beach hut keeps the facing the scene or its row gives it (a row fans toward the viewer)
+  'building.kiosk': { cls: 'market-stall', size: { h: [2.6, 4.8] } }, 'building.beach-hut': { orient: 'free' }, 'street.bunting': { solidity: 'passable', orient: 'free', clearance: 0 },
+  // a lighthouse is scaled by the scene (a cliff-top light is 30 to 45 m): its model height follows its size
+  'structure.lighthouse': { size: { h: [16, 48] } },
   'street.mqn-parasol': { cls: 'umbrella', when: { months: [4, 5, 6, 7, 8, 9, 10], hours: [8, 21], weather: _WKB_FINE, tempMin: 11, snowDay: false, weatherOnly: true }, habitat: { on: ['paving', 'deck'] }, solidity: 'solid' },
   'prop.us-beach-umbrella': { cls: 'umbrella', when: { months: [6, 7, 8], hours: [9, 19], weather: ['clear'], tempMin: 18 }, habitat: { on: ['sand', 'paving'] } },
   'person.cafe-goer': { cls: 'cafe-table' },

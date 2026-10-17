@@ -764,7 +764,7 @@ function _wcCheck(spec0, repair) {
     for (const k of ['from', 'to']) {
       if (WORLD_JOIN_KINDS.includes(kind)) {
         if (s[k] == null) act(`${p}.${k}`, 'missingField', `${kind} join two levels: ${k} is a height, 'ground' or a surface id`, set(s, k, 'ground', who));
-        else if (!_wcNum(s[k]) && s[k] !== 'ground' && !sIds.has(s[k])) act(`${p}.${k}`, 'badValue', `${k} is a height, 'ground' or a surface id`, set(s, k, 'ground', who));
+        else if (!_wcNum(s[k]) && s[k] !== 'ground' && !sIds.has(s[k]) && !(eIds.has(s[k]) && typeof worldModelFor === 'function' && (worldModelFor((eIds.get(s[k]) || {}).obj) || {}).deck)) act(`${p}.${k}`, 'badValue', `${k} is a height, 'ground', a surface id or an entity that carries a deck (a model with a deck)`, set(s, k, 'ground', who));
       } else if (s[k] != null) act(`${p}.${k}`, 'unknownKey', k + ' is only for stairs and ramps', strip(s, k, who));
     }
     if (WORLD_JOIN_KINDS.includes(kind) && !Array.isArray(s.path)) { act(p, 'badSurface', `${kind} need a path (from the first point to the last)`, drop(surfs, s, who)); return; }
@@ -887,7 +887,7 @@ function _wcCheck(spec0, repair) {
           if (ak === 'deck' && hs && _wcRaised(hs)) { /* a raised surface is a deck */ }
           else if (!host || !hi) stripAttach('unknownSurface', 'no host entity ' + ref);
           else if (ak === 'wall' && !['building', 'structure', 'landmark', 'fence'].includes(hi.cls)) stripAttach('badAttach', `${ref} (${hi.cls}) has no wall`);
-          else if (ak === 'deck' && !hi.deck && !(info.perch && hi.solidity === 'solid')) stripAttach('badAttach', `${ref} (${hi.cls}) has no deck`);
+          else if (ak === 'deck' && !hi.deck && !(info.perch && hi.solidity === 'solid') && !(typeof worldModelFor === 'function' && (worldModelFor(host.obj) || {}).deck)) stripAttach('badAttach', `${ref} (${hi.cls}) has no deck`);
         }
       }
       const kind = ak || info.attachOk[0];
@@ -1492,6 +1492,8 @@ function _wcEntity(world, e, info, season) {
     attach: ak + (ref ? ':' + ref : ''), host: hostId, deck: null, waterline: waterline == null ? null : _wcR3(waterline), lights: null, static: true,
     seasonal: info.seasonal, blocks: e.blocks === true, framed: e.framed === true };
   if (e.row === true) ent.row = true;
+  // a thing on a host's deck is ordered as if it stood at the host's nearest edge (just behind it): drawn after the host wherever it is along the host (a kiosk on a pier)
+  if (ak === 'deck' && hostId) { const hh = world.entities.find(q => q.id === hostId); if (hh && Array.isArray(hh.foot) && hh.foot.length > 2) ent.orderZ = _wcR3(Math.min(...hh.foot.map(q => q[1])) - 0.01); }
   if (e.model && typeof worldModelFit === 'function') worldModelFit(ent, info, e.model);   // the model's own size, height and footprint
   if (_wcStr(e.parent)) ent.parent = e.parent;
   if (info.kcls !== info.cls) ent.kcls = info.kcls;

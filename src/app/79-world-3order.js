@@ -43,7 +43,7 @@ function _worldOrderMemo(e) {
     if (p[1] < zl) zl = p[1]; if (p[1] > zh) zh = p[1];
     if (p[0] < xl) xl = p[0]; if (p[0] > xh) xh = p[0];
   }
-  m = { f: e.foot, x: e.x, z: e.z, at: e.attach, h: worldOrderHostId(e), zk: zl, zm: zh, xr: [xl, xh], fl: undefined, oh: undefined };
+  m = { f: e.foot, x: e.x, z: e.z, at: e.attach, h: worldOrderHostId(e), zk: Number.isFinite(e.orderZ) ? e.orderZ : zl, zm: zh, xr: [xl, xh], fl: undefined, oh: undefined };
   e._om = m;
   return m;
 }
