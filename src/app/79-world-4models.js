@@ -648,7 +648,8 @@ function worldModelCheck(id, o) {
   for (const eye of [0.5, 1.65, 6]) {
     const cam = mkCam(eye);
     if (!cam) { say('no camera (sceneCamera is not loaded)'); break; }
-    for (const z of [z0, z0 * 0.45]) for (let k = 0; k < 8; k++) for (const season of seasons) for (const t of [null, 4.2]) {
+    // a small thing (a sign, a lamp) 3 m from a high eye is below the frame: the near view keeps it in shot (eye 6: at least 1.1 x its height from the foot)
+    for (const z of [z0, Math.max(z0 * 0.45, eye > 3 ? 1.6 * dim + 1 : 0)]) for (let k = 0; k < 8; k++) for (const season of seasons) for (const t of [null, 4.2]) {
       const ent = Object.assign({}, base, { id: 'chk-' + k, z, facing: k * 45 });
       const t0 = Date.now();
       let prim = null;

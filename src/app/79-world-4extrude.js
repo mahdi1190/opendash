@@ -282,7 +282,10 @@ function worldExtrudeLine(line, cam, o) {
   o = o || {};
   if (!line || !cam || !_wexNum(cam.f) || !Array.isArray(line.path) || line.path.length < 2 || !line.path.every(_wexPt)) return [];
   // a wall in the uplands is a dry-stone wall (4drystone: the place's style says so)
-  const K = line.kind === 'wall' && o.drystone && typeof WORLD_EXTRUDE_DRYSTONE === 'object' ? WORLD_EXTRUDE_DRYSTONE : (WORLD_EXTRUDE_KINDS[line.kind] || WORLD_EXTRUDE_KINDS.wall), total = _wexLen(line.path), near = _wexNear(cam);
+  let K = line.kind === 'wall' && o.drystone && typeof WORLD_EXTRUDE_DRYSTONE === 'object' ? WORLD_EXTRUDE_DRYSTONE : (WORLD_EXTRUDE_KINDS[line.kind] || WORLD_EXTRUDE_KINDS.wall);
+  // `stone: '#hex'` on a wall: the local stone (honey limestone, red sandstone): the base colour, the cope a little lighter
+  if (line.kind === 'wall' && typeof line.stone === 'string' && /^#[0-9a-f]{6}$/i.test(line.stone)) K = Object.assign({}, K, { hex: line.stone, top: _wexShade(line.stone, 1.1) });
+  const total = _wexLen(line.path), near = _wexNear(cam);
   const out = [];
   let idx = 0;
   for (const [s0, s1] of _wexRuns(line, total)) {

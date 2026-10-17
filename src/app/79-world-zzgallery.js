@@ -15,7 +15,8 @@
     'liverpool-pier-head-1-w3': ['liverpool-pier-head', 'merseyside', 'Liverpool'],
     'malham-cove-1-w3': ['malham-cove', 'north-yorkshire', 'Malham'],
     'york-shambles-1-w3': ['york-shambles', 'north-yorkshire', 'York'] };
-  const items = src.map(it => Object.assign({}, it, PLACE[it.id] ? { ukPlace: PLACE[it.id][0], county: PLACE[it.id][1], ukTown: PLACE[it.id][2], ukView: 'world-engine' } : {}, {
+  // a place made by `node tools/world.mjs new` carries its own grouping in its meta (ukPlace, county, ukTown, ukView): nothing to add here
+  const items = src.map(it => Object.assign({}, it, !PLACE[it.id] && it.ukPlace ? { ukView: it.ukView || 'world-engine' } : null, PLACE[it.id] ? { ukPlace: PLACE[it.id][0], county: PLACE[it.id][1], ukTown: PLACE[it.id][2], ukView: 'world-engine' } : {}, {
     label: /\(world\)/.test(String(it.label || '')) ? it.label : String(it.label || it.id) + ' (world)',
     tags: (Array.isArray(it.tags) ? it.tags : []).concat(['world-engine', 'preview']),
     mood: ['calm', 'cheerful', 'proud', 'cosy', 'focused', 'dreamy', 'energetic', 'neutral'].includes(it.mood) ? it.mood : 'neutral',
