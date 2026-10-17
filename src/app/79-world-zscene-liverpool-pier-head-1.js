@@ -45,7 +45,7 @@
     entities: [
       // the floating landing stage (a pontoon on guide piles, 120 m by 14 m) off the wall, with its terminal shed and a hinged gangway
       // down from the quay; the two ferries lie alongside it with a brow to each gate (a, along the stage from its middle, a = -110)
-      { id: 'stage', obj: 'boat.landing-stage', at: at(-110, -21), facing: 342, attach: 'water', model: { opts: { gap: 14, gangway: 5, shed: 5, berthA: -30, berthB: 40, people: 0.8 } } },
+      { id: 'stage', obj: 'boat.landing-stage', at: at(-110, -21), facing: 342, attach: 'water', model: { opts: { gap: 14, gangway: 5, shed: 36, shedSide: 1, berthA: -30, berthB: 40, people: 0.8 } } },
       { obj: 'boat.river-ferry', at: at(-140, -34), facing: 342, id: 'ferry-1' }, { obj: 'boat.river-ferry', at: at(-70, -34), facing: 162, id: 'ferry-2' },
       // the walking bronze group on the plaza and one named bench (the kit scatters the rest of the benches, lamps and planters)
       { obj: 'street.walker-group', at: at(-228, 15), facing: 90, id: 'statue' },

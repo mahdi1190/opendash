@@ -311,6 +311,59 @@ function _wmdVesFoam(V, H, wid, alpha, rest) {
   V.face(outer.map(q => [q[0], q[1], 0.01]), '#f4fbfc', 'water', 'foam', null, { alpha: alpha || 0.35 });
 }
 
+/**
+ * The white water of a big hull lying in a tideway (a ferry, a landing stage): from a camera a few metres over the water a flat foam
+ * collar is a sliver under a pixel, so the wash STANDS UP: a low broken skirt of foam against the hull at the waterline (higher at the
+ * ends, gaps between the pieces), a bow wave at each end (a wedge of small white crests running aft from the stem), and a few flecks on
+ * the water. Seeded, subtle, never a ring. E: { face(pts, hex, mat, role, inside, extra) } in model coordinates (V, or the kit through
+ * a wrapper); ring: the hull's plan at the waterline, a closed [[a, l]...]; o: { L, hb, seed (a key), up (the stem's strength 0..1), fine,
+ * tips: [a of each stem], sea (0..1.5: how rough: scales the heights), gapK (1: gaps between the pieces of the skirt, 0.2: nearly continuous), valley (0.2: the ends of a piece stand low, 0.8: high) }.
+ */
+function _wmdVesWash(E, ring, o) {
+  const UP = [0, 1, 0], h = o.h, u = (k) => h.u('wash' + k), sea = o.sea == null ? 1 : o.sea, fine = o.fine !== false, hex = '#f6fbfb', ink = [0, 0, 1.2];
+  const nrm = (a, b) => { const dx = b[0] - a[0], dl = b[1] - a[1], n = Math.hypot(dx, dl) || 1; return [dl / n, -dx / n]; };
+  // the skirt: pieces of 0.8 to 3.2 m along the outline, tent-shaped (a peak, never a slab), offset a hand outward, broken by gaps
+  let k = 0;
+  const endK = (a) => Math.max(0, Math.min(1, (Math.abs(a) - (o.L / 2 - 11)) / 9));
+  for (let i = 0; i < ring.length; i++) {
+    const A = ring[i], B = ring[(i + 1) % ring.length], len = Math.hypot(B[0] - A[0], B[1] - A[1]);
+    if (len < 0.3) continue;
+    const n = nrm(A, B);
+    for (let t0 = u('t0' + i) * 1.5 / len; t0 < 1; ) {
+      k++;
+      const pl = (0.8 + 2.4 * u('pl' + k)) / len, t1 = Math.min(1, t0 + pl), am = A[0] + (B[0] - A[0]) * (t0 + t1) / 2, ek = endK(am), tm = (t0 + t1) / 2;
+      const next = t1 + (o.gapK == null ? 1 : o.gapK) * (0.3 + 2.6 * u('gp' + k) * (1 - ek)) / len;
+      if (t1 - t0 > 0.15 / len) {
+        const hh = (0.08 + 0.2 * u('hh' + k) + 0.45 * ek * (0.5 + 0.5 * u('he' + k))) * sea, off = 0.1 + 0.04 * u('of' + k), al = 0.45 + 0.3 * u('al' + k);
+        const at = (t, y) => [A[0] + (B[0] - A[0]) * t + n[0] * off, A[1] + (B[1] - A[1]) * t + n[1] * off, y];
+        const q1 = t0 + (t1 - t0) * (0.2 + 0.2 * u('q1' + k)), q2 = t1 - (t1 - t0) * (0.2 + 0.2 * u('q2' + k));
+        const vl = o.valley == null ? 0.2 : o.valley;   // how high the ends of a piece stand (a continuous skirt hides the hull's foot between its peaks)
+        E.face([at(t0, 0), at(t1, 0), at(t1, hh * (vl + (0.5 - vl * 0.5) * u('h1' + k))), at(q2, hh * (0.7 + 0.3 * u('p2' + k))), at(q1, hh), at(t0, hh * (vl + (0.5 - vl * 0.5) * u('h0' + k)))], hex, 'water', 'foam', ink, { alpha: al, shadeN: UP });
+      }
+      t0 = next;
+    }
+  }
+  // the bow waves: from each stem a wedge of white crests running aft along both sides, widening, taller near the stem
+  const tips = o.tips || [];
+  tips.forEach((tp, ti) => {
+    const dir = tp > 0 ? 1 : -1, str = (ti === 0 ? o.up == null ? 0.7 : o.up : 1 - (o.up == null ? 0.7 : o.up) * 0.7);
+    const nC = fine ? 9 : 5;
+    for (const sg of [-1, 1]) for (let c = 0; c < nC; c++) {
+      const s = (c + 0.3 + 0.7 * u('bs' + ti + sg + c)) / nC, back = s * (o.wedge || 9), a = tp - dir * back, l = sg * (o.tipHb + 0.3 + s * (o.wedge || 9) * 0.16 + 0.35 * u('bl' + ti + sg + c));
+      const w = (0.7 + 1.4 * u('bw' + ti + sg + c)) * (0.5 + 0.5 * (1 - s)), hh = (0.12 + 0.38 * (1 - s) * (0.5 + 0.5 * u('bh' + ti + sg + c))) * sea * (0.4 + 0.8 * str);
+      // a crest: a vertical fin of foam along the wedge line
+      const ax = dir * 0.62, al = sg * 0.18;
+      E.face([[a - ax * w * 0.5, l - al * w * 0.5, 0], [a + ax * w * 0.5, l + al * w * 0.5, 0], [a + ax * w * 0.3, l + al * w * 0.3, hh], [a - ax * w * 0.3, l - al * w * 0.3, hh * 0.8]], hex, 'water', 'foam', null, { alpha: (0.4 + 0.35 * (1 - s)) * (0.5 + 0.5 * str), shadeN: UP });
+    }
+    // flecks on the water ahead of the stem and along the wedge: flat, faint (they read where the eye is high)
+    if (fine) for (let c = 0; c < 7; c++) {
+      const a = tp + dir * (0.5 + 2.8 * u('fa' + ti + c)) - dir * 4.5 * u('fb' + ti + c), l = (u('fl' + ti + c) - 0.5) * (o.tipHb * 2.4 + 2), r = 0.35 + 0.8 * u('fr' + ti + c), ring2 = [];
+      for (let q = 0; q < 7; q++) { const th = q / 7 * Math.PI * 2, rad = r * (0.7 + 0.5 * u('fq' + ti + c + '_' + q)); ring2.push([a + Math.cos(th) * rad * 1.5, l + Math.sin(th) * rad, 0.015]); }
+      E.face(ring2, hex, 'water', 'foam', null, { alpha: 0.3 + 0.25 * u('fp' + ti + c), shadeN: UP });
+    }
+  });
+}
+
 /* ============================================================
    FERRIES
    ============================================================ */
@@ -337,6 +390,10 @@ function _wmdVesBuildRiverFerry(p, h) {
   V.part('hull', 0, 0, 1.5, 3);
   Hh.cap(age(liv.ring, 'paint'), 0.16, 'paint', 0.06);
   _wmdVesFoam(V, Hh, 0.5, 0.34, true);
+  // the wash: a standing skirt and a bow wave at each stem (the flat collar above is a sliver from a quay)
+  V.part('wash', 0, 0, 0.3, 4.2);
+  { const R = Hh.st.map(sx => [sx.a - sx.ov, sx.hd * Hh.kW]), ring = R.concat(R.slice().reverse().map(q => [q[0], -q[1]]));
+    _wmdVesWash({ face: (pts, hx, mt, rl, ins, ex) => V.face(pts, hx, mt, rl, ins, ex) }, ring, { h, L, tips: [L / 2 - 0.2, -L / 2 + 0.2], tipHb: 1.2, up: 0.4 + 0.5 * h.u('flow'), fine: V.px(1) >= 2, wedge: 10, sea: p.sea == null ? 1 : p.sea }); }
   V.part('deck', 0, 0, 2.2, 1);
   Hh.deck(age(liv.deck, 'paint'), 'paint', 0.12);
   Hh.inner(age(liv.hull, 'paint'), 0.12);
@@ -395,6 +452,7 @@ function _wmdVesBuildRiverFerry(p, h) {
 worldModelDefine('ferry-river', {
   name: 'Mersey ferry (a double-ended river passenger ferry)', ids: ['boat.river-ferry'], sampleObj: 'boat.river-ferry', float: true, solidity: 'solid',
   bob: { heave: 0.025, roll: 0.0035, pitch: 0.0012, period: 6.5 },
+  moor: { heave: 0.11, roll: 0.013, pitch: 0.0075, period: 6.1 },   // a 46 m ferry lying to a stage in a tideway's swell: it heaves a hand and rolls about a degree
   dims(info) { const s = info && info.size; return { L: s && s.w > 20 ? s.w : 46, B: s && s.d > 6 ? s.d : 11.2, H: s && s.h > 8 ? s.h : 15.2 }; },
   liveries: () => _WMD_VES_FERRY_RIVER,
   params(ent, o, p) { return p.liveryKey != null ? null : { liveryKey: Math.abs(ent.variant | 0) % 3 === 0 ? _wexHash(String(ent.id) + 'f') % 5 : Math.abs(ent.variant | 0) % 3 }; },

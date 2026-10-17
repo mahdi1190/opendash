@@ -483,7 +483,9 @@ function _wflTry(F, c) {
   if (peopleLike && c.auto === 'fill' && (F.peopleSpots || []).some(p => Math.hypot(p[0] - c.x, p[1] - c.z) < 4 + 0.04 * c.z)) return null;
   // no prop at the lens either (SCENE_LESSONS K): a bollard, a sandwich board or a bin nearer than where a 1.3 m thing is about 20 % of the
   // frame is a dark blob filling a corner; the placement solver's near band has the same rule for what an author places
-  if (!c.framing && ['post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle', 'signage'].includes(kb.cls) && c.z < F.cam.f * Math.min(kb.size.h0 || 1, 1.3) / 270) return null;
+  // (the divisor is 180, the 20 % the comment above and the placement solver (79-world-1place.js, step 3b) already say: the fill's own
+  // 270 was 30 % of the frame, so a seed put a 1 m bollard 3.7 m from the lens beside the Pier Head's river rail, a quarter of the frame)
+  if (!c.framing && ['post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle', 'signage'].includes(kb.cls) && c.z < F.cam.f * Math.min(kb.size.h0 || 1, 1.3) / (kb.cls === 'post' ? 180 : 270)) return null;
   // K6 things that come and go (flowers, lilies, leaf litter) only where the renderer hides them out of season
   if (!F.seasonal && kb.when && (kb.when.months || kb.when.dates || kb.when.weather)) return null;
   // C1, P8 (on screen)
