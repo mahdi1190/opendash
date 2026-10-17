@@ -215,7 +215,8 @@ test('CI workflow: push + PR; Linux, Windows, macOS x Node 20, 22, 24; build, te
   assert.match(ci, /os: \[ubuntu-latest, windows-latest, macos-latest\]/);
   assert.match(ci, /node: \[20, 22, 24\]/);
   assert.match(ci, /fail-fast: false/);
-  for (const step of ['node build.mjs --syntax', 'node build.mjs\n', 'node --test tests/*.test.mjs', 'node tools/privacy-scan.mjs --no-terms']) assert.ok(ci.includes(step), step);
+  for (const step of ['node build.mjs --syntax', 'node build.mjs\n', '--test-shard=${{ matrix.shard }}/3 tests/*.test.mjs', 'node tools/privacy-scan.mjs --no-terms']) assert.ok(ci.includes(step), step);
+  assert.match(ci, /shard: \[1, 2, 3\]/, 'the suite runs in three shards per cell (the run time budget)');
   assert.match(ci, /CLAUDE_CLI_PATH: .*no-claude-cli/);
   assert.match(ci, /permissions:\n {2}contents: read/);
   const runs = [...ci.matchAll(/^\s+run: (.*)$/gm)].map(m => m[1]).join('\n');
