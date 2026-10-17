@@ -12,7 +12,8 @@ function sceneUkMcrCentreItems() {
   const region = typeof ukCounty === 'function' && ukCounty(COUNTY) ? ukCounty(COUNTY).region : 'north-west';
   const near = (ctx) => !!ctx && !!ctx.county && (ctx.county === COUNTY || (typeof animUkScenePools === 'function' && animUkScenePools([{ county: COUNTY, ukTown: 'Manchester' }], ctx).nearby.length > 0));
   // the market runs from mid-November to just before Christmas (day: the date the scene is for)
-  const monthDay = (day) => { const s = typeof day === 'string' ? day : day instanceof Date ? day.toISOString().slice(0, 10) : ''; const m = /^\d{4}-(\d\d)-(\d\d)/.exec(s); return m ? [+m[1], +m[2]] : null; };
+  // (a Date is read as its day on the user's clock, Clock.parts, not as its UTC day)
+  const monthDay = (day) => { const s = typeof day === 'string' ? day : day instanceof Date ? (typeof Clock !== 'undefined' ? Clock.parts(day.getTime()).iso : String(day.toISOString()).split('T')[0]) : ''; const m = /^\d{4}-(\d\d)-(\d\d)/.exec(s); return m ? [+m[1], +m[2]] : null; };
   const isMarket = (day) => { const md = monthDay(day); return !!md && ((md[0] === 11 && md[1] >= 14) || (md[0] === 12 && md[1] <= 22)); };
   const views = [
     { n: 1, view: 'albert-square', label: 'Albert Square', site: 'Albert Square — the Town Hall clock tower over the square, pigeons round the Albert Memorial', fn: () => sceneUkMcrCentre1(false), ok: typeof sceneUkMcrCentre1 === 'function', lat: 53.47905, lon: -2.2464, tags: ['town hall', 'clock tower', 'albert memorial', 'gothic', 'square'] },

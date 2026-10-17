@@ -218,6 +218,8 @@ function _wexPiece(line, K, cam, ss, ends, o, idx) {
   if (K.detail === 'courses') {
     const zMid = C[Math.floor(C.length / 2)].p[1];
     if (cam.f * 0.3 / Math.max(near, zMid) >= 3) for (let hy = 0.3; hy < h - 0.05; hy += 0.3) { const pts = line3(seenSide, hy, seenBase); if (pts.length >= 2) details.push({ type: 'stroke', pts, width: _wexR(Math.max(0.4, cam.f * 0.012 / Math.max(near, zMid)), 2), hex: _wexMat(o, K.mat, '#6e665a', zMid, 'course'), alpha: 0.45 }); }
+  } else if (K.detail === 'masonry') {
+    if (typeof worldMasonryDetails === 'function') worldMasonryDetails({ line, cam, ss, K, details, h, w, seenL, idx, grow: (p) => { box = _wexBox(p, box); } });
   } else if (K.detail === 'drystone') {
     if (typeof worldDrystoneDetails === 'function') worldDrystoneDetails({ line, cam, ss, K, details, h, w, seenL, idx, grow: (p) => { box = _wexBox(p, box); } });
   } else if (K.detail === 'rails' || K.detail === 'bars') {
@@ -282,7 +284,9 @@ function worldExtrudeLine(line, cam, o) {
   o = o || {};
   if (!line || !cam || !_wexNum(cam.f) || !Array.isArray(line.path) || line.path.length < 2 || !line.path.every(_wexPt)) return [];
   // a wall in the uplands is a dry-stone wall (4drystone: the place's style says so)
-  let K = line.kind === 'wall' && o.drystone && typeof WORLD_EXTRUDE_DRYSTONE === 'object' ? WORLD_EXTRUDE_DRYSTONE : (WORLD_EXTRUDE_KINDS[line.kind] || WORLD_EXTRUDE_KINDS.wall);
+  let K = line.kind === 'wall' && (o.drystone || line.laid === 'drystone') && typeof WORLD_EXTRUDE_DRYSTONE === 'object' ? WORLD_EXTRUDE_DRYSTONE : (WORLD_EXTRUDE_KINDS[line.kind] || WORLD_EXTRUDE_KINDS.wall);
+  // `laid: 'coursed' | 'rubble'` on a wall: coursed or rubble masonry with a coping (79-world-4masonry.js)
+  if (line.kind === 'wall' && (line.laid === 'coursed' || line.laid === 'rubble') && K.detail === 'courses') K = Object.assign({}, K, { detail: 'masonry' });
   // `stone: '#hex'` on a wall: the local stone (honey limestone, red sandstone): the base colour, the cope a little lighter
   if (line.kind === 'wall' && typeof line.stone === 'string' && /^#[0-9a-f]{6}$/i.test(line.stone)) K = Object.assign({}, K, { hex: line.stone, top: _wexShade(line.stone, 1.1) });
   const total = _wexLen(line.path), near = _wexNear(cam);
@@ -295,7 +299,10 @@ function worldExtrudeLine(line, cam, o) {
     for (let i = 1; i < ss.length; i++) {
       const za = _wexAlong(line.path, ss[start]).p[1], zb = _wexAlong(line.path, ss[i]).p[1], zmin = Math.max(near, Math.min(za, zb));
       const last = i === ss.length - 1;
-      if (last || Math.abs(zb - za) >= Math.max(1, 0.08 * zmin) || ss[i] - ss[start] >= 25) {
+      // a piece never turns a corner (a corner piece is concave: its convex footprint would cover the ground inside the corner): cut at any bend over about 25 degrees
+      let bend = false;
+      if (!last) { const t0 = _wexAlong(line.path, ss[i] - 0.02).t, t1 = _wexAlong(line.path, ss[i] + 0.02).t; bend = t0[0] * t1[0] + t0[1] * t1[1] < 0.9; }
+      if (last || bend || Math.abs(zb - za) >= Math.max(1, 0.08 * zmin) || ss[i] - ss[start] >= 25) {
         const piece = _wexPiece(line, K, cam, ss.slice(start, i + 1), [start === 0, last], o, idx++);
         if (piece) out.push(piece);
         start = i;
@@ -682,7 +689,7 @@ function worldExtrude(world, cam, o) {
     for (const b of parts) { try { const p = worldExtrudeBuilding(b, cam, o); if (p) prims.push(p); } catch (e) { /* G8 */ } }
   }
   if (o.hulls !== false) for (const e of Array.isArray(world.entities) ? world.entities : []) {
-    if (!e || e.static === false || typeof e.obj !== 'string' || e.landmark) continue;
+    if (!e || e.static === false || typeof e.obj !== 'string' || (e.landmark && !(typeof worldModelHas === 'function' && worldModelHas(e.obj)))) continue;
     let v = null;
     if (typeof worldViewOf === 'function') { try { v = worldViewOf(e, cam); } catch (err) { v = null; } }
     if (!v || !(v.persp || (typeof worldModelHas === 'function' && worldModelHas(e.obj)))) continue;
@@ -753,7 +760,7 @@ function worldExtrudeDraw(ctx, prim, o) {
         const on = night && _wexNum(f.theta) && f.theta < share && f.lit;
         if (f.line) {
           if (!f.pts || f.pts.length < 2) continue;
-          ctx.globalAlpha = A; ctx.strokeStyle = colour(f.mat, f.hex, f.z, f.role); ctx.lineWidth = f.w || 1;
+          ctx.globalAlpha = (f.alpha == null ? 1 : f.alpha) * A; ctx.strokeStyle = colour(f.mat, f.hex, f.z, f.role); ctx.lineWidth = f.w || 1;
           ctx.lineJoin = 'round'; ctx.lineCap = 'round';
           ctx.beginPath(); ctx.moveTo(f.pts[0][0], f.pts[0][1]); for (let i = 1; i < f.pts.length; i++) ctx.lineTo(f.pts[i][0], f.pts[i][1]); ctx.stroke(); n++;
         } else if (on) {

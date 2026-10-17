@@ -440,7 +440,21 @@ function _wnavOnLayerAt(L, x, z, fam) {
   const S = L.shapes[top], kd = S.costs || _WNAV_KIND[S.kind];
   return !!(kd && kd[fam]);
 }
+/**
+ * The verdict for a point in a far cell, remembered (a small direct-mapped cache per layer): the walkers' step tests the point it
+ * steps to, the life pass tests it again as the mover's place, and the next tick's step starts from it, so one point is asked three
+ * times and each ask is a solid scan and five surface lookups. The navigation is not edited while a world runs.
+ */
 function _wnavFarPointOk(L, k, x, z, r) {
+  let C = L.fpc;
+  if (!C) C = L.fpc = { x: new Float64Array(256).fill(NaN), z: new Float64Array(256), r: new Float64Array(256), v: new Uint8Array(256) };
+  const h = ((Math.floor(x * 32) * 73856093) ^ (Math.floor(z * 32) * 19349663)) & 255;
+  if (C.x[h] === x && C.z[h] === z && C.r[h] === r) return C.v[h] === 1;
+  const v = _wnavFarPointOk0(L, k, x, z, r);
+  C.x[h] = x; C.z[h] = z; C.r[h] = r; C.v[h] = v ? 1 : 0;
+  return v;
+}
+function _wnavFarPointOk0(L, k, x, z, r) {
   if (_wnavFarSolidDist(L, k, x, z) < r) return false;
   const fam = L.layer.split('@')[0];
   if (!L.shapes || fam === 'wade') return true;
@@ -627,8 +641,39 @@ function worldNavBuild(world, o) {
     _wnavCells(L, p.surface, k => { const x = _wnavCX(L, k), z = _wnavCZ(L, k); if (worldNavOk({ layers }, p.a, x, z) && worldNavOk({ layers }, p.b, x, z)) pairs.push([x, z, x, z]); });
     p.pairs = pairs;
   }
+  // a slot one body wide costs more to walk (SCENE_LESSONS J): two cannot pass in it, so routes and flow fields go round by the open ground
+  // when that is not much longer (the quay's lifebuoy left 0.5 m between itself and the near band: walkers met in it)
+  for (const Ln of Object.keys(layers)) if (/^walk(@|$)/.test(Ln) && layers[Ln] && layers[Ln].data && layers[Ln].N0) _wnavSlotCost(layers[Ln]);
   layers.rail = { layer: 'rail', lines: surfaces.filter(s => (s.kind === 'rail' || s.kind === 'tram') && s.path).map(s => ({ id: s.id, kind: s.kind, path: s.path, width: s.width || 0 })) };
   return { layers, cam, world, flows: new Map(), solids: ground, wetSolids: wet, ents, surfaces, owners, extra, levels: levelRecs, portals, waterLevel };
+}
+const WORLD_NAV_SLOT = { width: 1.0, cost: 3 };           // a run of ok cells no wider than this (m), bounded by blocked ones both ends, costs this much more
+/** Raise the cost of the near grid's cells that lie in a slot (a run of legal cells <= WORLD_NAV_SLOT.width wide, across x or across z). */
+function _wnavSlotCost(L) {
+  const w = L.w, h = L.hLive, N = w * h, maxRun = Math.max(1, Math.round(WORLD_NAV_SLOT.width / L.cell));
+  const ok = new Uint8Array(N);
+  for (let k = 0; k < N; k++) ok[k] = _wnavCellOk(L, k, 0.25, false) ? 1 : 0;
+  const slot = new Uint8Array(N);
+  const mark = (start, step, count) => {                     // one line of cells: its runs, marked when short and walled in at both ends
+    let i = 0;
+    while (i < count) {
+      if (!ok[start + i * step]) { i++; continue; }
+      let j = i; while (j < count && ok[start + j * step]) j++;
+      if (i > 0 && j < count && j - i <= maxRun) for (let q = i; q < j; q++) slot[start + q * step] = 1;
+      i = j;
+    }
+  };
+  for (let j = 0; j < h; j++) mark(j * w, 1, w);
+  for (let i = 0; i < w; i++) mark(i, w, h);
+  for (let k = 0; k < N; k++) if (slot[k] && L.data[k]) L.data[k] = Math.max(L.data[k] + 1, Math.round(L.data[k] * WORLD_NAV_SLOT.cost));
+  L.slot = slot;
+}
+/** Is the point in a slot (a run of legal cells no wider than 1 m, walled in at both ends: two cannot pass in it)? Near grid only. */
+function worldNavSlot(nav, layer, x, z) {
+  const L = nav && nav.layers && nav.layers[layer];
+  if (!L || !L.slot) return false;
+  const k = _wnavIdx(L, x, z);
+  return k >= 0 && k < L.slot.length && L.slot[k] === 1;
 }
 function _wnavPaint(L, s, cost) {
   _wnavCells(L, s, k => { if (!L.data[k]) { L.data[k] = cost; L.clear[k] = Math.max(L.clear[k], 0.3); } });

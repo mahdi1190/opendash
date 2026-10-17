@@ -222,6 +222,9 @@ const WORLD_KB_CLASSES = _wkbFreeze({
   walkway: { habitat: { on: ['water', 'soil', 'grass', 'wet', 'walk', 'road', 'road-lane', 'rail', 'tram', 'water-margin', 'bank', 'ground', 'paving', 'deck', 'stone'] }, foot: 'box',
     solidity: 'overhead', clearance: 1.2, orient: 'free', group: { kind: 'single', size: [1, 1], gap: 0 }, perch: 'rail', snow: 0.8, deck: true, anim: _WKB_STATIC_ANIM },
   weir: { habitat: { on: ['water', 'weir'] }, foot: 'box', solidity: 'solid', clearance: 0.5, orient: 'bank', group: { kind: 'single', size: [1, 1], gap: 0 }, snow: 0.3, anim: _WKB_STATIC_ANIM },
+  // a lychgate: a roof on four posts over a path in a churchyard wall: stands on the path (walkers pass under it), faces as it is told
+  lychgate: { habitat: { on: ['soil', 'grass', 'walk', 'paving', 'ground', 'path', 'hedge', 'heath', 'field'], avoid: ['water', 'road-lane', 'rail'] }, foot: 'box', solidity: 'overhead',
+    clearance: 0.5, orient: 'free', group: { kind: 'single', size: [1, 1], gap: 0 }, perch: 'roof', snow: 0.8, anim: _WKB_STATIC_ANIM },
   gate: { habitat: { on: ['soil', 'grass', 'walk', 'paving', 'ground', 'path', 'hedge', 'heath', 'field'], avoid: ['water', 'road-lane', 'rail'] }, foot: 'box', solidity: 'solid',
     clearance: 1.5, orient: 'fence', group: { kind: 'single', size: [1, 1], gap: 0 }, perch: 'fence', snow: 0.6, anim: _WKB_STATIC_ANIM },
   fence: { habitat: { on: ['soil', 'grass', 'walk', 'paving', 'ground', 'path', 'bank', 'heath', 'field', 'stone', 'water-margin'], avoid: ['water', 'road-lane', 'rail', 'walkline'] }, foot: 'box',
@@ -259,6 +262,10 @@ const WORLD_KB_CLASSES = _wkbFreeze({
 // bloom: [[month, day], [month, day]] (the flowering window); when: K6; region / swap / liveries: K7; size: K8 extras.
 const _WKB_FINE = ['clear', 'cloud'];
 const WORLD_KB_OBJECTS = _wkbFreeze({
+  // a lychgate is a roof on four posts over a path: walkers pass under it (overhead), the gate leaves are low and open to the path
+  'structure.lychgate': { cls: 'lychgate', solidity: 'overhead' },
+  // headstones are of every size in a churchyard (a low kerbed slab to a tall cross-less stone): the class range is wide
+  'structure.headstone': { cls: 'street', size: { h: [0.6, 1.3] } },
   // K7: local transport liveries (Metrolink yellow and grey; Supertram; UK buses and trains in plausible styles)
   'vehicle.metrolink-m5000': { region: { only: ['manchester'] }, swap: { sheffield: 'vehicle.supertram' }, liveries: { default: [0, 1], names: ['Metrolink yellow and grey, two cars', 'Metrolink yellow and grey, four sections'] } },
   'vehicle.supertram': { region: { only: ['sheffield'] }, swap: { manchester: 'vehicle.metrolink-m5000' }, liveries: { default: [0, 1], names: ['Supertram white with blue, orange and red', 'Supertram blue with yellow'] } },
@@ -327,6 +334,8 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'person.bench-sitter': { size: { pose: 'sit' }, habitat: _WKB_FURNITURE, orient: 'path' }, 'person.bench-reader': { size: { pose: 'sit' }, habitat: _WKB_FURNITURE, orient: 'path' },
   'person.wheelchair-user': { size: { pose: 'sit' } },
   'boat.narrowboat': { size: { lRange: [15, 21], wRange: [2.05, 2.15], h: [1.7, 2.1] } }, 'boat.mcf-narrowboat': { size: { lRange: [15, 21], wRange: [2.05, 2.15], h: [1.7, 2.1] } },
+  // a fishing boat is one of three model kinds (79-world-4models-vessels.js): a trawler to its masthead 6 m, a potter about 4 m, a coble about 3 m
+  'boat.fishing-boat': { size: { h: [2.9, 7] } },
   'boat.narrowboat-ai': { size: { lRange: [15, 21], wRange: [2.05, 2.15] } }, 'boat.canal-view-boat': { size: { lRange: [15, 21], wRange: [2.05, 2.15] } },
   // K1 special habitats
   'tree.wyv-snag': { cls: 'tree', leaf: 'none', habitat: { on: ['soil', 'grass', 'wet', 'water-margin', 'water', 'bank'] }, perch: 'tree' },
@@ -619,6 +628,7 @@ function _wkbPartsOf(id, def) {
   try { const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(id, 0, 'summer') : null; if (sh && sh.parts) return Object.keys(sh.parts); } catch (e) { /* none */ }
   return ['body'];
 }
+const _wkbS = (v) => v === 'solid' || v === 'walkable' || v === 'passable' || v === 'overhead';
 function _wkbBuild(id) {
   const def = typeof sceneObj === 'function' ? sceneObj(id) : null;
   const ov = WORLD_KB_OBJECTS[id] || null;
@@ -641,7 +651,7 @@ function _wkbBuild(id) {
   const d = _wkbCopy(C);
   // K8: size. Movers keep the v2 real size classes (a duck 0.35 m, a person 1.7 m); everything else its real table size
   const moverCls = ['person', 'cyclist', 'picnic', 'cafe-table', 'umbrella', 'dog', 'duck', 'coot', 'grebe', 'swan', 'goose', 'heron', 'kingfisher', 'gull', 'bird', 'grazer', 'animal', 'fish'];
-  const size = Object.assign({}, d.size || {});
+  const size = Object.assign({}, d.size || {}, ov && ov.size ? ov.size : null);
   const ageChild = cls !== 'cafe-table' && (/child|kid/.test(id) && !/family/.test(id));
   const pose = size.pose || (tags.includes('sitting') || /sitter|reader|picnic|cafe|wheelchair/.test(id) ? 'sit' : cls === 'duck' || cls === 'coot' || cls === 'grebe' || cls === 'swan' ? 'swim' : cls === 'kingfisher' ? 'perch' : cls === 'cyclist' ? 'ride' : 'stand');
   size.pose = pose; size.age = ageChild ? 'child' : 'adult';
@@ -718,6 +728,7 @@ function _wkbBuild(id) {
   else d.deck = null;
   // bridges, viaducts and footbridges are overhead to what passes beneath; low boardwalks are walkable
   if (cls === 'walkway') d.solidity = /bridge|viaduct|footbridge|railbridge|arch/.test(id) ? 'overhead' : 'walkable';
+  if (ov && _wkbS(ov.solidity)) d.solidity = ov.solidity;
   // A6, M1, M3: animation (the v2 behaviour presets, so the stride matches the v2 walk hooks)
   // stride: metres a walk cycle (two steps) at the gait's reference speed, so rate = speed / stride (A6, no sliding feet)
   const gait = _wkbPresetFor(id, cls) || null;

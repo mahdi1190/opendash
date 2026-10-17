@@ -36,7 +36,7 @@ function sceneUkSheffieldParksItems() {
     items.push(sceneItem({
       id: `${COUNTY}-sheffield-parks-${v.n}`, label: v.label + ', ' + TOWN, site: v.site,
       colour: v.colour, mood: v.mood, intensity: 'subtle', priority: 1, theme: 'any', region: [NATION],
-      tags: ['uk', region.replace(/-/g, ' '), NAME.toLowerCase(), 'sheffield'].concat(v.tags),
+      tags: ['uk', region.replace(/-/g, ' '), NAME.toLowerCase(), 'sheffield', v.kind].concat(v.tags),   // the kind is a tag too (the registry's metadata rule)
       county: COUNTY, ukRegion: region, ukKind: v.kind, signature: false, ukPart: 'sheffield-parks',
       ukPlace: v.place, ukLocality: v.locality, ukTown: TOWN, ukView: v.view,
       liveSky: { lat: cam.lat, lon: cam.lon }, when,

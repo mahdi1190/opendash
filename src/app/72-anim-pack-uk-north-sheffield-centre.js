@@ -25,7 +25,7 @@ function sceneUkNorthSheffieldCentreItems() {
       id: `${COUNTY}-${PLACE}-${V.n}`, label: V.label, site: V.site,
       colour: V.colour, mood: 'cheerful', intensity: 'subtle', priority: 1, theme: 'any', region: [NATION],
       tags: ['uk', region.replace(/-/g, ' '), NAME.toLowerCase(), 'sheffield', 'city', 'townscape'].concat(V.tags),
-      county: COUNTY, ukRegion: region, ukKind: 'townscape', signature: V.n === 1, ukPart: 'uk-north-' + PLACE,
+      county: COUNTY, ukRegion: region, ukKind: 'city', signature: V.n === 1, ukPart: 'uk-north-' + PLACE,
       ukPlace: PLACE, ukLocality: TOWN, ukTown: TOWN, ukView: V.view, viewReason: V.site,
       liveSky: { lat: 53.38, lon: -1.468 },
       when,

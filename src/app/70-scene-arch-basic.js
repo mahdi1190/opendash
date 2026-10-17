@@ -78,13 +78,13 @@ function sceneArchBasic(p, u, opts) {
   if (water) {
     const edge = pick('edge', id => !/fish-ring/.test(id));
     if (any(edge)) data.scatter.push({ obj: edge, layer: 'near', seed: 10, area: { rect: [-150, yWater1 - 2, 1750, yWater1 + 14] }, n: n(60), minGap: 22, s: [0.3, 0.6], flip: 0.5, variant: 'random', tint: { col: '#8a7a40', k: [0, 0.12] }, reflect: true });
-    const swim = pick('bird', id => { const d = sceneObj(id); return !!(d && d.anim && (d.anim.paddle)); });
+    const swim = pick('bird', id => sceneObjHasHook(id, 'paddle'));
     if (any(swim)) data.scatter.push({ obj: swim, layer: 'mid', seed: 12, area: { rect: [0, yWater0 + 18, 1600, yWater1 - 10] }, n: 6, minGap: 90, s: [0.32, 0.42], flip: 0.5, variant: 'random' });
     const boats = slot(pick('boat'), 'boat');
     boats.slice(0, 2).forEach((id, i) => data.actors.push({ obj: id, layer: 'mid', path: i ? [[1800, yWater0 + 30], [-200, yWater0 + 30]] : [[-200, yWater1 - 12], [1800, yWater1 - 12]], speed: 6 + i * 2, loop: 'loop', s: sOf(id, 34 + i * 6), seed: 30 + i, offset: 0.25 + i * 0.4, flip: !!i }));
   }
   // flying birds
-  const fly = slot(pick('bird', id => { const d = sceneObj(id); return !!(d && d.anim && d.anim.flap); }), 'bird');
+  const fly = slot(pick('bird', id => sceneObjHasHook(id, 'flap')), 'bird');
   if (fly.length) data.flocks.push({ obj: fly[0], n: 7, area: [200, 80, 1400, Math.max(200, H - 160)], speed: 30, s: 0.6, seed: 9, layer: 'far' });
   if (fly.length > 1) data.flocks.push({ obj: fly[1], n: 3, area: [100, 120, 1500, Math.max(240, H - 120)], speed: 22, s: 0.7, seed: 10, layer: 'mid' });
   // a road with vehicles (urban)
@@ -95,7 +95,7 @@ function sceneArchBasic(p, u, opts) {
     veh.slice(0, 2).forEach((id, i) => data.actors.push({ obj: id, layer: 'near', path: i ? [[1860, yr - 8], [-260, yr - 8]] : [[-260, yr + 6], [1860, yr + 6]], speed: 46 + i * 8, loop: 'loop', s: 1, seed: 40 + i, offset: 0.15 + i * 0.5, flip: !!i }));
   }
   // walkers: anonymous silhouettes, spread out (care rules 8.5), sized by the depth ladder at their row (2.8)
-  const walkers = slot(pick('walker', id => { const d = sceneObj(id); return !!d && (d.tags || []).includes('silhouette') && !(d.anim && d.anim.turn && !d.anim.walk); }), 'walker');
+  const walkers = slot(pick('walker', id => { const d = sceneObj(id); return !!d && (d.tags || []).includes('silhouette') && !(sceneObjHasHook(id, 'turn') && !sceneObjHasHook(id, 'walk')); }), 'walker');
   const nw = Math.min(opts.walkers == null ? 6 : opts.walkers, 10);
   for (let i = 0; i < nw && walkers.length; i++) {
     const id = walkers[i % walkers.length], y = (opts.walkY || H + 200) + (i % 3) * 14, back = i % 2 === 1;

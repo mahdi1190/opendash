@@ -88,7 +88,8 @@
         if (winter) {
           crown.push({ s: '@bark.0', w: f1(S.trunk[0] * 0.6), cap: 'round', d: br[0] }, { s: '@bark.0', w: f1(Math.max(2, S.trunk[0] * 0.3)), cap: 'round', d: br[1] }, { s: '@bark.2', w: 1.4, cap: 'round', op: 0.85, d: br[2], detail: true });
           // the twig haze (willow: golden hanging stems)
-          crown.push({ s: '@leaf.1', w: 1.1, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(r, cx, cy, cw * 0.95, ch * 0.9, S.weep ? 10 : 22) });
+          const hz = sceneDraw.twigHazeLod(r, cx, cy, cw * 0.95, ch * 0.9, S.weep ? 10 : 22);
+          crown.push({ s: '@leaf.1', w: 1.1, cap: 'round', op: 0.6, d: hz.core }, { s: '@leaf.1', w: 1.1, cap: 'round', op: 0.6, d: hz.fine, detail: true });
           crown.push({ s: '@leaf.0', w: 0.7, cap: 'round', op: 0.45, d: sceneDraw.twigHaze(r, cx, cy, cw, ch, S.weep ? 8 : 16), detail: true });
         } else {
           crown.push({ s: '@bark.0', w: f1(S.trunk[0] * 0.55), cap: 'round', d: br[2], detail: true });
@@ -308,7 +309,8 @@
       body.push(['@bark.0', `M-9 2L-5 ${f1(cy + ch * 0.5)}L5 ${f1(cy + ch * 0.5)}L9 2Z`]);
       if (winter) {   // bare: the limbs out of the trunk top and the fine twig haze (the willow's in its golden stems)
         const y0 = cy + ch * 0.5, lim = sceneDraw.twigs(r, [[-2, y0, -0.7, ch * 0.55], [2, y0, 0.65, ch * 0.55], [0, y0, 0, ch * 0.7]], 2, 0.4);
-        body.push({ s: '@bark.0', w: 3, cap: 'round', d: lim }, { s: '@' + slot + (k === 'willow' ? '.2' : '.1'), w: 1.2, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(r, 0, cy, cw * 0.95, ch * 0.9, 20) });
+        const hz = sceneDraw.twigHazeLod(r, 0, cy, cw * 0.95, ch * 0.9, 20), hs = '@' + slot + (k === 'willow' ? '.2' : '.1');
+        body.push({ s: '@bark.0', w: 3, cap: 'round', d: lim }, { s: hs, w: 1.2, cap: 'round', op: 0.6, d: hz.core }, { s: hs, w: 1.2, cap: 'round', op: 0.6, d: hz.fine, detail: true });
         return { body };
       }
       let a = '', b = '';

@@ -51,7 +51,7 @@ function sceneArchSkylineWater(p, u) {
   const ranked = (w, name) => slot(w, name).filter(id => !foreign(id)).map((id, i) => { const t = (sceneObj(id) || {}).tags || []; return [id, (own(name).includes(id) ? 4 : 0) + (t.includes('kit:' + climate) ? 2 : 0) + (t.includes('harbour') ? 1 : 0), i]; })
     .sort((a, b) => b[1] - a[1] || a[2] - b[2]).map(x => x[0]);
   const any = w => Object.keys(w).length > 0;
-  const anim = (id, k) => { const d = sceneObj(id); return !!(d && d.anim && d.anim[k]); };
+  const anim = (id, k) => sceneObjHasHook(id, k);
   const yQ = H + 22, yW0 = H + 26, yP = Math.round(H + 0.6 * (900 - H)), yW1 = yP, yBed = yP + 46;
   const data = {
     v: 1, id: String(p.id), view: { lat: p.lat, lon: p.lon, heading: Number.isFinite(p.heading) ? p.heading : 180, fov: 70, horizon: H, lift: 1 },

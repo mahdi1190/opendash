@@ -94,7 +94,8 @@
         if (bare) {   // winter: up-swept limbs off the white stem and the fine twig haze of the crown
           let lim = '';
           for (let i = 0; i < 5; i++) { const t = 0.45 + i * 0.1, s = i % 2 ? 1 : -1; lim += `M${f1(lean * t)} ${f1(-h * t)}l${f1(s * rr(r, 12, 22))} ${f1(-rr(r, 16, 26))}`; }
-          body.push({ s: '@leaf.0', w: 1.6, cap: 'round', d: lim }, { s: '@leaf.1', w: 1, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(r, cx, cy, rx, ry, 9) });
+          const hz = sceneDraw.twigHazeLod(r, cx, cy, rx, ry, 9);
+          body.push({ s: '@leaf.0', w: 1.6, cap: 'round', d: lim }, { s: '@leaf.1', w: 1, cap: 'round', op: 0.6, d: hz.core }, { s: '@leaf.1', w: 1, cap: 'round', op: 0.6, d: hz.fine, detail: true });
           return { body };
         }
         body.push(['@leaf.0', massI(r, cx + 3, cy + 6, rx, ry, 8)], ['@leaf.1', massI(r, cx, cy, rx * 0.9, ry * 0.9, 8)], ['@leaf.2', massI(r, cx - rx * 0.3, cy - ry * 0.3, rx * 0.42, ry * 0.42, 6), 0.9]);
@@ -105,7 +106,8 @@
         const cy = -h * 0.66;
         if (bare) {   // winter: the branch fork and the fine twig haze of a bare oak or alder
           const y0 = -h * 0.4, lim = sceneDraw.twigs(r, [[-1, y0, -0.75, w * 0.42], [1, y0, 0.7, w * 0.42], [0, y0, 0.05, h * 0.3]], 1, 0.42);
-          body.push({ s: '@trunk.0', w: 2.2, cap: 'round', d: lim }, { s: '@leaf.1', w: 1, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(r, 0, cy, w / 2, h * 0.3, 16) });
+          const hz = sceneDraw.twigHazeLod(r, 0, cy, w / 2, h * 0.3, 16);
+          body.push({ s: '@trunk.0', w: 2.2, cap: 'round', d: lim }, { s: '@leaf.1', w: 1, cap: 'round', op: 0.6, d: hz.core }, { s: '@leaf.1', w: 1, cap: 'round', op: 0.6, d: hz.fine, detail: true });
           return { body };
         }
         body.push(['@leaf.0', massI(r, 4, cy + 8, w / 2, h * 0.32, 9)], ['@leaf.1', massI(r, 0, cy, w / 2 * 0.92, h * 0.3, 9)]);
@@ -324,7 +326,7 @@
         let hz = '';
         for (const [ax, ay, , L, u] of hangs) if (u > 0.7 && r() < 0.5) hz += sceneDraw.twigHaze(r, ax, ay + L * 0.4, L * 0.35, L * 0.45, 2);
         crown.push({ s: '@haze', w: 0.6, cap: 'round', op: 0.45, d: hz, detail: true });
-        crown.push({ s: '@twig.1', w: 0.6, cap: 'round', op: 0.7, d: tw2 }, { s: '@twig.0', w: [1.4, 1.25, 1.1][v], cap: 'round', d: lim2 });
+        crown.push({ s: '@twig.1', w: 0.6, cap: 'round', op: 0.7, d: tw2, detail: true }, { s: '@twig.0', w: [1.4, 1.25, 1.1][v], cap: 'round', d: lim2 });
         crown.push({ s: '@twig.0', w: [3.6, 3.1, 2.6][v], cap: 'round', d: lim }, { s: '@bark.1', w: [2.2, 1.9, 1.6][v], cap: 'round', d: lim });
         crown.push({ s: '@twig.0', w: 0.8, cap: 'round', op: 0.85, d: tw });
         crown.push({ s: '@catkin', w: 1.8, cap: 'round', op: 0.85, d: cat, detail: true });
@@ -409,9 +411,9 @@
       }
       crown.push({ s: '@twig.0', w: alder ? 3.5 : 5, cap: 'round', d: limbs });
       if (bare) {
-        let hz = '';
-        for (const [ex, ey, , len] of ends) hz += sceneDraw.twigHaze(r, ex, ey, len * 0.4, len * 0.34, 5);
-        crown.push({ s: '@haze', w: 0.8, cap: 'round', op: 0.5, d: hz });
+        let hz = '', hzF = '';
+        for (const [ex, ey, , len] of ends) { const h = sceneDraw.twigHazeLod(r, ex, ey, len * 0.4, len * 0.34, 5); hz += h.core; hzF += h.fine; }
+        crown.push({ s: '@haze', w: 0.8, cap: 'round', op: 0.5, d: hz }, { s: '@haze', w: 0.8, cap: 'round', op: 0.5, d: hzF, detail: true });
         crown.push({ s: '@twig.1', w: 1, cap: 'round', op: 0.8, d: twigs(r, ends, n * 7, H * 0.1) });
         crown.push({ s: '@twig.0', w: 0.6, cap: 'round', op: 0.6, d: twigs(r, ends, n * 6, H * 0.07), detail: true });
         return { trunk, crown };

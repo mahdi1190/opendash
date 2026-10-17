@@ -147,3 +147,46 @@ test('the watchdog: a mover with somewhere to go that makes no headway for 10 s 
   assert.ok(gone, 'the wedged mover was retired');
   assert.ok(life.problems.some(p => p.rule === 'stuckRetired'), 'and logged');
 });
+
+// ---- 15 Oct (movement round): a gap two cannot pass in. Whitby's quay had a bollard 1.6 m from a bench: head-on walkers met in it, each
+// took the other for a standing obstacle (oncoming was judged by the velocity a held-up mover no longer has), both stood nose to nose
+// for 4 to 5 s and a squeeze then put them through each other. Now: oncoming is by intent, the one nearer the gap goes first and the
+// other waits at its mouth.
+function gapWorld(gap, seed) {
+  const zc = 10;
+  return { seed, cam, surfaces: [{ id: 'quay', kind: 'plaza', poly: rect(-40, 8, 40, 14) }],
+    entities: [
+      { id: 'post', obj: 'street.bollard', cls: 'post', x: 0, z: zc - gap / 2 - 0.25, solidity: 'solid', size: { w: 0.5, d: 0.5, h: 1.1 }, height: 1.1, static: true },
+      { id: 'bench', obj: 'street.bench', cls: 'bench', x: 0, z: zc + gap / 2 + 1.0, solidity: 'solid', size: { w: 2.2, d: 2.0, h: 0.9 }, height: 0.9, static: true },
+    ],
+    life: [{ who: 'walkers', on: 'quay', rate: '0.0001/min', mix: { stroll: 1 }, edges: ['W', 'E'] }] };
+}
+function headOn(gap, dz, seed) {
+  const nav = C.worldNavBuild(gapWorld(gap, seed)), life = C.worldLifeInit(gapWorld(gap, seed), nav, 0, { warm: false }), pop = life.pops[0];
+  const A = C._wlfArrive(life, pop, pop.entries[0]), B = C._wlfArrive(life, pop, pop.entries[0]);
+  assert.ok(A && B, 'two walkers arrived');
+  const put = (a, x, z, tx) => { a.x = a.px = x; a.z = a.pz = z; a.goals = [{ go: [tx, z] }]; a.gi = 0; a.route = null; a.leaving = false; a.heading = tx > x ? Math.PI / 2 : -Math.PI / 2; a.fadeIn = 0; a.v = 1.2; };
+  put(A, -9, 10 + dz, 9); put(B, 9, 10 - dz, -9);
+  let stall = 0, maxStall = 0, minD = 9, sq = 0, pass = false;
+  for (let i = 0; i < 40 * 15; i++) {
+    C.worldLifeTick(life, 1 / 15);
+    minD = Math.min(minD, Math.hypot(A.x - B.x, A.z - B.z));
+    if (A.squeeze > life.t || B.squeeze > life.t) sq++;
+    if ((A.speed < 0.15 || B.speed < 0.15) && Math.abs(A.x) < 5) { stall++; maxStall = Math.max(maxStall, stall); } else stall = 0;
+    if (A.x > 3 && B.x < -3) pass = true;
+  }
+  return { minD, maxStallS: maxStall / 15, squeezeFrames: sq, pass };
+}
+test('two walkers meeting head on in a gap between a bollard and a bench pass: no standing nose to nose, no squeeze through each other', () => {
+  for (const dz of [0, 0.2, -0.3]) {
+    const r = headOn(1.6, dz, 3);
+    assert.ok(r.pass, 'both got through (offset ' + dz + ')');
+    assert.ok(r.maxStallS <= 1.5, 'stood still for ' + r.maxStallS.toFixed(1) + ' s (offset ' + dz + ')');
+    assert.equal(r.squeezeFrames, 0, 'squeezed through each other for ' + r.squeezeFrames + ' frames (offset ' + dz + ')');
+    assert.ok(r.minD >= 0.3, 'the closest they came: ' + r.minD.toFixed(2) + ' m');
+  }
+});
+test('an open pass is as it was: head-on walkers 2.4 m between the pieces pass side by side without waiting', () => {
+  const r = headOn(2.4, 0, 3);
+  assert.ok(r.pass && r.maxStallS < 0.5 && r.squeezeFrames === 0, JSON.stringify(r));
+});

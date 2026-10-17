@@ -110,8 +110,10 @@
     tags: ['uk', 'london', 'city', 'people', 'anonymous', 'commuter', 'pedestrian', 'umbrella', 'street', 'kit:people', 'kit:urban', 'kit:london', 'role:walker'],
     credit: 'the shared people builder (scenePeople.figure) in a city wardrobe, with what city walkers carry',
     build(v, r, ctx) {
-      const p = CITY[v], s = ctx.season, o = PP.outfit(p, s), wet = s === 'autumn' || s === 'winter';
-      if (p.carry === 'umbrella') Object.assign(o, { hold: s === 'summer' ? 'brolly' : 'umbrella', holdCol: p.brolly });
+      // the weather of the day when the host says it (the world engine): an umbrella is up in the rain and furled when it is dry,
+      // whatever the season; a build that is not told keeps to its season (up in autumn and winter, furled in summer)
+      const p = CITY[v], s = ctx.season, o = PP.outfit(p, s), day = PP.wetDay(), wet = day == null ? (s === 'autumn' || s === 'winter') : day;
+      if (p.carry === 'umbrella') Object.assign(o, { hold: (day == null ? s !== 'summer' : day) ? 'umbrella' : 'brolly', holdCol: p.brolly });
       if (p.carry === 'tote' && wet) Object.assign(o, { hold: 'umbrella', holdCol: p.brolly });
       if (o.hold === 'umbrella') o.arms = { far: 'forward', near: { hand: [6.2, -46.6] } };   // the handle held in front of the chest: the shaft clears the face
       if (p.carry === 'phone') o.hold = 'phone';

@@ -8,7 +8,7 @@ windows and lamps at night, sitting in the water where it floats, mirrored by th
 engine. A scene then simply says what it wants and the library supplies it.
 
 Files: `src/app/79-world-4models.js` (registry, builder kit, conformance check), `src/app/79-world-4model-<name>.js` (one model
-each; the narrowboat is `79-world-4model-narrowboat.js`), `tools/lib/world/models.mjs` (the sheet), `tests/world-models.test.mjs`.
+each; the narrowboat is `79-world-4model-narrowboat.js`; the landing stage and the shared seated and standing figures are `79-world-4models-landing.js`), `tools/lib/world/models.mjs` (the sheet), `tests/world-models.test.mjs`.
 
 ## 1. How a scene asks for a model
 
@@ -80,6 +80,7 @@ worldModelDefine(id, {
   liveries: [ { name, ...colours } ] | { name: {...} } | () => [...],
   sunLit: true,                       // faces carry their normal and the scene sun tones them (the narrowboat opts out: baked sky light only)
   bob: { heave, roll, pitch, period } | false,   // the floater's bob (metres, radians, seconds); only with a time (agents, o.t)
+  moor: { heave, roll, pitch, period },          // a floater MOORED in a swell (a static in rough water: the frame passes o.t and o.sea): larger than the idle bob; default 4x the heave, 3x the roll and pitch
   solidity: 'solid', footprint(p) -> [[a, l]...],  // the nav footprint (default: the L x B rectangle)
   samples: [ { livery, age, size, seed } ],        // what the sheet shows as "many instances"
   faceCap: 2500,                      // faces a build may emit (extra faces are dropped, never thrown)
@@ -169,6 +170,18 @@ windows do this for you. A model with `sunLit` (the default) carries each face's
 * The entity's own `size`, `height`, `foot` are set from the model at build (`worldModelFit`), so placement and navigation know
   the real size.
 
+Rocking at a mooring (17 Oct). A static floater (a ferry, a landing stage, a dinghy on a mooring) in ROUGH water (a water region whose
+look has `chop` of 0.5 or more: an estuary, the sea) is drawn live: `_wfrRocks` (79-world-5frame.js) marks it in the plan, takes it out of
+the baked chunks, and every 1/3 s the frame builds the model again with `o.t` (the scene time) and `o.sea` (0 flat calm .. 1 a fresh breeze
+.. 1.6 a gale, from the light's wind: `_wfrSea`) and draws it once into its own bitmap that the frames between blit. With a sea the kit's
+`h.bob` uses the def's `moor` (the sea scales it), so a ferry heaves about 10 cm and rolls about a degree, the 120 m pontoon of a landing
+stage less, and a flat calm is still. The baked mirror in the water stays at the rest pose (a pixel at most). A canal, a pond and a harbour
+never rock, and a model built without `o.sea` (an agent's, the sheet's) keeps its small idle bob. The build's `pose` ({ heave, roll, pitch }) is
+on the prim for checks. Test: `tests/world-river-detail.test.mjs` X3.
+
+The white water of a big hull (a ferry, a stage): `_wmdVesWash` (79-world-4models-vessels.js) draws a broken skirt of foam standing against
+the hull at the waterline and a bow wave at each stem. A flat collar is a sliver under a pixel from a quay 100 m away; upright pieces read.
+
 ## 6. Rules (what the review looks for)
 
 1. **Real form from every angle.** Look at the sheet: from 8 angles, end-on and from above. A flat panel with a paper outline
@@ -214,7 +227,7 @@ Several people (or agents) add models at once without touching each other:
   chooses livery, size, age.
 * Add one row for your model class to SCENE_LESSONS section W when you find a mistake worth keeping.
 
-## 9. Seafront models and generators (17 Oct, detail/pier)
+## 11. Seafront models and generators (17 Oct, detail/pier)
 
 | model / generator | file | what it is | scene use |
 |---|---|---|---|
@@ -231,3 +244,31 @@ Engine hooks added for them (small, general):
 * `ent.orderZ` (set in `_wcEntity` for a thing on a host's deck, read by the order memo and the frame record): ordered as if it stood at the host's nearest edge, so it is drawn after a long model it stands on.
 * kb overrides in `79-world-0kb.js`: `building.kiosk` is a `market-stall`, `building.beach-hut` has `orient: 'free'` (a row may fan toward the viewer), `street.bunting` is passable, `structure.lighthouse` may be 16 to 48 m.
 * `79-world-2life.js` `_wlfToLevel`: a mover that reaches a portal 0.6 m short of the painted ramp steps onto it (spread by its id); on a level whose host is an entity it is hosted by it.
+
+## 10. The English village set (17 Oct, detail/cotswold): a church, a churchyard, a green
+
+The Cotswold green's church was a blank wall of tall windows under a flat grey slab, with a bare wall, no headstones and no yews. These are the
+reusable pieces that replaced it (all seeded, scalable by `model.size`, sheet with `node tools/world.mjs models <id> --full --out D`):
+
+| model (object id) | what it is | the parameters |
+|---|---|---|
+| `parish-church` (`structure.parish-church`) | west tower in three stages with set-back corner buttresses, a belfry with louvred openings, a corbel table, a crenellated parapet with pinnacles, a stair turret and a weathercock (or a broach spire); a nave under stone slates laid in courses that shrink to the ridge, a clerestory over one or two aisles, a lower chancel, a gabled south porch, a priest's door, stepped buttresses, quoins, mottled coursed stone, tracery by era, lit glass after dusk (never on a wall seen edge-on) | `opts.era` norman / early-english / perpendicular, `opts.aisle` both / south / none, `opts.crown` parapet / spire / none, `opts.porch`, `opts.clerestory`; liveries honey, grey-limestone, ironstone, red-sandstone, flint (clay tiles). 34 x 14 x 19.4 m at size 1; `facing: 90` puts the tower on the left and the porch toward a camera looking north |
+| `headstone` (`structure.headstone`) | an upright slab with a round, pointed, square, shouldered or ogee head, or a chest tomb; leans a few degrees, lichen and moss, a sunk base, faint rows where text would be (never readable) | `opts.shape`, `opts.lean`; liveries limestone, slate, sandstone, granite, marble |
+| `lychgate` (`structure.lychgate`) | four oak posts on footings, a pitched stone-slate or tile roof with barge boards, a timber-framed gable at each end, seat rails, two slatted gates shut or ajar | liveries oak, black-white, red-tile; `facing` is the line of the path through it. The kb gives it its own class (`lychgate`: overhead, stands on a path, faces as told) |
+| `churchyard-yew` (`tree.churchyard-yew`) | a fluted multi-stemmed trunk and a crown of overlapping needle lobes (material `needle`: evergreen, it does not turn in autumn) | `opts.form: 'column'` for a clipped or Irish yew; liveries dark, green, olive |
+| `noticeboard` (`street.noticeboard`) | two posts, a glazed cabinet with a pitched cap, a cork back with pinned sheets (blank paper) | liveries oak, green, black |
+
+Also in the set (not models): `lines: [{ kind: 'wall', laid: 'coursed' | 'rubble' | 'drystone', cope: 'saddle' | 'flat' | 'upright', stone, h, width }]`
+(`79-world-4masonry.js`: a tone per stone, staggered joints, long stones, a coping row; a wall with no `laid` keeps the plain courses), and the
+scaffold landmark `parish-church[:livery]` (`--landmarks=parish-church:honey,pub,pond`), which writes the church (as a `landmarks` entry with its
+`model`), a coursed wall round three sides with a gap, the lychgate, three yews, about 30 headstones in rows and a path from the lane to the porch.
+
+Engine changes that came with it (each has a line in `tests/world-churchyard.test.mjs`): a landmark that has a model is drawn by the model (it was
+always the sprite); `landmarks` entries take `model`; a model line honours `alpha` (faces did, lines did not); kb: a per-object `ov.cls`, `ov.solidity`
+and `ov.size` (a headstone's class range is 0.6 to 1.3 m); a wall piece is cut at a bend (a corner piece was concave and its footprint covered the
+ground inside the corner); the model check keeps a small thing beyond the camera's near plane. Note for authors: a wall's `gaps` should be arc lengths
+`[[s0, s1]]` (the `{ at, w }` form is read by the extruder but not by the placement obstacles, so a lychgate in such a gap was dropped as overlapping).
+
+## 9. The landing stage and seated figures (16 Oct)
+
+`boat.landing-stage` (`landing-stage`) is a floating pontoon moored off a river wall: a hull, deck lines, fenders, bollards, guide piles, lamp standards, a terminal shed, a hinged gangway down from the wall (its height is read from the waterline the entity floats at), brows to the ferries' gates and people waiting. A scene places it like a boat (`attach: 'water'`) and says where its gangway and brows are: `model: { opts: { gap: 14, gangway: 5, shed: 5, berthA: -30, berthB: 40, people: 0.8 } }` (metres along the stage from its middle; `gap` is the stage's inland edge to the wall). `shedSide: 1` puts the terminal shed on the INLAND edge instead of down the middle: seen along the wall, a shed on the stage's centre line hides the hull of a ferry lying behind it (the Pier Head's second ferry); on the inland edge it stands clear of the berth side. The scene leaves the wall's railing open at the gangway and lays the ferries alongside the berth side. `_wmdLdgSeated(d, o)` and `_wmdLdgStanding(d, o)` draw a seated or standing person through any `{ line, disc }` pair (the kit's `h` or a vessel's `V`): a person who sits has a thigh, a shin, arms and a head, so a dinghy's crew, a rower or someone on a bench is never a column.

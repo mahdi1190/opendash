@@ -198,7 +198,13 @@ test('canvas: the frame budget at 1600 x 900 with water and shadows on (drawMs m
 // These eight v1 scenes exist at BASE and survived v2.11's deliberate UK/demo retirements unchanged.
 const SAMPLES = ['asia-central/vladivostok-skyline', 'asia-east/guangzhou-skyline', 'asia-east/hong-kong-skyline', 'asia-east/macau-skyline',
   'asia-east/shanghai-skyline', 'asia-east/taipei-skyline', 'asia-east/tokyo-skyline', 'asia-east/xian-skyline'];
-test('canvas: v1 scenes are pixel-identical to the base commit (8 samples, noon and night)', { skip: !browser || process.env.SCENE_V2_SKIP_IDENTITY === '1' }, async (t) => {
+// STALE PREMISE (16 Oct): the base commit 5fa23d9 is the Oct 8 renderer. The shared renderer has changed on purpose since (18fed8c, 9 Oct: shadows kept
+// under visible casters and off water, mover shadows in the frame pass, seeded frost and snow days), so a v1 scene no longer renders the same
+// pixels as 5fa23d9 (20 000 to 50 000 pixels of each of these eight skylines), although its COMPILE is still byte for byte the base's
+// (tests/scene-compat.test.mjs, which is the v1 identity gate and passes). This renderer-only comparison therefore runs when asked, against a
+// base whose renderer you accept: SCENE_V2_IDENTITY=1 SCENE_V2_BASE=<commit> node --test tests/scene-render-v2.test.mjs
+const IDENTITY = process.env.SCENE_V2_IDENTITY === '1';
+test('canvas: v1 scenes are pixel-identical to the base commit (8 samples, noon and night)', { skip: !browser ? 'no browser' : process.env.SCENE_V2_SKIP_IDENTITY === '1' ? 'SCENE_V2_SKIP_IDENTITY=1' : !IDENTITY ? 'renderer changed on purpose since the base commit (see the comment above); run with SCENE_V2_IDENTITY=1 SCENE_V2_BASE=<commit>' : false }, async (t) => {
   const base = archive();
   if (!base) { t.skip('no git archive of ' + BASE); return; }
   const shot = async (root, ref, at) => {

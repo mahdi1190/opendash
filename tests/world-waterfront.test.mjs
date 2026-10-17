@@ -77,7 +77,10 @@ test('K4: the far shore: an estuary backdrop is a low line of buildings and tree
 /* ---------- a hull seen along its length with no end art ---------- */
 test('K5: a hull with no end art gets a stepped silhouette (hull, house, deck, mast) from its side art, never one flat slab', () => {
   const cam = camOf({ camera: { eye: 1.7, fov: 72, horizon: 500, heading: 0 } });
-  const hull = W.worldExtrudeHull({ id: 'f', obj: 'boat.ferry', x: -6, z: 60, y: -3, facing: 0 }, cam);
+  // (16 Oct) the ferry, tug, yacht, dinghy, water taxi and island ferry are 3D vessel models now (79-world-4models-vessels.js: their own
+  // modelled ends), so the stepped procedural face is exercised on a hull that is still art only: the junk
+  assert.ok(W.worldModelFor('boat.ferry') && !W.worldModelFor('boat.junk'), 'the ferry is a model; the junk is art only');
+  const hull = W.worldExtrudeHull({ id: 'f', obj: 'boat.junk', x: -6, z: 60, y: -3, facing: 0 }, cam);
   assert.ok(hull && hull.end && !hull.end.obj && hull.end.face, 'no end art: a procedural face');
   const f = hull.end.face;
   assert.ok(f.bands.length === 4 && f.bands[0].u === 0 && f.bands[3].u > f.bands[1].u, 'a stepped outline narrowing upward: ' + f.bands.map(b => b.u).join());
@@ -86,9 +89,11 @@ test('K5: a hull with no end art gets a stepped silhouette (hull, house, deck, m
   const ctx = mockCtx();
   W.worldExtrudeDraw(ctx, hull, { vs: 1, ox: 0, oy: 0 });
   assert.ok(ctx.calls.filter(c => c[0] === 'fill').length >= 1 + f.bands.length, 'the bands are drawn');
-  // a boat WITH end art (the new river ferry) uses it
+  // the river ferry has end art in the library (K6), but it is a 3D vessel model now (model ferry-river): its ends are modelled faces,
+  // so the extruded hull is the model, with neither end art nor a procedural face
   const rf = W.worldExtrudeHull({ id: 'rf', obj: 'boat.river-ferry', x: -6, z: 60, y: -3, facing: 0 }, cam);
-  assert.equal(rf.end.obj, 'boat.river-ferry-end'); assert.ok(!rf.end.face);
+  assert.ok(rf.model && rf.modelId === 'ferry-river' && !(rf.end && (rf.end.obj || rf.end.face)), 'a modelled hull');
+  assert.ok(rf.faces.filter(f => !f.line).length > 20, 'a solid model, not one slab');
   // (merge of 15 Oct) a narrowboat is the 3D boat model (worldExtrudeBoatModel): its ends are modelled faces (stern counter, bow),
   // never end art on a face and never a flat slab
   const nb = W.worldExtrudeHull({ id: 'nb', obj: 'boat.narrowboat', x: 0, z: 30, y: -0.5, facing: 0 }, cam);

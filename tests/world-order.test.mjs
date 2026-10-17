@@ -86,6 +86,12 @@ test('chunks: far to near, capped at 24, split where movers can stand', () => {
   assert.equal(split.length, 2, 'a standable cell between them splits the chunk');
 });
 
+// A fixed reference workload (a sort of 200 000 numbers: 16 ms on the machine the budgets were set on; tests/world-life.test.mjs and world-nav use the same)
+// tells how much slower than that machine this one is right now: a timing budget is judged as it stands OR scaled by that ratio, so a shared CI
+// runner that is simply slower does not fail a budget the code still meets, while a real regression (slower by more than the machine is) does.
+const REF_MS = 16;
+function refMs() { const a = new Float64Array(200000); let s = 12345; for (let i = 0; i < a.length; i++) { s = (s * 1103515245 + 12345) >>> 0; a[i] = s; } const t = performance.now(); a.sort(); return performance.now() - t; }
+const medianOf = (a) => { const q = a.slice().sort((x, y) => x - y); return q[q.length >> 1]; };
 test('500 statics + 60 agents: 0 order violations over 1,000 frames, order < 0.7 ms (median, at 1.2x)', async () => {
   const { world, nav } = randomWorld(11);
   const chunks = W.worldChunks(world, nav, cam);
@@ -123,7 +129,8 @@ test('500 statics + 60 agents: 0 order violations over 1,000 frames, order < 0.7
   }
   times.sort((x, y) => x - y);
   const per = Math.min(times[Math.floor(times.length / 2)], ...rounds, ...cpu.filter(x => x > 0));
-  assert.ok(per < 0.7 * 1.2, `order ${per.toFixed(3)} ms/frame (rounds ${rounds.map((x) => x.toFixed(3)).join(', ')}; cpu ${cpu.map((x) => x.toFixed(3)).join(', ')})`);
+  const ref = medianOf(Array.from({ length: 5 }, refMs));
+  assert.ok(per < 0.7 * 1.2 || per / ref < (0.7 / REF_MS) * 1.2, `order ${per.toFixed(3)} ms/frame (reference workload ${ref.toFixed(1)} ms; rounds ${rounds.map((x) => x.toFixed(3)).join(', ')}; cpu ${cpu.map((x) => x.toFixed(3)).join(', ')})`);
   console.log(`# order ${per.toFixed(3)} ms/frame`);
 });
 
@@ -224,7 +231,8 @@ test('the checker: movers against everything, static pairs with opts.all, fast',
   const t0 = performance.now();
   for (let i = 0; i < 20; i++) assert.equal(W.worldOrderCheck(order).length, 0);
   const ms = (performance.now() - t0) / 20;
-  assert.ok(ms < 5, `check ${ms.toFixed(2)} ms`);
+  const ref = medianOf(Array.from({ length: 5 }, refMs));   // a slower machine than the budget's (a shared CI runner) is allowed its ratio
+  assert.ok(ms < 5 || ms / ref < 5 / REF_MS, `check ${ms.toFixed(2)} ms (reference workload ${ref.toFixed(1)} ms)`);
   // a static pair drawn in the wrong order is caught with opts.all only
   const a = { id: 'near', x: 0, z: 10, y: 0, height: 2, foot: rect(0, 10, 2, 1), static: true }, b = { id: 'far', x: 0, z: 12, y: 0, height: 4, foot: rect(0, 12, 2, 1), static: true };
   a.box = boxOf(a); b.box = boxOf(b);

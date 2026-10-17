@@ -152,7 +152,15 @@ export function migrateScene(data, C, { E, cam = null, keepPixels = false, pack 
   scene.water = water;
   // placements: ground (at, k), pinned (the skyline backdrop), pixel (no real size)
   const place = [];
-  const sDepth = (def, d, h) => (cam.f / d) * (h / def.size[1]);
+  // what a placement at k = 1 is drawn at, by the engine's own rule (70-scene-1ground.js): people and animals by their SIZE CLASS over
+  // their drawn top (sceneMoverSize: the true mover scale of the animation overhaul, 10 Oct), everything else by its real height over
+  // its box. The two differ by up to 15 %, so a migrated cow drawn from the box alone came back that much off its v1 size.
+  const MOVER_CLASSES = ['person', 'cyclist', 'animal', 'animal-dog', 'animal-graze', 'bird-water', 'bird-ground'];   // _SCGR_SIZED
+  const sDepth = (def, d, h) => {
+    const cls = typeof E.objClass === 'function' ? E.objClass(def.id) : null;
+    const m = typeof E.moverSize === 'function' && MOVER_CLASSES.includes(cls) ? E.moverSize(def.id) : null;
+    return (cam.f / d) * (m && m.h > 0 && m.top > 0 ? m.h / Math.max(1, m.top) : h / def.size[1]);
+  };
   (data.place || []).forEach((p, pi) => {
     const def = E.obj(p.obj), y = p.y, base = {};
     for (const k of ['variant', 'flip', 'seed', 'tint', 'anim', 'shadow', 'reflect', 'season', 'pit']) if (p[k] !== undefined) base[k] = p[k];
