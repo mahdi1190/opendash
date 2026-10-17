@@ -182,6 +182,9 @@ function worldHostV2Data(spec, o) {
     // night, autumn leaves from an empty sky) belong to no tree or chimney (M3, K7); a world's particles come from the world
     setting: urban ? 'urban' : 'natural', atmos: 'auto', weather: 'live', cover: 'auto', particles: 'none',
     surfaces: [{ id: 'world-rest', kind: urban ? 'plot' : 'grass', rest: true }], water: [], place: [], scatter: [], actors: [], flows: [], world3: true };
+  // a far shore that is the world's own (the estuary's low line of roofs, cranes and trees in haze, 79-world-4backdrop.js) is not painted
+  // again by the v2 backdrop: its UK woodland band was a wall of green trees along the whole far shore of the Mersey (user, 16 Oct)
+  if (world && world.backdrop && world.backdrop.style === 'estuary') data.backdrop = 'none';
   // the terrain (W2) is drawn by the world (79-world-4terrain.js): the v2 base keeps its flat ground, so it needs no relief
   // the spec rides along (not enumerable: the bake cache and JSON never see it) so worldHostSpec finds it from the data
   try { Object.defineProperty(data, '$spec', { value: spec, enumerable: false }); } catch (e) { /* frozen */ }

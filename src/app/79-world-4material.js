@@ -269,6 +269,7 @@ function worldMaterialFor(mctx, ent, ctx) {
   if (ent && Number.isFinite(ent.z)) {
     const d = Math.hypot(ent.x || 0, ent.z);
     out.haze = typeof sceneHazeAt === 'function' ? sceneHazeAt(d, out.atmos, out.L) : 0.47 * (1 - Math.exp(-d / 12000));
+    if (ent.backdrop && Number.isFinite(ent.haze)) out.haze = Math.max(out.haze, ent.haze);   // a band's own haze floor (the far shore of an estuary: backdrop styles' band.haze)
   }
   return out;
 }

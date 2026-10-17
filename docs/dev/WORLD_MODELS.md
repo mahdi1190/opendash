@@ -8,7 +8,7 @@ windows and lamps at night, sitting in the water where it floats, mirrored by th
 engine. A scene then simply says what it wants and the library supplies it.
 
 Files: `src/app/79-world-4models.js` (registry, builder kit, conformance check), `src/app/79-world-4model-<name>.js` (one model
-each; the narrowboat is `79-world-4model-narrowboat.js`), `tools/lib/world/models.mjs` (the sheet), `tests/world-models.test.mjs`.
+each; the narrowboat is `79-world-4model-narrowboat.js`; the landing stage and the shared seated and standing figures are `79-world-4models-landing.js`), `tools/lib/world/models.mjs` (the sheet), `tests/world-models.test.mjs`.
 
 ## 1. How a scene asks for a model
 
@@ -212,3 +212,7 @@ Several people (or agents) add models at once without touching each other:
 * Then in a scene: an entity of the object (a plain `{ obj, at, facing, attach }`) is already drawn by your model; `model:`
   chooses livery, size, age.
 * Add one row for your model class to SCENE_LESSONS section W when you find a mistake worth keeping.
+
+## 9. The landing stage and seated figures (16 Oct)
+
+`boat.landing-stage` (`landing-stage`) is a floating pontoon moored off a river wall: a hull, deck lines, fenders, bollards, guide piles, lamp standards, a terminal shed, a hinged gangway down from the wall (its height is read from the waterline the entity floats at), brows to the ferries' gates and people waiting. A scene places it like a boat (`attach: 'water'`) and says where its gangway and brows are: `model: { opts: { gap: 14, gangway: 5, shed: 5, berthA: -30, berthB: 40, people: 0.8 } }` (metres along the stage from its middle; `gap` is the stage's inland edge to the wall). The scene leaves the wall's railing open at the gangway and lays the ferries alongside the berth side. `_wmdLdgSeated(d, o)` and `_wmdLdgStanding(d, o)` draw a seated or standing person through any `{ line, disc }` pair (the kit's `h` or a vessel's `V`): a person who sits has a thigh, a shin, arms and a head, so a dinghy's crew, a rower or someone on a bench is never a column.

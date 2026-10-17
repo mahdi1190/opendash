@@ -212,8 +212,10 @@ const WORLD_STYLE_KITS = _wkbFreeze({
       distant: _WKT_DISTANT_TOWN, accents: [['plant.daisies', 2], ['ground.leaf-litter', 2]], maxH: 2.6 },
       // near the lens a great plaza has low things (tubs, a bin, a bollard, a planter), never a bicycle stand or a bench, which fill a corner of the frame
       paving: { near: [['plant.rph-flower-tub', 3], ['street.mcf-litter-bin', 1], ['street.bollard', 1], ['street.mqn-planter-grass', 2], ['tree.plane-avenue', 1]],
-        mid: _WKT_STREET_MID.concat([['street.mqn-parasol', 1], ['person.cafe-goer', 2], ['street.bollard', 2], ['street.mqn-lifebuoy', 1]]),
-        far: _WKT_STREET_FAR.concat([['person.cafe-goer', 1], ['street.bench', 1]]), accents: _WKT_PAVING_ACCENTS, max: { near: 10, mid: 34, far: 22 } },
+        // the plaza 12 to 35 m from the lens is lived in (user, 16 Oct: "rather empty on the near side"): benches facing the river with their bins,
+        // a bike stand, a statue, lamp standards, café-goers and a parasol, never in the near band (a bench there fills a corner of the frame)
+        mid: _WKT_STREET_MID.concat([['street.mqn-parasol', 1], ['person.cafe-goer', 3], ['street.bollard', 2], ['street.mqn-lifebuoy', 1], ['street.mqn-bike-hoop', 2], ['street.mcr-statue', 1], ['street.bench', 2], ['street.mcf-litter-bin', 1]]),
+        far: _WKT_STREET_FAR.concat([['person.cafe-goer', 1], ['street.bench', 1]]), accents: _WKT_PAVING_ACCENTS, max: { near: 10, mid: 44, far: 22 } },
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
     edges: Object.assign({}, _WKT_EDGES_URBAN, { water: { pond: 'natural', lake: 'quay', canal: 'quay', river: 'quay', estuary: 'quay', sea: 'quay', harbour: 'quay', puddle: 'none' },
       quay: { top: [['plant.rph-short-grass', 2]], posts: [['street.bollard', 4], ['street.mqn-lifebuoy', 1]] } }),
