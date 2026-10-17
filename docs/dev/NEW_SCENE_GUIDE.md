@@ -127,6 +127,6 @@ With no missing piece, a place is a scaffold, a render and two or three layout t
 ## 9. Known gaps (not done)
 
 Church nave: no buttresses, porch or clerestory; the churchyard wall is a flat colour (no coursing) and the headstones are not seen. Pier
-kiosks are plain boxes, the pier has no people on it. The sea is a small part of the coast view (the layout looks along the promenade).
+kiosks are now models and the pier has people (SCENE_LESSONS X). The sea is a small part of the coast view (the layout looks along the promenade).
 The `street`, `water-edge` and `open` families are validated but not rendered in this pass (the guide's checklist applies to them first).
 `tests/world-kit-fixtures.test.mjs` has one failure that is on `main` too (a fishing boat in the quayside fixture is 6 m tall).

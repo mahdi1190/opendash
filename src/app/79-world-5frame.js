@@ -87,7 +87,9 @@ function _wfrPrimRec(prim, ent, vw) {
     box: { x0: b[0], y0: b[1], x1: b[2], y1: b[3] }, x: own ? cx : Number.isFinite(e.x) ? e.x : cx, y: Number.isFinite(e.y) ? e.y : 0, z: own ? cz : Number.isFinite(e.z) ? e.z : cz, foot, height: prim.height || _wfrHeight(e),
     attach: e.attach || null, static: e.static !== false, cut: null, view: vw ? vw.view : 'side', mirror: vw ? !!vw.mirror : false, backdrop: !!e.backdrop,
     // a low piece a mover runs on (a railway's ballast bed) lies under it in the order (79-world-3order.js: flat things)
-    flat: prim.sub === 'ballast' || prim.sub === 'trough' ? true : undefined };
+    flat: prim.sub === 'ballast' || prim.sub === 'trough' ? true : undefined,
+    // a thing standing on a host's deck is ordered just behind the host's nearest edge (0core _wcEntity), so it is drawn after the host
+    orderZ: ent && Number.isFinite(ent.orderZ) ? ent.orderZ : undefined };
 }
 /**
  * The draw record of a world entity or agent at a camera (scene units, 1600 x 900): { id, ent, obj, o (the view's object), v,
@@ -114,7 +116,8 @@ function _wfrRec(e, cam, o) {
   const box = flip ? { x0: P.X - b[2] * s, y0: P.Y + b[1] * s, x1: P.X - b[0] * s, y1: P.Y + b[3] * s } : { x0: P.X + b[0] * s, y0: P.Y + b[1] * s, x1: P.X + b[2] * s, y1: P.Y + b[3] * s };
   const foot = Array.isArray(e.foot) && e.foot.length ? e.foot : [[e.x, e.z]];
   return { id: _wfrId(e, oid), ent: e, obj: e.obj, o: oid, v, X: P.X, Y: P.Y, s, flip, box, x: e.x, y: Number.isFinite(e.y) ? e.y : 0, z: e.z, foot, season: form,
-    height: _wfrHeight(e), attach: e.attach || null, static: e.static !== false, cut: _wfrCutOf(e, cam, o.regions), view: vw.view, mirror: !!vw.mirror, backdrop: !!e.backdrop };
+    height: _wfrHeight(e), attach: e.attach || null, static: e.static !== false, cut: _wfrCutOf(e, cam, o.regions), view: vw.view, mirror: !!vw.mirror, backdrop: !!e.backdrop,
+    orderZ: Number.isFinite(e.orderZ) ? e.orderZ : undefined };
 }
 /**
  * Where a floater's art is cut (H3): look's worldWaterCut on the region it floats in, else its waterline row when it sinks

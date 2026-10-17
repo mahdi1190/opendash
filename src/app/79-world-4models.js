@@ -200,6 +200,12 @@ function worldModelFit(ent, info, model) {
   const f = (_wexNum(ent.facing) ? ent.facing : 0) * Math.PI / 180, hx = Math.sin(f), hz = Math.cos(f), rx = Math.cos(f), rz = -Math.sin(f);
   const poly = typeof def.footprint === 'function' ? def.footprint(p) : [[-p.L / 2, -p.B / 2], [p.L / 2, -p.B / 2], [p.L / 2, p.B / 2], [-p.L / 2, p.B / 2]];
   ent.foot = poly.map(([u, v]) => [_wexR(ent.x + u * hx + v * rx, 3), _wexR(ent.z + u * hz + v * rz, 3)]);
+  // a model may carry a walkable deck (def.deck(p) -> { y (metres above the entity's base), poly: [[a, l]...] }): the entity gets `deck`, so things attach
+  // to it ('deck:<id>'), people walk on it as a raised level, solids on it block, and the order draws them after the model (a pier, a boat, a bridge)
+  if (typeof def.deck === 'function') {
+    const dk = def.deck(p);
+    if (dk && Array.isArray(dk.poly) && dk.poly.length > 2 && _wexNum(dk.y)) ent.deck = { poly: dk.poly.map(([u, v]) => [_wexR(ent.x + u * hx + v * rx, 3), _wexR(ent.z + u * hz + v * rz, 3)]), y: _wexR((_wexNum(ent.y) ? ent.y : 0) + dk.y, 3) };
+  }
   return ent;
 }
 

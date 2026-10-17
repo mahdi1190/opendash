@@ -83,6 +83,7 @@ worldModelDefine(id, {
   solidity: 'solid', footprint(p) -> [[a, l]...],  // the nav footprint (default: the L x B rectangle)
   samples: [ { livery, age, size, seed } ],        // what the sheet shows as "many instances"
   faceCap: 2500,                      // faces a build may emit (extra faces are dropped, never thrown)
+  deck(p) -> { y, poly: [[a, l]...] },  // a walkable deck the model carries (17 Oct): the entity gets `deck`, things attach to it ('deck:<id>'), people walk on it as a raised level
   build(p, h) -> { height, footprint?, lights?, extra?, faces? } | void
 });
 ```
@@ -212,3 +213,21 @@ Several people (or agents) add models at once without touching each other:
 * Then in a scene: an entity of the object (a plain `{ obj, at, facing, attach }`) is already drawn by your model; `model:`
   chooses livery, size, age.
 * Add one row for your model class to SCENE_LESSONS section W when you find a mistake worth keeping.
+
+## 9. Seafront models and generators (17 Oct, detail/pier)
+
+| model / generator | file | what it is | scene use |
+|---|---|---|---|
+| `building.beach-hut` | `79-world-4model-beachhut.js` | one hut: solid, vertical stripes or a darker skirt; door single / double / stable / standing open on a dark interior with a towel; side lights, a front porthole; roof pitch 0.38 to 0.8; an optional veranda on posts; a number plate (bars, never digits); a deck chair, a striped windbreak, a towel line. All seeded, all overridable in `model.opts` | `{ obj: 'building.beach-hut', model: { livery, size, seed, opts: { door: 'open', veranda: true } } }` |
+| `worldBeachHutRow({ from, to, facing, turn, seed, gap, size, mix, skip, chair, windbreak, veranda })` | same | the entities of a row that does not repeat: a paint never twice in a line, size and wobble jitter, spacing from the footprint of each (so a fan turned toward the viewer never overlaps), gaps for a chair | `entities: [...worldBeachHutRow({ ... })]` |
+| `building.kiosk` | `79-world-4model-kiosk.js` | a promenade or pier kiosk: hatch with goods on the shelf and shutters thrown back, a striped canopy with a scalloped valance, a menu board of painted bars, a gabled roof, a roof sign on posts (ring and bands, no lettering); `opts.kind`: `icecream` (a cone and two scoops on the ridge), `tea` (a chimney), `arcade` (a deeper hall, lit bulb border), `tackle` (rods, a net). A solid; kb class `market-stall` (paving or a deck) | `{ obj: 'building.kiosk', model: { livery: 'pink-cream', opts: { kind: 'icecream' } } }` |
+| `street.bunting` | `79-world-4model-bunting.js` | pennants on a sagging cord between two poles; `opts.span`, `height`, `sag`, `posts: false`; four palettes; flutters by `p.t`; passable | `{ obj: 'street.bunting', blocks: true, model: { opts: { span: 8.4, height: 3.9 } } }` |
+| `structure.pier` (reworked) | `79-world-4model-pier.js` | piles with a tide-stained weed band and a ring of foam at the water, X braces, a plank deck with boards across, rails with lamp standards alternating from side to side and festoon bulbs between them (lit at night), lifebuoys, a pavilion with arched lit windows, a roof sign edged with bulbs, an eave bulb row, a door canopy, turrets, a vane (never a flag). `opts`: `deck` (m above the water), `ramp` (a rising approach), `beachLen` / `beachRise` (piles stand on a beach), `extL` / `extR` (an apron back to the wall), `gate: false`, `festoon: false`, `kiosks: true` (three plain inline ones) | `worldPierPlan(...)` |
+| `worldPierPlan({ id, root, facing, size, waterY, level, wallX, benches, anglers, kiosks, seed })` | same | the pier entity (a model that carries its own deck), the apron to the promenade wall, a ramp portal onto the deck, and kiosks, benches and anglers on it (`attach: 'deck:<id>'`: solid kiosks block the walkers, everything is drawn after the pier) | spread `entity`, `entities` and `surfaces` into the spec; visitors use `{ go: '<pier id>' }, { wander: '<pier id>', for: [..] }` |
+| `seafront-regency`, `seafront-parade` | `70-scene-gen-style-seafront.js` | building styles: a pastel stucco terrace of 4 storeys with a hidden flat roof (the end of a taller house is a rectangle, not a gable), first-floor iron balconies, a bow over three floors on half the houses, fanlight doors; and a parade of three storeys over shopfronts with a deep striped canopy and lamps | `buildings: [{ along, style: 'seafront-regency', storeys: 4 }, { style: 'seafront-parade', shops: ['tea', 'gift'] }]` |
+
+Engine hooks added for them (small, general):
+* `def.deck(p)` on a model (registry `worldModelFit`): the entity carries a walkable deck; a thing attached `deck:<entity id>` stands on it, the validator accepts the host, and a ramp or stairs may name it (`from: 'ground', to: '<id>'`).
+* `ent.orderZ` (set in `_wcEntity` for a thing on a host's deck, read by the order memo and the frame record): ordered as if it stood at the host's nearest edge, so it is drawn after a long model it stands on.
+* kb overrides in `79-world-0kb.js`: `building.kiosk` is a `market-stall`, `building.beach-hut` has `orient: 'free'` (a row may fan toward the viewer), `street.bunting` is passable, `structure.lighthouse` may be 16 to 48 m.
+* `79-world-2life.js` `_wlfToLevel`: a mover that reaches a portal 0.6 m short of the painted ramp steps onto it (spread by its id); on a level whose host is an entity it is hosted by it.

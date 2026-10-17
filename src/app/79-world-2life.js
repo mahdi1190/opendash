@@ -1215,7 +1215,23 @@ function _wlfToLevel(life, a, layer) {
   if (res === 'here') {
     // at the portal: a landing is an eased step aboard (or ashore); a stair is shared ground, the layer simply changes
     if (best.p.kind === 'landing') { a.step = { t0: life.t, dur: 0.8, x0: a.x, z0: a.z, x1: best.to[0], z1: best.to[1], layer: layer }; a.host = best.p.id; }
-    else { a.layer = layer; }
+    else {
+      // within 0.6 m of the portal's first shared cell the mover may still stand just outside the new layer's painted cells (a ramp's edge): it steps
+      // onto the ramp, spread by its id along the ramp's direction so a group never lands on one point
+      if (typeof worldLifeOk === 'function' && !worldLifeOk(life, layer, a.x, a.z, _wlfFlowR(a))) {
+        var sp = best.p.surface && best.p.surface.path, ux = 1, uz = 0, hh = (_wlfHash(String(a.id)) % 1000) / 1000;
+        if (sp && sp.length > 1) { var q0 = sp[0], q1 = sp[sp.length - 1], LL = Math.hypot(q1[0] - q0[0], q1[1] - q0[1]) || 1; ux = (q1[0] - q0[0]) / LL; uz = (q1[1] - q0[1]) / LL; }
+        // inward along the ramp, and sideways toward its centre line (the first shared cell lies at the ramp's edge: never outward)
+        var sx = -uz, sz = ux;
+        if (sp && sp.length > 1) { var tq = (best.to[0] - sp[0][0]) * ux + (best.to[1] - sp[0][1]) * uz, cx = sp[0][0] + ux * tq - best.to[0], cz = sp[0][1] + uz * tq - best.to[1], cl = Math.hypot(cx, cz); if (cl > 0.05) { sx = cx / cl; sz = cz / cl; } else if (hh > 0.5) { sx = -sx; sz = -sz; } }
+        a.x = best.to[0] + ux * (0.15 + 1.1 * hh) + sx * hh * 1.2; a.z = best.to[1] + uz * (0.15 + 1.1 * hh) + sz * hh * 1.2;
+      }
+      a.layer = layer;
+      // on a deck that belongs to an entity (a pier: the level's host) the mover is hosted by it: not 'inside' the pier's solid, drawn after it; ashore it has no host
+      var lvs = typeof worldNavLevels === 'function' ? worldNavLevels(life.nav) : [], hl = null;
+      for (var li = 0; li < lvs.length; li++) if (lvs[li].layer === layer) hl = lvs[li];
+      a.host = hl && hl.host ? hl.host : null;
+    }
     a.route = null;
     return 'go';
   }
