@@ -2464,6 +2464,12 @@
     },
     {
       "rule": "private-term",
+      "path": "src/app/70-scene-lib-people-london-stations.js",
+      "line_sha256": "5e33bd225a3bb85c385bd0c361dd5d0a109e110180c46380d7b705877cbb37d7",
+      "why": "an ordinary English verb in a drawing comment (reviewed)"
+    },
+    {
+      "rule": "private-term",
       "path": "tests/anim-pack-cli.shared.mjs",
       "line_sha256": "7de8834fa088153a46aba1e1c6d7d0fd239887765fe428b3cb73d626be76989f",
       "why": "an ordinary English word in a test comment or pattern (reviewed)"

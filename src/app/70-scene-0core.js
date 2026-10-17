@@ -67,6 +67,9 @@ const sceneD = {
 
 /* ---------- the object registry (2.1, 2.2) ---------- */
 const _scObjs = new Map(), _scShapeMemo = new Map(), _scObjDups = [];
+/** The weather of the figure being built (null: not said, the wardrobe keeps to its season; true: wet, an umbrella is up; false: dry). */
+let _scWardrobeWet = null;
+function sceneWardrobeWet() { return _scWardrobeWet; }
 const _SC_OBJ_ID_RE = /^[a-z]+\.[a-z0-9-]{1,40}$/;
 /** Define (or, for tests, redefine) an object. A second definition of an id replaces the first and is reported by sceneObjCheck / sceneObjDups. */
 function sceneObjDefine(def) {
@@ -131,10 +134,18 @@ function _scBox(parts) {
 function sceneObjShapes(id, v, season) {
   const def = sceneObj(id);
   if (!def) return null;
+  // a season may carry the weather of the day ('autumn~wet', 'autumn~dry': the world engine's people, SCENE_LESSONS J): only the
+  // wardrobe of a person reads it (an umbrella is up in the rain and furled when it is dry); no suffix leaves a wardrobe to its season
+  let wet = null;
+  if (typeof season === 'string' && (season.endsWith('~wet') || season.endsWith('~dry'))) { wet = season.endsWith('~wet'); season = season.slice(0, -4); }
+  if (def.category !== 'person') wet = null;
   const vv = Math.max(0, Math.min((def.variants || 1) - 1, v | 0)), se = def.seasonal === false ? 'summer' : (season || 'summer');
-  const key = id + '|' + vv + '|' + se;
+  const key = id + '|' + vv + '|' + se + (wet == null ? '' : wet ? '~wet' : '~dry');
   if (_scShapeMemo.has(key)) return _scShapeMemo.get(key);
-  const raw = def.build(vv, sceneRnd(sceneHash(id + '|' + vv + (def.shapeBySeason ? '|' + se : ''))), { season: se, v: vv, id }) || {};
+  const wasWet = _scWardrobeWet;
+  _scWardrobeWet = wet;
+  let raw;
+  try { raw = def.build(vv, sceneRnd(sceneHash(id + '|' + vv + (def.shapeBySeason ? '|' + se : ''))), { season: se, v: vv, id, wet }) || {}; } finally { _scWardrobeWet = wasWet; }
   const want = def.parts || ['body'];
   const order = want.filter(n => raw[n]).concat(Object.keys(raw).filter(n => !want.includes(n)));
   const parts = {};

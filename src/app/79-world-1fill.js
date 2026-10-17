@@ -571,6 +571,117 @@ function _wflTry(F, c) {
   if (furn) (F.furnBoxes || (F.furnBoxes = [])).push(Object.assign(b.slice(), { z: c.z, cls: kb.cls }));
   return ent;
 }
+/**
+ * A walked square keeps a way through (SCENE_LESSONS J, the Whitby quay: a bollard 2 m from a bench was the only way along the quay and
+ * people met in it). Across the width the frame shows there is always a clear way for the centres of two people abreast (1.0 m) in the
+ * space the nav leaves a mover: 0.6 m off a solid and 0.5 m off a bank. Where it is narrower, the last-placed piece of the fill that
+ * closes it is taken away (never an authored one). A surface that is itself no wider than that (a boardwalk, a lane of 1.6 m) is left as
+ * it is. The flow is along the frame's width for a population with a west or east edge (strips are measured along z at each x),
+ * else along z (strips are measured across x at each z).
+ */
+const WORLD_FILL_LANE = 1.0;            // the way's width for the centres of two people passing abreast (0.67 apart at the personal floor, and some wobble)
+const WORLD_FILL_LANE_SOLID = 0.6;      // the nav keeps a mover's centre this far off a solid (its radius and a cell) ...
+const WORLD_FILL_LANE_WATER = 0.5;      // ... and this far off a bank
+/** Is (x, z) within `m` of a solid's footprint (or inside it)? */
+function _wflSolidNear(ix, x, z, m) {
+  const c = ix.cell;
+  for (let i = Math.floor((x - m) / c); i <= Math.floor((x + m) / c); i++) for (let j = Math.floor((z - m) / c); j <= Math.floor((z + m) / c); j++) {
+    for (const rec of ix.grid.get(i + ',' + j) || []) {
+      if (rec.sol !== 'solid' || x + m < rec.box[0] || x - m > rec.box[2] || z + m < rec.box[1] || z - m > rec.box[3]) continue;
+      if (_wflInPoly(rec.foot, x, z) || _wflNear(rec.foot, x, z, true).d < m) return rec;
+    }
+  }
+  return null;
+}
+/** The walking surfaces of a world that a population walks, with the flow's axis. -> [{ s, lateral }] */
+function _wflLanes(F) {
+  const out = [], life = F.world.life || [];
+  for (const s of _wflIndexOf(F).walks) {
+    if (!F.lived.has(s.id)) continue;
+    const pops = life.filter(p => p && p.on === s.id);
+    if (!pops.length) continue;
+    const lateral = pops.some(p => !Array.isArray(p.edges) || !p.edges.length || p.edges.some(e => e === 'W' || e === 'E' || e === 'left' || e === 'right'));
+    out.push({ s, lateral });
+  }
+  return out;
+}
+/**
+ * The tightest way along one walked surface: { slack (the strip the centres of two people have, less what they need), len, at: [x, z],
+ * lateral } or null. A line across the flow is measured every 0.1 m in the space the nav leaves a mover (solids and banks taken off by
+ * their margins); the line's way is its longest free run; the surface's tightest line is the way.
+ */
+function _wflLaneScan(F, L) {
+  const ix = _wflIndexOf(F), cam = F.cam, s = L.s;
+  const zn = Math.max(cam.f * 1.9 / 405, cam.f * cam.eye / Math.max(1, F.H - cam.horizon) + 0.3);
+  const rings = _wflRings(s);
+  let xa = Infinity, xb = -Infinity, za = Infinity, zb = -Infinity;
+  for (const r of rings) for (const p of r.pts) { xa = Math.min(xa, p[0]); xb = Math.max(xb, p[0]); za = Math.min(za, p[1]); zb = Math.max(zb, p[1]); }
+  if (!(xb > xa) || !(zb > za)) return null;
+  const tan = (F.W / 2 + F.pad) / cam.f, zFar = Math.min(zb, zn + 40), zNear = Math.max(za, zn);
+  if (!(zFar > zNear + 1)) return null;
+  const R = Math.min(60, zFar * tan + 2), step = 0.1, waters = ix.waters;
+  const nearWater = (x, z) => {
+    for (const w of waters) for (const r of w.rings) { if (_wflNear(r.pts, x, z, r.closed).d < WORLD_FILL_LANE_WATER) return true; }
+    return false;
+  };
+  const wetAt = (x, z) => { for (const w of waters) if (_wflContains(w.s, x, z)) return true; return false; };
+  // 0 off the surface, 1 free, 2 kept off (a solid's margin, a bank's)
+  const cls = (x, z, solids) => {
+    if (!_wflContains(s, x, z) || wetAt(x, z)) return 0;
+    if (nearWater(x, z)) return 2;
+    return solids && _wflSolidNear(ix, x, z, WORLD_FILL_LANE_SOLID) ? 2 : 1;
+  };
+  let best = null;
+  const way = (fn, from, to) => { let run = 0, bf = 0, bAt = from; for (let u = from; u <= to; u += step) { if (fn(u) === 1) { run += step; if (run > bf) { bf = run; bAt = u - run / 2; } } else run = 0; } return { len: bf, at: bAt }; };
+  const line = (fnFree, fnSelf, from, to, mk) => {
+    const w = way(fnFree, from, to);
+    if (w.len >= WORLD_FILL_LANE + 0.5) return;                        // a way with room: nothing to measure
+    if (way(fnSelf, from, to).len < WORLD_FILL_LANE + 0.01) return;    // the surface itself is a one-body lane: nothing the fill did
+    const slack = w.len - WORLD_FILL_LANE;
+    if (!best || slack < best.slack) best = Object.assign({ slack, len: w.len, lateral: L.lateral }, mk(w.at));
+  };
+  if (L.lateral) {
+    for (let x = Math.max(xa, -R); x <= Math.min(xb, R); x += 0.5) line(z => cls(x, z, true), z => cls(x, z, false), zNear, zFar, at => ({ at: [x, at] }));
+  } else {
+    for (let z = zNear; z <= zFar; z += 1.5) line(x => cls(x, z, true), x => cls(x, z, false), Math.max(xa, -R), Math.min(xb, R), at => ({ at: [at, z] }));
+  }
+  return best;
+}
+/** Take away the last-placed fill pieces that close a way through a walked surface. -> the removed entities. */
+function _wflThroughLane(F) {
+  const removed = [];
+  for (let guard = 0; guard < 60; guard++) {
+    let culprit = null;
+    for (const L of _wflLanes(F)) {
+      const sc = _wflLaneScan(F, L);
+      if (!sc || sc.slack >= 0) continue;
+      // the fill pieces whose margin touches the narrowest strip (they are what closes it): the last placed goes
+      const ix = _wflIndexOf(F), x = sc.at[0], z = sc.at[1], pick = [], m = WORLD_FILL_LANE_SOLID + sc.len / 2 + 0.3;
+      for (const rec of ix.solids) {
+        const e = rec.e;
+        if (!e || !e.auto || rec.sol !== 'solid' || !F.added.includes(e)) continue;
+        if (x >= rec.box[0] - m && x <= rec.box[2] + m && z >= rec.box[1] - m && z <= rec.box[3] + m) pick.push(e);
+      }
+      pick.sort((a, b) => F.added.indexOf(b) - F.added.indexOf(a));
+      if (pick.length) { culprit = pick[0]; break; }
+    }
+    if (!culprit) break;
+    _wflUndo(F, culprit);
+    removed.push(culprit);
+    if (Array.isArray(F.world.log)) F.world.log.push({ id: culprit.id, obj: culprit.obj, action: 'drop', rule: 'P3', reason: 'it closed the way through the walked ground to less than two abreast need (they stand nose to nose in it)', by: 'kb' });
+  }
+  return removed;
+}
+/** The tightest way through the walked ground of a world, for tools and tests: { slack (< 0: too narrow for two abreast), len, need, at, surface } or null. */
+function worldFillLane(world, o) {
+  o = o || {};
+  const cam = o.cam || (world && world.cam);
+  if (!world || !cam || !_wflNum(cam.f)) return null;
+  const F = { world, cam, W: o.W || 1600, H: o.H || 900, pad: (o.overscan == null ? 0.18 : o.overscan) * (o.W || 1600), lived: _wflLived(world), ix: null, added: [] };
+  let best = null;
+  for (const L of _wflLanes(F)) { const sc = _wflLaneScan(F, L); if (sc && (!best || sc.slack < best.slack)) best = Object.assign({ surface: L.s.id }, sc); }
+  return best;
+}
 /** The descriptor of a kit object, or null; a name the library does not have is logged once (kitMissing), never swapped. */
 function _wflKb(F, id) {
   if (typeof id !== 'string' || !id) return null;
@@ -1626,6 +1737,8 @@ function worldFill(world, o) {
       }
       _wflAccents(F);
       _wflRichTier(F, floor);
+      // ... and the walked ground keeps a way through (last, so the richness tiers cannot close it again)
+      { const gone = _wflThroughLane(F); if (gone.length) log.push({ id: null, obj: null, action: 'fill', rule: 'P3', reason: `${gone.length} piece(s) taken away that closed the way through the walked ground (${gone.map(e => e.obj).join(', ')})`, by: 'kb' }); }
       rich = worldRichness(world, cam, { perennial: true, floor, W: F.W, H: F.H, box: false });
       if (!cov.ok) {
         const why = [];

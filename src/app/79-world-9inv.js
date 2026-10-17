@@ -638,6 +638,9 @@ const _WIV_RULES = {
         else if (pose && S.poses && Array.isArray(S.poses[pose])) hr = S.poses[pose];
       }
       const h = _wivNum(e.height) ? e.height : _wivNum(e.h) ? e.h : null;
+      // a parametric model (79-world-4models.js) is built to its own real height, which differs by kind (a trawler 7 m, a potter 4.6 m, a
+      // coble 3.6 m) and by the scene's size: the library's one number is no judge of it; the range is what a scene may ask (0.3 to 3 x)
+      if (hr && S && typeof worldModelHas === 'function' && worldModelHas(e.obj)) { const m0 = _wivNum(S.h0) ? S.h0 : (hr[0] + hr[1]) / 2; hr = [m0 * 0.3, m0 * 3]; }
       if (hr && h != null && (h > hr[1] * 1.15 || h < hr[0] / 1.15)) _wivPush(C, 'giant', e.id, `${e.obj || cls} is ${_wivR(h)} m tall; a ${cls} is ${hr[0]}-${hr[1]} m`);
       const b = _wivBox(e);
       if (b && (cls === 'person' || cls === 'dog' || cls === 'cyclist') && !e.framed && (b[3] - b[1]) > 0.45 * H) _wivPush(C, 'giant', e.id, `${e.obj || cls} is drawn ${Math.round((b[3] - b[1]) / H * 100)} % of the frame tall (a giant at the lens)`);
@@ -648,7 +651,21 @@ const _WIV_RULES = {
     if (!prev || !Array.isArray(prev.ents)) return 'na';
     const W = C.W, H = C.H, was = new Map();
     for (const e of prev.ents) if (e && e.static === false) was.set(e.id, e);
-    const atEdge = (e) => { const b = _wivBox(e); if (!b) return true; return b[0] <= 2 || b[2] >= W - 2 || b[3] >= H - 2 || b[1] <= 0 || b[2] < 0 || b[0] > W || (b[3] - b[1]) < 4; };
+    // a frame is only a sample of the page's 60 a second: a mover that walks in from beyond a side comes in by as far as it walks between
+    // two samples (and by the 50 px the draw keeps past the frame), so 'at the edge' is as wide as that reach (the real-frame run samples
+    // at 2 Hz: a family member entering at 1.5 m/s showed up 100 px inside the frame and was called a pop)
+    const f = C.cam && _wivNum(C.cam.f) && C.cam.f > 0 ? C.cam.f : null, gapT = _wivNum(prev.t) && _wivNum(C.t) ? Math.min(1.5, Math.max(0, C.t - prev.t)) : 0;
+    const reach = (e, dz) => {
+      const z = _wivNum(e.z) && e.z > 0.3 ? e.z : null;
+      if (!f || !z) return 0;
+      const v = Math.hypot(_wivNum(e.vx) ? e.vx : 0, _wivNum(e.vz) ? e.vz : 0) || (_wivNum(e.speed) ? e.speed : 0);
+      return Math.min(240, f * v * gapT / z * (dz ? Math.max(0.3, (C.cam.eye || 1.7) / z) : 1)) + 50;
+    };
+    const atEdge = (e) => {
+      const b = _wivBox(e); if (!b) return true;
+      const rx = reach(e, false), rz = reach(e, true);
+      return b[0] <= 2 + rx || b[2] >= W - 2 - rx || b[3] >= H - 2 - rz || b[1] <= 0 || b[2] < 0 || b[0] > W || (b[3] - b[1]) < 4;
+    };
     const covered = (e, list) => {
       const b = _wivBox(e); if (!b) return true;
       const area = Math.max(1, (b[2] - b[0]) * (b[3] - b[1]));
@@ -1040,7 +1057,10 @@ const _WIV_RULES = {
       const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
       if (seen.has(k)) continue;
       seen.add(k);
-      const ab = _wivBox(a), bb = _wivBox(b), sm = Math.max(1, Math.min((ab[2] - ab[0]) * (ab[3] - ab[1]), (bb[2] - bb[0]) * (bb[3] - bb[1])));
+      // the bodies, not the art boxes: a box holds the swing of the arms and legs, so two people walking shoulder to shoulder (0.6 m) overlap by
+      // 40 % of their boxes and not at all by their bodies; the core is the middle 70 % of a box's width
+      const core = (q) => { const k = 0.15 * (q[2] - q[0]); return [q[0] + k, q[1], q[2] - k, q[3]]; };
+      const ab = core(_wivBox(a)), bb = core(_wivBox(b)), sm = Math.max(1, Math.min((ab[2] - ab[0]) * (ab[3] - ab[1]), (bb[2] - bb[0]) * (bb[3] - bb[1])));
       if (_wivBoxOverlap(ab, bb) / sm <= 0.4) continue;
       now.add(k);
       let held = true;
