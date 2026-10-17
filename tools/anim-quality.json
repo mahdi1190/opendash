@@ -1467,7 +1467,7 @@
    }
   },
   "world": {
-   "for": "the WORLD ENGINE's scenes (format v3, gallery only): the lint reads the v2 data DERIVED from the spec at one still moment, with no life sim, so what the engine draws at run time (walkers, boats, birds, the sun's path, lights) is not in it: movers, travellers, motion kinds and lamps count 0 here, and the derived data and still are far larger than the spec the author writes. The spec itself is judged by `scene lint` (worldValidate and the motion check, tools/lib/world/refs.mjs worldLintAdjust) and the world tests. Measured on 7 scenes.",
+   "for": "the WORLD ENGINE's scenes (format v3, gallery only): the lint reads the v2 data DERIVED from the spec at one still moment, with no life sim, so what the engine draws at run time (walkers, boats, birds, the sun's path, lights) is not in it: movers, travellers, motion kinds and lamps count 0 here, and the derived data and still are far larger than the spec the author writes. The spec itself is judged by `scene lint` (worldValidate and the motion check, tools/lib/world/refs.mjs worldLintAdjust) and the world tests. Measured on 7 scenes; re-measured 16 Oct after the Fleet Pond marsh and the Pier Head rebuild (scaleSpread 7 rows, flipShare 9 rows, spriteMB 330).",
    "packs": [
     "world-preview"
    ],
@@ -1482,7 +1482,7 @@
      "max": 115000
     },
     "spriteMB": {
-     "max": 380
+     "max": 330
     },
     "coverItems": {
      "min": 40
@@ -1512,10 +1512,10 @@
      "rows": 16
     },
     "scaleSpread": {
-     "rows": 6
+     "rows": 7
     },
     "flipShare": {
-     "rows": 8
+     "rows": 9
     },
     "species": {
      "rows": 1
