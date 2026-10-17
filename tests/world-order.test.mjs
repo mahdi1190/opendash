@@ -231,7 +231,8 @@ test('the checker: movers against everything, static pairs with opts.all, fast',
   const t0 = performance.now();
   for (let i = 0; i < 20; i++) assert.equal(W.worldOrderCheck(order).length, 0);
   const ms = (performance.now() - t0) / 20;
-  assert.ok(ms < 5, `check ${ms.toFixed(2)} ms`);
+  const ref = medianOf(Array.from({ length: 5 }, refMs));   // a slower machine than the budget's (a shared CI runner) is allowed its ratio
+  assert.ok(ms < 5 || ms / ref < 5 / REF_MS, `check ${ms.toFixed(2)} ms (reference workload ${ref.toFixed(1)} ms)`);
   // a static pair drawn in the wrong order is caught with opts.all only
   const a = { id: 'near', x: 0, z: 10, y: 0, height: 2, foot: rect(0, 10, 2, 1), static: true }, b = { id: 'far', x: 0, z: 12, y: 0, height: 4, foot: rect(0, 12, 2, 1), static: true };
   a.box = boxOf(a); b.box = boxOf(b);
