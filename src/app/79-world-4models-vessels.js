@@ -317,28 +317,31 @@ function _wmdVesFoam(V, H, wid, alpha, rest) {
  * ends, gaps between the pieces), a bow wave at each end (a wedge of small white crests running aft from the stem), and a few flecks on
  * the water. Seeded, subtle, never a ring. E: { face(pts, hex, mat, role, inside, extra) } in model coordinates (V, or the kit through
  * a wrapper); ring: the hull's plan at the waterline, a closed [[a, l]...]; o: { L, hb, seed (a key), up (the stem's strength 0..1), fine,
- * tips: [a of each stem], sea (0..1.5: how rough: scales the heights), gapK (1: gaps between the pieces of the skirt, 0.2: nearly continuous), valley (0.2: the ends of a piece stand low, 0.8: high) }.
+ * tips: [a of each stem], sea (0..1.5: how rough: scales the heights), gapK (1: gaps between the pieces, 0.2: nearly continuous), soft (a multiplier of the alpha) }.
  */
 function _wmdVesWash(E, ring, o) {
   const UP = [0, 1, 0], h = o.h, u = (k) => h.u('wash' + k), sea = o.sea == null ? 1 : o.sea, fine = o.fine !== false, hex = '#f6fbfb', ink = [0, 0, 1.2];
   const nrm = (a, b) => { const dx = b[0] - a[0], dl = b[1] - a[1], n = Math.hypot(dx, dl) || 1; return [dl / n, -dx / n]; };
-  // the skirt: pieces of 0.8 to 3.2 m along the outline, tent-shaped (a peak, never a slab), offset a hand outward, broken by gaps
+  // the wash along the hull: a thin, low, broken band that hugs the waterline (never a fringe of triangles): pieces of 2 to 8 m with
+  // irregular gaps, a core strip and a fainter, taller veil over it, flat topped, fading toward the ends (alpha steps down at each end)
   let k = 0;
   const endK = (a) => Math.max(0, Math.min(1, (Math.abs(a) - (o.L / 2 - 11)) / 9));
   for (let i = 0; i < ring.length; i++) {
     const A = ring[i], B = ring[(i + 1) % ring.length], len = Math.hypot(B[0] - A[0], B[1] - A[1]);
     if (len < 0.3) continue;
     const n = nrm(A, B);
-    for (let t0 = u('t0' + i) * 1.5 / len; t0 < 1; ) {
+    for (let t0 = u('t0' + i) * 2 / len; t0 < 1; ) {
       k++;
-      const pl = (0.8 + 2.4 * u('pl' + k)) / len, t1 = Math.min(1, t0 + pl), am = A[0] + (B[0] - A[0]) * (t0 + t1) / 2, ek = endK(am), tm = (t0 + t1) / 2;
-      const next = t1 + (o.gapK == null ? 1 : o.gapK) * (0.3 + 2.6 * u('gp' + k) * (1 - ek)) / len;
-      if (t1 - t0 > 0.15 / len) {
-        const hh = (0.08 + 0.2 * u('hh' + k) + 0.45 * ek * (0.5 + 0.5 * u('he' + k))) * sea, off = 0.1 + 0.04 * u('of' + k), al = 0.45 + 0.3 * u('al' + k);
-        const at = (t, y) => [A[0] + (B[0] - A[0]) * t + n[0] * off, A[1] + (B[1] - A[1]) * t + n[1] * off, y];
-        const q1 = t0 + (t1 - t0) * (0.2 + 0.2 * u('q1' + k)), q2 = t1 - (t1 - t0) * (0.2 + 0.2 * u('q2' + k));
-        const vl = o.valley == null ? 0.2 : o.valley;   // how high the ends of a piece stand (a continuous skirt hides the hull's foot between its peaks)
-        E.face([at(t0, 0), at(t1, 0), at(t1, hh * (vl + (0.5 - vl * 0.5) * u('h1' + k))), at(q2, hh * (0.7 + 0.3 * u('p2' + k))), at(q1, hh), at(t0, hh * (vl + (0.5 - vl * 0.5) * u('h0' + k)))], hex, 'water', 'foam', ink, { alpha: al, shadeN: UP });
+      const pl = (2 + 6 * u('pl' + k)) / len, t1 = Math.min(1, t0 + pl), am = A[0] + (B[0] - A[0]) * (t0 + t1) / 2, ek = endK(am), tm = (t0 + t1) / 2;
+      const next = t1 + (o.gapK == null ? 1 : o.gapK) * (0.6 + 3 * u('gp' + k) * (1 - 0.6 * ek)) / len;
+      if (t1 - t0 > 0.4 / len) {
+        const hh = (0.05 + 0.07 * u('hh' + k) + 0.22 * ek * u('he' + k)) * sea, off = 0.08 + 0.05 * u('of' + k), al = (0.3 + 0.12 * u('al' + k)) * (o.soft == null ? 1 : o.soft);
+        const at = (t, y, d) => [A[0] + (B[0] - A[0]) * t + n[0] * (off + (d || 0)), A[1] + (B[1] - A[1]) * t + n[1] * (off + (d || 0)), y];
+        const e0 = t0 + (t1 - t0) * 0.18, e1 = t1 - (t1 - t0) * 0.18;
+        // the core: low and flat, its ends a little shorter (the foam thins out)
+        E.face([at(t0, 0), at(t1, 0), at(t1, hh * 0.5), at(e1, hh), at(e0, hh), at(t0, hh * 0.5)], hex, 'water', 'foam', ink, { alpha: al, shadeN: UP });
+        // the veil: taller and fainter, shorter than the core along the hull
+        E.face([at(e0, 0, 0.03), at(e1, 0, 0.03), at(e1, hh * 1.9), at(e0, hh * 1.9)], hex, 'water', 'foam', ink, { alpha: al * 0.4, shadeN: UP });
       }
       t0 = next;
     }

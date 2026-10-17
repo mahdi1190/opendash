@@ -110,7 +110,7 @@ function _wchTidal(B, wet, w, h, x0, y0, o) {
   // a train: wavelength lam (m), heading th (radians off the view's depth axis), amplitude a; fade: gone where its phase runs faster than a pixel can show
   const train = (lam, th, a, grp) => {
     const k = TAU / lam, kx = k * Math.sin(th), kd = k * Math.cos(th);
-    return { kx, kd, a, grp, ph: rr() * TAU, fade: (d, f_, eH) => { const gx = Math.abs(kx) * d / f_, gy = Math.abs(kd) * d * d / (f_ * eH), g = Math.hypot(gx, gy); return g > 2.3 ? 0 : g < 0.9 ? 1 : 1 - _wchStep(0.9, 2.3, g); } };
+    return { kx, kd, a, grp, lam, ph: rr() * TAU, fade: (d, f_, eH) => { const gx = Math.abs(kx) * d / f_, gy = Math.abs(kd) * d * d / (f_ * eH), g = Math.hypot(gx, gy); return g > 2.3 ? 0 : g < 0.9 ? 1 : 1 - _wchStep(0.9, 2.3, g); } };
   };
   const swl = [train(41 + 6 * rr(), windA + (rr() - 0.5) * 0.5, 1, 0), train(23 + 5 * rr(), windA + 0.35 + (rr() - 0.5) * 0.6, 0.8, 1)];
   const lams = [6.4, 4.3, 3.1, 2.4, 1.8, 1.35, 1.0, 0.72, 0.52, 0.38], wc = lams.map((lam, i) => train(lam * (0.92 + 0.16 * rr()), windA + (rr() - 0.5) * (i < 5 ? 0.7 : 1.5), 0.42 * Math.pow(lam / 3, 0.22) * (0.8 + 0.4 * rr()), i % 2));
@@ -128,7 +128,9 @@ function _wchTidal(B, wet, w, h, x0, y0, o) {
     // the trains that show at this depth (a train fades by how fast its phase runs across a pixel: a function of the row only)
     let nAct = 0, nSw = 0;
     for (let i = 0; i < 2; i++) { const fd = swl[i].fade(d, f, eyeH); if (fd >= 0.02) { SW[nSw++] = swl[i]; SWF[nSw - 1] = swl[i].a * fd; } }
-    for (let i = 0; i < wc.length; i++) { const fd = wc[i].fade(d, f, eyeH); if (fd >= 0.02) { ACT[nAct++] = wc[i]; ACF[nAct - 1] = wc[i].a * fd; } }
+    // near the lens the surface is calm and large (soft swell patches, not a busy scatter of wavelets): the short trains grow with distance
+    const nk = cl((d - 6) / 34, 0, 1);
+    for (let i = 0; i < wc.length; i++) { const fd = wc[i].fade(d, f, eyeH); if (fd >= 0.02) { ACT[nAct++] = wc[i]; ACF[nAct - 1] = wc[i].a * fd * (wc[i].lam < 3.5 ? 0.22 + 0.78 * nk : 0.5 + 0.5 * nk); } }
     const sf = (1 - cl(((Math.PI * 2 / 3.4) * wcos * d / f + (Math.PI * 2 / 80) * wsin * d * d / (f * eyeH) - 0.9) / 1.5, 0, 1)) * rk;
     for (let x = 0; x < w; x++) {
       const p = r * w + x;
@@ -166,7 +168,7 @@ function _wchTidal(B, wet, w, h, x0, y0, o) {
         // the highest crests break: small white caps, only on the gusty water
         if (s > 0.36 && gust > 0.5) { const cap = cl((s - 0.36) * 4, 0, 1) * 0.5 * day; B[q] += (246 - B[q]) * cap; B[q + 1] += (248 - B[q + 1]) * cap; B[q + 2] += (246 - B[q + 2]) * cap; }
       } else if (s < -0.05) {
-        const k = 0.3 * _wchStep(0.05, 0.38, -s) * (0.55 + 0.45 * day);
+        const k = 0.3 * _wchStep(0.05, 0.38, -s) * (0.55 + 0.45 * day) * (0.5 + 0.5 * nk);
         B[q] *= 1 - k; B[q + 1] *= 1 - k; B[q + 2] *= 1 - k * 0.9;
       }
       n++;

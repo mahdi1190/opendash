@@ -133,7 +133,7 @@ function _wmdLdgBuild(p, h) {
     h.part('wash', { layer: 0.4 });
     const ring = [[-hl, -hb], [-hl, hb], [hl, hb], [hl, -hb]];
     _wmdVesWash({ face: (pts, hx, mt, rl, ins, ex) => h.face(pts.map(q => h.P(q[0], q[1], q[2])), hx, mt, rl, Array.isArray(ins) ? h.P(0, 0, 1.2) : ins, ex) },
-      ring, { h, L, tips: [hl - 0.3, -hl + 0.3], tipHb: hb, up: 0.5, fine: h.fine, wedge: 8, gapK: 0.2, valley: 0.45, sea: p.sea == null ? 1 : p.sea });
+      ring, { h, L, tips: [hl - 0.3, -hl + 0.3], tipHb: hb, up: 0.5, fine: h.fine, wedge: 8, gapK: 0.5, sea: p.sea == null ? 1 : p.sea });
   }
   // ---- the deck: yellow edge lines, seams
   h.part('deck', { layer: 1 });
