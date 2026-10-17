@@ -54,6 +54,29 @@ export const LANDMARKS = {
       entities: [{ obj: 'plant.rph-church-shrub', at: [r1(x1 + 1), r1(zw + 2)], id: 'yard-shrub-1' },
         { obj: 'street.rph-headstone', at: [r1(xm + 5), r1(zw + 2.6)], id: 'stones-1' }, { obj: 'street.rph-headstone', at: [r1(xm - 6), r1(zw + 3.4)], id: 'stones-2' }] };
   },
+  // a parish church from the model (79-world-4model-church.js) in its churchyard: a coursed wall round three sides with a saddle coping and a
+  // gap for a lychgate, three yews, rows of headstones (79-world-4model-headstone.js), a path from the lane to the porch. style = the stone
+  // (honey | grey-limestone | ironstone | red-sandstone | flint). The church takes the slot's centre; the yard is the 10 m south of it.
+  'parish-church': (P, style) => {
+    const [x0, z0] = P.church[0], [x1] = P.church[1], far = z0 - 7, xc = r1((x0 + x1) / 2), zw = r1(far + 4.2), zc = r1(far + 22), xl = r1(xc - 5.8);
+    let a = 91; const rnd = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const stones = [], xa = r1(xc - 16.4), xb = r1(xc + 16);
+    for (const [dz, n] of [[2.4, 9], [4.3, 9], [6.2, 8], [8, 7]]) for (let i = 0; i < n; i++) {
+      const x = xa + (xb - xa) * (i + 0.2 + 0.6 * rnd()) / n, z = zw + dz + (rnd() - 0.5) * 0.7;
+      if (Math.abs(x - (xl + Math.max(0, z - zw - 0.8) * 1.0)) < 2.4 + Math.max(0, z - zw - 1.8) * 0.15 || (x > xc - 0.8 && x < xc + 5.6 && z > zw + 7) || Math.abs(x - (xc - 11.6)) < 1.5 || Math.abs(x - (xc + 15.6)) < 1.6) continue;
+      const r = rnd();
+      stones.push({ obj: 'structure.headstone', at: [r1(x), r1(z)], facing: Math.round(r < 0.58 ? 180 + (rnd() - 0.5) * 70 : r < 0.8 ? 180 + (rnd() - 0.5) * 140 : rnd() < 0.5 ? 90 : 270), id: 'stone-' + stones.length, model: { size: Math.round((0.9 + 0.3 * rnd()) * 100) / 100 } });
+    }
+    const wall = { id: 'churchyard-wall', kind: 'wall', laid: 'coursed', cope: 'saddle', stone: /cotswold|honey/.test(style || '') || !style ? '#b99c68' : undefined, h: 1.1, width: 0.5,
+      path: [[r1(xc - 19.4), r1(zc + 1.5)], [r1(xc - 19), zw], [r1(xc + 18.5), zw], [r1(xc + 19), r1(zc + 1.5)]], gaps: [[r1(zc + 1.5 - zw + (xl - (xc - 19)) - 1.75), r1(zc + 1.5 - zw + (xl - (xc - 19)) + 1.75)]] };
+    return { at: 'church',
+      landmarks: [{ id: 'church', obj: 'structure.parish-church', at: [xc, zc], facing: 90, src: 'a generic English parish church: a west tower, a nave with an aisle and a south porch, a chancel', model: { livery: /^(honey|grey-limestone|ironstone|red-sandstone|flint)$/.test(style || '') ? style : 'honey', size: 1.05, seed: 3, opts: { era: 'perpendicular', aisle: 'south', crown: 'parapet', porch: true } } }],
+      surfaces: [{ id: 'church-walk', kind: 'path', path: [[xl, far], [xl + 0.2, zw], [r1(xl + 2.6), r1(zw + 3.8)], [r1(xl + 6.2), r1(zw + 7.4)], [r1(xl + 8.2), r1(zw + 10)]], width: 1.8 }],
+      lines: [wall],
+      entities: [{ obj: 'structure.lychgate', at: [xl + 0.2, zw], facing: 0, id: 'lychgate', blocks: true, model: { livery: 'oak', seed: 4 } },
+        { obj: 'tree.churchyard-yew', at: [r1(xc - 11.6), r1(zw + 5.8)], id: 'yew-1', model: { size: 0.78, seed: 2 } }, { obj: 'tree.churchyard-yew', at: [r1(xc + 15.6), r1(zw + 4.8)], id: 'yew-2', model: { size: 0.95, seed: 7 } },
+        { obj: 'tree.churchyard-yew', at: [r1(xc + 6.5), r1(zw + 6.8)], id: 'yew-3', model: { size: 0.85, seed: 5 } }].concat(stones) };
+  },
   pub: (P, style) => ({ at: 'pub', buildings: [{ id: 'pub', foot: P.pub, storeys: 2, landmark: true, style: style || 'stone-cottage', src: 'the village pub: a bigger house facing the green' }],
     surfaces: [{ id: 'pub-front', kind: 'pavement', path: P.pubFront, width: 3.2 }], entities: [{ obj: 'street.pub-sign', at: P.pubSign, facing: P.pubSignFacing, id: 'pub-sign' }] }),
   pond: (P) => ({ surfaces: [{ id: 'pond', kind: 'water', water: 'pond', poly: P.pond, shallow: 0.45 }], life: [{ who: 'mallard', count: 6, on: 'pond' }, { who: 'moorhen', count: 1, on: 'pond' }] }),
@@ -65,7 +88,7 @@ export const LANDMARKS = {
   bridge: (P) => ({ buildings: [{ id: 'bridge', foot: P.bridge, storeys: 1, h: 8, landmark: true, style: 'swing-bridge', src: 'the swing bridge' }] }),
 };
 /** Who may take which slot, by family. */
-const FAMILY_LANDMARKS = { green: ['church-tower', 'pub', 'pond', 'minster'], coast: ['pier', 'lighthouse', 'beach-huts'], 'water-edge': ['bridge', 'church-tower', 'abbey', 'minster'], street: ['minster', 'church-tower', 'pub'], open: ['church-tower'] };
+const FAMILY_LANDMARKS = { green: ['church-tower', 'parish-church', 'pub', 'pond', 'minster'], coast: ['pier', 'lighthouse', 'beach-huts'], 'water-edge': ['bridge', 'church-tower', 'abbey', 'minster'], street: ['minster', 'church-tower', 'pub'], open: ['church-tower'] };
 
 /** A row of houses along a surface, broken around the stretches in `skip` ([from, to] in metres along the surface). */
 function rows(id, along, side, style, len, skip, extra) {
@@ -89,7 +112,7 @@ const FAMILIES = {
       { id: 'walk', kind: 'path', path: [[8, 1], [12, 28], [14, 54], [16, far]], width: 1.8 },
     ];
     // the lane's length runs from x = -190: a stretch at x is `x + 190` along it
-    const skip = []; if (o.landmarks.includes('church-tower') || o.landmarks.includes('minster')) skip.push([2 + 190, 40 + 190]);
+    const skip = []; if (o.landmarks.includes('church-tower') || o.landmarks.includes('parish-church') || o.landmarks.includes('minster')) skip.push([2 + 190, 40 + 190]);
     if (o.landmarks.includes('pub')) skip.push([-52 + 190, -24 + 190]);
     const buildings = rows('far', 'lane', 'left', o.houses, 380, skip, { depth: [6, 8] })
       .concat(rows('west', 'lane-l', 'left', o.houses, far + 4, [], { depth: [6, 8] }), rows('east', 'lane-r', 'right', o.houses, far + 4, [], { depth: [6, 8] }));
@@ -166,7 +189,7 @@ export function scaffoldSpec(a) {
     const make = LANDMARKS[l.kind];
     if (!make || !(FAMILY_LANDMARKS[family] || []).includes(l.kind)) { notes.push(`landmark '${l.kind}' has no recipe for the '${family}' layout (known: ${(FAMILY_LANDMARKS[family] || []).join(', ')}): ask for it, see docs/dev/NEW_SCENE_GUIDE.md`); continue; }
     const m = make(R.P, l.style);
-    for (const k of ['surfaces', 'buildings', 'entities', 'life', 'lines']) if (m[k]) out[k] = out[k].concat(m[k]);
+    for (const k of ['surfaces', 'buildings', 'entities', 'life', 'lines', 'landmarks']) if (m[k]) out[k] = (out[k] || []).concat(m[k]);
     if (m.ground) out.ground = out.ground.concat(m.ground);
   }
   const cam = viewCamera(a.view, family);
@@ -178,6 +201,7 @@ export function scaffoldSpec(a) {
   if (out.lines.length) spec.lines = out.lines;
   if (out.buildings.length) spec.buildings = out.buildings;
   if (out.entities.length) spec.entities = out.entities;
+  if (out.landmarks && out.landmarks.length) spec.landmarks = out.landmarks;
   spec.life = out.life;
   spec.seed = Number(a.seed) || (Math.abs(String(a.slug).split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)) % 90) + 3;
   const slug = String(a.slug);
@@ -201,6 +225,7 @@ export function scaffoldSource(a) {
   if (spec.lines) lines.push('    lines: ' + list(spec.lines, '    ') + ',');
   if (spec.buildings) lines.push('    buildings: ' + list(spec.buildings, '    ') + ',');
   if (spec.entities) lines.push('    entities: ' + list(spec.entities, '    ') + ',');
+  if (spec.landmarks) lines.push('    landmarks: ' + list(spec.landmarks, '    ') + ',');
   lines.push('    life: ' + list(spec.life, '    ') + ',', `    seed: ${spec.seed},`, '  });', '})();');
   return { text: lines.join('\n') + '\n', notes, id: meta.id, file: `79-world-zscene-${a.slug}-1.js`, spec };
 }

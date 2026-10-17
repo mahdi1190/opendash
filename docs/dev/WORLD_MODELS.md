@@ -212,3 +212,27 @@ Several people (or agents) add models at once without touching each other:
 * Then in a scene: an entity of the object (a plain `{ obj, at, facing, attach }`) is already drawn by your model; `model:`
   chooses livery, size, age.
 * Add one row for your model class to SCENE_LESSONS section W when you find a mistake worth keeping.
+
+## 9. The English village set (17 Oct, detail/cotswold): a church, a churchyard, a green
+
+The Cotswold green's church was a blank wall of tall windows under a flat grey slab, with a bare wall, no headstones and no yews. These are the
+reusable pieces that replaced it (all seeded, scalable by `model.size`, sheet with `node tools/world.mjs models <id> --full --out D`):
+
+| model (object id) | what it is | the parameters |
+|---|---|---|
+| `parish-church` (`structure.parish-church`) | west tower in three stages with set-back corner buttresses, a belfry with louvred openings, a corbel table, a crenellated parapet with pinnacles, a stair turret and a weathercock (or a broach spire); a nave under stone slates laid in courses that shrink to the ridge, a clerestory over one or two aisles, a lower chancel, a gabled south porch, a priest's door, stepped buttresses, quoins, mottled coursed stone, tracery by era, lit glass after dusk (never on a wall seen edge-on) | `opts.era` norman / early-english / perpendicular, `opts.aisle` both / south / none, `opts.crown` parapet / spire / none, `opts.porch`, `opts.clerestory`; liveries honey, grey-limestone, ironstone, red-sandstone, flint (clay tiles). 34 x 14 x 19.4 m at size 1; `facing: 90` puts the tower on the left and the porch toward a camera looking north |
+| `headstone` (`structure.headstone`) | an upright slab with a round, pointed, square, shouldered or ogee head, or a chest tomb; leans a few degrees, lichen and moss, a sunk base, faint rows where text would be (never readable) | `opts.shape`, `opts.lean`; liveries limestone, slate, sandstone, granite, marble |
+| `lychgate` (`structure.lychgate`) | four oak posts on footings, a pitched stone-slate or tile roof with barge boards, a timber-framed gable at each end, seat rails, two slatted gates shut or ajar | liveries oak, black-white, red-tile; `facing` is the line of the path through it. The kb gives it its own class (`lychgate`: overhead, stands on a path, faces as told) |
+| `churchyard-yew` (`tree.churchyard-yew`) | a fluted multi-stemmed trunk and a crown of overlapping needle lobes (material `needle`: evergreen, it does not turn in autumn) | `opts.form: 'column'` for a clipped or Irish yew; liveries dark, green, olive |
+| `noticeboard` (`street.noticeboard`) | two posts, a glazed cabinet with a pitched cap, a cork back with pinned sheets (blank paper) | liveries oak, green, black |
+
+Also in the set (not models): `lines: [{ kind: 'wall', laid: 'coursed' | 'rubble' | 'drystone', cope: 'saddle' | 'flat' | 'upright', stone, h, width }]`
+(`79-world-4masonry.js`: a tone per stone, staggered joints, long stones, a coping row; a wall with no `laid` keeps the plain courses), and the
+scaffold landmark `parish-church[:livery]` (`--landmarks=parish-church:honey,pub,pond`), which writes the church (as a `landmarks` entry with its
+`model`), a coursed wall round three sides with a gap, the lychgate, three yews, about 30 headstones in rows and a path from the lane to the porch.
+
+Engine changes that came with it (each has a line in `tests/world-churchyard.test.mjs`): a landmark that has a model is drawn by the model (it was
+always the sprite); `landmarks` entries take `model`; a model line honours `alpha` (faces did, lines did not); kb: a per-object `ov.cls`, `ov.solidity`
+and `ov.size` (a headstone's class range is 0.6 to 1.3 m); a wall piece is cut at a bend (a corner piece was concave and its footprint covered the
+ground inside the corner); the model check keeps a small thing beyond the camera's near plane. Note for authors: a wall's `gaps` should be arc lengths
+`[[s0, s1]]` (the `{ at, w }` form is read by the extruder but not by the placement obstacles, so a lychgate in such a gap was dropped as overlapping).

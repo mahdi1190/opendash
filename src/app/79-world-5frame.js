@@ -101,7 +101,7 @@ function _wfrRec(e, cam, o) {
   if (!(e.z > WORLD_FRAME_ZMIN) || !Number.isFinite(e.x)) return null;
   const vw = _wfrView(e, cam, o.agent, o.prev);
   // a long hull seen at an angle or end-on: drawn in true perspective, never a flat side slab (Q4)
-  if ((vw.persp || (typeof worldModelHas === 'function' && worldModelHas(e.obj))) && !e.landmark && typeof worldExtrudeHull === 'function') {   // a registered model (79-world-4models.js) draws in 3D at any angle
+  if ((vw.persp || (typeof worldModelHas === 'function' && worldModelHas(e.obj))) && (!e.landmark || (typeof worldModelHas === 'function' && worldModelHas(e.obj))) && typeof worldExtrudeHull === 'function') {   // a registered model (also a landmark that has one: a church) (79-world-4models.js) draws in 3D at any angle
     try { const prim = worldExtrudeHull(e, cam, { season: o.season, regions: o.regions }); if (prim && prim.box) { const r = _wfrPrimRec(prim, e, vw); r.cut = prim.noCut ? null : _wfrCutOf(e, cam, o.regions); return r; } } catch (err) { /* a sprite below */ }
   }
   const oid = vw.obj && sceneObj(vw.obj) ? vw.obj : (typeof _wh5ViewObj === 'function' ? _wh5ViewObj(e.obj, vw.view) : e.obj), def = sceneObj(oid);

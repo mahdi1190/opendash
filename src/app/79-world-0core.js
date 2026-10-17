@@ -446,11 +446,11 @@ const _WC_KEYS = {
   ground: ['relief', 'features'], relief: ['x', 'd', 'nx', 'nd', 'h', 'src'], feature: ['id', 'kind', 'path', 'width', 'h', 'arc', 'scree', 'batter', 'rim', 'high', 'fade', 'rock', 'rough', 'scoop'],
   surface: ['id', 'kind', 'water', 'poly', 'path', 'width', 'shallow', 'level', 'obj', 'open', 'y', 'from', 'to', 'hint', 'flow', 'step', 'over'],
   step: ['to', 'kind'],
-  line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj', 'stone'],
+  line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj', 'stone', 'laid', 'cope'],
   building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap', 'crown', 'landmark'],
   entity: ['id', 'obj', 'at', 'facing', 'attach', 'variant', 'y', 'open', 'blocks', 'framed', 'row', 'parent', 'model'],
   cluster: ['cluster', 'on', 'edge', 'n', 'seed', 'gap', 'variant'],
-  landmark: ['id', 'obj', 'at', 'facing', 'src', 'variant', 'attach'],
+  landmark: ['id', 'obj', 'at', 'facing', 'src', 'variant', 'attach', 'model'],
   life: ['id', 'who', 'on', 'rate', 'count', 'every', 'mix', 'edges', 'goals', 'group', 'state', 'framed'],
   goal: ['go', 'do', 'for', 'wander', 'follow', 'meet', 'leave', 'sit', 'wait', 'board', 'enter', 'fish', 'feed', 'view'],
   backdrop: ['style', 'skyline'], skyline: ['obj', 'bearing', 'dist', 'src'],
@@ -790,6 +790,8 @@ function _wcCheck(spec0, repair) {
     for (const k of ['width', 'h']) if (l[k] != null && !(_wcNum(l[k]) && l[k] > 0)) act(`${p}.${k}`, 'badValue', k + ' is metres > 0', strip(l, k, l.id));
     if (l.gaps != null && !(Array.isArray(l.gaps) && l.gaps.every(g => (_wcPt(g) && g[0] >= 0 && g[1] > g[0]) || (g && typeof g === 'object' && !Array.isArray(g) && (_wcNum(g.at) || _wcPt(g.at)) && (g.w == null || (_wcNum(g.w) && g.w > 0)))))) act(p + '.gaps', 'badValue', 'gaps are [[s0, s1]] arc lengths in metres, or { at: metres along | [x, z], w } (the extruder reads both)', strip(l, 'gaps', l.id));
     if (l.obj != null && !worldObjectInfo(l.obj)) act(p + '.obj', 'unknownSize', 'no world descriptor for ' + l.obj, strip(l, 'obj', l.id));
+    if (l.laid != null && !(l.kind === 'wall' && typeof WORLD_MASONRY_LAID !== 'undefined' && WORLD_MASONRY_LAID.includes(l.laid))) act(p + '.laid', 'badValue', 'laid is coursed, rubble or drystone, on a wall (how the stone is laid)', strip(l, 'laid', l.id));
+    if (l.cope != null && !(l.kind === 'wall' && typeof WORLD_MASONRY_COPE !== 'undefined' && WORLD_MASONRY_COPE.includes(l.cope))) act(p + '.cope', 'badValue', 'cope is saddle, flat or upright, on a wall', strip(l, 'cope', l.id));
   });
   const blds = listOf(spec, 'buildings', 'buildings');
   blds.forEach((b, i) => {
