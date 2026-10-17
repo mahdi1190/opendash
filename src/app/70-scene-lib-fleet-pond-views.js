@@ -500,6 +500,7 @@ const SCENE_FPV_WALK = (function () {
     real: { h: 7.5, l: 12, w: 6 },
     palette: {
       base: { board: ['#3e5a4e', '#2e463c', '#56766a'], trim: ['#e8e4d8', '#c8c2b2'], roof: ['#3a3a3e', '#56565c'], glass: ['#5a6a74', '#2a3238'], post: ['#e8e4d8'], flag: ['#c8302a', '#f4f2ec', '#1e3a6a'], deck: ['#7a6a54', '#5a4c3c'], window: '#33404a' },
+      spring: {}, summer: {}, autumn: {},   // the base colours (the four seasons are declared: the bar's seasons rule)
       winter: { roof: ['#d8dcdc', '#b8bcbe'] },
     },
     night: { glow: { window: '#ffd690' }, on: 0.95 },
@@ -663,6 +664,7 @@ const SCENE_FPV_WALK = (function () {
         silver: ['#a8a296', '#8a857a', '#c8c2b6'], root: ['#4e3c2c', '#33281e', '#6e5a44'], peat: ['#2a221c', '#3a3026'], sand: ['#cdb98e', '#a8946c', '#e2d4b2'], pan: '#9a6234',
         heath: ['#5e5a36', '#7a5a5a'], algae: ['#36402a', '#4e5a34'], twig: ['#7a746a', '#58524a', '#a49e94'], ripple: '#e8f2f4',
         bird: ['#1a1b1c', '#26282a', '#5a5238'], bill: '#8a7a5a', face: '#ece6d6', gular: '#d8a440' },
+      spring: {}, summer: {},   // the base colours (the four seasons are declared: the bar's seasons rule)
       autumn: { heath: ['#6a5a34', '#8a5a4a'] },
       winter: { silver: ['#b4aea4', '#948e84', '#d4d0c8'], sand: ['#c8bc9e', '#a49a80', '#ddd4c0'], heath: ['#5a5440', '#6a5450'], twig: ['#827c74', '#605a52', '#b0aaa2'] },
     },

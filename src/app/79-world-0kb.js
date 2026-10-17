@@ -323,6 +323,8 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'person.bench-sitter': { size: { pose: 'sit' }, habitat: _WKB_FURNITURE, orient: 'path' }, 'person.bench-reader': { size: { pose: 'sit' }, habitat: _WKB_FURNITURE, orient: 'path' },
   'person.wheelchair-user': { size: { pose: 'sit' } },
   'boat.narrowboat': { size: { lRange: [15, 21], wRange: [2.05, 2.15], h: [1.7, 2.1] } }, 'boat.mcf-narrowboat': { size: { lRange: [15, 21], wRange: [2.05, 2.15], h: [1.7, 2.1] } },
+  // a fishing boat is one of three model kinds (79-world-4models-vessels.js): a trawler to its masthead 6 m, a potter about 4 m, a coble about 3 m
+  'boat.fishing-boat': { size: { h: [2.9, 7] } },
   'boat.narrowboat-ai': { size: { lRange: [15, 21], wRange: [2.05, 2.15] } }, 'boat.canal-view-boat': { size: { lRange: [15, 21], wRange: [2.05, 2.15] } },
   // K1 special habitats
   'tree.wyv-snag': { cls: 'tree', leaf: 'none', habitat: { on: ['soil', 'grass', 'wet', 'water-margin', 'water', 'bank'] }, perch: 'tree' },

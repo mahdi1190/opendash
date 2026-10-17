@@ -40,6 +40,10 @@ function onLine(xa, xb, line, hOf, c = [60, 60, 200]) {
   return { img, x: xa, y: top, count };
 }
 /** The rows of device column x where the owner of depth z landed (from the mirror's z-buffer). */
+// Since fef2fea the mirror is RESAMPLED (a linear blend of the two source rows a destination row falls between), so a reflected edge is
+// anti-aliased at its true row: an owner can land on ONE extra (partly covered) row at its far edge. A thing therefore reflects in its
+// height h or h + 1 rows, once; a doubled image would be about 2h.
+const onceRows = (n, h) => n >= h && n <= h + 1;
 function rowsOf(res, x, z) { const out = []; for (let r = 0; r < res.h; r++) if (res.zb.data[r * res.w + (x - res.x0)] === z) out.push(r + res.y0); return out; }
 const contiguous = (rows) => rows.every((r, i) => i === 0 || r === rows[i - 1] + 1);
 const pond = (poly, o = {}) => Object.assign({ id: 'pond', kind: 'water', water: 'pond', level: 0, poly }, o);
@@ -89,7 +93,7 @@ test('a heron, a post and a boat on one region reflect once each, from their own
   for (const [x, z, h, row] of [[Math.round(Xof(-5, 20)), 20, hp, Rl(20)], [Math.round(Xof(3, 15)), 15, pp, Rl(15)]]) {
     const rows = rowsOf(res, x, z);
     assert.ok(contiguous(rows), 'one run');
-    assert.equal(rows.length, h, `${z}: ${rows.length} rows, its height ${h} (once, not doubled)`);
+    assert.ok(onceRows(rows.length, h), `${z}: ${rows.length} rows, its height ${h} (once, not doubled; one anti-aliased edge row allowed)`);
     assert.ok(Math.abs(rows[0] - row) <= 1, `${z}: starts at ${rows[0]}, its waterline ${row}`);
   }
   // the boat: in every column away from the post, one run from its sloped waterline, the height of its art there
@@ -106,7 +110,7 @@ test('a heron, a post and a boat on one region reflect once each, from their own
   assert.ok(cols > 500, 'checked ' + cols + ' boat columns');
   // where the post's image and the boat's land on the same water, the nearer (the post) wins
   const both = rowsOf(res, postX, 15);
-  assert.ok(both.length === pp && rowsOf(res, postX, 30).every(r => r < both[0]), 'the post covers the boat behind it');
+  assert.ok(onceRows(both.length, pp) && rowsOf(res, postX, 30).every(r => r < both[0]), 'the post covers the boat behind it');
 });
 
 test('a far-bank tree mirrors from the bank edge, following a curving bank in perspective', () => {
@@ -142,7 +146,7 @@ test('what a nearer thing hides on the screen still reflects: no hole in a far r
   const res = W.worldWaterMirror(null, R, comp, owner, Object.assign({ ripple: false }, F));
   const edge = W.worldWaterSpansAt(R, PX + 0.5)[0][0];
   const rows = rowsOf(res, PX, 60), postRows = rowsOf(res, PX, 12);
-  assert.equal(postRows.length, ph, 'the post reflects in full where it lands (the nearer wins there)');
+  assert.ok(onceRows(postRows.length, ph), 'the post reflects in full where it lands (the nearer wins there)');
   assert.ok(contiguous(rows) && Math.abs(rows[0] - edge) <= 1, 'the warehouse from the bank edge, one run');
   assert.ok(Math.abs(rows[rows.length - 1] + 1 - postRows[0]) <= 1, `no hole: the warehouse fills every water row down to the post's image (${rows[rows.length - 1]} / ${postRows[0]})`);
   const hidden = Math.round(Rl(60)) - (Math.round(Rl(12)) - ph);
@@ -174,7 +178,7 @@ test('a sloped multi-piece boat reflects once with no doubling', () => {
     if (!n) continue;
     const rows = rowsOf(res, x, 26);
     assert.ok(contiguous(rows), 'column ' + x + ': one run (no second copy)');
-    assert.ok(rows.length <= n && rows.length >= n - 1, `column ${x}: ${rows.length} reflected rows for ${n} pixels`);
+    assert.ok(rows.length <= n + 1 && rows.length >= n - 1, `column ${x}: ${rows.length} reflected rows for ${n} pixels`);
     assert.ok(Math.abs(rows[0] - line(x + 0.5)) <= 1, `column ${x}: from its own sloped waterline`);
     cols++;
   }
@@ -251,7 +255,7 @@ test('movers are mirrored per frame on their columns only, and a nearer static s
   const res = W.worldWaterMirror(null, R, mv.comp, mv.owner, Object.assign({ base: false, ripple: false, cols, zb: bake.zb }, F));
   assert.ok(res.x0 >= cols[0] && res.x0 + res.w <= cols[1], 'only its columns');
   const sailRows = rowsOf(res, PX, 22), postRows = rowsOf(bake, PX, 15);
-  assert.ok(postRows.length === pp && !sailRows.some(r => postRows.includes(r)), 'the post wins where both land');
+  assert.ok(onceRows(postRows.length, pp) && !sailRows.some(r => postRows.includes(r)), 'the post wins where both land');
   assert.ok(rowsOf(res, SX + 15, 22).length > sh * 0.9, 'beside the post the sail reflects in full');
   assert.equal(res.gaps, 0);
 });

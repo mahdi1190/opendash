@@ -210,13 +210,15 @@ function worldDevApply(o) {
   }
   return n;
 }
-function _wdbMsOf(day, hour) { const y = new Date().getUTCFullYear(); return Date.UTC(y, 0, 1) + (day - 1) * 86400000 + hour * 3600000; }
+/** Now in ms: the app's Clock (07-core-clock.js, which a screenshot or a test can set) when it is there. */
+function _wdbNow() { return typeof Clock !== 'undefined' && Clock && typeof Clock.now === 'function' ? Clock.now() : Date.now(); }
+function _wdbMsOf(day, hour) { const y = new Date(_wdbNow()).getUTCFullYear(); return Date.UTC(y, 0, 1) + (day - 1) * 86400000 + hour * 3600000; }
 /** The dev panel: layer toggles and the scrubber. Created once, on the first dev frame. */
 function worldDevPanel(doc) {
   doc = doc || (typeof document !== 'undefined' ? document : null);
   if (!doc || !doc.body) return null;
   if (_wdbState.panel && _wdbState.panel.isConnected) return _wdbState.panel;
-  const now = new Date(), day0 = Math.floor((Date.now() - Date.UTC(now.getUTCFullYear(), 0, 1)) / 86400000) + 1, hour0 = now.getUTCHours() + now.getUTCMinutes() / 60;
+  const now = new Date(_wdbNow()), day0 = Math.floor((_wdbNow() - Date.UTC(now.getUTCFullYear(), 0, 1)) / 86400000) + 1, hour0 = now.getUTCHours() + now.getUTCMinutes() / 60;
   const p = doc.createElement('div');
   p.className = 'wdb-panel';
   p.setAttribute('role', 'region'); p.setAttribute('aria-label', 'World dev overlays');

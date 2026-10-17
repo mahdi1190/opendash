@@ -301,7 +301,7 @@ Paste what you need inside your IIFE, after the `const { ... } = K;` line, then 
 
 ## 6. Helper patterns from the pilot: rock, bush, crowns, ferns, ranges, house, boat (tested)
 
-The pilot drew a whole region (Oceania: nine scenes, seven icons) as the skill's first user; six agents each rebuilt a rock, a bush, a tree, a fern, a house and a boat from scratch inside their IIFE, and the judges then found "flat coin-circle foliage" and "cloned house rows" in the result. These are the tested versions of the pilot's best helpers (the pilot's `71-anim-region-oceania-scenes-1.js` and `-scenes-2.js`, which are not kept in the repo; the code below is the tested copy). Paste what you need, then CHANGE the seeds, sizes, colours and proportions: the pilot's own pieces have no `sharedShare` against each other because every call had its own seed. The `// use:` lines are run by `tests/anim-pack-cli.test.mjs`.
+The pilot drew a whole region (Oceania: nine scenes, seven icons) as the skill's first user; six agents each rebuilt a rock, a bush, a tree, a fern, a house and a boat from scratch inside their IIFE, and the judges then found "flat coin-circle foliage" and "cloned house rows" in the result. These are the tested versions of the pilot's best helpers (the pilot's `71-anim-region-oceania-scenes-1.js` and `-scenes-2.js`, which are not kept in the repo; the code below is the tested copy). Paste what you need, then CHANGE the seeds, sizes, colours and proportions: the pilot's own pieces have no `sharedShare` against each other because every call had its own seed. The `// use:` lines are run by `tests/anim-pack-cli.shared.mjs`.
 
 <!-- tested -->
 ```js

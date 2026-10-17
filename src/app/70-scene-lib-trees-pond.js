@@ -91,7 +91,8 @@
     if (winter) {
       out.push({ s: '@bark.0', w: f1(S.trunk[0] * 0.45), cap: 'round', d: br[0] }, { s: '@bark.2', w: 1.6, cap: 'round', op: 0.85, d: br[1], detail: true });
       // bare: fine twig sprays through the crown's space (no leaf masses); the willow's golden stems follow
-      out.push({ s: '@leaf.1', w: 1.1, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(r, cx, cy, cw * 0.95, ch * 0.9, S.weep ? 8 : 16) });
+      const hz = sceneDraw.twigHazeLod(r, cx, cy, cw * 0.95, ch * 0.9, S.weep ? 8 : 16);
+      out.push({ s: '@leaf.1', w: 1.1, cap: 'round', op: 0.6, d: hz.core }, { s: '@leaf.1', w: 1.1, cap: 'round', op: 0.6, d: hz.fine, detail: true });
       out.push({ s: '@leaf.0', w: 0.7, cap: 'round', op: 0.45, d: sceneDraw.twigHaze(r, cx, cy, cw, ch, S.weep ? 6 : 12), detail: true });
     } else {
       out.push({ s: '@bark.0', w: f1(S.trunk[0] * 0.4), cap: 'round', d: br[0] + br[1], detail: true });
@@ -168,7 +169,7 @@
     credit: 'drawn for Fleet Pond (the far shores\' wood)',
     build(v, r, ctx) {
       const winter = ctx && ctx.season === 'winter', body = [], stems = [], t = ['', '', ''], ta = ['', '', ''], pn = ['', '', ''];
-      let tw = '', tl = '', tg = '';
+      let tw = '', tl = '', tg = '', twF = '', tgF = '';   // twF, tgF: the fine sprays (detail: a tile skips them)
       for (const [dx, k, sz] of WOOD[v] || WOOD[0]) {
         const x = dx + rr(r, -8, 8), h = (k === 'p' ? 200 : k === 'b' ? 170 : 150) * sz * rr(r, 0.9, 1.1);
         stems.push(`M${f1(x - 3)} 0L${f1(x - 1.5)} ${f1(-h * (k === 'p' ? 0.95 : 0.5))}h3L${f1(x + 3)} 0Z`);
@@ -180,7 +181,8 @@
         if (winter) {   // bare: a few limbs from the stem top and the fine twig haze of the crown (the willow's golden)
           const sy = -h * 0.5, s2 = (k === 'b' ? 0.6 : 1);
           tl += sceneDraw.twigs(r, [[x, sy, -0.5 * s2, hh * 0.7], [x, sy, 0.45 * s2, hh * 0.7], [x, sy, 0.05, hh * 0.9]], 1, 0.38);
-          if (k === 'w') tg += sceneDraw.twigHaze(r, x, cy, w * 0.9, hh * 0.9, 10); else tw += sceneDraw.twigHaze(r, x, cy, w * 0.9, hh * 0.9, 7);
+          const hz = sceneDraw.twigHazeLod(r, x, cy, w * 0.9, hh * 0.9, k === 'w' ? 10 : 7);
+          if (k === 'w') { tg += hz.core; tgF += hz.fine; } else { tw += hz.core; twF += hz.fine; }
           continue;
         }
         dst[0] += ring(r, x + w * 0.08, cy + hh * 0.1, w, hh, 8);
@@ -194,6 +196,8 @@
       if (tl) body.push({ s: '@bark.0', w: 2, cap: 'round', op: 0.9, d: tl });
       if (tw) body.push({ s: '@leaf.1', w: 1, cap: 'round', op: 0.55, d: tw });
       if (tg) body.push({ s: '@gold.1', w: 1.2, cap: 'round', op: 0.7, d: tg });
+      if (twF) body.push({ s: '@leaf.1', w: 1, cap: 'round', op: 0.55, d: twF, detail: true });
+      if (tgF) body.push({ s: '@gold.1', w: 1.2, cap: 'round', op: 0.7, d: tgF, detail: true });
       for (const [g, slot] of [[t, '@leaf.'], [ta, '@alt.']]) if (g[0]) body.push([slot + '0', g[0]], [slot + '1', g[1]], { f: slot + '2', d: g[2], op: 0.75, detail: true });
       if (pn[0]) body.push(['@pine.0', pn[0]], ['@pine.1', pn[1]], { f: '@pine.2', d: pn[2], op: 0.8, detail: true });
       return { body };

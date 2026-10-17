@@ -16,7 +16,7 @@
   "scenes": 457,
   "items": 575,
   "scene": "us-*, asia-*, texas full scenes (229)",
-  "scene-legacy": "uk-south-east full scenes that are not rich (98; recalibrated 2026-10-08 at the UK rebuild, when the Hampshire baseline and the uk-north-west pack moved to the composed uk-area-* packs)",
+  "scene-legacy": "uk-south-east full scenes that are not rich (98; recalibrated 2026-10-08 at the UK rebuild, when the Hampshire baseline and the uk-north-west pack moved to the composed uk-area-* packs) [15 Oct 2026: 90 scenes after the Netley Abbey and Whitchurch Mill views left the pack in the Hampshire redraw; medians and advisory levels re-proposed from them (calibrate --propose); the two skyStops floors stay as they were]",
   "scene-rich": "the retired rich Yateley and Fleet views (80): deleted at the UK rebuild (2026-10-08); the floors stay as calibrated on them",
   "item": "us-*, asia-* small items (245)",
   "item-classic": "core, moments, rewards, seasons, sky, texas, world, uk-south-west small items (330)",
@@ -305,9 +305,9 @@
   },
   "sharedShareAll": {
    "max": 0.361,
-   "warnMax": 0.196,
-   "median": 0.042,
-   "note": "corpus n=229: min 0.006, p3 0.011, p10 0.013, median 0.042, p90 0.196, max 0.361"
+   "warnMax": 0.195,
+   "median": 0.041,
+   "note": "corpus n=229: min 0.006, p3 0.011, p10 0.013, median 0.041, p90 0.195, max 0.361"
   },
   "unknownClasses": {
    "max": 0,
@@ -355,116 +355,116 @@
    "warnMin": 15045,
    "max": 32000,
    "warnMax": 28751,
-   "median": 20828,
-   "note": "corpus n=98: min 11349, p3 14373, p10 15045, median 20828, p90 28751, max 31838"
+   "median": 20631,
+   "note": "corpus n=90: min 11349, p3 14373, p10 15045, median 20631, p90 28751, max 31838"
   },
   "shapes": {
    "min": 81,
    "warnMin": 102,
    "median": 157,
-   "note": "corpus n=98: min 81, p3 82, p10 102, median 157, p90 255, max 374"
+   "note": "corpus n=90: min 81, p3 82, p10 102, median 157, p90 275, max 374"
   },
   "paths": {
    "min": 15,
    "warnMin": 17,
    "median": 50,
-   "note": "corpus n=98: min 15, p3 16, p10 17, median 50, p90 141, max 236"
+   "note": "corpus n=90: min 15, p3 16, p10 17, median 50, p90 142, max 236"
   },
   "pathSegments": {
    "min": 204,
    "warnMin": 372,
-   "median": 593,
-   "note": "corpus n=98: min 204, p3 289, p10 372, median 593, p90 1333, max 1613"
+   "median": 587,
+   "note": "corpus n=90: min 204, p3 289, p10 372, median 587, p90 1428, max 1613"
   },
   "segmentsPerShape": {
    "min": 1.11,
-   "warnMin": 2.54,
+   "warnMin": 2.6,
    "median": 4.03,
-   "note": "corpus n=98: min 1.11, p3 2.1, p10 2.54, median 4.03, p90 6.22, max 11.92"
+   "note": "corpus n=90: min 1.11, p3 2.1, p10 2.6, median 4.03, p90 6.16, max 10.62"
   },
   "bytesPerShape": {
    "min": 77,
    "warnMin": 97,
    "median": 128,
-   "note": "corpus n=98: min 77, p3 80, p10 97, median 128, p90 164, max 235"
+   "note": "corpus n=90: min 77, p3 80, p10 97, median 128, p90 163, max 235"
   },
   "shapesPerKB": {
    "min": 4.36,
    "advisoryIn": "detailPerKB",
    "median": 8.02,
-   "note": "corpus n=98: min 4.36, p3 5.01, p10 6.23, median 8.02, p90 10.57, max 13.32"
+   "note": "corpus n=90: min 4.36, p3 5.59, p10 6.34, median 8.02, p90 11.1, max 13.32"
   },
   "distinctShapes": {
    "min": 81,
-   "warnMin": 101,
+   "warnMin": 102,
    "median": 149,
-   "note": "corpus n=98: min 81, p3 82, p10 101, median 149, p90 249, max 374"
+   "note": "corpus n=90: min 81, p3 82, p10 102, median 149, p90 249, max 374"
   },
   "distinctForms": {
    "min": 39,
-   "warnMin": 56,
+   "warnMin": 60,
    "median": 82,
-   "note": "corpus n=98: min 39, p3 48, p10 56, median 82, p90 130, max 177"
+   "note": "corpus n=90: min 39, p3 48, p10 60, median 82, p90 131, max 177"
   },
   "distinctRatio": {
    "min": 0.604,
    "warnMin": 0.898,
    "median": 1,
-   "note": "corpus n=98: min 0.604, p3 0.622, p10 0.898, median 1, p90 1, max 1"
+   "note": "corpus n=90: min 0.604, p3 0.622, p10 0.898, median 1, p90 1, max 1"
   },
   "colours": {
    "min": 30,
    "warnMin": 36,
    "median": 41,
-   "note": "corpus n=98: min 30, p3 31, p10 36, median 41, p90 54, max 73"
+   "note": "corpus n=90: min 30, p3 31, p10 36, median 41, p90 52, max 73"
   },
   "colourClusters": {
    "min": 21,
    "warnMin": 23,
-   "median": 28,
-   "note": "corpus n=98: min 21, p3 21, p10 23, median 28, p90 33, max 42"
+   "median": 27,
+   "note": "corpus n=90: min 21, p3 21, p10 23, median 27, p90 32, max 42"
   },
   "coloursWithArea": {
    "min": 13,
    "warnMin": 16,
-   "median": 20,
-   "note": "corpus n=98: min 13, p3 13, p10 16, median 20, p90 28, max 37"
+   "median": 19,
+   "note": "corpus n=90: min 13, p3 13, p10 16, median 19, p90 27, max 37"
   },
   "tonalRange": {
    "min": 0.892,
    "warnMin": 0.918,
-   "median": 0.95,
-   "note": "corpus n=98: min 0.892, p3 0.918, p10 0.918, median 0.95, p90 0.969, max 1"
+   "median": 0.94,
+   "note": "corpus n=90: min 0.892, p3 0.918, p10 0.918, median 0.94, p90 0.969, max 1"
   },
   "hueSectors": {
    "max": 6,
    "warnMax": 5,
    "median": 4,
-   "note": "corpus n=98: min 1, p3 2, p10 3, median 4, p90 5, max 6"
+   "note": "corpus n=90: min 1, p3 2, p10 3, median 4, p90 5, max 6"
   },
   "gradients": {
    "min": 9,
    "warnMin": 10,
    "median": 11,
-   "note": "corpus n=98: min 9, p3 9, p10 10, median 11, p90 14, max 25"
+   "note": "corpus n=90: min 9, p3 9, p10 10, median 11, p90 14, max 25"
   },
   "gradientsUsed": {
    "min": 8,
    "warnMin": 9,
    "median": 10,
-   "note": "corpus n=98: min 8, p3 9, p10 9, median 10, p90 13, max 25"
+   "note": "corpus n=90: min 8, p3 9, p10 9, median 10, p90 13, max 25"
   },
   "gradientFilledShapes": {
    "min": 7,
    "warnMin": 8,
    "median": 19,
-   "note": "corpus n=98: min 7, p3 8, p10 8, median 19, p90 27, max 35"
+   "note": "corpus n=90: min 7, p3 8, p10 8, median 19, p90 27, max 35"
   },
   "translucentLayers": {
    "min": 14,
    "warnMin": 15,
    "median": 21,
-   "note": "corpus n=98: min 14, p3 15, p10 15, median 21, p90 31, max 51"
+   "note": "corpus n=90: min 14, p3 15, p10 15, median 21, p90 31, max 51"
   },
   "skyStops": {
    "min": 2,
@@ -476,147 +476,147 @@
    "min": 5,
    "warnMin": 8,
    "median": 10,
-   "note": "corpus n=98: min 5, p3 6, p10 8, median 10, p90 14, max 17"
+   "note": "corpus n=90: min 5, p3 6, p10 8, median 10, p90 14, max 17"
   },
   "bandFills": {
    "min": 5,
    "warnMin": 7,
-   "median": 9,
-   "note": "corpus n=98: min 5, p3 6, p10 7, median 9, p90 12, max 14"
+   "median": 10,
+   "note": "corpus n=90: min 5, p3 6, p10 7, median 10, p90 12, max 14"
   },
   "detailShapes": {
    "min": 61,
    "warnMin": 84,
    "median": 143,
-   "note": "corpus n=98: min 61, p3 67, p10 84, median 143, p90 243, max 359"
+   "note": "corpus n=90: min 61, p3 67, p10 84, median 143, p90 258, max 359"
   },
   "detailCells": {
    "min": 39,
    "warnMin": 46,
    "median": 62,
-   "note": "corpus n=98: min 39, p3 41, p10 46, median 62, p90 80, max 92"
+   "note": "corpus n=90: min 39, p3 41, p10 46, median 62, p90 81, max 92"
   },
   "detailColumns": {
    "min": 14,
    "warnMin": 15,
    "median": 16,
-   "note": "corpus n=98: min 14, p3 14, p10 15, median 16, p90 16, max 16"
+   "note": "corpus n=90: min 14, p3 14, p10 15, median 16, p90 16, max 16"
   },
   "detailRows": {
    "min": 6,
    "warnMin": 7,
    "median": 8,
-   "note": "corpus n=98: min 6, p3 6, p10 7, median 8, p90 9, max 9"
+   "note": "corpus n=90: min 6, p3 6, p10 7, median 8, p90 9, max 9"
   },
   "focusShare": {
    "min": 0.145,
    "warnMin": 0.178,
-   "median": 0.259,
-   "note": "corpus n=98: min 0.145, p3 0.148, p10 0.178, median 0.259, p90 0.487, max 0.664"
+   "median": 0.258,
+   "note": "corpus n=90: min 0.145, p3 0.148, p10 0.178, median 0.258, p90 0.487, max 0.623"
   },
   "sizeClasses": {
    "min": 9,
    "warnMin": 12,
    "median": 14,
-   "note": "corpus n=98: min 9, p3 10, p10 12, median 14, p90 16, max 17"
+   "note": "corpus n=90: min 9, p3 10, p10 12, median 14, p90 16, max 16"
   },
   "tinyShare": {
    "max": 0.476,
-   "warnMax": 0.317,
+   "warnMax": 0.337,
    "median": 0.226,
-   "note": "corpus n=98: min 0.09, p3 0.099, p10 0.127, median 0.226, p90 0.317, max 0.476"
+   "note": "corpus n=90: min 0.09, p3 0.099, p10 0.129, median 0.226, p90 0.337, max 0.476"
   },
   "hiddenShare": {
    "max": 0.149,
-   "warnMax": 0.095,
-   "median": 0.045,
-   "note": "corpus n=98: min 0, p3 0.003, p10 0.011, median 0.045, p90 0.095, max 0.149"
+   "warnMax": 0.097,
+   "median": 0.047,
+   "note": "corpus n=90: min 0, p3 0.003, p10 0.014, median 0.047, p90 0.097, max 0.149"
   },
   "bottomCover": {
    "min": 1,
    "warnMin": 1,
    "median": 1,
-   "note": "corpus n=98: min 1, p3 1, p10 1, median 1, p90 1, max 1"
+   "note": "corpus n=90: min 1, p3 1, p10 1, median 1, p90 1, max 1"
   },
   "movingGroups": {
    "min": 11,
    "warnMin": 15,
    "median": 20,
-   "note": "corpus n=98: min 11, p3 11, p10 15, median 20, p90 64, max 94"
+   "note": "corpus n=90: min 11, p3 11, p10 15, median 20, p90 61, max 94"
   },
   "motionKinds": {
    "min": 4,
    "warnMin": 6,
    "median": 8,
-   "note": "corpus n=98: min 4, p3 4, p10 6, median 8, p90 10, max 11"
+   "note": "corpus n=90: min 4, p3 4, p10 6, median 8, p90 9, max 10"
   },
   "driftGroups": {
    "min": 6,
    "warnMin": 6,
    "median": 7,
-   "note": "corpus n=98: min 6, p3 6, p10 6, median 7, p90 8, max 10"
+   "note": "corpus n=90: min 6, p3 6, p10 6, median 7, p90 8, max 10"
   },
   "ambientGroups": {
    "min": 0,
    "warnMin": 7,
    "median": 12,
-   "note": "corpus n=98: min 0, p3 2, p10 7, median 12, p90 56, max 87"
+   "note": "corpus n=90: min 0, p3 2, p10 7, median 12, p90 53, max 87"
   },
   "ambientKinds": {
    "min": 0,
    "warnMin": 2,
    "median": 4,
-   "note": "corpus n=98: min 0, p3 1, p10 2, median 4, p90 6, max 8"
+   "note": "corpus n=90: min 0, p3 1, p10 2, median 4, p90 6, max 7"
   },
   "motionZones": {
    "min": 2,
    "warnMin": 2,
    "median": 3,
-   "note": "corpus n=98: min 2, p3 2, p10 2, median 3, p90 3, max 3"
+   "note": "corpus n=90: min 2, p3 2, p10 2, median 3, p90 3, max 3"
   },
   "distinctDurations": {
    "min": 9,
    "warnMin": 11,
    "median": 18,
-   "note": "corpus n=98: min 9, p3 9, p10 11, median 18, p90 36, max 42"
+   "note": "corpus n=90: min 9, p3 9, p10 11, median 18, p90 36, max 39"
   },
   "staggerDelays": {
    "min": 0,
    "warnMin": 3,
    "median": 9,
-   "note": "corpus n=98: min 0, p3 2, p10 3, median 9, p90 31, max 35"
+   "note": "corpus n=90: min 0, p3 2, p10 3, median 9, p90 30, max 35"
   },
   "movingPerShape": {
    "min": 0.034,
    "warnMin": 0.066,
    "max": 0.631,
    "warnMax": 0.488,
-   "median": 0.179,
-   "note": "corpus n=98: min 0.034, p3 0.047, p10 0.066, median 0.179, p90 0.488, max 0.631"
+   "median": 0.178,
+   "note": "corpus n=90: min 0.034, p3 0.047, p10 0.066, median 0.178, p90 0.488, max 0.631"
   },
   "sharedShare": {
    "max": 0.992,
    "warnMax": 0.989,
    "median": 0.283,
-   "note": "corpus n=98: min 0.011, p3 0.024, p10 0.035, median 0.283, p90 0.989, max 0.992"
+   "note": "corpus n=90: min 0.011, p3 0.024, p10 0.035, median 0.283, p90 0.989, max 0.992"
   },
   "sharedShareAll": {
    "max": 0.992,
    "warnMax": 0.989,
    "median": 0.283,
-   "note": "corpus n=98: min 0.011, p3 0.027, p10 0.037, median 0.283, p90 0.989, max 0.992"
+   "note": "corpus n=90: min 0.011, p3 0.027, p10 0.037, median 0.283, p90 0.989, max 0.992"
   },
   "unknownClasses": {
    "max": 0,
    "warnMax": 0,
    "median": 0,
-   "note": "corpus n=98: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+   "note": "corpus n=90: min 0, p3 0, p10 0, median 0, p90 0, max 0"
   },
   "coverUps": {
    "max": 0,
    "warnMax": 0,
    "median": 0,
-   "note": "corpus n=98: min 0, p3 0, p10 0, median 0, p90 0, max 0"
+   "note": "corpus n=90: min 0, p3 0, p10 0, median 0, p90 0, max 0"
   },
   "richness": {
    "min": 0.77,
@@ -625,8 +625,8 @@
    "cap": 1.25,
    "components": {
     "shapes": 157,
-    "pathSegments": 593,
-    "colourClusters": 28,
+    "pathSegments": 587,
+    "colourClusters": 27,
     "gradients": 11,
     "translucentLayers": 21,
     "movingGroups": 20,
@@ -636,14 +636,14 @@
     "detailCells": 62,
     "sizeClasses": 14,
     "distinctForms": 82,
-    "bytes": 20828
+    "bytes": 20631
    },
    "note": "composite of shapes, pathSegments, colourClusters, gradients, translucentLayers, movingGroups, motionKinds, ambientGroups, bands, detailCells, sizeClasses, distinctForms, bytes, each capped at 125% of its corpus median; corpus index n=98: min 0.77, p3 0.81, p10 0.857, median 0.985, max 1.227"
   },
   "detailPerKB": {
    "warnMin": 28,
    "median": 41.46,
-   "note": "corpus n=98: min 21.53, p3 26.48, p10 28.95, median 41.46, p90 62.98, max 76.69"
+   "note": "corpus n=90: min 21.53, p3 26.48, p10 28.95, median 41.46, p90 61.74, max 76.69"
   }
  },
  "scene-rich": {
@@ -1369,6 +1369,171 @@
    "puddleRings": 20,
    "fogBanks": 4,
    "shadowPairs": 40
+  }
+ },
+ "composed-kinds": {
+  "_note": "Calibrated KINDS of composed scene (15 Oct 2026). The strict \"composed\" profile above is the bar of the rich Yateley and Fleet scenes and stays the bar: a scene of a kind below can never be GOLD (its tier is 'composed', below the bar until it passes the strict profile). A kind is a list of packs whose scenes legitimately exceed designed limits that were set before they existed: `allow` names the rules such a scene may fail and by how much (rows: how many failing rows of that rule one scene may have; max / min: the largest / smallest value a failing row may carry). Each bound sits a few per cent past the worst scene of the kind on the day it was measured, so a new scene may not be worse than the worst existing one, and tests/anim-quality.test.mjs fails when a bound is no longer needed (lower it, or drop the rule), so the lists only shrink. Never raise a bound to let a new scene in: fix the scene, or calibrate a new kind with a reason.",
+  "place": {
+   "for": "hand-composed PLACE views: the Hampshire views and proofs (Yateley Common and Green, Wyndham's Pool, Fleet Pond, the Basingstoke Canal), the Manchester (Castlefield, Salford Quays and NQ) and Sheffield (centre, parks) drafts. Thousands of explicitly placed library objects (heath drifts, pavement setts, crowds) rather than scatter rules over an archetype, so the data, the still, the sprite cache and the crowd are larger than a region scene's; several of them are drafts that wait for conversion to the world engine. Measured on 100 scenes.",
+   "packs": [
+    "proof-fleet-pond",
+    "proof-wyndhams-pool",
+    "proof-yateley-green",
+    "uk-south-east",
+    "uk-north-manchester-castlefield",
+    "uk-north-manchester-quays-nq",
+    "uk-north-sheffield-centre",
+    "uk-north-sheffield-parks"
+   ],
+   "allow": {
+    "svgTileBytes": {
+     "max": 850000
+    },
+    "svgFillBytes": {
+     "max": 1800000
+    },
+    "dataBytes": {
+     "max": 170000
+    },
+    "spriteMB": {
+     "max": 133
+    },
+    "bitmaps": {
+     "max": 7
+    },
+    "distinctSprites": {
+     "max": 640
+    },
+    "animatedDraws": {
+     "max": 340
+    },
+    "coverItems": {
+     "min": 30
+    },
+    "groundCover": {
+     "min": 0.25
+    },
+    "movers": {
+     "min": 8
+    },
+    "nightLights": {
+     "min": 6
+    },
+    "shadows": {
+     "min": 0.4
+    },
+    "signature": {
+     "rows": 1
+    },
+    "reflections": {
+     "rows": 1
+    },
+    "people": {
+     "max": 32
+    },
+    "crowd": {
+     "max": 22
+    },
+    "personHeight": {
+     "max": 900
+    },
+    "silhouettes": {
+     "rows": 1
+    },
+    "tintUse": {
+     "rows": 20
+    },
+    "scaleSpread": {
+     "rows": 2
+    },
+    "flipShare": {
+     "rows": 2
+    },
+    "species": {
+     "rows": 1
+    },
+    "topShare": {
+     "rows": 1
+    },
+    "variantUse": {
+     "rows": 1
+    },
+    "grid": {
+     "max": 0.8
+    },
+    "stacked": {
+     "max": 220
+    }
+   }
+  },
+  "world": {
+   "for": "the WORLD ENGINE's scenes (format v3, gallery only): the lint reads the v2 data DERIVED from the spec at one still moment, with no life sim, so what the engine draws at run time (walkers, boats, birds, the sun's path, lights) is not in it: movers, travellers, motion kinds and lamps count 0 here, and the derived data and still are far larger than the spec the author writes. The spec itself is judged by `scene lint` (worldValidate and the motion check, tools/lib/world/refs.mjs worldLintAdjust) and the world tests. Measured on 7 scenes; re-measured 16 Oct after the Fleet Pond marsh and the Pier Head rebuild (scaleSpread 7 rows, flipShare 9 rows, spriteMB 330).",
+   "packs": [
+    "world-preview"
+   ],
+   "allow": {
+    "svgTileBytes": {
+     "max": 1900000
+    },
+    "svgFillBytes": {
+     "max": 3100000
+    },
+    "dataBytes": {
+     "max": 115000
+    },
+    "spriteMB": {
+     "max": 330
+    },
+    "coverItems": {
+     "min": 40
+    },
+    "groundCover": {
+     "min": 0.7
+    },
+    "movers": {
+     "min": 0
+    },
+    "travellers": {
+     "min": 0
+    },
+    "motionKinds": {
+     "min": 0
+    },
+    "nightLights": {
+     "min": 0
+    },
+    "signature": {
+     "min": 0
+    },
+    "liveSky": {
+     "rows": 1
+    },
+    "tintUse": {
+     "rows": 16
+    },
+    "scaleSpread": {
+     "rows": 7
+    },
+    "flipShare": {
+     "rows": 9
+    },
+    "species": {
+     "rows": 1
+    },
+    "topShare": {
+     "rows": 1
+    },
+    "variantUse": {
+     "rows": 8
+    },
+    "grid": {
+     "rows": 2,
+     "max": 0.7
+    },
+    "stacked": {
+     "max": 80
+    }
+   }
   }
  },
  "object": {
