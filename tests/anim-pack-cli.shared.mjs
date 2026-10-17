@@ -1196,12 +1196,11 @@ test('a scaffold keeps the repo-wide tests GREEN (region-framework: structural c
   cpSync(join(ROOT, 'tools', 'lib', 'raster-assets.mjs'), join(root, 'tools', 'lib', 'raster-assets.mjs'));   // build.mjs embeds the raster objects' images through it
   for (const f of ['region-framework.test.mjs', 'anim-packs.test.mjs']) cpSync(join(ROOT, 'tests', f), join(root, 'tests', f));
   assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
-  const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
-  const SKIP_REPO_OWN = '--test-skip-pattern=quality gate: pack|the core pack covers|moments .wave 4.|rich local scenes|validation names|the daily look|season and intensity|look prefs|a second pack|almanac:|special days win|UK county table|UK packs:|South East and London|Hampshire replacement|Yateley live skies';
+  const env = { ...process.env, ANIM_PACKS_ONLY_REGISTRATION: '1' }; delete env.NODE_TEST_CONTEXT;
   // anim-packs.test.mjs runs here for its registration test (a scaffold's empty pack file may register nothing until complete: true). Its
   // per-pack quality gates and the UK place tests are the repo's own run's business: in this temp checkout (no place packs) they would only
-  // draw every scene again, twice. (A skip pattern: a lookahead in --test-name-pattern does not exclude on Node 24, so those tests ran and failed here.)
-  const test = () => spawnSync(process.execPath, ['--test', '--test-reporter=tap', SKIP_REPO_OWN, 'tests/region-framework.test.mjs', 'tests/anim-packs.test.mjs'], { cwd: root, encoding: 'utf8', env });
+  // draw every scene again, twice. (An env var read by anim-packs.test.mjs, not a name pattern: a lookahead in --test-name-pattern did not exclude on Node 24 and --test-skip-pattern does not exist before Node 22.)
+  const test = () => spawnSync(process.execPath, ['--test', '--test-reporter=tap', 'tests/region-framework.test.mjs', 'tests/anim-packs.test.mjs'], { cwd: root, encoding: 'utf8', env });
   const wip = test();
   assert.equal(wip.status, 0, 'the scaffold is green: ' + wip.stdout.split('\n').filter(l => /^not ok|^# (pass|fail)/.test(l)).join('\n'));
   assert.match(wip.stdout, /# fail 0/); assert.match(wip.stdout, /# todo 1/);

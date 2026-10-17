@@ -3,12 +3,17 @@
 // item renders (normal and reduced) without throwing, well-formed trusted markup, nothing
 // fetched or scripted, size budgets, a reduced-motion variant, no near-duplicates in a slot.
 // Then the daily look (seeded, stable within a day) and the look prefs. Synthetic data only.
-import { test } from 'node:test';
+import { test as nodeTest } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { animRegistryFiles, packSourceFiles } from '../tools/lib/anim-sources.mjs';
+// ANIM_PACKS_ONLY_REGISTRATION=1 (set by tests/anim-pack-cli.shared.mjs, which runs this file inside a temp checkout of a scaffolded region)
+// keeps only the registration test: the per-pack quality gates and the place tests belong to the repo's own run, and in that checkout (no place
+// packs) they would only draw every scene again. (A skip pattern would do it, but --test-skip-pattern does not exist before Node 22.)
+const ONLY_REGISTRATION = process.env.ANIM_PACKS_ONLY_REGISTRATION === '1';
+const test = (name, ...rest) => { if (!ONLY_REGISTRATION || /^there is at least the core pack/.test(name)) nodeTest(name, ...rest); };
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'src', 'app');

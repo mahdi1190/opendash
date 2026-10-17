@@ -3,7 +3,7 @@
 # Node.js version. No npm install: the app has zero dependencies.
 #
 # Time budget (16 Oct 2026): the suite is ~270 files and about an hour of CPU in one process (the scene, animation and world-engine files draw
-# whole scenes), so each cell runs it in THREE SHARDS (node --test --test-shard=i/3, available from Node 20.5) in parallel jobs of about
+# whole scenes), so each cell runs it in FIVE SHARDS (node --test --test-shard=i/5, available from Node 20.5) in parallel jobs of about
 # ten minutes. The syntax check and the privacy scan run once per cell, in shard 1. The browser parts of the world tests are skipped
 # unless WORLD_BROWSER=1 (run them locally: WORLD_BROWSER=1 node --test tests/world-acceptance.test.mjs).
 name: CI
@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   test:
-    name: Node ${{ matrix.node }} on ${{ matrix.os }} (shard ${{ matrix.shard }}/3)
+    name: Node ${{ matrix.node }} on ${{ matrix.os }} (shard ${{ matrix.shard }}/5)
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     strategy:
@@ -31,7 +31,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         node: [20, 22, 24]
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5]
     env:
       # Runners have no Claude Code CLI. Point at a file that does not exist so
       # nothing ever finds one by accident: tests that need it must skip.
@@ -54,9 +54,9 @@ jobs:
 
       # bash expands the glob on every OS, so Node 20 (no glob support in
       # --test) runs exactly the same files as Node 22 and 24.
-      - name: Tests (node --test --test-shard=${{ matrix.shard }}/3 tests/*.test.mjs)
+      - name: Tests (node --test --test-shard=${{ matrix.shard }}/5 tests/*.test.mjs)
         shell: bash
-        run: node --test --test-shard=${{ matrix.shard }}/3 tests/*.test.mjs
+        run: node --test --test-shard=${{ matrix.shard }}/5 tests/*.test.mjs
 
       - name: Privacy scan (generic rules)
         if: matrix.shard == 1
