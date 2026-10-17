@@ -1,7 +1,12 @@
+// SHARDED (16 Oct): this file holds ~50 tests that each build a temp checkout and load the whole animation registry, about 22 minutes in one process
+// (and a process that sometimes died on Windows with an access violation, SCENE_ENGINE.md). The five tests/anim-pack-cli-N.test.mjs wrappers set
+// ANIM_CLI_SHARD=N and import this file, so node --test runs the five shards in parallel processes, about four minutes each. SHARD_OF gives the
+// shard of each test by its order in this file (balanced by measured time); a new test must be added to it (the check at the bottom says so).
+// Without ANIM_CLI_SHARD every test runs: node --test tests/anim-pack-cli.shared.mjs.
 // The region workflow commands of tools/anim-pack.mjs: `status` (coverage of a region), `brief` (ready-to-paste agent briefs from
 // tools/lib/anim-templates/*.md) and `new` (scaffold a region), their shared helpers (tools/lib/anim-region.mjs) and the generated
 // coverage test. The scaffold is made in a temp copy of the animation sources (--root), never in the repo. Synthetic data only.
-import { test, after } from 'node:test';
+import { test as nodeTest, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, cpSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
@@ -21,12 +26,19 @@ import { loadThresholds, loadReference, itemNames, keyFilter, measureRegistry, s
 import { TARGETS, allowedTagList, measure } from '../tools/lib/anim-quality.mjs';
 import { CROPS } from '../tools/lib/anim-render.mjs';
 
+const SHARD_OF = [2,0,1,2,0,2,0,4,2,3,1,1,3,4,0,2,4,1,2,2,1,4,0,2,1,2,1,1,1,2,3,3,4,3,2,3,4,0,4,1,1,0,3,0,2,2,1,1,2,3,1,2];
+const SHARD = process.env.ANIM_CLI_SHARD == null ? null : Number(process.env.ANIM_CLI_SHARD);
+let testCount = 0;
+const test = (name, ...rest) => { const k = SHARD_OF[testCount++]; if (SHARD === null || k === SHARD) nodeTest(name, ...rest); };
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'src', 'app');
 const run = async (argv, extra = {}) => { const out = [], err = []; const code = await main(argv, { out: (s) => out.push(s), err: (s) => err.push(s), ...extra }); return { code, out: out.join('\n'), err: err.join('\n') }; };
 
 /** The animation sources of the first regions and the fixed pack families: a region added to the repo since (and its packs) is not copied, so these tests never depend on it. */
-const isBase = (f) => !/^71-anim-region-/.test(f) && (!/^72-anim-pack-/.test(f) || /^72-anim-pack-(core|moments|rewards|seasons|sky|texas|world|uk|us|asia|proof)[-.]/.test(f));
+// (the place packs added since 9 Oct - the Hampshire, Manchester, Sheffield and Reepham views and the proofs: composed scenes of 1 to 5 s
+// each to draw - are not copied either: nothing here uses them, and every lint, status and nested test run of a temp checkout
+// drew all of them. The two legacy UK packs stay: the registry's own tests read them.)
+const isBase = (f) => !/^71-anim-region-/.test(f) && !/^(79-world-|78-scene-x-)/.test(f) && (!/^72-anim-pack-/.test(f) || /^72-anim-pack-(core|moments|rewards|seasons|sky|texas|world|us|asia)[-.]/.test(f) || /^72-anim-pack-uk-south-(west|east)(-d+)?.js$/.test(f));
 /** A temp checkout with just the animation sources: what the registry load, the lint and the generated test need. */
 const temps = [];
 function makeRoot() {
@@ -1184,7 +1196,10 @@ test('a scaffold keeps the repo-wide tests GREEN (region-framework: structural c
   cpSync(join(ROOT, 'tools', 'lib', 'raster-assets.mjs'), join(root, 'tools', 'lib', 'raster-assets.mjs'));   // build.mjs embeds the raster objects' images through it
   for (const f of ['region-framework.test.mjs', 'anim-packs.test.mjs']) cpSync(join(ROOT, 'tests', f), join(root, 'tests', f));
   assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
-  const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
+  const env = { ...process.env, ANIM_PACKS_ONLY_REGISTRATION: '1' }; delete env.NODE_TEST_CONTEXT;
+  // anim-packs.test.mjs runs here for its registration test (a scaffold's empty pack file may register nothing until complete: true). Its
+  // per-pack quality gates and the UK place tests are the repo's own run's business: in this temp checkout (no place packs) they would only
+  // draw every scene again, twice. (An env var read by anim-packs.test.mjs, not a name pattern: a lookahead in --test-name-pattern did not exclude on Node 24 and --test-skip-pattern does not exist before Node 22.)
   const test = () => spawnSync(process.execPath, ['--test', '--test-reporter=tap', 'tests/region-framework.test.mjs', 'tests/anim-packs.test.mjs'], { cwd: root, encoding: 'utf8', env });
   const wip = test();
   assert.equal(wip.status, 0, 'the scaffold is green: ' + wip.stdout.split('\n').filter(l => /^not ok|^# (pass|fail)/.test(l)).join('\n'));
@@ -1418,3 +1433,5 @@ test('the skill\'s commands for the look gate are real: sheet --still --sizes --
   assert.match(REF('rubric'), /The 28 px test is the `--sizes` strip/); assert.match(REF('rubric'), /How to judge a contact sheet or a strip/); assert.match(REF('kit-reference'), /`sheet --still`/);
   const brief = readFileSync(join(TEMPLATES_DIR, 'element-brief.md'), 'utf8'); assert.match(brief, /--still --sizes --contact --out \.anim-ref\/<name>/); assert.match(brief, /The 28 px test is the `--sizes` strip/);
 });
+
+if (testCount !== SHARD_OF.length) throw new Error('anim-pack-cli.shared.mjs: ' + testCount + ' tests but SHARD_OF has ' + SHARD_OF.length + ': give the new test a shard (0-4) in SHARD_OF, by its position in the file');

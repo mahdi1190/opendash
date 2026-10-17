@@ -22,7 +22,7 @@
     base: { far: ['#8a9cb0', '#a8b8c8'], quay: ['#8a8e92', '#6a7076'], pave: ['#bdb6aa', '#a49e92', '#8a8478'], rail: ['#3a4048', '#5a626a'],
       bed: ['#4a5a36', '#3a4a2a'], water: ['#9ab0ba', '#5e7e8c', '#34566a'] },
     spring: { bed: ['#4e6236', '#3c4e2a'] },
-    autumn: { bed: ['#8e7038', '#664e28'], pave: ['#bca882', '#a08c6a', '#867458'], far: ['#9a9aa4', '#b4b2b8'] },
+    autumn: { bed: ['#9c7434', '#704f24'], pave: ['#bca882', '#a08c6a', '#867458'], far: ['#9a9aa4', '#b4b2b8'] },
     winter: { bed: ['#7a7258', '#5e5844'], pave: ['#aaa69e', '#908c84', '#76726a'] },
   };
   // the fog: a soft band (fully clear at its edges), in the colour of sunlit fog

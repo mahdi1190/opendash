@@ -650,7 +650,14 @@ function _wlfSpawnPass(life, dt) {
     var pop = life.pops[p];
     if (pop.rate) {
       pop.acc += pop.rate * dt;
-      while (pop.acc >= 1) { pop.acc -= 1; _wlfArrive(life, pop, _wlfPickEntry(pop)); }
+      // a RARE arrival (under one a minute: a visitor every few minutes) that finds the spawn cells held by someone still there stays due and
+      // tries again each tick for up to 20 s, as a scheduled one does, instead of silently missing its turn because a walker stood at the door;
+      // a busy stream just thins
+      while (pop.acc >= 1) {
+        life.heldArrival = false;
+        if (!_wlfArrive(life, pop, _wlfPickEntry(pop)) && life.heldArrival && pop.rate < 1 / 60 && (pop.late = (pop.late || 0) + dt) < 20) break;
+        pop.late = 0; pop.acc -= 1;
+      }
     }
     if (pop.period) {
       // rail entries run on their timetable; everything else departs on the schedule's beat
@@ -725,7 +732,7 @@ function _wlfArrive(life, pop, entry, o) {
     var c = pool[Math.floor(pop.rng() * pool.length)];
     if (!_wlfCrowded(life, b.layer, c.x, c.z, Math.max(b.r * 3 + 0.6, b.kind === 'walker' || b.kind === 'runner' ? 3 : 0))) sp = c;
   }
-  if (!sp) return null;
+  if (!sp) { life.heldArrival = true; return null; }
   var id = 'p' + pop.idx + '-' + (pop.ord++);
   var a = _wlfNewAgent(life, pop, entry, sp.x, sp.z, id, { edge: sp.edge, state: _wlfStateAlias(b, spec.state) });
   if (b.kind === 'boat') a.r = _wlfBoatR(entry);

@@ -74,7 +74,8 @@
         }
         if (winter) {
           // bare crowns: a see-through haze of twigs over a few branch lines
-          body.push({ s: '@twig.1', w: 1, cap: 'round', op: 0.6, d: sceneDraw.twigHaze(rnd, cx, cy, rx, ry, 14) });
+          const hz = sceneDraw.twigHazeLod(rnd, cx, cy, rx, ry, 14);
+          body.push({ s: '@twig.1', w: 1, cap: 'round', op: 0.6, d: hz.core }, { s: '@twig.1', w: 1, cap: 'round', op: 0.6, d: hz.fine, detail: true });
           body.push({ s: '@twig.0', w: 2, cap: 'round', d: `M${cx} ${f1(cy + ry * 0.6)}L${f1(cx - rx * 0.4)} ${f1(cy - ry * 0.3)}M${cx} ${f1(cy + ry * 0.4)}L${f1(cx + rx * 0.45)} ${f1(cy - ry * 0.2)}M${cx} ${f1(cy + ry * 0.5)}V${f1(cy - ry * 0.5)}`, op: 0.8 });
           return;
         }

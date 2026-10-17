@@ -79,6 +79,20 @@ function sceneObjDefine(def) {
   return def;
 }
 function sceneObj(id) { return _scObjs.get(id) || null; }
+/**
+ * Whether an object has a hook of this kind (walk, paddle, flap, turn ...) for an archetype's pick filter: its def.anim, or for a
+ * PERSON the hooks its build() returns in $anim (the walking people have swinging arms and directional views, so their hooks are
+ * per variant). An archetype that read def.anim alone dropped person.walker and person.jogger from every walkers slot once their
+ * hooks moved to $anim (CI 15 Oct: the compiled v1 scenes changed). Other categories keep reading def.anim only, as before: a
+ * kit adapter's $anim never made a bird or a boat eligible, and it must not now (the same scenes, byte for byte).
+ */
+function sceneObjHasHook(id, kind) {
+  const d = _scObjs.get(id);
+  if (!d) return false;
+  if (d.anim) return !!d.anim[kind];
+  if (d.category !== 'person') return false;
+  try { const sh = sceneObjShapes(id, 0, 'summer'); return !!(sh && sh.anim.some(h => h.kind === kind)); } catch (e) { return false; }
+}
 function sceneObjs() { return [..._scObjs.values()]; }
 function sceneObjDups() { return _scObjDups.slice(); }
 function _scSlot(def, season, slot) {
@@ -719,6 +733,16 @@ function sceneArchetypeCheck(id, row) {
 }
 const _scKitPickMemo = new Map();
 /**
+ * Objects drawn for ONE place's views are named with that place's prefix (<category>.<prefix>-<name>). A kit pick fills any
+ * scene of the kit, so such an object must be named by the scene that wants it (weight 0 by default, as the docs say for
+ * "only a scene that names it gets it"): without this a Blackbushe hangar, a Sheffield tram or the Sheffield hills joined the
+ * far-building and vehicle pools of every temperate or urban scene (CI 15 Oct: an Armenian plain with an airfield hangar,
+ * the New York skyline with the Sheffield hills, +130 KB on a tile). A def that sets its own weight keeps it.
+ */
+// (the older proof- and wp- objects are not listed: the byte-identical v1 baselines of tests/fixtures were made with them in the pools)
+const SCENE_PLACE_PREFIXES = Object.freeze(['yc', 'yg', 'fpv', 'wyv', 'canal-view', 'mcf', 'mcr', 'mqn', 'shc', 'shp', 'shk']);
+const _SC_PLACE_ID_RE = new RegExp('^[a-z]+[.](?:' + SCENE_PLACE_PREFIXES.join('|') + ')-');
+/**
  * { objectId: weight } of every object with one of the kit:<k> tags, the role:<role> tag and every tag in o.tags (not o.exclude),
  * keyed in id order (never registration order: library files load by file name). weight defaults to 1; weight 0 excludes. Empty-safe.
  */
@@ -729,7 +753,7 @@ function sceneKitPick(kits, role, o) {
   if (_scKitPickMemo.has(key)) return Object.assign({}, _scKitPickMemo.get(key));
   const out = {};
   for (const d of [..._scObjs.values()].sort((a, b) => (a.id < b.id ? -1 : 1))) {
-    const t = d.tags || [], w = d.weight == null ? 1 : d.weight;
+    const t = d.tags || [], w = d.weight == null ? (_SC_PLACE_ID_RE.test(d.id) ? 0 : 1) : d.weight;
     if (!(w > 0) || !t.includes('role:' + role) || !ks.some(k => t.includes('kit:' + k)) || !tags.every(x => t.includes(x))) continue;
     if ((Array.isArray(ex) ? ex : [ex]).some(x => x === d.id || t.includes(x))) continue;
     out[d.id] = w;

@@ -71,7 +71,9 @@
     // the marsh (79-world-4marsh.js, expanded by the engine into surfaces, rails and plants): from the far bank of the stream on,
     // the walk goes through a reed bed to a platform at the reed edge. fen-water joins the pond; the islands, the spine, the walk
     // (over the carr floor, the 3 m footbridge over the stream, then the reed bed) and the platform come last in the surface list
-    marsh: [{ id: 'fen', walk, width: 1.6, seed: 11, from: 11.4, reach: 9.5, open: 0.5, density: 1, platform: { size: [3.6, 4.4], bench: true } }],
+    // the walk is 2.4 m wide: at 1.6 its rails left the walkers a one-cell lane in the nav grid, cut into pieces (nobody could wander it, a
+    // visitor never got in) and two walkers meeting on it locked head to head
+    marsh: [{ id: 'fen', walk, width: 2.4, seed: 11, from: 11.4, reach: 9.5, open: 0.5, density: 1, platform: { size: [3.6, 4.4], bench: true } }],
     entities: ent,
     // the main line on its low bank along the north shore (OS Explorer 145): a long flat-topped embankment the tracks run along
     ground: { features: [{ id: 'emb', kind: 'embankment', path: [[-420, railZ(-420)], [420, railZ(420)]], width: 30, h: 2.0 }] },

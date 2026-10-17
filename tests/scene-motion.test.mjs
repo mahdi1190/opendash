@@ -24,9 +24,12 @@ const compile = (d) => E.sceneCompile(d, { season: 'summer', lod: 1 });
 test('size classes: the drawn top, the class height (a def real wins), the sink of what floats', () => {
   const m = E.sceneMoverSize('bird.mtest-duck');
   assert.equal(m.size, 'duck'); near(m.h, 0.35, 1e-9); near(m.top, 36, 0.01, 'the head is the top');
-  near(m.sink, 0.3 * 20, 0.01, 'a third of the body sits in the water');
+  // what floats sinks by a share of its body (the water bird 0.3, a boat 0.08: its art already draws its waterline), with the body's
+  // height capped at 40 % of the drawn top (10 Oct, sceneMoverSize: a hull or body taller than that must not sink a floater past
+  // its back): the duck's body is 20 units under a 36-unit top, so 14.4 count; the boat's hull is 40 under a 40-unit top, so 16
+  near(m.sink, 0.3 * Math.min(20, 0.4 * 36), 0.01, 'the body sits in the water: 0.3 of the capped body');
   const b = E.sceneMoverSize('boat.mtest');
-  near(b.h, 1.9, 1e-9, 'its own real height'); near(b.sink, 0.22 * 40, 0.01);
+  near(b.h, 1.9, 1e-9, 'its own real height'); near(b.sink, 0.08 * Math.min(40, 0.4 * 40), 0.01, 'a boat sinks by 0.08 of its capped hull');
   near(E.sceneMoverScale('bird.mtest-duck', 1, 50), 50 * 0.35 / 36, 1e-9);
 });
 

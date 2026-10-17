@@ -74,6 +74,7 @@
     id: 'tree.wyv-snag', category: 'tree', size: [110, 170], box: [-40, -166, 70, 6], variants: 2, seasonal: true, flippable: true,
     palette: {
       base: { wood: ['#6e665c', '#4e483f', '#8e877c', '#2e2a26'], moss: ['#5e6e3a', '#76864a'], wet: '#2a2824' },
+      spring: {}, summer: {}, autumn: {},   // the same wood and moss as the base (the four seasons are declared: the bar's seasons rule)
       winter: { wood: ['#7a746c', '#58524a', '#9a948a', '#34302c'], moss: ['#56604a', '#6a7458'] },
     },
     parts: ['body'], reflect: true,

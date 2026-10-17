@@ -563,8 +563,8 @@
     {
       "rule": "private-term",
       "path": "tests/fixtures/scene-compiled-v1-hashes.json",
-      "line_sha256": "05f04c56b7f574f37e5ff5146ef44f11d279b52b7430d054f3638b836cd49390",
-      "why": "reviewed ordinary word"
+      "line_sha256": "214a4970ea3bba066d28f2c5cad0d0c29751f4bd366702948c0f7e8a1c57ddda",
+      "why": "hex digits of content hashes, which can spell a short name by chance (reviewed; refresh this pin with the fixture)"
     },
     {
       "rule": "private-term",
@@ -2461,6 +2461,24 @@
       "path": "src/app/79-world-0kb.js",
       "line_sha256": "045e8c0c7af30f3654065078a6c35fc3abb234090e839e7762b4ce409bee4ca5",
       "why": "ordinary colour words in the livery names of the main-line train (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/anim-pack-cli.shared.mjs",
+      "line_sha256": "7de8834fa088153a46aba1e1c6d7d0fd239887765fe428b3cb73d626be76989f",
+      "why": "an ordinary English word in a test comment or pattern (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/anim-pack-cli.shared.mjs",
+      "line_sha256": "27f9164821f70c5bc357f64e58fbed1a622ba52330ad4d61593596b7c6c2818b",
+      "why": "an ordinary English word in a test comment or pattern (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/anim-pack-cli.shared.mjs",
+      "line_sha256": "184a20e61f0e4e8688780c5d2db8bccb1672ecd459a8de43e7e8ef196a590d1a",
+      "why": "an ordinary English word in a test comment or pattern (reviewed)"
     }
   ]
 }

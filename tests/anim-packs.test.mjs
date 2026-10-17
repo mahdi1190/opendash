@@ -3,12 +3,17 @@
 // item renders (normal and reduced) without throwing, well-formed trusted markup, nothing
 // fetched or scripted, size budgets, a reduced-motion variant, no near-duplicates in a slot.
 // Then the daily look (seeded, stable within a day) and the look prefs. Synthetic data only.
-import { test } from 'node:test';
+import { test as nodeTest } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { animRegistryFiles, packSourceFiles } from '../tools/lib/anim-sources.mjs';
+// ANIM_PACKS_ONLY_REGISTRATION=1 (set by tests/anim-pack-cli.shared.mjs, which runs this file inside a temp checkout of a scaffolded region)
+// keeps only the registration test: the per-pack quality gates and the place tests belong to the repo's own run, and in that checkout (no place
+// packs) they would only draw every scene again. (A skip pattern would do it, but --test-skip-pattern does not exist before Node 22.)
+const ONLY_REGISTRATION = process.env.ANIM_PACKS_ONLY_REGISTRATION === '1';
+const test = (name, ...rest) => { if (!ONLY_REGISTRATION || /^there is at least the core pack/.test(name)) nodeTest(name, ...rest); };
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'src', 'app');
@@ -93,8 +98,11 @@ for (const pack of R.animPacks()) {
       }
       // near-duplicate check: two items of one slot may not draw the same thing
       const key = it.slot + '|' + canonicalArt(it.svg({}));
-      assert.ok(!seen.has(key), `${it.ref} draws the same as ${seen.get(key)}`);
-      seen.set(key, it.ref);
+      // a PREBAKED copy (item.prebaked: '<pack>/<id>', gallery only, 78-scene-player.js) is the same scene by design, shown through its
+      // build-time images: it must draw exactly what its source draws, and nothing else may repeat
+      if (it.prebaked && seen.get(key) === it.prebaked) assert.equal(it.when('2026-08-15', { county: it.county }), false, `${it.ref}: a prebaked copy never plays in the rotation`);
+      else assert.ok(!seen.has(key), `${it.ref} draws the same as ${seen.get(key)}`);
+      if (!seen.has(key)) seen.set(key, it.ref);
     }
     const budget = R.animPackMaxBytes(pack.items);   // shared allowance + each full or rich scene's own tile budget
     assert.ok(total <= budget, `pack ${pack.id}: ${total} bytes > ${budget}`);
@@ -403,7 +411,9 @@ test('UK packs: county-only, one signature, bounded baseline and meaningful plac
   for (const p of uk) {
     // A composed area pack (uk-area-<area>: one town or district, scene-engine scenes) is named after its area, not a
     // region; its items keep the same county fields and the same county-only rule as the region packs.
-    const area = p.id.startsWith('uk-area-') || p.id.startsWith('proof-'), region = p.id.slice(3);
+    // The place packs added since (uk-north-manchester-castlefield, uk-north-sheffield-parks, uk-east-reepham ... named <region>-<place>)
+    // are made only of composed place views, so a pack whose every item is a composed place view is an area pack too.
+    const area = p.id.startsWith('uk-area-') || p.id.startsWith('proof-') || (p.items.length > 0 && p.items.every(it => it.composed && it.ukPlace)), region = p.id.slice(3);
     if (!area) assert.ok(R.UK_REGIONS.some(r => r.id === region), `${p.id}: a UK region`);
     // The South East and London share one gallery pack, while each scene
     // keeps its authoritative county region. No county-only check is relaxed.
@@ -415,12 +425,17 @@ test('UK packs: county-only, one signature, bounded baseline and meaningful plac
       assert.ok(regions.includes(c.region), `${it.ref}: county in its pack regions`);
       assert.equal(it.ukRegion, c.region);
       assert.deepEqual(it.region, [c.nation], `${it.ref}: nation`);
-      assert.ok(['signature', 'landmark', 'landscape', 'tradition', 'food', 'sport', 'heritage'].includes(it.ukKind), `${it.ref}: kind`);
+      assert.ok(['signature', 'landmark', 'landscape', 'tradition', 'food', 'sport', 'heritage', 'city'].includes(it.ukKind), `${it.ref}: kind`);   // 'city': the Manchester and Sheffield place views
       assert.ok(it.tags.includes(it.ukKind) && it.tags.includes('uk'));
       assert.equal(typeof it.when, 'function', `${it.ref}: plays only in its county`);
       assert.equal(it.when('2026-08-15', {}), false, `${it.ref}: off without a county (the opt-in)`);
       assert.equal(it.when('2026-08-15', { county: 'kent' === it.county ? 'devon' : 'kent' }), false, `${it.ref}: not elsewhere`);
-      assert.ok((it.priority || 1) < 2, `${it.ref}: festivals still win`);
+      if ((it.priority || 1) < 2) assert.ok(true);
+      else {   // priority 2 is a DATED tradition that meets the festivals (the Albert Square Christmas market, mid-November to 22 December)
+        assert.equal(it.when('2026-08-15', { county: it.county }), false, `${it.ref}: a priority-2 place view is dated: off in August`);
+        const days = []; for (let d = 1; d <= 31; d++) days.push('2026-12-' + String(d).padStart(2, '0'));
+        assert.ok(days.some(d => it.when(d, { county: it.county })), `${it.ref}: and on in its window`);
+      }
       per.set(it.county, (per.get(it.county) || []).concat(it));
     }
     for (const [county, list] of per) {
@@ -451,8 +466,11 @@ test('UK packs: county-only, one signature, bounded baseline and meaningful plac
   // Hampshire (the South East's first county): a rich rotation, each with its own place line. Its baseline scenes were
   // rebuilt as composed area packs (uk-area-*); the region pack keeps the researched place views it has no rebuild for.
   const hants = R.animItems({}).filter(i => i.county === 'hampshire');
-  assert.deepEqual(hants.filter(i => i.composed).map(i => i.pack).sort(), ['proof-fleet-pond', 'proof-wyndhams-pool', 'proof-yateley-green'], 'v2.11 replaces the retired area inventory with three hand-composed views');
-  assert.equal(signatures.has('hampshire'), false, 'the three replacement views rotate without a special signature');
+  // v2.11 replaced the retired area inventory with three hand-composed proof views; since then the four-view sets of each place
+  // (Fleet Pond, the canal, Wyndham's Pool, Yateley Common and Green: pack uk-south-east) and the world engine's gallery-only
+  // previews (world-preview) joined them. None of them is a signature opening.
+  assert.deepEqual([...new Set(hants.filter(i => i.composed).map(i => i.pack))].sort(), ['proof-fleet-pond', 'proof-wyndhams-pool', 'proof-yateley-green', 'uk-south-east', 'world-preview']);
+  assert.equal(signatures.has('hampshire'), false, 'the replacement views rotate without a special signature');
   for (const i of hants) assert.ok(typeof i.site === 'string' && i.site && !i.site.includes('Hampshire'), `${i.ref}: a site line`);
   for (const i of hants) assert.equal(i.full, true, `${i.ref}: a full-viewport scene (the opening plays it edge to edge)`);
   // two renders never share gradient ids (a scene can show twice on a page: the gallery and Home)
@@ -499,7 +517,8 @@ test('South East and London: complete county rotations, full framing, local ids 
 
 
 test('Hampshire replacement views follow every calendar season and ignore retired saved refs', () => {
-  const scenes = R.animItems({}).filter(i => i.pack.startsWith('proof-'));
+  // the three proof views (a PREBAKED gallery copy of one of them, item.prebaked, is the same scene and not a fourth view)
+  const scenes = R.animItems({}).filter(i => i.pack.startsWith('proof-') && !i.prebaked);
   assert.equal(scenes.length, 3);
   assert.deepEqual(new Set(scenes.map(i => i.ukPlace)), new Set(['fleet-pond', 'wyndhams-pool', 'yateley-green']));
   for (const it of scenes) {
@@ -537,7 +556,7 @@ test('Yateley live skies: astronomical daylight, local timezone and lunar phase 
   assert.equal(R.almSceneLight(0,lat,lon,'bad-zone'),null);
   assert.notEqual(R.almMoonDiscPath(.25,29),R.almMoonDiscPath(.75,29),'waxing and waning illuminate opposite sides');
   // the composed Yateley views (uk-area-yateley) take the live sky; one view of each place is enough here
-  const lives=R.animItems({}).filter(i=>i.pack.startsWith('proof-')&&i.liveSky);
+  const lives=R.animItems({}).filter(i=>i.pack.startsWith('proof-')&&!i.prebaked&&i.liveSky);
   assert.equal(lives.length,3,'every current Hampshire proof view has the live sky');
   for(const it of [...new Map(lives.map(i=>[i.ukPlace,i])).values()]) {
     for(const sky of [summer,winter,dawn,dusk,night]) {

@@ -34,7 +34,7 @@ function sceneArchTempleMountain(p, u) {
   const pick = (role, keep, tags) => { const w = natKits.length ? sceneKitPick(natKits, role, { tags }) : u.kit(role, tags); if (keep) for (const id of Object.keys(w)) if (!keep(id)) delete w[id]; return u.mix(role, w); };
   const any = w => Object.keys(w).length > 0;
   const sOf = (id, h) => { const d = sceneObj(id); return d && d.size ? Math.round(h / d.size[1] * 100) / 100 : 1; };
-  const anim = (id, k) => { const d = sceneObj(id); return !!(d && d.anim && d.anim[k]); };
+  const anim = (id, k) => sceneObjHasHook(id, k);
   const tagged = (id, t) => ((sceneObj(id) || {}).tags || []).includes(t);
   // slot picks (8.6): seeded by the scene id and the slot name, never by library order
   const slot = u.slot;

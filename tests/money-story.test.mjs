@@ -13,6 +13,7 @@ import { request, createServer } from 'node:http';
 import { MBM, MSM, storyFor, storyPrompt, aiStory, STORY_SCHEMA, groupsFor } from '../lib/finance/money-story.mjs';
 import { loadFinanceView } from '../tools/finance-numbers.mjs';
 import { buildFakeData } from '../tools/make-fake-data.mjs';
+import { todayIn } from '../lib/finance/glance.mjs';
 
 const { dnum, diso } = MBM.util;
 const fmt = MBM.makeFmt('GBP', 'en-GB');
@@ -285,7 +286,10 @@ test('GET /api/finance/story: the template at once, Claude only when asked, cach
   const r = await get(q);
   assert.equal(r.status, 200, r.text);
   assert.equal(r.json.ai.state, 'missing'); assert.equal(aiCalls.length, 0);
-  const { S, template } = storyFor(synth(), SEP);
+  // the server moves analysis.today up to ITS day (todayIn of the configured zone; the process's own day here), so the page's key and
+  // anchor are the real day's: the expected story uses that day too (before 15 Oct it compared with the data's own 14 Oct)
+  const day = todayIn(null), base = synth();
+  const { S, template } = storyFor({ ...base, today: base.today < day ? day : base.today }, SEP);
   assert.equal(r.json.key, S.key); assert.deepEqual(r.json.template, template); assert.equal(r.json.start, '2026-09-01');
   assert.equal((await get(q, { 'Sec-Fetch-Site': 'cross-site' })).status, 403, 'cross-site requests are refused');
   assert.equal((await get('/api/finance/story?period=year')).status, 400);
