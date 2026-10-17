@@ -1,6 +1,11 @@
 # CI: on every push and pull request, check the build, run the whole test
 # suite and the privacy scan on Linux, Windows and macOS with each supported
 # Node.js version. No npm install: the app has zero dependencies.
+#
+# Time budget (16 Oct 2026): the suite is ~270 files and about an hour of CPU in one process (the scene, animation and world-engine files draw
+# whole scenes), so each cell runs it in THREE SHARDS (node --test --test-shard=i/3, available from Node 20.5) in parallel jobs of about
+# ten minutes. The syntax check and the privacy scan run once per cell, in shard 1. The browser parts of the world tests are skipped
+# unless WORLD_BROWSER=1 (run them locally: WORLD_BROWSER=1 node --test tests/world-acceptance.test.mjs).
 name: CI
 
 on:
@@ -18,14 +23,15 @@ concurrency:
 
 jobs:
   test:
-    name: Node ${{ matrix.node }} on ${{ matrix.os }}
+    name: Node ${{ matrix.node }} on ${{ matrix.os }} (shard ${{ matrix.shard }}/3)
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         node: [20, 22, 24]
+        shard: [1, 2, 3]
     env:
       # Runners have no Claude Code CLI. Point at a file that does not exist so
       # nothing ever finds one by accident: tests that need it must skip.
@@ -40,6 +46,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Syntax check (node build.mjs --syntax)
+        if: matrix.shard == 1
         run: node build.mjs --syntax
 
       - name: Build index.html (node build.mjs)
@@ -47,20 +54,24 @@ jobs:
 
       # bash expands the glob on every OS, so Node 20 (no glob support in
       # --test) runs exactly the same files as Node 22 and 24.
-      - name: Tests (node --test tests/*.test.mjs)
+      - name: Tests (node --test --test-shard=${{ matrix.shard }}/3 tests/*.test.mjs)
         shell: bash
-        run: node --test tests/*.test.mjs
+        run: node --test --test-shard=${{ matrix.shard }}/3 tests/*.test.mjs
 
       - name: Privacy scan (generic rules)
+        if: matrix.shard == 1
         run: node tools/privacy-scan.mjs --no-terms
 
-  # The same suite with the machine's clock in other time zones: ahead of
-  # UTC, behind it, a half-hour zone and the +14 date line. The DST weeks
-  # (UK 25 Oct, US 1 Nov) are covered inside tests/clock.test.mjs.
+  # The suite with the machine's clock in other time zones: ahead of UTC,
+  # behind it, a half-hour zone and the +14 date line. The DST weeks (UK 25
+  # Oct, US 1 Nov) are covered inside tests/clock.test.mjs. The scene, world
+  # and animation-pack files draw from fixed dates and seeds and never read the
+  # machine's zone, so they are left to the main job (they are most of the
+  # run time): this job runs everything else.
   timezones:
     name: Time zone ${{ matrix.tz }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -82,14 +93,16 @@ jobs:
 
       - name: Tests (TZ=${{ matrix.tz }})
         shell: bash
-        run: node --test tests/*.test.mjs
+        run: node --test $(ls tests/*.test.mjs | grep -Ev '^tests/(world-|scene-|anim-pack|anim-quality)')
 
-  # The same suite with no network and no Claude CLI, as on a user's offline
-  # machine. Advisory until every network or Claude test skips cleanly.
+  # The suite with no network and no Claude CLI, as on a user's offline
+  # machine (the scene, world and animation-pack files make no network calls
+  # and are left to the main job). Advisory until every network or Claude test
+  # skips cleanly.
   offline:
     name: Offline (no network, no Claude CLI)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     continue-on-error: true
     env:
       CLAUDE_CLI_PATH: ${{ github.workspace }}/.no-claude-cli/claude
@@ -109,4 +122,4 @@ jobs:
         shell: bash
         run: |
           export NODE_OPTIONS="--import=file://$PWD/tools/release-offline.mjs"
-          node --test tests/*.test.mjs
+          node --test $(ls tests/*.test.mjs | grep -Ev '^tests/(world-|scene-|anim-pack|anim-quality)')
