@@ -722,6 +722,7 @@ function worldHostOrderCheck(world, agents, cam) {
   const zMin = Math.max(0.3, (cam.dMin || 1) * 0.5);
   const proj = { f: cam.f, project: (x, z, y) => { const p = sceneProject(cam, x, Math.max(zMin, z), y); return [p.X, p.Y]; } };
   const chunks = worldChunks(world, null, proj);
-  const ag = (agents || []).map(a => Object.assign({}, a, { static: false, height: a.height || 1.7 }));
+  // (as the frame does, 5frame: an agent on a host's deck is attached to it, so it draws after the host)
+  const ag = (agents || []).map(a => Object.assign({}, a, { static: false, height: a.height || 1.7, attach: a.attach || (a.host ? 'deck:' + a.host : null) }));
   return worldOrderCheck(worldFrameOrder(chunks, ag, proj));
 }
