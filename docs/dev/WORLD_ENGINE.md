@@ -153,7 +153,7 @@ Buildings (Q3): `buildings: [{ id, foot: [[x, z]], storeys | h, roof, style }]`,
 ### 1.5 Terrain (W2)
 
 The ground height `h(x, z)` is defined everywhere in view: the v2 relief grid (`ground.relief`) plus authored features
-`ground.features: [{ kind: 'bank' | 'embankment' | 'cutting', path, width, h }]` compiled into it. A grounded thing stands at `h`,
+`ground.features: [{ kind: 'bank' | 'embankment' | 'cutting' | 'slope', path, width, h }]` compiled into it (a `slope` is a hill street: the ground rises `h` m along its path, level beyond both ends, SCENE_LESSONS AA). A grounded thing stands at `h`,
 a decked thing at its deck, a floater at the water level less its sink, a wader at the water level, a flyer at its altitude.
 Nothing is placed through the ground or floating above it (invariant `floating`).
 

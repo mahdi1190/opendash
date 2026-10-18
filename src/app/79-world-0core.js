@@ -95,7 +95,7 @@ const WORLD_WATER_ALIAS = Object.freeze({ ocean: 'sea', bay: 'sea', stream: 'riv
 const WORLD_WATER_HINTS = Object.freeze(['calm', 'breezy']);
 const WORLD_STEP_KINDS = Object.freeze(['weir', 'lock', 'fall']);
 const WORLD_LINE_KINDS = Object.freeze(['wall', 'fence', 'railing', 'hedge', 'kerb', 'coping']);
-const WORLD_FEATURE_KINDS = Object.freeze(['bank', 'embankment', 'cutting', 'cliff']);
+const WORLD_FEATURE_KINDS = Object.freeze(['bank', 'embankment', 'cutting', 'slope', 'cliff']);
 const WORLD_BACKDROPS = Object.freeze(['heath', 'woodland', 'downs', 'farmland', 'town-low', 'city-victorian', 'city-sheffield-hills', 'city-manchester-towers', 'canal-wooded', 'coast', 'estuary']);
 /** Frame edges: the v3.1 names and the camera-frame letters (their aliases). */
 const WORLD_EDGES = Object.freeze(['left', 'right', 'far', 'near', 'W', 'E', 'N', 'S']);
@@ -700,7 +700,7 @@ function _wcCheck(spec0, repair) {
         const p = `ground.features[${i}]`;
         if (!_wcObjOf(f) || threw(f)) { act(p, 'badType', 'a feature is an object', drop(feats, f)); return; }
         keys(f, _WC_KEYS.feature, p, f.id);
-        if (!WORLD_FEATURE_KINDS.includes(f.kind)) { act(p + '.kind', 'badValue', 'kind is bank, embankment, cutting or cliff', drop(feats, f, f.id)); return; }
+        if (!WORLD_FEATURE_KINDS.includes(f.kind)) { act(p + '.kind', 'badValue', 'kind is bank, embankment, cutting, slope or cliff', drop(feats, f, f.id)); return; }
         // a cliff's plan is a path or an arc (4cliff: the arc becomes its polyline here, before the camera transform maps the points)
         const arcP = f.kind === 'cliff' && !f.path && _wcObjOf(f.arc) && typeof worldCliffArcPath === 'function' ? worldCliffArcPath(f.arc) : null;
         if (arcP && repair) f.path = arcP;
@@ -1307,6 +1307,17 @@ function worldTemplated(specs) {
 
 /* ---------- terrain (W2): ground.features compiled into the relief grid ---------- */
 const _wcReliefMemo = new WeakMap();
+/** A `slope` (a hill street: Elm Hill, Gold Hill, Steep Hill): the ground rises by `h` metres along its path (0 at the first point, `h` at the last, level beyond both ends), across `width` metres, then falls away to 0 over `fade` (default 12 m). The ends run on in a straight line (a hill street does not end in a round hump). */
+function _wcSlopeAt(f, x, z) {
+  const P = f.path, EXT = 600, half = f.width / 2, fade = _wcNum(f.fade) && f.fade > 0 ? f.fade : 12;
+  const dir = (a, b) => { const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; };
+  const d0 = dir(P[0], P[1]), d1 = dir(P[P.length - 2], P[P.length - 1]);
+  const path = [[P[0][0] - d0[0] * EXT, P[0][1] - d0[1] * EXT]].concat(P, [[P[P.length - 1][0] + d1[0] * EXT, P[P.length - 1][1] + d1[1] * EXT]]);
+  const n = _wcLineNear(path, x, z);
+  if (!n || n.d >= half + fade) return 0;
+  const L = _wcPathLen(P) || 1, along = Math.max(0, Math.min(1, (n.s - EXT) / L)), t = n.d <= half ? 1 : 1 - (n.d - half) / fade;
+  return Math.abs(f.h) * along * t * t * (3 - 2 * t);
+}
 function _wcFeatProfile(f, t) {
   const half = f.width / 2; if (t >= half) return 0;
   if (f.kind === 'bank') return 0.5 * (1 + Math.cos(Math.PI * t / half));
@@ -1322,9 +1333,9 @@ function _wcReliefCompile(cs) {
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, segs = 0;
   let cliffs = 0;
   for (const f of feats) {
-    const G = f.kind === 'cliff' ? worldCliffGeom(f) : null, pad = G ? G.w + G.lipW + 12 : f.width / 2 + 4;
+    const G = f.kind === 'cliff' ? worldCliffGeom(f) : null, pad = G ? G.w + G.lipW + 12 : f.width / 2 + 4 + (f.kind === 'slope' ? (_wcNum(f.fade) && f.fade > 0 ? f.fade : 12) : 0);
     segs += G ? G.pts.length - 1 : f.path.length - 1; if (G) cliffs++;
-    for (const p of G ? G.pts : f.path) { x0 = Math.min(x0, p[0] - pad); x1 = Math.max(x1, p[0] + pad); z0 = Math.min(z0, p[1] - pad); z1 = Math.max(z1, p[1] + pad + (G ? 40 : 0)); }
+    for (const p of G ? G.pts : f.path) { x0 = Math.min(x0, p[0] - pad); x1 = Math.max(x1, p[0] + pad); z0 = Math.min(z0, p[1] - pad); z1 = Math.max(z1, p[1] + pad + (G ? 40 : 0) + (f.kind === 'slope' ? 800 : 0)); }   // a slope's plateau runs on: nothing beyond it shows through (the backdrop hides behind the hill's own ground)
   }
   if (base) { x0 = Math.min(x0, base.x[0]); x1 = Math.max(x1, base.x[1]); z0 = Math.min(z0, base.d[0]); z1 = Math.max(z1, base.d[1]); }
   x0 = Math.max(x0, -3000); x1 = Math.min(x1, 3000); z0 = Math.max(0.3, z0); z1 = Math.max(z0 * 1.5, Math.min(z1, 6000));
@@ -1342,6 +1353,7 @@ function _wcReliefCompile(cs) {
       let up = 0, down = 0, cl = 0;
       for (const f of feats) {
         if (f.kind === 'cliff') { cl = Math.max(cl, worldCliffHeight(f, x, d)); continue; }
+        if (f.kind === 'slope') { up = Math.max(up, _wcSlopeAt(f, x, d)); continue; }
         const pr = _wcFeatProfile(f, _wcLineDist(f.path, x, d)); if (!pr) continue; if (f.kind === 'cutting') down = Math.min(down, -Math.abs(f.h) * pr); else up = Math.max(up, Math.abs(f.h) * pr);
       }
       let upc = up;

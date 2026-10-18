@@ -30,6 +30,9 @@ const WORLD_GROUND_LOOKS = Object.freeze({
   setts: Object.freeze({ mat: 'paving', joint: [0.24, 0.16], tone: 0.08, edge: true, cracks: 0, courseEvery: 5 }),
   // an old-town lane (the Shambles): irregular flags in a running bond with a worn central drain; the joints are cut per course (stagger), never a tile grid
   lane: Object.freeze({ mat: 'paving', joint: [0.62, 0.5], tone: 0.1, edge: true, cracks: 0, courseEvery: 4, stagger: true, drain: 0.14 }),
+  // cobbles (Elm Hill, a Cotswold or Cornish lane): rounded stones 0.15 m across laid in rough, staggered rows, each drawn as a stone with its dark joint and a
+  // pale catch of light, near the eye (where one is at least 1 px deep); beyond that the tone patches and the speckle are the paving
+  cobbles: Object.freeze({ mat: 'paving', cobbles: 0.15, specks: 1 / 420, tone: 0.12, cracks: 0 }),
   gravel: Object.freeze({ mat: 'gravel', specks: 1 / 190, ruts: true, fray: true, tone: 0.09, damp: 0.25 }),
   sand: Object.freeze({ mat: 'soil', specks: 1 / 260, ruts: true, fray: true, tone: 0.07, damp: 0.1 }),
   tarmac: Object.freeze({ mat: 'tarmac', tone: 0.05, gutter: true, cracks: 0.06, patches: 0.4, drains: 26 }),
@@ -230,6 +233,53 @@ function _wgdScatter(cam, out, s, look, rnd, scr, W, H, perPx, kind, zMax) {
     }
   }
 }
+const _WGD_COBBLE_TONES = Object.freeze(['#8f887b', '#a09787', '#7f786d', '#aaa292', '#968d7e', '#837b6f', '#9c8f7a', '#74706a']);
+/**
+ * Cobbles along a strip surface: rows across the strip every `size` metres, each stone staggered and jittered, drawn FAR to NEAR so a near stone
+ * covers the edge of the one behind it. Only the stones that read (>= 0.9 px wide and 0.4 px deep: about the first 22 m of a 1.7 m eye) are made;
+ * a stone is its dark joint, the stone itself in one of eight tones (a seeded pick, so the lane never repeats) and, near, a pale catch of light.
+ */
+function _wgdCobbles(cam, out, s, L, rnd, o) {
+  const size = L.cobbles, near = _wgdNear(cam), hw = s.width / 2, path = s.path, cap = Math.max(400, Math.min(8000, (o && o.cobbleCap) || 7700)), W = (o && o.W) || 1600, H = (o && o.H) || 900;
+  let acc = 0, made = 0;
+  const rows = [];
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], c = path[i], dx = c[0] - a[0], dz = c[1] - a[1], Ls = Math.hypot(dx, dz);
+    if (!(Ls > 0)) continue;
+    const t = [dx / Ls, dz / Ls], n = [-t[1], t[0]];
+    for (let u = Math.ceil(acc / size) * size - acc, k = Math.round((acc + u) / size); u < Ls; u += size, k++) {
+      const z = a[1] + t[1] * u;
+      if (z < near || z > 30) continue;
+      rows.push({ k, p: [a[0] + t[0] * u, a[1] + t[1] * u], n, z });
+    }
+    acc += Ls;
+  }
+  // the near rows first, so a capped budget is spent on the stones that read; they are drawn far to near after
+  rows.sort((p, q) => p.z - q.z);
+  const groups = [];
+  for (const row of rows) {
+    if (made >= cap) break;
+    const nj = Math.ceil(s.width / size), ph = (row.k & 1) * 0.5 + (rnd() - 0.5) * 0.3, g = [];
+    for (let j = 0; j <= nj; j++) {
+      const v = -hw + (j + ph) * size + (rnd() - 0.5) * size * 0.35;
+      if (v < -hw - size * 0.3 || v > hw + size * 0.3) continue;
+      const x = row.p[0] + row.n[0] * v + (rnd() - 0.5) * size * 0.3, z = row.p[1] + row.n[1] * v + (rnd() - 0.5) * size * 0.3;
+      if (z < near) continue;
+      const r = size * 0.5 * (0.78 + rnd() * 0.5), q = _wgdP(cam, x, z), rx = cam.f * r / z;
+      if (rx < 0.9) continue;
+      const ry = Math.min(rx, Math.max(0.2, rx * Math.abs(cam.eye - _wgdG(cam, x, z)) / z));
+      if (ry < 0.4 || q[1] - ry > H + 4 || q[0] + rx < -40 || q[0] - rx > W + 40) continue;   // too thin to read, or off the frame: no budget spent on it
+      const X = _wgdR(q[0]), Y = _wgdR(q[1]), tone = _WGD_COBBLE_TONES[Math.floor(rnd() * _WGD_COBBLE_TONES.length)];
+      if (rx < 7) { g.push({ t: 'dot', x: X, y: Y, rx: _wgdR(rx * 1.02), ry: _wgdR(ry * 1.02), a: 0.88, c: tone, mat: 'stone' }); made++; continue; }   // far: the stone alone, the joint is the paving between
+      g.push({ t: 'dot', x: X, y: Y, rx: _wgdR(rx * 1.1), ry: _wgdR(ry * 1.1), a: 0.34, c: 'dark' });
+      g.push({ t: 'dot', x: X, y: Y, rx: _wgdR(rx * 0.9), ry: _wgdR(ry * 0.9), a: 0.92, c: tone, mat: 'stone' });
+      made += 2;
+      if (rx >= 11) { g.push({ t: 'dot', x: _wgdR(q[0] - rx * 0.14), y: _wgdR(q[1] - ry * 0.22), rx: _wgdR(rx * 0.5), ry: _wgdR(ry * 0.42), a: 0.13, c: 'light' }); made++; }
+    }
+    groups.push(g);
+  }
+  for (let i = groups.length - 1; i >= 0; i--) for (const m of groups[i]) out.push(m);
+}
 /** The marks of one surface by its look. */
 function _wgdSurfaceMarks(world, cam, s, look, L, o) {
   const P = _wgdPoly(s), out = [], W = o.W || 1600, H = o.H || 900;
@@ -277,6 +327,7 @@ function _wgdSurfaceMarks(world, cam, s, look, L, o) {
       for (let v = Math.ceil(v0 / dv) * dv; v <= v1 && !lim(out.length); v += dv) _wgdLine(cam, out, at(u0, v), at(u1, v), ax.v, dv, 0.16, 'dark', zMax * 0.4);
     }
   }
+  if (L.cobbles && strip) _wgdCobbles(cam, out, s, L, rnd, Object.assign({ W, H }, o));
   // a flight of steps: a dark riser line then a pale nosing every `treads` metres along the strip, across its width (kept where they read)
   if (L.treads && strip) {
     const path = s.path, hw = s.width / 2, du = L.treads;

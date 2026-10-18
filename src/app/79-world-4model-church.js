@@ -15,7 +15,7 @@ const _WMD_CH_LIVERIES = Object.freeze([
   { name: 'grey-limestone', wall: '#a9a498', quoin: '#c4bfb1', trim: '#cbc6b8', roof: '#6c7176', roofHi: '#83888c', roofMat: 'slate', glass: '#26303a', door: '#3f3a34' },
   { name: 'ironstone', wall: '#a47443', quoin: '#c29c68', trim: '#c9a876', roof: '#6c5e53', roofHi: '#85766a', roofMat: 'slate', glass: '#2a303a', door: '#40342a' },
   { name: 'red-sandstone', wall: '#9d5c47', quoin: '#bc8168', trim: '#c4906f', roof: '#5f6462', roofHi: '#777c78', roofMat: 'slate', glass: '#27303a', door: '#3b2f28' },
-  { name: 'flint', wall: '#7c7e7b', quoin: '#bdb6a3', trim: '#c4bda8', roof: '#8a4a38', roofHi: '#a05c46', roofMat: 'tile', glass: '#252d36', door: '#3d332b' },
+  { name: 'flint', wall: '#6f7274', quoin: '#bdb6a3', trim: '#c4bda8', roof: '#8a4a38', roofHi: '#a05c46', roofMat: 'tile', glass: '#252d36', door: '#3d332b' },
 ]);
 const _WMD_CH_ERAS = Object.freeze(['norman', 'early-english', 'perpendicular']);
 if (typeof sceneObjDefine === 'function' && !(typeof sceneObj === 'function' && sceneObj('structure.parish-church'))) sceneObjDefine({
@@ -79,6 +79,17 @@ function _wmdChCourses(h, W, p, rn, u0, u1, v0, v1, step, hex, skip) {
 /** Mottle: patches of lighter and darker stone (and rarely a lichen stain) so a wall is never one flat colour. */
 function _wmdChMottle(h, W, p, rn, u0, u1, v0, v1, hex, n) {
   const k = p.size;
+  // FLINT: not a mottled ashlar but nodules, knapped dark grey-blue and black with pale cores and chalk-white flecks in wide lime joints (the church of
+  // Norfolk and Suffolk). Small near, so a face is a few dozen of them, never more than 70; far, patches of dark and pale at the contrast of the whole.
+  if (p.livery && p.livery.name === 'flint') {
+    const near = h.px(0.3 * k) >= 2.2, m = Math.min(70, near ? Math.round(n * 2.2) : Math.round(n * 2.6));
+    for (let i = 0; i < m; i++) {
+      const w = (near ? 0.3 + 0.7 * rn() : 0.5 + 1.4 * rn()) * k, hh = (near ? 0.16 + 0.22 * rn() : 0.25 + 0.6 * rn()) * k, u = u0 + rn() * Math.max(0.01, u1 - u0 - w), v = v0 + rn() * Math.max(0.01, v1 - v0 - hh), t = rn();
+      const tone = t < 0.6 ? h.shade(hex, 0.5 + 0.25 * t) : t < 0.92 ? h.shade(hex, 1.05 + 0.6 * (t - 0.6)) : '#d4d0c2';   // dark nodules, grey, the odd chalk-white fleck
+      _wmdChRect(h, W, u, u + w, v, v + hh, tone, 'stone', 'flint', 0.007, { alpha: t > 0.92 ? 0.5 : 0.55 });
+    }
+    return;
+  }
   for (let i = 0; i < n; i++) {
     const w = (0.8 + 2.4 * rn()) * k, hh = (0.4 + 1.1 * rn()) * k, u = u0 + rn() * Math.max(0.01, u1 - u0 - w), v = v0 + rn() * Math.max(0.01, v1 - v0 - hh), t = rn(), lichen = rn() < 0.07;
     _wmdChRect(h, W, u, u + w, v, v + hh, lichen ? '#a7a25a' : h.shade(hex, t < 0.5 ? 0.86 + 0.08 * t : 1.04 + 0.1 * (t - 0.5)), 'stone', 'mottle', 0.007, { alpha: lichen ? 0.3 : 0.38 });
@@ -163,7 +174,7 @@ worldModelDefine('parish-church', {
   build(p, h) {
     const k = p.size, liv = p.livery, A0 = -p.L / 2, A1 = p.L / 2, era = p.era, rn = _wmdChRng((p.seed ^ 0x2f1d) >>> 0);
     const wall = h.aged(liv.wall, 'stone', 0.8), quoin = h.aged(liv.quoin, 'stone', 0.6), trim = h.aged(liv.trim, 'stone', 0.6), glass = liv.glass, roof = h.aged(liv.roof, 'stone', 0.6), rmat = liv.roofMat;
-    const mortar = h.shade(wall, 0.74);
+    const mortar = liv.name === 'flint' ? h.shade(wall, 1.45) : h.shade(wall, 0.74);
     const hasTower = p.crown !== 'none', tl = hasTower ? 6.4 * k : 0, th = 3.5 * k, nh = 3.9 * k, chh = 3.1 * k, aw = 3.3 * k, cl = 7.4 * k;
     const aS = p.aisle !== 'none', aN = p.aisle === 'both', Hn = (aS || aN) ? 8.1 * k : 6.7 * k, Rn = Hn + 2.5 * k, Ha = 3.9 * k, Hc = 5.5 * k, Rc = Hc + 2.1 * k, Ht = 15.2 * k;
     const Ns = A0 + tl, Ne = A1 - cl, sS = aS ? nh + aw : nh, sN = aN ? nh + aw : nh;

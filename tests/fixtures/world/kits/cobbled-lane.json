@@ -1,0 +1,14 @@
+{ "v": 3, "place": {"lat": 52.6314, "lon": 1.2918, "region": "norfolk", "style": "cobbled-lane"},
+  "camera": {"eye": 1.7, "fov": 54, "horizon": 580, "heading": 0},
+  "ground": {"features": [{"kind": "slope", "path": [[0, 0], [0, 26], [1, 50], [3.5, 68], [6, 90]], "width": 360, "h": 7, "fade": 40}]},
+  "surfaces": [
+    {"id": "lane", "kind": "plaza", "path": [[0, -8], [0, 26], [1, 50], [3.5, 68], [6, 90]], "width": 6.6}
+  ],
+  "buildings": [
+    {"id": "west", "along": "lane", "side": "left", "style": "tudor-colourwash", "storeys": [2, 3], "from": 0.5, "to": 88, "gap": -0.55},
+    {"id": "east", "along": "lane", "side": "right", "style": "tudor-colourwash", "storeys": [2, 3], "from": 0.5, "to": 88, "gap": -0.55}
+  ],
+  "life": [
+    {"who": "walkers", "on": "lane", "rate": "5/min", "mix": {"stroll": 0.6, "chat": 0.15, "couple": 0.25}, "edges": ["S", "N"]}
+  ],
+  "seed": 5 }
