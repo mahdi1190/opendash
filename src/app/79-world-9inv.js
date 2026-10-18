@@ -966,7 +966,7 @@ const _WIV_RULES = {
     if (!C.world || !C.cam || typeof worldCoverage !== 'function') return 'na';
     let r = C.track ? C.track.cache.get('bare') : undefined;
     if (r === undefined) {
-      try { r = worldCoverage(C.world, C.cam, { season: C.frame.season || (C.frame.ctx && C.frame.ctx.season) }); } catch (e) { r = null; }
+      try { r = worldCoverage(C.world, C.world.cam || C.cam, { season: C.frame.season || (C.frame.ctx && C.frame.ctx.season) }); } catch (e) { r = null; }
       if (C.track) C.track.cache.set('bare', r);
     }
     if (r && r.ok === false) _wivPush(C, 'bare', null, r.msg || `${Math.round((r.bare || 0) * 100)} % of the frame is bare`);

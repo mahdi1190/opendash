@@ -375,7 +375,9 @@ function worldCoverage(world, cam, o) {
         const g = typeof sceneUnproject === 'function' ? sceneUnproject(cam, X, Y) : (Y > cam.horizon ? { x: (X - cam.x0) * cam.f * cam.eye / (Y - cam.horizon) / cam.f, d: cam.f * cam.eye / (Y - cam.horizon) } : null);
         if (g) {
           const s = _wlSurfAt(world, g.x, g.d);
-          if (s && (_WBD_DRESSED_KINDS.has(s.kind) || lived.has(s.id))) dressed = true;
+          // landscape beyond the fill's reach (260 m): the terrain pass draws it with its own moor and field tones, walls and woods (a valley seen from a hillside)
+          if (cam.relief && g.d > 260 && s && (s.kind === 'field' || s.kind === 'heath' || s.kind === 'grass')) dressed = true;
+          else if (s && (_WBD_DRESSED_KINDS.has(s.kind) || lived.has(s.id))) dressed = true;
           else if (s && openOf(s)) half = true;
           // the far ground beyond the last band is dressed by the bands themselves only where they stand: rows within a
           // pixel of the horizon read as the horizon line, not as bare ground
