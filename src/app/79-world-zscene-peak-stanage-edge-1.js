@@ -20,7 +20,7 @@
     seed: 11, bearing: 0, drop: 300, fall: 1000, floor: 1300, shoulder: 0, noise: 1, up: { grade: 0, run: 0, tail: 0 },
     far: { rise: 400, run: 900 }, end: { at: 3600, rise: 330, run: 1800 },
     fields: { from: 260, to: 2300, u: [-700, 3800], rows: 7, cell: 520, wallsTo: 1150, cross: false },
-    woods: { n: 30, s: [500, 2150], u: [-200, 3600], size: [70, 230], obj: ['tree.far-broad', 'tree.distant', 'tree.far-birch', 'tree.far-broad'], density: 0.0009 },
+    woods: { n: 30, s: [500, 2150], u: [-200, 3600], size: [70, 230], obj: ['tree.far-broad', 'tree.distant', 'tree.far-birch', 'tree.far-broad'], density: 0.0002 },
     hamlet: { at: [1250, 2100], houses: 14, spread: 80, style: 'stone-cottage' },
   };
   const at = (s, u) => [-s, u];
@@ -39,12 +39,18 @@
     surfaces: [
       { id: 'moor', kind: 'heath', poly: [at(-3000, -900), at(-3000, 9000), at(260, 9000), at(260, -900)] },
       // the plateau behind the rim, in two stretches (the dressing is authored here: the engine's fill dresses the screen's rows, and the valley takes them)
-      { id: 'pl-a', kind: 'heath', poly: [[7.5, 3], [14, 3], [48, 40], [7.5, 40]] },
-      { id: 'pl-b', kind: 'heath', poly: [[7.5, 40], [48, 40], [130, 140], [7.5, 140]] },
-      { id: 'pl-c', kind: 'heath', poly: [[7.5, 140], [130, 140], [300, 400], [7.5, 400]] },
+      { id: 'pl-a', kind: 'heath', poly: [[0.6, 3], [4.5, 3], [31, 40], [0.6, 40]] },
+      { id: 'pl-b', kind: 'heath', poly: [[0.6, 40], [31, 40], [102, 140], [0.6, 140]] },
+      { id: 'pl-c', kind: 'heath', poly: [[0.6, 140], [102, 140], [285, 400], [0.6, 400]] },
+      // the slope under the crags down to the intake wall: heather, bracken and fallen blocks (authored: the engine's fill would dress the whole valley side)
+      { id: 'slope', kind: 'heath', poly: [at(2, 20), at(2, 700), at(250, 700), at(250, 20)] },
+      { id: 'slope-n', kind: 'heath', poly: [at(4, 40), at(4, 260), at(110, 260), at(110, 40)] },
+      { id: 'pl-0', kind: 'heath', poly: [[0.6, 3.4], [3.6, 3.4], [6.4, 7.5], [0.6, 7.5]] },
+      { id: 'slope-m', kind: 'heath', poly: [at(20, 150), at(20, 450), at(250, 450), at(250, 150)] },
+      { id: 'slope-nn', kind: 'heath', poly: [at(10, 36), at(10, 90), at(80, 90), at(80, 36)] },
       { id: 'farhill', kind: 'heath', poly: [at(2300, -900), at(2300, 9000), at(5200, 9000), at(5200, -900)] },
       { id: 'path', kind: 'path', path: [at(-4.6, -60), at(-5, 40), at(-5.6, 110)], width: 1.7 },
-      { id: 'path-b', kind: 'path', path: [at(-5.6, 108), at(-6, 160), at(-14, 240), at(-18, 330), at(-9, 420), at(-6, 560), at(-8, 800), at(-8, 1100)], width: 1.7 },
+      { id: 'path-b', kind: 'path', path: [at(-5.6, 108), at(-6, 160), at(-14, 240), at(-18, 330), at(-9, 420), at(-6, 520)], width: 1.7 },
     ],
     lines: [
       // a wall on the plateau coming up to the rim, and the intake wall (the first of the field walls) a little way down the slope
@@ -52,9 +58,15 @@
     ],
     landmarks: [{ id: 'church', obj: 'structure.parish-church', at: at(1250, 2150), facing: 90, src: 'St Michael and All Angels, Hathersage (OS Explorer OL1), the spire above the hamlet', model: { livery: 'grey-limestone', size: 1.15, opts: { crown: 'spire', era: 'perpendicular' } } }],
     entities: [
-      { cluster: 'plant.moor-heather', on: 'pl-a', n: 70, seed: 3, gap: 1.1 }, { cluster: 'plant.bilberry', on: 'pl-a', n: 40, seed: 4, gap: 1.1 }, { cluster: 'plant.grass-long', on: 'pl-a', n: 40, seed: 5, gap: 1.1 }, { cluster: 'plant.bracken', on: 'pl-a', n: 22, seed: 6, gap: 1.1 }, { cluster: 'plant.yc-cotton-grass', on: 'pl-a', n: 9, seed: 7, gap: 1.1 }, { cluster: 'rock.gritstone-block', on: 'pl-a', n: 5, seed: 8, gap: 4 }, { cluster: 'rock.stones', on: 'pl-a', n: 8, seed: 9 },
-      { cluster: 'plant.moor-heather', on: 'pl-b', n: 150, seed: 13, gap: 1.1 }, { cluster: 'plant.bilberry', on: 'pl-b', n: 70, seed: 14, gap: 1.1 }, { cluster: 'plant.bracken', on: 'pl-b', n: 60, seed: 16, gap: 1.1 }, { cluster: 'plant.grass-long', on: 'pl-b', n: 60, seed: 15, gap: 1.1 }, { cluster: 'plant.yc-cotton-grass', on: 'pl-b', n: 14, seed: 17, gap: 1.1 }, { cluster: 'rock.gritstone-block', on: 'pl-b', n: 12, seed: 18, gap: 4 }, { cluster: 'rock.stones', on: 'pl-b', n: 14, seed: 19 },
-      { cluster: 'plant.moor-heather', on: 'pl-c', n: 260, seed: 23, gap: 1.1 }, { cluster: 'plant.bracken', on: 'pl-c', n: 110, seed: 26, gap: 1.1 }, { cluster: 'plant.bilberry', on: 'pl-c', n: 80, seed: 24, gap: 1.1 }, { cluster: 'rock.gritstone-block', on: 'pl-c', n: 22, seed: 28, gap: 4 }, { cluster: 'rock.stones', on: 'pl-c', n: 24, seed: 29 },
+      // the foreground under the lens (the strip a camera 36 m up sees at its feet) and the slope below the rim: authored, the engine's fill is off
+      { cluster: 'plant.moor-heather', on: 'pl-0', n: 40, seed: 51, gap: 0.4 }, { cluster: 'plant.grass-long', on: 'pl-0', n: 22, seed: 52, gap: 0.45 }, { cluster: 'plant.bilberry', on: 'pl-0', n: 16, seed: 53, gap: 0.45 }, { cluster: 'plant.rph-short-grass', on: 'pl-0', n: 12, seed: 54, gap: 0.45 },
+      { cluster: 'plant.moor-heather', on: 'slope-m', n: 70, seed: 57, gap: 3 }, { cluster: 'plant.bracken', on: 'slope-m', n: 26, seed: 58, gap: 5 },
+      { cluster: 'plant.moor-heather', on: 'slope-nn', n: 48, seed: 55, gap: 1.6 }, { cluster: 'plant.bracken', on: 'slope-nn', n: 20, seed: 56, gap: 2 },
+      { cluster: 'plant.moor-heather', on: 'slope-n', n: 39, seed: 43, gap: 1.8 }, { cluster: 'plant.bracken', on: 'slope-n', n: 22, seed: 44, gap: 2.5 }, { cluster: 'plant.bilberry', on: 'slope-n', n: 17, seed: 45, gap: 2 }, { cluster: 'rock.gritstone-block', on: 'slope-n', n: 5, seed: 46, gap: 6 },
+      { cluster: 'plant.moor-heather', on: 'slope', n: 30, seed: 33, gap: 2.2 }, { cluster: 'plant.bracken', on: 'slope', n: 45, seed: 34, gap: 2.5 }, { cluster: 'plant.bilberry', on: 'slope', n: 15, seed: 35, gap: 2.5 }, { cluster: 'rock.gritstone-block', on: 'slope', n: 10, seed: 36, gap: 7 }, { cluster: 'rock.stones', on: 'slope', n: 7, seed: 37, gap: 2 }, { cluster: 'tree.green-birch', on: 'slope', n: 7, seed: 61, gap: 9 }, { cluster: 'plant.gorse', on: 'slope', n: 5, seed: 38, gap: 12 },
+      { cluster: 'plant.moor-heather', on: 'pl-a', n: 51, seed: 3, gap: 0.9 }, { cluster: 'plant.bilberry', on: 'pl-a', n: 34, seed: 4, gap: 1.1 }, { cluster: 'plant.grass-long', on: 'pl-a', n: 34, seed: 5, gap: 1.1 }, { cluster: 'plant.bracken', on: 'pl-a', n: 19, seed: 6, gap: 1.1 }, { cluster: 'plant.yc-cotton-grass', on: 'pl-a', n: 8, seed: 7, gap: 1.1 }, { cluster: 'rock.gritstone-block', on: 'pl-a', n: 4, seed: 8, gap: 4 }, { cluster: 'rock.stones', on: 'pl-a', n: 7, seed: 9 },
+      { cluster: 'plant.moor-heather', on: 'pl-b', n: 50, seed: 13, gap: 1.5 }, { cluster: 'plant.bilberry', on: 'pl-b', n: 39, seed: 14, gap: 1.1 }, { cluster: 'plant.bracken', on: 'pl-b', n: 34, seed: 16, gap: 1.1 }, { cluster: 'plant.grass-long', on: 'pl-b', n: 34, seed: 15, gap: 1.1 }, { cluster: 'plant.yc-cotton-grass', on: 'pl-b', n: 8, seed: 17, gap: 1.1 }, { cluster: 'rock.gritstone-block', on: 'pl-b', n: 6, seed: 18, gap: 4 }, { cluster: 'rock.stones', on: 'pl-b', n: 5, seed: 19 },
+      { cluster: 'plant.moor-heather', on: 'pl-c', n: 34, seed: 23, gap: 1.6 }, { cluster: 'plant.bracken', on: 'pl-c', n: 21, seed: 26, gap: 2 }, { cluster: 'plant.bilberry', on: 'pl-c', n: 34, seed: 24, gap: 1.1 }, { cluster: 'rock.gritstone-block', on: 'pl-c', n: 9, seed: 28, gap: 4 }, { cluster: 'rock.stones', on: 'pl-c', n: 4, seed: 29 },
     ],
     life: [
       // walkers both ways along the edge path (a couple, a brisk pair, one on their own), and sheep on the moor by the path
@@ -62,6 +74,7 @@
       { who: 'sheep', count: 4, on: 'pl-c' }, { who: 'sheep', count: 3, on: 'pl-b' }, { who: 'sheep', count: 3, on: 'pl-a' },
     ],
     backdrop: { style: 'upland' },
+    fill: false,
     seed: 61,
   });
 })();

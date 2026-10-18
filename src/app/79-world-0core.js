@@ -1872,6 +1872,8 @@ function worldAddLog(id, o) {
   }
   return key.built.slice();
 }
+/** The spec of a registered item as its author wrote it (a `valley` key is still the numbers, not the thousand-number relief it expands to), or null. */
+function worldSourceSpec(id) { const key = _wcReg().get(id); return key ? key.spec : null; }
 /** The registered v3 items whose specs had strict errors (they were repaired and registered all the same): [{ pack, id, errors }]. */
 function worldAddProblems() {
   const out = [];

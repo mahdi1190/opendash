@@ -201,6 +201,13 @@ function _wtrFieldTone(hex, id) {
   const c = picks[Math.floor(u * picks.length) % picks.length];
   return _wtrShade(_wtrMixHex(hex, c, 0.72), 0.92 + 0.16 * v);
 }
+/** The ground's grass and heather in the season: pasture and moor go straw in autumn and a grey-brown mat in winter (the strips are baked from fixed colours, so the season is mixed in here; stone and scree keep theirs). */
+function _wtrSeasonTone(hex, season) {
+  if (season === 'autumn') return _wtrMixHex(hex, '#a99a5c', 0.3);
+  if (season === 'winter') return _wtrShade(_wtrMixHex(hex, '#7d7664', 0.5), 0.93);
+  if (season === 'spring') return _wtrMixHex(hex, '#8fc05a', 0.1);
+  return hex;
+}
 function _wtrHashId(id) { let h = 2166136261 >>> 0; const t = String(id); for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return (h % 9973) + 1; }
 /**
  * The tone of a moor from a distance: drifts of heather (a dark purple-brown), bracken (green, russet after the first frosts: the material pass
@@ -424,7 +431,7 @@ function _wtrPrims(world, cam, o) {
         hi = Math.max(hi, hm); xmin = Math.min(xmin, x); xmax = Math.max(xmax, x2);
         // the far ground is hazy: a ridge at four kilometres is blue-grey and soft, never the saturated tone of the heather at your feet (the haze of
         // a fair day; the light pass grades it after, so night and dusk follow)
-        let hexF = _wtrShade(m.hex, shade * jit);
+        let hexF = _wtrShade(m.mat === 'grass' ? _wtrSeasonTone(m.hex, o.season) : m.hex, shade * jit);
         if (zm > 500) hexF = _wtrMixHex(hexF, '#a3b7cb', Math.min(0.78, 0.9 * (1 - Math.exp(-(zm - 500) / 3600))));
         faces.push({ pts, role: 'ground', mat: m.mat, hex: hexF, z: cz0, alpha: 1 });
       }
