@@ -12,9 +12,11 @@
    PURE. Registered in the hidden dev pack 'world-test' until approved.
    ============================================================ */
 (function () {
-  if (typeof worldAdd !== 'function' || typeof worldValley !== 'function') return;
+  if (typeof worldAdd !== 'function') return;
   // the valley below the edge: the camera stands on the plateau, 36 m above the foot of the crags (the relief's zero is the foot; the plateau is the cliff's own height)
-  const V = worldValley({
+  // (a bare context that has no generator, the scene tests' vm, gets the spec without its valley: the edge, the plateau and the life)
+  const VALLEY = typeof worldValley === 'function' ? worldValley : () => ({ ground: {}, surfaces: [], lines: [], buildings: [], entities: [], at: (s, u) => [-s, u] });
+  const V = VALLEY({
     seed: 11, bearing: 0, drop: 300, fall: 1000, floor: 1300, shoulder: 0, noise: 1, up: { grade: 0, run: 0, tail: 0 },
     far: { rise: 400, run: 900 }, end: { at: 3600, rise: 330, run: 1800 },
     fields: { from: 260, to: 2300, u: [-700, 3800], rows: 7, cell: 520, wallsTo: 1150, cross: false },
