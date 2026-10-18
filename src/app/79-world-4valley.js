@@ -8,7 +8,7 @@
 
      worldValley({ seed, bearing, drop, fall, floor, far: { rise, run }, shoulder, noise,
                    fields: { from, to, u: [u0, u1], rows, cell, kinds, walls, wallsTo, cross (false: no walls down the slope between fields: seen along their length from a hillside they draw no pixels) },
-                   hamlet: { at: [s, u], houses, style, church }, woods: { n, ... } }) -> {
+                   hamlet: { at: [s, u], houses, style, spread, lamps }, woods: { n, ... } }) -> {
        ground: { relief },                      the relief grid (x by log depth) for `spec.ground` (features such as a cliff go beside it)
        surfaces: [...], lines: [...],           the field mosaic (kinds grass / field, each its own id so each takes its own tone) and its walls
        buildings: [...], entities: [...],       the hamlet (cottages) and the woods (`woods: { n, s: [from, to], u, size, obj (an id or a list: one kind per wood, in turn), density }`: surfaces of kind grass with a cluster of trees each)
@@ -138,6 +138,9 @@ function worldValley(o) {
       Object.defineProperty(b, '_s', { value: cs, enumerable: false }); Object.defineProperty(b, '_u', { value: cu, enumerable: false });
       out.buildings.push(b); placed++;
     }
+    // lamps along the lane (lit at night through the world's own light pass: a hamlet two kilometres off is a handful of warm points and their glow)
+    const nl = Number.isFinite(Hm.lamps) ? Hm.lamps | 0 : 0;
+    for (let i = 0; i < nl && i < out.buildings.length; i++) { const b = out.buildings[Math.floor(i * out.buildings.length / nl)]; out.entities.push({ obj: 'street.lamppost', id: 'hm-lamp-' + i, at: at(b._s + 7.5, b._u + 3), attach: 'ground' }); }
   }
   return out;
 }
