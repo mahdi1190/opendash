@@ -1019,7 +1019,15 @@ function _wkbInDates(doy, dates) {
   return a <= b ? (doy >= a && doy <= b) : (doy >= a || doy <= b);
 }
 function _wkbWeatherOf(ctx) { const w = typeof ctx.weather === 'string' ? ctx.weather : null; return w === 'drizzle' || w === 'showers' ? 'rain' : w === 'overcast' ? 'cloud' : w; }
-function _wkbDark(ctx) { if (typeof ctx.dark === 'boolean') return ctx.dark; if (_wkbNum(ctx.dark)) return ctx.dark > 0.5; const a = ctx.sun && _wkbNum(ctx.sun.alt) ? ctx.sun.alt : null; return a == null ? null : a < -4; }
+function _wkbDark(ctx) {
+  if (typeof ctx.dark === 'boolean') return ctx.dark;
+  if (_wkbNum(ctx.dark)) return ctx.dark > 0.5;
+  let a = ctx.sun && _wkbNum(ctx.sun.alt) ? ctx.sun.alt : null;
+  // a time context without a sun record (the life's own: ms, lat, lon): the almanac's sun, so a night's density is a night's (gulls and
+  // pigeons flew over the night harbour because 'dark' was unknown here: the night-light audit)
+  if (a == null && _wkbNum(ctx.ms) && typeof almSunPosition === 'function') { try { const p = almSunPosition(ctx.ms, _wkbNum(ctx.lat) ? ctx.lat : 51.5, _wkbNum(ctx.lon) ? ctx.lon : 0); if (p && _wkbNum(p.alt)) a = p.alt; } catch (e) { a = null; } }
+  return a == null ? null : a < -4;
+}
 /**
  * K6: is this class present at this time, and how much of a population (share 0..1)? ctx: the WorldTimeCtx (11.11).
  * when: { months: [1..12], dates: [[m, d], [m, d]], hours: [h0, h1], days: [dow], weather: [...], tempMin, tempMax, snowDay: false,

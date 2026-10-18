@@ -287,6 +287,26 @@ thing drawn in many pieces (a boat in slices, a bridge, a viaduct, a reed stand)
   train windows): windows by a per-window seeded threshold against the sun's elevation (`worldKbState` lit share), lamps with
   pools of light on the ground beneath, the moon's glitter on water.
 - Weather light: overcast flattens shadows, fog hazes by depth, rain darkens and wets (materials).
+- How a night frame is composed (the night-light audit of 18 Oct; SCENE_LESSONS AC; `tests/world-night.test.mjs`). One rule per layer, so
+  nothing is tuned per scene:
+  1. Sky and key: `worldSkyOf` (almanac sun and moon, `dark`, `nightKey`: foliage sinks to silhouettes, pale materials catch the key by their
+     own lightness), the v2 base sky and stars.
+  2. Sources: library glow parts only (`worldLights`: lamps with one pool each, vehicle lamps while moving, signs) and the lamps a generated
+     building carries (`direct.lamps` from the generator's lantern blocks, `worldBuildingLamps`). A lamp switches by its seeded photocell (-1
+     to +2 degrees), a lantern with its building's glass (under 2 degrees).
+  3. Window light: lit SURFACES, never sources. A library sprite's panes by `worldGlowOn` (a seeded threshold per pane; a glow path of many
+     panes is split per pane, `_wlGlowPanes`); a generated building's panes by `worldBuildingGlassOn` (per building and pane bucket a seeded
+     switch-on elevation, then the hour's share; shop glass keeps shop hours). The lit pane IS the generator's glass shape (set back in the
+     reveal, clipped to the opening), dimmed on walls seen edge-on (`gk`), with the day streak dropped on it (`dt`). Chunks are keyed by the
+     lit set (`_wfrChunkLit`, buildings included), so windows come on and go out during a session.
+  4. Glows: halos round sources (`worldLightDraws`, capped); a lantern's glow is one radial gradient (`soft`), never stacked discs.
+  5. Light on the ground: one soft additive pool per lamp or lantern, under every chunk, cut off the water.
+  6. Light on movers: `worldLocalLight` at the feet over the lit pools (steps of 0.1, at most 0.6) adds the material's own colour times the
+     lamp's (`_wmtLamp`); the checker's own records take the same light.
+  7. Reflections: the water mirrors the composite, lit glass included; the moon's glitter road when it is up.
+  8. Shadows: none from a sun below the horizon; contact shadows stay.
+  9. Defaults a real place has: a lit kit stands a street lamp within 45 m (`_wflStreetLight`); gulls and pigeons roost after dark.
+  The pixel check judges the picture (`worldLitPixels`; `nightLight`: lit pixels after dusk, no lamp and no generated pane lit with the sun up).
 - The scene has NO light key. The validator rejects `grade`, `light`, `tint`, `exposure`, `ambient`, `shadow`, `reflect`,
   `mirror`, `ripple`, `glint`, `colour` anywhere (L3); library parts named as shadows or reflections are never drawn.
 

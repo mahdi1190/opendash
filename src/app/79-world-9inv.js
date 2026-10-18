@@ -62,7 +62,7 @@ const WORLD_INVARIANTS = Object.freeze([
   { rule: 'shadowOrphan', req: 'L2', what: 'every cast shadow belongs to something drawn at that moment', needs: 'pixels' },
   { rule: 'deckDrawn', req: 'A2, W2', what: 'a walker stands on drawn ground or planks, never on open water in the picture (the nav deck and the drawn deck agree)', needs: 'pixels' },
   { rule: 'particles', req: 'M3, K7', what: 'no v2 screen particles in a world scene (petals, motes, fireflies, leaves in an empty sky)', needs: 'pixels' },
-  { rule: 'nightLight', req: 'L4, QP4', what: 'after dusk a scene with buildings, boats or lamps shows lit lights; no lamp is lit with the sun up', needs: 'pixels' },
+  { rule: 'nightLight', req: 'L4, QP4', what: 'after dusk a scene with buildings, boats or lamps shows lit pixels in the picture; no lamp and no generated pane is lit with the sun up', needs: 'pixels' },
 ]);
 
 /* ---------- small maths ---------- */
@@ -1161,6 +1161,8 @@ const _WIV_RULES = {
     if (sun == null || !_wivNum(f.litPx)) return 'na';
     const lights = Array.isArray(f.lights) ? f.lights : [];
     if (sun > 0) { const on = lights.filter(l => l && l.on && l.kind === 'lamp'); if (on.length) _wivPush(C, 'nightLight', on[0].ref || null, `${on.length} street lamp(s) lit with the sun ${Math.round(sun)} degrees up`); }
+    // the panes of generated buildings (frame.glassLit: how many buildings have a lit pane bucket now) are dark while the sun is well up
+    if (sun > 6 && _wivNum(f.glassLit) && f.glassLit > 0) _wivPush(C, 'nightLight', null, `${f.glassLit} generated building(s) with lit windows with the sun ${Math.round(sun)} degrees up`);
     if (sun < -8) {
       const hosts = C.ents.filter(e => /^(building|landmark|boat|lamp|vehicle|tram|train)$/.test(_wivCls(e) || '') || /lamp|lantern/.test(String(e.obj || '')));
       if (hosts.length && f.litPx < 50) _wivPush(C, 'nightLight', null, `night (sun ${Math.round(sun)} degrees) with ${hosts.length} building(s), boat(s) or lamp(s) in frame, but only ${f.litPx} lit pixel(s): no window, lamp or cabin light shows`);

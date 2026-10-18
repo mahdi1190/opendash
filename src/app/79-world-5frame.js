@@ -747,7 +747,8 @@ function _wfrSpriteOf(env, S, r, part, x) {
   // the frame (an agent's memory, a live static's record) against exactly what the sprite depends on, so the key string, the material
   // key and the shared cache are not walked per part per frame (the sprite lookups were a fifth of a crowded frame)
   const h = r.mem || (r.live ? r : null), bk = x && x.bucket ? x.bucket : r.s, p = part || '*';
-  const mc = h ? _wfrMcOf(S, r, h) : _wfrMc(S, r.ent);
+  // a mover drawn without a holder (the checker's own records, a capture) takes the same lamp light as in the frame
+  const mc = h ? _wfrMcOf(S, r, h) : !r.ent.static && S.localLights && S.localLights.length && typeof worldLocalLight === 'function' ? _wfrMcLamp(S, _wfrMc(S, r.ent), worldLocalLight(S.localLights, r.ent.x || 0, r.ent.z || 0).k) : _wfrMc(S, r.ent);
   let memo = null;
   if (h && mc) {
     memo = h._spm;
@@ -768,17 +769,19 @@ function _wfrMcOf(S, r, h) {
   // the light; away from the lamps it keeps the night grade (the night-light audit: walkers under the lanterns were as dark as the rest)
   const LL = S.localLights, lk = !e.static && LL && LL.length && typeof worldLocalLight === 'function' ? worldLocalLight(LL, e.x || 0, e.z || 0).k : 0;
   if (h._mcS === S && h._mcD === dk && h._mcI === e.id && h._mcL === lk && h._mcLS === LL) return h._mc;
-  let mc = _wfrMc(S, e);
-  if (mc && lk > 0) {
-    const W = S.lampMc || (S.lampMc = new WeakMap());
-    let byK = W.get(mc);
-    if (!byK) { byK = new Map(); W.set(mc, byK); }
-    let m2 = byK.get(lk);
-    if (!m2) { m2 = { ...mc, lamp: { k: lk, col: WORLD_LAMP_LIGHT_COL } }; delete m2._mk; byK.set(lk, m2); }
-    mc = m2;
-  }
+  const mc = _wfrMcLamp(S, _wfrMc(S, e), lk);
   h._mcS = S; h._mcD = dk; h._mcI = e.id; h._mcL = lk; h._mcLS = LL; h._mc = mc;
   return mc;
+}
+/** A material context under lamp light k (one shared object per context and k: the sprite caches key on its identity and its key). */
+function _wfrMcLamp(S, mc, lk) {
+  if (!mc || !(lk > 0)) return mc;
+  const W = S.lampMc || (S.lampMc = new WeakMap());
+  let byK = W.get(mc);
+  if (!byK) { byK = new Map(); W.set(mc, byK); }
+  let m2 = byK.get(lk);
+  if (!m2) { m2 = { ...mc, lamp: { k: lk, col: WORLD_LAMP_LIGHT_COL } }; delete m2._mk; byK.set(lk, m2); }
+  return m2;
 }
 function _wfrM(env, r) { return [env.vs * r.s * (r.flip ? -1 : 1), 0, 0, env.vs * r.s, env.vs * r.X + env.ox, env.vs * r.Y + env.oy]; }
 /** Clip a context to what lies above a floater's cut (device px: scene units through vs, ox, oy, then less the bitmap's origin). */

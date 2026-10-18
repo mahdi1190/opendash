@@ -372,12 +372,30 @@ function _wlGlowParts(id, variant, season) {
     r.top = sh.box[1] || -1;
     for (const p of sh.order) for (const s of sh.parts[p] || []) {
       if (!s.glow) continue;
-      const b = typeof scenePathBox === 'function' ? scenePathBox(s.d, s.m) : null;
-      if (b) r.parts.push({ kind: s.glow, u: (b[0] + b[2]) / 2, v: (b[1] + b[3]) / 2, size: Math.max(b[2] - b[0], b[3] - b[1]) / 2, op: s.op == null ? 1 : s.op, d: s.d, m: s.m || null, f: typeof s.f === 'string' ? s.f : null });
+      // a library drawing often lays a whole row of panes as ONE glow path (winRows: a storey's windows): lit as one, a facade lit in
+      // whole storeys, like pasted bands (the night-light audit: Kelham's mills). Each pane (a subpath whose box holds no other) is
+      // its own glow part, so windows light one by one; a pane with a hole (bars cut out) stays whole
+      for (const d of _wlGlowPanes(s.d, s.m)) {
+        const b = typeof scenePathBox === 'function' ? scenePathBox(d, s.m) : null;
+        if (b) r.parts.push({ kind: s.glow, u: (b[0] + b[2]) / 2, v: (b[1] + b[3]) / 2, size: Math.max(b[2] - b[0], b[3] - b[1]) / 2, op: s.op == null ? 1 : s.op, d, m: s.m || null, f: typeof s.f === 'string' ? s.f : null });
+      }
     }
   }
   _wlGlowMemo.set(key, r);
   return r;
+}
+/** The panes of a glow path: its subpaths, those lying inside another one kept with it (a hole or a bar); one path when it is one pane. */
+function _wlGlowPanes(d, m) {
+  const subs = String(d || '').split(/(?=[Mm])/).map(q => q.trim()).filter(Boolean);
+  if (subs.length < 2 || /^m/.test(subs[1]) || typeof scenePathBox !== 'function') return [d];
+  const boxes = subs.map(q => scenePathBox(q, m));
+  if (boxes.some(b => !b)) return [d];
+  const inside = (a, b) => a[0] >= b[0] - 0.01 && a[1] >= b[1] - 0.01 && a[2] <= b[2] + 0.01 && a[3] <= b[3] + 0.01;
+  const owner = boxes.map((b, i) => { let o = -1; boxes.forEach((c, j) => { if (j !== i && inside(b, c) && (o < 0 || inside(c, boxes[o]))) o = j; }); return o; });
+  const out = [];
+  subs.forEach((q, i) => { if (owner[i] < 0) out.push([i]); });
+  subs.forEach((q, i) => { if (owner[i] >= 0) { let o = owner[i]; while (owner[o] >= 0) o = owner[o]; const g = out.find(x => x[0] === o); if (g) g.push(i); } });
+  return out.length > 1 ? out.map(g => g.map(i => subs[i]).join('')) : [d];
 }
 /** The glow parts of a library object at a variant and a drawn form (see _wlGlowParts): the compositor draws lit glass from them. */
 function worldGlowParts(id, variant, season) { return _wlGlowParts(id, variant, season); }

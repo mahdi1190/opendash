@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { loadWorld } from '../tools/lib/world/load.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const W = loadWorld(ROOT, { extra: 'globalThis.__hl = { sceneBuildingResolve, sceneBuildingStyle, sceneObj, sceneObjShapes, sceneBuildingProject, _scbgBuild, _scbgFoot, _scbgPersp, _scbgBlockKinds, _scbgWallPlane };' });
+const W = loadWorld(ROOT, { extra: 'globalThis.__hl = { sceneBuildingResolve, sceneBuildingStyle, sceneObj, sceneObjShapes, sceneBuildingProject, _scbgBuild, _scbgFoot, _scbgPersp, _scbgBlockKinds, _scbgWallPlane, _scbgSoftStops };' });
 const G = globalThis.__hl;
 const LANE = [[0, -8], [0, 26], [1, 50], [3.5, 68], [6, 90]];
 const HILL = (h) => ({ features: [{ id: 'hill', kind: 'slope', path: [[0, 0], [0, 26], [1, 50], [3.5, 68], [6, 90]], width: 70, h, fade: 14 }] });
@@ -178,12 +178,17 @@ test('the scene: Elm Hill registers, validates with no drop, its houses build wi
   assert.ok(!prims.some(p => p && p.error), 'no house fell back to the prism');
 });
 
-test('a lane lantern glows in a soft falloff of six small steps, never three hard-edged discs', () => {
+test('a lane lantern glows in ONE soft falloff, never stacked hard-edged discs', () => {
+  // (the night-light audit, 18 Oct: three discs, then six smaller steps, both showed as rings at night; the glow is now one radial
+  // gradient, so no edge exists to show. The same behaviour as before is checked: no hard discs, a soft falloff, never opaque, lit glass)
   const faces = G._scbgBlockKinds.lantern({ s: 1, z: 2.4, out: 0.5 }, { plane: G._scbgWallPlane([-2, 0], [-2, 8]) });
-  const rings = faces.filter(f => f.part === 'lit' && f.round).sort((a, b) => b.rad - a.rad);
-  assert.ok(rings.length >= 6, 'rings: ' + rings.length);
-  for (let i = 1; i < rings.length; i++) assert.ok(rings[i].op - rings[i - 1].op <= 0.045, `each step is small: ${rings[i - 1].op} -> ${rings[i].op}`);
-  assert.ok(rings.reduce((a, f) => a + f.op, 0) < 0.5, 'and the glow never builds to an opaque disc');
+  const round = faces.filter(f => f.part === 'lit' && f.round);
+  assert.equal(round.length, 1, 'one glow face, no stack of discs: ' + round.length);
+  assert.ok(round[0].soft > 0 && round[0].soft < 0.6, 'a soft glow whose peak is never an opaque disc: ' + round[0].soft);
+  const a = G._scbgSoftStops('#ffd890', round[0].soft).map(q => q[2]);
+  assert.ok(a.length >= 8, 'at least 8 gradient stops');
+  for (let i = 1; i < a.length; i++) assert.ok(a[i] <= a[i - 1] && a[i - 1] - a[i] <= 0.15, `each step is small: ${a[i - 1]} -> ${a[i]}`);
+  assert.equal(a[a.length - 1], 0, 'it fades to nothing at its rim');
   assert.ok(faces.some(f => f.part === 'lit' && !f.round && f.op === 1), 'the glass itself is lit');
 });
 
