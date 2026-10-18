@@ -110,7 +110,9 @@ test('GET /api/time, POST /api/time/observe (validated, once per 10 s per client
   assert.equal(r.json.today, clockTodayIn(FAR, Date.now()));
   assert.equal(r.json.changes.at(-1).to, FAR);
   // The log has the event, never the zone id.
-  const log = readFileSync(join(dir, 'logs', 'server.log'), 'utf8');
+  // (the log line is written just after the reply: wait for it, as the travel route test does)
+  let log = '';
+  for (let i = 0; i < 60; i++) { log = readFileSync(join(dir, 'logs', 'server.log'), 'utf8'); if (/time observe: changed/.test(log)) break; await new Promise(r => setTimeout(r, 50)); }
   assert.match(log, /time observe: changed/);
   assert.ok(!log.includes(FAR), 'zone ids stay out of the log');
 });
