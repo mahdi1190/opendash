@@ -253,8 +253,8 @@ test('G3: the solver goes through a spatial index (never all pairs): 900 entitie
   const runs = [];
   for (let r = 0; r < 3; r++) { const t0 = Date.now(); build(s); runs.push(Date.now() - t0); }
   runs.sort((a, b) => a - b);
-  // (a Windows CI runner read 1.47 s for the median; an all-pairs solver is minutes at this size, so the bound only has to separate the two)
-  assert.ok(runs[1] < 4000, `median ${runs[1]} ms (budget 4 s: a spatial index is well under, all pairs is not)`);
+  // (a Windows CI runner read 1.47 s for the median against the old 1.2 s bound; the bound is loosened to 4 s, so it guards against gross slowdowns, not small ones)
+  assert.ok(runs[1] < 4000, `median ${runs[1]} ms (budget 4 s)`);
   const a = build(s), b = build(s);
   assert.deepEqual(a.entities.map(e => [e.id, e.x, e.z, e.facing]), b.entities.map(e => [e.id, e.x, e.z, e.facing]), 'deterministic');
 });
