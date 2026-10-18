@@ -156,6 +156,8 @@ function worldValley(o) {
       const hb = { id: 'farm-' + k + '-h', foot: box(cs, cu, 3, 5), storeys: 2, roof: 'pitched', style: Fm.style || 'stone-cottage' };
       const bb = { id: 'farm-' + k + '-b', foot: box(cs + (rot ? 0 : 15), cu + (rot ? 15 : 0), 4.5, 9), storeys: 1, roof: 'pitched', style: Fm.style || 'stone-cottage' };
       for (const b of [hb, bb]) { Object.defineProperty(b, '_s', { value: cs, enumerable: false }); Object.defineProperty(b, '_u', { value: cu, enumerable: false }); out.buildings.push(b); }
+      // a yard light on a pole at the first few farms (lit at night by the world's light pass: a lit farm on the far hillside)
+      if (k < (Number.isFinite(Fm.lamps) ? Fm.lamps | 0 : 0)) out.entities.push({ obj: 'street.lamppost', id: 'farm-lamp-' + k, at: at(cs + (rot ? 7 : -7), cu + (rot ? -8 : 8)), attach: 'ground' });
       k++;
     }
   }

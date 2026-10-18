@@ -23,8 +23,8 @@
     far: { rise: 400, run: 900 }, end: { at: 3600, rise: 330, run: 1800 },
     fields: { from: 260, to: 3500, u: [-900, 4200], rows: 11, cell: 300, wallsTo: 1150, cross: false },
     woods: { n: 18, s: [500, 2150], u: [-200, 3600], size: [70, 230], obj: ['tree.far-broad', 'tree.distant', 'tree.far-birch', 'tree.far-broad'], density: 0.0004 },
-    farms: { n: 9 }, lanes: true,
-    hamlet: { at: [1250, 2100], houses: 14, spread: 80, style: 'stone-cottage' },
+    farms: { n: 9, lamps: 3 }, lanes: true,
+    hamlet: { at: [1250, 2100], houses: 14, spread: 80, style: 'stone-cottage', lamps: 4 },
   };
   const at = (s, u) => [-s, u];
   // the rim (camera metres [x, z]): the buttress the lens stands on, its tip 4 m ahead-left, then the edge swings back into a bay and runs away
@@ -84,6 +84,7 @@
       { who: 'visit', on: 'pl-a', mix: { stroll: 0.5, couple: 0.3, 'dog-walker': 0.2 }, rate: '1/70s', edges: ['right'], goals: [{ go: [4, 8.6] }, { do: 'look', for: [20, 60] }, { leave: 'right' }] },
       { who: 'walkers', on: 'path-far', rate: '2/min', mix: { brisk: 0.5, couple: 0.3, 'dog-walker': 0.2 }, edges: ['far', 'right'] },
       { who: 'sheep', count: 4, on: 'pl-a' }, { who: 'sheep', count: 4, on: 'slope' }, { who: 'sheep', count: 3, on: 'pl-b' },
+      { who: 'bird.buzzard-flight', count: 2 }, { who: 'bird.small-flight', count: 3 },
     ],
     backdrop: { style: 'upland' },
     fill: false,

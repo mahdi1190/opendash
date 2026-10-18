@@ -374,7 +374,7 @@ function _wtrValleyOps(V, cam, hAt, za, zb, month, ops, ext) {
     const s = _wtrSegZ(Ln.path[i - 1], Ln.path[i], za, zb); if (!s) continue;
     stroke(hz('#b3aa92'), Math.round(Math.max(0.8, Math.min(3, Ln.w * k)) * 10) / 10, line(s[0], s[1]));
   }
-  for (const [key, S] of strokes) { const [h, w] = key.split('|'); for (const P2 of S) ops.push({ t: 's', p: P2, m: 'stone', h, w: +w, a: 0.9 }); }
+  for (const [key, S] of strokes) { const [h, w] = key.split('|'); for (const P2 of S) ops.push({ t: 's', p: P2, m: 'heath', h, w: +w, a: 0.9 }); }   // (heath: a wall or hedge two kilometres off is a dark line at night, never a moonlit wire)
   for (const [h, D] of dots) ops.push({ t: 'fm', ps: D, m: 'heath', h, a: 1 });
 }
 

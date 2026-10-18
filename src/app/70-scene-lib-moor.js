@@ -7,6 +7,7 @@
                           (the full bloom of August is the moor's own carpet, 79-world-4terrain _wtrMoorCols); autumn: bronze, the dead flower
                           spikes grey-brown; winter: dark russet-brown (snow is the terrain's, on snow days); spring: dark, with fresh green tips.
                           4 variants. Replaces the domed plant.moor-heather near the lens (18 Oct, Stanage: "giant cartoonish purple balls").
+     bird.buzzard-flight  a common buzzard soaring (broad fingered wings in a shallow V, a slow flap): the moor's bird of prey, all year
    Lit from the LEFT.
    ============================================================ */
 (function () {
@@ -56,6 +57,24 @@
         flowers.push({ f: '@flower.0', d: d0 }, { f: '@flower.1', d: d1, op: 0.9 });
       }
       return { body, flowers };
+    },
+  });
+
+  /* bird.buzzard-flight: a common buzzard soaring over the edge and the valley (resident all year): broad wings held in a shallow V with fingered
+     tips, a short fanned tail, pale bands under the wings; a slow lazy flap. v0 dark, v1 a paler bird. */
+  SD.define({
+    id: 'bird.buzzard-flight', category: 'bird', size: [64, 18], variants: 2, seasonal: false, flippable: true, parts: ['body', 'wings'],
+    palette: { base: { bird: ['#4a3a2c', '#6a5440'], light: ['#b8a68a', '#d2c3a6'], dark: ['#2a221c'] } },
+    anim: { flap: { part: 'wings', pivot: [0, -2], sy: [-0.35, 0.5], period: 1.6 } },
+    tags: ['uk', 'sky', 'raptor', 'buzzard', 'flight', 'moor', 'kit:birds', 'kit:temperate', 'role:bird'],
+    credit: 'native: common buzzard soaring',
+    build(v) {
+      const c = v ? 1 : 0;
+      const wing = (sg) => `M0 -2C${10 * sg} -5 ${20 * sg} -8 ${27 * sg} -9l${2 * sg} -1l${1 * sg} 1.6l${1.6 * sg} -0.6l${0.4 * sg} 1.8l${1.2 * sg} 0.2l${-2 * sg} 2.6C${22 * sg} -5 ${12 * sg} -1 0 1z`;
+      return {
+        body: [['@bird.' + c, 'M-9 -1q4 -3 12 -2.6l4 1.2-4 1.6q-7 1.6-12 -0.2z'], ['@bird.' + c, 'M-9 -1l-5 -2.4 0.6 4.6z'], ['@light.' + c, 'M-6 0.6q5 1.4 10 0-5 1-10 0z', 0.7]],
+        wings: [['@bird.' + c, wing(1)], ['@bird.' + c, wing(-1)], ['@light.' + c, 'M3 -2.4C10 -4.4 17 -6.6 22 -7.4 17 -5.4 10 -3.2 3 -1.6z', 0.55], ['@light.' + c, 'M-3 -2.4C-10 -4.4 -17 -6.6 -22 -7.4 -17 -5.4 -10 -3.2 -3 -1.6z', 0.55]],
+      };
     },
   });
 })();
