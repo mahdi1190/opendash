@@ -439,7 +439,7 @@ function _wcStyleGuess(spec) {
 
 /* ---------- the validator and the repair (5.2) ---------- */
 const _WC_KEYS = {
-  top: ['v', 'place', 'camera', 'cameras', 'ground', 'surfaces', 'lines', 'buildings', 'entities', 'landmarks', 'life', 'backdrop', 'fill', 'seed', 'marsh'],
+  top: ['v', 'place', 'camera', 'cameras', 'ground', 'surfaces', 'lines', 'buildings', 'entities', 'landmarks', 'life', 'backdrop', 'fill', 'seed', 'marsh', 'valley'],
   place: ['lat', 'lon', 'alt', 'region', 'origin', 'style'],
   camera: ['eye', 'fov', 'horizon', 'heading', 'x0', 'lat', 'lon', 'alt', 'water', 'preset'],
   camera31: ['id', 'at', 'height', 'eye', 'heading', 'lookAt', 'frame', 'fov', 'horizon', 'pitch', 'x0', 'lat', 'lon', 'alt', 'water', 'preset', 'relief'],
@@ -577,6 +577,8 @@ function _wcCheck(spec0, repair) {
   // a `marsh` list is expanded first (79-world-4marsh.js: the walk and a few numbers become the wetland's surfaces, rails and
   // plants), so the validator and the repair see, and judge, exactly what will be built; the scene stays pure data
   let marshProblems = [];
+  // a valley is a few numbers (79-world-4valley.js): its relief, field mosaic, walls, woods and hamlet are generated here, so the scene's data stays small
+  if (spec0.valley != null && typeof worldSpecExpand === 'function') spec0 = worldSpecExpand(spec0);
   if (Array.isArray(spec0.marsh) || spec0.marsh != null) { const ex = _wcMarshExpand(spec0); spec0 = ex.spec; marshProblems = ex.problems; }
   const thrown = [];
   const spec = repair ? _wcClone(spec0, (p, m) => thrown.push({ p, m })) : spec0;

@@ -11,7 +11,7 @@
                    hamlet: { at: [s, u], houses, style, church }, woods: { n, ... } }) -> {
        ground: { relief },                      the relief grid (x by log depth) for `spec.ground` (features such as a cliff go beside it)
        surfaces: [...], lines: [...],           the field mosaic (kinds grass / field, each its own id so each takes its own tone) and its walls
-       buildings: [...], entities: [...],       the hamlet (cottages) and the woods (`woods: { n, s: [from, to], u, size, obj, density }`: surfaces of kind grass with a cluster of trees each)
+       buildings: [...], entities: [...],       the hamlet (cottages) and the woods (`woods: { n, s: [from, to], u, size, obj (an id or a list: one kind per wood, in turn), density }`: surfaces of kind grass with a cluster of trees each)
        at(s, u) -> [x, z], sOf(x, z), uOf(x, z), height(x, z)      the frame of the valley: s is metres DOWNHILL from the camera, u metres
                                                 along the contour (away from the camera, +u is `bearing` degrees right of straight ahead)
      }
@@ -119,7 +119,8 @@ function worldValley(o) {
       const cs = sA + (sB - sA) * wr(), cu = uA + (uB - uA) * wr(), a = sz[0] + (sz[1] - sz[0]) * wr(), b = a * (0.4 + 0.9 * wr()), poly = [];
       for (let k = 0; k < 8; k++) { const th = k / 8 * Math.PI * 2, rr = 0.7 + 0.4 * wr(); poly.push(at(cs + Math.cos(th) * a * 0.5 * rr, cu + Math.sin(th) * b * 0.5 * rr)); }
       const id = 'wood-' + i; out.surfaces.push({ id, kind: 'grass', poly });
-      out.entities.push({ cluster: Wd.obj || 'tree.far-broad', on: id, n: Math.max(6, Math.round((Wd.density || 0.0035) * a * b)), seed: 100 + i });
+      const objs = Array.isArray(Wd.obj) && Wd.obj.length ? Wd.obj : [Wd.obj || 'tree.far-broad'];
+      out.entities.push({ cluster: objs[i % objs.length], on: id, n: Math.max(6, Math.round((Wd.density || 0.0035) * a * b)), seed: 100 + i });
     }
   }
   // ---- the hamlet: a cluster of stone cottages and a farm along a lane, with a church tower (footprints only; a style gives the stone)
@@ -138,5 +139,22 @@ function worldValley(o) {
       out.buildings.push(b); placed++;
     }
   }
+  return out;
+}
+
+/**
+ * A spec with a `valley` key (the numbers worldValley takes) with the valley made: its relief becomes ground.relief, its fields, walls, woods and hamlet are added after
+ * the authored surfaces, lines, buildings and entities (the authored ones first, so a surface drawn later in a spec wins: the fields over the moor polygon). The key goes.
+ * Called by the validator and the build, so the spec file holds twenty numbers instead of a hundred thousand.
+ */
+function worldSpecExpand(spec) {
+  if (!spec || typeof spec !== 'object' || !spec.valley || typeof spec.valley !== 'object') return spec;
+  const V = worldValley(spec.valley), out = Object.assign({}, spec);
+  delete out.valley;
+  out.ground = Object.assign({}, spec.ground || {}, { relief: V.ground.relief });
+  out.surfaces = (Array.isArray(spec.surfaces) ? spec.surfaces : []).concat(V.surfaces);
+  out.lines = (Array.isArray(spec.lines) ? spec.lines : []).concat(V.lines);
+  out.buildings = (Array.isArray(spec.buildings) ? spec.buildings : []).concat(V.buildings);
+  out.entities = V.entities.concat(Array.isArray(spec.entities) ? spec.entities : []);
   return out;
 }
