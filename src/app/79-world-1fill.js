@@ -1326,6 +1326,46 @@ function _wflNearBand(F) {
   }
   if (n) _wflLog(F, { action: 'frame', rule: 'N2', reason: `the near band held ${Math.round(start * 100)} % standing things: ${n} framing clump(s) added at its sides (now ${Math.round(rec.near.object * 100)} %)` });
 }
+/**
+ * Street lighting (the night-light audit, 18 Oct): a town or city view whose kit lights its streets (a 'lamp' among its framing options:
+ * quays, promenades, squares, streets, greens, parks) must have a lamp standing near enough to light what the camera sees at night. A
+ * harbour quay with no lamp in its first 45 m was a dark slab with unlit walkers while every window across the water glowed. When
+ * nothing that lights (a lamp or lantern, authored or filled) stands within 45 m in the frame's width, one lamp of the kit is set at a
+ * side of the near band as a frame (the framing search: on its own habitat, never in the lens's face). Logged.
+ */
+function _wflStreetLight(F) {
+  const opt = (F.style.frame || []).find(o => o && o.kind === 'lamp' && o.obj);
+  if (!opt) return;
+  const cam = F.cam, x0 = _wflNum(cam.x0) ? cam.x0 : F.W / 2;
+  const lit = (F.world.entities || []).some(e => {
+    if (!e || !(e.z > 0) || e.z > 45 || !/lamp|lantern/.test(String(e.obj || ''))) return false;
+    const X = x0 + cam.f * (e.x || 0) / e.z;
+    return X > -0.25 * F.W && X < 1.25 * F.W;
+  });
+  if (lit) return;
+  // the search: rows from the near band of a lamp (a 1.3 m base filling a fifth of the frame) out to 30 m, at the sides of the frame
+  // (a sixteenth to a third in from each edge), a lamp standing at a quay's or a bank's edge first (where a harbour's lamps stand);
+  // its own random stream, so a view where none fits is filled exactly as before
+  const kb = _wflKb(F, opt.obj);
+  if (!kb) return;
+  const r0 = F.r;
+  F.r = _wflRng('light|' + (F.world.seed | 0) + '|' + F.styleKey);
+  const zMin = Math.max(cam.f * Math.min(kb.size.h0 || 1, 1.3) / 270, (cam.dMin || 1) * 1.1), cands = [];
+  for (let z = zMin; z <= 30; z *= 1.15) for (const fx of [0.06, 0.12, 0.19, 0.26, 0.33]) for (const sd of [1, -1]) {
+    const X = sd < 0 ? fx * F.W : (1 - fx) * F.W, x = (X - x0) * z / cam.f, p = _wflProbe(F, x, z);
+    if (p.kind === 'water') continue;
+    const edge = _wflNum(p.bankDist) && p.bankDist <= 1.6 ? 0 : 1;
+    cands.push({ x, z, sd, score: edge * 100 + z + fx * 20 });
+  }
+  cands.sort((a, b) => a.score - b.score);
+  let got = null;
+  for (const c of cands) {
+    got = _wflTry(F, { obj: opt.obj, x: c.x, z: c.z, facing: c.sd < 0 ? 90 : 270, auto: 'frame', rule: 'L4', why: 'street furniture: street lighting', framing: true });
+    if (got) { _wflLog(F, { id: got.id, action: 'frame', rule: 'L4', reason: `street lighting: no lamp lit the near 45 m; ${opt.obj} set at ${c.z.toFixed(1)} m on the ${c.sd < 0 ? 'left' : 'right'} (${F.styleKey})` }); break; }
+  }
+  F.r = r0;
+  if (!got) _wflLog(F, { action: 'frame', rule: 'L4', reason: `street lighting: no lamp lit the near 45 m and no place for one (${F.styleKey})` });
+}
 /** Remove an entity the fill has just added (a framing trunk whose bough found no place). */
 function _wflUndo(F, e) {
   const W = F.world, i = W.entities.indexOf(e);
@@ -1722,7 +1762,7 @@ function worldFill(world, o) {
       log.push({ id: null, obj: null, action: 'default', rule: 'emptyBackground', reason: `backdrop '${style.backdrop}' from the place style '${styleKey}'`, by: 'kb' });
     }
     if (!state.edges) { _wflEdges(F); state.edges = true; }
-    if (!state.frame) { _wflFrame(F); _wflNearBand(F); state.frame = true; }
+    if (!state.frame) { _wflFrame(F); _wflNearBand(F); if (!fillOff) _wflStreetLight(F); state.frame = true; }
     if (!fillOff && !state.fill) {
       const floor = o.floor || null, maxTier = o.maxTier || 5;
       let cov = _wflCoverage(F), rich = worldRichness(world, cam, { perennial: true, floor, W: F.W, H: F.H, box: false });
