@@ -20,7 +20,7 @@
     seed: 11, bearing: 0, drop: 300, fall: 1000, floor: 1300, shoulder: 0, noise: 1, up: { grade: 0, run: 0, tail: 0 },
     far: { rise: 400, run: 900 }, end: { at: 3600, rise: 330, run: 1800 },
     fields: { from: 260, to: 2300, u: [-700, 3800], rows: 7, cell: 520, wallsTo: 1150, cross: false },
-    woods: { n: 30, s: [500, 2150], u: [-200, 3600], size: [70, 230], obj: ['tree.far-broad', 'tree.distant', 'tree.far-birch', 'tree.far-broad'], density: 0.0002 },
+    woods: { n: 18, s: [500, 2150], u: [-200, 3600], size: [70, 230], obj: ['tree.far-broad', 'tree.distant', 'tree.far-birch', 'tree.far-broad'], density: 0.0002 },
     hamlet: { at: [1250, 2100], houses: 14, spread: 80, style: 'stone-cottage' },
   };
   const at = (s, u) => [-s, u];
@@ -59,7 +59,7 @@
     landmarks: [{ id: 'church', obj: 'structure.parish-church', at: at(1250, 2150), facing: 90, src: 'St Michael and All Angels, Hathersage (OS Explorer OL1), the spire above the hamlet', model: { livery: 'grey-limestone', size: 1.15, opts: { crown: 'spire', era: 'perpendicular' } } }],
     entities: [
       // the foreground under the lens (the strip a camera 36 m up sees at its feet) and the slope below the rim: authored, the engine's fill is off
-      { cluster: 'plant.moor-heather', on: 'pl-0', n: 40, seed: 51, gap: 0.4 }, { cluster: 'plant.grass-long', on: 'pl-0', n: 22, seed: 52, gap: 0.45 }, { cluster: 'plant.bilberry', on: 'pl-0', n: 16, seed: 53, gap: 0.45 }, { cluster: 'plant.rph-short-grass', on: 'pl-0', n: 12, seed: 54, gap: 0.45 },
+      { cluster: 'plant.moor-heather', on: 'pl-0', n: 40, seed: 51, gap: 0.4 }, { cluster: 'plant.grass-long', on: 'pl-0', n: 22, seed: 52, gap: 0.45 }, { cluster: 'plant.bilberry', on: 'pl-0', n: 16, seed: 53, gap: 0.45 }, { cluster: 'plant.rph-short-grass', on: 'pl-0', n: 7, seed: 54, gap: 0.45 },
       { cluster: 'plant.moor-heather', on: 'slope-m', n: 70, seed: 57, gap: 3 }, { cluster: 'plant.bracken', on: 'slope-m', n: 26, seed: 58, gap: 5 },
       { cluster: 'plant.moor-heather', on: 'slope-nn', n: 48, seed: 55, gap: 1.6 }, { cluster: 'plant.bracken', on: 'slope-nn', n: 20, seed: 56, gap: 2 },
       { cluster: 'plant.moor-heather', on: 'slope-n', n: 39, seed: 43, gap: 1.8 }, { cluster: 'plant.bracken', on: 'slope-n', n: 22, seed: 44, gap: 2.5 }, { cluster: 'plant.bilberry', on: 'slope-n', n: 17, seed: 45, gap: 2 }, { cluster: 'rock.gritstone-block', on: 'slope-n', n: 5, seed: 46, gap: 6 },
