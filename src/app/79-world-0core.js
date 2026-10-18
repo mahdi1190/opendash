@@ -1341,14 +1341,15 @@ function _wcReliefCompile(cs) {
     const d = z0 * Math.pow(z1 / z0, j / (nd - 1));
     for (let i = 0; i < nx; i++) {
       const x = x0 + (x1 - x0) * i / (nx - 1);
-      let up = 0, down = 0, cl = 0;
+      let up = 0, down = 0, cl = 0, tal = 0;
       for (const f of feats) {
-        if (f.kind === 'cliff') { cl = Math.max(cl, worldCliffHeight(f, x, d)); continue; }
+        if (f.kind === 'cliff') { cl = Math.max(cl, worldCliffHeight(f, x, d)); if (typeof worldCliffTalus === 'function') tal = Math.max(tal, worldCliffTalus(f, x, d)); continue; }
         const pr = _wcFeatProfile(f, _wcLineDist(f.path, x, d)); if (!pr) continue; if (f.kind === 'cutting') down = Math.min(down, -Math.abs(f.h) * pr); else up = Math.max(up, Math.abs(f.h) * pr);
       }
       const b0 = baseCam ? sceneGroundHeight(baseCam, x, d) : 0;
       // a cliff is an absolute height (its face is drawn from the foot up to `h`): it stands where it is higher than the relief it rises out of
-      const upc = cl > 0 ? Math.max(b0 + up, cl) : b0 + up;
+      // (a talus that lies on the slope below the face is added to the ground it lies on)
+      const upc = cl > 0 ? Math.max(b0 + up + tal, cl) : b0 + up + tal;
       h[j * nx + i] = _wcR3(upc + down);
       if (hb) hb[j * nx + i] = _wcR3(b0 + up + down);
     }

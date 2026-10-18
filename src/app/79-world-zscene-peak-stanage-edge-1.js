@@ -17,7 +17,7 @@
   // foot of the crags (the relief's zero is the foot; the plateau is the cliff's own height). Contours run straight ahead (bearing 0): at(s, u) is metres downhill (to the
   // left) and metres along.
   const VALLEY = {
-    seed: 11, bearing: 0, drop: 300, fall: 1000, floor: 1300, shoulder: 0, noise: 1, up: { grade: 0, run: 0, tail: 0 },
+    seed: 11, bearing: 0, drop: 300, fall: 1000, floor: 1300, shoulder: 0, noise: 1, up: { grade: 0.2, run: 70, tail: 0.03 },
     far: { rise: 400, run: 900 }, end: { at: 3600, rise: 330, run: 1800 },
     fields: { from: 260, to: 2300, u: [-700, 3800], rows: 7, cell: 520, wallsTo: 1150, cross: false },
     woods: { n: 18, s: [500, 2150], u: [-200, 3600], size: [70, 230], obj: ['tree.far-broad', 'tree.distant', 'tree.far-birch', 'tree.far-broad'], density: 0.0002 },
@@ -26,7 +26,7 @@
   const at = (s, u) => [-s, u];
   // the rim: a few metres from the lens along the contour, with spurs and bays (the edge is a line of buttresses); the face of each spur's near flank
   // looks back toward the lens. (s metres downhill of the camera line, u metres along it)
-  const EDGE = [[1.6, -420], [1.6, -30], [2, 70], [3, 130], [8, 170], [22, 200], [38, 228], [46, 270], [40, 322], [24, 362], [14, 400], [20, 480], [40, 560], [62, 640], [78, 668], [100, 700], [108, 748], [92, 795], [78, 830], [84, 900], [108, 1000], [130, 1090], [150, 1130], [176, 1190], [182, 1250], [160, 1290], [150, 1340], [160, 1500]].map(p => at(p[0], p[1]));
+  const EDGE = [[-40, -300], [-12, -80], [-5, -20], [-4.5, 0], [-3.5, 5], [0, 8], [5, 10], [12, 13], [22, 18], [35, 28], [48, 45], [58, 70], [65, 100], [70, 140], [74, 200], [80, 280], [90, 380], [105, 500], [125, 650], [150, 820], [185, 1020], [230, 1250], [285, 1500], [350, 1800]];
   worldAdd('world-test', { id: 'peak-stanage-edge-1-w3', label: 'Stanage Edge, Peak District (world)', site: 'Stanage Edge above Hathersage, Derbyshire', mood: 'calm', colour: 'slate',
     tags: ['uk', 'derbyshire', 'peak-district', 'stanage', 'gritstone', 'edge', 'moor', 'world-v3'], liveSky: { lat: 53.3436, lon: -1.6317 },
     ukPlace: 'peak-stanage-edge', county: 'derbyshire', ukTown: 'Stanage Edge', ukView: 'world-engine', setting: 'a gritstone edge over a valley' }, {
@@ -34,7 +34,7 @@
     camera: { eye: 37.7, fov: 70, horizon: 380, heading: 345 },
     valley: VALLEY,
     ground: { features: [
-      { id: 'edge', kind: 'cliff', path: EDGE, h: 36, rock: 'gritstone', rough: 1.4, scoop: false, scree: false, rim: { w: 1.5, h: 0.6 }, fade: 50, high: 'right' },
+      { id: 'edge', kind: 'cliff', path: EDGE, h: 36, rock: 'gritstone', rough: 1.4, scoop: false, scree: { w: 34, h: 4.5 }, rim: { w: 1.5, h: 0.6 }, fade: 50, high: 'right' },
     ] },
     surfaces: [
       { id: 'moor', kind: 'heath', poly: [at(-3000, -900), at(-3000, 9000), at(260, 9000), at(260, -900)] },

@@ -79,7 +79,7 @@ function _wtrTops(prim) {
   let a = Infinity, b = -Infinity;
   const pts = [];
   for (const f of prim.faces || []) for (const q of f.pts) pts.push(q);
-  for (const op of prim.ops || []) { if (op.p) for (const q of op.p) pts.push(q); else if (op.t === 'tree' || op.t === 'scrub') { pts.push([op.x - op.w, op.y - op.h * 1.1], [op.x + op.w, op.y]); } }
+  for (const op of prim.ops || []) { if (op.p) for (const q of op.p) pts.push(q); else if (op.ps) { for (const P of op.ps) for (const q of P) pts.push(q); } else if (op.t === 'tree' || op.t === 'scrub') { pts.push([op.x - op.w, op.y - op.h * 1.1], [op.x + op.w, op.y]); } }
   for (const q of pts) { if (q[0] < a) a = q[0]; if (q[0] > b) b = q[0]; }
   if (!pts.length || !isFinite(a)) return null;
   const x0 = Math.floor(a / W), n = Math.floor(b / W) - x0 + 1, y = new Array(n).fill(1e9);                     // 1e9: no quad in the column (a plain number: the frame record is JSON, which turns Infinity into null)
@@ -210,23 +210,73 @@ function _wtrSeasonTone(hex, season) {
 }
 function _wtrHashId(id) { let h = 2166136261 >>> 0; const t = String(id); for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return (h % 9973) + 1; }
 /**
- * The tone of a moor from a distance: drifts of heather (a dark purple-brown), bracken (green, russet after the first frosts: the material pass
- * moves it with the season), bleached bent grass and dark bilberry, in patches of 20 to 60 m with a finer grain, never one colour. In plan metres, so it
- * is the same in every frame.
+ * A moor through the year (month 0..11, the northern hemisphere): the colour of each plant of it that month. Ling heather is a dark olive-brown carpet
+ * that flowers purple in August and the first half of September (a few early bells of bell heather in late July) and goes bronze-brown after; bracken
+ * unfurls green in May, yellows in September, is russet in October and stands dead brown all winter; the bents and purple moor-grass bleach to
+ * pale straw from October to March (a winter moor is brown and bleached, never green); bilberry is green in summer and red in autumn. ONE seasonal
+ * model: the ground's material ('heath') does not season it again.
  */
-function _wtrMoorTone(hex, x, z, dist) {
-  // the fine grain (13 m) only where a quad is small on screen: far off a mosaic of 13 m patches is noise, not a moor
-  const near = Math.max(0, Math.min(1, 1.6 - (dist || 0) / 160));
-  const far = Math.max(0.25, Math.min(1, 1.5 - (dist || 0) / 1800)), a = (_wtrN2(x / 70 + 11, z / 70 - 5) * 0.75 + 0.45 * _wtrN2(x / 31 + 3, z / 31 - 9)) * far, b = near * _wtrN2(x / 13 - 3, z / 13 + 8), c = _wtrN2(x / 140 + 2, z / 140 + 41);
-  // near the lens a moor is a carpet of heather, bilberry, grass and bare peat in clumps of a metre or two
-  const nf = 0, f = 0, f2 = 0;      // (the grain of a metre or two was tried and drew horizontal stripes: strips near the lens are 0.1 m deep and a metre wide)
-  let t = hex;
-  if (nf > 0) { if (f > 0.15) t = _wtrMixHex(t, '#6d4d66', Math.min(0.6, (f - 0.15) * 1.2)); else if (f < -0.3) t = _wtrMixHex(t, '#4d5a2c', Math.min(0.55, (-0.3 - f) * 1.1)); if (f2 < -0.45) t = _wtrMixHex(t, '#3d3328', 0.45); else if (f2 > 0.55) t = _wtrMixHex(t, '#a59d66', 0.4); }
-  if (a > 0.12) t = _wtrMixHex(t, '#74506c', Math.min(0.7, 0.3 + (a - 0.12) * 0.9));         // heather
-  else if (a < -0.2) t = _wtrMixHex(t, '#6d8f33', Math.min(0.65, (-0.2 - a) * 1.1));           // bracken
-  if (b > 0.45) t = _wtrMixHex(t, '#a39c68', Math.min(0.4, (b - 0.45) * 0.9));               // bent grass
-  else if (b < -0.5) t = _wtrMixHex(t, '#46472f', Math.min(0.4, (-0.5 - b) * 0.9));          // bilberry and peat
-  return _wtrShade(t, 0.95 + 0.12 * c);
+function _wtrMoorCols(month) {
+  const m = Number.isFinite(month) ? ((Math.round(month) % 12) + 12) % 12 : 6;
+  const bloom = m === 7 ? 1 : m === 8 ? 0.6 : m === 6 ? 0.2 : 0;
+  const hb = m >= 3 && m <= 5 ? '#4f4c36' : m >= 6 && m <= 8 ? '#4c4733' : m === 9 || m === 10 ? '#5d4533' : '#57402f';
+  const BR = ['#87593a', '#87593a', '#83583a', '#7c5938', '#7d7f3c', '#66833a', '#62803a', '#6c8a3c', '#94953e', '#ad692e', '#985a31', '#8a593a'];
+  const GR = ['#c2b48c', '#c0b28a', '#b8ad84', '#aba876', '#98a462', '#8e9e58', '#8f9c56', '#9a9d5a', '#a9a062', '#b9a56c', '#c0ae7e', '#c3b48c'];
+  const BI = ['#6b4a3a', '#6a4b3a', '#6c4d3a', '#5f5a36', '#557a38', '#4f7034', '#4f6e34', '#56703a', '#6a6a34', '#8c3b2a', '#7a3e2e', '#6b4a3a'];
+  return { heather: _wtrMixHex(hb, '#8d5389', bloom * 0.8), bloom, bracken: BR[m], grass: GR[m], bilberry: BI[m], peat: '#3b3127', m };
+}
+const _wtrSm = t => { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
+/**
+ * The tone of a moor at a point: drifts of heather, bracken (thickest on the steep slopes under an edge), bleached bents, dark bilberry and bare peat,
+ * in patches of 20 to 60 m with a finer grain near the lens, blended smoothly (a threshold drew patches as staircases of quads). In plan metres, so it
+ * is the same in every frame; the colours are the month's (_wtrMoorCols).
+ */
+function _wtrMoorTone(hex, x, z, dist, Mc, slope) {
+  const M = Mc || _wtrMoorCols(6), d = dist || 0;
+  const near = Math.max(0, Math.min(1, 1.6 - d / 160)), far = Math.max(0.3, Math.min(1, 1.5 - d / 1800));
+  const a = _wtrN2(x / 70 + 11, z / 70 - 5) * 0.75 + 0.45 * _wtrN2(x / 31 + 3, z / 31 - 9), b = near * _wtrN2(x / 13 - 3, z / 13 + 8), c = _wtrN2(x / 140 + 2, z / 140 + 41);
+  let t = _wtrMixHex(M.grass, M.heather, 0.25 + 0.65 * _wtrSm((a + 0.3) / 0.65));
+  const wBr = Math.max(_wtrSm((-a - 0.35) / 0.35) * 0.8, _wtrSm(((slope || 0) - 0.12) / 0.9) * _wtrSm((_wtrN2(x / 40 + 7, z / 40 - 3) + 0.15) / 0.6) * 0.75);
+  t = _wtrMixHex(t, M.bracken, wBr);
+  if (b > 0.2) t = _wtrMixHex(t, M.grass, Math.min(0.45, (b - 0.2) * 0.8));
+  else if (b < -0.3) t = _wtrMixHex(t, b < -0.6 ? M.peat : M.bilberry, Math.min(0.42, (-0.3 - b) * 0.8));
+  // far off the drifts merge into the moor's mean tone (a mosaic of 20 m patches at two kilometres is noise)
+  t = _wtrMixHex(_wtrMixHex(M.grass, M.heather, 0.55), t, far);
+  return _wtrShade(_wtrMixHex(hex, t, 0.92), 0.95 + 0.1 * c);
+}
+/** '#rrggbb' quantised to steps of q (so the clumps of a strip share a few fills). */
+function _wtrQuant(hex, q) { const n = parseInt(hex.slice(1), 16), f = v => Math.min(255, Math.round(v / q) * q); return '#' + ((1 << 24) | (f((n >> 16) & 255) << 16) | (f((n >> 8) & 255) << 8) | f(n & 255)).toString(16).slice(1); }
+/**
+ * The carpet of a moor nearer than 260 m: clumps of heather and bilberry (dark domes, their shadow side), tufts of bleached bents catching the light,
+ * the purple of the heather's flowers in its months, snow lying on the tops on a snow day. Each clump 3 to 10 px across, so it reads as texture at
+ * any depth; placed by hashes of the quad (the same in every frame) and collected by colour into a few fills per strip (B: Map hex -> polygons).
+ */
+function _wtrMoorDeco(q, cam, hAt, B, ext, Mc, snow) {
+  if (q.cz > 260 || q.cz < 7) return;
+  const k = cam.f / Math.max(1, q.cz);
+  const yA = sceneProject(cam, q.cx, q.za, hAt(q.cx, q.za)).Y, yB = sceneProject(cam, q.cx, q.zb, hAt(q.cx, q.zb)).Y;
+  const wpx = (q.x2 - q.x) * k, hpx = Math.max(1, Math.abs(yA - yB));
+  const n = Math.min(12, Math.floor(wpx * hpx / 52 + _wtrU(q.cx * 1.3 + 3, q.cz * 0.7)));
+  const put = (hex, pts) => { const key = _wtrQuant(hex, 9); let L = B.get(key); if (!L) { L = []; B.set(key, L); } L.push(pts); for (const p of pts) { if (p[0] < ext.minX) ext.minX = p[0]; if (p[0] > ext.maxX) ext.maxX = p[0]; if (p[1] < ext.minY) ext.minY = p[1]; if (p[1] > ext.maxY) ext.maxY = p[1]; } };
+  for (let i = 0; i < n; i++) {
+    const u1 = _wtrU(q.cx * 3.1 + i * 7.3, q.cz * 1.7 + i), u2 = _wtrU(q.cx * 0.7 - i * 3.9, q.cz * 2.9 + i * 1.3), u3 = _wtrU(q.cx * 5.3 + i, q.cz * 0.3 - i * 2.1);
+    const x = q.x + (q.x2 - q.x) * u1, z = q.za + (q.zb - q.za) * u2, y = hAt(x, z);
+    const sz = Math.max(0.1, Math.min(1.6, (3 + 7 * u3) / k)), p = sceneProject(cam, x, z, y), X = p.X, Y = p.Y + 0.6, w2 = Math.max(1.2, sz * k * 0.5), hh = Math.max(1, sz * k * (0.28 + 0.14 * u2));
+    const col = _wtrMoorTone('#5a5038', x, z, q.cz, Mc, q.slope), lit = u3 > 0.58;
+    const pts = [], ns = w2 > 3 ? 4 : 3, hs = hh * (lit ? 1.6 : 1.25);
+    pts.push([X - w2, Y]);
+    for (let j = 0; j < ns; j++) {
+      const t0 = (j + 0.5) / ns, tx = X - w2 + 2 * w2 * t0 + (_wtrU(x * 7 + j, z * 5) - 0.5) * w2 * 0.5, th = hs * (0.7 + 0.5 * _wtrU(x * 3 - j, z * 11 + j));
+      pts.push([tx, Y - th], [X - w2 + 2 * w2 * (j + 1) / ns, Y - th * (lit ? 0.18 : 0.42)]);
+    }
+    pts[pts.length - 1] = [X + w2, Y];
+    for (let j = 0; j < pts.length; j++) pts[j] = [Math.round(pts[j][0] * 10) / 10, Math.round(pts[j][1] * 10) / 10];
+    put(lit ? _wtrShade(col, 1.08 + 0.1 * u1) : _wtrShade(col, 0.62 + 0.14 * u1), pts);
+    // the flowers of the heather in its months: a few purple points on the top of a dark clump
+    if (!lit && Mc && Mc.bloom > 0.15 && u2 < Mc.bloom * 0.8 && w2 > 1.6) { const r = Math.max(0.6, w2 * 0.22); put('#a7609f', [[X - r, Y - hh * 0.75], [X, Y - hh * 0.95 - r], [X + r, Y - hh * 0.75], [X, Y - hh * 0.55]]); }
+    // snow lies on the tops of the clumps on a snow day
+    if (snow && u1 < 0.45 + 0.4 * snow) put('#e8edf0', [[X - w2 * 0.8, Y - hs * 0.35], [X, Y - hs * 0.75], [X + w2 * 0.8, Y - hs * 0.35], [X, Y - hs * 0.15]]);
+  }
 }
 function _wtrU(x, z) { let h = Math.imul(Math.round(x * 4) | 0, 374761393) ^ Math.imul(Math.round(z * 4) | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
 
@@ -337,7 +387,7 @@ const _wtrMemo = new WeakMap();
 function worldTerrainPrims(world, cam, o) {
   o = o || {};
   if (world && typeof world === 'object' && cam && cam.relief) {
-    const key = (o.season || '') + '|' + cam.f + '|' + cam.horizon + '|' + cam.x0 + '|' + cam.eye + '|' + (world.features ? world.features.length : 0);
+    const key = (o.season || '') + '|' + (Number.isFinite(o.month) ? o.month : '') + '|' + (o.snow ? 1 : 0) + '|' + cam.f + '|' + cam.horizon + '|' + cam.x0 + '|' + cam.eye + '|' + (world.features ? world.features.length : 0);
     let m = _wtrMemo.get(world);
     if (m && m.key === key && m.relief === cam.relief) return m.out.slice();
     const out = _wtrPrims(world, cam, o);
@@ -357,9 +407,9 @@ function _wtrPrims(world, cam, o) {
   // the height of the ground: the grid; with a cliff, the cliff's own analytic function over the relief that is not a cliff
   const baseGrid = world.reliefBase ? { relief: world.reliefBase } : null;
   const hAt = cliffs.length
-    ? (x, z) => { let h = baseGrid ? sceneGroundHeight(baseGrid, x, z) : 0; for (const G of cliffs) { const v = worldCliffHeight(G.f, x, z); if (v > 0 && v > h) h = v; } return h; }   // (a cliff only counts where it stands: its 0 away from it is not a floor under a valley)
+    ? (x, z) => { let h = baseGrid ? sceneGroundHeight(baseGrid, x, z) : 0, tal = 0; for (const G of cliffs) if (G.slopeTalus) tal = Math.max(tal, worldCliffTalus(G.f, x, z)); h += tal; for (const G of cliffs) { const v = worldCliffHeight(G.f, x, z); if (v > 0 && v > h) h = v; } return h; }   // (a cliff only counts where it stands: its 0 away from it is not a floor under a valley)
     : (x, z) => sceneGroundHeight(cam, x, z);
-  const railBanks = _wtrRailBanks(world);
+  const railBanks = _wtrRailBanks(world), MC = _wtrMoorCols(Number.isFinite(o.month) ? o.month : o.season === 'winter' ? 0 : o.season === 'autumn' ? 9 : o.season === 'spring' ? 4 : 6);
   const rock = cliffs.length && typeof _WCL_LOOK === 'object' ? (_WCL_LOOK[cliffs[0].rock] || _WCL_LOOK.limestone) : null;
   const stones = cliffs.length && typeof worldCliffStones === 'function' ? worldCliffStones(world, cam) : [];
   let si = 0;
@@ -397,13 +447,18 @@ function _wtrPrims(world, cam, o) {
         if (!m) continue;
         // a steep quad beside a cliff is the cliff's own rock (never the generic pale grey: a gritstone edge is dark, chalk is white)
         if (m.mat === 'stone' && slope > 1.3 && rock) m = { mat: 'stone', hex: _wtrMixHex(rock.base, rock.dark, 0.3) };
-        if (m.mat === 'grass' && kind === 'heath' && slope < 1.3) m = { mat: m.mat, hex: _wtrMoorTone(m.hex, cx0, cz0, Math.hypot(cx0, cz0)) };
+        if (m.mat === 'grass' && kind === 'heath' && slope < 1.3) {
+          let hx = _wtrMoorTone(m.hex, cx0, cz0, Math.hypot(cx0, cz0), MC, slope);
+          // snow on a snow day: drifts in the hollows and on the lee of the walls and the rim, the tops of the heather showing through elsewhere
+          if (o.snow) { const sn = 0.6 * _wtrN2(cx0 / 22 + 5, cz0 / 22 - 7) + 0.4 * _wtrN2(cx0 / 7 - 2, cz0 / 7 + 4) + 0.35 * (o.snow - 0.5); hx = _wtrMixHex(hx, '#e6ebee', 0.88 * _wtrSm((sn + 0.05) / 0.35)); }
+          m = { mat: Math.hypot(cx0, cz0) > 900 ? 'grass' : 'heath', hex: hx };
+        }
         else if (m.mat === 'grass' && kind === 'field' && surf && surf.id) m = { mat: m.mat, hex: _wtrFieldTone(m.hex, surf.id) };
         // the scree of a cliff is where the cliff's own talus is the ground: a hill that rises higher there (the dale side beside the cove) is not scree
         if (pc.scree > 0 && baseGrid && sceneGroundHeight(baseGrid, cx0, cz0) > hAt(cx0, cz0) - 0.3 && sceneGroundHeight(baseGrid, cx0, cz0) > 0.5) pc.scree = 0;
         const jit0 = _wtrU(cx0, cz0);
         // a pasture is patchy (dry bent, rush, a greener flush by a spring), never one tone: two scales of noise in the colour, the yellower and the darker patches mixed in
-        if (m.mat === 'grass' && pc.scree <= 0.05 && Math.max(hm, -Math.min(...hs)) > 0.5) {
+        if ((m.mat === 'grass' || m.mat === 'heath') && pc.scree <= 0.05 && Math.max(hm, -Math.min(...hs)) > 0.5) {
           const na = _wtrN2(cx0 / 13, cz0 / 13), nb = _wtrN2(cx0 / 4.1 + 5, cz0 / 4.1 - 2);
           let hx = m.hex;
           if (kind === 'heath') { /* the moor has its own patches (_wtrMoorTone) */ } else if (kind === 'field') { hx = _wtrShade(hx, 1 + 0.05 * na); } else if (na > 0.25) hx = _wtrMixHex(hx, '#b4ab62', Math.min(0.5, (na - 0.25) * 0.7)); else if (na < -0.3) hx = _wtrMixHex(hx, '#4d7a3a', Math.min(0.5, (-0.3 - na) * 0.8));
@@ -439,8 +494,9 @@ function _wtrPrims(world, cam, o) {
     }
     // the pasture's own marks (trods, tussocks, scars), far to near within the strip
     if (hillQ.length) {
-      const ext = { minX, maxX, minY, maxY };
-      for (const q of hillQ) _wtrHillDeco(q, cam, hAt, sops, ext);
+      const ext = { minX, maxX, minY, maxY }, B = new Map();
+      for (const q of hillQ) { if (q.kind === 'heath') _wtrMoorDeco(q, cam, hAt, B, ext, MC, o.snow || 0); else _wtrHillDeco(q, cam, hAt, sops, ext); }
+      for (const [h, ps] of B) sops.push({ t: 'fm', ps, m: 'heath', h, a: 0.96 });
       ({ minX, maxX, minY, maxY } = ext);
     }
     // scrub on a railway bank's slope: drawn with the strip (the same depth as the ground it stands on), far to near
@@ -570,6 +626,7 @@ function _wtrDrawOps(ctx, prim, o, colour) {
     if (k !== 1 && op.m === 'stone' && hex) { const key = hex + k + mk; let v = _wtrShadeMemo.get(key); if (!v) { v = _wtrShade(hex, k); if (_wtrShadeMemo.size > 4000) _wtrShadeMemo.clear(); _wtrShadeMemo.set(key, v); } hex = v; }
     ctx.globalAlpha = A * (op.a == null ? 1 : op.a);
     if (op.t === 'f') { ctx.fillStyle = colour(op.m, hex); _wtrPoly(ctx, op.p); ctx.closePath(); ctx.fill(); n++; }
+    else if (op.t === 'fm') { ctx.fillStyle = colour(op.m, hex); ctx.beginPath(); for (const pts of op.ps) { ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); } ctx.fill(); n++; }
     else if (op.t === 'fg') {
       // a smooth fill whose colour drifts along it: the stops carry the colour and the normal of their own column (shaded one by one)
       const gr = ctx.createLinearGradient(op.x0, 0, op.x1, 0);
