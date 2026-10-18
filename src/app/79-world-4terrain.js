@@ -31,6 +31,16 @@ const WORLD_TERRAIN_FLAT = 0.4;                     // metres: relief below this
 const _WTR_COL = Object.freeze({ grass: '#7ea34c', field: '#9aaa5e', heath: '#8c7d58', sand: '#d8c99d', stone: '#a39d90', rock: '#8e8b83', soil: '#8a6e4b' });
 const _WTR_STONE = new Set(['path', 'pavement', 'towpath', 'plaza', 'boardwalk', 'bridge-deck', 'deck', 'platform', 'stairs', 'ramp', 'crossing', 'road']);
 
+/** The surface under (x, z) (the topmost; hedge, weir and rail are not ground), or null. */
+function worldTerrainSurface(world, x, z) {
+  const S = (world && world.surfaces) || [];
+  for (let i = S.length - 1; i >= 0; i--) {
+    const s = S[i];
+    if (!s || s.kind === 'hedge' || s.kind === 'weir' || s.kind === 'rail' || s.kind === 'tram') continue;
+    if (typeof _wcSurfContains === 'function' && _wcSurfContains(s, x, z)) return s;
+  }
+  return null;
+}
 function worldTerrainKind(world, x, z) {
   const S = (world && world.surfaces) || [];
   for (let i = S.length - 1; i >= 0; i--) {
@@ -181,6 +191,36 @@ function _wtrBankTone(hex, x, z, wet) {
   if (wet > 0) c = _wtrMixHex(c, '#4a6234', Math.min(0.7, wet));                      // damp grass at the water's foot
   return c;
 }
+/**
+ * The tone of a field seen from far off (a valley's patchwork: grass, silage, hay, stubble, a darker pasture), by the SURFACE's id: every field is
+ * one polygon with its own id, so each takes its own tone and the mosaic reads at two kilometres without a colour in the spec. Only 'field' polygons.
+ */
+function _wtrFieldTone(hex, id) {
+  const u = _wtrU(_wtrHashId(id) * 0.013, 17.3), v = _wtrU(_wtrHashId(id) * 0.007 + 5, 3.1);
+  const picks = ['#6f9a3f', '#a7ad58', '#d0c47a', '#86a548', '#4f7a38', '#b0a45a', '#7d9d4a', '#8a7a4f', '#5c8a3a', '#c8bd72'];
+  const c = picks[Math.floor(u * picks.length) % picks.length];
+  return _wtrShade(_wtrMixHex(hex, c, 0.72), 0.92 + 0.16 * v);
+}
+function _wtrHashId(id) { let h = 2166136261 >>> 0; const t = String(id); for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return (h % 9973) + 1; }
+/**
+ * The tone of a moor from a distance: drifts of heather (a dark purple-brown), bracken (green, russet after the first frosts: the material pass
+ * moves it with the season), bleached bent grass and dark bilberry, in patches of 20 to 60 m with a finer grain, never one colour. In plan metres, so it
+ * is the same in every frame.
+ */
+function _wtrMoorTone(hex, x, z, dist) {
+  // the fine grain (13 m) only where a quad is small on screen: far off a mosaic of 13 m patches is noise, not a moor
+  const near = Math.max(0, Math.min(1, 1.6 - (dist || 0) / 160));
+  const far = Math.max(0.25, Math.min(1, 1.5 - (dist || 0) / 1800)), a = (_wtrN2(x / 70 + 11, z / 70 - 5) * 0.75 + 0.45 * _wtrN2(x / 31 + 3, z / 31 - 9)) * far, b = near * _wtrN2(x / 13 - 3, z / 13 + 8), c = _wtrN2(x / 140 + 2, z / 140 + 41);
+  // near the lens a moor is a carpet of heather, bilberry, grass and bare peat in clumps of a metre or two
+  const nf = 0, f = 0, f2 = 0;      // (the grain of a metre or two was tried and drew horizontal stripes: strips near the lens are 0.1 m deep and a metre wide)
+  let t = hex;
+  if (nf > 0) { if (f > 0.15) t = _wtrMixHex(t, '#6d4d66', Math.min(0.6, (f - 0.15) * 1.2)); else if (f < -0.3) t = _wtrMixHex(t, '#4d5a2c', Math.min(0.55, (-0.3 - f) * 1.1)); if (f2 < -0.45) t = _wtrMixHex(t, '#3d3328', 0.45); else if (f2 > 0.55) t = _wtrMixHex(t, '#a59d66', 0.4); }
+  if (a > 0.12) t = _wtrMixHex(t, '#74506c', Math.min(0.7, 0.3 + (a - 0.12) * 0.9));         // heather
+  else if (a < -0.2) t = _wtrMixHex(t, '#6d8f33', Math.min(0.65, (-0.2 - a) * 1.1));           // bracken
+  if (b > 0.45) t = _wtrMixHex(t, '#a39c68', Math.min(0.4, (b - 0.45) * 0.9));               // bent grass
+  else if (b < -0.5) t = _wtrMixHex(t, '#46472f', Math.min(0.4, (-0.5 - b) * 0.9));          // bilberry and peat
+  return _wtrShade(t, 0.95 + 0.12 * c);
+}
 function _wtrU(x, z) { let h = Math.imul(Math.round(x * 4) | 0, 374761393) ^ Math.imul(Math.round(z * 4) | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
 
 /**
@@ -196,7 +236,7 @@ function _wtrHillDeco(q, cam, hAt, ops, ext) {
   const note = (pts) => { for (const p of pts) { if (p[0] < ext.minX) ext.minX = p[0]; if (p[0] > ext.maxX) ext.maxX = p[0]; if (p[1] < ext.minY) ext.minY = p[1]; if (p[1] > ext.maxY) ext.maxY = p[1]; } };
   const n1 = _wtrN2(q.cx / 14, q.cz / 14), n2 = _wtrN2(q.cx / 5 + 3, q.cz / 5);
   // a sheep trod: along the contour, a few metres to a dozen long, thicker where the slope is steeper
-  if (h(1.7, 1.3, 11) < 0.15 + 0.1 * Math.max(0, n2) && q.slope > 0.12) {
+  if (q.kind !== 'heath' && h(1.7, 1.3, 11) < 0.15 + 0.1 * Math.max(0, n2) && q.slope > 0.12) {
     const cx = -q.gz / cl, cz = q.gx / cl, half = 2.5 + 6 * h(0.9, 2.1, 5), pts = [], lo = [];
     for (let i = 0; i <= 4; i++) {
       const t = (i / 4 * 2 - 1) * half, x = q.x + W * h(3.1, 0.7, 2) + cx * t, z = Math.max(1, Math.min(q.zb, q.za + (q.zb - q.za) * h(0.4, 4.3, 9)) + cz * t * 0.25), y = hAt(x, z);
@@ -207,8 +247,8 @@ function _wtrHillDeco(q, cam, hAt, ops, ext) {
     note(pts); note(lo);
   }
   // tussocks and rush: dark rounded bumps, in clusters where the noise is high
-  if (h(2.3, 1.1, 21) < 0.16 + 0.2 * Math.max(0, n1)) {
-    const x = q.x + W * h(5.3, 0.3, 4), z = q.za + (q.zb - q.za) * h(0.2, 6.1, 3), y = hAt(x, z), sz = 0.5 + 1.1 * h(1.9, 2.9, 8), pts = [];
+  if (q.cz > (q.kind === 'heath' ? 30 : 0) && h(2.3, 1.1, 21) < 0.16 + 0.2 * Math.max(0, n1)) {
+    const x = q.x + W * h(5.3, 0.3, 4), z = q.za + (q.zb - q.za) * h(0.2, 6.1, 3), y = hAt(x, z), sz = (0.5 + 1.1 * h(1.9, 2.9, 8)) * (q.kind === 'heath' ? 0.55 : 1), pts = [];
     const [X, Y] = P(x, z, y), w2 = Math.max(1.2, sz * k * 0.5), hh = Math.max(1.1, sz * k * 0.38);
     for (let i = 0; i < 8; i++) { const an = Math.PI + i / 7 * Math.PI, rj = 0.78 + 0.3 * _wtrU(q.cx + i, q.cz); pts.push([X + Math.cos(an) * w2 * rj, Y + Math.sin(an) * hh * rj]); }
     pts.push([X + w2 * 0.9, Y + 0.4], [X - w2 * 0.9, Y + 0.4]);
@@ -217,7 +257,7 @@ function _wtrHillDeco(q, cam, hAt, ops, ext) {
     note(e);
   }
   // limestone scars on the steeper pasture, in clusters: a ragged outcrop (a lit, stepped top, a darker front, a shadow under it)
-  if (q.slope > 0.25 && n1 + 0.6 * n2 > 0.62 && h(3.7, 2.7, 31) < 0.34) {
+  if (q.kind !== 'heath' && q.slope > 0.25 && n1 + 0.6 * n2 > 0.62 && h(3.7, 2.7, 31) < 0.34) {
     const x = q.x + W * h(2.1, 3.3, 13), z = q.za + (q.zb - q.za) * h(4.4, 0.9, 17), wm = 0.9 + 2.8 * h(1.3, 5.7, 19), hm = 0.7 + 1.2 * h(6.1, 1.1, 23), nS = 5;
     const bot = [], top = [];
     for (let i = 0; i <= nS; i++) {
@@ -310,7 +350,7 @@ function _wtrPrims(world, cam, o) {
   // the height of the ground: the grid; with a cliff, the cliff's own analytic function over the relief that is not a cliff
   const baseGrid = world.reliefBase ? { relief: world.reliefBase } : null;
   const hAt = cliffs.length
-    ? (x, z) => { let h = baseGrid ? sceneGroundHeight(baseGrid, x, z) : 0; for (const G of cliffs) { const v = worldCliffHeight(G.f, x, z); if (v > h) h = v; } return h; }
+    ? (x, z) => { let h = baseGrid ? sceneGroundHeight(baseGrid, x, z) : 0; for (const G of cliffs) { const v = worldCliffHeight(G.f, x, z); if (v > 0 && v > h) h = v; } return h; }   // (a cliff only counts where it stands: its 0 away from it is not a floor under a valley)
     : (x, z) => sceneGroundHeight(cam, x, z);
   const railBanks = _wtrRailBanks(world);
   const rock = cliffs.length && typeof _WCL_LOOK === 'object' ? (_WCL_LOOK[cliffs[0].rock] || _WCL_LOOK.limestone) : null;
@@ -342,22 +382,26 @@ function _wtrPrims(world, cam, o) {
         const poly = pc.poly, hs = poly.map(p => hAt(p[0], p[1])), hm = Math.max(...hs);
         if (hm < 0.12 && Math.min(...hs) > -0.12) continue;                      // flat ground: the v2 base
         let cx0 = 0, cz0 = 0; for (const p of poly) { cx0 += p[0]; cz0 += p[1]; } cx0 /= poly.length; cz0 /= poly.length;
-        const kind = worldTerrainKind(world, cx0, cz0);
+        const surf = worldTerrainSurface(world, cx0, cz0), kind = surf ? surf.kind : 'grass';
         // the slope from the plan quad's four corners (a clipped piece keeps the quad's own gradient)
         // (a clipped piece takes the gradient at its own middle: the face's own jump is not its slope)
         const e = Math.max(0.3, (x2 - x) * 0.5), gx = (hAt(cx0 + e, cz0) - hAt(cx0 - e, cz0)) / (2 * e), gz = (hAt(cx0, cz0 + e) - hAt(cx0, Math.max(0.1, cz0 - e))) / (cz0 + e - Math.max(0.1, cz0 - e)), slope = Math.hypot(gx, gz);
         let m = _wtrMat(kind, slope);
         if (!m) continue;
+        // a steep quad beside a cliff is the cliff's own rock (never the generic pale grey: a gritstone edge is dark, chalk is white)
+        if (m.mat === 'stone' && slope > 1.3 && rock) m = { mat: 'stone', hex: _wtrMixHex(rock.base, rock.dark, 0.3) };
+        if (m.mat === 'grass' && kind === 'heath' && slope < 1.3) m = { mat: m.mat, hex: _wtrMoorTone(m.hex, cx0, cz0, Math.hypot(cx0, cz0)) };
+        else if (m.mat === 'grass' && kind === 'field' && surf && surf.id) m = { mat: m.mat, hex: _wtrFieldTone(m.hex, surf.id) };
         // the scree of a cliff is where the cliff's own talus is the ground: a hill that rises higher there (the dale side beside the cove) is not scree
         if (pc.scree > 0 && baseGrid && sceneGroundHeight(baseGrid, cx0, cz0) > hAt(cx0, cz0) - 0.3 && sceneGroundHeight(baseGrid, cx0, cz0) > 0.5) pc.scree = 0;
         const jit0 = _wtrU(cx0, cz0);
         // a pasture is patchy (dry bent, rush, a greener flush by a spring), never one tone: two scales of noise in the colour, the yellower and the darker patches mixed in
-        if (m.mat === 'grass' && pc.scree <= 0.05 && hm > 0.5) {
+        if (m.mat === 'grass' && pc.scree <= 0.05 && Math.max(hm, -Math.min(...hs)) > 0.5) {
           const na = _wtrN2(cx0 / 13, cz0 / 13), nb = _wtrN2(cx0 / 4.1 + 5, cz0 / 4.1 - 2);
           let hx = m.hex;
-          if (na > 0.25) hx = _wtrMixHex(hx, '#b4ab62', Math.min(0.5, (na - 0.25) * 0.7)); else if (na < -0.3) hx = _wtrMixHex(hx, '#4d7a3a', Math.min(0.5, (-0.3 - na) * 0.8));
-          m = { mat: m.mat, hex: _wtrShade(hx, 1 + 0.07 * na + 0.05 * nb) };
-          hillQ.push({ cx: cx0, cz: cz0, x, x2, za, zb, gx, gz, slope, hex: m.hex, hm });
+          if (kind === 'heath') { /* the moor has its own patches (_wtrMoorTone) */ } else if (kind === 'field') { hx = _wtrShade(hx, 1 + 0.05 * na); } else if (na > 0.25) hx = _wtrMixHex(hx, '#b4ab62', Math.min(0.5, (na - 0.25) * 0.7)); else if (na < -0.3) hx = _wtrMixHex(hx, '#4d7a3a', Math.min(0.5, (-0.3 - na) * 0.8));
+          m = kind === 'field' ? { mat: m.mat, hex: hx } : { mat: m.mat, hex: _wtrShade(hx, 1 + 0.07 * na + 0.05 * nb) };
+          hillQ.push({ cx: cx0, cz: cz0, x, x2, za, zb, gx, gz, slope, hex: m.hex, hm, kind });
         }
         // a talus skirt: pale broken rock where the slope comes off the foot of a cliff, grass creeping up from the toe
         const lf = Math.sin(cx0 * 0.09 + 1.3) * Math.sin(cz0 * 0.12 - 0.4);
@@ -378,7 +422,11 @@ function _wtrPrims(world, cam, o) {
         const pts = _wtrGrow(P, 0.65);
         for (const q of pts) { minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); minY = Math.min(minY, q[1]); maxY = Math.max(maxY, q[1]); }
         hi = Math.max(hi, hm); xmin = Math.min(xmin, x); xmax = Math.max(xmax, x2);
-        faces.push({ pts, role: 'ground', mat: m.mat, hex: _wtrShade(m.hex, shade * jit), z: cz0, alpha: 1 });
+        // the far ground is hazy: a ridge at four kilometres is blue-grey and soft, never the saturated tone of the heather at your feet (the haze of
+        // a fair day; the light pass grades it after, so night and dusk follow)
+        let hexF = _wtrShade(m.hex, shade * jit);
+        if (zm > 500) hexF = _wtrMixHex(hexF, '#a3b7cb', Math.min(0.78, 0.9 * (1 - Math.exp(-(zm - 500) / 3600))));
+        faces.push({ pts, role: 'ground', mat: m.mat, hex: hexF, z: cz0, alpha: 1 });
       }
       }
     }
@@ -400,7 +448,7 @@ function _wtrPrims(world, cam, o) {
     let sj = si; while (sj < stones.length && stones[sj].z < zb) sj++;
     for (let j = sj - 1; j >= si; j--) for (const op of stones[j].ops) { sops.push(op); for (const q of op.p) { minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); minY = Math.min(minY, q[1]); maxY = Math.max(maxY, q[1]); } xmin = Math.min(xmin, stones[j].x); xmax = Math.max(xmax, stones[j].x); }
     if (!faces.length) continue;
-    const strip = { id: 'terrain-' + k, kind: 'line', sub: 'terrain', lineKind: 'terrain', box: [minX, minY, maxX, maxY], zKey: za, foot: [[xmin, za], [xmax, za], [xmax, zb], [xmin, zb]], height: Math.max(0.3, hi), solidity: 'passable', faces, mat: 'grass', ops: sops.length ? sops : undefined, heading: cam.heading || 0 };
+    const strip = { id: 'terrain-' + k, kind: 'line', sub: 'terrain', lineKind: 'terrain', box: [minX, minY, maxX, maxY], zKey: za, orderZ: zb, foot: [[xmin, za], [xmax, za], [xmax, zb], [xmin, zb]], height: Math.max(0.3, hi), solidity: 'passable', faces, mat: 'grass', ops: sops.length ? sops : undefined, heading: cam.heading || 0 };
     strip.tops = _wtrTops(strip);
     out.push(strip);
   }

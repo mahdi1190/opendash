@@ -33,6 +33,8 @@ const WORLD_BACKDROP_STYLES = Object.freeze({
     { z: 260, dz: 0.25, objs: ['tree.far-pine', 'tree.far-pine', 'tree.far-birch', 'tree.distant-pine'], fill: 1.1, cl: [3, 7], sp: 18, max: 90 },
     { z: 700, dz: 0.2, objs: ['tree.distant-pine', 'tree.distant', 'tree.woods-edge'], fill: 1.2, cl: [4, 9], sp: 40, max: 90 },
     { z: 2000, dz: 0.15, objs: ['tree.woods-edge', 'tree.pond-wood'], fill: 0.9, cl: [5, 10], sp: 120, max: 80 }] },
+  // an upland valley seen from a hillside (Hope Valley from Stanage): the far ridge, fields and woods are the world's own relief and surfaces (worldValley): no bands
+  upland: { ground: 'heath', own: true, bands: [] },
   woodland: { ground: 'grass', bands: [
     { z: 220, dz: 0.25, objs: ['tree.far-broad', 'tree.far-broad', 'tree.far-birch', 'tree.wyv-far-oak'], fill: 1.3, cl: [4, 8], sp: 16, max: 100 },
     { z: 650, dz: 0.2, objs: ['tree.woods-edge', 'tree.distant', 'tree.pond-wood'], fill: 1.3, cl: [5, 10], sp: 40, max: 90 },
@@ -50,7 +52,7 @@ const WORLD_BACKDROP_STYLES = Object.freeze({
     { z: 600, dz: 0.2, objs: ['building.terrace', 'tree.distant', 'building.townhouse', 'tree.woods-edge'], fill: 1.2, cl: [4, 9], sp: 45, max: 100 },
     { z: 1800, dz: 0.15, objs: ['tree.woods-edge', 'tree.pond-wood', 'building.skyline-band'], fill: 0.9, cl: [5, 10], sp: 120, max: 80 }] },
   // the far shore of a wide estuary or river (a mile across): a low line of terraces, mills, warehouses, a church and trees, never a skyline
-  estuary: { ground: 'town', bands: [
+  estuary: { ground: 'town', own: true, bands: [
     // the Wirral shore from the Liverpool side (a mile and more across): a low line of terraces, warehouses, a church spire, chimneys and dock cranes
     // among trees, in haze (the distance does the fading), so the far shore is a long low shore of roofs, never a wall of green
     { z: 1500, dz: 0.08, objs: ['building.terrace-northern', 'building.warehouse-canal', 'building.terrace-northern', 'building.mill-red-brick', 'building.church', 'building.warehouse-canal', 'building.terrace-northern', 'building.terrace-northern', 'structure.dock-crane', 'building.mill-red-brick', 'tree.far-broad'], fill: 1.5, cl: [5, 10], sp: 70, max: 130, haze: 0.4 },

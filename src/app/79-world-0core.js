@@ -1344,10 +1344,10 @@ function _wcReliefCompile(cs) {
         if (f.kind === 'cliff') { cl = Math.max(cl, worldCliffHeight(f, x, d)); continue; }
         const pr = _wcFeatProfile(f, _wcLineDist(f.path, x, d)); if (!pr) continue; if (f.kind === 'cutting') down = Math.min(down, -Math.abs(f.h) * pr); else up = Math.max(up, Math.abs(f.h) * pr);
       }
-      let upc = up;
-      if (cl > 0) upc = Math.max(up, cl);
       const b0 = baseCam ? sceneGroundHeight(baseCam, x, d) : 0;
-      h[j * nx + i] = _wcR3(b0 + upc + down);
+      // a cliff is an absolute height (its face is drawn from the foot up to `h`): it stands where it is higher than the relief it rises out of
+      const upc = cl > 0 ? Math.max(b0 + up, cl) : b0 + up;
+      h[j * nx + i] = _wcR3(upc + down);
       if (hb) hb[j * nx + i] = _wcR3(b0 + up + down);
     }
   }
@@ -1643,6 +1643,14 @@ function worldBuild(spec, o = {}) {
   if (o.frame !== false) {
     if (typeof worldFrameCheck === 'function') { try { worldFrameCheck(world, world.cam, { apply: true }); } catch (err) { _wcLogBuild(log, null, 'the frame check: ' + String(err && err.message || err)); } }
     if (typeof worldLandmarkCheck === 'function') { try { worldLandmarkCheck(world, world.cam, { apply: true, demote: true, season }); } catch (err) { _wcLogBuild(log, null, 'the landmark check: ' + String(err && err.message || err)); } }
+  }
+  // a parametric model on sloping ground stands at its LOWEST footprint corner (a boulder sits into the hill instead of hanging off its downhill side by up to a
+  // metre; the invariant 'floating' judges a drawn piece the same way). Done last: a fill entity gets its id, and so its model's seeded size, after it is built
+  if (world.cam && world.cam.relief && typeof worldModelFootOf === 'function' && typeof worldModelHas === 'function') {
+    for (const e of world.entities) {
+      if (!e || e.static === false || !/^ground/.test(String(e.attach || '')) || e.host || !worldModelHas(e.obj)) continue;
+      try { let gm = e.y; for (const q of worldModelFootOf(e, e.model) || []) gm = Math.min(gm, sceneGroundHeight(world.cam, q[0], q[1])); if (gm < e.y) e.y = _wcR3(gm); } catch (err) { /* keep the centre's ground */ }
+    }
   }
   // one shape for every load-log entry, whoever acted (U2, 12.5)
   for (const l of world.log) if (l && typeof l === 'object') for (const k of ['id', 'obj', 'from', 'to']) if (!(k in l)) l[k] = null;
