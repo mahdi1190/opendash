@@ -1753,10 +1753,11 @@ function _wlfMove(life, a, dt) {
   }
   // the sidestep: a shuffle to one side to let a mover by (the other side when that cell is forbidden)
   if (dir && a.sideV > 0.01 && a.kind === 'walker') {
-    // a side found blocked stays given up for a second: stepping back to it on the next tick (it is free again once the walker has moved
-    // off it) shook the walker to and fro in place, its legs striding at the jitter's speed (18 Oct, Whitby p0-13 by a bollard)
-    var sd = a.sideFlip > life.t && a.sideFlipFrom === a.sideDir ? -a.sideDir : a.sideDir, st2 = a.sideV * dt, sdx = a.sideX * sd * st2, sdz = a.sideZ * sd * st2;
-    if (!_wlfTryAt(life, a, a.x + sdx, a.z + sdz) && _wlfTryAt(life, a, a.x - sdx, a.z - sdz)) { if (sd === a.sideDir) { a.sideFlip = life.t + 1; a.sideFlipFrom = a.sideDir; } else a.sideFlip = 0; }
+    // a side found blocked is not tried again for half a second after the walker stepped the other way: stepping back to it on the next
+    // tick (free again once the walker has moved off it) shook the walker to and fro in place, its legs striding at the jitter's speed
+    // (18 Oct, Whitby p0-13 by a bollard). Keeping to the other side instead jammed two walkers in a one-body strip (world-crowd's gap)
+    var sd = a.sideDir, st2 = a.sideV * dt, sdx = a.sideX * sd * st2, sdz = a.sideZ * sd * st2;
+    if (!(a.sideFlip > life.t && a.sideFlipFrom === sd)) { if (!_wlfTryAt(life, a, a.x + sdx, a.z + sdz) && _wlfTryAt(life, a, a.x - sdx, a.z - sdz)) { a.sideFlip = life.t + 0.5; a.sideFlipFrom = sd; } }
   }
   // the dog stays within its lead (A7)
   if (a.lead && a.leader && !a.leader.dead) _wlfLeash(life, a, dt);
