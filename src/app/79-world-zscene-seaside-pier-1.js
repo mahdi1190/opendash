@@ -12,9 +12,7 @@
   const NEAR = (() => { // deterministic scatter in the near band, one jittered item per grid cell so nothing overlaps
     let h = 7; const r = () => (h = (h * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff, out = [];
     const grid = (id, x0, x1, z0, z1, step, pick) => { for (let x = x0; x < x1; x += step) for (let z = z0; z < z1; z += step) if (r() < 0.85) out.push({ id: id + '-' + out.length, obj: pick(), at: [Math.round((x + r() * step * 0.4) * 100) / 100, Math.round((z + r() * step * 0.4) * 100) / 100] }); };
-    grid('near-stone', 5.6, 12.2, 11, 24, 0.8, () => 'rock.stones');
-    grid('near-tuft', -17, -5, 11, 24, 1.3, () => r() < 0.3 ? 'plant.wildflowers' : 'plant.rph-short-grass');
-    for (let k = 0; k < 6; k++) out.push({ id: 'near-tub-' + k, obj: 'plant.rph-flower-tub', at: [-16 + k * 1.9, 13 + (k % 3) * 3.4] });
+    grid('near-stone', 9.0, 14.2, 11, 24, 1.8, () => 'rock.stones');
     return out;
   })();
   worldAdd('world-test', {"id":"seaside-pier-1-w3","label":"A Victorian seaside pier and promenade, England (world)","site":"A Victorian seaside pier and promenade, England","mood":"calm","colour":"slate","tags":["uk","seaside-pier","coast","world-v3"],"liveSky":{"lat":50.82,"lon":-0.14},"ukPlace":"seaside-pier","county":"sussex","ukTown":"Seaside","ukView":"world-engine","setting":"a promenade along a beach, the sea on the right"}, {
@@ -47,7 +45,7 @@
       {"obj":"street.lamppost","at":[4.3,44],"id":"lamp-1"},
       {"obj":"street.lamppost","at":[3.9,100],"id":"lamp-2"},
       ...(PIER.entity ? [PIER.entity] : []), ...PIER.entities,
-      // the near ground the lens sees: shingle and tufts on the beach edge to the right, flower tubs and tufts on the paved front to the left
+      // the near ground the lens sees: shingle on the beach edge to the right
       // (a cluster spreads along the whole surface and only its first few metres are in the lower band, so these are placed where the frame is)
       ...NEAR,
       // seafront life: an ice-cream kiosk on the promenade by the sea rail, bunting across it, gulls on the beach and the pier, boats out at sea
