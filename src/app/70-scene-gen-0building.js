@@ -562,6 +562,19 @@ function _scbgRoofTex(face, ctx) {
   // slate or tile courses: a few lines parallel to the eave (the first edge of the plane), only near
   const P = face.poly, a = P[0], b = P[1], c = P[P.length - 1], m = Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]);
   if (m < 0.5 || P.length < 3) return;
+  // THATCH (a style's roofMat.kind): no tile courses but dense, ragged, wide bands of straw (two tones), laid up the pitch; the generator's own face colour is the straw
+  if (ctx.sp && ctx.sp.style && ctx.sp.style.roofMat && ctx.sp.style.roofMat.kind === 'thatch' && P.length >= 4) {
+    const nT = Math.min(34, Math.floor(m / 0.26)), lo = [], hi = [];
+    for (let i = 1; i < nT; i++) {
+      const t = i / nT, j = ((Math.sin(i * 12.9898 + m * 3.1) * 43758.5453) % 1 + 1) % 1, tt = Math.max(0.02, Math.min(0.98, t + (j - 0.5) * 0.35 / nT));
+      const p = _scbgAdd(a, _scbgMul([c[0] - a[0], c[1] - a[1], c[2] - a[2]], tt)), q = _scbgAdd(b, _scbgMul([P[2][0] - b[0], P[2][1] - b[1], P[2][2] - b[2]], tt)), up = _scbgMul(_scbgNorm([c[0] - a[0], c[1] - a[1], c[2] - a[2]]), 0.07 + 0.05 * j);
+      const cl = _scbgClipNear([p, q, _scbgAdd(q, up), _scbgAdd(p, up)], ctx.view.near);
+      if (cl) (i % 3 === 0 ? hi : lo).push(_scbgPath(cl.map(ctx.view.P)));
+    }
+    if (lo.length) ctx.sink.add(1, { f: _scbgDark(face.col, 0.34), d: lo.join(''), op: 0.5, part: 'roof', detail: true });
+    if (hi.length) ctx.sink.add(1, { f: _scbgLight(face.col, 0.28), d: hi.join(''), op: 0.5, part: 'roof', detail: true });
+    return;
+  }
   const n = Math.min(14, Math.floor(m / 0.45)), segs = [];
   for (let i = 1; i < n; i++) {
     const t = i / n, p = _scbgAdd(a, _scbgMul([c[0] - a[0], c[1] - a[1], c[2] - a[2]], t)), q = _scbgAdd(b, _scbgMul([P[2][0] - b[0], P[2][1] - b[1], P[2][2] - b[2]], P.length === 3 ? t * 0 : t));

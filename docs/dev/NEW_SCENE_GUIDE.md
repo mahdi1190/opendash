@@ -41,7 +41,7 @@ the light and weather, people and animals by the kit's life, reflections, night 
 | `park`, `pond` | a park or a pond with its trees and reeds | green | georgian / stone-cottage |
 | `coast` | a promenade by a beach and the sea, a headland | coast | georgian |
 | `quayside`, `canal`, `river-city`, `waterfront-city` | a quay or towpath, water, houses on the far bank | water-edge | pantile-cottage / victorian-terrace / mill / baroque-civic |
-| `terraced-street`, `old-town-lane`, `civic-square` | a street seen along its length | street | victorian-terrace / timber-framed / georgian |
+| `terraced-street`, `old-town-lane`, `cobbled-lane`, `civic-square` | a street seen along its length (`cobbled-lane`: a hill lane of cobbles, add a `slope` ground feature) | street | victorian-terrace / timber-framed / tudor-colourwash / georgian |
 | `moor`, `heath`, `woodland`, `farmland`, `downs`, `dale` | open country, a path, walls, grazing | open | stone-cottage |
 
 Each kit (`79-world-0kits.js`) is the curated set of the best library objects for that kind of place: near, mid, far and distant
@@ -55,7 +55,7 @@ has no recipe in that layout is printed as a note, never dropped silently. To ad
 `tools/lib/world/scaffold.mjs` (a function returning buildings, entities, surfaces or lines at the recipe's slots).
 
 Building styles (`style:`) that exist: `stone-cottage`, `cotswold-stone` (honey limestone, steep stone-slate roof), `pantile-cottage`,
-`timber-framed`, `victorian-terrace`, `edwardian`, `georgian`, `baroque-civic` (crowns), `mill`, `station`, `norfolk-flint`, `semi-1930s`,
+`timber-framed`, `tudor-colourwash` (East Anglian pastel limewash, gables, plastered fronts), `tudor-thatch`, `victorian-terrace`, `edwardian`, `georgian`, `baroque-civic` (crowns), `mill`, `station`, `norfolk-flint`, `semi-1930s`,
 `interwar-shops`, `brutalist`, `modern-glass`, `parish-church`, `cotswold-church` (crown `pinnacled-tower`), `gothic-minster`
 (`twin-towers`), `gothic-ruin` (`abbey`), `swing-bridge`, `canal-warehouse` (a detached row: `party: 'none', spacing`). A row of houses is `{ along: <surface id>, side: 'left' | 'right', style, from, to }`
 (`left` of a path that runs along +z is -x). Pick a style that matches the region and era; stone, brick and render colour come with it.

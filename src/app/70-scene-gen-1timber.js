@@ -40,6 +40,9 @@ const _sctfPick = (r, a) => a[Math.floor(r() * a.length) % a.length];
 function _sctfResolve(sp, b) {
   const st = sp.style, r = _sctfRnd(sp, 'resolve'), nS = sp.storeys, T = st.timber || {};
   const tf = { timber: _sctfPick(r, T.oak || _SCTF_OAK), plaster: _sctfPick(r, T.plaster || _SCTF_PLASTER), pattern: _sctfPick(r, ['close', 'close', 'box', 'box', 'square']) };
+  // a limewashed front: the frame is plastered over (the posts, plates and the jetty's beam show; no studs, rails or braces). A separate seeded draw, so a style that
+  // does not ask for it (T.plastered unset: York) keeps its stream. East Anglia (Elm Hill, Lavenham) plastered more than it left open
+  if (T.plastered && _sctfRnd(sp, 'plastered')() < T.plastered) tf.pattern = 'plastered';
   const hs = [];
   for (let i = 0; i < nS; i++) hs.push(i === 0 ? 2.65 + r() * 0.55 : (i === nS - 1 && nS >= 3 && r() < 0.4) ? 1.9 + r() * 0.35 : 2.25 + r() * 0.5);
   sp.hs = hs; sp.zs = [0]; for (const h of hs) sp.zs.push(sp.zs[sp.zs.length - 1] + h);
@@ -58,7 +61,8 @@ function _sctfResolve(sp, b) {
   while (tf.jet.length < nS) { tf.jet.push(tf.jet[tf.jet.length - 1]); tf.top.push(tf.top[tf.top.length - 1]); }
   tf.lean = lean;
   tf.sign = sp.shop ? r() < 0.7 : r() < 0.1;
-  tf.lantern = r() < 0.4; tf.basket = r() < 0.45; tf.awning = !!sp.shop && r() < 0.65; tf.stall = !!sp.shop && r() < 0.8;
+  // (a style may say how often: T.lantern, T.basket; the draws are the same, only the threshold moves, so a style that does not say keeps its stream)
+  tf.lantern = r() < (T.lantern == null ? 0.4 : T.lantern); tf.basket = r() < (T.basket == null ? 0.45 : T.basket); tf.awning = !!sp.shop && r() < 0.65; tf.stall = !!sp.shop && r() < 0.8;
   tf.fascia = _sctfPick(r, T.paint || _SCTF_PAINT); tf.board = _sctfPick(r, T.paint || _SCTF_PAINT); tf.motif = _sctfPick(r, ['disc', 'stripes', 'chevron', 'diamond', 'bar']);
   tf.awnCols = [_sctfPick(r, ['#8a2a2a', '#2a5a4a', '#2a3a6a', '#6a5a2a', '#7a3a1a']), '#e8e2d0'];
   tf.doorCol = _sctfPick(r, ['#2a3a2e', '#3a2a22', '#1f2a3a', '#4a2a2a', '#2a2a2a']);
@@ -168,9 +172,9 @@ function _sctfFrontLayout(sp, face, model) {
     if (tf.stall && deep(Math.min(gs, ge), 'stall') && deep(Math.max(gs, ge), 'stall')) put({ kind: 'stall', s0: gs, s1: ge, o: 0.34, z: 0.92, col: _scbgLight(tf.timber, 0.12), kindOf: sp.shop && sp.shop.kind });
     if (tf.awning && deep(gs, 'awning') && deep(ge, 'awning')) put({ kind: 'awning', s0: gs - 0.1, s1: ge + 0.1, z: zB - 0.78, drop: 0.42, out: 0.8, cols: tf.awnCols });
   } else {
-    const ps = tf.pattern === 'close' ? 1.9 + r() * 0.7 : tf.pattern === 'box' ? 1.4 + r() * 0.5 : 1.05 + r() * 0.25, nb = Math.max(1, Math.round(len / ps)), bw = len / nb;
+    const ps = tf.pattern === 'close' ? 1.9 + r() * 0.7 : tf.pattern === 'box' ? 1.4 + r() * 0.5 : tf.pattern === 'plastered' ? 1.7 + r() * 0.6 : 1.05 + r() * 0.25, nb = Math.max(1, Math.round(len / ps)), bw = len / nb;
     const doorBay = i === 0 ? (sp.doorSide === 'left' ? 0 : nb - 1) : -1;
-    for (let k = 1; k < nb; k++) { const s = bw * k + (r() - 0.5) * 0.16; rect(s - 0.07, zLo, 0.14, zB - zLo - 0.15, 1); }
+    if (tf.pattern !== 'plastered') for (let k = 1; k < nb; k++) { const s = bw * k + (r() - 0.5) * 0.16; rect(s - 0.07, zLo, 0.14, zB - zLo - 0.15, 1); }
     for (let k = 0; k < nb; k++) {
       const sa = bw * k + pw / 2, sb = bw * (k + 1) - pw / 2, pwid = sb - sa;
       if (k === doorBay) { const dS = (sa + sb) / 2 - 0.5; out.elems.push({ k: 'door', s: dS, z: 0.12, w: 1.0, h: 2.05, panels: 2, recess: 0.2, col: tf.doorCol }); holes.push([dS - 0.05, dS + 1.05, 0, 2.3]); rect(dS - 0.1, 0, 0.1, 2.3, 1); rect(dS + 1.0, 0, 0.1, 2.3, 1); rect(dS - 0.1, 2.15, 1.2, 0.1, 1); continue; }
@@ -194,7 +198,7 @@ function _sctfFrontLayout(sp, face, model) {
   // mid rails, studs and braces by the frame pattern; everything stops at the openings
   const zMid = zA + (zB - zA) * 0.55, studs = [], pitch = tf.pattern === 'close' ? 0.31 : tf.pattern === 'box' ? 1.0 : 0.62;
   const inHole = (s, z0, z1) => holes.some(h => s > h[0] - 0.01 && s < h[1] + 0.01 && z1 > h[2] && z0 < h[3]);
-  if (!shop) {
+  if (!shop && tf.pattern !== 'plastered') {
     // rails across the panels between openings (a rail never crosses a window)
     const runs = [[0, len]];
     for (const h of holes.filter(h => zMid + rail > h[2] && zMid < h[3]).sort((a, b) => a[0] - b[0])) { const last = runs[runs.length - 1]; if (h[0] > last[0]) { const e = last[1]; last[1] = h[0]; if (h[1] < e) runs.push([h[1], e]); } else if (h[1] < last[1]) last[0] = h[1]; }
@@ -243,7 +247,7 @@ function _sctfSideLayout(sp, face, model) {
   const zA = zs[i], zB = top ? model.E0 : zs[i + 1], w = s1 - s0;
   if (w < 0.2) return out;
   rects.push([s0, zB - 0.15, w, 0.15, 1], [s0, zA, w, i ? 0.28 : 0.2, 1], [s0, zA, 0.16, zB - zA, 1], [s1 - 0.16, zA, 0.16, zB - zA, 1]);
-  for (let s = s0 + 0.4; s < s1 - 0.2; s += 0.32) rects.push([s - 0.04, zA + 0.28, 0.08, zB - zA - 0.43, 2]);
+  if (tf.pattern !== 'plastered') for (let s = s0 + 0.4; s < s1 - 0.2; s += 0.32) rects.push([s - 0.04, zA + 0.28, 0.08, zB - zA - 0.43, 2]);   // a plastered house is plastered at the side too
   if (face.role === 'side' && w > 2) out.elems.push({ k: 'win', s: (s0 + s1) / 2 - 0.5, z: zA + 0.8, w: 1.0, h: 0.9, type: 'leaded', panes: [3, 1], head: 'flat', recess: 0.1, storey: i, frame: tf.timber });
   out.elems.push({ k: 'tframe', s0, s1, z0: zA, z1: zB, storey: i, rects, quads: [], col: tf.timber, pitch: 0.32, studZone: null });
   return out;
@@ -435,7 +439,8 @@ _scbgBlockKinds.lantern = function (bk, wall) {
   faces.push(_sctfFace([X(bk.s, o - hw - 0.03, z - 0.3), X(bk.s, o + hw + 0.03, z - 0.3), X(bk.s, o + hw, z - 0.34), X(bk.s, o - hw, z - 0.34)], '#1c1f22'));
   faces.push(_sctfFace([X(bk.s, o - hw - 0.04, z + 0.0), X(bk.s, o + hw + 0.04, z), X(bk.s, o, z + 0.14)], '#1c1f22'));
   // its glow after dusk: a soft falloff of round lights (the lamp's own warm colour), wider and fainter outward, then the glass itself
-  for (const [rad, op] of [[0.95, 0.07], [0.6, 0.12], [0.36, 0.22]]) faces.push({ poly: [X(bk.s, o, z - 0.17)], n: [0, 1, 0], part: 'lit', role: 'lamps', col: '#ffd890', rad, op, round: true, elems: [], flat: true, lit: true });
+  // (six rings, each a small step: three rings of 0.07 to 0.22 showed as three hard-edged discs round every lantern at night)
+  for (const [rad, op] of [[1.05, 0.03], [0.86, 0.04], [0.68, 0.055], [0.52, 0.07], [0.38, 0.09], [0.26, 0.12]]) faces.push({ poly: [X(bk.s, o, z - 0.17)], n: [0, 1, 0], part: 'lit', role: 'lamps', col: '#ffd890', rad, op, round: true, elems: [], flat: true, lit: true });
   faces.push({ poly: [X(bk.s, o, z - 0.17)], n: [0, 1, 0], part: 'lit', role: 'lamps', col: '#fff1c8', rad: 0.1, op: 1, elems: [], flat: true, lit: true });
   return faces;
 };
