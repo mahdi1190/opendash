@@ -252,16 +252,16 @@ function _wtrQuant(hex, q) { const n = parseInt(hex.slice(1), 16), f = v => Math
  * any depth; placed by hashes of the quad (the same in every frame) and collected by colour into a few fills per strip (B: Map hex -> polygons).
  */
 function _wtrMoorDeco(q, cam, hAt, B, ext, Mc, snow) {
-  if (q.cz > 260 || q.cz < 7) return;
+  if (q.cz > 700 || q.cz < 7) return;
   const k = cam.f / Math.max(1, q.cz);
   const yA = sceneProject(cam, q.cx, q.za, hAt(q.cx, q.za)).Y, yB = sceneProject(cam, q.cx, q.zb, hAt(q.cx, q.zb)).Y;
   const wpx = (q.x2 - q.x) * k, hpx = Math.max(1, Math.abs(yA - yB));
-  const n = Math.min(12, Math.floor(wpx * hpx / 52 + _wtrU(q.cx * 1.3 + 3, q.cz * 0.7)));
+  const n = Math.min(16, Math.floor(wpx * hpx / (q.slope > 0.15 ? 30 : 46) + _wtrU(q.cx * 1.3 + 3, q.cz * 0.7)));
   const put = (hex, pts) => { const key = _wtrQuant(hex, 9); let L = B.get(key); if (!L) { L = []; B.set(key, L); } L.push(pts); for (const p of pts) { if (p[0] < ext.minX) ext.minX = p[0]; if (p[0] > ext.maxX) ext.maxX = p[0]; if (p[1] < ext.minY) ext.minY = p[1]; if (p[1] > ext.maxY) ext.maxY = p[1]; } };
   for (let i = 0; i < n; i++) {
     const u1 = _wtrU(q.cx * 3.1 + i * 7.3, q.cz * 1.7 + i), u2 = _wtrU(q.cx * 0.7 - i * 3.9, q.cz * 2.9 + i * 1.3), u3 = _wtrU(q.cx * 5.3 + i, q.cz * 0.3 - i * 2.1);
     const x = q.x + (q.x2 - q.x) * u1, z = q.za + (q.zb - q.za) * u2, y = hAt(x, z);
-    const sz = Math.max(0.1, Math.min(1.6, (3 + 7 * u3) / k)), p = sceneProject(cam, x, z, y), X = p.X, Y = p.Y + 0.6, w2 = Math.max(1.2, sz * k * 0.5), hh = Math.max(1, sz * k * (0.28 + 0.14 * u2));
+    const sz = Math.max(0.1, Math.min(2.2, (q.slope > 0.15 ? 4 + 9 * u3 : 3 + 7 * u3) / k)), p = sceneProject(cam, x, z, y), X = p.X, Y = p.Y + 0.6, w2 = Math.max(1.2, sz * k * 0.5), hh = Math.max(1, sz * k * (0.28 + 0.14 * u2));
     const col = _wtrMoorTone('#5a5038', x, z, q.cz, Mc, q.slope), lit = u3 > 0.58;
     const pts = [], ns = w2 > 3 ? 4 : 3, hs = hh * (lit ? 1.6 : 1.25);
     pts.push([X - w2, Y]);
@@ -271,7 +271,8 @@ function _wtrMoorDeco(q, cam, hAt, B, ext, Mc, snow) {
     }
     pts[pts.length - 1] = [X + w2, Y];
     for (let j = 0; j < pts.length; j++) pts[j] = [Math.round(pts[j][0] * 10) / 10, Math.round(pts[j][1] * 10) / 10];
-    put(lit ? _wtrShade(col, 1.08 + 0.1 * u1) : _wtrShade(col, 0.62 + 0.14 * u1), pts);
+    const stone = q.slope > 0.15 && u1 < 0.06;
+    put(stone ? _wtrShade("#8d8270", 0.85 + 0.3 * u2) : lit ? _wtrShade(col, 1.12 + 0.16 * u1) : _wtrShade(col, 0.56 + 0.16 * u1), pts);
     // the flowers of the heather in its months: a few purple points on the top of a dark clump
     if (!lit && Mc && Mc.bloom > 0.15 && u2 < Mc.bloom * 0.8 && w2 > 1.6) { const r = Math.max(0.6, w2 * 0.22); put('#a7609f', [[X - r, Y - hh * 0.75], [X, Y - hh * 0.95 - r], [X + r, Y - hh * 0.75], [X, Y - hh * 0.55]]); }
     // snow lies on the tops of the clumps on a snow day
@@ -588,7 +589,7 @@ function _wtrPrims(world, cam, o) {
         const lf = Math.sin(cx0 * 0.09 + 1.3) * Math.sin(cz0 * 0.12 - 0.4);
         if (pc.scree > 0.05 && rock) { const sc = Math.max(0, Math.min(1, pc.scree * (0.9 + 0.3 * lf))); m = sc > 0.5 ? { mat: 'scree', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), Math.min(1, sc * 1.1)) } : { mat: 'grass', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), sc * 0.9) }; }
         // the shade of the slope against a sun high on the left behind the eye (the light pass grades the colour by the real sun after)
-        const nl = Math.hypot(gx, gz, 1), lam = (-gx * -0.45 + -gz * -0.4 + 1 * 0.8) / (nl * 1.0), shade = Math.max(0.6, Math.min(1.12, 0.78 + 0.34 * lam));
+        const nl = Math.hypot(gx, gz, 1), lam = (-gx * -0.45 + -gz * -0.4 + 1 * 0.8) / (nl * 1.0), shade = kind === 'heath' ? Math.max(0.72, Math.min(1.08, 0.86 + 0.22 * lam)) : Math.max(0.6, Math.min(1.12, 0.78 + 0.34 * lam));
         // a few percent of variation along the strip (mowing, grazing) so a slope is never one flat tone; scree varies more
         const jit = 1 + 0.018 * Math.sin(cx0 * 0.37 + cz0 * 0.21) + 0.012 * Math.sin(cx0 * 1.3 - cz0 * 0.7) + (pc.scree > 0.05 ? 0.03 * lf : 0);
         // a railway bank is mottled, and wetter at a foot standing in the water

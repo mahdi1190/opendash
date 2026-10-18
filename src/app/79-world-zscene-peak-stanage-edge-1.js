@@ -41,7 +41,8 @@
     ] },
     surfaces: [
       { id: 'moor', kind: 'heath', poly: [at(-3000, -900), at(-3000, 9000), at(260, 9000), at(260, -900)] },
-      { id: 'farhill', kind: 'heath', poly: [at(2300, -900), at(2300, 9000), at(5200, 9000), at(5200, -900)] },
+      { id: 'farhill', kind: 'heath', poly: [at(2300, -4000), at(2300, 12000), at(9000, 12000), at(9000, -4000)] },
+      { id: 'vale-end', kind: 'heath', poly: [at(260, 4150), at(260, 12000), at(2300, 12000), at(2300, 4150)] },
       // the buttress top at the lens and the plateau round the bay (2.5 m back from the rim: the nav keeps everything on foot off the lip)
       { id: 'pl-0', kind: 'heath', poly: [[-1.2, 3.2], [-0.6, 5.6], [1.6, 7.6], [5.6, 9.4], [9, 9.4], [9, 3.2]] },
       { id: 'pl-tip', kind: 'heath', poly: [[-4.0, 2.2], [-3.7, 4.4], [-2.8, 5.6], [-0.6, 6.6], [-0.6, 2.2]] },
@@ -59,10 +60,10 @@
     ],
     lines: [
       // a wall on the plateau coming up to the path, and the intake wall on the slope below the bay
-      { id: 'wall-pl', kind: 'wall', stone: '#6a6358', path: [[140, 60], [110, 66], [84, 64], [62, 70]], h: 1.3 },
+      { id: 'wall-pl', kind: 'wall', stone: '#6a6358', path: [[140, 60], [110, 66], [84, 64], [62, 70]], h: 1.3, gaps: [[74.5, 81]] },
       { id: 'wall-in', kind: 'wall', stone: '#6a6358', path: [at(70, 60), at(60, 140), at(66, 240), at(80, 380)], h: 1.3, gaps: [[120, 128]] },
     ],
-    landmarks: [{ id: 'church', obj: 'structure.parish-church', at: at(1185, 2150), facing: 90, src: 'St Michael and All Angels, Hathersage (OS Explorer OL1), the spire above the hamlet', model: { livery: 'grey-limestone', size: 1.15, opts: { crown: 'spire', era: 'perpendicular' } } }],
+    landmarks: [{ id: 'church', obj: 'structure.parish-church', at: at(1250, 2150), facing: 90, src: 'St Michael and All Angels, Hathersage (OS Explorer OL1), the spire above the hamlet', model: { livery: 'grey-limestone', size: 1.15, opts: { crown: 'spire', era: 'perpendicular' } } }],
     entities: [
       // the heather carpet at the lens: ling, bilberry, bents and a few cotton-grass heads; the slope's bracken drifts and the boulder field (authored: the fill is off)
       { cluster: 'plant.ling-heather', on: 'pl-0', n: 70, seed: 51, gap: 0.2 }, { cluster: 'plant.bilberry', on: 'pl-0', n: 14, seed: 53, gap: 0.4 }, { cluster: 'plant.grass-long', on: 'pl-0', n: 8, seed: 52, gap: 0.6 }, { cluster: 'plant.rph-short-grass', on: 'pl-0', n: 170, seed: 54, gap: 0.06 }, { cluster: 'plant.bilberry', on: 'pl-0', n: 30, seed: 56, gap: 0.15 },
@@ -81,9 +82,9 @@
       // walkers both ways along the top (in from behind the lens and from the far end of the edge), sheep in the heather and on the slope, a buzzard over the valley
       { who: 'walkers', on: 'path', rate: '2/min', mix: { stroll: 0.3, brisk: 0.4, couple: 0.3 }, edges: ['near', 'right'] },
       // people walk out onto the buttress to look along the edge, then go on
-      { who: 'visit', on: 'pl-a', mix: { stroll: 0.5, couple: 0.3, 'dog-walker': 0.2 }, rate: '1/70s', edges: ['right'], goals: [{ go: [4, 8.6] }, { do: 'look', for: [20, 60] }, { leave: 'right' }] },
+      { who: 'visit', on: 'pl-a', mix: { stroll: 0.5, couple: 0.3, 'dog-walker': 0.2 }, rate: '1/2min', edges: ['right'], goals: [{ go: [4, 8.6] }, { do: 'look', for: [20, 60] }, { leave: 'right' }] },
       { who: 'walkers', on: 'path-far', rate: '2/min', mix: { brisk: 0.5, couple: 0.3, 'dog-walker': 0.2 }, edges: ['far', 'right'] },
-      { who: 'sheep', count: 4, on: 'pl-a' }, { who: 'sheep', count: 4, on: 'slope' }, { who: 'sheep', count: 3, on: 'pl-b' },
+      { who: 'sheep', count: 4, on: 'slope' }, { who: 'sheep', count: 5, on: 'pl-b' },
       { who: 'bird.buzzard-flight', count: 2 }, { who: 'bird.small-flight', count: 3 },
     ],
     backdrop: { style: 'upland' },

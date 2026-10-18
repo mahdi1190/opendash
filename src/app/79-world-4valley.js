@@ -165,7 +165,7 @@ function worldValley(o) {
   const Lw = o.lanes;
   if (Lw && Hm && Array.isArray(Hm.at)) {
     const uA = (F && F.u ? F.u[0] : -300), uB = (F && F.u ? F.u[1] : 3000), along = [];
-    for (let u = uA; u <= uB + 1; u += 120) along.push(at(Hm.at[0] + 25 + 60 * _wvlN1(seed + 'lane', u / 700) * (u === Hm.at[1] ? 0 : 1), u));
+    for (let u = uA; u <= uB + 1; u += 120) along.push(at(Hm.at[0] + (Number.isFinite(Hm.spread) ? Hm.spread : 90) * 0.7 + 60 + 40 * _wvlN1(seed + 'lane', u / 700), u));   // (beside the hamlet, never through its houses)
     out.surfaces.push({ id: 'lane-0', kind: 'track', path: along, width: 4 });
     const up = [], s1 = F && Number.isFinite(F.from) ? F.from + 30 : 300;
     for (let i = 0; i <= 8; i++) { const t = i / 8, sv = Hm.at[0] + (s1 - Hm.at[0]) * t; up.push(at(sv, Hm.at[1] + 170 + 140 * Math.sin(t * Math.PI * 2.2) * (1 - t * 0.3) + 120 * t)); }
