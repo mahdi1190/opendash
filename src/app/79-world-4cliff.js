@@ -102,6 +102,9 @@ const _wclBump = (s, c, w) => { const u = (s - c) / w; return Math.exp(-u * u); 
  */
 function _wclRough(g, f) {
   const n = Math.max(2, Math.ceil(g.L) + 2);
+  // a camera ON the plan (within 30 m of it: the lens stands on the rim) keeps the rim where the author put it for the first 300 m: no wobble, no lowered rim
+  let lensD = Infinity; for (const q of g.pts) lensD = Math.min(lensD, Math.hypot(q[0], q[1]));
+  const lensK = lensD < 30 ? ((x, z) => _wclSm((Math.hypot(x, z) - 60) / 250)) : (() => 1);
   g.mod = null; g.fanH = null; g.fanW = null; g.scoop = null;
   if (!(g.rough > 0)) return;
   g.sd = String(_wclHash((g.id || 'c') + '|' + g.rock + '|' + Math.round(g.L) + '|' + Math.round(g.H) + '|' + Math.round(g.pts[0][0]) + '|' + Math.round(g.pts[0][1])));
@@ -124,7 +127,7 @@ function _wclRough(g, f) {
     // real sun lights one block and shades the next (a smooth arc reads as a dam wall)
     if (bt) d += bt * K * _wclStep(g.sd + 'bt', s);
     if (g.scoop) d += g.scoop.d * K * _wclBump(s, g.scoop.s, g.scoop.w);
-    d *= _wclSm(s / e) * _wclSm((g.L - s) / e) * _wclSm((Math.hypot(P[i][0], P[i][1]) - 60) / 250);          // (never near the lens: a spec that stands the camera on the rim keeps it there)
+    d *= _wclSm(s / e) * _wclSm((g.L - s) / e) * lensK(P[i][0], P[i][1]);          // (never near the lens: a spec that stands the camera on the rim keeps it there)
     np.push([P[i][0] + g.hi * tz * d, P[i][1] - g.hi * tx * d]);
   }
   g.pts = np; g.cum = [0]; g.l2 = [];
@@ -135,7 +138,7 @@ function _wclRough(g, f) {
   const hv = Math.min(0.1, 0.05 * K);
   g.mod = new Float32Array(Math.max(2, Math.ceil(g.L) + 2));
   for (let i = 0; i < g.mod.length; i++) {
-    const s = i, pa = _wclAt(g, s), kn = _wclSm((Math.hypot(pa.x, pa.z) - 60) / 250);       // (the plateau is exactly `h` beside the lens: the eye stands on it)
+    const s = i, pa = _wclAt(g, s), kn = lensK(pa.x, pa.z);       // (the plateau is exactly `h` beside the lens: the eye stands on it)
     g.mod[i] = 1 - kn * (hv * (0.35 + 0.65 * (0.5 + 0.5 * _wclN1(g.sd + 'h', s / 70))) + 0.4 * hv * (0.5 + 0.5 * _wclN1(g.sd + 'h2', s / 21)) + (g.scoop ? g.scoop.notch * K * _wclBump(s, g.scoop.s, g.scoop.w * 0.8) : 0));
   }
   // (3) the scree: cones of different size with a low apron between (the largest fan is 1, the apron 0.2)
