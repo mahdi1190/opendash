@@ -44,7 +44,7 @@ const SCENE_REAL_SIZE = Object.freeze({
   'boat.island-ferry': { h: 18, l: 90, w: 18 }, 'boat.*': { h: 2, l: 8, w: 2.5 },
   // animals and birds
   'animal.fox': { h: 0.45, l: 1, w: 0.3 }, 'animal.sheep': { h: 0.9, l: 1.3, w: 0.5 }, 'animal.sheep-moor': { h: 0.85, l: 1.25, w: 0.5 }, 'animal.pony': { h: 1.35, l: 2, w: 0.6 }, 'animal.donkey': { h: 1.3, l: 1.9, w: 0.6 },
-  'animal.cattle': { h: 1.45, l: 2.4, w: 0.8 }, 'animal.deer': { h: 1.1, l: 1.3, w: 0.4 }, 'animal.rabbit': { h: 0.3, l: 0.4, w: 0.18 }, 'animal.squirrel': { h: 0.3, l: 0.45, w: 0.12 }, 'animal.dog': { h: 0.6, l: 0.9, w: 0.3 },
+  'animal.cattle': { h: 1.45, l: 2.4, w: 0.8 }, 'animal.deer': { h: 1.1, l: 1.3, w: 0.4 }, 'animal.rabbit': { h: 0.3, l: 0.4, w: 0.18 }, 'animal.cat': { h: 0.3, l: 0.42, w: 0.2 }, 'animal.squirrel': { h: 0.3, l: 0.45, w: 0.12 }, 'animal.dog': { h: 0.6, l: 0.9, w: 0.3 },
   'animal.butterfly': { h: 0.06, l: 0.06, w: 0.06 }, 'animal.dragonfly': { h: 0.07, l: 0.09, w: 0.09 }, 'animal.pond-dragonfly': { h: 0.08, l: 0.12, w: 0.1 }, 'animal.bee': { h: 0.03, l: 0.03, w: 0.02 }, 'animal.trout': { h: 0.15, l: 0.5, w: 0.1 },
   'animal.*': { h: 0.8, l: 1, w: 0.4 },
   'bird.mallard': { h: 0.35, l: 0.6, w: 0.3 }, 'bird.swan': { h: 0.8, l: 1.5, w: 0.6 }, 'bird.coot': { h: 0.3, l: 0.4, w: 0.2 }, 'bird.moorhen': { h: 0.3, l: 0.38, w: 0.2 }, 'bird.grebe': { h: 0.4, l: 0.5, w: 0.2 },
