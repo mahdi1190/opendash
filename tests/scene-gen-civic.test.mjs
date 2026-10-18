@@ -95,7 +95,7 @@ test('the whole facade vocabulary is drawn: rusticated base, order, entablature,
   assert.ok(def.real.h > 40, 'the elevation object includes the crown: ' + def.real.h);
   const L = lintObject(id, { E: engineOf(REG) });
   // (buildMs is wall-clock: a loaded CI runner read 103 ms against 100; the build budget is held by the perf gates, not here)
-  assert.deepEqual(L.rules.filter(r => !r.ok && r.name !== 'buildMs').map(r => `${r.name}: ${r.value} (${r.limit})`), [], id + ' lint');
+  assert.deepEqual(L.rules.filter(r => !r.ok && r.rule !== 'buildMs').map(r => `${r.rule}: ${r.value} (${r.limit})`), [], id + ' lint');
   assert.ok(L.stats.glow >= 4);
   const body = def.build(0, null, { season: 'summer' });
   assert.ok((body.body || []).length > 20 && (body.win || []).length > 4, 'parts are filled');
