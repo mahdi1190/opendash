@@ -27,7 +27,8 @@
 /* ---------- the looks ---------- */
 const WORLD_GROUND_LOOKS = Object.freeze({
   flags: Object.freeze({ mat: 'paving', joint: [0.9, 0.6], tone: 0.075, edge: true, cracks: 0.04 }),
-  setts: Object.freeze({ mat: 'paving', joint: [0.24, 0.16], tone: 0.08, edge: true, cracks: 0, courseEvery: 5 }),
+  // setts on a strip (a quay, a towpath, a lane's edge) are laid in a running bond: each course's cuts sit at their own offset (stagger), never a tile grid
+  setts: Object.freeze({ mat: 'paving', joint: [0.24, 0.16], tone: 0.08, edge: true, cracks: 0, courseEvery: 5, stagger: true }),
   // an old-town lane (the Shambles): irregular flags in a running bond with a worn central drain; the joints are cut per course (stagger), never a tile grid
   lane: Object.freeze({ mat: 'paving', joint: [0.62, 0.5], tone: 0.1, edge: true, cracks: 0, courseEvery: 4, stagger: true, drain: 0.14 }),
   gravel: Object.freeze({ mat: 'gravel', specks: 1 / 190, ruts: true, fray: true, tone: 0.09, damp: 0.25 }),

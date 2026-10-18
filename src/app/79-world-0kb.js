@@ -264,6 +264,8 @@ const _WKB_FINE = ['clear', 'cloud'];
 const WORLD_KB_OBJECTS = _wkbFreeze({
   // a lychgate is a roof on four posts over a path: walkers pass under it (overhead), the gate leaves are low and open to the path
   'structure.lychgate': { cls: 'lychgate', solidity: 'overhead' },
+  // a railway viaduct strides over a canal, a quay and a towpath: everything passes under it (people, boats, the fill); its piers are drawn, not solid
+  'structure.viaduct': { cls: 'walkway', solidity: 'overhead', size: { w: [20, 400], d: [4, 30], h: [4, 40] } },
   // headstones are of every size in a churchyard (a low kerbed slab to a tall cross-less stone): the class range is wide
   'structure.headstone': { cls: 'street', size: { h: [0.6, 1.3] } },
   // K7: local transport liveries (Metrolink yellow and grey; Supertram; UK buses and trains in plausible styles)
