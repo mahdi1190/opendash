@@ -1008,7 +1008,7 @@ function _wcCheck(spec0, repair) {
           const vb = verbs[0], tgt = g[vb], idOk = t => anyId(t) || lifeIds.has(t), isEdge = t => edgeOk(t) || (!v31 && WORLD_EDGES.includes(t));
           if (v31 && (vb === 'go' || vb === 'leave') && ['N', 'S', 'E', 'W'].includes(tgt) && !anyId(tgt)) act(`${gp}.${vb}`, 'badValue', `v 3.1 edges are left, right, far, near: ${tgt} read as ${WORLD_EDGE_ALIAS[tgt]}`, set(g, vb, WORLD_EDGE_ALIAS[tgt], who));
           else if (vb === 'go' && !(_wcPt(tgt) || idOk(tgt) || isEdge(tgt))) dropG('unreachable', 'no target ' + JSON.stringify(tgt));
-          else if (vb === 'wander' && !sIds.has(tgt)) dropG('unreachable', 'no surface ' + tgt);
+          else if (vb === 'wander' && !sIds.has(tgt) && !(typeof tgt === 'string' && tgt.startsWith('deck:') && eIds.has(tgt.slice(5)))) dropG('unreachable', 'no surface ' + tgt);
           else if (vb === 'leave' && !(isEdge(tgt) || tgt === 'cover' || tgt === 'any')) dropG('badValue', 'leave a frame edge or cover');
           else if ((vb === 'follow' || vb === 'meet') && typeof tgt !== 'string') dropG('badType', 'follow / meet name an id');
           else if (vb === 'sit' && !eIds.has(tgt)) dropG('unreachable', 'sit names a bench (an entity id): ' + JSON.stringify(tgt));

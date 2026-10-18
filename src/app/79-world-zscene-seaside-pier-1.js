@@ -51,8 +51,8 @@
     life: [
       // visitors walk onto the pier (only when the pier generator is loaded: a loader that reads this file alone has no pier to walk to)
       ...(PIER.entity ? [
-        { who: 'visit', on: 'prom', edges: ['S'], mix: { stroll: 0.5, brisk: 0.2, elderly: 0.3 }, rate: '1/30s', goals: [{ go: 'pier' }, { wander: 'pier', for: [40, 100] }, { leave: 'S' }] },
-        { who: 'visit', on: 'prom', edges: ['S'], mix: { elderly: 0.5, stroll: 0.5 }, rate: '1/70s', goals: [{ go: 'pier' }, { wander: 'pier', for: [60, 150] }, { leave: 'S' }] },
+        { who: 'visit', on: 'prom', edges: ['S'], mix: { stroll: 0.5, brisk: 0.2, elderly: 0.3 }, rate: '1/30s', goals: [{ go: 'pier' }, { wander: 'deck:pier', for: [40, 100] }, { leave: 'S' }] },
+        { who: 'visit', on: 'prom', edges: ['S'], mix: { elderly: 0.5, stroll: 0.5 }, rate: '1/70s', goals: [{ go: 'pier' }, { wander: 'deck:pier', for: [60, 150] }, { leave: 'S' }] },
       ] : []),
       {"who":"walkers","on":"prom","rate":"7/min","mix":{"stroll":0.4,"family":0.25,"dog-walker":0.2,"couple":0.15},"edges":["S","N"]},
       {"who":"gulls","count":8}
