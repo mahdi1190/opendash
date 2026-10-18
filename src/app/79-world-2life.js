@@ -1713,7 +1713,9 @@ function _wlfMove(life, a, dt) {
   // boats: the middle of the channel at walking pace; wakes (A9)
   if (a.kind === 'boat' && dir && typeof worldTrafficBoatSteer === 'function') dir = worldTrafficBoatSteer(life.nav, a.layer, a.x, a.z, dir, a.r, { meet: _wlfBoatMeet(life, a) });
   // arrive: ease into a stop (Y4)
-  if (dir && want > 0 && a.distLeft != null && a.distLeft < 50 && !a.leaving && !a.leader) want *= Math.max(0.35, a.distLeft / 50);
+  // (distLeft is in the flow field's units, 40 a metre: the last 1.25 m. A walker slows to 0.6 of its pace, never a third: an elderly walker
+  // eased to 0.2 m/s crept the last metre to a bench for five seconds with its legs striding on the spot, 18 Oct)
+  if (dir && want > 0 && a.distLeft != null && a.distLeft < 50 && !a.leaving && !a.leader) want *= Math.max(a.kind === 'walker' ? 0.6 : 0.35, a.distLeft / 50);
   var taut = 1;
   if (a.members && want > 0) for (var mi = 0; mi < a.members.length; mi++) { var mm = a.members[mi]; if (mm.lead && !mm.dead && Math.hypot(mm.x - a.x, mm.z - a.z) > mm.lead.len * 0.9) { taut = 0.2; break; } }   // a taut lead: the walker waits for its dog
   var wantRaw = want;
@@ -2006,23 +2008,28 @@ function _wlfAirMove(life, a, dt) {
 /** Stuck (no progress for 2.5 s while wanting to move): re-plan, then sidestep, then leave by the nearest spawn cell. */
 function _wlfStuck(life, a, want, dt) {
   // waiting at the mouth of a gap for someone to come through is a courtesy, not a jam
-  if (a.yieldPinch != null && life.t - a.yieldPinch < 0.3) { a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.stuckT = 0; return; }
+  if (a.yieldPinch != null && life.t - a.yieldPinch < 0.3) { a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.stuckT = 0; a.progW = 0; return; }
   // one that is held at an edge of the frame (a queue behind someone waiting for a bench, a yield) is never left standing there half in the picture
   // (C2): it wants to go on, so it counts as stuck, and it gives up and leaves at once instead of waiting out the stages
   var held = !!a.dir && !a.resident && !a.leader && a.kind === 'walker' && !a.step && !a.seat && _wlfInEdgeZone(life, a);
   if (held && want <= 0.05) want = 0.2;
   if (want > 0.05 && a.dir) {
-    if (Math.hypot(a.x - a.progX, a.z - a.progZ) > 0.4) { a.progX = a.x; a.progZ = a.z; a.lastProg = life.t; a.stuckT = 0; a.replans = Math.max(0, a.replans - 0.02); return; }
+    // progress is a real share of the way it wanted to go: a walker with a free road (no queue) pressing into a wall that the navigation's
+    // step slides it along at 0.2 m/s made 0.4 m in 2.5 s and was never stuck, striding on the spot along the wall for a minute (18 Oct,
+    // Cotswold green p2-0)
+    a.progW = (a.progW || 0) + want * dt;
+    var pd = Math.hypot(a.x - a.progX, a.z - a.progZ);
+    if (pd > 0.4 && (pd > 0.35 * a.progW || (a.slow != null && a.slow < 0.9) || a.leader)) { a.progX = a.x; a.progZ = a.z; a.lastProg = life.t; a.stuckT = 0; a.progW = 0; a.replans = Math.max(0, a.replans - 0.02); return; }
     a.stuckT = life.t - a.lastProg;
-  } else { a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.stuckT = 0; return; }
+  } else { a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.stuckT = 0; a.progW = 0; return; }
   if (held && a.stuckT > 1.0 && Math.hypot(a.vx || 0, a.vz || 0) < 0.1) {
-    a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.replans = 0; a.stuckOut = true;
+    a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.replans = 0; a.stuckOut = true; a.progW = 0;
     var eb = a.edge && /^(N|S|E|W|cover|door)$/.test(a.edge) && !(a.goals && a.goals[a.gi] && a.goals[a.gi].leave === a.edge) ? a.edge : 'any';
     _wlfLeave(life, a, eb); a.goalOn = null;
     return;
   }
   if (a.stuckT > 2.5) {
-    a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.replans++;
+    a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.replans++; a.progW = 0;
     var edgeZ = _wlfInEdgeZone(life, a);                     // never stand still in an edge zone (C2): re-plan at once
     // never stop in the lane to wait: a mover that stands still IS the next blockage (a jam feeds itself). First a new plan, at once;
     // then the later arrival of a knot turns back the way it came (the knot unwinds from its edges); only then a short pause.

@@ -370,7 +370,7 @@ function _wanUpdate(world, e, dt, clock) {
   // views with hysteresis (the camera's angle), skipped while culled (a culled agent keeps its last view)
   if (world && world.cam && !e.culled) { const v = worldViewOf(e, world.cam, { prev: an.view, prevMirror: an.mirror }); if (v) { an.view = v.view; an.mirror = v.mirror; an.persp = v.persp; } }
   // the gait the legs are drawn with (worldAnimGait): the frame record carries it, so the checker (walkInPlace) judges what is DRAWN
-  if (tg.state === 'move' && (tg.clip === 'walk' || tg.clip === 'run' || tg.clip === 'trot')) { const G = worldAnimGait(e, an, { view: an.view }); an.gait = { fs: G.fs, swing: G.swing, lift: G.lift }; }
+  if (tg.state === 'move' && (tg.clip === 'walk' || tg.clip === 'run' || tg.clip === 'trot')) { const G = worldAnimGait(e, an, { view: an.view }); an.gait = { fs: G.fs, swing: G.swing, lift: G.lift, plane: G.plane }; }
   else an.gait = null;
   return an;
 }
@@ -600,7 +600,9 @@ function worldAnimOf(ent, world) {
  * views it has (a front view's legs swing 3.5 degrees, a side view's 22), so the swing is scaled only by what the DRAWN view lacks: a
  * side-only figure (the elderly walker, the shopper ...) walking down the line of sight swings its legs by |sin rel| of the art's
  * swing instead of striding sideways on the spot. lift, sway: 0..1 (end-on 1), in units of WORLD_ANIM_GAIT x the art's height.
- *   worldAnimGait(ent, an, o) -> { fs, view, swing, lift, sway, bob, artH }   o: { obj (the drawn object), view (the drawn view) }
+ *   worldAnimGait(ent, an, o) -> { fs, view, swing, plane, lift, sway, bob, artH }   o: { obj (the drawn object), view (the drawn view) }
+ * plane: the share of a full side-on swing that is drawn in the picture plane (swing x the art's own foreshortening; a front view's
+ * 3.5 degrees is 0.16 of a side view's 22)
  */
 const WORLD_ANIM_GAIT = Object.freeze({ lift: 0.05, sway: 0.014, bob: 0.8, min: 0.2 });
 const _WAN_ART_FS = Object.freeze({ side: 1, 'q-front': Math.SQRT1_2, 'q-back': Math.SQRT1_2, front: 0, back: 0 });
@@ -616,7 +618,7 @@ function worldAnimGait(ent, an, o) {
   let artH = 64;
   const obj = o.obj || (ent && ent.obj);
   if (typeof sceneObj === 'function' && obj) { try { const d = sceneObj(obj); if (d && Array.isArray(d.size) && d.size[1] > 0) artH = d.size[1]; } catch (e) { /* 64 */ } }
-  return { fs: _wanR(fs, 3), view, swing: _wanR(swing, 3), lift: _wanR(fb, 3), sway: _wanR(fb, 3), bob: _wanR(1 + WORLD_ANIM_GAIT.bob * fb, 3), artH };
+  return { fs: _wanR(fs, 3), view, swing: _wanR(swing, 3), plane: _wanR(swing * Math.max(artFs, 0.16), 3), lift: _wanR(fb, 3), sway: _wanR(fb, 3), bob: _wanR(1 + WORLD_ANIM_GAIT.bob * fb, 3), artH };
 }
 
 /* ---------- hooks (the v2 AnimHooks the renderer draws with) ---------- */

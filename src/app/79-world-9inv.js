@@ -1262,7 +1262,7 @@ function worldInvariantTracker() { return { prev: null, ids: new Map(), anim: ne
  *   worldWalkInPlace(m, h, t) -> null (not a striding walker drawn with legs) | { fault: null | 'held' | 'slip' | 'flat', gs, ss, cyc, H }
  *     m: a frame record mover; h: its history ({} kept per id by the caller; worldInvariantTracker().inplace); t: the frame time
  */
-const WORLD_INPLACE = Object.freeze({ win: 0.5, minWin: 0.35, held: 0.15, slip: 0.5, flat: 0.25, minH: 14, minK: 0.3, grace: 0.6, lift: 0.3, swing: 0.7 });
+const WORLD_INPLACE = Object.freeze({ win: 0.5, minWin: 0.35, held: 0.15, slip: 0.5, flat: 0.25, minH: 14, minK: 0.3, grace: 0.6, lift: 0.3, swing: 0.75 });
 function worldWalkInPlace(m, h, t) {
   const b = _wivBox(m), a = m && m.anim;
   if (!b || !a) return null;
@@ -1282,7 +1282,9 @@ function worldWalkInPlace(m, h, t) {
   let fault = null;
   if (gs < WORLD_INPLACE.held) fault = 'held';
   else if (feet > 0.3 && gs < WORLD_INPLACE.slip * feet - 0.05) fault = 'slip';
-  else if (cyc < WORLD_INPLACE.flat && !(G && G.lift >= WORLD_INPLACE.lift && G.swing <= WORLD_INPLACE.swing)) fault = 'flat';
+  // flat: legs swung in the picture plane (75 % or more of a side-on stride: a side view, or a side-only figure seen end-on) while the figure
+  // moves under a quarter of its height a stride; one seen end-on must lift its feet in turn instead (the gait). No gait: the old drawer
+  else if (cyc < WORLD_INPLACE.flat && !(G && (_wivNum(G.plane) ? G.plane : G.swing) <= WORLD_INPLACE.swing && !(G.fs < 0.7 && G.lift < WORLD_INPLACE.lift))) fault = 'flat';
   return { fault, gs, ss, cyc, H, feet };
 }
 

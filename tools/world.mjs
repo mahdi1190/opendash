@@ -18,6 +18,10 @@
 //   node tools/world.mjs invariants <ref> [--seconds=360] [--hz=5] [--matrix] [--browser] [--json]
 //                         the invariant checker (16.2) over the full loop at 3 dates x 5 times (--matrix: 4 seasons x 5 times x 3
 //                         weathers, V7); exit 1 on any violation
+//   node tools/world.mjs inplace <ref> [--seconds=120] [--hz=10] [--browser] [--at=<ISO>] [--json]
+//                         WALKING IN PLACE measured on what is drawn (tools/lib/world/inplace.mjs): per person per frame the ground and
+//                         screen speed over 0.5 s, the clip, view and gait; the share of person-time striding on the spot, by cause, and
+//                         the worst offenders. --browser: the frames the real page drew. Exit 1 when any lasts past the grace (walkInPlace)
 //   node tools/world.mjs adversarial [<id>] [--seconds=120] [--hz=5] [--json]
 //                         every adversarial fixture (16.3): registers, builds, explains every fix in its log, zero violations
 //   node tools/world.mjs critic <ref> [--against=<ref>] [--json]      richness, emptiness and framing (P7, C1, C4, C6)
@@ -511,6 +515,20 @@ async function main() {
     writeFileSync(svg, worldMotionSvg(E, s.spec, r));
     out(`  overlay: ${svg}`);
     return r.red.length ? 1 : 0;
+  }
+
+  if (cmd === 'inplace') {
+    // walking in place, measured on what is drawn (tools/lib/world/inplace.mjs): the share of person-time, the causes, the worst offenders
+    const s = specOf(E, ref);
+    const { worldInPlaceRun, worldInPlaceBrowser, worldInPlaceText } = await import('./lib/world/inplace.mjs');
+    const at = typeof flags.at === 'string' ? (DATES[flags.at] || flags.at) : '2026-07-15T12:00:00Z';
+    let r;
+    if (flags.browser) {
+      const chrome = await chromeOf(!flags['no-gpu']);
+      try { r = await worldInPlaceBrowser(chrome, pageSrcOf(s), { at, seconds: Number(flags.seconds) || 60, hz: Number(flags.hz) || 10, root }); } finally { await chrome.close(); }
+    } else r = worldInPlaceRun(E, s.spec, { ms: Date.parse(at), seconds: Number(flags.seconds) || 120, hz: Number(flags.hz) || 10 });
+    out(flags.json ? JSON.stringify(r, null, 1) : worldInPlaceText(r, s.id + (flags.browser ? ' (the page)' : ' (Node)')));
+    return r.sustained || r.error || (r.errors && r.errors.length) ? 1 : 0;
   }
 
   if (cmd === 'invariants' && flags.browser) {
