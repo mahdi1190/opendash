@@ -447,7 +447,7 @@ const _WC_KEYS = {
   surface: ['id', 'kind', 'water', 'poly', 'path', 'width', 'shallow', 'level', 'obj', 'open', 'y', 'from', 'to', 'hint', 'flow', 'step', 'over'],
   step: ['to', 'kind'],
   line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj', 'stone', 'laid', 'cope'],
-  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap', 'crown', 'landmark'],
+  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap', 'crown', 'landmark', 'party', 'spacing'],
   entity: ['id', 'obj', 'at', 'facing', 'attach', 'variant', 'y', 'open', 'blocks', 'framed', 'row', 'parent', 'model'],
   cluster: ['cluster', 'on', 'edge', 'n', 'seed', 'gap', 'variant'],
   landmark: ['id', 'obj', 'at', 'facing', 'src', 'variant', 'attach', 'model'],

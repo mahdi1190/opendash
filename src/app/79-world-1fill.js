@@ -485,7 +485,9 @@ function _wflTry(F, c) {
   // frame is a dark blob filling a corner; the placement solver's near band has the same rule for what an author places
   // (the divisor is 180, the 20 % the comment above and the placement solver (79-world-1place.js, step 3b) already say: the fill's own
   // 270 was 30 % of the frame, so a seed put a 1 m bollard 3.7 m from the lens beside the Pier Head's river rail, a quarter of the frame)
-  if (!c.framing && ['post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle', 'signage'].includes(kb.cls) && c.z < F.cam.f * Math.min(kb.size.h0 || 1, 1.3) / (kb.cls === 'post' ? 180 : 270)) return null;
+  // ... and its foot is inside the frame: a bin whose base is below the bottom edge is a dark cut blob at the corner (a raised eye on a quay sees the ground only beyond f * eye / (H - horizon); a prop with more than half of its height below the bottom edge is a cut blob)
+  const footBand = (kb2) => F.cam.horizon < F.H ? F.cam.f * Math.max(0.2, F.cam.eye - _wflGround(F, c.x, c.z) - 0.5 * Math.min(kb2.size.h0 || 1, 1.3)) / (F.H - F.cam.horizon) : 0;
+  if (!c.framing && ['post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle', 'signage'].includes(kb.cls) && c.z < Math.max(F.cam.f * Math.min(kb.size.h0 || 1, 1.3) / (kb.cls === 'post' ? 180 : 270), footBand(kb))) return null;
   // K6 things that come and go (flowers, lilies, leaf litter) only where the renderer hides them out of season
   if (!F.seasonal && kb.when && (kb.when.months || kb.when.dates || kb.when.weather)) return null;
   // C1, P8 (on screen)

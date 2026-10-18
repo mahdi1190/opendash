@@ -736,6 +736,16 @@ function _scbgTexture(kind, e, face, ctx, col) {
     tone = _scbgDark(col, 0.2); op = 0.3;
   } else return;
   if (segs.length) sink.add(1, { f: tone, d: segs.join(''), op, part: 'body', detail: true });
+  // old brick is never one flat tone: patches of repointing and of weathered or sooty brick, long and low like courses (seeded per wall)
+  if (kind === 'brick' && z1 > 1.5 && sp.style && sp.style.wall && sp.style.wall.patches) {   // opt-in (wall.patches)
+    const area = (s1 - s0) * (z1 - z0), n = Math.max(3, Math.min(22, Math.round(area / 14))), dk = [], lt = [];
+    for (let i = 0; i < n; i++) {
+      const w = 0.9 + r() * 2.6, h = 0.3 + r() * 0.9, s = s0 + r() * Math.max(0.1, s1 - s0 - w), z = z0 + 0.4 + r() * Math.max(0.1, z1 - z0 - h - 0.5);
+      const p = _scbgRect(pl, view, s, z, w, h, 0.004); if (p) (r() < 0.55 ? dk : lt).push(_scbgPath(p));
+    }
+    if (dk.length) sink.add(1, { f: _scbgDark(col, 0.3), d: dk.join(''), op: 0.17, part: 'body', detail: true });
+    if (lt.length) sink.add(1, { f: _scbgLight(col, 0.16), d: lt.join(''), op: 0.15, part: 'body', detail: true });
+  }
 }
 /** The window kind at night for element e (seeded): 'window' warm, 'curtain' drawn curtains, 'tv' a blue room. */
 function _scbgGlowOf(sp, e, face) {
@@ -770,14 +780,18 @@ function _scbgDrawWin(e, face, ctx, T) {
   sink.add(4, { f: glassCol, d: _scbgPath(glass), op: 1, part: 'body', glow: e.shopGlass ? 'shop' : gl.kind, theta: gl.theta });
   if (T >= 3 && e.type !== 'curtain' && !e.glassOnly) {
     // a sky reflection across the upper panes, and curtains at the sides (by day)
-    const rf = _scbgMap(pl, view, [[e.s + e.w * 0.1, e.z + e.h * 0.55], [e.s + e.w * 0.55, e.z + e.h * 0.92], [e.s + e.w * 0.85, e.z + e.h * 0.92], [e.s + e.w * 0.3, e.z + e.h * 0.55]], -e.recess * 0.9);
+    let rf = _scbgMap(pl, view, [[e.s + e.w * 0.1, e.z + e.h * 0.55], [e.s + e.w * 0.55, e.z + e.h * 0.92], [e.s + e.w * 0.85, e.z + e.h * 0.92], [e.s + e.w * 0.3, e.z + e.h * 0.55]], -e.recess * 0.9);
+    if (rf && !view.ortho && e.recess > 0.02 && wn.clipBars) rf = _scbgClip2(rf, open);   // the sky's streak lies on the glass in the recess: cut to the opening
     if (rf) sink.add(5, { f: '#c8d6e2', d: _scbgPath(rf), op: 0.18, part: 'body', detail: true });
     if (gl.kind === 'curtain') { const cw = e.w * 0.18, cc = ['#c9b48a', '#8a5a4a', '#d8d0c0', '#6a7a8a'][sp.seed % 4]; for (const s of [e.s + 0.06, e.s + e.w - 0.06 - cw]) { const p = _scbgMap(pl, view, [[s, e.z + 0.08], [s + cw, e.z + 0.08], [s + cw, e.z + Math.min(e.h - 0.1, e.h * 0.92)], [s, e.z + Math.min(e.h - 0.1, e.h * 0.92)]], -e.recess * 0.8); if (p) sink.add(5, { f: cc, d: _scbgPath(p), op: 0.85, part: 'body', detail: true }); } }
   }
   if (T >= 2 && e.type !== 'curtain') {
     // frame and glazing bars (as thin quads on the glass plane), by window type
     const fr = e.frame || (e.type === 'metal' ? '#2e3236' : sp.frame), o = view.ortho ? 0 : -e.recess * 0.95, segs = [];
-    const bar = (sa, za, sb, zb) => { const p = _scbgMap(pl, view, [[sa, za], [sb, za], [sb, zb], [sa, zb]], o); if (p) segs.push(_scbgPath(p)); };
+    // the bars lie in the recess, so in perspective they shift against the opening: seen along a deep reveal they would hang outside the window (a grid of dark
+    // lines to the side of every pane); they are cut to the opening, as the glass is
+    const clipBars = !view.ortho && e.recess > 0.02 && !!wn.clipBars;   // opt-in (win.clipBars): a style that turns it on changes its compiled output
+    const bar = (sa, za, sb, zb) => { let p = _scbgMap(pl, view, [[sa, za], [sb, za], [sb, zb], [sa, zb]], o); if (p && clipBars) p = _scbgClip2(p, open); if (p) segs.push(_scbgPath(p)); };
     const s = e.s, z = e.z, w = e.w, h = e.h, t = e.type === 'metal' ? 0.035 : 0.055;
     const top = e.head === 'round' ? h - w / 2 : e.head === 'seg' ? h - 0.12 : h;
     bar(s, z, s + w, z + t); bar(s, z, s + t, z + top); bar(s + w - t, z, s + w, z + top);
