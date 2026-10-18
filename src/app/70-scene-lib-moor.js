@@ -35,10 +35,10 @@
         const t = r(), x = -W + 2 * W * t, env = Math.pow(Math.sin(Math.PI * t), 0.5), h = (7 + r() * 14) * (0.4 + 0.6 * env), lean = (r() - 0.5) * 5 + (t - 0.5) * 4, y0 = -1 - r() * 3;
         const ex = x + lean, ey = y0 - h;
         st += `M${f1(x)} ${f1(y0)}Q${f1(x + lean * 0.25)} ${f1(y0 - h * 0.55)} ${f1(ex)} ${f1(ey)}`;
-        const k = r() < 0.34 ? 2 : r() < 0.5 ? 0 : 1, nd = 4 + Math.floor(r() * 4);
+        const k = r() < 0.34 ? 2 : r() < 0.5 ? 0 : 1, nd = 7 + Math.floor(r() * 5);
         for (let j = 0; j < nd; j++) {
-          const u = 0.35 + 0.65 * (j + r() * 0.6) / nd, bx = x + lean * u * u, by = y0 - h * u, side = j % 2 ? -1 : 1, L = 1.6 + r() * 1.6;
-          dash[j > nd - 3 ? Math.max(k, 1) : k] += `M${f1(bx)} ${f1(by)}l${f1(side * L)} ${f1(-L * 0.8)}`;
+          const u = 0.25 + 0.75 * (j + r() * 0.8) / nd, bx = x + lean * u * u + (r() - 0.5) * 1.2, by = y0 - h * u, side = r() < 0.5 ? -1 : 1, L = 0.9 + r() * 1.3, an = 0.25 + r() * 1.1;
+          dash[j > nd - 3 ? Math.max(k, 1) : k] += `M${f1(bx)} ${f1(by)}l${f1(side * L * Math.sin(an))} ${f1(-L * Math.cos(an))}`;
         }
         tips.push([ex, ey, x]);
       }

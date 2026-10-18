@@ -449,7 +449,6 @@ function worldCliffPrims(world, cam, o) {
     const g = worldCliffGeom(f);
     if (!g) continue;
     for (const p of _wclFace(g, cam, o, world.reliefBase ? { relief: world.reliefBase } : null)) out.push(p);
-    for (const p of _wclLipBack(g, cam)) out.push(p);
   }
   return out;
 }
@@ -459,6 +458,7 @@ function worldCliffPrims(world, cam, o) {
  * gaps, each a low loaf with a lit top, a darker outer flank and a dark line where the rock falls away; heather lapping at their foot. Only a blocky
  * rock (gritstone), only nearer than 160 m, only where the eye is above the rim. -> terrain prims (one per depth bin).
  */
+function _wclLipSeed(g) { return String(_wclHash((g.id || 'c') + '|lip')); }
 function _wclLipBack(g, cam) {
   const lk = _WCL_LOOK[g.rock] || null, out = [];
   if (!lk || !lk.blocky || !(cam.eye > g.H * 0.9)) return out;
@@ -504,6 +504,29 @@ function _wclLipBack(g, cam) {
       }
     }
     s = s1 + gap;
+  }
+  // the line of the lip itself, nearer than 90 m: a pale worn edge and, under it, the dark of the rock falling away (in runs that follow the plan)
+  for (let s = 0; s < g.L; ) {
+    const a = _wclAt(g, s), nx = g.hi > 0 ? -a.tz : a.tz, nz = g.hi > 0 ? a.tx : -a.tx, m = _wclTaper(g, s);
+    const back = -(a.x * nx + a.z * nz) <= 0.02 * Math.hypot(a.x, a.z);
+    if (!(back && m > 0.5 && a.z > Math.max(near, 3) && a.z < 90 && eye > g.H * m + 0.3)) { s += 1; continue; }
+    const run = [], lo = [];
+    let e = s;
+    for (; e < g.L && run.length < 40; e += Math.max(0.4, a.z / 40)) {
+      const b = _wclAt(g, e), bnx = g.hi > 0 ? -b.tz : b.tz, bnz = g.hi > 0 ? b.tx : -b.tx, bm = _wclTaper(g, e);
+      if (!(-(b.x * bnx + b.z * bnz) <= 0.02 * Math.hypot(b.x, b.z)) || b.z < 3 || b.z > 90 || bm < 0.5 || b.z > a.z * 1.03 || b.z < a.z / 1.03) break;
+      const H = g.H * bm, w = 0.35 + 0.5 * (0.5 + 0.5 * _wclN1(_wclLipSeed(g) + 'lp', e / 3));
+      run.push([b.x - bnx * 0.1, Math.max(0.3, b.z - bnz * 0.1), H + 0.05]); lo.push([b.x + bnx * w, Math.max(0.3, b.z + bnz * w), H - 0.5 - 0.9 * w]);
+    }
+    if (run.length > 1) {
+      const top = run.map(q => Pt(q[0], q[1], q[2])), bot = lo.map(q => Pt(q[0], q[1], q[2])), zb = Math.min(...run.map(q => q[1])), bin = Math.floor(Math.log(Math.max(0.5, zb)) / lnB);
+      let B0 = bins.get(bin); if (!B0) { B0 = { ops: [], z: zb, foot: [], box: [Infinity, Infinity, -Infinity, -Infinity] }; bins.set(bin, B0); }
+      B0.ops.unshift({ t: 'f', p: top.concat(bot.slice().reverse()), m: 'stone', h: _wclShade(lk.dark, 1.2), a: 0.92 }, { t: 's', p: top, m: 'stone', h: lk.light, w: Math.max(1.2, f / zb * 0.12), a: 0.75, up: true });
+      for (const q of top.concat(bot)) { B0.box[0] = Math.min(B0.box[0], q[0]); B0.box[1] = Math.min(B0.box[1], q[1]); B0.box[2] = Math.max(B0.box[2], q[0]); B0.box[3] = Math.max(B0.box[3], q[1]); }
+      for (const q of run) B0.foot.push([q[0], q[1]]);
+      B0.z = Math.min(B0.z, zb);
+    }
+    s = Math.max(e, s + 1);
   }
   for (const [bin, B0] of bins) {
     if (!B0.ops.length) continue;
@@ -856,7 +879,7 @@ function worldCliffStones(world, cam) {
     const T = _wclTex(g), lk = T.lk, r = _wclRng(_wclHash(T.seed + 'stones')), bg = g.slopeTalus && world.reliefBase && typeof sceneGroundHeight === 'function' ? { relief: world.reliefBase } : null;
     for (let s = 0; s < g.L && out.length < 2400; s += 1.1 + r() * 1.5) {
       const m = _wclTaper(g, s), a = _wclAt(g, s), nx = g.hi > 0 ? -a.tz : a.tz, nz = g.hi > 0 ? a.tx : -a.tx;
-      if (m < 0.2 || -(a.x * nx + a.z * nz) <= 0) continue;
+      if (m < 0.2 || (-(a.x * nx + a.z * nz) <= 0 && !(g.slopeTalus && eye > g.H * m + 1))) continue;   // (a talus under a face turned away is seen from above: a lens on the rim looks down on it)
       const fh = _wclTab(g.fanH, s), fw = _wclTab(g.fanW, s), n = Math.max(1, Math.round((2 + Math.floor(r() * 3)) * (0.6 + 0.7 * fh)));
       for (let i = 0; i < n; i++) {
         const u = Math.pow(r(), 1.2), t = -g.w * fw * u * 0.97, tuft = u > 0.45 && r() < 0.5 + 0.4 * u;

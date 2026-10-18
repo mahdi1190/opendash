@@ -120,7 +120,8 @@ function worldValley(o) {
       for (let k = 0; k < 8; k++) { const th = k / 8 * Math.PI * 2, rr = 0.7 + 0.4 * wr(); poly.push(at(cs + Math.cos(th) * a * 0.5 * rr, cu + Math.sin(th) * b * 0.5 * rr)); }
       const id = 'wood-' + i; out.surfaces.push({ id, kind: 'grass', poly });
       const objs = Array.isArray(Wd.obj) && Wd.obj.length ? Wd.obj : [Wd.obj || 'tree.far-broad'];
-      out.entities.push({ cluster: objs[i % objs.length], on: id, n: Math.max(6, Math.round((Wd.density || 0.0035) * a * b)), seed: 100 + i });
+      // (trees: false: the terrain draws the wood as a canopy of crowns, 4terrain _wtrValleyOps; far trees as sprites read as lollipops)
+      if (Wd.trees !== false) out.entities.push({ cluster: objs[i % objs.length], on: id, n: Math.max(6, Math.round((Wd.density || 0.0035) * a * b)), seed: 100 + i });
     }
   }
   // ---- the hamlet: a cluster of stone cottages and a farm along a lane, with a church tower (footprints only; a style gives the stone)
@@ -141,6 +142,32 @@ function worldValley(o) {
     // lamps along the lane (lit at night through the world's own light pass: a hamlet two kilometres off is a handful of warm points and their glow)
     const nl = Number.isFinite(Hm.lamps) ? Hm.lamps | 0 : 0;
     for (let i = 0; i < nl && i < out.buildings.length; i++) { const b = out.buildings[Math.floor(i * out.buildings.length / nl)]; out.entities.push({ obj: 'street.lamppost', id: 'hm-lamp-' + i, at: at(b._s + 7.5, b._u + 3), attach: 'ground' }); }
+  }
+  // ---- farms: a farmhouse and its barn here and there among the fields (footprints only; the style gives the stone)
+  const Fm = o.farms;
+  if (Fm && typeof Fm === 'object' && F && typeof F === 'object') {
+    const fr = _wvlRng(_wvlHash(seed + '|farms')), n = Math.max(1, Fm.n | 0 || 6), sA = (Number.isFinite(F.from) ? F.from : 300) + 120, sB = (Number.isFinite(F.to) ? F.to : 2000) - 150, uA = (F.u || [-300, 3000])[0] + 200, uB = (F.u || [-300, 3000])[1] - 200;
+    let k = 0;
+    for (let i = 0; i < n * 4 && k < n; i++) {
+      const cs = sA + (sB - sA) * fr(), cu = uA + (uB - uA) * fr();
+      if (Hm && Array.isArray(Hm.at) && Math.hypot(cs - Hm.at[0], cu - Hm.at[1]) < 380) continue;
+      if (out.buildings.some(b => b._s != null && Math.hypot(b._s - cs, b._u - cu) < 260)) continue;
+      const rot = fr() < 0.5, box = (s0, u0, ds, du) => { const p = rot ? [[s0 - ds, u0 - du], [s0 + ds, u0 - du], [s0 + ds, u0 + du], [s0 - ds, u0 + du]] : [[s0 - du, u0 - ds], [s0 + du, u0 - ds], [s0 + du, u0 + ds], [s0 - du, u0 + ds]]; return p.map(q => at(q[0], q[1])); };
+      const hb = { id: 'farm-' + k + '-h', foot: box(cs, cu, 3, 5), storeys: 2, roof: 'pitched', style: Fm.style || 'stone-cottage' };
+      const bb = { id: 'farm-' + k + '-b', foot: box(cs + (rot ? 0 : 15), cu + (rot ? 15 : 0), 4.5, 9), storeys: 1, roof: 'pitched', style: Fm.style || 'stone-cottage' };
+      for (const b of [hb, bb]) { Object.defineProperty(b, '_s', { value: cs, enumerable: false }); Object.defineProperty(b, '_u', { value: cu, enumerable: false }); out.buildings.push(b); }
+      k++;
+    }
+  }
+  // ---- lanes: one along the valley through the hamlet, one climbing from it up the hillside to the moor gate (tracks between the walls)
+  const Lw = o.lanes;
+  if (Lw && Hm && Array.isArray(Hm.at)) {
+    const uA = (F && F.u ? F.u[0] : -300), uB = (F && F.u ? F.u[1] : 3000), along = [];
+    for (let u = uA; u <= uB + 1; u += 120) along.push(at(Hm.at[0] + 25 + 60 * _wvlN1(seed + 'lane', u / 700) * (u === Hm.at[1] ? 0 : 1), u));
+    out.surfaces.push({ id: 'lane-0', kind: 'track', path: along, width: 4 });
+    const up = [], s1 = F && Number.isFinite(F.from) ? F.from + 30 : 300;
+    for (let i = 0; i <= 8; i++) { const t = i / 8, sv = Hm.at[0] + (s1 - Hm.at[0]) * t; up.push(at(sv, Hm.at[1] + 170 + 140 * Math.sin(t * Math.PI * 2.2) * (1 - t * 0.3) + 120 * t)); }
+    out.surfaces.push({ id: 'lane-1', kind: 'track', path: up, width: 3.5 });
   }
   return out;
 }

@@ -233,7 +233,7 @@ const _wtrSm = t => { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t);
  */
 function _wtrMoorTone(hex, x, z, dist, Mc, slope) {
   const M = Mc || _wtrMoorCols(6), d = dist || 0;
-  const near = Math.max(0, Math.min(1, 1.6 - d / 160)), far = Math.max(0.3, Math.min(1, 1.5 - d / 1800));
+  const near = Math.max(0, Math.min(1, 1.6 - d / 160)), far = Math.max(0.08, Math.min(1, 1.5 - d / 1200));
   const a = _wtrN2(x / 70 + 11, z / 70 - 5) * 0.75 + 0.45 * _wtrN2(x / 31 + 3, z / 31 - 9), b = near * _wtrN2(x / 13 - 3, z / 13 + 8), c = _wtrN2(x / 140 + 2, z / 140 + 41);
   let t = _wtrMixHex(M.grass, M.heather, 0.25 + 0.65 * _wtrSm((a + 0.3) / 0.65));
   const wBr = Math.max(_wtrSm((-a - 0.35) / 0.35) * 0.8, _wtrSm(((slope || 0) - 0.12) / 0.9) * _wtrSm((_wtrN2(x / 40 + 7, z / 40 - 3) + 0.15) / 0.6) * 0.75);
@@ -279,6 +279,104 @@ function _wtrMoorDeco(q, cam, hAt, B, ext, Mc, snow) {
   }
 }
 function _wtrU(x, z) { let h = Math.imul(Math.round(x * 4) | 0, 374761393) ^ Math.imul(Math.round(z * 4) | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+
+/* ---------- a valley seen from above: fields, woods and lanes as their own shapes (18 Oct, Stanage: "a smooth, flat-shaded, CG-looking smear") ----------
+   The quads of a strip are 10 to 40 m wide at a kilometre: a field's edge drawn by them is a staircase and its walls and hedges are lost. So every field,
+   wood and lane of the world (the valley's mosaic, or any author's) is also drawn as ITS OWN polygon, clipped to each strip's depth band and laid on the
+   relief there: the boundaries are crisp lines, the dry-stone walls of the upper rows and the hedges of the valley floor are drawn as dark lines with the
+   hedgerow trees along them, a wood is a dark canopy of crowns, a lane a pale line winding between the walls. The colours are the month's (hay cut pale
+   in July, pasture green, straw and dull winter greens), shaded by the slope and hazed with distance like the quads under them. */
+function _wtrValleyOf(world) {
+  const out = { fields: [], lanes: [] };
+  for (const s of (world && world.surfaces) || []) {
+    if (!s || !s.id) continue;
+    const wood = /^wood-/.test(s.id);
+    if ((s.kind === 'field' || wood) && Array.isArray(s.poly) && s.poly.length >= 3) {
+      let z0 = Infinity, z1 = -Infinity; for (const p of s.poly) { z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+      const m = /^fld-(\d+)-/.exec(s.id);
+      if (z1 > 120) out.fields.push({ id: s.id, poly: s.poly, z0, z1, wood, row: m ? +m[1] : 0, h: _wtrHashId(s.id) });
+    } else if ((s.kind === 'track' || s.kind === 'lane') && Array.isArray(s.path) && s.path.length >= 2) out.lanes.push({ id: s.id, path: s.path, w: Number.isFinite(s.width) ? s.width : 4 });
+  }
+  return out;
+}
+/** The fields' colours in a month (0..11): pasture, silage, hay meadow (cut pale in July and August), rough grazing. */
+function _wtrFieldPal(month) {
+  const m = Number.isFinite(month) ? ((Math.round(month) % 12) + 12) % 12 : 6;
+  if (m >= 5 && m <= 7) return ['#6f9a40', '#80a648', '#93ae52', '#c9c27a', '#b9b76a', '#5f8c3a', '#a3b45c', '#7a9c46', '#d2c784', '#688f3e'];
+  if (m >= 8 && m <= 10) return ['#73923f', '#82984a', '#94a052', '#a9a462', '#b4a86c', '#668a3c', '#8c9a4e', '#9a9a58'];
+  if (m >= 3 && m <= 4) return ['#75a648', '#88b452', '#6c9c42', '#98b95c', '#80aa4c', '#a0bc62'];
+  return ['#6f8448', '#7d8c52', '#8a9058', '#69804a', '#949464', '#76874e', '#868a5c'];
+}
+/** Clip a plan polygon to zA <= z <= zB (Sutherland-Hodgman on two lines). */
+function _wtrClipZ(P, zA, zB) {
+  const cut = (Q, Z, keepAbove) => { const o = []; for (let i = 0; i < Q.length; i++) { const a = Q[i], b = Q[(i + 1) % Q.length], ia = keepAbove ? a[1] >= Z : a[1] <= Z, ib = keepAbove ? b[1] >= Z : b[1] <= Z; if (ia) o.push(a); if (ia !== ib) { const t = (Z - a[1]) / (b[1] - a[1]); o.push([a[0] + (b[0] - a[0]) * t, Z]); } } return o; };
+  const A = cut(P, zA, true); return A.length >= 3 ? cut(A, zB, false) : [];
+}
+/** Clip a segment to zA <= z <= zB: [[x, z], [x, z]] or null. */
+function _wtrSegZ(a, b, zA, zB) {
+  let t0 = 0, t1 = 1; const dz = b[1] - a[1];
+  if (Math.abs(dz) < 1e-9) { if (a[1] < zA || a[1] > zB) return null; }
+  else { const u = (zA - a[1]) / dz, v = (zB - a[1]) / dz; t0 = Math.max(t0, Math.min(u, v)); t1 = Math.min(t1, Math.max(u, v)); if (t0 >= t1) return null; }
+  return [[a[0] + (b[0] - a[0]) * t0, a[1] + dz * t0], [a[0] + (b[0] - a[0]) * t1, a[1] + dz * t1]];
+}
+function _wtrInPoly(P, x, z) { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+/** The ops of the valley's fields, woods and lanes in the strip [za, zb] (pushed onto sops; ext grown). */
+function _wtrValleyOps(V, cam, hAt, za, zb, month, ops, ext) {
+  const zm = (za + zb) / 2, k = cam.f / zm, L = Math.max(4, zm * 0.025), pal = _wtrFieldPal(month), winter = !(month >= 3 && month <= 9);
+  const hz = (hex) => zm > 500 ? _wtrMixHex(hex, '#a3b7cb', Math.min(0.78, 0.9 * (1 - Math.exp(-(zm - 500) / 3600)))) : hex;
+  const r1 = v => Math.round(v * 10) / 10;
+  const proj = (x, z) => { const p = sceneProject(cam, x, z, hAt(x, z) + 0.15); return [r1(p.X), r1(p.Y)]; };
+  const grow = (pts) => { for (const q of pts) { if (q[0] < ext.minX) ext.minX = q[0]; if (q[0] > ext.maxX) ext.maxX = q[0]; if (q[1] < ext.minY) ext.minY = q[1]; if (q[1] > ext.maxY) ext.maxY = q[1]; } };
+  const line = (a, b) => { const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / L)), o = []; for (let i = 0; i <= n; i++) o.push(proj(a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n)); return o; };
+  const xl = (-400 - cam.x0) * zb / cam.f, xr = (2000 - cam.x0) * zb / cam.f;
+  const dots = new Map(), dot = (hex, X, Y, r) => { let D = dots.get(hex); if (!D) { D = []; dots.set(hex, D); } const n = r > 3 ? 8 : 6, P = []; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; P.push([r1(X + Math.cos(a) * r), r1(Y + Math.sin(a) * r * 0.82)]); } D.push(P); grow(P); };
+  const strokes = new Map(), stroke = (hex, w, pts) => { const key = hex + '|' + w; let S = strokes.get(key); if (!S) { S = []; strokes.set(key, S); } S.push(pts); grow(pts); };
+  for (const F of V.fields) {
+    if (F.z1 < za || F.z0 > zb) continue;
+    const C = _wtrClipZ(F.poly, za, zb);
+    if (C.length < 3) continue;
+    let cx = 0, cz = 0; for (const q of C) { cx += q[0]; cz += q[1]; } cx /= C.length; cz /= C.length;
+    if (Math.max(...C.map(q => q[0])) < xl || Math.min(...C.map(q => q[0])) > xr) continue;
+    const pts = []; for (let i = 0; i < C.length; i++) { const seg = line(C[i], C[(i + 1) % C.length]); seg.pop(); for (const q of seg) pts.push(q); }
+    // the slope's light, as on the quads under it
+    const e = Math.max(4, zm * 0.02), gx = (hAt(cx + e, cz) - hAt(cx - e, cz)) / (2 * e), gz = (hAt(cx, cz + e) - hAt(cx, cz - e)) / (2 * e), nl = Math.hypot(gx, gz, 1), lam = (gx * 0.45 + gz * 0.4 + 0.8) / nl, shade = Math.max(0.66, Math.min(1.12, 0.8 + 0.3 * lam));
+    const u = (F.h % 997) / 997;
+    let hex = F.wood ? (winter ? (u < 0.5 ? '#5d5a48' : '#4a5440') : (u < 0.5 ? '#3f5c30' : '#4a6636')) : pal[F.h % pal.length];
+    hex = _wtrShade(hex, shade * (0.95 + 0.1 * u));
+    const gp = _wtrGrow(pts, 0.6); ops.push({ t: 'f', p: gp, m: 'heath', h: hz(hex), a: 1 }); grow(gp);
+    // a wood is a canopy of crowns (dark and lit), never a flat green
+    if (F.wood) {
+      const g = Math.max(9, 4 / k * 3);
+      for (let x = Math.floor(Math.min(...C.map(q => q[0])) / g) * g; x < Math.max(...C.map(q => q[0])); x += g) for (let z = Math.floor(za / g) * g; z < zb; z += g * 0.6) {
+        const h1 = _wtrU(x * 0.31 + 5, z * 0.17), xx = x + g * h1, zz = z + g * 0.6 * _wtrU(x * 0.13, z * 0.29 + 2);
+        if (zz < za || zz > zb || !_wtrInPoly(F.poly, xx, zz)) continue;
+        const p = sceneProject(cam, xx, zz, hAt(xx, zz) + 6), r = Math.max(0.9, (4 + 3 * h1) * k);
+        dot(hz(_wtrShade(winter ? '#5f5848' : '#3a5530', h1 < 0.5 ? 0.82 : 1.22)), p.X, p.Y, r);
+      }
+    }
+    // the boundaries: dry-stone walls on the upper rows (grey), hedges with their trees on the valley floor (dark green; bare in winter)
+    const hedge = !F.wood && F.row >= 3, wallK = F.row < 3 && !F.wood;
+    for (let i = 0; i < F.poly.length; i++) {
+      const s = _wtrSegZ(F.poly[i], F.poly[(i + 1) % F.poly.length], za, zb); if (!s) continue;
+      const P2 = line(s[0], s[1]);
+      if (wallK || hedge) stroke(hz(wallK ? '#57524a' : '#3d5230'), Math.round(Math.max(0.7, Math.min(2.2, (wallK ? 1.4 : 3) * k)) * 10) / 10, P2);
+      if (hedge && ((F.h + i * 7) % 10) < 6) {
+        const len = Math.hypot(s[1][0] - s[0][0], s[1][1] - s[0][1]), sp = 26 + 20 * u;
+        for (let d = (F.h % 13); d < len; d += sp * (0.7 + 0.6 * _wtrU(d * 0.1 + i, F.h * 0.01))) {
+          const t = d / len, xx = s[0][0] + (s[1][0] - s[0][0]) * t, zz = s[0][1] + (s[1][1] - s[0][1]) * t, p = sceneProject(cam, xx, zz, hAt(xx, zz) + 5);
+          dot(hz(winter ? '#6a6250' : _wtrShade('#3c5a2e', 0.9 + 0.25 * _wtrU(xx, zz))), p.X, p.Y, Math.max(0.8, (3 + 2.5 * _wtrU(zz, xx)) * k));
+        }
+      }
+    }
+  }
+  // lanes: a pale line between the walls
+  for (const Ln of V.lanes) for (let i = 1; i < Ln.path.length; i++) {
+    const s = _wtrSegZ(Ln.path[i - 1], Ln.path[i], za, zb); if (!s) continue;
+    stroke(hz('#b3aa92'), Math.round(Math.max(0.8, Math.min(3, Ln.w * k)) * 10) / 10, line(s[0], s[1]));
+  }
+  for (const [key, S] of strokes) { const [h, w] = key.split('|'); for (const P2 of S) ops.push({ t: 's', p: P2, m: 'stone', h, w: +w, a: 0.9 }); }
+  for (const [h, D] of dots) ops.push({ t: 'fm', ps: D, m: 'heath', h, a: 1 });
+}
 
 /**
  * What a pasture hillside has that a flat colour has not (found on Malham Cove: a green slab): sheep trods along the contours
@@ -424,7 +522,7 @@ function _wtrPrims(world, cam, o) {
   const hAt = cliffs.length
     ? (x, z) => { let h = baseGrid ? sceneGroundHeight(baseGrid, x, z) : 0, tal = 0; for (const G of cliffs) if (G.slopeTalus) tal = Math.max(tal, worldCliffTalus(G.f, x, z)); h += tal; for (const G of cliffs) { const v = worldCliffHeight(G.f, x, z); if (v > 0 && v > h) h = v; } return h; }   // (a cliff only counts where it stands: its 0 away from it is not a floor under a valley)
     : (x, z) => sceneGroundHeight(cam, x, z);
-  const railBanks = _wtrRailBanks(world), MC = _wtrMoorCols(Number.isFinite(o.month) ? o.month : o.season === 'winter' ? 0 : o.season === 'autumn' ? 9 : o.season === 'spring' ? 4 : 6);
+  const VAL = _wtrValleyOf(world), railBanks = _wtrRailBanks(world), MC = _wtrMoorCols(Number.isFinite(o.month) ? o.month : o.season === 'winter' ? 0 : o.season === 'autumn' ? 9 : o.season === 'spring' ? 4 : 6);
   const rock = cliffs.length && typeof _WCL_LOOK === 'object' ? (_WCL_LOOK[cliffs[0].rock] || _WCL_LOOK.limestone) : null;
   const stones = cliffs.length && typeof worldCliffStones === 'function' ? worldCliffStones(world, cam) : [];
   let si = 0;
@@ -542,6 +640,12 @@ function _wtrPrims(world, cam, o) {
     while (si < stones.length && stones[si].z < za) si++;
     let sj = si; while (sj < stones.length && stones[sj].z < zb) sj++;
     for (let j = sj - 1; j >= si; j--) for (const op of stones[j].ops) { sops.push(op); for (const q of op.p) { minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); minY = Math.min(minY, q[1]); maxY = Math.max(maxY, q[1]); } xmin = Math.min(xmin, stones[j].x); xmax = Math.max(xmax, stones[j].x); }
+    // the valley's fields, woods and lanes as their own shapes (beyond 120 m: nearer, the quads and the dressing are the ground)
+    if (faces.length && zb > 120 && (VAL.fields.length || VAL.lanes.length)) {
+      const ext = { minX, maxX, minY, maxY };
+      _wtrValleyOps(VAL, cam, hAt, za, zb, MC.m, sops, ext);
+      ({ minX, maxX, minY, maxY } = ext);
+    }
     if (!faces.length) continue;
     const strip = { id: 'terrain-' + k, kind: 'line', sub: 'terrain', lineKind: 'terrain', box: [minX, minY, maxX, maxY], zKey: za, orderZ: zb, foot: [[xmin, za], [xmax, za], [xmax, zb], [xmin, zb]], height: Math.max(0.3, hi), solidity: 'passable', faces, mat: 'grass', ops: sops.length ? sops : undefined, heading: cam.heading || 0 };
     strip.tops = _wtrTops(strip);

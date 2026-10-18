@@ -21,8 +21,9 @@
   const VALLEY = {
     seed: 11, bearing: 0, drop: 300, fall: 1000, floor: 1300, shoulder: 0, noise: 1, up: { grade: 0.2, run: 70, tail: 0.03 },
     far: { rise: 400, run: 900 }, end: { at: 3600, rise: 330, run: 1800 },
-    fields: { from: 260, to: 2300, u: [-700, 3800], rows: 7, cell: 520, wallsTo: 1150, cross: false },
-    woods: { n: 18, s: [500, 2150], u: [-200, 3600], size: [70, 230], obj: ['tree.far-broad', 'tree.distant', 'tree.far-birch', 'tree.far-broad'], density: 0.0002 },
+    fields: { from: 260, to: 3500, u: [-900, 4200], rows: 14, cell: 240, wallsTo: 1150, cross: false },
+    woods: { n: 18, s: [500, 2150], u: [-200, 3600], size: [70, 230], obj: ['tree.far-broad', 'tree.distant', 'tree.far-birch', 'tree.far-broad'], density: 0.0002, trees: false },
+    farms: { n: 9 }, lanes: true,
     hamlet: { at: [1250, 2100], houses: 14, spread: 80, style: 'stone-cottage' },
   };
   const at = (s, u) => [-s, u];
@@ -60,7 +61,7 @@
       { id: 'wall-pl', kind: 'wall', stone: '#6a6358', path: [[140, 60], [110, 66], [84, 64], [62, 70]], h: 1.3 },
       { id: 'wall-in', kind: 'wall', stone: '#6a6358', path: [at(70, 60), at(60, 140), at(66, 240), at(80, 380)], h: 1.3, gaps: [[120, 128]] },
     ],
-    landmarks: [{ id: 'church', obj: 'structure.parish-church', at: at(1250, 2150), facing: 90, src: 'St Michael and All Angels, Hathersage (OS Explorer OL1), the spire above the hamlet', model: { livery: 'grey-limestone', size: 1.15, opts: { crown: 'spire', era: 'perpendicular' } } }],
+    landmarks: [{ id: 'church', obj: 'structure.parish-church', at: at(1185, 2150), facing: 90, src: 'St Michael and All Angels, Hathersage (OS Explorer OL1), the spire above the hamlet', model: { livery: 'grey-limestone', size: 1.15, opts: { crown: 'spire', era: 'perpendicular' } } }],
     entities: [
       // the heather carpet at the lens: ling, bilberry, bents and a few cotton-grass heads; the slope's bracken drifts and the boulder field (authored: the fill is off)
       { cluster: 'plant.ling-heather', on: 'pl-0', n: 46, seed: 51, gap: 0.3 }, { cluster: 'plant.bilberry', on: 'pl-0', n: 14, seed: 53, gap: 0.4 }, { cluster: 'plant.grass-long', on: 'pl-0', n: 8, seed: 52, gap: 0.6 }, { cluster: 'plant.rph-short-grass', on: 'pl-0', n: 10, seed: 54, gap: 0.45 },
