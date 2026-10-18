@@ -34,6 +34,7 @@ const WORLD_FRAME_FADE_S = 0.25;           // a view change cross-fades over thi
 const WORLD_FRAME_LIVE_CAP = 24;           // statics drawn live (they sway by cause, M3): the nearest this many
 const WORLD_FRAME_LIVE_H = 36;             // ... at least this tall on screen (scene units)
 const WORLD_FRAME_LOD_PX = 14;             // a walker or a paddler shorter than this on screen (device px) is drawn whole: its limbs cannot be told apart
+const WORLD_FRAME_LOD_BOB = 0.7;           // ... and bobs by at least this (device px) twice a stride, so a far walker still steps
 const WORLD_FRAME_WATER_HZ = 15;           // the rippled water is composed this many times a second and blitted once per frame between (ripple: 0.2 Hz, under 0.2 px a refresh)
 const WORLD_FRAME_LIVE_AREA = 0.4;         // ... and covering at most this share of the frame (a giant framing crown stays baked)
 const _WFR_PAD = 2;
@@ -1450,8 +1451,15 @@ function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(r.o, r.v, r.season || S.season) : null;
   const L = env.Lnow || env.L, night = !!(L && (L.windows || L.dark > 0.5)), lit = !r.static && night && /vehicle|tram|train|boat|bus|car/.test(String(r.ent.cls || r.obj));
   let hooks = typeof sceneAnimPose === 'function' ? _wfrHooks(env, S, r, sh, tau) : [];
-  // a far mover (a few pixels tall): the swing of a leg is under a pixel, so its rest art is one blit instead of the body and four limbs
-  if (hooks.length && !r.static && (r.box.y1 - r.box.y0) * env.vs < WORLD_FRAME_LOD_PX) hooks = hooks.filter(h => h.kind !== 'walk' && h.kind !== 'paddle');
+  // a far mover (a few pixels tall): the swing of a leg is under a pixel, so its rest art is one blit instead of the body and four limbs.
+  // It keeps its STEP: the whole figure bobs twice a stride by at least WORLD_FRAME_LOD_BOB device px (18 Oct: far walkers glided like
+  // cut-outs while near ones walked; a bob of the art's 1.4 units is a fifth of a pixel at that size)
+  let lodBob = 0;
+  if (hooks.length && !r.static && (r.box.y1 - r.box.y0) * env.vs < WORLD_FRAME_LOD_PX) {
+    const wk = hooks.find(h => h.kind === 'walk' && h.k > 0.3);
+    if (wk) { try { const b = sceneAnimPose(wk, tau, L, r.x).bob || 0, w = Math.abs(Math.sin(2 * Math.PI * (tau / (wk.period || 0.9) + (wk.phase || 0)))); lodBob = -Math.max(-b * env.vs * r.s, WORLD_FRAME_LOD_BOB * w * Math.min(1, wk.k)); } catch (e) { lodBob = 0; } }
+    hooks = hooks.filter(h => h.kind !== 'walk' && h.kind !== 'paddle');
+  }
   const d = r.static ? S.draw.get(r.id) : null, M = d && d.M ? d.M : _wfrM(env, r);
   const x = { litGlow: lit, bucket: r.bucket };
   if (r.cut) { ctx.save(); _wfrClipCut(ctx, r.cut, env, 0, 0); }
@@ -1464,18 +1472,20 @@ function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
       const sp = _wfrSpriteOf(env, S, r, '*', x);
       r.spNow = sp;
       if (sp && env.keep) env.keep(sp);
-      blit(sp, M, A0);
+      if (lodBob) { const MB = M.slice(); MB[5] += lodBob; blit(sp, MB, A0); } else blit(sp, M, A0);
     } else {
       const whole = hooks.find(h => _wfrParts(h)[0] === '*'), moved = [...new Set(hooks.filter(h => _wfrParts(h)[0] !== '*').flatMap(_wfrParts))];
       const rest = _wfrSpriteOf(env, S, r, moved.length ? 'rest:' + moved.join(',') : '*', x);
       r.spNow = moved.length ? null : rest;
       if (rest && env.keep) env.keep(rest);
-      let bob = 0;
-      for (const h of hooks) if (h.kind === 'walk') { try { bob = sceneAnimPose(h, tau, L, r.x).bob || 0; } catch (e) { bob = 0; } break; }
+      let bob = 0, sway = 0;
+      for (const h of hooks) if (h.kind === 'walk') { try { const P = sceneAnimPose(h, tau, L, r.x); bob = P.bob || 0; sway = P.sway || 0; } catch (e) { bob = 0; } break; }
       let W0 = null;
       if (whole) { try { W0 = sceneAnimPose(whole, tau, L, r.x).m; } catch (e) { W0 = null; } }
       const MR = W0 ? _wfrMul(M, W0) : M.slice();
       if (bob) MR[5] += bob * env.vs * r.s;
+      if (sway) MR[4] += sway * env.vs * r.s * (MR[0] < 0 ? -1 : 1);
+      if (lodBob) MR[5] += lodBob;
       blit(rest, MR, A0);
       for (const h of hooks) {
         if (h === whole) continue;

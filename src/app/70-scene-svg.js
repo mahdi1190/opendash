@@ -171,7 +171,13 @@ function sceneAnimPose(a, t, L, x) {
     case 'sway': { const wind = typeof sceneWind === 'function' ? sceneWind(t, x || 0, L) : Math.sin(t); return { m: _scAbout(p[0], p[1], (a.deg || 2) * k * wind, 1, 1, 0, 0), alpha: 1 }; }
     case 'bob': return { m: _scAbout(0, 0, 0, 1, 1, 0, (a.dy || 2) * k * Math.sin(w)), alpha: 1 };
     case 'flap': { const sy = a.sy || [0.3, 1], v = sy[0] + (sy[1] - sy[0]) * (0.5 + 0.5 * Math.sin(w)); return { m: _scAbout(p[0], p[1], 0, 1, v, 0, 0), alpha: 1 }; }
-    case 'walk': return { m: _scAbout(p[0], p[1], (a.deg || 22) * k * Math.sin(w), 1, 1, 0, 0), m2: _scAbout(p[0], p[1], -(a.deg || 22) * k * Math.sin(w), 1, 1, 0, 0), bob: -(a.bob == null ? 1.5 : a.bob) * Math.abs(Math.sin(w)), alpha: 1 };
+    case 'walk': {
+      // lift (art units, optional): a foreshortened stride (a walker seen end-on) lifts each foot in turn instead of swinging it in the
+      // picture plane; sway (optional): the body's shift from foot to foot, an x offset of the rest of the figure (the world's drawer)
+      const sw = Math.sin(w), lf = a.lift || 0;
+      return { m: _scAbout(p[0], p[1], (a.deg || 22) * k * sw, 1, 1, 0, lf ? -lf * Math.max(0, sw) : 0), m2: _scAbout(p[0], p[1], -(a.deg || 22) * k * sw, 1, 1, 0, lf ? -lf * Math.max(0, -sw) : 0),
+        bob: -(a.bob == null ? 1.5 : a.bob) * Math.abs(sw), sway: (a.sway || 0) * sw, alpha: 1 };
+    }
     case 'paddle': return { m: _scAbout(0, 0, (a.deg || 2) * k * Math.sin(w + 1.3), 1, 1, 0, (a.dy || 1.5) * k * Math.sin(w)), alpha: 1 };
     case 'turn': { const hold = a.hold == null ? 0.6 : a.hold, u = _scFrac(t / per + ph), v = u < hold ? 0 : Math.sin(Math.PI * (u - hold) / (1 - hold)); return { m: _scAbout(p[0], p[1], (a.deg || 14) * k * v, 1, 1, 0, 0), alpha: 1 }; }
     case 'flicker': { const op = a.op || [0.6, 1]; return { m: _SC_ID, alpha: op[0] + (op[1] - op[0]) * (0.5 + 0.5 * Math.sin(w)) }; }
