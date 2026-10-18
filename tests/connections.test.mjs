@@ -13,7 +13,7 @@ import { ClaudeError } from '../lib/claude-runner.mjs';
 
 let root;
 before(() => { root = mkdtempSync(join(tmpdir(), 'conn-test-')); });
-after(() => rmSync(root, { recursive: true, force: true }));
+after(() => rmSync(root, { recursive: true, force: true, maxRetries: 8, retryDelay: 150 }));   // (Windows: a logger that is still closing makes the first delete fail with ENOTEMPTY)
 
 const toolLines = (tool, { text = '{"ok":true}', isError = false } = {}) => [
   JSON.stringify({ type: 'system', subtype: 'init', tools: [tool] }),
