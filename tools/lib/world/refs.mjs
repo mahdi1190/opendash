@@ -48,7 +48,7 @@ export function worldEntry(reg, s) {
 export function worldEngineOf(reg) {
   const get = getter(reg), E = {};
   for (const n of ['worldBuild', 'worldValidate', 'worldNavBuild', 'worldNavOk', 'worldLifeInit', 'worldLifeTick', 'worldAgents', 'worldLifeIsSpawn',
-    'worldHostOrderCheck', 'worldHostData', 'worldHostSpec', 'sceneCamera', 'sceneProject', 'sceneSvg', 'worldChunks', 'worldFrameOrder', 'worldOrderCheck']) E[n] = get(n);
+    'worldHostOrderCheck', 'worldHostData', 'worldHostSpec', 'sceneCamera', 'sceneProject', 'sceneSvg', 'worldChunks', 'worldFrameOrder', 'worldOrderCheck', 'worldSourceSpec']) E[n] = get(n);
   return E;
 }
 
@@ -87,9 +87,9 @@ export function worldLintAdjust(reg, s, r, { seconds = 120, motion = null } = {}
       put(Object.assign({}, old, { ok: value >= lim, value, message: value >= lim ? '' : `${name} ${value} (life sim) below ${lim}: ${msg}` }));
     }
   }
-  // dataBytes: what the author writes is the spec, not the derived v2 data the engine makes from it
+  // dataBytes: what the author writes is the spec, not the derived v2 data the engine makes from it (the source: a valley is twenty numbers, not its hundred thousand)
   const db = rules.findIndex(q => q.group === 'data' && q.rule === 'dataBytes');
-  if (db >= 0) { const n = JSON.stringify(s.spec).length, lim = numOf(rules[db].limit); rules[db] = Object.assign({}, rules[db], { value: n, ok: lim == null || n <= lim, message: lim == null || n <= lim ? '' : `dataBytes ${n} > ${lim}: the v3 spec is too large: use clusters (cluster + on + density) instead of single entities` }); }
+  if (db >= 0) { const src = typeof E.worldSourceSpec === 'function' && s.item ? E.worldSourceSpec(s.item.id) : null, n = JSON.stringify(src || s.spec).length, lim = numOf(rules[db].limit); rules[db] = Object.assign({}, rules[db], { value: n, ok: lim == null || n <= lim, message: lim == null || n <= lim ? '' : `dataBytes ${n} > ${lim}: the v3 spec is too large: use clusters (cluster + on + density) instead of single entities` }); }
   for (let i = 0; i < rules.length; i++) {
     const q = rules[i];
     if (!q.ok && q.group === 'variety') rules[i] = Object.assign({}, q, { ok: true, message: '', warn: `[engine] ${q.message || q.rule}` });

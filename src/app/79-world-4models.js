@@ -184,6 +184,17 @@ function worldModelSizeOf(objId, model) {
   const p = worldModelParams({ obj: objId, x: 0, z: 1, id: null, model: model || null }, {}, def);
   return p ? { w: _wexR(p.L, 3), d: _wexR(p.B, 3), h: _wexR(p.H, 3) } : null;
 }
+/** The model's true footprint of an entity in world metres [[x, z]...] (its seeded size and facing), or null: where it really stands, as worldModelFit lays it out. */
+function worldModelFootOf(ent, model) {
+  if (!ent || !_wexNum(ent.x) || !_wexNum(ent.z)) return null;
+  const def = worldModelFor(ent.obj);
+  if (!def) return null;
+  const p = worldModelParams(Object.assign({}, ent, { model: model || null }), {}, def);
+  if (!p) return null;
+  const f = (_wexNum(ent.facing) ? ent.facing : 0) * Math.PI / 180, hx = Math.sin(f), hz = Math.cos(f), rx = Math.cos(f), rz = -Math.sin(f);
+  const poly = typeof def.footprint === 'function' ? def.footprint(p) : [[-p.L / 2, -p.B / 2], [p.L / 2, -p.B / 2], [p.L / 2, p.B / 2], [-p.L / 2, p.B / 2]];
+  return poly.map(([u, v]) => [ent.x + u * hx + v * rx, ent.z + u * hz + v * rz]);
+}
 /**
  * The entity's own size, height and footprint from its model parameters (a scene that says { obj: 'boat.ferry', model: { size: 1.3 } }
  * gets a 1.3 x larger footprint for the nav grid, the solver and the occlusion order). Sets ent.size, ent.height, ent.foot, ent.model.

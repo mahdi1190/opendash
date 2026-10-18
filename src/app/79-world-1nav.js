@@ -475,7 +475,8 @@ function _wnavLayerRec(name, G, data, clear, y, cam, extra) {
   const n = G.near, F = G.far, fam = name.split('@')[0];
   // the near band: where the tallest user would fill 45 % of the frame, and never so near that its feet (its waterline) are
   // below the frame's bottom edge (a half mover at the lens)
-  const yb = fam === 'swim' || fam === 'wade' ? (extra && Number.isFinite(extra.baseY) ? extra.baseY : 0) : 0;
+  // (a ground layer's feet are on the ground under the lens: a camera on an edge's plateau 36 m above the relief's zero sees ground from 1.7 m, not from 37)
+  const yb = fam === 'swim' || fam === 'wade' ? (extra && Number.isFinite(extra.baseY) ? extra.baseY : 0) : (cam.raw && cam.raw.relief ? Math.max(0, Math.min(cam.eye - 0.3, _wnavGroundY(cam, 0, Math.max(1, cam.raw.relief.d[0])))) : 0);
   // (the tallest user of the layer: a river ferry is 16 m, so its band is where IT fills 45 % of the frame, not a duck's)
   const nearZ = Math.max(cam.f * Math.max(WORLD_NAV_HEIGHT[fam] || 1.9, (extra && extra.tallUser) || 0) / 405, cam.f * (cam.eye - yb) / Math.max(1, cam.H - cam.horizon) + 0.3);
   const L = Object.assign({ layer: name, cell: n ? n.cell : WORLD_NAV_GRID.far, w: n ? n.w : 0, h: n ? n.h : 0, ox: n ? n.ox : 0, oz: n ? n.oz : 0,
@@ -543,6 +544,22 @@ function worldNavBuild(world, o) {
   // extruded buildings are solid to everything that walks, swims or drives: their footprints cut the ground like any solid (a house standing proud
   // of a lane's edge by 30 cm, a terrace beside a pavement): people never walk through a wall the extruder drew (SCENE_LESSONS L)
   for (const b of world.buildings || []) if (b && Array.isArray(b.foot) && b.foot.length >= 3) { const sh = { poly: b.foot }; wet.push(sh); ground.push(sh); }
+  // a CLIFF is solid to everything that walks: the face and its lip (with a metre or two of margin on the plateau) cut the ground along the whole plan, so a sheep never
+  // grazes over the edge and a walker never steps off it (the ground height is the relief's, a drop of 30 m is one cell: nothing on foot crosses it). Where the face tapers to
+  // nothing (its ends) there is no barrier.
+  for (const f of world.features || []) {
+    if (!f || f.kind !== 'cliff' || typeof worldCliffGeom !== 'function') continue;
+    const g = worldCliffGeom(f);
+    if (!g || !Array.isArray(g.pts) || g.pts.length < 2) continue;
+    for (let i = 1; i < g.pts.length; i++) {
+      const A = g.pts[i - 1], B = g.pts[i], tx = B[0] - A[0], tz = B[1] - A[1], L = Math.hypot(tx, tz);
+      if (!(L > 1e-6)) continue;
+      const m = typeof _wclTaper === 'function' ? _wclTaper(g, g.cum[i - 1]) : 1;
+      if (!(m >= 0.2)) continue;
+      const E = typeof worldCliffEdges === 'function' ? worldCliffEdges(g, m) : { tA: -0.2, tB: 4 }, nx = g.hi * tz / L, nz = -g.hi * tx / L, lo = E.tA - 1, hi = E.tB + 2.5;
+      ground.push({ poly: [[A[0] + nx * lo, A[1] + nz * lo], [B[0] + nx * lo, B[1] + nz * lo], [B[0] + nx * hi, B[1] + nz * hi], [A[0] + nx * hi, A[1] + nz * hi]] });
+    }
+  }
   // lines (walls, fences, hedges, railings) are solid to everything that walks, except where the author left a gap (a gate); kerbs and coping are
   // only edges (docs 1.4). A sheep stood 10 cm inside a dry-stone wall and a walker could cross any fence: the nav had never read `lines`
   for (const l of world.lines || []) {

@@ -1053,3 +1053,7 @@ water mirror lines, invariant violations, the per-system profile, and the scrubb
 | shade under bridges | the bridge casts by geometry (2.4) | look |
 | wide aspect showing unfinished edges | overscan (14.3) | appearance |
 | tiny screens | the subject stays readable in the tile crop (C4 at tile size) | appearance |
+
+### Valleys and gritstone edges (18 Oct)
+`valley: { seed, bearing, drop, fall, floor, far: { rise, run }, end: { at, rise, run }, up, concave, noise, roll, fields: { from, to, u, rows, cell, kinds, walls, wallsTo, cross }, woods: { n, s, u, size, obj, density }, hamlet: { at, houses, spread, style, lamps } }`
+is a top-level spec key (`79-world-4valley.js`, `worldValley`, `worldSpecExpand`): the validator and the build replace it with `ground.relief`, a field mosaic (surfaces of kind `field`, each its own id and so its own tone), contour walls, woods (surfaces with tree clusters) and a hamlet (building footprints). `at(s, u)` (s metres downhill to the left of the contours, u along them) is what a scene uses to place the rest. A cliff takes `rock: 'gritstone'` (blocky, buttressed, heather-capped, tors, no trees); `rock.gritstone-block` is its boulder model. A camera on a plateau says `eye` as its height above the relief's zero (the cliff's own `h` is the plateau): the near planes follow the ground under the lens. Cliffs are solid to everything on foot.

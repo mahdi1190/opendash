@@ -299,7 +299,13 @@ function worldShadowPlan(world, cam, sun, o) {
     if (!S.kind || _WL_NO_CAST.test(e.obj) || h < 0.25 || e.z > WORLD_SHADOW_FAR) return;
     if (cls === 'walkway' && e.deck) return;                          // a deck's own cast is its slab, above
     const tip = typeof sceneShadowTip === 'function' ? sceneShadowTip(cam, cx, cz, h, S.g, S.tan) : [cx + S.g[0] * h * S.tan, cz + S.g[1] * h * S.tan];
-    const dx = tip[0] - cx, dz = tip[1] - cz;
+    let dx = tip[0] - cx, dz = tip[1] - cz;
+    // a shadow lies on ground at the caster's own level: where the ground falls away (the lip of an edge, a quay) it stops, never drawn in the air over the drop
+    if (deck == null && cam.relief) {
+      const gy = _wlGroundY(cam, cx, cz); let k = 0;
+      for (let i = 4; i >= 1; i--) { const t = i / 4; if (Math.abs(_wlGroundY(cam, cx + dx * t, cz + dz * t) - gy) <= 0.8) { k = t; break; } }
+      if (k < 1) { dx *= k; dz *= k; }
+    }
     const poly = _wlHull(foot.concat(foot.map(p => [p[0] + dx, p[1] + dz])));
     const size = e.size || (typeof worldObjectInfo === 'function' && worldObjectInfo(e.obj) ? worldObjectInfo(e.obj).size : null);
     const thin = _WL_THIN_CLS.has(cls) || (size && Math.min(size.w || 1, size.d || 1) < 0.3) || /railing|fence|post|lamp|reed|rush|pole|wire|sign/.test(e.obj);

@@ -175,6 +175,9 @@ function sceneCamera(data) {
   const cam = { eye, fov, horizon, heading, x0, f, dMin: f * eye / (900 - horizon), dMax: SCENE_DMAX, water: _scgrNum(c.water, 0),
     lat: _scgrNum(c.lat, _scgrNum(v.lat, null)), lon: _scgrNum(c.lon, _scgrNum(v.lon, null)), alt: _scgrNum(c.alt, null),
     bands: _scgrBands(data), relief: _scgrRelief(data && data.ground), preset: c.preset || null };
+  // a camera standing on high ground (an edge's plateau 36 m above the relief's zero) sees the ground from its true height above it: the nearest
+  // visible ground is f * (eye above the ground) / (rows below the horizon), not the distance a 37 m eye over flat ground would give (83 m)
+  if (cam.relief) { const g0 = sceneGroundHeight(cam, 0, Math.max(cam.relief.d[0], 1)); if (g0 > 2 && g0 < eye - 0.2) cam.dMin = f * (eye - g0) / (900 - horizon); }
   if (data && typeof data === 'object') _scgrCams.set(data, cam);
   return cam;
 }

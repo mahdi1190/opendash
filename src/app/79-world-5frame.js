@@ -89,7 +89,8 @@ function _wfrPrimRec(prim, ent, vw) {
     // a low piece a mover runs on (a railway's ballast bed) lies under it in the order (79-world-3order.js: flat things)
     flat: prim.sub === 'ballast' || prim.sub === 'trough' ? true : undefined,
     // a thing standing on a host's deck is ordered just behind the host's nearest edge (0core _wcEntity), so it is drawn after the host
-    orderZ: ent && Number.isFinite(ent.orderZ) ? ent.orderZ : undefined };
+    // (a terrain strip is ordered by its FAR edge: whatever stands inside the strip's depth range is drawn over the ground it stands on, never cut by the strip under it)
+    orderZ: ent && Number.isFinite(ent.orderZ) ? ent.orderZ : prim.sub === 'terrain' && Number.isFinite(prim.orderZ) ? prim.orderZ : undefined };
 }
 /**
  * The draw record of a world entity or agent at a camera (scene units, 1600 x 900): { id, ent, obj, o (the view's object), v,
