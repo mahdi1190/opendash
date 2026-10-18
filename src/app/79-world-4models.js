@@ -200,6 +200,8 @@ function worldModelFit(ent, info, model) {
   const f = (_wexNum(ent.facing) ? ent.facing : 0) * Math.PI / 180, hx = Math.sin(f), hz = Math.cos(f), rx = Math.cos(f), rz = -Math.sin(f);
   const poly = typeof def.footprint === 'function' ? def.footprint(p) : [[-p.L / 2, -p.B / 2], [p.L / 2, -p.B / 2], [p.L / 2, p.B / 2], [-p.L / 2, p.B / 2]];
   ent.foot = poly.map(([u, v]) => [_wexR(ent.x + u * hx + v * rx, 3), _wexR(ent.z + u * hz + v * rz, 3)]);
+  // a model may stand on solid legs under an overhead body (a viaduct's piers): def.legs(p) -> [[[a, l]...]...], the nav cuts them out of the ground
+  if (typeof def.legs === 'function') { try { const lg = def.legs(p); if (Array.isArray(lg)) ent.legs = lg.filter(q => Array.isArray(q) && q.length >= 3).map(q => q.map(([u, v]) => [_wexR(ent.x + u * hx + v * rx, 3), _wexR(ent.z + u * hz + v * rz, 3)])); } catch (e) { /* no legs */ } }
   // a model may carry a walkable deck (def.deck(p) -> { y (metres above the entity's base), poly: [[a, l]...] }): the entity gets `deck`, so things attach
   // to it ('deck:<id>'), people walk on it as a raised level, solids on it block, and the order draws them after the model (a pier, a boat, a bridge)
   if (typeof def.deck === 'function') {

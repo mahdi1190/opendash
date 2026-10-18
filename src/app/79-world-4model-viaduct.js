@@ -27,6 +27,22 @@ if (typeof sceneObjDefine === 'function' && !(typeof sceneObj === 'function' && 
   credit: 'a Victorian railway viaduct (the parametric model draws it; this sprite is the fallback)',
   build() { return { body: [['@brick', 'M-450 0V-80H450V0Z']] }; },
 });
+/** The piers along the run (their centres along the facing, and which are the abutments of the steel span): shared by the drawing and the nav footprint. */
+function _wmdVdPiers(p) {
+  const o = p.opts || {}, kind = o.kind === 'girder' ? 'girder' : 'arcade', k = p.size;
+  const pitch = _wmdVdOpt(p, 'span', kind === 'girder' ? 27 : 11.5) * k, pw = _wmdVdOpt(p, 'pier', kind === 'girder' ? 3.4 : 2.5) * k;
+  const gap = Math.max(0, _wmdVdOpt(p, 'gap', 0)) * k, gapAt = _wmdVdOpt(p, 'gapAt', 0) * k, x0 = -p.L / 2, x1 = p.L / 2, piers = [];
+  if (gap > 0) {
+    const g0 = gapAt - gap / 2 - pw * 0.7, g1 = gapAt + gap / 2 + pw * 0.7;
+    for (let x = g0; x > x0 - pw; x -= pitch) piers.push({ x, ab: x === g0 });
+    for (let x = g1; x < x1 + pw; x += pitch) piers.push({ x, ab: x === g1 });
+    piers.sort((a, b) => a.x - b.x);
+  } else {
+    const n = Math.max(1, Math.round(p.L / pitch)), p0 = -n * pitch / 2;
+    for (let i = 0; i <= n; i++) piers.push({ x: p0 + i * pitch, ab: false });
+  }
+  return { kind, k, pitch, pw, gap, gapAt, piers };
+}
 function _wmdVdOpt(p, key, dflt) { const v = p.opts ? p.opts[key] : null; return typeof v === 'number' && Number.isFinite(v) ? v : dflt; }
 worldModelDefine('viaduct', {
   name: 'Railway viaduct', ids: ['structure.viaduct', 'structure.viaduct-*'], sampleObj: 'structure.viaduct', solidity: 'overhead', faceCap: 3000,
@@ -34,6 +50,11 @@ worldModelDefine('viaduct', {
     const o = (ent && ent.model && ent.model.opts) || {}, n = (k, d) => (typeof o[k] === 'number' && Number.isFinite(o[k]) && o[k] > 0 ? o[k] : d);
     const girder = o.kind === 'girder';
     return { L: n('len', 96), B: n('width', 9.2), H: n('h', 10) + (girder ? 4.0 + (o.masts ? 2.6 : 0) : 1.2) };
+  },
+  // the piers stand on the ground and are solid to walkers and boats (the deck and the arches are overhead): the nav cuts these footprints out
+  legs(p) {
+    const P = _wmdVdPiers(p), hw = p.B / 2 + 0.3 * P.k;
+    return P.piers.map(pr => { const w = (pr.ab ? P.pw * 0.7 : P.pw / 2) + 0.3 * P.k; return [[pr.x - w, -hw], [pr.x + w, -hw], [pr.x + w, hw], [pr.x - w, hw]]; });
   },
   liveries: () => _WMD_VD_LIVERIES,
   samples: [{ livery: 'red-cream', seed: 3 }, { livery: 'soot-grey', seed: 6, age: 0.8 }, { livery: 'blue-black', seed: 9, opts: { kind: 'girder' } }, { livery: 'red-cream', seed: 12, opts: { kind: 'girder', masts: true } },
@@ -48,16 +69,7 @@ worldModelDefine('viaduct', {
     const rn = (key) => { let a = (h.u(key) * 4294967296) >>> 0 || 1; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
     const x0 = -L / 2, x1 = L / 2;
     // ---- the piers along the run: centres, and the span that carries the steel plate girders (the gap) ----
-    const piers = [];
-    if (gap > 0) {
-      const g0 = gapAt - gap / 2 - pw * 0.7, g1 = gapAt + gap / 2 + pw * 0.7;
-      for (let x = g0; x > x0 - pw; x -= pitch) piers.push({ x, ab: x === g0 });
-      for (let x = g1; x < x1 + pw; x += pitch) piers.push({ x, ab: x === g1 });
-      piers.sort((a, b) => a.x - b.x);
-    } else {
-      const n = Math.max(1, Math.round(L / pitch)), p0 = -n * pitch / 2;
-      for (let i = 0; i <= n; i++) piers.push({ x: p0 + i * pitch, ab: false });
-    }
+    const piers = _wmdVdPiers(p).piers;
     const spans = [];
     for (let i = 0; i + 1 < piers.length; i++) {
       const A = piers[i], Bp = piers[i + 1], a0 = A.x + (A.ab ? pw * 0.7 : pw / 2), a1 = Bp.x - (Bp.ab ? pw * 0.7 : pw / 2);
@@ -67,12 +79,31 @@ worldModelDefine('viaduct', {
     const eyeSide = h.sees([0, 1, 0], [0, hw, yR * 0.5]) ? 1 : -1;     // the +l or -l face is the one nearer the eye
     const LDF = (hex, kk) => h.shade(hex, kk);
     // ============================================================ piers
+    const brickwork = (px, w, y0, y1) => {
+      const yTop = y1, rp = rn('pb' + Math.round(px * 10));
+      for (const sl of [-1, 1]) {
+        if (!h.sees([0, sl, 0], [px, sl * hw, yTop * 0.5])) continue;
+        const lf = sl * (hw + 0.006);
+        if (h.px(0.45) >= 3.2) for (let yy = y0 + 0.45 * k; yy < yTop - 0.2 * k; yy += 0.45 * k) h.line([h.P(px - w, lf, yy), h.P(px + w, lf, yy)], 0.025 * k, LDF(brick, 0.8), 'brick', 'course', { alpha: 0.42 });
+        if (h.px(0.4) >= 3) for (let yy = y0, q = 0; yy < yTop - 0.4 * k; yy += 0.42 * k, q++) for (const ex of [-1, 1]) {
+          const ww = (q % 2 ? 0.34 : 0.55) * k, xa = ex < 0 ? px - w : px + w - ww;
+          h.face([h.P(xa, lf, yy), h.P(xa + ww, lf, yy), h.P(xa + ww, lf, yy + 0.38 * k), h.P(xa, lf, yy + 0.38 * k)], LDF(stone, 0.92 + 0.1 * rp()), 'stone', 'quoin', null);
+        }
+        if (h.px(1) >= 1.6) for (let sx = px - w + 0.5 * k; sx < px + w - 0.4 * k; sx += (0.8 + 1.6 * rp()) * k) {
+          const hg = (1.2 + 3.2 * rp()) * k * sootK * 2.5;
+          h.line([h.P(sx, lf, yTop - 0.6 * k), h.P(sx + (rp() - 0.5) * 0.2 * k, lf, yTop - 0.6 * k - hg)], (0.12 + 0.2 * rp()) * k, '#1d1a18', 'stone', 'soot', { alpha: 0.18 + 0.22 * sootK });
+        }
+        // the foot of the pier is dirtier and wetter
+        h.face([h.P(px - w, lf, y0), h.P(px + w, lf, y0), h.P(px + w, lf, y0 + 1.3 * k), h.P(px - w, lf, y0 + 1.3 * k)], '#1a1714', 'stone', 'grime', null, { alpha: 0.2 });
+      }
+    };
     const pierBox = (px, name, wide) => {
       h.part(name, { layer: 3 });
       const w = (wide ? pw * 0.7 : pw / 2), yT = kind === 'girder' ? yR - 1.4 * k : yR - 0.4 * k;
       const batter = 0.28 * k, plinthH = 1.1 * k;
       h.box(px - w - batter, px + w + batter, -hw - batter, hw + batter, 0, plinthH, stone, LDF(stone, 1.05), 'stone', 'plinth');
       h.box(px - w, px + w, -hw, hw, plinthH, kind === 'girder' || wide ? yT : Math.min(yT, ysG), brick, brick, 'brick', 'pier');
+      if (kind === 'girder') brickwork(px, w, plinthH, yT);
       if (kind === 'girder') {
         // recessed panels on the long faces and a stone cornice cap
         if (h.px(1) >= 3) for (const sl of [-1, 1]) {
@@ -248,6 +279,7 @@ worldModelDefine('viaduct', {
           const w = pr.ab ? pw * 0.7 : pw / 2, inside = h.P(pr.x, 0, 3);
           if (pr.ab && gap > 0) h.face([h.P(pr.x - w, sl * hw, 1.1 * k), h.P(pr.x + w, sl * hw, 1.1 * k), h.P(pr.x + w, sl * hw, yR + 0.12 * k), h.P(pr.x - w, sl * hw, yR + 0.12 * k)], brick, 'brick', 'pier-face', inside);
           else h.face([h.P(pr.x - w, sl * hw, 1.1 * k), h.P(pr.x + w, sl * hw, 1.1 * k), h.P(pr.x + w, sl * hw, yStr), h.P(pr.x - w, sl * hw, yStr)], brick, 'brick', 'pier-face', inside);
+          if (sl === eyeSide) brickwork(pr.x, w, 1.1 * k, pr.ab && gap > 0 ? yR : yStr);
           h.box(pr.x - w * 0.55, pr.x + w * 0.55, sl * hw, sl * (hw + 0.32 * k), 1.1 * k, yStr - 1.4 * k, brick, LDF(brick, 1.1), 'brick', 'pilaster');
           h.box(pr.x - w * 0.7, pr.x + w * 0.7, sl * hw, sl * (hw + 0.4 * k), yStr - 1.4 * k, yStr - 1.25 * k, stone, stone, 'stone', 'pilaster-cap');
           if (h.px(1) >= 2.5) h.line([h.P(pr.x + w * 0.25, sl * (hw + 0.4 * k), 0.6 * k), h.P(pr.x + w * 0.25, sl * (hw + 0.4 * k), yStr - 0.6 * k)], 0.1 * k, '#2a2c2a', 'metal', 'downpipe', { alpha: rn('dp' + pr.x)() < 0.45 ? 1 : 0 });

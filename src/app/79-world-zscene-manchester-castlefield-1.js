@@ -26,6 +26,10 @@
   // narrowboats along the north quay
   [[30, 0], [58, 1], [86, 2], [114, 3], [144, 4]].forEach(([s, i]) => ents.push({ obj: 'boat.narrowboat', at: C(s, 20.4), facing: FA, attach: 'water', model: { seed: 20 + i } }));
   [[30, 5], [62, 6], [96, 7]].forEach(([s, i]) => ents.push({ obj: 'boat.narrowboat', at: C(s, 4.9), facing: FA, attach: 'water', model: { seed: 30 + i } }));
+  // the towpath furniture: two benches facing the water (people sit on them), a lifebuoy at the water's edge
+  ents.push({ obj: 'street.bench', at: C(36, 1.3), facing: FT, id: 'bench-a' }, { obj: 'street.bench', at: C(70, 1.3), facing: FT, id: 'bench-b' }, { obj: 'street.mqn-lifebuoy', at: C(46, 2.6), facing: FT });
+  // iron mooring bollards along the quay edge (the nearest stands where its whole height is in the frame)
+  [9.4, 21, 33, 47, 60].forEach(sv => ents.push({ obj: 'street.bollard', at: C(sv, 2.55), facing: FT }));
   worldAdd('world-test', { id: 'manchester-castlefield-1-w3', label: 'Castlefield canal basin, Manchester (world)', site: 'Castlefield canal basin, Manchester', mood: 'calm', colour: 'brick',
     tags: ['uk', 'manchester', 'canal', 'basin', 'viaduct', 'warehouses', 'narrowboats', 'world-v3'], liveSky: { lat: 53.4773, lon: -2.2554 },
     ukPlace: 'manchester-castlefield', county: 'greater-manchester', ukTown: 'Castlefield canal basin', ukView: 'world-engine', setting: 'a canal basin under railway viaducts' }, {
@@ -45,8 +49,16 @@
     entities: ents,
 
     life: [
-      { who: 'walkers', on: 'quay', rate: '5/min', mix: { stroll: 0.5, chat: 0.2, family: 0.15, 'dog-walker': 0.15 }, edges: ['W', 'E'] },
-      { who: 'mallard', count: 4, on: 'water' },
+      { who: 'walkers', on: 'quay', rate: '9/min', mix: { stroll: 0.4, brisk: 0.15, chat: 0.2, family: 0.1, 'dog-walker': 0.15 }, edges: ['W', 'E'] },
+      { who: 'walkers', on: 'behind', rate: '4/min', mix: { stroll: 0.5, brisk: 0.3, chat: 0.2 }, edges: ['W', 'E'] },
+      { who: 'walkers', on: 'far-quay', rate: '3/min', mix: { stroll: 0.5, brisk: 0.3, chat: 0.2 }, edges: ['W', 'E'] },
+      { who: 'visit', mix: { elderly: 0.5, stroll: 0.5 }, rate: '1/min', goals: [{ go: 'bench-a' }, { do: 'sit', for: [25, 80] }, { leave: 'E' }] },
+      { who: 'visit', mix: { elderly: 0.4, stroll: 0.6 }, rate: '1/min', goals: [{ go: 'bench-b' }, { do: 'sit', for: [25, 80] }, { leave: 'W' }] },
+      { who: 'narrowboat-cruising', on: 'water', every: '2min' },
+      { who: 'mallard', count: 5, on: 'water' },
+      { who: 'mute-swan', count: 2, on: 'water' },
+      { who: 'coot', count: 3, on: 'water' },
+      { who: 'gulls', count: 4 },
     ],
     backdrop: { style: 'city-manchester-towers' },
     seed: 79,
