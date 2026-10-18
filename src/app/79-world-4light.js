@@ -406,6 +406,60 @@ function worldGlowOn(key, i, kind, alt, share, o) {
   return alt < 0 || !!o.murky;
 }
 /**
+ * Is a pane of a GENERATED building lit now (the extruder's direct records: panes carry theta, one of 8 buckets, seeded per window)?
+ * Each bucket of each building has its own seeded switch-on elevation of the sun, from +1.5 down to -8 degrees, so a street lights
+ * pane by pane through dusk (and never all at once when the light band turns 'night'); then the hour's share (sceneWindowShare: 0.7
+ * in the evening, 0.25 before dawn) puts out the buckets at or above it, so windows go dark through the night. Fog and deep overcast
+ * bring the switch-on forward. key: the building's id. kind 'shop' (a shop window or door glass) keeps shop hours instead of the
+ * home share: lit until about 21:30 local (hour), then only a third of the displays stay lit through the night.
+ */
+function worldBuildingGlassOn(key, theta, alt, share, murky, kind, hour) {
+  if (!Number.isFinite(theta)) return alt < 0 || !!murky;
+  const b = Math.max(0, Math.min(7, Math.floor(theta * 8))), u = _wlRng(String(key) + '|pane|' + b)();
+  const thr = 1.5 - 9.5 * u + (murky ? 4 : 0);
+  if (kind === 'shop') { const h = Number.isFinite(hour) ? hour : 20, open = h >= 7 && h < 21.5; return alt < thr && (open || _wlRng(String(key) + '|shop|' + b)() < 0.33); }
+  return alt < thr && theta < share;
+}
+/**
+ * The lamps a generated building carries (direct.lamps: { x, y, z, col } in camera-frame metres, from the generator's lantern blocks)
+ * as world lights: each one a source with a pool on the ground under it (the generator draws its glass and its soft glow, so no halo
+ * here). On with the building's lit glass (the sun under 2 degrees, or murk). LN: the frame's light moment { alt, murky }.
+ */
+function worldBuildingLamps(ref, lamps, LN) {
+  const on = !!LN && (LN.alt < 2 || !!LN.murky);
+  return (lamps || []).filter(p => p && Number.isFinite(p.x) && Number.isFinite(p.z) && p.z > 0).map((p, i) => ({
+    ref, part: 'lamp' + i, kind: 'lamp', x: p.x, y: p.y, z: p.z, r: 1.2, halo: 0, src: true, col: p.col || '#ffd890', on, agent: false,
+    pool: { x: p.x, z: p.z, r: 4.5, h: Math.max(1.5, Number(p.y) || 2.6), col: p.col || '#ffd890' } }));
+}
+// the colour lamp light gives what it falls on (one warm colour: the sprite cache keys on the strength only)
+const WORLD_LAMP_LIGHT_COL = '#ffd59a';
+/**
+ * How much lamp light falls on a ground point (x, z): the sum over the pools of a point light h above the ground,
+ * 0.55 (1 + (rho / h)^2)^-1.5, eased to nothing at the pool's reach, capped at 0.6 and in steps of 0.1 (sprite caches).
+ * pools: [{ x, z, r, h }] (worldLights' pools, lit ones). -> { k }.
+ */
+function worldLocalLight(pools, x, z) {
+  let k = 0;
+  for (const P of pools || []) {
+    const r = P.r || 6, dx = x - P.x, dz = z - P.z;
+    if (Math.abs(dx) > r || Math.abs(dz) > r) continue;
+    const rho = Math.hypot(dx, dz);
+    if (rho >= r) continue;
+    const h = Math.max(1, P.h || 4), u = rho / r, e = Math.pow(1 + (rho / h) * (rho / h), -1.5) * (1 - u * u * (3 - 2 * u));
+    k += 0.55 * e;
+  }
+  return { k: Math.round(Math.min(0.6, k) * 10) / 10 };
+}
+/** The 8-bit mask of a generated building's lit pane buckets now (0: none lit). */
+function worldBuildingGlassMask(key, alt, share, murky, hour) {
+  let m = 0;
+  for (let b = 0; b < 8; b++) {
+    if (worldBuildingGlassOn(key, (b + 0.5) / 8, alt, share, murky)) m |= 1 << b;
+    if (worldBuildingGlassOn(key, (b + 0.5) / 8, alt, share, murky, 'shop', hour)) m |= 1 << (b + 8);
+  }
+  return m;
+}
+/**
  * Every light source of the world, ONLY from the library's glow parts: an entity with no glow part never lights.
  * o: { sky (worldSkyOf: the sun's elevation decides), night (bool: the old switch; true = deep night, false = noon), L, share
  * (lit share of windows at deep night; default from the hour), season, agents, wet }.

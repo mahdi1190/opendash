@@ -765,9 +765,20 @@ function _wfrSpriteOf(env, S, r, part, x) {
 /** The material context of a mover, remembered per 2 m of distance on its holder (the key string was built on every call). */
 function _wfrMcOf(S, r, h) {
   const e = r.ent, dk = Math.round(Math.hypot(e.x || 0, e.z || 0) / 2);
-  if (h._mcS === S && h._mcD === dk && h._mcI === e.id) return h._mc;
-  const mc = _wfrMc(S, e);
-  h._mcS = S; h._mcD = dk; h._mcI = e.id; h._mc = mc;
+  // a mover under a lamp is lit by it (worldLocalLight at its feet, in steps of 0.1): its own colours come back, warm, in proportion to
+  // the light; away from the lamps it keeps the night grade (the night-light audit: walkers under the lanterns were as dark as the rest)
+  const LL = S.localLights, lk = !e.static && LL && LL.length && typeof worldLocalLight === 'function' ? worldLocalLight(LL, e.x || 0, e.z || 0).k : 0;
+  if (h._mcS === S && h._mcD === dk && h._mcI === e.id && h._mcL === lk && h._mcLS === LL) return h._mc;
+  let mc = _wfrMc(S, e);
+  if (mc && lk > 0) {
+    const W = S.lampMc || (S.lampMc = new WeakMap());
+    let byK = W.get(mc);
+    if (!byK) { byK = new Map(); W.set(mc, byK); }
+    let m2 = byK.get(lk);
+    if (!m2) { m2 = { ...mc, lamp: { k: lk, col: WORLD_LAMP_LIGHT_COL } }; delete m2._mk; byK.set(lk, m2); }
+    mc = m2;
+  }
+  h._mcS = S; h._mcD = dk; h._mcI = e.id; h._mcL = lk; h._mcLS = LL; h._mc = mc;
   return mc;
 }
 function _wfrM(env, r) { return [env.vs * r.s * (r.flip ? -1 : 1), 0, 0, env.vs * r.s, env.vs * r.X + env.ox, env.vs * r.Y + env.oy]; }
@@ -807,7 +818,10 @@ function _wfrDrawRec(cx, env, S, r, d, bx, by, alpha) {
         const L = env.Lnow || env.L;
         // a hull's windows at night: a boat under way is lit inside; a moored one is a home (one seeded draw per boat, as a house's windows)
         const LN = S.lightNow, hullLit = r.prim.kind === 'hull' && !!LN && typeof worldGlowOn === 'function' && (r.static ? worldGlowOn(String(r.id), 0, 'window', LN.alt, LN.share, {}) : LN.alt < 4);
-        n = drawPrim(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, litGlow: hullLit, mctx: S.mctx || undefined, sun: S.sun || null, night: !!(L && (L.dark > 0.5 || L.windows)),
+        // a generated building's panes light by the world's rule (worldBuildingGlassOn: per building and pane bucket), never all at once
+        const bld = r.prim.kind === 'building' && r.prim.direct && LN && typeof worldBuildingGlassOn === 'function';
+        n = drawPrim(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, litGlow: hullLit, mctx: S.mctx || undefined, sun: S.sun || null,
+          night: bld ? LN.alt < 2 || !!LN.murky : !!(L && (L.dark > 0.5 || L.windows)), glassOn: bld ? (th, kind) => worldBuildingGlassOn(String(r.id), th, LN.alt, LN.share, LN.murky, kind, LN.sky ? LN.sky.localHour : null) : undefined,
           windowShare: S.sky && Number.isFinite(S.sky.windowShare) ? S.sky.windowShare : L && L.windowShare, season: S.season, haze: _wfrHaze(env, r.ent), alpha: alpha == null ? 1 : alpha }) || 0;
       }
     } else {
@@ -1290,7 +1304,12 @@ function _wfrChunkLit(S, ch, LN) {
   if (!LN || !(LN.alt < 4 || LN.murky)) return '-';
   let s = '';
   for (const r of ch.ents) {
-    if (r.prim) { if (r.prim.kind === 'hull' && r.static && typeof worldGlowOn === 'function' && worldGlowOn(String(r.id), 0, 'window', LN.alt, LN.share, {})) s += r.id + ':h;'; continue; }
+    if (r.prim) {
+      if (r.prim.kind === 'hull' && r.static && typeof worldGlowOn === 'function' && worldGlowOn(String(r.id), 0, 'window', LN.alt, LN.share, {})) s += r.id + ':h;';
+      // a generated building: the mask of its lit pane buckets (a relight redraws the chunk when a bucket comes on or goes off)
+      else if (r.prim.kind === 'building' && r.prim.direct && typeof worldBuildingGlassMask === 'function') { const m = worldBuildingGlassMask(String(r.id), LN.alt, LN.share, LN.murky, LN.sky ? LN.sky.localHour : null); if (m) s += r.id + ':b' + m + ';'; }
+      continue;
+    }
     const on = _wfrGlassOn(S, r, LN); if (on.length) s += r.id + ':' + on.join('.') + ';';
   }
   return s ? _wfrHashStr(s) : '-';
@@ -1371,7 +1390,7 @@ function _wfrLightOnRec(l, r) {
   return l;
 }
 function _wfrLightsPlan(env, S) {
-  S.lights = null; S.liveLights = null;
+  S.lights = null; S.liveLights = null; S.localLights = null;
   const rec = S.rec, world = rec.world, LN = _wfrLightNow(env, S);
   S.lightNow = LN;
   if (typeof worldLights !== 'function' || typeof worldDrawLights !== 'function' || !LN || !S.plan) return;
@@ -1380,7 +1399,12 @@ function _wfrLightsPlan(env, S) {
   try {
     const ents = recs.map(r => ({ ...r.ent, id: r.id, mirror: !!r.flip }));
     list = (worldLights({ entities: ents }, { sky: LN.sky || undefined, L: LN.L, season: S.season }) || []).filter(x => x.on);
+    // the lamps a generated building carries (a lantern on a bracket: the generator draws its glass and glow, the world lights the lane
+    // under it and the people walking there)
+    if (typeof worldBuildingLamps === 'function') for (const r of S.plan.recs) if (r.prim && r.prim.direct && r.prim.direct.lamps) list.push(...worldBuildingLamps(r.id, r.prim.direct.lamps, LN).filter(x => x.on));
   } catch (e) { S.stats.errors.push('lights: ' + (e && e.message)); return; }
+  // the light that falls on the movers: every lit pool on the ground (worldLocalLight samples it at a mover's feet)
+  S.localLights = list.filter(x => x.pool).map(x => x.pool);
   if (!list.length) return;
   // each halo on its owner's drawn sprite (the glow part's art point through the record's own transform: bug 13)
   for (const l of list) _wfrLightOnRec(l, S.plan.byId && S.plan.byId.get(String(l.ref)));

@@ -716,6 +716,41 @@ function _wexTrace(ctx, d) {
     else i++;
   }
 }
+/** A fill for a paint: a colour, or a gradient ({ lin | rad: [[offset, colour, alpha]], x1 y1 x2 y2 | cx cy r }) on this context. */
+function _wexPaint(ctx, f) {
+  if (typeof f === 'string' || !f || typeof f !== 'object') return f || '#000';
+  const stops = f.lin || f.rad;
+  if (!stops || typeof ctx.createRadialGradient !== 'function') return (stops && stops[0] && stops[0][1]) || '#000';
+  const g = f.lin ? ctx.createLinearGradient(f.x1 || 0, f.y1 || 0, f.x2 || 0, f.y2 != null ? f.y2 : 1) : ctx.createRadialGradient(f.cx || 0, f.cy || 0, 0, f.cx || 0, f.cy || 0, f.r || 1);
+  for (const [off, c, op] of stops) { const h = String(c).replace('#', ''), v = parseInt(h.length === 3 ? h.replace(/./g, '$&$&') : h, 16) || 0; g.addColorStop(_wexClamp(off, 0, 1), `rgba(${v >> 16 & 255},${v >> 8 & 255},${v & 255},${op == null ? 1 : op})`); }
+  return g;
+}
+const _WEX_SHOP_LIT = '#f6d9a4';   // a lit shop or door: warm, never the near-white of a lamp (a whole door in #fff0cc was a glowing slab)
+/** The box of a path string (memoised on the shape). */
+function _wexPathBox(sh) {
+  if (sh._bb) return sh._bb;
+  const t = String(sh.d).match(/-?\d+(?:\.\d+)?/g) || [];
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i + 1 < t.length; i += 2) { const X = +t[i], Y = +t[i + 1]; if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y; }
+  Object.defineProperty(sh, '_bb', { value: [x0, y0, x1, y1], enumerable: false });
+  return sh._bb;
+}
+/**
+ * The fill of a lit pane of a generated building: its night colour (by glow kind), a shop's warm interior falling darker to the floor,
+ * and on a wall seen at a grazing angle (sh.gk < 1, from the generator's view.facing) only that share of the light over the day
+ * glass, so a row of panes seen edge-on is a row of dim slivers, never bright bars.
+ */
+function worldGlassLitFill(ctx, sh, nightCol, day) {
+  const mix = (a, b, t) => { const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16), m = (k) => Math.round(((A >> k) & 255) * (1 - t) + ((B >> k) & 255) * t); return '#' + ((m(16) << 16) | (m(8) << 8) | m(0)).toString(16).padStart(6, '0'); };
+  let col = sh.glow === 'shop' ? _WEX_SHOP_LIT : (nightCol && nightCol[sh.glow]) || '#ffd98a';
+  const gk = _wexNum(sh.gk) ? _wexClamp(sh.gk, 0, 1) : 1;
+  if (gk < 1 && typeof day === 'string' && day[0] === '#') col = mix(day, col, 0.15 + 0.85 * gk);
+  if (sh.glow === 'shop' && typeof ctx.createLinearGradient === 'function') {
+    const b = _wexPathBox(sh);
+    if (b[3] - b[1] > 4) { const g = ctx.createLinearGradient(0, b[1], 0, b[3]); g.addColorStop(0, col); g.addColorStop(0.55, mix(col, '#b07a40', 0.22)); g.addColorStop(1, mix(col, '#6a4626', 0.5)); return g; }
+  }
+  return col;
+}
 function _wexFillPts(ctx, pts, hex, alpha) {
   if (!pts || pts.length < 3) return 0;
   ctx.globalAlpha = alpha == null ? 1 : alpha;
@@ -785,15 +820,22 @@ function worldExtrudeDraw(ctx, prim, o) {
     } else if (prim.kind === 'building' && prim.direct) {
       const D = prim.direct, night = !!o.night, share = _wexNum(o.windowShare) ? o.windowShare : 0;
       const nightCol = (typeof SCENE_GEN_NIGHT === 'object' && SCENE_GEN_NIGHT) || {};
+      // which panes are lit: o.glassOn(theta) is the world's rule (worldBuildingGlassOn: per building and pane bucket a seeded sun
+      // elevation, then the hour's share), so a street lights pane by pane through dusk and goes dark through the night; else the old
+      // share rule (every pane under the share at once)
+      const on = (th, kind) => night && (typeof o.glassOn === 'function' ? !!o.glassOn(th, kind) : th == null || th < share);
+      const fill = (sh) => { if (typeof Path2D === 'function') ctx.fill(new Path2D(sh.d)); else { ctx.beginPath(); _wexTrace(ctx, sh.d); ctx.fill(); } };
       for (const sh of D.shapes || []) {
         if (!sh || !sh.d) continue;
-        const lit = night && sh.glow && (sh.theta == null || sh.theta < share);
+        if (sh.dt != null && on(sh.dt)) continue;                       // the sky's streak is a day reflection: a lit room outshines it
+        const lit = !!sh.glow && on(sh.theta, sh.glow);
         ctx.globalAlpha = (sh.op == null ? 1 : sh.op) * A;
-        ctx.fillStyle = lit ? (nightCol[sh.glow] || '#ffd98a') : colour(sh.part === 'roof' ? 'slate' : 'brick', o.sun && sh.n && typeof worldSunTone === 'function' && typeof sh.f === 'string' ? worldSunTone(sh.f, sh.n, o.sun) : sh.f, prim.zKey, sh.part || 'wall');
-        if (typeof Path2D === 'function') ctx.fill(new Path2D(sh.d)); else { ctx.beginPath(); _wexTrace(ctx, sh.d); ctx.fill(); }
+        const day = lit && !(sh.gk < 1) ? null : colour(sh.part === 'roof' ? 'slate' : 'brick', o.sun && sh.n && typeof worldSunTone === 'function' && typeof sh.f === 'string' ? worldSunTone(sh.f, sh.n, o.sun) : sh.f, prim.zKey, sh.part || 'wall');
+        ctx.fillStyle = lit ? worldGlassLitFill(ctx, sh, nightCol, day) : day;
+        fill(sh);
         n++;
       }
-      if (night) for (const sh of D.lit || []) { ctx.globalAlpha = (sh.op == null ? 1 : sh.op) * A; ctx.fillStyle = sh.f; if (typeof Path2D === 'function') ctx.fill(new Path2D(sh.d)); else { ctx.beginPath(); _wexTrace(ctx, sh.d); ctx.fill(); } n++; }
+      if (night) for (const sh of D.lit || []) { ctx.globalAlpha = (sh.op == null ? 1 : sh.op) * A; ctx.fillStyle = _wexPaint(ctx, sh.f); fill(sh); n++; }
       // a house too far off to resolve its windows (a hamlet in a valley two kilometres away) still shows as warm points at night: one to three, by its lit windows
       if (night && Array.isArray(prim.box) && prim.box[2] - prim.box[0] < 18) {
         const nl = (D.shapes || []).filter(q => q && q.glow && (q.theta == null || q.theta < share)).length, bw = prim.box[2] - prim.box[0], bh = prim.box[3] - prim.box[1];

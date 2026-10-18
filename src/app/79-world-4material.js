@@ -397,12 +397,22 @@ function _wmtNightKey(mat, src, out, c) {
   const a = Math.pow(_wmtLum(src), 1.25) * 0.26 * n * k;
   return _wmtHex(o.map((v, i) => v + a * col[i]));
 }
+/**
+ * Lamp light on a mover (c.lamp: { k, col } from worldLocalLight at its feet): the light adds the material's own colour times the
+ * lamp's colour, k of it, so under a lamp a red coat is red again and a white shirt is warm white; glass and water are not lit so.
+ */
+function _wmtLamp(mat, src, out, c) {
+  const L = c.lamp;
+  if (!L || !(L.k > 0) || mat === 'glass' || mat === 'water') return out;
+  const s = _wmtRgb(src), o = _wmtRgb(out), l = _wmtRgb(L.col || '#ffd59a');
+  return _wmtHex(o.map((v, i) => v + L.k * s[i] * l[i] / 255));
+}
 function _wmtLight(mat, hex, c) {
   const M = WORLD_MATERIALS[mat] || {}, sky = c.sky;
   if (c.L && typeof sceneTone === 'function') {
     let out = sceneTone(c.L)(hex);
     if (M.gloss > 0 && c.L.mid) out = _wmtMix(out, c.L.mid, M.gloss * 0.25 * (1 - (c.L.dark || 0)));
-    return _wmtNightKey(mat, hex, out, c);
+    return _wmtLamp(mat, hex, _wmtNightKey(mat, hex, out, c), c);
   }
   if (!sky) return hex;
   // normalised by a clear high summer sun (the light the library art is drawn in), so clear noon leaves the art as drawn
@@ -413,7 +423,7 @@ function _wmtLight(mat, hex, c) {
   if (M.gloss > 0 && sky.sky && sky.sky.mid) out = _wmtMix(out, sky.sky.mid, M.gloss * 0.25 * (1 - (sky.dark || 0)));
   // night: colour drains (a scotopic grey-blue), keeping the darks dark
   if (sky.dark > 0.3) { const L0 = _wmtLum(out), n = _wmtClamp((sky.dark - 0.3) / 0.6, 0, 1); out = _wmtMix(out, _wmtHex([L0 * 200, L0 * 215, L0 * 255]), 0.6 * n); }
-  return _wmtNightKey(mat, hex, out, c);
+  return _wmtLamp(mat, hex, _wmtNightKey(mat, hex, out, c), c);
 }
 /**
  * The colour of a material now. mctx: worldMaterialCtx / worldMaterialFor (month, leaf, turn, wet, frost, snow, snowDay, sky or
@@ -438,5 +448,5 @@ function worldMaterialColour(mat, hex, mctx) {
 function worldMaterialKey(mctx) {
   const c = mctx || {}, q = (v, n) => Math.round(_wmtClamp(Number(v) || 0, 0, 1) * n);
   return 'm' + (c.month == null ? '' : c.month) + (c.leaf ? c.leaf[0] + q(c.turn, 4) : '') + (c.art ? (c.artOwn ? 'A' : 'a') + c.art.slice(0, 2) : '') + '|' + (c.band || (c.sky && c.sky.band) || '-') +
-    '|w' + q(c.wet, 3) + 'f' + q(c.frost, 3) + 's' + (c.snowDay ? q(c.snow, 4) : 0) + 'h' + q(c.haze, 10);
+    '|w' + q(c.wet, 3) + 'f' + q(c.frost, 3) + 's' + (c.snowDay ? q(c.snow, 4) : 0) + 'h' + q(c.haze, 10) + (c.lamp && c.lamp.k > 0 ? 'l' + Math.round(c.lamp.k * 10) : '');
 }

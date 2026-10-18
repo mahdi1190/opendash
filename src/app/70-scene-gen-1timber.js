@@ -438,9 +438,9 @@ _scbgBlockKinds.lantern = function (bk, wall) {
   faces.push(_sctfFace([X(bk.s, o - hw, z - 0.05), X(bk.s, o + hw, z - 0.05), X(bk.s, o + hw, z - 0.3), X(bk.s, o - hw, z - 0.3)], '#cdd2c4'));
   faces.push(_sctfFace([X(bk.s, o - hw - 0.03, z - 0.3), X(bk.s, o + hw + 0.03, z - 0.3), X(bk.s, o + hw, z - 0.34), X(bk.s, o - hw, z - 0.34)], '#1c1f22'));
   faces.push(_sctfFace([X(bk.s, o - hw - 0.04, z + 0.0), X(bk.s, o + hw + 0.04, z), X(bk.s, o, z + 0.14)], '#1c1f22'));
-  // its glow after dusk: a soft falloff of round lights (the lamp's own warm colour), wider and fainter outward, then the glass itself
-  // (six rings, each a small step: three rings of 0.07 to 0.22 showed as three hard-edged discs round every lantern at night)
-  for (const [rad, op] of [[1.05, 0.03], [0.86, 0.04], [0.68, 0.055], [0.52, 0.07], [0.38, 0.09], [0.26, 0.12]]) faces.push({ poly: [X(bk.s, o, z - 0.17)], n: [0, 1, 0], part: 'lit', role: 'lamps', col: '#ffd890', rad, op, round: true, elems: [], flat: true, lit: true });
+  // its glow after dusk: ONE soft radial falloff in the lamp's own warm colour (soft: a gradient), then the glass itself. Stacked discs
+  // of any number show their edges as rings (three, then six hard-edged steps round every lantern at night: the night-light audit)
+  faces.push({ poly: [X(bk.s, o, z - 0.17)], n: [0, 1, 0], part: 'lit', role: 'lamps', col: '#ffd890', rad: 1.05, op: 1, soft: 0.5, round: true, elems: [], flat: true, lit: true });
   faces.push({ poly: [X(bk.s, o, z - 0.17)], n: [0, 1, 0], part: 'lit', role: 'lamps', col: '#fff1c8', rad: 0.1, op: 1, elems: [], flat: true, lit: true });
   return faces;
 };

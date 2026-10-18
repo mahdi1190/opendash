@@ -284,6 +284,7 @@ ground inside the corner); the model check keeps a small thing beyond the camera
 
 Generator fixes that came with it (`70-scene-gen-0building.js`): a window's glazing bars and the sky's streak on the glass are cut to the opening (seen along a deep reveal they hung outside the window, a grid of dark lines beside every pane): a style opts in with `win.clipBars: true`; brick walls carry patches of repointing and of weathered brick (a wall was one flat tone): `wall.patches: true`. Both are opt-in because turning them on for a style changes every compiled scene that uses it (`tests/scene-compat.test.mjs`: a documented hash refresh); setts on a strip are laid in a running bond (`79-world-4ground.js`); the fill keeps a prop's foot inside the frame (`79-world-1fill.js`: a bin whose base is below the bottom edge was a dark cut blob). Test: `tests/world-model-viaduct.test.mjs`.
 ## 12. A lane's small things (18 Oct, Elm Hill; SCENE_LESSONS AA)
+## 13. A lane's small things (18 Oct, Elm Hill; SCENE_LESSONS AB)
 
 * `parish-church` in the `flint` livery draws flint nodules (dark, grey, chalk-white; `role: 'flint'`, at most 70 a face) in pale lime joints instead of mottled ashlar; quoins and dressings stay limestone.
 * `animal.cat` (a library object, not a model): a sitting cat, four coats (`variant` 0 ginger tabby, 1 black, 2 grey tabby, 3 black and white), 0.3 m, a static animal for a doorstep or a wall foot: `{ obj: 'animal.cat', at: [2.2, 9.2], facing: 270, id: 'cat-1' }`.

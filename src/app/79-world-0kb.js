@@ -1222,8 +1222,9 @@ function worldKbDensity(who, ctx, placeType) {
       case 'transit': f = _wkbCurve('transit', hour) * (dow === 0 ? 0.6 : weekend ? 0.8 : 1) * W({ snow: 0.8 }); break;
       case 'boat': f = _wkbCurve('boat', hour) * (weekend ? 1.5 : 1) * (({ winter: 0.15, spring: 0.7, summer: 1.2, autumn: 0.6 })[season] || 1) * W({ rain: 0.4, snow: 0.1, fog: 0.5 }); break;
       case 'water-bird': f = (dark ? 0.7 : 1) * (season === 'winter' ? 1.2 : 1); break;
-      case 'gull': f = (dark ? 0.2 : 1) * (({ winter: 1.4, autumn: 1.1, summer: 0.7 })[season] || 1); break;
-      case 'pigeon': f = dark ? 0.1 : _wkbCurve('day', hour); break;
+      // gulls and pigeons roost after dark (on roofs and ledges out of the view): none spawn, so none fly over a night harbour (night-light audit)
+      case 'gull': f = (dark ? 0 : 1) * (({ winter: 1.4, autumn: 1.1, summer: 0.7 })[season] || 1); break;
+      case 'pigeon': f = dark ? 0 : _wkbCurve('day', hour); break;
       case 'grazer': f = dark ? 0.6 : 1; break;
       case 'insect': f = dark ? 0 : _wkbCurve('leisure', hour) * W({ rain: 0, snow: 0, fog: 0.3, cloud: 0.6 }); break;
       case 'bat': f = dark === false ? 0 : 1; break;
