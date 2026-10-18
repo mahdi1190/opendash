@@ -25,7 +25,7 @@ const ENGINE_NAMES = ['sceneData', 'sceneCamera', 'sceneProject', 'sceneUnprojec
   'worldObjectInfo', 'worldValidate', 'worldBuild', 'worldAdd', 'worldNavBuild', 'worldLifeInit', 'worldLifeTick', 'worldAgents', 'worldChunks',
   'worldFrameOrder', 'worldOrderCheck', 'worldBackdrop', 'worldCoverage', 'worldHostV2Data', 'worldHostWorld', 'worldHostSim', 'worldHostAgents',
   'worldHostOrderCheck', 'worldHostData', 'worldHostSpec', 'worldRendererFor', 'worldBrains', 'sceneCompile', 'sceneSvg', 'worldNavOk', 'worldNavLayer', 'worldAddProblems', 'worldSurfaceAt', 'worldLifeIsSpawn', 'worldHostViewOf', 'worldHostPlace',
-  'sceneGroundHeight', 'sceneObjs', 'sceneObjReal', 'sceneSeason', 'sceneSnowCover', 'sceneFrostAt', 'almSunPosition', 'almMoonPosition', 'almSceneLight', 'sceneLightV2', 'sceneObjShapes'];
+  'sceneGroundHeight', 'sceneObjs', 'sceneObjReal', 'sceneSeason', 'sceneSnowCover', 'sceneFrostAt', 'almSunPosition', 'almMoonPosition', 'almSceneLight', 'sceneLightV2', 'sceneObjShapes', 'sceneAnimPose'];
 
 let _cache = null;
 /** Evaluate the sources once per process (about 0.3 s). */

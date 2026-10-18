@@ -1498,10 +1498,20 @@ function _wlfFollowBrain(life, a, dt) {
   var mv = a.brain.states.walk ? 'walk' : a.brain.states.swim ? 'swim' : a.brain.start;
   if (a.bs !== mv) _wlfEnter(life, a, mv);
   a.lookAt = null;
-  if (d2 < 0.05) { a.dir = null; return; }
-  a.dir = [dx2 / d2, dz2 / d2];
-  // catching up its slot at a stride, not a sprint: a leader's pace plus what the gap asks, never more than half as much again and a step
-  a.spd = _wlfClamp(Math.max(L.speed, 0.3) + (d2 - 0.2) * 1.2, 0, Math.min((a.brain.states[mv].speed ? a.brain.states[mv].speed[1] : 1.5) * 1.5, Math.max(L.speed, 0.5) * 1.5 + 0.35));
+  var cap = Math.min((a.brain.states[mv].speed ? a.brain.states[mv].speed[1] : 1.5) * 1.5, Math.max(L.speed, 0.5) * 1.5 + 0.35);
+  if (lmoving && d2 <= 2.5) {
+    // walking with a moving leader: its velocity plus a gentle pull to the slot (velocity matching). Chasing the slot point itself (head for
+    // it at the leader's pace plus 1.2 x the gap, stop dead within 5 cm) made a member surge to 1.9 m/s, stop, surge again and swing its
+    // view through front and side every second: a child "walking on the spot" beside its parent (18 Oct, Whitby family p0-17)
+    var lvx = L.svx != null ? L.svx : L.vx || 0, lvz = L.svz != null ? L.svz : L.vz || 0, gx = lvx + dx2 * 0.9, gz = lvz + dz2 * 0.9, gsp = Math.hypot(gx, gz);
+    if (gsp < 0.05) { a.dir = null; return; }
+    a.dir = [gx / gsp, gz / gsp]; a.spd = _wlfClamp(gsp, 0, cap);
+  } else {
+    if (d2 < 0.05) { a.dir = null; return; }
+    a.dir = [dx2 / d2, dz2 / d2];
+    // catching up its slot at a stride, not a sprint: a leader's pace plus what the gap asks, never more than half as much again and a step
+    a.spd = _wlfClamp(Math.max(L.speed, 0.3) + (d2 - 0.2) * 1.2, 0, cap);
+  }
   // a post or a bench between the member and its slot: round it by a route
   if (d2 > 0.8 && d2 <= 6 && !_wlfLine(life, a, a.x, a.z, p[0], p[1])) { var rm = _wlfPathTo(life, a, Math.round(p[0] * 2) / 2, Math.round(p[1] * 2) / 2); if (rm !== 'go') a.dir = [dx2 / d2, dz2 / d2]; }
   if (d2 > 6) { var res = _wlfPathTo(life, a, p[0], p[1]); if (res === 'fail') a.dir = [dx2 / d2, dz2 / d2]; }
@@ -1703,10 +1713,21 @@ function _wlfMove(life, a, dt) {
   // boats: the middle of the channel at walking pace; wakes (A9)
   if (a.kind === 'boat' && dir && typeof worldTrafficBoatSteer === 'function') dir = worldTrafficBoatSteer(life.nav, a.layer, a.x, a.z, dir, a.r, { meet: _wlfBoatMeet(life, a) });
   // arrive: ease into a stop (Y4)
-  if (dir && want > 0 && a.distLeft != null && a.distLeft < 50 && !a.leaving && !a.leader) want *= Math.max(0.35, a.distLeft / 50);
-  if (a.members && want > 0) for (var mi = 0; mi < a.members.length; mi++) { var mm = a.members[mi]; if (mm.lead && !mm.dead && Math.hypot(mm.x - a.x, mm.z - a.z) > mm.lead.len * 0.9) { want *= 0.2; break; } }   // a taut lead: the walker waits for its dog
+  // (distLeft is in the flow field's units, 40 a metre: the last 1.25 m. A walker slows to 0.6 of its pace, never a third: an elderly walker
+  // eased to 0.2 m/s crept the last metre to a bench for five seconds with its legs striding on the spot, 18 Oct)
+  if (dir && want > 0 && a.distLeft != null && a.distLeft < 50 && !a.leaving && !a.leader) want *= Math.max(a.kind === 'walker' ? 0.6 : 0.35, a.distLeft / 50);
+  var taut = 1;
+  if (a.members && want > 0) for (var mi = 0; mi < a.members.length; mi++) { var mm = a.members[mi]; if (mm.lead && !mm.dead && Math.hypot(mm.x - a.x, mm.z - a.z) > mm.lead.len * 0.9) { taut = 0.2; break; } }   // a taut lead: the walker waits for its dog
   var wantRaw = want;
-  if (dir && want > 0) { dir = _wlfSteer(life, a, dir, want); want *= a.slow; }   // a queue eases off; being held up still counts as wanting to move (stuck)
+  if (dir && want > 0) {
+    dir = _wlfSteer(life, a, dir, want);
+    // a queue eases off; being held up still counts as wanting to move (stuck). A person never CREEPS: legs striding at a tenth of a pace
+    // read as walking on the spot (18 Oct). Held to under about a quarter of a metre a second (behind the one in front, or by a taut lead)
+    // a walker stands and waits, and sets off again only when there is room for a real step (hysteresis: 0.25 to stop, 0.4 to go)
+    var qf = a.slow * taut;
+    if (a.kind === 'walker' && qf < 1) { var thr = (a.v || 0) > 0.05 ? WORLD_LIFE_CREEP.stop : WORLD_LIFE_CREEP.go; if (want * qf < Math.min(thr, 0.6 * want)) { qf = 0; a.held = life.t; } }
+    want *= qf;
+  }
   if (dir && want > 0 && a.kind === 'walker' && _wlfPinchYield(life, a, dir)) { want = 0; a.slow = 0; }   // waits at the mouth of a gap for the one coming through it
   // the walker steps aside for a ringing cyclist (keeps to its left)
   if (dir && a.yieldT > life.t) { var lx = -dir[1], lz = dir[0], nx0 = dir[0] + lx * 0.6 * a.yieldSide, nz0 = dir[1] + lz * 0.6 * a.yieldSide, nl = Math.hypot(nx0, nz0) || 1; dir = [nx0 / nl, nz0 / nl]; }
@@ -1732,12 +1753,16 @@ function _wlfMove(life, a, dt) {
   }
   // the sidestep: a shuffle to one side to let a mover by (the other side when that cell is forbidden)
   if (dir && a.sideV > 0.01 && a.kind === 'walker') {
+    // a side found blocked is not tried again for half a second after the walker stepped the other way: stepping back to it on the next
+    // tick (free again once the walker has moved off it) shook the walker to and fro in place, its legs striding at the jitter's speed
+    // (18 Oct, Whitby p0-13 by a bollard). Keeping to the other side instead jammed two walkers in a one-body strip (world-crowd's gap)
     var sd = a.sideDir, st2 = a.sideV * dt, sdx = a.sideX * sd * st2, sdz = a.sideZ * sd * st2;
-    if (!_wlfTryAt(life, a, a.x + sdx, a.z + sdz)) _wlfTryAt(life, a, a.x - sdx, a.z - sdz);
+    if (!(a.sideFlip > life.t && a.sideFlipFrom === sd)) { if (!_wlfTryAt(life, a, a.x + sdx, a.z + sdz) && _wlfTryAt(life, a, a.x - sdx, a.z - sdz)) { a.sideFlip = life.t + 0.5; a.sideFlipFrom = sd; } }
   }
   // the dog stays within its lead (A7)
   if (a.lead && a.leader && !a.leader.dead) _wlfLeash(life, a, dt);
   a.vx = (a.x - ox) / dt; a.vz = (a.z - oz) / dt; a.speed = Math.hypot(a.vx, a.vz);
+  a.mvX = ox; a.mvZ = oz;                                                         // the start of this tick's move (_wlfTrueV, after the separation)
   _wlfShownV(a, dt);
   a.y = worldLifeY(life, a);
   if (a.kind === 'boat' && a.speed > 0.2 && (!a.wakeT || life.t - a.wakeT >= 1)) { a.wakeT = life.t; life.bus.emit('wake', { id: a.id, x: a.x, z: a.z, heading: a.heading * 180 / Math.PI, speed: a.speed, beam: a.r * 2, len: a.len || 18, t: life.t }); }
@@ -1751,9 +1776,37 @@ function _wlfMove(life, a, dt) {
  */
 function _wlfShownV(a, dt) {
   var k = 1 - Math.exp(-dt / 0.2);
-  if (a.svx == null) { a.svx = a.vx; a.svz = a.vz; return; }
+  if (a.svx == null) { a.svx = a.vx; a.svz = a.vz; a.lpv = a.lpv || []; return; }
+  a.lpv = a.lpv || [];
   a.svx += (a.vx - a.svx) * k; a.svz += (a.vz - a.svz) * k;
   if (Math.hypot(a.svx, a.svz) < 0.03 && Math.hypot(a.vx, a.vz) < 0.03) { a.svx = 0; a.svz = 0; }
+}
+/** The shown speed is never more than the ground really covered over the last 4 ticks: a body shaken to and fro in one spot (a sidestep
+ *  against a post, a push and its return) has a low-passed velocity of 0.2 m/s from the jitter alone, and its legs strode on the spot. */
+function _wlfShownCap(a, dt) {
+  var P = a.lpv || (a.lpv = []);
+  P.push(a.x, a.z);
+  if (P.length > 10) P.splice(0, 2);
+  if (P.length < 10 || a.svx == null) return;
+  var box = Math.hypot(a.x - P[0], a.z - P[1]) / (4 * dt), s = Math.hypot(a.svx, a.svz);
+  if (s > box + 0.05) { var f = (box + 0.05) / s; a.svx *= f; a.svz *= f; if (Math.hypot(a.svx, a.svz) < 0.03) { a.svx = 0; a.svz = 0; } }
+}
+/** A walker held by a queue or a taut lead below `stop` m/s stands; it sets off again at `go` m/s (_wlfMove). */
+var WORLD_LIFE_CREEP = { stop: 0.25, go: 0.4 };
+/** After the separation pass: the velocity, the shown velocity and the state from the body's real displacement this tick. */
+function _wlfTrueV(life, a, dt) {
+  if (a.dead || a.kind === 'lane' || a.kind === 'rail' || a.kind === 'moored' || a.layer === 'air' || a.hop || a.step || a.fadeOut || a.mvX == null) return;
+  var vx = (a.x - a.mvX) / dt, vz = (a.z - a.mvZ) / dt;
+  a.mvX = null;
+  var ex = vx - (a.vx || 0), ez = vz - (a.vz || 0);
+  if (ex * ex + ez * ez < 1e-6) return;
+  var k = 1 - Math.exp(-dt / 0.2);
+  a.vx = vx; a.vz = vz; a.speed = Math.hypot(vx, vz);
+  if (a.svx != null) {
+    a.svx += ex * k; a.svz += ez * k;
+    if (Math.hypot(a.svx, a.svz) < 0.03 && a.speed < 0.03) { a.svx = 0; a.svz = 0; }
+  }
+  _wlfPresent(life, a);
 }
 function _wlfBoatMeet(life, a) {
   for (var i = 0; i < life.agents.length; i++) { var o = life.agents[i]; if (o !== a && o.kind === 'boat' && !o.dead && Math.hypot(o.x - a.x, o.z - a.z) < 40 && (o.vx * a.vx + o.vz * a.vz) < 0) return true; }
@@ -1969,23 +2022,28 @@ function _wlfAirMove(life, a, dt) {
 /** Stuck (no progress for 2.5 s while wanting to move): re-plan, then sidestep, then leave by the nearest spawn cell. */
 function _wlfStuck(life, a, want, dt) {
   // waiting at the mouth of a gap for someone to come through is a courtesy, not a jam
-  if (a.yieldPinch != null && life.t - a.yieldPinch < 0.3) { a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.stuckT = 0; return; }
+  if (a.yieldPinch != null && life.t - a.yieldPinch < 0.3) { a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.stuckT = 0; a.progW = 0; return; }
   // one that is held at an edge of the frame (a queue behind someone waiting for a bench, a yield) is never left standing there half in the picture
   // (C2): it wants to go on, so it counts as stuck, and it gives up and leaves at once instead of waiting out the stages
   var held = !!a.dir && !a.resident && !a.leader && a.kind === 'walker' && !a.step && !a.seat && _wlfInEdgeZone(life, a);
   if (held && want <= 0.05) want = 0.2;
   if (want > 0.05 && a.dir) {
-    if (Math.hypot(a.x - a.progX, a.z - a.progZ) > 0.4) { a.progX = a.x; a.progZ = a.z; a.lastProg = life.t; a.stuckT = 0; a.replans = Math.max(0, a.replans - 0.02); return; }
+    // progress is a real share of the way it wanted to go: a walker with a free road (no queue) pressing into a wall that the navigation's
+    // step slides it along at 0.2 m/s made 0.4 m in 2.5 s and was never stuck, striding on the spot along the wall for a minute (18 Oct,
+    // Cotswold green p2-0)
+    a.progW = (a.progW || 0) + want * dt;
+    var pd = Math.hypot(a.x - a.progX, a.z - a.progZ);
+    if (pd > 0.4 && (pd > 0.35 * a.progW || (a.slow != null && a.slow < 0.9) || a.leader)) { a.progX = a.x; a.progZ = a.z; a.lastProg = life.t; a.stuckT = 0; a.progW = 0; a.replans = Math.max(0, a.replans - 0.02); return; }
     a.stuckT = life.t - a.lastProg;
-  } else { a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.stuckT = 0; return; }
+  } else { a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.stuckT = 0; a.progW = 0; return; }
   if (held && a.stuckT > 1.0 && Math.hypot(a.vx || 0, a.vz || 0) < 0.1) {
-    a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.replans = 0; a.stuckOut = true;
+    a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.replans = 0; a.stuckOut = true; a.progW = 0;
     var eb = a.edge && /^(N|S|E|W|cover|door)$/.test(a.edge) && !(a.goals && a.goals[a.gi] && a.goals[a.gi].leave === a.edge) ? a.edge : 'any';
     _wlfLeave(life, a, eb); a.goalOn = null;
     return;
   }
   if (a.stuckT > 2.5) {
-    a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.replans++;
+    a.lastProg = life.t; a.progX = a.x; a.progZ = a.z; a.replans++; a.progW = 0;
     var edgeZ = _wlfInEdgeZone(life, a);                     // never stand still in an edge zone (C2): re-plan at once
     // never stop in the lane to wait: a mover that stands still IS the next blockage (a jam feeds itself). First a new plan, at once;
     // then the later arrival of a knot turns back the way it came (the knot unwinds from its edges); only then a short pause.
@@ -2363,6 +2421,10 @@ function _wlfPassMove(life, dt) {
   try { _wlfSeparate(life); } catch (e) { _wlfProblem(life, { pop: -1, rule: 'error', msg: 'separate: ' + (e && e.message) }); }
   // the lead is never longer than it is: the last word, after the pushes of the separation pass
   for (var li = 0; li < A.length; li++) { var dg = A[li]; if (!dg.dead && dg.lead && dg.leader && !dg.leader.dead) _wlfLeash(life, dg, dt); }
+  // the velocity is what the body REALLY did this tick: the separation pass and the last leash move bodies after _wlfMove measured them,
+  // so a walker pressed back by the one in front kept the velocity of the step it never made and its legs strode on the spot (18 Oct,
+  // Whitby: "pushedBack" walkers). The shown velocity and the presented state are corrected by the difference.
+  for (var vi = 0; vi < A.length; vi++) { var av = A[vi]; _wlfTrueV(life, av, dt); if (!av.dead && av.kind === 'walker' && av.layer !== 'air' && !av.hop && !av.step) _wlfShownCap(av, dt); else av.lpv = null; }
   _wlfTrafficPass(life, dt);
   var w = 0;
   for (var k = 0; k < A.length; k++) { if (!A[k].dead) A[w++] = A[k]; else life.byId.delete(A[k].id); }
