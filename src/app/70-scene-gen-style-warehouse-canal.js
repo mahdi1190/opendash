@@ -13,11 +13,11 @@
   sceneBuildingStyleDefine('canal-warehouse', Object.assign({}, base, {
     label: 'Canal warehouse (dark red brick, loading arches, lucam)', eras: [1790, 1900], regions: ['uk', 'north', 'midlands'], grouping: 'block',
     storeys: [4, 5], storeyH: [5.0, 4.0], frontage: [34, 72], depth: [14, 18], roof: 'pitched-side', pitch: 17,
-    wall: { cols: COLS, grime: '#201b18', texture: 'brick', mortar: '#b1a38a' },
+    wall: { cols: COLS, grime: '#201b18', texture: 'brick', mortar: '#b1a38a', patches: true },
     roofMat: { cols: ['#3a3f46', '#41464d'], kind: 'slate' },
     dress: { cols: ['#bfb6a0', '#b3aa94'] },
     plinth: 1.0,
-    win: { type: 'metal', panes: [3, 4], w: 1.5, hk: 0.66, sill: 1.0, head: 'round', recess: 0.3, grade: [1, 1, 0.94, 0.88, 0.82], lintelCol: 'wall', frames: ['#2c3034', '#363a3e', '#3a2c26'], glass: ['#2a343d', '#303a44', '#262e36'] },
+    win: { clipBars: true, type: 'metal', panes: [3, 4], w: 1.5, hk: 0.66, sill: 1.0, head: 'round', recess: 0.3, grade: [1, 1, 0.94, 0.88, 0.82], lintelCol: 'wall', frames: ['#2c3034', '#363a3e', '#3a2c26'], glass: ['#2a343d', '#303a44', '#262e36'] },
     door: { w: 1.4, h: 2.6, fan: false, panels: 0, recess: 0.3, cols: ['#3a2a1e', '#2a3a2e', '#30363a'] },
     bands: [{ storey: 1, h: 0.42, col: 'dress' }, { storey: 3, h: 0.2, col: '#68301f' }],
     details: { downpipe: 0.9, alarm: 0, boxes: 0, ivy: 0.12 },
