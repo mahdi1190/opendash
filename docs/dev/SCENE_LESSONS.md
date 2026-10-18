@@ -510,3 +510,30 @@ Five things the 16 Oct render still showed, each fixed in the engine (the scene 
 | A bollard a quarter of the frame high beside the river rail | The fill's near band for props was `f * h / 270` (30 % of the frame), while its comment and the placement solver said 180 (20 %); a seed put a 1 m bollard at 3.7 m | Posts keep to `f * h / 180` in the fill too (other props are left as they were: changing them moves every scene). Every seed tried now keeps a bollard 4.8 m or more from the lens |
 | A perf run said the change cost 2.5 times the frame time | Other programs were using the machine; the baseline had been measured a minute earlier on a quiet one | Measure the base and the change back to back, twice, in the same minute (`stash`, run, `pop`); under load they came out equal |
 
+
+## AA. People walking in place (18 Oct, the user: "so many people just walking in place")
+Every check was green (`slidingFeet`, `animStill`, `stillMoving` on Whitby and York: zero) because each compared the legs with the
+SHOWN velocity, the very number the legs are computed from. Measured on what is drawn (`node tools/world.mjs inplace <ref>
+[--browser]`, tools/lib/world/inplace.mjs; Node, 120 s of the summer noon at 10 Hz), the share of person-time with legs striding on
+the spot was York 80 %, the canal 55 %, the Cotswold green 46 %, Fleet Pond 37 %, the seaside pier 21 %, the Pier Head 10 %,
+Whitby 3 %; after the fixes 0.0 to 0.6 % (the pond 3 %, all of it eases into and out of a queue, none past the 0.6 s grace). Every row
+is fixed in the engine (no scene was edited) and has a test that fails on the engine as it was:
+`node --test tests/world-walk-in-place.test.mjs`. The invariant `walkInPlace` keeps the checkers from being blind to it again.
+
+| Mistake | Why it happened | Rule |
+|---|---|---|
+| Walkers coming toward or going away from the eye (most of a lane, a towpath, a pier) stood with their feet together and bobbed: the front and back art swings its legs 3.5 degrees | The world drawer never foreshortened the walk (the v2 renderer's `fs` and leg lift were not carried over; `worldAnimHooks` set an `fs` nothing read) | `worldAnimGait`: end-on, each foot lifts in turn, the body sways and bobs more; `sceneAnimPose` takes `lift` and `sway` on a walk hook |
+| A side-only figure (the elderly walker, the shopper, the hiker ...) walking down the line of sight strode sideways on the spot | A missing view falls back to the side art, drawn with its full 13 to 22 degree swing | The swing is scaled by `fs / sin(art view)`: a side drawing seen end-on swings `fs` of its stride and lifts its feet |
+| A walker pressed back by the one in front kept striding | `_wlfMove` measured the velocity, then the separation pass (and the last leash) moved the body back | The velocity, the shown velocity and the state are taken AFTER those passes (`_wlfTrueV`) |
+| A walker shaken to and fro by a bollard strode in place at 0.2 m/s | A sidestep found blocked fell back to the other side, the next tick tried the blocked side again: a zero-mean jitter whose low-pass reads as walking | A blocked side stays given up for a second; the shown speed never exceeds the ground covered over 4 ticks (`_wlfShownCap`) |
+| Queues crept at 0.05 to 0.2 m/s with the legs striding, and a dog-walker with a taut lead crawled at a fifth of a pace | The queue factor and the taut lead scaled the speed down continuously | A walker held below 0.25 m/s stands; it sets off again at 0.4 (`WORLD_LIFE_CREEP`) |
+| An elderly walker crept the last metre to its bench for five seconds | The arrival eased to 0.35 of the pace | A walker eases to 0.6 of its pace, never a crawl (a boat keeps 0.35) |
+| A child of a family surged to 1.9 m/s, stopped dead and surged again, its view swinging front and side every second | The member headed for its slot point at the leader's pace plus 1.2 x the gap and stopped within 5 cm | With a moving leader a member matches the leader's velocity plus a gentle pull to its slot |
+| A walker pressing into a wall that the navigation slid it along at 0.2 m/s was never stuck | Progress was 0.4 m in 2.5 s, whatever it wanted | A free walker (no queue, no leader) progresses only when it covers 35 % of the way it wanted; else it re-plans |
+| A standing dog seen head-on bobbed at 3.6 Hz (trotting on the spot) | Its front art's only hook is a body bob with a fixed period, played at half strength while still | A quick bob on a legged body is its gait: twice a stride while it moves, never while it stands |
+| Far walkers (under 14 device px, the home card) glided like cut-outs | The LOD drops the limbs, and with them the bob | They keep a whole-figure step bob of at least 0.7 device px |
+
+The app drives the same clock as the tools (checked 18 Oct): the page's driver is deterministic (`worldHostDriver` runs the systems with
+`R.advance`, budgets never act on the life), positions and legs both follow the scene clock `tau` (a slow frame slows both together,
+`WORLD_HOST_CATCHUP`), and the governor only thins far movers by a hash of the id. Not fixed here: families and friends walk 0.5 m apart
+by design, so a group seen along the line of sight is drawn overlapping (correct occlusion, but it reads as bunching).

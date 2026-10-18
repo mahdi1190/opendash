@@ -841,6 +841,19 @@ from what the entity is DOING, never from a timer:
 - Drawing: the renderer draws an agent's sprite with the v2 animation hooks of its state (`worldAnimHooks`: `sceneBehave.hooks`
   and `sceneBehave.stride` periods), so limbs move at the speed the agent travels.
 - Frame-rate independence (M8): all motion uses scene time from the runner (11.3).
+- The gait (`worldAnimGait`, 18 Oct): a walk cycle is drawn for the angle the walker is seen at. `fs = |sin rel|` (rel: its heading
+  against the line of sight). The art's own swing is scaled only by what the DRAWN view lacks (a side-only figure walking down the
+  line of sight swings `fs` of its side swing, never a sideways stride on the spot); end-on (`1 - fs`) each foot LIFTS in turn
+  (`lift`, 5 % of the art height), the body sways from foot to foot (`sway`, 1.4 %) and bobs up to 1.8 x. `sceneAnimPose` takes
+  `lift` and `sway` on a walk hook (absent: exactly the old pose). The anim record carries `gait: { fs, swing, plane, lift }` so the
+  checker judges what is drawn. A walker under the LOD (14 device px, limbs not drawn) keeps a whole-figure step bob of at least
+  `WORLD_FRAME_LOD_BOB` (0.7 px). A quick body bob on a legged animal (a dog's front view) is its gait: twice a stride while it
+  moves, never while it stands.
+- What the legs follow is what the body did (life, 18 Oct): the velocity is measured AFTER the separation pass and the last leash
+  (`_wlfTrueV`), the shown speed never exceeds the ground covered over the last 4 ticks (`_wlfShownCap`: a body shaken to and fro
+  shows no walk), a walker held by a queue or a taut lead below 0.25 m/s stands and sets off again at 0.4 (`WORLD_LIFE_CREEP`), a
+  walker's arrival eases to 0.6 of its pace (never a crawl), a group member walks with its moving leader by velocity matching, and a
+  free walker that makes under 35 % of the way it wanted is stuck (it re-plans) even when it slides along a wall.
 
 ## 14. Perspective is automatic (Q1-Q7, W5)
 
@@ -994,6 +1007,7 @@ violation is `{ rule, req, id, msg }`; the count must be zero.
 | `popping`, `stuck` | appear and vanish only at spawn cells; no progress for 10 s outside an idle goal | A3, A4 |
 | `slidingFeet`, `facing`, `laneDir` | stride vs speed, view vs velocity, lanes on the left | A5, A6, A9 |
 | `animStill`, `stillMoving`, `staticAnim` | animating while still, still while moving, statics animating | M1, M2 |
+| `walkInPlace` | walking on the spot, judged from the record's POSITIONS and boxes over 0.5 s (never the shown velocity the legs are made from): legs cycling (walk, run, trot, k >= 0.3, drawn 14 px or taller) while the body is held (< 0.15 m/s: `held`), while the feet pace out over twice the ground covered (`slip`), or while the figure moves under a quarter of its height a stride on screen with its legs swung side-on (`plane > 0.75` of a side stride, or no gait at all: `flat`). 0.6 s grace (M7). Shared classifier `worldWalkInPlace(m, h, t)`, thresholds `WORLD_INPLACE` | A6, M1, Q4 |
 | `clones`, `windDir` | synchronised phases, sway against the wind | M4, M3 |
 | `order` | `worldOrderCheck` = 0 | R1, R2 |
 | `landmark`, `bare` | landmark face visible, no bare region > 15 % | C4, C6 |
@@ -1016,6 +1030,7 @@ with zero invariant violations, and carry a load log that explains every fix.
 | `render <ref>` | PNGs on the real renderer |
 | `sheet <ref> [--matrix] [--sizes]` | dates x times x sizes on one sheet; `--matrix` = 4 seasons x 5 times x 3 weathers |
 | `motion <ref>` | paths, footprints and violations over the still |
+| `inplace <ref> [--browser]` | walking in place measured on what is drawn (tools/lib/world/inplace.mjs): per person per frame the ground and screen speed, clip, view and gait; the share of person-time, the causes (pinch yield, pushed back, group follower, taut lead, queue, sidestep, a side-only figure seen end-on, an end-on view) and the worst offenders; `--browser` reads the frames the real page drew |
 | `capture <ref> --full` | the WHOLE loop as a frame strip, not just 20 s |
 | `critic <ref> [--against <ref>]` | richness, emptiness and framing scores (and against a source) |
 | `compare <v3> <original>` | side by side at 3 dates x 5 times |
