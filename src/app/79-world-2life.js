@@ -1753,8 +1753,10 @@ function _wlfMove(life, a, dt) {
   }
   // the sidestep: a shuffle to one side to let a mover by (the other side when that cell is forbidden)
   if (dir && a.sideV > 0.01 && a.kind === 'walker') {
-    var sd = a.sideDir, st2 = a.sideV * dt, sdx = a.sideX * sd * st2, sdz = a.sideZ * sd * st2;
-    if (!_wlfTryAt(life, a, a.x + sdx, a.z + sdz)) _wlfTryAt(life, a, a.x - sdx, a.z - sdz);
+    // a side found blocked stays given up for a second: stepping back to it on the next tick (it is free again once the walker has moved
+    // off it) shook the walker to and fro in place, its legs striding at the jitter's speed (18 Oct, Whitby p0-13 by a bollard)
+    var sd = a.sideFlip > life.t && a.sideFlipFrom === a.sideDir ? -a.sideDir : a.sideDir, st2 = a.sideV * dt, sdx = a.sideX * sd * st2, sdz = a.sideZ * sd * st2;
+    if (!_wlfTryAt(life, a, a.x + sdx, a.z + sdz) && _wlfTryAt(life, a, a.x - sdx, a.z - sdz)) { if (sd === a.sideDir) { a.sideFlip = life.t + 1; a.sideFlipFrom = a.sideDir; } else a.sideFlip = 0; }
   }
   // the dog stays within its lead (A7)
   if (a.lead && a.leader && !a.leader.dead) _wlfLeash(life, a, dt);
@@ -1773,9 +1775,20 @@ function _wlfMove(life, a, dt) {
  */
 function _wlfShownV(a, dt) {
   var k = 1 - Math.exp(-dt / 0.2);
-  if (a.svx == null) { a.svx = a.vx; a.svz = a.vz; return; }
+  if (a.svx == null) { a.svx = a.vx; a.svz = a.vz; a.lpv = a.lpv || []; return; }
+  a.lpv = a.lpv || [];
   a.svx += (a.vx - a.svx) * k; a.svz += (a.vz - a.svz) * k;
   if (Math.hypot(a.svx, a.svz) < 0.03 && Math.hypot(a.vx, a.vz) < 0.03) { a.svx = 0; a.svz = 0; }
+}
+/** The shown speed is never more than the ground really covered over the last 4 ticks: a body shaken to and fro in one spot (a sidestep
+ *  against a post, a push and its return) has a low-passed velocity of 0.2 m/s from the jitter alone, and its legs strode on the spot. */
+function _wlfShownCap(a, dt) {
+  var P = a.lpv || (a.lpv = []);
+  P.push(a.x, a.z);
+  if (P.length > 10) P.splice(0, 2);
+  if (P.length < 10 || a.svx == null) return;
+  var box = Math.hypot(a.x - P[0], a.z - P[1]) / (4 * dt), s = Math.hypot(a.svx, a.svz);
+  if (s > box + 0.05) { var f = (box + 0.05) / s; a.svx *= f; a.svz *= f; if (Math.hypot(a.svx, a.svz) < 0.03) { a.svx = 0; a.svz = 0; } }
 }
 /** A walker held by a queue or a taut lead below `stop` m/s stands; it sets off again at `go` m/s (_wlfMove). */
 var WORLD_LIFE_CREEP = { stop: 0.25, go: 0.4 };
@@ -2410,7 +2423,7 @@ function _wlfPassMove(life, dt) {
   // the velocity is what the body REALLY did this tick: the separation pass and the last leash move bodies after _wlfMove measured them,
   // so a walker pressed back by the one in front kept the velocity of the step it never made and its legs strode on the spot (18 Oct,
   // Whitby: "pushedBack" walkers). The shown velocity and the presented state are corrected by the difference.
-  for (var vi = 0; vi < A.length; vi++) _wlfTrueV(life, A[vi], dt);
+  for (var vi = 0; vi < A.length; vi++) { var av = A[vi]; _wlfTrueV(life, av, dt); if (!av.dead && av.kind === 'walker' && av.layer !== 'air' && !av.hop && !av.step) _wlfShownCap(av, dt); else av.lpv = null; }
   _wlfTrafficPass(life, dt);
   var w = 0;
   for (var k = 0; k < A.length; k++) { if (!A[k].dead) A[w++] = A[k]; else life.byId.delete(A[k].id); }
