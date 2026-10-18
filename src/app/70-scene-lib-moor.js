@@ -46,12 +46,12 @@
       if (s === 'spring') { let d = ''; for (const [ex, ey] of tips) if (r() < 0.45) d += ell(ex, ey + 0.8, 1.1, 0.8); body.push({ f: '#7f9a4a', d, op: 0.8 }); }
       // the flowers: spikes of tiny bells on a few sprigs in summer (the start of the bloom), grey-brown dead spikes after
       if (s !== 'spring') {
-        const share = s === 'summer' ? 0.32 : s === 'autumn' ? 0.45 : 0.22;
+        const share = s === 'summer' ? 0.14 : s === 'autumn' ? 0.35 : 0.2;
         let d0 = '', d1 = '';
         for (const [ex, ey, x] of tips) {
           if (r() > share) continue;
           const dx = (ex - x) / 16;
-          for (let j = 0; j < 5; j++) { const yy = ey + 0.9 + j * 1.25, xx = ex - dx * j * 1.25 + (r() - 0.5) * 0.8; if (j % 2) d1 += ell(xx, yy, 0.75, 0.85); else d0 += ell(xx, yy, 0.8, 0.95); }
+          for (let j = 0; j < 3; j++) { const yy = ey + 0.8 + j * 1.1, xx = ex - dx * j * 1.1 + (r() - 0.5) * 0.9; if (j % 2) d1 += ell(xx, yy, 0.5, 0.6); else d0 += ell(xx, yy, 0.55, 0.65); }
         }
         flowers.push({ f: '@flower.0', d: d0 }, { f: '@flower.1', d: d1, op: 0.9 });
       }
