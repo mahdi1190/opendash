@@ -1762,7 +1762,7 @@ function worldFill(world, o) {
       log.push({ id: null, obj: null, action: 'default', rule: 'emptyBackground', reason: `backdrop '${style.backdrop}' from the place style '${styleKey}'`, by: 'kb' });
     }
     if (!state.edges) { _wflEdges(F); state.edges = true; }
-    if (!state.frame) { _wflFrame(F); _wflNearBand(F); if (!fillOff) _wflStreetLight(F); state.frame = true; }
+    if (!state.frame) { _wflFrame(F); _wflNearBand(F); state.frame = true; }
     if (!fillOff && !state.fill) {
       const floor = o.floor || null, maxTier = o.maxTier || 5;
       let cov = _wflCoverage(F), rich = worldRichness(world, cam, { perennial: true, floor, W: F.W, H: F.H, box: false });
@@ -1797,6 +1797,8 @@ function worldFill(world, o) {
       }
       state.fill = true;
       state.coverage = cov.bare; state.richness = rich.score;
+      // after the fill (its own lamps count): street lighting where nothing lights the near 45 m
+      if (!state.light) { _wflStreetLight(F); state.light = true; }
     } else if (fillOff && !state.offLogged) {
       log.push({ id: null, obj: null, action: 'fill', rule: 'P6', reason: 'fill: false: no auto-fill (edges and framing only)', by: 'kb' });
       state.offLogged = true;

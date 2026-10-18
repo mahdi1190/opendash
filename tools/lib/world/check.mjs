@@ -10,7 +10,7 @@
 //   px[id] = { a: its opaque pixels drawn alone, top: those in the top 40 % of its box, own: the pixels it should show (nothing
 //              nearer covers them), match: the owned pixels whose canvas colour is its own }
 // plus the water's gap pixels, the static shadows cast and their casters, whether each walker's feet land on drawn planks, the v2
-// particle mode and the lit pixels of the light layer. The frame record and these fields go through worldInvariants IN THE PAGE
+// particle mode, the lit pixels of the picture (worldLitPixels) and the generated buildings with lit panes. The frame record and these fields go through worldInvariants IN THE PAGE
 // (79-world-9inv.js rules drawn, crown, shadowOrphan, deckDrawn, particles, nightLight, waterGap, and every rule that reads the
 // frame record), so the same rules judge Node runs and real frames.
 //
@@ -26,6 +26,18 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { worldPageOpen, fileSafe, WORLD_SIZES } from './sheet.mjs';
 import { worldMatrixCells, worldWeatherFits } from './adversarial.mjs';
+
+/**
+ * The lit pixels of a frame (RGBA bytes, W x H): pixels that are bright and warm the way lamp light and lit glass are (red over 150,
+ * red at least 40 over blue, red plus green over 300) and that the night sky, moonlit stone and snow never are. The night check counts
+ * them on the PICTURE: it used to read a light layer (S.lights.c) that the compositor never makes, so every night frame had 0 lit
+ * pixels and failed, and no dusk frame was judged at all (the night-light audit, 18 Oct). Runs in Node and, by its source, in the page.
+ */
+export function worldLitPixels(F, W, H) {
+  let n = 0;
+  for (let p = 0, q = 0; p < W * H; p++, q += 4) { const r = F[q], g = F[q + 1], b = F[q + 2]; if (r > 150 && r - b >= 40 && r + g > 300) n++; }
+  return n;
+}
 
 /** The rules a single real frame is judged by (the ones that need a frame history, popping and stuck, run in Node). */
 export const WORLD_CHECK_RULES = Object.freeze(['drawn', 'crown', 'shadowOrphan', 'deckDrawn', 'particles', 'nightLight', 'waterGap', 'edgeCut', 'nearStatic',
@@ -50,7 +62,7 @@ export function worldCheckPlan(spec, o = {}) {
 }
 
 /* ---------- the page side (runs in the scene page: every name below is a page global of 78-scene-* / 79-world-*) ---------- */
-function pageProbe(opts) {
+function pageProbe(opts, litPixels) {
   const out = { error: null, violations: [], stats: {}, overlay: null };
   const hosts = typeof _schHosts !== 'undefined' ? [..._schHosts.values()].filter(r => r.r) : [];
   const rec = hosts[0];
@@ -184,9 +196,12 @@ function pageProbe(opts) {
     }
     deckFoot[r.id] = !(seen === 3 && water === 3);
   }
-  // 9. lights: the lit pixels of the static light layer, the on lights (look's worldLights), the sun, the particle mode
-  let litPx = 0;
-  if (S.lights && S.lights.c) { const d = S.lights.c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, S.lights.c.width, S.lights.c.height).data; for (let q = 3; q < d.length; q += 4) if (d[q] > 24) litPx++; }
+  // 9. lights: the lit pixels of the PICTURE (worldLitPixels: warm and bright), the on lights (look's worldLights), the generated
+  // buildings whose panes are lit now (worldBuildingGlassMask at the frame's sun), the sun, the particle mode
+  const litPx = typeof litPixels === 'function' ? litPixels(F, W, H) : null;
+  let glassLit = 0;
+  const LN = S.lightNow;
+  if (LN && typeof worldBuildingGlassMask === 'function') for (const r of S.plan.recs) if (r.prim && r.prim.kind === 'building' && r.prim.direct && (r.prim.direct.shapes || []).some(sh => sh && sh.glow) && worldBuildingGlassMask(String(r.id), LN.alt, LN.share, LN.murky, LN.sky ? LN.sky.localHour : null)) glassLit++;
   let lights = [];
   try { const L = env.Lnow || env.L; lights = typeof worldLights === 'function' ? (worldLights({ entities: S.plan.recs.filter(r => !r.prim).map(r => Object.assign({}, r.ent, { id: r.id })) }, { sky: S.sky || undefined, L, season: S.season }) || []).map(l => ({ ref: l.ref, kind: l.kind, on: !!l.on })) : []; } catch (e) { lights = []; }
   const L = env.Lnow || env.L, sun = S.sky && S.sky.sun ? { az: S.sky.sun.az, alt: S.sky.sun.alt } : L ? { az: L.az, alt: L.alt } : null;
@@ -214,7 +229,7 @@ function pageProbe(opts) {
   for (const e of ents) { if (pos.has(e.id)) e.order = pos.get(e.id); if (e.static && redrawn.has(e.id)) e.redrawFor = redrawn.get(e.id).slice(); }
   const ctx = S.tctx ? JSON.parse(JSON.stringify(S.tctx)) : null;
   const frame = { t, ctx, cam: { f: cam.f, x0: cam.x0, horizon: cam.horizon, eye: cam.eye, heading: cam.heading, fov: cam.fov, water: cam.water, dMin: cam.dMin }, W: W / vs, H: H / vs, ents,
-    surfaces: world.surfaces || [], season: S.season, sun, lights, px, shadowsCast, deckFoot, particles, litPx, waterGaps: gaps };
+    surfaces: world.surfaces || [], season: S.season, sun, lights, px, shadowsCast, deckFoot, particles, litPx, glassLit, waterGaps: gaps };
   const rules = opts.rules || null;
   let v = [];
   const stI = {};
@@ -251,7 +266,7 @@ function pageProbe(opts) {
 
 /** The pixel check of the frame the page shows now. o: { t, rules, tol, overlay }. */
 export async function worldCheckFrame(chrome, o = {}) {
-  const r = await chrome.evaluate(`(${pageProbe.toString()})(${JSON.stringify({ t: o.t || 0, rules: o.rules || WORLD_CHECK_RULES, tol: o.tol, overlay: o.overlay })})`);
+  const r = await chrome.evaluate(`(${pageProbe.toString()})(${JSON.stringify({ t: o.t || 0, rules: o.rules || WORLD_CHECK_RULES, tol: o.tol, overlay: o.overlay })}, ${worldLitPixels.toString()})`);
   if (!r) return { error: 'the probe returned nothing', violations: [], stats: {} };
   if (r.overlay) r.overlay = Buffer.from(String(r.overlay).replace(/^data:image\/png;base64,/, ''), 'base64');
   return r;

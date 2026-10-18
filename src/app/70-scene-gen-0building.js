@@ -782,7 +782,7 @@ function _scbgDrawWin(e, face, ctx, T) {
   const gl = _scbgGlowOf(sp, e, face), glassCol = _scbgMix(sp.glass, '#9fb0c0', gl.refl * 0.22);
   const outline = _scbgOpening(e);
   // gk: how much of its light a lit pane shows from here (0.25 steps, so panes still merge): full face-on, none edge-on (under about 10 degrees)
-  const fc = view.facing && face.n ? view.facing(face.n, _scbgOn(pl, e.s + e.w / 2, e.z + e.h / 2, 0)) : 1, gk = fc >= 0.42 ? undefined : Math.round(Math.max(0, Math.min(1, (fc - 0.17) / 0.25)) * 4) / 4;
+  const fc = view.facing && face.n ? view.facing(face.n, _scbgOn(pl, e.s + e.w / 2, e.z + e.h / 2, 0)) : 1, gk0 = Math.round(Math.max(0, Math.min(1, (fc - 0.17) / 0.25)) * 4) / 4, gk = gk0 >= 1 ? undefined : gk0;
   if (T === 0) {
     const p = _scbgMap(pl, view, outline, 0);
     if (p && ctx.debug) ctx.debug.windows.push({ edge: face.edge, role: face.role, quad: p, theta: gl.theta, kind: gl.kind, tier: 0 });
