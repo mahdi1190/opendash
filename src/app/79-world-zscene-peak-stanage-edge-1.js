@@ -21,8 +21,8 @@
   const VALLEY = {
     seed: 11, bearing: 0, drop: 300, fall: 1000, floor: 1300, shoulder: 0, noise: 1, up: { grade: 0.2, run: 70, tail: 0.03 },
     far: { rise: 400, run: 900 }, end: { at: 3600, rise: 330, run: 1800 },
-    fields: { from: 260, to: 3500, u: [-900, 4200], rows: 14, cell: 240, wallsTo: 1150, cross: false },
-    woods: { n: 18, s: [500, 2150], u: [-200, 3600], size: [70, 230], obj: ['tree.far-broad', 'tree.distant', 'tree.far-birch', 'tree.far-broad'], density: 0.0002, trees: false },
+    fields: { from: 260, to: 3500, u: [-900, 4200], rows: 11, cell: 300, wallsTo: 1150, cross: false },
+    woods: { n: 18, s: [500, 2150], u: [-200, 3600], size: [70, 230], obj: ['tree.far-broad', 'tree.distant', 'tree.far-birch', 'tree.far-broad'], density: 0.0004 },
     farms: { n: 9 }, lanes: true,
     hamlet: { at: [1250, 2100], houses: 14, spread: 80, style: 'stone-cottage' },
   };
@@ -44,6 +44,7 @@
       { id: 'farhill', kind: 'heath', poly: [at(2300, -900), at(2300, 9000), at(5200, 9000), at(5200, -900)] },
       // the buttress top at the lens and the plateau round the bay (2.5 m back from the rim: the nav keeps everything on foot off the lip)
       { id: 'pl-0', kind: 'heath', poly: [[-1.2, 3.2], [-0.6, 5.6], [1.6, 7.6], [5.6, 9.4], [9, 9.4], [9, 3.2]] },
+      { id: 'pl-tip', kind: 'heath', poly: [[-4.0, 2.2], [-3.7, 4.4], [-2.8, 5.6], [-0.6, 6.6], [-0.6, 2.2]] },
       { id: 'pl-a', kind: 'heath', poly: [[1.6, 7.6], [6, 9.8], [12.6, 12.6], [22.4, 17.4], [35.4, 27.2], [40, 33], [40, 7.6]] },
       { id: 'pl-b', kind: 'heath', poly: [[40, 33], [48.6, 44.4], [58.8, 69.4], [66, 99.6], [71, 139.6], [75, 199.6], [81, 279.6], [140, 279.6], [140, 33]] },
       // the cap rocks along the lip of the buttress and the bay (gritstone blocks, the models)
@@ -64,7 +65,8 @@
     landmarks: [{ id: 'church', obj: 'structure.parish-church', at: at(1185, 2150), facing: 90, src: 'St Michael and All Angels, Hathersage (OS Explorer OL1), the spire above the hamlet', model: { livery: 'grey-limestone', size: 1.15, opts: { crown: 'spire', era: 'perpendicular' } } }],
     entities: [
       // the heather carpet at the lens: ling, bilberry, bents and a few cotton-grass heads; the slope's bracken drifts and the boulder field (authored: the fill is off)
-      { cluster: 'plant.ling-heather', on: 'pl-0', n: 46, seed: 51, gap: 0.3 }, { cluster: 'plant.bilberry', on: 'pl-0', n: 14, seed: 53, gap: 0.4 }, { cluster: 'plant.grass-long', on: 'pl-0', n: 8, seed: 52, gap: 0.6 }, { cluster: 'plant.rph-short-grass', on: 'pl-0', n: 10, seed: 54, gap: 0.45 },
+      { cluster: 'plant.ling-heather', on: 'pl-0', n: 70, seed: 51, gap: 0.2 }, { cluster: 'plant.bilberry', on: 'pl-0', n: 14, seed: 53, gap: 0.4 }, { cluster: 'plant.grass-long', on: 'pl-0', n: 8, seed: 52, gap: 0.6 }, { cluster: 'plant.rph-short-grass', on: 'pl-0', n: 170, seed: 54, gap: 0.06 }, { cluster: 'plant.bilberry', on: 'pl-0', n: 30, seed: 56, gap: 0.15 },
+      { cluster: 'plant.ling-heather', on: 'pl-tip', n: 30, seed: 95, gap: 0.15 }, { cluster: 'plant.bilberry', on: 'pl-tip', n: 14, seed: 96, gap: 0.2 }, { cluster: 'plant.rph-short-grass', on: 'pl-tip', n: 80, seed: 97, gap: 0.06 },
       { cluster: 'rock.gritstone-block', on: 'rimrocks', n: 30, seed: 81, gap: 0.5 },
       // the cap rocks of the buttress the lens stands on: the edge itself, in front of the drop (framing: they stand nearer than the near band of a prop)
       { obj: 'rock.gritstone-block', id: 'cap-1', at: [-1.0, 5.1], facing: 20, framed: true, model: { size: 0.62, seed: 3, livery: 'weathered' } },
@@ -73,8 +75,7 @@
       { cluster: 'plant.ling-heather', on: 'pl-a', n: 70, seed: 3, gap: 0.6 }, { cluster: 'plant.bilberry', on: 'pl-a', n: 30, seed: 4, gap: 0.9 }, { cluster: 'plant.grass-long', on: 'pl-a', n: 14, seed: 5, gap: 1.4 }, { cluster: 'plant.yc-cotton-grass', on: 'pl-a', n: 8, seed: 7, gap: 1.2 }, { cluster: 'rock.gritstone-block', on: 'pl-a', n: 4, seed: 8, gap: 5 },
       { cluster: 'plant.ling-heather', on: 'pl-b', n: 60, seed: 13, gap: 1.6 }, { cluster: 'plant.bilberry', on: 'pl-b', n: 20, seed: 14, gap: 1.6 }, { cluster: 'rock.gritstone-block', on: 'pl-b', n: 8, seed: 18, gap: 6 },
       { cluster: 'rock.gritstone-block', on: 'boulders', n: 40, seed: 36, gap: 2.5 }, { cluster: 'plant.bracken', on: 'boulders', n: 30, seed: 34, gap: 2 }, { cluster: 'plant.ling-heather', on: 'boulders', n: 20, seed: 33, gap: 2 },
-      { cluster: 'plant.bracken', on: 'slope', n: 90, seed: 58, gap: 2.2 }, { cluster: 'plant.ling-heather', on: 'slope', n: 60, seed: 57, gap: 2.4 }, { cluster: 'plant.bilberry', on: 'slope', n: 24, seed: 45, gap: 2.4 }, { cluster: 'rock.gritstone-block', on: 'slope', n: 14, seed: 46, gap: 8 }, { cluster: 'tree.green-birch', on: 'slope', n: 6, seed: 61, gap: 10 },
-      { cluster: 'plant.bracken', on: 'slope-far', n: 40, seed: 71, gap: 5 }, { cluster: 'rock.gritstone-block', on: 'slope-far', n: 12, seed: 72, gap: 9 },
+      { cluster: 'plant.bracken', on: 'slope', n: 30, seed: 58, gap: 3 }, { cluster: 'rock.gritstone-block', on: 'slope', n: 8, seed: 46, gap: 9 }, { cluster: 'tree.green-birch', on: 'slope', n: 4, seed: 61, gap: 12 },
     ],
     life: [
       // walkers both ways along the top (in from behind the lens and from the far end of the edge), sheep in the heather and on the slope, a buzzard over the valley

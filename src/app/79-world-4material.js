@@ -383,7 +383,7 @@ function _wmtWeather(mat, hex, c) {
  * colour; overcast trades sun for a grey ambient, night leaves a dim blue ambient.
  */
 // materials that stand as dark masses at night (silhouettes against the sky: they see little of it), and lit glass's dark panes
-const _WMT_MASS = new Set(['leaf', 'needle', 'bark', 'reed', 'grass']);
+const _WMT_MASS = new Set(['leaf', 'needle', 'bark', 'reed', 'grass', 'heath']);
 /**
  * The night key (QP4: night keeps every structure readable): after the grade, foliage, trunks and reed beds sink into silhouettes
  * (x (1 - 0.3 n)) against the sky, and every other material catches the night key in proportion to its OWN lightness (pale stone,
