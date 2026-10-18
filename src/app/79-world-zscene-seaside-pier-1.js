@@ -9,6 +9,14 @@
   // (the generators live in 79-world-4model-pier.js and -beachhut.js; a loader that reads the scene file alone gets an empty pier and no huts)
   const PIER = typeof worldPierPlan !== 'function' ? { entity: null, entities: [], surfaces: [], way: [4.4, 24], point: () => [0, 0] } : worldPierPlan({ id: 'pier', root: [9, 28], facing: 30, size: 1, wallX: 4.7, waterY: -2.9, level: 0.1, benches: 6, anglers: 4, seed: 4, model: { opts: { gate: false } },
     kiosks: [{ kind: 'icecream', side: 1, at: 0.22, livery: 'pink-cream' }, { kind: 'tea', side: -1, at: 0.45, livery: 'mint-white' }, { kind: 'tackle', side: 1, at: 0.7, livery: 'navy-cream' }] });
+  const NEAR = (() => { // deterministic scatter in the near band, one jittered item per grid cell so nothing overlaps
+    let h = 7; const r = () => (h = (h * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff, out = [];
+    const grid = (id, x0, x1, z0, z1, step, pick) => { for (let x = x0; x < x1; x += step) for (let z = z0; z < z1; z += step) if (r() < 0.85) out.push({ id: id + '-' + out.length, obj: pick(), at: [Math.round((x + r() * step * 0.4) * 100) / 100, Math.round((z + r() * step * 0.4) * 100) / 100] }); };
+    grid('near-stone', 5.6, 12.2, 11, 24, 0.8, () => 'rock.stones');
+    grid('near-tuft', -17, -5, 11, 24, 1.3, () => r() < 0.3 ? 'plant.wildflowers' : 'plant.rph-short-grass');
+    for (let k = 0; k < 6; k++) out.push({ id: 'near-tub-' + k, obj: 'plant.rph-flower-tub', at: [-16 + k * 1.9, 13 + (k % 3) * 3.4] });
+    return out;
+  })();
   worldAdd('world-test', {"id":"seaside-pier-1-w3","label":"A Victorian seaside pier and promenade, England (world)","site":"A Victorian seaside pier and promenade, England","mood":"calm","colour":"slate","tags":["uk","seaside-pier","coast","world-v3"],"liveSky":{"lat":50.82,"lon":-0.14},"ukPlace":"seaside-pier","county":"sussex","ukTown":"Seaside","ukView":"world-engine","setting":"a promenade along a beach, the sea on the right"}, {
     v: 3, place: {"lat":50.82,"lon":-0.14,"alt":60,"region":"uk","style":"coast"},
     camera: {"eye":3.2,"fov":70,"horizon":470,"heading":90,"water":-2.9},
@@ -39,6 +47,9 @@
       {"obj":"street.lamppost","at":[4.3,44],"id":"lamp-1"},
       {"obj":"street.lamppost","at":[3.9,100],"id":"lamp-2"},
       ...(PIER.entity ? [PIER.entity] : []), ...PIER.entities,
+      // the near ground the lens sees: shingle and tufts on the beach edge to the right, flower tubs and tufts on the paved front to the left
+      // (a cluster spreads along the whole surface and only its first few metres are in the lower band, so these are placed where the frame is)
+      ...NEAR,
       // seafront life: an ice-cream kiosk on the promenade by the sea rail, bunting across it, gulls on the beach and the pier, boats out at sea
       { id: 'kiosk-ice', obj: 'building.kiosk', at: [-6.5, 47], facing: 90, model: { livery: 'cream-red', seed: 3, opts: { kind: 'icecream' } } },
       { id: 'bunting-1', obj: 'street.bunting', at: [0, 96], facing: 90, blocks: true, model: { livery: 'primary', seed: 2, opts: { span: 8.4, height: 3.9, sag: 0.5 } } },

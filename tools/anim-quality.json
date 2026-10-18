@@ -1563,11 +1563,6 @@
  },
  "waivers": [
   {
-   "ref": "world-preview/seaside-pier-1-w3",
-   "rule": "coverItems",
-   "reason": "A seafront promenade: the lower band of the frame is finished paving, the sea rail and the sea (hard ground and water, not soft ground for scatter), so the rule counts few placements; the band is dressed with planters, shrubs, benches and people. Re-check if the promenade gets a beach or lawn in the near ground, then delete this waiver."
-  },
-  {
    "ref": "asia-central/uz-signature",
    "rule": "structure",
    "reason": "Known art defect: in iwan() of src/app/71-anim-asia2-scenes-4.js the first two <path> template pieces end at 'z' without the closing quote and slash, so the markup is malformed (the browser drops those paths). Fix the source, then delete this waiver."
