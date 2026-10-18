@@ -515,8 +515,9 @@ Five things the 16 Oct render still showed, each fixed in the engine (the scene 
 Every check was green (`slidingFeet`, `animStill`, `stillMoving` on Whitby and York: zero) because each compared the legs with the
 SHOWN velocity, the very number the legs are computed from. Measured on what is drawn (`node tools/world.mjs inplace <ref>
 [--browser]`, tools/lib/world/inplace.mjs; Node, 120 s of the summer noon at 10 Hz), the share of person-time with legs striding on
-the spot was York 80 %, the canal 55 %, the Cotswold green 46 %, Fleet Pond 37 %, the seaside pier 21 %, the Pier Head 10 %,
-Whitby 3 %; after the fixes 0.0 to 0.6 % (the pond 3 %, all of it eases into and out of a queue, none past the 0.6 s grace). Every row
+the spot was York 80 %, the canal 55 %, the Cotswold green 46 %, Fleet Pond 34 %, the seaside pier 20 %, the Pier Head 10 %,
+Whitby 2 %; after the fixes 0.0 to 0.9 % (the pond 2.4 %, eases into and out of a queue), none past the 0.6 s grace. The page agrees
+(`--browser`, 40 s): York 77 % -> 0.8 %, the canal 41 % -> 0.1 %, Whitby 1.4 % -> 0.3 %. Every row
 is fixed in the engine (no scene was edited) and has a test that fails on the engine as it was:
 `node --test tests/world-walk-in-place.test.mjs`. The invariant `walkInPlace` keeps the checkers from being blind to it again.
 
