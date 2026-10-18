@@ -20,7 +20,7 @@ test('worldValley: a relief that falls away to a floor and rises to a far ridge,
   assert.ok(h(900, 400) < -200, `the floor is far below: ${h(900, 400)}`);
   assert.ok(h(3800, 400) > h(1600, 400) + 100, 'the far side rises');
   // the slope is concave: steepest at the top, so an eye on the shoulder sees down to the floor
-  assert.ok(h(0, 0) - h(100, 0) > h(800, 0) - h(900, 0), 'steeper at the top than at the foot');
+  assert.ok(h(0, 0) - h(100, 0) > 2 * (h(800, 0) - h(900, 0)), `steeper at the top (${(h(0, 0) - h(100, 0)).toFixed(1)} m in 100) than at the foot (${(h(800, 0) - h(900, 0)).toFixed(1)})`);
 });
 
 test('worldValley: fields are polygons with ids of their own, walls stop at wallsTo, no cross walls, woods carry trees, a hamlet is footprints', () => {
@@ -39,7 +39,8 @@ test('a gritstone edge is its own rock: dark, blocky (joints bed by bed), tors o
   const f = { kind: 'cliff', path: [[0, 40], [20, 200], [10, 400]], h: 30, rock: 'gritstone', rough: 1, scree: false };
   const g = W.worldCliffGeom(f);
   assert.equal(g.rock, 'gritstone');
-  const look = W._WCL_LOOK ? W._WCL_LOOK.gritstone : null;
+  const look = W.worldCliffLook ? W.worldCliffLook('gritstone') : null;
+  assert.ok(look, 'the rock look table is reachable for the check');
   if (look) { assert.ok(look.blocky && look.tors && look.heather && look.trees === false); assert.ok(parseInt(look.base.slice(1, 3), 16) < 0x80, 'a dark rock'); }
   const lime = W.worldCliffGeom({ kind: 'cliff', path: [[0, 40], [20, 200], [10, 400]], h: 30, rock: 'limestone' });
   assert.ok(lime.rock === 'limestone', 'limestone keeps its own look');
@@ -63,9 +64,9 @@ test('a camera on high ground is judged from its height above the ground (the ne
   assert.ok(cam.dMin < 6, `on a 36 m plateau the nearest ground is ${cam.dMin.toFixed(1)} m`);
 });
 
-test('a model on a slope stands at its lowest corner and a shadow stops at a lip; both settle after the build', () => {
+test('a model on a slope stands at its lowest corner (settled after the build)', () => {
   const rel = { x: [-200, 200], d: [2, 400], nx: 65, nd: 65, h: [] };
-  for (let j = 0; j < 65; j++) for (let i = 0; i < 65; i++) rel.h.push(-0.25 * Math.max(0, -200 + 400 * i / 64));   // falls 0.25 per metre to the right of x = 0
+  for (let j = 0; j < 65; j++) for (let i = 0; i < 65; i++) rel.h.push(-0.25 * Math.max(0, i / 64 * 400 - 200));   // falls 0.25 per metre to the right of x = 0
   const spec = { v: 3, place: { lat: 53.3, lon: -1.6, region: 'derbyshire', style: 'moor' }, camera: { eye: 1.7, fov: 70, horizon: 450, heading: 0 }, seed: 2,
     ground: { relief: rel }, surfaces: [{ id: 'moor', kind: 'heath', poly: [[-300, 1], [300, 1], [300, 400], [-300, 400]] }],
     entities: [{ id: 'blk', obj: 'rock.gritstone-block', at: [10, 30], facing: 90 }], backdrop: { style: 'heath' } };
@@ -74,6 +75,22 @@ test('a model on a slope stands at its lowest corner and a shadow stops at a lip
   const foot = W.worldModelFootOf(e, e.model) || [];
   const lowest = Math.min(...foot.map(q => W.sceneGroundHeight(w.cam, q[0], q[1])));
   assert.ok(Math.abs(e.y - lowest) < 0.01, `y ${e.y} is the ground at the lowest corner ${lowest}`);
+  assert.ok(e.y < W.sceneGroundHeight(w.cam, e.x, e.z) - 0.05, 'below the ground at its centre: it sits into the hill');
+});
+
+test('a cast shadow stops where the ground falls away (a lip, a quay): never drawn in the air over a drop', () => {
+  // flat to x = 6, then a 20 m drop within 10 m: a tree at x = 4 casts toward +x and -x in turn
+  const rel = { x: [-200, 200], d: [2, 400], nx: 401, nd: 65, h: [] };
+  for (let j = 0; j < 65; j++) for (let i = 0; i < 401; i++) { const x = -200 + i; rel.h.push(x < 6 ? 0 : -Math.min(20, (x - 6) * 2)); }
+  const spec = { v: 3, place: { lat: 53.3, lon: -1.6, region: 'derbyshire', style: 'moor' }, camera: { eye: 1.7, fov: 70, horizon: 450, heading: 0 }, seed: 2,
+    ground: { relief: rel }, surfaces: [{ id: 'moor', kind: 'heath', poly: [[-300, 1], [300, 1], [300, 400], [-300, 400]] }],
+    entities: [{ id: 'oak', obj: 'tree.oak', at: [4, 40] }], backdrop: { style: 'heath' } };
+  const w = W.worldBuild(spec, { fill: false });
+  for (const az of [90, 270]) {
+    const plan = W.worldShadowPlan(w, w.cam, { az, alt: 25 }, {}).filter(s => s.ref === 'oak' && s.kind === 'cast');
+    assert.ok(plan.length, 'the oak casts at az ' + az);
+    for (const s of plan) for (const q of s.poly) assert.ok(Math.abs(W.sceneGroundHeight(w.cam, q[0], q[1])) <= 2.5, `a shadow point at x ${q[0].toFixed(1)} is over ground at ${W.sceneGroundHeight(w.cam, q[0], q[1]).toFixed(1)}`);
+  }
 });
 
 test('the gritstone block is a registered model with its own fallback object and no clones', () => {

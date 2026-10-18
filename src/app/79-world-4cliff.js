@@ -255,6 +255,8 @@ const _WCL_LOOK = Object.freeze({
   slate: { base: '#6e7278', warm: '#7b7468', cool: '#5f666e', dark: '#25282c', light: '#8f949a', stain: '#23262a', lichen: '#7e8564', moss: '#4f6a3e', bed: [0.35, 1.3], joint: [1.2, 4], tone: 0.06, joints: 1.6, streak: 0.8, ledge: 0.6, veg: 0.4 },
   granite: { base: '#a29d95', warm: '#b3a590', cool: '#8f9396', dark: '#3d3a36', light: '#c4c0b8', stain: '#383a38', lichen: '#a09b62', moss: '#5a7340', bed: [2.5, 7.5], joint: [2.5, 8], tone: 0.06, joints: 1.2, streak: 0.8, ledge: 0.7, veg: 0.5 },
 });
+/** The look table of a rock (tone, bedding, jointing, vegetation) or null. */
+function worldCliffLook(rock) { return _WCL_LOOK[rock] || null; }
 function _wclHash(s) { let h = 2166136261 >>> 0; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
 function _wclRng(seed) { let a = (seed >>> 0) || 1; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 /** Smooth 1-D noise in [-1, 1] from a seed and a position (value noise on a lattice, smoothstep between). */
