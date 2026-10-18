@@ -135,22 +135,24 @@ test('a held walker stands: nobody creeps with striding legs (0.05 to 0.22 m/s f
   assert.deepEqual([...creepers], [], 'walkers that crept with walking legs for a second: ' + [...creepers].join(', '));
 });
 
-test('a family member walks WITH its moving leader: no surge-and-stop (its speed stays near the leader\'s)', () => {
-  const world = lane({ width: 3.5, life: [{ who: 'walkers', on: 'tow', rate: '4/min', mix: { family: 1 }, edges: ['S', 'N'] }] });
-  const nav = L.worldNavBuild(world), life = L.worldLifeInit(world, nav, 0);
-  let ticks = 0, off = 0;
+test('a family member walks WITH its moving leader: no surge-and-stop (tick-to-tick speed jumps over 0.15 m/s under 3 %)', () => {
+  // a busy 2.6 m towpath of families (the slot swings as leaders steer round each other); the engine before the fix: 4.3 % of the ticks
+  const world = lane({ width: 2.6, life: [{ who: 'walkers', on: 'tow', rate: '8/min', mix: { family: 1 }, edges: ['S', 'N'] }] });
+  const nav = L.worldNavBuild(world), life = L.worldLifeInit(world, nav, 0), prev = new Map();
+  let ticks = 0, jerk = 0;
   for (let s = 0; s < 240 * 15; s++) {
     L.worldLifeTick(life, 1 / 15);
     for (const a of life.agents) {
       const Ld = a.leader;
-      if (a.dead || !Ld || Ld.dead || a.lead || a.fadeOut || Ld.fadeOut || !(Ld.speed > 0.6) || Math.abs((Ld.v || 0) - Ld.speed) > 0.1) continue;
-      if (Math.hypot(a.x - Ld.x, a.z - Ld.z) > 2.5) continue;
+      if (a.dead || !Ld || Ld.dead || a.lead || a.fadeOut || Ld.fadeOut || !(Ld.speed > 0.6) || Math.abs((Ld.v || 0) - Ld.speed) > 0.1 || Math.hypot(a.x - Ld.x, a.z - Ld.z) > 2.5) { prev.delete(a.id); continue; }
       ticks++;
-      if (Math.abs(a.speed - Ld.speed) > 0.45 * Ld.speed) off++;
+      const p = prev.get(a.id);
+      if (p != null && Math.abs(a.speed - p) > 0.15) jerk++;
+      prev.set(a.id, a.speed);
     }
   }
-  assert.ok(ticks > 500, 'member ticks beside a walking leader: ' + ticks);
-  assert.ok(off / ticks < 0.1, `a member was off its leader's pace by over 45 % in ${(100 * off / ticks).toFixed(1)} % of the ticks`);
+  assert.ok(ticks > 5000, 'member ticks beside a walking leader: ' + ticks);
+  assert.ok(jerk / ticks < 0.03, `a member's speed jumped by over 0.15 m/s in a tick in ${(100 * jerk / ticks).toFixed(1)} % of the ticks`);
 });
 
 /* ---------- the real scene: measured on the frame record ---------- */
