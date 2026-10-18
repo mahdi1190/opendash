@@ -149,7 +149,9 @@ function worldValley(o) {
     const fr = _wvlRng(_wvlHash(seed + '|farms')), n = Math.max(1, Fm.n | 0 || 6), sA = (Number.isFinite(F.from) ? F.from : 300) + 120, sB = (Number.isFinite(F.to) ? F.to : 2000) - 150, uA = (F.u || [-300, 3000])[0] + 200, uB = (F.u || [-300, 3000])[1] - 200;
     let k = 0;
     for (let i = 0; i < n * 4 && k < n; i++) {
-      const cs = sA + (sB - sA) * fr(), cu = uA + (uB - uA) * fr();
+      // (in the middle of a row of fields, away from the walls along its edges)
+      const E = out.fieldRows, ri = E ? Math.floor(fr() * (E.length - 1)) : 0, cs = E ? (E[ri] + E[ri + 1]) / 2 + (fr() - 0.5) * 0.3 * (E[ri + 1] - E[ri]) : sA + (sB - sA) * fr(), cu = uA + (uB - uA) * fr();
+      if (cs < sA || cs > sB) continue;
       if (Hm && Array.isArray(Hm.at) && Math.hypot(cs - Hm.at[0], cu - Hm.at[1]) < 380) continue;
       if (out.buildings.some(b => b._s != null && Math.hypot(b._s - cs, b._u - cu) < 260)) continue;
       const rot = fr() < 0.5, box = (s0, u0, ds, du) => { const p = rot ? [[s0 - ds, u0 - du], [s0 + ds, u0 - du], [s0 + ds, u0 + du], [s0 - ds, u0 + du]] : [[s0 - du, u0 - ds], [s0 + du, u0 - ds], [s0 + du, u0 + ds], [s0 - du, u0 + ds]]; return p.map(q => at(q[0], q[1])); };
@@ -170,6 +172,17 @@ function worldValley(o) {
     const up = [], s1 = F && Number.isFinite(F.from) ? F.from + 30 : 300;
     for (let i = 0; i <= 8; i++) { const t = i / 8, sv = Hm.at[0] + (s1 - Hm.at[0]) * t; up.push(at(sv, Hm.at[1] + 170 + 140 * Math.sin(t * Math.PI * 2.2) * (1 - t * 0.3) + 120 * t)); }
     out.surfaces.push({ id: 'lane-1', kind: 'track', path: up, width: 3.5 });
+    // a gate in every wall a lane crosses (a wall across a lane would block it)
+    const cross = (a, b, c, d) => { const den = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0]); if (Math.abs(den) < 1e-9) return null; const t = ((c[0] - a[0]) * (d[1] - c[1]) - (c[1] - a[1]) * (d[0] - c[0])) / den, v = ((c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0])) / den; return t >= 0 && t <= 1 && v >= 0 && v <= 1 ? t : null; };
+    for (const ln of out.lines) {
+      let acc = 0; const gaps = [];
+      for (let i = 1; i < ln.path.length; i++) {
+        const a = ln.path[i - 1], b = ln.path[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        for (const lane of [along, up]) for (let j = 1; j < lane.length; j++) { const t = cross(a, b, lane[j - 1], lane[j]); if (t != null) gaps.push([_wvlR(acc + t * L - 4), _wvlR(acc + t * L + 4)]); }
+        acc += L;
+      }
+      if (gaps.length) ln.gaps = (ln.gaps || []).concat(gaps);
+    }
   }
   return out;
 }

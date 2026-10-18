@@ -84,7 +84,7 @@
       // people walk out onto the buttress to look along the edge, then go on
       { who: 'visit', on: 'pl-a', mix: { stroll: 0.5, couple: 0.3, 'dog-walker': 0.2 }, rate: '1/2min', edges: ['right'], goals: [{ go: [4, 8.6] }, { do: 'look', for: [20, 60] }, { leave: 'right' }] },
       { who: 'walkers', on: 'path-far', rate: '2/min', mix: { brisk: 0.5, couple: 0.3, 'dog-walker': 0.2 }, edges: ['far', 'right'] },
-      { who: 'sheep', count: 4, on: 'slope' }, { who: 'sheep', count: 5, on: 'pl-b' },
+      { who: 'sheep', count: 4, on: 'boulders' }, { who: 'sheep', count: 5, on: 'pl-b' },
       { who: 'bird.buzzard-flight', count: 2 }, { who: 'bird.small-flight', count: 3 },
     ],
     backdrop: { style: 'upland' },
