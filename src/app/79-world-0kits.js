@@ -256,13 +256,13 @@ const WORLD_STYLE_KITS = _wkbFreeze({
   // rowan in a clough is the spec's to place); the first scaffold planted a hawthorn wood and pines across the edge (18 Oct, Stanage)
   moor: { label: 'moor', place: 'rural', backdrop: 'heath', ground: 'heath', sky: [0.4, 0.68], layers: 5,
     look: { grass: 'tussock', heath: 'heath', field: 'rows', path: 'gravel', paving: 'flags', quay: 'stone', bank: 'earth' },
-    fill: { grass: { near: [['plant.moor-heather', 4], ['plant.bilberry', 2], ['plant.yc-cotton-grass', 2], ['plant.rph-short-grass', 2], ['plant.grass-long', 2], ['plant.heather', 1]],
-      mid: [['rock.gritstone-block', 2], ['plant.moor-heather', 3], ['plant.bracken', 3], ['plant.bilberry', 2], ['plant.grass-long', 1], ['plant.proof-fleet-rush', 1]],
-      far: [['rock.gritstone-block', 2], ['plant.bracken', 3], ['plant.moor-heather', 3], ['plant.gorse', 1]], distant: [],
+    fill: { grass: { near: [['plant.ling-heather', 4], ['plant.bilberry', 2], ['plant.yc-cotton-grass', 2], ['plant.rph-short-grass', 2], ['plant.grass-long', 2], ['plant.heather', 1]],
+      mid: [['rock.gritstone-block', 2], ['plant.ling-heather', 3], ['plant.bracken', 3], ['plant.bilberry', 2], ['plant.grass-long', 1], ['plant.proof-fleet-rush', 1]],
+      far: [['rock.gritstone-block', 2], ['plant.bracken', 3], ['plant.ling-heather', 3], ['plant.gorse', 1]], distant: [],
       accents: [['plant.yc-cotton-grass', 2], ['ground.yc-sphagnum', 1]] },
       heath: null, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, paving: _WKT_PAVING, path: _WKT_PATH, water: _WKT_NOLILY },
-    edges: Object.assign({}, _WKT_EDGES_RURAL, { hedgerow: [] }), frame: [{ kind: 'shrub', obj: 'plant.moor-heather' }, { kind: 'shrub', obj: 'plant.bracken' }, { kind: 'rock', obj: 'rock.gritstone-block' }],
-    rich: { mid: [['rock.gritstone-block', 2], ['plant.bracken', 2], ['plant.moor-heather', 3], ['plant.bilberry', 1], ['plant.yc-cotton-grass', 1]], far: [['rock.gritstone-block', 2], ['plant.bracken', 2], ['plant.moor-heather', 2]] },
+    edges: Object.assign({}, _WKT_EDGES_RURAL, { hedgerow: [] }), frame: [{ kind: 'shrub', obj: 'plant.ling-heather' }, { kind: 'shrub', obj: 'plant.bracken' }, { kind: 'rock', obj: 'rock.gritstone-block' }],
+    rich: { mid: [['rock.gritstone-block', 2], ['plant.bracken', 2], ['plant.ling-heather', 3], ['plant.bilberry', 1], ['plant.yc-cotton-grass', 1]], far: [['rock.gritstone-block', 2], ['plant.bracken', 2], ['plant.ling-heather', 2]] },
     life: { walk: { who: 'walkers', rate: '2/min', mix: { brisk: 0.5, 'dog-walker': 0.3, couple: 0.2 } }, graze: [{ who: 'sheep', count: 8 }] } },
   // the coast: sand and shingle, marram on the dunes, gorse on the cliff top, a railed promenade with lamps and benches, gulls
   coast: { label: 'coast', place: 'rural', backdrop: 'coast', ground: 'sand', sky: [0.38, 0.65], layers: 5, bare: { ground: 0.3, paving: 0.1 },

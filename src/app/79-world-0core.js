@@ -1337,24 +1337,41 @@ function _wcReliefCompile(cs) {
   const baseCam = base ? { relief: { x: base.x, d: base.d, nx: base.nx, nd: base.nd, h: base.h } } : null, h = new Array(nx * nd);
   // a world with a cliff AND other relief keeps the relief without the cliff (relief.base): the cliff is drawn analytically (4terrain), the rest from the grid
   const mixed = cliffs > 0 && (!!base || feats.some(f => f.kind !== 'cliff')), hb = mixed ? new Array(nx * nd) : null;
+  // the height at a point: [with the features, without the cliffs]
+  const hpt = (x, d) => {
+    let up = 0, down = 0, cl = 0, tal = 0;
+    for (const f of feats) {
+      if (f.kind === 'cliff') { cl = Math.max(cl, worldCliffHeight(f, x, d)); if (typeof worldCliffTalus === 'function') tal = Math.max(tal, worldCliffTalus(f, x, d)); continue; }
+      const pr = _wcFeatProfile(f, _wcLineDist(f.path, x, d)); if (!pr) continue; if (f.kind === 'cutting') down = Math.min(down, -Math.abs(f.h) * pr); else up = Math.max(up, Math.abs(f.h) * pr);
+    }
+    const b0 = baseCam ? sceneGroundHeight(baseCam, x, d) : 0;
+    // a cliff is an absolute height (its face is drawn from the foot up to `h`): it stands where it is higher than the relief it rises out of
+    // (a talus that lies on the slope below the face is added to the ground it lies on)
+    const upc = cl > 0 ? Math.max(b0 + up + tal, cl) : b0 + up + tal;
+    return [_wcR3(upc + down), _wcR3(b0 + up + down)];
+  };
   for (let j = 0; j < nd; j++) {
     const d = z0 * Math.pow(z1 / z0, j / (nd - 1));
     for (let i = 0; i < nx; i++) {
-      const x = x0 + (x1 - x0) * i / (nx - 1);
-      let up = 0, down = 0, cl = 0, tal = 0;
-      for (const f of feats) {
-        if (f.kind === 'cliff') { cl = Math.max(cl, worldCliffHeight(f, x, d)); if (typeof worldCliffTalus === 'function') tal = Math.max(tal, worldCliffTalus(f, x, d)); continue; }
-        const pr = _wcFeatProfile(f, _wcLineDist(f.path, x, d)); if (!pr) continue; if (f.kind === 'cutting') down = Math.min(down, -Math.abs(f.h) * pr); else up = Math.max(up, Math.abs(f.h) * pr);
-      }
-      const b0 = baseCam ? sceneGroundHeight(baseCam, x, d) : 0;
-      // a cliff is an absolute height (its face is drawn from the foot up to `h`): it stands where it is higher than the relief it rises out of
-      // (a talus that lies on the slope below the face is added to the ground it lies on)
-      const upc = cl > 0 ? Math.max(b0 + up + tal, cl) : b0 + up + tal;
-      h[j * nx + i] = _wcR3(upc + down);
-      if (hb) hb[j * nx + i] = _wcR3(b0 + up + down);
+      const v = hpt(x0 + (x1 - x0) * i / (nx - 1), d);
+      h[j * nx + i] = v[0];
+      if (hb) hb[j * nx + i] = v[1];
     }
   }
   const r = { x: [_wcR3(x0), _wcR3(x1)], d: [_wcR3(z0), _wcR3(z1)], nx, nd, h, src: 'features' };
+  // a lens standing on (or within 40 m of) a cliff's plan: the grid's columns (7 m wide over a valley's three kilometres) blur the lip into a ramp, so things
+  // near the rim would stand at the wrong height or be judged hidden. A fine grid (0.5 to 1 m columns, rows 2 % deep, to 400 m) round the lens and along the
+  // nearer faces holds the true heights; sceneGroundHeight reads it first (18 Oct, Stanage: half the heather at the lens was dropped as "behind a rise")
+  if (cliffs && (x1 - x0) / (nx - 1) > 1.2) {
+    let lens = Infinity, xa = -20, xb = 20;
+    for (const f of feats) { const G = f.kind === 'cliff' ? worldCliffGeom(f) : null; if (!G) continue; for (const p of G.pts) { const dd = Math.hypot(p[0], p[1]); lens = Math.min(lens, dd); if (p[1] > 0 && p[1] < 400) { xa = Math.min(xa, p[0] - 40); xb = Math.max(xb, p[0] + 40); } } }
+    if (lens < 40) {
+      xa = Math.max(-160, xa); xb = Math.min(160, xb);
+      const da = 0.4, db = 400, nn = Math.min(321, Math.ceil((xb - xa) / 0.5) + 1), mm = Math.ceil(Math.log(db / da) / Math.log(1.02)) + 1, hn = new Array(nn * mm);
+      for (let j = 0; j < mm; j++) { const d = da * Math.pow(db / da, j / (mm - 1)); for (let i = 0; i < nn; i++) hn[j * nn + i] = hpt(xa + (xb - xa) * i / (nn - 1), d)[0]; }
+      r.near = { x: [_wcR3(xa), _wcR3(xb)], d: [da, db], nx: nn, nd: mm, h: hn };
+    }
+  }
   if (hb) r.base = { x: r.x, d: r.d, nx, nd, h: hb };
   _wcReliefMemo.set(g, r);
   return r;

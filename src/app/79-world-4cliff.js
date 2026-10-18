@@ -449,6 +449,66 @@ function worldCliffPrims(world, cam, o) {
     const g = worldCliffGeom(f);
     if (!g) continue;
     for (const p of _wclFace(g, cam, o, world.reliefBase ? { relief: world.reliefBase } : null)) out.push(p);
+    for (const p of _wclLipBack(g, cam)) out.push(p);
+  }
+  return out;
+}
+/**
+ * The lip of a face seen from BEHIND (the camera on the plateau, the face turned away): what the eye sees there is the edge itself, a broken line
+ * of rounded cap blocks on the rim with the drop beyond (Stanage from the top), never a plateau that simply stops. Blocks 0.8 to 3.5 m long with
+ * gaps, each a low loaf with a lit top, a darker outer flank and a dark line where the rock falls away; heather lapping at their foot. Only a blocky
+ * rock (gritstone), only nearer than 160 m, only where the eye is above the rim. -> terrain prims (one per depth bin).
+ */
+function _wclLipBack(g, cam) {
+  const lk = _WCL_LOOK[g.rock] || null, out = [];
+  if (!lk || !lk.blocky || !(cam.eye > g.H * 0.9)) return out;
+  const f = cam.f, x0 = _wclNum(cam.x0) ? cam.x0 : 800, hz = cam.horizon, eye = cam.eye, near = Math.max(0.5, (cam.dMin || 1) * 0.6), lnB = Math.log(1.03);
+  const r = _wclRng(_wclHash((g.id || 'c') + '|lipback'));
+  const Pt = (x, z, y) => [_wclR1(x0 + f * x / z), _wclR1(hz + f * (eye - y) / z)];
+  const bins = new Map();
+  for (let s = r() * 2; s < g.L; ) {
+    const L = (0.8 + Math.pow(r(), 1.4) * 2.7) * (_wclAt(g, s).z < 12 ? 0.75 : 1), gap = 0.15 + r() * (r() < 0.2 ? 1.6 : 0.5), s1 = Math.min(g.L, s + L), sm = (s + s1) / 2, a = _wclAt(g, sm);
+    const nx = g.hi > 0 ? -a.tz : a.tz, nz = g.hi > 0 ? a.tx : -a.tx, m = _wclTaper(g, sm);
+    const back = -(a.x * nx + a.z * nz) <= 0.02 * Math.hypot(a.x, a.z);
+    if (back && m > 0.5 && a.z > Math.max(near, 22) && a.z < 160 && eye > g.H * m + 0.3) {
+      const X = x0 + f * a.x / a.z;
+      if (X > -200 && X < 1800) {
+        const H = g.H * m, hb = 0.25 + r() * 0.5, inset = 0.3 + r() * 0.7, tone = r();
+        const A = _wclAt(g, s), B = _wclAt(g, s1);
+        // the block: its outer foot on the lip line, its body set back onto the plateau by `inset`, a rounded top
+        const ox = (q, t) => [q.x - nx * t, q.z - nz * t];
+        const p0 = ox(A, -0.2), p1 = ox(B, -0.2), q0 = ox(A, inset), q1 = ox(B, inset);
+        const P = (q, y) => Pt(q[0], Math.max(0.3, q[1]), y);
+        const midO = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2], midI = [(q0[0] + q1[0]) / 2, (q0[1] + q1[1]) / 2];
+        // (corners rounded: a weathered block of grit is a loaf, never a box)
+        const rnd = (pts, k) => { const o = []; for (let i = 0; i < pts.length; i++) { const p = pts[i], a1 = pts[(i + pts.length - 1) % pts.length], b1 = pts[(i + 1) % pts.length]; o.push([_wclR1(p[0] + (a1[0] - p[0]) * k), _wclR1(p[1] + (a1[1] - p[1]) * k)], [_wclR1(p[0] * 0.5 + (a1[0] + b1[0]) * 0.25), _wclR1(p[1] * 0.5 + (a1[1] + b1[1]) * 0.25)], [_wclR1(p[0] + (b1[0] - p[0]) * k), _wclR1(p[1] + (b1[1] - p[1]) * k)]); } return o; };
+        const body = rnd([P(p0, H - 0.25), P(p0, H + hb * 0.55), P(q0, H + hb * 0.85), P(midI, H + hb), P(q1, H + hb * 0.8), P(p1, H + hb * 0.5), P(p1, H - 0.25), P(midO, H - 0.35)], 0.2);
+        const top = rnd([P(p0, H + hb * 0.55), P(q0, H + hb * 0.85), P(midI, H + hb), P(q1, H + hb * 0.8), P(p1, H + hb * 0.5), P(midO, H + hb * 0.62)], 0.22);
+        const zb = a.z, bin = Math.floor(Math.log(zb) / lnB);
+        let B0 = bins.get(bin); if (!B0) { B0 = { ops: [], z: zb, foot: [], box: [Infinity, Infinity, -Infinity, -Infinity] }; bins.set(bin, B0); }
+        const nrm = [_wclR1(nx * 100) / 100, _wclR1(nz * 100) / 100];
+        B0.ops.push({ t: 'f', p: body, m: 'stone', h: _wclShade(lk.base, 0.8 + 0.3 * tone), a: 1, n: nrm });
+        B0.ops.push({ t: 'f', p: top, m: 'stone', h: _wclShade(lk.light, 0.86 + 0.18 * tone), a: 0.85, up: true });
+        B0.ops.push({ t: 's', p: [P(p0, H - 0.3), P(midO, H - 0.4), P(p1, H - 0.3)], m: 'stone', h: lk.dark, w: Math.max(1, f / zb * 0.12), a: 0.7 });
+        if (r() < 0.35) B0.ops.push({ t: 'f', p: [P(q0, H + hb * 0.5), P(midI, H + hb * 0.62), P(q1, H + hb * 0.5), P(midI, H + hb * 0.38)], m: 'stone', h: r() < 0.5 ? lk.lichen : lk.dark, a: 0.35 });
+        // a block big on screen shows its bedding and a crack, and lichen in rosettes
+        if (f / zb * L > 40) {
+          const bed = (u) => [P(p0, H + hb * u), P(midO, H + hb * u * 1.05 + 0.02), P(p1, H + hb * u)];
+          B0.ops.push({ t: 's', p: bed(0.3 + 0.1 * r()), m: 'stone', h: lk.dark, w: Math.max(0.8, f / zb * 0.03), a: 0.4 });
+          const cu = 0.25 + 0.5 * r(), cq = [p0[0] + (p1[0] - p0[0]) * cu, p0[1] + (p1[1] - p0[1]) * cu];
+          B0.ops.push({ t: 's', p: [P(cq, H - 0.3), P(cq, H + hb * 0.45)], m: 'stone', h: lk.dark, w: Math.max(0.8, f / zb * 0.035), a: 0.5 });
+          for (let i = 0; i < 3; i++) { const lu = r(), lq = [p0[0] + (p1[0] - p0[0]) * lu, p0[1] + (p1[1] - p0[1]) * lu], c = P(lq, H + hb * (0.15 + 0.3 * r())), rr = Math.max(1.2, f / zb * (0.06 + 0.1 * r())); B0.ops.push({ t: 'f', p: [[c[0] - rr, c[1]], [c[0], c[1] - rr * 0.7], [c[0] + rr, c[1]], [c[0], c[1] + rr * 0.7]], m: 'stone', h: i === 0 && lk.lichen2 ? lk.lichen2 : lk.lichen, a: 0.6 }); }
+        }
+        for (const q of body) { B0.box[0] = Math.min(B0.box[0], q[0]); B0.box[1] = Math.min(B0.box[1], q[1]); B0.box[2] = Math.max(B0.box[2], q[0]); B0.box[3] = Math.max(B0.box[3], q[1]); }
+        B0.foot.push(q0, q1); B0.z = Math.min(B0.z, zb);
+      }
+    }
+    s = s1 + gap;
+  }
+  for (const [bin, B0] of bins) {
+    if (!B0.ops.length) continue;
+    const xs = B0.foot.map(q => q[0]), zs = B0.foot.map(q => q[1]), xa = Math.min(...xs), xb = Math.max(...xs), za = Math.min(...zs), zb = Math.max(...zs);
+    out.push({ id: 'cliff-' + (g.id || 'c') + '-lip-' + bin, kind: 'line', sub: 'terrain', lineKind: 'cliff', box: [B0.box[0] - 2, B0.box[1] - 2, B0.box[2] + 2, B0.box[3] + 2], zKey: za, foot: [[xa, za], [xb, za], [xb, zb + 0.3], [xa, zb + 0.3]], height: 1, solidity: 'passable', faces: [], ops: B0.ops, mat: 'stone', heading: cam.heading || 0 });
   }
   return out;
 }

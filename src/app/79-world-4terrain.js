@@ -337,7 +337,7 @@ function _wtrClipT(poly, T, sgn) {
   for (let i = 0; i < poly.length; i++) {
     const a = poly[i], b = poly[(i + 1) % poly.length], ia = inside(a), ib = inside(b);
     if (ia) out.push(a);
-    if (ia !== ib) { const u = (T - a.t) / (b.t - a.t); out.push({ x: a.x + (b.x - a.x) * u, z: a.z + (b.z - a.z) * u, t: T, m: a.m + (b.m - a.m) * u, fw: (a.fw == null ? 1 : a.fw) + ((b.fw == null ? 1 : b.fw) - (a.fw == null ? 1 : a.fw)) * u }); }
+    if (ia !== ib) { const u = (T - a.t) / (b.t - a.t); out.push({ x: a.x + (b.x - a.x) * u, z: a.z + (b.z - a.z) * u, t: T, m: a.m + (b.m - a.m) * u, fw: (a.fw == null ? 1 : a.fw) + ((b.fw == null ? 1 : b.fw) - (a.fw == null ? 1 : a.fw)) * u, s: a.s != null && b.s != null ? a.s + (b.s - a.s) * u : a.s }); }
   }
   return out;
 }
@@ -358,23 +358,38 @@ function _wtrCliffPieces(corners, cliffs, cam, hAt) {
   for (const G of cliffs) {
     const next = [];
     for (const pc of pieces) {
-      const V = pc.fresh ? pc.poly.map(v => { const s = worldCliffSample(G, v.x, v.z); return { x: v.x, z: v.z, t: s.t, m: s.m, fw: s.fw }; }) : pc.poly;
+      const V = pc.fresh || pc.G !== G ? pc.poly.map(v => { const s = worldCliffSample(G, v.x, v.z); return { x: v.x, z: v.z, t: s.t, m: s.m, fw: s.fw, s: s.s }; }) : pc.poly;
       const mm = Math.max(...V.map(v => v.m));
-      if (mm < WORLD_CLIFF_MIN_M) { next.push({ poly: V, scree: pc.scree, fresh: false }); continue; }
+      if (mm < WORLD_CLIFF_MIN_M) { next.push({ poly: V, scree: pc.scree, fresh: false, G }); continue; }
       const E = worldCliffEdges(G, mm), tmin = Math.min(...V.map(v => v.t)), tmax = Math.max(...V.map(v => v.t));
       // what lies behind the face is hidden only where the sight line from the eye is still below the face's top where it crosses it
       const hide = (poly) => { let cx = 0, cz = 0, hh = 0; for (const v of poly) { cx += v.x; cz += v.z; if (hAt) hh = Math.max(hh, hAt(v.x, v.z)); } return worldCliffHides(G, cx / poly.length, cz / poly.length, hh, cam.eye); };
-      if (tmax <= E.tA) next.push({ poly: V, scree: Math.max(pc.scree, _wtrScreeOf(G, V, mm)), fresh: false });
-      else if (tmin >= E.tB) { if (!hide(V)) next.push({ poly: V, scree: pc.scree, fresh: false }); }
+      if (tmax <= E.tA) next.push({ poly: V, scree: Math.max(pc.scree, _wtrScreeOf(G, V, mm)), fresh: false, G });
+      else if (tmin >= E.tB) { if (!hide(V)) next.push({ poly: V, scree: pc.scree, fresh: false, G }); }
       else {
         const fr = tmin < E.tA ? _wtrClipT(V, E.tA, 1) : [], bk = tmax > E.tB ? _wtrClipT(V, E.tB, -1) : [];
-        if (fr.length >= 3) next.push({ poly: fr, scree: Math.max(pc.scree, _wtrScreeOf(G, fr, mm)), fresh: false });
-        if (bk.length >= 3 && !hide(bk)) next.push({ poly: bk, scree: pc.scree, fresh: false });
+        if (fr.length >= 3) next.push({ poly: fr, scree: Math.max(pc.scree, _wtrScreeOf(G, fr, mm)), fresh: false, G });
+        if (bk.length >= 3 && !hide(bk)) next.push({ poly: bk, scree: pc.scree, fresh: false, G });
       }
     }
     pieces = next;
+    // a blocky rock's plateau ends in bare rock: the cap (2 to 7 m of slab behind the lip, its width wandering along the edge)
+    if (G.slopeTalus && typeof _WCL_LOOK === 'object' && _WCL_LOOK[G.rock] && _WCL_LOOK[G.rock].blocky) {
+      const next2 = [];
+      for (const pc of pieces) {
+        const V = pc.poly, mm = Math.max(...V.map(v => v.m == null ? 0 : v.m));
+        if (pc.cap != null || mm < 0.5 || !V.every(v => v.t != null)) { next2.push(pc); continue; }
+        const E = worldCliffEdges(G, mm), tmin = Math.min(...V.map(v => v.t)), sm = V.reduce((a, v) => a + (v.s || 0), 0) / V.length;
+        const cw = E.tB + 1.5 + 3 * (0.5 + 0.5 * Math.sin(sm / 9.3 + 1.1) * Math.cos(sm / 23.7 - 0.4)), zc = V.reduce((a, v) => a + v.z, 0) / V.length;
+        if (zc < 9 || tmin < E.tB - 0.01 || tmin >= cw) { next2.push(pc); continue; }
+        const ins = _wtrClipT(V, cw, 1), out = _wtrClipT(V, cw, -1);
+        if (ins.length >= 3) next2.push({ poly: ins, scree: pc.scree, fresh: false, cap: 1 });
+        if (out.length >= 3) next2.push({ poly: out, scree: pc.scree, fresh: false, cap: 0 });
+      }
+      pieces = next2;
+    }
   }
-  return pieces.map(p => ({ poly: p.poly.map(v => [v.x, v.z]), scree: p.scree }));
+  return pieces.map(p => ({ poly: p.poly.map(v => [v.x, v.z]), scree: p.scree, cap: p.cap || 0 }));
 }
 
 /** Does the strip at depth zm (across x within xlim) cross the talus skirt of this cliff? (a finer grid of quads there: the scree is smooth, not a mosaic) */
@@ -422,7 +437,7 @@ function _wtrPrims(world, cam, o) {
     const bankStrip = railBanks.length && typeof _wcLineDist === 'function' && railBanks.some(b => { for (let x = xl; x <= xr; x += Math.max(20, (xr - xl) / 8)) if (_wcLineDist(b.path, x, zm) < b.half) return true; return false; });
     const step = Math.max(screeStrip ? 0.6 : 0.9, zm / (screeStrip ? 220 : cliffs.length ? 70 : bankStrip ? 120 : 44)), faces = [], sops = [];
     let hi = 0, xmin = Infinity, xmax = -Infinity, minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
-    const hillQ = [];
+    const hillQ = [], capQ = [];
     for (let x = xl; x < xr - 1e-6; x += step) {
       const x2 = Math.min(xr, x + step);
       // a quad that more than one surface kind lies under (a lane, a flight of steps, a path across a slope) is cut into a finer grid, so a
@@ -445,6 +460,7 @@ function _wtrPrims(world, cam, o) {
         const e = Math.max(0.3, (x2 - x) * 0.5), gx = (hAt(cx0 + e, cz0) - hAt(cx0 - e, cz0)) / (2 * e), gz = (hAt(cx0, cz0 + e) - hAt(cx0, Math.max(0.1, cz0 - e))) / (cz0 + e - Math.max(0.1, cz0 - e)), slope = Math.hypot(gx, gz);
         let m = _wtrMat(kind, slope);
         if (!m) continue;
+        if (rock && (kind === 'path' || kind === 'track') && m.mat === 'stone' && slope <= 1.3) { const pn = _wtrN2(cx0 / 3.1 + 7, cz0 / 3.1 - 2), pn2 = _wtrN2(cx0 / 0.9, cz0 / 0.9 + 3); m = { mat: 'gravel', hex: _wtrShade(_wtrMixHex(_wtrMixHex(rock.light, '#7a6a50', 0.45), pn < -0.2 ? '#4a3d30' : '#b0a080', Math.min(0.5, Math.abs(pn) * 0.7)), 0.95 + 0.07 * pn2) }; }
         // a steep quad beside a cliff is the cliff's own rock (never the generic pale grey: a gritstone edge is dark, chalk is white)
         if (m.mat === 'stone' && slope > 1.3 && rock) m = { mat: 'stone', hex: _wtrMixHex(rock.base, rock.dark, 0.3) };
         if (m.mat === 'grass' && kind === 'heath' && slope < 1.3) {
@@ -456,6 +472,11 @@ function _wtrPrims(world, cam, o) {
         else if (m.mat === 'grass' && kind === 'field' && surf && surf.id) m = { mat: m.mat, hex: _wtrFieldTone(m.hex, surf.id) };
         // the scree of a cliff is where the cliff's own talus is the ground: a hill that rises higher there (the dale side beside the cove) is not scree
         if (pc.scree > 0 && baseGrid && sceneGroundHeight(baseGrid, cx0, cz0) > hAt(cx0, cz0) - 0.3 && sceneGroundHeight(baseGrid, cx0, cz0) > 0.5) pc.scree = 0;
+        if (pc.cap && rock) {
+          const cn = _wtrN2(cx0 / 9 + 4, cz0 / 9 - 1), cn2 = _wtrN2(cx0 / 25 - 3, cz0 / 25 + 2);
+          m = { mat: 'stone', hex: _wtrShade(_wtrMixHex(_wtrMixHex(rock.light, rock.base, 0.35 + 0.25 * cn2), cn < 0 ? rock.dark : rock.lichen || rock.light, Math.min(0.18, Math.abs(cn) * 0.25)), 0.98 + 0.04 * cn) };
+          capQ.push({ cx: cx0, cz: cz0, x, x2, za, zb });
+        }
         const jit0 = _wtrU(cx0, cz0);
         // a pasture is patchy (dry bent, rush, a greener flush by a spring), never one tone: two scales of noise in the colour, the yellower and the darker patches mixed in
         if ((m.mat === 'grass' || m.mat === 'heath') && pc.scree <= 0.05 && Math.max(hm, -Math.min(...hs)) > 0.5) {
@@ -498,6 +519,17 @@ function _wtrPrims(world, cam, o) {
       for (const q of hillQ) { if (q.kind === 'heath') _wtrMoorDeco(q, cam, hAt, B, ext, MC, o.snow || 0); else _wtrHillDeco(q, cam, hAt, sops, ext); }
       for (const [h, ps] of B) sops.push({ t: 'fm', ps, m: 'heath', h, a: 0.96 });
       ({ minX, maxX, minY, maxY } = ext);
+    }
+    // the cap's marks: joints across the slab, round weathering pits (dark, a pale rim), lichen rosettes; in plan metres from hashes
+    for (const q of capQ) {
+      const k = cam.f / Math.max(1, q.cz); if (k > 90) continue; const n = Math.min(4, Math.floor((q.x2 - q.x) * k / 40 + _wtrU(q.cx * 2.1, q.cz * 1.3)));
+      for (let i = 0; i < n; i++) {
+        const u1 = _wtrU(q.cx * 1.7 + i * 3.3, q.cz * 2.3 - i), u2 = _wtrU(q.cx * 4.1 - i, q.cz * 0.9 + i * 2.7), u3 = _wtrU(q.cx * 0.3 + i * 7, q.cz * 5.1);
+        const x = q.x + (q.x2 - q.x) * u1, z = q.za + (q.zb - q.za) * u2, y = hAt(x, z) + 0.01, p = sceneProject(cam, x, z, y);
+        if (u3 < 0.35) { const L = (0.6 + 1.6 * u1) * k, a2 = (u2 - 0.5) * 0.6, e = [[p.X - L * Math.cos(a2), p.Y - L * 0.12 * Math.sin(a2)], [p.X, p.Y + 0.4], [p.X + L * Math.cos(a2), p.Y + L * 0.12 * Math.sin(a2)]]; sops.push({ t: 's', p: e.map(q2 => [Math.round(q2[0] * 10) / 10, Math.round(q2[1] * 10) / 10]), m: 'stone', h: rock.dark, w: Math.max(0.7, 0.05 * k), a: 0.55 }); }
+        else { const rx = (0.12 + 0.35 * u1) * k, ry = Math.max(0.6, rx * Math.min(0.5, 30 / Math.max(30, q.cz * 4) + 0.12)), pit = u3 < 0.7, P4 = [[p.X - rx, p.Y], [p.X - rx * 0.6, p.Y - ry * 0.8], [p.X + rx * 0.5, p.Y - ry * 0.9], [p.X + rx, p.Y], [p.X + rx * 0.5, p.Y + ry * 0.8], [p.X - rx * 0.6, p.Y + ry * 0.75]].map(q2 => [Math.round(q2[0] * 10) / 10, Math.round(q2[1] * 10) / 10]); sops.push({ t: 'f', p: P4, m: 'stone', h: pit ? rock.dark : (u2 < 0.4 && rock.lichen2 ? rock.lichen2 : rock.lichen), a: pit ? 0.45 : 0.55 }); }
+        minX = Math.min(minX, p.X - 30); maxX = Math.max(maxX, p.X + 30); minY = Math.min(minY, p.Y - 10); maxY = Math.max(maxY, p.Y + 10);
+      }
     }
     // scrub on a railway bank's slope: drawn with the strip (the same depth as the ground it stands on), far to near
     if (bankStrip && faces.length) {

@@ -294,7 +294,7 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'plant.us-portland-rose': { cls: 'flower', bloom: [[5, 20], [9, 15]], when: { months: [5, 6, 7, 8, 9] } },
   'plant.us-minneapolis-garden-perennial': { cls: 'flower', bloom: [[5, 20], [9, 10]], when: { months: [5, 6, 7, 8, 9] } },
   // blossom and bloom states on perennials (present all year)
-  'plant.yg-meadow': { cls: 'shrub', leaf: 'herb', bloom: [[5, 20], [8, 20]] }, 'plant.heather': { bloom: [[8, 1], [9, 25]] }, 'plant.moor-heather': { bloom: [[8, 1], [9, 25]] },
+  'plant.yg-meadow': { cls: 'shrub', leaf: 'herb', bloom: [[5, 20], [8, 20]] }, 'plant.heather': { bloom: [[8, 1], [9, 25]] }, 'plant.moor-heather': { bloom: [[8, 1], [9, 25]] }, 'plant.ling-heather': { bloom: [[7, 25], [9, 20]] },
   'ground.yc-heath-drift': { bloom: [[7, 25], [9, 20]] }, 'plant.wyv-heath-bank': { bloom: [[7, 25], [9, 20]] },
   'plant.gorse': { bloom: [[2, 15], [6, 10]] }, 'plant.yc-gorse-spray': { bloom: [[2, 15], [6, 10]] }, 'plant.mqn-buddleia': { bloom: [[7, 1], [9, 30]] },
   'tree.hawthorn': { bloom: [[5, 1], [5, 31]] }, 'tree.horse-chestnut': { bloom: [[4, 25], [5, 25]] }, 'tree.green-chestnut': { bloom: [[4, 25], [5, 25]] },

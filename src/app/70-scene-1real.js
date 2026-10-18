@@ -63,7 +63,7 @@ const SCENE_REAL_SIZE = Object.freeze({
   'tree.far-pine': { h: 16 }, 'tree.far-birch': { h: 14 }, 'tree.far-broad': { h: 15 }, 'tree.*': { h: 15 },
   'plant.grass': { h: 0.35 }, 'plant.heather': { h: 0.4 }, 'plant.gorse': { h: 1.4 }, 'plant.reed': { h: 1.8 }, 'plant.bulrush': { h: 1.6 }, 'plant.bracken': { h: 0.9 }, 'plant.fern': { h: 0.8 },
   'plant.wildflowers': { h: 0.5 }, 'plant.bluebells': { h: 0.25 }, 'plant.hedge': { h: 1.8, w: 1.2 }, 'plant.shrub': { h: 2.2 }, 'plant.holly': { h: 3.5 }, 'plant.planter': { h: 0.7, w: 0.6 },
-  'plant.moor-heather': { h: 0.35 }, 'plant.bilberry': { h: 0.3 }, 'plant.towpath-hedge': { h: 2.2, w: 1.2 }, 'plant.hedgerow-blackberry': { h: 2.5, w: 1.5 }, 'plant.water-crowfoot': { h: 0.08 }, 'plant.watercress': { h: 0.15 },
+  'plant.moor-heather': { h: 0.35 }, 'plant.ling-heather': { h: 0.4 }, 'plant.bilberry': { h: 0.3 }, 'plant.towpath-hedge': { h: 2.2, w: 1.2 }, 'plant.hedgerow-blackberry': { h: 2.5, w: 1.5 }, 'plant.water-crowfoot': { h: 0.08 }, 'plant.watercress': { h: 0.15 },
   'plant.palm-coconut': { h: 15 }, 'plant.palm-coconut-tall': { h: 22 }, 'plant.palm-royal': { h: 18 }, 'plant.banana': { h: 4 }, 'plant.banana-grove': { h: 5 }, 'plant.frangipani': { h: 6 },
   'plant.bougainvillea': { h: 1.5 }, 'plant.bougainvillea-hedge': { h: 2, w: 1.2 }, 'plant.ixora': { h: 0.8 }, 'plant.grass-tropical': { h: 0.6 }, 'plant.bamboo': { h: 10 }, 'plant.sasa': { h: 0.6 }, 'plant.azalea': { h: 1.2 }, 'plant.susuki': { h: 1.5 },
   'plant.daisies': { h: 0.12 }, 'plant.grass-long': { h: 0.6 }, 'plant.*': { h: 0.8 },
