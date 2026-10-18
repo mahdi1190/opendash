@@ -186,3 +186,20 @@ test('a lane lantern glows in a soft falloff of six small steps, never three har
   assert.ok(rings.reduce((a, f) => a + f.op, 0) < 0.5, 'and the glow never builds to an opaque disc');
   assert.ok(faces.some(f => f.part === 'lit' && !f.round && f.op === 1), 'the glass itself is lit');
 });
+
+test('the ground of a hill street is one layer: after the backdrop bands, under everything else, never merged with the houses (no 700 redraws a frame)', () => {
+  const got = [];
+  vm.runInNewContext(readFileSync(join(ROOT, 'src', 'app', '79-world-zscene-norwich-elm-hill-1.js'), 'utf8'), { worldAdd: (p, m, sp) => got.push(sp), Math });
+  const w = build(JSON.parse(JSON.stringify(got[0])), { fill: true }), plan = W.worldFramePlan(w, { season: 'summer' });
+  const ground = plan.chunks.filter(c => c.ground);
+  assert.equal(ground.length, 1, 'one ground chunk');
+  assert.ok(ground[0].ents.length > 100 && ground[0].ents.every(r => r.ground && r.prim && r.prim.sub === 'terrain'), 'it holds the strips: ' + ground[0].ents.length);
+  for (let i = 1; i < ground[0].ents.length; i++) assert.ok(ground[0].ents[i - 1].z >= ground[0].ents[i].z, 'far first, as the strips were');
+  const gi = plan.chunks.indexOf(ground[0]);
+  plan.chunks.forEach((c, i) => { if (c.backdrop && !c.ground) assert.ok(i < gi, 'the bands come before the ground (a plateau above the eye hides them)'); });
+  assert.ok(plan.chunks.filter(c => !c.backdrop && c.ents.length).every(c => c.ents.every(r => !r.ground)), 'no strip among the houses');
+  assert.ok(plan.chunks.length >= 3, 'the houses are not collapsed into one bitmap with the ground: ' + plan.chunks.length + ' chunks');
+  // a cliff or an embankment hides what stands behind it: its strips stay statics in depth order
+  const cliff = build(spec({ ground: { features: [{ kind: 'embankment', path: [[-100, 60], [100, 60]], width: 60, h: 12 }] } }), { fill: true });
+  assert.ok(!W.worldFramePlan(cliff, { season: 'summer' }).chunks.some(c => c.ground), 'other relief keeps the strips in depth order');
+});

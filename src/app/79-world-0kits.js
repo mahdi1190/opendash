@@ -249,7 +249,7 @@ const WORLD_STYLE_KITS = _wkbFreeze({
   'cobbled-lane': { label: 'cobbled hill lane', place: 'town', backdrop: 'town-low', ground: 'grass', sky: [0.02, 0.18], layers: 5, bare: { ground: 0.3, paving: 0.3, near: 0.4 },
     look: { grass: 'mown', path: 'cobbles', paving: 'flags', plaza: 'cobbles', quay: 'stone', bank: 'stone' },
     fill: { grass: { near: [['plant.rph-short-grass', 3], ['plant.grass', 2]], mid: [['plant.hedge', 1]], far: [['plant.hedge', 1]], distant: _WKT_DISTANT_TOWN, accents: [['plant.daisies', 1]], maxH: 1.6 },
-      paving: { near: [], mid: [['plant.lane-planter', 2], ['street.mqn-aboard', 1]], far: [['plant.lane-planter', 1], ['tree.mqn-street-tree', 1]], accents: [['ground.leaf-litter', 2], ['ground.puddle', 1]], max: { near: 0, mid: 3, far: 4 } },
+      paving: { near: [], mid: [['plant.lane-planter', 2], ['street.mqn-aboard', 1]], far: [['plant.lane-planter', 1]], accents: [['ground.leaf-litter', 2], ['ground.puddle', 1]], max: { near: 0, mid: 3, far: 4 } },
       path: _WKT_PATH, heath: _WKT_HEATH, wood: _WKT_WOOD, field: _WKT_FIELD, wet: _WKT_WET, sand: _WKT_SAND, water: _WKT_NOLILY },
     edges: Object.assign({}, _WKT_EDGES_URBAN, { hedgerow: [] }), frame: [{ kind: 'planter', obj: 'plant.lane-planter' }],
     rich: { mid: [['plant.lane-planter', 1], ['street.mqn-aboard', 1]], far: [['plant.lane-planter', 1]] },

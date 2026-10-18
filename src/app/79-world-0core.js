@@ -1335,7 +1335,7 @@ function _wcReliefCompile(cs) {
   for (const f of feats) {
     const G = f.kind === 'cliff' ? worldCliffGeom(f) : null, pad = G ? G.w + G.lipW + 12 : f.width / 2 + 4 + (f.kind === 'slope' ? (_wcNum(f.fade) && f.fade > 0 ? f.fade : 12) : 0);
     segs += G ? G.pts.length - 1 : f.path.length - 1; if (G) cliffs++;
-    for (const p of G ? G.pts : f.path) { x0 = Math.min(x0, p[0] - pad); x1 = Math.max(x1, p[0] + pad); z0 = Math.min(z0, p[1] - pad); z1 = Math.max(z1, p[1] + pad + (G ? 40 : 0) + (f.kind === 'slope' ? 800 : 0)); }   // a slope's plateau runs on: nothing beyond it shows through (the backdrop hides behind the hill's own ground)
+    for (const p of G ? G.pts : f.path) { x0 = Math.min(x0, p[0] - pad); x1 = Math.max(x1, p[0] + pad); z0 = Math.min(z0, p[1] - pad); z1 = Math.max(z1, p[1] + pad + (G ? 40 : 0) + (f.kind === 'slope' ? 4000 : 0)); }   // a slope's plateau runs on: nothing beyond it shows through (the backdrop hides behind the hill's own ground)
   }
   if (base) { x0 = Math.min(x0, base.x[0]); x1 = Math.max(x1, base.x[1]); z0 = Math.min(z0, base.d[0]); z1 = Math.max(z1, base.d[1]); }
   x0 = Math.max(x0, -3000); x1 = Math.min(x1, 3000); z0 = Math.max(0.3, z0); z1 = Math.max(z0 * 1.5, Math.min(z1, 6000));

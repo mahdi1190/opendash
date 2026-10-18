@@ -382,12 +382,15 @@ function worldFramePlan(world, o) {
   }
   // the terrain (W2): strips of the relief as prims, so the chunk order hides what lies behind a nearer rise and puts what stands on
   // the slope in front of it (the v2 ground follows a relief along polygon edges only)
+  const gentleGround = Array.isArray(world.features) && world.features.length > 0 && world.features.every(f => f && f.kind === 'slope');
   if (typeof worldTerrainPrims === 'function') {
     try {
       for (const p of worldTerrainPrims(world, cam, { season: o.season }) || []) if (p && p.box) {
         const r = _wfrPrimRec(p, null, null);
         // ground below a mover's feet never covers the mover: the strip is an occluder only where its upper edge reaches above them (4terrain)
         if (p.tops && typeof worldTerrainOccludes === 'function') r.occlude = (box) => worldTerrainOccludes(p, box);
+        // a world whose only relief is gentle slopes (a hill street): the ground hides nothing that stands on it, so it is one layer under everything (below)
+        if (gentleGround) r.ground = true;
         add(r);
       }
     } catch (e) { /* flat ground */ }
@@ -409,7 +412,22 @@ function worldFramePlan(world, o) {
   const chunked = out.recs.filter(r => !r.live);
   if (typeof worldChunks === 'function') {
     const standZ = o.nav ? _wfrStandZ(o.nav, cam) : null;
-    out.chunks = _wfrMergeChunks(worldChunks({ entities: chunked }, standZ ? { standZ } : null, null, {}), standZ);
+    // the ground of a hill street is ONE chunk, drawn after the backdrop bands (a plateau above the eye hides all that lies beyond it) and under every other static.
+    // 200 thin strips as ordinary statics made every chunk's box a frame wide, the merge budget collapsed the whole scene into one chunk and every mover redrew
+    // 60 nearer statics a frame (900 ms a frame at a 4x throttle)
+    const gnd = chunked.filter(r => r.ground).sort((a, b) => b.z - a.z);
+    const bands = gnd.length ? chunked.filter(r => r.backdrop && !r.ground).sort((a, b) => b.z - a.z) : [];
+    const rest = gnd.length ? chunked.filter(r => !r.ground && !(r.backdrop)) : chunked;
+    out.chunks = _wfrMergeChunks(worldChunks({ entities: rest }, standZ ? { standZ } : null, null, {}), standZ);
+    if (gnd.length) {
+      const union = (L) => L.reduce((bb, r) => bb ? { x0: Math.min(bb.x0, r.box.x0), y0: Math.min(bb.y0, r.box.y0), x1: Math.max(bb.x1, r.box.x1), y1: Math.max(bb.y1, r.box.y1) } : { x0: r.box.x0, y0: r.box.y0, x1: r.box.x1, y1: r.box.y1 }, null);
+      const first = [];
+      if (out.chunks.length && out.chunks[0].backdrop && !out.chunks[0].ents.length) first.push(out.chunks.shift());
+      if (bands.length) first.push({ z0: Infinity, z1: Infinity, ents: bands, bbox: union(bands), stand: 0, backdrop: true });
+      first.push({ z0: Infinity, z1: Infinity, ents: gnd, bbox: union(gnd), stand: 0, backdrop: true, ground: true });
+      out.chunks = first.concat(out.chunks);
+      out.chunks.forEach((c, i) => { c.i = i; });
+    }
   } else out.chunks = chunked.length ? [{ i: 0, z0: 0, z1: Infinity, ents: chunked.slice().sort((a, b) => b.z - a.z), bbox: null, stand: 0 }] : [];
   return out;
 }
