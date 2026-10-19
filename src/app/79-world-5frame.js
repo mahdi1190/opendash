@@ -387,7 +387,8 @@ function worldFramePlan(world, o) {
   const gentleGround = Array.isArray(world.features) && world.features.length > 0 && world.features.every(f => f && f.kind === 'slope');
   if (typeof worldTerrainPrims === 'function') {
     try {
-      for (const p of worldTerrainPrims(world, cam, { season: o.season }) || []) if (p && p.box) {
+      const tc = o.ctx || null, snowK = tc && (tc.snowDay || tc.snowCover > 0) ? Math.max(0.5, Math.min(1, Number(tc.snowCover) || Number(tc.snowDepth) || 0.7)) : 0;
+      for (const p of worldTerrainPrims(world, cam, { season: o.season, month: tc && Number.isFinite(tc.month) ? tc.month : undefined, snow: snowK }) || []) if (p && p.box) {
         const r = _wfrPrimRec(p, null, null);
         // ground below a mover's feet never covers the mover: the strip is an occluder only where its upper edge reaches above them (4terrain)
         if (p.tops && typeof worldTerrainOccludes === 'function') r.occlude = (box) => worldTerrainOccludes(p, box);

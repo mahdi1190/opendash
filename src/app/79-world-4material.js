@@ -53,6 +53,9 @@ const WORLD_MATERIALS = Object.freeze({
   soil: { wet: 0.35, frost: 0.5, snow: 'ground', season: null, gloss: 0 },
   // broken rock on a slope (the talus at the foot of a cliff, 4terrain): wet like stone, and snow lies on it as on any ground
   scree: { wet: 0.34, frost: 0.25, snow: 'ground', season: null, gloss: 0, hard: true },
+  // a moor's ground of heather, bilberry, bracken and bents (4terrain): its colour carries the month already (_wtrMoorCols: ONE seasonal model), and snow lies in
+  // drifts and patches that the terrain draws on snow days, never as a white wash over the whole moor
+  heath: { wet: 0.24, frost: 0.55, snow: null, season: null, gloss: 0 },
 });
 // part name -> material (the library's part names: crown, trunk, leaves, hull, wheels ... ; first match wins)
 const _WMT_PART = [
@@ -380,7 +383,7 @@ function _wmtWeather(mat, hex, c) {
  * colour; overcast trades sun for a grey ambient, night leaves a dim blue ambient.
  */
 // materials that stand as dark masses at night (silhouettes against the sky: they see little of it), and lit glass's dark panes
-const _WMT_MASS = new Set(['leaf', 'needle', 'bark', 'reed', 'grass']);
+const _WMT_MASS = new Set(['leaf', 'needle', 'bark', 'reed', 'grass', 'heath']);
 /**
  * The night key (QP4: night keeps every structure readable): after the grade, foliage, trunks and reed beds sink into silhouettes
  * (x (1 - 0.3 n)) against the sky, and every other material catches the night key in proportion to its OWN lightness (pale stone,

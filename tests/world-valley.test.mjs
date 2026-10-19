@@ -98,3 +98,52 @@ test('the gritstone block is a registered model with its own fallback object and
   const c = W.worldModelCheck('gritstone-block');
   assert.ok(c.ok, 'the conformance check: ' + c.problems.join('; '));
 });
+
+// ---- second pass (18 Oct): the edge seen from a buttress, the valley drawn as fields, the moor through the year
+const EDGE2 = { id: 'edge', kind: 'cliff', path: [[-12, -80], [-4.5, 0], [-3.5, 5], [0, 8], [12, 13], [35, 28], [58, 70], [70, 140], [80, 280], [105, 500]], h: 36, rock: 'gritstone', rough: 1.4, scoop: false, scree: { w: 30, h: 4 }, high: 'right' };
+const spec2 = () => ({ v: 3, place: { lat: 53.34, lon: -1.63, region: 'derbyshire', style: 'moor' }, camera: { eye: 37.7, fov: 70, horizon: 380, heading: 345 }, seed: 4,
+  valley: { seed: 11, bearing: 0, drop: 300, fall: 1000, floor: 1300, up: { grade: 0.2, run: 70, tail: 0.03 }, fields: { from: 260, to: 2400, u: [-600, 3000], rows: 6, cell: 300, wallsTo: 1150, cross: false },
+    woods: { n: 4, s: [500, 2000], u: [0, 2500], trees: false }, hamlet: { at: [1250, 1800], houses: 6, spread: 70 }, farms: { n: 3, lamps: 1 }, lanes: true },
+  ground: { features: [EDGE2] }, surfaces: [{ id: 'moor', kind: 'heath', poly: [[-260, -900], [-260, 9000], [3000, 9000], [3000, -900]] }], fill: false });
+
+test('worldValley: farms (a house and a barn, a yard light), lanes beside the hamlet, woods drawn as canopies with no tree sprites', () => {
+  const V = W.worldValley(spec2().valley);
+  const farms = V.buildings.filter(b => /^farm-/.test(b.id));
+  assert.ok(farms.length === 6 && farms.some(b => /-h$/.test(b.id)) && farms.some(b => /-b$/.test(b.id)), `farms: ${farms.map(b => b.id)}`);
+  assert.equal(V.entities.filter(e => e.cluster).length, 0, 'trees: false: no tree clusters in the woods');
+  assert.ok(V.entities.some(e => e.obj === 'street.lamppost' && /^farm-lamp/.test(e.id)), 'a yard light at a farm');
+  const lanes = V.surfaces.filter(s => s.kind === 'track');
+  assert.equal(lanes.length, 2);
+  for (const b of V.buildings.filter(b => /^hm-/.test(b.id))) for (const p of lanes[0].path) assert.ok(Math.hypot(b.foot[0][0] - p[0], b.foot[0][1] - p[1]) > 8, 'the lane never runs through a house');
+});
+
+test('a gritstone talus lies ON the slope below the face (a limestone apron does not), and the face stands on it', () => {
+  const g = W.worldCliffGeom(EDGE2);
+  assert.ok(g && g.slopeTalus, 'gritstone: the talus follows the hill');
+  // just below the far face, on its low side: no absolute height from the cliff, a talus height above the ground there
+  const below = [62, 140];
+  assert.equal(W.worldCliffHeight(EDGE2, below[0], below[1]), 0);
+  assert.ok(W.worldCliffTalus(EDGE2, below[0], below[1]) > 0.5, 'a talus at the foot');
+  const lime = Object.assign({}, EDGE2, { rock: 'limestone' });
+  assert.equal(W.worldCliffTalus(lime, below[0], below[1]), 0, 'a limestone apron is absolute (Malham unchanged)');
+});
+
+test('a lens on a rim gets a fine relief grid round it: the ground at the lip is the cliff, not a 7 m blur', () => {
+  const w = W.worldBuild(spec2(), { fill: false }), cam = w.cam;
+  assert.ok(cam.relief && cam.relief.near, 'a near grid');
+  // on the buttress top 2 m inside the rim, and 6 m out over the drop
+  assert.ok(Math.abs(W.sceneGroundHeight(cam, 1, 5) - 36) < 0.6, `the plateau at the lens: ${W.sceneGroundHeight(cam, 1, 5)}`);
+  assert.ok(W.sceneGroundHeight(cam, -9, 5) < 8, `over the drop: ${W.sceneGroundHeight(cam, -9, 5)}`);
+});
+
+test('the moor through the year: heather purple in August, bronze-brown in January, the bents bleached; fields as their own shapes with walls and hedges', () => {
+  const w = W.worldBuild(spec2(), { fill: false });
+  const mean = (prims) => { let n = 0, s = [0, 0, 0]; for (const p of prims) for (const f of p.faces || []) if (f.mat === 'heath') { const c = parseInt(f.hex.slice(1), 16); s[0] += (c >> 16) & 255; s[1] += (c >> 8) & 255; s[2] += c & 255; n++; } return s.map(v => v / Math.max(1, n)); };
+  const aug = W.worldTerrainPrims(w, w.cam, { season: 'summer', month: 7 }), jan = W.worldTerrainPrims(w, w.cam, { season: 'winter', month: 0 });
+  const A = mean(aug), J = mean(jan);
+  assert.ok(A[2] > J[2] + 4, `August is bluer-purple than January: ${A.map(Math.round)} vs ${J.map(Math.round)}`);
+  assert.ok(Math.hypot(A[0] - J[0], A[1] - J[1], A[2] - J[2]) > 10, 'the moor changes with the month');
+  const ops = aug.flatMap(p => p.ops || []);
+  assert.ok(ops.some(o => o.t === 'fm'), 'the moor carpet: clumps collected into fills');
+  assert.ok(ops.filter(o => o.t === 's' && o.m === 'heath').length > 20, 'the walls and hedges of the fields are drawn as lines');
+});

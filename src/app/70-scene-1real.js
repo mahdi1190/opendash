@@ -51,7 +51,7 @@ const SCENE_REAL_SIZE = Object.freeze({
   'bird.goose': { h: 0.75, l: 1, w: 0.4 }, 'bird.heron': { h: 0.95, l: 0.8, w: 0.3 }, 'bird.kingfisher': { h: 0.18, l: 0.17, w: 0.06 }, 'bird.robin': { h: 0.15, l: 0.14, w: 0.06 }, 'bird.stonechat': { h: 0.13, l: 0.13, w: 0.05 },
   'bird.dartford-warbler': { h: 0.13, l: 0.13, w: 0.05 }, 'bird.pigeon': { h: 0.3, l: 0.33, w: 0.12 }, 'bird.pigeon-feral': { h: 0.3, l: 0.33, w: 0.12 }, 'bird.herring-gull': { h: 0.55, l: 0.6, w: 0.2 },
   'bird.nightjar': { h: 0.2, l: 0.6, w: 0.25 }, 'bird.curlew-flight': { h: 0.3, l: 0.9, w: 0.55 }, 'bird.herring-gull-flight': { h: 0.5, l: 1.4, w: 0.6 }, 'bird.gull': { h: 0.45, l: 1.3, w: 0.55 },
-  'bird.egret-flight': { h: 0.45, l: 1, w: 0.9 }, 'bird.kite-brahminy': { h: 0.45, l: 1.2, w: 0.5 }, 'bird.goose-flight': { h: 0.6, l: 1.7, w: 1 }, 'bird.kingfisher-flight': { h: 0.08, l: 0.26, w: 0.17 }, 'bird.small-flight': { h: 0.12, l: 0.25, w: 0.15 },
+  'bird.egret-flight': { h: 0.45, l: 1, w: 0.9 }, 'bird.kite-brahminy': { h: 0.45, l: 1.2, w: 0.5 }, 'bird.goose-flight': { h: 0.6, l: 1.7, w: 1 }, 'bird.kingfisher-flight': { h: 0.08, l: 0.26, w: 0.17 }, 'bird.small-flight': { h: 0.12, l: 0.25, w: 0.15 }, 'bird.buzzard-flight': { h: 0.3, l: 1.25, w: 0.55 },
   'bird.*': { h: 0.35, l: 0.5, w: 0.3 },
   // trees (to the crown's top) and plants
   'tree.oak': { h: 18 }, 'tree.birch': { h: 15 }, 'tree.pine': { h: 20 }, 'tree.plane': { h: 24 }, 'tree.willow': { h: 14 }, 'tree.alder': { h: 15 }, 'tree.horse-chestnut': { h: 20 }, 'tree.hawthorn': { h: 7 },
@@ -63,7 +63,7 @@ const SCENE_REAL_SIZE = Object.freeze({
   'tree.far-pine': { h: 16 }, 'tree.far-birch': { h: 14 }, 'tree.far-broad': { h: 15 }, 'tree.*': { h: 15 },
   'plant.grass': { h: 0.35 }, 'plant.heather': { h: 0.4 }, 'plant.gorse': { h: 1.4 }, 'plant.reed': { h: 1.8 }, 'plant.bulrush': { h: 1.6 }, 'plant.bracken': { h: 0.9 }, 'plant.fern': { h: 0.8 },
   'plant.wildflowers': { h: 0.5 }, 'plant.bluebells': { h: 0.25 }, 'plant.hedge': { h: 1.8, w: 1.2 }, 'plant.shrub': { h: 2.2 }, 'plant.holly': { h: 3.5 }, 'plant.planter': { h: 0.7, w: 0.6 },
-  'plant.moor-heather': { h: 0.35 }, 'plant.bilberry': { h: 0.3 }, 'plant.towpath-hedge': { h: 2.2, w: 1.2 }, 'plant.hedgerow-blackberry': { h: 2.5, w: 1.5 }, 'plant.water-crowfoot': { h: 0.08 }, 'plant.watercress': { h: 0.15 },
+  'plant.moor-heather': { h: 0.35 }, 'plant.ling-heather': { h: 0.4 }, 'plant.bilberry': { h: 0.3 }, 'plant.towpath-hedge': { h: 2.2, w: 1.2 }, 'plant.hedgerow-blackberry': { h: 2.5, w: 1.5 }, 'plant.water-crowfoot': { h: 0.08 }, 'plant.watercress': { h: 0.15 },
   'plant.palm-coconut': { h: 15 }, 'plant.palm-coconut-tall': { h: 22 }, 'plant.palm-royal': { h: 18 }, 'plant.banana': { h: 4 }, 'plant.banana-grove': { h: 5 }, 'plant.frangipani': { h: 6 },
   'plant.bougainvillea': { h: 1.5 }, 'plant.bougainvillea-hedge': { h: 2, w: 1.2 }, 'plant.ixora': { h: 0.8 }, 'plant.grass-tropical': { h: 0.6 }, 'plant.bamboo': { h: 10 }, 'plant.sasa': { h: 0.6 }, 'plant.azalea': { h: 1.2 }, 'plant.susuki': { h: 1.5 },
   'plant.daisies': { h: 0.12 }, 'plant.grass-long': { h: 0.6 }, 'plant.*': { h: 0.8 },
