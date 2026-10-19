@@ -13,12 +13,12 @@ const HEADINGS = { north: 0, northeast: 45, east: 90, southeast: 135, south: 180
 /** The kits and the family each one lays out as. */
 export const KIT_FAMILY = Object.freeze({
   'village-green': 'green', park: 'green', pond: 'green', canal: 'water-edge', 'river-city': 'water-edge', quayside: 'water-edge', 'waterfront-city': 'water-edge',
-  coast: 'coast', 'terraced-street': 'street', 'old-town-lane': 'street', 'civic-square': 'street',
+  coast: 'coast', 'terraced-street': 'street', 'old-town-lane': 'street', 'cobbled-lane': 'street', 'civic-square': 'street',
   moor: 'open', heath: 'open', woodland: 'open', farmland: 'open', downs: 'open', dale: 'open',
 });
 /** The building style a kit's houses take unless --houses says otherwise. */
 const KIT_HOUSES = { 'village-green': 'stone-cottage', park: 'georgian', pond: 'stone-cottage', canal: 'victorian-terrace', 'river-city': 'mill', quayside: 'pantile-cottage', 'waterfront-city': 'baroque-civic',
-  coast: 'georgian', 'terraced-street': 'victorian-terrace', 'old-town-lane': 'timber-framed', 'civic-square': 'georgian', farmland: 'stone-cottage', dale: 'stone-cottage' };
+  coast: 'georgian', 'terraced-street': 'victorian-terrace', 'old-town-lane': 'timber-framed', 'cobbled-lane': 'tudor-colourwash', 'civic-square': 'georgian', farmland: 'stone-cottage', dale: 'stone-cottage' };
 
 /** Words in --view: a compass word is the heading; a few intent words set the eye height and the field of view. */
 export function viewCamera(view, family) {
@@ -153,7 +153,7 @@ const FAMILIES = {
   /** A street seen along its length, houses both sides, a cross street at the end. */
   street(o) {
     const P = { church: rect(-18, 150, 18, 190) };
-    const surfaces = [{ id: 'street', kind: 'plaza', path: [[0, -6], [0, 60], [3, 100], [3, 130]], width: o.kit === 'old-town-lane' ? 3.8 : 6 },
+    const surfaces = [{ id: 'street', kind: 'plaza', path: [[0, -6], [0, 60], [3, 100], [3, 130]], width: o.kit === 'old-town-lane' ? 3.8 : o.kit === 'cobbled-lane' ? 6.4 : 6 },
       { id: 'cross', kind: 'pavement', path: [[-40, 130], [40, 130]], width: 5 }];
     const buildings = [].concat(rows('west', 'street', 'left', o.houses, 134, [], { storeys: [2, 3] }), rows('east', 'street', 'right', o.houses, 134, [], { storeys: [2, 3] }));
     const life = [{ who: 'walkers', on: 'street', rate: '8/min', mix: { stroll: 0.6, chat: 0.15, couple: 0.25 }, edges: ['S', 'N'] }];

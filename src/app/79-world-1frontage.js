@@ -54,6 +54,8 @@ function worldFrontageHouses(b, world) {
   const stor = Array.isArray(b.storeys) ? b.storeys : _wfgNum(b.storeys) ? [b.storeys, b.storeys] : [2, 3];
   const pickStoreys = () => { if (stor[0] === stor[1]) return stor[0]; const n = stor[1] - stor[0] + 1, q = r(); return n === 2 ? (q < 0.4 ? stor[0] : stor[1]) : n === 3 ? (q < 0.22 ? stor[0] : q < 0.78 ? stor[0] + 1 : stor[1]) : stor[0] + Math.floor(q * n); };
   const clampOff = v => Math.max(-0.12, Math.min(0.34, v));
+  // party walls: a street of terraces shares them ('both', the default); detached warehouses and halls stand free ('none', with `spacing` metres between them), so every end wall is drawn with its windows
+  const party = ['none', 'left', 'right', 'both'].includes(b.party) ? b.party : 'both', spacing = _wfgNum(b.spacing) && b.spacing > 0 ? b.spacing : 0;
   const out = [];
   let s = from, k = 0, offR = clampOff((r() - 0.3) * 0.4);
   while (s < to - 2.6 && k < 200) {
@@ -72,7 +74,7 @@ function worldFrontageHouses(b, world) {
     const storeys = pickStoreys(), seed = (_wfgHash((b.id || 'f') + '|' + k) + (world.seed | 0)) % 100000;
     const shop = shops && r() < pShop ? { kind: pool[Math.floor(r() * pool.length) % pool.length] } : null;
     const h0 = storeys * 2.6;
-    const rec = { id: (b.id || 'frontage') + '#' + k, foot, front: 0, storeys, h: h0, style, seed, party: 'both', solidity: 'solid', frontage: _wfgR3(F), depth: _wfgR3(D),
+    const rec = { id: (b.id || 'frontage') + '#' + k, foot, front: 0, storeys, h: h0, style, seed, party, solidity: 'solid', frontage: _wfgR3(F), depth: _wfgR3(D),
       part: { of: b.id || null, k, n: 0 }, src: b.src || 'frontage' };
     if (typeof b.roof === 'string') rec.roof = b.roof;
     if (shop) rec.shop = shop;
@@ -81,7 +83,7 @@ function worldFrontageHouses(b, world) {
       try { const sp = sceneBuildingResolve(rec); rec.h = _wfgR3(sp.zs[sp.zs.length - 1] + _wfgRise(sp.roof, sp.pitch, F, D)); } catch (e) { /* the estimate stands */ }
     }
     out.push(rec);
-    s += F; k++;
+    s += F + spacing; k++;
   }
   for (const h of out) h.part.n = out.length;
   return out;

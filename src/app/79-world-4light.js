@@ -372,12 +372,30 @@ function _wlGlowParts(id, variant, season) {
     r.top = sh.box[1] || -1;
     for (const p of sh.order) for (const s of sh.parts[p] || []) {
       if (!s.glow) continue;
-      const b = typeof scenePathBox === 'function' ? scenePathBox(s.d, s.m) : null;
-      if (b) r.parts.push({ kind: s.glow, u: (b[0] + b[2]) / 2, v: (b[1] + b[3]) / 2, size: Math.max(b[2] - b[0], b[3] - b[1]) / 2, op: s.op == null ? 1 : s.op, d: s.d, m: s.m || null, f: typeof s.f === 'string' ? s.f : null });
+      // a library drawing often lays a whole row of panes as ONE glow path (winRows: a storey's windows): lit as one, a facade lit in
+      // whole storeys, like pasted bands (the night-light audit: Kelham's mills). Each pane (a subpath whose box holds no other) is
+      // its own glow part, so windows light one by one; a pane with a hole (bars cut out) stays whole
+      for (const d of _wlGlowPanes(s.d, s.m)) {
+        const b = typeof scenePathBox === 'function' ? scenePathBox(d, s.m) : null;
+        if (b) r.parts.push({ kind: s.glow, u: (b[0] + b[2]) / 2, v: (b[1] + b[3]) / 2, size: Math.max(b[2] - b[0], b[3] - b[1]) / 2, op: s.op == null ? 1 : s.op, d, m: s.m || null, f: typeof s.f === 'string' ? s.f : null });
+      }
     }
   }
   _wlGlowMemo.set(key, r);
   return r;
+}
+/** The panes of a glow path: its subpaths, those lying inside another one kept with it (a hole or a bar); one path when it is one pane. */
+function _wlGlowPanes(d, m) {
+  const subs = String(d || '').split(/(?=[Mm])/).map(q => q.trim()).filter(Boolean);
+  if (subs.length < 2 || /^m/.test(subs[1]) || typeof scenePathBox !== 'function') return [d];
+  const boxes = subs.map(q => scenePathBox(q, m));
+  if (boxes.some(b => !b)) return [d];
+  const inside = (a, b) => a[0] >= b[0] - 0.01 && a[1] >= b[1] - 0.01 && a[2] <= b[2] + 0.01 && a[3] <= b[3] + 0.01;
+  const owner = boxes.map((b, i) => { let o = -1; boxes.forEach((c, j) => { if (j !== i && inside(b, c) && (o < 0 || inside(c, boxes[o]))) o = j; }); return o; });
+  const out = [];
+  subs.forEach((q, i) => { if (owner[i] < 0) out.push([i]); });
+  subs.forEach((q, i) => { if (owner[i] >= 0) { let o = owner[i]; while (owner[o] >= 0) o = owner[o]; const g = out.find(x => x[0] === o); if (g) g.push(i); } });
+  return out.length > 1 ? out.map(g => g.map(i => subs[i]).join('')) : [d];
 }
 /** The glow parts of a library object at a variant and a drawn form (see _wlGlowParts): the compositor draws lit glass from them. */
 function worldGlowParts(id, variant, season) { return _wlGlowParts(id, variant, season); }
@@ -398,6 +416,60 @@ function worldGlowOn(key, i, kind, alt, share, o) {
   if (kind === 'lamp') { const q = _wlRng(key + '|lamp')(); return alt < -1 + 3 * q || !!o.murky; }
   if (kind === 'rim') return false;
   return alt < 0 || !!o.murky;
+}
+/**
+ * Is a pane of a GENERATED building lit now (the extruder's direct records: panes carry theta, one of 8 buckets, seeded per window)?
+ * Each bucket of each building has its own seeded switch-on elevation of the sun, from +1.5 down to -8 degrees, so a street lights
+ * pane by pane through dusk (and never all at once when the light band turns 'night'); then the hour's share (sceneWindowShare: 0.7
+ * in the evening, 0.25 before dawn) puts out the buckets at or above it, so windows go dark through the night. Fog and deep overcast
+ * bring the switch-on forward. key: the building's id. kind 'shop' (a shop window or door glass) keeps shop hours instead of the
+ * home share: lit until about 21:30 local (hour), then only a third of the displays stay lit through the night.
+ */
+function worldBuildingGlassOn(key, theta, alt, share, murky, kind, hour) {
+  if (!Number.isFinite(theta)) return alt < 0 || !!murky;
+  const b = Math.max(0, Math.min(7, Math.floor(theta * 8))), u = _wlRng(String(key) + '|pane|' + b)();
+  const thr = 1.5 - 9.5 * u + (murky ? 4 : 0);
+  if (kind === 'shop') { const h = Number.isFinite(hour) ? hour : 20, open = h >= 7 && h < 21.5; return alt < thr && (open || _wlRng(String(key) + '|shop|' + b)() < 0.33); }
+  return alt < thr && theta < share;
+}
+/**
+ * The lamps a generated building carries (direct.lamps: { x, y, z, col } in camera-frame metres, from the generator's lantern blocks)
+ * as world lights: each one a source with a pool on the ground under it (the generator draws its glass and its soft glow, so no halo
+ * here). On with the building's lit glass (the sun under 2 degrees, or murk). LN: the frame's light moment { alt, murky }.
+ */
+function worldBuildingLamps(ref, lamps, LN) {
+  const on = !!LN && (LN.alt < 2 || !!LN.murky);
+  return (lamps || []).filter(p => p && Number.isFinite(p.x) && Number.isFinite(p.z) && p.z > 0).map((p, i) => ({
+    ref, part: 'lamp' + i, kind: 'lamp', x: p.x, y: p.y, z: p.z, r: 1.2, halo: 0, src: true, col: p.col || '#ffd890', on, agent: false,
+    pool: { x: p.x, z: p.z, r: 4.5, h: Math.max(1.5, Number(p.y) || 2.6), col: p.col || '#ffd890' } }));
+}
+// the colour lamp light gives what it falls on (one warm colour: the sprite cache keys on the strength only)
+const WORLD_LAMP_LIGHT_COL = '#ffd59a';
+/**
+ * How much lamp light falls on a ground point (x, z): the sum over the pools of a point light h above the ground,
+ * 0.55 (1 + (rho / h)^2)^-1.5, eased to nothing at the pool's reach, capped at 0.6 and in steps of 0.1 (sprite caches).
+ * pools: [{ x, z, r, h }] (worldLights' pools, lit ones). -> { k }.
+ */
+function worldLocalLight(pools, x, z) {
+  let k = 0;
+  for (const P of pools || []) {
+    const r = P.r || 6, dx = x - P.x, dz = z - P.z;
+    if (Math.abs(dx) > r || Math.abs(dz) > r) continue;
+    const rho = Math.hypot(dx, dz);
+    if (rho >= r) continue;
+    const h = Math.max(1, P.h || 4), u = rho / r, e = Math.pow(1 + (rho / h) * (rho / h), -1.5) * (1 - u * u * (3 - 2 * u));
+    k += 0.55 * e;
+  }
+  return { k: Math.round(Math.min(0.6, k) * 10) / 10 };
+}
+/** The 8-bit mask of a generated building's lit pane buckets now (0: none lit). */
+function worldBuildingGlassMask(key, alt, share, murky, hour) {
+  let m = 0;
+  for (let b = 0; b < 8; b++) {
+    if (worldBuildingGlassOn(key, (b + 0.5) / 8, alt, share, murky)) m |= 1 << b;
+    if (worldBuildingGlassOn(key, (b + 0.5) / 8, alt, share, murky, 'shop', hour)) m |= 1 << (b + 8);
+  }
+  return m;
 }
 /**
  * Every light source of the world, ONLY from the library's glow parts: an entity with no glow part never lights.
