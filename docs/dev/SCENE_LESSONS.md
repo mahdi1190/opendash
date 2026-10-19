@@ -563,3 +563,30 @@ has a test in `tests/world-night.test.mjs` that fails on the engine as it was. H
 | `world check` said nothing true about night: every night frame "had 0 lit pixels" and failed; no dusk frame was judged | It counted a light layer (`S.lights.c`) the compositor never makes | `worldLitPixels` counts warm bright pixels of the PICTURE; `nightLight` also fails generated panes lit with the sun over 6 degrees (`frame.glassLit`) (N7). Ten scenes x night, dusk and noon: all 30 cells pass |
 
 Not fixed (found): the v2 packs' night water is brighter and greener than the sky it mirrors (Sheffield v2 Kelham 1: water about 40,60,74 under a sky of 12,18,36; the v2 water base, not the world engine); bench and coping reflections read as pale bars on Castlefield's canal (reflection geometry, by day too); a birdwatcher with binoculars at midnight on Fleet Pond (a population with no hours); lamp halos stay within their 26-unit cap, so a near lamp's halo is hard to see.
+## AA. People walking in place (18 Oct, the user: "so many people just walking in place")
+Every check was green (`slidingFeet`, `animStill`, `stillMoving` on Whitby and York: zero) because each compared the legs with the
+SHOWN velocity, the very number the legs are computed from. Measured on what is drawn (`node tools/world.mjs inplace <ref>
+[--browser]`, tools/lib/world/inplace.mjs; Node, 120 s of the summer noon at 10 Hz), the share of person-time with legs striding on
+the spot was York 80 %, the canal 55 %, the Cotswold green 46 %, Fleet Pond 34 %, the seaside pier 20 %, the Pier Head 10 %,
+Whitby 2 %; after the fixes 0.0 to 1.1 % (brief eases into and out of a queue or a turn), none past the 0.6 s grace. The page agrees
+(`--browser`, 40 s): York 77 % -> 0.8 %, the canal 41 % -> 0.1 %, Whitby 1.4 % -> 0.3 %. Every row
+is fixed in the engine (no scene was edited) and has a test that fails on the engine as it was:
+`node --test tests/world-walk-in-place.test.mjs`. The invariant `walkInPlace` keeps the checkers from being blind to it again.
+
+| Mistake | Why it happened | Rule |
+|---|---|---|
+| Walkers coming toward or going away from the eye (most of a lane, a towpath, a pier) stood with their feet together and bobbed: the front and back art swings its legs 3.5 degrees | The world drawer never foreshortened the walk (the v2 renderer's `fs` and leg lift were not carried over; `worldAnimHooks` set an `fs` nothing read) | `worldAnimGait`: end-on, each foot lifts in turn, the body sways and bobs more; `sceneAnimPose` takes `lift` and `sway` on a walk hook |
+| A side-only figure (the elderly walker, the shopper, the hiker ...) walking down the line of sight strode sideways on the spot | A missing view falls back to the side art, drawn with its full 13 to 22 degree swing | The swing is scaled by `fs / sin(art view)`: a side drawing seen end-on swings `fs` of its stride and lifts its feet |
+| A walker pressed back by the one in front kept striding | `_wlfMove` measured the velocity, then the separation pass (and the last leash) moved the body back | The velocity, the shown velocity and the state are taken AFTER those passes (`_wlfTrueV`) |
+| A walker shaken to and fro by a bollard strode in place at 0.2 m/s | A sidestep found blocked fell back to the other side, the next tick tried the blocked side again: a zero-mean jitter whose low-pass reads as walking | After a blocked side the walker does not sidestep that way for 0.5 s (keeping to the other side instead jammed a one-body gap); the shown speed never exceeds the ground covered over 4 ticks (`_wlfShownCap`) |
+| Queues crept at 0.05 to 0.2 m/s with the legs striding, and a dog-walker with a taut lead crawled at a fifth of a pace | The queue factor and the taut lead scaled the speed down continuously | A walker held below 0.25 m/s stands; it sets off again at 0.4 (`WORLD_LIFE_CREEP`) |
+| An elderly walker crept the last metre to its bench for five seconds | The arrival eased to 0.35 of the pace | A walker eases to 0.6 of its pace, never a crawl (a boat keeps 0.35) |
+| A child of a family surged to 1.9 m/s, stopped dead and surged again, its view swinging front and side every second | The member headed for its slot point at the leader's pace plus 1.2 x the gap and stopped within 5 cm | With a moving leader a member matches the leader's velocity plus a gentle pull to its slot |
+| A walker pressing into a wall that the navigation slid it along at 0.2 m/s was never stuck | Progress was 0.4 m in 2.5 s, whatever it wanted | A free walker (no queue, no leader) progresses only when it covers 35 % of the way it wanted; else it re-plans |
+| A standing dog seen head-on bobbed at 3.6 Hz (trotting on the spot) | Its front art's only hook is a body bob with a fixed period, played at half strength while still | A quick bob on a legged body is its gait: twice a stride while it moves, never while it stands |
+| Far walkers (under 14 device px, the home card) glided like cut-outs | The LOD drops the limbs, and with them the bob | They keep a whole-figure step bob of at least 0.7 device px |
+
+The app drives the same clock as the tools (checked 18 Oct): the page's driver is deterministic (`worldHostDriver` runs the systems with
+`R.advance`, budgets never act on the life), positions and legs both follow the scene clock `tau` (a slow frame slows both together,
+`WORLD_HOST_CATCHUP`), and the governor only thins far movers by a hash of the id. Not fixed here: families and friends walk 0.5 m apart
+by design, so a group seen along the line of sight is drawn overlapping (correct occlusion, but it reads as bunching).
