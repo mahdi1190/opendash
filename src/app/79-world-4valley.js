@@ -168,10 +168,10 @@ function worldValley(o) {
   if (Lw && Hm && Array.isArray(Hm.at)) {
     const uA = (F && F.u ? F.u[0] : -300), uB = (F && F.u ? F.u[1] : 3000), along = [];
     for (let u = uA; u <= uB + 1; u += 120) along.push(at(Hm.at[0] + (Number.isFinite(Hm.spread) ? Hm.spread : 90) * 0.7 + 60 + 40 * _wvlN1(seed + 'lane', u / 700), u));   // (beside the hamlet, never through its houses)
-    out.surfaces.push({ id: 'lane-0', kind: 'track', path: along, width: 4 });
+    out.surfaces.push({ id: 'lane-0', kind: 'path', path: along, width: 4 });
     const up = [], s1 = F && Number.isFinite(F.from) ? F.from + 30 : 300;
     for (let i = 0; i <= 8; i++) { const t = i / 8, sv = Hm.at[0] + (s1 - Hm.at[0]) * t; up.push(at(sv, Hm.at[1] + 170 + 140 * Math.sin(t * Math.PI * 2.2) * (1 - t * 0.3) + 120 * t)); }
-    out.surfaces.push({ id: 'lane-1', kind: 'track', path: up, width: 3.5 });
+    out.surfaces.push({ id: 'lane-1', kind: 'path', path: up, width: 3.5 });
     // a gate in every wall a lane crosses (a wall across a lane would block it)
     const cross = (a, b, c, d) => { const den = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0]); if (Math.abs(den) < 1e-9) return null; const t = ((c[0] - a[0]) * (d[1] - c[1]) - (c[1] - a[1]) * (d[0] - c[0])) / den, v = ((c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0])) / den; return t >= 0 && t <= 1 && v >= 0 && v <= 1 ? t : null; };
     for (const ln of out.lines) {
