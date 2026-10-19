@@ -1455,6 +1455,9 @@ function _wlfFollowBrain(life, a, dt) {
     // held up (wanting to move, not moving) for half a second, or at an edge of the frame: a new spot near the walker
     if (a.dir && a.speed < 0.05) { a.heldT = (a.heldT || 0) + dt; if (a.heldT > 0.5) { a.roam = null; a.heldT = 0; a.roamNear = true; } } else a.heldT = 0;
     if (_wlfInEdgeZone(life, a) && a.roam && life.t + 1.5 < a.roam.until) { a.roam.until = life.t; a.roamNear = true; }
+    // a taut lead (the walker stands and waits for its dog, _wlfMove): the dog comes in to heel, never sniffs on at the lead's end (19 Oct:
+    // a dog content at its roam spot 1.4 m off held its walker standing half out of the frame at Whitby's edge)
+    if (a.roam && !a.roamNear && L.held != null && life.t - L.held < 0.3 && Math.hypot(L.x - a.x, L.z - a.z) > a.lead.len * 0.85) { a.roam.until = life.t; a.roamNear = true; }
     if (!a.roam || life.t > a.roam.until) {
       var ang = a.rng() * Math.PI * 2, rr = Math.max(0.65, a.lead.len * (a.roamNear ? 0.2 + 0.2 * a.rng() : 0.35 + 0.5 * a.rng()));   // never a spot inside the walker
       a.roam = { dx: Math.cos(ang) * rr, dz: Math.sin(ang) * rr, until: life.t + 2 + a.rng() * 3 }; a.roamNear = false;
@@ -1821,7 +1824,7 @@ function _wlfBoatMeet(life, a) {
 function _wlfSteer(life, a, dir, spd) {
   a.slow = 1; a.sideV = 0;
   if (a.brain.heavy || a.layer === 'air') return dir;
-  var vx = dir[0] * spd, vz = dir[1] * spd, ax = 0, az = 0, sx = 0, sz = 0, n = 0, ns = 0, kx = 0, kz = 0, nk = 0, hitF = Infinity;
+  var vx = dir[0] * spd, vz = dir[1] * spd, ax = 0, az = 0, sx = 0, sz = 0, n = 0, ns = 0, kx = 0, kz = 0, nk = 0, hitF = Infinity, wallL = 0, wallR = 0, hitOnc = false;
   var ps = (a.brain.space || 1) * life.space * (a.kind === 'swimmer' ? 0.6 : 0.5);
   var rgx = dir[1], rgz = -dir[0];                                   // the right-hand side of the heading (x right, z away)
   var cx = Math.floor(a.x / 2), cz = Math.floor(a.z / 2);
@@ -1844,8 +1847,9 @@ function _wlfSteer(life, a, dir, spd) {
       if (fwd > 0 && fwd < rs + 1 && Math.abs(lat) < (onc ? rs * 0.6 : rs + 0.1)) a.slow = Math.min(a.slow, _wlfClamp((fwd - rs - 0.05) / 0.9, onc ? 0.3 : 0, 1));   // an oncoming one is passed, not waited for
       // a sidestep (people shuffle aside whatever their forward speed): away from the other's side of my line; dead on, to my left
       // (UK) for an oncoming mover and to my right (overtaking) for one going my way slower, or standing
+      if (fwd > 0 && fwd < rs + 1.6 && Math.abs(lat) < rs + 0.35 + 0.6 && !onc) { if (lat < -0.15) wallL = 1; else if (lat > 0.15) wallR = 1; }
       if (fwd > 0 && fwd < rs + 1.6 && Math.abs(lat) < rs + 0.35 && fwd < hitF && (onc || (o.speed || 0) < spd * 0.8)) {
-        hitF = fwd;
+        hitF = fwd; hitOnc = onc;
         a.sideDir = lat > 0.15 ? -1 : lat < -0.15 ? 1 : onc ? -1 : 1;                       // -1 = to my left, +1 = to my right
         a.sideV = Math.min(0.9, (rs + 0.35 - Math.abs(lat)) * 1.6 + 0.2);
         a.sideX = rgx; a.sideZ = rgz;
@@ -1870,6 +1874,13 @@ function _wlfSteer(life, a, dir, spd) {
       ax += px / pl * w; az += pz / pl * w;
     }
   }
+  // the sidestep's side is held for 0.6 s: two movers at the same distance ahead (a couple walking abreast in front) each won the "nearest"
+  // test on alternate ticks by millimetres and the walker behind shuffled right, left, right ... on the spot, its legs striding side-on
+  // while it gained ground only in depth (19 Oct, the waterfront-city kit fixture: walkInPlace on a back-view walker)
+  // and there is no overtaking shuffle behind a row going my way that leaves no gap (a family abreast in front: people to the left, the
+  // right and dead ahead): the walker queues behind it instead of shuffling from side to side on the spot
+  if (a.sideV > 0 && !hitOnc && wallL && wallR) a.sideV = 0;
+  if (a.sideV > 0) { if (a.sideHoldT > life.t && a.sideKeep) a.sideDir = a.sideKeep; else { a.sideKeep = a.sideDir; a.sideHoldT = life.t + 0.6; } }
   if (!n && !ns && !nk) return dir;
   var nx = dir[0] + ax * 1.5 + sx * 0.8 + kx, nz = dir[1] + az * 1.5 + sz * 0.8 + kz, l = Math.hypot(nx, nz);
   if (l < 1e-6) return dir;
