@@ -36,10 +36,18 @@ test('the stage has a hull, deck, shed, fenders, a hinged gangway with rails, la
   assert.ok(p.lights.length >= 6, 'lamps are world lights: ' + p.lights.length);
 });
 
-test('the gangway reaches the wall: its top end is at the quay height above the water, whatever the quay', () => {
-  const top = (wl) => { const p = W.worldModelBuild(ent({ y: wl - 0.05, waterline: wl, model: { opts: { gap: 14, gangway: 5 } } }), cam, { season: 'summer' }); const g = p.faces.filter(f => f.role === 'girder'); assert.ok(g.length); return Math.min(...g.flatMap(f => f.pts.map(q => q[1]))); };
-  // a higher quay lifts the gangway's upper end on the screen (a smaller Y is higher)
-  assert.notEqual(top(-4.5), top(-1.8), 'the gangway follows the wall height');
+test('the gangway reaches the wall: its top end meets the quay top (ground level) whatever the quay, and its low end follows the stage', () => {
+  const ends = (wl) => {
+    const p = W.worldModelBuild(ent({ y: wl - 0.05, waterline: wl, model: { opts: { gap: 14, gangway: 5 } } }), cam, { season: 'summer' });
+    const g = p.faces.filter(f => f.role === 'girder'); assert.ok(g.length);
+    const pts = g.flatMap(f => f.pts), hi = pts.reduce((a, q) => q[0] > a[0] ? q : a, pts[0]), lo = pts.reduce((a, q) => q[0] < a[0] ? q : a, pts[0]);
+    return { wall: hi[1], stage: lo[1] };
+  };
+  const a = ends(-4.5), b = ends(-1.8);
+  // the quay top is the ground (world y 0) at any waterline: the wall end stays where the wall's top is on the screen ...
+  assert.ok(Math.abs(a.wall - b.wall) < 1, 'the top end stays at the quay top: ' + a.wall + ' ' + b.wall);
+  // ... and the stage end sits at the water, so a deeper river puts it lower on the screen (a larger Y)
+  assert.ok(a.stage > b.stage + 5, 'the low end follows the water: ' + a.stage + ' ' + b.stage);
 });
 
 test('the dinghy crew SITS in the boat: thighs, shins, arms and a head, not a column at the gunwale', () => {

@@ -393,18 +393,26 @@ function worldFrameOrder(chunks, agents, cam, boxes) {
 var _worldOrderCheckStamp = 0;
 function worldOrderCheck(order, boxes, opts) {
   opts = opts || {};
-  var stamp = ++_worldOrderCheckStamp, ents = [], pos = [], mov = [], p = 0, i, j;
+  var stamp = ++_worldOrderCheckStamp, ents = [], pos = [], mov = [], redr = [], lastMover = -1, p = 0, i, j;
   function put(e, mover) {
     var k;
     if (e._ocs === stamp) k = e._oci;
     else { e._ocs = stamp; k = e._oci = ents.length; ents.push(e); mov.push(false); }
     pos[k] = p++;
     if (mover) mov[k] = true;
+    return k;
   }
   for (i = 0; i < (order || []).length; i++) {
     var it = order[i];
     if (it.kind === 'chunk') { var es = it.ref.ents || []; for (j = 0; j < es.length; j++) put(es[j], false); }
-    else put(it.ref, it.kind === 'agent');
+    else if (it.kind === 'redraw') {
+      // a redraw paints only over the mover just drawn (the frame clips it to that mover's box): it orders the static after THAT mover only
+      // (the static's own draw stays its position for everyone else)
+      var rk = it.ref._ocs === stamp ? it.ref._oci : put(it.ref, false);
+      if (lastMover >= 0) (redr[rk] || (redr[rk] = {}))[lastMover] = p;
+      p++;
+    }
+    else { var mk = put(it.ref, it.kind === 'agent'); if (it.kind === 'agent') lastMover = mk; }
   }
   var n = ents.length, X0 = new Float64Array(n), Y0 = new Float64Array(n), X1 = new Float64Array(n), Y1 = new Float64Array(n), has = new Uint8Array(n), movers = [];
   for (i = 0; i < n; i++) {
@@ -421,7 +429,8 @@ function worldOrderCheck(order, boxes, opts) {
     if (ea.occlude && mov[b] && !ea.occlude({ x0: X0[b], y0: Y0[b], x1: X1[b], y1: Y1[b] })) return;
     if (eb.occlude && mov[a] && !eb.occlude({ x0: X0[a], y0: Y0[a], x1: X1[a], y1: Y1[a] })) return;
     var aNear = worldOrderNearer(ents[a], ents[b]);
-    if (aNear ? pos[a] < pos[b] : pos[b] < pos[a]) bad.push({ a: ents[a].id, b: ents[b].id, why: (aNear ? ents[a].id : ents[b].id) + ' is nearer but drawn first' });
+    var pa = redr[a] && redr[a][b] != null ? redr[a][b] : pos[a], pb = redr[b] && redr[b][a] != null ? redr[b][a] : pos[b];
+    if (aNear ? pa < pb : pb < pa) bad.push({ a: ents[a].id, b: ents[b].id, why: (aNear ? ents[a].id : ents[b].id) + ' is nearer but drawn first' });
   }
   if (opts.all) {
     // a sweep over x: only pairs whose x ranges meet are compared

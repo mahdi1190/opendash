@@ -29,7 +29,8 @@ function call(method, path, body, headers = {}) {
   });
 }
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
-async function until(fn, ms = 20000) {
+// (60 s: the fake provider answers after 300 ms a call and the rate-limit test waits out a Retry-After; a loaded CI runner took 22 s)
+async function until(fn, ms = 60000) {
   const t = Date.now();
   for (;;) { const v = await fn(); if (v) return v; if (Date.now() - t > ms) throw new Error('timed out'); await wait(60); }
 }

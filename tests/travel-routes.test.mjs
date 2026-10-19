@@ -68,7 +68,8 @@ test('/api/finance/travel: the Lisbon payments in euros, fees apart, no online b
   let log = '';
   for (let i = 0; i < 40; i++) { log = readFileSync(join(dir, 'logs', 'server.log'), 'utf8'); if (/finance travel: \d+ read/.test(log)) break; await new Promise(r => setTimeout(r, 50)); }
   assert.match(log, /finance travel: \d+ read, \d+ abroad/);
-  assert.ok(!/LISBOA|PASTELARIA|EUR|129/.test(log), 'no memos, places or amounts in the log');
+  // (whole tokens: a bare 129 or EUR also matches a port, a temp-folder name or a timestamp in the log, which failed the Windows runner by chance)
+  assert.ok(!/(LISBOA|PASTELARIA|EUR)|129[.,]4/.test(log), 'no memos, places or amounts in the log');
 });
 
 test('/api/finance/travel: nothing outside the window; bad input refused; same origin only', async () => {

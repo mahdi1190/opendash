@@ -1133,6 +1133,9 @@ function _wlfBrain(life, a, dt) {
     if (directed && b.states[nx] && !b.states[nx].speed && a.rng() > 0.25) nx = _wlfMovingState(a);
     // C2: nobody stops in the edge zones (the near row, the frame sides) unless the goal says so
     if (b.states[nx] && !b.states[nx].speed && (_wlfGroupEdge(life, a) || a.leaving)) nx = b.states.walk ? 'walk' : b.states.swim ? 'swim' : b.states.stalk ? 'stalk' : b.states.ride ? 'ride' : nx;
+    // nobody stops IN a one-body way (a boardwalk, a gap between a bollard and a bench): whoever is behind or coming the other way
+    // would stand there until the stop ended (a birdwatcher's look is up to 30 s); the stop waits for the next wider place
+    if (b.states[nx] && !b.states[nx].speed && a.kind === 'walker' && _wlfInSlot(life, a)) nx = b.states.walk ? 'walk' : nx;
     if (a.kind === 'wader' && nx === 'freeze') a.lookAt = _wlfWaterAhead(life, a);
     if (a.kind === 'wader' && nx === 'strike') { var wp = a.lookAt || _wlfWaterAhead(life, a); if (wp) life.bus.emit('strike', { id: a.id, x: wp[0], z: wp[1], t: life.t }); }
     _wlfEnter(life, a, nx);
@@ -1504,6 +1507,13 @@ function _wlfFollowBrain(life, a, dt) {
   if (d2 > 6) { var res = _wlfPathTo(life, a, p[0], p[1]); if (res === 'fail') a.dir = [dx2 / d2, dz2 / d2]; }
 }
 
+/** Is this mover in, or a step either way from, a gap only one body wide (the navigation's slot mask)? */
+function _wlfInSlot(life, a) {
+  if (typeof worldNavSlot !== 'function' || !life.nav) return false;
+  if (worldNavSlot(life.nav, a.layer, a.x, a.z)) return true;
+  var hx = Math.sin(a.heading || 0), hz = Math.cos(a.heading || 0);
+  return worldNavSlot(life.nav, a.layer, a.x + hx * 1.2, a.z + hz * 1.2) || worldNavSlot(life.nav, a.layer, a.x - hx * 1.2, a.z - hz * 1.2);
+}
 /** A loose group (ducks, geese, pigeons) or a pair (swans): each keeps its own states and drifts round the leader. */
 function _wlfLooseBrain(life, a, dt) {
   var L = a.leader, b = a.brain, R = b.group && b.group.kind === 'pair' ? 1.4 : 3.2;

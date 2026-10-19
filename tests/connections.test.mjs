@@ -13,7 +13,7 @@ import { ClaudeError } from '../lib/claude-runner.mjs';
 
 let root;
 before(() => { root = mkdtempSync(join(tmpdir(), 'conn-test-')); });
-after(() => rmSync(root, { recursive: true, force: true }));
+after(() => { try { rmSync(root, { recursive: true, force: true, maxRetries: 8, retryDelay: 150 }); } catch { /* temp folder: Windows can hold a log file a moment longer; leftovers in the temp dir are harmless */ } });
 
 const toolLines = (tool, { text = '{"ok":true}', isError = false } = {}) => [
   JSON.stringify({ type: 'system', subtype: 'init', tools: [tool] }),
