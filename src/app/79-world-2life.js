@@ -1833,7 +1833,7 @@ function _wlfSteer(life, a, dir, spd) {
     if (!bk) continue;
     for (var j = 0; j < bk.length; j++) {
       var o = bk[j];
-      if (o === a || o.layer !== a.layer || o.dead || o === a.leader || o.leader === a || (a.group && o.group === a.group)) continue;
+      if (o === a || !_wlfSameFloor(a, o) || o.dead || o === a.leader || o.leader === a || (a.group && o.group === a.group)) continue;
       var rx = o.x - a.x, rz = o.z - a.z, dd = Math.hypot(rx, rz);
       // queue: something close ahead in my lane is a bumper (an oncoming one only when it is dead ahead)
       // oncoming is judged by where the other WANTS to go (its planned direction), not by the velocity it has: two walkers met head on
@@ -1949,11 +1949,21 @@ function _wlfPair(life, a, o) {
   if (!moved) { a.squeezed = life.t; o.squeezed = life.t; }                            // nothing could give: the stuck logic re-plans
   return moved;
 }
+/** A walker on a walkable deck (a pier, a jetty: layer walk@n with its host) walks among people like one on the ground; one seated,
+ *  aboard a vehicle or stepping on or off is at rest on its host. */
+function _wlfOnDeck(a) { return a.kind === 'walker' && String(a.layer).indexOf('@') > 0 && !a.seat && !a.step && a.bs !== 'sitting'; }
+/** Two movers that can bump into each other: one layer, or two walking layers at one height where they meet (a pier deck at the level of
+ *  its promenade: a walker stepping off the deck and one on the promenade passed through each other, 19 Oct, seaside-pier p0-9 and p2-3.2) */
+function _wlfSameFloor(a, o) {
+  if (a.layer === o.layer) return true;
+  var la = String(a.layer), lo = String(o.layer);
+  return la.split('@')[0] === lo.split('@')[0] && la !== 'air' && Math.abs((a.y || 0) - (o.y || 0)) < 0.3;
+}
 function _wlfSeparate(life) {
   var A = life.agents, h = new Map(), L = [], i, j, k;
   for (i = 0; i < A.length; i++) {
     var a = A[i];
-    if (a.dead || a.layer === 'air' || a.kind === 'lane' || a.kind === 'rail' || a.kind === 'boat' || a.kind === 'moored' || a.hop || a.host) continue;
+    if (a.dead || a.layer === 'air' || a.kind === 'lane' || a.kind === 'rail' || a.kind === 'boat' || a.kind === 'moored' || a.hop || (a.host && !_wlfOnDeck(a))) continue;
     a._si = L.length; L.push(a);
     k = (Math.floor(a.x / 2) + 4096) * 8192 + (Math.floor(a.z / 2) + 4096);
     var b = h.get(k); if (!b) { b = []; h.set(k, b); } b.push(a);
@@ -1965,7 +1975,7 @@ function _wlfSeparate(life) {
       var p = L[i], cx = Math.floor(p.x / 2), cz = Math.floor(p.z / 2);
       for (var ix = -1; ix <= 1; ix++) for (var iz = -1; iz <= 1; iz++) {
         var bk = h.get((cx + ix + 4096) * 8192 + (cz + iz + 4096)); if (!bk) continue;
-        for (j = 0; j < bk.length; j++) { var o = bk[j]; if (o._si > p._si && o.layer === p.layer) moved += _wlfPair(life, p, o); }
+        for (j = 0; j < bk.length; j++) { var o = bk[j]; if (o._si > p._si && _wlfSameFloor(p, o)) moved += _wlfPair(life, p, o); }
       }
     }
     if (!moved) break;
