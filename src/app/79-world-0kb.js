@@ -264,6 +264,8 @@ const _WKB_FINE = ['clear', 'cloud'];
 const WORLD_KB_OBJECTS = _wkbFreeze({
   // a lychgate is a roof on four posts over a path: walkers pass under it (overhead), the gate leaves are low and open to the path
   'structure.lychgate': { cls: 'lychgate', solidity: 'overhead' },
+  // a railway viaduct strides over a canal, a quay and a towpath: everything passes under it (people, boats, the fill); its piers are drawn, not solid
+  'structure.viaduct': { cls: 'walkway', solidity: 'overhead', size: { h: [4, 40] } },
   // headstones are of every size in a churchyard (a low kerbed slab to a tall cross-less stone): the class range is wide
   'structure.headstone': { cls: 'street', size: { h: [0.6, 1.3] } },
   // K7: local transport liveries (Metrolink yellow and grey; Supertram; UK buses and trains in plausible styles)
@@ -1017,7 +1019,15 @@ function _wkbInDates(doy, dates) {
   return a <= b ? (doy >= a && doy <= b) : (doy >= a || doy <= b);
 }
 function _wkbWeatherOf(ctx) { const w = typeof ctx.weather === 'string' ? ctx.weather : null; return w === 'drizzle' || w === 'showers' ? 'rain' : w === 'overcast' ? 'cloud' : w; }
-function _wkbDark(ctx) { if (typeof ctx.dark === 'boolean') return ctx.dark; if (_wkbNum(ctx.dark)) return ctx.dark > 0.5; const a = ctx.sun && _wkbNum(ctx.sun.alt) ? ctx.sun.alt : null; return a == null ? null : a < -4; }
+function _wkbDark(ctx) {
+  if (typeof ctx.dark === 'boolean') return ctx.dark;
+  if (_wkbNum(ctx.dark)) return ctx.dark > 0.5;
+  let a = ctx.sun && _wkbNum(ctx.sun.alt) ? ctx.sun.alt : null;
+  // a time context without a sun record (the life's own: ms, lat, lon): the almanac's sun, so a night's density is a night's (gulls and
+  // pigeons flew over the night harbour because 'dark' was unknown here: the night-light audit)
+  if (a == null && _wkbNum(ctx.ms) && typeof almSunPosition === 'function') { try { const p = almSunPosition(ctx.ms, _wkbNum(ctx.lat) ? ctx.lat : 51.5, _wkbNum(ctx.lon) ? ctx.lon : 0); if (p && _wkbNum(p.alt)) a = p.alt; } catch (e) { a = null; } }
+  return a == null ? null : a < -4;
+}
 /**
  * K6: is this class present at this time, and how much of a population (share 0..1)? ctx: the WorldTimeCtx (11.11).
  * when: { months: [1..12], dates: [[m, d], [m, d]], hours: [h0, h1], days: [dow], weather: [...], tempMin, tempMax, snowDay: false,
@@ -1220,8 +1230,9 @@ function worldKbDensity(who, ctx, placeType) {
       case 'transit': f = _wkbCurve('transit', hour) * (dow === 0 ? 0.6 : weekend ? 0.8 : 1) * W({ snow: 0.8 }); break;
       case 'boat': f = _wkbCurve('boat', hour) * (weekend ? 1.5 : 1) * (({ winter: 0.15, spring: 0.7, summer: 1.2, autumn: 0.6 })[season] || 1) * W({ rain: 0.4, snow: 0.1, fog: 0.5 }); break;
       case 'water-bird': f = (dark ? 0.7 : 1) * (season === 'winter' ? 1.2 : 1); break;
-      case 'gull': f = (dark ? 0.2 : 1) * (({ winter: 1.4, autumn: 1.1, summer: 0.7 })[season] || 1); break;
-      case 'pigeon': f = dark ? 0.1 : _wkbCurve('day', hour); break;
+      // gulls and pigeons roost after dark (on roofs and ledges out of the view): none spawn, so none fly over a night harbour (night-light audit)
+      case 'gull': f = (dark ? 0 : 1) * (({ winter: 1.4, autumn: 1.1, summer: 0.7 })[season] || 1); break;
+      case 'pigeon': f = dark ? 0 : _wkbCurve('day', hour); break;
       case 'grazer': f = dark ? 0.6 : 1; break;
       case 'insect': f = dark ? 0 : _wkbCurve('leisure', hour) * W({ rain: 0, snow: 0, fog: 0.3, cloud: 0.6 }); break;
       case 'bat': f = dark === false ? 0 : 1; break;

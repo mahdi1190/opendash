@@ -45,6 +45,7 @@ const WORLD_INVARIANTS = Object.freeze([
   { rule: 'laneDir', req: 'A9, K3', what: 'vehicles keep to the left lane for their direction', needs: 'world' },
   { rule: 'animStill', req: 'M1', what: 'nothing plays a moving cycle while still', needs: 'anim' },
   { rule: 'stillMoving', req: 'M1', what: 'nothing slides along in an idle pose', needs: 'anim' },
+  { rule: 'walkInPlace', req: 'A6, M1, Q4', what: 'no legs striding on the spot: judged from the drawn POSITIONS over 0.5 s (never the shown velocity): legs cycling while the body is held (under 0.15 m/s), feet pacing out twice the ground covered, or a stride drawn side-on while the figure moves under a quarter of its height a cycle on screen (an end-on walker lifts its feet: the gait)', needs: 'track' },
   { rule: 'staticAnim', req: 'M2', what: 'statics never animate (sway only by wind, for plants)' },
   { rule: 'clones', req: 'M4', what: 'no two neighbours of a kind animate in step', needs: 'anim' },
   { rule: 'windDir', req: 'M3, S3', what: 'everything sways with the one wind', needs: 'wind' },
@@ -62,7 +63,7 @@ const WORLD_INVARIANTS = Object.freeze([
   { rule: 'shadowOrphan', req: 'L2', what: 'every cast shadow belongs to something drawn at that moment', needs: 'pixels' },
   { rule: 'deckDrawn', req: 'A2, W2', what: 'a walker stands on drawn ground or planks, never on open water in the picture (the nav deck and the drawn deck agree)', needs: 'pixels' },
   { rule: 'particles', req: 'M3, K7', what: 'no v2 screen particles in a world scene (petals, motes, fireflies, leaves in an empty sky)', needs: 'pixels' },
-  { rule: 'nightLight', req: 'L4, QP4', what: 'after dusk a scene with buildings, boats or lamps shows lit lights; no lamp is lit with the sun up', needs: 'pixels' },
+  { rule: 'nightLight', req: 'L4, QP4', what: 'after dusk a scene with buildings, boats or lamps shows lit pixels in the picture; no lamp and no generated pane is lit with the sun up', needs: 'pixels' },
 ]);
 
 /* ---------- small maths ---------- */
@@ -855,6 +856,23 @@ const _WIV_RULES = {
       _wivPush(C, 'stillMoving', m.id, `${m.obj || m.cls} moves at ${_wivR(sp)} m/s in '${a.state}' (rate ${_wivR(a.rate || 0)})`);
     }
   },
+  walkInPlace(C) {
+    const T = C.track;
+    if (!T) return 'na';
+    if (!C.ents.some(e => e.anim)) return 'na';
+    const M = T.inplace || (T.inplace = new Map()), live = new Set();
+    for (const m of C.movers) {
+      live.add(m.id);
+      let h = M.get(m.id); if (!h) M.set(m.id, h = {});
+      const r = worldWalkInPlace(m, h, C.t);
+      if (!r || !r.fault) { h.bad = null; continue; }
+      if (h.bad == null || h.fault !== r.fault) { h.bad = C.t; h.fault = r.fault; }
+      if (C.t - h.bad < WORLD_INPLACE.grace) continue;   // M7: a walk eases to a stop over 0.2-0.6 s
+      const what = r.fault === 'held' ? `is held (${_wivR(r.gs)} m/s over the last 0.5 s)` : r.fault === 'slip' ? `covers ${_wivR(r.gs)} m/s while its feet pace out ${_wivR(r.feet)} m/s` : `moves ${_wivR(r.cyc)} of its height a stride on screen (${m.view} view) with its legs swung side-on`;
+      _wivPush(C, 'walkInPlace', m.id, `${m.obj || m.cls} (${m.id}) walks on the spot: '${m.anim.clip}' at ${_wivR(m.anim.rate)} Hz but it ${what}`);
+    }
+    for (const k of [...M.keys()]) if (!live.has(k)) M.delete(k);
+  },
   staticAnim(C) {
     for (const e of C.statics) {
       const cls = _wivCls(e) || '', a = e.anim;
@@ -1161,6 +1179,8 @@ const _WIV_RULES = {
     if (sun == null || !_wivNum(f.litPx)) return 'na';
     const lights = Array.isArray(f.lights) ? f.lights : [];
     if (sun > 0) { const on = lights.filter(l => l && l.on && l.kind === 'lamp'); if (on.length) _wivPush(C, 'nightLight', on[0].ref || null, `${on.length} street lamp(s) lit with the sun ${Math.round(sun)} degrees up`); }
+    // the panes of generated buildings (frame.glassLit: how many buildings have a lit pane bucket now) are dark while the sun is well up
+    if (sun > 6 && _wivNum(f.glassLit) && f.glassLit > 0) _wivPush(C, 'nightLight', null, `${f.glassLit} generated building(s) with lit windows with the sun ${Math.round(sun)} degrees up`);
     if (sun < -8) {
       const hosts = C.ents.filter(e => /^(building|landmark|boat|lamp|vehicle|tram|train)$/.test(_wivCls(e) || '') || /lamp|lantern/.test(String(e.obj || '')));
       if (hosts.length && f.litPx < 50) _wivPush(C, 'nightLight', null, `night (sun ${Math.round(sun)} degrees) with ${hosts.length} building(s), boat(s) or lamp(s) in frame, but only ${f.litPx} lit pixel(s): no window, lamp or cabin light shows`);
@@ -1232,7 +1252,49 @@ function _wivNearer(a, b) {
 /** Rules that read the statics only (and the surfaces): computed once per world with a tracker, replayed on later frames. */
 const _WIV_STATIC_RULES = new Set(['habitat', 'pathBlocked', 'walkwayWater']);
 /** The history one run keeps across frames (popping, stuck, grace periods, the static cache). */
-function worldInvariantTracker() { return { prev: null, ids: new Map(), anim: new Map(), cache: new Map(), frames: 0 }; }
+function worldInvariantTracker() { return { prev: null, ids: new Map(), anim: new Map(), inplace: new Map(), cache: new Map(), frames: 0 }; }
+
+/**
+ * Walking in place (18 Oct; the user: "so many people just walking in place"). The old checks (slidingFeet, animStill, stillMoving)
+ * compared the legs with the SHOWN velocity, the very number the legs are computed from, so they could not see a body that did not
+ * go where its velocity said (pushed back by the separation pass), nor a walker seen end-on whose legs scissor in the picture plane
+ * while it moves a few pixels. This reads only what is drawn: the record's positions and boxes over the last 0.5 s, the clip, rate,
+ * stride and the gait the legs are drawn with.
+ *   WORLD_INPLACE   the thresholds
+ *   worldWalkInPlace(m, h, t) -> null (not a striding walker drawn with legs) | { fault: null | 'held' | 'slip' | 'flat', gs, ss, cyc, H }
+ *     m: a frame record mover; h: its history ({} kept per id by the caller; worldInvariantTracker().inplace); t: the frame time
+ */
+const WORLD_INPLACE = Object.freeze({ win: 0.5, minWin: 0.35, held: 0.15, slip: 0.5, flat: 0.25, minH: 14, minK: 0.3, grace: 0.6, lift: 0.3, swing: 0.3 });
+function worldWalkInPlace(m, h, t) {
+  const b = _wivBox(m), a = m && m.anim;
+  if (!b || !a) return null;
+  const H = b[3] - b[1], X = (b[0] + b[2]) / 2, Y = b[3];
+  const P = h.p || (h.p = []);
+  if (P.length && P[P.length - 1][0] >= t) P.length = 0;   // a new run or a rewind
+  P.push([t, m.x, m.z, X, Y]);
+  while (P.length > 1 && t - P[0][0] > WORLD_INPLACE.win + 1e-6) P.shift();
+  const person = /^(person\.|animal\.dog)/.test(String(m.obj || '')) || m.cls === 'dog' || m.cls === 'person';
+  if (!person || m.layer === 'air' || m.layer === 'drive' || m.layer === 'rail' || _wivHostOf(m) || (_wivNum(m.alpha) && m.alpha < 0.95)) return null;
+  const legs = a.state === 'move' && /^(walk|run|trot)$/.test(String(a.clip || '')) && a.rate > 0 && (a.k == null || a.k >= WORLD_INPLACE.minK);
+  if (!legs || H < WORLD_INPLACE.minH) return null;        // under 14 px the legs are not drawn (the frame's LOD): no stride to judge
+  const p0 = P[0], dt = t - p0[0];
+  if (dt < WORLD_INPLACE.minWin) return { fault: null, gs: null, ss: null, cyc: null, H };
+  const gs = Math.hypot(m.x - p0[1], m.z - p0[2]) / dt, ss = Math.hypot(X - p0[3], Y - p0[4]) / dt, cyc = ss / a.rate / H;
+  const feet = a.rate * (_wivNum(a.stride) ? a.stride : 0), G = a.gait || null;
+  let fault = null;
+  if (gs < WORLD_INPLACE.held) fault = 'held';
+  else if (feet > 0.3 && gs < WORLD_INPLACE.slip * feet - 0.05) fault = 'slip';
+  // flat: legs swung in the picture plane (over 30 % of a full side-on stride: a side view, or a side-only figure seen end-on) while the
+  // figure moves under a quarter of its height a stride for every full swing it draws (a full stride moves a side-on walker 0.74 of its
+  // height); one seen end-on must lift its feet in turn instead (the gait). No gait: the old drawer's full side-on swing
+  else {
+    // the drawn swing: k (a slow step is a short one) x the share of a side-on stride drawn in the picture plane (no gait, or an end-on
+    // walker that does not lift its feet: a full side-on swing, the old drawer)
+    const plane = G && !(G.fs < 0.7 && G.lift < WORLD_INPLACE.lift) ? (_wivNum(G.plane) ? G.plane : G.swing) : 1, swing = (a.k == null ? 1 : a.k) * plane;
+    if (swing > WORLD_INPLACE.swing && cyc < WORLD_INPLACE.flat * swing) fault = 'flat';
+  }
+  return { fault, gs, ss, cyc, H, feet };
+}
 
 /**
  * The violations of one frame record (16.1, 16.2). Never throws: a rule that throws is reported once as a violation of

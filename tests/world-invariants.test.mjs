@@ -40,7 +40,9 @@ test('WORLD_INVARIANTS lists every rule of 16.2 with its requirement ids', () =>
     // 15 Oct: the checks that read what the frame shows (audit bugs 3, 4, 8, 12, 13, 17, 19)
     'nearStatic', 'crownCut', 'crowd', 'outfitClone', 'drawn', 'crown', 'shadowOrphan', 'deckDrawn', 'particles', 'nightLight',
     // 16 Oct: a walkway never crosses open water
-    'walkwayWater'];
+    'walkwayWater',
+    // 18 Oct: walking in place, judged from the drawn positions (tests/world-walk-in-place.test.mjs)
+    'walkInPlace'];
   assert.deepEqual(E.WORLD_INVARIANTS.map(r => r.rule).sort(), want.slice().sort());
   for (const r of E.WORLD_INVARIANTS) { assert.match(r.req, /^[A-Z]\d/, r.rule); assert.ok(r.what.length > 10, r.rule); }
 });

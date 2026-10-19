@@ -34,6 +34,7 @@ const WORLD_FRAME_FADE_S = 0.25;           // a view change cross-fades over thi
 const WORLD_FRAME_LIVE_CAP = 24;           // statics drawn live (they sway by cause, M3): the nearest this many
 const WORLD_FRAME_LIVE_H = 36;             // ... at least this tall on screen (scene units)
 const WORLD_FRAME_LOD_PX = 14;             // a walker or a paddler shorter than this on screen (device px) is drawn whole: its limbs cannot be told apart
+const WORLD_FRAME_LOD_BOB = 0.7;           // ... and bobs by at least this (device px) twice a stride, so a far walker still steps
 const WORLD_FRAME_WATER_HZ = 15;           // the rippled water is composed this many times a second and blitted once per frame between (ripple: 0.2 Hz, under 0.2 px a refresh)
 const WORLD_FRAME_LIVE_AREA = 0.4;         // ... and covering at most this share of the frame (a giant framing crown stays baked)
 const _WFR_PAD = 2;
@@ -382,12 +383,15 @@ function worldFramePlan(world, o) {
   }
   // the terrain (W2): strips of the relief as prims, so the chunk order hides what lies behind a nearer rise and puts what stands on
   // the slope in front of it (the v2 ground follows a relief along polygon edges only)
+  const gentleGround = Array.isArray(world.features) && world.features.length > 0 && world.features.every(f => f && f.kind === 'slope');
   if (typeof worldTerrainPrims === 'function') {
     try {
       for (const p of worldTerrainPrims(world, cam, { season: o.season }) || []) if (p && p.box) {
         const r = _wfrPrimRec(p, null, null);
         // ground below a mover's feet never covers the mover: the strip is an occluder only where its upper edge reaches above them (4terrain)
         if (p.tops && typeof worldTerrainOccludes === 'function') r.occlude = (box) => worldTerrainOccludes(p, box);
+        // a world whose only relief is gentle slopes (a hill street): the ground hides nothing that stands on it, so it is one layer under everything (below)
+        if (gentleGround) r.ground = true;
         add(r);
       }
     } catch (e) { /* flat ground */ }
@@ -409,7 +413,22 @@ function worldFramePlan(world, o) {
   const chunked = out.recs.filter(r => !r.live);
   if (typeof worldChunks === 'function') {
     const standZ = o.nav ? _wfrStandZ(o.nav, cam) : null;
-    out.chunks = _wfrMergeChunks(worldChunks({ entities: chunked }, standZ ? { standZ } : null, null, {}), standZ);
+    // the ground of a hill street is ONE chunk, drawn after the backdrop bands (a plateau above the eye hides all that lies beyond it) and under every other static.
+    // 200 thin strips as ordinary statics made every chunk's box a frame wide, the merge budget collapsed the whole scene into one chunk and every mover redrew
+    // 60 nearer statics a frame (900 ms a frame at a 4x throttle)
+    const gnd = chunked.filter(r => r.ground).sort((a, b) => b.z - a.z);
+    const bands = gnd.length ? chunked.filter(r => r.backdrop && !r.ground).sort((a, b) => b.z - a.z) : [];
+    const rest = gnd.length ? chunked.filter(r => !r.ground && !(r.backdrop)) : chunked;
+    out.chunks = _wfrMergeChunks(worldChunks({ entities: rest }, standZ ? { standZ } : null, null, {}), standZ);
+    if (gnd.length) {
+      const union = (L) => L.reduce((bb, r) => bb ? { x0: Math.min(bb.x0, r.box.x0), y0: Math.min(bb.y0, r.box.y0), x1: Math.max(bb.x1, r.box.x1), y1: Math.max(bb.y1, r.box.y1) } : { x0: r.box.x0, y0: r.box.y0, x1: r.box.x1, y1: r.box.y1 }, null);
+      const first = [];
+      if (out.chunks.length && out.chunks[0].backdrop && !out.chunks[0].ents.length) first.push(out.chunks.shift());
+      if (bands.length) first.push({ z0: Infinity, z1: Infinity, ents: bands, bbox: union(bands), stand: 0, backdrop: true });
+      first.push({ z0: Infinity, z1: Infinity, ents: gnd, bbox: union(gnd), stand: 0, backdrop: true, ground: true });
+      out.chunks = first.concat(out.chunks);
+      out.chunks.forEach((c, i) => { c.i = i; });
+    }
   } else out.chunks = chunked.length ? [{ i: 0, z0: 0, z1: Infinity, ents: chunked.slice().sort((a, b) => b.z - a.z), bbox: null, stand: 0 }] : [];
   return out;
 }
@@ -729,7 +748,8 @@ function _wfrSpriteOf(env, S, r, part, x) {
   // the frame (an agent's memory, a live static's record) against exactly what the sprite depends on, so the key string, the material
   // key and the shared cache are not walked per part per frame (the sprite lookups were a fifth of a crowded frame)
   const h = r.mem || (r.live ? r : null), bk = x && x.bucket ? x.bucket : r.s, p = part || '*';
-  const mc = h ? _wfrMcOf(S, r, h) : _wfrMc(S, r.ent);
+  // a mover drawn without a holder (the checker's own records, a capture) takes the same lamp light as in the frame
+  const mc = h ? _wfrMcOf(S, r, h) : !r.ent.static && S.localLights && S.localLights.length && typeof worldLocalLight === 'function' ? _wfrMcLamp(S, _wfrMc(S, r.ent), worldLocalLight(S.localLights, r.ent.x || 0, r.ent.z || 0).k) : _wfrMc(S, r.ent);
   let memo = null;
   if (h && mc) {
     memo = h._spm;
@@ -746,10 +766,23 @@ function _wfrSpriteOf(env, S, r, part, x) {
 /** The material context of a mover, remembered per 2 m of distance on its holder (the key string was built on every call). */
 function _wfrMcOf(S, r, h) {
   const e = r.ent, dk = Math.round(Math.hypot(e.x || 0, e.z || 0) / 2);
-  if (h._mcS === S && h._mcD === dk && h._mcI === e.id) return h._mc;
-  const mc = _wfrMc(S, e);
-  h._mcS = S; h._mcD = dk; h._mcI = e.id; h._mc = mc;
+  // a mover under a lamp is lit by it (worldLocalLight at its feet, in steps of 0.1): its own colours come back, warm, in proportion to
+  // the light; away from the lamps it keeps the night grade (the night-light audit: walkers under the lanterns were as dark as the rest)
+  const LL = S.localLights, lk = !e.static && LL && LL.length && typeof worldLocalLight === 'function' ? worldLocalLight(LL, e.x || 0, e.z || 0).k : 0;
+  if (h._mcS === S && h._mcD === dk && h._mcI === e.id && h._mcL === lk && h._mcLS === LL) return h._mc;
+  const mc = _wfrMcLamp(S, _wfrMc(S, e), lk);
+  h._mcS = S; h._mcD = dk; h._mcI = e.id; h._mcL = lk; h._mcLS = LL; h._mc = mc;
   return mc;
+}
+/** A material context under lamp light k (one shared object per context and k: the sprite caches key on its identity and its key). */
+function _wfrMcLamp(S, mc, lk) {
+  if (!mc || !(lk > 0)) return mc;
+  const W = S.lampMc || (S.lampMc = new WeakMap());
+  let byK = W.get(mc);
+  if (!byK) { byK = new Map(); W.set(mc, byK); }
+  let m2 = byK.get(lk);
+  if (!m2) { m2 = { ...mc, lamp: { k: lk, col: WORLD_LAMP_LIGHT_COL } }; delete m2._mk; byK.set(lk, m2); }
+  return m2;
 }
 function _wfrM(env, r) { return [env.vs * r.s * (r.flip ? -1 : 1), 0, 0, env.vs * r.s, env.vs * r.X + env.ox, env.vs * r.Y + env.oy]; }
 /** Clip a context to what lies above a floater's cut (device px: scene units through vs, ox, oy, then less the bitmap's origin). */
@@ -788,7 +821,10 @@ function _wfrDrawRec(cx, env, S, r, d, bx, by, alpha) {
         const L = env.Lnow || env.L;
         // a hull's windows at night: a boat under way is lit inside; a moored one is a home (one seeded draw per boat, as a house's windows)
         const LN = S.lightNow, hullLit = r.prim.kind === 'hull' && !!LN && typeof worldGlowOn === 'function' && (r.static ? worldGlowOn(String(r.id), 0, 'window', LN.alt, LN.share, {}) : LN.alt < 4);
-        n = drawPrim(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, litGlow: hullLit, mctx: S.mctx || undefined, sun: S.sun || null, night: !!(L && (L.dark > 0.5 || L.windows)),
+        // a generated building's panes light by the world's rule (worldBuildingGlassOn: per building and pane bucket), never all at once
+        const bld = r.prim.kind === 'building' && r.prim.direct && LN && typeof worldBuildingGlassOn === 'function';
+        n = drawPrim(cx, r.prim, { vs: env.vs, ox: env.ox - bx, oy: env.oy - by, sprite: env.sprite, litGlow: hullLit, mctx: S.mctx || undefined, sun: S.sun || null,
+          night: bld ? LN.alt < 2 || !!LN.murky : !!(L && (L.dark > 0.5 || L.windows)), glassOn: bld ? (th, kind) => worldBuildingGlassOn(String(r.id), th, LN.alt, LN.share, LN.murky, kind, LN.sky ? LN.sky.localHour : null) : undefined,
           windowShare: S.sky && Number.isFinite(S.sky.windowShare) ? S.sky.windowShare : L && L.windowShare, season: S.season, haze: _wfrHaze(env, r.ent), alpha: alpha == null ? 1 : alpha }) || 0;
       }
     } else {
@@ -1271,7 +1307,12 @@ function _wfrChunkLit(S, ch, LN) {
   if (!LN || !(LN.alt < 4 || LN.murky)) return '-';
   let s = '';
   for (const r of ch.ents) {
-    if (r.prim) { if (r.prim.kind === 'hull' && r.static && typeof worldGlowOn === 'function' && worldGlowOn(String(r.id), 0, 'window', LN.alt, LN.share, {})) s += r.id + ':h;'; continue; }
+    if (r.prim) {
+      if (r.prim.kind === 'hull' && r.static && typeof worldGlowOn === 'function' && worldGlowOn(String(r.id), 0, 'window', LN.alt, LN.share, {})) s += r.id + ':h;';
+      // a generated building: the mask of its lit pane buckets (a relight redraws the chunk when a bucket comes on or goes off)
+      else if (r.prim.kind === 'building' && r.prim.direct && typeof worldBuildingGlassMask === 'function') { const m = worldBuildingGlassMask(String(r.id), LN.alt, LN.share, LN.murky, LN.sky ? LN.sky.localHour : null); if (m) s += r.id + ':b' + m + ';'; }
+      continue;
+    }
     const on = _wfrGlassOn(S, r, LN); if (on.length) s += r.id + ':' + on.join('.') + ';';
   }
   return s ? _wfrHashStr(s) : '-';
@@ -1352,7 +1393,7 @@ function _wfrLightOnRec(l, r) {
   return l;
 }
 function _wfrLightsPlan(env, S) {
-  S.lights = null; S.liveLights = null;
+  S.lights = null; S.liveLights = null; S.localLights = null;
   const rec = S.rec, world = rec.world, LN = _wfrLightNow(env, S);
   S.lightNow = LN;
   if (typeof worldLights !== 'function' || typeof worldDrawLights !== 'function' || !LN || !S.plan) return;
@@ -1361,7 +1402,12 @@ function _wfrLightsPlan(env, S) {
   try {
     const ents = recs.map(r => ({ ...r.ent, id: r.id, mirror: !!r.flip }));
     list = (worldLights({ entities: ents }, { sky: LN.sky || undefined, L: LN.L, season: S.season }) || []).filter(x => x.on);
+    // the lamps a generated building carries (a lantern on a bracket: the generator draws its glass and glow, the world lights the lane
+    // under it and the people walking there)
+    if (typeof worldBuildingLamps === 'function') for (const r of S.plan.recs) if (r.prim && r.prim.direct && r.prim.direct.lamps) list.push(...worldBuildingLamps(r.id, r.prim.direct.lamps, LN).filter(x => x.on));
   } catch (e) { S.stats.errors.push('lights: ' + (e && e.message)); return; }
+  // the light that falls on the movers: every lit pool on the ground (worldLocalLight samples it at a mover's feet)
+  S.localLights = list.filter(x => x.pool).map(x => x.pool);
   if (!list.length) return;
   // each halo on its owner's drawn sprite (the glow part's art point through the record's own transform: bug 13)
   for (const l of list) _wfrLightOnRec(l, S.plan.byId && S.plan.byId.get(String(l.ref)));
@@ -1450,8 +1496,15 @@ function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(r.o, r.v, r.season || S.season) : null;
   const L = env.Lnow || env.L, night = !!(L && (L.windows || L.dark > 0.5)), lit = !r.static && night && /vehicle|tram|train|boat|bus|car/.test(String(r.ent.cls || r.obj));
   let hooks = typeof sceneAnimPose === 'function' ? _wfrHooks(env, S, r, sh, tau) : [];
-  // a far mover (a few pixels tall): the swing of a leg is under a pixel, so its rest art is one blit instead of the body and four limbs
-  if (hooks.length && !r.static && (r.box.y1 - r.box.y0) * env.vs < WORLD_FRAME_LOD_PX) hooks = hooks.filter(h => h.kind !== 'walk' && h.kind !== 'paddle');
+  // a far mover (a few pixels tall): the swing of a leg is under a pixel, so its rest art is one blit instead of the body and four limbs.
+  // It keeps its STEP: the whole figure bobs twice a stride by at least WORLD_FRAME_LOD_BOB device px (18 Oct: far walkers glided like
+  // cut-outs while near ones walked; a bob of the art's 1.4 units is a fifth of a pixel at that size)
+  let lodBob = 0;
+  if (hooks.length && !r.static && (r.box.y1 - r.box.y0) * env.vs < WORLD_FRAME_LOD_PX) {
+    const wk = hooks.find(h => h.kind === 'walk' && h.k > 0.3);
+    if (wk) { try { const b = sceneAnimPose(wk, tau, L, r.x).bob || 0, w = Math.abs(Math.sin(2 * Math.PI * (tau / (wk.period || 0.9) + (wk.phase || 0)))); lodBob = -Math.max(-b * env.vs * r.s, WORLD_FRAME_LOD_BOB * w * Math.min(1, wk.k)); } catch (e) { lodBob = 0; } }
+    hooks = hooks.filter(h => h.kind !== 'walk' && h.kind !== 'paddle');
+  }
   const d = r.static ? S.draw.get(r.id) : null, M = d && d.M ? d.M : _wfrM(env, r);
   const x = { litGlow: lit, bucket: r.bucket };
   if (r.cut) { ctx.save(); _wfrClipCut(ctx, r.cut, env, 0, 0); }
@@ -1464,18 +1517,20 @@ function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
       const sp = _wfrSpriteOf(env, S, r, '*', x);
       r.spNow = sp;
       if (sp && env.keep) env.keep(sp);
-      blit(sp, M, A0);
+      if (lodBob) { const MB = M.slice(); MB[5] += lodBob; blit(sp, MB, A0); } else blit(sp, M, A0);
     } else {
       const whole = hooks.find(h => _wfrParts(h)[0] === '*'), moved = [...new Set(hooks.filter(h => _wfrParts(h)[0] !== '*').flatMap(_wfrParts))];
       const rest = _wfrSpriteOf(env, S, r, moved.length ? 'rest:' + moved.join(',') : '*', x);
       r.spNow = moved.length ? null : rest;
       if (rest && env.keep) env.keep(rest);
-      let bob = 0;
-      for (const h of hooks) if (h.kind === 'walk') { try { bob = sceneAnimPose(h, tau, L, r.x).bob || 0; } catch (e) { bob = 0; } break; }
+      let bob = 0, sway = 0;
+      for (const h of hooks) if (h.kind === 'walk') { try { const P = sceneAnimPose(h, tau, L, r.x); bob = P.bob || 0; sway = P.sway || 0; } catch (e) { bob = 0; } break; }
       let W0 = null;
       if (whole) { try { W0 = sceneAnimPose(whole, tau, L, r.x).m; } catch (e) { W0 = null; } }
       const MR = W0 ? _wfrMul(M, W0) : M.slice();
       if (bob) MR[5] += bob * env.vs * r.s;
+      if (sway) MR[4] += sway * env.vs * r.s * (MR[0] < 0 ? -1 : 1);
+      if (lodBob) MR[5] += lodBob;
       blit(rest, MR, A0);
       for (const h of hooks) {
         if (h === whole) continue;

@@ -10,6 +10,24 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.14.0] - 2026-10-19
+
+### Added
+
+- **New places:** Manchester Castlefield (the canal basin, red-brick warehouses and railway viaducts) and Norwich Elm Hill (a cobbled lane climbing to a flint church), both drawn by the world engine, with their own reusable pieces: a viaduct model, canal-warehouse and Tudor colour-wash styles, a cobbled-lane kit and climbing streets.
+- **Night lighting:** lantern glows are smooth instead of stepped rings; windows come on one at a time through dusk and go out through the night; shop windows keep shop hours; lamps light the ground and the people in their pools; walls seen edge-on no longer show bright bars; gulls no longer fly at night. The night check now measures real lit pixels.
+- **A walking-in-place detector** (`node tools/world.mjs inplace <scene>` and an invariant rule) that reads the drawn frames, not the simulation.
+
+### Changed
+
+- **Walking:** people walking toward or away from the camera now step, sway and bob instead of standing with their feet together; queues, blocked walkers, family groups, dogs on leads and walkers near benches no longer creep or stride on the spot. The share of person-time walking in place fell from 80 % to about 1 % in York and from 55 % to under 1 % on the canal.
+- **Fewer, better scenes:** the 90 basic hand-drawn place studies of the South East pack (Kent, Sussex, Surrey, the Isle of Wight, Berkshire, Oxfordshire, Buckinghamshire and Greater London) are retired. The registry no longer lists them; they stay in their files for now.
+
+### Fixed
+
+- The seaside pier scene registers again (its visitors wandered on a surface that did not exist) and its near ground is dressed.
+- Several flaky tests (timing, log waits, temporary-folder cleanup on Windows); the continuous-integration run is green again.
+
 ## [2.13.0] - 2026-10-09
 
 ### Added
@@ -555,7 +573,8 @@ of earlier private builds; see the notes at the end.)
   use the Claude connectors or an iCal link
   ([CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)).
 
-[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.13.0...HEAD
+[Unreleased]: https://github.com/mahdi1190/opendash/compare/v2.14.0...HEAD
+[2.14.0]: https://github.com/mahdi1190/opendash/compare/v2.13.0...v2.14.0
 [2.13.0]: https://github.com/mahdi1190/opendash/compare/v2.12.0...v2.13.0
 [2.12.0]: https://github.com/mahdi1190/opendash/compare/v2.11.0...v2.12.0
 [2.11.0]: https://github.com/mahdi1190/opendash/compare/v2.10.0...v2.11.0

@@ -116,7 +116,9 @@ function _wanHull(info, obj) {
 }
 /** The facing (degrees, camera frame) an entity shows now: velocity, else anim.face, else heading (radians, life), else facing. */
 function _wanFacing(ent) {
-  const vx = _wanNum(ent.vx) ? ent.vx : 0, vz = _wanNum(ent.vz) ? ent.vz : 0, sp = Math.hypot(vx, vz);
+  // the SHOWN velocity when life keeps one (low-passed, never more than the ground covered): a per-tick zig-zag (a sidestep, a push) must not
+  // swing the view or the gait from tick to tick; the tools' records already carry it as vx
+  const vx = _wanNum(ent.svx) ? ent.svx : _wanNum(ent.vx) ? ent.vx : 0, vz = _wanNum(ent.svz) ? ent.svz : _wanNum(ent.vz) ? ent.vz : 0, sp = Math.hypot(vx, vz);
   if (sp > _WAN_MOVE_OUT) return { deg: Math.atan2(vx, vz) / _WAN_DEG, moving: true };
   if (ent.anim && _wanNum(ent.anim.face)) return { deg: ent.anim.face, moving: false };
   if (_wanNum(ent.facing)) return { deg: ent.facing, moving: false };
@@ -369,6 +371,9 @@ function _wanUpdate(world, e, dt, clock) {
   an.obj = _wanPoseObj(e.obj, tg.kind, tg.pose, onBench);
   // views with hysteresis (the camera's angle), skipped while culled (a culled agent keeps its last view)
   if (world && world.cam && !e.culled) { const v = worldViewOf(e, world.cam, { prev: an.view, prevMirror: an.mirror }); if (v) { an.view = v.view; an.mirror = v.mirror; an.persp = v.persp; } }
+  // the gait the legs are drawn with (worldAnimGait): the frame record carries it, so the checker (walkInPlace) judges what is DRAWN
+  if (tg.state === 'move' && (tg.clip === 'walk' || tg.clip === 'run' || tg.clip === 'trot')) { const G = worldAnimGait(e, an, { view: an.view }); an.gait = { fs: G.fs, swing: G.swing, lift: G.lift, plane: G.plane }; }
+  else an.gait = null;
   return an;
 }
 
@@ -589,6 +594,35 @@ function worldAnimOf(ent, world) {
   return _wanSnapshot(ent, world || null);
 }
 
+/* ---------- the gait: legs foreshortened by the angle to the eye (18 Oct, "people walking in place") ---------- */
+/**
+ * How a walk cycle is drawn for the angle the walker is seen at. A leg swing drawn in the picture plane is what a walker seen SIDE-ON
+ * shows; seen end-on (walking toward or away from the eye) the legs swing in depth: the eye sees each foot lift and fall in turn, the
+ * body sway from foot to foot and bob twice a stride, and the figure grow or shrink. The art carries its own foreshortening for the
+ * views it has (a front view's legs swing 3.5 degrees, a side view's 22), so the swing is scaled only by what the DRAWN view lacks: a
+ * side-only figure (the elderly walker, the shopper ...) walking down the line of sight swings its legs by |sin rel| of the art's
+ * swing instead of striding sideways on the spot. lift, sway: 0..1 (end-on 1), in units of WORLD_ANIM_GAIT x the art's height.
+ *   worldAnimGait(ent, an, o) -> { fs, view, swing, plane, lift, sway, bob, artH }   o: { obj (the drawn object), view (the drawn view) }
+ * plane: the share of a full side-on swing that is drawn in the picture plane (swing x the art's own foreshortening; a front view's
+ * 3.5 degrees is 0.16 of a side view's 22)
+ */
+const WORLD_ANIM_GAIT = Object.freeze({ lift: 0.05, sway: 0.014, bob: 0.8, min: 0.2 });
+const _WAN_ART_FS = Object.freeze({ side: 1, 'q-front': Math.SQRT1_2, 'q-back': Math.SQRT1_2, front: 0, back: 0 });
+function worldAnimGait(ent, an, o) {
+  o = o || {};
+  let fs = 1;
+  if (ent && _wanNum(ent.x) && _wanNum(ent.z)) {
+    const fc = _wanFacing(ent), bearing = Math.atan2(ent.x, Math.max(1e-3, ent.z)) / _WAN_DEG;
+    fs = Math.abs(Math.sin(_wan180(fc.deg - bearing) * _WAN_DEG));
+  }
+  const view = o.view || (an && an.view) || (ent && ent.view) || 'side', artFs = _WAN_ART_FS[view] != null ? _WAN_ART_FS[view] : 1;
+  const swing = artFs > 0.3 ? _wanClamp(fs / artFs, WORLD_ANIM_GAIT.min, 1) : 1, fb = 1 - Math.min(1, fs);
+  let artH = 64;
+  const obj = o.obj || (ent && ent.obj);
+  if (typeof sceneObj === 'function' && obj) { try { const d = sceneObj(obj); if (d && Array.isArray(d.size) && d.size[1] > 0) artH = d.size[1]; } catch (e) { /* 64 */ } }
+  return { fs: _wanR(fs, 3), view, swing: _wanR(swing, 3), plane: _wanR(swing * Math.max(artFs, 0.16), 3), lift: _wanR(fb, 3), sway: _wanR(fb, 3), bob: _wanR(1 + WORLD_ANIM_GAIT.bob * fb, 3), artH };
+}
+
 /* ---------- hooks (the v2 AnimHooks the renderer draws with) ---------- */
 /** The preset of sceneBehave.hooks for a body kind (objects without hooks of their own). */
 function _wanBehaveHooks(kind, obj) {
@@ -640,13 +674,18 @@ function worldAnimHooks(ent, t, o) {
   const mv = an.state === 'move', blendU = _wanEase(an.blend == null ? 1 : an.blend);
   const legPer = an.legPeriod || an.period || 1, legPh = _wanFrac(an.cyc - (an.t || 0) / legPer);
   const flying = an.pose === 'fly', still = an.state === 'sit' || an.state === 'lie' || an.state === 'stopped';
+  const legged = kind === 'person' || kind === 'dog' || kind === 'grazer' || kind === 'walkbird';
+  let gait = null;
   base.forEach((h, i) => {
     const k0 = h.k == null ? 1 : h.k, ph = _wanFrac((h.phase || 0) + an.phase + i * 0.37);
     switch (h.kind) {
       case 'walk': {
-        // legs: the stride period from the speed (A6); still when seated, lying or stopped (M1); eased in and out (M7)
-        const k = still ? 0 : an.k;
-        out.push(Object.assign({}, h, { period: legPer, phase: legPh, k: k0 * k, bob: (h.bob == null ? 1.5 : h.bob) * k, fs: ent.view === 'front' || ent.view === 'back' ? 0.3 : 1 }));
+        // legs: the stride period from the speed (A6); still when seated, lying or stopped (M1); eased in and out (M7); FORESHORTENED by
+        // the real angle to the line of sight (worldAnimGait): a walker coming toward the eye lifts its feet in turn, sways and bobs instead
+        // of scissoring its legs in the picture plane (18 Oct: side-only art walking toward the camera read as walking on the spot)
+        const k = still ? 0 : an.k, G = gait || (gait = worldAnimGait(ent, an, { obj, view: o.view }));
+        out.push(Object.assign({}, h, { period: legPer, phase: legPh, k: k0 * k, deg: (h.deg || 22) * G.swing, bob: (h.bob == null ? 1.5 : h.bob) * k * G.bob,
+          lift: G.lift * G.artH * WORLD_ANIM_GAIT.lift * k, sway: G.sway * G.artH * WORLD_ANIM_GAIT.sway * k, fs: G.fs }));
         break;
       }
       case 'paddle': {
@@ -663,6 +702,9 @@ function worldAnimHooks(ent, t, o) {
       }
       case 'flap': out.push(Object.assign({}, h, { period: (h.period || 0.4) * mult, phase: ph, k: k0 * (flying ? blendU : 0) })); break;
       case 'bob': {
+        // a quick bob on a legged body (a dog's front view, the dog of a dog-walker: periods under a second) is its GAIT: it bobs twice a
+        // stride while it moves and never while it stands (18 Oct: a standing dog seen head-on bobbed at 3.6 Hz, trotting on the spot)
+        if (legged && (h.period || 1) < 1) { out.push(Object.assign({}, h, { period: legPer / 2, phase: _wanFrac(2 * legPh), k: still || !mv ? 0 : k0 * an.k })); break; }
         const k = (kind === 'vehicle' || kind === 'rail') ? (mv ? 1 : an.idling ? 0.2 : 0) : kind === 'boat' ? (mv ? 1 : 0.35) : mv ? 1 : 0.5;
         if (kind === 'boat' && Math.abs(rock) > 0.05) out.push({ kind: 'paddle', part: h.part || '*', parts: h.parts, dy: (h.dy || 1) * k, deg: rock, period: 1e9, phase: _WAN_ROCK_PH });
         else out.push(Object.assign({}, h, { period: (h.period || 1) * mult, phase: ph, k: k0 * k }));

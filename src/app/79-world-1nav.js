@@ -538,6 +538,8 @@ function worldNavBuild(world, o) {
     wet.push(sh);
     if (!lowHosts.has(e)) ground.push(sh);                                                 // a low deck replaces its host's solid for walkers
   }
+  // an overhead body on solid legs (a viaduct: the deck and the arches pass over everything, its piers do not): each leg cuts the ground
+  for (const e of ents) if (Array.isArray(e.legs)) for (const poly of e.legs) { const sh = { poly, ent: e }; wet.push(sh); ground.push(sh); }
   // extruded buildings are solid to everything that walks, swims or drives: their footprints cut the ground like any solid (a house standing proud
   // of a lane's edge by 30 cm, a terrace beside a pavement): people never walk through a wall the extruder drew (SCENE_LESSONS L)
   for (const b of world.buildings || []) if (b && Array.isArray(b.foot) && b.foot.length >= 3) { const sh = { poly: b.foot }; wet.push(sh); ground.push(sh); }

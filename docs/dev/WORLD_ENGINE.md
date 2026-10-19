@@ -153,7 +153,7 @@ Buildings (Q3): `buildings: [{ id, foot: [[x, z]], storeys | h, roof, style }]`,
 ### 1.5 Terrain (W2)
 
 The ground height `h(x, z)` is defined everywhere in view: the v2 relief grid (`ground.relief`) plus authored features
-`ground.features: [{ kind: 'bank' | 'embankment' | 'cutting', path, width, h }]` compiled into it. A grounded thing stands at `h`,
+`ground.features: [{ kind: 'bank' | 'embankment' | 'cutting' | 'slope', path, width, h }]` compiled into it (a `slope` is a hill street: the ground rises `h` m along its path, level beyond both ends, SCENE_LESSONS AA). A grounded thing stands at `h`,
 a decked thing at its deck, a floater at the water level less its sink, a wader at the water level, a flyer at its altitude.
 Nothing is placed through the ground or floating above it (invariant `floating`).
 
@@ -287,6 +287,26 @@ thing drawn in many pieces (a boat in slices, a bridge, a viaduct, a reed stand)
   train windows): windows by a per-window seeded threshold against the sun's elevation (`worldKbState` lit share), lamps with
   pools of light on the ground beneath, the moon's glitter on water.
 - Weather light: overcast flattens shadows, fog hazes by depth, rain darkens and wets (materials).
+- How a night frame is composed (the night-light audit of 18 Oct; SCENE_LESSONS AC; `tests/world-night.test.mjs`). One rule per layer, so
+  nothing is tuned per scene:
+  1. Sky and key: `worldSkyOf` (almanac sun and moon, `dark`, `nightKey`: foliage sinks to silhouettes, pale materials catch the key by their
+     own lightness), the v2 base sky and stars.
+  2. Sources: library glow parts only (`worldLights`: lamps with one pool each, vehicle lamps while moving, signs) and the lamps a generated
+     building carries (`direct.lamps` from the generator's lantern blocks, `worldBuildingLamps`). A lamp switches by its seeded photocell (-1
+     to +2 degrees), a lantern with its building's glass (under 2 degrees).
+  3. Window light: lit SURFACES, never sources. A library sprite's panes by `worldGlowOn` (a seeded threshold per pane; a glow path of many
+     panes is split per pane, `_wlGlowPanes`); a generated building's panes by `worldBuildingGlassOn` (per building and pane bucket a seeded
+     switch-on elevation, then the hour's share; shop glass keeps shop hours). The lit pane IS the generator's glass shape (set back in the
+     reveal, clipped to the opening), dimmed on walls seen edge-on (`gk`), with the day streak dropped on it (`dt`). Chunks are keyed by the
+     lit set (`_wfrChunkLit`, buildings included), so windows come on and go out during a session.
+  4. Glows: halos round sources (`worldLightDraws`, capped); a lantern's glow is one radial gradient (`soft`), never stacked discs.
+  5. Light on the ground: one soft additive pool per lamp or lantern, under every chunk, cut off the water.
+  6. Light on movers: `worldLocalLight` at the feet over the lit pools (steps of 0.1, at most 0.6) adds the material's own colour times the
+     lamp's (`_wmtLamp`); the checker's own records take the same light.
+  7. Reflections: the water mirrors the composite, lit glass included; the moon's glitter road when it is up.
+  8. Shadows: none from a sun below the horizon; contact shadows stay.
+  9. Defaults a real place has: a lit kit stands a street lamp within 45 m (`_wflStreetLight`); gulls and pigeons roost after dark.
+  The pixel check judges the picture (`worldLitPixels`; `nightLight`: lit pixels after dusk, no lamp and no generated pane lit with the sun up).
 - The scene has NO light key. The validator rejects `grade`, `light`, `tint`, `exposure`, `ambient`, `shadow`, `reflect`,
   `mirror`, `ripple`, `glint`, `colour` anywhere (L3); library parts named as shadows or reflections are never drawn.
 
@@ -841,6 +861,19 @@ from what the entity is DOING, never from a timer:
 - Drawing: the renderer draws an agent's sprite with the v2 animation hooks of its state (`worldAnimHooks`: `sceneBehave.hooks`
   and `sceneBehave.stride` periods), so limbs move at the speed the agent travels.
 - Frame-rate independence (M8): all motion uses scene time from the runner (11.3).
+- The gait (`worldAnimGait`, 18 Oct): a walk cycle is drawn for the angle the walker is seen at. `fs = |sin rel|` (rel: its heading
+  against the line of sight). The art's own swing is scaled only by what the DRAWN view lacks (a side-only figure walking down the
+  line of sight swings `fs` of its side swing, never a sideways stride on the spot); end-on (`1 - fs`) each foot LIFTS in turn
+  (`lift`, 5 % of the art height), the body sways from foot to foot (`sway`, 1.4 %) and bobs up to 1.8 x. `sceneAnimPose` takes
+  `lift` and `sway` on a walk hook (absent: exactly the old pose). The anim record carries `gait: { fs, swing, plane, lift }` so the
+  checker judges what is drawn. A walker under the LOD (14 device px, limbs not drawn) keeps a whole-figure step bob of at least
+  `WORLD_FRAME_LOD_BOB` (0.7 px). A quick body bob on a legged animal (a dog's front view) is its gait: twice a stride while it
+  moves, never while it stands.
+- What the legs follow is what the body did (life, 18 Oct): the velocity is measured AFTER the separation pass and the last leash
+  (`_wlfTrueV`), the shown speed never exceeds the ground covered over the last 4 ticks (`_wlfShownCap`: a body shaken to and fro
+  shows no walk), a walker held by a queue or a taut lead below 0.25 m/s stands and sets off again at 0.4 (`WORLD_LIFE_CREEP`), a
+  walker's arrival eases to 0.6 of its pace (never a crawl), a group member walks with its moving leader by velocity matching, and a
+  free walker that makes under 35 % of the way it wanted is stuck (it re-plans) even when it slides along a wall.
 
 ## 14. Perspective is automatic (Q1-Q7, W5)
 
@@ -994,6 +1027,7 @@ violation is `{ rule, req, id, msg }`; the count must be zero.
 | `popping`, `stuck` | appear and vanish only at spawn cells; no progress for 10 s outside an idle goal | A3, A4 |
 | `slidingFeet`, `facing`, `laneDir` | stride vs speed, view vs velocity, lanes on the left | A5, A6, A9 |
 | `animStill`, `stillMoving`, `staticAnim` | animating while still, still while moving, statics animating | M1, M2 |
+| `walkInPlace` | walking on the spot, judged from the record's POSITIONS and boxes over 0.5 s (never the shown velocity the legs are made from): legs cycling (walk, run, trot, k >= 0.3, drawn 14 px or taller) while the body is held (< 0.15 m/s: `held`), while the feet pace out over twice the ground covered (`slip`), or while the figure moves on screen under a quarter of its height a stride for every full side-on swing it draws (drawn swing = `k x plane`, judged when over 0.3; no gait at all counts as a full side-on swing: `flat`). 0.6 s grace (M7). Shared classifier `worldWalkInPlace(m, h, t)`, thresholds `WORLD_INPLACE` | A6, M1, Q4 |
 | `clones`, `windDir` | synchronised phases, sway against the wind | M4, M3 |
 | `order` | `worldOrderCheck` = 0 | R1, R2 |
 | `landmark`, `bare` | landmark face visible, no bare region > 15 % | C4, C6 |
@@ -1016,6 +1050,7 @@ with zero invariant violations, and carry a load log that explains every fix.
 | `render <ref>` | PNGs on the real renderer |
 | `sheet <ref> [--matrix] [--sizes]` | dates x times x sizes on one sheet; `--matrix` = 4 seasons x 5 times x 3 weathers |
 | `motion <ref>` | paths, footprints and violations over the still |
+| `inplace <ref> [--browser]` | walking in place measured on what is drawn (tools/lib/world/inplace.mjs): per person per frame the ground and screen speed, clip, view and gait; the share of person-time, the causes (pinch yield, pushed back, group follower, taut lead, queue, sidestep, a side-only figure seen end-on, an end-on view) and the worst offenders; `--browser` reads the frames the real page drew |
 | `capture <ref> --full` | the WHOLE loop as a frame strip, not just 20 s |
 | `critic <ref> [--against <ref>]` | richness, emptiness and framing scores (and against a source) |
 | `compare <v3> <original>` | side by side at 3 dates x 5 times |

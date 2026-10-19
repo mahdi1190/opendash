@@ -520,7 +520,8 @@ function _wplInKeep(world, e, foot) {
 }
 // ... and any other solid static (a fallen log is class 'cover': it lay across the towpath, 15 Oct audit); walkways, weirs and boats
 // are where people walk or float, never moved off a walking line
-const _wplOffline = (info, e) => !e.landmark && e.blocks !== true && (_WPL_OFFLINE.includes(info.cls) || (info.solidity === 'solid' && !['walkway', 'weir', 'boat', 'landmark', 'rail-kit', 'train', 'tram'].includes(info.cls))) && !/^(deck|wall|air)/.test(String(e.attach || ''));
+// an overhead thing (a viaduct, a bridge, a lychgate) has the path under it: it never blocks one
+const _wplOffline = (info, e) => !e.landmark && e.blocks !== true && info.solidity !== 'overhead' && (_WPL_OFFLINE.includes(info.cls) || (info.solidity === 'solid' && !['walkway', 'weir', 'boat', 'landmark', 'rail-kit', 'train', 'tram'].includes(info.cls))) && !/^(deck|wall|air)/.test(String(e.attach || ''));
 
 /* ---------- the near band for statics (bug 4): a non-framing plant at the lens is a giant blob over the frame ---------- */
 const _wplFramed = e => !!(e && (e.framed === true || e.framing === true || e.auto === 'frame' || e.landmark));

@@ -122,6 +122,32 @@ const ANIM_PACK_CSS_MAX_BYTES = 24000;
 const _ANIM_ID_RE = /^[a-z0-9][a-z0-9-]{0,47}$/;
 const _animPacks = new Map();     // id -> frozen pack {id, name, ..., items:[item]}
 const _animRefs = new Map();      // 'pack/item' -> item
+/* Retired items: the basic hand-drawn place studies of the South East pack (90 scenes: one flat landmark on a generic hill or shore, nothing like the
+   Yateley, Fleet, Whitby or York standard). They stay in their files so a refresh can bring one back; the registry drops them, so no picker, gallery,
+   catalogue or saved choice shows them (a saved ref to one falls back like any missing ref). Removed at the user's request, 18 Oct 2026. */
+const ANIM_RETIRED_SOUTH_EAST = new Set([
+  'berkshire-dorney-rowing', 'berkshire-eton-mess', 'berkshire-hocktide', 'berkshire-hungerford-canal', 'berkshire-hungerford-canal-2',
+  'berkshire-maidenhead-bridge', 'berkshire-maidenhead-bridge-2', 'berkshire-windsor-castle', 'buckinghamshire-aylesbury-ducks',
+  'buckinghamshire-bletchley-park', 'buckinghamshire-ivinghoe-beacon', 'buckinghamshire-ivinghoe-beacon-2', 'buckinghamshire-olney-pancake-race',
+  'buckinghamshire-stowe-bridge', 'buckinghamshire-stowe-bridge-2', 'buckinghamshire-waddesdon-manor', 'east-sussex-cuckmere-haven',
+  'east-sussex-cuckmere-haven-2', 'east-sussex-hastings-catch', 'east-sussex-jack-in-the-green', 'east-sussex-net-shops', 'east-sussex-royal-pavilion',
+  'east-sussex-royal-pavilion-2', 'east-sussex-seven-sisters', 'greater-london-borough-market', 'greater-london-greenwich-observatory',
+  'greater-london-kew-palm-house', 'greater-london-kew-palm-house-2', 'greater-london-regents-canal', 'greater-london-st-pauls',
+  'greater-london-st-pauls-2', 'greater-london-totally-thames', 'greater-london-tower-bridge', 'greater-london-wimbledon-grass',
+  'isle-of-wight-cowes-sailing', 'isle-of-wight-freshwater-bay', 'isle-of-wight-freshwater-bay-2', 'isle-of-wight-garlic-festival',
+  'isle-of-wight-mersley-garlic', 'isle-of-wight-needles', 'isle-of-wight-osborne', 'isle-of-wight-osborne-2', 'kent-brogdale-orchards',
+  'kent-canterbury-cathedral', 'kent-chatham-slips', 'kent-deal-castle-beach-evening', 'kent-deal-castle-courtyard', 'kent-deal-castle-dry-moat',
+  'kent-deal-castle-sea-front', 'kent-dover-castle-channel-ramparts', 'kent-dover-castle-inner-bailey', 'kent-dover-castle-roman-pharos',
+  'kent-dover-castle-winter-approach', 'kent-hop-harvest', 'kent-leeds-castle', 'kent-leeds-castle-2', 'kent-rochester-castle-castle-gardens',
+  'kent-rochester-castle-medway-keep', 'kent-rochester-castle-open-keep', 'kent-rochester-castle-river-evening', 'kent-walmer-castle-broadwalk',
+  'kent-walmer-castle-castle-lawns', 'kent-walmer-castle-kitchen-garden', 'kent-walmer-castle-reflecting-pool', 'kent-white-cliffs',
+  'kent-white-cliffs-2', 'oxfordshire-bampton-morris', 'oxfordshire-banbury-cakes', 'oxfordshire-blenheim-palace', 'oxfordshire-blenheim-palace-2',
+  'oxfordshire-henley-rowing', 'oxfordshire-radcliffe-camera', 'oxfordshire-uffington-horse', 'oxfordshire-uffington-horse-2', 'surrey-box-hill',
+  'surrey-brooklands-banking', 'surrey-denbies-vines', 'surrey-frensham-pond', 'surrey-frensham-pond-2', 'surrey-leith-hill', 'surrey-leith-hill-2',
+  'surrey-shere-gardens', 'west-sussex-ardingly-show', 'west-sussex-arundel-castle', 'west-sussex-chichester-cathedral',
+  'west-sussex-chichester-cathedral-2', 'west-sussex-goodwood-circuit', 'west-sussex-nutbourne-vines', 'west-sussex-west-wittering',
+  'west-sussex-west-wittering-2',
+]);
 const _animMoved = new Map();     // an old 'pack/item' ref -> the current ref (a pack's movedFrom: its items once lived in those packs)
 
 function _animList(v) { return v === 'any' || v == null ? 'any' : (Array.isArray(v) ? v : [v]); }
@@ -178,7 +204,9 @@ function animRegisterPack(p) {
   if (old) for (const it of old.items) _animRefs.delete(it.ref);
   // scene engine v2 (V2 14.3): the pack's recipes take the place of the items they supersede, in every kind of pack
   const src = typeof sceneRecipeSupersede === 'function' ? sceneRecipeSupersede(p.id, p.items) : p.items;
-  const items = src.map(it => Object.freeze(Object.assign({}, it, {
+  // (retired items: dropped here, before anything reads the pack)
+
+  const items = src.filter(it => !(p.id === 'uk-south-east' && ANIM_RETIRED_SOUTH_EAST.has(it.id))).map(it => Object.freeze(Object.assign({}, it, {
     pack: p.id, ref: p.id + '/' + it.id, tags: it.tags.slice(), theme: _animList(it.theme), season: _animList(it.season), region: _animList(it.region),
     colour: it.colour || 'blue',
   })));

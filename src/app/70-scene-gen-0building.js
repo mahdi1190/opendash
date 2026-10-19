@@ -216,10 +216,13 @@ function _scbgPersp(cam) {
   return { ortho: false, cam: c, near, eye: c.eye,
     P: w => [c.x0 + c.f * w[0] / Math.max(near * 0.999, w[2]), c.horizon + c.f * (c.eye - w[1]) / Math.max(near * 0.999, w[2])],
     sees: (n, w) => n[0] * -w[0] + n[1] * (c.eye - w[1]) + n[2] * -w[2] > 1e-6,
+    // the cosine between a face's outward normal and the line to the eye (1 face-on, 0 edge-on): a lit pane on a wall the eye meets at a
+    // grazing angle is a sliver of the reveal, never a bright bar (the night-light audit, 18 Oct)
+    facing: (n, w) => { const dx = -w[0], dy = c.eye - w[1], dz = -w[2], l = Math.hypot(dx, dy, dz) || 1; return (n[0] * dx + n[1] * dy + n[2] * dz) / l; },
     px: (hm, w) => c.f * hm / Math.max(near, w[2]) };
 }
 function _scbgOrtho(upm) {
-  return { ortho: true, near: -Infinity, eye: 1.65, P: w => [w[0] * upm, -w[1] * upm], sees: n => n[2] < -1e-6, px: hm => hm * upm };
+  return { ortho: true, near: -Infinity, eye: 1.65, P: w => [w[0] * upm, -w[1] * upm], sees: n => n[2] < -1e-6, facing: () => 1, px: hm => hm * upm };
 }
 
 /* ---------- the model: footprint, walls, roof, protrusions ---------- */
@@ -508,18 +511,24 @@ const _scbgLayouts = {
  * and bars, 6 sills and lintels, 7 doors and details), flushed in layer order, same paint merged into one path within a layer
  * (elements of one layer never overlap). Glass is never merged in elevation (each pane switches on alone at night).
  */
+/** The stops of a soft glow (peak alpha a at the centre, a smooth (1 - u)^2.4 fall to 0 at the rim; 9 stops: no visible step). */
+function _scbgSoftStops(col, a) {
+  const out = [];
+  for (let i = 0; i <= 8; i++) { const u = i / 8, v = a * Math.pow(1 - u, 2.4); out.push([u, col, Math.round(v * 1000) / 1000]); }
+  return out;
+}
 function _scbgSink(opt) {
-  const shapes = [], lit = [], snow = [];
+  const shapes = [], lit = [], snow = [], lamps = [];
   let cur = null;
   const api = {
-    shapes, lit, snow, count: 0,
+    shapes, lit, snow, lamps, count: 0,
     begin(n) { cur = new Map(); api.nrm = !opt.ortho && Array.isArray(n) ? n.map(v => Math.round(v * 100) / 100) : null; },   // n: the face's outward normal, stamped on its shapes so the world can light them by the real sun (79-world-4suntone.js)
     add(layer, sh) {
       if (!sh || !sh.d) return;
       if (sh.part === 'lit') { lit.push(Object.assign({}, sh, { layer })); return; }
       if (sh.part === 'snow') { snow.push(Object.assign({}, sh, { layer })); return; }
       if (api.nrm && sh.n == null) sh = Object.assign({}, sh, { n: api.nrm });
-      const key = layer + '|' + (sh.part || '') + '|' + (typeof sh.f === 'string' ? sh.f : JSON.stringify(sh.f)) + '|' + (sh.op == null ? 1 : sh.op) + '|' + (sh.glow || '') + '|' + (sh.theta == null ? '' : sh.theta) + '|' + (sh.detail ? 1 : 0);
+      const key = layer + '|' + (sh.part || '') + '|' + (typeof sh.f === 'string' ? sh.f : JSON.stringify(sh.f)) + '|' + (sh.op == null ? 1 : sh.op) + '|' + (sh.glow || '') + '|' + (sh.theta == null ? '' : sh.theta) + '|' + (sh.detail ? 1 : 0) + '|' + (sh.gk == null ? '' : sh.gk) + '|' + (sh.dt == null ? '' : sh.dt);
       const noMerge = sh.glow && opt.ortho;
       let L = cur.get(layer); if (!L) cur.set(layer, (L = new Map()));
       const k = noMerge ? key + '|' + L.size : key;
@@ -562,6 +571,19 @@ function _scbgRoofTex(face, ctx) {
   // slate or tile courses: a few lines parallel to the eave (the first edge of the plane), only near
   const P = face.poly, a = P[0], b = P[1], c = P[P.length - 1], m = Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]);
   if (m < 0.5 || P.length < 3) return;
+  // THATCH (a style's roofMat.kind): no tile courses but dense, ragged, wide bands of straw (two tones), laid up the pitch; the generator's own face colour is the straw
+  if (ctx.sp && ctx.sp.style && ctx.sp.style.roofMat && ctx.sp.style.roofMat.kind === 'thatch' && P.length >= 4) {
+    const nT = Math.min(34, Math.floor(m / 0.26)), lo = [], hi = [];
+    for (let i = 1; i < nT; i++) {
+      const t = i / nT, j = ((Math.sin(i * 12.9898 + m * 3.1) * 43758.5453) % 1 + 1) % 1, tt = Math.max(0.02, Math.min(0.98, t + (j - 0.5) * 0.35 / nT));
+      const p = _scbgAdd(a, _scbgMul([c[0] - a[0], c[1] - a[1], c[2] - a[2]], tt)), q = _scbgAdd(b, _scbgMul([P[2][0] - b[0], P[2][1] - b[1], P[2][2] - b[2]], tt)), up = _scbgMul(_scbgNorm([c[0] - a[0], c[1] - a[1], c[2] - a[2]]), 0.07 + 0.05 * j);
+      const cl = _scbgClipNear([p, q, _scbgAdd(q, up), _scbgAdd(p, up)], ctx.view.near);
+      if (cl) (i % 3 === 0 ? hi : lo).push(_scbgPath(cl.map(ctx.view.P)));
+    }
+    if (lo.length) ctx.sink.add(1, { f: _scbgDark(face.col, 0.34), d: lo.join(''), op: 0.5, part: 'roof', detail: true });
+    if (hi.length) ctx.sink.add(1, { f: _scbgLight(face.col, 0.28), d: hi.join(''), op: 0.5, part: 'roof', detail: true });
+    return;
+  }
   const n = Math.min(14, Math.floor(m / 0.45)), segs = [];
   for (let i = 1; i < n; i++) {
     const t = i / n, p = _scbgAdd(a, _scbgMul([c[0] - a[0], c[1] - a[1], c[2] - a[2]], t)), q = _scbgAdd(b, _scbgMul([P[2][0] - b[0], P[2][1] - b[1], P[2][2] - b[2]], P.length === 3 ? t * 0 : t));
@@ -736,6 +758,16 @@ function _scbgTexture(kind, e, face, ctx, col) {
     tone = _scbgDark(col, 0.2); op = 0.3;
   } else return;
   if (segs.length) sink.add(1, { f: tone, d: segs.join(''), op, part: 'body', detail: true });
+  // old brick is never one flat tone: patches of repointing and of weathered or sooty brick, long and low like courses (seeded per wall)
+  if (kind === 'brick' && z1 > 1.5 && sp.style && sp.style.wall && sp.style.wall.patches) {   // opt-in (wall.patches)
+    const area = (s1 - s0) * (z1 - z0), n = Math.max(3, Math.min(22, Math.round(area / 14))), dk = [], lt = [];
+    for (let i = 0; i < n; i++) {
+      const w = 0.9 + r() * 2.6, h = 0.3 + r() * 0.9, s = s0 + r() * Math.max(0.1, s1 - s0 - w), z = z0 + 0.4 + r() * Math.max(0.1, z1 - z0 - h - 0.5);
+      const p = _scbgRect(pl, view, s, z, w, h, 0.004); if (p) (r() < 0.55 ? dk : lt).push(_scbgPath(p));
+    }
+    if (dk.length) sink.add(1, { f: _scbgDark(col, 0.3), d: dk.join(''), op: 0.17, part: 'body', detail: true });
+    if (lt.length) sink.add(1, { f: _scbgLight(col, 0.16), d: lt.join(''), op: 0.15, part: 'body', detail: true });
+  }
 }
 /** The window kind at night for element e (seeded): 'window' warm, 'curtain' drawn curtains, 'tv' a blue room. */
 function _scbgGlowOf(sp, e, face) {
@@ -749,10 +781,12 @@ function _scbgDrawWin(e, face, ctx, T) {
   const shade = _scbgFaceShade(face, ctx);
   const gl = _scbgGlowOf(sp, e, face), glassCol = _scbgMix(sp.glass, '#9fb0c0', gl.refl * 0.22);
   const outline = _scbgOpening(e);
+  // gk: how much of its light a lit pane shows from here (0.25 steps, so panes still merge): full face-on, none edge-on (under about 10 degrees)
+  const fc = view.facing && face.n ? view.facing(face.n, _scbgOn(pl, e.s + e.w / 2, e.z + e.h / 2, 0)) : 1, gk0 = Math.round(Math.max(0, Math.min(1, (fc - 0.17) / 0.25)) * 4) / 4, gk = gk0 >= 1 ? undefined : gk0;
   if (T === 0) {
     const p = _scbgMap(pl, view, outline, 0);
     if (p && ctx.debug) ctx.debug.windows.push({ edge: face.edge, role: face.role, quad: p, theta: gl.theta, kind: gl.kind, tier: 0 });
-    if (p) sink.add(4, { f: glassCol, d: _scbgPath(p), op: 0.85, part: 'body', glow: gl.kind, theta: gl.theta });
+    if (p) sink.add(4, { f: glassCol, d: _scbgPath(p), op: 0.85, part: 'body', glow: gl.kind, theta: gl.theta, gk });
     return;
   }
   const open = _scbgMap(pl, view, outline, 0);
@@ -767,17 +801,22 @@ function _scbgDrawWin(e, face, ctx, T) {
   let glass = open;
   if (T >= 2 && !view.ortho && e.recess > 0.02) { const g = _scbgMap(pl, view, _scbgOpening(e, 0.02), -e.recess); glass = g ? _scbgClip2(g, open) || open : open; }
   else if (T >= 2 && view.ortho && !e.glassOnly) glass = _scbgMap(pl, view, _scbgOpening(Object.assign({}, e, { h: e.h - 0.06 }), 0.03), 0) || open;
-  sink.add(4, { f: glassCol, d: _scbgPath(glass), op: 1, part: 'body', glow: e.shopGlass ? 'shop' : gl.kind, theta: gl.theta });
+  sink.add(4, { f: glassCol, d: _scbgPath(glass), op: 1, part: 'body', glow: e.shopGlass ? 'shop' : gl.kind, theta: gl.theta, gk });
   if (T >= 3 && e.type !== 'curtain' && !e.glassOnly) {
     // a sky reflection across the upper panes, and curtains at the sides (by day)
-    const rf = _scbgMap(pl, view, [[e.s + e.w * 0.1, e.z + e.h * 0.55], [e.s + e.w * 0.55, e.z + e.h * 0.92], [e.s + e.w * 0.85, e.z + e.h * 0.92], [e.s + e.w * 0.3, e.z + e.h * 0.55]], -e.recess * 0.9);
-    if (rf) sink.add(5, { f: '#c8d6e2', d: _scbgPath(rf), op: 0.18, part: 'body', detail: true });
+    let rf = _scbgMap(pl, view, [[e.s + e.w * 0.1, e.z + e.h * 0.55], [e.s + e.w * 0.55, e.z + e.h * 0.92], [e.s + e.w * 0.85, e.z + e.h * 0.92], [e.s + e.w * 0.3, e.z + e.h * 0.55]], -e.recess * 0.9);
+    if (rf && !view.ortho && e.recess > 0.02 && wn.clipBars) rf = _scbgClip2(rf, open);   // the sky's streak lies on the glass in the recess: cut to the opening
+    // dt: the sky's streak is a DAY reflection: not drawn over the pane once it is lit (a lit room outshines the sky)
+    if (rf) sink.add(5, { f: '#c8d6e2', d: _scbgPath(rf), op: 0.18, part: 'body', detail: true, dt: gl.theta });
     if (gl.kind === 'curtain') { const cw = e.w * 0.18, cc = ['#c9b48a', '#8a5a4a', '#d8d0c0', '#6a7a8a'][sp.seed % 4]; for (const s of [e.s + 0.06, e.s + e.w - 0.06 - cw]) { const p = _scbgMap(pl, view, [[s, e.z + 0.08], [s + cw, e.z + 0.08], [s + cw, e.z + Math.min(e.h - 0.1, e.h * 0.92)], [s, e.z + Math.min(e.h - 0.1, e.h * 0.92)]], -e.recess * 0.8); if (p) sink.add(5, { f: cc, d: _scbgPath(p), op: 0.85, part: 'body', detail: true }); } }
   }
   if (T >= 2 && e.type !== 'curtain') {
     // frame and glazing bars (as thin quads on the glass plane), by window type
     const fr = e.frame || (e.type === 'metal' ? '#2e3236' : sp.frame), o = view.ortho ? 0 : -e.recess * 0.95, segs = [];
-    const bar = (sa, za, sb, zb) => { const p = _scbgMap(pl, view, [[sa, za], [sb, za], [sb, zb], [sa, zb]], o); if (p) segs.push(_scbgPath(p)); };
+    // the bars lie in the recess, so in perspective they shift against the opening: seen along a deep reveal they would hang outside the window (a grid of dark
+    // lines to the side of every pane); they are cut to the opening, as the glass is
+    const clipBars = !view.ortho && e.recess > 0.02 && !!wn.clipBars;   // opt-in (win.clipBars): a style that turns it on changes its compiled output
+    const bar = (sa, za, sb, zb) => { let p = _scbgMap(pl, view, [[sa, za], [sb, za], [sb, zb], [sa, zb]], o); if (p && clipBars) p = _scbgClip2(p, open); if (p) segs.push(_scbgPath(p)); };
     const s = e.s, z = e.z, w = e.w, h = e.h, t = e.type === 'metal' ? 0.035 : 0.055;
     const top = e.head === 'round' ? h - w / 2 : e.head === 'seg' ? h - 0.12 : h;
     bar(s, z, s + w, z + t); bar(s, z, s + t, z + top); bar(s + w - t, z, s + w, z + top);
@@ -1091,7 +1130,15 @@ function _scbgBuild(b, sp, foot, view, opt) {
     for (const f of bl.faces) {
       if (f.part === 'lit') {
         // canopy lamps: small lit squares (night only)
-        for (const p of f.poly) { const q = view.P(p); if (p[2] < view.near) continue; const r = view.ortho ? 3 * ((f.rad || 0.14) / 0.14) : Math.max(0.6, view.px(f.rad || 0.14, p)); ctx.sink.lit.push({ f: f.col && f.rad ? f.col : SCENE_GEN_NIGHT.lamp, d: _scbgPath(f.round ? (n => Array.from({ length: n }, (_, k) => [q[0] + r * Math.cos(k * 2 * Math.PI / n), q[1] + r * Math.sin(k * 2 * Math.PI / n)]))(Math.max(12, Math.min(40, Math.round(r * 0.9)))) : [[q[0] - r, q[1] - r], [q[0] + r, q[1] - r], [q[0] + r, q[1] + r], [q[0] - r, q[1] + r]]), op: f.op == null ? 1 : f.op, part: 'lit' }); }
+        for (const p of f.poly) {
+          const q = view.P(p); if (p[2] < view.near) continue;
+          const r = view.ortho ? 3 * ((f.rad || 0.14) / 0.14) : Math.max(0.6, view.px(f.rad || 0.14, p));
+          // soft (a peak alpha): one radial gradient that falls smoothly to nothing at r, so no ring or step can show
+          const fill = f.soft > 0 && f.col ? { rad: _scbgSoftStops(f.col, f.soft), cx: Math.round(q[0] * 100) / 100, cy: Math.round(q[1] * 100) / 100, r: Math.round(r * 100) / 100 } : f.col && f.rad ? f.col : SCENE_GEN_NIGHT.lamp;
+          ctx.sink.lit.push({ f: fill, d: _scbgPath(f.round ? (n => Array.from({ length: n }, (_, k) => [q[0] + r * Math.cos(k * 2 * Math.PI / n), q[1] + r * Math.sin(k * 2 * Math.PI / n)]))(Math.max(12, Math.min(40, Math.round(r * 0.9)))) : [[q[0] - r, q[1] - r], [q[0] + r, q[1] - r], [q[0] + r, q[1] + r], [q[0] - r, q[1] + r]]), op: f.op == null ? 1 : f.op, part: 'lit' });
+          // a lamp's world point (metres, camera frame): the world lights the lane and the people under it (79-world-4light.js)
+          if (f.role === 'lamps' && f.soft > 0 && ctx.sink.lamps) ctx.sink.lamps.push({ x: Math.round(p[0] * 100) / 100, y: Math.round(p[1] * 100) / 100, z: Math.round(p[2] * 100) / 100, col: f.col });
+        }
         continue;
       }
       if (f.flat || view.sees(f.n, f.poly[0])) _scbgDrawFace(f, ctx);
@@ -1269,7 +1316,7 @@ function sceneBuildingProject(b, cam, ctx) {
   }
   const T = res.model;
   return {
-    shapes, lit: sink.lit, snow: sink.snow, glow: Object.assign({}, SCENE_GEN_NIGHT), on: sp0.on,
+    shapes, lit: sink.lit, snow: sink.snow, glow: Object.assign({}, SCENE_GEN_NIGHT), on: sp0.on, ...(sink.lamps.length ? { lamps: sink.lamps } : null),
     box: [Math.floor(x0), Math.floor(y0), Math.ceil(x1), Math.ceil(y1)], foot, h: Math.round(T.H * 100) / 100, eave: Math.round(T.E * 100) / 100,
     style: sp0.id, roof: T.roof, seed: sp0.seed, src: b.src || 'gen', n: shapes.length + sink.lit.length, tier: tierCap,
     dz: Math.round(dz * 10) / 10, dc: Math.round(dc * 10) / 10, anchor, smoke: res.smoke.filter(p => p[2] >= view.near).map(p => view.P(p).map(_scbgR1)), signs,
@@ -1456,7 +1503,7 @@ function sceneBuildingAsObject(b, cam, ctx) {
       real: { h: probe.h }, reflect: true,
       build(v, rnd, c) {
         const d = sceneBuildingProject(b, cam, { season: c.season, snowDepth: ctx.snowDepth || 0 });
-        const mv = (sh) => ({ f: sh.f && typeof sh.f === 'object' && sh.f.lin ? Object.assign({}, sh.f, { x1: sh.f.x1 - ax, y1: sh.f.y1 - ay, x2: sh.f.x2 - ax, y2: sh.f.y2 - ay }) : sh.f, d: _scbgShift(sh.d, -ax, -ay), op: sh.op, glow: sh.glow || undefined, detail: sh.detail || undefined });
+        const mv = (sh) => ({ f: sh.f && typeof sh.f === 'object' && sh.f.lin ? Object.assign({}, sh.f, { x1: sh.f.x1 - ax, y1: sh.f.y1 - ay, x2: sh.f.x2 - ax, y2: sh.f.y2 - ay }) : sh.f && typeof sh.f === 'object' && sh.f.rad ? Object.assign({}, sh.f, { cx: sh.f.cx - ax, cy: sh.f.cy - ay }) : sh.f, d: _scbgShift(sh.d, -ax, -ay), op: sh.op, glow: sh.glow || undefined, detail: sh.detail || undefined });
         return { body: d ? d.shapes.map(mv) : [], lit: d ? d.lit.map(mv) : [] };
       } });
   }

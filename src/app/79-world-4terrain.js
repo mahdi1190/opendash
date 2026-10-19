@@ -27,10 +27,28 @@
    ============================================================ */
 
 const WORLD_TERRAIN_STEP = 1.03;                    // depth ratio between strips
+const WORLD_TERRAIN_GENTLE = 0.2;                   // a slope (rise per run) under this leaves a thin paved surface to the base
 const WORLD_TERRAIN_FLAT = 0.4;                     // metres: relief below this is flat ground (the v2 base draws it)
 const _WTR_COL = Object.freeze({ grass: '#7ea34c', field: '#9aaa5e', heath: '#8c7d58', sand: '#d8c99d', stone: '#a39d90', rock: '#8e8b83', soil: '#8a6e4b' });
 const _WTR_STONE = new Set(['path', 'pavement', 'towpath', 'plaza', 'boardwalk', 'bridge-deck', 'deck', 'platform', 'stairs', 'ramp', 'crossing', 'road']);
 
+/** The topmost surface at a ground point (the one worldTerrainKind reads), or null. */
+function worldTerrainSurface(world, x, z) {
+  const S = (world && world.surfaces) || [];
+  for (let i = S.length - 1; i >= 0; i--) {
+    const s = S[i];
+    if (!s || s.kind === 'hedge' || s.kind === 'weir' || s.kind === 'rail' || s.kind === 'tram') continue;
+    if (typeof _wcSurfContains === 'function' && _wcSurfContains(s, x, z)) return s;
+  }
+  return null;
+}
+/** Is (x, z) within `margin` metres of the edge of a thin paved surface (a lane or a path: a `path` surface of 12 m or less, no polygon)? */
+function _wtrBesideThinPaved(world, x, z, margin) {
+  const S = (world && world.surfaces) || [];
+  if (typeof _wcLineDist !== 'function') return false;
+  for (const s of S) if (s && _WTR_STONE.has(s.kind) && Array.isArray(s.path) && !Array.isArray(s.poly) && s.width > 0 && s.width <= 12 && _wcLineDist(s.path, x, z) <= s.width / 2 + margin) return true;
+  return false;
+}
 function worldTerrainKind(world, x, z) {
   const S = (world && world.surfaces) || [];
   for (let i = S.length - 1; i >= 0; i--) {
@@ -348,6 +366,15 @@ function _wtrPrims(world, cam, o) {
         const e = Math.max(0.3, (x2 - x) * 0.5), gx = (hAt(cx0 + e, cz0) - hAt(cx0 - e, cz0)) / (2 * e), gz = (hAt(cx0, cz0 + e) - hAt(cx0, Math.max(0.1, cz0 - e))) / (cz0 + e - Math.max(0.1, cz0 - e)), slope = Math.hypot(gx, gz);
         let m = _wtrMat(kind, slope);
         if (!m) continue;
+        // a thin paved surface (a lane, a path) on a GENTLE slope: the base draws it, tilted along its own centre line (a straight 3D edge is a
+        // straight screen edge), with its setts, flags and gutter. A flat strip over it hid every mark: a lane up a hill was a grey ribbon (Elm Hill)
+        // (only where the base CAN draw it: below the horizon row. Ground above eye level projects above it and the base draws nothing there, so the strip stays)
+        const belowHorizon = poly.every((p, i) => sceneProject(cam, p[0], p[1], hs[i]).Y >= (cam.horizon || 0) + 2);
+        if (belowHorizon && slope < WORLD_TERRAIN_GENTLE && !cliffs.length) {
+          if (_WTR_STONE.has(kind)) { const sf = worldTerrainSurface(world, cx0, cz0); if (sf && Array.isArray(sf.path) && !Array.isArray(sf.poly) && sf.width <= 12) continue; }
+          // the ground beside such a surface (the sliver a quad's centre puts outside it, the foot of a wall): not a green wedge cutting into the paving
+          else if (kind === 'grass' && _wtrBesideThinPaved(world, cx0, cz0, Math.max(0.9, (x2 - x) * 1.1))) continue;
+        }
         // the scree of a cliff is where the cliff's own talus is the ground: a hill that rises higher there (the dale side beside the cove) is not scree
         if (pc.scree > 0 && baseGrid && sceneGroundHeight(baseGrid, cx0, cz0) > hAt(cx0, cz0) - 0.3 && sceneGroundHeight(baseGrid, cx0, cz0) > 0.5) pc.scree = 0;
         const jit0 = _wtrU(cx0, cz0);
@@ -378,7 +405,9 @@ function _wtrPrims(world, cam, o) {
         const pts = _wtrGrow(P, 0.65);
         for (const q of pts) { minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); minY = Math.min(minY, q[1]); maxY = Math.max(maxY, q[1]); }
         hi = Math.max(hi, hm); xmin = Math.min(xmin, x); xmax = Math.max(xmax, x2);
-        faces.push({ pts, role: 'ground', mat: m.mat, hex: _wtrShade(m.hex, shade * jit), z: cz0, alpha: 1 });
+        // a lane drawn flat (above the eye the base draws nothing): its cells vary a few percent cell to cell, so it reads as worn stone and not as a tarmac ribbon
+        const stoneJit = _WTR_STONE.has(kind) && slope < WORLD_TERRAIN_GENTLE ? 1 + 0.12 * (jit0 - 0.5) + 0.05 * Math.sin(cx0 * 2.3 + cz0 * 0.9) : 1;
+        faces.push({ pts, role: 'ground', mat: m.mat, hex: _wtrShade(m.hex, shade * jit * stoneJit), z: cz0, alpha: 1 });
       }
       }
     }
