@@ -116,7 +116,9 @@ function _wanHull(info, obj) {
 }
 /** The facing (degrees, camera frame) an entity shows now: velocity, else anim.face, else heading (radians, life), else facing. */
 function _wanFacing(ent) {
-  const vx = _wanNum(ent.vx) ? ent.vx : 0, vz = _wanNum(ent.vz) ? ent.vz : 0, sp = Math.hypot(vx, vz);
+  // the SHOWN velocity when life keeps one (low-passed, never more than the ground covered): a per-tick zig-zag (a sidestep, a push) must not
+  // swing the view or the gait from tick to tick; the tools' records already carry it as vx
+  const vx = _wanNum(ent.svx) ? ent.svx : _wanNum(ent.vx) ? ent.vx : 0, vz = _wanNum(ent.svz) ? ent.svz : _wanNum(ent.vz) ? ent.vz : 0, sp = Math.hypot(vx, vz);
   if (sp > _WAN_MOVE_OUT) return { deg: Math.atan2(vx, vz) / _WAN_DEG, moving: true };
   if (ent.anim && _wanNum(ent.anim.face)) return { deg: ent.anim.face, moving: false };
   if (_wanNum(ent.facing)) return { deg: ent.facing, moving: false };

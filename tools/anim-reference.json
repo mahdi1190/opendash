@@ -283,6 +283,7 @@
     }
   ],
   "weaker": [
+    {"ref": "asia-west/ae-signature", "wrong": "Three flat camels in one pose on a smooth gradient dune, a pale city of identical rectangles with one tower, and the same template sky, sun and birds as the other signature scenes of its region.", "fix": "Vary the camels (pose, size, spacing), give the dunes ripples and wind-blown edges, draw the skyline with real silhouettes and depth, and replace the template sky."},
     {
       "ref": "texas/west-texas-sunset",
       "wrong": "The retained original is one of the five thinnest accepted hand-drawn scenes: its limited moving groups require the existing richness exception. It is useful as a negative example alongside the released composed replacement, which passes without that exception.",
@@ -312,11 +313,6 @@
       "wrong": "White arcade and domes on white: a tonal range of only 0.82, no shadow side or depth layers, so the mosque reads as a flat cut-out against pale water.",
       "fix": "Shade the domes and arches, add a darker foreground and a lit horizon, and break the white mass with colour, reflections and layers.",
       "source": "src/app/71-anim-asia2-scenes-4.js (key 'place:abu-dhabi')"
-    },
-    {
-      "ref": "uk-south-east/west-sussex-ardingly-show",
-      "wrong": "Five identical white tents stamped in a row, ant-like figures in grey dots, and a flat green field under the same template sky, sun and clouds as 160 other UK scenes.",
-      "fix": "Draw each tent differently (size, colour, perspective), add a recognisable subject and real foreground, and give the scene its own sky and palette."
     }
   ],
   "weakerItems": [

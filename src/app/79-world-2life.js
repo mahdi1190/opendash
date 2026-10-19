@@ -1455,6 +1455,9 @@ function _wlfFollowBrain(life, a, dt) {
     // held up (wanting to move, not moving) for half a second, or at an edge of the frame: a new spot near the walker
     if (a.dir && a.speed < 0.05) { a.heldT = (a.heldT || 0) + dt; if (a.heldT > 0.5) { a.roam = null; a.heldT = 0; a.roamNear = true; } } else a.heldT = 0;
     if (_wlfInEdgeZone(life, a) && a.roam && life.t + 1.5 < a.roam.until) { a.roam.until = life.t; a.roamNear = true; }
+    // a taut lead (the walker stands and waits for its dog, _wlfMove): the dog comes in to heel, never sniffs on at the lead's end (19 Oct:
+    // a dog content at its roam spot 1.4 m off held its walker standing half out of the frame at Whitby's edge)
+    if (a.roam && !a.roamNear && L.held != null && life.t - L.held < 0.3 && Math.hypot(L.x - a.x, L.z - a.z) > a.lead.len * 0.85) { a.roam.until = life.t; a.roamNear = true; }
     if (!a.roam || life.t > a.roam.until) {
       var ang = a.rng() * Math.PI * 2, rr = Math.max(0.65, a.lead.len * (a.roamNear ? 0.2 + 0.2 * a.rng() : 0.35 + 0.5 * a.rng()));   // never a spot inside the walker
       a.roam = { dx: Math.cos(ang) * rr, dz: Math.sin(ang) * rr, until: life.t + 2 + a.rng() * 3 }; a.roamNear = false;
@@ -1821,7 +1824,7 @@ function _wlfBoatMeet(life, a) {
 function _wlfSteer(life, a, dir, spd) {
   a.slow = 1; a.sideV = 0;
   if (a.brain.heavy || a.layer === 'air') return dir;
-  var vx = dir[0] * spd, vz = dir[1] * spd, ax = 0, az = 0, sx = 0, sz = 0, n = 0, ns = 0, kx = 0, kz = 0, nk = 0, hitF = Infinity;
+  var vx = dir[0] * spd, vz = dir[1] * spd, ax = 0, az = 0, sx = 0, sz = 0, n = 0, ns = 0, kx = 0, kz = 0, nk = 0, hitF = Infinity, wallL = 0, wallR = 0, hitOnc = false;
   var ps = (a.brain.space || 1) * life.space * (a.kind === 'swimmer' ? 0.6 : 0.5);
   var rgx = dir[1], rgz = -dir[0];                                   // the right-hand side of the heading (x right, z away)
   var cx = Math.floor(a.x / 2), cz = Math.floor(a.z / 2);
@@ -1830,7 +1833,7 @@ function _wlfSteer(life, a, dir, spd) {
     if (!bk) continue;
     for (var j = 0; j < bk.length; j++) {
       var o = bk[j];
-      if (o === a || o.layer !== a.layer || o.dead || o === a.leader || o.leader === a || (a.group && o.group === a.group)) continue;
+      if (o === a || !_wlfSameFloor(a, o) || o.dead || o === a.leader || o.leader === a || (a.group && o.group === a.group)) continue;
       var rx = o.x - a.x, rz = o.z - a.z, dd = Math.hypot(rx, rz);
       // queue: something close ahead in my lane is a bumper (an oncoming one only when it is dead ahead)
       // oncoming is judged by where the other WANTS to go (its planned direction), not by the velocity it has: two walkers met head on
@@ -1844,8 +1847,9 @@ function _wlfSteer(life, a, dir, spd) {
       if (fwd > 0 && fwd < rs + 1 && Math.abs(lat) < (onc ? rs * 0.6 : rs + 0.1)) a.slow = Math.min(a.slow, _wlfClamp((fwd - rs - 0.05) / 0.9, onc ? 0.3 : 0, 1));   // an oncoming one is passed, not waited for
       // a sidestep (people shuffle aside whatever their forward speed): away from the other's side of my line; dead on, to my left
       // (UK) for an oncoming mover and to my right (overtaking) for one going my way slower, or standing
+      if (fwd > 0 && fwd < rs + 1.6 && Math.abs(lat) < rs + 0.35 + 0.6 && !onc) { if (lat < -0.15) wallL = 1; else if (lat > 0.15) wallR = 1; }
       if (fwd > 0 && fwd < rs + 1.6 && Math.abs(lat) < rs + 0.35 && fwd < hitF && (onc || (o.speed || 0) < spd * 0.8)) {
-        hitF = fwd;
+        hitF = fwd; hitOnc = onc;
         a.sideDir = lat > 0.15 ? -1 : lat < -0.15 ? 1 : onc ? -1 : 1;                       // -1 = to my left, +1 = to my right
         a.sideV = Math.min(0.9, (rs + 0.35 - Math.abs(lat)) * 1.6 + 0.2);
         a.sideX = rgx; a.sideZ = rgz;
@@ -1870,6 +1874,13 @@ function _wlfSteer(life, a, dir, spd) {
       ax += px / pl * w; az += pz / pl * w;
     }
   }
+  // the sidestep's side is held for 0.6 s: two movers at the same distance ahead (a couple walking abreast in front) each won the "nearest"
+  // test on alternate ticks by millimetres and the walker behind shuffled right, left, right ... on the spot, its legs striding side-on
+  // while it gained ground only in depth (19 Oct, the waterfront-city kit fixture: walkInPlace on a back-view walker)
+  // and there is no overtaking shuffle behind a row going my way that leaves no gap (a family abreast in front: people to the left, the
+  // right and dead ahead): the walker queues behind it instead of shuffling from side to side on the spot
+  if (a.sideV > 0 && !hitOnc && wallL && wallR) a.sideV = 0;
+  if (a.sideV > 0) { if (a.sideHoldT > life.t && a.sideKeep) a.sideDir = a.sideKeep; else { a.sideKeep = a.sideDir; a.sideHoldT = life.t + 0.6; } }
   if (!n && !ns && !nk) return dir;
   var nx = dir[0] + ax * 1.5 + sx * 0.8 + kx, nz = dir[1] + az * 1.5 + sz * 0.8 + kz, l = Math.hypot(nx, nz);
   if (l < 1e-6) return dir;
@@ -1938,11 +1949,21 @@ function _wlfPair(life, a, o) {
   if (!moved) { a.squeezed = life.t; o.squeezed = life.t; }                            // nothing could give: the stuck logic re-plans
   return moved;
 }
+/** A walker on a walkable deck (a pier, a jetty: layer walk@n with its host) walks among people like one on the ground; one seated,
+ *  aboard a vehicle or stepping on or off is at rest on its host. */
+function _wlfOnDeck(a) { return a.kind === 'walker' && String(a.layer).indexOf('@') > 0 && !a.seat && !a.step && a.bs !== 'sitting'; }
+/** Two movers that can bump into each other: one layer, or two walking layers at one height where they meet (a pier deck at the level of
+ *  its promenade: a walker stepping off the deck and one on the promenade passed through each other, 19 Oct, seaside-pier p0-9 and p2-3.2) */
+function _wlfSameFloor(a, o) {
+  if (a.layer === o.layer) return true;
+  var la = String(a.layer), lo = String(o.layer);
+  return la.split('@')[0] === lo.split('@')[0] && la !== 'air' && Math.abs((a.y || 0) - (o.y || 0)) < 0.3;
+}
 function _wlfSeparate(life) {
   var A = life.agents, h = new Map(), L = [], i, j, k;
   for (i = 0; i < A.length; i++) {
     var a = A[i];
-    if (a.dead || a.layer === 'air' || a.kind === 'lane' || a.kind === 'rail' || a.kind === 'boat' || a.kind === 'moored' || a.hop || a.host) continue;
+    if (a.dead || a.layer === 'air' || a.kind === 'lane' || a.kind === 'rail' || a.kind === 'boat' || a.kind === 'moored' || a.hop || (a.host && !_wlfOnDeck(a))) continue;
     a._si = L.length; L.push(a);
     k = (Math.floor(a.x / 2) + 4096) * 8192 + (Math.floor(a.z / 2) + 4096);
     var b = h.get(k); if (!b) { b = []; h.set(k, b); } b.push(a);
@@ -1954,7 +1975,7 @@ function _wlfSeparate(life) {
       var p = L[i], cx = Math.floor(p.x / 2), cz = Math.floor(p.z / 2);
       for (var ix = -1; ix <= 1; ix++) for (var iz = -1; iz <= 1; iz++) {
         var bk = h.get((cx + ix + 4096) * 8192 + (cz + iz + 4096)); if (!bk) continue;
-        for (j = 0; j < bk.length; j++) { var o = bk[j]; if (o._si > p._si && o.layer === p.layer) moved += _wlfPair(life, p, o); }
+        for (j = 0; j < bk.length; j++) { var o = bk[j]; if (o._si > p._si && _wlfSameFloor(p, o)) moved += _wlfPair(life, p, o); }
       }
     }
     if (!moved) break;

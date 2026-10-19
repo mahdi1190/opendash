@@ -491,7 +491,8 @@ test('UK packs: county-only, one signature, bounded baseline and meaningful plac
 });
 
 test('South East and London: complete county rotations, full framing, local ids and dated traditions', () => {
-  const expected = ['south-east', 'london'].flatMap(region => R.ukCountiesIn(region));
+  // (2.14.0 retired the basic place studies of every other county: only Hampshire's composed scenes remain in this pack)
+  const expected = ['south-east', 'london'].flatMap(region => R.ukCountiesIn(region)).filter(c => c.id === 'hampshire');
   const pack = R.animPack('uk-south-east');
   assert.deepEqual([...new Set(pack.items.map(i => i.county))].sort(), expected.map(c => c.id).sort());
   const ids = html => [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);

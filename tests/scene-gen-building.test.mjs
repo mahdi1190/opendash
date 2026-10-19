@@ -89,7 +89,7 @@ test('elevation objects pass object lint (glow included), with real sizes and no
     assert.match(id, /^building\.gen-[a-z0-9-]+-[0-9a-f]{8}$/);
     const L = lintObject(id, { E: Ex });
     // (buildMs is wall-clock: a loaded CI runner read 131 ms against 100; the build budget is held by the perf gates, not here)
-    const bad = L.rules.filter(r => !r.ok && r.name !== 'buildMs').map(r => `${r.name}: ${r.value} (${r.limit})`);
+    const bad = L.rules.filter(r => !r.ok && r.rule !== 'buildMs').map(r => `${r.rule}: ${r.value} (${r.limit})`);
     assert.deepEqual(bad, [], `${id} (${style}) lint`);
     assert.ok(L.stats.glow >= 4, `${style}: windows glow at night`);
     assert.ok(Math.abs(def.real.h * 20 - def.size[1]) <= 1, `${style}: size[1] is real.h at SCENE_GEN_UPM`);
