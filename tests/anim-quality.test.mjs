@@ -46,7 +46,8 @@ const UPGRADE_LEGACY = measureRegistry(REG, RETIRED.filter(isLiveUpgrade).map(e 
 const CORPUS = RES.results.concat(RICH_LEGACY, UPGRADE_LEGACY);
 const ORIGINAL_BY_REF = new Map(CORPUS.filter(r => r.profile !== 'composed').map(r => [r.ref, { ...r, full: BY_REF.get(r.ref).full }]));
 // a profile whose whole corpus is gone (scene-rich since the UK rebuild): its committed floors stay, nothing recalibrates them
-const RETIRED_PROFILES = ['scene-rich'].filter(p => !CORPUS.some(r => r.profile === p));
+// (scene-legacy too since 19 Oct 2026: its corpus was the 90 basic South East place studies, retired from the registry in 2.14.0)
+const RETIRED_PROFILES = ['scene-rich', 'scene-legacy'].filter(p => !CORPUS.some(r => r.profile === p));
 const PACK_CSS = (id) => (REG.packs().find(p => p.id === id) || {}).css || '';
 const SCENE_CLASSES = REG.classesFor({ css: PACK_CSS('us-pacific') });
 
@@ -62,7 +63,7 @@ test('the registry has full scenes and small items to lint, in every profile', (
   assert.ok(RES.summary.scenes >= 330 && RES.summary.small >= 570, `${RES.summary.scenes} scenes, ${RES.summary.small} small items`);
   // scene-rich: its corpus (the rich Yateley and Fleet views, kept as legacySvg after the convert stage) was deleted at the UK rebuild
   // (2026-10-08, the composed uk-area-* packs replace them); its floors stay as calibrated, and RETIRED_PROFILES skip the corpus checks
-  for (const p of ['scene', 'scene-legacy', 'item', 'item-classic']) assert.ok(CORPUS.some(r => r.profile === p), `something is judged by ${p}`);
+  for (const p of ['scene', 'scene-legacy', 'item', 'item-classic']) if (!RETIRED_PROFILES.includes(p)) assert.ok(CORPUS.some(r => r.profile === p), `something is judged by ${p}`);
   for (const p of RETIRED_PROFILES) assert.ok(!RES.results.some(r => r.profile === p), `nothing live is judged by the retired ${p}`);
   assert.ok(RES.results.some(r => r.profile === 'composed'), 'something is judged by composed');
 });
