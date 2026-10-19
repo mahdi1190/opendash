@@ -827,9 +827,11 @@ function worldExtrudeDraw(ctx, prim, o) {
       const fill = (sh) => { if (typeof Path2D === 'function') ctx.fill(new Path2D(sh.d)); else { ctx.beginPath(); _wexTrace(ctx, sh.d); ctx.fill(); } };
       for (const sh of D.shapes || []) {
         if (!sh || !sh.d) continue;
-        if (sh.dt != null && on(sh.dt)) continue;                       // the sky's streak is a day reflection: a lit room outshines it
         const lit = !!sh.glow && on(sh.theta, sh.glow);
         ctx.globalAlpha = (sh.op == null ? 1 : sh.op) * A;
+        // the sky's streak is a day reflection: on a lit pane it is part of the lit glass (a lit room outshines the sky), drawn in the
+        // pane's light so the glass reads as one lit pane and every shape of the record is still drawn
+        if (sh.dt != null && on(sh.dt)) { ctx.fillStyle = (nightCol && nightCol.window) || '#ffd98a'; fill(sh); n++; continue; }
         const day = lit && !(sh.gk < 1) ? null : colour(sh.part === 'roof' ? 'slate' : 'brick', o.sun && sh.n && typeof worldSunTone === 'function' && typeof sh.f === 'string' ? worldSunTone(sh.f, sh.n, o.sun) : sh.f, prim.zKey, sh.part || 'wall');
         ctx.fillStyle = lit ? worldGlassLitFill(ctx, sh, nightCol, day) : day;
         fill(sh);
