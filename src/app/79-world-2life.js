@@ -1457,7 +1457,7 @@ function _wlfFollowBrain(life, a, dt) {
     if (_wlfInEdgeZone(life, a) && a.roam && life.t + 1.5 < a.roam.until) { a.roam.until = life.t; a.roamNear = true; }
     // a taut lead (the walker stands and waits for its dog, _wlfMove): the dog comes in to heel, never sniffs on at the lead's end (19 Oct:
     // a dog content at its roam spot 1.4 m off held its walker standing half out of the frame at Whitby's edge)
-    if (a.roam && !a.roamNear && Math.hypot(L.x - a.x, L.z - a.z) > a.lead.len * 0.85) { a.roam.until = life.t; a.roamNear = true; }
+    if (a.roam && !a.roamNear && L.held != null && life.t - L.held < 0.3 && Math.hypot(L.x - a.x, L.z - a.z) > a.lead.len * 0.85) { a.roam.until = life.t; a.roamNear = true; }
     if (!a.roam || life.t > a.roam.until) {
       var ang = a.rng() * Math.PI * 2, rr = Math.max(0.65, a.lead.len * (a.roamNear ? 0.2 + 0.2 * a.rng() : 0.35 + 0.5 * a.rng()));   // never a spot inside the walker
       a.roam = { dx: Math.cos(ang) * rr, dz: Math.sin(ang) * rr, until: life.t + 2 + a.rng() * 3 }; a.roamNear = false;
