@@ -12,7 +12,7 @@ upgrades it.
 
 ### Changed
 
-- **Walking in tight places:** people in tight places now walk through each other as soft ghosts instead of dodging. Where two walkers meet in a gap one person wide, a lane too narrow to pass abreast or a knot of people in a narrow street, they no longer wait at the mouth of the gap, shuffle sideways or stand nose to nose: each fades to about half opacity as they overlap and back to solid as they part (never invisible, the shadow and the reflection fade with the body). On open ground they still pass side by side. People fading in and out at the edges of a scene are now drawn faded too (the world renderer ignored that before).
+- **People no longer dodge each other:** strangers pass through each other as soft ghosts wherever their paths cross, not only in tight places. Nobody swerves, slows, shuffles or waits for a stranger any more: well before they meet, people keep a little to their side of the way, and where their paths still cross each fades to about half opacity as they overlap and back to solid as they part (never invisible; the shadow and the reflection fade with the body). People who would walk by at a comfortable distance stay solid. Crowds, groups, people stuck in a jam and people about to stop are steered as before, so a crowd never turns into a pile of ghosts. People fading in and out at the edges of a scene are now drawn faded too (the world renderer ignored that before).
 
 ## [2.14.0] - 2026-10-19
 
