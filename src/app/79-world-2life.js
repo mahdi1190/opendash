@@ -1730,6 +1730,7 @@ function _wlfMove(life, a, dt) {
   var wantRaw = want;
   if (dir && want > 0) {
     dir = _wlfSteer(life, a, dir, want);
+    dir = _wlfSteerEase(a, dir, dt);
     // a queue eases off; being held up still counts as wanting to move (stuck). A person never CREEPS: legs striding at a tenth of a pace
     // read as walking on the spot (18 Oct). Held to under about a quarter of a metre a second (behind the one in front, or by a taut lead)
     // a walker stands and waits, and sets off again only when there is room for a real step (hysteresis: 0.25 to stop, 0.4 to go)
@@ -1755,6 +1756,12 @@ function _wlfMove(life, a, dt) {
   a.turning = !!dir && rem > Math.PI / 4;
   if (a.v > 0 && dir) {
     var vx = Math.sin(a.heading) * a.v, vz = Math.cos(a.heading) * a.v;
+    // a dog nearing the end of its lead eases off the outward part of its step (from 80 % of the lead out): it never walks into the end
+    // of the lead to be yanked back the next tick (20 Oct: dogs twitched at the ends of their leads, the leash pull against the body)
+    if (a.lead && a.leader && !a.leader.dead && a.lead.len > 0) {
+      var lrx = a.x - a.leader.x, lrz = a.z - a.leader.z, lrd = Math.hypot(lrx, lrz), lln = a.lead.len;
+      if (lrd > 0.8 * lln) { var lux = lrx / lrd, luz = lrz / lrd, lout = vx * lux + vz * luz; if (lout > 0) { var lkeep = _wlfClamp((lln * 0.97 - lrd) / (0.17 * lln), 0, 1); vx -= lux * lout * (1 - lkeep); vz -= luz * lout * (1 - lkeep); } }
+    }
     var np = typeof worldStep === 'function' ? worldStep(life.nav, a.layer, [a.x, a.z], [vx, vz], _wlfNavR(a), dt) : [a.x + vx * dt, a.z + vz * dt];
     if (np && _wlfOk(life, a, np[0], np[1])) { a.x = np[0]; a.z = np[1]; }
     // held up or slid off the planned line: the steering point is planned again next tick (from where it really is)
@@ -1777,6 +1784,23 @@ function _wlfMove(life, a, dt) {
   if (a.kind === 'boat' && a.speed > 0.2 && (!a.wakeT || life.t - a.wakeT >= 1)) { a.wakeT = life.t; life.bus.emit('wake', { id: a.id, x: a.x, z: a.z, heading: a.heading * 180 / Math.PI, speed: a.speed, beam: a.r * 2, len: a.len || 18, t: life.t }); }
   _wlfStuck(life, a, wantRaw, dt);
   _wlfFace(life, a);
+}
+/**
+ * The steering's output, eased (20 Oct, the user: "people are shaking about"): the avoidance (the velocity obstacle, keeping left, the
+ * queue) answered each tick afresh and its direction swung 20 to 40 degrees to and fro from tick to tick, so the heading zig-zagged as
+ * fast as the turn rate allowed and the body wove 3 to 7 times a second. A walker now follows the steered direction through a low-pass of
+ * WORLD_LIFE_STEER.tau seconds (a reversal of more than `turn` degrees, a real change of mind, is taken at once: the turn rate eases it).
+ */
+var WORLD_LIFE_STEER = { tau: 0.2, turn: 100 };
+function _wlfSteerEase(a, dir, dt) {
+  if (!dir || a.kind !== 'walker') { a.sdir = null; return dir; }
+  var s = a.sdir;
+  if (s && s[0] * dir[0] + s[1] * dir[1] > Math.cos(WORLD_LIFE_STEER.turn * Math.PI / 180)) {
+    var k = 1 - Math.exp(-dt / WORLD_LIFE_STEER.tau), x = s[0] + (dir[0] - s[0]) * k, z = s[1] + (dir[1] - s[1]) * k, l = Math.hypot(x, z);
+    if (l > 1e-3) dir = [x / l, z / l];
+  }
+  a.sdir = [dir[0], dir[1]];
+  return dir;
 }
 /**
  * The velocity the records SHOW (the animation, the facing and the checkers read it): the real ground velocity, low-passed over
@@ -1992,6 +2016,26 @@ function _wlfSeparate(life) {
     if (!moved) break;
   }
   for (i = 0; i < L.length; i++) L[i].y = worldLifeY(life, L[i]);
+}
+/**
+ * Draw smoothing (20 Oct, the user: "people are shaking about"): the hard floor under the steering (_wlfSeparate), the lead (_wlfLeash),
+ * a sidestep against a wall and the navigation's slide along it move a body by a few centimetres a tick, to and fro; drawn as they
+ * happened, a pressed walker or a dog at the end of its lead shook three or four times a second. The body is where the sim puts it (every
+ * check, the navigation and the next tick see that); the DRAWING follows it as a predicted point: last tick's drawn place moved on by the
+ * shown velocity, pulled toward the body by 1 - exp(-dt / tau). A steady walk is drawn exactly where it is; a zig-zag is drawn as a quarter
+ * of itself. The drawn place is never more than `max` metres off the body (the records, worldAgents: an offset voX, voZ, interpolated
+ * between ticks like the body); walkers and dogs on the ground only, and never across a jump (a step aboard, a hop, a spawn).
+ */
+var WORLD_LIFE_SMOOTH = { tau: 0.12, max: 0.12 };
+function _wlfDrawSmooth(a, dt) {
+  if (a.dead || a.kind !== 'walker' || a.layer === 'air' || a.hop || a.step || a.host || a.px == null || !(dt > 0)) { a.voX = 0; a.voZ = 0; return; }
+  var dpx = a.px + (a.pvoX || 0), dpz = a.pz + (a.pvoZ || 0), vx = a.svx != null ? a.svx : a.vx || 0, vz = a.svz != null ? a.svz : a.vz || 0;
+  if (Math.hypot(a.x - a.px, a.z - a.pz) > 0.6) { a.voX = 0; a.voZ = 0; return; }
+  var px = dpx + vx * dt, pz = dpz + vz * dt, k = 1 - Math.exp(-dt / WORLD_LIFE_SMOOTH.tau);
+  var ox = px + (a.x - px) * k - a.x, oz = pz + (a.z - pz) * k - a.z, m = Math.hypot(ox, oz), M = WORLD_LIFE_SMOOTH.max;
+  if (m > M) { ox *= M / m; oz *= M / m; }
+  if (m < 1e-4) { ox = 0; oz = 0; }
+  a.voX = ox; a.voZ = oz;
 }
 function _wlfLeash(life, a, dt) {
   var L = a.leader, len = a.lead.len, dx = a.x - L.x, dz = a.z - L.z, d = Math.hypot(dx, dz);
@@ -2725,6 +2769,8 @@ function _wlfPassNav(life, dt) {
 function _wlfPassMove(life, dt) {
   var A = life.agents;
   try { _wlfGhostPass(life, dt); } catch (e) { _wlfProblem(life, { pop: -1, rule: 'error', msg: 'ghost: ' + (e && e.message) }); }
+  // the drawn offset (WORLD_LIFE_SMOOTH): last tick's, for the records to interpolate from
+  for (var si = 0; si < A.length; si++) { var sa = A[si]; sa.pvoX = sa.voX || 0; sa.pvoZ = sa.voZ || 0; }
   for (var i = 0; i < A.length; i++) {
     var a = A[i]; if (a.dead) continue;
     try { _wlfMove(life, a, dt); } catch (e) { a.vx = 0; a.vz = 0; if (!a.moveErr) { a.moveErr = 1; _wlfProblem(life, { pop: a.pop, rule: 'error', msg: a.id + ' move: ' + (e && e.message) }); } }
@@ -2736,7 +2782,7 @@ function _wlfPassMove(life, dt) {
   // the velocity is what the body REALLY did this tick: the separation pass and the last leash move bodies after _wlfMove measured them,
   // so a walker pressed back by the one in front kept the velocity of the step it never made and its legs strode on the spot (18 Oct,
   // Whitby: "pushedBack" walkers). The shown velocity and the presented state are corrected by the difference.
-  for (var vi = 0; vi < A.length; vi++) { var av = A[vi]; _wlfTrueV(life, av, dt); if (!av.dead && av.kind === 'walker' && av.layer !== 'air' && !av.hop && !av.step) _wlfShownCap(av, dt); else av.lpv = null; }
+  for (var vi = 0; vi < A.length; vi++) { var av = A[vi]; _wlfTrueV(life, av, dt); if (!av.dead && av.kind === 'walker' && av.layer !== 'air' && !av.hop && !av.step) _wlfShownCap(av, dt); else av.lpv = null; _wlfDrawSmooth(av, dt); }
   _wlfTrafficPass(life, dt);
   var w = 0;
   for (var k = 0; k < A.length; k++) { if (!A[k].dead) A[w++] = A[k]; else life.byId.delete(A[k].id); }
@@ -2763,7 +2809,13 @@ function worldAgents(life) {
   for (var i = 0; i < life.agents.length; i++) {
     var a = life.agents[i];
     var x = a.px + (a.x - a.px) * al, z = a.pz + (a.z - a.pz) * al;
-    if (a.layer !== 'air' && !a.host && a.kind !== 'lane' && a.kind !== 'rail' && !worldLifeOk(life, a.layer, x, z)) { x = a.x; z = a.z; }
+    // the drawn offset of a push being taken up (WORLD_LIFE_SMOOTH), between its last two ticks too
+    var grounded = a.layer !== 'air' && !a.host && a.kind !== 'lane' && a.kind !== 'rail';
+    if (a.voX || a.voZ || a.pvoX || a.pvoZ) {
+      var ox0 = a.pvoX || 0, oz0 = a.pvoZ || 0, xo = x + ox0 + ((a.voX || 0) - ox0) * al, zo = z + oz0 + ((a.voZ || 0) - oz0) * al;
+      if (!grounded || worldLifeOk(life, a.layer, xo, zo)) { x = xo; z = zo; }
+    }
+    if (grounded && !worldLifeOk(life, a.layer, x, z)) { x = a.x; z = a.z; }
     var st = a.brain.states[a.bs] || {};
     var state = a.state, pose = a.pose;
     var alpha = 1;
@@ -2892,7 +2944,12 @@ function _wlfSysInit(world) {
     worldSystem({ id: 'life-nav', phase: 'nav', rate: 15, budgetMs: 0.4, components: { read: ['brain', 'transform'], write: ['brain'] },
       update: function (world, dt) { var L = life(world); if (L) _wlfPassNav(L, dt); } });
     worldSystem({ id: 'life-move', phase: 'move', rate: 15, budgetMs: 0.5, components: { read: ['brain'], write: ['transform', 'agents'] },
-      update: function (world, dt) { var L = life(world); if (L) { _wlfPassMove(L, dt); world.agents = L.agents; } },
+      update: function (world, dt) { var L = life(world); if (L) { _wlfPassMove(L, dt); world.agents = L.agents; L.lerpT = 0; } },
       degrade: function (level, world) { var L = world && world._wlfLife; if (L) L.max = Math.round(60 * [1, 0.85, 0.7, 0.5][Math.max(0, Math.min(3, level | 0))]); } });
+    // the share of a move step gone since the last one (life.alpha: worldAgents puts each body between its last two steps), every runner
+    // tick. Until 20 Oct nothing set it when the runner drove the life (worldLifeTick does), so the records stood still for one 30 Hz tick
+    // in two and then jumped a whole step: on a 60 Hz screen every walker moved one frame in four ("people shaking about")
+    worldSystem({ id: 'life-lerp', phase: 'move', after: ['life-move'], rate: 30, budgetMs: 0.05, components: { read: ['transform'], write: ['agents'] },
+      update: function (world, dt) { var L = world && world._wlfLife; if (!L) return; var s = L.lerpT || 0; L.alpha = Math.max(0, Math.min(1, s / L.step)); L.lerpT = s + dt; } });
   } catch (e) { /* the runner refused: the host still drives worldLifeTick */ }
 })();

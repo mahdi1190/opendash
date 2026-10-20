@@ -114,11 +114,47 @@ function _wanHull(info, obj) {
   const hullish = cls === 'boat' || cls === 'train' || cls === 'tram' || (cls === 'vehicle' && L >= 8) || (!cls && /^boat\./.test(String(obj || '')));
   return hullish && L >= 6 && L / Math.max(0.1, h) >= 2.5;
 }
-/** The facing (degrees, camera frame) an entity shows now: velocity, else anim.face, else heading (radians, life), else facing. */
+/** The live anim record of an entity (its own, else the one the anim system keeps by its id), or null (a still, a tool's record). */
+function _wanLiveAnim(ent) {
+  if (!ent || ent.static !== false && ent.anim == null) return null;
+  if (ent.anim && ent.anim.state !== undefined && !ent.anim.snapshot) return ent.anim.oid === ent.obj ? ent.anim : null;
+  if (ent.id == null) return null;
+  const W = _wanLast(), S = W ? _wanWorlds.get(W) : null, an = S && S.byId ? S.byId.get(ent.id) : null;
+  return an && an.oid === ent.obj ? an : null;
+}
+// the body's turn (20 Oct): it follows the brain's heading (rate-limited already: 180 degrees in brain.turn seconds) through `play`
+// degrees of backlash (a heading that wavers to and fro by less never turns the body: no flicker of the view at a boundary, no
+// shaking of the gait, and a real turn is followed at once, `play` degrees behind), never faster than `rate` x the brain's own rate;
+// a body dragged or pushed over `off` degrees off its heading at over `drag` m/s (a dog pulled by its lead) faces the way it moves
+const WORLD_ANIM_YAW = Object.freeze({ play: 5, rate: 1.25, off: 70, drag: 0.5 });
+/** The way an agent's body faces (degrees, the frame of its velocity), smoothed from its heading; null for bodies that keep the velocity. */
+function _wanYaw(e, an, tg, dt) {
+  const kind = tg.kind;
+  if (!(kind === 'person' || kind === 'dog' || kind === 'cyclist' || kind === 'grazer' || kind === 'walkbird')) return null;
+  const vx = _wanNum(e.svx) ? e.svx : _wanNum(e.vx) ? e.vx : 0, vz = _wanNum(e.svz) ? e.svz : _wanNum(e.vz) ? e.vz : 0, sp = Math.hypot(vx, vz);
+  const hd = _wanNum(e.heading) ? e.heading / _WAN_DEG : null;
+  let target = _wanNum(an.face) ? an.face : null;
+  if (target == null) {
+    if (sp > _WAN_MOVE_OUT) {
+      const vd = Math.atan2(vx, vz) / _WAN_DEG;
+      target = hd != null && !(sp > WORLD_ANIM_YAW.drag && Math.abs(_wan180(vd - hd)) > WORLD_ANIM_YAW.off) ? hd : vd;
+    } else target = hd != null ? hd : _wanNum(e.facing) ? e.facing : null;
+  }
+  if (target == null) return null;
+  if (!_wanNum(an.yaw) || !(dt > 0)) return _wanR(target, 3);
+  const turn = e.brain && e.brain.turn > 0 ? e.brain.turn : 0.5, max = 180 / Math.max(0.15, turn) * WORLD_ANIM_YAW.rate * dt;
+  const d = _wan180(target - an.yaw), p = WORLD_ANIM_YAW.play, step = _wanClamp(d > p ? d - p : d < -p ? d + p : 0, -max, max);
+  return step ? _wanR(_wan180(an.yaw + step), 3) : an.yaw;
+}
+/** The facing (degrees, camera frame) an entity shows now: its body's yaw (a live agent), else velocity, else anim.face, else heading (radians, life), else facing. */
 function _wanFacing(ent) {
   // the SHOWN velocity when life keeps one (low-passed, never more than the ground covered): a per-tick zig-zag (a sidestep, a push) must not
   // swing the view or the gait from tick to tick; the tools' records already carry it as vx
   const vx = _wanNum(ent.svx) ? ent.svx : _wanNum(ent.vx) ? ent.vx : 0, vz = _wanNum(ent.svz) ? ent.svz : _wanNum(ent.vz) ? ent.vz : 0, sp = Math.hypot(vx, vz);
+  // a body with a live anim record: the way its BODY faces (anim.yaw, _wanYaw: its heading, turned smoothly), never the direction of a
+  // velocity that a sidestep, a push or a slow start swings from tick to tick (20 Oct: views flickered and "people shaking about")
+  const an = _wanLiveAnim(ent);
+  if (an && _wanNum(an.yaw)) return { deg: an.yaw, moving: sp > _WAN_MOVE_OUT };
   if (sp > _WAN_MOVE_OUT) return { deg: Math.atan2(vx, vz) / _WAN_DEG, moving: true };
   if (ent.anim && _wanNum(ent.anim.face)) return { deg: ent.anim.face, moving: false };
   if (_wanNum(ent.facing)) return { deg: ent.facing, moving: false };
@@ -160,7 +196,9 @@ function worldViewOf(ent, cam, o) {
     const eye = cam && _wanNum(cam.eye) ? cam.eye : 1.65, top = (_wanNum(ent.y) ? ent.y : 0) + (_wanNum(ent.height) ? ent.height : info.size.h);
     out.roof = eye > top;
   }
-  out.norm = 1;
+  // one object is one height from every side (20 Oct, the user: "people are changing size when they change movement directions"): a
+  // view drawn by another builder or declared at another size is scaled to the drawn height of the object's own side art (worldViewNorm)
+  out.norm = vObj !== obj && !persp ? worldViewNorm(obj, vObj, Number.isInteger(variant) ? variant : 0) : 1;
   if (cam && _wanNum(cam.f) && ent.z > 0.05 && typeof sceneObj === 'function') {
     const def = sceneObj(vObj), h = _wanNum(ent.height) && ent.height > 0 ? ent.height : _wanNum(ent.h) && ent.h > 0 ? ent.h : info && info.size ? info.size.h : null;
     if (def && Array.isArray(def.size) && def.size[1] > 0 && h) out.s = _wanR((cam.f / ent.z) * h / def.size[1] * out.norm, 5);
@@ -316,15 +354,17 @@ const _wanNormMemo = new Map();
  * (worldArtBounds, the still parts) of every variant in summer and winter dress and the MEDIAN is kept (an umbrella or a stick held
  * in one variant does not move it). The ground line keeps: the anchor is the feet in every view. 1 when either has no art.
  */
-function worldViewNorm(sideObj, viewObj) {
+function worldViewNorm(sideObj, viewObj, variant) {
   if (!sideObj || !viewObj || sideObj === viewObj || typeof sceneObj !== 'function') return 1;
-  const key = sideObj + '>' + viewObj;
+  const key = sideObj + '>' + viewObj + '|' + (Number.isInteger(variant) ? variant : '*');
   if (_wanNormMemo.has(key)) return _wanNormMemo.get(key);
   const A = sceneObj(sideObj), B = sceneObj(viewObj);
   let k = 1;
   if (A && B && Array.isArray(A.size) && Array.isArray(B.size) && A.size[1] > 0 && B.size[1] > 0) {
+    // a variant's own ratio when it is named (two variants of one bird may be drawn in different poses), else every variant's
     const person = A.category === 'person', n = Math.max(1, Math.min(16, B.variants || 1, A.variants || 1)), ks = [];
-    for (let v = 0; v < n; v++) for (const se of ['summer', 'winter']) {
+    const vs = Number.isInteger(variant) ? [Math.max(0, Math.min(n - 1, variant))] : Array.from({ length: n }, (_, i) => i);
+    for (const v of vs) for (const se of ['summer', 'winter']) {
       const f = person ? se + '~dry' : se, a = worldArtBounds(sideObj, v, f, '*'), b = worldArtBounds(viewObj, v, f, '*');
       if (!a || !b) continue;
       const ha = (a[3] - a[1]) / A.size[1], hb = (b[3] - b[1]) / B.size[1];
@@ -527,6 +567,7 @@ function _wanUpdate(world, e, dt, clock) {
   if (r.legPeriod) an.legPeriod = r.legPeriod; else if (an.blend >= 1) an.legPeriod = 0;
   if (r.paddle) an.paddle = r.paddle;
   an.k = _wanR(from && an.blend < 1 ? from.k + (r.k - from.k) * u : r.k, 4);
+  if (tg.state === 'move') an.kStep = r.k;   // the shuffle's share of a full step (the stance gait sizes the swing from the full step)
   an.idling = !!tg.idling;
   an.t = clock;
   // under budget pressure (degrade 3) far ones keep still between moves: no idle micro-motion at LOD 2
@@ -538,6 +579,8 @@ function _wanUpdate(world, e, dt, clock) {
   else if (tg.state === 'sit' && e.host && world && Array.isArray(world.entities)) { const b = world.entities.find(q => q && q.id === e.host); if (b && _wanNum(b.facing)) an.face = b.facing; }
   const onBench = !!(e.host && world && Array.isArray(world.entities) && world.entities.some(q => q && q.id === e.host && /bench|seat/.test(String(q.obj || ''))));
   an.obj = _wanPoseObj(e.obj, tg.kind, tg.pose, onBench);
+  // the way the body faces (the views and the gait are drawn from it)
+  { const y = _wanYaw(e, an, tg, dt); an.yaw = y; }
   // views with hysteresis (the camera's angle), skipped while culled (a culled agent keeps its last view)
   if (world && world.cam && !e.culled) { const v = worldViewOf(e, world.cam, { prev: an.view, prevMirror: an.mirror }); if (v) { an.view = v.view; an.mirror = v.mirror; an.persp = v.persp; } }
   // the gait the legs are drawn with (worldAnimGait): the frame record carries it, so the checker (walkInPlace) judges what is DRAWN
@@ -788,7 +831,9 @@ function worldAnimGait(ent, an, o) {
   const swing = artFs > 0.3 ? _wanClamp(fs / artFs, WORLD_ANIM_GAIT.min, 1) : 1, fb = 1 - Math.min(1, fs);
   let artH = 64;
   const obj = o.obj || (ent && ent.obj);
-  if (typeof sceneObj === 'function' && obj) { try { const d = sceneObj(obj); if (d && Array.isArray(d.size) && d.size[1] > 0) artH = d.size[1]; } catch (e) { /* 64 */ } }
+  // the art units a body height is drawn at: a view object's size over its view scale (worldViewNorm), so a lift or a sway is the same
+  // share of the figure from every side
+  if (typeof sceneObj === 'function' && obj) { try { const d = sceneObj(obj); if (d && Array.isArray(d.size) && d.size[1] > 0) artH = d.size[1] / (ent && ent.obj && obj !== ent.obj ? worldViewNorm(ent.obj, obj, Number.isInteger(ent.variant) ? ent.variant : 0) : 1); } catch (e) { /* 64 */ } }
   return { fs: _wanR(fs, 3), view, swing: _wanR(swing, 3), plane: _wanR(swing * Math.max(artFs, 0.16), 3), lift: _wanR(fb, 3), sway: _wanR(fb, 3), bob: _wanR(1 + WORLD_ANIM_GAIT.bob * fb, 3), artH };
 }
 

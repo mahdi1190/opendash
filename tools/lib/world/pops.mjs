@@ -28,7 +28,7 @@
 //   worldPopsText(report, id)                -> printable lines
 import { worldSimOf } from './adversarial.mjs';
 
-export const POPS = Object.freeze({ size: 0.06, width: 0.2, pos: 4, slide: 0.5, snap: 1.5, snapAdd: 30, accel: 5, rate: 0.3, flicker: 0.5, shakeRev: 2.5, shakeRms: 0.01, minPx: 14, gaitJump: 0.15, win: 15 });
+export const POPS = Object.freeze({ size: 0.06, width: 0.2, pos: 4, slide: 0.5, snap: 1.5, snapAdd: 30, accel: 5, rate: 0.3, flicker: 0.5, shakeRev: 2.5, shakeRms: 0.01, minPx: 14, gaitJump: 0.15, win: 15, stutter: 0.5, skip: 1 });
 const R3 = (v) => Math.round(v * 1000) / 1000;
 const ang = (a) => ((((a % 360) + 540) % 360) - 180);
 
@@ -68,7 +68,7 @@ function drawBox(E, d) {
 /** The rest height of a drawing (its still art, unposed, at its scale): the change of view compares these. */
 function restH(E, d) { const b = E.worldArtBounds(d.o, d.v, d.season, '*'); return b ? (b[3] - b[1]) * d.s : null; }
 
-function newCounts() { return { sizePop: 0, swaps: 0, swapPop: 0, widthPop: 0, posPop: 0, anchorJump: 0, slideFrames: 0, sideOnFrames: 0, headingSnap: 0, speedPop: 0, ratePop: 0, clipFlicker: 0, viewFlicker: 0, mirrorFlip: 0, shakeFrames: 0, shakeOnsets: 0, steerFlip: 0, sideFlip: 0, gaitNoise: 0, frames: 0, moving: 0 }; }
+function newCounts() { return { sizePop: 0, swaps: 0, swapPop: 0, widthPop: 0, posPop: 0, anchorJump: 0, slideFrames: 0, sideOnFrames: 0, headingSnap: 0, speedPop: 0, ratePop: 0, clipFlicker: 0, viewFlicker: 0, mirrorFlip: 0, shakeFrames: 0, shakeOnsets: 0, stutterFrames: 0, stutterBase: 0, steerFlip: 0, sideFlip: 0, gaitNoise: 0, frames: 0, moving: 0 }; }
 
 /** The analysis: feed it each frame's figures ({ id, obj, X, Y, x, z, height, view, mirror, draws, agent, raw, anim }). */
 export function popsTracker(E, o = {}) {
@@ -101,18 +101,18 @@ export function popsTracker(E, o = {}) {
       const key = newest.o + (newest.flip ? '~' : ''), clip = f.anim && f.anim.clip, rate = f.anim && f.anim.rate;
       const s = { t, X: f.X, Y: f.Y, x: f.x, z: f.z, height: f.height, H, W, feetY, headY, cx, legs, key, view: f.view, mirror: f.mirror, sp, clip, rate,
         k: f.anim ? f.anim.k : null, swing: f.anim && f.anim.gait ? f.anim.gait.swing : null, fs: f.anim && f.anim.gait ? f.anim.gait.fs : null,
-        face: moving ? Math.atan2(f.agent.vx, f.agent.vz) * 180 / Math.PI : null, heading: f.raw && Number.isFinite(f.raw.heading) ? f.raw.heading * 180 / Math.PI : null,
+        face: moving ? (f.anim && Number.isFinite(f.anim.yaw) ? f.anim.yaw : Math.atan2(f.agent.vx, f.agent.vz) * 180 / Math.PI) : null, heading: f.raw && Number.isFinite(f.raw.heading) ? f.raw.heading * 180 / Math.PI : null,
         turn: f.raw && f.raw.turn > 0 ? f.raw.turn : 0.5, sideDir: f.raw ? f.raw.sideDir : null, sideV: f.raw ? f.raw.sideV : 0, rest: restH(E, newest), fade: f.draws.length > 1, big };
       if (big) { p.frames++; C.frames++; kindC(kind).frames++; if (moving) { p.moving++; C.moving++; kindC(kind).moving++; } }
       const q = p.prev;
-      if (q && Math.abs(t - q.t - dt) < dt * 0.6 && big && q.big) {
+      if (q && t >= POPS.skip && Math.abs(t - q.t - dt) < dt * 0.6 && big && q.big) {
         const sameH = s.height === q.height;
         // (a) size: the drawn height per metre at its depth, frame to frame
         if (sameH && q.H > 0) {
           const k = (s.H * s.z) / (q.H * q.z);
           if (Math.abs(k - 1) > POPS.size) { bump(p, 'sizePop'); ex('sizePop', t, f, `drawn height ${q.H.toFixed(1)} -> ${s.H.toFixed(1)} px (${Math.round((k - 1) * 100)} % at its depth) ${q.view}${q.mirror ? '~' : ''} -> ${s.view}${s.mirror ? '~' : ''}${s.fade ? ' (cross-fading)' : ''}`, { k: R3(k) }); }
           const kw = q.W > 0 ? (s.W * s.z) / (q.W * q.z) : 1;
-          if (Math.abs(kw - 1) > POPS.width) { bump(p, 'widthPop'); ex('widthPop', t, f, `drawn width ${q.W.toFixed(1)} -> ${s.W.toFixed(1)} px ${q.view} -> ${s.view}`); }
+          if ((s.key !== q.key || s.fade) && Math.abs(kw - 1) > POPS.width) { bump(p, 'widthPop'); ex('widthPop', t, f, `drawn width ${q.W.toFixed(1)} -> ${s.W.toFixed(1)} px ${q.view} -> ${s.view}`); }
         }
         // a change of view: the new drawing's rest height against the old one's, at the same depth
         if (s.key !== q.key) {
@@ -176,7 +176,7 @@ export function popsTracker(E, o = {}) {
       // (a) the anchor shaking and (d) the heading's turn reversing: over a centred window of POPS.win frames each side
       p.hist.push(s);
       if (p.hist.length > 2 * POPS.win + 1) p.hist.shift();
-      if (p.hist.length === 2 * POPS.win + 1) shake(p, f);
+      if (p.hist.length === 2 * POPS.win + 1 && t >= POPS.skip) shake(p, f);
       p.prev = s;
     }
     for (const id of [...P.keys()]) if (!seen.has(id)) { const p = P.get(id); if (t - p.prev.t > 1) { done.push(p); P.delete(id); } }
@@ -184,6 +184,15 @@ export function popsTracker(E, o = {}) {
   const done = [];
   function shake(p, f) {
     const Hs = p.hist, c = Hs[POPS.win];
+    // a stutter: the body moving in fits and starts from frame to frame (the per-frame step's own change against its mean; a steady walk
+    // is near 0, still-then-double steps (a 15 Hz move drawn at 30 or 60 Hz) are 2)
+    if (c.big && Hs.every(h => h.sp > 0.3)) {
+      let sd = 0, sdd = 0, n = 0, prevD = null;
+      for (let i = 1; i < Hs.length; i++) { const d = Math.hypot(Hs[i].x - Hs[i - 1].x, Hs[i].z - Hs[i - 1].z); sd += d; if (prevD != null) { sdd += Math.abs(d - prevD); n++; } prevD = d; }
+      const md = sd / (Hs.length - 1), st = n && md > 0.004 ? sdd / n / md : 0;
+      bump(p, 'stutterBase');
+      if (st > POPS.stutter) { bump(p, 'stutterFrames'); if (!p.stuttered) ex('stutter', c.t, f, `the body moves in fits and starts: the step from frame to frame changes by ${Math.round(st * 100)} % of its mean (${(md * 1000).toFixed(1)} mm a frame)`); p.stuttered = true; } else p.stuttered = false;
+    }
     if (!c.big || !(c.sp > 0.15) || Hs.some(h => !(h.sp > 0.1))) { p.shaking = false; return; }
     const a = Hs[0], b = Hs[Hs.length - 1], L = Math.hypot(b.x - a.x, b.z - a.z);
     if (!(L > 0.2)) { p.shaking = false; return; }
@@ -214,13 +223,13 @@ export function popsTracker(E, o = {}) {
     const all = done.concat([...P.values()]);
     const mins = C.frames / fps / 60, per = (n, m) => (m > 0 ? R3(n / m) : 0);
     const perMin = {};
-    for (const k of Object.keys(C)) if (!['frames', 'moving', 'slideFrames', 'sideOnFrames', 'shakeFrames'].includes(k)) perMin[k] = per(C[k], mins);
+    for (const k of Object.keys(C)) if (!['frames', 'moving', 'slideFrames', 'sideOnFrames', 'shakeFrames', 'stutterFrames', 'stutterBase'].includes(k)) perMin[k] = per(C[k], mins);
     const kinds = {};
-    for (const [k, c] of Object.entries(byKind)) { const m = c.frames / fps / 60; kinds[k] = { minutes: R3(m), swaps: c.swaps, swapPop: c.swapPop, sizePop: per(c.sizePop, m), posPop: per(c.posPop, m), headingSnap: per(c.headingSnap, m), viewFlicker: per(c.viewFlicker, m), shake: per(c.shakeOnsets, m), shakeShare: c.moving ? R3(c.shakeFrames / c.moving) : 0, slideShare: c.sideOnFrames ? R3(c.slideFrames / c.sideOnFrames) : 0, speedPop: per(c.speedPop, m), steerFlip: per(c.steerFlip, m) }; }
+    for (const [k, c] of Object.entries(byKind)) { const m = c.frames / fps / 60; kinds[k] = { minutes: R3(m), swaps: c.swaps, swapPop: c.swapPop, sizePop: per(c.sizePop, m), posPop: per(c.posPop, m), headingSnap: per(c.headingSnap, m), viewFlicker: per(c.viewFlicker, m), shake: per(c.shakeOnsets, m), shakeShare: c.moving ? R3(c.shakeFrames / c.moving) : 0, slideShare: c.sideOnFrames ? R3(c.slideFrames / c.sideOnFrames) : 0, speedPop: per(c.speedPop, m), steerFlip: per(c.steerFlip, m), stutterShare: c.stutterBase ? R3(c.stutterFrames / c.stutterBase) : 0 }; }
     const sw = Object.values(swaps).map(w => ({ pair: w.pair, obj: w.obj, kind: w.kind, n: w.n, pops: w.pops, mean: R3(w.sum / w.n), max: R3(w.max) })).sort((a, b) => b.pops - a.pops || b.max - a.max);
     const score = (p) => (p.c.sizePop || 0) + (p.c.swapPop || 0) + (p.c.posPop || 0) + (p.c.headingSnap || 0) + (p.c.viewFlicker || 0) + (p.c.shakeOnsets || 0) * 2 + (p.c.speedPop || 0) + (p.c.clipFlicker || 0) + (p.c.slideFrames || 0) / 30;
     const worst = all.filter(p => score(p) > 0).sort((a, b) => score(b) - score(a)).slice(0, 10).map(p => ({ id: p.id, obj: p.obj, kind: p.kind, score: R3(score(p)), c: p.c, shakeCause: p.shakeCause || null }));
-    return { frames, fps, personMinutes: R3(mins), movingMinutes: R3(C.moving / fps / 60), counts: C, perMin, shakeShare: C.moving ? R3(C.shakeFrames / C.moving) : 0, slideShare: C.sideOnFrames ? R3(C.slideFrames / C.sideOnFrames) : 0, byKind: kinds, swaps: sw, worst, examples };
+    return { frames, fps, personMinutes: R3(mins), movingMinutes: R3(C.moving / fps / 60), counts: C, perMin, shakeShare: C.moving ? R3(C.shakeFrames / C.moving) : 0, slideShare: C.sideOnFrames ? R3(C.slideFrames / C.sideOnFrames) : 0, stutterShare: C.stutterBase ? R3(C.stutterFrames / C.stutterBase) : 0, byKind: kinds, swaps: sw, worst, examples };
   }
   return { frame, report };
 }
@@ -251,7 +260,7 @@ export function worldPopsRun(E, spec, o = {}) {
     const agents = sim.agents(), L = sim.life, raw = new Map(((L && L.agents) || []).map(a => [String(a.id), a])), byId = new Map(agents.map(a => [String(a.id), a]));
     const figs = E.worldFrameFigures(sim.world, sim.t, { mem, agents, season, wet: false });
     const lt = L ? L.t : sim.t;
-    T.frame(sim.t, figs.map(g => { const a = byId.get(String(g.id)) || null, an = a && typeof E.worldAnimOf === 'function' ? E.worldAnimOf(Object.assign({}, a, { obj: a.obj }), sim.world) : null; return Object.assign(g, { agent: a, raw: rawOf(raw.get(String(g.id)), lt), anim: an ? { clip: an.clip, rate: an.rate, k: an.k, gait: an.gait || null } : null }); }));
+    T.frame(sim.t, figs.map(g => { const a = byId.get(String(g.id)) || null, an = a && typeof E.worldAnimOf === 'function' ? E.worldAnimOf(Object.assign({}, a, { obj: a.obj }), sim.world) : null; return Object.assign(g, { agent: a, raw: rawOf(raw.get(String(g.id)), lt), anim: an ? { clip: an.clip, rate: an.rate, k: an.k, gait: an.gait || null, yaw: an.yaw } : null }); }));
   }
   return Object.assign(T.report(), { seconds, source: 'node' });
 }
@@ -281,7 +290,7 @@ export async function worldPopsBrowser(chrome, src, o = {}) {
           draws: ds.map(d => ({ o: d.o, v: d.v, season: d.season, flip: d.flip, s: d.s, a: d.a, blits: d.blits })),
           agent: a ? { vx: a.vx, vz: a.vz, cls: a.cls, age: a.age } : null,
           raw: ra ? { heading: ra.heading, turn: ra.brain && ra.brain.turn, sideDir: ra.sideDir, sideV: ra.sideV || 0, lead: !!ra.lead, leader: !!ra.leader, taut: !!(ra.lead && ra.leader && Math.hypot(ra.x - ra.leader.x, ra.z - ra.leader.z) > ra.lead.len * 0.85), yieldPinch: ra.yieldPinch, squeezed: ra.squeezed, held: ra.held, ghost: ra.ghost, slow: ra.slow, turning: ra.turning, lt: L.t } : null,
-          anim: an ? { clip: an.clip, rate: an.rate, k: an.k, gait: an.gait || null } : null });
+          anim: an ? { clip: an.clip, rate: an.rate, k: an.k, gait: an.gait || null, yaw: an.yaw } : null });
       }
       return { t: S.drawn.tau, out };
     } catch (e) { return { error: String(e && e.stack || e) }; } })()`);
@@ -300,7 +309,7 @@ export function worldPopsText(R, id) {
     `  size pops ${c.sizePop} (${m.sizePop}/min)  view changes ${c.swaps} (${m.swaps}/min), ${c.swapPop} of them over 6 % (${m.swapPop}/min)  width pops ${c.widthPop}`,
     `  position pops ${c.posPop} (${m.posPop}/min)  anchor jumps ${c.anchorJump}  heading snaps ${c.headingSnap} (${m.headingSnap}/min)  speed pops ${c.speedPop}  cycle-rate pops ${c.ratePop}  walk/stand flicker ${c.clipFlicker}`,
     `  foot slide ${pc(R.slideShare)} of side-on walking  view flicker ${c.viewFlicker} (${m.viewFlicker}/min)  mirror flips ${c.mirrorFlip}  gait noise ${c.gaitNoise}`,
-    `  jitter: shaking ${pc(R.shakeShare)} of moving time, ${c.shakeOnsets} onsets (${m.shakeOnsets}/min); steering reversals ${c.steerFlip} (${m.steerFlip}/min); sidestep side flips ${c.sideFlip}`];
+    `  jitter: stutter ${pc(R.stutterShare || 0)} of moving time; shaking ${pc(R.shakeShare)} of moving time, ${c.shakeOnsets} onsets (${m.shakeOnsets}/min); steering reversals ${c.steerFlip} (${m.steerFlip}/min); sidestep side flips ${c.sideFlip}`];
   L.push('  by kind:');
   for (const [k, v] of Object.entries(R.byKind || {}).sort((a, b) => b[1].minutes - a[1].minutes)) L.push(`    ${k.padEnd(11)} ${String(v.minutes).padStart(7)} min  swaps ${String(v.swaps).padStart(4)} (${v.swapPop} pops)  size ${v.sizePop}/min  pos ${v.posPop}/min  snap ${v.headingSnap}/min  flicker ${v.viewFlicker}/min  shake ${v.shake}/min (${pc(v.shakeShare)})  slide ${pc(v.slideShare)}`);
   const sw = (R.swaps || []).filter(w => w.pops || w.max > 0.06).slice(0, 14);

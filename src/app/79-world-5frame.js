@@ -110,7 +110,8 @@ function _wfrRec(e, cam, o) {
   const oid = vw.obj && sceneObj(vw.obj) ? vw.obj : (typeof _wh5ViewObj === 'function' ? _wh5ViewObj(e.obj, vw.view) : e.obj), def = sceneObj(oid);
   if (!def || !def.size) return null;
   const v = vw.variant != null ? vw.variant : Number.isInteger(e.variant) ? e.variant : 0;
-  const P = sceneProject(cam, e.x, e.z, Number.isFinite(e.y) ? e.y : null), s = vw.s || (cam.f / e.z) * _wfrHeight(e) / def.size[1];
+  // (a view object is drawn at the height of its side object: appearance's worldViewNorm, already in vw.s)
+  const P = sceneProject(cam, e.x, e.z, Number.isFinite(e.y) ? e.y : null), s = vw.s || (cam.f / e.z) * _wfrHeight(e) / def.size[1] * (oid !== e.obj && typeof worldViewNorm === 'function' ? worldViewNorm(e.obj, oid, v) : 1);
   // a person is drawn in the wardrobe of the day's weather (an umbrella is up in rain or showers and furled when it is dry: SCENE_LESSONS J);
   // o.wet: true | false from the draw's light, undefined (a record made without one) keeps the season's wardrobe
   const form = o.agent ? (o.season || 'summer') + (o.wet != null && /^person./.test(String(e.obj)) ? (o.wet ? '~wet' : '~dry') : '') : _wfrFormOf(e, o.season, o.ctx);
@@ -216,8 +217,10 @@ function _wfrAgentMem(mem, r, tau) {
   const ex = Math.log2(Math.max(1e-3, r.s)) * 4;
   if (Math.abs(ex - m.e) > 0.75) m.e = Math.round(ex);
   r.bucket = 2 ** (m.e / 4);
-  if (m.o !== r.o || m.flip !== r.flip) { m.prev = { o: m.o, flip: m.flip, view: m.view }; m.since = tau; }
-  m.view = r.view; m.mirror = r.mirror; m.o = r.o; m.flip = r.flip;
+  // sz: the scale times the depth (the view's own scale at any depth): the old view of a change is drawn at ITS scale, not the new one's
+  const sz = r.s * r.z;
+  if (m.o !== r.o || m.flip !== r.flip) { m.prev = { o: m.o, flip: m.flip, view: m.view, sz: m.sz }; m.since = tau; }
+  m.view = r.view; m.mirror = r.mirror; m.o = r.o; m.flip = r.flip; m.sz = sz;
   r.mem = m;
   return m;
 }
@@ -227,9 +230,53 @@ function _wfrAgentMem(mem, r, tau) {
  */
 function _wfrFadeRecs(r, m, tau) {
   const k = m && m.prev && m.since >= 0 ? Math.max(0, Math.min(1, (tau - m.since) / WORLD_FRAME_FADE_S)) : 1;
-  if (k < 1 && m.prev && m.prev.o && !r.prim) return [{ rec: Object.assign({}, r, { o: m.prev.o, flip: !!m.prev.flip }), a: 1 - k, old: true }, { rec: r, a: k }];
+  if (k < 1 && m.prev && m.prev.o && !r.prim) {
+    const old = Object.assign({}, r, { o: m.prev.o, flip: !!m.prev.flip, view: m.prev.view || r.view });
+    // the old view at its own scale (until 20 Oct it took the new view's: a walker's side art shrank by a fifth in the first frame of a
+    // turn toward the eye, whatever the views' heights), its own box and sprite bucket
+    if (m.prev.sz > 0 && r.z > 0) {
+      old.s = m.prev.sz / r.z;
+      old.bucket = 2 ** (Math.round(Math.log2(Math.max(1e-3, old.s)) * 4) / 4);
+      const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(old.o, old.v, old.season) : null, b = sh && sh.box;
+      if (b) old.box = old.flip ? { x0: r.X - b[2] * old.s, y0: r.Y + b[1] * old.s, x1: r.X - b[0] * old.s, y1: r.Y + b[3] * old.s } : { x0: r.X + b[0] * old.s, y0: r.Y + b[1] * old.s, x1: r.X + b[2] * old.s, y1: r.Y + b[3] * old.s };
+    }
+    return [{ rec: old, a: 1 - k, old: true }, { rec: r, a: k }];
+  }
   if (m) m.prev = null;
   return [{ rec: r, a: 1 }];
+}
+/**
+ * A view change drawn as a true dissolve (20 Oct): the old and the new drawing each made whole in a scratch, mixed in proportion
+ * (old x (1 - k) + new x k: 'lighter' on premultiplied pixels), and the mix laid on the frame once at the agent's own opacity ga. Two
+ * drawings blitted one over the other at 1 - k and k let the scene show through the figure halfway (0.75 cover at k = 0.5) and the
+ * old view's wider parts vanish at once at the end. Falls back to the two blits when there is no scratch.
+ */
+function _wfrDrawDissolve(env, S, ctx, rOld, rNew, k, tau, ga) {
+  const vs = env.vs, bx = (r) => r.box;
+  const x0f = Math.min(bx(rOld).x0, bx(rNew).x0), y0f = Math.min(bx(rOld).y0, bx(rNew).y0), x1f = Math.max(bx(rOld).x1, bx(rNew).x1), y1f = Math.max(bx(rOld).y1, bx(rNew).y1);
+  const bw = (x1f - x0f) * vs, bh = (y1f - y0f) * vs, pad = Math.ceil(Math.max(4, Math.max(bw, bh) * 0.25));
+  const x0 = Math.floor(x0f * vs + env.ox) - pad, y0 = Math.floor(y0f * vs + env.oy) - pad, w = Math.ceil(bw) + 2 * pad, h = Math.ceil(bh) + 2 * pad;
+  const two = () => _wfrDrawMover(env, S, ctx, rOld, tau, (1 - k) * ga) + _wfrDrawMover(env, S, ctx, rNew, tau, k * ga);
+  if (!(w > 0 && h > 0) || w > 2 * (env.W || 4096) || h > 2 * (env.H || 4096) || rOld.cut || rNew.cut) return two();
+  const grow = (c) => { if (c && c.width >= w && c.height >= h) return c; try { return _wfrCanvas(Math.max(w, c ? c.width : 0, 64), Math.max(h, c ? c.height : 0, 128)); } catch (e) { return null; } };
+  const A = S.fadeA = grow(S.fadeA), B = S.fadeB = grow(S.fadeB);
+  const ax = A && A.getContext ? A.getContext('2d') : null, bx2 = B && B.getContext ? B.getContext('2d') : null;
+  if (!ax || !bx2) return two();
+  const e2 = Object.create(env); e2.ox = env.ox - x0; e2.oy = env.oy - y0;
+  for (const c of [ax, bx2]) { c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, w, h); }
+  let n = 0;
+  try {
+    S.figA = (1 - k) * ga; n += _wfrDrawMover0(e2, S, ax, rOld, tau, 1);
+    S.figA = k * ga; n += _wfrDrawMover0(e2, S, bx2, rNew, tau, 1);
+  } finally { S.figA = null; }
+  ax.setTransform(1, 0, 0, 1, 0, 0);
+  ax.globalCompositeOperation = 'destination-out'; ax.globalAlpha = k; ax.fillStyle = '#000'; ax.fillRect(0, 0, w, h);
+  ax.globalCompositeOperation = 'lighter'; ax.globalAlpha = k; ax.drawImage(B, 0, 0, w, h, 0, 0, w, h);
+  ax.globalCompositeOperation = 'source-over'; ax.globalAlpha = 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = ga;
+  ctx.drawImage(A, 0, 0, w, h, x0, y0, w, h);
+  ctx.globalAlpha = 1;
+  return n + 1;
 }
 /**
  * The blits of one mover drawing at scene time tau (the compositor draws exactly these; worldFrameFigures measures them):
@@ -1592,7 +1639,8 @@ function _wfrRun(S, ms) {
 function _wfrHooks(env, S, r, sh, tau) {
   if (typeof worldAnimHooks === 'function') {
     try {
-      const h = worldAnimHooks(r.ent, tau, { obj: r.o, variant: r.v, season: r.season || S.season, world: S.rec.world });
+      // (the view DRAWN: the old one of a view change keeps its own swing; appearance's own view otherwise)
+      const h = worldAnimHooks(r.ent, tau, { obj: r.o, variant: r.v, season: r.season || S.season, world: S.rec.world, view: r.agent || r.mem ? r.view : undefined });
       const list = Array.isArray(h) ? h : h && Array.isArray(h.hooks) ? h.hooks : null;
       if (list) return list.filter(x => x && x.kind);
     } catch (e) { /* below */ }
@@ -1914,10 +1962,13 @@ function _wfrDraw(env, ctx, t) {
       const r = it.ref, m = r.mem;
       // the agent's own opacity (life: a fade in or out, a ghost pass through another walker), times the view change's cross-fade
       const ga = _wfrAgentAlpha(r);
-      for (const f of (r.agent ? _wfrFadeRecs(r, m, tau) : [{ rec: r, a: 1 }])) draws += _wfrDrawMover(env, S, ctx, f.rec, tau, f.a * ga);
+      const fr = r.agent ? _wfrFadeRecs(r, m, tau) : [{ rec: r, a: 1 }];
+      if (fr.length === 2 && !r.prim && !r.bmp) draws += _wfrDrawDissolve(env, S, ctx, fr[0].rec, fr[1].rec, fr[1].a, tau, ga);
+      else for (const f of fr) draws += _wfrDrawMover(env, S, ctx, f.rec, tau, f.a * ga);
       const own = (agentLights && agentLights.get(r.id)) || (r.static && S.liveLights && S.liveLights.get(r.id));
       if (own) { try { draws += worldDrawLights(ctx, own, cam, { vs, ox, oy, sky: S.sky || undefined, stage: 'glow' }) || 0; } catch (e) { /* no lamp */ } ctx.setTransform(1, 0, 0, 1, 0, 0); }
-      const b = r.box;
+      // (the occluder redraws cover both drawings of a view change)
+      const b = fr.length === 2 ? { x0: Math.min(r.box.x0, fr[0].rec.box.x0), y0: Math.min(r.box.y0, fr[0].rec.box.y0), x1: Math.max(r.box.x1, fr[0].rec.box.x1), y1: Math.max(r.box.y1, fr[0].rec.box.y1) } : r.box;
       clip = [Math.floor(b.x0 * vs + ox) - 1, Math.floor(b.y0 * vs + oy) - 1, Math.ceil(b.x1 * vs + ox) + 1, Math.ceil(b.y1 * vs + oy) + 1];
       continue;
     }
