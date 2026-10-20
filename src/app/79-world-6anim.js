@@ -160,12 +160,181 @@ function worldViewOf(ent, cam, o) {
     const eye = cam && _wanNum(cam.eye) ? cam.eye : 1.65, top = (_wanNum(ent.y) ? ent.y : 0) + (_wanNum(ent.height) ? ent.height : info.size.h);
     out.roof = eye > top;
   }
+  out.norm = 1;
   if (cam && _wanNum(cam.f) && ent.z > 0.05 && typeof sceneObj === 'function') {
     const def = sceneObj(vObj), h = _wanNum(ent.height) && ent.height > 0 ? ent.height : _wanNum(ent.h) && ent.h > 0 ? ent.h : info && info.size ? info.size.h : null;
-    if (def && Array.isArray(def.size) && def.size[1] > 0 && h) out.s = _wanR((cam.f / ent.z) * h / def.size[1], 5);
+    if (def && Array.isArray(def.size) && def.size[1] > 0 && h) out.s = _wanR((cam.f / ent.z) * h / def.size[1] * out.norm, 5);
   }
   if (o.write && !o.keep) { ent.view = view; ent.mirror = mirror; }
   return out;
+}
+
+/* ---------- the drawn extent of art, and one height from every side (20 Oct) ---------- */
+// The library's own boxes (_scBox, scenePathBox) are CONSERVATIVE: control points and an arc's radius round both its ends. A head drawn
+// as an ellipse of arcs (the directional views, sceneMoverViews) came out 5 units taller than the same head drawn with curves (the side
+// figures), so boxes cannot tell whether two views are drawn at one height. These are the bounds of the drawn outline itself: curves
+// at their extremes, arcs through their true centre, a stroke's half width, through the shape's own matrix.
+const _wanBoxMemo = new Map();
+function _wanSeg(pts, x0, y0, f, n) { for (let i = 1; i <= n; i++) { const p = f(i / n); pts.push(p[0], p[1]); } }
+/** The arc of an SVG 'A' command as points (the endpoint form turned into its centre form, F.6.5 of the SVG spec). */
+function _wanArc(pts, x1, y1, rx, ry, phi, fa, fs, x2, y2) {
+  rx = Math.abs(rx); ry = Math.abs(ry);
+  if (!(rx > 1e-9 && ry > 1e-9)) { pts.push(x2, y2); return; }
+  const c = Math.cos(phi), s = Math.sin(phi), dx = (x1 - x2) / 2, dy = (y1 - y2) / 2, xp = c * dx + s * dy, yp = -s * dx + c * dy;
+  const lam = (xp * xp) / (rx * rx) + (yp * yp) / (ry * ry);
+  if (lam > 1) { const q = Math.sqrt(lam); rx *= q; ry *= q; }
+  const num = rx * rx * ry * ry - rx * rx * yp * yp - ry * ry * xp * xp, den = rx * rx * yp * yp + ry * ry * xp * xp;
+  let co = den > 0 ? Math.sqrt(Math.max(0, num / den)) : 0;
+  if (fa === fs) co = -co;
+  const cxp = co * rx * yp / ry, cyp = -co * ry * xp / rx, cx = c * cxp - s * cyp + (x1 + x2) / 2, cy = s * cxp + c * cyp + (y1 + y2) / 2;
+  const ang = (ux, uy, vx, vy) => { const a = Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy); return a; };
+  const t1 = ang(1, 0, (xp - cxp) / rx, (yp - cyp) / ry);
+  let dt = ang((xp - cxp) / rx, (yp - cyp) / ry, (-xp - cxp) / rx, (-yp - cyp) / ry);
+  if (!fs && dt > 0) dt -= 2 * Math.PI; else if (fs && dt < 0) dt += 2 * Math.PI;
+  const n = Math.max(4, Math.ceil(Math.abs(dt) / (Math.PI / 16)));
+  for (let i = 1; i <= n; i++) { const t = t1 + dt * i / n, ct = Math.cos(t), st = Math.sin(t); pts.push(cx + c * rx * ct - s * ry * st, cy + s * rx * ct + c * ry * st); }
+}
+/** The points of an SVG path's outline (curves and arcs flattened finely enough for bounds to a hundredth of a unit). */
+function _wanPathPts(d) {
+  const tok = String(d || '').match(/[MLHVCSQTAZmlhvcsqtaz]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g);
+  const pts = [];
+  if (!tok) return pts;
+  const N = { M: 2, L: 2, H: 1, V: 1, C: 6, S: 4, Q: 4, T: 2, A: 7, Z: 0 };
+  let cx = 0, cy = 0, sx = 0, sy = 0, cmd = 'M', i = 0, qx = null, qy = null, kx = null, ky = null, last = '';
+  while (i < tok.length) {
+    if (/[A-Za-z]/.test(tok[i])) { cmd = tok[i++]; if (cmd === 'Z' || cmd === 'z') { cx = sx; cy = sy; last = 'Z'; continue; } }
+    const U = cmd.toUpperCase(), rel = cmd !== U, n = N[U];
+    if (!n || i + n > tok.length) break;
+    const a = tok.slice(i, i + n).map(Number); i += n;
+    const ox = rel ? cx : 0, oy = rel ? cy : 0, x0 = cx, y0 = cy;
+    if (U === 'M') { cx = ox + a[0]; cy = oy + a[1]; sx = cx; sy = cy; pts.push(cx, cy); cmd = rel ? 'l' : 'L'; }
+    else if (U === 'L') { cx = ox + a[0]; cy = oy + a[1]; pts.push(cx, cy); }
+    else if (U === 'H') { cx = ox + a[0]; pts.push(cx, cy); }
+    else if (U === 'V') { cy = oy + a[0]; pts.push(cx, cy); }
+    else if (U === 'C' || U === 'S') {
+      let x1, y1;
+      if (U === 'C') { x1 = ox + a[0]; y1 = oy + a[1]; } else { x1 = last === 'C' && kx != null ? 2 * x0 - kx : x0; y1 = last === 'C' && ky != null ? 2 * y0 - ky : y0; }
+      const x2 = ox + a[U === 'C' ? 2 : 0], y2 = oy + a[U === 'C' ? 3 : 1], x3 = ox + a[U === 'C' ? 4 : 2], y3 = oy + a[U === 'C' ? 5 : 3];
+      _wanSeg(pts, x0, y0, t => { const u = 1 - t; return [u * u * u * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3, u * u * u * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3]; }, 16);
+      kx = x2; ky = y2; cx = x3; cy = y3; last = 'C'; continue;
+    } else if (U === 'Q' || U === 'T') {
+      let x1, y1;
+      if (U === 'Q') { x1 = ox + a[0]; y1 = oy + a[1]; } else { x1 = last === 'Q' && qx != null ? 2 * x0 - qx : x0; y1 = last === 'Q' && qy != null ? 2 * y0 - qy : y0; }
+      const x2 = ox + a[U === 'Q' ? 2 : 0], y2 = oy + a[U === 'Q' ? 3 : 1];
+      _wanSeg(pts, x0, y0, t => { const u = 1 - t; return [u * u * x0 + 2 * u * t * x1 + t * t * x2, u * u * y0 + 2 * u * t * y1 + t * t * y2]; }, 12);
+      qx = x1; qy = y1; cx = x2; cy = y2; last = 'Q'; continue;
+    } else if (U === 'A') { const ex = ox + a[5], ey = oy + a[6]; _wanArc(pts, x0, y0, a[0], a[1], a[2] * _WAN_DEG, a[3] ? 1 : 0, a[4] ? 1 : 0, ex, ey); cx = ex; cy = ey; }
+    last = U;
+  }
+  return pts;
+}
+/** The exact bounds [x0, y0, x1, y1] of a path's outline, through a matrix m, widened by a stroke's half width w. */
+function _wanPathBox(d, m, w) {
+  let raw = typeof d === 'string' ? _wanBoxMemo.get(d) : undefined;
+  if (raw === undefined) { raw = _wanPathPts(d); if (typeof d === 'string') { if (_wanBoxMemo.size > 40000) _wanBoxMemo.clear(); _wanBoxMemo.set(d, raw); } }
+  if (!raw.length) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < raw.length; i += 2) {
+    const x = m ? m[0] * raw[i] + m[2] * raw[i + 1] + m[4] : raw[i], y = m ? m[1] * raw[i] + m[3] * raw[i + 1] + m[5] : raw[i + 1];
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  const h = w > 0 ? w / 2 : 0;
+  return [x0 - h, y0 - h, x1 + h, y1 + h];
+}
+const _wanArtMemo = new Map();
+/**
+ * The drawn extent of an object's art (art units, its anchor at 0, 0): the exact outline bounds of the parts of a sprite as the
+ * compositor names them: '*' (the still parts), 'rest:a,b' (the still parts but the moving ones), or one part. Null: no drawing.
+ */
+function worldArtBounds(oid, v, season, part) {
+  const key = oid + '|' + (v | 0) + '|' + (season || 'summer') + '|' + (part || '*');
+  if (_wanArtMemo.has(key)) return _wanArtMemo.get(key);
+  let b = null;
+  if (typeof sceneObjShapes === 'function' && oid) {
+    let sh = null;
+    try { sh = sceneObjShapes(oid, v | 0, season || 'summer'); } catch (e) { sh = null; }
+    if (sh && sh.parts) {
+      const still = sh.still || sh.order.filter(p => p !== 'lit'), p = part || '*';
+      const names = p === '*' ? still : p.startsWith('rest:') ? still.filter(q => !p.slice(5).split(',').includes(q)) : [p];
+      for (const n of names) for (const s of sh.parts[n] || []) {
+        if (!s || !s.d || s.img) continue;
+        const q = _wanPathBox(s.d, s.m, s.s ? s.w || 1 : 0);
+        if (!q) continue;
+        b = b ? [Math.min(b[0], q[0]), Math.min(b[1], q[1]), Math.max(b[2], q[2]), Math.max(b[3], q[3])] : q;
+      }
+    }
+  }
+  if (_wanArtMemo.size > 20000) _wanArtMemo.clear();
+  _wanArtMemo.set(key, b);
+  return b;
+}
+const _wanHullMemo = new Map();
+/**
+ * The convex hull of an object's drawn outline (art units; the parts as worldArtBounds names them), widened by its widest stroke's half
+ * width: { pts: [x0, y0, x1, y1, ...], pad }. A posed part's exact bounds are the hull's points through its matrix (the tools measure
+ * the drawn figure with it: tools/lib/world/pops.mjs). Null: no drawing.
+ */
+function worldArtHull(oid, v, season, part) {
+  const key = oid + '|' + (v | 0) + '|' + (season || 'summer') + '|' + (part || '*');
+  if (_wanHullMemo.has(key)) return _wanHullMemo.get(key);
+  let out = null;
+  if (typeof sceneObjShapes === 'function' && oid) {
+    let sh = null;
+    try { sh = sceneObjShapes(oid, v | 0, season || 'summer'); } catch (e) { sh = null; }
+    if (sh && sh.parts) {
+      const still = sh.still || sh.order.filter(p => p !== 'lit'), p = part || '*';
+      const names = p === '*' ? still : p.startsWith('rest:') ? still.filter(q => !p.slice(5).split(',').includes(q)) : [p];
+      const P = [];
+      let pad = 0;
+      for (const n of names) for (const s of sh.parts[n] || []) {
+        if (!s || !s.d || s.img) continue;
+        const raw = _wanPathPts(s.d), m = s.m;
+        for (let i = 0; i < raw.length; i += 2) P.push(m ? [m[0] * raw[i] + m[2] * raw[i + 1] + m[4], m[1] * raw[i] + m[3] * raw[i + 1] + m[5]] : [raw[i], raw[i + 1]]);
+        if (s.s) pad = Math.max(pad, (s.w || 1) / 2);
+      }
+      if (P.length) {
+        P.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+        const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], hi = [];
+        for (const q of P) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+        for (let i = P.length - 1; i >= 0; i--) { const q = P[i]; while (hi.length >= 2 && cr(hi[hi.length - 2], hi[hi.length - 1], q) <= 0) hi.pop(); hi.push(q); }
+        const H = lo.slice(0, -1).concat(hi.slice(0, -1)), pts = [];
+        for (const q of H.length ? H : [P[0]]) pts.push(q[0], q[1]);
+        out = { pts, pad };
+      }
+    }
+  }
+  if (_wanHullMemo.size > 20000) _wanHullMemo.clear();
+  _wanHullMemo.set(key, out);
+  return out;
+}
+const _wanNormMemo = new Map();
+/**
+ * The factor on a VIEW object's sprite scale (f / z x real h / its size[1]) that draws it at the height its side object is drawn at
+ * (20 Oct). The views of one mover come from different builders and were declared at different sizes: person.walker is 29 x 64, its
+ * four views 30 x 80, so every walker shrank by a fifth as it turned toward or away from the eye, and grew back as it turned across;
+ * a dog's head-on art filled 0.73 to 0.8 of its box, its side 0.87 to 0.96. The height ratio is measured on the drawn outlines
+ * (worldArtBounds, the still parts) of every variant in summer and winter dress and the MEDIAN is kept (an umbrella or a stick held
+ * in one variant does not move it). The ground line keeps: the anchor is the feet in every view. 1 when either has no art.
+ */
+function worldViewNorm(sideObj, viewObj) {
+  if (!sideObj || !viewObj || sideObj === viewObj || typeof sceneObj !== 'function') return 1;
+  const key = sideObj + '>' + viewObj;
+  if (_wanNormMemo.has(key)) return _wanNormMemo.get(key);
+  const A = sceneObj(sideObj), B = sceneObj(viewObj);
+  let k = 1;
+  if (A && B && Array.isArray(A.size) && Array.isArray(B.size) && A.size[1] > 0 && B.size[1] > 0) {
+    const person = A.category === 'person', n = Math.max(1, Math.min(16, B.variants || 1, A.variants || 1)), ks = [];
+    for (let v = 0; v < n; v++) for (const se of ['summer', 'winter']) {
+      const f = person ? se + '~dry' : se, a = worldArtBounds(sideObj, v, f, '*'), b = worldArtBounds(viewObj, v, f, '*');
+      if (!a || !b) continue;
+      const ha = (a[3] - a[1]) / A.size[1], hb = (b[3] - b[1]) / B.size[1];
+      if (ha > 0 && hb > 0) ks.push(ha / hb);
+    }
+    if (ks.length) { ks.sort((x, y) => x - y); k = _wanClamp(ks[Math.floor(ks.length / 2)], 0.5, 2); }
+  }
+  k = _wanR(k, 4);
+  _wanNormMemo.set(key, k);
+  return k;
 }
 
 /* ---------- classes, strides, rates ---------- */
