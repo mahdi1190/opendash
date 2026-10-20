@@ -137,7 +137,8 @@ function _wanYaw(e, an, tg, dt) {
   if (target == null) {
     if (sp > _WAN_MOVE_OUT) {
       const vd = Math.atan2(vx, vz) / _WAN_DEG;
-      target = hd != null && !(sp > WORLD_ANIM_YAW.drag && Math.abs(_wan180(vd - hd)) > WORLD_ANIM_YAW.off) ? hd : vd;
+      // (a dog faces the way it goes: its lead and its roaming move it off its heading all the time, and a switch between the two flickered its view)
+      target = kind !== 'dog' && hd != null && !(sp > WORLD_ANIM_YAW.drag && Math.abs(_wan180(vd - hd)) > WORLD_ANIM_YAW.off) ? hd : vd;
     } else target = hd != null ? hd : _wanNum(e.facing) ? e.facing : null;
   }
   if (target == null) return null;
@@ -173,7 +174,9 @@ function worldViewOf(ent, cam, o) {
   const rel = _wan180(fc.deg - bearing), abs = Math.abs(rel);
   const prev = o.prev !== undefined ? o.prev : (ent.anim && ent.anim.view) || ent.view || null;
   const prevMirror = o.prevMirror !== undefined ? o.prevMirror : ent.anim && typeof ent.anim.mirror === 'boolean' ? ent.anim.mirror : ent.mirror;
-  const want = _wanWant(abs, prev), has = obj ? _wanViews(obj) : { side: obj };
+  // o.hold: a view that changed a moment ago stays while the body is within twice the hysteresis of it (no view flicker at a boundary)
+  const held = o.hold && prev && _WAN_VIEW_AT[prev] != null && Math.abs(abs - _WAN_VIEW_AT[prev]) <= 22.5 + 2 * _WAN_HYST;
+  const want = held ? prev : _wanWant(abs, prev), has = obj ? _wanViews(obj) : { side: obj };
   let view = has[want] ? want : null;
   if (!view) {
     let best = 'side', bd = Math.abs(abs - 90);

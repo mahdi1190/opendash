@@ -47,10 +47,10 @@ function _wfrHeight(e) {
 }
 function _wfrHash(str) { let h = 2166136261 >>> 0; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
 /** The drawn view of a static or an agent: appearance's worldViewOf, else the agent's own (life), else from its facing. */
-function _wfrView(e, cam, agent, prev) {
+function _wfrView(e, cam, agent, prev, hold) {
   if (typeof worldViewOf === 'function') {
     try {
-      const v = worldViewOf(e, cam, prev ? { prev: prev.view, prevMirror: prev.mirror } : undefined);
+      const v = worldViewOf(e, cam, prev ? { prev: prev.view, prevMirror: prev.mirror, hold: !!hold } : undefined);
       if (v && typeof v.view === 'string') return { view: v.view, mirror: !!v.mirror, obj: typeof v.obj === 'string' ? v.obj : null, variant: Number.isInteger(v.variant) ? v.variant : null, persp: !!v.persp, s: Number.isFinite(v.s) && v.s > 0 ? v.s : null };
     } catch (err) { /* below */ }
   }
@@ -102,7 +102,7 @@ function _wfrRec(e, cam, o) {
   o = o || {};
   if (!e || !e.obj || !cam || typeof sceneProject !== 'function' || typeof sceneObj !== 'function') return null;
   if (!(e.z > WORLD_FRAME_ZMIN) || !Number.isFinite(e.x)) return null;
-  const vw = _wfrView(e, cam, o.agent, o.prev);
+  const vw = _wfrView(e, cam, o.agent, o.prev, o.hold);
   // a long hull seen at an angle or end-on: drawn in true perspective, never a flat side slab (Q4)
   if ((vw.persp || (typeof worldModelHas === 'function' && worldModelHas(e.obj))) && (!e.landmark || (typeof worldModelHas === 'function' && worldModelHas(e.obj))) && typeof worldExtrudeHull === 'function') {   // a registered model (also a landmark that has one: a church) (79-world-4models.js) draws in 3D at any angle
     try { const prim = worldExtrudeHull(e, cam, { season: o.season, regions: o.regions }); if (prim && prim.box) { const r = _wfrPrimRec(prim, e, vw); r.cut = prim.noCut ? null : _wfrCutOf(e, cam, o.regions); return r; } } catch (err) { /* a sprite below */ }
@@ -219,11 +219,20 @@ function _wfrAgentMem(mem, r, tau) {
   r.bucket = 2 ** (m.e / 4);
   // sz: the scale times the depth (the view's own scale at any depth): the old view of a change is drawn at ITS scale, not the new one's
   const sz = r.s * r.z;
-  if (m.o !== r.o || m.flip !== r.flip) { m.prev = { o: m.o, flip: m.flip, view: m.view, sz: m.sz }; m.since = tau; }
+  if (m.o !== r.o || m.flip !== r.flip) {
+    // a second change while the first is less than half faded: the new view takes the place of the half-shown one (the old view keeps
+    // fading out); else the view it leaves becomes the old one. Until 20 Oct the half-shown one vanished at once (a dog's width popped)
+    const k0 = m.prev && m.since >= 0 ? (tau - m.since) / WORLD_FRAME_FADE_S : 1;
+    if (!(k0 < 0.5)) { m.prev = { o: m.o, flip: m.flip, view: m.view, sz: m.sz }; m.since = tau; }
+    m.changed = tau;
+  }
   m.view = r.view; m.mirror = r.mirror; m.o = r.o; m.flip = r.flip; m.sz = sz;
   r.mem = m;
   return m;
 }
+/** Hold a view a moment after it changed (WORLD_FRAME_VIEW_HOLD: appearance's worldViewOf keeps it unless the body has turned well past it). */
+const WORLD_FRAME_VIEW_HOLD = 0.35;
+function _wfrHold(m, tau) { return !!(m && Number.isFinite(m.changed) && tau - m.changed >= 0 && tau - m.changed < WORLD_FRAME_VIEW_HOLD); }
 /**
  * The drawings of an agent this frame: [{ rec, a }] (a: the share of its opacity), two while a view change cross-fades (the old view
  * under the new), else one. Clears the memory of a finished change.
@@ -336,7 +345,7 @@ function worldFrameFigures(world, t, o) {
   for (const a of agents) {
     if (a.culled && a.cullReason !== 'occluded') continue;
     const m0 = mem.get(String(a.id));
-    const r = _wfrRec(_wfrAgentEnt(a), cam, { season, agent: true, prev: m0, regions: [], wet: o.wet });
+    const r = _wfrRec(_wfrAgentEnt(a), cam, { season, agent: true, prev: m0, hold: _wfrHold(m0, tau), regions: [], wet: o.wet });
     if (!r || r.prim) continue;
     if (r.z < cam.f * r.height / 405 && !a.framed) continue;
     if (r.box.x1 < -50 || r.box.x0 > 1650 || r.box.y1 < -50) continue;
@@ -1826,7 +1835,7 @@ function _wfrDraw(env, ctx, t) {
   for (const a of list) {
     if (a.culled && a.cullReason !== 'occluded') continue;   // off the frame (the lod system); an occluded one still orders
     const m0 = mem.get(String(a.id));
-    const r = _wfrRec(_wfrAgentEnt(a), cam, { season: S.season, agent: true, prev: m0, regions: S.regions, wet });
+    const r = _wfrRec(_wfrAgentEnt(a), cam, { season: S.season, agent: true, prev: m0, hold: _wfrHold(m0, tau), regions: S.regions, wet });
     if (!r) continue;
     // the near band (3.2): a giant at the lens is never drawn even if a module let one through
     if (!r.prim && r.z < cam.f * r.height / 405 && !a.framed) continue;
