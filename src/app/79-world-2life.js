@@ -1876,8 +1876,13 @@ function _wlfGhostDrift(life, a, d, dir) {
     if (best > 0 && _wlfOk(life, a, a.x + lx * side * 0.6, a.z + lz * side * 0.6)) { a._dW = best; a._dS = side; }
     if (s0 && (a._dS === s0 || !a._dS) && w0 * 0.7 > a._dW && _wlfOk(life, a, a.x + lx * s0 * 0.6, a.z + lz * s0 * 0.6)) { a._dW = w0 * 0.7; a._dS = s0; }
   }
-  if (!(a._dW > 0)) return d;
-  var k = G.drift * a._dW * a._dS, nx = d[0] - dir[1] * k, nz = d[1] + dir[0] * k, l = Math.hypot(nx, nz) || 1;
+  // the drift applied is eased (0.6 s): a step in it swung a leader's heading, and its family's formation slots with it (members
+  // surged and stopped beside it on a towpath of families)
+  var want = a._dW > 0 ? G.drift * a._dW * a._dS : 0, dts = life.t - (a._dsT == null ? life.t : a._dsT);
+  a._dsT = life.t;
+  a._dk = (a._dk || 0) + (want - (a._dk || 0)) * (1 - Math.exp(-Math.max(0, dts) / 0.6));
+  if (Math.abs(a._dk) < 1e-3) { a._dk = 0; return d; }
+  var k = a._dk, nx = d[0] - dir[1] * k, nz = d[1] + dir[0] * k, l = Math.hypot(nx, nz) || 1;
   return [nx / l, nz / l];
 }
 function _wlfSteer0(life, a, dir, spd) {
