@@ -1459,7 +1459,18 @@ function _wlfFollowBrain(life, a, dt) {
   if (L.step && L.step.sit) { a.lookAt = [L.x, L.z]; }
   if (a.lead) {                                                              // a dog: roams within its lead round the walker
     // held up (wanting to move, not moving) for half a second, or at an edge of the frame: a new spot near the walker
-    if (a.dir && a.speed < 0.05) { a.heldT = (a.heldT || 0) + dt; if (a.heldT > 0.5) { a.roam = null; a.heldT = 0; a.roamNear = true; } } else a.heldT = 0;
+    // (20 Oct) held again and again (a dog pressed against something on the way to every spot it picks, jittering at 0.1 to 0.5 m/s
+    // beside its idle walker for ten seconds and more: Fleet canal, Whitby) it stands and sniffs where it is until its walker moves on
+    // (the lead brings it along). Judged by the ground it covers: under 0.3 m in a second while it wants to go
+    // (a.dir is cleared at the top of every brain tick: the dog's wish to go is its walk state; the old test of a.dir never fired)
+    var wantGo = a.bs === 'walk';
+    if (wantGo && a.speed < 0.05) { a.heldT = (a.heldT || 0) + dt; if (a.heldT > 0.5) { a.roam = null; a.heldT = 0; a.roamNear = true; } } else a.heldT = 0;
+    var moved = a.hpT != null && Math.hypot(a.x - a.hpX, a.z - a.hpZ) > 0.3;
+    if (a.hpT == null || !wantGo || moved) { a.hpT = life.t; a.hpX = a.x; a.hpZ = a.z; if (moved) a.heldN = 0; }
+    else if (life.t - a.hpT > 1) { a.heldN = (a.heldN || 0) + 1; a.hpT = life.t; a.roam = null; a.roamNear = true; }
+    var lmov = (L.speed || 0) > 0.2;                                          // really walking (a walker held by its taut lead only wants to)
+    if (a.heldN >= 3 && !lmov) { a.dir = null; a.route = null; if (a.bs === 'walk') _wlfEnter(life, a, 'sniff'); a.st = Math.max(a.st, 0.5); return; }
+    if (lmov && a.heldN >= 3) a.heldN = 0;
     if (_wlfInEdgeZone(life, a) && a.roam && life.t + 1.5 < a.roam.until) { a.roam.until = life.t; a.roamNear = true; }
     // a taut lead (the walker stands and waits for its dog, _wlfMove): the dog comes in to heel, never sniffs on at the lead's end (19 Oct:
     // a dog content at its roam spot 1.4 m off held its walker standing half out of the frame at Whitby's edge)
@@ -1726,7 +1737,7 @@ function _wlfMove(life, a, dt) {
   // eased to 0.2 m/s crept the last metre to a bench for five seconds with its legs striding on the spot, 18 Oct)
   if (dir && want > 0 && a.distLeft != null && a.distLeft < 50 && !a.leaving && !a.leader) want *= Math.max(a.kind === 'walker' ? 0.6 : 0.35, a.distLeft / 50);
   var taut = 1;
-  if (a.members && want > 0) for (var mi = 0; mi < a.members.length; mi++) { var mm = a.members[mi]; if (mm.lead && !mm.dead && Math.hypot(mm.x - a.x, mm.z - a.z) > mm.lead.len * 0.9) { taut = 0.2; break; } }   // a taut lead: the walker waits for its dog
+  if (a.members && want > 0) for (var mi = 0; mi < a.members.length; mi++) { var mm = a.members[mi]; if (mm.lead && !mm.dead && !(mm.heldN >= 3) && Math.hypot(mm.x - a.x, mm.z - a.z) > mm.lead.len * 0.9) { taut = 0.2; break; } }   // a taut lead: the walker waits for its dog (not for one that cannot come: the lead brings it)
   var wantRaw = want;
   if (dir && want > 0) {
     dir = _wlfSteer(life, a, dir, want);
