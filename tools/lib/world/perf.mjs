@@ -251,8 +251,10 @@ export function worldPerfText(check, title = '') {
  * The life sim of a spec in Node for `seconds` at 15 Hz with every check of 8.3 / 8.6, each failure a red mark:
  * forbidden (an agent on a cell its layer forbids), float (a floater or wader off the water level), pop / vanish (appearing or
  * leaving off a spawn cell), stuck (a walking agent that has not moved 0.3 m in 20 s), order (worldOrderCheck, every 2 s),
- * overlap (two people under 0.35 m apart across the view and 0.4 m in depth for 0.5 s: drawn through each other), clone (two people in the same outfit within 3 m for
- * 3 s, A11) and water (a walker on open water, no deck under it).
+ * overlap (two people under 0.35 m apart across the view and 0.4 m in depth for 0.5 s: drawn through each other; a ghost pass of two
+ * translucent walkers linked to each other is not one, worldLifeGhostLinked), clone (two people in the same outfit within 3 m for
+ * 3 s, A11), water (a walker on open water, no deck under it) and ghostFlicker (a mover's alpha changing by over 0.12 in one tick:
+ * a frame on each tick would show the jump whole). Also returns ghosts: the ghost passes made (life.ghostLinks).
  */
 export function worldMotion(E, spec, o = {}) {
   const seconds = o.seconds || 600, dt = 1 / 15;
@@ -264,6 +266,10 @@ export function worldMotion(E, spec, o = {}) {
   const mark = (t, a, rule, msg) => { if (red.length < 2000) red.push({ t, id: a.id, cls: a.cls, rule, msg, x: a.x, z: a.z, y: a.y }); };
   let prev = new Map((E.worldAgents(life) || []).map(a => [a.id, a]));
   for (const a of prev.values()) seen.add(a.id);
+  // a ghost pass (life's records: both ghosted over 0.15 and linked to each other by ghostWith; the same test as worldLifeGhostLinked,
+  // written out here because an engine handle may not carry that name: the registry's does not)
+  const has = (p, id) => Array.isArray(p.ghostWith) && p.ghostWith.some(x => String(x) === String(id));
+  const ghostLinked = (a, b) => +a.ghost > 0.15 && +b.ghost > 0.15 && (has(a, b.id) || has(b, a.id));
   const still = new Map();
   // 15 Oct (audit bug 8): bodies through each other, outfit clones walking together, walkers on open water (0 red marks while
   // all three were on screen); each held for a while so a brief overtake or crossing is not a mark
@@ -280,6 +286,8 @@ export function worldMotion(E, spec, o = {}) {
       cur.set(a.id, a);
       if (E.worldNavOk && a.layer !== 'air' && !a.host && !E.worldNavOk(nav, a.layer, a.x, a.z, 0)) mark(t, a, 'forbidden', `on a forbidden ${a.layer} cell at (${a.x.toFixed(2)}, ${a.z.toFixed(2)})`);
       if ((a.layer === 'swim' || a.layer === 'wade') && !a.host && Math.abs((a.y || 0) - waterY) > 1e-6) mark(t, a, 'float', `y ${a.y} but the water is at ${waterY}`);
+      const pa = prev.get(a.id);
+      if (pa && Number.isFinite(pa.alpha) && Number.isFinite(a.alpha) && Math.abs(a.alpha - pa.alpha) > 0.12 + 1e-9 && !marked.has('g' + a.id)) { marked.add('g' + a.id); mark(t, a, 'ghostFlicker', `alpha ${pa.alpha.toFixed(2)} -> ${a.alpha.toFixed(2)} in one tick`); }
       if (!prev.has(a.id) && !seen.has(a.id)) { seen.add(a.id); if (isSpawn && !a.host && a.layer !== 'air' && !isSpawn(a.layer, a.x, a.z)) mark(t, a, 'pop', 'appeared off a spawn cell'); }
       if (i % 15 === 0) {
         if (!tracks.has(a.id)) tracks.set(a.id, { cls: a.cls, pts: [] });
@@ -297,7 +305,7 @@ export function worldMotion(E, spec, o = {}) {
         if (d > 3) continue;
         // the frame's view: side by side under 0.35 m across the line of sight and under 0.4 m in depth, their figures overlap by
         // over 40 % (the crowd invariant's measure on screen boxes)
-        if (Math.abs(a.x - b.x) < 0.35 && Math.abs(a.z - b.z) < 0.4 && !(a.group != null && a.group === b.group) && a.lead !== b.id && b.lead !== a.id && Math.abs((a.y || 0) - (b.y || 0)) < 0.3) {
+        if (Math.abs(a.x - b.x) < 0.35 && Math.abs(a.z - b.z) < 0.4 && !ghostLinked(a, b) && !(a.group != null && a.group === b.group) && a.lead !== b.id && b.lead !== a.id && Math.abs((a.y || 0) - (b.y || 0)) < 0.3) {
           live.add(k); if (!pairSince.has(k)) pairSince.set(k, t);
           if (t - pairSince.get(k) >= 0.5 && !marked.has('o' + k)) { marked.add('o' + k); mark(t, a, 'overlap', `${a.id} and ${b.id} stand ${Math.round(d * 100)} cm apart: drawn through each other`); }
         }
@@ -316,7 +324,7 @@ export function worldMotion(E, spec, o = {}) {
     }
     prev = cur;
   }
-  return { seconds, agentsSeen: seen.size, red, tracks: [...tracks.entries()].map(([id, v]) => ({ id, cls: v.cls, pts: v.pts })) };
+  return { seconds, agentsSeen: seen.size, ghosts: life.ghostLinks || 0, red, tracks: [...tracks.entries()].map(([id, v]) => ({ id, cls: v.cls, pts: v.pts })) };
 }
 
 /** The overlay: the statics' still (the v2 SVG of the derived data) with each agent's track (green) and the red marks. */

@@ -32,7 +32,7 @@ export const OWNERS = Object.freeze({
   facing: 'life (A5)', laneDir: 'life (A9 traffic) + sense (K3)', animStill: 'appearance', stillMoving: 'appearance', staticAnim: 'appearance + systems',
   clones: 'appearance (M4)', windDir: 'systems (wind) + look', order: 'render', landmark: 'appearance (C4) + kb (P8)', bare: 'kb (fill) + look (coverage)',
   season: 'kb (state) + look (materials, light)',
-  nearStatic: 'sense (near band after every solver move) + kb (fill)', crownCut: 'appearance (C1 framing) + kb (fill: tree depth)', crowd: 'life (A2 push-apart)',
+  nearStatic: 'sense (near band after every solver move) + kb (fill)', crownCut: 'appearance (C1 framing) + kb (fill: tree depth)', crowd: 'life (A2 push-apart; the ghost pass)', ghostFlicker: 'life (ghost pass easing, fades) + render (agent alpha)',
   outfitClone: 'life (A11 outfit de-dup)', drawn: 'render (draw records) + look (materials)', crown: 'look (materials: seasonal art) + kb (leaf state)',
   shadowOrphan: 'look (shadow plan from drawn sprites)', deckDrawn: 'life (nav deck) + render (drawn deck)', particles: 'render (host data)', nightLight: 'look (lights)',
   log: 'sense (load log)', register: 'sense (worldAdd never refuses)', build: 'sense (G8 isolation)',

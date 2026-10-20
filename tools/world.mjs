@@ -505,7 +505,7 @@ async function main() {
     const r = worldMotion(E, s.spec, { seconds: Number(flags.seconds) || 600 });
     if (flags.json) out(JSON.stringify(Object.assign({}, r, { tracks: undefined }), null, 1));
     else {
-      out(`${s.id}: ${r.seconds} s simulated, ${r.agentsSeen} agents, ${r.red.length} red mark(s)`);
+      out(`${s.id}: ${r.seconds} s simulated, ${r.agentsSeen} agents, ${r.ghosts || 0} ghost pass(es), ${r.red.length} red mark(s)`);
       const by = {}; for (const m of r.red) by[m.rule] = (by[m.rule] || 0) + 1;
       for (const [k, v] of Object.entries(by)) out(`  ${k}: ${v}`);
       for (const m of r.red.slice(0, 20)) out(`    t ${m.t.toFixed(1)} ${m.id} (${m.cls}) ${m.rule}: ${m.msg}`);

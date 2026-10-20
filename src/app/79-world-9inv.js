@@ -57,6 +57,7 @@ const WORLD_INVARIANTS = Object.freeze([
   { rule: 'nearStatic', req: 'C1, C2, K8', what: 'no non-framing static stands inside its near band (a giant at the lens) or, as a plant or hedge, fills over 35 % of the frame' },
   { rule: 'crownCut', req: 'C1, K4', what: 'no tree shows its trunk with most of its crown above the frame top (a pole with fronds hanging from nothing)' },
   { rule: 'crowd', req: 'A2, A11', what: 'no two people drawn through each other (boxes overlapping over 40 % at the same depth for 0.5 s) unless one group' },
+  { rule: 'ghostFlicker', req: 'A3, Y4', what: 'the opacity of a mover never pops: its alpha changes by at most 0.12 between frames 1/30 s apart (at most 3.6 a second)', needs: 'prev' },
   { rule: 'outfitClone', req: 'A11', what: 'no two people within 3 m in the same outfit (object and variant) for 3 s' },
   { rule: 'drawn', req: 'R1, V5, 16.1', what: 'drawn vs simulated: every entity and agent in the frame record makes pixels in its box, and what it owns shows in the frame unless occluded', needs: 'pixels' },
   { rule: 'crown', req: 'S1, V3, K4', what: 'every drawn tree has its crown or its winter branches (pixels in the top 40 % of its box)', needs: 'pixels' },
@@ -244,7 +245,7 @@ function _wivContext(frame, o) {
  * same scene must never pass with one frame record and fail with another. The record's own values always win.
  */
 const _WIV_STATIC_FIELDS = ['attach', 'deck', 'blocks', 'parentOff', 'line', 'parked', 'solidity', 'framing', 'auto', 'variant', 'waterline', 'host', 'parent'];
-const _WIV_AGENT_FIELDS = ['variant', 'outfit', 'group', 'kind', 'who', 'lead', 'host', 'pose', 'age', 'alpha', 'framed'];
+const _WIV_AGENT_FIELDS = ['variant', 'outfit', 'group', 'kind', 'who', 'lead', 'host', 'pose', 'age', 'alpha', 'framed', 'ghost', 'ghostWith'];
 function _wivEnrich(C, o) {
   const W = C.world, ents = W && Array.isArray(W.entities) ? W.entities : null, ags = Array.isArray(o.agents) ? o.agents : null;
   if (!ents && !ags) return;
@@ -313,6 +314,18 @@ function _wivOnScreen(C, b) {
 }
 const _wivHostOf = (e) => e.host != null ? e.host : (typeof e.attach === 'string' && e.attach.indexOf(':') > 0 ? e.attach.slice(e.attach.indexOf(':') + 1) : null);
 const _wivRelated = (a, b) => _wivHostOf(a) === b.id || _wivHostOf(b) === a.id || a.parent === b.id || b.parent === a.id;
+/**
+ * The ghost pass (life, 20 Oct): two walkers in a tight place walk through each other, each drawn at alpha 1 - 0.55 x ghost. A pair
+ * is skipped by the body rules (personalSpace, crowd) only when BOTH are ghosted over 0.15 and linked to each other (ghostWith); two
+ * solid people drawn through each other, or a ghost and a third person, are judged as ever.
+ */
+const _wivGhostPair = (a, b) => {
+  if (!(_wivNum(a.ghost) && a.ghost > 0.15 && _wivNum(b.ghost) && b.ghost > 0.15)) return false;
+  const has = (p, id) => Array.isArray(p.ghostWith) && p.ghostWith.some(x => String(x) === String(id));
+  return has(a, b.id) || has(b, a.id);
+};
+/** Below full opacity for a fade in or out, not only for a ghost pass (life: alpha = min(fade, 1 - 0.55 x ghost)). */
+const _wivFading = (m, below) => _wivNum(m.alpha) && m.alpha < below && m.alpha < 1 - 0.55 * (_wivNum(m.ghost) && m.ghost > 0 ? m.ghost : 0) - 0.01;
 
 /* ---------- the rules ---------- */
 const _WIV_RULES = {
@@ -698,19 +711,19 @@ const _WIV_RULES = {
     for (const m of C.movers) {
       if (was.has(m.id) || m.layer === 'air' || _wivHostOf(m)) continue;
       // a mover still fading in (life's visible spawn, A3) has not popped: it is appearing
-      if (_wivNum(m.alpha) && m.alpha < 0.95) continue;
+      if (_wivFading(m, 0.95)) continue;
       if (atEdge(m) || spawnOk(m) || covered(m, C.statics)) continue;
       _wivPush(C, 'popping', m.id, `${m.obj || m.cls} appeared mid-frame at (${_wivR(m.x)}, ${_wivR(m.z)})`);
     }
     for (const [id, m] of was) {
       if (C.byId.has(id) || m.layer === 'air' || _wivHostOf(m)) continue;
-      if (_wivNum(m.alpha) && m.alpha < 0.95) continue;   // faded out before it left
+      if (_wivFading(m, 0.95)) continue;   // faded out before it left
       if (atEdge(m) || spawnOk(m) || exitOk(m) || covered(m, prev.ents)) continue;
       _wivPush(C, 'popping', id, `${m.obj || m.cls} vanished mid-frame at (${_wivR(m.x)}, ${_wivR(m.z)})`);
     }
   },
   personalSpace(C) {
-    const M = C.movers.filter(m => m.layer && m.layer !== 'air' && m.layer !== 'rail' && m.layer !== 'drive' && !/^(boat|vehicle|train|tram)$/.test(_wivCls(m) || '') && !_wivHostOf(m) && !(_wivNum(m.alpha) && m.alpha < 0.5));
+    const M = C.movers.filter(m => m.layer && m.layer !== 'air' && m.layer !== 'rail' && m.layer !== 'drive' && !/^(boat|vehicle|train|tram)$/.test(_wivCls(m) || '') && !_wivHostOf(m) && !_wivFading(m, 0.5));
     if (M.length < 2) return;
     const g = _wivGrid(2), by = new Map(), was = new Map(), prev = C.o.prev || (C.track && C.track.prev) || null;
     for (const m of M) { by.set(m.id, m); g.add(m.id, m.x, m.z, 1); }
@@ -722,6 +735,7 @@ const _WIV_RULES = {
       const rel = (a.group != null && (a.group === b.id || a.group === b.group)) || (b.group != null && b.group === a.id) || a.leader === b.id || b.leader === a.id || (a.leader != null && a.leader === b.leader);
       // a floor of 85 % of the bodies; a group (a walker and its dog) 27 %, never on the same spot; two passing in a lane a body wide (life's squeeze: they turn sideways and pass through each other for a step) are left to life
       if (!rel && (a.squeeze || b.squeeze)) continue;   // a lane a body wide: they turn sideways and pass through each other for a step (life says so)
+      if (!rel && _wivGhostPair(a, b)) continue;          // a ghost pass: both translucent, walking through each other by design (life says so)
       const minD = (rad(a) + rad(b)) * (rel ? 0.27 : (C.o.personalFloor || 0.85)), d = Math.hypot(a.x - b.x, a.z - b.z);
       if (d < minD) { _wivPush(C, 'personalSpace', a.id, `${a.obj || a.cls} (${a.id}) and ${b.obj || b.cls} (${b.id}) are ${_wivR(d)} m apart; their bodies need ${_wivR(minD)} m`); continue; }
       // passed through between two frames: the closest approach of their straight tracks over the interval
@@ -1072,6 +1086,7 @@ const _WIV_RULES = {
       const b = by.get(id);
       if (!b || Math.abs(a.z - b.z) >= 0.4 || _wivRelated(a, b) || (a.group != null && a.group === b.group)) continue;
       if (a.squeeze || b.squeeze) continue;   // a lane a body wide: they turn sideways and brush past for a step (life says so; personalSpace alike)
+      if (_wivGhostPair(a, b)) continue;       // a ghost pass (both translucent and linked to each other; personalSpace alike)
       const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
       if (seen.has(k)) continue;
       seen.add(k);
@@ -1086,6 +1101,21 @@ const _WIV_RULES = {
       if (held) _wivPush(C, 'crowd', a.id, `${a.obj || a.cls} ${a.id} and ${b.id} are drawn through each other (${Math.round(Math.hypot(a.x - b.x, a.z - b.z) * 100)} cm apart, boxes ${Math.round(_wivBoxOverlap(ab, bb) / sm * 100)} % overlapped)`);
     }
     if (since) for (const k of [...since.keys()]) if (!now.has(k)) since.delete(k);
+  },
+  ghostFlicker(C) {
+    // no popping of the opacity (a ghost pass, a fade in or out): at most 0.12 between frames 1/30 s apart, i.e. 3.6 a second at any
+    // frame rate (one frame record to the next; a mover new in this frame has nothing to compare)
+    const prev = C.o.prev || (C.track && C.track.prev) || null;
+    if (!prev || !Array.isArray(prev.ents) || !_wivNum(prev.t) || !_wivNum(C.t)) return 'na';
+    const dtp = C.t - prev.t;
+    if (!(dtp > 0) || dtp > 1) return 'na';
+    const lim = 0.12 * Math.max(1, dtp * 30) + 1e-6, was = new Map();
+    for (const e of prev.ents) if (e && e.static === false && _wivNum(e.alpha)) was.set(e.id, e.alpha);
+    for (const m of C.movers) {
+      if (!_wivNum(m.alpha) || !was.has(m.id)) continue;
+      const d = Math.abs(m.alpha - was.get(m.id));
+      if (d > lim) _wivPush(C, 'ghostFlicker', m.id, `${m.obj || m.cls} (${m.id}) popped from alpha ${_wivR(was.get(m.id))} to ${_wivR(m.alpha)} in ${_wivR(dtp)} s (at most ${_wivR(lim)})`);
+    }
   },
   outfitClone(C) {
     const ppl = C.movers.filter(m => /^person\./.test(String(m.obj || '')) && (m.variant != null || m.outfit != null));
@@ -1274,7 +1304,7 @@ function worldWalkInPlace(m, h, t) {
   P.push([t, m.x, m.z, X, Y]);
   while (P.length > 1 && t - P[0][0] > WORLD_INPLACE.win + 1e-6) P.shift();
   const person = /^(person\.|animal\.dog)/.test(String(m.obj || '')) || m.cls === 'dog' || m.cls === 'person';
-  if (!person || m.layer === 'air' || m.layer === 'drive' || m.layer === 'rail' || _wivHostOf(m) || (_wivNum(m.alpha) && m.alpha < 0.95)) return null;
+  if (!person || m.layer === 'air' || m.layer === 'drive' || m.layer === 'rail' || _wivHostOf(m) || _wivFading(m, 0.95)) return null;
   const legs = a.state === 'move' && /^(walk|run|trot)$/.test(String(a.clip || '')) && a.rate > 0 && (a.k == null || a.k >= WORLD_INPLACE.minK);
   if (!legs || H < WORLD_INPLACE.minH) return null;        // under 14 px the legs are not drawn (the frame's LOD): no stride to judge
   const p0 = P[0], dt = t - p0[0];
@@ -1394,7 +1424,7 @@ function worldInvariantFrame(world, agents, o) {
     let anim = a.anim || null;
     if (!anim && typeof worldAnimOf === 'function') { try { anim = worldAnimOf(a) || null; } catch (e) { anim = null; } }
     ents.push({ id: a.id, cls: a.cls || (info && info.cls) || null, obj: a.obj, static: false, x: a.x, y: a.y, z: a.z, facing: a.heading != null ? a.heading * _WIV_DEG : null,
-      foot, height: h, r: _wivNum(a.r) ? a.r : r, group: a.group || null, leash: !!a.lead, intent: a.intent || null, resident: !!a.resident, squeeze: !!a.squeeze, stepping: !!a.stepping, leader: a.leader || null, layer: a.layer || null, host: a.host || null, view: a.view || null, mirror: !!a.mirror, framed: !!a.framed, sideOnly: a.sideOnly,
+      foot, height: h, r: _wivNum(a.r) ? a.r : r, group: a.group || null, leash: !!a.lead, intent: a.intent || null, resident: !!a.resident, squeeze: !!a.squeeze, ghost: _wivNum(a.ghost) ? a.ghost : 0, ghostWith: Array.isArray(a.ghostWith) && a.ghostWith.length ? a.ghostWith.map(String) : null, stepping: !!a.stepping, leader: a.leader || null, layer: a.layer || null, host: a.host || null, view: a.view || null, mirror: !!a.mirror, framed: !!a.framed, sideOnly: a.sideOnly,
       box: cam ? _wivBoxOf(cam, { x: a.x, z: a.z, y: a.y, foot: null }, h, info ? info.size.w : h * 0.4) : null, order: null,
       speed: Math.hypot(a.vx || 0, a.vz || 0), vx: a.vx || 0, vz: a.vz || 0, state: a.state || null, born: born ? born.get(a.id) : null,
       anim, sway: null, shadow: a.shadow || null, reflect: a.reflect || null, look: a.look || null, leaving: !!a.leaving,
