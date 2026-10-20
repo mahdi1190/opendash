@@ -2225,7 +2225,7 @@ function _wlfPinchYield0(life, a, dir) {
  *           at 15 Hz: no popping).
  */
 var WORLD_LIFE_GHOST = { horizon: 2.5, comfy: 0.9, close: 0.3, overtake: 0.6, range: 4.5, arrive: 1.2, hold: 1.0, full: 0.4, none: 0.8, lead: 0.2,
-  tauIn: 0.25, tauOut: 0.25, rate: 2.9, minRate: 1.5, fade: 0.55, maxAge: 8, knot: 3, group: 5, jam: 1.5, jamGoal: 4, softPush: 0.025, drift: 0.28 };
+  tauIn: 0.25, tauOut: 0.25, rate: 2.9, minRate: 1.5, fade: 0.55, maxAge: 8, knot: 3, group: 4, jam: 1.5, jamGoal: 4, softPush: 0.025, drift: 0.28 };
 /** A body that may walk through another as a ghost: a person on foot or a dog (never a cyclist, a pigeon, a goose or grazing stock). */
 function _wlfGhostBody(a) { return a.kind === 'walker' && a.cls !== 'cyclist' && (a.cls === 'dog' || /^person\./.test(String(a.obj || ''))); }
 /** Can these two ever be ghost-linked (who they are and what they are doing; not where)? Strangers on foot on the walk layer. */
