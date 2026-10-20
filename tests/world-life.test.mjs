@@ -275,7 +275,18 @@ test('reactions (M6): ducks paddle from a dog at the bank, pigeons lift and sett
     C.worldLifeTick(life, 1 / 15);
     for (const a of life.agents) if (a.cls === 'duck' && a.flee && life.t < a.flee.until) fled.add(a.id);
   }
-  assert.ok(ev.scare > 0 && fled.size > 0, `ducks paddled away: ${ev.scare} scares, ${fled.size} ducks`);
+  // (20 Oct, the ghost pass) the ducks keep to the far half of this cut, 9 to 12 m from where a dog at the bank scares (a duck flees
+  // within 6 m): the run used to pass on one chance flee (40 scares, 1 duck in 400 s) because dogs reached the bank more often while
+  // walkers kept left of each other; walkers no longer swerve for strangers, so dogs reach it less (6 scares). The scare comes from
+  // the run; whether a duck in reach paddles off is checked on a duck put within reach of the last scare, not left to chance.
+  assert.ok(ev.scare > 0, `a dog at the bank scared the ducks: ${ev.scare} scares`);
+  if (!fled.size) {
+    const duck = life.agents.find(a => a.cls === 'duck' && !a.dead);
+    assert.ok(duck, 'a duck');
+    let at = null; life.bus.on('scare', (e) => { at = e; });
+    life.bus.emit('scare', { id: 'test', by: 'test', x: duck.x + 2, z: duck.z, r: 6, t: life.t });
+    assert.ok(at && duck.flee && duck.flee.until > life.t, 'a duck within reach of a scare paddles away');
+  }
   assert.ok(ev.lift > 0 && ev.settle > 0, `pigeons lifted ${ev.lift} and settled ${ev.settle}`);
   assert.ok(ev.strike > 0, 'the heron struck');
   assert.ok(ev.ring > 0, 'a cyclist rang');

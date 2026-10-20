@@ -51,7 +51,7 @@ function headOn(make, seed, zA, zB, secs = 30) {
   for (let i = 0; i < secs * 15; i++) {
     C.worldLifeTick(life, 1 / 15);
     const R = C.worldAgents(life), ra = R.find(q => q.id === A.id), rb = R.find(q => q.id === B.id);
-    rows.push({ t: life.t, d: Math.hypot(A.x - B.x, A.z - B.z), ax: A.x, bx: B.x, va: A.speed || 0, vb: B.speed || 0, aa: ra ? ra.alpha : null, ab: rb ? rb.alpha : null,
+    rows.push({ t: life.t, d: Math.hypot(A.x - B.x, A.z - B.z), ax: A.x, bx: B.x, az: A.z, bz: B.z, va: A.speed || 0, vb: B.speed || 0, aa: ra ? ra.alpha : null, ab: rb ? rb.alpha : null,
       ga: ra ? ra.ghost : 0, gb: rb ? rb.ghost : 0, link: !!(ra && rb && C.worldLifeGhostLinked(ra, rb)) });
   }
   return { rows, life, A, B };
@@ -99,14 +99,34 @@ test('(b) the opacity is continuous: never more than 0.12 between two ticks (a f
   }
 });
 
-test('(c) in an open plaza two oncoming walkers do not ghost: alpha stays 1 and they pass side by side', () => {
+// (c) rewritten 20 Oct (the second round): the first ghost pass was for tight places only and this test said an open plaza never
+// ghosts. The user found the avoiding itself weird anywhere, so now: strangers whose paths would bring them inside a comfortable
+// distance (0.9 m between centres) pass through each other as ghosts on open ground too, and strangers who would walk by at a
+// comfortable distance do not ghost at all. Neither swerves nor stops: each walks its own straight line.
+// how far a walker strays, while the two are within 5 m, from the line it walks when the other is far away (the route itself drifts
+// a little toward the grid's cell centres: the same with or without the other)
+const sway = (r, k, zA, zB) => {
+  const solo = k === 'az' ? headOn(plaza, 3, zA, 30) : headOn(plaza, 3, 30, zB);
+  return Math.max(0, ...r.rows.map((q, i) => (q.d < 5 && solo.rows[i] ? Math.abs(q[k] - solo.rows[i][k]) : 0)));
+};
+test('(c) in an open plaza: walkers who would walk by stay solid; walkers whose paths meet ghost; nobody swerves or stops', () => {
+  for (const [zA, zB] of [[18, 19.1], [18.6, 17.4], [18, 19.4]]) {
+    const r = headOn(plaza, 3, zA, zB);
+    assert.ok(passed(r), 'they passed');
+    assert.equal(r.life.ghostLinks, 0, `a comfortable miss (${Math.abs(zA - zB).toFixed(1)} m apart) is no ghost pass`);
+    assert.equal(minAlpha(r), 1, 'solid all the way');
+    const sa = sway(r, 'az', zA, zB), sb = sway(r, 'bz', zA, zB);
+    assert.ok(sa < 0.05 && sb < 0.05, `they walk by without swerving (${sa.toFixed(2)}, ${sb.toFixed(2)} m off their own lines)`);
+  }
   for (const [zA, zB] of [[18, 18], [18.2, 17.9], [18, 18.4]]) {
     const r = headOn(plaza, 3, zA, zB);
     assert.ok(passed(r), 'they passed');
-    assert.equal(r.life.ghostLinks, 0, 'no ghost pass on open ground');
-    assert.equal(minAlpha(r), 1, 'solid all the way');
-    const md = Math.min(...r.rows.map(q => q.d));
-    assert.ok(md >= 0.55, `side by side, never through each other (closest ${md.toFixed(2)} m)`);
+    assert.equal(r.life.ghostLinks, 1, 'paths that meet: one ghost pass');
+    const lo = minAlpha(r);
+    assert.ok(lo >= 0.4 && lo <= 0.6, `min alpha ${lo.toFixed(3)}`);
+    assert.ok(stopS(r) < 0.2, `nobody slowed or stopped (${stopS(r).toFixed(2)} s)`);
+    const sa = sway(r, 'az', zA, zB), sb = sway(r, 'bz', zA, zB);
+    assert.ok(sa < 0.05 && sb < 0.05, `nobody swerved (${sa.toFixed(2)}, ${sb.toFixed(2)} m off their own lines)`);
   }
 });
 
