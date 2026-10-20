@@ -1841,7 +1841,7 @@ function _wlfBoatMeet(life, a) {
 function _wlfSteer(life, a, dir, spd) { return _wlfGhostDrift(life, a, _wlfSteer0(life, a, dir, spd), dir); }
 /**
  * The lane habit (20 Oct, second ghost round): people keep to their side of the way long before they meet. A walker with a stranger
- * coming toward it, standing, or going its way slower (overtaken on the right), 3 to 18 m ahead on a line they would pass closer than a comfortable distance on, drifts gently to
+ * coming toward it, standing, or going its way slower (overtaken on the right), 6 to 18 m ahead on a line they would pass closer than a comfortable distance on, drifts gently to
  * its LEFT (UK; away from a stander's side), a few degrees and only until the room is comfortable, never a swerve (at most `drift`
  * of its heading's sine: under 9 degrees, eased in with the distance). Most such pairs then walk by at a
  * comfortable distance, solid, and never need a ghost pass; where the way leaves no room, the pair ghosts through as before. It is
@@ -1859,7 +1859,7 @@ function _wlfGhostDrift(life, a, d, dir) {
     _wlfNearXZ(life, a.x + dir[0] * 10.5, a.z + dir[1] * 10.5, 8, function (o) {
       if (o === a || o.dead || !_wlfGhostEligible(life, a, o)) return;
       var rx = o.x - a.x, rz = o.z - a.z, fwd = rx * dir[0] + rz * dir[1], lat = rx * lx + rz * lz;   // lat > 0: on my left
-      if (fwd < 2 || fwd > 18) return;
+      if (fwd < 6 || fwd > 18) return;                                              // early only: closer, a drift would read as a dodge
       var ov = _wlfWantV(o), os = Math.hypot(ov[0], ov[1]), standing = !(o.dir && o.spd > 0) || (o.speed || 0) < 0.2;
       var onc = os > 0.2 && (ov[0] * dir[0] + ov[1] * dir[1]) < -0.5 * os;
       // one going my way slower, ahead: overtaken on the RIGHT (UK), with the same gentle drift
@@ -1868,7 +1868,9 @@ function _wlfGhostDrift(life, a, d, dir) {
       // the lateral room they would pass at, by where each WANTS to go; the drift stops once it is comfortable
       var plat = Math.abs(lat + (onc ? (ov[0] * lx + ov[1] * lz) * fwd / Math.max(0.5, os + a.spd) : 0));
       var w = _wlfClamp((G.comfy + 0.15 - plat) / 0.6, 0, 1) * (fwd < 13 ? 1 : (18 - fwd) / 5);
-      if (w > best) { best = w; side = onc ? 1 : slower ? -1 : (lat > 0 ? -1 : 1); }   // +1: to my left
+      // +1: to my left. Away from the other's side when it is already off my line; dead on, to my left (UK) for one coming toward me
+      // and to my right for one I overtake (a drift toward the other's side would only close the gap: 20 Oct, test (c))
+      if (w > best) { best = w; side = Math.abs(lat) > 0.15 ? (lat > 0 ? -1 : 1) : slower ? -1 : 1; }
     });
     // only with room to that side (a drift into a wall reads as pressing against it)
     if (best > 0 && _wlfOk(life, a, a.x + lx * side * 0.6, a.z + lz * side * 0.6)) { a._dW = best; a._dS = side; }
