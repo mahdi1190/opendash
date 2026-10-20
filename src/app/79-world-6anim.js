@@ -122,29 +122,32 @@ function _wanLiveAnim(ent) {
   const W = _wanLast(), S = W ? _wanWorlds.get(W) : null, an = S && S.byId ? S.byId.get(ent.id) : null;
   return an && an.oid === ent.obj ? an : null;
 }
-// the body's turn (20 Oct): it follows the brain's heading (rate-limited already: 180 degrees in brain.turn seconds) through `play`
-// degrees of backlash (a heading that wavers to and fro by less never turns the body: no flicker of the view at a boundary, no
-// shaking of the gait, and a real turn is followed at once, `play` degrees behind), never faster than `rate` x the brain's own rate;
-// a body dragged or pushed over `off` degrees off its heading at over `drag` m/s (a dog pulled by its lead) faces the way it moves
-const WORLD_ANIM_YAW = Object.freeze({ play: 5, rate: 1.25, off: 70, drag: 0.5 });
+// the body's turn (20 Oct): it follows the way the body moves (its heading while it starts, stops or shuffles under `drag` m/s, when the
+// velocity's direction is noise) through `play` degrees of backlash (a direction that wavers to and fro by less never turns the body: no
+// flicker of the view at a boundary, no shaking of the gait, and a real turn is followed at once, `play` degrees behind: within the
+// facing invariant's 5 degrees beyond the views' hysteresis); turning to its heading while slow, never faster than `rate` x the brain's
+// own turn rate (180 degrees in brain.turn seconds)
+const WORLD_ANIM_YAW = Object.freeze({ play: 4, rate: 1.25, drag: 0.25 });
 /** The way an agent's body faces (degrees, the frame of its velocity), smoothed from its heading; null for bodies that keep the velocity. */
 function _wanYaw(e, an, tg, dt) {
   const kind = tg.kind;
   if (!(kind === 'person' || kind === 'dog' || kind === 'cyclist' || kind === 'grazer' || kind === 'walkbird')) return null;
   const vx = _wanNum(e.svx) ? e.svx : _wanNum(e.vx) ? e.vx : 0, vz = _wanNum(e.svz) ? e.svz : _wanNum(e.vz) ? e.vz : 0, sp = Math.hypot(vx, vz);
   const hd = _wanNum(e.heading) ? e.heading / _WAN_DEG : null;
-  let target = _wanNum(an.face) ? an.face : null;
+  let target = _wanNum(an.face) ? an.face : null, slow = true;
   if (target == null) {
     if (sp > _WAN_MOVE_OUT) {
       const vd = Math.atan2(vx, vz) / _WAN_DEG;
-      // (a dog faces the way it goes: its lead and its roaming move it off its heading all the time, and a switch between the two flickered its view)
-      target = kind !== 'dog' && hd != null && !(sp > WORLD_ANIM_YAW.drag && Math.abs(_wan180(vd - hd)) > WORLD_ANIM_YAW.off) ? hd : vd;
+      // a body under way faces the way it goes (A5: the facing invariant); starting, stopping or shuffling (under `drag` m/s) the direction of
+      // its velocity is noise and its heading is what it faces (a dog always faces the way it goes: its lead moves it off its heading)
+      target = sp >= WORLD_ANIM_YAW.drag || kind === 'dog' || hd == null ? vd : hd;
+      slow = target !== vd;
     } else target = hd != null ? hd : _wanNum(e.facing) ? e.facing : null;
   }
   if (target == null) return null;
   if (!_wanNum(an.yaw) || !(dt > 0)) return _wanR(target, 3);
   const turn = e.brain && e.brain.turn > 0 ? e.brain.turn : 0.5, max = 180 / Math.max(0.15, turn) * WORLD_ANIM_YAW.rate * dt;
-  const d = _wan180(target - an.yaw), p = WORLD_ANIM_YAW.play, step = _wanClamp(d > p ? d - p : d < -p ? d + p : 0, -max, max);
+  const d = _wan180(target - an.yaw), p = WORLD_ANIM_YAW.play, b = d > p ? d - p : d < -p ? d + p : 0, step = slow ? _wanClamp(b, -max, max) : b;
   return step ? _wanR(_wan180(an.yaw + step), 3) : an.yaw;
 }
 /** The facing (degrees, camera frame) an entity shows now: its body's yaw (a live agent), else velocity, else anim.face, else heading (radians, life), else facing. */
@@ -174,9 +177,7 @@ function worldViewOf(ent, cam, o) {
   const rel = _wan180(fc.deg - bearing), abs = Math.abs(rel);
   const prev = o.prev !== undefined ? o.prev : (ent.anim && ent.anim.view) || ent.view || null;
   const prevMirror = o.prevMirror !== undefined ? o.prevMirror : ent.anim && typeof ent.anim.mirror === 'boolean' ? ent.anim.mirror : ent.mirror;
-  // o.hold: a view that changed a moment ago stays while the body is within twice the hysteresis of it (no view flicker at a boundary)
-  const held = o.hold && prev && _WAN_VIEW_AT[prev] != null && Math.abs(abs - _WAN_VIEW_AT[prev]) <= 22.5 + 2 * _WAN_HYST;
-  const want = held ? prev : _wanWant(abs, prev), has = obj ? _wanViews(obj) : { side: obj };
+  const want = _wanWant(abs, prev), has = obj ? _wanViews(obj) : { side: obj };
   let view = has[want] ? want : null;
   if (!view) {
     let best = 'side', bd = Math.abs(abs - 90);
