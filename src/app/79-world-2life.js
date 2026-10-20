@@ -2408,7 +2408,7 @@ function _wlfGhostLink(life, q, r, why) {
     links.push({ a: x, o: y, t0: life.t, until: life.t + G.hold, rel: false });
   }
 }
-/** The ghost pass (at the start of the move pass): links held or dropped, new links made, every agent's ghost value eased. */
+/** The ghost pass (at the end of the brain pass): links held or dropped, new links made, every agent's ghost value eased. */
 function _wlfGhostPass(life, dt) {
   if (life.warming) return;
   var G = WORLD_LIFE_GHOST, links = life.ghosts || (life.ghosts = []), A = life.agents, i, L;
@@ -2775,6 +2775,9 @@ function _wlfPassBrain(life, dt) {
     a.phase = (a.phase + dt * (0.5 + (a.speed || 0))) % 1;
     try { _wlfBrain(life, a, dt); } catch (e) { a.dir = null; _wlfProblem(life, { pop: a.pop, rule: 'error', msg: a.id + ': ' + (e && e.message) }); }
   }
+  // the ghost pass decides on where everyone wants to go now (the brain's directions), before anything moves: it is a decision, so it
+  // runs in the brain phase (the nav phase only turns heads; the move phase steers with its links)
+  try { _wlfGhostPass(life, dt); } catch (e) { _wlfProblem(life, { pop: -1, rule: 'error', msg: 'ghost: ' + (e && e.message) }); }
 }
 /** nav phase: routes are built lazily by the brain; here a still mover turns to its point of interest. */
 function _wlfPassNav(life, dt) {
@@ -2784,7 +2787,6 @@ function _wlfPassNav(life, dt) {
 /** move phase: steering, integration, traffic, and the departed are dropped. */
 function _wlfPassMove(life, dt) {
   var A = life.agents;
-  try { _wlfGhostPass(life, dt); } catch (e) { _wlfProblem(life, { pop: -1, rule: 'error', msg: 'ghost: ' + (e && e.message) }); }
   for (var i = 0; i < A.length; i++) {
     var a = A[i]; if (a.dead) continue;
     try { _wlfMove(life, a, dt); } catch (e) { a.vx = 0; a.vz = 0; if (!a.moveErr) { a.moveErr = 1; _wlfProblem(life, { pop: a.pop, rule: 'error', msg: a.id + ' move: ' + (e && e.message) }); } }
