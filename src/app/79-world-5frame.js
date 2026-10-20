@@ -18,7 +18,7 @@
    band, weather, snow, haze) and scale bucket; chunk bitmaps by their members, the frame geometry and those keys; the shadow
    layer by the sun bucket; the water by the sun bucket and the frame; the lights layer by the set of lit lights. A change of
    time inside a light band re-plans the shadows and the lights and reuses every sprite and chunk bitmap.
-   Section 19: a stable tie by id (worldOrderNearer); view changes cross-fade (0.25 s) and keep appearance's hysteresis; scale
+   Section 19: a stable tie by id (worldOrderNearer); view changes dissolve (0.16 s, each view at its own scale) and keep appearance's hysteresis; scale
    buckets change with hysteresis; no chunk seams (integer chunk origins, 1 px bleed, each entity in exactly one chunk).
    PURE part (Node + browser): worldFramePlan, worldFrameScene, worldFrameAt (the frame record of 16.1, no drawing).
    BROWSER part: the pass (registered when the pass registry is loaded) and the rasteriser.
@@ -30,7 +30,7 @@ let _wfrPassDefined = false;
 function worldFramePassOn() { return _wfrPassDefined; }
 
 const WORLD_FRAME_ZMIN = 0.3;              // nearer than this (metres): behind the lens, not drawn
-const WORLD_FRAME_FADE_S = 0.25;           // a view change cross-fades over this (19)
+const WORLD_FRAME_FADE_S = 0.16;           // a view change cross-fades (a true dissolve: _wfrDrawDissolve) over this (19; 0.25 until 20 Oct: two poses showed through each other too long)
 const WORLD_FRAME_LIVE_CAP = 24;           // statics drawn live (they sway by cause, M3): the nearest this many
 const WORLD_FRAME_LIVE_H = 36;             // ... at least this tall on screen (scene units)
 const WORLD_FRAME_LOD_PX = 14;             // a walker or a paddler shorter than this on screen (device px) is drawn whole: its limbs cannot be told apart
