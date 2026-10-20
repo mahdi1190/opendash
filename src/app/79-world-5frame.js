@@ -583,7 +583,7 @@ function worldFrameAt(scene, t, o) {
       state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null,
       prim: r.prim ? (r.prim.walkway ? 'walkway' : r.prim.kind || null) : null, spans: !!(r.prim && r.prim.spans), tops: r.prim && r.prim.tops ? _wfrPlain(r.prim.tops) : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal,
       // what the checkers need of a mover: its body radius, its group (the leader's id), whether it has a lead, and its intent (life)
-      r: agent && Number.isFinite(e.r) ? _wfrR3(e.r) : null, group: agent ? e.group || null : null, leash: agent ? !!e.lead : false, intent: agent ? e.intent || null : null, squeeze: agent ? !!e.squeeze : false, stepping: agent ? !!e.stepping : false, leader: agent ? e.leader || null : null, resident: agent ? !!e.resident : false,
+      r: agent && Number.isFinite(e.r) ? _wfrR3(e.r) : null, group: agent ? e.group || null : null, leash: agent ? !!e.lead : false, intent: agent ? e.intent || null : null, squeeze: agent ? !!e.squeeze : false, ghost: agent && e.ghost > 0 ? _wfrR3(e.ghost) : 0, ghostWith: agent && Array.isArray(e.ghostWith) && e.ghostWith.length ? e.ghostWith.map(String) : null, stepping: agent ? !!e.stepping : false, leader: agent ? e.leader || null : null, resident: agent ? !!e.resident : false,
       // the look drawn (A11) and what a check needs to judge the frame by itself (variant, outfit, attach, deck, live)
       variant: r.v != null ? r.v : null, outfit: agent && e.outfit != null ? e.outfit : null, attach: e.attach || null, deck: e.deck || null, live: !!r.live };
   };
@@ -1489,8 +1489,33 @@ function _wfrHooks(env, S, r, sh, tau) {
   const ph = Number.isFinite(r.ent.phase) ? r.ent.phase : 0;
   return sh.anim.filter(h => h.kind === 'walk' || h.kind === 'paddle' || h.kind === 'flap').map(h => Object.assign({}, h, { phase: ((h.phase || 0) + ph) % 1 }));
 }
-/** Draw one mover (an agent or a live static): its rest sprite and its moving parts posed at the scene time, cut at a waterline. */
+/**
+ * Draw one mover at an opacity (alpha: the view change's cross-fade times the agent's own alpha, life's fade in or out and its ghost
+ * pass). Opaque, a bitmap or a drawn piece: straight onto the frame. A translucent figure of several parts (a body and four posed
+ * limbs) is drawn whole into a scratch and laid on the frame once at its alpha: blitted part by part, each limb showed through the
+ * body under it (an x-ray figure) and the overlaps were darker (the ghost pass, 20 Oct).
+ */
 function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
+  const A = alpha == null ? 1 : alpha;
+  if (A >= 0.999 || !(A > 0) || r.bmp || r.prim || r.static || !r.box) return _wfrDrawMover0(env, S, ctx, r, tau, alpha);
+  const b = r.box, vs = env.vs, bw = (b.x1 - b.x0) * vs, bh = (b.y1 - b.y0) * vs, pad = Math.ceil(Math.max(4, Math.max(bw, bh) * 0.25));
+  const x0 = Math.floor(b.x0 * vs + env.ox) - pad, y0 = Math.floor(b.y0 * vs + env.oy) - pad, w = Math.ceil(bw) + 2 * pad, h = Math.ceil(bh) + 2 * pad;
+  if (!(w > 0 && h > 0) || w > 2 * (env.W || 4096) || h > 2 * (env.H || 4096)) return _wfrDrawMover0(env, S, ctx, r, tau, alpha);
+  let sc = S.ghostScratch;
+  if (!sc || sc.width < w || sc.height < h) { try { sc = S.ghostScratch = _wfrCanvas(Math.max(w, sc ? sc.width : 0, 64), Math.max(h, sc ? sc.height : 0, 128)); } catch (e) { sc = null; } }
+  const sx = sc && sc.getContext ? sc.getContext('2d') : null;
+  if (!sx) return _wfrDrawMover0(env, S, ctx, r, tau, alpha);
+  sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalAlpha = 1; sx.globalCompositeOperation = 'source-over'; sx.clearRect(0, 0, w, h);
+  // the same drawing with the frame's origin moved to the scratch's corner (env is only read by the draw)
+  const e2 = Object.create(env); e2.ox = env.ox - x0; e2.oy = env.oy - y0;
+  const n = _wfrDrawMover0(e2, S, sx, r, tau, 1);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = A;
+  ctx.drawImage(sc, 0, 0, w, h, x0, y0, w, h);
+  ctx.globalAlpha = 1;
+  return n + 1;
+}
+/** Draw one mover (an agent or a live static): its rest sprite and its moving parts posed at the scene time, cut at a waterline. */
+function _wfrDrawMover0(env, S, ctx, r, tau, alpha) {
   if (r.bmp) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha == null ? 1 : alpha; ctx.drawImage(r.bmp.c, 0, 0, r.bmp.w, r.bmp.h, r.bmp.x, r.bmp.y, r.bmp.w, r.bmp.h); ctx.globalAlpha = 1; return 1; }
   if (r.prim) return _wfrDrawRec(ctx, env, S, r, null, 0, 0, alpha);
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(r.o, r.v, r.season || S.season) : null;
@@ -1552,13 +1577,19 @@ function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
   if (r.static && !r.prim && S.lightNow) { try { n += _wfrDrawGlass(ctx, env, S, r, 0, 0, S.lightNow) || 0; } catch (e) { /* unlit */ } }
   return n;
 }
+/** An agent record's own opacity 0..1 (life's alpha: fading in or out, a ghost pass), 1 for anything else. */
+function _wfrAgentAlpha(r) {
+  const a = r && (r.agent || r.ent);
+  const v = a && Number.isFinite(a.alpha) ? a.alpha : 1;
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
 /** The contact blob under a grounded agent (no look package): a soft ellipse, never on water or in the air. */
 function _wfrBlob(ctx, env, r) {
   const a = r.ent;
   if (_wfrIsWater(a) || a.layer === 'wade' || a.layer === 'air' || /^air/.test(String(a.attach || ''))) return 0;
   const w = Math.max(3, (r.box.x1 - r.box.x0) * 0.7) * env.vs, h = Math.max(1, w * 0.18);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = env.Lnow && env.Lnow.dark > 0.7 ? 0.12 : 0.22;
+  ctx.globalAlpha = (env.Lnow && env.Lnow.dark > 0.7 ? 0.12 : 0.22) * _wfrAgentAlpha(r);   // fades with the body
   ctx.fillStyle = '#10161e';
   ctx.beginPath(); ctx.ellipse(r.X * env.vs + env.ox, r.Y * env.vs + env.oy, w / 2, h / 2, 0, 0, 2 * Math.PI); ctx.fill();
   ctx.globalAlpha = 1;
@@ -1604,7 +1635,7 @@ function _wfrMirrorAgents(env, S, ctx, aRecs, tau) {
       if (r.prim) {
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(-1e5, yClip, 2e5, 1e5); ctx.clip();
-        ctx.globalAlpha = k;
+        ctx.globalAlpha = k * _wfrAgentAlpha(r);   // a boat fading in or out: its reflection with it
         const b = r.box, x0 = Math.floor(b.x0 * vs + ox) - 1, y0 = Math.floor(b.y0 * vs + oy) - 1, ww = Math.ceil((b.x1 - b.x0) * vs) + 2, hh = Math.min(Math.ceil(Yc - y0) + 1, Math.ceil((b.y1 - b.y0) * vs) + 2);
         if (ww > 0 && hh > 0 && ww < 4 * env.W && hh < 4 * env.H) {
           const sc = S.scratch && S.scratch.width >= ww && S.scratch.height >= hh ? S.scratch : (S.scratch = _wfrCanvas(Math.max(ww, 64), Math.max(hh, 64)));
@@ -1619,6 +1650,7 @@ function _wfrMirrorAgents(env, S, ctx, aRecs, tau) {
       } else {
         const sp = _wfrSpriteOf(env, S, r, '*', { bucket: r.bucket });
         if (sp && sp.c) {
+          ctx.globalAlpha = k * _wfrAgentAlpha(r);   // a ghost's (or a fading mover's) reflection fades with it
           // the mirror shows only below the contact row: the art rows from the top down to ycut (the sprite's own rows below its anchor
           // flip above the axis); cropped from the source, not clipped (a save, a rect clip and a restore an agent)
           const M = _wfrM(env, r), ycut = (2 * Yc - M[5] - yClip) / M[3];
@@ -1801,9 +1833,11 @@ function _wfrDraw(env, ctx, t) {
     if (it.kind === 'agent') {
       const r = it.ref, m = r.mem;
       const k = m && m.prev && m.since >= 0 ? Math.max(0, Math.min(1, (tau - m.since) / WORLD_FRAME_FADE_S)) : 1;
-      if (k < 1 && m.prev && m.prev.o && !r.prim) draws += _wfrDrawMover(env, S, ctx, Object.assign({}, r, { o: m.prev.o, flip: !!m.prev.flip }), tau, 1 - k);
+      // the agent's own opacity (life: a fade in or out, a ghost pass through another walker), times the view change's cross-fade
+      const ga = _wfrAgentAlpha(r);
+      if (k < 1 && m.prev && m.prev.o && !r.prim) draws += _wfrDrawMover(env, S, ctx, Object.assign({}, r, { o: m.prev.o, flip: !!m.prev.flip }), tau, (1 - k) * ga);
       else if (m) m.prev = null;
-      draws += _wfrDrawMover(env, S, ctx, r, tau, k);
+      draws += _wfrDrawMover(env, S, ctx, r, tau, k * ga);
       const own = (agentLights && agentLights.get(r.id)) || (r.static && S.liveLights && S.liveLights.get(r.id));
       if (own) { try { draws += worldDrawLights(ctx, own, cam, { vs, ox, oy, sky: S.sky || undefined, stage: 'glow' }) || 0; } catch (e) { /* no lamp */ } ctx.setTransform(1, 0, 0, 1, 0, 0); }
       const b = r.box;

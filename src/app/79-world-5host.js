@@ -406,7 +406,7 @@ function worldHostAgents(agents, cam, o) {
     const s = (cam.f / Math.max(0.3, a.z)) * hM / def.size[1];
     if (p.X < -200 || p.X > 1800 || p.Y < -200) continue;
     out.push({ a, id: a.id, o: obj, v: a.variant == null ? 0 : a.variant, X: p.X, Y: p.Y, s, flip: !!a.mirror, d: a.z, layer: _wh5LayerOf(cam, a.z, o.layers),
-      view: a.view || 'side', alpha: 1, kind: a.cls, moving: Math.hypot(a.vx || 0, a.vz || 0) > 0.05, phase: a.phase || 0 });
+      view: a.view || 'side', alpha: Number.isFinite(a.alpha) ? Math.max(0, Math.min(1, a.alpha)) : 1, kind: a.cls, moving: Math.hypot(a.vx || 0, a.vz || 0) > 0.05, phase: a.phase || 0 });
   }
   out.sort((p, q) => q.d - p.d);
   return out;

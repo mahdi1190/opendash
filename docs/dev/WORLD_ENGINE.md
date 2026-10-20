@@ -376,6 +376,49 @@ same layer and level, through the shared spatial index (11.5). Personal space by
 queues at stops and benches, groups keep formation offsets round a leader, speeds by age and gait. A stuck detector (speed
 < 10 % of desired for 3 s) re-plans; after two re-plans the agent idles, then leaves by the nearest spawn cell.
 
+**The ghost pass (20 Oct; `_wlfGhostPass`, `WORLD_LIFE_GHOST` in 79-world-2life.js).** Where dodging looks silly, two walkers walk
+THROUGH each other instead of dodging, each drawn as a translucent ghost. Once per move pass, before the steering:
+- *Link.* Two people on foot or dogs (never cyclists, birds or stock), on one floor, strangers (never one group, its leader or a dog
+  on its own walker's lead), none seated, stepping, hopping, aboard, fading or within 3 m of its goal (it would stop inside the other),
+  are linked when they are within 2.6 m, closing at 0.4 m/s or more on lines that would bring them inside each other's floor (or
+  both stand nose to nose wanting to go), AND the place where they would meet is tight: a nav slot there or 0.6 m along their way
+  (`worldNavSlot`; a slot beside their way, an A-board's gap at the wall, is no reason), a squeeze, a centre-legal width across
+  their way under 1.15 m (two cannot pass abreast), under 1.35 m while either one's steering is dodging (a sidestep, a queue, held,
+  a pinch wait), or under 2.9 m for two coming toward each other within 2 m when one is already held up by the other (under half
+  its pace, stood by the creep rule, a blocked side: the steering's pass is failing). People standing
+  in the way count as walls only where the ground itself leaves under 2.4 m (a narrow street); on open ground (a plaza, a
+  promenade, a 2.6 m towpath or boardwalk) nothing changes: they pass side by side, keeping left. Two going the SAME way (a merge,
+  a queue to one exit) are never linked, except an overtake in a lane the ground leaves one body wide (the one in front walking at
+  0.4 m/s or more, the one behind 0.35 m/s faster); a stand-off links only two that want to go toward each other; and never inside
+  a knot (more than one other body within 1.5 m of where they meet): a crowd jammed at Castlefield's west exit made dozens of links
+  a minute and a translucent heap there, so a knot is left to the steering and the floor; nor with a walker in a jam (no headway
+  for 1.5 s by the stuck handler's clock, or no nearer its goal along its route for 4 s: one pressed into a wall, a crowd milling
+  short of an exit), unless the two stand nose to nose. A follower (a dog on its lead, a child of a family) never starts a pass of
+  its own (the dogs of a knot of dog-walkers milled through each other dozens of times a minute): when a leader passes a stranger,
+  everyone of the one group passes everyone of the other.
+- *Ignore.* A linked pair is skipped by the steering (queue, sidestep, keep-left, velocity obstacle, separation), by the pinch
+  yield (`_wlfPinchYield` does not wait for a walker it will pass as a ghost, `_wlfGhostLikely`: no jam, no knot at the gap, nobody
+  about to stop; anyone else is waited for as before) and by the hard floor (`_wlfPair`); the stuck handler counts the pass as
+  progress while the walker really walks (the watchdog still nets a real stall). No ghost pass runs in the 90 s warm-up.
+- *Hold.* A link is sticky: it holds while they are closing or moving past each other (over 0.3 m/s) within 1.05 m, and 1 s
+  more; then it ends once they are clear of each other's floor. Two that still overlap when the pass is over (they walk on
+  together, one turned; both stopped, at once; or the link is 8 s old) are *released*: the steering sees them again and the floor
+  parts them at 5 cm a tick (never a shove), and they stay translucent until they are clear.
+- *Fade.* Each agent's `ghost` (0..1) eases toward the nearest partner's target (full at 0.5 m apart less 0.25 s of closing, none at
+  1.05 m), with time constants 0.25 s in and 0.35 s out, at least 1 and at most 2.9 a second: an alpha step of at most 0.11 a
+  15 Hz tick. `worldAgents` emits `ghost`, `ghostWith` (the linked ids) and `alpha = min(fade in/out, 1 - 0.55 x ghost)`: never
+  under 0.45. Deterministic: no random draw, agents in list order.
+- *Draw.* The compositor draws every agent at its own alpha times the view change's cross-fade (`_wfrAgentAlpha`); a translucent
+  figure of several parts is drawn whole into a scratch and laid on the frame once (part by part, the limbs showed through the
+  body). Its shadow (`worldShadowPlan`: `op` x alpha), contact blob and water reflection fade with it; depth order is unchanged,
+  so of two overlapping ghosts the nearer is drawn later.
+- *Check.* `personalSpace`, `crowd`, `worldLifeCrowdCheck` and the motion tool's `overlap` skip a pair only when BOTH are ghosted
+  over 0.15 and linked to each other (`worldLifeGhostLinked`, `_wivGhostPair`): two solid people, a near-solid ghost or a ghost
+  and a third person are judged as ever. A ghost's alpha does not excuse it from `popping` or `walkInPlace` (only a fade does,
+  `_wivFading`). `ghostFlicker` fails an alpha change over 0.12 between frames 1/30 s apart (3.6 a second); the motion tool marks
+  a change over 0.12 in one tick. `node tools/world.mjs motion` reports the ghost passes; `life.ghostLog` keeps each one's reason
+  (`slot`, `lane`, `dodge`, `squeeze`, `standoff`).
+
 ## 4. Characters (A1-A11, M6, T1)
 
 ### 4.1 State machines

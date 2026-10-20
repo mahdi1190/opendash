@@ -590,3 +590,21 @@ The app drives the same clock as the tools (checked 18 Oct): the page's driver i
 `R.advance`, budgets never act on the life), positions and legs both follow the scene clock `tau` (a slow frame slows both together,
 `WORLD_HOST_CATCHUP`), and the governor only thins far movers by a hash of the id. Not fixed here: families and friends walk 0.5 m apart
 by design, so a group seen along the line of sight is drawn overlapping (correct occlusion, but it reads as bunching).
+
+## AD. The ghost pass (20 Oct, the user: "let people walk into each other ... phase in and out, transparencies"; `node --test tests/world-ghost-pass.test.mjs`)
+In tight places two walkers now walk through each other as soft ghosts (WORLD_ENGINE 3.3, `_wlfGhostPass`). Each row is a mistake found
+while building it, by rendering the crossings and reading the per-scene link logs, not the unit tests.
+
+| Mistake | Why it happened | Rule |
+|---|---|---|
+| Fading people (arriving at a visible spawn, leaving) were drawn opaque in every v3 scene | The compositor passed only the view cross-fade to the draw; the agent's own `alpha` was never read (the records carried it, so the checkers thought it was drawn) | The draw multiplies the agent's alpha in (`_wfrAgentAlpha`), its shadow (`op`), contact blob and reflection too |
+| A translucent figure showed its limbs through its body (an x-ray) | The body and four posed limbs were blitted one by one at the alpha | A translucent multi-part figure is drawn whole into a scratch, then laid on the frame once |
+| A knot of 15 dog-walkers at Castlefield's west exit made 5,000 links in 5 minutes and a translucent heap | Two going to one exit converge, and the dogs milled round their stuck walkers | Never two going the same way (except an overtake in a one-body lane), never in a knot, never with one in a jam (no headway, or no nearer its goal for 4 s); followers never start a pass, a group passes a group |
+| Two people walking side by side in the middle of the Shambles were ghosted | A slot anywhere on the segment between them counted (an A-board's gap at the wall) and the lateral probe ran across the pair's axis | Tightness is judged where they would meet, across the way they walk |
+| Two people stood half transparent 0.8 m apart for seconds (Elm Hill), or walked on inside each other as ghosts (York) | A link held while they were close, passing or not | A link holds only while they close or move past each other; then a pair still overlapping is released: seen by the steering again and parted by the floor at 5 cm a tick, translucent until clear |
+| `world check`'s `drawn` would call every ghost "lost between the record and the canvas" | It expected each owned pixel in the agent's own colour | A translucent agent's expected colour is its own mixed with what lies under it (where that is known) |
+
+Measured over 5 simulated minutes (summer noon, `stats.mjs` in the report): ghost passes are occasional, not constant (see the report
+for the per-scene counts). Not fixed: Castlefield's west exit knot (a crowd that cannot leave, base and branch alike); a walker that
+stops for its own reasons next to an oncoming one still stops (most "near-stops" in York are such, the pair would have passed 1 to 2 m
+apart); the fade is reactive to the steering for the `held` case (one has slowed before the link is made).
