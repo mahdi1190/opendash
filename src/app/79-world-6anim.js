@@ -584,7 +584,9 @@ function _wanUpdate(world, e, dt, clock) {
   // views with hysteresis (the camera's angle), skipped while culled (a culled agent keeps its last view)
   if (world && world.cam && !e.culled) { const v = worldViewOf(e, world.cam, { prev: an.view, prevMirror: an.mirror }); if (v) { an.view = v.view; an.mirror = v.mirror; an.persp = v.persp; } }
   // the gait the legs are drawn with (worldAnimGait): the frame record carries it, so the checker (walkInPlace) judges what is DRAWN
-  if (tg.state === 'move' && (tg.clip === 'walk' || tg.clip === 'run' || tg.clip === 'trot')) { const G = worldAnimGait(e, an, { view: an.view }); an.gait = { fs: G.fs, swing: G.swing, lift: G.lift, plane: G.plane }; }
+  if (tg.state === 'move' && (tg.clip === 'walk' || tg.clip === 'run' || tg.clip === 'trot')) { const G = worldAnimGait(e, an, { view: an.view }); an.gait = { fs: G.fs, swing: G.swing, lift: G.lift, plane: G.plane };
+    // a person seen side-on or three-quarter walks with planted feet (_wanStance): its stride is drawn as the ground's crossing share, the rest lifted
+    if (tg.kind === 'person' && (_WAN_ART_FS[G.view] || 0) > 0.3) { const fv = _wanCross(e, G.fs); an.gait.plane = _wanR(Math.min(1, fv), 3); an.gait.lift = _wanR(Math.max(G.lift, 1 - Math.min(1, fv)), 3); } }
   else an.gait = null;
   return an;
 }
@@ -818,7 +820,28 @@ function worldAnimOf(ent, world) {
  * plane: the share of a full side-on swing that is drawn in the picture plane (swing x the art's own foreshortening; a front view's
  * 3.5 degrees is 0.16 of a side view's 22)
  */
-const WORLD_ANIM_GAIT = Object.freeze({ lift: 0.05, sway: 0.014, bob: 0.8, min: 0.2 });
+const WORLD_ANIM_GAIT = Object.freeze({ lift: 0.05, sway: 0.014, bob: 0.8, min: 0.2, stance: 0.5, maxSin: 0.8 });
+/** |sin| of the angle between the way a body MOVES and the line of sight (dflt when it hardly moves): the share of its stride the eye sees. */
+function _wanCross(ent, dflt) {
+  const vx = _wanNum(ent.svx) ? ent.svx : ent.vx, vz = _wanNum(ent.svz) ? ent.svz : ent.vz;
+  if (!(_wanNum(vx) && _wanNum(vz) && Math.hypot(vx, vz) > 0.1 && _wanNum(ent.x) && _wanNum(ent.z))) return dflt;
+  return Math.abs(Math.sin(Math.atan2(vx, vz) - Math.atan2(ent.x, Math.max(1e-3, ent.z))));
+}
+const _wanIsLegs = (h) => /leg/i.test(String(h.part || '') + ' ' + (h.parts || []).join(' '));
+/**
+ * The planted-foot stance of a leg hook, or null: { deg } the swing (degrees) at which the foot moves back under the hip by the step's
+ * on-screen share in the stance (WORLD_ANIM_GAIT.stance of a stride) while the body walks on. Only a person's leg hook pivoted at its hip
+ * (a dog's legs rock about its body), seen side-on or three-quarter, moving.
+ */
+function _wanStance(h, an, G, ent) {
+  if (!h || h.kind !== 'walk' || !_wanIsLegs(h) || !Array.isArray(h.pivot) || !(h.pivot[1] < -4) || !(an && an.state === 'move' && an.step > 0)) return null;
+  if (_wanKind(ent) !== 'person' || !((_WAN_ART_FS[G.view] || 0) > 0.3) || !(G.artH > 0)) return null;
+  const hgt = _wanH(ent), full = an.step / Math.max(0.05, an.kStep || 1), L = Math.abs(h.pivot[1]);
+  // the share of the ground's motion that crosses the line of sight: from the way the body MOVES (a sidestep moves it off its facing)
+  const fv = _wanCross(ent, G.fs);
+  const sA = _wanClamp((full / hgt) * G.artH * 2 * WORLD_ANIM_GAIT.stance * fv / (2 * L), 0, WORLD_ANIM_GAIT.maxSin);
+  return { deg: _wanR(Math.asin(sA) / _WAN_DEG * (h.deg < 0 ? -1 : 1), 3), lift: _wanR(Math.max(G.lift, 1 - Math.min(1, fv)), 3) };
+}
 const _WAN_ART_FS = Object.freeze({ side: 1, 'q-front': Math.SQRT1_2, 'q-back': Math.SQRT1_2, front: 0, back: 0 });
 function worldAnimGait(ent, an, o) {
   o = o || {};
@@ -898,8 +921,18 @@ function worldAnimHooks(ent, t, o) {
         // the real angle to the line of sight (worldAnimGait): a walker coming toward the eye lifts its feet in turn, sways and bobs instead
         // of scissoring its legs in the picture plane (18 Oct: side-only art walking toward the camera read as walking on the spot)
         const k = still ? 0 : an.k, G = gait || (gait = worldAnimGait(ent, an, { obj, view: o.view }));
-        out.push(Object.assign({}, h, { period: legPer, phase: legPh, k: k0 * k, deg: (h.deg || 22) * G.swing, bob: (h.bob == null ? 1.5 : h.bob) * k * G.bob,
-          lift: G.lift * G.artH * WORLD_ANIM_GAIT.lift * k, sway: G.sway * G.artH * WORLD_ANIM_GAIT.sway * k, fs: G.fs }));
+        // PLANTED FEET (20 Oct: the drawn feet slid 60 to 90 % of the body's speed walking side-on): seen side-on or three-quarter, a leg
+        // hook (its pivot at the hip) turns through the stance at an even pace and as far as the step needs: the foot moves back under
+        // the hip by the step's on-screen length (step x |sin rel|) while the body moves on by it, so it stands still on the ground
+        // (sceneAnimPose's stance). The arms swing against the near leg (a quarter cycle on). End-on views keep the lifted feet.
+        const st = _wanStance(h, an, G, ent);
+        if (st) out.push(Object.assign({}, h, { period: legPer, phase: legPh, k: k0 * k, deg: st.deg, stance: WORLD_ANIM_GAIT.stance, bob: (h.bob == null ? 1.5 : h.bob) * k * G.bob,
+          lift: st.lift * G.artH * WORLD_ANIM_GAIT.lift * k, sway: G.sway * G.artH * WORLD_ANIM_GAIT.sway * k, fs: G.fs }));
+        else {
+          const armShift = !_wanIsLegs(h) && base.some(q => q.kind === 'walk' && _wanStance(q, an, G, ent)) ? -0.25 : 0;
+          out.push(Object.assign({}, h, { period: legPer, phase: _wanFrac(legPh + armShift), k: k0 * k, deg: (h.deg || 22) * G.swing, bob: (h.bob == null ? 1.5 : h.bob) * k * G.bob,
+            lift: G.lift * G.artH * WORLD_ANIM_GAIT.lift * k, sway: G.sway * G.artH * WORLD_ANIM_GAIT.sway * k, fs: G.fs }));
+        }
         break;
       }
       case 'paddle': {
