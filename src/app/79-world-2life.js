@@ -2213,10 +2213,11 @@ function _wlfGhostFree(life, a, o, x, z, bodies) {
 }
 /** The centre-legal width (m, in 0.125 m steps up to 2 x probe) across the direction (lx, lz) at a point: 0 when the point is blocked.
  *  bodies: third bodies standing in the way count as walls (a queue, a knot of people in a narrow street). */
-function _wlfGhostRoom(life, a, o, px, pz, lx, lz, bodies) {
+function _wlfGhostRoom(life, a, o, px, pz, lx, lz, bodies, enough) {
   if (!_wlfGhostFree(life, a, o, px, pz, bodies)) return 0;
   var w = 0, st = 0.125, P = WORLD_LIFE_GHOST.probe;
-  for (var sg = -1; sg <= 1; sg += 2) for (var s = st; s <= P + 1e-9; s += st) { if (!_wlfGhostFree(life, a, o, px + lx * s * sg, pz + lz * s * sg, bodies)) break; w += st; }
+  // (enough: the caller only asks whether the width reaches it; the probing stops there, open ground costs a few probes)
+  for (var sg = -1; sg <= 1; sg += 2) for (var s = st; s <= P + 1e-9; s += st) { if (enough != null && w >= enough - 1e-9) return w; if (!_wlfGhostFree(life, a, o, px + lx * s * sg, pz + lz * s * sg, bodies)) break; w += st; }
   return w;
 }
 /** Is the place between a and o tight (see WORLD_LIFE_GHOST)? awk: 0, 1 (the steering of either is dodging now) or 2 (and the dodge is
@@ -2233,8 +2234,8 @@ function _wlfGhostTight(life, a, o, awk, navOnly, mx, mz, ux, uz) {
   // too, but those only in a street that is narrow anyway (`street`): a knot of people on open ground is walked round, as it always was
   var lx = -uz, lz = ux, lim = awk === 2 ? G.heldLane : awk ? G.awkLane : G.lane;
   for (i = 0; i < pts.length; i++) {
-    var wn = _wlfGhostRoom(life, a, o, pts[i][0], pts[i][1], lx, lz, false);
-    var w = wn < G.street - 1e-9 && !navOnly ? Math.min(wn, _wlfGhostRoom(life, a, o, pts[i][0], pts[i][1], lx, lz, true)) : wn;
+    var wn = _wlfGhostRoom(life, a, o, pts[i][0], pts[i][1], lx, lz, false, Math.max(lim, G.street));
+    var w = wn < G.street - 1e-9 && !navOnly ? Math.min(wn, _wlfGhostRoom(life, a, o, pts[i][0], pts[i][1], lx, lz, true, lim)) : wn;
     if (w < lim - 1e-9) return w < G.lane - 1e-9 ? 'lane' : w < G.awkLane - 1e-9 ? 'dodge' : 'held';
   }
   return null;
@@ -2375,9 +2376,12 @@ function _wlfGhostPass(life, dt) {
     p._gi = i;
     _wlfGoalClock(life, p);
   }
+  // each walker asks on one tick in three (staggered by its place in the list; links form within a fifth of a second of being due,
+  // well inside the 2.6 m range): the pair scan was a third of the move pass in a crowd (Castlefield, 20 Oct)
+  life.ghostTick = ((life.ghostTick | 0) + 1) % 3;
   for (i = 0; i < A.length; i++) {
     var q = A[i];
-    if (q.dead || !_wlfGhostBody(q) || q.layer === 'air') continue;
+    if (q.dead || !_wlfGhostBody(q) || q.layer === 'air' || (i + life.ghostTick) % 3) continue;
     var cx = Math.floor(q.x / 2), cz = Math.floor(q.z / 2);
     for (var ix = -1; ix <= 1; ix++) for (var iz = -1; iz <= 1; iz++) {
       var bk = life.hash.get((cx + ix + 4096) * 8192 + (cz + iz + 4096));
