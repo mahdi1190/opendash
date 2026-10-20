@@ -41,7 +41,11 @@ test('Q4: views come from the camera\'s angle and change with hysteresis', () =>
   const m = W.worldViewOf({ obj: 'person.walker', x: 3, z: 15, vx: 0, vz: -1.2 }, c);
   assert.equal(m.view, 'front');
   assert.equal(m.obj, 'person.walker-front', 'the front view object');
-  assert.ok(m.s > 0 && Math.abs(m.s * W.sceneObj('person.walker-front').size[1] - c.f / 15 * 1.7) < 1e-3, 'real size at its depth');
+  // real size at its depth, at the height its side art is drawn (20 Oct: the views are declared 30 x 80 against the side's 29 x 64, and were
+  // drawn a fifth smaller: worldViewNorm scales a view to its side object's drawn height)
+  const norm = W.worldViewNorm('person.walker', 'person.walker-front', 0);
+  assert.ok(norm > 1.15 && norm < 1.35, `the walker's views are drawn at the side's height (${norm})`);
+  assert.ok(m.s > 0 && Math.abs(m.s * W.sceneObj('person.walker-front').size[1] / norm - c.f / 15 * 1.7) < 2e-3, 'real size at its depth');
 });
 
 test('Q4: a boat seen end-on is drawn end-on; a long hull is never a flat side slab', () => {

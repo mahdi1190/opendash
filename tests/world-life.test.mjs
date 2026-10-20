@@ -423,13 +423,15 @@ test('the systems runtime: life registers its brain, nav and move systems; the L
   const C = load('var __reg = [];\nfunction worldSystem(def) { __reg.push(def); return def; }');
   const defs = C.__reg || [];
   for (const d of defs) reg.push(d.id + ':' + d.phase);
-  assert.deepEqual(reg, ['life:brain', 'life-nav:nav', 'life-move:move']);
+  // (20 Oct: life-lerp keeps life.alpha, the share of a move step gone, every runner tick: the records then move every frame)
+  assert.deepEqual(reg, ['life:brain', 'life-nav:nav', 'life-move:move', 'life-lerp:move']);
   const world = canal([{ who: 'mallard', count: 4, on: 'cut' }]);
   defs[0].init(world);
   const L = C.worldLifeOf(world);
   assert.ok(L && L.agents.length === 4 && world.sim === L && world.agents === L.agents);
   const before = L.t;
   for (const d of defs) d.update(world, 1 / 15);
+  assert.ok(L.alpha >= 0 && L.alpha <= 1, 'the share of a step');
   assert.ok(Math.abs(L.t - before - 1 / 15) < 1e-9, 'one fixed step through the three phases');
   for (const a of world.agents) assert.ok(typeof a.state === 'string' && Number.isFinite(a.facing) && Number.isFinite(a.h), 'agents carry what they are doing');
 });

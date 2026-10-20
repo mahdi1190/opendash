@@ -1756,11 +1756,11 @@ function _wlfMove(life, a, dt) {
   a.turning = !!dir && rem > Math.PI / 4;
   if (a.v > 0 && dir) {
     var vx = Math.sin(a.heading) * a.v, vz = Math.cos(a.heading) * a.v;
-    // a dog nearing the end of its lead eases off the outward part of its step (from 80 % of the lead out): it never walks into the end
+    // a dog nearing the end of its lead eases off the outward part of its step (from 90 % of the lead out): it never walks into the end
     // of the lead to be yanked back the next tick (20 Oct: dogs twitched at the ends of their leads, the leash pull against the body)
     if (a.lead && a.leader && !a.leader.dead && a.lead.len > 0) {
       var lrx = a.x - a.leader.x, lrz = a.z - a.leader.z, lrd = Math.hypot(lrx, lrz), lln = a.lead.len;
-      if (lrd > 0.8 * lln) { var lux = lrx / lrd, luz = lrz / lrd, lout = vx * lux + vz * luz; if (lout > 0) { var lkeep = _wlfClamp((lln * 0.97 - lrd) / (0.17 * lln), 0, 1); vx -= lux * lout * (1 - lkeep); vz -= luz * lout * (1 - lkeep); } }
+      if (lrd > 0.9 * lln) { var lux = lrx / lrd, luz = lrz / lrd, lout = vx * lux + vz * luz; if (lout > 0) { var lkeep = _wlfClamp((lln - lrd) / (0.1 * lln), 0, 1); vx -= lux * lout * (1 - lkeep); vz -= luz * lout * (1 - lkeep); } }
     }
     var np = typeof worldStep === 'function' ? worldStep(life.nav, a.layer, [a.x, a.z], [vx, vz], _wlfNavR(a), dt) : [a.x + vx * dt, a.z + vz * dt];
     if (np && _wlfOk(life, a, np[0], np[1])) { a.x = np[0]; a.z = np[1]; }
@@ -2016,26 +2016,6 @@ function _wlfSeparate(life) {
     if (!moved) break;
   }
   for (i = 0; i < L.length; i++) L[i].y = worldLifeY(life, L[i]);
-}
-/**
- * Draw smoothing (20 Oct, the user: "people are shaking about"): the hard floor under the steering (_wlfSeparate), the lead (_wlfLeash),
- * a sidestep against a wall and the navigation's slide along it move a body by a few centimetres a tick, to and fro; drawn as they
- * happened, a pressed walker or a dog at the end of its lead shook three or four times a second. The body is where the sim puts it (every
- * check, the navigation and the next tick see that); the DRAWING follows it as a predicted point: last tick's drawn place moved on by the
- * shown velocity, pulled toward the body by 1 - exp(-dt / tau). A steady walk is drawn exactly where it is; a zig-zag is drawn as a quarter
- * of itself. The drawn place is never more than `max` metres off the body (the records, worldAgents: an offset voX, voZ, interpolated
- * between ticks like the body); walkers and dogs on the ground only, and never across a jump (a step aboard, a hop, a spawn).
- */
-var WORLD_LIFE_SMOOTH = { tau: 0.12, max: 0.12 };
-function _wlfDrawSmooth(a, dt) {
-  if (a.dead || a.kind !== 'walker' || a.layer === 'air' || a.hop || a.step || a.host || a.px == null || !(dt > 0)) { a.voX = 0; a.voZ = 0; return; }
-  var dpx = a.px + (a.pvoX || 0), dpz = a.pz + (a.pvoZ || 0), vx = a.svx != null ? a.svx : a.vx || 0, vz = a.svz != null ? a.svz : a.vz || 0;
-  if (Math.hypot(a.x - a.px, a.z - a.pz) > 0.6) { a.voX = 0; a.voZ = 0; return; }
-  var px = dpx + vx * dt, pz = dpz + vz * dt, k = 1 - Math.exp(-dt / WORLD_LIFE_SMOOTH.tau);
-  var ox = px + (a.x - px) * k - a.x, oz = pz + (a.z - pz) * k - a.z, m = Math.hypot(ox, oz), M = WORLD_LIFE_SMOOTH.max;
-  if (m > M) { ox *= M / m; oz *= M / m; }
-  if (m < 1e-4) { ox = 0; oz = 0; }
-  a.voX = ox; a.voZ = oz;
 }
 function _wlfLeash(life, a, dt) {
   var L = a.leader, len = a.lead.len, dx = a.x - L.x, dz = a.z - L.z, d = Math.hypot(dx, dz);
@@ -2769,8 +2749,6 @@ function _wlfPassNav(life, dt) {
 function _wlfPassMove(life, dt) {
   var A = life.agents;
   try { _wlfGhostPass(life, dt); } catch (e) { _wlfProblem(life, { pop: -1, rule: 'error', msg: 'ghost: ' + (e && e.message) }); }
-  // the drawn offset (WORLD_LIFE_SMOOTH): last tick's, for the records to interpolate from
-  for (var si = 0; si < A.length; si++) { var sa = A[si]; sa.pvoX = sa.voX || 0; sa.pvoZ = sa.voZ || 0; }
   for (var i = 0; i < A.length; i++) {
     var a = A[i]; if (a.dead) continue;
     try { _wlfMove(life, a, dt); } catch (e) { a.vx = 0; a.vz = 0; if (!a.moveErr) { a.moveErr = 1; _wlfProblem(life, { pop: a.pop, rule: 'error', msg: a.id + ' move: ' + (e && e.message) }); } }
@@ -2782,7 +2760,7 @@ function _wlfPassMove(life, dt) {
   // the velocity is what the body REALLY did this tick: the separation pass and the last leash move bodies after _wlfMove measured them,
   // so a walker pressed back by the one in front kept the velocity of the step it never made and its legs strode on the spot (18 Oct,
   // Whitby: "pushedBack" walkers). The shown velocity and the presented state are corrected by the difference.
-  for (var vi = 0; vi < A.length; vi++) { var av = A[vi]; _wlfTrueV(life, av, dt); if (!av.dead && av.kind === 'walker' && av.layer !== 'air' && !av.hop && !av.step) _wlfShownCap(av, dt); else av.lpv = null; _wlfDrawSmooth(av, dt); }
+  for (var vi = 0; vi < A.length; vi++) { var av = A[vi]; _wlfTrueV(life, av, dt); if (!av.dead && av.kind === 'walker' && av.layer !== 'air' && !av.hop && !av.step) _wlfShownCap(av, dt); else av.lpv = null; }
   _wlfTrafficPass(life, dt);
   var w = 0;
   for (var k = 0; k < A.length; k++) { if (!A[k].dead) A[w++] = A[k]; else life.byId.delete(A[k].id); }
@@ -2809,13 +2787,7 @@ function worldAgents(life) {
   for (var i = 0; i < life.agents.length; i++) {
     var a = life.agents[i];
     var x = a.px + (a.x - a.px) * al, z = a.pz + (a.z - a.pz) * al;
-    // the drawn offset of a push being taken up (WORLD_LIFE_SMOOTH), between its last two ticks too
-    var grounded = a.layer !== 'air' && !a.host && a.kind !== 'lane' && a.kind !== 'rail';
-    if (a.voX || a.voZ || a.pvoX || a.pvoZ) {
-      var ox0 = a.pvoX || 0, oz0 = a.pvoZ || 0, xo = x + ox0 + ((a.voX || 0) - ox0) * al, zo = z + oz0 + ((a.voZ || 0) - oz0) * al;
-      if (!grounded || worldLifeOk(life, a.layer, xo, zo)) { x = xo; z = zo; }
-    }
-    if (grounded && !worldLifeOk(life, a.layer, x, z)) { x = a.x; z = a.z; }
+    if (a.layer !== 'air' && !a.host && a.kind !== 'lane' && a.kind !== 'rail' && !worldLifeOk(life, a.layer, x, z)) { x = a.x; z = a.z; }
     var st = a.brain.states[a.bs] || {};
     var state = a.state, pose = a.pose;
     var alpha = 1;
