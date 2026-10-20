@@ -448,6 +448,15 @@ spec `W`, `E`, `N`, `S` are their aliases. Movers are never stuck, walking on th
 
 - Facing from velocity in WORLD space against the view ray: one of 8 directions = 5 drawn views (`side, q-front, front, q-back,
   back`) + 3 mirrors, hysteresis 15 degrees (A5). A standing mover keeps its last facing or faces its point of interest.
+  (20 Oct) A live agent is drawn from its BODY's yaw (`anim.yaw`, `_wanYaw`, `WORLD_ANIM_YAW`): the direction it moves from 0.25 m/s
+  (the facing invariant's own bound), its heading below that (starting, stopping, shuffling: the velocity's direction is noise there),
+  followed through 4 degrees of backlash (a direction that wavers by less never turns the body, so a view never flickers at a boundary)
+  and, toward the heading, at most 1.25 x the brain's turn rate. A dog always faces the way it goes.
+- One height from every side (20 Oct): a view object (`views`, SCENE_OBJ_VIEWS) is drawn at the height its SIDE object's art is drawn
+  at: `worldViewNorm(side, view, variant)` is the ratio of the two drawings' exact outline heights per declared `size[1]`
+  (`worldArtBounds`; the library's `_scBox` / `scenePathBox` are conservative: an arc's radius round both its ends), median over summer
+  and winter dress; `worldViewOf` multiplies the sprite scale `s` by it (`out.norm`) and the gait's art height divides by it. Until
+  then person.walker (29 x 64) and its views (30 x 80) differed by a fifth and the dog's head-on art by up to 43 %.
 - Scale is `f * h / z` with `h` from the descriptor's range for its pose and age, seeded per agent (A10, K8). There is no scale
   knob anywhere. No giants near the camera: the near band is reserved for framing.
 - Variety (A11): variant, outfit colours, gait and breed are seeded per agent from the descriptor's pools; two agents walking
@@ -901,6 +910,18 @@ from what the entity is DOING, never from a timer:
 - Secondary motion (M5), cheap and dropped first under budget: leads swing between dog and walker, coats lag, a dog's ears and
   tail react to its gait, boats rock in passing wakes, reeds part as a heron walks through.
 - Transitions (M7): walk to stop, stand to sit, swim to take-off are eased over 0.2-0.6 s with the right view; never instant.
+- A change of view (20 Oct) is a true DISSOLVE over `WORLD_FRAME_FADE_S` (0.16 s; `_wfrDrawDissolve`): the old and the new drawing,
+  each at its OWN scale (the agent's draw memory keeps the view's scale times depth, `m.sz`), each made whole in a scratch, mixed as
+  old x (1 - k) + new x k ('lighter' on premultiplied pixels) and laid on the frame once at the agent's own alpha (the ghost pass and
+  fades multiply in). A second change while the first is under half faded replaces the half-shown drawing; the occluder redraws cover
+  both. Until then the old view took the new view's scale and the two were blitted at 1 - k and k (0.75 cover halfway).
+- Planted feet (20 Oct, `_wanStance`): a person's leg hook pivoted at the hip, seen side-on or three-quarter, is drawn with
+  `stance: 0.5` (sceneAnimPose: through the stance the leg turns at an even pace from -deg to +deg, the other leg half a cycle on,
+  then swings forward on a cosine; lift only while a foot swings) and `deg = asin(full step x crossing share / (2 x hip height))`
+  (the crossing share from the way the body MOVES against the line of sight, `_wanCross`; the step in art units of the drawn view):
+  the foot moves back under the hip by the step's on-screen length while the body moves on by it. The arm hooks swing a quarter cycle
+  on (against the near leg). The anim record's `gait.plane` is that crossing share, so walkInPlace judges what is drawn. End-on views keep
+  the lifted feet; a dog's legs (rocked about its body in the library art) are unchanged.
 - Drawing: the renderer draws an agent's sprite with the v2 animation hooks of its state (`worldAnimHooks`: `sceneBehave.hooks`
   and `sceneBehave.stride` periods), so limbs move at the speed the agent travels.
 - Frame-rate independence (M8): all motion uses scene time from the runner (11.3).
@@ -912,6 +933,11 @@ from what the entity is DOING, never from a timer:
   checker judges what is drawn. A walker under the LOD (14 device px, limbs not drawn) keeps a whole-figure step bob of at least
   `WORLD_FRAME_LOD_BOB` (0.7 px). A quick body bob on a legged animal (a dog's front view) is its gait: twice a stride while it
   moves, never while it stands.
+- Every frame between ticks (life, 20 Oct): the runner's life systems move bodies at 15 Hz; the `life-lerp` system (rate 30) keeps
+  `life.alpha`, the share of a move step gone, so `worldAgents` puts each body between its last two steps on every runner tick (until
+  then nothing set it on the runner path: records stood still one 30 Hz tick in two, then jumped two steps; on a 60 Hz screen a walker
+  moved one frame in four). The steered direction of a walker is eased (`_wlfSteerEase`, `WORLD_LIFE_STEER`: a 0.2 s low-pass; a change
+  of over 100 degrees is taken at once) and a dog eases off the outward part of its step from 90 % of its lead (never yanked back).
 - What the legs follow is what the body did (life, 18 Oct): the velocity is measured AFTER the separation pass and the last leash
   (`_wlfTrueV`), the shown speed never exceeds the ground covered over the last 4 ticks (`_wlfShownCap`: a body shaken to and fro
   shows no walk), a walker held by a queue or a taut lead below 0.25 m/s stands and sets off again at 0.4 (`WORLD_LIFE_CREEP`), a
@@ -1071,6 +1097,7 @@ violation is `{ rule, req, id, msg }`; the count must be zero.
 | `slidingFeet`, `facing`, `laneDir` | stride vs speed, view vs velocity, lanes on the left | A5, A6, A9 |
 | `animStill`, `stillMoving`, `staticAnim` | animating while still, still while moving, statics animating | M1, M2 |
 | `walkInPlace` | walking on the spot, judged from the record's POSITIONS and boxes over 0.5 s (never the shown velocity the legs are made from): legs cycling (walk, run, trot, k >= 0.3, drawn 14 px or taller) while the body is held (< 0.15 m/s: `held`), while the feet pace out over twice the ground covered (`slip`), or while the figure moves on screen under a quarter of its height a stride for every full side-on swing it draws (drawn swing = `k x plane`, judged when over 0.3; no gait at all counts as a full side-on swing: `flat`). 0.6 s grace (M7). Shared classifier `worldWalkInPlace(m, h, t)`, thresholds `WORLD_INPLACE` | A6, M1, Q4 |
+| `sizePop` | a change of view (or mirror) never changes a mover's drawn height (the record's `fig`, the exact outline of its rest art, times its depth over its height) by over 6 % (`WORLD_INVARIANT_POP`) | A5, A10, Q4 |
 | `clones`, `windDir` | synchronised phases, sway against the wind | M4, M3 |
 | `order` | `worldOrderCheck` = 0 | R1, R2 |
 | `landmark`, `bare` | landmark face visible, no bare region > 15 % | C4, C6 |
@@ -1094,6 +1121,7 @@ with zero invariant violations, and carry a load log that explains every fix.
 | `sheet <ref> [--matrix] [--sizes]` | dates x times x sizes on one sheet; `--matrix` = 4 seasons x 5 times x 3 weathers |
 | `motion <ref>` | paths, footprints and violations over the still |
 | `inplace <ref> [--browser]` | walking in place measured on what is drawn (tools/lib/world/inplace.mjs): per person per frame the ground and screen speed, clip, view and gait; the share of person-time, the causes (pinch yield, pushed back, group follower, taut lead, queue, sidestep, a side-only figure seen end-on, an end-on view) and the worst offenders; `--browser` reads the frames the real page drew |
+| `pops <ref> [--browser]` | people that pop, slide, snap and shake, measured on what is drawn at 30 fps (tools/lib/world/pops.mjs): the compositor's own draw records and pose plans (`worldFrameFigures`; `--browser`: the blits the page drew, `S.figRec`), each part through its matrix (`worldArtHull`). Per person and dog: size pops and every view change's size ratio by view pair and object, width and position pops, anchor jumps, foot slide (the slower drawn foot against the body side-on), heading snaps, speed and cycle-rate pops, walk/stand and view flicker, gait noise, stutter (the per-frame step's own change), shaking (sideways reversals on a straight course), steering reversals; per person-minute, by kind, worst offenders and examples |
 | `capture <ref> --full` | the WHOLE loop as a frame strip, not just 20 s |
 | `critic <ref> [--against <ref>]` | richness, emptiness and framing scores (and against a source) |
 | `compare <v3> <original>` | side by side at 3 dates x 5 times |
