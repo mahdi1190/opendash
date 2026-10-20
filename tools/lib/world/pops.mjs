@@ -12,7 +12,7 @@
 //   width pops     the drawn width jumps over 20 % in one frame (a hard swap of a wide side for a narrow front)
 //   position pops  the feet (the drawing's lowest row) or its centre jump over 4 px against the anchor in one frame, or the anchor
 //                  itself jumps further than the body can move (a teleport)
-//   foot slide     walking side-on, the planted foot (the slower of the two drawn feet) moves on the screen at over half the body's speed
+//   foot slide     walking side-on (the stride drawn in the picture plane over 0.7 of a side-on one), the planted foot (the slower of the two drawn feet) moves on the screen at over half the body's speed
 //   heading snaps  the facing the view is drawn from turns faster than the brain's turn rate allows (1.5 x, plus 30 degrees a second)
 //   speed pops     the shown speed changes by over 4 m/s/s, or the walk cycle's rate by over 30 % in one frame; walk / stand flicker
 //   jitter         (a) the anchor shaking: over 2.5 reversals a second of its sideways motion on a straight course, over 1 cm (RMS) off
@@ -100,7 +100,7 @@ export function popsTracker(E, o = {}) {
       const sp = f.agent ? Math.hypot(f.agent.vx || 0, f.agent.vz || 0) : 0, moving = sp > 0.15, big = H >= POPS.minPx;
       const key = newest.o + (newest.flip ? '~' : ''), clip = f.anim && f.anim.clip, rate = f.anim && f.anim.rate;
       const s = { t, X: f.X, Y: f.Y, x: f.x, z: f.z, height: f.height, H, W, feetY, headY, cx, legs, key, view: f.view, mirror: f.mirror, sp, clip, rate,
-        k: f.anim ? f.anim.k : null, swing: f.anim && f.anim.gait ? f.anim.gait.swing : null, fs: f.anim && f.anim.gait ? f.anim.gait.fs : null,
+        k: f.anim ? f.anim.k : null, swing: f.anim && f.anim.gait ? f.anim.gait.swing : null, fs: f.anim && f.anim.gait ? f.anim.gait.fs : null, plane: f.anim && f.anim.gait ? f.anim.gait.plane : null,
         face: moving ? (f.anim && Number.isFinite(f.anim.yaw) ? f.anim.yaw : Math.atan2(f.agent.vx, f.agent.vz) * 180 / Math.PI) : null, heading: f.raw && Number.isFinite(f.raw.heading) ? f.raw.heading * 180 / Math.PI : null,
         turn: f.raw && f.raw.turn > 0 ? f.raw.turn : 0.5, sideDir: f.raw ? f.raw.sideDir : null, sideV: f.raw ? f.raw.sideV : 0, rest: restH(E, newest), fade: f.draws.length > 1, big };
       if (big) { p.frames++; C.frames++; kindC(kind).frames++; if (moving) { p.moving++; C.moving++; kindC(kind).moving++; } }
@@ -156,7 +156,7 @@ export function popsTracker(E, o = {}) {
         // (c) gait noise: the leg amplitude or swing jumping between frames
         if (moving && s.key === q.key && !s.fade && s.k != null && q.k != null && (Math.abs(s.k - q.k) > POPS.gaitJump || (s.swing != null && q.swing != null && Math.abs(s.swing - q.swing) > POPS.gaitJump))) { bump(p, 'gaitNoise'); ex('gaitNoise', t, f, `leg amplitude ${q.k} -> ${s.k}, swing ${q.swing} -> ${s.swing}`); }
         // foot slide: walking side-on, the planted foot is the slower of the two drawn feet; on a fixed camera it should stand still
-        if (moving && /^(walk|run|trot)$/.test(String(s.clip)) && s.fs != null && s.fs > 0.7 && s.legs && q.legs && s.legs.length >= 2 && q.legs.length >= 2 && !s.fade && s.key === q.key && s.H >= 30) {
+        if (moving && /^(walk|run|trot)$/.test(String(s.clip)) && s.plane != null && s.plane > 0.7 && s.legs && q.legs && s.legs.length >= 2 && q.legs.length >= 2 && !s.fade && s.key === q.key && s.H >= 30) {
           const vA = Math.abs((s.X - q.X) / dt);
           if (vA > 4) {
             const vs = s.legs.map((L, i) => Math.abs((L.x - q.legs[i].x) / dt));
