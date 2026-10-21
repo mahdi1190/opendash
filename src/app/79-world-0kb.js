@@ -349,8 +349,8 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'rock.boulder': { group: { kind: 'single', size: [1, 2], gap: 6 }, habitat: { on: ['soil', 'grass', 'heath', 'bank', 'stone', 'sand'] } },
   'water.edge': { habitat: { on: ['bank', 'water-margin', 'wet', 'soil', 'grass'] } }, 'water.chalk-stream': { habitat: { on: ['water', 'water-margin', 'wet'] } },
   // a fountain jet rises from its pool or from the paving (a 'cover' may stand on ground or water; it was drawn in the air, 21 Oct)
-  // and a city fountain is switched off overnight (its in-ground lights glowed under no water at midnight)
-  'water.shc-jet': { cls: 'cover', habitat: { on: ['water', 'paving'] }, solidity: 'passable', when: { hours: [7, 22] } }, 'water.shc-bubbler': { cls: 'cover', habitat: { on: ['water', 'paving'] }, solidity: 'passable', when: { hours: [7, 22] } },
+  // a jet is solid (the fill once stood a litter bin among the jets, drawn over by the water), and a city fountain is switched off overnight (its in-ground lights glowed under no water at midnight)
+  'water.shc-jet': { cls: 'cover', habitat: { on: ['water', 'paving'] }, solidity: 'solid', when: { hours: [7, 22] } }, 'water.shc-bubbler': { cls: 'cover', habitat: { on: ['water', 'paving'] }, solidity: 'passable', when: { hours: [7, 22] } },
   'structure.shp-stepping-stone': { cls: 'rock', habitat: { on: ['water', 'water-margin', 'wet'] }, solidity: 'walkable' },
   'structure.mqn-ole-v2': { cls: 'post', solidity: 'solid' },
   // a bollard stands on land at the edge (a mooring post in the water is its own object): the post class allows water, so a

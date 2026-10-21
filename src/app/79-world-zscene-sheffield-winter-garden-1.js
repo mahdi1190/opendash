@@ -36,7 +36,7 @@
   // two coffee kiosks with their parasols on the square, benches facing the fountain and the Winter Garden, a busker by the kiosks
   ents.push({ obj: 'building.kiosk', at: [9, 30], facing: 230, id: 'kiosk-a', model: { livery: 'navy-cream', seed: 4, opts: { kind: 'tea' } } });
   ents.push({ obj: 'building.kiosk', at: [24, 36], facing: 215, id: 'kiosk-b', model: { livery: 'mint-white', seed: 9, opts: { kind: 'tea' } } });
-  ents.push({ obj: 'street.bench', at: [-7, 17], facing: 260, id: 'bench-a' }, { obj: 'street.bench', at: [-2, 35], facing: 250, id: 'bench-b' }, { obj: 'street.bench', at: [38, 24], facing: 210, id: 'bench-c' });
+  ents.push({ obj: 'street.bench', at: [-7, 17], facing: 260, id: 'bench-a' }, { obj: 'street.bench', at: [-2, 35], facing: 250, id: 'bench-b' }, { obj: 'street.bench', at: [7.5, 20.5], facing: 215, id: 'bench-c' });
   ents.push({ obj: 'person.busker', at: [2.5, 26], facing: 200, id: 'busker' });
   // tables out in front of the coffee kiosks, tubs of flowers by the benches, a planter row along the gardens' edge
   ents.push({ obj: 'street.mqn-parasol', at: [12.5, 25.5] }, { obj: 'person.cafe-goer', at: [11.4, 23.6], facing: 230 }, { obj: 'street.mqn-parasol', at: [18.5, 29] }, { obj: 'person.cafe-goer', at: [19.6, 27.4], facing: 200 });
@@ -78,10 +78,11 @@
       { id: 'winter-garden', obj: 'structure.glasshouse', at: [28, 82], facing: 62, src: 'Sheffield Winter Garden (2003): 70 x 22 x 21 m, glulam larch arches; Museums Sheffield / Sheffield City Council', model: { livery: 'larch', seed: 7 } },
     ],
     life: [
-      { who: 'crowd', on: 'square', rate: '24/min', mix: { commuter: 0.25, shopper: 0.25, friends: 0.2, stroll: 0.12, couple: 0.1, buggy: 0.04, elderly: 0.04 }, edges: ['W', 'E', 'S'] },
-      { who: 'crowd', on: 'tudor', rate: '14/min', mix: { commuter: 0.3, shopper: 0.2, friends: 0.25, stroll: 0.15, couple: 0.1 }, edges: ['W', 'E'] },
+      { who: 'crowd', on: 'square', rate: '20/min', mix: { commuter: 0.28, shopper: 0.25, stroll: 0.2, couple: 0.2, elderly: 0.07 }, edges: ['W', 'E', 'S'] },
+      // the far square is crossed, not lingered on (groups that stopped to chat there stood at the frame's edge)
+      { who: 'crowd', on: 'tudor', rate: '11/min', mix: { commuter: 0.4, shopper: 0.3, brisk: 0.15, stroll: 0.15 }, edges: ['W', 'E'] },
       { who: 'visit', mix: { elderly: 0.4, stroll: 0.3, couple: 0.3 }, rate: '1/min', goals: [{ go: 'bench-a' }, { do: 'sit', for: [25, 80] }, { leave: 'S' }] },
-      { who: 'visit', mix: { stroll: 0.5, friends: 0.5 }, rate: '1/min', goals: [{ go: 'bench-c' }, { do: 'sit', for: [25, 80] }, { leave: 'E' }] },
+      { who: 'visit', mix: { stroll: 0.6, elderly: 0.4 }, rate: '1/min', goals: [{ go: 'bench-c' }, { do: 'sit', for: [25, 80] }, { leave: 'E' }] },
       { who: 'visit', mix: { stroll: 0.5, shopper: 0.3, elderly: 0.2 }, rate: '1/40s', goals: [{ view: 'busker', for: [15, 45] }, { leave: 'E' }] },
       { who: 'visit', mix: { commuter: 0.5, shopper: 0.5 }, rate: '1/50s', goals: [{ view: 'kiosk-a', for: [10, 30] }, { leave: 'W' }] },
       { who: 'pigeons', count: 7, on: 'tudor' },
