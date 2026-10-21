@@ -41,7 +41,7 @@ export async function runCellHere(job) {
 
 /** The cells in child processes, `concurrency` at a time; a child that dies abnormally is run again up to `retries` times. */
 export function runCells(jobs, o = {}) {
-  const conc = Math.max(1, Math.min(o.concurrency || Math.max(1, Math.floor(cpus().length / 3)), 8)), retries = o.retries == null ? 2 : o.retries;
+  const conc = Math.max(1, Math.min(o.concurrency || +process.env.OPENDASH_WORLD_JOBS || Math.max(1, Math.floor(cpus().length / 3)), 3)), retries = o.retries == null ? 2 : o.retries;
   const dir = join(tmpdir(), 'opendash-world', 'cells-' + process.pid + '-' + Date.now());
   mkdirSync(dir, { recursive: true });
   const out = new Array(jobs.length);
