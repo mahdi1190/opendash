@@ -24,10 +24,13 @@
     return [p0, p1, [r(p1[0] + nx), r(p1[1] + nz)], [r(p0[0] + nx), r(p0[1] + nz)]];
   };
   const ents = [];
-  // the gardens' fountain: jets in a ring rising from the granite (the Goodwin Fountain's kind) beside a long stone pool, bubblers between them
-  for (let i = 0; i < 9; i++) { const t = i / 9 * Math.PI * 2; ents.push({ obj: 'water.shc-jet', at: [Math.round((-12 + Math.cos(t) * 3.6) * 10) / 10, Math.round((23 + Math.sin(t) * 3.2) * 10) / 10], variant: i % 3 }); }
+  // the gardens' fountain: jets in a ring rising from the granite (the Goodwin Fountain's kind; a pool beside it was tried and dropped:
+  // walkers' low-sun shadows fell on it, which the engine rules out)
+  // (a tall jet in the middle, a ring of middle ones and an outer ring of low ones: a cluster reads as a fountain, a row of tall ones as posts)
+  const R1 = (v) => Math.round(v * 10) / 10;
+  for (let i = 0; i < 10; i++) { const t = i / 10 * Math.PI * 2; ents.push({ obj: 'water.shc-jet', at: [R1(-12 + Math.cos(t) * 3.4), R1(23 + Math.sin(t) * 2.8)], variant: 0 }); }
+  for (let i = 0; i < 5; i++) { const t = (i + 0.5) / 5 * Math.PI * 2; ents.push({ obj: 'water.shc-jet', at: [R1(-12 + Math.cos(t) * 1.7), R1(23 + Math.sin(t) * 1.4)], variant: 1 }); }
   ents.push({ obj: 'water.shc-jet', at: [-12, 23], variant: 2 });
-  for (let i = 0; i < 5; i++) { const t = (i + 0.5) / 5 * Math.PI * 2; ents.push({ obj: 'water.shc-bubbler', at: [Math.round((-12 + Math.cos(t) * 1.8) * 10) / 10, Math.round((23 + Math.sin(t) * 1.6) * 10) / 10], variant: i % 2 }); }
   // the gardens' trees on the lawn, and plane trees in pits along the square
   for (const [x, z, o] of [[-34, 14, 'tree.plane-avenue'], [-44, 30, 'tree.plane-avenue'], [-30, 36, 'tree.green-birch'], [-56, 20, 'tree.green-chestnut'], [-38, 6, 'tree.green-birch']]) ents.push({ obj: o, at: [x, z] });
   // two coffee kiosks with their parasols on the square, benches facing the fountain and the Winter Garden, a busker by the kiosks
@@ -44,12 +47,14 @@
     surfaces: [
       { id: 'gardens', kind: 'grass', poly: [[-110, 2], [-25, 2], [-25, 40], [-110, 40]] },
       { id: 'square', kind: 'plaza', poly: [[-25, 2], [150, 2], [150, 43.5], [-110, 43.5], [-110, 40], [-25, 40]] },
-      { id: 'pool', kind: 'water', water: 'canal', poly: [[-24, 29], [-6, 29], [-6, 33], [-24, 33]], hint: 'breezy' },
       { id: 'kerb', kind: 'pavement', poly: [[-220, 43.5], [220, 43.5], [220, 51], [-220, 51]] },
       { id: 'tramline', kind: 'tram', path: [[-220, 47.3], [220, 47.3]], width: 3.4 },
       { id: 'cross-a', kind: 'crossing', path: [[-12, 43.5], [-12, 51]], width: 4 },
       { id: 'cross-b', kind: 'crossing', path: [[32, 43.5], [32, 51]], width: 4 },
-      { id: 'tudor', kind: 'plaza', poly: [[-80, 51], [150, 51], [150, 96], [67, 89.5], [3.7, 55.9], [-7.4, 76.6], [1.6, 89.1], [-30.5, 105.1], [-32, 113.8], [-38, 87.8], [-39, 83.7], [-46, 57.7], [-80, 57.7]] },
+      // the square's far part; it stops where a walker would be seen THROUGH the Winter Garden's glass (behind its near end, past its far end)
+      { id: 'tudor', kind: 'plaza', poly: [[-80, 51], [150, 51], [150, 88], [70, 88], [67, 89.5], [3.7, 55.9], [-7.4, 76.6], [-30.5, 105.1], [-32, 113.8], [-38, 87.8], [-39, 83.7], [-46, 57.7], [-80, 57.7]] },
+      // the gallery's forecourt in the angle between the Winter Garden and the gallery front (paved, no through walkers)
+      { id: 'forecourt', kind: 'pavement', poly: [[-7.4, 76.6], [1.6, 89.1], [-30.5, 105.1]] },
     ],
     buildings: [
       { id: 'lyceum', foot: block([-47, 58], [-40, 84], 22), storeys: 3, style: 'theatre-edwardian', crown: 'corner-dome' },
@@ -67,9 +72,9 @@
       { who: 'crowd', on: 'tudor', rate: '14/min', mix: { commuter: 0.3, shopper: 0.2, friends: 0.25, stroll: 0.15, couple: 0.1 }, edges: ['W', 'E'] },
       { who: 'visit', mix: { elderly: 0.4, stroll: 0.3, couple: 0.3 }, rate: '1/min', goals: [{ go: 'bench-a' }, { do: 'sit', for: [25, 80] }, { leave: 'S' }] },
       { who: 'visit', mix: { stroll: 0.5, friends: 0.5 }, rate: '1/min', goals: [{ go: 'bench-c' }, { do: 'sit', for: [25, 80] }, { leave: 'E' }] },
-      { who: 'visit', mix: { stroll: 0.4, family: 0.3, friends: 0.3 }, rate: '1/40s', goals: [{ view: 'busker', for: [15, 45] }, { leave: 'E' }] },
+      { who: 'visit', mix: { stroll: 0.5, shopper: 0.3, elderly: 0.2 }, rate: '1/40s', goals: [{ view: 'busker', for: [15, 45] }, { leave: 'E' }] },
       { who: 'visit', mix: { commuter: 0.5, shopper: 0.5 }, rate: '1/50s', goals: [{ view: 'kiosk-a', for: [10, 30] }, { leave: 'W' }] },
-      { who: 'pigeons', count: 10, on: 'square' },
+      { who: 'pigeons', count: 7, on: 'tudor' },
       { who: 'tram', on: 'tramline', every: '3min' },
     ],
     backdrop: { style: 'city-sheffield-hills' },

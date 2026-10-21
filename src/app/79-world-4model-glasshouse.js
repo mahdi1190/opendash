@@ -60,12 +60,12 @@ function _wmdGhPalm(h, a, l, ht, k, seed) {
   const trunk = h.mix('#7d6c56', '#9a8a70', u('tc'));
   h.line([h.P(a, l, 0.3 * k), h.P((a + top[0]) / 2 + Math.cos(lAng) * lean * 0.15, (l + top[1]) / 2 + Math.sin(lAng) * lean * 0.15, ht * 0.55), h.P(top[0], top[1], top[2])], 0.32 * k, trunk, 'houseplant', 'trunk');
   if (h.px(0.3 * k) >= 3) for (let r = 1.2 * k; r < ht - 0.6 * k; r += 0.9 * k) { const f = r / ht; h.line([h.P(a + (top[0] - a) * f - 0.17 * k, l + (top[1] - l) * f, r), h.P(a + (top[0] - a) * f + 0.17 * k, l + (top[1] - l) * f, r)], 0.05 * k, h.shade(trunk, 0.78), 'houseplant', 'ring'); }
-  const n = 9 + Math.floor(u('nf') * 5), R = (2.2 + 1.6 * u('fr')) * k, g0 = Math.floor(u('g') * _WMD_GH_GREENS.length);
+  const n = 11 + Math.floor(u('nf') * 5), R = (3.0 + 1.8 * u('fr')) * k, g0 = Math.floor(u('g') * _WMD_GH_GREENS.length);
   for (let i = 0; i < n; i++) {
     const th = (i / n + u('rot')) * Math.PI * 2 + (u('j' + i) - 0.5) * 0.4, ca = Math.cos(th), cl = Math.sin(th);
     const up = (i % 3 === 0) ? 0.55 : (i % 3 === 1 ? 0.15 : -0.1), len = R * (0.8 + 0.35 * u('fl' + i));
     const C = top, M = [C[0] + ca * len * 0.5, C[1] + cl * len * 0.5, C[2] + len * (0.22 + up * 0.5)], T = [C[0] + ca * len, C[1] + cl * len, C[2] + len * (up * 0.4 - 0.35)];
-    const w = len * 0.16, sa = -cl * w, sl = ca * w;
+    const w = len * 0.2, sa = -cl * w, sl = ca * w;
     const col = _WMD_GH_GREENS[(g0 + i) % _WMD_GH_GREENS.length];
     h.face([h.P(C[0], C[1], C[2]), h.P(M[0] + sa, M[1] + sl, M[2]), h.P(T[0], T[1], T[2]), h.P(M[0] - sa, M[1] - sl, M[2] - 0.08 * k)], col, 'houseplant', 'frond', 'two');
     if (h.px(0.1 * k) >= 1.2) h.line([h.P(C[0], C[1], C[2]), h.P(M[0], M[1], M[2] + 0.02 * k), h.P(T[0], T[1], T[2])], 0.04 * k, h.shade(col, 1.25), 'houseplant', 'midrib');
@@ -85,7 +85,7 @@ function _wmdGhPine(h, a, l, ht, k, seed) {
 function _wmdGhBroad(h, a, l, ht, k, seed) {
   const u = (s) => _wmdU(seed, s);
   h.line([h.P(a, l, 0.3 * k), h.P(a + (u('x') - 0.5) * 0.8 * k, l, ht * 0.6)], 0.3 * k, '#6a5a48', 'houseplant', 'trunk');
-  const n = 6 + Math.floor(u('n') * 4), R = (1.8 + 1.4 * u('R')) * k;
+  const n = 7 + Math.floor(u('n') * 4), R = (2.4 + 1.6 * u('R')) * k;
   for (let i = 0; i < n; i++) {
     const th = u('a' + i) * Math.PI * 2, rr = R * 0.65 * Math.sqrt(u('d' + i));
     h.disc(h.P(a + Math.cos(th) * rr, l + Math.sin(th) * rr * 0.6, ht * (0.62 + 0.3 * u('y' + i))), R * (0.42 + 0.25 * u('s' + i)), _WMD_GH_GREENS[(i + Math.floor(u('g') * 7)) % 7], 'houseplant', 'crown', 0.8);
@@ -149,7 +149,7 @@ worldModelDefine('glasshouse', {
     const ribSeg = (j, i, soff, back) => {
       const a = aj(j), o0 = pts[i], o1 = pts[i + 1], n0 = inner[i], n1 = inner[i + 1];
       // the far half is seen through two panes and the planting: its ribs are softer (a lattice of equal ribs reads as a diagrid)
-      const side = h.mix(h.mix(rib, ribLo, 0.2 + 0.25 * Math.abs(stripN(i)[0])), liv.glassBack, back ? 0.42 : 0);
+      const side = h.mix(h.mix(rib, ribLo, 0.2 + 0.25 * Math.abs(stripN(i)[0])), liv.glassBack, back ? 0.58 : 0);
       h.face([h.P(a, o0[0], o0[1]), h.P(a, o1[0], o1[1]), h.P(a, n1[0], n1[1]), h.P(a, n0[0], n0[1])], side, 'timber', 'rib', 'two');
       if (soff) h.face([h.P(a - rw, n0[0], n0[1]), h.P(a + rw, n0[0], n0[1]), h.P(a + rw, n1[0], n1[1]), h.P(a - rw, n1[0], n1[1])], h.mix(soffit, liv.glassBack, 0.35), 'timber', 'rib-soffit', 'two');
     };
@@ -165,7 +165,7 @@ worldModelDefine('glasshouse', {
     /* ---- 4. the planting, each plant its own part (drawn far to near) ---- */
     const fill = p.planting, plants = [];
     if (fill > 0 && h.px(1) >= 0.8) {
-      const nPalm = Math.round((11 + 4 * h.u('np')) * fill * L / (70 * k)), nPine = Math.max(1, Math.round(3 * fill * L / (70 * k))), nBroad = Math.round((6 + 3 * h.u('nb')) * fill * L / (70 * k));
+      const nPalm = Math.round((11 + 4 * h.u('np')) * fill * L / (70 * k)), nPine = Math.max(1, Math.round(3 * fill * L / (70 * k))), nBroad = Math.round((11 + 4 * h.u('nb')) * fill * L / (70 * k));
       const room = (l, y) => S.yOf(l) - y;   // headroom under the vault
       const spot = (key, lo, hi) => { const a = A0 + (0.08 + 0.84 * h.u(key + 'a')) * L, sg = h.u(key + 's') < 0.5 ? -1 : 1, l = sg * (lo + (hi - lo) * h.u(key + 'l')) * W; return [a, l]; };
       for (let i = 0; i < nPalm; i++) { const [a, l] = spot('p' + i, 0.22, 0.62), ht = Math.min((7 + 8 * h.u('ph' + i)) * k, S.yOf(l) - 3.2 * k); if (ht > 2.5 * k) plants.push(['palm', a, l, ht, i]); }
@@ -182,7 +182,7 @@ worldModelDefine('glasshouse', {
         h.part('beds-' + (sg < 0 ? 'l' : 'r'), { layer: 4, key: h.depth(0, sg * W * 0.5, 1) + 0.5 });
         for (let a = A0 + 3.5 * k; a < A1 - 3.5 * k; a += (1.1 + 1.4 * h.u('sa' + a + sg)) * k) {
           if (h.u('skip' + a + sg) > 0.55 + 0.4 * fill) continue;
-          const l = sg * (2.8 + (W - 5.5 * k) * h.u('sl' + a + sg)), r = (1.0 + 1.2 * h.u('sr' + a + sg)) * k, flower = h.u('sf' + a + sg) < 0.28;
+          const l = sg * (2.8 + (W - 5.5 * k) * h.u('sl' + a + sg)), r = (1.2 + 1.3 * h.u('sr' + a + sg)) * k, flower = h.u('sf' + a + sg) < 0.28;
           h.disc(h.P(a, l, r * 0.75), r, _WMD_GH_GREENS[Math.floor(h.u('sc' + a + sg) * 7) % 7], 'houseplant', 'shrub', 0.62);
           if (flower && h.px(0.3 * k) >= 2) for (let q = 0; q < 4; q++) h.disc(h.P(a + (h.u('fa' + q + a) - 0.5) * r, l + (h.u('fl' + q + a) - 0.5) * r * 0.5, r * (0.9 + 0.5 * h.u('fy' + q + a))), 0.16 * k, _WMD_GH_FLOWERS[(q + Math.floor(h.u('fc' + a) * 5)) % 5], 'houseplant', 'flower', 1);
         }
