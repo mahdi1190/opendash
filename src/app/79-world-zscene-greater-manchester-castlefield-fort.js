@@ -1,0 +1,1496 @@
+/* ============================================================
+   WORLD SCENE (format v3) world-test / greater-manchester-castlefield-fort-w3: converted by `node tools/world.mjs convert uk-north-manchester-castlefield/greater-manchester-castlefield-fort`.
+   docs/dev/WORLD_ENGINE.md 6. World metres only. A FIRST DRAFT: enrich it by hand to the rich bar before it ships.
+   Review (26):
+     - place[0]: structure.mcf-railbridge: pixel placement unprojected to [0, 104.9] m (was pinned perspective art: check it is a real object at this spot)
+     - place[1]: structure.mcf-railbridge-front: pixel placement unprojected to [0, 104.9] m (was pinned perspective art: check it is a real object at this spot)
+     - place[2]: structure.mcf-railbridge-pier: pixel placement unprojected to [0, 104.9] m (was pinned perspective art: check it is a real object at this spot)
+     - place[3]: landmark.mcf-roman-gate: pixel placement unprojected to [8.4, 40] m (was pinned perspective art: check it is a real object at this spot)
+     - place[41]: plant.mcf-plane-bough: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - buildings[0]: building.mill: no world descriptor (unknownSize); not placed. Add a descriptor to A's table or swap for a library object
+     - buildings[0]: building footprint (mill, 4 storeys) -> one 'building.mill' entity at its centre: the library size replaces the authored footprint
+     - buildings[1]: building.victorian-terrace: no world descriptor (unknownSize); not placed. Add a descriptor to A's table or swap for a library object
+     - buildings[1]: building footprint (victorian-terrace, 3 storeys) -> one 'building.victorian-terrace' entity at its centre: the library size replaces the authored footprint
+     - buildings[2]: building.mill: no world descriptor (unknownSize); not placed. Add a descriptor to A's table or swap for a library object
+     - buildings[2]: building footprint (mill, 5 storeys) -> one 'building.mill' entity at its centre: the library size replaces the authored footprint
+     - buildings[3]: building.mill: no world descriptor (unknownSize); not placed. Add a descriptor to A's table or swap for a library object
+     - buildings[3]: building footprint (mill, 6 storeys) -> one 'building.mill' entity at its centre: the library size replaces the authored footprint
+     - buildings[4]: building.modern-glass: no world descriptor (unknownSize); not placed. Add a descriptor to A's table or swap for a library object
+     - buildings[4]: building footprint (modern-glass, 9 storeys) -> one 'building.modern-glass' entity at its centre: the library size replaces the authored footprint
+     - buildings[5]: building.modern-glass: no world descriptor (unknownSize); not placed. Add a descriptor to A's table or swap for a library object
+     - buildings[5]: building footprint (modern-glass, 14 storeys) -> one 'building.modern-glass' entity at its centre: the library size replaces the authored footprint
+     - buildings[6]: building.modern-glass: no world descriptor (unknownSize); not placed. Add a descriptor to A's table or swap for a library object
+     - buildings[6]: building footprint (modern-glass, 20 storeys) -> one 'building.modern-glass' entity at its centre: the library size replaces the authored footprint
+     - flows[0]: flow on ["pave","pave-f"]: one population per surface is better; kept on 'pave' only
+     - actors[0]: actor vehicle.metrolink-m5000: no life class; dropped
+     - actors[1]: actor vehicle.metrolink-m5000: no life class; dropped
+     - backdrop: backdrop style 'city-manchester-towers' chosen from the place and the water; check it against the real view
+     - landmarks[0]: repair: removed (overlap) landmark.mcf-roman-gate overlaps street.bench (entities[24]) by 0.6 m
+     - entities[311]: repair: removed (overlap) street.lamppost overlaps street.lamppost (entities[30]) by 0.277 m
+     - life[1].who: repair: removed (unknownWho) unknown population traffic
+   PURE. Hidden dev pack until approved; the original scene is untouched.
+   ============================================================ */
+(function () {
+  if (typeof worldAdd !== 'function') return;
+  worldAdd('world-test', {"id":"greater-manchester-castlefield-fort-w3","label":"Roman fort, Castlefield, Manchester","site":"Castlefield, Manchester — The reconstructed north gate of the Roman fort of Mamucium","tags":["uk","north west","greater manchester","manchester","castlefield","city","roman","fort","gate","park","viaduct","tram","world-v3"],"liveSky":{"lat":53.4762,"lon":-2.2576},"mood":"calm","colour":"green"},
+{
+ "v": 3,
+ "place": {
+  "lat": 53.4762,
+  "lon": -2.2576,
+  "region": "greater-manchester"
+ },
+ "camera": {
+  "eye": 1.65,
+  "fov": 58,
+  "horizon": 610,
+  "heading": 112
+ },
+ "surfaces": [{
+   "id": "land",
+   "kind": "grass",
+   "poly": [[-5.1, 7.4],
+    [5.1, 7.4],
+    [2078.7, 3000],
+    [-2078.7, 3000]]
+  },
+  {
+   "id": "path",
+   "kind": "path",
+   "path": [[-3, 5],
+    [1, 14],
+    [5, 26],
+    [8, 36.5]],
+   "width": 2.6
+  },
+  {
+   "id": "path-x",
+   "kind": "path",
+   "path": [[-40, 26],
+    [-12, 30],
+    [4, 33],
+    [30, 31]],
+   "width": 2.2
+  },
+  {
+   "id": "beds",
+   "kind": "grass",
+   "poly": [[-30, 34],
+    [-10, 35],
+    [-10, 36.5],
+    [-30, 36]]
+  },
+  {
+   "id": "yard",
+   "kind": "plaza",
+   "poly": [[-200, 60],
+    [200, 50],
+    [200, 96],
+    [-200, 112]]
+  },
+  {
+   "id": "pave",
+   "kind": "pavement",
+   "poly": [[-200, 112],
+    [200, 96],
+    [200, 99],
+    [-200, 115]]
+  },
+  {
+   "id": "road",
+   "kind": "road",
+   "path": [[-200, 119.5],
+    [200, 103.5]],
+   "width": 8
+  },
+  {
+   "id": "pave-f",
+   "kind": "pavement",
+   "poly": [[-200, 124],
+    [200, 108],
+    [200, 111],
+    [-200, 127]]
+  },
+  {
+   "id": "plots",
+   "kind": "plaza",
+   "poly": [[-200, 127],
+    [200, 111],
+    [200, 900],
+    [-200, 900]]
+  }],
+ "entities": [{
+   "obj": "structure.mcf-railbridge",
+   "at": [0, 104.9],
+   "variant": 17
+  },
+  {
+   "obj": "structure.mcf-railbridge-front",
+   "at": [0, 104.9],
+   "variant": 17
+  },
+  {
+   "obj": "structure.mcf-railbridge-pier",
+   "at": [0, 104.9],
+   "variant": 17
+  },
+  {
+   "obj": "tree.plane-avenue",
+   "at": [-21, 30],
+   "variant": 0
+  },
+  {
+   "obj": "tree.bank-oak",
+   "at": [-30, 52],
+   "variant": 1,
+   "facing": 270
+  },
+  {
+   "obj": "tree.plane-avenue",
+   "at": [34, 52],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "tree.bank-birch",
+   "at": [22, 30],
+   "variant": 1
+  },
+  {
+   "obj": "tree.bank-oak",
+   "at": [-60, 114],
+   "variant": 1
+  },
+  {
+   "obj": "tree.plane-avenue",
+   "at": [44, 100],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "person.phone-idler",
+   "at": [-12, 24],
+   "facing": 270
+  },
+  {
+   "obj": "person.child-ball",
+   "at": [6.4, 17]
+  },
+  {
+   "obj": "person.child-jumping",
+   "at": [4.6, 18.4]
+  },
+  {
+   "obj": "person.photographer",
+   "at": [3.5, 30],
+   "facing": 0
+  },
+  {
+   "obj": "street.bench",
+   "at": [-9, 22],
+   "facing": 90
+  },
+  {
+   "obj": "person.bench-sitter",
+   "at": [-9.3, 22.05],
+   "facing": 90
+  },
+  {
+   "obj": "person.bench-reader",
+   "at": [-8.6, 22.05],
+   "facing": 90
+  },
+  {
+   "obj": "person.child-scooter",
+   "at": [1.8, 14.2]
+  },
+  {
+   "obj": "person.picnicker",
+   "at": [13.8, 21.6],
+   "facing": 270
+  },
+  {
+   "obj": "person.phone-idler",
+   "at": [-15.5, 26]
+  },
+  {
+   "obj": "person.couple",
+   "at": [11.4, 33.6]
+  },
+  {
+   "obj": "person.student",
+   "at": [16.6, 34.4],
+   "facing": 270
+  },
+  {
+   "obj": "person.photographer",
+   "at": [-2.4, 33.2],
+   "facing": 90
+  },
+  {
+   "obj": "person.elderly-couple",
+   "at": [-18, 31.4]
+  },
+  {
+   "obj": "person.couple",
+   "at": [20.5, 27.5]
+  },
+  {
+   "obj": "street.bench",
+   "at": [10.5, 18.5],
+   "facing": 270
+  },
+  {
+   "obj": "person.bench-reader",
+   "at": [10.5, 18.55],
+   "facing": 270
+  },
+  {
+   "obj": "street.bench",
+   "at": [-11.5, 31.6],
+   "facing": 90
+  },
+  {
+   "obj": "person.bench-sitter",
+   "at": [-11.5, 31.65],
+   "facing": 90
+  },
+  {
+   "obj": "street.mcf-litter-bin",
+   "at": [-9.6, 31.8],
+   "variant": 0
+  },
+  {
+   "obj": "street.mcf-litter-bin",
+   "at": [12.6, 18.4],
+   "variant": 1
+  },
+  {
+   "obj": "street.lamppost",
+   "at": [-5, 32],
+   "variant": 1
+  },
+  {
+   "obj": "street.lamppost",
+   "at": [17, 34.6],
+   "variant": 1
+  },
+  {
+   "obj": "street.lamppost",
+   "at": [-40, 107],
+   "variant": 1
+  },
+  {
+   "obj": "street.lamppost",
+   "at": [40, 104],
+   "variant": 1
+  },
+  {
+   "obj": "bird.pigeon-feral",
+   "at": [-0.6, 9.4],
+   "variant": 0
+  },
+  {
+   "obj": "bird.pigeon-feral",
+   "at": [0.3, 10.2],
+   "variant": 1,
+   "facing": 270
+  },
+  {
+   "obj": "bird.pigeon-feral",
+   "at": [-1.4, 10.8],
+   "variant": 2
+  },
+  {
+   "obj": "bird.pigeon-feral",
+   "at": [1.1, 11.2],
+   "variant": 3,
+   "facing": 270
+  },
+  {
+   "obj": "bird.pigeon-feral",
+   "at": [0.1, 12.4],
+   "variant": 4
+  },
+  {
+   "cluster": "building.gen-direct",
+   "on": "plots",
+   "n": 6,
+   "seed": 4004
+  },
+  {
+   "obj": "tree.bank-oak",
+   "at": [-60, 118]
+  },
+  {
+   "cluster": "plant.planter",
+   "on": "yard",
+   "n": 12,
+   "seed": 7428
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.71, 8.1]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.93, 8.31]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [1.26, 8.33]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [2.47, 8.34]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-3.2, 8.35]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [2.63, 8.38]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.88, 8.51]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-2.84, 8.53]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.6, 8.55]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.79, 8.63]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.39, 8.65]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-3.24, 8.66]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.57, 8.77]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [4.95, 8.83]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.66, 8.91]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.5, 9.04]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-3.03, 9.11]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-2.82, 9.13]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [4.73, 9.25]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [2.97, 9.3]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [2.46, 9.46]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [0.59, 9.48]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.79, 9.52]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.26, 9.56]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [2.37, 9.59]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.26, 9.63]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [2.51, 9.81]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.05, 9.88]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [4.42, 9.9]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6, 10.1]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [4.72, 10.17]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.49, 10.26]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.02, 10.37]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.86, 10.71]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [1.89, 10.71]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [4.6, 10.82]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.52, 10.98]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [4.79, 11.07]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [1.71, 11.16]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.71, 11.21]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.66, 11.33]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-1.81, 11.53]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-6.73, 11.59]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-6.92, 11.63]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [1.76, 11.71]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [2.34, 12.27]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [2.26, 12.56]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [7.53, 12.62]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-1.8, 12.84]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.36, 13.23]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-1.95, 13.76]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [7.26, 13.82]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.93, 13.84]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.1, 13.89]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-8.57, 13.95]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-9.28, 14.2]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.6, 14.23]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.67, 14.3]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-3.61, 14.58]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.86, 14.59]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.39, 14.98]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-2.78, 15.03]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [4.43, 15.21]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.91, 15.85]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-8.43, 16.19]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.31, 16.31]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-9.75, 16.47]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.8, 16.5]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.91, 16.6]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.26, 16.86]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-6.6, 16.95]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-2.03, 16.99]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-10.36, 17.32]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [9.16, 17.43]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-9.39, 17.44]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [8.24, 17.51]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [11.37, 17.63]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.35, 17.97]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [10.91, 18.11]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-2.19, 18.24]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [8.81, 18.62]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [9.03, 18.74]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.24, 19.05]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-10.85, 19.09]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-0.23, 19.23]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [11.94, 19.62]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [7.92, 20.33]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.02, 20.7]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-11.18, 20.7]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-11.74, 20.71]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [12.95, 20.81]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [12.1, 22.27]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-0.18, 23.45]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-1.14, 23.52]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [13.15, 24.58]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.14, 24.63]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-7.3, 24.69]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [7.51, 25.19]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [1.21, 26.42]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-8.32, 26.7]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [1.62, 26.98]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-10.68, 27.5]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-13.94, 27.78]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [15.93, 29.33]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.35, 30.51]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [2.93, 30.72]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-17.48, 31.89]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-18.48, 33.16]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-10.22, 34.12]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-7.25, 34.31]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-19.72, 37.12]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-6.99, 38.48]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [24.54, 39.95]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [0.07, 8.15]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [2.89, 8.18]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [3.48, 8.27]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [1.17, 8.31]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [1.34, 8.31]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-3.33, 8.36]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [4.54, 8.45]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [5.71, 8.88]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-2.96, 9.14]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-2.92, 9.27]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [4, 9.53]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [4.1, 9.56]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-5.85, 9.61]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [3.56, 10.03]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [2.97, 10.06]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [3.13, 10.22]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-2.31, 10.24]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-5.95, 10.31]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [2.01, 10.61]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [1.52, 10.73]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [1.62, 10.87]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [2.57, 10.91]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [4.14, 10.92]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-3.33, 11.34]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-6.8, 11.58]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-5.25, 11.73]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-2.31, 11.83]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [2.11, 11.86]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-6.84, 11.95]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-3.77, 12.18]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-6.85, 12.19]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [4.38, 12.59]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [7.83, 12.68]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-2.39, 12.9]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-6.85, 12.95]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-2.17, 13.32]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [7.28, 13.41]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [7.21, 13.54]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [8.33, 13.66]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [3.93, 14.3]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [6.49, 14.3]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-2.25, 14.75]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [6.64, 14.8]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-2.56, 15.02]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-2.73, 15.35]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [3.52, 15.5]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-4.93, 15.56]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-5.43, 15.6]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-8.27, 15.67]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [7.27, 15.73]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-3.81, 15.84]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-2.98, 15.88]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-8.5, 15.89]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-9.45, 16.61]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-2.2, 17.42]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [8.53, 17.84]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-0.52, 18.73]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [11.96, 18.79]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-3.03, 19.71]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-0.99, 19.74]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-3.77, 21.68]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-11.13, 23.43]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-1.4, 23.47]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [13.89, 24.15]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-10, 24.64]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-7.65, 24.83]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-10.36, 24.99]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-13.39, 25.05]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [6.36, 25.51]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-12.05, 26.96]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [7.03, 27.6]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [11.55, 28.36]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-7.93, 29.29]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [1.57, 29.83]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-3.5, 30.21]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [0.8, 30.24]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [19.17, 35.49]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [19.54, 36.78]
+  },
+  {
+   "obj": "plant.daisies",
+   "at": [-23.23, 38.09]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.12, 8.35]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.85, 8.57]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.03, 8.76]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.53, 8.91]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.66, 9.39]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.18, 9.66]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [1.87, 9.95]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [4.99, 10.36]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [4.02, 10.38]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.47, 10.69]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.03, 10.88]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-6.46, 11.02]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [1.95, 11.31]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-2.13, 11.88]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-2.27, 12.68]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.88, 12.68]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.7, 13.16]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.94, 13.3]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.81, 14.21]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-7.91, 14.9]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-9.3, 16.07]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-9.44, 16.1]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.25, 16.44]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.42, 17.48]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.93, 17.82]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.24, 19.14]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-11.62, 19.92]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-11.19, 19.93]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [9.46, 20.38]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.67, 20.96]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-0.34, 22.58]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-13.87, 22.73]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-15.22, 25.84]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [11.49, 28.78]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [19.99, 34.19]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-12.07, 34.28]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-21.53, 37.69]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [17.7, 37.7]
+  },
+  {
+   "obj": "plant.shrub",
+   "at": [-20.64, 34.65]
+  },
+  {
+   "cluster": "plant.shrub",
+   "on": "beds",
+   "n": 6,
+   "seed": 5530
+  },
+  {
+   "cluster": "plant.wildflowers",
+   "on": "beds",
+   "n": 7,
+   "seed": 1682
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-21.13, 34.78]
+  },
+  {
+   "cluster": "plant.grass-long",
+   "on": "beds",
+   "n": 7,
+   "seed": 1974
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [-0.52, 21.99]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [-7.87, 22.28]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [7, 23.71]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [-12.51, 24.23]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [1.28, 24.79]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [-0.97, 26.74]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [-8.18, 27.54]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [1.58, 28.11]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [0.13, 29.05]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [7.69, 29.3]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [9.43, 30.61]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [-13.33, 31.28]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [-20.51, 32.76]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [-16.22, 32.98]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [3.41, 35.27]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [-4.88, 9.44]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [0.77, 18.55]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [-7.99, 18.95]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [-4.74, 20.39]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [1.2, 20.64]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [-0.37, 20.71]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [5.29, 21.11]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [-9.82, 21.15]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [-0.56, 23.45]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [-2, 25.24]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [1.03, 29.63]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [-5.02, 29.89]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [2.52, 30.89]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [-0.17, 34.7]
+  },
+  {
+   "obj": "person.couple",
+   "at": [11.4, 33.6]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [-7.4, 31.69]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [7.31, 33.36]
+  },
+  {
+   "obj": "person.photographer",
+   "at": [-2.4, 33.2]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [5.16, 32.32]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [4.25, 22.71]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [6.61, 27.68]
+  },
+  {
+   "obj": "ground.leaf-litter",
+   "at": [5.22, 28.52]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [0.62, 14.19]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [3.49, 21.64]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [2.45, 21.95]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [3.89, 25.95]
+  },
+  {
+   "obj": "ground.leaves",
+   "at": [5.34, 26.04]
+  },
+  {
+   "obj": "bird.pigeon-feral",
+   "at": [-0.6, 9.4]
+  }],
+ "landmarks": [{
+   "obj": "landmark.beetham-tower-blade",
+   "at": [-160, 470],
+   "src": "https://www.castlefield.org.uk"
+  }],
+ "life": [{
+   "who": "walkers",
+   "on": "pave",
+   "rate": "3/min",
+   "mix": {
+    "stroll": 0.33,
+    "dog-walker": 0.17,
+    "couple": 0.17,
+    "jogger": 0.17,
+    "family": 0.08,
+    "student": 0.08
+   }
+  },
+  {
+   "who": "visit",
+   "mix": {
+    "stroll": 1
+   },
+   "rate": "1/2min",
+   "on": "path"
+  },
+  {
+   "who": "visit",
+   "mix": {
+    "dog-walker": 1
+   },
+   "rate": "1/3min",
+   "on": "path"
+  },
+  {
+   "who": "visit",
+   "mix": {
+    "jogger": 1
+   },
+   "rate": "1/6min",
+   "on": "path"
+  }],
+ "backdrop": {
+  "style": "city-manchester-towers"
+ },
+ "seed": 1
+});
+})();

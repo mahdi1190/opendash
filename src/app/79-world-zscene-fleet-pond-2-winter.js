@@ -1,0 +1,5455 @@
+/* ============================================================
+   WORLD SCENE (format v3) world-test / fleet-pond-2-winter-w3: converted by `node tools/world.mjs convert uk-south-east/hampshire-fleet-pond-2-winter`.
+   docs/dev/WORLD_ENGINE.md 6. World metres only. A FIRST DRAFT: enrich it by hand to the rich bar before it ships.
+   Review (191):
+     - place[0]: structure.fpv-walk-v2: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[1]: structure.fpv-walk-v2: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[2]: structure.fpv-walk-v2: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[3]: structure.fpv-walk-v2: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[4]: structure.fpv-walk-v2: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[5]: structure.fpv-walk-v2: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[6]: structure.fpv-walk-v2: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[7]: structure.fpv-walk-v2: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[11]: tree.pond-birch: variant 2 does not exist; dropped the variant
+     - place[16]: plant.grass-long: pixel placement unprojected to [-2.5, 11.1] m (was pinned perspective art: check it is a real object at this spot)
+     - place[17]: plant.reed: pixel placement unprojected to [-2.7, 10.7] m (was pinned perspective art: check it is a real object at this spot)
+     - place[18]: plant.bulrush: pixel placement unprojected to [-2.5, 10.9] m (was pinned perspective art: check it is a real object at this spot)
+     - place[19]: plant.grass-long: pixel placement unprojected to [-3.1, 10.9] m (was pinned perspective art: check it is a real object at this spot)
+     - place[20]: plant.grass-long: pixel placement unprojected to [-1.8, 10.8] m (was pinned perspective art: check it is a real object at this spot)
+     - place[21]: plant.bulrush: pixel placement unprojected to [-2.8, 11] m (was pinned perspective art: check it is a real object at this spot)
+     - place[22]: plant.reed: pixel placement unprojected to [-2.4, 10.9] m (was pinned perspective art: check it is a real object at this spot)
+     - place[23]: plant.reed: pixel placement unprojected to [-2.2, 10.9] m (was pinned perspective art: check it is a real object at this spot)
+     - place[24]: plant.reed: pixel placement unprojected to [-2.8, 11] m (was pinned perspective art: check it is a real object at this spot)
+     - place[25]: plant.bulrush: pixel placement unprojected to [-3.1, 10.8] m (was pinned perspective art: check it is a real object at this spot)
+     - place[26]: plant.reed: pixel placement unprojected to [-2.3, 11] m (was pinned perspective art: check it is a real object at this spot)
+     - place[27]: plant.grass-long: pixel placement unprojected to [-1.4, 13.2] m (was pinned perspective art: check it is a real object at this spot)
+     - place[28]: plant.canal-view-loosestrife: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[29]: plant.bulrush: pixel placement unprojected to [-0.9, 13.3] m (was pinned perspective art: check it is a real object at this spot)
+     - place[30]: plant.grass-long: pixel placement unprojected to [-1.3, 13.2] m (was pinned perspective art: check it is a real object at this spot)
+     - place[31]: plant.reed: pixel placement unprojected to [-1, 13.4] m (was pinned perspective art: check it is a real object at this spot)
+     - place[32]: plant.canal-view-loosestrife: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[33]: plant.reed: pixel placement unprojected to [-4.9, 15.5] m (was pinned perspective art: check it is a real object at this spot)
+     - place[34]: plant.grass-long: pixel placement unprojected to [-4.2, 15.1] m (was pinned perspective art: check it is a real object at this spot)
+     - place[35]: plant.reed: pixel placement unprojected to [-4.8, 15.6] m (was pinned perspective art: check it is a real object at this spot)
+     - place[36]: plant.canal-view-loosestrife: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[37]: plant.grass-long: pixel placement unprojected to [-4.6, 15.2] m (was pinned perspective art: check it is a real object at this spot)
+     - place[38]: plant.reed: pixel placement unprojected to [-4.5, 15.5] m (was pinned perspective art: check it is a real object at this spot)
+     - place[39]: plant.bulrush: pixel placement unprojected to [-4, 15.7] m (was pinned perspective art: check it is a real object at this spot)
+     - place[40]: plant.canal-view-loosestrife: pinned perspective art (screen-drawn, not a world object); dropped. Place the real library object (a boat, a bridge, a walk) instead
+     - place[41]: plant.reed: pixel placement unprojected to [-4.7, 15.5] m (was pinned perspective art: check it is a real object at this spot)
+     - place[42]: plant.reed: pixel placement unprojected to [-4.6, 15.6] m (was pinned perspective art: check it is a real object at this spot)
+     - place[43]: plant.grass-long: pixel placement unprojected to [-3.8, 15.6] m (was pinned perspective art: check it is a real object at this spot)
+     - place[44]: plant.bulrush: pixel placement unprojected to [-4.4, 15.5] m (was pinned perspective art: check it is a real object at this spot)
+     - place[45]: plant.bulrush: pixel placement unprojected to [-4.1, 22.2] m (was pinned perspective art: check it is a real object at this spot)
+     - place[46]: plant.reed: pixel placement unprojected to [-3.6, 22] m (was pinned perspective art: check it is a real object at this spot)
+     ... and 151 more (node tools/world.mjs convert --report)
+   PURE. Hidden dev pack until approved; the original scene is untouched.
+   ============================================================ */
+(function () {
+  if (typeof worldAdd !== 'function') return;
+  worldAdd('world-test', {"id":"fleet-pond-2-winter-w3","label":"Fleet Pond, Hampshire","site":"Fleet Pond — Frosted reeds, a train across the winter pond","tags":["uk","south east","hampshire","landscape","lake","reedbed","nature reserve","winter","world-v3"],"liveSky":{"lat":51.2853,"lon":-0.8266},"mood":"calm","colour":"blue"},
+{
+ "v": 3,
+ "place": {
+  "lat": 51.2853,
+  "lon": -0.8266,
+  "region": "hampshire"
+ },
+ "camera": {
+  "eye": 2.4,
+  "fov": 66,
+  "horizon": 400,
+  "heading": 8,
+  "water": -0.2
+ },
+ "surfaces": [{
+   "id": "land",
+   "kind": "grass",
+   "poly": [[-4.3, 5.3],
+    [4.3, 5.3],
+    [2435.3, 3000],
+    [-2435.3, 3000]]
+  },
+  {
+   "id": "fen-r",
+   "kind": "grass",
+   "poly": [[2, 12.6],
+    [9, 12.6],
+    [9, 24],
+    [2, 24]]
+  },
+  {
+   "id": "sedge-n",
+   "kind": "grass",
+   "poly": [[-6, 4],
+    [-0.15, 4],
+    [-0.15, 9.2],
+    [-6, 9.2]]
+  },
+  {
+   "id": "sedge-e",
+   "kind": "grass",
+   "poly": [[1.5, 4],
+    [6.4, 4],
+    [6.4, 9.4],
+    [1.5, 9.4]]
+  },
+  {
+   "id": "lineside",
+   "kind": "grass",
+   "poly": [[-320, 112],
+    [320, 304],
+    [320, 366],
+    [-320, 174]]
+  },
+  {
+   "id": "emb",
+   "kind": "grass",
+   "path": [[-320, 104],
+    [320, 296]],
+   "width": 16
+  },
+  {
+   "id": "railway",
+   "kind": "rail",
+   "path": [[-320, 104],
+    [320, 296]],
+   "width": 9
+  },
+  {
+   "id": "reeds-n",
+   "kind": "grass",
+   "poly": [[-260, 106],
+    [260, 262],
+    [260, 276],
+    [-260, 120]]
+  },
+  {
+   "id": "carr-l",
+   "kind": "grass",
+   "poly": [[-80, 4],
+    [-4.6, 4],
+    [-4.4, 9],
+    [-5.6, 13],
+    [-6.8, 17],
+    [-8.6, 21.5],
+    [-14, 24],
+    [-80, 24]]
+  },
+  {
+   "id": "carr-r",
+   "kind": "grass",
+   "poly": [[4.6, 4],
+    [80, 4],
+    [80, 24],
+    [10, 22],
+    [6.6, 18],
+    [6.2, 14],
+    [5.6, 10]]
+  },
+  {
+   "id": "reeds-l",
+   "kind": "grass",
+   "poly": [[-80.23, 21.88],
+    [-77.63, 21.72],
+    [-74.74, 22.07],
+    [-72.66, 21.94],
+    [-69.96, 21.62],
+    [-66.64, 21.59],
+    [-64.25, 21.57],
+    [-61.33, 21.66],
+    [-58.63, 21.51],
+    [-55.59, 21.41],
+    [-53.24, 21.52],
+    [-49.88, 21.11],
+    [-47.49, 21.1],
+    [-44.5, 21.01],
+    [-41.95, 21.4],
+    [-38.89, 21.26],
+    [-36.12, 20.87],
+    [-34.06, 21.2],
+    [-31.83, 20.88],
+    [-28.7, 20.83],
+    [-26.84, 21.15],
+    [-24.2, 21.17],
+    [-22.07, 20.76],
+    [-20.26, 20.97],
+    [-18.25, 20.88],
+    [-16.72, 20.99],
+    [-14.9, 20.72],
+    [-13.14, 20.79],
+    [-12.39, 21.1],
+    [-6.09, 22.17],
+    [-8.81, 24.29],
+    [-8.93, 25.34],
+    [-9.47, 27.31],
+    [-9.62, 28.89],
+    [-9.24, 31.26],
+    [-10.1, 33.53],
+    [-10.65, 35.16],
+    [-11.28, 36.52],
+    [-13.03, 38.62],
+    [-13.27, 39.37],
+    [-15.29, 40.79],
+    [-16.31, 42.02],
+    [-18.73, 43.65],
+    [-20.95, 44.72],
+    [-22.38, 45.07],
+    [-24.37, 46.04],
+    [-26.76, 46.79],
+    [-28.13, 47.6],
+    [-30.41, 48.42],
+    [-33.11, 48.94],
+    [-36.44, 49.82],
+    [-40.39, 50.71],
+    [-41.93, 50.79],
+    [-43.54, 51.39],
+    [-45.44, 51.7],
+    [-46.93, 52.05],
+    [-49.26, 52.06],
+    [-51.08, 52.76],
+    [-53.24, 52.78],
+    [-55.75, 53.22],
+    [-58.4, 53.34],
+    [-60.78, 53.74],
+    [-62.74, 54.59],
+    [-65.46, 54.62],
+    [-67.65, 55],
+    [-70.47, 55.58],
+    [-73.89, 55.59],
+    [-76.68, 56.19],
+    [-80.13, 56.39],
+    [-82.15, 56.88],
+    [-84.08, 57.15],
+    [-86.2, 57.64],
+    [-88.93, 58],
+    [-91.16, 58.54],
+    [-93.55, 59.08],
+    [-96.09, 59.62],
+    [-99.32, 59.75],
+    [-101.62, 60.62],
+    [-104.59, 60.99],
+    [-107.29, 61.4],
+    [-110, 61.99],
+    [-112.99, 63.02],
+    [-115.77, 63.02],
+    [-118.44, 63.97],
+    [-122.01, 64.16],
+    [-124.72, 64.94],
+    [-127.59, 65.03],
+    [-130.22, 65.45],
+    [-132.05, 65.7],
+    [-135.34, 66.03],
+    [-137.75, 65.71],
+    [-139.07, 66.09],
+    [-142.05, 66.02],
+    [-144.17, 65.76],
+    [-145.47, 65.57],
+    [-147.49, 65.36],
+    [-148.86, 64.88],
+    [-149.83, 64.68],
+    [-151.96, 63.22],
+    [-153.81, 61.93],
+    [-154.61, 59.98],
+    [-156.59, 57.67],
+    [-156.94, 54.86],
+    [-158.47, 52.02],
+    [-158.32, 49.47],
+    [-158.71, 46.5],
+    [-158.46, 43.66],
+    [-158.35, 40.32],
+    [-157.81, 37.6],
+    [-157.07, 34.37],
+    [-156.29, 32.19],
+    [-155.52, 29.31],
+    [-153.44, 27.54],
+    [-151.57, 25.38],
+    [-150.46, 24.1],
+    [-148.25, 23.56],
+    [-146.86, 22.67],
+    [-145.88, 22.09],
+    [-143.93, 21.82],
+    [-142.14, 21.35],
+    [-140.07, 21.18],
+    [-137.87, 20.7],
+    [-135.6, 20.7],
+    [-133.56, 20.74],
+    [-131.35, 20.44],
+    [-128.22, 20.25],
+    [-125.66, 20.17],
+    [-122.92, 20.51],
+    [-120.24, 20.26],
+    [-118.07, 20.55],
+    [-114.72, 20.57],
+    [-112.44, 20.84],
+    [-109.44, 20.98],
+    [-106.4, 20.91],
+    [-103.93, 21.51],
+    [-100.71, 21.28],
+    [-97.93, 21.6],
+    [-95.23, 21.85],
+    [-92.88, 21.97],
+    [-90.04, 21.68],
+    [-87.46, 22.16],
+    [-84.7, 22],
+    [-82.63, 22.2]]
+  },
+  {
+   "id": "reeds-r",
+   "kind": "grass",
+   "poly": [[3.36, 23.58],
+    [4.62, 22.67],
+    [5.44, 22.45],
+    [9.4, 22.53],
+    [10.2, 22.44],
+    [12.43, 22.65],
+    [13.97, 22.51],
+    [16.65, 22.78],
+    [18.69, 22.89],
+    [20.8, 22.89],
+    [23.77, 23.51],
+    [26.38, 23.44],
+    [30.04, 23.72],
+    [32.06, 24.28],
+    [34.06, 24.27],
+    [35.89, 24.46],
+    [37.65, 24.87],
+    [38.81, 25.39],
+    [41.35, 25.84],
+    [43.28, 25.93],
+    [45.47, 26.38],
+    [47.79, 26.38],
+    [50.17, 26.81],
+    [51.92, 27.15],
+    [54.39, 27.58],
+    [57.57, 28.12],
+    [60.36, 28.71],
+    [63.19, 29.36],
+    [67.04, 29.73],
+    [69.51, 30.22],
+    [71.96, 30.01],
+    [73.56, 30.46],
+    [76.26, 30.91],
+    [78.57, 31.11],
+    [80.5, 31.38],
+    [83.24, 31.44],
+    [86.15, 31.9],
+    [88.81, 31.73],
+    [91.6, 32.03],
+    [94.36, 32.43],
+    [96.95, 32.57],
+    [99.06, 32.85],
+    [101.98, 33.25],
+    [104.84, 33.09],
+    [107.72, 33.47],
+    [111.35, 33.79],
+    [113.75, 34.36],
+    [116.3, 34.28],
+    [119.33, 34.81],
+    [122.5, 34.74],
+    [124.98, 35.23],
+    [128.21, 35.35],
+    [129.93, 35.86],
+    [132.54, 36.02],
+    [135.71, 36.51],
+    [138.07, 36.67],
+    [139.83, 37.47],
+    [141.99, 37.55],
+    [144.17, 38.02],
+    [145.28, 38.85],
+    [147.68, 39.09],
+    [148.88, 39.3],
+    [150.39, 40.22],
+    [153.08, 41.85],
+    [155.5, 43.85],
+    [156.72, 46.52],
+    [156.98, 49.35],
+    [157.17, 52.23],
+    [156.05, 54.69],
+    [155.15, 57.65],
+    [152.91, 59.65],
+    [151.28, 61.53],
+    [150.3, 63.28],
+    [149.24, 63.61],
+    [147.08, 64.04],
+    [145.55, 64.71],
+    [144.12, 64.64],
+    [141.71, 64.72],
+    [139.49, 65.17],
+    [137.66, 64.51],
+    [135.07, 64.6],
+    [132.09, 64.05],
+    [129.98, 64.07],
+    [126.9, 63.49],
+    [123.37, 63.28],
+    [119.91, 62.36],
+    [118.05, 62.65],
+    [116.47, 62.24],
+    [113.7, 62],
+    [111.42, 61.67],
+    [109.01, 61.36],
+    [107.25, 60.64],
+    [104.98, 60.19],
+    [102.29, 60.13],
+    [99.69, 59.38],
+    [96.4, 58.92],
+    [93.57, 58.39],
+    [91.29, 58.18],
+    [88.8, 57.78],
+    [85.93, 57.4],
+    [83.66, 56.62],
+    [80.98, 56.46],
+    [77.74, 55.75],
+    [75.28, 55.4],
+    [73.2, 55.23],
+    [70.69, 54.62],
+    [68.59, 54.34],
+    [65.95, 53.83],
+    [63.84, 53.08],
+    [62.32, 52.76],
+    [60.47, 52.31],
+    [56.42, 51.99],
+    [54.05, 51.15],
+    [50.44, 50.63],
+    [48.18, 50.57],
+    [45.95, 50.24],
+    [43.34, 49.43],
+    [41.06, 48.94],
+    [38.97, 48.37],
+    [36.9, 47.98],
+    [35.56, 47.91],
+    [33.4, 47.61],
+    [31.94, 46.73],
+    [29.7, 46.7],
+    [27.07, 46.08],
+    [24.59, 45.23],
+    [21.7, 44.34],
+    [19.14, 43.5],
+    [17.42, 42.93],
+    [15.98, 42.5],
+    [13.77, 41.33],
+    [11.91, 40.19],
+    [10.72, 39.06],
+    [8.76, 37.82],
+    [8.23, 36.56],
+    [6.91, 34.58],
+    [6.74, 32.68],
+    [6.06, 31.56],
+    [4.19, 29.79],
+    [3.48, 28.57],
+    [3.5, 25.68]]
+  },
+  {
+   "id": "deck",
+   "kind": "bridge-deck",
+   "over": "water",
+   "path": [[0.1, 2.4],
+    [0.2, 5],
+    [0.5, 7.5],
+    [1, 10],
+    [1.5, 12.6],
+    [1.9, 15.2],
+    [2, 17.6],
+    [1.4, 19.4]],
+   "width": 1.3
+  },
+  {
+   "id": "platform",
+   "kind": "bridge-deck",
+   "over": "water",
+   "poly": [[-2, 19.4],
+    [1.8, 18.8],
+    [2.3, 23],
+    [-1.5, 23.6]]
+  },
+  {
+   "id": "pond",
+   "kind": "water",
+   "water": "lake",
+   "poly": [[-260, 84],
+    [-150, 64],
+    [-80, 56],
+    [-40, 50],
+    [-20, 44],
+    [-11, 38],
+    [-10.82, 37.65],
+    [-10.56, 37.18],
+    [-10.26, 36.62],
+    [-9.92, 36],
+    [-9.59, 35.36],
+    [-9.28, 34.72],
+    [-9, 34.12],
+    [-8.8, 33.6],
+    [-8.6, 32.89],
+    [-8.5, 32.24],
+    [-8.46, 31.64],
+    [-8.44, 31.03],
+    [-8.4, 30.4],
+    [-8.34, 29.71],
+    [-8.29, 29],
+    [-8.24, 28.28],
+    [-8.21, 27.61],
+    [-8.2, 27],
+    [-8.25, 26.38],
+    [-8.34, 25.88],
+    [-8.41, 25.38],
+    [-8.4, 24.8],
+    [-8.3, 24.24],
+    [-8.13, 23.63],
+    [-7.94, 23],
+    [-7.75, 22.37],
+    [-7.6, 21.8],
+    [-7.48, 21.17],
+    [-7.4, 20.59],
+    [-7.32, 20.01],
+    [-7.2, 19.4],
+    [-7.06, 18.87],
+    [-6.9, 18.31],
+    [-6.72, 17.74],
+    [-6.55, 17.17],
+    [-6.4, 16.6],
+    [-6.27, 16.04],
+    [-6.16, 15.47],
+    [-6.06, 14.91],
+    [-5.94, 14.35],
+    [-5.8, 13.8],
+    [-5.57, 13.12],
+    [-5.31, 12.44],
+    [-5.05, 11.79],
+    [-4.8, 11.2],
+    [-4.53, 10.51],
+    [-4.28, 9.9],
+    [-4, 9.4],
+    [-3.66, 9.01],
+    [-3.29, 8.72],
+    [-2.9, 8.5],
+    [-2.26, 8.28],
+    [-1.6, 8.2],
+    [-0.98, 8.26],
+    [-0.4, 8.4],
+    [0.09, 8.57],
+    [0.6, 8.7],
+    [1.04, 8.7],
+    [1.52, 8.66],
+    [2, 8.6],
+    [2.47, 8.49],
+    [2.95, 8.36],
+    [3.4, 8.3],
+    [4.06, 8.38],
+    [4.6, 8.6],
+    [4.94, 9.02],
+    [5, 9.5],
+    [4.56, 9.87],
+    [3.9, 10.2],
+    [3.46, 10.4],
+    [3, 10.59],
+    [2.6, 10.8],
+    [2.1, 11.16],
+    [1.8, 11.6],
+    [1.81, 12.26],
+    [2.1, 12.8],
+    [2.51, 12.83],
+    [3.06, 12.72],
+    [3.6, 12.7],
+    [4.09, 12.85],
+    [4.57, 13.09],
+    [5, 13.4],
+    [5.36, 13.8],
+    [5.67, 14.28],
+    [5.9, 14.8],
+    [6.06, 15.38],
+    [6.14, 16],
+    [6.1, 16.6],
+    [5.91, 17.19],
+    [5.61, 17.75],
+    [5.2, 18.2],
+    [4.63, 18.47],
+    [3.96, 18.62],
+    [3.4, 18.8],
+    [2.88, 19.03],
+    [2.6, 19.6],
+    [2.57, 20.13],
+    [2.6, 20.82],
+    [2.66, 21.59],
+    [2.74, 22.34],
+    [2.8, 23],
+    [2.87, 23.67],
+    [2.94, 24.26],
+    [3.02, 24.82],
+    [3.1, 25.4],
+    [3.18, 26.06],
+    [3.27, 26.75],
+    [3.35, 27.37],
+    [3.4, 27.8],
+    [5.6, 31],
+    [8, 36],
+    [14, 41],
+    [30, 46],
+    [60, 52],
+    [120, 62],
+    [260, 84],
+    [260, 277.3],
+    [247, 273.5],
+    [234, 269.6],
+    [221, 265.7],
+    [208, 261.7],
+    [210.56, 259.7],
+    [212.66, 260.07],
+    [216.01, 260.61],
+    [217.68, 261.08],
+    [220.34, 261.39],
+    [223.74, 260.87],
+    [226.23, 260.66],
+    [228.65, 260.34],
+    [231.41, 260.04],
+    [234.2, 258.94],
+    [235.3, 258.41],
+    [234.57, 257.41],
+    [232.16, 256.53],
+    [228.94, 256.15],
+    [226.35, 255.93],
+    [223.24, 255.59],
+    [220.8, 256.05],
+    [218.23, 256.1],
+    [214.92, 256.41],
+    [212.21, 257.18],
+    [210.09, 257.65],
+    [208.73, 258.35],
+    [210.56, 259.7],
+    [208, 261.7],
+    [195, 258],
+    [182, 253.9],
+    [169, 250.1],
+    [156, 246.3],
+    [151.35, 241.76],
+    [152.22, 242.68],
+    [155.97, 243.52],
+    [159.41, 243.41],
+    [161.76, 243.81],
+    [163.73, 243.72],
+    [165.96, 243.65],
+    [169.16, 243.52],
+    [172.17, 243.6],
+    [174.23, 243.36],
+    [176.43, 243.64],
+    [180.37, 243.03],
+    [183.71, 241.93],
+    [185.56, 241.77],
+    [186.51, 240.63],
+    [185.61, 240.11],
+    [183.45, 239.29],
+    [180.33, 238.31],
+    [176.5, 237.57],
+    [174.52, 237.75],
+    [172.43, 237.61],
+    [169.7, 237.85],
+    [166.42, 237.53],
+    [163.56, 237.67],
+    [160.89, 238.37],
+    [158.83, 238.13],
+    [155.8, 238.76],
+    [153.05, 239.73],
+    [151.28, 239.99],
+    [149.73, 240.59],
+    [151.35, 241.76],
+    [156, 246.3],
+    [143, 242.2],
+    [130, 238.4],
+    [117, 234.6],
+    [104, 230.6],
+    [110.22, 228.66],
+    [112.91, 229.67],
+    [115.08, 229.8],
+    [117.88, 229.82],
+    [120.36, 229.68],
+    [122.57, 229.35],
+    [125.41, 228.87],
+    [127.08, 227.82],
+    [125.18, 226.32],
+    [122.34, 224.81],
+    [120.83, 224.67],
+    [118.42, 224.78],
+    [115.12, 225.3],
+    [112.94, 225.36],
+    [110.09, 226.33],
+    [108.73, 227.31],
+    [110.22, 228.66],
+    [104, 230.6],
+    [91, 226.7],
+    [78, 222.7],
+    [65, 218.9],
+    [52, 215],
+    [55.76, 213.7],
+    [58.36, 214.57],
+    [62.28, 215.56],
+    [64.71, 215.92],
+    [66.9, 216.08],
+    [70.41, 215.64],
+    [72.34, 215.6],
+    [75.77, 215.67],
+    [77.8, 215.64],
+    [80.75, 214.48],
+    [83.91, 213.3],
+    [84.74, 212.47],
+    [84.18, 210.76],
+    [81.55, 209.7],
+    [76.96, 208.94],
+    [75.24, 208.76],
+    [73.29, 208.37],
+    [69.87, 208.45],
+    [67.05, 208.79],
+    [64.47, 208.76],
+    [62.77, 209.41],
+    [58.73, 210.08],
+    [56.17, 211.02],
+    [54.73, 212.69],
+    [55.76, 213.7],
+    [52, 215],
+    [39, 211.1],
+    [26, 207.1],
+    [13, 203.3],
+    [12.1, 199.5],
+    [14.31, 200.92],
+    [16.1, 201.37],
+    [18.86, 201.51],
+    [22.5, 201.24],
+    [24.61, 200.87],
+    [26.99, 200.46],
+    [30.89, 199.57],
+    [33.3, 199.06],
+    [31.89, 198.02],
+    [30.39, 197.04],
+    [27.4, 196.04],
+    [25.49, 196.28],
+    [22.4, 195.86],
+    [18.74, 196.58],
+    [16.74, 196.89],
+    [13.16, 197.44],
+    [10.73, 199.06],
+    [12.1, 199.5],
+    [13, 203.3],
+    [0, 199.3],
+    [-13, 195.6],
+    [-26, 191.5],
+    [-39, 187.7],
+    [-52, 183.8],
+    [-48.83, 183.3],
+    [-47.3, 184.46],
+    [-43.6, 185.02],
+    [-39.83, 186],
+    [-37.92, 186.18],
+    [-34.97, 186.1],
+    [-31.71, 185.63],
+    [-27.97, 185.49],
+    [-25.64, 185.4],
+    [-22.92, 185.64],
+    [-20.08, 185.18],
+    [-16.78, 184.79],
+    [-13.31, 184.12],
+    [-10.35, 183.42],
+    [-9.91, 182.87],
+    [-10.76, 181.73],
+    [-13.34, 181.21],
+    [-16.87, 180.44],
+    [-20.12, 180.05],
+    [-22.44, 179.53],
+    [-25.34, 179.18],
+    [-28.87, 179.77],
+    [-31.64, 179.59],
+    [-34.8, 179.77],
+    [-37.64, 179.8],
+    [-40.21, 180.64],
+    [-43.24, 180.96],
+    [-47.44, 181.7],
+    [-49.52, 181.84],
+    [-50.27, 183.02],
+    [-48.83, 183.3],
+    [-52, 183.8],
+    [-65, 179.8],
+    [-78, 176.1],
+    [-91, 172.1],
+    [-85.01, 168.78],
+    [-82.18, 170.33],
+    [-80.2, 170.86],
+    [-77.48, 170.4],
+    [-75.26, 170.57],
+    [-73.14, 170.18],
+    [-70.82, 168.33],
+    [-68.46, 167.07],
+    [-70.72, 165.14],
+    [-73.55, 163.23],
+    [-74.95, 163.05],
+    [-77.62, 163.5],
+    [-80.54, 163.73],
+    [-82.66, 163.66],
+    [-85.6, 164.95],
+    [-87.27, 167.06],
+    [-85.01, 168.78],
+    [-91, 172.1],
+    [-104, 168.2],
+    [-117, 164.4],
+    [-130, 160.5],
+    [-143, 156.4],
+    [-147.6, 153.13],
+    [-144.42, 153.61],
+    [-141.01, 154.17],
+    [-137.92, 154.94],
+    [-134.99, 154.32],
+    [-132.1, 154.8],
+    [-128.79, 154.48],
+    [-125.35, 154.06],
+    [-123.62, 153.96],
+    [-118.86, 153.89],
+    [-116.71, 152.66],
+    [-114.62, 152.41],
+    [-116.79, 151.42],
+    [-119.88, 150.04],
+    [-123.08, 149.32],
+    [-125.58, 149.56],
+    [-129.44, 149.35],
+    [-132.02, 149.49],
+    [-135.1, 149.86],
+    [-138.29, 150.16],
+    [-139.9, 150.42],
+    [-144.35, 150.6],
+    [-147.37, 151.06],
+    [-149.27, 152.2],
+    [-147.6, 153.13],
+    [-143, 156.4],
+    [-156, 152.7],
+    [-169, 148.8],
+    [-182, 144.8],
+    [-195, 140.9],
+    [-208, 137],
+    [-207.09, 133.17],
+    [-204.43, 133.97],
+    [-201.72, 135.32],
+    [-199.82, 135.54],
+    [-197.76, 135.28],
+    [-195.22, 135.14],
+    [-191.73, 134.64],
+    [-190.42, 134.5],
+    [-187.08, 133.92],
+    [-184.65, 133.07],
+    [-184.13, 132.33],
+    [-184.99, 131.19],
+    [-187.04, 129.7],
+    [-189.83, 129.17],
+    [-191.77, 129.19],
+    [-194.65, 128.92],
+    [-197.84, 128.76],
+    [-199.53, 129.56],
+    [-201.92, 129.28],
+    [-205.45, 130.43],
+    [-207.56, 130.87],
+    [-208.27, 132.16],
+    [-207.09, 133.17],
+    [-208, 137],
+    [-221, 133],
+    [-234, 129.3],
+    [-247, 125.3],
+    [-260, 121.5]],
+   "shallow": 1.5
+  }],
+ "entities": [{
+   "obj": "tree.pond-alder",
+   "at": [-6.4, 10.5],
+   "variant": 1
+  },
+  {
+   "obj": "tree.bank-alder",
+   "at": [-9.8, 15.5],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "tree.bank-willow",
+   "at": [-15, 21.5],
+   "variant": 1,
+   "facing": 270
+  },
+  {
+   "obj": "tree.pond-birch",
+   "at": [-17, 27]
+  },
+  {
+   "obj": "tree.pond-alder",
+   "at": [7.4, 10.8],
+   "variant": 2,
+   "facing": 270
+  },
+  {
+   "obj": "tree.bank-alder",
+   "at": [10.4, 15.2],
+   "variant": 1
+  },
+  {
+   "obj": "tree.pond-birch",
+   "at": [12.2, 20.5],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "tree.bank-willow",
+   "at": [18, 23],
+   "variant": 0
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-2.65, 10.67],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-2.46, 10.88],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-2.79, 11.03],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-2.36, 10.91],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-2.19, 10.91],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-2.83, 10.98],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-3.06, 10.77],
+   "variant": 0,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-2.26, 10.96],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-0.88, 13.32],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-0.98, 13.37],
+   "variant": 0,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-4.85, 15.45],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-4.84, 15.64],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-4.45, 15.52],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-4.05, 15.72],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-4.74, 15.54],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-4.59, 15.63],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-4.4, 15.54],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-4.14, 22.2],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-3.59, 21.98],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-4.26, 21.79],
+   "variant": 0,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-4.13, 21.35],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-3.34, 21.74],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-5.42, 26.71],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-4.83, 26.61],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-5.89, 26.37],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-5.61, 26.76],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-4.98, 26.56],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-5.7, 26.44],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-4.9, 26.83],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-6.31, 26.98],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-4.88, 26.49],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.57, 14.62],
+   "variant": 0,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.85, 14.26],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [3.77, 14.13],
+   "variant": 0,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.62, 14.06],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.96, 14.28],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.36, 14.6],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.77, 14.26],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.11, 14.54],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.52, 14.3],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [3.13, 12.41],
+   "variant": 1,
+   "facing": 270
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.21, 12.25],
+   "variant": 2,
+   "facing": 270
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.94, 12.41],
+   "variant": 2,
+   "facing": 270
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.21, 8.75],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.9, 8.91],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.03, 8.9],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [3.71, 8.73],
+   "variant": 0,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.31, 8.88],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.68, 11.82],
+   "variant": 1
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.5, 11.67],
+   "variant": 0
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.96, 11.5],
+   "variant": 1,
+   "facing": 270
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [3.05, 11.74],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.87, 12.14],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.95, 11.59],
+   "variant": 2
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [2.92, 11.6],
+   "variant": 1
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.98, 11.7],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.57, 11.65],
+   "variant": 1
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.18, 11.74],
+   "variant": 0
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [5.33, 11.29],
+   "variant": 2,
+   "facing": 270
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [5.42, 11.4],
+   "variant": 1
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.94, 11.86],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.02, 10.92],
+   "variant": 2
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [5.39, 11.01],
+   "variant": 2
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.22, 7.8],
+   "variant": 2
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.1, 7.1],
+   "variant": 0
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.88, 7.55],
+   "variant": 2
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [1.92, 7.16],
+   "variant": 1
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.27, 7.02],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.54, 7.37],
+   "variant": 2,
+   "facing": 270
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.65, 7.46],
+   "variant": 0
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [5.29, 7.43],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [4.84, 7.64],
+   "variant": 2
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.59, 7.22],
+   "variant": 1
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [4.4, 7.16],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.89, 7.49],
+   "variant": 2
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.33, 7.52],
+   "variant": 1,
+   "facing": 270
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.77, 7.61],
+   "variant": 0
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.01, 7.74],
+   "variant": 1,
+   "facing": 270
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-2.97, 7.39],
+   "variant": 1,
+   "facing": 270
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.31, 7.73],
+   "variant": 0,
+   "facing": 270
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.17, 7.31],
+   "variant": 2
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.95, 7.74],
+   "variant": 0
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-2.83, 7.73],
+   "variant": 1
+  },
+  {
+   "obj": "plant.reed",
+   "at": [2.31, 32.17],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [2.58, 31.45],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [1.19, 30.93],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [1.77, 31.42],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [2.93, 31.76],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.21, 31.72],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [0.97, 31.32],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [3.25, 31.39],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [2.66, 31.86],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [0.99, 31.19],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [1.19, 31.39],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [1.97, 32.17],
+   "variant": 0,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [2.26, 30.99],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [2.6, 32.14],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-14.19, 43.29],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.77, 42.97],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-14.81, 43.04],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.54, 43.87],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.12, 43.1],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-14.17, 43.16],
+   "variant": 0,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.78, 43.67],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-14.28, 43.74],
+   "variant": 0,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.96, 42.6],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.75, 44.06],
+   "variant": 1,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [14.34, 47.61],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [13.8, 47.92],
+   "variant": 2,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.33, 48],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.69, 48],
+   "variant": 0,
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [15.45, 48.31],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.36, 48.07],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.49, 48.47],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.58, 48],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-2.75, 14.86],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-2.1, 14.84],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-2.22, 14.79],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-1.71, 14.56],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-2.28, 14.47],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-5.61, 20.8],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-6.12, 21.02],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-4.86, 21.57],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-5.25, 20.68],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-5.95, 20.86],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-2.08, 24.89],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-0.23, 24.59],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-1.55, 25.72],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-1.45, 26.31],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [5.19, 17.89],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [3.69, 17.82],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [4.43, 17.1],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-4.6, 31.13],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-4, 30.59],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-2.03, 29.31],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-2.03, 29.54],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [5.82, 39.83],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [3.98, 40.29],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [5.2, 38.76],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [5.96, 41],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [3.82, 39.97],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-12.73, 42.82],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-10.32, 44.51],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-12.43, 45.02],
+   "variant": 0,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-13.23, 45.54],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [-10.35, 43.28],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [7.63, 47.15],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [8.13, 46.37],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [10.88, 49.81],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.lily",
+   "at": [10.39, 46.69],
+   "variant": 2,
+   "attach": "water"
+  },
+  {
+   "obj": "water.fish-ring",
+   "at": [-14, 70],
+   "attach": "water"
+  },
+  {
+   "obj": "water.fish-ring",
+   "at": [22, 110],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "water.fish-ring",
+   "at": [-4.6, 20],
+   "variant": 1,
+   "attach": "water"
+  },
+  {
+   "obj": "bird.kingfisher",
+   "at": [-2.6, 11.7]
+  },
+  {
+   "obj": "bird.coot",
+   "at": [30, 84],
+   "attach": "water"
+  },
+  {
+   "obj": "bird.grebe",
+   "at": [-24, 150],
+   "facing": 270,
+   "attach": "water"
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [2.79, 5.38],
+   "facing": 270
+  },
+  {
+   "obj": "plant.fern",
+   "at": [3.47, 5.28]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2, 5.48]
+  },
+  {
+   "obj": "tree.bank-distant",
+   "at": [218.48, 396.47]
+  },
+  {
+   "cluster": "tree.far-pine",
+   "on": "land",
+   "n": 5,
+   "seed": 1530
+  },
+  {
+   "obj": "tree.far-birch",
+   "at": [234.48, 383.55]
+  },
+  {
+   "cluster": "tree.bank-oak",
+   "on": "lineside",
+   "n": 9,
+   "seed": 4645
+  },
+  {
+   "cluster": "tree.bank-alder",
+   "on": "lineside",
+   "n": 21,
+   "seed": 8183
+  },
+  {
+   "cluster": "tree.bank-birch",
+   "on": "lineside",
+   "n": 28,
+   "seed": 3767
+  },
+  {
+   "cluster": "tree.bank-willow",
+   "on": "lineside",
+   "n": 12,
+   "seed": 7969
+  },
+  {
+   "cluster": "plant.bulrush",
+   "on": "reeds-n",
+   "n": 50,
+   "seed": 1992,
+   "edge": true
+  },
+  {
+   "cluster": "plant.reed",
+   "on": "reeds-n",
+   "n": 250,
+   "seed": 6892,
+   "edge": true
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.58, 20.95]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.24, 21.47]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.18, 21.55]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.54, 21.67]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.09, 21.74]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.26, 21.8]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.48, 21.89]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.91, 21.91]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.43, 21.96]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.09, 22]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.43, 22.18]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.64, 22.19]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.27, 22.2]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.57, 22.2]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.86, 22.23]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.45, 22.28]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.31, 22.39]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.11, 22.43]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.39, 22.5]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.35, 22.5]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.72, 22.54]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.48, 22.54]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.7, 22.55]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.65, 22.55]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-8.32, 22.71]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.82, 22.73]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.28, 22.8]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.78, 22.85]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.82, 22.91]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.93, 22.92]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.78, 23.05]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.29, 23.07]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.19, 23.21]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.61, 23.26]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.35, 23.27]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-9.99, 23.28]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.19, 23.36]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.54, 23.37]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.46, 23.52]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-8.85, 23.62]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.67, 23.66]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-9.89, 23.7]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.35, 23.72]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-8.3, 23.73]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.2, 23.74]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.67, 23.77]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.45, 23.82]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.11, 23.86]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.6, 23.87]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-9.5, 23.87]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.17, 23.93]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.98, 23.96]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.76, 24.02]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.86, 24.02]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.63, 24.06]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.03, 24.28]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.13, 24.34]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-9.96, 24.38]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.92, 24.42]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.78, 24.52]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-18.59, 24.53]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-8.93, 24.54]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.09, 24.67]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-19.01, 24.7]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-9.62, 24.9]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.97, 24.95]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.21, 25.01]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.69, 25.13]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.12, 25.3]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.58, 25.43]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.35, 25.63]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.52, 25.8]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.3, 25.89]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.74, 26]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-18.89, 26.11]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.04, 26.18]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.32, 26.19]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.82, 26.3]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-9.22, 26.33]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.85, 26.37]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.94, 26.6]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.86, 26.71]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.2, 26.81]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.14, 26.83]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.61, 26.83]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.48, 26.95]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.15, 27.17]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-18.76, 27.25]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.16, 27.3]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.62, 27.39]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.66, 27.5]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.27, 27.55]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.49, 27.64]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.55, 27.75]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.37, 27.79]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-19.02, 27.79]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.93, 28.1]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.51, 28.12]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.55, 28.29]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-19.63, 28.39]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-20.2, 28.53]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.68, 28.73]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.03, 29.05]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.93, 29.13]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-19.43, 29.14]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.06, 29.17]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.04, 29.27]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-19.8, 29.51]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-18.07, 29.55]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-22.3, 30.32]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-23.2, 30.34]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-19.09, 30.37]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.24, 30.43]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.41, 30.5]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.35, 30.66]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.78, 30.67]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.1, 30.72]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.34, 30.92]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-23.41, 31.01]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-23.59, 31.13]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-22.03, 31.14]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.27, 31.27]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.75, 31.32]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.04, 31.35]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.3, 31.35]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.63, 31.37]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.88, 31.38]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-24.22, 31.44]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-24.06, 31.49]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-21.39, 31.49]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-24.06, 31.59]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.42, 31.62]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.95, 31.65]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.01, 31.66]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.66, 31.72]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.57, 31.76]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.33, 31.86]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.87, 32.07]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.74, 32.07]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-22.16, 32.11]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.15, 32.16]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.12, 32.18]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.05, 32.23]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.44, 32.31]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-13.66, 32.32]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-24.94, 32.44]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-15.72, 32.46]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-25.09, 32.54]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-24.63, 32.57]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.09, 32.7]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.19, 32.93]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.39, 33.02]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-20.2, 33.07]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.21, 33.14]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.35, 33.16]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.66, 33.17]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.6, 33.22]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.04, 33.3]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-14.19, 33.35]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.3, 33.5]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.35, 33.53]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-10.13, 33.56]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-25.87, 33.6]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-25.52, 33.61]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-17.81, 33.68]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-21.83, 34.03]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-23.06, 34.24]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.5, 34.31]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-16.9, 34.32]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-20.86, 34.6]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-12.08, 34.93]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-11.56, 34.99]
+  },
+  {
+   "cluster": "plant.reed",
+   "on": "reeds-l",
+   "n": 46,
+   "seed": 826,
+   "edge": true
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.83, 22.56]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [6.12, 22.6]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.89, 22.61]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.67, 22.67]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.84, 22.72]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.72, 22.74]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.69, 22.84]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.55, 22.85]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.53, 22.85]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.73, 22.88]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.87, 22.91]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.9, 22.93]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.95, 22.97]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [8.95, 22.97]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.24, 23]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.75, 23.01]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.13, 23.02]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.22, 23.03]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.75, 23.1]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.83, 23.23]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.42, 23.28]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.05, 23.3]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.74, 23.34]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [17.09, 23.38]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [11.07, 23.44]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.8, 23.46]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.65, 23.49]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.09, 23.51]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.5, 23.54]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.66, 23.56]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.79, 23.64]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.88, 23.65]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.48, 23.68]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.28, 23.72]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.4, 23.74]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.99, 23.77]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.42, 23.88]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.97, 23.88]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.7, 24.05]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.7, 24.06]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.48, 24.1]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.89, 24.13]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [18.45, 24.14]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.4, 24.15]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [8.45, 24.18]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.32, 24.26]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.45, 24.27]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.56, 24.33]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.32, 24.34]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.03, 24.36]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.54, 24.52]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10, 24.58]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.85, 24.59]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.24, 24.63]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [8.63, 24.73]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [18.37, 24.87]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [11.4, 24.88]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.28, 25.03]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.69, 25.08]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.73, 25.14]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.46, 25.24]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.07, 25.41]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.94, 25.45]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.1, 25.5]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.6, 25.67]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.92, 25.69]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [18.15, 25.71]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.65, 25.72]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.99, 25.8]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.41, 25.88]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [18.89, 25.98]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.38, 26.16]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.54, 26.19]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [19.26, 26.28]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.94, 26.29]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [12.99, 26.31]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [17.94, 26.4]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.55, 26.4]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [19.54, 26.49]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.42, 26.57]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.11, 26.62]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [12.69, 26.68]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.11, 26.76]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.96, 26.93]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.06, 27.06]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.18, 27.09]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [8.64, 27.1]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [20.26, 27.66]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.02, 27.71]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.07, 27.73]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [12.21, 27.76]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [6.48, 27.82]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.35, 27.87]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.58, 27.92]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [11.33, 27.96]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [21.24, 28.06]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.69, 28.06]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.34, 28.12]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.48, 28.21]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.62, 28.22]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.32, 28.26]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.72, 28.26]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.52, 28.3]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.25, 28.32]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [19.93, 28.36]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.69, 28.47]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [18.97, 28.59]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.42, 28.6]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.59, 28.6]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.04, 28.77]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.83, 28.84]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.58, 28.88]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [6.26, 28.93]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.03, 29]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.73, 29.01]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.45, 29.08]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.65, 29.09]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.01, 29.16]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.54, 29.17]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [18.35, 29.17]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.25, 29.3]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [8.47, 29.3]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [22.04, 29.3]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [11.63, 29.33]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [21.21, 29.36]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.54, 29.38]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.08, 29.39]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [19.12, 29.44]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.77, 29.61]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [11.07, 29.75]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.35, 29.76]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [17.55, 29.81]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [22.53, 29.87]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [17.31, 29.89]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.11, 30.04]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [17.55, 30.11]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [17.72, 30.23]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.29, 30.24]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [16.35, 30.29]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [17.51, 30.56]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [22.89, 30.94]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [17.93, 31.01]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.92, 31.06]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [17.9, 31.1]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.51, 31.17]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [21.66, 31.25]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [12.61, 31.36]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.14, 31.4]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [19.23, 31.4]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.03, 31.43]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [18.34, 31.45]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [17.42, 31.46]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [18.54, 31.6]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.63, 31.75]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [20.88, 32.15]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [19.3, 32.19]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [10.37, 32.4]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [20.29, 32.43]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [12.14, 32.53]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [20.99, 32.54]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [9.06, 32.58]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.18, 32.67]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [11.5, 32.74]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [20.16, 32.89]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [22.24, 32.95]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [20.01, 32.97]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [22.6, 33.12]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [23.1, 33.5]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [21.06, 33.55]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [23.1, 33.6]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [14.24, 33.85]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [15.24, 33.91]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [8.16, 33.92]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [23.92, 33.96]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [8.79, 34.06]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [21.16, 34.4]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.97, 34.42]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [12.87, 34.48]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [23.89, 34.55]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [13.58, 34.65]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [18.27, 34.83]
+  },
+  {
+   "cluster": "plant.reed",
+   "on": "reeds-r",
+   "n": 55,
+   "seed": 2059,
+   "edge": true
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.76, 23.29]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.97, 23.49]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [13.77, 23.7]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [8.48, 23.73]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [9.82, 24.31]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [9.39, 24.32]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [9.63, 24.33]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [7.7, 24.43]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [13.74, 24.58]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [17.04, 24.8]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [9.96, 24.98]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [16.23, 27.17]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [5.74, 27.81]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [13.4, 27.96]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [8.05, 28.76]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [17.03, 29.23]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [11.66, 29.68]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [9.91, 29.97]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [9.62, 29.97]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [8.47, 30.15]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [20.38, 30.37]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [20.83, 30.73]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [5.97, 31.21]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [22.73, 34.72]
+  },
+  {
+   "cluster": "plant.bulrush",
+   "on": "reeds-r",
+   "n": 9,
+   "seed": 6825,
+   "edge": true
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-13.75, 21.86]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-8.56, 22.1]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-16.31, 22.18]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-14.16, 22.54]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-16.95, 22.69]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-8.29, 23.05]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-14.98, 23.18]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-15.4, 23.63]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-15.02, 24.34]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-18.2, 24.61]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-12.53, 25.41]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-10.31, 25.41]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-9.55, 25.67]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-18.75, 26.41]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-13.25, 27.23]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-13.52, 28.79]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-18.16, 29.16]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-17.19, 29.55]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-11.31, 30.16]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-22.62, 30.91]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-18.33, 31.04]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-24.09, 31.92]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-10.98, 31.97]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-24.55, 32.06]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-10.95, 32.11]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-16.21, 32.79]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-11.13, 33.05]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-25.34, 33.06]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-16.68, 33.59]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-26.16, 34.09]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-11.66, 34.97]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-26.51, 42.45]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-26.67, 43.54]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-12.54, 22.22]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-18, 27.17]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-18.1, 29.23]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-12.22, 29.45]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-10.79, 33.87]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-22.9, 34.15]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-21.2, 35.03]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-28.39, 41.87]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-28.29, 42.74]
+  },
+  {
+   "obj": "plant.wildflowers",
+   "at": [4.53, 26.84]
+  },
+  {
+   "obj": "plant.wildflowers",
+   "at": [16.16, 39.25]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [11.18, 22.92]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.84, 24.45]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [9.87, 26.54]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [15.22, 27.27]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [13.16, 27.31]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [12.98, 28.31]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [14.5, 28.75]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [10.76, 29.19]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [11.67, 32.64]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.53, 33.43]
+  },
+  {
+   "cluster": "plant.grass-long",
+   "on": "reeds-r",
+   "n": 4,
+   "seed": 206
+  },
+  {
+   "obj": "plant.wildflowers",
+   "at": [-12.1, 25.42]
+  },
+  {
+   "obj": "plant.wildflowers",
+   "at": [-17.76, 31]
+  },
+  {
+   "obj": "plant.wildflowers",
+   "at": [-13.28, 38.8]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [5.95, 17.55]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [5.86, 18.77]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [5.22, 18.96]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.66, 19.23]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [3.43, 19.5]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [7.31, 20.24]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [6.1, 20.48]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [3.49, 20.51]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [6.6, 20.6]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.33, 20.8]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [6.13, 20.97]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.71, 22.43]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [3.13, 23.49]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.87, 14.54]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [6.04, 14.78]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [6.12, 16.44]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [6.44, 16.53]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.88, 17.91]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.53, 18.13]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.97, 18.6]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.22, 18.74]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.13, 19.38]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.65, 19.41]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.48, 19.85]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.35, 20.22]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.77, 20.42]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [8.12, 20.51]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [6.73, 20.57]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.01, 20.68]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.75, 20.69]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.61, 20.7]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [8.75, 20.85]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.11, 21.1]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.85, 21.18]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [5.61, 21.3]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [6.17, 21.54]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [2.81, 21.74]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.52, 22.02]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [8.89, 22.16]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [7.25, 22.17]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.04, 22.43]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.83, 12.63]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.19, 13.21]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.93, 13.3]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.57, 13.43]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.92, 14.58]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.25, 15.04]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.97, 17.42]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.8, 17.55]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.38, 18.77]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.55, 18.96]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.63, 19.41]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.11, 19.47]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.82, 19.88]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.95, 19.93]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.73, 20.25]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.41, 20.37]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.95, 20.53]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.6, 21.95]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.1, 22.03]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.85, 22.17]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.79, 22.35]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [5.59, 9.22]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [5.94, 9.54]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [6.99, 9.59]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [6.18, 10.91]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [6.54, 11.86]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [8.2, 12.77]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [7.46, 13.91]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [10.12, 14.77]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [8.07, 15.08]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [9.48, 15.12]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [6.9, 18]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [13.27, 18.02]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [14.31, 21.83]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-5.25, 8.17]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-6.08, 8.65]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-5.08, 8.69]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-4.64, 9.25]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-7.04, 9.37]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-6.13, 9.43]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-6.32, 10.15]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-5.44, 11.57]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-6.55, 12.93]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-7.68, 13.21]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-12.27, 16.57]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-10.97, 16.96]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-8.21, 17.08]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-7.45, 17.55]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-10.86, 17.72]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-11.8, 17.85]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-11.55, 19.78]
+  },
+  {
+   "obj": "plant.bluebells",
+   "at": [-8.85, 21.11]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.28, 7.22]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.32, 7.66]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.45, 8.38]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.84, 8.59]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.6, 8.6]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.49, 8.87]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.28, 8.94]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.89, 9.1]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.32, 9.5]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.77, 9.7]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [7.67, 9.96]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.91, 9.99]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.82, 10.38]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [7.84, 10.45]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.82, 11.42]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.04, 11.56]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.73, 12.02]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [8.11, 12.16]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [7.91, 12.19]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.56, 12.31]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [6.95, 12.82]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [7.52, 13.05]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [9, 13.34]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [10.34, 14.66]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [11.3, 14.92]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [8.59, 15.19]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [8.86, 15.77]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [12.79, 17]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [9.46, 17.23]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [12.29, 17.34]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [10.98, 17.43]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [13.44, 17.96]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [13.83, 19.06]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [9.96, 20.45]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [10.33, 20.59]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [9.58, 21.01]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [6.03, 8.13]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [6.11, 8.49]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [6.41, 8.91]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [6.92, 8.98]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [5.84, 9.65]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [6.07, 9.84]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [7.12, 10.63]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [6.8, 10.78]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [8.07, 10.82]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [6.12, 10.93]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [5.87, 11.39]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [6.81, 11.64]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [8.49, 12.45]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [9.75, 12.8]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [9.75, 13.65]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [8.05, 14.2]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [8.33, 16.7]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [10.25, 17.55]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [12.05, 19.16]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [11.29, 19.93]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [15.42, 20.38]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [15.15, 20.51]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [12.51, 20.99]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.53, 6.06]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.71, 6.62]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.52, 6.69]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.02, 6.79]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.65, 6.81]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.89, 6.82]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.91, 6.89]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.79, 6.96]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.86, 6.98]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.31, 7.11]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.2, 7.77]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.88, 7.93]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-6.3, 8.28]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-6, 8.29]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.98, 8.32]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.52, 8.34]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-6.49, 8.48]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.92, 8.61]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.94, 8.69]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.6, 8.83]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-6.24, 8.92]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.19, 8.99]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-6.72, 9.03]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.81, 9.39]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-7.15, 9.47]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.11, 9.85]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-6.29, 9.92]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.65, 9.94]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.8, 10.1]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-7.74, 10.63]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-6.01, 10.7]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-8.04, 10.79]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-7.92, 10.91]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-6.43, 11.28]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.68, 11.32]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-7.72, 11.61]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-7.25, 12.13]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-7.24, 12.46]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-6.63, 12.68]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-5.86, 12.77]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-9.53, 13.5]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-9.92, 13.51]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-7.86, 13.67]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-9.63, 13.77]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-10.06, 13.88]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-8.37, 14.19]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-10.39, 14.27]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-8.93, 14.42]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-7.83, 14.72]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-6.74, 15.1]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-10.57, 15.16]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-10.44, 15.31]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-7.83, 15.95]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-10.21, 15.95]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-8.16, 16.56]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-12.68, 16.86]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-8.64, 17]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-10.48, 18.77]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-11.85, 19.09]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-12.46, 19.1]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-14.41, 20.18]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-10.77, 20.86]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-4.62, 6.19]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-4.77, 6.34]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-4.58, 6.52]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-4.76, 6.61]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-4.53, 6.81]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-4.72, 8.02]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-4.79, 8.24]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-4.5, 8.25]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-6.39, 8.33]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-4.56, 8.51]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-5.75, 8.9]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-6.76, 8.98]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-6.94, 9.07]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-6.23, 9.18]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-4.9, 9.6]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-7.08, 9.94]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-5.48, 10.11]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-5.3, 10.12]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-7.77, 10.42]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-6.24, 11.02]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-9.29, 12.37]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-9.48, 12.6]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-7.92, 13.31]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-8.08, 13.61]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-6.31, 13.82]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-9.33, 14.59]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-10.95, 15.63]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-8.96, 16.63]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-14.29, 18.63]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-10.06, 19.39]
+  },
+  {
+   "obj": "plant.fern",
+   "at": [-15.68, 20.79]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.21, 6.92]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.33, 7.52]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.3, 7.7]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.61, 8.31]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.48, 9.07]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.91, 9.47]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.54, 10.34]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.96, 10.48]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.61, 10.6]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.64, 10.67]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.02, 10.91]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.02, 10.92]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.13, 11.14]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.07, 11.27]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.4, 11.59]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.18, 11.74]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.94, 11.86]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.46, 11.96]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.18, 12.36]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.06, 12.89]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.22, 12.97]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.21, 13.26]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.54, 13.33]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [9.52, 13.46]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [9.32, 13.55]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.8, 14.06]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.25, 14.16]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.72, 14.52]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.41, 15.22]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.38, 15.39]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.55, 15.53]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.43, 15.6]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.08, 15.62]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [11.54, 15.81]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [12.04, 15.82]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [6.94, 16.2]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.33, 16.31]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [7.83, 16.31]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [10.03, 16.82]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.27, 16.87]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [9.55, 16.98]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.47, 17.53]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [12.3, 17.69]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [8.01, 18.07]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [9.84, 18.63]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [10.21, 18.7]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [14.22, 18.74]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [11.58, 18.78]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [12.17, 19.16]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.69, 6.27]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.63, 6.41]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.03, 6.57]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.63, 6.63]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.98, 7.05]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.61, 7.14]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.98, 7.15]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.82, 7.56]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.55, 7.58]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.96, 7.79]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.23, 7.91]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.85, 8.35]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.48, 8.43]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.44, 8.44]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-6.15, 8.7]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-6.05, 9.39]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-6.47, 9.74]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.92, 9.86]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-7.37, 10.28]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-8.92, 11.78]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-5.5, 11.95]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-7.14, 12.07]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-9.09, 12.38]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-6.28, 12.52]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-8.15, 12.75]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-8.95, 12.93]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-7.12, 13.47]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-8.45, 13.67]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-10.64, 14]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-9.48, 14.51]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-8.06, 14.52]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-6.98, 14.53]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-7.22, 15.37]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-12.58, 17.72]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-13.68, 18.43]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-8.27, 18.7]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-14.53, 18.93]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-13.37, 19.69]
+  },
+  {
+   "obj": "tree.bank-birch",
+   "at": [8.11, 18.52]
+  },
+  {
+   "obj": "plant.canal-view-loosestrife",
+   "at": [3.42, 11.67]
+  },
+  {
+   "obj": "plant.canal-view-loosestrife",
+   "at": [3.2, 12.34]
+  },
+  {
+   "obj": "plant.canal-view-loosestrife",
+   "at": [3.34, 12.41]
+  },
+  {
+   "obj": "plant.canal-view-loosestrife",
+   "at": [5.95, 11.53]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.68, 5.91]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [4.47, 6.51]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [3.34, 7.01]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.06, 7.4]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [4.03, 7.78]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [5.03, 9.09]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-0.41, 5.86]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-0.36, 5.9]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-0.71, 5.96]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-1.02, 5.96]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-4.03, 6.01]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-1.77, 6.06]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.95, 6.18]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-2.38, 6.28]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-2.27, 6.3]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-1.17, 6.39]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.87, 6.75]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-1.07, 6.78]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.24, 6.79]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.88, 6.88]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.42, 6.89]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.51, 6.9]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-2.31, 6.92]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-2.11, 7.08]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-0.7, 7.1]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3, 7.25]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.17, 7.31]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-1.51, 7.45]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-0.64, 7.71]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-2.83, 7.73]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.31, 7.73]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [-3.01, 7.74]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2, 5.48]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.31, 5.86]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.37, 5.87]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.53, 5.99]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.73, 6.07]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.3, 6.12]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.76, 6.31]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.55, 6.32]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.65, 6.32]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [4.54, 6.36]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [4.69, 6.36]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [4.33, 6.4]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.88, 6.44]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.1, 6.46]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.81, 6.47]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [1.74, 6.59]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.67, 6.63]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.37, 6.66]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.99, 6.7]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [1.64, 6.73]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.84, 6.76]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [4.59, 6.78]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.33, 6.78]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.15, 6.81]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [3.16, 6.82]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [5.06, 6.85]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.27, 7.02]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.1, 7.1]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [1.92, 7.16]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [4.4, 7.16]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.76, 7.26]
+  },
+  {
+   "obj": "plant.grass-long",
+   "at": [2.45, 7.3]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.3, 7.07]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [1.69, 7.15]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [4.32, 7.31]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.16, 7.67]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [2.57, 7.95]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3, 8.09]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [3.28, 8.15]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [2.79, 5.38]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [4.77, 6.51]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [3.69, 6.58]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-3.08, 6.18]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-2.69, 6.33]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-4.4, 6.4]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-2.16, 6.56]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-3.76, 6.67]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-1.98, 7.13]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-1.38, 7.14]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-2.61, 7.39]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-3.16, 7.46]
+  },
+  {
+   "obj": "plant.grass",
+   "at": [-2.33, 7.97]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-1.22, 6.08]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-2.8, 6.81]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-3.08, 7.03]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-2.97, 7.39]
+  },
+  {
+   "obj": "plant.bulrush",
+   "at": [-4.21, 7.7]
+  },
+  {
+   "obj": "plant.canal-view-loosestrife",
+   "at": [-2.92, 7.38]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-0.55, 5.9]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-3.64, 6.29]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-4.38, 6.66]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-2.6, 6.67]
+  },
+  {
+   "obj": "plant.reed",
+   "at": [-3.2, 7.38]
+  },
+  {
+   "obj": "plant.wildflowers",
+   "at": [-1.27, 7.18]
+  },
+  {
+   "obj": "plant.canal-view-loosestrife",
+   "at": [2.26, 6.99]
+  }],
+ "life": [{
+   "who": "train",
+   "on": "railway",
+   "every": "2min"
+  },
+  {
+   "who": "kingfisher",
+   "count": 1,
+   "on": "pond"
+  },
+  {
+   "who": "moorhen",
+   "count": 1,
+   "on": "pond"
+  },
+  {
+   "who": "heron",
+   "count": 1,
+   "on": "pond",
+   "state": "stalk"
+  },
+  {
+   "who": "mute-swan",
+   "count": 2,
+   "on": "pond",
+   "group": "pair"
+  },
+  {
+   "who": "grebe",
+   "count": 1,
+   "on": "pond"
+  },
+  {
+   "who": "mallard",
+   "count": 2,
+   "on": "pond"
+  },
+  {
+   "who": "coot",
+   "count": 1,
+   "on": "pond"
+  }],
+ "backdrop": {
+  "style": "woodland"
+ },
+ "seed": 1
+});
+})();
