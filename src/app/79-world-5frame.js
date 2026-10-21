@@ -51,7 +51,7 @@ function _wfrView(e, cam, agent, prev) {
   if (typeof worldViewOf === 'function') {
     try {
       const v = worldViewOf(e, cam, prev ? { prev: prev.view, prevMirror: prev.mirror } : undefined);
-      if (v && typeof v.view === 'string') return { view: v.view, mirror: !!v.mirror, obj: typeof v.obj === 'string' ? v.obj : null, variant: Number.isInteger(v.variant) ? v.variant : null, persp: !!v.persp, s: Number.isFinite(v.s) && v.s > 0 ? v.s : null };
+      if (v && typeof v.view === 'string') return { view: v.view, mirror: !!v.mirror, obj: typeof v.obj === 'string' ? v.obj : null, variant: Number.isInteger(v.variant) ? v.variant : null, persp: !!v.persp, s: Number.isFinite(v.s) && v.s > 0 ? v.s : null, norm: Number.isFinite(v.norm) && v.norm > 0 ? v.norm : 1 };
     } catch (err) { /* below */ }
   }
   if (agent && typeof e.view === 'string') return { view: e.view, mirror: !!e.mirror, obj: null, variant: null, persp: false, s: null };
@@ -110,11 +110,12 @@ function _wfrRec(e, cam, o) {
   const oid = vw.obj && sceneObj(vw.obj) ? vw.obj : (typeof _wh5ViewObj === 'function' ? _wh5ViewObj(e.obj, vw.view) : e.obj), def = sceneObj(oid);
   if (!def || !def.size) return null;
   const v = vw.variant != null ? vw.variant : Number.isInteger(e.variant) ? e.variant : 0;
-  // (a view object is drawn at the height of its side object: appearance's worldViewNorm, already in vw.s)
-  const P = sceneProject(cam, e.x, e.z, Number.isFinite(e.y) ? e.y : null), s = vw.s || (cam.f / e.z) * _wfrHeight(e) / def.size[1] * (oid !== e.obj && typeof worldViewNorm === 'function' ? worldViewNorm(e.obj, oid, v) : 1);
   // a person is drawn in the wardrobe of the day's weather (an umbrella is up in rain or showers and furled when it is dry: SCENE_LESSONS J);
   // o.wet: true | false from the draw's light, undefined (a record made without one) keeps the season's wardrobe
   const form = o.agent ? (o.season || 'summer') + (o.wet != null && /^person./.test(String(e.obj)) ? (o.wet ? '~wet' : '~dry') : '') : _wfrFormOf(e, o.season, o.ctx);
+  // a view object is drawn at the height of its side object in the dress it is drawn in (appearance's worldViewNorm for this season)
+  const nk = oid !== e.obj && typeof worldViewNorm === 'function' ? worldViewNorm(e.obj, oid, v, o.agent ? o.season || 'summer' : null) : 1;
+  const P = sceneProject(cam, e.x, e.z, Number.isFinite(e.y) ? e.y : null), s = (vw.s ? vw.s / (vw.norm || 1) : (cam.f / e.z) * _wfrHeight(e) / def.size[1]) * nk;
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(oid, v, form) : null, b = (sh && sh.box) || [-def.size[0] / 2, -def.size[1], def.size[0] / 2, 0];
   const flip = !!vw.mirror && def.flippable !== false;
   const box = flip ? { x0: P.X - b[2] * s, y0: P.Y + b[1] * s, x1: P.X - b[0] * s, y1: P.Y + b[3] * s } : { x0: P.X + b[0] * s, y0: P.Y + b[1] * s, x1: P.X + b[2] * s, y1: P.Y + b[3] * s };

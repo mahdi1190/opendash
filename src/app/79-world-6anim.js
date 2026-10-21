@@ -134,15 +134,16 @@ function _wanYaw(e, an, tg, dt) {
   if (!(kind === 'person' || kind === 'dog' || kind === 'cyclist' || kind === 'grazer' || kind === 'walkbird')) return null;
   const vx = _wanNum(e.svx) ? e.svx : _wanNum(e.vx) ? e.vx : 0, vz = _wanNum(e.svz) ? e.svz : _wanNum(e.vz) ? e.vz : 0, sp = Math.hypot(vx, vz);
   const hd = _wanNum(e.heading) ? e.heading / _WAN_DEG : null;
-  let target = _wanNum(an.face) ? an.face : null, slow = true;
-  if (target == null) {
+  // (moving, it faces its motion even while its pose is still the seat's: stepping up from a bench; still, the seat's facing holds)
+  let target = null, slow = true;
+  {
     if (sp > _WAN_MOVE_OUT) {
       const vd = Math.atan2(vx, vz) / _WAN_DEG;
       // a body under way faces the way it goes (A5: the facing invariant); starting, stopping or shuffling (under `drag` m/s) the direction of
       // its velocity is noise and its heading is what it faces (a dog always faces the way it goes: its lead moves it off its heading)
       target = sp >= WORLD_ANIM_YAW.drag || kind === 'dog' || hd == null ? vd : hd;
       slow = target !== vd;
-    } else target = hd != null ? hd : _wanNum(e.facing) ? e.facing : null;
+    } else target = _wanNum(an.face) ? an.face : hd != null ? hd : _wanNum(e.facing) ? e.facing : null;
   }
   if (target == null) return null;
   if (!_wanNum(an.yaw) || !(dt > 0)) return _wanR(target, 3);
@@ -358,9 +359,9 @@ const _wanNormMemo = new Map();
  * (worldArtBounds, the still parts) of every variant in summer and winter dress and the MEDIAN is kept (an umbrella or a stick held
  * in one variant does not move it). The ground line keeps: the anchor is the feet in every view. 1 when either has no art.
  */
-function worldViewNorm(sideObj, viewObj, variant) {
+function worldViewNorm(sideObj, viewObj, variant, season) {
   if (!sideObj || !viewObj || sideObj === viewObj || typeof sceneObj !== 'function') return 1;
-  const key = sideObj + '>' + viewObj + '|' + (Number.isInteger(variant) ? variant : '*');
+  const key = sideObj + '>' + viewObj + '|' + (Number.isInteger(variant) ? variant : '*') + '|' + (season || '');
   if (_wanNormMemo.has(key)) return _wanNormMemo.get(key);
   const A = sceneObj(sideObj), B = sceneObj(viewObj);
   let k = 1;
@@ -368,7 +369,9 @@ function worldViewNorm(sideObj, viewObj, variant) {
     // a variant's own ratio when it is named (two variants of one bird may be drawn in different poses), else every variant's
     const person = A.category === 'person', n = Math.max(1, Math.min(16, B.variants || 1, A.variants || 1)), ks = [];
     const vs = Number.isInteger(variant) ? [Math.max(0, Math.min(n - 1, variant))] : Array.from({ length: n }, (_, i) => i);
-    for (const v of vs) for (const se of ['summer', 'winter']) {
+    // the dress of one season when it is named (an autumn hat), else summer's and winter's; a person dry (an umbrella up is not its height)
+    const ses = season ? [String(season).replace(/~(wet|dry)$/, '')] : ['summer', 'winter'];
+    for (const v of vs) for (const se of ses) {
       const f = person ? se + '~dry' : se, a = worldArtBounds(sideObj, v, f, '*'), b = worldArtBounds(viewObj, v, f, '*');
       if (!a || !b) continue;
       const ha = (a[3] - a[1]) / A.size[1], hb = (b[3] - b[1]) / B.size[1];
