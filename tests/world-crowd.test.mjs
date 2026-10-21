@@ -197,10 +197,12 @@ test('two walkers meeting head on in a gap between a bollard and a bench pass: n
   }
 });
 // 2.4 m between the pieces leaves the centres 1.2 m (the nav keeps 0.6 m off a solid): the old engine slowed one walker to 0.04 m/s
-// there for half a second (a shuffle), so this gap is now a ghost pass too; 3 m is open ground, passed side by side as it was
-test('an open pass is as it was: head-on walkers 3 m between the pieces pass side by side without waiting; 2.4 m is a ghost pass', () => {
-  const r = headOn(3, 0, 3);
-  assert.ok(r.pass && r.maxStallS < 0.5 && r.squeezeFrames === 0 && r.ghosts === 0 && r.minD >= 0.55, JSON.stringify(r));
-  const q = headOn(2.4, 0, 3);
-  assert.ok(q.pass && q.maxStallS < 0.2 && q.squeezeFrames === 0 && q.minSolid >= 0.3, JSON.stringify(q));
+// there for half a second (a shuffle). Since the second ghost round (20 Oct) strangers never dodge each other: long before they meet each
+// keeps a little to its side (the lane habit), and where their paths still meet they pass through each other as ghosts. Neither waits;
+// a pair that is not a ghost pass walks by at shoulder room or more, and solid bodies never come closer than the old 0.3 m.
+test('head-on walkers between a bollard and a bench 3 m or 2.4 m apart: nobody waits; a ghost pass or a walk-by, never a squeeze', () => {
+  for (const gap of [3, 2.4]) {
+    const q = headOn(gap, 0, 3);
+    assert.ok(q.pass && q.maxStallS < 0.2 && q.squeezeFrames === 0 && q.ghosts <= 1 && q.minSolid >= 0.3 && (q.ghosts === 1 || q.minD >= 0.6), gap + ' m: ' + JSON.stringify(q));
+  }
 });
