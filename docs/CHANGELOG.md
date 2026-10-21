@@ -10,6 +10,10 @@ upgrades it.
 
 ## [Unreleased]
 
+### Added
+
+- **New place: Sheffield's Winter Garden and Tudor Square** (world engine), with reusable pieces: a great-glasshouse model (larch or iron arches, glazing, palms and pines inside, lit after dusk), Yorkshire civic styles (a sandstone town hall with its clock tower, an Edwardian theatre, a 1970s brick theatre, a gallery front, a white residential tower), and engine fixes found on the way (fountain jets stand on the ground and switch off overnight, kiosks and daytime-only buildings stay dark at night, street furniture keeps clear of tram lines).
+
 ## [2.14.0] - 2026-10-19
 
 ### Added

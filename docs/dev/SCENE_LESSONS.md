@@ -590,3 +590,16 @@ The app drives the same clock as the tools (checked 18 Oct): the page's driver i
 `R.advance`, budgets never act on the life), positions and legs both follow the scene clock `tau` (a slow frame slows both together,
 `WORLD_HOST_CATCHUP`), and the governor only thins far movers by a hash of the id. Not fixed here: families and friends walk 0.5 m apart
 by design, so a group seen along the line of sight is drawn overlapping (correct occlusion, but it reads as bunching).
+
+## AD. A city square under a glasshouse (21 Oct, Sheffield Winter Garden and Tudor Square: `sheffield-winter-garden-1-w3`)
+| Mistake | Why it happened | Rule |
+|---|---|---|
+| Fountain jets floated about 4.6 m above the paving | The library tags the jet `class:air`; the core took the class from the tag and ignored the kb's ground class | A `class:air` piece whose kb class is street, post or cover is grounded (`_wcInfoOf`); jets are solid (the fill stood a bin among them, drawn over by the water) and off overnight |
+| Walkers and a bin "lost" between frame record and canvas | They stood where the eye sees them THROUGH the glasshouse's glass | A surface people or the fill use must not lie behind translucent glass from the camera: cut it at the glass's sight lines |
+| Coffee kiosks vanished on weekdays and at night; their hatches lit at midnight | `building.kiosk` inherited the market stall's market-day hours; the hatch used the "someone aboard" share | A kiosk stands every day; only an arcade's hatch lights after dark |
+| A gallery's bays lit at 22:30 | The world's pane rule never read a style's `night.on` | `night.on: 0` = never lit (a daytime-only building) |
+| A parasol stood 0.8 m from a tramway and the tram went through it | The fill's track index knew `road`/`tramway`, not the v3 kind `tram`; the habitat test only sees the line's own surface | Fill furniture keeps half the line's width plus 1.9 m from a `tram` or `rail` path |
+| Nine static people failed the lint (`people <= 8`) | The fill capped its own seated figures at eight, ignoring the author's busker | The eight include the author's static people; the fill never stands a thing on one |
+| A family "viewing" a busker stood for 90 s; third members of 3-person groups idled at the frame edge | Life groups on wide squares (open: a loose member roams 3.2 m) | A view goal on an absent thing goes on to the next goal (engine); the square's flows are singles and pairs (scene) |
+| A glasshouse read as a diagrid of crossing ribs | The far half's ribs, seen through two panes, were as strong as the near ones | Far ribs are mixed toward the far glass; a lattice of equal ribs is not what the eye sees |
+Not done: Sheffield's slopes (the scene is flat; a `slope` under a 70 m model and a tramway was not tried), the far ribs still cross the near ones visibly, the interior planting is low-poly discs and fronds, the layout compresses the real geography (see the scene header).
