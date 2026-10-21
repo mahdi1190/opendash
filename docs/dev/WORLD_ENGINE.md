@@ -239,6 +239,10 @@ Integration rules (10 Oct, the integrator pass):
    their key; the parts of one entity draw in tiers (hull, cabin, roof).
 5. Invariant (tests, 16): for every pair whose screen boxes overlap, the one with the smaller footprint-front z is drawn later.
    `worldOrderCheck(order, boxes)` returns violations; it must be 0.
+6. Two footprints side by side (disjoint in x): each is compared at the x between them, clamped into it; there a footprint's front is
+   its extreme point, or (20 Oct) the near end of its edge at that extreme x when the edge runs along the line of sight (over 3 x as
+   long in z as in x: a long buggy-walker a few degrees off the axis has its extreme x at its FAR corner, which read it 2 m behind
+   itself; `worldOrderFrontZ`). A round footprint keeps its extreme point.
 
 ### 2.4 Shadows (engine only; L2, L5)
 
@@ -936,7 +940,7 @@ from what the entity is DOING, never from a timer:
   `life.alpha`, the share of a move step gone, so `worldAgents` puts each body between its last two steps on every runner tick (until
   then nothing set it on the runner path: records stood still one 30 Hz tick in two, then jumped two steps; on a 60 Hz screen a walker
   moved one frame in four). The steered direction of a walker is eased (`_wlfSteerEase`, `WORLD_LIFE_STEER`: a 0.2 s low-pass; a change
-  of over 100 degrees is taken at once) and a dog eases off the outward part of its step from 90 % of its lead (never yanked back).
+  of over 100 degrees is taken at once; not for a group member, in a queue or within 3 m of its goal, where a knot must answer at once), a walker standing up from its seat is an immovable body to the separation pass and a dog eases off the outward part of its step from 90 % of its lead (never yanked back).
 - What the legs follow is what the body did (life, 18 Oct): the velocity is measured AFTER the separation pass and the last leash
   (`_wlfTrueV`), the shown speed never exceeds the ground covered over the last 4 ticks (`_wlfShownCap`: a body shaken to and fro
   shows no walk), a walker held by a queue or a taut lead below 0.25 m/s stands and sets off again at 0.4 (`WORLD_LIFE_CREEP`), a
