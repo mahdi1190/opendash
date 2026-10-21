@@ -127,7 +127,7 @@ function _wanLiveAnim(ent) {
 // flicker of the view at a boundary, no shaking of the gait, and a real turn is followed at once, `play` degrees behind: within the
 // facing invariant's 5 degrees beyond the views' hysteresis); turning to its heading while slow, never faster than `rate` x the brain's
 // own turn rate (180 degrees in brain.turn seconds)
-const WORLD_ANIM_YAW = Object.freeze({ play: 4, rate: 1.25, drag: 0.25 });
+const WORLD_ANIM_YAW = Object.freeze({ play: 4, rate: 1.25, drag: 0.18 });
 /** The way an agent's body faces (degrees, the frame of its velocity), smoothed from its heading; null for bodies that keep the velocity. */
 function _wanYaw(e, an, tg, dt) {
   const kind = tg.kind;

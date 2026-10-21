@@ -2070,7 +2070,10 @@ function _wlfSeparate(life) {
   var A = life.agents, h = new Map(), L = [], i, j, k;
   for (i = 0; i < A.length; i++) {
     var a = A[i];
-    if (a.dead || a.layer === 'air' || a.kind === 'lane' || a.kind === 'rail' || a.kind === 'boat' || a.kind === 'moored' || a.hop || (a.host && !_wlfOnDeck(a))) continue;
+    // (a walker standing up from its seat is on the ground's floor: an immovable body, _wlfMass, that the others are pushed off; until
+    // 20 Oct nobody saw it and it rose into a passer-by or a dog 0.3 m away: Whitby, Castlefield)
+    var rising = a.step && a.step.stand && a.kind === 'walker';
+    if (a.dead || a.layer === 'air' || a.kind === 'lane' || a.kind === 'rail' || a.kind === 'boat' || a.kind === 'moored' || a.hop || (a.host && !_wlfOnDeck(a) && !rising)) continue;
     a._si = L.length; L.push(a);
     k = (Math.floor(a.x / 2) + 4096) * 8192 + (Math.floor(a.z / 2) + 4096);
     var b = h.get(k); if (!b) { b = []; h.set(k, b); } b.push(a);

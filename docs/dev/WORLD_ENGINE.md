@@ -447,8 +447,8 @@ spec `W`, `E`, `N`, `S` are their aliases. Movers are never stuck, walking on th
 
 - Facing from velocity in WORLD space against the view ray: one of 8 directions = 5 drawn views (`side, q-front, front, q-back,
   back`) + 3 mirrors, hysteresis 15 degrees (A5). A standing mover keeps its last facing or faces its point of interest.
-  (20 Oct) A live agent is drawn from its BODY's yaw (`anim.yaw`, `_wanYaw`, `WORLD_ANIM_YAW`): the direction it moves from 0.25 m/s
-  (the facing invariant's own bound), its heading below that (starting, stopping, shuffling: the velocity's direction is noise there),
+  (20 Oct) A live agent is drawn from its BODY's yaw (`anim.yaw`, `_wanYaw`, `WORLD_ANIM_YAW`): the direction it moves from 0.18 m/s
+  (under the facing invariant's 0.25 m/s bound, so a body it judges is never still turning to its heading), its heading below that (starting, stopping, shuffling: the velocity's direction is noise there),
   followed through 4 degrees of backlash (a direction that wavers by less never turns the body, so a view never flickers at a boundary)
   and, toward the heading, at most 1.25 x the brain's turn rate. A dog always faces the way it goes.
 - One height from every side (20 Oct): a view object (`views`, SCENE_OBJ_VIEWS) is drawn at the height its SIDE object's art is drawn
