@@ -2258,6 +2258,11 @@ function _wlfPinchYield0(life, a, dir) {
   return false;
 }
 /* ---------- the ghost pass (20 Oct): strangers whose paths cross walk THROUGH each other as soft ghosts ---------- */
+// The two to tune by eye (the user, 21 Oct):
+// how far a walker drifts across its lane to pass an oncoming stranger without touching (radians off its way: 0.28 = 16 degrees)
+var WORLD_LIFE_GHOST_DRIFT = 0.28;
+// how near (metres between centres) two strangers on crossing paths may be when the ghost pass decides to link them
+var WORLD_LIFE_GHOST_RANGE = 4.5;
 /**
  * The user: "it's super weird watching them try to avoid each other ... phase in and out, transparencies", then, on seeing it only in
  * tight places: "people walking into each other doing weird avoiding each other, it just looks weird". So nobody is ever seen dodging
@@ -2280,8 +2285,8 @@ function _wlfPinchYield0(life, a, dir) {
  *           at `none` m), eased with `tauIn` / `tauOut` s, at least `minRate` and at most `rate` a second (an alpha step of 0.11
  *           at 15 Hz: no popping).
  */
-var WORLD_LIFE_GHOST = { horizon: 2.5, comfy: 0.9, close: 0.3, overtake: 0.6, range: 4.5, arrive: 1.2, hold: 1.0, full: 0.4, none: 0.8, lead: 0.2,
-  tauIn: 0.25, tauOut: 0.25, rate: 2.9, minRate: 1.5, fade: 0.55, maxAge: 8, knot: 3, group: 4, jam: 1.5, jamGoal: 4, softPush: 0.025, drift: 0.28 };
+var WORLD_LIFE_GHOST = { horizon: 2.5, comfy: 0.9, close: 0.3, overtake: 0.6, range: WORLD_LIFE_GHOST_RANGE, arrive: 1.2, hold: 1.0, full: 0.4, none: 0.8, lead: 0.2,
+  tauIn: 0.25, tauOut: 0.25, rate: 2.9, minRate: 1.5, fade: 0.55, maxAge: 8, knot: 3, group: 4, jam: 1.5, jamGoal: 4, softPush: 0.025, drift: WORLD_LIFE_GHOST_DRIFT };
 /** A body that may walk through another as a ghost: a person on foot or a dog (never a cyclist, a pigeon, a goose or grazing stock). */
 function _wlfGhostBody(a) {
   if (a._gbO !== a.obj) { a._gbO = a.obj; a._gb = a.kind === 'walker' && a.cls !== 'cyclist' && (a.cls === 'dog' || /^person\./.test(String(a.obj || ''))); }   // (cached: asked per neighbour per tick)
