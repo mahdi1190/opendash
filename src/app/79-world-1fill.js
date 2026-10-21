@@ -476,7 +476,9 @@ function _wflTry(F, c) {
   const air = c.attach === 'air';
   // people-like statics (picnics, cafe tables, sitters) are a few groups per view, never a crowd of statues (life is the crowd)
   const peopleLike = kb.cls === 'picnic' || kb.cls === 'cafe-table' || kb.cls === 'person';
-  if (peopleLike && c.auto === 'fill' && (F.peopleStatics || 0) >= 8) return null;
+  // the eight include the author's own (a busker, a bench sitter): the lint counts every static person in the view (21 Oct)
+  if (peopleLike && c.auto === 'fill' && F.peopleAuthored == null) F.peopleAuthored = ((F.world && F.world.entities) || []).filter(e => !e.auto && /^person\./.test(String(e.obj || '')) && !e.mover).length;
+  if (peopleLike && c.auto === 'fill' && (F.peopleStatics || 0) + (F.peopleAuthored || 0) >= 8) return null;
   // ... and never a giant at the lens (A10): no nearer than where their height fills 45 % of the frame; the fill's own stand back
   // further (a fifth of the frame at most: they are scenery, the walkers are the life) and apart (never a heap of rugs)
   if (peopleLike && c.z < F.cam.f * Math.max(1.2, kb.size.h0 || 1.3) / (c.auto === 'fill' ? 0.2 * F.H : 405)) return null;

@@ -59,7 +59,7 @@ function _wmdGhPalm(h, a, l, ht, k, seed) {
   const top = [a + Math.cos(lAng) * lean, l + Math.sin(lAng) * lean, ht];
   const trunk = h.mix('#7d6c56', '#9a8a70', u('tc'));
   h.line([h.P(a, l, 0.3 * k), h.P((a + top[0]) / 2 + Math.cos(lAng) * lean * 0.15, (l + top[1]) / 2 + Math.sin(lAng) * lean * 0.15, ht * 0.55), h.P(top[0], top[1], top[2])], 0.32 * k, trunk, 'houseplant', 'trunk');
-  if (h.px(0.3 * k) >= 3) for (let r = 1.2 * k; r < ht - 0.6 * k; r += 0.9 * k) { const f = r / ht; h.line([h.P(a + (top[0] - a) * f - 0.17 * k, l + (top[1] - l) * f, r), h.P(a + (top[0] - a) * f + 0.17 * k, l + (top[1] - l) * f, r)], 0.05 * k, h.shade(trunk, 0.78), 'houseplant', 'ring'); }
+  if (h.px(0.3 * k) >= 5) for (let r = 1.2 * k; r < ht - 0.6 * k; r += 1.5 * k) { const f = r / ht; h.line([h.P(a + (top[0] - a) * f - 0.17 * k, l + (top[1] - l) * f, r), h.P(a + (top[0] - a) * f + 0.17 * k, l + (top[1] - l) * f, r)], 0.05 * k, h.shade(trunk, 0.78), 'houseplant', 'ring'); }
   const n = 11 + Math.floor(u('nf') * 5), R = (3.0 + 1.8 * u('fr')) * k, g0 = Math.floor(u('g') * _WMD_GH_GREENS.length);
   for (let i = 0; i < n; i++) {
     const th = (i / n + u('rot')) * Math.PI * 2 + (u('j' + i) - 0.5) * 0.4, ca = Math.cos(th), cl = Math.sin(th);
@@ -68,7 +68,7 @@ function _wmdGhPalm(h, a, l, ht, k, seed) {
     const w = len * 0.2, sa = -cl * w, sl = ca * w;
     const col = _WMD_GH_GREENS[(g0 + i) % _WMD_GH_GREENS.length];
     h.face([h.P(C[0], C[1], C[2]), h.P(M[0] + sa, M[1] + sl, M[2]), h.P(T[0], T[1], T[2]), h.P(M[0] - sa, M[1] - sl, M[2] - 0.08 * k)], col, 'houseplant', 'frond', 'two');
-    if (h.px(0.1 * k) >= 1.2) h.line([h.P(C[0], C[1], C[2]), h.P(M[0], M[1], M[2] + 0.02 * k), h.P(T[0], T[1], T[2])], 0.04 * k, h.shade(col, 1.25), 'houseplant', 'midrib');
+    if (h.px(0.1 * k) >= 2.5) h.line([h.P(C[0], C[1], C[2]), h.P(M[0], M[1], M[2] + 0.02 * k), h.P(T[0], T[1], T[2])], 0.04 * k, h.shade(col, 1.25), 'houseplant', 'midrib');
   }
 }
 /** A Norfolk Island pine: a straight trunk with tiers of drooping branches (shallow cones), widest at the foot. */
