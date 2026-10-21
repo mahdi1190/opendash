@@ -1811,7 +1811,9 @@ function _wlfMove(life, a, dt) {
  */
 var WORLD_LIFE_STEER = { tau: 0.2, turn: 100 };
 function _wlfSteerEase(a, dir, dt) {
-  if (!dir || a.kind !== 'walker' || a.leader) { a.sdir = null; return dir; }   // (a group member keeps its slot by its own velocity matching)
+  // (not for a group member: it keeps its slot by its own velocity matching; nor in a queue or within 3 m of its goal, where the steering
+  // still works a knot of people and must answer at once: a lagging turn there packed Castlefield's west exit, 20 Oct)
+  if (!dir || a.kind !== 'walker' || a.leader || (a.slow != null && a.slow < 0.95) || (a.distLeft != null && a.distLeft < 120)) { a.sdir = null; return dir; }
   var s = a.sdir;
   if (s && s[0] * dir[0] + s[1] * dir[1] > Math.cos(WORLD_LIFE_STEER.turn * Math.PI / 180)) {
     var k = 1 - Math.exp(-dt / WORLD_LIFE_STEER.tau), x = s[0] + (dir[0] - s[0]) * k, z = s[1] + (dir[1] - s[1]) * k, l = Math.hypot(x, z);
