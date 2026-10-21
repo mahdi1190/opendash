@@ -472,6 +472,11 @@ function _wlfNewAgent(life, pop, entry, x, z, id, o) {
     lookAt: null, goals: null, gi: 0, gt: 0, route: null, wait: 0, fails: 0, stuckT: 0, replans: 0, leaving: false, dead: false, born: life.t,
     alpha: 1, fadeIn: 0, fadeOut: 0, edge: o.edge || null, resident: !!o.resident, age: b.age || 'adult', gait: 1, lead: null, moving: false, turning: false,
     lastProg: life.t, progX: x, progZ: z, rung: null, yieldT: 0, yieldSide: 0, flee: null, attract: null, hop: null, step: null, seat: null, stop: null,
+    // the ghost pass's fields, made here so every agent keeps one shape (added later one by one, they slowed every property read of
+    // every agent: the move pass took 1.6 x as long in Castlefield)
+    gl: null, glR: null, ghost: 0, _gi: -1, _gh: null, _crowd: 0, _gs: false, _gsT: -1, _gbO: null, _gb: false,
+    _dT: null, _dW: 0, _dS: 0, _dk: 0, _dsT: null, _softT: -1, _softO: null, dlRef: null, dlT: null, dlG: null,
+    heldN: 0, heldT: 0, hpT: null, hpX: 0, hpZ: 0,
   };
   a.kb = _wlfKb(a.obj); a.info = _wlfInfo(a.obj);
   if (o.age) a.age = o.age;
@@ -1464,7 +1469,20 @@ function _wlfFollowBrain(life, a, dt) {
   if (L.step && L.step.sit) { a.lookAt = [L.x, L.z]; }
   if (a.lead) {                                                              // a dog: roams within its lead round the walker
     // held up (wanting to move, not moving) for half a second, or at an edge of the frame: a new spot near the walker
-    if (a.dir && a.speed < 0.05) { a.heldT = (a.heldT || 0) + dt; if (a.heldT > 0.5) { a.roam = null; a.heldT = 0; a.roamNear = true; } } else a.heldT = 0;
+    // (20 Oct) held again and again (a dog pressed against something on the way to every spot it picks, jittering at 0.1 to 0.5 m/s
+    // beside its idle walker for ten seconds and more: Fleet canal, Whitby) it stands and sniffs where it is until its walker moves on
+    // (the lead brings it along). Judged by the ground it covers: under 0.3 m in a second while it wants to go
+    // (a.dir is cleared at the top of every brain tick: the dog's wish to go is its walk state; the old test of a.dir never fired)
+    var wantGo = a.bs === 'walk';
+    if (wantGo && a.speed < 0.05) { a.heldT = (a.heldT || 0) + dt; if (a.heldT > 0.5) { a.roam = null; a.heldT = 0; a.roamNear = true; } } else a.heldT = 0;
+    var moved = a.hpT != null && Math.hypot(a.x - a.hpX, a.z - a.hpZ) > 0.3;
+    if (a.hpT == null || !wantGo || moved) { a.hpT = life.t; a.hpX = a.x; a.hpZ = a.z; if (moved) a.heldN = 0; }
+    else if (life.t - a.hpT > 0.6) { a.heldN = (a.heldN || 0) + 1; a.hpT = life.t; a.roam = null; a.roamNear = true; }
+    var lmov = (L.speed || 0) > 0.2;                                          // really walking (a walker held by its taut lead only wants to)
+    // (at once when it is held at the end of its lead: the lead and the dog's wish fought it to a trot on the spot, Whitby)
+    var atEnd = Math.hypot(L.x - a.x, L.z - a.z) > a.lead.len * 0.95;
+    if ((a.heldN >= 3 || (a.heldN >= 1 && atEnd)) && !lmov) { a.dir = null; a.route = null; if (a.bs === 'walk') _wlfEnter(life, a, 'sniff'); a.st = Math.max(a.st, 0.5); return; }
+    if (lmov && a.heldN >= 1) a.heldN = 0;
     if (_wlfInEdgeZone(life, a) && a.roam && life.t + 1.5 < a.roam.until) { a.roam.until = life.t; a.roamNear = true; }
     // a taut lead (the walker stands and waits for its dog, _wlfMove): the dog comes in to heel, never sniffs on at the lead's end (19 Oct:
     // a dog content at its roam spot 1.4 m off held its walker standing half out of the frame at Whitby's edge)
@@ -1731,10 +1749,11 @@ function _wlfMove(life, a, dt) {
   // eased to 0.2 m/s crept the last metre to a bench for five seconds with its legs striding on the spot, 18 Oct)
   if (dir && want > 0 && a.distLeft != null && a.distLeft < 50 && !a.leaving && !a.leader) want *= Math.max(a.kind === 'walker' ? 0.6 : 0.35, a.distLeft / 50);
   var taut = 1;
-  if (a.members && want > 0) for (var mi = 0; mi < a.members.length; mi++) { var mm = a.members[mi]; if (mm.lead && !mm.dead && Math.hypot(mm.x - a.x, mm.z - a.z) > mm.lead.len * 0.9) { taut = 0.2; break; } }   // a taut lead: the walker waits for its dog
+  if (a.members && want > 0) for (var mi = 0; mi < a.members.length; mi++) { var mm = a.members[mi]; if (mm.lead && !mm.dead && !(mm.heldN >= 3) && Math.hypot(mm.x - a.x, mm.z - a.z) > mm.lead.len * 0.9) { taut = 0.2; break; } }   // a taut lead: the walker waits for its dog (not for one that cannot come: the lead brings it)
   var wantRaw = want;
   if (dir && want > 0) {
     dir = _wlfSteer(life, a, dir, want);
+    dir = _wlfSteerEase(a, dir, dt);
     // a queue eases off; being held up still counts as wanting to move (stuck). A person never CREEPS: legs striding at a tenth of a pace
     // read as walking on the spot (18 Oct). Held to under about a quarter of a metre a second (behind the one in front, or by a taut lead)
     // a walker stands and waits, and sets off again only when there is room for a real step (hysteresis: 0.25 to stop, 0.4 to go)
@@ -1760,6 +1779,12 @@ function _wlfMove(life, a, dt) {
   a.turning = !!dir && rem > Math.PI / 4;
   if (a.v > 0 && dir) {
     var vx = Math.sin(a.heading) * a.v, vz = Math.cos(a.heading) * a.v;
+    // a dog nearing the end of its lead eases off the outward part of its step (from 90 % of the lead out): it never walks into the end
+    // of the lead to be yanked back the next tick (20 Oct: dogs twitched at the ends of their leads, the leash pull against the body)
+    if (a.lead && a.leader && !a.leader.dead && a.lead.len > 0) {
+      var lrx = a.x - a.leader.x, lrz = a.z - a.leader.z, lrd = Math.hypot(lrx, lrz), lln = a.lead.len;
+      if (lrd > 0.9 * lln) { var lux = lrx / lrd, luz = lrz / lrd, lout = vx * lux + vz * luz; if (lout > 0) { var lkeep = _wlfClamp((lln - lrd) / (0.1 * lln), 0, 1); vx -= lux * lout * (1 - lkeep); vz -= luz * lout * (1 - lkeep); } }
+    }
     var np = typeof worldStep === 'function' ? worldStep(life.nav, a.layer, [a.x, a.z], [vx, vz], _wlfNavR(a), dt) : [a.x + vx * dt, a.z + vz * dt];
     if (np && _wlfOk(life, a, np[0], np[1])) { a.x = np[0]; a.z = np[1]; }
     // held up or slid off the planned line: the steering point is planned again next tick (from where it really is)
@@ -1782,6 +1807,25 @@ function _wlfMove(life, a, dt) {
   if (a.kind === 'boat' && a.speed > 0.2 && (!a.wakeT || life.t - a.wakeT >= 1)) { a.wakeT = life.t; life.bus.emit('wake', { id: a.id, x: a.x, z: a.z, heading: a.heading * 180 / Math.PI, speed: a.speed, beam: a.r * 2, len: a.len || 18, t: life.t }); }
   _wlfStuck(life, a, wantRaw, dt);
   _wlfFace(life, a);
+}
+/**
+ * The steering's output, eased (20 Oct, the user: "people are shaking about"): the avoidance (the velocity obstacle, keeping left, the
+ * queue) answered each tick afresh and its direction swung 20 to 40 degrees to and fro from tick to tick, so the heading zig-zagged as
+ * fast as the turn rate allowed and the body wove 3 to 7 times a second. A walker now follows the steered direction through a low-pass of
+ * WORLD_LIFE_STEER.tau seconds (a reversal of more than `turn` degrees, a real change of mind, is taken at once: the turn rate eases it).
+ */
+var WORLD_LIFE_STEER = { tau: 0.2, turn: 100 };
+function _wlfSteerEase(a, dir, dt) {
+  // (not for a group member: it keeps its slot by its own velocity matching; nor in a queue or within 3 m of its goal, where the steering
+  // still works a knot of people and must answer at once: a lagging turn there packed Castlefield's west exit, 20 Oct)
+  if (!dir || a.kind !== 'walker' || a.leader || (a.slow != null && a.slow < 0.95) || (a.distLeft != null && a.distLeft < 120)) { a.sdir = null; return dir; }
+  var s = a.sdir;
+  if (s && s[0] * dir[0] + s[1] * dir[1] > Math.cos(WORLD_LIFE_STEER.turn * Math.PI / 180)) {
+    var k = 1 - Math.exp(-dt / WORLD_LIFE_STEER.tau), x = s[0] + (dir[0] - s[0]) * k, z = s[1] + (dir[1] - s[1]) * k, l = Math.hypot(x, z);
+    if (l > 1e-3) dir = [x / l, z / l];
+  }
+  a.sdir = [dir[0], dir[1]];
+  return dir;
 }
 /**
  * The velocity the records SHOW (the animation, the facing and the checkers read it): the real ground velocity, low-passed over
@@ -1832,11 +1876,60 @@ function _wlfBoatMeet(life, a) {
  * (a queue). Sets a.slow, the share of the wanted speed that is safe now (1 = free). The hard floor under all of this is
  * _wlfSeparate: whatever the steering does, two movers never overlap.
  */
-function _wlfSteer(life, a, dir, spd) {
+function _wlfSteer(life, a, dir, spd) { return _wlfGhostDrift(life, a, _wlfSteer0(life, a, dir, spd), dir); }
+/**
+ * The lane habit (20 Oct, second ghost round): people keep to their side of the way long before they meet. A walker with a stranger
+ * coming toward it, standing, or going its way slower (overtaken on the right), 6 to 18 m ahead on a line they would pass closer than a comfortable distance on, drifts gently to
+ * its LEFT (UK; away from a stander's side), a few degrees and only until the room is comfortable, never a swerve (at most `drift`
+ * of its heading's sine: under 9 degrees, eased in with the distance). Most such pairs then walk by at a
+ * comfortable distance, solid, and never need a ghost pass; where the way leaves no room, the pair ghosts through as before. It is
+ * judged every 0.4 s and held (and eased) between. Not for followers (a dog, a child: they follow their leader).
+ */
+function _wlfGhostDrift(life, a, d, dir) {
+  var G = WORLD_LIFE_GHOST;
+  if (!d || !dir || !_wlfGhostBody(a) || a.leader || a.layer === 'air' || life.warming) return d;
+  if (a._gh == null) a._gh = _wlfHash(a.id) % 3;
+  if (a._dT == null || life.t - a._dT > 0.39) {
+    // (the weight eases off rather than dropping: a drift that stopped and started with every new look read as a wobble)
+    var w0 = a._dW || 0, s0 = a._dS || 0;
+    a._dT = life.t; a._dW = 0; a._dS = 0;
+    var lx = -dir[1], lz = dir[0], best = 0, side = 0;
+    _wlfNearXZ(life, a.x + dir[0] * 10.5, a.z + dir[1] * 10.5, 8, function (o) {
+      if (o === a || o.dead) return;
+      var rx = o.x - a.x, rz = o.z - a.z, fwd = rx * dir[0] + rz * dir[1], lat = rx * lx + rz * lz;   // lat > 0: on my left
+      if (fwd < 6 || fwd > 18 || Math.abs(lat) > 3) return;                          // early only: closer, a drift would read as a dodge
+      if (!_wlfGhostEligible(life, a, o)) return;
+      var ov = _wlfWantV(o), os = Math.hypot(ov[0], ov[1]), standing = !(o.dir && o.spd > 0) || (o.speed || 0) < 0.2;
+      var onc = os > 0.2 && (ov[0] * dir[0] + ov[1] * dir[1]) < -0.5 * os;
+      // one going my way slower, ahead: overtaken on the RIGHT (UK), with the same gentle drift
+      var slower = !onc && !standing && (ov[0] * dir[0] + ov[1] * dir[1]) > 0.5 * os && a.spd - os > 0.3 && fwd < 8;
+      if (!onc && !standing && !slower) return;
+      // the lateral room they would pass at, by where each WANTS to go; the drift stops once it is comfortable
+      var plat = Math.abs(lat + (onc ? (ov[0] * lx + ov[1] * lz) * fwd / Math.max(0.5, os + a.spd) : 0));
+      var w = _wlfClamp((G.comfy + 0.15 - plat) / 0.6, 0, 1) * (fwd < 13 ? 1 : (18 - fwd) / 5);
+      // +1: to my left. Away from the other's side when it is already off my line; dead on, to my left (UK) for one coming toward me
+      // and to my right for one I overtake (a drift toward the other's side would only close the gap: 20 Oct, test (c))
+      if (w > best) { best = w; side = Math.abs(lat) > 0.15 ? (lat > 0 ? -1 : 1) : slower ? -1 : 1; }
+    });
+    // only with room to that side (a drift into a wall reads as pressing against it)
+    if (best > 0 && _wlfOk(life, a, a.x + lx * side * 0.6, a.z + lz * side * 0.6)) { a._dW = best; a._dS = side; }
+    if (s0 && (a._dS === s0 || !a._dS) && w0 * 0.7 > a._dW && _wlfOk(life, a, a.x + lx * s0 * 0.6, a.z + lz * s0 * 0.6)) { a._dW = w0 * 0.7; a._dS = s0; }
+  }
+  // the drift applied is eased (0.6 s): a step in it swung a leader's heading, and its family's formation slots with it (members
+  // surged and stopped beside it on a towpath of families)
+  var want = a._dW > 0 ? G.drift * a._dW * a._dS : 0, dts = life.t - (a._dsT == null ? life.t : a._dsT);
+  a._dsT = life.t;
+  a._dk = (a._dk || 0) + (want - (a._dk || 0)) * (1 - Math.exp(-Math.max(0, dts) / 0.6));
+  if (Math.abs(a._dk) < 1e-3) { a._dk = 0; return d; }
+  var k = a._dk, nx = d[0] - dir[1] * k, nz = d[1] + dir[0] * k, l = Math.hypot(nx, nz) || 1;
+  return [nx / l, nz / l];
+}
+function _wlfSteer0(life, a, dir, spd) {
   a.slow = 1; a.sideV = 0;
   if (a.brain.heavy || a.layer === 'air') return dir;
   var vx = dir[0] * spd, vz = dir[1] * spd, ax = 0, az = 0, sx = 0, sz = 0, n = 0, ns = 0, kx = 0, kz = 0, nk = 0, hitF = Infinity, wallL = 0, wallR = 0, hitOnc = false;
   var ps = (a.brain.space || 1) * life.space * (a.kind === 'swimmer' ? 0.6 : 0.5);
+  var aGhost = _wlfGhostSelf(life, a) || !!(a.gl && a.gl.length) || !!(a.glR && a.glR.length);   // (no ghost test per neighbour otherwise)
   var rgx = dir[1], rgz = -dir[0];                                   // the right-hand side of the heading (x right, z away)
   var cx = Math.floor(a.x / 2), cz = Math.floor(a.z / 2);
   for (var ix = -1; ix <= 1; ix++) for (var iz = -1; iz <= 1; iz++) {
@@ -1845,8 +1938,9 @@ function _wlfSteer(life, a, dir, spd) {
     for (var j = 0; j < bk.length; j++) {
       var o = bk[j];
       if (o === a || !_wlfSameFloor(a, o) || o.dead || o === a.leader || o.leader === a || (a.group && o.group === a.group)) continue;
-      // a ghost partner (_wlfGhostPass): walked through, never queued behind, sidestepped, kept left of or pushed off
-      if (_wlfGhosted(a, o)) continue;
+      // a stranger it may walk through (_wlfGhostPass: linked, or eligible and not yet due): never queued behind, sidestepped, kept
+      // left of, swerved round or pushed off; where their paths meet they pass through each other, where they do not they walk by
+      if (aGhost && _wlfGhostSkip(life, a, o)) continue;
       var rx = o.x - a.x, rz = o.z - a.z, dd = Math.hypot(rx, rz);
       // queue: something close ahead in my lane is a bumper (an oncoming one only when it is dead ahead)
       // oncoming is judged by where the other WANTS to go (its planned direction), not by the velocity it has: two walkers met head on
@@ -1932,6 +2026,8 @@ function _wlfRelated(a, o) { return a.leader === o || o.leader === a || (a.group
 function _wlfPair(life, a, o) {
   if (_wlfGhosted(a, o)) return 0;                                                   // a ghost pass: they walk through each other
   var soft = _wlfGhostReleased(a, o) ? WORLD_LIFE_GHOST.softPush : WORLD_LIFE_PUSH_MAX;   // a pass that is over: parted softly
+  // (once a tick: the separation runs up to six passes, and six soft steps were a sideways lurch of 0.75 m/s)
+  if (soft < WORLD_LIFE_PUSH_MAX) { if (a._softT === life.t && a._softO === o) return 0; a._softT = life.t; a._softO = o; }
   var dx = o.x - a.x, dz = o.z - a.z, d = Math.hypot(dx, dz);
   var rel = _wlfRelated(a, o);
   var sq = (a.squeeze > life.t || o.squeeze > life.t);                                // passing in a lane too narrow for two
@@ -1942,6 +2038,8 @@ function _wlfPair(life, a, o) {
   var people = rel && /^person\./.test(String(a.obj || '')) && /^person\./.test(String(o.obj || ''));
   var minD = (a.r + o.r) * (rel ? (people ? 0.96 : 0.6) : sq ? 0.25 : (a.kind === 'walker' && o.kind === 'walker' ? WORLD_LIFE_BODY : 1));
   if (d >= minD) return 0;
+  // a pair the steering left to the ghost pass that comes inside the floor before the pass linked it: linked now, never shoved apart
+  if (!rel && !life.warming && _wlfGhostSkip(life, a, o)) { var why0 = _wlfGhostPair(life, a, o); if (why0) { _wlfGhostLink(life, a, o, why0); return 0; } }
   // shoulder room only where there is room for it: in a gap between two solids (a bollard and a bench 1.6 m apart: the legal centres
   // lie 0.75 m apart, less than the 1.2 x floor) two people pass at their shoulder width, never pushed back along the lane for ever
   if (!rel && !sq && minD > (a.r + o.r) && d >= (a.r + o.r) && a.kind === 'walker' && o.kind === 'walker' && (_wlfOneBody(life, a) || _wlfOneBody(life, o))) return 0;
@@ -1979,7 +2077,10 @@ function _wlfSeparate(life) {
   var A = life.agents, h = new Map(), L = [], i, j, k;
   for (i = 0; i < A.length; i++) {
     var a = A[i];
-    if (a.dead || a.layer === 'air' || a.kind === 'lane' || a.kind === 'rail' || a.kind === 'boat' || a.kind === 'moored' || a.hop || (a.host && !_wlfOnDeck(a))) continue;
+    // (a walker standing up from its seat is on the ground's floor: an immovable body, _wlfMass, that the others are pushed off; until
+    // 20 Oct nobody saw it and it rose into a passer-by or a dog 0.3 m away: Whitby, Castlefield)
+    var rising = a.step && a.step.stand && a.kind === 'walker';
+    if (a.dead || a.layer === 'air' || a.kind === 'lane' || a.kind === 'rail' || a.kind === 'boat' || a.kind === 'moored' || a.hop || (a.host && !_wlfOnDeck(a) && !rising)) continue;
     a._si = L.length; L.push(a);
     k = (Math.floor(a.x / 2) + 4096) * 8192 + (Math.floor(a.z / 2) + 4096);
     var b = h.get(k); if (!b) { b = []; h.set(k, b); } b.push(a);
@@ -2138,10 +2239,9 @@ function _wlfPinchYield0(life, a, dir) {
   var o0 = null, fw0 = Infinity;
   _wlfNearXZ(life, a.x, a.z, 7, function (o) {
     if (o === a || o.kind !== 'walker' || o.layer !== a.layer || o.dead || o.step || o.fadeOut || o === a.leader || o.leader === a || (a.group && o.group === a.group)) return;
-    // one it will pass as a ghost is never waited for (20 Oct: the gap is tight by definition, so the pair links as they meet); one
-    // it could not (a jam, a knot at the gap, a walker about to stop) is waited for as before: skipping the wait for anyone ghostable
-    // sent pairs that then never linked into the gap together (Castlefield's west exit)
-    if (_wlfGhosted(a, o) || _wlfGhostLikely(life, a, o, gx, gz)) return;
+    // a stranger it may pass as a ghost is never waited for (20 Oct); one it may not (a jam, a knot, a walker about to stop) is
+    // waited for as before
+    if (_wlfGhostSkip(life, a, o)) return;
     var ox = o.vx, oz = o.vz;
     if (o.dir && o.spd > 0.2) { ox = o.dir[0] * o.spd; oz = o.dir[1] * o.spd; }
     var os = Math.hypot(ox, oz); if (os < 0.2) return;
@@ -2162,40 +2262,41 @@ function _wlfPinchYield0(life, a, dir) {
   a.pinchT0 = null;
   return false;
 }
-/* ---------- the ghost pass (20 Oct): in a tight place two walkers walk THROUGH each other as soft ghosts ---------- */
+/* ---------- the ghost pass (20 Oct): strangers whose paths cross walk THROUGH each other as soft ghosts ---------- */
 /**
- * The user: "it's super weird watching them try to avoid each other in tight areas ... phase in and out, transparencies". Where a
- * dodge looks silly (a gap one body wide, a lane too narrow for two abreast, a sidestep or a queue with no room for it, two
- * standing nose to nose) a converging pair of walkers is LINKED: the steering (queue, sidestep, keep-left, velocity obstacle,
- * separation), the pinch yield and the hard floor (_wlfPair) ignore each other, and each fades to a translucent ghost
- * (alpha 1 - 0.55 x ghost, never under 0.45) as the bodies overlap, back to solid as they separate. On open ground (a plaza, a
- * promenade, a 2.6 m towpath) nothing changes: they pass side by side. Deterministic (no random draw; agents in list order).
- *   link    people on foot and dogs (not cyclists, birds or stock), one floor, strangers (never a group, its leader, a dog on
- *           its own walker's lead), none seated, stepping, hopping, aboard, fading or within `arrive` m of its goal; within
- *           `range` m, closing at `close` m/s or more on lines that would bring them inside each other's floor (or both standing nose to nose wanting to go), and the
- *           place where they would meet is tight: a slot of the nav there, a squeeze, a centre-legal width across their way under
- *           `lane` m, under `awkLane` m while the steering of either is dodging (a sidestep, a queue, held, a pinch wait), or under
- *           `heldLane` m for two coming toward each other within 2 m when one is already held up by it (under half its pace, stood
- *           by the creep rule). People standing in the way count as walls only where the ground leaves under `street` m (a narrow
- *           street), never on open ground. Never two going the same way (a merge) but an overtake in a one-body lane; never inside
- *           a knot (more than `knot` other bodies within 1.5 m of where they meet), never with one in a jam (no headway for `jam`
- *           s, or no nearer its goal for `jamGoal` s) unless the two stand nose to nose. A follower (a dog on its lead, a member
- *           of a family) never starts a pass: when its leader passes a stranger, the whole group passes the stranger's whole group.
+ * The user: "it's super weird watching them try to avoid each other ... phase in and out, transparencies", then, on seeing it only in
+ * tight places: "people walking into each other doing weird avoiding each other, it just looks weird". So nobody is ever seen dodging
+ * a stranger: the steering (queue, sidestep, keep-left, velocity obstacle, separation) and the pinch yield ignore any stranger the
+ * walker may pass through (_wlfGhostSkip), and where two strangers' paths meet they are LINKED: the hard floor (_wlfPair) ignores them
+ * and each fades to a translucent ghost (alpha 1 - 0.55 x ghost, never under 0.45) as they near, back to solid as they part.
+ * Strangers whose paths keep a comfortable distance just walk by, solid. Deterministic (no random draw; agents in list order).
+ *   who     people on foot and dogs on the walk layer (not cyclists, birds or stock), one floor, strangers (never a group, its leader,
+ *           a dog on its own walker's lead), none seated, stepping, hopping, aboard or fading, none in a jam (no headway for `jam`
+ *           s, or no nearer its goal for `jamGoal` s), none within `arrive` m of its goal (it would stop inside the other), neither
+ *           inside a knot (more than `knot` other bodies within 1.5 m), and every linked set at most `group` bodies: past that the
+ *           steering and the floor act as before, so a crowd never becomes a pile of ghosts.
+ *   link    early, by where they WANT to go: closing at `close` m/s or more and the projected closest approach within `horizon` s
+ *           under `comfy` m between their centres (oncoming, crossing, an overtake, a walker and a stranger standing in its way),
+ *           or already inside each other's floor; a pass takes both whole groups along.
  *   hold    a link is sticky: it holds while they are closing or moving past each other within `none` m, and `hold` s more;
  *           then it ends once they are clear of each other's floor; two that still overlap then (or after `maxAge` s) are released:
- *           seen by the steering again and parted by the floor at `softPush` m a tick, translucent until clear.
+ *           parted by the floor at `softPush` m a tick (never by the steering's swerve), translucent until clear.
  *   ghost   per agent 0..1: the target from the nearest partner's distance less `lead` s of closing (full at `full` m, none
  *           at `none` m), eased with `tauIn` / `tauOut` s, at least `minRate` and at most `rate` a second (an alpha step of 0.11
  *           at 15 Hz: no popping).
  */
-var WORLD_LIFE_GHOST = { range: 2.6, close: 0.4, arrive: 3, lane: 1.15, awkLane: 1.35, heldLane: 2.9, street: 2.4, probe: 1.5, hold: 1.0, full: 0.5, none: 1.05, lead: 0.25,
-  tauIn: 0.25, tauOut: 0.35, rate: 2.9, minRate: 1.0, fade: 0.55, maxAge: 8, knot: 1, jam: 1.5, jamGoal: 4, softPush: 0.05 };
+var WORLD_LIFE_GHOST = { horizon: 2.5, comfy: 0.9, close: 0.3, overtake: 0.6, range: 4.5, arrive: 1.2, hold: 1.0, full: 0.4, none: 0.8, lead: 0.2,
+  tauIn: 0.25, tauOut: 0.25, rate: 2.9, minRate: 1.5, fade: 0.55, maxAge: 8, knot: 3, group: 4, jam: 1.5, jamGoal: 4, softPush: 0.025, drift: 0.28 };
 /** A body that may walk through another as a ghost: a person on foot or a dog (never a cyclist, a pigeon, a goose or grazing stock). */
-function _wlfGhostBody(a) { return a.kind === 'walker' && a.cls !== 'cyclist' && (a.cls === 'dog' || /^person\./.test(String(a.obj || ''))); }
-/** Can these two ever be ghost-linked (who they are and what they are doing; not where)? */
+function _wlfGhostBody(a) {
+  if (a._gbO !== a.obj) { a._gbO = a.obj; a._gb = a.kind === 'walker' && a.cls !== 'cyclist' && (a.cls === 'dog' || /^person\./.test(String(a.obj || ''))); }   // (cached: asked per neighbour per tick)
+  return a._gb;
+}
+/** Can these two ever be ghost-linked (who they are and what they are doing; not where)? Strangers on foot on the walk layer. */
 function _wlfGhostable(life, a, o) {
   if (a === o || a.dead || o.dead || !_wlfGhostBody(a) || !_wlfGhostBody(o)) return false;
-  if (a.layer === 'air' || o.layer === 'air' || a.hop || o.hop || a.step || o.step || a.seat || o.seat || a.bs === 'sitting' || o.bs === 'sitting') return false;
+  if ((a.layer !== 'walk' && String(a.layer).indexOf('walk@') !== 0) || (o.layer !== 'walk' && String(o.layer).indexOf('walk@') !== 0)) return false;
+  if (a.hop || o.hop || a.step || o.step || a.seat || o.seat || a.bs === 'sitting' || o.bs === 'sitting') return false;
   if ((a.host && !_wlfOnDeck(a)) || (o.host && !_wlfOnDeck(o))) return false;
   if (_wlfRelated(a, o) || (a.group && o.group === a.group) || (a.leader && a.leader === o.leader)) return false;
   return _wlfSameFloor(a, o);
@@ -2205,110 +2306,87 @@ function _wlfFading(life, a) { return !!a.fadeOut || (a.fadeIn > 0 && life.t - a
 function _wlfGhosted(a, o) { return !!(a.gl && a.gl.length && a.gl.indexOf(o) >= 0); }
 /** The planned velocity of a mover (where it WANTS to go, as the steering judges oncoming movers), else its real one. */
 function _wlfWantV(a) { return a.dir && a.spd > 0.2 && !a.step && !a.fadeOut ? [a.dir[0] * a.spd, a.dir[1] * a.spd] : [a.vx || 0, a.vz || 0]; }
-/** A point a body may stand on for the room measure: legal for a, and (bodies) no third body standing (under 0.3 m/s) on it. */
-function _wlfGhostFree(life, a, o, x, z, bodies) {
-  if (!_wlfOk(life, a, x, z)) return false;
-  if (!bodies) return true;
-  var hit = false;
-  _wlfNearXZ(life, x, z, 1.2, function (q) {
-    if (hit || q === a || q === o || q.dead || q.layer === 'air' || (q.speed || 0) >= 0.3 || !_wlfSameFloor(a, q)) return;
-    if (Math.hypot(q.x - x, q.z - z) < q.r + a.r) hit = true;
-  });
-  return !hit;
+/** A walker about to stop: its goal within `arrive` m (a bench, a shop window, a stand). It would stop inside the other and stand there
+ *  as a ghost (Elm Hill, 20 Oct); it is steered round as it always was. */
+function _wlfArriving(q) { return !!(q.dir && q.spd > 0 && q.distLeft != null && q.distLeft < WORLD_LIFE_GHOST.arrive * 40); }
+/** May these two pass through each other (who, what they are doing, the crowd round them; not yet whether their paths meet)? The steering
+ *  ignores such a pair altogether (_wlfGhostSkip): it never swerves, slows or shuffles for a stranger it may walk through. */
+function _wlfGhostEligible(life, a, o) {
+  return _wlfGhostSelf(life, a) && _wlfGhostSelf(life, o) && _wlfGhostable(life, a, o);
 }
-/** The centre-legal width (m, in 0.125 m steps up to 2 x probe) across the direction (lx, lz) at a point: 0 when the point is blocked.
- *  bodies: third bodies standing in the way count as walls (a queue, a knot of people in a narrow street). */
-function _wlfGhostRoom(life, a, o, px, pz, lx, lz, bodies, enough) {
-  if (!_wlfGhostFree(life, a, o, px, pz, bodies)) return 0;
-  var w = 0, st = 0.125, P = WORLD_LIFE_GHOST.probe;
-  // (enough: the caller only asks whether the width reaches it; the probing stops there, open ground costs a few probes)
-  for (var sg = -1; sg <= 1; sg += 2) for (var s = st; s <= P + 1e-9; s += st) { if (enough != null && w >= enough - 1e-9) return w; if (!_wlfGhostFree(life, a, o, px + lx * s * sg, pz + lz * s * sg, bodies)) break; w += st; }
-  return w;
+/** The one-mover half of _wlfGhostEligible, once a tick per mover (it is asked for every neighbour by the steering, the floor and the
+ *  pass): a person or a dog on the walk layer, not fading, not in a jam (no headway: one pressed into a wall, a crowd milling short of
+ *  an exit), not about to stop, not inside a knot of people (more than `knot` other bodies within 1.5 m, counted by the ghost pass:
+ *  a crowd made a translucent heap, Castlefield's west exit, 20 Oct; the steering and the floor sort a knot out, as before). */
+function _wlfGhostSelf(life, a) {
+  if (a._gsT === life.t) return a._gs;
+  a._gsT = life.t;
+  a._gs = !a.dead && _wlfGhostBody(a) && (a.layer === 'walk' || String(a.layer).indexOf('walk@') === 0) && !_wlfFading(life, a) && !_wlfJammed(life, a) && !_wlfArriving(a) && !(a._crowd > WORLD_LIFE_GHOST.knot);
+  return a._gs;
 }
-/** Is the place between a and o tight (see WORLD_LIFE_GHOST)? awk: 0, 1 (the steering of either is dodging now) or 2 (and the dodge is
- *  failing: one held up to under half its pace by the other). -> why ('squeeze', 'slot', 'lane', 'dodge', 'held') or null. */
-function _wlfGhostTight(life, a, o, awk, navOnly, mx, mz, ux, uz) {
-  var G = WORLD_LIFE_GHOST;
-  if (a.squeeze > life.t || o.squeeze > life.t) return 'squeeze';
-  // where they would meet (mx, mz) and the way they walk there (ux, uz): a slot (a run of legal cells two cannot pass in) there or
-  // 0.6 m along their way either side of it; a slot beside their way (an A-board's gap at the wall of an open lane) is no reason
-  // (York, 20 Oct: two passing side by side in the middle of the Shambles were ghosted for a slot a metre off)
-  var pts = [[mx, mz], [mx - ux * 0.6, mz - uz * 0.6], [mx + ux * 0.6, mz + uz * 0.6]], i;
-  if (typeof worldNavSlot === 'function') for (i = 0; i < pts.length; i++) if (worldNavSlot(life.nav, a.layer, pts[i][0], pts[i][1])) return 'slot';
-  // the width across their way at those points: the ground's own (walls, solids, banks), and with the people standing there as walls
-  // too, but those only in a street that is narrow anyway (`street`): a knot of people on open ground is walked round, as it always was
-  var lx = -uz, lz = ux, lim = awk === 2 ? G.heldLane : awk ? G.awkLane : G.lane;
-  for (i = 0; i < pts.length; i++) {
-    var wn = _wlfGhostRoom(life, a, o, pts[i][0], pts[i][1], lx, lz, false, Math.max(lim, G.street));
-    var w = wn < G.street - 1e-9 && !navOnly ? Math.min(wn, _wlfGhostRoom(life, a, o, pts[i][0], pts[i][1], lx, lz, true, lim)) : wn;
-    if (w < lim - 1e-9) return w < G.lane - 1e-9 ? 'lane' : w < G.awkLane - 1e-9 ? 'dodge' : 'held';
-  }
-  return null;
+/** The bodies one pass takes along: a mover's whole group (its leader and the leader's members, or its own members). */
+function _wlfGhostUnit(q) { var L = q.leader && !q.leader.dead ? q.leader : q; return [L].concat((L.members || []).filter(function (m) { return !m.dead; })); }
+/** How many bodies are in a's linked set (a, its partners, theirs ...; capped search). */
+function _wlfGhostSet(a, seen) {
+  seen = seen || [];
+  if (seen.indexOf(a) >= 0 || seen.length > 12) return seen;
+  seen.push(a);
+  if (a.gl) for (var i = 0; i < a.gl.length; i++) _wlfGhostSet(a.gl[i], seen);
+  return seen;
 }
-/** Is the steering of this walker dodging now (a sidestep, a queue, held below its creep speed, a blocked side, a pinch wait)? */
-function _wlfDodging(life, q) {
-  return (q.sideV > 0.01) || (q.slow != null && q.slow < 0.7) || (q.held != null && life.t - q.held < 0.5) || (q.sideFlip > life.t) || (q.yieldPinch != null && life.t - q.yieldPinch < 0.5);
+/** Would linking these two units keep every linked set at most `group` bodies (a family of four and a passer-by; never a pile)? */
+function _wlfGhostRoomFor(a, o) {
+  // (the common case without a search: neither group in a pass yet)
+  var La = a.leader && !a.leader.dead ? a.leader : a, Lo = o.leader && !o.leader.dead ? o.leader : o;
+  var na = 1 + (La.members ? La.members.length : 0), no = 1 + (Lo.members ? Lo.members.length : 0);
+  if (na + no > WORLD_LIFE_GHOST.group) return false;
+  var busy = (La.gl && La.gl.length) || (Lo.gl && Lo.gl.length) || (a.gl && a.gl.length) || (o.gl && o.gl.length), i;
+  if (!busy && La.members) for (i = 0; i < La.members.length && !busy; i++) busy = La.members[i].gl && La.members[i].gl.length;
+  if (!busy && Lo.members) for (i = 0; i < Lo.members.length && !busy; i++) busy = Lo.members[i].gl && Lo.members[i].gl.length;
+  if (!busy) return true;
+  var S = [], U = _wlfGhostUnit(a).concat(_wlfGhostUnit(o));
+  for (var i = 0; i < U.length; i++) _wlfGhostSet(U[i], S);
+  return S.length <= WORLD_LIFE_GHOST.group;
 }
-/** Is this walker's dodge failing: held up to under half its pace (a queue behind an oncoming one, a blocked side, stood by the creep
- *  rule) while it wants to go? */
-function _wlfHeldUp(life, q) {
-  if (!(q.dir && q.spd > 0.2)) return false;
-  return (q.speed || 0) < 0.5 * q.spd || (q.held != null && life.t - q.held < 0.3) || (q.sideFlip > life.t);
+/** Two going the same way at nearly one pace (closing under `overtake` m/s): the one behind follows, as people do (the queue), rather
+ *  than walking slowly through the one in front: such a pair was ghosted for 4 to 8 s at a time (York, 20 Oct). A faster walker drifts
+ *  out and overtakes on the right (_wlfGhostDrift), and a real overtake that still meets is a ghost pass. */
+function _wlfGhostFollow(a, o) {
+  var va = _wlfWantV(a), vo = _wlfWantV(o), sa = Math.hypot(va[0], va[1]), so = Math.hypot(vo[0], vo[1]);
+  if (!(sa > 0.2 && so > 0.2 && (va[0] * vo[0] + va[1] * vo[1]) > 0.5 * sa * so)) return false;
+  return Math.abs(sa - so) < WORLD_LIFE_GHOST.overtake;
 }
-/** Should this pair be linked now (the decision; not the hold)? -> why ('standoff', or _wlfGhostTight's) or null. */
-function _wlfGhostPair(life, a, o) {
-  var G = WORLD_LIFE_GHOST;
-  if (!_wlfGhostable(life, a, o) || _wlfFading(life, a) || _wlfFading(life, o)) return null;
-  var rx = o.x - a.x, rz = o.z - a.z, d = Math.hypot(rx, rz);
-  if (d > G.range) return null;
+/** Does the steering leave o to the ghost pass (a stranger a may walk through: linked, or eligible with room in both linked sets)? */
+function _wlfGhostSkip(life, a, o) {
+  if (a.gl && a.gl.length && a.gl.indexOf(o) >= 0) return true;
+  // a pass that is over but still overlapping: parted by the floor's soft step only (the steering's separation, seeing them inside
+  // each other, swung the walker 40 degrees sideways at once)
+  if (_wlfGhostReleased(a, o)) return true;
+  // (cheapest first: this is asked for every neighbour of every walker every tick)
+  return _wlfGhostSelf(life, o) && _wlfGhostSelf(life, a) && _wlfGhostable(life, a, o) && !_wlfGhostFollow(a, o) && _wlfGhostRoomFor(a, o);
+}
+/** Where their paths take them (the planned directions, a velocity obstacle over the next `horizon` s): { d, closing, tca, miss }. */
+function _wlfGhostMeet(a, o) {
+  var G = WORLD_LIFE_GHOST, rx = o.x - a.x, rz = o.z - a.z, d = Math.hypot(rx, rz);
   var va = _wlfWantV(a), vo = _wlfWantV(o), rvx = vo[0] - va[0], rvz = vo[1] - va[1], vv = rvx * rvx + rvz * rvz;
   var closing = d > 1e-6 ? -(rx * rvx + rz * rvz) / d : 0;
-  var wantA = !!(a.dir && a.spd > 0), wantO = !!(o.dir && o.spd > 0);
-  // the way each wants to go: oncoming (or crossing) pairs pass through each other; two going the SAME way (a merge, a queue to one
-  // exit) never do, but an overtake in a lane the ground leaves one body wide (the one in front walking, the one behind faster):
-  // linking a knot of people bound for one exit cell put them all inside each other (Castlefield, 20 Oct)
-  var sa = Math.hypot(va[0], va[1]), so = Math.hypot(vo[0], vo[1]), dot = sa > 0.1 && so > 0.1 ? (va[0] * vo[0] + va[1] * vo[1]) / (sa * so) : 0;
-  var same = dot > 0.5;
-  // nose to nose: both want to go toward each other, neither moves (a deadlock the steering made): linked wherever it happens
-  var standoff = wantA && wantO && dot < -0.3 && d < 1.3 && (a.speed || 0) < 0.2 && (o.speed || 0) < 0.2;
-  if (same) {
-    var behind = (rx * va[0] + rz * va[1]) > 0 ? a : o, front = behind === a ? o : a;
-    if (!((front.speed || 0) >= 0.4 && Math.hypot(_wlfWantV(behind)[0], _wlfWantV(behind)[1]) - (front.speed || 0) >= 0.35)) return null;
-  }
-  var tca = 0;
-  if (!standoff) {
-    // a walker that has made no headway for a while is in a jam (a crowd milling at an exit, one pressed into a wall): no pass
-    // through it, the stuck handler and the floor deal with a jam (Castlefield's west exit, Elm Hill, 20 Oct)
-    if (_wlfJammed(life, a) || _wlfJammed(life, o)) return null;
-    if (closing < G.close || !(wantA || wantO)) return null;
-    // a walker about to stop (its goal within `arrive` m: a shop window, a bench, a stand) would stop inside the other and stand there
-    // as a ghost (Elm Hill, 20 Oct: two stood 0.1 m apart by a planter for 1.5 s); the steering parts them as it always did
-    if ((wantA && a.distLeft != null && a.distLeft < G.arrive * 40) || (wantO && o.distLeft != null && o.distLeft < G.arrive * 40)) return null;
-    tca = vv > 1e-6 ? _wlfClamp(-(rx * rvx + rz * rvz) / vv, 0, 3) : 0;
-    var miss = Math.hypot(rx + rvx * tca, rz + rvz * tca);
-    if (miss > (a.r + o.r) * WORLD_LIFE_BODY + 0.1) return null;                      // they would pass clear of each other's floor anyway
-  }
-  // where they meet: the middle of where each would be at the closest approach (standing: where it is), and the way they walk there
-  var mx = (a.x + va[0] * tca + o.x + vo[0] * tca) / 2, mz = (a.z + va[1] * tca + o.z + vo[1] * tca) / 2;
-  var ux = sa > 0.1 ? va[0] / sa : so > 0.1 ? -vo[0] / so : (d > 1e-6 ? rx / d : 1), uz = sa > 0.1 ? va[1] / sa : so > 0.1 ? -vo[1] / so : (d > 1e-6 ? rz / d : 0);
-  // never inside a knot (more than `knot` other bodies within 1.5 m of where they meet, their own group mates aside): a crowd jammed at
-  // an exit made dozens of links a minute there and a translucent heap of people (Castlefield's west exit, 20 Oct); the steering and
-  // the floor sort a knot out, as before
-  if (_wlfGhostKnot(life, a, o, mx, mz) > G.knot) return null;
-  if (standoff) return 'standoff';
-  // oncoming, and one of them already held up by the other (the steering's pass is failing): a lane a little wider still counts
-  var awk = same ? 0 : dot < -0.3 && d < 2 && (_wlfHeldUp(life, a) || _wlfHeldUp(life, o)) ? 2 : _wlfDodging(life, a) || _wlfDodging(life, o) ? 1 : 0;
-  var why = _wlfGhostTight(life, a, o, awk, same, mx, mz, ux, uz);
-  return same && why === 'dodge' ? null : why;
+  var tca = vv > 1e-6 ? _wlfClamp(-(rx * rvx + rz * rvz) / vv, 0, G.horizon) : 0;
+  return { d: d, closing: closing, tca: tca, miss: Math.hypot(rx + rvx * tca, rz + rvz * tca), mx: (a.x + va[0] * tca + o.x + vo[0] * tca) / 2, mz: (a.z + va[1] * tca + o.z + vo[1] * tca) / 2 };
 }
-/** Will a and o (o coming toward a through a gap at gx, gz) pass as ghosts when they meet: every condition of _wlfGhostPair that
- *  does not depend on their distance yet (who they are, a jam, a walker about to stop, a knot at the gap)? */
-function _wlfGhostLikely(life, a, o, gx, gz) {
+/** Should this pair be linked now (the decision; not the hold)? -> why ('meet': their paths bring them inside a comfortable passing
+ *  distance within the horizon, 'overlap': they already stand inside each other's floor) or null. Strangers who would walk by each
+ *  other at `comfy` m or more are never linked: they keep walking naturally. */
+function _wlfGhostPair(life, a, o) {
   var G = WORLD_LIFE_GHOST;
-  if (!_wlfGhostable(life, a, o) || _wlfFading(life, a) || _wlfFading(life, o) || a.leader || o.leader) return false;
-  if (_wlfJammed(life, a) || _wlfJammed(life, o)) return false;
-  if ((a.distLeft != null && a.distLeft < G.arrive * 40) || (o.distLeft != null && o.distLeft < G.arrive * 40)) return false;
-  return _wlfGhostKnot(life, a, o, gx, gz) <= G.knot;
+  if (!_wlfGhostEligible(life, a, o)) return null;
+  var wantA = !!(a.dir && a.spd > 0), wantO = !!(o.dir && o.spd > 0);
+  if (!(wantA || wantO)) return null;                                                 // two standing strangers: the floor keeps them apart
+  var M = _wlfGhostMeet(a, o);
+  if (M.d > G.range || _wlfGhostFollow(a, o)) return null;
+  var floor = (a.r + o.r) * WORLD_LIFE_BODY;
+  if (M.d < floor && ((a.speed || 0) > 0.2 || (o.speed || 0) > 0.2)) return _wlfGhostRoomFor(a, o) ? 'overlap' : null;
+  if (M.closing < G.close || M.miss >= G.comfy) return null;
+  return _wlfGhostRoomFor(a, o) ? 'meet' : null;
 }
 /** Wants to go but has made no headway for `jam` s (the stuck handler's own progress clock), or has come no nearer its goal along its
  *  route for `jamGoal` s (a crowd milling 42 m from Castlefield's west exit for minutes kept moving, so its progress clock never ran out). */
@@ -2350,7 +2428,23 @@ function _wlfGhostRelease(L) {
 function _wlfGhostReleased(a, o) { return !!(a.glR && a.glR.length && a.glR.indexOf(o) >= 0); }
 /** Linked in any way (passing, or released and parting): what the records' ghostWith lists. */
 function _wlfGhostPartner(a, o) { return _wlfGhosted(a, o) || _wlfGhostReleased(a, o); }
-/** The ghost pass (at the start of the move pass): links held or dropped, new links made, every agent's ghost value eased. */
+/** Link q and r (and their whole groups: a stranger through a dog-walker and the dog; a dog or a child that meets a stranger takes its
+ *  group along, so no member is left to dodge). Counted and logged for the tools (never in life.events: those are the spawns and
+ *  departures, judged on spawn cells). */
+function _wlfGhostLink(life, q, r, why) {
+  var G = WORLD_LIFE_GHOST, links = life.ghosts || (life.ghosts = []);
+  life.ghostLinks = (life.ghostLinks || 0) + 1;
+  if (!life.ghostLog) life.ghostLog = [];
+  if (life.ghostLog.length < 2000) life.ghostLog.push({ t: life.t, a: q.id, b: r.id, x: (q.x + r.x) / 2, z: (q.z + r.z) / 2, why: why });
+  var Qs = _wlfGhostUnit(q), Rs = _wlfGhostUnit(r);
+  for (var qi = 0; qi < Qs.length; qi++) for (var ri = 0; ri < Rs.length; ri++) {
+    var x = Qs[qi], y = Rs[ri];
+    if (x.dead || y.dead || _wlfGhostPartner(x, y) || !_wlfGhostable(life, x, y)) continue;
+    (x.gl || (x.gl = [])).push(y); (y.gl || (y.gl = [])).push(x);
+    links.push({ a: x, o: y, t0: life.t, until: life.t + G.hold, rel: false });
+  }
+}
+/** The ghost pass (at the end of the brain pass): links held or dropped, new links made, every agent's ghost value eased. */
 function _wlfGhostPass(life, dt) {
   if (life.warming) return;
   var G = WORLD_LIFE_GHOST, links = life.ghosts || (life.ghosts = []), A = life.agents, i, L;
@@ -2377,40 +2471,33 @@ function _wlfGhostPass(life, dt) {
   // 2. new links (each pair once: the agent earlier in the list asks)
   for (i = 0; i < A.length; i++) {
     var p = A[i];
-    if (p.dead || !_wlfGhostBody(p) || p.layer === 'air') continue;
+    if (p.dead || !_wlfGhostBody(p) || p.layer === 'air') { p._crowd = 0; continue; }
     p._gi = i;
     _wlfGoalClock(life, p);
+    // the crowd round it: other people and dogs (not its own group) within 1.5 m (_wlfGhostEligible: no pass inside a knot), on one
+    // tick in three (by id)
+    if (p._gh == null) p._gh = _wlfHash(p.id) % 3;
+    if (p._crowd == null || p._gh === (((life.ghostTick | 0) + 1) % 3)) p._crowd = _wlfGhostKnot(life, p, p, p.x, p.z);
   }
-  // each walker asks on one tick in three (staggered by its place in the list; links form within a fifth of a second of being due,
-  // well inside the 2.6 m range): the pair scan was a third of the move pass in a crowd (Castlefield, 20 Oct)
+  // each walker asks on one tick in three (staggered by a hash of its id): the pair scan was a third of the move pass in a crowd
+  // (Castlefield, 20 Oct); the steering already leaves an eligible pair alone meanwhile, and a pair that reaches the floor before its
+  // turn is linked there (_wlfPair)
   life.ghostTick = ((life.ghostTick | 0) + 1) % 3;
   for (i = 0; i < A.length; i++) {
     var q = A[i];
-    if (q.dead || !_wlfGhostBody(q) || q.layer === 'air' || (i + life.ghostTick) % 3) continue;
+    if (q.dead || !_wlfGhostSelf(life, q)) continue;
+    if (q._gh == null) q._gh = _wlfHash(q.id) % 3;                                    // by id: adding a mover shifts no one's turn
+    if (q._gh !== life.ghostTick) continue;                                           // its turn (one tick in three)
     var cx = Math.floor(q.x / 2), cz = Math.floor(q.z / 2);
     for (var ix = -1; ix <= 1; ix++) for (var iz = -1; iz <= 1; iz++) {
       var bk = life.hash.get((cx + ix + 4096) * 8192 + (cz + iz + 4096));
       if (!bk) continue;
       for (var j = 0; j < bk.length; j++) {
         var r = bk[j];
-        if (r === q || r.dead || !(r._gi > i) || A[r._gi] !== r || _wlfGhostPartner(q, r)) continue;
-        // a follower (a dog on its lead, a child of a family) never starts a pass of its own: its group passes as one, below. The dogs
-        // of a knot of dog-walkers milled through each other dozens of times a minute (Castlefield, 20 Oct)
-        if (q.leader || r.leader) continue;
+        if (r === q || r.dead || !(r._gi > i) || A[r._gi] !== r) continue;
+        if (!_wlfGhostSelf(life, r) || _wlfGhostPartner(q, r)) continue;
         var why = _wlfGhostPair(life, q, r);
-        if (!why) continue;
-        // counted and logged for the tools (never in life.events: those are the spawns and departures, judged on spawn cells)
-        life.ghostLinks = (life.ghostLinks || 0) + 1;
-        if (!life.ghostLog) life.ghostLog = [];
-        if (life.ghostLog.length < 2000) life.ghostLog.push({ t: life.t, a: q.id, b: r.id, x: (q.x + r.x) / 2, z: (q.z + r.z) / 2, why: why });
-        // the two and their groups: everyone of one walks through everyone of the other (a stranger through a dog-walker and the dog)
-        var Qs = [q].concat(q.members || []), Rs = [r].concat(r.members || []);
-        for (var qi = 0; qi < Qs.length; qi++) for (var ri = 0; ri < Rs.length; ri++) {
-          var x = Qs[qi], y = Rs[ri];
-          if (x.dead || y.dead || _wlfGhostPartner(x, y) || ((x !== q || y !== r) && !_wlfGhostable(life, x, y))) continue;
-          (x.gl || (x.gl = [])).push(y); (y.gl || (y.gl = [])).push(x);
-          links.push({ a: x, o: y, t0: life.t, until: life.t + G.hold });
-        }
+        if (why) _wlfGhostLink(life, q, r, why);
       }
     }
   }
@@ -2422,7 +2509,11 @@ function _wlfGhostPass(life, dt) {
     if (all) for (var k = 0; k < all.length; k++) {
       var m = all[k], mx = m.x - b.x, mz = m.z - b.z, md = Math.hypot(mx, mz), vb = _wlfWantV(b), vm = _wlfWantV(m);
       var cl = md > 1e-6 ? -(mx * (vm[0] - vb[0]) + mz * (vm[1] - vb[1])) / md : 0;
-      var u = _wlfClamp((G.none - (md - Math.max(0, cl) * G.lead)) / (G.none - G.full), 0, 1);
+      // the distance the fade reads: now less `lead` s of closing, but never under where their paths bring them (two that will pass
+      // 0.7 m apart are drawn only a little see-through, never wholly ghosted on the way)
+      var de = md - Math.max(0, cl) * G.lead;
+      if (cl > 0) { var Mm = _wlfGhostMeet(b, m); if (Mm.miss > de) de = Math.min(md, Mm.miss); }
+      var u = _wlfClamp((G.none - de) / (G.none - G.full), 0, 1);
       u = u * u * (3 - 2 * u);
       if (u > tgt) tgt = u;
     }
@@ -2720,6 +2811,9 @@ function _wlfPassBrain(life, dt) {
     a.phase = (a.phase + dt * (0.5 + (a.speed || 0))) % 1;
     try { _wlfBrain(life, a, dt); } catch (e) { a.dir = null; _wlfProblem(life, { pop: a.pop, rule: 'error', msg: a.id + ': ' + (e && e.message) }); }
   }
+  // the ghost pass decides on where everyone wants to go now (the brain's directions), before anything moves: it is a decision, so it
+  // runs in the brain phase (the nav phase only turns heads; the move phase steers with its links)
+  try { _wlfGhostPass(life, dt); } catch (e) { _wlfProblem(life, { pop: -1, rule: 'error', msg: 'ghost: ' + (e && e.message) }); }
 }
 /** nav phase: routes are built lazily by the brain; here a still mover turns to its point of interest. */
 function _wlfPassNav(life, dt) {
@@ -2729,7 +2823,6 @@ function _wlfPassNav(life, dt) {
 /** move phase: steering, integration, traffic, and the departed are dropped. */
 function _wlfPassMove(life, dt) {
   var A = life.agents;
-  try { _wlfGhostPass(life, dt); } catch (e) { _wlfProblem(life, { pop: -1, rule: 'error', msg: 'ghost: ' + (e && e.message) }); }
   for (var i = 0; i < A.length; i++) {
     var a = A[i]; if (a.dead) continue;
     try { _wlfMove(life, a, dt); } catch (e) { a.vx = 0; a.vz = 0; if (!a.moveErr) { a.moveErr = 1; _wlfProblem(life, { pop: a.pop, rule: 'error', msg: a.id + ' move: ' + (e && e.message) }); } }
@@ -2897,7 +2990,12 @@ function _wlfSysInit(world) {
     worldSystem({ id: 'life-nav', phase: 'nav', rate: 15, budgetMs: 0.4, components: { read: ['brain', 'transform'], write: ['brain'] },
       update: function (world, dt) { var L = life(world); if (L) _wlfPassNav(L, dt); } });
     worldSystem({ id: 'life-move', phase: 'move', rate: 15, budgetMs: 0.5, components: { read: ['brain'], write: ['transform', 'agents'] },
-      update: function (world, dt) { var L = life(world); if (L) { _wlfPassMove(L, dt); world.agents = L.agents; } },
+      update: function (world, dt) { var L = life(world); if (L) { _wlfPassMove(L, dt); world.agents = L.agents; L.lerpT = 0; } },
       degrade: function (level, world) { var L = world && world._wlfLife; if (L) L.max = Math.round(60 * [1, 0.85, 0.7, 0.5][Math.max(0, Math.min(3, level | 0))]); } });
+    // the share of a move step gone since the last one (life.alpha: worldAgents puts each body between its last two steps), every runner
+    // tick. Until 20 Oct nothing set it when the runner drove the life (worldLifeTick does), so the records stood still for one 30 Hz tick
+    // in two and then jumped a whole step: on a 60 Hz screen every walker moved one frame in four ("people shaking about")
+    worldSystem({ id: 'life-lerp', phase: 'move', after: ['life-move'], rate: 30, budgetMs: 0.05, components: { read: ['transform'], write: ['agents'] },
+      update: function (world, dt) { var L = world && world._wlfLife; if (!L) return; var s = L.lerpT || 0; L.alpha = Math.max(0, Math.min(1, s / L.step)); L.lerpT = s + dt; } });
   } catch (e) { /* the runner refused: the host still drives worldLifeTick */ }
 })();

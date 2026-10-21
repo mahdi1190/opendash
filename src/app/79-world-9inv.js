@@ -58,6 +58,7 @@ const WORLD_INVARIANTS = Object.freeze([
   { rule: 'crownCut', req: 'C1, K4', what: 'no tree shows its trunk with most of its crown above the frame top (a pole with fronds hanging from nothing)' },
   { rule: 'crowd', req: 'A2, A11', what: 'no two people drawn through each other (boxes overlapping over 40 % at the same depth for 0.5 s) unless one group' },
   { rule: 'ghostFlicker', req: 'A3, Y4', what: 'the opacity of a mover never pops: its alpha changes by at most 0.12 between frames 1/30 s apart (at most 3.6 a second)', needs: 'prev' },
+  { rule: 'sizePop', req: 'A5, A10, Q4', what: 'a mover keeps its drawn height when its view changes (a turn): the drawn outline of its art (frame record fig) times its depth over its height changes by at most 6 % across a change of view or mirror', needs: 'prev' },
   { rule: 'outfitClone', req: 'A11', what: 'no two people within 3 m in the same outfit (object and variant) for 3 s' },
   { rule: 'drawn', req: 'R1, V5, 16.1', what: 'drawn vs simulated: every entity and agent in the frame record makes pixels in its box, and what it owns shows in the frame unless occluded', needs: 'pixels' },
   { rule: 'crown', req: 'S1, V3, K4', what: 'every drawn tree has its crown or its winter branches (pixels in the top 40 % of its box)', needs: 'pixels' },
@@ -66,6 +67,9 @@ const WORLD_INVARIANTS = Object.freeze([
   { rule: 'particles', req: 'M3, K7', what: 'no v2 screen particles in a world scene (petals, motes, fireflies, leaves in an empty sky)', needs: 'pixels' },
   { rule: 'nightLight', req: 'L4, QP4', what: 'after dusk a scene with buildings, boats or lamps shows lit pixels in the picture; no lamp and no generated pane is lit with the sun up', needs: 'pixels' },
 ]);
+
+/** sizePop: the most a mover's drawn height (per metre at its depth) may change across a change of view. */
+const WORLD_INVARIANT_POP = Object.freeze({ size: 0.06 });
 
 /* ---------- small maths ---------- */
 const _WIV_DEG = 180 / Math.PI;
@@ -1101,6 +1105,25 @@ const _WIV_RULES = {
       if (held) _wivPush(C, 'crowd', a.id, `${a.obj || a.cls} ${a.id} and ${b.id} are drawn through each other (${Math.round(Math.hypot(a.x - b.x, a.z - b.z) * 100)} cm apart, boxes ${Math.round(_wivBoxOverlap(ab, bb) / sm * 100)} % overlapped)`);
     }
     if (since) for (const k of [...since.keys()]) if (!now.has(k)) since.delete(k);
+  },
+  sizePop(C) {
+    // 20 Oct, the user: "people are changing size when they change movement directions". A view (side, q-front, front, q-back, back) or a
+    // mirror changes, and the figure's drawn height (its rest art's exact outline, fig) per metre of real height at its depth must not jump
+    // (WORLD_INVARIANT_POP.size; foreshortening is the depth, which the ratio divides out)
+    const prev = C.o.prev || (C.track && C.track.prev) || null;
+    if (!prev || !Array.isArray(prev.ents)) return 'na';
+    const was = new Map();
+    for (const e of prev.ents) if (e && e.static === false && Array.isArray(e.fig)) was.set(e.id, e);
+    if (!was.size) return 'na';
+    for (const m of C.movers) {
+      const p = was.get(m.id);
+      if (!p || !Array.isArray(m.fig) || !(m.z > 0) || !(p.z > 0) || !_wivNum(m.height) || m.height !== p.height) continue;
+      if (m.vobj === p.vobj && m.mirror === p.mirror) continue;
+      const hn = (m.fig[3] - m.fig[1]) * m.z, hp = (p.fig[3] - p.fig[1]) * p.z;
+      if (!(hn > 0 && hp > 0)) continue;
+      const k = hn / hp;
+      if (Math.abs(k - 1) > WORLD_INVARIANT_POP.size) _wivPush(C, 'sizePop', m.id, `${m.obj} turned ${p.view}${p.mirror ? '~' : ''} -> ${m.view}${m.mirror ? '~' : ''} and its drawn height changed by ${Math.round((k - 1) * 100)} % (${p.vobj} -> ${m.vobj})`);
+    }
   },
   ghostFlicker(C) {
     // no popping of the opacity (a ghost pass, a fade in or out): at most 0.12 between frames 1/30 s apart, i.e. 3.6 a second at any

@@ -275,7 +275,18 @@ test('reactions (M6): ducks paddle from a dog at the bank, pigeons lift and sett
     C.worldLifeTick(life, 1 / 15);
     for (const a of life.agents) if (a.cls === 'duck' && a.flee && life.t < a.flee.until) fled.add(a.id);
   }
-  assert.ok(ev.scare > 0 && fled.size > 0, `ducks paddled away: ${ev.scare} scares, ${fled.size} ducks`);
+  // (20 Oct, the ghost pass) the ducks keep to the far half of this cut, 9 to 12 m from where a dog at the bank scares (a duck flees
+  // within 6 m): the run used to pass on one chance flee (40 scares, 1 duck in 400 s) because dogs reached the bank more often while
+  // walkers kept left of each other; walkers no longer swerve for strangers, so dogs reach it less (6 scares). The scare comes from
+  // the run; whether a duck in reach paddles off is checked on a duck put within reach of the last scare, not left to chance.
+  assert.ok(ev.scare > 0, `a dog at the bank scared the ducks: ${ev.scare} scares`);
+  if (!fled.size) {
+    const duck = life.agents.find(a => a.cls === 'duck' && !a.dead);
+    assert.ok(duck, 'a duck');
+    let at = null; life.bus.on('scare', (e) => { at = e; });
+    life.bus.emit('scare', { id: 'test', by: 'test', x: duck.x + 2, z: duck.z, r: 6, t: life.t });
+    assert.ok(at && duck.flee && duck.flee.until > life.t, 'a duck within reach of a scare paddles away');
+  }
   assert.ok(ev.lift > 0 && ev.settle > 0, `pigeons lifted ${ev.lift} and settled ${ev.settle}`);
   assert.ok(ev.strike > 0, 'the heron struck');
   assert.ok(ev.ring > 0, 'a cyclist rang');
@@ -423,13 +434,15 @@ test('the systems runtime: life registers its brain, nav and move systems; the L
   const C = load('var __reg = [];\nfunction worldSystem(def) { __reg.push(def); return def; }');
   const defs = C.__reg || [];
   for (const d of defs) reg.push(d.id + ':' + d.phase);
-  assert.deepEqual(reg, ['life:brain', 'life-nav:nav', 'life-move:move']);
+  // (20 Oct: life-lerp keeps life.alpha, the share of a move step gone, every runner tick: the records then move every frame)
+  assert.deepEqual(reg, ['life:brain', 'life-nav:nav', 'life-move:move', 'life-lerp:move']);
   const world = canal([{ who: 'mallard', count: 4, on: 'cut' }]);
   defs[0].init(world);
   const L = C.worldLifeOf(world);
   assert.ok(L && L.agents.length === 4 && world.sim === L && world.agents === L.agents);
   const before = L.t;
   for (const d of defs) d.update(world, 1 / 15);
+  assert.ok(L.alpha >= 0 && L.alpha <= 1, 'the share of a step');
   assert.ok(Math.abs(L.t - before - 1 / 15) < 1e-9, 'one fixed step through the three phases');
   for (const a of world.agents) assert.ok(typeof a.state === 'string' && Number.isFinite(a.facing) && Number.isFinite(a.h), 'agents carry what they are doing');
 });
