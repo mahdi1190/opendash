@@ -167,7 +167,8 @@ function _wflIndexEnt(ix, e) {
   // things in the air or on a wall or deck leave the ground free; an 'air' object standing on the ground (a framing trunk the
   // library classes as overhead art) still has its footprint there
   if (/^(wall|deck)/.test(a) || (/^air/.test(a) && !(Math.abs(Number(e.y) || 0) < 0.3))) return;
-  const sol = e.solidity;
+  // an author's static figure (a busker, a bench sitter) is passable to walkers but holds its spot: the fill once stood a bin on a busker
+  const sol = e.solidity === 'passable' && !e.auto && /^person\./.test(String(e.obj || '')) ? 'solid' : e.solidity;
   if (sol !== 'solid' && sol !== 'walkable' && sol !== 'overhead') return;
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
   for (const p of e.foot) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
@@ -476,7 +477,9 @@ function _wflTry(F, c) {
   const air = c.attach === 'air';
   // people-like statics (picnics, cafe tables, sitters) are a few groups per view, never a crowd of statues (life is the crowd)
   const peopleLike = kb.cls === 'picnic' || kb.cls === 'cafe-table' || kb.cls === 'person';
-  if (peopleLike && c.auto === 'fill' && (F.peopleStatics || 0) >= 8) return null;
+  // the eight include the author's own (a busker, a bench sitter): the lint counts every static person in the view (21 Oct)
+  if (peopleLike && c.auto === 'fill' && F.peopleAuthored == null) F.peopleAuthored = ((F.world && F.world.entities) || []).filter(e => !e.auto && /^person\./.test(String(e.obj || '')) && !e.mover).length;
+  if (peopleLike && c.auto === 'fill' && (F.peopleStatics || 0) + (F.peopleAuthored || 0) >= 8) return null;
   // ... and never a giant at the lens (A10): no nearer than where their height fills 45 % of the frame; the fill's own stand back
   // further (a fifth of the frame at most: they are scenery, the walkers are the life) and apart (never a heap of rugs)
   if (peopleLike && c.z < F.cam.f * Math.max(1.2, kb.size.h0 || 1.3) / (c.auto === 'fill' ? 0.2 * F.H : 405)) return null;
@@ -486,6 +489,12 @@ function _wflTry(F, c) {
   // (the divisor is 180, the 20 % the comment above and the placement solver (79-world-1place.js, step 3b) already say: the fill's own
   // 270 was 30 % of the frame, so a seed put a 1 m bollard 3.7 m from the lens beside the Pier Head's river rail, a quarter of the frame)
   // ... and its foot is inside the frame: a bin whose base is below the bottom edge is a dark cut blob at the corner (a raised eye on a quay sees the ground only beyond f * eye / (H - horizon); a prop with more than half of its height below the bottom edge is a cut blob)
+  // street furniture keeps out of a tram's or a train's swept path: the habitat test only sees the line's own surface, so a parasol
+  // stood 0.8 m from a street-running tramway and the passing tram went through its canopy (21 Oct)
+  if (!air && ['bench', 'street', 'lamp', 'post', 'umbrella', 'cafe-table', 'market-stall', 'signage'].includes(kb.cls)) {
+    const lines = F._railLines || (F._railLines = ((F.world && F.world.surfaces) || []).filter(s => s && (s.kind === 'tram' || s.kind === 'rail') && Array.isArray(s.path) && s.path.length >= 2));
+    for (const s of lines) if (_wflNear(s.path, c.x, c.z, false).d < (s.width || 3) / 2 + 1.9) return null;
+  }
   const footBand = (kb2) => F.cam.horizon < F.H ? F.cam.f * Math.max(0.2, F.cam.eye - _wflGround(F, c.x, c.z) - 0.5 * Math.min(kb2.size.h0 || 1, 1.3)) / (F.H - F.cam.horizon) : 0;
   if (!c.framing && ['post', 'bench', 'lamp', 'street', 'gate', 'rock', 'vehicle', 'signage'].includes(kb.cls) && c.z < Math.max(F.cam.f * Math.min(kb.size.h0 || 1, 1.3) / (kb.cls === 'post' ? 180 : 270), footBand(kb))) return null;
   // K6 things that come and go (flowers, lilies, leaf litter) only where the renderer hides them out of season

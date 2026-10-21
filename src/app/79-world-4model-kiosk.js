@@ -48,7 +48,8 @@ worldModelDefine('kiosk', {
     const hwid = (kind === 'arcade' ? 1.1 : 0.82) * k, dc = kind === 'arcade' ? 0 : (h.u('hpos') - 0.5) * 0.5 * k, yh0 = 0.98 * k, yh1 = 1.95 * k;
     if (front) {
       FS.rect(dc - hwid - 0.07 * k, dc + hwid + 0.07 * k, yh0 - 0.07 * k, yh1 + 0.07 * k, trim, 'paint', 'frame', 0.008);
-      FS.rect(dc - hwid, dc + hwid, yh0, yh1, '#2a211c', 'timber', 'hatch', 0.012, h.litFx(false, '#ffcf80'));
+      // a tea, ice-cream or tackle kiosk is shut after dark (its hatch never lights at midnight); an arcade keeps its evening hours
+      FS.rect(dc - hwid, dc + hwid, yh0, yh1, '#2a211c', 'timber', 'hatch', 0.012, h.litFx(kind !== 'arcade', '#ffcf80'));
       if (h.fine) {
         FS.rect(dc - hwid, dc + hwid, yh0 + 0.55 * k, yh0 + 0.58 * k, '#6b5a48', 'timber', 'shelf', 0.016);
         const cols = ['#c9423a', '#f2cf68', '#2f8a86', '#f6f2e6', '#e0708f'];

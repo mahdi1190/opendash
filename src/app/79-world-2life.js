@@ -1428,7 +1428,12 @@ function _wlfViewGoal(life, a, g, dt) {
   var tgt = g.view, p = null;
   if (Array.isArray(tgt)) p = tgt;
   else if (typeof tgt === 'number') { var hb = tgt * Math.PI / 180; p = [a.x + Math.sin(hb) * 30, a.z + Math.cos(hb) * 30]; }
-  else { var e = _wlfEntity(life, tgt), s = _wlfSurface(life, tgt); p = e ? [e.x, e.z] : s ? _wlfCentroid(s) : null; }
+  else {
+    var e = _wlfEntity(life, tgt), s = _wlfSurface(life, tgt); p = e ? [e.x, e.z] : s ? _wlfCentroid(s) : null;
+    // the thing to watch is not there today (a busker on a wet day, a stall out of its hours): go on to the next goal, never stand
+    // and stare at nothing (21 Oct: a family "viewing" an absent busker stood for 90 s)
+    if (!p && typeof tgt === 'string' && !g.here) { a.viewAt = null; a.viewPoi = null; a.gdur = null; _wlfNextGoal(life, a); return; }
+  }
   if (g.here || !p) p = p && !g.here ? p : [a.x + Math.sin(a.heading) * 25, a.z + Math.cos(a.heading) * 25];
   if (!g.here && !a.viewAt) {
     // a spot to view from: a walkable cell 3-12 m from the point of interest, among the nearest few that no other viewer has taken (0.9 m clear):
