@@ -18,6 +18,7 @@ function worldOrderFrontZ(foot, x) {
   if (foot.length === 1) return foot[0][1];
   var lo = Infinity, hi = -Infinity, i;
   for (i = 0; i < foot.length; i++) { if (foot[i][0] < lo) lo = foot[i][0]; if (foot[i][0] > hi) hi = foot[i][0]; }
+  var out = x < lo || x > hi;
   if (x < lo) x = lo; if (x > hi) x = hi;
   var best = Infinity;
   for (i = 0; i < foot.length; i++) {
@@ -26,6 +27,14 @@ function worldOrderFrontZ(foot, x) {
     if (x >= (ax < bx ? ax : bx) && x <= (ax > bx ? ax : bx)) {
       var z = ax === bx ? (a[1] < b[1] ? a[1] : b[1]) : a[1] + (b[1] - a[1]) * (x - ax) / (bx - ax);
       if (z < best) best = z;
+    }
+    // x beyond the footprint (two things side by side): the side it shows its neighbour is an edge at its extreme x that runs along
+    // the line of sight (over 3 x as long in z as in x), and its front is that side's near end. A long footprint a few degrees off the
+    // axis (a buggy-walker drifting in its lane, 20 Oct) has its extreme x at its FAR corner: its front read 2 m behind its near end
+    // (Cotswold: drawn in front of a hawthorn it stood behind). A round footprint keeps its extreme point.
+    if (out && (Math.abs(ax - x) < 1e-9 || Math.abs(bx - x) < 1e-9) && Math.abs(b[1] - a[1]) > 3 * Math.abs(bx - ax)) {
+      var zn = a[1] < b[1] ? a[1] : b[1];
+      if (zn < best) best = zn;
     }
   }
   return best;
