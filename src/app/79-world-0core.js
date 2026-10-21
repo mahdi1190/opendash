@@ -360,7 +360,11 @@ function _wcInfoOf(id, def, kb) {
     if (_wcNum(kh) && kh > 0) real = { h: kh, l: ks.l, w: _wcNum(ks.w) ? ks.w : ks.l * 0.6, src: 'kb' };
   }
   if (!(real && real.h > 0 && real.src !== 'class')) return null;
-  const c2 = typeof sceneObjClass === 'function' ? sceneObjClass(id) : 'street', cls = _wcClass(id, c2), ci = WORLD_CLASS_INFO[cls] || WORLD_CLASS_INFO.street;
+  const c2 = typeof sceneObjClass === 'function' ? sceneObjClass(id) : 'street';
+  // a library 'class:air' piece that the kb stands on the ground (a fountain jet: kb class street) is grounded: it was drawn 4.6 m up (21 Oct)
+  let cls = _wcClass(id, c2);
+  if (cls === 'air' && kb && ['street', 'post', 'cover'].includes(kb.cls)) cls = kb.cls;
+  const ci = WORLD_CLASS_INFO[cls] || WORLD_CLASS_INFO.street;
   const mv = typeof sceneMoverSize === 'function' ? sceneMoverSize(id) : null;
   // movers keep the v2 real size classes (a duck 0.35 m, a person 1.7 m); everything else its real table size. A seated scenery
   // figure (a picnicker on a rug, a cafe-goer at a table: kb pose 'sit' and a scenery class) is drawn at its seated height (K8)

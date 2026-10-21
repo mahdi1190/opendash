@@ -320,7 +320,8 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'structure.mcr-market-chalet': { cls: 'market-stall', when: { dates: [[11, 8], [12, 23]], hours: [9.5, 21], days: null } },
   'structure.mcr-market-hut': { cls: 'market-stall', when: { dates: [[11, 8], [12, 23]], hours: [9.5, 21], days: null } },
   // seafront (17 Oct): a kiosk is a stall (paving or a deck, faces its path); a beach hut keeps the facing the scene or its row gives it (a row fans toward the viewer)
-  'building.kiosk': { cls: 'market-stall', size: { h: [2.6, 4.8] } }, 'building.beach-hut': { orient: 'free' }, 'street.bunting': { solidity: 'passable', orient: 'free', clearance: 0 },
+  // a kiosk is a little building, not a market stall that is put up on market days: it stands every day and night (closed after hours; 21 Oct)
+  'building.kiosk': { cls: 'market-stall', size: { h: [2.6, 4.8] }, when: { days: [0, 1, 2, 3, 4, 5, 6], hours: [-2, 26] } }, 'building.beach-hut': { orient: 'free' }, 'street.bunting': { solidity: 'passable', orient: 'free', clearance: 0 },
   // a lighthouse is scaled by the scene (a cliff-top light is 30 to 45 m): its model height follows its size
   'structure.lighthouse': { size: { h: [16, 48] } },
   'street.mqn-parasol': { cls: 'umbrella', when: { months: [4, 5, 6, 7, 8, 9, 10], hours: [8, 21], weather: _WKB_FINE, tempMin: 11, snowDay: false, weatherOnly: true }, habitat: { on: ['paving', 'deck'] }, solidity: 'solid' },
@@ -347,7 +348,8 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'tree.wp-treeline': { framing: false }, 'ground.log': { solidity: 'solid', foot: 'box', habitat: { on: ['soil', 'grass', 'wet', 'bank', 'heath', 'water-margin'], avoid: ['walk', 'path', 'paving', 'water', 'road-lane', 'rail', 'tram'] }, group: { kind: 'single', size: [1, 1], gap: 8 } },
   'rock.boulder': { group: { kind: 'single', size: [1, 2], gap: 6 }, habitat: { on: ['soil', 'grass', 'heath', 'bank', 'stone', 'sand'] } },
   'water.edge': { habitat: { on: ['bank', 'water-margin', 'wet', 'soil', 'grass'] } }, 'water.chalk-stream': { habitat: { on: ['water', 'water-margin', 'wet'] } },
-  'water.shc-jet': { cls: 'street', habitat: { on: ['water', 'paving'] }, solidity: 'passable' }, 'water.shc-bubbler': { cls: 'street', habitat: { on: ['water', 'paving'] }, solidity: 'passable' },
+  // a fountain jet rises from its pool or from the paving (a 'cover' may stand on ground or water; it was drawn in the air, 21 Oct)
+  'water.shc-jet': { cls: 'cover', habitat: { on: ['water', 'paving'] }, solidity: 'passable' }, 'water.shc-bubbler': { cls: 'cover', habitat: { on: ['water', 'paving'] }, solidity: 'passable' },
   'structure.shp-stepping-stone': { cls: 'rock', habitat: { on: ['water', 'water-margin', 'wet'] }, solidity: 'walkable' },
   'structure.mqn-ole-v2': { cls: 'post', solidity: 'solid' },
   // a bollard stands on land at the edge (a mooring post in the water is its own object): the post class allows water, so a
