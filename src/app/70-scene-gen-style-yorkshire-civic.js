@@ -9,7 +9,7 @@
      'theatre-brick-1970s' a 1970s brick theatre or arts centre: brown brick with a cantilevered upper block over a recessed glazed foyer,
                            deep window strips (the brutalist generator with brick, not board-marked concrete)
      'gallery-portal'      a late-1990s gallery front: white portal frames over tall glass bays, two lofty storeys, a white canopy slab;
-                           few windows lit after hours (galleries close at five), no lit stair core
+                           dark after hours (galleries close at five), no lit stair core
    No names, no lettering, no emblems: a finial is a spike, a ball or an urn. */
 (function () {
   if (typeof sceneBuildingStyleDefine !== 'function' || typeof sceneBuildingStyle !== 'function') return;
@@ -48,7 +48,8 @@
       wall: { cols: ['#e6dcc4', '#e9dfc9', '#e2d7be'], grime: '#5a5244', texture: 'render', mortar: '#d4c9b0' },
       roofMat: { cols: ['#5c6266'], kind: 'slate' },
       dress: { cols: ['#f2ead8', '#efe6d2'] },
-      night: { on: 0.6, curtain: 0, tv: 0, flood: 0.18 },
+      // no flood wash: on a set-back corner turret it lay across the parapet in front of it as a pale band
+      night: { on: 0.6, curtain: 0, tv: 0, flood: 0 },
       civic: Object.assign({}, baroque.civic, { bay: 3.8, order: 'pilaster', entab: 1.6, course: 0.9, pil: 0.7, copper: '#6f9585' }),
       crowns,
     }));
@@ -73,7 +74,7 @@
     win: { glass: ['#3c5566', '#38526a', '#44606f'], frames: ['#eeede8'] },
     grid: { col: 4.2, spandrel: 1.1, mullion: '#f1f0eb', slab: '#f3f2ed', canopy: 2.4, spandrelCol: '#e8e7e1' },
     core: false,
-    night: { on: 0.18, curtain: 0, tv: 0 },
+    night: { on: 0, curtain: 0, tv: 0 },   // a gallery is a daytime building: dark after hours (the user, Oct: no lit windows in daylight-only buildings)
   }));
   // a slim white residential tower of the 2000s (white cladding bands between ribbons of glass): flats, so a share of windows lit at night
   if (glass) sceneBuildingStyleDefine('tower-white', Object.assign({}, glass, {
