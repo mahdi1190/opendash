@@ -333,8 +333,12 @@ const WORLD_FRONT_CLASSES = Object.freeze(['bench', 'building']);
 /** Gaps: objects whose real size is only a class guess get one here (metres), or they cannot be placed. Also a drawing pinned at one
     corner of what it shows (a perspective landmark drawn for one camera): the library's `l` is the length its drawing shows, but the world
     centres a footprint on the anchor, so that length would reach half its way into the neighbours and the street; such a drawing gets the
-    footprint of its pinned corner only (22 Oct, Deansgate: the John Rylands Library's 42 m crossed the pavement and two buildings). */
-const WORLD_SIZE_GAPS = Object.freeze({ 'landmark.mcr-john-rylands': { h: 34, l: 2.5, w: 2 } });
+    footprint of its pinned corner only (22 Oct, Deansgate: the John Rylands Library's 42 m crossed the pavement and two buildings).
+    A pinned perspective drawing with no real size of its own got the class guess (2 m) and was drawn at a third or a twentieth of its
+    size: its `h` is the height its box spans at its anchor in its camera (size[1] x anchor depth / f), so it is drawn 1:1 (22 Oct,
+    Stevenson Square: the painted kiosk at 30 m, the painted gable at 87 m, camera fov 58). */
+const WORLD_SIZE_GAPS = Object.freeze({ 'landmark.mcr-john-rylands': { h: 34, l: 2.5, w: 2 },
+  'structure.mqn-kiosk-v3': { h: 6.24, l: 2, w: 1.2 }, 'structure.mqn-mural-v3': { h: 36.27, l: 2, w: 1.2 } });
 const _WC_HAB_ATTACH = Object.freeze({ water: 'water', 'water-margin': 'water', bank: 'ground', walk: 'ground', paving: 'ground', grass: 'ground', soil: 'ground',
   'grass-edge': 'ground', 'road-lane': 'ground', road: 'ground', rail: 'rail', tram: 'rail', roof: 'deck', perch: 'deck', deck: 'deck', air: 'air', wall: 'wall' });
 const _WC_SOLIDITY = Object.freeze(['solid', 'walkable', 'water', 'passable', 'overhead']);

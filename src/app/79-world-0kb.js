@@ -651,7 +651,10 @@ function _wkbBuild(id) {
   }
   const tags = def.tags || [], cat = def.category || String(id).split('.')[0];
   const c2 = typeof sceneObjClass === 'function' ? sceneObjClass(id) : null;
-  const real = typeof sceneObjReal === 'function' ? sceneObjReal(id) : { h: 1, l: 1, w: 0.6, src: 'none' };
+  // a size gap of the core (WORLD_SIZE_GAPS: a class guess filled in, a pinned perspective drawing's 1:1 height) is the size here too,
+  // or the true-scale check (`giant`) holds the object to the guess the core no longer draws it at
+  const gapSize = typeof WORLD_SIZE_GAPS === 'object' && WORLD_SIZE_GAPS && WORLD_SIZE_GAPS[id] ? Object.assign({ src: 'gap' }, WORLD_SIZE_GAPS[id]) : null;
+  const real = gapSize || (typeof sceneObjReal === 'function' ? sceneObjReal(id) : { h: 1, l: 1, w: 0.6, src: 'none' });
   const mv = typeof sceneMoverSize === 'function' ? sceneMoverSize(id) : null;
   const d = _wkbCopy(C);
   // K8: size. Movers keep the v2 real size classes (a duck 0.35 m, a person 1.7 m); everything else its real table size

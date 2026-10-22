@@ -53,7 +53,8 @@
  "place": {
   "lat": 53.4824,
   "lon": -2.2346,
-  "region": "greater-manchester"
+  "region": "greater-manchester",
+  "style": "civic-square"
  },
  "camera": {
   "eye": 1.65,
@@ -64,10 +65,10 @@
  "surfaces": [{
    "id": "land",
    "kind": "plaza",
-   "poly": [[-3.9, 5.6],
-    [3.9, 5.6],
-    [2078.7, 3000],
-    [-2078.7, 3000]]
+   "poly": [[-200, 0],
+    [200, 0],
+    [200, 160],
+    [-200, 160]]
   },
   {
    "id": "square",
@@ -80,13 +81,14 @@
   {
    "id": "lever",
    "kind": "road",
+   // (it runs to 70 m: the v2 road's leg on to the west lay on Hilton Street's own lanes, and a bus there, or one ending in the
+   // junction, was judged to drive on the right of Hilton Street; its last stretch to Hilton Street is paved over, closed to traffic,
+   // as the square's north end now is)
    "path": [[-10, 1],
-    [-10, 72],
-    [-14, 79],
-    [-24, 80],
-    [-160, 80]],
+    [-10, 70]],
    "width": 7
   },
+  { "id": "lever-n", "kind": "plaza", "poly": [[-13.6, 70], [-6.4, 70], [-6.4, 76.4], [-13.6, 76.4]] },
   {
    "id": "pave-l",
    "kind": "pavement",
@@ -118,7 +120,38 @@
     [39, 2],
     [39, 76.4],
     [36, 76.4]]
-  }],
+  },
+  // the square's tree pits (soil under a grille: a tree on bare setts is dropped by the world)
+  { "id": "pit-1", "kind": "grass", "poly": [[12, 19], [14, 19], [14, 21], [12, 21]] },
+  { "id": "pit-2", "kind": "grass", "poly": [[24.8, 30.8], [26.8, 30.8], [26.8, 32.8], [24.8, 32.8]] },
+  { "id": "pit-3", "kind": "grass", "poly": [[19, 51], [21, 51], [21, 53], [19, 53]] },
+  { "id": "pit-4", "kind": "grass", "poly": [[29, 65], [31, 65], [31, 67], [29, 67]] },
+  { "id": "pit-5", "kind": "grass", "poly": [[-3, 59], [-1, 59], [-1, 61], [-3, 61]] }],
+ // the painted kiosk's walls for the navigation: its drawing is pinned at its near corner (3, 30) and the world gives it that corner's
+ // footprint only, so walkers went through its body; a low wall round the inside of its footprint keeps them out (hidden behind it)
+ // (four lines, a hand's breadth apart at the corners: the pieces of one line overlapped where they met)
+ "lines": [{ "id": "kiosk-w1", "kind": "wall", "path": [[4.4, 31], [10.5, 31]], "h": 1 }, { "id": "kiosk-w2", "kind": "wall", "path": [[10.7, 31.3], [10.7, 34.5]], "h": 1 },
+  { "id": "kiosk-w3", "kind": "wall", "path": [[10.4, 34.7], [3.7, 34.7]], "h": 1 }, { "id": "kiosk-w4", "kind": "wall", "path": [[3.4, 34.4], [3.4, 31.4]], "h": 1 }],
+ "buildings": [
+  // Lever Street's west side (left): Victorian warehouses, shops and bars in their ground floors (the v2 view's footprints)
+  { "id": "lv-1", "foot": [[-32, 2], [-18, 2], [-18, 16], [-32, 16]], "style": "mqn-nq-warehouse", "storeys": 5 },
+  { "id": "lv-2", "foot": [[-31, 16], [-18, 16], [-18, 29], [-31, 29]], "style": "mqn-nq-warehouse", "storeys": 4 },
+  { "id": "lv-3", "foot": [[-34, 29], [-18, 29], [-18, 45], [-34, 45]], "style": "mqn-nq-warehouse", "storeys": 6 },
+  { "id": "lv-4", "foot": [[-32, 45], [-18, 45], [-18, 58], [-32, 58]], "style": "mqn-nq-warehouse", "storeys": 5 },
+  { "id": "lv-5", "foot": [[-30, 58], [-18, 58], [-18, 72.6], [-30, 72.6]], "style": "mqn-nq-warehouse", "storeys": 4 },
+  // across Hilton Street at the far end: the mill with the painted gable, warehouses either side
+  { "id": "hn-mill", "foot": [[-22, 88], [-4, 88], [-4, 104], [-22, 104]], "style": "mqn-ancoats-mill", "storeys": 6 },
+  { "id": "hn-1", "foot": [[-3.6, 86.6], [14, 86.6], [14, 102], [-3.6, 102]], "style": "mqn-nq-warehouse", "storeys": 5 },
+  { "id": "hn-2", "foot": [[14.4, 86.6], [30, 86.6], [30, 100], [14.4, 100]], "style": "mqn-nq-warehouse", "storeys": 4 },
+  { "id": "hn-3", "foot": [[30.4, 86.6], [52, 86.6], [52, 104], [30.4, 104]], "style": "mqn-nq-warehouse", "storeys": 6 },
+  { "id": "hn-4", "foot": [[-46, 86.6], [-22.4, 86.6], [-22.4, 102], [-46, 102]], "style": "mqn-nq-warehouse", "storeys": 5 },
+  { "id": "hn-5", "foot": [[-70, 86.6], [-46.4, 86.6], [-46.4, 100], [-70, 100]], "style": "mqn-nq-warehouse", "storeys": 4 },
+  // the square's east side (right), and a taller mill behind the far end
+  { "id": "sq-e1", "foot": [[40.6, 6], [56, 6], [56, 26], [40.6, 26]], "style": "mqn-nq-warehouse", "storeys": 5 },
+  { "id": "sq-e2", "foot": [[40.6, 26], [54, 26], [54, 48], [40.6, 48]], "style": "mqn-nq-warehouse", "storeys": 4 },
+  { "id": "sq-e3", "foot": [[40.6, 48], [58, 48], [58, 76.4], [40.6, 76.4]], "style": "mqn-nq-warehouse", "storeys": 6 },
+  { "id": "far-mill", "foot": [[-20, 130], [20, 130], [20, 150], [-20, 150]], "style": "mqn-ancoats-mill", "storeys": 8 }
+ ],
  "entities": [{
    "obj": "structure.mqn-kiosk-v3",
    "at": [3, 29.99],
@@ -193,7 +226,13 @@
   {
    "obj": "street.bench",
    "at": [7, 37],
-   "facing": 180
+   "facing": 180,
+   "id": "bench-k"
+  },
+  {
+   "obj": "street.bench",
+   "at": [10, 25],
+   "id": "bench-s"
   },
   {
    "obj": "street.mqn-planter-grass",
@@ -294,76 +333,10 @@
    "facing": 0
   },
   {
-   "obj": "person.bench-reader",
-   "at": [12.5, 33.1]
-  },
-  {
-   "obj": "person.skateboarder",
-   "at": [16, 58]
-  },
-  {
-   "obj": "person.child-scooter",
-   "at": [7, 24]
-  },
-  {
    "obj": "street.mqn-bike-hoop",
    "at": [2.6, 6.4],
    "variant": 1,
    "facing": 270
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [-1.2, 7.4],
-   "variant": 1,
-   "facing": 270
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [-0.4, 7.8],
-   "variant": 3,
-   "facing": 270
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [0.6, 7.2],
-   "variant": 0
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [2.4, 8.2],
-   "variant": 0
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [3.1, 8.8],
-   "variant": 1,
-   "facing": 270
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [1.8, 9.2],
-   "variant": 2
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [3.8, 8.5],
-   "variant": 3,
-   "facing": 270
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [11, 12.4],
-   "variant": 4
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [11.6, 13],
-   "variant": 0
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [2.6, 9.8],
-   "variant": 2
   },
   {
    "obj": "person.busker",
@@ -379,29 +352,6 @@
    "obj": "person.phone-idler",
    "at": [4.6, 8.2],
    "facing": 270
-  },
-  {
-   "obj": "person.student",
-   "at": [-2.2, 12.6],
-   "facing": 90
-  },
-  {
-   "obj": "person.student",
-   "at": [-1.6, 13.2],
-   "facing": 270
-  },
-  {
-   "obj": "person.wheelchair-user",
-   "at": [8, 18],
-   "facing": 270
-  },
-  {
-   "obj": "person.bench-reader",
-   "at": [2, 28.7]
-  },
-  {
-   "obj": "person.bench-reader",
-   "at": [7, 37.2]
   },
   {
    "obj": "street.mqn-bin",
@@ -628,10 +578,21 @@
    "n": 12,
    "seed": 9778
   }],
- "life": [{
+ "life": [
+  // buses, black cabs and cars down Lever Street and along Hilton Street
+  { "who": "buses", "on": "lever", "every": "5min", "mix": { "vehicle.bus-double-decker": 1 } },
+  { "who": "cars", "on": "lever", "rate": "5/min", "mix": { "vehicle.car-city": 4, "vehicle.taxi-black": 2, "vehicle.car": 2 } },
+  { "who": "cars", "on": "hilton", "rate": "3/min", "mix": { "vehicle.car-city": 3, "vehicle.taxi-black": 1 } },
+  { "who": "walkers", "on": "pave-n", "rate": "5/min", "mix": { "stroll": 0.4, "commuter": 0.3, "student": 0.3 } },
+  { "who": "walkers", "on": "pave-e", "rate": "4/min", "mix": { "stroll": 0.5, "commuter": 0.5 } },
+  { "who": "visit", "mix": { "student": 0.4, "stroll": 0.3, "takeaway-walker": 0.3 }, "rate": "1/min", "goals": [{ "go": "bench-k" }, { "do": "sit", "for": [25, 80] }, { "leave": "far" }] },
+  { "who": "visit", "mix": { "elderly": 0.4, "stroll": 0.6 }, "rate": "1/min", "goals": [{ "go": "bench-s" }, { "do": "sit", "for": [25, 80] }, { "leave": "far" }] },
+  // pigeons on the setts by day (they roost after dark; the draft's ten were pinned statics, out at midnight)
+  { "who": "pigeons", "count": 8, "on": "square" },
+  {
    "who": "cyclists",
    "on": "lever",
-   "rate": "1/3min",
+   "rate": "1/2min",
    "mix": {
     "cyclist": 1
    }
