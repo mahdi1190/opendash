@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    WORLD SCENE (format v3) world-test / greater-manchester-manchester-centre-4-w3: Deansgate at the John Rylands Library, Manchester.
    Converted by `node tools/world.mjs convert uk-north-manchester-centre/greater-manchester-manchester-centre-4`, then rebuilt by hand
    (22 Oct): the draft had no buildings at all (every footprint was dropped as `unknownSize`), the library was removed for an overlap,
@@ -45,7 +45,7 @@
   // people stopped: one waiting at the crossing, a photographer at the library door, a couple and a student on our side
   ents.push({ obj: 'person.phone-idler', at: P(25, 21.6), id: 'idler' }, { obj: 'person.photographer', at: P(40, 22.6), id: 'photo' }, { obj: 'person.couple', at: P(30, 4.6) }, { obj: 'person.elderly-couple', at: P(46, 23) });
   ents.push({ obj: 'ground.leaf-litter', at: P(16, 6.6) }, { obj: 'ground.leaves', at: P(34, 7.2) }, { obj: 'ground.leaf-litter', at: P(9, 21.4) }, { obj: 'ground.leaves', at: P(66, 22) });
-  worldAdd('world-test', { id: 'greater-manchester-manchester-centre-4-w3', label: 'Deansgate, Manchester', site: 'Deansgate â€” buses and bikes pass the John Rylands Library\'s red sandstone Gothic',
+  worldAdd('world-test', { id: 'greater-manchester-manchester-centre-4-w3', label: 'Deansgate, Manchester', site: 'Deansgate — buses and bikes pass the John Rylands Library\'s red sandstone Gothic',
     tags: ['uk', 'north west', 'greater manchester', 'manchester', 'city', 'civic', 'john rylands library', 'deansgate', 'gothic', 'bus', 'street', 'world-v3'], liveSky: { lat: 53.4806, lon: -2.2473 }, mood: 'energetic', colour: 'red',
     ukPlace: 'manchester-centre', county: 'greater-manchester', ukTown: 'Manchester', ukView: 'world-engine', setting: 'a city street under a Gothic library' }, {
     v: 3,
