@@ -12,6 +12,19 @@
 // metres with facing; flows and behaving actors as life populations; landmarks with a src; and everything else the v2 compile
 // places (U4: kits, hedgerows, bank and edge planting, scatter): exact near the camera (< 35 m), clustered beyond, hedge pieces as
 // hedgerow surfaces (one solid strip each). Without the compile, scatter becomes clustered entries.
+// Lossless since 23 Oct (each loss below was a review line or a silent drop before):
+//   - the v2 generator's buildings (data.buildings with a foot or at/frontage/depth, and every house of data.streets rules) come
+//     through as v3 `buildings` exactly as the compile drew them: { foot (front edge first), front: 0, storeys | h, style, seed,
+//     roof, party, shop, crown }, never as 'building.<style>' entities (unknownSize) or 'building.gen-direct' placeholders
+//   - drive flows become `cars` with their mix of vehicle ids, and f.bus a `buses` population every N min (not 'traffic')
+//   - one life population per surface of a flow (a flow on two pavements is two populations)
+//   - overlap / blocksPath: the placement solver settles the entry (one build; a move of at most NUDGE_MAX_M, logged) before
+//     anything is removed
+//   - a city (buildings, streets, setting urban) takes a city backdrop before the coast does
+//   - a pinned v2 drawing with no real size of its own is drawn 1:1: h = drawn height x anchor depth / f on its pinned corner's
+//     footprint, registered with worldSizeAutoDefine and written to the generated src/app/79-world-zdata-sizes.js (report.sizes)
+//   - `pit: true` on a placement becomes a 2 x 2 m soil pit surface under it (kind grass, the enriched scenes' convention)
+//   - the scene file is compact: one line per surface, entity, building or population
 // What it drops (listed in report.dropped, never kept): light, tint, shadow, reflect, layer, scale (s, k, sByY), flip, pixel paths,
 // water colours / mirror / ripple. Pixel placements are unprojected at their foot row; what has no foot goes to backdrop.skyline or is
 // dropped, and each one is listed under report.review. Converted scenes are NEW items (<id>-w3); the original is never touched.
@@ -25,7 +38,8 @@ const ENGINE_NAMES = ['sceneData', 'sceneCamera', 'sceneProject', 'sceneUnprojec
   'worldObjectInfo', 'worldValidate', 'worldBuild', 'worldAdd', 'worldNavBuild', 'worldLifeInit', 'worldLifeTick', 'worldAgents', 'worldChunks',
   'worldFrameOrder', 'worldOrderCheck', 'worldBackdrop', 'worldCoverage', 'worldHostV2Data', 'worldHostWorld', 'worldHostSim', 'worldHostAgents',
   'worldHostOrderCheck', 'worldHostData', 'worldHostSpec', 'worldRendererFor', 'worldBrains', 'sceneCompile', 'sceneSvg', 'worldNavOk', 'worldNavLayer', 'worldAddProblems', 'worldSurfaceAt', 'worldLifeIsSpawn', 'worldHostViewOf', 'worldHostPlace',
-  'sceneGroundHeight', 'sceneObjs', 'sceneObjReal', 'sceneSeason', 'sceneSnowCover', 'sceneFrostAt', 'almSunPosition', 'almMoonPosition', 'almSceneLight', 'sceneLightV2', 'sceneObjShapes', 'sceneAnimPose'];
+  'sceneGroundHeight', 'sceneObjs', 'sceneObjReal', 'sceneSeason', 'sceneSnowCover', 'sceneFrostAt', 'almSunPosition', 'almMoonPosition', 'almSceneLight', 'sceneLightV2', 'sceneObjShapes', 'sceneAnimPose',
+  'sceneStreetExpand', 'sceneHash', 'SCENE_REAL_SIZE'];
 
 /** Private helpers of render (5frame), the checker (9inv) and traffic (2traffic) that the preflight's route sweeps call, so a sweep
  *  runs the gate's own geometry and never a copy of it (tools/lib/world/preflight.mjs). On E.priv; a missing one is undefined. */
@@ -164,7 +178,7 @@ function headerSrc(root, id) {
  * o: { ref, root }. Returns { spec, meta, report: { ref, from, id, counts, dropped, review, notes } }.
  */
 export function convertData(data, meta, E, o = {}) {
-  const report = { ref: o.ref || null, from: data && data.v === 2 ? 'v2' : 'v1', id: null, counts: {}, dropped: [], review: [], notes: [] };
+  const report = { ref: o.ref || null, from: data && data.v === 2 ? 'v2' : 'v1', id: null, counts: {}, dropped: [], review: [], notes: [], sizes: [] };
   const drop = (path, field, why) => report.dropped.push({ path, field, why });
   const review = (path, msg) => report.review.push({ path, msg });
   const v2 = !!(data && data.v === 2);
@@ -242,13 +256,22 @@ export function convertData(data, meta, E, o = {}) {
   const walkIds = surfaces.filter(s => ['path', 'pavement', 'towpath', 'plaza', 'boardwalk', 'bridge-deck'].includes(s.kind)).map(s => s.id);
   const surfAt = (x, z) => { for (let i = surfaces.length - 1; i >= 0; i--) { const s = surfaces[i]; if (s.poly) { const sp = polySpan(s.poly, z); if (sp && x >= sp[0] && x <= sp[1]) return s; } else if (s.path) { const q = pathAtZ(s.path, z); if (q && Math.abs(q.p[0] - x) <= s.width / 2) return s; } } return null; };
 
+  // the v2 compile, once (what the v2 renderer draws): generated buildings, kits, hedgerows, scatter
+  let compiled = null;
+  if (data && E.sceneCompile) { try { compiled = E.sceneCompile(data, { season: 'summer' }); } catch (e) { report.notes.push('carry: the v2 compile threw (' + e.message + '); nothing carried and no generated buildings'); } }
+
   // 3. placements
-  const entities = [], landmarks = [], skyline = [];
+  const entities = [], landmarks = [], skyline = [], pits = [];
   const info = (id) => (E.worldObjectInfo ? E.worldObjectInfo(id) : undefined);   // undefined: A not loaded (unverified)
+  // 3a. pinned v2 drawings with no real size of their own: their 1:1 size at their anchor (before any is placed or judged)
+  if (v2 && cam) pinnedSizes(data, cam, E, { report, review, info, ref: o.ref });
   const placeEntity = (path, obj, at, facing, extra) => {
     const d = info(obj);
     if (d === null) { review(path, `${obj}: no world descriptor (unknownSize); not placed. Add a descriptor to A's table or swap for a library object`); return; }
     if (d && (d.attachOk || [])[0] === 'air' && !(d.attachOk || []).includes('ground')) { review(path, `${obj}: a flyer with no perch; dropped (the life sim flies birds)`); return; }
+    const pit = !!(extra && extra.$pit);
+    if (extra) delete extra.$pit;
+    if (pit) pits.push({ path, obj, at: [r2(at[0]), r2(at[1])] });
     const e = Object.assign({ obj, at: [r2(at[0]), r2(at[1])] }, extra || {});
     if (e.variant != null && d && Number.isFinite(d.variants) && !(Number.isInteger(e.variant) && e.variant < d.variants)) { review(path, `${obj}: variant ${e.variant} does not exist; dropped the variant`); delete e.variant; }
     if (facing != null) e.facing = facing;
@@ -266,6 +289,7 @@ export function convertData(data, meta, E, o = {}) {
     if (p.variant != null) extra.variant = p.variant;
     if (p.id) extra.id = p.id;
     if (p.fix) extra.fix = true;
+    if (p.pit) extra.$pit = true;
     for (const k of LOOK_FIELDS) if (p[k] !== undefined && !(k === 'x' || k === 'y') && !(k === 's' && p.x != null)) drop(path, k, 'derived by the engine');
     let at = null, facing = p.face != null ? FACE_DEG[p.face] : null;
     if (Array.isArray(p.at)) at = p.at;
@@ -342,18 +366,10 @@ export function convertData(data, meta, E, o = {}) {
       } else for (const it of items) review(it.path, `${src}: pinned perspective art with no foot on the ground; dropped`);
     }
   }
-  // buildings (v2 19): one entity per footprint, the library building of its style
-  for (const [i, b] of ((data && data.buildings) || []).entries()) {
-    const path = `buildings[${i}]`;
-    if (!b || !Array.isArray(b.foot) || b.foot.length < 3) continue;
-    const cx = b.foot.reduce((s, p) => s + p[0], 0) / b.foot.length, cz = b.foot.reduce((s, p) => s + p[1], 0) / b.foot.length;
-    const a = b.foot[0], c = b.foot[1];
-    placeEntity(path, 'building.' + (b.style || 'house'), [cx, cz], (headingOf(c[0] - a[0], c[1] - a[1]) + 270) % 360, {});
-    review(path, `building footprint (${b.style}, ${b.storeys || '?'} storeys) -> one 'building.${b.style}' entity at its centre: the library size replaces the authored footprint`);
-    drop(path, 'foot,storeys,seed', 'size comes from the descriptor');
-  }
+  // buildings (v2 19): the generator's own records, as the compile drew them (data.buildings and the houses of data.streets)
+  const buildings = v2 ? buildingsOf(data, E, compiled, { report, review, drop, ref: o.ref }) : [];
   // scatter -> clusters (world metres); with the compile (3b) the scatter's real result is carried instead
-  const carrying = o.carry !== false && !!E.sceneCompile;
+  const carrying = o.carry !== false && !!compiled;
   for (const [i, s] of ((data && data.scatter) || []).entries()) {
     const path = `scatter[${i}]`;
     if (!s || !s.obj) continue;
@@ -380,29 +396,56 @@ export function convertData(data, meta, E, o = {}) {
   // 3b. carry everything else that is visible (U4, P7): the v2 compile places items the data above does not name (kits,
   // hedgerows, bank and edge planting, auto dressing, scatter that expanded beyond its n). Per object and surface, the shortfall
   // between the compiled items and what the spec already holds is carried: 4 or more as a cluster, fewer as entities.
-  if (o.carry !== false && E.sceneCompile) carryCompiled(data, E, { surfaces, byId, entities, landmarks, surfAt, info, report, rest: surfaces[0] });
+  if (o.carry !== false && compiled) carryCompiled(compiled, E, { surfaces, byId, entities, landmarks, surfAt, info, report, rest: surfaces[0] });
+  // 3c. a placement's tree pit (v2 `pit: true`): a 2 x 2 m soil pit under it (a tree on bare paving is off its habitat). After the
+  // carry, which matches the compile's items to the spec's by surface: a pit there would split a tree from its compiled self
+  // (ids clear of the source's own: a v2 scene may already name a surface pit-1)
+  let pitN = 0;
+  const pitId = () => { let id; do id = 'tree-pit-' + (++pitN); while (byId.has(id)); return id; };
+  pits.forEach((q) => surfaces.push({ id: pitId(), kind: 'grass', poly: [[q.at[0] - 1, q.at[1] - 1], [q.at[0] + 1, q.at[1] - 1], [q.at[0] + 1, q.at[1] + 1], [q.at[0] - 1, q.at[1] + 1]].map(p => [r2(p[0]), r2(p[1])]) }));
+  if (pits.length) review('place', `${pits.length} placement(s) with pit: true keep their pit: a 2 x 2 m soil square under each (${[...new Set(pits.map(q => q.obj))].join(', ')})`);
 
   // 4. life: flows and behaving actors
   const life = [];
   for (const [i, f] of ((data && data.flows) || []).entries()) {
     const path = `flows[${i}]`;
     if (!f) continue;
-    const on = [].concat(f.on || [])[0];
-    const sp = Array.isArray(f.speed) ? (f.speed[0] + f.speed[1]) / 2 : 1.3;
+    // one population per surface of the flow (each surface gets the flow's own density)
+    const ons = [].concat(f.on || []).filter(x => x != null);
+    const drive = f.kind === 'drive';
+    const sp = Array.isArray(f.speed) ? (f.speed[0] + f.speed[1]) / 2 : drive ? 8 : 1.3;
     const every = f.timetable && f.timetable.every;
-    if (f.kind === 'train' || f.kind === 'tram') { life.push({ who: f.kind, on, every: (every || 4) + 'min' }); }
-    else if (f.kind === 'boat') life.push({ who: 'narrowboat-cruising', on, every: (every || 6) + 'min' });
-    else {
-      // density: agents per 100 m of lane at the peak -> arrivals per minute at one edge: density * speed * 60 / 100 (x 2 both ways)
-      const perMin = Math.max(0.2, (f.density || 1) * sp * 0.6 * (f.both ? 2 : 1));
-      const who = f.kind === 'cycle' ? 'cyclists' : f.kind === 'drive' ? 'traffic' : f.kind === 'graze' ? 'grazers' : 'walkers';
-      const e = { who, on, rate: (perMin >= 1 ? Math.round(perMin) : '1/' + Math.round(1 / perMin)) + '/min' };
-      if (e.rate.startsWith('1/')) e.rate = '1/' + Math.round(1 / perMin) + 'min';
+    // density: agents per 100 m of lane at the peak -> arrivals per minute at one edge: density * speed * 60 / 100 (x 2 both ways)
+    const perMin = Math.max(0.2, (f.density || 1) * sp * 0.6 * (f.both ? 2 : 1));
+    const rate = perMin >= 1 ? Math.round(perMin) + '/min' : '1/' + Math.round(1 / perMin) + 'min';
+    for (const on of ons.length ? ons : [undefined]) {
+      if (f.kind === 'train' || f.kind === 'tram') { life.push({ who: f.kind, on, every: (every || 4) + 'min' }); continue; }
+      if (f.kind === 'boat') { life.push({ who: 'narrowboat-cruising', on, every: (every || 6) + 'min' }); continue; }
+      if (drive) {
+        // cars with the flow's own vehicles (their ids are the life mix), and its buses as a timetabled population
+        const e = { who: 'cars', on, rate };
+        if (f.mix && typeof f.mix === 'object') {
+          const m = {};
+          for (const [k, w] of Object.entries(f.mix)) { if (!(w > 0)) continue; if (info(k) === null) { review(path, `flow vehicle ${k}: no world descriptor; left out of the cars' mix`); continue; } m[k] = w; }
+          if (Object.keys(m).length) e.mix = m;
+        }
+        life.push(e);
+        if (f.bus && typeof f.bus === 'object') {
+          const b = { who: 'buses', on, every: (Number.isFinite(f.bus.every) && f.bus.every > 0 ? f.bus.every : 6) + 'min' };
+          if (f.bus.obj && info(f.bus.obj) !== null) b.mix = { [f.bus.obj]: 1 };
+          else if (f.bus.obj) review(path, `bus ${f.bus.obj}: no world descriptor; the default bus runs instead`);
+          life.push(b);
+          if (f.bus.stops) drop(path, 'bus.stops', 'buses stop at the bus stops the world has (a bus-stop object beside the lane)');
+        }
+        continue;
+      }
+      const who = f.kind === 'cycle' ? 'cyclists' : f.kind === 'graze' ? 'grazers' : 'walkers';
+      const e = { who, on, rate };
       if (f.mix && typeof f.mix === 'object') { const m = {}; let tot = 0; for (const [k, w] of Object.entries(f.mix)) { const n = MIX_NAME[k] || k.replace(/^[a-z]+\./, ''); m[n] = (m[n] || 0) + w; tot += w; } for (const k in m) m[k] = Math.round(m[k] / tot * 100) / 100; e.mix = m; }
       life.push(e);
-      if ([].concat(f.on || []).length > 1) review(path, `flow on ${JSON.stringify(f.on)}: one population per surface is better; kept on '${on}' only`);
     }
-    for (const k of ['profile', 'max', 'lanes', 'speed', 'bus', 'seed', 'density', 'timetable', 'both']) if (f[k] !== undefined) drop(path, k, 'life rates and speeds come from the brains and the time of day');
+    if (ons.length > 1) report.notes.push(`${path}: a flow on ${ons.length} surfaces -> one population on each (${ons.join(', ')})`);
+    for (const k of ['profile', 'max', 'lanes', 'speed', 'seed', 'density', 'timetable', 'both']) if (f[k] !== undefined) drop(path, k, 'life rates and speeds come from the brains and the time of day');
   }
   const counts = new Map();
   for (const [i, a] of ((data && data.actors) || []).entries()) {
@@ -425,23 +468,132 @@ export function convertData(data, meta, E, o = {}) {
 
   // 5. the backdrop (required): a preset from the place and the water
   const wk = surfaces.filter(s => s.kind === 'water').map(s => s.water);
-  const city = (data && (data.setting === 'urban' || (data.buildings && data.buildings.length)));
-  let style = wk.includes('sea') || wk.includes('harbour') ? 'coast' : city ? (lat > 53.3 && lat < 53.45 && lon > -1.6 && lon < -1.35 ? 'city-sheffield-hills' : lat > 53.4 && lat < 53.55 && lon > -2.35 && lon < -2.15 ? 'city-manchester-towers' : 'town-low')
-    : wk.includes('canal') ? 'canal-wooded' : wk.includes('lake') || wk.includes('pond') ? 'woodland' : 'farmland';
+  // a city first: a dock or a quay in a city (Salford Quays, a harbour basin) is a city view with water, not a coast
+  const city = !!(data && (data.setting === 'urban' || (data.buildings && data.buildings.length) || (data.streets && data.streets.length) || buildings.length));
+  let style = city ? (lat > 53.3 && lat < 53.45 && lon > -1.6 && lon < -1.35 ? 'city-sheffield-hills' : lat > 53.4 && lat < 53.55 && lon > -2.35 && lon < -2.15 ? 'city-manchester-towers' : 'town-low')
+    : wk.includes('sea') || wk.includes('harbour') ? 'coast' : wk.includes('canal') ? 'canal-wooded' : wk.includes('lake') || wk.includes('pond') ? 'woodland' : 'farmland';
   const backdrop = { style };
   if (skyline.length) backdrop.skyline = skyline;
   review('backdrop', `backdrop style '${style}' chosen from the place and the water; check it against the real view`);
 
   const id = ((meta && meta.id) || (data && data.id) || 'scene').replace(/^[a-z-]*?(fleet|sheffield)/, '$1') + '-w3';
-  const spec = { v: 3, place, camera, surfaces, entities, landmarks, life, backdrop, seed: (data && data.seed) || 1 };
+  const spec = { v: 3, place, camera, surfaces, buildings, entities, landmarks, life, backdrop, seed: (data && data.seed) || 1 };
   if (!landmarks.length) delete spec.landmarks;
+  if (!buildings.length) delete spec.buildings;
   report.id = id;
-  report.counts = { surfaces: surfaces.length, entities: entities.filter(e => e.obj).length, clusters: entities.filter(e => e.cluster).length, landmarks: landmarks.length, life: life.length, skyline: skyline.length, dropped: report.dropped.length, review: report.review.length };
+  report.counts = Object.assign({ surfaces: surfaces.length, buildings: buildings.length, entities: entities.filter(e => e.obj).length, clusters: entities.filter(e => e.cluster).length, landmarks: landmarks.length, life: life.length, skyline: skyline.length, dropped: report.dropped.length, review: report.review.length }, report.counts);
   const m2 = { id, label: (meta && meta.label) || id, site: (meta && meta.site) || '', tags: [].concat((meta && meta.tags) || [], ['world-v3']), liveSky: place.lat != null ? { lat: place.lat, lon: place.lon } : true };
   if (meta && meta.mood) m2.mood = meta.mood;
   if (meta && meta.colour) m2.colour = meta.colour;
   return { spec, meta: m2, report };
 }
+
+// what a v2 building record carries into a v3 building (the rest is listed under report.dropped)
+const BUILDING_KEEP = new Set(['foot', 'at', 'frontage', 'depth', 'front', 'storeys', 'h', 'style', 'roof', 'seed', 'party', 'shop', 'crown', 'subject', 'src', 'i', 'along', 'id']);
+/**
+ * The v2 generator's buildings as v3 `buildings` (19; sceneGenExpand): the records it drew (data.buildings, seeded as it seeds them,
+ * and the houses of every data.streets rule), kept when the compile drew them (a direct item of that key), each on the footprint the
+ * compile drew (its front edge first: front 0) with its storeys (or h), style, seed, roof, party walls, shop and crown. Without the
+ * compile: data.buildings as written. -> [building]
+ */
+function buildingsOf(data, E, C, { report, review, drop, ref }) {
+  const nB = (data.buildings || []).length, nS = (data.streets || []).length, out = [];
+  if (!nB && !nS) return out;
+  const recs = new Map();
+  (data.buildings || []).forEach((b, i) => { if (b && typeof b === 'object') recs.set('b' + i, Object.assign({ seed: E.sceneHash ? E.sceneHash(String(data.id) + '|b|' + i) % 1e6 : i + 1 }, b, { $path: `buildings[${i}]` })); });
+  (data.streets || []).forEach((rule, ri) => {
+    let list = [];
+    if (E.sceneStreetExpand) { try { list = E.sceneStreetExpand(Object.assign({ index: ri }, rule), null, data.camera, data) || []; } catch (e) { review(`streets[${ri}]`, 'the street rule threw: ' + e.message); } }
+    for (const b of list) recs.set('s' + ri + '.' + b.i, Object.assign({}, b, { $path: `streets[${ri}]` }));
+  });
+  const direct = C ? (C.items || []).filter(it => it && it.direct && it.gen != null) : null;
+  const kept = direct ? direct.map(it => ({ key: String(it.gen), d: it.direct })) : [...recs.keys()].map(key => ({ key, d: null }));
+  const dropped = new Set();
+  for (const { key, d } of kept) {
+    const rec = recs.get(key) || {};
+    const foot = d && Array.isArray(d.foot) && d.foot.length >= 3 ? d.foot : Array.isArray(rec.foot) && rec.foot.length >= 3 ? rec.foot : null;
+    if (!foot) { review(rec.$path || key, 'a generated building with no footprint: dropped'); continue; }
+    const b = { id: 'gen-' + key.replace(/\./g, '-'), foot: foot.map(p => [r2(p[0]), r2(p[1])]) };
+    if (Number.isInteger(rec.storeys) && rec.storeys >= 1 && rec.storeys <= 100) b.storeys = rec.storeys;
+    else if (Number.isFinite(rec.h) && rec.h > 0) b.h = r2(rec.h);
+    else if (d && Number.isFinite(d.eave) && d.eave > 0) b.h = r2(d.eave);
+    b.style = (d && d.style) || rec.style || 'victorian-terrace';
+    if (typeof rec.roof === 'string') b.roof = rec.roof;
+    const seed = Number.isFinite(Number(rec.seed)) ? Number(rec.seed) >>> 0 : d && Number.isFinite(d.seed) ? d.seed >>> 0 : null;
+    if (seed != null) b.seed = seed;
+    // the compile's footprint starts at the edge it drew the door on; without it the record's own front (or the generator's choice)
+    if (d) b.front = 0; else if (Number.isInteger(rec.front) && rec.front >= 0 && rec.front < b.foot.length) b.front = rec.front;
+    if (typeof rec.party === 'string' && rec.party !== 'none') b.party = rec.party;
+    if (rec.shop && typeof rec.shop === 'object' && typeof rec.shop.kind === 'string') b.shop = { kind: rec.shop.kind }; else if (rec.shop === false) b.shop = false;
+    if (typeof rec.crown === 'string') b.crown = rec.crown;
+    if (rec.subject) b.landmark = true;
+    b.src = 'v2 ' + (rec.$path || key);
+    for (const k of Object.keys(rec)) if (k !== '$path' && !BUILDING_KEEP.has(k) && !dropped.has(k)) { dropped.add(k); drop('buildings', k, 'not a v3 building field (the style draws it)'); }
+    out.push(b);
+  }
+  report.counts.v2Buildings = direct ? direct.length : recs.size;
+  const fromS = out.filter(b => /^v2 streets/.test(b.src)).length;
+  review('buildings', `${out.length} of the v2 compile's ${report.counts.v2Buildings} generated building(s) carried as v3 buildings (${out.length - fromS} footprint(s), ${fromS} house(s) of ${nS} street rule(s)): foot, front, storeys, style and seed as v2 drew them`);
+  return out;
+}
+/**
+ * The 1:1 size of each pinned v2 drawing that has no real size of its own (no def.real, no SCENE_REAL_SIZE or WORLD_SIZE_GAPS
+ * entry, no descriptor size): h = its drawn height (size[1] x s) x its anchor depth / f, on the footprint of its pinned corner
+ * (2 x 1.2 m: a drawing pinned at one corner of what it shows must not reach into its neighbours). Only a drawing with ONE anchor
+ * (every placement of it within 10 % of one height, here and in any earlier conversion); one whose library size is within 25 % keeps
+ * it. Each is registered (E.worldSizeAutoDefine) and listed in report.sizes for the generated size file.
+ */
+function pinnedSizes(data, cam, E, { report, review, info, ref }) {
+  if (typeof E.worldSizeAutoDefine !== 'function' || !E.sceneUnproject || !E.sceneObj || !(cam.f > 0)) return;
+  const by = new Map();
+  for (const [i, p] of ((data && data.place) || []).entries()) {
+    if (!p || !p.pin || !p.obj || p.x == null || p.y == null || p.layer === 'sky' || p.layer === 'horizon') continue;
+    if (PIECE_RE.test(p.obj) || PIECE_FAMILY[p.obj] || /^(sky|bird|bird-air|person|animal|vehicle|boat)\./.test(p.obj)) continue;
+    const def = E.sceneObj(p.obj);
+    if (!def || !Array.isArray(def.size) || !(def.size[1] > 0)) continue;
+    let kb = null; try { kb = E.worldKb ? E.worldKb(p.obj) : null; } catch { kb = null; }
+    const own = (def.real && def.real.h > 0) || (E.SCENE_REAL_SIZE && E.SCENE_REAL_SIZE[p.obj]) || (E.WORLD_SIZE_GAPS && E.WORLD_SIZE_GAPS[p.obj]) || (kb && kb.size && Number.isFinite(kb.size.l));
+    if (own) continue;
+    let g = null; try { g = E.sceneUnproject(cam, p.x, p.y); } catch { g = null; }
+    if (!g || !(g.d > 0.5 && g.d < 2500)) continue;
+    const h = def.size[1] * (Number.isFinite(p.s) && p.s > 0 ? p.s : 1) * g.d / cam.f;
+    if (!(h > 0.2 && h < 400)) continue;
+    if (!by.has(p.obj)) by.set(p.obj, []);
+    by.get(p.obj).push({ i, h, d: g.d });
+  }
+  for (const [id, L] of by) {
+    const hs = L.map(x => x.h).sort((a, b) => a - b), h = r2(hs[Math.floor(hs.length / 2)]), path = `place[${L[0].i}]`;
+    if (hs[hs.length - 1] > hs[0] * 1.1) { review(path, `${id}: a pinned drawing at ${L.length} depths (${L.map(x => r1(x.d)).join(', ')} m): no single 1:1 height; its library size stays`); continue; }
+    const have = E.WORLD_SIZE_AUTO && E.WORLD_SIZE_AUTO[id];
+    if (have && Math.abs(have.h / h - 1) > 0.1) { review(path, `${id}: pinned at another depth in ${have.from || 'another view'} (1:1 there: ${have.h} m, here ${h} m): no single 1:1 height; the first stays`); continue; }
+    const cur = info(id);
+    if (!have && cur && Math.abs(cur.size.h / h - 1) <= 0.25) continue;
+    const s = { h, l: 2, w: 1.2, from: `${ref || 'v2'}: pinned at ${r1(L[0].d)} m, f ${r1(cam.f)}` };
+    if (!have) E.worldSizeAutoDefine(id, s);
+    report.sizes.push(Object.assign({ id }, have || s));
+    review(path, `${id}: a pinned drawing with no real size, drawn 1:1: ${h} m tall at its anchor ${r1(L[0].d)} m away (the generated size file), on its pinned corner's footprint (2 x 1.2 m)`);
+  }
+}
+/** The generated size file (src/app/79-world-zdata-sizes.js): one worldSizeAutoDefine per id, sorted. sizes: { id: { h, l, w, from } }. */
+export function sizeFileSource(sizes) {
+  const ids = Object.keys(sizes).sort();
+  return ['/* ============================================================',
+    '   WORLD ENGINE: GENERATED sizes of pinned v2 drawings, drawn 1:1 (tools/lib/world/convert.mjs pinnedSizes; WORLD_ENGINE.md 6).',
+    '   h = the drawing\'s height x its anchor depth / f in its own camera; the footprint is its pinned corner. Written by',
+    '   `node tools/world.mjs convert <ref> --out` (and the batch conversions): do not edit by hand. A WORLD_SIZE_GAPS entry wins.',
+    '   ============================================================ */',
+    '(function () {',
+    "  if (typeof worldSizeAutoDefine !== 'function') return;",
+    ...ids.map(id => { const s = sizes[id]; return `  worldSizeAutoDefine(${JSON.stringify(id)}, ${JSON.stringify({ h: s.h, l: s.l, w: s.w, from: s.from || null })});`; }),
+    '})();', ''].join('\n');
+}
+/** The sizes a generated size file holds (its worldSizeAutoDefine lines). */
+export function sizeFileRead(text) {
+  const out = {};
+  for (const m of String(text || '').matchAll(/worldSizeAutoDefine\(("(?:[^"\\]|\\.)*"), (\{[^\n]*\})\);/g)) { try { out[JSON.parse(m[1])] = JSON.parse(m[2]); } catch { /* skip */ } }
+  return out;
+}
+export const SIZE_FILE = '79-world-zdata-sizes.js';
 
 /** Hedge pieces into chains: each piece joins the chain whose end is within 7 m, else starts one; each chain ordered along its
  *  main axis and thinned to a point every 2 m or more. */
@@ -471,13 +623,14 @@ const hashOf = (s) => { let h = 2166136261 >>> 0; for (const c of String(s)) { h
  * Carry the compiled v2 items the spec does not hold yet (3b). Mutates entities; adds report.counts.carried and a note.
  * Items beyond 400 m are the backdrop's (the style's bands); items with no ground record (sky art) were reviewed above.
  */
-function carryCompiled(data, E, { surfaces, byId, entities, landmarks, surfAt, info, report, rest }) {
-  let C;
-  try { C = E.sceneCompile(data, { season: 'summer' }); } catch (e) { report.notes.push('carry: the v2 compile threw (' + e.message + '); nothing carried'); return; }
+function carryCompiled(C, E, { surfaces, byId, entities, landmarks, surfAt, info, report, rest }) {
   const restId = rest ? rest.id : null, groups = new Map();
   for (const it of C.items || []) {
     const g = it.g;
     if (!g || !Number.isFinite(g.x) || !Number.isFinite(g.d) || g.d <= 0.5 || g.d > 400) continue;
+    // a generated building is a direct item with an invisible placeholder object ('building.gen-direct', op 0): it comes through as a
+    // v3 building (buildingsOf), never as that placeholder
+    if (it.direct || it.gen != null || it.o === 'building.gen-direct') continue;
     // perspective pieces are screen art (boats, walks, bridges cut to one view); plants and ground cover from those libraries are real
     if ((PIECE_RE.test(it.o) && !/^(plant|ground|tree|water|flower)\./.test(it.o)) || /^(landmark|sky|bird-air)\./.test(it.o)) continue;
     let on = g.surf && byId.has(g.surf) ? g.surf : null;
@@ -566,10 +719,53 @@ export function convertRef(ref, { root = repoRoot(), E = null, critic = true } =
 
 // the rules a converted entry is removed for (never moved silently): each removal is listed under review
 const REPAIR_RULES = new Set(['overlap', 'blocksPath', 'badAttach', 'unknownSize', 'unknownVariant', 'unreachable', 'unknownWho', 'unknownSurface', 'missingField', 'landmarkSrc']);
-/** Validate; remove what the validator refuses (entities, clusters, life entries, skyline), each one listed; repeat (at most 6 rounds). */
+// overlap and blocksPath are the placement solver's to settle (the validator leaves them to it: 0core `place`): the converter takes
+// its move when it is at most this far (the p90 of the overlaps the first bulk conversion removed), and only removes the rest
+export const NUDGE_MAX_M = 1.2;
+const SOLVER_RULES = new Set(['overlap', 'blocksPath']);
+/**
+ * One build of the spec: every entity or landmark the placement solver moved for an overlap or a blocked path (its log), by at most
+ * NUDGE_MAX_M, gets the solver's position (and facing) in the spec, each listed under review. -> the set of moved entries.
+ */
+function solverNudges(spec, errs, report, E) {
+  const moved = new Set();
+  if (!E.worldBuild || !errs.length) return moved;
+  // every entry gets a name for the one build (the solver's log names entries by id); the names go again after it
+  const tags = [];
+  for (const key of ['entities', 'landmarks']) (spec[key] || []).forEach((it, i) => { if (it && Array.isArray(it.at)) { const had = it.id; if (had == null) it.id = `$nudge:${key}:${i}`; tags.push({ key, i, it, id: it.id, had, at: it.at.slice(), facing: it.facing }); } });
+  let w = null;
+  try { w = E.worldBuild(JSON.parse(JSON.stringify(spec)), { season: 'summer' }); } catch (e) { report.notes.push('repair: the solver build threw (' + e.message + '): nothing nudged'); }
+  for (const t of tags) if (t.had == null) delete t.it.id;
+  if (!w) return moved;
+  const log = Array.isArray(w.log) ? w.log : [], byId = new Map((w.entities || []).map(e => [String(e.id), e]));
+  const why = new Map();
+  for (const l of log) if (l && SOLVER_RULES.has(l.rule) && (l.action === 'move' || l.action === 'rotate')) { const k = String(l.id); if (!why.has(k)) why.set(k, []); why.get(k).push(l); }
+  for (const t of tags) {
+    const L = why.get(String(t.id)), e = byId.get(String(t.id));
+    if (!L || !e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) continue;
+    const d = Math.hypot(e.x - t.at[0], e.z - t.at[1]);
+    if (d > NUDGE_MAX_M) continue;
+    t.it.at = [r2(e.x), r2(e.z)];
+    const turned = L.some(l => l.action === 'rotate') && Number.isFinite(e.facing);
+    if (turned) t.it.facing = Math.round(e.facing);
+    moved.add(t.it);
+    const reason = String(L[0].reason).replace(/\$nudge:(entities|landmarks):(\d+)/g, '$1[$2]');
+    // one review line for them all (repairSpec), each in the notes (--report)
+    (report.$nudges = report.$nudges || []).push({ path: `${t.key}[${t.i}]`, obj: t.it.obj, d: r2(d) });
+    report.notes.push(`${t.key}[${t.i}] ${t.it.obj}: nudged ${r2(d)} m by the placement solver${turned ? ' and turned' : ''} (${[...new Set(L.map(l => l.rule))].join(', ')}: ${reason})`);
+  }
+  report.counts.nudged = (report.counts.nudged || 0) + moved.size;
+  return moved;
+}
+/** Validate; let the solver settle overlaps and blocked paths (solverNudges); remove what the validator still refuses (entities,
+ *  clusters, life entries, skyline), each one listed; repeat (at most 6 rounds). */
 export function repairSpec(spec, report, E = {}) {
   let v = validateSpec(spec, E);
   for (let round = 0; round < 6 && !v.ok; round++) {
+    // 1. the solver first: what it moves within NUDGE_MAX_M stays, at the solver's spot (one build per round)
+    const solverErrs = v.errors.filter(er => SOLVER_RULES.has(er.rule) && /^(entities|landmarks)\[\d+\]/.test(er.path || ''));
+    const moved = round < 3 ? solverNudges(spec, solverErrs, report, E) : new Set();
+    if (moved.size) { v = validateSpec(spec, E); if (v.ok) break; }
     const kill = new Map();
     for (const er of v.errors) {
       if (!REPAIR_RULES.has(er.rule)) continue;
@@ -580,15 +776,25 @@ export function repairSpec(spec, report, E = {}) {
       const item = list && list[+m[2]];
       if (!item) continue;
       if (m[3] && er.rule === 'unknownVariant') { delete item.variant; report.review.push({ path: er.path, msg: 'repair: ' + er.msg + ' (variant dropped)' }); continue; }
-      if (!kill.has(list)) kill.set(list, new Set());
-      if (!kill.get(list).has(+m[2])) report.review.push({ path: er.path, msg: `repair: removed (${er.rule}) ${er.msg}` });
-      kill.get(list).add(+m[2]);
+      // a landmark that overlaps a plain entity keeps its place: the entity goes (the Town Hall is not lost to a lamppost)
+      let L = list, k = +m[2], msg = `repair: removed (${er.rule}) ${er.msg}`, path = er.path;
+      const pm = er.rule === 'overlap' && key === 'landmarks' ? /\(entities\[(\d+)\]\)/.exec(String(er.msg)) : null;
+      if (pm && spec.entities && spec.entities[+pm[1]] && spec.entities[+pm[1]].obj) { L = spec.entities; k = +pm[1]; path = `entities[${k}]`; msg = `repair: removed (overlap) ${L[k].obj} (${path}): it overlaps the landmark ${item.obj}, which stays (${er.msg})`; }
+      if (!kill.has(L)) kill.set(L, new Set());
+      if (!kill.get(L).has(k)) report.review.push({ path, msg });
+      kill.get(L).add(k);
     }
     if (!kill.size && !v.errors.some(er => er.rule === 'unknownVariant')) break;
     for (const [list, set] of kill) { const keep = list.filter((x, i) => !set.has(i)); list.length = 0; list.push(...keep); }
     if (spec.backdrop && spec.backdrop.skyline && !spec.backdrop.skyline.length) delete spec.backdrop.skyline;
     if (spec.landmarks && !spec.landmarks.length) delete spec.landmarks;
     v = validateSpec(spec, E);
+  }
+  const N = report.$nudges || [];
+  delete report.$nudges;
+  if (N.length) {
+    const ds = N.map(n => n.d);
+    report.review.push({ path: 'entities', msg: `${N.length} entr${N.length === 1 ? 'y' : 'ies'} kept where the placement solver settled ${N.length === 1 ? 'it' : 'them'} (overlap, blocksPath; ${Math.min(...ds)}-${Math.max(...ds)} m, at most ${NUDGE_MAX_M} m; each in the notes): ${N.slice(0, 10).map(n => `${n.path} ${n.obj} ${n.d} m`).join(', ')}${N.length > 10 ? ', ...' : ''}` });
   }
   report.counts.entities = spec.entities.filter(e => e.obj).length; report.counts.clusters = spec.entities.filter(e => e.cluster).length; report.counts.life = spec.life.length;
   report.counts.review = report.review.length;
@@ -605,7 +811,7 @@ export function validateSpec(spec, E = {}) {
     try { const r = E.worldValidate(spec); return { ok: !!r.ok, errors: r.errors || [], by: 'worldValidate' }; } catch (e) { return { ok: false, errors: [{ path: '', rule: 'crash', msg: String(e && e.message || e), fix: 'see A' }], by: 'worldValidate' }; }
   }
   const errors = [], err = (path, rule, msg, fix) => errors.push({ path, rule, msg, fix });
-  const TOP = new Set(['v', 'place', 'camera', 'surfaces', 'entities', 'landmarks', 'life', 'backdrop', 'seed']);
+  const TOP = new Set(['v', 'place', 'camera', 'surfaces', 'buildings', 'entities', 'landmarks', 'life', 'backdrop', 'seed']);
   for (const k of Object.keys(spec)) if (!TOP.has(k)) err(k, 'unknownKey', `unknown key ${k}`, 'remove it');
   if (spec.v !== 3) err('v', 'version', 'v must be 3', 'set v: 3');
   const walk = (o, path) => {
@@ -639,6 +845,18 @@ export function sceneFileSource(meta, spec, report) {
     '   PURE. Hidden dev pack until approved; the original scene is untouched.',
     '   ============================================================ */',
   ];
-  return head.join('\n') + '\n(function () {\n  if (typeof worldAdd !== \'function\') return;\n  worldAdd(\'world-test\', ' + JSON.stringify(meta) + ',\n' + JSON.stringify(spec, null, 1).replace(/\n\s*(-?[\d.]+,?)(?=\n)/g, ' $1').replace(/\[\s+/g, '[').replace(/\s+\]/g, ']') + ');\n})();\n';
+  return head.join('\n') + '\n(function () {\n  if (typeof worldAdd !== \'function\') return;\n  worldAdd(\'world-test\', ' + JSON.stringify(meta) + ',\n' + compactJson(spec) + ');\n})();\n';
+}
+/** A spec as compact JSON: one line per top-level value, and one line per entry of each list (a surface, a building, an entity, a
+ *  population), so an edit or a re-conversion touches the lines of what changed, not hundreds of one-number lines. */
+export function compactJson(spec) {
+  const keys = Object.keys(spec), lines = ['{'];
+  keys.forEach((k, ki) => {
+    const v = spec[k], end = ki < keys.length - 1 ? ',' : '';
+    if (Array.isArray(v) && v.length) { lines.push(` ${JSON.stringify(k)}: [`); v.forEach((x, i) => lines.push('  ' + JSON.stringify(x) + (i < v.length - 1 ? ',' : ''))); lines.push(' ]' + end); }
+    else lines.push(` ${JSON.stringify(k)}: ${JSON.stringify(v)}${end}`);
+  });
+  lines.push('}');
+  return lines.join('\n');
 }
 

@@ -27,11 +27,11 @@
 // when }, n }. Ranked: errors first, then the most seasons, then the earliest first hit.
 import { worldMomentsOf, OWNERS } from './adversarial.mjs';
 
-export const PREFLIGHT_STATIC_RULES = Object.freeze(['habitat', 'overlap', 'pathBlocked', 'walkwayWater', 'floating', 'orphan', 'giant', 'nearStatic', 'crownCut', 'landmark', 'bare', 'edgeCut', 'season']);
-export const PREFLIGHT_ROUTE_RULES = Object.freeze(['overlap', 'inSolid', 'edgeCut', 'nearBand']);
+export const PREFLIGHT_STATIC_RULES = Object.freeze(['habitat', 'overlap', 'pathBlocked', 'walkwayWater', 'floating', 'orphan', 'giant', 'nearStatic', 'crownCut', 'landmark', 'bare', 'edgeCut', 'season', 'laneDir']);
+export const PREFLIGHT_ROUTE_RULES = Object.freeze(['overlap', 'inSolid', 'edgeCut', 'nearBand', 'laneDir']);
 // the sweep's sampling (not thresholds: every decision is the gate's): lanes every 0.25 m, rails every 0.1 s and 0.05 m, chord
 // poses every 0.02 m with chords 0.05 m apart; how many candidate poses of one fact are put to the gate's rules
-const SWEEP = Object.freeze({ laneDs: 0.25, railDt: 0.1, railDs: 0.05, chordDs: 0.02, chordDd: 0.05, confirmTimed: 6, confirmGeom: 3 });
+const SWEEP = Object.freeze({ laneDs: 0.25, railDt: 0.1, railDs: 0.05, chordDs: 0.02, chordDd: 0.05, confirmTimed: 6, confirmGeom: 3, edgeMargin: 120 });
 const FIX = {
   habitat: 'move it onto a surface its class may use (K1), or leave it to the fill (P6)',
   overlap: 'move the two solids apart (P2: 5 cm)',
@@ -54,8 +54,12 @@ const ROUTE_FIX = {
   inSolid: (f) => `move ${f.id} off ${f.where}, or the lane off it (a kerb vehicle rides 0.75 m in from the edge)`,
   edgeCut: (f) => `end ${f.where} before the bottom edge, or move the camera (C1, C2)`,
   nearBand: (f) => `end ${f.where} before the near band (f x h / 405 m), or move the camera (C2)`,
+  laneDir: (f) => `${f.where} passes within half a road of another road's centre line (a junction): the gate judges a car by the nearest road line and has no junction exemption; end the crossing road's line at the kerb of this one, or move it clear (engine: laneDir, 79-world-9inv.js)`,
 };
+const MOVER_RULES = new Set(['edgeCut', 'nearBand', 'laneDir']);
 const r1 = (v) => Math.round(v * 10) / 10, r2 = (v) => Math.round(v * 100) / 100;
+/** Distance from a point to a segment (plain geometry; candidates only, the gate's rule decides). */
+const segDist = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], L = dx * dx + dz * dz, t = L ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L)) : 0; return Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz); };
 const now = () => performance.now();
 const copy = (o) => JSON.parse(JSON.stringify(o));
 
@@ -135,7 +139,7 @@ function lanePoses(E, life) {
         if (span.blocked || span.s1 - span.s0 < len * 2) { none.push({ lane: lane.id, road: lane.road, who: spec.who || null, obj, blocked: !!span.blocked, blocks: lane.blocks.slice(), span: [r1(span.s0), r1(span.s1)] }); continue; }
         const kerb = b.kerb ? lane.kerb : 0;
         const placeAt = (s) => { const p = E.worldTrafficLaneAt(lane, s); return { x: p.x - p.tz * kerb, z: p.z + p.tx * kerb, heading: Math.atan2(p.tx, p.tz) }; };
-        const base = { kind: 'lane', cls: ent.m.cls, obj, layer: b.layer, where: lane.id, len, h: hMax };
+        const base = { kind: 'lane', cls: ent.m.cls, obj, layer: b.layer, where: lane.id, road: lane.road, len, h: hMax };
         for (const s of samplesOf(lane.cum, span.s0, span.s1, SWEEP.laneDs)) { const c = placeAt(s); poses.push({ ...base, s, x: c.x, z: c.z, heading: c.heading, vdir: c.heading }); }
         // across a vertex: the drawn centre a step behind, the velocity along the chord (a gait up to 1.2 x the brain's top speed)
         const Lmax = (b.speed ? b.speed[1] : 13.4) * 1.2 * step;
@@ -195,17 +199,19 @@ function poseAgent(E, world, q, id) {
   const vd = Number.isFinite(q.vdir) ? q.vdir : q.heading, v = q.state === 'stopped' ? 0 : 8;
   return { id, obj: q.obj, cls: q.cls, kind: q.kind, layer: q.layer, x: q.x, y, z: q.z, heading: q.heading, vx: Math.sin(vd) * v, vz: Math.cos(vd) * v, len: q.len || 28, h: q.h, r: 1, state: q.state === 'stopped' ? 'stopped' : 'drive' };
 }
-/** The candidates of one pose against one solid set: the gate's geometry at zero tolerance (every hit the rules could report). */
-function candidates(E, P, world, q, ss, cam, season, cand) {
+/** The candidates of one pose against one solid set: the gate's geometry at zero tolerance (every hit the rules could report).
+ *  frame: also the rules that do not depend on the solids (nearBand, the bottom-edge cut): once per pose and date. */
+function candidates(E, P, world, q, ss, cam, season, cand, frame) {
   const a = poseAgent(E, world, q, 'route:' + q.where), ent = P._wfrAgentEnt(a);
   if (!(ent.z > 0.3)) return;                                // behind the lens: render keeps no record
   const vd = Number.isFinite(q.vdir) ? q.vdir : q.heading, moving = a.state !== 'stopped';
   const feet = [ent.foot];
   if (moving && Math.abs(Math.atan2(Math.sin(vd - q.heading), Math.cos(vd - q.heading))) > 1e-6) feet.push(P._wfrAgentFoot(Object.assign({}, a, { heading: vd })));
-  const add = (rule, id, depth) => {
+  // depth: how deep the geometry meets (reported); rank: the order the candidates are put to the gate's rules (default: deepest first)
+  const add = (rule, id, depth, rank) => {
     const key = rule + '|' + id + '|' + ss.key;
     let c = cand.get(key); if (!c) cand.set(key, c = { rule, id, ss, poses: [] });
-    c.poses.push({ q, depth });
+    c.poses.push({ q, depth, rank: rank != null ? rank : depth });
   };
   const m = { id: a.id, static: false, cls: q.cls, obj: q.obj, x: ent.x, z: ent.z, foot: ent.foot, layer: q.layer, solidity: null, height: q.h };
   // overlap (P2): only a mover the gate puts in its solid set (vehicle, train, tram or boat with a solid footprint)
@@ -223,12 +229,38 @@ function candidates(E, P, world, q, ss, cam, season, cand) {
   }
   // inSolid (A2): the mover's centre inside a static solid (rail and air movers are exempt)
   if (q.layer !== 'air' && q.layer !== 'rail') for (const s of ss.grid.near(m.x, m.z, 0.01)) { if (!P._wivRelated(m, s)) { const d = P._wivPolyDist(s.foot, m.x, m.z); if (d < 0) add('inSolid', s.id, -d); } }
+  if (!frame) return;
+  // laneDir (A9): a lane vehicle is judged against the nearest road; it can only be 'on the right' of ANOTHER road (a junction, a
+  // crossing street): a candidate wherever another road's line comes within its half width + 2 m (a superset of the rule's + 0.5 m)
+  // (ranked by how far it sits to the right of that road's line for its direction of travel: the rule's own reading, at zero tolerance)
+  if (q.kind === 'lane' && ss.roads && ss.roads.length) {
+    let dOwn = Infinity;
+    const own = ss.roads.find(s => s.id === q.road);
+    if (own) for (let i = 1; i < own.path.length; i++) dOwn = Math.min(dOwn, segDist(q.x, q.z, own.path[i - 1], own.path[i]));
+    const vd = Number.isFinite(q.vdir) ? q.vdir : q.heading, vx = Math.sin(vd), vz = Math.cos(vd);
+    let worst = 0, rank = -Infinity;
+    for (const s of ss.roads) {
+      if (s.id === q.road) continue;
+      for (let i = 1; i < s.path.length; i++) {
+        const a = s.path[i - 1], b = s.path[i], d = segDist(q.x, q.z, a, b);
+        if (d > (s.width || 0) / 2 + 2 || d > dOwn + 0.01) continue;
+        let tx = b[0] - a[0], tz = b[1] - a[1]; const L = Math.hypot(tx, tz) || 1; tx /= L; tz /= L;
+        if (vx * tx + vz * tz < 0) { tx = -tx; tz = -tz; }
+        const ox = q.x - a[0], oz = q.z - a[1], al = ox * tx + oz * tz, side = (ox - al * tx) * -tz + (oz - al * tz) * tx;
+        if (side < worst) worst = side;
+        // the order to try them in: within the rule's reach of the line first (half width + 0.5 m), then the farthest to the right
+        if (side < 0) rank = Math.max(rank, (d <= (s.width || 0) / 2 + 0.5 ? 100 : 0) - side);
+      }
+    }
+    if (worst < 0) add('laneDir', q.where, -worst, rank);
+  }
   // nearBand (C2)
   if (cam.f && ent.z < cam.f * q.h / 405) add('nearBand', q.where, cam.f * q.h / 405 - ent.z);
-  // the bottom-edge cut (C1, C2): body corners projected first (cheap), then render's own record box where it can matter
+  // the bottom-edge cut (C1, C2): body corners projected first (cheap), then render's own record box where it can matter (a box's
+  // bottom is the body's lowest ground point: a sprite's foot row, a hull's nearest corner; 120 px is a wide margin over that)
   let cy = -Infinity;
   for (const F of feet) for (const c of F) { try { const pp = E.sceneProject(cam, c[0], Math.max(0.3, c[1]), a.y); if (pp && Number.isFinite(pp.Y)) cy = Math.max(cy, pp.Y); } catch { /* none */ } }
-  if (cy > ss.H - 250) {
+  if (cy > ss.H - SWEEP.edgeMargin) {
     let r = null; try { r = P._wfrRec(ent, cam, { season, agent: true, prev: null, regions: ss.regions }); } catch { r = null; }
     const b = r && r.box;
     if (b && b.y1 > ss.H) add('edgeCut', q.where, b.y1 - ss.H);
@@ -307,7 +339,9 @@ export function worldPreflight(E, spec, o = {}) {
       for (const x of v) fact('static|' + x.rule + '|' + x.id, { rule: x.rule, id: x.id, sev: 'error', kind: 'static', msg: x.msg, fix: FIX[x.rule] || 'see WORLD_ENGINE 16.2', owner: OWNERS[x.rule] || null }, season, { date, moment: m.moment, t: 0, when: `${date} ${m.moment}, t 0` });
       if (!solidSets.has(ab.key)) {
         const C = P._wivContext(fr, { world, agents: [] }), sol = P._wivSolids(C);
-        solidSets.set(ab.key, { key: ab.key, grid: solidGrid(P, sol.list), ctx, moment: m.moment, regions: world.$wfr ? world.$wfr.regions : [], H: Number.isFinite(fr.H) ? fr.H : 900 });
+        // (the roads laneDir judges by: the rule's own filter, a centre line and two-way)
+        const roads = (world.surfaces || []).filter(s => s && s.kind === 'road' && Array.isArray(s.path) && s.path.length >= 2 && !s.oneway);
+        solidSets.set(ab.key, { key: ab.key, grid: solidGrid(P, sol.list), ctx, moment: m.moment, regions: world.$wfr ? world.$wfr.regions : [], H: Number.isFinite(fr.H) ? fr.H : 900, roads });
       }
     }
     // 2. the route sweeps against each distinct solid set of the date
@@ -317,9 +351,11 @@ export function worldPreflight(E, spec, o = {}) {
     D.counts = { lanes: life.traffic ? life.traffic.lanes.length : 0, tracks: life.traffic ? life.traffic.tracks.length : 0, lanePoses: lp.poses.length, railTimed: rp.timed.length, railArc: rp.arc.length, solidSets: solidSets.size };
     t = now();
     const cand = new Map(), cam = world.cam;
-    for (const ss of solidSets.values()) for (const q of lp.poses.concat(rp.timed, rp.arc)) candidates(E, P, world, q, ss, cam, season, cand);
+    let first = true;
+    for (const ss of solidSets.values()) { for (const q of lp.poses.concat(rp.timed, rp.arc)) candidates(E, P, world, q, ss, cam, season, cand, first); first = false; }
     D.ms.sweep = now() - t;
     D.counts.candidates = cand.size;
+    D.candidates = [...cand.values()].map(c => `${c.rule}|${c.id}|${c.ss.key}: ${c.poses.length}`);
     // each candidate fact put to the gate's rules: timed rail poses in gate-time order (the first that the rules report is the first
     // hit), arc and lane poses deepest first
     t = now();
@@ -327,10 +363,12 @@ export function worldPreflight(E, spec, o = {}) {
     const onGrid = (t) => Math.abs(t * hz - Math.round(t * hz)) < 1e-6, gridFirst = (p) => { const g = p.ts.find(onGrid); return g != null ? g : Infinity; };
     for (const c of cand.values()) {
       const timed = c.poses.filter(p => p.q.timed).map(p => Object.assign(p, { ts: gateTimes(p.q.clock, p.q.span, warm, loop) })).filter(p => p.ts.length).sort((a, b) => (gridFirst(a) - gridFirst(b)) || (a.ts[0] - b.ts[0]));
-      const geom = c.poses.filter(p => !p.q.timed).sort((a, b) => b.depth - a.depth);
+      const geom = c.poses.filter(p => !p.q.timed).sort((a, b) => b.rank - a.rank);
       let hit = null, at = null, tries = 0;
-      for (const p of timed.slice(0, SWEEP.confirmTimed)) { tries++; const v = confirm(E, world, c.ss, p.q).find(x => x.rule === c.rule && (c.rule === 'edgeCut' || c.rule === 'nearBand' || otherId(x, 'route:' + p.q.where) === c.id)); if (v) { hit = { v, p }; at = Number.isFinite(gridFirst(p)) ? gridFirst(p) : p.ts[0]; break; } }
-      if (!hit) for (const p of geom.slice(0, SWEEP.confirmGeom)) { tries++; const v = confirm(E, world, c.ss, p.q).find(x => x.rule === c.rule && (c.rule === 'edgeCut' || c.rule === 'nearBand' || otherId(x, 'route:' + p.q.where) === c.id)); if (v) { hit = { v, p }; break; } }
+      // (edgeCut, nearBand and laneDir name the mover; overlap and inSolid the solid it meets)
+      const ours = (x, p) => x.rule === c.rule && (MOVER_RULES.has(c.rule) || otherId(x, 'route:' + p.q.where) === c.id);
+      for (const p of timed.slice(0, SWEEP.confirmTimed)) { tries++; const v = confirm(E, world, c.ss, p.q).find(x => ours(x, p)); if (v) { hit = { v, p }; at = Number.isFinite(gridFirst(p)) ? gridFirst(p) : p.ts[0]; break; } }
+      if (!hit) for (const p of geom.slice(0, SWEEP.confirmGeom)) { tries++; const v = confirm(E, world, c.ss, p.q).find(x => ours(x, p)); if (v) { hit = { v, p }; break; } }
       D.counts.confirmed = (D.counts.confirmed || 0) + (hit ? 1 : 0); D.counts.tries = (D.counts.tries || 0) + tries;
       if (!hit) continue;
       const q = hit.p.q, depth = Math.max(...c.poses.map(p => p.depth));

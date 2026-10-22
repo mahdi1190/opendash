@@ -178,6 +178,63 @@ test('motion: 60 s of life on the world-test scenes: nobody on a forbidden cell,
   }
 });
 
+test('core (23 Oct): a building takes the generator\'s seed, front and shop; a computed 1:1 size registers and unregisters', () => {
+  const spec = { v: 3, place: { lat: 53.48, lon: -2.25 }, camera: { eye: 1.65, fov: 60, horizon: 450, heading: 0 }, surfaces: [{ id: 'pave', kind: 'pavement', poly: [[-30, 1], [30, 1], [30, 80], [-30, 80]] }],
+    buildings: [{ id: 'ok', foot: [[-20, 40], [-10, 40], [-10, 50], [-20, 50]], storeys: 3, style: 'victorian-terrace', seed: 42, front: 0, shop: { kind: 'cafe' } },
+      { id: 'bad', foot: [[10, 40], [20, 40], [20, 50], [10, 50]], storeys: 3, seed: -1, front: 9, shop: 'yes' }], backdrop: { style: 'town-low' }, seed: 1 };
+  const errs = E.worldValidate(spec).errors.filter(e => /^buildings/.test(e.path));
+  assert.deepEqual(errs.filter(e => /^buildings\[0\]/.test(e.path)), [], 'seed, front and shop are building keys');
+  assert.deepEqual(errs.filter(e => /^buildings\[1\]/.test(e.path)).map(e => e.path).sort(), ['buildings[1].front', 'buildings[1].seed', 'buildings[1].shop']);
+  // a pinned drawing with no real size: no descriptor until its computed size is registered, and none again once removed
+  const PIECE = /[.-](p-v\d|[a-z]*-view-|fpv-|wl-\d|wr-\d)|-(parapet|bough)$/;   // perspective pieces are screen art, never sized
+  const ids = (E.sceneObjs ? E.sceneObjs() : []).map(o => typeof o === 'string' ? o : o && o.id).filter(id => typeof id === 'string' && /^(structure|street|landmark)\./.test(id) && !PIECE.test(id) && E.worldObjectInfo(id) === null && !(E.sceneObj(id).real && E.sceneObj(id).real.h > 0) && Array.isArray(E.sceneObj(id).size));
+  if (!ids.length) return;
+  const id = ids[0];
+  assert.equal(E.worldSizeAutoDefine(id, { h: 7.5, l: 2, w: 1.2, from: 'test' }), true);
+  assert.equal(E.worldObjectInfo(id).size.h, 7.5);
+  assert.equal(E.worldObjectInfo(id).src, 'auto');
+  E.worldSizeAutoDefine(id, null);
+  assert.equal(E.worldObjectInfo(id), null);
+  // the converter computes it from a pinned placement: h = size[1] x s x anchor depth / f
+  const data = { v: 2, id: 'pin-test', camera: { eye: 1.65, fov: 60, horizon: 450, heading: 0 }, surfaces: [{ id: 'g', kind: 'grass', rest: true }], place: [{ obj: id, x: 800, y: 600, s: 1, pin: true }] };
+  const out = convertData(data, { id: 'pin-test' }, E, { ref: 'test/pin-test' });
+  const cam = E.sceneCamera(Object.assign({}, data, { camera: data.camera })), g = E.sceneUnproject(cam, 800, 600);
+  assert.equal(out.report.sizes.length, 1);
+  assert.ok(Math.abs(out.report.sizes[0].h - E.sceneObj(id).size[1] * g.d / cam.f) < 0.02, JSON.stringify(out.report.sizes[0]));
+  assert.ok(out.spec.entities.concat(out.spec.landmarks || []).some(e => e.obj === id), 'the drawing is placed (it has a size now)');
+  E.worldSizeAutoDefine(id, null);
+});
+
+test('lossless conversion: buildings, cars and buses, one population per surface, nudges, pits and a compact file', () => {
+  // Deansgate's v2 source: 6 footprints, a drive flow with its bus every 3 min, street trees in pits
+  const c = conv('uk-north-manchester-centre/greater-manchester-manchester-centre-4');
+  assert.equal(c.validation.ok, true, JSON.stringify(c.validation.errors.slice(0, 3)));
+  assert.equal(c.spec.buildings.length, c.report.counts.v2Buildings);
+  assert.equal(c.spec.buildings.length, 6);
+  for (const b of c.spec.buildings) { assert.ok(b.foot.length >= 4 && b.style && Number.isInteger(b.seed) && b.front === 0 && (b.storeys || b.h), JSON.stringify(b)); }
+  assert.ok(!c.spec.entities.some(e => /^building\./.test(e.obj || e.cluster || '')), 'no building entities or gen-direct placeholders');
+  const cars = c.spec.life.find(l => l.who === 'cars'), buses = c.spec.life.find(l => l.who === 'buses');
+  assert.deepEqual(cars && cars.mix, { 'vehicle.car-city': 5, 'vehicle.taxi-black': 3, 'vehicle.car': 2 }, 'the flow\'s own vehicles');
+  assert.equal(buses && buses.every, '3min');
+  assert.deepEqual(buses.mix, { 'vehicle.bus-double-decker': 1 });
+  assert.ok(!c.spec.life.some(l => l.who === 'traffic'));
+  assert.equal(c.spec.backdrop.style, 'city-manchester-towers');
+  assert.ok(c.spec.surfaces.some(s => /^tree-pit-/.test(s.id) && s.kind === 'grass'), 'pit: true keeps its pit');
+  assert.ok(c.report.counts.nudged > 0 && c.report.review.some(r => /kept where the placement solver settled/.test(r.msg)), 'conflicts nudged, not deleted');
+  assert.ok(c.report.notes.some(n => /nudged [\d.]+ m by the placement solver/.test(n)));
+  assert.ok(!c.report.review.some(r => /\$nudge/.test(r.msg)) && !c.report.notes.some(n => /\$nudge/.test(n)), 'no temporary names leak');
+  const src = sceneFileSource(c.meta, c.spec, c.report), lines = src.split('\n').length;
+  assert.ok(lines < 40 + c.spec.surfaces.length + c.spec.buildings.length + c.spec.entities.length + c.spec.life.length + 30, 'one line per entry: ' + lines);
+  // sheffield-centre-1: the houses of its Pinstone Street rule and its at/frontage buildings come through; a flow on two surfaces is two populations
+  const s = conv('uk-north-sheffield-centre/south-yorkshire-sheffield-centre-1');
+  assert.equal(s.spec.buildings.length, s.report.counts.v2Buildings);
+  assert.ok(s.spec.buildings.filter(b => /^v2 streets/.test(b.src)).length >= 10, 'the street rule\'s houses');
+  assert.ok(s.spec.buildings.some(b => b.party === 'both'), 'terrace party walls');
+  const per = new Map(); for (const l of s.spec.life) if (l.on) per.set(l.on, (per.get(l.on) || 0) + 1);
+  assert.ok([...per.keys()].length >= 5, 'one population per lived surface: ' + [...per.keys()].join(', '));
+  assert.ok(s.critic.ok, `critic ${s.critic.converted} vs ${s.critic.source}`);
+});
+
 test('CLI: validate and convert', () => {
   const run = (...a) => spawnSync(process.execPath, [join(ROOT, 'tools', 'world.mjs'), ...a], { encoding: 'utf8', cwd: ROOT });
   const v = run('validate', 'fleet-pond-2');

@@ -572,8 +572,33 @@ validator knows every version. v1 and v2 scenes keep working until they are conv
 4. v1 scenes: synthesize a camera from `view` (horizon, fov, heading, eye 1.65) and do step 3 for all.
 5. Dropped fields (light, tint, reflect, layer, scale, hand paths, per-scene water looks) are listed in the report, never kept.
 6. The converted scene must be at least as rich as its source (P7, U4): `world critic` compares the two richness scores and the
-   conversion fails below.
+   conversion fails below. Both sides count generated buildings (a v3 world's `buildings` by the extruder's box, a v2 direct item
+   by its projected box), so a carried street is never "poorer than its source".
 7. Converted scenes are new items (`<id>-w3`) and never replace or delete the original until the user approves.
+
+Lossless since 23 Oct (`tools/lib/world/convert.mjs`; each was a review line or a silent drop before, round-1 and round-2
+critiques of the scene pipeline):
+
+- **Buildings.** The v2 generator's records (`data.buildings` by `foot` or `at`/`frontage`/`depth`, and every house of each
+  `data.streets` rule) come through as v3 `buildings`, exactly as the v2 compile drew them: `{ foot (its door edge first),
+  front: 0, storeys | h, style, seed, roof, party, shop, crown }` (`landmark: true` for the v2 subject). Before, a footprint became
+  one `building.<style>` entity that `unknownSize` dropped, an at/frontage building or a street rule vanished, and the compile's
+  `building.gen-direct` placeholders (op 0) were carried as invisible clusters. The core accepts `seed`, `front` and `shop` on a
+  building (the extruder and the generator already read them).
+- **Traffic.** A `drive` flow becomes `cars` with its own mix of vehicle ids, and its `bus` a `buses` population every N min
+  (there is no `traffic` population). A flow on several surfaces is one population per surface.
+- **Conflicts.** `overlap` and `blocksPath` are the placement solver's (the validator leaves them to it): one build of the spec,
+  and every entry the solver moves by at most `NUDGE_MAX_M` (1.2 m) takes the solver's spot, each listed as `nudged ... by the
+  placement solver`; only what it cannot settle is removed. A landmark that overlaps a plain entity stays and the entity goes.
+- **Backdrop.** A city (buildings, streets, `setting: 'urban'`) takes a city backdrop before water makes it a coast.
+- **Pinned drawings.** A pinned v2 drawing with no real size of its own (no `real`, no `SCENE_REAL_SIZE` or `WORLD_SIZE_GAPS` entry,
+  no descriptor size) is drawn 1:1: `h = size[1] x s x anchor depth / f` on the footprint of its pinned corner (2 x 1.2 m), only
+  when every placement of it gives one height (within 10 %) and its library size is more than 25 % off. The sizes are registered
+  with `worldSizeAutoDefine(id, { h, l, w, from })` and written to the GENERATED `src/app/79-world-zdata-sizes.js` (`convert
+  --out` merges into it); no scene session edits `WORLD_SIZE_GAPS` by hand (a hand entry still wins).
+- **Pits.** `pit: true` on a v2 placement becomes a 2 x 2 m soil pit surface under it (kind grass, as the enriched scenes do).
+- **Compact files.** One line per surface, building, entity and population (`compactJson`), so a later edit or re-conversion
+  touches the lines of what changed.
 
 ## 7. Performance plan and budget (F1-F4, Y7, Z1, Z2)
 
@@ -1173,24 +1198,27 @@ the whole preflight 1.1-2.7 s a scene warm):
 
 1. **Statics.** For each gate date: `worldBuild`, then the gate's own `worldInvariants` with the static rule set (`habitat`,
    `overlap`, `pathBlocked`, `walkwayWater`, `floating`, `orphan`, `giant`, `nearStatic`, `crownCut`, `landmark`, `bare`,
-   `edgeCut`, `season`) on render's `worldFrameAt(world, 0)` at each of the 15 moments (the absent set and the sun differ by
-   the hour). No threshold is re-implemented.
+   `edgeCut`, `season`, `laneDir`) on render's `worldFrameAt(world, 0)` at each of the 15 moments (the absent set and the sun
+   differ by the hour). No threshold is re-implemented.
 2. **Route sweeps.** Every rail vehicle at the gate's clock (the 90 s warm-up and the framed offset life gives it) every 0.1 s over
    one full timetable pattern, and every arc-length pose at 0.05 m; every lane vehicle along its span at 0.25 m, at its kerb
    offset. Two corrections are needed to agree with the gate: across a track vertex the heading snaps while the record's velocity
    is the chord of the last life step, so the body takes every chord pose near each vertex (a hull in perspective follows the
    velocity, a sprite box the heading: both are judged); and a lane vehicle is drawn one move step behind (the 5 Hz frame lerps at
    alpha 0). A pose is a candidate when the gate's own geometry touches at all (zero tolerance); it becomes a fact only when
-   `worldInvariants` (`overlap`, `inSolid`, `edgeCut`, `nearBand`) reports it on render's own frame record of that pose. Rail facts
-   carry the first gate frame (at `--hz`, 5) where they happen.
+   `worldInvariants` (`overlap`, `inSolid`, `edgeCut`, `nearBand`, `laneDir`) reports it on render's own frame record of that
+   pose. Rail facts carry the first gate frame (at `--hz`, 5) where they happen; a lane fact happens whenever a vehicle passes.
 3. **Advisories** no gate rule covers: `laneBlocked`, a lane whose traffic never runs because a parked vehicle or another solid
    stands within 1.2 m of its line (`worldTrafficSpan` gives it no span).
 
 Measured recall: MediaCity's recorded gate (inv-mc.json) has 35 tram-overlap records, 7 distinct (rule, id, date) faults; the
 preflight lists all 7 (fill-15 every date; fill-125 January, fill-75 July, fill-135 and fill-76 October) at the gate's own
-frames (167.6, 200.6, 201.6, 166.4, 167.4 s), and nothing on Deansgate (15 of 15 clean). It does not predict the dynamic
-faults (walkers: `stuck`, `personalSpace`, `order`, `crowd`; those need the life sim). Use it after every edit; run the full
-`world invariants` once before a commit. `tests/world-preflight.test.mjs`.
+frames (167.6, 200.6, 201.6, 166.4, 167.4 s), and nothing on Deansgate (15 of 15 clean). Lanes, positive: Deansgate converted
+from its v2 source (buses and cars on the near road): one real gate cell reported a landmark/building overlap, buses cut by the
+bottom edge and cars "on the right of" the crossing road at the junction; the preflight lists all three on the lanes they happen
+on. It does not predict the dynamic faults (walkers: `stuck`, `personalSpace`, `order`, `crowd`; those need the life sim), and a
+very large world costs its builds (Fleet Pond 2: 27 s of its 29 s are the three `worldBuild`s). Use it after every edit; run
+the full `world invariants` once before a commit. `tests/world-preflight.test.mjs`.
 
 ### Valleys and gritstone edges (18 Oct)
 `valley: { seed, bearing, drop, fall, floor, far: { rise, run }, end: { at, rise, run }, up, concave, noise, roll, fields: { from, to, u, rows, cell, kinds, walls, wallsTo, cross }, woods: { n, s, u, size, obj, density }, hamlet: { at, houses, spread, style, lamps } }`

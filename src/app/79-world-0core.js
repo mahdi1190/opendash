@@ -343,6 +343,19 @@ const WORLD_FRONT_CLASSES = Object.freeze(['bench', 'building']);
 const WORLD_SIZE_GAPS = Object.freeze({ 'landmark.mcr-john-rylands': { h: 34, l: 2.5, w: 2 },
   'structure.mqn-kiosk-v3': { h: 6.24, l: 2, w: 1.2 }, 'structure.mqn-mural-v3': { h: 36.27, l: 2, w: 1.2 },
   'landmark.mqn-iwm-v2': { h: 112.98, l: 32.5, w: 18 }, 'structure.mqn-screen-v2': { h: 9.57, l: 2, w: 1.2 } });
+/** Sizes computed, not typed (23 Oct): the converter's 1:1 sizes of pinned v2 drawings with no real size of their own (h = the drawn
+    height x the anchor depth / f, the footprint of the pinned corner), registered by the generated src/app/79-world-zdata-sizes.js
+    (tools/lib/world/convert.mjs) so no scene session edits the table above. A WORLD_SIZE_GAPS entry wins.
+    worldSizeAutoDefine(id, { h, l, w, from }) registers one (id, null removes it) -> true when taken. */
+const WORLD_SIZE_AUTO = {};
+function worldSizeAutoDefine(id, s) {
+  if (typeof id !== 'string' || !id) return false;
+  if (s == null) delete WORLD_SIZE_AUTO[id];
+  else if (s && _wcNum(s.h) && s.h > 0) WORLD_SIZE_AUTO[id] = Object.freeze({ h: s.h, l: _wcNum(s.l) && s.l > 0 ? s.l : 2, w: _wcNum(s.w) && s.w > 0 ? s.w : 1.2, from: typeof s.from === 'string' ? s.from : null });
+  else return false;
+  _wcInfoMemo.delete(id);
+  return true;
+}
 const _WC_HAB_ATTACH = Object.freeze({ water: 'water', 'water-margin': 'water', bank: 'ground', walk: 'ground', paving: 'ground', grass: 'ground', soil: 'ground',
   'grass-edge': 'ground', 'road-lane': 'ground', road: 'ground', rail: 'rail', tram: 'rail', roof: 'deck', perch: 'deck', deck: 'deck', air: 'air', wall: 'wall' });
 const _WC_SOLIDITY = Object.freeze(['solid', 'walkable', 'water', 'passable', 'overhead']);
@@ -365,6 +378,7 @@ function worldObjectInfo(id) {
 function _wcInfoOf(id, def, kb) {
   let real = typeof sceneObjReal === 'function' ? sceneObjReal(id) : null;
   if (WORLD_SIZE_GAPS[id]) real = Object.assign({ src: 'gap' }, WORLD_SIZE_GAPS[id]);
+  else if (WORLD_SIZE_AUTO[id]) real = { h: WORLD_SIZE_AUTO[id].h, l: WORLD_SIZE_AUTO[id].l, w: WORLD_SIZE_AUTO[id].w, src: 'auto' };
   const ks = kb && kb.size;
   if (!(real && real.h > 0 && real.src !== 'class') && ks && _wcNum(ks.l) && ks.l > 0) {   // no library size: the descriptor's (K2, K8)
     const kh = Array.isArray(ks.h) ? (ks.h[0] + ks.h[1]) / 2 : ks.h;
@@ -462,7 +476,7 @@ const _WC_KEYS = {
   surface: ['id', 'kind', 'water', 'poly', 'path', 'width', 'shallow', 'level', 'obj', 'open', 'y', 'from', 'to', 'hint', 'flow', 'step', 'over'],
   step: ['to', 'kind'],
   line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj', 'stone', 'laid', 'cope'],
-  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap', 'crown', 'landmark', 'party', 'spacing'],
+  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap', 'crown', 'landmark', 'party', 'spacing', 'seed', 'front', 'shop'],
   entity: ['id', 'obj', 'at', 'facing', 'attach', 'variant', 'y', 'open', 'blocks', 'framed', 'row', 'parent', 'model'],
   cluster: ['cluster', 'on', 'edge', 'n', 'seed', 'gap', 'variant'],
   landmark: ['id', 'obj', 'at', 'facing', 'src', 'variant', 'attach', 'model'],
@@ -835,6 +849,11 @@ function _wcCheck(spec0, repair) {
     // a building may be declared a LANDMARK (an abbey, a church, a bridge): the fill never hides its main face (P8), as for a placed landmark
     if (b.landmark != null && typeof b.landmark !== 'boolean') act(p + '.landmark', 'badType', 'landmark is true or false', strip(b, 'landmark', b.id));
     if (b.facing != null && !_wcNum(b.facing)) act(p + '.facing', 'badType', 'facing is degrees', strip(b, 'facing', b.id));
+    // what the v2 generator draws a footprint with (the converter carries them, 23 Oct): its seed (doors, colours, wear), the edge
+    // with the door (an index into foot) and a ground-floor shop ({ kind } or false)
+    if (b.seed != null && !(Number.isInteger(b.seed) && b.seed >= 0)) act(p + '.seed', 'badValue', 'seed is a whole number >= 0', strip(b, 'seed', b.id));
+    if (b.front != null && !(Number.isInteger(b.front) && b.front >= 0 && b.front < b.foot.length)) act(p + '.front', 'badValue', 'front is the index of a footprint edge (0 = foot[0] -> foot[1])', strip(b, 'front', b.id));
+    if (b.shop != null && b.shop !== false && !(_wcObjOf(b.shop) && _wcStr(b.shop.kind))) act(p + '.shop', 'badValue', 'shop is false or { kind }', strip(b, 'shop', b.id));
   });
 
   // entities and landmarks (one bad entry never takes the rest down: G8)

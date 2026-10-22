@@ -5,11 +5,12 @@
 //     201.6 / 166.4 / 167.4 s. The preflight must list exactly those, season by season, at those gate frames.
 //   Deansgate (manchester-centre-4, negative control): 15 of 15 clean: nothing predicted.
 //   Kelham-3 (Alma Street): its parked cars stand in lane alma:f, so that lane never carries traffic: an advisory, not a fault.
+//   Deansgate converted from its v2 source (lanes, positive): buses cut by the bottom edge and cars judged against the crossing road.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadEngine, resolveRef } from '../tools/lib/world/convert.mjs';
+import { loadEngine, resolveRef, convertRef } from '../tools/lib/world/convert.mjs';
 import { worldPreflight, preflightText, PREFLIGHT_STATIC_RULES, PREFLIGHT_ROUTE_RULES } from '../tools/lib/world/preflight.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -46,6 +47,18 @@ test('Deansgate (negative control): a scene the gate passes 15 of 15 has nothing
   assert.deepEqual(r.facts, []);
   assert.ok(r.dates.length === 3 && r.dates.every(D => D.counts.lanes === 4 && D.counts.lanePoses > 0), 'its four lanes were swept in every season');
   assert.match(preflightText(r), /nothing predicted/);
+});
+
+test('lanes, positive: Deansgate converted from its v2 source (buses and cars on the near road) predicts what one gate cell finds', () => {
+  // measured 23 Oct: one gate cell (2026-01-15 dawn, 360 s at 5 Hz) of this conversion reported the Rylands drawing overlapping a
+  // carried building at every frame, buses cut by the bottom edge (t 165.4, 327.4) and cars 'on the right of xing' (the crossing
+  // road's line at the junction, from t 0.4): every one of those rule classes must be predicted, on the lanes it happens on
+  const c = convertRef('uk-north-manchester-centre/greater-manchester-manchester-centre-4', { root: ROOT, E, critic: false });
+  const r = worldPreflight(E, c.spec, { id: 'deansgate-from-v2' });
+  const keys = new Set(r.facts.filter(f => f.sev === 'error').map(f => f.kind + ' ' + f.rule + ' ' + f.id));
+  for (const k of ['route edgeCut deansgate:f', 'route edgeCut deansgate:b', 'route laneDir deansgate:f', 'route laneDir deansgate:b']) assert.ok(keys.has(k), k + ' in ' + [...keys].join('; '));
+  assert.ok(r.facts.some(f => f.kind === 'static' && f.rule === 'overlap' && /mcr-john-rylands/.test(f.id) && /gen-b2/.test(f.msg)), 'the landmark against the carried building');
+  assert.ok(r.facts.filter(f => f.kind === 'route' && f.rule === 'edgeCut').every(f => /bus-double-decker/.test(f.msg)), 'the cut mover is the bus');
 });
 
 test('Kelham-3: parked cars in a lane are an advisory (laneBlocked), never a gate fault', () => {

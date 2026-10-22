@@ -71,7 +71,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join, resolve, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { loadEngine, resolveRef, convertRef, validateSpec, sceneFileSource, WORLD_TEST_REFS, WORLD_ALIASES } from './lib/world/convert.mjs';
+import { loadEngine, resolveRef, convertRef, validateSpec, sceneFileSource, sizeFileSource, sizeFileRead, SIZE_FILE, WORLD_TEST_REFS, WORLD_ALIASES } from './lib/world/convert.mjs';
 import { worldPerfNode, worldPerfBrowser, worldPerfCheck, worldPerfText, worldMotion, worldMotionSvg, worldPerfProfile, worldPerfProfileText, worldPerfMatrix } from './lib/world/perf.mjs';
 import { adversarialFixtures, adversarialText, worldMomentsOf, worldMatrixCells, worldWeatherFits, OWNERS } from './lib/world/adversarial.mjs';
 import { worldCritic, criticOfRef, criticText } from './lib/world/critic.mjs';
@@ -510,6 +510,13 @@ async function main() {
       if (existsSync(file) && !flags.force) { out(`  NOT written: ${file} exists (--force to replace; or --out=<other file>)`); return 1; }
       writeFileSync(file, sceneFileSource(c.meta, c.spec, R));
       out(`  wrote ${file}`);
+      // the 1:1 sizes of its pinned drawings go to the generated size file beside it (src/app/79-world-zdata-sizes.js), merged
+      if (R.sizes && R.sizes.length) {
+        const sf = join(resolve(file, '..'), SIZE_FILE), have = existsSync(sf) ? sizeFileRead(readFileSync(sf, 'utf8')) : {};
+        for (const s of R.sizes) if (!have[s.id]) have[s.id] = { h: s.h, l: s.l, w: s.w, from: s.from };
+        writeFileSync(sf, sizeFileSource(have));
+        out(`  sizes: ${R.sizes.map(s => `${s.id} ${s.h} m`).join(', ')} -> ${sf}`);
+      }
     }
     return c.ok ? 0 : 1;
   }
