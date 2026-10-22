@@ -27,15 +27,21 @@ const ENGINE_NAMES = ['sceneData', 'sceneCamera', 'sceneProject', 'sceneUnprojec
   'worldHostOrderCheck', 'worldHostData', 'worldHostSpec', 'worldRendererFor', 'worldBrains', 'sceneCompile', 'sceneSvg', 'worldNavOk', 'worldNavLayer', 'worldAddProblems', 'worldSurfaceAt', 'worldLifeIsSpawn', 'worldHostViewOf', 'worldHostPlace',
   'sceneGroundHeight', 'sceneObjs', 'sceneObjReal', 'sceneSeason', 'sceneSnowCover', 'sceneFrostAt', 'almSunPosition', 'almMoonPosition', 'almSceneLight', 'sceneLightV2', 'sceneObjShapes', 'sceneAnimPose'];
 
+/** Private helpers of render (5frame), the checker (9inv) and traffic (2traffic) that the preflight's route sweeps call, so a sweep
+ *  runs the gate's own geometry and never a copy of it (tools/lib/world/preflight.mjs). On E.priv; a missing one is undefined. */
+export const PRIVATE_NAMES = Object.freeze(['_wfrRec', '_wfrAgentEnt', '_wfrAgentFoot', '_wfrAbsent', '_wivContext', '_wivSolids', '_wivPen', '_wivPolyDist',
+  '_wivRelated', '_wivDisjointLong', '_wivRadiusOf', '_wivCls', '_wivSolidity', '_wivFootOf', '_wtrFramedOffset', '_wtrParkedOn', '_wtrTrips']);
+
 let _cache = null;
-/** Evaluate the sources once per process (about 0.3 s). */
+/** Evaluate the sources once per process (about 0.9 s). */
 export function loadEngine({ root = repoRoot(), fresh = false } = {}) {
   if (_cache && !fresh && _cache.root === root) return _cache.E;
   // every top-level world* / WORLD_* name of the 79-world sources (each package adds its own; a missing one is undefined)
   let names = ENGINE_NAMES;
   try { const app = join(root, 'src', 'app'); names = [...new Set([...ENGINE_NAMES, ...worldNames(readdirSync(app).filter(f => WORLD_FILE_RE.test(f)).map(f => join(app, f)))])]; } catch (e) { /* the fixed list */ }
   const extra = 'globalThis.__worldEngine = { ' + names.map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ') +
-    ", refs: typeof _animRefs === 'undefined' ? null : _animRefs, packs: typeof _scPacks === 'undefined' ? null : _scPacks };";
+    ", refs: typeof _animRefs === 'undefined' ? null : _animRefs, packs: typeof _scPacks === 'undefined' ? null : _scPacks, priv: { " +
+    PRIVATE_NAMES.map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ') + ' } };';
   loadScenes(root, { fixtures: false, extra });
   const E = globalThis.__worldEngine;
   delete globalThis.__worldEngine;

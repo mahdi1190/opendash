@@ -1126,6 +1126,7 @@ with zero invariant violations, and carry a load log that explains every fix.
 | `inplace <ref> [--browser]` | walking in place measured on what is drawn (tools/lib/world/inplace.mjs): per person per frame the ground and screen speed, clip, view and gait; the share of person-time, the causes (pinch yield, pushed back, group follower, taut lead, queue, sidestep, a side-only figure seen end-on, an end-on view) and the worst offenders; `--browser` reads the frames the real page drew |
 | `pops <ref> [--browser]` | people that pop, slide, snap and shake, measured on what is drawn at 30 fps (tools/lib/world/pops.mjs): the compositor's own draw records and pose plans (`worldFrameFigures`; `--browser`: the blits the page drew, `S.figRec`), each part through its matrix (`worldArtHull`). Per person and dog: size pops and every view change's size ratio by view pair and object, width and position pops, anchor jumps, foot slide (the slower drawn foot against the body side-on), heading snaps, speed and cycle-rate pops, walk/stand and view flicker, gait noise, stutter (the per-frame step's own change), shaking (sideways reversals on a straight course), steering reversals; per person-minute, by kind, worst offenders and examples |
 | `capture <ref> --full` | the WHOLE loop as a frame strip, not just 20 s |
+| `preflight <ref...> [--json]` | what the invariant gate WILL report, predicted in about a second a scene (16.7): each fact once, ranked, with its id, fix and first hit. Not a gate |
 | `critic <ref> [--against <ref>]` | richness, emptiness and framing scores (and against a source) |
 | `compare <v3> <original>` | side by side at 3 dates x 5 times |
 | `adversarial` | every adversarial fixture: load, render, invariants, log |
@@ -1162,6 +1163,34 @@ water mirror lines, invariant violations, the per-system profile, and the scrubb
 | shade under bridges | the bridge casts by geometry (2.4) | look |
 | wide aspect showing unfinished edges | overscan (14.3) | appearance |
 | tiny screens | the subject stays readable in the tile crop (C4 at tile size) | appearance |
+
+### 16.7 The preflight (`world preflight <ref...>`, `tools/lib/world/preflight.mjs`, 23 Oct)
+
+A full gate run is 15 cells x 360 s. But a gate cell is only one of 3 builds (the world depends on the season, not the hour),
+and lane and rail vehicles can only be where their lane or timetable puts them. So most of what the gate finds can be predicted
+from the 3 season worlds in about a second a scene (E1, 22 Oct: engine eval 0.9 s once per process, worldBuild 0.2 s a season,
+the whole preflight 1.1-2.7 s a scene warm):
+
+1. **Statics.** For each gate date: `worldBuild`, then the gate's own `worldInvariants` with the static rule set (`habitat`,
+   `overlap`, `pathBlocked`, `walkwayWater`, `floating`, `orphan`, `giant`, `nearStatic`, `crownCut`, `landmark`, `bare`,
+   `edgeCut`, `season`) on render's `worldFrameAt(world, 0)` at each of the 15 moments (the absent set and the sun differ by
+   the hour). No threshold is re-implemented.
+2. **Route sweeps.** Every rail vehicle at the gate's clock (the 90 s warm-up and the framed offset life gives it) every 0.1 s over
+   one full timetable pattern, and every arc-length pose at 0.05 m; every lane vehicle along its span at 0.25 m, at its kerb
+   offset. Two corrections are needed to agree with the gate: across a track vertex the heading snaps while the record's velocity
+   is the chord of the last life step, so the body takes every chord pose near each vertex (a hull in perspective follows the
+   velocity, a sprite box the heading: both are judged); and a lane vehicle is drawn one move step behind (the 5 Hz frame lerps at
+   alpha 0). A pose is a candidate when the gate's own geometry touches at all (zero tolerance); it becomes a fact only when
+   `worldInvariants` (`overlap`, `inSolid`, `edgeCut`, `nearBand`) reports it on render's own frame record of that pose. Rail facts
+   carry the first gate frame (at `--hz`, 5) where they happen.
+3. **Advisories** no gate rule covers: `laneBlocked`, a lane whose traffic never runs because a parked vehicle or another solid
+   stands within 1.2 m of its line (`worldTrafficSpan` gives it no span).
+
+Measured recall: MediaCity's recorded gate (inv-mc.json) has 35 tram-overlap records, 7 distinct (rule, id, date) faults; the
+preflight lists all 7 (fill-15 every date; fill-125 January, fill-75 July, fill-135 and fill-76 October) at the gate's own
+frames (167.6, 200.6, 201.6, 166.4, 167.4 s), and nothing on Deansgate (15 of 15 clean). It does not predict the dynamic
+faults (walkers: `stuck`, `personalSpace`, `order`, `crowd`; those need the life sim). Use it after every edit; run the full
+`world invariants` once before a commit. `tests/world-preflight.test.mjs`.
 
 ### Valleys and gritstone edges (18 Oct)
 `valley: { seed, bearing, drop, fall, floor, far: { rise, run }, end: { at, rise, run }, up, concave, noise, roll, fields: { from, to, u, rows, cell, kinds, walls, wallsTo, cross }, woods: { n, s, u, size, obj, density }, hamlet: { at, houses, spread, style, lamps } }`

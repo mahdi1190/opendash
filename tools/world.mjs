@@ -15,6 +15,14 @@
 //                         SCAFFOLD a new place: writes src/app/79-world-zscene-<slug>-1.js (a short spec built from the kit's recipe; it shows in the gallery at once),
 //                         then validates it and prints what the engine dropped. Next: render <slug>-1-w3. docs/dev/NEW_SCENE_GUIDE.md
 //   node tools/world.mjs motion <ref> [--seconds=600] [--svg=file] [--json]
+//   node tools/world.mjs preflight <ref...> [--json]
+//                         PREDICT what the invariant gate will report, in about a second a scene, before any 15-cell run (16.7,
+//                         tools/lib/world/preflight.mjs): the 3 season worlds; the gate's own static rules (worldInvariants) on render's
+//                         frame at all 15 moments; exact route sweeps of every lane and rail vehicle (the timetable at the gate's clock,
+//                         chord poses across track vertices, lane vehicles drawn a step behind) confirmed by the gate's own rules; and
+//                         advisories no rule covers (laneBlocked: a parked car in a lane). Each fact once, ranked, with its id, fix and
+//                         first hit. One process and one engine for every ref. NOT a gate: exit 1 on a predicted fault; run the full
+//                         `invariants` before a commit
 //   node tools/world.mjs invariants <ref> [--seconds=360] [--hz=5] [--matrix] [--browser] [--json]
 //                         the invariant checker (16.2) over the full loop at 3 dates x 5 times (--matrix: 4 seasons x 5 times x 3
 //                         weathers, V7); exit 1 on any violation
@@ -552,6 +560,22 @@ async function main() {
     return r.error || (r.errors && r.errors.length) || c.swapPop || c.sizePop ? 1 : 0;
   }
 
+  if (cmd === 'preflight') {
+    // every ref in this one process, through the one engine loaded above
+    const { worldPreflight, preflightText } = await import('./lib/world/preflight.mjs');
+    const all = [];
+    let bad = 0;
+    for (const r of pos.slice(1)) {
+      let s, res;
+      try { s = specOf(E, r); res = worldPreflight(E, s.spec, { id: s.id, ref: s.ref || r, hz: Number(flags.hz) || 5 }); } catch (e) { bad++; all.push({ ref: r, error: e.message }); if (!flags.json) out(`world preflight: ${r}: ERROR ${e.message}`); continue; }
+      if (res.facts.some(f => f.sev === 'error')) bad++;
+      all.push(res);
+      if (!flags.json) out(preflightText(res, s.id + (s.converted ? ' (converted in memory)' : '')));
+    }
+    if (flags.json) out(JSON.stringify(all, null, 1));
+    return bad ? 1 : 0;
+  }
+
   if (cmd === 'invariants' && flags.browser) {
     // the checker on the REAL rendered frames: the page draws every frame of the loop and the record of what it drew is checked
     const s = specOf(E, ref), loop = E.WORLD_LOOP_S || 360;
@@ -778,7 +802,7 @@ async function main() {
     out(`GATE: ${res.pass ? 'PASS' : 'FAIL'}${res.pass ? '' : ' - nothing is shown to the user until every item passes and a fresh reviewer signs off (X4)'}`);
     return res.pass ? 0 : 1;
   }
-  out(`unknown command '${cmd}' (validate | convert | render | motion | invariants | adversarial | critic | sheet | capture | check | compare | perf | glitch | models | accept)`);
+  out(`unknown command '${cmd}' (validate | convert | render | motion | preflight | invariants | adversarial | critic | sheet | capture | check | compare | perf | glitch | models | accept)`);
   return 2;
 }
 
