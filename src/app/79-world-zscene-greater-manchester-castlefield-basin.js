@@ -1,7 +1,7 @@
 /* ============================================================
    WORLD SCENE (format v3) world-test / greater-manchester-castlefield-basin-w3: converted by `node tools/world.mjs convert uk-north-manchester-castlefield/greater-manchester-castlefield-basin`.
    docs/dev/WORLD_ENGINE.md 6. World metres only. A FIRST DRAFT: enrich it by hand to the rich bar before it ships.
-   Review (53):
+   Review (54):
      - place[0]: structure.mcf-railbridge: pixel placement unprojected to [43, 52] m (was pinned perspective art: check it is a real object at this spot)
      - place[1]: structure.mcf-railbridge-front: pixel placement unprojected to [43, 52] m (was pinned perspective art: check it is a real object at this spot)
      - place[2]: structure.mcf-railbridge-pier: pixel placement unprojected to [43, 52] m (was pinned perspective art: check it is a real object at this spot)
@@ -42,7 +42,7 @@
      - place: 3 placement(s) with pit: true keep their pit: a 2 x 2 m soil square under each (tree.plane-avenue)
      - actors[0]: actor vehicle.metrolink-m5000: no life class; dropped
      - actors[1]: actor vehicle.metrolink-m5000: no life class; dropped
-     ... and 13 more (node tools/world.mjs convert --report)
+     ... and 14 more (node tools/world.mjs convert --report)
    PURE. Hidden dev pack until approved; the original scene is untouched.
    ============================================================ */
 (function () {
@@ -135,7 +135,6 @@
   {"cluster":"plant.shrub","on":"green-s","n":5,"seed":6361},
   {"cluster":"ground.leaf-litter","on":"quay-n","n":11,"seed":1403},
   {"cluster":"ground.leaves","on":"quay-n","n":7,"seed":5351},
-  {"obj":"street.lamppost","at":[23.4,51.98]},
   {"obj":"person.angler","at":[20.28,29.97]},
   {"cluster":"plant.planter","on":"quay-n","n":6,"seed":5476},
   {"obj":"street.bollard","at":[-27.04,49.69]},

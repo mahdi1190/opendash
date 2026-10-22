@@ -1,7 +1,7 @@
 /* ============================================================
    WORLD SCENE (format v3) world-test / greater-manchester-castlefield-fort-w3: converted by `node tools/world.mjs convert uk-north-manchester-castlefield/greater-manchester-castlefield-fort`.
    docs/dev/WORLD_ENGINE.md 6. World metres only. A FIRST DRAFT: enrich it by hand to the rich bar before it ships.
-   Review (13):
+   Review (14):
      - place[0]: structure.mcf-railbridge: pixel placement unprojected to [0, 104.9] m (was pinned perspective art: check it is a real object at this spot)
      - place[1]: structure.mcf-railbridge-front: pixel placement unprojected to [0, 104.9] m (was pinned perspective art: check it is a real object at this spot)
      - place[2]: structure.mcf-railbridge-pier: pixel placement unprojected to [0, 104.9] m (was pinned perspective art: check it is a real object at this spot)
@@ -13,8 +13,9 @@
      - actors[1]: actor vehicle.metrolink-m5000: no life class; dropped
      - backdrop: backdrop style 'city-manchester-towers' chosen from the place and the water; check it against the real view
      - entities[24]: repair: removed (overlap) street.bench (entities[24]): it overlaps the landmark landmark.mcf-roman-gate, which stays (landmark.mcf-roman-gate overlaps street.bench (entities[24]) by 0.6 m)
+     - entities[310]: repair: removed (overlap) street.lamppost overlaps street.lamppost (entities[30]) by 0.277 m
      - landmarks[0]: repair: removed (blocksPath) landmark.mcf-roman-gate covers the whole width of path
-     - entities: 8 entries kept where the placement solver settled them (overlap, blocksPath; 0.25-0.75 m, at most 1.2 m; each in the notes): entities[26] street.bench 0.42 m, entities[27] person.bench-sitter 0.5 m, entities[30] street.lamppost 0.69 m, entities[151] plant.grass 0.25 m, entities[232] plant.daisies 0.5 m, entities[269] plant.grass-long 0.75 m, entities[270] plant.grass-long 0.75 m, entities[310] street.lamppost 0.25 m
+     - entities: 6 entries kept where the placement solver settled them (overlap, blocksPath; 0.25-0.75 m, at most 1.2 m; each in the notes): entities[26] street.bench 0.42 m, entities[27] person.bench-sitter 0.5 m, entities[151] plant.grass 0.25 m, entities[232] plant.daisies 0.5 m, entities[269] plant.grass-long 0.75 m, entities[270] plant.grass-long 0.75 m
    PURE. Hidden dev pack until approved; the original scene is untouched.
    ============================================================ */
 (function () {
@@ -75,7 +76,7 @@
   {"obj":"person.bench-sitter","at":[-11,31.65],"facing":90},
   {"obj":"street.mcf-litter-bin","at":[-9.6,31.8],"variant":0},
   {"obj":"street.mcf-litter-bin","at":[12.6,18.4],"variant":1},
-  {"obj":"street.lamppost","at":[-5.13,32.68],"variant":1},
+  {"obj":"street.lamppost","at":[-5,32],"variant":1},
   {"obj":"street.lamppost","at":[17,34.6],"variant":1},
   {"obj":"street.lamppost","at":[-40,107],"variant":1},
   {"obj":"street.lamppost","at":[40,104],"variant":1},
@@ -355,7 +356,6 @@
   {"obj":"ground.leaves","at":[7.31,33.36]},
   {"obj":"person.photographer","at":[-2.4,33.2]},
   {"obj":"ground.leaf-litter","at":[5.16,32.32]},
-  {"obj":"street.lamppost","at":[-4.82,32.18]},
   {"obj":"ground.leaf-litter","at":[4.25,22.71]},
   {"obj":"ground.leaf-litter","at":[6.61,27.68]},
   {"obj":"ground.leaf-litter","at":[5.22,28.52]},

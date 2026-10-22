@@ -1,7 +1,7 @@
 /* ============================================================
    WORLD SCENE (format v3) world-test / greater-manchester-ancoats-canal-w3: converted by `node tools/world.mjs convert uk-north-manchester-quays-nq/greater-manchester-ancoats-canal`.
    docs/dev/WORLD_ENGINE.md 6. World metres only. A FIRST DRAFT: enrich it by hand to the rich bar before it ships.
-   Review (15):
+   Review (16):
      - place[0]: structure.mqn-arch-v4: pixel placement unprojected to [4, 213.1] m (was pinned perspective art: check it is a real object at this spot)
      - place[1]: structure.mqn-lockside-v4: pixel placement unprojected to [-1.4, 26] m (was pinned perspective art: check it is a real object at this spot)
      - place[2]: structure.mqn-lock-v4: pixel placement unprojected to [-0.4, 30] m (was pinned perspective art: check it is a real object at this spot)
@@ -11,12 +11,13 @@
      - backdrop: backdrop style 'city-manchester-towers' chosen from the place and the water; check it against the real view
      - entities[1].at: repair: removed (badAttach) structure.mqn-lockside-v4 stands on the ground but (-1.4, 25.99) is water
      - entities[2]: repair: removed (overlap) structure.mqn-lock-v4 overlaps structure.mqn-lockside-v4 (entities[1]) by 0.2 m
+     - entities[34]: repair: removed (overlap) street.lamppost overlaps street.lamppost (entities[4]) by 0.277 m
      - entities[43]: repair: removed (overlap) street.bench overlaps street.bench (entities[10]) by 0.105 m
      - entities[38]: repair: removed (overlap) boat.narrowboat-stern overlaps boat.narrowboat (entities[19]) by 2.1 m
      - entities[271]: repair: removed (overlap) boat.narrowboat-bow overlaps boat.narrowboat (entities[20]) by 2.1 m
      - entities[39]: repair: removed (overlap) boat.narrowboat-stern overlaps boat.narrowboat (entities[21]) by 2.1 m
      - life[1]: repair: removed (unreachable) cyclists lives on the drive layer and the scene has no surface for it
-     - entities: 5 entries kept where the placement solver settled them (overlap, blocksPath; 0.34-1 m, at most 1.2 m; each in the notes): entities[5] street.lamppost 0.34 m, entities[22] person.bench-reader 1 m, entities[23] person.bench-reader 1 m, entities[34] street.lamppost 0.34 m, entities[243] plant.grass-long 0.5 m
+     - entities: 4 entries kept where the placement solver settled them (overlap, blocksPath; 0.34-1 m, at most 1.2 m; each in the notes): entities[5] street.lamppost 0.34 m, entities[22] person.bench-reader 1 m, entities[23] person.bench-reader 1 m, entities[243] plant.grass-long 0.5 m
    PURE. Hidden dev pack until approved; the original scene is untouched.
    ============================================================ */
 (function () {
@@ -78,7 +79,6 @@
   {"obj":"person.angler","at":[-1.1,12],"facing":270},
   {"obj":"person.couple","at":[1.4,16],"facing":270},
   {"obj":"plant.mqn-buddleia","at":[2.95,5.68],"variant":2},
-  {"obj":"street.lamppost","at":[1.39,11.87]},
   {"obj":"plant.mqn-buddleia","at":[2.95,5.68]},
   {"obj":"plant.mqn-buddleia","at":[2.01,28.2]},
   {"cluster":"plant.mqn-buddleia","on":"verge","n":7,"seed":4447},

@@ -1,7 +1,7 @@
 /* ============================================================
    WORLD SCENE (format v3) world-test / greater-manchester-castlefield-warehouses-w3: converted by `node tools/world.mjs convert uk-north-manchester-castlefield/greater-manchester-castlefield-warehouses`.
    docs/dev/WORLD_ENGINE.md 6. World metres only. A FIRST DRAFT: enrich it by hand to the rich bar before it ships.
-   Review (23):
+   Review (24):
      - place[0]: structure.mcf-railbridge: pixel placement unprojected to [7.4, 197] m (was pinned perspective art: check it is a real object at this spot)
      - place[1]: structure.mcf-railbridge-front: pixel placement unprojected to [7.4, 197] m (was pinned perspective art: check it is a real object at this spot)
      - place[2]: structure.mcf-railbridge-pier: pixel placement unprojected to [7.4, 197] m (was pinned perspective art: check it is a real object at this spot)
@@ -23,8 +23,9 @@
      - actors[1]: actor vehicle.metrolink-m5000: no life class; dropped
      - backdrop: backdrop style 'city-manchester-towers' chosen from the place and the water; check it against the real view
      - entities[12]: repair: removed (overlap) structure.mcf-frame overlaps structure.mcf-frame (entities[11]) by 0.3 m
+     - entities[13]: repair: removed (overlap) structure.mcf-frame overlaps structure.mcf-frame (entities[11]) by 0.3 m
      - entities[28]: repair: removed (overlap) street.mqn-parasol overlaps person.cafe-goer (entities[22]) by 0.364 m
-     - entities: 5 entries kept where the placement solver settled them (overlap, blocksPath; 0.25-0.75 m, at most 1.2 m; each in the notes): entities[12] structure.mcf-frame 0.36 m, entities[13] structure.mcf-frame 0.5 m, entities[27] street.mqn-parasol 0.75 m, entities[56] plant.grass 0.75 m, entities[57] plant.grass 0.25 m
+     - entities: 3 entries kept where the placement solver settled them (overlap, blocksPath; 0.25-0.75 m, at most 1.2 m; each in the notes): entities[27] street.mqn-parasol 0.75 m, entities[56] plant.grass 0.75 m, entities[57] plant.grass 0.25 m
    PURE. Hidden dev pack until approved; the original scene is untouched.
    ============================================================ */
 (function () {
@@ -68,7 +69,6 @@
   {"obj":"structure.mcf-shipping-hole","at":[-13.51,25.86],"variant":0,"attach":"water"},
   {"obj":"structure.mcf-shipping-hole","at":[-8.9,61.06],"variant":1,"attach":"water"},
   {"obj":"structure.mcf-frame","at":[-11.53,18.46],"variant":0},
-  {"obj":"structure.mcf-frame","at":[-11.88,18.11],"variant":2},
   {"obj":"tree.plane-avenue","at":[13,92],"variant":0},
   {"obj":"tree.plane-avenue","at":[14,158],"variant":0,"facing":270},
   {"obj":"tree.plane-avenue","at":[-13,190],"variant":0},
