@@ -223,6 +223,11 @@ test('lossless conversion: buildings, cars and buses, one population per surface
   assert.ok(c.report.counts.nudged > 0 && c.report.review.some(r => /kept where the placement solver settled/.test(r.msg)), 'conflicts nudged, not deleted');
   assert.ok(c.report.notes.some(n => /nudged [\d.]+ m by the placement solver/.test(n)));
   assert.ok(!c.report.review.some(r => /\$nudge/.test(r.msg)) && !c.report.notes.some(n => /\$nudge/.test(n)), 'no temporary names leak');
+  // a duplicate (a placed object and the compile's copy of it) is merged, never nudged apart into two
+  for (const sp of [c.spec, conv('uk-north-manchester-quays-nq/greater-manchester-ancoats-canal').spec]) {
+    const ents = sp.entities.filter(e => e.obj && Array.isArray(e.at));
+    for (let i = 0; i < ents.length; i++) for (let j = i + 1; j < ents.length; j++) if (ents[i].obj === ents[j].obj && /^street\.lamp/.test(ents[i].obj)) assert.ok(Math.hypot(ents[i].at[0] - ents[j].at[0], ents[i].at[1] - ents[j].at[1]) >= 0.5, `${ents[i].obj} twice: ${ents[i].at} / ${ents[j].at}`);
+  }
   const src = sceneFileSource(c.meta, c.spec, c.report), lines = src.split('\n').length;
   assert.ok(lines < 40 + c.spec.surfaces.length + c.spec.buildings.length + c.spec.entities.length + c.spec.life.length + 30, 'one line per entry: ' + lines);
   // sheffield-centre-1: the houses of its Pinstone Street rule and its at/frontage buildings come through; a flow on two surfaces is two populations

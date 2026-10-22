@@ -730,6 +730,17 @@ const SOLVER_RULES = new Set(['overlap', 'blocksPath']);
 function solverNudges(spec, errs, report, E) {
   const moved = new Set();
   if (!E.worldBuild || !errs.length) return moved;
+  // two entries of the SAME object overlapping are one thing twice (a placed lamp and the compile's copy of it a few cm off): a
+  // duplicate to merge (repairSpec removes one), never two things to push apart (23 Oct, Ancoats: a nudge kept a second lamppost)
+  const dup = new Set();
+  for (const er of errs) {
+    if (er.rule !== 'overlap') continue;
+    const a = /^(entities|landmarks)\[(\d+)\]/.exec(er.path || ''), b = /^(\S+) overlaps (\S+) \((entities|landmarks)\[(\d+)\]\)/.exec(String(er.msg));
+    if (!a || !b || b[1] !== b[2]) continue;
+    const ia = spec[a[1]] && spec[a[1]][+a[2]], ib = spec[b[3]] && spec[b[3]][+b[4]];
+    if (ia) dup.add(ia); if (ib) dup.add(ib);
+  }
+  if (dup.size) report.notes.push(`repair: ${dup.size} entr${dup.size === 1 ? 'y overlaps' : 'ies overlap'} another of the same object: duplicates, merged (not nudged)`);
   // every entry gets a name for the one build (the solver's log names entries by id); the names go again after it
   const tags = [];
   for (const key of ['entities', 'landmarks']) (spec[key] || []).forEach((it, i) => { if (it && Array.isArray(it.at)) { const had = it.id; if (had == null) it.id = `$nudge:${key}:${i}`; tags.push({ key, i, it, id: it.id, had, at: it.at.slice(), facing: it.facing }); } });
@@ -742,7 +753,7 @@ function solverNudges(spec, errs, report, E) {
   for (const l of log) if (l && SOLVER_RULES.has(l.rule) && (l.action === 'move' || l.action === 'rotate')) { const k = String(l.id); if (!why.has(k)) why.set(k, []); why.get(k).push(l); }
   for (const t of tags) {
     const L = why.get(String(t.id)), e = byId.get(String(t.id));
-    if (!L || !e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) continue;
+    if (!L || !e || !Number.isFinite(e.x) || !Number.isFinite(e.z) || dup.has(t.it)) continue;
     const d = Math.hypot(e.x - t.at[0], e.z - t.at[1]);
     if (d > NUDGE_MAX_M) continue;
     t.it.at = [r2(e.x), r2(e.z)];
