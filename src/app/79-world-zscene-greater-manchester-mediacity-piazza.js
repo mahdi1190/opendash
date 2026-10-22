@@ -48,7 +48,8 @@
  "place": {
   "lat": 53.4726,
   "lon": -2.2978,
-  "region": "greater-manchester"
+  "region": "greater-manchester",
+  "style": "civic-square"
  },
  "camera": {
   "eye": 6,
@@ -60,10 +61,10 @@
  "surfaces": [{
    "id": "land",
    "kind": "plaza",
-   "poly": [[-10.8, 16.2],
-    [10.8, 16.2],
-    [1993.9, 3000],
-    [-1993.9, 3000]]
+   "poly": [[-400, 0],
+    [400, 0],
+    [400, 130],
+    [-400, 130]]
   },
   {
    "id": "piazza",
@@ -98,9 +99,20 @@
   {
    "id": "tramway",
    "kind": "tram",
-   "path": [[-3.5, 2],
-    [-3.5, 30],
-    [-5, 50],
+   // (the v2 line ran from under the lens: a tram runs its whole track and is ONE rigid 40 m body, so every tram's tail came under a
+   // camera 6 m up, cut by the frame's bottom (edgeCut, nearBand), and on a bend in the near band its body swung over the kit's framing
+   // planter. It now swings in from the left behind the near band, in a long curve entering the frame at about 40 m, and runs on along
+   // the piazza and away west as before, no part of it nearer than 40 m)
+   "path": [[-130, 40],
+    [-80, 40],
+    [-45, 41],
+    [-30, 42.4],
+    [-20, 44.5],
+    [-13, 47.2],
+    [-8, 50.6],
+    [-5.6, 54.5],
+    [-6, 59],
+    [-9, 64.5],
     [-12, 70],
     [-30, 86],
     [-70, 96],
@@ -108,22 +120,24 @@
     [-300, 110]],
    "width": 7.2
   },
-  {
-   "id": "platform",
-   "kind": "plaza",
-   "poly": [[0.2, 20],
-    [3.8, 20],
-    [3.8, 56],
-    [0.2, 56]]
-  },
-  {
-   "id": "platform-l",
-   "kind": "plaza",
-   "poly": [[-10.8, 20],
-    [-7.2, 20],
-    [-7.6, 46],
-    [-11.2, 46]]
-  },
+  // the stop's platform on the line's outer side
+  { "id": "platform", "kind": "platform", "poly": [[0.2, 52], [3.6, 52], [2.4, 64], [-1.2, 64]] },
+  // the concourse in front of it (where the v2 line ran), crossed by its own walkers
+  { "id": "concourse", "kind": "plaza", "poly": [[-14, 3], [4, 3], [4, 52], [-1.8, 52], [-6, 46], [-14, 42]] },
+  // grassed track verges on the outside of the line's bends: on a bend the tram's rigid body swings out over the ground beside the
+  // rails, and the fill's lamps and benches stood there (overlap)
+  { "id": "verge-1", "kind": "grass", "poly": [[-18, 41.2], [-11, 43.6], [-5.2, 47.2], [-2.6, 51.4], [-1.8, 52], [4, 52], [4, 44], [-8, 38], [-18, 37.6]] },
+  { "id": "verge-2", "kind": "grass", "poly": [[-1.6, 64.5], [2, 64.5], [0, 72], [-4, 84], [-14, 94], [-26, 93], [-24, 89], [-14, 79.5], [-9, 74], [-4.8, 66]] },
+  // and on the inside of the first bend, where the body's middle swings in
+  { "id": "verge-3", "kind": "grass", "poly": [[-45, 43.6], [-30, 45], [-20, 47.6], [-13.4, 50.6], [-9.8, 54], [-9.6, 58], [-13, 58], [-17, 53], [-25, 50], [-45, 48]] },
+  // the piazza's young trees in their pits (a tree on bare paving is dropped by the world)
+  { "id": "pit-1", "kind": "grass", "poly": [[10, 23], [12, 23], [12, 25], [10, 25]] },
+  { "id": "pit-2", "kind": "grass", "poly": [[14, 39], [16, 39], [16, 41], [14, 41]] },
+  { "id": "pit-3", "kind": "grass", "poly": [[9, 57], [11, 57], [11, 59], [9, 59]] },
+  { "id": "pit-4", "kind": "grass", "poly": [[18, 69], [20, 69], [20, 71], [18, 71]] },
+  { "id": "pit-5", "kind": "grass", "poly": [[19, 29], [21, 29], [21, 31], [19, 31]] },
+  { "id": "pit-6", "kind": "grass", "poly": [[5, 65], [7, 65], [7, 67], [5, 67]] },
+  { "id": "pit-7", "kind": "grass", "poly": [[13, 83], [15, 83], [15, 85], [13, 85]] },
   {
    "id": "canal",
    "kind": "water",
@@ -134,55 +148,24 @@
     [-600, 318]],
    "shallow": 1.5
   }],
+ // the quay's railing along the water's edge (the v2 view's pinned rail ran across three quarters of the frame: the world drops it)
+ "lines": [{ "id": "quay-rail", "kind": "railing", "path": [[-160, 129.4], [160, 129.4]] }],
+ "buildings": [
+  // MediaCity's glass blocks either side of the piazza (the v2 view's footprints; the near left one set back behind the tram's curve)
+  { "id": "studios-l", "foot": [[-52, 59], [-21, 59], [-22, 72], [-52, 72]], "storeys": 8, "style": "mqn-media" },
+  { "id": "quay-l", "foot": [[-70, 108], [-30, 108], [-30, 126], [-70, 126]], "storeys": 6, "style": "mqn-media" },
+  { "id": "studios-r1", "foot": [[28.5, 18], [62, 18], [62, 48], [28.5, 48]], "storeys": 8, "style": "mqn-media" },
+  { "id": "studios-r2", "foot": [[28.5, 50], [60, 50], [60, 98], [28.5, 98]], "storeys": 5, "style": "mqn-media" },
+  { "id": "studios-r3", "foot": [[30, 102], [64, 102], [64, 126], [30, 126]], "storeys": 11, "style": "mqn-media" },
+  // Trafford Wharf's offices across the water, beside IWM North
+  { "id": "trafford-1", "foot": [[-200, 380], [-130, 380], [-130, 420], [-200, 420]], "storeys": 5, "style": "brutalist" }
+ ],
+ // (no tram stop canopies: the v2 ones were pinned drawings for this camera, and with a stop the trams' alighting riders were put on
+ // one spot, 0 m apart, an engine fault of the tram stop; the trams pass along the piazza)
  "entities": [{
-   "obj": "structure.mqn-mcbridge-v2",
-   "at": [15.91, 125.03],
-   "variant": 0
-  },
-  {
    "obj": "structure.mqn-screen-v2",
    "at": [26.9, 47.99],
    "variant": 0
-  },
-  {
-   "obj": "structure.mqn-quayrail-v2",
-   "at": [13.61, 130.08],
-   "variant": 0
-  },
-  {
-   "obj": "structure.mqn-ole-v2",
-   "at": [1.1, 30],
-   "variant": 0
-  },
-  {
-   "obj": "structure.mqn-ole-v2",
-   "at": [-0.41, 50.29],
-   "variant": 1
-  },
-  {
-   "obj": "structure.mqn-ole-v2",
-   "at": [-7.25, 70.36],
-   "variant": 2
-  },
-  {
-   "obj": "structure.mqn-ole-v2",
-   "at": [-24.45, 87.22],
-   "variant": 3
-  },
-  {
-   "obj": "structure.mqn-ole-v2",
-   "at": [-49.92, 95.73],
-   "variant": 4
-  },
-  {
-   "obj": "structure.mqn-tramstop-v2",
-   "at": [0.9, 33.7],
-   "variant": 0
-  },
-  {
-   "obj": "structure.mqn-tramstop-v2",
-   "at": [-8.1, 29.7],
-   "variant": 2
   },
   {
    "obj": "street.mqn-parasol",
@@ -327,11 +310,6 @@
    "at": [1.8, 50]
   },
   {
-   "obj": "person.takeaway-walker",
-   "at": [-9, 26],
-   "facing": 90
-  },
-  {
    "obj": "person.photographer",
    "at": [2, 128],
    "facing": 0
@@ -339,34 +317,6 @@
   {
    "obj": "person.couple",
    "at": [12, 127.5]
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [7.4, 24],
-   "variant": 0,
-   "facing": 270
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [8.1, 24.6],
-   "variant": 1
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [6.8, 25.3],
-   "variant": 2,
-   "facing": 270
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [8.8, 25.8],
-   "variant": 3
-  },
-  {
-   "obj": "bird.pigeon-feral",
-   "at": [9.6, 24.4],
-   "variant": 4,
-   "facing": 270
   },
   {
    "obj": "tree.mqn-street-tree",
@@ -402,11 +352,6 @@
   },
   {
    "obj": "street.mqn-planter-grass",
-   "at": [3.4, 44],
-   "variant": 0
-  },
-  {
-   "obj": "street.mqn-planter-grass",
    "at": [12, 30],
    "variant": 2
   },
@@ -435,18 +380,6 @@
    "obj": "street.bench",
    "at": [26, 84],
    "facing": 180
-  },
-  {
-   "obj": "person.bench-reader",
-   "at": [16.5, 44.2]
-  },
-  {
-   "obj": "person.bench-reader",
-   "at": [-14, 100.2]
-  },
-  {
-   "obj": "person.bench-reader",
-   "at": [26, 84.2]
   },
   {
    "obj": "street.mqn-bin",
@@ -546,21 +479,6 @@
    "facing": 90
   },
   {
-   "obj": "person.commuter-station",
-   "at": [-9, 22],
-   "facing": 90
-  },
-  {
-   "obj": "person.phone-idler",
-   "at": [-8.6, 30],
-   "facing": 90
-  },
-  {
-   "obj": "person.shopper",
-   "at": [-9.4, 38],
-   "facing": 90
-  },
-  {
    "obj": "person.commuter",
    "at": [2.2, 31],
    "facing": 270
@@ -573,11 +491,6 @@
   {
    "obj": "street.mqn-bin",
    "at": [-11.4, 20],
-   "variant": 0
-  },
-  {
-   "obj": "street.mqn-totem",
-   "at": [-11.6, 28],
    "variant": 0
   },
   {
@@ -629,10 +542,6 @@
    "at": [-30, 34]
   },
   {
-   "obj": "street.mqn-totem",
-   "at": [-12.05, 28]
-  },
-  {
    "obj": "street.mqn-bin",
    "at": [-10.8, 20.05]
   }],
@@ -645,8 +554,16 @@
  "life": [{
    "who": "tram",
    "on": "tramway",
-   "every": "4min"
+   "every": "4min",
+   "mix": { "vehicle.metrolink-m5000": 1 }
   },
+  { "who": "walkers", "on": "platform", "rate": "3/min", "mix": { "commuter": 0.6, "student": 0.4 } },
+  { "who": "walkers", "on": "piazza-w", "rate": "6/min", "mix": { "commuter": 0.4, "stroll": 0.3, "takeaway-walker": 0.3 } },
+  { "who": "walkers", "on": "concourse", "rate": "8/min", "mix": { "commuter": 0.5, "student": 0.2, "takeaway-walker": 0.3 } },
+  { "who": "gulls", "count": 5 },
+  // pigeons on the piazza by day (they roost at night; the draft's were pinned statics, out at midnight)
+  { "who": "pigeons", "count": 6, "on": "piazza" },
+  { "who": "mallard", "count": 4, "on": "canal" },
   {
    "who": "walkers",
    "on": "piazza",
@@ -669,7 +586,7 @@
    "on": "canal"
   }],
  "backdrop": {
-  "style": "coast"
+  "style": "city-manchester-towers"
  },
  "seed": 1
 });

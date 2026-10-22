@@ -336,9 +336,13 @@ const WORLD_FRONT_CLASSES = Object.freeze(['bench', 'building']);
     footprint of its pinned corner only (22 Oct, Deansgate: the John Rylands Library's 42 m crossed the pavement and two buildings).
     A pinned perspective drawing with no real size of its own got the class guess (2 m) and was drawn at a third or a twentieth of its
     size: its `h` is the height its box spans at its anchor in its camera (size[1] x anchor depth / f), so it is drawn 1:1 (22 Oct,
-    Stevenson Square: the painted kiosk at 30 m, the painted gable at 87 m, camera fov 58). */
+    Stevenson Square: the painted kiosk at 30 m, the painted gable at 87 m, camera fov 58; MediaCity: IWM North at 354 m, the screen
+    at 48 m, camera fov 56). Only drawings with ONE anchor: a drawing whose variants stand at different depths (the MediaCity
+    overhead-line masts) cannot be drawn 1:1 by one height; one that runs out of the frame at 1:1 (MediaCity's swing footbridge and
+    quay rail) is dropped by the appearance pass (C1). */
 const WORLD_SIZE_GAPS = Object.freeze({ 'landmark.mcr-john-rylands': { h: 34, l: 2.5, w: 2 },
-  'structure.mqn-kiosk-v3': { h: 6.24, l: 2, w: 1.2 }, 'structure.mqn-mural-v3': { h: 36.27, l: 2, w: 1.2 } });
+  'structure.mqn-kiosk-v3': { h: 6.24, l: 2, w: 1.2 }, 'structure.mqn-mural-v3': { h: 36.27, l: 2, w: 1.2 },
+  'landmark.mqn-iwm-v2': { h: 112.98, l: 32.5, w: 18 }, 'structure.mqn-screen-v2': { h: 9.57, l: 2, w: 1.2 } });
 const _WC_HAB_ATTACH = Object.freeze({ water: 'water', 'water-margin': 'water', bank: 'ground', walk: 'ground', paving: 'ground', grass: 'ground', soil: 'ground',
   'grass-edge': 'ground', 'road-lane': 'ground', road: 'ground', rail: 'rail', tram: 'rail', roof: 'deck', perch: 'deck', deck: 'deck', air: 'air', wall: 'wall' });
 const _WC_SOLIDITY = Object.freeze(['solid', 'walkable', 'water', 'passable', 'overhead']);
