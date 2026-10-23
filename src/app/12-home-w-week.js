@@ -100,6 +100,12 @@ function _hwkRender(el, ctx) {
     if (t.dataset.act === 'upcoming') { setView('week'); return; }
     if (t.dataset.act === 'overdue') { setView('today'); return; }
     if (t.dataset.act === 'day') { setView('day:' + t.dataset.day); return; }
+    // A task on that day in one click (the task card in create mode, or the small dialog).
+    if (t.dataset.act === 'add') {
+      if (typeof calNewTaskDialog === 'function') calNewTaskDialog({ date: t.dataset.day });
+      else if (typeof tcOpenCreate === 'function') tcOpenCreate({ date: t.dataset.day }, { from: t });
+      return;
+    }
     if (t.matches('.hw-item[data-id]')) { ctx.openTask(t.dataset.id, t); return; }
     if (t.dataset.cd) { if (typeof openCountdownEditor === 'function') openCountdownEditor(t.dataset.cd); return; }
     if (t.dataset.bday !== undefined) { homeCalOpenEvent(t.dataset.bday, t); return; }
@@ -144,7 +150,8 @@ function _hwkDayHtml(d, o) {
   const load = `<div class="hw-load${d.loadMin >= 6 * 60 ? ' is-heavy' : ''}" title="${escAttr(d.loadMin ? homeDur(d.loadMin) + ' of events' : 'No events')}" aria-hidden="true"><i style="--load:${loadPct}%"></i></div>`;
   const aria = `${d.k === 0 ? 'Today, ' : ''}${wd} ${d.dn}: ${dueTasks} due${d.events.length ? `, ${d.events.length} event${d.events.length === 1 ? '' : 's'}` : ''}`;
   return `<div class="hw-day${d.today ? ' today' : ''}${d.weekend ? ' weekend' : ''}" data-drop-date="${escAttr(d.iso)}" tabindex="0" role="group" aria-label="${escAttr(aria)}"${d.today ? ' aria-current="date"' : ''}>`
-    + `<div class="hw-h"><span class="hw-wd">${esc(d.k === 0 ? 'Today' : wd)}</span><b class="hw-dn num">${esc(d.dn)}</b>${dueTasks ? `<span class="hw-n num">${esc(dueTasks)}</span>` : ''}</div>`
+    + `<div class="hw-h"><span class="hw-wd">${esc(d.k === 0 ? 'Today' : wd)}</span><b class="hw-dn num">${esc(d.dn)}</b>${dueTasks ? `<span class="hw-n num">${esc(dueTasks)}</span>` : ''}`
+    + `<button type="button" class="hw-add" data-act="add" data-day="${escAttr(d.iso)}" aria-label="${escAttr('Add a task on ' + label)}" data-tip="Add a task">${icon('plus')}</button></div>`
     + load + `<div class="hw-items">${over}${items}${moreBtn}</div>`
     + `<div class="hw-drop" aria-hidden="true">${icon('calendar-check')}<span>Move to ${esc(label)}</span></div>`
     + evs + '</div>';

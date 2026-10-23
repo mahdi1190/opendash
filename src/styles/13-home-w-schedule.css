@@ -208,6 +208,14 @@ html[data-motion="reduced"] .hs-upd.is-running .i { animation: none; }
 .hw-wd { white-space: nowrap; }
 .hw-dn { font-size: 15px; font-weight: var(--weight-semibold); color: var(--fg); letter-spacing: -0.01em; }
 .hw-n { margin-left: auto; font-size: var(--text-2xs); color: var(--fg-subtle); }
+/* Add a task on the day (12-home-w-week.js): shows on hover / keyboard focus; always on touch screens. */
+.hw-add { margin-left: auto; flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: var(--radius-sm); background: none; color: var(--fg-subtle); cursor: pointer; opacity: 0; align-self: center; }
+.hw-n + .hw-add { margin-left: 2px; }
+.hw-add .i { width: 13px; height: 13px; }
+.hw-add:hover { background: var(--bg-muted); color: var(--fg); }
+.hw-add:focus-visible { opacity: 1; outline: none; box-shadow: var(--focus-ring); }
+.hw-day:hover .hw-add, .hw-day:focus-within .hw-add { opacity: 1; }
+@media (hover: none) { .hw-add { opacity: 1; } }
 .hw-day.today .hw-h, .hw-day.today .hw-dn { color: var(--accent-ink); }
 .hw-day.weekend .hw-wd { color: var(--fg-subtle); }
 .hw-load { height: 4px; overflow: hidden; border-radius: 2px; background: color-mix(in oklab, var(--fg-subtle) 14%, transparent); }
