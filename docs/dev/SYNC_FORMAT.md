@@ -198,6 +198,8 @@ top-level keys (`SYNC_FILES` in `lib/sync/manifest.mjs`):
 | `calendar/sources/<sourceId>.json` | published | `{events: [...], calendars: [...], ...}` (lib/calendar-sources.mjs) |
 | `inbox/sources/<sourceId>.json` | published | `{messages: [...], accounts: [...], ...}` (lib/inbox-sources.mjs) |
 | `calendar/events.json`, `inbox/messages.json` | published by `connectors` | the Claude-connector snapshots |
+| `finance-share/finance.json` | published by `bank` | `{v: 1, head: {<analysis field>: JSON text}, tx: {'YYYY-MM'[~n]: {w: [word], r: [[k, day, m, c, a, acct, memo, how, bc, extra?]]}}, bal: {'YYYY-MM': {w: [account], r: [[day, total, [i, value, ...]]]}}, meta: {at, updatedAt, by, fid, currency, lastUpdate, analysisAt, storeCount, accounts, sources}}`: the finance analysis, one register per month of transactions (lib/sync/finance-share.mjs; docs/dev/MULTI_DEVICE.md "Finances on every device"). Written only with encrypted sync |
+| `finance-share/edits.json` | shared | `{v: 1, overrides: {m<hash>: {m, c, at, by}}, budgets: {b<hash>: {c, v, at, by}}, accounts: {a<hash>: {k, name?, colour?, hidden?}}}`: finance edits from any device, one register per entry (an account's fields one each) |
 
 A snapshot in `calendar/sources/` or `inbox/sources/` belongs to the account
 whose record lists its name in `sources` (`{mail: <sourceId>, calendar:

@@ -79,6 +79,7 @@ function syncedFilesChanged(rels) {
   try { if (typeof CalStore !== 'undefined' && CalStore && CalStore.st && CalStore.st.loaded && (any('calendar/') || prefs)) CalStore.load(true); } catch (e) { /* not loaded yet */ }
   try { if (typeof InboxStore !== 'undefined' && InboxStore && InboxStore.st && InboxStore.st.loaded && (any('inbox/') || any('email/') || prefs)) InboxStore.load(true); } catch (e) { /* not loaded yet */ }
   if (list.includes('brief/day-advice.json') && typeof homeAdvisorRefresh === 'function') homeAdvisorRefresh();
+  if (any('finance-share/') && typeof financeSharedChanged === 'function') financeSharedChanged();   // finances from the computer that reads the bank (65-finance-view.js)
   _rjFilesRefresh(list, any);
   if ((list.includes('profile.json') || any('briefs/') || prefs) && typeof render === 'function') { try { render(); } catch (e) { /* fine */ } }
   // A proposal applied or dismissed on another computer (state/proposals.json): the assistant's cards follow (70-ai-chats.js).

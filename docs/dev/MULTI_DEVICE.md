@@ -34,6 +34,7 @@ How the pieces fit together, in plain words. The details are in
 | the list of connected accounts (`accounts.json`: address, provider, features, who reads it, the ids of its snapshot files) | **every sign-in, token, app password and key** |
 | the mail and calendar each account's reader saved | `config.json`, `sources.json`, `connections.json`, the local token |
 | who runs which background job (`roles.json`) | the sync identity and its encryption keys |
+| the finances the computer that reads the bank published (`finance-share/finance.json`), and your finance edits from any device (`finance-share/edits.json`: categories, budgets, account names, colours, Show in Finances); encrypted sync only | the finance folder (transaction store, CSV imports, the spreadsheet, `rules.json`), bank sign-ins and connector tokens |
 
 Sign-ins never travel, on purpose: a refresh token that two computers both use
 breaks on one of them (a Monzo token works only once), and a cloud folder is
@@ -193,6 +194,69 @@ connecting) asks this rule. One place records it: `accounts.json` for accounts,
 `roles.json` for jobs, with sync on or off. The sync engine's
 `isFetcher / fetcher / setFetcher / clearFetcher` is the only implementation;
 `lib/main-computer.mjs` is a view on it.
+
+## Finances on every device
+
+The bank is read on one computer, the **finance computer**: the one that runs
+the `bank` job by the rule above. With capabilities known, that is the
+computer that reads a bank (a bank connector, a direct connection), else the
+one that holds the finance store (CSV imports, the spreadsheet), else the
+recorded role or the main computer. The first time it publishes it is
+recorded as the `bank` role (`roles.json`) when none is, so two computers that
+could both read the bank (the same Claude account's connector on each) never
+take turns while one sleeps; choosing a main computer clears it, as for every
+job. Only while sync is end-to-end encrypted;
+sync off or plain sync: each computer has its own finances, as before.
+
+- **Published** (`finance-share/finance.json`, role `published`, account
+  `bank`): after every rebuild of its analysis (an update, an import, a new
+  category, an account shown or hidden) the finance computer publishes what
+  the Finances view and the Home money cards read: the whole analysis
+  (totals, categories, recurring payments, flags, balances and their history,
+  the accounts and sources the chips show, the last update's result) and every
+  transaction. Compact: one register per month of transactions (rows as
+  arrays, repeated words as numbers), so a new payment rewrites only its month
+  and a recategorised merchant only the months it is in. Unchanged content is
+  not written again. A text that looks like a credential is blanked first.
+- **Shown** on the others, read only: `GET /api/finance` (and the glance, the
+  money brief, the story, the export) answer from that copy with
+  `meta.remote = {name, online, updatedAt}`. Finances' subtitle says
+  "Finance from Home laptop · updated 5 min ago · data to …"; Home's Money
+  card has the same line; before the first copy arrives, "Finance from Home
+  laptop · waiting for its first update" instead of "Connect your bank".
+  Connections counts the bank as the group's ("Finance from Home laptop").
+- **Sync bank** there asks the finance computer (`POST /api/finance/update`
+  answers 202 `{remote}`: a remote request `fetch:finance` addressed to it,
+  `lib/sync/requests.mjs`); it runs its own update and publishes before the
+  answer goes back. Off: the request says "Home laptop is off. Try again
+  later…" and the last copy stays on show. Automatic runs ("Start my day")
+  are skipped there. A CSV is imported on the finance computer (an import
+  elsewhere answers 409 `FINANCE_ELSEWHERE`).
+- **Edits** from any device (`finance-share/edits.json`, role `shared`, one
+  register per entry, keyed by a hash so a name is never a field name): a
+  merchant's category, a budget (only the categories a save changed, so a
+  budget added on the other device is kept), an account's name, colour and
+  Show in Finances. Two devices recategorising the same merchant write the
+  same register: the later change wins everywhere and the other is listed as
+  a clash in Settings > Sync; different merchants both stay. The finance
+  computer applies what changed since it last applied it (to `rules.json`,
+  `budgets.json`, its sources), rebuilds once and publishes; until then (it
+  may be off) the others lay the categories over the copy. The shared budgets
+  are the budgets on every device.
+
+- **The Claude host** does not read banks for another computer: finances are
+  one store, the finance computer's, so a bank read through Claude is read
+  there (`lib/remote-jobs.mjs` `financeSyncs()` is false on purpose: a bank
+  the host read for someone else would land in a finance folder nobody
+  publishes). Each computer's own banks: only the finance computer's show.
+- **Trial mode** (a computer that does not take changes from the others yet)
+  keeps its own finances, edits and imports; its Finances and Home only say
+  where they would come from ("Finance from Home laptop · turn on 'Use
+  changes from my other computers' to see it").
+
+Code: `lib/sync/finance-share.mjs` (format, pure), `lib/finance-share.mjs`
+(who publishes, publish, apply, ask), the hooks in `lib/finance.mjs`
+(`financeData()` answers from the copy) and `server/routes/finance.mjs`.
 
 ## The Claude host
 

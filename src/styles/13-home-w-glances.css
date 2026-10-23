@@ -60,6 +60,10 @@
 .hbf-sub b.warn { color: var(--warning-ink); }
 .hbf-stale { display: inline-flex; align-items: center; gap: 5px; color: var(--fg-subtle); }
 .hbf-stale .i { width: 12px; height: 12px; }
+/* "Finance from Home laptop · updated 5 min ago" (finances another device reads) */
+.hbf-via { display: flex; align-items: center; gap: 6px; margin-top: 12px; font-size: var(--text-xs); line-height: 16px; color: var(--fg-subtle); min-width: 0; }
+.hbf-via .i { width: 12px; height: 12px; flex: none; }
+.hbf-via span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hbf-rows { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
 /* label and amount on one line, the track under them: reads well from a phone tile to L */
 .hbf-mtr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "l v" "t t"; align-items: baseline; column-gap: 10px; row-gap: 6px; font-size: 12px; }

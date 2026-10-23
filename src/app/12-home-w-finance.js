@@ -232,6 +232,8 @@ function _hbFinLoad(maxAge) {
     .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
     .then(j => {
       _hbFin.status = j && j.status === 'ok' ? 'ok' : 'empty';
+      // Finances another device reads (lib/finance-share.mjs): {name, online, updatedAt, waiting?}.
+      _hbFin.remote = j && j.meta && j.meta.remote && j.meta.remote.name ? j.meta.remote : null;
       _hbFin.glance = _hbFin.status === 'ok' ? homeFinGlance(j.analysis, { today: todayStr(), weekStart: _hbFinWeekStart() }) : null;
       if (_hbFin.status === 'ok' && !_hbFin.glance) _hbFin.status = 'empty';
       _hbFin.err = null;
@@ -239,7 +241,7 @@ function _hbFinLoad(maxAge) {
     .catch(() => { _hbFin.err = 'unreachable'; })
     .finally(() => {
       _hbFin.loading = false; _hbFin.at = Date.now();
-      const key = (_hbFin.status || '') + '#' + (_hbFin.err || '') + '#' + (_hbFin.glance ? _hbFin.glance.key : '');
+      const key = (_hbFin.status || '') + '#' + (_hbFin.err || '') + '#' + (_hbFin.glance ? _hbFin.glance.key : '') + '#' + (_hbFin.remote ? _hbFin.remote.name + (_hbFin.remote.waiting ? '~' : '') : '');
       const changed = key !== _hbFin.key;
       _hbFin.key = key;
       if (changed && state.view === 'home' && typeof homeRerenderWidget === 'function' && document.querySelector('.hg-w[data-wid="finance"]')) homeRerenderWidget('finance');
@@ -340,6 +342,20 @@ function _hbFinRender(el, ctx) {
       actions: [{ label: 'Retry', icon: 'refresh-cw', run: () => { _hbFin.at = 0; _hbFin.err = null; _hbFin.key = ''; _hbFinLoad(0); homeRerenderWidget('finance'); } }] }));
     return true;
   }
+  const rm = _hbFin.remote;
+  if ((!g || _hbFin.status !== 'ok' || !g.count) && rm) {
+    // Another device reads the bank and has not sent anything yet: name it, never "Connect your bank".
+    const off = ctx.off ? ctx.off({ icon: 'wallet', title: 'Money at a glance',
+      text: rm.trial ? `Finance from ${rm.name}. To see it here, turn on "Use changes from my other computers" in Settings > Sync.`
+        : `Finance from ${rm.name} · waiting for its first update. What you spend shows here once ${rm.name} has updated${rm.online ? '' : ' (it is off right now)'}.`,
+      action: { label: 'Open Finances', icon: 'wallet', run: () => _hbFinOpen(null) } })
+      : hglEmpty({ icon: 'wallet', title: 'Money at a glance', actions: [{ label: 'Open Finances', icon: 'wallet', run: () => _hbFinOpen(null) }] });
+    off.classList.add('hgl-off');
+    const art = hglScene('finance', { size: 'lg', hover: true });
+    if (art) off.insertAdjacentHTML('afterbegin', art);
+    body.appendChild(off);
+    return true;
+  }
   if (!g || _hbFin.status !== 'ok' || !g.count) {
     const bankOk = !(window.Connections && typeof Connections.has === 'function') || Connections.has('bank');
     const off = ctx.off ? ctx.off({
@@ -357,10 +373,21 @@ function _hbFinRender(el, ctx) {
   }
   const fresh = ctx.isNew ? ctx.isNew('data:' + g.key) : !!ctx.firstPaint;   // the data's first showing this entry
   body.appendChild(_hbFinBody(g, size));
+  if (rm && !rm.waiting) body.insertAdjacentHTML('beforeend', _hbFinViaHtml(rm));
   _hbFinWire(body, g);
   if (fresh) _hbFinEnter(body);
   if (window.FinSymbols && typeof FinSymbols.activate === 'function') try { FinSymbols.activate(body); } catch (e) { /* static */ }
   return true;
+}
+
+/** "Finance from Home laptop · updated 5 min ago": the finances another device reads (lib/finance-share.mjs). */
+function _hbFinViaHtml(rm) {
+  const t = rm.updatedAt ? Date.parse(rm.updatedAt) : NaN;
+  const s = Number.isFinite(t) ? Math.max(0, Math.round((Date.now() - t) / 1000)) : null;
+  const ago = s == null ? '' : s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`;
+  const text = `Finance from ${rm.name}${ago ? ` · updated ${ago}` : ''}`;
+  const tip = rm.online ? `${rm.name} reads your bank; this is the same as there` : `${rm.name} is off right now: this is what it last sent`;
+  return `<div class="hbf-via" title="${escAttr(tip)}">${icon('laptop', 'i-xs')}<span>${esc(text)}</span></div>`;
 }
 
 function _hbFinMeter(label, p, kind) {
