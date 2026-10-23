@@ -11,10 +11,12 @@ import http from 'node:http';
 import dgram from 'node:dgram';
 import { createPortMapper, parseSsdpResponse, parseIgdDescription, parseSoapResponse, soapRequest, natpmpMapRequest, parseNatpmp, pcpMapRequest, parsePcp, classifyExternal } from '../lib/sync/live/nat.mjs';
 import { createNodeUdp, nodeHttp } from '../lib/sync/live/node-net.mjs';
+import { tempDir, rm, stopAll, waitFor, pairedPair, liveFor } from './live.shared.mjs';
 
 const LOOP = '127.0.0.1';
 const closers = [];
-after(async () => { for (const c of closers) await c(); });
+const base = tempDir('live-nat-');
+after(async () => { for (const c of closers) await c(); await stopAll(); rm(base); });
 
 const DESC = (control) => `<?xml version="1.0"?><root xmlns="urn:schemas-upnp-org:device-1-0"><device><deviceType>urn:schemas-upnp-org:device:InternetGatewayDevice:1</deviceType>
 <deviceList><device><deviceType>urn:schemas-upnp-org:device:WANDevice:1</deviceType><deviceList><device><deviceType>urn:schemas-upnp-org:device:WANConnectionDevice:1</deviceType>
@@ -203,4 +205,31 @@ test('no UPnP: NAT-PMP on the router; PCP when the router answers in PCP; refusa
   assert.deepEqual([r.ok, r.reason], [false, 'refused']);
   r = await (await mapper({ gateways: [LOOP] })).map({ internalPort: 41731 });
   assert.deepEqual([r.ok, r.reason, r.reachable], [false, 'no-router-support', false]);
+});
+
+test('in live sync: the mapped address is published (encrypted) for the other computer, removed on exit; CGNAT is reported, not published', async () => {
+  const P = await pairedPair(base);
+  const igd = await fakeIgd();
+  const live = liveFor(P.A, { nat: await mapper({ ssdp: await fakeSsdp(`http://${LOOP}:${igd.port}/desc.xml`) }) });
+  await live.start();
+  await waitFor(() => live.status().reach.state === 'mapped', 5000, 'mapped');
+  const st = live.status();
+  assert.equal(st.reach.method, 'upnp');
+  assert.equal(st.reach.external, `81.2.3.4:${live.port}`);
+  assert.equal(igd.mappings.get(live.port).internalPort, live.port);
+  await waitFor(async () => { await P.A.eng.syncNow(); P.oneDrive('a->b'); await P.B.eng.syncNow(); const ex = P.B.eng.peerExtra(P.A.eng.deviceId); return !!(ex && ex.live.eps.some(e => e.k === 'wan')); }, 5000, 'B reads the address');
+  const ex = P.B.eng.peerExtra(P.A.eng.deviceId).live;
+  assert.deepEqual(ex.eps.find(e => e.k === 'wan'), { k: 'wan', a: '81.2.3.4', p: live.port });
+  assert.equal(ex.nat.state, 'mapped');
+  assert.equal(P.A.eng.status().live.reach.state, 'mapped', 'Settings > Sync says so');
+  await live.stop();
+  assert.equal(igd.mappings.size, 0, 'the router mapping is removed on a clean exit');
+  // Behind carrier-grade NAT: mapped on the home router, but not a way in.
+  const cg = await fakeIgd({ external: '100.64.7.8' });
+  const live2 = liveFor(P.A, { nat: await mapper({ ssdp: await fakeSsdp(`http://${LOOP}:${cg.port}/desc.xml`) }) });
+  await live2.start();
+  await waitFor(() => live2.status().reach.state === 'cgnat', 5000, 'cgnat');
+  assert.equal(live2.status().reach.external, null);
+  assert.ok(!live2._debug().myEps.some(e => e.k === 'wan'), 'no internet address is published');
+  await live2.stop();
 });

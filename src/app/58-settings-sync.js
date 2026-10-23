@@ -71,6 +71,7 @@ function syncLiveLines(st) {
   if (L.state !== 'on') return [];
   const out = [];
   if (L.firewall) out.push({ tone: 'warn', text: 'Windows asked to allow OpenDash on private networks: click Allow. (Missed it? Start > "Allow an app through Windows Firewall" > tick Node.js for Private.)' });
+  else if (L.firewallHint) out.push({ tone: 'idle', text: 'If Windows asks to allow OpenDash (Node.js) on private networks, click Allow: that lets your other computer connect.' });
   const peers = L.peers || [];
   if (!peers.length) out.push({ tone: 'idle', text: 'Live sync is ready: it connects as soon as your other computer is on.' });
   for (const p of peers) {

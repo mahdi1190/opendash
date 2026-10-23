@@ -10,6 +10,9 @@ import * as X from '../lib/sync/e2e-crypto.mjs';
 import { encodeFrame, createFrameReader, jsonBytes, MAX_HELLO_FRAME } from '../lib/sync/live/wire.mjs';
 import { staticAuth } from '../lib/sync/live/handshake.mjs';
 import { createSession } from '../lib/sync/live/session.mjs';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 async function device() {
@@ -244,4 +247,14 @@ test('a flood is cut off; a silent link is closed; an idle link keeps itself ali
   await sleep(300);
   assert.equal(r.ev.r.why, 'idle');
   r.I.close(); r.R.close();
+});
+
+test('the live core imports nothing platform-specific (a phone or WebRTC transport reuses it)', () => {
+  const LIVE = join(dirname(fileURLToPath(import.meta.url)), '..', 'lib', 'sync', 'live');
+  const CORE = ['wire.mjs', 'handshake.mjs', 'session.mjs', 'addrbook.mjs', 'discovery.mjs', 'lease.mjs', 'nat.mjs', 'live.mjs'];
+  for (const f of CORE) {
+    const code = readFileSync(join(LIVE, f), 'utf8').split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    assert.doesNotMatch(code, /from\s+['"]node:|require\(|\bBuffer\b|\bprocess\.|__dirname/, `${f} must stay platform-agnostic`);
+    for (const m of code.matchAll(/from\s+['"]([^'"]+)['"]/g)) assert.ok(CORE.includes(m[1].replace('./', '')) || m[1] === '../e2e-crypto.mjs', `${f} imports ${m[1]}`);
+  }
 });

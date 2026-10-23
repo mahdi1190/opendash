@@ -37,6 +37,7 @@ test('Windows firewall: the one thing to click', () => {
   const t = texts(st({ firewall: true, peers: [{ name: 'Work laptop', state: 'not-live', reason: 'firewall' }] }));
   assert.match(t[0], /^Windows asked to allow OpenDash on private networks: click Allow\./);
   assert.match(t[1], /Windows on one of the computers is blocking OpenDash/);
+  assert.match(texts(st({ firewallHint: true }))[0], /^If Windows asks to allow OpenDash \(Node\.js\) on private networks, click Allow/);
 });
 
 test('which computer is main for each job; nothing when sync or live is off', () => {
