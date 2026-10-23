@@ -18,6 +18,7 @@
 //   node tools/relocate.mjs --cancel              stop an unfinished copy (nothing was switched)
 //   node tools/relocate.mjs --undo [--yes]        what "Undo move" would do / do it
 //   --data-dir <dir>   the data folder (default: the one OpenDash uses)
+//   --app-dir <dir>    the app folder (default: the one this script is in)
 //   --json             machine-readable output
 //
 // Internal (the server starts it detached after a move or an undo):
@@ -79,7 +80,8 @@ export async function main(argv = process.argv.slice(2), { env = process.env, ou
   if (has(argv, '--handoff')) return handoff(argv, { env, err });
 
   const dataDir = resolveDataDir({ argv, env });
-  const R = createRelocator({ dataDir, appDir: REPO_ROOT, env, log: (lvl, msg) => { if (!json) err(`  ${msg}`); } });
+  const home = env === process.env ? undefined : (env.USERPROFILE || env.HOME);
+  const R = createRelocator({ dataDir, appDir: argValue(argv, '--app-dir') || REPO_ROOT, env, ...(home ? { home } : {}), log: (lvl, msg) => { if (!json) err(`  ${msg}`); } });
   const opts = {
     ...(argValue(argv, '--to') ? { to: argValue(argv, '--to') } : {}),
     ...(argValue(argv, '--app-to') ? { toApp: argValue(argv, '--app-to'), moveApp: true } : {}),
