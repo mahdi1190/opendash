@@ -21,6 +21,11 @@
 // uses, in this server and in the MCP server's embedded mode: same lock, same
 // version stamping, same backups. onChange(fn) hears about every write this
 // process makes (live sync).
+//
+// writeGate (optional, injected): `await writeGate(kind)` runs at the start of
+// every write() and mutate() ('write' | 'mutate') and throws to refuse it.
+// The server passes lib/hosts.mjs's gate: 423 OTHER_COMPUTER while another
+// computer has this data folder open.
 
 import { existsSync, promises as fsp } from 'node:fs';
 import { join } from 'node:path';
@@ -35,7 +40,8 @@ export const DAILY_KEEP_DAYS = 30;
 const stamp = (d = new Date()) => d.toISOString().replace(/[:.]/g, '-');
 const localDate = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-export function createStateStore({ stateDir, log = () => {}, now = () => Date.now() }) {
+export function createStateStore({ stateDir, log = () => {}, now = () => Date.now(), writeGate = null }) {
+  const gate = async (kind) => { if (typeof writeGate === 'function') await writeGate(kind); };
   const file = join(stateDir, 'dashboard-state.json');
   const backups = join(stateDir, 'backups');
   const daily = join(backups, 'daily');
@@ -170,6 +176,7 @@ export function createStateStore({ stateDir, log = () => {}, now = () => Date.no
    * opts.source / opts.client label the change for live-sync listeners.
    */
   async function write(text, opts = {}) {
+    await gate('write');
     let parsed;
     try { parsed = JSON.parse(text); } catch { throw new HttpError(400, 'body must be JSON'); }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new HttpError(400, 'state must be a JSON object');
@@ -206,6 +213,7 @@ export function createStateStore({ stateDir, log = () => {}, now = () => Date.no
    * Returns { version, written, result, dataChanged }.
    */
   async function mutate(fn, opts = {}) {
+    await gate('mutate');
     const r = await withLock(file, async () => {
       let { prevText, prev } = await readLocked();
       let recoveredFrom = null;
