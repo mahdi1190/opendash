@@ -355,7 +355,10 @@ function _hhPaintHero(root, m, ctx, reduced, compact) {
   // Entrance timing, carried across re-renders by negative delays.
   if (!reduced && now - _hh.entryAt < 1600) { root.classList.add('is-entering'); root.style.setProperty('--hh-en', `${-Math.round(now - _hh.entryAt)}ms`); }
   if (!compact && !waiting && _hh.read && !reduced) {
-    if (!_hh.readAt) { _hh.readAt = now; seenMarkDay('homeRead', m.today); }
+    // The first paint decided on this browser's cached state; once the file is in, a read-along another
+    // computer already played today is not played again here (06-core-seen.js).
+    if (!_hh.readAt && typeof _uiSharedBooted !== 'undefined' && _uiSharedBooted && seenDay('homeRead', m.today)) _hh.read = false;
+    else if (!_hh.readAt) { _hh.readAt = now; seenMarkDay('homeRead', m.today); }
     if (now - _hh.readAt < 2200) { root.classList.add('is-reading'); root.style.setProperty('--hh-rd', `${-Math.round(now - _hh.readAt)}ms`); }
   }
   root.classList.toggle('is-waiting', waiting);
