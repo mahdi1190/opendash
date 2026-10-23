@@ -35,7 +35,7 @@ import {
   localFinanceData, localBudgets, writeBudgetsFile, applyMerchantOverrides,
 } from '../../lib/finance.mjs';
 import { createFinanceShare } from '../../lib/finance-share.mjs';
-import { EDITS_REL } from '../../lib/sync/finance-share.mjs';
+import { EDITS_REL, SHARE_REL } from '../../lib/sync/finance-share.mjs';
 import { transactionsCsv } from '../../lib/finance/report.mjs';
 import { updateConnection } from '../../lib/datadir.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
@@ -157,17 +157,23 @@ export default function register(app) {
   // Edits from the other devices are applied by the finance computer; a device
   // that just became it publishes. Also every few minutes, and once at start.
   let shareTimer = null;
+  // This computer's open tabs reload Finances once another device's edits are applied here.
+  const tellTabs = (changed) => {
+    const sse = app.ctx.liveSync;
+    if (changed && sse && typeof sse.emit === 'function') { try { sse.emit('synced-files', { rels: [SHARE_REL], at: Date.now() }); } catch { /* no open tabs */ } }
+  };
+  const applyEdits = () => share.applyEdits().then(tellTabs, () => {});
   app.onReady(() => {
     const e = app.ctx.sync;
     if (e && typeof e.onApplied === 'function') {
       e.onApplied((info) => {
         const rels = (info && info.fileRels) || [];
-        if (rels.includes(EDITS_REL)) share.applyEdits();
+        if (rels.includes(EDITS_REL)) applyEdits();
         else if (rels.includes('roles.json') || rels.includes('accounts.json')) share.publish();
       });
     }
-    const first = setTimeout(() => share.applyEdits(), 15000); first.unref?.();
-    shareTimer = setInterval(() => share.applyEdits(), 5 * 60 * 1000); shareTimer.unref?.();
+    const first = setTimeout(applyEdits, 15000); first.unref?.();
+    shareTimer = setInterval(applyEdits, 5 * 60 * 1000); shareTimer.unref?.();
   });
   app.onClose(() => { clearInterval(shareTimer); });
 

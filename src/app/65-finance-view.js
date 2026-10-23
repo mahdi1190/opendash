@@ -10,6 +10,18 @@
    first render can arrive before it exists: show a placeholder and retry.
    ============================================================ */
 let _finWaitTries = 0, _finWaitTimer = null;
+
+/**
+ * Finances on every device (lib/finance-share.mjs): the computer that reads the
+ * bank published new finances, or an edit from another device arrived
+ * (finance-share/*, the live event 'synced-files', 56-remote-jobs.js): reload
+ * what shows them (the Finances view, Home's Money and Safe to spend).
+ */
+function financeSharedChanged() {
+  try { if (window.FinanceView && typeof FinanceView.sharedChanged === 'function') FinanceView.sharedChanged(); } catch (e) { /* not loaded yet */ }
+  try { if (typeof _hbFin !== 'undefined' && _hbFin) { _hbFin.at = 0; if (state.view === 'home' && typeof _hbFinLoad === 'function') _hbFinLoad(0); } } catch (e) { /* no Money card */ }
+  try { if (state.view === 'home' && typeof homeDataRefresh === 'function' && typeof _HSP_DATA !== 'undefined') homeDataRefresh(_HSP_DATA); } catch (e) { /* no Safe to spend card */ }
+}
 function renderFinanceView(container) {
   const FV = window.FinanceView;
   if (FV && typeof FV.mount === 'function') {

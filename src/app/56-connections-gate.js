@@ -56,8 +56,10 @@ function _connEntryOk(id) { return !!(_connAll && _connAll[id] && _connAll[id].s
    device answers requests from this one (56-remote-jobs.js); a calendar or a
    mailbox another device reads arrives here by sync. So the feature works
    here too and nothing says "Connect": it says "Uses Claude on Home laptop".
-   The bank does not count: finance data stays on the computer that reads it. */
-const _CONN_GROUP_NEED = { claude: 'claude', gmail: 'email', calendar: 'calendar' };
+   The bank too: the computer that reads it publishes the finances and the
+   others show them, "Finance from Home laptop" (lib/finance-share.mjs); the
+   sign-in stays on that computer. */
+const _CONN_GROUP_NEED = { claude: 'claude', gmail: 'email', calendar: 'calendar', bank: 'bank' };
 /** The name of another device this feature works through, or null (only devices that take changes from the others count). */
 function connVia(name) {
   const k = _CONN_GROUP_NEED[name];
@@ -96,7 +98,7 @@ function connViaText(name) {
   if (connLocalHas(name)) return '';
   const via = connVia(name) || (name === 'claude' && typeof AI_VIA !== 'undefined' && AI_VIA) || null;
   if (!via) return '';
-  const base = name === 'claude' ? `Uses Claude on ${via}` : name === 'calendar' ? `Calendar from ${via}` : name === 'gmail' ? `Email from ${via}` : '';
+  const base = name === 'claude' ? `Uses Claude on ${via}` : name === 'calendar' ? `Calendar from ${via}` : name === 'gmail' ? `Email from ${via}` : name === 'bank' ? `Finance from ${via}` : '';
   // Honest when it is off: what it made still shows; asking it waits until it is on (or set it up here).
   return base && !connViaOnline(name) ? `${base} (off right now: what it made still shows)` : base;
 }
