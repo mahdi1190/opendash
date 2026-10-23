@@ -582,7 +582,8 @@ feature that applies proposals calls `POST /api/actions {proposalId}`.
 Where bank transactions, calendar events and email come from: ANY number per
 capability (two banks, several calendars, a second mailbox), each with its own
 accounts. `<data>/sources.json` = `{version:1, sources:[{id, capability:
-bank|calendar|email, kind: mcp|ical|csv|microsoft, label, server, preset?, tools?, url?
+bank|calendar|email, kind: mcp|ical|csv|microsoft|google|imap|direct, account? (the
+mail/calendar account it belongs to, docs/dev/ACCOUNTS.md), label, server, preset?, tools?, url?
 (ical, server-side only), colour, enabled, demo?, accounts:[{id, name, colour,
 enabled, own?, renamed?}], lastSync, lastError:{at, code, message}, createdAt}]}`.
 - Presets = the three tuned adapters that existed before: `aureli` (claude.ai
@@ -600,8 +601,11 @@ enabled, own?, renamed?}], lastSync, lastError:{at, code, message}, createdAt}]}
   RECURRENCE-ID, TZID incl. Windows zone names); anything else keeps only its
   first date. CSV = the existing Finances import, labelled.
 - Discovery + health: `claude mcp list` (cached 60 s) is the primary signal;
-  native Microsoft sources instead use their own OAuth status and sync result,
-  without requiring a Claude installation.
+  account sources (kind microsoft/google/imap) instead take their health from
+  their account (`accountSourceHealth`: paused, sign in again, waiting for the
+  organisation, checked on another computer) and their sync result, without
+  requiring a Claude installation. They are read only on the account's fetcher
+  (`readsHere` hook in the calendar and inbox jobs).
   the hourly connector probes (lib/connections.mjs) only run when it is
   unavailable. A real sync's sign-in failure sticks until a later sync works
   (`claude mcp list` can say Connected while the tools say "sign in again").
@@ -631,7 +635,7 @@ enabled, own?, renamed?}], lastSync, lastError:{at, code, message}, createdAt}]}
 | Model, discovery, health, dedupe, service (`sourcesFor(ctx)` shares one per data folder); lastCheck records tools/read readiness separately from lastSync/lastError, status reads sources after discovery | `lib/sources.mjs` |
 | Generic MCP adapter | `lib/source-adapter.mjs` |
 | iCal | `lib/ical.mjs` |
-| Direct Outlook/Hotmail and Microsoft 365 browser sign-in; PKCE, one-use state, read-only Graph, private refresh credentials | `lib/microsoft.mjs`, `server/routes/microsoft.mjs`, shared setup/Connections `src/app/56-microsoft.js`; `tests/microsoft.test.mjs` |
+| Mail and calendar ACCOUNTS, any number side by side (no OpenDash account): the contract, pure core (record, Web Crypto PKCE/state, redirect adapters, per-account token vault, service), the Microsoft provider (personal `/consumers`, work `/organizations`, admin-approval page), shipped client IDs; Node binding (`<data>/accounts.json`, secret store `accounts/<id>`, sources kept in step, the fetcher role, migration of the old single Microsoft connection); `/api/accounts`; the Connections account list | `docs/dev/ACCOUNTS.md`, `lib/accounts/core.mjs`, `lib/accounts/microsoft.mjs`, `lib/accounts/shipped.mjs`, `lib/accounts.mjs`, `lib/accounts-file.mjs`, `server/routes/accounts.mjs`, `tools/migrations/090-accounts.mjs`, `src/app/56-accounts-logic.js`, `src/app/56-accounts.js`, `src/styles/56-accounts.css`; old names kept in `lib/microsoft.mjs`, `src/app/56-microsoft.js`; `tests/accounts-*.test.mjs`, `tests/microsoft.test.mjs` |
 | Shared hosted browser-Claude relay, per-installation OAuth and matching-code approval, outbound-only local connector, propose-mode MCP | `cloudflare/relay-worker.mjs`, `lib/hosted-relay.mjs`, `server/routes/hosted-relay.mjs`, shared setup/Connections `src/app/56-hosted-relay.js`; `tests/hosted-relay.test.mjs`, `docs/dev/HOSTED_RELAY.md` |
 | Default local Link Claude: existing install/auth lookup first, official native installer only if missing, browser auth login, automatic MCP, metadata checks without model calls; optional Open connected Claude launches official Remote Control without bypassing its confirmations | `lib/local-claude-connect.mjs`, helpers in `lib/claude-runner.mjs`, `server/routes/local-claude.mjs`, shared `56-assistant-cards.js` and Connections `56-connections-assistants.js`; `tests/local-claude-connect.test.mjs`, `docs/dev/LOCAL_CLAUDE_CONNECT.md` |
 | Calendar from several sources (snapshots `<data>/calendar/sources/<id>.json`, merge) | `lib/calendar-sources.mjs` (+ hooks in `lib/calendar.mjs`, `server/routes/calendar.mjs`) |
@@ -1335,6 +1339,9 @@ Big made-up data: `node tools/make-fake-finance.mjs <dir> --days 730 --seed 11
 <data>/inbox/drafts.json           Gmail drafts the dashboard made (lib/gmail-draft.mjs): {drafts:[{id, at, purpose,
                                    threadId?, taskId?}]} - ids only, never addresses or text; DELETE only these
 <data>/sources.json                data sources (lib/sources.mjs): banks, calendars, mailboxes and their accounts
+<data>/accounts.json      mail and calendar accounts (lib/accounts-file.mjs, docs/dev/ACCOUNTS.md): {version, accounts:[{id,
+                          provider, email, displayName, kind, tenantId?, scopes, features, status, lastSync, error, fetcher}]}; no secrets
+<device>/secrets/accounts/<id>.json  that account's tokens on THIS computer (secret store key accounts/<id>, 0600)
 <data>/resources/github-cache.json  Files & links: open PRs/issues per repo (30 min), read-only GitHub lookups
 <data>/seed-resources.json         optional personal list for migration 070-resources (never in the repo)
 <data>/index/settings.json         Auto-linking: workspace folders, names-only folders, on/off, auto-attach threshold, judge model + limits
