@@ -34,6 +34,7 @@ import { secretStore } from '../lib/secret-store.mjs';
 import { migrateLegacySecrets } from '../lib/devicedir.mjs';
 import { createPresence, createWriteGate, othersLive } from '../lib/hosts.mjs';
 import { createMoveGate } from '../lib/relocate/gate.mjs';
+import { movedAwayNotice, movedAwayText } from '../lib/relocate/index.mjs';
 import { initFinance, financeAvailable, cleanupPartials } from '../lib/finance.mjs';
 import { createApp } from './router.mjs';
 import { createLogger } from './log.mjs';
@@ -68,6 +69,14 @@ export async function main(argv = process.argv.slice(2)) {
   Add  --dry-run  to see what it would do first.
   (Or start empty on purpose with --fresh.)
 `);
+    process.exitCode = EXIT.CONFIG;
+    return null;
+  }
+
+  // A move took this folder away (lib/relocate/): never start an empty one in its place.
+  const away = has('--fresh') ? null : movedAwayNotice(dataDir);
+  if (away) {
+    console.error(`\n${movedAwayText(away)}\n`);
     process.exitCode = EXIT.CONFIG;
     return null;
   }

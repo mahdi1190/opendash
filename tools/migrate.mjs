@@ -21,6 +21,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { copyTree } from '../lib/fsutil.mjs';
 import { resolveDataDir, dataPaths, ensureDataDir, legacyStatus } from '../lib/datadir.mjs';
+import { movedAwayNotice, movedAwayText } from '../lib/relocate/index.mjs';
 import { applyMigration, loadApplied } from './migrations/_lib.mjs';
 import { othersLive, seenText } from '../lib/hosts.mjs';
 
@@ -70,6 +71,9 @@ export async function backupDataDir(dataDir) {
 export async function autoMigrate({ dataDir, dryRun = false, log = console.log, argv = [], repoRoot, othersLive: others } = {}) {
   const legacy = legacyStatus({ dataDir, ...(repoRoot ? { repoRoot } : {}) });
   if (legacy) return { status: 'legacy', legacy, applied: [] };
+  // A move took this folder away (lib/relocate/): never set up an empty one in its place.
+  const away = argv.includes('--fresh') ? null : movedAwayNotice(dataDir);
+  if (away) return { status: 'moved', moved: away, applied: [] };
   const mods = await loadMigrations();
   if (existsSync(dataPaths(dataDir).root)) {
     const live = typeof others === 'function' ? others() : othersLive(dataDir);
@@ -116,6 +120,11 @@ async function main(argv) {
       console.error(`\n  Your data is still in the old folder (${r.legacy.legacyStateDir}).`);
       console.error(`  Copy it into the data folder once with:\n\n     ${r.legacy.command}\n`);
       console.error('  Add --finance-from "<folder>" to bring a finance folder along, and --dry-run to preview.\n');
+      process.exitCode = 2;
+      return;
+    }
+    if (r.status === 'moved') {
+      console.error(`\n${movedAwayText(r.moved)}\n`);
       process.exitCode = 2;
       return;
     }

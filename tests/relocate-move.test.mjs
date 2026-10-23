@@ -210,3 +210,19 @@ test('the record lives in this computer\'s folder, never in the data folder', as
     assert.ok(!readdirSync(join(pc.base, 'Data')).some(n => /relocation/.test(n)));
   } finally { pc.cleanup(); }
 });
+
+test('another computer sharing the OneDrive folder (no record here) is not given an empty data folder in its place', async () => {
+  const pc = makeComputer({ files: 1 });
+  try {
+    await mk(pc).run({ moveApp: false });
+    await mk(pc).finish();
+    const { movedAwayNotice, movedAwayText } = await import('../lib/relocate/index.mjs');
+    const n = movedAwayNotice(pc.data);
+    assert.ok(n && n.movedTo === join(pc.base, 'Data') && n.host === 'HOME-PC', JSON.stringify(n));
+    assert.match(movedAwayText(n), /did not start/);
+    const { autoMigrate } = await import('../tools/migrate.mjs');
+    const r = await autoMigrate({ dataDir: pc.data, log: () => {}, othersLive: () => [] });
+    assert.equal(r.status, 'moved');
+    assert.ok(!existsSync(pc.data), 'no empty data folder was made');
+  } finally { pc.cleanup(); }
+});
