@@ -23,7 +23,7 @@ let _clkBooted = false;
 const _clkObs = { last: 0, at: 0, timer: null, client: 'p' + Math.random().toString(36).slice(2, 10) };
 const _CLK_BANNER_KEY = 'dashboard-zone-banner';      // localStorage: {from, to, at} of the last change a tab showed
 const _CLK_UTC_KEY = 'dashboard-zone-utc-asked';      // localStorage: the UTC card was answered
-const _CLK_OPTIN_KEY = 'dashboard-travel-optin-line'; // localStorage: the banner's "Turn on travel features?" line was shown
+// The banner's "Turn on travel features?" line, once: state.seen.once.travelOptinLine (synced, 06-core-seen.js; travel settings follow the person).
 let _clkRenderTimer = null;
 let _clkChangedAt = 0;   // when this tab last saw the computer change zone (also one found at boot)
 
@@ -235,8 +235,8 @@ function _clkZoneBanner(ev, boot, force) {
   acts.appendChild(x);
   // Travel off and now abroad: one line, once (spec 2.4 step 6, 6.4).
   const away = Clock.away();
-  if (away.away && !Clock.placeless(to) && _clkTravelOff() && !_clkLs(_CLK_OPTIN_KEY)) {
-    _clkLs(_CLK_OPTIN_KEY, String(Date.now()));
+  if (away.away && !Clock.placeless(to) && _clkTravelOff() && !seenOnce('travelOptinLine')) {
+    seenMarkOnce('travelOptinLine');
     const line = el.querySelector('.clk-optin');
     line.hidden = false;
     line.innerHTML = '<span>Turn on travel features? Local time, weather and tips for the trip; everything stays on this computer.</span>';

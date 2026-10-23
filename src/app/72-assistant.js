@@ -23,11 +23,11 @@
    several things at once, including people from meetings and tasks who are not in
    People yet (list_link_suggestions; ignored names never come back).
    Conversation memory: this tab's session (sessionStorage), last 40 messages;
-   the server gets the last 12 turns with each question. Model choice is kept
-   on this device (Opus 5.5 medium by default; Haiku 4.5 for speed).
+   the server gets the last 12 turns with each question. Model choice follows
+   you to your other computers (state.uiPrefs.assistantModel, 06-core-seen.js;
+   Opus 5.5 medium by default; Haiku 4.5 for speed).
    ============================================================ */
 const _ASST_KEY = 'dashboard-assistant-v1';
-const _ASST_MODEL_KEY = 'dashboard-assistant-model';
 const _ASST_MODELS_FALLBACK = [
   { id: 'claude-opus-5-5', effort: 'medium', label: 'Opus 5.5', hint: 'Medium effort' },
   { id: 'claude-sonnet-5', effort: 'medium', label: 'Sonnet 5', hint: 'Medium effort' },
@@ -57,7 +57,7 @@ function _asstSave() {
 function _asstModelChoice() {
   const list = _asst.models || _ASST_MODELS_FALLBACK;
   let id = null;
-  try { id = localStorage.getItem(_ASST_MODEL_KEY); } catch (e) { id = null; }
+  try { id = uiPrefGet('assistantModel') || null; } catch (e) { id = null; }   // follows you to your other computers (06-core-seen.js)
   return list.find(m => m.id === id) || list[0];
 }
 async function _asstLoadModels() {
@@ -685,7 +685,7 @@ function _asstBuild() {
     const cur = _asstModelChoice();
     openMenu(mb, [{ heading: 'Model' }, ...list.map(m => ({
       label: m.label, hint: m.hint || (m.effort ? m.effort : ''), checked: m.id === cur.id,
-      run: () => { try { localStorage.setItem(_ASST_MODEL_KEY, m.id); } catch (e) {} _asstPaint(); },
+      run: () => { try { uiPrefSet('assistantModel', m.id); } catch (e) {} _asstPaint(); },
     }))]);
   };
   el.addEventListener('keydown', (e) => {

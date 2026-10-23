@@ -39,16 +39,12 @@
    Home widget: 12-home-w-travel.js.
    ============================================================ */
 
-const _TRU_DOT_KEY = 'dashboard-travel-chip-dot';      // localStorage: the chip's "new" dot (the local day it was set)
-const _TRU_OPTIN_KEY = 'dashboard-travel-optin-seen';  // localStorage: {key: date} opt-in prompts answered with Not now
-const _TRU_ADDCARD_KEY = 'dashboard-travel-add-card';  // localStorage: "Add the Trip card to Home?" was offered
+// Synced flags (state.seen, 06-core-seen.js): travelDot.chip (the chip's "new" dot: the day it was set),
+// travelOptin {key: date} (opt-in prompts answered with Not now), once.travelAddCard ("Add the Trip card
+// to Home?" was offered).
 let _truChipKey = '', _truChipShownKeys = new Set(), _truTickOff = null, _truChipMin = -1, _truChipBooted = false;
 let _truProp = null;
 
-function _truLs(k, v) {
-  try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* private mode */ }
-  return null;
-}
 function _truCfg() { return trUiCfg((typeof APP_CONFIG !== 'undefined' && APP_CONFIG && APP_CONFIG.travel) || {}); }
 function _truOn() { return _truCfg().on; }
 function _truReduced() { return !!(window.Motion && Motion.prefersReduced && Motion.prefersReduced()) || document.documentElement.getAttribute('data-motion-level') === 'off'; }
@@ -67,8 +63,8 @@ const Travel = {
     _truAfterChange();
     toast('Travel features on: local time, weather and tips when you travel', { kind: 'ok', icon: 'plane', timeout: 9000,
       action: { label: 'Undo', run: async () => { if (await settingsSaveConfig({ travel: { on: false } }, false)) _truAfterChange(); } } });
-    if (!_truLs(_TRU_ADDCARD_KEY) && typeof homeWidgetShow === 'function') {
-      _truLs(_TRU_ADDCARD_KEY, String(Date.now()));
+    if (!seenOnce('travelAddCard') && typeof homeWidgetShow === 'function') {
+      seenMarkOnce('travelAddCard');
       setTimeout(() => toast('Add the Trip card to Home?', { icon: 'layout-grid', timeout: 12000, action: { label: 'Add it', run: () => Travel.addCard() } }), 600);
     }
     return true;
@@ -99,8 +95,8 @@ const Travel = {
   chip: () => document.querySelector('[data-tr-chip]'),
   /** The chip's "new" dot until it is opened or the local day ends; chipDot() reads it. */
   chipDot(on) {
-    if (on === undefined) return _truLs(_TRU_DOT_KEY) === Clock.today();
-    _truLs(_TRU_DOT_KEY, on ? Clock.today() : null);
+    if (on === undefined) return seenGet('travelDot', 'chip') === Clock.today();
+    seenSet('travelDot', 'chip', on ? Clock.today() : null);
     const c = Travel.chip(); if (c) c.classList.toggle('has-dot', !!on);
     return !!on;
   },
@@ -214,7 +210,7 @@ function _truChipTick() {
 registerTopbarWidget({ id: 'travel-clock', order: 3, render: (el) => _truChipRender(el) });
 
 /* ---------- "Turn on travel features?" (6.4) ---------- */
-function _truOptInSeen() { try { return JSON.parse(_truLs(_TRU_OPTIN_KEY) || '{}') || {}; } catch (e) { return {}; } }
+function _truOptInSeen() { try { return seenAll('travelOptin'); } catch (e) { return {}; } }
 function _truOptInMaybe() {
   if (typeof document === 'undefined' || !document.body) return;
   const cur = document.getElementById('tr-optin');
@@ -237,7 +233,7 @@ function _truOptInMaybe() {
   const close = () => { el.classList.add('is-out'); setTimeout(() => el.remove(), _truReduced() ? 0 : 220); };
   const mk = (label, cls, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.textContent = label; b.addEventListener('click', run); acts.appendChild(b); return b; };
   mk('Turn on', 'btn-primary', async () => { close(); await Travel.turnOn(); });
-  mk('Not now', 'btn-ghost', () => { const s = _truOptInSeen(); s[card.key] = Clock.today(); _truLs(_TRU_OPTIN_KEY, JSON.stringify(s)); close(); });
+  mk('Not now', 'btn-ghost', () => { seenSet('travelOptin', card.key, Clock.today()); close(); });
   mk('Never', 'btn-ghost', async () => { close(); if (await Travel.save({ prompt: false })) toast('Travel won’t ask again. Settings > Travel & time turns it on.', { kind: 'ok', icon: 'plane' }); });
   const content = document.getElementById('content');
   if (content && content.parentNode) content.parentNode.insertBefore(el, content);

@@ -21,7 +21,7 @@
    is pure (tests/hosts-banner.test.mjs runs it in a VM). Text goes in with
    textContent only.
    ============================================================ */
-const _HB_ONEDRIVE_OFF_KEY = 'dashboard-onedrive-banner-off';
+// The OneDrive notice, once dismissed: state.seen.once.onedriveBannerOff (synced, 06-core-seen.js).
 const _HB_POLL_MS = 60000;
 const _hb = { status: null, els: new Map(), timer: null, dismissed: new Set(), busy: false };
 
@@ -96,7 +96,7 @@ function hostsBannerModel(st, opts) {
   return out;
 }
 
-function _hbOneDriveOff() { try { return localStorage.getItem(_HB_ONEDRIVE_OFF_KEY) === '1'; } catch (e) { return false; } }
+function _hbOneDriveOff() { try { return seenOnce('onedriveBannerOff'); } catch (e) { return false; } }   // dismissed on any computer (06-core-seen.js)
 
 async function hostsRefresh() {
   if (typeof fetch !== 'function' || typeof location === 'undefined' || !/^https?:$/.test(location.protocol)) return null;
@@ -158,7 +158,7 @@ async function _hbAction(item, act, btn) {
 }
 
 function _hbDismiss(item) {
-  if (item.kind === 'onedrive') { try { localStorage.setItem(_HB_ONEDRIVE_OFF_KEY, '1'); } catch (e) { /* storage blocked: this tab only */ } }
+  if (item.kind === 'onedrive') { try { seenMarkOnce('onedriveBannerOff'); } catch (e) { /* this tab only */ } }
   _hb.dismissed.add(item.key);
   _hbRender();
 }
