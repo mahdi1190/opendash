@@ -73,6 +73,8 @@ function syncedFilesChanged(rels) {
   try { if (typeof InboxStore !== 'undefined' && InboxStore && InboxStore.st && InboxStore.st.loaded && any('inbox/')) InboxStore.load(true); } catch (e) { /* not loaded yet */ }
   if (list.includes('brief/day-advice.json') && typeof homeAdvisorRefresh === 'function') homeAdvisorRefresh();
   if ((list.includes('profile.json') || any('briefs/')) && typeof render === 'function') { try { render(); } catch (e) { /* fine */ } }
+  // A proposal applied or dismissed on another computer (state/proposals.json): the assistant's cards follow (70-ai-chats.js).
+  if (list.includes('state/proposals.json') && typeof chatProposalsChanged === 'function') chatProposalsChanged();
 }
 
 window.RemoteJobs = { fetch: remoteFetch, wait: remoteWait, wake: remoteWake, filesChanged: syncedFilesChanged };

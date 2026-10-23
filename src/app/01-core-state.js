@@ -116,14 +116,18 @@ const _undoStack = [];
 const _redoStack = [];
 const UNDO_LIMIT = 50;
 let _prevSnapshot = null;
+// The AI chats (70-ai-chats.js) are data that never makes an undo step and is
+// never rolled back by one: undoing a task edit must not take back a message,
+// a reply from another computer or a proposal's Applied.
+const _NO_UNDO_KEYS = new Set(['taskChat', 'assistantChat', 'chatMeta', 'chatArchive']);
 function _dataSnapshot() {
   const o = {};
-  for (const k of Object.keys(state)) if (!_NON_DATA_KEYS.has(k)) o[k] = state[k];
+  for (const k of Object.keys(state)) if (!_NON_DATA_KEYS.has(k) && !_NO_UNDO_KEYS.has(k)) o[k] = state[k];
   return JSON.stringify(o);
 }
 function _restoreDataSnapshot(json) {
   const d = JSON.parse(json);
-  for (const k of Object.keys(state)) if (!_NON_DATA_KEYS.has(k)) delete state[k];
+  for (const k of Object.keys(state)) if (!_NON_DATA_KEYS.has(k) && !_NO_UNDO_KEYS.has(k)) delete state[k];
   Object.assign(state, d);
   ensureStateDefaults(state);
   if (state.selectedTaskId && !getItem(state.selectedTaskId)) state.selectedTaskId = null;
