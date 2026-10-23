@@ -742,9 +742,26 @@ function evcOpenCreate(prefill, o) {
   const cals = _evcWritableCals();
   if (!draft.calendarId || (cals.length && !cals.some(c => c.id === draft.calendarId))) draft.calendarId = _evcDefaultCal() || draft.calendarId;
   if (typeof _calOpenEventId !== 'undefined' && _calOpenEventId) { _calOpenEventId = null; render(); }
+  // What it opened with: leaving it unchanged asks nothing. Words the user typed before (the
+  // quick-create's More options: prefill.typed) count as typed here too.
+  draft.start0 = prefill && prefill.typed ? _evcDraftSig({}) : _evcDraftSig(draft);
   const fromEl = o.from && o.from.isConnected ? o.from : null;
   tcOpen({ kind: 'evcreate', draft }, Object.assign({}, o, { fromEl, fromRect: fromEl ? fromEl.getBoundingClientRect() : null }));
   return 'card';
+}
+function _evcDraftSig(d) { return JSON.stringify([String(d.title || '').trim(), String(d.location || '').trim(), String(d.description || '').trim(), d.guests || []]); }
+/**
+ * The new-event card left without Save (Esc, x, Cancel, the scrim, Back: 61-task-card.js
+ * tcClose / tcBack). When something was typed, the toast says it was not saved and Reopen
+ * brings the card back with everything as it was.
+ */
+function evcCreateLeft(cur) {
+  if (!cur || cur.kind !== 'evcreate' || cur.saved || !cur.draft) return;
+  const d = cur.draft;
+  if (_evcDraftSig(d) === (d.start0 || _evcDraftSig({}))) return;
+  const t = String(d.title || '').replace(/\s+/g, ' ').trim();
+  const name = t ? `“${t.length > 40 ? t.slice(0, 39) + '…' : t}”` : 'The new event';
+  toast(`${name} was not saved`, { icon: 'pencil', timeout: 8000, action: { label: 'Reopen', run: () => tcOpen({ kind: 'evcreate', draft: d }, {}) } });
 }
 /** The scene band for a new event: follows the title, tinted with the calendar's colour. */
 function evcHeroSpec(d) {
@@ -899,6 +916,7 @@ function _evcCreateSave() {
   const args = evcDraftToCreate(d);
   if (!_evcSupports('colorId')) delete args.colorId;
   if (!_evcSupports('guests')) delete args.guests;
+  cur.saved = true;                         // leaving now is not "not saved" (evcCreateLeft)
   const leave = () => { if (_tc.stack.length > 1) { _tc.stack.pop(); _tcPaint({ swap: 'back' }); _tcFocusStart(); } else tcClose(); };
   if (!cw || typeof cw.create !== 'function') {
     const w = d.when;

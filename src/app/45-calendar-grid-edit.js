@@ -997,7 +997,7 @@ function _cgeQuickCreate(d, spec, pre) {
       return;
     }
     const w = when();
-    const pre = { title, start: w.start, end: w.end, allDay: w.allDay, calendarId: calId || undefined, location: locIn.value.trim() || undefined };
+    const pre = { title, start: w.start, end: w.end, allDay: w.allDay, calendarId: calId || undefined, location: locIn.value.trim() || undefined, typed: true };
     // The centre card's event editor (46-cal-event-edit.js); without it, Google's own full editor.
     if (typeof evcOpenCreate === 'function' && typeof openEvent === 'function') { openEvent(null, { create: pre, from }); close(); return; }
     close();
