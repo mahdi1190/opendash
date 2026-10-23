@@ -707,6 +707,13 @@ function openPersonEditor(id, prefill, o) {
       if (typeof trPersonTzField === 'function') el.appendChild(trPersonTzField(v, F, field));   // 69-travel-ui.js
       const err = document.createElement('div'); err.className = 'field-error'; err.hidden = true; F._err = err;
       el.appendChild(err);
+      // Quick add: Enter in any box saves (Add person / Save), as Ctrl+Enter does.
+      el.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+        if (!(e.target instanceof HTMLInputElement)) return;
+        const btn = el.closest('.modal') && el.closest('.modal').querySelector('.modal-f .btn-primary');
+        if (btn) { e.preventDefault(); btn.click(); }
+      });
     },
     actions: [
       { label: 'Cancel' },
@@ -727,8 +734,8 @@ function openPersonEditor(id, prefill, o) {
         if (!p && !o.stay) openPerson(res.id);
         if (typeof o.onSaved === 'function') { try { o.onSaved(res.id); } catch (e) { console.error('[people] onSaved', e); } }
         if (nowSug.length) {
-          toast(`${nowSug.length} task${nowSug.length === 1 ? ' names' : 's name'} ${_pplFirst(getPerson(res.id))}`, { icon: 'link', action: { label: 'Link', run: () => { const n = linkSuggestedPeople(nowSug); render(); toast(`Linked ${n} task${n === 1 ? '' : 's'}`, { kind: 'ok' }); } } });
-        } else toast(p ? 'Saved' : `Added ${fields.name.trim()}`, { kind: 'ok', icon: 'user-check' });
+          toast(`${p ? 'Saved' : 'Added ' + fields.name.trim()} · ${nowSug.length} task${nowSug.length === 1 ? ' names' : 's name'} ${_pplFirst(getPerson(res.id))}`, { icon: 'link', action: { label: 'Link them', run: () => { const n = linkSuggestedPeople(nowSug); render(); toast(`Linked ${n} task${n === 1 ? '' : 's'}`, { kind: 'ok', icon: 'link', action: { label: 'Undo', run: () => undo() } }); } } });
+        } else toast(p ? 'Saved' : `Added ${fields.name.trim()}`, { kind: 'ok', icon: 'user-check', action: { label: 'Undo', run: () => undo() } });
         return true;
       } },
     ],

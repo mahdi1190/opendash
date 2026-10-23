@@ -348,7 +348,15 @@ function _palResults(raw) {
       } });
     }
     push('Commands', { icon: 'plus', label: `New task “${q}”`, run: () => openNewTask(q) });
+    // Looks like a name ("Sam Lee": capitalised words) and nobody has it yet: add them in one step
+    // (the person form opens filled in). With @ it is offered for any text (below).
+    if (typeof addNewPerson === 'function' && /^\p{Lu}[\p{L}'.-]*(\s+\p{Lu}[\p{L}'.-]*){0,3}$/u.test(q) && !(state.people || []).some(p => p && String(p.name || '').toLowerCase() === ql)) {
+      push('Commands', { icon: 'user-plus', label: `Add “${q}” to People`, run: () => addNewPerson({ name: q }) });
+    }
     if (ql.length >= 3) push('Assistant', { icon: 'sparkles', label: `Ask the assistant: “${q}”`, hint: typeof assistantReady === 'function' && !assistantReady() ? 'Connect Claude first' : '', run: () => openAssistant({ message: q, send: true }) });
+  }
+  if (mode === 'people' && ql.length >= 2 && typeof addNewPerson === 'function' && !(state.people || []).some(p => p && String(p.name || '').toLowerCase() === ql)) {
+    push('Commands', { icon: 'user-plus', label: `Add “${q}” to People`, run: () => addNewPerson({ name: q }) });
   }
   const ordered = [];
   const names = [...groups.keys()].sort((a, b) => {
