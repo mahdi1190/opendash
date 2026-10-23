@@ -114,15 +114,24 @@ function googleAddAccount({ email = '', accountId = null, features = null, custo
           const problem = googleChoiceProblem(choice.email, choice.features);
           if (problem) { card.error(problem); return false; }
           done = true;
+          // "Sign in again" keeps the account's own Mail/Calendar choice: a box changed here changes it.
+          const saveChoice = () => {
+            if (!accountId || !features) return;
+            const changed = {};
+            for (const k of ['mail', 'calendar']) if (!!features[k] !== !!choice.features[k]) changed[k] = choice.features[k];
+            if (Object.keys(changed).length) _srcApi('/api/accounts/features', { method: 'POST', body: { id: accountId, ...changed } }).catch(() => {});
+          };
           // The account list (56-accounts.js) opens the sign-in tab inside this click and notices the return.
           if (typeof accOpenSignIn === 'function') {
             accOpenSignIn({ provider: 'google', email: choice.email, features: choice.features, ...(accountId ? { accountId } : {}) });
-            if (typeof accWaiting === 'function') openDrawer({ title: 'Add a Google account', width: 520, body: (el, close) => el.appendChild(accWaiting('Google', close)) });
+            saveChoice();
+            if (typeof accWaiting === 'function') openDrawer({ title: accountId ? 'Sign in to Google again' : 'Add a Google account', width: 520, body: (el, close) => el.appendChild(accWaiting('Google', close)) });
             resolve(choice);
             return;
           }
           let popup = null;
           try { popup = window.open('about:blank', '_blank'); } catch (_) { popup = null; }
+          saveChoice();
           _googleBegin(choice, popup).then((ok) => resolve(ok ? choice : null));
         } },
       ],

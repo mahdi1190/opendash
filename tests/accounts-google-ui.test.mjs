@@ -186,3 +186,14 @@ test('the list\'s begin address carries the ticked features (GET /api/accounts/b
   assert.deepEqual([u.get('provider'), u.get('email'), u.get('features')], ['google', 'kim@example.com', 'calendar']);
   assert.equal(new URLSearchParams(ctx.accBeginUrl({ provider: 'microsoft', email: 'kim@example.com' }).split('?')[1]).has('features'), false);
 });
+
+test('sign in again with a box changed: the account\'s Mail/Calendar choice follows (only what changed is sent)', async () => {
+  const { ctx, dialogs, calls } = page();
+  ctx.accOpenSignIn = () => {};
+  const p = ctx.googleAddAccount({ email: 'kim@example.com', accountId: 'acc_0123456789abcdef', features: { mail: true, calendar: false } });
+  all(dialogs[0].body).find((e) => e.dataset.feature === 'calendar').checked = true;
+  dialogs[0].press('Continue to Google');
+  await p;
+  const sent = calls.filter((c) => c[0] === 'api').map((c) => JSON.parse(JSON.stringify(c.slice(1))));
+  assert.deepEqual(sent, [['/api/accounts/features', { method: 'POST', body: { id: 'acc_0123456789abcdef', calendar: true } }]]);
+});
