@@ -175,11 +175,13 @@ function syncResolve(merged, conflict, side) {
 }
 
 /*
- * Fields inside a shared preference that still belong to the tab: the calendar
- * mode it is in and its one-stream filter (the view carries them:
- * #view=calendar:week). lib/sync/manifest.mjs keeps them on each computer too.
+ * Fields inside a shared preference that still belong to the tab. Since 2.16
+ * there are none: the calendar mode and its one-stream filter follow the person
+ * like the rest of the layout (one change here, the same change there), and a
+ * tab on the calendar moves its view to the new mode (_liveFollowCalMode).
+ * The mechanism stays for later fields.
  */
-const _LIVE_TAB_FIELDS = Object.freeze({ calPrefs: Object.freeze(['mode', 'stream']) });
+const _LIVE_TAB_FIELDS = Object.freeze({});
 /**
  * The merge a tab makes when a newer copy of the state arrives: syncMerge3 over
  * everything except the tab's own keys (opts.tab: where you are, panel sizes,
@@ -275,6 +277,21 @@ function _liveTabOwn() {
   const shared = new Set(typeof SHARED_UI_KEYS !== 'undefined' ? SHARED_UI_KEYS : []);
   return new Set([..._NON_DATA_KEYS].filter(k => !shared.has(k)));
 }
+/**
+ * The calendar mode (calPrefs.mode) changed elsewhere while this tab shows the
+ * calendar: the view carries the mode (#view=calendar:week), so it follows,
+ * else the section would put the old mode back on the next render and save it.
+ * Only the view's name changes; nothing is saved (the mode came from the file).
+ */
+function _liveFollowCalMode() {
+  const v = String(state.view || '');
+  const m = state.calPrefs && state.calPrefs.mode;
+  if (!/^calendar(:|$)/.test(v) || !['month', 'week', 'day', 'agenda'].includes(m)) return;
+  const want = v.split(':')[1];
+  if (!want || want === m) return;         // plain "calendar" uses the mode as it is; same mode: nothing to do
+  state.view = 'calendar:' + m;
+  if (typeof _syncViewHash === 'function') { try { _syncViewHash(); } catch (e) { /* the next render fixes the hash */ } }
+}
 /** Replace this tab's data and preferences with `merged` (keeps view, selection, caches); take the server's version. */
 function _liveApply(merged, remoteVersion) {
   const own = _liveTabOwn();
@@ -282,6 +299,7 @@ function _liveApply(merged, remoteVersion) {
   for (const k of Object.keys(merged)) if (!own.has(k) && !_NOT_PERSISTED.includes(k)) state[k] = merged[k];
   state._lastSave = Number(remoteVersion) || state._lastSave;
   ensureStateDefaults(state);
+  _liveFollowCalMode();
   if (state.selectedTaskId && !getItem(state.selectedTaskId)) state.selectedTaskId = null;
   // Auto may have just been switched on elsewhere: this computer's own evening decides the theme.
   if (typeof applyAutoTheme === 'function') { try { applyAutoTheme(); } catch (e) { /* the next render paints it */ } }

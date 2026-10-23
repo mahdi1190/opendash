@@ -57,6 +57,8 @@ const SHARED_UI_KEYS = [
   'sortBy', 'groupBy', 'theme', 'density', 'collapsedSidebar', 'autoTheme',
   'taskViewPrefs', 'calPrefs', 'peopleView', 'openItemsIn', 'itemHero',
   'homeUI', 'achievements', 'sidebarLists',
+  // 2.16: the rest of the layout follows you too (one change here, the same change there)
+  'viewMode', 'focus', 'sidebarCollapsed', 'paneSizes', 'lastReviewPrompt', 'suggestStats',
 ];
 const BOOKKEEPING_KEYS = ['_lastSave', '_saveCount', '_localDirty'];
 const _NON_DATA_KEYS = new Set([...UI_STATE_KEYS, ...BOOKKEEPING_KEYS]);

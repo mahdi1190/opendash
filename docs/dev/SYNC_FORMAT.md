@@ -252,32 +252,35 @@ manifest).
 | `viewFilter` | one value | the saved view filter (tag renames rewrite it) |
 | `collapsedSidebar` | per heading | folded sidebar headings |
 | `taskViewPrefs` | per view, per field; `collapsed` per group | each view's sort, grouping and folded groups |
-| `calPrefs` | per field; `hidden` per entry (`cal:<id>`, `google`, `tasks`, `plans`, `countdowns`, `declined`); `mode` and `stream` stay | the calendars you follow or hide; the mode you are in and a one-stream filter are where you are (the view carries them: `#view=calendar:week`) |
+| `calPrefs` | per field; `hidden` per entry (`cal:<id>`, `google`, `tasks`, `plans`, `countdowns`, `declined`) | the calendars you follow or hide, the calendar mode (month, week, day, agenda) and the one-stream filter (since 2.16; a tab showing the calendar moves its view, `#view=calendar:week`, to the new mode) |
 | `peopleView` | per field | People layout, sort, grouping and filter |
-| `homeUI` | per field; `listFold` per list card; `hideAmounts` stays | Home cards: expanded, folded groups, "not now", celebrations, gallery badges; blurring amounts is this screen's privacy |
+| `homeUI` | per field; `listFold` per list card | Home cards: expanded, folded groups, "not now", celebrations, gallery badges, amounts hidden (since 2.16) |
 | `sidebarLists` | per list, per field | sidebar list sort and length |
 | `animPrefs` | per field; `overrides` per event, `look` per field | scene rules, per-event overrides and the animation look |
 | `achievements` | per field; `unlocked` and `notes` per entry | unlocks: nothing earned is lost |
+| `viewMode` | one value | list, board or review mode of the task views (2.16) |
+| `focus` | one value | Focus mode: on until you turn it off or open the sidebar (2.16) |
+| `sidebarCollapsed` | one value | the sidebar folded or open (2.16) |
+| `paneSizes` | per panel | panel sizes in pixels; each screen clamps them to what fits (2.16) |
+| `lastReviewPrompt` | one value | when you were last asked for a weekly review: answered on one computer, not asked again on the other (2.16) |
+| `suggestStats` | `rules` per rule and field, `seen` per key | the suggestions' counts; the later count wins per field (a count can come out a little low, never doubled) (2.16) |
+
+Data (not a preference: clashes are reported like task edits): `travel` (2.16), the trip decisions, `trips` per trip and field, `notTrips` and `moments` per entry. The zone each computer is in is not in it: that is `time.json` and `config.time`, which stay on each computer.
 
 | Device-local (never synced) | Why it stays |
 |---|---|
-| `view` | where you are |
-| `viewMode` | the list, board or review mode of the view you are in (part of where you are) |
+| `view` | where you are (it follows `calPrefs.mode` when that changes elsewhere) |
 | `selectedTaskId` | the open task |
 | `calMonth`, `weekBarOffset` | the month and week shown |
 | `_snappedFor` | scroll bookkeeping |
-| `focus` | Focus mode is a moment (it ends when the sidebar opens) |
 | `personEditMode` | an edit in progress |
-| `paneSizes`, `sidebarCollapsed` | panel and sidebar sizes: this screen's size |
-| `lastReviewPrompt` | when this screen last asked for a review |
 | `_lastBackup` | this browser's last download backup |
-| `suggestStats` | counters (shown, acted on, ignored per rule and day): last-writer-wins would lose counts |
 | `env` | this computer |
-| `travel` | this computer's zone, trips and places (they move with the computer) |
 | `_lastSave`, `_saveCount`, `_localDirty`, `_overridesMigrated_v1`, `_demo`, `taskOverrides`, `dateOverrides` | bookkeeping and emptied legacy keys |
 
-Derived keys (`calCache`, `peopleEmailCache`, `emailTriage`, `autolink`,
-`suggest`, `taskChat`) are rebuilt on each device and never synced.
+Derived keys (`calCache`, `peopleEmailCache`, `autolink`) are rebuilt on each
+device and never synced. Results (`emailTriage`, `taskChat`, `suggest`) sync:
+a computer without Claude cannot rebuild them.
 
 **Theme under Auto.** While `autoTheme` is `true` on a device, its `theme`
 is not captured and an incoming `theme` is not written in (the register
@@ -290,7 +293,7 @@ tab takes them from a newer copy like data (`src/app/86-live-sync.js`
 `syncMergeTab`; the list is `SHARED_UI_KEYS` in `lib/state-keys.mjs`), so an
 open tab never writes its old theme back over a choice made elsewhere. A
 clash keeps the tab's choice without asking (it is saved next, so it becomes
-the later one). `calPrefs.mode` and `.stream` stay each tab's own.
+the later one). Since 2.16 no field inside a preference stays a tab's own.
 
 ### 9.2 Devices that synced before preferences did
 
@@ -313,7 +316,29 @@ The format does not change (no new `v`). After the update:
 - A **fresh device that joins** writes its first capture at the floor
   (section 2), so the group's preferences win wherever the group has one
   (its theme, its hidden calendars), and what only the new device has is
-  added. Its own view, open task and panel sizes stay as they were.
+  added. Its own view and open task stay as they were.
+
+The same holds for every key and field that 2.16 made synced (`viewMode`,
+`focus`, `sidebarCollapsed`, `paneSizes`, `lastReviewPrompt`,
+`suggestStats`, `travel`, `calPrefs.mode` and `.stream`,
+`homeUI.hideAmounts`): an updated device publishes what it has on its first
+pass, maps merge entry by entry (panel sizes, trips, "not a trip", the
+suggestions' seen list), and a plain value takes the later device's choice.
+A field that used to be device-local inside a record (`calPrefs.mode`) is
+refused by older versions (their schema still says local), so they keep
+their own until updated.
+
+**The person's settings (`profile.json`).** A key that `profile.json` does
+not hold yet (a new file, or a key a later version added: `travel`,
+`locationMode`, `manualLocation`, `time` in 2.16) is written only when this
+computer's value differs from the defaults (`lib/profile.mjs` writeProfile),
+so an updated computer with blank settings never overwrites the other's
+choices; one with its own choice publishes it as an ordinary change. Keys
+only part of which follows the person (`PERSON_PART`): `travel` without
+`sources.geo` (the browser's location permission), `time` with only
+`clock12` (which zone a computer shows stays its own). When the typed place
+is chosen for the weather (`locationMode` manual), applying `manualLocation`
+sets this computer's `location` to it too.
 
 ## 10. Versions and unknown data
 
@@ -438,7 +463,9 @@ In each device's own `pair.json` (`{v:2, t:"pair", dev, pub, at, join?, approve?
 
 1. New device N: `join: {sid, commit, name, kind, at, exp}` with
    `commit = b64u(SHA-256(JSON ["opendash-pair-commit-v2", sid, pubN, name, kind, nN]))`,
-   `nN` 32 random bytes (b64u). The request lasts 15 minutes.
+   `nN` 32 random bytes (b64u). A session ends after 1 minute without
+   progress; each step gives it another minute (`PAIR_MS`). Requests whose
+   `exp` is up to 20 minutes ahead (older versions wrote 15) are accepted.
 2. Member E (its user clicked "Check it's yours") locks onto that commit and
    writes `approve: {sid, to:N, group, commit, nonce:nE, at, exp}`.
 3. N takes the FIRST answer for its `sid` and reveals `join.open = nN`.
@@ -453,7 +480,30 @@ In each device's own `pair.json` (`{v:2, t:"pair", dev, pub, at, join?, approve?
 Each side answers once per session, and each value is fixed before the other
 side's last value is visible, so a man in the middle cannot search for keys
 that make the codes match: it gets one blind 1-in-a-million guess per pairing
-the user starts. A "no" on either side writes `abort:true`.
+the user starts. A "no" on either side writes `abort:true`; Cancel works at
+every step, including after E has sent the keyring.
+
+**Restarts, renames, removed devices** (2.16):
+
+- Both sides keep the session in their secret store (`sync-e2e-pairing`:
+  sid, nonces, the step), so a restart carries on with the same session.
+- E follows the newest request of the same device: when N's `join` carries
+  another `sid` with a later `at` (N started again: a restart on an older
+  version, a new name), E answers it with a fresh `nE`, fixed before it sees
+  the new opening. N never follows a second answer for one `sid` (that would
+  let the folder pick `nE` after seeing `nN`).
+- A side whose peer's message has been missing from the folder for 15 s
+  ends the session ("the other computer stopped") instead of waiting.
+- E keeps the keyring in `approve.wrap` until N's `keys.json` shows up (at
+  most 10 minutes), however slow the cloud is.
+- A request from a REMOVED device is shown ("A computer you removed, ...,
+  wants to join again"). Removal is permanent, so approving it does not add
+  the old id: the keyring tells N it was removed and N joins under a new
+  identity (adopt), which it announces in its roster; E sees it arrive.
+- A device that is not in a group but finds a member's authenticated
+  "removed" notice (`gone[<its id>]`, section 11.3) starts its pairing or
+  join code again with a fresh identity by itself (a fake notice could only
+  make it pick a new key pair).
 
 **QR offer** (a phone): E writes `offer: {id, exp, iv, ct}`: the keyring
 (`purpose:"offer"`) sealed under `HKDF(T, "opendash-offer-v2", label)`, label
@@ -468,3 +518,43 @@ A device that synced plainly takes a new (fingerprint) id, KEEPS what it has
 deletes its own old folder. The first one makes the group (and shows the
 recovery code); the others join it. Plain records from other devices are not
 taken in once a device is encrypted; their changes arrive once they join.
+
+### 11.7 Join code ("Add a computer", 2.16)
+
+The usual way in: E shows 4 letters from `ABCDEFGHJKLMNPQRSTUVWXYZ` (no I, O,
+0 or 1; 24^4 codes), valid 10 minutes (`CODE_MS`, separate from the
+pairing's idle minute), single use. N types them. A short code can be
+guessed offline from anything derived from it, so nothing that lets anyone
+TEST a guess is ever written to the folder: no code, no hash, no MAC of it.
+Both sides run CPace, a balanced PAKE:
+
+- `G` = Elligator 2 (RFC 9380, curve25519, Z = 2) of
+  `HKDF-SHA-256(code, salt "opendash-joincode-v1", info "opendash-joincode-generator|<sid>", 48 bytes)`
+  read as a big-endian integer mod 2^255 - 19, as a little-endian u-coordinate.
+- Each side picks a fresh X25519 secret `y` and publishes `Y = X25519(y, G)`;
+  `K = X25519(y_self, Y_other)`.
+- Transcript `T = [sid, E, pubE, Y_E, N, pubN, Y_N, name, kind]`;
+  `HKDF(K, salt SHA-256(JSON ["opendash-joincode-transcript-v1", ...T]), info "opendash-joincode-confirm-v1", 64)`:
+  the first 32 bytes are N's tag, the last 32 E's.
+
+In `pair.json`:
+
+1. E: `code: {sid, Y, at, exp}` (and `no: {<N>: <at>}` for wrong answers).
+2. N: `claims: [{sid, to: E, Y, name, kind, tag, at}]`, one per open session it
+   finds (at most 3: a fake session costs N one).
+3. E checks each answer once. A wrong tag counts; after 3 the code is burned
+   (`abort: "burned"`). One device with a right tag, still alone after 3 s,
+   is let in: `code: {sid, done: {to: N, wrap, tag: E's tag}}`, the keyring
+   (`purpose:"joincode"`) wrapped from E to N (label
+   `opendash-joincode-wrap-v1|sid|E|N`). Two devices with right tags: both are
+   refused (`abort: "clash"`, "Two computers tried to use this code").
+4. N checks E's tag (E knew the code), opens the wrap from `pubE` and adopts
+   the keyring (a removed identity comes back as a new one, as in 11.5).
+
+What the folder can do: it sees `Y_E`, `Y_N` and the tags, from which no
+guess can be checked (that would need `y`). A fake E or N gets one guess per
+session (1 in 331,776), and E stops after 3 wrong ones. Someone with write
+access to the folder could only race a legitimate join in the few seconds
+before E acts on it, and only with the right code (which they cannot learn
+from the folder); two right answers are refused. Both sides keep their session
+in the secret store, so a restart carries on.
