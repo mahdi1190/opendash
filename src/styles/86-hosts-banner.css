@@ -1,0 +1,24 @@
+/* ============= TWO COMPUTERS (src/app/86-hosts-banner.js) =============
+   Paused / also open / OneDrive / conflict-copy banners: the same calm,
+   in-flow look as the "server isn't running" banner (86-offline-banner.css). */
+.hb-banner {
+  flex: none; align-self: center; position: relative; z-index: var(--z-sticky);
+  display: flex; align-items: center; gap: var(--space-3);
+  width: max-content; max-width: calc(100% - 2 * var(--space-3));
+  margin: var(--space-2) var(--space-3) 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in oklab, var(--warning) 35%, var(--border));
+  border-radius: var(--radius-lg); background: var(--surface-raised); box-shadow: var(--shadow-sm);
+}
+.hb-banner.is-info { border-color: color-mix(in oklab, var(--info, var(--accent)) 30%, var(--border)); }
+.hb-banner.is-floating { position: fixed; top: var(--space-2); left: 50%; transform: translateX(-50%); margin: 0; z-index: calc(var(--z-drawer) - 1); box-shadow: var(--shadow-md); }
+.hb-banner .hb-ic { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: var(--radius-full); background: var(--warning-soft); color: var(--warning-ink); }
+.hb-banner.is-info .hb-ic { background: var(--info-soft, var(--surface-sunken)); color: var(--info-ink, var(--fg-muted)); }
+.hb-banner .hb-msg { min-width: 0; flex: 1; }
+.hb-banner .hb-title { font-size: var(--text-sm); line-height: var(--lh-sm); font-weight: var(--weight-semibold); color: var(--fg); }
+.hb-banner .hb-sub { font-size: var(--text-xs); line-height: var(--lh-xs); color: var(--fg-muted); }
+.hb-banner .hb-acts { display: flex; align-items: center; gap: var(--space-2); flex: none; }
+@media (max-width: 640px) {
+  .hb-banner { flex-wrap: wrap; width: auto; align-self: stretch; }
+  .hb-banner .hb-acts { width: 100%; justify-content: flex-end; }
+}
