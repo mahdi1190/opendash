@@ -92,6 +92,7 @@ function _hsRender(el, ctx) {
   if (wantTrack && m.timed.length) _hsTrack(body, m, _hsW.size === ctx.size && _hsW.w === w0 ? _hsW.track : 0);
   else if (m.timed.length) body.insertAdjacentHTML('beforeend', _hsListHtml(m, banner));
   if (cal.error) body.insertAdjacentHTML('beforeend', `<div class="hs-note">${icon('circle-alert', 'i-xs')}<span>Couldn’t read the calendar.</span><button type="button" class="hs-note-btn" data-act="retry">Retry</button></div>`);
+  else if (cal.none && typeof connViaText === 'function' && connViaText('calendar')) body.insertAdjacentHTML('beforeend', `<div class="hs-note">${icon('calendar-days', 'i-xs')}<span>${esc(connViaText('calendar'))}: its events show here once they sync.</span></div>`);
   else if (cal.none) body.insertAdjacentHTML('beforeend', `<div class="hs-note">${icon('plug', 'i-xs')}<span>Only timed tasks so far.</span><button type="button" class="hs-note-btn" data-act="connect">Connect a calendar</button></div>`);
   const foot = (wantTrack && !banner ? _hsTrackFootHtml(m) : '') + (cal.ok ? _hsTomorrowHtml(today) : '');
   if (foot) body.insertAdjacentHTML('beforeend', `<div class="hs-foot">${foot}</div>`);

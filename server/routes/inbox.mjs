@@ -25,7 +25,9 @@ export default function register(app) {
   const { dataDir, paths, log, getConfig } = app.ctx;
   const sources = sourcesFor(app.ctx);
   const hooks = {
-    list: async () => (await sources.all()).filter(s => s.capability === 'email'),
+    // This computer's mailboxes, plus the ones another of the user's devices reads itself (lib/remote-jobs.mjs):
+    // shown here from their synced snapshots, never fetched here.
+    list: async () => { const own = (await sources.all()).filter(s => s.capability === 'email'); const rj = app.ctx.remoteJobs; return rj ? [...own, ...rj.remoteSources('email', own.map(s => s.id))] : own; },
     readSnapshots: async (list) => {
       const out = {};
       for (const s of list) if (s.preset !== 'gmail') out[s.id] = await readInboxSnapshot(paths, s.id).catch(() => null);
@@ -73,17 +75,22 @@ export default function register(app) {
     path: '/api/inbox/update', method: 'POST', methodError: 'POST only',
     handler: async (c) => {
       const body = await c.body({ allowEmpty: true });
+      // A click also asks the other devices that read mailboxes this one does not (their Claude
+      // connectors) to update them (lib/remote-jobs.mjs); what they fetch arrives by sync.
+      const asked = body.force === true && !c.internal && app.ctx.remoteJobs ? await app.ctx.remoteJobs.askOthers('fetch:inbox', body, c).catch(() => []) : [];
+      const also = asked.length ? { asked, message: `Asking ${[...new Set(asked.map(a => a.runsOn))].join(' and ')} to update your email.` } : {};
       // An automatic update runs only on the main computer (lib/main-computer.mjs); a click always runs.
       const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('connectors', { automatic: body.force !== true }) : { run: true };
       // Not this computer's job: the Claude connectors (and calendar links) wait for the main
       // computer, but the accounts this computer fetches (lib/sync/roles.mjs) are still read here.
       if (!mc.run) {
         const own = mc.reason === 'moving' ? { started: false } : await inbox.start({ days: body.days, force: body.force === true, onlyAccounts: true });
-        return own.started ? c.json(202, { job: own.job, ...skippedBody(mc) }) : { ...skippedBody(mc), job: null };
+        return own.started ? c.json(202, { job: own.job, ...skippedBody(mc), ...also }) : asked.length ? c.json(202, { job: null, ...also }) : { ...skippedBody(mc), job: null };
       }
       const r = await inbox.start({ days: body.days, force: body.force === true });
-      if (r.started) return c.json(202, { job: r.job });
+      if (r.started) return c.json(202, { job: r.job, ...also });
       if (r.reason === 'running') return c.json(409, { error: 'An update is already running.', job: r.job });
+      if (r.reason === 'no-sources' && asked.length) return c.json(202, { job: null, ...also });
       if (r.reason === 'no-sources') return c.json(409, { error: 'No mailbox is connected yet: add one in Connections.', code: 'NO_SOURCES', job: r.job });
       return { skipped: true, reason: r.reason, job: r.job, lastUpdate: r.lastUpdate || null };
     },

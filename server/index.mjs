@@ -27,8 +27,9 @@ import { spawn } from 'node:child_process';
 import { installSpawnGuard } from '../lib/spawn-guard.mjs';
 installSpawnGuard();   // in a test process, never start a real AI agent CLI (lib/spawn-guard.mjs)
 import {
-  REPO_ROOT, argValue, resolveDataDir, dataPaths, ensureDataDir, loadConfig, saveConfig, publicConfig, legacyStatus,
+  REPO_ROOT, argValue, resolveDataDir, dataPaths, ensureDataDir, loadConfig, saveConfig, publicConfig, legacyStatus, DEFAULT_CONFIG,
 } from '../lib/datadir.mjs';
+import { writeProfile } from '../lib/profile.mjs';
 import { setRunnerLogger, setCliPath } from '../lib/claude-runner.mjs';
 import { aiStatus, setDefaultModel } from '../lib/ai.mjs';
 import { initGoogle } from '../lib/google.mjs';
@@ -150,7 +151,8 @@ export async function main(argv = process.argv.slice(2)) {
     port, dataDir, paths: { ...paths, stateDir }, repoRoot: REPO_ROOT, financeDir, log, store, version, lifecycle: life, buildId, track,
     hosts: { presence, gate: hostGate, others: othersNow }, moveGate,
     getConfig: () => config,
-    setConfig: async (patch) => { config = await saveConfig(dataDir, patch); setDefaultModel(config.ai.model); return config; },
+    // The person's part of the config follows them to their other computers (lib/profile.mjs).
+    setConfig: async (patch) => { config = await saveConfig(dataDir, patch); setDefaultModel(config.ai.model); await writeProfile(paths.root, config, { defaults: DEFAULT_CONFIG }).catch((e) => log('warn', `profile: could not write profile.json (${e.code || e.message})`)); return config; },
   };
   const app = createApp(ctx);
   await registerRoutes(app);

@@ -31,6 +31,11 @@ export default function register(app) {
         pending = !ai;
       }
       const cfg = c.getConfig();
+      // Claude on another of the user's devices counts (lib/remote-jobs.mjs): `via` names it.
+      let via = null;
+      if (!(ai && ai.available) && app.ctx.remoteJobs && app.ctx.sync && app.ctx.sync.apply) {
+        try { const r = await app.ctx.remoteJobs.runnerFor('claude'); via = r && !r.me ? r.name || 'your other computer' : null; } catch { via = null; }
+      }
       return {
         ok: true,
         app: 'dashboard',
@@ -40,7 +45,7 @@ export default function register(app) {
         ...(st.exists ? { taskCount: st.taskCount ?? null, lastSave: st.lastSave ?? null, size: st.size } : {}),
         ...(st.parseError ? { parseError: st.parseError } : {}),
         ai: {
-          available: !!(ai && ai.available), pending,
+          available: !!(ai && ai.available) || !!via, local: !!(ai && ai.available), ...(via ? { via } : {}), pending: pending && !via,
           code: ai ? ai.code : null, model: cfg.ai.model, chatModel: cfg.ai.chatModel,
         },
         google: await c.googleSummary(),

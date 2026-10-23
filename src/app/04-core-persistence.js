@@ -48,6 +48,7 @@ async function detectStateServer() {
     _serverAvailable = !!h.ok;
     _serverHasState = h.stateExists !== false;
     AI_AVAILABLE = !!(h.ai && h.ai.available);
+    AI_VIA = (h.ai && !h.ai.local && h.ai.via) || null;   // Claude works through another of your devices (56-remote-jobs.js)
     AI_PENDING = !!(h.ai && h.ai.pending);
     AI_MODEL = (h.ai && h.ai.model) || null;
     GOOGLE_CONFIGURED = !!(h.google && h.google.configured);
@@ -155,6 +156,7 @@ async function serverStateWrite() {
 // What the server says this machine can do (set by detectStateServer and
 // the AI status poll). Features check these to grey themselves out.
 let AI_AVAILABLE = false;
+let AI_VIA = null;            // the other device whose Claude this one uses (connect once, use everywhere), or null
 let AI_PENDING = false;
 let GOOGLE_CONNECTED = false;
 let GOOGLE_CONFIGURED = false;

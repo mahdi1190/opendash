@@ -22,6 +22,9 @@ export default function register(app) {
 
   app.route({
     path: '/api/ai', method: 'POST', maxBody: MAX_BODY, methodError: 'POST only',
+    // No Claude here but on another of the user's devices: asked there (lib/remote-jobs.mjs).
+    // `purpose` ('triage' | 'taskchat') only names the job for "Asking Home laptop...".
+    remote: { kind: (b) => (['triage', 'taskchat'].includes(b && b.purpose) ? b.purpose : 'ai') },
     handler: async (c) => {
       const b = await c.body();
       if (typeof b.prompt !== 'string' || !b.prompt.trim()) throw new HttpError(400, 'prompt is required');
@@ -54,8 +57,15 @@ export default function register(app) {
   const status = async (c, force) => {
     const s = await aiStatus({ force });
     const cfg = c.getConfig();
+    // Claude on another of the user's devices counts (connect once, use everywhere):
+    // `local` says whether it is this computer's, `via` names the other device.
+    let via = null;
+    if (!s.available && app.ctx.remoteJobs && app.ctx.sync && app.ctx.sync.apply) {
+      try { const r = await app.ctx.remoteJobs.runnerFor('claude'); via = r && !r.me ? r.name || 'your other computer' : null; } catch { via = null; }
+    }
     return {
-      available: s.available, code: s.code, message: s.message, checkedAt: new Date(s.at).toISOString(),
+      available: s.available || !!via, local: s.available, ...(via ? { via } : {}),
+      code: s.available || via ? null : s.code, message: s.available ? s.message : via ? `Uses Claude on ${via}.` : s.message, checkedAt: new Date(s.at).toISOString(),
       model: cfg.ai.model, chatModel: cfg.ai.chatModel, effort: cfg.ai.effort,
       models: MODELS, efforts: EFFORTS, queue: queueStats(),
     };

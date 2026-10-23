@@ -101,6 +101,13 @@ export function createApp(ctx) {
     }
     const t0 = Date.now();
     try {
+      // A job this computer cannot do (no Claude here) but another one of the
+      // user's devices can: asked there (lib/remote-jobs.mjs), answered 202
+      // {remote}; the page waits for the answer (src/app/56-remote-jobs.js).
+      if (r.remote && ctx.remoteJobs) {
+        const fw = await ctx.remoteJobs.forward(r.remote, c);
+        if (fw) { json(res, fw.status, fw.body); return true; }
+      }
       const out = await r.handler(c);
       if (!res.headersSent && out !== undefined) json(res, 200, out);
       else if (!res.headersSent) json(res, 200, { ok: true });
@@ -128,8 +135,44 @@ export function createApp(ctx) {
     for (const fn of list) { try { await fn(); } catch (e) { ctx.log?.('warn', `${label} hook failed: ${e && e.message}`); } }
   }
 
+  /**
+   * Run one route's handler from inside the server (a remote request another
+   * device made: lib/remote-jobs.mjs), exactly as a click would, without a
+   * socket: -> {status, body}. Only for the allow-listed jobs of
+   * lib/sync/requests.mjs; c.internal is true (never forwarded again).
+   */
+  async function invoke(method, path, { body = {}, zone = null } = {}) {
+    const m = String(method || 'GET').toUpperCase();
+    const url = new URL(path, `http://localhost:${ctx.port || 0}`);
+    const { route: r } = find(m, url.pathname);
+    if (!r) return { status: 404, body: { error: 'unknown route' } };
+    let sent = null;
+    const c = {
+      ...ctx, req: null, res: null, url, method: m, path: url.pathname, query: url.searchParams, internal: true,
+      send: (code, b) => { sent = { status: code, body: typeof b === 'string' ? { text: b } : b }; },
+      json: (code, obj) => { sent = { status: code, body: obj }; },
+      text: async () => JSON.stringify(body || {}),
+      body: async () => structuredClone(body || {}),
+      zone: typeof zone === 'string' && zone ? zone : null,
+    };
+    c.clockNow = (now = Date.now()) => {
+      const cfg = (typeof ctx.getConfig === 'function' && ctx.getConfig()) || {};
+      const where = (ctx.paths && ctx.paths.root) || ctx.dataDir;
+      const stored = where ? timeStoreFor(where).peek() : null;
+      return clockFor(cfg, systemZone({ header: c.zone, stored, now: Number(now), cfg }), now);
+    };
+    try {
+      const out = await r.handler(c);
+      return sent || { status: 200, body: out === undefined ? { ok: true } : out };
+    } catch (err) {
+      const msg = String(err && err.message ? err.message : err);
+      const code = err.status || (/JSON|refusing/.test(msg) ? 400 : 500);
+      return { status: code, body: typeof err.toJSON === 'function' ? err.toJSON() : { error: msg, ...(err.code ? { code: err.code } : {}) } };
+    }
+  }
+
   return {
-    route, handle, find, ctx, onReady, onClose,
+    route, handle, find, ctx, onReady, onClose, invoke,
     runReady: () => runHooks(readyHooks, 'ready'), runClose: () => runHooks(closeHooks, 'close'),
     get routes() { return [...[...exact.values()].flat(), ...prefixes]; },
   };

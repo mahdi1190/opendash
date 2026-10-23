@@ -33,7 +33,7 @@ function homeAdvisorPaint() {
     button.textContent=_homeAdviceBusy?'Thinking through your day…':'Think through my day';button.onclick=()=>homeAdvisorReview(false);host.querySelector('.bf-ai-h').appendChild(button);
     const available=typeof connHas==='function'&&connHas('claude');
     const a=homeAdviceCurrent();
-    host.querySelector('.hd-advisor-status').textContent=_homeAdviceBusy?'Reviewing your tasks, deadlines, calendar and recent progress.':a?'AI review · '+new Date(a.at).toLocaleTimeString(APP_CONFIG.locale||undefined,{hour:'2-digit',minute:'2-digit',timeZone:Clock.zone()})+' · '+a.model:available?'Reasons across your day and proposes up to three next steps. Uses your selected AI chat model.':'Connect Claude in Connections to use the day adviser.';
+    host.querySelector('.hd-advisor-status').textContent=_homeAdviceBusy?'Reviewing your tasks, deadlines, calendar and recent progress.':a?'AI review · '+new Date(a.at).toLocaleTimeString(APP_CONFIG.locale||undefined,{hour:'2-digit',minute:'2-digit',timeZone:Clock.zone()})+' · '+a.model+(a.by&&typeof Connections!=='undefined'&&Connections.viaText('claude')?' · on '+a.by:''):available?'Reasons across your day and proposes up to three next steps. '+(typeof connViaText==='function'&&connViaText('claude')?connViaText('claude')+'.':'Uses your selected AI chat model.'):'Connect Claude in Connections to use the day adviser.';
     if(_homeAdviceError&&!_homeAdviceBusy)host.querySelector('.hd-advisor-status').textContent=_homeAdviceError+' The normal suggestions remain available.';
     if(!available){button.disabled=true;button.onclick=null;}
     const row=host.querySelector('.hd-advisor-ideas');
@@ -55,7 +55,8 @@ async function homeAdvisorReview(automatic) {
       _homeAdviceError='';
       if(state._localDirty && typeof _persistFire==='function')await _persistFire();
       if(state._localDirty)throw new Error('Wait for your latest changes to finish saving, then try again.');
-      const response=await fetch('/api/story/advice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({automatic:!!automatic})});
+      // No Claude here but on another of your devices: it thinks it through there (56-remote-jobs.js).
+      const response=await (typeof remoteFetch==='function'&&!automatic?remoteFetch:fetch)('/api/story/advice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({automatic:!!automatic})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error?.message||data.error||'The AI review could not finish.');
       _homeAdvice=data;
@@ -69,11 +70,29 @@ async function homeAdvisorReview(automatic) {
 function homeAdvisorTick() {
   homeAdvisorPaint();
   if(typeof briefPrefs!=='function')return;
-  if(!briefPrefs().advisorAuto||!briefPrefs().ai||document.hidden||typeof _serverAvailable==='undefined'||!_serverAvailable||!connHas('claude')||_homeAdviceBusy)return;
+  // A review made on another of your devices (the main computer's automatic one, or one asked from here) shows here too.
+  if(!document.hidden&&typeof _serverAvailable!=='undefined'&&_serverAvailable&&!homeAdviceCurrent()&&Date.now()-_homeAdviceFetchedAt>5*60*1000)homeAdvisorRefresh();
+  // The automatic review runs only where Claude is (the main computer); a computer that uses another's Claude reads its result.
+  if(!briefPrefs().advisorAuto||!briefPrefs().ai||document.hidden||typeof _serverAvailable==='undefined'||!_serverAvailable||!(typeof connLocalHas==='function'?connLocalHas('claude'):connHas('claude'))||_homeAdviceBusy)return;
   const key=todayStr()+'|'+Clock.zone()+'|'+homeAdvicePeriod();
   let attempts={};try{attempts=JSON.parse(localStorage.getItem(_HOME_ADVICE_KEY+'-attempts')||'{}');}catch(e){/* Private mode. */}
   if(attempts.key===key&&Date.now()-attempts.at<15*60*1000)return;
   if(_homeAdvice&&_homeAdvice.date===todayStr()&&_homeAdvice.tz===Clock.zone()&&_homeAdvice.period===homeAdvicePeriod())return;
   try{localStorage.setItem(_HOME_ADVICE_KEY+'-attempts',JSON.stringify({key,at:Date.now()}));}catch(e){/* Private mode. */}
   homeAdvisorReview(true);
+}
+/** The latest review on the server (brief/day-advice.json, synced: one made on another of your devices shows here). */
+var _homeAdviceFetchedAt = 0;   // var: homeAdvisorTick may read it first
+async function homeAdvisorRefresh() {
+  _homeAdviceFetchedAt = Date.now();
+  try {
+    const r = await fetch('/api/story/advice', { cache: 'no-store' });
+    if (!r.ok) return;
+    const j = await r.json();
+    const a = j && j.advice;
+    if (!a || !Array.isArray(a.ideas) || (_homeAdvice && _homeAdvice.at >= a.at)) return;
+    _homeAdvice = a;
+    try { localStorage.setItem(_HOME_ADVICE_KEY, JSON.stringify(a)); } catch (e) { /* Private mode. */ }
+    homeAdvisorPaint();
+  } catch (e) { /* no server: the last one stays */ }
 }

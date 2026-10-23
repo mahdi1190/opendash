@@ -51,9 +51,33 @@ function _connReadCache() {
 }
 function _connEntryOk(id) { return !!(_connAll && _connAll[id] && _connAll[id].state === 'ok'); }
 
-function connHas(name) {
+/* Connect once, use everywhere (docs/dev/MULTI_DEVICE.md): /api/connections
+   carries `group`, what the user's OTHER devices can do. Claude on another
+   device answers requests from this one (56-remote-jobs.js); a calendar or a
+   mailbox another device reads arrives here by sync. So the feature works
+   here too and nothing says "Connect": it says "Uses Claude on Home laptop".
+   The bank does not count: finance data stays on the computer that reads it. */
+const _CONN_GROUP_NEED = { claude: 'claude', gmail: 'email', calendar: 'calendar' };
+/** The name of another device this feature works through, or null (only devices that take changes from the others count). */
+function connVia(name) {
+  const k = _CONN_GROUP_NEED[name];
+  const g = _connAll && _connAll.group;
+  if (!k || !g || !g.apply || !g.has || !Array.isArray(g.has[k])) return null;
+  // the one that is on now first, so a request finds it awake
+  const d = g.has[k].find(x => x && x.apply && x.online) || g.has[k].find(x => x && x.apply) || null;
+  return d ? (d.name || 'your other computer') : null;
+}
+/** Is the device a feature works through on right now? (true when unknown) */
+function connViaOnline(name) {
+  const k = _CONN_GROUP_NEED[name];
+  const g = _connAll && _connAll.group;
+  if (!k || !g || !g.has || !Array.isArray(g.has[k]) || !g.has[k].length) return true;
+  return g.has[k].some(x => x && x.apply && x.online);
+}
+/** Connected on THIS computer (its own sign-in, Claude, source). */
+function connLocalHas(name) {
   switch (name) {
-    case 'claude': return (typeof AI_AVAILABLE !== 'undefined' && AI_AVAILABLE) || _connEntryOk('claude');
+    case 'claude': return (typeof AI_AVAILABLE !== 'undefined' && AI_AVAILABLE && !(typeof AI_VIA !== 'undefined' && AI_VIA)) || _connEntryOk('claude');
     case 'gmail': case 'calendar': case 'bank': {
       const live = name !== 'bank' && typeof GOOGLE_LIVE !== 'undefined' && GOOGLE_LIVE;
       const cap = _connCap(name);
@@ -61,6 +85,20 @@ function connHas(name) {
     }
     default: return true;
   }
+}
+function connHas(name) {
+  if (connLocalHas(name)) return true;
+  if (name === 'claude' && typeof AI_AVAILABLE !== 'undefined' && AI_AVAILABLE) return true;   // the server says: through another device
+  return !!connVia(name);
+}
+/** "Uses Claude on Home laptop" / "Calendar from Home laptop", or '' when this computer has it itself. */
+function connViaText(name) {
+  if (connLocalHas(name)) return '';
+  const via = connVia(name) || (name === 'claude' && typeof AI_VIA !== 'undefined' && AI_VIA) || null;
+  if (!via) return '';
+  const base = name === 'claude' ? `Uses Claude on ${via}` : name === 'calendar' ? `Calendar from ${via}` : name === 'gmail' ? `Email from ${via}` : '';
+  // Honest when it is off: what it made still shows; asking it waits until it is on (or set it up here).
+  return base && !connViaOnline(name) ? `${base} (off right now: what it made still shows)` : base;
 }
 /** True while we have no answer yet for `name` (first load of a fresh browser). */
 function _connUnknown(name) {
@@ -168,6 +206,10 @@ function _gateApply(el) {
     if (ov) ov.remove();
     for (const c of el.children) c.removeAttribute('inert');
   }
+  // Works here through another of your devices: say so ("Uses Claude on Home laptop"), never "Connect".
+  const viaTxt = !gated && !off ? (names.map(n => connViaText(n)).find(Boolean) || '') : '';
+  if (viaTxt) { if (!el.hasAttribute('data-tip') || el.hasAttribute('data-via-tip')) { el.setAttribute('data-tip', viaTxt); el.setAttribute('data-via-tip', '1'); } }
+  else if (el.hasAttribute('data-via-tip')) { el.removeAttribute('data-tip'); el.removeAttribute('data-via-tip'); }
   // Soft requirement: a note in the tooltip, never blocked.
   if (soft.length) {
     const sm = soft.filter(n => !connHas(n));
@@ -250,6 +292,12 @@ async function connRefresh(opts) {
       if (_connAll.claude && _connAll.claude.state === 'ok' && typeof AI_AVAILABLE !== 'undefined' && !AI_AVAILABLE) {
         AI_AVAILABLE = true; document.body.classList.remove('no-ai');
       }
+      // Claude on another of your devices: AI features work here through it (56-remote-jobs.js).
+      const via = connVia('claude');
+      if (typeof AI_AVAILABLE !== 'undefined' && !(_connAll.claude && _connAll.claude.state === 'ok')) {
+        if (via && !AI_AVAILABLE) { AI_AVAILABLE = true; AI_VIA = via; document.body.classList.remove('no-ai'); }
+        else if (via && typeof AI_VIA !== 'undefined' && AI_VIA) AI_VIA = via;
+      }
     } catch (e) { /* no server: keep the cached view */ }
     _connLoading = null;
     _connNotify();
@@ -279,6 +327,9 @@ async function connCheck(id) {
 
 window.Connections = {
   has: connHas,
+  local: connLocalHas,
+  via: connVia,
+  viaText: connViaText,
   status: (name) => (_connAll && _connAll[name]) || null,
   all: () => _connAll,
   onChange(fn) { _connSubs.add(fn); return () => _connSubs.delete(fn); },
