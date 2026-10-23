@@ -715,7 +715,8 @@ function _finGroupCard(group, nameOf) {
     card.appendChild(m);
   }
   // An unfinished copy left by an earlier try (a retried Monzo set-up): say so and remove it in one click.
-  if (s.kind === 'direct' && s.setup && !group.accounts.length && _finGroups().some(g => g !== group && g.provider === group.provider && g.source.id !== s.id && g.accounts.length)) {
+  const signedIn = ((FinConnectStore.entry(group.provider) || {}).sources || []).some(x => x && x.id === s.id && x.status && x.status.connected);
+  if (s.kind === 'direct' && s.setup && !signedIn && !group.accounts.length && _finGroups().some(g => g !== group && g.provider === group.provider && g.source.id !== s.id && g.accounts.length)) {
     const d = _finEl('div', 'fc-group-msg');
     d.innerHTML = icon('copy', 'i-xs');
     d.appendChild(_finEl('span', null, `This looks like an unfinished copy left by an earlier try. Your working ${p.name} connection is listed separately and is not touched.`));
