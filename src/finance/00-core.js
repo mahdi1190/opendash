@@ -224,7 +224,7 @@
   const R = {
     root: null, layer: null, mounted: false, container: null, mo: null, themeMo: null,
     data: null, model: null, loading: false, err: null, loadedAt: 0, mode: null,
-    job: null, poll: null, startErr: null,
+    job: null, poll: null, startErr: null, startNote: null,
     charts: new Map(), sectionEls: null, sectionId: null, ctx: null,
     rangeHistory: [], tokens: null, reduced: false, noAnim: false,
     budgets: null, budgetDraft: null, budgetsLocal: false, budgetsBusy: false,

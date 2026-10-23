@@ -12,6 +12,29 @@
 let _finWaitTries = 0, _finWaitTimer = null;
 
 /**
+ * The one line every money surface shows for finances another computer reads
+ * (Finances' subtitle, Home's Money card, Connections > Money), from meta.remote
+ * ({name, online, state, updatedAt}; state open | running | asleep | off | outdated,
+ * lib/finance-share.mjs). While that computer is away it says so calmly, never as an error:
+ *   "Finance from Home laptop · updated 5 min ago"
+ *   "Finance from Home laptop · last update 2 h ago (it's off)"
+ * -> {text, tip, away ('' | 'off' | 'asleep' | 'outdated')} or null.
+ */
+function financeRemoteLine(rm) {
+  if (!rm || !rm.name) return null;
+  const t = Date.parse(rm.updatedAt || '');
+  const s = Number.isFinite(t) ? Math.max(0, Math.round((Date.now() - t) / 1000)) : null;
+  const ago = s == null ? '' : s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`;
+  const state = rm.state || (rm.online ? 'open' : 'off');
+  const away = state === 'off' || state === 'asleep' || state === 'outdated' ? state : '';
+  if (!away) return { text: `Finance from ${rm.name}` + (ago ? ` · updated ${ago}` : ''), tip: `${rm.name} reads your bank; this is the same as there`, away: '' };
+  const why = { off: "it's off", asleep: "it's asleep", outdated: 'it needs an OpenDash update' }[away];
+  const tip = away === 'outdated' ? `${rm.name} runs an older OpenDash. This is what it last sent; update OpenDash there to keep it coming.`
+    : `${rm.name} is ${away === 'off' ? 'off' : 'asleep'} right now. This is what it last sent; it updates by itself when ${rm.name} is on again.`;
+  return { text: `Finance from ${rm.name}` + (ago ? ` · last update ${ago}` : '') + ` (${why})`, tip, away };
+}
+
+/**
  * Finances on every device (lib/finance-share.mjs): the computer that reads the
  * bank published new finances, or an edit from another device arrived
  * (finance-share/*, the live event 'synced-files', 56-remote-jobs.js): reload
@@ -21,6 +44,8 @@ function financeSharedChanged() {
   try { if (window.FinanceView && typeof FinanceView.sharedChanged === 'function') FinanceView.sharedChanged(); } catch (e) { /* not loaded yet */ }
   try { if (typeof _hbFin !== 'undefined' && _hbFin) { _hbFin.at = 0; if (state.view === 'home' && typeof _hbFinLoad === 'function') _hbFinLoad(0); } } catch (e) { /* no Money card */ }
   try { if (state.view === 'home' && typeof homeDataRefresh === 'function' && typeof _HSP_DATA !== 'undefined') homeDataRefresh(_HSP_DATA); } catch (e) { /* no Safe to spend card */ }
+  // Connections > Money lists the finance computer's accounts from the same copy (56-fin-connect.js).
+  try { if (state.view === 'connections' && typeof FinConnectStore !== 'undefined') FinConnectStore.load({ force: true }); } catch (e) { /* not loaded yet */ }
 }
 function renderFinanceView(container) {
   const FV = window.FinanceView;

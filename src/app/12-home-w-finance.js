@@ -380,14 +380,14 @@ function _hbFinRender(el, ctx) {
   return true;
 }
 
-/** "Finance from Home laptop · updated 5 min ago": the finances another device reads (lib/finance-share.mjs). */
+/**
+ * "Finance from Home laptop · updated 5 min ago" (while it is off: "· last update 2 h ago (it's off)"):
+ * the finances another device reads (lib/finance-share.mjs; the words are 65-finance-view.js financeRemoteLine).
+ */
 function _hbFinViaHtml(rm) {
-  const t = rm.updatedAt ? Date.parse(rm.updatedAt) : NaN;
-  const s = Number.isFinite(t) ? Math.max(0, Math.round((Date.now() - t) / 1000)) : null;
-  const ago = s == null ? '' : s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`;
-  const text = `Finance from ${rm.name}${ago ? ` · updated ${ago}` : ''}`;
-  const tip = rm.online ? `${rm.name} reads your bank; this is the same as there` : `${rm.name} is off right now: this is what it last sent`;
-  return `<div class="hbf-via" title="${escAttr(tip)}">${icon('laptop', 'i-xs')}<span>${esc(text)}</span></div>`;
+  const l = financeRemoteLine(rm);
+  if (!l) return '';
+  return `<div class="hbf-via${l.away ? ' is-away' : ''}" title="${escAttr(l.tip)}">${icon(l.away ? 'moon' : 'laptop', 'i-xs')}<span>${esc(l.text)}</span></div>`;
 }
 
 function _hbFinMeter(label, p, kind) {
