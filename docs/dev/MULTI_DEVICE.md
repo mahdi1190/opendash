@@ -30,7 +30,7 @@ How the pieces fit together, in plain words. The details are in
 
 | Travels (sync, or the shared folder) | Stays on each computer |
 |---|---|
-| tasks, notes, people, streams, countdowns, Home, reviews, and your preferences (theme, density, sort and grouping, the calendars you hide, per-view options, Home cards; [SYNC_FORMAT.md](SYNC_FORMAT.md) section 9) | where you are in the app (view, open task, calendar mode), Focus mode, panel sizes, this computer's zone and trips |
+| tasks, notes, people, streams, countdowns, Home, reviews, trips, and the whole layout and every preference (theme, density, sort and grouping, the calendars you hide, the calendar mode, list or board, Focus mode, the sidebar, panel sizes, Home cards; [SYNC_FORMAT.md](SYNC_FORMAT.md) section 9) | where you are in the app (the view, the open task, the month shown), this computer's zone |
 | the list of connected accounts (`accounts.json`: address, provider, features, who reads it, the ids of its snapshot files) | **every sign-in, token, app password and key** |
 | the mail and calendar each account's reader saved | `config.json`, `sources.json`, `connections.json`, the local token |
 | who runs which background job (`roles.json`) | the sync identity and its encryption keys |
@@ -38,6 +38,67 @@ How the pieces fit together, in plain words. The details are in
 Sign-ins never travel, on purpose: a refresh token that two computers both use
 breaks on one of them (a Monzo token works only once), and a cloud folder is
 the wrong place for keys.
+
+## The full list: synced or this computer's own (2.16)
+
+The rule (the user's, 23 Oct 2026): the dashboards are the same on every
+computer; one change here makes the same change there. Only where you are,
+this computer's own things (its zone, its folders, its sign-ins) and
+bookkeeping stay. Every item, with the reason in one line.
+
+### Your data (the state, field by field)
+
+| Item | | Why |
+|---|---|---|
+| tasks, subtasks, statuses, notes, pinned, activity, completion log, manual order, removed built-in tasks, the bin, task and quick templates | synced | your data |
+| people (and their notes), names and addresses never to link, auto-link choice | synced | your data |
+| streams, countdowns and top-bar widgets, resources, tags, pinned tags, sidebar order, default stream, archive days | synced | your data |
+| Home layout, focus settings, snoozes, widget settings; daily notes; notes on calendar events; calendar names and colours; weekly reviews | synced | your data and the Home page itself |
+| trips: confirmed and renamed, "not a trip", travel moments already shown (`travel`) | synced (2.16) | your decisions; the zone each computer is in is not in it |
+| Claude's suggestions from your mail and what you did with each thread (`emailTriage`), the suggestions' memory (`suggest`), each task's AI chat (`taskChat`) | synced | results: a computer without Claude cannot rebuild them |
+| calendar and mail caches per page (`calCache`, `peopleEmailCache`), auto-link suggestions (`autolink`) | rebuilt on each computer | caches of synced data, or of this computer's file index |
+
+### Layout and preferences (no undo step; the later choice wins quietly)
+
+| Item | | Why |
+|---|---|---|
+| theme, Auto theme, density, sort, grouping, per-view options, people layout, open items in, card header, saved filter, sidebar headings and lists, scenes and animation look, unlocks | synced | preferences follow the person |
+| theme while Auto is on | this computer's own | each computer turns dark in its own evening |
+| list, board or review mode (`viewMode`) | synced (2.16) | layout |
+| Focus mode (`focus`), sidebar folded (`sidebarCollapsed`) | synced (2.16) | layout |
+| panel sizes (`paneSizes`), per panel | synced (2.16) | layout; each screen clamps them to fit |
+| calendar mode and one-stream filter (`calPrefs.mode`, `.stream`) | synced (2.16) | layout; a tab on the calendar moves its view to the new mode |
+| amounts hidden on Home (`homeUI.hideAmounts`) | synced (2.16) | the same on every screen |
+| when you were last asked for a weekly review (`lastReviewPrompt`) | synced (2.16) | answered once, not asked again on the other computer |
+| suggestion counts (`suggestStats`) | synced (2.16), field by field | the same suggestions show; the later count wins (never doubled) |
+| where you are: view, open task, month and week shown, scroll and edit bookkeeping (`view`, `selectedTaskId`, `calMonth`, `weekBarOffset`, `_snappedFor`, `personEditMode`) | this computer's own | where you are, not what the dashboard looks like |
+| `env`, `_lastBackup`, `_lastSave`, `_saveCount`, `_localDirty`, migration and demo markers, emptied legacy keys | this computer's own | bookkeeping |
+
+### Settings (`config.json`; the person's part travels in `profile.json`)
+
+| Item | | Why |
+|---|---|---|
+| name, own addresses, home zone, locale, currency, week start, working hours, birthday, default theme, AI choices, features switched off, brief and story settings, workspace icon | synced | the person's settings |
+| travel features (on, prompts, moments, holidays, rates, second clock) | synced (2.16) | the person's settings |
+| the browser-location switch inside them (`travel.sources.geo`) | this computer's own | the permission is per browser |
+| the typed weather place and whether to use it (`manualLocation`, `locationMode`) | synced (2.16) | the person's place; with the typed place chosen every computer uses it |
+| the place the weather is for (`location`) | this computer's own | the typed place, or this computer's own location |
+| 12 or 24-hour clocks (`time.clock12`) | synced (2.16) | how you read the time |
+| which zone this computer shows (`time.follow`, `.zone`, `.trip`) | this computer's own | the zone of the computer |
+| browser notifications (`notifications`) | this computer's own | the permission is per browser |
+| the finance folder (`financeDir`), first-run marker, file format | this computer's own | a path, and this computer's set-up |
+
+<!-- 2.16 integration: files, finance, browser storage, AI chats and who runs Claude are filled in below -->
+
+### Never leaves this computer
+
+| Item | Why |
+|---|---|
+| `secrets/` (the device folder's sign-ins, tokens, keys, the sync identity and its keys, a pairing in progress) | secrets |
+| `data-id.json`, `hosts/`, `runtime.json`, `local-token`, `launch.json`, `update-check.json` | this computer's identity, presence, server port and token, start-up and update checks |
+| `migrations.json`, `migration-plans/`, `backups/`, `logs/`, `state/backups/` | this computer's migrations, backups and logs |
+| `index/files.json`, `index/status.json` | the workspace file index lists this computer's files |
+| this computer's sync folder (`settings.json`, `device.json`, `meta.json`, `conflicts.jsonl`) | sync's own bookkeeping |
 
 ## Connections: each account is read on one computer
 
