@@ -6,9 +6,9 @@
    the Animations switch off, and the opt-in UK regional packs.
      animNewPlan(o)  PURE: {show, reasons[], actions[]} from the settings
      animNewCardShow(force)  the card (fixed, bottom-right; Escape closes)
-   Seen flag: localStorage 'dashboard-new22-anim' (per device).
+   Seen flag: state.seen.once.new22Anim (synced: seen on one computer, not shown on the other;
+   06-core-seen.js; the old per-browser key 'dashboard-new22-anim' is folded in once).
    ============================================================ */
-const _ANEW_KEY = 'dashboard-new22-anim';
 
 /**
  * o: {seen, firstRun, osReduced, osOverride, level ('off'|'subtle'|...), scenesOn, inUK, ukOn}
@@ -25,8 +25,8 @@ function animNewPlan(o) {
   return out;
 }
 
-function _anewSeen() { try { return localStorage.getItem(_ANEW_KEY) === '1'; } catch (e) { return false; } }
-function _anewSetSeen() { try { localStorage.setItem(_ANEW_KEY, '1'); } catch (e) { /* private mode */ } }
+function _anewSeen() { try { return seenOnce('new22Anim'); } catch (e) { return false; } }
+function _anewSetSeen() { try { seenMarkOnce('new22Anim'); } catch (e) { /* the next one saves it */ } }
 
 function animNewCardShow(force) {
   try {

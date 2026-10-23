@@ -175,6 +175,19 @@ function _uiSharedOutboxPut(kind, group, entry, value) {
 /** Something to write in the NEXT load's state (the welcome set-up replaces the state and reloads). */
 function seenMarkPending(group, entry, value) { if (_seenName(group) && _seenName(entry)) _uiSharedOutboxPut('seen', group, entry, value === undefined ? 1 : value); }
 
+/** This browser's own id (device-local): tells a flag this browser set from one another computer set. */
+let _seenBrowserIdMemo = '';
+function seenBrowserId() {
+  if (_seenBrowserIdMemo) return _seenBrowserIdMemo;
+  let id = _seenLs('dashboard-browser-id');
+  if (!id || !/^[a-z0-9]{8,32}$/.test(id)) {
+    id = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    try { localStorage.setItem('dashboard-browser-id', id); } catch (e) { /* this load only */ }
+  }
+  _seenBrowserIdMemo = id;
+  return id;
+}
+
 /* ---------- reading and writing ---------- */
 /** state.seen[group][entry], or undefined. Before boot: this load's outbox first; before the migration: the old key last. */
 function seenGet(group, entry) {
@@ -225,7 +238,8 @@ function _seenPruneGroup(group) {
   let n = 0;
   for (const e of Object.keys(g)) {
     if (cut && /^\d{4}-\d{2}-\d{2}/.test(e) && e.slice(0, 10) < cut) { delete g[e]; n++; continue; }
-    if (maxDays && typeof g[e] === 'number' && g[e] > 1e12 && now - g[e] > maxDays * 864e5) { delete g[e]; n++; }
+    const at = typeof g[e] === 'number' ? g[e] : _seenIsObj(g[e]) && typeof g[e].at === 'number' ? g[e].at : null;
+    if (maxDays && at && at > 1e12 && now - at > maxDays * 864e5) { delete g[e]; n++; }
   }
   return n > 0;
 }
@@ -395,7 +409,8 @@ function uiSharedAfterRender() {
     const fb = _seenIsObj(state.uiPrefs) ? state.uiPrefs.focusBlock : undefined;
     if (fb !== _uiSharedLast.focus) { _uiSharedLast.focus = fb; if (typeof animFocusPaint === 'function') animFocusPaint(); }
     if (typeof animOpeningModeSync === 'function') animOpeningModeSync();
-    const today = _seenToday();
+    // The splash's own day (this computer's calendar date, as body.html works it out).
+    const d = new Date(), today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');   // clock-ok: the splash's day
     if (_uiSharedLast.openingDay !== today && seenDay('opening', today)) {
       _uiSharedLast.openingDay = today;
       if (_seenLs('dashboard-opening-day') !== today) { try { localStorage.setItem('dashboard-opening-day', today); } catch (e) { /* storage blocked */ } }

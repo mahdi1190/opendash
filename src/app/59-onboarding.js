@@ -94,7 +94,7 @@ function openOnboarding() {
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
     // Land on Home, as promised: Home's morning greeting (and its full-screen story)
     // opens by itself from tomorrow, not on top of the set-up just finished.
-    try { localStorage.setItem('dashboard-brief-seen', todayStr()); } catch (e) { /* ignore */ }
+    seenMarkPending('brief', todayStr());   // into the state the reload loads (06-core-seen.js outbox)
     location.hash = '#view=home';
     location.reload();
   }

@@ -70,13 +70,14 @@ function _stIcon(name, cls) { return `<svg class="i st-i${cls ? ' ' + cls : ''}"
 /* ---------- settings ---------- */
 function storyPrefs() {
   const s = (APP_CONFIG && APP_CONFIG.brief && APP_CONFIG.brief.story) || {};
+  // The player's own choices (volume, speed, today's mute) follow you to your other computers (state.uiPrefs.story, 06-core-seen.js).
   let ui = {};
-  try { ui = JSON.parse(localStorage.getItem('dashboard-story-ui') || '{}') || {}; } catch (e) { ui = {}; }
+  try { ui = uiPrefGet('story') || {}; } catch (e) { ui = {}; }
   const num = (v, d) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Number(v) : d);
   return {
     autoOpen: s.autoOpen !== false, voice: s.voice !== false, voiceName: s.voiceName || '',
     rate: num(s.rate, 1), pitch: num(s.pitch, 1),
-    // The player's volume slider (this browser) wins over the Settings default.
+    // The player's volume slider wins over the Settings default.
     volume: Math.max(0, Math.min(1, num(ui.volume, num(s.volume, 1)))),
     speed: STORY_SPEEDS.includes(Number(ui.speed)) ? Number(ui.speed) : STORY_SPEEDS.includes(Number(s.speed)) ? Number(s.speed) : 1,
     // This session's mute (the M key) wins over the default until the next day.
@@ -86,10 +87,7 @@ function storyPrefs() {
   };
 }
 function _stSaveUi(patch) {
-  try {
-    const cur = JSON.parse(localStorage.getItem('dashboard-story-ui') || '{}') || {};
-    localStorage.setItem('dashboard-story-ui', JSON.stringify(Object.assign(cur, patch, patch.muted !== undefined ? { mutedFor: todayStrSafe() } : {})));
-  } catch (e) { /* private mode */ }
+  try { uiPrefSet('story', Object.assign({}, patch, patch.muted !== undefined ? { mutedFor: todayStrSafe() } : {})); } catch (e) { /* the next change saves it */ }
 }
 function storyReduced() { return typeof animEnabled === 'function' ? !animEnabled() : !!(window.Motion && Motion.prefersReduced()); }
 function _stSynth() { return typeof window !== 'undefined' && window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function' ? window.speechSynthesis : null; }
@@ -676,7 +674,7 @@ function _stStartPlayback() {
   root.classList.add('is-playing');
   if (_story.fresh) { _story.fresh = false; _stSrcBadge(); }
   // Playing the morning story counts as having seen the brief (the top-bar pill and auto-open stop).
-  if (_story.kind === 'morning') { try { localStorage.setItem('dashboard-brief-seen', todayStrSafe()); } catch (e) { /* private mode */ } }
+  if (_story.kind === 'morning') seenMarkDay('brief', todayStrSafe());
   if (!_story.tl) {
     _story.tl = storyCreateTimeline({
       beats: _story.beats, narrator: nar, speed: prefs.speed, muted: prefs.muted || !nar.canSpeak(),
@@ -948,7 +946,7 @@ function _stOnVoiceMode(mode) {
 function _stOnEnd() {
   const root = _story.root; if (!root) return;
   root.querySelectorAll('.st-seg').forEach(s => s.style.setProperty('--p', '1'));
-  try { localStorage.setItem('dashboard-story-played-' + _story.kind, todayStrSafe()); } catch (e) { /* ignore */ }
+  seenMarkDay('storyPlayed:' + _story.kind, todayStrSafe());   // synced: played on one computer, played everywhere (06-core-seen.js)
 }
 function _stPaintProgress() {
   const root = _story.root; if (!root) return;
@@ -1153,7 +1151,7 @@ registerCommand({ id: 'story-week', label: 'Play my week (weekly review story)',
  *   setVolume(0..1)         narration volume (persisted; applies at once)
  * The overlay is a body-level element (.story); <html> gets .story-open while it shows.
  */
-function storyPlayedToday(kind) { try { return localStorage.getItem('dashboard-story-played-' + kind) === todayStrSafe(); } catch (e) { return false; } }
+function storyPlayedToday(kind) { try { return seenDay('storyPlayed:' + kind, todayStrSafe()); } catch (e) { return false; } }
 const Story = Object.freeze({
   open: (kind, o) => storyOpen(kind, o), close: () => storyClose(), isOpen: () => storyIsOpen(), kind: () => (_story.open ? _story.kind : null),
   play: () => STORY_PLAYER.toggle(), toggle: () => STORY_PLAYER.toggle(), next: () => STORY_PLAYER.next(), prev: () => STORY_PLAYER.prev(),
