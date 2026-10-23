@@ -107,6 +107,18 @@ export default function register(app) {
   async function callbackPage(c) {
     c.res.setHeader('Referrer-Policy', 'no-referrer'); c.res.setHeader('Cache-Control', 'no-store');
     const html = (status, opts) => c.send(status, page({ back: 'You can close this tab and go back to OpenDash.', ...opts }), 'text/html; charset=utf-8');
+    // "Your organisation needs to approve OpenDash once": the admin link and the ready-made email.
+    const approvalPage = (account) => {
+      const ap = account && account.approval;
+      const org = (account && account.email && account.email.split('@')[1]) || 'your organisation';
+      return html(200, {
+        title: 'Your organisation needs to approve OpenDash once', tone: 'wait',
+        lines: [`Your work account belongs to ${org}. It only lets apps in after an administrator says yes. This is normal for work accounts and only needs doing once.`,
+          'If you look after your organisation’s Microsoft 365 yourself, approve it now. If not, send the ready-made email to your IT team.',
+          'When it has been approved, go back to OpenDash and press Try again.'],
+        actions: ap ? [{ label: 'I am the admin: approve OpenDash', href: ap.consentUrl, primary: true }, { label: 'Email my IT team', href: ap.mailto }, { label: 'Back to OpenDash', href: home() }] : [{ label: 'Back to OpenDash', href: home(), primary: true }],
+      });
+    };
     const q = Object.fromEntries(['state', 'code', 'error', 'error_description', 'error_subcode', 'admin_consent', 'tenant'].map((k) => [k, c.query.get(k)]).filter(([, v]) => v != null));
     try {
       const out = await accounts().callback(q);
@@ -118,6 +130,8 @@ export default function register(app) {
       const a = out.account;
       const results = await syncAccount(a.id, c).catch(() => []);
       log('note', `accounts: ${a.provider} sign-in completed`);
+      // Signed in, but the organisation blocks reading the mailbox (Graph 403): the same approval page.
+      if (results.some((r) => r.code === 'NEEDS_ADMIN_APPROVAL')) return approvalPage((await accounts().list()).find((x) => x.id === a.id) || a);
       const failed = results.some((r) => !r.ok);
       return html(200, {
         title: 'Your account is connected',
@@ -125,17 +139,7 @@ export default function register(app) {
         actions: [{ label: 'Back to OpenDash', href: home(), primary: true }],
       });
     } catch (e) {
-      if (e && e.code === 'NEEDS_ADMIN_APPROVAL') {
-        const ap = e.account && e.account.approval;
-        const org = (e.account && e.account.email && e.account.email.split('@')[1]) || 'your organisation';
-        return html(200, {
-          title: 'Your organisation needs to approve OpenDash once', tone: 'wait',
-          lines: [`Your work account belongs to ${org}. It only lets apps in after an administrator says yes. This is normal for work accounts and only needs doing once.`,
-            'If you look after your organisation\'s Microsoft 365 yourself, approve it now. If not, send the ready-made email to your IT team.',
-            'When it has been approved, go back to OpenDash and press Try again.'],
-          actions: ap ? [{ label: 'I am the admin: approve OpenDash', href: ap.consentUrl, primary: true }, { label: 'Email my IT team', href: ap.mailto }, { label: 'Back to OpenDash', href: home() }] : [{ label: 'Back to OpenDash', href: home(), primary: true }],
-        });
-      }
+      if (e && e.code === 'NEEDS_ADMIN_APPROVAL') return approvalPage(e.account);
       if (e && e.code === 'WRONG_ACCOUNT_TYPE') {
         const kind = e.retryKind === 'work' ? 'work' : 'personal';
         const retry = e.email ? `/api/accounts/begin?${new URLSearchParams({ provider: 'microsoft', email: e.email, kind })}` : null;
