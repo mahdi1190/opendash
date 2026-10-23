@@ -267,6 +267,24 @@ manifest).
 
 Data (not a preference: clashes are reported like task edits): `travel` (2.16), the trip decisions, `trips` per trip and field, `notTrips` and `moments` per entry. The zone each computer is in is not in it: that is `time.json` and `config.time`, which stay on each computer.
 
+<!-- ── local ── -->
+**What the page kept per browser (2.16).** Three more preferences hold what used to be in each
+browser's localStorage (`src/app/06-core-seen.js`):
+
+| Preference (synced) | Merges | Why it syncs |
+|---|---|---|
+| `seen` | per group, per entry (`map(map())`) | seen, played and dismissed: the brief, stories, confetti, one-off cards and tips, the opening rotation, moments shown, banners dismissed, arrival welcomes. A day flag is `{'YYYY-MM-DD': 1}` and a one-off `once: {name: 1}`, so two computers marking the same flag write the same value and flags only add up; dated entries are pruned after three weeks, a group is never removed |
+| `uiPrefs` | per field; `story` and `motion` field by field | the story player's volume, speed and mute, the animation intensity (`motion.level`, `.last`), the assistant's model, a running focus block |
+| `drafts` | per draft, per field | the weekly review in progress (`week:<from>`); saving the review removes it |
+
+An updated computer folds its old browser keys in once, after the state file has loaded: flags are
+added, values and preferences only fill what the state does not have (a value another computer
+synced is never overwritten), and the old keys go only once the server holds the result, so the fold
+is idempotent on one computer or two. A write made before the state file loads also goes to a small
+outbox in the browser and is written into the loaded state (a newer file replaces the cached copy
+wholesale). The splash's first-paint copies stay in the browser and are rewritten from the state.
+<!-- ── end local ── -->
+
 | Device-local (never synced) | Why it stays |
 |---|---|
 | `view` | where you are (it follows `calPrefs.mode` when that changes elsewhere) |
