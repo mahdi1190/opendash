@@ -117,6 +117,7 @@ closes (`tampered`).
 | `seen` | `n` | how far the sender now has the other's records |
 | `lease` | `claims` | main-computer claims (section 7) |
 | `pres` | `v`, `page?`, `app?`, `stopping?` | presence (2.16, `lib/sync/presence.mjs`): whether a dashboard page is open on the sender and its OpenDash version, sent on opening, when the page opens or closes, and every 2 minutes; `stopping: true` is the goodbye of a clean stop, sent just before the link closes. Older versions ignore it |
+| `blob` | `v`, `ref`, `id`, `kind`, `data` | a picture or narration clip the sender just stored (SYNC_FORMAT.md section 12): `data` is the sealed blob file (base64url, at most 1.5 MB), `ref` its path in the data folder, `id` the SHA-256 of the plaintext. Sent one at a time, at most about 4 MB a second, at most 64 waiting (the folder brings the rest) |
 | `ping`, `bye` | | keepalive, closing |
 
 Presence also reads the link itself: an open link means the other server
@@ -131,7 +132,10 @@ A receiver takes `recs` only with `rec.dev` equal to the authenticated
 peer, and passes them to the engine (`deliverLive`), which applies exactly
 the checks of a folder log line (key, removal cut, AES-GCM, schema, secret
 filters) and skips a `(dev, n)` it already has. A record that does not fit
-in one frame is left to the folder.
+in one frame is left to the folder. A `blob` from a member is opened with the
+group key (AD = group, id, key id), checked against its id (and a picture's
+name), and only then written into the data folder (`deliverBlob`); a peer
+on an older version ignores the message.
 
 ## 5. Address book
 

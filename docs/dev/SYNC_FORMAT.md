@@ -5,12 +5,13 @@ folder (OneDrive, Google Drive for desktop, Dropbox, or any other place that
 copies files). A different client (a phone app, a PWA, a desktop shell) can
 read and write it from this page alone. The reference implementation is
 `lib/sync/` (`hlc.mjs`, `fracindex.mjs`, `model.mjs`, `manifest.mjs`,
-`engine.mjs`, `e2e.mjs` and `e2e-crypto.mjs` are platform-agnostic;
+`engine.mjs`, `blobs.mjs`, `e2e.mjs` and `e2e-crypto.mjs` are platform-agnostic;
 `folder.mjs` and `node-host.mjs` are the Node adapters).
 
 Status: prototype. Version `1` is the plain format (sections 1-10). Version
 `2` is the same data END-TO-END ENCRYPTED (section 11): every record is
-sealed, and the folder holds no key. Snapshot register data is version `2`
+sealed, and the folder holds no key. With version `2`, pictures and
+narration audio travel too, as sealed blobs (section 12). Snapshot register data is version `2`
 in both. A reader that meets a higher version stops and reports it (see
 [Versions](#10-versions-and-unknown-data)).
 
@@ -24,6 +25,7 @@ in both. A reader that meets a higher version stops and reports it (see
   devices/<deviceId>/snapshot.json
   devices/<deviceId>/keys.json        (v 2) the key, wrapped for each member
   devices/<deviceId>/pair.json        (v 2) adding a device
+  devices/<deviceId>/blobs/<xx>/<locator>   (v 2) a picture or narration clip, sealed (section 12)
 ```
 
 - `deviceId`: 16 lower-case hex digits, random (`crypto.getRandomValues`).
@@ -48,7 +50,8 @@ in both. A reader that meets a higher version stops and reports it (see
   the same day once a part reaches about 512 KB.
 - **Names readers accept:** exactly `device.json`, `snapshot.json`,
   `keys.json`, `pair.json` and `^ops-\d{8}(-\d{2})?\.jsonl$`, inside folders
-  named `^[0-9a-f]{16}$`.
+  named `^[0-9a-f]{16}$`; and blob files `^[0-9a-f]{32}$` in
+  `blobs/<their first two digits>/` there (section 12).
   Everything else is ignored: temporary files, `ops-20261023 (1).jsonl`,
   `ops-20261023-DESKTOP-AB12CD.jsonl` (OneDrive), `... (conflicted copy ...)`
   (Dropbox), `desktop.ini` and so on.
@@ -266,6 +269,7 @@ device that produced a copy sends it, the others show it.
 | `animations/mine.json` | `items` by id | later change |
 | `index/settings.json` | per field; `folders`, `namesOnly`, `enabled` stay on each device | later change |
 | `source-prefs.json` | `sources` per source id, `accounts` per account id, per field | later change |
+| `blobs/index.json` | `blobs` per file name; only with encryption | later change (section 12) |
 
 **Newest produced-at wins** (`newest`). A copy of such a file says when it
 was produced (`at`, `savedAt`, `fetchedAt`). Its register is written with
@@ -311,8 +315,9 @@ back), `time.json` (this computer's observed zone), `calendar/update.json`
 and `inbox/update.json` (the job throttle: a copy would stop a computer
 from reading its own accounts), `travel/rates-*.json` (public rate caches),
 `index/files.json`, `index/status.json`, `state/actions-journal.json`
-(undo tokens of this computer), binary files (`people/images/`,
-`cache/narration/`), and every identity, secret and bookkeeping file.
+(undo tokens of this computer), and every identity, secret and bookkeeping
+file. Binary files (`people/images/`, `cache/narration/`) are not registers:
+with encryption they travel as blobs (section 12), without it they stay.
 <!-- ── /files ── -->
 
 ## 9. What syncs, and what never does
@@ -707,3 +712,107 @@ access to the folder could only race a legitimate join in the few seconds
 before E acts on it, and only with the right code (which they cannot learn
 from the folder); two right answers are refused. Both sides keep their session
 in the secret store, so a restart carries on.
+
+## 12. Blobs: pictures and narration audio (version 2, 2.16)
+
+People's pictures (`people/images/<name>`) and story narration clips
+(`cache/narration/<id>.mp3`) are files, not JSON. With end-to-end encryption
+(section 11) they travel as BLOBS; without it they stay on each device.
+Reference: `lib/sync/blobs.mjs` (platform-agnostic), the blob calls of the
+folder adapter (`lib/sync/folder.mjs`) and `sealBlob` / `openBlob` /
+`blobLocator` in `lib/sync/e2e.mjs`.
+
+**Identity.** A blob is the bytes of one file. Its id is
+`hex(SHA-256(bytes))` (64 hex digits): equal files are one blob.
+
+**Sealing.** AES-256-GCM under the group's current key, a fresh random
+96-bit nonce, associated data `"opendash-blob-v1\n" + group + "\n" + id +
+"\n" + kid` (UTF-8). The blob file is a one-line JSON header followed by the
+ciphertext (with its 16-byte tag):
+
+```
+{"v":2,"t":"blob","k":"<kid>","iv":"<b64u 12 bytes>"}\n<ciphertext bytes>
+```
+
+**Where.** `devices/<deviceId>/blobs/<xx>/<locator>`: written by a device
+that has the file, in its own folder only (section 1, single writer), as a
+temporary file renamed into place; never changed afterwards, removed when
+pruned. `locator = hex(HKDF-SHA-256(key(kid), salt "opendash-blob-name-v1",
+info "opendash-blob-name|<group>|<kid>|<id>", 16 bytes))`, 32 hex digits;
+`<xx>` its first two. The folder sees sizes, never ids, so it cannot test
+whether a picture it knows is there. Two devices that both store a blob hold
+two copies; readers take whichever they find (dedupe on read).
+
+**The catalogue** is `blobs/index.json`, a synced file of the data folder
+(section 8.1; `lib/sync/manifest.mjs` 'blobs') that travels only with
+encryption:
+
+```json
+{"v":1,"blobs":{
+  "people/images/sam-avatar-0123456789abcdef.jpg":{"id":"0123456789abcdef...","size":48213,"kind":"picture","at":"2026-10-23T09:00:00.000Z","by":"3f9a0c2b7d41e865","kid":"<kid>"},
+  "cache/narration/<64 hex>.mp3":{"id":"...","size":512000,"kind":"narration","at":"...","by":"...","kid":"...","re":true}}}
+```
+
+One register per file name (later change wins; clashes are not reported).
+`by` is the device folder that holds the blob, `kid` the key it is sealed
+with (members hold every key: the keyring of section 11.3). A picture's name
+carries the first 16 hex digits of its id (`lib/people-images.mjs`): an entry
+or a pushed blob whose id does not start with them is refused.
+
+**References.** A person's `photo` / `cover` (`file:<name>`) names a picture.
+The person syncs like any record, so when one person's picture is changed on
+two devices, the later reference wins and the other picture becomes
+unreferenced. A narration clip is a cache entry of its own, marked
+re-creatable (`re: true`). Its name is the hash of the request (voice, model,
+delivery, text), so another device that plays the same story asks for the
+same file, and plays it instead of generating (and paying for) it again.
+
+**Storing** (after each sync pass, at most once a minute, a few seconds after
+a change). A device stores a picture that one of its people shows, that it
+has, and that no member holds: no entry, or one held by a device that is
+not a member any more, or its own entry whose blob is gone. A narration clip
+it has, once: a clip that left the catalogue is not stored again by a device
+that saw it, and not in trial mode (apply off). A blob already held under
+another name gets a new entry pointing at it.
+
+**Fetching** is lazy: the first time a file is asked for and is missing
+(GET `/api/people/image/<name>`, a story asking for a clip). The device reads
+the catalogue entry, computes the locator, reads the blob from the folder of
+`by`, else of any other device, opens it, checks that the SHA-256 of the
+plaintext is the id and its length the entry's size, and only then writes
+it into its data folder. A copy that fails (changed, or cut short by a cloud
+client still downloading it) is dropped and remembered by its size and time;
+the next copy, or the same file once it changes, is tried later, with
+backoff, for up to 2 hours after it was asked for. Until then the page shows
+its normal placeholder (initials, the default cover, the computer voice); a
+`synced-files` event with the file's path tells open tabs when it is here.
+A blob referenced before it arrives (the person came first, the cloud is
+still bringing the blob, or its catalogue entry) is the same case.
+
+**Live sync** (docs/dev/LIVE_SYNC.md) carries a new blob file of at most
+1.5 MB at once (`{t: "blob", v: 1, ref, id, kind, data}`, `data` the blob
+file in base64url), from a member over an authenticated link, with the same
+checks.
+
+**Budget.** At most 5 MB per blob and 200 MB per group (the catalogue's
+distinct ids). A clip is stored only while the group is under 75 % of it.
+Pruning, done only by a device that uses the others' changes (apply on, so
+its state shows what is referenced): a picture nobody shows (its person was
+deleted, or shows another picture) a week after that device first saw it
+unreferenced; clips older than 45 days, then the oldest clips while the group
+is above 75 %; above 200 MB, the oldest unreferenced pictures. A picture
+someone shows is never pruned: a full budget stops new uploads (those
+pictures stay on their device) and Settings > Sync says so. Pruning removes
+the entry; the holding device then removes its blob file (one that no entry
+with its own id names). The status carries `blobs: {on, used, budget,
+files, pictures, audio, full, tight, text}`, for example
+`"Pictures and audio: 34 MB of 200 MB"`.
+
+**This device's own bookkeeping** (`blobs.json` beside its other sync files,
+never in the shared folder): the id of each local file (hashed once), the
+clips it has seen in the catalogue, and when it first saw each picture
+unreferenced.
+
+**Older versions** drop the catalogue's registers (outside their schema,
+section 6) and never look in `blobs/`; their pictures stay as they were.
+No new `v`.

@@ -117,7 +117,7 @@ function pcCoverApply(el, p) {
   el.classList.toggle('is-file', look.kind === 'file');
   el.classList.toggle('is-default', look.kind === 'default');
   if (look.kind === 'preset') el.style.background = look.css;
-  else if (look.kind === 'file') el.style.backgroundImage = `url("${look.url.replace(/["\\]/g, '')}")`;
+  else if (look.kind === 'file') el.style.backgroundImage = `url("${(typeof pplPicUrl === 'function' ? pplPicUrl(look.url) : look.url).replace(/["\\]/g, '')}")`;
   else el.style.removeProperty('background-image');
 }
 

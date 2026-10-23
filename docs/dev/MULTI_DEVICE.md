@@ -34,6 +34,7 @@ How the pieces fit together, in plain words. The details are in
 | the list of connected accounts (`accounts.json`: address, provider, features, who reads it, the ids of its snapshot files) | **every sign-in, token, app password and key** |
 | the mail and calendar each account's reader saved; results, caches and the person's settings (below) | this computer's paths and zone in `config.json`, the source definitions in `sources.json` (secret links), `connections.json` (what works here), the local token |
 | who runs which background job (`roles.json`) | the sync identity and its encryption keys |
+| people's pictures and story narration clips, as sealed blobs fetched when first shown (`blobs/index.json` names them; [SYNC_FORMAT.md](SYNC_FORMAT.md) section 12); encrypted sync only, 200 MB for the group | without encryption, pictures and clips stay on the computer that has them |
 | the finances the computer that reads the bank published (`finance-share/finance.json`), and your finance edits from any device (`finance-share/edits.json`: categories, budgets, account names, colours, Show in Finances); encrypted sync only | the finance folder (transaction store, CSV imports, the spreadsheet, `rules.json`), bank sign-ins and connector tokens |
 
 Sign-ins never travel, on purpose: a refresh token that two computers both use
@@ -130,7 +131,7 @@ An open page reloads a file the moment it arrives, without fetching again.
 | last update runs (`calendar/update.json`, `inbox/update.json`) | this computer's own | the 30-minute throttle: a copy would stop a computer reading its own accounts |
 | exchange-rate caches (`travel/rates-*.json`) | this computer's own | public data each computer fetches; merging their ranges would lose some |
 | undo history (`state/actions-journal.json`) | this computer's own | its tokens name this computer's state versions |
-| pictures and audio (`people/images/`, `cache/narration/`) | this computer's own | binary files: sync carries JSON only |
+| people's pictures and story narration clips (`people/images/`, `cache/narration/`) | synced with encrypted sync (2.16), as sealed blobs | a picture or clip made on one computer is fetched on the other the first time it is shown (the initials or the computer voice until then); a clip is never paid for twice. 5 MB per file, 200 MB for the group, clips only while it is under 75 %; Settings > Sync shows *Pictures and audio: 34 MB of 200 MB* ([SYNC_FORMAT.md](SYNC_FORMAT.md) section 12) |
 
 A file too big to send (over its limit, or one value over 256 KB) stays as
 it is on that computer, and Settings > Sync lists it under *Not synced from

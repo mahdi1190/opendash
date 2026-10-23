@@ -87,11 +87,31 @@ function pplAvatarColor(c) {
   const sw = _PPL_SWATCHES.has(v) ? v : _PPL_SWATCH_HEX[v];
   return sw ? 'var(--sw-' + sw + ')' : safeColor(c, 'var(--sw-slate)');
 }
+// Pictures synced from another computer (lib/sync/blobs.mjs) are fetched the first time they
+// are shown; until then the initials show. When one arrives ('synced-files' with
+// people/images/<name>, 56-remote-jobs.js) its URL gets a fresh query, so the browser asks
+// again instead of keeping the miss, and the page repaints.
+const _pplArrived = new Map();   // picture name -> arrival count
+function pplPicUrl(url) {
+  const m = typeof url === 'string' ? /^\/api\/people\/image\/([a-z0-9.-]+)$/.exec(url) : null;
+  return m && _pplArrived.has(m[1]) ? url + '?a=' + _pplArrived.get(m[1]) : url;
+}
+let _pplArrivedT = null;
+function pplPicturesArrived(rels) {
+  let any = false;
+  for (const r of Array.isArray(rels) ? rels : []) {
+    const m = typeof r === 'string' ? /^people\/images\/([a-z0-9.-]+)$/.exec(r) : null;
+    if (m) { _pplArrived.set(m[1], (_pplArrived.get(m[1]) || 0) + 1); any = true; }
+  }
+  if (!any) return;
+  clearTimeout(_pplArrivedT);
+  _pplArrivedT = setTimeout(() => { if (typeof render === 'function') { try { render(); } catch (e) { /* fine */ } } }, 250);
+}
 function avatarHtml(person, size) {
   const sz = Number(size) || 32;
   const p = person || { name: '?' };
   // A picture set on their card (54-people-card.js: uploaded, or Gravatar when the user opted in) comes first.
-  const url = (typeof pcPhotoUrl === 'function' && pcPhotoUrl(p.photo)) || safeUrl(p.avatarUrl);
+  const url = pplPicUrl((typeof pcPhotoUrl === 'function' && pcPhotoUrl(p.photo)) || safeUrl(p.avatarUrl));
   const cls = 'avatar ' + _pplAvClass(sz) + (p.stub ? ' unknown' : '');
   const st = `--c:${escAttr(pplAvatarColor(p.color))};--size:${sz}px`;
   if (url) return `<span class="${cls}" style="${st}" title="${escAttr(p.name)}"${p.id && !p.stub && typeof czAttrs === 'function' ? czAttrs('person', p.id) : ''}><img src="${escAttr(url)}" alt="" data-avatar-fallback="${escAttr(p.id || '')}" data-avatar-size="${sz}"></span>`;
