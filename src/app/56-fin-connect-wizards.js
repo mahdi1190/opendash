@@ -514,7 +514,16 @@ function _finMonzoApprove(ctx, body) {
     ctx.foot.add('Finish with 90 days', null, 'btn-secondary', () => { w.doneSource = w.sourceId; _finRefreshAll(); ctx.go('done'); });
     ctx.foot.add('Get full history', 'history', 'btn-primary', () => { w.connectAt = null; w.approval = null; ctx.go('connect'); }, { act: 'monzo-full' });
   } else if (view.phase === 'error') {
-    if (view.retry) {
+    if (w.approval && w.approval.code === 'BUSY') {
+      // Downloaded but not saved (another update was running): save what is already here.
+      ctx.foot.add('Save it now', 'refresh-cw', 'btn-primary', async (b) => {
+        b.disabled = true;
+        await SourcesStore.refresh();
+        const src = ((SourcesStore.data && SourcesStore.data.sources) || []).find(x => x.id === w.sourceId) || { id: w.sourceId, kind: 'direct', provider: 'monzo', label: 'Monzo' };
+        w.doneSource = w.sourceId; ctx.go('done');
+        finSyncSource(src);
+      }, { act: 'monzo-save-now' });
+    } else if (view.retry) {
       ctx.foot.add('Sign in again', 'log-in', 'btn-ghost', () => { w.connectAt = null; w.approval = null; ctx.go('connect'); });
       ctx.foot.add(w.approval && w.approval.code === 'NOT_APPROVED' ? 'Keep waiting' : 'Try again', 'refresh-cw', 'btn-primary', (b) => retry(b), { act: 'monzo-retry' });
     } else ctx.foot.add('Sign in again', 'log-in', 'btn-primary', () => { w.connectAt = null; w.approval = null; ctx.go('connect'); });
