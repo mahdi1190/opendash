@@ -58,6 +58,18 @@
 .conn-page .fc-dup .btn { height: 28px; min-height: 28px; color: var(--cp-amber); }
 .conn-page .fc-acc-detail { grid-column: 1 / -1; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 16px; margin: 0 0 12px 38px; font-size: 12px; line-height: 1.6; }
 .conn-page .fc-acc-detail dt { color: var(--cp-muted); }
+/* the finance computer's accounts on another computer (56-fin-connect.js _finRemoteSection): no balance column, calm when it is off */
+.conn-page .fc-acc-main.is-remote { grid-template-columns: 10px minmax(0, 1fr) minmax(92px, auto); cursor: default; }
+.conn-page .fc-remote-line { display: flex; align-items: center; gap: 6px; margin: -2px 0 0; color: var(--cp-muted); font-size: 12px; line-height: 1.5; min-width: 0; }
+.conn-page .fc-remote-line .i { width: 12px; height: 12px; flex: none; }
+.conn-page .fc-remote-line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conn-page .fc-remote-line.is-away { color: var(--cp-faint); }
+.conn-page .fc-remote-empty { border: 1px dashed var(--cp-border-strong); border-radius: 12px; }
+.conn-page .fc-adv { border-top: 1px solid var(--cp-border); padding: 8px 16px 10px; font-size: 12px; }
+.conn-page .fc-adv summary { width: max-content; color: var(--cp-muted); cursor: pointer; }
+.conn-page .fc-adv summary:hover { color: var(--cp-text); }
+.conn-page .fc-adv-b { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 8px; color: var(--cp-muted); line-height: 1.6; }
+.conn-page .fc-remote-here { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 14px; border: 1px solid var(--cp-border); border-radius: 12px; background: var(--cp-subtle); color: var(--cp-muted); font-size: 12px; line-height: 1.6; }
 .conn-page .fc-acc-detail dd { margin: 0; color: var(--cp-text); overflow-wrap: anywhere; }
 
 /* the Show in Finances switch (shared with the sheets) */

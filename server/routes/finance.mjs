@@ -10,6 +10,8 @@
 //                                 409 {code:'LOOKS_LIKE_DUPLICATE'}: the file's account is new but most of
 //                                 its rows match another account's (an export of a synced account);
 //                                 nothing imported - send again with force:true to import anyway
+//   POST /api/finance/here        {} -> {ok, job?} | {ok, already}: this computer becomes the finance
+//                                 computer (409 SIGN_IN_FIRST without a bank connection of its own)
 //   POST /api/finance/categorise  {merchant, category|null} -> {ok, changed, analysis}
 //   GET  /api/finance/budgets     -> {budgets};  PUT {budgets} -> {ok, budgets}
 //   GET  /api/finance/export      -> text/csv of every transaction (same-origin only)
@@ -82,7 +84,14 @@ export default function register(app) {
     noteSync: (id, r) => sources.noteSync(id, r),
   });
 
-  /** Accounts for the Finances chips: [{key, sourceId, sourceLabel, sourceColour, name, colour, enabled}]. */
+  /** The kind of connection a bank source is, as Connections > Money names it. */
+  // (the same names as src/app/56-fin-connect.js finProviderOf)
+  const providerOf = (s) => (!s ? 'csv' : s.kind === 'direct' ? String(s.provider || 'mcp') : s.kind === 'csv' ? 'csv'
+    : s.preset === 'aureli' || s.preset === 'bank' || /^claude\.ai Bank$/i.test(String(s.server || '')) ? 'aureli' : 'mcp');
+  /**
+   * Accounts for the Finances chips: [{key, sourceId, sourceLabel, sourceColour, name, colour, enabled}],
+   * plus provider, kind and lastSync for Connections > Money on the other devices (the published copy).
+   */
   async function accountsMeta(analysis) {
     const list = (await sources.all()).filter(s => s.capability === 'bank');
     const out = [];
@@ -91,7 +100,7 @@ export default function register(app) {
       for (const a of s.accounts || []) {
         const key = s.preset === 'aureli' || s.kind === 'csv' ? a.id : `${s.id}.${a.id}`;
         if (seen.has(key)) continue; seen.add(key);
-        out.push({ key, sourceId: s.id, sourceLabel: s.label, sourceColour: s.colour, name: a.name, colour: a.colour, enabled: a.enabled !== false && s.enabled });
+        out.push({ key, sourceId: s.id, sourceLabel: s.label, sourceColour: s.colour, provider: providerOf(s), kind: a.kind || null, name: a.name, colour: a.colour, enabled: a.enabled !== false && s.enabled, lastSync: s.lastSync || null });
       }
     }
     // Accounts in the data that no source names: CSV imports (or a bank that was removed).
@@ -104,10 +113,10 @@ export default function register(app) {
       // Aureli ids are opaque tokens; CSV exports carry sort code / account numbers.
       const isAureli = !generic && aureli && /^[A-Za-z0-9_-]{8,64}$/.test(k) && /[A-Za-z]/.test(k);
       const src = generic || (isAureli ? aureli : csv) || null;
-      out.push({ key: k, sourceId: src ? src.id : null, sourceLabel: src ? src.label : 'Imported', sourceColour: src ? src.colour : 'slate',
+      out.push({ key: k, sourceId: src ? src.id : null, sourceLabel: src ? src.label : 'Imported', sourceColour: src ? src.colour : 'slate', provider: providerOf(src), kind: null,
         // Account numbers are shortened; a readable label from a CSV is kept as it is.
         name: /\d{5,}/.test(k) || (isAureli && !generic) ? 'Account …' + String(k).replace(/^.*\./, '').replace(/\s+/g, '').slice(-4) : String(k).replace(/^.*\./, '').slice(0, 30),
-        colour: null, enabled: true });
+        colour: null, enabled: true, lastSync: (src && src.lastSync) || null });
     }
     return out;
   }
@@ -115,7 +124,7 @@ export default function register(app) {
   async function sourcesMeta(analysis) {
     const st = await sources.status({ discover: false });
     return {
-      sources: st.sources.filter(s => s.capability === 'bank').map(s => ({ id: s.id, label: s.label, kind: s.kind, colour: s.colour, enabled: s.enabled, state: s.health && s.health.state, lastSync: s.lastSync })),
+      sources: st.sources.filter(s => s.capability === 'bank').map(s => ({ id: s.id, label: s.label, kind: s.kind, provider: providerOf(s), colour: s.colour, enabled: s.enabled, state: s.health && s.health.state, lastSync: s.lastSync })),
       accounts: await accountsMeta(analysis),
       canSync: st.capabilities.bank.available,
     };
@@ -230,6 +239,23 @@ export default function register(app) {
       log('note', `finance update started${body.bank === false ? ' (no bank)' : body.full === true ? ' (full)' : ''}`);
       const asked = hf.asked.length ? { asked: hf.asked, message: `Asking ${[...new Set(hf.asked.map(a => a.runsOn))].join(' and ')} to update your bank.` } : hf.message ? { message: hf.message } : {};
       return c.json(202, { job: r.job, ...asked });
+    },
+  });
+
+  // Connections > Money on another device: "Sign in to this bank on this computer instead". Once this
+  // computer has a bank of its own, it becomes the finance computer and reads it now (lib/finance-share.mjs).
+  app.route({
+    path: '/api/finance/here', method: 'POST', methodError: 'POST only',
+    handler: async (c) => {
+      await c.body({ allowEmpty: true });
+      const own = (await sources.all()).filter(s => s.capability === 'bank' && s.enabled !== false && !s.demo && s.kind !== 'csv'
+        && (s.kind !== 'direct' || (!s.setup && (s.accounts || []).length > 0)));
+      const r = await share.useThisComputer({ hasBank: own.length > 0 });
+      if (!r.ok) return c.json(409, { code: r.code, error: r.message });
+      if (r.already) return { ok: true, already: true };
+      const u = startFinanceUpdate({});
+      log('note', 'finance: this computer reads the bank now; update started');
+      return { ok: true, job: u.job || null };
     },
   });
 

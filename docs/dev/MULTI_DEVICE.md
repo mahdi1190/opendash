@@ -90,6 +90,8 @@ bookkeeping stay. Every item, with the reason in one line.
 | 12 or 24-hour clocks (`time.clock12`) | synced (2.16) | how you read the time |
 | which zone this computer shows (`time.follow`, `.zone`, `.trip`) | this computer's own | the zone of the computer |
 | browser notifications (`notifications`) | this computer's own | the permission is per browser |
+| Finances' AI choices: Claude's wording of the money brief and story on or off, their models, the bank country (`finance.briefAi`, `.briefModel`, `.storyModel`, `.country`; Settings > AI) | synced (2.15.2), field by field | the person's settings |
+| how Enable Banking returns to this computer (`finance.ebRedirect`) | this computer's own | it belongs to the Enable Banking app saved on this computer (its sign-in is in this computer's secrets) |
 | the finance folder (`financeDir`), first-run marker, file format | this computer's own | a path, and this computer's set-up |
 
 ### AI proposals, finances and who runs Claude
@@ -154,6 +156,9 @@ flags add up, values only fill what the state does not have yet.
 | an arrival welcome shown (per place) | synced (`seen.arrival`) | one welcome per arrival; the arrival record itself stays (below) |
 | the story player's volume, speed and today's mute; the animation intensity; the assistant's model; a running focus block | synced (`uiPrefs`) | preferences; the focus block follows like Focus mode |
 | the weekly review in progress | synced (`drafts`) | start it on one computer, finish it on the other |
+| Finances' display choices: chart modes, sorts, page size, income and transfers shown, compare (`uiPrefs.finance`, from `dash-finance-ui-v1`) | synced (`uiPrefs`, per field; 2.15.2) | preferences; this browser's old choices only fill what the state does not have |
+| the transactions seen at the last visit to Finances > Transactions (`seen.financeTx`, from `dash-finance-seen-v1`) | synced (`seen`; 2.15.2) | new rows are marked once, on whichever computer you look; shortened opaque row keys, no amount or merchant |
+| where you are in Finances (the section, the date range, the filters, the budget picked), the category colour slots, budgets kept in the browser while the server lacked the route (`dash-finance-ui-v1`) | this computer's own | where you are; the slots are worked out from your spending, and a budget is an amount |
 | first-paint copies: `dashboard-opening-mode`, `dashboard-opening-day`, `dashboard-motion-level` / `-last` | this browser, rewritten from the state | the splash decides before any script has the state |
 | this computer's location: the location history, the arrival record, the county last welcomed | this computer's own | where this computer is (two computers in different places must not pass arrivals back and forth); the history never leaves the browser |
 | "Animate anyway" (`dashboard-motion-os-override`) | this computer's own | answers this computer's own reduced-motion setting |
@@ -239,6 +244,20 @@ sync off or plain sync: each computer has its own finances, as before.
   card has the same line; before the first copy arrives, "Finance from Home
   laptop · waiting for its first update" instead of "Connect your bank".
   Connections counts the bank as the group's ("Finance from Home laptop").
+- **Connections > Money** there lists the finance computer's accounts from
+  the same copy (`GET /api/fin-connect/accounts` `remote`), per connection
+  "Connected on Home laptop": name, bank, colour, last update, *Show in
+  Finances*, rename and colour, which are shared edits (below). Its own
+  connections, if any, show under "On this computer". *Advanced > Sign in to
+  this bank on this computer instead* starts that bank's sign-in here; once
+  signed in, this computer becomes the finance computer (`POST
+  /api/finance/here` records the `bank` role here and reads the bank).
+- **While the finance computer is away** (presence: `lib/sync/presence.mjs`
+  asleep, off or outdated; `meta.remote.state`) every money surface says it
+  calmly, with a grey dot instead of a warning: "Finance from Home laptop ·
+  last update 2 h ago (it's off)" (`src/app/65-finance-view.js`
+  `financeRemoteLine`). Sync bank then shows a note ("Home laptop is off right
+  now. This is what it last sent…"), never an error.
 - **Sync bank** there asks the finance computer (`POST /api/finance/update`
   answers 202 `{remote}`: a remote request `fetch:finance` addressed to it,
   `lib/sync/requests.mjs`); it runs its own update and publishes before the

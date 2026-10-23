@@ -2,7 +2,8 @@
 // (lib/fin-connect/; design docs/dev/FINANCE_CONNECTIONS.md 3.6).
 //
 //   GET   /api/fin-connect/providers            catalogue + per-provider status (no secrets)
-//   GET   /api/fin-connect/accounts             every bank account across providers (Your accounts)
+//   GET   /api/fin-connect/accounts             every bank account across providers (Your accounts);
+//                                               + remote: the finance computer's accounts on the other devices
 //   PATCH /api/fin-connect/accounts/:key        {name?, colour?, enabled?, keep?:'this'|'other'}
 //   POST  /api/fin-connect/sources/:id/sync     a finance update for that source only -> 202 {job}
 //   POST  /api/fin-connect/sources/:id/disconnect {removeData?} -> {ok, removed, undo}
@@ -53,7 +54,17 @@ export default async function register(app) {
   await svc.ready();
 
   app.route({ path: BASE + 'providers', method: 'GET', methodError: 'GET only', handler: () => svc.catalogue() });
-  app.route({ path: BASE + 'accounts', method: 'GET', methodError: 'GET only', handler: () => svc.accounts() });
+  // On a device that is not the finance computer, `remote` lists the finance computer's accounts
+  // (its published copy, lib/finance-share.mjs remoteAccounts): Connections > Money shows them.
+  app.route({
+    path: BASE + 'accounts', method: 'GET', methodError: 'GET only',
+    handler: async () => {
+      const out = await svc.accounts();
+      const fs = app.ctx.financeShare;
+      const remote = fs && typeof fs.remoteAccounts === 'function' ? await fs.remoteAccounts().catch(() => null) : null;
+      return remote ? { ...out, remote } : out;
+    },
+  });
 
   app.route({
     prefix: BASE + 'accounts/', method: 'PATCH', methodError: 'PATCH only',

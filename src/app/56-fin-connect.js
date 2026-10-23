@@ -5,7 +5,10 @@
    One block for every way money gets into Finances:
      Your accounts        every account from every provider in one list
                           (rename, colour, show in Finances, last sync,
-                          sign-in-again date, possible duplicates)
+                          sign-in-again date, possible duplicates); on a
+                          computer that does not read the bank: the finance
+                          computer's accounts ("Connected on Home laptop"),
+                          then this computer's own as "On this computer"
      Add a bank or wallet the provider chooser in three groups:
                           A via Claude (Aureli), B direct (Plasma One,
                           Monzo, other UK/EU banks via Enable Banking),
@@ -298,7 +301,8 @@ function finCardStatus(providerId, groups, entry) {
 
 /* ---------- the store ---------- */
 const FinConnectStore = {
-  providers: null, accounts: null, meta: {}, error: null, missing: false, loading: null, gen: 0, at: 0,
+  // remote: the finance computer's accounts when another computer reads the bank (lib/finance-share.mjs remoteAccounts)
+  providers: null, accounts: null, remote: null, meta: {}, error: null, missing: false, loading: null, gen: 0, at: 0,
   async load(opts) {
     opts = opts || {};
     if (this.loading && !opts.force) return this.loading;
@@ -317,6 +321,7 @@ const FinConnectStore = {
           this.providers = p ? (Array.isArray(p) ? p : p.providers || []) : [];
           this.meta = p && !Array.isArray(p) ? p : {};
           this.accounts = a ? (Array.isArray(a) ? a : a.groups || a.accounts || []) : [];
+          this.remote = a && !Array.isArray(a) && a.remote && typeof a.remote === 'object' ? a.remote : null;
           this.missing = !p; this.error = null; this.at = Date.now();
         }
       } catch (e) { if (gen === this.gen) this.error = (e && e.message) || 'Could not load the money connections.'; }
@@ -671,17 +676,203 @@ function _finGroupCard(group, nameOf) {
   card.appendChild(list);
   return card;
 }
-function _finAccountsSection(groups) {
+function _finAccountsSection(groups, opts) {
+  opts = opts || {};
   const wrap = _finEl('div', 'fc-accounts');
   const head = _finEl('div', 'fc-sub-head');
   const n = groups.reduce((t, g) => t + g.accounts.length, 0);
   const shown = groups.reduce((t, g) => t + g.accounts.filter(a => a.enabled).length, 0);
-  head.append(_finEl('h3', null, 'Your accounts'), _finEl('span', 'fc-sub-note', `${shown} of ${n} account${n === 1 ? '' : 's'} shown in Finances`));
+  head.append(_finEl('h3', null, opts.title || 'Your accounts'), _finEl('span', 'fc-sub-note', opts.note || `${shown} of ${n} account${n === 1 ? '' : 's'} shown in Finances`));
   wrap.appendChild(head);
   const names = new Map();
   for (const g of groups) for (const a of g.accounts) names.set(a.key, `${a.name} (${finProviderInfo(g.provider).name})`);
   const nameOf = (key) => names.get(key) || 'another account';
   for (const g of groups) wrap.appendChild(_finGroupCard(g, nameOf));
+  return wrap;
+}
+
+/* ---------- Your accounts on another computer (docs/dev/MULTI_DEVICE.md "Finances on every device") ----------
+   On a computer that does not read the bank, Your accounts lists the FINANCE COMPUTER's accounts
+   from the copy it published (GET /api/fin-connect/accounts `remote`, lib/finance-share.mjs
+   remoteAccounts): name, bank, colour, last update, Show in Finances, rename and colour. A change
+   is a shared edit (PATCH accounts/:key, lib/finance-share.mjs editAccount): the finance computer
+   applies it, and until then this computer lays it over its copy. Nothing here needs a sign-in.
+   While the finance computer is off the line under the heading says so calmly (65-finance-view.js
+   financeRemoteLine), never as an error. Advanced: "Sign in to this bank on this computer instead"
+   starts that bank's sign-in here; once it is done this computer becomes the finance computer
+   (POST /api/finance/here). */
+let _finTakeOver = null;                      // {at, provider}: "Sign in to this bank on this computer instead" was chosen in this page
+const _finAdvOpen = new Set();                // remote groups whose Advanced part is open (kept across repaints)
+/** The published accounts -> groups like finMergeAccounts' ({remote: true, source, provider, accounts}). */
+function _finRemoteGroups(remote) {
+  const srcs = new Map((Array.isArray(remote.sources) ? remote.sources : []).filter(s => s && s.id).map(s => [String(s.id), s]));
+  const groups = new Map();
+  const col = (c) => (SRC_SWATCHES.includes(c) ? c : null);
+  for (const a of Array.isArray(remote.accounts) ? remote.accounts : []) {
+    if (!a || !a.key) continue;
+    const sid = String(a.sourceId || 'imported'), s = srcs.get(sid) || {};
+    let g = groups.get(sid);
+    if (!g) {
+      const provider = String(a.provider || s.provider || (s.kind === 'csv' || !a.sourceId ? 'csv' : 'mcp'));
+      g = { remote: true, provider, accounts: [], source: { id: sid, kind: s.kind || (provider === 'csv' ? 'csv' : provider === 'aureli' || provider === 'mcp' ? 'mcp' : 'direct'),
+        label: a.sourceLabel || s.label || finProviderInfo(provider).name, colour: col(a.sourceColour) || col(s.colour) || 'slate', enabled: s.enabled !== false, state: s.state || null, lastSync: s.lastSync || null } };
+      groups.set(sid, g);
+    }
+    g.accounts.push({ key: String(a.key), sourceId: sid, name: String(a.name || 'Account'), kind: a.kind || '', colour: col(a.colour) || g.source.colour,
+      enabled: a.enabled !== false, lastSync: a.lastSync || g.source.lastSync || null });
+  }
+  const rank = { aureli: 0, monzo: 1, 'enable-banking': 2, plasma: 3, mcp: 4, csv: 5 };
+  return [...groups.values()].sort((a, b) => (rank[a.provider] ?? 9) - (rank[b.provider] ?? 9));
+}
+/** This computer has a bank of its own that it could read (provider: only that kind). */
+function _finOwnBank(groups, provider) {
+  return (groups || []).some(g => g.provider !== 'csv' && g.source.enabled !== false && (!provider || g.provider === provider)
+    && (g.source.kind !== 'direct' || (!g.source.setup && g.accounts.length > 0)));
+}
+/** A shared edit from here; while the finance computer is away the toast says it follows when it is back. */
+function _finRemotePatch(group, a, patch, msg, remote) {
+  const l = typeof financeRemoteLine === 'function' ? financeRemoteLine(remote) : null;
+  return _finPatchAccount(group, a, patch, msg && l && l.away ? msg + (/[.!?]$/.test(msg) ? ' ' : '. ') + `${remote.name} takes it over when it is on again.` : msg);
+}
+function _finRemoteRowMenu(anchor, group, a, remote) {
+  const items = [
+    { label: 'Rename', icon: 'pencil', run: () => { _finRenaming = a.key; renderMain(); } },
+    { label: 'Colour…', icon: 'palette', run: () => _finColourPop(anchor, group, a) },
+  ];
+  if (group.source.kind !== 'csv') items.push(a.enabled ? { label: 'Hide from Finances', icon: 'eye-off', run: () => _finRemotePatch(group, a, { enabled: false }, `${a.name} hidden from Finances. Its data is kept.`, remote) }
+    : { label: 'Show in Finances', icon: 'eye', run: () => _finRemotePatch(group, a, { enabled: true }, `${a.name} shown in Finances`, remote) });
+  openMenu(anchor, items, { align: 'end' });
+}
+function _finRemoteRow(group, a, remote) {
+  const row = _finEl('div', 'fc-acc' + (a.enabled ? '' : ' is-hidden'));
+  row.dataset.account = a.key;
+  row.setAttribute('role', 'listitem');
+  const main = _finEl('div', 'fc-acc-main is-remote');
+  main.appendChild(_finEl('span', 'fc-sw c-' + a.colour));
+  const names = _finEl('span', 'fc-acc-names');
+  if (_finRenaming === a.key) {
+    const input = _finEl('input', 'fc-rename'); input.value = a.name; input.maxLength = 60;
+    input.setAttribute('aria-label', 'New name for ' + a.name);
+    let done = false;
+    const finish = (save) => {
+      if (done) return; done = true; _finRenaming = null;
+      const v = input.value.trim();
+      if (save && v && v !== a.name) _finRemotePatch(group, a, { name: v }, 'Renamed', remote); else renderMain();
+    };
+    input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); } };
+    input.onblur = () => finish(true);
+    names.appendChild(input);
+    requestAnimationFrame(() => { if (input.isConnected) { input.focus(); input.select(); } });
+  } else names.appendChild(_finEl('span', 'fc-acc-name', a.name));
+  names.appendChild(_finEl('span', 'fc-acc-sub', [group.source.label, FIN_KIND_LABEL[a.kind] || ''].filter(Boolean).join(' · ')));
+  main.appendChild(names);
+  const when = _finEl('span', 'fc-acc-when');
+  when.innerHTML = icon('clock', 'i-xs'); when.appendChild(_finEl('span', null, a.lastSync ? 'Updated ' + _connAgo(a.lastSync) : 'Not updated yet'));
+  when.setAttribute('data-tip', a.lastSync ? `Last read on ${remote.name}: ${new Date(a.lastSync).toLocaleString()}` : `${remote.name} has not read it yet`);
+  main.appendChild(when);
+  row.appendChild(main);
+  const side = _finEl('div', 'fc-acc-side');
+  const sw = _finEl('button', 'fc-switch'); sw.type = 'button';
+  sw.setAttribute('role', 'switch'); sw.setAttribute('aria-checked', String(a.enabled));
+  sw.setAttribute('aria-label', 'Show ' + a.name + ' in Finances');
+  sw.setAttribute('data-tip', a.enabled ? 'Shown in Finances on every computer. Click to hide (its data is kept).' : 'Hidden from Finances. Click to show.');
+  sw.appendChild(_finEl('span', 'fc-switch-knob'));
+  sw.disabled = group.source.kind === 'csv';
+  sw.onclick = (e) => { e.stopPropagation(); sw.disabled = true; _finRemotePatch(group, a, { enabled: !a.enabled }, a.enabled ? `${a.name} hidden from Finances. Its data is kept.` : `${a.name} shown in Finances`, remote); };
+  side.appendChild(sw);
+  const more = _finEl('button', 'btn-icon btn-sm'); more.type = 'button';
+  more.setAttribute('aria-label', 'Manage ' + a.name); more.innerHTML = icon('ellipsis');
+  more.onclick = (e) => { e.stopPropagation(); _finRemoteRowMenu(more, group, a, remote); };
+  side.appendChild(more);
+  row.appendChild(side);
+  return row;
+}
+function _finRemoteGroupCard(group, remote, ownGroups) {
+  const s = group.source, p = finProviderInfo(group.provider), who = remote.name || 'your other computer';
+  const card = _finEl('section', 'fc-group is-remote');
+  card.dataset.source = s.id; card.dataset.provider = group.provider;
+  const head = _finEl('div', 'fc-group-head');
+  const mark = _finEl('span', 'fc-mark'); mark.innerHTML = finMark(p.mark || group.provider);
+  const titles = _finEl('div', 'fc-group-titles');
+  titles.append(_finEl('h4', null, s.label || p.name), _finEl('span', null, s.kind === 'csv' ? `Imported on ${who}` : `Connected on ${who}`));
+  head.append(mark, titles);
+  head.appendChild(s.kind === 'csv' ? _finStatusPill('off', 'Manual import') : s.enabled === false ? _finStatusPill('off', 'Paused')
+    : s.state === 'auth' ? _finStatusPill('warn', `Sign in again on ${who}`) : s.state === 'error' ? _finStatusPill('err', 'Not working') : _finStatusPill('ok', 'Connected'));
+  const lock = _finEl('span', 'fc-lock'); lock.innerHTML = icon('laptop', 'i-xs');
+  lock.setAttribute('data-tip', `${who} reads it${s.kind === 'csv' ? ' from the files imported there' : ''}; its sign-in stays there. ${FIN_READONLY_TIP}`);
+  lock.appendChild(_finEl('span', null, `On ${who}`));
+  head.appendChild(lock);
+  card.appendChild(head);
+  const list = _finEl('div', 'fc-acc-list'); list.setAttribute('role', 'list');
+  for (const a of group.accounts) list.appendChild(_finRemoteRow(group, a, remote));
+  card.appendChild(list);
+  if (s.kind !== 'csv') {
+    const adv = document.createElement('details'); adv.className = 'fc-adv';
+    adv.open = _finAdvOpen.has(s.id);
+    adv.ontoggle = () => { if (adv.open) _finAdvOpen.add(s.id); else _finAdvOpen.delete(s.id); };
+    const sum = document.createElement('summary'); sum.textContent = 'Advanced';
+    adv.appendChild(sum);
+    const b = _finEl('div', 'fc-adv-b');
+    const link = _finEl('button', 'fc-link', 'Sign in to this bank on this computer instead'); link.type = 'button';
+    link.onclick = () => _finSignInHere(group, remote, ownGroups);
+    b.append(link, _finEl('span', null, `Then this computer reads it, and ${who} shows your finances from here.`));
+    adv.appendChild(b);
+    card.appendChild(adv);
+  }
+  return card;
+}
+/** "Sign in to this bank on this computer instead": that bank's sign-in here; afterwards this computer reads the bank. */
+async function _finSignInHere(group, remote, ownGroups) {
+  const who = remote.name || 'your other computer', bank = group.source.label || finProviderInfo(group.provider).name;
+  const ok = await confirmDialog({
+    title: `Sign in to ${bank} on this computer?`,
+    text: `${who} reads your bank now. Once you have signed in here, this computer reads it instead and ${who} shows your finances from here. Your categories and budgets stay. ${who} keeps its own sign-in until you disconnect it there.`,
+    confirmLabel: 'Sign in here',
+  });
+  if (!ok) return;
+  // Already signed in here (a Claude connector both computers have): this computer takes over now.
+  if (_finOwnBank(ownGroups, group.provider)) { _finUseHere(remote, true); return; }
+  _finTakeOver = { at: Date.now(), provider: group.provider };
+  if (group.provider === 'aureli') _finConnectAureli();
+  else if (group.provider === 'mcp') srcAddFlow({ capability: 'bank', mcpBank: true });
+  else finStartProvider(group.provider, group.provider === 'enable-banking' ? { step: 'bank' } : {});
+}
+/** This computer becomes the finance computer (POST /api/finance/here). auto: the person chose it already. */
+async function _finUseHere(remote, auto) {
+  const who = (remote && remote.name) || 'your other computer';
+  if (!auto && !(await confirmDialog({ title: 'Read your bank on this computer?', confirmLabel: 'Use this computer',
+    text: `This computer becomes the one that reads your bank, and ${who} shows your finances from here. Your categories and budgets stay.` }))) return;
+  _finTakeOver = null;
+  try {
+    const j = await finApi('/api/finance/here', { method: 'POST', body: {} });
+    toast(j.already ? 'This computer reads your bank already.' : `This computer reads your bank now. ${who} shows your finances from here.`, { kind: 'ok', icon: 'landmark' });
+  } catch (e) { toast(e.message, e.code === 'SIGN_IN_FIRST' ? { icon: 'log-in' } : { kind: 'err' }); }
+  await Promise.all([SourcesStore.refresh(), FinConnectStore.load({ force: true })]);
+  _srcAfterChange('bank');
+}
+function _finRemoteSection(remote, ownGroups) {
+  const wrap = _finEl('div', 'fc-accounts fc-remote');
+  const groups = _finRemoteGroups(remote), who = remote.name || 'your other computer';
+  const n = groups.reduce((t, g) => t + g.accounts.length, 0);
+  const shown = groups.reduce((t, g) => t + g.accounts.filter(a => a.enabled).length, 0);
+  const head = _finEl('div', 'fc-sub-head');
+  head.append(_finEl('h3', null, 'Your accounts'), _finEl('span', 'fc-sub-note', n ? `${shown} of ${n} account${n === 1 ? '' : 's'} shown in Finances` : ''));
+  wrap.appendChild(head);
+  const l = remote.waiting ? null : financeRemoteLine(remote);
+  const line = _finEl('p', 'fc-remote-line' + (l && l.away ? ' is-away' : ''));
+  line.innerHTML = icon(l && l.away ? 'moon' : 'laptop', 'i-xs');
+  line.appendChild(_finEl('span', null, l ? l.text : `Finance from ${who} · waiting for its first update`));
+  if (l && l.tip) line.title = l.tip;
+  wrap.appendChild(line);
+  if (!groups.length) wrap.appendChild(_finEl('p', 'fc-acc-empty fc-remote-empty', `${who} reads your bank. Its accounts show here after its ${remote.waiting ? 'first' : 'next'} update.`));
+  for (const g of groups) wrap.appendChild(_finRemoteGroupCard(g, remote, ownGroups));
+  // Signed in to a bank directly here (the take-over was not finished in this page): offer it.
+  if (ownGroups.some(g => g.source.kind === 'direct' && g.accounts.length > 0)) {
+    const here = _finEl('div', 'fc-remote-here');
+    here.appendChild(_finEl('span', null, `This computer has a bank connection of its own, but ${who} reads your bank.`));
+    here.appendChild(_connBtn('Read my bank on this computer', 'landmark', 'btn-ghost', () => _finUseHere(remote, false)));
+    wrap.appendChild(here);
+  }
   return wrap;
 }
 
@@ -835,12 +1026,24 @@ function finMoneyBlock() {
     section.appendChild(err);
   }
   const groups = SourcesStore.data ? _finGroups() : [];
-  if (groups.some(g => g.accounts.length || g.provider !== 'csv')) section.appendChild(_finAccountsSection(groups));
-  else if (!SourcesStore.data) section.appendChild(_finEl('p', 'cp-loading', 'Loading your accounts…'));
-  section.appendChild(_finChooser(groups));
+  // Another computer reads the bank: its accounts first (from the copy it published).
+  const remote = FinConnectStore.remote;
+  if (remote) {
+    section.appendChild(_finRemoteSection(remote, groups));
+    // Signed in here after "Sign in to this bank on this computer instead": this computer takes over, once.
+    if (_finTakeOver && Date.now() - _finTakeOver.at > 60 * 60000) _finTakeOver = null;
+    if (_finTakeOver && _finOwnBank(groups, _finTakeOver.provider)) { _finTakeOver = null; setTimeout(() => _finUseHere(remote, true), 0); }
+  }
+  const who = remote ? remote.name || 'your other computer' : '';
+  if (groups.some(g => g.accounts.length || g.provider !== 'csv')) section.appendChild(_finAccountsSection(groups, remote ? { title: 'On this computer', note: `Not read while ${who} reads your bank` } : null));
+  else if (!SourcesStore.data && !remote) section.appendChild(_finEl('p', 'cp-loading', 'Loading your accounts…'));
+  // Banks are added on the finance computer; here only through the Advanced sign-in above.
+  if (!remote || groups.some(g => g.provider !== 'csv')) section.appendChild(_finChooser(groups));
   const foot = _finEl('p', 'fc-privacy');
-  foot.innerHTML = icon('hard-drive', 'i-xs');
-  foot.appendChild(_finEl('span', null, 'Transactions are saved in your data folder on this computer. Sign-ins for direct connections are kept on this computer only, outside the data folder, never in the page, logs or exports. Disconnecting deletes them.'));
+  foot.innerHTML = icon(remote ? 'lock' : 'hard-drive', 'i-xs');
+  foot.appendChild(_finEl('span', null, remote
+    ? `Your finances come from ${who}, end-to-end encrypted through your sync folder. Bank sign-ins stay on the computer that reads the bank, never in the page, logs or exports.`
+    : 'Transactions are saved in your data folder on this computer. Sign-ins for direct connections are kept on this computer only, outside the data folder, never in the page, logs or exports. Disconnecting deletes them.'));
   section.appendChild(foot);
   return section;
 }

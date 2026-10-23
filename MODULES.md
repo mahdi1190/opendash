@@ -1173,7 +1173,8 @@ Files: `lib/finance.mjs`, `lib/finance/*`, `server/routes/finance.mjs`,
   (category totals and deltas, the pace, the next bills' merchant names and
   amounts, safe to spend a day; no transactions, memos, accounts or balances)
   through the `json` profile with a `--json-schema` (`config.finance.briefModel`,
-  Haiku by default; `config.finance.briefAi: false` turns it off), checks every
+  Haiku by default; `config.finance.briefAi: false` turns it off; both in Settings >
+  AI > Money brief and story, and they follow the person: `lib/profile.mjs`), checks every
   number of every sentence against those figures (a sentence that fails is
   replaced by the template one; unknown chips are dropped) and caches one
   wording per day and period in `_system/brief-ai.json`. The page checks the
