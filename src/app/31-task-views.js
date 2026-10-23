@@ -620,7 +620,7 @@ function renderKanban(container, o) {
       if (col.key === 'done') toggleDone(id);   // its own toast + Undo
       else {
         setStatus(id, col.key);
-        toast(cur === 'done' ? `Reopened: ${col.label}` : `Moved to ${col.label}`, { icon: col.key === 'doing' ? 'circle-dot' : 'circle', action: { label: 'Undo', run: () => undo() } });
+        toast(cur === 'done' ? 'Reopened' : `Moved to ${col.label}`, { icon: col.key === 'doing' ? 'circle-dot' : 'circle', action: { label: 'Undo', run: () => undo() } });
       }
     });
     const list = document.createElement('div'); list.className = 'kanban-list';
