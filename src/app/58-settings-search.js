@@ -136,6 +136,13 @@ const SETTINGS_SEARCH_CATALOG = {
     ['Enable the Start server button', 'Let the offline banner start the server.'],
     ['Show an offline page', 'Keep the app page available when the server is stopped.', 'service worker cache'],
   ],
+  sync: [
+    ['Sync across my devices', 'Keep tasks, notes and people the same on your computers through a cloud folder.', 'onedrive google drive dropbox cloud laptop multi-device'],
+    ['Folder', 'The cloud folder that carries the changes between computers.', 'onedrive dropbox google drive path'],
+    ['Status', 'When it last synced and which other computers were seen.', 'last seen devices'],
+    ['This computer is called', 'How your other computers show this one.', 'device name'],
+    ['Check the folder now', 'Look for changes from your other computers now.', 'sync now refresh'],
+  ],
   updates: [
     ['OpenDash version', 'Check for updates and install a newer release.', 'upgrade GitHub'],
     ['Check once a day', 'Choose whether to check for updates automatically.'],
