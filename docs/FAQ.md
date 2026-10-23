@@ -56,7 +56,10 @@ you keep elsewhere, use *Export all data (.zip)*.
 
 **Can I keep the data folder in OneDrive, Dropbox or iCloud?**
 Yes, with `--data-dir`, but run OpenDash on one computer at a time: sync tools
-copy files, they do not merge edits made in two places at once.
+copy files, they do not merge edits made in two places at once. OpenDash
+pauses changes when it starts while another computer has it open (choose *Use
+here anyway* to go on), and your sign-ins stay on each computer: on a second
+computer you sign in again (see [INSTALL.md](INSTALL.md)).
 
 **How do I move to a new computer?**
 *Export all data (.zip)* on the old one, install OpenDash on the new one,

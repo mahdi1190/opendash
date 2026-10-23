@@ -43,6 +43,19 @@ test('under the test runner the default is a temp folder, never the real one', (
   }
 });
 
+test('a data folder in the system temp folder never gets the real device folder, whatever the environment', () => {
+  // (a test may start a real server with NODE_TEST* removed from its environment)
+  const env = { LOCALAPPDATA: join('C', 'Local') };
+  assert.equal(deviceBase({ env, platform: 'win32', dataDir: join(tmpdir(), 'some-test', 'data') }), join(tmpdir(), 'opendash-test-device'));
+  assert.equal(deviceBase({ env, platform: 'win32', dataDir: join('D', 'Users', 'me', 'data') }), join('C', 'Local', 'OpenDash'));
+  assert.equal(deviceBase({ env: { ...env, DASHBOARD_DEVICE_DIR: join(tmpdir(), 'x') }, platform: 'win32', dataDir: join(tmpdir(), 'd') }), join(tmpdir(), 'x'));
+  const t = tmp();
+  try {
+    mkdirSync(join(t, 'data'));
+    assert.equal(deviceRoot(join(t, 'data'), { env: {}, platform: 'win32' }).startsWith(join(tmpdir(), 'opendash-test-device')), true);
+  } finally { rmSync(t, { recursive: true, force: true }); }
+});
+
 test('the data id is made once, read back, and follows the folder when it moves', () => {
   const t = tmp();
   try {

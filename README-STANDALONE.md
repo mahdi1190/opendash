@@ -96,7 +96,7 @@ it is a clean install for someone else.
 | **Backups** | `data/state/backups/` — a rolling copy at most every 10 minutes when your data changes (last 40), plus `daily/` (one per day, 30 days) |
 | **Finances** | `data/finance/` (or `--finance-dir <folder>`) |
 | **Calendar / email snapshots** | `data/calendar/calendar.json`, `data/email/inbox.json` |
-| **Google sign-in files** | `data/secrets/` |
+| **Sign-ins and keys** | not in the data folder: this computer's private folder (`%LOCALAPPDATA%\OpenDash\<id>\secrets` on Windows; see docs/INSTALL.md) |
 | **Server log** | `data/logs/server.log` (rotated): every start, stop (with its reason), crash and restart |
 | **Start-up switches** | `data/launch.json` — whether the Start server button is set up (Settings > Server), so the page can offer it while the server is down |
 | **Migrations** | `data/migrations.json`; pre-upgrade copies in `data/backups/` |
@@ -189,7 +189,9 @@ Save the downloaded file as exactly:
 data/secrets/google-client.json
 ```
 
-(create the `secrets` folder inside your data folder if it is not there).
+(create the `secrets` folder inside your data folder if it is not there). When the
+dashboard starts it moves the file into this computer's private folder, outside
+the data folder, so it never travels with a synced or copied data folder.
 
 ### 6. Connect
 
@@ -202,7 +204,8 @@ and allow. It's your own app, requesting read-only access, running on your
 machine.
 
 The button turns into **✉** and email triage + the calendar block go live. The
-refresh token is stored in `data/secrets/google-tokens.json` and reused from then on
+refresh token is stored on this computer only (its private folder, never the data
+folder) and reused from then on
 — you won't be asked again.
 
 ### Scopes requested
@@ -230,7 +233,7 @@ JSON. Sign in to the Google Health mobile app first, then sign in with Google
 from OpenDash and allow activity, sleep, or both.
 
 The first connection reads the last seven days. **Sync now** refreshes them.
-Credentials, tokens and the health snapshot stay in `data/secrets/`; disconnect
+Credentials, tokens and the health snapshot stay on this computer only; disconnect
 removes the local tokens and snapshot. The connection card reports real sign-in
 and sync failures. Health charts and Home widgets are not included yet.
 

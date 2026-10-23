@@ -18,6 +18,7 @@
 // carry counts and kinds only.
 
 import { sourcesFor, validateSource, newSourceId, presetFor, maskUrl, publicSource } from '../../lib/sources.mjs';
+import { accountsFor } from '../../lib/accounts.mjs';
 import { fetchCalendarSource } from '../../lib/calendar-sources.mjs';
 import { fetchEmailSource } from '../../lib/inbox-sources.mjs';
 import { fetchFromSource, describeRejected } from '../../lib/source-adapter.mjs';
@@ -91,13 +92,13 @@ export default function register(app) {
             : { ok: false, error: `${source.label} did not offer its required read tool. Retry the check or sync; reconnect only if Claude asks you to sign in.`, code: 'TOOL_MISSING' });
         }
         if (source.capability === 'calendar') {
-          const r = await fetchCalendarSource(source, { dataDir: app.ctx.dataDir, from: addDays(today, -7), to: addDays(today, 90), timeZone: tz, serverDef: sources.serverDef(source.server), denyServers: claudeAiServers() });
+          const r = await fetchCalendarSource(source, { dataDir: app.ctx.dataDir, accounts: accountsFor(app.ctx), from: addDays(today, -7), to: addDays(today, 90), timeZone: tz, serverDef: sources.serverDef(source.server), denyServers: claudeAiServers() });
           log('note', `sources: test ${source.kind} calendar: ${r.count} events`);
           return await finish({ ok: true, count: r.count, accounts: r.calendars, warnings: r.warnings, ms: Date.now() - t0,
             preview: r.events.slice(0, 5).map(e => ({ title: e.summary, when: e.start.date || e.start.dateTime })) });
         }
         if (source.capability === 'email') {
-          const r = await fetchEmailSource(source, { dataDir: app.ctx.dataDir, days: 3, todayIso: today, serverDef: sources.serverDef(source.server), denyServers: claudeAiServers() });
+          const r = await fetchEmailSource(source, { dataDir: app.ctx.dataDir, accounts: accountsFor(app.ctx), days: 3, todayIso: today, serverDef: sources.serverDef(source.server), denyServers: claudeAiServers() });
           log('note', `sources: test email: ${r.count} messages`);
           return await finish({ ok: true, count: r.count, accounts: r.accounts, warnings: r.warnings, ms: Date.now() - t0,
             preview: r.messages.slice(0, 5).map(m => ({ title: m.subject, when: m.date, who: m.from.name || m.from.email })) });
@@ -141,7 +142,14 @@ export default function register(app) {
       }
       if (c.method === 'PUT' || c.method === 'PATCH') {
         const patch = await c.body();
-        try { return { source: publicSource(await sources.update(id, patch || {})) }; }
+        try {
+          const saved = await sources.update(id, patch || {});
+          // An account's source switched on or off is that account's Mail / Calendar choice (docs/dev/ACCOUNTS.md).
+          if (saved.account && patch && typeof patch.enabled === 'boolean') {
+            await accountsFor(app.ctx).setFeatures(saved.account, { [saved.capability === 'calendar' ? 'calendar' : 'mail']: patch.enabled }).catch(() => {});
+          }
+          return { source: publicSource(saved) };
+        }
         catch (e) { if (e.status) throw new HttpError(e.status, e.message); throw e; }
       }
       if (c.method === 'DELETE') {

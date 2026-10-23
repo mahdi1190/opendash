@@ -71,7 +71,8 @@ function _srcPill(st) {
   return _connEl('span', 'status ' + kind, label);
 }
 function _srcKindText(s) {
-  if (s.kind === 'microsoft') return 'Microsoft browser sign-in · read-only';
+  if (s.kind === 'microsoft') return (s.account ? s.label + ' · ' : '') + 'Microsoft sign-in · read-only';
+  if (s.kind === 'google') return (s.account ? s.label + ' · ' : '') + 'Google sign-in · read-only';
   if (s.kind === 'csv') return 'CSV export · imported in Finances';
   if (s.kind === 'ical') return 'iCal link · ' + (s.urlHint || 'calendar feed') + ' · read-only';
   return (s.server || 'MCP server') + ' · read-only';
@@ -158,7 +159,7 @@ function _srcRow(s) {
 
 function _srcFixHelp(s) {
   const box = _connEl('div', 'conn-help src-help');
-  if (s.kind === 'microsoft') { box.appendChild(_connBtn('Sign in with Microsoft', 'log-in', 'btn-primary', microsoftSignIn)); return box; }
+  if (['microsoft', 'google'].includes(s.kind)) { box.appendChild(_connBtn('Sign in again', 'log-in', 'btn-primary', () => (s.account ? accOpenSignIn({ provider: s.kind, accountId: s.account }) : accAdd(s.kind)))); return box; }
   const claudeAi = /^claude\.ai /.test(s.server || '');
   if (claudeAi) {
     box.appendChild(_connSteps([
@@ -377,9 +378,10 @@ function srcAddFlow(o) {
   // offers every provider; only a named MCP server or "another bank MCP" comes here.
   if (o.capability === 'bank' && !o.edit && !o.server && !o.mcpBank && typeof finMoneyBlock === 'function') { connOpen('money'); return; }
   const f = {
-    step: o.edit ? (o.edit.kind === 'ical' ? 'url' : 'tools') : o.capability ? (o.server ? 'tools' : 'from') : 'what',
-    capability: o.edit ? o.edit.capability : o.capability || null,
-    kind: o.edit ? o.edit.kind : o.server ? 'mcp' : null,
+    // o.ical: straight to "paste the calendar link" (Connections > Add a calendar link).
+    step: o.edit ? (o.edit.kind === 'ical' ? 'url' : 'tools') : o.ical ? 'url' : o.capability ? (o.server ? 'tools' : 'from') : 'what',
+    capability: o.edit ? o.edit.capability : o.ical ? 'calendar' : o.capability || null,
+    kind: o.edit ? o.edit.kind : o.ical ? 'ical' : o.server ? 'mcp' : null,
     server: o.edit ? o.edit.server : o.server || null,
     tools: null, toolsErr: null, selected: new Set(o.edit && o.edit.tools ? o.edit.tools : []),
     url: '', label: o.edit ? o.edit.label : '', colour: o.edit ? o.edit.colour : null,
@@ -500,7 +502,7 @@ function srcAddFlow(o) {
       const used = new Set(((SourcesStore.data && SourcesStore.data.sources) || []).filter(s => s.kind === 'mcp' && s.capability === f.capability).map(s => s.server));
       const g = _connEl('div', 'src-choices');
       const ranked = servers.slice().sort((a, b) => ((b.capability === f.capability) - (a.capability === f.capability)) || ((b.status === 'ok') - (a.status === 'ok')) || a.name.localeCompare(b.name));
-      if (['calendar', 'email'].includes(f.capability)) g.appendChild(choice('mail', 'Outlook / Microsoft 365', 'Personal Outlook/Hotmail or work and school accounts. Browser sign-in, read-only.', false, () => { closeFn && closeFn(); microsoftConnectionSetup(); }));
+      if (['calendar', 'email'].includes(f.capability)) g.appendChild(choice('mail', 'Outlook / Microsoft 365', 'Personal Outlook/Hotmail or work and school accounts. Sign in with Microsoft, read-only.', false, () => { closeFn && closeFn(); accAdd('microsoft'); }));
       for (const sv of ranked) {
         const badge = _connEl('span', 'src-srv-dot st-' + ({ ok: 'ok', auth: 'auth', error: 'error' }[sv.status] || 'unknown'));
         const sub = used.has(sv.name) ? 'Already a source' : !sv.usable ? 'Only user-scope servers can be used' : sv.status === 'auth' ? 'Needs sign-in in Claude first' : sv.status === 'error' ? 'Not working in Claude right now' : (sv.capability === f.capability ? 'Looks like a ' + cap.one + ' · ' : '') + (sv.kind === 'claude.ai' ? 'claude.ai connector' : 'MCP server');

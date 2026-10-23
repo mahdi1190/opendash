@@ -16,6 +16,7 @@ function _connPageToolsReady(s) {
 }
 function _connPageSourceService(s) {
   if (s.kind === 'microsoft') return 'outlook';
+  if (s.kind === 'google') return 'gmail';
   if (s.kind !== 'mcp') return null;
   const server = String(s.server || '').toLowerCase();
   if (s.preset === 'gmail' || /\bgmail\b/.test(server)) return 'gmail';
@@ -48,7 +49,7 @@ function _connPageSourceDescription(s) {
   return 'Recent senders, subjects and previews for email triage and tasks.';
 }
 function _connPageSourceHelp(s) {
-  if (s.kind === 'microsoft') { microsoftConnectionSetup(); return; }
+  if (['microsoft', 'google'].includes(s.kind)) { if (s.account) accOpenSignIn({ provider: s.kind, accountId: s.account }); else accAdd(s.kind); return; }
   if (s.kind === 'mcp' && /^claude\.ai /.test(s.server || '') && typeof connCloudSignIn === 'function') {
     connCloudSignIn(s); return;
   }

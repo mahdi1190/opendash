@@ -8,7 +8,7 @@
    for a password: sign-in happens in Claude's own window, on claude.ai or
    on the provider's own page. Money (banks and wallets) is its own block,
    56-fin-connect.js: its direct connections save a Monzo client or an
-   Enable Banking key file in the data folder's secrets area, never in the
+   Enable Banking key file on this computer only (lib/secret-store.mjs), never in the
    page.
    ============================================================ */
 const CONNECTORS_URL = 'https://claude.ai/customize/connectors';
@@ -398,7 +398,8 @@ function _connPageSourceSection(sources, ready) {
   const paint = () => {
     grid.replaceChildren();
     // Banks and wallets live in the Money block below (56-fin-connect.js).
-    const visible = sources.filter(s => s.capability !== 'bank' && _connPageMatchesSource(s, _connPageFilter, _connPageQuery));
+    // Banks and wallets live in the Money block; mail and calendar ACCOUNTS have their own cards (56-accounts.js).
+    const visible = sources.filter(s => s.capability !== 'bank' && !s.account && _connPageMatchesSource(s, _connPageFilter, _connPageQuery));
     for (const s of visible) grid.appendChild(_connPageSourceCard(s));
     // CSVs and demo sources never stand in for a connected account.
     const missing = ['calendar', 'email'].filter(cap => !sources.some(s => s.capability === cap && s.kind !== 'csv' && !s.demo));
@@ -488,10 +489,11 @@ registerSection('connections', {
     const check = _connBtn(_connPageChecking ? 'Checking…' : 'Check status', 'refresh-cw', 'btn-secondary', _connPageCheck); check.disabled = _connPageChecking;
     actions.append(check, _connBtn('Add connection', 'plus', 'btn-primary', () => srcAddFlow({})));
     heading.append(copy, actions);
-    page.append(heading, _connPageHero(), _connPageOverview(sources, all, ready), _connPageSourceSection(sources, ready));
+    page.append(heading, _connPageHero(), _connPageOverview(sources, all, ready));
+    if (typeof accountsSection === 'function') page.appendChild(accountsSection());
+    page.appendChild(_connPageSourceSection(sources, ready));
     if (typeof finMoneyBlock === 'function') page.appendChild(finMoneyBlock());
     page.appendChild(_connPageAssistantSection(all));
-    if (typeof microsoftConnectionCard === 'function') page.appendChild(microsoftConnectionCard(all));
     if (typeof googleHealthConnectionCard === 'function') page.appendChild(googleHealthConnectionCard(all));
     const privacy = _connEl('section', 'cp-privacy-panel cp-privacy-wide');
     privacy.innerHTML = icon('shield-check');

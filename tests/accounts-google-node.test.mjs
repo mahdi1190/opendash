@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { secretStore, fileBackend } from '../lib/secret-store.mjs';
-import { createGoogleConfig, readGoogleApp, migrateLegacyGoogle, GOOGLE_APP_KEY } from '../lib/accounts-google.mjs';
+import { googleConfig, readGoogleApp, migrateLegacyGoogle, GOOGLE_APP_KEY } from '../lib/accounts-google.mjs';
 import { createGoogleProvider, GOOGLE_TOKEN_URL, GOOGLE_SCOPES } from '../lib/accounts/google.mjs';
 import { createAccounts } from '../lib/accounts/core.mjs';
 
@@ -32,44 +32,43 @@ function memoryRegistry(accounts = []) {
 }
 
 test('the Google app: built-in from the release/environment, the user\'s own wins, secrets stay paired with their id', async () => withStore(async ({ store }) => {
-  const none = createGoogleConfig({ store, env: {} });
-  assert.deepEqual(await none.load(), { available: false, custom: false, builtIn: false, hasSecret: false, clientIdHint: null });
-  assert.equal(none.clientId(), null);
-  const cfg = createGoogleConfig({ store, env: ENV });
-  assert.deepEqual(await cfg.load(), { available: true, custom: false, builtIn: true, hasSecret: true, clientIdHint: null });
-  assert.equal(cfg.clientId(), BUILT);
-  assert.equal(cfg.clientSecret(BUILT), BUILT_SECRET);
-  assert.equal(cfg.knownClient(OWN), false);
+  const none = googleConfig({ store, env: {} });
+  assert.deepEqual(await none.describe(), { available: false, custom: false, builtIn: false, hasSecret: false, clientIdHint: null });
+  assert.equal(await none.clientId(), null);
+  const cfg = googleConfig({ store, env: ENV });
+  assert.deepEqual(await cfg.describe(), { available: true, custom: false, builtIn: true, hasSecret: true, clientIdHint: null });
+  assert.equal(await cfg.clientId(), BUILT);
+  assert.equal(await cfg.clientSecret(BUILT), BUILT_SECRET);
+  assert.equal(await cfg.knownClient(OWN), false);
   const d = await cfg.save({ installed: { client_id: OWN, client_secret: OWN_SECRET } });
   assert.equal(d.custom, true);
   assert.ok(!JSON.stringify(d).includes(OWN_SECRET) && !JSON.stringify(d).includes(OWN), 'never the secret, only a hint of the id');
-  assert.equal(cfg.clientId(), OWN);
-  assert.equal(cfg.clientSecret(OWN), OWN_SECRET);
-  assert.equal(cfg.clientSecret(BUILT), BUILT_SECRET, 'tokens from the built-in app still refresh');
-  assert.equal(cfg.knownClient(BUILT) && cfg.knownClient(OWN), true);
-  assert.equal(cfg.clientSecret('someone-else.apps.googleusercontent.com'), null);
+  const other = googleConfig({ store, env: ENV });
+  assert.equal(await other.clientId(), OWN, 'every copy sees the change at once (no cache)');
+  assert.equal(await cfg.clientSecret(OWN), OWN_SECRET);
+  assert.equal(await cfg.clientSecret(BUILT), BUILT_SECRET, 'tokens from the built-in app still refresh');
+  assert.equal((await cfg.knownClient(BUILT)) && (await cfg.knownClient(OWN)), true);
+  assert.equal(await cfg.clientSecret('someone-else.apps.googleusercontent.com'), null);
   await cfg.save(OWN);
-  assert.equal(cfg.clientSecret(OWN), OWN_SECRET, 'saving the same app without a secret keeps the saved one');
+  assert.equal(await cfg.clientSecret(OWN), OWN_SECRET, 'saving the same app without a secret keeps the saved one');
   assert.deepEqual(await store.get(GOOGLE_APP_KEY), { clientId: OWN, clientSecret: OWN_SECRET });
   await assert.rejects(cfg.save('nonsense'), { code: 'BAD_REQUEST' });
-  assert.equal(cfg.clientId(), OWN, 'a bad paste changes nothing');
+  assert.equal(await cfg.clientId(), OWN, 'a bad paste changes nothing');
   await cfg.save(null);
-  assert.equal(cfg.clientId(), BUILT);
-  assert.equal(cfg.knownClient(OWN), false, 'tokens from a removed own app need a new sign-in');
-  const again = createGoogleConfig({ store, env: ENV });
-  assert.equal((await again.load()).custom, false, 'the choice is kept on this computer');
+  assert.equal(await cfg.clientId(), BUILT);
+  assert.equal(await cfg.knownClient(OWN), false, 'tokens from a removed own app need a new sign-in');
+  assert.equal((await googleConfig({ store, env: ENV }).describe()).custom, false, 'the choice is kept on this computer');
 }));
 
 test('an old client_secret_*.json download still counts as the user\'s own app; a saved "built-in" hides it', async () => withStore(async ({ dir, store }) => {
   mkdirSync(join(dir, 'secrets'), { recursive: true });
   writeFileSync(join(dir, 'secrets', `client_secret_${OWN}.json`), JSON.stringify({ installed: { client_id: OWN, client_secret: OWN_SECRET } }));
   assert.deepEqual(await readGoogleApp(store), { clientId: OWN, clientSecret: OWN_SECRET });
-  const cfg = createGoogleConfig({ store, env: ENV });
-  await cfg.load();
-  assert.equal(cfg.clientId(), OWN);
+  const cfg = googleConfig({ store, env: ENV });
+  assert.equal(await cfg.clientId(), OWN);
   await cfg.save(null);
   assert.equal(await readGoogleApp(store), null);
-  assert.equal(cfg.clientId(), BUILT);
+  assert.equal(await cfg.clientId(), BUILT);
 }));
 
 test('migration: the old single connection becomes one account, once; its tokens keep working with the app that made them', async () => withStore(async ({ dir, store }) => {
@@ -107,8 +106,7 @@ test('migration: the old single connection becomes one account, once; its tokens
     assert.equal(init.headers.Authorization, 'Bearer at-new');
     return reply({ messages: [] });
   };
-  const cfg = createGoogleConfig({ store, env: ENV });
-  await cfg.load();
+  const cfg = googleConfig({ store, env: ENV });
   const svc = createAccounts({ registry: reg, secrets: store, providers: { google: createGoogleProvider }, providerConfig: { google: cfg }, fetch, deviceId: 'host-1234abcd', redirect: () => null });
   const mail = await svc.fetchMail(id, { source: { id: 'email-google-x' }, days: 3 });
   assert.equal(mail.count, 0);

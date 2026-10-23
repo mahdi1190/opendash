@@ -76,10 +76,10 @@ async function seed(vault, id, { email, refresh, access = null, expires = 0, sco
 }
 
 // ─── Purity, scopes, settings ─────────────────────────────────────────────
-test('the Google provider is pure JS: no node: imports, only the account core', () => {
+test('the Google provider is pure JS: no node: imports, only the account core and the shipped settings', () => {
   const src = readFileSync(join(ROOT, 'lib', 'accounts', 'google.mjs'), 'utf8');
   const imports = [...src.matchAll(/^\s*import\s[^;]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]);
-  assert.deepEqual(imports, ['./core.mjs']);
+  assert.deepEqual(imports, ['./core.mjs', './shipped.mjs']);
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.doesNotMatch(code, /\bnode:|require\(|import\(|process\.|Buffer\b|globalThis\.fetch/);
 });

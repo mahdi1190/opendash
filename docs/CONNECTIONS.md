@@ -42,9 +42,12 @@ OpenDash never asks for, sees or stores a password for Claude, Google or your
 bank. Sign-in happens on claude.ai, in Claude's own window or on your bank's
 own page. The direct bank connections are the one place OpenDash keeps a
 credential: the Monzo client and sign-in you create, or your Enable Banking key
-file. They stay in your data folder on this computer (`secrets/fin/`), are
-never shown on the page or written to the logs, and are deleted when you
-disconnect.
+file. They stay on this computer, in its private folder outside the data
+folder (`secrets/fin/` there, see [INSTALL.md](INSTALL.md)), are never shown
+on the page or written to the logs, never travel with a copied or synced data
+folder, and are deleted when you disconnect. On another computer you connect
+again: keep your Enable Banking `.pem` key and your Monzo client ID and
+secret somewhere safe.
 
 ## Claude (Claude Code on this computer)
 
@@ -230,7 +233,7 @@ confirmed; if yours is not listed, use a CSV export.
 
 ### What stays on this computer
 
-| Provider | Kept in your data folder's `secrets/fin/` |
+| Provider | Kept on this computer only (`secrets/fin/` in its private folder) |
 |---|---|
 | Plasma One | your public address, and the optional Routescan key |
 | Monzo | your client ID and secret, and the current sign-in |

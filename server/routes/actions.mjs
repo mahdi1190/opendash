@@ -72,7 +72,7 @@ export default function register(app) {
   }
   function fail(c, e) {
     if (e instanceof ActionError) return c.json(e.status || 400, { ok: false, error: e.toJSON() });
-    if (e && e.status && e.status < 500) return c.json(e.status, { ok: false, error: { code: e.code || 'BAD_REQUEST', message: e.message } });
+    if (e && e.status && e.status < 500) return c.json(e.status, { ok: false, error: { code: e.code || 'BAD_REQUEST', message: e.message, ...(e.code === 'OTHER_COMPUTER' ? { host: e.host, lastSeen: e.lastSeen } : {}) } });
     if (e && (e.code === 'LOCK_TIMEOUT' || e.status === 503)) return c.json(503, { ok: false, error: { code: e.code || 'BUSY', message: e.message, hint: 'try again in a moment' } });
     log('error', `actions: ${e && e.stack || e}`);
     return c.json(500, { ok: false, error: { code: 'INTERNAL', message: 'internal error (see the server log)' } });
