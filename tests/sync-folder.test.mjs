@@ -142,7 +142,7 @@ test('cloud folders are found from the environment and their usual places (looki
     exists: (p) => ['/Users/sam/Library/CloudStorage', '/Users/sam/Library/CloudStorage/OneDrive-Personal', '/Users/sam/Library/CloudStorage/GoogleDrive-sam@example.com/My Drive'].includes(p),
     list: () => ['OneDrive-Personal', 'GoogleDrive-sam@example.com'],
   });
-  assert.deepEqual(mac.map(x => [x.kind, !!x.work]), [['onedrive', false], ['gdrive', false]], 'OneDrive-Personal is personal');
+  assert.deepEqual(mac.map(x => [x.kind, !!x.work]), [['onedrive', false], ['gdrive', false]], 'personal: OneDrive-Personal');
   assert.equal(detectCloudFolders({ platform: 'linux', home: '/home/x', env: {}, exists: () => false, read: () => { throw new Error('no'); } }).length, 0);
   assert.ok(!existsSync(join(base, 'OneDrive')), 'detection never creates anything');
 });
