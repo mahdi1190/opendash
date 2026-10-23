@@ -39,10 +39,21 @@
    each part that failed with a Retry for just that part, or "Everything is up to date" that
    goes by itself. The automatic runs show no panel.
 
-   ON ITS OWN: every 30 minutes while a dashboard page is open and visible, after the computer
-   wakes from sleep, and when the tab comes back after more than 10 minutes away. One tab runs
-   it for the computer (a stamp in localStorage); the server's rules keep the bank and Claude
-   jobs to one device.
+   ON ITS OWN (user request, 24 Oct: Claude usage matters): Settings > Home and stories >
+   "Refresh everything automatically": every 30 minutes, every hour (the default), every 2
+   hours or only when I click (uiPrefs.refreshEvery, synced). While a page is visible, on that
+   schedule, after the computer wakes and when the tab comes back after 10 minutes away:
+     free parts       weather, travel, location, presence, widget data, and calendars / inboxes
+                      read without Claude (accounts, iCal): every automatic run
+     Claude parts     calendars / inboxes read through Claude connectors, the bank update (it may
+                      read banks through Claude; direct banks keep the finance computer's own
+                      limits), the day adviser and tasks from email: at most every hour and the
+                      chosen schedule, and only when something could have changed (the data is
+                      that old, the day's inputs changed, there is email Claude has not seen);
+                      the adviser and email only where Claude runs on this computer
+   One tab runs it for the computer (a stamp in localStorage); the server's main-computer
+   rules keep connector, bank and AI jobs to one device; the email Claude was shown is
+   remembered for every computer (state.seen 'aiEmail').
    ============================================================ */
 let _homeTodayRefresh = null, _homeClockMinute = '', _homeCurrentDate = '';
 function homeCurrentSummary() {
@@ -83,16 +94,33 @@ function homeRefreshDerived() {
 }
 
 /* ---------- timings ---------- */
-const HR_EVERY_MS = 30 * 60000;          // the automatic run
+const HR_EVERY_CHOICES = Object.freeze([['30', 'Every 30 minutes'], ['60', 'Every hour'], ['120', 'Every 2 hours'], ['off', 'Only when I click']]);
+const HR_EVERY_DEFAULT = '60';
+const HR_CLAUDE_MS = 60 * 60000;         // Claude-run parts on automatic runs: at most this often
 const HR_AWAY_MS = 10 * 60000;           // back on the tab after this long: run
 const HR_WAKE_GAP_MS = 5 * 60000;        // a minute timer this late: the computer slept
 const HR_FRESH_MS = 3 * 60000;           // calendar / inbox read this recently: a click does not read again
 const HR_FIN_FRESH_MS = 30 * 60000;      // the bank after a click (providers have daily budgets)
-const HR_FIN_AUTO_MS = 12 * 3600000;     // the bank, automatic
 const HR_AI_MS = 2 * 3600000;            // the day adviser: again when older than this (or the day changed)
 const HR_JOB_MS = 4 * 60000;             // a job still going after this: "still working", it finishes anyway
 const HR_QUICK_MS = 20000;               // a fetch / a location fix
 const HR_STAMP_KEY = 'dashboard-refresh-auto';
+/** The automatic schedule ('30' | '60' | '120' | 'off'): a preference that follows you to your other computers. */
+function homeRefreshEvery() { const v = typeof uiPrefGet === 'function' ? uiPrefGet('refreshEvery') : null; return HR_EVERY_CHOICES.some(c => c[0] === v) ? v : HR_EVERY_DEFAULT; }
+function _hrEveryMs() { const v = homeRefreshEvery(); return v === 'off' ? 0 : Number(v) * 60000; }
+/** How long a Claude-run part waits between automatic runs: an hour, or the schedule when longer. */
+function _hrClaudeMs() { return Math.max(HR_CLAUDE_MS, _hrEveryMs()); }
+function _hrEveryText() { const v = homeRefreshEvery(); return v === 'off' ? '' : v === '30' ? 'every 30 minutes' : v === '120' ? 'every 2 hours' : 'every hour'; }
+/** This computer's last automatic Claude run of a part ('adviser', 'triage'). */
+function _hrClaudeAt(k) { const o = _hrAiGet('auto:' + k); return o ? o.at : 0; }
+/** Calendars / inboxes read through Claude: any source that is not a known Claude-free kind (an
+ *  account, an iCal link...). Unknown counts as Claude, so a doubt never costs usage. */
+const _HR_FREE_KINDS = new Set(['ical', 'microsoft', 'google', 'imap', 'direct', 'csv']);
+function _hrViaClaude(store) {
+  const src = store && store.data && Array.isArray(store.data.sources) ? store.data.sources : null;
+  if (!src || !src.length) return true;
+  return src.some(x => !x || !_HR_FREE_KINDS.has(x.kind));
+}
 const HR_AI_KEY = 'dashboard-refresh-ai';
 
 const _hr = { run: null, last: null, lastAt: 0, tickAt: Date.now(), hiddenAt: 0, hideT: 0, hooked: false };
@@ -146,6 +174,11 @@ async function _hrStore(run, store, conn, what) {
   if (typeof store === 'undefined' || !store) return { status: 'skipped', reason: 'off' };
   const age = store.age();
   if (run.manual && age !== null && age < HR_FRESH_MS && !store.running()) return { status: 'fresh', at: Date.now() - age };
+  // Automatic: read through Claude at most hourly (or on the schedule when longer); without Claude, on the schedule.
+  if (!run.manual && age !== null && !store.running()) {
+    const wait = (_hrViaClaude(store) ? _hrClaudeMs() : _hrEveryMs()) - 60000;
+    if (age < wait) return { status: 'fresh', at: Date.now() - age };
+  }
   const away = _hrAway(conn, what);
   if (away) { store.load(true).catch(() => {}); return { status: 'away', reason: away }; }
   if (!store.running()) {
@@ -175,7 +208,7 @@ async function _hrFinance(run) {
   try { s = await _hrJson('/api/finance/status'); } catch (e) { return { status: 'error', reason: _hrMsg(e, 'Finances could not be checked.') }; }
   const at = s && s.lastUpdate && Date.parse(s.lastUpdate.at || s.lastUpdate.finishedAt || '');
   const busy = () => !!(s && s.job && s.job.state === 'running');
-  if (!busy() && at && Date.now() - at < (run.manual ? HR_FIN_FRESH_MS : HR_FIN_AUTO_MS)) return { status: 'fresh', at };
+  if (!busy() && at && Date.now() - at < (run.manual ? HR_FIN_FRESH_MS : _hrClaudeMs() - 60000)) return { status: 'fresh', at };
   const away = _hrAway('bank', 'your finances');
   if (away) return { status: 'away', reason: away };
   if (!busy()) {
@@ -210,9 +243,20 @@ async function _hrAdviser(run) {
   if (typeof homeAdvisorRefresh === 'function') { try { await homeAdvisorRefresh(); } catch (e) { /* the last one stays */ } }
   if (run.cancelled) return { status: 'cancelled' };
   const cur = typeof homeAdviceCurrent === 'function' ? homeAdviceCurrent() : null;
-  // Automatic: no AI here (homeAdvisorTick and the server's once-per-period rule do the automatic review).
-  if (!run.manual) return cur ? { status: 'fresh', at: cur.at } : { status: 'skipped', reason: 'runs when you ask' };
   const sig = _hrDaySig(), last = _hrAiGet('adviser');
+  // Automatic: only with automatic reviews on, where Claude runs on this computer, at most hourly, and only
+  // when the day's inputs changed (the server still allows one automatic review per part of the day).
+  if (!run.manual) {
+    const local = typeof connLocalHas === 'function' ? connLocalHas('claude') : false;
+    const changed = !cur || !last || !sig || last.sig !== sig;
+    if (!(typeof briefPrefs === 'function' && briefPrefs().advisorAuto) || !local || !changed || Date.now() - _hrClaudeAt('adviser') < _hrClaudeMs() - 60000) return cur ? { status: 'fresh', at: cur.at } : { status: 'skipped', reason: 'runs when you ask' };
+    _hrAiSet('auto:adviser', '');
+    await homeAdvisorReview(true, { quiet: true });
+    if (run.cancelled) return { status: 'cancelled' };
+    if (typeof _homeAdviceError !== 'undefined' && _homeAdviceError) return { status: 'error', reason: String(_homeAdviceError) };
+    if (sig) _hrAiSet('adviser', sig);
+    return { status: 'done' };
+  }
   if (cur && Date.now() - (cur.at || 0) < HR_AI_MS && (!last || !sig || last.sig === sig)) {
     if (!last && sig) _hrAiSet('adviser', sig);
     return { status: 'fresh', at: cur.at, reason: 'Nothing changed since the last review.' };
@@ -224,28 +268,32 @@ async function _hrAdviser(run) {
   return { status: 'done' };
 }
 /**
- * Tasks from new email (55-email-google.js aiSuggestTasksFromEmails), after the inbox: a click
- * only, and only for messages Claude has not looked at from this browser yet (the triage list
- * already skips those handled or with a suggestion). Its own toast says what it found.
+ * Tasks from new email (55-email-google.js aiSuggestTasksFromEmails), after the inbox: only the
+ * messages Claude has not been shown from any of your computers (state.seen 'aiEmail', synced),
+ * so no email is sent twice. Automatic: where Claude runs on this computer, at most hourly.
  */
-const HR_TRIAGE_KEY = 'dashboard-refresh-triaged';
 async function _hrTriage(run) {
   if (run.p && run.p.inbox) await run.p.inbox;
   if (run.cancelled) return { status: 'cancelled' };
-  if (!run.manual) return { status: 'skipped', reason: 'runs when you ask' };
-  let seen = [];
-  try { seen = JSON.parse(localStorage.getItem(HR_TRIAGE_KEY) || '[]'); } catch (e) { seen = []; }
-  const seenSet = new Set(Array.isArray(seen) ? seen : []);
+  // The user's own Suggest tasks is running: wait for it rather than stop or repeat it.
+  if (typeof _emSuggesting !== 'undefined' && _emSuggesting) {
+    await _hrUntil(run, () => !_emSuggesting, 3 * 60000);
+    return run.cancelled ? { status: 'cancelled' } : { status: 'fresh', reason: 'Claude has just read your email.' };
+  }
+  const sent = typeof seenAll === 'function' ? seenAll('aiEmail') : {};
   const t = state.emailTriage || {};
   const handled = t.handled || {}, pending = new Set((t.suggestions || []).map(x => x && x.emailId));
-  const open = emailMessages().filter(m => m && m.id && !handled[m.id] && !pending.has(m.id));
-  if (!open.some(m => !seenSet.has(m.id))) return { status: 'fresh', reason: 'No new email to look at.' };
-  const sent = open.slice(0, 40);                 // what aiSuggestTasksFromEmails sends (its own rule)
-  await aiSuggestTasksFromEmails();
-  await _hrUntil(run, () => typeof _emSuggesting === 'undefined' || !_emSuggesting, 3 * 60000);
-  if (run.cancelled) return { status: 'cancelled' };
-  try { localStorage.setItem(HR_TRIAGE_KEY, JSON.stringify([...new Set([...seenSet, ...sent.map(m => m.id)])].slice(-600))); } catch (e) { /* private mode */ }
-  return { status: 'done' };
+  const fresh = emailMessages().filter(m => m && m.id && !handled[m.id] && !pending.has(m.id) && !sent[m.id]);
+  if (!fresh.length) return { status: 'fresh', reason: 'No new email for Claude to look at.' };
+  if (!run.manual) {
+    const local = typeof connLocalHas === 'function' ? connLocalHas('claude') : false;
+    if (!local || Date.now() - _hrClaudeAt('triage') < _hrClaudeMs() - 60000) return { status: 'skipped', reason: 'runs when you ask' };
+    _hrAiSet('auto:triage', '');
+  }
+  const r = await aiSuggestTasksFromEmails({ quiet: true, onlyNew: true });
+  if (run.cancelled || (r && r.cancelled)) return { status: 'cancelled' };
+  if (r && r.error) return { status: 'error', reason: String(r.error) };
+  return { status: 'done', reason: r && r.found ? `${r.found} suggested` : '' };
 }
 function _hrSteps() {
   const ai = typeof briefPrefs === 'function' && !!briefPrefs().ai;
@@ -386,10 +434,11 @@ function homeRefreshRetry(id) {
 function homeRefreshToday() { return homeRefreshAll({ manual: true }); }
 /** The automatic run: one tab per computer (the stamp), only while visible and the server answers. */
 function homeRefreshAuto(why) {
-  if (_hr.run || document.hidden || !_hrUp()) return;
+  const every = _hrEveryMs();
+  if (!every || _hr.run || document.hidden || !_hrUp()) return;   // "Only when I click": never on its own
   let last = 0;
   try { last = Number(localStorage.getItem(HR_STAMP_KEY)) || 0; } catch (e) { last = 0; }
-  const need = why === 'timer' ? HR_EVERY_MS - 60000 : HR_AWAY_MS;   // another tab did it this recently: nothing
+  const need = why === 'timer' ? every - 60000 : Math.min(every, HR_AWAY_MS);   // another tab did it this recently: nothing
   if (Date.now() - Math.max(last, _hr.lastAt) < need) return;
   homeRefreshAll({ manual: false });
 }
@@ -479,7 +528,7 @@ function _homeRefreshLabel(btn, busy) {
   if (busy) btn.setAttribute('aria-busy', 'true'); else btn.removeAttribute('aria-busy');
   const when = _hr.lastAt ? ` Last refreshed ${_hrHM(_hr.lastAt)}.` : '';
   btn.setAttribute('data-tip', busy ? 'Refreshing calendar, inbox, finances, weather and the day adviser. Click to see how it is going.'
-    : `Refresh everything: calendar, inbox, finances, weather and the day adviser. It also refreshes on its own every 30 minutes.${when}`);
+    : `Refresh everything: calendar, inbox, finances, weather and the day adviser.${_hrEveryText() ? ` It also refreshes on its own ${_hrEveryText()} (Settings > Home and stories).` : ''}${when}`);
 }
 function _hrButtons() { const b = document.getElementById('tb-home-refresh'); if (b) _homeRefreshLabel(b, !!_hr.run); }
 function homeRefreshClock() {
@@ -515,7 +564,8 @@ function _hrHook() {
     _hr.tickAt = now;
     if (document.hidden) return;
     if (gap > HR_WAKE_GAP_MS) { homeRefreshAuto('wake'); return; }    // the computer slept
-    if (now - _hr.lastAt >= HR_EVERY_MS) homeRefreshAuto('timer');
+    const every = _hrEveryMs();
+    if (every && now - _hr.lastAt >= every) homeRefreshAuto('timer');
   }, 60000);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { _hr.hiddenAt = Date.now(); return; }
@@ -525,3 +575,16 @@ function _hrHook() {
   });
 }
 if (typeof setTimeout === 'function' && typeof document !== 'undefined') setTimeout(_hrHook, 0);
+
+/* ---------- Settings > Home and stories (78-brief-hooks.js adds the row) ---------- */
+function homeRefreshSettingsRow() {
+  const sel = _settingsSelect(HR_EVERY_CHOICES, homeRefreshEvery(), (v) => {
+    if (typeof uiPrefSet === 'function') uiPrefSet('refreshEvery', v);
+    _hrButtons();
+    toast(v === 'off' ? 'Home refreshes only when you click Refresh today' : `Home refreshes on its own ${_hrEveryText()}`, { kind: 'ok', icon: 'refresh-cw' });
+  });
+  sel.setAttribute('aria-label', 'Refresh everything automatically');
+  return _settingsRow('Refresh everything automatically',
+    'While a dashboard page is open: weather, travel and data read without Claude refresh on this schedule. Parts that use Claude (calendars and email read through Claude, the bank update, the day adviser, tasks from email) refresh at most every hour, and only when something could have changed. Refresh today always refreshes everything at once. The same on all your computers.',
+    sel);
+}
