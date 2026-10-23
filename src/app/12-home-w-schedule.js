@@ -118,12 +118,24 @@ function _hsHead(cal, m) {
     b.setAttribute('aria-label', cal.running ? 'Updating the calendar' : `${cal.label}. Read the calendar again`);
     h.appendChild(b);
   }
+  // New event in one click (the event card in create mode at the next half hour), where events can be saved from here.
+  if (cal.ok && _hsCanCreate()) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-icon btn-sm hs-new'; b.dataset.act = 'new';
+    b.innerHTML = icon('plus'); b.setAttribute('aria-label', 'New event'); b.setAttribute('data-tip', 'New event');
+    h.appendChild(b);
+  }
   if (!cal.off) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm hs-link'; b.dataset.act = 'calendar';
     b.innerHTML = '<span>Calendar</span>' + icon('arrow-right');
     h.appendChild(b);
   }
   return h;
+}
+
+function _hsCanCreate() {
+  const w = typeof window !== 'undefined' ? window.CalWrite : null;
+  if (!w || typeof w.create !== 'function' || typeof openEvent !== 'function' || typeof evcOpenCreate !== 'function') return false;
+  try { return typeof _evcWritableCals !== 'function' || _evcWritableCals().length > 0; } catch (e) { return false; }
 }
 
 /* ---------- no calendar / can't read it / switched off ---------- */
@@ -337,6 +349,7 @@ function _hsWire(card, ctx) {
     if (b.dataset.sgCal) { if (typeof sgScheduleCal === 'function') sgScheduleCal(b.dataset.sgCal); return; }
     const act = b.dataset.act;
     if (act === 'calendar') { setView('calendar'); return; }
+    if (act === 'new') { openEvent(null, { from: b, context: 'home', create: {} }); return; }
     if (act === 'connect') { if (window.Connections && typeof Connections.open === 'function') Connections.open('calendar'); else setView('connections'); return; }
     if (act === 'retry') { const s = _homeCalStore(); if (s) s.load(true); else if (typeof calendarSoon === 'function') calendarSoon(() => homeRerenderWidget('schedule'), true); return; }
     if (act === 'refresh') { _hsRefresh(b); return; }
