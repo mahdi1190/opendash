@@ -694,6 +694,25 @@ and own-transfer matching work unchanged.
 | Hooks | `lib/sources.mjs` (`kind:'direct'`, `setDirectHealth`), `lib/finance.mjs` (`only:[ids]`, `manual`, direct sources read; accounts with `enabled:false` are passed to the pipeline as `hideAccounts` and left out of the analysis, rows kept; `refreshFinanceAnalysis()` rebuilds after Show/Hide), `server/routes/finance.mjs` (`fetchSource` dispatch) |
 | Tests | `tests/fin-connect-core.test.mjs`, `tests/fin-connect-monzo.test.mjs`, `tests/fin-connect-security.test.mjs`, `tests/fin-connect-integration.test.mjs` |
 
+### Sync across my devices (owner: Sync) - lib/sync/ (prototype, off by default)
+
+No server, no sign-in: devices exchange field-level changes through a folder
+the user's cloud drive already syncs. Format: `docs/dev/SYNC_FORMAT.md`.
+
+| Part | Files |
+|---|---|
+| Platform-agnostic core (no `node:` imports; a phone/PWA build reuses it) | `lib/sync/hlc.mjs` (clock), `fracindex.mjs` (positions), `model.mjs` (registers, capture, merge, materialize, checks, credential filters), `manifest.mjs` (every state key: synced / device-local / derived; synced files), `engine.mjs` (passes, shadow mode, conflicts, fetcher roles) |
+| Node adapters | `lib/sync/node-host.mjs` (`createNodeSyncEngine`; this computer's files in `%LOCALAPPDATA%/OpenDash/sync/<key>`, never in the data folder), `lib/sync/folder.mjs` (the folder transport, conflict-copy filtering, cloud folder detection) |
+| Server | `server/routes/sync.mjs` (`/api/sync/status`, `/settings`, `/now`; `app.ctx.sync` for the connections code: `isFetcher(accountId)`, `setFetcher`, `takeOver(id, {hasToken})`, `fetcher`, `devices`) |
+| Page | `src/app/58-settings-sync.js` (Settings > Sync: on/off, folder, apply switch, trial-mode list, devices); `86-live-sync.js` labels changes "Updated by <device>" |
+| Tests | `tests/sync-*.test.mjs` (`sync.shared.mjs` helpers; `OPENDASH_SYNC_TEST_DIR` moves their temp folders) |
+
+Rules: only `store.mutate()` writes the state (a pass captures, merges and
+commits under the lock); a new state key must be added to
+`lib/sync/manifest.mjs` (a test fails otherwise) and, if synced, to
+`SYNC_SPEC`; turning sync on starts in shadow mode (collect and report, apply
+nothing) until the apply switch.
+
 ### lib/fsutil.mjs - the only way to write user data
 - `atomicWrite(path, text)` / `writeJson(path, obj)`: temp file + rename,
   retrying `EPERM/EBUSY/EACCES` with backoff (OneDrive locks files briefly).

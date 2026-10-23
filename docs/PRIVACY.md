@@ -30,6 +30,7 @@ or the folder you chose with `--data-dir`):
 | Local token | `local-token` | a random secret for local programs |
 | Open computers | `hosts/`, `data-id.json` | one small file per computer that has the folder open (a random id, the computer's name, the app version, when it last checked in), and the folder's random id |
 | Sign-ins and keys | **this computer's private folder, not the data folder**: `%LOCALAPPDATA%\OpenDash\<id>\secrets` (Windows), `~/Library/Application Support/OpenDash/<id>/secrets` (macOS), `~/.local/state/opendash/<id>/secrets` (Linux) | Google and Microsoft sign-ins, Google Health, ElevenLabs, the remote MCP and relay pairings, and under `fin/` your Monzo client and sign-in, your Enable Banking application key and bank sessions, your Plasma One address (only if you set those up; deleted when you disconnect). They never travel with the data folder |
+| Sync across my devices (if on) | outside the data folder: `%LOCALAPPDATA%/OpenDash/sync/` (Windows), `~/Library/Application Support/OpenDash/sync/` (macOS), `~/.local/state/opendash/sync/` (Linux) | this computer's sync identity, what it last synced, clashes between computers, the trial-mode report |
 
 Your browser keeps interface preferences, a fallback copy of unsaved edits
 while the server is down, and an offline copy of the app page (with your
@@ -54,6 +55,7 @@ Only in these cases, and only when you switch the feature on:
 | **Read aloud** (stories and the money brief), only with an online voice | the text being read | your browser's speech service. Voices built into your computer keep everything local; voices marked *(online)* in Settings > Morning brief > *Voice* (for example some "Natural" voices in Microsoft Edge, or Chrome's Google voices) send the text to the browser maker |
 | **Avatars** (if you set an image address on a person) | a normal image request | the site in that address |
 | **Links you open** | whatever your browser sends when you open a web link | that site |
+| **Sync across my devices** (off by default; Settings > Sync) | your tasks, notes, people, streams, countdowns, Home layout and reviews, field by field; the list of connected accounts (never their sign-ins); the mail and calendar snapshots of accounts this computer fetches. Never: sign-ins, bank keys, tokens, `config.json`, `connections.json`, `sources.json`, or this screen's view and theme | an `OpenDash Sync` folder inside the OneDrive, Google Drive or Dropbox folder you choose, so your cloud provider stores it like any of your files (not encrypted yet). Each of your computers reads it from there; nothing goes to OpenDash. Until you also turn on *Use changes from my other computers*, nothing received is applied |
 
 Nothing else. In particular:
 

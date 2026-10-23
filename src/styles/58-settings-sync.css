@@ -1,0 +1,13 @@
+/* Settings > Sync (src/app/58-settings-sync.js) */
+.sync-folder { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; max-width: 100%; }
+.sync-folder select { max-width: 100%; }
+.sync-other { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.sync-other[hidden] { display: none; }
+.sync-other input { flex: 1 1 16rem; min-width: 0; }
+.sync-status { font-weight: 500; padding: var(--space-1) 0; }
+.sync-status.sync-ok { color: var(--success, var(--accent)); }
+.sync-status.sync-warn { color: var(--warning, #b7791f); }
+.sync-status.sync-err { color: var(--danger, #c0392b); }
+.sync-status.sync-off, .sync-status.sync-idle { color: var(--text-muted, inherit); }
+.sync-devices { white-space: pre-line; }
+.sync-preview { white-space: pre-line; max-height: 12rem; overflow: auto; }
