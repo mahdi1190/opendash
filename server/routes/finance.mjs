@@ -85,7 +85,9 @@ export default function register(app) {
   });
 
   /** The kind of connection a bank source is, as Connections > Money names it. */
-  const providerOf = (s) => (!s ? 'csv' : s.kind === 'direct' ? String(s.provider || 'direct') : s.preset === 'aureli' ? 'aureli' : s.kind === 'csv' ? 'csv' : 'mcp');
+  // (the same names as src/app/56-fin-connect.js finProviderOf)
+  const providerOf = (s) => (!s ? 'csv' : s.kind === 'direct' ? String(s.provider || 'mcp') : s.kind === 'csv' ? 'csv'
+    : s.preset === 'aureli' || s.preset === 'bank' || /^claude\.ai Bank$/i.test(String(s.server || '')) ? 'aureli' : 'mcp');
   /**
    * Accounts for the Finances chips: [{key, sourceId, sourceLabel, sourceColour, name, colour, enabled}],
    * plus provider, kind and lastSync for Connections > Money on the other devices (the published copy).

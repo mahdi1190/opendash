@@ -14,8 +14,9 @@ let _finWaitTries = 0, _finWaitTimer = null;
 /**
  * The one line every money surface shows for finances another computer reads
  * (Finances' subtitle, Home's Money card, Connections > Money), from meta.remote
- * ({name, online, state, updatedAt}; state open | running | asleep | off | outdated,
- * lib/finance-share.mjs). While that computer is away it says so calmly, never as an error:
+ * ({name, online, state, updatedAt}; state open | running | asleep | off | outdated | checking,
+ * lib/finance-share.mjs, lib/sync/presence.mjs). While that computer is away it says so calmly,
+ * never as an error (checking, right after this computer woke: nothing is claimed yet):
  *   "Finance from Home laptop · updated 5 min ago"
  *   "Finance from Home laptop · last update 2 h ago (it's off)"
  * -> {text, tip, away ('' | 'off' | 'asleep' | 'outdated')} or null.

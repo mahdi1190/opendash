@@ -243,6 +243,20 @@ sync off or plain sync: each computer has its own finances, as before.
   card has the same line; before the first copy arrives, "Finance from Home
   laptop · waiting for its first update" instead of "Connect your bank".
   Connections counts the bank as the group's ("Finance from Home laptop").
+- **Connections > Money** there lists the finance computer's accounts from
+  the same copy (`GET /api/fin-connect/accounts` `remote`), per connection
+  "Connected on Home laptop": name, bank, colour, last update, *Show in
+  Finances*, rename and colour, which are shared edits (below). Its own
+  connections, if any, show under "On this computer". *Advanced > Sign in to
+  this bank on this computer instead* starts that bank's sign-in here; once
+  signed in, this computer becomes the finance computer (`POST
+  /api/finance/here` records the `bank` role here and reads the bank).
+- **While the finance computer is away** (presence: `lib/sync/presence.mjs`
+  asleep, off or outdated; `meta.remote.state`) every money surface says it
+  calmly, with a grey dot instead of a warning: "Finance from Home laptop ·
+  last update 2 h ago (it's off)" (`src/app/65-finance-view.js`
+  `financeRemoteLine`). Sync bank then shows a note ("Home laptop is off right
+  now. This is what it last sent…"), never an error.
 - **Sync bank** there asks the finance computer (`POST /api/finance/update`
   answers 202 `{remote}`: a remote request `fetch:finance` addressed to it,
   `lib/sync/requests.mjs`); it runs its own update and publishes before the
