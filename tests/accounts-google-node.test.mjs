@@ -75,15 +75,15 @@ test('an old client_secret_*.json download still counts as the user\'s own app; 
 test('migration: the old single connection becomes one account, once; its tokens keep working with the app that made them', async () => withStore(async ({ dir, store }) => {
   // What lib/google.mjs (before 2.15) left on this computer.
   await store.set('google-client', { installed: { client_id: OWN, client_secret: OWN_SECRET, redirect_uris: ['http://localhost'] } });
-  await store.set('google-tokens', { refresh_token: 'rt-legacy', access_token: 'at-legacy', expires_at: 1, account: 'Mahdi.Synthetic@gmail.com' });
+  await store.set('google-tokens', { refresh_token: 'rt-legacy', access_token: 'at-legacy', expires_at: 1, account: 'Sam.Synthetic@example.com' });
   const reg = memoryRegistry();
   const events = [];
   const r = await migrateLegacyGoogle({ store, registry: reg, deviceId: 'host-1234abcd', now: () => Date.UTC(2026, 9, 23), hooks: { changed: async (e, a, x) => events.push([e, a.id, x]) } });
-  const id = 'acc_' + createHash('sha256').update('google:mahdi.synthetic@gmail.com').digest('hex').slice(0, 16);
+  const id = 'acc_' + createHash('sha256').update('google:sam.synthetic@example.com').digest('hex').slice(0, 16);
   assert.equal(r.status, 'done');
   assert.equal(r.accountId, id);
   assert.deepEqual(reg.doc.accounts, [{
-    id, provider: 'google', email: 'mahdi.synthetic@gmail.com', displayName: '', kind: 'personal',
+    id, provider: 'google', email: 'sam.synthetic@example.com', displayName: '', kind: 'work',
     scopes: [GOOGLE_SCOPES.mail, GOOGLE_SCOPES.calendar], features: { mail: true, calendar: true }, status: 'connected',
     lastSync: null, error: null, fetcher: 'host-1234abcd', createdAt: '2026-10-23T00:00:00.000Z', updatedAt: '2026-10-23T00:00:00.000Z', legacy: true,
   }]);
@@ -120,9 +120,9 @@ test('migration: the old single connection becomes one account, once; its tokens
 
 test('migration never replaces a newer sign-in, and finds an account added before it ran', async () => withStore(async ({ store }) => {
   await store.set('google-client', { installed: { client_id: OWN, client_secret: OWN_SECRET } });
-  await store.set('google-tokens', { refresh_token: 'rt-legacy', account: 'sam@example.test' });
-  await store.set('accounts/acc_00000000000000ab', { provider: 'google', clientId: BUILT, refresh_token: 'rt-newer', email: 'sam@example.test' });
-  const reg = memoryRegistry([{ id: 'acc_00000000000000ab', provider: 'google', email: 'sam@example.test', kind: 'work', status: 'connected', features: { mail: false, calendar: true }, createdAt: '2026-10-01T00:00:00.000Z' }]);
+  await store.set('google-tokens', { refresh_token: 'rt-legacy', account: 'sam@example.org' });
+  await store.set('accounts/acc_00000000000000ab', { provider: 'google', clientId: BUILT, refresh_token: 'rt-newer', email: 'sam@example.org' });
+  const reg = memoryRegistry([{ id: 'acc_00000000000000ab', provider: 'google', email: 'sam@example.org', kind: 'work', status: 'connected', features: { mail: false, calendar: true }, createdAt: '2026-10-01T00:00:00.000Z' }]);
   const r = await migrateLegacyGoogle({ store, registry: reg });
   assert.deepEqual([r.status, r.accountId, r.isNew], ['done', 'acc_00000000000000ab', false]);
   assert.equal((await store.get('accounts/acc_00000000000000ab')).refresh_token, 'rt-newer');
@@ -135,7 +135,7 @@ test('migration leaves what it cannot use: no app, no address, a signed-out or u
   assert.equal((await migrateLegacyGoogle({ store, registry: reg })).status, 'none', 'nothing there');
   await store.set('google-tokens', {});
   assert.equal((await migrateLegacyGoogle({ store, registry: reg })).status, 'none', 'disconnected before');
-  await store.set('google-tokens', { refresh_token: 'rt', account: 'a@gmail.com' });
+  await store.set('google-tokens', { refresh_token: 'rt', account: 'a@example.com' });
   assert.deepEqual(await migrateLegacyGoogle({ store, registry: reg }), { status: 'skipped', reason: 'no-client' });
   assert.equal((await store.get('google-tokens')).refresh_token, 'rt', 'kept for a later try');
   await store.set('google-client', { installed: { client_id: OWN, client_secret: OWN_SECRET } });
@@ -152,11 +152,11 @@ test('the old status call counts Google accounts signed in on this computer (hea
   try {
     initGoogle(store);
     assert.deepEqual([(await googleStatus()).connected, (await googleStatus()).accounts], [false, 0]);
-    await store.set('accounts/acc_00000000000000a1', { provider: 'google', clientId: OWN, email: 'a@gmail.com', refresh_token: 'rt-a' });
-    await store.set('accounts/acc_00000000000000a2', { provider: 'google', clientId: OWN, email: 'b@gmail.com', refresh_token: 'rt-b', needsAuth: true });
+    await store.set('accounts/acc_00000000000000a1', { provider: 'google', clientId: OWN, email: 'a@example.com', refresh_token: 'rt-a' });
+    await store.set('accounts/acc_00000000000000a2', { provider: 'google', clientId: OWN, email: 'b@example.com', refresh_token: 'rt-b', needsAuth: true });
     await store.set('accounts/acc_00000000000000a3', { provider: 'microsoft', clientId: 'x', refresh_token: 'rt-m' });
     const st = await googleStatus();
-    assert.deepEqual([st.connected, st.account, st.accounts], [true, 'a@gmail.com', 1]);
+    assert.deepEqual([st.connected, st.account, st.accounts], [true, 'a@example.com', 1]);
     assert.ok(!JSON.stringify(st).includes('rt-a'));
   } finally { initGoogle(null); }
 }));

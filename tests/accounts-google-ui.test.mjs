@@ -35,7 +35,7 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 
 test('the card: email and calendar are separate ticks, and Google\'s warning is explained before the browser opens', () => {
   const { ctx, dialogs, calls } = page();
-  ctx.googleAddAccount({ email: 'Me@Gmail.com' });
+  ctx.googleAddAccount({ email: 'Me@Example.com' });
   const d = dialogs[0];
   const boxes = all(d.body).filter((e) => e.type === 'checkbox');
   assert.deepEqual(boxes.map((b) => [b.dataset.feature, b.checked]), [['mail', true], ['calendar', true]]);
@@ -47,21 +47,21 @@ test('the card: email and calendar are separate ticks, and Google\'s warning is 
   assert.match(words, /myaccount\.google\.com\/permissions/);
   assert.match(words, /never sends, deletes, labels or archives/);
   assert.equal(calls.length, 0, 'nothing opens until Continue');
-  ctx.googleAddAccount({ email: 'me@gmail.com', custom: true });
+  ctx.googleAddAccount({ email: 'me@example.com', custom: true });
   assert.match(text(dialogs[1].body), /Go to the name you gave your Google app \(unsafe\)/);
 });
 
 test('Continue: an empty tab first, then the server\'s Google address; only the ticked features are asked for', async () => {
   const { ctx, dialogs, calls, popup } = page();
-  const done = ctx.googleAddAccount({ email: 'me@gmail.com' });
+  const done = ctx.googleAddAccount({ email: 'me@example.com' });
   const d = dialogs[0];
   all(d.body).find((e) => e.dataset.feature === 'mail').checked = false;
   d.press('Continue to Google');
   const choice = await done;
-  assert.deepEqual(JSON.parse(JSON.stringify(choice)), { email: 'me@gmail.com', features: { mail: false, calendar: true }, accountId: null });
+  assert.deepEqual(JSON.parse(JSON.stringify(choice)), { email: 'me@example.com', features: { mail: false, calendar: true }, accountId: null });
   assert.deepEqual(calls[0], ['open', 'about:blank', '_blank'], 'the tab opens inside the click (no pop-up blocker)');
   assert.equal(calls[1][1], '/api/accounts/begin');
-  assert.deepEqual(JSON.parse(JSON.stringify(calls[1][2])), { method: 'POST', body: { provider: 'google', email: 'me@gmail.com', features: { mail: false, calendar: true } } });
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[1][2])), { method: 'POST', body: { provider: 'google', email: 'me@example.com', features: { mail: false, calendar: true } } });
   assert.deepEqual(calls[2], ['navigate', 'https://accounts.google.com/o/oauth2/v2/auth?client_id=x']);
   assert.equal(popup.opener, null);
 });
@@ -73,7 +73,7 @@ test('a bad address or nothing ticked keeps the card open and sends nothing', as
   const alert = all(dialogs[0].body).find((e) => e.attributes.role === 'alert');
   assert.equal(alert.hidden, false);
   assert.match(alert.textContent, /full Google address/);
-  ctx.googleAddAccount({ email: 'me@gmail.com', features: { mail: false, calendar: false } });
+  ctx.googleAddAccount({ email: 'me@example.com', features: { mail: false, calendar: false } });
   assert.equal(dialogs[1].press('Continue to Google'), false);
   assert.match(all(dialogs[1].body).find((e) => e.attributes.role === 'alert').textContent, /Tick email, calendar or both/);
   assert.equal(calls.length, 0);
@@ -81,7 +81,7 @@ test('a bad address or nothing ticked keeps the card open and sends nothing', as
 
 test('blocked pop-up: sign in in this tab; a non-Google address from the server is never opened', async () => {
   const blocked = page(undefined, { blocked: true });
-  const p = blocked.ctx.googleAddAccount({ email: 'me@gmail.com' });
+  const p = blocked.ctx.googleAddAccount({ email: 'me@example.com' });
   blocked.dialogs[0].press('Continue to Google');
   await p;
   const t = blocked.calls.find((c) => c[0] === 'toast');
@@ -90,7 +90,7 @@ test('blocked pop-up: sign in in this tab; a non-Google address from the server 
   assert.deepEqual(blocked.calls.at(-1), ['same-tab', 'https://accounts.google.com/o/oauth2/v2/auth?client_id=x']);
 
   const evil = page(async () => ({ url: 'https://evil.example/login' }));
-  const q = evil.ctx.googleAddAccount({ email: 'me@gmail.com' });
+  const q = evil.ctx.googleAddAccount({ email: 'me@example.com' });
   evil.dialogs[0].press('Continue to Google');
   assert.equal(await q, null);
   assert.ok(evil.calls.some((c) => c[0] === 'popup-close'));
@@ -100,13 +100,13 @@ test('blocked pop-up: sign in in this tab; a non-Google address from the server 
 
 test('sign in again: the account id goes with it and the address cannot be changed; Cancel sends nothing', async () => {
   const { ctx, dialogs, calls } = page();
-  const p = ctx.googleAddAccount({ email: 'me@gmail.com', accountId: 'acc_0123456789abcdef', features: { mail: true, calendar: false } });
+  const p = ctx.googleAddAccount({ email: 'me@example.com', accountId: 'acc_0123456789abcdef', features: { mail: true, calendar: false } });
   assert.equal(all(dialogs[0].body).find((e) => e.type === 'email').readOnly, true);
   assert.equal(all(dialogs[0].body).find((e) => e.dataset.feature === 'calendar').checked, false);
   dialogs[0].press('Continue to Google');
   await p;
   assert.equal(calls[1][2].body.accountId, 'acc_0123456789abcdef');
-  const c = ctx.googleAddAccount({ email: 'me@gmail.com' });
+  const c = ctx.googleAddAccount({ email: 'me@example.com' });
   dialogs[1].press('Cancel');
   assert.equal(await c, null);
   assert.equal(calls.filter((x) => x[0] === 'api').length, 1);
@@ -130,7 +130,7 @@ test('Advanced: save your own Google app (id + secret, or Google\'s JSON), or go
   await button('Save my Google app').onclick();
   assert.deepEqual(JSON.parse(JSON.stringify(calls.find((c) => c[0] === 'api').slice(1))), ['/api/accounts/google-app', { method: 'PUT', body: { clientId: 'synthetic-own-1.apps.googleusercontent.com', clientSecret: 'GOCSPX-synthetic' } }]);
   assert.equal(secret.value, '', 'the secret is cleared from the page once saved');
-  idBox.value = '{"installed":{"client_id":"synthetic-own-1.apps.googleusercontent.com","client_secret":"GOCSPX-synthetic"}}';
+  idBox.value = JSON.stringify({ installed: { client_id: 'synthetic-own-1.apps.googleusercontent.com', client_secret: 'GOCSPX-synthetic' } });
   await button('Save my Google app').onclick();
   assert.ok(calls.filter((c) => c[0] === 'api')[1][2].body.json.startsWith('{"installed"'));
   await button('Use the built-in app').onclick();

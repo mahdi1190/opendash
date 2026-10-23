@@ -65,17 +65,17 @@ test('own Google app -> begin with only mail ticked -> sign-in return -> account
       const f = Object.fromEntries(new URLSearchParams(init.body));
       assert.equal(f.client_secret, OWN_SECRET);
       assert.match(f.code_verifier, /^[A-Za-z0-9_-]{43,128}$/);
-      return reply({ access_token: 'at-1', refresh_token: 'rt-1', expires_in: 3600, scope: `openid email ${GOOGLE_SCOPES.mail}`, id_token: idToken({ sub: '42', email: 'pat.synthetic@gmail.com' }) });
+      return reply({ access_token: 'at-1', refresh_token: 'rt-1', expires_in: 3600, scope: `openid email ${GOOGLE_SCOPES.mail}`, id_token: idToken({ sub: '42', email: 'pat.synthetic@example.com' }) });
     }
     const u = new URL(url);
     assert.equal(init.method, 'GET');
     if (u.pathname.endsWith('/messages')) return reply({ messages: [{ id: 'm1', threadId: 't1' }] });
-    return reply({ id: 'm1', threadId: 't1', labelIds: ['INBOX', 'UNREAD'], snippet: 'Hello &amp; welcome', internalDate: String(Date.now() - 60000), payload: { headers: [{ name: 'Subject', value: 'Welcome' }, { name: 'From', value: 'Sam <sam@example.test>' }] } });
+    return reply({ id: 'm1', threadId: 't1', labelIds: ['INBOX', 'UNREAD'], snippet: 'Hello &amp; welcome', internalDate: String(Date.now() - 60000), payload: { headers: [{ name: 'Subject', value: 'Welcome' }, { name: 'From', value: 'Sam <sam@example.org>' }] } });
   };
   const { dir, store, port: p } = await serverFor('one', google);
   let info = JSON.parse((await raw(p, 'GET', '/api/accounts', SAME(p))).text);
   assert.deepEqual(info.providers.google, { available: false, custom: false, builtIn: false, hasSecret: false, clientIdHint: null });
-  const nope = await raw(p, 'POST', '/api/accounts/begin', SAME(p), { provider: 'google', email: 'pat.synthetic@gmail.com' });
+  const nope = await raw(p, 'POST', '/api/accounts/begin', SAME(p), { provider: 'google', email: 'pat.synthetic@example.com' });
   assert.equal(nope.status, 409); assert.equal(JSON.parse(nope.text).code, 'NOT_CONFIGURED');
 
   const bad = await raw(p, 'PUT', '/api/accounts/google-app', SAME(p), { clientId: 'not-a-client' });
@@ -86,24 +86,24 @@ test('own Google app -> begin with only mail ticked -> sign-in return -> account
   assert.deepEqual(JSON.parse(saved.text), { available: true, custom: true, builtIn: false, hasSecret: true, clientIdHint: 'synthetic-…' });
   assert.deepEqual(await store.get('google-client'), { clientId: OWN, clientSecret: OWN_SECRET });
 
-  const begin = JSON.parse((await raw(p, 'POST', '/api/accounts/begin', SAME(p), { provider: 'google', email: 'Pat.Synthetic@gmail.com', features: { mail: true, calendar: false } })).text);
+  const begin = JSON.parse((await raw(p, 'POST', '/api/accounts/begin', SAME(p), { provider: 'google', email: 'Pat.Synthetic@example.com', features: { mail: true, calendar: false } })).text);
   const u = new URL(begin.url);
   assert.equal(u.origin, 'https://accounts.google.com');
   assert.equal(u.searchParams.get('scope'), `openid email ${GOOGLE_SCOPES.mail}`);
   assert.equal(u.searchParams.get('redirect_uri'), `http://localhost:${p}/api/accounts/callback`);
-  assert.equal(u.searchParams.get('login_hint'), 'pat.synthetic@gmail.com');
-  assert.equal(begin.kind, 'personal');
+  assert.equal(u.searchParams.get('login_hint'), 'pat.synthetic@example.com');
+  assert.equal(begin.kind, 'work', 'a first guess for a non-Gmail address; the id token settles it');
 
   // Google sends the browser back: a cross-site navigation, accepted only with the state.
   const back = await raw(p, 'GET', `/api/accounts/callback?state=${encodeURIComponent(u.searchParams.get('state'))}&code=synthetic-code`, EVIL);
   assert.equal(back.status, 200, back.text);
-  assert.match(back.text, /pat\.synthetic@gmail\.com is now connected/);
+  assert.match(back.text, /pat\.synthetic@example.com is now connected/);
   assert.ok(!back.text.includes('rt-1') && !back.text.includes('at-1'));
 
   info = JSON.parse((await raw(p, 'GET', '/api/accounts', SAME(p))).text);
   assert.equal(info.accounts.length, 1);
   const a = info.accounts[0];
-  assert.deepEqual([a.provider, a.email, a.kind, a.status, a.features], ['google', 'pat.synthetic@gmail.com', 'personal', 'connected', { mail: true, calendar: false }]);
+  assert.deepEqual([a.provider, a.email, a.kind, a.status, a.features], ['google', 'pat.synthetic@example.com', 'personal', 'connected', { mail: true, calendar: false }]);
   assert.ok(!readFileSync(join(dir, 'accounts.json'), 'utf8').includes('rt-1'), 'no token in the data folder');
   assert.equal((await store.get('accounts/' + a.id)).refresh_token, 'rt-1');
   const sources = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')).sources.filter((s) => s.account === a.id);
@@ -114,7 +114,7 @@ test('own Google app -> begin with only mail ticked -> sign-in return -> account
   assert.ok(!calls.some((c) => /calendar/.test(c.url)), 'calendar was not ticked: never read');
 
   // GET begin (opened in a new tab) takes the features as a list.
-  const r302 = await raw(p, 'GET', '/api/accounts/begin?provider=google&email=pat.synthetic%40gmail.com&features=calendar', { 'Sec-Fetch-Site': 'same-origin' });
+  const r302 = await raw(p, 'GET', '/api/accounts/begin?provider=google&email=pat.synthetic%40example.com&features=calendar', { 'Sec-Fetch-Site': 'same-origin' });
   assert.equal(r302.status, 302);
   assert.equal(new URL(r302.headers.location).searchParams.get('scope'), `openid email ${GOOGLE_SCOPES.calendar}`);
 
@@ -133,13 +133,13 @@ test('the old single Google connection appears as an account with its sources at
   const { dir, store, port: p } = await serverFor('legacy', google, {
     prepare: async (s) => {
       await s.set('google-client', { installed: { client_id: OWN, client_secret: OWN_SECRET } });
-      await s.set('google-tokens', { refresh_token: 'rt-old', access_token: null, expires_at: 0, account: 'old.synthetic@gmail.com' });
+      await s.set('google-tokens', { refresh_token: 'rt-old', access_token: null, expires_at: 0, account: 'old.synthetic@example.com' });
     },
   });
   const info = JSON.parse((await raw(p, 'GET', '/api/accounts', SAME(p))).text);
   assert.equal(info.accounts.length, 1);
   const a = info.accounts[0];
-  assert.deepEqual([a.provider, a.email, a.legacy, a.status, a.features, a.here.signedIn], ['google', 'old.synthetic@gmail.com', true, 'connected', { mail: true, calendar: true }, true]);
+  assert.deepEqual([a.provider, a.email, a.legacy, a.status, a.features, a.here.signedIn], ['google', 'old.synthetic@example.com', true, 'connected', { mail: true, calendar: true }, true]);
   assert.equal(info.providers.google.custom, true, 'the old app stays this computer\'s own Google app');
   assert.equal(await store.get('google-tokens'), null);
   const sources = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')).sources.filter((s) => s.account === a.id);
@@ -150,7 +150,7 @@ test('the old single Google connection appears as an account with its sources at
 });
 
 test('signing an account in again as a different Google account is refused and keeps the old sign-in', async () => {
-  let who = { sub: '7', email: 'first.synthetic@gmail.com' };
+  let who = { sub: '7', email: 'first.synthetic@example.com' };
   const google = async (url) => (String(url) === GOOGLE_TOKEN_URL
     ? reply({ access_token: 'at', refresh_token: 'rt-' + who.sub, expires_in: 3600, scope: `openid email ${GOOGLE_SCOPES.mail} ${GOOGLE_SCOPES.calendar}`, id_token: idToken(who) })
     : reply({ messages: [], items: [] }));
@@ -159,11 +159,11 @@ test('signing an account in again as a different Google account is refused and k
   const s1 = await go({ provider: 'google', email: who.email });
   assert.equal((await raw(p, 'GET', `/api/accounts/callback?state=${s1}&code=c`, EVIL)).status, 200);
   const id = JSON.parse((await raw(p, 'GET', '/api/accounts', SAME(p))).text).accounts[0].id;
-  who = { sub: '8', email: 'second.synthetic@gmail.com' };
+  who = { sub: '8', email: 'second.synthetic@example.com' };
   const s2 = await go({ provider: 'google', accountId: id });
   const page = await raw(p, 'GET', `/api/accounts/callback?state=${s2}&code=c`, EVIL);
   assert.equal(page.status, 409);
-  assert.match(page.text, /You signed in as second\.synthetic@gmail\.com/);
+  assert.match(page.text, /You signed in as second\.synthetic@example.com/);
   assert.equal((await store.get('accounts/' + id)).refresh_token, 'rt-7');
   assert.equal(JSON.parse((await raw(p, 'GET', '/api/accounts', SAME(p))).text).accounts.length, 1);
 });
