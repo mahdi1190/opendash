@@ -60,7 +60,9 @@ function showKbHelp() {
       ['Move between tasks', ['J', 'K']], ['Extend selection', ['Shift', '↑']], ['Open task', ['Enter']],
       ['Complete / reopen', ['X']], ['In progress', ['S']], ['Plan for today', ['T']], ['Due date', ['D']],
       ['Priority', ['P']], ['Set priority', ['1', '–', '4']], ['Edit title', ['E']], ['Task menu', ['.']],
-      ['Move to bin', ['Del']], ['Select all tasks', [mod, 'A']],
+      ['Move to bin', ['Del']], ['Select a task', [mod, 'click']], ['Select all tasks', [mod, 'A']],
+      ['With tasks selected: same keys for all', ['X', 'T', 'D', '1–4', 'Del']],
+      ['Move a subtask up / down', ['Alt', '↑', '↓']], ['This task’s commands', [mod, 'K']],
     ]],
     ['View', [
       ['Toggle sidebar', [mod, '\\']], ['Dark mode', [mod, 'Shift', 'D']], ['Focus mode', [mod, 'Shift', 'F']],

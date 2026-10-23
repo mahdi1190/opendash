@@ -5,8 +5,11 @@
      openPriorityMenu / openStreamMenu / openPeoplePicker / openTaskMenu(anchor|{x,y}, id)
      renderMarkdown(text) -> safe HTML (escaped first, then a small markdown subset)
      openTaskDisplayPopover(anchor)  sort / group / rows for the current view
-     renderBulkBar()                 the multi-select action bar
-     task keyboard shortcuts         j/k, x, s, d, p, 1-4, t, e, Del
+     renderBulkBar()                 the multi-select action bar (+ Select all); bulk* actions
+     task keyboard shortcuts         j/k, x, s, d, p, 1-4, t, e, Del (x t d 1-4 Del act on
+                                     the selection when tasks are ticked)
+     setDueWithNote(id, date, time)  a new due date; a toast + Undo when the task leaves the list
+     palette commands                for the open task / the keyboard cursor, with their keys
    ============================================================ */
 
 /* ---------- focus that survives a re-render ---------- */
@@ -199,6 +202,28 @@ function openPeoplePicker(anchor, id) {
   }, { width: 280, align: 'start' });
 }
 
+/**
+ * A new due date (and time: undefined keeps it, null clears it) as ONE undo step. When the task
+ * then leaves the list on screen (and is not open in the card or the panel), a toast says where
+ * it went, with Undo: the row vanishing on its own looked like the task was lost.
+ */
+function setDueWithNote(id, d, t) {
+  const it = getItem(id); if (!it) return;
+  const listed = (x) => !!x && typeof isTaskView === 'function' && isTaskView(state.view) && typeof matchesView === 'function' && matchesView(x, state.view);
+  const before = listed(it);
+  const from = it.dueDate || null, fromT = it.dueTime || null;
+  d = d || null;
+  const time = d ? (t === undefined ? fromT : (t || null)) : null;
+  if (from === d && fromT === time) return;
+  if (from !== d) logActivity(id, 'date', { from, to: d, reason: null });
+  if (fromT !== time && d) logActivity(id, 'dueTime', { from: fromT, to: time });   // no date: the date entry says it all
+  it.dueDate = d;
+  if (time) it.dueTime = time; else delete it.dueTime;
+  saveData(); render();
+  const open = state.selectedTaskId === id || (typeof tcCurrentTaskId === 'function' && tcCurrentTaskId() === id);
+  if (before && !open && !listed(getItem(id))) toast(d ? `Moved to ${dueLabel(d)}` : 'Date removed', { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
+}
+
 /** Everything you can do to a task, as menu rows (context menu, "…" button). */
 function taskMenuItems(id) {
   const item = getItem(id); if (!item) return [];
@@ -214,10 +239,10 @@ function taskMenuItems(id) {
     st !== 'done' ? { label: rec ? 'Skip this occurrence' : "Won't do", icon: 'circle-x', run: () => markWontDo(id) } : null,
     'sep',
     st !== 'done' ? { label: planned ? 'Remove from Today' : 'Plan for today', icon: 'sun', kbd: 'T', run: () => togglePlannedToday(id) } : null,
-    { label: 'Due today', icon: 'calendar', run: () => setDate(id, todayStr()) },
-    { label: 'Due tomorrow', icon: 'sunrise', run: () => setDate(id, tomorrowStr()) },
-    { label: 'Due next week', icon: 'calendar-plus', run: () => setDate(id, fmtDate(_qaAdd(_qaWeekStart(_qaToday()), 7))) },
-    { label: 'Pick a date…', icon: 'calendar-days', kbd: 'D', run: () => openDueDatePopover(anchor(), { value: effDate(item), time: item.dueTime, allowTime: true, allowClear: true, align: 'end', onPick: (d, t) => { setDateWithReason(id, d, null); if (d) setOverride(id, 'dueTime', t || null); render(); } }) },
+    { label: 'Due today', icon: 'calendar', run: () => setDueWithNote(id, todayStr()) },
+    { label: 'Due tomorrow', icon: 'sunrise', run: () => setDueWithNote(id, tomorrowStr()) },
+    { label: 'Due next week', icon: 'calendar-plus', run: () => setDueWithNote(id, fmtDate(_qaAdd(_qaWeekStart(_qaToday()), 7))) },
+    { label: 'Pick a date…', icon: 'calendar-days', kbd: 'D', run: () => openDueDatePopover(anchor(), { value: effDate(item), time: item.dueTime, allowTime: true, allowClear: true, align: 'end', onPick: (d, t) => setDueWithNote(id, d, t) }) },
     'sep',
     { label: 'Priority…', icon: 'flag', kbd: 'P', run: () => openPriorityMenu(anchor(), id) },
     { label: 'Move to stream…', icon: 'layers', run: () => openStreamMenu(anchor(), id) },
@@ -337,6 +362,34 @@ function openTaskDisplayPopover(anchor) {
   }, { width: 320, align: 'end' });
 }
 
+/* ---------- bulk actions (the bulk bar and the task keys with a selection) ---------- */
+function _bulkDone(msg) { toast(msg, { kind: 'ok', action: { label: 'Undo', run: () => undo() } }); }
+function _bulkN(n) { return `${n} task${n === 1 ? '' : 's'}`; }
+function bulkComplete(list) {
+  batchTasks(list, id => { if (statusOf(id) !== 'done') setStatus(id, 'done', { noSave: true }); });
+  multiSelect.ids.clear(); render(); _bulkDone(`${list.length} completed`);
+}
+function bulkPlanToday(list) {
+  const t = todayStr();
+  batchTasks(list, id => { const it = getItem(id); if (it.plannedFor !== t) { logActivity(id, 'plan', { from: it.plannedFor || null, to: t }); it.plannedFor = t; } });
+  _bulkDone(`${list.length} planned for today`);
+}
+function bulkSetDue(list, d) {
+  batchTasks(list, id => { const it = getItem(id); const from = it.dueDate || null; if (from !== d) { logActivity(id, 'date', { from, to: d, reason: 'bulk' }); it.dueDate = d; if (!d) delete it.dueTime; } });
+  _bulkDone(`${list.length} moved to ${d ? dueLabel(d) : 'no date'}`);
+}
+function bulkPriority(list, k) {
+  batchTasks(list, id => { const it = getItem(id); if (effPriority(it) !== k) { logActivity(id, 'priority', { from: effPriority(it), to: k }); it.priority = k; } });
+  _bulkDone(`Priority set on ${list.length}`);
+}
+function bulkBin(list) {
+  for (const id of list) deleteTask(id, { noSave: true });
+  multiSelect.ids.clear(); saveData(); render(); _bulkDone(`${list.length} moved to the bin`);
+}
+function bulkDueDatePopover(anchor, list) {
+  openDueDatePopover(anchor, { allowClear: true, title: `Due date for ${_bulkN(list.length)}`, onPick: (d) => bulkSetDue(list.filter(id => getItem(id)), d) });
+}
+
 /* ---------- bulk bar ---------- */
 function renderBulkBar() {
   const bb = document.getElementById('bulk-bar');
@@ -347,23 +400,22 @@ function renderBulkBar() {
   const ids = () => [...multiSelect.ids];
   bb.classList.add('open');
   bb.innerHTML = `<span class="count">${n} selected</span>`;
-  const btn = (label, ic, run, cls, tip) => {
+  const btn = (label, ic, run, cls, tip, kbd) => {
     const b = document.createElement('button'); b.type = 'button'; if (cls) b.className = cls;
     b.innerHTML = icon(ic) + (label ? `<span>${esc(label)}</span>` : '');
     if (tip) { b.setAttribute('data-tip', tip); b.setAttribute('aria-label', tip); }
+    if (kbd) { b.setAttribute('data-kbd', kbd); if (!tip) b.setAttribute('data-tip', label); }
     b.onclick = (e) => run(e.currentTarget);
     bb.appendChild(b); return b;
   };
-  const done = (msg) => { toast(msg, { kind: 'ok', action: { label: 'Undo', run: () => undo() } }); };
-  btn('Complete', 'circle-check', () => { const list = ids(); batchTasks(list, id => { if (statusOf(id) !== 'done') setStatus(id, 'done', { noSave: true }); }); multiSelect.ids.clear(); render(); done(`${list.length} completed`); });
-  btn('Today', 'sun', () => { const list = ids(); batchTasks(list, id => { const it = getItem(id); const t = todayStr(); if (it.plannedFor !== t) { logActivity(id, 'plan', { from: it.plannedFor || null, to: t }); it.plannedFor = t; } }); done(`${list.length} planned for today`); }, '', 'Plan for today');
-  btn('Date', 'calendar', (a) => openDueDatePopover(a, { allowClear: true, title: `Due date for ${n} tasks`, onPick: (d) => {
-    const list = ids(); batchTasks(list, id => { const it = getItem(id); const from = it.dueDate || null; if (from !== d) { logActivity(id, 'date', { from, to: d, reason: 'bulk' }); it.dueDate = d; if (!d) delete it.dueTime; } });
-    done(`${list.length} moved to ${d ? dueLabel(d) : 'no date'}`);
-  } }));
-  btn('Priority', 'flag', (a) => openMenu(a, [['p1', 'High'], ['p2', 'Medium'], ['p3', 'Low'], ['p0', 'No priority']].map(([k, l]) => ({ label: l, icon: 'flag', className: 'prio-item ' + k, run: () => {
-    const list = ids(); batchTasks(list, id => { const it = getItem(id); if (effPriority(it) !== k) { logActivity(id, 'priority', { from: effPriority(it), to: k }); it.priority = k; } }); done(`Priority set on ${list.length}`);
-  } })), { align: 'center', width: 180 }));
+  // More of this list could be selected: one click for all of it (Ctrl+A does the same).
+  const rest = _lastRenderedTaskIds.filter(id => !multiSelect.ids.has(id) && getItem(id));
+  if (rest.length) btn('Select all', 'list-checks', () => { for (const id of _lastRenderedTaskIds) if (getItem(id)) multiSelect.ids.add(id); document.body.classList.add('has-selection'); render(); }, 'ghost', `Select all ${_lastRenderedTaskIds.length} in this list`, 'Ctrl+A');
+  btn('Complete', 'circle-check', () => bulkComplete(ids()), '', '', 'X');
+  btn('Today', 'sun', () => bulkPlanToday(ids()), '', 'Plan for today', 'T');
+  btn('Date', 'calendar', (a) => bulkDueDatePopover(a, ids()), '', '', 'D');
+  btn('Priority', 'flag', (a) => openMenu(a, [['p1', 'High', '1'], ['p2', 'Medium', '2'], ['p3', 'Low', '3'], ['p0', 'No priority', '4']].map(([k, l, kb]) => ({ label: l, icon: 'flag', kbd: kb, className: 'prio-item ' + k, run: () => bulkPriority(ids(), k) })), { align: 'center', width: 180 }), '', '', '1–4');
+  const done = _bulkDone;
   btn('Stream', 'layers', (a) => openStreamMenu(a, null, (k) => {
     const list = ids(); batchTasks(list, id => { const it = getItem(id); if (it.stream !== k) { logActivity(id, 'stream', { from: it.stream, to: k }); it.stream = k; } }); done(`${list.length} moved to ${STREAMS[k]?.label || k}`);
   }));
@@ -384,8 +436,8 @@ function renderBulkBar() {
     done(`Tags updated on ${list.length}`);
   });
   btn('Pin', 'pin', () => { const list = ids(); const allPinned = list.every(id => isPinned(id)); batchTasks(list, id => { if (allPinned) delete state.pinned[id]; else state.pinned[id] = true; }); done(allPinned ? 'Unpinned' : 'Pinned'); }, '', 'Pin or unpin');
-  btn('', 'trash-2', () => { const list = ids(); for (const id of list) deleteTask(id, { noSave: true }); multiSelect.ids.clear(); saveData(); render(); done(`${list.length} moved to the bin`); }, 'danger', 'Move to bin');
-  btn('', 'x', () => { multiSelect.ids.clear(); render(); }, 'ghost', 'Clear selection (Esc)');
+  btn('', 'trash-2', () => bulkBin(ids()), 'danger', 'Move to bin', 'Del');
+  btn('', 'x', () => { multiSelect.ids.clear(); render(); }, 'ghost', 'Clear selection', 'Esc');
 }
 
 /* ---------- keyboard ---------- */
@@ -421,6 +473,17 @@ document.addEventListener('keydown', (e) => {
   // In Calendar (a task open in the detail pane) t/j/k/m/w/d/a belong to the calendar (41-calendar-section.js).
   if (/^calendar/.test(String(state.view)) && /^[tjkmwda]$/i.test(k)) return;
   if (k === 'j' || k === 'k') { e.preventDefault(); _moveTaskCursor(k === 'j' ? 1 : -1); return; }
+  // Tasks ticked for bulk actions: X, T, D, 1-4 and Del act on all of them (as the bulk bar does).
+  const sel = [...multiSelect.ids].filter(x => getItem(x));
+  if (sel.length && /^(x|t|d|[1-4]|Delete|Backspace)$/.test(k)) {
+    e.preventDefault();
+    if (k === 'x') bulkComplete(sel);
+    else if (k === 't') bulkPlanToday(sel);
+    else if (k === 'd') bulkDueDatePopover(document.querySelector('#bulk-bar [data-kbd="D"]') || document.getElementById('main-body'), sel);
+    else if (k === 'Delete' || k === 'Backspace') bulkBin(sel);
+    else bulkPriority(sel, ['p1', 'p2', 'p3', 'p0'][Number(k) - 1]);
+    return;
+  }
   const id = _taskCursorId();
   if (!id) return;
   const rowAnchor = () => document.querySelector(`#main-body [data-id="${CSS.escape(id)}"] .due-stamp`) || document.querySelector(`#main-body [data-id="${CSS.escape(id)}"]`) || document.querySelector('#detail-pane .dp-due') || document.getElementById('main-body');
@@ -437,7 +500,7 @@ document.addEventListener('keydown', (e) => {
   }
   if (k === 's') { e.preventDefault(); toggleDoing(id); return; }
   if (k === 't') { e.preventDefault(); togglePlannedToday(id); return; }
-  if (k === 'd') { e.preventDefault(); openDueDatePopover(rowAnchor(), { value: effDate(item), time: item.dueTime, allowTime: true, allowClear: true, align: 'end', onPick: (d, tm) => { setDateWithReason(id, d, null); if (d) setOverride(id, 'dueTime', tm || null); render(); } }); return; }
+  if (k === 'd') { e.preventDefault(); openDueDatePopover(rowAnchor(), { value: effDate(item), time: item.dueTime, allowTime: true, allowClear: true, align: 'end', onPick: (d, tm) => setDueWithNote(id, d, tm) }); return; }
   if (k === 'p') { e.preventDefault(); openPriorityMenu(rowAnchor(), id); return; }
   if (['1', '2', '3', '4'].includes(k)) { e.preventDefault(); setOverride(id, 'priority', ['p1', 'p2', 'p3', 'p0'][Number(k) - 1]); render(); return; }
   if (k === 'e') { e.preventDefault(); if (typeof openTask === 'function') openTask(id); else selectTask(id); setTimeout(() => { const ti = document.querySelector('.tc [data-fk="title"], #detail-pane .dp-title-input'); if (ti) { ti.focus(); ti.select(); } }, 30); return; }
@@ -451,3 +514,36 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 });
+
+/* ---------- palette: the open task (or the keyboard cursor), with the keys that do the same ---------- */
+// Listed first in the palette when nothing is typed (16-command-palette.js), so the keys are easy to learn.
+function _palTaskId() {
+  if (typeof tcIsOpen === 'function' && tcIsOpen()) { const c = tcCurrentTaskId(); return c && getItem(c) ? c : null; }
+  if (state.selectedTaskId && getItem(state.selectedTaskId)) return state.selectedTaskId;
+  return isTaskView(state.view) ? _taskCursorId() : null;
+}
+function _palTaskAnchor(id, sel) {
+  const q = (s) => document.querySelector(s);
+  return (sel && (q('.tc ' + sel) || q('#detail-pane ' + sel))) || q(`#main-body [data-id="${CSS.escape(id)}"] .due-stamp`) || q(`#main-body [data-id="${CSS.escape(id)}"]`) || q('.tc') || document.getElementById('main-body');
+}
+{
+  const has = () => !!_palTaskId();
+  const open = () => { const id = _palTaskId(); return id && statusOf(id) !== 'done'; };
+  const short = () => { const it = getItem(_palTaskId()); const t = it ? effTitle(it) : ''; return t.length > 48 ? t.slice(0, 47) + '…' : t; };
+  const cmd = (def) => registerCommand(Object.assign({ group: 'This task' }, def, { run: () => { const id = _palTaskId(); if (id) def.run(id); } }));
+  cmd({ id: 'task-done', icon: 'circle-check', kbd: 'X', keywords: 'complete done finish tick reopen', when: has,
+    label: () => `${statusOf(_palTaskId()) === 'done' ? 'Reopen' : 'Complete'} “${short()}”`, run: (id) => toggleDone(id) });
+  cmd({ id: 'task-doing', icon: 'circle-dot', kbd: 'S', keywords: 'start progress doing', when: open,
+    label: () => statusOf(_palTaskId()) === 'doing' ? 'Stop progress' : 'Start (in progress)', run: (id) => toggleDoing(id) });
+  cmd({ id: 'task-today', icon: 'sun', kbd: 'T', keywords: 'plan today', when: open,
+    label: () => { const it = getItem(_palTaskId()); return it && it.plannedFor && it.plannedFor <= todayStr() ? 'Remove from Today' : 'Plan for today'; }, run: (id) => togglePlannedToday(id) });
+  cmd({ id: 'task-due', icon: 'calendar-days', kbd: 'D', keywords: 'date due reschedule deadline', when: has, label: 'Change due date…',
+    run: (id) => { const it = getItem(id); openDueDatePopover(_palTaskAnchor(id, '.dp-due'), { value: effDate(it), time: it.dueTime, allowTime: true, allowClear: true, align: 'end', onPick: (d, t) => setDueWithNote(id, d, t) }); } });
+  cmd({ id: 'task-tomorrow', icon: 'sunrise', keywords: 'snooze postpone later push', when: open, label: 'Due tomorrow', run: (id) => setDueWithNote(id, tomorrowStr()) });
+  cmd({ id: 'task-priority', icon: 'flag', kbd: 'P', keywords: 'priority urgent important', when: has, label: 'Set priority…', run: (id) => openPriorityMenu(_palTaskAnchor(id, '.dp-prio'), id) });
+  cmd({ id: 'task-stream', icon: 'layers', keywords: 'stream move project area', when: has, label: 'Move to stream…', run: (id) => openStreamMenu(_palTaskAnchor(id, '.dp-stream'), id) });
+  cmd({ id: 'task-pin', icon: 'pin', keywords: 'pin top unpin', when: has, label: () => isPinned(_palTaskId()) ? 'Unpin' : 'Pin to top', run: (id) => togglePin(id) });
+  cmd({ id: 'task-copy', icon: 'copy', keywords: 'duplicate clone copy', when: has, label: 'Duplicate task', run: (id) => cloneTask(id) });
+  cmd({ id: 'task-bin', icon: 'trash-2', kbd: 'Del', keywords: 'delete remove bin trash', when: has, label: 'Move to bin',
+    run: (id) => { if (typeof tcCurrentTaskId === 'function' && tcCurrentTaskId() === id && typeof _tcDelete === 'function') _tcDelete(id); else deleteTask(id); } });
+}

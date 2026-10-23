@@ -221,7 +221,7 @@ function tdProps(id, o) {
     const wrap = document.createElement('div'); wrap.className = 'prop-row';
     const due = effDate(item);
     const lbl = due ? `${esc(_dayLabel(due, { weekday: 'short', day: 'numeric', month: 'short', year: Math.abs(daysUntil(due)) > 300 ? 'numeric' : undefined }))}${item.dueTime ? ' · ' + esc(item.dueTime) : ''}<span class="rel ${_rowDueClass(item)}">${esc(_relDays(due))}</span>` : '<span class="ph">Add a due date</span>';
-    const b = chipBtn(lbl, 'dp-due', (a) => openDueDatePopover(a, { value: due, time: item.dueTime, allowTime: true, allowClear: true, onPick: (d, t) => { setDateWithReason(id, d, null); if (d) setOverride(id, 'dueTime', t || null); render(); } }), 'Due date and time (D)');
+    const b = chipBtn(lbl, 'dp-due', (a) => openDueDatePopover(a, { value: due, time: item.dueTime, allowTime: true, allowClear: true, onPick: (d, t) => setDueWithNote(id, d, t) }), 'Due date and time (D)');
     wrap.appendChild(b);
     if (due) {
       const r = document.createElement('button'); r.type = 'button'; r.className = 'btn-icon btn-sm dp-resch'; r.innerHTML = icon('history');

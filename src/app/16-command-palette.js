@@ -24,7 +24,8 @@ const PALETTE_SOURCES = [];
 function registerPaletteSource(fn) { if (typeof fn === 'function') PALETTE_SOURCES.push(fn); }
 
 let _paletteClose = null;
-const PALETTE_GROUP_ORDER = ['Assistant', 'Tasks', 'Go to', 'People', 'Tags', 'Files', 'Commands'];
+// 'This task': the open task's (or the keyboard cursor's) commands, with their keys (32-tasks-ui.js).
+const PALETTE_GROUP_ORDER = ['Assistant', 'This task', 'Tasks', 'Go to', 'People', 'Tags', 'Files', 'Commands'];
 const _PAL_SCOPES = [['', 'Everything', 'search'], ['>', 'Commands', 'zap'], ['#', 'Tags', 'hash'], ['@', 'People', 'at-sign'], ['?', 'Ask', 'sparkles']];
 // The "G then a letter" jumps (90-wiring.js), shown as hints.
 const _PAL_G = { home: 'G H', today: 'G T', week: 'G U', all: 'G A', calendar: 'G C', finance: 'G F', people: 'G P', settings: 'G S', bin: 'G B', completed: 'G L' };
@@ -281,7 +282,7 @@ function _palResults(raw) {
   // Empty query: a short, useful starting list rather than everything.
   if (!ql && mode === '') {
     const pick = (g, n) => scored.filter(x => x.o.group === g).slice(0, n);
-    for (const x of [...pick('Go to', 8), ...pick('Commands', 6)]) push(x.o.group, x.o);
+    for (const x of [...pick('This task', 6), ...pick('Go to', 8), ...pick('Commands', 6)]) push(x.o.group, x.o);
   } else {
     scored.sort((a, b) => b.s - a.s);
     const per = {};

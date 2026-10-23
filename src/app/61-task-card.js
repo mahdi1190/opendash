@@ -756,7 +756,7 @@ function _tcMoreMenu(anchor, id) {
     if (!it || typeof it !== 'object') return it;
     if (it.label === 'Open' || it.label === 'Open in the centre') return null;   // it is open
     if (it.label === 'Open in side panel') return { label: 'Open in side panel', icon: 'panel-right', run: () => _tcToPanel() };
-    if (it.label === 'Pick a date…') return Object.assign({}, it, { run: () => { const item = getItem(id); openDueDatePopover(at('.dp-due')(), { value: effDate(item), time: item.dueTime, allowTime: true, allowClear: true, onPick: (d, t) => { setDateWithReason(id, d, null); if (d) setOverride(id, 'dueTime', t || null); render(); } }); } });
+    if (it.label === 'Pick a date…') return Object.assign({}, it, { run: () => { const item = getItem(id); openDueDatePopover(at('.dp-due')(), { value: effDate(item), time: item.dueTime, allowTime: true, allowClear: true, onPick: (d, t) => setDueWithNote(id, d, t) }); } });
     if (it.label === 'Priority…') return Object.assign({}, it, { run: () => openPriorityMenu(at('.dp-prio')(), id) });
     if (it.label === 'Move to stream…') return Object.assign({}, it, { run: () => openStreamMenu(at('.dp-stream')(), id) });
     if (it.label === 'People…') return Object.assign({}, it, { run: () => openPeoplePicker(at('.dp-people .prop-btn.add')(), id) });
