@@ -77,8 +77,12 @@ export default function register(app) {
       const body = await c.body({ allowEmpty: true });
       // A click also asks the other devices that read mailboxes this one does not (their Claude
       // connectors) to update them (lib/remote-jobs.mjs); what they fetch arrives by sync.
-      const asked = body.force === true && !c.internal && app.ctx.remoteJobs ? await app.ctx.remoteJobs.askOthers('fetch:inbox', body, c).catch(() => []) : [];
-      const also = asked.length ? { asked, message: `Asking ${[...new Set(asked.map(a => a.runsOn))].join(' and ')} to update your email.` } : {};
+      // ── host ── The Claude-run mailboxes (the Gmail connector, MCP servers) that the Claude host reads
+      // too are left to it (lib/remote-jobs.mjs hostFetch); the ones it lacks, and the others, are read here.
+      const hf = body.force === true && !c.internal && app.ctx.remoteJobs ? await app.ctx.remoteJobs.hostFetch('fetch:inbox', body, c).catch(() => ({ skip: [], asked: [] })) : { skip: [], asked: [] };
+      const asked = [...hf.asked, ...(body.force === true && !c.internal && app.ctx.remoteJobs ? await app.ctx.remoteJobs.askOthers('fetch:inbox', body, c).catch(() => []) : [])].filter((a, i, all) => all.findIndex(b => b.id === a.id) === i);
+      const also = asked.length ? { asked, message: `Asking ${[...new Set(asked.map(a => a.runsOn))].join(' and ')} to update your email.` } : hf.message ? { message: hf.message } : {};
+      const pick = { ...(hf.skip.length ? { skip: hf.skip } : {}), ...(Array.isArray(body.only) && c.internal ? { only: body.only.filter(x => typeof x === 'string').slice(0, 30) } : {}) };
       // An automatic update runs only on the main computer (lib/main-computer.mjs); a click always runs.
       const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('connectors', { automatic: body.force !== true }) : { run: true };
       // Not this computer's job: the Claude connectors (and calendar links) wait for the main
@@ -87,8 +91,9 @@ export default function register(app) {
         const own = mc.reason === 'moving' ? { started: false } : await inbox.start({ days: body.days, force: body.force === true, onlyAccounts: true });
         return own.started ? c.json(202, { job: own.job, ...skippedBody(mc), ...also }) : asked.length ? c.json(202, { job: null, ...also }) : { ...skippedBody(mc), job: null };
       }
-      const r = await inbox.start({ days: body.days, force: body.force === true });
+      const r = await inbox.start({ days: body.days, force: body.force === true, ...pick });
       if (r.started) return c.json(202, { job: r.job, ...also });
+      if (r.reason === 'no-sources' && pick.skip && !asked.length) return { skipped: true, reason: 'host', job: r.job, ...also };
       if (r.reason === 'running') return c.json(409, { error: 'An update is already running.', job: r.job });
       if (r.reason === 'no-sources' && asked.length) return c.json(202, { job: null, ...also });
       if (r.reason === 'no-sources') return c.json(409, { error: 'No mailbox is connected yet: add one in Connections.', code: 'NO_SOURCES', job: r.job });

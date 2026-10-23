@@ -86,11 +86,12 @@ export default function register(app) {
   // Live sync: a computer may take an account's lease only with its own sign-in for that
   // account (accounts/<id> in this computer's secret store; tokens never sync). The
   // 'claude' role (answering remote requests that need Claude, lib/remote-jobs.mjs)
-  // is claimed only by a computer where Claude works.
+  // is claimed only by a computer where Claude works, and not by one set to "Only <host>"
+  // (lib/sync/claude-host.mjs: it never answers for the Claude host while that is off).
   const live = createNodeLive({
     engine, dataDir: paths.root, log, canFetch: (acc) => accounts().hasSignIn(acc && acc.id),
     extraRoles: ['phone', 'claude'],
-    canRun: async (role) => (role !== 'claude' ? true : !!(app.ctx.remoteJobs && (await app.ctx.remoteJobs.localCaps()).claude)),
+    canRun: async (role) => (role !== 'claude' ? true : !!(app.ctx.remoteJobs && (await app.ctx.remoteJobs.canHost()))),
   });
   // Not ctx.liveSync: that is the open tabs' event stream (server/live-sync.mjs), which
   // the calendar writer and the time route emit on.
