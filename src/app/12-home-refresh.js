@@ -44,24 +44,43 @@ function homeRefreshToday() {
   if (typeof _hd !== 'undefined') { _hd.story = null; _hd.storyAt = 0; }
   homeRefreshDerived();
   const btn = document.getElementById('tb-home-refresh');
-  if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+  if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); _homeRefreshLabel(btn, true); }
+  // A slow part (a location fix, a server that stopped answering) no longer keeps the
+  // button greyed for good: each part gets _HOME_REFRESH_WAIT, then Home shows what it has.
+  const capped = (p) => Promise.race([Promise.resolve(p), new Promise((res) => setTimeout(() => res('slow'), _HOME_REFRESH_WAIT))]);
   _homeTodayRefresh = Promise.resolve().then(async () => {
-    if (typeof dashboardLocationAutoRefresh === 'function') await dashboardLocationAutoRefresh(true);
+    let slow = false;
+    if (typeof dashboardLocationAutoRefresh === 'function') slow = (await capped(dashboardLocationAutoRefresh(true).catch(() => false))) === 'slow';
     const jobs = [];
     if (typeof homeDataRefreshVisible === 'function') jobs.push(homeDataRefreshVisible());
-    if (typeof _serverAvailable !== 'undefined' && _serverAvailable) {
+    const up = typeof _serverAvailable !== 'undefined' && _serverAvailable;
+    if (up) {
       if (typeof briefLoadWeather === 'function') jobs.push(briefLoadWeather());
       if (typeof CalStore !== 'undefined' && typeof CalStore.load === 'function') jobs.push(CalStore.load(true));
     }
-    await Promise.allSettled(jobs);
+    const res = await Promise.allSettled(jobs.map(capped));
+    slow = slow || res.some(r => r.status === 'fulfilled' && r.value === 'slow');
     if (state.view === 'home') homeRefreshDerived();
-    if (typeof toast === 'function') toast('Today refreshed for the current time', { kind: 'ok' });
+    if (typeof toast !== 'function') return;
+    // Say what did not come in, with a way to try again, instead of a tick either way.
+    const calErr = up && typeof CalStore !== 'undefined' && CalStore.st && CalStore.st.error;
+    const again = { label: 'Try again', run: () => homeRefreshToday() };
+    if (!up && typeof _serverAvailable !== 'undefined') toast('Refreshed for the current time. The OpenDash server is not answering, so new events and data could not be fetched.', { icon: 'triangle-alert', timeout: 7000, action: again });
+    else if (calErr) toast('Refreshed for the current time, but the calendar could not be read.', { icon: 'triangle-alert', timeout: 7000, action: again });
+    else if (slow) toast('Refreshed for the current time. Some parts are still loading and appear when they arrive.', { icon: 'clock' });
+    else toast('Today refreshed for the current time', { kind: 'ok' });
   }).finally(() => {
     _homeTodayRefresh = null;
     const current = document.getElementById('tb-home-refresh');
-    if (current) { current.disabled = false; current.removeAttribute('aria-busy'); }
+    if (current) { current.disabled = false; current.removeAttribute('aria-busy'); _homeRefreshLabel(current, false); }
   });
   return _homeTodayRefresh;
+}
+const _HOME_REFRESH_WAIT = 15000;
+/** The button says it is working (and spins, unless motion is reduced) rather than only greying out. */
+function _homeRefreshLabel(btn, busy) {
+  const t = btn.querySelector('span'); if (t) t.textContent = busy ? 'Refreshing…' : 'Refresh today';
+  const i = btn.querySelector('.i'); if (i) i.classList.toggle('spin', !!busy);
 }
 function homeRefreshClock() {
   if (state.view !== 'home' || document.hidden || _homeTodayRefresh) return;
@@ -79,6 +98,7 @@ function homeRefreshButton(crumb) {
   btn.innerHTML = icon('refresh-cw') + '<span>Refresh today</span>';
   btn.setAttribute('data-tip', 'Update ideas, day so far and Home widgets for the current time');
   btn.disabled = !!_homeTodayRefresh;
+  if (_homeTodayRefresh) { btn.setAttribute('aria-busy', 'true'); _homeRefreshLabel(btn, true); }
   btn.onclick = homeRefreshToday;
   crumb.insertAdjacentElement('afterend', btn);
 }

@@ -56,6 +56,11 @@
 .tb-home-cust:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .tb-home-cust[aria-pressed="true"] { background: var(--accent-soft); border-color: color-mix(in oklab, var(--accent) 35%, transparent); color: var(--accent-ink); cursor: default; }
 .tb-home-cust[aria-pressed="true"] .i { color: var(--accent-ink); }
+/* Refresh today while it works (12-home-refresh.js): the icon turns; a still icon with reduced motion. */
+.tb-home-cust[aria-busy="true"] { cursor: progress; }
+.tb-home-cust .i.spin { animation: ui-spin 0.9s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .tb-home-cust .i.spin { animation: none; } }
+html[data-motion="reduced"] .tb-home-cust .i.spin { animation: none; }
 .home-foot-bar { display: flex; justify-content: center; margin-top: var(--space-8); }
 .home-foot-cust { border-radius: var(--radius-full); }
 @media (max-width: 640px) {
