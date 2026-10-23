@@ -189,7 +189,7 @@ export default function register(app) {
           d.meta.canSync = true;
         } else {
           Object.assign(d.meta, await sourcesMeta(d.analysis));
-          if (r) d.meta.canSync = true;
+          if (r && !r.trial) d.meta.canSync = true;
         }
       } catch (e) { log('warn', `finance: sources meta failed (${e.message})`); }
       return d;

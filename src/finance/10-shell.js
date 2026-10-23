@@ -58,16 +58,16 @@
     const meta = (R.data && R.data.meta) || {};
     // Another device reads the bank and has not published yet: no "connect", it is on its way.
     const rm = meta.remote;
-    if (rm && rm.name) {
+    if (rm && rm.name && !rm.trial) {
       const ask = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => startUpdate({}) }, ic('refresh-cw'), h('span', { text: `Ask ${rm.name} to update` }));
-      if (rm.trial) return emptyState({ icon: 'wallet', cls: 'fv-welcome', title: `Finance from ${rm.name}`,
-        text: `${rm.name} reads your bank. To see your finances here too, turn on "Use changes from my other computers" in Settings > Sync.`,
-        actions: [h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => setView('settings:sync') }, ic('refresh-cw'), h('span', { text: 'Open Settings > Sync' }))] });
       return emptyState({ icon: 'wallet', cls: 'fv-welcome', title: `Finance from ${rm.name}`,
         text: `${rm.name} reads your bank. Your finances show here, the same as there, after its next update${rm.online ? '.' : ' (it is off right now).'}`, actions: [ask] });
     }
     const imp = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => pickCsv() }, ic('upload'), h('span', { text: 'Import a CSV' }));
     const sync = h('button', { class: 'btn btn-secondary', type: 'button', 'data-requires': 'bank', 'data-requires-hint': 'Syncing needs the bank connection. Importing a CSV export works without it.', onclick: () => startUpdate({}) }, ic('landmark'), h('span', { text: 'Sync from your bank' }));
+    // Trial mode: another device reads the bank, but its finances only come here once this one takes changes.
+    const trial = rm && rm.name && rm.trial ? h('div', { class: 'fv-welcome-note' }, ic('landmark'),
+      h('span', { text: `${rm.name} reads your bank. To see its finances here, turn on "Use changes from my other computers" in Settings > Sync.` })) : null;
     const pending = meta.inboxPending ? h('div', { class: 'fv-welcome-note' }, ic('file-up'),
       h('span', { text: `${meta.inboxPending} CSV file${meta.inboxPending === 1 ? ' is' : 's are'} waiting in the finance inbox folder.` }),
       h('button', { class: 'btn-link', type: 'button', text: 'Import now', onclick: () => startUpdate({ bank: false }) })) : null;
@@ -78,7 +78,7 @@
         .map(([i, t, d]) => h('li', null, h('span', { class: 'fv-step-ic' }, ic(i)), h('b', { text: t }), h('span', { text: d }))));
     const el = emptyState({ icon: 'wallet', cls: 'fv-welcome', title: 'Bring in your transactions',
       text: 'Import a CSV export from your bank, or connect your bank to sync it automatically (read-only). Your data stays in your data folder.',
-      actions: [imp, sync, h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => (window.Connections && Connections.open ? Connections.open('money') : setView('connections')) }, ic('landmark'), h('span', { text: 'Connect a bank or wallet' }))], after: h('div', null, pending, steps) });
+      actions: [imp, sync, h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => (window.Connections && Connections.open ? Connections.open('money') : setView('connections')) }, ic('landmark'), h('span', { text: 'Connect a bank or wallet' }))], after: h('div', null, trial, pending, steps) });
     // One calm animated scene (a coin dropping into a jar) instead of a static icon.
     try {
       const FS = window.FinSymbols, box = el.querySelector('.es-icon');
@@ -166,7 +166,7 @@
     const running = !!(job && job.state === 'running') || !!R.importing || !!R.remoteJob;
     const done = !running && R.syncDoneAt && Date.now() - R.syncDoneAt < 2600;
     // Another device reads the bank: Sync asks it; a CSV is imported there.
-    const rm = meta.remote && meta.remote.name ? meta.remote : null;
+    const rm = meta.remote && meta.remote.name && !meta.remote.trial ? meta.remote : null;
     H.imp.setAttribute('data-tip', rm ? `Import a CSV on ${rm.name}: it shows here after that` : 'Import a CSV export from your bank (works offline)');
     if (rm) H.sync.removeAttribute('data-requires'); else H.sync.setAttribute('data-requires', 'bank');
     if (rm) H.sync.setAttribute('data-tip', `Asks ${rm.name} to update your finances`); else H.sync.removeAttribute('data-tip');
@@ -249,7 +249,7 @@
     let msg = null;
     if (a) {
       const days = Number(a.stale_days) || 0;
-      const rm = R.data && R.data.meta && R.data.meta.remote && R.data.meta.remote.name ? R.data.meta.remote : null;
+      const rm = R.data && R.data.meta && R.data.meta.remote && R.data.meta.remote.name && !R.data.meta.remote.trial ? R.data.meta.remote : null;
       msg = a.sample ? ['info', 'Sample data.', 'These figures are made up to show the layout. Import a CSV from your bank to see your own.']
         : days > 4 && rm ? ['triangle-alert', `Your data is ${days} days old.`, `Sync bank asks ${rm.name} to update it${rm.online ? '' : ' when it is on'}.`]
           : days > 4 ? ['triangle-alert', `Your data is ${days} days old.`, bankOk() ? 'Sync your bank, or import a recent CSV export.' : 'Import a recent CSV export from your bank, or connect your bank to sync it.'] : null;
