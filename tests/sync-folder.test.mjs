@@ -11,11 +11,11 @@ import {
   isSyncFileName, readLogFrom, createLogWriter, listDeviceFiles, listDevices, detectCloudFolders, syncRootFor, SYNC_DIR_NAME,
 } from '../lib/sync/folder.mjs';
 import { encodeHlc } from '../lib/sync/hlc.mjs';
-import { tempDir, rm, makeDevice, waitFor, keepAlive } from './sync.shared.mjs';
+import { tempDir, rm, stopAll, makeDevice, waitFor, sleep, keepAlive } from './sync.shared.mjs';
 
 const base = tempDir('sync-folder-');
 const release = keepAlive();
-after(() => { release(); rm(base); });
+after(async () => { await stopAll(); release(); rm(base); });
 
 const OTHER = 'feedfacecafebeef';
 const line = (n, w, wall = Date.now()) => JSON.stringify({ v: 1, dev: OTHER, n, h: encodeHlc(wall + n, 0, OTHER), s: {}, w, x: [] }) + '\n';
@@ -92,7 +92,7 @@ test('the engine ignores junk and conflict copies, waits for a half-delivered li
   mkdirSync(cloud);
   const me = makeDevice(base, 'e', { state: { custom: [{ id: 'u-1', title: 'one' }], statuses: {} }, pollMs: 100 });
   await me.eng.start();
-  await me.eng.configure({ enabled: true, folder: cloud, deviceName: 'Me' });
+  await me.eng.configure({ enabled: true, apply: true, folder: cloud, deviceName: 'Me' });
   const dir = join(cloud, SYNC_DIR_NAME, 'devices', OTHER);
   mkdirSync(dir, { recursive: true });
   const wall = Date.now();
@@ -137,4 +137,23 @@ test('cloud folders are found from the environment and their usual places (looki
   assert.deepEqual(mac.map(x => x.kind), ['onedrive', 'gdrive']);
   assert.equal(detectCloudFolders({ platform: 'linux', home: '/home/x', env: {}, exists: () => false, read: () => { throw new Error('no'); } }).length, 0);
   assert.ok(!existsSync(join(base, 'OneDrive')), 'detection never creates anything');
+});
+
+test('a cloud folder that disappears (signed out, deleted) costs no CPU while sync waits for it', async () => {
+  const cloud = join(base, 'cloud-gone');
+  mkdirSync(cloud);
+  const d = makeDevice(base, 'gone', { pollMs: 300 });
+  await d.eng.start();
+  await d.eng.configure({ enabled: true, apply: true, folder: cloud, deviceName: 'Gone' });
+  rm(cloud);   // Windows keeps firing watch events for a deleted folder: the watcher must stand down
+  const c0 = process.cpuUsage();
+  await sleep(2000);
+  const c = process.cpuUsage(c0);
+  const ms = Math.round((c.user + c.system) / 1000);
+  assert.ok(ms < 400, `${ms} ms of CPU in 2 s`);
+  assert.equal(d.eng.status().state, 'waiting');
+  assert.match(d.eng.status().message, /is not there/);
+  mkdirSync(cloud);   // it comes back: sync carries on by itself
+  await waitFor(() => d.eng.status().state === 'ok', 3000, 'sync to resume');
+  await d.eng.stop();
 });

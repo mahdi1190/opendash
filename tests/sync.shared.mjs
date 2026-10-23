@@ -11,13 +11,24 @@ export function tempDir(prefix) { mkdirSync(TEST_BASE, { recursive: true }); ret
 export const rm = (d) => { try { rmSync(d, { recursive: true, force: true }); } catch { /* fine */ } };
 export const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+// A test file that is still running after this long is stopped (this laptop
+// must never be left with a busy process). Unref'd: it never keeps one alive.
+const WATCHDOG = setTimeout(() => { console.error('# watchdog: the test file ran too long; stopping it'); process.exit(1); }, Number(process.env.SYNC_TEST_WATCHDOG_MS) || 120000);
+WATCHDOG.unref();
+
+/** Every engine made here, so a failing test cannot leave one running. */
+export const engines = new Set();
+export async function stopAll() { for (const e of engines) await e.stop().catch(() => {}); engines.clear(); }
+
 /** One "computer": a data folder with a state file, its store and its sync engine (not started). */
 export function makeDevice(base, name, { state = { custom: [] }, pollMs = 200, watch = true, now, debounceMs = 30, log } = {}) {
   const data = join(base, `data-${name}`);
   mkdirSync(join(data, 'state'), { recursive: true });
   if (state) writeFileSync(join(data, 'state', 'dashboard-state.json'), JSON.stringify({ ...state, _lastSave: 1 }));
   const store = createStateStore({ stateDir: join(data, 'state') });
-  const eng = createSyncEngine({ store, dataDir: data, host: `host-${name}`, pollMs, watch, debounceMs, detect: () => [], ...(now ? { now } : {}), ...(log ? { log } : {}) });
+  // This computer's own sync files (normally %LOCALAPPDATA%, outside the data folder).
+  const eng = createSyncEngine({ store, dataDir: data, localDir: join(base, `local-${name}`), host: `host-${name}`, pollMs, watch, debounceMs, detect: () => [], ...(now ? { now } : {}), ...(log ? { log } : {}) });
+  engines.add(eng);
   return { name, data, store, eng };
 }
 

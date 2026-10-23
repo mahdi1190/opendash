@@ -3,7 +3,9 @@
 //   GET  /api/sync/status     -> {enabled, state: off|syncing|ok|waiting|error, message,
 //                                 folder, cloud, deviceName, devices:[{name, me, lastSeen}],
 //                                 lastSyncAt, conflicts:{count, recent}, detected:[{kind,label,path}], ...}
-//   POST /api/sync/settings   {enabled?, folder?, deviceName?} -> the status
+//   POST /api/sync/settings   {enabled?, apply?, folder?, deviceName?} -> the status
+//                             apply (default off) = write other computers' changes into this
+//                             data; off = shadow mode: collect them and report what would change
 //                             (400 {error, code} for a folder that is missing, inside the
 //                             data or app folder; off by default)
 //   POST /api/sync/now        run a sync pass now -> the status
@@ -31,7 +33,7 @@ export default function register(app) {
     handler: async (c) => {
       const b = await c.body();
       const patch = {};
-      for (const k of ['enabled', 'folder', 'deviceName']) if (b && b[k] !== undefined) patch[k] = b[k];
+      for (const k of ['enabled', 'apply', 'folder', 'deviceName']) if (b && b[k] !== undefined) patch[k] = b[k];
       try { return await engine.configure(patch); }
       catch (e) { if (e.status === 400) return c.json(400, { error: e.message, code: e.code }); throw e; }
     },

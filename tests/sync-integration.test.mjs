@@ -11,11 +11,11 @@ import { join } from 'node:path';
 import { syncedView } from '../lib/sync/model.mjs';
 import { SYNC_DIR_NAME, isSyncFileName } from '../lib/sync/folder.mjs';
 import { buildFakeData } from '../tools/make-fake-data.mjs';
-import { tempDir, rm, makeDevice, editState, waitFor, sleep, keepAlive } from './sync.shared.mjs';
+import { tempDir, rm, stopAll, makeDevice, editState, waitFor, sleep, keepAlive } from './sync.shared.mjs';
 
 const base = tempDir('sync-int-');
 const release = keepAlive();
-after(() => { release(); rm(base); });
+after(async () => { await stopAll(); release(); rm(base); });
 
 const cloudA = join(base, 'cloud-a'), cloudB = join(base, 'cloud-b');
 mkdirSync(cloudA); mkdirSync(cloudB);
@@ -71,9 +71,9 @@ let idA, idB;
 
 test('a new computer joins: it gets everything, delivered late, half-first and out of order', async () => {
   await A.eng.start(); await B.eng.start();
-  await A.eng.configure({ enabled: true, folder: cloudA, deviceName: 'Home PC' });
+  await A.eng.configure({ enabled: true, apply: true, folder: cloudA, deviceName: 'Home PC' });
   idA = A.eng.deviceId;
-  await B.eng.configure({ enabled: true, folder: cloudB, deviceName: 'Work laptop' });
+  await B.eng.configure({ enabled: true, apply: true, folder: cloudB, deviceName: 'Work laptop' });
   idB = B.eng.deviceId;
   assert.notEqual(idA, idB);
   // Nothing has been delivered yet: B has only its own (empty) data.
@@ -189,7 +189,7 @@ test('with file watching unavailable, the 5 s poll still picks changes up', asyn
   const C = makeDevice(base, 'c', { state: { custom: [] }, watch: false, pollMs: 5000 });
   const cloudC = join(base, 'cloud-c'); mkdirSync(cloudC);
   await C.eng.start();
-  await C.eng.configure({ enabled: true, folder: cloudC, deviceName: 'Old laptop' });
+  await C.eng.configure({ enabled: true, apply: true, folder: cloudC, deviceName: 'Old laptop' });
   await deliver(cloudA, cloudC, idA); await deliver(cloudB, cloudC, idB);
   await waitFor(async () => (await view(C)) === (await view(A)), 12000, 'C to catch up by polling');
   await editState(A.store, s => { s.custom[0].title = 'poll check'; });
@@ -206,7 +206,7 @@ test('with file watching unavailable, the 5 s poll still picks changes up', asyn
 test('after a restart the engine resumes where it was (no re-send, no lost offsets)', async () => {
   await A.eng.stop();
   const before = readdirSync(join(devs(cloudA), idA)).map(n => [n, statSync(join(devs(cloudA), idA, n)).size]);
-  const A2 = { ...A, eng: (await import('../lib/sync/engine.mjs')).createSyncEngine({ store: A.store, dataDir: A.data, host: 'host-a', pollMs: 200, debounceMs: 30, detect: () => [] }) };
+  const A2 = { ...A, eng: (await import('../lib/sync/engine.mjs')).createSyncEngine({ store: A.store, dataDir: A.data, localDir: join(base, 'local-a'), host: 'host-a', pollMs: 200, debounceMs: 30, detect: () => [] }) };
   await A2.eng.start();
   assert.equal(A2.eng.deviceId, idA, 'same identity');
   await A2.eng.syncNow();

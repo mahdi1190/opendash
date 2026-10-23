@@ -9,7 +9,7 @@ import { mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, exists
 import { join } from 'node:path';
 import { request, createServer } from 'node:http';
 import { SYNC_DIR_NAME, isSyncFileName } from '../lib/sync/folder.mjs';
-import { tempDir, rm, makeDevice, editState, waitFor, sleep } from './sync.shared.mjs';
+import { tempDir, rm, makeDevice, editState, waitFor, sleep, stopAll } from './sync.shared.mjs';
 
 const base = tempDir('sync-srv-');
 const dataDir = join(base, 'data-server');
@@ -76,6 +76,7 @@ before(async () => {
   process.env.CLAUDE_CLI_PATH = join(base, 'no-claude-here.exe');
   process.env.DASHBOARD_OS_EXEC = 'dry-run';
   process.env.DASHBOARD_SYNC_POLL_MS = '3000';
+  process.env.DASHBOARD_SYNC_LOCAL_DIR = join(base, 'local-server');   // normally %LOCALAPPDATA%/OpenDash/sync/<key>
   const { setCliPath } = await import('../lib/claude-runner.mjs');
   setCliPath(process.env.CLAUDE_CLI_PATH);
   port = await freePort();
@@ -83,8 +84,9 @@ before(async () => {
   srv = await main(['--port', String(port), '--no-open', '--data-dir', dataDir, '--fresh']);
 });
 after(async () => {
+  await stopAll();
   await srv?.close();
-  delete process.env.CLAUDE_CLI_PATH; delete process.env.DASHBOARD_OS_EXEC; delete process.env.DASHBOARD_SYNC_POLL_MS;
+  delete process.env.CLAUDE_CLI_PATH; delete process.env.DASHBOARD_OS_EXEC; delete process.env.DASHBOARD_SYNC_POLL_MS; delete process.env.DASHBOARD_SYNC_LOCAL_DIR;
   rm(base);
 });
 
@@ -110,12 +112,17 @@ test('settings are checked: a missing folder, the data folder itself, another si
 });
 
 let A;
-test('turned on: a change made through the actions layer (the MCP route) is written to the shared folder', async () => {
-  const r = await call('POST', '/api/sync/settings', { enabled: true, folder: cloudB, deviceName: 'Work laptop' });
+test('turned on: trial (shadow) mode first; a change made through the actions layer (the MCP route) is written to the shared folder', async () => {
+  let r = await call('POST', '/api/sync/settings', { enabled: true, folder: cloudB, deviceName: 'Work laptop' });
   assert.equal(r.status, 200);
   assert.equal(r.json.enabled, true);
-  assert.equal(r.json.state, 'ok');
+  assert.equal(r.json.mode, 'shadow', 'turning sync on does not apply anything until the second switch');
+  assert.match(r.json.message, /Trial mode/);
   assert.equal(r.json.deviceName, 'Work laptop');
+  assert.ok(!existsSync(join(dataDir, 'sync')), "sync's own files are not in the data folder");
+  r = await call('POST', '/api/sync/settings', { apply: true });
+  assert.equal(r.json.mode, 'apply');
+  assert.equal(r.json.state, 'ok');
   const token = readFileSync(join(dataDir, 'local-token'), 'utf8').trim();
   const before = filesOf(cloudB, srv.ctx.sync.deviceId).find(f => f.n.endsWith('.jsonl')).text.length;
   const a = await call('POST', '/api/actions', { ops: [{ op: 'task.update', id: 'u-1-aaa', title: 'Write the final report' }], client: 'test mcp' }, { 'X-Dashboard-Token': token });
@@ -128,7 +135,7 @@ test('turned on: a change made through the actions layer (the MCP route) is writ
 test('a change from another computer reaches an open tab over /api/events (and the page label says who)', async () => {
   A = makeDevice(base, 'home', { state: { custom: [] }, pollMs: 60000 });
   await A.eng.start();
-  await A.eng.configure({ enabled: true, folder: cloudA, deviceName: 'Home PC' });
+  await A.eng.configure({ enabled: true, apply: true, folder: cloudA, deviceName: 'Home PC' });
   // The cloud brings the server's files to A, and A's to the server.
   for (const f of filesOf(cloudB, srv.ctx.sync.deviceId)) put(join(cloudA, SYNC_DIR_NAME, 'devices', srv.ctx.sync.deviceId, f.n), f.text);
   await waitFor(async () => ((await A.store.readObject()).custom || []).length === 1, 5000, 'A to have the task');

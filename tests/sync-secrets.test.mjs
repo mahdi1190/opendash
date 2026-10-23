@@ -11,11 +11,11 @@ import { join } from 'node:path';
 import { SYNC_KEYS, isSecretName, looksSecret, capture, newTree, validateOp, sanitize } from '../lib/sync/model.mjs';
 import { UI_STATE_KEYS, BOOKKEEPING_KEYS } from '../lib/state-keys.mjs';
 import { encodeHlc } from '../lib/sync/hlc.mjs';
-import { tempDir, rm, makeDevice, waitFor, keepAlive } from './sync.shared.mjs';
+import { tempDir, rm, stopAll, makeDevice, waitFor, keepAlive } from './sync.shared.mjs';
 
 const base = tempDir('sync-secrets-');
 const release = keepAlive();
-after(() => { release(); rm(base); });
+after(async () => { await stopAll(); release(); rm(base); });
 
 // Marker values: each must never appear in anything sync writes.
 const S = {
@@ -92,23 +92,36 @@ test('end to end: nothing secret reaches the shared folder or the other computer
   const cloud = join(base, 'cloud');
   mkdirSync(cloud);
   const a = makeDevice(base, 'a', { state: lacedState() });
-  // The files that hold sign-ins on a real install, with markers in them.
+  // The files that hold sign-ins on a real install (lib/microsoft.mjs, lib/google-health.mjs,
+  // lib/hosted-relay.mjs, lib/remote-mcp-auth.mjs, lib/narration.mjs, lib/fin-connect/secrets.mjs),
+  // with markers in them.
   mkdirSync(join(a.data, 'secrets', 'fin'), { recursive: true });
-  writeFileSync(join(a.data, 'secrets', 'google-token.json'), JSON.stringify({ access_token: S.oauth, refresh_token: S.refresh, client_secret: S.google }));
+  writeFileSync(join(a.data, 'secrets', 'microsoft-tokens.json'), JSON.stringify({ access_token: S.oauth, refresh_token: S.refresh }));
+  writeFileSync(join(a.data, 'secrets', 'microsoft-client.json'), JSON.stringify({ client_secret: S.google }));
+  writeFileSync(join(a.data, 'secrets', 'google-health-tokens.json'), JSON.stringify({ refresh_token: S.refresh }));
+  writeFileSync(join(a.data, 'secrets', 'hosted-relay.json'), JSON.stringify({ secret: S.relay }));
+  writeFileSync(join(a.data, 'secrets', 'remote-mcp-auth.json'), JSON.stringify({ token: S.token }));
+  writeFileSync(join(a.data, 'secrets', 'narration.json'), JSON.stringify({ apiKey: S.apiKey }));
   writeFileSync(join(a.data, 'secrets', 'fin', 'enable-banking.json'), JSON.stringify({ key: S.bank }));
+  writeFileSync(join(a.data, 'sources.json'), JSON.stringify({ banks: [{ key: S.bank }] }));
   writeFileSync(join(a.data, 'connections.json'), JSON.stringify({ relay: { secret: S.relay } }));
   writeFileSync(join(a.data, 'config.json'), JSON.stringify({ userName: 'Alex', apiKey: S.apiKey }));
   writeFileSync(join(a.data, 'local-token'), S.token);
   const b = makeDevice(base, 'b', { state: { custom: [] } });
   await a.eng.start(); await b.eng.start();
-  await a.eng.configure({ enabled: true, folder: cloud, deviceName: 'A' });
-  await b.eng.configure({ enabled: true, folder: cloud, deviceName: 'B' });
+  await a.eng.configure({ enabled: true, apply: true, folder: cloud, deviceName: 'A' });
+  await b.eng.configure({ enabled: true, apply: true, folder: cloud, deviceName: 'B' });
   await waitFor(async () => ((await b.store.readObject()).custom || []).length === 2, 8000, 'B to receive the tasks');
   // Every byte in the shared folder.
   const all = [];
   const walk = (d) => { for (const n of readdirSync(d)) { const p = join(d, n); if (statSync(p).isDirectory()) walk(p); else all.push(readFileSync(p, 'utf8')); } };
   walk(cloud);
   assert.ok(all.length >= 4, 'logs, snapshots and device files were written');
+  assert.deepEqual(leaks(all.join('\n')), []);
+  // The engine's own files (meta, settings; outside the data folder) hold no secrets either.
+  const before = all.length;
+  walk(a.eng.localDir);
+  assert.ok(all.length > before);
   assert.deepEqual(leaks(all.join('\n')), []);
   // The other computer has the ordinary data and none of the secrets.
   const bs = await b.store.readObject();
