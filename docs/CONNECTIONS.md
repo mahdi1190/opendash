@@ -65,8 +65,21 @@ At the top of **Connections**, under *Your email and calendar accounts*:
   work or school account* (or *personal*) before continuing.
 - **+ Add Google account**: the same, with Google (coming soon in this copy if
   the button says so).
-- **+ Other email**: Yahoo, iCloud and other providers with an app password are
-  coming soon.
+- **+ Other email**: Yahoo, iCloud, AOL, GMX, Zoho, Fastmail, Proton (through
+  Proton Mail Bridge) and most other email services. Type your address and
+  press *Next*: OpenDash recognises the service and shows its own steps to make
+  an **app password** (a second password your provider makes just for OpenDash,
+  so OpenDash never needs your real password; you can delete it on the
+  provider's website at any time). A button opens the right page. Paste the
+  app password and press *Test connection*. If it does not work, OpenDash says
+  why in plain words (the wrong password, IMAP switched off, two-step
+  verification needed first) and what to do. A Gmail or Outlook address is
+  sent to the one-click buttons instead. Afterwards OpenDash offers *Add a
+  calendar link* with the steps for that service (iCloud: a public calendar
+  link; Yahoo: the calendar's ICS link). The app password is kept on this
+  computer only, never in the data folder; OpenDash only reads mail and never
+  marks it as read. If the app password stops working, the account says
+  *Sign in again*: press *Paste a new app password*.
 - **Add a calendar link**: any calendar you can share as a link (see
   [Calendars from an iCal link](#calendars-from-an-ical-link)).
 

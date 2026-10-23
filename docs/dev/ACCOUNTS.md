@@ -9,7 +9,7 @@ button:
     + Add Microsoft account     + Add Google account     + Other email
                                                           Add a calendar link
 
-This file is the contract every provider (Microsoft, Google, later IMAP) and
+This file is the contract every provider (Microsoft, Google, IMAP) and
 every client (the page today; a mobile, desktop or web app later) builds on.
 
 Code:
@@ -20,6 +20,14 @@ Code:
 | `lib/accounts/microsoft.mjs` | the Microsoft provider (Graph mail + calendar) | **pure JS** |
 | `lib/accounts/google.mjs` | the Google provider (built against this contract) | **pure JS** |
 | `lib/accounts/shipped.mjs` | the shipped (build-time) client IDs | pure JS |
+| `lib/accounts/imap.mjs` | the IMAP provider ("+ Other email": app password, read-only mail) | **pure JS** |
+| `lib/accounts/imap-wire.mjs` | the IMAP client: framing, parser, read-only command allowlist, limits | **pure JS** |
+| `lib/accounts/mime.mjs` | MIME preview decoding (QP, base64, charsets, RFC 2047, BODYSTRUCTURE) | **pure JS** |
+| `lib/accounts/imap-providers.mjs` | the provider table: servers, app-password steps, calendar-link steps | **pure JS** |
+| `lib/imap-transport.mjs` | the IMAP transport adapter (node:tls, strict certificates) | Node |
+| `lib/accounts-imap.mjs` | the IMAP provider config and the MX lookup | Node |
+| `server/routes/accounts-imap.mjs` | `/api/accounts/imap/*` (lookup, connect) | Node |
+| `src/app/56-accounts-imap*.js` | the "+ Other email" guided drawer | page |
 | `lib/accounts.mjs` | the Node binding: registry file, secret store, device id, migration, sources | Node |
 | `server/routes/accounts.mjs` | `/api/accounts` | Node |
 | `src/app/56-accounts*.js` | the Connections tab account list | page |
@@ -69,6 +77,8 @@ it, ever**: no tokens, no codes, no client secrets.
   fetcher: '<hostId>' | null,         // the computer that reads this account (section 7)
   createdAt, updatedAt,               // ISO
   legacy: true,                       // optional: made from the old single-account files
+  server: { service, host, port, security },   // imap only: 'yahoo'|'icloud'|...|'other', the IMAP server
+                                                // ('tls' = IMAPS, 'starttls'); never the password
 }
 ```
 
@@ -258,6 +268,80 @@ provider = {
   limit, no message bodies or attachments, calendar budget of 40 requests /
   60 s / 1,000 events.
 
+### IMAP specifics ("+ Other email": `lib/accounts/imap.mjs`)
+
+Yahoo, AOL, iCloud (icloud.com, me.com, mac.com), GMX, Zoho, Fastmail, Proton
+(through Proton Mail Bridge) and any IMAP mailbox, signed in with an **app
+password**, mail only, read-only.
+
+- **No browser sign-in**: the provider has `connect(input)` instead of
+  `beginSignIn`/`handleCallback`; the core's `accounts.connect({provider:'imap', ...})`
+  (section 8) calls it and merges the record like a callback. `connect` **tests
+  first** (connect, sign in, EXAMINE INBOX, LOGOUT) and only then writes
+  `{provider:'imap', username, password, host, port, security, service}` to the
+  vault (`accounts/<id>`). The record carries `server` (no secret) and
+  `features: {mail: true, calendar: false}`: IMAP has no calendar; the page offers
+  "Add a calendar link" (an `ical` source) with the provider's own steps.
+- **The provider table** (`lib/accounts/imap-providers.mjs`, pure):
+  `lookupProvider(email)` -> `{kind: 'known'|'other'|'redirect'|'invalid', id, name,
+  imap: {host, port, security}, username, appPassword: {url, button, required, twoStep?},
+  intro, steps, tips, webmail, calendar: {ics, steps, url, button, note} | {ics:false, text}}`.
+  Gmail / Googlemail and Hotmail / Outlook / Live / MSN addresses are `redirect`
+  (to the one-click buttons; `connect` refuses them with `USE_ONE_CLICK` +
+  `retryProvider`). The Node binding adds `providerFromMx`: for an unknown domain
+  the MX records (3 s timeout) recognise Google Workspace / Microsoft 365
+  (redirect) and Fastmail, iCloud+, Zoho (imappro.*), Yahoo, GMX on the user's own
+  domain. Anything else is `other` with a guessed `imap.<domain>:993`.
+- **User names**: the whole address; iCloud tries the whole address, then the part
+  before `@`; Proton Bridge shows its own (the form asks for it). App passwords of
+  Yahoo, AOL, iCloud and Fastmail never contain spaces, so pasted spaces are removed.
+- **The client** (`lib/accounts/imap-wire.mjs`, pure; the socket is a transport
+  adapter `openTransport({host, port, tls}) -> {secure, write, onData, onClose, startTls, close}`,
+  `lib/imap-transport.mjs` on Node): CAPABILITY, STARTTLS, LOGIN or AUTHENTICATE
+  PLAIN (SASL-IR when offered), EXAMINE (never SELECT), UID SEARCH SINCE, UID FETCH,
+  NOOP and LOGOUT are the **only** commands it can send; FETCH items must be
+  `BODY.PEEK[...]` (never `BODY[` / `RFC822`, which mark mail read). No STORE, COPY,
+  EXPUNGE, APPEND; no SMTP. Literals (`{n}`, `{n+}`, `~{n}`) both ways; caps of 1 MB
+  per line, 4 MB per literal, 8 MB per response, 32 MB per session; 20 s idle and
+  120 s per session. A password is only sent once `transport.secure` (TLS up and the
+  certificate verified: `rejectUnauthorized` always, TLS 1.2+, host name checked).
+  STARTTLS: data sent after the server's OK and before the handshake is refused;
+  capabilities are asked again after TLS.
+- **Reading mail**: UID SEARCH SINCE (the last `days`, at most 30), the newest 300,
+  `UID FETCH (UID FLAGS INTERNALDATE ENVELOPE BODYSTRUCTURE)`, then the text part
+  BODYSTRUCTURE picks (text/plain, else text/html; never an attachment) with
+  `BODY.PEEK[<part>]<0.1200>` (HTML `<0.6000>`), one FETCH per part number; a message
+  without a usable BODYSTRUCTURE falls back to `BODY.PEEK[HEADER.FIELDS (CONTENT-TYPE
+  CONTENT-TRANSFER-ENCODING)]` + `BODY.PEEK[TEXT]<0.3000>`. Decoding
+  (`lib/accounts/mime.mjs`): quoted-printable, base64 (a cut-off end keeps the bytes it
+  holds), charsets (utf-8, us-ascii, iso-8859-1 / windows-1252 built in, others by
+  TextDecoder), RFC 2047 subjects and names. Mapped to the same message shape as
+  Microsoft: `id: 'im' + sha256(sourceId|uidValidity|uid)[0..24]`, `unread` = no
+  `\Seen`, `important` = `\Flagged`, `link` = the provider's webmail (https only).
+- **Errors** (`classifyImapError`, plain words, never the server's text):
+
+| code | when |
+|---|---|
+| `WRONG_PASSWORD` | sign-in refused at connect (most often the normal password instead of an app password) |
+| `APP_PASSWORD_NEEDED` | the server says an app / application-specific password is required |
+| `TWO_STEP_NEEDED` | the server says two-step verification must be on first |
+| `IMAP_DISABLED` | IMAP access is off (GMX, Zoho, plans without IMAP); provider-specific help |
+| `IMAP_UNREACHABLE` | DNS, refused, reset (`BRIDGE_NOT_RUNNING` for Proton Bridge) |
+| `IMAP_NOT_TRUSTED` | the certificate did not verify: nothing was sent |
+| `IMAP_NOT_SECURE` | no TLS / no STARTTLS / LOGINDISABLED: nothing was sent |
+| `NEEDS_SIGN_IN` | a saved app password stopped working (status `needs-sign-in`: "Paste a new app password") |
+| `USE_ONE_CLICK` | a Gmail / Outlook address: `retryProvider` says which button |
+| `PROVIDER_BUSY`, `PROVIDER_NETWORK`, `PROVIDER_LIMIT`, `PROVIDER_RESPONSE`, `PROVIDER_REFUSED` | busy, timeout, too big, unreadable, refused |
+
+- **Weak points**: Proton Mail Bridge presents its own self-signed certificate,
+  which the strict check refuses (`IMAP_NOT_TRUSTED`); trusting Bridge's exported
+  certificate is not built. Fastmail Basic and Zoho Mail Free have no IMAP. GMX
+  switches IMAP off after long disuse. Gmail and Outlook.com are sent to the
+  one-click OAuth buttons rather than app passwords. Google Workspace / Microsoft 365
+  on the user's own domain are only recognised when the MX lookup answers. The app
+  password is kept like every other secret (lib/secret-store.mjs: a 0600 file in the
+  per-computer folder today, an OS keychain later).
+
 ## 7. The fetcher ("main computer")
 
 Each account has one **fetcher**: the device that reads it (default: the device
@@ -279,6 +363,8 @@ createAccounts({ registry, secrets, providers: { microsoft: createMicrosoftProvi
   .get(id)                       -> account | null
   .begin({ provider, email, kind?, accountId?, features? }) -> { url, state, kind }
   .callback(params)              -> { account } | { adminConsent: true }
+  .connect({ provider, ...input }) -> { account, isNew, inbox? }   // a provider without a browser sign-in (IMAP):
+                                                                   // provider.connect(input) tests and saves; the core merges the record
   .pause(id) / .resume(id)       -> account
   .setFeatures(id, { mail?, calendar? }) -> account
   .remove(id)                    -> { removed: id }      // deletes this device's tokens and the record
@@ -304,7 +390,7 @@ calls these routes on its local server.
 
 | route | body / query | answer |
 |---|---|---|
-| `GET /api/accounts` | - | `{ accounts: [publicAccount], providers: { microsoft: {available, custom, builtIn, callback}, google: {available}, imap: {available:false, comingSoon:true} } }` (`microsoft.custom`: the user's own app is in use; `microsoft.callback`: the return address to register for it) |
+| `GET /api/accounts` | - | `{ accounts: [publicAccount], providers: { microsoft: {available, custom, builtIn, callback}, google: {available}, imap: {available, comingSoon} } }` (`microsoft.custom`: the user's own app is in use; `microsoft.callback`: the return address to register for it) |
 | `POST /api/accounts/begin` | `{ provider, email, kind?, accountId?, features? }` | `{ url, kind }`: open `url` in the browser |
 | `GET /api/accounts/begin?provider=&email=&kind=&accountId=` | - | `302` to the provider (the page opens this in a new tab, so no pop-up blocker) |
 | `GET /api/accounts/callback?code=&state=` | - | an HTML page: connected / waiting for your organisation (with the approval link and email) / try again. Also at `/api/microsoft/callback` for app registrations made with the old instructions |
@@ -315,6 +401,8 @@ calls these routes on its local server.
 | `POST /api/accounts/sync` | `{ id }` | `{ account, results: [{feature, ok, count, error?}] }` (only on the fetcher) |
 | `POST /api/accounts/fetch-here` | `{ id }` | `{ ok:false, placeholder:true, message }` |
 | `GET /api/accounts/approval?id=` | - | `{ consentUrl, mailto, tenant }` |
+| `POST /api/accounts/imap/lookup` | `{ email }` | `{ provider }`: `lookupProvider` plus the MX check (section 6, IMAP); nothing saved |
+| `POST /api/accounts/imap/connect` | `{ email, password, username?, host?, port?, security?, accountId? }` | `{ account, inbox: {exists}, results }`: test, save the app password in this computer's secret store, add the account, read its inbox once. A refused sign-in is a 401 with a plain message and saves nothing |
 | `PUT /api/accounts/microsoft-app` | `{ clientId }` (or `null` to use the built-in one) | `{ custom, available }` |
 
 Errors are `{ error: '<plain message>', code }` with the HTTP status.
@@ -348,4 +436,13 @@ Synthetic provider responses only, temp folders, no network:
 `tests/accounts-microsoft.test.mjs` (authority, consent, refresh, Graph parsing),
 `tests/accounts-node.test.mjs` (registry file, secret files, migration, isolation),
 `tests/accounts-routes.test.mjs` (routes and their checks),
-`tests/accounts-ui.test.mjs` (the page's logic helpers).
+`tests/accounts-ui.test.mjs` (the page's logic helpers),
+`tests/imap-wire.test.mjs` (framing, parser, commands, allowlist, caps, purity),
+`tests/imap-mime.test.mjs` (preview decoding), `tests/imap-providers.test.mjs`
+(the provider table, MX), `tests/imap-client.test.mjs` (the client against
+`tests/fixtures/imap-fake-server.mjs`, an in-process IMAP server on a random port,
+plain or TLS with a throwaway in-memory certificate: sign-in, literals, chunking,
+malformed and oversized answers, timeouts, strict certificates, STARTTLS injection),
+`tests/accounts-imap.test.mjs` (the provider through the core and the Node binding:
+the password only in the secret store, friendly errors, the Microsoft mail shape),
+`tests/accounts-imap-routes.test.mjs` and `tests/accounts-imap-ui.test.mjs`.
