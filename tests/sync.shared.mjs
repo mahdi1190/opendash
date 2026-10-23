@@ -21,13 +21,13 @@ export const engines = new Set();
 export async function stopAll() { for (const e of engines) await e.stop().catch(() => {}); engines.clear(); }
 
 /** One "computer": a data folder with a state file, its store and its sync engine (not started). */
-export function makeDevice(base, name, { state = { custom: [] }, pollMs = 200, watch = true, now, debounceMs = 30, log } = {}) {
+export function makeDevice(base, name, { state = { custom: [] }, pollMs = 200, watch = true, now, debounceMs = 30, log, background = true } = {}) {
   const data = join(base, `data-${name}`);
   mkdirSync(join(data, 'state'), { recursive: true });
   if (state) writeFileSync(join(data, 'state', 'dashboard-state.json'), JSON.stringify({ ...state, _lastSave: 1 }));
   const store = createStateStore({ stateDir: join(data, 'state') });
   // This computer's own sync files (normally %LOCALAPPDATA%, outside the data folder).
-  const eng = createNodeSyncEngine({ store, dataDir: data, localDir: join(base, `local-${name}`), host: `host-${name}`, pollMs, watch, debounceMs, detect: () => [], ...(now ? { now } : {}), ...(log ? { log } : {}) });
+  const eng = createNodeSyncEngine({ store, dataDir: data, localDir: join(base, `local-${name}`), host: `host-${name}`, pollMs, watch, debounceMs, background, detect: () => [], ...(now ? { now } : {}), ...(log ? { log } : {}) });
   engines.add(eng);
   return { name, data, store, eng };
 }
