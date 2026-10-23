@@ -152,9 +152,12 @@ function openBulkImport() {
 /* ============================================================
    TASK TEMPLATES
    ============================================================ */
-function saveTaskAsTemplate(taskId) {
+async function saveTaskAsTemplate(taskId) {
   const item = getItem(taskId); if (!item) return;
-  const name = prompt('Template name:', effTitle(item));
+  // The app's own name box (not the browser's prompt), filled with the task's title.
+  const name = typeof promptDialog === 'function'
+    ? await promptDialog({ title: 'Save as a template', label: 'Template name', value: effTitle(item), confirmLabel: 'Save template' })
+    : prompt('Template name:', effTitle(item));
   if (!name) return;
   state.taskTemplates.push({
     id: 'tmpl-' + Date.now(), name,
@@ -163,7 +166,7 @@ function saveTaskAsTemplate(taskId) {
     subtasks: effSubtasks(item).map(s => ({ title: s.title, done: false })), recurrence: effRecurrence(item), people: [...(item.people || [])],
   });
   saveData();
-  showToast('✓ template saved', false);
+  toast(`Template “${name}” saved`, { kind: 'ok', action: { label: 'Templates', run: () => openTemplatesModal() } });
 }
 function applyTemplate(tmplId) {
   const t = state.taskTemplates.find(x => x.id === tmplId); if (!t) return;
@@ -230,7 +233,16 @@ function openTemplatesModal() {
   `, (card) => {
     card.querySelector('#tmpl-close').onclick = closeModal;
     card.querySelectorAll('[data-act="apply"]').forEach(b => b.onclick = () => { applyTemplate(b.dataset.id); closeModal(); });
-    card.querySelectorAll('[data-act="del"]').forEach(b => b.onclick = () => { if (confirm('Delete template?')) { deleteTemplate(b.dataset.id); closeModal(); openTemplatesModal(); } });
+    // Delete at once; the toast's Undo brings it back (and repaints this list if it is still open).
+    card.querySelectorAll('[data-act="del"]').forEach(b => b.onclick = () => {
+      const t = state.taskTemplates.find(x => x.id === b.dataset.id);
+      deleteTemplate(b.dataset.id); closeModal(); openTemplatesModal();
+      const mark = typeof undoMark === 'function' ? undoMark() : null;
+      toast(`Deleted the template “${t ? t.name : ''}”`, { icon: 'trash-2', action: { label: 'Undo', run: () => {
+        if (mark) undoMarked(mark); else undo();
+        const ov = document.getElementById('modal-overlay'); if (ov && ov.classList.contains('open')) openTemplatesModal();
+      } } });
+    });
     card.querySelectorAll('[data-act="rename"]').forEach(inp => {
       let timer;
       inp.oninput = () => { clearTimeout(timer); timer = setTimeout(() => updateTemplate(inp.dataset.id, 'name', inp.value), 300); };

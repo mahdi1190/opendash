@@ -236,13 +236,28 @@ function maybeAutoBackup() {
 }
 function importBackup(file) {
   const reader = new FileReader();
-  reader.onload = e => {
+  // A file that is not a backup, or cannot be read: say so, and offer to pick another (no blocking alert).
+  const fail = (msg) => {
+    const pick = () => { const inp = document.getElementById('import-file'); if (inp) { inp.value = ''; inp.click(); } };
+    if (typeof toast === 'function' && document.getElementById('toast-host')) toast('Not restored: ' + msg, { kind: 'err', action: { label: 'Choose another file', run: pick } });
+    else alert('Failed to import: ' + msg);
+  };
+  reader.onerror = () => fail('the file could not be read.');
+  reader.onload = async e => {
+    let data;
     try {
-      const data = JSON.parse(e.target.result);
+      data = JSON.parse(e.target.result);
       if (typeof data !== 'object' || !data || Array.isArray(data)) throw new Error('Not a JSON object');
       if (!Array.isArray(data.custom)) throw new Error('This file has no task list, so it is not an OpenDash backup.');
+    } catch (err) { fail(err.message === 'Not a JSON object' || err instanceof SyntaxError ? 'this file is not an OpenDash backup (it is not JSON).' : err.message); return; }
+    try {
       const when = data._lastSave ? new Date(data._lastSave).toLocaleString(undefined, { timeZone: Clock.zone() }) : 'an unknown date';
-      if (!confirm(`Replace your current OpenDash data with this backup?\n\nFile: ${file.name}\nBackup from ${when}: ${data.custom.length} tasks (you have ${state.custom.length} now).\nThis will overwrite any unsaved local changes.`)) return;
+      // Replacing everything cannot be undone with Ctrl+Z, so this one does ask (in the app's own dialog).
+      const text = `File: ${file.name}. Backup from ${when}: ${data.custom.length} tasks (you have ${state.custom.length} now). Everything you have now is replaced, and this cannot be undone with Ctrl+Z; the server keeps its own backups in your data folder.`;
+      const ok = typeof confirmDialog === 'function'
+        ? await confirmDialog({ title: 'Replace your data with this backup?', text, confirmLabel: 'Replace my data', danger: true })
+        : confirm('Replace your current OpenDash data with this backup?\n\n' + text);
+      if (!ok) return;
       for (const k of RETIRED_STATE_KEYS) delete data[k];
       if (data.bin && Array.isArray(data.bin.tasks)) data.bin.tasks = data.bin.tasks.filter(t => !(t && t.kind === 'board'));
       // Preserve current view if not in backup
@@ -261,7 +276,7 @@ function importBackup(file) {
       showToast('✓ restored from backup', false);
       render();
     } catch (err) {
-      alert('Failed to import: ' + err.message);
+      fail(err.message);
     }
   };
   reader.readAsText(file);
