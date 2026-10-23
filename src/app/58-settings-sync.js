@@ -376,7 +376,8 @@ function _syncCard(el) {
   };
   if (_syncCode) _syncCodePanel(card);
   const screen = syncScreen(st, _syncFlow);
-  if (screen === 'start' || screen === 'loading') _syncStart(card, st);
+  if (screen === 'loading') card.body.appendChild(_settingsRow('Status', '', line));
+  else if (screen === 'start') _syncStart(card, st);
   else if (screen === 'first' || screen === 'join') _syncSetup(card, st, screen === 'first');
   else {
     const status = document.createElement('div');

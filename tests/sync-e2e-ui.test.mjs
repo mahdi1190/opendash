@@ -157,3 +157,90 @@ test('QR: the offer and longer texts read back exactly (versions 1 to 10, one an
   for (const v of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) assert.ok(seen.has(v), `version ${v} covered`);
   assert.throws(() => box.syncQrMatrix('x'.repeat(214)), /too long/);
 });
+
+// ─── Rendering every screen (a tiny fake DOM; nothing is drawn) ─────────
+class El {
+  constructor(tag) { this.tagName = String(tag).toUpperCase(); this.children = []; this.attributes = {}; this.className = ''; this.textContent = ''; this.style = {}; this.dataset = {}; this.innerHTML = ''; }
+  append(...c) { for (const x of c) if (x) this.children.push(x); }
+  appendChild(c) { this.children.push(c); return c; }
+  setAttribute(k, v) { this.attributes[k] = String(v); }
+  focus() {}
+  querySelector(sel) { const cls = sel.replace(/^\./, ''); for (const c of this.children) { if (String(c.className).split(' ').includes(cls)) return c; const r = c.querySelector && c.querySelector(sel); if (r) return r; } return null; }
+  all() { return [this, ...this.children.flatMap(c => (c.all ? c.all() : []))]; }
+}
+function renderSync(st, flow, extra = {}) {
+  const ctx = {
+    TextEncoder, state: { view: 'settings:sync' }, registerSettingsGroup: () => {}, renderMain: () => {}, toast: () => {}, netErrorMessage: (e) => String(e),
+    setInterval: () => 0, clearInterval: () => {}, setTimeout: () => 0, fetch: async () => ({ ok: true, json: async () => ({}) }),
+    document: { createElement: (t) => new El(t), createElementNS: (ns, t) => new El(t), body: { contains: () => true, appendChild() {}, classList: { add() {}, remove() {} } } },
+    _settingsCard: (title, desc) => { const card = new El('section'); const body = new El('div'); card.append(Object.assign(new El('h2'), { textContent: title + ' ' + (desc || '') }), body); return { card, body }; },
+    _settingsRow: (label, hint, control) => { const r = new El('div'); r.append(Object.assign(new El('div'), { textContent: label }), Object.assign(new El('div'), { textContent: hint || '' })); if (control) r.append(control); return r; },
+    _settingsSwitch: (on, label) => Object.assign(new El('button'), { textContent: `[switch ${label}: ${on ? 'on' : 'off'}]` }),
+    confirmDialog: async () => false, promptDialog: async () => null,
+  };
+  vm.createContext(ctx);
+  vm.runInContext(readFileSync(join(APP, '58-settings-sync-qr.js'), 'utf8') + '\n' + readFileSync(join(APP, '58-settings-sync.js'), 'utf8'), ctx);
+  vm.runInContext(`_syncSt = ${JSON.stringify(st)}; _syncFlow = ${JSON.stringify(flow || null)}; _syncCode = ${JSON.stringify(extra.code || null)}; _syncOffer = ${JSON.stringify(extra.offer || null)}; _syncAdd = ${!!extra.add};`, ctx);
+  const root = new El('div');
+  vm.runInContext('(el) => _syncCard(el)', ctx)(root);
+  const els = root.all();
+  return { text: els.map(e => e.textContent).join('\n'), buttons: els.filter(e => e.tagName === 'BUTTON').map(e => e.textContent), els };
+}
+
+test('every Settings > Sync screen renders, with the plain words and buttons it needs', () => {
+  const off = { enabled: false, state: 'off', detected: [{ kind: 'onedrive', label: 'OneDrive', path: 'C:\\Users\\me\\OneDrive' }], e2e: { available: true, on: false } };
+  let r = renderSync(off, null);
+  assert.match(r.text, /Is this your first computer with OpenDash\?/);
+  assert.deepEqual(r.buttons, ['Yes, this is my first', 'No, I already use OpenDash']);
+  r = renderSync(off, 'first');
+  assert.ok(r.buttons.includes('Turn on sync') && r.buttons.includes('Back'));
+  assert.match(r.text, /only your computers can read it/);
+  r = renderSync(off, 'join');
+  assert.ok(r.buttons.includes('Find my sync'));
+
+  const joining = { enabled: true, state: 'locked', message: 'Found your OpenDash sync in OneDrive. To add this computer, approve it on your other computer, or type your recovery code.', devices: [], e2e: { available: true, on: true, ready: false, reason: 'not-joined', found: { groups: 1 }, requests: [] } };
+  r = renderSync(joining);
+  assert.match(r.text, /Found your OpenDash sync/);
+  assert.ok(r.buttons.includes('Ask my other computer') && r.buttons.includes('Use this code'));
+  assert.match(r.text, /Or type your recovery code/);
+  r = renderSync({ ...joining, e2e: { ...joining.e2e, pairing: { role: 'join', sid: 's', step: 'compare', code: '482913' } } });
+  assert.match(r.text, /482 913/);
+  assert.ok(r.buttons.includes('Yes, they match') && r.buttons.includes("No, they're different"));
+  assert.ok(!r.buttons.includes('Ask my other computer'), 'one thing at a time');
+
+  r = renderSync({ ...joining, message: 'This computer was removed from sync by Work laptop.', e2e: { ...joining.e2e, reason: 'removed' } });
+  assert.match(r.text, /was removed from sync/);
+  assert.ok(r.buttons.includes('Use this code'));
+
+  const ready = {
+    enabled: true, apply: true, mode: 'apply', state: 'ok', message: 'Up to date.', lastSyncAt: now, folder: 'C:\\Users\\me\\OneDrive', detected: [],
+    devices: [{ id: 'a'.repeat(16), name: 'Work laptop', kind: 'computer', me: true, fetches: ['Home mail'] }, { id: 'b'.repeat(16), name: 'Phone', kind: 'phone', me: false, lastSeen: Date.now() - 60000, fetches: [] }],
+    accounts: [{ id: 'acc', label: 'Home mail', fetcher: { me: true, name: 'Work laptop' } }, { id: 'cal', label: 'Work calendar', fetcher: { me: false, name: 'Phone', note: 'Phone fetches only while OpenDash is open on it.' } }],
+    skew: { text: "Your other computer's clock (Phone) is 2 hours ahead. Set both computers to the right time so the newest change wins." },
+    e2e: { available: true, on: true, ready: true, reason: null, requests: [{ sid: 'r1', deviceId: 'c'.repeat(16), name: 'Kitchen laptop', kind: 'computer' }], pairing: null, found: { groups: 1 } },
+  };
+  r = renderSync(ready, null, { code: 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF-GGGG-HHHH' });
+  assert.match(r.text, /Your recovery code/);
+  assert.match(r.text, /AAAA-BBBB-CCCC-DDDD/);
+  assert.ok(r.buttons.includes('Print') && r.buttons.includes('I have written it down'));
+  assert.match(r.text, /A new computer, "Kitchen laptop", wants to join your sync/);
+  assert.ok(r.buttons.includes("Check it's yours") && r.buttons.includes('Not mine'));
+  assert.match(r.text, /Computer \u00b7 This computer \u00b7 main computer for Home mail/);
+  assert.match(r.text, /Phone \u00b7 last seen 1 min ago/);
+  assert.equal(r.buttons.filter(b => b === 'Remove this device').length, 1, 'not for this computer');
+  assert.equal(r.buttons.filter(b => b === 'Rename').length, 2);
+  assert.match(r.text, /Main computer for each account/);
+  assert.ok(r.buttons.includes('Use this computer instead'));
+  assert.match(r.text, /Checked by Phone\. Phone fetches only while OpenDash is open on it\./);
+  assert.ok(r.buttons.includes('Make a new recovery code') && r.buttons.includes('Add a computer or phone'));
+  assert.match(r.text, /clock \(Phone\) is 2 hours ahead/);
+
+  r = renderSync(ready, null, { add: true, offer: { text: 'opendash-join:1:0123456789abcdef:fedcba9876543210:a1b2c3d4:AbCdEfGhIjKlMnOpQrStUv', expiresAt: Date.now() + 600000 } });
+  assert.match(r.text, /On a phone: open OpenDash and scan this code/);
+  assert.ok(r.els.some(e => e.tagName === 'SVG'), 'the QR code is drawn');
+  assert.match(r.text, /choose "No, I already use OpenDash"/);
+
+  r = renderSync({ ...ready, e2e: { available: true, on: false }, devices: ready.devices.slice(0, 1) });
+  assert.ok(r.buttons.includes('Encrypt my synced data'));
+  assert.match(r.text, /Not encrypted yet/);
+});
