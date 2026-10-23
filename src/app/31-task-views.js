@@ -367,9 +367,11 @@ function _makeDayDropTarget(el, iso) {
   el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
   el.addEventListener('drop', (e) => {
     el.classList.remove('drag-over');
-    const id = draggedTaskId(e);
-    if (!id) return;
+    const ids = draggedTaskIds(e);   // a dragged selection moves together (30-task-row.js)
+    if (!ids.length) return;
     e.preventDefault(); e.stopPropagation();
+    if (ids.length > 1) { const move = ids.filter(x => getItem(x).dueDate !== iso); if (move.length) bulkSetDue(move, iso); return; }
+    const id = ids[0];
     const it = getItem(id);
     if (it && it.dueDate === iso) return;
     const snap = dueMoveSnap(id);
@@ -693,8 +695,17 @@ function renderKanban(container, o) {
     c.addEventListener('dragleave', (e) => { if (!c.contains(e.relatedTarget)) c.classList.remove('dragover'); });
     c.addEventListener('drop', e => {
       c.classList.remove('dragover');
-      const id = draggedTaskId(e); if (!id) return;
+      const ids = draggedTaskIds(e); if (!ids.length) return;
       e.preventDefault();
+      if (ids.length > 1) {   // a dragged selection: all of them into this column, one undo step
+        const move = ids.filter(x => statusOf(x) !== col.key);
+        if (!move.length) return;
+        if (col.key === 'done') { bulkComplete(move); return; }
+        batchTasks(move, x => setStatus(x, col.key, { noSave: true }));
+        toast(`${move.length} moved to ${col.label}`, { kind: 'ok', icon: col.key === 'doing' ? 'circle-dot' : 'circle', action: { label: 'Undo', run: () => undo() } });
+        return;
+      }
+      const id = ids[0];
       const cur = statusOf(id);
       if (col.key === cur) return;
       if (col.key === 'done') toggleDone(id);   // its own toast + Undo
@@ -806,6 +817,7 @@ function _renderKanbanCard(it) {
   }
   // As in the list: Ctrl/Cmd+click ticks it for the bulk bar; a plain click opens it (centre card or side panel).
   card.onclick = (e) => {
+    if (e.shiftKey && _selectRangeTo(it.id)) return;   // Shift+click: everything from the last one clicked (30-task-row.js)
     _lastSelectedTaskId = it.id;
     if (e.ctrlKey || e.metaKey) { _toggleMulti(it.id); return; }
     openTask(it.id, { from: card });

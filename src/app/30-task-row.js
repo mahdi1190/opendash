@@ -21,15 +21,41 @@ function isTaskDrag(e) {
   const types = e && e.dataTransfer && e.dataTransfer.types;
   return !!types && Array.from(types).includes(TASK_DND_MIME);
 }
+// A selected task drags the whole selection: its ids ride along under this type (the dragged one first),
+// and every task drop target takes them all through draggedTaskIds(e).
+const TASKS_DND_MIME = 'application/x-dashboard-tasks';
+/** Every task a drag carries (the selection when a selected task was dragged), or []. */
+function draggedTaskIds(e) {
+  const one = draggedTaskId(e); if (!one) return [];
+  let ids = null;
+  try { ids = JSON.parse((e.dataTransfer && e.dataTransfer.getData(TASKS_DND_MIME)) || 'null'); } catch (err) { ids = null; }
+  if (!Array.isArray(ids)) return [one];
+  ids = ids.filter((x, i) => typeof x === 'string' && ids.indexOf(x) === i && getItem(x)).slice(0, 500);
+  return ids.includes(one) ? ids : [one];
+}
 function _startTaskDrag(e, item, el) {
   e.dataTransfer.setData(TASK_DND_MIME, item.id);
   e.dataTransfer.setData('text/plain', item.id);
   e.dataTransfer.effectAllowed = 'move';
+  const group = multiSelect.ids.has(item.id) ? [...multiSelect.ids].filter(x => getItem(x)) : [];
+  if (group.length > 1) {
+    const ids = [item.id, ...group.filter(x => x !== item.id)];
+    e.dataTransfer.setData(TASKS_DND_MIME, JSON.stringify(ids));
+    for (const x of ids) { const n = document.querySelector(`#main-body .task[data-id="${CSS.escape(x)}"], #main-body .kanban-card[data-id="${CSS.escape(x)}"]`); if (n) n.classList.add('dragging'); }
+    // What is being dragged, in words: "3 tasks" next to the pointer.
+    try {
+      const g = document.createElement('div'); g.className = 'drag-count'; g.textContent = `${ids.length} tasks`;
+      document.body.appendChild(g);
+      e.dataTransfer.setDragImage(g, 14, 14);
+      setTimeout(() => g.remove(), 0);
+    } catch (err) { /* the browser's own drag image */ }
+  }
   el.classList.add('dragging');
   document.body.classList.add('task-dragging');
 }
 function _endTaskDrag(el) {
   el.classList.remove('dragging');
+  document.querySelectorAll('#main-body .task.dragging, #main-body .kanban-card.dragging').forEach(n => n.classList.remove('dragging'));
   document.body.classList.remove('task-dragging');
   document.querySelectorAll('.drag-over, .drop-before, .drop-after').forEach(n => n.classList.remove('drag-over', 'drop-before', 'drop-after'));
 }
@@ -46,13 +72,25 @@ function sbTaskDrop(el, view) {
   el.addEventListener('dragleave', (e) => { if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over'); });
   el.addEventListener('drop', (e) => {
     el.classList.remove('drag-over');
-    const id = draggedTaskId(e); if (!id) return;
+    const ids = draggedTaskIds(e); if (!ids.length) return;
     e.preventDefault(); e.stopPropagation();
+    if (ids.length > 1) { _sbTaskDropMany(view, ids); return; }
+    const id = ids[0];
     const msg = act(id, getItem(id));
     if (msg) toast(msg, { kind: 'ok', icon: view.startsWith('stream:') ? 'layers' : 'calendar', action: { label: 'Undo', run: () => undo() } });
   });
   el.dataset.taskDrop = '';   // outlined while a task is dragged (20-main-tasks.css), so the targets show themselves
   return el;
+}
+/** Several selected tasks dropped on a sidebar item: the same change for all, one undo step (32-tasks-ui.js bulk*). */
+function _sbTaskDropMany(view, ids) {
+  if (view.startsWith('stream:')) {
+    const s = view.slice(7); if (!STREAMS[s]) return;
+    batchTasks(ids, id => { const it = getItem(id); if (it.stream !== s) { logActivity(id, 'stream', { from: it.stream, to: s }); it.stream = s; } });
+    toast(`${ids.length} moved to ${STREAMS[s].label}`, { kind: 'ok', icon: 'layers', action: { label: 'Undo', run: () => undo() } });
+  } else if (view === 'today') bulkSetDue(ids, todayStr());
+  else if (view === 'no-date') bulkSetDue(ids, null);
+  else if (view === 'completed') bulkComplete(ids);
 }
 /** What a drop on a sidebar item does: (id, item) -> toast text ('' when nothing changed or it says so itself). */
 function _sbTaskDropAction(view) {
@@ -193,12 +231,12 @@ function renderTaskRow(item, opts) {
     };
     el.ondragleave = () => el.classList.remove('drop-before', 'drop-after');
     el.ondrop = e => {
-      const draggedId = draggedTaskId(e);
+      const ids = draggedTaskIds(e);
       const after = el.classList.contains('drop-after');
       el.classList.remove('drop-before', 'drop-after');
-      if (!draggedId) return;
+      if (!ids.length) return;
       e.preventDefault(); e.stopPropagation();
-      if (draggedId !== id) reorderTask(draggedId, id, after);
+      if (!ids.includes(id)) reorderTask(ids.length > 1 ? ids : ids[0], id, after);   // a selection moves as one block
     };
   }
 
@@ -322,17 +360,7 @@ function renderTaskRow(item, opts) {
 
   el.onclick = (e) => {
     if (e.target.closest('.multi-handle')) return;
-    if (e.shiftKey && _lastSelectedTaskId && _lastRenderedTaskIds.length) {
-      const i1 = _lastRenderedTaskIds.indexOf(_lastSelectedTaskId);
-      const i2 = _lastRenderedTaskIds.indexOf(id);
-      if (i1 >= 0 && i2 >= 0) {
-        const [lo, hi] = i1 < i2 ? [i1, i2] : [i2, i1];
-        for (let i = lo; i <= hi; i++) multiSelect.ids.add(_lastRenderedTaskIds[i]);
-        document.body.classList.toggle('has-selection', multiSelect.ids.size > 0);
-        render();
-        return;
-      }
-    }
+    if (e.shiftKey && _selectRangeTo(id)) return;
     if (e.ctrlKey || e.metaKey) { _lastSelectedTaskId = id; _toggleMulti(id); return; }
     _lastSelectedTaskId = id;
     // The centre card or the side panel (Settings > Tasks): 61-task-card.js. Clicking the open one again is a no-op.
@@ -365,6 +393,22 @@ function _toggleMulti(id) {
   if (multiSelect.ids.has(id)) multiSelect.ids.delete(id); else multiSelect.ids.add(id);
   document.body.classList.toggle('has-selection', multiSelect.ids.size > 0);
   render();
+}
+/**
+ * Shift+click (list and board): select every task from the last one clicked (or ticked) to `id`,
+ * in the order on screen, keeping what was selected already. False when there is no anchor.
+ */
+function _selectRangeTo(id) {
+  if (!_lastSelectedTaskId || !_lastRenderedTaskIds.length) return false;
+  const i1 = _lastRenderedTaskIds.indexOf(_lastSelectedTaskId);
+  const i2 = _lastRenderedTaskIds.indexOf(id);
+  if (i1 < 0 || i2 < 0) return false;
+  const [lo, hi] = i1 < i2 ? [i1, i2] : [i2, i1];
+  for (let i = lo; i <= hi; i++) multiSelect.ids.add(_lastRenderedTaskIds[i]);
+  document.body.classList.toggle('has-selection', multiSelect.ids.size > 0);
+  try { const s = window.getSelection && window.getSelection(); if (s) s.removeAllRanges(); } catch (e) { /* no selection API */ }   // Shift+click also selects text
+  render();
+  return true;
 }
 
 function toggleInlineSubtasks(id) {
@@ -407,17 +451,20 @@ function _buildInlineSubtasks(item) {
   return wrap;
 }
 
-/** Reorder by drag: switches THIS view to manual order (seeded from what is on screen). */
+/** Reorder by drag: switches THIS view to manual order (seeded from what is on screen). draggedId: an id or several (a block, in screen order). */
 function reorderTask(draggedId, targetId, after) {
-  if (!getItem(draggedId) || !getItem(targetId)) return;
   const view = state.view;
+  const seed = _lastRenderedTaskIds;
+  const moving = (Array.isArray(draggedId) ? draggedId : [draggedId]).filter(x => getItem(x) && x !== targetId)
+    .sort((a, b) => (seed.indexOf(a) < 0 ? 1e9 : seed.indexOf(a)) - (seed.indexOf(b) < 0 ? 1e9 : seed.indexOf(b)));
+  if (!moving.length || !getItem(targetId)) return;
   const wasManual = sortForView(view) === 'manual';
   let order = (state.customOrder[view] || []).filter(x => getItem(x));
-  if (!wasManual || !order.length) order = _lastRenderedTaskIds.filter(x => getItem(x));
-  order = order.filter(x => x !== draggedId);
+  if (!wasManual || !order.length) order = seed.filter(x => getItem(x));
+  order = order.filter(x => !moving.includes(x));
   let ti = order.indexOf(targetId);
-  if (ti < 0) order.push(draggedId);
-  else order.splice(ti + (after ? 1 : 0), 0, draggedId);
+  if (ti < 0) order.push(...moving);
+  else order.splice(ti + (after ? 1 : 0), 0, ...moving);
   state.customOrder[view] = order;
   if (!wasManual) {
     setTaskViewPref(view, { sort: 'manual' });

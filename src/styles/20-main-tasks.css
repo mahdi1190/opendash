@@ -357,3 +357,11 @@ body.has-selection .task .drag-handle { display: none; }
 /* Display popover > Sections (Today): four toggles that wrap to two rows in the narrow popover. */
 .seg.seg-wrap { flex-wrap: wrap; }
 .seg.seg-wrap button { flex: 1 1 45%; white-space: nowrap; }
+/* Multi-select (30-task-row.js, 90-wiring.js rubber band): ticked rows stand out from the open one
+   (a stronger tint and an accent bar); rows under the selection rectangle light up while you drag. */
+.task.multi-selected, .task.rb-hit { background: var(--accent-soft-2); box-shadow: inset 3px 0 0 var(--accent); border-radius: var(--radius-sm); }
+.task.multi-selected .t-title { color: var(--fg); }
+.drag-count {
+  position: fixed; top: -200px; left: -200px; padding: 4px 10px; border-radius: 999px;
+  background: var(--accent); color: #fff; font-size: var(--text-xs); font-weight: var(--weight-semibold); white-space: nowrap;
+}
